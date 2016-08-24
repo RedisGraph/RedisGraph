@@ -4,28 +4,29 @@
 #include "assert.h"
 
 int main(int argc, char **argv) {
-	
-	Node *nodeSrc = NewNode("Wyoming");
-	NodeAddFilter(nodeSrc, GreaterThanFilter("population", 584000));
 
-	Node *nodeDest = NewNode("Utah");
-	NodeAddFilter(nodeDest, GreaterThanFilter("population", 2000000));
+	Graph* graph = NewGraph();	
+	Node *nodeUtah = GraphAddNode(graph, "Utah");
+	Node *nodeWyoming = GraphAddNode(graph, "Wyoming");
+	Edge* edge = GraphConnectNodes(graph, "Wyoming", "Utah", "neighbors");
 
-	Edge* edge = ConnectNodes(nodeSrc, nodeDest, "neighbors");
-	
-	assert(strcmp(nodeSrc->name, "Wyoming") == 0);
-	assert(ValidateNode(nodeSrc) == 1);
-	assert(Vector_Size(nodeSrc->filters) == 1);
-	assert(Vector_Size(nodeSrc->incomingEdges) == 0);
-	assert(Vector_Size(nodeSrc->outgoingEdges) == 1);
-	assert(Vector_Size(nodeDest->incomingEdges) == 1);
-	assert(Vector_Size(nodeDest->outgoingEdges) == 0);
+	NodeAddFilter(nodeWyoming, GreaterThanFilter("population", 584000));
+
+	assert(strcmp(nodeWyoming->name, "Wyoming") == 0);
+	assert(Vector_Size(nodeWyoming->filters) == 1);
+	assert(Vector_Size(nodeWyoming->incomingEdges) == 0);
+	assert(Vector_Size(nodeWyoming->outgoingEdges) == 1);
+	assert(Vector_Size(nodeUtah->incomingEdges) == 1);
+	assert(Vector_Size(nodeUtah->outgoingEdges) == 0);
 	assert(ValidateEdge(edge) == 1);
 	assert(strcmp(edge->relationship, "neighbors") == 0);
 
-	FreeNode(nodeSrc);
-	FreeNode(nodeDest);
-	FreeEdge(edge);
+	assert(Vector_Size(graph->nodes) == 2);
+	assert(Vector_Size(graph->edges) == 1);
+
+	assert(ValidateGraph(graph) == 1);
+
+	FreeGraph(graph);
 
 	printf("PASS!");
     return 0;
