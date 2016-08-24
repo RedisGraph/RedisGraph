@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <string.h>
+#include "node.h"
+#include "edge.h"
 #include "graph.h"
 #include "assert.h"
 

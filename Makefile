@@ -25,8 +25,16 @@ test_filter: test_filter.o filter.o
 	$(CC) -Wall -o test_filter filter.o test_filter.o $(LIBS) -L$(RMUTIL_LIBDIR) -lrmutil -lc -O0
 	@(sh -c ./test_filter)
 
-test_graph: test_graph.o graph.o filter.o
-	$(CC) -Wall -o test_graph graph.o test_graph.o filter.o $(LIBS) -L$(RMUTIL_LIBDIR) -lrmutil -lc -O0
+test_node: test_node.o node.o filter.o
+	$(CC) -Wall -o test_node test_node.o node.o filter.o $(LIBS) -L$(RMUTIL_LIBDIR) -lrmutil -lc -O0
+	@(sh -c ./test_node)
+
+test_edge: test_edge.o edge.o node.o filter.o
+	$(CC) -Wall -o test_edge test_edge.o edge.o node.o filter.o $(LIBS) -L$(RMUTIL_LIBDIR) -lrmutil -lc -O0
+	@(sh -c ./test_edge)
+
+test_graph: test_graph.o edge.o node.o graph.o filter.o
+	$(CC) -Wall -o test_graph test_graph.o edge.o node.o graph.o filter.o $(LIBS) -L$(RMUTIL_LIBDIR) -lrmutil -lc -O0
 	@(sh -c ./test_graph)
 
 .c.xo:

@@ -4,46 +4,13 @@
 #include "filter.h"
 #include "rmutil/vector.h"
 
-typedef struct {
-	char* name;				// Node's name
-	Vector* filters;		// List of filters
-	Vector* incomingEdges;	// List of outgoing edges
-	Vector* outgoingEdges;	// List of outgoing edges
-} Node;
-
-typedef struct {
-	char* relationship;
-	const Node* src;
-	const Node* dest;
-
-} Edge;
+#include "node.h"
+#include "edge.h"
 
 typedef struct {
 	Vector* nodes;
 	Vector* edges;
 } Graph;
-
-
-// Creates a new node.
-Node* NewNode(const char* name);
-
-// Adds a filter to given node.
-void NodeAddFilter(const Node* node, const Filter* filter);
-
-// Validate checks the node for validity and returns false if something is wrong.
-int ValidateNode(const Node* node);
-
-// Frees alocated space by given node.
-void FreeNode(Node* node);
-
-// Creates a new edge, connecting src to dest node.
-Edge* NewEdge(const Node* src, const Node* dest, const char* relationship);
-
-// Validate checks the edge for validity and returns false if something is wrong.
-int ValidateEdge(const Edge* edge);
-
-// Frees alocated space by given edge
-void FreeEdge(Edge* edge);
 
 // Creats a new graph
 Graph* NewGraph();
