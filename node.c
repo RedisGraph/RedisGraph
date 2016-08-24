@@ -4,8 +4,7 @@
 Node* NewNode(const char* name) {
 	Node* node = (Node*)malloc(sizeof(Node));
 	node->filters = NewVector(Filter*, 0); // Vector initial capacity 0.
-	node->incomingEdges = NewVector(Edge*, 0); // Vector initial capacity 0.
-	node->outgoingEdges = NewVector(Edge*, 1); // Vector initial capacity 1.
+	node->outgoingEdges = NewVector(Edge*, 0); // Vector initial capacity 0.
 	node->name = (char*)malloc(sizeof(char) * (strlen(name) + 1));
 
 	strcpy(node->name, name);
@@ -41,7 +40,6 @@ void FreeNode(Node* node) {
     }
     
 	Vector_Free(node->filters);
-	Vector_Free(node->incomingEdges);
 	Vector_Free(node->outgoingEdges);
 	free(node);
 }

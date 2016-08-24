@@ -9,7 +9,6 @@
 
 typedef struct {
 	Vector* nodes;
-	Vector* edges;
 } Graph;
 
 // Creats a new graph
@@ -17,6 +16,8 @@ Graph* NewGraph();
 
 // Adds a new node to the graph.
 Node* GraphAddNode(const Graph* graph, const char* nodeName);
+
+Node* GraphRemoveNode(Graph* graph, const char* nodeName);
 
 // Retrives a node from the graph.
 Node* GraphGetNode(const Graph* graph, const char* nodeName);

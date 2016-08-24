@@ -7,7 +7,7 @@
 
 int main(int argc, char **argv) {
 
-	Graph* graph = NewGraph();	
+	Graph* graph = NewGraph();
 	Node *nodeUtah = GraphAddNode(graph, "Utah");
 	Node *nodeWyoming = GraphAddNode(graph, "Wyoming");
 	Edge* edge = GraphConnectNodes(graph, "Wyoming", "Utah", "neighbors");
@@ -16,17 +16,19 @@ int main(int argc, char **argv) {
 
 	assert(strcmp(nodeWyoming->name, "Wyoming") == 0);
 	assert(Vector_Size(nodeWyoming->filters) == 1);
-	assert(Vector_Size(nodeWyoming->incomingEdges) == 0);
 	assert(Vector_Size(nodeWyoming->outgoingEdges) == 1);
-	assert(Vector_Size(nodeUtah->incomingEdges) == 1);
 	assert(Vector_Size(nodeUtah->outgoingEdges) == 0);
 	assert(ValidateEdge(edge) == 1);
 	assert(strcmp(edge->relationship, "neighbors") == 0);
 
 	assert(Vector_Size(graph->nodes) == 2);
-	assert(Vector_Size(graph->edges) == 1);
 
 	assert(ValidateGraph(graph) == 1);
+
+	Node* removedNode = GraphRemoveNode(graph, "Wyoming");
+	assert(removedNode == nodeWyoming);
+	assert(Vector_Size(graph->nodes) == 1);
+	assert(Vector_Size(removedNode->outgoingEdges) == 0);
 
 	FreeGraph(graph);
 

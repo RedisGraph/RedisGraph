@@ -11,8 +11,7 @@ int main(int argc, char **argv) {
 
 	assert(strcmp(node->name, "origin") == 0);
 	assert(ValidateNode(node) == 1);
-	assert(Vector_Size(node->incomingEdges) == 0);
-	assert(Vector_Size(node->outgoingEdges) == 0);	
+	assert(Vector_Size(node->outgoingEdges) == 0);
 
 	FreeNode(node);
 

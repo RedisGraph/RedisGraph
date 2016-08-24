@@ -7,7 +7,6 @@
 typedef struct {
 	char* name;				// Node's name
 	Vector* filters;		// List of filters
-	Vector* incomingEdges;	// List of outgoing edges
 	Vector* outgoingEdges;	// List of outgoing edges
 } Node;
 
