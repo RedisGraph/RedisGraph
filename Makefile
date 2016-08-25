@@ -33,6 +33,10 @@ test_edge: test_edge.o edge.o node.o filter.o
 	$(CC) -Wall -o test_edge test_edge.o edge.o node.o filter.o $(LIBS) -L$(RMUTIL_LIBDIR) -lrmutil -lc -O0
 	@(sh -c ./test_edge)
 
+test_triplet: test_triplet.o triplet.o edge.o node.o filter.o
+	$(CC) -Wall -o test_triplet test_triplet.o triplet.o edge.o node.o filter.o $(LIBS) -L$(RMUTIL_LIBDIR) -lrmutil -lc -O0
+	@(sh -c ./test_triplet)
+
 test_graph: test_graph.o edge.o node.o graph.o filter.o
 	$(CC) -Wall -o test_graph test_graph.o edge.o node.o graph.o filter.o $(LIBS) -L$(RMUTIL_LIBDIR) -lrmutil -lc -O0
 	@(sh -c ./test_graph)

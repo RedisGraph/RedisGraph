@@ -5,7 +5,12 @@
 #include "node.h"
 
 int main(int argc, char **argv) {
-	Node* node = NewNode("origin");
+	
+	Node* node = NewNode("");
+	assert(strcmp(node->name, "") == 0);
+	FreeNode(node);
+
+	node = NewNode("origin");
 
 	NodeAddFilter(node, EqualFilter("position", 0));
 
