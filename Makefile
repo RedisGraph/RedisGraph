@@ -21,6 +21,8 @@ all: graph.so
 clean:
 	rm -rf *.xo *.so *.o
 
+test: | clean test_filter test_node test_edge test_triplet test_edge
+ 
 test_filter: test_filter.o filter.o
 	$(CC) -Wall -o test_filter filter.o test_filter.o $(LIBS) -L$(RMUTIL_LIBDIR) -lrmutil -lc -O0
 	@(sh -c ./test_filter)
