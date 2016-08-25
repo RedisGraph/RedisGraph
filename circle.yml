@@ -1,0 +1,9 @@
+general:
+  branches:
+    only:
+     - master
+     - develop
+
+test:
+  override:
+    - make test
