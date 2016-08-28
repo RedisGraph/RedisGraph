@@ -1,8 +1,10 @@
-#include "./redismodule.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>
+#include "./redismodule.h"
+#include "./rmutil/util.h"
+#include "./rmutil/test_util.h"
 
 #define SCORE 0.0
 
@@ -167,19 +169,35 @@ int Graph_AddEdge(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     return REDISMODULE_OK;
 }
 
-int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+// Test the the AddNode command
+int testAddNode(RedisModuleCtx *ctx) {    
+    RedisModuleCallReply *r = RedisModule_Call(ctx, "graph.ADDNODE", "cc", "peers", "Fanning");
+    RMUtil_Assert(RedisModule_CallReplyType(r) == REDISMODULE_REPLY_INTEGER);
+    RMUtil_AssertReplyEquals(r, "1");
+
+    return 0;
+}
+
+// Unit test entry point for the module
+int TestModule(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+     RedisModule_AutoMemory(ctx);
+
+    RMUtil_Test(testAddNode);
     
+    RedisModule_ReplyWithSimpleString(ctx, "PASS");
+    return REDISMODULE_OK;
+}
+
+int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     if (RedisModule_Init(ctx, "graph", 1, REDISMODULE_APIVER_1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
     }
-    
-    if (RedisModule_CreateCommand(ctx, "graph.ADDNODE",
-                                  Graph_AddNode, "write", 1, 1, 1) == REDISMODULE_ERR)
-        return REDISMODULE_ERR;
-    
-    if (RedisModule_CreateCommand(ctx, "graph.ADDEDGE",
-                                  Graph_AddEdge, "write", 1, 1, 1) == REDISMODULE_ERR)
-        return REDISMODULE_ERR;
-    
+
+    RMUtil_RegisterWriteCmd(ctx, "graph.ADDNODE", Graph_AddNode);
+    RMUtil_RegisterWriteCmd(ctx, "graph.ADDEDGE", Graph_AddEdge);
+
+    // register the unit test
+    RMUtil_RegisterWriteCmd(ctx, "graph.TEST", TestModule);
+
     return REDISMODULE_OK;
 }

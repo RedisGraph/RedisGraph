@@ -4,32 +4,43 @@
 #include "edge.h"
 #include "triplet.h"
 
-int main(int argc, char **argv) {
 
-	Node* src = NewNode("me");
-	Node* dest = NewNode("beer");
-	Edge* edge = NewEdge(src, dest, "love");
+void testTriplet(const char* src, const char* relationship, const char* dest, TripletKind expectedKind, const char* expectedStrRepresentation) {
+	Node* srcNode = NewNode(src);
+	Node* destNode = NewNode(dest);
+	Edge* edge = NewEdge(srcNode, destNode, relationship);
 
 	Triplet* triplet = BuildTriplet(edge);
 
 	FreeEdge(edge);
-	FreeNode(src);
-	FreeNode(dest);
+	FreeNode(srcNode);
+	FreeNode(destNode);
 
-	assert(strcmp(triplet->subject, "me") == 0);
-	assert(strcmp(triplet->predicate, "love") == 0);
-	assert(strcmp(triplet->object, "beer") == 0);
-	assert(triplet->kind == SPO);
-
-	printf("triplet->kind: %d\n", triplet->kind);
+	assert(strcmp(triplet->subject, src) == 0);
+	assert(strcmp(triplet->predicate, relationship) == 0);
+	assert(strcmp(triplet->object, dest) == 0);
+	assert(triplet->kind == expectedKind);
 
 	char* str = TripletToString(triplet);
-	printf("str: %s\n", str);
-	assert( strcmp(str, "SPO:me:love:beer") == 0);
+	if(str == 0) {
+		assert(str == expectedStrRepresentation);
+	} else {
+		assert(strcmp(str, expectedStrRepresentation) == 0);
+	}
 	
-	free(str);
 	FreeTriplet(triplet);
+}
 
+int main(int argc, char **argv) {
+	testTriplet("", "", "", UNKNOW, 0);
+	testTriplet("me", "", "", S, "SPO:me:");
+	testTriplet("", "", "Tokyo", O, "OPS:Tokyo:");
+	testTriplet("", "friend with", "", P, "POS:friend with:");
+	testTriplet("me", "friend with", "", SP, "SPO:me:friend with:");	
+	testTriplet("", "visit", "Tokyo", PO, "POS:visit:Tokyo:");
+	testTriplet("me", "", "beer", SO, "SOP:me:beer:");
+	testTriplet("me", "love", "beer", SPO, "SPO:me:love:beer");
+	
 	printf("PASS!");
     return 0;
 }

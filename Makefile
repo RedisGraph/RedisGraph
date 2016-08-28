@@ -1,3 +1,12 @@
+#set environment variable RM_INCLUDE_DIR to the location of redismodule.h
+ifndef RM_INCLUDE_DIR
+	RM_INCLUDE_DIR=./
+endif
+
+ifndef RMUTIL_LIBDIR
+	RMUTIL_LIBDIR=./rmutil
+endif
+
 # find the OS
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 
@@ -9,17 +18,11 @@ else
 	SHOBJ_CFLAGS ?= -dynamic -fno-common -g -ggdb
 	SHOBJ_LDFLAGS ?= -bundle -undefined dynamic_lookup
 endif
+CFLAGS = -I$(RM_INCLUDE_DIR) -Wall -g -fPIC -lc -lm -std=gnu99  
+CC=gcc
 
-ifndef RMUTIL_LIBDIR
-	RMUTIL_LIBDIR=./rmutil
-endif
 
-.SUFFIXES: .c .so .xo .o
-
-all: graph.so
-
-clean:
-	rm -rf *.xo *.so *.o
+all: redis_graph.so
 
 test: | clean test_filter test_node test_edge test_triplet test_edge
  
@@ -43,10 +46,8 @@ test_graph: test_graph.o edge.o node.o graph.o filter.o
 	$(CC) -Wall -o test_graph test_graph.o edge.o node.o graph.o filter.o $(LIBS) -L$(RMUTIL_LIBDIR) -lrmutil -lc -O0
 	@(sh -c ./test_graph)
 
-.c.xo:
-	$(CC) -I. $(CFLAGS) $(SHOBJ_CFLAGS) -fPIC -c $< -o $@
+redis_graph.so: redis_graph.o
+	$(LD) -o $@ redis_graph.o $(SHOBJ_LDFLAGS) $(LIBS) -L$(RMUTIL_LIBDIR) -lrmutil -lc
 
-graph.xo: redismodule.h
-
-graph.so: graph.xo
-	$(LD) -o $@ $< $(SHOBJ_LDFLAGS) $(LIBS) -lc
+clean:
+	rm -rf *.xo *.so *.o
