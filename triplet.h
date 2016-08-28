@@ -21,6 +21,12 @@ Triplet* BuildTriplet(const Edge* edge);
 // Returns a string representation of triplet.
 char* TripletToString(const Triplet* triplet);
 
+// Returns all 6 possible string permutations.
+char** GetTripletPermutations(const Triplet* triplet);
+
+// Validate checks the triplet for validity and returns false if something is wrong.
+int ValidateTriplet(const Triplet* triplet);
+
 // Frees allocated space by given triplet.
 void FreeTriplet(Triplet* triplet);
 

@@ -3,6 +3,7 @@
 #include <ctype.h>
 #include <string.h>
 #include "./redismodule.h"
+#include "triplet.h"
 #include "./rmutil/util.h"
 #include "./rmutil/test_util.h"
 
@@ -40,90 +41,33 @@ int Graph_AddNode(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 // Create all 6 triplets from given subject, predicate and object.
 // Returns an array of triplets, caller is responsible for freeing each triplet.
 RedisModuleString **hexastoreTriplets(RedisModuleCtx *ctx, const RedisModuleString *subject, const RedisModuleString *predicate, const RedisModuleString *object) {
-    
+    RedisModuleString** triplets = RedisModule_Alloc(sizeof(RedisModuleString*) * 6);
+
     size_t sLen = 0;
     size_t oLen = 0;
     size_t pLen = 0;
-    
+
     const char* s = RedisModule_StringPtrLen(subject, &sLen);
     const char* p = RedisModule_StringPtrLen(predicate, &pLen);
     const char* o = RedisModule_StringPtrLen(object, &oLen);
     
     size_t bufLen = 6 + sLen + pLen + oLen;
-    char *buf = RedisModule_Alloc(bufLen);
+
+    Triplet *triplet = NewTriplet(s, p, o);
+    char** permutations = GetTripletPermutations(triplet);
     
-    RedisModuleString** triplets = RedisModule_Alloc(sizeof(RedisModuleString*) * 6);
+    for(int i = 0; i < 6; i++) {
+        RedisModuleString *permutation = RedisModule_CreateString(ctx, permutations[i], bufLen);
+        triplets[i] = permutation;
+        free(permutations[i]);
+    }
     
-    // 1. SPO
-    strcat(buf, "SPO:");
-    strcat(buf, s);
-    strcat(buf, ":");
-    strcat(buf, p);
-    strcat(buf, ":");
-    strcat(buf, o);
-    RedisModuleString *spo = RedisModule_CreateString(ctx, buf, bufLen);
-    triplets[0] = spo;
-    memset(buf, 0, bufLen);
-    
-    // 2. SOP
-    strcat(buf, "SOP:");
-    strcat(buf, s);
-    strcat(buf, ":");
-    strcat(buf, o);
-    strcat(buf, ":");
-    strcat(buf, p);
-    RedisModuleString *sop = RedisModule_CreateString(ctx, buf, bufLen);
-    triplets[1] = sop;
-    memset(buf, 0, bufLen);
-    
-    // 3. OSP
-    strcat(buf, "OSP:");
-    strcat(buf, o);
-    strcat(buf, ":");
-    strcat(buf, s);
-    strcat(buf, ":");
-    strcat(buf, p);
-    RedisModuleString *osp = RedisModule_CreateString(ctx, buf, bufLen);
-    triplets[2] = osp;
-    memset(buf, 0, bufLen);
-    
-    // 4. OPS
-    strcat(buf, "OPS:");
-    strcat(buf, o);
-    strcat(buf, ":");
-    strcat(buf, p);
-    strcat(buf, ":");
-    strcat(buf, s);
-    RedisModuleString *ops = RedisModule_CreateString(ctx, buf, bufLen);
-    triplets[3] = ops;
-    memset(buf, 0, bufLen);
-    
-    // 5. POS
-    strcat(buf, "POS:");
-    strcat(buf, p);
-    strcat(buf, ":");
-    strcat(buf, o);
-    strcat(buf, ":");
-    strcat(buf, s);
-    RedisModuleString *pos = RedisModule_CreateString(ctx, buf, bufLen);
-    triplets[4] = pos;
-    memset(buf, 0, bufLen);
-    
-    // 6. PSO
-    strcat(buf, "PSO:");
-    strcat(buf, p);
-    strcat(buf, ":");
-    strcat(buf, s);
-    strcat(buf, ":");
-    strcat(buf, o);
-    RedisModuleString *pso = RedisModule_CreateString(ctx, buf, bufLen);
-    triplets[5] = pso;
-    memset(buf, 0, bufLen);
-    
-    RedisModule_Free(buf);
-    
+    free(permutations);
+    FreeTriplet(triplet);
+
     return triplets;
 }
+
 // Adds a new edge to the graph.
 // Args:
 // argv[1] graph name
@@ -132,16 +76,17 @@ RedisModuleString **hexastoreTriplets(RedisModuleCtx *ctx, const RedisModuleStri
 // argv[4] object
 // connect subject to object with a bi directional edge.
 // Assuming both subject and object exists.
-int Graph_AddEdge(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {    
+int Graph_AddEdge(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     if(argc != 5) {
         return RedisModule_WrongArity(ctx);
     }
-    // RedisModule_AutoMemory(ctx);
+    
+    RedisModuleString *graph;
+    RedisModuleString *subject;
+    RedisModuleString *predicate;
+    RedisModuleString *object;
 
-    RedisModuleString *graph = argv[1];
-    RedisModuleString *subject = argv[2];
-    RedisModuleString *predicate = argv[3];
-    RedisModuleString *object = argv[4];
+    RMUtil_ParseArgs(argv, argc, 1, "ssss", &graph, &subject, &predicate, &object);
 
     RedisModuleKey *key = RedisModule_OpenKey(ctx, graph, REDISMODULE_WRITE);
     int keytype = RedisModule_KeyType(key);
@@ -178,11 +123,31 @@ int testAddNode(RedisModuleCtx *ctx) {
     return 0;
 }
 
+// Test the the AddNode command
+int testAddEdge(RedisModuleCtx *ctx) {
+
+    // Create edge
+    RedisModuleCallReply *r = RedisModule_Call(ctx, "graph.ADDEDGE", "cccc", "peers", "Fanning", "cofounder", "Parker");
+    RMUtil_Assert(RedisModule_CallReplyType(r) == REDISMODULE_REPLY_INTEGER);
+    RMUtil_AssertReplyEquals(r, "6");
+
+    // Check all 6 permutations were created.
+    r = RedisModule_Call(ctx, "ZCOUNT", "ccc", "peers", "0", "0");
+    RMUtil_AssertReplyEquals(r, "6");
+
+    // r = RedisModule_Call(ctx, "ZRANGEBYLEX" "ccc", "peers" "\"[\"", "\"[\xff\"");
+    // RMUtil_AssertReplyEquals(r, "6");
+
+    return 0;
+}
+
+
 // Unit test entry point for the module
 int TestModule(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-     RedisModule_AutoMemory(ctx);
+    RedisModule_AutoMemory(ctx);
 
-    RMUtil_Test(testAddNode);
+    // RMUtil_Test(testAddNode);
+    RMUtil_Test(testAddEdge);
     
     RedisModule_ReplyWithSimpleString(ctx, "PASS");
     return REDISMODULE_OK;

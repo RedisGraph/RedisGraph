@@ -46,8 +46,8 @@ test_graph: test_graph.o edge.o node.o graph.o filter.o
 	$(CC) -Wall -o test_graph test_graph.o edge.o node.o graph.o filter.o $(LIBS) -L$(RMUTIL_LIBDIR) -lrmutil -lc -O0
 	@(sh -c ./test_graph)
 
-redis_graph.so: redis_graph.o
-	$(LD) -o $@ redis_graph.o $(SHOBJ_LDFLAGS) $(LIBS) -L$(RMUTIL_LIBDIR) -lrmutil -lc
+redis_graph.so: redis_graph.o triplet.o
+	$(LD) -o $@ redis_graph.o triplet.o $(SHOBJ_LDFLAGS) $(LIBS) -L$(RMUTIL_LIBDIR) -lrmutil -lc
 
 clean:
 	rm -rf *.xo *.so *.o

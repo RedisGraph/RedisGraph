@@ -20,7 +20,8 @@ void testTriplet(const char* src, const char* relationship, const char* dest, Tr
 	assert(strcmp(triplet->predicate, relationship) == 0);
 	assert(strcmp(triplet->object, dest) == 0);
 	assert(triplet->kind == expectedKind);
-
+	assert(ValidateTriplet(triplet) == 1);
+	
 	char* str = TripletToString(triplet);
 	if(str == 0) {
 		assert(str == expectedStrRepresentation);
@@ -39,8 +40,27 @@ int main(int argc, char **argv) {
 	testTriplet("me", "friend with", "", SP, "SPO:me:friend with:");	
 	testTriplet("", "visit", "Tokyo", PO, "POS:visit:Tokyo:");
 	testTriplet("me", "", "beer", SO, "SOP:me:beer:");
-	testTriplet("me", "love", "beer", SPO, "SPO:me:love:beer");
+	testTriplet("me", "love", "beer", SPO, "SPO:me:love:beer");	
+
+	Triplet* triplet = NewTriplet("me", "love", "beer");
+	char** permutations = GetTripletPermutations(triplet);
+
+	assert(strcmp(permutations[0], "SPO:me:love:beer") == 0);
+	assert(strcmp(permutations[1], "SOP:me:beer:love") == 0);
+	assert(strcmp(permutations[2], "PSO:love:me:beer") == 0);
+	assert(strcmp(permutations[3], "POS:love:beer:me") == 0);
+	assert(strcmp(permutations[4], "OSP:beer:me:love") == 0);
+	assert(strcmp(permutations[5], "OPS:beer:love:me") == 0);
 	
+	// Clean up
+	FreeTriplet(triplet);
+
+	for(int i = 0; i < 6; i++) {
+		free(permutations[i]);
+	}
+
+	free(permutations);
+
 	printf("PASS!");
     return 0;
 }
