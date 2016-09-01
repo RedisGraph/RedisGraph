@@ -4,22 +4,92 @@
 Triplet* NewTriplet(const char* S, const char* P, const char* O) {
 	Triplet* triplet = (Triplet*)malloc(sizeof(Triplet));
 
-	triplet->subject = (char*)malloc(strlen(S) + 1);
-	strcpy(triplet->subject, S);
+	const char* s = S;
+	const char* p = P;
+	const char* o = O;
 
-	triplet->predicate = (char*)malloc(strlen(P) + 1);
-	strcpy(triplet->predicate, P);
+	if(s == 0) {
+		s = "";
+	}
 
-	triplet->object = (char*)malloc(strlen(O) + 1);
-	strcpy(triplet->object, O);
+	if(p == 0) {
+		p = "";
+	}
 
-	triplet->kind = (strlen(S) > 0) << 2 | (strlen(P) > 0) << 1 | (strlen(O) > 0);
+	if(o == 0) {
+		o = "";
+	}
+
+	triplet->subject = (char*)malloc(strlen(s) + 1);
+	strcpy(triplet->subject, s);
+
+	triplet->predicate = (char*)malloc(strlen(p) + 1);
+	strcpy(triplet->predicate, p);
+
+	triplet->object = (char*)malloc(strlen(o) + 1);
+	strcpy(triplet->object, o);
+
+	triplet->kind = (strlen(s) > 0) << 2 | (strlen(p) > 0) << 1 | (strlen(o) > 0);
 
 	return triplet;
 }
 
-Triplet* BuildTriplet(const Edge* edge) {
+Triplet* TripletFromEdge(const Edge* edge) {
 	return NewTriplet(edge->src->name, edge->relationship, edge->dest->name);
+}
+
+// Assuming string format KIND:A:B:C
+Triplet* TripletFromString(const char* input) {
+	char* kind;
+	char* subject = 0;
+	char* predicate = 0;
+	char* object = 0;
+
+	char* str = (char*)malloc(sizeof(char) * strlen(input) + 1);
+	strcpy(str, input);
+
+	char *token = strtok(str, ":");
+	kind = token;
+
+	for(int i = 0; i < strlen(kind); i++) {
+		switch(kind[i]) {
+			case 'S':
+				token = strtok(NULL, ":");
+				subject = (char*)malloc(sizeof(char) * strlen(token) + 1);
+				strcpy(subject, token);
+				break;
+
+			case 'P':
+				token = strtok(NULL, ":");
+				predicate = (char*)malloc(sizeof(char) * strlen(token) + 1);
+				strcpy(predicate, token);
+				break;
+
+			case 'O':
+				token = strtok(NULL, ":");
+				object = (char*)malloc(sizeof(char) * strlen(token) + 1);
+				strcpy(object, token);
+				break;
+
+			default:
+				break;
+		}
+	}
+
+	Triplet* t = NewTriplet(subject, predicate, object);
+
+	free(str);
+	if(subject) {
+		free(subject);
+	}
+	if(predicate) {
+		free(predicate);
+	}
+	if(object) {
+		free(object);
+	}
+
+	return t;
 }
 
 char* TripletToString(const Triplet* triplet) {

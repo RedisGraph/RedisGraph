@@ -36,7 +36,7 @@ void FreeNode(Node* node) {
 	for (int i = 0; i < Vector_Size(node->filters); i++) {
         Filter* f;
         Vector_Get(node->filters, i, &f);
-        FreeFilter(f);        
+        FreeFilter(f);
     }
     
 	Vector_Free(node->filters);

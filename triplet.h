@@ -16,7 +16,10 @@ typedef struct {
 Triplet* NewTriplet(const char* S, const char* P, const char* O);
 
 // Given an edge (A) -[edge]-> (B), creates a new triplet.
-Triplet* BuildTriplet(const Edge* edge);
+Triplet* TripletFromEdge(const Edge* edge);
+
+// Creates a new triplet from string.
+Triplet* TripletFromString(const char* input);
 
 // Returns a string representation of triplet.
 char* TripletToString(const Triplet* triplet);

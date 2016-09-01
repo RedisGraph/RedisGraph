@@ -40,8 +40,9 @@ int main(int argc, char **argv) {
 	testTriplet("me", "friend with", "", SP, "SPO:me:friend with:");	
 	testTriplet("", "visit", "Tokyo", PO, "POS:visit:Tokyo:");
 	testTriplet("me", "", "beer", SO, "SOP:me:beer:");
-	testTriplet("me", "love", "beer", SPO, "SPO:me:love:beer");	
+	testTriplet("me", "love", "beer", SPO, "SPO:me:love:beer"); // Note does not ends with ':'
 
+	// test permutations
 	Triplet* triplet = NewTriplet("me", "love", "beer");
 	char** permutations = GetTripletPermutations(triplet);
 
@@ -52,14 +53,30 @@ int main(int argc, char **argv) {
 	assert(strcmp(permutations[4], "OSP:beer:me:love") == 0);
 	assert(strcmp(permutations[5], "OPS:beer:love:me") == 0);
 	
-	// Clean up
-	FreeTriplet(triplet);
+	// test triplet from string
+	Triplet* tripletFromString = TripletFromString("SPO:me:visit:Tokyo");
+	assert(tripletFromString != 0);
+	assert(tripletFromString->kind == SPO);
+	assert(strcmp(tripletFromString->subject, "me") == 0);
+	assert(strcmp(tripletFromString->predicate, "visit") == 0);
+	assert(strcmp(tripletFromString->object, "Tokyo") == 0);
 
+	FreeTriplet(tripletFromString);
+
+	tripletFromString = TripletFromString("SP:me:visit");
+	assert(tripletFromString != 0);
+	assert(tripletFromString->kind == SP);
+	assert(strcmp(tripletFromString->subject, "me") == 0);
+	assert(strcmp(tripletFromString->predicate, "visit") == 0);
+	assert(strcmp(tripletFromString->object, "") == 0);
+
+	// Clean up
 	for(int i = 0; i < 6; i++) {
 		free(permutations[i]);
 	}
-
 	free(permutations);
+	FreeTriplet(triplet);
+	FreeTriplet(tripletFromString);
 
 	printf("PASS!");
     return 0;
