@@ -10,7 +10,7 @@ void testTriplet(const char* src, const char* relationship, const char* dest, Tr
 	Node* destNode = NewNode(dest);
 	Edge* edge = NewEdge(srcNode, destNode, relationship);
 
-	Triplet* triplet = BuildTriplet(edge);
+	Triplet* triplet = TripletFromEdge(edge);
 
 	FreeEdge(edge);
 	FreeNode(srcNode);

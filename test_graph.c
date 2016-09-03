@@ -12,7 +12,7 @@ int main(int argc, char **argv) {
 	Node *nodeWyoming = GraphAddNode(graph, "Wyoming");
 	Edge* edge = GraphConnectNodes(graph, "Wyoming", "Utah", "neighbors");
 
-	NodeAddFilter(nodeWyoming, GreaterThanFilter("population", 584000));
+	NodeAddFilter(nodeWyoming, "population", GreaterThanIntergerFilter(584000, 1));
 
 	assert(strcmp(nodeWyoming->name, "Wyoming") == 0);
 	assert(Vector_Size(nodeWyoming->filters) == 1);

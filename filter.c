@@ -3,70 +3,149 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <limits.h>
 
-Filter* NewFilter(const char* property, Operator op, int n_args, int values, ...) {
+Filter* NewFilter(Operator op) {
 	Filter *filter = (Filter *)malloc(sizeof(Filter));
-	filter->property = (char*)malloc(strlen(property) + 1);
-	strcpy(filter->property, property);
 	filter->op = op;
-	filter->values = NewVector(int, 0);
-
-	// read values
-	va_list args;
-	va_start(args, values);
-
-	for(int i = 0; i < n_args; i++) {
-		Vector_Push(filter->values, va_arg(args, int));
-	}
-
 	return filter;
 }
 
-Filter* EqualFilter(const char* property, int value) {
-	return NewFilter(property, Eq, 1, value);
+Filter* EqualIntegerFilter(int value) {
+	Filter* f = NewFilter(EQ);
+
+	f->eq.v.n = value;
+	f->eq.v.t = Integer;
+
+	return f;
 }
 
-Filter* GreaterThanFilter(const char* property, int value) {
-	return NewFilter(property, Gt, 1, value);
+Filter* EqualFloatFilter(float value) {
+	Filter* f = NewFilter(EQ);
+
+	f->eq.v.f = value;
+	f->eq.v.t = Float;
+
+	return f;
 }
 
-Filter* LessThanFilter(const char* property, int value) {
-	return NewFilter(property, Lt, 1, value);
+Filter* EqualStringFilter(const char* value) {
+	Filter* f = NewFilter(EQ);
+
+	f->eq.v.c = (char*)malloc(strlen(value)+1);
+	strcpy(f->eq.v.c, value);
+	f->eq.v.t = String;
+
+	return f;
 }
 
-Filter* RangeFilter(const char* property, int min, int max) {
-	return NewFilter(property, Between, 2, min, max);
-}
+Filter* GreaterThanIntergerFilter(int value, int exclusive) {
+	Operator op;
 
-int ValidateFilter(const Filter* filter) {	
-	// Check that we have a property
-	if(strlen(filter->property) == 0) {
-		fprintf(stderr, "No property given for filter\n");
-		return 0;
+	if(exclusive) {
+		op = GE;
+	} else {
+		op = GT;
 	}
 
-	int valuesCount = Vector_Size(filter->values);
-	// Check that we have values
-	if(valuesCount == 0) {
-		fprintf(stderr, "No values given for filter\n");
-		return 0;
+	Filter* f = NewFilter(op);
+	f->rng.min.n = value;
+	f->rng.min.t = Integer;
+	f->rng.minExclusive = exclusive;
+	f->rng.max.n = INT_MAX;
+	f->rng.max.t = Integer;
+
+	return f;
+}
+
+Filter* GreaterThanFloatFilter(float value, int exclusive) {
+	Operator op;
+
+	if(exclusive) {
+		op = GE;
+	} else {
+		op = GT;
 	}
 
+	Filter* f = NewFilter(op);
+	f->rng.min.f = value;
+	f->rng.min.t = Float;
+	f->rng.minExclusive = exclusive;
+	f->rng.max.f = LONG_MAX;
+	f->rng.max.t = Float;
+
+	return f;
+}
+
+Filter* LessThanIntergerFilter(int value, int exclusive) {
+	Operator op;
+
+	if(exclusive) {
+		op = LE;
+	} else {
+		op = LT;
+	}
+
+	Filter* f = NewFilter(op);
+	f->rng.max.n = value;
+	f->rng.max.t = Integer;
+	f->rng.maxExclusive = exclusive;
+	f->rng.min.n = INT_MIN;
+	f->rng.min.t = Integer;
+
+	return f;
+}
+
+Filter* LessThanFloatFilter(int value, int exclusive) {
+	Operator op;
+
+	if(exclusive) {
+		op = LE;
+	} else {
+		op = LT;
+	}
+
+	Filter* f = NewFilter(op);
+	f->rng.max.n = value;
+	f->rng.max.t = Integer;
+	f->rng.maxExclusive = exclusive;
+	f->rng.min.f = LONG_MIN;
+	f->rng.min.t = Integer;
+
+	return f;
+}
+
+int ValidateFilter(const Filter* filter) {
 	// Check for unknow operator
 	switch(filter->op) {
-		case Eq:
-		case Gt:
-		case Lt:
-			if(valuesCount > 1) {
-				fprintf(stderr, "Too many values for filter\n");
+		case EQ:
+			if(filter->eq.v.t == String && filter->eq.v.c == 0) {
+				fprintf(stderr, "missing value to compare against\n");
 				return 0;
 			}
 			break;
 
-		case Between:
-			if(valuesCount != 2) {				
-				fprintf(stderr, "Range filters must have exactly 2 values, %d given\n", valuesCount);
+		case GT:
+		case GE:
+		case LT:
+		case LE:
+			if(filter->rng.min.t != filter->rng.max.t) {
+				fprintf(stderr, "range min and max value types should be the same\n");
 				return 0;
+			}
+
+			if(filter->rng.min.t == Integer) {
+				if(filter->rng.min.n >= filter->rng.max.n) {
+					fprintf(stderr, "range min value %d can not be greater or equals to range max value %d\n", filter->rng.min.n, filter->rng.max.n);
+					return 0;
+				}
+			}
+
+			if(filter->rng.min.t == Float) {
+				if(filter->rng.min.f >= filter->rng.max.f) {
+					fprintf(stderr, "range min value %f can not be greater or equals to range max value %f\n", filter->rng.min.f, filter->rng.max.f);
+					return 0;
+				}
 			}
 			break;
 
@@ -79,7 +158,11 @@ int ValidateFilter(const Filter* filter) {
 }
 
 void FreeFilter(Filter* filter) {
-	Vector_Free(filter->values);
-	free(filter->property);
+	if(filter->op == EQ) {
+		if(filter->eq.v.t == String) {
+			free(filter->eq.v.c);
+		}
+	}
+
 	free(filter);
 }
