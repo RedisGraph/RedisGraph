@@ -118,7 +118,7 @@ int Graph_AddEdge(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     return REDISMODULE_OK;
 }
 
-int applyFilter(RedisModuleCtx *ctx, const Filter* filter, const char* elementID, const char* property) {    
+int applyFilter(RedisModuleCtx *ctx, const Filter* filter, const char* elementID, const char* property) {        
     RedisModuleString* keyStr =
         RedisModule_CreateString(ctx, elementID, strlen(elementID));
 
@@ -126,6 +126,13 @@ int applyFilter(RedisModuleCtx *ctx, const Filter* filter, const char* elementID
         RedisModule_CreateString(ctx, property, strlen(property));
 
     RedisModuleKey *key = RedisModule_OpenKey(ctx, keyStr, REDISMODULE_READ);
+    
+    if(key == NULL) {
+        printf("key %s does not exists\n", elementID);
+        RedisModule_FreeString(ctx, keyStr);
+        RedisModule_FreeString(ctx, elementProp);
+        return 0;
+    }
 
     RedisModuleString* propValue;
 
@@ -139,9 +146,6 @@ int applyFilter(RedisModuleCtx *ctx, const Filter* filter, const char* elementID
     const char* strPropValue = RedisModule_StringPtrLen(propValue, 0);
     int nPropValue = atoi(strPropValue);
     double dPropValue = atof(strPropValue);
-
-    printf("Retrived property value: %s\n", strPropValue);
-
     RedisModule_FreeString(ctx, propValue);
 
     // Determine filter type and apply.
@@ -204,6 +208,61 @@ int applyFilter(RedisModuleCtx *ctx, const Filter* filter, const char* elementID
     return 0;
 }
 
+// Filters given result-set using given filters
+// only the part (SPO) specified by part is inspected.
+Vector* filterResultSet(RedisModuleCtx *ctx, Vector* resultSet, Vector* filters, TripletKind part) {
+    Vector* filteredResultSet = NewVector(Triplet*, 0);
+
+    // Foreach result in result set
+    for(int i = 0; i < Vector_Size(resultSet); i++) {        
+        Triplet* result;
+        Vector_Get(resultSet, i, &result);
+        int bPassFilters = 1;
+
+        // Applay filter to subject.
+        const char* elementID;
+        switch(part) {
+            case S:
+                elementID = result->subject;
+                break;
+            case P:
+                elementID = result->predicate;
+                break;
+            case O:
+                elementID = result->object;
+                break;
+            default:
+                // ERROR
+                break;
+        }
+
+        // Apply filter to current result
+        for (int i = 0; i < Vector_Size(filters); i++) {
+
+            PropertyFilter* propertyFilter;
+            Vector_Get(filters, i, &propertyFilter);
+            if(!applyFilter(ctx, propertyFilter->filter, elementID, propertyFilter->property)) {
+                printf("%s failed to pass filter %s\n", elementID, propertyFilter->property);
+                bPassFilters = 0;
+                break;
+            }
+        }
+
+        // Check if current result pass all filters.
+        if(bPassFilters) {
+            printf("%s passed all filters\n", elementID);
+            Vector_Push(filteredResultSet, result);
+        } else {
+            // Free filtered triplets
+            FreeTriplet(result);
+        }
+    }
+
+    // Free original result set.
+    Vector_Free(resultSet);
+    return filteredResultSet;
+}
+
 Vector* queryTriplet(RedisModuleCtx *ctx, RedisModuleString* graph, const Triplet* triplet) {
     Vector* resultSet = NewVector(Triplet*, 0);
     char* tripletStr = TripletToString(triplet);
@@ -261,45 +320,35 @@ int Graph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     Node* dest = NewNode("");
     Edge* edge = NewEdge(src, dest, "listen");
     NodeAddFilter(src, "age", GreaterThanIntergerFilter(15, 0));
+    NodeAddFilter(dest, "genre", EqualStringFilter("Alternative rock"));
     // END OF TEST DATA
 
+    // Create a triplet out of edge
     Triplet* triplet = TripletFromEdge(edge);
+
+    // Query graph using triplet
     Vector* resultSet = queryTriplet(ctx, graph, triplet);
 
     FreeTriplet(triplet);
     RedisModule_FreeString(ctx, graph);
 
-    // loop through resultSet.
+    resultSet = filterResultSet(ctx, resultSet, src->filters, S);
+    resultSet = filterResultSet(ctx, resultSet, dest->filters, O);
+    
+    // Print final result set.
     for(int i = 0; i < Vector_Size(resultSet); i++) {
         Triplet* result;
         Vector_Get(resultSet, i, &result);
-
-        // Apply filter to current result
-        // Foreach filter in source node.
-        int bSubjectPassFilters = 1;
-        for (int i = 0; i < Vector_Size(src->filters); i++) {
-            PropertyFilter* propertyFilter;
-            Vector_Get(src->filters, i, &propertyFilter);
-
-            // Applay filter to subject.
-            if(!applyFilter(ctx, propertyFilter->filter, result->subject, propertyFilter->property)) {
-                printf("%s failed to pass filter %s\n", result->subject, propertyFilter->property);
-                bSubjectPassFilters = 0;
-                break;
-            }
-        }
-
-        if(bSubjectPassFilters) {
-            printf("%s passed all filters\n", result->subject);
-            const char *element = TripletToString(result);
-            printf("retrived element %s\n", element);
-        }
+        char* resultStr = TripletToString(result);
 
         FreeTriplet(result);
+        printf("Retrived: %s\n", resultStr);
+        free(resultStr);
     }
 
     printf("result set size: %d\n", Vector_Size(resultSet));
     RedisModule_ReplyWithDouble(ctx, Vector_Size(resultSet));
+
     Vector_Free(resultSet);
     FreeEdge(edge);
     FreeNode(src);
@@ -340,20 +389,20 @@ int testQuery(RedisModuleCtx *ctx) {
     // Create music bands
     RedisModule_Call(ctx, "HSET", "ccc", "Gorillaz", "genre", "Alternative rock");
     RedisModule_Call(ctx, "HSET", "ccc", "Tool", "genre", "Progressive metal");
-    RedisModule_Call(ctx, "HSET", "ccc", "A perfect circle", "genre", "Alternative rock");
+    RedisModule_Call(ctx, "HSET", "ccc", "A_perfect_circle", "genre", "Alternative rock");
     RedisModule_Call(ctx, "HSET", "ccc", "Deftones", "genre", "Alternative metal");
-    RedisModule_Call(ctx, "HSET", "ccc", "Florance and the machine", "genre", "Indie rock");
+    RedisModule_Call(ctx, "HSET", "ccc", "Florance_and_the_machine", "genre", "Indie rock");
 
     // Populate graph
     const char* graph = "test_graph";
 
-    RedisModule_Call(ctx, "graph.ADDEDGE", "cccc", graph, "Roi", "listen", "a perfect circle");
-    RedisModule_Call(ctx, "graph.ADDEDGE", "cccc", graph, "Roi", "listen", "tool");
-    RedisModule_Call(ctx, "graph.ADDEDGE", "cccc", graph, "Roi", "listen", "deftones");
+    RedisModule_Call(ctx, "graph.ADDEDGE", "cccc", graph, "Roi", "listen", "A_perfect_circle");
+    RedisModule_Call(ctx, "graph.ADDEDGE", "cccc", graph, "Roi", "listen", "Tool");
+    RedisModule_Call(ctx, "graph.ADDEDGE", "cccc", graph, "Roi", "listen", "Deftones");
     RedisModule_Call(ctx, "graph.ADDEDGE", "cccc", graph, "Roi", "listen", "Gorillaz");
 
     RedisModule_Call(ctx, "graph.ADDEDGE", "cccc", graph, "Hila", "listen", "Gorillaz");
-    RedisModule_Call(ctx, "graph.ADDEDGE", "cccc", graph, "Hila", "listen", "Florance and the machine");
+    RedisModule_Call(ctx, "graph.ADDEDGE", "cccc", graph, "Hila", "listen", "Florance_and_the_machine");
 
     RedisModule_Call(ctx, "graph.ADDEDGE", "cccc", graph, "Roi", "visit", "Tokyo");
     RedisModule_Call(ctx, "graph.ADDEDGE", "cccc", graph, "Roi", "visit", "California");
@@ -364,7 +413,7 @@ int testQuery(RedisModuleCtx *ctx) {
     RedisModule_Call(ctx, "graph.ADDEDGE", "cccc", graph, "Hila", "visit", "Tokyo");
 
     RedisModuleCallReply *r = RedisModule_Call(ctx, "graph.QUERY", "");
-    RMUtil_AssertReplyEquals(r, "4");
+    RMUtil_AssertReplyEquals(r, "2");
 
     return 0;
 }
