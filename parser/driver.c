@@ -10,7 +10,7 @@ int main(int argc, char const *argv[]) {
   void* pParser = ParseAlloc(malloc);
   int yv;
 
-  yy_scan_string("(me:Roi)-[]->()");
+  yy_scan_string("MATCH (me:Roi)-[]->() where me.lastname = lipman RETURN me.age");
 
   while( (yv=yylex()) != 0) {
     Parse(pParser, yv, yylval.str);

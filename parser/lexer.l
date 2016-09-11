@@ -5,21 +5,26 @@
 
 %%
 
+(MATCH)|(match) { return MATCH; }
+(RETURN)|(return) { return RETURN; }
+(WHERE)|(where) { return WHERE; }
+(AND)|(and) { return AND; }
+
 [0-9]+ { yylval.n = atoi(yytext); return NUMBER; }
 
 [A-Za-z][A-Za-z0-9]* { yylval.str = strdup(yytext); return STRING; }
 
+"," { return COMMA; }
 "(" { return LEFT_PARENTHESIS; }
 ")" { return RIGHT_PARENTHESIS; }
 "[" { return LEFT_BRACKET; }
 "]" { return RIGHT_BRACKET; }
-"{" { return LEFT_CURLY_BRACKET; }
-"}" { return RIGHT_CURLY_BRACKET; }
-">" { return ARROW_RIGHT; }
+">" { return RIGHT_ANGLE_BRACKET; }
+"<" { return LEFT_ANGLE_BRACKET; }
 "-" { return DASH; }
 ":" { return COLON; }
-
-.	{ return yytext[0]; }
+"=" { return EQUALS; }
+"." { return DOT; }
 
 %%
 
