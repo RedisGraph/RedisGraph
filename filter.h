@@ -1,7 +1,6 @@
 #ifndef FILTER_H
 #define FILTER_H
 
-#include "rmutil/vector.h"
 // Filter represents a single constraint an object
 // needs to pass inorder to be part of a result set.
 
