@@ -24,9 +24,7 @@ void FreeItemNode(ItemNode* itemNode) {
 
 LinkNode* NewLinkNode(const char* relationship) {
 	LinkNode* node = (LinkNode*)malloc(sizeof(LinkNode));
-
 	node->relationship = (char*)malloc(strlen(relationship) + 1);
-
 	strcpy(node->relationship, relationship);
 
 	return node;
@@ -71,12 +69,19 @@ void FreeFilterNode(FilterNode* filterNode) {
 
 	switch(filterNode->t) {
 		case N_PRED:
-			free(filterNode->pn.alias);
-			free(filterNode->pn.property);
+			if(filterNode->pn.alias) {
+				free(filterNode->pn.alias);
+			}
+
+			if(filterNode->pn.property) {
+				free(filterNode->pn.property);
+			}
+			break;
 		case N_COND:
 			FreeFilterNode(filterNode->cn.left);
 			FreeFilterNode(filterNode->cn.right);
-	}	
+			break;
+	}
 }
 
 
@@ -110,7 +115,7 @@ void FreeWhereNode(WhereNode* whereNode) {
 
 
 ReturnNode* NewReturnNode(Vector* variables) {
-	ReturnNode* returnNode = malloc(sizeof(ReturnNode));
+	ReturnNode* returnNode = (ReturnNode*)malloc(sizeof(ReturnNode));
 	returnNode->variables = variables;
 
 	return returnNode;
@@ -122,25 +127,41 @@ void FreeReturnNode(ReturnNode* returnNode) {
 		Vector_Get(returnNode->variables, i, &node);
 		FreeVariableNode(node);
 	}
-
+	
 	Vector_Free(returnNode->variables);
 	free(returnNode);
 }
 
 
-VariableNode* CreateVariableNode(const char* alias, const char* property) {
+VariableNode* NewVariableNode(const char* alias, const char* property) {
 	VariableNode* variableNode = (VariableNode*)malloc(sizeof(VariableNode));
-	variableNode->alias = (char*)malloc(strlen(alias) + 1);
-	variableNode->property = (char*)malloc(strlen(property) + 1);
+	variableNode->alias = NULL;
+	variableNode->property = NULL;
+
+	if(alias) {
+		variableNode->alias = (char*)malloc(strlen(alias) + 1);
+		strcpy(variableNode->alias, alias);
+	}
+
+	if(property) {
+		variableNode->property = (char*)malloc(strlen(property) + 1);
+		strcpy(variableNode->property, property);
+	}
 	
-	strcpy(variableNode->alias, alias);
-	strcpy(variableNode->property, property);
 	return variableNode;
 }
 
 void FreeVariableNode(VariableNode* variableNode) {
-	free(variableNode->alias);
-	free(variableNode->property);
+
+	if(variableNode->alias){
+		free(variableNode->alias);
+	}
+	
+	if(variableNode->property) {
+
+		free(variableNode->property);
+	}
+
 	free(variableNode);
 }
 
@@ -175,5 +196,5 @@ QueryExpressionNode* NewQueryExpressionNode(MatchNode* matchNode, WhereNode* whe
 void FreeQueryExpressionNode(QueryExpressionNode* queryExpressionNode) {
 	FreeMatchNode(queryExpressionNode->matchNode);
 	FreeWhereNode(queryExpressionNode->whereNode);
-	FreeReturnNode(queryExpressionNode->returnNode);
+	// FreeReturnNode(queryExpressionNode->returnNode);
 }

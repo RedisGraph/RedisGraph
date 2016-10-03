@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <string.h>
 #include "assert.h"
-#include "edge.h"
-#include "triplet.h"
+#include "../src/edge.h"
+#include "../src/triplet.h"
 
 
 void testTriplet(const char* src, const char* relationship, const char* dest, TripletKind expectedKind, const char* expectedStrRepresentation) {
@@ -70,11 +70,21 @@ int main(int argc, char **argv) {
 	assert(strcmp(tripletFromString->predicate, "visit") == 0);
 	assert(strcmp(tripletFromString->object, "") == 0);
 
+	// test triplet compare
+	Triplet* A = NewTriplet("me", "love", "beer");
+	Triplet* B = NewTriplet("me", "love", "beer!");
+	
+	assert(TripletCompare(A, A) == 0);
+	assert(TripletCompare(A, B) < 0);
+	assert(TripletCompare(B, A) > 0);
+
 	// Clean up
 	for(int i = 0; i < 6; i++) {
 		free(permutations[i]);
 	}
 	free(permutations);
+	FreeTriplet(A);
+	FreeTriplet(B);
 	FreeTriplet(triplet);
 	FreeTriplet(tripletFromString);
 

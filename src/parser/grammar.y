@@ -1,11 +1,11 @@
-%left AND.
 %left OR.
+%left AND.
 %nonassoc EQ GT GE LT LE.
 
 %token_type {Token}
 
 %syntax_error {
-	printf("Syntax error!\n");
+	//printf("Syntax error!\n");
 }
 
 %include {
@@ -27,7 +27,7 @@ query ::= expr(A). { *root = A; }
 %type expr {QueryExpressionNode*}
 
 expr(A) ::= matchClause(B) whereClause(C) returnClause(D). { 
-	printf("Query expression\n");
+	//printf("Query expression\n");
 	A = NewQueryExpressionNode(B, C, D); 
 }
 
@@ -35,7 +35,7 @@ expr(A) ::= matchClause(B) whereClause(C) returnClause(D). {
 %type matchClause { MatchNode* }
 
 matchClause(A) ::= MATCH relationship(B). {
-	printf("match clause\n");
+	//printf("match clause\n");
 	A = NewMatchNode(B);
 }
 
@@ -43,7 +43,7 @@ matchClause(A) ::= MATCH relationship(B). {
 %type relationship {RelationshipNode*}
 
 relationship(A) ::= node(B) link(C) node(D). {
-	printf("relationship\n");
+	//printf("relationship\n");
 	A = NewRelationshipNode(B, C, D);
 }
 
@@ -64,7 +64,7 @@ node(A) ::= LEFT_PARENTHESIS RIGHT_PARENTHESIS. {
 %type link {LinkNode*}
 
 link(A) ::= DASH LEFT_BRACKET RIGHT_BRACKET RIGHT_ARROW. { 
-	printf("empty link\n");
+	//printf("empty link\n");
 	A = NewLinkNode(""); 
 }
 link(A) ::= DASH LEFT_BRACKET STRING(B) RIGHT_BRACKET RIGHT_ARROW. { 
@@ -75,11 +75,11 @@ link(A) ::= DASH LEFT_BRACKET STRING(B) RIGHT_BRACKET RIGHT_ARROW. {
 %type whereClause {WhereNode*}
 
 whereClause(A) ::= . { 
-	printf("no where clause\n");
+	//printf("no where clause\n");
 	A = NULL;
 }
 whereClause(A) ::= WHERE cond(B). {
-	printf("where clause\n");
+	//printf("where clause\n");
 	A = NewWhereNode(B);
 }
 
@@ -114,7 +114,7 @@ value(A) ::= FALSE. { A = SI_BoolVal(0); }
 %type returnClause {ReturnNode*}
 
 returnClause(A) ::= RETURN variables(B). {
-	printf("return clause\n");
+	//printf("return clause\n");
 	A = NewReturnNode(B);
 }
 
@@ -122,12 +122,12 @@ returnClause(A) ::= RETURN variables(B). {
 %type variables {Vector*}
 
 variables(A) ::= variable(B). {
-	printf("a single variable\n");
+	//printf("a single variable\n");
 	A = NewVector(VariableNode*, 1);
 	Vector_Push(A, B); 
 }
 variables(A) ::= variables(B) COMMA variable(C). {
-	printf("multi variables\n");
+	//printf("multi variables\n");
 	Vector_Push(B, C);
 	A = B;
 }
@@ -136,12 +136,12 @@ variables(A) ::= variables(B) COMMA variable(C). {
 %type variable {VariableNode*}
 
 variable(A) ::= STRING(B). {
-	printf("variable: %s\n", B.strval);
-	A = CreateVariableNode(B.strval, "");
+	//printf("variable: %s\n", B.strval);
+	A = NewVariableNode(B.strval, NULL);
 }
 variable(A) ::= STRING(B) DOT STRING(C). {
-	printf("variable: %s prop: %s\n", B.strval, C.strval);
-	A = CreateVariableNode(B.strval, C.strval);
+	//printf("variable: %s prop: %s\n", B.strval, C.strval);
+	A = NewVariableNode(B.strval, C.strval);
 }
 
 
@@ -164,7 +164,7 @@ variable(A) ::= STRING(B) DOT STRING(C). {
   		QueryExpressionNode *ret = NULL;
 
   		while( (t = yylex()) != 0) {
-  			//printf("Token %d\n", t);
+  			////printf("Token %d\n", t);
     		Parse(pParser, t, tok, &ret);
   		}
   		Parse(pParser, 0, tok, &ret);

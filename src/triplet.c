@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include "triplet.h"
 
 Triplet* NewTriplet(const char* S, const char* P, const char* O) {
@@ -153,6 +154,19 @@ char** GetTripletPermutations(const Triplet* triplet) {
 	sprintf(permutations[5], "OPS:%s:%s:%s", triplet->object, triplet->predicate, triplet->subject);
 
 	return permutations;
+}
+
+// Assuming Triplets are of the same kind.
+int TripletCompare(const Triplet* A, const Triplet* B) {	
+	char* Astr = TripletToString(A);
+	char* Bstr = TripletToString(B);
+
+	int res = strcmp(Astr, Bstr);
+
+	free(Astr);
+	free(Bstr);
+
+	return res;
 }
 
 int ValidateTriplet(const Triplet* triplet) {

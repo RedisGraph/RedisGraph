@@ -27,6 +27,12 @@ char* TripletToString(const Triplet* triplet);
 // Returns all 6 possible string permutations.
 char** GetTripletPermutations(const Triplet* triplet);
 
+// Similar to strcmp,
+// Returns <0 if B is greater then A
+// Return >0 if A is greater then B
+// Return 0 if A equals B
+int TripletCompare(const Triplet* A, const Triplet* B);
+
 // Validate checks the triplet for validity and returns false if something is wrong.
 int ValidateTriplet(const Triplet* triplet);
 

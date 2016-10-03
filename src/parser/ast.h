@@ -81,6 +81,8 @@ FilterNode* NewConditionNode(FilterNode *left, int op, FilterNode *right);
 
 WhereNode* NewWhereNode(FilterNode* filters);
 
+VariableNode* NewVariableNode(const char* alias, const char* property);
+
 ReturnNode* NewReturnNode(Vector* variables);
 
 RelationshipNode* NewRelationshipNode(ItemNode* src, LinkNode* relation, ItemNode* dest);

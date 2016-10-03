@@ -1,7 +1,7 @@
 #ifndef __UTIL_H__
 #define __UTIL_H__
 
-#include <redismodule.h>
+#include "../redismodule.h"
 #include <stdarg.h>
 
 /// make sure the response is not NULL or an error, and if it is sends the error to the client and exit the current function

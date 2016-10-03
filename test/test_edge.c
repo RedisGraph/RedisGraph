@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <string.h>
+#include "../src/node.h"
+#include "../src/edge.h"
 #include "assert.h"
-#include "node.h"
-#include "edge.h"
 
 int main(int argc, char **argv) {
 

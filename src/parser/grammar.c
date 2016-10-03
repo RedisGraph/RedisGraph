@@ -205,10 +205,10 @@ typedef union {
 static const YYACTIONTYPE yy_action[] = {
  /*     0 */    72,   73,   76,   74,   75,  120,   31,   13,   79,   59,
  /*    10 */    10,   30,   84,    6,   27,   16,   77,   63,   78,   80,
- /*    20 */    81,   82,    7,    5,   20,    1,   24,   62,   17,   21,
- /*    30 */    29,    7,    5,   69,   85,    4,   71,   68,   14,   22,
- /*    40 */     2,   25,   18,   60,   58,    9,    8,   65,   12,   19,
- /*    50 */    15,   64,   61,   23,    5,    3,   26,   87,   11,   28,
+ /*    20 */    81,   82,    5,    7,   20,    1,   24,   62,   17,   21,
+ /*    30 */    29,    5,    7,   69,   85,    4,   25,   68,   14,   22,
+ /*    40 */     2,   70,   18,   60,   58,    9,    8,   65,   12,   19,
+ /*    50 */    15,   64,   61,   23,    7,    3,   26,   87,   11,   28,
  /*    60 */    88,
 };
 static const YYCODETYPE yy_lookahead[] = {
@@ -241,7 +241,7 @@ static const signed char yy_reduce_ofst[] = {
 static const YYACTIONTYPE yy_default[] = {
  /*     0 */   119,  119,  119,  119,  119,  119,  119,  119,  119,  119,
  /*    10 */   119,  119,  119,   97,  119,  119,  119,  119,   98,  119,
- /*    20 */   119,  119,  119,  119,  119,  101,  119,  119,  119,  117,
+ /*    20 */   119,  119,  119,  119,  119,  102,  119,  119,  119,  117,
  /*    30 */   114,  119,
 };
 /********** End of lemon-generated parsing tables *****************************/
@@ -347,7 +347,7 @@ void ParseTrace(FILE *TraceFILE, char *zTracePrompt){
 /* For tracing shifts, the names of all terminals and nonterminals
 ** are required.  The following table supplies these names */
 static const char *const yyTokenName[] = { 
-  "$",             "AND",           "OR",            "EQ",          
+  "$",             "OR",            "AND",           "EQ",          
   "GT",            "GE",            "LT",            "LE",          
   "MATCH",         "LEFT_PARENTHESIS",  "STRING",        "COLON",       
   "RIGHT_PARENTHESIS",  "DASH",          "LEFT_BRACKET",  "RIGHT_BRACKET",
@@ -852,7 +852,7 @@ static void yy_reduce(
       case 1: /* expr ::= matchClause whereClause returnClause */
 #line 29 "grammar.y"
 { 
-	printf("Query expression\n");
+	//printf("Query expression\n");
 	yylhsminor.yy67 = NewQueryExpressionNode(yymsp[-2].minor.yy2, yymsp[-1].minor.yy48, yymsp[0].minor.yy17); 
 }
 #line 859 "grammar.c"
@@ -861,7 +861,7 @@ static void yy_reduce(
       case 2: /* matchClause ::= MATCH relationship */
 #line 37 "grammar.y"
 {
-	printf("match clause\n");
+	//printf("match clause\n");
 	yymsp[-1].minor.yy2 = NewMatchNode(yymsp[0].minor.yy31);
 }
 #line 868 "grammar.c"
@@ -869,7 +869,7 @@ static void yy_reduce(
       case 3: /* relationship ::= node link node */
 #line 45 "grammar.y"
 {
-	printf("relationship\n");
+	//printf("relationship\n");
 	yylhsminor.yy31 = NewRelationshipNode(yymsp[-2].minor.yy68, yymsp[-1].minor.yy32, yymsp[0].minor.yy68);
 }
 #line 876 "grammar.c"
@@ -899,7 +899,7 @@ static void yy_reduce(
       case 7: /* link ::= DASH LEFT_BRACKET RIGHT_BRACKET RIGHT_ARROW */
 #line 66 "grammar.y"
 { 
-	printf("empty link\n");
+	//printf("empty link\n");
 	yymsp[-3].minor.yy32 = NewLinkNode(""); 
 }
 #line 906 "grammar.c"
@@ -914,7 +914,7 @@ static void yy_reduce(
       case 9: /* whereClause ::= */
 #line 77 "grammar.y"
 { 
-	printf("no where clause\n");
+	//printf("no where clause\n");
 	yymsp[1].minor.yy48 = NULL;
 }
 #line 921 "grammar.c"
@@ -922,7 +922,7 @@ static void yy_reduce(
       case 10: /* whereClause ::= WHERE cond */
 #line 81 "grammar.y"
 {
-	printf("where clause\n");
+	//printf("where clause\n");
 	yymsp[-1].minor.yy48 = NewWhereNode(yymsp[0].minor.yy69);
 }
 #line 929 "grammar.c"
@@ -1011,7 +1011,7 @@ static void yy_reduce(
       case 26: /* returnClause ::= RETURN variables */
 #line 116 "grammar.y"
 {
-	printf("return clause\n");
+	//printf("return clause\n");
 	yymsp[-1].minor.yy17 = NewReturnNode(yymsp[0].minor.yy66);
 }
 #line 1018 "grammar.c"
@@ -1019,7 +1019,7 @@ static void yy_reduce(
       case 27: /* variables ::= variable */
 #line 124 "grammar.y"
 {
-	printf("a single variable\n");
+	//printf("a single variable\n");
 	yylhsminor.yy66 = NewVector(VariableNode*, 1);
 	Vector_Push(yylhsminor.yy66, yymsp[0].minor.yy11); 
 }
@@ -1029,7 +1029,7 @@ static void yy_reduce(
       case 28: /* variables ::= variables COMMA variable */
 #line 129 "grammar.y"
 {
-	printf("multi variables\n");
+	//printf("multi variables\n");
 	Vector_Push(yymsp[-2].minor.yy66, yymsp[0].minor.yy11);
 	yylhsminor.yy66 = yymsp[-2].minor.yy66;
 }
@@ -1039,8 +1039,8 @@ static void yy_reduce(
       case 29: /* variable ::= STRING */
 #line 138 "grammar.y"
 {
-	printf("variable: %s\n", yymsp[0].minor.yy0.strval);
-	yylhsminor.yy11 = CreateVariableNode(yymsp[0].minor.yy0.strval, "");
+	//printf("variable: %s\n", yymsp[0].minor.yy0.strval);
+	yylhsminor.yy11 = NewVariableNode(yymsp[0].minor.yy0.strval, NULL);
 }
 #line 1046 "grammar.c"
   yymsp[0].minor.yy11 = yylhsminor.yy11;
@@ -1048,8 +1048,8 @@ static void yy_reduce(
       case 30: /* variable ::= STRING DOT STRING */
 #line 142 "grammar.y"
 {
-	printf("variable: %s prop: %s\n", yymsp[-2].minor.yy0.strval, yymsp[0].minor.yy0.strval);
-	yylhsminor.yy11 = CreateVariableNode(yymsp[-2].minor.yy0.strval, yymsp[0].minor.yy0.strval);
+	//printf("variable: %s prop: %s\n", yymsp[-2].minor.yy0.strval, yymsp[0].minor.yy0.strval);
+	yylhsminor.yy11 = NewVariableNode(yymsp[-2].minor.yy0.strval, yymsp[0].minor.yy0.strval);
 }
 #line 1055 "grammar.c"
   yymsp[-2].minor.yy11 = yylhsminor.yy11;
@@ -1113,7 +1113,7 @@ static void yy_syntax_error(
 /************ Begin %syntax_error code ****************************************/
 #line 7 "grammar.y"
 
-	printf("Syntax error!\n");
+	//printf("Syntax error!\n");
 #line 1118 "grammar.c"
 /************ End %syntax_error code ******************************************/
   ParseARG_STORE; /* Suppress warning about unused %extra_argument variable */
@@ -1337,7 +1337,7 @@ void Parse(
   		QueryExpressionNode *ret = NULL;
 
   		while( (t = yylex()) != 0) {
-  			//printf("Token %d\n", t);
+  			////printf("Token %d\n", t);
     		Parse(pParser, t, tok, &ret);
   		}
   		Parse(pParser, 0, tok, &ret);
