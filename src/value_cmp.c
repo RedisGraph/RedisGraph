@@ -5,13 +5,13 @@
 #include <sys/param.h>
 
 // Comparators for all simple types
-GENERIC_CMP_FUNC_IMPL(si_cmp_float, floatval);
-GENERIC_CMP_FUNC_IMPL(si_cmp_int, intval);
-GENERIC_CMP_FUNC_IMPL(si_cmp_long, longval);
-GENERIC_CMP_FUNC_IMPL(si_cmp_double, doubleval);
-GENERIC_CMP_FUNC_IMPL(si_cmp_uint, uintval);
+GENERIC_CMP_FUNC_IMPL(cmp_float, floatval);
+GENERIC_CMP_FUNC_IMPL(cmp_int, intval);
+GENERIC_CMP_FUNC_IMPL(cmp_long, longval);
+GENERIC_CMP_FUNC_IMPL(cmp_double, doubleval);
+GENERIC_CMP_FUNC_IMPL(cmp_uint, uintval);
 
-int si_cmp_string(void *p1, void *p2) {
+int cmp_string(void *p1, void *p2) {
   SIValue *v1 = p1, *v2 = p2;
   if (SIValue_IsInf(v1) || SIValue_IsNegativeInf(v2))
     return 1;

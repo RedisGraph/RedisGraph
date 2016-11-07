@@ -30,9 +30,16 @@ Token tok;
   return INTEGER;
 }
 
-[A-Za-z][A-Za-z0-9]* {	
+[A-Za-z][A-Za-z0-9]* {
   	tok.strval = strdup(yytext);
   	return STRING;
+}
+
+(\"(\\.|[^\"])*\")|('(\\.|[^'])*')    {
+  /* String literals, with escape sequences - enclosed by "" or '' */
+  *(yytext+strlen(yytext)-1) = '\0';
+  tok.strval = strdup(yytext+1);
+  return STRING;
 }
 
 "," 	{ return COMMA; }

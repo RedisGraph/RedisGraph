@@ -9,6 +9,7 @@
 #include "triplet.h"
 #include "value_cmp.h"
 #include "redismodule.h"
+#include "query_executor.h"
 
 #include "rmutil/util.h"
 #include "rmutil/vector.h"
@@ -126,127 +127,11 @@ int Graph_AddEdge(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     return REDISMODULE_OK;
 }
 
-// Applies filters specified in where clause of AST.
-int applyFilters(RedisModuleCtx *ctx, Triplet* result, char** aliases, FilterNode* root) {
-    // Scan tree.
-    if(root->t == N_PRED) {
-        char* elementID = NULL;
-        
-        if (strcmp(aliases[0], root->pn.alias) == 0) {
-            elementID = result->subject;
-        }
-        if (strcmp(aliases[2], root->pn.alias) == 0) {
-            elementID = result->object;
-        }
-
-        return applyFilter(ctx, elementID, root->pn.property, root->pn.op, root->pn.val);
-    }
-
-    // root->t == N_COND
-
-    // Visit left subtree
-    int pass = applyFilters(ctx, result, aliases, root->cn.left);
-    
-    if(root->cn.op == AND && pass == 1) {
-        // Visit right subtree
-        pass *= applyFilters(ctx, result, aliases, root->cn.right);
-    }
-
-    if(root->cn.op == OR && pass == 0) {
-        // Visit right subtree
-        pass = applyFilters(ctx, result, aliases, root->cn.right);   
-    }
-
-    return pass;
-}
-
-// Applies a single filter to a single result.
-int applyFilter(RedisModuleCtx *ctx, const char* elementID, const char* property, int op, SIValue val) {
-    RedisModuleString* keyStr =
-        RedisModule_CreateString(ctx, elementID, strlen(elementID));
-
-    RedisModuleString* elementProp =
-        RedisModule_CreateString(ctx, property, strlen(property));
-
-    RedisModuleKey *key = RedisModule_OpenKey(ctx, keyStr, REDISMODULE_READ);
-    
-    if(key == NULL) {
-        printf("key %s does not exists\n", elementID);
-        RedisModule_FreeString(ctx, keyStr);
-        RedisModule_FreeString(ctx, elementProp);
-        return 0;
-    }
-
-    RedisModuleString* propValue;
-
-    RedisModule_HashGet(key, REDISMODULE_HASH_NONE, elementProp, &propValue, NULL);
-
-    RedisModule_CloseKey(key);
-    RedisModule_FreeString(ctx, keyStr);
-    RedisModule_FreeString(ctx, elementProp);
-
-    size_t strProplen;
-    const char* strPropValue = RedisModule_StringPtrLen(propValue, &strProplen);
-    RedisModule_FreeString(ctx, propValue);
-
-    SIValue propVal = {.type = val.type};
-
-    if (!SI_ParseValue(&propVal, strPropValue, strProplen)) {
-      RedisModule_Log(ctx, "error", "Could not parse %.*s\n", (int)strProplen, strPropValue);
-      return RedisModule_ReplyWithError(ctx, "Invalid value given");
-    }
-
-    // Relation between prop value and value.
-    int rel = 0;
-    switch(val.type) {
-      case T_STRING:      
-        rel = si_cmp_string(&propVal, &val);
-        break;
-      case T_INT32:
-        rel = si_cmp_int(&propVal, &val);
-        break;
-      case T_INT64:
-        rel = si_cmp_long(&propVal, &val);
-        break;
-      case T_UINT:
-        rel = si_cmp_uint(&propVal, &val);
-        break;
-      case T_BOOL:
-        rel = si_cmp_int(&propVal, &val);
-        break;
-      case T_FLOAT:
-        rel = si_cmp_float(&propVal, &val);
-        break;
-      case T_DOUBLE:
-        rel = si_cmp_double(&propVal, &val);
-        break;
-    }
-
-    switch(op) {
-        case EQ:
-            return rel == 0;
-
-        case GT:
-            return rel > 0;
-
-        case GE:
-            return rel >= 0;
-
-        case LT:
-            return rel < 0;
-
-        case LE:
-            return rel <= 0;
-
-        default:
-            RedisModule_Log(ctx, "error", "Unknown comparison operator %d\n", op);
-            return RedisModule_ReplyWithError(ctx, "Invalid comparison operator");
-    }
-
-}
-
 // Filters given result-set using given filters
 Vector* FilterResultSet(RedisModuleCtx *ctx, Vector* resultSet, FilterNode* root, char** aliases) {
+    // Construct filter tree.
+    QE_FilterNode* filterTree = BuildFiltersTree(root);
+
     Vector* filteredResultSet = NewVector(Triplet*, 0);
 
     int resultSetSize = Vector_Size(resultSet);    
@@ -256,11 +141,7 @@ Vector* FilterResultSet(RedisModuleCtx *ctx, Vector* resultSet, FilterNode* root
         Triplet* result;
         Vector_Get(resultSet, i, &result);
 
-        char* strResult = TripletToString(result);
-
-        // TODO: Apply filters to current result
-        if(applyFilters(ctx, result, aliases, root)) {            
-            free(strResult);
+        if(applyFilters(ctx, result, aliases, filterTree)) {
             Vector_Push(filteredResultSet, result);
         } else {
             // Free filtered triplets
