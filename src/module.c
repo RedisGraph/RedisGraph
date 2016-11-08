@@ -155,8 +155,10 @@ Vector* FilterResultSet(RedisModuleCtx *ctx, Vector* resultSet, FilterNode* root
 }
 
 Vector* queryTriplet(RedisModuleCtx *ctx, RedisModuleString* graph, const Triplet* triplet) {
+
     Vector* resultSet = NewVector(Triplet*, 0);
     char* tripletStr = TripletToString(triplet);
+
     size_t bufLen = strlen(tripletStr) + 2;
     char* buf = (char*)malloc(bufLen);
 
@@ -310,7 +312,6 @@ int Graph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     Vector* resultSet = queryTriplet(ctx, graph, triplet);
 
     FreeTriplet(triplet);
-    RedisModule_FreeString(ctx, graph);
 
     if(parseTree->whereNode != NULL) {
         // Apply filters specified in where clause.
@@ -339,6 +340,7 @@ int Graph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     Vector_Free(response);
 
     // TODO: free memory.
+    // RedisModule_FreeString(ctx, graph);
     // Free AST
     // FreeQueryExpressionNode(parseTree);
     // Vector_Free(resultSet);

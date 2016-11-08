@@ -1,72 +1,113 @@
-import redis
 import csv
+import redis
+import operator
+from datetime import date
 
 r = redis.Redis(host='localhost', port=6379)
-
-# Load data
-# Create users
-with open('users.csv', 'r') as f:
-	next(f) # Skip header row
-	reader = csv.reader(f)
-	for user in reader:
-		name = user[0]
-		age = user[1]
-		r.hset(name, 'name', name)
-		r.hset(name, 'age', age)
+graph = "imdb"
 
 
-# Create music bands
-with open('bands.csv', 'r') as f:
-	next(f) # Skip header row
-	reader = csv.reader(f)
-	for band in reader:
-		name = band[0]
-		genre = band[1]
-		r.hset(name, 'name', name)
-		r.hset(name, 'genre', genre)
+def PopulateGraph():
+	# check if graph already exists
+	if r.exists(graph) == 0:
+		print "Loading movies"
+		movies = LoadMovies()
+		print "Loaded %d movies" % len(movies)
 
+		print "Loading actors"
+		actors = LoadActors()
+		print "Loaded %d actors" % len(actors)
 
-# Make connection.
-graph = "music_graph"
+		# print "Number of actors which played in more then 2 movies %d" % len([x for x in actors if actors[x] > 2]) 
 
-r.execute_command("graph.ADDEDGE", graph, "Roi", "listen", "A_perfect_circle")
-r.execute_command("graph.ADDEDGE", graph, "Roi", "listen", "Tool")
-r.execute_command("graph.ADDEDGE", graph, "Roi", "listen", "Deftones")
-r.execute_command("graph.ADDEDGE", graph, "Roi", "listen", "Gorillaz")
+def LoadMovies():
+	# Load movies entities
+	movies = []
+	with open('movies.csv', 'r') as f:
+		reader = csv.reader(f, delimiter=',')
+		for row in reader:
+			# Doctor Strange,Action,71532,8.0,2016
+			title = row[0]
+			gener = row[1]
+			votes = int(row[2])
+			rating = float(row[3])
+			year = int(row[4])
 
-r.execute_command("graph.ADDEDGE", graph, "Hila", "listen", "Gorillaz")
-r.execute_command("graph.ADDEDGE", graph, "Hila", "listen", "Florance_and_the_machine")
+			r.hset(title, 'title', title)
+			r.hset(title, 'gener', gener)
+			r.hset(title, 'votes', votes)
+			r.hset(title, 'rating', rating)
+			r.hset(title, 'year', year)
+			movies.append(title)
 
-# r.execute_command("graph.ADDEDGE", graph, "Roi", "visit", "Tokyo")
-# r.execute_command("graph.ADDEDGE", graph, "Roi", "visit", "California")
-# r.execute_command("graph.ADDEDGE", graph, "Roi", "visit", "Tanzania")
-# r.execute_command("graph.ADDEDGE", graph, "Roi", "visit", "Germany")
+	return movies
 
-# r.execute_command("graph.ADDEDGE", graph, "Hila", "visit", "Germany")
-# r.execute_command("graph.ADDEDGE", graph, "Hila", "visit", "Tokyo")
+def LoadActors():
+	# Load movies entities
+	actors = {}
+	today = date.today()
 
-# Query the graph
+	with open('actors.csv', 'r') as f:
+		reader = csv.reader(f, delimiter=',')
+		for row in reader:
+			# Chris Pratt,1979,Guardians of the Galaxy
+			name = row[0]
+			yearOfBirth = int(row[1])
+			movie = row[2]
+			age = today.year - yearOfBirth
 
-# To which bands does Roi listens to which play either Alternative or Progressive?
-query = """MATCH (me:Roi)-[listen]->(band)
-	WHERE band.genre = Progressive OR band.genre = Alternative 
-	RETURN me.name, me.age, band.name""";
+			r.hset(name, 'name', name)
+			r.hset(name, 'age', age)			
+			r.execute_command("GRAPH.ADDEDGE", graph, name, "act", movie)
 
-print "Query: %s\n" % query
+			if name in actors:
+				actors[name] += 1
+			else:
+				actors[name] = 1
 
-resultset = r.execute_command("graph.QUERY", graph, query)
-print "results: %s\n" % resultset
+		
+	# topActors = sorted(actors.items(), key=operator.itemgetter(1))
+	# print "top 10 actors %s" % (topActors[-10:])
+	return actors
 
+def ExecuteQuery(query):
+	print "Query: %s\n" % query
 
-# Who's listens to Alternative?
-query = """MATCH (me)-[listen]->(band)
-	WHERE band.genre = Alternative
-	RETURN me.name, band.name""";
+	resultset = r.execute_command("graph.QUERY", graph, query)
+	print "results: %s\n" % resultset
 
-print "Query: %s\n" % query
+def main():
+	
+	PopulateGraph()
 
-resultset = r.execute_command("graph.QUERY", graph, query)
-print "results: %s\n" % resultset
+	# Query database
+	#------------------------------------------------------------------------
+	print "Which actors played in the movie Straight Outta Compton?"
 
-# query = "MATCH (me:Roi)-[]->(band) WHERE band.genre = Alternative RETURN me";
-# r.execute_command("graph.QUERY", graph, query)
+	query = """MATCH (actor)-[act]->(movie:"Straight Outta Compton") 
+	RETURN actor.name""";
+
+	ExecuteQuery(query)
+
+	#------------------------------------------------------------------------
+	print "Which actors who are over 50 played in blockbuster movies?"
+	
+	query = """MATCH (actor)-[act]->(movie)
+	WHERE actor.age >= 50 AND movie.votes > 10000 AND movie.rating > 8.5
+	RETURN actor.name, actor.age, movie.title, movie.votes, movie.rating"""
+
+	ExecuteQuery(query)
+
+	#------------------------------------------------------------------------
+	print "Which actors played in bad drame or comedy?"
+
+	query = """MATCH (actor)-[act]->(movie)
+	WHERE (movie.gener = Drama OR movie.gener = Comedy) 
+	AND movie.rating < 6.0 AND movie.votes > 80000
+	RETURN actor.name, movie.title, movie.gener, movie.rating"""
+	
+	ExecuteQuery(query)
+	
+
+if __name__ == '__main__':
+	main()
