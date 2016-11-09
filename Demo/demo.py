@@ -73,7 +73,7 @@ def LoadActors():
 def ExecuteQuery(query):
 	print "Query: %s\n" % query
 
-	resultset = r.execute_command("graph.QUERY", graph, query)
+	resultset = r.execute_command("GRAPH.QUERY", graph, query)
 	print "results: %s\n" % resultset
 
 def main():
