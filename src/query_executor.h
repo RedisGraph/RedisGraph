@@ -2,6 +2,7 @@
 #define __QUERY_EXECUTOR_H
 
 #include "triplet.h"
+#include "graph/graph.h"
 #include "value_cmp.h"
 #include "parser/ast.h"
 #include "redismodule.h"
@@ -40,6 +41,11 @@ typedef struct {
   QE_FilterNodeType t;	// Determins actual type of this node
 } QE_FilterNode;
 
+
+// Given AST's MATCH node constructs a graph
+// representing queried entities and the relationships
+// between them
+Graph* BuildGraph(const MatchNode* matchNode);
 
 // Given AST's WHERE subtree constructs a filter tree
 // this is done to speed up the filtering process

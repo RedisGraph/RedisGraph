@@ -1,8 +1,59 @@
 #include "query_executor.h"
 #include "parser/grammar.h"
+#include "rmutil/vector.h"
+#include "graph/node.h"
+
+Graph* BuildGraph(const MatchNode* matchNode) {
+    printf("in BuildGraph\n");
+
+    Graph* g = NewGraph();
+    Vector* stack = NewVector(ChainElement*, 3);
+    
+    printf("there are %d elements to process\n", Vector_Size(matchNode->chainElements));
+    for(int i = 0; i < Vector_Size(matchNode->chainElements); i++) {
+        ChainElement* element;
+        Vector_Get(matchNode->chainElements, i, &element);
+        Vector_Push(stack, element);
+
+        if(Vector_Size(stack) == 3) {
+            ChainElement* a;
+            ChainElement* edge;
+            ChainElement* c; 
+            Vector_Pop(stack, &c);
+            Vector_Pop(stack, &edge);
+            Vector_Pop(stack, &a);
+
+            // TODO: Validate a, edge, c types
+            Node* src;
+            Node* dest;
+
+            if(edge->l.direction == N_LEFT_TO_RIGHT) {
+                printf("edge direction is LEFT_TO_RIGHT\n");
+                src = Graph_AddNode(g, a->e.alias, a->e.id);
+                dest = Graph_AddNode(g, c->e.alias, c->e.id);                
+            } else {
+                printf("edge direction is RIGHT_TO_LEFT\n");
+                src = Graph_AddNode(g, c->e.alias, c->e.id);
+                dest = Graph_AddNode(g, a->e.alias, a->e.id);
+            }
+            printf("HERE!\n");
+            printf("Connecting %s:%s to %s:%s using %s\n", src->alias, src->id, dest->alias, dest->id, edge->l.relationship);
+            ConnectNode(src, dest, edge->l.relationship);
+            
+            // reintroduce last pushed item
+            Vector_Push(stack, c);
+        } // if ends
+    } // For loop ends
+
+    Vector_Free(stack);    
+    return g;
+}
 
 QE_FilterNode* BuildFiltersTree(const FilterNode* root) {
-	
+    if(root == NULL) {
+        return NULL;
+    }
+    
 	QE_FilterNode* filterNode = (QE_FilterNode*)malloc(sizeof(QE_FilterNode));
 
     if(root->t == N_PRED) {

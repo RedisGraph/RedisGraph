@@ -3,8 +3,10 @@
 #include <string.h>
 #include <ctype.h>
 
-#include "edge.h"
-#include "node.h"
+#include "graph/edge.h"
+#include "graph/node.h"
+#include "graph/graph.h"
+
 #include "value.h"
 #include "triplet.h"
 #include "value_cmp.h"
@@ -20,36 +22,6 @@
 #include "parser/parser_common.h"
 
 #define SCORE 0.0
-
-// Adds a new node to the graph.
-// Args:
-// argv[1] - Graph name
-// argv[2] - Node name
-int Graph_AddNode(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-    RedisModule_AutoMemory(ctx);
-
-    if(argc != 3) {
-        return RedisModule_WrongArity(ctx);
-    }
-    
-    RedisModuleString *graph = argv[1];
-    RedisModuleString *nodeName = argv[2];
-    
-    RedisModuleKey *key = RedisModule_OpenKey(ctx, graph, REDISMODULE_WRITE);
-    
-    int keytype = RedisModule_KeyType(key);
-    
-    // Expecting key to be of type empty or sorted set.
-    if(keytype != REDISMODULE_KEYTYPE_ZSET && keytype != REDISMODULE_KEYTYPE_EMPTY) {
-        return RedisModule_ReplyWithError(ctx, REDISMODULE_ERRORMSG_WRONGTYPE);
-    }
-    
-    RedisModule_ZsetAdd(key, SCORE, nodeName, NULL);
-    size_t newlen = RedisModule_ValueLength(key);
-    RedisModule_CloseKey(key);
-    RedisModule_ReplyWithLongLong(ctx, newlen);
-    return REDISMODULE_OK;
-}
 
 // Create all 6 triplets from given subject, predicate and object.
 // Returns an array of triplets, caller is responsible for freeing each triplet.
@@ -89,7 +61,7 @@ RedisModuleString **hexastoreTriplets(RedisModuleCtx *ctx, const RedisModuleStri
 // argv[4] object
 // connect subject to object with a bi directional edge.
 // Assuming both subject and object exists.
-int Graph_AddEdge(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+int MGraph_AddEdge(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     if(argc != 5) {
         return RedisModule_WrongArity(ctx);
     }
@@ -280,64 +252,130 @@ Vector* BuildQueryResponse(RedisModuleCtx *ctx, ReturnNode* returnNode, Vector* 
     return res;
 }
 
-int Graph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+void QueryNode(RedisModuleCtx *ctx, RedisModuleString *graphName, Graph* g, Node* n, QE_FilterNode* filterTree) {
+    printf("In QueryNode\n");
+    printf("node: (%s:%s)\n", n->alias, n->id);
+    Node* src = n;
+
+    for(int i = 0; i < Vector_Size(src->outgoingEdges); i++) {
+        Edge* edge;
+        Vector_Get(src->outgoingEdges, i, &edge);
+        Node* dest = edge->dest;
+
+        printf("source node (%s:%s)-[%s]->(%s:%s)\n", src->alias, src->id, edge->relationship, dest->alias, dest->id);
+        
+        // Create a triplet out of edge
+        Triplet* triplet = TripletFromEdge(edge);
+        printf("constructed a triplet %s from edge\n", TripletToString(triplet));
+        
+        // Query graph using triplet, no filters are applied at this stage
+        printf("About to query using triplet\n");
+        Vector* resultSet = queryTriplet(ctx, graphName, triplet);
+        printf("Got a result set for triplet\n");
+
+        FreeTriplet(triplet);
+
+        // Backup original node IDs
+        char* srcOriginalID = src->id;
+        char* edgeOriginalID = edge->relationship;
+        char* destOriginalID = dest->id;
+
+        // Run through result set.
+        for(int j = 0; j < Vector_Size(resultSet); j++) {
+            // copy result values to graph.
+            Triplet* result;
+            Vector_Get(resultSet, j, &result);
+
+            printf("Got result: %s\n", (TripletToString(result)));
+            
+            // Override node IDs.
+            src->id = result->subject;
+            edge->relationship = result->predicate;
+            dest->id = result->object;
+
+            // Advance to next node
+            if(Vector_Size(dest->outgoingEdges) > 0) {
+                printf("Advancing to next node\n");
+                QueryNode(ctx, graphName, g, dest, filterTree);                
+            } else {
+                printf("See if result pass filters\n");
+                // We've reach the end of the graph
+                // Pass through filter
+                // if(parseTree->whereNode != NULL) {
+                
+                // Apply filters specified in where clause.
+                // Vector* filterResultSet = FilterResultSet(ctx, resultSet, parseTree->whereNode->filters, aliases);
+                // if(FilterResultSet(ctx, parseTree->whereNode->filters, g)) {
+                    // Get requested fields. 
+                    // Vector* response = BuildQueryResponse(ctx, parseTree->returnNode, resultSet, aliases);
+
+                    // Append to final result set.
+                // }
+            }
+        } // End of result-set loop
+        
+        // Restore nodes original IDs.
+        src->id = srcOriginalID;
+        edge->relationship = edgeOriginalID;
+        dest->id = destOriginalID;
+    }
+}
+
+
+int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     if (argc < 2) return RedisModule_WrongArity(ctx);
 
-    RedisModuleString *graph;
+    RedisModuleString *graphName;
     RedisModuleString *query;
-    RMUtil_ParseArgs(argv, argc, 1, "ss", &graph, &query);
+    RMUtil_ParseArgs(argv, argc, 1, "ss", &graphName, &query);
     
     size_t qLen;
     const char* q = RedisModule_StringPtrLen(query, &qLen);
 
+    printf("Processing query: %s\n", q);
+
     // Parse query, get AST.
     QueryExpressionNode* parseTree = ParseQuery(q, qLen);
 
-    // Traverse match clause, construct alias table
-    char* aliases[3];
-    RelationshipNode* relationshipNode = parseTree->matchNode->relationshipNode;
+    printf("got parseTree\n");
 
-    Node* src = NewNode(relationshipNode->src->id);
-    aliases[0] = relationshipNode->src->alias;
+    Graph* graph = BuildGraph(parseTree->matchNode);
 
-    Node* dest = NewNode(relationshipNode->dest->id);
-    aliases[2] = relationshipNode->dest->alias;
-
-    Edge* edge = NewEdge(src, dest, relationshipNode->relation->relationship);
-
-    // Create a triplet out of edge
-    Triplet* triplet = TripletFromEdge(edge);
-
-    // Query graph using triplet, no filters are applied at this stage
-    Vector* resultSet = queryTriplet(ctx, graph, triplet);
-
-    FreeTriplet(triplet);
-
+    printf("Construct filter tree");
+    QE_FilterNode* filterTree = NULL;
     if(parseTree->whereNode != NULL) {
-        // Apply filters specified in where clause.
-        Vector* filterResultSet = FilterResultSet(ctx, resultSet, parseTree->whereNode->filters, aliases);
-
-        // TODO: Free unfiltered result set.
-        resultSet = filterResultSet;
+        filterTree = BuildFiltersTree(parseTree->whereNode->filters);
     }
     
-    // Print final result set.
-    size_t resultSetSize = Vector_Size(resultSet);
-    RedisModule_ReplyWithArray(ctx, resultSetSize);
+    Node* startNode = Graph_GetNDegreeNode(graph, 0);
+    QueryNode(ctx, graphName, graph, startNode, filterTree);    
 
-    // Return specified properties.    
-    Vector* response = BuildQueryResponse(ctx, parseTree->returnNode, resultSet, aliases);
+    
+    // if(parseTree->whereNode != NULL) {
+    //     // Apply filters specified in where clause.
+    //     Vector* filterResultSet = FilterResultSet(ctx, resultSet, parseTree->whereNode->filters, aliases);
 
-    for(int i = 0; i < Vector_Size(response); i++) {
-        char* result;
-        Vector_Get(response, i, &result);
+    //     // TODO: Free unfiltered result set.
+    //     resultSet = filterResultSet;
+    // }
+    
+    // // Print final result set.
+    // size_t resultSetSize = Vector_Size(resultSet);
+    // RedisModule_ReplyWithArray(ctx, resultSetSize);
 
-        RedisModule_ReplyWithStringBuffer(ctx, result, strlen(result));
+    // // Return specified properties.    
+    // Vector* response = BuildQueryResponse(ctx, parseTree->returnNode, resultSet, aliases);
 
-        free(result);
-    }
+    // for(int i = 0; i < Vector_Size(response); i++) {
+    //     char* result;
+    //     Vector_Get(response, i, &result);
 
-    Vector_Free(response);
+    //     RedisModule_ReplyWithStringBuffer(ctx, result, strlen(result));
+
+    //     free(result);
+    // }
+
+    // Vector_Free(response);
 
     // TODO: free memory.
     // RedisModule_FreeString(ctx, graph);
@@ -356,9 +394,8 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
         return REDISMODULE_ERR;
     }
 
-    RMUtil_RegisterWriteCmd(ctx, "graph.ADDNODE", Graph_AddNode);
-    RMUtil_RegisterWriteCmd(ctx, "graph.ADDEDGE", Graph_AddEdge);
-    RMUtil_RegisterWriteCmd(ctx, "graph.QUERY", Graph_Query);
+    RMUtil_RegisterWriteCmd(ctx, "graph.ADDEDGE", MGraph_AddEdge);
+    RMUtil_RegisterWriteCmd(ctx, "graph.QUERY", MGraph_Query);
 
     return REDISMODULE_OK;
 }

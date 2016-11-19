@@ -36,7 +36,7 @@ Triplet* NewTriplet(const char* S, const char* P, const char* O) {
 }
 
 Triplet* TripletFromEdge(const Edge* edge) {
-	return NewTriplet(edge->src->name, edge->relationship, edge->dest->name);
+	return NewTriplet(edge->src->id, edge->relationship, edge->dest->id);
 }
 
 // Assuming string format KIND:A:B:C

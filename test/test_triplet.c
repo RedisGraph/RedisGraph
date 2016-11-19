@@ -1,13 +1,13 @@
 #include <stdio.h>
 #include <string.h>
 #include "assert.h"
-#include "../src/edge.h"
+#include "../src/graph/edge.h"
 #include "../src/triplet.h"
 
 
 void testTriplet(const char* src, const char* relationship, const char* dest, TripletKind expectedKind, const char* expectedStrRepresentation) {
-	Node* srcNode = NewNode(src);
-	Node* destNode = NewNode(dest);
+	Node* srcNode = NewNode("", src);
+	Node* destNode = NewNode("", dest);
 	Edge* edge = NewEdge(srcNode, destNode, relationship);
 
 	Triplet* triplet = TripletFromEdge(edge);
