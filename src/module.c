@@ -99,32 +99,6 @@ int MGraph_AddEdge(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     return REDISMODULE_OK;
 }
 
-// Filters given result-set using given filters
-Vector* FilterResultSet(RedisModuleCtx *ctx, Vector* resultSet, FilterNode* root, char** aliases) {
-    // Construct filter tree.
-    QE_FilterNode* filterTree = BuildFiltersTree(root);
-
-    Vector* filteredResultSet = NewVector(Triplet*, 0);
-
-    int resultSetSize = Vector_Size(resultSet);    
-
-    // Foreach result in result set
-    for(int i = 0; i < Vector_Size(resultSet); i++) {
-        Triplet* result;
-        Vector_Get(resultSet, i, &result);
-
-        if(applyFilters(ctx, result, aliases, filterTree)) {
-            Vector_Push(filteredResultSet, result);
-        } else {
-            // Free filtered triplets
-            FreeTriplet(result);
-        }
-    }
-
-    // Free original result set.
-    Vector_Free(resultSet);
-    return filteredResultSet;
-}
 
 Vector* queryTriplet(RedisModuleCtx *ctx, RedisModuleString* graph, const Triplet* triplet) {
 
@@ -178,101 +152,81 @@ Vector* queryTriplet(RedisModuleCtx *ctx, RedisModuleString* graph, const Triple
 }
 
 // Construct the final response for a query
-Vector* BuildQueryResponse(RedisModuleCtx *ctx, ReturnNode* returnNode, Vector* resultSet, char** aliases) {
+// TODO: return Vector of props values, add function to concat vector.
+char* BuildQueryResponse(RedisModuleCtx *ctx, const ReturnNode* returnNode, const Graph* g) {
+    Vector* returnedProps = NewVector(const char*, 0);
+    size_t itemLength = 0;
 
-    Vector* res = NewVector(char*, Vector_Size(resultSet));
+    for(int i = 0; i < Vector_Size(returnNode->variables); i++) {
+        VariableNode* var;
+        Vector_Get(returnNode->variables, i, &var);
 
-    for(int i = 0; i < Vector_Size(resultSet); i++) {
-        Triplet* item;
-        Vector_Get(resultSet, i, &item);
+        Node* n = Graph_GetNodeByAlias(g, var->alias);
+        // Alias maps to subject or object?
+        char* elementID = n->id;
 
-        // Foreach specified alias:property
-        Vector* returnedProps = NewVector(const char*, 0);
+        RedisModuleString* keyStr = 
+        RedisModule_CreateString(ctx, elementID, strlen(elementID));
 
-        size_t itemLength = 0;
-        for(int j = 0; j < Vector_Size(returnNode->variables); j++) {
-            VariableNode* var;
-            Vector_Get(returnNode->variables, j, &var);
-
-
-            // Alias maps to subject or object?
-            char* elementID = item->subject;
-            if(strcmp(aliases[2], var->alias) == 0) {
-                elementID = item->object;
-            }
-
-
-            RedisModuleString* keyStr = 
-            RedisModule_CreateString(ctx, elementID, strlen(elementID));
-
-            RedisModuleKey *key =
-                RedisModule_OpenKey(ctx, keyStr, REDISMODULE_READ);
+        RedisModuleKey *key =
+            RedisModule_OpenKey(ctx, keyStr, REDISMODULE_READ);
             
-            if(var->property != NULL) {
-                RedisModuleString* elementProp =
-                    RedisModule_CreateString(ctx, var->property, strlen(var->property));
+        if(var->property != NULL) {
+            RedisModuleString* elementProp =
+                RedisModule_CreateString(ctx, var->property, strlen(var->property));
 
-                RedisModuleString* propValue;
-                RedisModule_HashGet(key, REDISMODULE_HASH_NONE, elementProp, &propValue, NULL);
+            RedisModuleString* propValue;
+            RedisModule_HashGet(key, REDISMODULE_HASH_NONE, elementProp, &propValue, NULL);
                 
-                size_t propValueLen;
-                const char* prop = 
-                    RedisModule_StringPtrLen(propValue, &propValueLen);
+            size_t propValueLen;
+            const char* prop = 
+                RedisModule_StringPtrLen(propValue, &propValueLen);
 
-                Vector_Push(returnedProps, prop);
-                itemLength += propValueLen + 1;
-
-            } else {
-                // Couldn't find an API for HGETALL.
-            }
-
-            RedisModule_CloseKey(key);
+            Vector_Push(returnedProps, prop);
+            itemLength += propValueLen + 1;
+        } else {
+            // Couldn't find an API for HGETALL.
         }
 
-        // Concat strings.
+        RedisModule_CloseKey(key);
+    } // End of for loop
 
-        char* strItem = (char*)malloc(sizeof(char) * itemLength);
-        int offset = 0;
-        for(int j = 0; j < Vector_Size(returnedProps); j++) {
-            const char* prop;            
-            Vector_Get(returnedProps, j, &prop);
+    // Concat strings.
+    char* strItem = (char*)malloc(sizeof(char) * itemLength);
+    int offset = 0;
+    for(int i = 0; i < Vector_Size(returnedProps); i++) {
+        char* prop;
+        Vector_Get(returnedProps, i, &prop);
 
-            strcpy(strItem + offset, prop);
-            offset += strlen(prop);
-                    
-            strItem[offset] = ',';
-            offset++;
-            strItem[offset] = NULL;
-        }
+        strcpy(strItem + offset, prop);
+        offset += strlen(prop);
 
-        strItem[strlen(strItem)-1] = NULL;
-        Vector_Push(res, strItem);
+        strItem[offset] = ',';
+        offset++;
+        strItem[offset] = NULL;
     }
 
-    return res;
+    // Remove last comma
+    strItem[strlen(strItem)-1] = NULL;
+
+    // TODO: Clean up
+
+    return strItem;
 }
 
-void QueryNode(RedisModuleCtx *ctx, RedisModuleString *graphName, Graph* g, Node* n, QE_FilterNode* filterTree) {
-    printf("In QueryNode\n");
-    printf("node: (%s:%s)\n", n->alias, n->id);
+void QueryNode(RedisModuleCtx *ctx, RedisModuleString *graphName, Graph* g, Node* n, const QE_FilterNode* filterTree, const ReturnNode* returnTree, Vector* returnedSet) {
     Node* src = n;
 
     for(int i = 0; i < Vector_Size(src->outgoingEdges); i++) {
         Edge* edge;
         Vector_Get(src->outgoingEdges, i, &edge);
         Node* dest = edge->dest;
-
-        printf("source node (%s:%s)-[%s]->(%s:%s)\n", src->alias, src->id, edge->relationship, dest->alias, dest->id);
         
         // Create a triplet out of edge
         Triplet* triplet = TripletFromEdge(edge);
-        printf("constructed a triplet %s from edge\n", TripletToString(triplet));
         
         // Query graph using triplet, no filters are applied at this stage
-        printf("About to query using triplet\n");
         Vector* resultSet = queryTriplet(ctx, graphName, triplet);
-        printf("Got a result set for triplet\n");
-
         FreeTriplet(triplet);
 
         // Backup original node IDs
@@ -285,8 +239,6 @@ void QueryNode(RedisModuleCtx *ctx, RedisModuleString *graphName, Graph* g, Node
             // copy result values to graph.
             Triplet* result;
             Vector_Get(resultSet, j, &result);
-
-            printf("Got result: %s\n", (TripletToString(result)));
             
             // Override node IDs.
             src->id = result->subject;
@@ -295,22 +247,16 @@ void QueryNode(RedisModuleCtx *ctx, RedisModuleString *graphName, Graph* g, Node
 
             // Advance to next node
             if(Vector_Size(dest->outgoingEdges) > 0) {
-                printf("Advancing to next node\n");
-                QueryNode(ctx, graphName, g, dest, filterTree);                
+                QueryNode(ctx, graphName, g, dest, filterTree, returnTree, returnedSet);
             } else {
-                printf("See if result pass filters\n");
                 // We've reach the end of the graph
                 // Pass through filter
-                // if(parseTree->whereNode != NULL) {
-                
-                // Apply filters specified in where clause.
-                // Vector* filterResultSet = FilterResultSet(ctx, resultSet, parseTree->whereNode->filters, aliases);
-                // if(FilterResultSet(ctx, parseTree->whereNode->filters, g)) {
-                    // Get requested fields. 
-                    // Vector* response = BuildQueryResponse(ctx, parseTree->returnNode, resultSet, aliases);
-
+                if(filterTree == NULL || applyFilters(ctx, g, filterTree)) {
+                    // Apply filters specified in where clause.
                     // Append to final result set.
-                // }
+                    char* response = BuildQueryResponse(ctx, returnTree, g);
+                    Vector_Push(returnedSet, response);
+                }
             }
         } // End of result-set loop
         
@@ -332,48 +278,31 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     size_t qLen;
     const char* q = RedisModule_StringPtrLen(query, &qLen);
 
-    printf("Processing query: %s\n", q);
-
     // Parse query, get AST.
     QueryExpressionNode* parseTree = ParseQuery(q, qLen);
-
-    printf("got parseTree\n");
-
     Graph* graph = BuildGraph(parseTree->matchNode);
 
-    printf("Construct filter tree");
     QE_FilterNode* filterTree = NULL;
     if(parseTree->whereNode != NULL) {
         filterTree = BuildFiltersTree(parseTree->whereNode->filters);
     }
     
     Node* startNode = Graph_GetNDegreeNode(graph, 0);
-    QueryNode(ctx, graphName, graph, startNode, filterTree);    
+    Vector* resultSet = NewVector(char*, 0);
+    QueryNode(ctx, graphName, graph, startNode, filterTree, parseTree->returnNode, resultSet);
 
+    // Print final result set.
+    size_t resultSetSize = Vector_Size(resultSet);
+    RedisModule_ReplyWithArray(ctx, resultSetSize);
     
-    // if(parseTree->whereNode != NULL) {
-    //     // Apply filters specified in where clause.
-    //     Vector* filterResultSet = FilterResultSet(ctx, resultSet, parseTree->whereNode->filters, aliases);
+    for(int i = 0; i < Vector_Size(resultSet); i++) {
+        char* result;
+        Vector_Get(resultSet, i, &result);
 
-    //     // TODO: Free unfiltered result set.
-    //     resultSet = filterResultSet;
-    // }
-    
-    // // Print final result set.
-    // size_t resultSetSize = Vector_Size(resultSet);
-    // RedisModule_ReplyWithArray(ctx, resultSetSize);
+        RedisModule_ReplyWithStringBuffer(ctx, result, strlen(result));
 
-    // // Return specified properties.    
-    // Vector* response = BuildQueryResponse(ctx, parseTree->returnNode, resultSet, aliases);
-
-    // for(int i = 0; i < Vector_Size(response); i++) {
-    //     char* result;
-    //     Vector_Get(response, i, &result);
-
-    //     RedisModule_ReplyWithStringBuffer(ctx, result, strlen(result));
-
-    //     free(result);
-    // }
+        free(result);
+    }
 
     // Vector_Free(response);
 

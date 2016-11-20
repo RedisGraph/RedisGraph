@@ -4,12 +4,9 @@
 #include "graph/node.h"
 
 Graph* BuildGraph(const MatchNode* matchNode) {
-    printf("in BuildGraph\n");
-
     Graph* g = NewGraph();
     Vector* stack = NewVector(ChainElement*, 3);
     
-    printf("there are %d elements to process\n", Vector_Size(matchNode->chainElements));
     for(int i = 0; i < Vector_Size(matchNode->chainElements); i++) {
         ChainElement* element;
         Vector_Get(matchNode->chainElements, i, &element);
@@ -28,16 +25,12 @@ Graph* BuildGraph(const MatchNode* matchNode) {
             Node* dest;
 
             if(edge->l.direction == N_LEFT_TO_RIGHT) {
-                printf("edge direction is LEFT_TO_RIGHT\n");
                 src = Graph_AddNode(g, a->e.alias, a->e.id);
                 dest = Graph_AddNode(g, c->e.alias, c->e.id);                
             } else {
-                printf("edge direction is RIGHT_TO_LEFT\n");
                 src = Graph_AddNode(g, c->e.alias, c->e.id);
                 dest = Graph_AddNode(g, a->e.alias, a->e.id);
             }
-            printf("HERE!\n");
-            printf("Connecting %s:%s to %s:%s using %s\n", src->alias, src->id, dest->alias, dest->id, edge->l.relationship);
             ConnectNode(src, dest, edge->l.relationship);
             
             // reintroduce last pushed item
@@ -120,34 +113,33 @@ QE_FilterNode* BuildFiltersTree(const FilterNode* root) {
 	return filterNode;
 }
 
-int applyFilters(RedisModuleCtx *ctx, Triplet* result, char** aliases, QE_FilterNode* root) {
+int applyFilters(RedisModuleCtx *ctx, Graph* g, QE_FilterNode* root) {
     // Scan tree.
     if(root->t == QE_N_PRED) {
         char* elementID = NULL;
-        
-        if (strcmp(aliases[0], root->pred.alias) == 0) {
-            elementID = result->subject;
-        }
-        if (strcmp(aliases[2], root->pred.alias) == 0) {
-            elementID = result->object;
+        Node* n = Graph_GetNodeByAlias(g, root->pred.alias);
+
+        if (n == NULL) {
+            // TODO: Report error
+            return 0;
         }
 
-        return applyFilter(ctx, elementID, &root->pred);
+        return applyFilter(ctx, n->id, &root->pred);
     }
 
     // root->t == QE_N_COND
 
     // Visit left subtree
-    int pass = applyFilters(ctx, result, aliases, root->cond.left);
+    int pass = applyFilters(ctx, g, root->cond.left);
     
     if(root->cond.op == AND && pass == 1) {
         // Visit right subtree
-        pass *= applyFilters(ctx, result, aliases, root->cond.right);
+        pass *= applyFilters(ctx, g, root->cond.right);
     }
 
     if(root->cond.op == OR && pass == 0) {
         // Visit right subtree
-        pass = applyFilters(ctx, result, aliases, root->cond.right);   
+        pass = applyFilters(ctx, g, root->cond.right);
     }
 
     return pass;

@@ -52,7 +52,7 @@ Graph* BuildGraph(const MatchNode* matchNode);
 QE_FilterNode* BuildFiltersTree(const FilterNode* root);
 
 // Runs val through the filter tree
-int applyFilters(RedisModuleCtx *ctx, Triplet* result, char** aliases, QE_FilterNode* root);
+int applyFilters(RedisModuleCtx *ctx, Graph* g, QE_FilterNode* root);
 int applyFilter(RedisModuleCtx *ctx, const char* elementID, QE_PredicateNode* node);
 
 #endif

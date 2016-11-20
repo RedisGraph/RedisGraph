@@ -24,7 +24,6 @@ Node* Graph_AddNode(Graph* g, const char* alias, const char* id) {
     Node* n = Graph_GetNodeByAlias(g, alias);
     
     if(n == NULL) {
-        printf("Adding a new node (%s:%s) to the graph\n", alias, id);
         n = NewNode(alias, id);
         Vector_Push(g->nodes, n);
     }
@@ -42,7 +41,6 @@ Node* Graph_GetNDegreeNode(Graph* g, int degree) {
     }
 
     if(n == NULL) {
-        printf("No node with %d input degree\n", degree);
         return NULL;
     }
     
