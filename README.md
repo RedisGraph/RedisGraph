@@ -66,7 +66,11 @@ Example:
 
 As such we're interested in entities which have the relation "act" with **the** entity "straight outta compton"
 
-At the moment the language only suport a single hop relation, in future versions several hops will be possible.
+It is possible to describe broder relationships by composing a multi hop query as such:
+```sh
+(me:swilly)-[friends_with]->()-[friends_with]->(fof)
+```
+Here we're interesed to find out who are my friends friends.
 
 #### WHERE
 this clause is not mandatory, but in order to filter results define prediactes as such: `alias.property operation value`
