@@ -18,9 +18,10 @@ int cmp_string(void *p1, void *p2) {
   if (SIValue_IsInf(v2) || SIValue_IsNegativeInf(v1))
     return -1;
 
+
   // compare the longest length possible, which is the shortest length of the
   // two strings
-  int cmp = strncmp(v1->stringval.str, v2->stringval.str,
+  int cmp = strncasecmp(v1->stringval.str, v2->stringval.str,
                     MIN(v2->stringval.len, v1->stringval.len));
 
   // if the strings are equal at the common length but are not of the same

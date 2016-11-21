@@ -9,15 +9,27 @@ typedef enum {
   N_COND,
 } FilterNodeType;
 
+typedef enum {
+	N_LEFT_TO_RIGHT,
+	N_RIGHT_TO_LEFT,
+} LinkDirection;
+
+typedef enum {
+	N_ENTITY,
+	N_LINK,
+} ChainElementType;
+
 struct filterNode;
 
 typedef struct {
 	char* id;
 	char* alias;
-} ItemNode;
+} EntityNode;
 
 typedef struct {
 	char* relationship;
+	LinkDirection direction;
+
 } LinkNode;
 
 typedef struct {	
@@ -41,14 +53,23 @@ typedef struct filterNode {
   FilterNodeType t;
 } FilterNode;
 
-typedef struct {
-	ItemNode* src;
-	LinkNode* relation;
-	ItemNode* dest;
-} RelationshipNode;
+// typedef struct {
+// 	ItemNode* src;
+// 	LinkNode* relation;
+// 	ItemNode* dest;
+// } RelationshipNode;
 
 typedef struct {
-	RelationshipNode* relationshipNode;
+	union {
+		EntityNode e;
+		LinkNode l;
+	};
+	ChainElementType t;
+} ChainElement;
+
+typedef struct {
+	// RelationshipNode* relationshipNode;
+	Vector* chainElements;
 } MatchNode;
 
 typedef struct {
@@ -71,10 +92,11 @@ typedef struct {
 }QueryExpressionNode;
 
 
-MatchNode* NewMatchNode(RelationshipNode* relationshipNode);
+ChainElement* NewChainEntity(char* alias, char* id);
+ChainElement* NewChainLink(char* relationship, LinkDirection dir);
 
-ItemNode* NewItemNode(const char* alias, const char* id);
-LinkNode* NewLinkNode(const char* relationship);
+MatchNode* NewMatchNode(Vector* elements);
+
 
 FilterNode* NewPredicateNode(const char* alias, const char* property, int op, SIValue v);
 FilterNode* NewConditionNode(FilterNode *left, int op, FilterNode *right);
@@ -85,17 +107,13 @@ VariableNode* NewVariableNode(const char* alias, const char* property);
 
 ReturnNode* NewReturnNode(Vector* variables);
 
-RelationshipNode* NewRelationshipNode(ItemNode* src, LinkNode* relation, ItemNode* dest);
-
 QueryExpressionNode* NewQueryExpressionNode(MatchNode* matchNode, WhereNode* whereNode, ReturnNode* returnNode);
 
-void FreeItemNode(ItemNode* itemNode);
-void FreeLinkNode(LinkNode* linkNode);
 void FreeMatchNode(MatchNode* matchNode);
 void FreeWhereNode(WhereNode* whereNode);
 void FreeFilterNode(FilterNode* filterNode);
 void FreeReturnNode(ReturnNode* returnNode);
 void FreeVariableNode(VariableNode* variableNode);
-void FreeRelationshipNode(RelationshipNode* relationshipNode);
+void FreeChainElement(ChainElement* chainElement);
 void FreeQueryExpressionNode(QueryExpressionNode* queryExpressionNode);
 #endif

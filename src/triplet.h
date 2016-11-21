@@ -1,7 +1,7 @@
 #ifndef TRIPLET_H
 #define TRIPLET_H
 
-#include "edge.h"
+#include "graph/edge.h"
 
 typedef enum {UNKNOW, O, P, PO, S, SO, SP, SPO} TripletKind;
 
