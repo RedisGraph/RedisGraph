@@ -1,13 +1,13 @@
 #include <stdio.h>
 #include <string.h>
-#include "../src/node.h"
-#include "../src/edge.h"
+#include "../src/graph/node.h"
+#include "../src/graph/edge.h"
 #include "assert.h"
 
 int main(int argc, char **argv) {
 
-	Node* src = NewNode("source");
-	Node* dest = NewNode("destination");
+	Node* src = NewNode("","source");
+	Node* dest = NewNode("", "destination");
 	Edge* edge = NewEdge(src, dest, "route");
 
 
@@ -16,8 +16,8 @@ int main(int argc, char **argv) {
 	assert(edge->src == src);
 	assert(edge->dest == dest);
 
-	assert(strcmp(edge->src->name, "source") == 0);
-	assert(strcmp(edge->dest->name, "destination") == 0);
+	assert(strcmp(edge->src->id, "source") == 0);
+	assert(strcmp(edge->dest->id, "destination") == 0);
 
 	FreeEdge(edge);
 

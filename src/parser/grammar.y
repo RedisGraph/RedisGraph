@@ -34,43 +34,52 @@ expr(A) ::= matchClause(B) whereClause(C) returnClause(D). {
 
 %type matchClause { MatchNode* }
 
-matchClause(A) ::= MATCH relationship(B). {
-	//printf("match clause\n");
+matchClause(A) ::= MATCH chain(B). {
 	A = NewMatchNode(B);
 }
 
 
-%type relationship {RelationshipNode*}
+%type chain {Vector*}
 
-relationship(A) ::= node(B) link(C) node(D). {
-	//printf("relationship\n");
-	A = NewRelationshipNode(B, C, D);
+chain(A) ::= node(B). {
+	A = NewVector(ChainElement*, 1);
+	Vector_Push(A, B);
+} 
+
+chain(A) ::= chain(B) link(C) node(D). {
+	Vector_Push(B, C);
+	Vector_Push(B, D);
+	A = B;
 }
 
 
-%type node {ItemNode*}
+%type node {ChainElement*}
 
 node(A) ::= LEFT_PARENTHESIS STRING(B) COLON STRING(C) RIGHT_PARENTHESIS. {
-	A = NewItemNode(B.strval, C.strval);
+	A = NewChainEntity(B.strval, C.strval);
 }
 node(A) ::= LEFT_PARENTHESIS STRING(B) RIGHT_PARENTHESIS. {
-	A = NewItemNode(B.strval, "");
+	A = NewChainEntity(B.strval, "");
 }
 node(A) ::= LEFT_PARENTHESIS RIGHT_PARENTHESIS. {
-	A = NewItemNode("", "");
+	A = NewChainEntity("", "");
 }
 
 
-%type link {LinkNode*}
+%type link {ChainElement*}
 
 link(A) ::= DASH LEFT_BRACKET RIGHT_BRACKET RIGHT_ARROW. { 
-	//printf("empty link\n");
-	A = NewLinkNode(""); 
+	A =  NewChainLink("", N_LEFT_TO_RIGHT); 
 }
 link(A) ::= DASH LEFT_BRACKET STRING(B) RIGHT_BRACKET RIGHT_ARROW. { 
-	A = NewLinkNode(B.strval);
+	A = NewChainLink(B.strval, N_LEFT_TO_RIGHT);
 }
-
+link(A) ::= LEFT_ARROW LEFT_BRACKET RIGHT_BRACKET DASH. { 
+	A = NewChainLink("", N_RIGHT_TO_LEFT); 
+}
+link(A) ::= LEFT_ARROW LEFT_BRACKET STRING(B) RIGHT_BRACKET DASH. { 
+	A = NewChainLink(B.strval, N_RIGHT_TO_LEFT);
+}
 
 %type whereClause {WhereNode*}
 
@@ -122,7 +131,6 @@ returnClause(A) ::= RETURN variables(B). {
 %type variables {Vector*}
 
 variables(A) ::= variable(B). {
-	//printf("a single variable\n");
 	A = NewVector(VariableNode*, 1);
 	Vector_Push(A, B); 
 }
@@ -172,6 +180,5 @@ variable(A) ::= STRING(B) DOT STRING(C). {
 
   		return ret;
 	}
-
-
+	
 }

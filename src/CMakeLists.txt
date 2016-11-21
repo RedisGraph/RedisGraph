@@ -1,14 +1,16 @@
 # The file list for building the graph database library.
 # They can be used directly for unit tests.
 # the ../src part is so that they can be accessed from outside the src tree
-set(_graph_files  
-      ../src/edge.c
-      ../src/node.c
+set(_graph_files        
       ../src/value.c
       ../src/module.c
       ../src/triplet.c
       ../src/value_cmp.c
       ../src/query_executor.c
+      
+      ../src/graph/edge.c
+      ../src/graph/node.c
+      ../src/graph/graph.c
 
       ../src/parser/ast.c
       ../src/parser/lex.yy.c

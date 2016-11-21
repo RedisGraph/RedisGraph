@@ -3,38 +3,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-ItemNode* NewItemNode(const char* alias, const char* id) {
-	ItemNode* node = (ItemNode*)malloc(sizeof(ItemNode));
-
-	node->id = (char*)malloc(strlen(id) + 1);
-	node->alias = (char*)malloc(strlen(alias) + 1);
-
-	strcpy(node->id, id);
-	strcpy(node->alias, alias);
-
-	return node;
-}
-
-void FreeItemNode(ItemNode* itemNode) {
-	free(itemNode->id);
-	free(itemNode->alias);
-	free(itemNode);
-}
-
-
-LinkNode* NewLinkNode(const char* relationship) {
-	LinkNode* node = (LinkNode*)malloc(sizeof(LinkNode));
-	node->relationship = (char*)malloc(strlen(relationship) + 1);
-	strcpy(node->relationship, relationship);
-
-	return node;
-}
-
-void FreeLinkNode(LinkNode* linkNode) {
-	free(linkNode->relationship);
-	free(linkNode);
-}
-
 
 FilterNode* NewPredicateNode(const char* alias, const char* property, int op, SIValue value) {
 	FilterNode *n = malloc(sizeof(FilterNode));
@@ -85,15 +53,61 @@ void FreeFilterNode(FilterNode* filterNode) {
 }
 
 
-MatchNode* NewMatchNode(RelationshipNode* relationshipNode) {
+ChainElement* NewChainLink(char* relationship, LinkDirection dir) {
+	ChainElement* ce = (ChainElement*)malloc(sizeof(ChainElement));
+	ce->t = N_LINK;	
+	
+	ce->l.direction = dir;
+	ce->l.relationship = (char*)malloc(strlen(relationship) + 1);
+	strcpy(ce->l.relationship, relationship);
+
+	return ce;
+}
+
+
+ChainElement* NewChainEntity(char* alias, char* id) {
+	ChainElement* ce = (ChainElement*)malloc(sizeof(ChainElement));
+	ce->t = N_ENTITY;
+	
+	ce->e.id = (char*)malloc(strlen(id) + 1);
+	ce->e.alias = (char*)malloc(strlen(alias) + 1);
+
+	strcpy(ce->e.id, id);
+	strcpy(ce->e.alias, alias);
+
+	return ce;
+}
+
+void FreeChainElement(ChainElement* chainElement) {
+	switch(chainElement->t) {
+		case N_ENTITY:
+			free(chainElement->e.id);
+			free(chainElement->e.alias);
+			break;
+
+		case N_LINK:
+			free(chainElement->l.relationship);
+			break;
+	}
+
+	free(chainElement);
+}
+
+MatchNode* NewMatchNode(Vector* elements) {
 	MatchNode* matchNode = (MatchNode*)malloc(sizeof(MatchNode));
-	matchNode->relationshipNode = relationshipNode;
+	matchNode->chainElements = elements;
 
 	return matchNode;
 }
 
 void FreeMatchNode(MatchNode* matchNode) {
-	FreeRelationshipNode(matchNode->relationshipNode);
+	for(int i = 0; i < Vector_Size(matchNode->chainElements); i++) {
+		ChainElement* ce;
+		Vector_Get(matchNode->chainElements, i, &ce);
+		FreeChainElement(ce);
+	}
+
+	Vector_Free(matchNode->chainElements);
 	free(matchNode);
 }
 
@@ -163,23 +177,6 @@ void FreeVariableNode(VariableNode* variableNode) {
 	}
 
 	free(variableNode);
-}
-
-
-RelationshipNode* NewRelationshipNode(ItemNode* src, LinkNode* relation, ItemNode* dest) {
-	RelationshipNode* relationshipNode = (RelationshipNode*)malloc(sizeof(RelationshipNode));
-	relationshipNode->src = src;
-	relationshipNode->relation = relation;
-	relationshipNode->dest = dest;
-
-	return relationshipNode;
-}
-
-void FreeRelationshipNode(RelationshipNode* relationshipNode) {
-	FreeItemNode(relationshipNode->src);
-	FreeItemNode(relationshipNode->dest);
-	FreeLinkNode(relationshipNode->relation);
-	free(relationshipNode);
 }
 
 

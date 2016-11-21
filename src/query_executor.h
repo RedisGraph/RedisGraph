@@ -2,6 +2,7 @@
 #define __QUERY_EXECUTOR_H
 
 #include "triplet.h"
+#include "graph/graph.h"
 #include "value_cmp.h"
 #include "parser/ast.h"
 #include "redismodule.h"
@@ -41,12 +42,17 @@ typedef struct {
 } QE_FilterNode;
 
 
+// Given AST's MATCH node constructs a graph
+// representing queried entities and the relationships
+// between them
+Graph* BuildGraph(const MatchNode* matchNode);
+
 // Given AST's WHERE subtree constructs a filter tree
 // this is done to speed up the filtering process
 QE_FilterNode* BuildFiltersTree(const FilterNode* root);
 
 // Runs val through the filter tree
-int applyFilters(RedisModuleCtx *ctx, Triplet* result, char** aliases, QE_FilterNode* root);
+int applyFilters(RedisModuleCtx *ctx, Graph* g, QE_FilterNode* root);
 int applyFilter(RedisModuleCtx *ctx, const char* elementID, QE_PredicateNode* node);
 
 #endif
