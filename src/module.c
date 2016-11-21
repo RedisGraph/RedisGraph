@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
+#include <time.h>
 
 #include "graph/edge.h"
 #include "graph/node.h"
@@ -269,6 +270,10 @@ void QueryNode(RedisModuleCtx *ctx, RedisModuleString *graphName, Graph* g, Node
 
 
 int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+    // Time query execution
+    clock_t start = clock();
+    clock_t end;
+
     if (argc < 2) return RedisModule_WrongArity(ctx);
 
     RedisModuleString *graphName;
@@ -286,13 +291,13 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     if(parseTree->whereNode != NULL) {
         filterTree = BuildFiltersTree(parseTree->whereNode->filters);
     }
-    
+
     Node* startNode = Graph_GetNDegreeNode(graph, 0);
     Vector* resultSet = NewVector(char*, 0);
     QueryNode(ctx, graphName, graph, startNode, filterTree, parseTree->returnNode, resultSet);
 
     // Print final result set.
-    size_t resultSetSize = Vector_Size(resultSet);
+    size_t resultSetSize = Vector_Size(resultSet) + 1; // Additional one for time measurement
     RedisModule_ReplyWithArray(ctx, resultSetSize);
     
     for(int i = 0; i < Vector_Size(resultSet); i++) {
@@ -304,9 +309,17 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
         free(result);
     }
 
+    end = clock();
+    double elapsed = (double)(end - start) / CLOCKS_PER_SEC;
+    double elapsedMS = elapsed * 1000; 
+    char* strElapsed = (char*)malloc(sizeof(char) * strlen("Query internal execution time: miliseconds") + 8);
+    sprintf(strElapsed, "Query internal execution time: %f miliseconds", elapsedMS);
+    RedisModule_ReplyWithStringBuffer(ctx, strElapsed, strlen(strElapsed));
+
     // Vector_Free(response);
 
     // TODO: free memory.
+    free(strElapsed);
     // RedisModule_FreeString(ctx, graph);
     // Free AST
     // FreeQueryExpressionNode(parseTree);

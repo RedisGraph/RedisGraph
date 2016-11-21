@@ -75,11 +75,12 @@ def ExecuteQuery(query):
 	start = timeit.default_timer()
 	resultset = r.execute_command("GRAPH.QUERY", graph, query)
 	elapsed = timeit.default_timer() - start
+	elapsedMS = elapsed * 1000
 
 	for result in resultset:
 		print "%s\n" % result
 
-	print "Query executed in %.5f seconds\n" % elapsed
+	print "Query executed in %.5f miliseconds\n" % elapsedMS
 
 def main():
 	
