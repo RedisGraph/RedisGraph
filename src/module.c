@@ -258,9 +258,8 @@ char* BuildQueryResponse(RedisModuleCtx *ctx, const ReturnNode* returnNode, cons
     return strItem;
 }
 
-void QueryNode(RedisModuleCtx *ctx, RedisModuleString *graphName, Graph* g, Node* n, const QE_FilterNode* filterTree, const ReturnNode* returnTree, Vector* returnedSet) {
+void QueryNode(RedisModuleCtx *ctx, RedisModuleString *graphName, Graph* g, Node* n, Vector* entryPoints, const QE_FilterNode* filterTree, const ReturnNode* returnTree, Vector* returnedSet) {
     Node* src = n;
-
     for(int i = 0; i < Vector_Size(src->outgoingEdges); i++) {
         Edge* edge;
         Vector_Get(src->outgoingEdges, i, &edge);
@@ -291,7 +290,14 @@ void QueryNode(RedisModuleCtx *ctx, RedisModuleString *graphName, Graph* g, Node
 
             // Advance to next node
             if(Vector_Size(dest->outgoingEdges) > 0) {
-                QueryNode(ctx, graphName, g, dest, filterTree, returnTree, returnedSet);
+                QueryNode(ctx, graphName, g, dest, entryPoints, filterTree, returnTree, returnedSet);
+            } else if(Vector_Size(entryPoints) > 0) {
+                // Additional entry point
+                Node* entryPoint = NULL;
+                Vector_Pop(entryPoints, &entryPoint);
+                QueryNode(ctx, graphName, g, entryPoint, entryPoints, filterTree, returnTree, returnedSet);
+                // Restore state, for next iteration.
+                Vector_Push(entryPoints, entryPoint);
             } else {
                 // We've reach the end of the graph
                 // Pass through filter
@@ -335,9 +341,12 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
         filterTree = BuildFiltersTree(parseTree->whereNode->filters);
     }
 
-    Node* startNode = Graph_GetNDegreeNode(graph, 0);
+    Vector* entryPoints = Graph_GetNDegreeNodes(graph, 0);
+    Node* startNode = NULL;
+    Vector_Pop(entryPoints, &startNode);
     Vector* resultSet = NewVector(char*, 0);
-    QueryNode(ctx, graphName, graph, startNode, filterTree, parseTree->returnNode, resultSet);
+
+    QueryNode(ctx, graphName, graph, startNode, entryPoints, filterTree, parseTree->returnNode, resultSet);
 
     // Print final result set.
     size_t resultSetSize = Vector_Size(resultSet) + 1; // Additional one for time measurement

@@ -2,16 +2,13 @@ import os
 import csv
 import operator
 import timeit
+import redis
 from datetime import date
-from disposableredis import DisposableRedis
+
 
 graph = "imdb"
-r = None
+r = redis.Redis(host='localhost', port=6379)
 
-def redis():
-	module_path = os.path.abspath(os.path.join(os.getcwd(), "../src/libmodule.so"))
-	r = DisposableRedis(loadmodule = module_path)
-	return r
 
 def PopulateGraph():
 	# check if graph already exists
@@ -84,37 +81,45 @@ def ExecuteQuery(query):
 
 def main():
 	
-	global r
-	with redis() as r:
-		PopulateGraph()
+	PopulateGraph()
 
-		# Query database
-		#------------------------------------------------------------------------
-		print "Which actors played in the movie Straight Outta Compton?"
+	# Query database
+	#------------------------------------------------------------------------
+	
+	print "Which actors played in the movie Straight Outta Compton?"
 
-		query = """MATCH (actor)-[act]->(movie:"Straight Outta Compton")
-		RETURN actor.name""";
+	query = """MATCH (actor)-[act]->(movie:"Straight Outta Compton")
+	RETURN actor.name""";
 
-		ExecuteQuery(query)
+	ExecuteQuery(query)
 
-		#------------------------------------------------------------------------
-		print "Which actors who are over 50 played in blockbuster movies?"
+	#------------------------------------------------------------------------
+	print "Which actors who are over 50 played in blockbuster movies?"
 
-		query = """MATCH (actor)-[act]->(movie)
-		WHERE actor.age >= 50 AND movie.votes > 10000 AND movie.rating > 8.5
-		RETURN actor.name, actor.age, movie.title, movie.votes, movie.rating"""
+	query = """MATCH (actor)-[act]->(movie)
+	WHERE actor.age >= 50 AND movie.votes > 10000 AND movie.rating > 8.5
+	RETURN actor.name, actor.age, movie.title, movie.votes, movie.rating"""
 
-		ExecuteQuery(query)
+	ExecuteQuery(query)
 
-		#------------------------------------------------------------------------
-		print "Which actors played in bad drame or comedy?"
+	#------------------------------------------------------------------------
+	print "Which actors played in bad drame or comedy?"
 
-		query = """MATCH (actor)-[act]->(movie)
-		WHERE (movie.gener = Drama OR movie.gener = Comedy)
-		AND movie.rating < 6.0 AND movie.votes > 80000
-		RETURN actor.name, movie.title, movie.gener, movie.rating"""
+	query = """MATCH (actor)-[act]->(movie)
+	WHERE (movie.gener = Drama OR movie.gener = Comedy)
+	AND movie.rating < 6.0 AND movie.votes > 80000
+	RETURN actor.name, movie.title, movie.gener, movie.rating"""
 
-		ExecuteQuery(query)
+	ExecuteQuery(query)
+
+	#------------------------------------------------------------------------
+	print "Which young actors played along side Cameron Diaz?"
+		
+	query = """MATCH (Cameron:"Cameron Diaz")-[act]->(movie)<-[act]-(actor)
+	WHERE actor.age < 35
+	RETURN actor.name, actor.age, movie.title""";
+
+	ExecuteQuery(query)
 
 if __name__ == '__main__':
 	main()

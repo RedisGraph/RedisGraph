@@ -18,7 +18,7 @@ Node* Graph_GetNodeByAlias(const Graph* g, const char* alias);
 Node* Graph_AddNode(Graph* g, const char* alias, const char* id);
 
 // Finds a node with given input degree 
-Node* Graph_GetNDegreeNode(Graph* g, int degree);
+Vector* Graph_GetNDegreeNodes(Graph* g, int degree);
 
 // Frees entire graph.
 void FreeGraph(Graph* g);

@@ -31,20 +31,29 @@ Node* Graph_AddNode(Graph* g, const char* alias, const char* id) {
     return n;
 }
 
-Node* Graph_GetNDegreeNode(Graph* g, int degree) {
+Vector* Graph_GetNDegreeNodes(Graph* g, int degree) {
+    Vector* nodes = NewVector(Node*, 0);
     Node* n = NULL;
+
+    // First iteration, place at the begining of the vector
+    // nodes which don't have an ID.
     for(int i = 0; i < Vector_Size(g->nodes); i++) {
         Vector_Get(g->nodes, i, &n);
-        if(n->incomingEdges == degree) {
-            break;
+        if(n->incomingEdges == degree && strlen(n->id) == 0) {
+            Vector_Push(nodes, n);
         }
     }
 
-    if(n == NULL) {
-        return NULL;
+    // Second iteration, place at the end of the vector
+    // nodes which have an ID.
+    for(int i = 0; i < Vector_Size(g->nodes); i++) {
+        Vector_Get(g->nodes, i, &n);
+        if(n->incomingEdges == degree && strlen(n->id) > 0) {
+            Vector_Push(nodes, n);
+        }
     }
-    
-    return n;
+
+    return nodes;
 }
 
 // Frees entire graph.
