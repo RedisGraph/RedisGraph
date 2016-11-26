@@ -101,6 +101,57 @@ int MGraph_AddEdge(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 }
 
 
+// Vector* queryTriplet(RedisModuleCtx *ctx, RedisModuleString* graph, const Triplet* triplet) {
+
+//     Vector* resultSet = NewVector(Triplet*, 0);
+//     char* tripletStr = TripletToString(triplet);
+
+//     size_t bufLen = strlen(tripletStr) + 3;
+//     char* buf = (char*)malloc(bufLen);
+
+//     // [spo:antirez:is-friend-of: [spo:antirez:is-friend-of:\xff
+//     // min [spo:antirez:is-friend-of:
+//     // max [spo:antirez:is-friend-of:\xff
+
+//     // min
+//     sprintf(buf, "[%s", tripletStr);
+//     RedisModuleString *min = RedisModule_CreateString(ctx, buf, strlen(buf));
+
+//     // max
+//     sprintf(buf, "[%s\xff", tripletStr);
+//     RedisModuleString *max = RedisModule_CreateString(ctx, buf, bufLen);
+
+//     free(tripletStr);
+//     free(buf);
+
+//     RedisModuleKey *key = RedisModule_OpenKey(ctx, graph, REDISMODULE_READ);
+
+//     if(RedisModule_ZsetFirstInLexRange(key, min, max) == REDISMODULE_ERR) {
+//         RedisModule_CloseKey(key);
+//         RedisModule_FreeString(ctx, min);
+//         RedisModule_FreeString(ctx, max);
+//         return resultSet;
+//     }
+
+//     do {
+//         double dScore = 0.0;
+//         RedisModuleString* element =
+//             RedisModule_ZsetRangeCurrentElement(key, &dScore);
+
+//         if(element) {
+//             Vector_Push(resultSet, TripletFromString(RedisModule_StringPtrLen(element, 0)));
+//             RedisModule_FreeString(ctx, element);
+//         }
+
+//     } while(RedisModule_ZsetRangeNext(key));
+
+//     RedisModule_FreeString(ctx, min);
+//     RedisModule_FreeString(ctx, max);
+//     RedisModule_CloseKey(key);
+
+//     return resultSet;
+// }
+
 Vector* queryTriplet(RedisModuleCtx *ctx, RedisModuleString* graph, const Triplet* triplet) {
 
     Vector* resultSet = NewVector(Triplet*, 0);
@@ -124,30 +175,22 @@ Vector* queryTriplet(RedisModuleCtx *ctx, RedisModuleString* graph, const Triple
     free(tripletStr);
     free(buf);
 
-    RedisModuleKey *key = RedisModule_OpenKey(ctx, graph, REDISMODULE_READ);
+    RedisModuleCallReply *reply = RedisModule_Call(ctx, "ZRANGEBYLEX", "sss", graph, min, max);
 
-    if(RedisModule_ZsetFirstInLexRange(key, min, max) == REDISMODULE_ERR) {
-        RedisModule_CloseKey(key);
-        RedisModule_FreeString(ctx, min);
-        RedisModule_FreeString(ctx, max);
-        return resultSet;
+    size_t reply_len = RedisModule_CallReplyLength(reply);
+    for(int idx = 0; idx < reply_len; idx++) {
+        RedisModuleCallReply *subreply;
+        subreply = RedisModule_CallReplyArrayElement(reply, idx);
+
+        size_t len;
+        char* subReplyValue = RedisModule_CallReplyStringPtr(subreply, &len);
+        subReplyValue[len] = 0;
+
+        Vector_Push(resultSet, TripletFromString(subReplyValue));
     }
-
-    do {
-        double dScore = 0.0;
-        RedisModuleString* element =
-            RedisModule_ZsetRangeCurrentElement(key, &dScore);
-
-        if(element) {
-            Vector_Push(resultSet, TripletFromString(RedisModule_StringPtrLen(element, 0)));
-            RedisModule_FreeString(ctx, element);
-        }
-
-    } while(RedisModule_ZsetRangeNext(key));
 
     RedisModule_FreeString(ctx, min);
     RedisModule_FreeString(ctx, max);
-    RedisModule_CloseKey(key);
 
     return resultSet;
 }
