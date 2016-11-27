@@ -72,6 +72,13 @@ It is possible to describe broder relationships by composing a multi hop query a
 ```
 Here we're interesed to find out who are my friends friends.
 
+Nodes can have more than one edge coming in or out of them, for instance:
+```sh
+(me:swilly)-[visited]->(country)<-[visited]-(friend)<-[friends_with]-(me)
+```
+Here we're interested in knowing which of my friends have visited at least one country I've been to.
+
+
 #### WHERE
 this clause is not mandatory, but in order to filter results define prediactes as such: `alias.property operation value`
 
