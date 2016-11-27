@@ -208,7 +208,6 @@ char* BuildQueryResponse(RedisModuleCtx *ctx, const ReturnNode* returnNode, cons
         Node* n = Graph_GetNodeByAlias(g, var->alias);
         // Alias maps to subject or object?
         char* elementID = n->id;
-
         RedisModuleString* keyStr = 
         RedisModule_CreateString(ctx, elementID, strlen(elementID));
 
@@ -254,7 +253,6 @@ char* BuildQueryResponse(RedisModuleCtx *ctx, const ReturnNode* returnNode, cons
     strItem[strlen(strItem)-1] = NULL;
 
     // TODO: Clean up
-
     return strItem;
 }
 

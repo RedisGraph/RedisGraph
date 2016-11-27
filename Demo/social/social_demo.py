@@ -68,7 +68,8 @@ def AddPersonToGraph(person, pipe):
             pipe.hmset(key, {prop: person[prop]})
     
     for country in person["visited"]:
-            pipe.execute_command("GRAPH.ADDEDGE", graph, person["name"], "visited", country)
+        pipe.hmset(country, {"name": country})
+        pipe.execute_command("GRAPH.ADDEDGE", graph, person["name"], "visited", country)
     
     for friend in person["friendsWith"]:
          pipe.execute_command("GRAPH.ADDEDGE", graph, person["name"], "friend", friend["name"])
@@ -110,6 +111,11 @@ def main():
         query = """MATCH (ME:"Roi Lipman")-[friend]->()-[friend]->(fof)-[visited]->(country:Amsterdam)
                 WHERE fof.status = single
                 RETURN fof.name""";
+        ExecuteQuery(query)
+
+        print "Friends who've been to places I've visited"
+        query = """MATCH (ME:"Roi Lipman")-[visited]->(country)<-[visited]-(f)<-[friend]-(:"Roi Lipman")
+                RETURN f.name, country.name""";
         ExecuteQuery(query)
 		
 if __name__ == '__main__':

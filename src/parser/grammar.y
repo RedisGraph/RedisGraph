@@ -58,6 +58,9 @@ chain(A) ::= chain(B) link(C) node(D). {
 node(A) ::= LEFT_PARENTHESIS STRING(B) COLON STRING(C) RIGHT_PARENTHESIS. {
 	A = NewChainEntity(B.strval, C.strval);
 }
+node(A) ::= LEFT_PARENTHESIS COLON STRING(B) RIGHT_PARENTHESIS. {
+	A = NewChainEntity("", B.strval);
+}
 node(A) ::= LEFT_PARENTHESIS STRING(B) RIGHT_PARENTHESIS. {
 	A = NewChainEntity(B.strval, "");
 }

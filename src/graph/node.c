@@ -11,14 +11,13 @@ Node* NewNode(const char* alias, const char* id) {
 
 	if(id != NULL) {
 		node->id = (char*)malloc(sizeof(char) * (strlen(id) + 1));
+		strcpy(node->id, id);
 	}
 
 	if(alias != NULL) {
 		node->alias = (char*)malloc(sizeof(char) * (strlen(alias) + 1));
+		strcpy(node->alias, alias);
 	}
-
-	strcpy(node->id, id);
-	strcpy(node->alias, alias);
 
 	return node;
 }

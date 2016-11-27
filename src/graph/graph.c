@@ -26,6 +26,13 @@ Node* Graph_AddNode(Graph* g, const char* alias, const char* id) {
     if(n == NULL) {
         n = NewNode(alias, id);
         Vector_Push(g->nodes, n);
+    } else {
+        // Update node ID in case it is missing
+        if(n->id != NULL && strlen(n->id) == 0 && strlen(id) > 0) {
+            free(n->id);
+            n->id = (char*)malloc(sizeof(char) * (strlen(id) + 1));
+            strcpy(n->id, id);
+        }
     }
 
     return n;
