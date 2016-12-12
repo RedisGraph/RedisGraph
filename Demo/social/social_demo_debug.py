@@ -90,11 +90,15 @@ def main():
     query = """MATCH (ME:"Roi Lipman")-[friend]->()-[friend]->(fof) RETURN fof.name""";
     ExecuteQuery(query)
 
+    #------------------------------------------------------------------------
+
     print "Friends of friends who are single and over 30"
     query = """MATCH (ME:"Roi Lipman")-[friend]->()-[friend]->(fof) 
                 WHERE fof.status = single and fof.age > 30
                 RETURN fof.name, fof.age""";
     ExecuteQuery(query)
+
+    #------------------------------------------------------------------------
 
     print "Friends of friends who visited Amsterdam and are single?"
     query = """MATCH (ME:"Roi Lipman")-[friend]->()-[friend]->(fof)-[visited]->(country:Amsterdam)
@@ -102,9 +106,19 @@ def main():
             RETURN fof.name""";
     ExecuteQuery(query)
 
+    #------------------------------------------------------------------------
+
     print "Friends who've been to places I've visited"
     query = """MATCH (ME:"Roi Lipman")-[visited]->(country)<-[visited]-(f)<-[friend]-(:"Roi Lipman")
             RETURN f.name, country.name""";
+    ExecuteQuery(query)
+
+    #------------------------------------------------------------------------
+
+    print "Friends who are older than me"
+    query = """MATCH (ME:"Roi Lipman")-[friend]->(f)
+            WHERE f.age > ME.age
+            RETURN f.name, f.age""";
     ExecuteQuery(query)
 		
 if __name__ == '__main__':

@@ -3,11 +3,31 @@
 #include <stdlib.h>
 #include <string.h>
 
+FilterNode* NewVaryingPredicateNode(const char* lAlias, const char* lProperty, int op, const char* rAlias, const char* rProperty) {
+	FilterNode *n = malloc(sizeof(FilterNode));
+	n->t = N_PRED;
 
-FilterNode* NewPredicateNode(const char* alias, const char* property, int op, SIValue value) {
+	n->pn.t = N_VARYING;
+	n->pn.alias = (char*)malloc(strlen(lAlias) + 1);
+	n->pn.property = (char*)malloc(strlen(lProperty) + 1);
+	n->pn.nodeVal.alias = (char*)malloc(strlen(rAlias) + 1);
+	n->pn.nodeVal.property = (char*)malloc(strlen(rProperty) + 1);
+
+	strcpy(n->pn.alias, lAlias);
+	strcpy(n->pn.property, lProperty);
+	strcpy(n->pn.nodeVal.alias, rAlias);
+	strcpy(n->pn.nodeVal.property, rProperty);
+
+	n->pn.op = op;
+
+	return n;
+}
+
+FilterNode* NewConstantPredicateNode(const char* alias, const char* property, int op, SIValue value) {
 	FilterNode *n = malloc(sizeof(FilterNode));
   	n->t = N_PRED;
 
+	n->pn.t = N_CONSTANT;
   	n->pn.alias = (char*)malloc(strlen(alias) + 1);
 	n->pn.property = (char*)malloc(strlen(property) + 1);
 
@@ -15,7 +35,7 @@ FilterNode* NewPredicateNode(const char* alias, const char* property, int op, SI
 	strcpy(n->pn.property, property);
 
 	n->pn.op = op;
-	n->pn.val = value;
+	n->pn.constVal = value;
 
 	return n;
 }
@@ -31,19 +51,38 @@ FilterNode *NewConditionNode(FilterNode *left, int op, FilterNode *right) {
   return n;
 }
 
+
+void FreePredicateNode(PredicateNode* predicateNode) {
+
+	if(predicateNode->alias) {
+		free(predicateNode->alias);
+	}
+
+	if(predicateNode->property) {
+		free(predicateNode->property);
+	}
+
+	if(predicateNode->t == N_VARYING) {
+		if(predicateNode->nodeVal.alias) {
+			free(predicateNode->nodeVal.alias);
+		}
+
+		if(predicateNode->nodeVal.property) {
+			free(predicateNode->nodeVal.property);
+		}
+	}
+
+	// TODO: Should I free constVal?
+}
+
+
 void FreeFilterNode(FilterNode* filterNode) {
 	if(!filterNode)
 		return;
 
 	switch(filterNode->t) {
 		case N_PRED:
-			if(filterNode->pn.alias) {
-				free(filterNode->pn.alias);
-			}
-
-			if(filterNode->pn.property) {
-				free(filterNode->pn.property);
-			}
+			FreePredicateNode(&filterNode->pn);
 			break;
 		case N_COND:
 			FreeFilterNode(filterNode->cn.left);

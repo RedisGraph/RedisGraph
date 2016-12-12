@@ -38,7 +38,7 @@ def LoadMovies():
 			rating = float(row[3])
 			year = int(row[4])
 
-			movies.append(title)
+			movies.append(title)			
 			pipe.hmset(title, {'title': title, 'gener': gener, 'votes': votes, 'rating': rating, 'year': year})
 
 	pipe.execute()
@@ -128,6 +128,15 @@ def main():
 		
 		query = """MATCH (Cameron:"Cameron Diaz")-[act]->(movie)<-[act]-(actor)
 		WHERE actor.age < 35
+		RETURN actor.name, actor.age, movie.title""";
+
+		ExecuteQuery(query)
+
+		#------------------------------------------------------------------------
+		print "Which actors played along side Cameron Diaz and are younger then her?"
+			
+		query = """MATCH (Cameron:"Cameron Diaz")-[act]->(movie)<-[act]-(actor)
+		WHERE actor.age < Cameron.age
 		RETURN actor.name, actor.age, movie.title""";
 
 		ExecuteQuery(query)

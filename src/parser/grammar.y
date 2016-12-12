@@ -99,7 +99,8 @@ whereClause(A) ::= WHERE cond(B). {
 %type cond {FilterNode*}
 %destructor cond { FreeFilterNode($$); }
 
-cond(A) ::= STRING(B) DOT STRING(C) op(D) value(E). { A = NewPredicateNode(B.strval, C.strval, D, E); }
+cond(A) ::= STRING(B) DOT STRING(C) op(D) STRING(E) DOT STRING(F). { A = NewVaryingPredicateNode(B.strval, C.strval, D, E.strval, F.strval); }
+cond(A) ::= STRING(B) DOT STRING(C) op(D) value(E). { A = NewConstantPredicateNode(B.strval, C.strval, D, E); }
 cond(A) ::= LEFT_PARENTHESIS cond(B) RIGHT_PARENTHESIS. { A = B; }
 cond(A) ::= cond(B) AND cond(C). { A = NewConditionNode(B, AND, C); }
 cond(A) ::= cond(B) OR cond(C). { A = NewConditionNode(B, OR, C); }
