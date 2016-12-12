@@ -93,7 +93,7 @@ def main():
 
 	ExecuteQuery(query)
 
-	#------------------------------------------------------------------------
+	# #------------------------------------------------------------------------
 	print "Which actors who are over 50 played in blockbuster movies?"
 
 	query = """MATCH (actor)-[act]->(movie)
@@ -102,7 +102,7 @@ def main():
 
 	ExecuteQuery(query)
 
-	#------------------------------------------------------------------------
+	# #------------------------------------------------------------------------
 	print "Which actors played in bad drame or comedy?"
 
 	query = """MATCH (actor)-[act]->(movie)
@@ -112,11 +112,20 @@ def main():
 
 	ExecuteQuery(query)
 
-	#------------------------------------------------------------------------
+	# #------------------------------------------------------------------------
 	print "Which young actors played along side Cameron Diaz?"
 		
 	query = """MATCH (Cameron:"Cameron Diaz")-[act]->(movie)<-[act]-(actor)
 	WHERE actor.age < 35
+	RETURN actor.name, actor.age, movie.title""";
+
+	ExecuteQuery(query)
+
+	#------------------------------------------------------------------------
+	print "Which actors played along side Cameron Diaz and are younger then her?"
+		
+	query = """MATCH (Cameron:"Cameron Diaz")-[act]->(movie)<-[act]-(actor)
+	WHERE actor.age < Cameron.age
 	RETURN actor.name, actor.age, movie.title""";
 
 	ExecuteQuery(query)

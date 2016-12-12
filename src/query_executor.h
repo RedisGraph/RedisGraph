@@ -15,14 +15,28 @@ typedef enum {
   QE_N_COND,
 } QE_FilterNodeType;
 
+typedef enum {
+	QE_N_CONSTANT,
+	QE_N_VARYING,
+} QE_CompareValueType;
+
 struct QE_FilterNode;
 
 typedef struct {
-	char* alias;	// Element in question alias
-	char* property;	// Element's property to check 
-	int op;			// Operation (<, <=, =, =>, >, !)
-	SIValue val;	// Value to compare against
-	CmpFunc cf;	// Compare function, determins relation between val and element property
+	struct {			// Left side of predicate
+		char* alias;		// Element in question alias
+		char* property;		// Element's property to check
+	} Lop;
+	int op;					// Operation (<, <=, =, =>, >, !)
+	union {					// Right side of predicate
+		SIValue constVal;	// Value to compare against
+		struct {
+			char* alias;
+			char* property;
+		} Rop;
+	};
+	QE_CompareValueType t; 	// Comapred value type, constant/node
+	CmpFunc cf;				// Compare function, determins relation between val and element property
 } QE_PredicateNode;
 
 
@@ -53,6 +67,5 @@ QE_FilterNode* BuildFiltersTree(const FilterNode* root);
 
 // Runs val through the filter tree
 int applyFilters(RedisModuleCtx *ctx, Graph* g, QE_FilterNode* root);
-int applyFilter(RedisModuleCtx *ctx, const char* elementID, QE_PredicateNode* node);
 
 #endif

@@ -19,6 +19,11 @@ typedef enum {
 	N_LINK,
 } ChainElementType;
 
+typedef enum {
+	N_CONSTANT,
+	N_VARYING,
+} CompareValueType;
+
 struct filterNode;
 
 typedef struct {
@@ -32,11 +37,18 @@ typedef struct {
 
 } LinkNode;
 
-typedef struct {	
-	char* alias;
-	char* property;
-	int op;
-	SIValue val;
+typedef struct {
+	union {
+		SIValue constVal;
+		struct {
+			char* alias;
+			char* property;
+		} nodeVal;
+	};
+	CompareValueType t; // Comapred value type, constant/node
+	char* alias;		// Node alias
+	char* property; 	// Node property
+	int op;				// Type of comparison
 } PredicateNode;
 
 typedef struct conditionNode {
@@ -53,12 +65,6 @@ typedef struct filterNode {
   FilterNodeType t;
 } FilterNode;
 
-// typedef struct {
-// 	ItemNode* src;
-// 	LinkNode* relation;
-// 	ItemNode* dest;
-// } RelationshipNode;
-
 typedef struct {
 	union {
 		EntityNode e;
@@ -68,7 +74,6 @@ typedef struct {
 } ChainElement;
 
 typedef struct {
-	// RelationshipNode* relationshipNode;
 	Vector* chainElements;
 } MatchNode;
 
@@ -97,8 +102,8 @@ ChainElement* NewChainLink(char* relationship, LinkDirection dir);
 
 MatchNode* NewMatchNode(Vector* elements);
 
-
-FilterNode* NewPredicateNode(const char* alias, const char* property, int op, SIValue v);
+FilterNode* NewConstantPredicateNode(const char* alias, const char* property, int op, SIValue value);
+FilterNode* NewVaryingPredicateNode(const char* lAlias, const char* lProperty, int op, const char* rAlias, const char* rProperty);
 FilterNode* NewConditionNode(FilterNode *left, int op, FilterNode *right);
 
 WhereNode* NewWhereNode(FilterNode* filters);

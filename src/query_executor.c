@@ -42,69 +42,111 @@ Graph* BuildGraph(const MatchNode* matchNode) {
     return g;
 }
 
+QE_FilterNode* _CreateVaryingFilterNode(PredicateNode n) {
+    // At the moment only numerical comparison is supported
+    // Assuming compared data is double.
+    // TODO: support all types of possible SIValues.
+    CmpFunc compareFunc = cmp_double;
+    QE_FilterNode* filterNode = (QE_FilterNode*)malloc(sizeof(QE_FilterNode));
+
+    // Create predicate node
+    filterNode->t = QE_N_PRED;
+    filterNode->pred.t = QE_N_VARYING;
+
+    filterNode->pred.Lop.alias = 
+        (char*)malloc(sizeof(char) * (strlen(n.alias) + 1));
+
+    filterNode->pred.Lop.property = 
+        (char*)malloc(sizeof(char) * (strlen(n.property) + 1));
+
+    filterNode->pred.Rop.alias = 
+        (char*)malloc(sizeof(char) * (strlen(n.nodeVal.alias) + 1));
+
+    filterNode->pred.Rop.property = 
+        (char*)malloc(sizeof(char) * (strlen(n.nodeVal.property) + 1));
+
+    strcpy(filterNode->pred.Lop.alias, n.alias);
+    strcpy(filterNode->pred.Lop.property, n.property);
+    strcpy(filterNode->pred.Rop.alias, n.nodeVal.alias);
+    strcpy(filterNode->pred.Rop.property, n.nodeVal.property);
+
+    filterNode->pred.op = n.op;
+    filterNode->pred.cf = compareFunc;
+    return filterNode;
+}
+
+QE_FilterNode* _CreateConstFilterNode(PredicateNode n) {
+    CmpFunc compareFunc = NULL;
+    QE_FilterNode* filterNode = (QE_FilterNode*)malloc(sizeof(QE_FilterNode));
+
+    // Find out which compare function should we use.
+    switch(n.constVal.type) {
+        case T_STRING:
+        compareFunc = cmp_string;
+        break;
+        case T_INT32:
+        compareFunc = cmp_int;
+        break;
+        case T_INT64:
+        compareFunc = cmp_long;
+        break;
+        case T_UINT:
+        compareFunc = cmp_uint;
+        break;
+        case T_BOOL:
+        compareFunc = cmp_int;
+        break;
+        case T_FLOAT:
+        compareFunc = cmp_float;
+        break;
+        case T_DOUBLE:
+        compareFunc = cmp_double;
+        break;
+    }
+
+    // Couldn't figure out which compare function to use.
+    if(compareFunc == NULL) {
+        // ERROR.
+        return NULL;
+    }
+
+    // Create predicate node
+    filterNode->t = QE_N_PRED;
+    filterNode->pred.t = QE_N_CONSTANT;
+
+    filterNode->pred.Lop.alias = 
+        (char*)malloc(sizeof(char) * (strlen(n.alias) + 1));
+
+    filterNode->pred.Lop.property = 
+        (char*)malloc(sizeof(char) * (strlen(n.property) + 1));
+
+    strcpy(filterNode->pred.Lop.alias, n.alias);
+    strcpy(filterNode->pred.Lop.property, n.property);
+
+    filterNode->pred.op = n.op;
+    filterNode->pred.constVal = n.constVal; // Not sure about this assignmeant
+    filterNode->pred.cf = compareFunc;
+    return filterNode;
+}
+
 QE_FilterNode* BuildFiltersTree(const FilterNode* root) {
     if(root == NULL) {
         return NULL;
     }
     
-	QE_FilterNode* filterNode = (QE_FilterNode*)malloc(sizeof(QE_FilterNode));
-
     if(root->t == N_PRED) {
-    	CmpFunc compareFunc = NULL;
-	    
-	    // Find out which compare function should we use.
-	    switch(root->pn.val.type) {
-	      case T_STRING:
-	        compareFunc = cmp_string;
-	        break;
-	      case T_INT32:
-	        compareFunc = cmp_int;
-	        break;
-	      case T_INT64:
-	        compareFunc = cmp_long;
-	        break;
-	      case T_UINT:
-	        compareFunc = cmp_uint;
-	        break;
-	      case T_BOOL:
-	        compareFunc = cmp_int;
-	        break;
-	      case T_FLOAT:
-	        compareFunc = cmp_float;
-	        break;
-	      case T_DOUBLE:
-	        compareFunc = cmp_double;
-	        break;
-	    }
-
-	    // Couldn't figure out which compare function to use.
-	    if(compareFunc == NULL) {
-	    	// ERROR.
-	    	return NULL;
-	    }
-
-	    // Create predicate node
-	    filterNode->t = QE_N_PRED;
-	    
-	    filterNode->pred.alias = 
-	    	(char*)malloc(sizeof(char) * (strlen(root->pn.alias) + 1));
-
-	    filterNode->pred.property = 
-	    	(char*)malloc(sizeof(char) * (strlen(root->pn.property) + 1));
-	    
-	    strcpy(filterNode->pred.alias, root->pn.alias);
-	    strcpy(filterNode->pred.property, root->pn.property);
-
-	    filterNode->pred.op = root->pn.op;
-	    filterNode->pred.val = root->pn.val; // Not sure about this assignmeant
-
-	    filterNode->pred.cf = compareFunc;
-	    return filterNode;
+        if(root->pn.t == N_CONSTANT) {
+            return _CreateConstFilterNode(root->pn);
+        } else {
+            return _CreateVaryingFilterNode(root->pn);
+        }
 	}
 
     // root->t == N_COND
 
     // Create condition node
+    QE_FilterNode* filterNode = (QE_FilterNode*)malloc(sizeof(QE_FilterNode));
+
 	filterNode->t = QE_N_COND;
 	filterNode->cond.op = root->cn.op;
 	
@@ -114,17 +156,32 @@ QE_FilterNode* BuildFiltersTree(const FilterNode* root) {
 }
 
 int applyFilters(RedisModuleCtx *ctx, Graph* g, QE_FilterNode* root) {
-    // Scan tree.
+    // Handle predicate node.
     if(root->t == QE_N_PRED) {
-        char* elementID = NULL;
-        Node* n = Graph_GetNodeByAlias(g, root->pred.alias);
+        // A op B
+        // extract both A and B values
+        Node* node;
+        SIValue aVal;
+        SIValue bVal;
 
-        if (n == NULL) {
-            // TODO: Report error
+        if(root->pred.t == QE_N_CONSTANT) {
+            bVal = root->pred.constVal;
+            aVal.type = bVal.type;
+        } else {
+            aVal.type = bVal.type = T_DOUBLE; // Default to DOUBLE
+            node = Graph_GetNodeByAlias(g, root->pred.Rop.alias);
+            if(!_GetElementProperyValue(ctx, node->id, root->pred.Rop.property, &bVal)) {
+                // TODO: Log this missing element / property
+                return 0;
+            }
+        }
+        node = Graph_GetNodeByAlias(g, root->pred.Lop.alias);
+        if(!_GetElementProperyValue(ctx, node->id, root->pred.Lop.property, &aVal)) {
+            // TODO: Log this missing element / property
             return 0;
         }
 
-        return applyFilter(ctx, n->id, &root->pred);
+        return _applyFilter(ctx, &aVal, &bVal, root->pred.cf, root->pred.op);
     }
 
     // root->t == QE_N_COND
@@ -145,23 +202,23 @@ int applyFilters(RedisModuleCtx *ctx, Graph* g, QE_FilterNode* root) {
     return pass;
 }
 
-// Applies a single filter to a single result.
-int applyFilter(RedisModuleCtx *ctx, const char* elementID, QE_PredicateNode* node) {
-	RedisModuleString* keyStr =
+int _GetElementProperyValue(RedisModuleCtx *ctx, const char* elementID, const char* property, SIType* propVal) {
+    RedisModuleString* keyStr =
         RedisModule_CreateString(ctx, elementID, strlen(elementID));
-
-    RedisModuleString* elementProp =
-        RedisModule_CreateString(ctx, node->property, strlen(node->property));
-
-    RedisModuleKey *key = RedisModule_OpenKey(ctx, keyStr, REDISMODULE_READ);
     
+    RedisModuleKey *key = 
+        RedisModule_OpenKey(ctx, keyStr, REDISMODULE_READ);
+
     if(key == NULL) {
-        RedisModule_FreeString(ctx, keyStr);
-        RedisModule_FreeString(ctx, elementProp);
+        // TODO: RedisModule_FreeString here crashes
+        // RedisModule_FreeString(ctx, keyStr);
         return 0;
     }
 
-    RedisModuleString* propValue;
+    RedisModuleString* propValue = NULL;
+
+    RedisModuleString* elementProp =
+        RedisModule_CreateString(ctx, property, strlen(property));
 
     RedisModule_HashGet(key, REDISMODULE_HASH_NONE, elementProp, &propValue, NULL);
 
@@ -173,33 +230,39 @@ int applyFilter(RedisModuleCtx *ctx, const char* elementID, QE_PredicateNode* no
     const char* strPropValue = RedisModule_StringPtrLen(propValue, &strProplen);
     RedisModule_FreeString(ctx, propValue);
 
-    SIValue propVal = {.type = node->val.type};
-
-    if (!SI_ParseValue(&propVal, strPropValue, strProplen)) {
-      RedisModule_Log(ctx, "error", "Could not parse %.*s\n", (int)strProplen, strPropValue);
-      return RedisModule_ReplyWithError(ctx, "Invalid value given");
+    if (!SI_ParseValue(propVal, strPropValue, strProplen)) {
+        RedisModule_Log(ctx, "error", "Could not parse %.*s\n", (int)strProplen, strPropValue);
+        return RedisModule_ReplyWithError(ctx, "Invalid value given");
     }
 
-    // Relation between prop value and value.
-    int rel = node->cf(&propVal, &node->val);
-    switch(node->op) {
+    return 1;
+}
+
+// Applies a single filter to a single result.
+// Compares given values, tests if values maintain desired relation (op)
+int _applyFilter(RedisModuleCtx *ctx, SIValue* aVal, SIValue* bVal, CmpFunc f, int op) {
+    // TODO: Make sure values are of the same type
+    // TODO: Make sure values type confirms with compare function.
+    int rel = f(aVal, bVal);
+
+    switch(op) {
         case EQ:
-            return rel == 0;
+        return rel == 0;
 
         case GT:
-            return rel > 0;
+        return rel > 0;
 
         case GE:
-            return rel >= 0;
+        return rel >= 0;
 
         case LT:
-            return rel < 0;
+        return rel < 0;
 
         case LE:
-            return rel <= 0;
+        return rel <= 0;
 
         default:
-            RedisModule_Log(ctx, "error", "Unknown comparison operator %d\n", node->op);
+            RedisModule_Log(ctx, "error", "Unknown comparison operator %d\n", op);
             return RedisModule_ReplyWithError(ctx, "Invalid comparison operator");
     }
 }
