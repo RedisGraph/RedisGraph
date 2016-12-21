@@ -20,7 +20,7 @@ Arguments: `Graph name, source node, relationship, destination node`
 
 Creats a connection within the given graph between source node and destination node using relation.
 ```sh
-GRAPH.ADDEDGE presidents "barak obama", born Hawaii
+GRAPH.ADDEDGE presidents "barak obama" born Hawaii
 ```
 
 #### GRAPH.QUERY
@@ -33,7 +33,7 @@ GRAPH.QUERY presidents "MATCH (president)-[born]->(state:Hawaii) RETURN presiden
 ```
 
 ### Query language
-The syntex is based on neo4j's Cypher and currently only a small subset of the language is supported.
+The syntex is based on neo4j's Cypher and currently only a subset of the language is supported.
 
 A query is composed of three parts:
 
@@ -80,9 +80,13 @@ Here we're interested in knowing which of my friends have visited at least one c
 
 
 #### WHERE
-this clause is not mandatory, but in order to filter results define prediactes as such: `alias.property operation value`
+This clause is not mandatory, but in order to filter results you can define prediactes of two kinds:
+1. Compare against constant value: `alias.property operation value`
+where `value` is a primitive type (int, float, string and boolean)
 
-supported operations:
+2. Compare between nodes properties: `alias.property operation alias.property`
+
+Supported operations:
 - `=`
 - `!=`
 - `<`
@@ -92,11 +96,14 @@ supported operations:
 
 Predicates can be combided using AND / OR, wrap predicates within parentheses to control precedence.
 
-At the moment `value` can only represent a primitive type (int, float, string and boolean), in the future it will be possible to replace primitive values with node's properties.
 
-Example: 
+Examples: 
 ```sh
 WHERE (actor.name = "john doe" OR movie.rating > 8.8) AND movie.votes <=250)
+```
+
+```sh
+WHERE actor.age >= director.age AND actor.age > 32
 ```
 
 #### RETURN
@@ -115,4 +122,4 @@ Loading module into redis:
 ./redis-server --loadmodule <PATH_TO_RedisGraph>/src/libmodule.so
 ``` 
 
-For more information please see Demo
+For more eaxmples please see [Demo](https://github.com/swilly22/redis-module-graph/tree/master/Demo)
