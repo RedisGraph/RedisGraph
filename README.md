@@ -82,10 +82,11 @@ Here we're interested in knowing which of my friends have visited at least one c
 #### WHERE
 This clause is not mandatory, but in order to filter results you can define prediactes of two kinds:
 
-1. Compare against constant value: `alias.property operation value`
-where `value` is a primitive type (int, float, string and boolean)
+1. Compare between nodes properties: `alias.property operation alias.property`
 
-2. Compare between nodes properties: `alias.property operation alias.property`
+2. Compare against constant value: `alias.property operation value`
+
+where `value` is a primitive type (int, float, string and boolean)
 
 Supported operations:
 - `=`
