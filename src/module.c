@@ -102,62 +102,12 @@ int MGraph_AddEdge(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
 
 // Vector* queryTriplet(RedisModuleCtx *ctx, RedisModuleString* graph, const Triplet* triplet) {
+TripletCursor* queryTriplet(RedisModuleCtx *ctx, RedisModuleString* graph, const Triplet* triplet) {
+    RedisModule_AutoMemory(ctx);
 
-//     Vector* resultSet = NewVector(Triplet*, 0);
-//     char* tripletStr = TripletToString(triplet);
-
-//     size_t bufLen = strlen(tripletStr) + 3;
-//     char* buf = (char*)malloc(bufLen);
-
-//     // [spo:antirez:is-friend-of: [spo:antirez:is-friend-of:\xff
-//     // min [spo:antirez:is-friend-of:
-//     // max [spo:antirez:is-friend-of:\xff
-
-//     // min
-//     sprintf(buf, "[%s", tripletStr);
-//     RedisModuleString *min = RedisModule_CreateString(ctx, buf, strlen(buf));
-
-//     // max
-//     sprintf(buf, "[%s\xff", tripletStr);
-//     RedisModuleString *max = RedisModule_CreateString(ctx, buf, bufLen);
-
-//     free(tripletStr);
-//     free(buf);
-
-//     RedisModuleKey *key = RedisModule_OpenKey(ctx, graph, REDISMODULE_READ);
-
-//     if(RedisModule_ZsetFirstInLexRange(key, min, max) == REDISMODULE_ERR) {
-//         RedisModule_CloseKey(key);
-//         RedisModule_FreeString(ctx, min);
-//         RedisModule_FreeString(ctx, max);
-//         return resultSet;
-//     }
-
-//     do {
-//         double dScore = 0.0;
-//         RedisModuleString* element =
-//             RedisModule_ZsetRangeCurrentElement(key, &dScore);
-
-//         if(element) {
-//             Vector_Push(resultSet, TripletFromString(RedisModule_StringPtrLen(element, 0)));
-//             RedisModule_FreeString(ctx, element);
-//         }
-
-//     } while(RedisModule_ZsetRangeNext(key));
-
-//     RedisModule_FreeString(ctx, min);
-//     RedisModule_FreeString(ctx, max);
-//     RedisModule_CloseKey(key);
-
-//     return resultSet;
-// }
-
-Vector* queryTriplet(RedisModuleCtx *ctx, RedisModuleString* graph, const Triplet* triplet) {
-
-    Vector* resultSet = NewVector(Triplet*, 0);
     char* tripletStr = TripletToString(triplet);
 
-    size_t bufLen = strlen(tripletStr) + 2;
+    size_t bufLen = strlen(tripletStr) + 3;
     char* buf = (char*)malloc(bufLen);
 
     // [spo:antirez:is-friend-of: [spo:antirez:is-friend-of:\xff
@@ -175,24 +125,13 @@ Vector* queryTriplet(RedisModuleCtx *ctx, RedisModuleString* graph, const Triple
     free(tripletStr);
     free(buf);
 
-    RedisModuleCallReply *reply = RedisModule_Call(ctx, "ZRANGEBYLEX", "sss", graph, min, max);
+    RedisModuleKey *key = RedisModule_OpenKey(ctx, graph, REDISMODULE_READ);
 
-    size_t reply_len = RedisModule_CallReplyLength(reply);
-    for(int idx = 0; idx < reply_len; idx++) {
-        RedisModuleCallReply *subreply;
-        subreply = RedisModule_CallReplyArrayElement(reply, idx);
-
-        size_t len;
-        char* subReplyValue = RedisModule_CallReplyStringPtr(subreply, &len);
-        subReplyValue[len] = 0;
-
-        Vector_Push(resultSet, TripletFromString(subReplyValue));
+    if(RedisModule_ZsetFirstInLexRange(key, min, max) == REDISMODULE_ERR) {
+        return NULL;
     }
 
-    RedisModule_FreeString(ctx, min);
-    RedisModule_FreeString(ctx, max);
-
-    return resultSet;
+    return NewTripletCursor(ctx, key);
 }
 
 // Construct the final response for a query
@@ -267,7 +206,7 @@ void QueryNode(RedisModuleCtx *ctx, RedisModuleString *graphName, Graph* g, Node
         Triplet* triplet = TripletFromEdge(edge);
         
         // Query graph using triplet, no filters are applied at this stage
-        Vector* resultSet = queryTriplet(ctx, graphName, triplet);
+        TripletCursor* cursor = queryTriplet(ctx, graphName, triplet);
         FreeTriplet(triplet);
 
         // Backup original node IDs
@@ -275,13 +214,10 @@ void QueryNode(RedisModuleCtx *ctx, RedisModuleString *graphName, Graph* g, Node
         char* edgeOriginalID = edge->relationship;
         char* destOriginalID = dest->id;
 
-        // Run through result set.
-        for(int j = 0; j < Vector_Size(resultSet); j++) {
-            // copy result values to graph.
-            Triplet* result;
-            Vector_Get(resultSet, j, &result);
-            
-            // Override node IDs.
+        // Run through cursor.
+        Triplet* result;
+        while(result = TripletCursorNext(cursor), result != NULL) {
+            // Copy result values to graph, override node IDs.
             src->id = result->subject;
             edge->relationship = result->predicate;
             dest->id = result->object;
@@ -298,15 +234,15 @@ void QueryNode(RedisModuleCtx *ctx, RedisModuleString *graphName, Graph* g, Node
                 Vector_Push(entryPoints, entryPoint);
             } else {
                 // We've reach the end of the graph
-                // Pass through filter
+                // Pass through filter, apply filters specified in where clause.
                 if(filterTree == NULL || applyFilters(ctx, g, filterTree)) {
-                    // Apply filters specified in where clause.
                     // Append to final result set.
                     char* response = BuildQueryResponse(ctx, returnTree, g);
                     Vector_Push(returnedSet, response);
                 }
             }
-        } // End of result-set loop
+        } // End of cursor loop
+        FreeTripletCursor(cursor);
         
         // Restore nodes original IDs.
         src->id = srcOriginalID;
