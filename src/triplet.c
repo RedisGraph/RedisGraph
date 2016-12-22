@@ -257,3 +257,55 @@ void FreeTriplet(Triplet* triplet) {
 	free(triplet->object);
 	free(triplet);
 }
+
+TripletCursor* NewTripletCursor(RedisModuleCtx *ctx, RedisModuleKey* key) {
+	TripletCursor* cursor = (TripletCursor*)malloc(sizeof(TripletCursor));
+	cursor->closed = 0;
+	cursor->ctx = ctx;
+
+	// TODO: Validate key type, should be a sorted set
+	cursor->key = key;
+	return cursor;
+}
+
+// Closes given cursor
+void CloseTripletCursor(TripletCursor* cursor) {
+	RedisModule_CloseKey(cursor->key);
+	cursor->closed = 1;
+}
+
+// Returns the next triplet from the cursor
+// or NULL when cursor is depleted
+Triplet* TripletCursorNext(TripletCursor* cursor) {
+	RedisModule_AutoMemory(cursor->ctx);
+
+	if(cursor->closed) {
+		return NULL;
+	}
+
+	double dScore = 0.0;
+	RedisModuleString* element =
+		RedisModule_ZsetRangeCurrentElement(cursor->key, &dScore);
+
+	if(element == NULL) {
+		// TODO: why RedisModule_ZsetRangeCurrentElement returns NULL?
+		return NULL;
+	}
+
+	Triplet* t = 
+		TripletFromString(RedisModule_StringPtrLen(element, 0));
+
+    if (!RedisModule_ZsetRangeNext(cursor->key)) {
+		// Cursor reached it's end.
+		CloseTripletCursor(cursor);
+	}
+
+	return t;
+}
+
+void FreeTripletCursor(TripletCursor* cursor) {
+	if(!cursor->closed) {
+		CloseTripletCursor(cursor);
+	}
+	free(cursor);
+}

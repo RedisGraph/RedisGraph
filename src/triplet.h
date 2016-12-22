@@ -2,6 +2,7 @@
 #define TRIPLET_H
 
 #include "graph/edge.h"
+#include "redismodule.h"
 
 typedef enum {UNKNOW, O, P, PO, S, SO, SP, SPO} TripletKind;
 
@@ -11,6 +12,12 @@ typedef struct {
 	char* object;
 	TripletKind kind;
 } Triplet;
+
+typedef struct {
+	RedisModuleCtx *ctx;
+	RedisModuleKey *key;
+	int closed;
+} TripletCursor;
 
 // Creates a new triplet
 Triplet* NewTriplet(const char* S, const char* P, const char* O);
@@ -38,5 +45,14 @@ int ValidateTriplet(const Triplet* triplet);
 
 // Frees allocated space by given triplet.
 void FreeTriplet(Triplet* triplet);
+
+// Triplet cursor
+
+TripletCursor* NewTripletCursor(RedisModuleCtx *ctx, RedisModuleKey* key);
+
+// Returns the next triplet from the cursor.
+Triplet* TripletCursorNext(TripletCursor* cursor);
+
+void FreeTripletCursor(TripletCursor* cursor);
 
 #endif
