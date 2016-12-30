@@ -114,7 +114,6 @@ int _parseBool(SIValue *v, char *str, size_t len) {
 }
 
 int _parseFloat(SIValue *v, char *str, size_t len) {
-
   errno = 0; /* To distinguish success/failure after call */
   char *endptr = str + len;
   double val = strtod(str, &endptr);
@@ -312,4 +311,28 @@ int SI_StringVal_Cast(SIValue *v, SIType type) {
   }
 
   return 0;
+}
+
+int SIValue_ToDouble(SIValue *v, double *d) {
+  switch (v->type) {
+  case T_DOUBLE:
+    *d = v->doubleval;
+    return 1;
+  case T_INT64: // do nothing!
+    *d = (double)v->longval;
+    return 1;
+  case T_INT32:
+    *d = (double)v->intval;
+    return 1;
+  case T_UINT:
+    *d = (double)v->uintval;
+    return 1;
+  case T_FLOAT:
+    *d = (double)v->floatval;
+    return 1;
+
+  default:
+    // cannot convert!
+    return 0;
+  }
 }

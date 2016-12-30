@@ -16,6 +16,13 @@ set(_graph_files
       ../src/parser/lex.yy.c
       ../src/parser/grammar.c
 
+      ../src/aggregate/aggregate.c
+      ../src/aggregate/functions.c
+      ../src/aggregate/repository.c
+
+      ../src/grouping/group.c
+      ../src/grouping/group_cache.c
+
       ../src/rmutil/sds.c
       ../src/rmutil/util.c
       ../src/rmutil/vector.c
@@ -36,7 +43,7 @@ target_compile_options(Llibgraph PUBLIC "-fPIC" "-DREDIS_MODULE_TARGET" "-I${CMA
 #                TARGET Llibgraph
 #                PRE_BUILD
 #                COMMAND lex -i lexer.l
-#                COMMAND lemon -s grammar.y 
+#                COMMAND lemon -s grammar.y
 #                WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/src/parser)
 
 

@@ -68,4 +68,19 @@ QE_FilterNode* BuildFiltersTree(const FilterNode* root);
 // Runs val through the filter tree
 int applyFilters(RedisModuleCtx *ctx, Graph* g, QE_FilterNode* root);
 
+// Retrives requested properties from the graph.
+Vector* ReturnClause_RetrivePropValues(RedisModuleCtx *ctx, const ReturnNode* returnNode, const Graph* g);
+
+// Retrives all properties which define the group key from given graph.
+Vector* ReturnClause_RetriveGroupKeys(RedisModuleCtx *ctx, const ReturnNode* returnNode, const Graph* g);
+
+// Retrives all aggregated properties from graph.
+Vector* ReturnClause_RetriveGroupAggVals(RedisModuleCtx *ctx, const ReturnNode* returnNode, const Graph* g);
+
+int ReturnClause_ContainsAggregation(const ReturnNode* returnNode);
+
+// Retrives all aggregation functions used within given return clause.
+// Returns a vector of AggCtx*
+Vector* ReturnClause_GetAggFuncs(RedisModuleCtx *ctx, const ReturnNode* returnNode);
+
 #endif

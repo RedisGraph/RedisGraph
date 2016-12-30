@@ -126,34 +126,43 @@ value(A) ::= FALSE. { A = SI_BoolVal(0); }
 
 %type returnClause {ReturnNode*}
 
-returnClause(A) ::= RETURN variables(B). {
-	//printf("return clause\n");
+returnClause(A) ::= RETURN returnElements(B). {
 	A = NewReturnNode(B);
 }
 
 
-%type variables {Vector*}
+%type returnElements {Vector*}
 
-variables(A) ::= variable(B). {
-	A = NewVector(VariableNode*, 1);
-	Vector_Push(A, B); 
-}
-variables(A) ::= variables(B) COMMA variable(C). {
-	//printf("multi variables\n");
+returnElements(A) ::= returnElements(B) COMMA returnElement(C). {
 	Vector_Push(B, C);
 	A = B;
 }
 
-
-%type variable {VariableNode*}
-
-variable(A) ::= STRING(B). {
-	//printf("variable: %s\n", B.strval);
-	A = NewVariableNode(B.strval, NULL);
+returnElements(A) ::= returnElement(B). {
+	A = NewVector(ReturnElementNode*, 1);
+	Vector_Push(A, B);
 }
+
+%type returnElement {ReturnElementNode*}
+
+returnElement(A) ::= variable(B). {
+	A = B;
+}
+
+returnElement(A) ::= aggFunc(B). {
+	A = B;
+}
+
+%type variable {ReturnElementNode*}
+
 variable(A) ::= STRING(B) DOT STRING(C). {
-	//printf("variable: %s prop: %s\n", B.strval, C.strval);
-	A = NewVariableNode(B.strval, C.strval);
+	A = NewReturnElementNode(N_PROP, B.strval, C.strval, NULL);
+}
+
+%type aggFunc {ReturnElementNode*}
+
+aggFunc(A) ::= STRING(B) LEFT_PARENTHESIS variable(C) RIGHT_PARENTHESIS. {
+	A = NewReturnElementNode(N_AGG_FUNC, C->alias, C->property, B.strval);
 }
 
 
