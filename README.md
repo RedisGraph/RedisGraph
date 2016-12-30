@@ -112,7 +112,7 @@ In its simple form Return defines which properties the returned result-set will 
 RETURN movie.title, actor.name
 ```
 
-Return can also be used to aggregate data similar to SQL group by, once an aggregation function is added to the return list all other none aggrigated values are considred as group keys, for example:
+Return can also be used to aggregate data similar to SQL group by, once an aggregation function is added to the return list all other none aggregated values are considred as group keys, for example:
 ```sh
 RETURN movie.title, MAX(actor.age), MIN(actor.age)
 ```
