@@ -2,6 +2,7 @@
 #include "parser/grammar.h"
 #include "rmutil/vector.h"
 #include "graph/node.h"
+#include "aggregate/agg_ctx.h"
 
 Graph* BuildGraph(const MatchNode* matchNode) {
     Graph* g = NewGraph();
@@ -155,6 +156,33 @@ QE_FilterNode* BuildFiltersTree(const FilterNode* root) {
 	return filterNode;
 }
 
+RedisModuleString* _GetElementProperyValue(RedisModuleCtx *ctx, const char* elementID, const char* property) {
+    RedisModuleString* keyStr =
+        RedisModule_CreateString(ctx, elementID, strlen(elementID));
+
+    RedisModuleKey *key = 
+        RedisModule_OpenKey(ctx, keyStr, REDISMODULE_READ);
+
+    if(key == NULL) {
+        // TODO: RedisModule_FreeString here crashes
+        // RedisModule_FreeString(ctx, keyStr);
+        return NULL;
+    }
+
+    RedisModuleString* propValue = NULL;
+
+    RedisModuleString* elementProp =
+        RedisModule_CreateString(ctx, property, strlen(property));
+
+    RedisModule_HashGet(key, REDISMODULE_HASH_NONE, elementProp, &propValue, NULL);
+
+    RedisModule_CloseKey(key);
+    RedisModule_FreeString(ctx, keyStr);
+    RedisModule_FreeString(ctx, elementProp);
+
+    return propValue;
+}
+
 int applyFilters(RedisModuleCtx *ctx, Graph* g, QE_FilterNode* root) {
     // Handle predicate node.
     if(root->t == QE_N_PRED) {
@@ -170,16 +198,36 @@ int applyFilters(RedisModuleCtx *ctx, Graph* g, QE_FilterNode* root) {
         } else {
             aVal.type = bVal.type = T_DOUBLE; // Default to DOUBLE
             node = Graph_GetNodeByAlias(g, root->pred.Rop.alias);
-            if(!_GetElementProperyValue(ctx, node->id, root->pred.Rop.property, &bVal)) {
+            RedisModuleString* propValue = _GetElementProperyValue(ctx, node->id, root->pred.Rop.property);
+            if(propValue == NULL) {
                 // TODO: Log this missing element / property
                 return 0;
             }
+
+            // Cast from RedisModuleString to SIValue.
+            size_t strProplen = 0;
+            const char* strPropValue = RedisModule_StringPtrLen(propValue, &strProplen);
+            if (!SI_ParseValue(&bVal, strPropValue, strProplen)) {
+                RedisModule_Log(ctx, "error", "Could not parse %.*s\n", (int)strProplen, strPropValue);
+                return RedisModule_ReplyWithError(ctx, "Invalid value given");
+            }
+            RedisModule_FreeString(ctx, propValue);
         }
+
         node = Graph_GetNodeByAlias(g, root->pred.Lop.alias);
-        if(!_GetElementProperyValue(ctx, node->id, root->pred.Lop.property, &aVal)) {
-            // TODO: Log this missing element / property
-            return 0;
+        RedisModuleString* propValue = _GetElementProperyValue(ctx, node->id, root->pred.Lop.property);
+        if(propValue == NULL) {
+                // TODO: Log this missing element / property
+                return 0;
         }
+        // Cast from RedisModuleString to SIValue.
+        size_t strProplen = 0;
+        const char* strPropValue = RedisModule_StringPtrLen(propValue, &strProplen);
+        if (!SI_ParseValue(&aVal, strPropValue, strProplen)) {
+            RedisModule_Log(ctx, "error", "Could not parse %.*s\n", (int)strProplen, strPropValue);
+            return RedisModule_ReplyWithError(ctx, "Invalid value given");
+        }
+        RedisModule_FreeString(ctx, propValue);
 
         return _applyFilter(ctx, &aVal, &bVal, root->pred.cf, root->pred.op);
     }
@@ -200,42 +248,6 @@ int applyFilters(RedisModuleCtx *ctx, Graph* g, QE_FilterNode* root) {
     }
 
     return pass;
-}
-
-int _GetElementProperyValue(RedisModuleCtx *ctx, const char* elementID, const char* property, SIType* propVal) {
-    RedisModuleString* keyStr =
-        RedisModule_CreateString(ctx, elementID, strlen(elementID));
-    
-    RedisModuleKey *key = 
-        RedisModule_OpenKey(ctx, keyStr, REDISMODULE_READ);
-
-    if(key == NULL) {
-        // TODO: RedisModule_FreeString here crashes
-        // RedisModule_FreeString(ctx, keyStr);
-        return 0;
-    }
-
-    RedisModuleString* propValue = NULL;
-
-    RedisModuleString* elementProp =
-        RedisModule_CreateString(ctx, property, strlen(property));
-
-    RedisModule_HashGet(key, REDISMODULE_HASH_NONE, elementProp, &propValue, NULL);
-
-    RedisModule_CloseKey(key);
-    RedisModule_FreeString(ctx, keyStr);
-    RedisModule_FreeString(ctx, elementProp);
-
-    size_t strProplen;
-    const char* strPropValue = RedisModule_StringPtrLen(propValue, &strProplen);
-    RedisModule_FreeString(ctx, propValue);
-
-    if (!SI_ParseValue(propVal, strPropValue, strProplen)) {
-        RedisModule_Log(ctx, "error", "Could not parse %.*s\n", (int)strProplen, strPropValue);
-        return RedisModule_ReplyWithError(ctx, "Invalid value given");
-    }
-
-    return 1;
 }
 
 // Applies a single filter to a single result.
@@ -265,4 +277,85 @@ int _applyFilter(RedisModuleCtx *ctx, SIValue* aVal, SIValue* bVal, CmpFunc f, i
             RedisModule_Log(ctx, "error", "Unknown comparison operator %d\n", op);
             return RedisModule_ReplyWithError(ctx, "Invalid comparison operator");
     }
+}
+
+// type specifies the type of return elements to retrive
+Vector* _ReturnClause_RetriveValues(RedisModuleCtx *ctx, const ReturnNode* returnNode, const Graph* g, ReturnElementType type) {
+    Vector* returnedProps = NewVector(RedisModuleString*, Vector_Size(returnNode->returnElements));
+
+    for(int i = 0; i < Vector_Size(returnNode->returnElements); i++) {
+        ReturnElementNode* retElem;
+        Vector_Get(returnNode->returnElements, i, &retElem);
+
+        // Skip elements not of specified type
+        if(retElem->type != type) {
+            continue;
+        }
+
+        Node* n = Graph_GetNodeByAlias(g, retElem->alias);
+
+        if(retElem->property != NULL) {
+            Vector_Push(returnedProps, _GetElementProperyValue(ctx, n->id, retElem->property));
+        } else {
+            // Couldn't find an API for HGETALL.
+        }
+    } // End of for loop
+
+    return returnedProps;
+}
+
+// Retrives all request values specified in return clause
+// Returns a vector of RedisModuleString*
+Vector* ReturnClause_RetrivePropValues(RedisModuleCtx *ctx, const ReturnNode* returnNode, const Graph* g) {
+    return _ReturnClause_RetriveValues(ctx, returnNode, g, N_PROP);
+}
+
+// Retrives "GROUP BY" values.
+// Returns a vector of RedisModuleString*
+Vector* ReturnClause_RetriveGroupKeys(RedisModuleCtx *ctx, const ReturnNode* returnNode, const Graph* g) {
+    return _ReturnClause_RetriveValues(ctx, returnNode, g, N_PROP);
+}
+
+// Retrives all aggregated properties from graph.
+// e.g. SUM(Person.age)
+// Returns a vector of RedisModuleString*
+Vector* ReturnClause_RetriveGroupAggVals(RedisModuleCtx *ctx, const ReturnNode* returnNode, const Graph* g) {
+    return _ReturnClause_RetriveValues(ctx, returnNode, g, N_AGG_FUNC);
+}
+
+// Checks if return clause uses aggregation.
+int ReturnClause_ContainsAggregation(const ReturnNode* returnNode) {
+    int res = 0;
+
+    for(int i = 0; i < Vector_Size(returnNode->returnElements); i++) {
+        ReturnElementNode* retElem;
+        Vector_Get(returnNode->returnElements, i, &retElem);
+        if(retElem->type == N_AGG_FUNC) {
+            res = 1;
+            break;
+        }
+    }
+
+    return res;
+}
+
+Vector* ReturnClause_GetAggFuncs(RedisModuleCtx *ctx, const ReturnNode* returnNode) {
+    Vector* aggFunctions = NewVector(AggCtx*, 0);
+
+    for(int i = 0; i < Vector_Size(returnNode->returnElements); i++) {
+        ReturnElementNode* retElem;
+        Vector_Get(returnNode->returnElements, i, &retElem);
+
+        if(retElem->type == N_AGG_FUNC) {
+            AggCtx* func = NULL;
+            Agg_GetFunc(retElem->func, &func);
+            if(func == NULL) {
+                RedisModule_Log(ctx, "error", "aggregation function %s is not supported\n", retElem->func);
+                return RedisModule_ReplyWithError(ctx, "Invalid aggregation function");
+            }
+            Vector_Push(aggFunctions, func);
+        }
+    }
+
+    return aggFunctions;
 }

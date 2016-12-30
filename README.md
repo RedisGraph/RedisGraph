@@ -81,12 +81,10 @@ Here we're interested in knowing which of my friends have visited at least one c
 
 #### WHERE
 This clause is not mandatory, but in order to filter results you can define prediactes of two kinds:
-
-1. Compare between nodes properties: `alias.property operation alias.property`
-
-2. Compare against constant value: `alias.property operation value`
-
+1. Compare against constant value: `alias.property operation value`
 where `value` is a primitive type (int, float, string and boolean)
+
+2. Compare between nodes properties: `alias.property operation alias.property`
 
 Supported operations:
 - `=`
@@ -109,10 +107,25 @@ WHERE actor.age >= director.age AND actor.age > 32
 ```
 
 #### RETURN
-Defines which properties the returned result-set will contain, its structure is a list of `alias.property` seperated by comma. e.g. 
+In its simple form Return defines which properties the returned result-set will contain, its structure is a list of `alias.property` seperated by comma. e.g. 
 ```sh 
 RETURN movie.title, actor.name
 ```
+
+Return can also be used to aggregate data similar to SQL group by, once an aggregation function is added to the return list all other none aggrigated values are considred as group keys, for example:
+```sh
+RETURN movie.title, MAX(actor.age), MIN(actor.age)
+```
+Here we group data by movie title and foreach movie we find its youngest and oldest actor age.
+
+#### Aggregations
+Supported aggregation functions:
+- `sum`
+- `avg`
+- `min`
+- `max`
+- `count`
+
 
 #### Build and run
 To build the module, from root folder run:

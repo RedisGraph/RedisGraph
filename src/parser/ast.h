@@ -24,6 +24,11 @@ typedef enum {
 	N_VARYING,
 } CompareValueType;
 
+typedef enum {
+	N_PROP,
+	N_AGG_FUNC
+} ReturnElementType;
+
 struct filterNode;
 
 typedef struct {
@@ -82,13 +87,16 @@ typedef struct {
 } WhereNode;
 
 typedef struct {
-	Vector* variables;
+	Vector* returnElements;
 } ReturnNode;
 
 typedef struct {
 	char* alias;
 	char* property;
-} VariableNode;
+	char* func;
+	ReturnElementType type;
+} ReturnElementNode;
+
 
 typedef struct {
 	MatchNode* matchNode;
@@ -108,9 +116,9 @@ FilterNode* NewConditionNode(FilterNode *left, int op, FilterNode *right);
 
 WhereNode* NewWhereNode(FilterNode* filters);
 
-VariableNode* NewVariableNode(const char* alias, const char* property);
+ReturnElementNode* NewReturnElementNode(ReturnElementType type, const char* alias, const char* property, const char* aggFunc);
 
-ReturnNode* NewReturnNode(Vector* variables);
+ReturnNode* NewReturnNode(Vector* returnElements);
 
 QueryExpressionNode* NewQueryExpressionNode(MatchNode* matchNode, WhereNode* whereNode, ReturnNode* returnNode);
 
@@ -118,7 +126,7 @@ void FreeMatchNode(MatchNode* matchNode);
 void FreeWhereNode(WhereNode* whereNode);
 void FreeFilterNode(FilterNode* filterNode);
 void FreeReturnNode(ReturnNode* returnNode);
-void FreeVariableNode(VariableNode* variableNode);
+void FreeReturnElementNode(ReturnElementNode* returnElementNode);
 void FreeChainElement(ChainElement* chainElement);
 void FreeQueryExpressionNode(QueryExpressionNode* queryExpressionNode);
 #endif

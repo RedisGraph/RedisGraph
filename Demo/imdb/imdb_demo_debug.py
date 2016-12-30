@@ -1,9 +1,9 @@
 import os
 import csv
 import operator
-import timeit
 import redis
 from datetime import date
+from query_executor import ExecuteQuery
 
 
 graph = "imdb"
@@ -66,18 +66,7 @@ def LoadActors():
 	pipe.execute()
 	return actors
 
-def ExecuteQuery(query):
-	print "Query: %s\n" % query
 
-	start = timeit.default_timer()
-	resultset = r.execute_command("GRAPH.QUERY", graph, query)
-	elapsed = timeit.default_timer() - start
-	elapsedMS = elapsed * 1000
-
-	for result in resultset:
-		print "%s\n" % result
-
-	print "Query executed in %.5f miliseconds\n" % elapsedMS
 
 def main():
 	
@@ -85,50 +74,74 @@ def main():
 
 	# Query database
 	#------------------------------------------------------------------------
-	
-	print "Which actors played in the movie Straight Outta Compton?"
+
+	qDesc = "Which actors played along side Nicolas Cage?"
+	query = """MATCH (Nicolas:"Nicolas Cage")-[act]->(movie)<-[act]-(actor)
+	RETURN Nicolas.name, movie.title, actor.name""";
+
+	ExecuteQuery(r, query, graph, qDesc)	
+
+	#------------------------------------------------------------------------
+	qDesc = "Which actors played in the movie Straight Outta Compton?"
 
 	query = """MATCH (actor)-[act]->(movie:"Straight Outta Compton")
 	RETURN actor.name""";
 
-	ExecuteQuery(query)
+	ExecuteQuery(r, query, graph, qDesc)
 
-	# #------------------------------------------------------------------------
-	print "Which actors who are over 50 played in blockbuster movies?"
+	#------------------------------------------------------------------------
+	qDesc = "Which actors who are over 50 played in blockbuster movies?"
 
 	query = """MATCH (actor)-[act]->(movie)
 	WHERE actor.age >= 50 AND movie.votes > 10000 AND movie.rating > 8.5
 	RETURN actor.name, actor.age, movie.title, movie.votes, movie.rating"""
 
-	ExecuteQuery(query)
+	ExecuteQuery(r, query, graph, qDesc)
 
-	# #------------------------------------------------------------------------
-	print "Which actors played in bad drame or comedy?"
+	#------------------------------------------------------------------------
+	qDesc = "Which actors played in bad drame or comedy?"
 
 	query = """MATCH (actor)-[act]->(movie)
 	WHERE (movie.gener = Drama OR movie.gener = Comedy)
 	AND movie.rating < 6.0 AND movie.votes > 80000
 	RETURN actor.name, movie.title, movie.gener, movie.rating"""
 
-	ExecuteQuery(query)
+	ExecuteQuery(r, query, graph, qDesc)
 
-	# #------------------------------------------------------------------------
-	print "Which young actors played along side Cameron Diaz?"
-		
+	#------------------------------------------------------------------------
+	qDesc = "Which young actors played along side Cameron Diaz?"
+
 	query = """MATCH (Cameron:"Cameron Diaz")-[act]->(movie)<-[act]-(actor)
 	WHERE actor.age < 35
 	RETURN actor.name, actor.age, movie.title""";
 
-	ExecuteQuery(query)
+	ExecuteQuery(r, query, graph, qDesc)
 
 	#------------------------------------------------------------------------
-	print "Which actors played along side Cameron Diaz and are younger then her?"
+	qDesc = "Which actors played along side Cameron Diaz and are younger then her?"
 		
 	query = """MATCH (Cameron:"Cameron Diaz")-[act]->(movie)<-[act]-(actor)
 	WHERE actor.age < Cameron.age
 	RETURN actor.name, actor.age, movie.title""";
 
-	ExecuteQuery(query)
+	ExecuteQuery(r, query, graph, qDesc)
+
+	#------------------------------------------------------------------------
+	qDesc = "What's the sum and average age of the Straight Outta Compton cast?"
+
+	query = """MATCH (actor)-[act]->(movie:"Straight Outta Compton")
+	RETURN movie.title, SUM(actor.age), AVG(actor.age)""";
+
+	ExecuteQuery(r, query, graph, qDesc)
+
+	#------------------------------------------------------------------------
+	qDesc = "In how may movies did Cameron Diaz played"
+
+	query = """MATCH (Cameron:"Cameron Diaz")-[act]->(movie)
+	RETURN Cameron.name, COUNT(movie.title)""";
+
+	ExecuteQuery(r, query, graph, qDesc)
+
 
 if __name__ == '__main__':
 	main()

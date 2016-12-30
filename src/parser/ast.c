@@ -167,55 +167,51 @@ void FreeWhereNode(WhereNode* whereNode) {
 }
 
 
-ReturnNode* NewReturnNode(Vector* variables) {
+ReturnNode* NewReturnNode(Vector* returnElements) {
 	ReturnNode* returnNode = (ReturnNode*)malloc(sizeof(ReturnNode));
-	returnNode->variables = variables;
-
+	returnNode->returnElements = returnElements;
 	return returnNode;
 }
 
 void FreeReturnNode(ReturnNode* returnNode) {
-	for (int i = 0; i < Vector_Size(returnNode->variables); i++) {
-		VariableNode *node;
-		Vector_Get(returnNode->variables, i, &node);
-		FreeVariableNode(node);
+	for (int i = 0; i < Vector_Size(returnNode->returnElements); i++) {
+		ReturnNode *node;
+		Vector_Get(returnNode->returnElements, i, &node);
+		FreeReturnNode(node);
 	}
 	
-	Vector_Free(returnNode->variables);
+	Vector_Free(returnNode->returnElements);
 	free(returnNode);
 }
 
+ReturnElementNode* NewReturnElementNode(ReturnElementType type, const char* alias, const char* property, const char* aggFunc) {
+	ReturnElementNode* returnElementNode = (ReturnElementNode*)malloc(sizeof(ReturnElementNode));
+	returnElementNode->type = type;
+	returnElementNode->func = NULL;
 
-VariableNode* NewVariableNode(const char* alias, const char* property) {
-	VariableNode* variableNode = (VariableNode*)malloc(sizeof(VariableNode));
-	variableNode->alias = NULL;
-	variableNode->property = NULL;
+	returnElementNode->alias = (char*)malloc(strlen(alias) + 1);
+	strcpy(returnElementNode->alias, alias);
 
-	if(alias) {
-		variableNode->alias = (char*)malloc(strlen(alias) + 1);
-		strcpy(variableNode->alias, alias);
-	}
+	returnElementNode->property = (char*)malloc(strlen(property) + 1);
+	strcpy(returnElementNode->property, property);
 
-	if(property) {
-		variableNode->property = (char*)malloc(strlen(property) + 1);
-		strcpy(variableNode->property, property);
+	if(type == N_AGG_FUNC) {
+		returnElementNode->func = (char*)malloc(strlen(aggFunc) + 1);
+		strcpy(returnElementNode->func, aggFunc);
 	}
 	
-	return variableNode;
+	return returnElementNode;
 }
 
-void FreeVariableNode(VariableNode* variableNode) {
-
-	if(variableNode->alias){
-		free(variableNode->alias);
-	}
+void FreeReturnElementNode(ReturnElementNode* returnElementNode) {
+	free(returnElementNode->alias);
+	free(returnElementNode->property);
 	
-	if(variableNode->property) {
-
-		free(variableNode->property);
+	if(returnElementNode->type == N_AGG_FUNC) {
+		free(returnElementNode->func);
 	}
 
-	free(variableNode);
+	free(returnElementNode);
 }
 
 

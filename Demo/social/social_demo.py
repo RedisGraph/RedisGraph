@@ -5,6 +5,7 @@ import timeit
 import csv
 from datetime import date
 from disposableredis import DisposableRedis
+from query_executor import ExecuteQuery
 
 graph = "facebook"
 r = None
@@ -76,19 +77,6 @@ def AddPersonToGraph(person, pipe):
          AddPersonToGraph(friend, pipe)
 
 
-def ExecuteQuery(query):
-    print "Query: %s\n" % query
-    start = timeit.default_timer()
-    resultset = r.execute_command("GRAPH.QUERY", graph, query)
-    elapsed = timeit.default_timer() - start
-    elapsedMS = elapsed * 1000
-
-    for result in resultset:
-        print "%s\n" % result
-    
-    print "Query executed in %.5f miliseconds\n" % elapsedMS
-
-
 
 def main():
     global r
@@ -97,40 +85,54 @@ def main():
 
         # Query database
         #------------------------------------------------------------------------
-        print "Friends of friends?"
+        qDesc = "Friends of friends?"
         query = """MATCH (ME:"Roi Lipman")-[friend]->()-[friend]->(fof) RETURN fof.name""";
-        ExecuteQuery(query)
+        ExecuteQuery(r, query, graph, qDesc)
 
         #------------------------------------------------------------------------
 
-        print "Friends of friends who are single and over 30"
+        qDesc = "Friends of friends who are single and over 30"
         query = """MATCH (ME:"Roi Lipman")-[friend]->()-[friend]->(fof) 
                     WHERE fof.status = single and fof.age > 30
                     RETURN fof.name, fof.age""";
-        ExecuteQuery(query)
+        ExecuteQuery(r, query, graph, qDesc)
 
         #------------------------------------------------------------------------
 
-        print "Friends of friends who visited Amsterdam and are single?"
+        qDesc = "Friends of friends who visited Amsterdam and are single?"
         query = """MATCH (ME:"Roi Lipman")-[friend]->()-[friend]->(fof)-[visited]->(country:Amsterdam)
                 WHERE fof.status = single
                 RETURN fof.name""";
-        ExecuteQuery(query)
+        ExecuteQuery(r, query, graph, qDesc)
 
         #------------------------------------------------------------------------
 
-        print "Friends who've been to places I've visited"
+        qDesc = "Friends who've been to places I've visited"
         query = """MATCH (ME:"Roi Lipman")-[visited]->(country)<-[visited]-(f)<-[friend]-(:"Roi Lipman")
                 RETURN f.name, country.name""";
-        ExecuteQuery(query)
+        ExecuteQuery(r, query, graph, qDesc)
 
         #------------------------------------------------------------------------
 
-        print "Friends who are older than me"
+        qDesc = "Friends who are older than me"
         query = """MATCH (ME:"Roi Lipman")-[friend]->(f)
                 WHERE f.age > ME.age
                 RETURN f.name, f.age""";
-        ExecuteQuery(query)
+        ExecuteQuery(r, query, graph, qDesc)
+        
+        #------------------------------------------------------------------------
+
+        qDesc = "Count for each friend how many countires he or she been to"
+        query = """MATCH (ME:"Roi Lipman")-[friend]->(friend)-[visited]->(country)
+                RETURN friend.name, count(country.name)""";
+        ExecuteQuery(r, query, graph, qDesc)
+
+        #------------------------------------------------------------------------
+
+        qDesc = "Friends age statistics"
+        query = """MATCH (ME:"Roi Lipman")-[friend]->(f)
+                RETURN ME.name, count(f.name), sum(f.age), avg(f.age), min(f.age), max(f.age)""";
+        ExecuteQuery(r, query, graph, qDesc)
 
 if __name__ == '__main__':
 	main()
