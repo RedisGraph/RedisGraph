@@ -104,8 +104,6 @@ int MGraph_AddEdge(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     return REDISMODULE_OK;
 }
 
-
-// Vector* queryTriplet(RedisModuleCtx *ctx, RedisModuleString* graph, const Triplet* triplet) {
 TripletCursor* queryTriplet(RedisModuleCtx *ctx, RedisModuleString* graph, const Triplet* triplet) {
     RedisModule_AutoMemory(ctx);
 
@@ -203,12 +201,56 @@ Vector* BuildAggQueryRecord(RedisModuleCtx *ctx, const ReturnNode* returnNode, c
 
     return record;
 }
+
 // Construct the final response for a query
-// TODO: add function to concat vector.
 char* BuildQueryResponse(RedisModuleCtx *ctx, const ReturnNode* returnNode, const Graph* g) {
     Vector* returnedPropValues = ReturnClause_RetrivePropValues(ctx, returnNode, g);
     char* strItem = _concatRMStrings(returnedPropValues, ",");
     return strItem;
+}
+
+void _aggregateRecord(RedisModuleCtx *ctx, const ReturnNode* returnTree, const Graph* g) {
+    // Get group
+    Vector* groupKeys = ReturnClause_RetriveGroupKeys(ctx, returnTree, g);
+    char* groupKey = _concatRMStrings(groupKeys, ",");
+    // TODO: free groupKeys
+
+    Group* group = NULL;
+    CacheGroupGet(groupKey, &group);
+
+    if(group == NULL) {
+        // Create a new group
+        // Get aggregation functions
+        group = NewGroup(groupKeys, ReturnClause_GetAggFuncs(ctx, returnTree));
+        CacheGroupAdd(groupKey, group);
+
+        // TODO: no need to get inserted group
+        CacheGroupGet(groupKey, &group);
+    }
+
+    // TODO: why can't we free groupKey?
+    // free(groupKey);
+
+    Vector* valsToAgg = ReturnClause_RetriveGroupAggVals(ctx, returnTree, g);
+
+    // Run each value through its coresponding function.
+    for(int i = 0; i < Vector_Size(valsToAgg); i++) {
+        RedisModuleString* value = NULL;
+        Vector_Get(valsToAgg, i, &value);
+        size_t len;
+        const char* strValue = RedisModule_StringPtrLen(value, &len);
+
+        // Convert to double SIValue.
+        SIValue numValue;
+        numValue.type = T_DOUBLE;
+        SI_ParseValue(&numValue, strValue, len);
+
+        AggCtx* funcCtx = NULL;
+        Vector_Get(group->aggregationFunctions, i, &funcCtx);
+        Agg_Step(funcCtx, &numValue, 1);
+    }
+
+    // TODO: free valsToAgg
 }
 
 void QueryNode(RedisModuleCtx *ctx, RedisModuleString *graphName, Graph* g, Node* n, Vector* entryPoints, const QE_FilterNode* filterTree, const ReturnNode* returnTree, Vector* returnedSet) {
@@ -253,43 +295,10 @@ void QueryNode(RedisModuleCtx *ctx, RedisModuleString *graphName, Graph* g, Node
                 // Pass through filter, apply filters specified in where clause.
                 if(filterTree == NULL || applyFilters(ctx, g, filterTree)) {
                     if(ReturnClause_ContainsAggregation(returnTree)) {
-                        // Aggregations
-                        // Get group
-                        Vector* groupKeys = ReturnClause_RetriveGroupKeys(ctx, returnTree, g);
-                        Group* group = NULL;
-                        CacheGroupGet(groupKeys, &group);
-
-                        if(group == NULL) {
-                            // Create a new group
-                            // Get aggregation functions
-                            group = NewGroup(groupKeys, ReturnClause_GetAggFuncs(ctx, returnTree));
-                            CacheGroupAdd(group);
-
-                            CacheGroupGet(groupKeys, &group);
-                        }
-
-                        Vector* propsToAgg = ReturnClause_RetriveGroupAggVals(ctx, returnTree, g);
-
-                        // TODO: Run each prop through its coresponding function.
-                        for(int j = 0; j < Vector_Size(propsToAgg); j++) {
-                            RedisModuleString* prop = NULL;
-                            Vector_Get(propsToAgg, j, &prop);
-                            size_t strPropLen;
-                            const char* strProp = RedisModule_StringPtrLen(prop, &strPropLen);
-                            // Convert to double SIValue.
-                            SIValue arg;
-                            arg.type = T_DOUBLE;
-                            SI_ParseValue(&arg, strProp, strPropLen);
-
-                            AggCtx* funcCtx = NULL;
-                            Vector_Get(group->aggregationFunctions, j, &funcCtx);
-                            Agg_Step(funcCtx, &arg, 1);
-                        }
+                        _aggregateRecord(ctx, returnTree, g);
                     } else {
                         // Append to final result set.
                         char* response = BuildQueryResponse(ctx, returnTree, g);
-                        // char* response = malloc(5);
-                        // strcpy(response, "none");
                         Vector_Push(returnedSet, response);
                     }
                 } // End of filtering
@@ -303,7 +312,6 @@ void QueryNode(RedisModuleCtx *ctx, RedisModuleString *graphName, Graph* g, Node
         dest->id = destOriginalID;
     }
 }
-
 
 int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     // Time query execution

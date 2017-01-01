@@ -1,9 +1,50 @@
 #include "graph.h"
+#include <uuid/uuid.h>
 
 Graph* NewGraph() {
     Graph* g = (Graph*)malloc(sizeof(Graph));
     g->nodes = NewVector(Node*, 0);
     return g;
+}
+
+Node* _getNodeByInternalID(const Graph* g, uuid_t id) {
+    for(int i = 0; i < Vector_Size(g->nodes); i++) {
+        Node* node;
+        Vector_Get(g->nodes, i, &node);
+
+        if(uuid_compare(node->internalId, id) == 0) {
+            return node;
+        }
+    }
+    return NULL;
+}
+
+Graph* Graph_Clone(const Graph* graph) {
+    Graph* clone = NewGraph();
+
+    for(int i = 0; i < Vector_Size(graph->nodes); i++) {
+        Node* node;
+        Vector_Get(graph->nodes, i, &node);
+
+        for(int j = 0; j < Vector_Size(node->outgoingEdges); j++) {
+            Edge* e;
+            Vector_Get(node->outgoingEdges, j, &e);
+            Node* src = _getNodeByInternalID(clone, e->src->internalId);
+            Node* dest = _getNodeByInternalID(clone, e->dest->internalId);
+
+            if(src == NULL) {
+                src = Graph_AddNode(clone, e->src->alias, e->src->id);
+                uuid_copy(src->internalId, e->src->internalId);
+            }
+            if(dest == NULL) {
+                dest = Graph_AddNode(clone, e->dest->alias, e->dest->id);
+                uuid_copy(dest->internalId, e->dest->internalId);
+            }
+
+            ConnectNode(src, dest, e->relationship);
+        }
+    }
+    return clone;
 }
 
 // Search the graph for a node with given alias 

@@ -8,6 +8,7 @@ Node* NewNode(const char* alias, const char* id) {
 	node->alias = NULL;
 	node->outgoingEdges = NewVector(Edge*, 0);
 	node->incomingEdges = 0;
+	uuid_generate(node->internalId);
 
 	if(id != NULL) {
 		node->id = (char*)malloc(sizeof(char) * (strlen(id) + 1));
@@ -29,8 +30,12 @@ void ConnectNode(Node* src, Node* dest, const char* connection) {
 }
 
 void FreeNode(Node* node) {
-	free(node->id);
-	free(node->alias);
+	if(node->id) {
+		free(node->id);
+	}
+	if(node->alias) {
+		free(node->alias);
+	}
 
 	for(int i = 0; i < Vector_Size(node->outgoingEdges); i++) {
 		Edge* e;

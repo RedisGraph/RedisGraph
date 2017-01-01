@@ -2,10 +2,12 @@
 #define NODE_H_
 
 #include "../rmutil/vector.h"
+#include <uuid/uuid.h>
 
 typedef struct {
 	char* alias;
 	char* id;
+	uuid_t internalId;
 	Vector* outgoingEdges;
 	int incomingEdges;
 } Node;

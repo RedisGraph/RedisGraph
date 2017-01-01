@@ -22,14 +22,13 @@ int CacheGroupIterNext(khiter_t* iter, char** key, Group** group);
 
 KHASH_MAP_INIT_STR(khID, Group*) // setup khash to handle string key with Group* payload
 
-void CacheGroupAdd(const Group* group);
+int CacheGroupAdd(const char* key, const Group* group);
 
-void CacheGroupRemove(const Group* group);
+void CacheGroupRemove(const char* key);
 
 // Retrives a group,
-// Ret urns NULL if group is missing.
-// Group* CacheGroupGet(Vector* keys);
-void CacheGroupGet(Vector* keys, Group** group);
+// Sets group to NULL if key is missing.
+void CacheGroupGet(const char* key, Group** group);
 
 void CacheGroupClear();
 

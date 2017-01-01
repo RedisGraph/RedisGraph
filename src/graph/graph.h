@@ -11,6 +11,8 @@ typedef struct {
 
 Graph* NewGraph();
 
+Graph* Graph_Clone(const Graph* graph);
+
 // Search the graph for a node with given alias 
 Node* Graph_GetNodeByAlias(const Graph* g, const char* alias);
 
