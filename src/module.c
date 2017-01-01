@@ -104,6 +104,80 @@ int MGraph_AddEdge(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     return REDISMODULE_OK;
 }
 
+// Removes edge from the graph.
+// Args:
+// argv[1] graph name
+// argv[2] subject
+// argv[3] edge, predicate
+// argv[4] object
+// removes all 6 triplets representing
+// the connection (predicate) between subject and object
+int MGraph_RemoveEdge(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+    if(argc != 5) {
+        return RedisModule_WrongArity(ctx);
+    }
+
+    RedisModuleString *graph;
+    RedisModuleString *subject;
+    RedisModuleString *predicate;
+    RedisModuleString *object;
+
+    RMUtil_ParseArgs(argv, argc, 1, "ssss", &graph, &subject, &predicate, &object);
+
+    size_t reply = 0;
+    RedisModuleKey *key = RedisModule_OpenKey(ctx, graph, REDISMODULE_WRITE);
+    int keytype = RedisModule_KeyType(key);
+
+    // Expecting key a sorted set.
+    if(keytype == REDISMODULE_KEYTYPE_ZSET) {
+        // Create all 6 hexastore variations
+        // SPO, SOP, PSO, POS, OSP, OPS
+        RedisModuleString **triplets = hexastoreTriplets(ctx, subject, predicate, object);
+        for(int i = 0; i < 6; i++) {
+            RedisModuleString *triplet = triplets[i];
+            int deleted;
+            RedisModule_ZsetRem(key, triplet, &deleted);
+            reply += deleted;
+            RedisModule_FreeString(ctx, triplet);
+        }
+        RedisModule_Free(triplets);
+    }
+
+    // Clean up
+    RedisModule_CloseKey(key);
+    RedisModule_ReplyWithLongLong(ctx, reply);
+
+    return REDISMODULE_OK;
+}
+
+// Removes given graph.
+// Args:
+// argv[1] graph name
+// sorted set holding graph name is deleted
+int MGraph_DeleteGraph(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+    if(argc != 2) {
+        return RedisModule_WrongArity(ctx);
+    }
+
+    RedisModuleString *graph;
+    RMUtil_ParseArgs(argv, argc, 1, "s", &graph);
+
+    RedisModuleKey *key = RedisModule_OpenKey(ctx, graph, REDISMODULE_WRITE);
+    int keytype = RedisModule_KeyType(key);
+    size_t reply = 0;
+
+    // Expecting key to be a sorted set.
+    if(keytype == REDISMODULE_KEYTYPE_ZSET) {
+        RedisModule_DeleteKey(key);
+        reply = 1;
+    }
+
+    RedisModule_CloseKey(key);
+    RedisModule_ReplyWithLongLong(ctx, reply);
+
+    return REDISMODULE_OK;
+}
+
 TripletCursor* queryTriplet(RedisModuleCtx *ctx, RedisModuleString* graph, const Triplet* triplet) {
     RedisModule_AutoMemory(ctx);
 
@@ -410,6 +484,8 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
     }
 
     RMUtil_RegisterWriteCmd(ctx, "graph.ADDEDGE", MGraph_AddEdge);
+    RMUtil_RegisterWriteCmd(ctx, "graph.REMOVEEDGE", MGraph_RemoveEdge);
+    RMUtil_RegisterWriteCmd(ctx, "graph.DELETE", MGraph_DeleteGraph);
     RMUtil_RegisterWriteCmd(ctx, "graph.QUERY", MGraph_Query);
 
     return REDISMODULE_OK;

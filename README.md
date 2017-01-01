@@ -11,16 +11,32 @@ This is one of the key ideas behind this project; a node in the graph is simply 
 
 
 ### Usage
-This module introduce two new commands
+This module introduce four new commands
 - GRAPH.ADDEDGE
+- GRAPH.REMOVEEDGE
+- GRAPH.DELETE
 - GRAPH.QUERY
 
-#### ADDEDGE
+#### GRAPH.ADDEDGE
 Arguments: `Graph name, source node, relationship, destination node`
 
 Creats a connection within the given graph between source node and destination node using relation.
 ```sh
-GRAPH.ADDEDGE presidents "barak obama" born Hawaii
+GRAPH.ADDEDGE presidents "Barak Obama" born Hawaii
+```
+#### GRAPH.REMOVEEDGE
+Arguments: `Graph name, source node, relationship, destination node`
+
+Removes edge connecting source to destination.
+```sh
+GRAPH.REMOVEEDGE presidents "Richard Nixon" born California
+```
+#### GRAPH.DELETE
+Arguments: `Graph name`
+
+Deletes the entire graph
+```sh
+GRAPH.DELETE presidents
 ```
 
 #### GRAPH.QUERY
@@ -130,11 +146,12 @@ Supported aggregation functions:
 #### Build and run
 To build the module, from root folder run:
 ```sh 
-cmake . && make
+cmake . && make all
 ``` 
 Loading module into redis:
 ```sh 
-./redis-server --loadmodule <PATH_TO_RedisGraph>/src/libmodule.so
+# Assuming you have a redis build from the unstable branch:
+/path/to/redis-server --loadmodule <PATH_TO_RedisGraph>/src/libmodule.so
 ``` 
 
 For more eaxmples please see [Demo](https://github.com/swilly22/redis-module-graph/tree/master/Demo)
