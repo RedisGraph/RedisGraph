@@ -24,3 +24,6 @@
 #define FALSE                           24
 #define RETURN                          25
 #define COMMA                           26
+#define ORDER                           27
+#define BY                              28
+#define LIMIT                           29

@@ -1,7 +1,7 @@
 #ifndef GROUP_CACHE_H_
 #define GROUP_CACHE_H_
 
-#include "khash.h"
+#include "../util/khash.h"
 #include "group.h"
 #include "../rmutil/vector.h"
 
@@ -12,7 +12,7 @@
 // returns 0=replaced existing item, 1=bucket empty (new key), 2-adding element previously deleted
 #define kh_set(kname, hash, key, val) ({int ret; khiter_t k = kh_put(kname, hash, key, &ret); kh_value(hash, k) = val; ret;})
 
-const char* khID = "group_cache";
+static const char* khID = "group_cache";
 
 // Returns an iterator to scan hashtable
 khiter_t CacheGroupIter();
