@@ -51,13 +51,14 @@ GRAPH.QUERY presidents "MATCH (president)-[born]->(state:Hawaii) RETURN presiden
 ### Query language
 The syntex is based on neo4j's Cypher and currently only a subset of the language is supported.
 
-A query is composed of three parts:
+A query is composed of four parts:
 
 ### Query structure
 
  - MATCH
  - WHERE
  - RETURN
+ - LIMIT
 
 #### MATCH
 Describes the relationship between queried entities, it is composed of three parts:
@@ -142,6 +143,16 @@ Supported aggregation functions:
 - `max`
 - `count`
 
+### LIMIT
+
+Although not mandatory, but in order to limit the number of records returned by a query
+use the limit clause as such
+
+```sh
+LIMIT <max records to return>
+```
+
+If not specified there's no limit to the number of records returned by a query.
 
 #### Build and run
 To build the module, from root folder run:
