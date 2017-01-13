@@ -26,9 +26,8 @@ query ::= expr(A). { *root = A; }
 
 %type expr {QueryExpressionNode*}
 
-expr(A) ::= matchClause(B) whereClause(C) returnClause(D). { 
-	//printf("Query expression\n");
-	A = NewQueryExpressionNode(B, C, D); 
+expr(A) ::= matchClause(B) whereClause(C) returnClause(D) orderClause(E) limitClause(F). {
+	A = NewQueryExpressionNode(B, C, D, E, F);
 }
 
 
@@ -87,7 +86,6 @@ link(A) ::= LEFT_ARROW LEFT_BRACKET STRING(B) RIGHT_BRACKET DASH. {
 %type whereClause {WhereNode*}
 
 whereClause(A) ::= . { 
-	//printf("no where clause\n");
 	A = NULL;
 }
 whereClause(A) ::= WHERE cond(B). {
@@ -146,17 +144,29 @@ returnElements(A) ::= returnElement(B). {
 %type returnElement {ReturnElementNode*}
 
 returnElement(A) ::= variable(B). {
-	A = B;
+	A = NewReturnElementNode(N_PROP, B->alias, B->property, NULL);
+	FreeVariable(B);
 }
 
 returnElement(A) ::= aggFunc(B). {
 	A = B;
 }
 
-%type variable {ReturnElementNode*}
+%type variableList {Vector*}
+variableList(A) ::= variableList(B) COMMA variable(C). {
+	Vector_Push(B, C);
+	A = B;
+}
+
+variableList(A) ::= variable(B). {
+	A = NewVector(Variable*, 1);
+	Vector_Push(A, B);
+}
+
+%type variable {Variable*}
 
 variable(A) ::= STRING(B) DOT STRING(C). {
-	A = NewReturnElementNode(N_PROP, B.strval, C.strval, NULL);
+	A = NewVariable(B.strval, C.strval);
 }
 
 %type aggFunc {ReturnElementNode*}
@@ -165,6 +175,24 @@ aggFunc(A) ::= STRING(B) LEFT_PARENTHESIS variable(C) RIGHT_PARENTHESIS. {
 	A = NewReturnElementNode(N_AGG_FUNC, C->alias, C->property, B.strval);
 }
 
+%type orderClause {OrderNode*}
+
+orderClause(A) ::= . {
+	A = NULL;
+}
+orderClause(A) ::= ORDER BY variableList(B). {
+	printf("grammar order clause\n");
+	A = NewOrderNode(B);
+}
+
+%type limitClause {LimitNode*}
+
+limitClause(A) ::= . {
+	A = NULL;
+}
+limitClause(A) ::= LIMIT INTEGER(B). {
+	A = NewLimitNode(B.intval);
+}
 
 %code {
 

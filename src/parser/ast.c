@@ -215,12 +215,14 @@ void FreeReturnElementNode(ReturnElementNode* returnElementNode) {
 }
 
 
-QueryExpressionNode* NewQueryExpressionNode(MatchNode* matchNode, WhereNode* whereNode, ReturnNode* returnNode) {
+QueryExpressionNode* NewQueryExpressionNode(MatchNode* matchNode, WhereNode* whereNode, ReturnNode* returnNode, OrderNode* orderNode, LimitNode* limitNode) {
 	QueryExpressionNode* queryExpressionNode = (QueryExpressionNode*)malloc(sizeof(QueryExpressionNode));
 	
 	queryExpressionNode->matchNode = matchNode;
 	queryExpressionNode->whereNode = whereNode;
 	queryExpressionNode->returnNode = returnNode;
+	queryExpressionNode->orderNode = orderNode;
+	queryExpressionNode->limitNode = limitNode;
 
 	return queryExpressionNode;
 }
@@ -228,5 +230,59 @@ QueryExpressionNode* NewQueryExpressionNode(MatchNode* matchNode, WhereNode* whe
 void FreeQueryExpressionNode(QueryExpressionNode* queryExpressionNode) {
 	FreeMatchNode(queryExpressionNode->matchNode);
 	FreeWhereNode(queryExpressionNode->whereNode);
-	// FreeReturnNode(queryExpressionNode->returnNode);
+	FreeReturnNode(queryExpressionNode->returnNode);
+	FreeOrderNode(queryExpressionNode->orderNode);
+	free(queryExpressionNode);
+}
+
+
+Variable* NewVariable(const char* alias, const char* property) {
+	Variable* v = (Variable*)malloc(sizeof(Variable));
+	v->alias = (char*)malloc(sizeof(char) * (strlen(alias) + 1));
+	v->property = (char*)malloc(sizeof(char) * (strlen(property) + 1));
+
+	strcpy(v->alias, alias);
+	strcpy(v->property, property);
+
+	return v;
+}
+
+void FreeVariable(Variable* v) {
+	if(v != NULL) {
+		free(v->alias);
+		free(v->property);
+		free(v);
+	}
+}
+
+OrderNode* NewOrderNode(Vector* variables) {
+	printf("NewOrderNode\n");
+	OrderNode* orderNode = (OrderNode*)malloc(sizeof(OrderNode));
+	orderNode->variables = variables;
+	return orderNode;
+}
+
+void FreeOrderNode(OrderNode* orderNode) {
+	if(orderNode != NULL) {
+		for(int i = 0; i < Vector_Size(orderNode->variables); i++) {
+			Variable* v = NULL;
+			Vector_Get(orderNode->variables, i , &v);
+			FreeVariable(v);
+		}
+
+		free(orderNode->variables);
+		free(orderNode);
+	}
+}
+
+LimitNode* NewLimitNode(int limit) {
+	LimitNode* limitNode = (LimitNode*)malloc(sizeof(limitNode));
+	limitNode->limit = limit;
+	return limitNode;
+}
+
+void FreeLimitNode(LimitNode* limitNode) {
+	if(limitNode) {
+		free(limitNode);
+	}
 }
