@@ -13,6 +13,7 @@
 #include "value_cmp.h"
 #include "redismodule.h"
 #include "query_executor.h"
+#include "resultset.h"
 
 #include "rmutil/util.h"
 #include "rmutil/vector.h"
@@ -24,7 +25,6 @@
 
 #include "aggregate/functions.h"
 #include "grouping/group.h"
-#include "grouping/khash.h"
 
 #define SCORE 0.0
 
@@ -212,7 +212,7 @@ TripletCursor* queryTriplet(RedisModuleCtx *ctx, RedisModuleString* graph, const
 
 // Concats rmStrings using given delimiter.
 // rmStrings is a vector of RedisModuleStrings pointers.
-char* _concatRMStrings(const Vector* rmStrings, const char* delimiter) {
+char* _concatRMStrings(const Vector* rmStrings, const char* delimiter, char** concat) {
     size_t length = 0;
 
     // Compute length
@@ -226,67 +226,27 @@ char* _concatRMStrings(const Vector* rmStrings, const char* delimiter) {
     }
 
     length += strlen(delimiter) * Vector_Size(rmStrings) + 1;
-    char* response = calloc(length, sizeof(char));
+    *concat = calloc(length, sizeof(char));
 
     for(int i = 0; i < Vector_Size(rmStrings); i++) {
         RedisModuleString* rmString;
         Vector_Get(rmStrings, i, &rmString);
 
         const char* string = RedisModule_StringPtrLen(rmString, NULL);
-        strcat(response, string);
-        strcat(response, delimiter);
+
+        strcat(*concat, string);
+        strcat(*concat, delimiter);
     }
 
     // Discard last delimiter.
-    response[strlen(response) - strlen(delimiter)] = NULL;
-    return response;
-}
-
-Vector* BuildAggQueryRecord(RedisModuleCtx *ctx, const ReturnNode* returnNode, const Group* group) {
-    int keyIdx = 0;
-    int aggIdx = 0;
-    Vector* record = NewVector(RedisModuleString*, Vector_Size(returnNode->returnElements));
-
-    // Sort group elements according to specified return order.
-    for(int i = 0; i < Vector_Size(returnNode->returnElements); i++) {
-        ReturnElementNode* retElem;
-        Vector_Get(returnNode->returnElements, i, &retElem);
-
-        if(retElem->type == N_AGG_FUNC) {
-            AggCtx* aggCtx;
-            Vector_Get(group->aggregationFunctions, aggIdx, &aggCtx);
-
-            // get string representation of double
-            char strAggValue[32];
-            SIValue_ToString(aggCtx->result, strAggValue, 32);
-
-            RedisModuleString* rmStrAggValue = RedisModule_CreateString(ctx, strAggValue, 32);
-            Vector_Push(record, rmStrAggValue);
-
-            aggIdx++;
-        } else {
-            RedisModuleString* key;
-            Vector_Get(group->keys, keyIdx, &key);
-            Vector_Push(record, key);
-
-            keyIdx++;
-        }
-    }
-
-    return record;
-}
-
-// Construct the final response for a query
-char* BuildQueryResponse(RedisModuleCtx *ctx, const ReturnNode* returnNode, const Graph* g) {
-    Vector* returnedPropValues = ReturnClause_RetrivePropValues(ctx, returnNode, g);
-    char* strItem = _concatRMStrings(returnedPropValues, ",");
-    return strItem;
+    (*concat)[strlen(*concat) - strlen(delimiter)] = NULL;
 }
 
 void _aggregateRecord(RedisModuleCtx *ctx, const ReturnNode* returnTree, const Graph* g) {
     // Get group
     Vector* groupKeys = ReturnClause_RetriveGroupKeys(ctx, returnTree, g);
-    char* groupKey = _concatRMStrings(groupKeys, ",");
+    char* groupKey = NULL;
+    _concatRMStrings(groupKeys, ",", &groupKey);
     // TODO: free groupKeys
 
     Group* group = NULL;
@@ -327,9 +287,10 @@ void _aggregateRecord(RedisModuleCtx *ctx, const ReturnNode* returnTree, const G
     // TODO: free valsToAgg
 }
 
-void QueryNode(RedisModuleCtx *ctx, RedisModuleString *graphName, Graph* g, Node* n, Vector* entryPoints, const QE_FilterNode* filterTree, const ReturnNode* returnTree, Vector* returnedSet) {
+void QueryNode(RedisModuleCtx *ctx, RedisModuleString *graphName, Graph* g, Node* n, Vector* entryPoints, const QE_FilterNode* filterTree, const ReturnNode* returnTree, ResultSet* returnedSet) {
     Node* src = n;
-    for(int i = 0; i < Vector_Size(src->outgoingEdges); i++) {
+    for(int i = 0; i < Vector_Size(src->outgoingEdges) && !ResultSet_Full(returnedSet); i++) {
+
         Edge* edge;
         Vector_Get(src->outgoingEdges, i, &edge);
         Node* dest = edge->dest;
@@ -348,7 +309,7 @@ void QueryNode(RedisModuleCtx *ctx, RedisModuleString *graphName, Graph* g, Node
 
         // Run through cursor.
         Triplet* result;
-        while(result = TripletCursorNext(cursor), result != NULL) {
+        while(!ResultSet_Full(returnedSet) && (result = TripletCursorNext(cursor), result != NULL)) {
             // Copy result values to graph, override node IDs.
             src->id = result->subject;
             edge->relationship = result->predicate;
@@ -368,12 +329,11 @@ void QueryNode(RedisModuleCtx *ctx, RedisModuleString *graphName, Graph* g, Node
                 // We've reach the end of the graph
                 // Pass through filter, apply filters specified in where clause.
                 if(filterTree == NULL || applyFilters(ctx, g, filterTree)) {
-                    if(ReturnClause_ContainsAggregation(returnTree)) {
+                    if(returnedSet->aggregated) {
                         _aggregateRecord(ctx, returnTree, g);
                     } else {
                         // Append to final result set.
-                        char* response = BuildQueryResponse(ctx, returnTree, g);
-                        Vector_Push(returnedSet, response);
+                        ResultSet_AddRecord(returnedSet, ReturnClause_RetrivePropValues(ctx, returnTree, g));
                     }
                 } // End of filtering
             }
@@ -387,12 +347,16 @@ void QueryNode(RedisModuleCtx *ctx, RedisModuleString *graphName, Graph* g, Node
     }
 }
 
+// Queries graph
+// Args:
+// argv[1] graph name
+// argv[2] query to execute
 int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+    if (argc < 2) return RedisModule_WrongArity(ctx);
+
     // Time query execution
     clock_t start = clock();
     clock_t end;
-
-    if (argc < 2) return RedisModule_WrongArity(ctx);
 
     RedisModuleString *graphName;
     RedisModuleString *query;
@@ -413,51 +377,17 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     Vector* entryPoints = Graph_GetNDegreeNodes(graph, 0);
     Node* startNode = NULL;
     Vector_Pop(entryPoints, &startNode);
-    Vector* resultSet = NewVector(char*, 0);
 
     CacheGroupClear(); // Clear group cache before query execution.
-
+    
+    // Construct a new empty result-set.
+    ResultSet* resultSet = NewResultSet(parseTree);
     QueryNode(ctx, graphName, graph, startNode, entryPoints, filterTree, parseTree->returnNode, resultSet);
 
-    if(ReturnClause_ContainsAggregation(parseTree->returnNode)) {
-        char* key;
-        Group* group;
-        khiter_t iter = CacheGroupIter();
+    // Send result-set back to client.
+    ResultSet_Replay(ctx, resultSet);
 
-        // Scan entire groups cache
-        while(CacheGroupIterNext(&iter, &key, &group) != 0) {
-            // Finalize each aggregation function
-            for(int i = 0; i < Vector_Size(group->aggregationFunctions); i++) {
-                AggCtx* aggCtx = NULL;
-                Vector_Get(group->aggregationFunctions, i, &aggCtx);
-                Agg_Finalize(aggCtx);
-            }
-
-            // Construct response
-            Vector* record = BuildAggQueryRecord(ctx, parseTree->returnNode, group);
-            char* strRecord = _concatRMStrings(record, ",");
-            // TODO: free record.
-
-            Vector_Push(resultSet, strRecord);
-        }
-    }
-
-    // TODO: if this is an aggregation query,
-    // finalize aggregations and build a result set.
-
-    // Print final result set.
-    size_t resultSetSize = Vector_Size(resultSet) + 1; // Additional one for time measurement
-    RedisModule_ReplyWithArray(ctx, resultSetSize);
-    
-    for(int i = 0; i < Vector_Size(resultSet); i++) {
-        char* result;
-        Vector_Get(resultSet, i, &result);
-
-        RedisModule_ReplyWithStringBuffer(ctx, result, strlen(result));
-
-        // free(result);
-    }
-
+    // Report execution timing
     end = clock();
     double elapsed = (double)(end - start) / CLOCKS_PER_SEC;
     double elapsedMS = elapsed * 1000; 
@@ -465,13 +395,11 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     sprintf(strElapsed, "Query internal execution time: %f miliseconds", elapsedMS);
     RedisModule_ReplyWithStringBuffer(ctx, strElapsed, strlen(strElapsed));
 
-    // Vector_Free(response);
-
     // TODO: free memory.
     // free(strElapsed);
     // Free AST
     // FreeQueryExpressionNode(parseTree);
-    Vector_Free(resultSet);
+    ResultSet_Free(ctx, resultSet);
 
     return REDISMODULE_OK;
 }

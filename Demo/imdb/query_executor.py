@@ -11,7 +11,20 @@ def ExecuteQuery(r, query, graph, qDesc):
     elapsedMS = elapsed * 1000
 
     # RETURN Nicolas.name, movie.title, actor.name 
-    columns = query[query.index("RETURN ") + 7:]
+    startIdx = query.index("RETURN ") + 7
+
+    stopIdx = query.find("ORDER BY")
+    if stopIdx is -1:
+        stopIdx = query.find("LIMIT")
+
+    if stopIdx > -1:
+        stopIdx -= 1
+        # Remove all characters between stopIdx and end of return clause
+        while query[stopIdx] in [' ', '\r', '\n', '\t']:
+            stopIdx -=1
+
+    columns = query[startIdx: stopIdx]
+
     columns = columns.split(",")
     tbl = PrettyTable(columns)
     

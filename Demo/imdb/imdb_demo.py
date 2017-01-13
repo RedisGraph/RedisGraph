@@ -82,8 +82,18 @@ def main():
 		#------------------------------------------------------------------------
 
 		qDesc = "Which actors played along side Nicolas Cage?"
+
 		query = """MATCH (Nicolas:"Nicolas Cage")-[act]->(movie)<-[act]-(actor)
-		RETURN Nicolas.name, movie.title, actor.name""";
+		RETURN actor.name, movie.title""";
+
+		ExecuteQuery(r, query, graph, qDesc)
+
+		#------------------------------------------------------------------------
+		qDesc = "Get 3 actors who've played along side Nicolas Cage?"
+
+		query = """MATCH (Nicolas:"Nicolas Cage")-[act]->(movie)<-[act]-(actor)
+		RETURN actor.name, movie.title
+		LIMIT 3""";
 
 		ExecuteQuery(r, query, graph, qDesc)
 

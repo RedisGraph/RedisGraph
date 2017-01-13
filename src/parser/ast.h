@@ -91,19 +91,33 @@ typedef struct {
 } ReturnNode;
 
 typedef struct {
+	int limit;
+} LimitNode;
+
+// TODO: consider using union
+typedef struct {
 	char* alias;
 	char* property;
 	char* func;
 	ReturnElementType type;
 } ReturnElementNode;
 
+typedef struct {
+	char* alias;
+	char* property;
+} Variable;
+
+typedef struct {
+	Vector* variables;
+} OrderNode;
 
 typedef struct {
 	MatchNode* matchNode;
 	WhereNode* whereNode;
 	ReturnNode* returnNode;
-}QueryExpressionNode;
-
+	OrderNode* orderNode;
+	LimitNode* limitNode;
+} QueryExpressionNode;
 
 ChainElement* NewChainEntity(char* alias, char* id);
 ChainElement* NewChainLink(char* relationship, LinkDirection dir);
@@ -120,12 +134,21 @@ ReturnElementNode* NewReturnElementNode(ReturnElementType type, const char* alia
 
 ReturnNode* NewReturnNode(Vector* returnElements);
 
-QueryExpressionNode* NewQueryExpressionNode(MatchNode* matchNode, WhereNode* whereNode, ReturnNode* returnNode);
+OrderNode* NewOrderNode(Vector* variables);
 
+Variable* NewVariable(const char* alias, const char* property);
+
+LimitNode* NewLimitNode(int limit);
+
+QueryExpressionNode* NewQueryExpressionNode(MatchNode* matchNode, WhereNode* whereNode, ReturnNode* returnNode, OrderNode* orderNode, LimitNode* limitNode);
+
+void FreeVariable(Variable* v);
 void FreeMatchNode(MatchNode* matchNode);
 void FreeWhereNode(WhereNode* whereNode);
 void FreeFilterNode(FilterNode* filterNode);
 void FreeReturnNode(ReturnNode* returnNode);
+void FreeOrderNode(OrderNode* orderNode);
+void FreeLimitNode(LimitNode* limitNode);
 void FreeReturnElementNode(ReturnElementNode* returnElementNode);
 void FreeChainElement(ChainElement* chainElement);
 void FreeQueryExpressionNode(QueryExpressionNode* queryExpressionNode);

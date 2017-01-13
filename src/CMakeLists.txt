@@ -6,6 +6,7 @@ set(_graph_files
       ../src/module.c
       ../src/triplet.c
       ../src/value_cmp.c
+      ../src/resultset.c
       ../src/query_executor.c
 
       ../src/graph/edge.c
