@@ -893,7 +893,7 @@ static void yy_reduce(
         break;
       case 1: /* expr ::= matchClause whereClause returnClause orderClause limitClause */
 #line 29 "grammar.y"
-{ 
+{
 	yylhsminor.yy35 = NewQueryExpressionNode(yymsp[-4].minor.yy2, yymsp[-3].minor.yy26, yymsp[-2].minor.yy93, yymsp[-1].minor.yy79, yymsp[0].minor.yy18);
 }
 #line 900 "grammar.c"
@@ -1145,7 +1145,7 @@ static void yy_reduce(
         break;
       case 38: /* variable ::= STRING DOT STRING */
 #line 168 "grammar.y"
-{	
+{
 	yylhsminor.yy65 = NewVariable(yymsp[-2].minor.yy0.strval, yymsp[0].minor.yy0.strval);
 }
 #line 1152 "grammar.c"
@@ -1169,24 +1169,23 @@ static void yy_reduce(
       case 41: /* orderClause ::= ORDER BY variableList */
 #line 183 "grammar.y"
 {
-	printf("grammar order clause\n");
 	yymsp[-2].minor.yy79 = NewOrderNode(yymsp[0].minor.yy64);
 }
-#line 1176 "grammar.c"
+#line 1175 "grammar.c"
         break;
       case 42: /* limitClause ::= */
-#line 190 "grammar.y"
+#line 189 "grammar.y"
 {
 	yymsp[1].minor.yy18 = NULL;
 }
-#line 1183 "grammar.c"
+#line 1182 "grammar.c"
         break;
       case 43: /* limitClause ::= LIMIT INTEGER */
-#line 193 "grammar.y"
+#line 192 "grammar.y"
 {
 	yymsp[-1].minor.yy18 = NewLimitNode(yymsp[0].minor.yy0.intval);
 }
-#line 1190 "grammar.c"
+#line 1189 "grammar.c"
         break;
       default:
         break;
@@ -1248,7 +1247,7 @@ static void yy_syntax_error(
 #line 7 "grammar.y"
 
 	//printf("Syntax error!\n");
-#line 1252 "grammar.c"
+#line 1251 "grammar.c"
 /************ End %syntax_error code ******************************************/
   ParseARG_STORE; /* Suppress warning about unused %extra_argument variable */
 }
@@ -1451,7 +1450,7 @@ void Parse(
 #endif
   return;
 }
-#line 197 "grammar.y"
+#line 196 "grammar.y"
 
 
 	/* Definitions of flex stuff */
@@ -1480,4 +1479,4 @@ void Parse(
   		return ret;
 	}
 	
-#line 1484 "grammar.c"
+#line 1483 "grammar.c"

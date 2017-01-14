@@ -181,7 +181,6 @@ orderClause(A) ::= . {
 	A = NULL;
 }
 orderClause(A) ::= ORDER BY variableList(B). {
-	printf("grammar order clause\n");
 	A = NewOrderNode(B);
 }
 

@@ -6,7 +6,6 @@ set(_graph_files
       ../src/module.c
       ../src/triplet.c
       ../src/value_cmp.c
-      ../src/resultset.c
       ../src/query_executor.c
 
       ../src/graph/edge.c
@@ -23,6 +22,11 @@ set(_graph_files
 
       ../src/grouping/group.c
       ../src/grouping/group_cache.c
+
+      ../src/util/heap.c
+
+      ../src/resultset/record.c
+      ../src/resultset/resultset.c
 
       ../src/rmutil/sds.c
       ../src/rmutil/util.c
