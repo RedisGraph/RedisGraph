@@ -279,8 +279,8 @@ int _applyFilter(RedisModuleCtx *ctx, SIValue* aVal, SIValue* bVal, CmpFunc f, i
     }
 }
 
-// type specifies the type of return elements to retrive
-Vector* _ReturnClause_RetriveValues(RedisModuleCtx *ctx, const ReturnNode* returnNode, const Graph* g, ReturnElementType type) {
+// type specifies the type of return elements to Retrieve
+Vector* _ReturnClause_RetrieveValues(RedisModuleCtx *ctx, const ReturnNode* returnNode, const Graph* g, ReturnElementType type) {
     Vector* returnedProps = NewVector(RedisModuleString*, Vector_Size(returnNode->returnElements));
 
     for(int i = 0; i < Vector_Size(returnNode->returnElements); i++) {
@@ -304,23 +304,23 @@ Vector* _ReturnClause_RetriveValues(RedisModuleCtx *ctx, const ReturnNode* retur
     return returnedProps;
 }
 
-// Retrives all request values specified in return clause
+// Retrieves all request values specified in return clause
 // Returns a vector of RedisModuleString*
-Vector* ReturnClause_RetrivePropValues(RedisModuleCtx *ctx, const ReturnNode* returnNode, const Graph* g) {
-    return _ReturnClause_RetriveValues(ctx, returnNode, g, N_PROP);
+Vector* ReturnClause_RetrievePropValues(RedisModuleCtx *ctx, const ReturnNode* returnNode, const Graph* g) {
+    return _ReturnClause_RetrieveValues(ctx, returnNode, g, N_PROP);
 }
 
-// Retrives "GROUP BY" values.
+// Retrieves "GROUP BY" values.
 // Returns a vector of RedisModuleString*
-Vector* ReturnClause_RetriveGroupKeys(RedisModuleCtx *ctx, const ReturnNode* returnNode, const Graph* g) {
-    return _ReturnClause_RetriveValues(ctx, returnNode, g, N_PROP);
+Vector* ReturnClause_RetrieveGroupKeys(RedisModuleCtx *ctx, const ReturnNode* returnNode, const Graph* g) {
+    return _ReturnClause_RetrieveValues(ctx, returnNode, g, N_PROP);
 }
 
-// Retrives all aggregated properties from graph.
+// Retrieves all aggregated properties from graph.
 // e.g. SUM(Person.age)
 // Returns a vector of RedisModuleString*
-Vector* ReturnClause_RetriveGroupAggVals(RedisModuleCtx *ctx, const ReturnNode* returnNode, const Graph* g) {
-    return _ReturnClause_RetriveValues(ctx, returnNode, g, N_AGG_FUNC);
+Vector* ReturnClause_RetrieveGroupAggVals(RedisModuleCtx *ctx, const ReturnNode* returnNode, const Graph* g) {
+    return _ReturnClause_RetrieveValues(ctx, returnNode, g, N_AGG_FUNC);
 }
 
 // Checks if return clause uses aggregation.
@@ -358,4 +358,23 @@ Vector* ReturnClause_GetAggFuncs(RedisModuleCtx *ctx, const ReturnNode* returnNo
     }
 
     return aggFunctions;
+}
+
+Vector* OrderClause_RetrievePropValues(RedisModuleCtx *ctx, const OrderNode* orderNode, const Graph* g) {
+    Vector* props = NewVector(RedisModuleString*, Vector_Size(orderNode->variables));
+
+    for(int i = 0; i < Vector_Size(orderNode->variables); i++) {
+        Variable* elem;
+        Vector_Get(orderNode->variables, i, &elem);
+
+        Node* n = Graph_GetNodeByAlias(g, elem->alias);
+
+        if(elem->property != NULL) {
+            Vector_Push(props, _GetElementProperyValue(ctx, n->id, elem->property));
+        } else {
+            // Couldn't find an API for HGETALL.
+        }
+    } // End of for loop
+
+    return props;
 }

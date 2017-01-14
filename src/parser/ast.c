@@ -256,7 +256,6 @@ void FreeVariable(Variable* v) {
 }
 
 OrderNode* NewOrderNode(Vector* variables) {
-	printf("NewOrderNode\n");
 	OrderNode* orderNode = (OrderNode*)malloc(sizeof(OrderNode));
 	orderNode->variables = variables;
 	return orderNode;

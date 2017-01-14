@@ -13,7 +13,6 @@
 #include "value_cmp.h"
 #include "redismodule.h"
 #include "query_executor.h"
-#include "resultset.h"
 
 #include "rmutil/util.h"
 #include "rmutil/vector.h"
@@ -25,6 +24,9 @@
 
 #include "aggregate/functions.h"
 #include "grouping/group.h"
+
+#include "resultset/record.h"
+#include "resultset/resultset.h"
 
 #define SCORE 0.0
 
@@ -244,7 +246,7 @@ char* _concatRMStrings(const Vector* rmStrings, const char* delimiter, char** co
 
 void _aggregateRecord(RedisModuleCtx *ctx, const ReturnNode* returnTree, const Graph* g) {
     // Get group
-    Vector* groupKeys = ReturnClause_RetriveGroupKeys(ctx, returnTree, g);
+    Vector* groupKeys = ReturnClause_RetrieveGroupKeys(ctx, returnTree, g);
     char* groupKey = NULL;
     _concatRMStrings(groupKeys, ",", &groupKey);
     // TODO: free groupKeys
@@ -265,7 +267,7 @@ void _aggregateRecord(RedisModuleCtx *ctx, const ReturnNode* returnTree, const G
     // TODO: why can't we free groupKey?
     // free(groupKey);
 
-    Vector* valsToAgg = ReturnClause_RetriveGroupAggVals(ctx, returnTree, g);
+    Vector* valsToAgg = ReturnClause_RetrieveGroupAggVals(ctx, returnTree, g);
 
     // Run each value through its coresponding function.
     for(int i = 0; i < Vector_Size(valsToAgg); i++) {
@@ -287,7 +289,7 @@ void _aggregateRecord(RedisModuleCtx *ctx, const ReturnNode* returnTree, const G
     // TODO: free valsToAgg
 }
 
-void QueryNode(RedisModuleCtx *ctx, RedisModuleString *graphName, Graph* g, Node* n, Vector* entryPoints, const QE_FilterNode* filterTree, const ReturnNode* returnTree, ResultSet* returnedSet) {
+void QueryNode(RedisModuleCtx *ctx, RedisModuleString *graphName, Graph* g, Node* n, Vector* entryPoints, const QE_FilterNode* filterTree, const QueryExpressionNode* ast, ResultSet* returnedSet) {
     Node* src = n;
     for(int i = 0; i < Vector_Size(src->outgoingEdges) && !ResultSet_Full(returnedSet); i++) {
 
@@ -317,12 +319,12 @@ void QueryNode(RedisModuleCtx *ctx, RedisModuleString *graphName, Graph* g, Node
 
             // Advance to next node
             if(Vector_Size(dest->outgoingEdges) > 0) {
-                QueryNode(ctx, graphName, g, dest, entryPoints, filterTree, returnTree, returnedSet);
+                QueryNode(ctx, graphName, g, dest, entryPoints, filterTree, ast, returnedSet);
             } else if(Vector_Size(entryPoints) > 0) {
                 // Additional entry point
                 Node* entryPoint = NULL;
                 Vector_Pop(entryPoints, &entryPoint);
-                QueryNode(ctx, graphName, g, entryPoint, entryPoints, filterTree, returnTree, returnedSet);
+                QueryNode(ctx, graphName, g, entryPoint, entryPoints, filterTree, ast, returnedSet);
                 // Restore state, for next iteration.
                 Vector_Push(entryPoints, entryPoint);
             } else {
@@ -330,10 +332,11 @@ void QueryNode(RedisModuleCtx *ctx, RedisModuleString *graphName, Graph* g, Node
                 // Pass through filter, apply filters specified in where clause.
                 if(filterTree == NULL || applyFilters(ctx, g, filterTree)) {
                     if(returnedSet->aggregated) {
-                        _aggregateRecord(ctx, returnTree, g);
+                        _aggregateRecord(ctx, ast->returnNode, g);
                     } else {
                         // Append to final result set.
-                        ResultSet_AddRecord(returnedSet, ReturnClause_RetrivePropValues(ctx, returnTree, g));
+                        Record *r = Record_FromGraph(ctx, ast, g);
+                        ResultSet_AddRecord(returnedSet, r);
                     }
                 } // End of filtering
             }
@@ -382,7 +385,7 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     
     // Construct a new empty result-set.
     ResultSet* resultSet = NewResultSet(parseTree);
-    QueryNode(ctx, graphName, graph, startNode, entryPoints, filterTree, parseTree->returnNode, resultSet);
+    QueryNode(ctx, graphName, graph, startNode, entryPoints, filterTree, parseTree, resultSet);
 
     // Send result-set back to client.
     ResultSet_Replay(ctx, resultSet);
