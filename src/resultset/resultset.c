@@ -136,8 +136,7 @@ void ResultSet_Replay(RedisModuleCtx* ctx, ResultSet* set) {
     size_t resultSetSize;
 
     if(set->ordered && set->limit != RESULTSET_UNLIMITED) {
-        // TODO: this is wrong, heap might have lees then limit values!
-        resultSetSize = set->limit;
+        resultSetSize = heap_count(set->heap);
     } else {
         resultSetSize = Vector_Size(set->records);
     }
