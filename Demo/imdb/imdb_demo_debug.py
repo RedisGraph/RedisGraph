@@ -149,6 +149,16 @@ def main():
 
 	ExecuteQuery(r, query, graph, qDesc)
 
+	#------------------------------------------------------------------------
+	qDesc = "10 Oldest actors"
+
+	query = """MATCH (actor)-[act]->(movie)
+	RETURN actor.name, actor.age
+	ORDER BY actor.age
+	LIMIT 10""";
+
+	ExecuteQuery(r, query, graph, qDesc)
+
 
 if __name__ == '__main__':
 	main()
