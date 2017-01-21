@@ -107,12 +107,18 @@ ChainElement* NewChainLink(char* relationship, LinkDirection dir) {
 ChainElement* NewChainEntity(char* alias, char* id) {
 	ChainElement* ce = (ChainElement*)malloc(sizeof(ChainElement));
 	ce->t = N_ENTITY;
+	ce->e.id = NULL;
+	ce->e.alias = NULL;
 	
-	ce->e.id = (char*)malloc(strlen(id) + 1);
-	ce->e.alias = (char*)malloc(strlen(alias) + 1);
+	if(id != NULL) {
+		ce->e.id = (char*)malloc(strlen(id) + 1);
+		strcpy(ce->e.id, id);
+	}
 
-	strcpy(ce->e.id, id);
-	strcpy(ce->e.alias, alias);
+	if(alias != NULL) {
+		ce->e.alias = (char*)malloc(strlen(alias) + 1);
+		strcpy(ce->e.alias, alias);
+	}
 
 	return ce;
 }
@@ -120,8 +126,12 @@ ChainElement* NewChainEntity(char* alias, char* id) {
 void FreeChainElement(ChainElement* chainElement) {
 	switch(chainElement->t) {
 		case N_ENTITY:
-			free(chainElement->e.id);
-			free(chainElement->e.alias);
+			if(chainElement->e.id != NULL) {
+				free(chainElement->e.id);
+			}
+			if(chainElement->e.alias != NULL) {
+				free(chainElement->e.alias);
+			}
 			break;
 
 		case N_LINK:
@@ -167,9 +177,10 @@ void FreeWhereNode(WhereNode* whereNode) {
 }
 
 
-ReturnNode* NewReturnNode(Vector* returnElements) {
+ReturnNode* NewReturnNode(Vector* returnElements, int distinct) {
 	ReturnNode* returnNode = (ReturnNode*)malloc(sizeof(ReturnNode));
 	returnNode->returnElements = returnElements;
+	returnNode->distinct = distinct;
 	return returnNode;
 }
 
@@ -255,9 +266,10 @@ void FreeVariable(Variable* v) {
 	}
 }
 
-OrderNode* NewOrderNode(Vector* variables) {
+OrderNode* NewOrderNode(Vector* variables, OrderByDirection direction) {
 	OrderNode* orderNode = (OrderNode*)malloc(sizeof(OrderNode));
 	orderNode->variables = variables;
+	orderNode->direction = direction;
 	return orderNode;
 }
 

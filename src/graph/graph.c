@@ -49,11 +49,15 @@ Graph* Graph_Clone(const Graph* graph) {
 
 // Search the graph for a node with given alias 
 Node* Graph_GetNodeByAlias(const Graph* g, const char* alias) {
+    if(alias == NULL) {
+        return NULL;
+    }
+
     for(int i = 0; i < Vector_Size(g->nodes); i++) {
         Node* node;
         Vector_Get(g->nodes, i, &node);
 
-        if(strcmp(node->alias, alias) == 0) {
+        if(node->alias != NULL && strcmp(node->alias, alias) == 0) {
             return node;
         }
     }
@@ -69,8 +73,7 @@ Node* Graph_AddNode(Graph* g, const char* alias, const char* id) {
         Vector_Push(g->nodes, n);
     } else {
         // Update node ID in case it is missing
-        if(n->id != NULL && strlen(n->id) == 0 && strlen(id) > 0) {
-            free(n->id);
+        if(n->id == NULL && id != NULL) {
             n->id = (char*)malloc(sizeof(char) * (strlen(id) + 1));
             strcpy(n->id, id);
         }
@@ -87,7 +90,7 @@ Vector* Graph_GetNDegreeNodes(Graph* g, int degree) {
     // nodes which don't have an ID.
     for(int i = 0; i < Vector_Size(g->nodes); i++) {
         Vector_Get(g->nodes, i, &n);
-        if(n->incomingEdges == degree && strlen(n->id) == 0) {
+        if(n->incomingEdges == degree && n->id == NULL) {
             Vector_Push(nodes, n);
         }
     }
@@ -96,7 +99,7 @@ Vector* Graph_GetNDegreeNodes(Graph* g, int degree) {
     // nodes which have an ID.
     for(int i = 0; i < Vector_Size(g->nodes); i++) {
         Vector_Get(g->nodes, i, &n);
-        if(n->incomingEdges == degree && strlen(n->id) > 0) {
+        if(n->incomingEdges == degree && n->id != NULL) {
             Vector_Push(nodes, n);
         }
     }

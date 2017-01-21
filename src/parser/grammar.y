@@ -58,13 +58,13 @@ node(A) ::= LEFT_PARENTHESIS STRING(B) COLON STRING(C) RIGHT_PARENTHESIS. {
 	A = NewChainEntity(B.strval, C.strval);
 }
 node(A) ::= LEFT_PARENTHESIS COLON STRING(B) RIGHT_PARENTHESIS. {
-	A = NewChainEntity("", B.strval);
+	A = NewChainEntity(NULL, B.strval);
 }
 node(A) ::= LEFT_PARENTHESIS STRING(B) RIGHT_PARENTHESIS. {
-	A = NewChainEntity(B.strval, "");
+	A = NewChainEntity(B.strval, NULL);
 }
 node(A) ::= LEFT_PARENTHESIS RIGHT_PARENTHESIS. {
-	A = NewChainEntity("", "");
+	A = NewChainEntity(NULL, NULL);
 }
 
 
@@ -125,7 +125,10 @@ value(A) ::= FALSE. { A = SI_BoolVal(0); }
 %type returnClause {ReturnNode*}
 
 returnClause(A) ::= RETURN returnElements(B). {
-	A = NewReturnNode(B);
+	A = NewReturnNode(B, 0);
+}
+returnClause(A) ::= RETURN DISTINCT returnElements(B). {
+	A = NewReturnNode(B, 1);
 }
 
 
@@ -181,7 +184,13 @@ orderClause(A) ::= . {
 	A = NULL;
 }
 orderClause(A) ::= ORDER BY variableList(B). {
-	A = NewOrderNode(B);
+	A = NewOrderNode(B, ORDER_DIR_ASC);
+}
+orderClause(A) ::= ORDER BY variableList(B) ASC. {
+	A = NewOrderNode(B, ORDER_DIR_ASC);
+}
+orderClause(A) ::= ORDER BY variableList(B) DESC. {
+	A = NewOrderNode(B, ORDER_DIR_DESC);
 }
 
 %type limitClause {LimitNode*}

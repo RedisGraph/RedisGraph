@@ -29,6 +29,11 @@ typedef enum {
 	N_AGG_FUNC
 } ReturnElementType;
 
+typedef enum {
+	ORDER_DIR_ASC,
+	ORDER_DIR_DESC
+} OrderByDirection;
+
 struct filterNode;
 
 typedef struct {
@@ -88,6 +93,7 @@ typedef struct {
 
 typedef struct {
 	Vector* returnElements;
+	int distinct;
 } ReturnNode;
 
 typedef struct {
@@ -109,6 +115,7 @@ typedef struct {
 
 typedef struct {
 	Vector* variables;
+	OrderByDirection direction;
 } OrderNode;
 
 typedef struct {
@@ -132,9 +139,9 @@ WhereNode* NewWhereNode(FilterNode* filters);
 
 ReturnElementNode* NewReturnElementNode(ReturnElementType type, const char* alias, const char* property, const char* aggFunc);
 
-ReturnNode* NewReturnNode(Vector* returnElements);
+ReturnNode* NewReturnNode(Vector* returnElements, int distinct);
 
-OrderNode* NewOrderNode(Vector* variables);
+OrderNode* NewOrderNode(Vector* variables, OrderByDirection direction);
 
 Variable* NewVariable(const char* alias, const char* property);
 

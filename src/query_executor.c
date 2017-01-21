@@ -6,33 +6,33 @@
 
 Graph* BuildGraph(const MatchNode* matchNode) {
     Graph* g = NewGraph();
-    Vector* stack = NewVector(ChainElement*, 3);
+    Vector* stack = NewVector(void*, 3);
     
     for(int i = 0; i < Vector_Size(matchNode->chainElements); i++) {
         ChainElement* element;
         Vector_Get(matchNode->chainElements, i, &element);
-        Vector_Push(stack, element);
+
+        if(element->t == N_ENTITY) {
+            Node* n = Graph_AddNode(g, element->e.alias, element->e.id);
+            Vector_Push(stack, n);
+        } else {
+            Vector_Push(stack, &element->l);
+        }
 
         if(Vector_Size(stack) == 3) {
-            ChainElement* a;
-            ChainElement* edge;
-            ChainElement* c; 
+            Node* a;
+            LinkNode* edge;
+            Node* c;
+
             Vector_Pop(stack, &c);
             Vector_Pop(stack, &edge);
             Vector_Pop(stack, &a);
 
-            // TODO: Validate a, edge, c types
-            Node* src;
-            Node* dest;
-
-            if(edge->l.direction == N_LEFT_TO_RIGHT) {
-                src = Graph_AddNode(g, a->e.alias, a->e.id);
-                dest = Graph_AddNode(g, c->e.alias, c->e.id);                
+            if(edge->direction == N_LEFT_TO_RIGHT) {
+                ConnectNode(a, c, edge->relationship);
             } else {
-                src = Graph_AddNode(g, c->e.alias, c->e.id);
-                dest = Graph_AddNode(g, a->e.alias, a->e.id);
+                ConnectNode(c, a, edge->relationship);
             }
-            ConnectNode(src, dest, edge->l.relationship);
             
             // reintroduce last pushed item
             Vector_Push(stack, c);
@@ -198,6 +198,11 @@ int applyFilters(RedisModuleCtx *ctx, Graph* g, QE_FilterNode* root) {
         } else {
             aVal.type = bVal.type = T_DOUBLE; // Default to DOUBLE
             node = Graph_GetNodeByAlias(g, root->pred.Rop.alias);
+            if(node->id == NULL) {
+                // Missing node's ID, assume TRUE.
+                return 1;
+            }
+
             RedisModuleString* propValue = _GetElementProperyValue(ctx, node->id, root->pred.Rop.property);
             if(propValue == NULL) {
                 // TODO: Log this missing element / property
@@ -215,6 +220,11 @@ int applyFilters(RedisModuleCtx *ctx, Graph* g, QE_FilterNode* root) {
         }
 
         node = Graph_GetNodeByAlias(g, root->pred.Lop.alias);
+        if(node->id == NULL) {
+            // Missing node's ID, assume TRUE.
+            return 1;
+        }
+
         RedisModuleString* propValue = _GetElementProperyValue(ctx, node->id, root->pred.Lop.property);
         if(propValue == NULL) {
                 // TODO: Log this missing element / property
@@ -295,7 +305,14 @@ Vector* _ReturnClause_RetrieveValues(RedisModuleCtx *ctx, const ReturnNode* retu
         Node* n = Graph_GetNodeByAlias(g, retElem->alias);
 
         if(retElem->property != NULL) {
-            Vector_Push(returnedProps, _GetElementProperyValue(ctx, n->id, retElem->property));
+            RedisModuleString* prop = _GetElementProperyValue(ctx, n->id, retElem->property);
+            if(prop == NULL) {
+                // Couldn't find prop for id.
+                // TODO: Free returnedProps.
+                return NULL;
+            } else {
+                Vector_Push(returnedProps, _GetElementProperyValue(ctx, n->id, retElem->property));
+            }
         } else {
             // Couldn't find an API for HGETALL.
         }

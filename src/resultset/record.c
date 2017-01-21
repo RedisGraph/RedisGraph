@@ -3,15 +3,21 @@
 
 
 Record* Record_FromGraph(RedisModuleCtx *ctx, const QueryExpressionNode* ast, const Graph* g) {
-    Record *r = (Record*)RedisModule_Alloc(sizeof(Record));
-    r->elements = NULL;
-    r->orderBys = NULL;
+    Vector* elements = NULL;
+    Vector* orderBys = NULL;
 
-    r->elements = ReturnClause_RetrievePropValues(ctx, ast->returnNode, g);
+    elements = ReturnClause_RetrievePropValues(ctx, ast->returnNode, g);
+    if(elements == NULL) {
+        return NULL;
+    }
 
     if(ast->orderNode != NULL) {
-        r->orderBys = OrderClause_RetrievePropValues(ctx, ast->orderNode, g);
+        orderBys = OrderClause_RetrievePropValues(ctx, ast->orderNode, g);
     }
+
+    Record *r = (Record*)RedisModule_Alloc(sizeof(Record));
+    r->elements = elements;
+    r->orderBys = orderBys;
 
     return r;
 }

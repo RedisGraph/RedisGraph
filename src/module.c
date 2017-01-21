@@ -289,10 +289,67 @@ void _aggregateRecord(RedisModuleCtx *ctx, const ReturnNode* returnTree, const G
     // TODO: free valsToAgg
 }
 
+/*
+* To speed things up we'll try to skip triplets as early as possible
+* even though we might not have a complete graph (some IDs are still missing)
+* fastSkipTriplets returns the first triplet which pass the filter-tree
+* triplets which fail to pass are discarded.
+*/
+Triplet* _fastSkipTriplets(RedisModuleCtx *ctx, const QE_FilterNode* filterTree, TripletCursor* cursor, Graph* g, Node* src, Node* dest) {
+    Triplet* triplet = TripletCursorNext(cursor);
+    if(triplet == NULL) {
+        return NULL;
+    }
+
+    // No filters
+    if(filterTree == NULL) {
+        return triplet;
+    }
+
+    src->id = triplet->subject;
+    dest->id = NULL;
+
+    // Try to fast skip current src id
+    while(applyFilters(ctx, g, filterTree) != 1) {
+        // Skip source id
+        while((triplet = TripletCursorNext(cursor), triplet != NULL) && strcmp(triplet->subject, src->id) == 0) {
+            // Skip
+            FreeTriplet(triplet);
+        }
+
+        if(triplet != NULL) {
+            // Try new source id
+            src->id = triplet->subject;
+        } else {
+            // Consumed cursor
+            return NULL;
+        }
+    }
+
+    dest->id = triplet->object;
+
+    while(applyFilters(ctx, g, filterTree) != 1) {
+        // Skip dest id
+        while((triplet = TripletCursorNext(cursor), triplet != NULL) && strcmp(triplet->object, dest->id) == 0) {
+            // Skip
+            FreeTriplet(triplet);
+        }
+
+        if(triplet != NULL) {
+            // Try new dest id
+            dest->id = triplet->object;
+        } else {
+            // Consumed cursor
+            return NULL;
+        }
+    }
+
+    return triplet;
+}
+
 void QueryNode(RedisModuleCtx *ctx, RedisModuleString *graphName, Graph* g, Node* n, Vector* entryPoints, const QE_FilterNode* filterTree, const QueryExpressionNode* ast, ResultSet* returnedSet) {
     Node* src = n;
     for(int i = 0; i < Vector_Size(src->outgoingEdges) && !ResultSet_Full(returnedSet); i++) {
-
         Edge* edge;
         Vector_Get(src->outgoingEdges, i, &edge);
         Node* dest = edge->dest;
@@ -310,12 +367,18 @@ void QueryNode(RedisModuleCtx *ctx, RedisModuleString *graphName, Graph* g, Node
         char* destOriginalID = dest->id;
 
         // Run through cursor.
-        Triplet* result;
-        while(!ResultSet_Full(returnedSet) && (result = TripletCursorNext(cursor), result != NULL)) {
-            // Copy result values to graph, override node IDs.
-            src->id = result->subject;
-            edge->relationship = result->predicate;
-            dest->id = result->object;
+        while(!ResultSet_Full(returnedSet)) {
+            // Fast skip triplets which do not pass filters
+            triplet = _fastSkipTriplets(ctx, filterTree, cursor, g, src, dest);
+            if(triplet == NULL) {
+                // Couldn't find a triplet which agrees with filters
+                break;
+            } else {
+                // Set nodes
+                src->id = triplet->subject;
+                edge->relationship = triplet->predicate;
+                dest->id = triplet->object;
+            }
 
             // Advance to next node
             if(Vector_Size(dest->outgoingEdges) > 0) {
@@ -329,16 +392,15 @@ void QueryNode(RedisModuleCtx *ctx, RedisModuleString *graphName, Graph* g, Node
                 Vector_Push(entryPoints, entryPoint);
             } else {
                 // We've reach the end of the graph
-                // Pass through filter, apply filters specified in where clause.
-                if(filterTree == NULL || applyFilters(ctx, g, filterTree)) {
-                    if(returnedSet->aggregated) {
-                        _aggregateRecord(ctx, ast->returnNode, g);
-                    } else {
-                        // Append to final result set.
-                        Record *r = Record_FromGraph(ctx, ast, g);
+                if(returnedSet->aggregated) {
+                    _aggregateRecord(ctx, ast->returnNode, g);
+                } else {
+                    // Append to final result set.
+                    Record *r = Record_FromGraph(ctx, ast, g);
+                    if(r != NULL) {
                         ResultSet_AddRecord(returnedSet, r);
                     }
-                } // End of filtering
+                }
             }
         } // End of cursor loop
         FreeTripletCursor(cursor);
@@ -414,10 +476,21 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
         return REDISMODULE_ERR;
     }
 
-    RMUtil_RegisterWriteCmd(ctx, "graph.ADDEDGE", MGraph_AddEdge);
-    RMUtil_RegisterWriteCmd(ctx, "graph.REMOVEEDGE", MGraph_RemoveEdge);
-    RMUtil_RegisterWriteCmd(ctx, "graph.DELETE", MGraph_DeleteGraph);
-    RMUtil_RegisterWriteCmd(ctx, "graph.QUERY", MGraph_Query);
+    if(RedisModule_CreateCommand(ctx, "graph.ADDEDGE", MGraph_AddEdge, "write", 1, 1, 1) == REDISMODULE_ERR) {
+        return REDISMODULE_ERR;
+    }
+
+    if(RedisModule_CreateCommand(ctx, "graph.REMOVEEDGE", MGraph_RemoveEdge, "write", 1, 1, 1) == REDISMODULE_ERR) {
+        return REDISMODULE_ERR;
+    }
+
+    if(RedisModule_CreateCommand(ctx, "graph.DELETE", MGraph_DeleteGraph, "write", 1, 1, 1) == REDISMODULE_ERR) {
+        return REDISMODULE_ERR;
+    }
+
+    if(RedisModule_CreateCommand(ctx, "graph.QUERY", MGraph_Query, "write", 1, 1, 1) == REDISMODULE_ERR) {
+        return REDISMODULE_ERR;
+    }
 
     return REDISMODULE_OK;
 }

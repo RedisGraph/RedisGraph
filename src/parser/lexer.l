@@ -11,16 +11,20 @@ Token tok;
 
 %%
 
-"AND"		  { return AND; }
-"OR"      { return OR; }
-"TRUE"    { return TRUE; }
-"FALSE"   { return FALSE; }
-"MATCH" 	{ return MATCH; }
-"RETURN" 	{ return RETURN; }
-"WHERE" 	{ return WHERE; }
-"ORDER"   { return ORDER; }
-"BY"      { return BY; }
-"LIMIT"   { return LIMIT; }
+"AND"		    { return AND; }
+"OR"        { return OR; }
+"TRUE"      { return TRUE; }
+"FALSE"     { return FALSE; }
+"MATCH" 	  { return MATCH; }
+"RETURN" 	  { return RETURN; }
+"DISTINCT"  { return DISTINCT; }
+"WHERE" 	  { return WHERE; }
+"ORDER"     { return ORDER; }
+"BY"        { return BY; }
+"ASC"       { return ASC; }
+"DESC"      { return DESC; }
+"LIMIT"     { return LIMIT; }
+
 
 [\-\+]?[0-9]*\.[0-9]+    {
 	tok.dval = atof(yytext);

@@ -23,7 +23,10 @@
 #define TRUE                            23
 #define FALSE                           24
 #define RETURN                          25
-#define COMMA                           26
-#define ORDER                           27
-#define BY                              28
-#define LIMIT                           29
+#define DISTINCT                        26
+#define COMMA                           27
+#define ORDER                           28
+#define BY                              29
+#define ASC                             30
+#define DESC                            31
+#define LIMIT                           32

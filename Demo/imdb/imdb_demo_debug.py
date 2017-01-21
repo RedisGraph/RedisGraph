@@ -153,8 +153,8 @@ def main():
 	qDesc = "10 Oldest actors"
 
 	query = """MATCH (actor)-[act]->(movie)
-	RETURN actor.name, actor.age
-	ORDER BY actor.age
+	RETURN DISTINCT actor.name, actor.age
+	ORDER BY actor.age DESC
 	LIMIT 10""";
 
 	ExecuteQuery(r, query, graph, qDesc)

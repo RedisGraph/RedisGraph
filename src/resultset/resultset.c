@@ -1,6 +1,6 @@
 #include "resultset.h"
-#include "../grouping/group_cache.h"
 #include "../value.h"
+#include "../grouping/group_cache.h"
 
 void _RedisModuleStringToNum(const RedisModuleString* value, SIValue* numValue) {
     // Cast to numeric.
@@ -45,13 +45,35 @@ int _heap_elem_compare(const void * A, const void * B, const void *udata) {
     return 0;
 }
 
+/*
+Checks if we've alrady seen given records
+Returns 1 if the string did not exist otherwise 0
+*/
+int __encounteredRecord(const ResultSet* set, const Record* record) {
+    char* str = Record_ToString(record);
+    tm_len_t len = strlen(str);
+
+    // Returns 1 if the string did NOT exist otherwise 0
+    int newRecord = TrieMapNode_Add(&set->trie, str, len,  NULL, NULL);
+
+    free(str);
+    return !newRecord;
+}
+
 ResultSet* NewResultSet(const QueryExpressionNode* ast) {
     ResultSet* set = (ResultSet*)malloc(sizeof(ResultSet));
     set->ast = ast;
+    set->heap = NULL;
+    set->trie = NULL;
     set->aggregated = ReturnClause_ContainsAggregation(ast->returnNode);
     set->ordered = (ast->orderNode != NULL);
     set->limit = RESULTSET_UNLIMITED;
-    set->direction = DIR_MAX_HEAP;
+    set->direction =  DIR_ASC;
+    set->distinct = ast->returnNode->distinct;
+
+    if(set->ordered && ast->orderNode->direction == ORDER_DIR_DESC) {
+        set->direction = DIR_DESC;
+    }
 
     if(ast->limitNode != NULL) {
         set->limit = ast->limitNode->limit;
@@ -61,31 +83,34 @@ ResultSet* NewResultSet(const QueryExpressionNode* ast) {
         set->heap = heap_new(_heap_elem_compare, &set->direction);
     }
 
+    if(set->distinct) {
+        set->trie = NewTrieMap();
+    }
+
     set->records = NewVector(Record*, set->limit);
     return set;
 }
 
-int ResultSet_AddRecord(ResultSet* set, const Record *record) {
+
+int ResultSet_AddRecord(ResultSet* set, const Record* record) {
     if(ResultSet_Full(set)) {
         return RESULTSET_FULL;
     }
     
+    // TODO: Incase of an aggregated query, there's no need to distinct check
+    // groups are alreay distinct by key.
+    if(set->distinct && __encounteredRecord(set, record)) {
+        // TODO: indicate we've skipped record.
+        return RESULTSET_OK;
+    }
+
     if(set->ordered && set->limit != RESULTSET_UNLIMITED) {
         if(heap_count(set->heap) < set->limit) {
             // There's room in heap for record
             heap_offer(&set->heap, record);
         } else {
-            // No room in heap, see if we need to evit heap top.
-
-            // In case of a max heap, the smallest record will be at the top of the heap.
-            // if inserted record is larger then top, insert otherwise discard.
-            if(_heap_elem_compare(record, heap_peek(set->heap), &set->direction) == 1 && set->direction == DIR_MAX_HEAP) {
-                heap_offer(&set->heap, record);
-            }
-
-            // In case of a min heap, the largest record will be at the top of the heap.
-            // if inserted record is smaller then top, insert otherwise discard.
-            if(_heap_elem_compare(record, heap_peek(set->heap), &set->direction) == -1 && set->direction == DIR_MIN_HEAP) {
+            if(_heap_elem_compare(heap_peek(set->heap), record, &set->direction) == 1) {
+                heap_poll(set->heap);
                 heap_offer(&set->heap, record);
             }
         }
@@ -144,17 +169,27 @@ void ResultSet_Replay(RedisModuleCtx* ctx, ResultSet* set) {
 
     // Replay final result set.
     RedisModule_ReplyWithArray(ctx, resultSetSize);
-    
+    char *strRecord = NULL;
     if(set->ordered && set->limit != RESULTSET_UNLIMITED) {
-        int limitCounter = set->limit;
-        while(heap_count(set->heap) > 0 && limitCounter > 0) {
-            Record* record = heap_poll(set->heap);
-            char *strRecord = Record_ToString(record);
-            RedisModule_ReplyWithStringBuffer(ctx, strRecord, strlen(strRecord));
+        // Responses need to be reversed.
+        Vector *reversedResultSet = NewVector(char*, heap_count(set->heap));
 
-            free(strRecord);
-            limitCounter--;
+        // Pop items from heap
+        while(heap_count(set->heap) > 0) {
+            Record* record = heap_poll(set->heap);
+            strRecord = Record_ToString(record);
+            Vector_Push(reversedResultSet, strRecord);
+            Record_Free(ctx, record);
         }
+
+        // Replay elements in reversed order
+        for(int i = Vector_Size(reversedResultSet)-1; i >= 0; i--) {
+            Vector_Get(reversedResultSet, i, &strRecord);
+            RedisModule_ReplyWithStringBuffer(ctx, strRecord, strlen(strRecord));
+            free(strRecord);
+        }
+
+        Vector_Free(reversedResultSet);
     } else {
         for(int i = 0; i < Vector_Size(set->records); i++) {
             Record* record = NULL;
@@ -176,6 +211,11 @@ void ResultSet_Free(RedisModuleCtx* ctx, ResultSet* set) {
             Vector_Get(set->records, i, &record);
             Record_Free(ctx, record);
         }
+
+        if(set->trie) {
+            TrieMapNode_Free(set->trie, NULL);
+        }
+
         free(set->records);
         free(set);
     }

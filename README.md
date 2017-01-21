@@ -51,13 +51,14 @@ GRAPH.QUERY presidents "MATCH (president)-[born]->(state:Hawaii) RETURN presiden
 ### Query language
 The syntex is based on neo4j's Cypher and currently only a subset of the language is supported.
 
-A query is composed of four parts:
+A query is composed of five parts:
 
 ### Query structure
 
  - MATCH
  - WHERE
  - RETURN
+ - ORDER BY
  - LIMIT
 
 #### MATCH
@@ -129,6 +130,15 @@ In its simple form Return defines which properties the returned result-set will 
 RETURN movie.title, actor.name
 ```
 
+Use the DISTINCT keyword to remove duplications within the result-set
+```sh
+RETURN DISTINCT friend_of_friend.name
+```
+In the above example, suppose we have two friends Joe and Miesha
+and both know Dominick then DISTINCT will make sure Dominick will only appear once
+in the final result-set.
+
+
 Return can also be used to aggregate data similar to SQL group by, once an aggregation function is added to the return list all other none aggregated values are considered as group keys, for example:
 ```sh
 RETURN movie.title, MAX(actor.age), MIN(actor.age)
@@ -142,6 +152,20 @@ Supported aggregation functions:
 - `min`
 - `max`
 - `count`
+
+### ORDER BY
+Specifies that the output should be sorted and how.
+
+You can order by multiple properties by stating each variable in the ORDER BY clause.
+the result will be sorted by the first variable listed, and for equals values, go to the next property in the ORDER BY clause, and so on.
+```sh
+ORDER BY <alias.property list> [ASC/DESC]
+```
+
+Below we sort our friends by height, for similar heights, weight is used to break even.
+```sh
+ORDER BY friend.height, friend.weight DESC
+```
 
 ### LIMIT
 

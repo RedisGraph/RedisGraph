@@ -24,6 +24,7 @@ set(_graph_files
       ../src/grouping/group_cache.c
 
       ../src/util/heap.c
+      ../src/util/triemap.c
 
       ../src/resultset/record.c
       ../src/resultset/resultset.c
@@ -37,7 +38,8 @@ set(_graph_files
 
 set (graph_files ${_graph_files} PARENT_SCOPE)
 
-# Libgraph target - a static library for graph database that can be linked in any module
+
+# Libgraph target - a static library for graph database
 add_library(Llibgraph STATIC  ${_graph_files})
 
 target_compile_options(Llibgraph PUBLIC "-fPIC" "-DREDIS_MODULE_TARGET" "-I${CMAKE_CURRENT_LIST_DIR}")

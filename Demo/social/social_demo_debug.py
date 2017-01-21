@@ -77,6 +77,12 @@ def main():
     
     # Query database
     #------------------------------------------------------------------------
+    qDesc = "My friends?"
+    query = """MATCH (ME:"Roi Lipman")-[friend]->(f) RETURN f.name""";
+    ExecuteQuery(r, query, graph, qDesc)
+
+    #------------------------------------------------------------------------
+
     qDesc = "Friends of friends?"
     query = """MATCH (ME:"Roi Lipman")-[friend]->()-[friend]->(fof) RETURN fof.name""";
     ExecuteQuery(r, query, graph, qDesc)
