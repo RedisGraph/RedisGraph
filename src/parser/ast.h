@@ -34,6 +34,11 @@ typedef enum {
 	ORDER_DIR_DESC
 } OrderByDirection;
 
+typedef enum {
+	N_VARIABLE,
+	N_ALIAS
+} ColumnNodeType;
+
 struct filterNode;
 
 typedef struct {
@@ -100,23 +105,28 @@ typedef struct {
 	int limit;
 } LimitNode;
 
-// TODO: consider using union
-typedef struct {
-	char* alias;
-	char* property;
-	char* func;
-	ReturnElementType type;
-} ReturnElementNode;
-
 typedef struct {
 	char* alias;
 	char* property;
 } Variable;
 
 typedef struct {
-	Vector* variables;
+	Variable* variable;
+	char* func;			// Aggregation function
+	char* alias; 		// Alias given to this return element (using the AS keyword)
+	ReturnElementType type;
+} ReturnElementNode;
+
+typedef struct {
+	Vector* columns;	// Vector of ColumnNodes
 	OrderByDirection direction;
 } OrderNode;
+
+typedef struct {
+	char* alias;
+	char* property;
+	ColumnNodeType type;
+} ColumnNode;
 
 typedef struct {
 	MatchNode* matchNode;
@@ -137,11 +147,16 @@ FilterNode* NewConditionNode(FilterNode *left, int op, FilterNode *right);
 
 WhereNode* NewWhereNode(FilterNode* filters);
 
-ReturnElementNode* NewReturnElementNode(ReturnElementType type, const char* alias, const char* property, const char* aggFunc);
+ReturnElementNode* NewReturnElementNode(ReturnElementType type, const Variable* variable, const char* aggFunc, const char* alias);
 
 ReturnNode* NewReturnNode(Vector* returnElements, int distinct);
 
-OrderNode* NewOrderNode(Vector* variables, OrderByDirection direction);
+OrderNode* NewOrderNode(Vector* columns, OrderByDirection direction);
+
+ColumnNode* NewColumnNode(const char* alias, const char* prop, ColumnNodeType type);
+ColumnNode* ColumnNodeFromVariable(const Variable* variable);
+ColumnNode* ColumnNodeFromAlias(const char* alias);
+void FreeColumnNode(ColumnNode* node);
 
 Variable* NewVariable(const char* alias, const char* property);
 

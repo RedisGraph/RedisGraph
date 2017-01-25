@@ -83,7 +83,4 @@ int ReturnClause_ContainsAggregation(const ReturnNode* returnNode);
 // Returns a vector of AggCtx*
 Vector* ReturnClause_GetAggFuncs(RedisModuleCtx *ctx, const ReturnNode* returnNode);
 
-// Retrieves all properties which take part in the order by clause.
-Vector* OrderClause_RetrievePropValues(RedisModuleCtx *ctx, const OrderNode* orderNode, const Graph* g);
-
 #endif

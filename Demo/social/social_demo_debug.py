@@ -122,7 +122,9 @@ def main():
 
     qDesc = "Count for each friend how many countires he or she been to"
     query = """MATCH (ME:"Roi Lipman")-[friend]->(friend)-[visited]->(country)
-            RETURN friend.name, count(country.name)""";
+            RETURN friend.name, count(country.name) AS countriesVisited
+            ORDER BY countriesVisited DESC
+            LIMIT 10""";
     ExecuteQuery(r, query, graph, qDesc)
 
     #------------------------------------------------------------------------

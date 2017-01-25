@@ -189,4 +189,4 @@ Loading module into redis:
 /path/to/redis-server --loadmodule <PATH_TO_RedisGraph>/src/libmodule.so
 ``` 
 
-For more eaxmples please see [Demo](https://github.com/swilly22/redis-module-graph/tree/master/Demo)
+For more examples please see [Demo](https://github.com/swilly22/redis-module-graph/tree/master/Demo)

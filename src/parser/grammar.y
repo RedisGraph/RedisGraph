@@ -147,23 +147,13 @@ returnElements(A) ::= returnElement(B). {
 %type returnElement {ReturnElementNode*}
 
 returnElement(A) ::= variable(B). {
-	A = NewReturnElementNode(N_PROP, B->alias, B->property, NULL);
-	FreeVariable(B);
+	A = NewReturnElementNode(N_PROP, B, NULL, NULL);
 }
-
+returnElement(A) ::= variable(B) AS STRING(C). {
+	A = NewReturnElementNode(N_PROP, B, NULL, C.strval);
+}
 returnElement(A) ::= aggFunc(B). {
 	A = B;
-}
-
-%type variableList {Vector*}
-variableList(A) ::= variableList(B) COMMA variable(C). {
-	Vector_Push(B, C);
-	A = B;
-}
-
-variableList(A) ::= variable(B). {
-	A = NewVector(Variable*, 1);
-	Vector_Push(A, B);
 }
 
 %type variable {Variable*}
@@ -175,7 +165,10 @@ variable(A) ::= STRING(B) DOT STRING(C). {
 %type aggFunc {ReturnElementNode*}
 
 aggFunc(A) ::= STRING(B) LEFT_PARENTHESIS variable(C) RIGHT_PARENTHESIS. {
-	A = NewReturnElementNode(N_AGG_FUNC, C->alias, C->property, B.strval);
+	A = NewReturnElementNode(N_AGG_FUNC, C, B.strval, NULL);
+}
+aggFunc(A) ::= STRING(B) LEFT_PARENTHESIS variable(C) RIGHT_PARENTHESIS AS STRING(D). {
+	A = NewReturnElementNode(N_AGG_FUNC, C, B.strval, D.strval);
 }
 
 %type orderClause {OrderNode*}
@@ -183,14 +176,33 @@ aggFunc(A) ::= STRING(B) LEFT_PARENTHESIS variable(C) RIGHT_PARENTHESIS. {
 orderClause(A) ::= . {
 	A = NULL;
 }
-orderClause(A) ::= ORDER BY variableList(B). {
+orderClause(A) ::= ORDER BY columnNameList(B). {
 	A = NewOrderNode(B, ORDER_DIR_ASC);
 }
-orderClause(A) ::= ORDER BY variableList(B) ASC. {
+orderClause(A) ::= ORDER BY columnNameList(B) ASC. {
 	A = NewOrderNode(B, ORDER_DIR_ASC);
 }
-orderClause(A) ::= ORDER BY variableList(B) DESC. {
+orderClause(A) ::= ORDER BY columnNameList(B) DESC. {
 	A = NewOrderNode(B, ORDER_DIR_DESC);
+}
+
+%type columnNameList {Vector*}
+columnNameList(A) ::= columnNameList(B) COMMA columnName(C). {
+	Vector_Push(B, C);
+	A = B;
+}
+columnNameList(A) ::= columnName(B). {
+	A = NewVector(ColumnNode*, 1);
+	Vector_Push(A, B);
+}
+
+%type columnName {ColumnNode*}
+columnName(A) ::= variable(B). {
+	A = ColumnNodeFromVariable(B);
+	FreeVariable(B);
+}
+columnName(A) ::= STRING(B). {
+	A = ColumnNodeFromAlias(B.strval);
 }
 
 %type limitClause {LimitNode*}

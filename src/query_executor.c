@@ -302,16 +302,16 @@ Vector* _ReturnClause_RetrieveValues(RedisModuleCtx *ctx, const ReturnNode* retu
             continue;
         }
 
-        Node* n = Graph_GetNodeByAlias(g, retElem->alias);
+        Node* n = Graph_GetNodeByAlias(g, retElem->variable->alias);
 
-        if(retElem->property != NULL) {
-            RedisModuleString* prop = _GetElementProperyValue(ctx, n->id, retElem->property);
+        if(retElem->variable->property != NULL) {
+            RedisModuleString* prop = _GetElementProperyValue(ctx, n->id, retElem->variable->property);
             if(prop == NULL) {
                 // Couldn't find prop for id.
                 // TODO: Free returnedProps.
                 return NULL;
             } else {
-                Vector_Push(returnedProps, _GetElementProperyValue(ctx, n->id, retElem->property));
+                Vector_Push(returnedProps, prop);
             }
         } else {
             // Couldn't find an API for HGETALL.
@@ -375,23 +375,4 @@ Vector* ReturnClause_GetAggFuncs(RedisModuleCtx *ctx, const ReturnNode* returnNo
     }
 
     return aggFunctions;
-}
-
-Vector* OrderClause_RetrievePropValues(RedisModuleCtx *ctx, const OrderNode* orderNode, const Graph* g) {
-    Vector* props = NewVector(RedisModuleString*, Vector_Size(orderNode->variables));
-
-    for(int i = 0; i < Vector_Size(orderNode->variables); i++) {
-        Variable* elem;
-        Vector_Get(orderNode->variables, i, &elem);
-
-        Node* n = Graph_GetNodeByAlias(g, elem->alias);
-
-        if(elem->property != NULL) {
-            Vector_Push(props, _GetElementProperyValue(ctx, n->id, elem->property));
-        } else {
-            // Couldn't find an API for HGETALL.
-        }
-    } // End of for loop
-
-    return props;
 }

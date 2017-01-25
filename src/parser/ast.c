@@ -195,34 +195,39 @@ void FreeReturnNode(ReturnNode* returnNode) {
 	free(returnNode);
 }
 
-ReturnElementNode* NewReturnElementNode(ReturnElementType type, const char* alias, const char* property, const char* aggFunc) {
+ReturnElementNode* NewReturnElementNode(ReturnElementType type, const Variable* variable, const char* aggFunc, const char* alias) {
 	ReturnElementNode* returnElementNode = (ReturnElementNode*)malloc(sizeof(ReturnElementNode));
 	returnElementNode->type = type;
+	returnElementNode->variable = variable;
 	returnElementNode->func = NULL;
-
-	returnElementNode->alias = (char*)malloc(strlen(alias) + 1);
-	strcpy(returnElementNode->alias, alias);
-
-	returnElementNode->property = (char*)malloc(strlen(property) + 1);
-	strcpy(returnElementNode->property, property);
+	returnElementNode->alias = NULL;
 
 	if(type == N_AGG_FUNC) {
 		returnElementNode->func = (char*)malloc(strlen(aggFunc) + 1);
 		strcpy(returnElementNode->func, aggFunc);
+	}
+
+	if(alias != NULL) {
+		returnElementNode->alias = (char*)malloc(strlen(alias) + 1);
+		strcpy(returnElementNode->alias, alias);
 	}
 	
 	return returnElementNode;
 }
 
 void FreeReturnElementNode(ReturnElementNode* returnElementNode) {
-	free(returnElementNode->alias);
-	free(returnElementNode->property);
-	
-	if(returnElementNode->type == N_AGG_FUNC) {
-		free(returnElementNode->func);
-	}
+	if(returnElementNode != NULL) {
+		FreeVariable(returnElementNode->variable);
 
-	free(returnElementNode);
+		if(returnElementNode->type == N_AGG_FUNC) {
+			free(returnElementNode->func);
+		}
+		if(returnElementNode->alias != NULL) {
+			free(returnElementNode->alias);
+		}
+
+		free(returnElementNode);
+	}
 }
 
 
@@ -266,23 +271,60 @@ void FreeVariable(Variable* v) {
 	}
 }
 
-OrderNode* NewOrderNode(Vector* variables, OrderByDirection direction) {
+OrderNode* NewOrderNode(Vector* columns, OrderByDirection direction) {
 	OrderNode* orderNode = (OrderNode*)malloc(sizeof(OrderNode));
-	orderNode->variables = variables;
+	orderNode->columns = columns;
 	orderNode->direction = direction;
 	return orderNode;
 }
 
 void FreeOrderNode(OrderNode* orderNode) {
 	if(orderNode != NULL) {
-		for(int i = 0; i < Vector_Size(orderNode->variables); i++) {
-			Variable* v = NULL;
-			Vector_Get(orderNode->variables, i , &v);
-			FreeVariable(v);
+		for(int i = 0; i < Vector_Size(orderNode->columns); i++) {
+			ColumnNode* c = NULL;
+			Vector_Get(orderNode->columns, i , &c);
+			FreeColumnNode(c);
 		}
 
-		free(orderNode->variables);
+		Vector_Free(orderNode->columns);
 		free(orderNode);
+	}
+}
+
+ColumnNode* NewColumnNode(const char* alias, const char* property, ColumnNodeType type) {
+	ColumnNode* node = malloc(sizeof(ColumnNode));
+	node->type = type;
+	node->alias = NULL;
+	node->property = NULL;
+
+	node->alias = malloc(sizeof(char) * (strlen(alias) + 1));
+	strcpy(node->alias, alias);
+
+	if(type == N_VARIABLE) {
+		node->property = malloc(sizeof(char) * (strlen(property) + 1));
+		strcpy(node->property, property);
+	}
+
+	return node;
+}
+
+ColumnNode* ColumnNodeFromVariable(const Variable* variable) {
+	return NewColumnNode(variable->alias, variable->property, N_VARIABLE);
+}
+
+ColumnNode* ColumnNodeFromAlias(const char* alias) {
+	return NewColumnNode(alias, NULL, N_ALIAS);
+}
+
+void FreeColumnNode(ColumnNode* node) {
+	if(node != NULL) {
+		if(node->alias != NULL) {
+			free(node->alias);
+		}
+		if(node->type == N_VARIABLE && node->property != NULL) {
+			free(node->property);
+		}
+		free(node);
 	}
 }
 

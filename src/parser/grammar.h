@@ -25,8 +25,9 @@
 #define RETURN                          25
 #define DISTINCT                        26
 #define COMMA                           27
-#define ORDER                           28
-#define BY                              29
-#define ASC                             30
-#define DESC                            31
-#define LIMIT                           32
+#define AS                              28
+#define ORDER                           29
+#define BY                              30
+#define ASC                             31
+#define DESC                            32
+#define LIMIT                           33

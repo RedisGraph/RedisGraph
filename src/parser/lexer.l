@@ -17,6 +17,7 @@ Token tok;
 "FALSE"     { return FALSE; }
 "MATCH" 	  { return MATCH; }
 "RETURN" 	  { return RETURN; }
+"AS" 	      { return AS; }
 "DISTINCT"  { return DISTINCT; }
 "WHERE" 	  { return WHERE; }
 "ORDER"     { return ORDER; }
