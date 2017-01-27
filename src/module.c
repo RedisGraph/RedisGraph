@@ -99,9 +99,8 @@ int MGraph_AddEdge(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
     // Clean up
     RedisModule_Free(triplets);
-    size_t newlen = RedisModule_ValueLength(key);
     RedisModule_CloseKey(key);
-    RedisModule_ReplyWithLongLong(ctx, newlen);
+    RedisModule_ReplyWithSimpleString(ctx, "OK");
     
     return REDISMODULE_OK;
 }
@@ -126,7 +125,6 @@ int MGraph_RemoveEdge(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
     RMUtil_ParseArgs(argv, argc, 1, "ssss", &graph, &subject, &predicate, &object);
 
-    size_t reply = 0;
     RedisModuleKey *key = RedisModule_OpenKey(ctx, graph, REDISMODULE_WRITE);
     int keytype = RedisModule_KeyType(key);
 
@@ -139,7 +137,6 @@ int MGraph_RemoveEdge(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
             RedisModuleString *triplet = triplets[i];
             int deleted;
             RedisModule_ZsetRem(key, triplet, &deleted);
-            reply += deleted;
             RedisModule_FreeString(ctx, triplet);
         }
         RedisModule_Free(triplets);
@@ -147,7 +144,7 @@ int MGraph_RemoveEdge(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
     // Clean up
     RedisModule_CloseKey(key);
-    RedisModule_ReplyWithLongLong(ctx, reply);
+    RedisModule_ReplyWithSimpleString(ctx, "OK");
 
     return REDISMODULE_OK;
 }
@@ -166,16 +163,14 @@ int MGraph_DeleteGraph(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 
     RedisModuleKey *key = RedisModule_OpenKey(ctx, graph, REDISMODULE_WRITE);
     int keytype = RedisModule_KeyType(key);
-    size_t reply = 0;
 
     // Expecting key to be a sorted set.
     if(keytype == REDISMODULE_KEYTYPE_ZSET) {
         RedisModule_DeleteKey(key);
-        reply = 1;
     }
 
     RedisModule_CloseKey(key);
-    RedisModule_ReplyWithLongLong(ctx, reply);
+    RedisModule_ReplyWithSimpleString(ctx, "OK");
 
     return REDISMODULE_OK;
 }
@@ -431,7 +426,15 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     const char* q = RedisModule_StringPtrLen(query, &qLen);
 
     // Parse query, get AST.
-    QueryExpressionNode* parseTree = ParseQuery(q, qLen);
+    char *errMsg = NULL;
+    QueryExpressionNode* parseTree = Query_Parse(q, qLen, &errMsg);
+    if (!parseTree) {
+        RedisModule_Log(ctx, "debug", "Error parsing query: %s", errMsg);
+        RedisModule_ReplyWithError(ctx, errMsg);
+        free(errMsg);
+        return REDISMODULE_OK;
+    }
+
     Graph* graph = BuildGraph(parseTree->matchNode);
 
     QE_FilterNode* filterTree = NULL;
@@ -459,12 +462,17 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     char* strElapsed = (char*)malloc(sizeof(char) * strlen("Query internal execution time: miliseconds") + 8);
     sprintf(strElapsed, "Query internal execution time: %f miliseconds", elapsedMS);
     RedisModule_ReplyWithStringBuffer(ctx, strElapsed, strlen(strElapsed));
+    free(strElapsed);
 
-    // TODO: free memory.
-    // free(strElapsed);
+    // TODO: free filterTree
+
     // Free AST
-    // FreeQueryExpressionNode(parseTree);
+    FreeQueryExpressionNode(parseTree);
     ResultSet_Free(ctx, resultSet);
+
+    Vector_Free(entryPoints);
+    Graph_Free(graph);
+    CacheGroupClear();
 
     return REDISMODULE_OK;
 }

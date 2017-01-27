@@ -58,7 +58,7 @@ Token tok;
 "<=" 	{ return LE; }
 "->"	{ return RIGHT_ARROW; }
 "<-"	{ return LEFT_ARROW; }
-"!="    {  return NE; }
+"!="  {  return NE; }
 "=" 	{ return EQ; }
 ">" 	{ return GT; }
 "<" 	{ return LT; }

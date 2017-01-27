@@ -186,9 +186,9 @@ ReturnNode* NewReturnNode(Vector* returnElements, int distinct) {
 
 void FreeReturnNode(ReturnNode* returnNode) {
 	for (int i = 0; i < Vector_Size(returnNode->returnElements); i++) {
-		ReturnNode *node;
+		ReturnElementNode *node;
 		Vector_Get(returnNode->returnElements, i, &node);
-		FreeReturnNode(node);
+		FreeReturnElementNode(node);
 	}
 	
 	Vector_Free(returnNode->returnElements);

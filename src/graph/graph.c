@@ -108,7 +108,7 @@ Vector* Graph_GetNDegreeNodes(Graph* g, int degree) {
 }
 
 // Frees entire graph.
-void FreeGraph(Graph* g) {
+void Graph_Free(Graph* g) {
     // Free graph's nodes
     for(int i = 0; i < Vector_Size(g->nodes); i++) {
         Node* n;

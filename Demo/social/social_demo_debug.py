@@ -1,6 +1,5 @@
 import os
 import csv
-import operator
 import timeit
 import csv
 from datetime import date

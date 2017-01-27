@@ -4,10 +4,6 @@
 
 %token_type {Token}
 
-%syntax_error {
-	//printf("Syntax error!\n");
-}
-
 %include {
 	#include <stdlib.h>
 	#include <stdio.h>
@@ -15,13 +11,34 @@
 	#include "token.h"	
 	#include "grammar.h"
 	#include "ast.h"
+	#include "parse.h"
 
 	void yyerror(char *s);
 } // END %include
 
-%extra_argument { QueryExpressionNode **root }
+%syntax_error {
 
-query ::= expr(A). { *root = A; }
+	char *expectedToken = NULL;
+    int n = sizeof(yyTokenName) / sizeof(yyTokenName[0]);
+    for (int i = 0; i < n; ++i) {
+		int a = yy_find_shift_action(yypParser, (YYCODETYPE)i);
+		if (a < YYNSTATE + YYNRULE) {
+			expectedToken = yyTokenName[i];
+			break;
+		}
+	}
+
+	ctx->ok = 0;
+	size_t len = sizeof(char) *  (strlen("syntax error - ") + strlen(expectedToken) + 1);
+	ctx->errorMsg = malloc(len);
+	snprintf(ctx->errorMsg, len, "syntax error - %s", expectedToken);
+}
+
+
+
+%extra_argument { parseCtx *ctx }
+
+query ::= expr(A). { ctx->root = A; }
 
 
 %type expr {QueryExpressionNode*}
@@ -224,22 +241,24 @@ limitClause(A) ::= LIMIT INTEGER(B). {
   	extern int yylineno;
   	extern char *yytext;
 
-	QueryExpressionNode *ParseQuery(const char *c, size_t len) {
+	QueryExpressionNode *Query_Parse(const char *q, size_t len, char **err) {
 
-		yy_scan_bytes(c, len);
+		yy_scan_bytes(q, len);
   		void* pParser = ParseAlloc(malloc);
   		int t = 0;
 
-  		QueryExpressionNode *ret = NULL;
+		parseCtx ctx = {.root = NULL, .ok = 1, .errorMsg = NULL};
 
   		while( (t = yylex()) != 0) {
-  			////printf("Token %d\n", t);
-    		Parse(pParser, t, tok, &ret);
+			Parse(pParser, t, tok, &ctx);
+		}
+		if (ctx.ok) {
+			Parse(pParser, 0, tok, &ctx);
   		}
-  		Parse(pParser, 0, tok, &ret);
-  		ParseFree(pParser, free);
-
-  		return ret;
+		ParseFree(pParser, free);
+		if (err) {
+			*err = ctx.errorMsg;
+		}
+		return ctx.root;
 	}
-	
 }

@@ -23,6 +23,6 @@ Node* Graph_AddNode(Graph* g, const char* alias, const char* id);
 Vector* Graph_GetNDegreeNodes(Graph* g, int degree);
 
 // Frees entire graph.
-void FreeGraph(Graph* g);
+void Graph_Free(Graph* g);
 
 #endif

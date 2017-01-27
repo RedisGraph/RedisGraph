@@ -3,5 +3,5 @@
 #include <stdlib.h>
 #include "ast.h"
 
-QueryExpressionNode *ParseQuery(const char *c, size_t len);
+QueryExpressionNode *Query_Parse(const char *q, size_t len, char **err);
 #endif
