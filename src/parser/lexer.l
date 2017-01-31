@@ -7,6 +7,13 @@
 
 Token tok;
 
+
+/* handle locations */
+int yycolumn = 1;
+
+#define YY_USER_ACTION yycolumn += yyleng; \
+    tok.pos = yycolumn; \
+    tok.s = strdup(yytext);
 %}
 
 %%
@@ -66,7 +73,8 @@ Token tok;
 ":" 	{ return COLON; }
 "." 	{ return DOT; }
 
-[ \t\n]+ /* ignore whitespace */
+[ \t]+ /* ignore whitespace */
+\n    { yycolumn = 1; } /* ignore whitespace */
 
 %%
 

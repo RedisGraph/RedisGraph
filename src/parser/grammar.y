@@ -17,21 +17,11 @@
 } // END %include
 
 %syntax_error {
-
-	char *expectedToken = NULL;
-    int n = sizeof(yyTokenName) / sizeof(yyTokenName[0]);
-    for (int i = 0; i < n; ++i) {
-		int a = yy_find_shift_action(yypParser, (YYCODETYPE)i);
-		if (a < YYNSTATE + YYNRULE) {
-			expectedToken = yyTokenName[i];
-			break;
-		}
-	}
+	char buf[256];
+	snprintf(buf, 256, "Syntax error at offset %d near '%s'\n", TOKEN.pos, TOKEN.s);
 
 	ctx->ok = 0;
-	size_t len = sizeof(char) *  (strlen("syntax error - ") + strlen(expectedToken) + 1);
-	ctx->errorMsg = malloc(len);
-	snprintf(ctx->errorMsg, len, "syntax error - %s", expectedToken);
+	ctx->errorMsg = strdup(buf);
 }
 
 
@@ -240,9 +230,10 @@ limitClause(A) ::= LIMIT INTEGER(B). {
   	YY_BUFFER_STATE yy_scan_bytes( const char *, size_t );
   	extern int yylineno;
   	extern char *yytext;
+	extern int yycolumn;
 
 	QueryExpressionNode *Query_Parse(const char *q, size_t len, char **err) {
-
+		yycolumn = 1;	// Reset lexer's token tracking position
 		yy_scan_bytes(q, len);
   		void* pParser = ParseAlloc(malloc);
   		int t = 0;

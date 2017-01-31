@@ -459,8 +459,8 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     end = clock();
     double elapsed = (double)(end - start) / CLOCKS_PER_SEC;
     double elapsedMS = elapsed * 1000; 
-    char* strElapsed = (char*)malloc(sizeof(char) * strlen("Query internal execution time: miliseconds") + 8);
-    sprintf(strElapsed, "Query internal execution time: %f miliseconds", elapsedMS);
+    char* strElapsed = (char*)malloc(sizeof(char) * strlen("Query internal execution time: milliseconds") + 8);
+    sprintf(strElapsed, "Query internal execution time: %f milliseconds", elapsedMS);
     RedisModule_ReplyWithStringBuffer(ctx, strElapsed, strlen(strElapsed));
     free(strElapsed);
 
