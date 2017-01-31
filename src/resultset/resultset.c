@@ -325,15 +325,19 @@ void ResultSet_Free(RedisModuleCtx* ctx, ResultSet* set) {
             Vector* record;
             Vector_Get(set->records, i, &record);
             Record_Free(ctx, record);
+            record = NULL;
         }
         Vector_Free(set->records);
 
-        if(set->trie) {
-            // Pop items from heap
+        if(set->heap != NULL) {
             while(heap_count(set->heap) > 0) {
                 Record* record = heap_poll(set->heap);
                 Record_Free(ctx, record);
             }
+            heap_free(set->heap);
+        }
+
+        if(set->trie != NULL) {
             TrieMapNode_Free(set->trie, NULL);
         }
 

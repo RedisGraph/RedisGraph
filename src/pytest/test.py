@@ -178,6 +178,28 @@ class GraphTestCase(ModuleTestCase('../libmodule.so')):
                 next_age = int(float(result_set[i+1]))
                 self.assertLessEqual(age, next_age)
 
+    def test_distinct(self):
+        """Validates distinct resultset"""
+        with self.redis() as r:
+            r.flushdb()
+            r.hmset('Roi', {'age':'32', 'name': 'Roi'})
+            r.hmset('Alon', {'age': '32', 'name': 'Alon'})
+            r.hmset('Omri', {'age': '33', 'name': 'Omri'})
+            r.hmset('Boaz', {'age': '31', 'name': 'Boaz'})
+
+            self.assertOk(r.execute_command(
+                'graph.ADDEDGE', 'social', 'Roi', 'friend', 'Alon'))
+            self.assertOk(r.execute_command(
+                'graph.ADDEDGE', 'social', 'Alon', 'friend', 'Omri'))
+            self.assertOk(r.execute_command(
+                'graph.ADDEDGE', 'social', 'Boaz', 'friend', 'Omri'))
+
+            result_set = r.execute_command(
+                'graph.QUERY',
+                'social',
+                'MATCH (ME:Roi)-[friend]->(f)-[friend]->(fof) RETURN DISTINCT f.name')
+
+            self.assertEquals(len(result_set), 2)
 
 if __name__ == '__main__':
     unittest.main()
