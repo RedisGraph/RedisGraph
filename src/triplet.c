@@ -133,40 +133,11 @@ char* TripletToString(const Triplet* triplet) {
 	return str;
 }
 
-char** GetTripletPermutations(const Triplet* triplet) {
-	char** permutations = (char**)malloc(sizeof(char*) * 6);
-	
-	int subjectLen = strlen(triplet->subject);
-	int predicateLen = strlen(triplet->predicate);
-	int objectLen = strlen(triplet->object);
-	int bufferSize = 4 + subjectLen + 1 + predicateLen + 1 + objectLen + 1;
-
-	for(int i = 0; i < 6; i++) {
-		char* permutation = (char*)malloc(sizeof(char) * bufferSize);
-		permutations[i] = permutation;
-	}
-	
-	sprintf(permutations[0], "SPO:%s:%s:%s", triplet->subject, triplet->predicate, triplet->object);
-	sprintf(permutations[1], "SOP:%s:%s:%s", triplet->subject, triplet->object, triplet->predicate);
-	sprintf(permutations[2], "PSO:%s:%s:%s", triplet->predicate, triplet->subject, triplet->object);
-	sprintf(permutations[3], "POS:%s:%s:%s", triplet->predicate, triplet->object, triplet->subject);
-	sprintf(permutations[4], "OSP:%s:%s:%s", triplet->object, triplet->subject, triplet->predicate);
-	sprintf(permutations[5], "OPS:%s:%s:%s", triplet->object, triplet->predicate, triplet->subject);
-
-	return permutations;
-}
-
 // Assuming Triplets are of the same kind.
-int TripletCompare(const Triplet* A, const Triplet* B) {	
-	char* Astr = TripletToString(A);
-	char* Bstr = TripletToString(B);
-
-	int res = strcmp(Astr, Bstr);
-
-	free(Astr);
-	free(Bstr);
-
-	return res;
+int TripletCompare(const Triplet* A, const Triplet* B) {
+	return ((strcmp(A->subject, B->subject) == 0) &&
+		(strcmp(A->predicate, B->predicate) == 0) &&
+		(strcmp(A->object, B->object) == 0));
 }
 
 int ValidateTriplet(const Triplet* triplet) {
@@ -258,54 +229,28 @@ void FreeTriplet(Triplet* triplet) {
 	free(triplet);
 }
 
-TripletCursor* NewTripletCursor(RedisModuleCtx *ctx, RedisModuleKey* key) {
-	TripletCursor* cursor = (TripletCursor*)malloc(sizeof(TripletCursor));
-	cursor->closed = 0;
-	cursor->ctx = ctx;
-
-	// TODO: Validate key type, should be a sorted set
-	cursor->key = key;
-	return cursor;
-}
-
-// Closes given cursor
-void CloseTripletCursor(TripletCursor* cursor) {
-	RedisModule_CloseKey(cursor->key);
-	cursor->closed = 1;
+TripletIterator* NewTripletIterator(TrieMapIterator *iter) {
+	TripletIterator* iterator = (TripletIterator*)malloc(sizeof(TripletIterator));
+	iterator->iter = iter;
+	return iterator;
 }
 
 // Returns the next triplet from the cursor
 // or NULL when cursor is depleted
-Triplet* TripletCursorNext(TripletCursor* cursor) {
-	RedisModule_AutoMemory(cursor->ctx);
-
-	if(cursor->closed) {
+Triplet* TripletIterator_Next(TripletIterator* iterator) {
+	char *key = NULL;
+	tm_len_t len = 0;
+	void *ptr = NULL;
+	int res = TrieMapIterator_Next(iterator->iter, &key, &len, &ptr);
+	if(res == 0) {
 		return NULL;
 	}
 
-	double dScore = 0.0;
-	RedisModuleString* element =
-		RedisModule_ZsetRangeCurrentElement(cursor->key, &dScore);
-
-	if(element == NULL) {
-		// TODO: why RedisModule_ZsetRangeCurrentElement returns NULL?
-		return NULL;
-	}
-
-	Triplet* t = 
-		TripletFromString(RedisModule_StringPtrLen(element, 0));
-
-    if (!RedisModule_ZsetRangeNext(cursor->key)) {
-		// Cursor reached it's end.
-		CloseTripletCursor(cursor);
-	}
-
+	Triplet* t = TripletFromString(key);
 	return t;
 }
 
-void FreeTripletCursor(TripletCursor* cursor) {
-	if(!cursor->closed) {
-		CloseTripletCursor(cursor);
-	}
-	free(cursor);
+void TripletIterator_Free(TripletIterator* iterator) {
+	TrieMapIterator_Free(iterator->iter);
+	free(iterator);
 }

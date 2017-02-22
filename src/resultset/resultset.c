@@ -338,7 +338,8 @@ void ResultSet_Free(RedisModuleCtx* ctx, ResultSet* set) {
         }
 
         if(set->trie != NULL) {
-            TrieMapNode_Free(set->trie, NULL);
+            // TODO: free trie.
+            // TrieMapNode_Free(set->trie, NULL);
         }
 
         ResultSetHeader_Free(set->header);
