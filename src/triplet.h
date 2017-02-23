@@ -3,6 +3,7 @@
 
 #include "graph/edge.h"
 #include "redismodule.h"
+#include "util/triemap/triemap.h"
 
 typedef enum {UNKNOW, O, P, PO, S, SO, SP, SPO} TripletKind;
 
@@ -14,10 +15,8 @@ typedef struct {
 } Triplet;
 
 typedef struct {
-	RedisModuleCtx *ctx;
-	RedisModuleKey *key;
-	int closed;
-} TripletCursor;
+	TrieMapIterator *iter;
+} TripletIterator;
 
 // Creates a new triplet
 Triplet* NewTriplet(const char* S, const char* P, const char* O);
@@ -31,13 +30,7 @@ Triplet* TripletFromString(const char* input);
 // Returns a string representation of triplet.
 char* TripletToString(const Triplet* triplet);
 
-// Returns all 6 possible string permutations.
-char** GetTripletPermutations(const Triplet* triplet);
-
-// Similar to strcmp,
-// Returns <0 if B is greater then A
-// Return >0 if A is greater then B
-// Return 0 if A equals B
+// Checks if given triplets are the same.
 int TripletCompare(const Triplet* A, const Triplet* B);
 
 // Validate checks the triplet for validity and returns false if something is wrong.
@@ -46,13 +39,13 @@ int ValidateTriplet(const Triplet* triplet);
 // Frees allocated space by given triplet.
 void FreeTriplet(Triplet* triplet);
 
-// Triplet cursor
+// -------------Triplet cursor-------------
 
-TripletCursor* NewTripletCursor(RedisModuleCtx *ctx, RedisModuleKey* key);
+TripletIterator* NewTripletIterator(TrieMapIterator *iterator);
 
 // Returns the next triplet from the cursor.
-Triplet* TripletCursorNext(TripletCursor* cursor);
+Triplet* TripletIterator_Next(TripletIterator* cursor);
 
-void FreeTripletCursor(TripletCursor* cursor);
+void TripletIterator_Free(TripletIterator* cursor);
 
 #endif

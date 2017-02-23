@@ -5,7 +5,7 @@
 #include "../redismodule.h"
 #include "../rmutil/vector.h"
 #include "../util/heap.h"
-#include "../util/triemap.h"
+#include "../util/triemap/triemap.h"
 #include "record.h"
 
 #define RESULTSET_UNLIMITED 0

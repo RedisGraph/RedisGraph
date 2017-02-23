@@ -17,6 +17,7 @@
 #include "rmutil/util.h"
 #include "rmutil/vector.h"
 #include "rmutil/test_util.h"
+#include "util/triemap/triemap_type.h"
 
 #include "parser/ast.h"
 #include "parser/grammar.h"
@@ -24,41 +25,10 @@
 
 #include "aggregate/functions.h"
 #include "grouping/group.h"
+#include "hexastore/hexastore.h"
 
 #include "resultset/record.h"
 #include "resultset/resultset.h"
-
-#define SCORE 0.0
-
-// Create all 6 triplets from given subject, predicate and object.
-// Returns an array of triplets, caller is responsible for freeing each triplet.
-RedisModuleString **hexastoreTriplets(RedisModuleCtx *ctx, const RedisModuleString *subject, const RedisModuleString *predicate, const RedisModuleString *object) {
-    RedisModuleString** triplets = RedisModule_Alloc(sizeof(RedisModuleString*) * 6);
-
-    size_t sLen = 0;
-    size_t oLen = 0;
-    size_t pLen = 0;
-
-    const char* s = RedisModule_StringPtrLen(subject, &sLen);
-    const char* p = RedisModule_StringPtrLen(predicate, &pLen);
-    const char* o = RedisModule_StringPtrLen(object, &oLen);
-    
-    size_t bufLen = 6 + sLen + pLen + oLen;
-
-    Triplet *triplet = NewTriplet(s, p, o);
-    char** permutations = GetTripletPermutations(triplet);
-    
-    for(int i = 0; i < 6; i++) {
-        RedisModuleString *permutation = RedisModule_CreateString(ctx, permutations[i], bufLen);
-        triplets[i] = permutation;
-        free(permutations[i]);
-    }
-    
-    free(permutations);
-    FreeTriplet(triplet);
-
-    return triplets;
-}
 
 // Adds a new edge to the graph.
 // Args:
@@ -80,28 +50,16 @@ int MGraph_AddEdge(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
     RMUtil_ParseArgs(argv, argc, 1, "ssss", &graph, &subject, &predicate, &object);
 
-    RedisModuleKey *key = RedisModule_OpenKey(ctx, graph, REDISMODULE_WRITE);
-    int keytype = RedisModule_KeyType(key);
-    
-    // Expecting key to be of type empty or sorted set.
-    if(keytype != REDISMODULE_KEYTYPE_ZSET && keytype != REDISMODULE_KEYTYPE_EMPTY) {
-        return RedisModule_ReplyWithError(ctx, REDISMODULE_ERRORMSG_WRONGTYPE);
-    }
-    
+    const char *strSubject = RedisModule_StringPtrLen(subject, NULL);
+    const char *strPredicate = RedisModule_StringPtrLen(predicate, NULL);
+    const char *strObject = RedisModule_StringPtrLen(object, NULL);
+
     // Create all 6 hexastore variations
     // SPO, SOP, PSO, POS, OSP, OPS
-    RedisModuleString **triplets = hexastoreTriplets(ctx, subject, predicate, object);
-    for(int i = 0; i < 6; i++) {
-        RedisModuleString *triplet = triplets[i];
-        RedisModule_ZsetAdd(key, SCORE, triplet, NULL);
-        RedisModule_FreeString(ctx, triplet);
-    }
-
-    // Clean up
-    RedisModule_Free(triplets);
-    RedisModule_CloseKey(key);
-    RedisModule_ReplyWithSimpleString(ctx, "OK");
+    HexaStore *hexaStore = GetHexaStore(ctx, graph);
+    HexaStore_InsertAllPerm(hexaStore, strSubject, strPredicate, strObject);
     
+    RedisModule_ReplyWithSimpleString(ctx, "OK");
     return REDISMODULE_OK;
 }
 
@@ -125,27 +83,14 @@ int MGraph_RemoveEdge(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
     RMUtil_ParseArgs(argv, argc, 1, "ssss", &graph, &subject, &predicate, &object);
 
-    RedisModuleKey *key = RedisModule_OpenKey(ctx, graph, REDISMODULE_WRITE);
-    int keytype = RedisModule_KeyType(key);
+    const char *strSubject = RedisModule_StringPtrLen(subject, NULL);
+    const char *strPredicate = RedisModule_StringPtrLen(predicate, NULL);
+    const char *strObject = RedisModule_StringPtrLen(object, NULL);
 
-    // Expecting key a sorted set.
-    if(keytype == REDISMODULE_KEYTYPE_ZSET) {
-        // Create all 6 hexastore variations
-        // SPO, SOP, PSO, POS, OSP, OPS
-        RedisModuleString **triplets = hexastoreTriplets(ctx, subject, predicate, object);
-        for(int i = 0; i < 6; i++) {
-            RedisModuleString *triplet = triplets[i];
-            int deleted;
-            RedisModule_ZsetRem(key, triplet, &deleted);
-            RedisModule_FreeString(ctx, triplet);
-        }
-        RedisModule_Free(triplets);
-    }
+    HexaStore *hexaStore = GetHexaStore(ctx, graph);
+    HexaStore_RemoveAllPerm(hexaStore, strSubject, strPredicate, strObject);
 
-    // Clean up
-    RedisModule_CloseKey(key);
     RedisModule_ReplyWithSimpleString(ctx, "OK");
-
     return REDISMODULE_OK;
 }
 
@@ -161,50 +106,19 @@ int MGraph_DeleteGraph(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
     RedisModuleString *graph;
     RMUtil_ParseArgs(argv, argc, 1, "s", &graph);
 
-    RedisModuleKey *key = RedisModule_OpenKey(ctx, graph, REDISMODULE_WRITE);
-    int keytype = RedisModule_KeyType(key);
-
-    // Expecting key to be a sorted set.
-    if(keytype == REDISMODULE_KEYTYPE_ZSET) {
-        RedisModule_DeleteKey(key);
-    }
-
-    RedisModule_CloseKey(key);
+    RedisModule_DeleteKey(graph);
     RedisModule_ReplyWithSimpleString(ctx, "OK");
-
     return REDISMODULE_OK;
 }
 
-TripletCursor* queryTriplet(RedisModuleCtx *ctx, RedisModuleString* graph, const Triplet* triplet) {
-    RedisModule_AutoMemory(ctx);
+TripletIterator* queryTriplet(RedisModuleCtx *ctx, RedisModuleString* graph, const Triplet* triplet) {
+    HexaStore *hexaStore = GetHexaStore(ctx, graph);
 
-    char* tripletStr = TripletToString(triplet);
+    char *prefix = TripletToString(triplet);
+    TripletIterator *iter = HexaStore_Search(hexaStore, prefix);
+    free(prefix);
 
-    size_t bufLen = strlen(tripletStr) + 3;
-    char* buf = (char*)malloc(bufLen);
-
-    // [spo:antirez:is-friend-of: [spo:antirez:is-friend-of:\xff
-    // min [spo:antirez:is-friend-of:
-    // max [spo:antirez:is-friend-of:\xff
-
-    // min
-    sprintf(buf, "[%s", tripletStr);
-    RedisModuleString *min = RedisModule_CreateString(ctx, buf, strlen(buf));
-
-    // max
-    sprintf(buf, "[%s\xff", tripletStr);
-    RedisModuleString *max = RedisModule_CreateString(ctx, buf, bufLen);
-
-    free(tripletStr);
-    free(buf);
-
-    RedisModuleKey *key = RedisModule_OpenKey(ctx, graph, REDISMODULE_READ);
-
-    if(RedisModule_ZsetFirstInLexRange(key, min, max) == REDISMODULE_ERR) {
-        return NULL;
-    }
-
-    return NewTripletCursor(ctx, key);
+    return iter;
 }
 
 // Concats rmStrings using given delimiter.
@@ -290,8 +204,9 @@ void _aggregateRecord(RedisModuleCtx *ctx, const ReturnNode* returnTree, const G
 * fastSkipTriplets returns the first triplet which pass the filter-tree
 * triplets which fail to pass are discarded.
 */
-Triplet* _fastSkipTriplets(RedisModuleCtx *ctx, const QE_FilterNode* filterTree, TripletCursor* cursor, Graph* g, Node* src, Node* dest) {
-    Triplet* triplet = TripletCursorNext(cursor);
+Triplet* _fastSkipTriplets(RedisModuleCtx *ctx, const QE_FilterNode *filterTree, TripletIterator *iterator, Graph *g, Node *src, Node *dest) {
+    // TODO: if triplet doesn't pass filter below we've got a leak.
+    Triplet* triplet = TripletIterator_Next(iterator);
     if(triplet == NULL) {
         return NULL;
     }
@@ -307,8 +222,7 @@ Triplet* _fastSkipTriplets(RedisModuleCtx *ctx, const QE_FilterNode* filterTree,
     // Try to fast skip current src id
     while(applyFilters(ctx, g, filterTree) != 1) {
         // Skip source id
-        while((triplet = TripletCursorNext(cursor), triplet != NULL) && strcmp(triplet->subject, src->id) == 0) {
-            // Skip
+        while((triplet = TripletIterator_Next(iterator), triplet != NULL) && strcmp(triplet->subject, src->id) == 0) {
             FreeTriplet(triplet);
         }
 
@@ -316,7 +230,7 @@ Triplet* _fastSkipTriplets(RedisModuleCtx *ctx, const QE_FilterNode* filterTree,
             // Try new source id
             src->id = triplet->subject;
         } else {
-            // Consumed cursor
+            // Consumed iterator
             return NULL;
         }
     }
@@ -325,8 +239,7 @@ Triplet* _fastSkipTriplets(RedisModuleCtx *ctx, const QE_FilterNode* filterTree,
 
     while(applyFilters(ctx, g, filterTree) != 1) {
         // Skip dest id
-        while((triplet = TripletCursorNext(cursor), triplet != NULL) && strcmp(triplet->object, dest->id) == 0) {
-            // Skip
+        while((triplet = TripletIterator_Next(iterator), triplet != NULL) && strcmp(triplet->object, dest->id) == 0) {
             FreeTriplet(triplet);
         }
 
@@ -334,7 +247,7 @@ Triplet* _fastSkipTriplets(RedisModuleCtx *ctx, const QE_FilterNode* filterTree,
             // Try new dest id
             dest->id = triplet->object;
         } else {
-            // Consumed cursor
+            // Consumed iterator
             return NULL;
         }
     }
@@ -353,7 +266,7 @@ void QueryNode(RedisModuleCtx *ctx, RedisModuleString *graphName, Graph* g, Node
         Triplet* triplet = TripletFromEdge(edge);
         
         // Query graph using triplet, no filters are applied at this stage
-        TripletCursor* cursor = queryTriplet(ctx, graphName, triplet);
+        TripletIterator* cursor = queryTriplet(ctx, graphName, triplet);
         FreeTriplet(triplet);
 
         // Backup original node IDs
@@ -398,7 +311,7 @@ void QueryNode(RedisModuleCtx *ctx, RedisModuleString *graphName, Graph* g, Node
                 }
             }
         } // End of cursor loop
-        FreeTripletCursor(cursor);
+        TripletIterator_Free(cursor);
         
         // Restore nodes original IDs.
         src->id = srcOriginalID;
@@ -481,6 +394,11 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
     Agg_RegisterFuncs();
 
     if (RedisModule_Init(ctx, "graph", 1, REDISMODULE_APIVER_1) == REDISMODULE_ERR) {
+        return REDISMODULE_ERR;
+    }
+
+    if(TrieMapType_Register(ctx) == REDISMODULE_ERR) {
+        printf("Failed to register triemaptype\n");
         return REDISMODULE_ERR;
     }
 

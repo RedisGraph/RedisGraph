@@ -8,6 +8,8 @@ set(_graph_files
       ../src/value_cmp.c
       ../src/query_executor.c
 
+      ../src/hexastore/hexastore.c
+
       ../src/graph/edge.c
       ../src/graph/node.c
       ../src/graph/graph.c
@@ -24,7 +26,8 @@ set(_graph_files
       ../src/grouping/group_cache.c
 
       ../src/util/heap.c
-      ../src/util/triemap.c
+      ../src/util/triemap/triemap.c
+      ../src/util/triemap/triemap_type.c
 
       ../src/resultset/record.c
       ../src/resultset/resultset.c
@@ -37,7 +40,6 @@ set(_graph_files
 
 
 set (graph_files ${_graph_files} PARENT_SCOPE)
-
 
 # Libgraph target - a static library for graph database
 add_library(Llibgraph STATIC  ${_graph_files})
