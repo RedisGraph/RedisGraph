@@ -3,10 +3,9 @@
 
 #include "../../redismodule.h"
 
-#define TRIEMAP_TYPE_ENCODING_VERSION 1
+extern RedisModuleType *TrieRedisModuleType;
 
-/* declaration of the type for redis registration. */
-static RedisModuleType *TrieRedisModuleType;
+#define TRIEMAP_TYPE_ENCODING_VERSION 1
 
 /* Commands related to the redis TrieType registration */
 int TrieMapType_Register(RedisModuleCtx *ctx);

@@ -2,6 +2,9 @@
 #include "triemap_type.h"
 #include "../../triplet.h"
 
+/* declaration of the type for redis registration. */
+RedisModuleType *TrieRedisModuleType;
+
 void *TrieMapType_RdbLoad(RedisModuleIO *rdb, int encver) {
   if (encver != 0) {
     return NULL;
@@ -22,6 +25,7 @@ void *TrieMapType_RdbLoad(RedisModuleIO *rdb, int encver) {
 void TrieMapType_RdbSave(RedisModuleIO *rdb, void *value) {
   TrieMap *trie = (TrieMap *)value;
   int count = trie->cardinality;
+
   RedisModule_SaveUnsigned(rdb, count);
 
   // Scan entire trie.
@@ -68,7 +72,7 @@ int TrieMapType_Register(RedisModuleCtx *ctx) {
                                .free = TrieMapType_Free};
   
   
-  TrieRedisModuleType = RedisModule_CreateDataType(ctx, "trietype1", 0, &tm);
+  TrieRedisModuleType = RedisModule_CreateDataType(ctx, "trietype1", TRIEMAP_TYPE_ENCODING_VERSION, &tm);
   if (TrieRedisModuleType == NULL) {
     return REDISMODULE_ERR;
   }
