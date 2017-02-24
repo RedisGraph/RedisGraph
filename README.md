@@ -2,13 +2,13 @@
 
 
 ### Introduction
-This project is an attempt to build a graph database ontop of Redis using Redis modules, where the nodes in the graph represents entities such as a person or a place and connections such as 'visit' are made between the different entities.
+This project is a Redis module that implements a graph database. Nodes in the graph represent entities such as persons or places, and connections such as 'visit' are made between the different entities.
 
-As entities might have several attributes Redis hashes seems ideal to hold them, as such a node in the graph is named after an entity's key, for example suppose we had a persone entity representing Barack Obama, our entity's key within redis would be "Barack Obama" and two of its attributes could be Age (55) and profession, we could also have another entity under the key Hawaii. with an attribute population (1,442,949).
-Finally we could construct a simple graph by connecting Barak Obama with an edge representing the relation born to Hawaii.
+Entities may have multiple attributes, so Redis Hashes are optimal for storing them and a node in the graph is a Hash in the entity's key. For example, suppose we had a person entity representing Barack Obama. That entity's key in Redis would be "Barack Obama", and two of its fields could be "age" (55) and "profession" (ex-president). We could also have another entity under the key "Hawaii" with an attribute "population" (1442949).
 
-This is one of the key ideas behind this project; a node in the graph is simply a reference to an entity stored as Redis hash.
+Finally we could construct a simple graph by connecting Barak Obama with an edge representing the relation "born" with Hawaii.
 
+This is one of the key ideas behind this project; a node in the graph is simply a reference to an entity stored as Redis Hash.
 
 ### Usage
 This module introduce four new commands
@@ -49,7 +49,7 @@ GRAPH.QUERY presidents "MATCH (president)-[born]->(state:Hawaii) RETURN presiden
 ```
 
 ### Query language
-The syntex is based on neo4j's Cypher and currently only a subset of the language is supported.
+The syntax is based on neo4j's Cypher and currently only a subset of the language is supported.
 
 A query is composed of five parts:
 
