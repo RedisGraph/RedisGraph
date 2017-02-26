@@ -11,7 +11,7 @@ typedef struct {
     Vector* values; // Vector of *RedisModuleStrings
 } Record;
 
-Record* NewRecord();
+Record* NewRecord(size_t len);
 
 // Creates a new result-set record from graph.
 Record* Record_FromGraph(RedisModuleCtx *ctx, const QueryExpressionNode* ast, const Graph* g);

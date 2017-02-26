@@ -3,6 +3,7 @@
 #include "rmutil/vector.h"
 #include "graph/node.h"
 #include "aggregate/agg_ctx.h"
+#include "aggregate/repository.h"
 
 Graph* BuildGraph(const MatchNode* matchNode) {
     Graph* g = NewGraph();
@@ -41,6 +42,35 @@ Graph* BuildGraph(const MatchNode* matchNode) {
 
     Vector_Free(stack);    
     return g;
+}
+
+// Applies a single filter to a single result.
+// Compares given values, tests if values maintain desired relation (op)
+int _applyFilter(RedisModuleCtx *ctx, SIValue* aVal, SIValue* bVal, CmpFunc f, int op) {
+    // TODO: Make sure values are of the same type
+    // TODO: Make sure values type confirms with compare function.
+    int rel = f(aVal, bVal);
+
+    switch(op) {
+        case EQ:
+        return rel == 0;
+
+        case GT:
+        return rel > 0;
+
+        case GE:
+        return rel >= 0;
+
+        case LT:
+        return rel < 0;
+
+        case LE:
+        return rel <= 0;
+
+        default:
+            RedisModule_Log(ctx, "error", "Unknown comparison operator %d\n", op);
+            return RedisModule_ReplyWithError(ctx, "Invalid comparison operator");
+    }
 }
 
 QE_FilterNode* _CreateVaryingFilterNode(PredicateNode n) {
@@ -102,6 +132,9 @@ QE_FilterNode* _CreateConstFilterNode(PredicateNode n) {
         break;
         case T_DOUBLE:
         compareFunc = cmp_double;
+        break;
+        default:
+        compareFunc = NULL;
         break;
     }
 
@@ -260,35 +293,6 @@ int applyFilters(RedisModuleCtx *ctx, Graph* g, QE_FilterNode* root) {
     return pass;
 }
 
-// Applies a single filter to a single result.
-// Compares given values, tests if values maintain desired relation (op)
-int _applyFilter(RedisModuleCtx *ctx, SIValue* aVal, SIValue* bVal, CmpFunc f, int op) {
-    // TODO: Make sure values are of the same type
-    // TODO: Make sure values type confirms with compare function.
-    int rel = f(aVal, bVal);
-
-    switch(op) {
-        case EQ:
-        return rel == 0;
-
-        case GT:
-        return rel > 0;
-
-        case GE:
-        return rel >= 0;
-
-        case LT:
-        return rel < 0;
-
-        case LE:
-        return rel <= 0;
-
-        default:
-            RedisModule_Log(ctx, "error", "Unknown comparison operator %d\n", op);
-            return RedisModule_ReplyWithError(ctx, "Invalid comparison operator");
-    }
-}
-
 // type specifies the type of return elements to Retrieve
 Vector* _ReturnClause_RetrieveValues(RedisModuleCtx *ctx, const ReturnNode* returnNode, const Graph* g, ReturnElementType type) {
     Vector* returnedProps = NewVector(RedisModuleString*, Vector_Size(returnNode->returnElements));
@@ -368,7 +372,8 @@ Vector* ReturnClause_GetAggFuncs(RedisModuleCtx *ctx, const ReturnNode* returnNo
             Agg_GetFunc(retElem->func, &func);
             if(func == NULL) {
                 RedisModule_Log(ctx, "error", "aggregation function %s is not supported\n", retElem->func);
-                return RedisModule_ReplyWithError(ctx, "Invalid aggregation function");
+                RedisModule_ReplyWithError(ctx, "Invalid aggregation function");
+                return NULL;
             }
             Vector_Push(aggFunctions, func);
         }

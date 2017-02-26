@@ -10,7 +10,7 @@ inline int __vector_PushPtr(Vector *v, void *elem) {
   return v->top;
 }
 
-inline int Vector_Get(Vector *v, size_t pos, void *ptr) {
+inline int Vector_Get(const Vector *v, size_t pos, void *ptr) {
   // return 0 if pos is out of bounds
   if (pos >= v->top) {
     return 0;
@@ -80,7 +80,7 @@ void Vector_Free(Vector *v) {
   free(v);
 }
 
-inline int Vector_Size(Vector *v) { return v->top; }
+inline int Vector_Size(const Vector *v) { return v->top; }
 
 /* return the actual capacity */
 inline int Vector_Cap(Vector *v) { return v->cap; }

@@ -5,13 +5,13 @@
 
 typedef struct {
 	char* relationship;
-	const Node* src;
-	const Node* dest;
+	Node* src;
+	Node* dest;
 } Edge;
 
 
 // Creates a new edge, connecting src to dest node.
-Edge* NewEdge(const Node* src, const Node* dest, const char* relationship);
+Edge* NewEdge(Node* src, Node* dest, const char* relationship);
 
 // Validate checks the edge for validity and returns false if something is wrong.
 int ValidateEdge(const Edge* edge);

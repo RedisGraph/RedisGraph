@@ -16,6 +16,7 @@
 
 #include "rmutil/util.h"
 #include "rmutil/vector.h"
+#include "rmutil/strings.h"
 #include "rmutil/test_util.h"
 #include "util/triemap/triemap_type.h"
 
@@ -24,7 +25,10 @@
 #include "parser/parser_common.h"
 
 #include "aggregate/functions.h"
+#include "aggregate/aggregate.h"
+
 #include "grouping/group.h"
+#include "grouping/group_cache.h"
 #include "hexastore/hexastore.h"
 
 #include "resultset/record.h"
@@ -106,7 +110,10 @@ int MGraph_DeleteGraph(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
     RedisModuleString *graph;
     RMUtil_ParseArgs(argv, argc, 1, "s", &graph);
 
-    RedisModule_DeleteKey(graph);
+    RedisModuleKey *key = RedisModule_OpenKey(ctx, graph, REDISMODULE_WRITE);
+    // TODO: check key type
+
+    RedisModule_DeleteKey(key);
     RedisModule_ReplyWithSimpleString(ctx, "OK");
     return REDISMODULE_OK;
 }
@@ -121,43 +128,11 @@ TripletIterator* queryTriplet(RedisModuleCtx *ctx, RedisModuleString* graph, con
     return iter;
 }
 
-// Concats rmStrings using given delimiter.
-// rmStrings is a vector of RedisModuleStrings pointers.
-char* _concatRMStrings(const Vector* rmStrings, const char* delimiter, char** concat) {
-    size_t length = 0;
-
-    // Compute length
-    for(int i = 0; i < Vector_Size(rmStrings); i++) {
-        RedisModuleString* string;
-        Vector_Get(rmStrings, i, &string);
-
-        size_t len;
-        RedisModule_StringPtrLen(string, &len);
-        length += len;
-    }
-
-    length += strlen(delimiter) * Vector_Size(rmStrings) + 1;
-    *concat = calloc(length, sizeof(char));
-
-    for(int i = 0; i < Vector_Size(rmStrings); i++) {
-        RedisModuleString* rmString;
-        Vector_Get(rmStrings, i, &rmString);
-
-        const char* string = RedisModule_StringPtrLen(rmString, NULL);
-
-        strcat(*concat, string);
-        strcat(*concat, delimiter);
-    }
-
-    // Discard last delimiter.
-    (*concat)[strlen(*concat) - strlen(delimiter)] = NULL;
-}
-
 void _aggregateRecord(RedisModuleCtx *ctx, const ReturnNode* returnTree, const Graph* g) {
     // Get group
     Vector* groupKeys = ReturnClause_RetrieveGroupKeys(ctx, returnTree, g);
     char* groupKey = NULL;
-    _concatRMStrings(groupKeys, ",", &groupKey);
+    RMUtil_StringConcat(groupKeys, ",", &groupKey);
     // TODO: free groupKeys
 
     Group* group = NULL;

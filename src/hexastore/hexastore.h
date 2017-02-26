@@ -8,7 +8,7 @@
 // TODO: find a suiteable place to store hexastores.
 typedef TrieMap HexaStore;
 
-HexaStore *GetHexaStore(RedisModuleCtx *ctx, const char *id);
+HexaStore *GetHexaStore(RedisModuleCtx *ctx, RedisModuleString *id);
 
 /* Create all 6 triplets from given subject, predicate and object.
  * Assuming triplets is an array of six char */

@@ -42,9 +42,9 @@ typedef struct {
     int distinct;               // Rather or not each record is unique
 } ResultSet;
 
-ResultSet* NewResultSet(const QueryExpressionNode* ast);
+ResultSet* NewResultSet(QueryExpressionNode* ast);
 
-int ResultSet_AddRecord(ResultSet* set, const Record *record);
+int ResultSet_AddRecord(ResultSet* set, Record *record);
 
 void ResultSet_Free(RedisModuleCtx* ctx, ResultSet* set);
 

@@ -195,7 +195,7 @@ void FreeReturnNode(ReturnNode* returnNode) {
 	free(returnNode);
 }
 
-ReturnElementNode* NewReturnElementNode(ReturnElementType type, const Variable* variable, const char* aggFunc, const char* alias) {
+ReturnElementNode* NewReturnElementNode(ReturnElementType type, Variable* variable, const char* aggFunc, const char* alias) {
 	ReturnElementNode* returnElementNode = (ReturnElementNode*)malloc(sizeof(ReturnElementNode));
 	returnElementNode->type = type;
 	returnElementNode->variable = variable;

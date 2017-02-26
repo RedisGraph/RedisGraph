@@ -20,8 +20,6 @@ RedisModuleString *RMUtil_CreateFormattedString(RedisModuleCtx *ctx, const char 
 }
 
 int RMUtil_StringEquals(RedisModuleString *s1, RedisModuleString *s2) {
-    
-    
     const char *c1, *c2;
     size_t l1, l2;
     c1 = RedisModule_StringPtrLen(s1, &l1);
@@ -32,8 +30,6 @@ int RMUtil_StringEquals(RedisModuleString *s1, RedisModuleString *s2) {
 }
 
 int RMUtil_StringEqualsC(RedisModuleString *s1, const char *s2) {
-    
-    
     const char *c1;
     size_t l1, l2 = strlen(s2);
     c1 = RedisModule_StringPtrLen(s1, &l1);
@@ -43,7 +39,6 @@ int RMUtil_StringEqualsC(RedisModuleString *s1, const char *s2) {
 }
 
 void RMUtil_StringToLower(RedisModuleString *s) {
-    
     size_t l;
     char *c = (char *)RedisModule_StringPtrLen(s, &l);
     size_t i;
@@ -51,7 +46,6 @@ void RMUtil_StringToLower(RedisModuleString *s) {
         *c = tolower(*c);
         ++c;
     }
-    
 }
 
 void RMUtil_StringToUpper(RedisModuleString *s) {
@@ -62,6 +56,33 @@ void RMUtil_StringToUpper(RedisModuleString *s) {
         *c = toupper(*c);
         ++c;
     }
-    
-    
+}
+
+void RMUtil_StringConcat(const Vector* rmStrings, const char* delimiter, char** concat) {
+    size_t length = 0;
+
+    // Compute length
+    for(int i = 0; i < Vector_Size(rmStrings); i++) {
+        RedisModuleString* string;
+        Vector_Get(rmStrings, i, &string);
+
+        size_t len;
+        RedisModule_StringPtrLen(string, &len);
+        length += len;
+    }
+
+    length += strlen(delimiter) * Vector_Size(rmStrings) + 1;
+    *concat = calloc(length, sizeof(char));
+
+    for(int i = 0; i < Vector_Size(rmStrings); i++) {
+        RedisModuleString* rmString;
+        Vector_Get(rmStrings, i, &rmString);
+
+        const char* string = RedisModule_StringPtrLen(rmString, NULL);
+
+        strcat(*concat, string);
+        strcat(*concat, delimiter);
+    }
+    // Discard last delimiter.
+    (*concat)[strlen(*concat) - strlen(delimiter)] = 0;
 }

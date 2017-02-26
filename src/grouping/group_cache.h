@@ -18,17 +18,17 @@ static const char* khID = "group_cache";
 khiter_t CacheGroupIter();
 
 // Advance iterator and returns key & value in current position.
-int CacheGroupIterNext(khiter_t* iter, char** key, Group** group);
+int CacheGroupIterNext(khiter_t *iter, char **key, Group **group);
 
 KHASH_MAP_INIT_STR(khID, Group*) // setup khash to handle string key with Group* payload
 
-int CacheGroupAdd(const char* key, const Group* group);
+int CacheGroupAdd(const char *key, Group *group);
 
-void CacheGroupRemove(const char* key);
+void CacheGroupRemove(const char *key);
 
 // Retrives a group,
 // Sets group to NULL if key is missing.
-void CacheGroupGet(const char* key, Group** group);
+void CacheGroupGet(const char *key, Group **group);
 
 void CacheGroupClear();
 

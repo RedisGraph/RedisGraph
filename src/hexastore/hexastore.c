@@ -6,7 +6,7 @@ HexaStore *_NewHexaStore() {
 	return NewTrieMap();
 }
 
-HexaStore *GetHexaStore(RedisModuleCtx *ctx, const char *id) {
+HexaStore *GetHexaStore(RedisModuleCtx *ctx, RedisModuleString *id) {
 	HexaStore *hexaStore = NULL;
 	
 	RedisModuleKey *key = RedisModule_OpenKey(ctx, id, REDISMODULE_WRITE);

@@ -1,6 +1,8 @@
 #include "resultset.h"
 #include "../value.h"
 #include "../grouping/group_cache.h"
+#include "../query_executor.h"
+#include "aggregate/aggregate.h"
 
 void _RedisModuleStringToNum(const RedisModuleString* value, SIValue* numValue) {
     // Cast to numeric.
@@ -25,14 +27,13 @@ int _heap_elem_compare(const void * A, const void * B, const void *udata) {
 Checks if we've already seen given records
 Returns 1 if the string did not exist otherwise 0
 */
-int __encounteredRecord(const ResultSet* set, const Record* record) {
+int __encounteredRecord(ResultSet* set, const Record* record) {
     char* str = Record_ToString(record);
     tm_len_t len = strlen(str);
 
     // Returns 1 if the string did NOT exist otherwise 0
-    int newRecord = TrieMapNode_Add(&set->trie, str, len,  NULL, NULL);
+    int newRecord = TrieMap_Add(set->trie, str, len, NULL, NULL);
     free(str);
-
     return !newRecord;
 }
 
@@ -137,7 +138,7 @@ void ResultSetHeader_Free(ResultSetHeader* header) {
     free(header);
 }
 
-ResultSet* NewResultSet(const QueryExpressionNode* ast) {
+ResultSet* NewResultSet(QueryExpressionNode* ast) {
     ResultSet* set = (ResultSet*)malloc(sizeof(ResultSet));
     set->ast = ast;
     set->heap = NULL;
@@ -170,7 +171,7 @@ ResultSet* NewResultSet(const QueryExpressionNode* ast) {
     return set;
 }
 
-int ResultSet_AddRecord(ResultSet* set, const Record* record) {
+int ResultSet_AddRecord(ResultSet* set, Record* record) {
     if(ResultSet_Full(set)) {
         return RESULTSET_FULL;
     }
@@ -322,7 +323,7 @@ void ResultSet_Free(RedisModuleCtx* ctx, ResultSet* set) {
     if(set != NULL) {
         // Free each record
         for(int i = 0; i < Vector_Size(set->records); i++) {
-            Vector* record;
+            Record* record;
             Vector_Get(set->records, i, &record);
             Record_Free(ctx, record);
             record = NULL;

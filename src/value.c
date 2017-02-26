@@ -175,7 +175,7 @@ void SIValue_ToString(SIValue v, char *buf, size_t len) {
     snprintf(buf, len, "%d", v.intval);
     break;
   case T_INT64:
-    snprintf(buf, len, "%ld", v.longval);
+    snprintf(buf, len, "%lld", v.longval);
     break;
   case T_UINT:
     snprintf(buf, len, "%zd", v.uintval);
@@ -244,7 +244,7 @@ int SI_LongVal_Cast(SIValue *v, SIType type) {
     break;
   case T_STRING: {
     char *buf = malloc(21);
-    snprintf(buf, 21, "%ld", v->longval);
+    snprintf(buf, 21, "%lld", v->longval);
     v->stringval = SI_StringValC(buf).stringval;
     break;
   }  

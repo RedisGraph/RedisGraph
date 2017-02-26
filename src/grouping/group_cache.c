@@ -13,7 +13,7 @@ khiter_t CacheGroupIter() {
     return kh_begin(__groupCache);
 }
 
-int CacheGroupIterNext(khiter_t* iter, char** key, Group** group) {
+int CacheGroupIterNext(khiter_t *iter, char **key, Group **group) {
     for(;*iter != kh_end(__groupCache); ++*iter) {
         if(kh_exist(__groupCache, *iter)) {
             *key = kh_key(__groupCache, *iter);
@@ -25,12 +25,12 @@ int CacheGroupIterNext(khiter_t* iter, char** key, Group** group) {
     return 0;
 }
 
-int CacheGroupAdd(const char* key, const Group* group) {
+int CacheGroupAdd(const char *key, Group *group) {
     __initGroupCache();
-    int res = kh_set(khID, __groupCache, key, group);
+    return kh_set(khID, __groupCache, key, group);
 }
 
-void CacheGroupRemove(const char* key) {
+void CacheGroupRemove(const char *key) {
     if(__groupCache == NULL) {
         return;
     }
@@ -43,7 +43,7 @@ void CacheGroupRemove(const char* key) {
 
 // Retrives a group,
 // Returns NULL if group is missing.
-void CacheGroupGet(const char* key, Group** group) {
+void CacheGroupGet(const char *key, Group **group) {
     if(__groupCache == NULL) {
         *group = NULL;
         return;

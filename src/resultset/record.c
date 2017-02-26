@@ -1,14 +1,9 @@
 #include "record.h"
+#include "../rmutil/strings.h"
 #include "../query_executor.h"
 
-Record* NewRecord(int* valuesCount) {
-    Record* r = (Record*)RedisModule_Alloc(sizeof(Record));
-
-    int len = 0;
-    if(valuesCount != NULL) {
-        len = *valuesCount;
-    }
-
+Record* NewRecord(size_t len) {
+    Record *r = (Record*)RedisModule_Alloc(sizeof(Record));
     r->values = NewVector(RedisModuleString*, len);
     return r;
 }
@@ -28,7 +23,7 @@ Record* Record_FromGraph(RedisModuleCtx *ctx, const QueryExpressionNode* ast, co
 // Creates a new result-set record from an aggregated group.
 Record* Record_FromGroup(RedisModuleCtx* ctx, const QueryExpressionNode* ast, const Group* g) {
     size_t elementsCount = Vector_Size(ast->returnNode->returnElements);
-    Record *r = NewRecord(&elementsCount);
+    Record *r = NewRecord(elementsCount);
     Vector* returnElements = ast->returnNode->returnElements;
     
     int keyIdx = 0;
@@ -65,7 +60,7 @@ Record* Record_FromGroup(RedisModuleCtx* ctx, const QueryExpressionNode* ast, co
 
 char* Record_ToString(const Record* record) {
     char* strRecord = NULL;
-    _concatRMStrings(record->values, ",", &strRecord);
+    RMUtil_StringConcat(record->values, ",", &strRecord);
     return strRecord;
 }
 

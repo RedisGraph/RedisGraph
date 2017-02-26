@@ -35,7 +35,7 @@ int __vector_PutPtr(Vector *v, size_t pos, void *elem);
 * the vector capacity, we return 0
 * otherwise 1
 */
-int Vector_Get(Vector *v, size_t pos, void *ptr);
+int Vector_Get(const Vector *v, size_t pos, void *ptr);
 
 /* Get the element at the end of the vector, decreasing the size by one */
 int Vector_Pop(Vector *v, void *ptr);
@@ -61,7 +61,7 @@ int __vector_PushPtr(Vector *v, void *elem);
 int Vector_Resize(Vector *v, size_t newcap);
 
 /* return the used size of the vector, regardless of capacity */
-int Vector_Size(Vector *v);
+int Vector_Size(const Vector *v);
 
 /* return the actual capacity */
 int Vector_Cap(Vector *v);

@@ -147,7 +147,7 @@ FilterNode* NewConditionNode(FilterNode *left, int op, FilterNode *right);
 
 WhereNode* NewWhereNode(FilterNode* filters);
 
-ReturnElementNode* NewReturnElementNode(ReturnElementType type, const Variable* variable, const char* aggFunc, const char* alias);
+ReturnElementNode* NewReturnElementNode(ReturnElementType type, Variable* variable, const char* aggFunc, const char* alias);
 
 ReturnNode* NewReturnNode(Vector* returnElements, int distinct);
 

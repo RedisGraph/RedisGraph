@@ -2,6 +2,7 @@
 #define __RMUTIL_STRINGS_H__
 
 #include "../redismodule.h"
+#include "./vector.h"
 
 /*
 * Create a new RedisModuleString object from a printf-style format and arguments.
@@ -20,4 +21,8 @@ void RMUtil_StringToLower(RedisModuleString *s);
 
 /* Converts a redis string to uppercase in place without reallocating anything */
 void RMUtil_StringToUpper(RedisModuleString *s);
+
+/* Concat redis strings within vector using delimiter */
+void RMUtil_StringConcat(const Vector* rmStrings, const char* delimiter, char** concat);
+
 #endif

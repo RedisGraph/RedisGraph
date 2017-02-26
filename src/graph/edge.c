@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include "edge.h"
 
-Edge* NewEdge(const Node* src, const Node* dest, const char* relationship) {
+Edge* NewEdge(Node* src, Node* dest, const char* relationship) {
 	Edge* edge = (Edge*)malloc(sizeof(Edge));
 	
 	edge->src = src;
@@ -16,12 +16,12 @@ Edge* NewEdge(const Node* src, const Node* dest, const char* relationship) {
 int ValidateEdge(const Edge* edge) {
 	if(edge->src == NULL) {
 		fprintf(stderr, "edge missing source node\n");
-		return NULL;
+		return 0;
 	}
 
 	if(edge->dest == NULL) {
 		fprintf(stderr, "edge missing destination node\n");
-		return NULL;
+		return 0;
 	}
 
 	return 1;

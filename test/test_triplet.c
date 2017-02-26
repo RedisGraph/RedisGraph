@@ -44,14 +44,6 @@ int main(int argc, char **argv) {
 
 	// test permutations
 	Triplet* triplet = NewTriplet("me", "love", "beer");
-	char** permutations = GetTripletPermutations(triplet);
-
-	assert(strcmp(permutations[0], "SPO:me:love:beer") == 0);
-	assert(strcmp(permutations[1], "SOP:me:beer:love") == 0);
-	assert(strcmp(permutations[2], "PSO:love:me:beer") == 0);
-	assert(strcmp(permutations[3], "POS:love:beer:me") == 0);
-	assert(strcmp(permutations[4], "OSP:beer:me:love") == 0);
-	assert(strcmp(permutations[5], "OPS:beer:love:me") == 0);
 	
 	// test triplet from string
 	Triplet* tripletFromString = TripletFromString("SPO:me:visit:Tokyo");
@@ -79,10 +71,6 @@ int main(int argc, char **argv) {
 	assert(TripletCompare(B, A) > 0);
 
 	// Clean up
-	for(int i = 0; i < 6; i++) {
-		free(permutations[i]);
-	}
-	free(permutations);
 	FreeTriplet(A);
 	FreeTriplet(B);
 	FreeTriplet(triplet);
