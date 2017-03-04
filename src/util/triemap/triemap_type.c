@@ -1,6 +1,6 @@
 #include "triemap.h"
 #include "triemap_type.h"
-#include "../../triplet.h"
+#include "../../hexastore/triplet.h"
 
 /* declaration of the type for redis registration. */
 RedisModuleType *TrieRedisModuleType;

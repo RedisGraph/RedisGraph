@@ -9,7 +9,6 @@
 #include "graph/graph.h"
 
 #include "value.h"
-#include "triplet.h"
 #include "value_cmp.h"
 #include "redismodule.h"
 #include "query_executor.h"
@@ -30,6 +29,7 @@
 #include "grouping/group.h"
 #include "grouping/group_cache.h"
 #include "hexastore/hexastore.h"
+#include "hexastore/triplet.h"
 
 #include "resultset/record.h"
 #include "resultset/resultset.h"
@@ -118,16 +118,6 @@ int MGraph_DeleteGraph(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
     return REDISMODULE_OK;
 }
 
-TripletIterator* queryTriplet(RedisModuleCtx *ctx, RedisModuleString* graph, const Triplet* triplet) {
-    HexaStore *hexaStore = GetHexaStore(ctx, graph);
-
-    char *prefix = TripletToString(triplet);
-    TripletIterator *iter = HexaStore_Search(hexaStore, prefix);
-    free(prefix);
-
-    return iter;
-}
-
 void _aggregateRecord(RedisModuleCtx *ctx, const ReturnNode* returnTree, const Graph* g) {
     // Get group
     Vector* groupKeys = ReturnClause_RetrieveGroupKeys(ctx, returnTree, g);
@@ -173,64 +163,7 @@ void _aggregateRecord(RedisModuleCtx *ctx, const ReturnNode* returnTree, const G
     // TODO: free valsToAgg
 }
 
-/*
-* To speed things up we'll try to skip triplets as early as possible
-* even though we might not have a complete graph (some IDs are still missing)
-* fastSkipTriplets returns the first triplet which pass the filter-tree
-* triplets which fail to pass are discarded.
-*/
-Triplet* _fastSkipTriplets(RedisModuleCtx *ctx, const QE_FilterNode *filterTree, TripletIterator *iterator, Graph *g, Node *src, Node *dest) {
-    // TODO: if triplet doesn't pass filter below we've got a leak.
-    Triplet* triplet = TripletIterator_Next(iterator);
-    if(triplet == NULL) {
-        return NULL;
-    }
-
-    // No filters
-    if(filterTree == NULL) {
-        return triplet;
-    }
-
-    src->id = triplet->subject;
-    dest->id = NULL;
-
-    // Try to fast skip current src id
-    while(applyFilters(ctx, g, filterTree) != 1) {
-        // Skip source id
-        while((triplet = TripletIterator_Next(iterator), triplet != NULL) && strcmp(triplet->subject, src->id) == 0) {
-            FreeTriplet(triplet);
-        }
-
-        if(triplet != NULL) {
-            // Try new source id
-            src->id = triplet->subject;
-        } else {
-            // Consumed iterator
-            return NULL;
-        }
-    }
-
-    dest->id = triplet->object;
-
-    while(applyFilters(ctx, g, filterTree) != 1) {
-        // Skip dest id
-        while((triplet = TripletIterator_Next(iterator), triplet != NULL) && strcmp(triplet->object, dest->id) == 0) {
-            FreeTriplet(triplet);
-        }
-
-        if(triplet != NULL) {
-            // Try new dest id
-            dest->id = triplet->object;
-        } else {
-            // Consumed iterator
-            return NULL;
-        }
-    }
-
-    return triplet;
-}
-
-void QueryNode(RedisModuleCtx *ctx, RedisModuleString *graphName, Graph* g, Node* n, Vector* entryPoints, const QE_FilterNode* filterTree, const QueryExpressionNode* ast, ResultSet* returnedSet) {
+void QueryNode(RedisModuleCtx *ctx, RedisModuleString *graphName, Graph *g, Node *n, Vector *entryPoints, const QE_FilterNode *filterTree, const QueryExpressionNode *ast, ResultSet *returnedSet) {
     Node* src = n;
     for(int i = 0; i < Vector_Size(src->outgoingEdges) && !ResultSet_Full(returnedSet); i++) {
         Edge* edge;
@@ -241,7 +174,9 @@ void QueryNode(RedisModuleCtx *ctx, RedisModuleString *graphName, Graph* g, Node
         Triplet* triplet = TripletFromEdge(edge);
         
         // Query graph using triplet, no filters are applied at this stage
-        TripletIterator* cursor = queryTriplet(ctx, graphName, triplet);
+        // TODO: pass hexastore to QueryNode.
+        HexaStore *hexaStore = GetHexaStore(ctx, graphName);
+        TripletIterator *cursor = HexaStore_QueryTriplet(hexaStore, triplet);
         FreeTriplet(triplet);
 
         // Backup original node IDs
@@ -252,7 +187,7 @@ void QueryNode(RedisModuleCtx *ctx, RedisModuleString *graphName, Graph* g, Node
         // Run through cursor.
         while(!ResultSet_Full(returnedSet)) {
             // Fast skip triplets which do not pass filters
-            triplet = _fastSkipTriplets(ctx, filterTree, cursor, g, src, dest);
+            triplet = FastSkipTriplets(ctx, filterTree, cursor, g, src, dest);
             if(triplet == NULL) {
                 // Couldn't find a triplet which agrees with filters
                 break;
@@ -336,6 +271,13 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
     CacheGroupClear(); // Clear group cache before query execution.
     
+    if(ReturnClause_ContainsCollapsedNodes(parseTree->returnNode) == 1) {
+        Graph *graphClone = Graph_Clone(graph);
+        // Expend collapsed nodes.
+        ReturnClause_ExpendCollapsedNodes(ctx, parseTree->returnNode, graphName, graphClone);
+        Graph_Free(graphClone);
+    }
+
     // Construct a new empty result-set.
     ResultSet* resultSet = NewResultSet(parseTree);
     QueryNode(ctx, graphName, graph, startNode, entryPoints, filterTree, parseTree, resultSet);

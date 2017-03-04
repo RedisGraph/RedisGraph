@@ -25,8 +25,9 @@ typedef enum {
 } CompareValueType;
 
 typedef enum {
-	N_PROP,
-	N_AGG_FUNC
+	N_NODE,		// Entire entity
+	N_PROP,		// Entity's property
+	N_AGG_FUNC 	// Aggregation function
 } ReturnElementType;
 
 typedef enum {
@@ -97,7 +98,7 @@ typedef struct {
 } WhereNode;
 
 typedef struct {
-	Vector* returnElements;
+	Vector* returnElements; // Vector of ReturnElementNode pointers
 	int distinct;
 } ReturnNode;
 
@@ -138,33 +139,23 @@ typedef struct {
 
 ChainElement* NewChainEntity(char* alias, char* id);
 ChainElement* NewChainLink(char* relationship, LinkDirection dir);
-
 MatchNode* NewMatchNode(Vector* elements);
-
 FilterNode* NewConstantPredicateNode(const char* alias, const char* property, int op, SIValue value);
 FilterNode* NewVaryingPredicateNode(const char* lAlias, const char* lProperty, int op, const char* rAlias, const char* rProperty);
 FilterNode* NewConditionNode(FilterNode *left, int op, FilterNode *right);
-
 WhereNode* NewWhereNode(FilterNode* filters);
-
 ReturnElementNode* NewReturnElementNode(ReturnElementType type, Variable* variable, const char* aggFunc, const char* alias);
-
 ReturnNode* NewReturnNode(Vector* returnElements, int distinct);
-
 OrderNode* NewOrderNode(Vector* columns, OrderByDirection direction);
-
 ColumnNode* NewColumnNode(const char* alias, const char* prop, ColumnNodeType type);
 ColumnNode* ColumnNodeFromVariable(const Variable* variable);
 ColumnNode* ColumnNodeFromAlias(const char* alias);
-void FreeColumnNode(ColumnNode* node);
-
 Variable* NewVariable(const char* alias, const char* property);
-
 LimitNode* NewLimitNode(int limit);
-
 QueryExpressionNode* NewQueryExpressionNode(MatchNode* matchNode, WhereNode* whereNode, ReturnNode* returnNode, OrderNode* orderNode, LimitNode* limitNode);
 
 void FreeVariable(Variable* v);
+void FreeColumnNode(ColumnNode* node);
 void FreeMatchNode(MatchNode* matchNode);
 void FreeWhereNode(WhereNode* whereNode);
 void FreeFilterNode(FilterNode* filterNode);

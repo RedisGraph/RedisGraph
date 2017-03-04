@@ -1,9 +1,9 @@
 #ifndef TRIPLET_H
 #define TRIPLET_H
 
-#include "graph/edge.h"
-#include "redismodule.h"
-#include "util/triemap/triemap.h"
+#include "../graph/edge.h"
+#include "../redismodule.h"
+#include "../util/triemap/triemap.h"
 
 typedef enum {UNKNOW, O, P, PO, S, SO, SP, SPO} TripletKind;
 

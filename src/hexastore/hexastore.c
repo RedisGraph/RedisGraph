@@ -1,5 +1,4 @@
 #include "hexastore.h"
-#include "../triplet.h"
 #include "../util/triemap/triemap_type.h"
 
 HexaStore *_NewHexaStore() {
@@ -86,4 +85,11 @@ TripletIterator *HexaStore_Search(HexaStore* hexaStore, const char *prefix) {
 	char* prefix_dup = strdup(prefix);
 	TrieMapIterator *iter = TrieMap_Iterate(hexaStore, prefix_dup, strlen(prefix_dup));
 	return NewTripletIterator(iter);
+}
+
+TripletIterator* HexaStore_QueryTriplet(HexaStore *hexaStore, const Triplet* triplet) {
+	char *prefix = TripletToString(triplet);
+    TripletIterator *iter = HexaStore_Search(hexaStore, prefix);
+    free(prefix);
+    return iter;
 }

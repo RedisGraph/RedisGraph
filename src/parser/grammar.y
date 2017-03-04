@@ -162,6 +162,9 @@ returnElement(A) ::= variable(B) AS STRING(C). {
 returnElement(A) ::= aggFunc(B). {
 	A = B;
 }
+returnElement(A) ::= STRING(B). {
+	A = NewReturnElementNode(N_NODE, NewVariable(B.strval, NULL), NULL, NULL);
+}
 
 %type variable {Variable*}
 

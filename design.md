@@ -111,6 +111,7 @@ Different graph databases uses different structures for representing a graph, so
 ### Graph representation: Hexastore
 
 A Hexastore is simply a list of triplets, where each triplet is composed of three parts:
+
 1. Subject
 2. Predicate
 3. Object
@@ -175,6 +176,7 @@ RediGraph will
 
 ### Query parser
 Given a valid query the parser will generate an AST containing four primary nodes one for each clause:
+
 1. MATCH
 2. WHERE
 3. RETURN

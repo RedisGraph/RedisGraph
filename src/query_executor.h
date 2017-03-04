@@ -1,11 +1,11 @@
 #ifndef __QUERY_EXECUTOR_H
 #define __QUERY_EXECUTOR_H
 
-#include "triplet.h"
 #include "graph/graph.h"
 #include "value_cmp.h"
 #include "parser/ast.h"
 #include "redismodule.h"
+#include "hexastore/triplet.h"
 
 // Nodes within the filter tree are one of two types
 // either a predicate node
@@ -69,18 +69,24 @@ QE_FilterNode* BuildFiltersTree(const FilterNode* root);
 int applyFilters(RedisModuleCtx *ctx, Graph* g, QE_FilterNode* root);
 
 // Retrieves requested properties from the graph.
-Vector* ReturnClause_RetrievePropValues(RedisModuleCtx *ctx, const ReturnNode* returnNode, const Graph* g);
+Vector* ReturnClause_RetrievePropValues(RedisModuleCtx *ctx, const ReturnNode *returnNode, const Graph *g);
 
 // Retrieves all properties which define the group key from given graph.
-Vector* ReturnClause_RetrieveGroupKeys(RedisModuleCtx *ctx, const ReturnNode* returnNode, const Graph* g);
+Vector* ReturnClause_RetrieveGroupKeys(RedisModuleCtx *ctx, const ReturnNode *returnNode, const Graph *g);
 
 // Retrieves all aggregated properties from graph.
-Vector* ReturnClause_RetrieveGroupAggVals(RedisModuleCtx *ctx, const ReturnNode* returnNode, const Graph* g);
+Vector* ReturnClause_RetrieveGroupAggVals(RedisModuleCtx *ctx, const ReturnNode *returnNode, const Graph *g);
 
-int ReturnClause_ContainsAggregation(const ReturnNode* returnNode);
+int ReturnClause_ContainsAggregation(const ReturnNode *returnNode);
 
 // Retrieves all aggregation functions used within given return clause.
 // Returns a vector of AggCtx*
-Vector* ReturnClause_GetAggFuncs(RedisModuleCtx *ctx, const ReturnNode* returnNode);
+Vector* ReturnClause_GetAggFuncs(RedisModuleCtx *ctx, const ReturnNode *returnNode);
 
+// Checks to see if return clause contains a collapsed node.
+int ReturnClause_ContainsCollapsedNodes(const ReturnNode *returnNode);
+
+void ReturnClause_ExpendCollapsedNodes(RedisModuleCtx *ctx, ReturnNode *returnNode, RedisModuleString *graphName, Graph *graph);
+
+Triplet* FastSkipTriplets(RedisModuleCtx *ctx, const QE_FilterNode *filterTree, TripletIterator *iterator, Graph *g, Node *src, Node *dest);
 #endif

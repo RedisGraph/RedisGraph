@@ -82,9 +82,19 @@ ResultSetHeader* NewResultSetHeader(const QueryExpressionNode *ast) {
         ReturnElementNode* returnElementNode;
         Vector_Get(ast->returnNode->returnElements, i, &returnElementNode);
 
-        size_t columnNameLen = strlen(returnElementNode->variable->alias) + strlen(returnElementNode->variable->property) + 1;
-        char* columnName = malloc(sizeof(char) * columnNameLen);
-        sprintf(columnName, "%s.%s", returnElementNode->variable->alias, returnElementNode->variable->property);
+        size_t columnNameLen = 0;
+        char* columnName = NULL;
+
+        if(returnElementNode->type == N_PROP) {
+            columnNameLen = strlen(returnElementNode->variable->alias) + strlen(returnElementNode->variable->property) + 1;
+            columnName = malloc(sizeof(char) * columnNameLen);
+            sprintf(columnName, "%s.%s", returnElementNode->variable->alias, returnElementNode->variable->property);
+        } else {
+           //  returnElementNode->type == N_AGG_FUNC
+            columnNameLen = strlen(returnElementNode->func) + 2 + strlen(returnElementNode->variable->alias) + strlen(returnElementNode->variable->property) + 1;
+            columnName = malloc(sizeof(char) * columnNameLen);
+            sprintf(columnName, "%s(%s.%s)", returnElementNode->func, returnElementNode->variable->alias, returnElementNode->variable->property);
+        }
 
         Column* column = NewColumn(columnName, returnElementNode->alias);
         free(columnName);
@@ -124,6 +134,39 @@ ResultSetHeader* NewResultSetHeader(const QueryExpressionNode *ast) {
     }
 
     return header;
+}
+
+char* ResultSetHeader_ToString(const ResultSetHeader *header, size_t *strLen) {
+    size_t len = 0;
+
+    for(int i = 0; i < header->columnsLen; i++) {
+        Column *c = header->columns[i];
+        if(c->alias != NULL) {
+            len += strlen(c->alias)+1;
+        } else {
+            len += strlen(c->name)+1;
+        }
+    }
+
+    char* str = calloc(len, sizeof(char));
+    len = 0;
+
+    for(int i = 0; i < header->columnsLen; i++) {
+        Column *c = header->columns[i];
+        if(c->alias != NULL) {
+            sprintf(str+len, "%s,", c->alias);
+            len += strlen(c->alias)+1;
+        } else {
+            sprintf(str+len, "%s,", c->name);
+            len += strlen(c->name)+1;
+        }
+    }
+
+    str[len-1] = 0;
+    if(strLen != NULL) {
+        *strLen = len;
+    }
+    return str;
 }
 
 void ResultSetHeader_Free(ResultSetHeader* header) {
@@ -268,10 +311,18 @@ void ResultSet_Replay(RedisModuleCtx* ctx, ResultSet* set) {
     } else {
         resultSetSize = Vector_Size(set->records);
     }
-    resultSetSize++; // Additional one for time measurement
+
+    resultSetSize += 2; // Additional two header and time measurement.
 
     // Replay final result set.
     RedisModule_ReplyWithArray(ctx, resultSetSize);
+
+    // Replay with table header.
+    size_t strHeaderLen = 0;
+    char* strHeader = ResultSetHeader_ToString(set->header, &strHeaderLen);
+    RedisModule_ReplyWithStringBuffer(ctx, strHeader, strHeaderLen);
+    free(strHeader);
+
     char *strRecord = NULL;
     if(set->ordered) {
         if(set->limit != RESULTSET_UNLIMITED) {

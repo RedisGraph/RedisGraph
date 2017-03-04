@@ -100,7 +100,7 @@ def main():
         qDesc = "Friends of friends who are single and over 30"
         query = """MATCH (ME:"Roi Lipman")-[friend]->()-[friend]->(fof) 
                     WHERE fof.status = single and fof.age > 30
-                    RETURN fof.name, fof.age""";
+                    RETURN fof""";
         ExecuteQuery(r, query, graph, qDesc)
 
         #------------------------------------------------------------------------
@@ -115,7 +115,7 @@ def main():
 
         qDesc = "Friends who've been to places I've visited"
         query = """MATCH (ME:"Roi Lipman")-[visited]->(country)<-[visited]-(f)<-[friend]-(:"Roi Lipman")
-                RETURN f.name, country.name""";
+                RETURN f.name, country""";
         ExecuteQuery(r, query, graph, qDesc)
 
         #------------------------------------------------------------------------
@@ -125,7 +125,7 @@ def main():
                 WHERE f.age > ME.age
                 RETURN f.name, f.age""";
         ExecuteQuery(r, query, graph, qDesc)
-        
+
         #------------------------------------------------------------------------
 
         qDesc = "Count for each friend how many countires he or she been to"
@@ -141,6 +141,8 @@ def main():
         query = """MATCH (ME:"Roi Lipman")-[friend]->(f)
                 RETURN ME.name, count(f.name), sum(f.age), avg(f.age), min(f.age), max(f.age)""";
         ExecuteQuery(r, query, graph, qDesc)
+
+        #------------------------------------------------------------------------
 
 if __name__ == '__main__':
 	main()

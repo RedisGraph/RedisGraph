@@ -101,7 +101,7 @@ def main():
 
 	query = """MATCH (actor)-[act]->(movie)
 	WHERE actor.age >= 50 AND movie.votes > 10000 AND movie.rating > 8.5
-	RETURN actor.name, actor.age, movie.title, movie.votes, movie.rating"""
+	RETURN actor, movie"""
 
 	ExecuteQuery(r, query, graph, qDesc)
 
@@ -111,7 +111,7 @@ def main():
 	query = """MATCH (actor)-[act]->(movie)
 	WHERE (movie.gener = Drama OR movie.gener = Comedy)
 	AND movie.rating < 6.0 AND movie.votes > 80000
-	RETURN actor.name, movie.title, movie.gener, movie.rating"""
+	RETURN actor.name, movie"""
 
 	ExecuteQuery(r, query, graph, qDesc)
 
@@ -120,7 +120,7 @@ def main():
 
 	query = """MATCH (Cameron:"Cameron Diaz")-[act]->(movie)<-[act]-(actor)
 	WHERE actor.age < 35
-	RETURN actor.name, actor.age, movie.title""";
+	RETURN actor, movie.title""";
 
 	ExecuteQuery(r, query, graph, qDesc)
 
@@ -129,7 +129,7 @@ def main():
 		
 	query = """MATCH (Cameron:"Cameron Diaz")-[act]->(movie)<-[act]-(actor)
 	WHERE actor.age < Cameron.age
-	RETURN actor.name, actor.age, movie.title""";
+	RETURN actor, movie.title""";
 
 	ExecuteQuery(r, query, graph, qDesc)
 

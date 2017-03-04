@@ -203,13 +203,11 @@ ReturnElementNode* NewReturnElementNode(ReturnElementType type, Variable* variab
 	returnElementNode->alias = NULL;
 
 	if(type == N_AGG_FUNC) {
-		returnElementNode->func = (char*)malloc(strlen(aggFunc) + 1);
-		strcpy(returnElementNode->func, aggFunc);
+		returnElementNode->func = strdup(aggFunc);
 	}
 
 	if(alias != NULL) {
-		returnElementNode->alias = (char*)malloc(strlen(alias) + 1);
-		strcpy(returnElementNode->alias, alias);
+		returnElementNode->alias = strdup(alias);
 	}
 	
 	return returnElementNode;
@@ -251,22 +249,27 @@ void FreeQueryExpressionNode(QueryExpressionNode* queryExpressionNode) {
 	free(queryExpressionNode);
 }
 
-
 Variable* NewVariable(const char* alias, const char* property) {
 	Variable* v = (Variable*)malloc(sizeof(Variable));
-	v->alias = (char*)malloc(sizeof(char) * (strlen(alias) + 1));
-	v->property = (char*)malloc(sizeof(char) * (strlen(property) + 1));
 
-	strcpy(v->alias, alias);
-	strcpy(v->property, property);
+	if(alias != NULL) {
+		v->alias = strdup(alias);
+	}
+	if(property != NULL) {
+		v->property = strdup(property);
+	}
 
 	return v;
 }
 
 void FreeVariable(Variable* v) {
 	if(v != NULL) {
-		free(v->alias);
-		free(v->property);
+		if(v->alias != NULL) {
+			free(v->alias);
+		}
+		if(v->property != NULL) {
+			free(v->property);
+		}
 		free(v);
 	}
 }

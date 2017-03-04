@@ -2,6 +2,8 @@
 #include "parser/grammar.h"
 #include "rmutil/vector.h"
 #include "graph/node.h"
+#include "hexastore/hexastore.h"
+#include "hexastore/triplet.h"
 #include "aggregate/agg_ctx.h"
 #include "aggregate/repository.h"
 
@@ -344,6 +346,17 @@ Vector* ReturnClause_RetrieveGroupAggVals(RedisModuleCtx *ctx, const ReturnNode*
     return _ReturnClause_RetrieveValues(ctx, returnNode, g, N_AGG_FUNC);
 }
 
+int ReturnClause_ContainsCollapsedNodes(const ReturnNode *returnNode) {
+    for(int i = 0; i < Vector_Size(returnNode->returnElements); i++) {
+        ReturnElementNode *returnElementNode;
+        Vector_Get(returnNode->returnElements, i, &returnElementNode);
+        if(returnElementNode->type == N_NODE) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
 // Checks if return clause uses aggregation.
 int ReturnClause_ContainsAggregation(const ReturnNode* returnNode) {
     int res = 0;
@@ -380,4 +393,156 @@ Vector* ReturnClause_GetAggFuncs(RedisModuleCtx *ctx, const ReturnNode* returnNo
     }
 
     return aggFunctions;
+}
+
+/*
+* To speed things up we'll try to skip triplets as early as possible
+* even though we might not have a complete graph (some IDs are still missing)
+* fastSkipTriplets returns the first triplet which pass the filter-tree
+* triplets which fail to pass are discarded.
+*/
+Triplet* FastSkipTriplets(RedisModuleCtx *ctx, const QE_FilterNode *filterTree, TripletIterator *iterator, Graph *g, Node *src, Node *dest) {
+    // TODO: if triplet doesn't pass filter below we've got a leak.
+    Triplet* triplet = TripletIterator_Next(iterator);
+    if(triplet == NULL) {
+        return NULL;
+    }
+
+    // No filters
+    if(filterTree == NULL) {
+        return triplet;
+    }
+
+    src->id = triplet->subject;
+    dest->id = NULL;
+
+    // Try to fast skip current src id
+    while(applyFilters(ctx, g, filterTree) != 1) {
+        // Skip source id
+        while((triplet = TripletIterator_Next(iterator), triplet != NULL) && strcmp(triplet->subject, src->id) == 0) {
+            FreeTriplet(triplet);
+        }
+
+        if(triplet != NULL) {
+            // Try new source id
+            src->id = triplet->subject;
+        } else {
+            // Consumed iterator
+            return NULL;
+        }
+    }
+
+    dest->id = triplet->object;
+
+    while(applyFilters(ctx, g, filterTree) != 1) {
+        // Skip dest id
+        while((triplet = TripletIterator_Next(iterator), triplet != NULL) && strcmp(triplet->object, dest->id) == 0) {
+            FreeTriplet(triplet);
+        }
+
+        if(triplet != NULL) {
+            // Try new dest id
+            dest->id = triplet->object;
+        } else {
+            // Consumed iterator
+            return NULL;
+        }
+    }
+
+    return triplet;
+}
+
+void _ExpendReturnClause(RedisModuleCtx *ctx, RedisModuleString *graphName, Graph *g, Node *n, Vector *entryPoints, ReturnNode *returnNode) {
+    Node* src = n;
+    for(int i = 0; i < Vector_Size(src->outgoingEdges); i++) {
+        Edge* edge;
+        Vector_Get(src->outgoingEdges, i, &edge);
+        Node* dest = edge->dest;
+
+        // Create a triplet out of edge
+        Triplet* triplet = TripletFromEdge(edge);
+
+        // Query graph using triplet, no filters are applied at this stage
+        HexaStore *hexaStore = GetHexaStore(ctx, graphName);
+        TripletIterator *cursor = HexaStore_QueryTriplet(hexaStore, triplet);
+
+        FreeTriplet(triplet);
+
+        // Run through cursor.
+        // Fast skip triplets which do not pass filters
+        triplet = FastSkipTriplets(ctx, NULL, cursor, g, src, dest);
+        if(triplet == NULL) {
+            // Couldn't find a triplet which agrees with filters
+            return;
+        } else {
+            // Set nodes
+            src->id = triplet->subject;
+            edge->relationship = triplet->predicate;
+            dest->id = triplet->object;
+        }
+        // Advance to next node
+        if(Vector_Size(dest->outgoingEdges) > 0) {
+            return _ExpendReturnClause(ctx, graphName, g, dest, entryPoints, returnNode);
+        } else if(Vector_Size(entryPoints) > 0) {
+            // Additional entry point
+            Node* entryPoint = NULL;
+            Vector_Pop(entryPoints, &entryPoint);
+            return _ExpendReturnClause(ctx, graphName, g, entryPoint, entryPoints, returnNode);
+        } else {
+            // We've reach the end of the graph
+            // Expend each collapsed return node.
+            Vector *returnElements = NewVector(ReturnElementNode *, Vector_Size(returnNode->returnElements));
+
+            for(int i = 0; i < Vector_Size(returnNode->returnElements); i++) {
+                ReturnElementNode *returnElementNode;
+                Vector_Get(returnNode->returnElements, i, &returnElementNode);
+
+                if(returnElementNode->type == N_NODE) {
+                    Node* collapsedNode = Graph_GetNodeByAlias(g, returnElementNode->variable->alias);
+
+                    // Issue HGETALL.
+                    RedisModuleCallReply *reply = RedisModule_Call(ctx, "HGETALL", "c", collapsedNode->id);
+                    if(RedisModule_CallReplyType(reply) != REDISMODULE_REPLY_ARRAY) {
+                        printf("ERROE expecting an array \n");
+                        break;
+                    } else {
+                        // Consume HGETALL.
+                        size_t reply_len = RedisModule_CallReplyLength(reply);
+                        // Foreach element within node's hash
+                        // We're only interested in attribute name.
+                        for(int idx = 0; idx < reply_len; idx+=2) {
+                            RedisModuleCallReply *subreply;
+                            subreply = RedisModule_CallReplyArrayElement(reply, idx);
+                            size_t len;
+                            const char *property = RedisModule_CallReplyStringPtr(subreply, &len);
+                            char* prop = calloc(len+1, sizeof(char));
+                            memcpy(prop, property, len);
+
+                            // Create a new return element.
+                            Variable* var = NewVariable(collapsedNode->alias, prop);
+                            ReturnElementNode* retElem = NewReturnElementNode(N_PROP, var, NULL, returnElementNode->alias);
+                            Vector_Push(returnElements, retElem);
+                            free(prop);
+                        }
+                    }
+                    RedisModule_FreeCallReply(reply);
+                } else {
+                    Vector_Push(returnElements, returnElementNode);
+                }
+            }
+
+            // Swap collapsed return clause with expended one.
+            // TODO: Free overide vector.
+            returnNode->returnElements = returnElements;
+        }
+        TripletIterator_Free(cursor);
+    }
+}
+
+void ReturnClause_ExpendCollapsedNodes(RedisModuleCtx *ctx, ReturnNode *returnNode, RedisModuleString *graphName, Graph *graph) {
+    // TODO: Check if return clause contains a collapsed node before running ExpendReturnClause.
+    Vector* entryPoints = Graph_GetNDegreeNodes(graph, 0);
+    Node* startNode = NULL;
+    Vector_Pop(entryPoints, &startNode);
+    _ExpendReturnClause(ctx, graphName, graph, startNode, entryPoints, returnNode);
 }

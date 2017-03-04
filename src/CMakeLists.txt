@@ -4,11 +4,11 @@
 set(_graph_files
       ../src/value.c
       ../src/module.c
-      ../src/triplet.c
       ../src/value_cmp.c
       ../src/query_executor.c
 
       ../src/hexastore/hexastore.c
+      ../src/hexastore/triplet.c
 
       ../src/graph/edge.c
       ../src/graph/node.c

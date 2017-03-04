@@ -3,7 +3,7 @@
 
 #include "../redismodule.h"
 #include "../util/triemap/triemap.h"
-#include "../triplet.h"
+#include "triplet.h"
 
 // TODO: find a suiteable place to store hexastores.
 typedef TrieMap HexaStore;
@@ -18,5 +18,7 @@ void HexaStore_RemoveAllPerm(HexaStore *hexaStore, const char *subject, const ch
 
 // TODO: return HexaStoreIterator.
 TripletIterator *HexaStore_Search(HexaStore* hexaStore, const char *prefix);
+
+TripletIterator *HexaStore_QueryTriplet(HexaStore *hexaStore, const Triplet* triplet);
 
 #endif
