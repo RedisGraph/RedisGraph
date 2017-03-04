@@ -125,9 +125,11 @@ WHERE actor.age >= director.age AND actor.age > 32
 ```
 
 #### RETURN
-In its simple form Return defines which properties the returned result-set will contain, its structure is a list of `alias.property` seperated by comma. e.g. 
+In its simple form Return defines which properties the returned result-set will contain,
+its structure is a list of `alias.property` seperated by comma, for convenience it's possible to specify
+only alias. e.g.
 ```sh 
-RETURN movie.title, actor.name
+RETURN movie.title, actor
 ```
 
 Use the DISTINCT keyword to remove duplications within the result-set
