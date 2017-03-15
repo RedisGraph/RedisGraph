@@ -1,0 +1,20 @@
+site_name: RedisGraph
+pages:
+    - 'RedisGraph': index.md
+    - 'Design': design.md
+
+repo_url: https://github.com/RedisLabsModules/redis-module-graph
+theme: material
+markdown_extensions:
+  - admonition
+  - codehilite(guess_lang=false)
+  - toc(permalink=true)
+extra:
+  palette:
+    primary: 'indigo'
+    accent: 'light blue'
+  social:
+    - type: 'twitter'
+      link: 'https://twitter.com/redislabs'
+  feature:
+    tabs: true
