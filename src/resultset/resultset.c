@@ -2,7 +2,6 @@
 #include "../value.h"
 #include "../grouping/group_cache.h"
 #include "../query_executor.h"
-#include "aggregate/aggregate.h"
 
 void _RedisModuleStringToNum(const RedisModuleString* value, SIValue* numValue) {
     // Cast to numeric.

@@ -3,14 +3,72 @@
 #include "assert.h"
 #include "../src/graph/graph.h"
 
+void test_graph_shortestpath() {
+    Graph *graph = NewGraph();
+    Node *a = NewNode("a", "a");
+    Node *b = NewNode("b", "b");
+    Node *c = NewNode("c", "c");
+    Node *d = NewNode("d", "d");
+    Node *e = NewNode("e", "e");
+    Node *f = NewNode("f", "f");
+    Node *g = NewNode("g", "g");
+
+    Graph_AddNode(graph, a);
+    Graph_AddNode(graph, b);
+    Graph_AddNode(graph, c);
+    Graph_AddNode(graph, d);
+    Graph_AddNode(graph, e);
+    Graph_AddNode(graph, f);
+    Graph_AddNode(graph, g);
+
+    ConnectNode(a, b, "");
+    ConnectNode(a, c, "");
+
+    ConnectNode(b, d, "");
+    ConnectNode(b, e, "");
+
+    ConnectNode(c, f, "");
+
+    ConnectNode(e, f, "");
+
+    ConnectNode(f, g, "");
+
+    // path: a->c->f->g
+    // path a->b->e->f->g
+
+    Vector *path = Graph_ShortestPath(graph, a, g);
+    assert(Vector_Size(path) == 4);
+
+    // Validate path
+    Node *n;
+    Vector_Pop(path, &n);
+    assert(strcmp (n->alias, "a") == 0);
+
+    Vector_Pop(path, &n);
+    assert(strcmp (n->alias, "c") == 0);
+
+    Vector_Pop(path, &n);
+    assert(strcmp (n->alias, "f") == 0);
+
+    Vector_Pop(path, &n);
+    assert(strcmp (n->alias, "g") == 0);
+
+    path = Graph_ShortestPath(graph, g, a);
+    assert(path == NULL);
+}
+
 void test_graph_clone() {
     Graph* origin = NewGraph();
 
     // (A:1)-[]->()-[]->(B)
-    Node* a = Graph_AddNode(origin, "A", "1");
-    Node* blank = Graph_AddNode(origin, "", "");
-    Node* b = Graph_AddNode(origin, "B", "");
-    
+    Node *a = NewNode("A", "1");
+    Node *b = NewNode("B", "2");
+    Node *blank = NewNode("", "");
+
+    Graph_AddNode(origin, a);
+    Graph_AddNode(origin, blank);
+    Graph_AddNode(origin, b);
+
     ConnectNode(a, blank, "");
     ConnectNode(blank, b, "");
 
@@ -39,7 +97,6 @@ void test_graph_clone() {
     assert(Vector_Size(blankClone->outgoingEdges) == Vector_Size(blank->outgoingEdges));
     assert(Vector_Size(bClone->outgoingEdges) == Vector_Size(b->outgoingEdges));
 
-
     Edge* e;
     Vector_Get(aClone->outgoingEdges, 0, &e);
     assert(e != NULL);
@@ -54,6 +111,7 @@ void test_graph_clone() {
 
 int main(int argc, char **argv) {
     test_graph_clone();
-	printf("PASS!");
+    test_graph_shortestpath();
+	printf("PASS!\n");
     return 0;
 }
