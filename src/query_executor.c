@@ -16,7 +16,8 @@ Graph* BuildGraph(const MatchNode* matchNode) {
         Vector_Get(matchNode->chainElements, i, &element);
 
         if(element->t == N_ENTITY) {
-            Node* n = Graph_AddNode(g, element);
+            Node *n = NewNode(element->e.alias, element->e.id);
+            Graph_AddNode(g, n);
             Vector_Push(stack, n);
         } else {
             Vector_Push(stack, &element->l);
