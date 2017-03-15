@@ -33,18 +33,22 @@ Graph* Graph_Clone(const Graph* graph) {
             Node* dest = _getNodeByInternalID(clone, e->dest->internalId);
 
             if(src == NULL) {
-                src = Graph_AddNode(clone, e->src->alias, e->src->id);
-                uuid_copy(src->internalId, e->src->internalId);
+                src = Node_Clone(e->src);
+                Graph_AddNode(clone, src);
             }
             if(dest == NULL) {
-                dest = Graph_AddNode(clone, e->dest->alias, e->dest->id);
-                uuid_copy(dest->internalId, e->dest->internalId);
+                dest = Node_Clone(e->dest);
+                Graph_AddNode(clone, dest);
             }
 
             ConnectNode(src, dest, e->relationship);
         }
     }
     return clone;
+}
+
+int Graph_ContainsNode(const Graph *graph, const Node *node) {
+    return _getNodeByInternalID(graph, node->internalId) != NULL;
 }
 
 // Search the graph for a node with given alias 
@@ -65,21 +69,12 @@ Node* Graph_GetNodeByAlias(const Graph* g, const char* alias) {
 }
 
 // Adds a new node to the graph
-Node* Graph_AddNode(Graph* g, const char* alias, const char* id) {
-    Node* n = Graph_GetNodeByAlias(g, alias);
-    
-    if(n == NULL) {
-        n = NewNode(alias, id);
-        Vector_Push(g->nodes, n);
-    } else {
-        // Update node ID in case it is missing
-        if(n->id == NULL && id != NULL) {
-            n->id = (char*)malloc(sizeof(char) * (strlen(id) + 1));
-            strcpy(n->id, id);
-        }
+int Graph_AddNode(Graph* g, Node *n) {
+    if(Graph_ContainsNode(g, n)) {
+        return 0;
     }
-
-    return n;
+    Vector_Push(g->nodes, n);
+    return 1;
 }
 
 Vector* Graph_GetNDegreeNodes(Graph* g, int degree) {
@@ -105,6 +100,67 @@ Vector* Graph_GetNDegreeNodes(Graph* g, int degree) {
     }
 
     return nodes;
+}
+
+Vector* Graph_ShortestPath(Graph *g, Node *src, Node *dest) {
+    Vector* res = NULL;
+    Graph *reversedGraph = NewGraph();
+    Node *srcClone = Node_Clone(src);
+    Graph_AddNode(reversedGraph, srcClone);
+
+    // Add src node to nodes to visit
+    int nodes_count = Vector_Size(g->nodes);
+    int node_idx = 0;
+    Vector *nodesToVisit = NewVector(Node*, nodes_count);
+    Vector_Push(nodesToVisit, src);
+
+    // As long as there are nodes to visit
+    // TODO: introduce a queue data-structure.
+    // while(Vector_Size(nodesToVisit) > 0) {
+    while(node_idx < nodesToVisit->top) {
+        Node *currentNode;
+        // Vector_Pop(nodesToVisit, &currentNode);
+        Vector_Get(nodesToVisit, node_idx, &currentNode);
+
+        Node *currentNodeClone = _getNodeByInternalID(reversedGraph, currentNode->internalId);
+
+        // Have we reached destination node?
+        if(Node_Compare(currentNode, dest)) {
+            // Add dest node to path.
+            Vector *path = NewVector(Node*, 1);
+            Vector_Push(path, dest);
+
+            Edge *reversedEdge;
+            // Walk reversed graph to construct path.
+            while(Vector_Get(currentNodeClone->outgoingEdges, 0, &reversedEdge) != 0) {
+                currentNodeClone = reversedEdge->dest;
+                Vector_Push(path, _getNodeByInternalID(g, currentNodeClone->internalId));
+            }
+            res = path;
+        }
+
+        // Add new nodes to visit
+        for(int i = 0; i < Vector_Size(currentNode->outgoingEdges); i++) {
+            Edge *e;
+            Vector_Get(currentNode->outgoingEdges, i, &e);
+            Node *neighbor = e->dest;
+
+            // Make sure we don't visit a node more than once.
+            if(!Graph_ContainsNode(reversedGraph, neighbor)) {
+                Vector_Push(nodesToVisit, neighbor);
+
+                // Add neighbor to reversedGraph
+                Node *neighborClone = Node_Clone(neighbor);
+                Graph_AddNode(reversedGraph, neighborClone);
+                ConnectNode(neighborClone, currentNodeClone, e->relationship);
+            }
+        }
+        node_idx++;
+    }
+
+    Vector_Free(nodesToVisit);
+    Graph_Free(reversedGraph);
+    return res;
 }
 
 // Frees entire graph.

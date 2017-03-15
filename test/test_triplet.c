@@ -2,7 +2,7 @@
 #include <string.h>
 #include "assert.h"
 #include "../src/graph/edge.h"
-#include "../src/triplet.h"
+#include "../src/hexastore/triplet.h"
 
 
 void testTriplet(const char* src, const char* relationship, const char* dest, TripletKind expectedKind, const char* expectedStrRepresentation) {
@@ -66,9 +66,9 @@ int main(int argc, char **argv) {
 	Triplet* A = NewTriplet("me", "love", "beer");
 	Triplet* B = NewTriplet("me", "love", "beer!");
 	
-	assert(TripletCompare(A, A) == 0);
-	assert(TripletCompare(A, B) < 0);
-	assert(TripletCompare(B, A) > 0);
+	assert(TripletCompare(A, A) == 1);
+	assert(TripletCompare(A, B) == 0);
+	assert(TripletCompare(B, A) == 0);
 
 	// Clean up
 	FreeTriplet(A);

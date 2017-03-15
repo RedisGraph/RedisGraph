@@ -11,16 +11,24 @@ Node* NewNode(const char* alias, const char* id) {
 	uuid_generate(node->internalId);
 
 	if(id != NULL) {
-		node->id = (char*)malloc(sizeof(char) * (strlen(id) + 1));
-		strcpy(node->id, id);
+		node->id = strdup(id);
 	}
 
 	if(alias != NULL) {
-		node->alias = (char*)malloc(sizeof(char) * (strlen(alias) + 1));
-		strcpy(node->alias, alias);
+		node->alias = strdup(alias);
 	}
 
 	return node;
+}
+
+Node* Node_Clone(const Node *node) {
+	Node *clone = NewNode(node->alias, node->id);
+	memcpy(&clone->internalId, &node->internalId, sizeof(node->internalId));
+	return clone;
+}
+
+int Node_Compare(const Node *a, const Node *b) {
+	return a->internalId == b->internalId;
 }
 
 void ConnectNode(Node* src, Node* dest, const char* connection) {

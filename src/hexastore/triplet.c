@@ -39,6 +39,10 @@ Triplet* TripletFromEdge(const Edge* edge) {
 	return NewTriplet(edge->src->id, edge->relationship, edge->dest->id);
 }
 
+Triplet* TripletFromNode(const Node *node) {
+	return NewTriplet(node->id, NULL, NULL);
+}
+
 // Assuming string format KIND:A:B:C
 Triplet* TripletFromString(const char* input) {
 	char* kind;
