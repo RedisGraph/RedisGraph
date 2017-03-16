@@ -26,7 +26,7 @@ int Graph_AddNode(Graph *g, Node *n);
 Vector* Graph_GetNDegreeNodes(Graph *g, int degree);
 
 // Finds the shortest path between source and destination nodes.
-Vector* Graph_ShortestPath(Graph *g, Node *src, Node *dest);
+Graph* Graph_ShortestPath(Graph *g, Node *src, Node *dest);
 
 // Frees entire graph.
 void Graph_Free(Graph* g);
