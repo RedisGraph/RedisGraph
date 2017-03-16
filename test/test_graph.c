@@ -36,22 +36,14 @@ void test_graph_shortestpath() {
     // path: a->c->f->g
     // path a->b->e->f->g
 
-    Vector *path = Graph_ShortestPath(graph, a, g);
-    assert(Vector_Size(path) == 4);
+    Graph *path = Graph_ShortestPath(graph, a, g);
+    assert(Vector_Size(path->nodes) == 4);
 
     // Validate path
-    Node *n;
-    Vector_Pop(path, &n);
-    assert(strcmp (n->alias, "a") == 0);
-
-    Vector_Pop(path, &n);
-    assert(strcmp (n->alias, "c") == 0);
-
-    Vector_Pop(path, &n);
-    assert(strcmp (n->alias, "f") == 0);
-
-    Vector_Pop(path, &n);
-    assert(strcmp (n->alias, "g") == 0);
+    assert(Graph_ContainsNode(graph, a) == 1);
+    assert(Graph_ContainsNode(graph, c) == 1);
+    assert(Graph_ContainsNode(graph, f) == 1);
+    assert(Graph_ContainsNode(graph, g) == 1);
 
     path = Graph_ShortestPath(graph, g, a);
     assert(path == NULL);
