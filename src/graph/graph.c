@@ -102,9 +102,9 @@ Vector* Graph_GetNDegreeNodes(Graph* g, int degree) {
     return nodes;
 }
 
-Vector* Graph_ShortestPath(Graph *g, Node *src, Node *dest) {
-    Vector* res = NULL;
+Graph* Graph_ShortestPath(Graph *g, Node *src, Node *dest) {
     Graph *reversedGraph = NewGraph();
+    Graph *path = NULL;
     Node *srcClone = Node_Clone(src);
     Graph_AddNode(reversedGraph, srcClone);
 
@@ -127,16 +127,20 @@ Vector* Graph_ShortestPath(Graph *g, Node *src, Node *dest) {
         // Have we reached destination node?
         if(Node_Compare(currentNode, dest)) {
             // Add dest node to path.
-            Vector *path = NewVector(Node*, 1);
-            Vector_Push(path, dest);
+            path = NewGraph();
+            Node *pathNodeCurrent = Node_Clone(dest);
+            Graph_AddNode(path, pathNodeCurrent);
 
             Edge *reversedEdge;
             // Walk reversed graph to construct path.
             while(Vector_Get(currentNodeClone->outgoingEdges, 0, &reversedEdge) != 0) {
-                currentNodeClone = reversedEdge->dest;
-                Vector_Push(path, _getNodeByInternalID(g, currentNodeClone->internalId));
+                Node *pathNodeNext = Node_Clone(reversedEdge->dest);
+                Graph_AddNode(path, pathNodeNext);
+                ConnectNode(pathNodeNext, pathNodeCurrent, reversedEdge->relationship);
+                currentNodeClone = _getNodeByInternalID(reversedGraph, pathNodeNext->internalId);
+                pathNodeCurrent = pathNodeNext;
             }
-            res = path;
+            break;
         }
 
         // Add new nodes to visit
@@ -160,7 +164,7 @@ Vector* Graph_ShortestPath(Graph *g, Node *src, Node *dest) {
 
     Vector_Free(nodesToVisit);
     Graph_Free(reversedGraph);
-    return res;
+    return path;
 }
 
 // Frees entire graph.
