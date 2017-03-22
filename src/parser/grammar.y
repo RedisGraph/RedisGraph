@@ -12,6 +12,7 @@
 	#include "grammar.h"
 	#include "ast.h"
 	#include "parse.h"
+	#include "../value.h"
 
 	void yyerror(char *s);
 } // END %include
@@ -61,19 +62,60 @@ chain(A) ::= chain(B) link(C) node(D). {
 
 %type node {ChainElement*}
 
-node(A) ::= LEFT_PARENTHESIS STRING(B) COLON STRING(C) RIGHT_PARENTHESIS. {
-	A = NewChainEntity(B.strval, C.strval);
-}
-node(A) ::= LEFT_PARENTHESIS COLON STRING(B) RIGHT_PARENTHESIS. {
-	A = NewChainEntity(NULL, B.strval);
-}
-node(A) ::= LEFT_PARENTHESIS STRING(B) RIGHT_PARENTHESIS. {
-	A = NewChainEntity(B.strval, NULL);
-}
-node(A) ::= LEFT_PARENTHESIS RIGHT_PARENTHESIS. {
-	A = NewChainEntity(NULL, NULL);
+// Node with alias and lable
+node(A) ::= LEFT_PARENTHESIS STRING(B) COLON STRING(C) properties(D) RIGHT_PARENTHESIS. {
+	A = NewChainEntity(B.strval, C.strval, D);
 }
 
+// node with lable
+node(A) ::= LEFT_PARENTHESIS COLON STRING(B) properties(D) RIGHT_PARENTHESIS. {
+	A = NewChainEntity(NULL, B.strval, D);
+}
+
+// node with alias
+node(A) ::= LEFT_PARENTHESIS STRING(B) properties(D) RIGHT_PARENTHESIS. {
+	A = NewChainEntity(B.strval, NULL, D);
+}
+
+// empty node
+node(A) ::= LEFT_PARENTHESIS properties(D) RIGHT_PARENTHESIS. {
+	A = NewChainEntity(NULL, NULL, D);
+}
+
+%type properties {Vector*}
+// empty properties
+properties(A) ::= . {
+	A = NULL;
+}
+
+properties(A) ::= LEFT_CURLY_BRACKET mapLiteral(B) RIGHT_CURLY_BRACKET. {
+	A = B;
+}
+
+%type mapLiteral {Vector*}
+mapLiteral(A) ::= STRING(B) COLON value(C). {
+	A = NewVector(SIValue*, 2);
+
+	SIValue *key = malloc(sizeof(SIValue));
+	*key = SI_StringValC(strdup(B.strval));
+	Vector_Push(A, key);
+
+	SIValue *val = malloc(sizeof(SIValue));
+	*val = C;
+	Vector_Push(A, val);
+}
+
+mapLiteral(A) ::= STRING(B) COLON value(C) COMMA mapLiteral(D). {
+	SIValue *key = malloc(sizeof(SIValue));
+	*key = SI_StringValC(strdup(B.strval));
+	Vector_Push(D, key);
+
+	SIValue *val = malloc(sizeof(SIValue));
+	*val = C;
+	Vector_Push(D, val);
+	
+	A = D;
+}
 
 %type link {ChainElement*}
 

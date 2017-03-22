@@ -28,11 +28,8 @@ FilterNode* NewConstantPredicateNode(const char* alias, const char* property, in
   	n->t = N_PRED;
 
 	n->pn.t = N_CONSTANT;
-  	n->pn.alias = (char*)malloc(strlen(alias) + 1);
-	n->pn.property = (char*)malloc(strlen(property) + 1);
-
-	strcpy(n->pn.alias, alias);
-	strcpy(n->pn.property, property);
+  	n->pn.alias = strdup(alias);
+	n->pn.property = strdup(property);
 
 	n->pn.op = op;
 	n->pn.constVal = value;
@@ -103,12 +100,12 @@ ChainElement* NewChainLink(char* relationship, LinkDirection dir) {
 	return ce;
 }
 
-
-ChainElement* NewChainEntity(char* alias, char* id) {
+ChainElement* NewChainEntity(char *alias, char *id, Vector *properties) {
 	ChainElement* ce = (ChainElement*)malloc(sizeof(ChainElement));
 	ce->t = N_ENTITY;
 	ce->e.id = NULL;
 	ce->e.alias = NULL;
+	ce->e.properties = properties;
 	
 	if(id != NULL) {
 		ce->e.id = (char*)malloc(strlen(id) + 1);
@@ -131,6 +128,15 @@ void FreeChainElement(ChainElement* chainElement) {
 			}
 			if(chainElement->e.alias != NULL) {
 				free(chainElement->e.alias);
+			}
+			if(chainElement->e.properties != NULL) {
+				for(int i = 0; i < Vector_Size(chainElement->e.properties); i++) {
+					SIValue *val;
+					Vector_Get(chainElement->e.properties, i, &val);
+					SIValue_Free(val);
+					free(val);
+				}
+				Vector_Free(chainElement->e.properties);
 			}
 			break;
 

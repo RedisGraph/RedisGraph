@@ -2,6 +2,7 @@
 #include "parser/grammar.h"
 #include "rmutil/vector.h"
 #include "graph/node.h"
+#include "parser/parser_common.h"
 #include "hexastore/hexastore.h"
 #include "hexastore/triplet.h"
 #include "aggregate/agg_ctx.h"
@@ -546,4 +547,82 @@ void ReturnClause_ExpendCollapsedNodes(RedisModuleCtx *ctx, ReturnNode *returnNo
     Node* startNode = NULL;
     Vector_Pop(entryPoints, &startNode);
     _ExpendReturnClause(ctx, graphName, graph, startNode, entryPoints, returnNode);
+}
+
+void nameAnonymousNodes(QueryExpressionNode *ast) {
+    Vector *elements = ast->matchNode->chainElements;
+    char buff[64];
+
+    // Foreach node
+    for(int i = 0; i < Vector_Size(elements); i++) {
+        ChainElement *element;
+        Vector_Get(elements, i, &element);
+
+        if(element->t != N_ENTITY) {
+            continue;
+        }
+        
+        if (element->e.alias == NULL) {
+            memset(buff, 0, 64);
+            sprintf(buff, "anon_node_%d", i);
+            element->e.alias = strdup(buff);
+        }
+    }
+}
+
+void inlineProperties(QueryExpressionNode *ast) {
+    // migrate inline filters to WHERE clause
+    Vector *elements = ast->matchNode->chainElements;
+
+    // Foreach node
+    for(int i = 0; i < Vector_Size(elements); i++) {
+        ChainElement *element;
+        Vector_Get(elements, i, &element);
+
+        if(element->t != N_ENTITY) {
+            continue;
+        }
+
+        Vector *properties = element->e.properties;
+        if(properties == NULL) {
+            continue;
+        }
+
+        // Foreach node property
+        for(int j = 0; j < Vector_Size(properties); j+=2) {
+            SIValue *key;
+            SIValue *val;
+
+            Vector_Get(properties, j, &key);
+            Vector_Get(properties, j+1, &val);
+
+            const char *alias = element->e.alias;
+            const char *property = key->stringval.str;
+
+            FilterNode *filterNode = NewConstantPredicateNode(alias, property, EQ, *val);
+            
+            // Create WHERE clause if missing.
+            if(ast->whereNode == NULL) {
+                ast->whereNode = NewWhereNode(filterNode);
+            } else {
+                // Introduce filter with AND operation
+                FilterNode *left = ast->whereNode->filters;
+                FilterNode *right = filterNode;
+                ast->whereNode->filters = NewConditionNode(left, AND, right);
+            }
+        }
+    }
+}
+
+QueryExpressionNode* ParseQuery(const char *query, size_t qLen, char **errMsg) {
+    QueryExpressionNode *ast = Query_Parse(query, qLen, errMsg);
+    
+    if (!ast) {
+        return NULL;
+    }
+    
+    // Modify AST
+    nameAnonymousNodes(ast);
+    inlineProperties(ast);
+    return ast;
 }
