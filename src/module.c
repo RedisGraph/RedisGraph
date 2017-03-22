@@ -250,7 +250,9 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
     // Parse query, get AST.
     char *errMsg = NULL;
-    QueryExpressionNode* parseTree = Query_Parse(q, qLen, &errMsg);
+    // QueryExpressionNode* parseTree = Query_Parse(q, qLen, &errMsg);
+    QueryExpressionNode* parseTree = ParseQuery(q, qLen, &errMsg);
+    
     if (!parseTree) {
         RedisModule_Log(ctx, "debug", "Error parsing query: %s", errMsg);
         RedisModule_ReplyWithError(ctx, errMsg);
@@ -271,6 +273,7 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
     CacheGroupClear(); // Clear group cache before query execution.
     
+    // Modify AST
     if(ReturnClause_ContainsCollapsedNodes(parseTree->returnNode) == 1) {
         Graph *graphClone = Graph_Clone(graph);
         // Expend collapsed nodes.

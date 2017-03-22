@@ -89,4 +89,7 @@ int ReturnClause_ContainsCollapsedNodes(const ReturnNode *returnNode);
 void ReturnClause_ExpendCollapsedNodes(RedisModuleCtx *ctx, ReturnNode *returnNode, RedisModuleString *graphName, Graph *graph);
 
 Triplet* FastSkipTriplets(RedisModuleCtx *ctx, const QE_FilterNode *filterTree, TripletIterator *iterator, Graph *g, Node *src, Node *dest);
+
+QueryExpressionNode* ParseQuery(const char *query, size_t qLen, char **errMsg);
+
 #endif

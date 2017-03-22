@@ -76,6 +76,7 @@ def main():
 
     # Query database
     #------------------------------------------------------------------------
+
     qDesc = "My friends?"
     query = """MATCH (ME:"Roi Lipman")-[friend]->(f) RETURN f.name""";
     ExecuteQuery(r, query, graph, qDesc)
@@ -89,16 +90,15 @@ def main():
     #------------------------------------------------------------------------
 
     qDesc = "Friends of friends who are single and over 30"
-    query = """MATCH (ME:"Roi Lipman")-[friend]->()-[friend]->(fof) 
-                WHERE fof.status = single and fof.age > 30
+    query = """MATCH (ME:"Roi Lipman")-[friend]->()-[friend]->(fof {status:single}) 
+                WHERE fof.age > 30
                 RETURN fof""";
     ExecuteQuery(r, query, graph, qDesc)
 
     #------------------------------------------------------------------------
 
     qDesc = "Friends of friends who visited Amsterdam and are single?"
-    query = """MATCH (ME:"Roi Lipman")-[friend]->()-[friend]->(fof)-[visited]->(country:Amsterdam)
-            WHERE fof.status = single
+    query = """MATCH (ME:"Roi Lipman")-[friend]->()-[friend]->(fof {status:single})-[visited]->(country:Amsterdam)
             RETURN fof.name""";
     ExecuteQuery(r, query, graph, qDesc)
 
