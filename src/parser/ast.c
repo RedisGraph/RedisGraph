@@ -100,21 +100,19 @@ ChainElement* NewChainLink(char* relationship, LinkDirection dir) {
 	return ce;
 }
 
-ChainElement* NewChainEntity(char *alias, char *id, Vector *properties) {
+ChainElement* NewChainEntity(char *alias, char *label, Vector *properties) {
 	ChainElement* ce = (ChainElement*)malloc(sizeof(ChainElement));
 	ce->t = N_ENTITY;
-	ce->e.id = NULL;
+	ce->e.label = NULL;
 	ce->e.alias = NULL;
 	ce->e.properties = properties;
 	
-	if(id != NULL) {
-		ce->e.id = (char*)malloc(strlen(id) + 1);
-		strcpy(ce->e.id, id);
+	if(label != NULL) {
+		ce->e.label = strdup(label);
 	}
 
 	if(alias != NULL) {
-		ce->e.alias = (char*)malloc(strlen(alias) + 1);
-		strcpy(ce->e.alias, alias);
+		ce->e.alias = strdup(alias);
 	}
 
 	return ce;
@@ -123,8 +121,8 @@ ChainElement* NewChainEntity(char *alias, char *id, Vector *properties) {
 void FreeChainElement(ChainElement* chainElement) {
 	switch(chainElement->t) {
 		case N_ENTITY:
-			if(chainElement->e.id != NULL) {
-				free(chainElement->e.id);
+			if(chainElement->e.label != NULL) {
+				free(chainElement->e.label);
 			}
 			if(chainElement->e.alias != NULL) {
 				free(chainElement->e.alias);

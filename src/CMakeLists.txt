@@ -32,6 +32,11 @@ set(_graph_files
       ../src/resultset/record.c
       ../src/resultset/resultset.c
 
+      ../src//labelstore/labelstore.c
+
+      ../src/execution_plan/ops/op.c
+      ../src/execution_plan/execution_plan.c
+
       ../src/rmutil/sds.c
       ../src/rmutil/util.c
       ../src/rmutil/vector.c

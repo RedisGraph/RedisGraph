@@ -624,5 +624,6 @@ QueryExpressionNode* ParseQuery(const char *query, size_t qLen, char **errMsg) {
     // Modify AST
     nameAnonymousNodes(ast);
     inlineProperties(ast);
+
     return ast;
 }

@@ -43,8 +43,9 @@ typedef enum {
 struct filterNode;
 
 typedef struct {
-	char *id;
 	char *alias;
+	char *label;
+	char *id; // TODO: remove this field.
 	Vector *properties;
 } EntityNode;
 
@@ -137,7 +138,7 @@ typedef struct {
 	LimitNode *limitNode;
 } QueryExpressionNode;
 
-ChainElement* NewChainEntity(char *alias, char *id, Vector *properties);
+ChainElement* NewChainEntity(char *alias, char *label, Vector *properties);
 ChainElement* NewChainLink(char *relationship, LinkDirection dir);
 MatchNode* NewMatchNode(Vector *elements);
 FilterNode* NewConstantPredicateNode(const char *alias, const char *property, int op, SIValue value);

@@ -23,6 +23,8 @@
 #include "parser/grammar.h"
 #include "parser/parser_common.h"
 
+#include "labelstore/labelstore.h"
+
 #include "aggregate/functions.h"
 #include "aggregate/aggregate.h"
 
@@ -34,14 +36,45 @@
 #include "resultset/record.h"
 #include "resultset/resultset.h"
 
-// Adds a new edge to the graph.
-// Args:
-// argv[1] graph name
-// argv[2] subject
-// argv[3] edge, predicate
-// argv[4] object
-// connect subject to object with a bi directional edge.
-// Assuming both subject and object exists.
+/* Marks entity with label(s)
+ * argv[1] graph name
+ * argv[2] entity id
+ * argv[3] label
+ * argv[4..n] Optional additional label(s) */
+int MGraph_LabelNode(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+    if(argc < 3) {
+        return RedisModule_WrongArity(ctx);
+    }
+
+    RedisModuleString *graph;
+    RedisModuleString *entityId;
+    RedisModuleString *label;
+    RMUtil_ParseArgs(argv, argc, 1, "ss", &graph, &entityId, &label);
+
+    // labels
+    for(int i = 3; i < argc; i++) {
+        RedisModuleString *label = argv[i];
+        if (LabelEntity(ctx, graph, label, entityId) != 1) {
+            RedisModule_Log(ctx, "debug", "Error failed to label entity");
+            RedisModule_ReplyWithError(ctx, "Failed to label entity");
+            // TODO: what do we want to do with previously applied labels?
+            return REDISMODULE_OK;
+        }
+    }
+
+    RedisModule_ReplyWithLongLong(ctx, argc - 2);
+    return REDISMODULE_OK;
+}
+
+/* Adds a new edge to the graph.
+ * Args:
+ * argv[1] graph name
+ * argv[2] subject
+ * argv[3] edge, predicate
+ * argv[4] object
+ * connect subject to object with a bi directional edge.
+ * Assuming both subject and object exists. */
+
 int MGraph_AddEdge(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     if(argc != 5) {
         return RedisModule_WrongArity(ctx);
@@ -67,14 +100,14 @@ int MGraph_AddEdge(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     return REDISMODULE_OK;
 }
 
-// Removes edge from the graph.
-// Args:
-// argv[1] graph name
-// argv[2] subject
-// argv[3] edge, predicate
-// argv[4] object
-// removes all 6 triplets representing
-// the connection (predicate) between subject and object
+/* Removes edge from the graph.
+ * Args:
+ * argv[1] graph name
+ * argv[2] subject
+ * argv[3] edge, predicate
+ * argv[4] object
+ * removes all 6 triplets representing
+ * the connection (predicate) between subject and object */
 int MGraph_RemoveEdge(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     if(argc != 5) {
         return RedisModule_WrongArity(ctx);
@@ -98,10 +131,10 @@ int MGraph_RemoveEdge(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     return REDISMODULE_OK;
 }
 
-// Removes given graph.
-// Args:
-// argv[1] graph name
-// sorted set holding graph name is deleted
+/* Removes given graph.
+ * Args:
+ * argv[1] graph name
+ * sorted set holding graph name is deleted */
 int MGraph_DeleteGraph(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     if(argc != 2) {
         return RedisModule_WrongArity(ctx);
@@ -230,10 +263,10 @@ void QueryNode(RedisModuleCtx *ctx, RedisModuleString *graphName, Graph *g, Node
     }
 }
 
-// Queries graph
-// Args:
-// argv[1] graph name
-// argv[2] query to execute
+/* Queries graph
+ * Args:
+ * argv[1] graph name
+ * argv[2] query to execute */
 int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     if (argc < 2) return RedisModule_WrongArity(ctx);
 
@@ -323,6 +356,10 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
     }
 
     if(RedisModule_CreateCommand(ctx, "graph.ADDEDGE", MGraph_AddEdge, "write", 1, 1, 1) == REDISMODULE_ERR) {
+        return REDISMODULE_ERR;
+    }
+
+    if(RedisModule_CreateCommand(ctx, "graph.LABELENTITY", MGraph_LabelNode, "write", 1, 1, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
     }
 
