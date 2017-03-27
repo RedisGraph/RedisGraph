@@ -1,5 +1,6 @@
 #include "node.h"
 #include "edge.h"
+#include <stdlib.h>
 
 Node* NewNode(const char* alias, const char* id) {
 	Node* node = (Node*)malloc(sizeof(Node));
@@ -8,7 +9,7 @@ Node* NewNode(const char* alias, const char* id) {
 	node->alias = NULL;
 	node->outgoingEdges = NewVector(Edge*, 0);
 	node->incomingEdges = 0;
-	uuid_generate(node->internalId);
+	node->internalId = rand();
 
 	if(id != NULL) {
 		node->id = strdup(id);
@@ -23,7 +24,7 @@ Node* NewNode(const char* alias, const char* id) {
 
 Node* Node_Clone(const Node *node) {
 	Node *clone = NewNode(node->alias, node->id);
-	memcpy(&clone->internalId, &node->internalId, sizeof(node->internalId));
+	clone->internalId = node->internalId;
 	return clone;
 }
 
