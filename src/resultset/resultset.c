@@ -42,21 +42,25 @@ Column* NewColumn(const char* name, const char* alias) {
     column->alias = NULL;
 
     if(name != NULL) {
-        column->name = malloc(sizeof(char) * (strlen(name) + 1));
-        strcpy(column->name, name);
+        column->name = strdup(name);
     }
 
     if(alias != NULL) {
-        column->alias = malloc(sizeof(char) * (strlen(alias) + 1));
-        strcpy(column->alias, alias);
+        column->alias = strdup(alias);
     }
 
     return column;
 }
 
 void Column_Free(Column* column) {
-    free(column->name);
-    free(column->alias);
+    if(column->name != NULL) {
+        free(column->name);
+    }
+
+    if(column->alias != NULL) {
+        free(column->alias);
+    }
+
     free(column);
 }
 
