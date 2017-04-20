@@ -183,7 +183,7 @@ If not specified there's no limit to the number of records returned by a query.
 #### Build and run
 To build the module, from root folder run:
 ```sh 
-cmake . && make all
+cmake . && make module
 ``` 
 Loading module into redis:
 ```sh 
