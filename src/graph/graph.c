@@ -1,5 +1,4 @@
 #include "graph.h"
-#include <uuid/uuid.h>
 
 Graph* NewGraph() {
     Graph* g = (Graph*)malloc(sizeof(Graph));
@@ -7,12 +6,12 @@ Graph* NewGraph() {
     return g;
 }
 
-Node* _getNodeByInternalID(const Graph* g, uuid_t id) {
+Node* _getNodeByInternalID(const Graph* g, int id) {
     for(int i = 0; i < Vector_Size(g->nodes); i++) {
         Node* node;
         Vector_Get(g->nodes, i, &node);
 
-        if(uuid_compare(node->internalId, id) == 0) {
+        if(node->internalId == id) {
             return node;
         }
     }
@@ -45,6 +44,42 @@ Graph* Graph_Clone(const Graph* graph) {
         }
     }
     return clone;
+}
+
+int Graph_Compare(const Graph *a, const Graph *b) {
+    /* NOTE: graph structure is not comapred
+     * for the timebeing this is enough 
+     * TODO: comapre edges */
+
+    const int EQUAL = 0;
+    const int DIFFER = 1;
+
+    if(a == NULL || b == NULL) {
+        return DIFFER;
+    }
+    
+    // Graphs must contain the same number of nodes
+    if(Vector_Size(a->nodes) != Vector_Size(b->nodes)) {
+        return DIFFER;
+    }
+    
+    // Make sure each node exists in both graphs
+    for(int i = 0; i < Vector_Size(a->nodes); i++) {
+        Node *An;
+        Vector_Get(a->nodes, i, &An);
+        
+        Node *Bn = _getNodeByInternalID(b, An->internalId);
+        if(Bn == NULL) {
+            return DIFFER;
+        }
+
+        // Nodes should have the same ID.
+        if(strcmp(An->id, Bn->id) != 0) {
+            return DIFFER;
+        }
+    }
+    
+    return EQUAL;
 }
 
 int Graph_ContainsNode(const Graph *graph, const Node *node) {

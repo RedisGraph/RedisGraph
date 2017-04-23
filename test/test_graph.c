@@ -101,9 +101,35 @@ void test_graph_clone() {
     assert(e->dest == bClone);
 }
 
+void test_graph_compare() {
+    Graph* origin = NewGraph();
+
+    // (A:1)-[]->()-[]->(B)
+    Node *a = NewNode("A", "1");
+    Node *b = NewNode("B", "2");
+    Node *blank = NewNode("", "");
+
+    Graph_AddNode(origin, a);
+    Graph_AddNode(origin, blank);
+    Graph_AddNode(origin, b);
+
+    ConnectNode(a, blank, "");
+    ConnectNode(blank, b, "");
+
+    Graph* clone = Graph_Clone(origin);
+
+    assert(Graph_Compare(origin, clone) == 0);
+
+    Node *c = NewNode("C", "3");
+    Graph_AddNode(origin, c);
+
+    assert(Graph_Compare(origin, clone) == 1);
+}
+
 int main(int argc, char **argv) {
     test_graph_clone();
     test_graph_shortestpath();
+    test_graph_compare();
 	printf("PASS!\n");
     return 0;
 }
