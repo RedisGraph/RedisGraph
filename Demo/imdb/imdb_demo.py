@@ -1,15 +1,17 @@
 import os
+import sys
 import csv
-import operator
+import redis
 import timeit
+from client import client
 from datetime import date
 from disposableredis import DisposableRedis
-from query_executor import ExecuteQuery
 
 graph = "imdb"
 r = None
+redis_graph = None
 
-def redis():
+def _redis():
 	module_path = os.path.abspath(os.path.join(os.getcwd(), "../../src/libmodule.so"))
 	r = DisposableRedis(loadmodule = module_path)
 	return r
@@ -22,13 +24,12 @@ def PopulateGraph():
 		print "Loaded %d movies" % len(movies)
 
 		print "Loading actors"
-		actors = LoadActors()
+		actors = LoadActors(movies)
 		print "Loaded %d actors" % len(actors)
-
+    			
 def LoadMovies():
 	# Load movies entities
-	movies = []
-	pipe = r.pipeline()
+	movies = {}
 
 	with open('movies.csv', 'r') as f:
 		reader = csv.reader(f, delimiter=',')
@@ -38,18 +39,20 @@ def LoadMovies():
 			votes = int(row[2])
 			rating = float(row[3])
 			year = int(row[4])
+			
+			movies[title] = redis_graph.create_node('title', title,
+			'gener', gener,
+			'votes', votes,
+			'rating', rating,
+			'year', year,
+			label="movie")
 
-			movies.append(title)			
-			pipe.hmset(title, {'title': title, 'gener': gener, 'votes': votes, 'rating': rating, 'year': year})
-
-	pipe.execute()
 	return movies
 
-def LoadActors():
+def LoadActors(movies):
 	# Load movies entities
 	actors = {}
 	today = date.today()
-	pipe = r.pipeline()
 
 	with open('actors.csv', 'r') as f:
 		reader = csv.reader(f, delimiter=',')
@@ -59,111 +62,167 @@ def LoadActors():
 			movie = row[2]
 			age = today.year - yearOfBirth
 
-			pipe.hmset(name, {'name': name, 'age': age})
-			pipe.execute_command("GRAPH.ADDEDGE", graph, name, "act", movie)
+			if name not in actors:
+				actors[name] = redis_graph.create_node('name', name,
+				'age', age, label="actor")
 
-			if name in actors:
-				actors[name] += 1
-			else:
-				actors[name] = 1
+			if movie in movies:
+				redis_graph.connect_nodes(actors[name], "act", movies[movie])
 
-	pipe.execute()
 	return actors
 
 
 
-def main():
-	
+
+def run_queries():
+	# Query database
+	#------------------------------------------------------------------------
+	# query_desc = "Which actors played along side Nicolas Cage?"
+	# print query_desc
+	# query = """MATCH (n:actor{name:"Nicolas Cage"})-[act]->(m:movie)<-[act]-(a:actor)
+	# RETURN a.name, m.title""";
+	# print "query: {query}".format(query=query)
+
+	# print "Execution plan: {plan}".format(plan=redis_graph.execution_plan(query))
+	# redis_graph.query(query)
+	# print "\n"
+
+	#------------------------------------------------------------------------
+	# query_desc = "Get 3 actors who've played along side Nicolas Cage?"
+	# print query_desc
+	# query = """MATCH (Nicolas:"Nicolas Cage")-[act]->(movie)<-[act]-(actor)
+	# RETURN actor.name, movie.title
+	# LIMIT 3""";
+	# print "query: {query}".format(query=query)
+
+	# print "Execution plan: {plan}".format(plan=redis_graph.execution_plan(query))
+	# redis_graph.query(query)
+	# print "\n"
+
+	# #------------------------------------------------------------------------
+	query_desc = "Which actors played in the movie Straight Outta Compton?"
+	print query_desc
+
+	query = """MATCH (a:actor)-[act]->(m:movie {title:"Straight Outta Compton"})
+	RETURN a.name""";
+	print "query: {query}".format(query=query)
+
+	print "Execution plan: {plan}".format(plan=redis_graph.execution_plan(query))
+	redis_graph.query(query)
+	print "\n"
+
+	#------------------------------------------------------------------------
+	query_desc = "Which actors who are over 50 played in blockbuster movies?"
+	print query_desc
+
+	query = """MATCH (a:actor)-[act]->(m:movie)
+	WHERE a.age >= 50 AND m.votes > 10000 AND m.rating > 8.5
+	RETURN a.name, m.title"""
+	print "query: {query}".format(query=query)
+
+	print "Execution plan: {plan}".format(plan=redis_graph.execution_plan(query))
+	redis_graph.query(query)
+	print "\n"
+
+	#------------------------------------------------------------------------
+	query_desc = "Which actors played in bad drame or comedy?"
+	print query_desc
+
+	query = """MATCH (a:actor)-[act]->(m:movie)
+	WHERE (m.gener = Drama OR m.gener = Comedy)
+	AND m.rating < 6.0 AND m.votes > 80000
+	RETURN a.name, m.title, m.gener, m.rating, m.votes
+	ORDER BY m.rating"""
+	print "query: {query}".format(query=query)
+
+	print "Execution plan: {plan}".format(plan=redis_graph.execution_plan(query))
+	redis_graph.query(query)
+	print "\n"
+
+	# #------------------------------------------------------------------------
+	# query_desc = "Which young actors played along side Cameron Diaz?"
+	# print query_desc
+
+	# query = """MATCH (Cameron:"Cameron Diaz")-[act]->(movie)<-[act]-(actor)
+	# WHERE actor.age < 35
+	# RETURN actor, movie.title""";
+	# print "query: {query}".format(query=query)
+
+	# print "Execution plan: {plan}".format(plan=redis_graph.execution_plan(query))
+	# redis_graph.query(query)
+	# print "\n"
+
+	#------------------------------------------------------------------------
+	# query_desc = "Which actors played along side Cameron Diaz and are younger then her?"
+	# print query_desc
+		
+	# query = """MATCH (Cameron:"Cameron Diaz")-[act]->(movie)<-[act]-(actor)
+	# WHERE actor.age < Cameron.age
+	# RETURN actor, movie.title""";
+	# print "query: {query}".format(query=query)
+
+	# print "Execution plan: {plan}".format(plan=redis_graph.execution_plan(query))
+	# redis_graph.query(query)
+	# print "\n"
+
+	#------------------------------------------------------------------------
+	query_desc = "What's the sum and average age of the Straight Outta Compton cast?"
+	print query_desc
+
+	query = """MATCH (a:actor)-[act]->(m:movie{title:"Straight Outta Compton"})
+	RETURN m.title, SUM(a.age), AVG(a.age)""";
+	print "query: {query}".format(query=query)
+
+	print "Execution plan: {plan}".format(plan=redis_graph.execution_plan(query))
+	redis_graph.query(query)
+	print "\n"
+
+	#------------------------------------------------------------------------
+	query_desc = "In how may movies did Cameron Diaz played"
+	print query_desc
+
+	query = """MATCH (Cameron:actor{name:"Cameron Diaz"})-[act]->(m:movie)
+	RETURN Cameron.name, COUNT(m.title)""";
+	print "query: {query}".format(query=query)
+
+	print "Execution plan: {plan}".format(plan=redis_graph.execution_plan(query))
+	redis_graph.query(query)
+	print "\n"
+
+	#------------------------------------------------------------------------
+	query_desc = "10 Oldest actors"
+	print query_desc
+
+	query = """MATCH (a:actor)-[act]->(m:movie)
+	RETURN DISTINCT a.name, a.age
+	ORDER BY a.age DESC
+	LIMIT 10""";
+	print "query: {query}".format(query=query)
+
+	print "Execution plan: {plan}".format(plan=redis_graph.execution_plan(query))
+	redis_graph.query(query)
+	print "\n"
+
+def debug():
+	print "debug"
 	global r
-	with redis() as r:
-		PopulateGraph()
+	global redis_graph
+	r = redis.Redis(host='localhost', port=6379)
+	redis_graph = client.RedisGraph(graph, r)
+	PopulateGraph()
+	run_queries()
 
-		# Query database
-		#------------------------------------------------------------------------
-		qDesc = "Which actors played along side Nicolas Cage?"
-		query = """MATCH (Nicolas:"Nicolas Cage")-[act]->(movie)<-[act]-(actor)
-		RETURN actor.name, movie.title""";
-
-		ExecuteQuery(r, query, graph, qDesc)
-
-		#------------------------------------------------------------------------
-		qDesc = "Get 3 actors who've played along side Nicolas Cage?"
-		query = """MATCH (Nicolas:"Nicolas Cage")-[act]->(movie)<-[act]-(actor)
-		RETURN actor.name, movie.title
-		LIMIT 3""";
-
-		ExecuteQuery(r, query, graph, qDesc)
-
-		#------------------------------------------------------------------------
-		qDesc = "Which actors played in the movie Straight Outta Compton?"
-
-		query = """MATCH (actor)-[act]->(movie:"Straight Outta Compton")
-		RETURN actor.name""";
-
-		ExecuteQuery(r, query, graph, qDesc)
-
-		#------------------------------------------------------------------------
-		qDesc = "Which actors who are over 50 played in blockbuster movies?"
-
-		query = """MATCH (actor)-[act]->(movie)
-		WHERE actor.age >= 50 AND movie.votes > 10000 AND movie.rating > 8.5
-		RETURN actor, movie"""
-
-		ExecuteQuery(r, query, graph, qDesc)
-
-		#------------------------------------------------------------------------
-		qDesc = "Which actors played in bad drame or comedy?"
-
-		query = """MATCH (actor)-[act]->(movie)
-		WHERE (movie.gener = Drama OR movie.gener = Comedy)
-		AND movie.rating < 6.0 AND movie.votes > 80000
-		RETURN actor.name, movie"""
-
-		ExecuteQuery(r, query, graph, qDesc)
-
-		#------------------------------------------------------------------------
-		qDesc = "Which young actors played along side Cameron Diaz?"
-
-		query = """MATCH (Cameron:"Cameron Diaz")-[act]->(movie)<-[act]-(actor)
-		WHERE actor.age < 35
-		RETURN actor, movie.title""";
-
-		ExecuteQuery(r, query, graph, qDesc)
-
-		#------------------------------------------------------------------------
-		qDesc = "Which actors played along side Cameron Diaz and are younger then her?"
-			
-		query = """MATCH (Cameron:"Cameron Diaz")-[act]->(movie)<-[act]-(actor)
-		WHERE actor.age < Cameron.age
-		RETURN actor, movie.title""";
-
-		ExecuteQuery(r, query, graph, qDesc)
-
-		#------------------------------------------------------------------------
-		qDesc = "What's the sum and average age of the Straight Outta Compton cast?"
-
-		query = """MATCH (actor)-[act]->(movie:"Straight Outta Compton")
-		RETURN movie.title, SUM(actor.age), AVG(actor.age)""";
-
-		ExecuteQuery(r, query, graph, qDesc)
-
-		#------------------------------------------------------------------------
-		qDesc = "In how may movies did Cameron Diaz played"
-
-		query = """MATCH (Cameron:"Cameron Diaz")-[act]->(movie)
-		RETURN Cameron.name, COUNT(movie.title)""";
-
-		ExecuteQuery(r, query, graph, qDesc)
-
-		#------------------------------------------------------------------------
-		qDesc = "10 Oldest actors"
-
-		query = """MATCH (actor)-[act]->(movie)
-		RETURN DISTINCT actor.name, actor.age
-		ORDER BY actor.age DESC
-		LIMIT 10""";
-
-		ExecuteQuery(r, query, graph, qDesc)
+def main(argv):
+	global r
+	global redis_graph
+	print argv
+	if "-debug" in argv:
+		debug()
+	else:
+		with _redis() as r:
+			redis_graph = client.RedisGraph(graph, r)
+			PopulateGraph()
+			run_queries()
 
 if __name__ == '__main__':
-	main()
+	main(sys.argv[1:])

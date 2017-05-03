@@ -2,41 +2,39 @@
 #include <string.h>
 #include "triplet.h"
 
-Triplet* NewTriplet(const char* S, const char* P, const char* O) {
+Triplet* NewTriplet(const char *S, const char *P, const char *O) {
 	Triplet* triplet = (Triplet*)malloc(sizeof(Triplet));
 
-	const char* s = S;
-	const char* p = P;
-	const char* o = O;
-
-	if(s == 0) {
-		s = "";
-	}
-
-	if(p == 0) {
-		p = "";
-	}
-
-	if(o == 0) {
-		o = "";
-	}
-
-	triplet->subject = (char*)malloc(strlen(s) + 1);
-	strcpy(triplet->subject, s);
-
-	triplet->predicate = (char*)malloc(strlen(p) + 1);
-	strcpy(triplet->predicate, p);
-
-	triplet->object = (char*)malloc(strlen(o) + 1);
-	strcpy(triplet->object, o);
-
+	const char *s = (S==NULL) ? "" : S;
+	const char *p = (P==NULL) ? "" : P;
+	const char *o = (O==NULL) ? "" : O;
+	
+	triplet->subject = strdup(s);
+	triplet->predicate = strdup(p);
+	triplet->object = strdup(o);
 	triplet->kind = (strlen(s) > 0) << 2 | (strlen(p) > 0) << 1 | (strlen(o) > 0);
 
 	return triplet;
 }
 
-Triplet* TripletFromEdge(const Edge* edge) {
-	return NewTriplet(edge->src->id, edge->relationship, edge->dest->id);
+Triplet* TripletFromEdge(const Edge *edge) {
+	const char *S = edge->src->id;
+	const char *O = edge->dest->id;
+	char *P = NULL;
+
+	// Predicate is composed of edge label and edge id.
+	if(edge->relationship != NULL) {
+		if(edge->id != NULL) {
+			asprintf(&P, "%s%s%s", edge->relationship, TRIPLET_PREDICATE_DELIMITER, edge->id);
+		} else {
+			asprintf(&P, "%s%s", edge->relationship, TRIPLET_PREDICATE_DELIMITER);
+		}
+	}
+
+	Triplet *t = NewTriplet(S, P, O);
+	free(P);
+
+	return t;
 }
 
 Triplet* TripletFromNode(const Node *node) {
@@ -44,34 +42,34 @@ Triplet* TripletFromNode(const Node *node) {
 }
 
 // Assuming string format KIND:A:B:C
-Triplet* TripletFromString(const char* input) {
-	char* kind;
-	char* subject = 0;
-	char* predicate = 0;
-	char* object = 0;
+Triplet* TripletFromString(const char *input) {
+	char *kind;
+	char *subject = NULL;
+	char *predicate = NULL;
+	char *object = NULL;
 
-	char* str = (char*)malloc(sizeof(char) * strlen(input) + 1);
+	char *str = (char*)malloc(sizeof(char) * strlen(input) + 1);
 	strcpy(str, input);
 
-	char *token = strtok(str, ":");
+	char *token = strtok(str, TRIPLET_ELEMENT_DELIMITER);
 	kind = token;
 
 	for(int i = 0; i < strlen(kind); i++) {
 		switch(kind[i]) {
 			case 'S':
-				token = strtok(NULL, ":");
+				token = strtok(NULL, TRIPLET_ELEMENT_DELIMITER);
 				subject = (char*)malloc(sizeof(char) * strlen(token) + 1);
 				strcpy(subject, token);
 				break;
 
 			case 'P':
-				token = strtok(NULL, ":");
+				token = strtok(NULL, TRIPLET_ELEMENT_DELIMITER);
 				predicate = (char*)malloc(sizeof(char) * strlen(token) + 1);
 				strcpy(predicate, token);
 				break;
 
 			case 'O':
-				token = strtok(NULL, ":");
+				token = strtok(NULL, TRIPLET_ELEMENT_DELIMITER);
 				object = (char*)malloc(sizeof(char) * strlen(token) + 1);
 				strcpy(object, token);
 				break;
@@ -81,7 +79,7 @@ Triplet* TripletFromString(const char* input) {
 		}
 	}
 
-	Triplet* t = NewTriplet(subject, predicate, object);
+	Triplet *t = NewTriplet(subject, predicate, object);
 
 	free(str);
 	if(subject) {
@@ -97,37 +95,30 @@ Triplet* TripletFromString(const char* input) {
 	return t;
 }
 
-char* TripletToString(const Triplet* triplet) {
-	char* str = 0;
+char* TripletToString(const Triplet *triplet) {
+	char *str = NULL;
 
 	switch(triplet->kind) {
 		case O:
-			str = (char*)malloc(4 + strlen(triplet->object) + 2);
-			sprintf(str, "OPS:%s:", triplet->object);
+			asprintf(&str, "OPS:%s", triplet->object);
 			break;
 		case P:			
-			str = (char*)malloc(4 + strlen(triplet->predicate) + 2);
-			sprintf(str, "POS:%s:", triplet->predicate);
+			asprintf(&str, "POS:%s", triplet->predicate);
 			break;
 		case PO:
-			str = (char*)malloc(4 + strlen(triplet->predicate) + 1 + strlen(triplet->object) + 2);
-			sprintf(str, "POS:%s:%s:", triplet->predicate, triplet->object);
+			asprintf(&str, "POS:%s:%s", triplet->predicate, triplet->object);
 			break;
 		case S:
-			str = (char*)malloc(4 + strlen(triplet->subject) + 2);
-			sprintf(str, "SPO:%s:", triplet->subject);
+			asprintf(&str, "SPO:%s", triplet->subject);
 			break;
 		case SO:
-			str = (char*)malloc(4 + strlen(triplet->subject) + 1 + strlen(triplet->object) + 2);
-			sprintf(str, "SOP:%s:%s:", triplet->subject, triplet->object);
+			asprintf(&str, "SOP:%s:%s", triplet->subject, triplet->object);
 			break;
 		case SP:
-			str = (char*)malloc(4 + strlen(triplet->subject) + 1 + strlen(triplet->predicate) + 2);
-			sprintf(str, "SPO:%s:%s:", triplet->subject, triplet->predicate);
+			asprintf(&str, "SPO:%s:%s", triplet->subject, triplet->predicate);
 			break;
 		case SPO:
-			str = (char*)malloc(4 + strlen(triplet->subject) + 1 + strlen(triplet->predicate) + 1 + strlen(triplet->object) + 2);
-			sprintf(str, "SPO:%s:%s:%s", triplet->subject, triplet->predicate, triplet->object);
+			asprintf(&str, "SPO:%s:%s:%s", triplet->subject, triplet->predicate, triplet->object);
 			break;
 		case UNKNOW:
 			break;
@@ -135,6 +126,33 @@ char* TripletToString(const Triplet* triplet) {
 	}
 
 	return str;
+}
+
+void TripletToGraph(const Triplet *triplet, Node *src, Edge *edge, Node *dest) {
+	// Copy triplet subject to src id
+	if(strcmp(triplet->subject, "") == 0) {
+		src->id = NULL;
+	} else {
+		src->id = strdup(triplet->subject);
+	}
+	
+	// Copy triplet predicate to edge label and id
+	if(strcmp(triplet->predicate, "") == 0) {
+		edge->id = NULL;
+		edge->relationship = NULL;
+	} else {
+		char *p = strdup(triplet->predicate);
+		edge->id = strdup(strtok(p, TRIPLET_PREDICATE_DELIMITER));
+		edge->relationship = strdup(strtok(NULL, TRIPLET_PREDICATE_DELIMITER));
+		free(p);
+	}
+	
+	// Copy triplet object to dest id
+	if(strcmp(triplet->object, "") == 0) {
+		dest->id = NULL;
+	} else {
+		dest->id = strdup(triplet->object);
+	}
 }
 
 // Assuming Triplets are of the same kind.
@@ -233,28 +251,19 @@ void FreeTriplet(Triplet* triplet) {
 	free(triplet);
 }
 
-TripletIterator* NewTripletIterator(TrieMapIterator *iter) {
-	TripletIterator* iterator = (TripletIterator*)malloc(sizeof(TripletIterator));
-	iterator->iter = iter;
-	return iterator;
-}
-
 // Returns the next triplet from the cursor
 // or NULL when cursor is depleted
 Triplet* TripletIterator_Next(TripletIterator* iterator) {
 	char *key = NULL;
 	tm_len_t len = 0;
-	void *ptr = NULL;
-	int res = TrieMapIterator_Next(iterator->iter, &key, &len, &ptr);
+	Triplet *triplet = NULL;
+	int res = TrieMapIterator_Next(iterator, &key, &len, &triplet);
 	if(res == 0) {
 		return NULL;
 	}
-
-	Triplet* t = TripletFromString(key);
-	return t;
+	return triplet;
 }
 
 void TripletIterator_Free(TripletIterator* iterator) {
-	TrieMapIterator_Free(iterator->iter);
-	free(iterator);
+	TrieMapIterator_Free(iterator);
 }

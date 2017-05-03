@@ -4,11 +4,11 @@
 #include "../src/graph/edge.h"
 #include "assert.h"
 
-int main(int argc, char **argv) {
 
+void test_edge() {
 	Node* src = NewNode("","source");
 	Node* dest = NewNode("", "destination");
-	Edge* edge = NewEdge(src, dest, "route");
+	Edge* edge = NewEdge("1", src, dest, "route");
 
 	assert(strcmp(edge->relationship, "route") == 0);
 	assert(ValidateEdge(edge) == 1);
@@ -17,7 +17,11 @@ int main(int argc, char **argv) {
 
 	FreeNode(src);
 	FreeNode(dest);
-
+	FreeEdge(edge);
 	printf("PASS!");
-    return 0;
+}
+
+int main(int argc, char **argv) {
+	test_edge();
+	return 0;
 }

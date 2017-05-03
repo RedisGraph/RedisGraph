@@ -5,11 +5,17 @@ OpBase* NewAllNodeScanOp(RedisModuleCtx *ctx, Node *node, RedisModuleString *gra
 }
 
 AllNodeScan* NewAllNodeScan(RedisModuleCtx *ctx, Node *node, RedisModuleString *graph) {
+    // Get graph store
+    Store *store = GetStore(ctx, STORE_NODE, graph, NULL);
+    if(store == NULL) {
+        return NULL;
+    }
+
     AllNodeScan *allNodeScan = malloc(sizeof(AllNodeScan));
     allNodeScan->ctx = ctx;
     allNodeScan->node = node;
     allNodeScan->graph = graph;
-    allNodeScan->iter = NULL;
+    allNodeScan->iter = Store_Search(store, "");
 
     // Set our Op operations
     allNodeScan->op.name = "All Node Scan";
@@ -34,30 +40,16 @@ OpResult AllNodeScanConsume(OpBase *opBase, Graph* graph) {
     }
 
     // Set node's ID.
-    op->node->id = id;
+    if(op->node->id != NULL) {
+        free(op->node->id);
+    }
+    
+    op->node->id = strdup(id);
+
     return OP_OK;
 }
 
 OpResult AllNodeScanReset(OpBase *op) {
-    AllNodeScan *allNodeScan = (AllNodeScan*)op;
-
-    // Free previous iterator.
-    if(allNodeScan->iter != NULL) {
-       StoreIterator_Free(allNodeScan->iter);
-    }
-
-    // Get graph store
-    Store *store = GetStore(allNodeScan->ctx, STORE_NODE, allNodeScan->graph, NULL);
-    if(store == NULL) {
-        return OP_ERR;
-    }
-
-    // Get entire graph cursor
-    allNodeScan->iter = Store_Search(store, "");
-    if(allNodeScan->iter == NULL) {
-        return OP_ERR;
-    }
-
     return OP_OK;
 }
 

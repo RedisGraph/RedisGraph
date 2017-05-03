@@ -8,7 +8,7 @@ Node* NewNode(const char* alias, const char* id) {
 	node->id = NULL;
 	node->alias = NULL;
 	node->outgoingEdges = NewVector(Edge*, 0);
-	node->incomingEdges = 0;
+	node->incomingEdges = NewVector(Edge*, 0);
 	node->internalId = rand();
 
 	if(id != NULL) {
@@ -32,10 +32,9 @@ int Node_Compare(const Node *a, const Node *b) {
 	return a->internalId == b->internalId;
 }
 
-void ConnectNode(Node* src, Node* dest, const char* connection) {
-	Edge* e = NewEdge(src, dest, connection);
+void ConnectNode(Node* src, Node* dest, struct Edge* e) {
 	Vector_Push(src->outgoingEdges, e);
-	dest->incomingEdges++;
+	Vector_Push(dest->incomingEdges, e);
 }
 
 void FreeNode(Node* node) {
@@ -51,8 +50,11 @@ void FreeNode(Node* node) {
 		Vector_Get(node->outgoingEdges, i, &e);
 		FreeEdge(e);
 	}
-
 	Vector_Free(node->outgoingEdges);
+
+	/* There no need to discard incoming edges.
+	* these will be freed on another outgoingEdges free. */ 
+	Vector_Free(node->incomingEdges);
 
 	free(node);
 }

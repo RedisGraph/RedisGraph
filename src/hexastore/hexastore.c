@@ -17,11 +17,17 @@ HexaStore *GetHexaStore(RedisModuleCtx *ctx, RedisModuleString *id) {
 	}
 
 	hexaStore = RedisModule_ModuleTypeGetValue(key);
+	RedisModule_CloseKey(key);
 	return hexaStore;
 }
 
+/* Stores all 6 permutations of given triplet */
+void HexaStore_InsertTriplet(HexaStore* hexaStore, const Triplet *triplet) {
+	return HexaStore_InsertAllPerm(hexaStore, triplet->subject, triplet->predicate, triplet->object, triplet);
+}
+
 /* Create all 6 triplets from given subject, predicate and object */
-void HexaStore_InsertAllPerm(HexaStore* hexaStore, const char *subject, const char *predicate, const char *object) {
+void HexaStore_InsertAllPerm(HexaStore* hexaStore, const char *subject, const char *predicate, const char *object, void *value) {
 	size_t sLen = strlen(subject);
     size_t pLen = strlen(predicate);
     size_t oLen = strlen(object);
@@ -30,22 +36,22 @@ void HexaStore_InsertAllPerm(HexaStore* hexaStore, const char *subject, const ch
 	char *triplet = malloc(sizeof(char) * bufferSize);
 	
 	snprintf(triplet, bufferSize, "SPO:%s:%s:%s", subject, predicate, object);
-	TrieMap_Add(hexaStore, triplet, bufferSize, NULL, NULL);
+	TrieMap_Add(hexaStore, triplet, bufferSize, value, NULL);
 
 	snprintf(triplet, bufferSize, "SOP:%s:%s:%s", subject, object, predicate);
-	TrieMap_Add(hexaStore, triplet, bufferSize, NULL, NULL);
+	TrieMap_Add(hexaStore, triplet, bufferSize, value, NULL);
 
 	snprintf(triplet, bufferSize, "PSO:%s:%s:%s", predicate, subject, object);
-	TrieMap_Add(hexaStore, triplet, bufferSize, NULL, NULL);
+	TrieMap_Add(hexaStore, triplet, bufferSize, value, NULL);
 
 	snprintf(triplet, bufferSize, "POS:%s:%s:%s", predicate, object, subject);
-	TrieMap_Add(hexaStore, triplet, bufferSize, NULL, NULL);
+	TrieMap_Add(hexaStore, triplet, bufferSize, value, NULL);
 
 	snprintf(triplet, bufferSize, "OSP:%s:%s:%s", object, subject, predicate);
-	TrieMap_Add(hexaStore, triplet, bufferSize, NULL, NULL);
+	TrieMap_Add(hexaStore, triplet, bufferSize, value, NULL);
 
 	snprintf(triplet, bufferSize, "OPS:%s:%s:%s", object, predicate, subject);
-	TrieMap_Add(hexaStore, triplet, bufferSize, NULL, NULL);
+	TrieMap_Add(hexaStore, triplet, bufferSize, value, NULL);
 
 	free(triplet);
 }
@@ -83,8 +89,7 @@ void HexaStore_RemoveAllPerm(HexaStore *hexaStore, const char *subject, const ch
 TripletIterator *HexaStore_Search(HexaStore* hexaStore, const char *prefix) {
 	// TODO: free prefix_dup.
 	char* prefix_dup = strdup(prefix);
-	TrieMapIterator *iter = TrieMap_Iterate(hexaStore, prefix_dup, strlen(prefix_dup));
-	return NewTripletIterator(iter);
+	return TrieMap_Iterate(hexaStore, prefix_dup, strlen(prefix_dup));
 }
 
 TripletIterator* HexaStore_QueryTriplet(HexaStore *hexaStore, const Triplet* triplet) {

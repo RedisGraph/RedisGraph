@@ -15,7 +15,6 @@ typedef struct {
     OpBase op;
     Node *node;
     RedisModuleCtx *ctx;
-    RedisModuleString *label;
     RedisModuleString *graph;
     StoreIterator *iter;
 } NodeByLabelScan;
@@ -32,6 +31,6 @@ OpResult NodeByLabelScanConsume(OpBase *opBase, Graph* graph);
 OpResult NodeByLabelScanReset(OpBase *ctx);
 
 /* Frees NodeByLabelScan */
-void NodeByLabelScanFree(NodeByLabelScan *ctx);
+void NodeByLabelScanFree(OpBase *ctx);
 
 #endif

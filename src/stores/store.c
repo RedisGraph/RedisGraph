@@ -37,6 +37,8 @@ Store *GetStore(RedisModuleCtx *ctx, StoreType type, const RedisModuleString *gr
     RedisModuleString *strKey = _StoreID(ctx, type, graph, label);
 	RedisModuleKey *key =
         RedisModule_OpenKey(ctx, strKey, REDISMODULE_WRITE);
+    
+    RedisModule_FreeString(ctx, strKey);
 
 	int keyType = RedisModule_KeyType(key);
 
@@ -46,14 +48,15 @@ Store *GetStore(RedisModuleCtx *ctx, StoreType type, const RedisModuleString *gr
 	}
 
 	store = RedisModule_ModuleTypeGetValue(key);
+    RedisModule_CloseKey(key);
 	return store;
 }
 
-void Store_Insert(Store *store, const RedisModuleString *id) {
+void Store_Insert(Store *store, const RedisModuleString *id, void *value) {
     size_t len;
     const char *strId = RedisModule_StringPtrLen(id, &len);
     
-    TrieMap_Add(store, id, len, NULL, NULL);
+    TrieMap_Add(store, strId, len, value, NULL);
 }
 
 void Store_Remove(Store *store, const RedisModuleString *id) {
@@ -67,6 +70,10 @@ StoreIterator *Store_Search(Store *store, const char *prefix) {
     char* prefix_dup = strdup(prefix);
 	StoreIterator *iter = TrieMap_Iterate(store, prefix_dup, strlen(prefix_dup));
     return iter;
+}
+
+void *Store_Get(Store *store, const char *id) {
+    return TrieMap_Find(store, id, strlen(id));
 }
 
 char *StoreIterator_Next(StoreIterator *cursor) {

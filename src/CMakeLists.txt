@@ -10,6 +10,8 @@ set(_graph_files
       ../src/hexastore/hexastore.c
       ../src/hexastore/triplet.c
 
+      ../src/filter_tree/filter_tree.c
+
       ../src/stores/store.c
 
       ../src/graph/edge.c
@@ -29,6 +31,7 @@ set(_graph_files
 
       ../src/util/heap.c
       ../src/util/sha1.c
+      ../src/util/prng.c
       ../src/util/triemap/triemap.c
       ../src/util/triemap/triemap_type.c
 
@@ -37,8 +40,10 @@ set(_graph_files
 
       ../src/execution_plan/ops/node_by_label_scan.c
       ../src/execution_plan/ops/all_node_scan.c
-      ../src/execution_plan/ops/expend_all.c
+      ../src/execution_plan/ops/expand_all.c
       ../src/execution_plan/ops/produce_results.c
+      ../src/execution_plan/ops/filter.c
+      ../src/execution_plan/ops/op_aggregate.c
 
       ../src/execution_plan/execution_plan.c
 

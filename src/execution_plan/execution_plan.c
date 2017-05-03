@@ -1,9 +1,12 @@
 #include "execution_plan.h"
 #include "../query_executor.h"
 
-#include "./ops/expend_all.h"
+#include "./ops/expand_all.h"
 #include "./ops/all_node_scan.h"
 #include "./ops/node_by_label_scan.h"
+#include "./ops/produce_results.h"
+#include "./ops/filter.h"
+#include "./ops/op_aggregate.h"
 
 #include "../graph/edge.h"
 #include "../rmutil/vector.h"
@@ -27,16 +30,31 @@ void OpNode_AddChild(OpNode* parent, OpNode* child) {
 }
 
 ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, RedisModuleString *graphName, QueryExpressionNode *ast) {
+    Graph *graph = BuildGraph(ast->matchNode);
     ExecutionPlan *executionPlan = malloc(sizeof(ExecutionPlan));
     
-    OpBase *produceResults;
-    NewProduceResultsOp(ctx, graphName, ast, &produceResults);
+    // List of operations
+    Vector *Ops = NewVector(OpNode*, 0);
+
+    OpBase *opFilter = NULL;
+    OpBase *produceResults = NULL;
+    NewProduceResultsOp(ctx, ast, &produceResults);
+
     OpNode *opProduceResults = NewOpNode(produceResults);
     executionPlan->root = opProduceResults;
-
-    // Build graph from AST MATCH clause
-    Graph *graph = BuildGraph(ast->matchNode);
     executionPlan->graph = graph;
+
+    Vector_Push(Ops, opProduceResults);
+    
+    if(ReturnClause_ContainsAggregation(ast->returnNode)) {
+        OpNode *opAggregate = NewOpNode(NewAggregateOp(ctx, ast));
+        Vector_Push(Ops, opAggregate);
+    }
+
+    // if(ast->whereNode != NULL) {
+    //     opFilter = NewFilterOp(ctx, ast);
+    //     Vector_Push(Ops,  NewOpNode(opFilter));
+    // }
 
     // Get all nodes without incoming edges
     Vector *entryNodes = Graph_GetNDegreeNodes(graph, 0);
@@ -44,10 +62,42 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, RedisModuleString *graphNam
     for(int i = 0; i < Vector_Size(entryNodes); i++) {
         Node *node;
         Vector_Get(entryNodes, i, &node);
-
-        // List of operations
-        Vector *Ops = NewVector(OpNode*, 0);
         
+        // Expand if possible
+        if(Vector_Size(node->outgoingEdges) > 0) {
+            Vector *reversedExpandOps = NewVector(OpNode*, 0);
+
+            // Traverse sub-graph expanded from current node.
+            // Assuming only one edge per node.
+            // TODO: this assumption doesn't hold, support multi outgoing edges.
+            Node *srcNode = node;
+            Node *destNode;
+            Edge *edge;
+
+            do {
+                Vector_Get(srcNode->outgoingEdges, 0, &edge);
+                destNode = edge->dest;
+
+                OpNode *opNodeExpandAll = NewOpNode(NewExpandAllOp(ctx, graphName, srcNode, edge, destNode));
+                Vector_Push(reversedExpandOps, opNodeExpandAll);
+                
+                // can we advance?
+                if(Vector_Size(destNode->outgoingEdges) == 0) {
+                    break;
+                }
+
+                // Advance
+                srcNode = destNode;
+            } while(destNode != NULL);
+
+            // Save expand ops in reverse order.
+            while(Vector_Size(reversedExpandOps) > 0) {
+                OpNode *opNodeExpandAll;
+                Vector_Pop(reversedExpandOps, &opNodeExpandAll);
+                Vector_Push(Ops, opNodeExpandAll);
+            }
+        }
+
         // Locate node within MATCH clause.
         ChainElement *chainElement;
         for(int j = 0; j < Vector_Size(ast->matchNode->chainElements); j++) {
@@ -55,72 +105,46 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, RedisModuleString *graphNam
             if(chainElement->t == N_ENTITY && strcmp(node->alias, chainElement->e.alias) == 0) { break; }
         }
 
-        OpBase* op;
+        OpBase* scanOp;
         // Determin operation type
         if(chainElement->e.label == NULL) {
             // Node is not labeled, no other option but a full scan.
             // TODO: if this node is a part of a pattern (A)-[]->(B)
             // then it might be possible to scan B more efficently
             // if B is labeled.
-            op = NewAllNodeScanOp(ctx, node, graphName);
+            scanOp = NewAllNodeScanOp(ctx, node, graphName);
         } else {
             // TODO: when indexing is enabled, use index when possible.
-            op = NewNodeByLabelScanOp(ctx, node, graphName, chainElement->e.label);
+            scanOp = NewNodeByLabelScanOp(ctx, node, graphName, chainElement->e.label);
         }
-        OpNode *opGetNode = NewOpNode(op);
-        
-        Vector_Push(Ops, opGetNode);
-
-        // Expend if possible
-        if(Vector_Size(node->outgoingEdges) > 0) {
-            // Traverse sub-graph expended from current node.
-            // Assuming only one edge per node.
-            // TODO: this assumption doesn't hold, support multi outgoing edges.
-            Node *current = node;
-            Node *next;
-            Edge *edge;
-            Vector_Get(current->outgoingEdges, 0, &edge);
-            next = edge->dest;
-
-            while(next != NULL) {
-                // Create sub-graph
-                // current and next are already connected by an edge.
-                Graph *g = NewGraph();
-                Graph_AddNode(g, current);
-                Graph_AddNode(g, next);
-
-                OpNode *opNodeExpendAll = NewOpNode(NewExpendAllOp(ctx, graphName, g));
-                Vector_Push(Ops, opNodeExpendAll);
-                
-                // can we advance?
-                if(Vector_Size(next->outgoingEdges) == 0) {
-                    break;
-                }
-                
-                // Advance
-                current = next;
-                Vector_Get(current->outgoingEdges, 0, &edge);
-                next = edge->dest;
-            }
-        } // End of node expansion
+        Vector_Push(Ops, NewOpNode(scanOp));
 
         // Consume Ops in reversed order.
-        OpNode* prevPrev;
-        OpNode* prev;
-
-        // Connect result-set to last expention
-        Vector_Pop(Ops, &prev);
-        OpNode_AddChild(opProduceResults, prev);
+        OpNode* currentOp;
+        OpNode* prevOp;
+        Vector_Pop(Ops, &prevOp);
         
         // Connect operations in reversed order
-        while(Vector_Size(Ops) != 0) {
-            Vector_Pop(Ops, &prevPrev);
-            OpNode_AddChild(prev, prevPrev);
-            prev = prevPrev;
-        }
+        do {
+            Vector_Pop(Ops, &currentOp);
 
-        Vector_Free(Ops);
+            // Inster filter after every step.
+            if(ast->whereNode != NULL) {
+                opFilter = NewFilterOp(ctx, ast);
+                OpNode *nodeFilter = NewOpNode(opFilter);
+                OpNode_AddChild(currentOp, nodeFilter);
+                OpNode_AddChild(nodeFilter, prevOp);
+            } else {
+                OpNode_AddChild(currentOp, prevOp);
+            }
+            prevOp = currentOp;
+        } while(Vector_Size(Ops) != 0);
+
+        // Reintroduce Projection.
+        Vector_Push(Ops, opProduceResults);
     } // End of entry nodes loop
+
+    Vector_Free(Ops);
 
     return executionPlan;
 }
@@ -156,33 +180,52 @@ OpResult _ExecuteOpNode(OpNode *node, Graph *graph) {
      * try to get new data from children */
     if(OP_REQUIRE_NEW_DATA(res)) {
         if(res == OP_DEPLETED) {
+            
+            // Op is consumed.
+            if(node->childCount == 0) {
+                return OP_DEPLETED;
+            }
+            
             // Reset on depleted
             if (node->operation->reset(node->operation) == OP_ERR) {
                 return OP_ERR;
             }
-
-            if(node->childCount == 0) {
-                return node->operation->next(node->operation, graph);
-            }
         }
 
-        // Try to get new data into the graph
-        for(int i = 0; i < node->childCount; i++) {
-            OpNode *child = node->children[i];
-            switch(_ExecuteOpNode(child, graph)) {
-                case OP_ERR:
-                    return OP_ERR;
-                case OP_OK:
-                    // Managed to get new data into the graph.
-                    return node->operation->next(node->operation, graph);
+        /* Try to get new data into the graph
+         * TODO: find a better soulution for this if condition.
+         * Produce Results requires all of its children to return OP_OK
+         * before consuming. */
+        if(strcmp(node->operation->name, "Produce Results") != 0) {
+            for(int i = 0; i < node->childCount; i++) {
+                OpNode *child = node->children[i];
+                switch(_ExecuteOpNode(child, graph)) {
+                    case OP_ERR:
+                        return OP_ERR;
+                    case OP_OK:
+                        // Managed to get new data into the graph,
+                        // Recall ourself.
+                        return _ExecuteOpNode(node, graph);
+                }
             }
+        } else {
+            for(int i = 0; i < node->childCount; i++) {
+                OpNode *child = node->children[i];
+                if (_ExecuteOpNode(child, graph) != OP_OK) {
+                    return res;
+                }
+            }
+            return _ExecuteOpNode(node, graph);
         }
     }
     return res;
 }
 
-void ExecutionPlan_Execute(ExecutionPlan *plan) {
-    while(_ExecuteOpNode(plan->root, plan->graph) != OP_DEPLETED);
+ResultSet* ExecutionPlan_Execute(ExecutionPlan *plan) {
+    while(_ExecuteOpNode(plan->root, plan->graph) == OP_OK);
+    
+    // Execution-Plan root node is ProduceResults operation.
+    return ((ProduceResults*)plan->root->operation)->resultset;
 }
 
 void OpNode_Free(OpNode* op) {
@@ -190,6 +233,9 @@ void OpNode_Free(OpNode* op) {
     for(int i = 0; i < op->childCount; i++) {
         OpNode_Free(op->children[i]);
     }
+    
+    // Free internal operation
+    op->operation->free(op->operation);
     free(op);
 }
 

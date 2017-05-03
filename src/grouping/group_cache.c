@@ -1,67 +1,39 @@
 #include "group_cache.h"
-#include "../redismodule.h"
+#include "../rmutil/vector.h"
 
-static khash_t(khID) *__groupCache = NULL;
-
-static void __initGroupCache() {
-    if(__groupCache == NULL) {
-        __groupCache = kh_init(khID);
-    }
+void InitGroupCache() {
+    __groupCache = NewTrieMap();
 }
 
-khiter_t CacheGroupIter() {
-    return kh_begin(__groupCache);
-}
-
-int CacheGroupIterNext(khiter_t *iter, char **key, Group **group) {
-    for(;*iter != kh_end(__groupCache); ++*iter) {
-        if(kh_exist(__groupCache, *iter)) {
-            *key = kh_key(__groupCache, *iter);
-            *group = kh_value(__groupCache, *iter);
-            ++*iter; // Advance before returning.
-            return 1;
-        }
-    }
-    return 0;
-}
-
-int CacheGroupAdd(const char *key, Group *group) {
-    __initGroupCache();
-    return kh_set(khID, __groupCache, key, group);
-}
-
-void CacheGroupRemove(const char *key) {
-    if(__groupCache == NULL) {
-        return;
-    }
-
-    khiter_t iter = kh_get(khID, __groupCache, key);
-    if (iter != kh_end(__groupCache)) {
-        kh_del(khID, __groupCache, iter);
-    }
+void CacheGroupAdd(const char *key, Group *group) {
+    TrieMap_Add(__groupCache, key, strlen(key), group, NULL);
 }
 
 // Retrives a group,
-// Returns NULL if group is missing.
+// Sets group to NULL if key is missing.
 void CacheGroupGet(const char *key, Group **group) {
-    if(__groupCache == NULL) {
+    *group = TrieMap_Find(__groupCache, key, strlen(key));
+    if (*group == TRIEMAP_NOTFOUND) {
         *group = NULL;
-        return;
     }
-    *group = kh_get_val(khID, __groupCache, key, NULL);
 }
 
-void CacheGroupClear() {
-    if(__groupCache == NULL) {
-        return;
-    }
+void FreeGroupCache() {
+    TrieMap_Free(__groupCache, FreeGroup);
+}
 
-    for (khiter_t iter = kh_begin(__groupCache); iter != kh_end(__groupCache); ++iter) {
-        if (kh_exist(__groupCache, iter)) {
-            kh_del(khID, __groupCache, iter);
-        }
-    }
+// Returns an iterator to scan entire group cache
+CacheGroupIterator* CacheGroupIter() {
+    char* prefix = strdup("");
+	return TrieMap_Iterate(__groupCache, prefix, strlen(prefix));
+}
 
-    // Cleanup and remove our hashtable
-    // kh_destroy(khID, __groupCache);
+// Advance iterator and returns key & value in current position.
+int CacheGroupIterNext(CacheGroupIterator *iter, char **key, Group **group) {
+    tm_len_t len = 0;
+    int res = TrieMapIterator_Next(iter, key, &len, group);
+    if(res == 0) {
+        *group = NULL;
+    }
+    return res;
 }

@@ -3,6 +3,8 @@
 
 #include "./ops/op.h"
 #include "../parser/ast.h"
+#include "../resultset/resultset.h"
+
 
 struct OpNode;
 
@@ -29,7 +31,7 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, RedisModuleString *graph, Q
 char* ExecutionPlanPrint(const ExecutionPlan *plan);
 
 /* Executes plan */
-void ExecutionPlan_Execute(ExecutionPlan *plan);
+ResultSet* ExecutionPlan_Execute(ExecutionPlan *plan);
 
 /* Free execution plan */
 void ExecutionPlanFree(ExecutionPlan *plan);

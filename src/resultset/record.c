@@ -14,7 +14,7 @@ Record* Record_FromGraph(RedisModuleCtx *ctx, const QueryExpressionNode* ast, co
         return NULL;
     }
 
-    Record *r = (Record*)RedisModule_Alloc(sizeof(Record));
+    Record *r = (Record*)malloc(sizeof(Record));
     r->values = elements;
 
     return r;

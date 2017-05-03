@@ -1,18 +1,17 @@
 #include "produce_results.h"
+#include "../../resultset/record.h"
 
 // OpBase* NewProduceResultsOp(RedisModuleCtx *ctx, RedisModuleString *graph, QueryExpressionNode *ast) {
-void NewProduceResultsOp(RedisModuleCtx *ctx, RedisModuleString *graph, QueryExpressionNode *ast, OpBase **op) {
-    *op = (OpBase *)NewProduceResults(ctx, graph, ast);
-    // OpBase *op = NewProduceResults(ctx, graph, ast);
-    // return op;
+void NewProduceResultsOp(RedisModuleCtx *ctx, QueryExpressionNode *ast, OpBase **op) {
+    *op = (OpBase *)NewProduceResults(ctx, ast);
 }
 
-ProduceResults* NewProduceResults(RedisModuleCtx *ctx, RedisModuleString *graph, QueryExpressionNode *ast) {
+ProduceResults* NewProduceResults(RedisModuleCtx *ctx, QueryExpressionNode *ast) {
     ProduceResults *produceResults = malloc(sizeof(ProduceResults));
     produceResults->ctx = ctx;
-    produceResults->graphName = graph;
     produceResults->ast = ast;
     produceResults->resultset = NULL;
+    produceResults->refreshAfterPass = 0;
 
     // Set our Op operations
     produceResults->op.name = "Produce Results";
@@ -32,17 +31,32 @@ OpResult ProduceResultsConsume(OpBase *opBase, Graph* graph) {
         return OP_DEPLETED;
     }
 
-    // Check if data change since last call
-    if(Graph_Compare(op->graph, graph) == 0) {
-        // Request new data
+    if(op->refreshAfterPass == 1) {
+        op->refreshAfterPass = 0;
         return OP_REFRESH;
-    } else {
-        // Graph changed, update internal graph.
-        // TODO: implement a faster way to see if graph been changed.
-        Graph_Free(op->graph);
-        op->graph = Graph_Clone(graph);
     }
     
+    if(!op->resultset->aggregated) {
+        /* At the moment we have to check every node
+        * node in the graph has an ID
+        * this is because of the optimistic filter */
+        
+        for(int i = 0; i < Vector_Size(graph->nodes); i++) {
+            Node *n;
+            Vector_Get(graph->nodes, i, &n);
+            if (n->id == NULL) {
+                return OP_REFRESH;
+            }
+        }
+
+        // Append to final result set.
+        Record *r = Record_FromGraph(op->ctx, op->ast, graph);
+        ResultSet_AddRecord(op->resultset, r);
+    }
+
+    // Request data refresh next time consume is called.
+    op->refreshAfterPass = 1;
+
     return OP_OK;
 }
 
@@ -61,8 +75,6 @@ OpResult ProduceResultsReset(OpBase *op) {
 /* Frees ProduceResults */
 void ProduceResultsFree(ProduceResults *op) {
     if(op != NULL) {
-        ResultSet_Free(op->ctx, op->resultset);
-        Graph_Free(op->graph);
         free(op);
     }
 }
