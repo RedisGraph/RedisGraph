@@ -1,11 +1,13 @@
+#include "graph/node.h"
+#include "stores/store.h"
+#include "rmutil/vector.h"
+#include "rmutil/util.h"
 #include "query_executor.h"
 #include "parser/grammar.h"
-#include "rmutil/vector.h"
-#include "graph/node.h"
-#include "parser/parser_common.h"
-#include "hexastore/hexastore.h"
-#include "hexastore/triplet.h"
 #include "aggregate/agg_ctx.h"
+#include "hexastore/triplet.h"
+#include "hexastore/hexastore.h"
+#include "parser/parser_common.h"
 #include "aggregate/repository.h"
 
 Graph* BuildGraph(const MatchNode* matchNode) {
@@ -175,99 +177,75 @@ Vector* ReturnClause_GetAggFuncs(RedisModuleCtx *ctx, const ReturnNode* returnNo
     return aggFunctions;
 }
 
-// void _ExpendReturnClause(RedisModuleCtx *ctx, RedisModuleString *graphName, Graph *g, Node *n, Vector *entryPoints, ReturnNode *returnNode) {
-//     Node* src = n;
-//     for(int i = 0; i < Vector_Size(src->outgoingEdges); i++) {
-//         Edge* edge;
-//         Vector_Get(src->outgoingEdges, i, &edge);
-//         Node* dest = edge->dest;
+void ReturnClause_ExpandCollapsedNodes(RedisModuleCtx *ctx, QueryExpressionNode *ast, RedisModuleString *graphName) {
+    /* Assumption, each collapsed node is tagged with a label
+     * TODO: maintain a label schema, this way we won't have
+     * to call HGETALL each time to discover label attributes */
+    Vector *expandReturnElements = NewVector(ReturnElementNode *, Vector_Size(ast->returnNode->returnElements));
 
-//         // Create a triplet out of edge
-//         Triplet* triplet = TripletFromEdge(edge);
+    for(int i = 0; i < Vector_Size(ast->returnNode->returnElements); i++) {
+        ReturnElementNode *node;
+        Vector_Get(ast->returnNode->returnElements, i, &node);
+        
+        if(node->type != N_NODE) {
+            Vector_Push(expandReturnElements, node);
+            continue;
+        }
+        
+        // Find collapsed node's label
+        ChainElement *collapsedNode = NULL;
+        for(int j = 0; j < Vector_Size(ast->matchNode->chainElements); j++) {
+            ChainElement *ce;
+            Vector_Get(ast->matchNode->chainElements, j, &ce);
+            if(ce->t != N_ENTITY) {
+                continue;
+            }
+            if(strcmp(ce->e.alias, node->variable->alias) == 0) {
+                collapsedNode = ce;
+                break;
+            }
+        }
 
-//         // Query graph using triplet, no filters are applied at this stage
-//         HexaStore *hexaStore = GetHexaStore(ctx, graphName);
-//         TripletIterator *cursor = HexaStore_QueryTriplet(hexaStore, triplet);
+        if(collapsedNode == NULL) {
+            // Invalud query, return clause refers to none existing node.
+            // TODO: Validate query.
+            printf("Error, could not find collapsed node\n");
+            return;
+        }
 
-//         FreeTriplet(triplet);
+        // Discard collapsed node.
+        FreeReturnElementNode(node);
+        
+        // Find an id, for node label
+        RedisModuleString *label =
+            RedisModule_CreateString(ctx, collapsedNode->e.label, strlen(collapsedNode->e.label));        
+        
+        Store *s = GetStore(ctx, STORE_NODE, graphName, label);
+        
+        RedisModule_FreeString(ctx, label);
 
-//         // Run through cursor.
-//         // Fast skip triplets which do not pass filters
-//         triplet = FastSkipTriplets(ctx, NULL, cursor, g, src, dest);
-//         if(triplet == NULL) {
-//             // Couldn't find a triplet which agrees with filters
-//             return;
-//         } else {
-//             // Set nodes
-//             src->id = triplet->subject;
-//             edge->relationship = triplet->predicate;
-//             dest->id = triplet->object;
-//         }
-//         // Advance to next node
-//         if(Vector_Size(dest->outgoingEdges) > 0) {
-//             return _ExpendReturnClause(ctx, graphName, g, dest, entryPoints, returnNode);
-//         } else if(Vector_Size(entryPoints) > 0) {
-//             // Additional entry point
-//             Node* entryPoint = NULL;
-//             Vector_Pop(entryPoints, &entryPoint);
-//             return _ExpendReturnClause(ctx, graphName, g, entryPoint, entryPoints, returnNode);
-//         } else {
-//             // We've reach the end of the graph
-//             // Expend each collapsed return node.
-//             Vector *returnElements = NewVector(ReturnElementNode *, Vector_Size(returnNode->returnElements));
-
-//             for(int i = 0; i < Vector_Size(returnNode->returnElements); i++) {
-//                 ReturnElementNode *returnElementNode;
-//                 Vector_Get(returnNode->returnElements, i, &returnElementNode);
-
-//                 if(returnElementNode->type == N_NODE) {
-//                     Node* collapsedNode = Graph_GetNodeByAlias(g, returnElementNode->variable->alias);
-
-//                     // Issue HGETALL.
-//                     RedisModuleCallReply *reply = RedisModule_Call(ctx, "HGETALL", "c", collapsedNode->id);
-//                     if(RedisModule_CallReplyType(reply) != REDISMODULE_REPLY_ARRAY) {
-//                         printf("ERROE expecting an array \n");
-//                         break;
-//                     } else {
-//                         // Consume HGETALL.
-//                         size_t reply_len = RedisModule_CallReplyLength(reply);
-//                         // Foreach element within node's hash
-//                         // We're only interested in attribute name.
-//                         for(int idx = 0; idx < reply_len; idx+=2) {
-//                             RedisModuleCallReply *subreply;
-//                             subreply = RedisModule_CallReplyArrayElement(reply, idx);
-//                             size_t len;
-//                             const char *property = RedisModule_CallReplyStringPtr(subreply, &len);
-//                             char* prop = calloc(len+1, sizeof(char));
-//                             memcpy(prop, property, len);
-
-//                             // Create a new return element.
-//                             Variable* var = NewVariable(collapsedNode->alias, prop);
-//                             ReturnElementNode* retElem = NewReturnElementNode(N_PROP, var, NULL, returnElementNode->alias);
-//                             Vector_Push(returnElements, retElem);
-//                             free(prop);
-//                         }
-//                     }
-//                     RedisModule_FreeCallReply(reply);
-//                 } else {
-//                     Vector_Push(returnElements, returnElementNode);
-//                 }
-//             }
-
-//             // Swap collapsed return clause with expended one.
-//             // TODO: Free overide vector.
-//             returnNode->returnElements = returnElements;
-//         }
-//         TripletIterator_Free(cursor);
-//     }
-// }
-
-void ReturnClause_ExpendCollapsedNodes(RedisModuleCtx *ctx, ReturnNode *returnNode, RedisModuleString *graphName, Graph *graph) {
-    // TODO: Check if return clause contains a collapsed node before running ExpendReturnClause.
-    Vector* entryPoints = Graph_GetNDegreeNodes(graph, 0);
-    Node* startNode = NULL;
-    Vector_Pop(entryPoints, &startNode);
-    // _ExpendReturnClause(ctx, graphName, graph, startNode, entryPoints, returnNode);
+        StoreIterator *it = Store_Search(s, "");
+        char *id = StoreIterator_Next(it);
+        
+        RedisModuleString *rmId = RedisModule_CreateString(ctx, id, strlen(id));
+        RMUtilInfo *attributes = RMUtil_HGetAll(ctx, rmId);
+        RedisModule_FreeString(ctx, rmId);
+        StoreIterator_Free(it);
+        
+        for(int j = 0; j < attributes->numEntries; j++) {
+            RMUtilInfoEntry entry = attributes->entries[j];
+            // Create a new return element.
+            Variable* var = NewVariable(collapsedNode->e.alias, entry.key);
+            free(entry.key);
+            free(entry.val);
+            ReturnElementNode* retElem = NewReturnElementNode(N_PROP, var, NULL, NULL);
+            Vector_Push(expandReturnElements, retElem);
+        }
+        RMUtilRedisInfo_Free(attributes);
+    }
+    // Override previous return clause
+    Vector_Free(ast->returnNode->returnElements);
+    ast->returnNode->returnElements = expandReturnElements;
 }
 
 void nameAnonymousNodes(QueryExpressionNode *ast) {

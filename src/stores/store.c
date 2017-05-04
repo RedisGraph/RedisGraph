@@ -73,7 +73,11 @@ StoreIterator *Store_Search(Store *store, const char *prefix) {
 }
 
 void *Store_Get(Store *store, const char *id) {
-    return TrieMap_Find(store, id, strlen(id));
+    void *val = TrieMap_Find(store, id, strlen(id));
+    if(val == TRIEMAP_NOTFOUND) {
+        val = NULL;
+    }
+    return val;
 }
 
 char *StoreIterator_Next(StoreIterator *cursor) {
@@ -85,7 +89,11 @@ char *StoreIterator_Next(StoreIterator *cursor) {
 		return NULL;
 	}
 
-	return key;
+    key[len] = NULL;
+    return key;
+    // char *id = strdup(key);
+    // id[len] = NULL;
+	// return id;
 }
 
 void StoreIterator_Free(StoreIterator* iterator) {

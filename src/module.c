@@ -43,11 +43,12 @@
  * Returns the new node ID */
 RedisModuleString* _CreateGraphEntity(RedisModuleCtx *ctx, RedisModuleString **properties, int propCount) {
     // Get an id
-    unsigned char id[40];
+    unsigned char id[33] = {};
     get_new_id(id);
 
     // Store node properties within a redis hash
-    RedisModuleString* entityID = RedisModule_CreateString(ctx, id, strlen(id));
+    // RedisModuleString* entityID = RedisModule_CreateString(ctx, id, strlen(id));
+    RedisModuleString* entityID = RedisModule_CreateString(ctx, id, 32);
     RedisModuleKey *key = RedisModule_OpenKey(ctx, entityID, REDISMODULE_WRITE);
     // TODO: check if key exists
     
@@ -248,9 +249,9 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
     // Parse query, get AST.
     char *errMsg = NULL;
-    QueryExpressionNode* parseTree = ParseQuery(q, qLen, &errMsg);
+    QueryExpressionNode* ast = ParseQuery(q, qLen, &errMsg);
     
-    if (!parseTree) {
+    if (!ast) {
         RedisModule_Log(ctx, "debug", "Error parsing query: %s", errMsg);
         RedisModule_ReplyWithError(ctx, errMsg);
         free(errMsg);
@@ -258,14 +259,12 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     }
     
     // Modify AST
-    // if(ReturnClause_ContainsCollapsedNodes(parseTree->returnNode) == 1) {
-    //     Graph* graph = BuildGraph(parseTree->matchNode);
-    //     // Expend collapsed nodes.
-    //     ReturnClause_ExpendCollapsedNodes(ctx, parseTree->returnNode, graphName, graph);
-    //     Graph_Free(graph);
-    // }
+    if(ReturnClause_ContainsCollapsedNodes(ast->returnNode) == 1) {
+        // Expend collapsed nodes.
+        ReturnClause_ExpandCollapsedNodes(ctx, ast, graphName);
+    }
 
-    ExecutionPlan *plan = NewExecutionPlan(ctx, graphName, parseTree);
+    ExecutionPlan *plan = NewExecutionPlan(ctx, graphName, ast);
     ResultSet* resultSet = ExecutionPlan_Execute(plan);
     
     // Send result-set back to client.
@@ -284,7 +283,7 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     free(strElapsed);
     
     // Free AST
-    FreeQueryExpressionNode(parseTree);
+    FreeQueryExpressionNode(ast);
     return REDISMODULE_OK;
 }
 
@@ -305,9 +304,9 @@ int MGraph_ExecutionPlan(RedisModuleCtx *ctx, RedisModuleString **argv, int argc
 
     // Parse query, get AST.
     char *errMsg = NULL;
-    QueryExpressionNode* parseTree = ParseQuery(q, qLen, &errMsg);
+    QueryExpressionNode* ast = ParseQuery(q, qLen, &errMsg);
     
-    if (!parseTree) {
+    if (!ast) {
         RedisModule_Log(ctx, "debug", "Error parsing query: %s", errMsg);
         RedisModule_ReplyWithError(ctx, errMsg);
         free(errMsg);
@@ -315,14 +314,12 @@ int MGraph_ExecutionPlan(RedisModuleCtx *ctx, RedisModuleString **argv, int argc
     }
     
     // Modify AST
-    // if(ReturnClause_ContainsCollapsedNodes(parseTree->returnNode) == 1) {
-    //     Graph* graph = BuildGraph(parseTree->matchNode);
-    //     // Expend collapsed nodes.
-    //     ReturnClause_ExpendCollapsedNodes(ctx, parseTree->returnNode, graphName, graph);
-    //     Graph_Free(graph);
-    // }
+    if(ReturnClause_ContainsCollapsedNodes(ast->returnNode) == 1) {
+        // Expend collapsed nodes.
+        ReturnClause_ExpandCollapsedNodes(ctx, ast, graphName);
+    }
 
-    ExecutionPlan *plan = NewExecutionPlan(ctx, graphName, parseTree);
+    ExecutionPlan *plan = NewExecutionPlan(ctx, graphName, ast);
     char* strPlan = ExecutionPlanPrint(plan);
     ExecutionPlanFree(plan);
 
@@ -330,7 +327,7 @@ int MGraph_ExecutionPlan(RedisModuleCtx *ctx, RedisModuleString **argv, int argc
     free(strPlan);
     
     // Free AST
-    FreeQueryExpressionNode(parseTree);
+    FreeQueryExpressionNode(ast);
     return REDISMODULE_OK;
 }
 

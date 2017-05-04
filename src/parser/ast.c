@@ -254,7 +254,7 @@ void FreeQueryExpressionNode(QueryExpressionNode* queryExpressionNode) {
 }
 
 Variable* NewVariable(const char* alias, const char* property) {
-	Variable* v = (Variable*)malloc(sizeof(Variable));
+	Variable* v = (Variable*)calloc(1, sizeof(Variable));
 
 	if(alias != NULL) {
 		v->alias = strdup(alias);

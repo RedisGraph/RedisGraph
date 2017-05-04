@@ -99,7 +99,7 @@ def run_queries():
 	# redis_graph.query(query)
 	# print "\n"
 
-	# #------------------------------------------------------------------------
+	#------------------------------------------------------------------------
 	query_desc = "Which actors played in the movie Straight Outta Compton?"
 	print query_desc
 
@@ -117,10 +117,10 @@ def run_queries():
 
 	query = """MATCH (a:actor)-[act]->(m:movie)
 	WHERE a.age >= 50 AND m.votes > 10000 AND m.rating > 8.5
-	RETURN a.name, m.title"""
+	RETURN a, m"""
 	print "query: {query}".format(query=query)
 
-	print "Execution plan: {plan}".format(plan=redis_graph.execution_plan(query))
+	# print "Execution plan: {plan}".format(plan=redis_graph.execution_plan(query))
 	redis_graph.query(query)
 	print "\n"
 
@@ -131,7 +131,7 @@ def run_queries():
 	query = """MATCH (a:actor)-[act]->(m:movie)
 	WHERE (m.gener = Drama OR m.gener = Comedy)
 	AND m.rating < 6.0 AND m.votes > 80000
-	RETURN a.name, m.title, m.gener, m.rating, m.votes
+	RETURN a.name, m
 	ORDER BY m.rating"""
 	print "query: {query}".format(query=query)
 
@@ -139,13 +139,13 @@ def run_queries():
 	redis_graph.query(query)
 	print "\n"
 
-	# #------------------------------------------------------------------------
+	#------------------------------------------------------------------------
 	# query_desc = "Which young actors played along side Cameron Diaz?"
 	# print query_desc
 
-	# query = """MATCH (Cameron:"Cameron Diaz")-[act]->(movie)<-[act]-(actor)
-	# WHERE actor.age < 35
-	# RETURN actor, movie.title""";
+	# query = """MATCH (Cameron:actor {name:"Cameron Diaz"})-[act]->(m:movie)<-[act]-(a:actor)
+	# WHERE a.age < 35
+	# RETURN a, m.title""";
 	# print "query: {query}".format(query=query)
 
 	# print "Execution plan: {plan}".format(plan=redis_graph.execution_plan(query))
@@ -155,10 +155,10 @@ def run_queries():
 	#------------------------------------------------------------------------
 	# query_desc = "Which actors played along side Cameron Diaz and are younger then her?"
 	# print query_desc
-		
-	# query = """MATCH (Cameron:"Cameron Diaz")-[act]->(movie)<-[act]-(actor)
-	# WHERE actor.age < Cameron.age
-	# RETURN actor, movie.title""";
+
+	# query = """MATCH (Cameron:actor {name:"Cameron Diaz"})-[act]->(m:movie)<-[act]-(a:actor)
+	# WHERE a.age < Cameron.age
+	# RETURN a, m.title""";
 	# print "query: {query}".format(query=query)
 
 	# print "Execution plan: {plan}".format(plan=redis_graph.execution_plan(query))
@@ -202,6 +202,8 @@ def run_queries():
 	print "Execution plan: {plan}".format(plan=redis_graph.execution_plan(query))
 	redis_graph.query(query)
 	print "\n"
+
+	#------------------------------------------------------------------------
 
 def debug():
 	print "debug"

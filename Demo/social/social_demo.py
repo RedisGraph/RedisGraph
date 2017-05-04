@@ -104,7 +104,7 @@ def run_queries():
     print query_desc
     query = """MATCH (ME:person {name:"Roi Lipman"})-[friend]->(:person)-[friend]->(fof:person {status:single}) 
                 WHERE fof.age > 30
-                RETURN fof.name, fof.age""";
+                RETURN fof""";
     print "query: {query}".format(query=query)
     print "execution plan:\n{plan}".format(plan=redis_graph.execution_plan(query))
     redis_graph.query(query)
@@ -126,7 +126,7 @@ def run_queries():
     # # query_desc = "Friends who've been to places I've visited"
     # # print query_desc
     # # query = """MATCH (:person {name:"Roi Lipman"})-[visited]->(c:country)<-[visited]-(f:person)<-[friend]-(:person {name:"Roi Lipman"})
-    # #         RETURN f.name, c.name""";
+    # #         RETURN f.name, c""";
 
     # # print "query: {query}".format(query=query)
     # # print "execution plan:\n{plan}".format(plan=redis_graph.execution_plan(query))

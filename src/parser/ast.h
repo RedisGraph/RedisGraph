@@ -45,7 +45,6 @@ struct filterNode;
 typedef struct {
 	char *alias;
 	char *label;
-	char *id; // TODO: remove this field.
 	Vector *properties;
 } EntityNode;
 

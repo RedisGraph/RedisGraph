@@ -72,6 +72,13 @@ typedef struct {
 RMUtilInfo *RMUtil_GetRedisInfo(RedisModuleCtx *ctx);
 
 /**
+* Get all properties of an hash object stored under given id.
+* Returns NULL if something goes wrong.
+* The resulting object needs to be freed with RMUtilRedisInfo_Free
+*/
+RMUtilInfo *RMUtil_HGetAll(RedisModuleCtx *ctx, RedisModuleString *id);
+
+/**
 * Free an RMUtilInfo object and its entries
 */
 void RMUtilRedisInfo_Free(RMUtilInfo *info);

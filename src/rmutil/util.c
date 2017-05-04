@@ -64,6 +64,39 @@ RMUtilInfo *RMUtil_GetRedisInfo(RedisModuleCtx *ctx) {
     return info;
     
 }
+
+RMUtilInfo *RMUtil_HGetAll(RedisModuleCtx *ctx, RedisModuleString *id) {
+    RedisModuleCallReply *reply = RedisModule_Call(ctx, "HGETALL", "s", id);
+    if(RedisModule_CallReplyType(reply) != REDISMODULE_REPLY_ARRAY) {
+        printf("ERROE expecting an array \n");
+        return NULL;
+    }
+    
+    size_t reply_len = RedisModule_CallReplyLength(reply);
+    RMUtilInfo *hgetall = malloc(sizeof(RMUtilInfo));
+    hgetall->numEntries = reply_len/2;
+    hgetall->entries = malloc(sizeof(RMUtilInfoEntry) * hgetall->numEntries);
+    
+    // Consume HGETALL
+    for(int idx = 0; idx < reply_len; idx+=2) {
+        RedisModuleCallReply *subreply;
+        subreply = RedisModule_CallReplyArrayElement(reply, idx);
+
+        size_t len;
+        char *key = strdup(RedisModule_CallReplyStringPtr(subreply, &len));
+        key[len] = 0;
+        hgetall->entries[idx/2].key = key;
+        
+        subreply = RedisModule_CallReplyArrayElement(reply, idx+1);
+        char *val = strdup(RedisModule_CallReplyStringPtr(subreply, &len));
+        val[len] = 0;
+        hgetall->entries[idx/2].val = val;
+    }
+
+    RedisModule_FreeCallReply(reply);
+    return hgetall;
+}
+
 void RMUtilRedisInfo_Free(RMUtilInfo *info) {
     
     free(info->entries);
