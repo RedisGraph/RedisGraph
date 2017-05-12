@@ -22,7 +22,7 @@ typedef struct {
 OpBase* NewExpandAllOp(RedisModuleCtx *ctx, RedisModuleString *graphId, Node *srcNode, Edge *relation, Node *destNode);
 ExpandAll* NewExpandAll(RedisModuleCtx *ctx, RedisModuleString *graphId, Node *srcNode, Edge *relation, Node *destNode);
 
-/* ExpandAllConsume  next operation 
+/* ExpandAllConsume next operation 
  * each call will update the graph
  * returns OP_DEPLETED when no additional updates are available */
 OpResult ExpandAllConsume(OpBase *opBase, Graph* graph);

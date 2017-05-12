@@ -270,7 +270,6 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     // Send result-set back to client.
     ResultSet_Replay(ctx, resultSet);
     ResultSet_Free(ctx, resultSet);
-
     ExecutionPlanFree(plan);
 
     // Report execution timing
@@ -282,8 +281,8 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     RedisModule_ReplyWithStringBuffer(ctx, strElapsed, strlen(strElapsed));
     free(strElapsed);
     
-    // Free AST
-    FreeQueryExpressionNode(ast);
+    // TODO: free AST
+    // FreeQueryExpressionNode(ast);
     return REDISMODULE_OK;
 }
 
@@ -313,12 +312,6 @@ int MGraph_ExecutionPlan(RedisModuleCtx *ctx, RedisModuleString **argv, int argc
         return REDISMODULE_OK;
     }
     
-    // Modify AST
-    if(ReturnClause_ContainsCollapsedNodes(ast->returnNode) == 1) {
-        // Expend collapsed nodes.
-        ReturnClause_ExpandCollapsedNodes(ctx, ast, graphName);
-    }
-
     ExecutionPlan *plan = NewExecutionPlan(ctx, graphName, ast);
     char* strPlan = ExecutionPlanPrint(plan);
     ExecutionPlanFree(plan);
@@ -326,8 +319,8 @@ int MGraph_ExecutionPlan(RedisModuleCtx *ctx, RedisModuleString **argv, int argc
     RedisModule_ReplyWithStringBuffer(ctx, strPlan, strlen(strPlan));
     free(strPlan);
     
-    // Free AST
-    FreeQueryExpressionNode(ast);
+    // TODO: free AST
+    // FreeQueryExpressionNode(ast);
     return REDISMODULE_OK;
 }
 

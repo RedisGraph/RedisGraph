@@ -24,6 +24,8 @@ Node* Node_Clone(const Node *node);
 // Checks if nodes are "equal"
 int Node_Compare(const Node *a, const Node *b);
 
+int Node_IncomeDegree(const Node *n);
+
 // Connects source node to destination node by edge
 void ConnectNode(Node* src, Node* dest, struct Edge* e);
 

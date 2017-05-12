@@ -1,4 +1,4 @@
-#include "expand_all.h"
+#include "op_expand_all.h"
 #include "../../hexastore/hexastore.h"
 
 OpBase* NewExpandAllOp(RedisModuleCtx *ctx, RedisModuleString *graphId, Node *srcNode, Edge *relation, Node *destNode) {
@@ -22,32 +22,6 @@ ExpandAll* NewExpandAll(RedisModuleCtx *ctx, RedisModuleString *graphId, Node *s
     expandAll->op.free = ExpandAllFree;
 
     return expandAll;
-}
-
-OpResult ExpandAllReset(OpBase *ctx) {
-    ExpandAll *op = ctx;
-
-    if(op->srcNode->id != NULL) {
-        free(op->srcNode->id);
-        op->srcNode->id = NULL;
-    }
-
-    if(op->destNode->id != NULL) {
-        free(op->destNode->id);
-        op->destNode->id = NULL;
-    }
-
-    if(op->relation->id != NULL) {
-        free(op->relation->id);
-        op->relation->id = NULL;
-    }
-    
-    if(op->iter != NULL) {
-        TripletIterator_Free(op->iter);
-        op->iter = NULL;
-    }
-    
-    return OP_OK;
 }
 
 /* ExpandAllConsume next operation 
@@ -90,11 +64,37 @@ OpResult ExpandAllConsume(OpBase *opBase, Graph* graph) {
     return OP_OK;
 }
 
+OpResult ExpandAllReset(OpBase *ctx) {
+    ExpandAll *op = ctx;
+
+    if(op->srcNode->id != NULL) {
+        free(op->srcNode->id);
+        op->srcNode->id = NULL;
+    }
+
+    if(op->destNode->id != NULL) {
+        free(op->destNode->id);
+        op->destNode->id = NULL;
+    }
+
+    if(op->relation->id != NULL) {
+        free(op->relation->id);
+        op->relation->id = NULL;
+    }
+    
+    if(op->iter != NULL) {
+        TripletIterator_Free(op->iter);
+        op->iter = NULL;
+    }
+    
+    return OP_OK;
+}
+
 /* Frees ExpandAll */
 void ExpandAllFree(OpBase *ctx) {
     ExpandAll *op = ctx;
     if(op->iter != NULL) {
         TripletIterator_Free(op->iter);
     }
-    free(ctx);
+    free(op);
 }

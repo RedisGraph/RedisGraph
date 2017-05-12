@@ -1,4 +1,4 @@
-#include "node_by_label_scan.h"
+#include "op_node_by_label_scan.h"
 
 OpBase *NewNodeByLabelScanOp(RedisModuleCtx *ctx, Node *node, RedisModuleString *graph, char *label) {
     return (OpBase*)NewNodeByLabelScan(ctx, node, graph, label);
@@ -17,6 +17,7 @@ NodeByLabelScan* NewNodeByLabelScan(RedisModuleCtx *ctx, Node *node, RedisModule
     nodeByLabelScan->ctx = ctx;
     nodeByLabelScan->node = node;
     nodeByLabelScan->graph = graph;
+    nodeByLabelScan->store = store;
     nodeByLabelScan->iter = Store_Search(store, "");
     
 
@@ -53,6 +54,12 @@ OpResult NodeByLabelScanConsume(OpBase *opBase, Graph* graph) {
 }
 
 OpResult NodeByLabelScanReset(OpBase *ctx) {
+    NodeByLabelScan *nodeByLabelScan = ctx;
+    if(nodeByLabelScan->iter != NULL) {
+        StoreIterator_Free(nodeByLabelScan->iter);
+    }
+    
+    nodeByLabelScan->iter = Store_Search(nodeByLabelScan->store, "");
     return OP_OK;
 }
 

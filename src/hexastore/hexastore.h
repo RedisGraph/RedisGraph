@@ -20,9 +20,8 @@ void HexaStore_InsertAllPerm(HexaStore* hexaStore, const char *subject, const ch
 
 void HexaStore_RemoveAllPerm(HexaStore *hexaStore, const char *subject, const char *predicate, const char *object);
 
-// TODO: return HexaStoreIterator.
 TripletIterator *HexaStore_Search(HexaStore* hexaStore, const char *prefix);
 
-TripletIterator *HexaStore_QueryTriplet(HexaStore *hexaStore, const Triplet* triplet);
+TripletIterator *HexaStore_QueryTriplet(HexaStore *hexaStore, const Triplet *triplet);
 
 #endif

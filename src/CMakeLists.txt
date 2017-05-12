@@ -38,11 +38,12 @@ set(_graph_files
       ../src/resultset/record.c
       ../src/resultset/resultset.c
 
-      ../src/execution_plan/ops/node_by_label_scan.c
-      ../src/execution_plan/ops/all_node_scan.c
-      ../src/execution_plan/ops/expand_all.c
-      ../src/execution_plan/ops/produce_results.c
-      ../src/execution_plan/ops/filter.c
+      ../src/execution_plan/ops/op_node_by_label_scan.c
+      ../src/execution_plan/ops/op_all_node_scan.c
+      ../src/execution_plan/ops/op_expand_all.c
+      ../src/execution_plan/ops/op_expand_into.c
+      ../src/execution_plan/ops/op_produce_results.c
+      ../src/execution_plan/ops/op_filter.c
       ../src/execution_plan/ops/op_aggregate.c
 
       ../src/execution_plan/execution_plan.c

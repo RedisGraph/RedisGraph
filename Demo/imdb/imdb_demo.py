@@ -7,14 +7,29 @@ from client import client
 from datetime import date
 from disposableredis import DisposableRedis
 
+REDIS_MODULE_PATH_ENVVAR = 'REDIS_MODULE_PATH'
+REDIS_PATH_ENVVAR = 'REDIS_PATH'
+REDIS_PORT_ENVVAR = 'REDIS_PORT'
+
 graph = "imdb"
 r = None
 redis_graph = None
 
 def _redis():
-	module_path = os.path.abspath(os.path.join(os.getcwd(), "../../src/libmodule.so"))
-	r = DisposableRedis(loadmodule = module_path)
-	return r
+	module_path = os.getenv(REDIS_MODULE_PATH_ENVVAR)
+	redis_path = os.getenv(REDIS_PATH_ENVVAR)
+	fixed_port = os.getenv(REDIS_PORT_ENVVAR)
+
+	_redis_path = redis_path
+	_module_path = os.path.abspath(os.path.join(os.getcwd(), module_path))
+
+	port = None
+	if fixed_port is not None:
+		port = fixed_port
+	
+	print "port=%s, path=%s, loadmodule=%s" % (port, redis_path, _module_path)
+	dr = DisposableRedis(port=port, path=redis_path, loadmodule=_module_path)
+	return dr
 
 def PopulateGraph():
 	# check if graph already exists
@@ -77,27 +92,27 @@ def LoadActors(movies):
 def run_queries():
 	# Query database
 	#------------------------------------------------------------------------
-	# query_desc = "Which actors played along side Nicolas Cage?"
-	# print query_desc
-	# query = """MATCH (n:actor{name:"Nicolas Cage"})-[act]->(m:movie)<-[act]-(a:actor)
-	# RETURN a.name, m.title""";
-	# print "query: {query}".format(query=query)
+	query_desc = "Which actors played along side Nicolas Cage?"
+	print query_desc
+	query = """MATCH (n:actor{name:"Nicolas Cage"})-[act]->(m:movie)<-[act]-(a:actor)
+	RETURN a.name, m.title""";
+	print "query: {query}".format(query=query)
 
-	# print "Execution plan: {plan}".format(plan=redis_graph.execution_plan(query))
-	# redis_graph.query(query)
-	# print "\n"
+	print "Execution plan:\n{plan}".format(plan=redis_graph.execution_plan(query))
+	redis_graph.query(query)
+	print "\n"
 
 	#------------------------------------------------------------------------
-	# query_desc = "Get 3 actors who've played along side Nicolas Cage?"
-	# print query_desc
-	# query = """MATCH (Nicolas:"Nicolas Cage")-[act]->(movie)<-[act]-(actor)
-	# RETURN actor.name, movie.title
-	# LIMIT 3""";
-	# print "query: {query}".format(query=query)
+	query_desc = "Get 3 actors who've played along side Nicolas Cage?"
+	print query_desc
+	query = """MATCH (nicolas:actor {name:"Nicolas Cage"})-[act]->(m:movie)<-[act]-(a:actor)
+	RETURN a.name, m.title
+	LIMIT 3""";
+	print "query: {query}".format(query=query)
 
-	# print "Execution plan: {plan}".format(plan=redis_graph.execution_plan(query))
-	# redis_graph.query(query)
-	# print "\n"
+	print "Execution plan:\n{plan}".format(plan=redis_graph.execution_plan(query))
+	redis_graph.query(query)
+	print "\n"
 
 	#------------------------------------------------------------------------
 	query_desc = "Which actors played in the movie Straight Outta Compton?"
@@ -107,7 +122,7 @@ def run_queries():
 	RETURN a.name""";
 	print "query: {query}".format(query=query)
 
-	print "Execution plan: {plan}".format(plan=redis_graph.execution_plan(query))
+	print "Execution plan:\n{plan}".format(plan=redis_graph.execution_plan(query))
 	redis_graph.query(query)
 	print "\n"
 
@@ -116,11 +131,11 @@ def run_queries():
 	print query_desc
 
 	query = """MATCH (a:actor)-[act]->(m:movie)
-	WHERE a.age >= 50 AND m.votes > 10000 AND m.rating > 8.5
+	WHERE a.age >= 50 AND m.votes > 10000 AND m.rating > 8.1
 	RETURN a, m"""
 	print "query: {query}".format(query=query)
 
-	# print "Execution plan: {plan}".format(plan=redis_graph.execution_plan(query))
+	print "Execution plan:\n{plan}".format(plan=redis_graph.execution_plan(query))
 	redis_graph.query(query)
 	print "\n"
 
@@ -135,35 +150,35 @@ def run_queries():
 	ORDER BY m.rating"""
 	print "query: {query}".format(query=query)
 
-	print "Execution plan: {plan}".format(plan=redis_graph.execution_plan(query))
+	print "Execution plan:\n{plan}".format(plan=redis_graph.execution_plan(query))
 	redis_graph.query(query)
 	print "\n"
 
 	#------------------------------------------------------------------------
-	# query_desc = "Which young actors played along side Cameron Diaz?"
-	# print query_desc
+	query_desc = "Which young actors played along side Cameron Diaz?"
+	print query_desc
 
-	# query = """MATCH (Cameron:actor {name:"Cameron Diaz"})-[act]->(m:movie)<-[act]-(a:actor)
-	# WHERE a.age < 35
-	# RETURN a, m.title""";
-	# print "query: {query}".format(query=query)
+	query = """MATCH (Cameron:actor {name:"Cameron Diaz"})-[act]->(m:movie)<-[act]-(a:actor)
+	WHERE a.age < 35
+	RETURN a, m.title""";
+	print "query: {query}".format(query=query)
 
-	# print "Execution plan: {plan}".format(plan=redis_graph.execution_plan(query))
-	# redis_graph.query(query)
-	# print "\n"
+	print "Execution plan:\n{plan}".format(plan=redis_graph.execution_plan(query))
+	redis_graph.query(query)
+	print "\n"
 
 	#------------------------------------------------------------------------
-	# query_desc = "Which actors played along side Cameron Diaz and are younger then her?"
-	# print query_desc
+	query_desc = "Which actors played along side Cameron Diaz and are younger then her?"
+	print query_desc
 
-	# query = """MATCH (Cameron:actor {name:"Cameron Diaz"})-[act]->(m:movie)<-[act]-(a:actor)
-	# WHERE a.age < Cameron.age
-	# RETURN a, m.title""";
-	# print "query: {query}".format(query=query)
+	query = """MATCH (Cameron:actor {name:"Cameron Diaz"})-[act]->(m:movie)<-[act]-(a:actor)
+	WHERE a.age < Cameron.age
+	RETURN a, m.title""";
+	print "query: {query}".format(query=query)
 
-	# print "Execution plan: {plan}".format(plan=redis_graph.execution_plan(query))
-	# redis_graph.query(query)
-	# print "\n"
+	print "Execution plan:\n{plan}".format(plan=redis_graph.execution_plan(query))
+	redis_graph.query(query)
+	print "\n"
 
 	#------------------------------------------------------------------------
 	query_desc = "What's the sum and average age of the Straight Outta Compton cast?"
@@ -173,7 +188,7 @@ def run_queries():
 	RETURN m.title, SUM(a.age), AVG(a.age)""";
 	print "query: {query}".format(query=query)
 
-	print "Execution plan: {plan}".format(plan=redis_graph.execution_plan(query))
+	print "Execution plan:\n{plan}".format(plan=redis_graph.execution_plan(query))
 	redis_graph.query(query)
 	print "\n"
 
@@ -185,7 +200,7 @@ def run_queries():
 	RETURN Cameron.name, COUNT(m.title)""";
 	print "query: {query}".format(query=query)
 
-	print "Execution plan: {plan}".format(plan=redis_graph.execution_plan(query))
+	print "Execution plan:\n{plan}".format(plan=redis_graph.execution_plan(query))
 	redis_graph.query(query)
 	print "\n"
 
@@ -199,7 +214,7 @@ def run_queries():
 	LIMIT 10""";
 	print "query: {query}".format(query=query)
 
-	print "Execution plan: {plan}".format(plan=redis_graph.execution_plan(query))
+	print "Execution plan:\n{plan}".format(plan=redis_graph.execution_plan(query))
 	redis_graph.query(query)
 	print "\n"
 
@@ -217,7 +232,6 @@ def debug():
 def main(argv):
 	global r
 	global redis_graph
-	print argv
 	if "-debug" in argv:
 		debug()
 	else:

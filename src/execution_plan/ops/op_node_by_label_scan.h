@@ -14,6 +14,7 @@
 typedef struct {
     OpBase op;
     Node *node;
+    Store *store;
     RedisModuleCtx *ctx;
     RedisModuleString *graph;
     StoreIterator *iter;

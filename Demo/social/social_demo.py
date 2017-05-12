@@ -7,14 +7,29 @@ from datetime import date
 from client import client
 from disposableredis import DisposableRedis
 
+REDIS_MODULE_PATH_ENVVAR = 'REDIS_MODULE_PATH'
+REDIS_PATH_ENVVAR = 'REDIS_PATH'
+REDIS_PORT_ENVVAR = 'REDIS_PORT'
+
 graph = "facebook"
 r = None
 redis_graph = None
 
-def _redis():
-    module_path = os.path.abspath(os.path.join(os.getcwd(), "../../build/src/libmodule.so"))
-    r = DisposableRedis(loadmodule = module_path)
-    return r
+def _redis():    
+    module_path = os.getenv(REDIS_MODULE_PATH_ENVVAR)
+    redis_path = os.getenv(REDIS_PATH_ENVVAR)
+    fixed_port = os.getenv(REDIS_PORT_ENVVAR)
+
+    _redis_path = redis_path
+    _module_path = os.path.abspath(os.path.join(os.getcwd(), module_path))
+
+    port = None
+    if fixed_port is not None:
+        port = fixed_port
+
+	print "port=%s, path=%s, loadmodule=%s" % (port, redis_path, _module_path)
+    dr = DisposableRedis(port=port, path=redis_path, loadmodule=_module_path)
+    return dr
 
 def PopulateGraph():
     if r.exists(graph):
@@ -79,7 +94,7 @@ def AddPersonToGraph(person, countries):
 
 
 def run_queries():
-    print "Querying..."
+    print "Querying...\n"
     # Query database
     #------------------------------------------------------------------------
     query_desc = "My friends?"
@@ -88,6 +103,7 @@ def run_queries():
     print "query: {query}".format(query=query)
     print "execution plan:\n{plan}".format(plan=redis_graph.execution_plan(query))
     redis_graph.query(query)
+    print "\n"
 
     #------------------------------------------------------------------------
 
@@ -97,6 +113,7 @@ def run_queries():
     print "query: {query}".format(query=query)
     print "execution plan:\n{plan}".format(plan=redis_graph.execution_plan(query))
     redis_graph.query(query)
+    print "\n"
 
     #------------------------------------------------------------------------
 
@@ -108,6 +125,7 @@ def run_queries():
     print "query: {query}".format(query=query)
     print "execution plan:\n{plan}".format(plan=redis_graph.execution_plan(query))
     redis_graph.query(query)
+    print "\n"
 
     #------------------------------------------------------------------------
 
@@ -118,19 +136,20 @@ def run_queries():
     print "query: {query}".format(query=query)
     print "execution plan:\n{plan}".format(plan=redis_graph.execution_plan(query))
     redis_graph.query(query)
+    print "\n"
 
     #------------------------------------------------------------------------
 
-    # # TODO: realize that bothe start points are the same node.
-    # # TODO: support bidirectional query.
-    # # query_desc = "Friends who've been to places I've visited"
-    # # print query_desc
-    # # query = """MATCH (:person {name:"Roi Lipman"})-[visited]->(c:country)<-[visited]-(f:person)<-[friend]-(:person {name:"Roi Lipman"})
-    # #         RETURN f.name, c""";
+    # TODO: realize that both start points are the same node.
+    query_desc = "Friends who've been to places I've visited"
+    print query_desc
+    query = """MATCH (:person {name:"Roi Lipman"})-[visited]->(c:country)<-[visited]-(f:person)<-[friend]-(:person {name:"Roi Lipman"})
+            RETURN f.name, c""";
 
-    # # print "query: {query}".format(query=query)
-    # # print "execution plan:\n{plan}".format(plan=redis_graph.execution_plan(query))
-    # # redis_graph.query(query)
+    print "query: {query}".format(query=query)
+    print "execution plan:\n{plan}".format(plan=redis_graph.execution_plan(query))
+    redis_graph.query(query)
+    print "\n"
 
     #------------------------------------------------------------------------
 
@@ -143,6 +162,7 @@ def run_queries():
     print "query: {query}".format(query=query)
     print "execution plan:\n{plan}".format(plan=redis_graph.execution_plan(query))
     redis_graph.query(query)
+    print "\n"
 
     # ------------------------------------------------------------------------
 
@@ -155,6 +175,7 @@ def run_queries():
     print "query: {query}".format(query=query)
     print "execution plan:\n{plan}".format(plan=redis_graph.execution_plan(query))
     redis_graph.query(query)
+    print "\n"
 
     #------------------------------------------------------------------------
 
@@ -165,6 +186,7 @@ def run_queries():
     print "query: {query}".format(query=query)
     print "execution plan:\n{plan}".format(plan=redis_graph.execution_plan(query))
     redis_graph.query(query)
+    print "\n"
 
     #------------------------------------------------------------------------
 
@@ -180,7 +202,6 @@ def debug():
 def main(argv):
     global r
     global redis_graph
-    print argv
     if "-debug" in argv:
         debug()
     else:
@@ -190,4 +211,4 @@ def main(argv):
             run_queries()
 
 if __name__ == '__main__':
-	main(sys.argv[1:])
+    main(sys.argv[1:])

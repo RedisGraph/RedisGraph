@@ -62,5 +62,9 @@ FT_FilterNode* BuildFiltersTree(const FilterNode* root);
 // Runs val through the filter tree
 int applyFilters(RedisModuleCtx *ctx, Graph* g, FT_FilterNode* root);
 
+// Checks to see if aliased node is within the filter tree.
+int FilterTree_ContainsNode(const FT_FilterNode *root, const char *alias);
+
 void FilterTree_Free(FT_FilterNode *root);
+
 #endif // _FILTER_TREE_H 

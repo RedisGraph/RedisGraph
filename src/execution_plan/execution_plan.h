@@ -12,16 +12,18 @@ typedef struct {
     OpBase *operation;          // node operation
     struct OpNode **children;   // child operations
     int childCount;             // number of children
+    struct OpNode **parents;    // parent operations
+    int parentCount;            // number of parents
 } OpNode;
 
 OpNode* NewOpNode(OpBase *op);
 void OpNode_Free(OpNode* op);
 
-void OpNode_AddChild(OpNode* parent, OpNode* child);
 
 typedef struct {
     OpNode *root;
     Graph *graph;
+    RedisModuleString *graphName;
 } ExecutionPlan;
 
 /* Creates a new execution plan from AST */

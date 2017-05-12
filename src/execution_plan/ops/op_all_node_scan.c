@@ -1,4 +1,4 @@
-#include "all_node_scan.h"
+#include "op_all_node_scan.h"
 
 OpBase* NewAllNodeScanOp(RedisModuleCtx *ctx, Node *node, RedisModuleString *graph) {
     return (OpBase*)NewAllNodeScan(ctx, node, graph);
@@ -50,6 +50,14 @@ OpResult AllNodeScanConsume(OpBase *opBase, Graph* graph) {
 }
 
 OpResult AllNodeScanReset(OpBase *op) {
+    AllNodeScan *allNodeScan = op;
+    
+    if(allNodeScan->iter != NULL) {
+       StoreIterator_Free(allNodeScan->iter);
+    }
+
+    Store *store = GetStore(allNodeScan->ctx, STORE_NODE, allNodeScan->graph, NULL);
+    allNodeScan->iter = Store_Search(store, "");
     return OP_OK;
 }
 

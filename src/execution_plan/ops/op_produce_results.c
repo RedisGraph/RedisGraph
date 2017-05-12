@@ -1,4 +1,4 @@
-#include "produce_results.h"
+#include "op_produce_results.h"
 #include "../../resultset/record.h"
 
 // OpBase* NewProduceResultsOp(RedisModuleCtx *ctx, RedisModuleString *graph, QueryExpressionNode *ast) {
@@ -51,7 +51,9 @@ OpResult ProduceResultsConsume(OpBase *opBase, Graph* graph) {
 
         // Append to final result set.
         Record *r = Record_FromGraph(op->ctx, op->ast, graph);
-        ResultSet_AddRecord(op->resultset, r);
+        if(ResultSet_AddRecord(op->resultset, r) == RESULTSET_FULL) {
+            return OP_ERR;
+        }
     }
 
     // Request data refresh next time consume is called.

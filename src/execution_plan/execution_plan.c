@@ -1,11 +1,12 @@
 #include "execution_plan.h"
 #include "../query_executor.h"
 
-#include "./ops/expand_all.h"
-#include "./ops/all_node_scan.h"
-#include "./ops/node_by_label_scan.h"
-#include "./ops/produce_results.h"
-#include "./ops/filter.h"
+#include "./ops/op_expand_all.h"
+#include "./ops/op_expand_into.h"
+#include "./ops/op_all_node_scan.h"
+#include "./ops/op_node_by_label_scan.h"
+#include "./ops/op_produce_results.h"
+#include "./ops/op_filter.h"
 #include "./ops/op_aggregate.h"
 
 #include "../graph/edge.h"
@@ -16,10 +17,25 @@ OpNode* NewOpNode(OpBase *op) {
     opNode->operation = op;
     opNode->children = NULL;
     opNode->childCount = 0;
+    opNode->parents = NULL;
+    opNode->parentCount = 0;
     return opNode;
 }
 
-void OpNode_AddChild(OpNode* parent, OpNode* child) {
+/* Checks if parent has given child, if so returns 1
+ * otherwise returns 0 */
+int _OpNode_ContainsChild(const OpNode *parent, const OpNode *child) {
+    for(int i = 0; i < parent->childCount; i++) {
+        if(parent->children[i] == child) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+void _OpNode_AddChild(OpNode *parent, OpNode *child) {
+
+    // Add child to parent
     if(parent->children == NULL) {
         parent->children = malloc(sizeof(OpNode *));
     }
@@ -27,6 +43,120 @@ void OpNode_AddChild(OpNode* parent, OpNode* child) {
     parent->children[parent->childCount] = child;
     parent->childCount++;
     parent->children = realloc(parent->children, sizeof(OpNode *) * (parent->childCount+1));
+
+    // Add parent to child
+    if(child->parents == NULL) {
+        child->parents = malloc(sizeof(OpNode *));
+    }
+
+    child->parents[child->parentCount] = parent;
+    child->parentCount++;
+    child->parents = realloc(child->parents, sizeof(OpNode *) * (child->parentCount+1));
+}
+
+void _OpNode_RemoveChild(OpNode *parent, OpNode *child) {
+    // remove child from parent
+    for(int i = 0; i < parent->childCount; i++) {
+        if(parent->children[i] == child) {
+            // shift left children
+            for(int j = i; j < parent->childCount-1; j++) {
+                parent->children[j] = parent->children[j+1];
+            }
+            // uppdate child count
+            parent->childCount--;
+            parent->children = realloc(parent->children, sizeof(OpNode *) * parent->childCount);
+            break;
+        }
+    }
+
+    // remove parent from child
+    for(int i = 0; i < child->parentCount; i++) {
+        if(child->parents[i] == parent) {
+            // shift left children
+            for(int j = i; j < child->parentCount-1; j++) {
+                child->parents[j] = child->parents[j+1];
+            }
+            // uppdate child count
+            child->parentCount--;
+            child->parents = realloc(child->parents, sizeof(OpNode *) * child->parentCount);
+            break;
+        }
+    }
+}
+
+/*
+ * Nodes with more than one incoming edge
+ * will take part in two expand operations
+ * MergeNodes will replace one of the expand operation
+ * with an expand_into operation 
+ * plan - execution plan to be modified
+ * n - node with two incoming edges. */
+void _ExecutionPlan_MergeNodes(ExecutionPlan *plan, const Node *n) {
+    if(Node_IncomeDegree(n) != 2) {
+        return;
+    }
+
+    /* locate both expand operations involving 
+     * n as the dest node */
+    
+    OpNode *a = NULL;
+    OpNode *b = NULL;
+
+    OpNode *current = NULL;
+    Vector *nodesToVisit = NewVector(OpNode*, 3);
+    Vector_Push(nodesToVisit, plan->root);
+    /* due to the structure of our execution plan
+     * there's not need to maintain a visited nodes 
+     * as in classic BFS/DFS */
+    while(Vector_Size (nodesToVisit) > 0) {
+        Vector_Pop(nodesToVisit, &current);
+        // TODO: add type to operation.
+        if(strcmp(current->operation->name, "Expand All") == 0) {
+            ExpandAll *op = current->operation;
+            if(Node_Compare(op->destNode, n)) {
+                if(a == NULL) {
+                    a = current;
+                    continue;
+                } else {
+                    b = current;
+                    break;
+                }
+            }
+        }
+
+        for(int i = 0; i < current->childCount; i++) {
+            Vector_Push(nodesToVisit, current->children[i]);
+        }
+    }
+    Vector_Free(nodesToVisit);
+    
+    if(a == NULL || b == NULL) {
+        return;
+    }
+
+    /* now that both operations involving node n
+     * are found we can replace one of them with
+     * an expand into operation */
+    ExpandAll *op = a->operation;
+    OpBase *opExpandInto;
+    NewExpandIntoOp(op->ctx, plan->graphName, op->srcNode, op->relation, op->destNode, &opExpandInto);
+    
+    // free previous operation.
+    a->operation->free(a->operation);
+    a->operation = opExpandInto;
+    OpNode *expandInto = a;
+
+    // link b operation with expand into
+    _OpNode_AddChild(expandInto, b);
+
+    // expand into should inherit b's parents
+    for(int i = 0; i < b->parentCount; i++) {
+        OpNode *bParent = b->parents[i];
+        if(!_OpNode_ContainsChild(bParent, expandInto)) {
+            _OpNode_AddChild(bParent, expandInto);
+        }
+        _OpNode_RemoveChild(bParent, b);
+    }
 }
 
 ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, RedisModuleString *graphName, QueryExpressionNode *ast) {
@@ -34,27 +164,27 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, RedisModuleString *graphNam
     ExecutionPlan *executionPlan = malloc(sizeof(ExecutionPlan));
     
     // List of operations
-    Vector *Ops = NewVector(OpNode*, 0);
-
-    OpBase *opFilter = NULL;
     OpBase *produceResults = NULL;
-    NewProduceResultsOp(ctx, ast, &produceResults);
+    FT_FilterNode *filterTree = NULL;
 
+    Vector *Ops = NewVector(OpNode*, 0);
+    NewProduceResultsOp(ctx, ast, &produceResults);
     OpNode *opProduceResults = NewOpNode(produceResults);
+
     executionPlan->root = opProduceResults;
     executionPlan->graph = graph;
+    executionPlan->graphName = graphName;
 
     Vector_Push(Ops, opProduceResults);
-    
+
+    if(ast->whereNode != NULL) {
+        filterTree = BuildFiltersTree(ast->whereNode->filters);
+    }
+
     if(ReturnClause_ContainsAggregation(ast->returnNode)) {
         OpNode *opAggregate = NewOpNode(NewAggregateOp(ctx, ast));
         Vector_Push(Ops, opAggregate);
     }
-
-    // if(ast->whereNode != NULL) {
-    //     opFilter = NewFilterOp(ctx, ast);
-    //     Vector_Push(Ops,  NewOpNode(opFilter));
-    // }
 
     // Get all nodes without incoming edges
     Vector *entryNodes = Graph_GetNDegreeNodes(graph, 0);
@@ -63,32 +193,32 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, RedisModuleString *graphNam
         Node *node;
         Vector_Get(entryNodes, i, &node);
         
-        // Expand if possible
+        // advance if possible
         if(Vector_Size(node->outgoingEdges) > 0) {
             Vector *reversedExpandOps = NewVector(OpNode*, 0);
 
             // Traverse sub-graph expanded from current node.
-            // Assuming only one edge per node.
-            // TODO: this assumption doesn't hold, support multi outgoing edges.
             Node *srcNode = node;
             Node *destNode;
             Edge *edge;
 
-            do {
+            while(Vector_Size(srcNode->outgoingEdges) > 0) {
                 Vector_Get(srcNode->outgoingEdges, 0, &edge);
                 destNode = edge->dest;
-
+                
                 OpNode *opNodeExpandAll = NewOpNode(NewExpandAllOp(ctx, graphName, srcNode, edge, destNode));
                 Vector_Push(reversedExpandOps, opNodeExpandAll);
                 
-                // can we advance?
-                if(Vector_Size(destNode->outgoingEdges) == 0) {
-                    break;
+                /* TODO: Make sure all filter conditions on this node
+                 * can be satisfied. */
+                if(FilterTree_ContainsNode(filterTree, destNode->alias)) {
+                    OpNode *nodeFilter = NewOpNode(NewFilterOp(ctx, ast));
+                    Vector_Push(reversedExpandOps, nodeFilter);
                 }
 
                 // Advance
                 srcNode = destNode;
-            } while(destNode != NULL);
+            }
 
             // Save expand ops in reverse order.
             while(Vector_Size(reversedExpandOps) > 0) {
@@ -117,6 +247,14 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, RedisModuleString *graphNam
             // TODO: when indexing is enabled, use index when possible.
             scanOp = NewNodeByLabelScanOp(ctx, node, graphName, chainElement->e.label);
         }
+
+        /* TODO: Make sure all filter conditions on this node
+         * can be satisfied. */
+        if(FilterTree_ContainsNode(filterTree, node->alias)) {
+            OpNode *nodeFilter = NewOpNode(NewFilterOp(ctx, ast));
+            Vector_Push(Ops, nodeFilter);
+        }
+        
         Vector_Push(Ops, NewOpNode(scanOp));
 
         // Consume Ops in reversed order.
@@ -127,16 +265,7 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, RedisModuleString *graphNam
         // Connect operations in reversed order
         do {
             Vector_Pop(Ops, &currentOp);
-
-            // Inster filter after every step.
-            if(ast->whereNode != NULL) {
-                opFilter = NewFilterOp(ctx, ast);
-                OpNode *nodeFilter = NewOpNode(opFilter);
-                OpNode_AddChild(currentOp, nodeFilter);
-                OpNode_AddChild(nodeFilter, prevOp);
-            } else {
-                OpNode_AddChild(currentOp, prevOp);
-            }
+            _OpNode_AddChild(currentOp, prevOp);
             prevOp = currentOp;
         } while(Vector_Size(Ops) != 0);
 
@@ -146,6 +275,14 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, RedisModuleString *graphNam
 
     Vector_Free(Ops);
 
+    // Optimizations and modifications.
+    Vector *nodesToMerge = Graph_GetNDegreeNodes(graph, 2);
+    for(int i = 0; i < Vector_Size(nodesToMerge); i++) {
+        Node *nodeToMerge;
+        Vector_Get(nodesToMerge, i, & nodeToMerge);
+        _ExecutionPlan_MergeNodes(executionPlan, nodeToMerge);
+    }
+    
     return executionPlan;
 }
 
@@ -190,32 +327,54 @@ OpResult _ExecuteOpNode(OpNode *node, Graph *graph) {
             if (node->operation->reset(node->operation) == OP_ERR) {
                 return OP_ERR;
             }
-        }
 
-        /* Try to get new data into the graph
-         * TODO: find a better soulution for this if condition.
-         * Produce Results requires all of its children to return OP_OK
-         * before consuming. */
-        if(strcmp(node->operation->name, "Produce Results") != 0) {
+            /* Require each child to return OP_OK before we can
+             * continue */
             for(int i = 0; i < node->childCount; i++) {
                 OpNode *child = node->children[i];
-                switch(_ExecuteOpNode(child, graph)) {
-                    case OP_ERR:
-                        return OP_ERR;
-                    case OP_OK:
-                        // Managed to get new data into the graph,
-                        // Recall ourself.
-                        return _ExecuteOpNode(node, graph);
-                }
-            }
-        } else {
-            for(int i = 0; i < node->childCount; i++) {
-                OpNode *child = node->children[i];
-                if (_ExecuteOpNode(child, graph) != OP_OK) {
+                if(_ExecuteOpNode(child, graph) != OP_OK) {
                     return res;
                 }
             }
+            // We're good to go.
             return _ExecuteOpNode(node, graph);
+        }
+        
+        if(res == OP_REFRESH) {
+            int i;
+            for(i = 0; i < node->childCount; i++) {
+                OpNode *child = node->children[i];
+                OpResult opResult = _ExecuteOpNode(child, graph);
+                if(opResult == OP_OK) {
+                    break;
+                }
+            }
+
+            if(i != node->childCount) {
+                i--;
+                /* one of our children managed to provide us with new data,
+                 * children between 0 to i, did not managed 
+                 * to get us new data, we're going to reset them. */
+                while(i > -1) {
+                    OpNode *child = node->children[i];
+                    // TODO: reset child's top node.
+                    OpNode *topChild = child;
+                    while(topChild->childCount != 0) {
+                        // topChild->operation->reset(topChild->operation);
+                        topChild = topChild->children[0];
+                    }
+                    // reset last child.
+                    topChild->operation->reset(topChild->operation);
+                    OpResult opResult = _ExecuteOpNode(child, graph);
+                    if(opResult != OP_OK) {
+                        return opResult;
+                    }
+                    i--;
+                }
+                
+                // We're good to go.
+                return _ExecuteOpNode(node, graph);
+            }
         }
     }
     return res;

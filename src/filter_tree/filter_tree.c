@@ -43,22 +43,10 @@ FT_FilterNode* _CreateVaryingFilterNode(PredicateNode n) {
     filterNode->t = FT_N_PRED;
     filterNode->pred.t = FT_N_VARYING;
 
-    filterNode->pred.Lop.alias = 
-        (char*)malloc(sizeof(char) * (strlen(n.alias) + 1));
-
-    filterNode->pred.Lop.property = 
-        (char*)malloc(sizeof(char) * (strlen(n.property) + 1));
-
-    filterNode->pred.Rop.alias = 
-        (char*)malloc(sizeof(char) * (strlen(n.nodeVal.alias) + 1));
-
-    filterNode->pred.Rop.property = 
-        (char*)malloc(sizeof(char) * (strlen(n.nodeVal.property) + 1));
-
-    strcpy(filterNode->pred.Lop.alias, n.alias);
-    strcpy(filterNode->pred.Lop.property, n.property);
-    strcpy(filterNode->pred.Rop.alias, n.nodeVal.alias);
-    strcpy(filterNode->pred.Rop.property, n.nodeVal.property);
+    filterNode->pred.Lop.alias = strdup(n.alias);
+    filterNode->pred.Lop.property = strdup(n.property);
+    filterNode->pred.Rop.alias = strdup(n.nodeVal.alias);
+    filterNode->pred.Rop.property = strdup(n.nodeVal.property);
 
     filterNode->pred.op = n.op;
     filterNode->pred.cf = compareFunc;
@@ -107,14 +95,8 @@ FT_FilterNode* _CreateConstFilterNode(PredicateNode n) {
     filterNode->t = FT_N_PRED;
     filterNode->pred.t = FT_N_CONSTANT;
 
-    filterNode->pred.Lop.alias = 
-        (char*)malloc(sizeof(char) * (strlen(n.alias) + 1));
-
-    filterNode->pred.Lop.property = 
-        (char*)malloc(sizeof(char) * (strlen(n.property) + 1));
-
-    strcpy(filterNode->pred.Lop.alias, n.alias);
-    strcpy(filterNode->pred.Lop.property, n.property);
+    filterNode->pred.Lop.alias = strdup(n.alias);
+    filterNode->pred.Lop.property = strdup(n.property);
 
     filterNode->pred.op = n.op;
     filterNode->pred.constVal = n.constVal; // Not sure about this assignmeant
@@ -227,6 +209,63 @@ int applyFilters(RedisModuleCtx *ctx, Graph* g, FT_FilterNode* root) {
     return pass;
 }
 
-void FilterTree_Free(FT_FilterNode *root) {
+int FilterTree_ContainsNode(const FT_FilterNode *root, const char *alias) {
+    if(root == NULL) {
+        return 0;
+    }
+    
+    if(root->t == FT_N_PRED) {
+        if(strcmp(root->pred.Lop.alias, alias) == 0) {
+            return 1;
+        }
 
+        if(root->pred.t == FT_N_VARYING) {
+            if(strcmp(root->pred.Rop.alias, alias) == 0) {
+                return 1;
+            }
+        }
+
+        return 0;
+    }
+
+    if(FilterTree_ContainsNode(root->cond.left, alias)) {
+        return 1;
+    }
+    
+    if(FilterTree_ContainsNode(root->cond.right, alias)) {
+        return 1;
+    }
+    
+    return 0;
+}
+
+void _FreeVaryingFilterNode(FT_PredicateNode node) {
+    free(node.Lop.alias);
+    free(node.Lop.property);
+    free(node.Rop.alias);
+    free(node.Rop.property);
+}
+
+void _FreeConstFilterNode(FT_PredicateNode node) {
+    free(node.Lop.alias);
+    free(node.Lop.property);
+}
+
+void _FilterTree_FreePredNode(FT_PredicateNode node) {
+    if(node.t == FT_N_CONSTANT) {
+        _FreeConstFilterNode(node);
+    } else {
+        _FreeVaryingFilterNode(node);
+    }
+}
+
+void FilterTree_Free(FT_FilterNode *root) {
+    if(root->t == FT_N_PRED) {
+        _FilterTree_FreePredNode(root->pred);
+    } else {
+        FilterTree_Free(root->cond.left);
+        FilterTree_Free(root->cond.right);
+    }
+
+    free(root);
 }

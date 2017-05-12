@@ -3,7 +3,7 @@
 #include "edge.h"
 
 Edge* NewEdge(const char *id, Node *src, Node *dest, const char *relationship) {
-	Edge* edge = (Edge*)malloc(sizeof(Edge));
+	Edge* edge = (Edge*)calloc(1, sizeof(Edge));
 	
 	edge->src = src;
 	edge->dest = dest;

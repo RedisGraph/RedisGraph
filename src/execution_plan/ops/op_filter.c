@@ -1,4 +1,4 @@
-#include "filter.h"
+#include "op_filter.h"
 
 OpBase* NewFilterOp(RedisModuleCtx *ctx, QueryExpressionNode *ast) {
     return NewFilter(ctx, ast);
@@ -21,7 +21,7 @@ Filter* NewFilter(RedisModuleCtx *ctx, QueryExpressionNode *ast) {
 }
 
 /* FilterConsume next operation 
- * returns OP_DEPLETED when */
+ * returns OP_DEPLETED when filter tree is not initialized */
 OpResult FilterConsume(OpBase *opBase, Graph* graph) {
     Filter *filter = opBase;
     
@@ -49,7 +49,9 @@ OpResult FilterConsume(OpBase *opBase, Graph* graph) {
 /* Restart iterator */
 OpResult FilterReset(OpBase *ctx) {
     Filter *filter = ctx;
-    filter->filterTree = BuildFiltersTree(filter->ast->whereNode->filters);
+    if(filter->filterTree == NULL) {
+        filter->filterTree = BuildFiltersTree(filter->ast->whereNode->filters);
+    }
     filter->refreshAfterPass = 0;
     return OP_OK;
 }
@@ -57,6 +59,8 @@ OpResult FilterReset(OpBase *ctx) {
 /* Frees Filter*/
 void FilterFree(OpBase *ctx) {
     Filter *filter = ctx;
-    FilterTree_Free(filter->filterTree);
+    if(filter->filterTree != NULL) {
+        FilterTree_Free(filter->filterTree);
+    }
     free(filter);
 }

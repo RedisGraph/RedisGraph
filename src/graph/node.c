@@ -3,7 +3,7 @@
 #include <stdlib.h>
 
 Node* NewNode(const char* alias, const char* id) {
-	Node* node = (Node*)malloc(sizeof(Node));
+	Node* node = (Node*)calloc(1, sizeof(Node));
 	
 	node->id = NULL;
 	node->alias = NULL;
@@ -37,11 +37,15 @@ void ConnectNode(Node* src, Node* dest, struct Edge* e) {
 	Vector_Push(dest->incomingEdges, e);
 }
 
+int Node_IncomeDegree(const Node *n) {
+	return Vector_Size(n->incomingEdges);
+}
+
 void FreeNode(Node* node) {
-	if(node->id) {
+	if(node->id != NULL) {
 		free(node->id);
 	}
-	if(node->alias) {
+	if(node->alias != NULL) {
 		free(node->alias);
 	}
 
@@ -55,6 +59,5 @@ void FreeNode(Node* node) {
 	/* There no need to discard incoming edges.
 	* these will be freed on another outgoingEdges free. */ 
 	Vector_Free(node->incomingEdges);
-
 	free(node);
 }
