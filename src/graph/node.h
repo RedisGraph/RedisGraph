@@ -3,6 +3,7 @@
 
 #include "../rmutil/vector.h"
 
+
 // Forward declaration of edge
 struct Edge;
 typedef struct Edge;

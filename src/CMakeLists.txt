@@ -84,3 +84,4 @@ add_library(librmutil STATIC IMPORTED ../../src/rmutil/librmutil.a)
 target_compile_options(module PUBLIC "-DREDIS_MODULE_TARGET")
 
 target_link_libraries(module Llibgraph)
+target_link_libraries(module m)
