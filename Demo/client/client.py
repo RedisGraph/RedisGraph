@@ -96,4 +96,4 @@ class RedisGraph(object):
         return tbl
 
     def execution_plan(self, query):
-        return self.redis_con.execute_command("GRAPH.EXECUTIONPLAN", self.graph, query)
+        return self.redis_con.execute_command("GRAPH.EXPLAIN", self.graph, query)

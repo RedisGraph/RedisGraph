@@ -131,7 +131,7 @@ def run_queries():
 	print query_desc
 
 	query = """MATCH (a:actor)-[act]->(m:movie)
-	WHERE a.age >= 50 AND m.votes > 10000 AND m.rating > 8.1
+	WHERE a.age >= 50 AND m.votes > 10000 AND m.rating > 8.2
 	RETURN a, m"""
 	print "query: {query}".format(query=query)
 
