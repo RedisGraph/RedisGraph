@@ -3,12 +3,12 @@
 #include <stdlib.h>
 
 Node* NewNode(const char* alias, const char* id) {
-	Node* node = (Node*)malloc(sizeof(Node));
+	Node* node = (Node*)calloc(1, sizeof(Node));
 	
 	node->id = NULL;
 	node->alias = NULL;
 	node->outgoingEdges = NewVector(Edge*, 0);
-	node->incomingEdges = 0;
+	node->incomingEdges = NewVector(Edge*, 0);
 	node->internalId = rand();
 
 	if(id != NULL) {
@@ -32,17 +32,20 @@ int Node_Compare(const Node *a, const Node *b) {
 	return a->internalId == b->internalId;
 }
 
-void ConnectNode(Node* src, Node* dest, const char* connection) {
-	Edge* e = NewEdge(src, dest, connection);
+void ConnectNode(Node* src, Node* dest, struct Edge* e) {
 	Vector_Push(src->outgoingEdges, e);
-	dest->incomingEdges++;
+	Vector_Push(dest->incomingEdges, e);
+}
+
+int Node_IncomeDegree(const Node *n) {
+	return Vector_Size(n->incomingEdges);
 }
 
 void FreeNode(Node* node) {
-	if(node->id) {
+	if(node->id != NULL) {
 		free(node->id);
 	}
-	if(node->alias) {
+	if(node->alias != NULL) {
 		free(node->alias);
 	}
 
@@ -51,8 +54,10 @@ void FreeNode(Node* node) {
 		Vector_Get(node->outgoingEdges, i, &e);
 		FreeEdge(e);
 	}
-
 	Vector_Free(node->outgoingEdges);
 
+	/* There no need to discard incoming edges.
+	* these will be freed on another outgoingEdges free. */ 
+	Vector_Free(node->incomingEdges);
 	free(node);
 }

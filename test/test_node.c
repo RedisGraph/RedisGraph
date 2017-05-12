@@ -8,15 +8,15 @@ void testNodeConnect() {
 	Node *a = NewNode("", "");
 	Node *b = NewNode("", "");
 
-	ConnectNode(a, b, "relationship");
+	Edge *e = NewEdge("1", a, b, "relationship");
+	ConnectNode(a, b, e);
 
 	assert(Vector_Size(a->outgoingEdges) == 1);
 	assert(Vector_Size(b->outgoingEdges) == 0);
 
-	assert(a->incomingEdges == 0);
-	assert(b->incomingEdges == 1);
-
-	Edge *e;
+	assert(Vector_Size(a->incomingEdges) == 0);
+	assert(Vector_Size(b->incomingEdges) == 1);
+	
 	Vector_Get(a->outgoingEdges, 0, &e);
 
 	assert(e->src == a);
@@ -32,7 +32,7 @@ void TestNodeCreation() {
 	Node* node = NewNode("", "");
 	assert(strcmp(node->alias, "") == 0);
 	assert(strcmp(node->id, "") == 0);
-	assert(node->incomingEdges == 0);
+	assert(Vector_Size(node->incomingEdges) == 0);
 	assert(Vector_Size(node->outgoingEdges) == 0);
 	FreeNode(node);
 
@@ -40,7 +40,7 @@ void TestNodeCreation() {
 	node = NewNode("alias", "id");
 	assert(strcmp(node->alias, "alias") == 0);
 	assert(strcmp(node->id, "id") == 0);
-	assert(node->incomingEdges == 0);
+	assert(Vector_Size(node->incomingEdges) == 0);
 	assert(Vector_Size(node->outgoingEdges) == 0);
 	FreeNode(node);
 }

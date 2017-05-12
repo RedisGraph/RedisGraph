@@ -61,6 +61,8 @@ int yycolumn = 1;
 ")" 	{ return RIGHT_PARENTHESIS; }
 "[" 	{ return LEFT_BRACKET; }
 "]" 	{ return RIGHT_BRACKET; }
+"{" 	{ return LEFT_CURLY_BRACKET; }
+"}" 	{ return RIGHT_CURLY_BRACKET; }
 ">=" 	{ return GE; }
 "<=" 	{ return LE; }
 "->"	{ return RIGHT_ARROW; }

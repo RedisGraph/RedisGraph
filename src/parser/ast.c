@@ -28,11 +28,8 @@ FilterNode* NewConstantPredicateNode(const char* alias, const char* property, in
   	n->t = N_PRED;
 
 	n->pn.t = N_CONSTANT;
-  	n->pn.alias = (char*)malloc(strlen(alias) + 1);
-	n->pn.property = (char*)malloc(strlen(property) + 1);
-
-	strcpy(n->pn.alias, alias);
-	strcpy(n->pn.property, property);
+  	n->pn.alias = strdup(alias);
+	n->pn.property = strdup(property);
 
 	n->pn.op = op;
 	n->pn.constVal = value;
@@ -103,21 +100,19 @@ ChainElement* NewChainLink(char* relationship, LinkDirection dir) {
 	return ce;
 }
 
-
-ChainElement* NewChainEntity(char* alias, char* id) {
+ChainElement* NewChainEntity(char *alias, char *label, Vector *properties) {
 	ChainElement* ce = (ChainElement*)malloc(sizeof(ChainElement));
 	ce->t = N_ENTITY;
-	ce->e.id = NULL;
+	ce->e.label = NULL;
 	ce->e.alias = NULL;
+	ce->e.properties = properties;
 	
-	if(id != NULL) {
-		ce->e.id = (char*)malloc(strlen(id) + 1);
-		strcpy(ce->e.id, id);
+	if(label != NULL) {
+		ce->e.label = strdup(label);
 	}
 
 	if(alias != NULL) {
-		ce->e.alias = (char*)malloc(strlen(alias) + 1);
-		strcpy(ce->e.alias, alias);
+		ce->e.alias = strdup(alias);
 	}
 
 	return ce;
@@ -126,11 +121,20 @@ ChainElement* NewChainEntity(char* alias, char* id) {
 void FreeChainElement(ChainElement* chainElement) {
 	switch(chainElement->t) {
 		case N_ENTITY:
-			if(chainElement->e.id != NULL) {
-				free(chainElement->e.id);
+			if(chainElement->e.label != NULL) {
+				free(chainElement->e.label);
 			}
 			if(chainElement->e.alias != NULL) {
 				free(chainElement->e.alias);
+			}
+			if(chainElement->e.properties != NULL) {
+				for(int i = 0; i < Vector_Size(chainElement->e.properties); i++) {
+					SIValue *val;
+					Vector_Get(chainElement->e.properties, i, &val);
+					SIValue_Free(val);
+					free(val);
+				}
+				Vector_Free(chainElement->e.properties);
 			}
 			break;
 
@@ -250,7 +254,7 @@ void FreeQueryExpressionNode(QueryExpressionNode* queryExpressionNode) {
 }
 
 Variable* NewVariable(const char* alias, const char* property) {
-	Variable* v = (Variable*)malloc(sizeof(Variable));
+	Variable* v = (Variable*)calloc(1, sizeof(Variable));
 
 	if(alias != NULL) {
 		v->alias = strdup(alias);

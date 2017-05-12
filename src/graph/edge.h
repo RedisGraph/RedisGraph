@@ -4,6 +4,7 @@
 #include "node.h"
 
 typedef struct {
+	char *id;
 	char* relationship;
 	Node* src;
 	Node* dest;
@@ -11,12 +12,12 @@ typedef struct {
 
 
 // Creates a new edge, connecting src to dest node.
-Edge* NewEdge(Node* src, Node* dest, const char* relationship);
+Edge* NewEdge(const char *id, Node *src, Node *dest, const char *relationship);
 
 // Validate checks the edge for validity and returns false if something is wrong.
-int ValidateEdge(const Edge* edge);
+int ValidateEdge(const Edge *edge);
 
 // Frees alocated space by given edge
-void FreeEdge(Edge* edge);
+void FreeEdge(Edge *edge);
 
 #endif

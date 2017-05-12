@@ -43,27 +43,27 @@ typedef enum {
 struct filterNode;
 
 typedef struct {
-	char* id;
-	char* alias;
+	char *alias;
+	char *label;
+	Vector *properties;
 } EntityNode;
 
 typedef struct {
-	char* relationship;
+	char *relationship;
 	LinkDirection direction;
-
 } LinkNode;
 
 typedef struct {
 	union {
 		SIValue constVal;
 		struct {
-			char* alias;
-			char* property;
+			char *alias;
+			char *property;
 		} nodeVal;
 	};
 	CompareValueType t; // Comapred value type, constant/node
-	char* alias;		// Node alias
-	char* property; 	// Node property
+	char *alias;		// Node alias
+	char *property; 	// Node property
 	int op;				// Type of comparison
 } PredicateNode;
 
@@ -90,15 +90,15 @@ typedef struct {
 } ChainElement;
 
 typedef struct {
-	Vector* chainElements;
+	Vector *chainElements;
 } MatchNode;
 
 typedef struct {
-	FilterNode* filters;
+	FilterNode *filters;
 } WhereNode;
 
 typedef struct {
-	Vector* returnElements; // Vector of ReturnElementNode pointers
+	Vector *returnElements; // Vector of ReturnElementNode pointers
 	int distinct;
 } ReturnNode;
 
@@ -107,62 +107,62 @@ typedef struct {
 } LimitNode;
 
 typedef struct {
-	char* alias;
-	char* property;
+	char *alias;
+	char *property;
 } Variable;
 
 typedef struct {
-	Variable* variable;
-	char* func;			// Aggregation function
-	char* alias; 		// Alias given to this return element (using the AS keyword)
+	Variable *variable;
+	char *func;			// Aggregation function
+	char *alias; 		// Alias given to this return element (using the AS keyword)
 	ReturnElementType type;
 } ReturnElementNode;
 
 typedef struct {
-	Vector* columns;	// Vector of ColumnNodes
+	Vector *columns;	// Vector of ColumnNodes
 	OrderByDirection direction;
 } OrderNode;
 
 typedef struct {
-	char* alias;
-	char* property;
+	char *alias;
+	char *property;
 	ColumnNodeType type;
 } ColumnNode;
 
 typedef struct {
-	MatchNode* matchNode;
-	WhereNode* whereNode;
-	ReturnNode* returnNode;
-	OrderNode* orderNode;
-	LimitNode* limitNode;
+	MatchNode *matchNode;
+	WhereNode *whereNode;
+	ReturnNode *returnNode;
+	OrderNode *orderNode;
+	LimitNode *limitNode;
 } QueryExpressionNode;
 
-ChainElement* NewChainEntity(char* alias, char* id);
-ChainElement* NewChainLink(char* relationship, LinkDirection dir);
-MatchNode* NewMatchNode(Vector* elements);
-FilterNode* NewConstantPredicateNode(const char* alias, const char* property, int op, SIValue value);
-FilterNode* NewVaryingPredicateNode(const char* lAlias, const char* lProperty, int op, const char* rAlias, const char* rProperty);
+ChainElement* NewChainEntity(char *alias, char *label, Vector *properties);
+ChainElement* NewChainLink(char *relationship, LinkDirection dir);
+MatchNode* NewMatchNode(Vector *elements);
+FilterNode* NewConstantPredicateNode(const char *alias, const char *property, int op, SIValue value);
+FilterNode* NewVaryingPredicateNode(const char *lAlias, const char *lProperty, int op, const char *rAlias, const char *rProperty);
 FilterNode* NewConditionNode(FilterNode *left, int op, FilterNode *right);
-WhereNode* NewWhereNode(FilterNode* filters);
-ReturnElementNode* NewReturnElementNode(ReturnElementType type, Variable* variable, const char* aggFunc, const char* alias);
+WhereNode* NewWhereNode(FilterNode *filters);
+ReturnElementNode* NewReturnElementNode(ReturnElementType type, Variable *variable, const char *aggFunc, const char *alias);
 ReturnNode* NewReturnNode(Vector* returnElements, int distinct);
 OrderNode* NewOrderNode(Vector* columns, OrderByDirection direction);
-ColumnNode* NewColumnNode(const char* alias, const char* prop, ColumnNodeType type);
-ColumnNode* ColumnNodeFromVariable(const Variable* variable);
-ColumnNode* ColumnNodeFromAlias(const char* alias);
-Variable* NewVariable(const char* alias, const char* property);
+ColumnNode* NewColumnNode(const char *alias, const char *prop, ColumnNodeType type);
+ColumnNode* ColumnNodeFromVariable(const Variable *variable);
+ColumnNode* ColumnNodeFromAlias(const char *alias);
+Variable* NewVariable(const char *alias, const char *property);
 LimitNode* NewLimitNode(int limit);
-QueryExpressionNode* NewQueryExpressionNode(MatchNode* matchNode, WhereNode* whereNode, ReturnNode* returnNode, OrderNode* orderNode, LimitNode* limitNode);
+QueryExpressionNode* NewQueryExpressionNode(MatchNode *matchNode, WhereNode *whereNode, ReturnNode *returnNode, OrderNode *orderNode, LimitNode *limitNode);
 
-void FreeVariable(Variable* v);
-void FreeColumnNode(ColumnNode* node);
-void FreeMatchNode(MatchNode* matchNode);
-void FreeWhereNode(WhereNode* whereNode);
-void FreeFilterNode(FilterNode* filterNode);
-void FreeReturnNode(ReturnNode* returnNode);
-void FreeOrderNode(OrderNode* orderNode);
-void FreeLimitNode(LimitNode* limitNode);
-void FreeReturnElementNode(ReturnElementNode* returnElementNode);
-void FreeChainElement(ChainElement* chainElement);
-void FreeQueryExpressionNode(QueryExpressionNode* queryExpressionNode);
+void FreeVariable(Variable *v);
+void FreeColumnNode(ColumnNode *node);
+void FreeMatchNode(MatchNode *matchNode);
+void FreeWhereNode(WhereNode *whereNode);
+void FreeFilterNode(FilterNode *filterNode);
+void FreeReturnNode(ReturnNode *returnNode);
+void FreeOrderNode(OrderNode *orderNode);
+void FreeLimitNode(LimitNode *limitNode);
+void FreeReturnElementNode(ReturnElementNode *returnElementNode);
+void FreeChainElement(ChainElement *chainElement);
+void FreeQueryExpressionNode(QueryExpressionNode *queryExpressionNode);
 #endif

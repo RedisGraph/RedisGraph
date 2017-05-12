@@ -25,6 +25,8 @@ Graph* Graph_Clone(const Graph* graph) {
         Node* node;
         Vector_Get(graph->nodes, i, &node);
 
+        Graph_AddNode(clone, Node_Clone(node));
+
         for(int j = 0; j < Vector_Size(node->outgoingEdges); j++) {
             Edge* e;
             Vector_Get(node->outgoingEdges, j, &e);
@@ -40,10 +42,59 @@ Graph* Graph_Clone(const Graph* graph) {
                 Graph_AddNode(clone, dest);
             }
 
-            ConnectNode(src, dest, e->relationship);
+            ConnectNode(src, dest, NewEdge(e->id, src, dest, e->relationship));
         }
     }
     return clone;
+}
+
+int Graph_Compare(const Graph *a, const Graph *b) {
+    /* NOTE: graph structure is not comapred
+     * for the timebeing this is enough 
+     * TODO: comapre edges */
+
+    const int EQUAL = 0;
+    const int DIFFER = 1;
+
+    if(a == NULL || b == NULL) {
+        return DIFFER;
+    }
+
+    // Same pointer
+    if(a == b) {
+        return EQUAL;
+    }
+    
+    // Graphs must contain the same number of nodes
+    if(Vector_Size(a->nodes) != Vector_Size(b->nodes)) {
+        return DIFFER;
+    }
+    
+    // Make sure each node exists in both graphs
+    for(int i = 0; i < Vector_Size(a->nodes); i++) {
+        Node *An;
+        Vector_Get(a->nodes, i, &An);
+        
+        Node *Bn = _getNodeByInternalID(b, An->internalId);
+        if(Bn == NULL) {
+            return DIFFER;
+        }
+
+        // Nodes should have the same ID.
+        if(An->id == NULL && Bn->id == NULL) {
+            continue;
+        }
+
+        if((An->id == NULL && Bn->id != NULL) || (An->id != NULL && Bn->id == NULL)) {
+            return DIFFER;
+        }
+
+        if(strcmp(An->id, Bn->id) != 0) {
+            return DIFFER;
+        }
+    }
+    
+    return EQUAL;
 }
 
 int Graph_ContainsNode(const Graph *graph, const Node *node) {
@@ -79,21 +130,10 @@ int Graph_AddNode(Graph* g, Node *n) {
 Vector* Graph_GetNDegreeNodes(Graph* g, int degree) {
     Vector* nodes = NewVector(Node*, 0);
     Node* n = NULL;
-
-    // First iteration, place at the begining of the vector
-    // nodes which don't have an ID.
+    
     for(int i = 0; i < Vector_Size(g->nodes); i++) {
         Vector_Get(g->nodes, i, &n);
-        if(n->incomingEdges == degree && n->id == NULL) {
-            Vector_Push(nodes, n);
-        }
-    }
-
-    // Second iteration, place at the end of the vector
-    // nodes which have an ID.
-    for(int i = 0; i < Vector_Size(g->nodes); i++) {
-        Vector_Get(g->nodes, i, &n);
-        if(n->incomingEdges == degree && n->id != NULL) {
+        if(Vector_Size(n->incomingEdges) == degree) {
             Vector_Push(nodes, n);
         }
     }
@@ -135,7 +175,7 @@ Graph* Graph_ShortestPath(Graph *g, Node *src, Node *dest) {
             while(Vector_Get(currentNodeClone->outgoingEdges, 0, &reversedEdge) != 0) {
                 Node *pathNodeNext = Node_Clone(reversedEdge->dest);
                 Graph_AddNode(path, pathNodeNext);
-                ConnectNode(pathNodeNext, pathNodeCurrent, reversedEdge->relationship);
+                ConnectNode(pathNodeNext, pathNodeCurrent, NewEdge("", pathNodeNext, pathNodeCurrent,reversedEdge->relationship));
                 currentNodeClone = _getNodeByInternalID(reversedGraph, pathNodeNext->internalId);
                 pathNodeCurrent = pathNodeNext;
             }
@@ -155,7 +195,7 @@ Graph* Graph_ShortestPath(Graph *g, Node *src, Node *dest) {
                 // Add neighbor to reversedGraph
                 Node *neighborClone = Node_Clone(neighbor);
                 Graph_AddNode(reversedGraph, neighborClone);
-                ConnectNode(neighborClone, currentNodeClone, e->relationship);
+                ConnectNode(neighborClone, currentNodeClone, NewEdge("", neighborClone, currentNodeClone, e->relationship));
             }
         }
         node_idx++;

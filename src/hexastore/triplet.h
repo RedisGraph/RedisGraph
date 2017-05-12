@@ -5,6 +5,9 @@
 #include "../redismodule.h"
 #include "../util/triemap/triemap.h"
 
+#define TRIPLET_ELEMENT_DELIMITER ":"
+#define TRIPLET_PREDICATE_DELIMITER "@"
+
 typedef enum {UNKNOW, O, P, PO, S, SO, SP, SPO} TripletKind;
 
 typedef struct {
@@ -14,9 +17,7 @@ typedef struct {
 	TripletKind kind;
 } Triplet;
 
-typedef struct {
-	TrieMapIterator *iter;
-} TripletIterator;
+typedef TrieMapIterator TripletIterator;
 
 // Creates a new triplet
 Triplet* NewTriplet(const char *S, const char *P, const char *O);
@@ -43,8 +44,6 @@ int ValidateTriplet(const Triplet *triplet);
 void FreeTriplet(Triplet *triplet);
 
 // -------------Triplet cursor-------------
-
-TripletIterator* NewTripletIterator(TrieMapIterator *iterator);
 
 // Returns the next triplet from the cursor.
 Triplet* TripletIterator_Next(TripletIterator *cursor);

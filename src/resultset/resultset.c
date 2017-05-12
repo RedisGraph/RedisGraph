@@ -257,10 +257,10 @@ int ResultSet_Full(const ResultSet* set) {
 void _aggregateResultSet(RedisModuleCtx* ctx, ResultSet* set) {
     char* key;
     Group* group;
-    khiter_t iter = CacheGroupIter();
+    CacheGroupIterator *iter = CacheGroupIter();
 
     // Scan entire groups cache
-    while(CacheGroupIterNext(&iter, &key, &group) != 0) {
+    while(CacheGroupIterNext(iter, &key, &group) != 0) {
         // Finalize each aggregation function
         for(int i = 0; i < Vector_Size(group->aggregationFunctions); i++) {
             AggCtx* aggCtx = NULL;
@@ -274,6 +274,9 @@ void _aggregateResultSet(RedisModuleCtx* ctx, ResultSet* set) {
             break;
         }
     }
+    
+    FreeGroupCache();
+    InitGroupCache();
 }
 
 // TODO: Drop heap, use some sort algo

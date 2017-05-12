@@ -21,17 +21,26 @@ void test_graph_shortestpath() {
     Graph_AddNode(graph, f);
     Graph_AddNode(graph, g);
 
-    ConnectNode(a, b, "");
-    ConnectNode(a, c, "");
+    Edge *ab = NewEdge("1", a, b, "");
+    ConnectNode(a, b, ab);
 
-    ConnectNode(b, d, "");
-    ConnectNode(b, e, "");
+    Edge *ac = NewEdge("2", a, c, "");
+    ConnectNode(a, c, ac);
 
-    ConnectNode(c, f, "");
+    Edge *bd = NewEdge("3", b, d, "");
+    ConnectNode(b, d, bd);
 
-    ConnectNode(e, f, "");
+    Edge *be = NewEdge("4", b, e, "");
+    ConnectNode(b, e, be);
 
-    ConnectNode(f, g, "");
+    Edge *cf = NewEdge("5", c, f, "");
+    ConnectNode(c, f, cf);
+    
+    Edge *ef = NewEdge("6", e, f, "");
+    ConnectNode(e, f, ef);
+    
+    Edge *fg = NewEdge("7", f, g, "");
+    ConnectNode(f, g, fg);
 
     // path: a->c->f->g
     // path a->b->e->f->g
@@ -57,12 +66,15 @@ void test_graph_clone() {
     Node *b = NewNode("B", "2");
     Node *blank = NewNode("", "");
 
+    Edge *e1 = NewEdge("1", a, blank, "");
+    Edge *e2 = NewEdge("2", blank, b, "");
+
     Graph_AddNode(origin, a);
     Graph_AddNode(origin, blank);
     Graph_AddNode(origin, b);
 
-    ConnectNode(a, blank, "");
-    ConnectNode(blank, b, "");
+    ConnectNode(a, blank, e1);
+    ConnectNode(blank, b, e2);
 
     Graph* clone = Graph_Clone(origin);
 
@@ -101,9 +113,35 @@ void test_graph_clone() {
     assert(e->dest == bClone);
 }
 
+void test_graph_compare() {
+    Graph* origin = NewGraph();
+
+    // (A:1)-[]->()-[]->(B)
+    Node *a = NewNode("A", "1");
+    Node *b = NewNode("B", "2");
+    Node *blank = NewNode("", "");
+
+    Graph_AddNode(origin, a);
+    Graph_AddNode(origin, blank);
+    Graph_AddNode(origin, b);
+
+    ConnectNode(a, blank, NewEdge("1", a, blank, ""));
+    ConnectNode(blank, b, NewEdge("2", blank, b, ""));
+
+    Graph* clone = Graph_Clone(origin);
+
+    assert(Graph_Compare(origin, clone) == 0);
+
+    Node *c = NewNode("C", "3");
+    Graph_AddNode(origin, c);
+
+    assert(Graph_Compare(origin, clone) == 1);
+}
+
 int main(int argc, char **argv) {
     test_graph_clone();
     test_graph_shortestpath();
+    test_graph_compare();
 	printf("PASS!\n");
     return 0;
 }
