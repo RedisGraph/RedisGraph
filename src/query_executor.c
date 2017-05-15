@@ -14,21 +14,21 @@ Graph* BuildGraph(const MatchNode* matchNode) {
     Graph* g = NewGraph();
     Vector* stack = NewVector(void*, 3);
     
-    for(int i = 0; i < Vector_Size(matchNode->chainElements); i++) {
-        ChainElement* element;
-        Vector_Get(matchNode->chainElements, i, &element);
+    for(int i = 0; i < Vector_Size(matchNode->graphEntities); i++) {
+        GraphEntity *entity;
+        Vector_Get(matchNode->graphEntities, i, &entity);
 
-        if(element->t == N_ENTITY) {
-            Node *n = NewNode(element->e.alias, NULL);
+        if(entity->t == N_ENTITY) {
+            Node *n = NewNode(entity->alias, NULL);
             Graph_AddNode(g, n);
             Vector_Push(stack, n);
         } else {
-            Vector_Push(stack, &element->l);
+            Vector_Push(stack, entity);
         }
 
         if(Vector_Size(stack) == 3) {
             Node* a;
-            LinkNode* edge;
+            LinkEntity* edge;
             Node* c;
 
             Vector_Pop(stack, &c);
@@ -36,10 +36,10 @@ Graph* BuildGraph(const MatchNode* matchNode) {
             Vector_Pop(stack, &a);
 
             if(edge->direction == N_LEFT_TO_RIGHT) {
-                Edge *e = NewEdge(NULL, a, c, edge->relationship);
-                ConnectNode(a, c,  e);
+                Edge *e = NewEdge(NULL, edge->ge.alias, a, c, edge->ge.label);
+                ConnectNode(a, c, e);
             } else {
-                Edge *e = NewEdge(NULL, c, a, edge->relationship);
+                Edge *e = NewEdge(NULL, edge->ge.alias, c, a, edge->ge.label);
                 ConnectNode(c, a, e);
             }
             
@@ -89,11 +89,20 @@ Vector* _ReturnClause_RetrieveValues(RedisModuleCtx *ctx, const ReturnNode* retu
             continue;
         }
 
+        char *entityID = NULL;
         Node* n = Graph_GetNodeByAlias(g, retElem->variable->alias);
+        if(n != NULL) {
+            entityID = n->id;
+        } else {
+            Edge *e = Graph_GetEdgeByAlias(g, retElem->variable->alias);
+            if(e != NULL) {
+                entityID = e->id;
+            }
+        }
 
         if(retElem->variable->property != NULL) {
             RedisModuleString* prop;
-            GetElementProperyValue(ctx, n->id, retElem->variable->property, &prop);
+            GetElementProperyValue(ctx, entityID, retElem->variable->property, &prop);
             if(prop == NULL) {
                 // Couldn't find prop for id.
                 // TODO: Free returnedProps.
@@ -193,15 +202,15 @@ void ReturnClause_ExpandCollapsedNodes(RedisModuleCtx *ctx, QueryExpressionNode 
         }
         
         // Find collapsed node's label
-        ChainElement *collapsedNode = NULL;
-        for(int j = 0; j < Vector_Size(ast->matchNode->chainElements); j++) {
-            ChainElement *ce;
-            Vector_Get(ast->matchNode->chainElements, j, &ce);
-            if(ce->t != N_ENTITY) {
+        GraphEntity *collapsedNode = NULL;
+        for(int j = 0; j < Vector_Size(ast->matchNode->graphEntities); j++) {
+            GraphEntity *ge;
+            Vector_Get(ast->matchNode->graphEntities, j, &ge);
+            if(ge->t != N_ENTITY) {
                 continue;
             }
-            if(strcmp(ce->e.alias, node->variable->alias) == 0) {
-                collapsedNode = ce;
+            if(strcmp(ge->alias, node->variable->alias) == 0) {
+                collapsedNode = ge;
                 break;
             }
         }
@@ -218,7 +227,7 @@ void ReturnClause_ExpandCollapsedNodes(RedisModuleCtx *ctx, QueryExpressionNode 
         
         // Find an id, for node label
         RedisModuleString *label =
-            RedisModule_CreateString(ctx, collapsedNode->e.label, strlen(collapsedNode->e.label));        
+            RedisModule_CreateString(ctx, collapsedNode->label, strlen(collapsedNode->label));        
         
         Store *s = GetStore(ctx, STORE_NODE, graphName, label);
         
@@ -235,7 +244,7 @@ void ReturnClause_ExpandCollapsedNodes(RedisModuleCtx *ctx, QueryExpressionNode 
         for(int j = 0; j < attributes->numEntries; j++) {
             RMUtilInfoEntry entry = attributes->entries[j];
             // Create a new return element.
-            Variable* var = NewVariable(collapsedNode->e.alias, entry.key);
+            Variable* var = NewVariable(collapsedNode->alias, entry.key);
             free(entry.key);
             free(entry.val);
             ReturnElementNode* retElem = NewReturnElementNode(N_PROP, var, NULL, NULL);
@@ -249,45 +258,34 @@ void ReturnClause_ExpandCollapsedNodes(RedisModuleCtx *ctx, QueryExpressionNode 
 }
 
 void nameAnonymousNodes(QueryExpressionNode *ast) {
-    Vector *elements = ast->matchNode->chainElements;
-    char buff[64];
-
-    // Foreach node
-    for(int i = 0; i < Vector_Size(elements); i++) {
-        ChainElement *element;
-        Vector_Get(elements, i, &element);
-
-        if(element->t != N_ENTITY) {
-            continue;
-        }
+    Vector *entities = ast->matchNode->graphEntities;
+    
+    // Foreach graph entity: node/edge.
+    for(int i = 0; i < Vector_Size(entities); i++) {
+        GraphEntity *entity;
+        Vector_Get(entities, i, &entity);
         
-        if (element->e.alias == NULL) {
-            memset(buff, 0, 64);
-            sprintf(buff, "anon_node_%d", i);
-            element->e.alias = strdup(buff);
+        if (entity->alias == NULL) {
+            asprintf(&entity->alias, "anon_%d", i);
         }
     }
 }
 
 void inlineProperties(QueryExpressionNode *ast) {
     // migrate inline filters to WHERE clause
-    Vector *elements = ast->matchNode->chainElements;
+    Vector *entities = ast->matchNode->graphEntities;
 
-    // Foreach node
-    for(int i = 0; i < Vector_Size(elements); i++) {
-        ChainElement *element;
-        Vector_Get(elements, i, &element);
+    // Foreach entity
+    for(int i = 0; i < Vector_Size(entities); i++) {
+        GraphEntity *entity;
+        Vector_Get(entities, i, &entity);
 
-        if(element->t != N_ENTITY) {
-            continue;
-        }
-
-        Vector *properties = element->e.properties;
+        Vector *properties = entity->properties;
         if(properties == NULL) {
             continue;
         }
 
-        // Foreach node property
+        // Foreach property
         for(int j = 0; j < Vector_Size(properties); j+=2) {
             SIValue *key;
             SIValue *val;
@@ -295,7 +293,7 @@ void inlineProperties(QueryExpressionNode *ast) {
             Vector_Get(properties, j, &key);
             Vector_Get(properties, j+1, &val);
 
-            const char *alias = element->e.alias;
+            const char *alias = entity->alias;
             const char *property = key->stringval.str;
 
             FilterNode *filterNode = NewConstantPredicateNode(alias, property, EQ, *val);

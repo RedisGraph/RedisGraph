@@ -42,7 +42,7 @@ Graph* Graph_Clone(const Graph* graph) {
                 Graph_AddNode(clone, dest);
             }
 
-            ConnectNode(src, dest, NewEdge(e->id, src, dest, e->relationship));
+            ConnectNode(src, dest, NewEdge(e->id, e->alias, src, dest, e->relationship));
         }
     }
     return clone;
@@ -118,6 +118,26 @@ Node* Graph_GetNodeByAlias(const Graph* g, const char* alias) {
     return NULL;
 }
 
+// TODO: Find a faster way to search for an edge.
+Edge* Graph_GetEdgeByAlias(const Graph *g, const char *alias) {
+    for(int i = 0; i < Vector_Size(g->nodes); i++) {
+        Node *n;
+        Vector_Get(g->nodes, i, &n);
+
+        for (int j = 0; j < Vector_Size(n->outgoingEdges); j++) {
+            Edge *e;
+            Vector_Get(n->outgoingEdges, j, &e);
+
+            if(e->alias != NULL) {
+                if(strcmp(e->alias, alias) == 0) {
+                    return e;
+                }
+            }
+        }
+    }
+    return NULL;
+}
+
 // Adds a new node to the graph
 int Graph_AddNode(Graph* g, Node *n) {
     if(Graph_ContainsNode(g, n)) {
@@ -175,7 +195,7 @@ Graph* Graph_ShortestPath(Graph *g, Node *src, Node *dest) {
             while(Vector_Get(currentNodeClone->outgoingEdges, 0, &reversedEdge) != 0) {
                 Node *pathNodeNext = Node_Clone(reversedEdge->dest);
                 Graph_AddNode(path, pathNodeNext);
-                ConnectNode(pathNodeNext, pathNodeCurrent, NewEdge("", pathNodeNext, pathNodeCurrent,reversedEdge->relationship));
+                ConnectNode(pathNodeNext, pathNodeCurrent, NewEdge(NULL, NULL, pathNodeNext, pathNodeCurrent,reversedEdge->relationship));
                 currentNodeClone = _getNodeByInternalID(reversedGraph, pathNodeNext->internalId);
                 pathNodeCurrent = pathNodeNext;
             }
@@ -195,7 +215,7 @@ Graph* Graph_ShortestPath(Graph *g, Node *src, Node *dest) {
                 // Add neighbor to reversedGraph
                 Node *neighborClone = Node_Clone(neighbor);
                 Graph_AddNode(reversedGraph, neighborClone);
-                ConnectNode(neighborClone, currentNodeClone, NewEdge("", neighborClone, currentNodeClone, e->relationship));
+                ConnectNode(neighborClone, currentNodeClone, NewEdge(NULL, NULL, neighborClone, currentNodeClone, e->relationship));
             }
         }
         node_idx++;

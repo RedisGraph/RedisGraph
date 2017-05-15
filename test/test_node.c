@@ -8,7 +8,7 @@ void testNodeConnect() {
 	Node *a = NewNode("", "");
 	Node *b = NewNode("", "");
 
-	Edge *e = NewEdge("1", a, b, "relationship");
+	Edge *e = NewEdge("1", NULL, a, b, "relationship");
 	ConnectNode(a, b, e);
 
 	assert(Vector_Size(a->outgoingEdges) == 1);

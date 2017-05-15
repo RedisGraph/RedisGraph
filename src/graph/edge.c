@@ -2,15 +2,22 @@
 #include <stdlib.h>
 #include "edge.h"
 
-Edge* NewEdge(const char *id, Node *src, Node *dest, const char *relationship) {
+Edge* NewEdge(const char *id, const char *alias, Node *src, Node *dest, const char *relationship) {
 	Edge* edge = (Edge*)calloc(1, sizeof(Edge));
 	
 	edge->src = src;
 	edge->dest = dest;
-	edge->relationship = strdup(relationship);
+
+	if(relationship != NULL) {
+		edge->relationship = strdup(relationship);
+	}
 
 	if(id != NULL) {
 		edge->id = strdup(id);
+	}
+
+	if(alias != NULL) {
+		edge->alias = strdup(alias);
 	}
 
 	return edge;
@@ -36,6 +43,9 @@ void FreeEdge(Edge* edge) {
 	}
 	if(edge->relationship != NULL) {
 		free(edge->relationship);
+	}
+	if(edge->alias != NULL) {
+		free(edge->alias);
 	}
 	free(edge);
 }

@@ -26,6 +26,9 @@ int Graph_ContainsNode(const Graph *graph, const Node *node);
 /* Search the graph for a node with given alias */
 Node* Graph_GetNodeByAlias(const Graph *g, const char *alias);
 
+/* Search the graph for an edge with given alias */
+Edge* Graph_GetEdgeByAlias(const Graph *g, const char *alias);
+
 /* Adds a new node to the graph */
 int Graph_AddNode(Graph *g, Node *n);
 

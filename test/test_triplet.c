@@ -7,7 +7,7 @@
 void testTriplet(const char* src, const char* relationship, const char* dest, TripletKind expectedKind, const char* expectedStrRepresentation) {
 	Node* srcNode = NewNode("", src);
 	Node* destNode = NewNode("", dest);
-	Edge* edge = NewEdge("1", srcNode, destNode, relationship);
+	Edge* edge = NewEdge("1", NULL, srcNode, destNode, relationship);
 
 	Triplet* triplet = TripletFromEdge(edge);
 

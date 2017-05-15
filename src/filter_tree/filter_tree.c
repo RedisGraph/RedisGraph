@@ -135,7 +135,9 @@ int applyFilters(RedisModuleCtx *ctx, Graph* g, FT_FilterNode* root) {
     if(root->t == FT_N_PRED) {
         // A op B
         // extract both A and B values
-        Node* node;
+        Node *node = NULL;
+        Edge *edge = NULL;        
+        char *entityID = NULL;
         SIValue aVal;
         SIValue bVal;
 
@@ -145,13 +147,21 @@ int applyFilters(RedisModuleCtx *ctx, Graph* g, FT_FilterNode* root) {
         } else {
             aVal.type = bVal.type = T_DOUBLE; // Default to DOUBLE
             node = Graph_GetNodeByAlias(g, root->pred.Rop.alias);
-            if(node->id == NULL) {
+            if(node != NULL) {
+                entityID = node->id;
+            } else {
+                edge = Graph_GetEdgeByAlias(g, root->pred.Rop.alias);
+                if(edge != NULL) {
+                    entityID = edge->id;
+                }
+            }
+            if(entityID == NULL) {
                 // Missing node's ID, assume TRUE.
                 return 1;
             }
 
             RedisModuleString* propValue;
-            GetElementProperyValue(ctx, node->id, root->pred.Rop.property, &propValue);
+            GetElementProperyValue(ctx, entityID, root->pred.Rop.property, &propValue);
             if(propValue == NULL) {
                 // TODO: Log this missing element / property
                 return 0;
@@ -167,14 +177,24 @@ int applyFilters(RedisModuleCtx *ctx, Graph* g, FT_FilterNode* root) {
             RedisModule_FreeString(ctx, propValue);
         }
 
+        entityID = NULL;
         node = Graph_GetNodeByAlias(g, root->pred.Lop.alias);
-        if(node->id == NULL) {
+        if(node != NULL) {
+            entityID = node->id;
+        } else {
+            edge = Graph_GetEdgeByAlias(g, root->pred.Lop.alias);
+            if(edge != NULL) {
+                entityID = edge->id;
+            }
+        }
+
+        if(entityID == NULL) {
             // Missing node's ID, assume TRUE.
             return 1;
         }
 
         RedisModuleString* propValue;
-        GetElementProperyValue(ctx, node->id, root->pred.Lop.property, &propValue);
+        GetElementProperyValue(ctx, entityID, root->pred.Lop.property, &propValue);
         if(propValue == NULL) {
                 // TODO: Log this missing element / property
                 return 0;

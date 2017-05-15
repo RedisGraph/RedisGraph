@@ -12,12 +12,13 @@ typedef enum {
 typedef enum {
 	N_LEFT_TO_RIGHT,
 	N_RIGHT_TO_LEFT,
+	N_DIR_UNKNOWN,
 } LinkDirection;
 
 typedef enum {
 	N_ENTITY,
 	N_LINK,
-} ChainElementType;
+} GraphEntityType;
 
 typedef enum {
 	N_CONSTANT,
@@ -46,12 +47,15 @@ typedef struct {
 	char *alias;
 	char *label;
 	Vector *properties;
-} EntityNode;
+	GraphEntityType t;
+} GraphEntity;
+
+typedef GraphEntity NodeEntity;
 
 typedef struct {
-	char *relationship;
+	GraphEntity ge;
 	LinkDirection direction;
-} LinkNode;
+} LinkEntity;
 
 typedef struct {
 	union {
@@ -82,15 +86,7 @@ typedef struct filterNode {
 } FilterNode;
 
 typedef struct {
-	union {
-		EntityNode e;
-		LinkNode l;
-	};
-	ChainElementType t;
-} ChainElement;
-
-typedef struct {
-	Vector *chainElements;
+	Vector *graphEntities;
 } MatchNode;
 
 typedef struct {
@@ -137,8 +133,8 @@ typedef struct {
 	LimitNode *limitNode;
 } QueryExpressionNode;
 
-ChainElement* NewChainEntity(char *alias, char *label, Vector *properties);
-ChainElement* NewChainLink(char *relationship, LinkDirection dir);
+GraphEntity* NewNodeEntity(char *alias, char *label, Vector *properties);
+GraphEntity* NewLinkEntity(char *alias, char *relationship, Vector *properties, LinkDirection dir);
 MatchNode* NewMatchNode(Vector *elements);
 FilterNode* NewConstantPredicateNode(const char *alias, const char *property, int op, SIValue value);
 FilterNode* NewVaryingPredicateNode(const char *lAlias, const char *lProperty, int op, const char *rAlias, const char *rProperty);
@@ -163,6 +159,6 @@ void FreeReturnNode(ReturnNode *returnNode);
 void FreeOrderNode(OrderNode *orderNode);
 void FreeLimitNode(LimitNode *limitNode);
 void FreeReturnElementNode(ReturnElementNode *returnElementNode);
-void FreeChainElement(ChainElement *chainElement);
+void FreeGraphEntity(GraphEntity *entity);
 void FreeQueryExpressionNode(QueryExpressionNode *queryExpressionNode);
 #endif
