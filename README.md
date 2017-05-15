@@ -17,7 +17,7 @@ To see RedisGraph in action see [Demos](https://github.com/swilly22/redis-module
 
 - GRAPH.CREATENODE
 - GRAPH.ADDEDGE
-- GRAPH.REMOVEEDGE
+<!--- GRAPH.REMOVEEDGE-->
 - GRAPH.DELETE
 - GRAPH.EXPLAIN
 - GRAPH.QUERY
@@ -31,10 +31,10 @@ Arguments: `Graph name, label [optional], list of key value pairs`
 Returns: `Node ID`
 
 ```sh
-GRAPH.CREATENODE us_government presidents name "Barak Obama" age 55
+GRAPH.CREATENODE us_government president name "Barak Obama" age 55
 ```
 
-#### GRAPH.ADDEDGE
+### GRAPH.ADDEDGE
 
 Creats a connection within the given graph between source node and destination node using relation.
 
@@ -46,7 +46,7 @@ Returns: `Edge ID`
 GRAPH.ADDEDGE us_government Barak_Obama_Node_ID born Hawaii_Node_ID
 ```
 
-#### GRAPH.REMOVEEDGE
+<!--### GRAPH.REMOVEEDGE
 
 Removes edge connecting source to destination.
 
@@ -56,9 +56,9 @@ Returns: `Null`
 
 ```sh
 GRAPH.REMOVEEDGE us_government Richard_Nixon_Node_ID born California_Node_ID
-```
+```-->
 
-#### GRAPH.DELETE
+### GRAPH.DELETE
 
 Deletes the entire graph
 
@@ -70,7 +70,7 @@ Returns: `Null`
 GRAPH.DELETE us_government
 ```
 
-#### GRAPH.EXPLAIN
+### GRAPH.EXPLAIN
 
 Constructs a Query Execution Plan but does not run it, inspect this execution plan to better
 understand how your query get executed.
@@ -80,10 +80,10 @@ Arguments: `Graph name, Query`
 Returns: `String representation of a query execution plan`
 
 ```sh
-GRAPH.EXPLAIN us_government "MATCH (p:president)-[born]->(h:state {name:Hawaii}) RETURN p"
+GRAPH.EXPLAIN us_government "MATCH (p:president)-[:born]->(h:state {name:Hawaii}) RETURN p"
 ```
 
-#### GRAPH.QUERY
+### GRAPH.QUERY
 
 Execute the given query against specified graph
 
@@ -92,7 +92,7 @@ Arguments: `Graph name, Query`
 Returns: `Result set`
 
 ```sh
-GRAPH.QUERY us_government "MATCH (p:president)-[born]->(h:state {name:Hawaii}) RETURN p"
+GRAPH.QUERY us_government "MATCH (p:president)-[:born]->(h:state {name:Hawaii}) RETURN p"
 ```
 
 ### Query language
@@ -120,21 +120,21 @@ Describes the relationship between queried entities, it is composed of three par
 Combining the three together
 `(S)-[R]->(D)`
 
-Each node can contain an alias and a label, but nodes can be left empty if needed.
+Each graph entity node/edge can contain an alias and a label, but both can be left empty if needed.
 
-Node structure: `(alias:label {filters})` alias, label and filters are all optional.
+Entity structure: `alias:label {filters}` alias, label and filters are all optional.
 
 Example:
 
 ```sh
-(a:actor)-[act]->(m:movie {title:"straight outta compton"})
+(a:actor)-[:act]->(m:movie {title:"straight outta compton"})
 ```
 
 `a` is an alias for the source node which we'll be able to refer to at different places within our query,
 
 `actor` is the label under which this node is marked
 
-`act` is the relationship
+`act` is the relationship type
 
 `m` an alias for the destination node
 
@@ -147,7 +147,7 @@ As such we're interested in actor entities which have the relation "act" with **
 It is possible to describe broder relationships by composing a multi hop query as such:
 
 ```sh
-(me {name:swilly})-[friends_with]->()-[friends_with]->(fof)
+(me {name:swilly})-[:friends_with]->()-[:friends_with]->(fof)
 ```
 
 Here we're interesed to find out who are my friends friends.
@@ -155,10 +155,10 @@ Here we're interesed to find out who are my friends friends.
 Nodes can have more than one edge coming in or out of them, for instance:
 
 ```sh
-(me {name:swilly})-[visited]->(c:country)<-[visited]-(friend)<-[friends_with]-({name:swilly})
+(me {name:swilly})-[:visited]->(c:country)<-[:visited]-(friend)<-[:friends_with]-({name:swilly})
 ```
 
-Here we're interested in knowing which of my friends have visited at least one country I've been to.
+Here we're interested in knowing which of my friends have visited at least one country i've been to.
 
 
 #### WHERE
@@ -185,23 +185,26 @@ Predicates can be combided using AND / OR, wrap predicates within parentheses to
 Examples:
 
 ```sh
-WHERE (actor.name = "john doe" OR movie.rating > 8.8) AND movie.votes <=250)
+WHERE (actor.name = "john doe" OR movie.rating > 8.8) AND movie.votes <= 250)
 ```
 
 ```sh
 WHERE actor.age >= director.age AND actor.age > 32
 ```
 
-It is also possible to specify equality predicates within a node using the curly braces as such:
+It is also possible to specify equality predicates within nodes and edges using the curly braces as such:
 
 ```sh
-(president {name:"Barack Obama"})
+(:president {name:"Barack Obama"})-[:won {term:2}]->(:state)
 ```
 
 Here we've required that the president node's name will have the value "Barack Obama"
+and the won edge term property will equal 2.
+
 There's no difference between inlined predicates and predicates specified within the WHERE clause.
 
 #### RETURN
+
 In its simple form Return defines which properties the returned result-set will contain,
 its structure is a list of `alias.property` seperated by comma,
 for convenience it's possible to specify only alias when you're interested in every attribute an entity possess
@@ -231,6 +234,7 @@ RETURN movie.title, MAX(actor.age), MIN(actor.age)
 Here we group data by movie title and foreach movie we find its youngest and oldest actor age.
 
 #### Aggregations
+
 Supported aggregation functions:
 
 - `sum`
@@ -240,6 +244,7 @@ Supported aggregation functions:
 - `count`
 
 ### ORDER BY
+
 Specifies that the output should be sorted and how.
 
 You can order by multiple properties by stating each variable in the ORDER BY clause.
@@ -267,6 +272,7 @@ LIMIT <max records to return>
 If not specified there's no limit to the number of records returned by a query.
 
 ### Build and run
+
 To build the module, from root folder run:
 
 ```sh
@@ -276,7 +282,7 @@ cmake . && make module
 Loading module into redis:
 
 ```sh
-# Assuming you have a redis build from the unstable branch:
+# Assuming your redis version support modules:
 /path/to/redis-server --loadmodule <PATH_TO_RedisGraph>/src/libmodule.so
 ```
 
