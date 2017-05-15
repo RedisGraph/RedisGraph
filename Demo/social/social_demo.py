@@ -212,7 +212,7 @@ def run_queries():
 
     #------------------------------------------------------------------------
 
-    query_desc = "Find out of who went on a business trip"
+    query_desc = "Find out who went on a business trip"
     print query_desc
     query = """MATCH (p:person)-[v:visited {purpose:business}]->(c:country) RETURN p.name, v.purpose, c.name"""
     print "query: {query}".format(query=query)
