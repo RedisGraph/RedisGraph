@@ -151,7 +151,7 @@ int MGraph_AddEdge(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     const char* strEdgeID = RedisModule_StringPtrLen(edgeID, NULL);
 
     // Create the actual edge
-    Edge *edge = NewEdge(strEdgeID, srcNode, destNode, strEdgeType);
+    Edge *edge = NewEdge(strEdgeID, NULL, srcNode, destNode, strEdgeType);
 
     // Place edge within edge store(s)
     Store *edgeStore = GetStore(ctx, STORE_EDGE, graph, NULL);

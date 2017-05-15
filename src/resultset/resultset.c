@@ -87,14 +87,10 @@ ResultSetHeader* NewResultSetHeader(const QueryExpressionNode *ast) {
         char* columnName = NULL;
 
         if(returnElementNode->type == N_PROP) {
-            columnNameLen = strlen(returnElementNode->variable->alias) + strlen(returnElementNode->variable->property) + 1;
-            columnName = malloc(sizeof(char) * columnNameLen);
-            sprintf(columnName, "%s.%s", returnElementNode->variable->alias, returnElementNode->variable->property);
+            asprintf(&columnName, "%s.%s", returnElementNode->variable->alias, returnElementNode->variable->property);
         } else {
            //  returnElementNode->type == N_AGG_FUNC
-            columnNameLen = strlen(returnElementNode->func) + 2 + strlen(returnElementNode->variable->alias) + strlen(returnElementNode->variable->property) + 1;
-            columnName = malloc(sizeof(char) * columnNameLen);
-            sprintf(columnName, "%s(%s.%s)", returnElementNode->func, returnElementNode->variable->alias, returnElementNode->variable->property);
+            asprintf(&columnName, "%s(%s.%s)", returnElementNode->func, returnElementNode->variable->alias, returnElementNode->variable->property);
         }
 
         Column* column = NewColumn(columnName, returnElementNode->alias);

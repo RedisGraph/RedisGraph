@@ -88,79 +88,71 @@ void FreeFilterNode(FilterNode* filterNode) {
 	}
 }
 
-
-ChainElement* NewChainLink(char* relationship, LinkDirection dir) {
-	ChainElement* ce = (ChainElement*)malloc(sizeof(ChainElement));
-	ce->t = N_LINK;	
-	
-	ce->l.direction = dir;
-	ce->l.relationship = (char*)malloc(strlen(relationship) + 1);
-	strcpy(ce->l.relationship, relationship);
-
-	return ce;
-}
-
-ChainElement* NewChainEntity(char *alias, char *label, Vector *properties) {
-	ChainElement* ce = (ChainElement*)malloc(sizeof(ChainElement));
-	ce->t = N_ENTITY;
-	ce->e.label = NULL;
-	ce->e.alias = NULL;
-	ce->e.properties = properties;
+GraphEntity* NewLinkEntity(char *alias, char *label, Vector *properties, LinkDirection dir) {
+	LinkEntity* le = (LinkEntity*)calloc(1, sizeof(LinkEntity));
+	le->direction = dir;
+	le->ge.t = N_LINK;
+	le->ge.properties = properties;
 	
 	if(label != NULL) {
-		ce->e.label = strdup(label);
+		le->ge.label = strdup(label);
 	}
-
 	if(alias != NULL) {
-		ce->e.alias = strdup(alias);
+		le->ge.alias = strdup(alias);
 	}
 
-	return ce;
+	return le;
 }
 
-void FreeChainElement(ChainElement* chainElement) {
-	switch(chainElement->t) {
-		case N_ENTITY:
-			if(chainElement->e.label != NULL) {
-				free(chainElement->e.label);
-			}
-			if(chainElement->e.alias != NULL) {
-				free(chainElement->e.alias);
-			}
-			if(chainElement->e.properties != NULL) {
-				for(int i = 0; i < Vector_Size(chainElement->e.properties); i++) {
-					SIValue *val;
-					Vector_Get(chainElement->e.properties, i, &val);
-					SIValue_Free(val);
-					free(val);
-				}
-				Vector_Free(chainElement->e.properties);
-			}
-			break;
-
-		case N_LINK:
-			free(chainElement->l.relationship);
-			break;
+GraphEntity* NewNodeEntity(char *alias, char *label, Vector *properties) {
+	NodeEntity* ge = (NodeEntity*)calloc(1, sizeof(NodeEntity));
+	ge->t = N_ENTITY;
+	ge->properties = properties;
+	
+	if(alias != NULL) {
+		ge->alias = strdup(alias);
+	}
+	if(label != NULL) {
+		ge->label = strdup(label);
 	}
 
-	free(chainElement);
+	return ge;
+}
+
+void FreeGraphEntity(GraphEntity* graphEntity) {
+	if(graphEntity->label != NULL) {
+		free(graphEntity->label);
+	}
+	if(graphEntity->alias != NULL) {
+		free(graphEntity->alias);
+	}
+	if(graphEntity->properties != NULL) {
+		for(int i = 0; i < Vector_Size(graphEntity->properties); i++) {
+			SIValue *val;
+			Vector_Get(graphEntity->properties, i, &val);
+			SIValue_Free(val);
+			free(val);
+		}
+		Vector_Free(graphEntity->properties);
+	}
+	free(graphEntity);
 }
 
 MatchNode* NewMatchNode(Vector* elements) {
 	MatchNode* matchNode = (MatchNode*)malloc(sizeof(MatchNode));
-	matchNode->chainElements = elements;
+	matchNode->graphEntities = elements;
 
 	return matchNode;
 }
 
 void FreeMatchNode(MatchNode* matchNode) {
-	for(int i = 0; i < Vector_Size(matchNode->chainElements); i++) {
-		ChainElement* ce;
-		Vector_Get(matchNode->chainElements, i, &ce);
-		FreeChainElement(ce);
+	for(int i = 0; i < Vector_Size(matchNode->graphEntities); i++) {
+		GraphEntity* ge;
+		Vector_Get(matchNode->graphEntities, i, &ge);
+		FreeGraphEntity(ge);
 	}
 
-	Vector_Free(matchNode->chainElements);
+	Vector_Free(matchNode->graphEntities);
 	free(matchNode);
 }
 

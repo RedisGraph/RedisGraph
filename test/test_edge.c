@@ -8,7 +8,7 @@
 void test_edge() {
 	Node* src = NewNode("","source");
 	Node* dest = NewNode("", "destination");
-	Edge* edge = NewEdge("1", src, dest, "route");
+	Edge* edge = NewEdge("1", NULL, src, dest, "route");
 
 	assert(strcmp(edge->relationship, "route") == 0);
 	assert(ValidateEdge(edge) == 1);

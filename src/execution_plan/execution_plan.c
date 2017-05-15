@@ -211,7 +211,7 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, RedisModuleString *graphNam
                 
                 /* TODO: Make sure all filter conditions on this node
                  * can be satisfied. */
-                if(FilterTree_ContainsNode(filterTree, destNode->alias)) {
+                if(FilterTree_ContainsNode(filterTree, destNode->alias) || FilterTree_ContainsNode(filterTree, edge->alias)) {
                     OpNode *nodeFilter = NewOpNode(NewFilterOp(ctx, ast));
                     Vector_Push(reversedExpandOps, nodeFilter);
                 }
@@ -229,15 +229,15 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, RedisModuleString *graphNam
         }
 
         // Locate node within MATCH clause.
-        ChainElement *chainElement;
-        for(int j = 0; j < Vector_Size(ast->matchNode->chainElements); j++) {
-            Vector_Get(ast->matchNode->chainElements, j, &chainElement);
-            if(chainElement->t == N_ENTITY && strcmp(node->alias, chainElement->e.alias) == 0) { break; }
+        GraphEntity *graphEntity;
+        for(int j = 0; j < Vector_Size(ast->matchNode->graphEntities); j++) {
+            Vector_Get(ast->matchNode->graphEntities, j, &graphEntity);
+            if(graphEntity->t == N_ENTITY && strcmp(node->alias, graphEntity->alias) == 0) { break; }
         }
 
         OpBase* scanOp;
         // Determin operation type
-        if(chainElement->e.label == NULL) {
+        if(graphEntity->label == NULL) {
             // Node is not labeled, no other option but a full scan.
             // TODO: if this node is a part of a pattern (A)-[]->(B)
             // then it might be possible to scan B more efficently
@@ -245,7 +245,7 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, RedisModuleString *graphNam
             scanOp = NewAllNodeScanOp(ctx, node, graphName);
         } else {
             // TODO: when indexing is enabled, use index when possible.
-            scanOp = NewNodeByLabelScanOp(ctx, node, graphName, chainElement->e.label);
+            scanOp = NewNodeByLabelScanOp(ctx, node, graphName, graphEntity->label);
         }
 
         /* TODO: Make sure all filter conditions on this node

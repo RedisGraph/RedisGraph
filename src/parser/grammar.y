@@ -49,7 +49,7 @@ matchClause(A) ::= MATCH chain(B). {
 %type chain {Vector*}
 
 chain(A) ::= node(B). {
-	A = NewVector(ChainElement*, 1);
+	A = NewVector(GraphEntity*, 1);
 	Vector_Push(A, B);
 } 
 
@@ -60,26 +60,61 @@ chain(A) ::= chain(B) link(C) node(D). {
 }
 
 
-%type node {ChainElement*}
+%type node {NodeEntity*}
 
-// Node with alias and lable
+// Node with alias and label
 node(A) ::= LEFT_PARENTHESIS STRING(B) COLON STRING(C) properties(D) RIGHT_PARENTHESIS. {
-	A = NewChainEntity(B.strval, C.strval, D);
+	A = NewNodeEntity(B.strval, C.strval, D);
 }
 
-// node with lable
+// node with label
 node(A) ::= LEFT_PARENTHESIS COLON STRING(B) properties(D) RIGHT_PARENTHESIS. {
-	A = NewChainEntity(NULL, B.strval, D);
+	A = NewNodeEntity(NULL, B.strval, D);
 }
 
 // node with alias
 node(A) ::= LEFT_PARENTHESIS STRING(B) properties(D) RIGHT_PARENTHESIS. {
-	A = NewChainEntity(B.strval, NULL, D);
+	A = NewNodeEntity(B.strval, NULL, D);
 }
 
 // empty node
 node(A) ::= LEFT_PARENTHESIS properties(D) RIGHT_PARENTHESIS. {
-	A = NewChainEntity(NULL, NULL, D);
+	A = NewNodeEntity(NULL, NULL, D);
+}
+
+%type link {LinkEntity*}
+
+// left to right edge
+link(A) ::= DASH edge(B) RIGHT_ARROW . {
+	A = B;
+	A->direction = N_LEFT_TO_RIGHT;
+}
+
+// right to left edge
+link(A) ::= LEFT_ARROW edge(B) DASH . {
+	A = B;
+	A->direction = N_RIGHT_TO_LEFT;
+}
+
+%type edge {LinkEntity*}
+// Empty edge []
+edge(A) ::= LEFT_BRACKET properties(B) RIGHT_BRACKET . { 
+	A = NewLinkEntity(NULL, NULL, B, N_DIR_UNKNOWN);
+}
+
+// Edge with an alias [alias]
+edge(A) ::= LEFT_BRACKET STRING(B) properties(C) RIGHT_BRACKET . { 
+	A = NewLinkEntity(B.strval, NULL, C, N_DIR_UNKNOWN);
+}
+
+// Edge with an alias [:label]
+edge(A) ::= LEFT_BRACKET COLON STRING(B) properties(C) RIGHT_BRACKET . { 
+	A = NewLinkEntity(NULL, B.strval, C, N_DIR_UNKNOWN);
+}
+
+// Edge with an alias and label [alias:label]
+edge(A) ::= LEFT_BRACKET STRING(B) COLON STRING(C) properties(D) RIGHT_BRACKET . { 
+	A = NewLinkEntity(B.strval, C.strval, D, N_DIR_UNKNOWN);
 }
 
 %type properties {Vector*}
@@ -115,21 +150,6 @@ mapLiteral(A) ::= STRING(B) COLON value(C) COMMA mapLiteral(D). {
 	Vector_Push(D, val);
 	
 	A = D;
-}
-
-%type link {ChainElement*}
-
-link(A) ::= DASH LEFT_BRACKET RIGHT_BRACKET RIGHT_ARROW. { 
-	A =  NewChainLink("", N_LEFT_TO_RIGHT); 
-}
-link(A) ::= DASH LEFT_BRACKET STRING(B) RIGHT_BRACKET RIGHT_ARROW. { 
-	A = NewChainLink(B.strval, N_LEFT_TO_RIGHT);
-}
-link(A) ::= LEFT_ARROW LEFT_BRACKET RIGHT_BRACKET DASH. { 
-	A = NewChainLink("", N_RIGHT_TO_LEFT); 
-}
-link(A) ::= LEFT_ARROW LEFT_BRACKET STRING(B) RIGHT_BRACKET DASH. { 
-	A = NewChainLink(B.strval, N_RIGHT_TO_LEFT);
 }
 
 %type whereClause {WhereNode*}

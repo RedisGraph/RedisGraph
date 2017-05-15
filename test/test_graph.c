@@ -21,25 +21,25 @@ void test_graph_shortestpath() {
     Graph_AddNode(graph, f);
     Graph_AddNode(graph, g);
 
-    Edge *ab = NewEdge("1", a, b, "");
+    Edge *ab = NewEdge("1", NULL, a, b, "");
     ConnectNode(a, b, ab);
 
-    Edge *ac = NewEdge("2", a, c, "");
+    Edge *ac = NewEdge("2", NULL, a, c, "");
     ConnectNode(a, c, ac);
 
-    Edge *bd = NewEdge("3", b, d, "");
+    Edge *bd = NewEdge("3", NULL, b, d, "");
     ConnectNode(b, d, bd);
 
-    Edge *be = NewEdge("4", b, e, "");
+    Edge *be = NewEdge("4", NULL, b, e, "");
     ConnectNode(b, e, be);
 
-    Edge *cf = NewEdge("5", c, f, "");
+    Edge *cf = NewEdge("5", NULL, c, f, "");
     ConnectNode(c, f, cf);
     
-    Edge *ef = NewEdge("6", e, f, "");
+    Edge *ef = NewEdge("6", NULL, e, f, "");
     ConnectNode(e, f, ef);
     
-    Edge *fg = NewEdge("7", f, g, "");
+    Edge *fg = NewEdge("7", NULL, f, g, "");
     ConnectNode(f, g, fg);
 
     // path: a->c->f->g
@@ -66,8 +66,8 @@ void test_graph_clone() {
     Node *b = NewNode("B", "2");
     Node *blank = NewNode("", "");
 
-    Edge *e1 = NewEdge("1", a, blank, "");
-    Edge *e2 = NewEdge("2", blank, b, "");
+    Edge *e1 = NewEdge("1", NULL, a, blank, "");
+    Edge *e2 = NewEdge("2", NULL, blank, b, "");
 
     Graph_AddNode(origin, a);
     Graph_AddNode(origin, blank);
@@ -125,8 +125,8 @@ void test_graph_compare() {
     Graph_AddNode(origin, blank);
     Graph_AddNode(origin, b);
 
-    ConnectNode(a, blank, NewEdge("1", a, blank, ""));
-    ConnectNode(blank, b, NewEdge("2", blank, b, ""));
+    ConnectNode(a, blank, NewEdge("1", NULL, a, blank, ""));
+    ConnectNode(blank, b, NewEdge("2", NULL, blank, b, ""));
 
     Graph* clone = Graph_Clone(origin);
 
