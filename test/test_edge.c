@@ -6,8 +6,8 @@
 
 
 void test_edge() {
-	Node* src = NewNode("","source");
-	Node* dest = NewNode("", "destination");
+	Node* src = NewNode("","source", NULL);
+	Node* dest = NewNode("", "destination", NULL);
 	Edge* edge = NewEdge("1", NULL, src, dest, "route");
 
 	assert(strcmp(edge->relationship, "route") == 0);

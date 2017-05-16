@@ -11,13 +11,14 @@ typedef struct Edge;
 typedef struct {
 	char* alias;			// an alias for this node
 	char* id;				// node unique id (might be empty)
+	char *label;			// label attached to node
 	int internalId;			// node unique id can not be empty
 	Vector* outgoingEdges;	// list of incoming edges (ME)<-(SRC)
 	Vector* incomingEdges;	// list on outgoing edges (ME)->(DEST)
 } Node;
 
 // Creates a new node.
-Node* NewNode(const char* alias, const char* id);
+Node* NewNode(const char *alias, const char *id, const char *label);
 
 // Creates a clone of given node.
 Node* Node_Clone(const Node *node);

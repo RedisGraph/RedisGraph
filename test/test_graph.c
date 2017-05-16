@@ -5,13 +5,13 @@
 
 void test_graph_shortestpath() {
     Graph *graph = NewGraph();
-    Node *a = NewNode("a", "a");
-    Node *b = NewNode("b", "b");
-    Node *c = NewNode("c", "c");
-    Node *d = NewNode("d", "d");
-    Node *e = NewNode("e", "e");
-    Node *f = NewNode("f", "f");
-    Node *g = NewNode("g", "g");
+    Node *a = NewNode("a", "a", NULL);
+    Node *b = NewNode("b", "b", NULL);
+    Node *c = NewNode("c", "c", NULL);
+    Node *d = NewNode("d", "d", NULL);
+    Node *e = NewNode("e", "e", NULL);
+    Node *f = NewNode("f", "f", NULL);
+    Node *g = NewNode("g", "g", NULL);
 
     Graph_AddNode(graph, a);
     Graph_AddNode(graph, b);
@@ -62,9 +62,9 @@ void test_graph_clone() {
     Graph* origin = NewGraph();
 
     // (A:1)-[]->()-[]->(B)
-    Node *a = NewNode("A", "1");
-    Node *b = NewNode("B", "2");
-    Node *blank = NewNode("", "");
+    Node *a = NewNode("A", "1", NULL);
+    Node *b = NewNode("B", "2", NULL);
+    Node *blank = NewNode("", "", NULL);
 
     Edge *e1 = NewEdge("1", NULL, a, blank, "");
     Edge *e2 = NewEdge("2", NULL, blank, b, "");
@@ -117,9 +117,9 @@ void test_graph_compare() {
     Graph* origin = NewGraph();
 
     // (A:1)-[]->()-[]->(B)
-    Node *a = NewNode("A", "1");
-    Node *b = NewNode("B", "2");
-    Node *blank = NewNode("", "");
+    Node *a = NewNode("A", "1", NULL);
+    Node *b = NewNode("B", "2", NULL);
+    Node *blank = NewNode("", "", NULL);
 
     Graph_AddNode(origin, a);
     Graph_AddNode(origin, blank);
@@ -132,7 +132,7 @@ void test_graph_compare() {
 
     assert(Graph_Compare(origin, clone) == 0);
 
-    Node *c = NewNode("C", "3");
+    Node *c = NewNode("C", "3", NULL);
     Graph_AddNode(origin, c);
 
     assert(Graph_Compare(origin, clone) == 1);

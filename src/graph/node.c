@@ -2,11 +2,9 @@
 #include "edge.h"
 #include <stdlib.h>
 
-Node* NewNode(const char* alias, const char* id) {
+Node* NewNode(const char *alias, const char *id, const char *label) {
 	Node* node = (Node*)calloc(1, sizeof(Node));
 	
-	node->id = NULL;
-	node->alias = NULL;
 	node->outgoingEdges = NewVector(Edge*, 0);
 	node->incomingEdges = NewVector(Edge*, 0);
 	node->internalId = rand();
@@ -19,11 +17,15 @@ Node* NewNode(const char* alias, const char* id) {
 		node->alias = strdup(alias);
 	}
 
+	if(label != NULL) {
+		node->label = strdup(label);
+	}
+
 	return node;
 }
 
 Node* Node_Clone(const Node *node) {
-	Node *clone = NewNode(node->alias, node->id);
+	Node *clone = NewNode(node->alias, node->id, node->label);
 	clone->internalId = node->internalId;
 	return clone;
 }
@@ -47,6 +49,9 @@ void FreeNode(Node* node) {
 	}
 	if(node->alias != NULL) {
 		free(node->alias);
+	}
+	if(node->label != NULL) {
+		free(node->label);
 	}
 
 	for(int i = 0; i < Vector_Size(node->outgoingEdges); i++) {

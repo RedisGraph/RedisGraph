@@ -32,6 +32,7 @@ set(_graph_files
       ../src/util/heap.c
       ../src/util/sha1.c
       ../src/util/prng.c
+      ../src/util/snowflake.c
       ../src/util/triemap/triemap.c
       ../src/util/triemap/triemap_type.c
 
@@ -85,7 +86,6 @@ target_compile_options(module PUBLIC "-DREDIS_MODULE_TARGET")
 
 target_link_libraries(module Llibgraph)
 set_property(TARGET Llibgraph PROPERTY C_STANDARD 99)
-target_link_libraries(Llibgraph uuid)
 
 target_link_libraries(module m)
 set_property(TARGET module PROPERTY C_STANDARD 99)

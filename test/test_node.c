@@ -5,8 +5,8 @@
 #include "../src/graph/edge.h"
 
 void testNodeConnect() {
-	Node *a = NewNode("", "");
-	Node *b = NewNode("", "");
+	Node *a = NewNode("", "", NULL);
+	Node *b = NewNode("", "", NULL);
 
 	Edge *e = NewEdge("1", NULL, a, b, "relationship");
 	ConnectNode(a, b, e);
@@ -29,7 +29,7 @@ void testNodeConnect() {
 
 void TestNodeCreation() {
 	// Empty node
-	Node* node = NewNode("", "");
+	Node* node = NewNode("", "", NULL);
 	assert(strcmp(node->alias, "") == 0);
 	assert(strcmp(node->id, "") == 0);
 	assert(Vector_Size(node->incomingEdges) == 0);
@@ -37,7 +37,7 @@ void TestNodeCreation() {
 	FreeNode(node);
 
 	// Named node with alias and id
-	node = NewNode("alias", "id");
+	node = NewNode("alias", "id", NULL);
 	assert(strcmp(node->alias, "alias") == 0);
 	assert(strcmp(node->id, "id") == 0);
 	assert(Vector_Size(node->incomingEdges) == 0);
