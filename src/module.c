@@ -18,6 +18,7 @@
 #include "rmutil/strings.h"
 #include "rmutil/test_util.h"
 #include "util/prng.h"
+#include "util/snowflake.h"
 #include "util/triemap/triemap_type.h"
 
 #include "parser/ast.h"
@@ -47,8 +48,8 @@ RedisModuleString* _CreateGraphEntity(RedisModuleCtx *ctx, RedisModuleString **p
     get_new_id(id);
 
     // Store node properties within a redis hash
-    // RedisModuleString* entityID = RedisModule_CreateString(ctx, id, strlen(id));
-    RedisModuleString* entityID = RedisModule_CreateString(ctx, id, 32);
+    RedisModuleString* entityID = RedisModule_CreateString(ctx, id, strlen(id));
+    // RedisModuleString* entityID = RedisModule_CreateString(ctx, id, 32);
     RedisModuleKey *key = RedisModule_OpenKey(ctx, entityID, REDISMODULE_WRITE);
     // TODO: check if key exists
     
@@ -89,7 +90,7 @@ int MGraph_CreateNode(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     RedisModuleString *nodeID = _CreateGraphEntity(ctx, properties, argc-propStartIdx);
 
     const char *strNodeID = RedisModule_StringPtrLen(nodeID, NULL);
-    Node *n = NewNode(NULL, strNodeID);
+    Node *n = NewNode(NULL, strNodeID, NULL);
     
     // Place node id within node store
     Store *store = GetStore(ctx, STORE_NODE, graph, NULL);
@@ -98,6 +99,12 @@ int MGraph_CreateNode(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     // Place node id within labeled node store
     if(labelSpecified == 1) {
         RedisModuleString *label = argv[2];
+
+        // Set node's label.
+        const char *strLabel = RedisModule_StringPtrLen(label, NULL);
+        n->label = strdup(strLabel);
+
+        // Store node within label store.
         store = GetStore(ctx, STORE_NODE, graph, label);
         Store_Insert(store, nodeID, n);
     }
@@ -129,7 +136,7 @@ int MGraph_AddEdge(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
     RMUtil_ParseArgs(argv, argc, 1, "ssss", &graph, &src, &dest, &edgeType);
     
-    const char *strSrc = RedisModule_StringPtrLen(src, NULL);    
+    const char *strSrc = RedisModule_StringPtrLen(src, NULL);
     const char *strDest = RedisModule_StringPtrLen(dest, NULL);
     const char* strEdgeType = RedisModule_StringPtrLen(edgeType, NULL);
     
@@ -327,6 +334,11 @@ int MGraph_ExecutionPlan(RedisModuleCtx *ctx, RedisModuleString **argv, int argc
 int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     InitGroupCache();
     Agg_RegisterFuncs();
+
+    if (snowflake_init(1, 1) != 1) {
+        RedisModule_Log(ctx, "error", "Failed to initialize snowflake");
+        return REDISMODULE_ERR;
+    }
 
     if (RedisModule_Init(ctx, "graph", 1, REDISMODULE_APIVER_1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;

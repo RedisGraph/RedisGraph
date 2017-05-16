@@ -5,8 +5,8 @@
 #include "../src/hexastore/triplet.h"
 
 void testTriplet(const char* src, const char* relationship, const char* dest, TripletKind expectedKind, const char* expectedStrRepresentation) {
-	Node* srcNode = NewNode("", src);
-	Node* destNode = NewNode("", dest);
+	Node* srcNode = NewNode("", src, NULL);
+	Node* destNode = NewNode("", dest, NULL);
 	Edge* edge = NewEdge("1", NULL, srcNode, destNode, relationship);
 
 	Triplet* triplet = TripletFromEdge(edge);
