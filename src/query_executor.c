@@ -19,7 +19,7 @@ Graph* BuildGraph(const MatchNode* matchNode) {
         Vector_Get(matchNode->graphEntities, i, &entity);
 
         if(entity->t == N_ENTITY) {
-            Node *n = NewNode(entity->alias, NULL);
+            Node *n = NewNode(entity->alias, NULL, entity->label);
             Graph_AddNode(g, n);
             Vector_Push(stack, n);
         } else {
