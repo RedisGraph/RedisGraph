@@ -56,11 +56,9 @@ void Column_Free(Column* column) {
     if(column->name != NULL) {
         free(column->name);
     }
-
     if(column->alias != NULL) {
         free(column->alias);
     }
-
     free(column);
 }
 
@@ -89,14 +87,10 @@ ResultSetHeader* NewResultSetHeader(const QueryExpressionNode *ast) {
         char* columnName = NULL;
 
         if(returnElementNode->type == N_PROP) {
-            columnNameLen = strlen(returnElementNode->variable->alias) + strlen(returnElementNode->variable->property) + 1;
-            columnName = malloc(sizeof(char) * columnNameLen);
-            sprintf(columnName, "%s.%s", returnElementNode->variable->alias, returnElementNode->variable->property);
+            asprintf(&columnName, "%s.%s", returnElementNode->variable->alias, returnElementNode->variable->property);
         } else {
            //  returnElementNode->type == N_AGG_FUNC
-            columnNameLen = strlen(returnElementNode->func) + 2 + strlen(returnElementNode->variable->alias) + strlen(returnElementNode->variable->property) + 1;
-            columnName = malloc(sizeof(char) * columnNameLen);
-            sprintf(columnName, "%s(%s.%s)", returnElementNode->func, returnElementNode->variable->alias, returnElementNode->variable->property);
+            asprintf(&columnName, "%s(%s.%s)", returnElementNode->func, returnElementNode->variable->alias, returnElementNode->variable->property);
         }
 
         Column* column = NewColumn(columnName, returnElementNode->alias);
@@ -259,10 +253,10 @@ int ResultSet_Full(const ResultSet* set) {
 void _aggregateResultSet(RedisModuleCtx* ctx, ResultSet* set) {
     char* key;
     Group* group;
-    khiter_t iter = CacheGroupIter();
+    CacheGroupIterator *iter = CacheGroupIter();
 
     // Scan entire groups cache
-    while(CacheGroupIterNext(&iter, &key, &group) != 0) {
+    while(CacheGroupIterNext(iter, &key, &group) != 0) {
         // Finalize each aggregation function
         for(int i = 0; i < Vector_Size(group->aggregationFunctions); i++) {
             AggCtx* aggCtx = NULL;
@@ -276,6 +270,9 @@ void _aggregateResultSet(RedisModuleCtx* ctx, ResultSet* set) {
             break;
         }
     }
+    
+    FreeGroupCache();
+    InitGroupCache();
 }
 
 // TODO: Drop heap, use some sort algo

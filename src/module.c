@@ -17,11 +17,15 @@
 #include "rmutil/vector.h"
 #include "rmutil/strings.h"
 #include "rmutil/test_util.h"
+#include "util/prng.h"
+#include "util/snowflake.h"
 #include "util/triemap/triemap_type.h"
 
 #include "parser/ast.h"
 #include "parser/grammar.h"
 #include "parser/parser_common.h"
+
+#include "stores/store.h"
 
 #include "aggregate/functions.h"
 #include "aggregate/aggregate.h"
@@ -34,47 +38,160 @@
 #include "resultset/record.h"
 #include "resultset/resultset.h"
 
-// Adds a new edge to the graph.
-// Args:
-// argv[1] graph name
-// argv[2] subject
-// argv[3] edge, predicate
-// argv[4] object
-// connect subject to object with a bi directional edge.
-// Assuming both subject and object exists.
+#include "execution_plan/execution_plan.h"
+
+/* Creates a new node and stores its properties within a redis hash.
+ * Returns the new node ID */
+RedisModuleString* _CreateGraphEntity(RedisModuleCtx *ctx, RedisModuleString **properties, int propCount) {
+    // Get an id
+    unsigned char id[33] = {};
+    get_new_id(id);
+
+    // Store node properties within a redis hash
+    RedisModuleString* entityID = RedisModule_CreateString(ctx, id, strlen(id));
+    // RedisModuleString* entityID = RedisModule_CreateString(ctx, id, 32);
+    RedisModuleKey *key = RedisModule_OpenKey(ctx, entityID, REDISMODULE_WRITE);
+    // TODO: check if key exists
+    
+    // Insert node attributes
+    for(int i = 0; i < propCount; i+=2) {
+        RedisModule_HashSet(key, REDISMODULE_HASH_NONE, properties[i], properties[i+1], NULL);
+    }
+    
+    RedisModule_CloseKey(key);
+    return entityID;
+}
+
+/* Creates a new node
+ * Args:
+ * argv[1] graph name
+ * argv[2] label (optional)
+ * argv[I] attribute name
+ * argv[I+1] attribute value 
+ * node gets a unique ID
+ * and added to the nodes store */
+int MGraph_CreateNode(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+    // Expecting at least 4 arguments
+    // number of arguments should be an even number.
+    if(argc < 4) {
+        return RedisModule_WrongArity(ctx);
+    }
+
+    int propStartIdx = 2;
+    int labelSpecified = 0;
+    if(argc % 2 == 1) {
+        // Label specified.
+        propStartIdx = 3;
+        labelSpecified = 1;
+    }
+
+    RedisModuleString *graph = argv[1];
+    RedisModuleString **properties = argv+propStartIdx;
+    RedisModuleString *nodeID = _CreateGraphEntity(ctx, properties, argc-propStartIdx);
+
+    const char *strNodeID = RedisModule_StringPtrLen(nodeID, NULL);
+    Node *n = NewNode(NULL, strNodeID, NULL);
+    
+    // Place node id within node store
+    Store *store = GetStore(ctx, STORE_NODE, graph, NULL);
+    Store_Insert(store, nodeID, n);
+
+    // Place node id within labeled node store
+    if(labelSpecified == 1) {
+        RedisModuleString *label = argv[2];
+
+        // Set node's label.
+        const char *strLabel = RedisModule_StringPtrLen(label, NULL);
+        n->label = strdup(strLabel);
+
+        // Store node within label store.
+        store = GetStore(ctx, STORE_NODE, graph, label);
+        Store_Insert(store, nodeID, n);
+    }
+    
+    RedisModule_ReplyWithString(ctx, nodeID);
+    RedisModule_FreeString(ctx, nodeID);
+
+    return REDISMODULE_OK;
+}
+
+/* Adds a new edge to the graph.
+ * Args:
+ * argv[1] graph name
+ * argv[2] source node
+ * argv[3] dest node
+ * argv[4] edge type
+ * argv[5] edge properties
+ * connects source node with dest node with a directional edge. */
+
 int MGraph_AddEdge(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-    if(argc != 5) {
+    if(argc < 5 || argc%2 == 0) {
         return RedisModule_WrongArity(ctx);
     }
     
     RedisModuleString *graph;
-    RedisModuleString *subject;
-    RedisModuleString *predicate;
-    RedisModuleString *object;
+    RedisModuleString *src;
+    RedisModuleString *dest;
+    RedisModuleString *edgeType;
 
-    RMUtil_ParseArgs(argv, argc, 1, "ssss", &graph, &subject, &predicate, &object);
-
-    const char *strSubject = RedisModule_StringPtrLen(subject, NULL);
-    const char *strPredicate = RedisModule_StringPtrLen(predicate, NULL);
-    const char *strObject = RedisModule_StringPtrLen(object, NULL);
-
-    // Create all 6 hexastore variations
-    // SPO, SOP, PSO, POS, OSP, OPS
-    HexaStore *hexaStore = GetHexaStore(ctx, graph);
-    HexaStore_InsertAllPerm(hexaStore, strSubject, strPredicate, strObject);
+    RMUtil_ParseArgs(argv, argc, 1, "ssss", &graph, &src, &dest, &edgeType);
     
+    const char *strSrc = RedisModule_StringPtrLen(src, NULL);
+    const char *strDest = RedisModule_StringPtrLen(dest, NULL);
+    const char* strEdgeType = RedisModule_StringPtrLen(edgeType, NULL);
+    
+    // Retreive source and dest nodes from node store
+    Store *nodeStore = GetStore(ctx, STORE_NODE, graph, NULL);
+    Node *srcNode = Store_Get(nodeStore, strSrc);
+    Node *destNode = Store_Get(nodeStore, strDest);
+
+    // Make sure both src and dest nodes exists
+    if(srcNode == NULL || destNode == NULL) {
+        // Linking none-existing node(s)
+        RedisModule_ReplyWithSimpleString(ctx, "Error, missing node(s)");
+        return REDISMODULE_OK;
+    }
+
+    // Save edge properties
+    RedisModuleString **properties = argv + 5;
+    RedisModuleString *edgeID = _CreateGraphEntity(ctx, properties, argc-5);
+    const char* strEdgeID = RedisModule_StringPtrLen(edgeID, NULL);
+
+    // Create the actual edge
+    Edge *edge = NewEdge(strEdgeID, NULL, srcNode, destNode, strEdgeType);
+
+    // Place edge within edge store(s)
+    Store *edgeStore = GetStore(ctx, STORE_EDGE, graph, NULL);
+    Store_Insert(edgeStore, edgeID, edge);
+    
+    edgeStore = GetStore(ctx, STORE_EDGE, graph, edgeType);
+    Store_Insert(edgeStore, edgeID, edge);
+    RedisModule_FreeString(ctx, edgeID);
+    
+    ConnectNode(srcNode, destNode, edge);
+    
+    /* Store relation within hexastore
+    * one triplet is used as key, this one contains the 
+    * edge lable and id, while the other triplet
+    * stored as the value does contains only IDs, no labels */
+    Triplet *keyTriplet = TripletFromEdge(edge);
+    Triplet *valTriplet = NewTriplet(srcNode->id, edge->id, destNode->id);
+    HexaStore *hexastore = GetHexaStore(ctx, graph);
+    HexaStore_InsertAllPerm(hexastore, keyTriplet->subject, keyTriplet->predicate, keyTriplet->object, valTriplet);
+    FreeTriplet(keyTriplet);
+
     RedisModule_ReplyWithSimpleString(ctx, "OK");
     return REDISMODULE_OK;
 }
 
-// Removes edge from the graph.
-// Args:
-// argv[1] graph name
-// argv[2] subject
-// argv[3] edge, predicate
-// argv[4] object
-// removes all 6 triplets representing
-// the connection (predicate) between subject and object
+/* Removes edge from the graph.
+ * Args:
+ * argv[1] graph name
+ * argv[2] subject
+ * argv[3] edge, predicate
+ * argv[4] object
+ * removes all 6 triplets representing
+ * the connection (predicate) between subject and object */
 int MGraph_RemoveEdge(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     if(argc != 5) {
         return RedisModule_WrongArity(ctx);
@@ -98,10 +215,10 @@ int MGraph_RemoveEdge(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     return REDISMODULE_OK;
 }
 
-// Removes given graph.
-// Args:
-// argv[1] graph name
-// sorted set holding graph name is deleted
+/* Removes given graph.
+ * Args:
+ * argv[1] graph name
+ * sorted set holding graph name is deleted */
 int MGraph_DeleteGraph(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     if(argc != 2) {
         return RedisModule_WrongArity(ctx);
@@ -114,126 +231,15 @@ int MGraph_DeleteGraph(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
     // TODO: check key type
 
     RedisModule_DeleteKey(key);
+    RedisModule_CloseKey(key);
     RedisModule_ReplyWithSimpleString(ctx, "OK");
     return REDISMODULE_OK;
 }
 
-void _aggregateRecord(RedisModuleCtx *ctx, const ReturnNode* returnTree, const Graph* g) {
-    // Get group
-    Vector* groupKeys = ReturnClause_RetrieveGroupKeys(ctx, returnTree, g);
-    char* groupKey = NULL;
-    RMUtil_StringConcat(groupKeys, ",", &groupKey);
-    // TODO: free groupKeys
-
-    Group* group = NULL;
-    CacheGroupGet(groupKey, &group);
-
-    if(group == NULL) {
-        // Create a new group
-        // Get aggregation functions
-        group = NewGroup(groupKeys, ReturnClause_GetAggFuncs(ctx, returnTree));
-        CacheGroupAdd(groupKey, group);
-
-        // TODO: no need to get inserted group
-        CacheGroupGet(groupKey, &group);
-    }
-
-    // TODO: why can't we free groupKey?
-    // free(groupKey);
-
-    Vector* valsToAgg = ReturnClause_RetrieveGroupAggVals(ctx, returnTree, g);
-
-    // Run each value through its coresponding function.
-    for(int i = 0; i < Vector_Size(valsToAgg); i++) {
-        RedisModuleString* value = NULL;
-        Vector_Get(valsToAgg, i, &value);
-        size_t len;
-        const char* strValue = RedisModule_StringPtrLen(value, &len);
-
-        // Convert to double SIValue.
-        SIValue numValue;
-        numValue.type = T_DOUBLE;
-        SI_ParseValue(&numValue, strValue, len);
-
-        AggCtx* funcCtx = NULL;
-        Vector_Get(group->aggregationFunctions, i, &funcCtx);
-        Agg_Step(funcCtx, &numValue, 1);
-    }
-
-    // TODO: free valsToAgg
-}
-
-void QueryNode(RedisModuleCtx *ctx, RedisModuleString *graphName, Graph *g, Node *n, Vector *entryPoints, const QE_FilterNode *filterTree, const QueryExpressionNode *ast, ResultSet *returnedSet) {
-    Node* src = n;
-    for(int i = 0; i < Vector_Size(src->outgoingEdges) && !ResultSet_Full(returnedSet); i++) {
-        Edge* edge;
-        Vector_Get(src->outgoingEdges, i, &edge);
-        Node* dest = edge->dest;
-        
-        // Create a triplet out of edge
-        Triplet* triplet = TripletFromEdge(edge);
-        
-        // Query graph using triplet, no filters are applied at this stage
-        // TODO: pass hexastore to QueryNode.
-        HexaStore *hexaStore = GetHexaStore(ctx, graphName);
-        TripletIterator *cursor = HexaStore_QueryTriplet(hexaStore, triplet);
-        FreeTriplet(triplet);
-
-        // Backup original node IDs
-        char* srcOriginalID = src->id;
-        char* edgeOriginalID = edge->relationship;
-        char* destOriginalID = dest->id;
-
-        // Run through cursor.
-        while(!ResultSet_Full(returnedSet)) {
-            // Fast skip triplets which do not pass filters
-            triplet = FastSkipTriplets(ctx, filterTree, cursor, g, src, dest);
-            if(triplet == NULL) {
-                // Couldn't find a triplet which agrees with filters
-                break;
-            } else {
-                // Set nodes
-                src->id = triplet->subject;
-                edge->relationship = triplet->predicate;
-                dest->id = triplet->object;
-            }
-
-            // Advance to next node
-            if(Vector_Size(dest->outgoingEdges) > 0) {
-                QueryNode(ctx, graphName, g, dest, entryPoints, filterTree, ast, returnedSet);
-            } else if(Vector_Size(entryPoints) > 0) {
-                // Additional entry point
-                Node* entryPoint = NULL;
-                Vector_Pop(entryPoints, &entryPoint);
-                QueryNode(ctx, graphName, g, entryPoint, entryPoints, filterTree, ast, returnedSet);
-                // Restore state, for next iteration.
-                Vector_Push(entryPoints, entryPoint);
-            } else {
-                // We've reach the end of the graph
-                if(returnedSet->aggregated) {
-                    _aggregateRecord(ctx, ast->returnNode, g);
-                } else {
-                    // Append to final result set.
-                    Record *r = Record_FromGraph(ctx, ast, g);
-                    if(r != NULL) {
-                        ResultSet_AddRecord(returnedSet, r);
-                    }
-                }
-            }
-        } // End of cursor loop
-        TripletIterator_Free(cursor);
-        
-        // Restore nodes original IDs.
-        src->id = srcOriginalID;
-        edge->relationship = edgeOriginalID;
-        dest->id = destOriginalID;
-    }
-}
-
-// Queries graph
-// Args:
-// argv[1] graph name
-// argv[2] query to execute
+/* Queries graph
+ * Args:
+ * argv[1] graph name
+ * argv[2] query to execute */
 int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     if (argc < 2) return RedisModule_WrongArity(ctx);
 
@@ -250,43 +256,28 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
     // Parse query, get AST.
     char *errMsg = NULL;
-    // QueryExpressionNode* parseTree = Query_Parse(q, qLen, &errMsg);
-    QueryExpressionNode* parseTree = ParseQuery(q, qLen, &errMsg);
+    QueryExpressionNode* ast = ParseQuery(q, qLen, &errMsg);
     
-    if (!parseTree) {
+    if (!ast) {
         RedisModule_Log(ctx, "debug", "Error parsing query: %s", errMsg);
         RedisModule_ReplyWithError(ctx, errMsg);
         free(errMsg);
         return REDISMODULE_OK;
     }
-
-    Graph* graph = BuildGraph(parseTree->matchNode);
-
-    QE_FilterNode* filterTree = NULL;
-    if(parseTree->whereNode != NULL) {
-        filterTree = BuildFiltersTree(parseTree->whereNode->filters);
-    }
-
-    Vector* entryPoints = Graph_GetNDegreeNodes(graph, 0);
-    Node* startNode = NULL;
-    Vector_Pop(entryPoints, &startNode);
-
-    CacheGroupClear(); // Clear group cache before query execution.
     
     // Modify AST
-    if(ReturnClause_ContainsCollapsedNodes(parseTree->returnNode) == 1) {
-        Graph *graphClone = Graph_Clone(graph);
+    if(ReturnClause_ContainsCollapsedNodes(ast->returnNode) == 1) {
         // Expend collapsed nodes.
-        ReturnClause_ExpendCollapsedNodes(ctx, parseTree->returnNode, graphName, graphClone);
-        Graph_Free(graphClone);
+        ReturnClause_ExpandCollapsedNodes(ctx, ast, graphName);
     }
 
-    // Construct a new empty result-set.
-    ResultSet* resultSet = NewResultSet(parseTree);
-    QueryNode(ctx, graphName, graph, startNode, entryPoints, filterTree, parseTree, resultSet);
-
+    ExecutionPlan *plan = NewExecutionPlan(ctx, graphName, ast);
+    ResultSet* resultSet = ExecutionPlan_Execute(plan);
+    
     // Send result-set back to client.
     ResultSet_Replay(ctx, resultSet);
+    ResultSet_Free(ctx, resultSet);
+    ExecutionPlanFree(plan);
 
     // Report execution timing
     end = clock();
@@ -296,22 +287,58 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     sprintf(strElapsed, "Query internal execution time: %f milliseconds", elapsedMS);
     RedisModule_ReplyWithStringBuffer(ctx, strElapsed, strlen(strElapsed));
     free(strElapsed);
+    
+    // TODO: free AST
+    // FreeQueryExpressionNode(ast);
+    return REDISMODULE_OK;
+}
 
-    // TODO: free filterTree
+/* Builds an execution plan but does not execute it
+ * reports plan back to the client
+ * Args:
+ * argv[1] graph name
+ * argv[2] query */
+int MGraph_ExecutionPlan(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+    if (argc < 2) return RedisModule_WrongArity(ctx);
+    
+    RedisModuleString *graphName;
+    RedisModuleString *query;
+    RMUtil_ParseArgs(argv, argc, 1, "ss", &graphName, &query);
+    
+    size_t qLen;
+    const char* q = RedisModule_StringPtrLen(query, &qLen);
 
-    // Free AST
-    FreeQueryExpressionNode(parseTree);
-    ResultSet_Free(ctx, resultSet);
+    // Parse query, get AST.
+    char *errMsg = NULL;
+    QueryExpressionNode* ast = ParseQuery(q, qLen, &errMsg);
+    
+    if (!ast) {
+        RedisModule_Log(ctx, "debug", "Error parsing query: %s", errMsg);
+        RedisModule_ReplyWithError(ctx, errMsg);
+        free(errMsg);
+        return REDISMODULE_OK;
+    }
+    
+    ExecutionPlan *plan = NewExecutionPlan(ctx, graphName, ast);
+    char* strPlan = ExecutionPlanPrint(plan);
+    ExecutionPlanFree(plan);
 
-    Vector_Free(entryPoints);
-    Graph_Free(graph);
-    CacheGroupClear();
-
+    RedisModule_ReplyWithStringBuffer(ctx, strPlan, strlen(strPlan));
+    free(strPlan);
+    
+    // TODO: free AST
+    // FreeQueryExpressionNode(ast);
     return REDISMODULE_OK;
 }
 
 int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+    InitGroupCache();
     Agg_RegisterFuncs();
+
+    if (snowflake_init(1, 1) != 1) {
+        RedisModule_Log(ctx, "error", "Failed to initialize snowflake");
+        return REDISMODULE_ERR;
+    }
 
     if (RedisModule_Init(ctx, "graph", 1, REDISMODULE_APIVER_1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
@@ -319,6 +346,10 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 
     if(TrieMapType_Register(ctx) == REDISMODULE_ERR) {
         printf("Failed to register triemaptype\n");
+        return REDISMODULE_ERR;
+    }
+
+    if(RedisModule_CreateCommand(ctx, "graph.CREATENODE", MGraph_CreateNode, "write", 1, 1, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
     }
 
@@ -335,6 +366,10 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
     }
 
     if(RedisModule_CreateCommand(ctx, "graph.QUERY", MGraph_Query, "write", 1, 1, 1) == REDISMODULE_ERR) {
+        return REDISMODULE_ERR;
+    }
+
+    if(RedisModule_CreateCommand(ctx, "graph.EXPLAIN", MGraph_ExecutionPlan, "write", 1, 1, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
     }
 

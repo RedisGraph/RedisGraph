@@ -24,17 +24,9 @@ Group* NewGroup(Vector* keys, Vector* funcs) {
 }
 
 void FreeGroup(Group* group) {
-    for(int i = 0; i < Vector_Size(group->keys); i++) {
-		RedisModuleString* key;
-		Vector_Get(group->keys, i, &key);
-    }
-    Vector_Free(group->keys);
+    if(group == NULL) return;
     
-    for(int i = 0; i < Vector_Size(group->aggregationFunctions); i++) {
-		AggCtx* aggFunc;
-		Vector_Get(group->aggregationFunctions, i, &aggFunc);
-    }
-    Vector_Free(group->aggregationFunctions);
-
+    // Vector_Free(group->keys);
+    // Vector_Free(group->aggregationFunctions);
     free(group);
 }

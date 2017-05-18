@@ -2,13 +2,23 @@
 #include <stdlib.h>
 #include "edge.h"
 
-Edge* NewEdge(Node* src, Node* dest, const char* relationship) {
-	Edge* edge = (Edge*)malloc(sizeof(Edge));
+Edge* NewEdge(const char *id, const char *alias, Node *src, Node *dest, const char *relationship) {
+	Edge* edge = (Edge*)calloc(1, sizeof(Edge));
 	
 	edge->src = src;
 	edge->dest = dest;
-	edge->relationship = (char*)malloc(strlen(relationship) + 1);
-	strcpy(edge->relationship, relationship);
+
+	if(relationship != NULL) {
+		edge->relationship = strdup(relationship);
+	}
+
+	if(id != NULL) {
+		edge->id = strdup(id);
+	}
+
+	if(alias != NULL) {
+		edge->alias = strdup(alias);
+	}
 
 	return edge;
 }
@@ -28,6 +38,14 @@ int ValidateEdge(const Edge* edge) {
 }
 
 void FreeEdge(Edge* edge) {
-	free(edge->relationship);
+	if(edge->id != NULL) {
+		free(edge->id);
+	}
+	if(edge->relationship != NULL) {
+		free(edge->relationship);
+	}
+	if(edge->alias != NULL) {
+		free(edge->alias);
+	}
 	free(edge);
 }
