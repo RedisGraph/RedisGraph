@@ -59,11 +59,26 @@ typedef struct {
 // this is done to speed up the filtering process
 FT_FilterNode* BuildFiltersTree(const FilterNode* root);
 
+FT_FilterNode* CreateVaryingFilterNode(const char *LAlias, const char *LProperty, const char *RAlias, const char *RProperty, int op);
+FT_FilterNode* CreateConstFilterNode(const char *alias, const char *property, int op, SIValue val);
+FT_FilterNode* CreateCondFilterNode(int op);
+
+FT_FilterNode *AppendLeftChild(FT_FilterNode *root, FT_FilterNode *child);
+FT_FilterNode *AppendRightChild(FT_FilterNode *root, FT_FilterNode *child);
+
 // Runs val through the filter tree
 int applyFilters(RedisModuleCtx *ctx, Graph* g, FT_FilterNode* root);
 
 // Checks to see if aliased node is within the filter tree.
 int FilterTree_ContainsNode(const FT_FilterNode *root, const char *alias);
+
+/* Clones given tree */
+void FilterTree_Clone(const FT_FilterNode *root, FT_FilterNode **clone);
+
+/* Prints tree */
+void FilterTree_Print(const FT_FilterNode *root);
+
+FT_FilterNode* FilterTree_MinFilterTree(FT_FilterNode *root, const char *alias);
 
 void FilterTree_Free(FT_FilterNode *root);
 

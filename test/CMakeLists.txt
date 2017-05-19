@@ -14,3 +14,6 @@ add_test(test_graph test_graph)
 
 add_executable(test_agg_sum test_agg_sum.c ${graph_files})
 add_test(test_agg_sum test_agg_sum)
+
+add_executable(test_filter_tree test_filter_tree.c ${graph_files})
+add_test(test_filter_tree test_filter_tree)
