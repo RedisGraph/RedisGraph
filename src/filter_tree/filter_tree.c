@@ -277,7 +277,7 @@ int FilterTree_ContainsNode(const FT_FilterNode *root, const char *alias) {
 
 FT_FilterNode* _FilterTree_ClonePredicateNode(const FT_FilterNode *root) {
     if(root->pred.t == FT_N_CONSTANT) {
-        return CreateConstFilterNode(root->pred.Lop.alias, root->pred.Lop.property, root->pred.op, SI_Clone(root->pred.constVal));
+        return CreateConstFilterNode(root->pred.Lop.alias, root->pred.Lop.property, root->pred.op, root->pred.constVal);
     }
     if(root->pred.t == FT_N_VARYING) {
         return CreateVaryingFilterNode(root->pred.Lop.alias, root->pred.Lop.property, root->pred.Rop.alias, root->pred.Rop.property, root->pred.op);
