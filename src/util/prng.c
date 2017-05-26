@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <uuid/uuid.h>
 #include "prng.h"
 #include "sha1.h"
 #include "snowflake.h"
