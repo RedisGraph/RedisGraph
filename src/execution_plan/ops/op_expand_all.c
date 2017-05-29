@@ -17,9 +17,15 @@ ExpandAll* NewExpandAll(RedisModuleCtx *ctx, RedisModuleString *graphId, Node *s
 
     // Set our Op operations
     expandAll->op.name = "Expand All";
+    expandAll->op.type = OPType_EXPAND_ALL;
     expandAll->op.next = ExpandAllConsume;
     expandAll->op.reset = ExpandAllReset;
     expandAll->op.free = ExpandAllFree;
+    expandAll->op.modifies = NewVector(char*, 3);
+    
+    Vector_Push(expandAll->op.modifies, srcNode->alias);
+    Vector_Push(expandAll->op.modifies, relation->alias);
+    Vector_Push(expandAll->op.modifies, destNode->alias);
 
     return expandAll;
 }
@@ -40,10 +46,13 @@ OpResult ExpandAllConsume(OpBase *opBase, Graph* graph) {
         FreeTriplet(t);
     }
     
-    Triplet *triplet = TripletIterator_Next(op->iter);
-    if(triplet == NULL) {
+    Triplet *triplet = NULL;
+    if(!TripletIterator_Next(op->iter, &triplet)) {
         return OP_DEPLETED;
     }
+
+    /* TODO: Make sure retrieved id are indeed
+     * labeled under nodes / edge lables. */
 
     // clear ids before update
     if(op->srcNode->id != NULL) {

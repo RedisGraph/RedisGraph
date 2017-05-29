@@ -17,9 +17,11 @@ Aggregate* NewAggregate(RedisModuleCtx *ctx, QueryExpressionNode *ast) {
     aggregate->init = 0;
 
     aggregate->op.name = "Aggregate";
+    aggregate->op.type = OPType_AGGREGATE;
     aggregate->op.next = AggregateConsume;
     aggregate->op.reset = AggregateReset;
     aggregate->op.free = AggregateFree;
+    aggregate->op.modifies = NULL;
     return aggregate;
 }
 

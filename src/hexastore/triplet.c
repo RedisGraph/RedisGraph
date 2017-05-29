@@ -12,7 +12,7 @@ Triplet* NewTriplet(const char *S, const char *P, const char *O) {
 	triplet->subject = strdup(s);
 	triplet->predicate = strdup(p);
 	triplet->object = strdup(o);
-	triplet->kind = (strlen(s) > 0) << 2 | (strlen(p) > 0) << 1 | (strlen(o) > 0);
+	triplet->kind = (strlen(s) > 0) << 2 | (strlen(o) > 0) << 1 | (strlen(p) > 0);
 
 	return triplet;
 }
@@ -48,30 +48,23 @@ Triplet* TripletFromString(const char *input) {
 	char *predicate = NULL;
 	char *object = NULL;
 
-	char *str = (char*)malloc(sizeof(char) * strlen(input) + 1);
-	strcpy(str, input);
-
+	char *str = strdup(input);
 	char *token = strtok(str, TRIPLET_ELEMENT_DELIMITER);
 	kind = token;
 
 	for(int i = 0; i < strlen(kind); i++) {
+		token = strtok(NULL, TRIPLET_ELEMENT_DELIMITER);
 		switch(kind[i]) {
 			case 'S':
-				token = strtok(NULL, TRIPLET_ELEMENT_DELIMITER);
-				subject = (char*)malloc(sizeof(char) * strlen(token) + 1);
-				strcpy(subject, token);
+				subject = strdup(token);
 				break;
 
 			case 'P':
-				token = strtok(NULL, TRIPLET_ELEMENT_DELIMITER);
-				predicate = (char*)malloc(sizeof(char) * strlen(token) + 1);
-				strcpy(predicate, token);
+				predicate = strdup(token);
 				break;
 
 			case 'O':
-				token = strtok(NULL, TRIPLET_ELEMENT_DELIMITER);
-				object = (char*)malloc(sizeof(char) * strlen(token) + 1);
-				strcpy(object, token);
+				object = strdup(token);
 				break;
 
 			default:
@@ -99,17 +92,17 @@ char* TripletToString(const Triplet *triplet) {
 	char *str = NULL;
 
 	switch(triplet->kind) {
-		case O:
-			asprintf(&str, "OPS:%s", triplet->object);
+		case S:
+			asprintf(&str, "SPO:%s", triplet->subject);
 			break;
 		case P:			
 			asprintf(&str, "POS:%s", triplet->predicate);
 			break;
-		case PO:
-			asprintf(&str, "POS:%s:%s", triplet->predicate, triplet->object);
+		case O:
+			asprintf(&str, "OPS:%s", triplet->object);
 			break;
-		case S:
-			asprintf(&str, "SPO:%s", triplet->subject);
+		case OP:
+			asprintf(&str, "OPS:%s:%s", triplet->object, triplet->predicate);
 			break;
 		case SO:
 			asprintf(&str, "SOP:%s:%s", triplet->subject, triplet->object);
@@ -117,8 +110,8 @@ char* TripletToString(const Triplet *triplet) {
 		case SP:
 			asprintf(&str, "SPO:%s:%s", triplet->subject, triplet->predicate);
 			break;
-		case SPO:
-			asprintf(&str, "SPO:%s:%s:%s", triplet->subject, triplet->predicate, triplet->object);
+		case SOP:
+			asprintf(&str, "SOP:%s:%s:%s", triplet->subject, triplet->object, triplet->predicate);
 			break;
 		case UNKNOW:
 			break;
@@ -189,7 +182,7 @@ int ValidateTriplet(const Triplet* triplet) {
 				valid = 0;
 			}
 			break;
-		case PO:
+		case OP:
 			if(triplet->predicate == 0 || strlen(triplet->predicate) == 0) {
 				valid = 0;
 			}
@@ -222,7 +215,7 @@ int ValidateTriplet(const Triplet* triplet) {
 				valid = 0;
 			}
 			break;
-		case SPO:
+		case SOP:
 			if(triplet->subject == 0 || strlen(triplet->subject) == 0) {
 				valid = 0;
 			}
@@ -253,15 +246,10 @@ void FreeTriplet(Triplet* triplet) {
 
 // Returns the next triplet from the cursor
 // or NULL when cursor is depleted
-Triplet* TripletIterator_Next(TripletIterator* iterator) {
+int TripletIterator_Next(TripletIterator* iterator, Triplet** triplet) {
 	char *key = NULL;
 	tm_len_t len = 0;
-	Triplet *triplet = NULL;
-	int res = TrieMapIterator_Next(iterator, &key, &len, &triplet);
-	if(res == 0) {
-		return NULL;
-	}
-	return triplet;
+	return TrieMapIterator_Next(iterator, &key, &len, triplet);
 }
 
 void TripletIterator_Free(TripletIterator* iterator) {

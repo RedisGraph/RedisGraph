@@ -70,7 +70,7 @@ FT_FilterNode *AppendRightChild(FT_FilterNode *root, FT_FilterNode *child);
 int applyFilters(RedisModuleCtx *ctx, Graph* g, FT_FilterNode* root);
 
 // Checks to see if aliased node is within the filter tree.
-int FilterTree_ContainsNode(const FT_FilterNode *root, const char *alias);
+int FilterTree_ContainsNode(const FT_FilterNode *root, const Vector *aliases);
 
 /* Clones given tree */
 void FilterTree_Clone(const FT_FilterNode *root, FT_FilterNode **clone);
@@ -78,7 +78,10 @@ void FilterTree_Clone(const FT_FilterNode *root, FT_FilterNode **clone);
 /* Prints tree */
 void FilterTree_Print(const FT_FilterNode *root);
 
-FT_FilterNode* FilterTree_MinFilterTree(FT_FilterNode *root, const char *alias);
+void FilterTree_RemoveAllNodesExcept(FT_FilterNode **root, Vector *aliases);
+void FilterTree_RemovePredNodes(FT_FilterNode **root, const Vector *aliases);
+void FilterTree_Squash(FT_FilterNode **root);
+FT_FilterNode* FilterTree_MinFilterTree(FT_FilterNode *root, Vector *aliases);
 
 void FilterTree_Free(FT_FilterNode *root);
 

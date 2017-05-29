@@ -19,7 +19,7 @@ Record* Record_FromGraph(RedisModuleCtx *ctx, const QueryExpressionNode* ast, co
 // Creates a new result-set record from an aggregated group.
 Record* Record_FromGroup(RedisModuleCtx* ctx, const QueryExpressionNode* ast, const Group* g);
 
-char* Record_ToString(const Record* record);
+void Record_ToString(const Record* record, char **strRecord);
 
 // Compares the two records, Using the values at given indeces
 // Returns 1 if A >= B, -1 if A <= B, 0 if A = B

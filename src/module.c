@@ -298,7 +298,7 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
  * Args:
  * argv[1] graph name
  * argv[2] query */
-int MGraph_ExecutionPlan(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     if (argc < 2) return RedisModule_WrongArity(ctx);
     
     RedisModuleString *graphName;
@@ -369,7 +369,7 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
         return REDISMODULE_ERR;
     }
 
-    if(RedisModule_CreateCommand(ctx, "graph.EXPLAIN", MGraph_ExecutionPlan, "write", 1, 1, 1) == REDISMODULE_ERR) {
+    if(RedisModule_CreateCommand(ctx, "graph.EXPLAIN", MGraph_Explain, "write", 1, 1, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
     }
 

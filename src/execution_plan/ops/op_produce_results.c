@@ -15,10 +15,11 @@ ProduceResults* NewProduceResults(RedisModuleCtx *ctx, QueryExpressionNode *ast)
 
     // Set our Op operations
     produceResults->op.name = "Produce Results";
+    produceResults->op.type = OPType_PRODUCE_RESULTS;
     produceResults->op.next = ProduceResultsConsume;
     produceResults->op.reset = ProduceResultsReset;
     produceResults->op.free = ProduceResultsFree;
-
+    produceResults->op.modifies = NULL;
     return produceResults;
 }
 
@@ -37,18 +38,6 @@ OpResult ProduceResultsConsume(OpBase *opBase, Graph* graph) {
     }
     
     if(!op->resultset->aggregated) {
-        /* At the moment we have to check every node
-        * node in the graph has an ID
-        * this is because of the optimistic filter */
-        
-        for(int i = 0; i < Vector_Size(graph->nodes); i++) {
-            Node *n;
-            Vector_Get(graph->nodes, i, &n);
-            if (n->id == NULL) {
-                return OP_REFRESH;
-            }
-        }
-
         // Append to final result set.
         Record *r = Record_FromGraph(op->ctx, op->ast, graph);
         if(ResultSet_AddRecord(op->resultset, r) == RESULTSET_FULL) {

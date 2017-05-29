@@ -6,8 +6,19 @@
 #include "../../graph/node.h"
 #include "../../graph/edge.h"
 #include "../../stores/store.h"
+#include "../../rmutil/vector.h"
 
 #define OP_REQUIRE_NEW_DATA(opRes) (opRes & (OP_DEPLETED | OP_REFRESH)) > 0
+
+typedef enum {
+OPType_AGGREGATE,
+OPType_ALL_NODE_SCAN,
+OPType_EXPAND_ALL,
+OPType_EXPAND_INTO,
+OPType_FILTER,
+OPType_NODE_BY_LABEL_SCAN,
+OPType_PRODUCE_RESULTS,
+} OPType;
 
 typedef enum {
     OP_DEPLETED = 1,
@@ -23,10 +34,12 @@ typedef OpResult (*fpReset)(struct OpBase*);
 typedef void (*fpFree)(struct OpBase*);
 
 typedef struct  {
+    OPType type;
     fpConsume next;
     fpReset reset;
     fpFree free;
     char *name;
+    Vector *modifies;   // List of aliases, this op modifies.
 } OpBase;
 
 #endif

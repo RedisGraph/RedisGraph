@@ -16,9 +16,13 @@ ExpandInto* NewExpandInto(RedisModuleCtx *ctx, RedisModuleString *graphId, Node 
 
     // Set our Op operations
     expandInto->op.name = "Expand Into";
+    expandInto->op.type = OPType_EXPAND_INTO;
     expandInto->op.next = ExpandIntoConsume;
     expandInto->op.reset = ExpandIntoReset;
     expandInto->op.free = ExpandIntoFree;
+    expandInto->op.modifies = NewVector(char*, 1);
+    
+    Vector_Push(expandInto->op.modifies, relation->alias);
 
     return expandInto;
 }
@@ -37,25 +41,31 @@ OpResult ExpandIntoConsume(OpBase *opBase, Graph* graph) {
         return OP_REFRESH;
     }
 
+    // TODO: discard this assumption and consume entire iterator.
     /* check to see if there's a connection between src and dest nodes.
      * assuming there could be only a single edge of type X
      * connecting src to dest nodes */
-    // Triplet *triplet = TripletFromEdge(op->relation);
 
     char *prefix;
     asprintf(&prefix, "SOP:%s:%s:%s", op->srcNode->id, op->destNode->id, op->relation->relationship);
 
     TripletIterator *it = HexaStore_Search(op->hexaStore, prefix);
-    // TripletIterator *it = HexaStore_QueryTriplet(op->hexaStore, triplet);
-    // FreeTriplet(triplet);
-
-    Triplet *res = TripletIterator_Next(it);
-    TripletIterator_Free(it);
-
+    Triplet *triplet = NULL;
+    
     // no connection between src and dest.
-    if(res == NULL) {
+    if(!TripletIterator_Next(it, &triplet)) {
+        TripletIterator_Free(it);
         return OP_REFRESH;
     }
+
+    if(op->relation->id != NULL) {
+        free(op->relation->id);
+    }
+
+    // Update graph
+    op->relation->id = strdup(triplet->predicate);
+
+    // FreeTriplet(triplet);
     
     /* connection found,
      * Require a data refresh next time we're called */

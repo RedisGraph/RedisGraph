@@ -10,13 +10,12 @@ typedef struct {
     OpBase op;
     RedisModuleCtx *ctx;
     int refreshAfterPass;
-    QueryExpressionNode *ast;
     FT_FilterNode *filterTree;
 } Filter;
 
 /* Creates a new Filter operation */
-OpBase* NewFilterOp(RedisModuleCtx *ctx, QueryExpressionNode *ast);
-Filter* NewFilter(RedisModuleCtx *ctx, QueryExpressionNode *ast);
+OpBase* NewFilterOp(RedisModuleCtx *ctx, FT_FilterNode *filterTree);
+Filter* NewFilter(RedisModuleCtx *ctx, FT_FilterNode *filterTree);
 
 /* FilterConsume next operation 
  * returns OP_DEPLETED when */

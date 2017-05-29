@@ -19,9 +19,13 @@ AllNodeScan* NewAllNodeScan(RedisModuleCtx *ctx, Node *node, RedisModuleString *
 
     // Set our Op operations
     allNodeScan->op.name = "All Node Scan";
+    allNodeScan->op.type = OPType_ALL_NODE_SCAN;
     allNodeScan->op.next = AllNodeScanConsume;
     allNodeScan->op.reset = AllNodeScanReset;
     allNodeScan->op.free = AllNodeScanFree;
+    allNodeScan->op.modifies = NewVector(char*, 1);
+    
+    Vector_Push(allNodeScan->op.modifies, node->alias);
 
     return allNodeScan;
 }

@@ -8,6 +8,8 @@
 // TODO: find a suiteable place to store hexastores.
 typedef TrieMap HexaStore;
 
+HexaStore *_NewHexaStore();
+
 HexaStore *GetHexaStore(RedisModuleCtx *ctx, RedisModuleString *id);
 
 /* Inserts all six permutation of given triplet

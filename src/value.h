@@ -70,6 +70,7 @@ SIValue SI_FloatVal(float f);
 SIValue SI_DoubleVal(double d);
 SIValue SI_NullVal();
 SIValue SI_BoolVal(int b);
+SIValue SI_Clone(SIValue v);
 
 int SIValue_IsNull(SIValue v);
 int SIValue_IsNullPtr(SIValue *v);

@@ -27,7 +27,8 @@ Checks if we've already seen given records
 Returns 1 if the string did not exist otherwise 0
 */
 int __encounteredRecord(ResultSet* set, const Record* record) {
-    char* str = Record_ToString(record);
+    char* str = NULL;
+    Record_ToString(record, &str);
     tm_len_t len = strlen(str);
 
     // Returns 1 if the string did NOT exist otherwise 0
@@ -332,7 +333,7 @@ void ResultSet_Replay(RedisModuleCtx* ctx, ResultSet* set) {
             // Pop items from heap
             while(heap_count(set->heap) > 0) {
                 Record* record = heap_poll(set->heap);
-                strRecord = Record_ToString(record);
+                Record_ToString(record, &strRecord);
                 Vector_Push(reversedResultSet, strRecord);
 
                 // Free record here, as it was removed from set heap.
@@ -351,7 +352,8 @@ void ResultSet_Replay(RedisModuleCtx* ctx, ResultSet* set) {
 
             for(int i = Vector_Size(set->records)-1; i >=0;  i--) {
                 Record* record = sortedRecords[i];
-                char *strRecord = Record_ToString(record);
+                char *strRecord = NULL;
+                Record_ToString(record, &strRecord);
                 RedisModule_ReplyWithStringBuffer(ctx, strRecord, strlen(strRecord));
                 free(strRecord);
             }
@@ -362,7 +364,8 @@ void ResultSet_Replay(RedisModuleCtx* ctx, ResultSet* set) {
             Record* record = NULL;
             Vector_Get(set->records, i, &record);
             
-            char *strRecord = Record_ToString(record);
+            char *strRecord = NULL;
+            Record_ToString(record, &strRecord);
             RedisModule_ReplyWithStringBuffer(ctx, strRecord, strlen(strRecord));
 
             free(strRecord);

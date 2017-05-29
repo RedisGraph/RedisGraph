@@ -17,3 +17,6 @@ add_test(test_agg_sum test_agg_sum)
 
 add_executable(test_filter_tree test_filter_tree.c ${graph_files})
 add_test(test_filter_tree test_filter_tree)
+
+add_executable(test_hexastore test_hexastore.c ${graph_files})
+add_test(test_hexastore test_hexastore)

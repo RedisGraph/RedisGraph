@@ -58,10 +58,8 @@ Record* Record_FromGroup(RedisModuleCtx* ctx, const QueryExpressionNode* ast, co
     return r;
 }
 
-char* Record_ToString(const Record* record) {
-    char* strRecord = NULL;
-    RMUtil_StringConcat(record->values, ",", &strRecord);
-    return strRecord;
+void Record_ToString(const Record* record, char **strRecord) {
+    RMUtil_StringConcat(record->values, ",", strRecord);
 }
 
 int Records_Compare(const Record *A, const Record *B, int* compareIndices, size_t compareIndicesLen) {

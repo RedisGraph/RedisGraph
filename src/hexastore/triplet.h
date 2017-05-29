@@ -8,7 +8,8 @@
 #define TRIPLET_ELEMENT_DELIMITER ":"
 #define TRIPLET_PREDICATE_DELIMITER "@"
 
-typedef enum {UNKNOW, O, P, PO, S, SO, SP, SPO} TripletKind;
+// typedef enum {UNKNOW, O, P, PO, S, SO, SP, SPO} TripletKind;
+typedef enum {UNKNOW, P, O, OP, S, SP, SO, SOP} TripletKind;
 
 typedef struct {
 	char* subject;
@@ -46,7 +47,7 @@ void FreeTriplet(Triplet *triplet);
 // -------------Triplet cursor-------------
 
 // Returns the next triplet from the cursor.
-Triplet* TripletIterator_Next(TripletIterator *cursor);
+int TripletIterator_Next(TripletIterator* iterator, Triplet** triplet);
 
 void TripletIterator_Free(TripletIterator *cursor);
 

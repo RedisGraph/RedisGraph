@@ -36,6 +36,31 @@ SIValue SI_StringValC(char *s) {
 
 SIValue SI_BoolVal(int b) { return (SIValue){.boolval = b, .type = T_BOOL}; }
 
+SIValue SI_Clone(SIValue v) {
+  switch (v.type) {
+  case T_STRING:
+    return SI_StringVal(v.stringval);
+  case T_INT32:
+    return SI_IntVal(v.intval);
+  case T_INT64:
+    return SI_LongVal(v.longval);
+  case T_UINT:
+    return SI_UintVal(v.uintval);  
+  case T_BOOL:
+    return SI_BoolVal(v.boolval);
+  case T_FLOAT:
+    return SI_FloatVal(v.floatval);
+  case T_DOUBLE:
+    return SI_DoubleVal(v.doubleval);
+  case T_INF:
+    return SI_InfVal();
+  case T_NEGINF:
+    return SI_NegativeInfVal();
+  case T_NULL:
+    return SI_NullVal();
+  }
+}
+
 SIString SIString_Copy(SIString s) {
   char *b = malloc(s.len + 1);
   memcpy(b, s.str, s.len);

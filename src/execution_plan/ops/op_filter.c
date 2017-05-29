@@ -1,31 +1,32 @@
 #include "op_filter.h"
 
-OpBase* NewFilterOp(RedisModuleCtx *ctx, QueryExpressionNode *ast) {
-    return NewFilter(ctx, ast);
+OpBase* NewFilterOp(RedisModuleCtx *ctx, FT_FilterNode *filterTree) {
+    return NewFilter(ctx, filterTree);
 }
 
-Filter* NewFilter(RedisModuleCtx *ctx, QueryExpressionNode *ast) {
+Filter* NewFilter(RedisModuleCtx *ctx, FT_FilterNode *filterTree) {
     Filter *filter = malloc(sizeof(Filter));
     filter->ctx = ctx;
-    filter->ast = ast;
-    filter->filterTree = NULL;
-    filter->refreshAfterPass = 0;
+    filter->filterTree = filterTree;
+    filter->refreshAfterPass = -1;
 
     // Set our Op operations
     filter->op.name = "Filter";
+    filter->op.type = OPType_FILTER;
     filter->op.next = FilterConsume;
     filter->op.reset = FilterReset;
     filter->op.free = FilterFree;
-
+    filter->op.modifies = NULL;
+    
     return filter;
 }
 
 /* FilterConsume next operation 
- * returns OP_DEPLETED when filter tree is not initialized */
+ * returns OP_OK when graph passes filter tree. */
 OpResult FilterConsume(OpBase *opBase, Graph* graph) {
     Filter *filter = opBase;
     
-    if(filter->filterTree == NULL) {
+    if(filter->refreshAfterPass == -1) {
         return OP_DEPLETED;
     }
     
@@ -49,9 +50,6 @@ OpResult FilterConsume(OpBase *opBase, Graph* graph) {
 /* Restart iterator */
 OpResult FilterReset(OpBase *ctx) {
     Filter *filter = ctx;
-    if(filter->filterTree == NULL) {
-        filter->filterTree = BuildFiltersTree(filter->ast->whereNode->filters);
-    }
     filter->refreshAfterPass = 0;
     return OP_OK;
 }

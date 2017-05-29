@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "assert.h"
+#include "../src/rmutil/vector.h"
 #include "../src/parser/grammar.h"
 #include "../src/filter_tree/filter_tree.h"
 
@@ -70,24 +71,30 @@ void test_filter_tree_clone() {
 
 void test_filter_tree_min_tree() {
     FT_FilterNode *filterTree = CreateConstFilterNode("X", "age", EQ, SI_IntVal(32));
-    FT_FilterNode *minTree = FilterTree_MinFilterTree(filterTree, "X");
+    Vector *mandatoryNodes = NewVector(char*, 1);
+    Vector_Push(mandatoryNodes, &"X");
+    FT_FilterNode *minTree = FilterTree_MinFilterTree(filterTree, mandatoryNodes);
+    Vector_Pop(mandatoryNodes, NULL);
     compareFilterTrees(filterTree, minTree);
     FilterTree_Free(minTree);
 
     ////////////////////////////////////////////////////////////////////
 
-    minTree = FilterTree_MinFilterTree(filterTree, "Y");
+    Vector_Push(mandatoryNodes, &"Y");
+    minTree = FilterTree_MinFilterTree(filterTree, mandatoryNodes);
+    Vector_Pop(mandatoryNodes, NULL);
     assert(minTree == NULL);
     FilterTree_Free(filterTree);
 
-    ////////////////////////////////////////////////////////////////////
+    // ////////////////////////////////////////////////////////////////////
 
     filterTree = CreateCondFilterNode(AND);
     AppendLeftChild(filterTree, CreateConstFilterNode("X", "age", EQ, SI_IntVal(32)));
     AppendRightChild(filterTree, CreateConstFilterNode("Y", "age", EQ, SI_IntVal(32)));
 
-    minTree = FilterTree_MinFilterTree(filterTree, "X");
-
+    Vector_Push(mandatoryNodes, &"X");
+    minTree = FilterTree_MinFilterTree(filterTree, mandatoryNodes);
+    Vector_Pop(mandatoryNodes, NULL);
     FT_FilterNode *expected = filterTree->cond.left;
 
     compareFilterTrees(minTree, expected);
@@ -95,7 +102,7 @@ void test_filter_tree_min_tree() {
     FilterTree_Free(minTree);
     FilterTree_Free(filterTree);
 
-    ////////////////////////////////////////////////////////////////////
+    // ////////////////////////////////////////////////////////////////////
 
     filterTree = CreateCondFilterNode(AND);
     FT_FilterNode *leftChild = AppendLeftChild(filterTree, CreateCondFilterNode(OR));
@@ -107,8 +114,9 @@ void test_filter_tree_min_tree() {
     AppendLeftChild(rightChild, CreateConstFilterNode("Y", "age", EQ, SI_IntVal(32)));
     AppendRightChild(rightChild, CreateConstFilterNode("Y", "rating", EQ, SI_IntVal(32)));
 
-    minTree = FilterTree_MinFilterTree(filterTree, "X");
-
+    Vector_Push(mandatoryNodes, &"X");
+    minTree = FilterTree_MinFilterTree(filterTree, mandatoryNodes);
+    Vector_Pop(mandatoryNodes, NULL);
     expected = filterTree->cond.left;
 
     compareFilterTrees(minTree, expected);
@@ -116,7 +124,7 @@ void test_filter_tree_min_tree() {
     FilterTree_Free(minTree);
     FilterTree_Free(filterTree);
 
-    ////////////////////////////////////////////////////////////////////
+    // ////////////////////////////////////////////////////////////////////
 
     filterTree = CreateCondFilterNode(AND);
     leftChild = AppendLeftChild(filterTree, CreateCondFilterNode(OR));
@@ -128,8 +136,9 @@ void test_filter_tree_min_tree() {
     AppendLeftChild(rightChild, CreateConstFilterNode("X", "age", EQ, SI_IntVal(32)));
     AppendRightChild(rightChild, CreateConstFilterNode("X", "rating", EQ, SI_IntVal(32)));
 
-    minTree = FilterTree_MinFilterTree(filterTree, "X");
-
+    Vector_Push(mandatoryNodes, &"X");
+    minTree = FilterTree_MinFilterTree(filterTree, mandatoryNodes);
+    Vector_Pop(mandatoryNodes, NULL);
     expected = filterTree->cond.right;
 
     compareFilterTrees(minTree, expected);
@@ -137,7 +146,7 @@ void test_filter_tree_min_tree() {
     FilterTree_Free(minTree);
     FilterTree_Free(filterTree);
 
-    ////////////////////////////////////////////////////////////////////
+    // ////////////////////////////////////////////////////////////////////
 
     filterTree = CreateCondFilterNode(AND);
     leftChild = AppendLeftChild(filterTree, CreateCondFilterNode(OR));
@@ -149,7 +158,9 @@ void test_filter_tree_min_tree() {
     AppendLeftChild(rightChild, CreateConstFilterNode("Y", "age", EQ, SI_IntVal(32)));
     AppendRightChild(rightChild, CreateConstFilterNode("X", "rating", EQ, SI_IntVal(32)));
 
-    minTree = FilterTree_MinFilterTree(filterTree, "X");
+    Vector_Push(mandatoryNodes, &"X");
+    minTree = FilterTree_MinFilterTree(filterTree, mandatoryNodes);
+    Vector_Pop(mandatoryNodes, NULL);
 
     expected = CreateCondFilterNode(AND);
     AppendLeftChild(expected, CreateConstFilterNode("X", "age", EQ, SI_IntVal(32)));
@@ -160,11 +171,34 @@ void test_filter_tree_min_tree() {
     FilterTree_Free(minTree);
     FilterTree_Free(expected);
     FilterTree_Free(filterTree);
+    Vector_Free(mandatoryNodes);
+}
+
+void test_filter_tree_remove_node() {
+    FT_FilterNode *filterTree = CreateCondFilterNode(AND);
+    FT_FilterNode *leftChild = AppendLeftChild(filterTree, CreateCondFilterNode(OR));
+    FT_FilterNode *rightChild = AppendRightChild(filterTree, CreateCondFilterNode(OR));
+
+    AppendLeftChild(leftChild, CreateConstFilterNode("Y", "age", EQ, SI_IntVal(32)));
+    AppendRightChild(leftChild, CreateConstFilterNode("Y", "rating", EQ, SI_IntVal(32)));
+
+    AppendLeftChild(rightChild, CreateConstFilterNode("X", "age", EQ, SI_IntVal(32)));
+    AppendRightChild(rightChild, CreateConstFilterNode("X", "rating", EQ, SI_IntVal(32)));
+
+    Vector *aliases = NewVector(char*, 1);
+    Vector_Push(aliases, &"Y");
+    FilterTree_RemovePredNodes(&filterTree, aliases);
+
+    FT_FilterNode *expected = rightChild;
+    compareFilterTrees(filterTree, expected);
+
+    FilterTree_Free(filterTree);
 }
 
 int main(int argc, char **argv) {
     test_filter_tree_clone();
     test_filter_tree_min_tree();
+    test_filter_tree_remove_node();
 	printf("PASS!\n");
     return 0;
 }

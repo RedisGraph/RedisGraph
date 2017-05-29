@@ -45,9 +45,9 @@ int main(int argc, char **argv) {
 	Triplet* triplet = NewTriplet("me", "love", "beer");
 	
 	// test triplet from string
-	Triplet* tripletFromString = TripletFromString("SPO:i:visit:Tokyo");
+	Triplet* tripletFromString = TripletFromString("SOP:i:Tokyo:visit");
 	assert(tripletFromString != 0);
-	assert(tripletFromString->kind == SPO);
+	assert(tripletFromString->kind == SOP);
 	assert(strcmp(tripletFromString->subject, "i") == 0);
 	assert(strcmp(tripletFromString->predicate, "visit") == 0);
 	assert(strcmp(tripletFromString->object, "Tokyo") == 0);

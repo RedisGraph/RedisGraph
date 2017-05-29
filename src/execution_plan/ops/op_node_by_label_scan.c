@@ -23,10 +23,14 @@ NodeByLabelScan* NewNodeByLabelScan(RedisModuleCtx *ctx, Node *node, RedisModule
 
     // Set our Op operations
     nodeByLabelScan->op.name = "Node By Label Scan";
+    nodeByLabelScan->op.type = OPType_NODE_BY_LABEL_SCAN;
     nodeByLabelScan->op.next = NodeByLabelScanConsume;
     nodeByLabelScan->op.reset = NodeByLabelScanReset;
     nodeByLabelScan->op.free = NodeByLabelScanFree;
-
+    nodeByLabelScan->op.modifies = NewVector(char*, 1);
+    
+    Vector_Push(nodeByLabelScan->op.modifies, node->alias);
+    
     return nodeByLabelScan;
 }
 
