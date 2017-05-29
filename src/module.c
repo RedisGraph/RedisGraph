@@ -134,7 +134,7 @@ int MGraph_AddEdge(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     RedisModuleString *dest;
     RedisModuleString *edgeType;
 
-    RMUtil_ParseArgs(argv, argc, 1, "ssss", &graph, &src, &dest, &edgeType);
+    RMUtil_ParseArgs(argv, argc, 1, "ssss", &graph, &src, &edgeType, &dest);
     
     const char *strSrc = RedisModule_StringPtrLen(src, NULL);
     const char *strDest = RedisModule_StringPtrLen(dest, NULL);

@@ -69,8 +69,8 @@ class RedisGraph(object):
             "GRAPH.ADDEDGE",
             self.graph,
             src_node.id,
-            dest_node.id,
             relation,
+            dest_node.id,
             *args)
 
         if resp == "OK":
