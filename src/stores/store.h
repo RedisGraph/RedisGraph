@@ -15,6 +15,8 @@ typedef enum {
 typedef TrieMap Store;
 typedef TrieMapIterator StoreIterator;
 
+RedisModuleString *Store_ID(RedisModuleCtx *ctx, StoreType type, const RedisModuleString *graph, const RedisModuleString *label);
+
 Store *GetStore(RedisModuleCtx *ctx, StoreType type, const RedisModuleString *graph, const RedisModuleString* label);
 
 void Store_Insert(Store *store, const RedisModuleString *id, void *value);
@@ -24,6 +26,8 @@ void Store_Remove(Store *store, const RedisModuleString *id);
 StoreIterator *Store_Search(Store *store, const char *prefix);
 
 void *Store_Get(Store *store, const char *id);
+
+void Store_Free(Store *store, void (*freeCB)(void *));
 
 // Returns the next id from the cursor.
 char *StoreIterator_Next(StoreIterator *cursor);

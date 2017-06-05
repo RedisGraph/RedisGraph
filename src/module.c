@@ -166,8 +166,6 @@ int MGraph_AddEdge(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     
     edgeStore = GetStore(ctx, STORE_EDGE, graph, edgeType);
     Store_Insert(edgeStore, edgeID, edge);
-    RedisModule_FreeString(ctx, edgeID);
-    
     ConnectNode(srcNode, destNode, edge);
     
     /* Store relation within hexastore
@@ -180,7 +178,103 @@ int MGraph_AddEdge(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     HexaStore_InsertAllPerm(hexastore, keyTriplet->subject, keyTriplet->predicate, keyTriplet->object, valTriplet);
     FreeTriplet(keyTriplet);
 
-    RedisModule_ReplyWithSimpleString(ctx, "OK");
+    RedisModule_ReplyWithString(ctx, edgeID);
+    RedisModule_FreeString(ctx, edgeID);
+    return REDISMODULE_OK;
+}
+
+/* Retrives node
+ * argv[1] graph name
+ * argv[2] node id
+ * returns node attributes plus label if exists */
+int MGraph_GetNode(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+    if(argc != 3) {
+        return RedisModule_WrongArity(ctx);
+    }
+    
+    RedisModuleString *graph;
+    RedisModuleString *nodeId;
+    
+    RMUtil_ParseArgs(argv, argc, 1, "ss", &graph, &nodeId);
+    const char *strNodeId = RedisModule_StringPtrLen(nodeId, NULL);
+
+    Store *nodeStore = GetStore(ctx, STORE_NODE, graph, NULL);
+    Node *node = Store_Get(nodeStore, strNodeId);
+
+    if(node == NULL) {
+        RedisModule_ReplyWithStringBuffer(ctx, "Missing node", strlen("Missing node"));
+        return REDISMODULE_OK;
+    }
+
+    RMUtilInfo *attributes = RMUtil_HGetAll(ctx, nodeId);
+    
+    int responseLength = attributes->numEntries * 2;
+    if(node->label != NULL) {
+        responseLength += 2;
+    }
+
+    RedisModule_ReplyWithArray(ctx, responseLength);
+    
+    if(node->label != NULL) {
+        RedisModule_ReplyWithStringBuffer(ctx, "label", 5);
+        RedisModule_ReplyWithStringBuffer(ctx, node->label, strlen(node->label));
+    }
+    
+    for(int i = 0; i < attributes->numEntries; i++) {
+        RMUtilInfoEntry entry = attributes->entries[i];
+        RedisModule_ReplyWithStringBuffer(ctx, entry.key, strlen(entry.key));
+        RedisModule_ReplyWithStringBuffer(ctx, entry.val, strlen(entry.val));
+    }
+    
+    return REDISMODULE_OK;
+}
+
+/* Retrives an edge
+ * argv[1] graph name
+ * argv[2] edge id
+ * returns edge attributes plus three additional:
+ * source node id, dest node id and edge label */
+int MGraph_GetEdge(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+    if(argc != 3) {
+        return RedisModule_WrongArity(ctx);
+    }
+    
+    RedisModuleString *graph;
+    RedisModuleString *edgeId;
+    
+    RMUtil_ParseArgs(argv, argc, 1, "ss", &graph, &edgeId);
+    const char *strEdgeId = RedisModule_StringPtrLen(edgeId, NULL);
+
+    Store *edgeStore = GetStore(ctx, STORE_EDGE, graph, NULL);
+    Edge *edge = Store_Get(edgeStore, strEdgeId);
+
+    if(edge == NULL) {
+        RedisModule_ReplyWithStringBuffer(ctx, "Missing edge", strlen("Missing edge"));
+        return REDISMODULE_OK;
+    }
+
+    RMUtilInfo *attributes = RMUtil_HGetAll(ctx, edgeId);
+    
+    RedisModule_ReplyWithArray(ctx, (attributes->numEntries*2)+8);
+    
+    RedisModule_ReplyWithStringBuffer(ctx, "id", 2);
+    RedisModule_ReplyWithStringBuffer(ctx, edge->id, strlen(edge->id));
+    
+    RedisModule_ReplyWithStringBuffer(ctx, "type", 4);
+    RedisModule_ReplyWithStringBuffer(ctx, edge->relationship, strlen(edge->relationship));
+
+    RedisModule_ReplyWithStringBuffer(ctx, "src", 3);
+    RedisModule_ReplyWithStringBuffer(ctx, edge->src->id, strlen(edge->src->id));
+    
+    RedisModule_ReplyWithStringBuffer(ctx, "dest", 4);
+    RedisModule_ReplyWithStringBuffer(ctx, edge->dest->id, strlen(edge->dest->id));
+
+    for(int i = 0; i < attributes->numEntries; i++) {
+        RMUtilInfoEntry entry = attributes->entries[i];
+        RedisModule_ReplyWithStringBuffer(ctx, entry.key, strlen(entry.key));
+        RedisModule_ReplyWithStringBuffer(ctx, entry.val, strlen(entry.val));
+    }
+    
     return REDISMODULE_OK;
 }
 
@@ -215,6 +309,128 @@ int MGraph_RemoveEdge(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     return REDISMODULE_OK;
 }
 
+/* Returns node's edges
+ * Args:
+ * argv[1] graph name
+ * argv[2] node id
+ * argv[3] edge type
+ * argv[4] edge direction: OUT(0), IN(1), BOTH(2) */
+int MGraph_GetNodeEdges(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+    if(argc != 5) {
+        return RedisModule_WrongArity(ctx);
+    }
+
+    RedisModuleString *graph;
+    char *nodeId;
+    char *edgeType;
+    long long direction;
+    RMUtil_ParseArgs(argv, argc, 1, "sccl", &graph, &nodeId, &edgeType, &direction);
+    
+    char* prefixes[2] = {0};
+    
+    switch(direction) {
+        case 0: // OUT
+            asprintf(&prefixes[0], "SPO:%s:%s", nodeId, edgeType);
+            break;
+        case 1: // IN
+            asprintf(&prefixes[0], "OPS:%s:%s", nodeId, edgeType);
+            break;
+        case 2: // BOTH
+            asprintf(&prefixes[0], "SPO:%s:%s", nodeId, edgeType);
+            asprintf(&prefixes[1], "OPS:%s:%s", nodeId, edgeType);
+            break;
+        default:
+            break;
+    }
+    
+    HexaStore *hexastore = GetHexaStore(ctx, graph);
+    Triplet *triplet;
+    TripletIterator *iter;
+    int edgeCount = 0;
+    RedisModule_ReplyWithArray(ctx, REDISMODULE_POSTPONED_ARRAY_LEN);
+    for(int i = 0; i < 2; i++) {
+        if(prefixes[i] == NULL) {
+            break;
+        }
+
+        iter = HexaStore_Search(hexastore, prefixes[i]);
+        
+        while(TripletIterator_Next(iter, &triplet) != NULL) {
+            RedisModule_ReplyWithStringBuffer(ctx, triplet->predicate, strlen(triplet->predicate));
+            edgeCount++;
+        }
+
+        free(prefixes[i]);
+        TripletIterator_Free(iter);
+    }
+    
+    RedisModule_ReplySetArrayLength(ctx, edgeCount);
+    return REDISMODULE_OK;
+}
+
+/* Returns node's neighbours
+ * Args:
+ * argv[1] graph name
+ * argv[2] node id
+ * argv[3] edge type
+ * argv[4] edge direction: OUT(0), IN(1), BOTH(2) */
+int MGraph_GetNeighbours(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+    if(argc != 5) {
+        return RedisModule_WrongArity(ctx);
+    }
+
+    RedisModuleString *graph;
+    char *nodeId;
+    char *edgeType;
+    long long direction;
+    RMUtil_ParseArgs(argv, argc, 1, "sccl", &graph, &nodeId, &edgeType, &direction);
+    
+    char* prefixes[2] = {0};
+    
+    switch(direction) {
+        case 0: // OUT
+            asprintf(&prefixes[0], "SPO:%s:%s", nodeId, edgeType);
+            break;
+        case 1: // IN
+            asprintf(&prefixes[0], "OPS:%s:%s", nodeId, edgeType);
+            break;
+        case 2: // BOTH
+            asprintf(&prefixes[0], "SPO:%s:%s", nodeId, edgeType);
+            asprintf(&prefixes[1], "OPS:%s:%s", nodeId, edgeType);
+            break;
+        default:
+            break;
+    }
+    
+    HexaStore *hexastore = GetHexaStore(ctx, graph);
+    Triplet *triplet;
+    TripletIterator *iter;
+    int neighboursCount = 0;
+    RedisModule_ReplyWithArray(ctx, REDISMODULE_POSTPONED_ARRAY_LEN);
+    for(int i = 0; i < 2; i++) {
+        if(prefixes[i] == NULL) {
+            break;
+        }
+
+        iter = HexaStore_Search(hexastore, prefixes[i]);
+        
+        while(TripletIterator_Next(iter, &triplet) != NULL) {
+            if(i == 0) /* OUT */ {
+                RedisModule_ReplyWithStringBuffer(ctx, triplet->object, strlen(triplet->object));
+            } else /* IN */ {
+                RedisModule_ReplyWithStringBuffer(ctx, triplet->subject, strlen(triplet->subject));
+            }
+            neighboursCount++;
+        }
+
+        free(prefixes[i]);
+        TripletIterator_Free(iter);
+    }
+    
+    RedisModule_ReplySetArrayLength(ctx, neighboursCount);
+    return REDISMODULE_OK;
+}
+
 /* Removes given graph.
  * Args:
  * argv[1] graph name
@@ -224,14 +440,60 @@ int MGraph_DeleteGraph(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
         return RedisModule_WrongArity(ctx);
     }
 
+    RedisModuleKey *key;
     RedisModuleString *graph;
+    RedisModuleString *storeId;
     RMUtil_ParseArgs(argv, argc, 1, "s", &graph);
+    
+    Store *store = GetStore(ctx, STORE_NODE, graph, NULL);
+    StoreIterator *it = Store_Search(store, "");
+    char *nodeId;
 
-    RedisModuleKey *key = RedisModule_OpenKey(ctx, graph, REDISMODULE_WRITE);
-    // TODO: check key type
-
+    // TODO: maybe we should delete node key as part of FreeNode?
+    // Free each node, start by deleting redis hashes
+    while((nodeId = StoreIterator_Next(it)) != NULL) {
+        RedisModuleString* strKey = RedisModule_CreateString(ctx, nodeId, strlen(nodeId));
+        key = RedisModule_OpenKey(ctx, strKey, REDISMODULE_WRITE);
+        RedisModule_FreeString(ctx, strKey);
+        RedisModule_DeleteKey(key);
+        RedisModule_CloseKey(key);
+    }
+    StoreIterator_Free(it);
+    
+    storeId = Store_ID(ctx, STORE_NODE, graph, NULL);
+    key = RedisModule_OpenKey(ctx, storeId, REDISMODULE_WRITE);
+    RedisModule_FreeString(ctx, storeId);
+    // Deletes the actual store + each stored node.
     RedisModule_DeleteKey(key);
     RedisModule_CloseKey(key);
+
+    // TODO: delete store key.
+    
+    store = GetStore(ctx, STORE_EDGE, graph, NULL);
+    it = Store_Search(store, "");
+    char *edgeId;
+
+    // TODO: maybe we should delete edge key as part of FreeEdge?
+    // Free each edge, start by deleting redis hashes
+    while((edgeId = StoreIterator_Next(it)) != NULL) {
+        RedisModuleString* strKey = RedisModule_CreateString(ctx, edgeId, strlen(edgeId));
+        key = RedisModule_OpenKey(ctx, strKey, REDISMODULE_WRITE);
+        RedisModule_FreeString(ctx, strKey);
+        RedisModule_DeleteKey(key);
+        RedisModule_CloseKey(key);
+    }
+    StoreIterator_Free(it);
+
+    storeId = Store_ID(ctx, STORE_EDGE, graph, NULL);
+    key = RedisModule_OpenKey(ctx, storeId, REDISMODULE_WRITE);
+    RedisModule_FreeString(ctx, storeId);
+    // Deletes the actual store + each stored edge.
+    RedisModule_DeleteKey(key);
+    RedisModule_CloseKey(key);
+    
+    // TODO: delete store key.
+    // TODO: Delete label stores...
+    
     RedisModule_ReplyWithSimpleString(ctx, "OK");
     return REDISMODULE_OK;
 }
@@ -370,6 +632,22 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
     }
 
     if(RedisModule_CreateCommand(ctx, "graph.EXPLAIN", MGraph_Explain, "write", 1, 1, 1) == REDISMODULE_ERR) {
+        return REDISMODULE_ERR;
+    }
+
+    if(RedisModule_CreateCommand(ctx, "graph.GETNODE", MGraph_GetNode, "write", 1, 1, 1) == REDISMODULE_ERR) {
+        return REDISMODULE_ERR;
+    }
+
+    if(RedisModule_CreateCommand(ctx, "graph.GETEDGE", MGraph_GetEdge, "write", 1, 1, 1) == REDISMODULE_ERR) {
+        return REDISMODULE_ERR;
+    }
+
+    if(RedisModule_CreateCommand(ctx, "graph.GETNODEEDGES", MGraph_GetNodeEdges, "write", 1, 1, 1) == REDISMODULE_ERR) {
+        return REDISMODULE_ERR;
+    }
+
+    if(RedisModule_CreateCommand(ctx, "graph.GETNEIGHBOURS", MGraph_GetNeighbours, "write", 1, 1, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
     }
 

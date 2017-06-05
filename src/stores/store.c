@@ -6,7 +6,7 @@ Store *_NewStore() {
 	return NewTrieMap();
 }
 
-RedisModuleString *_StoreID(RedisModuleCtx *ctx, StoreType type, const RedisModuleString *graph, const RedisModuleString *label) {
+RedisModuleString *Store_ID(RedisModuleCtx *ctx, StoreType type, const RedisModuleString *graph, const RedisModuleString *label) {
     const char *strGraph = RedisModule_StringPtrLen(graph, NULL);
     const char *strLabel = "ALL";
     
@@ -34,7 +34,7 @@ RedisModuleString *_StoreID(RedisModuleCtx *ctx, StoreType type, const RedisModu
 
 Store *GetStore(RedisModuleCtx *ctx, StoreType type, const RedisModuleString *graph, const RedisModuleString* label) {
 	Store *store = NULL;
-    RedisModuleString *strKey = _StoreID(ctx, type, graph, label);
+    RedisModuleString *strKey = Store_ID(ctx, type, graph, label);
 	RedisModuleKey *key =
         RedisModule_OpenKey(ctx, strKey, REDISMODULE_WRITE);
     
@@ -78,6 +78,10 @@ void *Store_Get(Store *store, const char *id) {
         val = NULL;
     }
     return val;
+}
+
+void Store_Free(Store *store, void (*freeCB)(void *)) {
+    TrieMap_Free(store, freeCB);
 }
 
 char *StoreIterator_Next(StoreIterator *cursor) {

@@ -54,11 +54,12 @@ void FreeNode(Node* node) {
 		free(node->label);
 	}
 
-	for(int i = 0; i < Vector_Size(node->outgoingEdges); i++) {
-		Edge* e;
-		Vector_Get(node->outgoingEdges, i, &e);
-		FreeEdge(e);
-	}
+	// TODO: free edgs.
+	// for(int i = 0; i < Vector_Size(node->outgoingEdges); i++) {
+	// 	Edge* e;
+	// 	Vector_Get(node->outgoingEdges, i, &e);
+	// 	FreeEdge(e);
+	// }
 	Vector_Free(node->outgoingEdges);
 
 	/* There no need to discard incoming edges.
