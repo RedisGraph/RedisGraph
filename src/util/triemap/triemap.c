@@ -453,7 +453,7 @@ void TrieMapNode_Free(TrieMapNode *n, void (*freeCB)(void *)) {
 /* Push a new trie node on the iterator's stack */
 inline void __tmi_Push(TrieMapIterator *it, TrieMapNode *node) {
   if (it->stackOffset == it->stackCap) {
-    it->stackCap = MIN(it->stackCap * 2, 1024);
+    it->stackCap += MIN(it->stackCap, 1024);
     it->stack = realloc(it->stack, it->stackCap * sizeof(__tmi_stackNode));
   }
   it->stack[it->stackOffset++] = (__tmi_stackNode){
@@ -545,11 +545,15 @@ int TrieMapIterator_Next(TrieMapIterator *it, char **ptr, tm_len_t *len, void **
         if (it->inSuffix ||
             *__trieMapNode_childKey(n, current->childOffset) == it->prefix[it->bufOffset]) {
           TrieMapNode *ch = __trieMapNode_children(n)[current->childOffset++];
-          __tmi_Push(it, ch);
 
           // unless in suffix mode, no need to go back here after popping the
           // child, so we just set the child offset at the end
           if (!it->inSuffix) current->childOffset = nch;
+
+
+          __tmi_Push(it, ch);
+
+
           goto next;
         }
         // if the child doesn't match- just advance one

@@ -146,7 +146,7 @@ char* ResultSetHeader_ToString(const ResultSetHeader *header, size_t *strLen) {
         }
     }
 
-    char* str = calloc(len, sizeof(char));
+    char* str = calloc(len, sizeof(char)+1);
     len = 0;
 
     for(int i = 0; i < header->columnsLen; i++) {

@@ -249,7 +249,9 @@ int applyFilters(RedisModuleCtx *ctx, Graph* g, FT_FilterNode* root) {
         }
         // Cast from RedisModuleString to SIValue.
         size_t strProplen = 0;
-        const char* strPropValue = RedisModule_StringPtrLen(propValue, &strProplen);
+        char* strPropValue = RedisModule_StringPtrLen(propValue, &strProplen);
+        // TODO: Free strPropValue.
+        strPropValue = strndup(strPropValue, strProplen);
         if (!SI_ParseValue(&aVal, strPropValue, strProplen)) {
             RedisModule_Log(ctx, "error", "Could not parse %.*s\n", (int)strProplen, strPropValue);
             return RedisModule_ReplyWithError(ctx, "Invalid value given");

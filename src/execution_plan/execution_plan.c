@@ -170,8 +170,7 @@ void _ExecutionPlan_MergeNodes(ExecutionPlan *plan, const Node *n) {
     _OpNode_AddChild(expandInto, b);
 
     // expand into should inherit b's parents
-    int bParentCount = b->parentCount;
-    for(int i = 0; i < bParentCount; i++) {
+    for(int i = 0; i < b->parentCount; i++) {
         OpNode *bParent = b->parents[i];
         
         if(bParent == expandInto) {
