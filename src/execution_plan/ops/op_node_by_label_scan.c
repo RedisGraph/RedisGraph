@@ -41,9 +41,12 @@ OpResult NodeByLabelScanConsume(OpBase *opBase, Graph* graph) {
         return OP_DEPLETED;
     }
 
-    char *id = StoreIterator_Next(op->iter);
+    char *id;
+    tm_len_t idLen;
+    Node *node;
+    int res = StoreIterator_Next(op->iter, &id, &idLen, &node);
 
-    if(id == NULL) {
+    if(res == 0) {
         return OP_DEPLETED;
     }
     

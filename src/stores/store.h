@@ -19,6 +19,9 @@ RedisModuleString *Store_ID(RedisModuleCtx *ctx, StoreType type, const RedisModu
 
 Store *GetStore(RedisModuleCtx *ctx, StoreType type, const RedisModuleString *graph, const RedisModuleString* label);
 
+// Returns the number of items within the store
+int Store_Cardinality(Store *store);
+
 void Store_Insert(Store *store, const RedisModuleString *id, void *value);
 
 void Store_Remove(Store *store, const RedisModuleString *id);
@@ -30,7 +33,7 @@ void *Store_Get(Store *store, const char *id);
 void Store_Free(Store *store, void (*freeCB)(void *));
 
 // Returns the next id from the cursor.
-char *StoreIterator_Next(StoreIterator *cursor);
+int StoreIterator_Next(StoreIterator *cursor, char **key, tm_len_t *len, void **value);
 
 void StoreIterator_Free(StoreIterator* iterator);
 

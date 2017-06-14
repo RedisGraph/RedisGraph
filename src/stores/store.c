@@ -52,6 +52,10 @@ Store *GetStore(RedisModuleCtx *ctx, StoreType type, const RedisModuleString *gr
 	return store;
 }
 
+int Store_Cardinality(Store *store) {
+    return store->cardinality;
+}
+
 void Store_Insert(Store *store, const RedisModuleString *id, void *value) {
     size_t len;
     const char *strId = RedisModule_StringPtrLen(id, &len);
@@ -84,20 +88,8 @@ void Store_Free(Store *store, void (*freeCB)(void *)) {
     TrieMap_Free(store, freeCB);
 }
 
-char *StoreIterator_Next(StoreIterator *cursor) {
-    char *key = NULL;
-	tm_len_t len = 0;
-	void *ptr = NULL;
-	int res = TrieMapIterator_Next(cursor, &key, &len, &ptr);
-	if(res == 0) {
-		return NULL;
-	}
-
-    key[len] = NULL;
-    return key;
-    // char *id = strdup(key);
-    // id[len] = NULL;
-	// return id;
+int StoreIterator_Next(StoreIterator *cursor, char **key, tm_len_t *len, void **value) {
+    return TrieMapIterator_Next(cursor, key, len, value);
 }
 
 void StoreIterator_Free(StoreIterator* iterator) {

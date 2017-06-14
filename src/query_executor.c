@@ -234,9 +234,12 @@ void ReturnClause_ExpandCollapsedNodes(RedisModuleCtx *ctx, QueryExpressionNode 
         RedisModule_FreeString(ctx, label);
 
         StoreIterator *it = Store_Search(s, "");
-        char *id = StoreIterator_Next(it);
+        char *id;
+        tm_len_t idLen;
+        Node *retrievedNode;
+        StoreIterator_Next(it, &id, &idLen, &retrievedNode);
         
-        RedisModuleString *rmId = RedisModule_CreateString(ctx, id, strlen(id));
+        RedisModuleString *rmId = RedisModule_CreateString(ctx, id, idLen);
         RMUtilInfo *attributes = RMUtil_HGetAll(ctx, rmId);
         RedisModule_FreeString(ctx, rmId);
         StoreIterator_Free(it);
