@@ -10,7 +10,7 @@ typedef TrieMap HexaStore;
 
 HexaStore *_NewHexaStore();
 
-HexaStore *GetHexaStore(RedisModuleCtx *ctx, RedisModuleString *id);
+HexaStore *GetHexaStore(RedisModuleCtx *ctx, const char *id);
 
 /* Inserts all six permutation of given triplet
  * stores triplet object under each permutation. */

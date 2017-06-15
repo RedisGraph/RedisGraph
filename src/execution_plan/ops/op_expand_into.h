@@ -19,8 +19,8 @@ typedef struct {
 } ExpandInto;
 
 /* Creates a new ExpandInto operation */
-void NewExpandIntoOp(RedisModuleCtx *ctx, RedisModuleString *graphId, Node *srcNode, Edge *relation, Node *destNode, OpBase **op);
-ExpandInto* NewExpandInto(RedisModuleCtx *ctx, RedisModuleString *graphId, Node *srcNode, Edge *relation, Node *destNode);
+void NewExpandIntoOp(RedisModuleCtx *ctx, const char *graphId, Node *srcNode, Edge *relation, Node *destNode, OpBase **op);
+ExpandInto* NewExpandInto(RedisModuleCtx *ctx, const char *graphId, Node *srcNode, Edge *relation, Node *destNode);
 
 /* ExpandIntoConsume next operation 
  * Returns OP_OK if there's a connection between source and dest nodes

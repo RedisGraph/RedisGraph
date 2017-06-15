@@ -1,10 +1,10 @@
 #include "op_all_node_scan.h"
 
-OpBase* NewAllNodeScanOp(RedisModuleCtx *ctx, Node *node, RedisModuleString *graph) {
+OpBase* NewAllNodeScanOp(RedisModuleCtx *ctx, Node *node, const char *graph) {
     return (OpBase*)NewAllNodeScan(ctx, node, graph);
 }
 
-AllNodeScan* NewAllNodeScan(RedisModuleCtx *ctx, Node *node, RedisModuleString *graph) {
+AllNodeScan* NewAllNodeScan(RedisModuleCtx *ctx, Node *node, const char *graph) {
     // Get graph store
     Store *store = GetStore(ctx, STORE_NODE, graph, NULL);
     if(store == NULL) {

@@ -19,8 +19,8 @@ typedef struct {
 } ExpandAll;
 
 /* Creates a new ExpandAll operation */
-OpBase* NewExpandAllOp(RedisModuleCtx *ctx, RedisModuleString *graphId, Node *srcNode, Edge *relation, Node *destNode);
-ExpandAll* NewExpandAll(RedisModuleCtx *ctx, RedisModuleString *graphId, Node *srcNode, Edge *relation, Node *destNode);
+OpBase* NewExpandAllOp(RedisModuleCtx *ctx, const char *graphId, Node *srcNode, Edge *relation, Node *destNode);
+ExpandAll* NewExpandAll(RedisModuleCtx *ctx, const char *graphId, Node *srcNode, Edge *relation, Node *destNode);
 
 /* ExpandAllConsume next operation 
  * each call will update the graph

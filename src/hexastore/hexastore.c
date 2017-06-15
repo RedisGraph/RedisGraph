@@ -5,10 +5,13 @@ HexaStore *_NewHexaStore() {
 	return NewTrieMap();
 }
 
-HexaStore *GetHexaStore(RedisModuleCtx *ctx, RedisModuleString *id) {
+HexaStore *GetHexaStore(RedisModuleCtx *ctx, const char *id) {
 	HexaStore *hexaStore = NULL;
 	
-	RedisModuleKey *key = RedisModule_OpenKey(ctx, id, REDISMODULE_WRITE);
+	RedisModuleString *rmId = RedisModule_CreateString(ctx, id, strlen(id));
+	RedisModuleKey *key = RedisModule_OpenKey(ctx, rmId, REDISMODULE_WRITE);
+	RedisModule_FreeString(ctx, rmId);
+	
 	int type = RedisModule_KeyType(key);
 
 	if (type == REDISMODULE_KEYTYPE_EMPTY) {

@@ -1,11 +1,11 @@
 #include "op_expand_all.h"
 #include "../../hexastore/hexastore.h"
 
-OpBase* NewExpandAllOp(RedisModuleCtx *ctx, RedisModuleString *graphId, Node *srcNode, Edge *relation, Node *destNode) {
+OpBase* NewExpandAllOp(RedisModuleCtx *ctx, const char *graphId, Node *srcNode, Edge *relation, Node *destNode) {
     return (OpBase*)NewExpandAll(ctx, graphId, srcNode, relation, destNode);
 }
 
-ExpandAll* NewExpandAll(RedisModuleCtx *ctx, RedisModuleString *graphId, Node *srcNode, Edge *relation, Node *destNode) {
+ExpandAll* NewExpandAll(RedisModuleCtx *ctx, const char *graphId, Node *srcNode, Edge *relation, Node *destNode) {
     ExpandAll *expandAll = malloc(sizeof(ExpandAll));
 
     expandAll->ctx = ctx;

@@ -33,7 +33,7 @@ Vector* ReturnClause_GetAggFuncs(RedisModuleCtx *ctx, const ReturnNode *returnNo
 // Checks to see if return clause contains a collapsed node.
 int ReturnClause_ContainsCollapsedNodes(const ReturnNode *returnNode);
 
-void ReturnClause_ExpandCollapsedNodes(RedisModuleCtx *ctx, QueryExpressionNode *ast, RedisModuleString *graphName);
+void ReturnClause_ExpandCollapsedNodes(RedisModuleCtx *ctx, QueryExpressionNode *ast, const char *graphName);
 
 QueryExpressionNode* ParseQuery(const char *query, size_t qLen, char **errMsg);
 

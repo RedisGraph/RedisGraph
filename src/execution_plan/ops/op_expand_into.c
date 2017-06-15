@@ -1,10 +1,10 @@
 #include "op_expand_into.h"
 
-void NewExpandIntoOp(RedisModuleCtx *ctx, RedisModuleString *graphId, Node *srcNode, Edge *relation, Node *destNode, OpBase **op) {
+void NewExpandIntoOp(RedisModuleCtx *ctx, const char *graphId, Node *srcNode, Edge *relation, Node *destNode, OpBase **op) {
     *op = (OpBase *)NewExpandInto(ctx, graphId, srcNode, relation, destNode);
 }
 
-ExpandInto* NewExpandInto(RedisModuleCtx *ctx, RedisModuleString *graphId, Node *srcNode, Edge *relation, Node *destNode) {
+ExpandInto* NewExpandInto(RedisModuleCtx *ctx, const char *graphId, Node *srcNode, Edge *relation, Node *destNode) {
     ExpandInto *expandInto = calloc(1, sizeof(ExpandInto));
 
     expandInto->srcNode = srcNode;

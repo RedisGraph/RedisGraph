@@ -15,16 +15,16 @@ typedef enum {
 typedef TrieMap Store;
 typedef TrieMapIterator StoreIterator;
 
-RedisModuleString *Store_ID(RedisModuleCtx *ctx, StoreType type, const RedisModuleString *graph, const RedisModuleString *label);
+int Store_ID(char **id, StoreType type, const char *graph, const char *label);
 
-Store *GetStore(RedisModuleCtx *ctx, StoreType type, const RedisModuleString *graph, const RedisModuleString* label);
+Store *GetStore(RedisModuleCtx *ctx, StoreType type, const char *graph, const char* label);
 
 // Returns the number of items within the store
 int Store_Cardinality(Store *store);
 
-void Store_Insert(Store *store, const RedisModuleString *id, void *value);
+void Store_Insert(Store *store, const char *id, void *value);
 
-void Store_Remove(Store *store, const RedisModuleString *id);
+void Store_Remove(Store *store, const char *id);
 
 StoreIterator *Store_Search(Store *store, const char *prefix);
 

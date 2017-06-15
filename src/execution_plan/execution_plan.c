@@ -186,20 +186,12 @@ void _ExecutionPlan_MergeNodes(ExecutionPlan *plan, const Node *n) {
 }
 
 /* Returns the number of expected IDs given node will generate */
-int _ExecutionPlan_EstimateNodeCardinality(RedisModuleCtx *ctx, const RedisModuleString *graph, const Node *n) {
-    Store *s = NULL;
-    if(n->label != NULL) {
-        RedisModuleString* label = RedisModule_CreateString(ctx, n->label, strlen(n->label));
-        s = GetStore(ctx, STORE_NODE, graph, label);
-        RedisModule_FreeString(ctx, label);
-    } else {
-        s = GetStore(ctx, STORE_NODE, graph, NULL);
-    }
-    
+int _ExecutionPlan_EstimateNodeCardinality(RedisModuleCtx *ctx, const char *graph, const Node *n) {
+    Store *s = GetStore(ctx, STORE_NODE, graph, n->label);
     return s->cardinality;
 }
 
-void _ExecutionPlan_OptimizeEntryPoints(RedisModuleCtx *ctx, const Graph *g, const RedisModuleString *graphName, FT_FilterNode *filterTree, QueryExpressionNode *ast, OpNode *root) {
+void _ExecutionPlan_OptimizeEntryPoints(RedisModuleCtx *ctx, const Graph *g, const char *graphName, FT_FilterNode *filterTree, QueryExpressionNode *ast, OpNode *root) {
     // We've reached a leaf
     if(root->childCount == 0 && strcmp(root->operation->name, "Expand All") == 0) {
         Node *src = ((ExpandAll*)(root->operation))->srcNode;
@@ -304,7 +296,7 @@ Vector* _ExecutionPlan_AddFilters(RedisModuleCtx *ctx, FT_FilterNode **filterTre
     return seen;
 }
 
-ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, RedisModuleString *graphName, QueryExpressionNode *ast) {
+ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, const char *graphName, QueryExpressionNode *ast) {
     Graph *graph = BuildGraph(ast->matchNode);
     ExecutionPlan *executionPlan = malloc(sizeof(ExecutionPlan));
     

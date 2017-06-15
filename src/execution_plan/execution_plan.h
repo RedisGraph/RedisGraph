@@ -23,11 +23,11 @@ void OpNode_Free(OpNode* op);
 typedef struct {
     OpNode *root;
     Graph *graph;
-    RedisModuleString *graphName;
+    const char *graphName;
 } ExecutionPlan;
 
 /* Creates a new execution plan from AST */
-ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, RedisModuleString *graph, QueryExpressionNode *ast);
+ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, const char *graph, QueryExpressionNode *ast);
 
 /* Prints execution plan */
 char* ExecutionPlanPrint(const ExecutionPlan *plan);

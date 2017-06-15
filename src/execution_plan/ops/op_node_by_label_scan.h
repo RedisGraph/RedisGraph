@@ -16,13 +16,13 @@ typedef struct {
     Node *node;
     Store *store;
     RedisModuleCtx *ctx;
-    RedisModuleString *graph;
+    const char *graph;
     StoreIterator *iter;
 } NodeByLabelScan;
 
 /* Creates a new NodeByLabelScan operation */
-OpBase* NewNodeByLabelScanOp(RedisModuleCtx *ctx, Node *node, RedisModuleString *graph, char *label);
-NodeByLabelScan* NewNodeByLabelScan(RedisModuleCtx *ctx, Node *node, RedisModuleString *graph, char *label);
+OpBase* NewNodeByLabelScanOp(RedisModuleCtx *ctx, Node *node, const char *graph, char *label);
+NodeByLabelScan* NewNodeByLabelScan(RedisModuleCtx *ctx, Node *node, const char *graph, char *label);
 
 /* NodeByLabelScan next operation
  * called each time a new ID is required */

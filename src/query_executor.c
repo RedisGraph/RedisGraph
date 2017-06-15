@@ -186,7 +186,7 @@ Vector* ReturnClause_GetAggFuncs(RedisModuleCtx *ctx, const ReturnNode* returnNo
     return aggFunctions;
 }
 
-void ReturnClause_ExpandCollapsedNodes(RedisModuleCtx *ctx, QueryExpressionNode *ast, RedisModuleString *graphName) {
+void ReturnClause_ExpandCollapsedNodes(RedisModuleCtx *ctx, QueryExpressionNode *ast, const char *graphName) {
     /* Assumption, each collapsed node is tagged with a label
      * TODO: maintain a label schema, this way we won't have
      * to call HGETALL each time to discover label attributes */
@@ -226,12 +226,7 @@ void ReturnClause_ExpandCollapsedNodes(RedisModuleCtx *ctx, QueryExpressionNode 
         FreeReturnElementNode(node);
         
         // Find an id, for node label
-        RedisModuleString *label =
-            RedisModule_CreateString(ctx, collapsedNode->label, strlen(collapsedNode->label));        
-        
-        Store *s = GetStore(ctx, STORE_NODE, graphName, label);
-        
-        RedisModule_FreeString(ctx, label);
+        Store *s = GetStore(ctx, STORE_NODE, graphName, collapsedNode->label);
 
         StoreIterator *it = Store_Search(s, "");
         char *id;

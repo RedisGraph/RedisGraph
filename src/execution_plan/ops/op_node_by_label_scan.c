@@ -1,14 +1,12 @@
 #include "op_node_by_label_scan.h"
 
-OpBase *NewNodeByLabelScanOp(RedisModuleCtx *ctx, Node *node, RedisModuleString *graph, char *label) {
+OpBase *NewNodeByLabelScanOp(RedisModuleCtx *ctx, Node *node, const char *graph, char *label) {
     return (OpBase*)NewNodeByLabelScan(ctx, node, graph, label);
 }
 
-NodeByLabelScan* NewNodeByLabelScan(RedisModuleCtx *ctx, Node *node, RedisModuleString *graph, char *label) {
+NodeByLabelScan* NewNodeByLabelScan(RedisModuleCtx *ctx, Node *node, const char *graph, char *label) {
     // Get graph store
-    RedisModuleString *rmsLabel = RedisModule_CreateString(ctx, label, strlen(label));
-    Store *store = GetStore(ctx, STORE_NODE, graph, rmsLabel);
-    RedisModule_FreeString(ctx, rmsLabel);
+    Store *store = GetStore(ctx, STORE_NODE, graph, label);
     if(store == NULL) {
         return NULL;
     }

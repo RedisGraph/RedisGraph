@@ -6,43 +6,40 @@ Store *_NewStore() {
 	return NewTrieMap();
 }
 
-RedisModuleString *Store_ID(RedisModuleCtx *ctx, StoreType type, const RedisModuleString *graph, const RedisModuleString *label) {
-    const char *strGraph = RedisModule_StringPtrLen(graph, NULL);
-    const char *strLabel = "ALL";
-    
-    if(label != NULL) {
-        strLabel = RedisModule_StringPtrLen(label, NULL);
+int Store_ID(char **id, StoreType type, const char *graph, const char *label) {
+    if(label == NULL) {
+        label = "ALL";
     }
 
-    const char* strStoreType = NULL;
+    const char* storeType = NULL;
 
     switch(type) {
         case STORE_NODE:
-            strStoreType = "NODE";
+            storeType = "NODE";
             break;
         case STORE_EDGE:
-            strStoreType = "EDGE";
+            storeType = "EDGE";
             break;
         default:
             // Unexpected store type.
             break;
     }
     
-    RedisModuleString *strKey = RMUtil_CreateFormattedString(ctx, "%s_%s_%s_%s", STORE_PREFIX, strGraph, strStoreType, strLabel);
-    return strKey;
+    return asprintf(id, "%s_%s_%s_%s", STORE_PREFIX, graph, storeType, label);
 }
 
-Store *GetStore(RedisModuleCtx *ctx, StoreType type, const RedisModuleString *graph, const RedisModuleString* label) {
+Store *GetStore(RedisModuleCtx *ctx, StoreType type, const char *graph, const char* label) {
 	Store *store = NULL;
-    RedisModuleString *strKey = Store_ID(ctx, type, graph, label);
-	RedisModuleKey *key =
-        RedisModule_OpenKey(ctx, strKey, REDISMODULE_WRITE);
+    char *strKey;
+    Store_ID(&strKey, type, graph, label);
+
+    RedisModuleString *rmStoreId = RedisModule_CreateString(ctx, strKey, strlen(strKey));
+    free(strKey);
     
-    RedisModule_FreeString(ctx, strKey);
+	RedisModuleKey *key = RedisModule_OpenKey(ctx, rmStoreId, REDISMODULE_WRITE);
+    RedisModule_FreeString(ctx, rmStoreId);
 
-	int keyType = RedisModule_KeyType(key);
-
-	if (keyType == REDISMODULE_KEYTYPE_EMPTY) {
+	if (RedisModule_KeyType(key) == REDISMODULE_KEYTYPE_EMPTY) {
 		store = _NewStore();
 		RedisModule_ModuleTypeSetValue(key, TrieRedisModuleType, store);
 	}
@@ -56,18 +53,12 @@ int Store_Cardinality(Store *store) {
     return store->cardinality;
 }
 
-void Store_Insert(Store *store, const RedisModuleString *id, void *value) {
-    size_t len;
-    const char *strId = RedisModule_StringPtrLen(id, &len);
-    
-    TrieMap_Add(store, strId, len, value, NULL);
+void Store_Insert(Store *store, const char *id, void *value) {
+    TrieMap_Add(store, id, strlen(id), value, NULL);
 }
 
-void Store_Remove(Store *store, const RedisModuleString *id) {
-    size_t len;
-    const char *strId = RedisModule_StringPtrLen(id, &len);
-    
-    TrieMap_Delete(store, strId, len, NULL);
+void Store_Remove(Store *store, const char *id) {
+    TrieMap_Delete(store, id, strlen(id), NULL);
 }
 
 StoreIterator *Store_Search(Store *store, const char *prefix) {

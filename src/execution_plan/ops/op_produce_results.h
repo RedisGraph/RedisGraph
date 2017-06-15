@@ -21,7 +21,6 @@ typedef struct {
 
 
 /* Creates a new NodeByLabelScan operation */
-// OpBase* NewProduceResultsOp(RedisModuleCtx *ctx, RedisModuleString *graph, QueryExpressionNode *ast);
 void NewProduceResultsOp(RedisModuleCtx *ctx, QueryExpressionNode *ast, OpBase **op);
 ProduceResults* NewProduceResults(RedisModuleCtx *ctx, QueryExpressionNode *ast);
 

@@ -1,7 +1,6 @@
 #include "op_produce_results.h"
 #include "../../resultset/record.h"
 
-// OpBase* NewProduceResultsOp(RedisModuleCtx *ctx, RedisModuleString *graph, QueryExpressionNode *ast) {
 void NewProduceResultsOp(RedisModuleCtx *ctx, QueryExpressionNode *ast, OpBase **op) {
     *op = (OpBase *)NewProduceResults(ctx, ast);
 }

@@ -15,12 +15,12 @@
      OpBase op;
      Node *node;                // node being scanned
      RedisModuleCtx *ctx;       // redis module API context
-     RedisModuleString *graph;  // queried graph id
+     const char *graph;          // queried graph id
      StoreIterator *iter;       // graph iterator
  } AllNodeScan;
 
-OpBase* NewAllNodeScanOp(RedisModuleCtx *ctx, Node *node, RedisModuleString *graph);
-AllNodeScan* NewAllNodeScan(RedisModuleCtx *ctx, Node *node, RedisModuleString *graph);
+OpBase* NewAllNodeScanOp(RedisModuleCtx *ctx, Node *node, const char *graph);
+AllNodeScan* NewAllNodeScan(RedisModuleCtx *ctx, Node *node, const char *graph);
 OpResult AllNodeScanConsume(OpBase *opBase, Graph* graph);
 OpResult AllNodeScanReset(OpBase *op);
 void AllNodeScanFree(AllNodeScan *allNodeScan);
