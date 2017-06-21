@@ -6,3 +6,8 @@ enable_testing()
 
 add_subdirectory(src)
 add_subdirectory(test)
+
+add_custom_target(deploydocs mkdocs build
+                  COMMAND s3cmd sync site/ s3://redisgraph.io
+                  COMMENT "Builds and deploys the module's documentation website"
+                  VERBATIM)
