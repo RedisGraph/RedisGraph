@@ -134,10 +134,10 @@ def run_queries():
 	run_query(query_desc, query)
 
 	#------------------------------------------------------------------------
-	query_desc = "Which actors played in bad drame or comedy?"
+	query_desc = "Which actors played in bad drama or comedy?"
 	query = """MATCH (a:actor)-[:act]->(m:movie)
 	WHERE (m.gener = Drama OR m.gener = Comedy)
-	AND m.rating < 6.0 AND m.votes > 80000
+	AND m.rating < 5.5 AND m.votes > 50000
 	RETURN a.name, m
 	ORDER BY m.rating"""
 	run_query(query_desc, query)
@@ -170,7 +170,7 @@ def run_queries():
 
 	# ------------------------------------------------------------------------
 	query_desc = "10 Oldest actors"
-	query = """MATCH (a:actor)-[:act]->(m:movie)
+	query = """MATCH (a:actor)
 	RETURN DISTINCT a.name, a.age
 	ORDER BY a.age DESC
 	LIMIT 10""";

@@ -2,9 +2,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "../graph/graph_entity.h"
 
-FilterNode* NewVaryingPredicateNode(const char* lAlias, const char* lProperty, int op, const char* rAlias, const char* rProperty) {
-	FilterNode *n = malloc(sizeof(FilterNode));
+AST_FilterNode* New_AST_VaryingPredicateNode(const char* lAlias, const char* lProperty, int op, const char* rAlias, const char* rProperty) {
+	AST_FilterNode *n = malloc(sizeof(AST_FilterNode));
 	n->t = N_PRED;
 
 	n->pn.t = N_VARYING;
@@ -23,8 +24,8 @@ FilterNode* NewVaryingPredicateNode(const char* lAlias, const char* lProperty, i
 	return n;
 }
 
-FilterNode* NewConstantPredicateNode(const char* alias, const char* property, int op, SIValue value) {
-	FilterNode *n = malloc(sizeof(FilterNode));
+AST_FilterNode* New_AST_ConstantPredicateNode(const char* alias, const char* property, int op, SIValue value) {
+	AST_FilterNode *n = malloc(sizeof(AST_FilterNode));
   	n->t = N_PRED;
 
 	n->pn.t = N_CONSTANT;
@@ -38,8 +39,8 @@ FilterNode* NewConstantPredicateNode(const char* alias, const char* property, in
 }
 
 
-FilterNode *NewConditionNode(FilterNode *left, int op, FilterNode *right) {
-  FilterNode *n = malloc(sizeof(FilterNode));
+AST_FilterNode *New_AST_ConditionNode(AST_FilterNode *left, int op, AST_FilterNode *right) {
+  AST_FilterNode *n = malloc(sizeof(AST_FilterNode));
   n->t = N_COND;
   n->cn.left = left;
   n->cn.right = right;
@@ -49,7 +50,7 @@ FilterNode *NewConditionNode(FilterNode *left, int op, FilterNode *right) {
 }
 
 
-void FreePredicateNode(PredicateNode* predicateNode) {
+void FreePredicateNode(AST_PredicateNode* predicateNode) {
 
 	if(predicateNode->alias) {
 		free(predicateNode->alias);
@@ -73,7 +74,7 @@ void FreePredicateNode(PredicateNode* predicateNode) {
 }
 
 
-void FreeFilterNode(FilterNode* filterNode) {
+void Free_AST_FilterNode(AST_FilterNode* filterNode) {
 	if(!filterNode)
 		return;
 
@@ -82,14 +83,14 @@ void FreeFilterNode(FilterNode* filterNode) {
 			FreePredicateNode(&filterNode->pn);
 			break;
 		case N_COND:
-			FreeFilterNode(filterNode->cn.left);
-			FreeFilterNode(filterNode->cn.right);
+			Free_AST_FilterNode(filterNode->cn.left);
+			Free_AST_FilterNode(filterNode->cn.right);
 			break;
 	}
 }
 
-GraphEntity* NewLinkEntity(char *alias, char *label, Vector *properties, LinkDirection dir) {
-	LinkEntity* le = (LinkEntity*)calloc(1, sizeof(LinkEntity));
+AST_LinkEntity* New_AST_LinkEntity(char *alias, char *label, Vector *properties, AST_LinkDirection dir) {
+	AST_LinkEntity* le = (AST_LinkEntity*)calloc(1, sizeof(AST_LinkEntity));
 	le->direction = dir;
 	le->ge.t = N_LINK;
 	le->ge.properties = properties;
@@ -104,22 +105,22 @@ GraphEntity* NewLinkEntity(char *alias, char *label, Vector *properties, LinkDir
 	return le;
 }
 
-GraphEntity* NewNodeEntity(char *alias, char *label, Vector *properties) {
-	NodeEntity* ge = (NodeEntity*)calloc(1, sizeof(NodeEntity));
-	ge->t = N_ENTITY;
-	ge->properties = properties;
+AST_NodeEntity* New_AST_NodeEntity(char *alias, char *label, Vector *properties) {
+	AST_NodeEntity* ne = (AST_NodeEntity*)calloc(1, sizeof(AST_NodeEntity));
+	ne->t = N_ENTITY;
+	ne->properties = properties;
 	
 	if(alias != NULL) {
-		ge->alias = strdup(alias);
+		ne->alias = strdup(alias);
 	}
 	if(label != NULL) {
-		ge->label = strdup(label);
+		ne->label = strdup(label);
 	}
 
-	return ge;
+	return ne;
 }
 
-void FreeGraphEntity(GraphEntity* graphEntity) {
+void Free_AST_GraphEntity(AST_GraphEntity *graphEntity) {
 	if(graphEntity->label != NULL) {
 		free(graphEntity->label);
 	}
@@ -138,16 +139,16 @@ void FreeGraphEntity(GraphEntity* graphEntity) {
 	free(graphEntity);
 }
 
-MatchNode* NewMatchNode(Vector* elements) {
-	MatchNode* matchNode = (MatchNode*)malloc(sizeof(MatchNode));
+AST_MatchNode* New_AST_MatchNode(Vector *elements) {
+	AST_MatchNode *matchNode = (AST_MatchNode*)malloc(sizeof(AST_MatchNode));
 	matchNode->graphEntities = elements;
 
 	return matchNode;
 }
 
-void FreeMatchNode(MatchNode* matchNode) {
+void Free_AST_MatchNode(AST_MatchNode *matchNode) {
 	for(int i = 0; i < Vector_Size(matchNode->graphEntities); i++) {
-		GraphEntity* ge;
+		GraphEntity *ge;
 		Vector_Get(matchNode->graphEntities, i, &ge);
 		FreeGraphEntity(ge);
 	}
@@ -157,42 +158,42 @@ void FreeMatchNode(MatchNode* matchNode) {
 }
 
 
-WhereNode* NewWhereNode(FilterNode* filters) {
-	WhereNode* whereNode = (WhereNode*)malloc(sizeof(WhereNode));
+AST_WhereNode* New_AST_WhereNode(AST_FilterNode *filters) {
+	AST_WhereNode *whereNode = (AST_WhereNode*)malloc(sizeof(AST_WhereNode));
 	whereNode->filters = filters;
 	return whereNode;
 }
 
-void FreeWhereNode(WhereNode* whereNode) {
+void Free_AST_WhereNode(AST_WhereNode *whereNode) {
 	if(!whereNode) {
 		return;
 	}
 
-	FreeFilterNode(whereNode->filters);
+	Free_AST_FilterNode(whereNode->filters);
 	free(whereNode);
 }
 
 
-ReturnNode* NewReturnNode(Vector* returnElements, int distinct) {
-	ReturnNode* returnNode = (ReturnNode*)malloc(sizeof(ReturnNode));
+AST_ReturnNode* New_AST_ReturnNode(Vector *returnElements, int distinct) {
+	AST_ReturnNode *returnNode = (AST_ReturnNode*)malloc(sizeof(AST_ReturnNode));
 	returnNode->returnElements = returnElements;
 	returnNode->distinct = distinct;
 	return returnNode;
 }
 
-void FreeReturnNode(ReturnNode* returnNode) {
+void Free_AST_ReturnNode(AST_ReturnNode *returnNode) {
 	for (int i = 0; i < Vector_Size(returnNode->returnElements); i++) {
-		ReturnElementNode *node;
+		AST_ReturnElementNode *node;
 		Vector_Get(returnNode->returnElements, i, &node);
-		FreeReturnElementNode(node);
+		Free_AST_ReturnElementNode(node);
 	}
 	
 	Vector_Free(returnNode->returnElements);
 	free(returnNode);
 }
 
-ReturnElementNode* NewReturnElementNode(ReturnElementType type, Variable* variable, const char* aggFunc, const char* alias) {
-	ReturnElementNode* returnElementNode = (ReturnElementNode*)malloc(sizeof(ReturnElementNode));
+AST_ReturnElementNode* New_AST_ReturnElementNode(AST_ReturnElementType type, AST_Variable* variable, const char* aggFunc, const char* alias) {
+	AST_ReturnElementNode *returnElementNode = (AST_ReturnElementNode*)malloc(sizeof(AST_ReturnElementNode));
 	returnElementNode->type = type;
 	returnElementNode->variable = variable;
 	returnElementNode->func = NULL;
@@ -209,9 +210,9 @@ ReturnElementNode* NewReturnElementNode(ReturnElementType type, Variable* variab
 	return returnElementNode;
 }
 
-void FreeReturnElementNode(ReturnElementNode* returnElementNode) {
+void Free_AST_ReturnElementNode(AST_ReturnElementNode *returnElementNode) {
 	if(returnElementNode != NULL) {
-		FreeVariable(returnElementNode->variable);
+		Free_AST_Variable(returnElementNode->variable);
 
 		if(returnElementNode->type == N_AGG_FUNC) {
 			free(returnElementNode->func);
@@ -225,8 +226,10 @@ void FreeReturnElementNode(ReturnElementNode* returnElementNode) {
 }
 
 
-QueryExpressionNode* NewQueryExpressionNode(MatchNode* matchNode, WhereNode* whereNode, ReturnNode* returnNode, OrderNode* orderNode, LimitNode* limitNode) {
-	QueryExpressionNode* queryExpressionNode = (QueryExpressionNode*)malloc(sizeof(QueryExpressionNode));
+AST_QueryExpressionNode* New_AST_QueryExpressionNode(AST_MatchNode *matchNode, AST_WhereNode *whereNode,
+												     AST_ReturnNode *returnNode, AST_OrderNode *orderNode,
+													 AST_LimitNode *limitNode) {
+	AST_QueryExpressionNode *queryExpressionNode = (AST_QueryExpressionNode*)malloc(sizeof(AST_QueryExpressionNode));
 	
 	queryExpressionNode->matchNode = matchNode;
 	queryExpressionNode->whereNode = whereNode;
@@ -237,16 +240,16 @@ QueryExpressionNode* NewQueryExpressionNode(MatchNode* matchNode, WhereNode* whe
 	return queryExpressionNode;
 }
 
-void FreeQueryExpressionNode(QueryExpressionNode* queryExpressionNode) {
-	FreeMatchNode(queryExpressionNode->matchNode);
-	FreeWhereNode(queryExpressionNode->whereNode);
-	FreeReturnNode(queryExpressionNode->returnNode);
-	FreeOrderNode(queryExpressionNode->orderNode);
+void Free_AST_QueryExpressionNode(AST_QueryExpressionNode *queryExpressionNode) {
+	Free_AST_MatchNode(queryExpressionNode->matchNode);
+	Free_AST_WhereNode(queryExpressionNode->whereNode);
+	Free_AST_ReturnNode(queryExpressionNode->returnNode);
+	Free_AST_OrderNode(queryExpressionNode->orderNode);
 	free(queryExpressionNode);
 }
 
-Variable* NewVariable(const char* alias, const char* property) {
-	Variable* v = (Variable*)calloc(1, sizeof(Variable));
+AST_Variable* New_AST_Variable(const char* alias, const char* property) {
+	AST_Variable *v = (AST_Variable*)calloc(1, sizeof(AST_Variable));
 
 	if(alias != NULL) {
 		v->alias = strdup(alias);
@@ -258,7 +261,7 @@ Variable* NewVariable(const char* alias, const char* property) {
 	return v;
 }
 
-void FreeVariable(Variable* v) {
+void Free_AST_Variable(AST_Variable *v) {
 	if(v != NULL) {
 		if(v->alias != NULL) {
 			free(v->alias);
@@ -270,19 +273,19 @@ void FreeVariable(Variable* v) {
 	}
 }
 
-OrderNode* NewOrderNode(Vector* columns, OrderByDirection direction) {
-	OrderNode* orderNode = (OrderNode*)malloc(sizeof(OrderNode));
+AST_OrderNode* New_AST_OrderNode(Vector *columns, AST_OrderByDirection direction) {
+	AST_OrderNode *orderNode = (AST_OrderNode*)malloc(sizeof(AST_OrderNode));
 	orderNode->columns = columns;
 	orderNode->direction = direction;
 	return orderNode;
 }
 
-void FreeOrderNode(OrderNode* orderNode) {
+void Free_AST_OrderNode(AST_OrderNode *orderNode) {
 	if(orderNode != NULL) {
 		for(int i = 0; i < Vector_Size(orderNode->columns); i++) {
-			ColumnNode* c = NULL;
+			AST_ColumnNode *c = NULL;
 			Vector_Get(orderNode->columns, i , &c);
-			FreeColumnNode(c);
+			Free_AST_ColumnNode(c);
 		}
 
 		Vector_Free(orderNode->columns);
@@ -290,8 +293,8 @@ void FreeOrderNode(OrderNode* orderNode) {
 	}
 }
 
-ColumnNode* NewColumnNode(const char* alias, const char* property, ColumnNodeType type) {
-	ColumnNode* node = malloc(sizeof(ColumnNode));
+AST_ColumnNode* New_AST_ColumnNode(const char *alias, const char *property, AST_ColumnNodeType type) {
+	AST_ColumnNode *node = malloc(sizeof(AST_ColumnNode));
 	node->type = type;
 	node->alias = NULL;
 	node->property = NULL;
@@ -307,15 +310,15 @@ ColumnNode* NewColumnNode(const char* alias, const char* property, ColumnNodeTyp
 	return node;
 }
 
-ColumnNode* ColumnNodeFromVariable(const Variable* variable) {
-	return NewColumnNode(variable->alias, variable->property, N_VARIABLE);
+AST_ColumnNode* AST_ColumnNodeFromVariable(const AST_Variable *variable) {
+	return New_AST_ColumnNode(variable->alias, variable->property, N_VARIABLE);
 }
 
-ColumnNode* ColumnNodeFromAlias(const char* alias) {
-	return NewColumnNode(alias, NULL, N_ALIAS);
+AST_ColumnNode* AST_ColumnNodeFromAlias(const char *alias) {
+	return New_AST_ColumnNode(alias, NULL, N_ALIAS);
 }
 
-void FreeColumnNode(ColumnNode* node) {
+void Free_AST_ColumnNode(AST_ColumnNode* node) {
 	if(node != NULL) {
 		if(node->alias != NULL) {
 			free(node->alias);
@@ -327,13 +330,13 @@ void FreeColumnNode(ColumnNode* node) {
 	}
 }
 
-LimitNode* NewLimitNode(int limit) {
-	LimitNode* limitNode = (LimitNode*)malloc(sizeof(limitNode));
+AST_LimitNode* New_AST_LimitNode(int limit) {
+	AST_LimitNode* limitNode = (AST_LimitNode*)malloc(sizeof(AST_LimitNode));
 	limitNode->limit = limit;
 	return limitNode;
 }
 
-void FreeLimitNode(LimitNode* limitNode) {
+void Free_AST_LimitNode(AST_LimitNode* limitNode) {
 	if(limitNode) {
 		free(limitNode);
 	}

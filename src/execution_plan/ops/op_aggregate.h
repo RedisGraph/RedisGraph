@@ -13,14 +13,14 @@
      OpBase op;
      RedisModuleCtx *ctx;
      int refreshAfterPass;
-     QueryExpressionNode *ast;
-     int init;  // TODO: find a better solution for this, maybe an instance of group_cache.
+     AST_QueryExpressionNode *ast;
+     int init;
  } Aggregate;
 
-OpBase* NewAggregateOp(RedisModuleCtx *ctx, QueryExpressionNode *ast);
-Aggregate* NewAggregate(RedisModuleCtx *ctx, QueryExpressionNode *ast);
+OpBase* NewAggregateOp(RedisModuleCtx *ctx, AST_QueryExpressionNode *ast);
+Aggregate* NewAggregate(RedisModuleCtx *ctx, AST_QueryExpressionNode *ast);
 OpResult AggregateConsume(OpBase *opBase, Graph* graph);
 OpResult AggregateReset(OpBase *opBase);
-void AggregateFree(Aggregate *opBase);
+void AggregateFree(OpBase *opBase);
 
 #endif

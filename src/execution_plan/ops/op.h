@@ -33,13 +33,14 @@ typedef OpResult (*fpConsume)(struct OpBase*, Graph* graph);
 typedef OpResult (*fpReset)(struct OpBase*);
 typedef void (*fpFree)(struct OpBase*);
 
-typedef struct  {
+struct OpBase {
     OPType type;
-    fpConsume next;
+    fpConsume consume;
     fpReset reset;
     fpFree free;
     char *name;
     Vector *modifies;   // List of aliases, this op modifies.
-} OpBase;
+};
+typedef struct OpBase OpBase;
 
 #endif

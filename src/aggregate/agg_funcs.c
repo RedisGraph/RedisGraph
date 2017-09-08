@@ -1,5 +1,5 @@
 #include <float.h>
-#include "functions.h"
+#include "agg_funcs.h"
 #include "aggregate.h"
 #include "repository.h"
 #include "../value.h"

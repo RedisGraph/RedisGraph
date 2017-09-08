@@ -13,16 +13,20 @@
 
 typedef struct {
     OpBase op;
-    Node *node;
+    Node **node;            /* node being scanned */
+    Node *_node;
     Store *store;
     RedisModuleCtx *ctx;
-    const char *graph;
+    const char *graph;      /* queried graph id */
     StoreIterator *iter;
 } NodeByLabelScan;
 
 /* Creates a new NodeByLabelScan operation */
-OpBase* NewNodeByLabelScanOp(RedisModuleCtx *ctx, Node *node, const char *graph, char *label);
-NodeByLabelScan* NewNodeByLabelScan(RedisModuleCtx *ctx, Node *node, const char *graph, char *label);
+OpBase *NewNodeByLabelScanOp(RedisModuleCtx *ctx, Graph *g, Node **node,
+                            const char *graph_name, char *label);
+
+NodeByLabelScan* NewNodeByLabelScan(RedisModuleCtx *ctx, Graph *g, Node **node,
+                                    const char *graph_name, char *label);
 
 /* NodeByLabelScan next operation
  * called each time a new ID is required */

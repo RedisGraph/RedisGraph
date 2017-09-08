@@ -1,47 +1,42 @@
 #ifndef TRIPLET_H
 #define TRIPLET_H
 
+#include "../graph/node.h"
 #include "../graph/edge.h"
 #include "../redismodule.h"
 #include "../util/triemap/triemap.h"
+#include "../rmutil/sds.h"
 
 #define TRIPLET_ELEMENT_DELIMITER ":"
 #define TRIPLET_PREDICATE_DELIMITER "@"
 
-// typedef enum {UNKNOW, O, P, PO, S, SO, SP, SPO} TripletKind;
 typedef enum {UNKNOW, P, O, OP, S, SP, SO, SOP} TripletKind;
-
 typedef struct {
-	char* subject;
-	char* predicate;
-	char* object;
+	Node* subject;
+	Edge* predicate;
+	Node* object;
 	TripletKind kind;
 } Triplet;
 
 typedef TrieMapIterator TripletIterator;
 
-// Creates a new triplet
-Triplet* NewTriplet(const char *S, const char *P, const char *O);
+/* Creates a new triplet */
+Triplet* NewTriplet(Node *s, Edge *p, Node *o);
 
-// Given an edge (A) -[edge]-> (B), creates a new triplet.
-Triplet* TripletFromEdge(const Edge *edge);
+/* Gets triplet's kind. */
+TripletKind TripletGetKind(const Triplet *t);
 
-// Given a node, creates a new triplet.
-Triplet* TripletFromNode(const Node *node);
+/* Given an edge (A) -[edge]-> (B), creates a new triplet. */
+Triplet* TripletFromEdge(Edge *edge);
 
-// Creates a new triplet from string.
-Triplet* TripletFromString(const char *input);
+/* Breaks down triplet into its components */
+void TripletComponents(const Triplet *t, char **subject, char **predicate, char **object);
 
-// Returns a string representation of triplet.
-char* TripletToString(const Triplet *triplet);
+/* Returns a string representation of triplet. */
+// char* TripletToString(const Triplet *triplet);
+void TripletToString(const Triplet *triplet, sds *str);
 
-// Checks if given triplets are the same.
-int TripletCompare(const Triplet *A, const Triplet *B);
-
-// Validate checks the triplet for validity and returns false if something is wrong.
-int ValidateTriplet(const Triplet *triplet);
-
-// Frees allocated space by given triplet.
+/* Frees allocated space by given triplet. */
 void FreeTriplet(Triplet *triplet);
 
 // -------------Triplet cursor-------------

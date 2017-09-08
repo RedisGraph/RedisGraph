@@ -1,158 +1,155 @@
 #include "graph.h"
+#include <assert.h>
+
+GraphEntity* _Graph_GetEntityById(GraphEntity **entity_list, int entity_count, long int id) {
+    int i;
+
+    for(i = 0; i < entity_count; i++) {
+        GraphEntity *entity = entity_list[i];
+        if(entity->id == id) {
+            return entity;
+        }
+    }
+    return NULL;
+}
+
+int _Graph_AddEntity(GraphEntity *entity, char *alias, GraphEntity ***entity_list, char ***alias_list, int *entityCount) {
+    if(*entity_list == NULL) {
+        *entity_list = (GraphEntity**)malloc(sizeof(GraphEntity*));
+        *alias_list = (char**)malloc(sizeof(char*));
+	} else {
+		*entity_list = realloc(*entity_list, sizeof(GraphEntity*) * (*entityCount + 1));
+        *alias_list = realloc(*alias_list, sizeof(char*) * (*entityCount + 1));
+	}
+
+    (*entity_list)[*entityCount] = entity;
+    (*alias_list)[*entityCount] = alias;
+    (*entityCount)++;
+    return 1;
+}
+
+int _Graph_AddEdge(Graph *g, Edge *e, char *alias) {
+    return _Graph_AddEntity((GraphEntity*)e,
+                            alias,
+                            (GraphEntity ***)(&g->edges),
+                            &g->edge_aliases,
+                            &g->edge_count);
+}
+
+GraphEntity* _Graph_GetEntityByAlias(GraphEntity **entity_list, char **alias_list, int entity_count, const char* alias) {
+    for(int i = 0; i < entity_count; i++) {
+        char *entity_alias = alias_list[i];
+        if(strcmp(entity_alias, alias) == 0) {
+            return entity_list[i];
+        }
+    }
+    return NULL;
+}
+
+char* _Graph_GetEntityAlias(GraphEntity *entity, GraphEntity **entities, char **aliases, int entity_count) {
+    int i;
+    for(i = 0; i < entity_count; i++) {
+        if(entities[i]->id == entity->id) {
+            return aliases[i];
+        }
+    }
+    
+    return NULL;
+}
+
+int _Graph_ContainsEntity(GraphEntity *entity, GraphEntity **entities, int entity_count) {
+    int i;
+    for(i = 0; i < entity_count; i++) {
+        GraphEntity *e = entities[i];
+        if(e == entity) {
+            return 1;
+        }
+    }
+    return 0;
+}
 
 Graph* NewGraph() {
     Graph* g = (Graph*)malloc(sizeof(Graph));
-    g->nodes = NewVector(Node*, 0);
+    g->nodes = NULL;
+    g->edges = NULL;
+    g->node_aliases = NULL;
+    g->edge_aliases = NULL;
+    g->node_count = 0;
+    g->edge_count = 0;
     return g;
 }
 
-Node* _getNodeByInternalID(const Graph* g, int id) {
-    for(int i = 0; i < Vector_Size(g->nodes); i++) {
-        Node* node;
-        Vector_Get(g->nodes, i, &node);
-
-        if(node->internalId == id) {
-            return node;
-        }
-    }
-    return NULL;
+Node* Graph_GetNodeById(const Graph *g, long int id) {
+    if(id == INVALID_ENTITY_ID) return NULL;
+    return (Node*)_Graph_GetEntityById((GraphEntity **)g->nodes, g->node_count, id);
 }
 
-Graph* Graph_Clone(const Graph* graph) {
-    Graph* clone = NewGraph();
-
-    for(int i = 0; i < Vector_Size(graph->nodes); i++) {
-        Node* node;
-        Vector_Get(graph->nodes, i, &node);
-
-        Graph_AddNode(clone, Node_Clone(node));
-
-        for(int j = 0; j < Vector_Size(node->outgoingEdges); j++) {
-            Edge* e;
-            Vector_Get(node->outgoingEdges, j, &e);
-            Node* src = _getNodeByInternalID(clone, e->src->internalId);
-            Node* dest = _getNodeByInternalID(clone, e->dest->internalId);
-
-            if(src == NULL) {
-                src = Node_Clone(e->src);
-                Graph_AddNode(clone, src);
-            }
-            if(dest == NULL) {
-                dest = Node_Clone(e->dest);
-                Graph_AddNode(clone, dest);
-            }
-
-            ConnectNode(src, dest, NewEdge(e->id, e->alias, src, dest, e->relationship));
-        }
-    }
-    return clone;
-}
-
-int Graph_Compare(const Graph *a, const Graph *b) {
-    /* NOTE: graph structure is not comapred
-     * for the timebeing this is enough 
-     * TODO: comapre edges */
-
-    const int EQUAL = 0;
-    const int DIFFER = 1;
-
-    if(a == NULL || b == NULL) {
-        return DIFFER;
-    }
-
-    // Same pointer
-    if(a == b) {
-        return EQUAL;
-    }
-    
-    // Graphs must contain the same number of nodes
-    if(Vector_Size(a->nodes) != Vector_Size(b->nodes)) {
-        return DIFFER;
-    }
-    
-    // Make sure each node exists in both graphs
-    for(int i = 0; i < Vector_Size(a->nodes); i++) {
-        Node *An;
-        Vector_Get(a->nodes, i, &An);
-        
-        Node *Bn = _getNodeByInternalID(b, An->internalId);
-        if(Bn == NULL) {
-            return DIFFER;
-        }
-
-        // Nodes should have the same ID.
-        if(An->id == NULL && Bn->id == NULL) {
-            continue;
-        }
-
-        if((An->id == NULL && Bn->id != NULL) || (An->id != NULL && Bn->id == NULL)) {
-            return DIFFER;
-        }
-
-        if(strcmp(An->id, Bn->id) != 0) {
-            return DIFFER;
-        }
-    }
-    
-    return EQUAL;
+Edge* Graph_GetEdgeById(const Graph *g, long int id) {
+    if(id == INVALID_ENTITY_ID) return NULL;
+    return (Edge*)_Graph_GetEntityById((GraphEntity **)g->edges, g->edge_count, id);
 }
 
 int Graph_ContainsNode(const Graph *graph, const Node *node) {
-    return _getNodeByInternalID(graph, node->internalId) != NULL;
+    if(!graph->node_count) return 0;
+    return _Graph_ContainsEntity((GraphEntity *)node,
+                                 (GraphEntity **)graph->nodes,
+                                 graph->node_count);
 }
 
-// Search the graph for a node with given alias 
+int Graph_ContainsEdge(const Graph *graph, const Edge *edge) {
+    if(!graph->edge_count) return 0;
+    return _Graph_ContainsEntity((GraphEntity *)edge,
+                                 (GraphEntity **)graph->edges,
+                                 graph->edge_count);
+}
+
+int Graph_AddNode(Graph* g, Node *n, char *alias) {
+    if(!Graph_ContainsNode(g, n)) {
+        return _Graph_AddEntity((GraphEntity*)n,
+        alias,
+        (GraphEntity ***)&g->nodes,
+        &g->node_aliases,
+        &g->node_count);
+    }
+    return 0;
+}
+
+int Graph_ConnectNodes(Graph *g, Node *src, Node *dest, Edge *e, char *edge_alias) {
+    assert(Graph_ContainsNode(g, src) && Graph_ContainsNode(g, dest) && !Graph_ContainsEdge(g, e));
+    Node_ConnectNode(src, dest, e);
+    return _Graph_AddEdge(g, e, edge_alias);
+}
+
 Node* Graph_GetNodeByAlias(const Graph* g, const char* alias) {
-    if(alias == NULL) {
-        return NULL;
-    }
-
-    for(int i = 0; i < Vector_Size(g->nodes); i++) {
-        Node* node;
-        Vector_Get(g->nodes, i, &node);
-
-        if(node->alias != NULL && strcmp(node->alias, alias) == 0) {
-            return node;
-        }
-    }
-    return NULL;
+    if(alias == NULL) return NULL;
+    return (Node*)_Graph_GetEntityByAlias((GraphEntity **)g->nodes, g->node_aliases, g->node_count, alias);
 }
 
-// TODO: Find a faster way to search for an edge.
 Edge* Graph_GetEdgeByAlias(const Graph *g, const char *alias) {
-    for(int i = 0; i < Vector_Size(g->nodes); i++) {
-        Node *n;
-        Vector_Get(g->nodes, i, &n);
-
-        for (int j = 0; j < Vector_Size(n->outgoingEdges); j++) {
-            Edge *e;
-            Vector_Get(n->outgoingEdges, j, &e);
-
-            if(e->alias != NULL) {
-                if(strcmp(e->alias, alias) == 0) {
-                    return e;
-                }
-            }
-        }
-    }
-    return NULL;
+    if(alias == NULL) return NULL;
+    return (Edge*)_Graph_GetEntityByAlias((GraphEntity **)g->edges, g->edge_aliases, g->edge_count, alias);
 }
 
-// Adds a new node to the graph
-int Graph_AddNode(Graph* g, Node *n) {
-    if(Graph_ContainsNode(g, n)) {
-        return 0;
+/* Returns either a node or an edge with the given alias
+ * we start by searching for a node with given alias,
+ * in-case we did not find a node ansering to alias
+ * we'll continue our search with edges.
+ * TODO: return also entity type. */
+GraphEntity* Graph_GetEntityByAlias(const Graph *g, const char *alias) {
+    GraphEntity *entity = (GraphEntity *)Graph_GetNodeByAlias(g, alias);
+    if(entity) {
+        return entity;
     }
-    Vector_Push(g->nodes, n);
-    return 1;
+    
+    return (GraphEntity*)Graph_GetEdgeByAlias(g, alias);
 }
 
 Vector* Graph_GetNDegreeNodes(Graph* g, int degree) {
     Vector* nodes = NewVector(Node*, 0);
     Node* n = NULL;
     
-    for(int i = 0; i < Vector_Size(g->nodes); i++) {
-        Vector_Get(g->nodes, i, &n);
+    for(int i = 0; i < g->node_count; i++) {
+        n = g->nodes[i];
         if(Vector_Size(n->incomingEdges) == degree) {
             Vector_Push(nodes, n);
         }
@@ -161,80 +158,81 @@ Vector* Graph_GetNDegreeNodes(Graph* g, int degree) {
     return nodes;
 }
 
-Graph* Graph_ShortestPath(Graph *g, Node *src, Node *dest) {
-    Graph *reversedGraph = NewGraph();
-    Graph *path = NULL;
-    Node *srcClone = Node_Clone(src);
-    Graph_AddNode(reversedGraph, srcClone);
+char* Graph_GetNodeAlias(const Graph *g, const Node *n) {
+    assert(g && n);
+    
+    int i;
+    int node_count = g->node_count;
 
-    // Add src node to nodes to visit
-    int nodes_count = Vector_Size(g->nodes);
-    int node_idx = 0;
-    Vector *nodesToVisit = NewVector(Node*, nodes_count);
-    Vector_Push(nodesToVisit, src);
-
-    // As long as there are nodes to visit
-    // TODO: introduce a queue data-structure.
-    // while(Vector_Size(nodesToVisit) > 0) {
-    while(node_idx < nodesToVisit->top) {
-        Node *currentNode;
-        // Vector_Pop(nodesToVisit, &currentNode);
-        Vector_Get(nodesToVisit, node_idx, &currentNode);
-
-        Node *currentNodeClone = _getNodeByInternalID(reversedGraph, currentNode->internalId);
-
-        // Have we reached destination node?
-        if(Node_Compare(currentNode, dest)) {
-            // Add dest node to path.
-            path = NewGraph();
-            Node *pathNodeCurrent = Node_Clone(dest);
-            Graph_AddNode(path, pathNodeCurrent);
-
-            Edge *reversedEdge;
-            // Walk reversed graph to construct path.
-            while(Vector_Get(currentNodeClone->outgoingEdges, 0, &reversedEdge) != 0) {
-                Node *pathNodeNext = Node_Clone(reversedEdge->dest);
-                Graph_AddNode(path, pathNodeNext);
-                ConnectNode(pathNodeNext, pathNodeCurrent, NewEdge(NULL, NULL, pathNodeNext, pathNodeCurrent,reversedEdge->relationship));
-                currentNodeClone = _getNodeByInternalID(reversedGraph, pathNodeNext->internalId);
-                pathNodeCurrent = pathNodeNext;
-            }
-            break;
+    for(i = 0; i < node_count; i++) {
+        if(n == g->nodes[i]) {
+            return g->node_aliases[i];
         }
-
-        // Add new nodes to visit
-        for(int i = 0; i < Vector_Size(currentNode->outgoingEdges); i++) {
-            Edge *e;
-            Vector_Get(currentNode->outgoingEdges, i, &e);
-            Node *neighbor = e->dest;
-
-            // Make sure we don't visit a node more than once.
-            if(!Graph_ContainsNode(reversedGraph, neighbor)) {
-                Vector_Push(nodesToVisit, neighbor);
-
-                // Add neighbor to reversedGraph
-                Node *neighborClone = Node_Clone(neighbor);
-                Graph_AddNode(reversedGraph, neighborClone);
-                ConnectNode(neighborClone, currentNodeClone, NewEdge(NULL, NULL, neighborClone, currentNodeClone, e->relationship));
-            }
-        }
-        node_idx++;
     }
 
-    Vector_Free(nodesToVisit);
-    Graph_Free(reversedGraph);
-    return path;
+    return NULL;
 }
 
-// Frees entire graph.
+char* Graph_GetEdgeAlias(const Graph *g, const Edge *e) {
+    assert(g && e);
+    
+    int i;
+    int edge_count = g->edge_count;
+
+    for(i = 0; i < edge_count; i++) {
+        if(e == g->edges[i]) {
+            return g->edge_aliases[i];
+        }
+    }
+    
+    return NULL;
+}
+
+Node** Graph_GetNodeRef(const Graph *g, const Node *n) {
+    assert(g && n);
+    
+    int i;
+    int node_count = g->node_count;
+
+    for(i = 0; i < node_count; i++) {
+        if(n == g->nodes[i]) {
+            return &(g->nodes[i]);
+        }
+    }
+
+    return NULL;
+}
+
+Edge** Graph_GetEdgeRef(const Graph *g, const Edge *e) {
+    assert(g && e);
+    
+    int i;
+    int edge_count = g->edge_count;
+
+    for(i = 0; i < edge_count; i++) {
+        if(e == g->edges[i]) {
+            return &(g->edges[i]);
+        }
+    }
+    
+    return NULL;
+}
+
+/* Frees entire graph. */
 void Graph_Free(Graph* g) {
-    // Free graph's nodes
-    for(int i = 0; i < Vector_Size(g->nodes); i++) {
-        Node* n;
-        Vector_Get(g->nodes, i, &n);
+    /* Free graph's nodes. */
+    int i;
+    int nodeCount = g->node_count;
+
+    for(i = 0; i < nodeCount; i++) {
+        Node* n = g->nodes[i];
         FreeNode(n);
     }
 
-    Vector_Free(g->nodes);
+    /* TODO: Free edges. */
+
+    /* Edges are freed internaly by nodes */
+    free(g->nodes);
+    free(g->edges);
     free(g);
 }

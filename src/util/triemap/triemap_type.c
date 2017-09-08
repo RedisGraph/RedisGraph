@@ -43,20 +43,7 @@ void TrieMapType_RdbSave(RedisModuleIO *rdb, void *value) {
 }
 
 void TrieMapType_AofRewrite(RedisModuleIO *aof, RedisModuleString *key, void *value) {
-  TrieMap *trie = (TrieMap *)value;
-  TrieMapIterator *it = TrieMap_Iterate(trie, "", 0);
-  
-  char *element;
-  tm_len_t len;
-  void *v;
- 
-  while (TrieMapIterator_Next(it, &element, &len, &v) != 0) {
-    Triplet *triplet = TripletFromString(element);
-    RedisModule_EmitAOF(aof, "graph.ADDEDGE", "ssss", key, triplet->subject, triplet->predicate, triplet->object);
-    FreeTriplet(triplet);
-  }
-  
-  TrieMapIterator_Free(it);
+  // TODO: implement.
 }
 
 void TrieMapType_Free(void *value) {

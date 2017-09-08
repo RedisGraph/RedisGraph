@@ -7,39 +7,39 @@
 typedef enum {
   N_PRED,
   N_COND,
-} FilterNodeType;
+} AST_FilterNodeType;
 
 typedef enum {
 	N_LEFT_TO_RIGHT,
 	N_RIGHT_TO_LEFT,
 	N_DIR_UNKNOWN,
-} LinkDirection;
+} AST_LinkDirection;
 
 typedef enum {
 	N_ENTITY,
 	N_LINK,
-} GraphEntityType;
+} AST_GraphEntityType;
 
 typedef enum {
 	N_CONSTANT,
 	N_VARYING,
-} CompareValueType;
+} AST_CompareValueType;
 
 typedef enum {
 	N_NODE,		// Entire entity
 	N_PROP,		// Entity's property
 	N_AGG_FUNC 	// Aggregation function
-} ReturnElementType;
+} AST_ReturnElementType;
 
 typedef enum {
 	ORDER_DIR_ASC,
 	ORDER_DIR_DESC
-} OrderByDirection;
+} AST_OrderByDirection;
 
 typedef enum {
 	N_VARIABLE,
 	N_ALIAS
-} ColumnNodeType;
+} AST_ColumnNodeType;
 
 struct filterNode;
 
@@ -47,15 +47,15 @@ typedef struct {
 	char *alias;
 	char *label;
 	Vector *properties;
-	GraphEntityType t;
-} GraphEntity;
+	AST_GraphEntityType t;
+} AST_GraphEntity;
 
-typedef GraphEntity NodeEntity;
+typedef AST_GraphEntity AST_NodeEntity;
 
 typedef struct {
-	GraphEntity ge;
-	LinkDirection direction;
-} LinkEntity;
+	AST_GraphEntity ge;
+	AST_LinkDirection direction;
+} AST_LinkEntity;
 
 typedef struct {
 	union {
@@ -65,100 +65,100 @@ typedef struct {
 			char *property;
 		} nodeVal;
 	};
-	CompareValueType t; // Comapred value type, constant/node
+	AST_CompareValueType t; // Comapred value type, constant/node
 	char *alias;		// Node alias
 	char *property; 	// Node property
 	int op;				// Type of comparison
-} PredicateNode;
+} AST_PredicateNode;
 
 typedef struct conditionNode {
   struct filterNode *left;
   struct filterNode *right;
   int op;
-} ConditionNode;
+} AST_ConditionNode;
 
 typedef struct filterNode {
   union {
-    PredicateNode pn;
-    ConditionNode cn;
+    AST_PredicateNode pn;
+    AST_ConditionNode cn;
   };
-  FilterNodeType t;
-} FilterNode;
+  AST_FilterNodeType t;
+} AST_FilterNode;
 
 typedef struct {
 	Vector *graphEntities;
-} MatchNode;
+} AST_MatchNode;
 
 typedef struct {
-	FilterNode *filters;
-} WhereNode;
+	AST_FilterNode *filters;
+} AST_WhereNode;
 
 typedef struct {
 	Vector *returnElements; // Vector of ReturnElementNode pointers
 	int distinct;
-} ReturnNode;
+} AST_ReturnNode;
 
 typedef struct {
 	int limit;
-} LimitNode;
+} AST_LimitNode;
 
 typedef struct {
 	char *alias;
 	char *property;
-} Variable;
+} AST_Variable;
 
 typedef struct {
-	Variable *variable;
+	AST_Variable *variable;
 	char *func;			// Aggregation function
 	char *alias; 		// Alias given to this return element (using the AS keyword)
-	ReturnElementType type;
-} ReturnElementNode;
+	AST_ReturnElementType type;
+} AST_ReturnElementNode;
 
 typedef struct {
 	Vector *columns;	// Vector of ColumnNodes
-	OrderByDirection direction;
-} OrderNode;
+	AST_OrderByDirection direction;
+} AST_OrderNode;
 
 typedef struct {
 	char *alias;
 	char *property;
-	ColumnNodeType type;
-} ColumnNode;
+	AST_ColumnNodeType type;
+} AST_ColumnNode;
 
 typedef struct {
-	MatchNode *matchNode;
-	WhereNode *whereNode;
-	ReturnNode *returnNode;
-	OrderNode *orderNode;
-	LimitNode *limitNode;
-} QueryExpressionNode;
+	AST_MatchNode *matchNode;
+	AST_WhereNode *whereNode;
+	AST_ReturnNode *returnNode;
+	AST_OrderNode *orderNode;
+	AST_LimitNode *limitNode;
+} 	AST_QueryExpressionNode;
 
-GraphEntity* NewNodeEntity(char *alias, char *label, Vector *properties);
-GraphEntity* NewLinkEntity(char *alias, char *relationship, Vector *properties, LinkDirection dir);
-MatchNode* NewMatchNode(Vector *elements);
-FilterNode* NewConstantPredicateNode(const char *alias, const char *property, int op, SIValue value);
-FilterNode* NewVaryingPredicateNode(const char *lAlias, const char *lProperty, int op, const char *rAlias, const char *rProperty);
-FilterNode* NewConditionNode(FilterNode *left, int op, FilterNode *right);
-WhereNode* NewWhereNode(FilterNode *filters);
-ReturnElementNode* NewReturnElementNode(ReturnElementType type, Variable *variable, const char *aggFunc, const char *alias);
-ReturnNode* NewReturnNode(Vector* returnElements, int distinct);
-OrderNode* NewOrderNode(Vector* columns, OrderByDirection direction);
-ColumnNode* NewColumnNode(const char *alias, const char *prop, ColumnNodeType type);
-ColumnNode* ColumnNodeFromVariable(const Variable *variable);
-ColumnNode* ColumnNodeFromAlias(const char *alias);
-Variable* NewVariable(const char *alias, const char *property);
-LimitNode* NewLimitNode(int limit);
-QueryExpressionNode* NewQueryExpressionNode(MatchNode *matchNode, WhereNode *whereNode, ReturnNode *returnNode, OrderNode *orderNode, LimitNode *limitNode);
+AST_NodeEntity* New_AST_NodeEntity(char *alias, char *label, Vector *properties);
+AST_LinkEntity* New_AST_LinkEntity(char *alias, char *relationship, Vector *properties, AST_LinkDirection dir);
+AST_MatchNode* New_AST_MatchNode(Vector *elements);
+AST_FilterNode* New_AST_ConstantPredicateNode(const char *alias, const char *property, int op, SIValue value);
+AST_FilterNode* New_AST_VaryingPredicateNode(const char *lAlias, const char *lProperty, int op, const char *rAlias, const char *rProperty);
+AST_FilterNode* New_AST_ConditionNode(AST_FilterNode *left, int op, AST_FilterNode *right);
+AST_WhereNode* New_AST_WhereNode(AST_FilterNode *filters);
+AST_ReturnElementNode* New_AST_ReturnElementNode(AST_ReturnElementType type, AST_Variable *variable, const char *aggFunc, const char *alias);
+AST_ReturnNode* New_AST_ReturnNode(Vector* returnElements, int distinct);
+AST_OrderNode* New_AST_OrderNode(Vector* columns, AST_OrderByDirection direction);
+AST_ColumnNode* New_AST_ColumnNode(const char *alias, const char *prop, AST_ColumnNodeType type);
+AST_ColumnNode* AST_ColumnNodeFromVariable(const AST_Variable *variable);
+AST_ColumnNode* AST_ColumnNodeFromAlias(const char *alias);
+AST_Variable* New_AST_Variable(const char *alias, const char *property);
+AST_LimitNode* New_AST_LimitNode(int limit);
+AST_QueryExpressionNode* New_AST_QueryExpressionNode(AST_MatchNode *matchNode, AST_WhereNode *whereNode, AST_ReturnNode *returnNode, AST_OrderNode *orderNode, AST_LimitNode *limitNode);
 
-void FreeVariable(Variable *v);
-void FreeColumnNode(ColumnNode *node);
-void FreeMatchNode(MatchNode *matchNode);
-void FreeWhereNode(WhereNode *whereNode);
-void FreeFilterNode(FilterNode *filterNode);
-void FreeReturnNode(ReturnNode *returnNode);
-void FreeOrderNode(OrderNode *orderNode);
-void FreeLimitNode(LimitNode *limitNode);
-void FreeReturnElementNode(ReturnElementNode *returnElementNode);
-void FreeGraphEntity(GraphEntity *entity);
-void FreeQueryExpressionNode(QueryExpressionNode *queryExpressionNode);
+void Free_AST_Variable(AST_Variable *v);
+void Free_AST_ColumnNode(AST_ColumnNode *node);
+void Free_AST_MatchNode(AST_MatchNode *matchNode);
+void Free_AST_WhereNode(AST_WhereNode *whereNode);
+void Free_AST_FilterNode(AST_FilterNode *filterNode);
+void Free_AST_ReturnNode(AST_ReturnNode *returnNode);
+void Free_AST_OrderNode(AST_OrderNode *orderNode);
+void Free_AST_LimitNode(AST_LimitNode *limitNode);
+void Free_AST_ReturnElementNode(AST_ReturnElementNode *returnElementNode);
+void Free_AST_GraphEntity(AST_GraphEntity *entity);
+void Free_AST_QueryExpressionNode(AST_QueryExpressionNode *queryExpressionNode);
 #endif

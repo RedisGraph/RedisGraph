@@ -1,33 +1,51 @@
 #include "op_expand_all.h"
 #include "../../hexastore/hexastore.h"
 
-OpBase* NewExpandAllOp(RedisModuleCtx *ctx, const char *graphId, Node *srcNode, Edge *relation, Node *destNode) {
-    return (OpBase*)NewExpandAll(ctx, graphId, srcNode, relation, destNode);
+OpBase* NewExpandAllOp(RedisModuleCtx *ctx, Graph *g, const char *graph_name,
+                       Node **src_node, Edge **relation, Node **dest_node) {
+    
+    return (OpBase*)NewExpandAll(ctx, g, graph_name, src_node, relation, dest_node);
 }
 
-ExpandAll* NewExpandAll(RedisModuleCtx *ctx, const char *graphId, Node *srcNode, Edge *relation, Node *destNode) {
-    ExpandAll *expandAll = malloc(sizeof(ExpandAll));
+ExpandAll* NewExpandAll(RedisModuleCtx *ctx, Graph *g, const char *graph_name,
+                        Node **src_node, Edge **relation, Node **dest_node) {
+    
+    ExpandAll *expand_all = malloc(sizeof(ExpandAll));
 
-    expandAll->ctx = ctx;
-    expandAll->srcNode = srcNode;
-    expandAll->destNode = destNode;
-    expandAll->relation = relation;
-    expandAll->hexaStore = GetHexaStore(ctx, graphId);
-    expandAll->iter = NULL;
+    expand_all->ctx = ctx;
+    expand_all->src_node = src_node;
+    expand_all->_src_node = *src_node;
+    expand_all->dest_node = dest_node;
+    expand_all->_dest_node = *dest_node;
+    expand_all->relation = relation;
+    expand_all->_relation = *relation;
+    expand_all->hexastore = GetHexaStore(ctx, graph_name);
+    expand_all->triplet = NewTriplet(NULL, NULL, NULL);
+    expand_all->str_triplet = sdsempty();
+    expand_all->iter = HexaStore_Search(expand_all->hexastore, "");
+    expand_all->state = ExpandAllUninitialized;
 
     // Set our Op operations
-    expandAll->op.name = "Expand All";
-    expandAll->op.type = OPType_EXPAND_ALL;
-    expandAll->op.next = ExpandAllConsume;
-    expandAll->op.reset = ExpandAllReset;
-    expandAll->op.free = ExpandAllFree;
-    expandAll->op.modifies = NewVector(char*, 3);
-    
-    Vector_Push(expandAll->op.modifies, srcNode->alias);
-    Vector_Push(expandAll->op.modifies, relation->alias);
-    Vector_Push(expandAll->op.modifies, destNode->alias);
+    expand_all->op.name = "Expand All";
+    expand_all->op.type = OPType_EXPAND_ALL;
+    expand_all->op.consume = ExpandAllConsume;
+    expand_all->op.reset = ExpandAllReset;
+    expand_all->op.free = ExpandAllFree;
+    expand_all->op.modifies = NewVector(char*, 3);
+        
+    char *modified;
+    /* Not completely true, but at this stage we don't know which entity
+     * is given to us by previous ops, at the moment there's no harm 
+     * in assuming we're modifiying all three entities, this can only effect 
+     * filter operations, which is already aware of previously modified entities. */
+    modified = Graph_GetNodeAlias(g, *src_node);
+    Vector_Push(expand_all->op.modifies, modified);
+    modified = Graph_GetEdgeAlias(g, *relation);
+    Vector_Push(expand_all->op.modifies, modified);
+    modified = Graph_GetNodeAlias(g, *dest_node);
+    Vector_Push(expand_all->op.modifies, modified);
 
-    return expandAll;
+    return expand_all;
 }
 
 /* ExpandAllConsume next operation 
@@ -36,74 +54,82 @@ ExpandAll* NewExpandAll(RedisModuleCtx *ctx, const char *graphId, Node *srcNode,
 OpResult ExpandAllConsume(OpBase *opBase, Graph* graph) {
     ExpandAll *op = (ExpandAll*)opBase;
     
-    if(op->srcNode->id == NULL && op->destNode->id == NULL && op->relation->id == NULL) {
-        return OP_DEPLETED;
+    if(op->state == ExpandAllUninitialized) {
+        return OP_REFRESH;
     }
 
-    if(op->iter == NULL) {
-        Triplet *t = TripletFromEdge(op->relation);
-        op->iter = HexaStore_QueryTriplet(op->hexaStore, t);
-        FreeTriplet(t);
+    /* State reseted. */
+    if(op->state == ExpandAllResetted) {
+        op->triplet->subject = *(op->src_node);
+        op->triplet->predicate = *(op->relation);
+        op->triplet->object = *(op->dest_node);
+        if(op->triplet->kind == UNKNOW) op->triplet->kind = TripletGetKind(op->triplet);
+
+        if(op->modifies.kind == UNKNOW) {
+            int s = (op->triplet->subject->id == INVALID_ENTITY_ID);
+            int o = (op->triplet->object->id == INVALID_ENTITY_ID);
+            int p = (op->triplet->predicate->id == INVALID_ENTITY_ID);
+            op->modifies.kind = (s > 0) << 2 | (o > 0) << 1 | (p > 0);
+        }
+
+        /* Overrides current value with triplet string representation,
+        * if string buffer is large enough, there will be no allocation. */
+        TripletToString(op->triplet, &op->str_triplet);
+        
+        /* Search hexastore, reuse iterator. */
+        HexaStore_Search_Iterator(op->hexastore, op->str_triplet, op->iter);
+
+        op->state = ExpandAllConsuming;
     }
     
     Triplet *triplet = NULL;
     if(!TripletIterator_Next(op->iter, &triplet)) {
-        return OP_DEPLETED;
+        return OP_REFRESH;
     }
 
     /* TODO: Make sure retrieved id are indeed
      * labeled under nodes / edge lables. */
-
-    // clear ids before update
-    if(op->srcNode->id != NULL) {
-        free(op->srcNode->id);
+         
+    /* Update graph. */
+    if(op->modifies.kind & S) {
+        *op->src_node = triplet->subject;
     }
-    if(op->relation->id != NULL) {
-        free(op->relation->id);
+    if(op->modifies.kind & P) {
+        *op->relation = triplet->predicate;
     }
-    if(op->destNode->id != NULL) {
-        free(op->destNode->id);
+    if(op->modifies.kind & O) {
+        *op->dest_node = triplet->object;
     }
-
-    // Update graph
-    op->srcNode->id = strdup(triplet->subject);
-    op->relation->id = strdup(triplet->predicate);
-    op->destNode->id = strdup(triplet->object);
-    
     return OP_OK;
 }
 
 OpResult ExpandAllReset(OpBase *ctx) {
-    ExpandAll *op = ctx;
-
-    if(op->srcNode->id != NULL) {
-        free(op->srcNode->id);
-        op->srcNode->id = NULL;
-    }
-
-    if(op->destNode->id != NULL) {
-        free(op->destNode->id);
-        op->destNode->id = NULL;
-    }
-
-    if(op->relation->id != NULL) {
-        free(op->relation->id);
-        op->relation->id = NULL;
-    }
+    ExpandAll *op = (ExpandAll*)ctx;
     
-    if(op->iter != NULL) {
-        TripletIterator_Free(op->iter);
-        op->iter = NULL;
+    /* Reset triplet string representation. */
+    op->str_triplet[0] = '\0';
+	sdsupdatelen(op->str_triplet);
+
+    if(op->modifies.kind & S) {
+        *op->src_node = op->_src_node;
     }
-    
+    if(op->modifies.kind & O) {
+        *op->dest_node = op->_dest_node;
+    }
+    if(op->modifies.kind & P) {
+        *op->relation = op->_relation;
+    }
+
+    op->state = ExpandAllResetted;   /* Mark reset. */
     return OP_OK;
 }
 
 /* Frees ExpandAll */
 void ExpandAllFree(OpBase *ctx) {
-    ExpandAll *op = ctx;
+    ExpandAll *op = (ExpandAll*)ctx;
     if(op->iter != NULL) {
         TripletIterator_Free(op->iter);
     }
+    sdsfree(op->str_triplet);
     free(op);
 }

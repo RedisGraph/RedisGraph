@@ -22,13 +22,13 @@ Store *GetStore(RedisModuleCtx *ctx, StoreType type, const char *graph, const ch
 // Returns the number of items within the store
 int Store_Cardinality(Store *store);
 
-void Store_Insert(Store *store, const char *id, void *value);
+void Store_Insert(Store *store, char *id, void *value);
 
-void Store_Remove(Store *store, const char *id);
+void Store_Remove(Store *store, char *id);
 
 StoreIterator *Store_Search(Store *store, const char *prefix);
 
-void *Store_Get(Store *store, const char *id);
+void *Store_Get(Store *store, char *id);
 
 void Store_Free(Store *store, void (*freeCB)(void *));
 

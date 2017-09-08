@@ -10,17 +10,17 @@
 #include "parser/parser_common.h"
 #include "aggregate/repository.h"
 
-Graph* BuildGraph(const MatchNode* matchNode) {
+Graph* BuildGraph(const AST_MatchNode *matchNode) {
     Graph* g = NewGraph();
     Vector* stack = NewVector(void*, 3);
     
     for(int i = 0; i < Vector_Size(matchNode->graphEntities); i++) {
-        GraphEntity *entity;
+        AST_GraphEntity *entity;
         Vector_Get(matchNode->graphEntities, i, &entity);
 
         if(entity->t == N_ENTITY) {
-            Node *n = NewNode(entity->alias, NULL, entity->label);
-            Graph_AddNode(g, n);
+            Node *n = NewNode(INVALID_ENTITY_ID, entity->label);
+            Graph_AddNode(g, n, entity->alias);
             Vector_Push(stack, n);
         } else {
             Vector_Push(stack, entity);
@@ -28,7 +28,7 @@ Graph* BuildGraph(const MatchNode* matchNode) {
 
         if(Vector_Size(stack) == 3) {
             Node* a;
-            LinkEntity* edge;
+            AST_LinkEntity* edge;
             Node* c;
 
             Vector_Pop(stack, &c);
@@ -36,110 +36,71 @@ Graph* BuildGraph(const MatchNode* matchNode) {
             Vector_Pop(stack, &a);
 
             if(edge->direction == N_LEFT_TO_RIGHT) {
-                Edge *e = NewEdge(NULL, edge->ge.alias, a, c, edge->ge.label);
-                ConnectNode(a, c, e);
+                Edge *e = NewEdge(INVALID_ENTITY_ID, a, c, edge->ge.label);
+                Graph_ConnectNodes(g, a, c, e, edge->ge.alias);
             } else {
-                Edge *e = NewEdge(NULL, edge->ge.alias, c, a, edge->ge.label);
-                ConnectNode(c, a, e);
+                Edge *e = NewEdge(INVALID_ENTITY_ID, c, a, edge->ge.label);
+                Graph_ConnectNodes(g, c, a, e, edge->ge.alias);
             }
             
-            // reintroduce last pushed item
+            /* Reintroduce last pushed item. */
             Vector_Push(stack, c);
-        } // if ends
-    } // For loop ends
+        } /* If ends. */
+    } /* For loop ends. */
 
     Vector_Free(stack);    
     return g;
 }
 
-void GetElementProperyValue(RedisModuleCtx *ctx, const char *elementID, const char *property, RedisModuleString **propValue) {
-    RedisModuleString* keyStr =
-        RedisModule_CreateString(ctx, elementID, strlen(elementID));
-
-    RedisModuleKey *key = 
-        RedisModule_OpenKey(ctx, keyStr, REDISMODULE_READ);
-
-    if(key == NULL) {
-        printf("ERROR: trying to get property:[%s] from a missing key:[%s]\n", property, elementID);
-        RedisModule_FreeString(ctx, keyStr);
-        (*propValue) = NULL;
-        return;
-    }
-
-    RedisModuleString* elementProp =
-        RedisModule_CreateString(ctx, property, strlen(property));
-
-    RedisModule_HashGet(key, REDISMODULE_HASH_NONE, elementProp, propValue, NULL);
-
-    RedisModule_CloseKey(key);
-    RedisModule_FreeString(ctx, keyStr);
-    RedisModule_FreeString(ctx, elementProp);
-}
-
-// type specifies the type of return elements to Retrieve
-Vector* _ReturnClause_RetrieveValues(RedisModuleCtx *ctx, const ReturnNode* returnNode, const Graph* g, ReturnElementType type) {
-    Vector* returnedProps = NewVector(RedisModuleString*, Vector_Size(returnNode->returnElements));
+/* Type specifies the type of return elements to Retrieve. */
+Vector* _ReturnClause_RetrieveValues(const AST_ReturnNode *returnNode, const Graph *g, AST_ReturnElementType type) {
+    Vector* returned_props = NewVector(SIValue*, Vector_Size(returnNode->returnElements));
 
     for(int i = 0; i < Vector_Size(returnNode->returnElements); i++) {
-        ReturnElementNode* retElem;
+        AST_ReturnElementNode *retElem;
         Vector_Get(returnNode->returnElements, i, &retElem);
 
-        // Skip elements not of specified type
+        /* Skip elements not of specified type. */
         if(retElem->type != type) {
             continue;
         }
 
-        char *entityID = NULL;
-        Node* n = Graph_GetNodeByAlias(g, retElem->variable->alias);
-        if(n != NULL) {
-            entityID = n->id;
-        } else {
-            Edge *e = Graph_GetEdgeByAlias(g, retElem->variable->alias);
-            if(e != NULL) {
-                entityID = e->id;
-            }
+        GraphEntity *e = Graph_GetEntityByAlias(g, retElem->variable->alias);
+        SIValue *property = GraphEntity_Get_Property(e, retElem->variable->property);
+        if(property == PROPERTY_NOTFOUND) {
+            /* Couldn't find prop for id.
+             * TODO: Free returned_props. */
+            Vector_Free(returned_props);
+            return NULL;
         }
+        Vector_Push(returned_props, property);
+    }
 
-        if(retElem->variable->property != NULL) {
-            RedisModuleString* prop;
-            GetElementProperyValue(ctx, entityID, retElem->variable->property, &prop);
-            if(prop == NULL) {
-                // Couldn't find prop for id.
-                // TODO: Free returnedProps.
-                return NULL;
-            } else {
-                Vector_Push(returnedProps, prop);
-            }
-        } else {
-            // Couldn't find an API for HGETALL.
-        }
-    } // End of for loop
-
-    return returnedProps;
+    return returned_props;
 }
 
-// Retrieves all request values specified in return clause
-// Returns a vector of RedisModuleString*
-Vector* ReturnClause_RetrievePropValues(RedisModuleCtx *ctx, const ReturnNode* returnNode, const Graph* g) {
-    return _ReturnClause_RetrieveValues(ctx, returnNode, g, N_PROP);
+/* Retrieves all request values specified in return clause
+ * Returns a vector of SIValue* */
+Vector* ReturnClause_RetrievePropValues(const AST_ReturnNode *returnNode, const Graph *g) {
+    return _ReturnClause_RetrieveValues(returnNode, g, N_PROP);
 }
 
-// Retrieves "GROUP BY" values.
-// Returns a vector of RedisModuleString*
-Vector* ReturnClause_RetrieveGroupKeys(RedisModuleCtx *ctx, const ReturnNode* returnNode, const Graph* g) {
-    return _ReturnClause_RetrieveValues(ctx, returnNode, g, N_PROP);
+/* Retrieves "GROUP BY" values.
+ * Returns a vector of SIValue* */
+Vector* ReturnClause_RetrieveGroupKeys(const AST_ReturnNode *returnNode, const Graph *g) {
+    return _ReturnClause_RetrieveValues(returnNode, g, N_PROP);
 }
 
-// Retrieves all aggregated properties from graph.
-// e.g. SUM(Person.age)
-// Returns a vector of RedisModuleString*
-Vector* ReturnClause_RetrieveGroupAggVals(RedisModuleCtx *ctx, const ReturnNode* returnNode, const Graph* g) {
-    return _ReturnClause_RetrieveValues(ctx, returnNode, g, N_AGG_FUNC);
+/* Retrieves all aggregated properties from graph.
+ * e.g. SUM(Person.age)
+ * Returns a vector of SIValue* */
+Vector* ReturnClause_RetrieveGroupAggVals(const AST_ReturnNode *returnNode, const Graph *g) {
+    return _ReturnClause_RetrieveValues(returnNode, g, N_AGG_FUNC);
 }
 
-int ReturnClause_ContainsCollapsedNodes(const ReturnNode *returnNode) {
+int ReturnClause_ContainsCollapsedNodes(const AST_ReturnNode *returnNode) {
     for(int i = 0; i < Vector_Size(returnNode->returnElements); i++) {
-        ReturnElementNode *returnElementNode;
+        AST_ReturnElementNode *returnElementNode;
         Vector_Get(returnNode->returnElements, i, &returnElementNode);
         if(returnElementNode->type == N_NODE) {
             return 1;
@@ -148,12 +109,12 @@ int ReturnClause_ContainsCollapsedNodes(const ReturnNode *returnNode) {
     return 0;
 }
 
-// Checks if return clause uses aggregation.
-int ReturnClause_ContainsAggregation(const ReturnNode* returnNode) {
+/* Checks if return clause uses aggregation. */
+int ReturnClause_ContainsAggregation(const AST_ReturnNode *returnNode) {
     int res = 0;
 
     for(int i = 0; i < Vector_Size(returnNode->returnElements); i++) {
-        ReturnElementNode* retElem;
+        AST_ReturnElementNode *retElem;
         Vector_Get(returnNode->returnElements, i, &retElem);
         if(retElem->type == N_AGG_FUNC) {
             res = 1;
@@ -164,11 +125,11 @@ int ReturnClause_ContainsAggregation(const ReturnNode* returnNode) {
     return res;
 }
 
-Vector* ReturnClause_GetAggFuncs(RedisModuleCtx *ctx, const ReturnNode* returnNode) {
+Vector* ReturnClause_GetAggFuncs(RedisModuleCtx *ctx, const AST_ReturnNode *returnNode) {
     Vector* aggFunctions = NewVector(AggCtx*, 0);
 
     for(int i = 0; i < Vector_Size(returnNode->returnElements); i++) {
-        ReturnElementNode* retElem;
+        AST_ReturnElementNode *retElem;
         Vector_Get(returnNode->returnElements, i, &retElem);
 
         if(retElem->type == N_AGG_FUNC) {
@@ -186,81 +147,71 @@ Vector* ReturnClause_GetAggFuncs(RedisModuleCtx *ctx, const ReturnNode* returnNo
     return aggFunctions;
 }
 
-void ReturnClause_ExpandCollapsedNodes(RedisModuleCtx *ctx, QueryExpressionNode *ast, const char *graphName) {
+void ReturnClause_ExpandCollapsedNodes(RedisModuleCtx *ctx, AST_QueryExpressionNode *ast, const char *graphName) {
     /* Assumption, each collapsed node is tagged with a label
      * TODO: maintain a label schema, this way we won't have
      * to call HGETALL each time to discover label attributes */
-    Vector *expandReturnElements = NewVector(ReturnElementNode *, Vector_Size(ast->returnNode->returnElements));
+    Vector *expandReturnElements = NewVector(AST_ReturnElementNode*, Vector_Size(ast->returnNode->returnElements));
 
     for(int i = 0; i < Vector_Size(ast->returnNode->returnElements); i++) {
-        ReturnElementNode *node;
-        Vector_Get(ast->returnNode->returnElements, i, &node);
+        AST_ReturnElementNode *ret_elem;
+        Vector_Get(ast->returnNode->returnElements, i, &ret_elem);
         
-        if(node->type != N_NODE) {
-            Vector_Push(expandReturnElements, node);
+        if(ret_elem->type != N_NODE) {
+            Vector_Push(expandReturnElements, ret_elem);
             continue;
         }
         
-        // Find collapsed node's label
-        GraphEntity *collapsedNode = NULL;
+        /* Find collapsed node's label. */
+        AST_GraphEntity *collapsed_entity = NULL;
         for(int j = 0; j < Vector_Size(ast->matchNode->graphEntities); j++) {
-            GraphEntity *ge;
+            AST_GraphEntity *ge;
             Vector_Get(ast->matchNode->graphEntities, j, &ge);
-            if(ge->t != N_ENTITY) {
-                continue;
-            }
-            if(strcmp(ge->alias, node->variable->alias) == 0) {
-                collapsedNode = ge;
+            if(strcmp(ge->alias, ret_elem->variable->alias) == 0) {
+                collapsed_entity = ge;
                 break;
             }
         }
 
-        if(collapsedNode == NULL) {
-            // Invalud query, return clause refers to none existing node.
-            // TODO: Validate query.
-            printf("Error, could not find collapsed node\n");
+        if(collapsed_entity == NULL) {
+            /* Invalud query, return clause refers to none existing entity. */
+            /* TODO: Validate query. */
+            printf("Error, could not find collapsed entity\n");
             return;
         }
 
-        // Discard collapsed node.
-        FreeReturnElementNode(node);
+        /* Discard collapsed node. */
+        Free_AST_ReturnElementNode(ret_elem);
         
-        // Find an id, for node label
-        Store *s = GetStore(ctx, STORE_NODE, graphName, collapsedNode->label);
-
+        /* Find an id, for entity. */
+        StoreType store_type = (collapsed_entity->t == N_ENTITY) ? STORE_NODE : STORE_EDGE;
+        Store *s = GetStore(ctx, store_type, graphName, collapsed_entity->label);
         StoreIterator *it = Store_Search(s, "");
         char *id;
-        tm_len_t idLen;
-        Node *retrievedNode;
-        StoreIterator_Next(it, &id, &idLen, &retrievedNode);
-        
-        RedisModuleString *rmId = RedisModule_CreateString(ctx, id, idLen);
-        RMUtilInfo *attributes = RMUtil_HGetAll(ctx, rmId);
-        RedisModule_FreeString(ctx, rmId);
+        tm_len_t id_len;
+        GraphEntity *entity;
+        StoreIterator_Next(it, &id, &id_len, (void**)&entity);
         StoreIterator_Free(it);
         
-        for(int j = 0; j < attributes->numEntries; j++) {
-            RMUtilInfoEntry entry = attributes->entries[j];
-            // Create a new return element.
-            Variable* var = NewVariable(collapsedNode->alias, entry.key);
-            free(entry.key);
-            free(entry.val);
-            ReturnElementNode* retElem = NewReturnElementNode(N_PROP, var, NULL, NULL);
+        for(int j = 0; j < entity->prop_count; j++) {
+            /* Create a new return element. */
+            AST_Variable *var = New_AST_Variable(collapsed_entity->alias,
+                                                 entity->properties[j].name);
+            AST_ReturnElementNode *retElem = New_AST_ReturnElementNode(N_PROP, var, NULL, NULL);
             Vector_Push(expandReturnElements, retElem);
         }
-        RMUtilRedisInfo_Free(attributes);
     }
-    // Override previous return clause
+    /* Override previous return clause. */
     Vector_Free(ast->returnNode->returnElements);
     ast->returnNode->returnElements = expandReturnElements;
 }
 
-void nameAnonymousNodes(QueryExpressionNode *ast) {
+void nameAnonymousNodes(AST_QueryExpressionNode *ast) {
     Vector *entities = ast->matchNode->graphEntities;
     
-    // Foreach graph entity: node/edge.
+    /* Foreach graph entity: node/edge. */
     for(int i = 0; i < Vector_Size(entities); i++) {
-        GraphEntity *entity;
+        AST_GraphEntity *entity;
         Vector_Get(entities, i, &entity);
         
         if (entity->alias == NULL) {
@@ -269,13 +220,13 @@ void nameAnonymousNodes(QueryExpressionNode *ast) {
     }
 }
 
-void inlineProperties(QueryExpressionNode *ast) {
-    // migrate inline filters to WHERE clause
+void inlineProperties(AST_QueryExpressionNode *ast) {
+    /* Migrate inline filters to WHERE clause. */
     Vector *entities = ast->matchNode->graphEntities;
 
-    // Foreach entity
+    /* Foreach entity. */
     for(int i = 0; i < Vector_Size(entities); i++) {
-        GraphEntity *entity;
+        AST_GraphEntity *entity;
         Vector_Get(entities, i, &entity);
 
         Vector *properties = entity->properties;
@@ -283,7 +234,7 @@ void inlineProperties(QueryExpressionNode *ast) {
             continue;
         }
 
-        // Foreach property
+        /* Foreach property. */
         for(int j = 0; j < Vector_Size(properties); j+=2) {
             SIValue *key;
             SIValue *val;
@@ -294,29 +245,29 @@ void inlineProperties(QueryExpressionNode *ast) {
             const char *alias = entity->alias;
             const char *property = key->stringval.str;
 
-            FilterNode *filterNode = NewConstantPredicateNode(alias, property, EQ, *val);
+            AST_FilterNode *filterNode = New_AST_ConstantPredicateNode(alias, property, EQ, *val);
             
-            // Create WHERE clause if missing.
+            /* Create WHERE clause if missing. */
             if(ast->whereNode == NULL) {
-                ast->whereNode = NewWhereNode(filterNode);
+                ast->whereNode = New_AST_WhereNode(filterNode);
             } else {
-                // Introduce filter with AND operation
-                FilterNode *left = ast->whereNode->filters;
-                FilterNode *right = filterNode;
-                ast->whereNode->filters = NewConditionNode(left, AND, right);
+                /* Introduce filter with AND operation. */
+                AST_FilterNode *left = ast->whereNode->filters;
+                AST_FilterNode *right = filterNode;
+                ast->whereNode->filters = New_AST_ConditionNode(left, AND, right);
             }
         }
     }
 }
 
-QueryExpressionNode* ParseQuery(const char *query, size_t qLen, char **errMsg) {
-    QueryExpressionNode *ast = Query_Parse(query, qLen, errMsg);
+AST_QueryExpressionNode* ParseQuery(const char *query, size_t qLen, char **errMsg) {
+    AST_QueryExpressionNode *ast = Query_Parse(query, qLen, errMsg);
     
     if (!ast) {
         return NULL;
     }
     
-    // Modify AST
+    /* Modify AST. */
     nameAnonymousNodes(ast);
     inlineProperties(ast);
 

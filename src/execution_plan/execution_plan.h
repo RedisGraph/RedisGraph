@@ -4,17 +4,29 @@
 #include "./ops/op.h"
 #include "../parser/ast.h"
 #include "../resultset/resultset.h"
+#include "../filter_tree/filter_tree.h"
 
+
+/* StreamState
+ * Different states in which stream can be at. */
+typedef enum {
+    StreamUnInitialized,
+    StreamConsuming,
+    StreamDepleted,
+} StreamState;
 
 struct OpNode;
 
-typedef struct {
-    OpBase *operation;          // node operation
-    struct OpNode **children;   // child operations
-    int childCount;             // number of children
-    struct OpNode **parents;    // parent operations
-    int parentCount;            // number of parents
-} OpNode;
+struct OpNode {
+    OpBase *operation;          /* Node operation. */
+    struct OpNode **children;   /* Child operations. */
+    int childCount;             /* Number of children. */
+    struct OpNode **parents;    /* Parent operations. */
+    int parentCount;            /* Number of parents. */
+    StreamState state;          /* Stream state. */
+};
+
+typedef struct OpNode OpNode;
 
 OpNode* NewOpNode(OpBase *op);
 void OpNode_Free(OpNode* op);
@@ -23,11 +35,12 @@ void OpNode_Free(OpNode* op);
 typedef struct {
     OpNode *root;
     Graph *graph;
+    FT_FilterNode *filter_tree;
     const char *graphName;
 } ExecutionPlan;
 
 /* Creates a new execution plan from AST */
-ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, const char *graph, QueryExpressionNode *ast);
+ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, const char *graph, AST_QueryExpressionNode *ast);
 
 /* Prints execution plan */
 char* ExecutionPlanPrint(const ExecutionPlan *plan);

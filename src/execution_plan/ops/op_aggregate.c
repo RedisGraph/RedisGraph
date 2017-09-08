@@ -5,11 +5,11 @@
 #include "../../grouping/group_cache.h"
 #include "../../query_executor.h"
 
-OpBase* NewAggregateOp(RedisModuleCtx *ctx, QueryExpressionNode *ast) {
-    return NewAggregate(ctx, ast);
+OpBase* NewAggregateOp(RedisModuleCtx *ctx, AST_QueryExpressionNode *ast) {
+    return (OpBase*)NewAggregate(ctx, ast);
 }
 
-Aggregate* NewAggregate(RedisModuleCtx *ctx, QueryExpressionNode *ast) {
+Aggregate* NewAggregate(RedisModuleCtx *ctx, AST_QueryExpressionNode *ast) {
     Aggregate *aggregate = malloc(sizeof(Aggregate));
     aggregate->ctx = ctx;
     aggregate->ast = ast;
@@ -18,60 +18,49 @@ Aggregate* NewAggregate(RedisModuleCtx *ctx, QueryExpressionNode *ast) {
 
     aggregate->op.name = "Aggregate";
     aggregate->op.type = OPType_AGGREGATE;
-    aggregate->op.next = AggregateConsume;
+    aggregate->op.consume = AggregateConsume;
     aggregate->op.reset = AggregateReset;
     aggregate->op.free = AggregateFree;
     aggregate->op.modifies = NULL;
     return aggregate;
 }
 
-void _aggregateRecord(RedisModuleCtx *ctx, const ReturnNode* returnTree, const Graph* g) {
-    // Get group
-    Vector* groupKeys = ReturnClause_RetrieveGroupKeys(ctx, returnTree, g);
-    char* groupKey = NULL;
-    RMUtil_StringConcat(groupKeys, ",", &groupKey);
+void _aggregateRecord(RedisModuleCtx *ctx, const AST_ReturnNode* returnTree, const Graph* g) {
+    /* Get group */
+    Vector* groupKeys = ReturnClause_RetrieveGroupKeys(returnTree, g);
+    char* groupKey;
+    SIValue_StringConcat(groupKeys, &groupKey);
     // TODO: free groupKeys
 
     Group* group = NULL;
     CacheGroupGet(groupKey, &group);
 
-    if(group == NULL) {
-        // Create a new group
-        // Get aggregation functions
+    if(!group) {
+        /* Create a new group
+         * Get aggregation functions. */
         group = NewGroup(groupKeys, ReturnClause_GetAggFuncs(ctx, returnTree));
         CacheGroupAdd(groupKey, group);
     }
 
-    // TODO: why can't we free groupKey?
-    // free(groupKey);
-
-    Vector* valsToAgg = ReturnClause_RetrieveGroupAggVals(ctx, returnTree, g);
+    Vector* valsToAgg = ReturnClause_RetrieveGroupAggVals(returnTree, g);
 
     // Run each value through its coresponding function.
     for(int i = 0; i < Vector_Size(valsToAgg); i++) {
-        RedisModuleString* value = NULL;
+        SIValue *value;
         Vector_Get(valsToAgg, i, &value);
-        size_t len;
-        const char* strValue = RedisModule_StringPtrLen(value, &len);
-
-        // Convert to double SIValue.
-        SIValue numValue;
-        numValue.type = T_DOUBLE;
-        SI_ParseValue(&numValue, strValue, len);
-
-        AggCtx* funcCtx = NULL;
+        
+        AggCtx* funcCtx;
         Vector_Get(group->aggregationFunctions, i, &funcCtx);
-        Agg_Step(funcCtx, &numValue, 1);
+        Agg_Step(funcCtx, value, 1);
     }
-    // TODO: free valsToAgg
 }
 
 OpResult AggregateConsume(OpBase *opBase, Graph* graph) {
-    Aggregate* op = opBase;
+    Aggregate *op = (Aggregate*)opBase;
 
     if(!op->init) {
         op->init = 1;
-        return OP_DEPLETED;
+        return OP_REFRESH;
     }
 
     if(op->refreshAfterPass == 1) {
@@ -89,7 +78,7 @@ OpResult AggregateReset(OpBase *opBase) {
     return OP_OK;
 }
 
-void AggregateFree(Aggregate *opBase) {
-    Aggregate *op = opBase;
+void AggregateFree(OpBase *opBase) {
+    Aggregate *op = (Aggregate*)opBase;
     free(op);
 }

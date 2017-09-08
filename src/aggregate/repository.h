@@ -2,7 +2,7 @@
 #define __AGG_FUNC_REPO_H__
 
 #include "agg_ctx.h"
-#include "functions.h"
+#include "agg_funcs.h"
 
 // AggCtx* Agg_GetFunc(const char* name);
 void Agg_GetFunc(const char* name, AggCtx** ctx);

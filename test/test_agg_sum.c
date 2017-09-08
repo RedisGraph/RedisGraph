@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "assert.h"
-#include "../src/aggregate/functions.h"
+#include "../src/aggregate/agg_funcs.h"
 #include "../src/value.h"
 
 int main(int argc, char **argv) {

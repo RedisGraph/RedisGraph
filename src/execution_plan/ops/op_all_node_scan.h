@@ -12,17 +12,19 @@
  * Sets node id to current element */
 
  typedef struct {
-     OpBase op;
-     Node *node;                // node being scanned
-     RedisModuleCtx *ctx;       // redis module API context
-     const char *graph;          // queried graph id
-     StoreIterator *iter;       // graph iterator
+    OpBase op;
+    Node **node;            /* node being scanned */
+    Node *_node;
+    Store *store;           /* store being scanned */
+    RedisModuleCtx *ctx;    /* redis module API context */
+    const char *graph;      /* queried graph id */
+    StoreIterator *iter;    /* graph iterator */
  } AllNodeScan;
 
-OpBase* NewAllNodeScanOp(RedisModuleCtx *ctx, Node *node, const char *graph);
-AllNodeScan* NewAllNodeScan(RedisModuleCtx *ctx, Node *node, const char *graph);
+OpBase* NewAllNodeScanOp(RedisModuleCtx *ctx, Graph *g, Node **n, const char *graph_name);
+AllNodeScan* NewAllNodeScan(RedisModuleCtx *ctx, Graph *g, Node **n, const char *graph_name);
 OpResult AllNodeScanConsume(OpBase *opBase, Graph* graph);
 OpResult AllNodeScanReset(OpBase *op);
-void AllNodeScanFree(AllNodeScan *allNodeScan);
+void AllNodeScanFree(OpBase *ctx);
 
 #endif

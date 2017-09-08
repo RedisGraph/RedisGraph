@@ -4,50 +4,58 @@
 #include "../src/graph/node.h"
 #include "../src/graph/edge.h"
 
-void testNodeConnect() {
-	Node *a = NewNode("", "", NULL);
-	Node *b = NewNode("", "", NULL);
+void test_node_creation() {
+	Node *node = NewNode(1l, "city");
 
-	Edge *e = NewEdge("1", NULL, a, b, "relationship");
-	ConnectNode(a, b, e);
-
-	assert(Vector_Size(a->outgoingEdges) == 1);
-	assert(Vector_Size(b->outgoingEdges) == 0);
-
-	assert(Vector_Size(a->incomingEdges) == 0);
-	assert(Vector_Size(b->incomingEdges) == 1);
-	
-	Vector_Get(a->outgoingEdges, 0, &e);
-
-	assert(e->src == a);
-	assert(e->dest == b);
-	assert(strcmp(e->relationship, "relationship") == 0);
-
-	FreeNode(a);
-	FreeNode(b);
+	assert(node != NULL);
+	assert(node->id == 1l);
+	assert(node->prop_count == 0);
+	assert(node->properties == NULL);
+	assert(Vector_Size(node->outgoingEdges) == 0);
+	assert(Vector_Size(node->incomingEdges) == 0);
+	assert(strcmp(node->label, "city") == 0);
+	FreeNode(node);
 }
 
-void TestNodeCreation() {
-	// Empty node
-	Node* node = NewNode("", "", NULL);
-	assert(strcmp(node->alias, "") == 0);
-	assert(strcmp(node->id, "") == 0);
-	assert(Vector_Size(node->incomingEdges) == 0);
-	assert(Vector_Size(node->outgoingEdges) == 0);
-	FreeNode(node);
+void test_node_props() {
+	Node *node = NewNode(1l, "city");
 
-	// Named node with alias and id
-	node = NewNode("alias", "id", NULL);
-	assert(strcmp(node->alias, "alias") == 0);
-	assert(strcmp(node->id, "id") == 0);
-	assert(Vector_Size(node->incomingEdges) == 0);
-	assert(Vector_Size(node->outgoingEdges) == 0);
+	char *keys[2] = {"neighborhood", "block"};
+	SIValue vals[2] = { SI_StringValC("rambam"), SI_IntVal(10)};
+
+	GraphEntity_Add_Properties((GraphEntity*)node, 2, keys, vals);
+
+	SIValue *val = GraphEntity_Get_Property((GraphEntity*)node, "neighborhood");
+	assert(strcmp(val->stringval.str, "rambam") == 0);
+	
+	val = GraphEntity_Get_Property((GraphEntity*)node, "block");
+	assert(val->intval == 10);
+
+	val = GraphEntity_Get_Property((GraphEntity*)node, "fake");
+	assert(val == PROPERTY_NOTFOUND);
+
 	FreeNode(node);
+}
+
+void test_node_edges() {
+	Node *src = NewNode(1l, "city");
+	Node *dest = NewNode(2l, "flight");
+	Edge *edge = NewEdge(3l, src, dest, "lands");
+
+	Node_ConnectNode(src, dest, edge);
+	
+	assert(Node_IncomeDegree(src) == 0);
+	assert(Node_IncomeDegree(dest) == 1);
+
+	FreeNode(src);
+	FreeNode(dest);
+	FreeEdge(edge);
 }
 
 int main(int argc, char **argv) {
-	testNodeConnect();
-	TestNodeCreation();
+	test_node_creation();
+	test_node_props();
+	test_node_edges();
 	printf("PASS!");
     return 0;
 }

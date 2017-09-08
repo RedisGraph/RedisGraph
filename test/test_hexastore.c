@@ -1,91 +1,77 @@
 #include <stdio.h>
 #include <string.h>
 #include "assert.h"
+#include "../src/util/prng.h"
 #include "../src/hexastore/hexastore.h"
 #include "../src/hexastore/triplet.h"
 
-
 void test_hexastore() {
-    HexaStore *hexastore = _NewHexaStore();
-    Triplet *triplet = NewTriplet("Michael", "Works", "Dunder Mifflin");
+    Triplet *t;
+    TripletIterator *it;
+    long int id;
 
-    HexaStore_InsertTriplet(hexastore, triplet);
-    TripletIterator *iter = HexaStore_Search(hexastore, "SPO:Michael:Works:");
-    
-    Triplet *item = NULL;
-    
-    int res = TripletIterator_Next(iter, &item);
-    assert(item != NULL);
-    assert(res);
+    id = get_new_id();
+    Node *subject_node = NewNode(id, "actor");
+	id = get_new_id();
+    Node *object_node = NewNode(id, "movie");
+	id = get_new_id();
+    Edge *predicate_edge = NewEdge(id, subject_node, object_node, "act");
+    Triplet *triplet = NewTriplet(subject_node, predicate_edge, object_node);
 
-    res = TripletIterator_Next(iter, &item);
-    assert(!res);
+	HexaStore *hexastore = _NewHexaStore();
+    assert(hexastore);
     
-    ////////////////////////////////////////////////////////////////////////////////
+    HexaStore_InsertAllPerm(hexastore,  triplet);
+    assert(hexastore->cardinality == 6);
 
-    iter = HexaStore_Search(hexastore, "S");
-    item = NULL;
-    
-    // SOP, SPO
-    for(int i = 0; i < 2; i++) {
-        res = TripletIterator_Next(iter, &item);
-        assert(item != NULL);
-        assert(res);
+    /* Note re-introducing the same triplet will seg-fault
+     * this is because the same triplet is used six times.
+     * i.e. freed six times */
+
+    /* Search hexastore.
+     * Scan entire hexastore. */
+    it = HexaStore_Search(hexastore, "");
+    for(int i = 0; i < 6; i++) {        
+        assert(TripletIterator_Next(it, &t));
+        assert(t == triplet);
     }
+    assert(!TripletIterator_Next(it, &t));
 
-    res = TripletIterator_Next(iter, &item);
-    assert(!res);
+    /* Searching all possible permutations. */
+    it = HexaStore_Search(hexastore, "SPO");
+    assert(TripletIterator_Next(it, &t));
+    assert(!TripletIterator_Next(it, &t));
 
-    ////////////////////////////////////////////////////////////////////////////////
+    it = HexaStore_Search(hexastore, "SOP");
+    assert(TripletIterator_Next(it, &t));
+    assert(!TripletIterator_Next(it, &t));
 
-    iter = HexaStore_Search(hexastore, "O");
-    item = NULL;
-    
-    // OPS, OSP
-    for(int i = 0; i < 2; i++) {
-        res = TripletIterator_Next(iter, &item);
-        assert(item != NULL);
-        assert(res);
-    }
+    it = HexaStore_Search(hexastore, "PSO");
+    assert(TripletIterator_Next(it, &t));
+    assert(!TripletIterator_Next(it, &t));
 
-    res = TripletIterator_Next(iter, &item);
-    assert(!res);
-    
-    ////////////////////////////////////////////////////////////////////////////////
+    it = HexaStore_Search(hexastore, "POS");
+    assert(TripletIterator_Next(it, &t));
+    assert(!TripletIterator_Next(it, &t));
 
-    iter = HexaStore_Search(hexastore, "P");
-    item = NULL;
-    
-    // PSO, POS
-    for(int i = 0; i < 2; i++) {
-        res = TripletIterator_Next(iter, &item);
-        assert(item != NULL);
-        assert(res);
-    }
+    it = HexaStore_Search(hexastore, "OSP");
+    assert(TripletIterator_Next(it, &t));
+    assert(!TripletIterator_Next(it, &t));
 
-    res = TripletIterator_Next(iter, &item);
-    assert(!res);
+    it = HexaStore_Search(hexastore, "OPS");
+    assert(TripletIterator_Next(it, &t));
+    assert(!TripletIterator_Next(it, &t));
 
-    ////////////////////////////////////////////////////////////////////////////////
+    HexaStore_RemoveAllPerm(hexastore, triplet);
+    assert(hexastore->cardinality == 0);
 
-    Triplet *t = NewTriplet("Michael", NULL, NULL);
-
-    iter = HexaStore_QueryTriplet(hexastore, t);
-    item = NULL;
-    
-    res = TripletIterator_Next(iter, &item);
-    assert(item != NULL);
-    assert(res);
-
-    res = TripletIterator_Next(iter, &item);
-    assert(!res);
-
-    ////////////////////////////////////////////////////////////////////////////////
-    
-	printf("PASS!");
+    /* Searching an empty hexastore */
+    it = HexaStore_Search(hexastore, "");
+    assert(!TripletIterator_Next(it, &t));
 }
 
 int main(int argc, char **argv) {
 	test_hexastore();
+    printf("PASS!");
 	return 0;
 }

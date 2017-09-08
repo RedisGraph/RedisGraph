@@ -14,6 +14,7 @@ set(_graph_files
 
       ../src/stores/store.c
 
+      ../src/graph/graph_entity.c
       ../src/graph/edge.c
       ../src/graph/node.c
       ../src/graph/graph.c
@@ -23,7 +24,7 @@ set(_graph_files
       ../src/parser/grammar.c
 
       ../src/aggregate/aggregate.c
-      ../src/aggregate/functions.c
+      ../src/aggregate/agg_funcs.c
       ../src/aggregate/repository.c
 
       ../src/grouping/group.c

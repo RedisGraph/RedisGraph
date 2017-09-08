@@ -1,3 +1,4 @@
+#include <assert.h>
 #include "../value.h"
 #include "filter_tree.h"
 #include "../parser/grammar.h"
@@ -7,19 +8,19 @@
 FT_FilterNode* LeftChild(const FT_FilterNode *node) { return node->cond.left; }
 FT_FilterNode* RightChild(const FT_FilterNode *node) { return node->cond.right; }
 
-int static inline IsNodeConstantPredicate(FT_FilterNode *node) {
+int static inline IsNodeConstantPredicate(const FT_FilterNode *node) {
     return (node->t == FT_N_PRED && node->pred.t == FT_N_CONSTANT);
 }
 
-int static inline IsNodeVaryingPredicate(FT_FilterNode *node) {
+int static inline IsNodeVaryingPredicate(const FT_FilterNode *node) {
     return (node->t == FT_N_PRED && node->pred.t == FT_N_VARYING);
 }
 
-int static inline IsNodePredicate(FT_FilterNode *node) {
+int static inline IsNodePredicate(const FT_FilterNode *node) {
     return node->t == FT_N_PRED;
 }
 
-int static inline IsNodeCondition(FT_FilterNode *node) {
+int static inline IsNodeCondition(const FT_FilterNode *node) {
     return node->t == FT_N_COND;
 }
 
@@ -33,35 +34,6 @@ int _vectorContains(const Vector *elements, const char *item) {
         }
     }
     return 0;
-}
-
-// Applies a single filter to a single result.
-// Compares given values, tests if values maintain desired relation (op)
-int _applyFilter(RedisModuleCtx *ctx, SIValue* aVal, SIValue* bVal, CmpFunc f, int op) {
-    // TODO: Make sure values are of the same type
-    // TODO: Make sure values type confirms with compare function.
-    int rel = f(aVal, bVal);
-
-    switch(op) {
-        case EQ:
-        return rel == 0;
-
-        case GT:
-        return rel > 0;
-
-        case GE:
-        return rel >= 0;
-
-        case LT:
-        return rel < 0;
-
-        case LE:
-        return rel <= 0;
-
-        default:
-            RedisModule_Log(ctx, "error", "Unknown comparison operator %d\n", op);
-            return RedisModule_ReplyWithError(ctx, "Invalid comparison operator");
-    }
 }
 
 FT_FilterNode* CreateVaryingFilterNode(const char *LAlias, const char *LProperty, const char *RAlias, const char *RProperty, int op) {
@@ -153,161 +125,19 @@ FT_FilterNode *AppendRightChild(FT_FilterNode *root, FT_FilterNode *child) {
     return root->cond.right;
 }
 
-FT_FilterNode* _CreateVaryingFilterNode(PredicateNode n) {
+FT_FilterNode* _CreateVaryingFilterNode(AST_PredicateNode n) {
     return CreateVaryingFilterNode(n.alias, n.property, n.nodeVal.alias, n.nodeVal.property, n.op);
 }
 
-FT_FilterNode* _CreateConstFilterNode(PredicateNode n) {
+FT_FilterNode* _CreateConstFilterNode(AST_PredicateNode n) {
     return CreateConstFilterNode(n.alias, n.property, n.op, n.constVal);
-}
-
-FT_FilterNode* BuildFiltersTree(const FilterNode* root) {
-    if(root->t == N_PRED) {
-        if(root->pn.t == N_CONSTANT) {
-            return _CreateConstFilterNode(root->pn);
-        } else {
-            return _CreateVaryingFilterNode(root->pn);
-        }
-	}
-
-    // root->t == N_COND
-    // Create condition node
-    FT_FilterNode* filterNode = CreateCondFilterNode(root->cn.op);
-    AppendLeftChild(filterNode, BuildFiltersTree(root->cn.left));
-    AppendRightChild(filterNode, BuildFiltersTree(root->cn.right));
-	return filterNode;
-}
-
-int applyFilters(RedisModuleCtx *ctx, Graph* g, FT_FilterNode* root) {
-    // Handle predicate node.
-    if(IsNodePredicate(root)) {
-        // A op B
-        // extract both A and B values
-        Node *node = NULL;
-        Edge *edge = NULL;        
-        char *entityID = NULL;
-        SIValue aVal;
-        SIValue bVal;
-
-        if(IsNodeConstantPredicate(root)) {
-            bVal = root->pred.constVal;
-            aVal.type = bVal.type;
-        } else {
-            aVal.type = bVal.type = T_DOUBLE; // Default to DOUBLE
-            node = Graph_GetNodeByAlias(g, root->pred.Rop.alias);
-            if(node != NULL) {
-                entityID = node->id;
-            } else {
-                edge = Graph_GetEdgeByAlias(g, root->pred.Rop.alias);
-                if(edge != NULL) {
-                    entityID = edge->id;
-                }
-            }
-            if(entityID == NULL) {
-                // Missing node's ID, assume TRUE.
-                return 1;
-            }
-
-            RedisModuleString* propValue;
-            GetElementProperyValue(ctx, entityID, root->pred.Rop.property, &propValue);
-            if(propValue == NULL) {
-                // TODO: Log this missing element / property
-                return 0;
-            }
-
-            // Cast from RedisModuleString to SIValue.
-            size_t strProplen = 0;
-            const char* strPropValue = RedisModule_StringPtrLen(propValue, &strProplen);
-            if (!SI_ParseValue(&bVal, strPropValue, strProplen)) {
-                RedisModule_Log(ctx, "error", "Could not parse %.*s\n", (int)strProplen, strPropValue);
-                return RedisModule_ReplyWithError(ctx, "Invalid value given");
-            }
-            RedisModule_FreeString(ctx, propValue);
-        }
-
-        entityID = NULL;
-        node = Graph_GetNodeByAlias(g, root->pred.Lop.alias);
-        if(node != NULL) {
-            entityID = node->id;
-        } else {
-            edge = Graph_GetEdgeByAlias(g, root->pred.Lop.alias);
-            if(edge != NULL) {
-                entityID = edge->id;
-            }
-        }
-
-        if(entityID == NULL) {
-            // Missing node's ID, assume TRUE.
-            return 1;
-        }
-
-        RedisModuleString* propValue;
-        GetElementProperyValue(ctx, entityID, root->pred.Lop.property, &propValue);
-        if(propValue == NULL) {
-                // TODO: Log this missing element / property
-                return 0;
-        }
-        // Cast from RedisModuleString to SIValue.
-        size_t strProplen = 0;
-        char* strPropValue = RedisModule_StringPtrLen(propValue, &strProplen);
-        // TODO: Free strPropValue.
-        strPropValue = strndup(strPropValue, strProplen);
-        if (!SI_ParseValue(&aVal, strPropValue, strProplen)) {
-            RedisModule_Log(ctx, "error", "Could not parse %.*s\n", (int)strProplen, strPropValue);
-            return RedisModule_ReplyWithError(ctx, "Invalid value given");
-        }
-        RedisModule_FreeString(ctx, propValue);
-
-        return _applyFilter(ctx, &aVal, &bVal, root->pred.cf, root->pred.op);
-    }
-
-    // root->t == FT_N_COND
-
-    // Visit left subtree
-    int pass = applyFilters(ctx, g, LeftChild(root));
-    
-    if(root->cond.op == AND && pass == 1) {
-        // Visit right subtree
-        pass *= applyFilters(ctx, g, RightChild(root));
-    }
-
-    if(root->cond.op == OR && pass == 0) {
-        // Visit right subtree
-        pass = applyFilters(ctx, g, RightChild(root));
-    }
-
-    return pass;
-}
-
-int FilterTree_ContainsNode(const FT_FilterNode *root, const Vector *aliases) {
-    if(root == NULL) {
-        return 0;
-    }
-    
-    // Is this a predicate node?
-    if(IsNodePredicate(root)) {
-
-        // For const predicate nodes, check only left predicate
-        if(IsNodeConstantPredicate(root)) {
-            return _vectorContains(aliases, root->pred.Lop.alias);
-        }
-        
-        // For varying predicate nodes, check both left and right predicate
-        if(IsNodeVaryingPredicate(root)) {
-            return (_vectorContains(aliases, root->pred.Lop.alias) && 
-                    _vectorContains(aliases, root->pred.Rop.alias));
-        }
-    }
-
-    return (FilterTree_ContainsNode(LeftChild(root), aliases) ||
-            FilterTree_ContainsNode(RightChild(root), aliases));
 }
 
 FT_FilterNode* _FilterTree_ClonePredicateNode(const FT_FilterNode *root) {
     if(IsNodeConstantPredicate(root)) {
         return CreateConstFilterNode(root->pred.Lop.alias, root->pred.Lop.property, root->pred.op, SI_Clone(root->pred.constVal));
-    }
-    if(IsNodeVaryingPredicate(root) == FT_N_VARYING) {
+    } else {
+        /* Node is a varying predicate. */
         return CreateVaryingFilterNode(root->pred.Lop.alias, root->pred.Lop.property, root->pred.Rop.alias, root->pred.Rop.property, root->pred.op);
     }
 }
@@ -423,6 +253,125 @@ FT_FilterNode* FilterTree_MinFilterTree(FT_FilterNode *root, Vector *aliases) {
     FilterTree_RemoveAllNodesExcept(&minTree, aliases);
     FilterTree_Squash(&minTree);
     return minTree;
+}
+
+FT_FilterNode* BuildFiltersTree(const AST_FilterNode *root) {
+    if(root->t == N_PRED) {
+        if(root->pn.t == N_CONSTANT) {
+            return _CreateConstFilterNode(root->pn);
+        } else {
+            return _CreateVaryingFilterNode(root->pn);
+        }
+	}
+
+    // root->t == N_COND
+    // Create condition node
+    FT_FilterNode* filterNode = CreateCondFilterNode(root->cn.op);
+    AppendLeftChild(filterNode, BuildFiltersTree(root->cn.left));
+    AppendRightChild(filterNode, BuildFiltersTree(root->cn.right));
+	return filterNode;
+}
+
+/* Applies a single filter to a single result.
+ * Compares given values, tests if values maintain desired relation (op) */
+int _applyFilter(SIValue* aVal, SIValue* bVal, CmpFunc f, int op) {
+    /* TODO: Make sure values are of the same type
+     * TODO: Make sure values type confirms with compare function. */
+    int rel = f(aVal, bVal);
+
+    switch(op) {
+        case EQ:
+        return rel == 0;
+
+        case GT:
+        return rel > 0;
+
+        case GE:
+        return rel >= 0;
+
+        case LT:
+        return rel < 0;
+
+        case LE:
+        return rel <= 0;
+
+        default:
+        /* Op should be enforced by AST. */
+        assert(0);
+    }
+    /* We shouldn't reach this point. */
+    return 0;
+}
+
+int _applyPredicateFilters(const Graph* g, const FT_FilterNode* root) {
+    /* A op B
+     * Extract both A and B values. */
+    GraphEntity *entity;
+    SIValue *aVal;
+    SIValue *bVal;
+
+    if(IsNodeConstantPredicate(root)) {
+        bVal = (SIValue *)&root->pred.constVal;
+    } else {
+        entity = Graph_GetEntityByAlias(g, root->pred.Rop.alias);
+        if(!entity || entity->id == INVALID_ENTITY_ID) {
+            return 0;
+        }
+        bVal = GraphEntity_Get_Property(entity, root->pred.Rop.property);
+    }
+
+    entity = Graph_GetEntityByAlias(g, root->pred.Lop.alias);
+    if(!entity || entity->id == INVALID_ENTITY_ID) {
+        return 0;
+    }
+    aVal = GraphEntity_Get_Property(entity, root->pred.Lop.property);
+
+    return _applyFilter(aVal, bVal, root->pred.cf, root->pred.op);
+}
+
+int applyFilters(const Graph* g, const FT_FilterNode* root) {
+    /* Handle predicate node. */
+    if(IsNodePredicate(root)) {
+        return _applyPredicateFilters(g, root);
+    }
+
+    /* root->t == FT_N_COND, visit left subtree. */
+    int pass = applyFilters(g, LeftChild(root));
+    
+    if(root->cond.op == AND && pass == 1) {
+        /* Visit right subtree. */
+        pass *= applyFilters(g, RightChild(root));
+    }
+
+    if(root->cond.op == OR && pass == 0) {
+        /* Visit right subtree. */
+        pass = applyFilters(g, RightChild(root));
+    }
+
+    return pass;
+}
+
+int FilterTree_ContainsNode(const FT_FilterNode *root, const Vector *aliases) {    
+    if(root == NULL) {
+        return 0;
+    }
+    
+    // Is this a predicate node?
+    if(IsNodePredicate(root)) {
+        // For const predicate nodes, check only left predicate
+        if(IsNodeConstantPredicate(root)) {
+            return _vectorContains(aliases, root->pred.Lop.alias);
+        }
+        
+        // For varying predicate nodes, check both left and right predicate
+        if(IsNodeVaryingPredicate(root)) {
+            return (_vectorContains(aliases, root->pred.Lop.alias) && 
+                    _vectorContains(aliases, root->pred.Rop.alias));
+        }
+    }
+
+    return (FilterTree_ContainsNode(LeftChild(root), aliases) ||
+            FilterTree_ContainsNode(RightChild(root), aliases));
 }
 
 void _FilterTree_Print(const FT_FilterNode *root, int ident) {

@@ -20,3 +20,9 @@ add_test(test_filter_tree test_filter_tree)
 
 add_executable(test_hexastore test_hexastore.c ${graph_files})
 add_test(test_hexastore test_hexastore)
+
+add_executable(test_resultset_record test_resultset_record.c ${graph_files})
+add_test(test_resultset_record test_resultset_record)
+
+add_executable(test_value test_value.c ${graph_files})
+add_test(test_value test_value)

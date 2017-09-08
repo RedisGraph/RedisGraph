@@ -12,11 +12,11 @@ static CacheGroup *__groupCache = NULL;
 
 void InitGroupCache();
 
-void CacheGroupAdd(const char *key, Group *group);
+void CacheGroupAdd(char *key, Group *group);
 
 // Retrives a group,
 // Sets group to NULL if key is missing.
-void CacheGroupGet(const char *key, Group **group);
+void CacheGroupGet(char *key, Group **group);
 
 void FreeGroupCache();
 

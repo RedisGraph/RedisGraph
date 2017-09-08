@@ -4,18 +4,25 @@
 #include "op.h"
 #include "../../filter_tree/filter_tree.h"
 
+/* FilterState 
+ * Different states in which ExpandAll can be at. */
+typedef enum {
+    FilterUninitialized, /* Filter wasn't initialized it. */
+    FilterRequestRefresh, /* */
+    FilterResetted,      /* Filter was just restarted. */
+} FilterState;
+
 /* Filter
  * filters graph according to where cluase */
 typedef struct {
     OpBase op;
-    RedisModuleCtx *ctx;
-    int refreshAfterPass;
     FT_FilterNode *filterTree;
+    FilterState state;
 } Filter;
 
 /* Creates a new Filter operation */
-OpBase* NewFilterOp(RedisModuleCtx *ctx, FT_FilterNode *filterTree);
-Filter* NewFilter(RedisModuleCtx *ctx, FT_FilterNode *filterTree);
+OpBase* NewFilterOp(FT_FilterNode *filterTree);
+Filter* NewFilter(FT_FilterNode *filterTree);
 
 /* FilterConsume next operation 
  * returns OP_DEPLETED when */

@@ -2,25 +2,31 @@
 #define __OP_EXPAND_INTO_H
 
 #include "op.h"
+#include "../../rmutil/sds.h"
 #include "../../hexastore/hexastore.h"
 
 /* ExpandInto checks to see if
  * there's a connection between source and destination
- * nodes, it does not changes node's ID.
- **/
+ * nodes, it does not changes node's ID. */
 typedef struct {
     OpBase op;
-    Node *srcNode;
-    Node *destNode;
-    Edge *relation; // Type of relation we're looking for to exists between nodes.
+    Node **src_node;
+    Node **dest_node;
+    Edge **relation; /* Type of relation we're looking for to exists between nodes. */
+    Edge *_relation;
+    sds str_triplet;
     int refreshAfterPass;
     RedisModuleCtx *ctx;
-    HexaStore *hexaStore;
+    HexaStore *hexastore;
+    TripletIterator *iter;  /* Graph iterator. */
 } ExpandInto;
 
 /* Creates a new ExpandInto operation */
-void NewExpandIntoOp(RedisModuleCtx *ctx, const char *graphId, Node *srcNode, Edge *relation, Node *destNode, OpBase **op);
-ExpandInto* NewExpandInto(RedisModuleCtx *ctx, const char *graphId, Node *srcNode, Edge *relation, Node *destNode);
+void NewExpandIntoOp(RedisModuleCtx *ctx, Graph *g, const char *graph_name, Node **src_node,
+                     Edge **relation, Node **dest_node, OpBase **op);
+
+ExpandInto* NewExpandInto(RedisModuleCtx *ctx, Graph *g, const char *graph_name, Node **src_node,
+                          Edge **relation, Node **dest_node);
 
 /* ExpandIntoConsume next operation 
  * Returns OP_OK if there's a connection between source and dest nodes

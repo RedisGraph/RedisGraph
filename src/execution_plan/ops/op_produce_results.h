@@ -15,14 +15,15 @@ typedef struct {
     OpBase op;
     RedisModuleCtx *ctx;
     int refreshAfterPass;
-    QueryExpressionNode *ast;
+    AST_QueryExpressionNode *ast;
     ResultSet *resultset;
+    int init;
 } ProduceResults;
 
 
 /* Creates a new NodeByLabelScan operation */
-void NewProduceResultsOp(RedisModuleCtx *ctx, QueryExpressionNode *ast, OpBase **op);
-ProduceResults* NewProduceResults(RedisModuleCtx *ctx, QueryExpressionNode *ast);
+void NewProduceResultsOp(RedisModuleCtx *ctx, AST_QueryExpressionNode *ast, OpBase **op);
+ProduceResults* NewProduceResults(RedisModuleCtx *ctx, AST_QueryExpressionNode *ast);
 
 /* ProduceResults next operation
  * called each time a new result record is required */
@@ -32,6 +33,6 @@ OpResult ProduceResultsConsume(OpBase *op, Graph* graph);
 OpResult ProduceResultsReset(OpBase *ctx);
 
 /* Frees ProduceResults */
-void ProduceResultsFree(ProduceResults *ctx);
+void ProduceResultsFree(OpBase *ctx);
 
 #endif

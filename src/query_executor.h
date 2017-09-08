@@ -7,34 +7,31 @@
 #include "redismodule.h"
 #include "hexastore/triplet.h"
 
-// Given AST's MATCH node constructs a graph
-// representing queried entities and the relationships
-// between them
-Graph* BuildGraph(const MatchNode* matchNode);
+/* Given AST's MATCH node constructs a graph
+ * representing queried entities and the relationships
+ * between them. */
+Graph* BuildGraph(const AST_MatchNode *matchNode);
 
-// Retrieves property value from hashed element.
-void GetElementProperyValue(RedisModuleCtx *ctx, const char *elementID, const char *property, RedisModuleString **propValue);
+/* Retrieves requested properties from the graph. */
+Vector* ReturnClause_RetrievePropValues(const AST_ReturnNode *returnNode, const Graph *g);
 
-// Retrieves requested properties from the graph.
-Vector* ReturnClause_RetrievePropValues(RedisModuleCtx *ctx, const ReturnNode *returnNode, const Graph *g);
+/* Retrieves all properties which define the group key from given graph. */
+Vector* ReturnClause_RetrieveGroupKeys(const AST_ReturnNode *returnNode, const Graph *g);
 
-// Retrieves all properties which define the group key from given graph.
-Vector* ReturnClause_RetrieveGroupKeys(RedisModuleCtx *ctx, const ReturnNode *returnNode, const Graph *g);
+/* Retrieves all aggregated properties from graph. */
+Vector* ReturnClause_RetrieveGroupAggVals(const AST_ReturnNode *returnNode, const Graph *g);
 
-// Retrieves all aggregated properties from graph.
-Vector* ReturnClause_RetrieveGroupAggVals(RedisModuleCtx *ctx, const ReturnNode *returnNode, const Graph *g);
+int ReturnClause_ContainsAggregation(const AST_ReturnNode *returnNode);
 
-int ReturnClause_ContainsAggregation(const ReturnNode *returnNode);
+/* Retrieves all aggregation functions used within given return clause.
+ * Returns a vector of AggCtx* */
+Vector* ReturnClause_GetAggFuncs(RedisModuleCtx *ctx, const AST_ReturnNode *returnNode);
 
-// Retrieves all aggregation functions used within given return clause.
-// Returns a vector of AggCtx*
-Vector* ReturnClause_GetAggFuncs(RedisModuleCtx *ctx, const ReturnNode *returnNode);
+/* Checks to see if return clause contains a collapsed node. */
+int ReturnClause_ContainsCollapsedNodes(const AST_ReturnNode *returnNode);
 
-// Checks to see if return clause contains a collapsed node.
-int ReturnClause_ContainsCollapsedNodes(const ReturnNode *returnNode);
+void ReturnClause_ExpandCollapsedNodes(RedisModuleCtx *ctx, AST_QueryExpressionNode *ast, const char *graphName);
 
-void ReturnClause_ExpandCollapsedNodes(RedisModuleCtx *ctx, QueryExpressionNode *ast, const char *graphName);
-
-QueryExpressionNode* ParseQuery(const char *query, size_t qLen, char **errMsg);
+AST_QueryExpressionNode* ParseQuery(const char *query, size_t qLen, char **errMsg);
 
 #endif

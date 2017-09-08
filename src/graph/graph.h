@@ -7,21 +7,27 @@
 #include "../hexastore/hexastore.h"
 
 typedef struct {
-    Vector *nodes;
+    Node **nodes;
+    Edge **edges;
+    char **node_aliases;
+    char **edge_aliases;
+    int node_count;
+    int edge_count;
 } Graph;
 
 Graph* NewGraph();
 
-Graph* Graph_Clone(const Graph *graph);
-
-/* Checks if graphs are equal
- * Returns 0 if a and b are the same
- * 1 otherwise */ 
-int Graph_Compare(const Graph *a, const Graph *b);
-
 /* Checks if graph contains given node
  * Returns 1 if so, 0 otherwise */ 
 int Graph_ContainsNode(const Graph *graph, const Node *node);
+
+int Graph_ContainsEdge(const Graph *graph, const Edge *edge);
+
+/* Retrieves node from graph */
+Node* Graph_GetNodeById(const Graph *g, long int id);
+
+/* Retrieves node from graph */
+Edge* Graph_GetEdgeById(const Graph *g, long int id);
 
 /* Search the graph for a node with given alias */
 Node* Graph_GetNodeByAlias(const Graph *g, const char *alias);
@@ -29,14 +35,26 @@ Node* Graph_GetNodeByAlias(const Graph *g, const char *alias);
 /* Search the graph for an edge with given alias */
 Edge* Graph_GetEdgeByAlias(const Graph *g, const char *alias);
 
+/* Search for either node/edge with given alias. */
+GraphEntity* Graph_GetEntityByAlias(const Graph *g, const char *alias);
+
 /* Adds a new node to the graph */
-int Graph_AddNode(Graph *g, Node *n);
+int Graph_AddNode(Graph* g, Node *n, char *alias);
+
+/* Adds a new edge to the graph */
+int Graph_ConnectNodes(Graph *g, Node *src, Node *dest, Edge *e, char *edge_alias);
 
 /* Finds a node with given input degree */
 Vector* Graph_GetNDegreeNodes(Graph *g, int degree);
 
-/* Finds the shortest path between source and destination nodes */
-Graph* Graph_ShortestPath(Graph *g, Node *src, Node *dest);
+/* Looks up node's alias within the graph */
+char* Graph_GetNodeAlias(const Graph *g, const Node *n);
+
+/* Looks up edge's alias within the graph */
+char* Graph_GetEdgeAlias(const Graph *g, const Edge *e);
+
+Node** Graph_GetNodeRef(const Graph *g, const Node *n);
+Edge** Graph_GetEdgeRef(const Graph *g, const Edge *e);
 
 /* Frees entire graph */
 void Graph_Free(Graph* g);

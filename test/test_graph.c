@@ -3,145 +3,139 @@
 #include "assert.h"
 #include "../src/graph/graph.h"
 
-void test_graph_shortestpath() {
+void test_graph_creation() {
     Graph *graph = NewGraph();
-    Node *a = NewNode("a", "a", NULL);
-    Node *b = NewNode("b", "b", NULL);
-    Node *c = NewNode("c", "c", NULL);
-    Node *d = NewNode("d", "d", NULL);
-    Node *e = NewNode("e", "e", NULL);
-    Node *f = NewNode("f", "f", NULL);
-    Node *g = NewNode("g", "g", NULL);
 
-    Graph_AddNode(graph, a);
-    Graph_AddNode(graph, b);
-    Graph_AddNode(graph, c);
-    Graph_AddNode(graph, d);
-    Graph_AddNode(graph, e);
-    Graph_AddNode(graph, f);
-    Graph_AddNode(graph, g);
+    assert(graph->nodes == NULL);
+    assert(graph->edges == NULL);
+    assert(graph->node_aliases == NULL);
+    assert(graph->edge_aliases == NULL);
+    assert(graph->node_count == 0);
+    assert(graph->edge_count == 0);
 
-    Edge *ab = NewEdge("1", NULL, a, b, "");
-    ConnectNode(a, b, ab);
-
-    Edge *ac = NewEdge("2", NULL, a, c, "");
-    ConnectNode(a, c, ac);
-
-    Edge *bd = NewEdge("3", NULL, b, d, "");
-    ConnectNode(b, d, bd);
-
-    Edge *be = NewEdge("4", NULL, b, e, "");
-    ConnectNode(b, e, be);
-
-    Edge *cf = NewEdge("5", NULL, c, f, "");
-    ConnectNode(c, f, cf);
-    
-    Edge *ef = NewEdge("6", NULL, e, f, "");
-    ConnectNode(e, f, ef);
-    
-    Edge *fg = NewEdge("7", NULL, f, g, "");
-    ConnectNode(f, g, fg);
-
-    // path: a->c->f->g
-    // path a->b->e->f->g
-
-    Graph *path = Graph_ShortestPath(graph, a, g);
-    assert(Vector_Size(path->nodes) == 4);
-
-    // Validate path
-    assert(Graph_ContainsNode(graph, a) == 1);
-    assert(Graph_ContainsNode(graph, c) == 1);
-    assert(Graph_ContainsNode(graph, f) == 1);
-    assert(Graph_ContainsNode(graph, g) == 1);
-
-    path = Graph_ShortestPath(graph, g, a);
-    assert(path == NULL);
+    Graph_Free(graph);
 }
 
-void test_graph_clone() {
-    Graph* origin = NewGraph();
+void test_graph_construction() {
+    Node fake_node;
+    Edge fake_edge;
+    
+    Graph *graph = NewGraph();
+    Node *person_node = NewNode(1l, "person");
+	Node *city_node = NewNode(2l, "city");
+	Edge *edge = NewEdge(3l, person_node, city_node, "lives");
+    
+    assert(Graph_AddNode(graph, person_node, "Joe"));
+    assert(Graph_AddNode(graph, city_node, "NYC"));
+    assert(Graph_ConnectNodes(graph, person_node, city_node, edge, "relation"));
 
-    // (A:1)-[]->()-[]->(B)
-    Node *a = NewNode("A", "1", NULL);
-    Node *b = NewNode("B", "2", NULL);
-    Node *blank = NewNode("", "", NULL);
+    assert(Graph_ContainsNode(graph, person_node));
+    assert(Graph_ContainsNode(graph, city_node));
+    assert(!Graph_ContainsNode(graph, &fake_node));
+    
+    assert(Graph_ContainsEdge(graph, edge));    
+    assert(!Graph_ContainsEdge(graph, &fake_edge));
+    
+    assert(Graph_GetNodeById(graph, person_node->id) == person_node);
+    assert(Graph_GetNodeById(graph, city_node->id) == city_node);
+    assert(Graph_GetNodeById(graph, 24l) == NULL);
 
-    Edge *e1 = NewEdge("1", NULL, a, blank, "");
-    Edge *e2 = NewEdge("2", NULL, blank, b, "");
+    assert(Graph_GetEdgeById(graph, edge->id) == edge);
+    assert(Graph_GetEdgeById(graph, 24l) == NULL);
 
-    Graph_AddNode(origin, a);
-    Graph_AddNode(origin, blank);
-    Graph_AddNode(origin, b);
+    assert(Graph_GetNodeByAlias(graph, "Joe") == person_node);
+    assert(Graph_GetNodeByAlias(graph, "NYC") == city_node);
+    assert(Graph_GetNodeByAlias(graph, "fake_alias") == NULL);
 
-    ConnectNode(a, blank, e1);
-    ConnectNode(blank, b, e2);
+    assert(Graph_GetEdgeByAlias(graph, "relation") == edge);
+    assert(Graph_GetEdgeByAlias(graph, "fake_alias") == NULL);
 
-    Graph* clone = Graph_Clone(origin);
+    assert(strcmp(Graph_GetNodeAlias(graph, person_node), "Joe") == 0);
+    assert(strcmp(Graph_GetNodeAlias(graph, city_node), "NYC") == 0);
+    assert(Graph_GetNodeAlias(graph, &fake_node) == NULL);
 
-    // Validate
-    assert(Vector_Size(origin->nodes) == Vector_Size(clone->nodes));
+    assert(strcmp(Graph_GetEdgeAlias(graph, edge), "relation") == 0);
+    assert(Graph_GetEdgeAlias(graph, &fake_edge) == NULL); 
 
-    Node* aClone = Graph_GetNodeByAlias(clone, "A");
-    Node* blankClone = Graph_GetNodeByAlias(clone, "");
-    Node* bClone = Graph_GetNodeByAlias(clone, "B");
+    assert(Graph_GetNodeRef(graph, person_node) == &graph->nodes[0]);
+    assert(Graph_GetNodeRef(graph, city_node) == &graph->nodes[1]);
+    assert(Graph_GetNodeRef(graph, &fake_node) == NULL);
+    
+    assert(Graph_GetEdgeRef(graph, edge) == &graph->edges[0]);
+    assert(Graph_GetEdgeRef(graph, &fake_edge) == NULL);
 
-    assert(aClone != NULL);
-    assert(blankClone != NULL);
-    assert(bClone != NULL);
-
-    assert(strcmp(aClone->alias, a->alias) == 0);
-    assert(strcmp(blankClone->alias, blank->alias) == 0);
-    assert(strcmp(bClone->alias, b->alias) == 0);
-
-    assert(strcmp(aClone->id, a->id) == 0);
-    assert(strcmp(blankClone->id, blank->id) == 0);
-    assert(strcmp(bClone->id, b->id) == 0);
-
-    assert(Vector_Size(aClone->outgoingEdges) == Vector_Size(a->outgoingEdges));
-    assert(Vector_Size(blankClone->outgoingEdges) == Vector_Size(blank->outgoingEdges));
-    assert(Vector_Size(bClone->outgoingEdges) == Vector_Size(b->outgoingEdges));
-
-    Edge* e;
-    Vector_Get(aClone->outgoingEdges, 0, &e);
-    assert(e != NULL);
-    assert(e->src == aClone);
-    assert(e->dest == blankClone);
-
-    Vector_Get(blankClone->outgoingEdges, 0, &e);
-    assert(e != NULL);
-    assert(e->src == blankClone);
-    assert(e->dest == bClone);
+    Vector *one_input_degree_nodes = Graph_GetNDegreeNodes(graph, 0);
+    assert(Vector_Size(one_input_degree_nodes) == 1);
+    Node *one_input_degree_node;
+    Vector_Get(one_input_degree_nodes, 0, &one_input_degree_node);
+    assert(one_input_degree_node == person_node);
+    assert(Vector_Size(Graph_GetNDegreeNodes(graph, 2)) == 0);
+    
+    Graph_Free(graph);
 }
 
-void test_graph_compare() {
-    Graph* origin = NewGraph();
+void test_graph_id_less_entities() {
+    Node fake_node;
+    Edge fake_edge;
+    
+    Graph *graph = NewGraph();
+    Node *person_node = NewNode(INVALID_ENTITY_ID, "person");
+	Node *city_node = NewNode(INVALID_ENTITY_ID, "city");
+	Edge *edge = NewEdge(INVALID_ENTITY_ID, person_node, city_node, "lives");
+    
+    assert(Graph_AddNode(graph, person_node, "Joe"));
+    assert(Graph_AddNode(graph, city_node, "NYC"));
+    assert(Graph_ConnectNodes(graph, person_node, city_node, edge, "relation"));
 
-    // (A:1)-[]->()-[]->(B)
-    Node *a = NewNode("A", "1", NULL);
-    Node *b = NewNode("B", "2", NULL);
-    Node *blank = NewNode("", "", NULL);
+    assert(Graph_ContainsNode(graph, person_node));
+    assert(Graph_ContainsNode(graph, city_node));
+    assert(!Graph_ContainsNode(graph, &fake_node));
+    
+    assert(Graph_ContainsEdge(graph, edge));    
+    assert(!Graph_ContainsEdge(graph, &fake_edge));
+    
+    assert(Graph_GetNodeById(graph, person_node->id) == NULL);
+    assert(Graph_GetNodeById(graph, city_node->id) == NULL);
+    assert(Graph_GetNodeById(graph, 24l) == NULL);
 
-    Graph_AddNode(origin, a);
-    Graph_AddNode(origin, blank);
-    Graph_AddNode(origin, b);
+    assert(Graph_GetEdgeById(graph, edge->id) == NULL);
+    assert(Graph_GetEdgeById(graph, 24l) == NULL);
 
-    ConnectNode(a, blank, NewEdge("1", NULL, a, blank, ""));
-    ConnectNode(blank, b, NewEdge("2", NULL, blank, b, ""));
+    assert(Graph_GetNodeByAlias(graph, "Joe") == person_node);
+    assert(Graph_GetNodeByAlias(graph, "NYC") == city_node);
+    assert(Graph_GetNodeByAlias(graph, "fake_alias") == NULL);
 
-    Graph* clone = Graph_Clone(origin);
+    assert(Graph_GetEdgeByAlias(graph, "relation") == edge);
+    assert(Graph_GetEdgeByAlias(graph, "fake_alias") == NULL);
 
-    assert(Graph_Compare(origin, clone) == 0);
+    assert(strcmp(Graph_GetNodeAlias(graph, person_node), "Joe") == 0);
+    assert(strcmp(Graph_GetNodeAlias(graph, city_node), "NYC") == 0);
+    assert(Graph_GetNodeAlias(graph, &fake_node) == NULL);
 
-    Node *c = NewNode("C", "3", NULL);
-    Graph_AddNode(origin, c);
+    assert(strcmp(Graph_GetEdgeAlias(graph, edge), "relation") == 0);
+    assert(Graph_GetEdgeAlias(graph, &fake_edge) == NULL); 
 
-    assert(Graph_Compare(origin, clone) == 1);
+    assert(Graph_GetNodeRef(graph, person_node) == &graph->nodes[0]);
+    assert(Graph_GetNodeRef(graph, city_node) == &graph->nodes[1]);
+    assert(Graph_GetNodeRef(graph, &fake_node) == NULL);
+    
+    assert(Graph_GetEdgeRef(graph, edge) == &graph->edges[0]);
+    assert(Graph_GetEdgeRef(graph, &fake_edge) == NULL);
+
+    Vector *one_input_degree_nodes = Graph_GetNDegreeNodes(graph, 0);
+    assert(Vector_Size(one_input_degree_nodes) == 1);
+    Node *one_input_degree_node;
+    Vector_Get(one_input_degree_nodes, 0, &one_input_degree_node);
+    assert(one_input_degree_node == person_node);
+    assert(Vector_Size(Graph_GetNDegreeNodes(graph, 2)) == 0);
+    
+    Graph_Free(graph);
 }
 
 int main(int argc, char **argv) {
-    test_graph_clone();
-    test_graph_shortestpath();
-    test_graph_compare();
+    test_graph_creation();
+    test_graph_construction();
+
 	printf("PASS!\n");
     return 0;
 }

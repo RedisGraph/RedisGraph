@@ -53,11 +53,11 @@ int Store_Cardinality(Store *store) {
     return store->cardinality;
 }
 
-void Store_Insert(Store *store, const char *id, void *value) {
+void Store_Insert(Store *store, char *id, void *value) {
     TrieMap_Add(store, id, strlen(id), value, NULL);
 }
 
-void Store_Remove(Store *store, const char *id) {
+void Store_Remove(Store *store, char *id) {
     TrieMap_Delete(store, id, strlen(id), NULL);
 }
 
@@ -67,7 +67,12 @@ StoreIterator *Store_Search(Store *store, const char *prefix) {
     return iter;
 }
 
-void *Store_Get(Store *store, const char *id) {
+void Store_Search_Iter(Store *store, const char *prefix, StoreIterator *it) {
+    char* prefix_dup = strdup(prefix);
+    TrieMapIterator_Reset(it, store, prefix_dup, strlen(prefix_dup));
+}
+
+void *Store_Get(Store *store, char *id) {
     void *val = TrieMap_Find(store, id, strlen(id));
     if(val == TRIEMAP_NOTFOUND) {
         val = NULL;

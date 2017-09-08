@@ -1,19 +1,18 @@
 #include "op_filter.h"
 
-OpBase* NewFilterOp(RedisModuleCtx *ctx, FT_FilterNode *filterTree) {
-    return NewFilter(ctx, filterTree);
+OpBase* NewFilterOp(FT_FilterNode *filterTree) {
+    return (OpBase*)NewFilter(filterTree);
 }
 
-Filter* NewFilter(RedisModuleCtx *ctx, FT_FilterNode *filterTree) {
+Filter* NewFilter(FT_FilterNode *filterTree) {
     Filter *filter = malloc(sizeof(Filter));
-    filter->ctx = ctx;
     filter->filterTree = filterTree;
-    filter->refreshAfterPass = -1;
+    filter->state = FilterUninitialized;
 
     // Set our Op operations
     filter->op.name = "Filter";
     filter->op.type = OPType_FILTER;
-    filter->op.next = FilterConsume;
+    filter->op.consume = FilterConsume;
     filter->op.reset = FilterReset;
     filter->op.free = FilterFree;
     filter->op.modifies = NULL;
@@ -24,41 +23,33 @@ Filter* NewFilter(RedisModuleCtx *ctx, FT_FilterNode *filterTree) {
 /* FilterConsume next operation 
  * returns OP_OK when graph passes filter tree. */
 OpResult FilterConsume(OpBase *opBase, Graph* graph) {
-    Filter *filter = opBase;
+    Filter *filter = (Filter*)opBase;
     
-    if(filter->refreshAfterPass == -1) {
-        return OP_DEPLETED;
-    }
-    
-    if(filter->refreshAfterPass == 1) {
-        filter->refreshAfterPass = 0;
+    if(filter->state == FilterUninitialized || filter->state == FilterRequestRefresh) {
         return OP_REFRESH;
     }
 
-    // Pass graph through filter tree
-    int pass = applyFilters(filter->ctx, graph, filter->filterTree);
+    /* Pass graph through filter tree */
+    int pass = applyFilters(graph, filter->filterTree);
 
-    // Incase graph fails to pass filter, request new data.
-    if(pass == FILTER_PASS) {
-        filter->refreshAfterPass = 1;
-        return OP_OK;
-    } else { 
-        return OP_REFRESH;
-    }
+    filter->state = FilterRequestRefresh;
+
+    /* Incase graph fails to pass filter, request new data. */
+    if(pass != FILTER_PASS) return OP_REFRESH;
+    
+    return OP_OK;
 }
 
 /* Restart iterator */
 OpResult FilterReset(OpBase *ctx) {
-    Filter *filter = ctx;
-    filter->refreshAfterPass = 0;
+    Filter *filter = (Filter*)ctx;
+    filter->state = FilterResetted;
     return OP_OK;
 }
 
 /* Frees Filter*/
 void FilterFree(OpBase *ctx) {
-    Filter *filter = ctx;
-    if(filter->filterTree != NULL) {
-        FilterTree_Free(filter->filterTree);
-    }
+    Filter *filter = (Filter*)ctx;
+    FilterTree_Free(filter->filterTree);
     free(filter);
 }

@@ -2,6 +2,7 @@
 #define __SECONDARY_VALUE_H__
 #include <stdlib.h>
 #include <string.h>
+#include "./rmutil/vector.h"
 
 typedef char *SIId;
 
@@ -89,14 +90,17 @@ int SI_DoubleVal_Cast(SIValue *v, SIType type);
 int SI_StringVal_Cast(SIValue *v, SIType type);
 
 /* Try to parse a value by string. The value's type should be set to
-* anything
-* other than T_NULL
-* to force strict parsing and not best guess */
+* anything other than T_NULL, to force strict parsing. */
 int SI_ParseValue(SIValue *v, char *str, size_t len);
 
-void SIValue_ToString(SIValue v, char *buf, size_t len);
+int SIValue_ToString(SIValue v, char *buf, size_t len);
 
 int SIValue_ToDouble(SIValue *v, double *d);
 
+/* Try to parse a value by string. */
+void SIValue_FromString(SIValue *v, char *s, size_t s_len);
+
+/* Concats strings as a comma seperated string. */
+size_t SIValue_StringConcat(const Vector* strings, char** concat);
 
 #endif

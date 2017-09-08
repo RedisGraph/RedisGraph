@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <limits.h>
 #include <stdio.h>
+#include <ctype.h>
 #include <sys/param.h>
 
 SIValue SI_IntVal(int i) { return (SIValue){.intval = i, .type = T_INT32}; }
@@ -191,40 +192,44 @@ int SI_ParseValue(SIValue *v, char *str, size_t len) {
   return 1;
 }
 
-void SIValue_ToString(SIValue v, char *buf, size_t len) {
+int SIValue_ToString(SIValue v, char *buf, size_t len) {
+  int bytes_written = 0;
+
   switch (v.type) {
   case T_STRING:
-    snprintf(buf, len, "\"%.*s\"", (int)v.stringval.len, v.stringval.str);
+    bytes_written = snprintf(buf, len, "\"%.*s\"", (int)v.stringval.len, v.stringval.str);
     break;
   case T_INT32:
-    snprintf(buf, len, "%d", v.intval);
+    bytes_written = snprintf(buf, len, "%d", v.intval);
     break;
   case T_INT64:
-    snprintf(buf, len, "%lld", v.longval);
+    bytes_written = snprintf(buf, len, "%lld", v.longval);
     break;
   case T_UINT:
-    snprintf(buf, len, "%zd", v.uintval);
+    bytes_written = snprintf(buf, len, "%zd", v.uintval);
     break;  
   case T_BOOL:
-    snprintf(buf, len, "%s", v.boolval ? "true" : "false");
+    bytes_written = snprintf(buf, len, "%s", v.boolval ? "true" : "false");
     break;
 
   case T_FLOAT:
-    snprintf(buf, len, "%f", v.floatval);
+    bytes_written = snprintf(buf, len, "%f", v.floatval);
     break;
   case T_DOUBLE:
-    snprintf(buf, len, "%f", v.doubleval);
+    bytes_written = snprintf(buf, len, "%f", v.doubleval);
     break;
   case T_INF:
-    snprintf(buf, len, "+inf");
+    bytes_written = snprintf(buf, len, "+inf");
     break;
   case T_NEGINF:
-    snprintf(buf, len, "-inf");
+    bytes_written = snprintf(buf, len, "-inf");
     break;
   case T_NULL:
   default:
-    snprintf(buf, len, "NULL");
+    bytes_written = snprintf(buf, len, "NULL");
   }
+  
+  return bytes_written;
 }
 
 inline SIValue SI_NullVal() { return (SIValue){.intval = 0, .type = T_NULL}; }
@@ -360,4 +365,63 @@ int SIValue_ToDouble(SIValue *v, double *d) {
     // cannot convert!
     return 0;
   }
+}
+
+void SIValue_FromString(SIValue *v, char *s, size_t s_len) {
+  int numeric = 1;
+  int i;
+  char c;
+
+  /* Scan string, see if we can find any none numeric characters int it. */
+  for(i = 0; i < s_len; i++) {
+    c = s[i];
+    
+    if(!isdigit(c) && c != '.' && c != '-') {
+      numeric = 0;
+      v->type = T_STRING;
+      break;
+    }
+  }
+
+  if(numeric) {
+    v->type = T_DOUBLE;
+  }
+
+  SI_ParseValue(v, s, s_len);
+}
+
+size_t SIValue_StringConcat(const Vector* strings, char** concat) {
+  int i;
+  size_t length = 0;
+  size_t offset = 0;
+  int elem_count = Vector_Size(strings);
+
+  /* Compute length. */
+  for(i = 0; i < elem_count; i++) {
+    SIValue* element;
+    Vector_Get(strings, i, &element);
+
+    /* Element string representation bytes size, strings are 
+     * srounded by double quotes,
+     * for all other SIValue types 32 bytes should be enough. */
+    size_t len = (element->type == T_STRING) ? element->stringval.len + 2 : 32;
+    length += len;
+  }
+
+  /* Account for delimiters and NULL terminating byte. */
+  length += elem_count + 1;
+  *concat = calloc(length, sizeof(char));
+
+  for(i = 0; i < elem_count; i++) {
+      SIValue* element;
+      Vector_Get(strings, i, &element);
+
+      offset += SIValue_ToString(*element, (*concat) + offset, length - offset);
+      (*concat)[offset++] = ',';
+  }
+  /* Backtrack once. */
+  offset--;
+  /* Discard last delimiter. */
+  (*concat)[offset] = 0;
+  return offset;
 }

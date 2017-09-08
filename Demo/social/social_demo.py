@@ -157,7 +157,6 @@ def run_queries():
     print query_desc
     query = """MATCH (:person {name:"Roi Lipman"})-[:visited]->(c:country)<-[:visited]-(f:person)<-[:friend]-(:person {name:"Roi Lipman"})
             RETURN f.name, c""";
-
     print "query: {query}".format(query=query)
     print "execution plan:\n{plan}".format(plan=redis_graph.execution_plan(query))
     redis_graph.query(query)

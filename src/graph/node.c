@@ -1,22 +1,20 @@
-#include "node.h"
-#include "edge.h"
 #include <stdlib.h>
 
-Node* NewNode(const char *alias, const char *id, const char *label) {
+#include "node.h"
+#include "edge.h"
+#include "assert.h"
+#include "graph_entity.h"
+
+// SIValue* NODE_PROPERTY_NOTFOUND = &SI_StringValC("NOT FOUND");
+
+Node* NewNode(long int id, const char *label) {
 	Node* node = (Node*)calloc(1, sizeof(Node));
 	
+	node->id = id;
+	node->prop_count = 0;
 	node->outgoingEdges = NewVector(Edge*, 0);
 	node->incomingEdges = NewVector(Edge*, 0);
-	node->internalId = rand();
-
-	if(id != NULL) {
-		node->id = strdup(id);
-	}
-
-	if(alias != NULL) {
-		node->alias = strdup(alias);
-	}
-
+	
 	if(label != NULL) {
 		node->label = strdup(label);
 	}
@@ -24,17 +22,12 @@ Node* NewNode(const char *alias, const char *id, const char *label) {
 	return node;
 }
 
-Node* Node_Clone(const Node *node) {
-	Node *clone = NewNode(node->alias, node->id, node->label);
-	clone->internalId = node->internalId;
-	return clone;
-}
-
 int Node_Compare(const Node *a, const Node *b) {
-	return a->internalId == b->internalId;
+	return a->id == b->id;
 }
 
-void ConnectNode(Node* src, Node* dest, struct Edge* e) {
+void Node_ConnectNode(Node* src, Node* dest, struct Edge* e) {
+	// assert(src && dest && e->src == src && e->dest == dest);
 	Vector_Push(src->outgoingEdges, e);
 	Vector_Push(dest->incomingEdges, e);
 }
@@ -43,27 +36,34 @@ int Node_IncomeDegree(const Node *n) {
 	return Vector_Size(n->incomingEdges);
 }
 
-void FreeNode(Node* node) {
-	if(node->id != NULL) {
-		free(node->id);
-	}
-	if(node->alias != NULL) {
-		free(node->alias);
-	}
+void Node_Add_Properties(Node *node, int prop_ount, char **keys, SIValue *values) {
+	GraphEntity_Add_Properties((GraphEntity*)node, prop_ount, keys, values);
+}
+
+SIValue* Node_Get_Property(const Node *node, const char* key) {
+	return GraphEntity_Get_Property((GraphEntity*)node, key);
+}
+
+void FreeNode(Node* node) {	
+	if(!node) return;
+
+	FreeGraphEntity((GraphEntity*)node);
+
 	if(node->label != NULL) {
 		free(node->label);
 	}
 
-	// TODO: free edgs.
-	// for(int i = 0; i < Vector_Size(node->outgoingEdges); i++) {
-	// 	Edge* e;
-	// 	Vector_Get(node->outgoingEdges, i, &e);
-	// 	FreeEdge(e);
-	// }
+	/* TODO: free edgs.
+	 * for(int i = 0; i < Vector_Size(node->outgoingEdges); i++) {
+	 * 	Edge* e;
+	 * 	Vector_Get(node->outgoingEdges, i, &e);
+	 * 	FreeEdge(e);
+	 * } */
 	Vector_Free(node->outgoingEdges);
 
-	/* There no need to discard incoming edges.
-	* these will be freed on another outgoingEdges free. */ 
+	/* There's no need to discard incoming edges.
+	 * these will be freed on another outgoingEdges free. */ 
 	Vector_Free(node->incomingEdges);
 	free(node);
+	node = NULL;
 }
