@@ -240,8 +240,6 @@ int MGraph_DeleteGraph(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
     tm_len_t nodeIdLen;
     Node *node;
 
-    /* TODO: maybe we should delete node key as part of FreeNode?
-     * Free each node, start by deleting redis hashes */
     while(StoreIterator_Next(it, &nodeId, &nodeIdLen, (void**)&node)) {
         RedisModuleString* strKey = RedisModule_CreateString(ctx, nodeId, nodeIdLen);
         key = RedisModule_OpenKey(ctx, strKey, REDISMODULE_WRITE);
@@ -262,15 +260,12 @@ int MGraph_DeleteGraph(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
     RedisModule_CloseKey(key);
 
     /* TODO: delete store key. */
-    
     store = GetStore(ctx, STORE_EDGE, graph, NULL);
     it = Store_Search(store, "");
     char *edgeId;
     tm_len_t edgeIdLen;
     Edge *edge;
 
-    /* TODO: maybe we should delete edge key as part of FreeEdge?
-     * Free each edge, start by deleting redis hashes */
     while(StoreIterator_Next(it, &edgeId, &edgeIdLen, (void**)&edge)) {
         RedisModuleString* strKey = RedisModule_CreateString(ctx, edgeId, edgeIdLen);
         key = RedisModule_OpenKey(ctx, strKey, REDISMODULE_WRITE);
@@ -292,7 +287,6 @@ int MGraph_DeleteGraph(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
     
     /* TODO: delete store key.
      * TODO: Delete label stores... */
-    
     RedisModule_ReplyWithSimpleString(ctx, "OK");
     return REDISMODULE_OK;
 }

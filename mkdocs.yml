@@ -1,8 +1,8 @@
 site_name: Redis Graph - a graph database module for Redis
 site_url: https://redisgraph.io
 site_favicon: 'images/favicon.png'
-repo_url: https://github.com/RedisLabsModules/redis-module-graph
-repo_name: RedisLabsModules/redis-module-graph
+repo_url: https://github.com/RedisLabsModules/redis-graph
+repo_name: RedisLabsModules/redis-graph
 
 theme: material
 

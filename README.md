@@ -7,8 +7,8 @@ Suppose we had a person entity representing Barack Obama, it might have two attr
 Primary features:
 
 * A graph database implementation
-* Nodes and edges can have labels
-* Nodes and edges are stored as Redis Hashes
+* Nodes and edges may have attributes
+* Nodes and edges can be labeled
 * Supports Neo4j's [openCypher](http://www.opencypher.org/) queries
 
 To see Redis Graph in action see [Demos](https://github.com/RedisLabsModules/redis-module-graph/tree/master/Demo).

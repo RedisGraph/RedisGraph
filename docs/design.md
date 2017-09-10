@@ -27,23 +27,22 @@ RediGraph is a graph database developed from scratch on top of Redis, using the 
 Let’s look at some of the key concepts of RediGraph using this example over the redis-cli tool:
 
 ### Introducing our entities:
-It is a common concept to represent entities as nodes within a graph, RedisGraph follows this simple concept and utilize Redis native hash datatype to store its entities.
+It is a common concept to represent entities as nodes within a graph, In this example, we'll create a small graph with both actors and movies as its entities,
+an "act" relation will connect actors to movies they casted in.
 
-In this example, we'll create a small graph with both actors and movies as its entities, an "act" relation will connect actors to movies they casted in.
-
-We use the HMSET command to create a new entity:
+We use the graph.CREATENODE command to create a new entity:
 ```sh
-HMSET <entity_id> <attribute_name> <attribute_value> <attribute_name> <attribute_value> ...
+graph.CREATENODE <graph_id> <label> <attribute_name> <attribute_value> <attribute_name> <attribute_value> ...
 ```
 
 Or in our example:
 ```sh
-HMSET Aldis_Hodge name "Aldis Hodge" birth_year 1986
-HMSET O'Shea_Jackson name "O'Shea Jackson" birth_year 1991
-HMSET Corey_Hawkins name "Corey Hawkins" birth_year 1988
-HMSET Neil_Brown name "Neil Brown" birthyear 1980
-HMSET Straight_Outta_Compton title "Straight Outta Compton" genre Biography votes 127258 rating 7.9 year 2015
-HMSET Never_Go_Back title "Never Go Back" gener Action votes 15821 rating 6.4 year 2016
+graph.CREATENODE IMDB actor name "Aldis Hodge" birth_year 1986
+graph.CREATENODE IMDB actor name "OShea Jackson" birth_year 1991
+graph.CREATENODE IMDB actor name "Corey Hawkins" birth_year 1988
+graph.CREATENODE IMDB actor name "Neil Brown" birthyear 1980
+graph.CREATENODE IMDB movie title "Straight Outta Compton" genre Biography votes 127258 rating 7.9 year 2015
+graph.CREATENODE IMDB movie title "Never Go Back" gener Action votes 15821 rating 6.4 year 2016
 ```
 
 ### Connecting entities:
@@ -56,16 +55,16 @@ GRAPH.ADDEDGE <graph_id> <src_entity_id> <relation> <dest_entity_id>
 Adding the Straight Outta Compton cast:
 
 ```sh
-GRAPH.ADDEDGE movies Aldis_Hodge act Straight_Outta_Compton
-GRAPH.ADDEDGE movies O'Shea_Jackson act Straight_Outta_Compton
-GRAPH.ADDEDGE movies Corey_Hawkins act Straight_Outta_Compton
-GRAPH.ADDEDGE movies Neil_Brown act Straight_Outta_Compton
+GRAPH.ADDEDGE IMDB <Aldis_Hodge node id> act <Straight_Outta_Compton node id>
+GRAPH.ADDEDGE IMDB <OShea_Jackson node id> act <Straight_Outta_Compton node id>
+GRAPH.ADDEDGE IMDB <Corey_Hawkins node id> act <Straight_Outta_Compton node id>
+GRAPH.ADDEDGE IMDB <Neil_Brown node id> act <Straight_Outta_Compton node id>
 ```
 
 Adding the only cast member who also played in the movie Never Go Back.
 
 ```sh
-GRAPH.ADDEDGE movies Aldis_Hodge act Never_Go_Back
+GRAPH.ADDEDGE IMDB <Aldis_Hodge node id> act <Never_Go_Back node id>
 ```
 
 ### Querying the graph:
@@ -80,28 +79,33 @@ Let's execute a number of queries against our movies graph:
 Find the sum, max, min and avg age of the Straight Outta Compton cast:
 
 ```sh
-GRAPH.QUERY movies "MATCH (actor)-[act]->(movie:"Straight_Outta_Compton") RETURN movie.title, SUM(actor.age), MAX(actor.age), MIN(actor.age), AVG(actor.age)"
+GRAPH.QUERY IMDB "MATCH (a:actor)-[act]->(m:movie {title:\"Straight Outta Compton\"})
+RETURN m.title, SUM(a.age), MAX(a.age), MIN(a.age), AVG(a.age)"
 ```
 
 RedisGraph will reply with:
 
 ```sh
-1) "Straight Outta Compton,123.000000,37.000000,26.000000,30.750000"
-2) "Query internal execution time: 0.108000 milliseconds"
+1) "m.title, SUM(a.age), MAX(a.age), MIN(a.age), AVG(a.age)"
+2) "Straight Outta Compton,123.000000,37.000000,26.000000,30.750000"
+3) "Query internal execution time: 0.071000 milliseconds"
 ```
 
-The first row contains our query result-set while the second row contains RedisGraph execution time.
+The first row is our result-set hearder which name each column according to the return clause.
+Second row contains our query result.
+Last row contains RedisGraph execution time.
 
 Let's try another query, this time we'll find in how many movies each actor played.
 
 ```sh
-GRAPH.QUERY movies "MATCH (actor)-[act]->(movie) RETURN actor.name, COUNT(movie.title) AS movies_count ORDER BY movies_count DESC"
+GRAPH.QUERY IMDB "MATCH (actor)-[act]->(movie) RETURN actor.name, COUNT(movie.title) AS movies_count ORDER BY movies_count DESC"
 
-1) "Aldis_Hodge,2.000000"
-2) "O'Shea Jackson,1.000000"
-3) "Corey Hawkins,1.000000"
-4) "Neil Brown,1.000000"
-5) "Query internal execution time: 0.071000 milliseconds"
+1) "actor.name, movies_count"
+2) "Aldis Hodge,2.000000"
+3) "O'Shea Jackson,1.000000"
+4) "Corey Hawkins,1.000000"
+5) "Neil Brown,1.000000"
+6) "Query internal execution time: 0.071000 milliseconds"
 ```
 
 ## The Theory: Ideas behind RedisGraph
@@ -142,16 +146,6 @@ Or if I'm interested in all the movies Aldis Hodge played in I can search for al
 
 Although a Hexastore uses plenty of memory, six triplets for each relation, we're using a trie data structure which is not only fast in terms of search but is also memory efficient as it doesn't create duplication of string prefixes it already seen.
 
-### The Design: Departing From Redis Data Structures
-
-At first we stored the Hexastore within a Redis native sorted-set data structure, but with the ability of introducing new data structures to Redis we've switched to a trie, this allowed for more efficient search time and reduced the overall memory consumption.
-
-As mentioned earlier nodes within the RedisGraph are no more than a reference to Redis hash object, these holds entities attributes, by using Redis Hashes we gain a number of nice features:
-- Fast insertion, Redis is known for its speed, creating hash objects (entities) is a quick operation to perform.
-- In case you've already got your entities stored in Redis there's no need for reintroducing them i.e. duplication, you can simply reuse them.
-- Data reusability, other Redis users which might not aware of RedisGraph can use these objects, that way RedisGraph enjoys "Free" updates to its entities.
-
-
 ### Query language: Cypher
 There are a number of Graph Query languages, we didn't want to reinvent the wheel and come up with our own language,
 and so we've decided to implement a subset of one of the most popular graph query language out there Cypher by Neo4J,
@@ -164,14 +158,17 @@ As mentioned only a subset of the language is supported, but it is our intention
 Let's review the steps our module takes when executing a query,
 consider the following query which finds all actors who've played alongside Aldis Hodge and are over 30 years old:
 ```
-MATCH (:Aldis_Hodge)-[act]->(Movie)<-[act]-(Actor) WHERE Actor.age > 30 RETURN Movie.title, Actor.name
+MATCH (aldis::actor {name:"Aldis Hodge"})-[act]->(m:movie)<-[act]-(a:actor) WHERE a.age > 30 RETURN m.title, a.name
 ```
 
 RediGraph will
 - Parse query, build abstract syntax tree (AST)
-- Build a graph representaion from the MATCH clause
-- Construct a filter tree
-- Search for matching entities
+- Construct a query execution plan composed of:
+  - Label scan operation
+  - Filter operation (filter tree)
+  - Expand operation
+  - Expand into operation
+- Execute plan
 - Populate result-set with matching entities attributes
 
 ### Query parser
@@ -201,24 +198,21 @@ for instance in our example we'll start our search by looking for movies in whic
 for each movie we'll extend our search to find out which other
 actors played in the current processed movie.
 
-It makes sense to start searching from a node which already has an ID
-assigned to it, as this will reduce our search space dramatically,
-as you might imagine the search process is a recursive operation which traverse the graph, at each step a new ID is 
-discovered, once every node has an ID assigned to it we can apply our filter tree to the graph and see if it passes all filters,
-if it dose we'll simply extract requested.
-attributes (as specified in the return clause) and append a new record to the final result set.
+As you might imagine the search process is a recursive operation which traverse the graph, at each step a new ID is
+discovered, once every node has an ID assigned to it we can be assured that current entities have passed our filters,
+at this point we can extract requested attributes (as specified in the return clause) and append a new record to the final result set.
 
-## Benchmarks:
+## Benchmarks
 
 Depending on the underlying hardware results may vary, that said inserting a new relationship is done in O(1) RedisGraph is able to create 100K new relations within one second.
 
-Retrieving data really depends on the size of the graph and the type of query you're executing, on a small size graph ~1000 entities and ~2500 edges RedisGraph is able to perform ~30K friend of a friend query every second.
+Retrieving data really depends on the size of the graph and the type of query you're executing, on a small size graph ~1000 entities and ~2500 edges RedisGraph is able to perform ~65K friend of a friend query every second.
 
 It's worth mentioning that besides the hexastore, entities are not indexed, it’s our intention to introduce entities indexing which should decrease query execution time dramatically.
 
 
-## License:
+## License
 Redis-Graph is published under AGPL-3.0.
 
-## Conclusion:
+## Conclusion
 RedisGraph although still a young project, can be an alternative to other graph databases, with its subset of operations one can use it to analyze and explore its graph data, being a Redis module this project is accessible from every Redis client without the need to make any adjustments. It's our intention to keep on improving and extending RedisGraph with the help of the open source community.

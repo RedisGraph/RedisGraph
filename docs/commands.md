@@ -4,7 +4,7 @@
 
 Creates a new node within the given graph, marked with a label (if provided).
 
-Arguments: `Graph name, label [optional], list of key value pairs`
+Arguments: `Graph name, label [optional], list of key value attributes`
 
 Returns: `Node ID`
 
@@ -70,7 +70,7 @@ Arguments: `Graph name, Query`
 Returns: `Result set`
 
 ```sh
-GRAPH.QUERY us_government "MATCH (p:president)-[:born]->(h:state {name:Hawaii}) RETURN p"
+GRAPH.QUERY us_government "MATCH (p:president)-[:born]->(:state {name:Hawaii}) RETURN p"
 ```
 
 ### Query language
