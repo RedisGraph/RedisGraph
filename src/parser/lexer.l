@@ -23,6 +23,7 @@ int yycolumn = 1;
 "TRUE"      { return TRUE; }
 "FALSE"     { return FALSE; }
 "MATCH" 	  { return MATCH; }
+"CREATE" 	  { return CREATE; }
 "RETURN" 	  { return RETURN; }
 "AS" 	      { return AS; }
 "DISTINCT"  { return DISTINCT; }

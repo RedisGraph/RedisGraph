@@ -32,10 +32,17 @@
 
 query ::= expr(A). { ctx->root = A; }
 
-expr(A) ::= matchClause(B) whereClause(C) returnClause(D) orderClause(E) limitClause(F). {
-	A = New_AST_QueryExpressionNode(B, C, D, E, F);
+expr(A) ::= matchClause(B) whereClause(C) creatClause(D) returnClause(E) orderClause(F) limitClause(G). {
+	A = New_AST_QueryExpressionNode(B, C, D, E, F, G);
 }
 
+expr(A) ::= matchClause(B) whereClause(C) creatClause(D). {
+	A = New_AST_QueryExpressionNode(B, C, D, NULL, NULL, NULL);
+}
+
+expr(A) ::= creatClause(B). {
+	A = New_AST_QueryExpressionNode(NULL, NULL, B, NULL, NULL, NULL);
+}
 
 %type matchClause { AST_MatchNode* }
 
@@ -54,6 +61,29 @@ chain(A) ::= node(B). {
 chain(A) ::= chain(B) link(C) node(D). {
 	Vector_Push(B, C);
 	Vector_Push(B, D);
+	A = B;
+}
+
+
+%type creatClause { AST_CreateNode *}
+
+creatClause(A) ::= . { 
+	A = NULL;
+}
+
+creatClause(A) ::= CREATE createExpression(B). {
+	A = New_AST_CreateNode(B);
+}
+
+%type createExpression {Vector*}
+
+createExpression(A) ::= chain(B). {
+	A = NewVector(Vector*, 1);
+	Vector_Push(A, B);
+}
+
+createExpression(A) ::= createExpression(B) COMMA chain(C). {
+	Vector_Push(B, C);
 	A = B;
 }
 

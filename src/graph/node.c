@@ -36,8 +36,8 @@ int Node_IncomeDegree(const Node *n) {
 	return Vector_Size(n->incomingEdges);
 }
 
-void Node_Add_Properties(Node *node, int prop_ount, char **keys, SIValue *values) {
-	GraphEntity_Add_Properties((GraphEntity*)node, prop_ount, keys, values);
+void Node_Add_Properties(Node *node, int prop_count, char **keys, SIValue *values) {
+	GraphEntity_Add_Properties((GraphEntity*)node, prop_count, keys, values);
 }
 
 SIValue* Node_Get_Property(const Node *node, const char* key) {

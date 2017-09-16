@@ -41,7 +41,7 @@ OpResult ProduceResultsConsume(OpBase *opBase, Graph* graph) {
     }
     
     /* TODO: remove condition. */
-    if(!op->resultset->aggregated) {
+    if(!op->resultset->aggregated && op->ast->returnNode) {
         /* Append to final result set. */
         Record *r = Record_FromGraph(op->ctx, op->ast, graph);
         if(ResultSet_AddRecord(op->resultset, r) == RESULTSET_FULL) {

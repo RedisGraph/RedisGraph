@@ -172,11 +172,11 @@ ResultSet* NewResultSet(AST_QueryExpressionNode* ast) {
     set->ast = ast;
     set->heap = NULL;
     set->trie = NULL;
-    set->aggregated = ReturnClause_ContainsAggregation(ast->returnNode);
+    set->aggregated = ReturnClause_ContainsAggregation(ast);
     set->ordered = (ast->orderNode != NULL);
     set->limit = RESULTSET_UNLIMITED;
     set->direction =  DIR_ASC;
-    set->distinct = ast->returnNode->distinct;
+    set->distinct = (ast->returnNode && ast->returnNode->distinct);
     set->header = NewResultSetHeader(ast);
     set->records = NewVector(Record*, 0);
 

@@ -10,6 +10,7 @@
 #include "./ops/op_produce_results.h"
 #include "./ops/op_filter.h"
 #include "./ops/op_aggregate.h"
+#include "./ops/op_create.h"
 
 #include "../graph/edge.h"
 #include "../rmutil/vector.h"
@@ -293,8 +294,47 @@ Vector* _ExecutionPlan_AddFilters(OpNode *root, FT_FilterNode **filterTree) {
     return seen;
 }
 
+void _Count_Graph_Entities(const Vector *entities, size_t *node_count, size_t *edge_count) {
+    for(int i = 0; i < Vector_Size(entities); i++) {
+        AST_GraphEntity *entity;
+        Vector_Get(entities, i, &entity);
+
+        if(entity->t == N_ENTITY) {
+            (*node_count)++;
+        } else if(entity->t == N_LINK) {
+            (*edge_count)++;
+        }
+    }
+}
+
+void _Determine_Graph_Size(const AST_QueryExpressionNode *ast, size_t *node_count, size_t *edge_count) {
+    *edge_count = 0;
+    *node_count = 0;
+    Vector *entities;
+    
+    if(ast->matchNode) {
+        entities = ast->matchNode->graphEntities;
+        _Count_Graph_Entities(entities, node_count,edge_count);
+    }
+
+    if(ast->createNode) {
+        entities = ast->createNode->graphEntities;
+        _Count_Graph_Entities(entities, node_count,edge_count);
+    }
+}
+
 ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, const char *graph_name, AST_QueryExpressionNode *ast) {
-    Graph *graph = BuildGraph(ast->matchNode);
+    /* TODO: Predetermin graph size: (entities in both MATCH and CREATE clauses)
+     * have graph object maintain an entity capacity, to avoid reallocs,
+     * problem was reallocs done by CREATE clause, which invalidated old refrences in ExpandAll. */
+
+    size_t node_count;
+    size_t edge_count;
+    _Determine_Graph_Size(ast, &node_count, &edge_count);
+    Graph *graph = NewGraph_WithCapacity(node_count, edge_count);
+
+    if(ast->matchNode) BuildGraph(graph, ast->matchNode->graphEntities);
+
     ExecutionPlan *executionPlan = (ExecutionPlan*)calloc(1, sizeof(ExecutionPlan));
     
     /* List of operations. */
@@ -316,7 +356,7 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, const char *graph_name, AST
         executionPlan->filter_tree = BuildFiltersTree(ast->whereNode->filters);
     }
 
-    if(ReturnClause_ContainsAggregation(ast->returnNode)) {
+    if(ReturnClause_ContainsAggregation(ast)) {
         OpNode *opAggregate = NewOpNode(NewAggregateOp(ctx, ast));
         Vector_Push(Ops, opAggregate);
     }
@@ -409,6 +449,13 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, const char *graph_name, AST
         _ExecutionPlan_AddFilters(executionPlan->root, &executionPlan->filter_tree);
     }
 
+    if(ast->createNode) {
+        BuildGraph(graph, ast->createNode->graphEntities);
+        int request_refresh = (executionPlan->root->childCount > 0);
+        OpNode* create_op = NewOpNode(NewCreateOp(ctx, graph, graph_name, request_refresh));
+        _OpNode_PushInBetween(executionPlan->root, create_op);
+    }
+
     /* TODO: The plan executor is about to override the nodes/edges within the graph
      * with entities which must persist, as a result freeing the graph
      * will corrupt our database, this is why we're freeing the graph's entities 
@@ -469,6 +516,10 @@ consume:
 }
 
 OpResult PullFromStreams(OpNode *source, Graph *graph) {
+    if(source->childCount == 0) {
+        return OP_DEPLETED;
+    }
+
     /* Assuming stream are independent, and do not effect each other. */
     OpNode *stream;
 

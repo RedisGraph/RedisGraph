@@ -13,7 +13,7 @@ struct Edge {
 	};
 	char* relationship;
 	Node* src;
-	Node* dest;	
+	Node* dest;
 };
 
 typedef struct Edge Edge;

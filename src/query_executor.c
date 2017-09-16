@@ -10,46 +10,81 @@
 #include "parser/parser_common.h"
 #include "aggregate/repository.h"
 
-Graph* BuildGraph(const AST_MatchNode *matchNode) {
-    Graph* g = NewGraph();
-    Vector* stack = NewVector(void*, 3);
-    
-    for(int i = 0; i < Vector_Size(matchNode->graphEntities); i++) {
+void BuildGraph(Graph *graph, Vector *entities) {
+    /* Introduce nodes first. */
+    for(int i = 0; i < Vector_Size(entities); i++) {
         AST_GraphEntity *entity;
-        Vector_Get(matchNode->graphEntities, i, &entity);
+        Vector_Get(entities, i, &entity);
 
-        if(entity->t == N_ENTITY) {
-            Node *n = NewNode(INVALID_ENTITY_ID, entity->label);
-            Graph_AddNode(g, n, entity->alias);
-            Vector_Push(stack, n);
-        } else {
-            Vector_Push(stack, entity);
+        if(entity->t != N_ENTITY) continue;
+
+        /* No duplicates. */
+        if(Graph_GetNodeByAlias(graph, entity->alias) != NULL) continue;
+
+        Node *n = NewNode(INVALID_ENTITY_ID, entity->label);
+
+        /* Add properties. */
+        if(entity->properties) {
+            size_t prop_count = Vector_Size(entity->properties);
+            for(int prop_idx = 0; prop_idx < prop_count; prop_idx+=2) {
+                SIValue *key;
+                SIValue *value;
+
+                Vector_Get(entity->properties, prop_idx, &key);
+                Vector_Get(entity->properties, prop_idx+1, &value);
+                char *k = strdup(key->stringval.str);
+                /* TODO: clone value. */
+                Node_Add_Properties(n, 1, &k, value);
+            }
         }
 
-        if(Vector_Size(stack) == 3) {
-            Node* a;
-            AST_LinkEntity* edge;
-            Node* c;
+        Graph_AddNode(graph, n, entity->alias);
+    }
 
-            Vector_Pop(stack, &c);
-            Vector_Pop(stack, &edge);
-            Vector_Pop(stack, &a);
+    /* Introduce edges. */
+    for(int i = 0; i < Vector_Size(entities); i++) {
+        AST_GraphEntity *entity;
+        Vector_Get(entities, i, &entity);
 
-            if(edge->direction == N_LEFT_TO_RIGHT) {
-                Edge *e = NewEdge(INVALID_ENTITY_ID, a, c, edge->ge.label);
-                Graph_ConnectNodes(g, a, c, e, edge->ge.alias);
-            } else {
-                Edge *e = NewEdge(INVALID_ENTITY_ID, c, a, edge->ge.label);
-                Graph_ConnectNodes(g, c, a, e, edge->ge.alias);
+        if(entity->t != N_LINK) continue;
+        
+        /* No duplicates. */
+        if(Graph_GetEdgeByAlias(graph, entity->alias) != NULL) continue;
+
+        AST_LinkEntity* edge = (AST_LinkEntity*)entity;
+        AST_NodeEntity *src_node;
+        AST_NodeEntity *dest_node;
+
+        if(edge->direction == N_LEFT_TO_RIGHT) {
+            Vector_Get(entities, i-1, &src_node);
+            Vector_Get(entities, i+1, &dest_node);    
+        } else {
+            Vector_Get(entities, i+1, &src_node);
+            Vector_Get(entities, i-1, &dest_node);
+        }
+
+        Node *src = Graph_GetNodeByAlias(graph, src_node->alias);
+        Node *dest = Graph_GetNodeByAlias(graph, dest_node->alias);
+        
+        Edge *e = NewEdge(INVALID_ENTITY_ID, src, dest, edge->ge.label);
+
+        /* Add properties. */
+        if(entity->properties) {
+            size_t prop_count = Vector_Size(entity->properties);
+            for(int prop_idx = 0; prop_idx < prop_count; prop_idx+=2) {
+                SIValue *key;
+                SIValue *value;
+
+                Vector_Get(entity->properties, prop_idx, &key);
+                Vector_Get(entity->properties, prop_idx+1, &value);
+                char *k = strdup(key->stringval.str);
+                /* TODO: clone value. */
+                Edge_Add_Properties(e, 1, &k, value);
             }
-            
-            /* Reintroduce last pushed item. */
-            Vector_Push(stack, c);
-        } /* If ends. */
-    } /* For loop ends. */
+        }
 
-    Vector_Free(stack);    
-    return g;
+        Graph_ConnectNodes(graph, src, dest, e, edge->ge.alias);
+    }
 }
 
 /* Type specifies the type of return elements to Retrieve. */
@@ -98,7 +133,10 @@ Vector* ReturnClause_RetrieveGroupAggVals(const AST_ReturnNode *returnNode, cons
     return _ReturnClause_RetrieveValues(returnNode, g, N_AGG_FUNC);
 }
 
-int ReturnClause_ContainsCollapsedNodes(const AST_ReturnNode *returnNode) {
+int ReturnClause_ContainsCollapsedNodes(AST_QueryExpressionNode *ast) {
+    if(!ast->returnNode) return 0;
+
+    AST_ReturnNode *returnNode = ast->returnNode;
     for(int i = 0; i < Vector_Size(returnNode->returnElements); i++) {
         AST_ReturnElementNode *returnElementNode;
         Vector_Get(returnNode->returnElements, i, &returnElementNode);
@@ -110,7 +148,10 @@ int ReturnClause_ContainsCollapsedNodes(const AST_ReturnNode *returnNode) {
 }
 
 /* Checks if return clause uses aggregation. */
-int ReturnClause_ContainsAggregation(const AST_ReturnNode *returnNode) {
+int ReturnClause_ContainsAggregation(AST_QueryExpressionNode *ast) {
+    if(!ast->returnNode) return 0;
+
+    AST_ReturnNode *returnNode = ast->returnNode;
     int res = 0;
 
     for(int i = 0; i < Vector_Size(returnNode->returnElements); i++) {
@@ -206,22 +247,32 @@ void ReturnClause_ExpandCollapsedNodes(RedisModuleCtx *ctx, AST_QueryExpressionN
     ast->returnNode->returnElements = expandReturnElements;
 }
 
-void nameAnonymousNodes(AST_QueryExpressionNode *ast) {
-    Vector *entities = ast->matchNode->graphEntities;
-    
+void _nameAnonymousNodes(Vector *entities, int *entity_id) {
     /* Foreach graph entity: node/edge. */
     for(int i = 0; i < Vector_Size(entities); i++) {
         AST_GraphEntity *entity;
         Vector_Get(entities, i, &entity);
         
         if (entity->alias == NULL) {
-            asprintf(&entity->alias, "anon_%d", i);
+            asprintf(&entity->alias, "anon_%d", *entity_id);
+            (*entity_id)++;
         }
     }
 }
 
+void nameAnonymousNodes(AST_QueryExpressionNode *ast) {
+    int entity_id = 0;
+
+    if(ast->matchNode)
+        _nameAnonymousNodes(ast->matchNode->graphEntities, &entity_id);
+
+    if(ast->createNode)
+        _nameAnonymousNodes(ast->createNode->graphEntities, &entity_id);
+}
+
 void inlineProperties(AST_QueryExpressionNode *ast) {
     /* Migrate inline filters to WHERE clause. */
+    if(!ast->matchNode) return;
     Vector *entities = ast->matchNode->graphEntities;
 
     /* Foreach entity. */

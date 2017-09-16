@@ -47,6 +47,7 @@ set(_graph_files
       ../src/execution_plan/ops/op_produce_results.c
       ../src/execution_plan/ops/op_filter.c
       ../src/execution_plan/ops/op_aggregate.c
+      ../src/execution_plan/ops/op_create.c
 
       ../src/execution_plan/execution_plan.c
 

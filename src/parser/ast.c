@@ -157,6 +157,38 @@ void Free_AST_MatchNode(AST_MatchNode *matchNode) {
 	free(matchNode);
 }
 
+AST_CreateNode* New_AST_CreateNode(Vector *elements) {
+	AST_CreateNode *createNode = (AST_CreateNode*)malloc(sizeof(AST_CreateNode));
+	createNode->graphEntities = NewVector(AST_GraphEntity *, 1);
+
+	for(int i = 0; i < Vector_Size(elements); i++) {
+		Vector *v;
+		Vector_Get(elements, i, &v);
+
+		for(int j = 0; j < Vector_Size(v); j++) {
+			AST_GraphEntity *ge;
+			Vector_Get(v, j, &ge);
+			Vector_Push(createNode->graphEntities, ge);
+		}
+		
+		Vector_Free(v);
+	}
+
+	return createNode;
+}
+
+void Free_AST_CreateNode(AST_CreateNode *createNode) {
+	if(!createNode) return;
+	
+	for(int i = 0; i < Vector_Size(createNode->graphEntities); i++) {
+		GraphEntity *ge;
+		Vector_Get(createNode->graphEntities, i, &ge);
+		FreeGraphEntity(ge);
+	}
+
+	Vector_Free(createNode->graphEntities);
+	free(createNode);
+}
 
 AST_WhereNode* New_AST_WhereNode(AST_FilterNode *filters) {
 	AST_WhereNode *whereNode = (AST_WhereNode*)malloc(sizeof(AST_WhereNode));
@@ -165,9 +197,7 @@ AST_WhereNode* New_AST_WhereNode(AST_FilterNode *filters) {
 }
 
 void Free_AST_WhereNode(AST_WhereNode *whereNode) {
-	if(!whereNode) {
-		return;
-	}
+	if(!whereNode) return;
 
 	Free_AST_FilterNode(whereNode->filters);
 	free(whereNode);
@@ -227,12 +257,13 @@ void Free_AST_ReturnElementNode(AST_ReturnElementNode *returnElementNode) {
 
 
 AST_QueryExpressionNode* New_AST_QueryExpressionNode(AST_MatchNode *matchNode, AST_WhereNode *whereNode,
-												     AST_ReturnNode *returnNode, AST_OrderNode *orderNode,
-													 AST_LimitNode *limitNode) {
+												     AST_CreateNode *createNode, AST_ReturnNode *returnNode,
+													 AST_OrderNode *orderNode, AST_LimitNode *limitNode) {
 	AST_QueryExpressionNode *queryExpressionNode = (AST_QueryExpressionNode*)malloc(sizeof(AST_QueryExpressionNode));
 	
 	queryExpressionNode->matchNode = matchNode;
 	queryExpressionNode->whereNode = whereNode;
+	queryExpressionNode->createNode = createNode;
 	queryExpressionNode->returnNode = returnNode;
 	queryExpressionNode->orderNode = orderNode;
 	queryExpressionNode->limitNode = limitNode;
@@ -242,6 +273,7 @@ AST_QueryExpressionNode* New_AST_QueryExpressionNode(AST_MatchNode *matchNode, A
 
 void Free_AST_QueryExpressionNode(AST_QueryExpressionNode *queryExpressionNode) {
 	Free_AST_MatchNode(queryExpressionNode->matchNode);
+	Free_AST_CreateNode(queryExpressionNode->createNode);
 	Free_AST_WhereNode(queryExpressionNode->whereNode);
 	Free_AST_ReturnNode(queryExpressionNode->returnNode);
 	Free_AST_OrderNode(queryExpressionNode->orderNode);

@@ -318,7 +318,7 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     }
     
     /* Modify AST */
-    if(ReturnClause_ContainsCollapsedNodes(ast->returnNode) == 1) {
+    if(ReturnClause_ContainsCollapsedNodes(ast) == 1) {
         /* Expend collapsed nodes. */
         ReturnClause_ExpandCollapsedNodes(ctx, ast, graphName);
     }
@@ -329,8 +329,7 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     /* Send result-set back to client. */
     ResultSet_Replay(ctx, resultSet);
     ResultSet_Free(ctx, resultSet);
-    /* TODO: free execution plan.
-     * ExecutionPlanFree(plan); */
+    ExecutionPlanFree(plan);
 
     /* Report execution timing. */
     end = clock();
