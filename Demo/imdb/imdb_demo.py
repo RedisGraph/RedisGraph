@@ -3,15 +3,15 @@ import sys
 import csv
 import redis
 import timeit
-from client import client
 from datetime import date
 from disposableredis import DisposableRedis
+from redisgraph import Node, Edge, Graph
 
 REDIS_MODULE_PATH_ENVVAR = 'REDIS_MODULE_PATH'
 REDIS_PATH_ENVVAR = 'REDIS_PATH'
 REDIS_PORT_ENVVAR = 'REDIS_PORT'
 
-graph = "imdb"
+graph_name = "imdb"
 r = None
 redis_graph = None
 
@@ -43,19 +43,12 @@ def _redis():
 
 def PopulateGraph():
 	# check if graph already exists
-	if r.exists(graph) == 0:
-		print "Loading movies"
-		movies = LoadMovies()
-		print "Loaded %d movies" % len(movies)
+	if r.exists(graph_name):
+		return
 
-		print "Loading actors"
-		actors = LoadActors(movies)
-		print "Loaded %d actors" % len(actors)
-    			
-def LoadMovies():
+	print "Loading movies"
 	# Load movies entities
 	movies = {}
-
 	with open('movies.csv', 'r') as f:
 		reader = csv.reader(f, delimiter=',')
 		for row in reader:
@@ -64,18 +57,18 @@ def LoadMovies():
 			votes = int(row[2])
 			rating = float(row[3])
 			year = int(row[4])
-			
-			movies[title] = redis_graph.create_node('title', title,
-			'gener', gener,
-			'votes', votes,
-			'rating', rating,
-			'year', year,
-			label="movie")
 
-	return movies
+			node = Node(label="movie", properties={'title': '"' + title + '"',
+														  'gener': gener,
+														  'votes': votes,
+														  'rating': rating,
+														  'year': year})
+			movies[title] = node
+			redis_graph.add_node(node)
 
-def LoadActors(movies):
-	# Load movies entities
+	print "Loaded %d movies" % len(movies)
+
+	print "Loading actors"
 	actors = {}
 	today = date.today()
 
@@ -88,15 +81,16 @@ def LoadActors(movies):
 			age = today.year - yearOfBirth
 
 			if name not in actors:
-				actors[name] = redis_graph.create_node('name', name,
-				'age', age, label="actor")
+				node = Node(label="actor", properties={'name': '"' + name + '"', 'age': age})
+				actors[name] = node
+				redis_graph.add_node(node)
 
 			if movie in movies:
-				redis_graph.connect_nodes(actors[name], "act", movies[movie])
+				edge = Edge(actors[name], "act", movies[movie])
+				redis_graph.add_edge(edge)
 
-	return actors
-
-
+	print "Loaded %d actors" % len(actors)
+	redis_graph.commit()
 
 def run_query(desc, query):
 	print desc
@@ -183,7 +177,7 @@ def debug():
 	global r
 	global redis_graph
 	r = redis.Redis(host='localhost', port=6379)
-	redis_graph = client.RedisGraph(graph, r)
+	redis_graph = Graph(graph_name, r)
 	PopulateGraph()
 	run_queries()
 
@@ -194,7 +188,7 @@ def main(argv):
 		debug()
 	else:
 		with _redis() as r:
-			redis_graph = client.RedisGraph(graph, r)
+			redis_graph = Graph(graph_name, r)
 			PopulateGraph()
 			run_queries()
 
