@@ -9,7 +9,7 @@ Primary features:
 * A graph database implementation
 * Nodes and edges may have attributes
 * Nodes and edges can be labeled
-* Supports Neo4j's [openCypher](http://www.opencypher.org/) queries
+* Supports [openCypher](http://www.opencypher.org/) graph queries
 
 To see Redis Graph in action see [Demos](https://github.com/RedisLabsModules/redis-module-graph/tree/master/Demo).
 
@@ -66,7 +66,8 @@ Once the module has been loaded successfully, the Redis log should have lines si
 
 ## Using Redis Graph
 
-Before using Redis Graph, you should familiarize yourself with its commands and syntax as detailed in the [commands reference](commands) document.
+Before using Redis Graph, you should familiarize yourself with its commands and syntax as detailed in the
+[commands reference](commands.md) document.
 
 You can call Redis Graph's commands from any Redis client.
 
@@ -80,17 +81,20 @@ $ redis-cli
 
 ### With any other client
 
-You can call the module's API using your client's ability to send raw Redis commands. Depending on your client of choice, the exact method for doing that may vary.
+You can call the module's API using your client's ability to send raw Redis commands. Depending on your client of
+choice, the exact method for doing that may vary.
 
 #### Python example
 
-This code snippet shows how to use Redis Graph with raw Redis commands from Python with [redis-py](https://github.com/andymccurdy/redis-py):
+This code snippet shows how to use Redis Graph with raw Redis commands from Python with
+[redis-py](https://github.com/andymccurdy/redis-py):
 
 ```python
 import redis
 
 r = redis.StrictRedis()
-reply = r.execute_command('GRAPH.CREATENODE', 'social', 'person', 'name', 'roi', 'age', 32, 'gender', 'male', 'status', 'married')
+reply = r.execute_command('GRAPH.CREATENODE', 'social', 'person', 'name', 'roi', 'age', 32, 'gender', 'male', 'status',
+'married')
 ```
 
 ### Client libraries
