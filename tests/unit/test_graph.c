@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "assert.h"
-#include "../src/graph/graph.h"
+#include "../../src/graph/graph.h"
 
 void test_graph_creation() {
     Graph *graph = NewGraph();

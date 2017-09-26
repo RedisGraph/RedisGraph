@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include "assert.h"
-#include "../src/resultset/record.h"
-#include "../src/value.h"
+#include "../../src/resultset/record.h"
+#include "../../src/value.h"
 
 size_t Record_ToString(const Record *record, char **record_str);
 

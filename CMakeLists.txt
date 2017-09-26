@@ -5,7 +5,8 @@ include(CTest)
 enable_testing()
 
 add_subdirectory(src)
-add_subdirectory(test)
+add_subdirectory(tests/unit)
+add_subdirectory(tests/flow)
 
 add_custom_target(deploydocs mkdocs build
                   COMMAND s3cmd sync site/ s3://redisgraph.io

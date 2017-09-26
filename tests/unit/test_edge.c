@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
-#include "../src/graph/node.h"
-#include "../src/graph/edge.h"
+#include "../../src/graph/node.h"
+#include "../../src/graph/edge.h"
 #include "assert.h"
 
 void test_edge_creation() {

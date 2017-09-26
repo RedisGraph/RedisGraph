@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <string.h>
 #include "assert.h"
-#include "../src/graph/node.h"
-#include "../src/graph/edge.h"
+#include "../../src/graph/node.h"
+#include "../../src/graph/edge.h"
 
 void test_node_creation() {
 	Node *node = NewNode(1l, "city");

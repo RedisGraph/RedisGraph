@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <string.h>
 #include "assert.h"
-#include "../src/rmutil/vector.h"
-#include "../src/parser/grammar.h"
-#include "../src/filter_tree/filter_tree.h"
+#include "../../src/rmutil/vector.h"
+#include "../../src/parser/grammar.h"
+#include "../../src/filter_tree/filter_tree.h"
 
 void compareFilterTreeVaryingNode(const FT_FilterNode *a, const FT_FilterNode *b) {
     assert(a->t == b->t);

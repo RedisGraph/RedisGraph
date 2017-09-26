@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "assert.h"
-#include "../src/value.h"
+#include "../../src/value.h"
 
 void test_value_parse() {
     SIValue v;
