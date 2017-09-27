@@ -1,16 +1,35 @@
 # Demos
 
-Before running either IMDB or Social demo make sure to set
-the following enviormeant variables:
+1. Set the following environment variables:
 
 - REDIS_MODULE_PATH - Relative path to compiled libmodule.so
 
-```sh
-export REDIS_MODULE_PATH=/Users/me/Dev/redis-graph/src/libmodule.so
-```
+  ```sh
+  export REDIS_MODULE_PATH=<ABSOLUTE_PATH_TO_MODULE.SO>
+  ```
 
 - REDIS_PATH - Absolute path to redis-server
 
-```sh
-export REDIS_PATH=/Users/me/Dev/redis/src/redis-server
-```
+  ```sh
+  export REDIS_PATH=<ABSOLUTE_PATH_TO_REDIS-SERVER>
+  ```
+
+2. Install requirements:
+
+  From either <REDISGRAPH_ROOT>/Demo/imdb or <REDISGRAPH_ROOT>/Demo/social, Run:
+
+  ```sh
+  pip install -r requirements.txt
+  ```
+
+3. Run demo:
+
+  ```sh
+  python imdb_demo.py
+  ```
+
+  or
+
+  ```sh
+  python social_demo.py
+  ```

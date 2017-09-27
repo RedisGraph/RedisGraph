@@ -39,7 +39,8 @@ GRAPH.QUERY us_government "MATCH (p:president)-[:born]->(:state {name:Hawaii}) R
 
 ### Query language
 
-The syntax is based on Neo4j's [openCypher](http://www.opencypher.org/) and currently only a subset of the language is supported.
+The syntax is based on [openCypher](http://www.opencypher.org/) and currently only a subset of the language is
+supported.
 
 A query is composed of five parts:
 
@@ -85,7 +86,8 @@ Example:
 
 `{title:"straight outta compton"}` requires the node's title attribute to equal "straight outta compton".
 
-As such, we're interested in actor entities which have the relation "act" with **the** entity representing the "straight outta compton" movie.
+As such, we're interested in actor entities which have the relation "act" with **the** entity representing the
+"straight outta compton" movie.
 
 It is possible to describe broader relationships by composing a multi-hop query such as:
 
@@ -167,7 +169,8 @@ and both know Dominick. Then DISTINCT will make sure that Dominick will only app
 in the final result-set.
 
 
-Return can also be used to aggregate data similar to SQL group by. Once an aggregation function is added to the return list, all other "none" aggregated values are considered as group keys, for example:
+Return can also be used to aggregate data similar to SQL group by. Once an aggregation function is added to the return
+list, all other "none" aggregated values are considered as group keys, for example:
 
 ```sh
 RETURN movie.title, MAX(actor.age), MIN(actor.age)
@@ -190,7 +193,8 @@ Supported aggregation functions:
 Specifies that the output should be sorted and how.
 
 You can order by multiple properties by stating each variable in the ORDER BY clause.
-The result will be sorted by the first variable listed, and for equal values, go to the next property in the ORDER BY clause, and so on.
+The result will be sorted by the first variable listed, and for equal values, go to the next property in the ORDER BY
+clause, and so on.
 
 ```sh
 ORDER BY <alias.property list> [ASC/DESC]
