@@ -172,13 +172,17 @@ ResultSet* NewResultSet(AST_QueryExpressionNode* ast) {
     set->ast = ast;
     set->heap = NULL;
     set->trie = NULL;
-    set->aggregated = ReturnClause_ContainsAggregation(ast->returnNode);
+    set->aggregated = ReturnClause_ContainsAggregation(ast);
     set->ordered = (ast->orderNode != NULL);
     set->limit = RESULTSET_UNLIMITED;
     set->direction =  DIR_ASC;
-    set->distinct = ast->returnNode->distinct;
+    set->distinct = (ast->returnNode && ast->returnNode->distinct);
     set->header = NewResultSetHeader(ast);
     set->records = NewVector(Record*, 0);
+    set->labels_added = 0;
+    set->nodes_created = 0;
+    set->properties_set = 0;
+    set->relationships_created = 0;
 
     if(set->ordered && ast->orderNode->direction == ORDER_DIR_DESC) {
         set->direction = DIR_DESC;
@@ -288,22 +292,42 @@ Record** _sortResultSet(const ResultSet *set, const Vector* records) {
     return arrRecords;
 }
 
+void _ResultSet_ReplayStats(RedisModuleCtx* ctx, ResultSet* set) {
+    char buff[512] = {0};
+    size_t resultset_size = 1 + 4; /* query execution time. */
+    RedisModule_ReplyWithArray(ctx, resultset_size);
+
+    sprintf(buff, "Labels added: %d", set->labels_added);
+    RedisModule_ReplyWithSimpleString(ctx, (const char*)buff);
+
+    sprintf(buff, "Nodes created: %d", set->nodes_created);
+    RedisModule_ReplyWithSimpleString(ctx, (const char*)buff);
+
+    sprintf(buff, "Properties set: %d", set->properties_set);
+    RedisModule_ReplyWithSimpleString(ctx, (const char*)buff);
+
+    sprintf(buff, "Relationships created: %d", set->relationships_created);
+    RedisModule_ReplyWithSimpleString(ctx, (const char*)buff);
+}
+
 void ResultSet_Replay(RedisModuleCtx* ctx, ResultSet* set) {
     if(set->aggregated) {
         _aggregateResultSet(ctx, set);
     }
     
-    size_t resultset_size;
+    /* Header row. */
+    size_t resultset_size = 1;
 
     if(set->ordered && set->limit != RESULTSET_UNLIMITED) {
-        resultset_size = heap_count(set->heap);
+        resultset_size += heap_count(set->heap);
     } else {
-        resultset_size = Vector_Size(set->records);
+        resultset_size += Vector_Size(set->records);
     }
-
-    resultset_size += 2; /* Additional two header and time measurement. */
-
-    /* Replay final result set. */
+    
+    /* Resultset + statistics. */
+    RedisModule_ReplyWithArray(ctx, 2);
+    
+    /* First element, resultset. */
     RedisModule_ReplyWithArray(ctx, resultset_size);
 
     /* Replay with table header. */
@@ -357,6 +381,8 @@ void ResultSet_Replay(RedisModuleCtx* ctx, ResultSet* set) {
             free(str_record);
         }
     }
+
+    _ResultSet_ReplayStats(ctx, set);
 }
 
 void ResultSet_Free(RedisModuleCtx *ctx, ResultSet *set) {

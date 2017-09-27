@@ -89,6 +89,10 @@ typedef struct {
 	Vector *graphEntities;
 } AST_MatchNode;
 
+typedef struct {	
+	Vector *graphEntities; /* Vector of Vectors of AST_GraphEntity pointers. */
+} AST_CreateNode;
+
 typedef struct {
 	AST_FilterNode *filters;
 } AST_WhereNode;
@@ -127,15 +131,17 @@ typedef struct {
 
 typedef struct {
 	AST_MatchNode *matchNode;
+	AST_CreateNode *createNode;
 	AST_WhereNode *whereNode;
 	AST_ReturnNode *returnNode;
 	AST_OrderNode *orderNode;
 	AST_LimitNode *limitNode;
-} 	AST_QueryExpressionNode;
+} AST_QueryExpressionNode;
 
 AST_NodeEntity* New_AST_NodeEntity(char *alias, char *label, Vector *properties);
 AST_LinkEntity* New_AST_LinkEntity(char *alias, char *relationship, Vector *properties, AST_LinkDirection dir);
 AST_MatchNode* New_AST_MatchNode(Vector *elements);
+AST_CreateNode* New_AST_CreateNode(Vector *elements);
 AST_FilterNode* New_AST_ConstantPredicateNode(const char *alias, const char *property, int op, SIValue value);
 AST_FilterNode* New_AST_VaryingPredicateNode(const char *lAlias, const char *lProperty, int op, const char *rAlias, const char *rProperty);
 AST_FilterNode* New_AST_ConditionNode(AST_FilterNode *left, int op, AST_FilterNode *right);
@@ -148,11 +154,12 @@ AST_ColumnNode* AST_ColumnNodeFromVariable(const AST_Variable *variable);
 AST_ColumnNode* AST_ColumnNodeFromAlias(const char *alias);
 AST_Variable* New_AST_Variable(const char *alias, const char *property);
 AST_LimitNode* New_AST_LimitNode(int limit);
-AST_QueryExpressionNode* New_AST_QueryExpressionNode(AST_MatchNode *matchNode, AST_WhereNode *whereNode, AST_ReturnNode *returnNode, AST_OrderNode *orderNode, AST_LimitNode *limitNode);
+AST_QueryExpressionNode* New_AST_QueryExpressionNode(AST_MatchNode *matchNode, AST_WhereNode *whereNode, AST_CreateNode *createNode, AST_ReturnNode *returnNode, AST_OrderNode *orderNode, AST_LimitNode *limitNode);
 
 void Free_AST_Variable(AST_Variable *v);
 void Free_AST_ColumnNode(AST_ColumnNode *node);
 void Free_AST_MatchNode(AST_MatchNode *matchNode);
+void Free_AST_CreateNode(AST_CreateNode *createNode);
 void Free_AST_WhereNode(AST_WhereNode *whereNode);
 void Free_AST_FilterNode(AST_FilterNode *filterNode);
 void Free_AST_ReturnNode(AST_ReturnNode *returnNode);

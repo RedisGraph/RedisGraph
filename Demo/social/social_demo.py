@@ -4,14 +4,14 @@ import sys
 import redis
 import timeit
 from datetime import date
-from client import client
+from redisgraph import Node, Edge, Graph
 from disposableredis import DisposableRedis
 
 REDIS_MODULE_PATH_ENVVAR = 'REDIS_MODULE_PATH'
 REDIS_PATH_ENVVAR = 'REDIS_PATH'
 REDIS_PORT_ENVVAR = 'REDIS_PORT'
 
-graph = "facebook"
+graph_name = "social"
 r = None
 redis_graph = None
 
@@ -42,7 +42,7 @@ def _redis():
     return dr
 
 def PopulateGraph():
-    if r.exists(graph):
+    if r.exists(graph_name):
         return
 
     # dictionary person name to its node entity
@@ -55,7 +55,10 @@ def PopulateGraph():
         reader = csv.reader(f, delimiter=',')
         for row in reader:
             name = row[0]
-            countries[name] = redis_graph.create_node("name", name, label="country")
+
+            node = Node(label="country", properties={"name": name})
+            countries[name] = node
+            redis_graph.add_node(node)
 
     # Create person entities
     with open('person.csv', 'r') as f:
@@ -65,11 +68,13 @@ def PopulateGraph():
             age = int(row[1])
             gender = row[2]
             status = row[3]
-            persons[name] = redis_graph.create_node("name", name,
-                                                    "age", age,
-                                                    "gender", gender,
-                                                    "status", status,
-                                                    label="person")
+            node = Node(label="person", properties={"name": '"' + name + '"',
+                                                    "age": age,
+                                                    "gender": gender,
+                                                    "status": status})
+
+            persons[name] = node
+            redis_graph.add_node(node)
 
     # Connect people to places they've visited.
     with open('visits.csv', 'r') as f:
@@ -78,7 +83,11 @@ def PopulateGraph():
             person = row[0]
             country = row[1]
             purpose = row[2]
-            redis_graph.connect_nodes(persons[person], "visited", countries[country], "purpose", purpose)
+            edge = Edge(persons[person],
+                        "visited",
+                        countries[country],
+                        properties={'purpose': purpose})
+            redis_graph.add_edge(edge)
 
     # Connect friends
     with open('friends.csv', 'r') as f:
@@ -86,23 +95,10 @@ def PopulateGraph():
         for row in reader:
             person = persons[row[0]]
             friend = persons[row[1]]
-            redis_graph.connect_nodes(person, "friend", friend)
+            edge = Edge(person, "friend", friend)
+            redis_graph.add_edge(edge)
 
-def AddPersonToGraph(person, countries):
-    print "Adding person {name} age {age} gender {gender} status {status}".format(name=person["name"],
-    age=person["age"],
-    gender=person["gender"],
-    status=person["status"])
-
-    person_node = redis_graph.create_node("name", person["name"],
-    "age", person["age"],
-    "gender", person["gender"],
-    "status", person["status"], label="person")
-
-    for country in person["visited"]:
-        country_node = countries[country]
-        redis_graph.connect_nodes(person_node, "visited", country_node)
-
+    redis_graph.commit()
 
 def run_queries():
     print "Querying...\n"
@@ -239,7 +235,7 @@ def debug():
     global r
     global redis_graph
     r = redis.Redis(host='localhost', port=6379)
-    redis_graph = client.RedisGraph(graph, r)
+    redis_graph = Graph(graph_name, r)
     print "PopulateGraph"
     PopulateGraph()
     print "run_queries"
@@ -252,7 +248,7 @@ def main(argv):
         debug()
     else:
         with _redis() as r:
-            redis_graph = client.RedisGraph(graph, r)
+            redis_graph = Graph(graph_name, r)
             PopulateGraph()
             run_queries()
 

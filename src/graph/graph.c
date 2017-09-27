@@ -13,27 +13,27 @@ GraphEntity* _Graph_GetEntityById(GraphEntity **entity_list, int entity_count, l
     return NULL;
 }
 
-int _Graph_AddEntity(GraphEntity *entity, char *alias, GraphEntity ***entity_list, char ***alias_list, int *entityCount) {
-    if(*entity_list == NULL) {
-        *entity_list = (GraphEntity**)malloc(sizeof(GraphEntity*));
-        *alias_list = (char**)malloc(sizeof(char*));
-	} else {
-		*entity_list = realloc(*entity_list, sizeof(GraphEntity*) * (*entityCount + 1));
-        *alias_list = realloc(*alias_list, sizeof(char*) * (*entityCount + 1));
-	}
+void _Graph_AddEntity(GraphEntity *entity, char *alias, GraphEntity ***entity_list,
+                     char ***alias_list, size_t *entity_count, size_t *entity_cap) {
+    
+    if(*entity_cap <= *entity_count) {
+        *entity_cap *= 2; 
+        *entity_list = realloc(*entity_list, sizeof(GraphEntity*) * (*entity_cap));
+        *alias_list = realloc(*alias_list, sizeof(char*) * (*entity_cap));
+    }
 
-    (*entity_list)[*entityCount] = entity;
-    (*alias_list)[*entityCount] = alias;
-    (*entityCount)++;
-    return 1;
+    (*entity_list)[*entity_count] = entity;
+    (*alias_list)[*entity_count] = alias;
+    (*entity_count)++;
 }
 
-int _Graph_AddEdge(Graph *g, Edge *e, char *alias) {
-    return _Graph_AddEntity((GraphEntity*)e,
-                            alias,
-                            (GraphEntity ***)(&g->edges),
-                            &g->edge_aliases,
-                            &g->edge_count);
+void _Graph_AddEdge(Graph *g, Edge *e, char *alias) {
+    _Graph_AddEntity((GraphEntity*)e,
+                     alias,
+                     (GraphEntity ***)(&g->edges),
+                     &g->edge_aliases,
+                     &g->edge_count,
+                     &g->edge_cap);
 }
 
 GraphEntity* _Graph_GetEntityByAlias(GraphEntity **entity_list, char **alias_list, int entity_count, const char* alias) {
@@ -70,13 +70,26 @@ int _Graph_ContainsEntity(GraphEntity *entity, GraphEntity **entities, int entit
 
 Graph* NewGraph() {
     Graph* g = (Graph*)malloc(sizeof(Graph));
-    g->nodes = NULL;
-    g->edges = NULL;
-    g->node_aliases = NULL;
-    g->edge_aliases = NULL;
     g->node_count = 0;
     g->edge_count = 0;
+    g->node_cap = DEFAULT_GRAPH_CAP;
+    g->edge_cap = DEFAULT_GRAPH_CAP;
+    g->nodes = (Node**)malloc(sizeof(Node*) * g->node_cap);
+    g->edges = (Edge**)malloc(sizeof(Edge*) * g->edge_cap);
+    g->node_aliases = (char**)malloc(sizeof(char*) * g->node_cap);
+    g->edge_aliases = (char**)malloc(sizeof(char*) * g->edge_cap);
     return g;
+}
+
+Graph* NewGraph_WithCapacity(size_t node_cap, size_t edge_cap) {
+    Graph *graph = NewGraph();
+    graph->node_cap = node_cap;
+    graph->edge_cap = edge_cap;
+    graph->nodes = (Node**)malloc(sizeof(Node*) * node_cap);
+    graph->edges = (Edge**)malloc(sizeof(Edge*) * edge_cap);
+    graph->node_aliases = (char**)malloc(sizeof(char*) * node_cap);
+    graph->edge_aliases = (char**)malloc(sizeof(char*) * edge_cap);
+    return graph;
 }
 
 Node* Graph_GetNodeById(const Graph *g, long int id) {
@@ -105,19 +118,21 @@ int Graph_ContainsEdge(const Graph *graph, const Edge *edge) {
 
 int Graph_AddNode(Graph* g, Node *n, char *alias) {
     if(!Graph_ContainsNode(g, n)) {
-        return _Graph_AddEntity((GraphEntity*)n,
+        _Graph_AddEntity((GraphEntity*)n,
         alias,
         (GraphEntity ***)&g->nodes,
         &g->node_aliases,
-        &g->node_count);
+        &g->node_count,
+        &g->node_cap);
+        return 1;
     }
     return 0;
 }
 
-int Graph_ConnectNodes(Graph *g, Node *src, Node *dest, Edge *e, char *edge_alias) {
+void Graph_ConnectNodes(Graph *g, Node *src, Node *dest, Edge *e, char *edge_alias) {
     assert(Graph_ContainsNode(g, src) && Graph_ContainsNode(g, dest) && !Graph_ContainsEdge(g, e));
     Node_ConnectNode(src, dest, e);
-    return _Graph_AddEdge(g, e, edge_alias);
+    _Graph_AddEdge(g, e, edge_alias);
 }
 
 Node* Graph_GetNodeByAlias(const Graph* g, const char* alias) {

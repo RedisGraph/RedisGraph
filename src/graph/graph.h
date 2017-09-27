@@ -6,16 +6,21 @@
 #include "../rmutil/vector.h"
 #include "../hexastore/hexastore.h"
 
+#define DEFAULT_GRAPH_CAP 32 /* Number of edges/nodes within the graph. */
+
 typedef struct {
     Node **nodes;
     Edge **edges;
     char **node_aliases;
     char **edge_aliases;
-    int node_count;
-    int edge_count;
+    size_t node_count;
+    size_t edge_count;
+    size_t node_cap;
+    size_t edge_cap;
 } Graph;
 
 Graph* NewGraph();
+Graph* NewGraph_WithCapacity(size_t node_cap, size_t edge_cap);
 
 /* Checks if graph contains given node
  * Returns 1 if so, 0 otherwise */ 
@@ -42,7 +47,7 @@ GraphEntity* Graph_GetEntityByAlias(const Graph *g, const char *alias);
 int Graph_AddNode(Graph* g, Node *n, char *alias);
 
 /* Adds a new edge to the graph */
-int Graph_ConnectNodes(Graph *g, Node *src, Node *dest, Edge *e, char *edge_alias);
+void Graph_ConnectNodes(Graph *g, Node *src, Node *dest, Edge *e, char *edge_alias);
 
 /* Finds a node with given input degree */
 Vector* Graph_GetNDegreeNodes(Graph *g, int degree);

@@ -10,7 +10,7 @@
 /* Given AST's MATCH node constructs a graph
  * representing queried entities and the relationships
  * between them. */
-Graph* BuildGraph(const AST_MatchNode *matchNode);
+void BuildGraph(Graph *graph, Vector *entities);
 
 /* Retrieves requested properties from the graph. */
 Vector* ReturnClause_RetrievePropValues(const AST_ReturnNode *returnNode, const Graph *g);
@@ -21,14 +21,14 @@ Vector* ReturnClause_RetrieveGroupKeys(const AST_ReturnNode *returnNode, const G
 /* Retrieves all aggregated properties from graph. */
 Vector* ReturnClause_RetrieveGroupAggVals(const AST_ReturnNode *returnNode, const Graph *g);
 
-int ReturnClause_ContainsAggregation(const AST_ReturnNode *returnNode);
+int ReturnClause_ContainsAggregation(AST_QueryExpressionNode *ast);
 
 /* Retrieves all aggregation functions used within given return clause.
  * Returns a vector of AggCtx* */
 Vector* ReturnClause_GetAggFuncs(RedisModuleCtx *ctx, const AST_ReturnNode *returnNode);
 
 /* Checks to see if return clause contains a collapsed node. */
-int ReturnClause_ContainsCollapsedNodes(const AST_ReturnNode *returnNode);
+int ReturnClause_ContainsCollapsedNodes(AST_QueryExpressionNode *ast);
 
 void ReturnClause_ExpandCollapsedNodes(RedisModuleCtx *ctx, AST_QueryExpressionNode *ast, const char *graphName);
 

@@ -31,11 +31,11 @@ int Node_IncomeDegree(const Node *n);
 /* Connects source node to destination node by edge */
 void Node_ConnectNode(Node* src, Node* dest, struct Edge* e);
 
-/* Adds a properties to node
+/* Adds properties to node
  * prop_count - number of new properties to add 
  * keys - array of properties keys 
  * values - array of properties values */
-void Node_Add_Properties(Node *node, int propCount, char **keys, SIValue *values);
+void Node_Add_Properties(Node *node, int prop_count, char **keys, SIValue *values);
 
 /* Retrieves node's property
  * NOTE: If the key does not exist, we return the special

@@ -296,7 +296,7 @@ int MGraph_DeleteGraph(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
  * argv[1] graph name
  * argv[2] query to execute */
 int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-    if (argc < 2) return RedisModule_WrongArity(ctx);
+    if (argc < 3) return RedisModule_WrongArity(ctx);
 
     /* Time query execution */
     clock_t start = clock();
@@ -318,7 +318,7 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     }
     
     /* Modify AST */
-    if(ReturnClause_ContainsCollapsedNodes(ast->returnNode) == 1) {
+    if(ReturnClause_ContainsCollapsedNodes(ast) == 1) {
         /* Expend collapsed nodes. */
         ReturnClause_ExpandCollapsedNodes(ctx, ast, graphName);
     }
@@ -327,10 +327,9 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     ResultSet* resultSet = ExecutionPlan_Execute(plan);
     
     /* Send result-set back to client. */
+    ExecutionPlanFree(plan);
     ResultSet_Replay(ctx, resultSet);
     ResultSet_Free(ctx, resultSet);
-    /* TODO: free execution plan.
-     * ExecutionPlanFree(plan); */
 
     /* Report execution timing. */
     end = clock();

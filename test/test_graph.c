@@ -27,7 +27,7 @@ void test_graph_construction() {
     
     assert(Graph_AddNode(graph, person_node, "Joe"));
     assert(Graph_AddNode(graph, city_node, "NYC"));
-    assert(Graph_ConnectNodes(graph, person_node, city_node, edge, "relation"));
+    Graph_ConnectNodes(graph, person_node, city_node, edge, "relation");
 
     assert(Graph_ContainsNode(graph, person_node));
     assert(Graph_ContainsNode(graph, city_node));
@@ -85,7 +85,7 @@ void test_graph_id_less_entities() {
     
     assert(Graph_AddNode(graph, person_node, "Joe"));
     assert(Graph_AddNode(graph, city_node, "NYC"));
-    assert(Graph_ConnectNodes(graph, person_node, city_node, edge, "relation"));
+    Graph_ConnectNodes(graph, person_node, city_node, edge, "relation");
 
     assert(Graph_ContainsNode(graph, person_node));
     assert(Graph_ContainsNode(graph, city_node));

@@ -10,6 +10,7 @@
 #include "./ops/op_produce_results.h"
 #include "./ops/op_filter.h"
 #include "./ops/op_aggregate.h"
+#include "./ops/op_create.h"
 
 #include "../graph/edge.h"
 #include "../rmutil/vector.h"
@@ -165,7 +166,7 @@ void _ExecutionPlan_MergeNodes(ExecutionPlan *plan, const Node *n) {
      * an expand into operation */
     ExpandAll *op = (ExpandAll*)a->operation;
     OpBase *opExpandInto;
-    NewExpandIntoOp(op->ctx, plan->graph, plan->graphName, op->src_node,
+    NewExpandIntoOp(op->ctx, plan->graph, plan->graph_name, op->src_node,
                     op->relation, op->dest_node, &opExpandInto);
 
     // free previous operation.
@@ -293,33 +294,60 @@ Vector* _ExecutionPlan_AddFilters(OpNode *root, FT_FilterNode **filterTree) {
     return seen;
 }
 
-ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, const char *graph_name, AST_QueryExpressionNode *ast) {
-    Graph *graph = BuildGraph(ast->matchNode);
-    ExecutionPlan *executionPlan = (ExecutionPlan*)calloc(1, sizeof(ExecutionPlan));
+void _Count_Graph_Entities(const Vector *entities, size_t *node_count, size_t *edge_count) {
+    for(int i = 0; i < Vector_Size(entities); i++) {
+        AST_GraphEntity *entity;
+        Vector_Get(entities, i, &entity);
+
+        if(entity->t == N_ENTITY) {
+            (*node_count)++;
+        } else if(entity->t == N_LINK) {
+            (*edge_count)++;
+        }
+    }
+}
+
+void _Determine_Graph_Size(const AST_QueryExpressionNode *ast, size_t *node_count, size_t *edge_count) {
+    *edge_count = 0;
+    *node_count = 0;
+    Vector *entities;
     
-    /* List of operations. */
-    OpBase *produceResults = NULL;
+    if(ast->matchNode) {
+        entities = ast->matchNode->graphEntities;
+        _Count_Graph_Entities(entities, node_count,edge_count);
+    }
+
+    if(ast->createNode) {
+        entities = ast->createNode->graphEntities;
+        _Count_Graph_Entities(entities, node_count,edge_count);
+    }
+}
+
+ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, const char *graph_name, AST_QueryExpressionNode *ast) {
+    /* Predetermin graph size: (entities in both MATCH and CREATE clauses)
+     * have graph object maintain an entity capacity, to avoid reallocs,
+     * problem was reallocs done by CREATE clause, which invalidated old refrences in ExpandAll. */
+
+    size_t node_count;
+    size_t edge_count;
+    _Determine_Graph_Size(ast, &node_count, &edge_count);
+    Graph *graph = NewGraph_WithCapacity(node_count, edge_count);
+
+    if(ast->matchNode) BuildGraph(graph, ast->matchNode->graphEntities);
+
+    ExecutionPlan *execution_plan = (ExecutionPlan*)calloc(1, sizeof(ExecutionPlan));
+    
+    /* List of operations. */    
     FT_FilterNode *filterTree = NULL;
 
     Vector *Ops = NewVector(OpNode*, 0);
-    /* Last operation in our execution plan, produce result-set. */
-    NewProduceResultsOp(ctx, ast, &produceResults);
-    OpNode *opProduceResults = NewOpNode(produceResults);
 
-    executionPlan->root = opProduceResults;
-    executionPlan->graph = graph;
-    executionPlan->graphName = graph_name;
+    execution_plan->root = NewOpNode(NULL);
+    execution_plan->graph = graph;
+    execution_plan->graph_name = graph_name;
+    execution_plan->result_set = NewResultSet(ast);
 
-    Vector_Push(Ops, opProduceResults);
-
-    if(ast->whereNode != NULL) {
-        executionPlan->filter_tree = BuildFiltersTree(ast->whereNode->filters);
-    }
-
-    if(ReturnClause_ContainsAggregation(ast->returnNode)) {
-        OpNode *opAggregate = NewOpNode(NewAggregateOp(ctx, ast));
-        Vector_Push(Ops, opAggregate);
-    }
+    Vector_Push(Ops, execution_plan->root);
 
     /* Get all nodes without incoming edges */
     Vector *entryNodes = Graph_GetNDegreeNodes(graph, 0);
@@ -386,34 +414,52 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, const char *graph_name, AST
                 prevOp = currentOp;
             } while(Vector_Size(Ops) != 0);
 
-            /* Reintroduce Projection. */
-            Vector_Push(Ops, opProduceResults);
+            /* Reintroduce root. */
+            Vector_Push(Ops, execution_plan->root);
         }
     } /* End of entry nodes loop */
 
     Vector_Free(Ops);
 
+    /* Set root operation */
+    if(ast->returnNode) {
+        if(execution_plan->result_set->aggregated) {
+            execution_plan->root->operation = NewAggregateOp(ctx, ast);
+        } else {
+            execution_plan->root->operation = NewProduceResultsOp(ctx, ast, execution_plan->result_set);
+        }
+    }
+
+    if(ast->createNode) {
+        BuildGraph(graph, ast->createNode->graphEntities);
+        int request_refresh = (execution_plan->root->childCount > 0);
+        OpBase *op_create = NewCreateOp(ctx, graph, graph_name, request_refresh, execution_plan->result_set);
+        
+        if(execution_plan->root->operation == NULL) {
+            /* Set root operation to create. */
+            execution_plan->root->operation = op_create;
+        } else {
+            /* Push create operation between root and its children. */
+            _OpNode_PushInBetween(execution_plan->root, NewOpNode(op_create));
+        }
+    }
+
     /* Optimizations and modifications. */
-    _ExecutionPlan_OptimizeEntryPoints(ctx, graph, graph_name, ast, executionPlan->root);
+    _ExecutionPlan_OptimizeEntryPoints(ctx, graph, graph_name, ast, execution_plan->root);
     
     Vector *nodesToMerge = Graph_GetNDegreeNodes(graph, 2);
     for(int i = 0; i < Vector_Size(nodesToMerge); i++) {
         Node *nodeToMerge;
         Vector_Get(nodesToMerge, i, & nodeToMerge);
-        _ExecutionPlan_MergeNodes(executionPlan, nodeToMerge);
-    }
-    
-    /* Until we'll be able to applay a the minimum filter tree to each op,
-     * filters will be applied at the lowest level. */
-    if(ast->whereNode != NULL) {
-        _ExecutionPlan_AddFilters(executionPlan->root, &executionPlan->filter_tree);
+        _ExecutionPlan_MergeNodes(execution_plan, nodeToMerge);
     }
 
-    /* TODO: The plan executor is about to override the nodes/edges within the graph
-     * with entities which must persist, as a result freeing the graph
-     * will corrupt our database, this is why we're freeing the graph's entities 
-     * at this early stage as we only care about their place holders. */
-    return executionPlan;
+    if(ast->whereNode != NULL) {
+        execution_plan->filter_tree = BuildFiltersTree(ast->whereNode->filters);
+        _ExecutionPlan_AddFilters(execution_plan->root, &execution_plan->filter_tree);
+    }
+
+    return execution_plan;
 }
 
 void _ExecutionPlanPrint(const OpNode *op, char **strPlan, int ident) {
@@ -469,6 +515,10 @@ consume:
 }
 
 OpResult PullFromStreams(OpNode *source, Graph *graph) {
+    if(source->childCount == 0) {
+        return OP_DEPLETED;
+    }
+
     /* Assuming stream are independent, and do not effect each other. */
     OpNode *stream;
 
@@ -512,9 +562,7 @@ OpResult PullFromStreams(OpNode *source, Graph *graph) {
 
 ResultSet* ExecutionPlan_Execute(ExecutionPlan *plan) {
     while(_ExecuteOpNode(plan->root, plan->graph) == OP_OK);
-    
-    // Execution-Plan root node is ProduceResults operation.
-    return ((ProduceResults*)plan->root->operation)->resultset;
+    return plan->result_set;
 }
 
 void OpNode_Free(OpNode* op) {
