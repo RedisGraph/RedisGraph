@@ -74,7 +74,7 @@ You can call Redis Graph's commands from any Redis client.
 
 ```sh
 $ redis-cli
-127.0.0.1:6379> GRAPH.CREATENODE social person name roi age 32 gender male status married
+127.0.0.1:6379> GRAPH.QUERY social "CREATE (:person {name: roi, age: 32, gender: male, status: married})"
 "459034279876493568"
 ```
 
@@ -90,7 +90,7 @@ This code snippet shows how to use Redis Graph with raw Redis commands from Pyth
 import redis
 
 r = redis.StrictRedis()
-reply = r.execute_command('GRAPH.CREATENODE', 'social', 'person', 'name', 'roi', 'age', 32, 'gender', 'male', 'status', 'married')
+reply = r.execute_command('GRAPH.QUERY', 'social', 'CREATE (:person {name:roi, age:32, gender:male, status:married)')
 ```
 
 ### Client libraries
@@ -99,4 +99,4 @@ Some languages have client libraries that provide support for Redis Graph's comm
 
 | Project | Language | License | Author | URL |
 | ------- | -------- | ------- | ------ | --- |
-| TBD | Python | TBD | [Redis Labs](https://redislabs.com) | [GitHub](https://github.com/swilly22/redis-module-graph/tree/master/Demo/client) |
+| redisgraph-py | Python | BSD | [Redis Labs](https://redislabs.com) | [GitHub](https://github.com/swilly22/redisgraph-py) |

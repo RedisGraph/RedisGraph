@@ -26,49 +26,36 @@ RediGraph is a graph database developed from scratch on top of Redis, using the 
 ## A Little Taste: RediGraph in Action
 Let’s look at some of the key concepts of RediGraph using this example over the redis-cli tool:
 
-### Introducing our entities:
+### Constructing a graph:
 It is a common concept to represent entities as nodes within a graph, In this example, we'll create a small graph with both actors and movies as its entities,
 an "act" relation will connect actors to movies they casted in.
+We use the graph.QUERY command to issue a CREATE query which will introduce new entities and relations to our graph.
 
-We use the graph.CREATENODE command to create a new entity:
 ```sh
-graph.CREATENODE <graph_id> <label> <attribute_name> <attribute_value> <attribute_name> <attribute_value> ...
+graph.QUERY <graph_id> 'CREATE (:<label> {<attribute_name>:<attribute_value>,...})'
 ```
 
-Or in our example:
 ```sh
-graph.CREATENODE IMDB actor name "Aldis Hodge" birth_year 1986
-graph.CREATENODE IMDB actor name "OShea Jackson" birth_year 1991
-graph.CREATENODE IMDB actor name "Corey Hawkins" birth_year 1988
-graph.CREATENODE IMDB actor name "Neil Brown" birthyear 1980
-graph.CREATENODE IMDB movie title "Straight Outta Compton" genre Biography votes 127258 rating 7.9 year 2015
-graph.CREATENODE IMDB movie title "Never Go Back" gener Action votes 15821 rating 6.4 year 2016
+graph.QUERY <graph_id> 'CREATE (<source_node_alias>)-[<relation> {<attribute_name>:<attribute_value>,...}]->(<dest_node_alias>)'
 ```
 
-### Connecting entities:
-It is now time to form relationships between actors and movies, we use RedisGraph ADDEDGE command and specify the source entity, type of connection and destination entity as such:
-
+Construct our graph in one go:
 ```sh
-GRAPH.ADDEDGE <graph_id> <src_entity_id> <relation> <dest_entity_id>
-```
-
-Adding the Straight Outta Compton cast:
-
-```sh
-GRAPH.ADDEDGE IMDB <Aldis_Hodge node id> act <Straight_Outta_Compton node id>
-GRAPH.ADDEDGE IMDB <OShea_Jackson node id> act <Straight_Outta_Compton node id>
-GRAPH.ADDEDGE IMDB <Corey_Hawkins node id> act <Straight_Outta_Compton node id>
-GRAPH.ADDEDGE IMDB <Neil_Brown node id> act <Straight_Outta_Compton node id>
-```
-
-Adding the only cast member who also played in the movie Never Go Back.
-
-```sh
-GRAPH.ADDEDGE IMDB <Aldis_Hodge node id> act <Never_Go_Back node id>
+graph.QUERY IMDB 'CREATE (aldis:actor {name: "Aldis Hodge", birth_year: 1986}),
+                         (oshea:actor {name: "OShea Jackson", birth_year: 1991}),
+                         (corey:actor {name: "Corey Hawkins", birth_year: 1988}),
+                         (neil:actor {name: "Neil Brown", birthyear: 1980}),
+                         (compton:movie {title: "Straight Outta Compton", genre: Biography, votes: 127258, rating: 7.9, year: 2015}),
+                         (neveregoback:movie {title: "Never Go Back", gener: Action, votes: 15821, rating: 6.4, year: 2016}),
+                         (aldis)-[act]->(neveregoback),
+                         (aldis)-[act]->(compton),
+                         (oshea)-[act]->(compton),
+                         (corey)-[act]->(compton),
+                         (neil)-[act]->(compton)'
 ```
 
 ### Querying the graph:
-RedisGraph exposes a subset of Neo4J Cypher language, although only a number of language capabilities are supported there's enough functionality to extract valuable insights from your graphs, to execute a query we use the GRAPH.QUERY command:
+RedisGraph exposes a subset of Open-Cypher language, although only a number of language capabilities are supported there's enough functionality to extract valuable insights from your graphs, to execute a query we use the GRAPH.QUERY command:
 
 ```sh
 GRAPH.QUERY <graph_id> <query>
@@ -88,12 +75,10 @@ RedisGraph will reply with:
 ```sh
 1) "m.title, SUM(a.age), MAX(a.age), MIN(a.age), AVG(a.age)"
 2) "Straight Outta Compton,123.000000,37.000000,26.000000,30.750000"
-3) "Query internal execution time: 0.071000 milliseconds"
 ```
 
 The first row is our result-set hearder which name each column according to the return clause.
 Second row contains our query result.
-Last row contains RedisGraph execution time.
 
 Let's try another query, this time we'll find in how many movies each actor played.
 
@@ -105,7 +90,6 @@ GRAPH.QUERY IMDB "MATCH (actor)-[act]->(movie) RETURN actor.name, COUNT(movie.ti
 3) "O'Shea Jackson,1.000000"
 4) "Corey Hawkins,1.000000"
 5) "Neil Brown,1.000000"
-6) "Query internal execution time: 0.071000 milliseconds"
 ```
 
 ## The Theory: Ideas behind RedisGraph
@@ -148,7 +132,7 @@ Although a Hexastore uses plenty of memory, six triplets for each relation, we'r
 
 ### Query language: Cypher
 There are a number of Graph Query languages, we didn't want to reinvent the wheel and come up with our own language,
-and so we've decided to implement a subset of one of the most popular graph query language out there Cypher by Neo4J,
+and so we've decided to implement a subset of one of the most popular graph query language out there Open-Cypher,
 the Open-Cypher project provides means to create a parser for the language, although convenient
 we decided to create our own parser with Lex as a tokenizer and Lemon which generates a C target parser.
 
@@ -172,12 +156,13 @@ RediGraph will
 - Populate result-set with matching entities attributes
 
 ### Query parser
-Given a valid query the parser will generate an AST containing four primary nodes one for each clause:
+Given a valid query the parser will generate an AST containing five primary nodes one for each clause:
 
 1. MATCH
-2. WHERE
-3. RETURN
-4. ORDER
+2. CREATE
+3. WHERE
+4. RETURN
+5. ORDER
 
 Generating an abstract syntax tree is a common way of discribing and structuring a language.
 

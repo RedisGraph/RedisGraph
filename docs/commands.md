@@ -1,41 +1,5 @@
 # Redis Graph Commands
 
-## GRAPH.CREATENODE
-
-Creates a new node within the given graph, marked with a label (if provided).
-
-Arguments: `Graph name, label [optional], list of key value attributes`
-
-Returns: `Node ID`
-
-```sh
-GRAPH.CREATENODE us_government president name "Barack Obama" age 55
-```
-
-## GRAPH.ADDEDGE
-
-Creates a connection within the given graph between source node and destination node, using relation.
-
-Arguments: `Graph name, source node ID, relationship, destination node ID`
-
-Returns: `Edge ID`
-
-```sh
-GRAPH.ADDEDGE us_government Barak_Obama_Node_ID born Hawaii_Node_ID
-```
-
-<!--## GRAPH.REMOVEEDGE
-
-Removes edge connecting source to destination.
-
-Arguments: `Graph name, source node ID, relationship, destination node ID`
-
-Returns: `Null`
-
-```sh
-GRAPH.REMOVEEDGE us_government Richard_Nixon_Node_ID born California_Node_ID
-```-->
-
 ## GRAPH.DELETE
 
 Deletes the entire graph.
@@ -86,6 +50,7 @@ A query is composed of five parts:
 - RETURN
 - ORDER BY
 - LIMIT
+- CREATE
 
 #### MATCH
 
@@ -137,7 +102,6 @@ Nodes can have more than one edge coming in or out of them, for instance:
 ```
 
 Here we're interested in knowing which of my friends have visited at least one country i've been to.
-
 
 #### WHERE
 
@@ -248,3 +212,45 @@ LIMIT <max records to return>
 ```
 
 If not specified, there's no limit to the number of records returned by a query.
+
+#### CREATE
+
+CREATE query is used to introduce new nodes and relationships.
+The simplest example of CREATE would be a single node creation:
+
+```sh
+CREATE (n)
+```
+
+It's possible to create multiple entities by seperating them with a comma.
+
+```sh
+CREATE (n),(m)
+```
+
+Label and properties can be specified at creation time
+
+```sh
+CREATE (:person {name: Kurt, age:27})
+```
+
+Adding relations between nodes, in the following example we first locate an existing source node,
+once found we create a new relationship and destination node.
+
+```sh
+MATCH(a:person)
+WHEREE a.name = 'Kurt'
+CREATE (a)-[member {position:"lead singer"}]->(:band {name:nirvana})
+RETURN
+```
+
+Here the source node is a bounded node while the destination node is unbounded,
+as a result a new node is created representing the band nirvana and a new relation connects kurt as the lead singer of the band.
+
+Lastly we'll create a complete pattern, all entities within the pattern which are not bounded will be created.
+```sh
+CREATE 
+(jim:person{name:'jim', age:29})-[friends]->(pam:person {name:'pam', age:27})-[works]->(:employer {name:'dunder mifflin'})
+RETURN
+```
+This query will create three nodes and two relationships.

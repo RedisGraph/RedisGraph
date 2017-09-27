@@ -6,11 +6,11 @@
 /* Forward declarations */
 void _EdgesSrcDestAliases(OpCreate *op, Graph* graph);
 
-OpBase* NewCreateOp(RedisModuleCtx *ctx, Graph *graph, const char *graph_name, int request_refresh) {
-    return (OpBase*)NewCreate(ctx, graph, graph_name, request_refresh);
+OpBase* NewCreateOp(RedisModuleCtx *ctx, Graph *graph, const char *graph_name, int request_refresh, ResultSet *result_set) {
+    return (OpBase*)NewCreate(ctx, graph, graph_name, request_refresh, result_set);
 }
 
-OpCreate* NewCreate(RedisModuleCtx *ctx, Graph *graph, const char *graph_name, int request_refresh) {
+OpCreate* NewCreate(RedisModuleCtx *ctx, Graph *graph, const char *graph_name, int request_refresh, ResultSet *result_set) {
     OpCreate *op_create = calloc(1, sizeof(OpCreate));
 
     op_create->ctx = ctx;
@@ -24,6 +24,7 @@ OpCreate* NewCreate(RedisModuleCtx *ctx, Graph *graph, const char *graph_name, i
     op_create->edge_count = 0;
     op_create->created_nodes = NewVector(Node*, 0);
     op_create->created_edges = NewVector(Edge*, 0);
+    op_create->result_set = result_set;
     
     _EdgesSrcDestAliases(op_create, graph);
 
@@ -187,8 +188,11 @@ void _CommitNewEntities(OpCreate *op) {
                 /* Store node within label store. */
                 label_store = GetStore(op->ctx, STORE_NODE, op->graph_name, n->label);
                 Store_Insert(label_store, node_id, n);
+                op->result_set->labels_added++;
             }
+            op->result_set->properties_set += n->prop_count;
         }
+        op->result_set->nodes_created = node_count;
     }
 
     if(edge_count > 0) {
@@ -211,7 +215,9 @@ void _CommitNewEntities(OpCreate *op) {
             /* Store relation within hexastore */
             Triplet *triplet = NewTriplet(e->src, e, e->dest);
             HexaStore_InsertAllPerm(hexastore, triplet);
+            op->result_set->properties_set += e->prop_count;
         }
+        op->result_set->relationships_created = edge_count;
     }
 }
 

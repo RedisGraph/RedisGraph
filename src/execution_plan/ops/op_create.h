@@ -4,6 +4,7 @@
 #include "op.h"
 #include "../../graph/node.h"
 #include "../../graph/edge.h"
+#include "../../resultset/resultset.h"
 /* Creats new entities according to the CREATE clause. */
 
 typedef struct {
@@ -33,11 +34,11 @@ typedef struct {
 
     Vector *created_nodes;
     Vector *created_edges;
-
+    ResultSet *result_set;
 } OpCreate;
 
-OpBase* NewCreateOp(RedisModuleCtx *ctx, Graph *graph, const char *graph_name, int request_refresh);
-OpCreate* NewCreate(RedisModuleCtx *ctx, Graph *graph, const char *graph_name, int request_refresh);
+OpBase* NewCreateOp(RedisModuleCtx *ctx, Graph *graph, const char *graph_name, int request_refresh, ResultSet *result_set);
+OpCreate* NewCreate(RedisModuleCtx *ctx, Graph *graph, const char *graph_name, int request_refresh, ResultSet *result_set);
 
 OpResult OpCreateConsume(OpBase *opBase, Graph* graph);
 OpResult OpCreateReset(OpBase *ctx);

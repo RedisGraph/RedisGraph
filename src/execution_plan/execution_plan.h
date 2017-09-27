@@ -36,7 +36,8 @@ typedef struct {
     OpNode *root;
     Graph *graph;
     FT_FilterNode *filter_tree;
-    const char *graphName;
+    const char *graph_name;
+    ResultSet *result_set;
 } ExecutionPlan;
 
 /* Creates a new execution plan from AST */
