@@ -188,7 +188,7 @@ Supported aggregation functions:
 - `max`
 - `count`
 
-### ORDER BY
+#### ORDER BY
 
 Specifies that the output should be sorted and how.
 
@@ -206,7 +206,7 @@ Below we sort our friends by height. For similar heights, weight is used to brea
 ORDER BY friend.height, friend.weight DESC
 ```
 
-### LIMIT
+#### LIMIT
 
 Although not mandatory, in order to limit the number of records returned by a query, you can
 use the limit clause:
