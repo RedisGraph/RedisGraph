@@ -1,10 +1,10 @@
 #include <stdio.h>
 #include <string.h>
 #include "assert.h"
-#include "../src/util/prng.h"
-#include "../src/rmutil/sds.h"
-#include "../src/graph/edge.h"
-#include "../src/hexastore/triplet.h"
+#include "../../src/util/prng.h"
+#include "../../src/rmutil/sds.h"
+#include "../../src/graph/edge.h"
+#include "../../src/hexastore/triplet.h"
 
 void test_triplet_creation() {
 	Node *subject_node = NewNode(get_new_id(), "actor");

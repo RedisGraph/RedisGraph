@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <string.h>
 #include "assert.h"
-#include "../src/util/prng.h"
-#include "../src/hexastore/hexastore.h"
-#include "../src/hexastore/triplet.h"
+#include "../../src/util/prng.h"
+#include "../../src/hexastore/hexastore.h"
+#include "../../src/hexastore/triplet.h"
 
 void test_hexastore() {
     Triplet *t;
