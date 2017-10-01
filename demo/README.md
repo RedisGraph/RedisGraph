@@ -16,7 +16,7 @@
 
 2. Install requirements:
 
-  From either <REDISGRAPH_ROOT>/Demo/imdb or <REDISGRAPH_ROOT>/Demo/social, Run:
+  From either <REDISGRAPH_ROOT>/demo/imdb or <REDISGRAPH_ROOT>/demo/social, Run:
 
   ```sh
   pip install -r requirements.txt

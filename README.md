@@ -15,7 +15,7 @@ Primary features:
 * Nodes and edges can be labeled
 * Supports [openCypher](http://www.opencypher.org/) graph queries
 
-To see Redis Graph in action see [Demos](https://github.com/RedisLabsModules/redis-module-graph/tree/master/Demo).
+To see Redis Graph in action see [Demos](https://github.com/RedisLabsModules/redis-module-graph/tree/master/demo).
 
 ## Quickstart
 

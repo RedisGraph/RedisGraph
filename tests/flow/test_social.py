@@ -3,7 +3,7 @@ import unittest
 from redisgraph import Graph
 
 sys.path.append('.')
-sys.path.append('../../Demo/social/')
+sys.path.append('../../demo/social/')
 from base import FlowTestsBase
 import queries
 import social_utils
