@@ -12,8 +12,8 @@ def populate_graph(redis_con, redis_graph):
 	if redis_con.exists(graph_name):
 		return
 
-	print("Loading movies")
 	# Load movies entities
+	print("Loading movies")
 	movies = {}
 
 	with open(os.path.dirname(os.path.abspath(__file__)) + '/resources/movies.csv', 'r') as f:
@@ -35,6 +35,7 @@ def populate_graph(redis_con, redis_graph):
 
 	print("Loaded %d movies" % len(movies))
 
+	# Load actors entities
 	print("Loading actors")
 	actors = {}
 	today = date.today()
