@@ -28,7 +28,11 @@ def debug():
     global redis_graph
     redis_con = redis.Redis(host='localhost', port=6379)
     redis_graph = Graph(imdb_utils.graph_name, redis_con)
+
+    print("populate_graph")
     imdb_utils.populate_graph(redis_con, redis_graph)
+
+    print("run_queries")
     run_queries()
 
 
@@ -45,4 +49,4 @@ def main(argv):
 
 
 if __name__ == '__main__':
-	main(sys.argv[1:])
+    main(sys.argv[1:])

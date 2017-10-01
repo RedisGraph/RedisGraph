@@ -28,8 +28,10 @@ def debug():
     global redis_graph
     redis_con = redis.Redis(host='localhost', port=6379)
     redis_graph = Graph(social_utils.graph_name, redis_con)
+
     print("populate_graph")
     social_utils.populate_graph(redis_con, redis_graph)
+
     print("run_queries")
     run_queries()
 
