@@ -58,7 +58,7 @@ set(_graph_files
       )
 
 
-set (graph_files ${_graph_files} PARENT_SCOPE)
+set(graph_files ${_graph_files} PARENT_SCOPE)
 
 # Libgraph target - a static library for graph database
 add_library(Llibgraph STATIC  ${_graph_files})
