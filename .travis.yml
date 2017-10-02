@@ -1,0 +1,15 @@
+language: c
+compiler: gcc
+dist: trusty
+before_script:
+- pip install --user redis ramp-packer rmtest
+- git clone -b 4.0.1 --depth 1 https://github.com/antirez/redis.git
+- cd redis
+- make
+- cd ..
+env:
+- REDIS_MODULE_PATH=$TRAVIS_BUILD_DIR/src/libmodule.so REDIS_PATH=$TRAVIS_BUILD_DIR/redis/src/redis-server
+script:
+- cmake .
+- make
+- make test
