@@ -63,7 +63,7 @@ set (graph_files ${_graph_files} PARENT_SCOPE)
 # Libgraph target - a static library for graph database
 add_library(Llibgraph STATIC  ${_graph_files})
 
-target_compile_options(Llibgraph PUBLIC "-fPIC" "-DREDIS_MODULE_TARGET" "-I${CMAKE_CURRENT_LIST_DIR}")
+target_compile_options(Llibgraph PUBLIC "-fPIC" "-D_GNU_SOURCE" "-DREDIS_MODULE_TARGET" "-I${CMAKE_CURRENT_LIST_DIR}")
 
 
 # build the parser source code before building Llibgraph
