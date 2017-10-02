@@ -3,7 +3,7 @@ import unittest
 from redisgraph import Graph
 
 sys.path.append('.')
-sys.path.append('../../Demo/imdb/')
+sys.path.append('../../demo/imdb/')
 from base import FlowTestsBase
 import queries
 import imdb_utils
