@@ -143,14 +143,7 @@ number_of_vacations_per_person_query = QueryInfo(
                      ['"Lucy Yanfital"', '2.000000'],
                      ['"Jane Chernomorin"', '2.000000'],
                      ['"Mor Yesharim"', '2.000000'],
-                     ['"Roi Lipman"', '3.000000'],
-                     ['"Alon Fital"', '3.000000'],
-                     ['"Ori Laslo"', '3.000000'],
-                     ['"Boaz Arad"', '2.000000'],
-                     ['"Tal Doron"', '3.000000'],
-                     ['"Valerie Abigail Arad"', '2.000000'],
-                     ['"Gal Derriere"', '1.000000'],
-                     ['"Ailon Velger"', '0.000000']]
+                     ['"Valerie Abigail Arad"', '2.000000']]
 )
 
 
