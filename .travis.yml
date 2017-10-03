@@ -1,6 +1,7 @@
 language: c
 compiler: gcc
 dist: xenial
+
 addons:
   apt:
     sources:
@@ -8,16 +9,38 @@ addons:
     packages:
       - cmake
       - cmake-data
-before_script:
-- pip install --user redis ramp-packer rmtest
-- git clone -b 4.0.1 --depth 1 https://github.com/antirez/redis.git
-- cd redis
-- make
-- cd ..
+
 env:
-- REDIS_MODULE_PATH=$TRAVIS_BUILD_DIR/src/libmodule.so REDIS_PATH=$TRAVIS_BUILD_DIR/redis/src/redis-server
+  - MODULE_NAME=redisgraph
+  - REDIS_MODULE_PATH=$TRAVIS_BUILD_DIR/src/libmodule.so
+  - REDIS_PATH=$TRAVIS_BUILD_DIR/redis/src/redis-server
+
+before_script:
+  - pip install --user redis ramp-packer rmtest
+  - git clone -b 4.0.1 --depth 1 https://github.com/antirez/redis.git
+  - cd redis
+  - make
+  - cd ..
+
 script:
-- cmake --version
-- cmake .
-- make module
-# - make test
+  - cmake --version
+  - cmake .
+  - make clean
+  - make module
+  - cd src
+  - mkdir -p ../build
+  - module_packer -v -o "../build/redisgraph.{os}-{architecture}.latest.zip" "`pwd`/libmodule.so"
+  # - make test
+
+deploy:
+  # Module latest artifact
+  - provider: s3
+    access_key_id: $AWS_ACCESS_KEY
+    secret_access_key: $AWS_SECRET
+    skip_cleanup: true
+    acl: public_read
+    bucket: redismodules
+    upload-dir: $MODULE_NAME
+    on:
+      branch: master
+    local_dir: $TRAVIS_BUILD_DIR/build
