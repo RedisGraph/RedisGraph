@@ -36,9 +36,8 @@ script:
 deploy:
   # Module latest artifact
   - provider: s3
-    access_key_id: AKIAJV5TLHJABHC5XH7A
-    secret_access_key:
-      secure: E9CY1H82Gt0SHw7IyhFiGYSvL+qnuPyTXKksLzVTpg8c83C2MFJwAMXOhW4JPLaSD/u7xZTSU9/DDLb6yEkbGvoKS2VMmuLKJDT13mRp4hV8jJnn3kb0sV6/7zq5d1qrKHkHd0VpTBybPuHRwHnO74mYOKx4XW6bDGsRMmCHljg4tRKU0gvGI+uvyO+iRvyj83o/erte/3QQXDIMsY7D/hvWRLnHg8Np0l1XC0F5nnKxuQlM/BtaQj06/xSy56QFDTiG51uZIfE5v5KiaA5V7Fde7SzdrRxMjKlRSI0u2LRhxepm3wfb+47R18sPE5kNMIq7v3licqjeEvR7piZf2p1TG3DX0heX4yxJkTxirpAuU95Wyu1VkivGBdhwwzI4bU4rZFDIrPJ9rQPX1eli//2s/6n1zS46+qHC2jQEIQ5Sj3ihuEVueV2CD+8OBS1yf+nfI7NT9OxToyDhhitMB5bNHOy+D3Su5IqHprn0B7pnXVto5iqYCnP+L6q2dyNkLX8E9sS1S2GToobSyVj69YEAP0bhq8k05ujq2canouJofraCYsWFNYvrsNkuaEaR4XwnaESg2+XnsPZBvJ2PCWby/HtSR7xAeR/Eqb2i2P8rBWrcNwxubT44q+hEa0iRDLylHVt/aKVrAxWP3WjuRF3VI5LBT1fxxbS4saAUa9o=
+    access_key_id: $AWS_ACCESS_KEY
+    secret_access_key: $AWS_SECRET
     skip_cleanup: true
     acl: public_read
     bucket: redismodules
