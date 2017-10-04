@@ -44,9 +44,7 @@ class FlowTestsBase(unittest.TestCase):
                          (str(actual_result_set), str(query_info.expected_result)))
 
     def _assert_run_time(self, actual_result, query_info):
-        run_time_string = actual_result.statistics[self.RUN_TIME_ROW_INDEX]
-        actual_run_time = float(run_time_string.split(': ')[1].split(' milliseconds')[0])
-        self.assertLessEqual(actual_run_time,
+        self.assertLessEqual(actual_result.run_time_ms,
                              query_info.max_run_time_ms,
                              'Maximum runtime for query \"%s\" was: %s, but shoud be %s' %
-                             (query_info.description, str(query_info.max_run_time_ms), str(actual_run_time)))
+                             (query_info.description, str(query_info.max_run_time_ms), str(actual_result.run_time_ms)))
