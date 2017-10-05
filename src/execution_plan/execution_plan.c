@@ -11,6 +11,7 @@
 #include "./ops/op_filter.h"
 #include "./ops/op_aggregate.h"
 #include "./ops/op_create.h"
+#include "./ops/op_delete.h"
 
 #include "../graph/edge.h"
 #include "../rmutil/vector.h"
@@ -357,7 +358,7 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, const char *graph_name, AST
         Vector_Get(entryNodes, i, &node);
         
         /* Advance if possible. */
-        if(Vector_Size(node->outgoingEdges) > 0) {
+        if(Vector_Size(node->outgoing_edges) > 0) {
             Vector *reversedExpandOps = NewVector(OpNode*, 0);
 
             /* Traverse sub-graph expanded from current node. */
@@ -365,8 +366,8 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, const char *graph_name, AST
             Node *destNode;
             Edge *edge;
 
-            while(Vector_Size(srcNode->outgoingEdges) > 0) {
-                Vector_Get(srcNode->outgoingEdges, 0, &edge);
+            while(Vector_Size(srcNode->outgoing_edges) > 0) {
+                Vector_Get(srcNode->outgoing_edges, 0, &edge);
                 destNode = edge->dest;
                 
                 OpNode *opNodeExpandAll = NewOpNode(NewExpandAllOp(ctx, graph, graph_name,
@@ -422,25 +423,32 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, const char *graph_name, AST
     Vector_Free(Ops);
 
     /* Set root operation */
-    if(ast->returnNode) {
-        if(execution_plan->result_set->aggregated) {
-            execution_plan->root->operation = NewAggregateOp(ctx, ast);
-        } else {
-            execution_plan->root->operation = NewProduceResultsOp(ctx, ast, execution_plan->result_set);
+    if(ast->deleteNode) {
+        execution_plan->root->operation = NewDeleteOp(ctx, ast->deleteNode, graph,
+                                                      graph_name, execution_plan->result_set);
+    } else {
+        if(ast->returnNode) {
+            if(execution_plan->result_set->aggregated) {
+                execution_plan->root->operation = NewAggregateOp(ctx, ast);
+            } else {
+                execution_plan->root->operation = NewProduceResultsOp(ctx, ast,
+                                                                      execution_plan->result_set);
+            }
         }
-    }
 
-    if(ast->createNode) {
-        BuildGraph(graph, ast->createNode->graphEntities);
-        int request_refresh = (execution_plan->root->childCount > 0);
-        OpBase *op_create = NewCreateOp(ctx, graph, graph_name, request_refresh, execution_plan->result_set);
-        
-        if(execution_plan->root->operation == NULL) {
-            /* Set root operation to create. */
-            execution_plan->root->operation = op_create;
-        } else {
-            /* Push create operation between root and its children. */
-            _OpNode_PushInBetween(execution_plan->root, NewOpNode(op_create));
+        if(ast->createNode) {
+            BuildGraph(graph, ast->createNode->graphEntities);
+            int request_refresh = (execution_plan->root->childCount > 0);
+            OpBase *op_create = NewCreateOp(ctx, graph, graph_name, request_refresh,
+                                            execution_plan->result_set);
+            
+            if(execution_plan->root->operation == NULL) {
+                /* Set root operation to create. */
+                execution_plan->root->operation = op_create;
+            } else {
+                /* Push create operation between root and its children. */
+                _OpNode_PushInBetween(execution_plan->root, NewOpNode(op_create));
+            }
         }
     }
 

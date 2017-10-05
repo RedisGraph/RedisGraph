@@ -190,6 +190,18 @@ void Free_AST_CreateNode(AST_CreateNode *createNode) {
 	free(createNode);
 }
 
+AST_DeleteNode* New_AST_DeleteNode(Vector *elements) {
+	AST_DeleteNode *deleteNode = (AST_DeleteNode*)malloc(sizeof(AST_DeleteNode));
+	deleteNode->graphEntities = elements;
+	return deleteNode;
+}
+
+void Free_AST_DeleteNode(AST_DeleteNode *deleteNode) {
+	if(!deleteNode)	return;
+	Vector_Free(deleteNode->graphEntities);
+	free(deleteNode);
+}
+
 AST_WhereNode* New_AST_WhereNode(AST_FilterNode *filters) {
 	AST_WhereNode *whereNode = (AST_WhereNode*)malloc(sizeof(AST_WhereNode));
 	whereNode->filters = filters;
@@ -257,13 +269,15 @@ void Free_AST_ReturnElementNode(AST_ReturnElementNode *returnElementNode) {
 
 
 AST_QueryExpressionNode* New_AST_QueryExpressionNode(AST_MatchNode *matchNode, AST_WhereNode *whereNode,
-												     AST_CreateNode *createNode, AST_ReturnNode *returnNode,
-													 AST_OrderNode *orderNode, AST_LimitNode *limitNode) {
+												     AST_CreateNode *createNode, AST_DeleteNode *deleteNode,
+													 AST_ReturnNode *returnNode, AST_OrderNode *orderNode,
+													 AST_LimitNode *limitNode) {
 	AST_QueryExpressionNode *queryExpressionNode = (AST_QueryExpressionNode*)malloc(sizeof(AST_QueryExpressionNode));
 	
 	queryExpressionNode->matchNode = matchNode;
 	queryExpressionNode->whereNode = whereNode;
 	queryExpressionNode->createNode = createNode;
+	queryExpressionNode->deleteNode = deleteNode;
 	queryExpressionNode->returnNode = returnNode;
 	queryExpressionNode->orderNode = orderNode;
 	queryExpressionNode->limitNode = limitNode;
@@ -274,6 +288,7 @@ AST_QueryExpressionNode* New_AST_QueryExpressionNode(AST_MatchNode *matchNode, A
 void Free_AST_QueryExpressionNode(AST_QueryExpressionNode *queryExpressionNode) {
 	Free_AST_MatchNode(queryExpressionNode->matchNode);
 	Free_AST_CreateNode(queryExpressionNode->createNode);
+	Free_AST_DeleteNode(queryExpressionNode->deleteNode);
 	Free_AST_WhereNode(queryExpressionNode->whereNode);
 	Free_AST_ReturnNode(queryExpressionNode->returnNode);
 	Free_AST_OrderNode(queryExpressionNode->orderNode);

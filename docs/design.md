@@ -177,10 +177,11 @@ RedisGraph will
 - Populate result-set with matching entities attributes
 
 ### Query parser
-Given a valid query the parser will generate an AST containing five primary nodes one for each clause:
+Given a valid query the parser will generate an AST containing six primary nodes one for each clause:
 
 1. MATCH
 2. CREATE
+3. DELETE
 3. WHERE
 4. RETURN
 5. ORDER

@@ -11,8 +11,8 @@ void test_node_creation() {
 	assert(node->id == 1l);
 	assert(node->prop_count == 0);
 	assert(node->properties == NULL);
-	assert(Vector_Size(node->outgoingEdges) == 0);
-	assert(Vector_Size(node->incomingEdges) == 0);
+	assert(Vector_Size(node->outgoing_edges) == 0);
+	assert(Vector_Size(node->incoming_edges) == 0);
 	assert(strcmp(node->label, "city") == 0);
 	FreeNode(node);
 }

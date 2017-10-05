@@ -15,8 +15,8 @@ typedef struct {
 		EntityProperty *properties;
 	};
 	char *label;			/* label attached to node */
-	Vector* outgoingEdges;	/* list of incoming edges (ME)<-(SRC) */
-	Vector* incomingEdges;	/* list on outgoing edges (ME)->(DEST) */
+	Vector* outgoing_edges;	/* list of incoming edges (ME)<-(SRC) */
+	Vector* incoming_edges;	/* list on outgoing edges (ME)->(DEST) */
 } Node;
 
 /* Creates a new node. */

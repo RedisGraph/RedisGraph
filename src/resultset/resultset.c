@@ -183,6 +183,8 @@ ResultSet* NewResultSet(AST_QueryExpressionNode* ast) {
     set->nodes_created = 0;
     set->properties_set = 0;
     set->relationships_created = 0;
+    set->nodes_deleted = 0;
+    set->relationships_deleted = 0;
 
     if(set->ordered && ast->orderNode->direction == ORDER_DIR_DESC) {
         set->direction = DIR_DESC;
@@ -294,20 +296,46 @@ Record** _sortResultSet(const ResultSet *set, const Vector* records) {
 
 void _ResultSet_ReplayStats(RedisModuleCtx* ctx, ResultSet* set) {
     char buff[512] = {0};
-    size_t resultset_size = 1 + 4; /* query execution time. */
+    size_t resultset_size = 1; /* query execution time. */
+
+    if(set->labels_added > 0) resultset_size++;
+    if(set->nodes_created > 0) resultset_size++;
+    if(set->properties_set > 0) resultset_size++;
+    if(set->relationships_created > 0) resultset_size++;
+    if(set->nodes_deleted > 0) resultset_size++;
+    if(set->relationships_deleted > 0) resultset_size++;
+
     RedisModule_ReplyWithArray(ctx, resultset_size);
 
-    sprintf(buff, "Labels added: %d", set->labels_added);
-    RedisModule_ReplyWithSimpleString(ctx, (const char*)buff);
+    if(set->labels_added > 0) {
+        sprintf(buff, "Labels added: %d", set->labels_added);
+        RedisModule_ReplyWithSimpleString(ctx, (const char*)buff);
+    }
 
-    sprintf(buff, "Nodes created: %d", set->nodes_created);
-    RedisModule_ReplyWithSimpleString(ctx, (const char*)buff);
+    if(set->nodes_created > 0) {
+        sprintf(buff, "Nodes created: %d", set->nodes_created);
+        RedisModule_ReplyWithSimpleString(ctx, (const char*)buff);
+    }
 
-    sprintf(buff, "Properties set: %d", set->properties_set);
-    RedisModule_ReplyWithSimpleString(ctx, (const char*)buff);
+    if(set->properties_set > 0) {
+        sprintf(buff, "Properties set: %d", set->properties_set);
+        RedisModule_ReplyWithSimpleString(ctx, (const char*)buff);
+    }
 
-    sprintf(buff, "Relationships created: %d", set->relationships_created);
-    RedisModule_ReplyWithSimpleString(ctx, (const char*)buff);
+    if(set->relationships_created > 0) {
+        sprintf(buff, "Relationships created: %d", set->relationships_created);
+        RedisModule_ReplyWithSimpleString(ctx, (const char*)buff);
+    }
+
+    if(set->nodes_deleted > 0) {
+        sprintf(buff, "Nodes deleted: %d", set->nodes_deleted);
+        RedisModule_ReplyWithSimpleString(ctx, (const char*)buff);
+    }
+
+    if(set->relationships_deleted > 0) {
+        sprintf(buff, "Relationships deleted: %d", set->relationships_deleted);
+        RedisModule_ReplyWithSimpleString(ctx, (const char*)buff);
+    }
 }
 
 void ResultSet_Replay(RedisModuleCtx* ctx, ResultSet* set) {

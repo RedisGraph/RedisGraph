@@ -24,9 +24,11 @@ Triplet* NewTriplet(Node *s, Edge *p, Node *o) {
 	return triplet;
 }
 
-Triplet* TripletFromEdge(Edge *edge) {
-	Triplet *t = NewTriplet(edge->src, edge, edge->dest);
-	return t;
+void TripletFromEdge(Edge *e, Triplet *t) {
+	t->subject = e->src;
+	t->predicate = e;
+	t->object = e->dest;
+	t->kind = TripletGetKind(t);
 }
 
 void TripletComponents(const Triplet *t, char **subject, char **predicate, char **object) {

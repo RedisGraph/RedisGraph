@@ -20,7 +20,7 @@ void test_triplet_creation() {
 	
 	FreeTriplet(triplet);
 
-	triplet = TripletFromEdge(predicate_edge);
+	TripletFromEdge(predicate_edge, triplet);
 	
 	assert(triplet);
 	assert(triplet->subject == subject_node);

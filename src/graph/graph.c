@@ -165,7 +165,7 @@ Vector* Graph_GetNDegreeNodes(Graph* g, int degree) {
     
     for(int i = 0; i < g->node_count; i++) {
         n = g->nodes[i];
-        if(Vector_Size(n->incomingEdges) == degree) {
+        if(Vector_Size(n->incoming_edges) == degree) {
             Vector_Push(nodes, n);
         }
     }

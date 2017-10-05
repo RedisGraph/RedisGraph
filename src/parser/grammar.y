@@ -33,15 +33,19 @@
 query ::= expr(A). { ctx->root = A; }
 
 expr(A) ::= matchClause(B) whereClause(C) creatClause(D) returnClause(E) orderClause(F) limitClause(G). {
-	A = New_AST_QueryExpressionNode(B, C, D, E, F, G);
+	A = New_AST_QueryExpressionNode(B, C, D, NULL, E, F, G);
 }
 
 expr(A) ::= matchClause(B) whereClause(C) creatClause(D). {
-	A = New_AST_QueryExpressionNode(B, C, D, NULL, NULL, NULL);
+	A = New_AST_QueryExpressionNode(B, C, D, NULL, NULL, NULL, NULL);
+}
+
+expr(A) ::= matchClause(B) whereClause(C) deleteClause(D). {
+	A = New_AST_QueryExpressionNode(B, C, NULL, D, NULL, NULL, NULL);
 }
 
 expr(A) ::= creatClause(B). {
-	A = New_AST_QueryExpressionNode(NULL, NULL, B, NULL, NULL, NULL);
+	A = New_AST_QueryExpressionNode(NULL, NULL, B, NULL, NULL, NULL, NULL);
 }
 
 %type matchClause { AST_MatchNode* }
@@ -87,6 +91,24 @@ createExpression(A) ::= createExpression(B) COMMA chain(C). {
 	A = B;
 }
 
+
+%type deleteClause { AST_DeleteNode *}
+
+deleteClause(A) ::= DELETE deleteExpression(B). {
+	A = New_AST_DeleteNode(B);
+}
+
+%type deleteExpression {Vector*}
+
+deleteExpression(A) ::= STRING(B). {
+	A = NewVector(char*, 1);
+	Vector_Push(A, B.strval);
+}
+
+deleteExpression(A) ::= deleteExpression(B) COMMA STRING(C). {
+	Vector_Push(B, C.strval);
+	A = B;
+}
 
 %type node {AST_NodeEntity*}
 

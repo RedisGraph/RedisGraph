@@ -44,6 +44,8 @@ typedef struct {
     int nodes_created;          /* Number of nodes created as part of a create query. */
     int properties_set;         /* Number of properties created as part of a create query. */
     int relationships_created;  /* Number of edges created as part of a create query. */
+    int nodes_deleted;          /* Number of nodes removed as part of a delete query.*/
+    int relationships_deleted;  /* Number of edges removed as part of a delete query.*/
 } ResultSet;
 
 ResultSet* NewResultSet(AST_QueryExpressionNode* ast);

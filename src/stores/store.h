@@ -24,7 +24,7 @@ int Store_Cardinality(Store *store);
 
 void Store_Insert(Store *store, char *id, void *value);
 
-void Store_Remove(Store *store, char *id);
+int Store_Remove(Store *store, char *id, void (*freeCB)(void *));
 
 StoreIterator *Store_Search(Store *store, const char *prefix);
 

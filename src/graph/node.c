@@ -12,8 +12,8 @@ Node* NewNode(long int id, const char *label) {
 	
 	node->id = id;
 	node->prop_count = 0;
-	node->outgoingEdges = NewVector(Edge*, 0);
-	node->incomingEdges = NewVector(Edge*, 0);
+	node->outgoing_edges = NewVector(Edge*, 0);
+	node->incoming_edges = NewVector(Edge*, 0);
 	
 	if(label != NULL) {
 		node->label = strdup(label);
@@ -28,12 +28,12 @@ int Node_Compare(const Node *a, const Node *b) {
 
 void Node_ConnectNode(Node* src, Node* dest, struct Edge* e) {
 	// assert(src && dest && e->src == src && e->dest == dest);
-	Vector_Push(src->outgoingEdges, e);
-	Vector_Push(dest->incomingEdges, e);
+	Vector_Push(src->outgoing_edges, e);
+	Vector_Push(dest->incoming_edges, e);
 }
 
 int Node_IncomeDegree(const Node *n) {
-	return Vector_Size(n->incomingEdges);
+	return Vector_Size(n->incoming_edges);
 }
 
 void Node_Add_Properties(Node *node, int prop_count, char **keys, SIValue *values) {
@@ -53,17 +53,9 @@ void FreeNode(Node* node) {
 		free(node->label);
 	}
 
-	/* TODO: free edgs.
-	 * for(int i = 0; i < Vector_Size(node->outgoingEdges); i++) {
-	 * 	Edge* e;
-	 * 	Vector_Get(node->outgoingEdges, i, &e);
-	 * 	FreeEdge(e);
-	 * } */
-	Vector_Free(node->outgoingEdges);
-
-	/* There's no need to discard incoming edges.
-	 * these will be freed on another outgoingEdges free. */ 
-	Vector_Free(node->incomingEdges);
+	Vector_Free(node->outgoing_edges);
+	Vector_Free(node->incoming_edges);
+	
 	free(node);
 	node = NULL;
 }

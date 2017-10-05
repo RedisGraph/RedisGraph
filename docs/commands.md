@@ -1,17 +1,5 @@
 # Redis Graph Commands
 
-## GRAPH.DELETE
-
-Deletes the entire graph.
-
-Arguments: `Graph name`
-
-Returns: `Null`
-
-```sh
-GRAPH.DELETE us_government
-```
-
 ## GRAPH.EXPLAIN
 
 Constructs a query execution plan but does not run it. Inspect this execution plan to better
@@ -52,6 +40,7 @@ A query is composed of five parts:
 - ORDER BY
 - LIMIT
 - CREATE
+- DELETE
 
 #### MATCH
 
@@ -244,17 +233,34 @@ once found we create a new relationship and destination node.
 ```sh
 MATCH(a:person)
 WHEREE a.name = 'Kurt'
-CREATE (a)-[member {position:"lead singer"}]->(:band {name:nirvana})
+CREATE (a)-[member {position:"lead singer"}]->(:band {name:Nirvana})
 RETURN
 ```
 
 Here the source node is a bounded node while the destination node is unbounded,
-as a result a new node is created representing the band nirvana and a new relation connects kurt as the lead singer of the band.
+as a result a new node is created representing the band Nirvana and a new relation connects Kurt as the lead singer of the band.
 
 Lastly we'll create a complete pattern, all entities within the pattern which are not bounded will be created.
 ```sh
 CREATE 
-(jim:person{name:'jim', age:29})-[friends]->(pam:person {name:'pam', age:27})-[works]->(:employer {name:'dunder mifflin'})
+(jim:person{name:'Jim', age:29})-[friends]->(pam:person {name:'Pam', age:27})-[works]->(:employer {name:'Dunder Mifflin'})
 RETURN
 ```
 This query will create three nodes and two relationships.
+
+#### DELETE
+DELETE query is used to remove both nodes and relationships, please remember that deleting a node will also delete
+all of its incoming and outgoing relationships.
+
+Delete a node and all of its relationships:
+```sh
+MATCH (p:person {name:'Jim'})
+DELETE p
+```
+
+Delete a relationship
+```sh
+MATCH (p:person {name:'Jim'})-[r:friends]->()
+DELETE r
+```
+This query will delete all `friend` outgoing relationships from the node with the name 'Jim'.

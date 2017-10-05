@@ -57,8 +57,8 @@ void Store_Insert(Store *store, char *id, void *value) {
     TrieMap_Add(store, id, strlen(id), value, NULL);
 }
 
-void Store_Remove(Store *store, char *id) {
-    TrieMap_Delete(store, id, strlen(id), NULL);
+int Store_Remove(Store *store, char *id, void (*freeCB)(void *)) {
+    return TrieMap_Delete(store, id, strlen(id), freeCB);
 }
 
 StoreIterator *Store_Search(Store *store, const char *prefix) {

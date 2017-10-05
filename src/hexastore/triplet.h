@@ -27,7 +27,7 @@ Triplet* NewTriplet(Node *s, Edge *p, Node *o);
 TripletKind TripletGetKind(const Triplet *t);
 
 /* Given an edge (A) -[edge]-> (B), creates a new triplet. */
-Triplet* TripletFromEdge(Edge *edge);
+void TripletFromEdge(Edge *e, Triplet *t);
 
 /* Breaks down triplet into its components */
 void TripletComponents(const Triplet *t, char **subject, char **predicate, char **object);

@@ -24,6 +24,7 @@ int yycolumn = 1;
 "FALSE"     { return FALSE; }
 "MATCH" 	  { return MATCH; }
 "CREATE" 	  { return CREATE; }
+"DELETE" 	  { return DELETE; }
 "RETURN" 	  { return RETURN; }
 "AS" 	      { return AS; }
 "DISTINCT"  { return DISTINCT; }
