@@ -10,7 +10,7 @@ OpBase* NewExpandAllOp(RedisModuleCtx *ctx, Graph *g, const char *graph_name,
 ExpandAll* NewExpandAll(RedisModuleCtx *ctx, Graph *g, const char *graph_name,
                         Node **src_node, Edge **relation, Node **dest_node) {
     
-    ExpandAll *expand_all = malloc(sizeof(ExpandAll));
+    ExpandAll *expand_all = calloc(1, sizeof(ExpandAll));
 
     expand_all->ctx = ctx;
     expand_all->src_node = src_node;
