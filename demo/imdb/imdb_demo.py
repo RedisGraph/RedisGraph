@@ -1,10 +1,11 @@
+import os
 import sys
 import redis
 from redisgraph import Graph
 
-sys.path.append('.')
-sys.path.append('..')
-from queries import queries_info
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../')
+from imdb_queries import queries_info
 import imdb_utils
 from utils import execute_query, _redis
 

@@ -22,3 +22,6 @@ localdocs: builddocs
 
 deploydocs: builddocs
 	mkdocs gh-deploy
+
+test:
+	$(MAKE) -C ./src test

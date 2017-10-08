@@ -55,7 +55,7 @@ actors_over_50_that_played_in_blockbusters_query = QueryInfo(
              WHERE a.age >= 50 AND m.votes > 10000 AND m.rating > 8.2
              RETURN a, m""",
     description='Which actors who are over 50 played in blockbuster movies?',
-    max_run_time_ms=2.5,
+    max_run_time_ms=3.5,
     expected_result=[['"Bill Irwin"', '67.000000', '"Interstellar"', '961763.000000', '2014.000000', '"Adventure"', '8.600000'],
                      ['"Vincent Price"', '106.000000', '"Vincent"', '18284.000000', '1982.000000', '"Short"', '8.400000'],
                      ['"Ellen Burstyn"', '85.000000', '"Interstellar"', '961763.000000', '2014.000000', '"Adventure"', '8.600000'],
@@ -109,7 +109,7 @@ actors_played_with_cameron_diaz_and_younger_than_her_query = QueryInfo(
              WHERE a.age < Cameron.age
              RETURN a, m.title""",
     description='Which actors played along side Cameron Diaz and are younger then her?',
-    max_run_time_ms=5,
+    max_run_time_ms=7,
     expected_result=[['"Jason Segel"', '37.000000', '"Sex Tape"'],
                      ['"Ellie Kemper"', '37.000000', '"Sex Tape"'],
                      ['"Nicolette Pierini"', '14.000000', '"Annie"'],
@@ -133,7 +133,7 @@ how_many_movies_cameron_diaz_played_query = QueryInfo(
     query="""MATCH (Cameron:actor{name:"Cameron Diaz"})-[:act]->(m:movie)
              RETURN Cameron.name, COUNT(m.title)""",
     description='In how many movies did Cameron Diaz played?',
-    max_run_time_ms=0.8,
+    max_run_time_ms=1.2,
     expected_result=[['"Cameron Diaz"', '3.000000']]
 )
 

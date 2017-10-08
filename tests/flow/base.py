@@ -1,13 +1,8 @@
-import unittest
-import redis
+import os
+from rmtest import ModuleTestCase
 
 
-class FlowTestsBase(unittest.TestCase):
-    RUN_TIME_ROW_INDEX = 4
-
-    @classmethod
-    def setUpClass(cls):
-        cls.redis_con = redis.Redis(host='localhost', port=6379)
+class FlowTestsBase(ModuleTestCase(os.path.dirname(os.path.abspath(__file__)) + '/../../src/redisgraph.so')):
 
     def _assert_only_expected_resuls_are_in_actual_results(self,
                                                            actual_result,

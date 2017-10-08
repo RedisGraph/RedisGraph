@@ -90,3 +90,11 @@ redisgraph.so: $(MODULE)
 
 clean:
 	find . -name '*.[oad]' -type f -delete
+
+package: redisgraph.so
+	mkdir -p ../build
+	module_packer -v -o "../build/redisgraph.{os}-{architecture}.latest.zip" "`pwd`/redisgraph.so"
+
+test: $(MODULE) redisgraph.so
+	# unit tests
+	$(MAKE) -C ../tests test

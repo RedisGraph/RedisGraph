@@ -11,17 +11,16 @@ before_script:
   - pip install --user redis ramp-packer rmtest
   - git clone -b 4.0.1 --depth 1 https://github.com/antirez/redis.git
   - cd redis
-  - make
+  - make -j 4
   - cd ..
 
-script:
+install:
   - make clean
-  - make
-  - cd src
-  - mkdir -p ../build
-  - module_packer -v -o "../build/redisgraph.{os}-{architecture}.latest.zip" "`pwd`/redisgraph.so"
-  - cd ..
-  # - make test
+  - make -j 4
+
+script:
+  - make test
+  - make package
 
 deploy:
   # Module latest artifact

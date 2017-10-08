@@ -60,7 +60,7 @@ friends_visited_same_places_as_me_query = QueryInfo(
                 [:friend]-(:person {name:"Roi Lipman"}) 
              RETURN f.name, c""",
     description='Friends who have been to places I have visited?',
-    max_run_time_ms=0.25,
+    max_run_time_ms=0.3,
     expected_result=[['"Tal Doron"', '"Tokyo"'],
                      ['"Alon Fital"', '"Prague"'],
                      ['"Tal Doron"', '"USA"'],
@@ -87,7 +87,7 @@ how_many_countries_each_friend_visited_query = QueryInfo(
              ORDER BY countriesVisited DESC
              LIMIT 10""",
     description='Count for each friend how many countires he or she been to?',
-    max_run_time_ms=0.25,
+    max_run_time_ms=0.3,
     expected_result=[['"Alon Fital"', '3.000000'],
                      ['"Omri Traub"', '3.000000'],
                      ['"Tal Doron"', '3.000000'],
