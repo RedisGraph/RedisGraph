@@ -32,7 +32,6 @@
 CMakeFiles/
 
 # Files
-Makefile
 CMakeCache.txt
 DartConfiguration.tcl
 
@@ -46,3 +45,4 @@ DartConfiguration.tcl
 *.make
 *.xml
 *.iml
+*.d

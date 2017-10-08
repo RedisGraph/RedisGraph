@@ -5,8 +5,6 @@
 #include "assert.h"
 #include "graph_entity.h"
 
-// SIValue* NODE_PROPERTY_NOTFOUND = &SI_StringValC("NOT FOUND");
-
 Node* NewNode(long int id, const char *label) {
 	Node* node = (Node*)calloc(1, sizeof(Node));
 	

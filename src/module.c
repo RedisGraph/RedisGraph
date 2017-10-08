@@ -14,7 +14,6 @@
 
 #include "util/prng.h"
 #include "util/snowflake.h"
-#include "util/triemap/triemap_type.h"
 
 #include "rmutil/util.h"
 #include "rmutil/vector.h"

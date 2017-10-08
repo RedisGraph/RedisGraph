@@ -1,7 +1,7 @@
 from rmtest import ModuleTestCase
 import unittest
 
-class GraphTestCase(ModuleTestCase('../libmodule.so')):
+class GraphTestCase(ModuleTestCase('../redisgraph.so')):
 
     def create_graph(self, r):
         """Creates a simple graph"""

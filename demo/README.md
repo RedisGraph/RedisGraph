@@ -2,7 +2,7 @@
 
 1. Set the following environment variables:
 
-- REDIS_MODULE_PATH - Relative path to compiled libmodule.so
+- REDIS_MODULE_PATH - Relative path to compiled redisgraph.so
 
   ```sh
   export REDIS_MODULE_PATH=<ABSOLUTE_PATH_TO_MODULE.SO>

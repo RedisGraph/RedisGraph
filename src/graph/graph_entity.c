@@ -1,4 +1,5 @@
 #include "graph.h"
+#include "graph_entity.h"
 
 SIValue *PROPERTY_NOTFOUND = NULL;
 

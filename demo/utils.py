@@ -23,7 +23,7 @@ def _redis():
 
     if module_path is None:
         print("Undeclared environment variable {}".format(REDIS_MODULE_PATH_ENVVAR))
-        print("run: export {}=../../src/libmodule.so".format(REDIS_MODULE_PATH_ENVVAR))
+        print("run: export {}=../../src/redisgraph.so".format(REDIS_MODULE_PATH_ENVVAR))
         return None
 
     if redis_path is None:

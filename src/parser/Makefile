@@ -1,3 +1,7 @@
-g++ -o grammar grammar.c AST_Node.c
+%.c: %.y
+parser:
+	lex -i lexer.l;\
+    ./lemon -s grammar.y
 
-cc -o grammar lex.yy.c grammar.c ast.c ../value.c ../rmutil/vector.c 
+.PHONY: parser
+all: parser

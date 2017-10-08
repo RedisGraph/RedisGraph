@@ -26,15 +26,11 @@ To see Redis Graph in action see [Demos](https://github.com/RedisLabsModules/red
 Requirements:
 
 * The Redis Graph repository: `git clone https://github.com/RedisLabsModules/redis-module-graph.git`
-* The build-essential and cmake packages: `apt-get install build-essential cmake`
+* The build-essential package: `apt-get install build-essential`
 
-To build the module, run the following in the project's directory:
+To build the module, run `make` in the project's directory:
 
-```sh
-cmake . && make module
-```
-
-Congratulations! You can find the compiled module library at `src/libmodule.so`.
+Congratulations! You can find the compiled module library at `src/redisgraph.so`.
 
 ## Loading the module to Redis
 
@@ -45,13 +41,13 @@ Requirements:
 We recommend you have Redis load the module during startup by adding the following to your redis.conf file:
 
 ```
-loadmodule /path/to/module/libmodule.so
+loadmodule /path/to/module/redisgraph.so
 ```
 
-In the line above replace `/path/to/module/libmodule.so` with the actual path to the module's library. Alternatively, you can have Redis load the module using the following command line argument syntax:
+In the line above replace `/path/to/module/redisgraph.so` with the actual path to the module's library. Alternatively, you can have Redis load the module using the following command line argument syntax:
 
 ```sh
-~/$ redis-server --loadmodule /path/to/module/libmodule.so
+~/$ redis-server --loadmodule /path/to/module/redisgraph.so
 ```
 
 Lastly, you can also use the [`MODULE LOAD`](http://redis.io/commands/module-load) command. Note, however, that `MODULE LOAD` is a dangerous command and may be blocked/deprecated in the future due to security considerations.
@@ -60,7 +56,7 @@ Once the module has been loaded successfully, the Redis log should have lines si
 
 ```
 ...
-30707:M 20 Jun 02:08:12.314 * Module 'graph' loaded from <redacted>/src/libmodule.so
+30707:M 20 Jun 02:08:12.314 * Module 'graph' loaded from <redacted>/src/redisgraph.so
 ...
 ```
 
