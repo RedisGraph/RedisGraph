@@ -46,6 +46,6 @@ void test_edge_props() {
 int main(int argc, char **argv) {	
 	test_edge_creation();
 	test_edge_props();
-	printf("test_edge - PASS!\n")
+	printf("test_edge - PASS!\n");
 	return 0;
 }
