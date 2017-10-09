@@ -20,15 +20,13 @@ void test_triplet_creation() {
 	
 	FreeTriplet(triplet);
 
-	TripletFromEdge(predicate_edge, triplet);
-	
-	assert(triplet);
-	assert(triplet->subject == subject_node);
-	assert(triplet->object == object_node);
-	assert(triplet->predicate == predicate_edge);
-	assert(triplet->kind == SOP);
-	
-	FreeTriplet(triplet);
+	Triplet t;
+	TripletFromEdge(predicate_edge, &t);
+
+	assert(t.subject == subject_node);
+	assert(t.object == object_node);
+	assert(t.predicate == predicate_edge);
+	assert(t.kind == SOP);
 }
 
 void test_triplet_string_rep() {
@@ -173,6 +171,6 @@ void test_triplet_string_rep() {
 int main(int argc, char **argv) {
 	test_triplet_creation();
 	test_triplet_string_rep();
-	printf("PASS!");
+	printf("test_triplet - PASS!\n");
     return 0;
 }

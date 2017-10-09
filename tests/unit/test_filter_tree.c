@@ -43,6 +43,6 @@ void compareFilterTrees(const FT_FilterNode *a, const FT_FilterNode *b) {
 }
 
 int main(int argc, char **argv) {
-	printf("PASS!\n");
+	printf("test_filter_tree - PASS!\n");
     return 0;
 }

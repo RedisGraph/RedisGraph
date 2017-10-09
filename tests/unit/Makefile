@@ -1,6 +1,12 @@
 CFLAGS:=$(CFLAGS)
 # CFLAGS = -g -O2 -fPIC -std=gnu99 -I./
-DEPS = $(CC_OBJECTS) $(LIBS)
+# DEPS = $(CC_OBJECTS) $(LIBS)
+CC_OBJECTS:=$(CC_OBJECTS)
+LIBRMUTIL=../../src/rmutil/librmutil.a
+LIBTRIEMAP=../../src/util/triemap/libtriemap.a
+
+LIBS=$(LIBTRIEMAP) $(LIBRMUTIL)
+DEPS=$(CC_OBJECTS) $(LIBS)
 
 SRCDIR := $(shell pwd)
 LDFLAGS :=  -lc -lm -ldl -lpthread
@@ -9,7 +15,7 @@ CC=gcc
 .SUFFIXES: .c .so .xo .o
 
 agg_sum: test_agg_sum.o
-	$(CC) $(CFLAGS)  -o test_agg_sum test_agg_sum.o  $(DEPS) $(LDFLAGS)
+	$(CC) $(CFLAGS)  -o test_agg_sum test_agg_sum.o $(DEPS) $(LDFLAGS)
 test_agg_sum:
 	@(sh -c ./test_agg_sum)
 .PHONY: test_agg_sum

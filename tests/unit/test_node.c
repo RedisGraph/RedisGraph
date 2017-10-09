@@ -56,6 +56,6 @@ int main(int argc, char **argv) {
 	test_node_creation();
 	test_node_props();
 	test_node_edges();
-	printf("PASS!");
+	printf("test_node - PASS!\n");
     return 0;
 }

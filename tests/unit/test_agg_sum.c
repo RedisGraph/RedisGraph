@@ -20,6 +20,6 @@ int main(int argc, char **argv) {
     sumCtx->ReduceNext(sumCtx);
 	assert(sumCtx->result.doubleval == sum);
 	
-	printf("PASS!");
+	printf("test_agg_sum - PASS!\n");
     return 0;
 }

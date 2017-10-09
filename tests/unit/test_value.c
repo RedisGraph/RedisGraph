@@ -12,10 +12,10 @@ void test_value_parse() {
 
     str = "3.14";
     SIValue_FromString(&v, str, strlen(str));
-    assert(v.type == T_FLOAT);
+    assert(v.type == T_DOUBLE);
     
     /* Almost equals. */
-    assert((v.floatval - 3.14) < 0.0001);
+    assert((v.doubleval - 3.14) < 0.0001);
 
     str = "-9876";
     SIValue_FromString(&v, str, strlen(str));
@@ -30,6 +30,6 @@ void test_value_parse() {
 
 int main(int argc, char **argv) {
     test_value_parse();
-    printf("PASS!");
+    printf("test_value - PASS!\n");
     return 0;
 }

@@ -33,6 +33,6 @@ void test_record_to_string () {
 
 int main(int argc, char **argv) {
     test_record_to_string();
-    printf("PASS!");
+    printf("test_resultset_record - PASS!\n");
     return 0;
 }

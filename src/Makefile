@@ -44,6 +44,7 @@ CC_SOURCES += $(wildcard $(SOURCEDIR)/util/*.c)
 
 # Convert all sources to .o files
 CC_OBJECTS = $(patsubst %.c, %.o, $(CC_SOURCES) )
+export CC_OBJECTS
 
 # .d files for each c file. These make sure that changing a header file
 # will also change the dependent .c files of it
@@ -90,6 +91,7 @@ redisgraph.so: $(MODULE)
 
 clean:
 	find . -name '*.[oad]' -type f -delete
+	$(MAKE) -C ../tests clean
 
 package: redisgraph.so
 	mkdir -p ../build

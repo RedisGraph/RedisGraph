@@ -6,10 +6,10 @@
 void test_graph_creation() {
     Graph *graph = NewGraph();
 
-    assert(graph->nodes == NULL);
-    assert(graph->edges == NULL);
-    assert(graph->node_aliases == NULL);
-    assert(graph->edge_aliases == NULL);
+    assert(graph->nodes != NULL);
+    assert(graph->edges != NULL);
+    assert(graph->node_aliases != NULL);
+    assert(graph->edge_aliases != NULL);
     assert(graph->node_count == 0);
     assert(graph->edge_count == 0);
 
@@ -136,6 +136,6 @@ int main(int argc, char **argv) {
     test_graph_creation();
     test_graph_construction();
 
-	printf("PASS!\n");
+	printf("test_graph - PASS!\n");
     return 0;
 }

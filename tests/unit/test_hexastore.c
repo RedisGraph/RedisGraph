@@ -72,6 +72,6 @@ void test_hexastore() {
 
 int main(int argc, char **argv) {
 	test_hexastore();
-    printf("PASS!");
+    printf("test_hexastore - PASS!\n");
 	return 0;
 }

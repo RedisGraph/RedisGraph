@@ -4,3 +4,6 @@ test:
 
 	# flow tests
 	python -m unittest discover
+
+clean:
+	find . -name '*.[oad]' -type f -delete
