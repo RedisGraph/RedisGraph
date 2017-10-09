@@ -3,9 +3,7 @@ compiler: gcc
 dist: xenial
 
 env:
-  - MODULE_NAME=redisgraph
-  - REDIS_MODULE_PATH=$TRAVIS_BUILD_DIR/src/redisgraph.so
-  - REDIS_PATH=$TRAVIS_BUILD_DIR/redis/src/redis-server
+  - MODULE_NAME=redisgraph REDIS_MODULE_PATH=$TRAVIS_BUILD_DIR/src/redisgraph.so REDIS_PATH=$TRAVIS_BUILD_DIR/redis/src/redis-server
 
 before_script:
   - pip install --user redis ramp-packer rmtest redisgraph
