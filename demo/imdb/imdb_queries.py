@@ -144,7 +144,7 @@ find_ten_oldest_actors_query = QueryInfo(
              ORDER BY a.age DESC
              LIMIT 10""",
     description='10 Oldest actors?',
-    max_run_time_ms=3.5,
+    max_run_time_ms=4.5,
     expected_result=[['"Vincent Price"', '106.000000'],
                      ['"George Kennedy"', '92.000000'],
                      ['"Cloris Leachman"', '91.000000'],

@@ -42,4 +42,4 @@ class FlowTestsBase(ModuleTestCase(os.path.dirname(os.path.abspath(__file__)) + 
         self.assertLessEqual(actual_result.run_time_ms,
                              query_info.max_run_time_ms,
                              'Maximum runtime for query \"%s\" was: %s, but shoud be %s' %
-                             (query_info.description, str(query_info.max_run_time_ms), str(actual_result.run_time_ms)))
+                             (query_info.description, str(actual_result.run_time_ms), str(query_info.max_run_time_ms)))
