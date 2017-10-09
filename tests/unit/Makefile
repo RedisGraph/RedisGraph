@@ -1,6 +1,4 @@
 CFLAGS:=$(CFLAGS)
-# CFLAGS = -g -O2 -fPIC -std=gnu99 -I./
-# DEPS = $(CC_OBJECTS) $(LIBS)
 CC_OBJECTS:=$(CC_OBJECTS)
 LIBRMUTIL=../../src/rmutil/librmutil.a
 LIBTRIEMAP=../../src/util/triemap/libtriemap.a
@@ -73,5 +71,4 @@ all: build test
 
 build: agg_sum edge node graph value triplet resultset_record hexastore filter_tree
 
-test: test_agg_sum test_edge test_node test_graph test_value test_triplet
-		test_resultset_record test_hexastore test_filter_tree
+test: test_agg_sum test_edge test_node test_graph test_value test_triplet test_resultset_record test_hexastore test_filter_tree

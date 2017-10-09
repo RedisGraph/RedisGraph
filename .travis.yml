@@ -8,7 +8,7 @@ env:
   - REDIS_PATH=$TRAVIS_BUILD_DIR/redis/src/redis-server
 
 before_script:
-  - pip install --user redis ramp-packer rmtest
+  - pip install --user redis ramp-packer rmtest redisgraph
   - git clone -b 4.0.1 --depth 1 https://github.com/antirez/redis.git
   - cd redis
   - make -j 4
