@@ -19,13 +19,13 @@ To see Redis Graph in action see [Demos](https://github.com/RedisLabsModules/red
 
 ## Quickstart
 
-1. [Build the Redis Graph module library](https://redisgraph.io/#building-the-module)
-2. [Load Redis Graph to Redis](https://redisgraph.io/#loading-the-module-to-redis)
-3. [Use it from any client](https://redisgraph.io/#using-redis-graph)
+1. [Build the Redis Graph module library](http://redisgraph.io/#building-the-module)
+2. [Load Redis Graph to Redis](http://redisgraph.io/#loading-the-module-to-redis)
+3. [Use it from any client](http://redisgraph.io/#using-redis-graph)
 
 ## Documentation
 
-Read the docs at [https://redisgraph.io](https://redisgraph.io).
+Read the docs at [redisgraph.io](http://redisgraph.io).
 
 ## License
 
