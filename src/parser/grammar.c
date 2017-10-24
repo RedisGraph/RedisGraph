@@ -24,7 +24,7 @@
 */
 #include <stdio.h>
 /************ Begin %include sections from the grammar ************************/
-#line 7 "grammar.y"
+#line 7 "./grammar.y"
 
 	#include <stdlib.h>
 	#include <stdio.h>
@@ -36,7 +36,7 @@
 	#include "../value.h"
 
 	void yyerror(char *s);
-#line 40 "grammar.c"
+#line 40 "./grammar.c"
 /**************** End of %include directives **********************************/
 /* These constants specify the various numeric values for terminal symbols
 ** in a format understandable to "makeheaders".  This section is blank unless
@@ -208,78 +208,78 @@ typedef union {
 **  yy_default[]       Default action for each state.
 **
 *********** Begin parsing tables **********************************************/
-#define YY_ACTTAB_COUNT (167)
+#define YY_ACTTAB_COUNT (165)
 static const YYACTIONTYPE yy_action[] = {
- /*     0 */   163,  164,  167,  165,  166,   80,  264,   38,   34,  131,
- /*    10 */    45,  176,   74,  180,  170,   75,  177,   74,  180,   76,
- /*    20 */    23,  133,  168,   50,  169,  171,  172,  173,  169,  171,
- /*    30 */   172,  173,   68,  177,   74,  180,  191,    9,   40,  190,
- /*    40 */    21,   22,   53,   61,   16,   18,    7,    3,   42,   31,
- /*    50 */    31,    3,   42,   24,   14,   37,   15,  133,  160,  130,
- /*    60 */    47,   17,  187,  188,   20,  133,  191,    2,   28,  189,
- /*    70 */    25,   55,   67,   16,   18,   77,   11,  159,   31,   31,
- /*    80 */    63,  140,   33,   57,   59,   13,   31,   64,   72,   18,
- /*    90 */    43,   39,  161,   51,   41,   78,   19,   56,   62,   49,
- /*   100 */    58,   79,   52,   54,   60,  134,  128,    1,  155,   65,
- /*   110 */   158,   36,   66,   35,   44,   10,   71,   46,  141,   48,
- /*   120 */     6,    8,  150,  147,   26,  151,   27,   12,  149,   29,
- /*   130 */   148,  145,  146,  143,  144,   30,  142,    4,   32,   70,
- /*   140 */   184,  179,  153,  182,  195,  197,  197,   76,  197,  197,
- /*   150 */   197,  197,  197,  197,   69,  197,  197,  197,  197,  194,
- /*   160 */   197,  197,   73,  197,  197,  197,    5,
+ /*     0 */   163,  164,  167,  165,  166,   80,  264,   37,   41,  131,
+ /*    10 */    45,   42,   19,  135,  170,   75,  177,   74,  180,   67,
+ /*    20 */    19,  135,  168,   14,  169,  171,  172,  173,  169,  171,
+ /*    30 */   172,  173,   68,  177,   74,  180,  176,   74,  180,  191,
+ /*    40 */     9,   39,  190,   20,   21,   52,   60,   15,   17,    3,
+ /*    50 */     4,   41,   30,   30,    4,   36,   23,   22,  135,  130,
+ /*    60 */   191,  160,   77,  189,   11,  187,  188,   47,   16,   27,
+ /*    70 */     2,   24,   54,   66,   15,   17,  159,   33,   62,   30,
+ /*    80 */    30,   56,   58,   43,   38,   13,   32,  140,   76,   55,
+ /*    90 */   161,   40,   50,   61,   49,   30,   51,   53,   63,   72,
+ /*   100 */    79,   57,   59,  155,  136,   65,   64,  128,    1,   78,
+ /*   110 */    34,   35,   18,    7,    8,   17,   44,   71,  158,   10,
+ /*   120 */    46,  141,   48,  150,  147,  151,   25,   26,   29,   69,
+ /*   130 */   149,  148,  145,  146,  143,   28,  144,  142,   12,   31,
+ /*   140 */   184,    5,  153,  195,   70,  179,  182,  197,  197,   76,
+ /*   150 */   197,  197,  197,  197,  197,  197,  197,  197,   73,  197,
+ /*   160 */   197,  194,  197,  197,    6,
 };
 static const YYCODETYPE yy_lookahead[] = {
- /*     0 */     3,    4,    5,    6,    7,   39,   40,   41,   13,   43,
- /*    10 */    12,   60,   61,   62,   12,   59,   60,   61,   62,   24,
- /*    20 */    48,   49,   25,   51,   26,   27,   28,   29,   26,   27,
- /*    30 */    28,   29,   59,   60,   61,   62,   61,   10,   63,   64,
- /*    40 */    12,   12,   14,   14,    1,    2,    8,    9,   12,   21,
- /*    50 */    21,    9,   12,   11,   13,   43,   48,   49,   15,   47,
- /*    60 */    12,   13,   35,   36,   48,   49,   61,   31,   16,   64,
- /*    70 */    18,   14,   14,    1,    2,   12,   58,   56,   21,   21,
- /*    80 */    56,   12,   50,   53,   53,   19,   21,   12,   12,    2,
- /*    90 */    57,   57,   57,   54,   57,   33,   23,   53,   53,   52,
- /*   100 */    54,   37,   53,   53,   53,   49,   46,   30,   55,   55,
- /*   110 */    12,   44,   53,   45,   24,   12,   61,   24,   12,   10,
- /*   120 */    42,   10,   20,   16,   12,   20,   12,   14,   20,   12,
- /*   130 */    20,   15,   17,   15,   15,   10,   15,   10,   12,   15,
- /*   140 */    12,   12,   22,   12,    0,   65,   65,   24,   65,   65,
- /*   150 */    65,   65,   65,   65,   32,   65,   65,   65,   65,   26,
- /*   160 */    65,   65,   32,   65,   65,   65,   34,
+ /*     0 */     3,    4,    5,    6,    7,   39,   40,   41,   12,   43,
+ /*    10 */    12,   48,   49,   50,   12,   59,   60,   61,   62,   48,
+ /*    20 */    49,   50,   25,   13,   26,   27,   28,   29,   26,   27,
+ /*    30 */    28,   29,   59,   60,   61,   62,   60,   61,   62,   61,
+ /*    40 */    10,   63,   64,   12,   12,   14,   14,    1,    2,    8,
+ /*    50 */     9,   12,   21,   21,    9,   43,   11,   49,   50,   47,
+ /*    60 */    61,   15,   12,   64,   58,   35,   36,   12,   13,   16,
+ /*    70 */    31,   18,   14,   14,    1,    2,   56,   13,   56,   21,
+ /*    80 */    21,   53,   53,   57,   57,   19,   51,   12,   24,   53,
+ /*    90 */    57,   57,   54,   53,   52,   21,   53,   53,   12,   12,
+ /*   100 */    37,   54,   53,   55,   50,   53,   55,   46,   30,   33,
+ /*   110 */    45,   44,   23,   42,   10,    2,   24,   61,   12,   12,
+ /*   120 */    24,   12,   10,   20,   16,   20,   12,   12,   10,   32,
+ /*   130 */    20,   20,   15,   17,   15,   12,   15,   15,   14,   12,
+ /*   140 */    12,   10,   22,    0,   15,   12,   12,   65,   65,   24,
+ /*   150 */    65,   65,   65,   65,   65,   65,   65,   65,   32,   65,
+ /*   160 */    65,   26,   65,   65,   34,
 };
-#define YY_SHIFT_USE_DFLT (167)
+#define YY_SHIFT_USE_DFLT (165)
 #define YY_SHIFT_COUNT    (80)
-#define YY_SHIFT_MIN      (-5)
-#define YY_SHIFT_MAX      (144)
+#define YY_SHIFT_MIN      (-4)
+#define YY_SHIFT_MAX      (143)
 static const short yy_shift_ofst[] = {
- /*     0 */    38,   36,   40,   41,   40,   63,   42,   41,   41,   63,
- /*    10 */    -3,   -2,    2,   28,   29,   52,   48,   48,   48,   48,
- /*    20 */    52,   57,   58,   52,   69,   66,   65,   65,   66,   65,
- /*    30 */    75,   75,   65,   41,   76,   64,   62,   77,   73,   43,
- /*    40 */    27,   72,   -5,   87,   98,   90,  103,   93,  106,  109,
- /*    50 */   111,  107,  102,  112,  105,  114,  108,  110,  115,  116,
- /*    60 */   118,  117,  119,  125,  113,  120,  121,  126,  127,  128,
- /*    70 */   122,  124,  123,  129,  130,  127,  131,  123,  132,  133,
- /*    80 */   144,
+ /*     0 */    41,   39,   -4,   10,   10,   -4,   50,   45,   10,   50,
+ /*    10 */    -3,   -2,    2,   31,   32,   55,   55,   55,   55,   53,
+ /*    20 */    58,   59,   53,   75,   66,   74,   74,   66,   74,   86,
+ /*    30 */    86,   74,   10,   87,   63,   76,   78,   89,   46,   30,
+ /*    40 */    73,   64,  104,  113,  106,   92,  107,   96,  109,  112,
+ /*    50 */   108,  103,  114,  105,  115,  110,  111,  116,  117,  119,
+ /*    60 */   123,  121,  118,  124,  120,  122,  127,  104,  131,  128,
+ /*    70 */    97,  129,  125,  133,  126,  131,  134,  125,  130,  135,
+ /*    80 */   143,
 };
-#define YY_REDUCE_USE_DFLT (-50)
-#define YY_REDUCE_COUNT (38)
-#define YY_REDUCE_MIN   (-49)
-#define YY_REDUCE_MAX   (78)
+#define YY_REDUCE_USE_DFLT (-45)
+#define YY_REDUCE_COUNT (37)
+#define YY_REDUCE_MIN   (-44)
+#define YY_REDUCE_MAX   (71)
 static const signed char yy_reduce_ofst[] = {
- /*     0 */   -34,  -44,  -27,  -28,  -49,  -25,   12,    8,   16,    5,
- /*    10 */    18,   21,   24,   30,   31,   32,   33,   34,   35,   37,
- /*    20 */    32,   44,   45,   32,   47,   39,   49,   50,   46,   51,
- /*    30 */    53,   54,   59,   56,   55,   60,   68,   67,   78,
+ /*     0 */   -34,  -44,  -27,  -37,  -29,  -24,  -22,   12,    8,   -1,
+ /*    10 */     6,   20,   22,   28,   29,   26,   27,   33,   34,   35,
+ /*    20 */    36,   40,   35,   42,   38,   43,   44,   47,   49,   48,
+ /*    30 */    51,   52,   54,   56,   61,   65,   67,   71,
 };
 static const YYACTIONTYPE yy_default[] = {
- /*     0 */   203,  263,  263,  263,  263,  263,  203,  263,  263,  263,
- /*    10 */   263,  263,  263,  220,  220,  200,  263,  263,  263,  263,
- /*    20 */   206,  220,  220,  205,  263,  263,  220,  220,  263,  220,
- /*    30 */   263,  263,  220,  263,  263,  261,  253,  197,  224,  263,
- /*    40 */   254,  225,  249,  230,  263,  238,  263,  263,  263,  207,
- /*    50 */   204,  263,  263,  263,  263,  263,  263,  263,  263,  263,
- /*    60 */   263,  263,  263,  222,  263,  263,  263,  263,  243,  263,
+ /*     0 */   201,  263,  263,  263,  263,  263,  263,  201,  263,  263,
+ /*    10 */   263,  263,  263,  220,  220,  263,  263,  263,  263,  205,
+ /*    20 */   220,  220,  206,  263,  263,  220,  220,  263,  220,  263,
+ /*    30 */   263,  220,  263,  263,  261,  253,  197,  224,  263,  254,
+ /*    40 */   225,  249,  200,  230,  263,  238,  263,  263,  263,  207,
+ /*    50 */   263,  263,  263,  263,  263,  263,  263,  263,  263,  263,
+ /*    60 */   263,  263,  222,  263,  263,  263,  263,  202,  243,  263,
  /*    70 */   251,  263,  263,  263,  246,  242,  263,  260,  263,  263,
  /*    80 */   263,
 };
@@ -396,9 +396,9 @@ static const char *const yyTokenName[] = {
   "TRUE",          "FALSE",         "RETURN",        "DISTINCT",    
   "AS",            "ORDER",         "BY",            "ASC",         
   "DESC",          "LIMIT",         "error",         "expr",        
-  "query",         "matchClause",   "whereClause",   "creatClause", 
+  "query",         "matchClause",   "whereClause",   "createClause",
   "returnClause",  "orderClause",   "limitClause",   "deleteClause",
-  "chain",         "node",          "link",          "createExpression",
+  "chains",        "chain",         "node",          "link",        
   "deleteExpression",  "properties",    "edge",          "mapLiteral",  
   "value",         "cond",          "op",            "returnElements",
   "returnElement",  "variable",      "aggFunc",       "columnNameList",
@@ -411,17 +411,17 @@ static const char *const yyTokenName[] = {
 */
 static const char *const yyRuleName[] = {
  /*   0 */ "query ::= expr",
- /*   1 */ "expr ::= matchClause whereClause creatClause returnClause orderClause limitClause",
- /*   2 */ "expr ::= matchClause whereClause creatClause",
+ /*   1 */ "expr ::= matchClause whereClause createClause returnClause orderClause limitClause",
+ /*   2 */ "expr ::= matchClause whereClause createClause",
  /*   3 */ "expr ::= matchClause whereClause deleteClause",
- /*   4 */ "expr ::= creatClause",
- /*   5 */ "matchClause ::= MATCH chain",
- /*   6 */ "chain ::= node",
- /*   7 */ "chain ::= chain link node",
- /*   8 */ "creatClause ::=",
- /*   9 */ "creatClause ::= CREATE createExpression",
- /*  10 */ "createExpression ::= chain",
- /*  11 */ "createExpression ::= createExpression COMMA chain",
+ /*   4 */ "expr ::= createClause",
+ /*   5 */ "matchClause ::= MATCH chains",
+ /*   6 */ "createClause ::=",
+ /*   7 */ "createClause ::= CREATE chains",
+ /*   8 */ "chain ::= node",
+ /*   9 */ "chain ::= chain link node",
+ /*  10 */ "chains ::= chain",
+ /*  11 */ "chains ::= chains COMMA chain",
  /*  12 */ "deleteClause ::= DELETE deleteExpression",
  /*  13 */ "deleteExpression ::= STRING",
  /*  14 */ "deleteExpression ::= deleteExpression COMMA STRING",
@@ -589,9 +589,9 @@ static void yy_destructor(
 /********* Begin destructor definitions ***************************************/
     case 57: /* cond */
 {
-#line 216 "grammar.y"
+#line 222 "./grammar.y"
  Free_AST_FilterNode((yypminor->yy36)); 
-#line 595 "grammar.c"
+#line 595 "./grammar.c"
 }
       break;
 /********* End destructor definitions *****************************************/
@@ -839,21 +839,21 @@ static const struct {
   { 39, 3 },
   { 39, 1 },
   { 41, 2 },
-  { 48, 1 },
-  { 48, 3 },
   { 43, 0 },
   { 43, 2 },
-  { 51, 1 },
-  { 51, 3 },
+  { 49, 1 },
+  { 49, 3 },
+  { 48, 1 },
+  { 48, 3 },
   { 47, 2 },
   { 52, 1 },
   { 52, 3 },
-  { 49, 6 },
-  { 49, 5 },
-  { 49, 4 },
-  { 49, 3 },
+  { 50, 6 },
+  { 50, 5 },
+  { 50, 4 },
   { 50, 3 },
-  { 50, 3 },
+  { 51, 3 },
+  { 51, 3 },
   { 54, 3 },
   { 54, 4 },
   { 54, 5 },
@@ -965,213 +965,217 @@ static void yy_reduce(
 /********** Begin reduce actions **********************************************/
         YYMINORTYPE yylhsminor;
       case 0: /* query ::= expr */
-#line 33 "grammar.y"
+#line 33 "./grammar.y"
 { ctx->root = yymsp[0].minor.yy88; }
-#line 971 "grammar.c"
+#line 971 "./grammar.c"
         break;
-      case 1: /* expr ::= matchClause whereClause creatClause returnClause orderClause limitClause */
-#line 35 "grammar.y"
+      case 1: /* expr ::= matchClause whereClause createClause returnClause orderClause limitClause */
+#line 35 "./grammar.y"
 {
 	yylhsminor.yy88 = New_AST_QueryExpressionNode(yymsp[-5].minor.yy75, yymsp[-4].minor.yy71, yymsp[-3].minor.yy89, NULL, yymsp[-2].minor.yy68, yymsp[-1].minor.yy108, yymsp[0].minor.yy7);
 }
-#line 978 "grammar.c"
+#line 978 "./grammar.c"
   yymsp[-5].minor.yy88 = yylhsminor.yy88;
         break;
-      case 2: /* expr ::= matchClause whereClause creatClause */
-#line 39 "grammar.y"
+      case 2: /* expr ::= matchClause whereClause createClause */
+#line 39 "./grammar.y"
 {
 	yylhsminor.yy88 = New_AST_QueryExpressionNode(yymsp[-2].minor.yy75, yymsp[-1].minor.yy71, yymsp[0].minor.yy89, NULL, NULL, NULL, NULL);
 }
-#line 986 "grammar.c"
+#line 986 "./grammar.c"
   yymsp[-2].minor.yy88 = yylhsminor.yy88;
         break;
       case 3: /* expr ::= matchClause whereClause deleteClause */
-#line 43 "grammar.y"
+#line 43 "./grammar.y"
 {
 	yylhsminor.yy88 = New_AST_QueryExpressionNode(yymsp[-2].minor.yy75, yymsp[-1].minor.yy71, NULL, yymsp[0].minor.yy5, NULL, NULL, NULL);
 }
-#line 994 "grammar.c"
+#line 994 "./grammar.c"
   yymsp[-2].minor.yy88 = yylhsminor.yy88;
         break;
-      case 4: /* expr ::= creatClause */
-#line 47 "grammar.y"
+      case 4: /* expr ::= createClause */
+#line 47 "./grammar.y"
 {
 	yylhsminor.yy88 = New_AST_QueryExpressionNode(NULL, NULL, yymsp[0].minor.yy89, NULL, NULL, NULL, NULL);
 }
-#line 1002 "grammar.c"
+#line 1002 "./grammar.c"
   yymsp[0].minor.yy88 = yylhsminor.yy88;
         break;
-      case 5: /* matchClause ::= MATCH chain */
-#line 53 "grammar.y"
+      case 5: /* matchClause ::= MATCH chains */
+#line 57 "./grammar.y"
 {
 	yymsp[-1].minor.yy75 = New_AST_MatchNode(yymsp[0].minor.yy66);
 }
-#line 1010 "grammar.c"
+#line 1010 "./grammar.c"
         break;
-      case 6: /* chain ::= node */
-#line 60 "grammar.y"
+      case 6: /* createClause ::= */
+#line 64 "./grammar.y"
+{ 
+	yymsp[1].minor.yy89 = NULL;
+}
+#line 1017 "./grammar.c"
+        break;
+      case 7: /* createClause ::= CREATE chains */
+#line 68 "./grammar.y"
+{
+	yymsp[-1].minor.yy89 = New_AST_CreateNode(yymsp[0].minor.yy66);
+}
+#line 1024 "./grammar.c"
+        break;
+      case 8: /* chain ::= node */
+#line 74 "./grammar.y"
 {
 	yylhsminor.yy66 = NewVector(AST_GraphEntity*, 1);
 	Vector_Push(yylhsminor.yy66, yymsp[0].minor.yy69);
 }
-#line 1018 "grammar.c"
+#line 1032 "./grammar.c"
   yymsp[0].minor.yy66 = yylhsminor.yy66;
         break;
-      case 7: /* chain ::= chain link node */
-#line 65 "grammar.y"
+      case 9: /* chain ::= chain link node */
+#line 79 "./grammar.y"
 {
 	Vector_Push(yymsp[-2].minor.yy66, yymsp[-1].minor.yy125);
 	Vector_Push(yymsp[-2].minor.yy66, yymsp[0].minor.yy69);
 	yylhsminor.yy66 = yymsp[-2].minor.yy66;
 }
-#line 1028 "grammar.c"
+#line 1042 "./grammar.c"
   yymsp[-2].minor.yy66 = yylhsminor.yy66;
         break;
-      case 8: /* creatClause ::= */
-#line 74 "grammar.y"
-{ 
-	yymsp[1].minor.yy89 = NULL;
-}
-#line 1036 "grammar.c"
-        break;
-      case 9: /* creatClause ::= CREATE createExpression */
-#line 78 "grammar.y"
+      case 10: /* chains ::= chain */
+#line 86 "./grammar.y"
 {
-	yymsp[-1].minor.yy89 = New_AST_CreateNode(yymsp[0].minor.yy66);
+	yylhsminor.yy66 = yymsp[0].minor.yy66;
 }
-#line 1043 "grammar.c"
-        break;
-      case 10: /* createExpression ::= chain */
-#line 84 "grammar.y"
-{
-	yylhsminor.yy66 = NewVector(Vector*, 1);
-	Vector_Push(yylhsminor.yy66, yymsp[0].minor.yy66);
-}
-#line 1051 "grammar.c"
+#line 1050 "./grammar.c"
   yymsp[0].minor.yy66 = yylhsminor.yy66;
         break;
-      case 11: /* createExpression ::= createExpression COMMA chain */
-#line 89 "grammar.y"
+      case 11: /* chains ::= chains COMMA chain */
+#line 90 "./grammar.y"
 {
-	Vector_Push(yymsp[-2].minor.yy66, yymsp[0].minor.yy66);
+	for(int i = 0; i < Vector_Size(yymsp[0].minor.yy66); i++) {
+		AST_GraphEntity *entity; 
+		Vector_Get(yymsp[0].minor.yy66, i, &entity);
+		Vector_Push(yymsp[-2].minor.yy66, entity);
+	}
+	Vector_Free(yymsp[0].minor.yy66);
 	yylhsminor.yy66 = yymsp[-2].minor.yy66;
 }
-#line 1060 "grammar.c"
+#line 1064 "./grammar.c"
   yymsp[-2].minor.yy66 = yylhsminor.yy66;
         break;
       case 12: /* deleteClause ::= DELETE deleteExpression */
-#line 97 "grammar.y"
+#line 103 "./grammar.y"
 {
 	yymsp[-1].minor.yy5 = New_AST_DeleteNode(yymsp[0].minor.yy66);
 }
-#line 1068 "grammar.c"
+#line 1072 "./grammar.c"
         break;
       case 13: /* deleteExpression ::= STRING */
-#line 103 "grammar.y"
+#line 109 "./grammar.y"
 {
 	yylhsminor.yy66 = NewVector(char*, 1);
 	Vector_Push(yylhsminor.yy66, yymsp[0].minor.yy0.strval);
 }
-#line 1076 "grammar.c"
+#line 1080 "./grammar.c"
   yymsp[0].minor.yy66 = yylhsminor.yy66;
         break;
       case 14: /* deleteExpression ::= deleteExpression COMMA STRING */
-#line 108 "grammar.y"
+#line 114 "./grammar.y"
 {
 	Vector_Push(yymsp[-2].minor.yy66, yymsp[0].minor.yy0.strval);
 	yylhsminor.yy66 = yymsp[-2].minor.yy66;
 }
-#line 1085 "grammar.c"
+#line 1089 "./grammar.c"
   yymsp[-2].minor.yy66 = yylhsminor.yy66;
         break;
       case 15: /* node ::= LEFT_PARENTHESIS STRING COLON STRING properties RIGHT_PARENTHESIS */
-#line 116 "grammar.y"
+#line 122 "./grammar.y"
 {
 	yymsp[-5].minor.yy69 = New_AST_NodeEntity(yymsp[-4].minor.yy0.strval, yymsp[-2].minor.yy0.strval, yymsp[-1].minor.yy66);
 }
-#line 1093 "grammar.c"
+#line 1097 "./grammar.c"
         break;
       case 16: /* node ::= LEFT_PARENTHESIS COLON STRING properties RIGHT_PARENTHESIS */
-#line 121 "grammar.y"
+#line 127 "./grammar.y"
 {
 	yymsp[-4].minor.yy69 = New_AST_NodeEntity(NULL, yymsp[-2].minor.yy0.strval, yymsp[-1].minor.yy66);
 }
-#line 1100 "grammar.c"
+#line 1104 "./grammar.c"
         break;
       case 17: /* node ::= LEFT_PARENTHESIS STRING properties RIGHT_PARENTHESIS */
-#line 126 "grammar.y"
+#line 132 "./grammar.y"
 {
 	yymsp[-3].minor.yy69 = New_AST_NodeEntity(yymsp[-2].minor.yy0.strval, NULL, yymsp[-1].minor.yy66);
 }
-#line 1107 "grammar.c"
+#line 1111 "./grammar.c"
         break;
       case 18: /* node ::= LEFT_PARENTHESIS properties RIGHT_PARENTHESIS */
-#line 131 "grammar.y"
+#line 137 "./grammar.y"
 {
 	yymsp[-2].minor.yy69 = New_AST_NodeEntity(NULL, NULL, yymsp[-1].minor.yy66);
 }
-#line 1114 "grammar.c"
+#line 1118 "./grammar.c"
         break;
       case 19: /* link ::= DASH edge RIGHT_ARROW */
-#line 138 "grammar.y"
+#line 144 "./grammar.y"
 {
 	yymsp[-2].minor.yy125 = yymsp[-1].minor.yy125;
 	yymsp[-2].minor.yy125->direction = N_LEFT_TO_RIGHT;
 }
-#line 1122 "grammar.c"
+#line 1126 "./grammar.c"
         break;
       case 20: /* link ::= LEFT_ARROW edge DASH */
-#line 144 "grammar.y"
+#line 150 "./grammar.y"
 {
 	yymsp[-2].minor.yy125 = yymsp[-1].minor.yy125;
 	yymsp[-2].minor.yy125->direction = N_RIGHT_TO_LEFT;
 }
-#line 1130 "grammar.c"
+#line 1134 "./grammar.c"
         break;
       case 21: /* edge ::= LEFT_BRACKET properties RIGHT_BRACKET */
-#line 151 "grammar.y"
+#line 157 "./grammar.y"
 { 
 	yymsp[-2].minor.yy125 = New_AST_LinkEntity(NULL, NULL, yymsp[-1].minor.yy66, N_DIR_UNKNOWN);
 }
-#line 1137 "grammar.c"
+#line 1141 "./grammar.c"
         break;
       case 22: /* edge ::= LEFT_BRACKET STRING properties RIGHT_BRACKET */
-#line 156 "grammar.y"
+#line 162 "./grammar.y"
 { 
 	yymsp[-3].minor.yy125 = New_AST_LinkEntity(yymsp[-2].minor.yy0.strval, NULL, yymsp[-1].minor.yy66, N_DIR_UNKNOWN);
 }
-#line 1144 "grammar.c"
+#line 1148 "./grammar.c"
         break;
       case 23: /* edge ::= LEFT_BRACKET COLON STRING properties RIGHT_BRACKET */
-#line 161 "grammar.y"
+#line 167 "./grammar.y"
 { 
 	yymsp[-4].minor.yy125 = New_AST_LinkEntity(NULL, yymsp[-2].minor.yy0.strval, yymsp[-1].minor.yy66, N_DIR_UNKNOWN);
 }
-#line 1151 "grammar.c"
+#line 1155 "./grammar.c"
         break;
       case 24: /* edge ::= LEFT_BRACKET STRING COLON STRING properties RIGHT_BRACKET */
-#line 166 "grammar.y"
+#line 172 "./grammar.y"
 { 
 	yymsp[-5].minor.yy125 = New_AST_LinkEntity(yymsp[-4].minor.yy0.strval, yymsp[-2].minor.yy0.strval, yymsp[-1].minor.yy66, N_DIR_UNKNOWN);
 }
-#line 1158 "grammar.c"
+#line 1162 "./grammar.c"
         break;
       case 25: /* properties ::= */
-#line 172 "grammar.y"
+#line 178 "./grammar.y"
 {
 	yymsp[1].minor.yy66 = NULL;
 }
-#line 1165 "grammar.c"
+#line 1169 "./grammar.c"
         break;
       case 26: /* properties ::= LEFT_CURLY_BRACKET mapLiteral RIGHT_CURLY_BRACKET */
-#line 176 "grammar.y"
+#line 182 "./grammar.y"
 {
 	yymsp[-2].minor.yy66 = yymsp[-1].minor.yy66;
 }
-#line 1172 "grammar.c"
+#line 1176 "./grammar.c"
         break;
       case 27: /* mapLiteral ::= STRING COLON value */
-#line 181 "grammar.y"
+#line 187 "./grammar.y"
 {
 	yylhsminor.yy66 = NewVector(SIValue*, 2);
 
@@ -1183,11 +1187,11 @@ static void yy_reduce(
 	*val = yymsp[0].minor.yy70;
 	Vector_Push(yylhsminor.yy66, val);
 }
-#line 1187 "grammar.c"
+#line 1191 "./grammar.c"
   yymsp[-2].minor.yy66 = yylhsminor.yy66;
         break;
       case 28: /* mapLiteral ::= STRING COLON value COMMA mapLiteral */
-#line 193 "grammar.y"
+#line 199 "./grammar.y"
 {
 	SIValue *key = malloc(sizeof(SIValue));
 	*key = SI_StringValC(strdup(yymsp[-4].minor.yy0.strval));
@@ -1199,274 +1203,274 @@ static void yy_reduce(
 	
 	yylhsminor.yy66 = yymsp[0].minor.yy66;
 }
-#line 1203 "grammar.c"
+#line 1207 "./grammar.c"
   yymsp[-4].minor.yy66 = yylhsminor.yy66;
         break;
       case 29: /* whereClause ::= */
-#line 207 "grammar.y"
+#line 213 "./grammar.y"
 { 
 	yymsp[1].minor.yy71 = NULL;
 }
-#line 1211 "grammar.c"
+#line 1215 "./grammar.c"
         break;
       case 30: /* whereClause ::= WHERE cond */
-#line 210 "grammar.y"
+#line 216 "./grammar.y"
 {
 	yymsp[-1].minor.yy71 = New_AST_WhereNode(yymsp[0].minor.yy36);
 }
-#line 1218 "grammar.c"
+#line 1222 "./grammar.c"
         break;
       case 31: /* cond ::= STRING DOT STRING op STRING DOT STRING */
-#line 218 "grammar.y"
+#line 224 "./grammar.y"
 { yylhsminor.yy36 = New_AST_VaryingPredicateNode(yymsp[-6].minor.yy0.strval, yymsp[-4].minor.yy0.strval, yymsp[-3].minor.yy72, yymsp[-2].minor.yy0.strval, yymsp[0].minor.yy0.strval); }
-#line 1223 "grammar.c"
+#line 1227 "./grammar.c"
   yymsp[-6].minor.yy36 = yylhsminor.yy36;
         break;
       case 32: /* cond ::= STRING DOT STRING op value */
-#line 219 "grammar.y"
+#line 225 "./grammar.y"
 { yylhsminor.yy36 = New_AST_ConstantPredicateNode(yymsp[-4].minor.yy0.strval, yymsp[-2].minor.yy0.strval, yymsp[-1].minor.yy72, yymsp[0].minor.yy70); }
-#line 1229 "grammar.c"
+#line 1233 "./grammar.c"
   yymsp[-4].minor.yy36 = yylhsminor.yy36;
         break;
       case 33: /* cond ::= LEFT_PARENTHESIS cond RIGHT_PARENTHESIS */
-#line 220 "grammar.y"
+#line 226 "./grammar.y"
 { yymsp[-2].minor.yy36 = yymsp[-1].minor.yy36; }
-#line 1235 "grammar.c"
+#line 1239 "./grammar.c"
         break;
       case 34: /* cond ::= cond AND cond */
-#line 221 "grammar.y"
+#line 227 "./grammar.y"
 { yylhsminor.yy36 = New_AST_ConditionNode(yymsp[-2].minor.yy36, AND, yymsp[0].minor.yy36); }
-#line 1240 "grammar.c"
+#line 1244 "./grammar.c"
   yymsp[-2].minor.yy36 = yylhsminor.yy36;
         break;
       case 35: /* cond ::= cond OR cond */
-#line 222 "grammar.y"
+#line 228 "./grammar.y"
 { yylhsminor.yy36 = New_AST_ConditionNode(yymsp[-2].minor.yy36, OR, yymsp[0].minor.yy36); }
-#line 1246 "grammar.c"
+#line 1250 "./grammar.c"
   yymsp[-2].minor.yy36 = yylhsminor.yy36;
         break;
       case 36: /* op ::= EQ */
-#line 226 "grammar.y"
+#line 232 "./grammar.y"
 { yymsp[0].minor.yy72 = EQ; }
-#line 1252 "grammar.c"
+#line 1256 "./grammar.c"
         break;
       case 37: /* op ::= GT */
-#line 227 "grammar.y"
+#line 233 "./grammar.y"
 { yymsp[0].minor.yy72 = GT; }
-#line 1257 "grammar.c"
+#line 1261 "./grammar.c"
         break;
       case 38: /* op ::= LT */
-#line 228 "grammar.y"
+#line 234 "./grammar.y"
 { yymsp[0].minor.yy72 = LT; }
-#line 1262 "grammar.c"
+#line 1266 "./grammar.c"
         break;
       case 39: /* op ::= LE */
-#line 229 "grammar.y"
+#line 235 "./grammar.y"
 { yymsp[0].minor.yy72 = LE; }
-#line 1267 "grammar.c"
+#line 1271 "./grammar.c"
         break;
       case 40: /* op ::= GE */
-#line 230 "grammar.y"
+#line 236 "./grammar.y"
 { yymsp[0].minor.yy72 = GE; }
-#line 1272 "grammar.c"
+#line 1276 "./grammar.c"
         break;
       case 41: /* op ::= NE */
-#line 231 "grammar.y"
+#line 237 "./grammar.y"
 { yymsp[0].minor.yy72 = NE; }
-#line 1277 "grammar.c"
+#line 1281 "./grammar.c"
         break;
       case 42: /* value ::= INTEGER */
-#line 237 "grammar.y"
+#line 243 "./grammar.y"
 {  yylhsminor.yy70 = SI_DoubleVal(yymsp[0].minor.yy0.intval); }
-#line 1282 "grammar.c"
+#line 1286 "./grammar.c"
   yymsp[0].minor.yy70 = yylhsminor.yy70;
         break;
       case 43: /* value ::= STRING */
-#line 238 "grammar.y"
+#line 244 "./grammar.y"
 {  yylhsminor.yy70 = SI_StringValC(strdup(yymsp[0].minor.yy0.strval)); }
-#line 1288 "grammar.c"
+#line 1292 "./grammar.c"
   yymsp[0].minor.yy70 = yylhsminor.yy70;
         break;
       case 44: /* value ::= FLOAT */
-#line 239 "grammar.y"
+#line 245 "./grammar.y"
 {  yylhsminor.yy70 = SI_DoubleVal(yymsp[0].minor.yy0.dval); }
-#line 1294 "grammar.c"
+#line 1298 "./grammar.c"
   yymsp[0].minor.yy70 = yylhsminor.yy70;
         break;
       case 45: /* value ::= TRUE */
-#line 240 "grammar.y"
+#line 246 "./grammar.y"
 { yymsp[0].minor.yy70 = SI_BoolVal(1); }
-#line 1300 "grammar.c"
+#line 1304 "./grammar.c"
         break;
       case 46: /* value ::= FALSE */
-#line 241 "grammar.y"
+#line 247 "./grammar.y"
 { yymsp[0].minor.yy70 = SI_BoolVal(0); }
-#line 1305 "grammar.c"
+#line 1309 "./grammar.c"
         break;
       case 47: /* returnClause ::= RETURN returnElements */
-#line 245 "grammar.y"
+#line 251 "./grammar.y"
 {
 	yymsp[-1].minor.yy68 = New_AST_ReturnNode(yymsp[0].minor.yy66, 0);
 }
-#line 1312 "grammar.c"
+#line 1316 "./grammar.c"
         break;
       case 48: /* returnClause ::= RETURN DISTINCT returnElements */
-#line 248 "grammar.y"
+#line 254 "./grammar.y"
 {
 	yymsp[-2].minor.yy68 = New_AST_ReturnNode(yymsp[0].minor.yy66, 1);
 }
-#line 1319 "grammar.c"
+#line 1323 "./grammar.c"
         break;
       case 49: /* returnElements ::= returnElements COMMA returnElement */
-#line 255 "grammar.y"
+#line 261 "./grammar.y"
 {
 	Vector_Push(yymsp[-2].minor.yy66, yymsp[0].minor.yy54);
 	yylhsminor.yy66 = yymsp[-2].minor.yy66;
 }
-#line 1327 "grammar.c"
+#line 1331 "./grammar.c"
   yymsp[-2].minor.yy66 = yylhsminor.yy66;
         break;
       case 50: /* returnElements ::= returnElement */
-#line 260 "grammar.y"
+#line 266 "./grammar.y"
 {
 	yylhsminor.yy66 = NewVector(AST_ReturnElementNode*, 1);
 	Vector_Push(yylhsminor.yy66, yymsp[0].minor.yy54);
 }
-#line 1336 "grammar.c"
+#line 1340 "./grammar.c"
   yymsp[0].minor.yy66 = yylhsminor.yy66;
         break;
       case 51: /* returnElement ::= variable */
-#line 267 "grammar.y"
+#line 273 "./grammar.y"
 {
 	yylhsminor.yy54 = New_AST_ReturnElementNode(N_PROP, yymsp[0].minor.yy73, NULL, NULL);
 }
-#line 1344 "grammar.c"
+#line 1348 "./grammar.c"
   yymsp[0].minor.yy54 = yylhsminor.yy54;
         break;
       case 52: /* returnElement ::= variable AS STRING */
-#line 270 "grammar.y"
+#line 276 "./grammar.y"
 {
 	yylhsminor.yy54 = New_AST_ReturnElementNode(N_PROP, yymsp[-2].minor.yy73, NULL, yymsp[0].minor.yy0.strval);
 }
-#line 1352 "grammar.c"
+#line 1356 "./grammar.c"
   yymsp[-2].minor.yy54 = yylhsminor.yy54;
         break;
       case 53: /* returnElement ::= aggFunc */
-#line 273 "grammar.y"
+#line 279 "./grammar.y"
 {
 	yylhsminor.yy54 = yymsp[0].minor.yy54;
 }
-#line 1360 "grammar.c"
+#line 1364 "./grammar.c"
   yymsp[0].minor.yy54 = yylhsminor.yy54;
         break;
       case 54: /* returnElement ::= STRING */
-#line 276 "grammar.y"
+#line 282 "./grammar.y"
 {
 	yylhsminor.yy54 = New_AST_ReturnElementNode(N_NODE, New_AST_Variable(yymsp[0].minor.yy0.strval, NULL), NULL, NULL);
 }
-#line 1368 "grammar.c"
+#line 1372 "./grammar.c"
   yymsp[0].minor.yy54 = yylhsminor.yy54;
         break;
       case 55: /* variable ::= STRING DOT STRING */
-#line 282 "grammar.y"
+#line 288 "./grammar.y"
 {
 	yylhsminor.yy73 = New_AST_Variable(yymsp[-2].minor.yy0.strval, yymsp[0].minor.yy0.strval);
 }
-#line 1376 "grammar.c"
+#line 1380 "./grammar.c"
   yymsp[-2].minor.yy73 = yylhsminor.yy73;
         break;
       case 56: /* aggFunc ::= STRING LEFT_PARENTHESIS variable RIGHT_PARENTHESIS */
-#line 288 "grammar.y"
+#line 294 "./grammar.y"
 {
 	yylhsminor.yy54 = New_AST_ReturnElementNode(N_AGG_FUNC, yymsp[-1].minor.yy73, yymsp[-3].minor.yy0.strval, NULL);
 }
-#line 1384 "grammar.c"
+#line 1388 "./grammar.c"
   yymsp[-3].minor.yy54 = yylhsminor.yy54;
         break;
       case 57: /* aggFunc ::= STRING LEFT_PARENTHESIS variable RIGHT_PARENTHESIS AS STRING */
-#line 291 "grammar.y"
+#line 297 "./grammar.y"
 {
 	yylhsminor.yy54 = New_AST_ReturnElementNode(N_AGG_FUNC, yymsp[-3].minor.yy73, yymsp[-5].minor.yy0.strval, yymsp[0].minor.yy0.strval);
 }
-#line 1392 "grammar.c"
+#line 1396 "./grammar.c"
   yymsp[-5].minor.yy54 = yylhsminor.yy54;
         break;
       case 58: /* orderClause ::= */
-#line 297 "grammar.y"
+#line 303 "./grammar.y"
 {
 	yymsp[1].minor.yy108 = NULL;
 }
-#line 1400 "grammar.c"
+#line 1404 "./grammar.c"
         break;
       case 59: /* orderClause ::= ORDER BY columnNameList */
-#line 300 "grammar.y"
+#line 306 "./grammar.y"
 {
 	yymsp[-2].minor.yy108 = New_AST_OrderNode(yymsp[0].minor.yy66, ORDER_DIR_ASC);
 }
-#line 1407 "grammar.c"
+#line 1411 "./grammar.c"
         break;
       case 60: /* orderClause ::= ORDER BY columnNameList ASC */
-#line 303 "grammar.y"
+#line 309 "./grammar.y"
 {
 	yymsp[-3].minor.yy108 = New_AST_OrderNode(yymsp[-1].minor.yy66, ORDER_DIR_ASC);
 }
-#line 1414 "grammar.c"
+#line 1418 "./grammar.c"
         break;
       case 61: /* orderClause ::= ORDER BY columnNameList DESC */
-#line 306 "grammar.y"
+#line 312 "./grammar.y"
 {
 	yymsp[-3].minor.yy108 = New_AST_OrderNode(yymsp[-1].minor.yy66, ORDER_DIR_DESC);
 }
-#line 1421 "grammar.c"
+#line 1425 "./grammar.c"
         break;
       case 62: /* columnNameList ::= columnNameList COMMA columnName */
-#line 311 "grammar.y"
+#line 317 "./grammar.y"
 {
 	Vector_Push(yymsp[-2].minor.yy66, yymsp[0].minor.yy74);
 	yylhsminor.yy66 = yymsp[-2].minor.yy66;
 }
-#line 1429 "grammar.c"
+#line 1433 "./grammar.c"
   yymsp[-2].minor.yy66 = yylhsminor.yy66;
         break;
       case 63: /* columnNameList ::= columnName */
-#line 315 "grammar.y"
+#line 321 "./grammar.y"
 {
 	yylhsminor.yy66 = NewVector(AST_ColumnNode*, 1);
 	Vector_Push(yylhsminor.yy66, yymsp[0].minor.yy74);
 }
-#line 1438 "grammar.c"
+#line 1442 "./grammar.c"
   yymsp[0].minor.yy66 = yylhsminor.yy66;
         break;
       case 64: /* columnName ::= variable */
-#line 321 "grammar.y"
+#line 327 "./grammar.y"
 {
 	yylhsminor.yy74 = AST_ColumnNodeFromVariable(yymsp[0].minor.yy73);
 	Free_AST_Variable(yymsp[0].minor.yy73);
 }
-#line 1447 "grammar.c"
+#line 1451 "./grammar.c"
   yymsp[0].minor.yy74 = yylhsminor.yy74;
         break;
       case 65: /* columnName ::= STRING */
-#line 325 "grammar.y"
+#line 331 "./grammar.y"
 {
 	yylhsminor.yy74 = AST_ColumnNodeFromAlias(yymsp[0].minor.yy0.strval);
 }
-#line 1455 "grammar.c"
+#line 1459 "./grammar.c"
   yymsp[0].minor.yy74 = yylhsminor.yy74;
         break;
       case 66: /* limitClause ::= */
-#line 331 "grammar.y"
+#line 337 "./grammar.y"
 {
 	yymsp[1].minor.yy7 = NULL;
 }
-#line 1463 "grammar.c"
+#line 1467 "./grammar.c"
         break;
       case 67: /* limitClause ::= LIMIT INTEGER */
-#line 334 "grammar.y"
+#line 340 "./grammar.y"
 {
 	yymsp[-1].minor.yy7 = New_AST_LimitNode(yymsp[0].minor.yy0.intval);
 }
-#line 1470 "grammar.c"
+#line 1474 "./grammar.c"
         break;
       default:
         break;
@@ -1525,14 +1529,14 @@ static void yy_syntax_error(
   ParseARG_FETCH;
 #define TOKEN yyminor
 /************ Begin %syntax_error code ****************************************/
-#line 20 "grammar.y"
+#line 20 "./grammar.y"
 
 	char buf[256];
 	snprintf(buf, 256, "Syntax error at offset %d near '%s'\n", TOKEN.pos, TOKEN.s);
 
 	ctx->ok = 0;
 	ctx->errorMsg = strdup(buf);
-#line 1536 "grammar.c"
+#line 1540 "./grammar.c"
 /************ End %syntax_error code ******************************************/
   ParseARG_STORE; /* Suppress warning about unused %extra_argument variable */
 }
@@ -1735,7 +1739,8 @@ void Parse(
 #endif
   return;
 }
-#line 338 "grammar.y"
+#line 344 "./grammar.y"
+
 
 	/* Definitions of flex stuff */
 	typedef struct yy_buffer_state *YY_BUFFER_STATE;
@@ -1766,4 +1771,4 @@ void Parse(
 		}
 		return ctx.root;
 	}
-#line 1771 "grammar.c"
+#line 1775 "./grammar.c"

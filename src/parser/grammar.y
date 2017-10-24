@@ -32,11 +32,11 @@
 
 query ::= expr(A). { ctx->root = A; }
 
-expr(A) ::= matchClause(B) whereClause(C) creatClause(D) returnClause(E) orderClause(F) limitClause(G). {
+expr(A) ::= matchClause(B) whereClause(C) createClause(D) returnClause(E) orderClause(F) limitClause(G). {
 	A = New_AST_QueryExpressionNode(B, C, D, NULL, E, F, G);
 }
 
-expr(A) ::= matchClause(B) whereClause(C) creatClause(D). {
+expr(A) ::= matchClause(B) whereClause(C) createClause(D). {
 	A = New_AST_QueryExpressionNode(B, C, D, NULL, NULL, NULL, NULL);
 }
 
@@ -44,16 +44,26 @@ expr(A) ::= matchClause(B) whereClause(C) deleteClause(D). {
 	A = New_AST_QueryExpressionNode(B, C, NULL, D, NULL, NULL, NULL);
 }
 
-expr(A) ::= creatClause(B). {
+expr(A) ::= createClause(B). {
 	A = New_AST_QueryExpressionNode(NULL, NULL, B, NULL, NULL, NULL, NULL);
 }
 
 %type matchClause { AST_MatchNode* }
 
-matchClause(A) ::= MATCH chain(B). {
+matchClause(A) ::= MATCH chains(B). {
 	A = New_AST_MatchNode(B);
 }
 
+%type createClause { AST_CreateNode *}
+
+// Empty create clause.
+createClause(A) ::= . {
+	A = NULL;
+}
+
+createClause(A) ::= CREATE chains(B). {
+	A = New_AST_CreateNode(B);
+}
 
 %type chain {Vector*}
 
@@ -68,26 +78,18 @@ chain(A) ::= chain(B) link(C) node(D). {
 	A = B;
 }
 
-
-%type creatClause { AST_CreateNode *}
-
-creatClause(A) ::= . { 
-	A = NULL;
+%type chains {Vector*}
+chains(A) ::= chain(B). {
+	A = B;
 }
 
-creatClause(A) ::= CREATE createExpression(B). {
-	A = New_AST_CreateNode(B);
-}
-
-%type createExpression {Vector*}
-
-createExpression(A) ::= chain(B). {
-	A = NewVector(Vector*, 1);
-	Vector_Push(A, B);
-}
-
-createExpression(A) ::= createExpression(B) COMMA chain(C). {
-	Vector_Push(B, C);
+chains(A) ::= chains(B) COMMA chain(C). {
+	for(int i = 0; i < Vector_Size(C); i++) {
+		AST_GraphEntity *entity;
+		Vector_Get(C, i, &entity);
+		Vector_Push(B, entity);
+	}
+	Vector_Free(C);
 	A = B;
 }
 

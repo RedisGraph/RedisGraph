@@ -142,7 +142,6 @@ void Free_AST_GraphEntity(AST_GraphEntity *graphEntity) {
 AST_MatchNode* New_AST_MatchNode(Vector *elements) {
 	AST_MatchNode *matchNode = (AST_MatchNode*)malloc(sizeof(AST_MatchNode));
 	matchNode->graphEntities = elements;
-
 	return matchNode;
 }
 
@@ -159,21 +158,7 @@ void Free_AST_MatchNode(AST_MatchNode *matchNode) {
 
 AST_CreateNode* New_AST_CreateNode(Vector *elements) {
 	AST_CreateNode *createNode = (AST_CreateNode*)malloc(sizeof(AST_CreateNode));
-	createNode->graphEntities = NewVector(AST_GraphEntity *, 1);
-
-	for(int i = 0; i < Vector_Size(elements); i++) {
-		Vector *v;
-		Vector_Get(elements, i, &v);
-
-		for(int j = 0; j < Vector_Size(v); j++) {
-			AST_GraphEntity *ge;
-			Vector_Get(v, j, &ge);
-			Vector_Push(createNode->graphEntities, ge);
-		}
-		
-		Vector_Free(v);
-	}
-
+	createNode->graphEntities = elements;
 	return createNode;
 }
 
