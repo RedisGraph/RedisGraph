@@ -1,15 +1,29 @@
-FROM ubuntu
+FROM redis:latest as builder
 
-RUN apt-get -y update && apt-get install -y build-essential
-RUN apt-get install -y wget
-RUN cd /tmp
-RUN wget https://github.com/antirez/redis/archive/4.0-rc2.tar.gz
-RUN tar xvzf 4.0-rc2.tar.gz
-RUN cd redis-4.0-rc2 && make
-RUN cd redis-4.0-rc2 && make install
-COPY . /redis-graph
-RUN cd /redis-graph && make
+ENV DEPS "python python-setuptools python-pip wget build-essential"
 
-EXPOSE 6379
+# Set up a build environment
+RUN set -ex;\
+    deps="$DEPS";\
+    apt-get update;\
+	apt-get install -y --no-install-recommends $deps;\
+    pip install rmtest;\
+    pip install redisgraph;
 
-CMD ["/usr/local/bin/redis-server", "--bind", "0.0.0.0", "--loadmodule", "/redis-graph/src/redisgraph.so"]
+# Build the source
+ADD ./ /redisgraph
+WORKDIR /redisgraph
+RUN set -ex;\
+    make clean; \
+    make all -j 4; \
+    make test;
+
+# Package the runner
+FROM redis:latest
+ENV LIBDIR /var/lib/redis/modules
+WORKDIR /data
+RUN set -ex;\
+    mkdir -p "$LIBDIR";
+COPY --from=builder /redisgraph/src/redisgraph.so "$LIBDIR"
+
+CMD ["redis-server", "--loadmodule", "/var/lib/redis/modules/redisgraph.so"]
