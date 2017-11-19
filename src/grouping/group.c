@@ -4,17 +4,17 @@
 
 // Creates a new group
 // arguments specify group's key.
-Group* NewGroup(Vector* keys, Vector* funcs) {
+Group* NewGroup(int key_count, SIValue* keys, Vector* funcs) {
     Group* g = malloc(sizeof(Group));
-    g->aggregationFunctions = funcs;
     g->keys = keys;
+    g->key_count = key_count;
+    g->aggregationFunctions = funcs;
     return g;
 }
 
 void FreeGroup(Group* group) {
     if(group == NULL) return;
-    
-    // Vector_Free(group->keys);
-    // Vector_Free(group->aggregationFunctions);
+
+    /* TODO: Free keys. */
     free(group);
 }

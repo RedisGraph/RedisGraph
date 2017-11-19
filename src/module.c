@@ -11,9 +11,11 @@
 #include "value.h"
 #include "redismodule.h"
 #include "query_executor.h"
+#include "arithmetic_expression.h"
 
 #include "util/prng.h"
 #include "util/snowflake.h"
+#include "util/triemap/triemap_type.h"
 
 #include "rmutil/util.h"
 #include "rmutil/vector.h"
@@ -183,6 +185,12 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
         return REDISMODULE_OK;
     }
     
+    /* Modify AST */
+    if(ReturnClause_ContainsCollapsedNodes(ast) == 1) {
+        /* Expend collapsed nodes. */
+        ReturnClause_ExpandCollapsedNodes(ctx, ast, graphName);
+    }
+
     ExecutionPlan *plan = NewExecutionPlan(ctx, graphName, ast);
     char* strPlan = ExecutionPlanPrint(plan);
     /* TODO: free execution plan.
@@ -199,6 +207,7 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     InitGroupCache();
     Agg_RegisterFuncs();
+    AR_RegisterFuncs(); /* Register arithmetic expression functions. */
 
     if (snowflake_init(1, 1) != 1) {
         RedisModule_Log(ctx, "error", "Failed to initialize snowflake");

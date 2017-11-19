@@ -101,6 +101,6 @@ int SIValue_ToDouble(SIValue *v, double *d);
 void SIValue_FromString(SIValue *v, char *s, size_t s_len);
 
 /* Concats strings as a comma seperated string. */
-size_t SIValue_StringConcat(const Vector* strings, char** concat);
+size_t SIValue_StringConcat(SIValue* strings, unsigned int string_count, char** concat);
 
 #endif

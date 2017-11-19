@@ -36,17 +36,17 @@ int yycolumn = 1;
 "LIMIT"     { return LIMIT; }
 
 
-[\-\+]?[0-9]*\.[0-9]+    {
+[0-9]*\.[0-9]+    {
 	tok.dval = atof(yytext);
 	return FLOAT; 
 }
 
-[\-\+]?[0-9]+    {   
+[0-9]+    {
   tok.intval = atoi(yytext); 
   return INTEGER;
 }
 
-[A-Za-z][A-Za-z0-9]* {
+[_A-Za-z][A-Za-z0-9_-]* {
   	tok.strval = strdup(yytext);
   	return STRING;
 }
@@ -76,6 +76,9 @@ int yycolumn = 1;
 "-" 	{ return DASH; }
 ":" 	{ return COLON; }
 "." 	{ return DOT; }
+"/"   { return DIV; }
+"*"   { return MUL; }
+"+"   { return ADD; }
 
 [ \t]+ /* ignore whitespace */
 \n    { yycolumn = 1; } /* ignore whitespace */

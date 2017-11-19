@@ -197,7 +197,8 @@ int SIValue_ToString(SIValue v, char *buf, size_t len) {
 
   switch (v.type) {
   case T_STRING:
-    bytes_written = snprintf(buf, len, "\"%.*s\"", (int)v.stringval.len, v.stringval.str);
+    // bytes_written = snprintf(buf, len, "\"%.*s\"", (int)v.stringval.len, v.stringval.str);
+    bytes_written = snprintf(buf, len, "%.*s", (int)v.stringval.len, v.stringval.str);
     break;
   case T_INT32:
     bytes_written = snprintf(buf, len, "%d", v.intval);
@@ -390,37 +391,30 @@ void SIValue_FromString(SIValue *v, char *s, size_t s_len) {
   SI_ParseValue(v, s, s_len);
 }
 
-size_t SIValue_StringConcat(const Vector* strings, char** concat) {
+size_t SIValue_StringConcat(SIValue* strings, unsigned int string_count, char** concat) {
   int i;
   size_t length = 0;
   size_t offset = 0;
-  int elem_count = Vector_Size(strings);
-
   /* Compute length. */
-  for(i = 0; i < elem_count; i++) {
-    SIValue* element;
-    Vector_Get(strings, i, &element);
-
+  for(i = 0; i < string_count; i++) {
     /* Element string representation bytes size, strings are 
-     * srounded by double quotes,
-     * for all other SIValue types 32 bytes should be enough. */
-    size_t len = (element->type == T_STRING) ? element->stringval.len + 2 : 32;
+    * srounded by double quotes,
+    * for all other SIValue types 32 bytes should be enough. */
+    size_t len = (strings[i].type == T_STRING) ? strings[i].stringval.len + 2 : 32;
     length += len;
   }
 
   /* Account for delimiters and NULL terminating byte. */
-  length += elem_count + 1;
+  length += string_count + 1;
   *concat = calloc(length, sizeof(char));
 
-  for(i = 0; i < elem_count; i++) {
-      SIValue* element;
-      Vector_Get(strings, i, &element);
-
-      offset += SIValue_ToString(*element, (*concat) + offset, length - offset);
-      (*concat)[offset++] = ',';
+  for(i = 0; i < string_count; i++) {
+    offset += SIValue_ToString(strings[i], (*concat) + offset, length - offset);
+    (*concat)[offset++] = ',';
   }
   /* Backtrack once. */
   offset--;
+
   /* Discard last delimiter. */
   (*concat)[offset] = 0;
   return offset;

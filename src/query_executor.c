@@ -1,3 +1,4 @@
+#include "assert.h"
 #include "graph/node.h"
 #include "stores/store.h"
 #include "rmutil/vector.h"
@@ -5,10 +6,10 @@
 #include "query_executor.h"
 #include "parser/grammar.h"
 #include "aggregate/agg_ctx.h"
+#include "aggregate/repository.h"
 #include "hexastore/triplet.h"
 #include "hexastore/hexastore.h"
 #include "parser/parser_common.h"
-#include "aggregate/repository.h"
 
 void BuildGraph(Graph *graph, Vector *entities) {
     /* Introduce nodes first. */
@@ -87,63 +88,63 @@ void BuildGraph(Graph *graph, Vector *entities) {
     }
 }
 
-/* Type specifies the type of return elements to Retrieve. */
-Vector* _ReturnClause_RetrieveValues(const AST_ReturnNode *returnNode, const Graph *g, AST_ReturnElementType type) {
-    Vector* returned_props = NewVector(SIValue*, Vector_Size(returnNode->returnElements));
+/* Construct an expression tree foreach none aggregated term.
+ * Returns a vector of none aggregated expression trees. */
+void Build_None_Aggregated_Arithmetic_Expressions(AST_ReturnNode *return_node, AR_ExpNode ***expressions, int *expressions_count, Graph *g) {
+    *expressions = malloc(sizeof(AR_ExpNode *) * Vector_Size(return_node->returnElements));
+    *expressions_count = 0;
 
-    for(int i = 0; i < Vector_Size(returnNode->returnElements); i++) {
-        AST_ReturnElementNode *retElem;
-        Vector_Get(returnNode->returnElements, i, &retElem);
+    for(int i = 0; i < Vector_Size(return_node->returnElements); i++) {
+        AST_ReturnElementNode *returnElement;
+        Vector_Get(return_node->returnElements, i, &returnElement);
 
-        /* Skip elements not of specified type. */
-        if(retElem->type != type) {
-            continue;
+        AR_ExpNode *expression = AR_EXP_BuildFromAST(returnElement->exp, g);
+        if(!AR_EXP_ContainsAggregation(expression, NULL)) {
+            (*expressions)[*expressions_count] = expression;
+            (*expressions_count)++;
         }
-
-        GraphEntity *e = Graph_GetEntityByAlias(g, retElem->variable->alias);
-        SIValue *property = GraphEntity_Get_Property(e, retElem->variable->property);
-        if(property == PROPERTY_NOTFOUND) {
-            /* Couldn't find prop for id.
-             * TODO: Free returned_props. */
-            Vector_Free(returned_props);
-            return NULL;
-        }
-        Vector_Push(returned_props, property);
     }
-
-    return returned_props;
-}
-
-/* Retrieves all request values specified in return clause
- * Returns a vector of SIValue* */
-Vector* ReturnClause_RetrievePropValues(const AST_ReturnNode *returnNode, const Graph *g) {
-    return _ReturnClause_RetrieveValues(returnNode, g, N_PROP);
-}
-
-/* Retrieves "GROUP BY" values.
- * Returns a vector of SIValue* */
-Vector* ReturnClause_RetrieveGroupKeys(const AST_ReturnNode *returnNode, const Graph *g) {
-    return _ReturnClause_RetrieveValues(returnNode, g, N_PROP);
-}
-
-/* Retrieves all aggregated properties from graph.
- * e.g. SUM(Person.age)
- * Returns a vector of SIValue* */
-Vector* ReturnClause_RetrieveGroupAggVals(const AST_ReturnNode *returnNode, const Graph *g) {
-    return _ReturnClause_RetrieveValues(returnNode, g, N_AGG_FUNC);
 }
 
 int ReturnClause_ContainsCollapsedNodes(AST_QueryExpressionNode *ast) {
     if(!ast->returnNode) return 0;
 
-    AST_ReturnNode *returnNode = ast->returnNode;
-    for(int i = 0; i < Vector_Size(returnNode->returnElements); i++) {
-        AST_ReturnElementNode *returnElementNode;
-        Vector_Get(returnNode->returnElements, i, &returnElementNode);
-        if(returnElementNode->type == N_NODE) {
-            return 1;
+    AST_ReturnNode *return_node = ast->returnNode;
+    for(int i = 0; i < Vector_Size(return_node->returnElements); i++) {
+        AST_ReturnElementNode *ret_elem;
+        Vector_Get(return_node->returnElements, i, &ret_elem);
+        AST_ArithmeticExpressionNode *exp = ret_elem->exp;
+        /* Detect collapsed entity,
+         * A collapsed entity is represented by an arithmetic expression
+         * of AST_AR_EXP_OPERAND type, 
+         * The operand type should be AST_AR_EXP_VARIADIC,
+         * lastly property should be missing. */
+        if(exp->type == AST_AR_EXP_OPERAND &&
+            exp->operand.type == AST_AR_EXP_VARIADIC &&
+            exp->operand.variadic.property == NULL) {
+                return 1;
         }
     }
+    return 0;
+}
+
+int _ContainsAggregation(AST_ArithmeticExpressionNode *exp) {
+    if(exp->type == AST_AR_EXP_OPERAND) {
+        return 0;
+    }
+    
+    /* Try to get an aggregation function. */
+    AggCtx* ctx;
+    Agg_GetFunc(exp->op.function, &ctx);
+    if(ctx != NULL) return 1;
+
+    /* Scan sub expressions. */
+    for(int i = 0; i < Vector_Size(exp->op.args); i++) {
+        AST_ArithmeticExpressionNode *child_exp;
+        Vector_Get(exp->op.args, i, &child_exp);
+        if(_ContainsAggregation(child_exp)) return 1;
+    }
+
     return 0;
 }
 
@@ -151,95 +152,88 @@ int ReturnClause_ContainsCollapsedNodes(AST_QueryExpressionNode *ast) {
 int ReturnClause_ContainsAggregation(AST_QueryExpressionNode *ast) {
     if(!ast->returnNode) return 0;
 
-    AST_ReturnNode *returnNode = ast->returnNode;
-    int res = 0;
+    AST_ReturnNode *return_node = ast->returnNode;
 
-    for(int i = 0; i < Vector_Size(returnNode->returnElements); i++) {
-        AST_ReturnElementNode *retElem;
-        Vector_Get(returnNode->returnElements, i, &retElem);
-        if(retElem->type == N_AGG_FUNC) {
-            res = 1;
-            break;
-        }
+    for(int i = 0; i < Vector_Size(return_node->returnElements); i++) {
+        AST_ReturnElementNode *ret_elem;
+        Vector_Get(return_node->returnElements, i, &ret_elem);
+        AST_ArithmeticExpressionNode *exp = ret_elem->exp;
+
+        /* Scan expression for an aggregation function. */
+        if (_ContainsAggregation(exp)) return 1;
     }
 
-    return res;
-}
-
-Vector* ReturnClause_GetAggFuncs(RedisModuleCtx *ctx, const AST_ReturnNode *returnNode) {
-    Vector* aggFunctions = NewVector(AggCtx*, 0);
-
-    for(int i = 0; i < Vector_Size(returnNode->returnElements); i++) {
-        AST_ReturnElementNode *retElem;
-        Vector_Get(returnNode->returnElements, i, &retElem);
-
-        if(retElem->type == N_AGG_FUNC) {
-            AggCtx* func = NULL;
-            Agg_GetFunc(retElem->func, &func);
-            if(func == NULL) {
-                RedisModule_Log(ctx, "error", "aggregation function %s is not supported\n", retElem->func);
-                RedisModule_ReplyWithError(ctx, "Invalid aggregation function");
-                return NULL;
-            }
-            Vector_Push(aggFunctions, func);
-        }
-    }
-
-    return aggFunctions;
+    return 0;
 }
 
 void ReturnClause_ExpandCollapsedNodes(RedisModuleCtx *ctx, AST_QueryExpressionNode *ast, const char *graphName) {
     /* Assumption, each collapsed node is tagged with a label
      * TODO: maintain a label schema, this way we won't have
-     * to call HGETALL each time to discover label attributes */
+     * to discover label attributes. */
+
+     /* Create a new return clause */
     Vector *expandReturnElements = NewVector(AST_ReturnElementNode*, Vector_Size(ast->returnNode->returnElements));
 
+    /* Scan return cluase, search for collapsed nodes. */
     for(int i = 0; i < Vector_Size(ast->returnNode->returnElements); i++) {
         AST_ReturnElementNode *ret_elem;
         Vector_Get(ast->returnNode->returnElements, i, &ret_elem);
+        AST_ArithmeticExpressionNode *exp = ret_elem->exp;
         
-        if(ret_elem->type != N_NODE) {
-            Vector_Push(expandReturnElements, ret_elem);
-            continue;
-        }
-        
-        /* Find collapsed node's label. */
-        AST_GraphEntity *collapsed_entity = NULL;
-        for(int j = 0; j < Vector_Size(ast->matchNode->graphEntities); j++) {
-            AST_GraphEntity *ge;
-            Vector_Get(ast->matchNode->graphEntities, j, &ge);
-            if(strcmp(ge->alias, ret_elem->variable->alias) == 0) {
-                collapsed_entity = ge;
-                break;
+        /* Detect collapsed entity,
+         * A collapsed entity is represented by an arithmetic expression
+         * of AST_AR_EXP_OPERAND type, 
+         * The operand type should be AST_AR_EXP_VARIADIC,
+         * lastly property should be missing. */
+        if(exp->type == AST_AR_EXP_OPERAND &&
+            exp->operand.type == AST_AR_EXP_VARIADIC &&
+            exp->operand.variadic.property == NULL) {
+            
+            /* Return cluase doesn't contains entity's lable,
+             * Find collapsed entity's label. */
+            AST_GraphEntity *collapsed_entity = NULL;
+            for(int j = 0; j < Vector_Size(ast->matchNode->graphEntities); j++) {
+                AST_GraphEntity *ge;
+                Vector_Get(ast->matchNode->graphEntities, j, &ge);
+                if(strcmp(ge->alias, exp->operand.variadic.alias) == 0) {
+                    collapsed_entity = ge;
+                    break;
+                }
             }
-        }
+            
+            /* Failed to find collapsed entity. */
+            if(collapsed_entity == NULL) {
+                /* Invalud query, return clause refers to none existing entity. */
+                /* TODO: Validate query. */
+                printf("Error, could not find collapsed entity\n");
+                return;
+            }
 
-        if(collapsed_entity == NULL) {
-            /* Invalud query, return clause refers to none existing entity. */
-            /* TODO: Validate query. */
-            printf("Error, could not find collapsed entity\n");
-            return;
-        }
+            /* Find an id, for entity. */
+            StoreType store_type = (collapsed_entity->t == N_ENTITY) ? STORE_NODE : STORE_EDGE;
+            Store *s = GetStore(ctx, store_type, graphName, collapsed_entity->label);
+            StoreIterator *it = Store_Search(s, "");
+            char *id;
+            tm_len_t id_len;
+            GraphEntity *entity;
+            StoreIterator_Next(it, &id, &id_len, (void**)&entity);
+            StoreIterator_Free(it);
+            
+            /* Create a new return element foreach property. */
+            for(int j = 0; j < entity->prop_count; j++) {
+                AST_ArithmeticExpressionNode *expanded_exp =
+                    New_AST_AR_EXP_VariableOperandNode(collapsed_entity->alias,
+                                                       entity->properties[j].name);
 
-        /* Discard collapsed node. */
-        Free_AST_ReturnElementNode(ret_elem);
-        
-        /* Find an id, for entity. */
-        StoreType store_type = (collapsed_entity->t == N_ENTITY) ? STORE_NODE : STORE_EDGE;
-        Store *s = GetStore(ctx, store_type, graphName, collapsed_entity->label);
-        StoreIterator *it = Store_Search(s, "");
-        char *id;
-        tm_len_t id_len;
-        GraphEntity *entity;
-        StoreIterator_Next(it, &id, &id_len, (void**)&entity);
-        StoreIterator_Free(it);
-        
-        for(int j = 0; j < entity->prop_count; j++) {
-            /* Create a new return element. */
-            AST_Variable *var = New_AST_Variable(collapsed_entity->alias,
-                                                 entity->properties[j].name);
-            AST_ReturnElementNode *retElem = New_AST_ReturnElementNode(N_PROP, var, NULL, NULL);
-            Vector_Push(expandReturnElements, retElem);
+                AST_ReturnElementNode *retElem =
+                    New_AST_ReturnElementNode(expanded_exp, ret_elem->alias);
+                Vector_Push(expandReturnElements, retElem);
+            }
+            
+            /* Discard collapsed return element. */
+            Free_AST_ReturnElementNode(ret_elem);
+        } else {
+            Vector_Push(expandReturnElements, ret_elem);
         }
     }
     /* Override previous return clause. */

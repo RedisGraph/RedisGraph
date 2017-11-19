@@ -5,12 +5,13 @@
 #include "../aggregate/agg_ctx.h"
 
 typedef struct {
-    Vector* keys;                   /* Vector of SIValue* */
-    Vector* aggregationFunctions;   /* Vector of AggCtx* */
+    int key_count;
+    SIValue* keys;
+    Vector* aggregationFunctions;   /* Vector of AR_ExpNode*, where the root is an aggregation function. */
 } Group;
 
 /* Creates a new group */
-Group* NewGroup(Vector* keys, Vector* funcs);
+Group* NewGroup(int key_count, SIValue* keys, Vector* funcs);
 
 void FreeGroup(Group* group);
 

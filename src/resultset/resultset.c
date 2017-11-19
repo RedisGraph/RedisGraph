@@ -10,7 +10,7 @@ int _heap_elem_compare(const void * A, const void * B, const void *udata) {
     const Record *aRec = (Record*)A;
     const Record *bRec = (Record*)B;
 
-    return Records_Compare(aRec, bRec, set->header->orderBys, set->header->orderByLen) * direction;
+    return Records_Compare(aRec, bRec, set->header->orderBys, set->header->orderby_len) * direction;
 }
 
 /* Checks if we've already seen given records
@@ -25,10 +25,11 @@ int __encounteredRecord(ResultSet* set, const Record* record) {
     return !newRecord;
 }
 
-Column* NewColumn(const char* name, const char* alias) {
+Column* NewColumn(const char* name, const char* alias, int aggregated) {
     Column* column = malloc(sizeof(Column));
     column->name = NULL;
     column->alias = NULL;
+    column->aggregated = aggregated;
 
     if(name != NULL) {
         column->name = strdup(name);
@@ -53,37 +54,35 @@ void Column_Free(Column* column) {
 
 ResultSetHeader* NewResultSetHeader(const AST_QueryExpressionNode *ast) {
     ResultSetHeader* header = malloc(sizeof(ResultSetHeader));
-    header->columnsLen = 0;
-    header->orderByLen = 0;
+    header->columns_len = 0;
+    header->orderby_len = 0;
     header->columns = NULL;
     header->orderBys = NULL;
 
     if(ast->returnNode != NULL) {
-        header->columnsLen = Vector_Size(ast->returnNode->returnElements);
-        header->columns = malloc(sizeof(Column*) * header->columnsLen);
+        header->columns_len = Vector_Size(ast->returnNode->returnElements);
+        header->columns = malloc(sizeof(Column*) * header->columns_len);
     }
 
     if(ast->orderNode != NULL) {
-        header->orderByLen = Vector_Size(ast->orderNode->columns);
-        header->orderBys = malloc(sizeof(int) * header->orderByLen);
+        header->orderby_len = Vector_Size(ast->orderNode->columns);
+        header->orderBys = malloc(sizeof(int) * header->orderby_len);
     }
 
-    for(int i = 0; i < header->columnsLen; i++) {
+    for(int i = 0; i < header->columns_len; i++) {
         AST_ReturnElementNode* returnElementNode;
         Vector_Get(ast->returnNode->returnElements, i, &returnElementNode);
 
-        size_t columnNameLen = 0;
-        char* columnName = NULL;
+        AR_ExpNode* ar_exp = AR_EXP_BuildFromAST(returnElementNode->exp, NULL);
 
-        if(returnElementNode->type == N_PROP) {
-            asprintf(&columnName, "%s.%s", returnElementNode->variable->alias, returnElementNode->variable->property);
-        } else {
-           //  returnElementNode->type == N_AGG_FUNC
-            asprintf(&columnName, "%s(%s.%s)", returnElementNode->func, returnElementNode->variable->alias, returnElementNode->variable->property);
-        }
+        char* column_name;
+        AR_EXP_ToString(ar_exp, &column_name);
 
-        Column* column = NewColumn(columnName, returnElementNode->alias);
-        free(columnName);
+        Column* column = NewColumn(column_name,
+                                   returnElementNode->alias,
+                                   AR_EXP_ContainsAggregation(ar_exp, NULL));
+        free(column_name);
+        AR_EXP_Free(ar_exp);
 
         header->columns[i] = column;
     }
@@ -91,12 +90,12 @@ ResultSetHeader* NewResultSetHeader(const AST_QueryExpressionNode *ast) {
     // Scan through order-by clause
     // foreach order by node locate its coresponding
     // element within the return clause
-    for(int i = 0; i < header->orderByLen; i++) {
+    for(int i = 0; i < header->orderby_len; i++) {
         AST_ColumnNode* orderBy = NULL;
         Vector_Get(ast->orderNode->columns, i, &orderBy);
 
         // Search return elements for orderBy
-        for(int j = 0; j < header->columnsLen; j++) {
+        for(int j = 0; j < header->columns_len; j++) {
             Column* col = header->columns[j];
             int match = 1;
 
@@ -125,7 +124,7 @@ ResultSetHeader* NewResultSetHeader(const AST_QueryExpressionNode *ast) {
 char *ResultSetHeader_ToString(const ResultSetHeader *header, size_t *strLen) {
     size_t len = 0;
 
-    for(int i = 0; i < header->columnsLen; i++) {
+    for(int i = 0; i < header->columns_len; i++) {
         Column *c = header->columns[i];
         if(c->alias != NULL) {
             len += strlen(c->alias)+1;
@@ -137,7 +136,7 @@ char *ResultSetHeader_ToString(const ResultSetHeader *header, size_t *strLen) {
     char *str = calloc(len, sizeof(char)+1);
     len = 0;
 
-    for(int i = 0; i < header->columnsLen; i++) {
+    for(int i = 0; i < header->columns_len; i++) {
         Column *c = header->columns[i];
         if(c->alias != NULL) {
             sprintf(str+len, "%s,", c->alias);
@@ -156,7 +155,7 @@ char *ResultSetHeader_ToString(const ResultSetHeader *header, size_t *strLen) {
 }
 
 void ResultSetHeader_Free(ResultSetHeader* header) {
-    for(int i = 0; i < header->columnsLen; i++) Column_Free(header->columns[i]);
+    for(int i = 0; i < header->columns_len; i++) Column_Free(header->columns[i]);
 
     if(header->columns != NULL) {
         free(header->columns);
@@ -254,13 +253,13 @@ void _aggregateResultSet(RedisModuleCtx* ctx, ResultSet* set) {
     while(CacheGroupIterNext(iter, &key, &group) != 0) {
         /* Finalize each aggregation function. */
         for(int i = 0; i < Vector_Size(group->aggregationFunctions); i++) {
-            AggCtx *agg_ctx = NULL;
-            Vector_Get(group->aggregationFunctions, i, &agg_ctx);
-            Agg_Finalize(agg_ctx);
+            AR_ExpNode *agg_exp = NULL;
+            Vector_Get(group->aggregationFunctions, i, &agg_exp);
+            AR_EXP_Reduce(agg_exp);
         }
 
         /* Construct response */
-        Record* record = Record_FromGroup(ctx, set->ast, group);
+        Record* record = Record_FromGroup(set->header, group);
         if(ResultSet_AddRecord(set, record) == RESULTSET_FULL) {
             break;
         }

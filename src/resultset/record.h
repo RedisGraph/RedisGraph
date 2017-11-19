@@ -1,24 +1,21 @@
 #ifndef __GRAPH_RECORD_H__
 #define __GRAPH_RECORD_H__
 
-#include "../redismodule.h"
+#include "resultset_header.h"
 #include "../parser/ast.h"
-#include "../rmutil/vector.h"
 #include "../grouping/group.h"
 #include "../graph/graph.h"
 
 typedef struct {
-    Vector* values; // Vector of SIValue*
+    unsigned int len;
+    SIValue *values;
 } Record;
 
 /* Creates a new record which will hold len elements. */
 Record* NewRecord(size_t len);
 
-/* Creates a new record from graph. */
-Record* Record_FromGraph(RedisModuleCtx *ctx, const AST_QueryExpressionNode *ast, const Graph *g);
-
 /* Creates a new record from an aggregated group. */
-Record* Record_FromGroup(RedisModuleCtx *ctx, const AST_QueryExpressionNode *ast, const Group *g);
+Record* Record_FromGroup(const ResultSetHeader *resultset_header, const Group *g);
 
 /* Get a string representation of record. */
 size_t Record_ToString(const Record *record, char **record_str);

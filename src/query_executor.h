@@ -2,30 +2,20 @@
 #define __QUERY_EXECUTOR_H
 
 #include "graph/graph.h"
-#include "value_cmp.h"
 #include "parser/ast.h"
 #include "redismodule.h"
 #include "hexastore/triplet.h"
+#include "arithmetic_expression.h"
 
 /* Given AST's MATCH node constructs a graph
  * representing queried entities and the relationships
  * between them. */
 void BuildGraph(Graph *graph, Vector *entities);
 
-/* Retrieves requested properties from the graph. */
-Vector* ReturnClause_RetrievePropValues(const AST_ReturnNode *returnNode, const Graph *g);
-
-/* Retrieves all properties which define the group key from given graph. */
-Vector* ReturnClause_RetrieveGroupKeys(const AST_ReturnNode *returnNode, const Graph *g);
-
-/* Retrieves all aggregated properties from graph. */
-Vector* ReturnClause_RetrieveGroupAggVals(const AST_ReturnNode *returnNode, const Graph *g);
+/* Constructs an arithmetic expression tree foreach none aggregated term. */
+void Build_None_Aggregated_Arithmetic_Expressions(AST_ReturnNode *return_node, AR_ExpNode ***expressions, int *expressions_count, Graph* g);
 
 int ReturnClause_ContainsAggregation(AST_QueryExpressionNode *ast);
-
-/* Retrieves all aggregation functions used within given return clause.
- * Returns a vector of AggCtx* */
-Vector* ReturnClause_GetAggFuncs(RedisModuleCtx *ctx, const AST_ReturnNode *returnNode);
 
 /* Checks to see if return clause contains a collapsed node. */
 int ReturnClause_ContainsCollapsedNodes(AST_QueryExpressionNode *ast);

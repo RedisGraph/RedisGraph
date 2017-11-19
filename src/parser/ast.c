@@ -38,7 +38,6 @@ AST_FilterNode* New_AST_ConstantPredicateNode(const char* alias, const char* pro
 	return n;
 }
 
-
 AST_FilterNode *New_AST_ConditionNode(AST_FilterNode *left, int op, AST_FilterNode *right) {
   AST_FilterNode *n = malloc(sizeof(AST_FilterNode));
   n->t = N_COND;
@@ -48,7 +47,6 @@ AST_FilterNode *New_AST_ConditionNode(AST_FilterNode *left, int op, AST_FilterNo
 
   return n;
 }
-
 
 void FreePredicateNode(AST_PredicateNode* predicateNode) {
 
@@ -72,7 +70,6 @@ void FreePredicateNode(AST_PredicateNode* predicateNode) {
 
 	// TODO: Should I free constVal?
 }
-
 
 void Free_AST_FilterNode(AST_FilterNode* filterNode) {
 	if(!filterNode)
@@ -200,7 +197,6 @@ void Free_AST_WhereNode(AST_WhereNode *whereNode) {
 	free(whereNode);
 }
 
-
 AST_ReturnNode* New_AST_ReturnNode(Vector *returnElements, int distinct) {
 	AST_ReturnNode *returnNode = (AST_ReturnNode*)malloc(sizeof(AST_ReturnNode));
 	returnNode->returnElements = returnElements;
@@ -219,31 +215,20 @@ void Free_AST_ReturnNode(AST_ReturnNode *returnNode) {
 	free(returnNode);
 }
 
-AST_ReturnElementNode* New_AST_ReturnElementNode(AST_ReturnElementType type, AST_Variable* variable, const char* aggFunc, const char* alias) {
+AST_ReturnElementNode* New_AST_ReturnElementNode(AST_ArithmeticExpressionNode *exp, const char* alias) {
 	AST_ReturnElementNode *returnElementNode = (AST_ReturnElementNode*)malloc(sizeof(AST_ReturnElementNode));
-	returnElementNode->type = type;
-	returnElementNode->variable = variable;
-	returnElementNode->func = NULL;
+	returnElementNode->exp = exp;
 	returnElementNode->alias = NULL;
 
-	if(type == N_AGG_FUNC) {
-		returnElementNode->func = strdup(aggFunc);
-	}
-
-	if(alias != NULL) {
-		returnElementNode->alias = strdup(alias);
-	}
+	if(alias != NULL) returnElementNode->alias = strdup(alias);
 	
 	return returnElementNode;
 }
 
 void Free_AST_ReturnElementNode(AST_ReturnElementNode *returnElementNode) {
 	if(returnElementNode != NULL) {
-		Free_AST_Variable(returnElementNode->variable);
+		Free_AST_ArithmeticExpressionNode(returnElementNode->exp);
 
-		if(returnElementNode->type == N_AGG_FUNC) {
-			free(returnElementNode->func);
-		}
 		if(returnElementNode->alias != NULL) {
 			free(returnElementNode->alias);
 		}
@@ -251,7 +236,6 @@ void Free_AST_ReturnElementNode(AST_ReturnElementNode *returnElementNode) {
 		free(returnElementNode);
 	}
 }
-
 
 AST_QueryExpressionNode* New_AST_QueryExpressionNode(AST_MatchNode *matchNode, AST_WhereNode *whereNode,
 												     AST_CreateNode *createNode, AST_DeleteNode *deleteNode,
@@ -372,4 +356,55 @@ void Free_AST_LimitNode(AST_LimitNode* limitNode) {
 	if(limitNode) {
 		free(limitNode);
 	}
+}
+
+AST_ArithmeticExpressionNode* NEW_AST_AR_EXP_ConstOperandNode(SIValue constant) {
+	AST_ArithmeticExpressionNode *node = malloc(sizeof(AST_ArithmeticExpressionNode));
+	node->type = AST_AR_EXP_OPERAND;
+	node->operand.type = AST_AR_EXP_CONSTANT;
+	node->operand.constant = constant;
+	return node;
+}
+
+AST_ArithmeticExpressionNode* New_AST_AR_EXP_VariableOperandNode(char* alias, char *property) {
+	AST_ArithmeticExpressionNode *node = malloc(sizeof(AST_ArithmeticExpressionNode));
+	node->type = AST_AR_EXP_OPERAND;
+	node->operand.type = AST_AR_EXP_VARIADIC;
+	node->operand.variadic.alias = strdup(alias);
+	if(property) {
+		// This is a collapsed entity.
+		node->operand.variadic.property = strdup(property);
+	} else {
+		node->operand.variadic.property = NULL;
+	}
+	return node;
+}
+
+AST_ArithmeticExpressionNode* NEW_AST_AR_EXP_OpNode(char *func, Vector *args) {
+	AST_ArithmeticExpressionNode *node = malloc(sizeof(AST_ArithmeticExpressionNode));
+	node->type = AST_AR_EXP_OP;
+	node->op.function = strdup(func);
+	node->op.args = args;
+	return node;
+}
+
+void Free_AST_ArithmeticExpressionNode(AST_ArithmeticExpressionNode *arExpNode) {
+	/* Free arithmetic expression operation. */
+	if(arExpNode->type == AST_AR_EXP_OP) {
+		/* Free each argument. */
+		for(int i = 0; i < Vector_Size(arExpNode->op.args); i++) {
+			AST_ArithmeticExpressionNode *child;
+			Vector_Get(arExpNode->op.args, i, &child);
+			Free_AST_ArithmeticExpressionNode(child);
+		}
+		Vector_Free(arExpNode->op.args);
+	} else {
+		/* Node is an arithmetic expression operand. */
+		if(arExpNode->operand.type == AST_AR_EXP_VARIADIC) {
+			free(arExpNode->operand.variadic.alias);
+			free(arExpNode->operand.variadic.property);
+		}
+	}
+	/* Finaly we can free the node. */
+	free(arExpNode);
 }

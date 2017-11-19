@@ -1,5 +1,7 @@
 %left OR.
 %left AND.
+%left ADD DASH.
+%left MUL DIV.
 %nonassoc EQ GT GE LT LE.
 
 %token_type {Token}
@@ -154,17 +156,17 @@ edge(A) ::= LEFT_BRACKET properties(B) RIGHT_BRACKET . {
 	A = New_AST_LinkEntity(NULL, NULL, B, N_DIR_UNKNOWN);
 }
 
-// Edge with an alias [alias]
+// Edge with alias [alias]
 edge(A) ::= LEFT_BRACKET STRING(B) properties(C) RIGHT_BRACKET . { 
 	A = New_AST_LinkEntity(B.strval, NULL, C, N_DIR_UNKNOWN);
 }
 
-// Edge with an alias [:label]
+// Edge with label [:label]
 edge(A) ::= LEFT_BRACKET COLON STRING(B) properties(C) RIGHT_BRACKET . { 
 	A = New_AST_LinkEntity(NULL, B.strval, C, N_DIR_UNKNOWN);
 }
 
-// Edge with an alias and label [alias:label]
+// Edge with alias and label [alias:label]
 edge(A) ::= LEFT_BRACKET STRING(B) COLON STRING(C) properties(D) RIGHT_BRACKET . { 
 	A = New_AST_LinkEntity(B.strval, C.strval, D, N_DIR_UNKNOWN);
 }
@@ -217,30 +219,12 @@ whereClause(A) ::= WHERE cond(B). {
 %type cond {AST_FilterNode*}
 %destructor cond { Free_AST_FilterNode($$); }
 
-cond(A) ::= STRING(B) DOT STRING(C) op(D) STRING(E) DOT STRING(F). { A = New_AST_VaryingPredicateNode(B.strval, C.strval, D, E.strval, F.strval); }
-cond(A) ::= STRING(B) DOT STRING(C) op(D) value(E). { A = New_AST_ConstantPredicateNode(B.strval, C.strval, D, E); }
+cond(A) ::= STRING(B) DOT STRING(C) relation(D) STRING(E) DOT STRING(F). { A = New_AST_VaryingPredicateNode(B.strval, C.strval, D, E.strval, F.strval); }
+cond(A) ::= STRING(B) DOT STRING(C) relation(D) value(E). { A = New_AST_ConstantPredicateNode(B.strval, C.strval, D, E); }
 cond(A) ::= LEFT_PARENTHESIS cond(B) RIGHT_PARENTHESIS. { A = B; }
 cond(A) ::= cond(B) AND cond(C). { A = New_AST_ConditionNode(B, AND, C); }
 cond(A) ::= cond(B) OR cond(C). { A = New_AST_ConditionNode(B, OR, C); }
 
-
-%type op {int}
-op(A) ::= EQ. { A = EQ; }
-op(A) ::= GT. { A = GT; }
-op(A) ::= LT. { A = LT; }
-op(A) ::= LE. { A = LE; }
-op(A) ::= GE. { A = GE; }
-op(A) ::= NE. { A = NE; }
-
-
-%type value {SIValue}
-
-// raw value tokens - int / string / float
-value(A) ::= INTEGER(B). {  A = SI_DoubleVal(B.intval); }
-value(A) ::= STRING(B). {  A = SI_StringValC(strdup(B.strval)); }
-value(A) ::= FLOAT(B). {  A = SI_DoubleVal(B.dval); }
-value(A) ::= TRUE. { A = SI_BoolVal(1); }
-value(A) ::= FALSE. { A = SI_BoolVal(0); }
 
 %type returnClause {AST_ReturnNode*}
 
@@ -266,32 +250,90 @@ returnElements(A) ::= returnElement(B). {
 
 %type returnElement {AST_ReturnElementNode*}
 
-returnElement(A) ::= variable(B). {
-	A = New_AST_ReturnElementNode(N_PROP, B, NULL, NULL);
+returnElement(A) ::= arithmetic_expression(B). {
+	A = New_AST_ReturnElementNode(B, NULL);
 }
-returnElement(A) ::= variable(B) AS STRING(C). {
-	A = New_AST_ReturnElementNode(N_PROP, B, NULL, C.strval);
+returnElement(A) ::= arithmetic_expression(B) AS STRING(C). {
+	A = New_AST_ReturnElementNode(B, C.strval);
 }
-returnElement(A) ::= aggFunc(B). {
+
+%type arithmetic_expression {AST_ArithmeticExpressionNode*}
+
+// Highest precedence, (1+2)
+arithmetic_expression(A) ::= LEFT_PARENTHESIS arithmetic_expression(B) RIGHT_PARENTHESIS. {
 	A = B;
 }
-returnElement(A) ::= STRING(B). {
-	A = New_AST_ReturnElementNode(N_NODE, New_AST_Variable(B.strval, NULL), NULL, NULL);
+
+// Binary op (+,-,/,*)
+//arithmetic_expression(A) ::= arithmetic_expression(B) arithmetic_operator(C) arithmetic_expression(D). {
+//	Vector *args = NewVector(AST_ArithmeticExpressionNode*, 2);
+//	Vector_Push(args, B);
+//	Vector_Push(args, D);
+//	A = NEW_AST_AR_EXP_OpNode("ADD", args);
+//}
+
+arithmetic_expression(A) ::= arithmetic_expression(B) ADD arithmetic_expression(D). {
+	Vector *args = NewVector(AST_ArithmeticExpressionNode*, 2);
+	Vector_Push(args, B);
+	Vector_Push(args, D);
+	A = NEW_AST_AR_EXP_OpNode("ADD", args);
+}
+
+arithmetic_expression(A) ::= arithmetic_expression(B) DASH arithmetic_expression(D). {
+	Vector *args = NewVector(AST_ArithmeticExpressionNode*, 2);
+	Vector_Push(args, B);
+	Vector_Push(args, D);
+	A = NEW_AST_AR_EXP_OpNode("SUB", args);
+}
+
+arithmetic_expression(A) ::= arithmetic_expression(B) MUL arithmetic_expression(D). {
+	Vector *args = NewVector(AST_ArithmeticExpressionNode*, 2);
+	Vector_Push(args, B);
+	Vector_Push(args, D);
+	A = NEW_AST_AR_EXP_OpNode("MUL", args);
+}
+
+arithmetic_expression(A) ::= arithmetic_expression(B) DIV arithmetic_expression(D). {
+	Vector *args = NewVector(AST_ArithmeticExpressionNode*, 2);
+	Vector_Push(args, B);
+	Vector_Push(args, D);
+	A = NEW_AST_AR_EXP_OpNode("DIV", args);
+}
+
+// concat(replace(a.first_name), ':', tostring(1 + 2))
+arithmetic_expression(A) ::= STRING(B) LEFT_PARENTHESIS arithmetic_expression_list(C) RIGHT_PARENTHESIS. {
+	A = NEW_AST_AR_EXP_OpNode(B.strval, C);
+}
+
+// 4
+arithmetic_expression(A) ::= value(B). {
+	if(B.type == T_STRING) {
+		A = New_AST_AR_EXP_VariableOperandNode(B.stringval.str, NULL);
+	} else {
+		A = NEW_AST_AR_EXP_ConstOperandNode(B);
+	}
+}
+
+// a.name
+arithmetic_expression(A) ::= variable(B). {
+	A = New_AST_AR_EXP_VariableOperandNode(B->alias, B->property);
+}
+
+// Vector of AST_ArithmeticExpressionNode pointers.
+%type arithmetic_expression_list {Vector*}
+arithmetic_expression_list(A) ::= arithmetic_expression(B). {
+	A = NewVector(AST_ArithmeticExpressionNode*, 1);
+	Vector_Push(A, B);
+}
+arithmetic_expression_list(A) ::= arithmetic_expression(B) COMMA arithmetic_expression_list(C). {
+	Vector_Push(C, B);
+	A = C;
 }
 
 %type variable {AST_Variable*}
 
 variable(A) ::= STRING(B) DOT STRING(C). {
 	A = New_AST_Variable(B.strval, C.strval);
-}
-
-%type aggFunc {AST_ReturnElementNode*}
-
-aggFunc(A) ::= STRING(B) LEFT_PARENTHESIS variable(C) RIGHT_PARENTHESIS. {
-	A = New_AST_ReturnElementNode(N_AGG_FUNC, C, B.strval, NULL);
-}
-aggFunc(A) ::= STRING(B) LEFT_PARENTHESIS variable(C) RIGHT_PARENTHESIS AS STRING(D). {
-	A = New_AST_ReturnElementNode(N_AGG_FUNC, C, B.strval, D.strval);
 }
 
 %type orderClause {AST_OrderNode*}
@@ -336,6 +378,32 @@ limitClause(A) ::= . {
 limitClause(A) ::= LIMIT INTEGER(B). {
 	A = New_AST_LimitNode(B.intval);
 }
+
+
+%type relation {int}
+relation(A) ::= EQ. { A = EQ; }
+relation(A) ::= GT. { A = GT; }
+relation(A) ::= LT. { A = LT; }
+relation(A) ::= LE. { A = LE; }
+relation(A) ::= GE. { A = GE; }
+relation(A) ::= NE. { A = NE; }
+
+//%type arithmetic_operator {int}
+//arithmetic_operator(A) ::= MUL. { A = MUL; }
+//arithmetic_operator(A) ::= DIV. { A = DIV; }
+//arithmetic_operator(A) ::= ADD. { A = ADD; }
+//arithmetic_operator(A) ::= DASH. { A = DASH; }
+
+%type value {SIValue}
+
+// raw value tokens - int / string / float
+value(A) ::= INTEGER(B). {  A = SI_DoubleVal(B.intval); }
+value(A) ::= DASH INTEGER(B). {  A = SI_DoubleVal(-B.intval); }
+value(A) ::= STRING(B). {  A = SI_StringValC(strdup(B.strval)); }
+value(A) ::= FLOAT(B). {  A = SI_DoubleVal(B.dval); }
+value(A) ::= DASH FLOAT(B). {  A = SI_DoubleVal(-B.dval); }
+value(A) ::= TRUE. { A = SI_BoolVal(1); }
+value(A) ::= FALSE. { A = SI_BoolVal(0); }
 
 %code {
 

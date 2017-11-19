@@ -5,6 +5,7 @@
 #include "../../parser/ast.h"
 #include "../../redismodule.h"
 #include "../../graph/graph.h"
+#include "../../arithmetic_expression.h"
 
 /* Aggregate
  * aggregates graph according to  
@@ -14,6 +15,9 @@
      RedisModuleCtx *ctx;
      int refreshAfterPass;
      AST_QueryExpressionNode *ast;
+     int none_aggregated_expression_count; /* Number of return terms which are not aggregated. */
+     AR_ExpNode **none_aggregated_expressions;
+     SIValue *group_keys;   /* Array of values composing an aggregated group. */
      int init;
  } Aggregate;
 

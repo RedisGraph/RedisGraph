@@ -66,9 +66,14 @@ test_value:
 	@(sh -c ./test_value)
 .PHONY: test_value
 
+arithmetic_expression: test_arithmetic_expression.o
+	$(CC) $(CFLAGS)  -o test_arithmetic_expression test_arithmetic_expression.o  $(DEPS) $(LDFLAGS)
+test_arithmetic_expression:
+	@(sh -c ./test_arithmetic_expression)
+.PHONY: test_arithmetic_expression
 
 all: build test
 
-build: agg_sum edge node graph value triplet resultset_record hexastore filter_tree
+build: agg_sum edge node graph value triplet resultset_record hexastore filter_tree arithmetic_expression
 
-test: test_agg_sum test_edge test_node test_graph test_value test_triplet test_resultset_record test_hexastore test_filter_tree
+test: test_agg_sum test_edge test_node test_graph test_value test_triplet test_resultset_record test_hexastore test_filter_tree test_arithmetic_expression

@@ -14,18 +14,18 @@ void test_record_to_string () {
     SIValue v_null = SI_NullVal();
     SIValue v_bool = SI_BoolVal(1);
 
-    Vector_Push(record->values, &v_string);
-    Vector_Push(record->values, &v_int);
-    Vector_Push(record->values, &v_uint);
-    // Vector_Push(record->values, &v_float);
-    Vector_Push(record->values, &v_null);
-    Vector_Push(record->values, &v_bool);
+    record->values[0] = v_string;
+    record->values[1] = v_int;
+    record->values[2] = v_uint;
+    record->values[3] = v_float;
+    record->values[4] = v_null;
+    record->values[5] = v_bool;
 
     char *record_str;
     size_t record_str_len = Record_ToString(record, &record_str);
 
-    assert(strcmp(record_str, "\"Hello\",-24,24,NULL,true") == 0);
-    assert(record_str_len == 24);
+    assert(strcmp(record_str, "Hello,-24,24,0.314000,NULL,true") == 0);
+    assert(record_str_len == 31);
     
     free(record_str);
     Record_Free(record);

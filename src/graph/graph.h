@@ -58,6 +58,7 @@ char* Graph_GetNodeAlias(const Graph *g, const Node *n);
 /* Looks up edge's alias within the graph */
 char* Graph_GetEdgeAlias(const Graph *g, const Edge *e);
 
+GraphEntity** Graph_GetEntityRef(const Graph *g, const GraphEntity *entity);
 Node** Graph_GetNodeRef(const Graph *g, const Node *n);
 Edge** Graph_GetEdgeRef(const Graph *g, const Edge *e);
 

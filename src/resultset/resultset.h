@@ -1,12 +1,13 @@
 #ifndef __GRAPH_RESULTSET_H__
 #define __GRAPH_RESULTSET_H__
 
+#include "record.h"
+#include "resultset_header.h"
 #include "../parser/ast.h"
 #include "../redismodule.h"
 #include "../rmutil/vector.h"
 #include "../util/heap.h"
 #include "../util/triemap/triemap.h"
-#include "record.h"
 
 #define RESULTSET_UNLIMITED 0
 #define RESULTSET_OK 1
@@ -14,20 +15,6 @@
 
 #define DIR_DESC -1
 #define DIR_ASC 1
-
-/* A column within the result-set
- * a column can be referred to either by its name or alias */
-typedef struct {
-    char* name;
-    char* alias;
-} Column;
-
-typedef struct {
-    size_t columnsLen;  /* Number of columns in record */
-    Column** columns;   /* Vector of Columns, desired elements specified in return clause */
-    size_t orderByLen;  /* How many elements are there in orderBys */
-    int* orderBys;      /* Array of indices into elements */
-} ResultSetHeader;
 
 typedef struct {
     Vector* records;            /* Vector of Records. */

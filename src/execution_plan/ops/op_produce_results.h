@@ -16,6 +16,7 @@ typedef struct {
     RedisModuleCtx *ctx;
     int refreshAfterPass;
     AST_QueryExpressionNode *ast;
+    Vector *return_elements; /* Vector of arithmetic expressions. */
     ResultSet *result_set;
     int init;
 } ProduceResults;
