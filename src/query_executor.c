@@ -305,6 +305,10 @@ void inlineProperties(AST_QueryExpressionNode *ast) {
     }
 }
 
+int Query_Modifies_KeySpace(const AST_QueryExpressionNode *ast) {
+    return (ast->createNode != NULL || ast->deleteNode != NULL);
+}
+
 AST_QueryExpressionNode* ParseQuery(const char *query, size_t qLen, char **errMsg) {
     AST_QueryExpressionNode *ast = Query_Parse(query, qLen, errMsg);
     

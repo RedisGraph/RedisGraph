@@ -22,6 +22,9 @@ int ReturnClause_ContainsCollapsedNodes(AST_QueryExpressionNode *ast);
 
 void ReturnClause_ExpandCollapsedNodes(RedisModuleCtx *ctx, AST_QueryExpressionNode *ast, const char *graphName);
 
+/* Checks if query performs write (Create/Delete/Update) */
+int Query_Modifies_KeySpace(const AST_QueryExpressionNode *ast);
+
 AST_QueryExpressionNode* ParseQuery(const char *query, size_t qLen, char **errMsg);
 
 #endif
