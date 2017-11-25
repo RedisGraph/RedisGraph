@@ -238,8 +238,7 @@ AR_ExpNode* AR_EXP_BuildFromAST(const AST_ArithmeticExpressionNode *exp, const G
         if(exp->operand.type == AST_AR_EXP_CONSTANT) {
             root = AR_EXP_NewConstOperandNode(exp->operand.constant);
         } else {
-            GraphEntity *e = Graph_GetEntityByAlias(g, exp->operand.variadic.alias);
-            GraphEntity **entity = Graph_GetEntityRef(g, e);
+            GraphEntity **entity = Graph_GetEntityRef(g, exp->operand.variadic.alias);
             root = AR_EXP_NewVariableOperandNode(entity,
                                                  exp->operand.variadic.property,
                                                  exp->operand.variadic.alias);

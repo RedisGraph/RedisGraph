@@ -25,7 +25,7 @@ def populate_graph(redis_con, redis_graph):
 			rating = float(row[3])
 			year = int(row[4])
 
-			node = Node(label="movie", properties={'title': '"' + title + '"',
+			node = Node(label="movie", properties={'title': title,
 												   'gener': gener,
 												   'votes': votes,
 												   'rating': rating,
@@ -49,7 +49,7 @@ def populate_graph(redis_con, redis_graph):
 			age = today.year - yearOfBirth
 
 			if name not in actors:
-				node = Node(label="actor", properties={'name': '"' + name + '"', 'age': age})
+				node = Node(label="actor", properties={'name': name, 'age': age})
 				actors[name] = node
 				redis_graph.add_node(node)
 

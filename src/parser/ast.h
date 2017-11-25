@@ -39,6 +39,11 @@ struct filterNode;
 
 typedef struct {
 	char *alias;
+	char *property;
+} AST_Variable;
+
+typedef struct {
+	char *alias;
 	char *label;
 	Vector *properties;
 	AST_GraphEntityType t;
@@ -127,6 +132,15 @@ typedef struct {
 	Vector *graphEntities; /* Vector of Vectors of AST_GraphEntity pointers. */
 } AST_CreateNode;
 
+typedef struct {
+	AST_Variable *entity;	/* Destination entity to update. */
+	AST_ArithmeticExpressionNode *exp;	/* Arithmetic expression, evaluated value used for update. */
+} AST_SetElement;
+
+typedef struct {
+	Vector *set_elements; /* Vector of AST_SetElement pointers, each describes an entity update. */
+} AST_SetNode;
+
 typedef struct {	
 	Vector *graphEntities; /* Vector of Vectors of char pointers. */
 } AST_DeleteNode;
@@ -143,11 +157,6 @@ typedef struct {
 typedef struct {
 	int limit;
 } AST_LimitNode;
-
-typedef struct {
-	char *alias;
-	char *property;
-} AST_Variable;
 
 typedef struct {
 	char *alias; 		// Alias given to this return element (using the AS keyword)
@@ -168,6 +177,7 @@ typedef struct {
 typedef struct {
 	AST_MatchNode *matchNode;
 	AST_CreateNode *createNode;
+	AST_SetNode *setNode;
 	AST_DeleteNode *deleteNode;
 	AST_WhereNode *whereNode;
 	AST_ReturnNode *returnNode;
@@ -179,14 +189,18 @@ AST_NodeEntity* New_AST_NodeEntity(char *alias, char *label, Vector *properties)
 AST_LinkEntity* New_AST_LinkEntity(char *alias, char *relationship, Vector *properties, AST_LinkDirection dir);
 AST_MatchNode* New_AST_MatchNode(Vector *elements);
 AST_CreateNode* New_AST_CreateNode(Vector *elements);
+AST_SetNode* New_AST_SetNode(Vector *elements);
 AST_DeleteNode* New_AST_DeleteNode(Vector *elements);
 AST_FilterNode* New_AST_ConstantPredicateNode(const char *alias, const char *property, int op, SIValue value);
 AST_FilterNode* New_AST_VaryingPredicateNode(const char *lAlias, const char *lProperty, int op, const char *rAlias, const char *rProperty);
 AST_FilterNode* New_AST_ConditionNode(AST_FilterNode *left, int op, AST_FilterNode *right);
 /* Arithmetic expression */
 AST_ArithmeticExpressionNode* New_AST_AR_EXP_VariableOperandNode(char* alias, char *property);
-AST_ArithmeticExpressionNode* NEW_AST_AR_EXP_ConstOperandNode(SIValue constant);
-AST_ArithmeticExpressionNode* NEW_AST_AR_EXP_OpNode(char *func, Vector *args);
+AST_ArithmeticExpressionNode* New_AST_AR_EXP_ConstOperandNode(SIValue constant);
+AST_ArithmeticExpressionNode* New_AST_AR_EXP_OpNode(char *func, Vector *args);
+
+/* Set cluase individual elements. */
+AST_SetElement* New_AST_SetElement(AST_Variable *updated_entity, AST_ArithmeticExpressionNode *exp);
 
 AST_WhereNode* New_AST_WhereNode(AST_FilterNode *filters);
 AST_ReturnElementNode* New_AST_ReturnElementNode(AST_ArithmeticExpressionNode *exp, const char *alias);
@@ -197,7 +211,10 @@ AST_ColumnNode* AST_ColumnNodeFromVariable(const AST_Variable *variable);
 AST_ColumnNode* AST_ColumnNodeFromAlias(const char *alias);
 AST_Variable* New_AST_Variable(const char *alias, const char *property);
 AST_LimitNode* New_AST_LimitNode(int limit);
-AST_QueryExpressionNode* New_AST_QueryExpressionNode(AST_MatchNode *matchNode, AST_WhereNode *whereNode, AST_CreateNode *createNode, AST_DeleteNode *deleteNode, AST_ReturnNode *returnNode, AST_OrderNode *orderNode, AST_LimitNode *limitNode);
+AST_QueryExpressionNode* New_AST_QueryExpressionNode(AST_MatchNode *matchNode, AST_WhereNode *whereNode,
+													 AST_CreateNode *createNode, AST_SetNode *setNode,
+													 AST_DeleteNode *deleteNode, AST_ReturnNode *returnNode,
+													 AST_OrderNode *orderNode, AST_LimitNode *limitNode);
 
 void Free_AST_Variable(AST_Variable *v);
 void Free_AST_ColumnNode(AST_ColumnNode *node);

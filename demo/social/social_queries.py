@@ -35,7 +35,7 @@ friends_of_friends_query = QueryInfo(
 
 
 friends_of_friends_single_and_over_30_query = QueryInfo(
-    query="""MATCH (ME:person {name:"Roi Lipman"})-[:friend]->(:person)-[:friend]->(fof:person {status:single}) 
+    query="""MATCH (ME:person {name:"Roi Lipman"})-[:friend]->(:person)-[:friend]->(fof:person {status:"single"})
              WHERE fof.age > 30
              RETURN fof""",
     description='Friends of friends who are single and over 30?',
@@ -46,7 +46,7 @@ friends_of_friends_single_and_over_30_query = QueryInfo(
 
 friends_of_friends_visited_amsterdam_and_single_query = QueryInfo(
     query="""MATCH (ME:person {name:"Roi Lipman"})-[:friend]->(:person)-[:friend]->
-                (fof:person {status:single})-[:visited]->(:country {name:Amsterdam}) 
+                (fof:person {status:"single"})-[:visited]->(:country {name:"Amsterdam"})
              RETURN fof.name""",
     description='Friends of friends who visited Amsterdam and are single?',
     max_run_time_ms=0.25,
@@ -108,15 +108,21 @@ how_many_countries_each_friend_visited_query = QueryInfo(
                      ['Boaz Arad', '2.000000']]
 )
 
+happy_birthday_query = QueryInfo(
+    query = """MATCH (:person {name:"Roi Lipman"})-[:friend]->(f:person)
+               SET f.age = f.age + 1""",
+    description='Update friends age.',
+    max_run_time_ms=0.2,
+    expected_result=[]
+)
 
 friends_age_statistics_query = QueryInfo(
     query="""MATCH (ME:person {name:"Roi Lipman"})-[:friend]->(f:person)
              RETURN ME.name, count(f.name), sum(f.age), avg(f.age), min(f.age), max(f.age)""",
-    description='Friends age statistics?',
+    description='Friends age statistics.',
     max_run_time_ms=0.25,
-    expected_result=[['Roi Lipman', '6.000000', '192.000000', '32.000000', '31.000000', '33.000000']]
+    expected_result=[['Roi Lipman', '6.000000', '198.000000', '33.000000', '32.000000', '34.000000']]
 )
-
 
 visit_purpose_of_each_country_i_visited_query = QueryInfo(
     query="""MATCH (ME:person {name:"Roi Lipman"})-[v:visited]->(c:country) 
@@ -130,10 +136,10 @@ visit_purpose_of_each_country_i_visited_query = QueryInfo(
 
 
 who_was_on_business_trip_query = QueryInfo(
-    query="""MATCH (p:person)-[v:visited {purpose:business}]->(c:country) 
+    query="""MATCH (p:person)-[v:visited {purpose:"business"}]->(c:country)
              RETURN p.name, v.purpose, toUpper(c.name)""",
     description='Find out who went on a business trip?',
-    max_run_time_ms=0.25,
+    max_run_time_ms=0.3,
     expected_result=[['Ori Laslo', 'business', 'CHINA'],
                      ['Ori Laslo', 'business', 'USA'],
                      ['Roi Lipman', 'business', 'USA'],
@@ -144,12 +150,12 @@ who_was_on_business_trip_query = QueryInfo(
 
 
 number_of_vacations_per_person_query = QueryInfo(
-    query="""MATCH (p:person)-[v:visited {purpose:pleasure}]->(c:country)
+    query="""MATCH (p:person)-[v:visited {purpose:"pleasure"}]->(c:country)
              RETURN p.name, count(v.purpose) AS vacations
              ORDER BY vacations DESC
              LIMIT 6""",
     description='Count number of vacations per person?',
-    max_run_time_ms=0.25,
+    max_run_time_ms=0.5,
     expected_result=[['Noam Nativ', '3.000000'],
                      ['Shelly Laslo Rooz', '3.000000'],
                      ['Omri Traub', '3.000000'],
@@ -169,6 +175,7 @@ queries_info = [
     friends_older_than_me_query,
     friedns_age_differance_query,
     how_many_countries_each_friend_visited_query,
+    happy_birthday_query,
     friends_age_statistics_query,
     visit_purpose_of_each_country_i_visited_query,
     who_was_on_business_trip_query,

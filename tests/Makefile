@@ -3,7 +3,7 @@ test:
 	$(MAKE) -C unit all
 
 	# flow tests
-	python -m unittest discover
+	python -m unittest discover --verbose
 
 clean:
 	find . -name '*.[oad]' -type f -delete

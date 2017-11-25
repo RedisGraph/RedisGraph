@@ -26,6 +26,7 @@ int yycolumn = 1;
 "CREATE" 	  { return CREATE; }
 "DELETE" 	  { return DELETE; }
 "RETURN" 	  { return RETURN; }
+"SET" 	    { return SET; }
 "AS" 	      { return AS; }
 "DISTINCT"  { return DISTINCT; }
 "WHERE" 	  { return WHERE; }
@@ -48,7 +49,7 @@ int yycolumn = 1;
 
 [_A-Za-z][A-Za-z0-9_-]* {
   	tok.strval = strdup(yytext);
-  	return STRING;
+  	return UQSTRING; // Unqueoted string, used for entity alias, prop name and labels.
 }
 
 (\"(\\.|[^\"])*\")|('(\\.|[^'])*')    {

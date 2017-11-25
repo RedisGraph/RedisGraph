@@ -69,7 +69,7 @@ actors_over_50_that_played_in_blockbusters_query = QueryInfo(
 
 actors_played_in_bad_drama_or_comedy_query = QueryInfo(
     query="""MATCH (a:actor)-[:act]->(m:movie)
-             WHERE (m.gener = Drama OR m.gener = Comedy)
+             WHERE (m.gener = "Drama" OR m.gener = "Comedy")
              AND m.rating < 5.5 AND m.votes > 50000
              RETURN a.name, m
              ORDER BY m.rating""",
@@ -98,7 +98,7 @@ young_actors_played_with_cameron_diaz_query = QueryInfo(
              WHERE a.age < 35
              RETURN a, m.title""",
     description='Which young actors played along side Cameron Diaz?',
-    max_run_time_ms=3.5,
+    max_run_time_ms=5,
     expected_result=[['Nicolette Pierini', '14.000000', 'Annie'],
                      ['Kate Upton', '25.000000', 'The Other Woman']]
 )

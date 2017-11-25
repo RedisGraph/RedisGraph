@@ -8,17 +8,16 @@
 
 void test_arithmetic_expression() {
 
-    AR_ExpNode *one = AR_EXP_NewConstOperandNode(SI_DoubleVal(1));
-    
-    /* 1 */
-    SIValue result = AR_EXP_Evaluate(one);
-    assert(result.doubleval == 1);
+    /* muchacho */
+    AR_ExpNode *string = AR_EXP_NewConstOperandNode(SI_StringValC("muchacho"));
+    SIValue result = AR_EXP_Evaluate(string);
+    assert(strcmp(result.stringval.str, "muchacho") == 0);
+    AR_EXP_Free(string);
 
-    char* str = NULL;
-    AR_EXP_ToString(one, &str);    
-    assert(strcmp(str, "1.000000") == 0);
-    free(str);
-    str = NULL;
+    /* 1 */
+    AR_ExpNode *one = AR_EXP_NewConstOperandNode(SI_DoubleVal(1));
+    result = AR_EXP_Evaluate(one);
+    assert(result.doubleval == 1);
 
     /* 1+2*3 */
     AR_ExpNode *two = AR_EXP_NewConstOperandNode(SI_DoubleVal(2));

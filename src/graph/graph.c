@@ -205,15 +205,30 @@ char* Graph_GetEdgeAlias(const Graph *g, const Edge *e) {
     return NULL;
 }
 
-GraphEntity** Graph_GetEntityRef(const Graph *g, const GraphEntity *entity) {
+GraphEntity** Graph_GetEntityRef(const Graph *g, const char *alias) {
+    int i;
+    char *entity_alias;
+
     if(g == NULL) return NULL;
 
-    Node** n = Graph_GetNodeRef(g, (Node*)entity);
-    if(n != NULL) {
-        return (GraphEntity**)n;
-    } else {
-        return (GraphEntity**)Graph_GetEdgeRef(g, (Edge*)entity);
+    /* Search graph nodes. */
+    for(i = 0; i < g->node_count; i++) {
+        entity_alias = g->node_aliases[i];
+        if(strcmp(entity_alias, alias) == 0) {
+            return (GraphEntity**)&g->nodes[i];
+        }
     }
+
+    /* Search graph edges. */
+    for(i = 0; i < g->edge_count; i++) {
+        entity_alias = g->edge_aliases[i];
+        if(strcmp(entity_alias, alias) == 0) {
+            return (GraphEntity**)&g->edges[i];
+        }
+    }
+
+    /* Entity doesn't exists in graph. */
+    return NULL;
 }
 
 Node** Graph_GetNodeRef(const Graph *g, const Node *n) {

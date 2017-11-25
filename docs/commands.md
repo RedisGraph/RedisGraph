@@ -44,6 +44,7 @@ A query is composed of five parts:
 - LIMIT
 - CREATE
 - DELETE
+- SET
 
 #### MATCH
 
@@ -267,6 +268,29 @@ MATCH (p:person {name:'Jim'})-[r:friends]->()
 DELETE r
 ```
 This query will delete all `friend` outgoing relationships from the node with the name 'Jim'.
+
+#### SET
+
+The `SET` clause is used to update properties on nodes and relationships.
+
+
+To set a property on a node or relationship, use `SET`.
+
+Query.
+
+```sh
+MATCH (n { name: 'Jim' }) SET n.name = 'Bob'
+```
+
+Set multiple properties using one `SET` clause
+If you want to set multiple properties in one go, simply separate them with a comma.
+
+Query.
+
+```sh
+MATCH (n { name: 'Jim', age:32 })
+SET n.age = 33, n.name = 'Bob'
+```
 
 ### Functions
 This section contains information on all supported functions from the OpenCypher query language.

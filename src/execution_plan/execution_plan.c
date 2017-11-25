@@ -1,20 +1,10 @@
 #include <assert.h>
 
 #include "execution_plan.h"
-#include "../query_executor.h"
-
-#include "./ops/op_expand_all.h"
-#include "./ops/op_expand_into.h"
-#include "./ops/op_all_node_scan.h"
-#include "./ops/op_node_by_label_scan.h"
-#include "./ops/op_produce_results.h"
-#include "./ops/op_filter.h"
-#include "./ops/op_aggregate.h"
-#include "./ops/op_create.h"
-#include "./ops/op_delete.h"
-
+#include "./ops/ops.h"
 #include "../graph/edge.h"
 #include "../rmutil/vector.h"
+#include "../query_executor.h"
 
 /* Forward declarations */
 OpResult PullFromStreams(OpNode *source, Graph *graph);
@@ -426,6 +416,9 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, const char *graph_name, AST
     if(ast->deleteNode) {
         execution_plan->root->operation = NewDeleteOp(ctx, ast->deleteNode, graph,
                                                       graph_name, execution_plan->result_set);
+    } else if(ast->setNode) {
+        execution_plan->root->operation = NewUpdateOp(ast->setNode,
+                                                      graph, execution_plan->result_set);
     } else {
         if(ast->returnNode) {
             if(execution_plan->result_set->aggregated) {
