@@ -20,13 +20,13 @@ def populate_graph(redis_con, redis_graph):
 		reader = csv.reader(f, delimiter=',')
 		for row in reader:
 			title = row[0]
-			gener = row[1]
+			genre = row[1]
 			votes = int(row[2])
 			rating = float(row[3])
 			year = int(row[4])
 
 			node = Node(label="movie", properties={'title': title,
-												   'gener': gener,
+												   'genre': genre,
 												   'votes': votes,
 												   'rating': rating,
 												   'year': year})

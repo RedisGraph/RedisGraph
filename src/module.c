@@ -134,6 +134,12 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
         return REDISMODULE_OK;
     }
     
+    char *reason;
+    if (Validate_AST(ast, &reason) != AST_VALID) {
+        RedisModule_ReplyWithError(ctx, reason);
+        return REDISMODULE_OK;
+    }
+    
     /* Modify AST */
     if(ReturnClause_ContainsCollapsedNodes(ast) == 1) {
         /* Expend collapsed nodes. */

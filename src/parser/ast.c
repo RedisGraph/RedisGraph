@@ -278,6 +278,65 @@ void Free_AST_QueryExpressionNode(AST_QueryExpressionNode *queryExpressionNode) 
 	free(queryExpressionNode);
 }
 
+AST_Validation _Validate_MATCH_Clause(const AST_QueryExpressionNode* ast, char **reason) {
+	return AST_VALID;
+}
+
+AST_Validation _Validate_WHERE_Clause(const AST_QueryExpressionNode* ast, char **reason) {
+	return AST_VALID;
+}
+
+AST_Validation _Validate_CREATE_Clause(const AST_QueryExpressionNode* ast, char **reason) {
+	return AST_VALID;
+}
+
+AST_Validation _Validate_SET_Clause(const AST_QueryExpressionNode* ast, char **reason) {
+	return AST_VALID;
+}
+
+AST_Validation _Validate_DELETE_Clause(const AST_QueryExpressionNode* ast, char **reason) {
+	return AST_VALID;
+}
+
+AST_Validation _Validate_RETURN_Clause(const AST_QueryExpressionNode* ast, char **reason) {
+	return AST_VALID;
+}
+
+AST_Validation Validate_AST(const AST_QueryExpressionNode* ast, char **reason) {
+	/* AST must include either a MATCH or CREATE clause. */
+	if(ast->matchNode == NULL && ast->createNode == NULL) {
+		*reason = "Query must specify either MATCH or CREATE clause.";
+		return AST_INVALID;
+	}
+
+	if(_Validate_MATCH_Clause(ast, reason) != AST_VALID) {
+		return AST_INVALID;
+	}
+
+	if(_Validate_WHERE_Clause(ast, reason) != AST_VALID) {
+		return AST_INVALID;
+	}
+
+	if(_Validate_CREATE_Clause(ast, reason) != AST_VALID) {
+		return AST_INVALID;
+	}
+
+	if(_Validate_SET_Clause(ast, reason) != AST_VALID) {
+		return AST_INVALID;
+	}
+
+	if(_Validate_DELETE_Clause(ast, reason) != AST_VALID) {
+		return AST_INVALID;
+	}
+
+	if(_Validate_RETURN_Clause(ast, reason) != AST_VALID) {
+		return AST_INVALID;
+	}
+
+	return AST_VALID;
+}
+
+
 AST_Variable* New_AST_Variable(const char* alias, const char* property) {
 	AST_Variable *v = (AST_Variable*)calloc(1, sizeof(AST_Variable));
 

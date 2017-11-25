@@ -56,40 +56,40 @@ actors_over_50_that_played_in_blockbusters_query = QueryInfo(
              RETURN a, m""",
     description='Which actors who are over 50 played in blockbuster movies?',
     max_run_time_ms=3.5,
-    expected_result=[['Bill Irwin', '67.000000', 'Interstellar', '961763.000000', '2014.000000', 'Adventure', '8.600000'],
-                     ['Vincent Price', '106.000000', 'Vincent', '18284.000000', '1982.000000', 'Short', '8.400000'],
-                     ['Ellen Burstyn', '85.000000', 'Interstellar', '961763.000000', '2014.000000', 'Adventure', '8.600000'],
-                     ['Paul Reiser', '60.000000', 'Whiplash', '420586.000000', '2014.000000', 'Drama', '8.500000'],
-                     ['Francis X. McCarthy', '75.000000', 'Interstellar', '961763.000000', '2014.000000', 'Adventure', '8.600000'],
-                     ['John Lithgow', '72.000000', 'Interstellar', '961763.000000', '2014.000000', 'Adventure', '8.600000'],
-                     ['J.K. Simmons', '62.000000', 'Whiplash', '420586.000000', '2014.000000', 'Drama', '8.500000'],
-                     ['Chris Mulkey', '69.000000', 'Whiplash', '420586.000000', '2014.000000', 'Drama', '8.500000']]
+    expected_result=[['Bill Irwin', '67.000000', 'Interstellar', '2014.000000', '961763.000000', '8.600000', 'Adventure'],
+                     ['Vincent Price', '106.000000', 'Vincent', '1982.000000', '18284.000000', '8.400000', 'Short'],
+                     ['Ellen Burstyn', '85.000000', 'Interstellar', '2014.000000', '961763.000000', '8.600000', 'Adventure'],
+                     ['Paul Reiser', '60.000000', 'Whiplash', '2014.000000', '420586.000000', '8.500000', 'Drama'],
+                     ['Francis X. McCarthy', '75.000000', 'Interstellar', '2014.000000', '961763.000000', '8.600000', 'Adventure'],
+                     ['John Lithgow', '72.000000', 'Interstellar', '2014.000000', '961763.000000', '8.600000', 'Adventure'],
+                     ['J.K. Simmons', '62.000000', 'Whiplash', '2014.000000', '420586.000000', '8.500000', 'Drama',],
+                     ['Chris Mulkey', '69.000000', 'Whiplash', '2014.000000', '420586.000000', '8.500000', 'Drama']]
 )
 
 
 actors_played_in_bad_drama_or_comedy_query = QueryInfo(
     query="""MATCH (a:actor)-[:act]->(m:movie)
-             WHERE (m.gener = "Drama" OR m.gener = "Comedy")
+             WHERE (m.genre = "Drama" OR m.genre = "Comedy")
              AND m.rating < 5.5 AND m.votes > 50000
              RETURN a.name, m
              ORDER BY m.rating""",
     description='Which actors played in bad drama or comedy?',
     max_run_time_ms=4,
-    expected_result=[['Eloise Mumford', 'Fifty Shades of Grey', '224710.000000', '2015.000000', 'Drama', '4.100000'],
-                     ['Victor Rasuk', 'Fifty Shades of Grey', '224710.000000', '2015.000000', 'Drama', '4.100000'],
-                     ['Max Martini', 'Fifty Shades of Grey', '224710.000000', '2015.000000', 'Drama', '4.100000'],
-                     ['Luke Grimes', 'Fifty Shades of Grey', '224710.000000', '2015.000000', 'Drama', '4.100000'],
-                     ['Rita Ora', 'Fifty Shades of Grey', '224710.000000', '2015.000000', 'Drama', '4.100000'],
-                     ['Marcia Gay Harden', 'Fifty Shades of Grey', '224710.000000', '2015.000000', 'Drama', '4.100000'],
-                     ['Dakota Johnson', 'Fifty Shades of Grey', '224710.000000', '2015.000000', 'Drama', '4.100000'],
-                     ['Jamie Dornan', 'Fifty Shades of Grey', '224710.000000', '2015.000000', 'Drama', '4.100000'],
-                     ['Jennifer Ehle', 'Fifty Shades of Grey', '224710.000000', '2015.000000', 'Drama', '4.100000'],
-                     ['Rob Corddry', 'Sex Tape', '86018.000000', '2014.000000', 'Comedy', '5.100000'],
-                     ['Ellie Kemper', 'Sex Tape', '86018.000000', '2014.000000', 'Comedy', '5.100000'],
-                     ['Jason Segel', 'Sex Tape', '86018.000000', '2014.000000', 'Comedy', '5.100000'],
-                     ['Nancy Lenehan', 'Sex Tape', '86018.000000', '2014.000000', 'Comedy', '5.100000'],
-                     ['Rob Lowe', 'Sex Tape', '86018.000000', '2014.000000', 'Comedy', '5.100000'],
-                     ['Cameron Diaz', 'Sex Tape', '86018.000000', '2014.000000', 'Comedy', '5.100000']]
+    expected_result=[['Rita Ora', 'Fifty Shades of Grey', '2015.000000', '224710.000000', '4.100000', 'Drama'],
+                     ['Dakota Johnson', 'Fifty Shades of Grey', '2015.000000', '224710.000000', '4.100000', 'Drama'],
+                     ['Marcia Gay Harden', 'Fifty Shades of Grey', '2015.000000', '224710.000000', '4.100000', 'Drama'],
+                     ['Jamie Dornan', 'Fifty Shades of Grey', '2015.000000', '224710.000000', '4.100000', 'Drama'],
+                     ['Eloise Mumford', 'Fifty Shades of Grey', '2015.000000', '224710.000000', '4.100000', 'Drama'],
+                     ['Max Martini', 'Fifty Shades of Grey', '2015.000000', '224710.000000', '4.100000', 'Drama'],
+                     ['Luke Grimes', 'Fifty Shades of Grey', '2015.000000', '224710.000000', '4.100000', 'Drama'],
+                     ['Jennifer Ehle', 'Fifty Shades of Grey', '2015.000000', '224710.000000', '4.100000', 'Drama'],
+                     ['Victor Rasuk', 'Fifty Shades of Grey', '2015.000000','224710.000000', '4.100000', 'Drama'],
+                     ['Nancy Lenehan', 'Sex Tape', '2014.000000', '86018.000000', '5.100000', 'Comedy'],
+                     ['Rob Lowe', 'Sex Tape', '2014.000000', '86018.000000', '5.100000', 'Comedy'],
+                     ['Cameron Diaz', 'Sex Tape', '2014.000000', '86018.000000', '5.100000', 'Comedy'],
+                     ['Rob Corddry', 'Sex Tape', '2014.000000', '86018.000000', '5.100000', 'Comedy'],
+                     ['Jason Segel', 'Sex Tape', '2014.000000', '86018.000000', '5.100000', 'Comedy'],
+                     ['Ellie Kemper', 'Sex Tape', '2014.000000', '86018.000000', '5.100000', 'Comedy']]
 )
 
 

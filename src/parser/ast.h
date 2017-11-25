@@ -35,6 +35,11 @@ typedef enum {
 	N_ALIAS
 } AST_ColumnNodeType;
 
+typedef enum {
+	AST_VALID,
+	AST_INVALID
+} AST_Validation;
+
 struct filterNode;
 
 typedef struct {
@@ -215,6 +220,15 @@ AST_QueryExpressionNode* New_AST_QueryExpressionNode(AST_MatchNode *matchNode, A
 													 AST_CreateNode *createNode, AST_SetNode *setNode,
 													 AST_DeleteNode *deleteNode, AST_ReturnNode *returnNode,
 													 AST_OrderNode *orderNode, AST_LimitNode *limitNode);
+
+/* AST Validations */
+AST_Validation _Validate_MATCH_Clause(const AST_QueryExpressionNode* ast, char **reason);
+AST_Validation _Validate_WHERE_Clause(const AST_QueryExpressionNode* ast, char **reason);
+AST_Validation _Validate_CREATE_Clause(const AST_QueryExpressionNode* ast, char **reason);
+AST_Validation _Validate_SET_Clause(const AST_QueryExpressionNode* ast, char **reason);
+AST_Validation _Validate_DELETE_Clause(const AST_QueryExpressionNode* ast, char **reason);
+AST_Validation _Validate_RETURN_Clause(const AST_QueryExpressionNode* ast, char **reason);
+AST_Validation Validate_AST(const AST_QueryExpressionNode* ast, char **reason);
 
 void Free_AST_Variable(AST_Variable *v);
 void Free_AST_ColumnNode(AST_ColumnNode *node);
