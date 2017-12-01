@@ -1,7 +1,7 @@
 #include "graph.h"
 #include "graph_entity.h"
 
-SIValue *PROPERTY_NOTFOUND = NULL;
+SIValue *PROPERTY_NOTFOUND = &(SIValue){.intval = 0, .type = T_NULL};
 
 /* Expecting e to be either *Node or *Edge */
 void GraphEntity_Add_Properties(GraphEntity *e, int prop_count, char **keys, SIValue *values) {

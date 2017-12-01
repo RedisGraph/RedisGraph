@@ -264,6 +264,7 @@ SIValue AR_ADD(SIValue *argv, int argc) {
     SIValue result;
     result = argv[0];
     for(int i = 1; i < argc; i++) {
+        if(SIValue_IsNull(argv[i])) return SI_NullVal();
         result.doubleval += argv[i].doubleval;
     }
     return result;
@@ -273,6 +274,7 @@ SIValue AR_SUB(SIValue *argv, int argc) {
     SIValue result;
     result = argv[0];
     for(int i = 1; i < argc; i++) {
+        if(SIValue_IsNull(argv[i])) return SI_NullVal();
         result.doubleval -= argv[i].doubleval;
     }
     return result;
@@ -282,6 +284,7 @@ SIValue AR_MUL(SIValue *argv, int argc) {
     SIValue result;
     result = argv[0];
     for(int i = 1; i < argc; i++) {
+        if(SIValue_IsNull(argv[i])) return SI_NullVal();
         /* Assuming every argv is of type double. */
         result.doubleval *= argv[i].doubleval;
     }
@@ -292,6 +295,7 @@ SIValue AR_DIV(SIValue *argv, int argc) {
     SIValue result;
     result = argv[0];
     for(int i = 1; i < argc; i++) {
+        if(SIValue_IsNull(argv[i])) return SI_NullVal();
         /* Assuming every argv is of type double. */
         /* TODO: division by zero. */
         result.doubleval /= argv[i].doubleval;
@@ -331,6 +335,9 @@ SIValue AR_ROUND(SIValue *argv, int argc) {
 }
 
 SIValue AR_SIGN(SIValue *argv, int argc) {
+    assert(argc == 1);
+    if(SIValue_IsNull(argv[0])) return SI_NullVal();
+
     if(argv[0].doubleval == 0) {
         return SI_DoubleVal(0);
     } else if(argv[0].doubleval < 0) {
@@ -344,6 +351,8 @@ SIValue AR_SIGN(SIValue *argv, int argc) {
 
 SIValue AR_LEFT(SIValue *argv, int argc) {
     assert(argc == 2);
+    if(SIValue_IsNull(argv[0])) return SI_NullVal();
+
     assert(argv[0].type == T_STRING);
     assert(argv[1].type == T_DOUBLE);
     
@@ -360,6 +369,8 @@ SIValue AR_LEFT(SIValue *argv, int argc) {
 }
 
 SIValue AR_LTRIM(SIValue *argv, int argc) {
+    if(SIValue_IsNull(argv[0])) return SI_NullVal();
+
     assert(argc == 1 && argv[0].type == T_STRING);
     
     char *str = argv[0].stringval.str;
@@ -377,6 +388,7 @@ SIValue AR_LTRIM(SIValue *argv, int argc) {
 
 SIValue AR_RIGHT(SIValue *argv, int argc) {
     assert(argc == 2);
+    if(SIValue_IsNull(argv[0])) return SI_NullVal();
     assert(argv[0].type == T_STRING);
     assert(argv[1].type == T_DOUBLE);
     
@@ -394,6 +406,7 @@ SIValue AR_RIGHT(SIValue *argv, int argc) {
 }
 
 SIValue AR_RTRIM(SIValue *argv, int argc) {
+    if(SIValue_IsNull(argv[0])) return SI_NullVal();
     assert(argc == 1 && argv[0].type == T_STRING);
     
     char *str = argv[0].stringval.str;
@@ -411,6 +424,7 @@ SIValue AR_RTRIM(SIValue *argv, int argc) {
 }
 
 SIValue AR_REVERSE(SIValue *argv, int argc) {
+    if(SIValue_IsNull(argv[0])) return SI_NullVal();
     assert(argv[0].type == T_STRING);
     char *str = argv[0].stringval.str;
     size_t str_len = argv[0].stringval.len;
@@ -434,6 +448,7 @@ SIValue AR_SUBSTRING(SIValue *argv, int argc) {
         If length is 0, the empty string will be returned.
     */
     assert(argc > 1);
+    if(SIValue_IsNull(argv[0])) return SI_NullVal();
     char *original = argv[0].stringval.str;
     size_t original_len = argv[0].stringval.len;
     uint start = (uint)argv[1].doubleval;
@@ -476,6 +491,8 @@ void _toLower(const char *str, char *lower, size_t *lower_len) {
 
 SIValue AR_TOLOWER(SIValue *argv, int argc) {
     assert(argc == 1);
+
+    if(SIValue_IsNull(argv[0])) return SI_NullVal();
     char *original = argv[0].stringval.str;
     size_t lower_len = argv[0].stringval.len + 1;
     char *lower = calloc(lower_len, sizeof(char));
@@ -486,6 +503,7 @@ SIValue AR_TOLOWER(SIValue *argv, int argc) {
 SIValue AR_TOUPPER(SIValue *argv, int argc) {
     assert(argc == 1);
 
+    if(SIValue_IsNull(argv[0])) return SI_NullVal();
     char *original = argv[0].stringval.str;
     size_t original_len = argv[0].stringval.len;
     char *upper = calloc(original_len+1, sizeof(char));
@@ -500,6 +518,7 @@ SIValue AR_TOUPPER(SIValue *argv, int argc) {
 SIValue AR_TOSTRING(SIValue *argv, int argc) {
     assert(argc == 1);
 
+    if(SIValue_IsNull(argv[0])) return SI_NullVal();
     size_t len = 128;
     char *str = calloc(len, sizeof(char));
     SIValue_ToString(argv[0], str, len);
@@ -507,6 +526,7 @@ SIValue AR_TOSTRING(SIValue *argv, int argc) {
 }
 
 SIValue AR_TRIM(SIValue *argv, int argc) {
+    if(SIValue_IsNull(argv[0])) return SI_NullVal();
     SIValue ltrim = AR_LTRIM(argv, argc);
     SIValue trimmed = AR_RTRIM(&ltrim, 1);
     return trimmed;

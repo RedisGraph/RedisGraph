@@ -15,10 +15,10 @@ typedef struct {
     OpBase op;
     Node **node;            /* node being scanned */
     Node *_node;
-    Store *store;
+    LabelStore *store;
     RedisModuleCtx *ctx;
     const char *graph;      /* queried graph id */
-    StoreIterator *iter;
+    LabelStoreIterator *iter;
 } NodeByLabelScan;
 
 /* Creates a new NodeByLabelScan operation */

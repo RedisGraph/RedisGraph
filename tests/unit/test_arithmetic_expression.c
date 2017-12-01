@@ -193,6 +193,7 @@ void test_abs() {
     AR_ExpNode *one = AR_EXP_NewConstOperandNode(SI_DoubleVal(1));
     AR_ExpNode *minus_one = AR_EXP_NewConstOperandNode(SI_DoubleVal(-1));
     AR_ExpNode *zero = AR_EXP_NewConstOperandNode(SI_DoubleVal(0));
+    AR_ExpNode *null = AR_EXP_NewConstOperandNode(SI_NullVal());
     
     root->op.children[0] = one;
     SIValue expected = SI_DoubleVal(1);
@@ -205,6 +206,10 @@ void test_abs() {
     root->op.children[0] = zero;
     expected = SI_DoubleVal(0);
     _test_ar_func(root, expected);
+
+    root->op.children[0] = null;
+    expected = SI_NullVal();
+    _test_ar_func(root, expected);
 }
 
 void test_ceil() {
@@ -212,6 +217,7 @@ void test_ceil() {
     AR_ExpNode *half = AR_EXP_NewConstOperandNode(SI_DoubleVal(0.5));
     AR_ExpNode *one = AR_EXP_NewConstOperandNode(SI_DoubleVal(1));
     AR_ExpNode *dot_one = AR_EXP_NewConstOperandNode(SI_DoubleVal(0.1));
+    AR_ExpNode *null = AR_EXP_NewConstOperandNode(SI_NullVal());
 
     root->op.children[0] = half;
     SIValue expected = SI_DoubleVal(1);
@@ -224,6 +230,10 @@ void test_ceil() {
     root->op.children[0] = dot_one;
     expected = SI_DoubleVal(1);
     _test_ar_func(root, expected);
+
+    root->op.children[0] = null;
+    expected = SI_NullVal();
+    _test_ar_func(root, expected);
 }
 
 void test_floor() {
@@ -231,6 +241,7 @@ void test_floor() {
     AR_ExpNode *half = AR_EXP_NewConstOperandNode(SI_DoubleVal(0.5));
     AR_ExpNode *one = AR_EXP_NewConstOperandNode(SI_DoubleVal(1));
     AR_ExpNode *dot_one = AR_EXP_NewConstOperandNode(SI_DoubleVal(0.1));
+    AR_ExpNode *null = AR_EXP_NewConstOperandNode(SI_NullVal());
 
     /* floor(0.5) */
     root->op.children[0] = half;
@@ -245,6 +256,11 @@ void test_floor() {
     /* floor(0.1) */
     root->op.children[0] = dot_one;
     expected = SI_DoubleVal(0);
+    _test_ar_func(root, expected);
+
+    /* floor(null) */
+    root->op.children[0] = null;
+    expected = SI_NullVal();
     _test_ar_func(root, expected);
 }
 
@@ -262,6 +278,7 @@ void test_round() {
     AR_ExpNode *dot_four = AR_EXP_NewConstOperandNode(SI_DoubleVal(0.49));
     AR_ExpNode *half = AR_EXP_NewConstOperandNode(SI_DoubleVal(0.5));
     AR_ExpNode *one = AR_EXP_NewConstOperandNode(SI_DoubleVal(1));
+    AR_ExpNode *null = AR_EXP_NewConstOperandNode(SI_NullVal());
 
     /* round(0) */
     root->op.children[0] = zero;
@@ -282,6 +299,11 @@ void test_round() {
     root->op.children[0] = one;
     expected = SI_DoubleVal(1);
     _test_ar_func(root, expected);
+
+    /* null */
+    root->op.children[0] = null;
+    expected = SI_NullVal();
+    _test_ar_func(root, expected);
 }
 
 void test_sign() {
@@ -290,6 +312,7 @@ void test_sign() {
     AR_ExpNode *zero = AR_EXP_NewConstOperandNode(SI_DoubleVal(0));
     AR_ExpNode *negative = AR_EXP_NewConstOperandNode(SI_DoubleVal(-8));
     AR_ExpNode *positive = AR_EXP_NewConstOperandNode(SI_DoubleVal(2.3));
+    AR_ExpNode *null = AR_EXP_NewConstOperandNode(SI_NullVal());
 
     /* sign(0) */
     root->op.children[0] = zero;
@@ -305,6 +328,11 @@ void test_sign() {
     root->op.children[0] = positive;
     expected = SI_DoubleVal(1);
     _test_ar_func(root, expected);
+
+    /* sign(null) */
+    root->op.children[0] = null;
+    expected = SI_NullVal();
+    _test_ar_func(root, expected);
 }
 
 void test_left() {
@@ -312,6 +340,7 @@ void test_left() {
     AR_ExpNode *str = AR_EXP_NewConstOperandNode(SI_StringValC("muchacho"));
     AR_ExpNode *left = AR_EXP_NewConstOperandNode(SI_DoubleVal(4));
     AR_ExpNode *entire_string_len = AR_EXP_NewConstOperandNode(SI_DoubleVal(100));
+    AR_ExpNode *null = AR_EXP_NewConstOperandNode(SI_NullVal());
 
     root->op.children[0] = str;
     root->op.children[1] = left;
@@ -324,12 +353,18 @@ void test_left() {
     result = AR_EXP_Evaluate(root);
     expected = "muchacho";
     assert(strcmp(result.stringval.str, expected) == 0);
+
+    root->op.children[0] = null;
+    root->op.children[1] = entire_string_len;
+    result = AR_EXP_Evaluate(root);
+    assert(result.type == T_NULL);
 }
 
 void test_reverse() {
     AR_ExpNode *root = AR_EXP_NewOpNode("REVERSE", 1);
     AR_ExpNode *str = AR_EXP_NewConstOperandNode(SI_StringValC("muchacho"));
     AR_ExpNode *empty_str = AR_EXP_NewConstOperandNode(SI_StringValC(""));
+    AR_ExpNode *null = AR_EXP_NewConstOperandNode(SI_NullVal());
     
     root->op.children[0] = str;
     SIValue result = AR_EXP_Evaluate(root);
@@ -340,6 +375,10 @@ void test_reverse() {
     result = AR_EXP_Evaluate(root);
     expected = "";
     assert(strcmp(result.stringval.str, expected) == 0);
+
+    root->op.children[0] = null;
+    result = AR_EXP_Evaluate(root);
+    assert(result.type == T_NULL);
 }
 
 void test_right() {
@@ -347,6 +386,7 @@ void test_right() {
     AR_ExpNode *str = AR_EXP_NewConstOperandNode(SI_StringValC("muchacho"));
     AR_ExpNode *right = AR_EXP_NewConstOperandNode(SI_DoubleVal(4));
     AR_ExpNode *entire_string_len = AR_EXP_NewConstOperandNode(SI_DoubleVal(100));
+    AR_ExpNode *null = AR_EXP_NewConstOperandNode(SI_NullVal());
 
     root->op.children[0] = str;
     root->op.children[1] = right;
@@ -359,6 +399,11 @@ void test_right() {
     result = AR_EXP_Evaluate(root);
     expected = "muchacho";
     assert(strcmp(result.stringval.str, expected) == 0);
+
+    root->op.children[0] = null;
+    root->op.children[1] = entire_string_len;
+    result = AR_EXP_Evaluate(root);
+    assert(result.type == T_NULL);
 }
 
 void test_ltrim() {
@@ -367,6 +412,7 @@ void test_ltrim() {
     AR_ExpNode *right_spaced_str = AR_EXP_NewConstOperandNode(SI_StringValC("muchacho   "));
     AR_ExpNode *spaced_str = AR_EXP_NewConstOperandNode(SI_StringValC("   much   acho   "));
     AR_ExpNode *no_space_str = AR_EXP_NewConstOperandNode(SI_StringValC("muchacho"));
+    AR_ExpNode *null = AR_EXP_NewConstOperandNode(SI_NullVal());
 
     root->op.children[0] = left_spaced_str;
     SIValue result = AR_EXP_Evaluate(root);
@@ -387,6 +433,10 @@ void test_ltrim() {
     result = AR_EXP_Evaluate(root);
     expected = "muchacho";
     assert(strcmp(result.stringval.str, expected) == 0);
+
+    root->op.children[0] = null;
+    result = AR_EXP_Evaluate(root);
+    assert(result.type == T_NULL);
 }
 
 void test_rtrim() {
@@ -395,6 +445,7 @@ void test_rtrim() {
     AR_ExpNode *right_spaced_str = AR_EXP_NewConstOperandNode(SI_StringValC("muchacho   "));
     AR_ExpNode *spaced_str = AR_EXP_NewConstOperandNode(SI_StringValC("   much   acho   "));
     AR_ExpNode *no_space_str = AR_EXP_NewConstOperandNode(SI_StringValC("muchacho"));
+    AR_ExpNode *null = AR_EXP_NewConstOperandNode(SI_NullVal());
 
     root->op.children[0] = left_spaced_str;
     SIValue result = AR_EXP_Evaluate(root);
@@ -415,6 +466,10 @@ void test_rtrim() {
     result = AR_EXP_Evaluate(root);
     expected = "muchacho";
     assert(strcmp(result.stringval.str, expected) == 0);
+
+    root->op.children[0] = null;
+    result = AR_EXP_Evaluate(root);
+    assert(result.type == T_NULL);
 }
 
 void test_substring() {
@@ -424,6 +479,7 @@ void test_substring() {
     AR_ExpNode *length = AR_EXP_NewConstOperandNode(SI_DoubleVal(4));
     AR_ExpNode *start_middel = AR_EXP_NewConstOperandNode(SI_DoubleVal(3));
     AR_ExpNode *length_overflow = AR_EXP_NewConstOperandNode(SI_DoubleVal(20));
+    AR_ExpNode *null = AR_EXP_NewConstOperandNode(SI_NullVal());
 
     root->op.children[0] = original_str;
     root->op.children[1] = start;
@@ -438,44 +494,61 @@ void test_substring() {
     result = AR_EXP_Evaluate(root);
     expected = "hacho";
     assert(strcmp(result.stringval.str, expected) == 0);
+
+    root->op.children[0] = null;
+    root->op.children[1] = start_middel;
+    root->op.children[2] = length_overflow;
+    result = AR_EXP_Evaluate(root);
+    assert(result.type == T_NULL);
 }
 
 void test_tolower() {
     AR_ExpNode *root = AR_EXP_NewOpNode("toLower", 1);
     AR_ExpNode *str1 = AR_EXP_NewConstOperandNode(SI_StringValC("MuChAcHo"));
     AR_ExpNode *str2 = AR_EXP_NewConstOperandNode(SI_StringValC("mUcHaChO"));
+    AR_ExpNode *null = AR_EXP_NewConstOperandNode(SI_NullVal());
 
     root->op.children[0] = str1;    
     SIValue result = AR_EXP_Evaluate(root);
     char *expected = "muchacho";
     assert(strcmp(result.stringval.str, expected) == 0);
 
-    root->op.children[0] = str2;    
+    root->op.children[0] = str2;
     result = AR_EXP_Evaluate(root);
     expected = "muchacho";
-    assert(strcmp(result.stringval.str, expected) == 0);   
+    assert(strcmp(result.stringval.str, expected) == 0);
+
+    root->op.children[0] = null;
+    result = AR_EXP_Evaluate(root);
+    assert(result.type == T_NULL);
 }
 
 void test_toupper() {
     AR_ExpNode *root = AR_EXP_NewOpNode("toUpper", 1);
     AR_ExpNode *str1 = AR_EXP_NewConstOperandNode(SI_StringValC("MuChAcHo"));
     AR_ExpNode *str2 = AR_EXP_NewConstOperandNode(SI_StringValC("mUcHaChO"));
+    AR_ExpNode *null = AR_EXP_NewConstOperandNode(SI_NullVal());
 
-    root->op.children[0] = str1;    
+    root->op.children[0] = str1;
     SIValue result = AR_EXP_Evaluate(root);
     char *expected = "MUCHACHO";
     assert(strcmp(result.stringval.str, expected) == 0);
 
-    root->op.children[0] = str2;    
+    root->op.children[0] = str2;
     result = AR_EXP_Evaluate(root);
     expected = "MUCHACHO";
-    assert(strcmp(result.stringval.str, expected) == 0);   
+    assert(strcmp(result.stringval.str, expected) == 0);
+
+    root->op.children[0] = null;
+    result = AR_EXP_Evaluate(root);
+    assert(result.type == T_NULL);
 }
 
 void test_toString() {
     AR_ExpNode *root = AR_EXP_NewOpNode("toString", 1);
     AR_ExpNode *str = AR_EXP_NewConstOperandNode(SI_StringValC("muchacho"));
     AR_ExpNode *number = AR_EXP_NewConstOperandNode(SI_DoubleVal(3.14));
+    AR_ExpNode *null = AR_EXP_NewConstOperandNode(SI_NullVal());
 
     root->op.children[0] = str;
     SIValue result = AR_EXP_Evaluate(root);
@@ -486,6 +559,10 @@ void test_toString() {
     result = AR_EXP_Evaluate(root);
     expected = "3.140000";
     assert(strcmp(result.stringval.str, expected) == 0);
+
+    root->op.children[0] = null;
+    result = AR_EXP_Evaluate(root);
+    assert(result.type == T_NULL);
 }
 
 void test_trim() {
@@ -494,6 +571,7 @@ void test_trim() {
     AR_ExpNode *right_spaced_str = AR_EXP_NewConstOperandNode(SI_StringValC("muchacho   "));
     AR_ExpNode *spaced_str = AR_EXP_NewConstOperandNode(SI_StringValC("   much   acho   "));
     AR_ExpNode *no_space_str = AR_EXP_NewConstOperandNode(SI_StringValC("muchacho"));
+    AR_ExpNode *null = AR_EXP_NewConstOperandNode(SI_NullVal());
 
     root->op.children[0] = left_spaced_str;
     SIValue result = AR_EXP_Evaluate(root);
@@ -514,6 +592,10 @@ void test_trim() {
     result = AR_EXP_Evaluate(root);
     expected = "muchacho";
     assert(strcmp(result.stringval.str, expected) == 0);
+
+    root->op.children[0] = null;
+    result = AR_EXP_Evaluate(root);
+    assert(result.type == T_NULL);
 }
 
 int main(int argc, char **argv) {

@@ -167,9 +167,7 @@ int ReturnClause_ContainsAggregation(AST_QueryExpressionNode *ast) {
 }
 
 void ReturnClause_ExpandCollapsedNodes(RedisModuleCtx *ctx, AST_QueryExpressionNode *ast, const char *graphName) {
-    /* Assumption, each collapsed node is tagged with a label
-     * TODO: maintain a label schema, this way we won't have
-     * to discover label attributes. */
+    /* Assumption, each collapsed node is tagged with a label */
 
      /* Create a new return clause */
     Vector *expandReturnElements = NewVector(AST_ReturnElementNode*, Vector_Size(ast->returnNode->returnElements));
@@ -209,27 +207,28 @@ void ReturnClause_ExpandCollapsedNodes(RedisModuleCtx *ctx, AST_QueryExpressionN
                 return;
             }
 
-            /* Find an id, for entity. */
-            StoreType store_type = (collapsed_entity->t == N_ENTITY) ? STORE_NODE : STORE_EDGE;
-            Store *s = GetStore(ctx, store_type, graphName, collapsed_entity->label);
-            StoreIterator *it = Store_Search(s, "");
-            char *id;
-            tm_len_t id_len;
-            GraphEntity *entity;
-            StoreIterator_Next(it, &id, &id_len, (void**)&entity);
-            StoreIterator_Free(it);
+            /* Find label's known properties. */
+            LabelStoreType store_type = (collapsed_entity->t == N_ENTITY) ? STORE_NODE : STORE_EDGE;
+            LabelStore *s = LabelStore_Get(ctx, store_type, graphName, collapsed_entity->label);
             
-            /* Create a new return element foreach property. */
-            for(int j = 0; j < entity->prop_count; j++) {
+            TrieMapIterator *it = TrieMap_Iterate(s->stats.properties, "", 0);
+            char *prop = NULL;
+            tm_len_t prop_len = 0;
+            void *ptr = NULL;
+
+            while(TrieMapIterator_Next(it, &prop, &prop_len, &ptr)) {
+                prop[prop_len] = 0;
+                /* Create a new return element foreach property. */
                 AST_ArithmeticExpressionNode *expanded_exp =
-                    New_AST_AR_EXP_VariableOperandNode(collapsed_entity->alias,
-                                                       entity->properties[j].name);
+                    New_AST_AR_EXP_VariableOperandNode(collapsed_entity->alias, prop);
 
                 AST_ReturnElementNode *retElem =
                     New_AST_ReturnElementNode(expanded_exp, ret_elem->alias);
+
                 Vector_Push(expandReturnElements, retElem);
             }
-            
+            TrieMapIterator_Free(it);
+
             /* Discard collapsed return element. */
             Free_AST_ReturnElementNode(ret_elem);
         } else {

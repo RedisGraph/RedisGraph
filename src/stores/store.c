@@ -2,11 +2,24 @@
 #include "../rmutil/strings.h"
 #include "../util/triemap/triemap_type.h"
 
-Store *_NewStore() {
-	return NewTrieMap();
+/* Creates a new LabelStore. */
+LabelStore *__new_Store(const char *label) {
+    LabelStore *store = calloc(1, sizeof(LabelStore));
+    store->items = NewTrieMap();
+    store->stats.properties = NewTrieMap();
+    if(label) store->label = strdup(label);
+
+    return store;
 }
 
-int Store_ID(char **id, StoreType type, const char *graph, const char *label) {
+void LabelStore_Free(LabelStore *store, void (*freeCB)(void *)) {
+    TrieMap_Free(store->items, freeCB);
+    TrieMap_Free(store->stats.properties, freeCB);
+    if(store->label) free(store->label);
+    free(store);
+}
+
+int LabelStore_Id(char **id, LabelStoreType type, const char *graph, const char *label) {
     if(label == NULL) {
         label = "ALL";
     }
@@ -25,13 +38,13 @@ int Store_ID(char **id, StoreType type, const char *graph, const char *label) {
             break;
     }
     
-    return asprintf(id, "%s_%s_%s_%s", STORE_PREFIX, graph, storeType, label);
+    return asprintf(id, "%s_%s_%s_%s", LABELSTORE_PREFIX, graph, storeType, label);
 }
 
-Store *GetStore(RedisModuleCtx *ctx, StoreType type, const char *graph, const char* label) {
-	Store *store = NULL;
+LabelStore *LabelStore_Get(RedisModuleCtx *ctx, LabelStoreType type, const char *graph, const char* label) {
+	LabelStore *store = NULL;
     char *strKey;
-    Store_ID(&strKey, type, graph, label);
+    LabelStore_Id(&strKey, type, graph, label);
 
     RedisModuleString *rmStoreId = RedisModule_CreateString(ctx, strKey, strlen(strKey));
     free(strKey);
@@ -40,7 +53,7 @@ Store *GetStore(RedisModuleCtx *ctx, StoreType type, const char *graph, const ch
     RedisModule_FreeString(ctx, rmStoreId);
 
 	if (RedisModule_KeyType(key) == REDISMODULE_KEYTYPE_EMPTY) {
-		store = _NewStore();
+		store = __new_Store(label);
 		RedisModule_ModuleTypeSetValue(key, TrieRedisModuleType, store);
 	}
 
@@ -49,45 +62,43 @@ Store *GetStore(RedisModuleCtx *ctx, StoreType type, const char *graph, const ch
 	return store;
 }
 
-int Store_Cardinality(Store *store) {
-    return store->cardinality;
+int LabelStore_Cardinality(LabelStore *store) {
+    return store->items->cardinality;
 }
 
-void Store_Insert(Store *store, char *id, void *value) {
-    TrieMap_Add(store, id, strlen(id), value, NULL);
+void LabelStore_Insert(LabelStore *store, char *id, GraphEntity *entity) {
+    if (TrieMap_Add(store->items, id, strlen(id), entity, NULL)) {
+        /* Entity is new to the store,
+         * update store's entity schema. */
+        if(store->label) {
+            /* Store has a label, not an 'ALL' store, where there are
+             * multiple entities with different labels.
+             * Add each of the entity's attribute names to store's stats,
+             * We'll be using this information whenever we're required to
+             * expand a collapsed entity. */
+            int prop_count = entity->prop_count;
+            for(int idx = 0; idx < prop_count; idx++) {
+                char *prop_name = entity->properties[idx].name;
+                TrieMap_Add(store->stats.properties, prop_name, strlen(prop_name), NULL, NULL);
+            }
+        }
+    }
 }
 
-int Store_Remove(Store *store, char *id, void (*freeCB)(void *)) {
-    return TrieMap_Delete(store, id, strlen(id), freeCB);
+int LabelStore_Remove(LabelStore *store, char *id, void (*freeCB)(void *)) {
+    return TrieMap_Delete(store->items, id, strlen(id), freeCB);
 }
 
-StoreIterator *Store_Search(Store *store, const char *prefix) {
-    char* prefix_dup = strdup(prefix);
-	StoreIterator *iter = TrieMap_Iterate(store, prefix_dup, strlen(prefix_dup));
+LabelStoreIterator *LabelStore_Search(LabelStore *store, const char *id) {
+    char* prefix_dup = strdup(id);
+	LabelStoreIterator *iter = TrieMap_Iterate(store->items, prefix_dup, strlen(prefix_dup));
     return iter;
 }
 
-void Store_Search_Iter(Store *store, const char *prefix, StoreIterator *it) {
-    char* prefix_dup = strdup(prefix);
-    TrieMapIterator_Reset(it, store, prefix_dup, strlen(prefix_dup));
-}
-
-void *Store_Get(Store *store, char *id) {
-    void *val = TrieMap_Find(store, id, strlen(id));
-    if(val == TRIEMAP_NOTFOUND) {
-        val = NULL;
-    }
-    return val;
-}
-
-void Store_Free(Store *store, void (*freeCB)(void *)) {
-    TrieMap_Free(store, freeCB);
-}
-
-int StoreIterator_Next(StoreIterator *cursor, char **key, tm_len_t *len, void **value) {
+int LabelStoreIterator_Next(LabelStoreIterator *cursor, char **key, tm_len_t *len, void **value) {
     return TrieMapIterator_Next(cursor, key, len, value);
 }
 
-void StoreIterator_Free(StoreIterator* iterator) {
+void LabelStoreIterator_Free(LabelStoreIterator* iterator) {
 	TrieMapIterator_Free(iterator);
 }

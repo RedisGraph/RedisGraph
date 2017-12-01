@@ -82,13 +82,13 @@ void _DeleteNode(OpDelete *op, Node *n) {
     const char *graph_name = op->graph_name;
 
     /* Remove node from all-node store. */
-    Store *all_node_store = GetStore(ctx, STORE_NODE, graph_name, NULL);
-    Store_Remove(all_node_store, node_id, _NOP_CB);
+    LabelStore *all_node_store = LabelStore_Get(ctx, STORE_NODE, graph_name, NULL);
+    LabelStore_Remove(all_node_store, node_id, _NOP_CB);
 
     /* Remove node from label store. */
     if(n->label != NULL) {
-        Store *all_node_store = GetStore(ctx, STORE_NODE, graph_name, n->label);
-        Store_Remove(all_node_store, node_id, _NOP_CB);
+        LabelStore *all_node_store = LabelStore_Get(ctx, STORE_NODE, graph_name, n->label);
+        LabelStore_Remove(all_node_store, node_id, _NOP_CB);
     }
 
     /* Remove node from hexastore. */
@@ -142,12 +142,12 @@ void _DeleteEdge(OpDelete *op, Edge *e) {
     const char *graph_name = op->graph_name;
 
     /* Remove edge from all-edge store. */ 
-    Store *all_edge_store = GetStore(ctx, STORE_EDGE, graph_name, NULL);
-    Store_Remove(all_edge_store, edge_id, _NOP_CB);
+    LabelStore *all_edge_store = LabelStore_Get(ctx, STORE_EDGE, graph_name, NULL);
+    LabelStore_Remove(all_edge_store, edge_id, _NOP_CB);
 
     /* Remove edge from relation store. */ 
-    Store *edge_store = GetStore(ctx, STORE_EDGE, graph_name, e->relationship);
-    Store_Remove(edge_store, edge_id, _NOP_CB);
+    LabelStore *edge_store = LabelStore_Get(ctx, STORE_EDGE, graph_name, e->relationship);
+    LabelStore_Remove(edge_store, edge_id, _NOP_CB);
 
     /* Remove edge from its source and destination nodes. */
     /* Remove edge from its source node. */

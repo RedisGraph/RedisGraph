@@ -15,10 +15,10 @@
     OpBase op;
     Node **node;            /* node being scanned */
     Node *_node;
-    Store *store;           /* store being scanned */
+    LabelStore *store;           /* store being scanned */
     RedisModuleCtx *ctx;    /* redis module API context */
     const char *graph;      /* queried graph id */
-    StoreIterator *iter;    /* graph iterator */
+    LabelStoreIterator *iter;    /* graph iterator */
  } AllNodeScan;
 
 OpBase* NewAllNodeScanOp(RedisModuleCtx *ctx, Graph *g, Node **n, const char *graph_name);

@@ -1,40 +1,55 @@
-#ifndef __STORE_H__
-#define __STORE_H__
+#ifndef __LABEL_STORE_H__
+#define __LABEL_STORE_H__
 
 #include "../redismodule.h"
+#include "../graph/graph_entity.h"
 #include "../util/triemap/triemap.h"
 
-#define STORE_PREFIX "redis_graph_store"
-#define LABEL_DEFAULT_SCORE 0
+#define LABELSTORE_PREFIX "redis_graph_store"
 
 typedef enum {
   STORE_NODE,
   STORE_EDGE,
-} StoreType;
+} LabelStoreType;
 
-typedef TrieMap Store;
-typedef TrieMapIterator StoreIterator;
+/* Keeps track on label schema. */
+typedef struct {
+  TrieMap *properties;  /* Entities under this Label, have a subset of properties */
+} LabelStatistics;
 
-int Store_ID(char **id, StoreType type, const char *graph, const char *label);
+typedef struct {
+  TrieMap *items;
+  LabelStatistics stats;
+  char *label;
+} LabelStore;
 
-Store *GetStore(RedisModuleCtx *ctx, StoreType type, const char *graph, const char* label);
+typedef TrieMapIterator LabelStoreIterator;
 
-// Returns the number of items within the store
-int Store_Cardinality(Store *store);
+/* Generates an ID for a new LabelStore. */
+int LabelStore_Id(char **id, LabelStoreType type, const char *graph, const char *label);
 
-void Store_Insert(Store *store, char *id, void *value);
+/* Get a label store. */
+LabelStore *LabelStore_Get(RedisModuleCtx *ctx, LabelStoreType type, const char *graph, const char* label);
 
-int Store_Remove(Store *store, char *id, void (*freeCB)(void *));
+/* Returns the number of items within the store */
+int LabelStore_Cardinality(LabelStore *store);
 
-StoreIterator *Store_Search(Store *store, const char *prefix);
+/* Inserts a new graph entity. */
+void LabelStore_Insert(LabelStore *store, char *id, GraphEntity *entity);
 
-void *Store_Get(Store *store, char *id);
+/* Removes entity with ID. */
+int LabelStore_Remove(LabelStore *store, char *id, void (*freeCB)(void *));
 
-void Store_Free(Store *store, void (*freeCB)(void *));
+/* Searches for entity with given Id. */
+LabelStoreIterator *LabelStore_Search(LabelStore *store, const char *id);
 
-// Returns the next id from the cursor.
-int StoreIterator_Next(StoreIterator *cursor, char **key, tm_len_t *len, void **value);
+/* Free store. */
+void LabelStore_Free(LabelStore *store, void (*freeCB)(void *));
 
-void StoreIterator_Free(StoreIterator* iterator);
+/* Returns the next id from cursor. */
+int LabelStoreIterator_Next(LabelStoreIterator *cursor, char **key, tm_len_t *len, void **value);
 
-#endif
+/* Free iterator. */
+void LabelStoreIterator_Free(LabelStoreIterator* iterator);
+
+#endif /* __LABEL_STORE_H__ */

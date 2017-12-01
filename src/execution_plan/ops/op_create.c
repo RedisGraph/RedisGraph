@@ -166,12 +166,12 @@ void _CreateEdges(RedisModuleCtx *ctx, OpCreate *op, Graph *graph) {
 
 /* Commit insertions. */
 void _CommitNewEntities(OpCreate *op) {
-    Store *label_store;
+    LabelStore *label_store;
     size_t node_count = Vector_Size(op->created_nodes);
     size_t edge_count = Vector_Size(op->created_edges);
     
     if(node_count > 0) {
-        Store *node_store = GetStore(op->ctx, STORE_NODE, op->graph_name, NULL);
+        LabelStore *node_store = LabelStore_Get(op->ctx, STORE_NODE, op->graph_name, NULL);
         for(int i = 0; i < node_count; i++) {
             Node *n;
             char *node_id;
@@ -181,13 +181,13 @@ void _CommitNewEntities(OpCreate *op) {
             asprintf(&node_id, "%ld", n->id);
 
             /* Place node id within node store. */        
-            Store_Insert(node_store, node_id, n);
+            LabelStore_Insert(node_store, node_id, (GraphEntity*)n);
 
             /* Place node id within labeled node store. */
             if(n->label) {
                 /* Store node within label store. */
-                label_store = GetStore(op->ctx, STORE_NODE, op->graph_name, n->label);
-                Store_Insert(label_store, node_id, n);
+                label_store = LabelStore_Get(op->ctx, STORE_NODE, op->graph_name, n->label);
+                LabelStore_Insert(label_store, node_id, (GraphEntity*)n);
                 op->result_set->labels_added++;
             }
             op->result_set->properties_set += n->prop_count;
@@ -197,7 +197,7 @@ void _CommitNewEntities(OpCreate *op) {
 
     if(edge_count > 0) {
         HexaStore *hexastore = GetHexaStore(op->ctx, op->graph_name);
-        Store *edge_store = GetStore(op->ctx, STORE_EDGE, op->graph_name, NULL);
+        LabelStore *edge_store = LabelStore_Get(op->ctx, STORE_EDGE, op->graph_name, NULL);
 
         for(int i = 0; i < edge_count; i++) {
             Edge *e;
@@ -207,10 +207,10 @@ void _CommitNewEntities(OpCreate *op) {
             asprintf(&edge_id, "%ld", e->id);
 
             /* Place edge within edge store(s). */
-            Store_Insert(edge_store, edge_id, e);
+            LabelStore_Insert(edge_store, edge_id, (GraphEntity*)e);
 
-            label_store = GetStore(op->ctx, STORE_EDGE, op->graph_name, e->relationship);
-            Store_Insert(label_store, edge_id, e);
+            label_store = LabelStore_Get(op->ctx, STORE_EDGE, op->graph_name, e->relationship);
+            LabelStore_Insert(label_store, edge_id, (GraphEntity*)e);
 
             /* Store relation within hexastore */
             Triplet *triplet = NewTriplet(e->src, e, e->dest);
