@@ -5,7 +5,7 @@
 #include "../../parser/ast.h"
 #include "../../redismodule.h"
 #include "../../graph/graph.h"
-#include "../../arithmetic_expression.h"
+#include "../../arithmetic/arithmetic_expression.h"
 
 /* Aggregate
  * aggregates graph according to  

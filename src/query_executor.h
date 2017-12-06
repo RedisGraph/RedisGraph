@@ -5,7 +5,7 @@
 #include "parser/ast.h"
 #include "redismodule.h"
 #include "hexastore/triplet.h"
-#include "arithmetic_expression.h"
+#include "arithmetic/arithmetic_expression.h"
 
 /* Given AST's MATCH node constructs a graph
  * representing queried entities and the relationships

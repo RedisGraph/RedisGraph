@@ -1,6 +1,6 @@
 #include "op_produce_results.h"
 #include "../../resultset/record.h"
-#include "../../arithmetic_expression.h"
+#include "../../arithmetic/arithmetic_expression.h"
 #include "../../query_executor.h"
 
 OpBase* NewProduceResultsOp(RedisModuleCtx *ctx, AST_QueryExpressionNode *ast, ResultSet *result_set) {

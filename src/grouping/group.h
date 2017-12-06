@@ -2,7 +2,7 @@
 #define GROUP_H_
 
 #include "../rmutil/vector.h"
-#include "../aggregate/agg_ctx.h"
+#include "../arithmetic/agg_ctx.h"
 
 typedef struct {
     int key_count;

@@ -2,7 +2,7 @@
 #define __ARITHMETIC_EXPRESSION_H
 
 #include "./graph/graph_entity.h"
-#include "./aggregate/agg_ctx.h"
+#include "./arithmetic/agg_ctx.h"
 #include "./parser/ast.h"
 #include "./graph/graph.h"
 

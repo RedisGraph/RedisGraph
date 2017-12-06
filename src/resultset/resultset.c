@@ -1,7 +1,7 @@
 #include "resultset.h"
 #include "../value.h"
 #include "../grouping/group_cache.h"
-#include "../aggregate/aggregate.h"
+#include "../arithmetic/aggregate.h"
 #include "../query_executor.h"
 
 int _heap_elem_compare(const void * A, const void * B, const void *udata) {

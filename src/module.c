@@ -11,7 +11,7 @@
 #include "value.h"
 #include "redismodule.h"
 #include "query_executor.h"
-#include "arithmetic_expression.h"
+#include "arithmetic/arithmetic_expression.h"
 
 #include "util/prng.h"
 #include "util/snowflake.h"
@@ -27,7 +27,7 @@
 #include "stores/store.h"
 
 #include "grouping/group_cache.h"
-#include "aggregate/agg_funcs.h"
+#include "arithmetic/agg_funcs.h"
 #include "hexastore/hexastore.h"
 #include "hexastore/triplet.h"
 

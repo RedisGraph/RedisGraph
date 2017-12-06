@@ -5,7 +5,7 @@
 #include "../../graph/node.h"
 #include "../../graph/edge.h"
 #include "../../resultset/resultset.h"
-#include "../../arithmetic_expression.h"
+#include "../../arithmetic/arithmetic_expression.h"
 
 typedef struct {
     GraphEntity **entity;   /* Entity to update. */

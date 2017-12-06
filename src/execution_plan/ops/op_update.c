@@ -1,5 +1,5 @@
 #include "op_update.h"
-#include "../../arithmetic_expression.h"
+#include "../../arithmetic/arithmetic_expression.h"
 
 /* Forward declarations. */
 void _OpUpdate_BuildUpdateEvalCtx(OpUpdate* op, AST_SetNode *ast, Graph *graph);

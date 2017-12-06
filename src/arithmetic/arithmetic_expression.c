@@ -1,7 +1,7 @@
 #include "arithmetic_expression.h"
 #include "./util/triemap/triemap.h"
-#include "./aggregate/aggregate.h"
-#include "./aggregate/repository.h"
+#include "./arithmetic/aggregate.h"
+#include "./arithmetic/repository.h"
 
 #include "assert.h"
 #include <math.h>

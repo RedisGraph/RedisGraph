@@ -28,7 +28,7 @@ export CFLAGS
 # Sources
 SOURCEDIR=$(shell pwd -P)
 CC_SOURCES = $(wildcard $(SOURCEDIR)/*.c)
-CC_SOURCES += $(wildcard $(SOURCEDIR)/aggregate/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/execution_plan/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/execution_plan/ops/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/filter_tree/*.c)
