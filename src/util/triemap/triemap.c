@@ -483,6 +483,10 @@ size_t TrieMap_MemUsage(TrieMap *t) {
   return TrieMapNode_MemUsage(t->root);
 }
 
+void TrieMap_NOP_CB(void *p) {
+  (void)(p);
+}
+
 void TrieMapNode_Free(TrieMapNode *n, void (*freeCB)(void *)) {
   for (tm_len_t i = 0; i < n->numChildren; i++) {
     TrieMapNode *child = __trieMapNode_children(n)[i];

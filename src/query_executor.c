@@ -167,8 +167,6 @@ int ReturnClause_ContainsAggregation(AST_QueryExpressionNode *ast) {
 }
 
 void ReturnClause_ExpandCollapsedNodes(RedisModuleCtx *ctx, AST_QueryExpressionNode *ast, const char *graphName) {
-    /* Assumption, each collapsed node is tagged with a label */
-
      /* Create a new return clause */
     Vector *expandReturnElements = NewVector(AST_ReturnElementNode*, Vector_Size(ast->returnNode->returnElements));
 
@@ -207,28 +205,68 @@ void ReturnClause_ExpandCollapsedNodes(RedisModuleCtx *ctx, AST_QueryExpressionN
                 return;
             }
 
-            /* Find label's known properties. */
+            /* Find label's properties. */
             LabelStoreType store_type = (collapsed_entity->t == N_ENTITY) ? STORE_NODE : STORE_EDGE;
-            LabelStore *s = LabelStore_Get(ctx, store_type, graphName, collapsed_entity->label);
-            
-            TrieMapIterator *it = TrieMap_Iterate(s->stats.properties, "", 0);
-            char *prop = NULL;
-            tm_len_t prop_len = 0;
-            void *ptr = NULL;
+            void *ptr = NULL;       /* Label store property value, (not in use). */
+            char *prop = NULL;      /* Entity property. */
+            tm_len_t prop_len = 0;  /* Length of entity's property. */
 
-            while(TrieMapIterator_Next(it, &prop, &prop_len, &ptr)) {
-                prop[prop_len] = 0;
-                /* Create a new return element foreach property. */
-                AST_ArithmeticExpressionNode *expanded_exp =
-                    New_AST_AR_EXP_VariableOperandNode(collapsed_entity->alias, prop);
+            /* Collapsed entity has a label. */
+            if(collapsed_entity->label) {
+                LabelStore *store = LabelStore_Get(ctx, store_type, graphName, collapsed_entity->label);
+                TrieMapIterator *it = TrieMap_Iterate(store->stats.properties, "", 0);
+                while(TrieMapIterator_Next(it, &prop, &prop_len, &ptr)) {
+                    prop[prop_len] = 0;
+                    /* Create a new return element foreach property. */
+                    AST_ArithmeticExpressionNode *expanded_exp =
+                        New_AST_AR_EXP_VariableOperandNode(collapsed_entity->alias, prop);
 
-                AST_ReturnElementNode *retElem =
-                    New_AST_ReturnElementNode(expanded_exp, ret_elem->alias);
+                    AST_ReturnElementNode *retElem =
+                        New_AST_ReturnElementNode(expanded_exp, ret_elem->alias);
 
-                Vector_Push(expandReturnElements, retElem);
+                    Vector_Push(expandReturnElements, retElem);
+                }
+                TrieMapIterator_Free(it);
+            } else {
+                /* Entity does have a label.
+                 * We don't have a choice but to retrieve all know properties. */
+                size_t stores_len = 128;    /* Limit number of labels we'll consider. */
+                LabelStore *stores[128];    /* Label stores. */
+
+                LabelStore_Get_ALL(ctx, store_type, graphName, stores, &stores_len);
+                TrieMap *properties = NewTrieMap(); /* Holds all properties, discards duplicates. */
+
+                /* Get properties out of label store. */
+                for(int store_idx = 0; store_idx < stores_len; store_idx++) {
+                    LabelStore *s = stores[store_idx];
+                    if(!s->label) continue; /* No label, (this is 'ALL' store). */
+                    TrieMapIterator *it = TrieMap_Iterate(s->stats.properties, "", 0);
+
+                    /* Add property to properties triemap. */
+                    while(TrieMapIterator_Next(it, &prop, &prop_len, &ptr)) {
+                        prop[prop_len] = 0;
+                        TrieMap_Add(properties, prop, prop_len, prop, NULL);
+                    }
+                    /* TODO: Free iterator. */
+                    // TrieMapIterator_Free(it);
+                }
+
+                /* Add each property to return cluase. */
+                TrieMapIterator *it = TrieMap_Iterate(properties, "", 0);
+                while(TrieMapIterator_Next(it, &prop, &prop_len, &ptr)) {
+                    /* Create a new return element foreach property. */
+                    prop[prop_len] = 0;
+                    AST_ArithmeticExpressionNode *expanded_exp =
+                        New_AST_AR_EXP_VariableOperandNode(collapsed_entity->alias, prop);
+
+                    AST_ReturnElementNode *retElem =
+                        New_AST_ReturnElementNode(expanded_exp, ret_elem->alias);
+
+                    Vector_Push(expandReturnElements, retElem);
+                }
+                TrieMapIterator_Free(it);
+                TrieMap_Free(properties, TrieMap_NOP_CB);
             }
-            TrieMapIterator_Free(it);
-
             /* Discard collapsed return element. */
             Free_AST_ReturnElementNode(ret_elem);
         } else {

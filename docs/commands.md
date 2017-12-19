@@ -10,7 +10,7 @@ Arguments: `Graph name, Query`
 Returns: `String representation of a query execution plan`
 
 ```sh
-GRAPH.EXPLAIN us_government "MATCH (p:president)-[:born]->(h:state {name:Hawaii}) RETURN p"
+GRAPH.EXPLAIN us_government "MATCH (p:president)-[:born]->(h:state {name:'Hawaii'}) RETURN p"
 ```
 
 ## GRAPH.QUERY
@@ -22,7 +22,7 @@ Arguments: `Graph name, Query`
 Returns: `Result set`
 
 ```sh
-GRAPH.QUERY us_government "MATCH (p:president)-[:born]->(:state {name:Hawaii}) RETURN p"
+GRAPH.QUERY us_government "MATCH (p:president)-[:born]->(:state {name:'Hawaii'}) RETURN p"
 ```
 
 ### Query language
@@ -85,7 +85,7 @@ As such, we're interested in actor entities which have the relation "act" with *
 It is possible to describe broader relationships by composing a multi-hop query such as:
 
 ```sh
-(me {name:swilly})-[:friends_with]->()-[:friends_with]->(fof)
+(me {name:'swilly'})-[:friends_with]->()-[:friends_with]->(fof)
 ```
 
 Here we're interested in finding out who are my friends' friends.
@@ -93,7 +93,7 @@ Here we're interested in finding out who are my friends' friends.
 Nodes can have more than one edge coming in or out of them, for instance:
 
 ```sh
-(me {name:swilly})-[:visited]->(c:country)<-[:visited]-(friend)<-[:friends_with]-({name:swilly})
+(me {name:'swilly'})-[:visited]->(c:country)<-[:visited]-(friend)<-[:friends_with]-({name:'swilly'})
 ```
 
 Here we're interested in knowing which of my friends have visited at least one country i've been to.
@@ -228,7 +228,7 @@ CREATE (n),(m)
 Label and properties can be specified at creation time
 
 ```sh
-CREATE (:person {name: Kurt, age:27})
+CREATE (:person {name: 'Kurt', age:27})
 ```
 
 Adding relations between nodes, in the following example we first locate an existing source node,
@@ -237,7 +237,7 @@ once found we create a new relationship and destination node.
 ```sh
 MATCH(a:person)
 WHEREE a.name = 'Kurt'
-CREATE (a)-[member {position:"lead singer"}]->(:band {name:Nirvana})
+CREATE (a)-[member {position:"lead singer"}]->(:band {name:"Nirvana"})
 RETURN
 ```
 

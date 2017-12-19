@@ -79,6 +79,15 @@ RMUtilInfo *RMUtil_GetRedisInfo(RedisModuleCtx *ctx);
 RMUtilInfo *RMUtil_HGetAll(RedisModuleCtx *ctx, RedisModuleString *id);
 
 /**
+ * Performs SCAN against given pattern.
+ * `keys` will contain each key returned by SCAN.
+ * Each RedisModuleString within keys must be free by caller.
+ * `key_count` sets a limit on the maximum number of keys consumed by SCAN.
+ * `keys` must be at least of size key_count.
+*/
+void RMUtil_SCAN(RedisModuleCtx *ctx, const char *pattern, RedisModuleString **keys, size_t *key_count);
+
+/**
 * Free an RMUtilInfo object and its entries
 */
 void RMUtilRedisInfo_Free(RMUtilInfo *info);

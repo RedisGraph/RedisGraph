@@ -97,6 +97,38 @@ RMUtilInfo *RMUtil_HGetAll(RedisModuleCtx *ctx, RedisModuleString *id) {
     return hgetall;
 }
 
+void RMUtil_SCAN(RedisModuleCtx *ctx, const char *pattern, RedisModuleString **keys, size_t *key_count) {
+    int scan_idx = 0;               /* SCAN cursor. */
+    size_t total_keys = 0;          /* Number of keys retrieved. */
+    RedisModuleCallReply *reply;
+
+    /* Consume SCAN */
+    do {
+        reply = RedisModule_Call(ctx, "SCAN", "lcc", scan_idx, "MATCH", pattern);
+
+        /* First element is the scan cursor, 0 indicates end of SCAN. */
+        RedisModuleCallReply *element = RedisModule_CallReplyArrayElement(reply, 0);
+        scan_idx = RedisModule_CallReplyInteger(element);
+
+        /* Process SCAN results. */
+        RedisModuleCallReply *scan_results = RedisModule_CallReplyArrayElement(reply, 1);
+        /* Number of elements in replay. */
+        size_t keys_count = RedisModule_CallReplyLength(scan_results);
+
+        /* Extract SCAN result elements. */
+        for(int idx = 0; idx < keys_count && *key_count > total_keys; idx++) {
+            element = RedisModule_CallReplyArrayElement(scan_results, idx);
+            RedisModuleString *key = RedisModule_CreateStringFromCallReply(element);
+            keys[total_keys] = key;
+            total_keys++;
+        }
+        RedisModule_FreeCallReply(reply);
+    } while(scan_idx != 0);
+
+    /* Update number of stores fetched. */
+    *key_count = total_keys;
+}
+
 void RMUtilRedisInfo_Free(RMUtilInfo *info) {
     
     free(info->entries);

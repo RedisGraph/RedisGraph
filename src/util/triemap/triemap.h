@@ -77,6 +77,9 @@ void *TrieMap_Find(TrieMap *t, char *str, tm_len_t len);
  * node. If it doesn't, we simply call free() */
 int TrieMap_Delete(TrieMap *t, char *str, tm_len_t len, void (*freeCB)(void *));
 
+/* Fake free callback which does absolutly nothing. */
+void TrieMap_NOP_CB(void *p);
+
 /* Free the trie's root and all its children recursively. If freeCB is given, we
  * call it to free individual payload values. If not, free() is used instead. */
 void TrieMap_Free(TrieMap *t, void (*freeCB)(void *));

@@ -31,6 +31,9 @@ int LabelStore_Id(char **id, LabelStoreType type, const char *graph, const char 
 /* Get a label store. */
 LabelStore *LabelStore_Get(RedisModuleCtx *ctx, LabelStoreType type, const char *graph, const char* label);
 
+/* Get all stores of given type. */
+void LabelStore_Get_ALL(RedisModuleCtx *ctx, LabelStoreType type, const char *graph, LabelStore **stores, size_t *stores_len);
+
 /* Returns the number of items within the store */
 int LabelStore_Cardinality(LabelStore *store);
 
