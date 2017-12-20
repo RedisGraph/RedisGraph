@@ -95,7 +95,7 @@ clean:
 
 package: redisgraph.so
 	mkdir -p ../build
-	ramp-packer -m "`pwd`/../ramp_manifest.yml" -v -o "../build/redisgraph.{os}-{architecture}.latest.zip" "`pwd`/redisgraph.so"
+	ramp pack -m "`pwd`/../ramp_manifest.yml" -v -o "../build/redisgraph.{os}-{architecture}.latest.zip" "`pwd`/redisgraph.so"
 
 test: $(MODULE) redisgraph.so
 	# unit tests
