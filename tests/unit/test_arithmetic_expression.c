@@ -598,6 +598,17 @@ void test_trim() {
     assert(result.type == T_NULL);
 }
 
+void test_id() {
+    AR_ExpNode *root = AR_EXP_NewOpNode("id", 1);
+
+    Node *node = NewNode(12345, "person");
+    AR_ExpNode *person_with_id = AR_EXP_NewVariableOperandNode((GraphEntity **)(&node), NULL, "Joe");
+
+    root->op.children[0] = person_with_id;
+    SIValue result = AR_EXP_Evaluate(root);
+    assert(result.longval == node->id);
+}
+
 int main(int argc, char **argv) {
     AR_RegisterFuncs();
     Agg_RegisterFuncs();
@@ -625,6 +636,8 @@ int main(int argc, char **argv) {
     test_toupper();
     test_toString();
     test_trim();
+
+    test_id();
 
     printf("test_arithmetic_expression - PASS!\n");
     return 0;

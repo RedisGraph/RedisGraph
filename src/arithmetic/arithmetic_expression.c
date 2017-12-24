@@ -35,10 +35,14 @@ SIValue AR_EXP_Evaluate(const AR_ExpNode *root) {
         if(root->operand.type == AR_EXP_CONSTANT) {
             result = root->operand.constant;
         } else {
-            /* Fetch entity property value. */
-            SIValue *property = GraphEntity_Get_Property(*root->operand.variadic.entity, root->operand.variadic.entity_prop);
-            /* TODO: Handle PROPERTY_NOTFOUND. */
-            result = *property;
+            // Fetch entity property value.
+            if (root->operand.variadic.entity_prop != NULL) {
+                SIValue *property = GraphEntity_Get_Property(*root->operand.variadic.entity, root->operand.variadic.entity_prop);
+               /* TODO: Handle PROPERTY_NOTFOUND. */
+                result = *property;
+            } else {
+                result = SI_PtrVal(*root->operand.variadic.entity);
+            }
         }
     }
 
@@ -99,8 +103,8 @@ AR_ExpNode* AR_EXP_NewVariableOperandNode(GraphEntity **entity, const char *enti
     node->type = AR_EXP_OPERAND;
     node->operand.type = AR_EXP_VARIADIC;
     node->operand.variadic.entity = entity;
-    node->operand.variadic.entity_prop = strdup(entity_prop);
     node->operand.variadic.entity_alias = strdup(entity_alias);
+    node->operand.variadic.entity_prop = entity_prop != NULL ? strdup(entity_prop) : NULL;
     return node;
 }
 
@@ -208,10 +212,13 @@ void _AR_EXP_ToString(const AR_ExpNode *root, char **str, size_t *str_size, size
             size_t len = SIValue_ToString(root->operand.constant, (*str + *bytes_written), 64);
             *bytes_written += len;
         } else {
-            *bytes_written += sprintf((*str + *bytes_written),
-                                      "%s.%s",
-                                      root->operand.variadic.entity_alias,
-                                      root->operand.variadic.entity_prop);
+            if (root->operand.variadic.entity_prop != NULL) {
+                *bytes_written += sprintf(
+                    (*str + *bytes_written), "%s.%s",
+                    root->operand.variadic.entity_alias, root->operand.variadic.entity_prop);
+            } else {
+                *bytes_written += sprintf((*str + *bytes_written), "%s", root->operand.variadic.entity_alias);
+            }
         }
     }
 }
@@ -544,6 +551,13 @@ SIValue AR_TRIM(SIValue *argv, int argc) {
 
 // }
 
+SIValue AR_ID(SIValue *argv, int argc) {
+    assert(argc == 1);
+    assert(argv[0].type == T_PTR);
+    GraphEntity *graph_entity = (GraphEntity*)argv[0].ptrval;
+    return SI_LongVal(graph_entity->id);
+}
+
 void AR_RegFunc(char *func_name, size_t func_name_len, AR_Func func) {
     if (__aeRegisteredFuncs == NULL) {
         __aeRegisteredFuncs = NewTrieMap();
@@ -647,5 +661,9 @@ void AR_RegisterFuncs() {
 
     _toLower("trim", &lower_func_name[0], &lower_func_name_len);
     AR_RegFunc(lower_func_name, lower_func_name_len, AR_TRIM);
+    lower_func_name_len = 32;
+
+    _toLower("id", &lower_func_name[0], &lower_func_name_len);
+    AR_RegFunc(lower_func_name, lower_func_name_len, AR_ID);
     lower_func_name_len = 32;
 }

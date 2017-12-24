@@ -17,6 +17,7 @@ typedef enum {
   T_BOOL = 0x010,
   T_FLOAT = 0x020,
   T_DOUBLE = 0x040,
+  T_PTR = 0x080,
 
   // special types for +inf and -inf on all types:
   T_INF = 0x100,
@@ -42,6 +43,7 @@ typedef struct {
     double doubleval;
     int boolval;
     SIString stringval;
+    void* ptrval;
   };
   SIType type;
 } SIValue;
@@ -71,6 +73,7 @@ SIValue SI_FloatVal(float f);
 SIValue SI_DoubleVal(double d);
 SIValue SI_NullVal();
 SIValue SI_BoolVal(int b);
+SIValue SI_PtrVal(void* v);
 SIValue SI_Clone(SIValue v);
 
 int SIValue_IsNull(SIValue v);

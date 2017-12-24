@@ -23,7 +23,6 @@ SIValue SI_DoubleVal(double d) {
   return (SIValue){.doubleval = d, .type = T_DOUBLE};
 }
 
-
 inline SIString SI_WrapString(const char *s) {
   return (SIString){(char *)s, strlen(s)};
 }
@@ -35,7 +34,13 @@ SIValue SI_StringValC(char *s) {
   return (SIValue){.stringval = SI_WrapString(s), .type = T_STRING};
 }
 
-SIValue SI_BoolVal(int b) { return (SIValue){.boolval = b, .type = T_BOOL}; }
+SIValue SI_BoolVal(int b) { 
+  return (SIValue) {.boolval = b, .type = T_BOOL}; 
+}
+
+SIValue SI_PtrVal(void* v) { 
+  return (SIValue) {.ptrval = v, .type = T_PTR}; 
+}
 
 SIValue SI_Clone(SIValue v) {
   switch (v.type) {

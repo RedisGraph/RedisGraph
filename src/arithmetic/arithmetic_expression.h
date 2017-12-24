@@ -61,6 +61,8 @@ SIValue AR_TOUPPER(SIValue *argv, int argc);   /* returns the original string in
 SIValue AR_TRIM(SIValue *argv, int argc);      /* returns the original string with leading and trailing whitespace removed. */
 SIValue AR_CONCAT(SIValue *argv, int argc);    /* returns a string concatenation of given values. */
 
+SIValue AR_ID(SIValue *argv, int argc);        /* returns the id of a relationship or node. */
+
 void AR_RegisterFuncs();                       /* Registers all arithmetic functions. */
 AR_Func AR_GetFunc(char *func_name);           /* Get arithmetic function. */
 /* Registe an arithmetic function. */
