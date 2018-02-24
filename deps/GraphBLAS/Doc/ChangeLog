@@ -1,0 +1,121 @@
+Version 1.2.0: TODO (Beta 4)
+
+    * added GxB_kron, GxB_resize (GxB_Matrix_resize and GxB_Vector_resize)
+    * bug fix to mask:  GrB_anymethod (C, C, ... , r_desc) where r_desc.outp
+        is 'replace', and C is aliased to the Mask, was incorrect.
+
+Version 1.1.2: Dec 28, 2017
+
+    * build issues with cmake
+    * performance improvement of dot product method, C=A'*B and v=u'*A,
+        particularly when A, B and u have dense columns, or nearly dense
+        columns.
+
+Version 1.1.1: Dec 17, 2017
+
+    * bug fix to GrB_assign and GxB_subassign: result was incorrect when
+        output C was the same as the input A or Mask.
+    * performance improvement in C<M>=A*B and GrB_reduce to scalar
+    * split AxB built-in semirings into Source/Generated/* for
+        faster compilation
+    * added memory usage statistics
+
+Version 1.1.0: Dec 1, 2017
+
+    * add new feature: GxB_SelectOp operator and GxB_select operation
+    * to clarify which features of SuiteSparse:GraphBLAS are extensions to
+        the spec, the names of functions and objects not in the spec have
+        changed.  They are now GxB_* (GXB_ for macros).
+    * modified how the global matrix queue is accessed, for thread safety
+        in case the user application is multi-threaded
+
+Version 1.0.0: Nov 25, 2017
+
+    * transition to CMake
+    * tested on many compilers (gcc 4.9 to 7.2 on Linux, clang 8 and gcc 6.2.0
+        on the Mac, xlc 13.01 on IBM Power)
+    * changed printf formats in Demo/ to silence warnings from older compilers
+    * complex.h in gcc-6.2.0 on the Mac doesn't #define CMPLX; added to usercomplex.h
+    * mergesort removed, quicksort performance improved
+    * performance improvement for masked matrix-matrix multiply
+    * bug fix for masked matrix-matrix multiply. In 0.5.0 only the Mask
+        structure was used, not the values.  The spec requires the values of
+        the Mask.  This is a bug but into only affects masked matrix multiply
+        when the Mask has explicit zero entries.
+
+Version 0.5.0: Nov 13, 2017
+
+    * resolved icc -O3 segfault: Intel compiler bug fixed icc version 18.0
+    * added triangle-counting demo in C (Demo/tricount.c) and MATLAB
+        (Test/tricount.m).  See also Test/test69, Test/test70. and Test/test71.
+    * performance enhancements to GrB_eWiseMult, GrB_assign, GrB_subassign,
+        GrB_extract, and GrB_mxm, reducing time and memory.  mxm now exploits
+        the mask during computation, to save memory and often saving time.
+        This is essential for good performance for triangle counting.
+    * reduced Test/testall.m and Tcov/testcov.m testing time from 2 hours to
+        15 minutes, maintained 100% test coverage
+
+Version 0.4.0: Oct 24, 2017
+
+    * SPEC: SuiteSparse:GraphBLAS 0.4.0 fully conforms to 1.1.0 of the spec
+    * GrB_assign functions added; all now conform to the 1.1.0 spec 
+    * renamed all prior GrB_*_assign functions to GrB_*_subassign
+
+Version 0.3.0: Oct 14, 2017
+
+    * changes for spec 1.1.0
+    * performance improvement of GrB_mxm, GrB_mxv, transpose, GrB_reduce;
+        added workspace kept internally, reused for subsequent calls to
+        GraphBLAS
+    * performance improvement of bfs in Demo (v held as dense vector)
+    * performance improvement of GrB_assign when A is a scalar
+    * performance improvement of C<M>= ... mask operation
+    * GrB_Column_extract and GrB_Column_assign renamed GrB_Col_*
+        to match changes in the spec
+    * changed GrB_*_setElement and GrB_*_extractTuples to match the spec
+    * added GrB_INSUFFICIENT_SPACE error code for GrB_*_extractTuples
+    * added GrB_INVALID_HANDLE
+    * GrB_assign still does not match the spec (in progress).
+        It differs on how it treats entries outside C(I,J), and it differs
+        in the size and interpretation of the Mask.
+
+Version 0.2.0: Sept 5, 2017
+
+    * No significant change to the code; but preparing for wider release
+    * content of GrB_stddef.h moved into Include/GraphBLAS.h and file removed
+    * User Guide updated (SPEC discussion)
+    * GraphBLAS.h modified (SPEC discussions)
+    * Licensed under Apache 2.0; versions 0.1.x were limited releases
+    * removed wathen_mod.m (to see it do 'type private/wathen' in MATLAB)
+
+Version 0.1.2: Aug 30, 2017
+
+    * added (double) to fpclassify in CAST macro, to silence
+        spurious errors in gcc
+    * minor typos
+    * icc -O3 causes a segfault when compiling GB_AxB_builtin.c, so
+        Lib/GraphBLAS_config.mk now uses -O2 with icc.
+    * some versions of gcc have trouble finding libgraphblas.so.0
+        when compiling the Demo (if GraphBLAS is not installed with
+        'make install').  Instead of requiring a 'make install'
+        static linking is now used for the Demo programs.  This
+        has no effect on the GraphBLAS library itself.
+    * changes for GraphBLAS spec 1.0.2 (Aug 10, 2017 version):
+        * GrB_Vector_reduce_Monoid renamed to GrB_Matrix_reduce_Monoid
+        * GrB_Vector_reduce_BinaryOp renamed to GrB_Matrix_reduce_BinaryOp
+        * GrB_Row_extract was renamed in the spec to GrB_Col_extract, but 
+            this version keeps the name GrB_Column_extract since it parallels
+            the name GrB_Column_assign.
+
+Version 0.1.1: Aug 28, 2017
+
+    * minor changes to Makefiles and GraphBLAS_config.mk
+    * port to Linux with gcc 4.9.3, 5.40, and 6.3.0
+    * minor code changes to silence spurious gcc warnings;
+        (&Ax[i]) changed to (Ax +(i)).
+    * bug fix to GB_assign1.c (apply_pending_updates variable)
+
+Version 0.1.0: July 31, 2017
+
+    * first version released; only to GraphBLAS API Committee
+
