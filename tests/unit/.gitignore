@@ -1,0 +1,10 @@
+# Extension-less binaries
+*
+!/**/
+!*.*
+
+# Object files
+*.o
+*.ko
+*.obj
+*.elf

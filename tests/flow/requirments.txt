@@ -1,0 +1,3 @@
+redis==2.10.5
+redisgraph
+rmtest

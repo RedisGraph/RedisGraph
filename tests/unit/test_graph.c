@@ -33,7 +33,7 @@ void _test_node_creation(Graph *g, size_t node_count) {
     NodeIterator *it;
 
     // Create nodes.
-    it = Graph_CreateNodes(g, node_count, NULL);
+    Graph_CreateNodes(g, node_count, NULL, &it);
 
     // Validate nodes creation.
     OK(GrB_Matrix_nrows(&nrows, g->adjacency_matrix));
@@ -113,7 +113,7 @@ void _test_graph_resize(Graph *g) {
     size_t prev_node_count = g->node_count;
     size_t node_count = g->node_cap * 2;
 
-    Graph_CreateNodes(g, node_count, NULL);
+    Graph_CreateNodes(g, node_count, NULL, NULL);
 
     // Validate nodes creation.
     assert(g->node_count == prev_node_count + node_count);
@@ -171,65 +171,181 @@ void test_graph_construction() {
     Graph_Free(g);
 }
 
-// Test graph creation time.
-void benchmark_graph_creation() {
-    double tic [2], t;
-    GrB_Matrix m;
+void benchmark_node_creation_with_labels() {
+    printf("benchmark_node_creation_with_labels\n");
+    double tic [2];
+    int samples = 64;
+    int label_count = 3;
+    double timings[samples];
+    int outliers = 0;
+    float threshold = 0.0018;
+    // size_t n = GRAPH_DEFAULT_NODE_CAP;
+    size_t n = 1000000;
+    Graph *g = Graph_New(n);    
     
-    // Create a graph with 1 milion entities;    
-    simple_tic(tic);
-    GrB_Matrix_new(&m, GrB_BOOL, 8, 8);
-    t = simple_toc (tic) ;
-    printf("Matrix creation, time: %.6f sec\n", t);
-    
-    simple_tic(tic);
-    GxB_Matrix_resize(m, 1000000, 1000000);
-    t = simple_toc (tic) ;
-    printf("Matrix resize, time: %.6f sec\n", t);
-    GrB_Matrix_free(&m);
-    
-    Graph *g = Graph_New(GRAPH_DEFAULT_NODE_CAP*2);
-
-    size_t n = GRAPH_DEFAULT_NODE_CAP;
-    
-    simple_tic(tic);
-    Graph_CreateNodes(g, n, NULL);
-    t = simple_toc (tic) ;
-    printf("%zu Nodes created, time: %.6f sec\n", n, t);
-    assert(t < 0.000006);
-    
-
     // Introduce labels and relations to graph.
-    for(int i = 0; i < 3; i++) {
-        Graph_AddRelationMatrix(g);
-        Graph_AddLabelVector(g);
+    for(int i = 0; i < label_count; i++) {
+        Graph_AddRelationMatrix(g); // Typed relation.
+        Graph_AddLabelVector(g);    // Typed node.
+    }
+    
+    int labels[n];
+
+    // Create N nodes with labels.
+    for(int i = 0; i < samples; i++) {        
+        // Associate nodes to labels.
+        for(int j = 0; j < n; j++) {
+            labels[j] = (rand() % label_count)-1;
+        }
+
+        simple_tic(tic);
+        Graph_CreateNodes(g, n, labels, NULL);
+        timings[i] = simple_toc(tic);
+        printf("%zu Nodes created, time: %.6f sec\n", n, timings[i]);
+        if(timings[i] > threshold) outliers++;
     }
 
-    // Form connections
-    // Average of 4 edges foreach node.
-    n = g->node_count * 4;    
-    int connections[n*3];
-    for(int i = 0; i < n*3; i+=3) {
-        connections[i] = rand() % g->node_count;
-        connections[i+1] = rand() % g->node_count;
-        connections[i+2] = rand() % 3;  // We've introduced 3 types of relations.
+    if(outliers > samples * 0.1) {
+        printf("Node creation took too long\n");
+        for(int i = 0; i < samples; i++) {
+            printf("%zu Nodes created, time: %.6f sec\n", n, timings[i]);
+        }
+        // assert(false);
     }
-
-    simple_tic(tic);
-    Graph_ConnectNodes(g, n*3, connections);
-    t = simple_toc (tic) ;
-    printf("Form %zu connections, time: %.6f sec\n", n, t);
-    assert(t < 0.01);
-
-    // Add additional nodes such that graph will resize.
-    n = GRAPH_DEFAULT_NODE_CAP*2;
-
-    simple_tic(tic);
-    Graph_CreateNodes(g, n, NULL);
-    t = simple_toc (tic) ;
-    printf("Graph resize, time: %.6f sec\n", t);
 
     Graph_Free(g);
+}
+
+// Test graph creation time.
+void benchmark_node_creation_no_labels() {
+    printf("benchmark_node_creation_no_labels\n");
+    double tic [2], t;
+    int samples = 64;
+    double timings[samples];
+    int outliers = 0;
+    float threshold = 0.000006;
+    // size_t n = GRAPH_DEFAULT_NODE_CAP;
+    size_t n = 1000000;
+    Graph *g = Graph_New(n);
+
+    for(int i = 0; i < samples; i++) {
+        // Create N nodes, don't use labels.
+        simple_tic(tic);
+        Graph_CreateNodes(g, n, NULL, NULL);
+        timings[i] = simple_toc(tic);
+        printf("%zu Nodes created, time: %.6f sec\n", n, timings[i]);
+        if(timings[i] > threshold) outliers++;
+    }
+
+    if(outliers > samples * 0.1) {
+        printf("Node creation took too long\n");
+        for(int i = 0; i < samples; i++) {
+            printf("%zu Nodes created, time: %.6f sec\n", n, timings[i]);
+        }
+        // assert(false);
+    }
+    
+    Graph_Free(g);
+}
+
+void benchmark_edge_creation_no_relationships() {
+    printf("benchmark_edge_creation_no_relationships\n");
+    double tic [2], t;
+    int samples = 64;
+    double timings[samples];
+    int outliers = 0;
+    float threshold = 0.001;
+    // int edge_count = GRAPH_DEFAULT_NODE_CAP * 1.10;
+    // int node_count = GRAPH_DEFAULT_NODE_CAP;
+    int edge_count = 1000000 * 1.10;
+    int node_count = 1000000;
+    int connections[edge_count*3];
+
+    Graph *g = Graph_New(GRAPH_DEFAULT_NODE_CAP);
+    Graph_CreateNodes(g, node_count, NULL, NULL);
+
+    for(int i = 0; i < samples; i++) {
+        // Describe connections;
+        // Node I is connected to Node I+1.
+        for(int i = 0; i < edge_count*3; i+=3) {
+            connections[i] = rand()%node_count;     // Source node id.
+            connections[i+1] = rand()%node_count;   // Destination node id.
+            connections[i+2] = GRAPH_NO_RELATION;   // Relation.
+        }
+
+        simple_tic(tic);
+        Graph_ConnectNodes(g, edge_count*3, connections);
+        timings[i] = simple_toc(tic);
+        printf("%d Formed connections, time: %.6f sec\n", edge_count, timings[i]);
+        if(timings[i] > threshold) outliers++;
+    }
+    
+    if(outliers > samples * 0.1) {
+        printf("Node creation took too long\n");
+        for(int i = 0; i < samples; i++) {
+            printf("%d Formed connections, time: %.6f sec\n", edge_count, timings[i]);
+        }
+        // assert(false);
+    }
+
+    Graph_Free(g);
+}
+
+void benchmark_edge_creation_with_relationships() {
+    printf("benchmark_edge_creation_with_relationships\n");
+    double tic [2], t;
+    int samples = 64;
+    double timings[samples];
+    int outliers = 0;
+    float threshold = 0.002;
+    int edge_count = 1000000 * 1.10;
+    int node_count = 1000000;
+    int relation_count = 3;
+    int connections[edge_count*3];
+    
+    Graph *g = Graph_New(GRAPH_DEFAULT_NODE_CAP);
+
+    // Introduce relations types.
+    for(int i = 0; i < relation_count; i++) {
+        Graph_AddRelationMatrix(g);
+    }
+
+    Graph_CreateNodes(g, node_count, NULL, NULL);
+
+    for(int i = 0; i < samples; i++) {
+        // Describe connections;
+        // Node I is connected to Node I+1,
+        // Connection type is relationships[I%4].
+        for(int i = 0; i < edge_count*3; i+=3) {
+            connections[i] = rand()%node_count;     // Source node id.
+            connections[i+1] = rand()%node_count;   // Destination node id.
+            connections[i+2] = (i%(relation_count+1))-1; // Relation, (-1 for GRAPH_NO_RELATION).
+        }
+
+        simple_tic(tic);
+        Graph_ConnectNodes(g, edge_count*3, connections);
+        timings[i] = simple_toc(tic);
+        printf("%d Formed connections, time: %.6f sec\n", edge_count, timings[i]);
+        if(timings[i] > threshold) outliers++;
+    }
+    
+    if(outliers > samples * 0.1) {
+        printf("Node creation took too long\n");
+        for(int i = 0; i < samples; i++) {
+            printf("%d Formed connections, time: %.6f sec\n", edge_count, timings[i]);
+        }
+        // assert(false);
+    }
+
+    Graph_Free(g);
+}
+
+void benchmark_graph() {
+    benchmark_node_creation_no_labels();
+    benchmark_node_creation_with_labels();
+    benchmark_edge_creation_with_relationships();
+    benchmark_edge_creation_no_relationships();
+    printf("%sgraph benchmark - PASS!%s\n", KGRN, KNRM);
 }
 
 int main(int argc, char **argv) {
@@ -240,7 +356,7 @@ int main(int argc, char **argv) {
 
     test_new_graph();
     test_graph_construction();
-    benchmark_graph_creation();
+    benchmark_graph();
 
     GrB_finalize();
 

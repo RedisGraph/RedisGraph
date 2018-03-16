@@ -24,7 +24,7 @@ typedef struct {
     size_t relation_count;          // Number of relation matrices.
     GrB_Vector *labels;             // Label vectors.
     size_t label_cap;               // Number of labels graph can hold.
-    size_t label_count;             // Nunber of label vectors.
+    size_t label_count;             // Number of label vectors.
 } Graph;
 
 // Create a new graph.
@@ -34,17 +34,18 @@ Graph *Graph_New (
 
 // Creates N new nodes.
 // Returns node iterator.
-NodeIterator *Graph_CreateNodes (
+void Graph_CreateNodes (
     Graph* g,               // Graph for which nodes will be added.
     size_t n,               // Number of nodes to create.
-    int* labels             // Lables Node i with label i.
+    int* labels,            // Lables Node i with label i.
+    NodeIterator **it       // [Optional] iterator over new nodes.
 );
 
 // Connects src[i] to dest[i] with edge of type relation[i].
 void Graph_ConnectNodes (
         Graph *g,                   // Graph in which connections are formed. 
         size_t n,                   // Number of src,dest pairs.
-        int *connections            // Triplets (src_id, dest_id, relation).
+        long long *connections      // Triplets (src_id, dest_id, relation).
 );
 
 // Retrieves node with given node_id from graph,
@@ -52,6 +53,16 @@ void Graph_ConnectNodes (
 Node *Graph_GetNode (
     const Graph *g,
     int node_id
+);
+
+// Label all nodes between start_node_id and end_node_id
+// with given label.
+void Graph_LabelNodes (
+    Graph *g,
+    int start_node_id,
+    int end_node_id,
+    int label,
+    NodeIterator **it
 );
 
 // Retrieves a node iterator which can be used to access
