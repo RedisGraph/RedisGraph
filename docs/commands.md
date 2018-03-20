@@ -236,7 +236,7 @@ once found we create a new relationship and destination node.
 
 ```sh
 MATCH(a:person)
-WHEREE a.name = 'Kurt'
+WHERE a.name = 'Kurt'
 CREATE (a)-[member {position:"lead singer"}]->(:band {name:"Nirvana"})
 RETURN
 ```
