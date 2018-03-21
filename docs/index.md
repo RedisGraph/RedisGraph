@@ -88,7 +88,7 @@ This code snippet shows how to use Redis Graph with raw Redis commands from Pyth
 import redis
 
 r = redis.StrictRedis()
-reply = r.execute_command('GRAPH.QUERY', 'social', "CREATE (:person {name:'roi', age:32, gender:'male', status:'married')")
+reply = r.execute_command('GRAPH.QUERY', 'social', "CREATE (:person {name:'roi', age:32, gender:'male', status:'married'})")
 ```
 
 ### Client libraries
