@@ -49,7 +49,7 @@ Construct our graph in one go:
 graph.QUERY IMDB 'CREATE (aldis:actor {name: "Aldis Hodge", birth_year: 1986}),
                          (oshea:actor {name: "OShea Jackson", birth_year: 1991}),
                          (corey:actor {name: "Corey Hawkins", birth_year: 1988}),
-                         (neil:actor {name: "Neil Brown", birthyear: 1980}),
+                         (neil:actor {name: "Neil Brown", birth_year: 1980}),
                          (compton:movie {title: "Straight Outta Compton", genre: "Biography", votes: 127258, rating: 7.9, year: 2015}),
                          (neveregoback:movie {title: "Never Go Back", genre: "Action", votes: 15821, rating: 6.4, year: 2016}),
                          (aldis)-[act]->(neveregoback),
