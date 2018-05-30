@@ -3,21 +3,39 @@
 
 #include "../graph/query_graph.h"
 #include "../graph/graph.h"
+#include "../parser/ast.h"
 
-typedef struct
-{
+// Matrix, vector operations.
+typedef enum {
+    AL_EXP_ADD,
+    AL_EXP_MUL,
+    AL_EXP_AND,
+} AL_EXP_OP;
 
-} AlgebraicExpressio;
+// Result of an algebraic expression evaluation.
+typedef struct {
+    GrB_Matrix m;       // Resulting matrix.
+    Node **src_node;    // Nodes represented by matrix rows.
+    Node **dest_node;   // Nodes represented by matrix columns.
+    bool _free_m;       // Should M be freed or not.
+} AlgebraicExpressionResult;
 
-/* Construct an algebraic expression from a query graph. */
-AlgebraicExpressio* AlgebraicExpressio_From_QueryGraph(const QueryGraph *g);
+// Algebraic expression e.g. A*B*C
+typedef struct {
+    AL_EXP_OP op;           // Operation to perform.
+    size_t operand_count;   // Number of operands to operate on.
+    GrB_Matrix *operands;   // Array of operands to operate on.
+    Node **_src_node;       // Nodes represented by the first operand rows.
+    Node **_dest_node;      // Nodes represented by the last operand columns.
+} AlgebraicExpression;
 
-/* Get a string representation of algebraic expression. */
-char* AlgebraicExpression_To_String(const AlgebraicExpressio* ae);
+/* Construct an algebraic expression from a query. */
+AlgebraicExpression **AlgebraicExpression_From_Query(const AST_Query *ast, const QueryGraph *q, size_t *exp_count);
 
 /* Executes given expression. */
-void AlgebraicExpressio_Execute(AlgebraicExpressio *ae, const Graph *g);
+AlgebraicExpressionResult *AlgebraicExpression_Execute(AlgebraicExpression *ae);
 
-void AlgebraicExpressio_Free(AlgebraicExpressio* ae);
+void AlgebraicExpression_Free(AlgebraicExpression* ae);
+void AlgebraicExpressionResult_Free(AlgebraicExpressionResult *aer);
 
 #endif

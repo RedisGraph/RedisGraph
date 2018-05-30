@@ -25,6 +25,8 @@ typedef enum {
 
 } SIType;
 
+#define SI_NUMERIC (T_INT32 | T_INT64 | T_UINT | T_FLOAT | T_DOUBLE)
+
 // binary safe strings
 typedef struct {
   char *str;
@@ -85,7 +87,7 @@ int SIValue_IsInf(SIValue *v);
 int SIValue_IsNegativeInf(SIValue *v);
 
 /*
- * Convesion functions used to make sure a comparison value in a query is of
+ * Conversion functions used to make sure a comparison value in a query is of
  * the right type
  */
 int SI_LongVal_Cast(SIValue *v, SIType type);
@@ -103,7 +105,14 @@ int SIValue_ToDouble(SIValue *v, double *d);
 /* Try to parse a value by string. */
 void SIValue_FromString(SIValue *v, char *s, size_t s_len);
 
+/* Determins number of bytes required to concat strings. */
+size_t SIValue_StringConcatLen(SIValue* strings, unsigned int string_count);
+
 /* Concats strings as a comma seperated string. */
-size_t SIValue_StringConcat(SIValue* strings, unsigned int string_count, char** concat);
+size_t SIValue_StringConcat(SIValue* strings, unsigned int string_count, char* buf, size_t buf_len);
+
+/* Compares two SIValues, expecting a and b to be of the same type,
+ * return value is similar to strcmp. */
+int SIValue_Compare(SIValue a, SIValue b);
 
 #endif

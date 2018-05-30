@@ -4,8 +4,9 @@
 #include "op.h"
 #include "../../graph/node.h"
 #include "../../graph/edge.h"
+#include "../../parser/ast.h"
 #include "../../resultset/resultset.h"
-/* Creats new entities according to the CREATE clause. */
+/* Creates new entities according to the CREATE clause. */
 
 typedef struct {
     Edge *original_edge;
@@ -22,8 +23,10 @@ typedef struct {
 typedef struct {
     OpBase op;
     RedisModuleCtx *ctx;
+    AST_Query *ast;
     int request_refresh;
-    QueryGraph *graph;
+    Graph *g;
+    QueryGraph *qg;
     const char *graph_name;
 
     NodeCreateCtx *nodes_to_create;
@@ -37,8 +40,8 @@ typedef struct {
     ResultSet *result_set;
 } OpCreate;
 
-OpBase* NewCreateOp(RedisModuleCtx *ctx, QueryGraph *graph, const char *graph_name, int request_refresh, ResultSet *result_set);
-OpCreate* NewCreate(RedisModuleCtx *ctx, QueryGraph *graph, const char *graph_name, int request_refresh, ResultSet *result_set);
+OpBase* NewCreateOp(RedisModuleCtx *ctx, AST_Query *ast, Graph *g, QueryGraph *qg, const char *graph_name, int request_refresh, ResultSet *result_set);
+OpCreate* NewCreate(RedisModuleCtx *ctx, AST_Query *ast, Graph *g, QueryGraph *qg, const char *graph_name, int request_refresh, ResultSet *result_set);
 
 OpResult OpCreateConsume(OpBase *opBase, QueryGraph* graph);
 OpResult OpCreateReset(OpBase *ctx);

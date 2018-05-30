@@ -12,9 +12,8 @@
 
 typedef struct {
     OpBase op;
-    RedisModuleCtx *ctx;
     int refreshAfterPass;
-    AST_QueryExpressionNode *ast;
+    AST_Query *ast;
     Vector *return_elements; /* Vector of arithmetic expressions. */
     ResultSet *result_set;
     int init;
@@ -22,9 +21,8 @@ typedef struct {
 
 
 /* Creates a new NodeByLabelScan operation */
-// void NewProduceResultsOp(RedisModuleCtx *ctx, AST_QueryExpressionNode *ast, ResultSet *resultset, OpBase **op);
-OpBase* NewProduceResultsOp(RedisModuleCtx *ctx, AST_QueryExpressionNode *ast, ResultSet *result_set);
-ProduceResults* NewProduceResults(RedisModuleCtx *ctx, AST_QueryExpressionNode *ast, ResultSet *resultset);
+OpBase* NewProduceResultsOp(AST_Query *ast, ResultSet *result_set);
+ProduceResults* NewProduceResults(AST_Query *ast, ResultSet *resultset);
 
 /* ProduceResults next operation
  * called each time a new result record is required */

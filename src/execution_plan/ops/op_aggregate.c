@@ -5,11 +5,11 @@
 #include "../../grouping/group_cache.h"
 #include "../../query_executor.h"
 
-OpBase* NewAggregateOp(RedisModuleCtx *ctx, AST_QueryExpressionNode *ast) {
+OpBase* NewAggregateOp(RedisModuleCtx *ctx, AST_Query *ast) {
     return (OpBase*)NewAggregate(ctx, ast);
 }
 
-Aggregate* NewAggregate(RedisModuleCtx *ctx, AST_QueryExpressionNode *ast) {
+Aggregate* NewAggregate(RedisModuleCtx *ctx, AST_Query *ast) {
     Aggregate *aggregate = malloc(sizeof(Aggregate));
     aggregate->ctx = ctx;
     aggregate->ast = ast;
@@ -30,7 +30,7 @@ Aggregate* NewAggregate(RedisModuleCtx *ctx, AST_QueryExpressionNode *ast) {
 
 /* Construct an aggregated expression tree foreach aggregated term. 
  * Returns a vector of aggregated expression trees. */
-Vector* _build_aggregated_expressions(AST_QueryExpressionNode *ast, QueryGraph* g) {
+Vector* _build_aggregated_expressions(AST_Query *ast, QueryGraph* g) {
     Vector *aggregated_expressions = NewVector(AR_ExpNode*, 1);
 
     for(int i = 0; i < Vector_Size(ast->returnNode->returnElements); i++) {
@@ -49,15 +49,19 @@ Vector* _build_aggregated_expressions(AST_QueryExpressionNode *ast, QueryGraph* 
 /* Construct group key based on none aggregated terms. 
  * Returns group name which must be freed by caller. */
 char* _computeGroupKey(Aggregate *op, SIValue *group_keys) {
-    char *group;
+    char *str_group;
 
     for(int i = 0; i < op->none_aggregated_expression_count; i++) {
         AR_ExpNode *exp = op->none_aggregated_expressions[i];
         group_keys[i] = AR_EXP_Evaluate(exp);
     }
 
-    SIValue_StringConcat(group_keys, op->none_aggregated_expression_count, &group);
-    return group;
+    // Determin required size for group string representation.
+    size_t str_group_len = SIValue_StringConcatLen(group_keys,op->none_aggregated_expression_count);
+    str_group = malloc(sizeof(char) * str_group_len);
+
+    SIValue_StringConcat(group_keys, op->none_aggregated_expression_count, str_group, str_group_len);
+    return str_group;
 }
 
 void _aggregateRecord(Aggregate *op, QueryGraph *g) {

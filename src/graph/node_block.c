@@ -2,7 +2,8 @@
 #include "assert.h"
 
 NodeBlock *NodeBlock_New() {
-    NodeBlock *block = calloc(1, sizeof(NodeBlock) - sizeof(Node*) + NODEBLOCK_CAP * sizeof(Node));
+    // NodeBlock *block = calloc(1, sizeof(NodeBlock) - sizeof(Node*) + NODEBLOCK_CAP * sizeof(Node));
+    NodeBlock *block = malloc(sizeof(NodeBlock) - sizeof(Node*) + NODEBLOCK_CAP * sizeof(Node));
     block->cap = NODEBLOCK_CAP;
     block->size = 0;
     block->next = NULL;

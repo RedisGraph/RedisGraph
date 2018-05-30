@@ -13,6 +13,7 @@
 	#include "token.h"	
 	#include "grammar.h"
 	#include "ast.h"
+	#include "./clauses/clauses.h"
 	#include "parse.h"
 	#include "../value.h"
 
@@ -30,32 +31,32 @@
 
 %extra_argument { parseCtx *ctx }
 
-%type expr {AST_QueryExpressionNode*}
+%type expr {AST_Query*}
 
 query ::= expr(A). { ctx->root = A; }
 
 expr(A) ::= matchClause(B) whereClause(C) createClause(D) returnClause(E) orderClause(F) limitClause(G). {
-	A = New_AST_QueryExpressionNode(B, C, D, NULL, NULL, E, F, G);
+	A = New_AST_Query(B, C, D, NULL, NULL, E, F, G);
 }
 
 expr(A) ::= matchClause(B) whereClause(C) createClause(D). {
-	A = New_AST_QueryExpressionNode(B, C, D, NULL, NULL, NULL, NULL, NULL);
+	A = New_AST_Query(B, C, D, NULL, NULL, NULL, NULL, NULL);
 }
 
 expr(A) ::= matchClause(B) whereClause(C) deleteClause(D). {
-	A = New_AST_QueryExpressionNode(B, C, NULL, NULL, D, NULL, NULL, NULL);
+	A = New_AST_Query(B, C, NULL, NULL, D, NULL, NULL, NULL);
 }
 
 expr(A) ::= matchClause(B) whereClause(C) setClause(D). {
-	A = New_AST_QueryExpressionNode(B, C, NULL, D, NULL, NULL, NULL, NULL);
+	A = New_AST_Query(B, C, NULL, D, NULL, NULL, NULL, NULL);
 }
 
 expr(A) ::= matchClause(B) whereClause(C) setClause(D) returnClause(E) orderClause(F) limitClause(G). {
-	A = New_AST_QueryExpressionNode(B, C, NULL, D, NULL, E, F, G);
+	A = New_AST_Query(B, C, NULL, D, NULL, E, F, G);
 }
 
 expr(A) ::= createClause(B). {
-	A = New_AST_QueryExpressionNode(NULL, NULL, B, NULL, NULL, NULL, NULL, NULL);
+	A = New_AST_Query(NULL, NULL, B, NULL, NULL, NULL, NULL, NULL);
 }
 
 %type matchClause { AST_MatchNode* }
@@ -452,7 +453,7 @@ value(A) ::= FALSE. { A = SI_BoolVal(0); }
   	extern char *yytext;
 	extern int yycolumn;
 
-	AST_QueryExpressionNode *Query_Parse(const char *q, size_t len, char **err) {
+	AST_Query *Query_Parse(const char *q, size_t len, char **err) {
 		yycolumn = 1;	// Reset lexer's token tracking position
 		yy_scan_bytes(q, len);
   		void* pParser = ParseAlloc(malloc);

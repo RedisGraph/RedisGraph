@@ -76,15 +76,16 @@ RedisModuleString** _Bulk_Insert_Parse_Labels(RedisModuleCtx *ctx, RedisModuleSt
             }
             return NULL;
         }
-        
-        // Assuming this is a new label store
-        // TODO: Remove this assumption.
+
         // TODO: Have label store hold on to attributes array.
         LabelStore *store = LabelStore_Get(ctx, STORE_NODE, graph_name, labels[label_idx].label);
-        LabelStore_UpdateSchema(store, labels[label_idx].attribute_count, labels[label_idx].attributes);
-
-        int label_id = Graph_AddLabelVector(g);
-        labels[label_idx].label_id = label_id;
+        if(store == NULL) {
+            int label_id = Graph_AddLabelMatrix(g);
+            store = LabelStore_New(ctx, STORE_NODE, graph_name, labels[label_idx].label, label_id);
+        }
+        
+        labels[label_idx].label_id = store->id;
+        LabelStore_UpdateSchema(store, labels[label_idx].attribute_count, labels[label_idx].attributes);        
     }
 
     return argv;
@@ -103,7 +104,7 @@ RedisModuleString** _Bulk_Insert_Read_Labeled_Node_Attributes(RedisModuleCtx *ct
 
     for(int i = 0; i < attribute_count; i++) {
         size_t attribute_len;
-        char *attribute_val = (char*)RedisModule_StringPtrLen(*argv++, &attribute_len);
+        char *attribute_val = strdup((char*)RedisModule_StringPtrLen(*argv++, &attribute_len));
         SIValue_FromString(&values[i], attribute_val, attribute_len);
     }
 
@@ -229,7 +230,8 @@ RedisModuleString** _Bulk_Insert_Insert_Nodes(RedisModuleCtx *ctx, RedisModuleSt
 }
 
 RedisModuleString** _Bulk_Insert_Insert_Edges(RedisModuleCtx *ctx, RedisModuleString **argv,
-                                              int *argc, Graph *g, size_t *edges) {
+                                              int *argc, Graph *g, const char *graph_name,
+                                              size_t *edges) {
     typedef struct {
         long long edge_count;   // Total number of edges.
         const char *label;      // Label given to edges.
@@ -260,7 +262,7 @@ RedisModuleString** _Bulk_Insert_Insert_Edges(RedisModuleCtx *ctx, RedisModuleSt
     }
 
     long long total_labeled_edges = 0;
-    long long connections[relations_count*3];       // Triplet (src,dest,relation)
+    GrB_Index connections[relations_count*3];       // Triplet (src,dest,relation)
     LabelRelation labelRelations[label_count + 1];  // Extra one for unlabeled relations.
 
     if(label_count > 0) {
@@ -277,7 +279,16 @@ RedisModuleString** _Bulk_Insert_Insert_Edges(RedisModuleCtx *ctx, RedisModuleSt
                 return NULL;
             }
             total_labeled_edges += labelRelations[i].edge_count;
-            labelRelations[i].label_id = Graph_AddRelationMatrix(g);
+            LabelStore *s = LabelStore_Get(ctx, STORE_EDGE, graph_name, labelRelations[i].label);
+            if(s != NULL) {
+                labelRelations[i].label_id = s->id;
+            } else {
+                labelRelations[i].label_id = Graph_AddRelationMatrix(g);
+                LabelStore *s = LabelStore_New(ctx, STORE_EDGE, graph_name,
+                                               labelRelations[i].label,
+                                               labelRelations[i].label_id);
+                // TODO: once we'll support edge attribute, need to update store schema.
+            }
         }
     }
 
@@ -297,11 +308,11 @@ RedisModuleString** _Bulk_Insert_Insert_Edges(RedisModuleCtx *ctx, RedisModuleSt
         LabelRelation labelRelation = labelRelations[i];
 
         for(int j = 0; j < labelRelation.edge_count; j++) {
-            if(RedisModule_StringToLongLong(*argv++, &connections[connection_idx++]) != REDISMODULE_OK) {
+            if(RedisModule_StringToLongLong(*argv++, (long long*)&connections[connection_idx++]) != REDISMODULE_OK) {
                 _Bulk_Insert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, failed to read relation source node id.");
                 return NULL;
             }
-            if(RedisModule_StringToLongLong(*argv++, &connections[connection_idx++]) != REDISMODULE_OK) {
+            if(RedisModule_StringToLongLong(*argv++, (long long*)&connections[connection_idx++]) != REDISMODULE_OK) {
                 _Bulk_Insert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, failed to read relation destination node id.");
                 return NULL;
             }
@@ -333,7 +344,7 @@ void Bulk_Insert(RedisModuleCtx *ctx, RedisModuleString **argv, int argc, Graph 
      }
 
      if(strcmp(section, "RELATIONS") == 0) {
-        argv = _Bulk_Insert_Insert_Edges(ctx, argv, &argc, g, edges);
+        argv = _Bulk_Insert_Insert_Edges(ctx, argv, &argc, g, graph_name, edges);
     }
 
     if(argc != 0) {

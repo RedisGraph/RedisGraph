@@ -5,7 +5,7 @@
 #include "edge.h"
 #include "graph_entity.h"
 
-Edge* NewEdge(long int id, Node *src, Node *dest, const char *relationship) {
+Edge* Edge_New(long int id, Node *src, Node *dest, const char *relationship) {
 	assert(src && dest);
 
 	Edge* edge = (Edge*)calloc(1, sizeof(Edge));

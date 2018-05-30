@@ -5,6 +5,7 @@
 #include "../graph/edge.h"
 #include "../rmutil/vector.h"
 #include "../query_executor.h"
+#include "../arithmetic/algebraic_expression.h"
 
 /* Forward declarations */
 OpResult PullFromStreams(OpNode *source, QueryGraph *graph);
@@ -109,123 +110,115 @@ void _OpNode_PushInBetween(OpNode *parent, OpNode *onlyChild) {
  * with an expand_into operation 
  * plan - execution plan to be modified
  * n - node with two incoming edges. */
-void _ExecutionPlan_MergeNodes(ExecutionPlan *plan, const Node *n) {
-    if(Node_IncomeDegree(n) != 2) {
-        return;
-    }
+// void _ExecutionPlan_MergeNodes(ExecutionPlan *plan, const Node *n) {
+//     if(Node_IncomeDegree(n) != 2) {
+//         return;
+//     }
 
-    /* Locate both expand operations involving 
-     * n as the dest node. */
+//     /* Locate both expand operations involving 
+//      * n as the dest node. */
     
-    OpNode *a = NULL;
-    OpNode *b = NULL;
+//     OpNode *a = NULL;
+//     OpNode *b = NULL;
 
-    OpNode *current = NULL;
-    Vector *nodesToVisit = NewVector(OpNode*, 3);
-    Vector_Push(nodesToVisit, plan->root);
-    /* Due to the structure of our execution plan
-     * there's not need to maintain a visited nodes 
-     * as in classic BFS/DFS. */
-    while(Vector_Size (nodesToVisit) > 0) {
-        Vector_Pop(nodesToVisit, &current);
-        if(current->operation->type == OPType_EXPAND_ALL) {
-            ExpandAll *op = (ExpandAll*)current->operation;
-            // if(Node_Compare(*(op->dest_node), n)) {
-                if(*op->dest_node == n) {
-                if(a == NULL) {
-                    a = current;
-                    continue;
-                } else {
-                    b = current;
-                    break;
-                }
-            }
-        }
+//     OpNode *current = NULL;
+//     Vector *nodesToVisit = NewVector(OpNode*, 3);
+//     Vector_Push(nodesToVisit, plan->root);
+//     /* Due to the structure of our execution plan
+//      * there's not need to maintain a visited nodes 
+//      * as in classic BFS/DFS. */
+//     while(Vector_Size (nodesToVisit) > 0) {
+//         Vector_Pop(nodesToVisit, &current);
+//         if(current->operation->type == OPType_EXPAND_ALL) {
+//             ExpandAll *op = (ExpandAll*)current->operation;
+//             // if(Node_Compare(*(op->dest_node), n)) {
+//                 if(*op->dest_node == n) {
+//                 if(a == NULL) {
+//                     a = current;
+//                     continue;
+//                 } else {
+//                     b = current;
+//                     break;
+//                 }
+//             }
+//         }
 
-        for(int i = 0; i < current->childCount; i++) {
-            Vector_Push(nodesToVisit, current->children[i]);
-        }
-    }
-    Vector_Free(nodesToVisit);
+//         for(int i = 0; i < current->childCount; i++) {
+//             Vector_Push(nodesToVisit, current->children[i]);
+//         }
+//     }
+//     Vector_Free(nodesToVisit);
     
-    if(a == NULL || b == NULL) {
-        return;
-    }
+//     if(a == NULL || b == NULL) {
+//         return;
+//     }
 
-    /* now that both operations involving node n
-     * are found we can replace one of them with
-     * an expand into operation */
-    ExpandAll *op = (ExpandAll*)a->operation;
-    OpBase *opExpandInto;
-    NewExpandIntoOp(op->ctx, plan->graph, plan->graph_name, op->src_node,
-                    op->relation, op->dest_node, &opExpandInto);
+//     /* now that both operations involving node n
+//      * are found we can replace one of them with
+//      * an expand into operation */
+//     ExpandAll *op = (ExpandAll*)a->operation;
+//     OpBase *opExpandInto;
+//     NewExpandIntoOp(op->ctx, plan->graph, plan->graph_name, op->src_node,
+//                     op->relation, op->dest_node, &opExpandInto);
 
-    // free previous operation.
-    a->operation->free(a->operation);
-    a->operation = opExpandInto;
-    OpNode *expandInto = a;
+//     // free previous operation.
+//     a->operation->free(a->operation);
+//     a->operation = opExpandInto;
+//     OpNode *expandInto = a;
 
-    // link b operation with expand into
-    _OpNode_AddChild(expandInto, b);
+//     // link b operation with expand into
+//     _OpNode_AddChild(expandInto, b);
 
-    // expand into should inherit b's parents
-    for(int i = 0; i < b->parentCount; i++) {
-        OpNode *bParent = b->parents[i];
+//     // expand into should inherit b's parents
+//     for(int i = 0; i < b->parentCount; i++) {
+//         OpNode *bParent = b->parents[i];
         
-        if(bParent == expandInto) {
-            continue;
-        }
+//         if(bParent == expandInto) {
+//             continue;
+//         }
 
-        if(!_OpNode_ContainsChild(bParent, expandInto)) {
-            _OpNode_AddChild(bParent, expandInto);
-        }
+//         if(!_OpNode_ContainsChild(bParent, expandInto)) {
+//             _OpNode_AddChild(bParent, expandInto);
+//         }
 
-        _OpNode_RemoveChild(bParent, b);
-    }
-}
-
-/* Returns the number of expected IDs given node will generate */
-int _ExecutionPlan_EstimateNodeCardinality(RedisModuleCtx *ctx, const char *graph, const Node *n) {
-    LabelStore *s = LabelStore_Get(ctx, STORE_NODE, graph, n->label);
-    return s->items->cardinality;
-}
+//         _OpNode_RemoveChild(bParent, b);
+//     }
+// }
 
 /* Locates expand all operations which do not have a child operation,
  * And adds a scan operation as a new child. */
-void _ExecutionPlan_OptimizeEntryPoints(RedisModuleCtx *ctx, QueryGraph *g, const char *graph_name,
-                                        AST_QueryExpressionNode *ast, OpNode *root) {
-    /* We've reached a leaf. */
-    if(root->childCount == 0 && root->operation->type == OPType_EXPAND_ALL) {
-        Node **src = ((ExpandAll*)(root->operation))->src_node;
-        Node **dest = ((ExpandAll*)(root->operation))->dest_node;
-        Node **entry_point = src;
+// void _ExecutionPlan_OptimizeEntryPoints(RedisModuleCtx *ctx, QueryGraph *g, const char *graph_name,
+//                                         AST_Query *ast, OpNode *root) {
+//     /* We've reached a leaf. */
+//     if(root->childCount == 0 && root->operation->type == OPType_EXPAND_ALL) {
+//         Node **src = ((ExpandAll*)(root->operation))->src_node;
+//         Node **dest = ((ExpandAll*)(root->operation))->dest_node;
+//         Node **entry_point = src;
 
-        // Determin which node should be scaned, based on node cardinality
-        // int src_cardinality = _ExecutionPlan_EstimateNodeCardinality(ctx, graph_name, *src);
-        // int dest_cardinality = _ExecutionPlan_EstimateNodeCardinality(ctx, graph_name, *dest);
+//         // TODO: Determin which node should be scanned, based on node cardinality
         
-        // if(dest_cardinality < src_cardinality) {
-        //     entry_point = dest;
-        // }
+//         // if(dest_cardinality < src_cardinality) {
+//         //     entry_point = dest;
+//         // }
         
-        OpBase *scan_op = NULL;
-        if((*entry_point)->label) {
-            /* TODO: when indexing is enabled, use index when possible. */
-            scan_op = NewNodeByLabelScanOp(ctx, g, entry_point, graph_name, (*entry_point)->label);
-        } else {
-            /* Node is not labeled, no other option but a full scan. */
-            scan_op = NewAllNodeScanOp(ctx, g, entry_point, graph_name);
-        }        
+//         OpBase *scan_op = NULL;
+//         if((*entry_point)->label) {
+//             /* TODO: when indexing is enabled, use index when possible. */
+//             scan_op = NewNodeByLabelScanOp(ctx, g, entry_point, graph_name, (*entry_point)->label);
+//         } else {
+//             /* Node is not labeled, no other option but a full scan. */
+//             scan_op = NewAllNodeScanOp(ctx, g, entry_point, graph_name);
+//         }        
         
-        _OpNode_AddChild(root, NewOpNode(scan_op));
+//         _OpNode_AddChild(root, NewOpNode(scan_op));
 
-    } else {
-        /* Continue scanning. */
-        for(int i = 0; i < root->childCount; i++) {
-            _ExecutionPlan_OptimizeEntryPoints(ctx, g, graph_name, ast, root->children[i]);
-        }
-    }
-}
+//     } else {
+//         /* Continue scanning. */
+//         for(int i = 0; i < root->childCount; i++) {
+//             _ExecutionPlan_OptimizeEntryPoints(ctx, g, graph_name, ast, root->children[i]);
+//         }
+//     }
+// }
 
 Vector* _ExecutionPlan_AddFilters(OpNode *root, FT_FilterNode **filterTree) {
     /* We've reached the end of our execution plan. */
@@ -298,7 +291,7 @@ void _Count_Graph_Entities(const Vector *entities, size_t *node_count, size_t *e
     }
 }
 
-void _Determine_Graph_Size(const AST_QueryExpressionNode *ast, size_t *node_count, size_t *edge_count) {
+void _Determine_Graph_Size(const AST_Query *ast, size_t *node_count, size_t *edge_count) {
     *edge_count = 0;
     *node_count = 0;
     Vector *entities;
@@ -314,155 +307,218 @@ void _Determine_Graph_Size(const AST_QueryExpressionNode *ast, size_t *node_coun
     }
 }
 
-ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, const char *graph_name, AST_QueryExpressionNode *ast) {
+ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g, const char *graph_name, AST_Query *ast) {
+    ExecutionPlan *execution_plan = (ExecutionPlan*)calloc(1, sizeof(ExecutionPlan));
+    execution_plan->root = NewOpNode(NULL);    
+    execution_plan->graph_name = graph_name;
+    execution_plan->result_set = NewResultSet(ast);
+    Vector *ops = NewVector(OpNode*, 1);
+    OpNode *op;
+
     /* Predetermin graph size: (entities in both MATCH and CREATE clauses)
      * have graph object maintain an entity capacity, to avoid reallocs,
-     * problem was reallocs done by CREATE clause, which invalidated old refrences in ExpandAll. */
-
+     * problem was reallocs done by CREATE clause, which invalidated old references in ExpandAll. */
     size_t node_count;
     size_t edge_count;
     _Determine_Graph_Size(ast, &node_count, &edge_count);
-    QueryGraph *graph = NewQueryGraph_WithCapacity(node_count, edge_count);    
+    QueryGraph *q = NewQueryGraph_WithCapacity(node_count, edge_count);
+    execution_plan->graph = q;
 
-    if(ast->matchNode) BuildGraph(graph, ast->matchNode->graphEntities);
+    if(ast->matchNode) {
+        BuildQueryGraph(ctx, g, graph_name, q, ast->matchNode->graphEntities);
 
-    // _QueryGraph_To_Algebraic_Expression(graph);
-    return NULL;
-
-    ExecutionPlan *execution_plan = (ExecutionPlan*)calloc(1, sizeof(ExecutionPlan));
-    
-    /* List of operations. */    
-    FT_FilterNode *filterTree = NULL;
-
-    Vector *Ops = NewVector(OpNode*, 0);
-
-    execution_plan->root = NewOpNode(NULL);
-    execution_plan->graph = graph;
-    execution_plan->graph_name = graph_name;
-    execution_plan->result_set = NewResultSet(ast);
-
-    Vector_Push(Ops, execution_plan->root);
-
-    /* Get all nodes without incoming edges */
-    Vector *entryNodes = QueryGraph_GetNDegreeNodes(graph, 0);
-
-    for(int i = 0; i < Vector_Size(entryNodes); i++) {
-        Node *node;
-        Vector_Get(entryNodes, i, &node);
-        
-        /* Advance if possible. */
-        if(Vector_Size(node->outgoing_edges) > 0) {
-            Vector *reversedExpandOps = NewVector(OpNode*, 0);
-
-            /* Traverse sub-graph expanded from current node. */
-            Node *srcNode = node;
-            Node *destNode;
-            Edge *edge;
-
-            while(Vector_Size(srcNode->outgoing_edges) > 0) {
-                Vector_Get(srcNode->outgoing_edges, 0, &edge);
-                destNode = edge->dest;
-                
-                OpNode *opNodeExpandAll = NewOpNode(NewExpandAllOp(ctx, graph, graph_name,
-                                                                   QueryGraph_GetNodeRef(graph, srcNode),
-                                                                   QueryGraph_GetEdgeRef(graph, edge),
-                                                                   QueryGraph_GetNodeRef(graph, destNode)));
-                Vector_Push(reversedExpandOps, opNodeExpandAll);
-                
-                /* Advance. */
-                srcNode = destNode;
-            }
-
-            /* Save expand ops in reverse order. */
-            while(Vector_Size(reversedExpandOps) > 0) {
-                OpNode *opNodeExpandAll;
-                Vector_Pop(reversedExpandOps, &opNodeExpandAll);
-                Vector_Push(Ops, opNodeExpandAll);
+        /* Do we required to perform traversal? */
+        if(q->edge_count == 0) {
+            /* Node scan. */
+            Node *n = q->nodes[0];
+            if(n->label) {
+                op = NewOpNode(NewNodeByLabelScanOp(ctx, q, g, graph_name, q->nodes, n->label));
+                Vector_Push(ops, op);
+            } else {
+                op = NewOpNode(NewAllNodeScanOp(q, g, q->nodes));
+                Vector_Push(ops, op);
             }
         } else {
-            /* Node doesn't have any incoming nor outgoing edges, 
-             * this is an hanging node "()", create a scan operation. */
-            OpNode *scan_op;
-            if(node->label) {
-                /* TODO: when indexing is enabled, use index when possible. */
-                scan_op = NewOpNode(NewNodeByLabelScanOp(ctx, graph, QueryGraph_GetNodeRef(graph, node),
-                                    graph_name, node->label));
-            } else {
-                /* Node is not labeled, no other option but a full scan. */
-                scan_op = NewOpNode(NewAllNodeScanOp(ctx, graph, QueryGraph_GetNodeRef(graph, node),
-                                    graph_name));
+            size_t exp_count = 0;
+            AlgebraicExpression **algebraic_expressions = AlgebraicExpression_From_Query(ast, q, &exp_count);
+            op = NewOpNode(NewTraverseOp(g, algebraic_expressions[exp_count-1]));
+            Vector_Push(ops, op);
+            for(int i = exp_count-2; i >= 0; i--) {
+                // OpNode *child_op = NewOpNode(NewCondTraverseOp(g, algebraic_expressions[i]));
+                // _OpNode_AddChild(child_op, op);
+                // op = child_op;
+                op = NewOpNode(NewCondTraverseOp(g, algebraic_expressions[i]));
+                Vector_Push(ops, op);
             }
-            Vector_Push(Ops, scan_op);
         }
-
-        /* Consume Ops in reversed order. */
-        if(Vector_Size(Ops) > 1) {
-            OpNode* currentOp;
-            OpNode* prevOp;
-            Vector_Pop(Ops, &prevOp);
-            
-            /* Connect operations in reversed order */
-            do {
-                Vector_Pop(Ops, &currentOp);
-                _OpNode_AddChild(currentOp, prevOp);
-                prevOp = currentOp;
-            } while(Vector_Size(Ops) != 0);
-
-            /* Reintroduce root. */
-            Vector_Push(Ops, execution_plan->root);
-        }
-    } /* End of entry nodes loop */
-
-    Vector_Free(Ops);
+    }
 
     /* Set root operation */
-    if(ast->deleteNode) {
-        execution_plan->root->operation = NewDeleteOp(ctx, ast->deleteNode, graph,
-                                                      graph_name, execution_plan->result_set);
-    } else if(ast->setNode) {
-        execution_plan->root->operation = NewUpdateOp(ast->setNode,
-                                                      graph, execution_plan->result_set);
-    } else {
-        if(ast->returnNode) {
-            if(execution_plan->result_set->aggregated) {
-                execution_plan->root->operation = NewAggregateOp(ctx, ast);
-            } else {
-                execution_plan->root->operation = NewProduceResultsOp(ctx, ast,
-                                                                      execution_plan->result_set);
-            }
-        }
-        if(ast->createNode) {
-            BuildGraph(graph, ast->createNode->graphEntities);
-            int request_refresh = (execution_plan->root->childCount > 0);
-            OpBase *op_create = NewCreateOp(ctx, graph, graph_name, request_refresh,
-                                            execution_plan->result_set);
+    if(ast->createNode) {
+        BuildQueryGraph(ctx, g, graph_name, q, ast->createNode->graphEntities);
 
-            if(execution_plan->root->operation == NULL) {
-                /* Set root operation to create. */
-                execution_plan->root->operation = op_create;
-            } else {
-                /* Push create operation between root and its children. */
-                _OpNode_PushInBetween(execution_plan->root, NewOpNode(op_create));
-            }
-        }
+        int request_refresh = (ast->matchNode != NULL);
+        OpNode *op_create = NewOpNode(NewCreateOp(ctx, ast, g, q, graph_name, request_refresh,
+                                        execution_plan->result_set));
+
+        Vector_Push(ops, op_create);        
     }
 
-    /* Optimizations and modifications. */
-    _ExecutionPlan_OptimizeEntryPoints(ctx, graph, graph_name, ast, execution_plan->root);
-    
-    Vector *nodesToMerge = QueryGraph_GetNDegreeNodes(graph, 2);
-    for(int i = 0; i < Vector_Size(nodesToMerge); i++) {
-        Node *nodeToMerge;
-        Vector_Get(nodesToMerge, i, & nodeToMerge);
-        _ExecutionPlan_MergeNodes(execution_plan, nodeToMerge);
+    if(ast->returnNode) {
+        if(execution_plan->result_set->aggregated) {
+           op = NewOpNode(NewAggregateOp(ctx, ast));
+        } else {
+            op = NewOpNode(NewProduceResultsOp(ast, execution_plan->result_set));
+        }
+        Vector_Push(ops, op);
     }
 
-    if(ast->whereNode != NULL) {
-        execution_plan->filter_tree = BuildFiltersTree(ast->whereNode->filters);
-        _ExecutionPlan_AddFilters(execution_plan->root, &execution_plan->filter_tree);
+    OpNode *parent_op;
+    OpNode *child_op;
+    Vector_Pop(ops, &parent_op);
+    execution_plan->root = parent_op;
+
+    while(Vector_Pop(ops, &child_op)) {
+        _OpNode_AddChild(parent_op, child_op);
+        parent_op = child_op;
     }
 
     return execution_plan;
+
+    // ExecutionPlan *execution_plan = (ExecutionPlan*)calloc(1, sizeof(ExecutionPlan));
+    
+    // /* List of operations. */    
+    // FT_FilterNode *filterTree = NULL;
+
+    // Vector *Ops = NewVector(OpNode*, 0);
+
+    // execution_plan->root = NewOpNode(NULL);
+    // execution_plan->graph = graph;
+    // execution_plan->graph_name = graph_name;
+    // execution_plan->result_set = NewResultSet(ast);
+
+    // Vector_Push(Ops, execution_plan->root);
+
+    // /* Get all nodes without incoming edges */
+    // Vector *entryNodes = QueryGraph_GetNDegreeNodes(graph, 0);
+
+    // for(int i = 0; i < Vector_Size(entryNodes); i++) {
+    //     Node *node;
+    //     Vector_Get(entryNodes, i, &node);
+        
+    //     /* Advance if possible. */
+    //     if(Vector_Size(node->outgoing_edges) > 0) {
+    //         Vector *reversedExpandOps = NewVector(OpNode*, 0);
+
+    //         /* Traverse sub-graph expanded from current node. */
+    //         Node *srcNode = node;
+    //         Node *destNode;
+    //         Edge *edge;
+
+    //         while(Vector_Size(srcNode->outgoing_edges) > 0) {
+    //             Vector_Get(srcNode->outgoing_edges, 0, &edge);
+    //             destNode = edge->dest;
+                
+    //             OpNode *opNodeExpandAll = NewOpNode(NewExpandAllOp(ctx, graph, graph_name,
+    //                                                                QueryGraph_GetNodeRef(graph, srcNode),
+    //                                                                QueryGraph_GetEdgeRef(graph, edge),
+    //                                                                QueryGraph_GetNodeRef(graph, destNode)));
+    //             Vector_Push(reversedExpandOps, opNodeExpandAll);
+                
+    //             /* Advance. */
+    //             srcNode = destNode;
+    //         }
+
+    //         /* Save expand ops in reverse order. */
+    //         while(Vector_Size(reversedExpandOps) > 0) {
+    //             OpNode *opNodeExpandAll;
+    //             Vector_Pop(reversedExpandOps, &opNodeExpandAll);
+    //             Vector_Push(Ops, opNodeExpandAll);
+    //         }
+    //     } else {
+    //         /* Node doesn't have any incoming nor outgoing edges, 
+    //          * this is an hanging node "()", create a scan operation. */
+    //         OpNode *scan_op;
+    //         if(node->label) {
+    //             /* TODO: when indexing is enabled, use index when possible. */
+    //             scan_op = NewOpNode(NewNodeByLabelScanOp(ctx, graph, QueryGraph_GetNodeRef(graph, node),
+    //                                 graph_name, node->label));
+    //         } else {
+    //             /* Node is not labeled, no other option but a full scan. */
+    //             scan_op = NewOpNode(NewAllNodeScanOp(ctx, graph, QueryGraph_GetNodeRef(graph, node),
+    //                                 graph_name));
+    //         }
+    //         Vector_Push(Ops, scan_op);
+    //     }
+
+    //     /* Consume Ops in reversed order. */
+    //     if(Vector_Size(Ops) > 1) {
+    //         OpNode* currentOp;
+    //         OpNode* prevOp;
+    //         Vector_Pop(Ops, &prevOp);
+            
+    //         /* Connect operations in reversed order */
+    //         do {
+    //             Vector_Pop(Ops, &currentOp);
+    //             _OpNode_AddChild(currentOp, prevOp);
+    //             prevOp = currentOp;
+    //         } while(Vector_Size(Ops) != 0);
+
+    //         /* Reintroduce root. */
+    //         Vector_Push(Ops, execution_plan->root);
+    //     }
+    // } /* End of entry nodes loop */
+
+    // Vector_Free(Ops);
+
+    // /* Set root operation */
+    // if(ast->deleteNode) {
+    //     execution_plan->root->operation = NewDeleteOp(ctx, ast->deleteNode, graph,
+    //                                                   graph_name, execution_plan->result_set);
+    // } else if(ast->setNode) {
+    //     execution_plan->root->operation = NewUpdateOp(ast->setNode,
+    //                                                   graph, execution_plan->result_set);
+    // } else {
+    //     if(ast->returnNode) {
+    //         if(execution_plan->result_set->aggregated) {
+    //             execution_plan->root->operation = NewAggregateOp(ctx, ast);
+    //         } else {
+    //             execution_plan->root->operation = NewProduceResultsOp(ctx, ast,
+    //                                                                   execution_plan->result_set);
+    //         }
+    //     }
+    //     if(ast->createNode) {
+    //         BuildGraph(graph, ast->createNode->graphEntities);
+    //         int request_refresh = (execution_plan->root->childCount > 0);
+    //         OpBase *op_create = NewCreateOp(ctx, graph, graph_name, request_refresh,
+    //                                         execution_plan->result_set);
+
+    //         if(execution_plan->root->operation == NULL) {
+    //             /* Set root operation to create. */
+    //             execution_plan->root->operation = op_create;
+    //         } else {
+    //             /* Push create operation between root and its children. */
+    //             _OpNode_PushInBetween(execution_plan->root, NewOpNode(op_create));
+    //         }
+    //     }
+    // }
+
+    // /* Optimizations and modifications. */
+    // _ExecutionPlan_OptimizeEntryPoints(ctx, graph, graph_name, ast, execution_plan->root);
+    
+    // Vector *nodesToMerge = QueryGraph_GetNDegreeNodes(graph, 2);
+    // for(int i = 0; i < Vector_Size(nodesToMerge); i++) {
+    //     Node *nodeToMerge;
+    //     Vector_Get(nodesToMerge, i, & nodeToMerge);
+    //     _ExecutionPlan_MergeNodes(execution_plan, nodeToMerge);
+    // }
+
+    // if(ast->whereNode != NULL) {
+    //     execution_plan->filter_tree = BuildFiltersTree(ast->whereNode->filters);
+    //     _ExecutionPlan_AddFilters(execution_plan->root, &execution_plan->filter_tree);
+    // }
+
+    // return execution_plan;
 }
 
 void _ExecutionPlanPrint(const OpNode *op, char **strPlan, int ident) {

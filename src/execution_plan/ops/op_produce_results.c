@@ -3,14 +3,12 @@
 #include "../../arithmetic/arithmetic_expression.h"
 #include "../../query_executor.h"
 
-OpBase* NewProduceResultsOp(RedisModuleCtx *ctx, AST_QueryExpressionNode *ast, ResultSet *result_set) {
-    // *op = (OpBase *)NewProduceResults(ctx, ast, result_set);
-    return (OpBase*)NewProduceResults(ctx, ast, result_set);
+OpBase* NewProduceResultsOp(AST_Query *ast, ResultSet *result_set) {
+    return (OpBase*)NewProduceResults(ast, result_set);
 }
 
-ProduceResults* NewProduceResults(RedisModuleCtx *ctx, AST_QueryExpressionNode *ast, ResultSet *result_set) {
+ProduceResults* NewProduceResults(AST_Query *ast, ResultSet *result_set) {
     ProduceResults *produceResults = malloc(sizeof(ProduceResults));
-    produceResults->ctx = ctx;
     produceResults->ast = ast;
     produceResults->result_set = result_set;
     produceResults->refreshAfterPass = 0;
@@ -27,7 +25,7 @@ ProduceResults* NewProduceResults(RedisModuleCtx *ctx, AST_QueryExpressionNode *
     return produceResults;
 }
 
-/* Construct arithmetic expressions from return cluase. */
+/* Construct arithmetic expressions from return clause. */
 void _BuildArithmeticExpressions(ProduceResults* op, AST_ReturnNode *return_node, QueryGraph *graph) {
     op->return_elements = NewVector(AR_ExpNode*, Vector_Size(return_node->returnElements));
 
@@ -50,7 +48,7 @@ Record *_ProduceResultsetRecord(ProduceResults* op) {
     return r;
 }
 
-/* ProduceResults next operation
+/* ProduceResults consume operation
  * called each time a new result record is required */
 OpResult ProduceResultsConsume(OpBase *opBase, QueryGraph* graph) {
     ProduceResults *op = (ProduceResults*)opBase;

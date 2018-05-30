@@ -10,10 +10,10 @@ void GraphEntity_Add_Properties(GraphEntity *e, int prop_count, char **keys, SIV
 	} else {
 		e->properties = realloc(e->properties, sizeof(EntityProperty) * (e->prop_count + prop_count));
 	}
-
+	
 	for(int i = 0; i < prop_count; i++) {
-		e->properties[e->prop_count + i].name = keys[i];
-		e->properties[e->prop_count + i].value = values[i];
+		e->properties[e->prop_count + i].name = strdup(keys[i]);
+		e->properties[e->prop_count + i].value = SI_Clone(values[i]);
 	}
 
 	e->prop_count += prop_count;
@@ -29,7 +29,7 @@ SIValue* GraphEntity_Get_Property(const GraphEntity *e, const char* key) {
 }
 
 void FreeGraphEntity(GraphEntity *e) {
-	if(e->properties == NULL) {
+	if(e->properties != NULL) {
 		for(int i = 0; i < e->prop_count; i++) {
 			free(e->properties[i].name);
 		}		

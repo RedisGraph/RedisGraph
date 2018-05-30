@@ -6,6 +6,7 @@
 #include "node_block.h"
 #include "node_iterator.h"
 #include "GraphBLAS.h"
+#include "../redismodule.h"
 #include "../util/triemap/triemap.h"
 
 #define GRAPH_DEFAULT_NODE_CAP 16384    // Default number of nodes a graph can hold before resizing.
@@ -22,7 +23,7 @@ typedef struct {
     GrB_Matrix *relations;          // Relation matrices.
     size_t relation_cap;            // Number of relations graph can hold.
     size_t relation_count;          // Number of relation matrices.
-    GrB_Vector *labels;             // Label vectors.
+    GrB_Matrix *labels;             // Label matrices.
     size_t label_cap;               // Number of labels graph can hold.
     size_t label_count;             // Number of label vectors.
 } Graph;
@@ -30,6 +31,13 @@ typedef struct {
 // Create a new graph.
 Graph *Graph_New (
     size_t n    // Initial number of nodes in the graph.
+);
+
+// Retrieves a graph from redis keyspace,
+// incase graph_name was not found NULL is returned.
+Graph *Graph_Get(
+    RedisModuleCtx *ctx,
+    RedisModuleString *graph_name
 );
 
 // Creates N new nodes.
@@ -44,8 +52,8 @@ void Graph_CreateNodes (
 // Connects src[i] to dest[i] with edge of type relation[i].
 void Graph_ConnectNodes (
         Graph *g,                   // Graph in which connections are formed. 
-        size_t n,                   // Number of src,dest pairs.
-        long long *connections      // Triplets (src_id, dest_id, relation).
+        size_t n,                   // Number of elements in connections array.
+        GrB_Index *connections      // Triplets (src_id, dest_id, relation).
 );
 
 // Retrieves node with given node_id from graph,
@@ -71,21 +79,19 @@ NodeIterator *Graph_ScanNodes (
     const Graph *g
 );
 
-// Retrieves a label vector, incase the vector does not exists
-// it is created. Vector is resized if its size doesn't match the 
-// number of nodes in the graph.
-GrB_Vector Graph_GetLabelVector (
-    Graph *g,           // Graph from which to get adjacency matrix.
-    int label           // Label described by vector.
+// Retrieves a label matrix, incase the matrix does not exists it is created.
+// Matrix is resized to match the adjacency matrix dimenstions.
+GrB_Matrix Graph_GetLabelMatrix (
+    const Graph *g,     // Graph from which to get adjacency matrix.
+    int label           // Label described by matrix.
 );
 
-// Creates a new label vector, returns id given to label.
-int Graph_AddLabelVector (
+// Creates a new label matrix, returns id given to label.
+int Graph_AddLabelMatrix (
     Graph *g
 );
 
-// Retrieves a typed adjacency matrix, incase the matrix does not exists
-// it is created.
+// Retrieves a typed adjacency matrix.
 // Matrix is resized if its size doesn't match graph's main adjacency matrix.
 GrB_Matrix Graph_GetRelationMatrix (
     const Graph *g,     // Graph from which to get adjacency matrix.

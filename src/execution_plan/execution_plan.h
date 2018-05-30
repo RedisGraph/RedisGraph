@@ -3,6 +3,7 @@
 
 #include "./ops/op.h"
 #include "../parser/ast.h"
+#include "../graph/graph.h"
 #include "../resultset/resultset.h"
 #include "../filter_tree/filter_tree.h"
 
@@ -41,7 +42,10 @@ typedef struct {
 } ExecutionPlan;
 
 /* Creates a new execution plan from AST */
-ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, const char *graph, AST_QueryExpressionNode *ast);
+ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx,
+                                Graph *g,
+                                const char *graph_name,
+                                AST_Query *ast);
 
 /* Prints execution plan */
 char* ExecutionPlanPrint(const ExecutionPlan *plan);

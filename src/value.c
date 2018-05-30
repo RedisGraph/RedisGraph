@@ -45,7 +45,7 @@ SIValue SI_PtrVal(void* v) {
 SIValue SI_Clone(SIValue v) {
   switch (v.type) {
   case T_STRING:
-    return SI_StringVal(v.stringval);
+    return SI_StringValC(strdup(v.stringval.str));
   case T_INT32:
     return SI_IntVal(v.intval);
   case T_INT64:
@@ -202,7 +202,6 @@ int SIValue_ToString(SIValue v, char *buf, size_t len) {
 
   switch (v.type) {
   case T_STRING:
-    // bytes_written = snprintf(buf, len, "\"%.*s\"", (int)v.stringval.len, v.stringval.str);
     bytes_written = snprintf(buf, len, "%.*s", (int)v.stringval.len, v.stringval.str);
     break;
   case T_INT32:
@@ -396,31 +395,44 @@ void SIValue_FromString(SIValue *v, char *s, size_t s_len) {
   SI_ParseValue(v, s, s_len);
 }
 
-size_t SIValue_StringConcat(SIValue* strings, unsigned int string_count, char** concat) {
+size_t SIValue_StringConcatLen(SIValue* strings, unsigned int string_count) {
   int i;
   size_t length = 0;
-  size_t offset = 0;
+
   /* Compute length. */
   for(i = 0; i < string_count; i++) {
-    /* Element string representation bytes size, strings are 
-    * srounded by double quotes,
-    * for all other SIValue types 32 bytes should be enough. */
-    size_t len = (strings[i].type == T_STRING) ? strings[i].stringval.len + 2 : 32;
+    /* String elements representing bytes size strings,
+     * for all other SIValue types 32 bytes should be enough. */
+    size_t len = (strings[i].type == T_STRING) ? strings[i].stringval.len + 1 : 32;
     length += len;
   }
 
-  /* Account for delimiters and NULL terminating byte. */
+  /* Account for NULL terminating byte. */
   length += string_count + 1;
-  *concat = calloc(length, sizeof(char));
+  return length;
+}
 
-  for(i = 0; i < string_count; i++) {
-    offset += SIValue_ToString(strings[i], (*concat) + offset, length - offset);
-    (*concat)[offset++] = ',';
+size_t SIValue_StringConcat(SIValue* strings, unsigned int string_count, char* buf, size_t buf_len) {
+  size_t offset = 0;
+
+  /* Account for delimiters and NULL terminating byte. */
+  for(int i = 0; i < string_count; i++) {
+    offset += SIValue_ToString(strings[i], buf + offset, buf_len - offset);
+    buf[offset++] = ',';
   }
   /* Backtrack once. */
   offset--;
 
   /* Discard last delimiter. */
-  (*concat)[offset] = 0;
+  buf[offset] = 0;
   return offset;
+}
+
+int SIValue_Compare(SIValue a, SIValue b) {
+  // TODO: Use SI_NUMERIC.
+  if(a.type == T_DOUBLE) {
+    return a.doubleval - b.doubleval;
+  } else {
+    return strcasecmp(a.stringval.str, b.stringval.str);
+  }
 }

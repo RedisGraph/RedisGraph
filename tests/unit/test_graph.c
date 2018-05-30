@@ -1,7 +1,7 @@
-#include "./simple_timer.h"
 #include "../../src/graph/graph.h"
 #include "../../src/graph/GraphBLAS.h"
 #include "../../src/graph/node_iterator.h"
+#include "../../src/util/simple_timer.h"
 
 #include <time.h>
 #include <stdio.h>
@@ -58,7 +58,7 @@ void _test_edge_creation(Graph *g, size_t node_count) {
     // Form connections.
     GrB_Info info;
     size_t edge_count = (node_count-1);
-    int connections[edge_count*3];
+    GrB_Index connections[edge_count*3];
 
     // Introduce relations types.
     for(int i = 0; i < 3; i++) {
@@ -131,6 +131,17 @@ void _test_graph_resize(Graph *g) {
     while((n = NodeIterator_Next(it)) != NULL) { new_node_count++; }
     assert(new_node_count == prev_node_count + node_count);
     NodeIterator_Free(it);
+
+    // Relation matrices get resize lazily,
+    // Try to fetch one of the specific relation matrices and verify its dimenstions.
+    assert(g->relation_count > 0);
+    for(int i = 0; i < g->relation_count; i++) {
+        GrB_Matrix r = Graph_GetRelationMatrix(g, i);
+        OK(GrB_Matrix_nrows(&nrows, r));
+        OK(GrB_Matrix_ncols(&ncols, r));
+        assert(ncols == g->node_cap);
+        assert(nrows == g->node_cap);
+    }
 }
 
 // Validate the creation of a graph,
@@ -186,7 +197,7 @@ void benchmark_node_creation_with_labels() {
     // Introduce labels and relations to graph.
     for(int i = 0; i < label_count; i++) {
         Graph_AddRelationMatrix(g); // Typed relation.
-        Graph_AddLabelVector(g);    // Typed node.
+        Graph_AddLabelMatrix(g);    // Typed node.
     }
     
     int labels[n];
@@ -259,7 +270,7 @@ void benchmark_edge_creation_no_relationships() {
     // int node_count = GRAPH_DEFAULT_NODE_CAP;
     int edge_count = 1000000 * 1.10;
     int node_count = 1000000;
-    int connections[edge_count*3];
+    GrB_Index connections[edge_count*3];
 
     Graph *g = Graph_New(GRAPH_DEFAULT_NODE_CAP);
     Graph_CreateNodes(g, node_count, NULL, NULL);
@@ -293,7 +304,7 @@ void benchmark_edge_creation_no_relationships() {
 
 void benchmark_edge_creation_with_relationships() {
     printf("benchmark_edge_creation_with_relationships\n");
-    double tic [2], t;
+    double tic [2];
     int samples = 64;
     double timings[samples];
     int outliers = 0;
@@ -301,7 +312,7 @@ void benchmark_edge_creation_with_relationships() {
     int edge_count = 1000000 * 1.10;
     int node_count = 1000000;
     int relation_count = 3;
-    int connections[edge_count*3];
+    GrB_Index connections[edge_count*3];
     
     Graph *g = Graph_New(GRAPH_DEFAULT_NODE_CAP);
 
@@ -356,7 +367,7 @@ int main(int argc, char **argv) {
 
     test_new_graph();
     test_graph_construction();
-    benchmark_graph();
+    // benchmark_graph();
 
     GrB_finalize();
 

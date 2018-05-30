@@ -1,4 +1,6 @@
 #include "query_graph.h"
+#include "../parser/ast.h"
+#include "../stores/store.h"
 #include <assert.h>
 
 GraphEntity* _QueryGraph_GetEntityById(GraphEntity **entity_list, int entity_count, long int id) {
@@ -68,7 +70,87 @@ int _QueryGraph_ContainsEntity(GraphEntity *entity, GraphEntity **entities, int 
     return 0;
 }
 
-QueryGraph* NewQueryGraph() {
+void QueryGraph_AddNode(QueryGraph *g, Node *n, char *alias) {
+    _QueryGraph_AddEntity((GraphEntity*)n,
+    alias,
+    (GraphEntity ***)&g->nodes,
+    &g->node_aliases,
+    &g->node_count,
+    &g->node_cap);
+}
+
+/* Adds properties to given graph entity
+ * based on the property-set specified in the AST entity. */
+void _BuildQueryGraphAddProps(AST_GraphEntity *entity, GraphEntity* e) {
+    if(entity->properties) {
+        size_t prop_count = Vector_Size(entity->properties);
+        char *keys[prop_count];
+        SIValue values[prop_count];
+
+        for(int prop_idx = 0; prop_idx < prop_count; prop_idx+=2) {
+            SIValue *key;
+            SIValue *value;
+            Vector_Get(entity->properties, prop_idx, &key);
+            Vector_Get(entity->properties, prop_idx+1, &value);
+
+            values[prop_idx/2] = *value;
+            keys[prop_idx/2] = key->stringval.str;
+        }
+
+        GraphEntity_Add_Properties(e, prop_count/2, keys, values);
+    }
+}
+
+void _BuildQueryGraphAddNode(AST_GraphEntity *entity, QueryGraph *graph) {
+    /* Check for duplications. */
+    if(QueryGraph_GetNodeByAlias(graph, entity->alias) != NULL) return;
+
+    /* Create a new node, set its properties, and add it to the graph. */
+    Node *n = Node_New(INVALID_ENTITY_ID, entity->label);
+    _BuildQueryGraphAddProps(entity, (GraphEntity*)n);
+    QueryGraph_AddNode(graph, n, entity->alias);
+}
+
+void _BuildQueryGraphAddEdge(const Graph *g,
+                        AST_GraphEntity *entity,
+                        AST_GraphEntity *l_entity,
+                        AST_GraphEntity *r_entity,
+                        RedisModuleCtx *ctx,
+                        const char *graph_name,
+                        QueryGraph *graph) {
+
+    /* Check for duplications. */
+    if(QueryGraph_GetEdgeByAlias(graph, entity->alias) != NULL) return;
+
+    AST_LinkEntity* edge = (AST_LinkEntity*)entity;
+    AST_NodeEntity *src_node;
+    AST_NodeEntity *dest_node;
+
+    // Determine relation between edge and its nodes.
+    if(edge->direction == N_LEFT_TO_RIGHT) {
+        src_node = l_entity;
+        dest_node = r_entity;
+    } else {
+        src_node = r_entity;
+        dest_node = l_entity;
+    }
+
+    Node *src = QueryGraph_GetNodeByAlias(graph, src_node->alias);
+    Node *dest = QueryGraph_GetNodeByAlias(graph, dest_node->alias);
+    Edge *e = Edge_New(INVALID_ENTITY_ID, src, dest, edge->ge.label);
+
+    // Get relation matrix.
+    if(edge->ge.label == NULL) {
+        e->mat = g->adjacency_matrix;
+    } else {
+        LabelStore *s = LabelStore_Get(ctx, STORE_EDGE, graph_name, edge->ge.label);
+        if(s) e->mat = g->relations[s->id];
+    }
+
+    QueryGraph_ConnectNodes(graph, src, dest, e, edge->ge.alias);
+}
+
+QueryGraph* QueryGraph_New() {
     QueryGraph* g = (QueryGraph*)malloc(sizeof(QueryGraph));
     g->node_count = 0;
     g->edge_count = 0;
@@ -82,7 +164,7 @@ QueryGraph* NewQueryGraph() {
 }
 
 QueryGraph* NewQueryGraph_WithCapacity(size_t node_cap, size_t edge_cap) {
-    QueryGraph *graph = NewQueryGraph();
+    QueryGraph *graph = QueryGraph_New();
     graph->node_cap = node_cap;
     graph->edge_cap = edge_cap;
     graph->nodes = (Node**)malloc(sizeof(Node*) * node_cap);
@@ -90,6 +172,28 @@ QueryGraph* NewQueryGraph_WithCapacity(size_t node_cap, size_t edge_cap) {
     graph->node_aliases = (char**)malloc(sizeof(char*) * node_cap);
     graph->edge_aliases = (char**)malloc(sizeof(char*) * edge_cap);
     return graph;
+}
+
+void BuildQueryGraph(RedisModuleCtx *ctx, const Graph *g, const char *graph_name, QueryGraph *query_graph, Vector *entities) {    
+    /* Introduce nodes first. */
+    for(int i = 0; i < Vector_Size(entities); i++) {
+        AST_GraphEntity *entity;
+        Vector_Get(entities, i, &entity);
+        if(entity->t != N_ENTITY) continue;
+        _BuildQueryGraphAddNode(entity, query_graph);
+    }
+
+    /* Introduce edges. */
+    for(int i = 0; i < Vector_Size(entities); i++) {
+        AST_GraphEntity *entity;
+        Vector_Get(entities, i, &entity);
+        if(entity->t != N_LINK) continue;
+        AST_GraphEntity *l_entity;
+        AST_GraphEntity *r_entity;
+        Vector_Get(entities, i-1, &l_entity);
+        Vector_Get(entities, i+1, &r_entity);
+        _BuildQueryGraphAddEdge(g, entity, l_entity, r_entity, ctx, graph_name, query_graph);
+    }
 }
 
 Node* QueryGraph_GetNodeById(const QueryGraph *g, long int id) {
@@ -114,19 +218,6 @@ int QueryGraph_ContainsEdge(const QueryGraph *graph, const Edge *edge) {
     return _QueryGraph_ContainsEntity((GraphEntity *)edge,
                                  (GraphEntity **)graph->edges,
                                  graph->edge_count);
-}
-
-int QueryGraph_AddNode(QueryGraph *g, Node *n, char *alias) {
-    if(!QueryGraph_ContainsNode(g, n)) {
-        _QueryGraph_AddEntity((GraphEntity*)n,
-        alias,
-        (GraphEntity ***)&g->nodes,
-        &g->node_aliases,
-        &g->node_count,
-        &g->node_cap);
-        return 1;
-    }
-    return 0;
 }
 
 void QueryGraph_ConnectNodes(QueryGraph *g, Node *src, Node *dest, Edge *e, char *edge_alias) {
@@ -187,6 +278,7 @@ char* QueryGraph_GetNodeAlias(const QueryGraph *g, const Node *n) {
         }
     }
 
+    assert(0);
     return NULL;
 }
 

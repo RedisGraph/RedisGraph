@@ -33,26 +33,28 @@ Record* Record_FromGroup(const ResultSetHeader *resultset_header, const Group *g
     return r;
 }
 
-size_t Record_ToString(const Record *record, char **record_str) {
-    return SIValue_StringConcat(record->values, record->len, record_str);
+size_t Record_ToString(const Record *record, char **buf, size_t *buf_cap) {
+    size_t required_len = SIValue_StringConcatLen(record->values, record->len);
+    
+    if(*buf_cap < required_len) {
+        *buf = realloc(*buf, sizeof(char) * required_len);
+        *buf_cap = required_len;
+    }
+
+    return SIValue_StringConcat(record->values, record->len, *buf, *buf_cap);
 }
 
 int Records_Compare(const Record *A, const Record *B, int* compareIndices, size_t compareIndicesLen) {
-    SIValue aValue;
-    SIValue bValue;
+    SIValue a;
+    SIValue b;
 
     for(int i = 0; i < compareIndicesLen; i++) {
         /* Get element index to comapre. */
         int index = compareIndices[i];
-        aValue = A->values[index];
-        bValue = B->values[index];
-        
-        /* Asuuming both values are of type double. */
-        if(aValue.doubleval > bValue.doubleval) {
-            return 1;
-        } else if(aValue.doubleval < bValue.doubleval) {
-            return -1;
-        }
+        a = A->values[index];
+        b = B->values[index];
+        int relation = SIValue_Compare(a, b);
+        if(relation) return relation;
     }
 
     return 0;

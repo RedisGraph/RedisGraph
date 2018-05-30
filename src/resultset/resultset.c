@@ -9,15 +9,15 @@ int _heap_elem_compare(const void * A, const void * B, const void *udata) {
     int direction = set->direction;
     const Record *aRec = (Record*)A;
     const Record *bRec = (Record*)B;
-
     return Records_Compare(aRec, bRec, set->header->orderBys, set->header->orderby_len) * direction;
 }
 
 /* Checks if we've already seen given records
  * Returns 1 if the string did not exist otherwise 0. */
 int __encounteredRecord(ResultSet* set, const Record* record) {
-    char *str;
-    tm_len_t len = Record_ToString(record, &str);
+    char *str = NULL;
+    size_t len = 0;
+    len = Record_ToString(record, &str, &len);
 
     // Returns 1 if the string did NOT exist otherwise 0
     int newRecord = TrieMap_Add(set->trie, str, len, NULL, NULL);
@@ -52,7 +52,7 @@ void Column_Free(Column* column) {
     free(column);
 }
 
-ResultSetHeader* NewResultSetHeader(const AST_QueryExpressionNode *ast) {
+ResultSetHeader* NewResultSetHeader(const AST_Query *ast) {
     ResultSetHeader* header = malloc(sizeof(ResultSetHeader));
     header->columns_len = 0;
     header->orderby_len = 0;
@@ -94,28 +94,27 @@ ResultSetHeader* NewResultSetHeader(const AST_QueryExpressionNode *ast) {
         AST_ColumnNode* orderBy = NULL;
         Vector_Get(ast->orderNode->columns, i, &orderBy);
 
+        char *orderByColumnName;
+        asprintf(&orderByColumnName, "%s.%s", orderBy->alias, orderBy->property);
+
         // Search return elements for orderBy
         for(int j = 0; j < header->columns_len; j++) {
             Column* col = header->columns[j];
-            int match = 1;
+            int match = 0;
 
-            if(orderBy->type == N_VARIABLE) {
-                char *orderByColumnName = malloc(sizeof(char) * (strlen(orderBy->alias) + strlen(orderBy->property) + 2));
-                sprintf(orderByColumnName, "%s.%s", orderBy->alias, orderBy->property);
-                match = strcmp(orderByColumnName, col->name);
-                free(orderByColumnName);
-            } else {
+            if(orderBy->type == N_VARIABLE) {                
+                match = !(strcmp(orderByColumnName, col->name));
+            } else if(col->alias != NULL) {
                 // Alias (AS alias)
-                if(col->alias != NULL) {
-                    match = strcmp(orderBy->alias, col->alias);
-                }
+                match = !(strcmp(orderBy->alias, col->alias));
             }
 
-            if(match == 0) {
+            if(match) {
                 header->orderBys[i] = j;
                 break;
             }
         }
+        free(orderByColumnName);
     }
 
     return header;
@@ -124,6 +123,7 @@ ResultSetHeader* NewResultSetHeader(const AST_QueryExpressionNode *ast) {
 char *ResultSetHeader_ToString(const ResultSetHeader *header, size_t *strLen) {
     size_t len = 0;
 
+    // Determin required buffer length.
     for(int i = 0; i < header->columns_len; i++) {
         Column *c = header->columns[i];
         if(c->alias != NULL) {
@@ -133,24 +133,22 @@ char *ResultSetHeader_ToString(const ResultSetHeader *header, size_t *strLen) {
         }
     }
 
-    char *str = calloc(len, sizeof(char)+1);
+    char *str = calloc(len, sizeof(char));
     len = 0;
 
     for(int i = 0; i < header->columns_len; i++) {
         Column *c = header->columns[i];
         if(c->alias != NULL) {
-            sprintf(str+len, "%s,", c->alias);
-            len += strlen(c->alias)+1;
+            len += sprintf(str+len, "%s,", c->alias);
         } else {
-            sprintf(str+len, "%s,", c->name);
-            len += strlen(c->name)+1;
+            len += sprintf(str+len, "%s,", c->name);
         }
     }
 
-    str[len-1] = 0;
-    if(strLen != NULL) {
-        *strLen = len;
-    }
+    str[len] = 0; // Replace last comma with NULL.
+    len--;
+    if(strLen != NULL) *strLen = len;
+
     return str;
 }
 
@@ -166,12 +164,12 @@ void ResultSetHeader_Free(ResultSetHeader* header) {
     free(header);
 }
 
-ResultSet* NewResultSet(AST_QueryExpressionNode* ast) {
+ResultSet* NewResultSet(AST_Query* ast) {
     ResultSet* set = (ResultSet*)malloc(sizeof(ResultSet));
     set->ast = ast;
     set->heap = NULL;
     set->trie = NULL;
-    set->aggregated = ReturnClause_ContainsAggregation(ast);
+    set->aggregated = ReturnClause_ContainsAggregation(ast->returnNode);
     set->ordered = (ast->orderNode != NULL);
     set->limit = RESULTSET_UNLIMITED;
     set->direction = DIR_ASC;
@@ -211,7 +209,7 @@ int ResultSet_AddRecord(ResultSet* set, Record* record) {
     }
     
     /* TODO: Incase of an aggregated query, there's no need to distinct check */
-    /* groups are alreay distinct by key. */
+    /* groups are already distinct by key. */
     if(set->distinct && __encounteredRecord(set, record)) {
         /* TODO: indicate we've skipped record. */
         return RESULTSET_OK;
@@ -220,10 +218,10 @@ int ResultSet_AddRecord(ResultSet* set, Record* record) {
     if(set->ordered && set->limit != RESULTSET_UNLIMITED) {
         if(heap_count(set->heap) < set->limit) {
             /* There's room in heap for record */
-            heap_offer(&set->heap, record);
+            heap_offer(&set->heap, record);            
         } else {
-            if(_heap_elem_compare(heap_peek(set->heap), record, set) == 1) {
-                heap_poll(set->heap);
+            if(_heap_elem_compare(heap_peek(set->heap), record, set) > 0) {                
+                Record *replaced = heap_poll(set->heap);
                 heap_offer(&set->heap, record);
             }
         }
@@ -334,74 +332,88 @@ void ResultSet_Replay(RedisModuleCtx* ctx, ResultSet* set) {
     if(set->aggregated) {
         _aggregateResultSet(ctx, set);
     }
+        
+    size_t resultset_size = 0;
+    bool results_available = false;
+    int redis_response_size = 1;    /* Statistics. */
     
-    /* Header row. */
-    size_t resultset_size = 1;
-
     if(set->ordered && set->limit != RESULTSET_UNLIMITED) {
         resultset_size += heap_count(set->heap);
     } else {
         resultset_size += Vector_Size(set->records);
     }
-    
-    /* Resultset + statistics. */
-    RedisModule_ReplyWithArray(ctx, 2);
-    
-    /* First element, resultset. */
-    RedisModule_ReplyWithArray(ctx, resultset_size);
 
-    /* Replay with table header. */
-    size_t str_header_len;
-    size_t str_record_len;
-    char *str_header = ResultSetHeader_ToString(set->header, &str_header_len);
-    RedisModule_ReplyWithStringBuffer(ctx, str_header, str_header_len);
-    free(str_header);
+    results_available = resultset_size > 0;
 
-    char *str_record = NULL;
-    if(set->ordered) {
-        if(set->limit != RESULTSET_UNLIMITED) {
-            /* Responses need to be reversed. */
-            Vector *reversedResultSet = NewVector(char*, heap_count(set->heap));
-
-            /* Pop items from heap */
-            while(heap_count(set->heap) > 0) {
-                Record* record = heap_poll(set->heap);
-                str_record_len = Record_ToString(record, &str_record);
-                Vector_Push(reversedResultSet, str_record);
-
-                /* Free record here, as it was removed from set heap. */
-                Record_Free(record);
-            }
-            /* Replay elements in reversed order */
-            for(int i = Vector_Size(reversedResultSet)-1; i >= 0; i--) {
-                Vector_Get(reversedResultSet, i, &str_record);
-                RedisModule_ReplyWithStringBuffer(ctx, str_record, strlen(str_record));
-                free(str_record);
-            }
-            Vector_Free(reversedResultSet);
-        } else {
-            /* ordered, not limited, sort. */
-            Record **sorted_records = _sortResultSet(set, set->records);
-
-            for(int i = Vector_Size(set->records)-1; i >=0;  i--) {
-                Record* record = sorted_records[i];
-                str_record_len = Record_ToString(record, &str_record);
-                RedisModule_ReplyWithStringBuffer(ctx, str_record, str_record_len);
-                free(str_record);
-            }
-            free(sorted_records);
-        }
-    } else {
-        for(int i = 0; i < Vector_Size(set->records); i++) {
-            Record* record = NULL;
-            Vector_Get(set->records, i, &record);
-            
-            str_record_len = Record_ToString(record, &str_record);
-            RedisModule_ReplyWithStringBuffer(ctx, str_record, str_record_len);
-            free(str_record);
-        }
+    if(results_available) {
+        resultset_size++; /* Header row. */
+        redis_response_size++;   /* Result-set. */
     }
 
+    /* Resultset + statistics. */
+    RedisModule_ReplyWithArray(ctx, redis_response_size);
+    
+    if(results_available) {
+        /* First element, resultset. */
+        RedisModule_ReplyWithArray(ctx, resultset_size);
+
+        /* Replay with table header. */
+        size_t str_header_len = 0;
+        size_t str_record_len = 0;
+        size_t str_record_cap = 2048;
+        char *str_header = ResultSetHeader_ToString(set->header, &str_header_len);
+        RedisModule_ReplyWithStringBuffer(ctx, str_header, str_header_len);
+        free(str_header);
+
+        char *str_record = malloc(str_record_cap);
+
+        if(set->ordered) {
+            if(set->limit != RESULTSET_UNLIMITED) {
+                /* Responses need to be reversed. */
+                Record* record;
+                int record_idx = 0;
+                int records_count = heap_count(set->heap);
+                Record **records = malloc(sizeof(Record*) * records_count);
+
+                /* Pop items from heap */
+                while(records_count > 0) {
+                    record = heap_poll(set->heap);
+                    records[record_idx++] = record;
+                    records_count--;
+                }
+
+                /* Replay records. */
+                while(record_idx) {
+                    record = records[--record_idx];
+                    str_record_len = Record_ToString(record, &str_record, &str_record_cap);
+                    RedisModule_ReplyWithStringBuffer(ctx, str_record, str_record_len);
+                    Record_Free(record);
+                }
+
+                free(records);
+            } else {
+                /* ordered, not limited, sort. */
+                Record **sorted_records = _sortResultSet(set, set->records);
+
+                for(int i = Vector_Size(set->records)-1; i >=0;  i--) {
+                    Record* record = sorted_records[i];
+                    str_record_len = Record_ToString(record, &str_record, &str_record_cap);
+                    RedisModule_ReplyWithStringBuffer(ctx, str_record, str_record_len);
+                }
+                free(sorted_records);
+            }
+        } else {
+            for(int i = 0; i < Vector_Size(set->records); i++) {
+                Record* record = NULL;
+                Vector_Get(set->records, i, &record);
+                
+                str_record_len = Record_ToString(record, &str_record, &str_record_cap);
+                RedisModule_ReplyWithStringBuffer(ctx, str_record, str_record_len);
+            }
+        }
+
+        free(str_record);
+    }
     _ResultSet_ReplayStats(ctx, set);
 }
 
@@ -425,8 +437,7 @@ void ResultSet_Free(RedisModuleCtx *ctx, ResultSet *set) {
         }
 
         if(set->trie != NULL) {
-            /* TODO: free trie.
-             * TrieMapNode_Free(set->trie, NULL); */
+            TrieMap_Free(set->trie, TrieMap_NOP_CB);
         }
 
         ResultSetHeader_Free(set->header);

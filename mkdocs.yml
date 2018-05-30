@@ -4,6 +4,10 @@ site_favicon: 'images/favicon.png'
 repo_url: https://github.com/RedisLabsModules/redis-graph
 repo_name: RedisLabsModules/redis-graph
 
+google_analytics:
+  - 'UA-92003007-8'
+  - 'auto'
+
 theme: material
 
 extra:

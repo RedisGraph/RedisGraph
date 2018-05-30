@@ -10,8 +10,8 @@
  * currently stored in the block, the block capacity and a pointer to
  * the next block if it exists. */
 
-// Number of nodes is a block. Should always be a power of 2.
-#define NODEBLOCK_CAP 1024
+// Number of nodes in a block. Should always be a power of 2.
+#define NODEBLOCK_CAP 256
 
 typedef struct nodeBlock {
     size_t size;                    // Number of nodes in block.

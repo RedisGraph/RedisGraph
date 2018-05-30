@@ -3,8 +3,8 @@
 
 #include "node.h"
 #include "edge.h"
+#include "graph.h"
 #include "../rmutil/vector.h"
-#include "../hexastore/hexastore.h"
 
 #define DEFAULT_GRAPH_CAP 32 /* Number of edges/nodes within the graph. */
 
@@ -19,8 +19,13 @@ typedef struct {
     size_t edge_cap;
 } QueryGraph;
 
-QueryGraph* NewQueryGraph();
+QueryGraph* QueryGraph_New();
 QueryGraph* NewQueryGraph_WithCapacity(size_t node_cap, size_t edge_cap);
+
+/* Given AST's MATCH node constructs a graph
+ * representing queried entities and the relationships
+ * between them. */
+void BuildQueryGraph(RedisModuleCtx *ctx, const Graph *g, const char *graph_name, QueryGraph *query_graph, Vector *entities);
 
 /* Checks if graph contains given node
  * Returns 1 if so, 0 otherwise */ 
@@ -44,7 +49,7 @@ Edge* QueryGraph_GetEdgeByAlias(const QueryGraph *g, const char *alias);
 GraphEntity* QueryGraph_GetEntityByAlias(const QueryGraph *g, const char *alias);
 
 /* Adds a new node to the graph */
-int QueryGraph_AddNode(QueryGraph* g, Node *n, char *alias);
+void QueryGraph_AddNode(QueryGraph* g, Node *n, char *alias);
 
 /* Adds a new edge to the graph */
 void QueryGraph_ConnectNodes(QueryGraph *g, Node *src, Node *dest, Edge *e, char *edge_alias);

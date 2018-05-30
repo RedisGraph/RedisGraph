@@ -1,10 +1,10 @@
 #ifndef __ARITHMETIC_EXPRESSION_H
 #define __ARITHMETIC_EXPRESSION_H
 
-#include "./graph/graph_entity.h"
-#include "./arithmetic/agg_ctx.h"
-#include "./parser/ast.h"
-#include "./graph/query_graph.h"
+#include "../graph/graph_entity.h"
+#include "../graph/query_graph.h"
+#include "../parser/ast.h"
+#include "./agg_ctx.h"
 
 /* Forward declarations. */
 struct AR_ExpNode;

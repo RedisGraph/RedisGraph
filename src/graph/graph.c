@@ -1,4 +1,5 @@
 #include "graph.h"
+#include "graph_type.h"
 #include "assert.h"
 
 #define MAX(a, b) \
@@ -21,23 +22,12 @@
 
 /*========================= Graph utility functions ========================= */
 // Resize given matrix to match graph's adjacency matrix dimensions.
-void _Graph_ResizeMatix(const Graph *g, GrB_Matrix m) {
+void _Graph_ResizeMatrix(const Graph *g, GrB_Matrix m) {
     GrB_Index n_rows;
     
     GrB_Matrix_nrows(&n_rows, m);
     if(n_rows != g->node_cap) {
         GrB_Info res = GxB_Matrix_resize(m, g->node_cap, g->node_cap);
-        assert(res == GrB_SUCCESS);
-    }
-}
-
-// Resize given vector to match the number of nodes in the graph.
-void _Graph_ResizeVector(Graph *g, GrB_Vector v) {
-    GrB_Index n;
-
-    GrB_Vector_size(&n, v);
-    if(n != g->node_cap) {
-        GrB_Info res = GxB_Vector_resize(v, g->node_cap);
         assert(res == GrB_SUCCESS);
     }
 }
@@ -67,7 +57,7 @@ void _Graph_ResizeNodes(Graph *g, size_t n) {
     }
 
     g->node_cap = g->block_count * NODEBLOCK_CAP;
-    _Graph_ResizeMatix(g, g->adjacency_matrix);
+    _Graph_ResizeMatrix(g, g->adjacency_matrix);
 }
 
 /*================================ Graph API ================================ */
@@ -95,8 +85,24 @@ Graph *Graph_New(size_t n) {
     }
 
     g->relations = malloc(sizeof(GrB_Matrix) * g->relation_cap);
-    g->labels = malloc(sizeof(GrB_Vector) * g->label_cap);
+    g->labels = malloc(sizeof(GrB_Matrix) * g->label_cap);
     GrB_Matrix_new(&g->adjacency_matrix, GrB_BOOL, g->node_cap, g->node_cap);
+    return g;
+}
+
+Graph *Graph_Get(RedisModuleCtx *ctx, RedisModuleString *graph_name) {
+    Graph *g = NULL;
+
+    RedisModuleKey *key = RedisModule_OpenKey(ctx, graph_name, REDISMODULE_WRITE);
+    int type = RedisModule_KeyType(key);
+
+    // Key does not exists.
+	if (type != REDISMODULE_KEYTYPE_EMPTY &&
+        RedisModule_ModuleTypeGetType(key) == GraphRedisModuleType) {
+        g = RedisModule_ModuleTypeGetValue(key);
+	}
+
+    RedisModule_CloseKey(key);
     return g;
 }
 
@@ -104,7 +110,6 @@ void Graph_CreateNodes(Graph* g, size_t n, int* labels, NodeIterator **it) {
     assert(g);
 
     _Graph_ResizeNodes(g, n);
-    
     Node *node = NULL;
     NodeIterator *node_it = NodeIterator_New(GRAPH_ACTIVE_BLOCK(g),
                                         g->node_count,
@@ -116,8 +121,8 @@ void Graph_CreateNodes(Graph* g, size_t n, int* labels, NodeIterator **it) {
         while((node = NodeIterator_Next(node_it)) != NULL) {
             int l = labels[idx];
             if(l != GRAPH_NO_LABEL) {
-                GrB_Vector v = Graph_GetLabelVector(g, l);
-                GrB_Vector_setElement_BOOL(v, true, node_id);
+                GrB_Matrix m = Graph_GetLabelMatrix(g, l);
+                GrB_Matrix_setElement_BOOL(m, true, node_id, node_id);
             }
             idx++;
             node_id++;
@@ -132,10 +137,10 @@ void Graph_CreateNodes(Graph* g, size_t n, int* labels, NodeIterator **it) {
     else NodeIterator_Free(node_it);
 }
 
-void Graph_ConnectNodes(Graph *g, size_t n, long long *connections) {
+void Graph_ConnectNodes(Graph *g, size_t n, GrB_Index *connections) {
     assert(g && connections);
 
-    // Update graph's adjacency matrices, setting mat[src,dest] to 1.
+    // Update graph's adjacency matrices, setting mat[dest,src] to 1.
     for(int i = 0; i < n; i+=3) {
         int src_id = connections[i];
         int dest_id = connections[i+1];
@@ -169,12 +174,12 @@ void Graph_LabelNodes(Graph *g, int start_node_id, int end_node_id, int label, N
     assert(g &&
            start_node_id < g->node_count &&
            start_node_id >=0 &&
-           start_node_id <= end_node_id &&
+           start_node_id < end_node_id &&
            end_node_id < g->node_count);
     
-    GrB_Vector v = Graph_GetLabelVector(g, label);
-    for(int node_id = start_node_id; node_id < end_node_id; node_id++) {
-        GrB_Vector_setElement_BOOL(v, true, node_id);
+    GrB_Matrix m = Graph_GetLabelMatrix(g, label);
+    for(int node_id = start_node_id; node_id <= end_node_id; node_id++) {
+        GrB_Matrix_setElement_BOOL(m, true, node_id, node_id);
     }
     
     if(it) {
@@ -190,30 +195,30 @@ NodeIterator *Graph_ScanNodes(const Graph *g) {
     return NodeIterator_New(g->nodes_blocks[0], 0, g->node_count, 1);
 }
 
-GrB_Vector Graph_GetLabelVector(Graph *g, int label_idx) {
+GrB_Matrix Graph_GetLabelMatrix(const Graph *g, int label_idx) {
     assert(g && label_idx < g->label_count);
-    GrB_Vector v = g->labels[label_idx];
-    _Graph_ResizeVector(g, v);
-    return v;
+    GrB_Matrix m = g->labels[label_idx];
+    _Graph_ResizeMatrix(g, m);
+    return m;
 }
 
-int Graph_AddLabelVector(Graph *g) {
+int Graph_AddLabelMatrix(Graph *g) {
     assert(g);
 
-    // Make sure we've got room for a new label vector.
+    // Make sure we've got room for a new label matrix.
     if(g->label_count == g->label_cap) {
-        g->label_cap += 4;   // allocate room for 4 new vectors.
-        g->labels = realloc(g->labels, g->label_cap * sizeof(GrB_Vector));
+        g->label_cap += 4;   // allocate room for 4 new matrices.
+        g->labels = realloc(g->labels, g->label_cap * sizeof(GrB_Matrix));
     }
 
-    GrB_Vector_new(&g->labels[g->label_count++], GrB_BOOL, g->node_cap);
+    GrB_Matrix_new(&g->labels[g->label_count++], GrB_BOOL, g->node_cap, g->node_cap);
     return g->label_count-1;
 }
 
 GrB_Matrix Graph_GetRelationMatrix(const Graph *g, int relation_idx) {
     assert(g && relation_idx < g->relation_count);
     GrB_Matrix m = g->relations[relation_idx];
-    _Graph_ResizeMatix(g, m);
+    _Graph_ResizeMatrix(g, m);
     return m;
 }
 
@@ -255,10 +260,10 @@ void Graph_Free(Graph *g) {
     }
     free(g->relations);
     
-    // Free vectors.
+    // Free matrices.
     for(int i = 0; i < g->label_count; i++) {
-        GrB_Vector v = g->labels[i];
-        GrB_Vector_free(&v);
+        GrB_Matrix m = g->labels[i];
+        GrB_Matrix_free(&m);
     }
     free(g->labels);
 

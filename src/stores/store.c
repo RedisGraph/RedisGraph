@@ -2,24 +2,9 @@
 #include "../rmutil/util.h"
 #include "../rmutil/strings.h"
 #include "../util/triemap/triemap_type.h"
+#include <assert.h>
 
-/* Creates a new LabelStore. */
-LabelStore *__new_Store(const char *label) {
-    LabelStore *store = calloc(1, sizeof(LabelStore));
-    store->items = NewTrieMap();
-    store->stats.properties = NewTrieMap();
-    if(label) store->label = strdup(label);
-
-    return store;
-}
-
-void LabelStore_Free(LabelStore *store, void (*freeCB)(void *)) {
-    TrieMap_Free(store->items, freeCB);
-    TrieMap_Free(store->stats.properties, freeCB);
-    if(store->label) free(store->label);
-    free(store);
-}
-
+/* Generates an ID for a new LabelStore. */
 int LabelStore_Id(char **id, LabelStoreType type, const char *graph, const char *label) {
     if(label == NULL) {
         label = "ALL";
@@ -42,6 +27,39 @@ int LabelStore_Id(char **id, LabelStoreType type, const char *graph, const char 
     return asprintf(id, "%s_%s_%s_%s", LABELSTORE_PREFIX, graph, storeType, label);
 }
 
+/* Creates a new LabelStore. */
+LabelStore *LabelStore_New(RedisModuleCtx *ctx, LabelStoreType type, const char *graph, const char* label, int id) {
+    assert(ctx && graph && label);
+
+    LabelStore *store = calloc(1, sizeof(LabelStore));
+    store->properties = NewTrieMap();
+    store->label = strdup(label);
+    store->id = id;
+    
+    // Store labelstore within redis keyspace.
+    char *strKey;
+    LabelStore_Id(&strKey, type, graph, label);
+
+    RedisModuleString *rmStoreId = RedisModule_CreateString(ctx, strKey, strlen(strKey));
+    free(strKey);
+    
+    RedisModuleKey *key = RedisModule_OpenKey(ctx, rmStoreId, REDISMODULE_WRITE);
+    RedisModule_FreeString(ctx, rmStoreId);
+    assert(RedisModule_KeyType(key) == REDISMODULE_KEYTYPE_EMPTY);
+
+    // TODO: BUG! storing LabelStore within a TrieMap key type.
+    // Need to register a new type.
+    RedisModule_ModuleTypeSetValue(key, TrieRedisModuleType, store);
+        
+    return store;
+}
+
+void LabelStore_Free(LabelStore *store, void (*freeCB)(void *)) {
+    TrieMap_Free(store->properties, freeCB);
+    if(store->label) free(store->label);
+    free(store);
+}
+
 LabelStore *LabelStore_Get(RedisModuleCtx *ctx, LabelStoreType type, const char *graph, const char* label) {
 	LabelStore *store = NULL;
     char *strKey;
@@ -54,8 +72,7 @@ LabelStore *LabelStore_Get(RedisModuleCtx *ctx, LabelStoreType type, const char 
     RedisModule_FreeString(ctx, rmStoreId);
 
 	if (RedisModule_KeyType(key) == REDISMODULE_KEYTYPE_EMPTY) {
-		store = __new_Store(label);
-		RedisModule_ModuleTypeSetValue(key, TrieRedisModuleType, store);
+        return NULL;
 	}
 
 	store = RedisModule_ModuleTypeGetValue(key);
@@ -89,51 +106,9 @@ void LabelStore_Get_ALL(RedisModuleCtx *ctx, LabelStoreType type, const char *gr
     *stores_len = key_count;
 }
 
-int LabelStore_Cardinality(LabelStore *store) {
-    return store->items->cardinality;
-}
-
 void LabelStore_UpdateSchema(LabelStore *store, int prop_count, char **properties) {
     for(int idx = 0; idx < prop_count; idx++) {
         char *property = properties[idx];
-        TrieMap_Add(store->stats.properties, property, strlen(property), NULL, NULL);
+        TrieMap_Add(store->properties, property, strlen(property), NULL, NULL);
     }
-}
-
-void LabelStore_Insert(LabelStore *store, char *id, GraphEntity *entity) {
-    if (TrieMap_Add(store->items, id, strlen(id), entity, NULL)) {
-        /* Entity is new to the store,
-         * update store's entity schema. */
-        if(store->label) {
-            /* Store has a label, not an 'ALL' store, where there are
-             * multiple entities with different labels.
-             * Add each of the entity's attribute names to store's stats,
-             * We'll be using this information whenever we're required to
-             * expand a collapsed entity. */
-            int prop_count = entity->prop_count;
-            char *properties[prop_count];
-            for(int idx = 0; idx < prop_count; idx++) {
-                properties[idx] = entity->properties[idx].name;
-            }
-            LabelStore_UpdateSchema(store, prop_count, properties);
-        }
-    }
-}
-
-int LabelStore_Remove(LabelStore *store, char *id, void (*freeCB)(void *)) {
-    return TrieMap_Delete(store->items, id, strlen(id), freeCB);
-}
-
-LabelStoreIterator *LabelStore_Search(LabelStore *store, const char *id) {
-    char* prefix_dup = strdup(id);
-	LabelStoreIterator *iter = TrieMap_Iterate(store->items, prefix_dup, strlen(prefix_dup));
-    return iter;
-}
-
-int LabelStoreIterator_Next(LabelStoreIterator *cursor, char **key, tm_len_t *len, void **value) {
-    return TrieMapIterator_Next(cursor, key, len, value);
-}
-
-void LabelStoreIterator_Free(LabelStoreIterator* iterator) {
-	TrieMapIterator_Free(iterator);
 }

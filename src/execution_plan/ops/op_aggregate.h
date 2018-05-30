@@ -14,15 +14,15 @@
      OpBase op;
      RedisModuleCtx *ctx;
      int refreshAfterPass;
-     AST_QueryExpressionNode *ast;
+     AST_Query *ast;
      int none_aggregated_expression_count; /* Number of return terms which are not aggregated. */
      AR_ExpNode **none_aggregated_expressions;
      SIValue *group_keys;   /* Array of values composing an aggregated group. */
      int init;
  } Aggregate;
 
-OpBase* NewAggregateOp(RedisModuleCtx *ctx, AST_QueryExpressionNode *ast);
-Aggregate* NewAggregate(RedisModuleCtx *ctx, AST_QueryExpressionNode *ast);
+OpBase* NewAggregateOp(RedisModuleCtx *ctx, AST_Query *ast);
+Aggregate* NewAggregate(RedisModuleCtx *ctx, AST_Query *ast);
 OpResult AggregateConsume(OpBase *opBase, QueryGraph* graph);
 OpResult AggregateReset(OpBase *opBase);
 void AggregateFree(OpBase *opBase);

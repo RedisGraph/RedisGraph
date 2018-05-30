@@ -5,7 +5,7 @@
 #include "assert.h"
 #include "graph_entity.h"
 
-Node* NewNode(long int id, const char *label) {
+Node* Node_New(long int id, const char *label) {
 	Node* node = (Node*)calloc(1, sizeof(Node));
 	
 	node->id = id;

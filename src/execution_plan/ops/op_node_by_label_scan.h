@@ -2,31 +2,26 @@
 #define __OP_NODE_BY_LABEL_SCAN_H
 
 #include "op.h"
-#include "../../redismodule.h"
 #include "../../graph/query_graph.h"
 #include "../../graph/node.h"
-#include "../../stores/store.h"
-/* NodeByLabelScan 
- * Scans entire label-store
- * Sets node id to current element within
- * the label store */
+#include "../../graph/graph.h"
+#include "../../arithmetic/tuples_iter.h"
+#include "GraphBLAS.h"
+
+/* NodeByLabelScan, scans entire label. */
 
 typedef struct {
     OpBase op;
-    Node **node;            /* node being scanned */
+    Node **node;            /* Node being scanned */
     Node *_node;
-    LabelStore *store;
-    RedisModuleCtx *ctx;
-    const char *graph;      /* queried graph id */
-    LabelStoreIterator *iter;
+    Graph *g;
+    TuplesIter *iter;
+    GrB_Matrix _zero_matrix;           /* Fake matrix, in-case label does not exists. */
 } NodeByLabelScan;
 
 /* Creates a new NodeByLabelScan operation */
-OpBase *NewNodeByLabelScanOp(RedisModuleCtx *ctx, QueryGraph *g, Node **node,
-                            const char *graph_name, char *label);
-
-NodeByLabelScan* NewNodeByLabelScan(RedisModuleCtx *ctx, QueryGraph *g, Node **node,
-                                    const char *graph_name, char *label);
+OpBase *NewNodeByLabelScanOp(RedisModuleCtx *ctx, QueryGraph *qg, Graph *g, const char *graph_name, Node **node, const char *label);
+NodeByLabelScan* NewNodeByLabelScan(RedisModuleCtx *ctx, QueryGraph *qg, Graph *g, const char *graph_name, Node **node, const char *label);
 
 /* NodeByLabelScan next operation
  * called each time a new ID is required */

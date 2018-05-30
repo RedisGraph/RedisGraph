@@ -5,7 +5,7 @@
 //#include "../rmutil/alloc.h"
 
 typedef struct {
-    AST_QueryExpressionNode *root;
+    AST_Query *root;
     int ok;
     char *errorMsg;
 } parseCtx;

@@ -20,7 +20,7 @@ typedef struct {
     Vector* records;            /* Vector of Records. */
     heap_t* heap;               /* Holds top n records. */
     TrieMap* trie;              /* When using distinct, used to identify unique records. */
-    AST_QueryExpressionNode* ast;
+    AST_Query* ast;
     ResultSetHeader* header;    /* Describes how records should look like. */
     int aggregated;             /* Rather or not this is an aggregated result set. */
     int ordered;                /* Rather or not this result set is ordered. */
@@ -35,7 +35,7 @@ typedef struct {
     int relationships_deleted;  /* Number of edges removed as part of a delete query.*/
 } ResultSet;
 
-ResultSet* NewResultSet(AST_QueryExpressionNode* ast);
+ResultSet* NewResultSet(AST_Query* ast);
 
 int ResultSet_AddRecord(ResultSet* set, Record *record);
 

@@ -20,7 +20,7 @@ typedef struct {
 } Node;
 
 /* Creates a new node. */
-Node* NewNode(long int id, const char *label);
+Node* Node_New(long int id, const char *label);
 
 /* Checks if nodes are "equal" */
 int Node_Compare(const Node *a, const Node *b);
