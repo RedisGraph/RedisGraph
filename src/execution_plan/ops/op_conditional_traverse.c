@@ -1,13 +1,13 @@
 #include "op_conditional_traverse.h"
 #include "../../util/arr.h"
 
-OpBase* NewCondTraverseOp(Graph *graph, AlgebraicExpression *algebraic_expression) {
-    return (OpBase*)NewCondTraverse(graph, algebraic_expression);
+OpBase* NewCondTraverseOp(Graph *g, QueryGraph* qg, AlgebraicExpression *algebraic_expression) {
+    return (OpBase*)NewCondTraverse(g, qg, algebraic_expression);
 }
 
-CondTraverse* NewCondTraverse(Graph *graph, AlgebraicExpression *algebraic_expression) {
+CondTraverse* NewCondTraverse(Graph *g, QueryGraph* qg, AlgebraicExpression *algebraic_expression) {
     CondTraverse *traverse = calloc(1, sizeof(CondTraverse));
-    traverse->graph = graph;
+    traverse->graph = g;
     traverse->algebraic_results = AlgebraicExpression_Execute(algebraic_expression);
     traverse->M = traverse->algebraic_results->m;    
 
@@ -23,6 +23,13 @@ CondTraverse* NewCondTraverse(Graph *graph, AlgebraicExpression *algebraic_expre
     traverse->op.reset = CondTraverseReset;
     traverse->op.free = CondTraverseFree;
     traverse->state = CondTraverseUninitialized;
+    traverse->op.modifies = NewVector(char*, 2);
+
+    char *modified = NULL;
+    modified = QueryGraph_GetNodeAlias(qg, *traverse->algebraic_results->src_node);
+    Vector_Push(traverse->op.modifies, modified);
+    modified = QueryGraph_GetNodeAlias(qg, *traverse->algebraic_results->dest_node);
+    Vector_Push(traverse->op.modifies, modified);
 
     return traverse;
 }

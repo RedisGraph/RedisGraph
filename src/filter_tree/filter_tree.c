@@ -255,6 +255,41 @@ FT_FilterNode* FilterTree_MinFilterTree(FT_FilterNode *root, Vector *aliases) {
     return minTree;
 }
 
+void _FilterTree_SubTrees(const FT_FilterNode *root, Vector *sub_trees) {
+    if (root == NULL) return;
+
+    switch(root->t) {
+        case FT_N_PRED:
+            /* This is a simple predicate tree, can not traverse further. */
+            Vector_Push(sub_trees, root);
+            break;
+        case FT_N_COND:
+            switch(root->cond.op) {
+                case AND:
+                    /* Break AND down to its components. */
+                    _FilterTree_SubTrees(root->cond.left, sub_trees);
+                    _FilterTree_SubTrees(root->cond.right, sub_trees);
+                    break;
+                case OR:
+                    /* OR tree must be return as is. */
+                    Vector_Push(sub_trees, root);
+                    break;
+                default:
+                    assert(0);
+            }
+            break;
+        default:
+            assert(0);
+            break;
+    }
+}
+
+Vector* FilterTree_SubTrees(const FT_FilterNode *root) {
+    Vector *sub_trees = NewVector(FT_FilterNode *, 1);
+    _FilterTree_SubTrees(root, sub_trees);
+    return sub_trees;
+}
+
 FT_FilterNode* BuildFiltersTree(const AST_FilterNode *root) {
     if(root->t == N_PRED) {
         if(root->pn.t == N_CONSTANT) {
@@ -372,6 +407,54 @@ int FilterTree_ContainsNode(const FT_FilterNode *root, const Vector *aliases) {
 
     return (FilterTree_ContainsNode(LeftChild(root), aliases) ||
             FilterTree_ContainsNode(RightChild(root), aliases));
+}
+
+void _FilterTree_CollectAliases(const FT_FilterNode *root, TrieMap *aliases) {
+    if(root == NULL) return;
+
+    switch(root->t) {
+        case FT_N_COND:
+        {
+            _FilterTree_CollectAliases(root->cond.left, aliases);
+            _FilterTree_CollectAliases(root->cond.right, aliases);
+            break;
+        }
+        case FT_N_PRED:
+        {
+            // Add alias to triemap.
+            char *alias = root->pred.Lop.alias;
+            TrieMap_Add(aliases, alias, strlen(alias), NULL, NULL);
+            if(root->pred.t == FT_N_VARYING) {
+                alias = root->pred.Rop.alias;
+                TrieMap_Add(aliases, alias, strlen(alias), NULL, NULL);
+            }
+            break;
+        }
+        default:
+        {
+            assert(0);
+            break;
+        }
+    }
+}
+
+Vector *FilterTree_CollectAliases(const FT_FilterNode *root) {
+    TrieMap *t = NewTrieMap();
+    _FilterTree_CollectAliases(root, t);
+
+    Vector *aliases = NewVector(char*, t->cardinality);
+    TrieMapIterator *it = TrieMap_Iterate(t, "", 0);
+    
+    char *ptr;
+    tm_len_t len;
+    void *value;
+
+    while(TrieMapIterator_Next(it, &ptr, &len, &value)) {
+        Vector_Push(aliases, strdup(ptr));
+    }
+
+    TrieMap_Free(t, NULL);
+    return aliases;
 }
 
 void _FilterTree_Print(const FT_FilterNode *root, int ident) {

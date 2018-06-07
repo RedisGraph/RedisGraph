@@ -3,6 +3,7 @@
 
 #include "../../value.h"
 #include "../../rmutil/vector.h"
+#include "../../util/triemap/triemap.h"
 
 typedef enum {
   N_PRED,
@@ -52,6 +53,7 @@ AST_WhereNode* New_AST_WhereNode(AST_FilterNode *filters);
 AST_FilterNode* New_AST_ConstantPredicateNode(const char *alias, const char *property, int op, SIValue value);
 AST_FilterNode* New_AST_VaryingPredicateNode(const char *lAlias, const char *lProperty, int op, const char *rAlias, const char *rProperty);
 AST_FilterNode* New_AST_ConditionNode(AST_FilterNode *left, int op, AST_FilterNode *right);
+void WhereClause_ReferredNodes(const AST_WhereNode *where_node, TrieMap *referred_nodes);
 void Free_AST_FilterNode(AST_FilterNode *filterNode);
 void Free_AST_WhereNode(AST_WhereNode *whereNode);
 

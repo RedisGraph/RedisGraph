@@ -28,8 +28,8 @@ typedef struct {
 } CondTraverse;
 
 /* Creates a new Traverse operation */
-OpBase* NewCondTraverseOp(Graph *graph, AlgebraicExpression *algebraic_expression);
-CondTraverse* NewCondTraverse(Graph *graph, AlgebraicExpression *algebraic_expression);
+OpBase* NewCondTraverseOp(Graph *g, QueryGraph* qg, AlgebraicExpression *algebraic_expression);
+CondTraverse* NewCondTraverse(Graph *g, QueryGraph* qg, AlgebraicExpression *algebraic_expression);
 
 /* TraverseConsume next operation 
  * each call will update the graph

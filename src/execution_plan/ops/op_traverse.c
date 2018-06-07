@@ -1,14 +1,14 @@
 #include "op_traverse.h"
 #include "../../util/arr.h"
 
-OpBase* NewTraverseOp(Graph *graph, AlgebraicExpression *algebraic_expression) {
-    return (OpBase*)NewTraverse(graph, algebraic_expression);
+OpBase* NewTraverseOp(Graph *g, QueryGraph* qg, AlgebraicExpression *ae) {
+    return (OpBase*)NewTraverse(g, qg, ae);
 }
 
-Traverse* NewTraverse(Graph *graph, AlgebraicExpression *algebraic_expression) {
+Traverse* NewTraverse(Graph *g, QueryGraph* qg, AlgebraicExpression *ae) {
     Traverse *traverse = calloc(1, sizeof(Traverse));
-    traverse->graph = graph;
-    traverse->algebraic_results = AlgebraicExpression_Execute(algebraic_expression);
+    traverse->graph = g;
+    traverse->algebraic_results = AlgebraicExpression_Execute(ae);
 
     GrB_Matrix M = traverse->algebraic_results->m;
     traverse->it = TuplesIter_new(M);
@@ -19,6 +19,13 @@ Traverse* NewTraverse(Graph *graph, AlgebraicExpression *algebraic_expression) {
     traverse->op.consume = TraverseConsume;
     traverse->op.reset = TraverseReset;
     traverse->op.free = TraverseFree;
+    traverse->op.modifies = NewVector(char*, 2);
+
+    char *modified = NULL;
+    modified = QueryGraph_GetNodeAlias(qg, *traverse->algebraic_results->src_node);
+    Vector_Push(traverse->op.modifies, modified);
+    modified = QueryGraph_GetNodeAlias(qg, *traverse->algebraic_results->dest_node);
+    Vector_Push(traverse->op.modifies, modified);
 
     return traverse;
 }

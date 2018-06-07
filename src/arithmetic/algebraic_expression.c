@@ -70,6 +70,7 @@ AlgebraicExpression **AlgebraicExpression_From_Query(const AST_Query *ast, const
     TrieMap *ref_nodes = NewTrieMap();
     ReturnClause_ReferredNodes(ast->returnNode, ref_nodes);
     CreateClause_ReferredNodes(ast->createNode, ref_nodes);
+    WhereClause_ReferredNodes(ast->whereNode, ref_nodes);
 
     /* At most we're expecting N algebraic expressions, where N is the number of edges 
      * within the query graph. */

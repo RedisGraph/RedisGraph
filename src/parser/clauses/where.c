@@ -1,4 +1,5 @@
 #include "./where.h"
+#include <assert.h>
 
 AST_WhereNode* New_AST_WhereNode(AST_FilterNode *filters) {
 	AST_WhereNode *whereNode = (AST_WhereNode*)malloc(sizeof(AST_WhereNode));
@@ -71,6 +72,37 @@ void FreePredicateNode(AST_PredicateNode* predicateNode) {
 	}
 
 	// TODO: Should I free constVal?
+}
+
+void _WhereClause_ReferredNodes(AST_FilterNode *root, TrieMap *referred_nodes) {
+	switch(root->t) {
+		case N_COND:
+			_WhereClause_ReferredNodes(root->cn.left, referred_nodes);
+			_WhereClause_ReferredNodes(root->cn.right, referred_nodes);
+			break;
+		case N_PRED:
+			TrieMap_Add(referred_nodes,
+						root->pn.alias,
+						strlen(root->pn.alias),
+						NULL,
+						TrieMap_DONT_CARE_REPLACE);
+			if(root->pn.t == N_VARYING) {
+				TrieMap_Add(referred_nodes,
+							root->pn.nodeVal.alias,
+							strlen(root->pn.nodeVal.alias),
+							NULL,
+							TrieMap_DONT_CARE_REPLACE);
+			}
+			break;
+		default:
+			assert(0);
+			break;
+	}
+}
+
+void WhereClause_ReferredNodes(const AST_WhereNode *where_node, TrieMap *referred_nodes) {
+	if(!where_node) return;
+	_WhereClause_ReferredNodes(where_node->filters, referred_nodes);
 }
 
 void Free_AST_FilterNode(AST_FilterNode* filterNode) {

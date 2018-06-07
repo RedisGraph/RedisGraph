@@ -22,8 +22,7 @@ struct OpNode {
     OpBase *operation;          /* Node operation. */
     struct OpNode **children;   /* Child operations. */
     int childCount;             /* Number of children. */
-    struct OpNode **parents;    /* Parent operations. */
-    int parentCount;            /* Number of parents. */
+    struct OpNode *parent;     /* Parent operations. */
     StreamState state;          /* Stream state. */
 };
 

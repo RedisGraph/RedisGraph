@@ -15,8 +15,7 @@ OpNode* NewOpNode(OpBase *op) {
     opNode->operation = op;
     opNode->children = NULL;
     opNode->childCount = 0;
-    opNode->parents = NULL;
-    opNode->parentCount = 0;
+    opNode->parent = NULL;
     opNode->state = StreamUnInitialized;
     return opNode;
 }
@@ -33,56 +32,44 @@ int _OpNode_ContainsChild(const OpNode *parent, const OpNode *child) {
 }
 
 void _OpNode_AddChild(OpNode *parent, OpNode *child) {
-
     // Add child to parent
     if(parent->children == NULL) {
         parent->children = malloc(sizeof(OpNode *));
+    } else {
+        parent->children = realloc(parent->children, sizeof(OpNode *) * (parent->childCount+1));
     }
-
-    parent->children[parent->childCount] = child;
-    parent->childCount++;
-    parent->children = realloc(parent->children, sizeof(OpNode *) * (parent->childCount+1));
+    parent->children[parent->childCount++] = child;
 
     // Add parent to child
-    if(child->parents == NULL) {
-        child->parents = malloc(sizeof(OpNode *));
-    }
-
-    child->parents[child->parentCount] = parent;
-    child->parentCount++;
-    child->parents = realloc(child->parents, sizeof(OpNode *) * (child->parentCount+1));
+    child->parent = parent;
 }
 
 /* Removes node b from a and update child parent lists
  * Assuming B is a child of A. */
-void _OpNode_RemoveNode(OpNode *a, OpNode *b) {
-    // remove child from parent
-    for(int i = 0; i < a->childCount; i++) {
-        if(a->children[i] == b) {
-            // shift left children
-            for(int j = i; j < a->childCount-1; j++) {
-                a->children[j] = a->children[j+1];
-            }
-            // uppdate child count
-            a->childCount--;
-            a->children = realloc(a->children, sizeof(OpNode *) * a->childCount);
-            break;
+void _OpNode_RemoveNode(OpNode *parent, OpNode *child) {
+    // Remove child from parent.
+    int i = 0;
+    for(; i < parent->childCount; i++) {
+        if(parent->children[i] == child) break;
+    }
+    
+    assert(i != parent->childCount);    
+
+    // Uppdate child count.
+    parent->childCount--;
+    if(parent->childCount == 0) {
+        free(parent->children);
+        parent->children = NULL;
+    } else {
+        // Shift left children.
+        for(int j = i; j < parent->childCount; j++) {
+            parent->children[j] = parent->children[j+1];
         }
+        parent->children = realloc(parent->children, sizeof(OpNode *) * parent->childCount);
     }
 
-    // remove parent from child
-    for(int i = 0; i < b->parentCount; i++) {
-        if(b->parents[i] == a) {
-            // shift left parents
-            for(int j = i; j < b->parentCount-1; j++) {
-                b->parents[j] = b->parents[j+1];
-            }
-            // uppdate parent count
-            b->parentCount--;
-            b->parents = realloc(b->parents, sizeof(OpNode *) * b->parentCount);
-            break;
-        }
-    }
+    // Remove parent from child.
+    child->parent = NULL;
 }
 
 void _OpNode_RemoveChild(OpNode *parent, OpNode *child) {
@@ -93,9 +80,44 @@ void _OpNode_RemoveParent(OpNode *child, OpNode *parent) {
     _OpNode_RemoveNode(parent, child);
 }
 
+/* Push b right below a. */
+void _OpNode_PushBelow(OpNode *a, OpNode *b) {
+    /* B shouldn't have its parent set. */
+    assert(!(b->parent || b->children));
+    assert(a->parent);
+
+    /* Replace A's former parent. */
+    OpNode *a_former_parent = a->parent;
+
+    /* Disconnect A from its former parent. */
+    _OpNode_RemoveChild(a_former_parent, a);
+
+    /* Add A's former parent as parent of B. */
+    _OpNode_AddChild(a_former_parent, b);
+
+    /* Add A as a child of B. */
+    _OpNode_AddChild(b, a);
+}
+
+/* Push b right above a. */
+void _OpNode_PushAbove(OpNode *a, OpNode *b) {
+    /* B shouldn't have its children set. */
+    assert(b->children != NULL);
+
+    /* Remove each child of A and add it as a child of B. */
+    while(a->childCount) {
+        OpNode* child = a->children[0];
+        _OpNode_RemoveChild(a, child);
+        _OpNode_AddChild(b, child);
+    }
+
+    /* B is the only child of A. */
+    _OpNode_AddChild(a, b);
+}
+
 void _OpNode_PushInBetween(OpNode *parent, OpNode *onlyChild) {
     /* Disconnect every child from parent
-     * Add each pareent's child to only child. */
+     * Add each parent's child to only child. */
     while(parent->childCount != 0) { 
         _OpNode_AddChild(onlyChild, parent->children[0]);
         _OpNode_RemoveChild(parent, parent->children[0]);
@@ -220,6 +242,77 @@ void _OpNode_PushInBetween(OpNode *parent, OpNode *onlyChild) {
 //     }
 // }
 
+Vector* _ExecutionPlan_Locate_References(OpNode *root, OpNode **op, Vector *references) {
+    /* List of entities which had their ID resolved
+     * at this point of execution, should include all
+     * previously modified entities (up the execution plan). */
+    Vector *seen = NewVector(char*, 0);
+    char *modifiedEntity;
+
+    /* Append current op modified entities. */
+    if(root->operation->modifies) {
+        for(int i = 0; i < Vector_Size(root->operation->modifies); i++) {
+            Vector_Get(root->operation->modifies, i, &modifiedEntity);
+            Vector_Push(seen, modifiedEntity);
+        }
+    }
+
+     /* Traverse execution plan, upwards. */
+    for(int i = 0; i < root->childCount; i++) {
+        Vector *saw = _ExecutionPlan_Locate_References(root->children[i], op, references);
+
+        /* Quick return if op was located. */
+        if(*op) {
+            Vector_Free(saw);
+            return seen;
+        }
+
+        /* Add modified entities from previous operation. */
+        for(int i = 0; i < Vector_Size(saw); i++) {
+            Vector_Get(saw, i, &modifiedEntity);
+            Vector_Push(seen, modifiedEntity);
+        }
+        Vector_Free(saw);
+    }
+
+    /* See if all references been resolved.
+     * TODO: create a vector compare function
+     * which checks if the content of one is in the other. */
+    int match = Vector_Size(references);
+    size_t ref_count = Vector_Size(references);
+    size_t seen_count = Vector_Size(seen);
+
+    for(int i = 0; i < ref_count; i++) {
+        char *reference;        
+        Vector_Get(references, i, &reference);
+
+        int j = 0;
+        for(; j < seen_count; j++) {
+            char *resolved;
+            Vector_Get(seen, j, &resolved);
+
+            if(!strcmp(reference, resolved)) {
+                /* Match! */
+                break;
+            }
+        }
+        
+        /* no match, quick break, */
+        if (j == seen_count) break;
+        else match--;
+    }
+
+    if(!match) *op = root;
+    return seen;
+}
+
+OpNode* ExecutionPlan_Locate_References(OpNode *root, Vector *references) {
+    OpNode *op = NULL;
+    Vector *temp = _ExecutionPlan_Locate_References(root, &op, references);
+    Vector_Free(temp);
+    return op;
+}
+
 Vector* _ExecutionPlan_AddFilters(OpNode *root, FT_FilterNode **filterTree) {
     /* We've reached the end of our execution plan. */
     if(root == NULL) {
@@ -341,13 +434,13 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g, const char *graph
         } else {
             size_t exp_count = 0;
             AlgebraicExpression **algebraic_expressions = AlgebraicExpression_From_Query(ast, q, &exp_count);
-            op = NewOpNode(NewTraverseOp(g, algebraic_expressions[exp_count-1]));
+            op = NewOpNode(NewTraverseOp(g, q, algebraic_expressions[exp_count-1]));
             Vector_Push(ops, op);
             for(int i = exp_count-2; i >= 0; i--) {
                 // OpNode *child_op = NewOpNode(NewCondTraverseOp(g, algebraic_expressions[i]));
                 // _OpNode_AddChild(child_op, op);
                 // op = child_op;
-                op = NewOpNode(NewCondTraverseOp(g, algebraic_expressions[i]));
+                op = NewOpNode(NewCondTraverseOp(g, q, algebraic_expressions[i]));
                 Vector_Push(ops, op);
             }
         }
@@ -383,6 +476,42 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g, const char *graph
         parent_op = child_op;
     }
 
+    if(ast->whereNode != NULL) {
+        FT_FilterNode *filter_tree = BuildFiltersTree(ast->whereNode->filters);
+        Vector *sub_trees = FilterTree_SubTrees(filter_tree);
+        
+
+        // _ExecutionPlan_AddFilters(execution_plan->root, &execution_plan->filter_tree);
+        
+        /* For each filter tree find the earliest position along the execution 
+         * after which the filter tree can be applied. */
+        for(int i = 0; i < Vector_Size(sub_trees); i++) {
+            FT_FilterNode *tree;
+            Vector_Get(sub_trees, i, &tree);
+
+            Vector *references = FilterTree_CollectAliases(tree);
+
+            /* Scan execution plan, locate the earliest position where all 
+             * references been resolved. */
+            OpNode *op = ExecutionPlan_Locate_References(execution_plan->root, references);
+            assert(op);
+
+            /* Create filter node,
+             * Introduce filter op right below located op. */
+            OpNode *filter_op = NewOpNode(NewFilterOp(tree));
+            _OpNode_PushBelow(op, filter_op);
+            for(int j = 0; j < Vector_Size(references); j++) {
+                char *ref;
+                Vector_Get(references, j, &ref);
+                free(ref);
+            }
+            Vector_Free(references);
+
+            ExecutionPlanPrint(execution_plan);
+        }
+        Vector_Free(sub_trees);
+    }
+    
     return execution_plan;
 
     // ExecutionPlan *execution_plan = (ExecutionPlan*)calloc(1, sizeof(ExecutionPlan));

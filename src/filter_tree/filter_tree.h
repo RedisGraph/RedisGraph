@@ -35,14 +35,14 @@ typedef struct {
 			char* property;
 		} Rop;
 	};
-	FT_CompareValueType t; 	/* Comapred value type, constant/node. */
+	FT_CompareValueType t; 	/* Compared value type, constant/node. */
 	CmpFunc cf;				/* Compare function, determins relation between val and element property. */
 } FT_PredicateNode;
 
 typedef struct {
 	struct FT_FilterNode *left;
 	struct FT_FilterNode *right;
-	int op;					/* OR, AND */
+	int op;	/* OR, AND */
 } FT_ConditionNode;
 
 /* All nodes within the filter tree are of type FT_FilterNode. */
@@ -73,6 +73,10 @@ int applyFilters(const QueryGraph *g, const FT_FilterNode* root);
 /* Checks to see if aliased node is within the filter tree. */
 int FilterTree_ContainsNode(const FT_FilterNode *root, const Vector *aliases);
 
+/* Extract every alias mentioned in the tree
+ * without duplications. */
+Vector *FilterTree_CollectAliases(const FT_FilterNode *root);
+
 /* Clones given tree */
 void FilterTree_Clone(const FT_FilterNode *root, FT_FilterNode **clone);
 
@@ -83,6 +87,12 @@ void FilterTree_RemoveAllNodesExcept(FT_FilterNode **root, Vector *aliases);
 void FilterTree_RemovePredNodes(FT_FilterNode **root, const Vector *aliases);
 void FilterTree_Squash(FT_FilterNode **root);
 FT_FilterNode* FilterTree_MinFilterTree(FT_FilterNode *root, Vector *aliases);
+
+/* Break filter tree into sub filter trees as follows:
+ * sub trees under an OR operator are returned,
+ * sub trees under an AND operator are broken down to the smallest
+ * components possible following the two rules above. */
+Vector* FilterTree_SubTrees(const FT_FilterNode *root);
 
 void FilterTree_Free(FT_FilterNode *root);
 

@@ -154,7 +154,12 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     RMUtil_ParseArgs(argv, argc, 1, "cc", &graph_name, &query);
 
     // Try to get graph.
-    Graph *g = NULL;
+    Graph *g = Graph_Get(ctx, argv[1]);
+    if(!g) {
+        /* At the moment EXPLAIN requires that the graph would exists. */
+        RedisModule_ReplyWithError(ctx, "key doesn't contains a graph object.");
+        return REDISMODULE_OK;
+    }
 
     /* Parse query, get AST. */
     char *errMsg = NULL;
