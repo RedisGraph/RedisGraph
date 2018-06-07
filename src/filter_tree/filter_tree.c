@@ -20,22 +20,6 @@ int static inline IsNodePredicate(const FT_FilterNode *node) {
     return node->t == FT_N_PRED;
 }
 
-int static inline IsNodeCondition(const FT_FilterNode *node) {
-    return node->t == FT_N_COND;
-}
-
-int _vectorContains(const Vector *elements, const char *item) {
-    int i = 0;
-    for(; i < Vector_Size(elements); i++) {
-        char *current;
-        Vector_Get(elements, i, &current);
-        if(strcmp(current, item) == 0) {
-            return 1;
-        }
-    }
-    return 0;
-}
-
 FT_FilterNode* CreateVaryingFilterNode(const char *LAlias, const char *LProperty, const char *RAlias, const char *RProperty, int op) {
     // At the moment only numerical comparison is supported
     // Assuming compared data is double.
@@ -49,8 +33,10 @@ FT_FilterNode* CreateVaryingFilterNode(const char *LAlias, const char *LProperty
 
     filterNode->pred.Lop.alias = strdup(LAlias);
     filterNode->pred.Lop.property = strdup(LProperty);
+    filterNode->pred.Lop.e = NULL;
     filterNode->pred.Rop.alias = strdup(RAlias);
     filterNode->pred.Rop.property = strdup(RProperty);
+    filterNode->pred.Rop.e = NULL;
 
     filterNode->pred.op = op;
     filterNode->pred.cf = compareFunc;
@@ -101,9 +87,10 @@ FT_FilterNode* CreateConstFilterNode(const char *alias, const char *property, in
 
     filterNode->pred.Lop.alias = strdup(alias);
     filterNode->pred.Lop.property = strdup(property);
+    filterNode->pred.Lop.e = NULL;
 
     filterNode->pred.op = op;
-    filterNode->pred.constVal = val; // Not sure about this assignmeant
+    filterNode->pred.constVal = val;
     filterNode->pred.cf = compareFunc;
     return filterNode;
 }
@@ -131,128 +118,6 @@ FT_FilterNode* _CreateVaryingFilterNode(AST_PredicateNode n) {
 
 FT_FilterNode* _CreateConstFilterNode(AST_PredicateNode n) {
     return CreateConstFilterNode(n.alias, n.property, n.op, n.constVal);
-}
-
-FT_FilterNode* _FilterTree_ClonePredicateNode(const FT_FilterNode *root) {
-    if(IsNodeConstantPredicate(root)) {
-        return CreateConstFilterNode(root->pred.Lop.alias, root->pred.Lop.property, root->pred.op, SI_Clone(root->pred.constVal));
-    } else {
-        /* Node is a varying predicate. */
-        return CreateVaryingFilterNode(root->pred.Lop.alias, root->pred.Lop.property, root->pred.Rop.alias, root->pred.Rop.property, root->pred.op);
-    }
-}
-
-void FilterTree_Clone(const FT_FilterNode *root, FT_FilterNode **clone) {
-    if(IsNodePredicate(root)) {
-        *clone = _FilterTree_ClonePredicateNode(root);
-        return;
-    }
-
-    *clone = CreateCondFilterNode(root->cond.op);
-    FilterTree_Clone(LeftChild(root), &((*clone)->cond.left));
-    FilterTree_Clone(RightChild(root), &((*clone)->cond.right));
-}
-
-void _FilterTree_RemovePredNodes(FT_FilterNode **root, const Vector *aliases) {
-    if(IsNodeVaryingPredicate(*root)) {
-        if(_vectorContains(aliases, (*root)->pred.Lop.alias) &&
-        _vectorContains(aliases, (*root)->pred.Rop.alias)) {
-            FilterTree_Free(*root);
-            *root = NULL;
-        }
-        return;
-    }
-
-    if(IsNodeConstantPredicate(*root)) {
-        if(_vectorContains(aliases, (*root)->pred.Lop.alias)) {
-            FilterTree_Free(*root);
-            *root = NULL;
-        }
-        return;
-    }
-
-    _FilterTree_RemovePredNodes(&((*root)->cond.left), aliases);
-    _FilterTree_RemovePredNodes(&((*root)->cond.right), aliases);
-}
-
-void FilterTree_RemovePredNodes(FT_FilterNode **root, const Vector *aliases) {
-    if(*root == NULL) { return; }
-    _FilterTree_RemovePredNodes(root, aliases);
-    FilterTree_Squash(root);
-}
-
-void FilterTree_RemoveAllNodesExcept(FT_FilterNode **root, Vector *aliases) {
-    /* For varying predicate nodes we can discard nodes 
-     * either left or right predicate is missing from aliases */
-    if(IsNodeVaryingPredicate(*root)) {
-        if(!_vectorContains(aliases, (*root)->pred.Lop.alias) ||
-           !_vectorContains(aliases, (*root)->pred.Rop.alias)) {
-            FilterTree_Free(*root);
-            *root = NULL;
-        }
-        return;
-    }
-
-    if(IsNodeConstantPredicate(*root)) {
-        // Check if current node is not in aliases.
-        if(!_vectorContains(aliases, (*root)->pred.Lop.alias)) {
-            FilterTree_Free(*root);
-            *root = NULL;
-        }
-        return;
-    }
-    
-    FilterTree_RemoveAllNodesExcept(&(*root)->cond.left, aliases);
-    FilterTree_RemoveAllNodesExcept(&(*root)->cond.right, aliases);
-}
-
-void FilterTree_Squash(FT_FilterNode **root) {
-    if(*root == NULL) {
-        return;
-    }
-
-    // We're only interested in conditional nodes.
-    if(IsNodePredicate(*root)) {
-        return;
-    }
-
-    // Left node was removed.
-    if((*root)->cond.left == NULL) {
-        // TODO: Free current node.
-        *root = (*root)->cond.right;
-        return FilterTree_Squash(root);
-    }
-
-    // Right node was removed.
-    if((*root)->cond.right == NULL) {
-        // TODO: Free current node.
-        *root = (*root)->cond.left;
-        return FilterTree_Squash(root);
-    }
-
-    FilterTree_Squash(&(*root)->cond.left);
-    FilterTree_Squash(&(*root)->cond.right);
-
-    // on return check squashed children
-    if((*root)->cond.left == NULL) {
-        // TODO: Free current node.
-        *root = (*root)->cond.right;
-        return;
-    }
-
-    if((*root)->cond.right == NULL) {
-        // TODO: Free current node.
-        *root = (*root)->cond.left;
-        return;
-    }
-}
-
-FT_FilterNode* FilterTree_MinFilterTree(FT_FilterNode *root, Vector *aliases) {
-    FT_FilterNode* minTree;
-    FilterTree_Clone(root, &minTree);
-    FilterTree_RemoveAllNodesExcept(&minTree, aliases);
-    FilterTree_Squash(&minTree);
-    return minTree;
 }
 
 void _FilterTree_SubTrees(const FT_FilterNode *root, Vector *sub_trees) {
@@ -338,7 +203,7 @@ int _applyFilter(SIValue* aVal, SIValue* bVal, CmpFunc f, int op) {
     return 0;
 }
 
-int _applyPredicateFilters(const QueryGraph *g, const FT_FilterNode* root) {
+int _applyPredicateFilters(const FT_FilterNode* root) {
     /* A op B
      * Extract both A and B values. */
     GraphEntity *entity;
@@ -348,65 +213,60 @@ int _applyPredicateFilters(const QueryGraph *g, const FT_FilterNode* root) {
     if(IsNodeConstantPredicate(root)) {
         bVal = (SIValue *)&root->pred.constVal;
     } else {
-        entity = QueryGraph_GetEntityByAlias(g, root->pred.Rop.alias);
+        entity = *root->pred.Rop.e;
         if(!entity || entity->id == INVALID_ENTITY_ID) {
-            return 0;
+            assert(0);
         }
         bVal = GraphEntity_Get_Property(entity, root->pred.Rop.property);
     }
 
-    entity = QueryGraph_GetEntityByAlias(g, root->pred.Lop.alias);
+    entity = *root->pred.Lop.e;
     if(!entity || entity->id == INVALID_ENTITY_ID) {
-        return 0;
+        assert(0);
     }
     aVal = GraphEntity_Get_Property(entity, root->pred.Lop.property);
 
     return _applyFilter(aVal, bVal, root->pred.cf, root->pred.op);
 }
 
-int applyFilters(const QueryGraph* g, const FT_FilterNode* root) {
+int FilterTree_applyFilters(const FT_FilterNode* root) {
     /* Handle predicate node. */
     if(IsNodePredicate(root)) {
-        return _applyPredicateFilters(g, root);
+        return _applyPredicateFilters(root);
     }
 
     /* root->t == FT_N_COND, visit left subtree. */
-    int pass = applyFilters(g, LeftChild(root));
+    int pass = FilterTree_applyFilters(LeftChild(root));
     
     if(root->cond.op == AND && pass == 1) {
         /* Visit right subtree. */
-        pass *= applyFilters(g, RightChild(root));
+        pass *= FilterTree_applyFilters(RightChild(root));
     }
 
     if(root->cond.op == OR && pass == 0) {
         /* Visit right subtree. */
-        pass = applyFilters(g, RightChild(root));
+        pass = FilterTree_applyFilters(RightChild(root));
     }
 
     return pass;
 }
 
-int FilterTree_ContainsNode(const FT_FilterNode *root, const Vector *aliases) {    
-    if(root == NULL) {
-        return 0;
+void FilterTree_bindEntities(FT_FilterNode* root, const QueryGraph *g) {
+    switch(root->t) {
+        case FT_N_COND:
+            FilterTree_bindEntities(root->cond.left, g);
+            FilterTree_bindEntities(root->cond.right, g);
+            break;
+        case FT_N_PRED:
+            root->pred.Lop.e = QueryGraph_GetEntityRef(g, root->pred.Lop.alias);
+            if(root->pred.t == FT_N_VARYING) {
+                root->pred.Rop.e = QueryGraph_GetEntityRef(g, root->pred.Rop.alias);
+            }
+            break;
+        default:
+            assert(0);
+            break;
     }
-    
-    // Is this a predicate node?
-    if(IsNodePredicate(root)) {
-        // For const predicate nodes, check only left predicate
-        if(IsNodeConstantPredicate(root)) {
-            return _vectorContains(aliases, root->pred.Lop.alias);
-        }
-        
-        // For varying predicate nodes, check both left and right predicate
-        if(IsNodeVaryingPredicate(root)) {
-            return (_vectorContains(aliases, root->pred.Lop.alias) && 
-                    _vectorContains(aliases, root->pred.Rop.alias));
-        }
-    }
-
-    return (FilterTree_ContainsNode(LeftChild(root), aliases) ||
-            FilterTree_ContainsNode(RightChild(root), aliases));
 }
 
 void _FilterTree_CollectAliases(const FT_FilterNode *root, TrieMap *aliases) {

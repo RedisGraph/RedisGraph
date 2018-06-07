@@ -26,13 +26,15 @@ typedef struct {
 	struct {			    /* Left side of predicate. */
 		char* alias;		/* Element in question alias. */
 		char* property;		/* Element's property to check. */
+		GraphEntity **e;	/* Left side entity. */
 	} Lop;
 	int op;					/* Operation (<, <=, =, =>, >, !). */
 	union {					/* Right side of predicate. */
 		SIValue constVal;	/* Value to compare against. */
 		struct {
-			char* alias;
-			char* property;
+			char* alias;		/* Element in question alias. */
+			char* property;		/* Element's property to check. */
+			GraphEntity **e;	/* Right side entity. */
 		} Rop;
 	};
 	FT_CompareValueType t; 	/* Compared value type, constant/node. */
@@ -68,25 +70,17 @@ FT_FilterNode *AppendLeftChild(FT_FilterNode *root, FT_FilterNode *child);
 FT_FilterNode *AppendRightChild(FT_FilterNode *root, FT_FilterNode *child);
 
 /* Runs val through the filter tree. */
-int applyFilters(const QueryGraph *g, const FT_FilterNode* root);
+int FilterTree_applyFilters(const FT_FilterNode* root);
 
-/* Checks to see if aliased node is within the filter tree. */
-int FilterTree_ContainsNode(const FT_FilterNode *root, const Vector *aliases);
+/* Binds filtered entities to query graph. */
+void FilterTree_bindEntities(FT_FilterNode* root, const QueryGraph *g);
 
 /* Extract every alias mentioned in the tree
  * without duplications. */
 Vector *FilterTree_CollectAliases(const FT_FilterNode *root);
 
-/* Clones given tree */
-void FilterTree_Clone(const FT_FilterNode *root, FT_FilterNode **clone);
-
 /* Prints tree. */
 void FilterTree_Print(const FT_FilterNode *root);
-
-void FilterTree_RemoveAllNodesExcept(FT_FilterNode **root, Vector *aliases);
-void FilterTree_RemovePredNodes(FT_FilterNode **root, const Vector *aliases);
-void FilterTree_Squash(FT_FilterNode **root);
-FT_FilterNode* FilterTree_MinFilterTree(FT_FilterNode *root, Vector *aliases);
 
 /* Break filter tree into sub filter trees as follows:
  * sub trees under an OR operator are returned,

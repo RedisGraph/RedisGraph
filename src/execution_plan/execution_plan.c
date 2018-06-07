@@ -76,10 +76,6 @@ void _OpNode_RemoveChild(OpNode *parent, OpNode *child) {
     _OpNode_RemoveNode(parent, child);
 }
 
-void _OpNode_RemoveParent(OpNode *child, OpNode *parent) {
-    _OpNode_RemoveNode(parent, child);
-}
-
 /* Push b right below a. */
 void _OpNode_PushBelow(OpNode *a, OpNode *b) {
     /* B shouldn't have its parent set. */
@@ -113,17 +109,6 @@ void _OpNode_PushAbove(OpNode *a, OpNode *b) {
 
     /* B is the only child of A. */
     _OpNode_AddChild(a, b);
-}
-
-void _OpNode_PushInBetween(OpNode *parent, OpNode *onlyChild) {
-    /* Disconnect every child from parent
-     * Add each parent's child to only child. */
-    while(parent->childCount != 0) { 
-        _OpNode_AddChild(onlyChild, parent->children[0]);
-        _OpNode_RemoveChild(parent, parent->children[0]);
-    }
-
-    _OpNode_AddChild(parent, onlyChild);
 }
 
 /*  Nodes with more than one incoming edge
@@ -313,64 +298,6 @@ OpNode* ExecutionPlan_Locate_References(OpNode *root, Vector *references) {
     return op;
 }
 
-Vector* _ExecutionPlan_AddFilters(OpNode *root, FT_FilterNode **filterTree) {
-    /* We've reached the end of our execution plan. */
-    if(root == NULL) {
-        return NULL;
-    }
-
-    /* List of entities which had their ID resolved
-     * at this point of execution, should include all
-     * previously modified entities (up the execution plan). */
-    Vector *seen = NewVector(char*, 0);
-    char *modifiedEntity;
-
-    /* Traverse execution plan, upwards. */
-    for(int i = root->childCount-1; i >= 0; i--) {
-        Vector *saw = _ExecutionPlan_AddFilters(root->children[i], filterTree);
-        
-        /* No need to continue, filter tree is empty. */
-        if(*filterTree == NULL) {
-            if(saw != NULL) {
-                Vector_Free(saw);
-            }
-            Vector_Free(seen);
-            return NULL;
-        }
-
-        /* Add modified entities from previous operation. */
-        if(saw != NULL) {
-            for(int i = 0; i < Vector_Size(saw); i++) {
-                Vector_Get(saw, i, &modifiedEntity);
-                Vector_Push(seen, modifiedEntity);
-            }
-            Vector_Free(saw);
-        }
-    }
-
-    // See if filter tree filters any of the current op modified entities
-    if(FilterTree_ContainsNode(*filterTree, seen)) {    
-        // Create a minimum filter tree for the current execution plan operation
-        FT_FilterNode *minTree = FilterTree_MinFilterTree(*filterTree, seen);
-        
-        // Remove op modified entities from main filter tree.
-        FilterTree_RemovePredNodes(filterTree, seen);
-        
-        OpNode *nodeFilter = NewOpNode(NewFilterOp(minTree));
-        _OpNode_PushInBetween(root, nodeFilter);
-    }
-
-    /* Append current op modified entities. */
-    if(root->operation->modifies) {
-        for(int i = 0; i < Vector_Size(root->operation->modifies); i++) {
-            Vector_Get(root->operation->modifies, i, &modifiedEntity);
-            Vector_Push(seen, modifiedEntity);
-        }
-    }
-
-    return seen;
-}
-
 void _Count_Graph_Entities(const Vector *entities, size_t *node_count, size_t *edge_count) {
     for(int i = 0; i < Vector_Size(entities); i++) {
         AST_GraphEntity *entity;
@@ -478,11 +405,9 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g, const char *graph
 
     if(ast->whereNode != NULL) {
         FT_FilterNode *filter_tree = BuildFiltersTree(ast->whereNode->filters);
+        execution_plan->filter_tree = filter_tree;
         Vector *sub_trees = FilterTree_SubTrees(filter_tree);
-        
 
-        // _ExecutionPlan_AddFilters(execution_plan->root, &execution_plan->filter_tree);
-        
         /* For each filter tree find the earliest position along the execution 
          * after which the filter tree can be applied. */
         for(int i = 0; i < Vector_Size(sub_trees); i++) {
@@ -498,7 +423,7 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g, const char *graph
 
             /* Create filter node,
              * Introduce filter op right below located op. */
-            OpNode *filter_op = NewOpNode(NewFilterOp(tree));
+            OpNode *filter_op = NewOpNode(NewFilterOp(tree, q));
             _OpNode_PushBelow(op, filter_op);
             for(int j = 0; j < Vector_Size(references); j++) {
                 char *ref;
@@ -766,9 +691,9 @@ void OpNode_Free(OpNode* op) {
 
 void ExecutionPlanFree(ExecutionPlan *plan) {
     OpNode_Free(plan->root);
-    // Graph_Free(plan->graph);
-    // if(plan->filter_tree) {
-    //     FilterTree_Free(plan->filter_tree);
-    // }
+    /* TODO: Free query graph! */
+    // QueryGraph_Free(plan->graph);
+    if(plan->filter_tree)
+        FilterTree_Free(plan->filter_tree);
     free(plan);
 }

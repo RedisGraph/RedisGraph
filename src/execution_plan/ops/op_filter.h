@@ -21,8 +21,8 @@ typedef struct {
 } Filter;
 
 /* Creates a new Filter operation */
-OpBase* NewFilterOp(FT_FilterNode *filterTree);
-Filter* NewFilter(FT_FilterNode *filterTree);
+OpBase* NewFilterOp(FT_FilterNode *filterTree, const QueryGraph *qg);
+Filter* NewFilter(FT_FilterNode *filterTree, const QueryGraph *qg);
 
 /* FilterConsume next operation 
  * returns OP_DEPLETED when */

@@ -366,7 +366,7 @@ void QueryGraph_Free(QueryGraph* g) {
 
     /* TODO: Free edges. */
 
-    /* Edges are freed internaly by nodes */
+    /* Edges are freed internally by nodes. */
     free(g->nodes);
     free(g->edges);
     free(g);

@@ -1,11 +1,15 @@
 #include "op_filter.h"
 
-OpBase* NewFilterOp(FT_FilterNode *filterTree) {
-    return (OpBase*)NewFilter(filterTree);
+OpBase* NewFilterOp(FT_FilterNode *filterTree, const QueryGraph *qg) {
+    return (OpBase*)NewFilter(filterTree, qg);
 }
 
-Filter* NewFilter(FT_FilterNode *filterTree) {
+Filter* NewFilter(FT_FilterNode *filterTree, const QueryGraph *qg) {
     Filter *filter = malloc(sizeof(Filter));
+
+    /* Bind filter tree with filter nodes. */
+    FilterTree_bindEntities(filterTree, qg);
+
     filter->filterTree = filterTree;
     filter->state = FilterUninitialized;
 
@@ -30,7 +34,7 @@ OpResult FilterConsume(OpBase *opBase, QueryGraph* graph) {
     }
 
     /* Pass graph through filter tree */
-    int pass = applyFilters(graph, filter->filterTree);
+    int pass = FilterTree_applyFilters(filter->filterTree);
 
     filter->state = FilterRequestRefresh;
 
@@ -50,6 +54,5 @@ OpResult FilterReset(OpBase *ctx) {
 /* Frees Filter*/
 void FilterFree(OpBase *ctx) {
     Filter *filter = (Filter*)ctx;
-    FilterTree_Free(filter->filterTree);
     free(filter);
 }
