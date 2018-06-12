@@ -31,6 +31,7 @@ CC_SOURCES = $(wildcard $(SOURCEDIR)/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/execution_plan/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/execution_plan/ops/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/execution_plan/optimizations/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/filter_tree/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/graph/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/grouping/*.c)
@@ -57,9 +58,10 @@ CC_DEPS = $(patsubst %.c, %.d, $(CC_SOURCES) )
 # Library dependencies
 LIBRMUTIL=rmutil/librmutil.a
 LIBTRIEMAP=util/triemap/libtriemap.a
+# GRAPHBLAS=../deps/GraphBLAS/build/libgraphblas.a
 
 # Compilation deps for the module
-LIBS=$(LIBTRIEMAP) $(LIBRMUTIL) $(GRAPHBLAS)
+LIBS=$(LIBTRIEMAP) $(LIBRMUTIL)
 MODULE=$(CC_OBJECTS) $(LIBS)
 
 %.c: %.y
@@ -83,9 +85,9 @@ $(LIBTRIEMAP):
 	$(MAKE) -C util/triemap
 .PHONY: $(LIBTRIEMAP)
 
-$(GRAPHBLAS):
-	$(MAKE) install -C ../deps/GraphBLAS
-.PHONY: $(GRAPHBLAS)
+# $(GRAPHBLAS):
+# 	$(MAKE) install -C ../deps/GraphBLAS
+# .PHONY: $(GRAPHBLAS)
 
 # Compile query parse. 
 # This is not included in the usual make target!

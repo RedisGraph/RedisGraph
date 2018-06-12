@@ -1,4 +1,3 @@
-#include "../../util/prng.h"
 #include "../../stores/store.h"
 #include "op_create.h"
 #include <assert.h>
@@ -153,7 +152,7 @@ void _CreateEdges(OpCreate *op) {
         Node *dest_node = QueryGraph_GetNodeByAlias(op->qg, op->edges_to_create[i].dest_node_alias);
 
         /* Create the actual edge. */
-        Edge *edge = Edge_New(get_new_id(), src_node, dest_node, e->relationship);
+        Edge *edge = Edge_New(0, src_node, dest_node, e->relationship);
 
         /* Add properties.*/
         char *keys[e->prop_count];

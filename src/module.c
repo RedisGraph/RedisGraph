@@ -14,8 +14,6 @@
 #include "bulk_insert.h"
 #include "arithmetic/arithmetic_expression.h"
 
-#include "util/prng.h"
-#include "util/snowflake.h"
 #include "util/simple_timer.h"
 #include "util/triemap/triemap_type.h"
 
@@ -247,11 +245,6 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
     InitGroupCache();
     Agg_RegisterFuncs();
     AR_RegisterFuncs(); /* Register arithmetic expression functions. */
-
-    if (snowflake_init(1, 1) != 1) {
-        RedisModule_Log(ctx, "error", "Failed to initialize snowflake");
-        return REDISMODULE_ERR;
-    }
 
     if (RedisModule_Init(ctx, "graph", 1, REDISMODULE_APIVER_1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
