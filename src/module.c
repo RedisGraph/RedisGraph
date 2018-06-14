@@ -3,6 +3,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <time.h>
+#include <assert.h>
 
 #include "graph/graph.h"
 #include "graph/graph_type.h"
@@ -242,6 +243,9 @@ int _RegisterDataTypes(RedisModuleCtx *ctx) {
 }
 
 int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+    assert(GrB_init(GrB_NONBLOCKING) == GrB_SUCCESS);
+    /* TODO: when module unloads call GrB_finalize. */
+
     InitGroupCache();
     Agg_RegisterFuncs();
     AR_RegisterFuncs(); /* Register arithmetic expression functions. */

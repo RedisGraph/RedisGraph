@@ -19,7 +19,7 @@ void _reduceFilter(OpNode *op) {
         /* Create a new root for the tree, merge trees using an AND. */
         FT_FilterNode *root = CreateCondFilterNode(AND);
         AppendLeftChild(root, tree);
-        AppendLeftChild(root, childFilter->filterTree);
+        AppendRightChild(root, childFilter->filterTree);
         tree = root;
 
         // Proceed.
@@ -28,6 +28,7 @@ void _reduceFilter(OpNode *op) {
 
     // Did we performed a reduction?
     if(filter->filterTree != tree) {
+        filter->filterTree = tree;
         // Remove intermidate filter ops.
         OpNode *intermidateChild = child->parent;
         while(intermidateChild != op) {

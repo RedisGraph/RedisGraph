@@ -15,40 +15,37 @@ void GxB_Matrix_print(GrB_Matrix m) {
             printf("%d ", x);
             x = false;
         }
+        printf("\n");
     }
+    printf("\n\n\n");
 }
 
 AlgebraicExpressionResult *_AlgebraicExpressionResult_New(GrB_Matrix M, AlgebraicExpression *ae) {
     AlgebraicExpressionResult *aer = malloc(sizeof(AlgebraicExpressionResult));
     aer->m = M;
-    aer->src_node = ae->_src_node;
-    aer->dest_node = ae->_dest_node;
-    aer->_free_m = ae->operand_count > 1;
+    aer->src_node = ae->src_node;
+    aer->dest_node = ae->dest_node;
+    /* Free either when a multiplication was performed,
+     * or a single operand was transposed */
+    aer->_free_m = (ae->operand_count > 1 || ae->operands[0].transpose);
     return aer;
 }
 
-AlgebraicExpression *_AE_New(AL_EXP_OP op, size_t operand_count) {
+AlgebraicExpression *_AE_MUL(size_t operand_count) {
     AlgebraicExpression *ae = malloc(sizeof(AlgebraicExpression));
-    ae->op = op;
+    ae->op = AL_EXP_MUL;
     ae->operand_count = operand_count;
-    ae->operands = malloc(sizeof(GrB_Matrix) * operand_count);
+    ae->operands = malloc(sizeof(AlgebraicExpressionOperand) * operand_count);
     return ae;
 }
 
-AlgebraicExpression *_AE_ADD(size_t operand_count) {
-    return _AE_New(AL_EXP_ADD, operand_count);
-}
-
-AlgebraicExpression *_AE_MUL(size_t operand_count) {
-    return _AE_New(AL_EXP_MUL, operand_count);
-}
-
-AlgebraicExpression *_AE_AND(size_t operand_count) {
-    return _AE_New(AL_EXP_AND, operand_count);
-}
-
 int _intermidate_node(const Node *n) {
-    return ( (Vector_Size(n->incoming_edges) > 0) && (Vector_Size(n->outgoing_edges) > 0) );
+    /* ->()<- 
+     * <-()->
+     * ->()-> */
+    return ((Vector_Size(n->incoming_edges) > 1) ||
+            (Vector_Size(n->outgoing_edges) > 1) ||
+            ((Vector_Size(n->incoming_edges) > 0) && (Vector_Size(n->outgoing_edges) > 0)));
 }
 
 int _referred_node(const Node *n, const QueryGraph *q, TrieMap *return_nodes) {
@@ -56,126 +53,117 @@ int _referred_node(const Node *n, const QueryGraph *q, TrieMap *return_nodes) {
     return TRIEMAP_NOTFOUND != TrieMap_Find(return_nodes, node_alias, strlen(node_alias));
 }
 
-/* Constructs a algebraic expressions from query,
- * for the time being we're only handling simple queries
- * of the form (A)-[B]->(C)-[D]->(E)...
- * Caller is responsible for freeing return value. */
-AlgebraicExpression **AlgebraicExpression_From_Query(const AST_Query *ast, const QueryGraph *q, size_t *exp_count) {
-    Node *n;
-    Edge *e;
-    *exp_count = 0;
-    int matrix_idx = 0; /* Matrix position within an expression. */
+/* Break down expression into sub expressions.
+ * considering referenced intermidate nodes. */
+AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(AlgebraicExpression *exp, const AST_Query *ast, const QueryGraph *q, size_t *exp_count) {
+    /* Allocating maximum number of expression possible. */
+    AlgebraicExpression **expressions = malloc(sizeof(AlgebraicExpression *) * q->edge_count);
+    int expIdx = 0;     // Sub expression index.
+    int operandIdx = 0; // Index to currently inspected operand.
+    int transpose;     // Indicate if matrix operand needs to be transposed.    
+    Node *dest = NULL;
+    Edge *e = NULL;
+    Vector *matchPattern = ast->matchNode->graphEntities;
 
-    /* Set of nodes which must have their ID set. */
     TrieMap *ref_nodes = NewTrieMap();
     ReturnClause_ReferredNodes(ast->returnNode, ref_nodes);
     CreateClause_ReferredNodes(ast->createNode, ref_nodes);
     WhereClause_ReferredNodes(ast->whereNode, ref_nodes);
 
-    /* At most we're expecting N algebraic expressions, where N is the number of edges 
-     * within the query graph. */
-    AlgebraicExpression **expressions = calloc(q->edge_count, sizeof(AlgebraicExpression *));
+    AlgebraicExpression *iexp = _AE_MUL(q->edge_count);
+    iexp->src_node = exp->src_node;
+    iexp->dest_node = exp->dest_node;
+    iexp->operand_count = 0;
+    expressions[expIdx++] = iexp;
 
-    /* Start scanning from node without incoming edges. */
-    Vector *start_nodes = QueryGraph_GetNDegreeNodes(q, 0);
-    /* No nodes with income degree of 0, nothing to do. */
-    if(Vector_Size(start_nodes) == 0) goto cleanup;
-    Vector_Get(start_nodes, 0, &n);
+    for(int i = 0; i < Vector_Size(matchPattern); i++) {
+        AST_GraphEntity *match_element;
+        Vector_Get(matchPattern, i, &match_element);
 
-    /* First algebraic expression. */
-    AlgebraicExpression *ae = _AE_MUL(q->edge_count);
-    expressions[(*exp_count)++] = ae;
-    ae->_src_node = QueryGraph_GetNodeRef(q, n);
+        if(match_element->t != N_LINK) continue;
 
-    /* Traverse node. */
-    /* TODO: Make sure there's no cycle in the graph, otherwise we'll be stuck in this loop. */
-    while(Vector_Size(n->outgoing_edges)) {
-        /* Wrongly assuming relation is between only two types.
-        *     if(n->label)
-        *         _Algebraic_Expression_Apply_Filter(expression, n->label);
-        */
-        Vector_Get(n->outgoing_edges, 0, &e);
+        AST_LinkEntity *edge = (AST_LinkEntity*)match_element;
+        transpose = (edge->direction == N_RIGHT_TO_LEFT);
+        e = QueryGraph_GetEdgeByAlias(q, edge->ge.alias);
 
-        /* If intermidate node is referenced by return clause
-         * create a new algebraic expression. */
-        if(_intermidate_node(n) && _referred_node(n, q, ref_nodes)) {
-            /* Update previous algebraic expression. */
-            ae->operand_count = matrix_idx;
+        if(transpose) dest = e->src;
+        else dest = e->dest;
 
+        iexp->operands[iexp->operand_count++] = exp->operands[operandIdx++];
+
+        /* If intermidate node is referenced create a new algebraic expression. */
+        if(_intermidate_node(dest) && _referred_node(dest, q, ref_nodes)) {
+            // Finalize current expression.
+            iexp->dest_node = QueryGraph_GetNodeRef(q, dest);
+            assert(iexp->operand_count > 0);
+            
             /* Create a new algebraic expression. */
-            ae = _AE_MUL(q->edge_count);
-            ae->_src_node = QueryGraph_GetNodeRef(q, n);
-            expressions[(*exp_count)++] = ae;
-            matrix_idx = 0; /* Reset matrix position within new expression. */
+            iexp = _AE_MUL(exp->operand_count - operandIdx);
+            iexp->operand_count = 0;
+            iexp->src_node = expressions[expIdx-1]->dest_node;
+            iexp->dest_node = exp->dest_node;
+            expressions[expIdx++] = iexp;
         }
-
-        ae->operands[matrix_idx++] = e->mat;
-        n = e->dest; /* Advance. */
-        ae->_dest_node = QueryGraph_GetNodeRef(q, n);
     }
-    ae->operand_count = matrix_idx; /* Update last algebraic expression operand count. */
-
-cleanup:
+    
+    *exp_count = expIdx;
     TrieMap_Free(ref_nodes, TrieMap_NOP_CB);
-    Vector_Free(start_nodes);
-
     return expressions;
 }
 
-void _AlgebraicExpression_Execute_MUL(GrB_Matrix C, GrB_Matrix A, GrB_Matrix B) {
+AlgebraicExpression **AlgebraicExpression_From_Query(const AST_Query *ast, const QueryGraph *q, size_t *exp_count) {
+    assert(q->edge_count != 0);
+
+    AlgebraicExpression *exp = _AE_MUL(q->edge_count);
+    int transpose; // Indicate if matrix operand needs to be transposed.    
+    int operandIdx = 0;
+    Node *dest = NULL;
+    Node *src = NULL;
+    Edge *e = NULL;
+    Vector *matchPattern = ast->matchNode->graphEntities;
+    
+    // Scan MATCH clause from left to right.
+    for(int i = 0; i < Vector_Size(matchPattern); i++) {
+        AST_GraphEntity *match_element;
+        Vector_Get(matchPattern, i, &match_element);
+
+        if(match_element->t != N_LINK) continue;
+        AST_LinkEntity *edge = (AST_LinkEntity*)match_element;
+        transpose = (edge->direction == N_RIGHT_TO_LEFT);
+        e = QueryGraph_GetEdgeByAlias(q, edge->ge.alias);
+        assert(e);
+
+        dest = e->dest;
+        src = e->src;
+
+        if(transpose) {
+            dest = e->src;
+            src = e->dest;
+        }
+
+        if(operandIdx == 0) exp->src_node = QueryGraph_GetNodeRef(q, src);
+
+        exp->operands[operandIdx].operand = e->mat;
+        exp->operands[operandIdx].transpose = transpose;
+        operandIdx++;
+    }
+    exp->dest_node = QueryGraph_GetNodeRef(q, dest);
+    
+    AlgebraicExpression **expressions = _AlgebraicExpression_Intermidate_Expressions(exp, ast, q, exp_count);
+    AlgebraicExpression_Free(exp);
+    return expressions;
+}
+
+inline void _AlgebraicExpression_Execute_MUL(GrB_Matrix C, GrB_Matrix A, GrB_Matrix B, GrB_Descriptor desc) {
     GrB_mxm(
         C,                  // Output
         NULL,               // Mask
         NULL,               // Accumulator
         GxB_LOR_LAND_BOOL,  // Semiring
-        A,
-        B,
-        NULL                // Descriptor        
+        A,                  // First matrix
+        B,                  // Second matrix
+        desc                // Descriptor        
     );
-}
-
-GrB_Matrix _AlgebraicExpression_Execute_BinaryOP(GrB_Matrix A, GrB_Matrix B, GrB_BinaryOp op) {
-    GrB_Index nrows;
-    GrB_Matrix_nrows(&nrows, A);
-    
-    GrB_Matrix C;
-    GrB_Matrix_new(&C, GrB_BOOL, nrows, nrows);
-    
-    GrB_eWiseAdd_Matrix_BinaryOp(
-        C,      // Output
-        NULL,   // Mask
-        NULL,   // Accumulator
-        op,     // Binary op
-        A,
-        B,
-        NULL    // Descriptor
-    );
-
-    return C;
-}
-
-GrB_Matrix _AlgebraicExpression_Execute_ADD(GrB_Matrix C, GrB_Matrix A, GrB_Matrix B) {
-    return _AlgebraicExpression_Execute_BinaryOP(A, B, GxB_LOR_BOOL);
-}
-
-GrB_Matrix _AlgebraicExpression_Execute_AND(GrB_Matrix C, GrB_Matrix A, GrB_Matrix B) {
-    return _AlgebraicExpression_Execute_BinaryOP(A, B, GxB_LAND_BOOL);
-}
-
-void _AlgebraicExpression_Execute_Op(AL_EXP_OP op, GrB_Matrix C, GrB_Matrix A, GrB_Matrix B) {
-    switch(op) {
-        case AL_EXP_ADD:
-            _AlgebraicExpression_Execute_ADD(C, A, B);
-            break;
-        case AL_EXP_MUL:            
-            _AlgebraicExpression_Execute_MUL(C, A, B);
-            break;
-        case AL_EXP_AND:
-            break;
-        default:
-            assert(false);
-            break;
-    }
 }
 
 /* Computes value of expression. 
@@ -183,23 +171,45 @@ void _AlgebraicExpression_Execute_Op(AL_EXP_OP op, GrB_Matrix C, GrB_Matrix A, G
  * operation (multiply) and a number of operands. */
 AlgebraicExpressionResult *AlgebraicExpression_Execute(AlgebraicExpression *ae) {
     assert(ae);
-
-    GrB_Matrix A = ae->operands[0];
+    
+    GrB_Matrix A = ae->operands[0].operand;
     GrB_Matrix C = A;
     int operand_count = ae->operand_count;
+    
+    if(operand_count == 1) {
+        if(ae->operands[0].transpose) {
+            GrB_Matrix dup;
+            /* TODO: replace assert with if, log, exit 1. */
+            assert(GrB_Matrix_dup(&dup, A) == GrB_SUCCESS);
+            assert(GrB_transpose(dup, NULL, NULL, dup, NULL) == GrB_SUCCESS);
+            C = dup;
+        }
+    }
 
     if(operand_count > 1) {
+        GrB_Descriptor desc;
+        GrB_Descriptor_new(&desc);
+        if(ae->operands[0].transpose) GrB_Descriptor_set(desc, GrB_INP0, GrB_TRAN);
+
         GrB_Index nrows;
         GrB_Matrix_nrows(&nrows, A);
         GrB_Matrix_new(&C, GrB_BOOL, nrows, nrows);
         
         for(int i = 1; i < operand_count; i++) {
-            GrB_Matrix B = ae->operands[i];            
-            _AlgebraicExpression_Execute_Op(ae->op, C, A, B);
+            GrB_Matrix B = ae->operands[i].operand;
+            if(ae->operands[i].transpose) GrB_Descriptor_set(desc, GrB_INP1, GrB_TRAN);
+
+            _AlgebraicExpression_Execute_MUL(C, A, B, desc);
             A = C;
+
+            // Restore descriptor to default.
+            GrB_Descriptor_set(desc, GrB_INP0, GxB_DEFAULT);
+            GrB_Descriptor_set(desc, GrB_INP1, GxB_DEFAULT);
         }
+
+        GrB_Descriptor_free(&desc);
     }
-    
+        
     AlgebraicExpressionResult *res = _AlgebraicExpressionResult_New(C, ae);
     return res;
 }

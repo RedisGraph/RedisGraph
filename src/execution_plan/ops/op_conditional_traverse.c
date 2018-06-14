@@ -9,7 +9,7 @@ CondTraverse* NewCondTraverse(Graph *g, QueryGraph* qg, AlgebraicExpression *alg
     CondTraverse *traverse = calloc(1, sizeof(CondTraverse));
     traverse->graph = g;
     traverse->algebraic_results = AlgebraicExpression_Execute(algebraic_expression);
-    traverse->M = traverse->algebraic_results->m;    
+    traverse->M = traverse->algebraic_results->m;
 
     GrB_Index nrows;
     GrB_Matrix_nrows(&nrows, traverse->M);
@@ -34,7 +34,7 @@ CondTraverse* NewCondTraverse(Graph *g, QueryGraph* qg, AlgebraicExpression *alg
     return traverse;
 }
 
-void extractColumn(CondTraverse *op) {    
+void extractColumn(CondTraverse *op) {
     GrB_Index column_idx = (*op->algebraic_results->dest_node)->id;
     GrB_Index nrows;
     GrB_Matrix_nrows(&nrows, op->M);

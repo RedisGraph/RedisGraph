@@ -20,13 +20,20 @@ typedef struct {
     bool _free_m;       // Should M be freed or not.
 } AlgebraicExpressionResult;
 
+/* AlgebraicExpressionOperand a single operand within an
+ * algebraic expression. */
+typedef struct  {
+    bool transpose;         // Should the matrix be transposed.
+    GrB_Matrix operand;
+} AlgebraicExpressionOperand;
+
 // Algebraic expression e.g. A*B*C
 typedef struct {
-    AL_EXP_OP op;           // Operation to perform.
-    size_t operand_count;   // Number of operands to operate on.
-    GrB_Matrix *operands;   // Array of operands to operate on.
-    Node **_src_node;       // Nodes represented by the first operand rows.
-    Node **_dest_node;      // Nodes represented by the last operand columns.
+    AL_EXP_OP op;                           // Operation to perform.
+    size_t operand_count;                   // Number of operands.
+    AlgebraicExpressionOperand *operands;   // Array of operands.
+    Node **src_node;                        // Nodes represented by the first operand rows.
+    Node **dest_node;                       // Nodes represented by the last operand columns.
 } AlgebraicExpression;
 
 /* Construct an algebraic expression from a query. */

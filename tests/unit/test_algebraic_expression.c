@@ -226,21 +226,21 @@ void test_multiple_intermidate_return_nodes(const char *query, const QueryGraph 
     assert(exp->operand_count == 1);
     Edge *e;
     e = QueryGraph_GetEdgeByAlias(query_graph, "ef");
-    assert(exp->operands[0] == e->mat);
+    assert(exp->operands[0].operand == e->mat);
 
     // Validate second expression.
     exp = ae[1];
     assert(exp->op == AL_EXP_MUL);
     assert(exp->operand_count == 1);
     e = QueryGraph_GetEdgeByAlias(query_graph, "ev");
-    assert(exp->operands[0] == e->mat);
+    assert(exp->operands[0].operand == e->mat);
 
     // Validate third expression.
     exp = ae[2];
     assert(exp->op == AL_EXP_MUL);
     assert(exp->operand_count == 1);
     e = QueryGraph_GetEdgeByAlias(query_graph, "ew");
-    assert(exp->operands[0] == e->mat);
+    assert(exp->operands[0].operand == e->mat);
 
     // Clean up.
     Free_AST_Query(ast);
@@ -266,10 +266,10 @@ void test_one_intermidate_return_node(const char *query, const QueryGraph *query
     
     Edge *e;
     e = QueryGraph_GetEdgeByAlias(query_graph, "ef");
-    assert(exp->operands[0] == e->mat);
+    assert(exp->operands[0].operand == e->mat);
 
     e = QueryGraph_GetEdgeByAlias(query_graph, "ev");
-    assert(exp->operands[1] == e->mat);
+    assert(exp->operands[1].operand == e->mat);
 
     // Validate second expression.
     exp = ae[1];
@@ -279,7 +279,7 @@ void test_one_intermidate_return_node(const char *query, const QueryGraph *query
     assert(exp->operand_count == 1);
 
     e = QueryGraph_GetEdgeByAlias(query_graph, "ew");
-    assert(exp->operands[0] == e->mat);
+    assert(exp->operands[0].operand == e->mat);
 
     // Clean up.
     Free_AST_Query(ast);
@@ -304,13 +304,13 @@ void test_no_intermidate_return_nodes(const char *query, const QueryGraph *query
 
     Edge *e;
     e = QueryGraph_GetEdgeByAlias(query_graph, "ef");
-    assert(exp->operands[0] == e->mat);
+    assert(exp->operands[0].operand == e->mat);
 
     e = QueryGraph_GetEdgeByAlias(query_graph, "ev");
-    assert(exp->operands[1] == e->mat);
+    assert(exp->operands[1].operand == e->mat);
 
     e = QueryGraph_GetEdgeByAlias(query_graph, "ew");
-    assert(exp->operands[2] == e->mat);
+    assert(exp->operands[2].operand == e->mat);
 
     // Clean up.
     Free_AST_Query(ast);
