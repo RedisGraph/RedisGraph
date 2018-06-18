@@ -1,6 +1,6 @@
 FROM redis:latest as builder
 
-ENV DEPS "python python-setuptools python-pip wget build-essential"
+ENV DEPS "python python-setuptools python-pip wget build-essential cmake"
 
 # Set up a build environment
 RUN set -ex;\
@@ -12,6 +12,14 @@ RUN set -ex;\
 
 # Build the source
 ADD ./ /redisgraph
+
+# Temporaraly individualy build GraphBLAS
+WORKDIR /redisgraph/deps/GraphBLAS
+RUN set -ex;\
+    cmake; \
+    make install;
+
+# Build RedisGraph
 WORKDIR /redisgraph
 RUN set -ex;\
     make clean; \
@@ -22,7 +30,12 @@ FROM redis:latest
 ENV LIBDIR /var/lib/redis/modules
 WORKDIR /data
 RUN set -ex;\
-    mkdir -p "$LIBDIR";
+    mkdir -p "$LIBDIR";\
+    apt-get update;\
+    apt-get install libgomp1;
+
+COPY --from=builder /usr/local/lib/libgraphblas* /usr/lib/
+COPY --from=builder /usr/local/include/GraphBLAS.h /usr/local/include/GraphBLAS.h
 COPY --from=builder /redisgraph/src/redisgraph.so "$LIBDIR"
 
 CMD ["redis-server", "--loadmodule", "/var/lib/redis/modules/redisgraph.so"]
