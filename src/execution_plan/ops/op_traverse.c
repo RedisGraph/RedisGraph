@@ -1,5 +1,4 @@
 #include "op_traverse.h"
-#include "../../util/arr.h"
 
 OpBase* NewTraverseOp(Graph *g, QueryGraph* qg, AlgebraicExpression *ae) {
     return (OpBase*)NewTraverse(g, qg, ae);

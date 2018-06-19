@@ -26,6 +26,7 @@
 #include "parser/parser_common.h"
 
 #include "stores/store.h"
+#include "stores/store_type.h"
 
 #include "grouping/group_cache.h"
 #include "arithmetic/agg_funcs.h"
@@ -229,8 +230,8 @@ int MGraph_BulkInsert(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 }
 
 int _RegisterDataTypes(RedisModuleCtx *ctx) {
-    if(TrieMapType_Register(ctx) == REDISMODULE_ERR) {
-        printf("Failed to register triemaptype\n");
+    if(StoreType_Register(ctx) == REDISMODULE_ERR) {
+        printf("Failed to register storetype\n");
         return REDISMODULE_ERR;
     }
 

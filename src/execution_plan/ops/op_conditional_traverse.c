@@ -1,5 +1,4 @@
 #include "op_conditional_traverse.h"
-#include "../../util/arr.h"
 
 OpBase* NewCondTraverseOp(Graph *g, QueryGraph* qg, AlgebraicExpression *algebraic_expression) {
     return (OpBase*)NewCondTraverse(g, qg, algebraic_expression);

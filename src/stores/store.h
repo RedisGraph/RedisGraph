@@ -13,9 +13,9 @@ typedef enum {
 } LabelStoreType;
 
 typedef struct {
-  int id;               /* Internal ID to either vector or matrix within the graph. */
+  int id;               /* Internal ID to a matrix within the graph. */
   char *label;
-  TrieMap *properties;  /* Keeps track on label schema. */
+  TrieMap *properties;  /* Keeps track after label schema. */
 } LabelStore;
 
 // Creates a new label store.
@@ -31,6 +31,6 @@ void LabelStore_Get_ALL(RedisModuleCtx *ctx, LabelStoreType type, const char *gr
 void LabelStore_UpdateSchema(LabelStore *store, int prop_count, char **properties);
 
 /* Free store. */
-void LabelStore_Free(LabelStore *store, void (*freeCB)(void *));
+void LabelStore_Free(LabelStore *store);
 
 #endif /* __LABEL_STORE_H__ */

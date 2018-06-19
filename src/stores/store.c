@@ -1,7 +1,7 @@
 #include "store.h"
+#include "store_type.h"
 #include "../rmutil/util.h"
 #include "../rmutil/strings.h"
-#include "../util/triemap/triemap_type.h"
 #include <assert.h>
 
 /* Generates an ID for a new LabelStore. */
@@ -46,16 +46,14 @@ LabelStore *LabelStore_New(RedisModuleCtx *ctx, LabelStoreType type, const char 
     RedisModuleKey *key = RedisModule_OpenKey(ctx, rmStoreId, REDISMODULE_WRITE);
     RedisModule_FreeString(ctx, rmStoreId);
     assert(RedisModule_KeyType(key) == REDISMODULE_KEYTYPE_EMPTY);
-
-    // TODO: BUG! storing LabelStore within a TrieMap key type.
-    // Need to register a new type.
-    RedisModule_ModuleTypeSetValue(key, TrieRedisModuleType, store);
+    
+    RedisModule_ModuleTypeSetValue(key, StoreRedisModuleType, store);
         
     return store;
 }
 
-void LabelStore_Free(LabelStore *store, void (*freeCB)(void *)) {
-    TrieMap_Free(store->properties, freeCB);
+void LabelStore_Free(LabelStore *store) {
+    TrieMap_Free(store->properties, TrieMap_NOP_CB);
     if(store->label) free(store->label);
     free(store);
 }
@@ -71,7 +69,7 @@ LabelStore *LabelStore_Get(RedisModuleCtx *ctx, LabelStoreType type, const char 
 	RedisModuleKey *key = RedisModule_OpenKey(ctx, rmStoreId, REDISMODULE_WRITE);
     RedisModule_FreeString(ctx, rmStoreId);
 
-	if (RedisModule_KeyType(key) == REDISMODULE_KEYTYPE_EMPTY) {
+    if (RedisModule_ModuleTypeGetType(key) != StoreRedisModuleType) {
         return NULL;
 	}
 
