@@ -117,7 +117,7 @@ void *GraphType_RdbLoad(RedisModuleIO *rdb, int encver) {
     return g;
 }
 
-void _GraphType_DumpNode(RedisModuleIO *rdb, const Node *n) {
+void _GraphType_SaveNode(RedisModuleIO *rdb, const Node *n) {
     /* Format:
      * #properties N
      * (name, value type, value) X N */
@@ -147,13 +147,13 @@ void _GraphType_SaveNodes(RedisModuleIO *rdb, const Graph *g) {
     NodeIterator *iter = Graph_ScanNodes(g);
     Node *n;
     while((n = NodeIterator_Next(iter))) {
-        _GraphType_DumpNode(rdb, n);
+        _GraphType_SaveNode(rdb, n);
     }
 
     NodeIterator_Free(iter);
 }
 
-void _GraphType_DumpMatrix(RedisModuleIO *rdb, GrB_Matrix m) {
+void _GraphType_SaveMatrix(RedisModuleIO *rdb, GrB_Matrix m) {
     /* Format:
      * #entries N
      * (row index,column index) X N */
@@ -183,18 +183,18 @@ void _GraphType_SaveMatrices(RedisModuleIO *rdb, Graph *g) {
      * label matrices
      * */
     
-    _GraphType_DumpMatrix(rdb, g->adjacency_matrix);
+    _GraphType_SaveMatrix(rdb, g->adjacency_matrix);
 
     RedisModule_SaveUnsigned(rdb, g->relation_count);
     for(int i = 0; i < g->relation_count; i++) {
         GrB_Matrix m = g->relations[i];
-        _GraphType_DumpMatrix(rdb, m);
+        _GraphType_SaveMatrix(rdb, m);
     }
 
     RedisModule_SaveUnsigned(rdb, g->label_count);
     for(int i = 0; i < g->label_count; i++) {
         GrB_Matrix m = g->labels[i];
-        _GraphType_DumpMatrix(rdb, m);
+        _GraphType_SaveMatrix(rdb, m);
     }
 }
 
@@ -208,7 +208,7 @@ void GraphType_RdbSave(RedisModuleIO *rdb, void *value) {
     // Dump nodes.
     _GraphType_SaveNodes(rdb, g);
     
-    // Dump matrices.
+    // Dump relations.
     _GraphType_SaveMatrices(rdb, g);
 }
 

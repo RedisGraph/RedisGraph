@@ -80,11 +80,11 @@ friends_older_than_me_query = QueryInfo(
     expected_result=[['Omri Traub', '33.000000']]
 )
 
-friedns_age_differance_query = QueryInfo(
+friends_age_difference_query = QueryInfo(
     query="""MATCH (ME:person {name:"Roi Lipman"})-[:friend]->(f:person)
              RETURN f.name, abs(ME.age - f.age) AS age_diff
              ORDER BY age_diff desc""",
-    description='Age differance between me and each of my friends.',
+    description='Age difference between me and each of my friends.',
     max_run_time_ms=0.25,
     expected_result=[['Boaz Arad', '1.000000'],
                      ['Omri Traub', '1.000000'],
@@ -121,7 +121,7 @@ friends_age_statistics_query = QueryInfo(
              RETURN ME.name, count(f.name), sum(f.age), avg(f.age), min(f.age), max(f.age)""",
     description='Friends age statistics.',
     max_run_time_ms=0.25,
-    expected_result=[['Roi Lipman', '6.000000', '198.000000', '33.000000', '32.000000', '34.000000']]
+    expected_result=[['Roi Lipman', '6.000000', '204.000000', '34.000000', '33.000000', '35.000000']]
 )
 
 visit_purpose_of_each_country_i_visited_query = QueryInfo(
@@ -165,7 +165,6 @@ number_of_vacations_per_person_query = QueryInfo(
                      ['Valerie Abigail Arad', '2.000000']]
 )
 
-
 queries_info = [
     my_friends_query,
     friends_of_friends_query,
@@ -173,11 +172,24 @@ queries_info = [
     friends_of_friends_visited_amsterdam_and_single_query,
     friends_visited_same_places_as_me_query,
     friends_older_than_me_query,
-    friedns_age_differance_query,
+    friends_age_difference_query,
     how_many_countries_each_friend_visited_query,
     happy_birthday_query,
-    friends_age_statistics_query,
-    visit_purpose_of_each_country_i_visited_query,
-    who_was_on_business_trip_query,
-    number_of_vacations_per_person_query
+    friends_age_statistics_query
 ]
+
+# queries_info = [
+#     my_friends_query,
+#     friends_of_friends_query,
+#     friends_of_friends_single_and_over_30_query,
+#     friends_of_friends_visited_amsterdam_and_single_query,
+#     friends_visited_same_places_as_me_query,
+#     friends_older_than_me_query,
+#     friends_age_difference_query,
+#     how_many_countries_each_friend_visited_query,
+#     happy_birthday_query,
+#     friends_age_statistics_query,
+#     visit_purpose_of_each_country_i_visited_query,
+#     who_was_on_business_trip_query,
+#     number_of_vacations_per_person_query
+# ]

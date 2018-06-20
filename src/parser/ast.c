@@ -161,7 +161,7 @@ AST_Validation AST_Validate(const AST_Query *ast, char **reason) {
   }
 
   /* MATCH clause must be followed by either a CREATE or a RETURN clause. */
-  if (ast->matchNode && !(ast->createNode || ast->returnNode)) {
+  if (ast->matchNode && !(ast->createNode || ast->returnNode || ast->setNode)) {
     *reason = "MATCH must be followed by either a RETURN or a CREATE clause.";
     return AST_INVALID;
   }

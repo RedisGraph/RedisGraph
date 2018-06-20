@@ -7,12 +7,6 @@ void _SetModifiedEntities(OpCreate *op) {
      * Search uninitialized nodes. */
     QueryGraph* graph = op->qg;
     size_t create_entity_count = Vector_Size(op->ast->createNode->graphEntities);
-
-    size_t match_entity_count = 0;
-    if(op->ast->matchNode) {
-        match_entity_count = Vector_Size(op->ast->matchNode->graphEntities);
-    }
-
     op->nodes_to_create = malloc(sizeof(NodeCreateCtx) * create_entity_count);
     op->edges_to_create = malloc(sizeof(EdgeCreateCtx) * create_entity_count);
 
@@ -26,16 +20,8 @@ void _SetModifiedEntities(OpCreate *op) {
         Vector_Get(op->ast->createNode->graphEntities, i, &create_ge);
         
         /* See if current entity is in MATCH clause. */
-        int j = 0;
-        for(; j < match_entity_count; j++) {
-            AST_GraphEntity *match_ge;
-            Vector_Get(op->ast->matchNode->graphEntities, i, &match_ge);
-            
-            /* Create entity is mentioned in MATCH clause. */
-            if(strcmp(create_ge->alias, match_ge->alias) == 0) break;
-        }
-        
-        if(j == match_entity_count) {
+        AST_GraphEntity *match_ge = MatchClause_GetEntity(op->ast->matchNode, create_ge->alias);
+        if(!match_ge) {
             /* Entity is not in MATCH clause. */
             AST_GraphEntity *ge = create_ge;
             if(ge->t == N_ENTITY) {
@@ -191,6 +177,7 @@ void _CommitNewEntities(OpCreate *op) {
                labels[i] = GRAPH_NO_LABEL; 
             } else {
                 LabelStore *store = LabelStore_Get(ctx, STORE_NODE, op->graph_name, label);
+                LabelStore *allStore = LabelStore_Get(ctx, STORE_NODE, op->graph_name, NULL);
                 if(store == NULL) {
                     int label_id = Graph_AddLabelMatrix(op->g);
                     store = LabelStore_New(ctx, STORE_NODE, op->graph_name, label, label_id);
@@ -204,6 +191,7 @@ void _CommitNewEntities(OpCreate *op) {
                         properties[j] = n->properties[j].name;
                     }
                     LabelStore_UpdateSchema(store, n->prop_count, properties);
+                    LabelStore_UpdateSchema(allStore, n->prop_count, properties);
                 }
             }
         }

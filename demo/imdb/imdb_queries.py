@@ -158,7 +158,6 @@ find_ten_oldest_actors_query = QueryInfo(
                      ['Judi Dench', '84.000000']]
 )
 
-
 queries_info = [
     actors_played_with_nicolas_cage_query,
     find_three_actors_played_with_nicolas_cage_query,
@@ -171,4 +170,3 @@ queries_info = [
     how_many_movies_cameron_diaz_played_query,
     find_ten_oldest_actors_query
 ]
-

@@ -69,6 +69,11 @@ LabelStore *LabelStore_Get(RedisModuleCtx *ctx, LabelStoreType type, const char 
 	RedisModuleKey *key = RedisModule_OpenKey(ctx, rmStoreId, REDISMODULE_WRITE);
     RedisModule_FreeString(ctx, rmStoreId);
 
+    /* Create "ALL" store if doesn't exists. */
+    if((RedisModule_KeyType(key) == REDISMODULE_KEYTYPE_EMPTY) && label == NULL) {
+        return LabelStore_New(ctx, type, graph, "ALL", -1);
+    }
+
     if (RedisModule_ModuleTypeGetType(key) != StoreRedisModuleType) {
         return NULL;
 	}

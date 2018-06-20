@@ -29,7 +29,7 @@ void Free_AST_SetNode(AST_SetNode *setNode) {
     if(!setNode) return;
 
     AST_SetElement *elem = NULL;
-    while(Vector_Pop(setNode->set_elements, elem)) {
+    while(Vector_Pop(setNode->set_elements, &elem)) {
         Free_AST_Variable(elem->entity);
         Free_AST_ArithmeticExpressionNode(elem->exp);
         free(elem);

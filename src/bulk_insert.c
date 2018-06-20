@@ -79,13 +79,15 @@ RedisModuleString** _Bulk_Insert_Parse_Labels(RedisModuleCtx *ctx, RedisModuleSt
 
         // TODO: Have label store hold on to attributes array.
         LabelStore *store = LabelStore_Get(ctx, STORE_NODE, graph_name, labels[label_idx].label);
+        LabelStore *allStore = LabelStore_Get(ctx, STORE_NODE, graph_name, NULL);
         if(store == NULL) {
             int label_id = Graph_AddLabelMatrix(g);
             store = LabelStore_New(ctx, STORE_NODE, graph_name, labels[label_idx].label, label_id);
         }
-        
+
         labels[label_idx].label_id = store->id;
-        LabelStore_UpdateSchema(store, labels[label_idx].attribute_count, labels[label_idx].attributes);        
+        LabelStore_UpdateSchema(store, labels[label_idx].attribute_count, labels[label_idx].attributes);
+        LabelStore_UpdateSchema(allStore, labels[label_idx].attribute_count, labels[label_idx].attributes);
     }
 
     return argv;

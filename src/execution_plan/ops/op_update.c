@@ -2,10 +2,13 @@
 #include "../../arithmetic/arithmetic_expression.h"
 
 /* Forward declarations. */
-void _OpUpdate_BuildUpdateEvalCtx(OpUpdate* op, AST_SetNode *ast, QueryGraph *graph);
+void _OpUpdate_BuildUpdateEvalCtx(OpUpdate* op, AST_SetNode *setNode, QueryGraph *q);
 
-OpBase* NewUpdateOp(AST_SetNode *ast, QueryGraph *graph, ResultSet *result_set) {
+OpBase* NewUpdateOp(RedisModuleCtx *ctx, AST_Query *ast, QueryGraph *q, ResultSet *result_set, const char *graphName) {
     OpUpdate* op_update = calloc(1, sizeof(OpUpdate));
+    op_update->ast = ast;
+    op_update->ctx = ctx;
+    op_update->graphName = graphName;
     op_update->result_set = result_set;
     op_update->request_refresh = 1;
     op_update->update_expressions = NULL;
@@ -14,7 +17,7 @@ OpBase* NewUpdateOp(AST_SetNode *ast, QueryGraph *graph, ResultSet *result_set) 
     op_update->entities_to_update_cap = 16; /* 16 seems reasonable number to start with. */
     op_update->entities_to_update = malloc(sizeof(EntityUpdateEvalCtx) * op_update->entities_to_update_cap);
 
-    _OpUpdate_BuildUpdateEvalCtx(op_update, ast, graph);
+    _OpUpdate_BuildUpdateEvalCtx(op_update, ast->setNode, q);
 
     // Set our Op operations
     op_update->op.name = "Update";
@@ -23,19 +26,20 @@ OpBase* NewUpdateOp(AST_SetNode *ast, QueryGraph *graph, ResultSet *result_set) 
     op_update->op.reset = OpUpdateReset;
     op_update->op.free = OpUpdateFree;
     op_update->op.modifies = NULL;
+
     return (OpBase*)op_update;
 }
 
 /* Build an evaluation tree foreach update expression.
  * Save each eval tree and updated graph entity within 
  * the update op. */
-void _OpUpdate_BuildUpdateEvalCtx(OpUpdate* op, AST_SetNode *ast, QueryGraph *graph) {
-    op->update_expressions_count = Vector_Size(ast->set_elements);
+void _OpUpdate_BuildUpdateEvalCtx(OpUpdate* op, AST_SetNode *setNode, QueryGraph *graph) {
+    op->update_expressions_count = Vector_Size(setNode->set_elements);
     op->update_expressions = malloc(sizeof(EntityUpdateEvalCtx) * op->update_expressions_count);
 
     for(int i = 0; i < op->update_expressions_count; i++) {
         AST_SetElement *element;
-        Vector_Get(ast->set_elements, i, &element);
+        Vector_Get(setNode->set_elements, i, &element);
 
         /* Get a reference to the updated entity. */
         op->update_expressions[i].entity = QueryGraph_GetEntityRef(graph, element->entity->alias);
@@ -72,21 +76,28 @@ OpResult OpUpdateConsume(OpBase *opBase, QueryGraph* graph) {
 
     /* Evaluate each update expression and store result 
      * for later execution. */
-    EntityUpdateEvalCtx *update_expressions = op->update_expressions;
-    for(int i = 0; i < op->update_expressions_count; i++, update_expressions++) {
-        SIValue new_value = AR_EXP_Evaluate(update_expressions->exp);
+    EntityUpdateEvalCtx *update_expression = op->update_expressions;
+    for(int i = 0; i < op->update_expressions_count; i++, update_expression++) {
+        SIValue new_value = AR_EXP_Evaluate(update_expression->exp);
         /* Find ref to property. */
-        GraphEntity *entity = *update_expressions->entity;
-        for(int j = 0; j < entity->prop_count; j++) {
-            if(strcmp(entity->properties[j].name, update_expressions->property) == 0) {
+        GraphEntity *entity = *update_expression->entity;
+        int j = 0;
+        for(; j < entity->prop_count; j++) {
+            if(strcmp(entity->properties[j].name, update_expression->property) == 0) {
                 _OpUpdate_QueueUpdate(op, &entity->properties[j], new_value);
                 break;
             }
         }
+
+        if(j == entity->prop_count) {
+            /* Property does not exists for entity, create it.
+             * For the time being set the new property value to PROPERTY_NOTFOUND.
+             * Once we commit the update, we'll set the actual value. */
+            GraphEntity_Add_Properties(entity, 1, &update_expression->property, PROPERTY_NOTFOUND);
+            _OpUpdate_QueueUpdate(op, &entity->properties[entity->prop_count-1], new_value);
+        }
     }
 
-    /* TODO: handle case where property is missing from entity,
-     * should we add a new property? YES! */    
     op->request_refresh = 1;
     return OP_OK;
 }
@@ -105,9 +116,35 @@ void _UpdateEntities(OpUpdate *op) {
     op->result_set->properties_set = op->entities_to_update_count;
 }
 
+/* Update tracked schemas according to set properties.
+ * Because SET can be used to introduce new properties
+ * We have to update our schemas to track newly created properties. */
+void _UpdateSchemas(const OpUpdate *op) {
+
+    AST_SetNode *setNode = op->ast->setNode;
+    for(int i = 0; i < op->update_expressions_count; i++) {
+        AST_SetElement *setElement;
+
+        Vector_Get(setNode->set_elements, i, &setElement);
+        char *entityAlias = setElement->entity->alias;
+        char *entityProp = setElement->entity->property;
+
+        /* Locate node label. */
+        AST_GraphEntity* ge = MatchClause_GetEntity(op->ast->matchNode, entityAlias);
+        char *l = ge->label;
+        LabelStoreType t = (ge->t == N_ENTITY) ? STORE_NODE : STORE_EDGE;
+
+        LabelStore *store = LabelStore_Get(op->ctx, t, op->graphName, l);
+        LabelStore *allStore = LabelStore_Get(op->ctx, t, op->graphName, NULL);
+        LabelStore_UpdateSchema(store, 1, &entityProp);
+        LabelStore_UpdateSchema(allStore, 1, &entityProp);
+    }
+}
+
 void OpUpdateFree(OpBase *ctx) {
     OpUpdate *op = (OpUpdate*)ctx;
     _UpdateEntities(op);
+    _UpdateSchemas(op);
     
     /* Free each update context. */
     for(int i = 0; i < op->update_expressions_count; i++) {

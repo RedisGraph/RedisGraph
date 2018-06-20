@@ -27,9 +27,12 @@ typedef struct {
     EntityUpdateCtx *entities_to_update;    /* List of entities to update and their actual new value. */
     size_t entities_to_update_cap;
     size_t entities_to_update_count;
+    AST_Query *ast;
+    RedisModuleCtx *ctx;
+    const char *graphName;
 } OpUpdate;
 
-OpBase* NewUpdateOp(AST_SetNode *ast, QueryGraph *graph, ResultSet *result_set);
+OpBase* NewUpdateOp(RedisModuleCtx *ctx, AST_Query *ast, QueryGraph *q, ResultSet *result_set, const char *graphName);
 OpResult OpUpdateConsume(OpBase *opBase, QueryGraph *graph);
 OpResult OpUpdateReset(OpBase *ctx);
 void OpUpdateFree(OpBase *ctx);

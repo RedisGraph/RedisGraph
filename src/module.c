@@ -133,7 +133,7 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     /* Report execution timing. */
     t = simple_toc(tic) * 1000;
     char* strElapsed;
-    asprintf(&strElapsed, "Query internal execution time: %.6f miliseconds", t);
+    asprintf(&strElapsed, "Query internal execution time: %.6f milliseconds", t);
     RedisModule_ReplyWithStringBuffer(ctx, strElapsed, strlen(strElapsed));
     free(strElapsed);
     

@@ -266,7 +266,12 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g, const char *graph
         OpNode *op_create = NewOpNode(NewCreateOp(ctx, ast, g, q, graph_name, request_refresh,
                                         execution_plan->result_set));
 
-        Vector_Push(ops, op_create);        
+        Vector_Push(ops, op_create);
+    }
+
+    if(ast->setNode) {
+        OpNode *op_update = NewOpNode(NewUpdateOp(ctx, ast, q, execution_plan->result_set, graph_name));
+        Vector_Push(ops, op_update);
     }
 
     if(ast->returnNode) {
