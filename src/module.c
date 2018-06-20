@@ -118,15 +118,15 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     ResultSet_Replay(ctx, resultSet);
 
     /* Replicate query only if it modified the keyspace. */
-    // if(Query_Modifies_KeySpace(ast) &&
-    //    (resultSet->labels_added > 0 ||
-    //    resultSet->nodes_created > 0 ||
-    //    resultSet->properties_set > 0 ||
-    //    resultSet->relationships_created > 0 ||
-    //    resultSet->nodes_deleted > 0 ||
-    //    resultSet->relationships_deleted > 0)) {
-    //        RedisModule_ReplicateVerbatim(ctx);
-    // }
+    if(Query_Modifies_KeySpace(ast) &&
+       (resultSet->labels_added > 0 ||
+       resultSet->nodes_created > 0 ||
+       resultSet->properties_set > 0 ||
+       resultSet->relationships_created > 0 ||
+       resultSet->nodes_deleted > 0 ||
+       resultSet->relationships_deleted > 0)) {
+           RedisModule_ReplicateVerbatim(ctx);
+    }
 
     ResultSet_Free(ctx, resultSet);
 
@@ -226,6 +226,8 @@ int MGraph_BulkInsert(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     sprintf(timings, "%zu Nodes created, %zu Edges created\n", nodes, edges);
     RedisModule_ReplyWithStringBuffer(ctx, timings, strlen(timings));
     
+    /* Replicate query only if it modified the keyspace. */
+    RedisModule_ReplicateVerbatim(ctx);
     return REDISMODULE_OK;
 }
 

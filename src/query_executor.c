@@ -205,7 +205,7 @@ void inlineProperties(AST_Query *ast) {
 }
 
 int Query_Modifies_KeySpace(const AST_Query *ast) {
-    return (ast->createNode != NULL || ast->deleteNode != NULL);
+    return (ast->createNode || ast->deleteNode || ast->setNode);
 }
 
 AST_Query* ParseQuery(const char *query, size_t qLen, char **errMsg) {
