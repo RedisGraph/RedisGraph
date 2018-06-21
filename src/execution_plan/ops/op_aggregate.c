@@ -49,6 +49,7 @@ Vector* _build_aggregated_expressions(AST_Query *ast, QueryGraph* g) {
 /* Construct group key based on none aggregated terms. 
  * Returns group name which must be freed by caller. */
 char* _computeGroupKey(Aggregate *op, SIValue *group_keys) {
+    if(!group_keys) return "SINGLE_GROUP";
     char *str_group;
 
     for(int i = 0; i < op->none_aggregated_expression_count; i++) {
@@ -103,7 +104,9 @@ OpResult AggregateConsume(OpBase *opBase, QueryGraph* graph) {
                                                      &op->none_aggregated_expression_count,
                                                      graph);
         /* Allocate memory for group keys. */
-        op->group_keys = malloc(sizeof(SIValue) * op->none_aggregated_expression_count);
+        if(op->none_aggregated_expression_count > 0) {
+            op->group_keys = malloc(sizeof(SIValue) * op->none_aggregated_expression_count);
+        }
         op->init = 1;
         return OP_REFRESH;
     }
