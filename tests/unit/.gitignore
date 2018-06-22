@@ -2,6 +2,7 @@
 *
 !/**/
 !*.*
+!Makefile
 
 # Object files
 *.o
