@@ -195,6 +195,9 @@ int _applyFilter(SIValue* aVal, SIValue* bVal, CmpFunc f, int op) {
         case LE:
         return rel <= 0;
 
+        case NE:
+        return rel != 0;
+
         default:
         /* Op should be enforced by AST. */
         assert(0);
@@ -214,16 +217,12 @@ int _applyPredicateFilters(const FT_FilterNode* root) {
         bVal = (SIValue *)&root->pred.constVal;
     } else {
         entity = *root->pred.Rop.e;
-        if(!entity || entity->id == INVALID_ENTITY_ID) {
-            assert(0);
-        }
+        assert (entity && entity->id != INVALID_ENTITY_ID);
         bVal = GraphEntity_Get_Property(entity, root->pred.Rop.property);
     }
 
     entity = *root->pred.Lop.e;
-    if(!entity || entity->id == INVALID_ENTITY_ID) {
-        assert(0);
-    }
+    assert(entity && entity->id != INVALID_ENTITY_ID);
     aVal = GraphEntity_Get_Property(entity, root->pred.Lop.property);
 
     return _applyFilter(aVal, bVal, root->pred.cf, root->pred.op);
