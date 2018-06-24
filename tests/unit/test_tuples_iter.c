@@ -1,5 +1,5 @@
 #include "assert.h"
-#include "GraphBLAS.h"
+#include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 #include "../../src/arithmetic/tuples_iter.h"
 
 void _test_random_vector_iterator() {
@@ -132,8 +132,8 @@ void _test_random_matrix_iterator() {
     }
     GrB_Matrix_build_BOOL(A, I, J, X, nvals, GrB_FIRST_BOOL);
 
-    GrB_Index I_expected[nvals];
-    GrB_Index J_expected[nvals];
+    GrB_Index *I_expected = malloc(sizeof(GrB_Index) * nvals);
+    GrB_Index *J_expected = malloc(sizeof(GrB_Index) * nvals);
     GrB_Matrix_extractTuples_BOOL(I_expected, J_expected, NULL, &nvals, A);
 
     //--------------------------------------------------------------------------
@@ -157,6 +157,8 @@ void _test_random_matrix_iterator() {
     //--------------------------------------------------------------------------
     // Clean up.
     //--------------------------------------------------------------------------
+    free(I_expected);
+    free(J_expected);
     TuplesIter_free(iter);
     GrB_Matrix_free(&A);
     printf("test_random_matrix_iterator - PASS!\n");

@@ -6,11 +6,13 @@ jobs:
     steps:
       - checkout
       - run:
+          name: Install prerequisite
+          command: >-
+            pip install redisgraph &&
+            apt-get update; apt-get install -y cmake
+      - run:
           name: Build
           command: make -j 8
-      - run:
-          name: Install prerequisite
-          command: pip install redisgraph
       - run:
           name: Test
           command: make test

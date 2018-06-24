@@ -1,0 +1,15 @@
+display_name: redisgraph
+author: RedisLabs
+email: roi@redislabs.com
+description: A graph database on top of Redis which supports Open-Cypher query language.
+homepage: http://redisgraph.io
+license: AGPLv3
+command_line_args: ""
+min_redis_version: "4.0"
+min_redis_pack_version: "5.0"
+capabilities:
+    - types
+    - backup_restore
+    - hash_policy
+    - failover_migrate
+    - persistence_rdb

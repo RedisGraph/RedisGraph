@@ -2,9 +2,9 @@ CFLAGS:=$(CFLAGS)
 CC_OBJECTS:=$(CC_OBJECTS)
 LIBRMUTIL=../../src/rmutil/librmutil.a
 LIBTRIEMAP=../../src/util/triemap/libtriemap.a
-LIBGRAPHBLAS = /usr/local/lib/libgraphblas.a
+LIBGRAPHBLAS=../../deps/GraphBLAS/build/libgraphblas.a
 
-LIBS=$(LIBTRIEMAP) $(LIBRMUTIL)
+LIBS=$(LIBTRIEMAP) $(LIBRMUTIL) $(LIBGRAPHBLAS)
 DEPS=$(CC_OBJECTS) $(LIBS)
 
 SRCDIR := $(shell pwd)
@@ -14,16 +14,16 @@ CC=gcc
 .SUFFIXES: .c .so .xo .o
 
 graph: test_graph.o
-	$(CC) $(CFLAGS) -o test_graph test_graph.o  $(DEPS) $(LDFLAGS) -lgraphblas
+	$(CC) $(CFLAGS) -o test_graph test_graph.o  $(DEPS) $(LDFLAGS)
 
 algebraic_expression: test_algebraic_expression.o
-	$(CC) $(CFLAGS) -o test_algebraic_expression test_algebraic_expression.o  $(DEPS) $(LDFLAGS) -lgraphblas
+	$(CC) $(CFLAGS) -o test_algebraic_expression test_algebraic_expression.o  $(DEPS) $(LDFLAGS)
 
 tuples_iter: test_tuples_iter.o
-	$(CC) $(CFLAGS) -o test_tuples_iter test_tuples_iter.o  $(DEPS) $(LDFLAGS) -lgraphblas
+	$(CC) $(CFLAGS) -o test_tuples_iter test_tuples_iter.o  $(DEPS) $(LDFLAGS)
 
 filter_tree: test_filter_tree.o
-	$(CC) $(CFLAGS) -o test_filter_tree test_filter_tree.o  $(DEPS) $(LDFLAGS) -lgraphblas
+	$(CC) $(CFLAGS) -o test_filter_tree test_filter_tree.o  $(DEPS) $(LDFLAGS)
 
 build: graph algebraic_expression tuples_iter filter_tree
 
