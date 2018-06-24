@@ -25,10 +25,10 @@ To see Redis Graph in action see [Demos](https://github.com/RedisLabsModules/red
 
 Requirements:
 
-* The Redis Graph repository: `git clone https://github.com/RedisLabsModules/redis-module-graph.git`
-* The build-essential package: `apt-get install build-essential`
+* The Redis Graph repository: `git clone https://github.com/RedisLabsModules/redis-graph.git`
+* The build-essential and cmake packages: `apt-get install build-essential cmake`
 
-To build the module, run `make` in the project's directory:
+To build the module, run `make` in the project's directory
 
 Congratulations! You can find the compiled module library at `src/redisgraph.so`.
 
@@ -41,13 +41,13 @@ Requirements:
 We recommend you have Redis load the module during startup by adding the following to your redis.conf file:
 
 ```
-loadmodule /path/to/module/redisgraph.so
+loadmodule /path/to/module/src/redisgraph.so
 ```
 
-In the line above replace `/path/to/module/redisgraph.so` with the actual path to the module's library. Alternatively, you can have Redis load the module using the following command line argument syntax:
+In the line above replace `/path/to/module/src/redisgraph.so` with the actual path to the module's library. Alternatively, you can have Redis load the module using the following command line argument syntax:
 
 ```sh
-~/$ redis-server --loadmodule /path/to/module/redisgraph.so
+~/$ redis-server --loadmodule /path/to/module/src/redisgraph.so
 ```
 
 Lastly, you can also use the [`MODULE LOAD`](http://redis.io/commands/module-load) command. Note, however, that `MODULE LOAD` is a dangerous command and may be blocked/deprecated in the future due to security considerations.
