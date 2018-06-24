@@ -58,10 +58,10 @@ CC_DEPS = $(patsubst %.c, %.d, $(CC_SOURCES) )
 # Library dependencies
 LIBRMUTIL=rmutil/librmutil.a
 LIBTRIEMAP=util/triemap/libtriemap.a
-# GRAPHBLAS=../deps/GraphBLAS/build/libgraphblas.a
+GRAPHBLAS=../deps/GraphBLAS/build/libgraphblas.a
 
 # Compilation deps for the module
-LIBS=$(LIBTRIEMAP) $(LIBRMUTIL)
+LIBS=$(LIBTRIEMAP) $(LIBRMUTIL) $(GRAPHBLAS)
 MODULE=$(CC_OBJECTS) $(LIBS)
 
 %.c: %.y
@@ -85,9 +85,9 @@ $(LIBTRIEMAP):
 	$(MAKE) -C util/triemap
 .PHONY: $(LIBTRIEMAP)
 
-# $(GRAPHBLAS):
-# 	$(MAKE) install -C ../deps/GraphBLAS
-# .PHONY: $(GRAPHBLAS)
+$(GRAPHBLAS):
+	$(MAKE) library -C ../deps/GraphBLAS
+.PHONY: $(GRAPHBLAS)
 
 # Compile query parse. 
 # This is not included in the usual make target!
@@ -97,7 +97,7 @@ parser:
 
 # Build the module...
 redisgraph.so: $(MODULE)
-	$(LD) -o $@ $(MODULE) $(SHOBJ_LDFLAGS) -lc -lm -lgraphblas
+	$(LD) -o $@ $(MODULE) $(SHOBJ_LDFLAGS) -lc -lm
 
 clean:
 	find . -name '*.[oad]' -type f -delete

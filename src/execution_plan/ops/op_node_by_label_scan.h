@@ -6,7 +6,7 @@
 #include "../../graph/node.h"
 #include "../../graph/graph.h"
 #include "../../arithmetic/tuples_iter.h"
-#include "GraphBLAS.h"
+#include "../../../deps/GraphBLAS/Include/GraphBLAS.h"
 
 /* NodeByLabelScan, scans entire label. */
 

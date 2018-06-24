@@ -5,7 +5,7 @@
 #include "edge.h"
 #include "node_block.h"
 #include "node_iterator.h"
-#include "GraphBLAS.h"
+#include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 #include "../redismodule.h"
 #include "../util/triemap/triemap.h"
 

@@ -1,7 +1,7 @@
 #ifndef EDGE_H_
 #define EDGE_H_
 
-#include "GraphBLAS.h"
+#include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 #include "graph_entity.h"
 #include "node.h"
 #include "../value.h"

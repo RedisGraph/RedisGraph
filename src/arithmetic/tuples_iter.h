@@ -2,7 +2,7 @@
 #define __TUPLES_ITER_H__
 
 #include <stdint.h>
-#include "GraphBLAS.h"
+#include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 
 typedef enum
 {

@@ -60,7 +60,7 @@ include_directories ( Source/Template Source Source/Generated Include Demo/Inclu
 if ("${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
     # cmake 2.8 workaround: gcc needs to be told to do ANSI C11.
     # cmake 3.0 doesn't have this problem.
-    set (CMAKE_C_FLAGS  "-std=c11 -lm -fopenmp")
+    set (CMAKE_C_FLAGS  "-std=c11 -lm -fPIC")
     if (CMAKE_C_COMPILER_VERSION VERSION_LESS 4.9)
         message (FATAL_ERROR "gcc version must be at least 4.9")
     endif ( )
@@ -157,4 +157,3 @@ target_link_libraries ( complex_demo  graphblas graphblasdemo )
 target_link_libraries ( kron_demo     graphblas graphblasdemo )
 target_link_libraries ( simple_demo   graphblasdemo )
 target_link_libraries ( wildtype_demo graphblas )
-
