@@ -7,7 +7,7 @@ size_t Record_ToString(const Record *record, char **record_str);
 
 void test_record_to_string () {
     Record *record = NewRecord(6);    
-    SIValue v_string = SI_StringValC("Hello");
+    SIValue v_string = SI_StringVal("Hello");
     SIValue v_int = SI_IntVal(-24);
     SIValue v_uint = SI_UintVal(24);
     SIValue v_float = SI_FloatVal(0.314);

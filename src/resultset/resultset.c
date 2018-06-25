@@ -17,7 +17,7 @@ int _heap_elem_compare(const void * A, const void * B, const void *udata) {
 int __encounteredRecord(ResultSet* set, const Record* record) {
     char *str = NULL;
     size_t len = 0;
-    len = Record_ToString(record, &str, &len);
+    len = Record_ToString(record, &str);
 
     // Returns 1 if the string did NOT exist otherwise 0
     int newRecord = TrieMap_Add(set->trie, str, len, NULL, NULL);
@@ -133,7 +133,7 @@ char *ResultSetHeader_ToString(const ResultSetHeader *header, size_t *strLen) {
         }
     }
 
-    char *str = calloc(len, sizeof(char));
+    char *str = calloc(len + 1, sizeof(char));
     len = 0;
 
     for(int i = 0; i < header->columns_len; i++) {
@@ -360,12 +360,11 @@ void ResultSet_Replay(RedisModuleCtx* ctx, ResultSet* set) {
         /* Replay with table header. */
         size_t str_header_len = 0;
         size_t str_record_len = 0;
-        size_t str_record_cap = 2048;
         char *str_header = ResultSetHeader_ToString(set->header, &str_header_len);
         RedisModule_ReplyWithStringBuffer(ctx, str_header, str_header_len);
         free(str_header);
 
-        char *str_record = malloc(str_record_cap);
+        char *str_record = NULL;
 
         if(set->ordered) {
             if(set->limit != RESULTSET_UNLIMITED) {
@@ -385,7 +384,7 @@ void ResultSet_Replay(RedisModuleCtx* ctx, ResultSet* set) {
                 /* Replay records. */
                 while(record_idx) {
                     record = records[--record_idx];
-                    str_record_len = Record_ToString(record, &str_record, &str_record_cap);
+                    str_record_len = Record_ToString(record, &str_record);
                     RedisModule_ReplyWithStringBuffer(ctx, str_record, str_record_len);
                     Record_Free(record);
                 }
@@ -397,7 +396,7 @@ void ResultSet_Replay(RedisModuleCtx* ctx, ResultSet* set) {
 
                 for(int i = Vector_Size(set->records)-1; i >=0;  i--) {
                     Record* record = sorted_records[i];
-                    str_record_len = Record_ToString(record, &str_record, &str_record_cap);
+                    str_record_len = Record_ToString(record, &str_record);
                     RedisModule_ReplyWithStringBuffer(ctx, str_record, str_record_len);
                 }
                 free(sorted_records);
@@ -407,7 +406,7 @@ void ResultSet_Replay(RedisModuleCtx* ctx, ResultSet* set) {
                 Record* record = NULL;
                 Vector_Get(set->records, i, &record);
                 
-                str_record_len = Record_ToString(record, &str_record, &str_record_cap);
+                str_record_len = Record_ToString(record, &str_record);
                 RedisModule_ReplyWithStringBuffer(ctx, str_record, str_record_len);
             }
         }

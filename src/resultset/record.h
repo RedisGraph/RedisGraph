@@ -17,7 +17,7 @@ Record* NewRecord(size_t len);
 Record* Record_FromGroup(const ResultSetHeader *resultset_header, const Group *g);
 
 /* Get a string representation of record. */
-size_t Record_ToString(const Record *record, char **buf, size_t *buf_cap);
+size_t Record_ToString(const Record *record, char **record_str);
 
 /* Compares the two records, using the values at given indeces
  * Returns 1 if A >= B, -1 if A <= B, 0 if A = B */
