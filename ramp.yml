@@ -13,3 +13,4 @@ capabilities:
     - hash_policy
     - failover_migrate
     - persistence_rdb
+    - replica_of
