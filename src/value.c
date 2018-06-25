@@ -159,7 +159,7 @@ int SI_ParseValue(SIValue *v, char *str) {
   switch (v->type) {
 
   case T_STRING:
-    v->stringval = str;
+    v->stringval = strdup(str);
 
     break;
   case T_INT32:
