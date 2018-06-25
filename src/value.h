@@ -2,6 +2,7 @@
 #define __SECONDARY_VALUE_H__
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #include "./rmutil/vector.h"
 
 typedef char *SIId;
@@ -27,15 +28,6 @@ typedef enum {
 
 #define SI_NUMERIC (T_INT32 | T_INT64 | T_UINT | T_FLOAT | T_DOUBLE)
 
-// binary safe strings
-typedef struct {
-  char *str;
-  size_t len;
-} SIString;
-
-SIString SI_WrapString(const char *s);
-SIString SIString_Copy(SIString s);
-
 typedef struct {
   union {
     int32_t intval;
@@ -44,7 +36,7 @@ typedef struct {
     float floatval;
     double doubleval;
     int boolval;
-    SIString stringval;
+    char *stringval;
     void* ptrval;
   };
   SIType type;
@@ -66,8 +58,7 @@ void SIValue_Free(SIValue *v);
 void SIValueVector_Append(SIValueVector *v, SIValue val);
 void SIValueVector_Free(SIValueVector *v);
 
-SIValue SI_StringVal(SIString s);
-SIValue SI_StringValC(char *s);
+SIValue SI_StringVal(const char *s);
 SIValue SI_IntVal(int i);
 SIValue SI_LongVal(int64_t i);
 SIValue SI_UintVal(u_int64_t i);
@@ -96,23 +87,22 @@ int SI_StringVal_Cast(SIValue *v, SIType type);
 
 /* Try to parse a value by string. The value's type should be set to
 * anything other than T_NULL, to force strict parsing. */
-int SI_ParseValue(SIValue *v, char *str, size_t len);
+int SI_ParseValue(SIValue *v, char *str);
 
 int SIValue_ToString(SIValue v, char *buf, size_t len);
 
 int SIValue_ToDouble(SIValue *v, double *d);
 
 /* Try to parse a value by string. */
-void SIValue_FromString(SIValue *v, char *s, size_t s_len);
-
-/* Determins number of bytes required to concat strings. */
-size_t SIValue_StringConcatLen(SIValue* strings, unsigned int string_count);
+void SIValue_FromString(SIValue *v, char *s);
 
 /* Concats strings as a comma seperated string. */
-size_t SIValue_StringConcat(SIValue* strings, unsigned int string_count, char* buf, size_t buf_len);
+size_t SIValue_StringConcat(SIValue* strings, unsigned int string_count, char** concat);
 
 /* Compares two SIValues, expecting a and b to be of the same type,
  * return value is similar to strcmp. */
 int SIValue_Compare(SIValue a, SIValue b);
+
+void SIValue_Print(FILE *outstream, SIValue *v);
 
 #endif

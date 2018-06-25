@@ -19,15 +19,17 @@ int cmp_string(void *p1, void *p2) {
     return -1;
 
 
+  int v1_len = strlen(v1->stringval);
+  int v2_len = strlen(v2->stringval);
   // compare the longest length possible, which is the shortest length of the
   // two strings
-  int cmp = strncasecmp(v1->stringval.str, v2->stringval.str,
-                    MIN(v2->stringval.len, v1->stringval.len));
+  int cmp = strncasecmp(v1->stringval, v2->stringval,
+                    MIN(v1_len, v2_len));
 
   // if the strings are equal at the common length but are not of the same
   // length, the longer string wins
-  if (cmp == 0 && v1->stringval.len != v2->stringval.len) {
-    return v1->stringval.len > v2->stringval.len ? 1 : -1;
+  if (cmp == 0 && v1_len != v2_len) {
+    return v1_len > v2_len ? 1 : -1;
   }
   // if they are not equal, or equal and same length - return the original cmp
   return cmp;
