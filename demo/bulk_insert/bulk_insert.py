@@ -76,9 +76,11 @@ def help():
 
 @click.command()
 @click.argument('graph')
-@click.option('--nodes', multiple=True, help='path to node csv file')
-@click.option('--relations', multiple=True, help='path to relation csv file')
-def bulk_insert(graph, nodes, relations):
+@click.option('--host', '-h', default='127.0.0.1', help='Redis server host')
+@click.option('--port', '-p', default=6379, help='Redis server port')
+@click.option('--nodes', '-n', multiple=True, help='path to node csv file')
+@click.option('--relations', '-r', multiple=True, help='path to relation csv file')
+def bulk_insert(graph, host, port, nodes, relations):
 	ARGS = []		# Arguments for bulk insert command
 	LABELS = [] 	# Labels information
 	NODES = []		# Nodes data
@@ -97,7 +99,7 @@ def bulk_insert(graph, nodes, relations):
 	
 	if ARGS:
 		print ARGS
-		redis_client = redis.StrictRedis()
+		redis_client = redis.StrictRedis(host=host, port=port)
 		result = redis_client.execute_command("GRAPH.BULK", graph, *ARGS)
 		print result
 
