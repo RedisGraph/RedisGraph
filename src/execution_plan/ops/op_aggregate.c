@@ -57,11 +57,7 @@ char* _computeGroupKey(Aggregate *op, SIValue *group_keys) {
         group_keys[i] = AR_EXP_Evaluate(exp);
     }
 
-    // Determin required size for group string representation.
-    size_t str_group_len = SIValue_StringConcatLen(group_keys,op->none_aggregated_expression_count);
-    str_group = malloc(sizeof(char) * str_group_len);
-
-    SIValue_StringConcat(group_keys, op->none_aggregated_expression_count, str_group, str_group_len);
+    SIValue_StringConcat(group_keys, op->none_aggregated_expression_count, &str_group);
     return str_group;
 }
 

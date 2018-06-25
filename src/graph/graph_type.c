@@ -77,7 +77,7 @@ void _GraphType_LoadNodes(RedisModuleIO *rdb, Graph *g) {
             if(t & SI_NUMERIC) {
                 propValue[i] = SI_DoubleVal(RedisModule_LoadDouble(rdb));
             } else {
-                propValue[i] = SI_StringValC(RedisModule_LoadStringBuffer(rdb, NULL));
+                propValue[i] = SI_StringVal(RedisModule_LoadStringBuffer(rdb, NULL));
             }
         }
 
@@ -133,7 +133,7 @@ void _GraphType_SaveNode(RedisModuleIO *rdb, const Node *n) {
         if(prop.value.type & SI_NUMERIC) {
             RedisModule_SaveDouble(rdb, prop.value.doubleval);
         } else {
-            RedisModule_SaveStringBuffer(rdb, prop.value.stringval.str, prop.value.stringval.len);
+            RedisModule_SaveStringBuffer(rdb, prop.value.stringval, strlen(prop.value.stringval));
         }        
     }
 }
