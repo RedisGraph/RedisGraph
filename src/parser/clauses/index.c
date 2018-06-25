@@ -9,4 +9,8 @@ AST_IndexNode* New_AST_IndexNode(const char *label, const char *property, AST_In
   return indexOp;
 }
 
-// TODO add Free_AST_IndexNode
+void Free_AST_IndexNode(AST_IndexNode *indexNode) {
+  if(indexNode != NULL) {
+    free(indexNode);
+  }
+}

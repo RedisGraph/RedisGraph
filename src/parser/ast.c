@@ -34,6 +34,7 @@ void Free_AST_Query(AST_Query *queryExpressionNode) {
   Free_AST_WhereNode(queryExpressionNode->whereNode);
   Free_AST_ReturnNode(queryExpressionNode->returnNode);
   Free_AST_OrderNode(queryExpressionNode->orderNode);
+  Free_AST_IndexNode(queryExpressionNode->indexNode);
   free(queryExpressionNode);
 }
 
