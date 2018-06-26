@@ -362,7 +362,7 @@ SIValue SIValue_FromString(char *s) {
   char *sEnd = NULL;
 
   errno = 0;
-  double parsedval = strtod (s, &sEnd);
+  double parsedval = strtod(s, &sEnd);
   /* The input was not a complete number or represented a number that
    * cannot be represented as a double.
    * Create a string SIValue. */
