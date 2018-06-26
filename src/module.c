@@ -36,6 +36,25 @@
 
 #include "execution_plan/execution_plan.h"
 
+#include "index/index.h"
+#include "index/index_type.h"
+
+int _index_operation(RedisModuleCtx *ctx, const char *graphName, Graph *g, AST_IndexNode *indexNode) {
+  switch(indexNode->operation) {
+    case CREATE_INDEX:
+      Index_Create(ctx, graphName, g, indexNode);
+      // Set up array response for printing statistics
+      RedisModule_ReplyWithArray(ctx, 1);
+      break;
+    default:
+      RedisModule_ReplyWithArray(ctx, 2);
+      RedisModule_ReplyWithError(ctx, "Redis-Graph only supports index creation operations at present.");
+      return 0;
+  }
+  return 1;
+}
+
+
 /* Tries to retrieve graph object stored within Redis under graph_name key,
  * If specified key does not exists and create is set to 1, a new graph object
  * is created and stored, in case key already stores a different object type
@@ -88,6 +107,7 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     
     // Try to get graph.
     Graph *g = Graph_Get(ctx, argv[1]);
+
     if(!g) {
         if(ast->createNode) {
             g = _MGraph_CreateGraph(ctx, argv[1]);
@@ -104,31 +124,35 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
         return REDISMODULE_OK;
     }
     
-    /* Modify AST */
-    if(ReturnClause_ContainsCollapsedNodes(ast->returnNode) == 1) {
-        /* Expand collapsed nodes. */
-        ReturnClause_ExpandCollapsedNodes(ctx, ast, graph_name);
+    if (ast->indexNode) { // index operation
+        _index_operation(ctx, graph_name, g, ast->indexNode);
+    } else { // operation requiring execution plan
+        /* Modify AST */
+        if(ReturnClause_ContainsCollapsedNodes(ast->returnNode) == 1) {
+            /* Expand collapsed nodes. */
+            ReturnClause_ExpandCollapsedNodes(ctx, ast, graph_name);
+        }
+
+        ExecutionPlan *plan = NewExecutionPlan(ctx, g, graph_name, ast);
+        ResultSet* resultSet = ExecutionPlan_Execute(plan);
+        ExecutionPlanFree(plan);
+
+        /* Send result-set back to client. */
+        ResultSet_Replay(ctx, resultSet);
+
+        /* Replicate query only if it modified the keyspace. */
+        if(Query_Modifies_KeySpace(ast) &&
+           (resultSet->labels_added > 0 ||
+           resultSet->nodes_created > 0 ||
+           resultSet->properties_set > 0 ||
+           resultSet->relationships_created > 0 ||
+           resultSet->nodes_deleted > 0 ||
+           resultSet->relationships_deleted > 0)) {
+          RedisModule_ReplicateVerbatim(ctx);
+        }
+
+        ResultSet_Free(ctx, resultSet);
     }
-
-    ExecutionPlan *plan = NewExecutionPlan(ctx, g, graph_name, ast);
-    ResultSet* resultSet = ExecutionPlan_Execute(plan);
-    ExecutionPlanFree(plan);
-
-    /* Send result-set back to client. */
-    ResultSet_Replay(ctx, resultSet);
-
-    /* Replicate query only if it modified the keyspace. */
-    if(Query_Modifies_KeySpace(ast) &&
-       (resultSet->labels_added > 0 ||
-       resultSet->nodes_created > 0 ||
-       resultSet->properties_set > 0 ||
-       resultSet->relationships_created > 0 ||
-       resultSet->nodes_deleted > 0 ||
-       resultSet->relationships_deleted > 0)) {
-           RedisModule_ReplicateVerbatim(ctx);
-    }
-
-    ResultSet_Free(ctx, resultSet);
 
     /* Report execution timing. */
     t = simple_toc(tic) * 1000;
@@ -239,6 +263,11 @@ int _RegisterDataTypes(RedisModuleCtx *ctx) {
 
     if(GraphType_Register(ctx) == REDISMODULE_ERR) {
         printf("Failed to register graphtype\n");
+        return REDISMODULE_ERR;
+    }
+
+    if(IndexType_Register(ctx) == REDISMODULE_ERR) {
+        printf("Failed to register indextype\n");
         return REDISMODULE_ERR;
     }
 
