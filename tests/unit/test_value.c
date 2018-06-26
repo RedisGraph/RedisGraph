@@ -26,6 +26,17 @@ void test_value_parse() {
     v = SIValue_FromString(str);
     assert(v.type == T_STRING);
     assert(strcmp(v.stringval, "Test!") == 0);
+
+    str = "+1.0E1";
+    v = SIValue_FromString(str);
+    assert(v.type == T_DOUBLE);
+    assert(v.doubleval == 10);
+
+    /* Out of double range */
+    str = "1.0001e10001";
+    v = SIValue_FromString(str);
+    assert(v.type == T_STRING);
+    assert(strcmp(v.stringval, "1.0001e10001") == 0);
 }
 
 int main(int argc, char **argv) {
