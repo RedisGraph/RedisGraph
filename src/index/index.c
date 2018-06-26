@@ -57,13 +57,17 @@ Index* Index_Get(RedisModuleCtx *ctx, const char *graph, const char *label, cons
 
 // Create and populate index for specified property
 // (This function will create separate string and numeric indices if property has mixed types)
-void Index_Create(RedisModuleCtx *ctx, const char *graphName, AST_IndexNode *indexOp) {
+void Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, AST_IndexNode *indexOp) {
   const char *label = indexOp->target.label;
   const char *prop_str = indexOp->target.property;
-  LabelStore *store = LabelStore_Get(ctx, STORE_NODE, graphName, label);
 
-  LabelStoreIterator it;
-  LabelStore_Scan(store, &it);
+  TuplesIter *it;
+  LabelStore *store = LabelStore_Get(ctx, STORE_NODE, graphName, label);
+  if(store != NULL) {
+    it = TuplesIter_new(Graph_GetLabelMatrix(g, store->id));
+  } else {
+    assert(0);
+  }
 
   char *nodeId;
   uint16_t nodeIdLen;
@@ -87,8 +91,11 @@ void Index_Create(RedisModuleCtx *ctx, const char *graphName, AST_IndexNode *ind
   index->string_sl = skiplistCreate(compareStrings, NULL, compareNodes, cloneKey, freeKey);
   index->numeric_sl = skiplistCreate(compareNumerics, NULL, compareNodes, cloneKey, freeKey);
 
+  GrB_Index row;
+  GrB_Index col;
   int prop_index = 0;
-  while(LabelStoreIterator_Next(&it, &nodeId, &nodeIdLen, (void**)&node)) {
+  while(TuplesIter_next(it, &row, &col) != TuplesIter_DEPLETED) {
+    node = Graph_GetNode(g, row);
     // If the sought property is at a different offset than it occupied in the previous node,
     // then seek and update
     if (strcmp(prop_str, node->properties[prop_index].name)) {
