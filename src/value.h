@@ -94,7 +94,7 @@ int SIValue_ToString(SIValue v, char *buf, size_t len);
 int SIValue_ToDouble(SIValue *v, double *d);
 
 /* Try to parse a value by string. */
-void SIValue_FromString(SIValue *v, char *s);
+SIValue SIValue_FromString(char *s);
 
 /* Concats strings as a comma seperated string. */
 size_t SIValue_StringConcat(SIValue* strings, unsigned int string_count, char** concat);

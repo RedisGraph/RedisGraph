@@ -358,25 +358,20 @@ int SIValue_ToDouble(SIValue *v, double *d) {
   }
 }
 
-void SIValue_FromString(SIValue *v, char *s) {
-  int numeric = 1;
-  char *c;
+SIValue SIValue_FromString(char *s) {
+  char *sEnd = NULL;
 
-  /* Scan string, see if we can find any non-numeric characters in it. */
-  for(c = s; *c != '\0'; c ++) {
-    
-    if(!isdigit(*c) && *c != '.' && *c != '-') {
-      numeric = 0;
-      v->type = T_STRING;
-      break;
-    }
+  errno = 0;
+  double parsedval = strtod (s, &sEnd);
+  /* The input was not a complete number or represented a number that
+   * cannot be represented as a double.
+   * Create a string SIValue. */
+  if (sEnd[0] != '\0' || errno == ERANGE) {
+    return SI_StringVal(s);
   }
 
-  if(numeric) {
-    v->type = T_DOUBLE;
-  }
-
-  SI_ParseValue(v, s);
+  // The input was fully converted; create a double SIValue.
+  return SI_DoubleVal(parsedval);
 }
 
 size_t SIValue_StringConcat(SIValue* strings, unsigned int string_count, char** concat) {
