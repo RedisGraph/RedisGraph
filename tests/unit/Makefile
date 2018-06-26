@@ -25,7 +25,10 @@ tuples_iter: test_tuples_iter.o
 filter_tree: test_filter_tree.o
 	$(CC) $(CFLAGS) -o test_filter_tree test_filter_tree.o  $(DEPS) $(LDFLAGS)
 
-build: graph algebraic_expression tuples_iter filter_tree
+value: test_value.o
+	$(CC) $(CFLAGS)  -o test_value test_value.o  $(DEPS) $(LDFLAGS)
+
+build: graph algebraic_expression tuples_iter filter_tree value
 
 test_graph:
 	@(sh -c ./test_graph)
@@ -43,6 +46,10 @@ test_filter_tree:
 	@(sh -c ./test_filter_tree)
 .PHONY: test_filter_tree
 
-test: test_graph test_algebraic_expression test_tuples_iter test_filter_tree
+test_value:
+	@(sh -c ./test_value)
+.PHONY: test_value
+
+test: test_graph test_algebraic_expression test_tuples_iter test_filter_tree test_value
 
 all: build test
