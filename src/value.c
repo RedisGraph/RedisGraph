@@ -358,7 +358,7 @@ int SIValue_ToDouble(SIValue *v, double *d) {
   }
 }
 
-SIValue SIValue_FromString(char *s) {
+SIValue SIValue_FromString(const char *s) {
   char *sEnd = NULL;
 
   errno = 0;
