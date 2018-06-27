@@ -528,7 +528,7 @@ SIValue AR_TOSTRING(SIValue *argv, int argc) {
 
     if(SIValue_IsNull(argv[0])) return SI_NullVal();
     size_t len = 128;
-    char str[len];
+    char str[128] = {0};
     SIValue_ToString(argv[0], str, len);
     return SI_StringVal(str);
 }
