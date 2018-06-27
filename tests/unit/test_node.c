@@ -21,12 +21,12 @@ void test_node_props() {
 	Node *node = NewNode(1l, "city");
 
 	char *keys[2] = {"neighborhood", "block"};
-	SIValue vals[2] = { SI_StringValC("rambam"), SI_IntVal(10)};
+	SIValue vals[2] = { SI_StringVal("rambam"), SI_IntVal(10)};
 
 	GraphEntity_Add_Properties((GraphEntity*)node, 2, keys, vals);
 
 	SIValue *val = GraphEntity_Get_Property((GraphEntity*)node, "neighborhood");
-	assert(strcmp(val->stringval.str, "rambam") == 0);
+	assert(strcmp(val->stringval, "rambam") == 0);
 
 	val = GraphEntity_Get_Property((GraphEntity*)node, "block");
 	assert(val->intval == 10);

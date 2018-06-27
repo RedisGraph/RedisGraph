@@ -37,7 +37,7 @@ void StoreType_RdbSave(RedisModuleIO *rdb, void *value) {
     LabelStore *s = value;
 
     RedisModule_SaveUnsigned(rdb, s->id);
-    RedisModule_SaveStringBuffer(rdb, s->label, strlen(s->label));
+    RedisModule_SaveStringBuffer(rdb, s->label, strlen(s->label) + 1);
     RedisModule_SaveUnsigned(rdb, s->properties->cardinality);
 
     if(s->properties->cardinality) {

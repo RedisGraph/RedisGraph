@@ -106,8 +106,8 @@ RedisModuleString** _Bulk_Insert_Read_Labeled_Node_Attributes(RedisModuleCtx *ct
 
     for(int i = 0; i < attribute_count; i++) {
         size_t attribute_len;
-        char *attribute_val = strdup((char*)RedisModule_StringPtrLen(*argv++, &attribute_len));
-        SIValue_FromString(&values[i], attribute_val, attribute_len);
+        char *attribute_val = (char*)RedisModule_StringPtrLen(*argv++, &attribute_len);
+        values[i] = SIValue_FromString(attribute_val);
     }
 
     return argv;
@@ -131,7 +131,7 @@ RedisModuleString** _Bulk_Insert_Read_Unlabeled_Node_Attributes(RedisModuleCtx *
 
         size_t attribute_len;
         char *attribute_val = (char*)RedisModule_StringPtrLen(*argv++, &attribute_len);
-        SIValue_FromString(&values[i], attribute_val, attribute_len);
+        values[i] = SIValue_FromString(attribute_val);
     }
 
     return argv;

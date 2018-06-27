@@ -94,7 +94,7 @@ void _BuildQueryGraphAddProps(AST_GraphEntity *entity, GraphEntity* e) {
             Vector_Get(entity->properties, prop_idx+1, &value);
 
             values[prop_idx/2] = *value;
-            keys[prop_idx/2] = key->stringval.str;
+            keys[prop_idx/2] = key->stringval;
         }
 
         GraphEntity_Add_Properties(e, prop_count/2, keys, values);

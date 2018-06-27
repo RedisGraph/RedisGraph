@@ -6,26 +6,39 @@
 void test_value_parse() {
     SIValue v;
     char *str = "12345";
-    SIValue_FromString(&v, str, strlen(str));
+    v = SIValue_FromString(str);
     assert(v.type == T_DOUBLE);
     assert(v.doubleval == 12345);
 
     str = "3.14";
-    SIValue_FromString(&v, str, strlen(str));
+    v = SIValue_FromString(str);
     assert(v.type == T_DOUBLE);
     
     /* Almost equals. */
     assert((v.doubleval - 3.14) < 0.0001);
 
     str = "-9876";
-    SIValue_FromString(&v, str, strlen(str));
+    v = SIValue_FromString(str);
     assert(v.type == T_DOUBLE);
     assert(v.doubleval == -9876);
 
     str = "Test!";
-    SIValue_FromString(&v, str, strlen(str));
+    v = SIValue_FromString(str);
     assert(v.type == T_STRING);
-    assert(strcmp(v.stringval.str, "Test!") == 0);
+    assert(strcmp(v.stringval, "Test!") == 0);
+    SIValue_Free(&v);
+
+    str = "+1.0E1";
+    v = SIValue_FromString(str);
+    assert(v.type == T_DOUBLE);
+    assert(v.doubleval == 10);
+
+    /* Out of double range */
+    str = "1.0001e10001";
+    v = SIValue_FromString(str);
+    assert(v.type == T_STRING);
+    assert(strcmp(v.stringval, "1.0001e10001") == 0);
+    SIValue_Free(&v);
 }
 
 int main(int argc, char **argv) {
