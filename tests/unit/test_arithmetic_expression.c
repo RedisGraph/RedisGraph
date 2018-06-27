@@ -84,7 +84,7 @@ void test_arithmetic_expression() {
 
 void test_variadic_arithmetic_expression() {
     /* person.age += 1 */
-    Node *node = NewNode(1, "person");
+    Node *node = Node_New(1, "person");
     char *props[2] = {"age", "name"};
     SIValue vals[2] = {SI_DoubleVal(33), SI_StringVal("joe")};
     GraphEntity_Add_Properties((GraphEntity*)node, 2, props, vals);
@@ -601,7 +601,7 @@ void test_trim() {
 void test_id() {
     AR_ExpNode *root = AR_EXP_NewOpNode("id", 1);
 
-    Node *node = NewNode(12345, "person");
+    Node *node = Node_New(12345, "person");
     AR_ExpNode *person_with_id = AR_EXP_NewVariableOperandNode((GraphEntity **)(&node), NULL, "Joe");
 
     root->op.children[0] = person_with_id;
