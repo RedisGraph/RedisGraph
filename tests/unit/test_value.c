@@ -26,6 +26,7 @@ void test_value_parse() {
     v = SIValue_FromString(str);
     assert(v.type == T_STRING);
     assert(strcmp(v.stringval, "Test!") == 0);
+    SIValue_Free(&v);
 
     str = "+1.0E1";
     v = SIValue_FromString(str);
@@ -37,6 +38,7 @@ void test_value_parse() {
     v = SIValue_FromString(str);
     assert(v.type == T_STRING);
     assert(strcmp(v.stringval, "1.0001e10001") == 0);
+    SIValue_Free(&v);
 }
 
 int main(int argc, char **argv) {
