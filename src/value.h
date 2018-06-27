@@ -96,8 +96,11 @@ int SIValue_ToDouble(SIValue *v, double *d);
 /* Try to parse a value by string. */
 SIValue SIValue_FromString(const char *s);
 
-/* Concats strings as a comma seperated string. */
-size_t SIValue_StringConcat(SIValue* strings, unsigned int string_count, char** concat);
+/* Determines number of bytes required to concat strings. */
+size_t SIValue_StringConcatLen(SIValue* strings, unsigned int string_count);
+
+/* Concats strings as a comma separated string. */
+size_t SIValue_StringConcat(SIValue* strings, unsigned int string_count, char *buf, size_t buf_len);
 
 /* Compares two SIValues, expecting a and b to be of the same type,
  * return value is similar to strcmp. */

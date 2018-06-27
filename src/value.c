@@ -374,31 +374,33 @@ SIValue SIValue_FromString(const char *s) {
   return SI_DoubleVal(parsedval);
 }
 
-size_t SIValue_StringConcat(SIValue* strings, unsigned int string_count, char** concat) {
-  int i;
+size_t SIValue_StringConcatLen(SIValue* strings, unsigned int string_count) {
+  size_t length = 0;
+  size_t elem_len;
 
-  size_t offset = 0, length = 0;
   /* Compute length. */
-  for(i = 0; i < string_count; i++) {
-    /* Element string representation bytes size, strings are
-    * surrounded by double quotes,
-    * for all other SIValue types 32 bytes should be enough. */
-    size_t len = (strings[i].type == T_STRING) ? strlen(strings[i].stringval) + 2 : 32;
-    length += len;
+  for(int i = 0; i < string_count; i ++) {
+    /* String elements representing bytes size strings,
+     * for all other SIValue types 32 bytes should be enough. */
+    elem_len = (strings[i].type == T_STRING) ? strlen(strings[i].stringval) + 1 : 32;
+    length += elem_len;
   }
 
-  /* Account for delimiters and NULL terminating byte. */
+  /* Account for NULL terminating byte. */
   length += string_count + 1;
-  *concat = malloc(length * sizeof(char));
+  return length;
+}
 
-  for(i = 0; i < string_count; i++) {
-    offset += SIValue_ToString(strings[i], (*concat) + offset, length - offset - 1);
-    (*concat)[offset++] = ',';
+size_t SIValue_StringConcat(SIValue* strings, unsigned int string_count, char *buf, size_t buf_len) {
+  size_t offset = 0;
+
+  for (int i = 0; i < string_count; i ++) {
+    offset += SIValue_ToString(strings[i], buf + offset, buf_len - offset - 1);
+    buf[offset++] = ',';
   }
-  /* Backtrack once. */
-  (*concat)[-- offset] = '\0';
+  /* Backtrack once and discard last delimiter. */
+  buf[--offset] = '\0';
 
-  /* Discard last delimiter. */
   return offset;
 }
 
