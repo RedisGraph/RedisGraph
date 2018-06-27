@@ -426,7 +426,7 @@ SIValue AR_REVERSE(SIValue *argv, int argc) {
     if(SIValue_IsNull(argv[0])) return SI_NullVal();
     assert(argv[0].type == T_STRING);
     char *str = argv[0].stringval;
-    size_t str_len = strlen(argv[0].stringval);
+    size_t str_len = strlen(str);
     char reverse[str_len + 1];
     
     int i = str_len-1;
@@ -449,7 +449,7 @@ SIValue AR_SUBSTRING(SIValue *argv, int argc) {
     assert(argc > 1);
     if(SIValue_IsNull(argv[0])) return SI_NullVal();
     char *original = argv[0].stringval;
-    size_t original_len = strlen(argv[0].stringval);
+    size_t original_len = strlen(original);
     int start = (int)argv[1].doubleval;
     size_t length;
 
@@ -493,7 +493,7 @@ SIValue AR_TOLOWER(SIValue *argv, int argc) {
 
     if(SIValue_IsNull(argv[0])) return SI_NullVal();
     char *original = argv[0].stringval;
-    size_t lower_len = strlen(argv[0].stringval) + 1;
+    size_t lower_len = strlen(original) + 1;
     char lower[lower_len];
     _toLower(original, lower, &lower_len);
     return SI_StringVal(lower);
@@ -517,7 +517,7 @@ SIValue AR_TOUPPER(SIValue *argv, int argc) {
 
     if(SIValue_IsNull(argv[0])) return SI_NullVal();
     char *original = argv[0].stringval;
-    size_t upper_len = strlen(argv[0].stringval) + 1;
+    size_t upper_len = strlen(original) + 1;
     char upper[upper_len];
     _toUpper(original, upper, &upper_len);
     return SI_StringVal(upper);
