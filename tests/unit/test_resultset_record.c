@@ -3,9 +3,7 @@
 #include "../../src/resultset/record.h"
 #include "../../src/value.h"
 
-size_t Record_ToString(const Record *record, char **record_str);
-
-void test_record_to_string () {
+void test_record_to_string() {
     Record *record = NewRecord(6);    
     SIValue v_string = SI_StringVal("Hello");
     SIValue v_int = SI_IntVal(-24);
@@ -21,12 +19,14 @@ void test_record_to_string () {
     record->values[4] = v_null;
     record->values[5] = v_bool;
 
-    char *record_str;
-    size_t record_str_len = Record_ToString(record, &record_str);
+    size_t record_str_cap = 0;
+    char *record_str = NULL;
+    size_t record_str_len = Record_ToString(record, &record_str, &record_str_cap);
 
     assert(strcmp(record_str, "Hello,-24,24,0.314000,NULL,true") == 0);
     assert(record_str_len == 31);
     
+    SIValue_Free(&v_string);
     free(record_str);
     Record_Free(record);
 }
