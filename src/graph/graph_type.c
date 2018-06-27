@@ -126,14 +126,14 @@ void _GraphType_SaveNode(RedisModuleIO *rdb, const Node *n) {
 
     for(int i = 0; i < n->prop_count; i++) {
         EntityProperty prop = n->properties[i];
-        RedisModule_SaveStringBuffer(rdb, prop.name, strlen(prop.name));        
+        RedisModule_SaveStringBuffer(rdb, prop.name, strlen(prop.name) + 1);
         
         RedisModule_SaveUnsigned(rdb, prop.value.type);
         
         if(prop.value.type & SI_NUMERIC) {
             RedisModule_SaveDouble(rdb, prop.value.doubleval);
         } else {
-            RedisModule_SaveStringBuffer(rdb, prop.value.stringval, strlen(prop.value.stringval));
+            RedisModule_SaveStringBuffer(rdb, prop.value.stringval, strlen(prop.value.stringval) + 1);
         }        
     }
 }
