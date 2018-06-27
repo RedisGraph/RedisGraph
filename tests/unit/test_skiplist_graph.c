@@ -40,21 +40,20 @@ void testFreeKey(void *key) {
 
 skiplist* build_skiplist(void) {
   skiplist *sl = skiplistCreate(testCompareStrings, NULL, testCompareNodes, testCloneKey, testFreeKey);
-  Node *cur_node;
-  SIValue *cur_prop;
+  Node *node_a, *node_b;
 
   for (long i = 0; words[i] != NULL; i ++) {
-    cur_node = Node_New(10 + i, node_label);
-    cur_prop = malloc(sizeof(SIValue));
-    SIValue_FromString(cur_prop, words[i]);
-    Node_Add_Properties(cur_node, 1, &prop_key, cur_prop);
-    skiplistInsert(sl, cur_prop, cur_node);
+    node_a = Node_New(10 + i, node_label);
+    SIValue *node_a_prop = malloc(sizeof(SIValue));
+    *node_a_prop = SIValue_FromString(words[i]);
+    Node_Add_Properties(node_a, 1, &prop_key, node_a_prop);
+    skiplistInsert(sl, node_a_prop, node_a);
 
-    cur_node = Node_New(i, node_label);
-    cur_prop = malloc(sizeof(SIValue));
-    SIValue_FromString(cur_prop, words[6 - i]);
-    Node_Add_Properties(cur_node, 1, &prop_key, cur_prop);
-    skiplistInsert(sl, cur_prop, cur_node);
+    node_b = Node_New(i, node_label);
+    SIValue *node_b_prop = malloc(sizeof(SIValue));
+    *node_b_prop = SIValue_FromString(words[6 - i]);
+    Node_Add_Properties(node_b, 1, &prop_key, node_b_prop);
+    skiplistInsert(sl, node_b_prop, node_b);
   }
 
   return sl;
@@ -70,7 +69,7 @@ skiplistNode* update_skiplist(skiplist *sl, void *val, void *old_key, void *new_
 void test_skiplist_range(void) {
   skiplist *sl = skiplistCreate(testCompareNumerics, NULL, testCompareNodes, testCloneKey, testFreeKey);
   Node *cur_node;
-  SIValue *cur_prop;
+  SIValue cur_prop;
 
   char *keys[] = {"5.5", "0", "-30.2", "7", "1", "2", "-1.5", NULL};
 
@@ -80,10 +79,9 @@ void test_skiplist_range(void) {
 
   for (long i = 0; keys[i] != NULL; i ++) {
     cur_node = Node_New(ids[i], node_label);
-    cur_prop = malloc(sizeof(SIValue));
-    SIValue_FromString(cur_prop, keys[i]);
-    Node_Add_Properties(cur_node, 1, &prop_key, cur_prop);
-    skiplistInsert(sl, cur_prop, cur_node);
+    cur_prop = SIValue_FromString(keys[i]);
+    Node_Add_Properties(cur_node, 1, &prop_key, &cur_prop);
+    skiplistInsert(sl, &cur_prop, cur_node);
   }
 
   long last_id = 3;
@@ -101,21 +99,20 @@ void test_skiplist_range(void) {
 
 void test_skiplist_delete(void) {
   int delete_result;
-  SIValue prop_to_delete;
 
   skiplist *sl = build_skiplist();
 
-  SIValue_FromString(&prop_to_delete, words[2]);
+  SIValue prop_to_delete = SIValue_FromString(words[2]);
   skiplistNode *old_skiplist_node = skiplistFind(sl, &prop_to_delete);
   Node *node_to_delete = old_skiplist_node->vals[0];
-  SIValue_FromString(&prop_to_delete, words[3]);
+  prop_to_delete = SIValue_FromString(words[3]);
 
   // Attempt to delete a non-existent key-value pair
   delete_result = skiplistDelete(sl, &prop_to_delete, node_to_delete);
   assert(delete_result == 0);
 
   // Attempt to delete a non-existent skiplist key
-  SIValue_FromString(&prop_to_delete, "not_a_key");
+  prop_to_delete = SIValue_FromString("not_a_key");
   delete_result = skiplistDelete(sl, &prop_to_delete, NULL);
   assert(delete_result == 0);
 
@@ -124,7 +121,7 @@ void test_skiplist_delete(void) {
   assert(delete_result == 1);
 
   // Delete full nodes from the skiplist - a single key and all values that share it
-  SIValue_FromString(&prop_to_delete, words[3]);
+  prop_to_delete = SIValue_FromString(words[3]);
   delete_result = skiplistDelete(sl, &prop_to_delete, NULL);
   assert(delete_result == 1);
 
@@ -138,17 +135,15 @@ void test_skiplist_delete(void) {
 void test_skiplist_update(void) {
   skiplistNode *search_result;
   skiplist *sl = build_skiplist();
-  SIValue find_prop;
-  SIValue_FromString(&find_prop, words[2]);
+  SIValue find_prop = SIValue_FromString(words[2]);
   skiplistNode *old_skiplist_node = skiplistFind(sl, &find_prop);
   Node *node_to_update = old_skiplist_node->vals[0];
 
-  SIValue *new_prop = malloc(sizeof(SIValue));
   SIValue old_prop = *Node_Get_Property(node_to_update, prop_key);
-  SIValue_FromString(new_prop, "updated_val");
 
   // Update the skiplist to store a different property
-  skiplistNode *new_skiplist_node = update_skiplist(sl, node_to_update, &old_prop, new_prop);
+  SIValue new_prop = SIValue_FromString("updated_val");
+  skiplistNode *new_skiplist_node = update_skiplist(sl, node_to_update, &old_prop, &new_prop);
 
   // The new skiplistNode should have the new key
   assert(!strcmp(((SIValue *)new_skiplist_node->key)->stringval, "updated_val"));
@@ -159,7 +154,7 @@ void test_skiplist_update(void) {
 
   // The new key-value pair can be found
   int found_index = -1;
-  search_result = skiplistFind(sl, new_prop);
+  search_result = skiplistFind(sl, &new_prop);
   if (search_result) {
     for (int i = 0; i < search_result->numVals; i ++) {
       if (testCompareNodes(search_result->vals[i], node_to_update) == 0) {
