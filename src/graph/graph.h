@@ -63,6 +63,20 @@ Node *Graph_GetNode (
     int node_id
 );
 
+// Removes a node and all of its connections
+// within the graph.
+void Graph_DeleteNode (
+    Graph *g,
+    int id
+);
+
+// Removes edge connecting src node to dest node.
+void Graph_DeleteEdge (
+    Graph *g,
+    int src_id,
+    int dest_id
+);
+
 // Label all nodes between start_node_id and end_node_id
 // with given label.
 void Graph_LabelNodes (

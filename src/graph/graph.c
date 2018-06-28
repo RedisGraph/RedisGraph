@@ -1,6 +1,7 @@
 #include "graph.h"
 #include "graph_type.h"
 #include "assert.h"
+#include "../arithmetic/tuples_iter.h"
 
 #define MAX(a, b) \
     ((a > b) ? a : b)
@@ -13,6 +14,11 @@
 #define GRAPH_NODE_ID_TO_BLOCK_INDEX(id) \
     (id / NODEBLOCK_CAP)
 
+// Computes node position within a block.
+#define GRAPH_NODE_POSITION_WITHIN_BLOCK(id) \
+    (id % NODEBLOCK_CAP)
+
+// Get currently active block.
 #define GRAPH_ACTIVE_BLOCK(g) \
     g->nodes_blocks[GRAPH_NODE_ID_TO_BLOCK_INDEX(g->node_count)]
 
@@ -58,6 +64,86 @@ void _Graph_ResizeNodes(Graph *g, size_t n) {
 
     g->node_cap = g->block_count * NODEBLOCK_CAP;
     _Graph_ResizeMatrix(g, g->adjacency_matrix);
+}
+
+/* Removes node with ID: removedNodeID from matrix M by replacing it 
+ * with node with ID: replacementNodeID.
+ * col, row, nrows, zero and desc are provided here as they're being reused. */
+void _Graph_RemoveNodeFromMatrix(GrB_Matrix M, int removedNodeID, int replacementNodeID,
+                                 GrB_Vector col, GrB_Vector row, GrB_Index nrows,
+                                 GrB_Vector zero, GrB_Descriptor desc) {
+    /* As replacement gets a new ID, in case it has a Self edge,
+     * we need to update its entry. */
+    bool selfEdge = false;
+    GrB_Matrix_extractElement_BOOL(&selfEdge, M, replacementNodeID, replacementNodeID);
+    
+    if(selfEdge) {
+        GrB_Matrix_setElement_BOOL(M, true, replacementNodeID, removedNodeID);
+        GrB_Matrix_setElement_BOOL(M, false, replacementNodeID, replacementNodeID);
+    }
+
+    // Replace row.
+    GrB_Col_extract(row, NULL, NULL, M, GrB_ALL, nrows, replacementNodeID, desc);
+    GrB_Row_assign(M, NULL, NULL, row, removedNodeID, GrB_ALL, nrows, NULL);
+
+    // Replace col.
+    GrB_Col_extract(col, NULL, NULL, M, GrB_ALL, nrows, replacementNodeID, NULL);
+    GrB_Col_assign(M, NULL, NULL, col, GrB_ALL, nrows, removedNodeID, NULL);
+
+    // Clear replacemnt row and column.
+    GrB_Col_assign(M, NULL, NULL, zero, GrB_ALL, nrows, replacementNodeID, NULL);
+    GrB_Row_assign(M, NULL, NULL, zero, replacementNodeID, GrB_ALL, nrows, NULL);
+}
+
+/* Replace removed node ID relations with 
+ * its replacement node relations. */
+void _Graph_RemoveNodeRelations(Graph *g, int id, int replacementID) {    
+    GrB_Index nrows = g->node_cap;
+    
+    // Vectors to hold replacement relations.
+    GrB_Vector col; // Incoming edges.
+    GrB_Vector row; // Outgoing edges.
+    
+    GrB_Vector_new(&col, GrB_BOOL, nrows);
+    GrB_Vector_new(&row, GrB_BOOL, nrows);
+
+    // Descriptor used to transpose a matrix for row extraction.
+    GrB_Descriptor desc;
+    GrB_Descriptor_new(&desc);
+    GrB_Descriptor_set(desc, GrB_INP0, GrB_TRAN);
+
+    // Zero vector to clear entire row/column.
+    GrB_Vector zero;
+    GrB_Vector_new(&zero, GrB_BOOL, nrows);
+
+    /* Replace node ID relations with replacement ID relations within
+     * every relation matrix. */
+    _Graph_RemoveNodeFromMatrix(g->adjacency_matrix, id, replacementID, col, row, nrows, zero, desc);
+    for(int i = 0; i < g->relation_count; i++) {
+        _Graph_RemoveNodeFromMatrix(g->relations[i], id, replacementID, col, row, nrows, zero, desc);
+    }
+
+    // TODO: How many entries did we clear?, used later for GC.
+    // Clean up
+    GrB_Vector_free(&zero);
+    GrB_Vector_free(&col);
+    GrB_Vector_free(&row);
+    GrB_Descriptor_free(&desc);
+}
+
+/* Removes given node from graph's node blockchain,
+ * by replacing it with the node at the front of the chain. */
+void _Graph_RemoveNodeFromBlockchain(Graph *g, int id, int *replacementID) {
+    // Get the block in which removed node resides.
+    NodeBlock *removedNodeBlock = GRAPH_GET_NODE_BLOCK(g, id);
+    // Get node position within its block.
+    int nodeBlockIdx = GRAPH_NODE_POSITION_WITHIN_BLOCK(id);
+    // Get the newest node in the graph.
+    GrB_Index newestNodeID = g->node_count-1;
+    Node *newestNode = Graph_GetNode(g, newestNodeID);
+    // Replace removed node with newest node.
+    removedNodeBlock->nodes[nodeBlockIdx] = *newestNode;
+    if(replacementID != NULL) *replacementID = newestNodeID;
 }
 
 /*================================ Graph API ================================ */
@@ -168,6 +254,76 @@ Node* Graph_GetNode(const Graph *g, int id) {
 
     NodeBlock *block = g->nodes_blocks[block_id];
     return &block->nodes[id%NODEBLOCK_CAP];
+}
+
+void Graph_DeleteNode(Graph *g, int id) {
+    // Make sure node exists.
+    Node *n = Graph_GetNode(g, id);
+    assert(n != NULL);
+
+    // Remove node from graph's node block.
+    int replacemntID;
+    _Graph_RemoveNodeFromBlockchain(g, id, &replacemntID);    
+
+    // Remove every node's incoming & outgoing relation.
+    _Graph_RemoveNodeRelations(g, id, replacemntID);
+
+    // Update graph node count.
+    g->node_count--;
+
+    // TODO Free node propetries.
+    // Node_Free(n);
+}
+
+void Graph_DeleteEdge(Graph *g, int src_id, int dest_id) {
+    assert(src_id < g->node_count && dest_id < g->node_count);
+    
+    // See if there's an edge between src and dest.
+    bool connected = false;
+    GrB_Matrix_extractElement_BOOL(&connected, g->adjacency_matrix, src_id, dest_id);
+    
+    if(!connected) return;
+
+    GrB_Matrix M = g->adjacency_matrix;
+    GrB_Vector col;
+    GrB_Vector updatedCol;
+    GrB_Index nrows = g->node_cap;
+    GrB_Vector_new(&col, GrB_BOOL, nrows);
+    GrB_Vector_new(&updatedCol, GrB_BOOL, nrows);
+
+    // Extract column dest_id.
+    GrB_Col_extract(col, NULL, NULL, M, GrB_ALL, nrows, dest_id, NULL);
+    // Create an updated column where row src_id is not set.
+    GrB_Index row;
+    TuplesIter *iter = TuplesIter_new((GrB_Matrix)col);
+    while(TuplesIter_next(iter, &row, NULL) != TuplesIter_DEPLETED) {
+        if(row != src_id) {
+            GrB_Vector_setElement_BOOL(updatedCol, true, row);
+        }
+    }
+    TuplesIter_free(iter);
+
+    GrB_Vector mask = updatedCol;
+    GrB_Col_assign(M, NULL, NULL, updatedCol, GrB_ALL, nrows, dest_id, NULL);
+    
+    GrB_Descriptor desc;
+    GrB_Descriptor_new(&desc);
+    GrB_Descriptor_set(desc, GrB_OUTP, GrB_REPLACE);
+
+    // Search for relation matrices in with edge is set.
+    for(int i = 0; i < g->relation_count; i++) {
+        M = g->relations[i];
+        connected = false;
+        GrB_Matrix_extractElement_BOOL(&connected, M, src_id, dest_id);
+        if(connected) {
+            GrB_Col_extract(col, mask, NULL, M, GrB_ALL, nrows, dest_id, desc);
+            GrB_Col_assign(M, NULL, NULL, col, GrB_ALL, nrows, dest_id, NULL);
+        }
+    }
+
+    GrB_Descriptor_free(&desc);
+    GrB_Vector_free(&col);
+    GrB_Vector_free(&updatedCol);
 }
 
 void Graph_LabelNodes(Graph *g, int start_node_id, int end_node_id, int label, NodeIterator **it) {
