@@ -99,12 +99,12 @@ Graph *_build_graph() {
     char *default_property_name = "name";
     for(int i = 0; i < person_count; i++) {
         Node *n = NodeIterator_Next(it);
-        SIValue name = SI_StringValC(persons[i]);
+        SIValue name = SI_StringVal(persons[i]);
         Node_Add_Properties(n, 1, &default_property_name, &name);
     }
     for(int i = 0; i < country_count; i++) {
         Node *n = NodeIterator_Next(it);
-        SIValue name = SI_StringValC(countries[i]);
+        SIValue name = SI_StringVal(countries[i]);
         Node_Add_Properties(n, 1, &default_property_name, &name);
     }
 

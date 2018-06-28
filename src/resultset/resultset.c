@@ -123,7 +123,7 @@ ResultSetHeader* NewResultSetHeader(const AST_Query *ast) {
 char *ResultSetHeader_ToString(const ResultSetHeader *header, size_t *strLen) {
     size_t len = 0;
 
-    // Determin required buffer length.
+    // Determine required buffer length.
     for(int i = 0; i < header->columns_len; i++) {
         Column *c = header->columns[i];
         if(c->alias != NULL) {
@@ -133,7 +133,7 @@ char *ResultSetHeader_ToString(const ResultSetHeader *header, size_t *strLen) {
         }
     }
 
-    char *str = calloc(len, sizeof(char));
+    char *str = calloc(len + 1, sizeof(char));
     len = 0;
 
     for(int i = 0; i < header->columns_len; i++) {
@@ -360,11 +360,11 @@ void ResultSet_Replay(RedisModuleCtx* ctx, ResultSet* set) {
         /* Replay with table header. */
         size_t str_header_len = 0;
         size_t str_record_len = 0;
-        size_t str_record_cap = 2048;
         char *str_header = ResultSetHeader_ToString(set->header, &str_header_len);
         RedisModule_ReplyWithStringBuffer(ctx, str_header, str_header_len);
         free(str_header);
 
+        size_t str_record_cap = 2048;
         char *str_record = malloc(str_record_cap);
 
         if(set->ordered) {
