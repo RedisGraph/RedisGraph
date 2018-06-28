@@ -333,7 +333,7 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g, const char *graph
          * apply this rule to reduce the number of filter operations. */
     }
     
-    optimizePlan(ctx, execution_plan, graph_name);
+    optimizePlan(ctx, execution_plan, graph_name, g);
 
     return execution_plan;
 }

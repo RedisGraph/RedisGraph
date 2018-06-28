@@ -1,6 +1,20 @@
 #include "optimizer.h"
 
-void _substituteIndexScans(RedisModuleCtx *ctx, ExecutionPlan *plan, const char *graph_name, OpNode *op) {
+/*
+   In general, there will be far fewer label scans in this project iteration.
+   Most ops will work on matrices, especially given that most queries will be traversals
+   operating on AlgebraicExpressions.
+
+   I think the right idea is probably to try to decompose the query parts and then use indices
+   to quickly construct the initial matrices, where possible.
+
+   MATCH (a)-[r]->(b) WHERE a.x < ? AND b.y < ?
+
+   Allows for building a and b matrices from indices on x and y prior to the AlgebraicExpression
+   (assuming indices exist)
+ */
+
+void _substituteIndexScans(RedisModuleCtx *ctx, ExecutionPlan *plan, const char *graph_name, Graph *g, OpNode *op) {
   if (op == NULL) return;
 
   NodeByLabelScan *scan_op;
@@ -15,7 +29,7 @@ void _substituteIndexScans(RedisModuleCtx *ctx, ExecutionPlan *plan, const char 
         IndexIterator *iter = Index_IntersectFilters(ctx, graph_name, filters, (*scan_op->node)->label);
         Vector_Free(filters);
         if (iter != NULL) {
-          index_op = NewOpNode(NewIndexScanOp(plan->graph, scan_op->node, iter));
+          index_op = NewOpNode(NewIndexScanOp(plan->graph, g, scan_op->node, iter));
           NodeByLabelScanFree((OpBase*)scan_op);
           op->children[0] = index_op;
         }
@@ -24,9 +38,9 @@ void _substituteIndexScans(RedisModuleCtx *ctx, ExecutionPlan *plan, const char 
 
   }
   if (op->childCount <= 0) return;
-  return _substituteIndexScans(ctx, plan, graph_name, op->children[0]);
+  return _substituteIndexScans(ctx, plan, graph_name, g, op->children[0]);
 }
 
-void substituteIndexScans(RedisModuleCtx *ctx, ExecutionPlan *plan, const char *graph_name) {
-  return _substituteIndexScans(ctx, plan, graph_name, plan->root);
+void substituteIndexScans(RedisModuleCtx *ctx, ExecutionPlan *plan, const char *graph_name, Graph *g) {
+  return _substituteIndexScans(ctx, plan, graph_name, g, plan->root);
 }

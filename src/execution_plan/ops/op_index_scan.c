@@ -1,10 +1,10 @@
 #include "op_index_scan.h"
 
-OpBase *NewIndexScanOp(QueryGraph *g, Node **node, IndexIterator *iter) {
-  return (OpBase*)NewIndexScan(g, node, iter);
+OpBase *NewIndexScanOp(QueryGraph *qg, Graph *g, Node **node, IndexIterator *iter) {
+  return (OpBase*)NewIndexScan(qg, g, node, iter);
 }
 
-IndexScan* NewIndexScan(QueryGraph *g, Node **node, IndexIterator *iter) {
+IndexScan* NewIndexScan(QueryGraph *qg, Graph *g, Node **node, IndexIterator *iter) {
 
   IndexScan *indexScan = malloc(sizeof(IndexScan));
   /* TODO I think these are getting set to dummy nodes rather than proper
@@ -14,6 +14,7 @@ IndexScan* NewIndexScan(QueryGraph *g, Node **node, IndexIterator *iter) {
   indexScan->node = node;
   indexScan->_node = *node;
   indexScan->iter = iter;
+  indexScan->g = g;
 
   // Set our Op operations
   indexScan->op.name = "Index Scan";
