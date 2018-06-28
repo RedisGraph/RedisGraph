@@ -2,7 +2,7 @@
 #include "index_type.h"
 
 int compareNodes(const void *a, const void *b) {
-  return ((Node*)a)->id - ((Node*)b)->id;
+  return (GrB_Index*)a - (GrB_Index*)b;
 }
 
 int compareStrings(void *a, void *b, void *ctx) {
@@ -61,18 +61,8 @@ void Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, AST_Inde
   const char *label = indexOp->target.label;
   const char *prop_str = indexOp->target.property;
 
-  TuplesIter *it;
   LabelStore *store = LabelStore_Get(ctx, STORE_NODE, graphName, label);
-  if(store != NULL) {
-    it = TuplesIter_new(Graph_GetLabelMatrix(g, store->id));
-  } else {
-    assert(0);
-  }
-
-  char *nodeId;
-  uint16_t nodeIdLen;
-  Node *node;
-  EntityProperty *prop;
+  assert(store);
 
   RedisModuleKey *key = Index_LookupKey(ctx, graphName, label, prop_str);
   // Do nothing if this index already exists
@@ -91,11 +81,16 @@ void Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, AST_Inde
   index->string_sl = skiplistCreate(compareStrings, NULL, compareNodes, cloneKey, freeKey);
   index->numeric_sl = skiplistCreate(compareNumerics, NULL, compareNodes, cloneKey, freeKey);
 
-  GrB_Index row;
+  GrB_Matrix label_matrix = Graph_GetLabelMatrix(g, store->id);
+  TuplesIter *it = TuplesIter_new(label_matrix);
+
+  Node *node;
+  EntityProperty *prop;
+
   GrB_Index col;
   int prop_index = 0;
-  while(TuplesIter_next(it, &row, &col) != TuplesIter_DEPLETED) {
-    node = Graph_GetNode(g, row);
+  while(TuplesIter_next(it, NULL, &col) != TuplesIter_DEPLETED) {
+    node = Graph_GetNode(g, col);
     // If the sought property is at a different offset than it occupied in the previous node,
     // then seek and update
     if (strcmp(prop_str, node->properties[prop_index].name)) {
@@ -111,10 +106,13 @@ void Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, AST_Inde
     // This value will be cloned within the skiplistInsert routine if necessary
     SIValue *key = &prop->value;
 
+    // Instead of storing node, store struct of node and GrB_Index *col? (row and col IDs should be same).
+    // are they sufficiently constant?
     if (key->type == T_STRING) {
-      skiplistInsert(index->string_sl, key, node);
+      // Safe cast? Same size, but...
+      skiplistInsert(index->string_sl, key, (void*)col);
     } else if (key->type & SI_NUMERIC) {
-      skiplistInsert(index->numeric_sl, key, node);
+      skiplistInsert(index->numeric_sl, key, (void*)col);
     } else { // This property was neither a string nor numeric value; raise a run-time error.
       assert(0);
     }

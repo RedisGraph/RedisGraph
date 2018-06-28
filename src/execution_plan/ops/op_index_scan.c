@@ -24,20 +24,30 @@ IndexScan* NewIndexScan(QueryGraph *qg, Graph *g, Node **node, IndexIterator *it
   indexScan->op.free = IndexScanFree;
   indexScan->op.modifies = NewVector(char*, 1);
 
-  Vector_Push(indexScan->op.modifies, QueryGraph_GetNodeAlias(g, *node));
+  Vector_Push(indexScan->op.modifies, QueryGraph_GetNodeAlias(qg, *node));
+
+  // Make/retrieve index of size n*n
+  int n = g->node_count;
+  GrB_Matrix_new(&indexScan->result_matrix, GrB_BOOL, n, n);
 
   return indexScan;
 }
 
 OpResult IndexScanConsume(OpBase *opBase, QueryGraph* graph) {
   IndexScan *op = (IndexScan*)opBase;
+  GrB_Index node_id = (GrB_Index)IndexIterator_Next(op->iter);
 
-  /* Update node */
-  *op->node = IndexIterator_Next(op->iter);
-
+  // TODO 0 is a valid id, so fix this
+  if (node_id == 0) {
+    return OP_DEPLETED;
+  }
+  // Necessary? Store graph on op or iter?
+  *op->node = Graph_GetNode(op->g, node_id);
   if(*op->node == NULL) {
     return OP_DEPLETED;
   }
+
+  GrB_Matrix_setElement_BOOL(op->result_matrix, true, node_id, node_id);
 
   return OP_OK;
 }
