@@ -74,10 +74,7 @@ void Index_Delete(RedisModuleCtx *ctx, const char *graphName, const char *label,
 
 // Create and populate index for specified property
 // (This function will create separate string and numeric indices if property has mixed types)
-void Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, AST_IndexNode *indexOp) {
-  const char *label = indexOp->target.label;
-  const char *prop_str = indexOp->target.property;
-
+void Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, const char *label, const char *prop_str) {
   LabelStore *store = LabelStore_Get(ctx, STORE_NODE, graphName, label);
   assert(store);
 
@@ -134,8 +131,7 @@ void Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, AST_Inde
     }
   }
 
-  char *reply = "Added 1 index.";
-  RedisModule_ReplyWithStringBuffer(ctx, reply, strlen(reply));
+  RedisModule_ReplyWithSimpleString(ctx, "Added 1 index.");
 }
 
 IndexCreateIter* IndexCreateIter_CreateFromFilter(Index *idx, FT_PredicateNode *filter) {

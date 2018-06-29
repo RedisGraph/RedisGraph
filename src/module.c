@@ -44,7 +44,7 @@ void _index_operation(RedisModuleCtx *ctx, const char *graphName, Graph *g, AST_
   RedisModule_ReplyWithArray(ctx, 2);
   switch(indexNode->operation) {
     case CREATE_INDEX:
-      Index_Create(ctx, graphName, g, indexNode);
+      Index_Create(ctx, graphName, g, indexNode->target.label, indexNode->target.property);
       break;
     case DROP_INDEX:
       Index_Delete(ctx, graphName, indexNode->target.label, indexNode->target.property);

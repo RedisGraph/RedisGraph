@@ -24,7 +24,7 @@ typedef struct {
 } Index;
 
 void Index_Delete(RedisModuleCtx *ctx, const char *graphName, const char *label, const char *prop);
-void Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, AST_IndexNode *indexOp);
+void Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, const char *label, const char *prop_str);
 
 /* Select an Index and range based on filters associated with Node */
 IndexCreateIter* Index_IntersectFilters(RedisModuleCtx *ctx, const char *graphName, Vector *filters, const char *label);
