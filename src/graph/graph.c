@@ -34,20 +34,19 @@ void _Graph_ResizeMatrix(const Graph *g, GrB_Matrix m) {
 
 // Resize graph's node array to contain at least n nodes.
 void _Graph_ResizeNodes(Graph *g, size_t n) {
+    int total_nodes = g->node_count + n;
+
     // Make sure we have room to store nodes.
-    if(g->node_count + n < g->node_cap)
+    if (total_nodes < g->node_cap)
         return;
 
-    int delta = (g->node_count + n) - g->node_cap;
-    // Add some additional extra space for future inserts.
-    delta += g->node_cap*2;
-
-    // Determine number of required NodeBlocks.
-    int new_blocks = GRAPH_NODE_COUNT_TO_BLOCK_COUNT(delta);
     int last_block = g->block_count - 1;
-    g->block_count += new_blocks;
-    g->nodes_blocks = realloc(g->nodes_blocks, sizeof(NodeBlock*) * g->block_count);
 
+    // Increase NodeBlock count by the smallest multiple required to contain all nodes
+    int increase_factor = (total_nodes / g->node_cap) + 1;
+    g->block_count *= increase_factor;
+
+    g->nodes_blocks = realloc(g->nodes_blocks, sizeof(NodeBlock*) * g->block_count);
     // Create and link blocks.
     for(int i = last_block; i < g->block_count-1; i++) {
         NodeBlock *block = g->nodes_blocks[i];
