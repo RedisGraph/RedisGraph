@@ -36,9 +36,8 @@ IndexScan* NewIndexScan(QueryGraph *qg, Graph *g, Node **node, IndexCreateIter *
     GrB_Matrix_setElement_BOOL(operand, true, node_id, node_id);
   }
 
-  indexScan->operand = operand;
   // Should be masked in IndexIterator
-  indexScan->iter = TuplesIter_new(indexScan->operand);
+  indexScan->iter = TuplesIter_new(operand);
 
   return indexScan;
 }

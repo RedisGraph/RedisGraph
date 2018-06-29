@@ -11,9 +11,8 @@ typedef struct {
     OpBase op;
     Node **node;            /* node being scanned */
     Node *_node;
-    TuplesIter *iter;
     Graph *g;
-    GrB_Matrix operand; // possibly unnecessary
+    TuplesIter *iter;
 } IndexScan;
 
 /* Creates a new IndexScan operation */
@@ -21,7 +20,7 @@ OpBase *NewIndexScanOp(QueryGraph *qg, Graph *g, Node **node, IndexCreateIter *i
 IndexScan* NewIndexScan(QueryGraph *qg, Graph *g, Node **node, IndexCreateIter *iter);
 
 /* IndexScan next operation
- * called each time a new ID is required */
+ * called each time a new node is required */
 OpResult IndexScanConsume(OpBase *opBase, QueryGraph* graph);
 
 /* Restart iterator */
