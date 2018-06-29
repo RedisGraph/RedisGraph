@@ -55,6 +55,23 @@ Index* Index_Get(RedisModuleCtx *ctx, const char *graph, const char *label, cons
   return idx;
 }
 
+void Index_Delete(RedisModuleCtx *ctx, const char *graphName, const char *label, const char *prop) {
+  RedisModuleKey *key = Index_LookupKey(ctx, graphName, label, prop);
+  char *reply;
+  if (RedisModule_ModuleTypeGetType(key) != IndexRedisModuleType) {
+    // Reply with error if this key does not exist or does not correspond to an index object
+    RedisModule_CloseKey(key);
+
+    asprintf(&reply, "ERR Unable to drop index on :%s(%s): no such index.", label, prop);
+    RedisModule_ReplyWithError(ctx, reply);
+    free(reply);
+    return;
+  }
+
+  RedisModule_DeleteKey(key);
+  RedisModule_ReplyWithSimpleString(ctx, "Removed 1 index.");
+}
+
 // Create and populate index for specified property
 // (This function will create separate string and numeric indices if property has mixed types)
 void Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, AST_IndexNode *indexOp) {

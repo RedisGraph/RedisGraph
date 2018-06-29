@@ -46,10 +46,11 @@ int _index_operation(RedisModuleCtx *ctx, const char *graphName, Graph *g, AST_I
       // Set up array response for printing statistics
       RedisModule_ReplyWithArray(ctx, 1);
       break;
+    case DROP_INDEX:
+      Index_Delete(ctx, graphName, indexNode->target.label, indexNode->target.property);
+      break;
     default:
-      RedisModule_ReplyWithArray(ctx, 2);
-      RedisModule_ReplyWithError(ctx, "Redis-Graph only supports index creation operations at present.");
-      return 0;
+      assert(0);
   }
   return 1;
 }

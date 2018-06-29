@@ -23,7 +23,9 @@ typedef struct {
   skiplist *numeric_sl;
 } Index;
 
+void Index_Delete(RedisModuleCtx *ctx, const char *graphName, const char *label, const char *prop);
 void Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, AST_IndexNode *indexOp);
+
 /* Select an Index and range based on filters associated with Node */
 IndexCreateIter* Index_IntersectFilters(RedisModuleCtx *ctx, const char *graphName, Vector *filters, const char *label);
 
