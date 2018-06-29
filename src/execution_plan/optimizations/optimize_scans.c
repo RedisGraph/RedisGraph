@@ -26,7 +26,7 @@ void _substituteIndexScans(RedisModuleCtx *ctx, ExecutionPlan *plan, const char 
       Vector *filters = FilterTree_CollectAliasConsts(plan->filter_tree,
           QueryGraph_GetNodeAlias(plan->graph, *scan_op->node));
       if (filters != NULL) {
-        IndexIterator *iter = Index_IntersectFilters(ctx, graph_name, filters, (*scan_op->node)->label);
+        IndexCreateIter *iter = Index_IntersectFilters(ctx, graph_name, filters, (*scan_op->node)->label);
         Vector_Free(filters);
         if (iter != NULL) {
           index_op = NewOpNode(NewIndexScanOp(plan->graph, g, scan_op->node, iter));

@@ -11,14 +11,14 @@ typedef struct {
     OpBase op;
     Node **node;            /* node being scanned */
     Node *_node;
-    IndexIterator *iter;
+    TuplesIter *iter;
     Graph *g;
-    GrB_Matrix result_matrix;
+    GrB_Matrix operand; // possibly unnecessary
 } IndexScan;
 
 /* Creates a new IndexScan operation */
-OpBase *NewIndexScanOp(QueryGraph *qg, Graph *g, Node **node, IndexIterator *iter);
-IndexScan* NewIndexScan(QueryGraph *qg, Graph *g, Node **node, IndexIterator *iter);
+OpBase *NewIndexScanOp(QueryGraph *qg, Graph *g, Node **node, IndexCreateIter *iter);
+IndexScan* NewIndexScan(QueryGraph *qg, Graph *g, Node **node, IndexCreateIter *iter);
 
 /* IndexScan next operation
  * called each time a new ID is required */

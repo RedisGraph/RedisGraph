@@ -14,7 +14,8 @@
 
 #define INDEX_PREFIX "redis_graph_INDEX"
 
-typedef skiplistIterator IndexIterator;
+typedef TuplesIter IndexIterator; // TODO unused
+typedef skiplistIterator IndexCreateIter;
 
 typedef struct {
   IndexTarget target;
@@ -24,12 +25,16 @@ typedef struct {
 
 void Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, AST_IndexNode *indexOp);
 /* Select an Index and range based on filters associated with Node */
-IndexIterator* Index_IntersectFilters(RedisModuleCtx *ctx, const char *graphName, Vector *filters, const char *label);
+IndexCreateIter* Index_IntersectFilters(RedisModuleCtx *ctx, const char *graphName, Vector *filters, const char *label);
 
 char* Index_OpPrint(AST_IndexNode *indexNode);
 
+void* IndexCreateIter_Next(IndexCreateIter *iter);
+
+/*
 void* IndexIterator_Next(IndexIterator *iter);
 void IndexIterator_Reset(IndexIterator *iter);
 void IndexIterator_Free(IndexIterator *iter);
+*/
 
 #endif

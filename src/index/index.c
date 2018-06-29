@@ -119,7 +119,7 @@ void Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, AST_Inde
   }
 }
 
-IndexIterator* IndexIterator_CreateFromFilter(Index *idx, FT_PredicateNode *filter) {
+IndexCreateIter* IndexCreateIter_CreateFromFilter(Index *idx, FT_PredicateNode *filter) {
   skiplist *target = filter->constVal.type == T_STRING ? idx->string_sl : idx->numeric_sl;
   SIValue *bound;
 
@@ -156,7 +156,7 @@ IndexIterator* IndexIterator_CreateFromFilter(Index *idx, FT_PredicateNode *filt
  * to see if a scan operation can employ an index. This function will return the iterator
  * required for constructing an indexScan operation.
  */
-IndexIterator* Index_IntersectFilters(RedisModuleCtx *ctx, const char *graphName, Vector *filters, const char *label) {
+IndexCreateIter* Index_IntersectFilters(RedisModuleCtx *ctx, const char *graphName, Vector *filters, const char *label) {
   FT_PredicateNode *const_filter;
   Index *idx;
   while (Vector_Size(filters) > 0) {
@@ -164,7 +164,7 @@ IndexIterator* Index_IntersectFilters(RedisModuleCtx *ctx, const char *graphName
     // Look this property up to see if it has been indexed (using the label rather than the node alias)
     if ((idx = Index_Get(ctx, graphName, label, const_filter->Lop.property)) != NULL) {
       // Build an iterator from the first matching index
-      return IndexIterator_CreateFromFilter(idx, const_filter);
+      return IndexCreateIter_CreateFromFilter(idx, const_filter);
     }
   }
 
@@ -180,14 +180,29 @@ char* Index_OpPrint(AST_IndexNode *indexNode) {
   }
 }
 
-void* IndexIterator_Next(IndexIterator *iter) {
+void* IndexCreateIter_Next(IndexCreateIter *iter) {
   return skiplistIterator_Next(iter);
 }
 
-void IndexIterator_Reset(IndexIterator *iter) {
+// TODO all unused
+/*
+void IndexCreateIter_Reset(IndexCreateIter *iter) {
   skiplistIterate_Reset(iter);
 }
 
-void IndexIterator_Free(IndexIterator *iter) {
+void IndexCreateIter_Free(IndexCreateIter *iter) {
   skiplistIterate_Free(iter);
 }
+
+void* IndexScanIterator_Next(IndexScanIterator *iter, GrB_Index *row, GrB_Index *col) {
+  return TuplesIter_next(iter, row, col);
+}
+
+void IndexScanIterator_Reset(IndexScanIterator *iter) {
+  TuplesIter_reset(iter);
+}
+
+void IndexScanIterator_Free(IndexScanIterator *iter) {
+  TuplesIter_free(iter);
+}
+*/

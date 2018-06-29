@@ -1,10 +1,10 @@
 #include "op_index_scan.h"
 
-OpBase *NewIndexScanOp(QueryGraph *qg, Graph *g, Node **node, IndexIterator *iter) {
+OpBase *NewIndexScanOp(QueryGraph *qg, Graph *g, Node **node, IndexCreateIter *iter) {
   return (OpBase*)NewIndexScan(qg, g, node, iter);
 }
 
-IndexScan* NewIndexScan(QueryGraph *qg, Graph *g, Node **node, IndexIterator *iter) {
+IndexScan* NewIndexScan(QueryGraph *qg, Graph *g, Node **node, IndexCreateIter *iter) {
 
   IndexScan *indexScan = malloc(sizeof(IndexScan));
   /* TODO I think these are getting set to dummy nodes rather than proper
@@ -13,7 +13,6 @@ IndexScan* NewIndexScan(QueryGraph *qg, Graph *g, Node **node, IndexIterator *it
    * Determine appropriate settings. */
   indexScan->node = node;
   indexScan->_node = *node;
-  indexScan->iter = iter;
   indexScan->g = g;
 
   // Set our Op operations
@@ -26,28 +25,40 @@ IndexScan* NewIndexScan(QueryGraph *qg, Graph *g, Node **node, IndexIterator *it
 
   Vector_Push(indexScan->op.modifies, QueryGraph_GetNodeAlias(qg, *node));
 
-  // Make/retrieve index of size n*n
+  // Make index matrix of size n*n
   int n = g->node_count;
-  GrB_Matrix_new(&indexScan->result_matrix, GrB_BOOL, n, n);
+  GrB_Matrix operand;
+  GrB_Matrix_new(&operand, GrB_BOOL, n, n);
+
+  GrB_Index node_id;
+  while ((node_id = (GrB_Index)IndexCreateIter_Next(iter)) > 0) {
+    // Obey constraint here?
+    GrB_Matrix_setElement_BOOL(operand, true, node_id, node_id);
+  }
+
+  indexScan->operand = operand;
+  // Should be masked in IndexIterator
+  indexScan->iter = TuplesIter_new(indexScan->operand);
 
   return indexScan;
 }
 
+  /*
+     TODO deletes probably make the basic assumption that IDs are immutable invalid
+   */
 OpResult IndexScanConsume(OpBase *opBase, QueryGraph* graph) {
   IndexScan *op = (IndexScan*)opBase;
-  GrB_Index node_id = (GrB_Index)IndexIterator_Next(op->iter);
 
-  // TODO 0 is a valid id, so fix this
-  if (node_id == 0) {
+  GrB_Index node_id;
+  if (TuplesIter_next(op->iter, NULL, &node_id) == TuplesIter_DEPLETED) {
     return OP_DEPLETED;
   }
-  // Necessary? Store graph on op or iter?
+
   *op->node = Graph_GetNode(op->g, node_id);
-  if(*op->node == NULL) {
+  // LabelScan sets id here
+  if (*op->node == NULL) {
     return OP_DEPLETED;
   }
-
-  GrB_Matrix_setElement_BOOL(op->result_matrix, true, node_id, node_id);
 
   return OP_OK;
 }
@@ -57,13 +68,14 @@ OpResult IndexScanReset(OpBase *ctx) {
 
   /* Restore original node. */
   *indexScan->node = indexScan->_node;
-  IndexIterator_Reset(indexScan->iter);
+  // Verify that this call does what we want
+  TuplesIter_reset(indexScan->iter);
 
   return OP_OK;
 }
 
 void IndexScanFree(OpBase *op) {
   IndexScan *indexScan = (IndexScan *)op;
-  IndexIterator_Free(indexScan->iter);
+  TuplesIter_free(indexScan->iter);
   free(indexScan);
 }
