@@ -49,16 +49,16 @@ void serializeSkiplistNode(RedisModuleIO *rdb, skiplistNode *sl_node) {
   // Elem 1: SIValue key
   saveSIValue(rdb, sl_node->key);
 
-  // Elem 2: value (Node) count
+  // Elem 2: value (Node ID) count
   RedisModule_SaveUnsigned(rdb, (uint64_t)sl_node->numVals);
 
   // Elem 3-x: buffer of Node IDs
-  Node *graph_node;
+  GrB_Index node_id;
 
   for (int i = 0; i < sl_node->numVals; i ++) {
-    graph_node = sl_node->vals[i];
+    node_id = (GrB_Index)sl_node->vals[i];
     // graph_node->id is of type `long int`
-    RedisModule_SaveSigned(rdb, (int64_t)graph_node->id);
+    RedisModule_SaveUnsigned(rdb, (uint64_t)node_id);
   }
 }
 
@@ -93,9 +93,8 @@ void loadSkiplist(RedisModuleIO *rdb, skiplist *sl) {
 
     node_num_vals = RedisModule_LoadUnsigned(rdb);
     for (int j = 0; j < node_num_vals; j ++) {
-      int64_t node_id = RedisModule_LoadSigned(rdb);
-      // associate with Node*?
-      printf("ID: %ld\n", node_id);
+      uint64_t node_id = RedisModule_LoadUnsigned(rdb);
+      // printf("ID: %lu\n", node_id);
       // skiplistInsert(sl, key, node);
     }
   }

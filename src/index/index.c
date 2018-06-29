@@ -2,7 +2,7 @@
 #include "index_type.h"
 
 int compareNodes(const void *a, const void *b) {
-  return (GrB_Index*)a - (GrB_Index*)b;
+  return (GrB_Index)a - (GrB_Index)b;
 }
 
 int compareStrings(void *a, void *b, void *ctx) {
@@ -106,8 +106,6 @@ void Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, AST_Inde
     // This value will be cloned within the skiplistInsert routine if necessary
     SIValue *key = &prop->value;
 
-    // Instead of storing node, store struct of node and GrB_Index *col? (row and col IDs should be same).
-    // are they sufficiently constant?
     if (key->type == T_STRING) {
       // Safe cast? Same size, but...
       skiplistInsert(index->string_sl, key, (void*)col);
