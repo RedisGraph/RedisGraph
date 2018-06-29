@@ -85,6 +85,7 @@ void Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, AST_Inde
   // Do nothing if this index already exists
   if (RedisModule_ModuleTypeGetType(key) == IndexRedisModuleType) {
     RedisModule_CloseKey(key);
+    RedisModule_ReplyWithSimpleString(ctx, "(no changes, no records)");
     return;
   }
 
@@ -132,6 +133,9 @@ void Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, AST_Inde
       assert(0);
     }
   }
+
+  char *reply = "Added 1 index.";
+  RedisModule_ReplyWithStringBuffer(ctx, reply, strlen(reply));
 }
 
 IndexCreateIter* IndexCreateIter_CreateFromFilter(Index *idx, FT_PredicateNode *filter) {

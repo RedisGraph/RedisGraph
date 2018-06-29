@@ -39,12 +39,12 @@
 #include "index/index.h"
 #include "index/index_type.h"
 
-int _index_operation(RedisModuleCtx *ctx, const char *graphName, Graph *g, AST_IndexNode *indexNode) {
+void _index_operation(RedisModuleCtx *ctx, const char *graphName, Graph *g, AST_IndexNode *indexNode) {
+  // Set up array response for printing statistics
+  RedisModule_ReplyWithArray(ctx, 2);
   switch(indexNode->operation) {
     case CREATE_INDEX:
       Index_Create(ctx, graphName, g, indexNode);
-      // Set up array response for printing statistics
-      RedisModule_ReplyWithArray(ctx, 1);
       break;
     case DROP_INDEX:
       Index_Delete(ctx, graphName, indexNode->target.label, indexNode->target.property);
@@ -52,7 +52,6 @@ int _index_operation(RedisModuleCtx *ctx, const char *graphName, Graph *g, AST_I
     default:
       assert(0);
   }
-  return 1;
 }
 
 
