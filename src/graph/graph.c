@@ -285,30 +285,23 @@ void Graph_DeleteEdge(Graph *g, int src_id, int dest_id) {
     if(!connected) return;
 
     GrB_Matrix M = g->adjacency_matrix;
-    GrB_Vector col;
-    GrB_Vector updatedCol;
     GrB_Index nrows = g->node_cap;
+
+    GrB_Vector mask;
+    GrB_Vector_new(&mask, GrB_BOOL, nrows);
+    GrB_Vector_setElement_BOOL(mask, true, src_id);
+
+    GrB_Vector col;
     GrB_Vector_new(&col, GrB_BOOL, nrows);
-    GrB_Vector_new(&updatedCol, GrB_BOOL, nrows);
 
-    // Extract column dest_id.
-    GrB_Col_extract(col, NULL, NULL, M, GrB_ALL, nrows, dest_id, NULL);
-    // Create an updated column where row src_id is not set.
-    GrB_Index row;
-    TuplesIter *iter = TuplesIter_new((GrB_Matrix)col);
-    while(TuplesIter_next(iter, &row, NULL) != TuplesIter_DEPLETED) {
-        if(row != src_id) {
-            GrB_Vector_setElement_BOOL(updatedCol, true, row);
-        }
-    }
-    TuplesIter_free(iter);
-
-    GrB_Vector mask = updatedCol;
-    GrB_Col_assign(M, NULL, NULL, updatedCol, GrB_ALL, nrows, dest_id, NULL);
-    
     GrB_Descriptor desc;
     GrB_Descriptor_new(&desc);
     GrB_Descriptor_set(desc, GrB_OUTP, GrB_REPLACE);
+    GrB_Descriptor_set(desc, GrB_MASK, GrB_SCMP);
+
+    // Extract column dest_id.
+    GrB_Col_extract(col, mask, NULL, M, GrB_ALL, nrows, dest_id, desc);
+    GrB_Col_assign(M, NULL, NULL, col, GrB_ALL, nrows, dest_id, NULL);
 
     // Search for relation matrices in with edge is set.
     for(int i = 0; i < g->relation_count; i++) {
@@ -323,7 +316,6 @@ void Graph_DeleteEdge(Graph *g, int src_id, int dest_id) {
 
     GrB_Descriptor_free(&desc);
     GrB_Vector_free(&col);
-    GrB_Vector_free(&updatedCol);
 }
 
 void Graph_LabelNodes(Graph *g, int start_node_id, int end_node_id, int label, NodeIterator **it) {

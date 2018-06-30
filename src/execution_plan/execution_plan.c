@@ -263,10 +263,15 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g, const char *graph
         BuildQueryGraph(ctx, g, graph_name, q, ast->createNode->graphEntities);
 
         int request_refresh = (ast->matchNode != NULL);
-        OpNode *op_create = NewOpNode(NewCreateOp(ctx, ast, g, q, graph_name, request_refresh,
+        OpNode *opCreate = NewOpNode(NewCreateOp(ctx, ast, g, q, graph_name, request_refresh,
                                         execution_plan->result_set));
 
-        Vector_Push(ops, op_create);
+        Vector_Push(ops, opCreate);
+    }
+
+    if(ast->deleteNode) {
+        OpNode *opDelete = NewOpNode(NewDeleteOp(ast->deleteNode, q, g, execution_plan->result_set));
+        Vector_Push(ops, opDelete);
     }
 
     if(ast->setNode) {
