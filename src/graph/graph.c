@@ -43,7 +43,7 @@ void _Graph_ResizeNodes(Graph *g, size_t n) {
     int last_block = g->block_count - 1;
 
     // Increase NodeBlock count by the smallest multiple required to contain all nodes
-    int increase_factor = (total_nodes / g->node_cap) + 1;
+    int increase_factor = (total_nodes / g->node_cap) + 2;
     g->block_count *= increase_factor;
 
     g->nodes_blocks = realloc(g->nodes_blocks, sizeof(NodeBlock*) * g->block_count);
