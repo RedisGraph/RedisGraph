@@ -58,6 +58,8 @@ Index* Index_Get(RedisModuleCtx *ctx, const char *graph, const char *label, cons
 void _index_free(Index *idx) {
   skiplistFree(idx->string_sl);
   skiplistFree(idx->numeric_sl);
+  free(idx->label);
+  free(idx->property);
   free(idx);
 }
 
