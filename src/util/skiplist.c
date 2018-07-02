@@ -127,7 +127,7 @@ void skiplistFreeNode(skiplistNode *node) {
 void skiplistFree(skiplist *sl) {
   skiplistNode *node = sl->header->level[0].forward, *next;
 
-  zfree(sl->header);
+  skiplistFreeNode(sl->header);
   while (node) {
     next = node->level[0].forward;
     // Free the key contained in the skiplistNode if we specified a routine for it
