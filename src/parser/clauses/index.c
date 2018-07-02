@@ -3,8 +3,8 @@
 
 AST_IndexNode* New_AST_IndexNode(const char *label, const char *property, AST_IndexOpType optype) {
   AST_IndexNode *indexOp = malloc(sizeof(AST_IndexNode));
-  indexOp->target.label = label;
-  indexOp->target.property = property;
+  indexOp->label = label;
+  indexOp->property = property;
   indexOp->operation = optype;
   return indexOp;
 }
