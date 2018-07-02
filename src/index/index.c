@@ -83,23 +83,8 @@ void Index_Delete(RedisModuleCtx *ctx, const char *graphName, const char *label,
   RedisModule_ReplyWithSimpleString(ctx, "Removed 1 index.");
 }
 
-// Create and populate index for specified property
-// (This function will create separate string and numeric indices if property has mixed types)
-void Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, const char *label, const char *prop_str) {
-  LabelStore *store = LabelStore_Get(ctx, STORE_NODE, graphName, label);
-  assert(store);
-
-  RedisModuleKey *key = Index_LookupKey(ctx, graphName, label, prop_str);
-  // Do nothing if this index already exists
-  if (RedisModule_ModuleTypeGetType(key) == IndexRedisModuleType) {
-    RedisModule_CloseKey(key);
-    RedisModule_ReplyWithSimpleString(ctx, "(no changes, no records)");
-    return;
-  }
-
+Index* buildIndex(Graph *g, GrB_Matrix label_matrix, const char *label, const char *prop_str) {
   Index *index = malloc(sizeof(Index));
-  RedisModule_ModuleTypeSetValue(key, IndexRedisModuleType, index);
-  RedisModule_CloseKey(key);
 
   index->label = strdup(label);
   index->property = strdup(prop_str);
@@ -107,7 +92,6 @@ void Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, const ch
   index->string_sl = skiplistCreate(compareStrings, NULL, compareNodes, cloneKey, freeKey);
   index->numeric_sl = skiplistCreate(compareNumerics, NULL, compareNodes, cloneKey, freeKey);
 
-  GrB_Matrix label_matrix = Graph_GetLabelMatrix(g, store->id);
   TuplesIter *it = TuplesIter_new(label_matrix);
 
   Node *node;
@@ -141,6 +125,30 @@ void Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, const ch
       assert(0);
     }
   }
+
+  TuplesIter_free(it);
+
+  return index;
+}
+
+// Create and populate index for specified property
+// (This function will create separate string and numeric indices if property has mixed types)
+void Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, const char *label, const char *prop_str) {
+  LabelStore *store = LabelStore_Get(ctx, STORE_NODE, graphName, label);
+  assert(store);
+  GrB_Matrix label_matrix = Graph_GetLabelMatrix(g, store->id);
+
+  RedisModuleKey *key = Index_LookupKey(ctx, graphName, label, prop_str);
+  // Do nothing if this index already exists
+  if (RedisModule_ModuleTypeGetType(key) == IndexRedisModuleType) {
+    RedisModule_CloseKey(key);
+    RedisModule_ReplyWithSimpleString(ctx, "(no changes, no records)");
+    return;
+  }
+
+  Index *idx = buildIndex(g, label_matrix, label, prop_str);
+  RedisModule_ModuleTypeSetValue(key, IndexRedisModuleType, idx);
+  RedisModule_CloseKey(key);
 
   RedisModule_ReplyWithSimpleString(ctx, "Added 1 index.");
 }
@@ -210,14 +218,14 @@ void* IndexCreateIter_Next(IndexCreateIter *iter) {
   return skiplistIterator_Next(iter);
 }
 
+void IndexCreateIter_Free(IndexCreateIter *iter) {
+  skiplistIterate_Free(iter);
+}
+
 // TODO all unused
 /*
 void IndexCreateIter_Reset(IndexCreateIter *iter) {
   skiplistIterate_Reset(iter);
-}
-
-void IndexCreateIter_Free(IndexCreateIter *iter) {
-  skiplistIterate_Free(iter);
 }
 
 void* IndexScanIterator_Next(IndexScanIterator *iter, GrB_Index *row, GrB_Index *col) {
