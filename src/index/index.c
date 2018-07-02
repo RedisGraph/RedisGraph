@@ -55,6 +55,12 @@ Index* Index_Get(RedisModuleCtx *ctx, const char *graph, const char *label, cons
   return idx;
 }
 
+void _index_free(Index *idx) {
+  skiplistFree(idx->string_sl);
+  skiplistFree(idx->numeric_sl);
+  free(idx);
+}
+
 void Index_Delete(RedisModuleCtx *ctx, const char *graphName, const char *label, const char *prop) {
   RedisModuleKey *key = Index_LookupKey(ctx, graphName, label, prop);
   char *reply;
@@ -67,6 +73,9 @@ void Index_Delete(RedisModuleCtx *ctx, const char *graphName, const char *label,
     free(reply);
     return;
   }
+
+  Index *idx = RedisModule_ModuleTypeGetValue(key);
+  _index_free(idx);
 
   RedisModule_DeleteKey(key);
   RedisModule_ReplyWithSimpleString(ctx, "Removed 1 index.");
@@ -90,8 +99,8 @@ void Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, const ch
   RedisModule_ModuleTypeSetValue(key, IndexRedisModuleType, index);
   RedisModule_CloseKey(key);
 
-  index->target.label = strdup(label);
-  index->target.property = strdup(prop_str);
+  index->label = strdup(label);
+  index->property = strdup(prop_str);
 
   index->string_sl = skiplistCreate(compareStrings, NULL, compareNodes, cloneKey, freeKey);
   index->numeric_sl = skiplistCreate(compareNumerics, NULL, compareNodes, cloneKey, freeKey);

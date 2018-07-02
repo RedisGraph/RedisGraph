@@ -18,7 +18,8 @@ typedef TuplesIter IndexIterator; // TODO unused
 typedef skiplistIterator IndexCreateIter;
 
 typedef struct {
-  IndexTarget target;
+  char *label;
+  char *property;
   skiplist *string_sl;
   skiplist *numeric_sl;
 } Index;
