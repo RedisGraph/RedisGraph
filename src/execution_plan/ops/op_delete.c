@@ -88,12 +88,17 @@ void _DeleteEntities(OpDelete *op) {
     }
     TrieMapIterator_Free(it);    
 
-    it = TrieMap_Iterate(op->deleted_nodes, "", 0);
-    while(TrieMapIterator_Next(it, &prefix, &prefixLen, &v)) {
-        Graph_DeleteNode(op->g, atoi(prefix));
+    if(op->deleted_nodes->cardinality > 0) {
+        int *nodesToDelete = malloc(sizeof(int) * op->deleted_nodes->cardinality);
+        int i = 0;
+        it = TrieMap_Iterate(op->deleted_nodes, "", 0);
+        while(TrieMapIterator_Next(it, &prefix, &prefixLen, &v)) {
+            nodesToDelete[i++] = atoi(prefix);
+        }
+        Graph_DeleteNodes(op->g, nodesToDelete, i);
+        free(nodesToDelete);
+        TrieMapIterator_Free(it);
     }
-    
-    TrieMapIterator_Free(it);
 }
 
 OpResult OpDeleteConsume(OpBase *opBase, QueryGraph* graph) {

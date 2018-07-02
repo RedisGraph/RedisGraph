@@ -11,7 +11,7 @@
  * the next block if it exists. */
 
 // Number of nodes in a block. Should always be a power of 2.
-#define NODEBLOCK_CAP 256
+#define NODEBLOCK_CAP 16384
 
 typedef struct nodeBlock {
     size_t size;                    // Number of nodes in block.

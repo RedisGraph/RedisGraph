@@ -342,8 +342,8 @@ void test_expression_execute(const char *query, Graph *g, QueryGraph *query_grap
     GrB_Index ncols, nrows, nvals;
     GrB_Matrix_ncols(&ncols, M);
     GrB_Matrix_nrows(&nrows, M);    
-    assert(ncols == g->node_cap);
-    assert(nrows == g->node_cap);
+    assert(ncols == g->node_count);
+    assert(nrows == g->node_count);
 
     // Expected result.
     // 0   0   1   0   0   0

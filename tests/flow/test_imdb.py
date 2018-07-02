@@ -33,7 +33,7 @@ class ImdbFlowTest(FlowTestsBase):
         actual_result = redis_graph.query(queries.actors_played_with_nicolas_cage_query.query)
 
         # assert result set
-        self._assert_only_expected_resuls_are_in_actual_results(
+        self._assert_only_expected_results_are_in_actual_results(
             actual_result,
             queries.actors_played_with_nicolas_cage_query)
 
@@ -60,7 +60,7 @@ class ImdbFlowTest(FlowTestsBase):
         actual_result = redis_graph.query(queries.actors_played_in_movie_straight_outta_compton_query.query)
 
         # assert result set
-        self._assert_only_expected_resuls_are_in_actual_results(
+        self._assert_only_expected_results_are_in_actual_results(
             actual_result,
             queries.actors_played_in_movie_straight_outta_compton_query)
 
@@ -73,7 +73,7 @@ class ImdbFlowTest(FlowTestsBase):
         actual_result = redis_graph.query(queries.actors_over_50_that_played_in_blockbusters_query.query)
 
         # assert result set
-        self._assert_only_expected_resuls_are_in_actual_results(
+        self._assert_only_expected_results_are_in_actual_results(
             actual_result,
             queries.actors_over_50_that_played_in_blockbusters_query)
 
@@ -85,7 +85,7 @@ class ImdbFlowTest(FlowTestsBase):
         actual_result = redis_graph.query(queries.actors_played_in_bad_drama_or_comedy_query.query)
 
         # assert result set
-        self._assert_only_expected_resuls_are_in_actual_results(
+        self._assert_only_expected_results_are_in_actual_results(
             actual_result,
             queries.actors_played_in_bad_drama_or_comedy_query)
 
@@ -97,7 +97,7 @@ class ImdbFlowTest(FlowTestsBase):
         actual_result = redis_graph.query(queries.young_actors_played_with_cameron_diaz_query.query)
 
         # assert result set
-        self._assert_only_expected_resuls_are_in_actual_results(
+        self._assert_only_expected_results_are_in_actual_results(
             actual_result,
             queries.young_actors_played_with_cameron_diaz_query)
 
@@ -109,7 +109,7 @@ class ImdbFlowTest(FlowTestsBase):
         actual_result = redis_graph.query(queries.actors_played_with_cameron_diaz_and_younger_than_her_query.query)
 
         # assert result set
-        self._assert_only_expected_resuls_are_in_actual_results(
+        self._assert_only_expected_results_are_in_actual_results(
             actual_result,
             queries.actors_played_with_cameron_diaz_and_younger_than_her_query)
 
@@ -121,7 +121,7 @@ class ImdbFlowTest(FlowTestsBase):
         actual_result = redis_graph.query(queries.sum_and_average_age_of_straight_outta_compton_cast_query.query)
 
         # assert result set
-        self._assert_only_expected_resuls_are_in_actual_results(
+        self._assert_only_expected_results_are_in_actual_results(
             actual_result,
             queries.sum_and_average_age_of_straight_outta_compton_cast_query)
 
@@ -133,7 +133,7 @@ class ImdbFlowTest(FlowTestsBase):
         actual_result = redis_graph.query(queries.how_many_movies_cameron_diaz_played_query.query)
 
         # assert result set
-        self._assert_only_expected_resuls_are_in_actual_results(
+        self._assert_only_expected_results_are_in_actual_results(
             actual_result,
             queries.how_many_movies_cameron_diaz_played_query)
 
@@ -145,7 +145,7 @@ class ImdbFlowTest(FlowTestsBase):
         actual_result = redis_graph.query(queries.find_ten_oldest_actors_query.query)
 
         # assert result set
-        self._assert_only_expected_resuls_are_in_actual_results(
+        self._assert_only_expected_results_are_in_actual_results(
             actual_result,
             queries.find_ten_oldest_actors_query)
 

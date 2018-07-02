@@ -49,7 +49,7 @@ friends_of_friends_visited_amsterdam_and_single_query = QueryInfo(
                 (fof:person {status:"single"})-[:visited]->(:country {name:"Amsterdam"})
              RETURN fof.name""",
     description='Friends of friends who visited Amsterdam and are single?',
-    max_run_time_ms=0.25,
+    max_run_time_ms=0.3,
     expected_result=[['Noam Nativ'],
                      ['Gal Derriere']]
 )
@@ -121,7 +121,7 @@ friends_age_statistics_query = QueryInfo(
              RETURN ME.name, count(f.name), sum(f.age), avg(f.age), min(f.age), max(f.age)""",
     description='Friends age statistics.',
     max_run_time_ms=0.25,
-    expected_result=[['Roi Lipman', '6.000000', '204.000000', '34.000000', '33.000000', '35.000000']]
+    expected_result=[['Roi Lipman', '6.000000', '198.000000', '33.000000', '32.000000', '34.000000']]
 )
 
 visit_purpose_of_each_country_i_visited_query = QueryInfo(
@@ -165,6 +165,20 @@ number_of_vacations_per_person_query = QueryInfo(
                      ['Valerie Abigail Arad', '2.000000']]
 )
 
+delete_friendships_query = QueryInfo(
+    query="""MATCH (ME:person {name:'Roi Lipman'})-[e:friend]->() DELETE e""",
+    description='Delete frienships',
+    max_run_time_ms=0.5,
+    expected_result=[]
+)
+
+delete_person_query = QueryInfo(
+    query="""MATCH (ME:person {name:'Roi Lipman'}) DELETE ME""",
+    description='Delete myself from the graph',
+    max_run_time_ms=0.5,
+    expected_result=[]
+)
+
 queries_info = [
     my_friends_query,
     friends_of_friends_query,
@@ -175,7 +189,9 @@ queries_info = [
     friends_age_difference_query,
     how_many_countries_each_friend_visited_query,
     happy_birthday_query,
-    friends_age_statistics_query
+    friends_age_statistics_query,
+    delete_friendships_query,
+    delete_person_query
 ]
 
 # queries_info = [

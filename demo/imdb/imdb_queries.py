@@ -9,7 +9,7 @@ actors_played_with_nicolas_cage_query = QueryInfo(
     query="""MATCH (n:actor{name:"Nicolas Cage"})-[:act]->(m:movie)<-[:act]-(a:actor)
              RETURN a.name, m.title""",
     description='Which actors played along side Nicolas Cage?',
-    max_run_time_ms=3,
+    max_run_time_ms=4,
     expected_result=[['Cassi Thomson', 'Left Behind'],
                      ['Gary Grubbs', 'Left Behind'],
                      ['Quinton Aaron', 'Left Behind'],
@@ -26,7 +26,7 @@ find_three_actors_played_with_nicolas_cage_query = QueryInfo(
              RETURN a.name, m.title
              LIMIT 3""",
     description='Get 3 actors who have played along side Nicolas Cage?',
-    max_run_time_ms=2.5,
+    max_run_time_ms=4,
     expected_result=[['Cassi Thomson', 'Left Behind'],
                      ['Gary Grubbs', 'Left Behind'],
                      ['Quinton Aaron', 'Left Behind'],
