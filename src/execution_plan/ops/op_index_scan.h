@@ -12,6 +12,7 @@ typedef struct {
     Node **node;            /* node being scanned */
     Node *_node;
     Graph *g;
+    GrB_Matrix operand;
     TuplesIter *iter;
 } IndexScan;
 

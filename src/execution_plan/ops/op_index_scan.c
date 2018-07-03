@@ -25,19 +25,9 @@ IndexScan* NewIndexScan(QueryGraph *qg, Graph *g, Node **node, IndexCreateIter *
 
   Vector_Push(indexScan->op.modifies, QueryGraph_GetNodeAlias(qg, *node));
 
-  // Make index matrix of size n*n
-  int n = g->node_count;
-  GrB_Matrix operand;
-  GrB_Matrix_new(&operand, GrB_BOOL, n, n);
-
-  GrB_Index node_id;
-  while ((node_id = (GrB_Index)IndexCreateIter_Next(iter)) != Index_DEPLETED) {
-    // Obey constraint here?
-    GrB_Matrix_setElement_BOOL(operand, true, node_id, node_id);
-  }
-
+  indexScan->operand = IndexCreateIter_BuildMatrix(iter, g);
   // Should be masked in IndexIterator
-  indexScan->iter = TuplesIter_new(operand);
+  indexScan->iter = TuplesIter_new(indexScan->operand);
 
   return indexScan;
 }
