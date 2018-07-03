@@ -66,5 +66,6 @@ OpResult IndexScanReset(OpBase *ctx) {
 void IndexScanFree(OpBase *op) {
   IndexScan *indexScan = (IndexScan *)op;
   TuplesIter_free(indexScan->iter);
+  GrB_Matrix_free(&indexScan->operand);
   free(indexScan);
 }
