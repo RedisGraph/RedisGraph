@@ -4,5 +4,5 @@
 void optimizePlan(RedisModuleCtx *ctx, ExecutionPlan *plan, const char *graph_name, Graph *g) {
     reduceFilters(plan);
 
-    substituteIndexScans(ctx, plan, graph_name, g);
+    utilizeIndices(ctx, plan, graph_name, g);
 }

@@ -8,6 +8,6 @@
 void optimizePlan(RedisModuleCtx *ctx, ExecutionPlan *plan, const char *graph_name, Graph *g);
 
 /* Replace LabelScans with IndexScans when viable */
-void substituteIndexScans(RedisModuleCtx *ctx, ExecutionPlan *plan, const char *graph_name, Graph *g);
+void utilizeIndices(RedisModuleCtx *ctx, ExecutionPlan *plan, const char *graph_name, Graph *g);
 
 #endif
