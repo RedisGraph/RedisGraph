@@ -25,7 +25,7 @@ IndexScan* NewIndexScan(QueryGraph *qg, Graph *g, Node **node, IndexCreateIter *
 
   Vector_Push(indexScan->op.modifies, QueryGraph_GetNodeAlias(qg, *node));
 
-  indexScan->operand = IndexCreateIter_BuildMatrix(iter, g);
+  indexScan->operand = IndexCreateIter_BuildMatrix(iter, g->node_count);
   // Should be masked in IndexIterator
   indexScan->iter = TuplesIter_new(indexScan->operand);
 

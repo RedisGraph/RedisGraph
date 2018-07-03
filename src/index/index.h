@@ -36,7 +36,7 @@ IndexCreateIter* Index_IntersectFilters(RedisModuleCtx *ctx, const char *graphNa
 
 char* Index_OpPrint(AST_IndexNode *indexNode);
 
-GrB_Matrix IndexCreateIter_BuildMatrix(IndexCreateIter *iter, Graph *g);
+GrB_Matrix IndexCreateIter_BuildMatrix(IndexCreateIter *iter, size_t node_count);
 
 void* IndexCreateIter_Next(IndexCreateIter *iter);
 void IndexCreateIter_Free(IndexCreateIter *iter);

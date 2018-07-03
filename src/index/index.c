@@ -214,11 +214,10 @@ char* Index_OpPrint(AST_IndexNode *indexNode) {
   }
 }
 
-GrB_Matrix IndexCreateIter_BuildMatrix(IndexCreateIter *iter, Graph *g) {
+GrB_Matrix IndexCreateIter_BuildMatrix(IndexCreateIter *iter, size_t node_count) {
   // Make index matrix of size n*n
-  int n = g->node_count;
   GrB_Matrix index_matrix;
-  GrB_Matrix_new(&index_matrix, GrB_BOOL, n, n);
+  GrB_Matrix_new(&index_matrix, GrB_BOOL, node_count, node_count);
 
   GrB_Index node_id;
   while ((node_id = (GrB_Index)IndexCreateIter_Next(iter)) != Index_DEPLETED) {
