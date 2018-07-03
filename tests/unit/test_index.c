@@ -46,7 +46,7 @@ Graph* build_test_graph() {
   // Limiter for random values
   int denom = RAND_MAX / 20 + 1;
 
-  for(int i = 0; i < n; i++) {
+  for (int i = 0; i < n; i ++) {
     node = NodeIterator_Next(it);
     node->id = i;
     // Properties will have a random value between 1 and 20
@@ -86,17 +86,17 @@ void validate_string_index(Graph *g, Index *idx) {
   SIValue last_prop = lb;
   SIValue *cur_prop;
 
-  // int num_vals = 0;
-  while ((node_id = (GrB_Index)IndexCreateIter_Next(iter))) {
+  int num_vals = 0;
+  while ((node_id = (GrB_Index)IndexCreateIter_Next(iter)) != Index_DEPLETED) {
     // Retrieve the node from the graph
     cur = Graph_GetNode(g, node_id);
     // Retrieve the indexed property from the node
     cur_prop = GraphEntity_Get_Property((GraphEntity*)cur, str_key);
     // Values should be sorted in increasing value - duplicates are allowed 
     assert(SIValue_Compare(last_prop, *cur_prop) <= 0);
-    // num_vals ++;
+    num_vals ++;
   }
-  // assert(num_vals == 100);
+  assert(num_vals == 100);
   SIValue_Free(&lb);
   IndexCreateIter_Free(iter);
 }
@@ -122,19 +122,18 @@ void validate_numeric_index(Graph *g, Index *idx) {
   SIValue last_prop = lb;
   SIValue *cur_prop;
 
-  // int num_vals = 0;
-  while ((node_id = (GrB_Index)IndexCreateIter_Next(iter))) {
+  int num_vals = 0;
+  while ((node_id = (GrB_Index)IndexCreateIter_Next(iter)) != Index_DEPLETED) {
     // Retrieve the node from the graph
     cur = Graph_GetNode(g, node_id);
     // Retrieve the indexed property from the node
     cur_prop = GraphEntity_Get_Property((GraphEntity*)cur, str_key);
     // Values should be sorted in increasing value - duplicates are allowed 
     assert(SIValue_Compare(last_prop, *cur_prop) <= 0);
-    // num_vals ++;
+    num_vals ++;
     // SIValue_Print(stdout, (SIValue*)cur_prop);
   }
-  // assert(num_vals == 100);
-  // assert(num_vals == 100);
+  assert(num_vals == 100);
   IndexCreateIter_Free(iter);
 }
 

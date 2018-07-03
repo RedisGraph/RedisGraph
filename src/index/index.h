@@ -14,6 +14,8 @@
 
 #define INDEX_PREFIX "redis_graph_INDEX"
 
+#define Index_DEPLETED (GrB_Index)SKIPLIST_DEPLETED
+
 typedef TuplesIter IndexIterator; // TODO unused
 typedef skiplistIterator IndexCreateIter;
 

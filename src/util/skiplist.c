@@ -65,13 +65,8 @@ skiplistNode *skiplistCreateNode(int level, void *key, void *val) {
   zn->key = key;
   zn->vals = zmalloc(sizeof(void **));
   zn->valsAllocated = 1;
-  if (val) {
-    zn->vals[0] = val;
-    zn->numVals = 1;
-  } else {
-    zn->vals[0] = NULL;
-    zn->numVals = 0;
-  }
+  zn->vals[0] = val;
+  zn->numVals = 1;
 
   return zn;
 }
@@ -441,11 +436,12 @@ void skiplistIterate_Free(skiplistIterator *iter) {
 
 void *skiplistIterator_Next(skiplistIterator *it) {
 
+  void *ret = SKIPLIST_DEPLETED;
+
   if (!it->current) {
-    return NULL;
+    return ret;
   }
 
-  void *ret = NULL;
   if (it->currentValOffset < it->current->numVals) {
     ret = it->current->vals[it->currentValOffset++];
   }

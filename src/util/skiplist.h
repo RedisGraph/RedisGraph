@@ -31,6 +31,9 @@
 #ifndef __DISQUE_SKIPLIST_H
 #define __DISQUE_SKIPLIST_H
 
+#include <stdint.h>
+#define SKIPLIST_DEPLETED (void*)UINT64_MAX
+
 #define SKIPLIST_MAXLEVEL 32 /* Should be enough for 2^32 elements */
 #define SKIPLIST_P 0.25      /* Skiplist P = 1/4 */
 

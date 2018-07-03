@@ -88,7 +88,7 @@ void test_skiplist_range(void) {
   // Iterate over a range of keys [1, INF)
   SIValue min = SI_DoubleVal(1);
   skiplistIterator *iter = skiplistIterateRange(sl, &min, NULL, 1, 0);
-  while ((cur_node = skiplistIterator_Next(iter)) != NULL) {
+  while ((cur_node = skiplistIterator_Next(iter)) != SKIPLIST_DEPLETED) {
     assert(last_id + 1 == cur_node->id);
     last_id = cur_node->id;
   }

@@ -31,7 +31,7 @@ IndexScan* NewIndexScan(QueryGraph *qg, Graph *g, Node **node, IndexCreateIter *
   GrB_Matrix_new(&operand, GrB_BOOL, n, n);
 
   GrB_Index node_id;
-  while ((node_id = (GrB_Index)IndexCreateIter_Next(iter)) > 0) {
+  while ((node_id = (GrB_Index)IndexCreateIter_Next(iter)) != Index_DEPLETED) {
     // Obey constraint here?
     GrB_Matrix_setElement_BOOL(operand, true, node_id, node_id);
   }
