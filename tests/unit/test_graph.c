@@ -202,8 +202,8 @@ void test_new_graph() {
     OK(GrB_Matrix_nvals(&nvals, g->adjacency_matrix));
 
     assert(g->nodes_blocks != NULL);
-    assert(g->relations != NULL);
-    assert(g->labels != NULL);
+    assert(g->_relations != NULL);
+    assert(g->_labels != NULL);
     assert(g->adjacency_matrix != NULL);
     assert(g->node_count == 0);
     assert(g->node_cap == GRAPH_DEFAULT_NODE_CAP);

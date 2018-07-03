@@ -153,8 +153,8 @@ Graph *Graph_New(size_t n) {
         }
     }
 
-    g->relations = malloc(sizeof(GrB_Matrix) * g->relation_cap);
-    g->labels = malloc(sizeof(GrB_Matrix) * g->label_cap);
+    g->_relations = malloc(sizeof(GrB_Matrix) * g->relation_cap);
+    g->_labels = malloc(sizeof(GrB_Matrix) * g->label_cap);
     GrB_Matrix_new(&g->adjacency_matrix, GrB_BOOL, g->node_cap, g->node_cap);
     return g;
 }
@@ -408,7 +408,7 @@ NodeIterator *Graph_ScanNodes(const Graph *g) {
 
 GrB_Matrix Graph_GetLabelMatrix(const Graph *g, int label_idx) {
     assert(g && label_idx < g->label_count);
-    GrB_Matrix m = g->labels[label_idx];
+    GrB_Matrix m = g->_labels[label_idx];
     _Graph_ResizeMatrix(g, m);
     return m;
 }
@@ -419,16 +419,16 @@ int Graph_AddLabelMatrix(Graph *g) {
     // Make sure we've got room for a new label matrix.
     if(g->label_count == g->label_cap) {
         g->label_cap += 4;   // allocate room for 4 new matrices.
-        g->labels = realloc(g->labels, g->label_cap * sizeof(GrB_Matrix));
+        g->_labels = realloc(g->_labels, g->label_cap * sizeof(GrB_Matrix));
     }
 
-    GrB_Matrix_new(&g->labels[g->label_count++], GrB_BOOL, g->node_cap, g->node_cap);
+    GrB_Matrix_new(&g->_labels[g->label_count++], GrB_BOOL, g->node_cap, g->node_cap);
     return g->label_count-1;
 }
 
 GrB_Matrix Graph_GetRelationMatrix(const Graph *g, int relation_idx) {
     assert(g && relation_idx < g->relation_count);
-    GrB_Matrix m = g->relations[relation_idx];
+    GrB_Matrix m = g->_relations[relation_idx];
     _Graph_ResizeMatrix(g, m);
     return m;
 }
@@ -439,10 +439,10 @@ int Graph_AddRelationMatrix(Graph *g) {
     // Make sure we've got room for a new relation matrix.
     if(g->relation_count == g->relation_cap) {
         g->relation_cap += 4;   // allocate room for 4 new matrices.
-        g->relations = realloc(g->relations, g->relation_cap * sizeof(GrB_Matrix));
+        g->_relations = realloc(g->_relations, g->relation_cap * sizeof(GrB_Matrix));
     }
 
-    GrB_Matrix_new(&g->relations[g->relation_count++], GrB_BOOL, g->node_count, g->node_count);
+    GrB_Matrix_new(&g->_relations[g->relation_count++], GrB_BOOL, g->node_cap, g->node_cap);
     return g->relation_count-1;
 }
 
@@ -466,17 +466,17 @@ void Graph_Free(Graph *g) {
     // Free matrices.
     GrB_Matrix_free(&g->adjacency_matrix);
     for(int i = 0; i < g->relation_count; i++) {
-        GrB_Matrix m = g->relations[i];
+        GrB_Matrix m = Graph_GetRelationMatrix(g, i);
         GrB_Matrix_free(&m);
     }
-    free(g->relations);
+    free(g->_relations);
     
     // Free matrices.
     for(int i = 0; i < g->label_count; i++) {
-        GrB_Matrix m = g->labels[i];
+        GrB_Matrix m = Graph_GetLabelMatrix(g, i);
         GrB_Matrix_free(&m);
     }
-    free(g->labels);
+    free(g->_labels);
 
     free(g);
 }

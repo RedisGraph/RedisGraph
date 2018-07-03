@@ -12,9 +12,6 @@
 #define KRED  "\x1B[31m"
 #define KNRM  "\x1B[0m"
 
-/* Get a string representation of algebraic expression. */
-// char* AlgebraicExpression_To_String(const AlgebraicExpression* ae);
-
 void _print_matrix(GrB_Matrix mat) {
     GrB_Index ncols, nrows, nvals;
     GrB_Matrix_ncols(&ncols, mat);
@@ -26,7 +23,7 @@ void _print_matrix(GrB_Matrix mat) {
     GrB_Index J[nvals];     // array for returning col indices of tuples
     bool X[nvals];          // array for returning values of tuples
 
-    GrB_Matrix_extractTuples(I, J, X, &nvals, mat);
+    GrB_Matrix_extractTuples_BOOL(I, J, X, &nvals, mat);
     for(int i = 0; i < nvals; i++) {
         printf("[%llu,%llu,%d]\n", I[i], J[i], X[i]);
     }
@@ -57,8 +54,8 @@ bool _compare_matrices(GrB_Matrix a, GrB_Matrix b) {
     GrB_Index bJ[bvals];     // array for returning col indices of tuples
     bool bX[bvals];          // array for returning values of tuples
 
-    GrB_Matrix_extractTuples(aI, aJ, aX, &avals, a);
-    GrB_Matrix_extractTuples(bI, bJ, bX, &bvals, b);
+    GrB_Matrix_extractTuples_BOOL(aI, aJ, aX, &avals, a);
+    GrB_Matrix_extractTuples_BOOL(bI, bJ, bX, &bvals, b);
 
     for(int i = 0; i < avals; i++) {
         if(aI[i] != bI[i] || aJ[i] != bJ[i] || aX[i] != bX[i]) {
@@ -197,9 +194,9 @@ QueryGraph *_build_query_graph(Graph *g) {
     
     // Set edges matrices according to the order they've been presented
     // during graph construction.
-    pff->mat = g->relations[0];
-    fvc->mat = g->relations[1];
-    cwe->mat = g->relations[2];
+    pff->mat = Graph_GetRelationMatrix(g, 0);
+    fvc->mat = Graph_GetRelationMatrix(g, 1);
+    cwe->mat = Graph_GetRelationMatrix(g, 2);
 
     // Construct query graph
     QueryGraph_AddNode(q, p, "p");
