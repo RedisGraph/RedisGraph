@@ -44,10 +44,7 @@ OpResult IndexScanConsume(OpBase *opBase, QueryGraph* graph) {
   }
 
   *op->node = Graph_GetNode(op->g, node_id);
-  // LabelScan sets id here
-  if (*op->node == NULL) {
-    return OP_DEPLETED;
-  }
+  (*op->node)->id = node_id;
 
   return OP_OK;
 }
