@@ -98,20 +98,28 @@ Index* buildIndex(Graph *g, const GrB_Matrix label_matrix, const char *label, co
   EntityProperty *prop;
 
   GrB_Index node_id;
+  int found;
   int prop_index = 0;
   while(TuplesIter_next(it, NULL, &node_id) != TuplesIter_DEPLETED) {
     node = Graph_GetNode(g, node_id);
     // If the sought property is at a different offset than it occupied in the previous node,
     // then seek and update
     if (strcmp(prop_str, node->properties[prop_index].name)) {
+      found = 0;
       for (int i = 0; i < node->prop_count; i ++) {
         prop = node->properties + i;
         if (!strcmp(prop_str, prop->name)) {
           prop_index = i;
+          found = 1;
           break;
         }
       }
+    } else {
+      found = 1;
     }
+    // The targeted property does not exist on this node
+    if (!found) continue;
+
     prop = node->properties + prop_index;
     // This value will be cloned within the skiplistInsert routine if necessary
     SIValue *key = &prop->value;
