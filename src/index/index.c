@@ -83,7 +83,7 @@ void Index_Delete(RedisModuleCtx *ctx, const char *graphName, const char *label,
   RedisModule_ReplyWithSimpleString(ctx, "Removed 1 index.");
 }
 
-Index* buildIndex(Graph *g, GrB_Matrix label_matrix, const char *label, const char *prop_str) {
+Index* buildIndex(Graph *g, const GrB_Matrix label_matrix, const char *label, const char *prop_str) {
   Index *index = malloc(sizeof(Index));
 
   index->label = strdup(label);
@@ -136,7 +136,7 @@ Index* buildIndex(Graph *g, GrB_Matrix label_matrix, const char *label, const ch
 void Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, const char *label, const char *prop_str) {
   LabelStore *store = LabelStore_Get(ctx, STORE_NODE, graphName, label);
   assert(store);
-  GrB_Matrix label_matrix = Graph_GetLabelMatrix(g, store->id);
+  const GrB_Matrix label_matrix = Graph_GetLabelMatrix(g, store->id);
 
   RedisModuleKey *key = Index_LookupKey(ctx, graphName, label, prop_str);
   // Do nothing if this index already exists

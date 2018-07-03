@@ -13,7 +13,7 @@ char *num_key = "num_prop";
 int label_id;
 
 Index* test_index_create(Graph *g, const char *label, const char *property) {
-  GrB_Matrix label_matrix = g->labels[label_id];
+  const GrB_Matrix label_matrix = g->labels[label_id];
   return buildIndex(g, label_matrix, label, property);
 }
 
