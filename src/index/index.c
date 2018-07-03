@@ -97,10 +97,10 @@ Index* buildIndex(Graph *g, GrB_Matrix label_matrix, const char *label, const ch
   Node *node;
   EntityProperty *prop;
 
-  GrB_Index col;
+  GrB_Index node_id;
   int prop_index = 0;
-  while(TuplesIter_next(it, NULL, &col) != TuplesIter_DEPLETED) {
-    node = Graph_GetNode(g, col);
+  while(TuplesIter_next(it, NULL, &node_id) != TuplesIter_DEPLETED) {
+    node = Graph_GetNode(g, node_id);
     // If the sought property is at a different offset than it occupied in the previous node,
     // then seek and update
     if (strcmp(prop_str, node->properties[prop_index].name)) {
@@ -118,9 +118,9 @@ Index* buildIndex(Graph *g, GrB_Matrix label_matrix, const char *label, const ch
 
     if (key->type == T_STRING) {
       // Safe cast? Same size, but...
-      skiplistInsert(index->string_sl, key, (void*)col);
+      skiplistInsert(index->string_sl, key, (void*)node_id);
     } else if (key->type & SI_NUMERIC) {
-      skiplistInsert(index->numeric_sl, key, (void*)col);
+      skiplistInsert(index->numeric_sl, key, (void*)node_id);
     } else { // This property was neither a string nor numeric value; raise a run-time error.
       assert(0);
     }
@@ -228,8 +228,8 @@ void IndexCreateIter_Reset(IndexCreateIter *iter) {
   skiplistIterate_Reset(iter);
 }
 
-void* IndexScanIterator_Next(IndexScanIterator *iter, GrB_Index *row, GrB_Index *col) {
-  return TuplesIter_next(iter, row, col);
+void* IndexScanIterator_Next(IndexScanIterator *iter, GrB_Index *row, GrB_Index *node_id) {
+  return TuplesIter_next(iter, row, node_id);
 }
 
 void IndexScanIterator_Reset(IndexScanIterator *iter) {
