@@ -180,32 +180,28 @@ void Graph_CreateNodes(Graph* g, size_t n, int* labels, NodeIterator **it) {
 
     int prevNodeCount = g->node_count;
     _Graph_ResizeNodes(g, n);
-
-    Node *node = NULL;
-    NodeIterator *node_it = NodeIterator_New(GRAPH_ACTIVE_BLOCK(g),
-                                        g->node_count,
-                                        g->node_count + n,
-                                        1);
     g->node_count += n;
+
     _Graph_ResizeMatrix(g, g->adjacency_matrix);
 
-    int idx = 0, node_id = prevNodeCount;
+    int node_id = prevNodeCount;
     if(labels) {
-        while((node = NodeIterator_Next(node_it)) != NULL) {
+        for(int idx = 0; idx < n; idx++) {
             int l = labels[idx];
             if(l != GRAPH_NO_LABEL) {
                 GrB_Matrix m = Graph_GetLabelMatrix(g, l);
                 GrB_Matrix_setElement_BOOL(m, true, node_id, node_id);
             }
-            idx++;
             node_id++;
         }
-        // Reset iterator for caller.
-        NodeIterator_Reset(node_it);
     }
 
-    if(it != NULL) *it = node_it;
-    else NodeIterator_Free(node_it);
+    if(it != NULL) {
+        *it = NodeIterator_New(GRAPH_ACTIVE_BLOCK(g),
+                               prevNodeCount,
+                               g->node_count,
+                               1);
+    }
 }
 
 void Graph_ConnectNodes(Graph *g, size_t n, GrB_Index *connections) {
