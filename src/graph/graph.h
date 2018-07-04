@@ -20,10 +20,10 @@ typedef struct {
     size_t node_cap;                // Number of nodes graph can hold.
     size_t node_count;              // Number of nodes stored.
     GrB_Matrix adjacency_matrix;    // Adjacency matrix, holds all graph connections.
-    GrB_Matrix *relations;          // Relation matrices.
+    GrB_Matrix *_relations;         // Relation matrices.
     size_t relation_cap;            // Number of relations graph can hold.
     size_t relation_count;          // Number of relation matrices.
-    GrB_Matrix *labels;             // Label matrices.
+    GrB_Matrix *_labels;             // Label matrices.
     size_t label_cap;               // Number of labels graph can hold.
     size_t label_count;             // Number of label matrices.
 } Graph;
@@ -61,6 +61,17 @@ void Graph_ConnectNodes (
 Node *Graph_GetNode (
     const Graph *g,
     int node_id
+);
+
+// Removes a set of nodes and all of their connections
+// within the graph.
+void Graph_DeleteNodes(Graph *g, int *IDs, size_t IDCount);
+
+// Removes edge connecting src node to dest node.
+void Graph_DeleteEdge (
+    Graph *g,
+    int src_id,
+    int dest_id
 );
 
 // Label all nodes between start_node_id and end_node_id

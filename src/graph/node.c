@@ -51,8 +51,10 @@ void Node_Free(Node* node) {
 		free(node->label);
 	}
 
-	Vector_Free(node->outgoing_edges);
-	Vector_Free(node->incoming_edges);
+	if(node->outgoing_edges)
+		Vector_Free(node->outgoing_edges);
+	if(node->incoming_edges)
+		Vector_Free(node->incoming_edges);
 
 	free(node);
 	node = NULL;

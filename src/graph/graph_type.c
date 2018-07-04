@@ -187,13 +187,13 @@ void _GraphType_SaveMatrices(RedisModuleIO *rdb, Graph *g) {
 
     RedisModule_SaveUnsigned(rdb, g->relation_count);
     for(int i = 0; i < g->relation_count; i++) {
-        GrB_Matrix m = g->relations[i];
+        GrB_Matrix m = Graph_GetRelationMatrix(g, i);
         _GraphType_SaveMatrix(rdb, m);
     }
 
     RedisModule_SaveUnsigned(rdb, g->label_count);
     for(int i = 0; i < g->label_count; i++) {
-        GrB_Matrix m = g->labels[i];
+        GrB_Matrix m = Graph_GetLabelMatrix(g, i);
         _GraphType_SaveMatrix(rdb, m);
     }
 }

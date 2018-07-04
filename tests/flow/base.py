@@ -4,7 +4,7 @@ from rmtest import ModuleTestCase
 
 class FlowTestsBase(ModuleTestCase(os.path.dirname(os.path.abspath(__file__)) + '/../../src/redisgraph.so')):
 
-    def _assert_only_expected_resuls_are_in_actual_results(self,
+    def _assert_only_expected_results_are_in_actual_results(self,
                                                            actual_result,
                                                            query_info):
         actual_result_set = actual_result.result_set[1:]
