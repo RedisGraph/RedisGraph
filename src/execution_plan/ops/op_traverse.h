@@ -12,6 +12,7 @@
 typedef struct {
     OpBase op;
     Graph *graph;
+    AlgebraicExpression *algebraic_expression;
     AlgebraicExpressionResult *algebraic_results;
     TuplesIter *it;
 } Traverse;

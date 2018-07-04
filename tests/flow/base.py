@@ -7,12 +7,14 @@ class FlowTestsBase(ModuleTestCase(os.path.dirname(os.path.abspath(__file__)) + 
     def _assert_only_expected_resuls_are_in_actual_results(self,
                                                            actual_result,
                                                            query_info):
-        actual_result_set = actual_result.result_set[1:]
+        actual_result_set = []
+        if actual_result.result_set is not None:
+            actual_result_set = actual_result.result_set[1:]
 
-        # assert num resuls
+        # Assert number of results.
         self.assertEqual(len(actual_result_set), len(query_info.expected_result))
 
-        # assert actual values vs expected values
+        # Assert actual values vs expected values.
         for res in query_info.expected_result:
             self.assertTrue(res in actual_result_set,
                             'The item %s is NOT in the actual result\n'
@@ -25,14 +27,14 @@ class FlowTestsBase(ModuleTestCase(os.path.dirname(os.path.abspath(__file__)) + 
                                                              num_contained_results):
         actual_result_set = actual_result.result_set[1:]
 
-        # assert num results
+        # Assert num results.
         self.assertEqual(len(actual_result_set), num_contained_results)
 
-        # assert actual values vs expected values
+        # Assert actual values vs expected values.
         expected_result = query_info.expected_result
         count = len([res for res in expected_result if res in actual_result_set])
 
-        # assert number of different results is as expected
+        # Assert number of different results is as expected.
         self.assertEqual(count,
                          num_contained_results,
                          'The actual result is: %s\nThe expected result is: %s' %

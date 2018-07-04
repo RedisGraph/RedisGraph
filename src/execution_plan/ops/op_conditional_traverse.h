@@ -20,6 +20,7 @@ typedef enum {
 typedef struct {
     OpBase op;
     Graph *graph;
+    AlgebraicExpression *algebraic_expression;
     AlgebraicExpressionResult *algebraic_results;
     GrB_Vector V;
     GrB_Matrix M;

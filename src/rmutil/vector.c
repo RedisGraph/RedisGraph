@@ -84,3 +84,7 @@ inline int Vector_Size(const Vector *v) { return v->top; }
 
 /* return the actual capacity */
 inline int Vector_Cap(Vector *v) { return v->cap; }
+
+void Vector_Clear(Vector *v) {
+  v->top = 0;
+}
