@@ -1,7 +1,8 @@
 #include "../../src/graph/graph.h"
-#include "../../src/graph/GraphBLAS.h"
+#include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 #include "../../src/graph/node_iterator.h"
 #include "../../src/util/simple_timer.h"
+#include "../../src/arithmetic/tuples_iter.h"
 
 #include <time.h>
 #include <stdio.h>
@@ -27,6 +28,51 @@
     }                                                       \
 }
 
+void _print_matrix(GrB_Matrix M) {
+    GrB_Index nrows;
+    GrB_Index ncols;
+    GrB_Matrix_nrows(&nrows, M);
+    GrB_Matrix_ncols(&ncols, M);
+
+    for(int i = 0; i < nrows; i++) {
+        for(int j = 0; j < ncols; j++) {
+            bool x = false;
+            GrB_Matrix_extractElement_BOOL(&x, M, i, j);
+            printf("%d ", x);
+        }
+        printf("\n");
+    }
+    printf("\n\n\n");
+}
+
+Graph* _random_graph(int nodes, int relations) {
+    Graph *g = Graph_New(nodes);
+    Graph_CreateNodes(g, nodes, NULL, NULL);
+
+    for(int i = 0; i < relations; i++) {
+        Graph_AddRelationMatrix(g);
+    }
+
+    int connectionCount = 0;
+    GrB_Index *connections = malloc(sizeof(GrB_Index) * 3 * nodes * nodes);
+
+    double mid_point = RAND_MAX/2;
+    for(int i = 0; i < nodes; i++) {
+        for(int j = 0; j < nodes; j++) {
+            if(rand() > mid_point) {
+                if(i == j) continue;
+                int relation = (rand() % (relations+1) - 1);
+                connections[connectionCount++] = i;
+                connections[connectionCount++] = j;
+                connections[connectionCount++] = relation;
+            }
+        }
+    }
+
+    Graph_ConnectNodes(g, connectionCount, connections);
+    return g;
+}
+
 void _test_node_creation(Graph *g, size_t node_count) {
     GrB_Info info;
     GrB_Index ncols, nrows, nvals;
@@ -41,8 +87,8 @@ void _test_node_creation(Graph *g, size_t node_count) {
     OK(GrB_Matrix_nvals(&nvals, g->adjacency_matrix));
 
     assert(nvals == 0);                     // No connection were formed.
-    assert(ncols == g->node_cap);           // Graph's adjacency matrix dimensions.
-    assert(nrows == g->node_cap);
+    assert(ncols == g->node_count);         // Graph's adjacency matrix dimensions.
+    assert(nrows == g->node_count);
     assert(g->node_count == node_count);
     assert(g->node_count <= g->node_cap);
 
@@ -120,8 +166,8 @@ void _test_graph_resize(Graph *g) {
     // Graph's adjacency matrix dimensions.
     OK(GrB_Matrix_nrows(&nrows, g->adjacency_matrix));
     OK(GrB_Matrix_ncols(&ncols, g->adjacency_matrix));
-    assert(ncols == g->node_cap);
-    assert(nrows == g->node_cap);
+    assert(ncols == g->node_count);
+    assert(nrows == g->node_count);
     assert(g->node_count <= g->node_cap);
 
     // Verify number of created nodes.
@@ -139,8 +185,8 @@ void _test_graph_resize(Graph *g) {
         GrB_Matrix r = Graph_GetRelationMatrix(g, i);
         OK(GrB_Matrix_nrows(&nrows, r));
         OK(GrB_Matrix_ncols(&ncols, r));
-        assert(ncols == g->node_cap);
-        assert(nrows == g->node_cap);
+        assert(ncols == g->node_count);
+        assert(nrows == g->node_count);
     }
 }
 
@@ -156,8 +202,8 @@ void test_new_graph() {
     OK(GrB_Matrix_nvals(&nvals, g->adjacency_matrix));
 
     assert(g->nodes_blocks != NULL);
-    assert(g->relations != NULL);
-    assert(g->labels != NULL);
+    assert(g->_relations != NULL);
+    assert(g->_labels != NULL);
     assert(g->adjacency_matrix != NULL);
     assert(g->node_count == 0);
     assert(g->node_cap == GRAPH_DEFAULT_NODE_CAP);
@@ -180,6 +226,262 @@ void test_graph_construction() {
     _test_graph_resize(g);
 
     Graph_Free(g);
+}
+
+void test_graph_remove_nodes() {
+    int nodeCount = 32;
+    int relationCount = 4;
+    
+    Graph *g = _random_graph(nodeCount, relationCount);
+    
+    struct {
+        GrB_Vector row;
+        GrB_Vector col;
+        GrB_Matrix m;
+    } matrices [g->relation_count+1];
+    
+    matrices[0].m = g->adjacency_matrix;
+    matrices[0].col = NULL;
+    matrices[0].row = NULL;
+
+    for(int i = 0; i < g->relation_count; i++) {
+        matrices[i+1].m = Graph_GetRelationMatrix(g, i);
+        matrices[i+1].col = NULL;
+        matrices[i+1].row = NULL;
+    }
+
+    GrB_Descriptor desc;
+    GrB_Descriptor_new(&desc);
+    GrB_Descriptor_set(desc, GrB_INP0, GrB_TRAN);
+
+    // Remove all nodes, one node at a time.
+    int nodesToDelete[1] = {0};
+    for(int nodeID = 0; nodeID < nodeCount; nodeID++) {
+        GrB_Index replacementID = g->node_count - 1;
+        GrB_Index nrows = g->node_count;
+
+        for(int i = 0; i < g->relation_count+1; i++) {
+            if(matrices[i].col != NULL)
+                GrB_Vector_free(&matrices[i].col);
+            if(matrices[i].row != NULL)
+                GrB_Vector_free(&matrices[i].row);
+
+            GrB_Vector_new(&(matrices[i].col), GrB_BOOL, nrows);
+            GrB_Vector_new(&(matrices[i].row), GrB_BOOL, nrows);
+
+            // Extract replacemnt column.
+            GrB_Col_extract(matrices[i].col, NULL, NULL, matrices[i].m, GrB_ALL, nrows, replacementID, NULL);
+            // Set col at position nodeID to 0, as this entry going to be remove.
+            GrB_Vector_setElement_BOOL(matrices[i].col, false, 0);
+            // Extract replacemnt row.
+            GrB_Col_extract(matrices[i].row, NULL, NULL, matrices[i].m, GrB_ALL, nrows, replacementID, desc);
+            // Set row at position nodeID to 0, as this entry going to be remove.
+            GrB_Vector_setElement_BOOL(matrices[i].row, false, 0);
+        }
+        Graph_DeleteNodes(g, nodesToDelete, 1);
+        assert(g->node_count == nodeCount - nodeID - 1);
+
+        /* Make sure removed entity relations were updated
+         * to the last entity relations. */
+        // Validate updated column.
+        for(int i = 0; i < g->relation_count+1; i++) {
+            GrB_Matrix M;
+
+            if(i == 0) M = matrices[0].m;   // Adjacency matrix.
+            else M = Graph_GetRelationMatrix(g, i-1);   // Relation matrix.
+
+            GrB_Vector col = matrices[i].col;
+            GrB_Vector row = matrices[i].row;
+
+            for(int rowIdx = 0; rowIdx < g->node_count; rowIdx++) {
+                bool actual = false;
+                bool expected = false;
+                GrB_Matrix_extractElement_BOOL(&actual, M, rowIdx, 0);
+                GrB_Vector_extractElement_BOOL(&expected, col, rowIdx);
+                assert(actual == expected);
+            }
+
+            // Validate updated row.
+            for(int colIdx = 0; colIdx < g->node_count; colIdx++) {
+                bool actual = false;
+                bool expected = false;
+                GrB_Matrix_extractElement_BOOL(&actual, M, 0, colIdx);
+                GrB_Vector_extractElement_BOOL(&expected, row, colIdx);
+                assert(actual == expected);
+            }
+        }
+    }
+
+    // Validate empty matrix.
+    assert(g->node_count == 0);
+    GrB_Index nvals;
+    GrB_Matrix_nvals(&nvals, g->adjacency_matrix);
+    assert(nvals == 0);
+
+    // Clean up.
+    GrB_Descriptor_free(&desc);
+    for(int i = 0; i < g->relation_count+1; i++) {
+        GrB_Vector_free(&matrices[i].col);
+        GrB_Vector_free(&matrices[i].row);
+    }
+    Graph_Free(g);
+}
+
+void test_graph_remove_multiple_nodes() {
+    // Delete two node.
+    // One which is the latest node introduced to the graph
+    // and the very first node.
+
+    // Expecting the first node to be replaced with node at position
+    // N-1, where N is the number of nodes in the graph.
+    double tic [2], t;
+
+    Graph *g = Graph_New(32);
+    Graph_CreateNodes(g, 8, NULL, NULL);
+
+    GrB_Index connections[3*9];
+
+    // First node.
+    connections[0] = 0;
+    connections[1] = 2;
+    connections[2] = GRAPH_NO_RELATION;
+
+    connections[3] = 0;
+    connections[4] = 6;
+    connections[5] = GRAPH_NO_RELATION;
+
+    connections[6] = 0;
+    connections[7] = 7;
+    connections[8] = GRAPH_NO_RELATION;
+
+    // Right before last node.
+    connections[9] = 6;
+    connections[10] = 0;
+    connections[11] = GRAPH_NO_RELATION;
+
+    connections[12] = 6;
+    connections[13] = 1;
+    connections[14] = GRAPH_NO_RELATION;
+
+    connections[15] = 6;
+    connections[16] = 7;
+    connections[17] = GRAPH_NO_RELATION;
+
+    // Last node.
+    connections[18] = 7;
+    connections[19] = 0;
+    connections[20] = GRAPH_NO_RELATION;
+
+    connections[21] = 7;
+    connections[22] = 1;
+    connections[23] = GRAPH_NO_RELATION;
+
+    connections[24] = 7;
+    connections[25] = 6;
+    connections[26] = GRAPH_NO_RELATION;
+
+    Graph_ConnectNodes(g, 27, connections);
+
+    // Delete first and last nodes.
+    int nodeToDelete[2];
+    nodeToDelete[0] = 7; // Remove last node.
+    nodeToDelete[1] = 0; // Remove first node.
+
+    simple_tic(tic);
+    Graph_DeleteNodes(g, nodeToDelete, 2);
+    double elapsed = simple_toc(tic);
+    printf("Nodes deletion took: %14.6f ms\n", elapsed*1000);
+
+    assert(g->node_count == 8-2);
+    GrB_Descriptor desc;
+    GrB_Descriptor_new(&desc);
+    GrB_Descriptor_set(desc, GrB_INP0, GrB_TRAN);
+
+    // Validation.
+    bool x = false;
+    GrB_Vector row;
+    GrB_Vector col;
+    GrB_Index rowNvals;
+    GrB_Index colNvals;
+
+    GrB_Vector_new(&row, GrB_BOOL, g->node_count);
+    GrB_Vector_new(&col, GrB_BOOL, g->node_count);
+
+    // Make sure last and before last rows and column are zeroed out.
+    GrB_Col_extract(row, NULL, NULL, g->adjacency_matrix, GrB_ALL, g->node_count, 7, desc);
+    GrB_Col_extract(col, NULL, NULL, g->adjacency_matrix, GrB_ALL, g->node_count, 7, NULL);
+    GrB_Vector_nvals(&rowNvals, row);
+    GrB_Vector_nvals(&colNvals, col);
+    assert(rowNvals == 0);
+    assert(colNvals == 0);
+
+    GrB_Col_extract(row, NULL, NULL, g->adjacency_matrix, GrB_ALL, g->node_count, 6, desc);
+    GrB_Col_extract(col, NULL, NULL, g->adjacency_matrix, GrB_ALL, g->node_count, 6, NULL);
+    GrB_Vector_nvals(&rowNvals, row);
+    GrB_Vector_nvals(&colNvals, col);
+    assert(rowNvals == 0);
+    assert(colNvals == 0);
+
+    // Validate replaced first row and column.
+    GrB_Col_extract(row, NULL, NULL, g->adjacency_matrix, GrB_ALL, g->node_count, 0, desc);
+    GrB_Col_extract(col, NULL, NULL, g->adjacency_matrix, GrB_ALL, g->node_count, 0, NULL);
+    GrB_Vector_nvals(&rowNvals, row);
+    GrB_Vector_nvals(&colNvals, col);
+
+    GrB_Vector_extractElement_BOOL(&x, row, 1);
+    assert(rowNvals == 1);
+    assert(colNvals == 0);
+    assert(x == true);
+
+    // Clean up.
+    GrB_Descriptor_free(&desc);
+    GrB_Vector_free(&row);
+    GrB_Vector_free(&col);
+    Graph_Free(g);
+}
+
+void test_graph_remove_edges() {
+    GrB_Index row;
+    GrB_Index col;
+    GrB_Index relationEdgeCount;
+    Graph *g = _random_graph(32, 4);
+    bool exists = false;
+
+    // Delete every edge in the graph.
+    for(int i = 0; i < g->relation_count; i++) {
+        GrB_Matrix M = Graph_GetRelationMatrix(g, i);
+        GrB_Matrix_nvals(&relationEdgeCount, M);
+        int edgeToDelete[relationEdgeCount * 2];
+
+        TuplesIter *iter = TuplesIter_new(M);
+
+        int edgeIdx = 0;
+        while(TuplesIter_next(iter, &row, &col) != TuplesIter_DEPLETED) {
+            edgeToDelete[edgeIdx++] = row;
+            edgeToDelete[edgeIdx++] = col;
+        }
+
+        TuplesIter_free(iter);
+
+        for(int j = 0; j < relationEdgeCount*2; j+=2) {
+            row = edgeToDelete[j];
+            col = edgeToDelete[j+1];
+            Graph_DeleteEdge(g, row, col);            
+
+            // Validate delete.
+            exists = false;
+            GrB_Matrix_extractElement_BOOL(&exists, g->adjacency_matrix, row, col);
+            assert(exists == false);
+            GrB_Matrix_extractElement_BOOL(&exists, M, row, col);
+            assert(exists == false);
+        }
+
+        iter = TuplesIter_new(M);
+        assert(TuplesIter_next(iter, &row, &col) == TuplesIter_DEPLETED);
+
+        GrB_Matrix_nvals(&relationEdgeCount, M);
+        assert(relationEdgeCount == 0);
+    }
 }
 
 void benchmark_node_creation_with_labels() {
@@ -367,6 +669,9 @@ int main(int argc, char **argv) {
 
     test_new_graph();
     test_graph_construction();
+    test_graph_remove_nodes();
+    test_graph_remove_multiple_nodes();
+    test_graph_remove_edges();
     // benchmark_graph();
 
     GrB_finalize();

@@ -35,7 +35,7 @@ Record* Record_FromGroup(const ResultSetHeader *resultset_header, const Group *g
 
 size_t Record_ToString(const Record *record, char **buf, size_t *buf_cap) {
     size_t required_len = SIValue_StringConcatLen(record->values, record->len);
-    
+
     if(*buf_cap < required_len) {
         *buf = realloc(*buf, sizeof(char) * required_len);
         *buf_cap = required_len;

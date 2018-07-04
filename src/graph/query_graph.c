@@ -94,7 +94,7 @@ void _BuildQueryGraphAddProps(AST_GraphEntity *entity, GraphEntity* e) {
             Vector_Get(entity->properties, prop_idx+1, &value);
 
             values[prop_idx/2] = *value;
-            keys[prop_idx/2] = key->stringval.str;
+            keys[prop_idx/2] = key->stringval;
         }
 
         GraphEntity_Add_Properties(e, prop_count/2, keys, values);
@@ -144,7 +144,7 @@ void _BuildQueryGraphAddEdge(const Graph *g,
         e->mat = g->adjacency_matrix;
     } else {
         LabelStore *s = LabelStore_Get(ctx, STORE_EDGE, graph_name, edge->ge.label);
-        if(s) e->mat = g->relations[s->id];
+        if(s) e->mat = Graph_GetRelationMatrix(g, s->id);
     }
 
     QueryGraph_ConnectNodes(graph, src, dest, e, edge->ge.alias);

@@ -187,7 +187,7 @@ void inlineProperties(AST_Query *ast) {
             Vector_Get(properties, j+1, &val);
 
             const char *alias = entity->alias;
-            const char *property = key->stringval.str;
+            const char *property = key->stringval;
 
             AST_FilterNode *filterNode = New_AST_ConstantPredicateNode(alias, property, EQ, *val);
             

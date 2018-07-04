@@ -77,7 +77,7 @@ void _GraphType_LoadNodes(RedisModuleIO *rdb, Graph *g) {
             if(t & SI_NUMERIC) {
                 propValue[i] = SI_DoubleVal(RedisModule_LoadDouble(rdb));
             } else {
-                propValue[i] = SI_StringValC(RedisModule_LoadStringBuffer(rdb, NULL));
+                propValue[i] = SI_StringVal(RedisModule_LoadStringBuffer(rdb, NULL));
             }
         }
 
@@ -126,14 +126,14 @@ void _GraphType_SaveNode(RedisModuleIO *rdb, const Node *n) {
 
     for(int i = 0; i < n->prop_count; i++) {
         EntityProperty prop = n->properties[i];
-        RedisModule_SaveStringBuffer(rdb, prop.name, strlen(prop.name));        
+        RedisModule_SaveStringBuffer(rdb, prop.name, strlen(prop.name) + 1);
         
         RedisModule_SaveUnsigned(rdb, prop.value.type);
         
         if(prop.value.type & SI_NUMERIC) {
             RedisModule_SaveDouble(rdb, prop.value.doubleval);
         } else {
-            RedisModule_SaveStringBuffer(rdb, prop.value.stringval.str, prop.value.stringval.len);
+            RedisModule_SaveStringBuffer(rdb, prop.value.stringval, strlen(prop.value.stringval) + 1);
         }        
     }
 }
@@ -187,13 +187,13 @@ void _GraphType_SaveMatrices(RedisModuleIO *rdb, Graph *g) {
 
     RedisModule_SaveUnsigned(rdb, g->relation_count);
     for(int i = 0; i < g->relation_count; i++) {
-        GrB_Matrix m = g->relations[i];
+        GrB_Matrix m = Graph_GetRelationMatrix(g, i);
         _GraphType_SaveMatrix(rdb, m);
     }
 
     RedisModule_SaveUnsigned(rdb, g->label_count);
     for(int i = 0; i < g->label_count; i++) {
-        GrB_Matrix m = g->labels[i];
+        GrB_Matrix m = Graph_GetLabelMatrix(g, i);
         _GraphType_SaveMatrix(rdb, m);
     }
 }
