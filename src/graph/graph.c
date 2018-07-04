@@ -177,14 +177,21 @@ Graph *Graph_Get(RedisModuleCtx *ctx, RedisModuleString *graph_name) {
 
 void Graph_CreateNodes(Graph* g, size_t n, int* labels, NodeIterator **it) {
     assert(g);
-
-    int prevNodeCount = g->node_count;
+    
     _Graph_ResizeNodes(g, n);
+
+    if(it != NULL) {
+        *it = NodeIterator_New(GRAPH_ACTIVE_BLOCK(g),
+                               g->node_count,
+                               g->node_count + n,
+                               1);
+    }
+
+    int node_id = g->node_count;
     g->node_count += n;
 
     _Graph_ResizeMatrix(g, g->adjacency_matrix);
 
-    int node_id = prevNodeCount;
     if(labels) {
         for(int idx = 0; idx < n; idx++) {
             int l = labels[idx];
@@ -194,13 +201,6 @@ void Graph_CreateNodes(Graph* g, size_t n, int* labels, NodeIterator **it) {
             }
             node_id++;
         }
-    }
-
-    if(it != NULL) {
-        *it = NodeIterator_New(GRAPH_ACTIVE_BLOCK(g),
-                               prevNodeCount,
-                               g->node_count,
-                               1);
     }
 }
 

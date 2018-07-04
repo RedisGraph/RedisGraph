@@ -8,7 +8,7 @@ OpBase* NewDeleteOp(AST_DeleteNode *ast_delete_node, QueryGraph *qg, Graph *g, R
 }
 
 OpDelete* _NewDeleteOp(AST_DeleteNode *ast_delete_node, QueryGraph *qg, Graph *g, ResultSet *result_set) {
-    OpDelete *op_delete = (OpDelete*) calloc(1, sizeof(OpDelete));
+    OpDelete *op_delete = malloc(sizeof(OpDelete));
 
     op_delete->g = g;
     op_delete->qg = qg;
