@@ -2,7 +2,7 @@
 // GB_resize: change the size of a matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -49,19 +49,23 @@ GrB_Info GB_resize              // change the size of a matrix
     int64_t *restrict Ai = A->i ;
     void    *restrict Ax = A->x ;
 
-    // extend the column pointers
-    int64_t anz = Ap [A->ncols] ;
-    for (int64_t j = A->ncols + 1 ; j <= ncols_new ; j++)
+    // if # of columns is increasing, extend the column pointers
+    if (ncols_new > A->ncols)
     {
-        Ap [j] = anz ;
+        int64_t anz = Ap [A->ncols] ;
+        for (int64_t j = A->ncols + 1 ; j <= ncols_new ; j++)
+        {
+            Ap [j] = anz ;
+        }
     }
+
     A->ncols = ncols_new ;
     ASSERT_OK (GB_check (A, "A col resized", 0)) ;
 
+    // if # of rows is shrinking, delete entries outside the new matrix
     if (nrows_new < A->nrows)
     {
-        // # of rows is shrinking; delete entries outside the new matrix
-        anz = 0 ;
+        int64_t anz = 0 ;
         int64_t asize = A->type->size ;
         for (int64_t j = 0 ; j < ncols_new ; j++)
         {
