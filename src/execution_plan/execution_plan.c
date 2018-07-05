@@ -99,7 +99,7 @@ void _OpNode_PushBelow(OpNode *a, OpNode *b) {
 /* Push b right above a. */
 void _OpNode_PushAbove(OpNode *a, OpNode *b) {
     /* B shouldn't have its children set. */
-    assert(b->children != NULL);
+    assert(b->children == NULL);
 
     /* Remove each child of A and add it as a child of B. */
     while(a->childCount) {
@@ -110,6 +110,25 @@ void _OpNode_PushAbove(OpNode *a, OpNode *b) {
 
     /* B is the only child of A. */
     _OpNode_AddChild(a, b);
+}
+
+void ExecutionPlan_RemoveOp(OpNode *op) {
+    assert(op->parent != NULL);
+
+    // Remove op from its parent.
+    OpNode* parent = op->parent;
+    _OpNode_RemoveChild(op->parent, op);
+
+    // Add each of op's children as a child of op's parent.
+    for(int i = 0; i < op->childCount; i++) {
+        _OpNode_AddChild(parent, op->children[i]);
+    }
+}
+
+void ExecutionPlan_ReplaceOp(OpNode *a, OpNode *b) {
+  _OpNode_PushAbove(a, b);
+  ExecutionPlan_RemoveOp(a);
+  OpNode_Free(a);
 }
 
 Vector* _ExecutionPlan_Locate_References(OpNode *root, OpNode **op, Vector *references) {
@@ -338,7 +357,8 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g, const char *graph
          * apply this rule to reduce the number of filter operations. */
     }
     
-    optimizePlan(execution_plan);
+    optimizePlan(ctx, execution_plan, graph_name, g);
+
     return execution_plan;
 }
 

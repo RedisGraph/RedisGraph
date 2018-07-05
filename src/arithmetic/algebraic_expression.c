@@ -154,7 +154,7 @@ AlgebraicExpression **AlgebraicExpression_From_Query(const AST_Query *ast, const
     return expressions;
 }
 
-inline void _AlgebraicExpression_Execute_MUL(GrB_Matrix C, GrB_Matrix A, GrB_Matrix B, GrB_Descriptor desc) {
+static inline void _AlgebraicExpression_Execute_MUL(GrB_Matrix C, GrB_Matrix A, GrB_Matrix B, GrB_Descriptor desc) {
     GrB_mxm(
         C,                  // Output
         NULL,               // Mask

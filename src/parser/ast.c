@@ -8,7 +8,8 @@
 AST_Query *New_AST_Query(AST_MatchNode *matchNode, AST_WhereNode *whereNode,
                          AST_CreateNode *createNode, AST_SetNode *setNode,
                          AST_DeleteNode *deleteNode, AST_ReturnNode *returnNode,
-                         AST_OrderNode *orderNode, AST_LimitNode *limitNode) {
+                         AST_OrderNode *orderNode, AST_LimitNode *limitNode, AST_IndexNode *indexNode) {
+
   AST_Query *queryExpressionNode = (AST_Query *)malloc(sizeof(AST_Query));
 
   queryExpressionNode->matchNode = matchNode;
@@ -19,6 +20,7 @@ AST_Query *New_AST_Query(AST_MatchNode *matchNode, AST_WhereNode *whereNode,
   queryExpressionNode->returnNode = returnNode;
   queryExpressionNode->orderNode = orderNode;
   queryExpressionNode->limitNode = limitNode;
+  queryExpressionNode->indexNode = indexNode;
 
   return queryExpressionNode;
 }
@@ -32,6 +34,7 @@ void Free_AST_Query(AST_Query *queryExpressionNode) {
   Free_AST_WhereNode(queryExpressionNode->whereNode);
   Free_AST_ReturnNode(queryExpressionNode->returnNode);
   Free_AST_OrderNode(queryExpressionNode->orderNode);
+  Free_AST_IndexNode(queryExpressionNode->indexNode);
   free(queryExpressionNode);
 }
 
@@ -155,7 +158,7 @@ AST_Validation _Validate_WHERE_Clause(const AST_Query *ast, char **reason) {
 
 AST_Validation AST_Validate(const AST_Query *ast, char **reason) {
   /* AST must include either a MATCH or CREATE clause. */
-  if (!(ast->matchNode || ast->createNode)) {
+  if (!(ast->matchNode || ast->createNode || ast->indexNode)) {
     *reason = "Query must specify either MATCH or CREATE clause.";
     return AST_INVALID;
   }

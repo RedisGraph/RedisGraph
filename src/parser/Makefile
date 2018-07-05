@@ -1,5 +1,5 @@
 %.c: %.y
-parser:
+parser: lemon
 	lex -i lexer.l;\
     ./lemon -s grammar.y
 
@@ -8,4 +8,4 @@ parser:
 lemon:
 	gcc -o lemon lemon.c
 
-all: parser
+all: lemon parser

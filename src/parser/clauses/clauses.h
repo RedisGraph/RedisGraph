@@ -10,5 +10,6 @@
 #include "./return.h"
 #include "./set.h"
 #include "./where.h"
+#include "./index.h"
 
 #endif
