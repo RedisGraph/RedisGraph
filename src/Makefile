@@ -1,9 +1,6 @@
 # find the OS
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 
-CC=gcc
-export CC
-
 # if DEBUG env var is set, we compile with "debug" cflags
 DEBUGFLAGS = -g -ggdb -O3 
 ifeq ($(DEBUG), 1)
@@ -20,8 +17,8 @@ CFLAGS += $(DEBUGFLAGS)
 ifeq ($(uname_S),Linux)
 	SHOBJ_LDFLAGS ?= -shared -Bsymbolic -Bsymbolic-functions -ldl -lpthread
 else
-	CFLAGS += -mmacosx-version-min=10.6
-	SHOBJ_LDFLAGS ?= -macosx_version_min 10.6 -exported_symbol _RedisModule_OnLoad -bundle -undefined dynamic_lookup -ldl -lpthread
+	CFLAGS += -mmacosx-version-min=10.12
+	SHOBJ_LDFLAGS ?= -macosx_version_min 10.12 -exported_symbol _RedisModule_OnLoad -bundle -undefined dynamic_lookup -ldl -lpthread
 endif
 export CFLAGS
 
@@ -86,7 +83,8 @@ $(LIBTRIEMAP):
 .PHONY: $(LIBTRIEMAP)
 
 $(GRAPHBLAS):
-	$(MAKE) library -C ../deps/GraphBLAS
+	$(MAKE) CMAKE_OPTIONS="-DCMAKE_CXX_FLAGS=-std=c++11" library -C ../deps/GraphBLAS
+
 .PHONY: $(GRAPHBLAS)
 
 # Compile query parse. 

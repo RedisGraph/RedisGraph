@@ -10,7 +10,6 @@ DEPS=$(CC_OBJECTS) $(LIBS)
 SRCDIR := $(shell pwd)
 LDFLAGS :=  -lc -lm -ldl -lpthread
 
-CC=gcc
 .SUFFIXES: .c .so .xo .o
 
 graph: test_graph.o
