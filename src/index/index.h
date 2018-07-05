@@ -14,8 +14,6 @@
 
 #define INDEX_PREFIX "redis_graph_INDEX"
 
-#define Index_DEPLETED (GrB_Index)SKIPLIST_DEPLETED
-
 typedef skiplistIterator IndexIter;
 
 typedef struct {
@@ -35,8 +33,7 @@ char* Index_OpPrint(AST_IndexNode *indexNode);
 
 GrB_Matrix IndexIter_BuildMatrix(IndexIter *iter, size_t node_count);
 
-void* IndexIter_Next(IndexIter *iter);
-void IndexIter_Free(IndexIter *iter);
+GrB_Index* IndexIter_Next(IndexIter *iter);
 void IndexIter_Free(IndexIter *iter);
 
 void Index_Free(Index *idx);

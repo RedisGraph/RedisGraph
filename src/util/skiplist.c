@@ -60,23 +60,27 @@ static inline skiplistNode *skiplistIteratorCurrent(skiplistIterator *it) {
  * Create a skip list node with the specified number of levels, pointing to
  * the specified object.
  */
-skiplistNode *skiplistCreateNode(int level, void *key, void *val) {
+skiplistNode *skiplistCreateNode(int level, skiplistKey key, skiplistVal *val) {
   skiplistNode *zn = zmalloc(sizeof(*zn) + level * sizeof(struct skiplistLevel));
   zn->key = key;
-  zn->vals = zmalloc(sizeof(void **));
+  zn->vals = zmalloc(sizeof(skiplistVal *));
   zn->valsAllocated = 1;
-  zn->vals[0] = val;
-  zn->numVals = 1;
+  if (val) {
+    zn->vals[0] = *val;
+    zn->numVals = 1;
+  } else {
+    zn->numVals = 0;
+  }
 
   return zn;
 }
 
-skiplistNode *skiplistNodeAppendValue(skiplistNode *n, void *val,
+skiplistNode *skiplistNodeAppendValue(skiplistNode *n, skiplistVal val,
                                       skiplistValCmpFunc cmp) {
 
   if (n->numVals >= n->valsAllocated) {
     n->valsAllocated *= 2;
-    n->vals = realloc(n->vals, n->valsAllocated * sizeof(void *));
+    n->vals = realloc(n->vals, n->valsAllocated * sizeof(skiplistVal *));
   }
 
   // Insert the new value
@@ -89,7 +93,7 @@ skiplistNode *skiplistNodeAppendValue(skiplistNode *n, void *val,
  * Create a new skip list with the specified function used in order to
  * compare elements. The function return value is the same as strcmp().
  */
-skiplist *skiplistCreate(skiplistCmpFunc cmp, void *cmpCtx, skiplistValCmpFunc vcmp,
+skiplist *skiplistCreate(skiplistCmpFunc cmp, skiplistValCmpFunc vcmp,
                          skiplistCloneKeyFunc cloneKey, skiplistFreeKeyFunc freeKey) {
   int j;
   skiplist *sl = zmalloc(sizeof(struct skiplist));
@@ -104,7 +108,6 @@ skiplist *skiplistCreate(skiplistCmpFunc cmp, void *cmpCtx, skiplistValCmpFunc v
   sl->header->backward = NULL;
   sl->tail = NULL;
   sl->compare = cmp;
-  sl->cmpCtx = cmpCtx;
   sl->valcmp = vcmp;
   sl->cloneKey = cloneKey;
   sl->freeKey = freeKey;
@@ -151,7 +154,7 @@ int skiplistRandomLevel(void) {
  * Insert the specified object, return NULL if the element already
  * exists.
  */
-skiplistNode *skiplistInsert(skiplist *sl, void *key, void *val) {
+skiplistNode *skiplistInsert(skiplist *sl, skiplistKey key, skiplistVal val) {
   skiplistNode *update[SKIPLIST_MAXLEVEL], *x;
   unsigned int rank[SKIPLIST_MAXLEVEL];
   int i, level;
@@ -161,7 +164,7 @@ skiplistNode *skiplistInsert(skiplist *sl, void *key, void *val) {
     /* store rank that is crossed to reach the insert position */
     rank[i] = (i == (sl->level - 1)) ? 0 : rank[i + 1];
     while (x->level[i].forward &&
-           sl->compare(x->level[i].forward->key, key, sl->cmpCtx) < 0) {
+           sl->compare(x->level[i].forward->key, key) < 0) {
       rank[i] += x->level[i].span;
       x = x->level[i].forward;
     }
@@ -170,7 +173,7 @@ skiplistNode *skiplistInsert(skiplist *sl, void *key, void *val) {
 
   /* If the element is already inside, append the value to the element. */
   if (x->level[0].forward &&
-      sl->compare(x->level[0].forward->key, key, sl->cmpCtx) == 0) {
+      sl->compare(x->level[0].forward->key, key) == 0) {
     return skiplistNodeAppendValue(x->level[0].forward, val, sl->valcmp);
   }
 
@@ -192,7 +195,7 @@ skiplistNode *skiplistInsert(skiplist *sl, void *key, void *val) {
    * will be set through pointer assignment.
    */
   if (sl->cloneKey) sl->cloneKey(&key);
-  x = skiplistCreateNode(level, key, val);
+  x = skiplistCreateNode(level, key, &val);
   for (i = 0; i < level; i++) {
     x->level[i].forward = update[i]->level[i].forward;
     update[i]->level[i].forward = x;
@@ -254,27 +257,27 @@ void skiplistDeleteNode(skiplist *sl, skiplistNode *x, skiplistNode **update) {
  * If the operation is successful, 1 is returned, otherwise the target was not found and 0 is returned.
  * The memory used to represent skiplist keys and values is not freed.
  */
-int skiplistDelete(skiplist *sl, void *key, void *val) {
+int skiplistDelete(skiplist *sl, skiplistKey key, skiplistVal *val) {
   skiplistNode *update[SKIPLIST_MAXLEVEL], *x;
   int i;
 
   x = sl->header;
   for (i = sl->level - 1; i >= 0; i--) {
     while (x->level[i].forward &&
-           sl->compare(x->level[i].forward->key, key, sl->cmpCtx) < 0) {
+           sl->compare(x->level[i].forward->key, key) < 0) {
       x = x->level[i].forward;
     }
     update[i] = x;
   }
   x = x->level[0].forward;
-  if (x && sl->compare(x->key, key, sl->cmpCtx) == 0) {
+  if (x && sl->compare(x->key, key) == 0) {
 
     if (val) {
       // try to delete the value itself from the vallist
       int found = 0;
       for (i = 0; i < x->numVals; i++) {
         // found the value - let's delete it
-        if (!sl->valcmp(val, x->vals[i])) {
+        if (!sl->valcmp(*val, x->vals[i])) {
           found = 1;
           // switch the found value with the top value
           if (i < x->numVals - 1) {
@@ -286,7 +289,7 @@ int skiplistDelete(skiplist *sl, void *key, void *val) {
           // shrink the array
           if (x->numVals > 0 && x->valsAllocated >= x->numVals * 4) {
             x->valsAllocated = x->numVals * 2;
-            x->vals = realloc(x->vals, x->valsAllocated * sizeof(val));
+            x->vals = realloc(x->vals, x->valsAllocated * sizeof(*val));
           }
           break;
         }
@@ -310,19 +313,19 @@ int skiplistDelete(skiplist *sl, void *key, void *val) {
  * Search for the element in the skip list, if found the
  * node pointer is returned, otherwise NULL is returned.
  */
-skiplistNode* skiplistFind(skiplist *sl, void *key) {
+skiplistNode* skiplistFind(skiplist *sl, skiplistKey key) {
   skiplistNode *x;
   int i;
 
   x = sl->header;
   for (i = sl->level - 1; i >= 0; i--) {
     while (x->level[i].forward &&
-           sl->compare(x->level[i].forward->key, key, sl->cmpCtx) < 0) {
+           sl->compare(x->level[i].forward->key, key) < 0) {
       x = x->level[i].forward;
     }
   }
   x = x->level[0].forward;
-  if (x && sl->compare(x->key, key, sl->cmpCtx) == 0) {
+  if (x && sl->compare(x->key, key) == 0) {
     return x;
   } else {
     return NULL;
@@ -333,13 +336,13 @@ skiplistNode* skiplistFind(skiplist *sl, void *key) {
  * Search for the element in the skip list, if found the
  * node pointer is returned, otherwise the next pointer is returned.
  */
-skiplistNode* skiplistFindAtLeast(skiplist *sl, void *key, int exclusive) {
+skiplistNode* skiplistFindAtLeast(skiplist *sl, skiplistKey key, int exclusive) {
   skiplistNode *x = sl->header;
   int i;
 
   for (i = sl->level - 1; i >= 0; i--) {
     while (x->level[i].forward) {
-      int rc = sl->compare(x->level[i].forward->key, key, sl->cmpCtx);
+      int rc = sl->compare(x->level[i].forward->key, key);
       if (rc < 0 || (rc == 0 && exclusive)) {
         x = x->level[i].forward;
       } else {
@@ -356,13 +359,13 @@ skiplistNode* skiplistFindAtLeast(skiplist *sl, void *key, int exclusive) {
  * If the skip list is empty, NULL is returned, otherwise the element
  * at head is removed and its pointed object returned.
  */
-void *skiplistPopHead(skiplist *sl) {
+skiplistKey skiplistPopHead(skiplist *sl) {
   skiplistNode *x = sl->header;
 
   x = x->level[0].forward;
   if (!x) return NULL;
 
-  void *ptr = x->key;
+  skiplistKey ptr = x->key;
   skiplistDelete(sl, ptr, NULL);
   return ptr;
 }
@@ -371,17 +374,17 @@ void *skiplistPopHead(skiplist *sl) {
  * If the skip list is empty, NULL is returned, otherwise the element
  * at tail is removed and its pointed object returned.
  */
-void *skiplistPopTail(skiplist *sl) {
+skiplistKey skiplistPopTail(skiplist *sl) {
   skiplistNode *x = sl->tail;
 
   if (!x) return NULL;
 
-  void *ptr = x->key;
-  skiplistDelete(sl, ptr, NULL);
-  return ptr;
+  skiplistKey key = x->key;
+  skiplistDelete(sl, key, NULL);
+  return key;
 }
 
-skiplistIterator* skiplistIterateRange(skiplist *sl, void *min, void *max,
+skiplistIterator* skiplistIterateRange(skiplist *sl, skiplistKey min, skiplistKey max,
                                       int minExclusive, int maxExclusive) {
   skiplistNode *n;
   if (!min) {
@@ -392,7 +395,7 @@ skiplistIterator* skiplistIterateRange(skiplist *sl, void *min, void *max,
   }
   if (n && max) {
     // make sure the first item of the range is not already above the range end
-    int c = sl->compare(n->key, max, sl->cmpCtx);
+    int c = sl->compare(n->key, max);
     // TODO: Fix comparisons to work with null functions
     if (c > 0 || (c == 0 && maxExclusive)) {
       n = NULL;
@@ -434,16 +437,16 @@ void skiplistIterate_Free(skiplistIterator *iter) {
   zfree(iter);
 }
 
-void *skiplistIterator_Next(skiplistIterator *it) {
+skiplistVal* skiplistIterator_Next(skiplistIterator *it) {
 
-  void *ret = SKIPLIST_DEPLETED;
+  skiplistVal *ret = NULL;
 
   if (!it->current) {
     return ret;
   }
 
   if (it->currentValOffset < it->current->numVals) {
-    ret = it->current->vals[it->currentValOffset++];
+    ret = &it->current->vals[it->currentValOffset++];
   }
 
   if (it->currentValOffset == it->current->numVals) {
@@ -452,7 +455,7 @@ void *skiplistIterator_Next(skiplistIterator *it) {
 
     // make sure we don't pass the range max. NULL means +inf
     if (it->current && it->rangeMax) {
-      int c = it->sl->compare(it->current->key, it->rangeMax, it->sl->cmpCtx);
+      int c = it->sl->compare(it->current->key, it->rangeMax);
       if (c > 0 || (c == 0 && it->maxExclusive)) {
         it->current = NULL;
       }

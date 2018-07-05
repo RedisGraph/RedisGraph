@@ -31,15 +31,19 @@
 #ifndef __DISQUE_SKIPLIST_H
 #define __DISQUE_SKIPLIST_H
 
-#include <stdint.h>
-#define SKIPLIST_DEPLETED (void*)UINT64_MAX
+// TODO this seems like a lot to add
+#include "../value.h"
+#include "../../deps/GraphBLAS/Include/GraphBLAS.h"
+
+typedef SIValue* skiplistKey;
+typedef GrB_Index skiplistVal;
 
 #define SKIPLIST_MAXLEVEL 32 /* Should be enough for 2^32 elements */
 #define SKIPLIST_P 0.25      /* Skiplist P = 1/4 */
 
 typedef struct skiplistNode {
-  void *key;
-  void **vals;
+  skiplistKey key;
+  skiplistVal *vals;
   unsigned int numVals;
   unsigned int valsAllocated;
   struct skiplistNode *backward;
@@ -49,11 +53,11 @@ typedef struct skiplistNode {
   } level[];
 } skiplistNode;
 
-typedef int (*skiplistCmpFunc)(void *p1, void *p2, void *ctx);
-typedef int (*skiplistValCmpFunc)(const void *p1, const void *p2);
+typedef int (*skiplistCmpFunc)(skiplistKey p1, skiplistKey p2);
+typedef int (*skiplistValCmpFunc)(const skiplistVal p1, const skiplistVal p2);
 
-typedef void (*skiplistCloneKeyFunc)(void **key);
-typedef void (*skiplistFreeKeyFunc)(void *key);
+typedef void (*skiplistCloneKeyFunc)(skiplistKey *key);
+typedef void (*skiplistFreeKeyFunc)(skiplistKey key);
 
 typedef struct skiplist {
   struct skiplistNode *header, *tail;
@@ -63,32 +67,31 @@ typedef struct skiplist {
   skiplistCloneKeyFunc cloneKey;
   skiplistFreeKeyFunc freeKey;
 
-  void *cmpCtx;
   unsigned long length;
   int level;
 } skiplist;
 
-skiplist *skiplistCreate(skiplistCmpFunc cmp, void *cmpCtx, skiplistValCmpFunc vcmp,
+skiplist *skiplistCreate(skiplistCmpFunc cmp, skiplistValCmpFunc vcmp,
                          skiplistCloneKeyFunc cloneKey, skiplistFreeKeyFunc freeKey);
 void skiplistFree(skiplist *sl);
-skiplistNode *skiplistInsert(skiplist *sl, void *key, void *val);
-int skiplistDelete(skiplist *sl, void *key, void *val);
-skiplistNode *skiplistFind(skiplist *sl, void *key);
-skiplistNode *skiplistFindAtLeast(skiplist *sl, void *key, int exclusive);
-void *skiplistPopHead(skiplist *sl);
-void *skiplistPopTail(skiplist *sl);
+skiplistNode *skiplistInsert(skiplist *sl, skiplistKey key, skiplistVal val);
+int skiplistDelete(skiplist *sl, skiplistKey key, skiplistVal *val);
+skiplistNode *skiplistFind(skiplist *sl, skiplistKey key);
+skiplistNode *skiplistFindAtLeast(skiplist *sl, skiplistKey key, int exclusive);
+skiplistKey skiplistPopHead(skiplist *sl);
+skiplistKey skiplistPopTail(skiplist *sl);
 
 typedef struct {
   skiplistNode *current;
   unsigned int currentValOffset;
-  void *rangeMin;
-  void *rangeMax;
+  skiplistKey rangeMin;
+  skiplistKey rangeMax;
   int minExclusive;
   int maxExclusive;
   skiplist *sl;
 } skiplistIterator;
 
-skiplistIterator* skiplistIterateRange(skiplist *sl, void *min, void *max,
+skiplistIterator* skiplistIterateRange(skiplist *sl, skiplistKey min, skiplistKey max,
                                       int minExclusive, int maxExclusive);
 
 skiplistIterator* skiplistIterateAll(skiplist *sl);
@@ -96,6 +99,6 @@ skiplistIterator* skiplistIterateAll(skiplist *sl);
 void skiplistIterate_Reset(skiplistIterator *iter);
 void skiplistIterate_Free(skiplistIterator *iter);
 
-void *skiplistIterator_Next(skiplistIterator *it);
+skiplistVal* skiplistIterator_Next(skiplistIterator *it);
 
 #endif

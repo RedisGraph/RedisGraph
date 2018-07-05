@@ -81,15 +81,15 @@ void validate_string_index(Graph *g, Index *idx) {
   IndexIter *iter = IndexIter_CreateFromFilter(idx, &filter->pred);
   FilterTree_Free(filter);
 
-  GrB_Index node_id;
+  GrB_Index *node_id;
   Node *cur;
   SIValue last_prop = lb;
   SIValue *cur_prop;
 
   int num_vals = 0;
-  while ((node_id = (GrB_Index)IndexIter_Next(iter)) != Index_DEPLETED) {
+  while ((node_id = IndexIter_Next(iter)) != NULL) {
     // Retrieve the node from the graph
-    cur = Graph_GetNode(g, node_id);
+    cur = Graph_GetNode(g, *node_id);
     // Retrieve the indexed property from the node
     cur_prop = GraphEntity_Get_Property((GraphEntity*)cur, str_key);
     // Values should be sorted in increasing value - duplicates are allowed 
@@ -117,15 +117,15 @@ void validate_numeric_index(Graph *g, Index *idx) {
   FilterTree_Free(filter);
 
 
-  GrB_Index node_id;
+  GrB_Index *node_id;
   Node *cur;
   SIValue last_prop = lb;
   SIValue *cur_prop;
 
   int num_vals = 0;
-  while ((node_id = (GrB_Index)IndexIter_Next(iter)) != Index_DEPLETED) {
+  while ((node_id = IndexIter_Next(iter)) != NULL) {
     // Retrieve the node from the graph
-    cur = Graph_GetNode(g, node_id);
+    cur = Graph_GetNode(g, *node_id);
     // Retrieve the indexed property from the node
     cur_prop = GraphEntity_Get_Property((GraphEntity*)cur, str_key);
     // Values should be sorted in increasing value - duplicates are allowed 

@@ -129,8 +129,7 @@ void IndexType_AofRewrite(RedisModuleIO *aof, RedisModuleString *key, void *valu
 }
 
 void IndexType_Free(void *value) {
-  Index *index = value;
-  // free
+  Index_Free((Index*)value);
 }
 
 int IndexType_Register(RedisModuleCtx *ctx) {

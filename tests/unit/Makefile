@@ -25,9 +25,6 @@ tuples_iter: test_tuples_iter.o
 filter_tree: test_filter_tree.o
 	$(CC) $(CFLAGS) -o test_filter_tree test_filter_tree.o  $(DEPS) $(LDFLAGS)
 
-skiplist_generic: test_skiplist_generic.o
-	$(CC) $(CFLAGS)  -o test_skiplist_generic test_skiplist_generic.o  $(DEPS) $(LDFLAGS)
-
 skiplist_graph: test_skiplist_graph.o
 	$(CC) $(CFLAGS)  -o test_skiplist_graph test_skiplist_graph.o  $(DEPS) $(LDFLAGS)
 
@@ -43,7 +40,7 @@ arithmetic_expression: test_arithmetic_expression.o
 resultset_record: test_resultset_record.o
 	$(CC) $(CFLAGS)  -o test_resultset_record test_resultset_record.o  $(DEPS) $(LDFLAGS)
 
-build: graph algebraic_expression tuples_iter filter_tree value arithmetic_expression resultset_record skiplist_generic skiplist_graph index
+build: graph algebraic_expression tuples_iter filter_tree value arithmetic_expression resultset_record skiplist_graph index
 
 test_graph:
 	@(sh -c ./test_graph)
@@ -60,10 +57,6 @@ test_tuples_iter:
 test_filter_tree:
 	@(sh -c ./test_filter_tree)
 .PHONY: test_filter_tree
-
-test_skiplist_generic:
-	@(sh -c ./test_skiplist_generic)
-.PHONY: test_skiplist_generic
 
 test_skiplist_graph:
 	@(sh -c ./test_skiplist_graph)
@@ -85,6 +78,6 @@ test_resultset_record:
 	@(sh -c ./test_resultset_record)
 .PHONY: test_resultset_record
 
-test: test_graph test_algebraic_expression test_tuples_iter test_filter_tree test_value test_arithmetic_expression test_resultset_record test_skiplist_generic test_skiplist_graph test_index
+test: test_graph test_algebraic_expression test_tuples_iter test_filter_tree test_value test_arithmetic_expression test_resultset_record test_skiplist_graph test_index
 
 all: build test

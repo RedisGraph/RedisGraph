@@ -1,8 +1,6 @@
 #include "index.h"
 #include "index_type.h"
 
-int compareNodes(const void *a, const void *b) {
-  return (GrB_Index)a - (GrB_Index)b;
 RedisModuleKey* _index_LookupKey(RedisModuleCtx *ctx, const char *graph, const char *label, const char *property) {
   char *strKey;
   int keylen = asprintf(&strKey, "%s_%s_%s_%s", INDEX_PREFIX, graph, label, property);
@@ -16,30 +14,29 @@ RedisModuleKey* _index_LookupKey(RedisModuleCtx *ctx, const char *graph, const c
   return key;
 }
 
-}
-
-int compareStrings(void *a, void *b, void *ctx) {
-  return strcmp(((SIValue*)a)->stringval, ((SIValue*)b)->stringval);
-}
-
-// TODO this seems inefficient
-int compareNumerics(void *p1, void *p2, void *ctx) {
-  double a, b;
-  SIValue_ToDouble(p1, &a);
-  SIValue_ToDouble(p2, &b);
+int compareNodes(GrB_Index a, GrB_Index b) {
   return a - b;
+}
+
+int compareStrings(SIValue *a, SIValue *b) {
+  return strcmp(a->stringval, b->stringval);
+}
+
+int compareNumerics(SIValue *a, SIValue *b) {
+  return a->doubleval - b->doubleval;
 }
 
 /*
  * The index must maintain its own copy of the indexed SIValue
  * so that it becomes outdated but not broken by updates to the property.
  */
-void cloneKey(void **property) {
+// TODO This can now be built directly into the skiplist-internal functions
+void cloneKey(SIValue **property) {
   SIValue *redirect = *property;
   *redirect = SI_Clone(*redirect);
 }
 
-void freeKey(void *key) {
+void freeKey(SIValue *key) {
   SIValue_Free(key);
 }
 
@@ -83,8 +80,8 @@ Index* buildIndex(Graph *g, const GrB_Matrix label_matrix, const char *label, co
   index->label = strdup(label);
   index->property = strdup(prop_str);
 
-  index->string_sl = skiplistCreate(compareStrings, NULL, compareNodes, cloneKey, freeKey);
-  index->numeric_sl = skiplistCreate(compareNumerics, NULL, compareNodes, cloneKey, freeKey);
+  index->string_sl = skiplistCreate(compareStrings, compareNodes, cloneKey, freeKey);
+  index->numeric_sl = skiplistCreate(compareNumerics, compareNodes, cloneKey, freeKey);
 
   TuplesIter *it = TuplesIter_new(label_matrix);
 
@@ -121,7 +118,7 @@ Index* buildIndex(Graph *g, const GrB_Matrix label_matrix, const char *label, co
 
     assert(key->type == T_STRING || key->type & SI_NUMERIC);
     sl = (key->type & SI_NUMERIC) ? index->numeric_sl: index->string_sl;
-    skiplistInsert(sl, key, (void*)node_id);
+    skiplistInsert(sl, key, node_id);
   }
 
   TuplesIter_free(it);
@@ -220,18 +217,18 @@ GrB_Matrix IndexIter_BuildMatrix(IndexIter *iter, size_t node_count) {
   GrB_Info info = GrB_Matrix_new(&index_matrix, GrB_BOOL, node_count, node_count);
   assert (info == GrB_SUCCESS);
 
-  GrB_Index node_id;
-  while ((node_id = (GrB_Index)IndexIter_Next(iter)) != Index_DEPLETED) {
-    assert (node_id < node_count);
+  GrB_Index *node_id;
+  while ((node_id = (GrB_Index *)IndexIter_Next(iter)) != NULL) {
+    assert (*node_id < node_count);
     // Obey constraint here?
-    GrB_Matrix_setElement_BOOL(index_matrix, true, node_id, node_id);
+    GrB_Matrix_setElement_BOOL(index_matrix, true, *node_id, *node_id);
   }
 
   return index_matrix;
 }
 
 
-void* IndexIter_Next(IndexIter *iter) {
+GrB_Index* IndexIter_Next(IndexIter *iter) {
   return skiplistIterator_Next(iter);
 }
 
