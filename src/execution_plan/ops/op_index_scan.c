@@ -1,16 +1,12 @@
 #include "op_index_scan.h"
 
-OpBase *NewIndexScanOp(QueryGraph *qg, Graph *g, Node **node, IndexCreateIter *iter) {
+OpBase *NewIndexScanOp(QueryGraph *qg, Graph *g, Node **node, IndexIter *iter) {
   return (OpBase*)NewIndexScan(qg, g, node, iter);
 }
 
-IndexScan* NewIndexScan(QueryGraph *qg, Graph *g, Node **node, IndexCreateIter *iter) {
+IndexScan* NewIndexScan(QueryGraph *qg, Graph *g, Node **node, IndexIter *iter) {
 
   IndexScan *indexScan = malloc(sizeof(IndexScan));
-  /* TODO I think these are getting set to dummy nodes rather than proper
-   * graph nodes. It is set before getting accessed by Consume, but an assertion
-   * in the FilterTree _applyPredicateFilters fails if they are not set here.
-   * Determine appropriate settings. */
   indexScan->node = node;
   indexScan->_node = *node;
   indexScan->g = g;
@@ -25,9 +21,9 @@ IndexScan* NewIndexScan(QueryGraph *qg, Graph *g, Node **node, IndexCreateIter *
 
   Vector_Push(indexScan->op.modifies, QueryGraph_GetNodeAlias(qg, *node));
 
-  indexScan->operand = IndexCreateIter_BuildMatrix(iter, g->node_count);
+  indexScan->M = IndexIter_BuildMatrix(iter, g->node_count);
   // Should be masked in IndexIterator
-  indexScan->iter = TuplesIter_new(indexScan->operand);
+  indexScan->iter = TuplesIter_new(indexScan->M);
 
   return indexScan;
 }
@@ -63,6 +59,6 @@ OpResult IndexScanReset(OpBase *ctx) {
 void IndexScanFree(OpBase *op) {
   IndexScan *indexScan = (IndexScan *)op;
   TuplesIter_free(indexScan->iter);
-  GrB_Matrix_free(&indexScan->operand);
+  GrB_Matrix_free(&indexScan->M);
   free(indexScan);
 }

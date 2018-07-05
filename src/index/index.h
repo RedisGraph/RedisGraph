@@ -16,8 +16,7 @@
 
 #define Index_DEPLETED (GrB_Index)SKIPLIST_DEPLETED
 
-typedef TuplesIter IndexIterator; // TODO unused
-typedef skiplistIterator IndexCreateIter;
+typedef skiplistIterator IndexIter;
 
 typedef struct {
   char *label;
@@ -26,25 +25,20 @@ typedef struct {
   skiplist *numeric_sl;
 } Index;
 
-Index* buildIndex(Graph *g, const GrB_Matrix label_matrix, const char *label, const char *prop_str);
-
 void Index_Delete(RedisModuleCtx *ctx, const char *graphName, const char *label, const char *prop);
 void Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, const char *label, const char *prop_str);
 
 /* Select an Index and range based on filters associated with Node */
-IndexCreateIter* Index_IntersectFilters(RedisModuleCtx *ctx, const char *graphName, Vector *filters, const char *label);
+IndexIter* Index_IntersectFilters(RedisModuleCtx *ctx, const char *graphName, Vector *filters, const char *label);
 
 char* Index_OpPrint(AST_IndexNode *indexNode);
 
-GrB_Matrix IndexCreateIter_BuildMatrix(IndexCreateIter *iter, size_t node_count);
+GrB_Matrix IndexIter_BuildMatrix(IndexIter *iter, size_t node_count);
 
-void* IndexCreateIter_Next(IndexCreateIter *iter);
-void IndexCreateIter_Free(IndexCreateIter *iter);
+void* IndexIter_Next(IndexIter *iter);
+void IndexIter_Free(IndexIter *iter);
+void IndexIter_Free(IndexIter *iter);
 
-/*
-void* IndexIterator_Next(IndexIterator *iter);
-void IndexIterator_Reset(IndexIterator *iter);
-void IndexIterator_Free(IndexIterator *iter);
-*/
+void Index_Free(Index *idx);
 
 #endif

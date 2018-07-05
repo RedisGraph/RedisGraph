@@ -12,13 +12,13 @@ typedef struct {
     Node **node;            /* node being scanned */
     Node *_node;
     Graph *g;
-    GrB_Matrix operand;
+    GrB_Matrix M;
     TuplesIter *iter;
 } IndexScan;
 
 /* Creates a new IndexScan operation */
-OpBase *NewIndexScanOp(QueryGraph *qg, Graph *g, Node **node, IndexCreateIter *iter);
-IndexScan* NewIndexScan(QueryGraph *qg, Graph *g, Node **node, IndexCreateIter *iter);
+OpBase *NewIndexScanOp(QueryGraph *qg, Graph *g, Node **node, IndexIter *iter);
+IndexScan* NewIndexScan(QueryGraph *qg, Graph *g, Node **node, IndexIter *iter);
 
 /* IndexScan next operation
  * called each time a new node is required */

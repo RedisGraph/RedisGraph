@@ -3,6 +3,19 @@
 
 int compareNodes(const void *a, const void *b) {
   return (GrB_Index)a - (GrB_Index)b;
+RedisModuleKey* _index_LookupKey(RedisModuleCtx *ctx, const char *graph, const char *label, const char *property) {
+  char *strKey;
+  int keylen = asprintf(&strKey, "%s_%s_%s_%s", INDEX_PREFIX, graph, label, property);
+
+  RedisModuleString *rmIndexId = RedisModule_CreateString(ctx, strKey, keylen);
+  free(strKey);
+
+  RedisModuleKey *key = RedisModule_OpenKey(ctx, rmIndexId, REDISMODULE_WRITE);
+  RedisModule_FreeString(ctx, rmIndexId);
+
+  return key;
+}
+
 }
 
 int compareStrings(void *a, void *b, void *ctx) {
@@ -30,21 +43,8 @@ void freeKey(void *key) {
   SIValue_Free(key);
 }
 
-RedisModuleKey* Index_LookupKey(RedisModuleCtx *ctx, const char *graph, const char *label, const char *property) {
-  char *strKey;
-  asprintf(&strKey, "%s_%s_%s_%s", INDEX_PREFIX, graph, label, property);
-
-  RedisModuleString *rmIndexId = RedisModule_CreateString(ctx, strKey, strlen(strKey));
-  free(strKey);
-
-  RedisModuleKey *key = RedisModule_OpenKey(ctx, rmIndexId, REDISMODULE_WRITE);
-  RedisModule_FreeString(ctx, rmIndexId);
-
-  return key;
-}
-
 Index* Index_Get(RedisModuleCtx *ctx, const char *graph, const char *label, const char *property) {
-  RedisModuleKey *key = Index_LookupKey(ctx, graph, label, property);
+  RedisModuleKey *key = _index_LookupKey(ctx, graph, label, property);
   Index *idx = NULL;
 
   if (RedisModule_ModuleTypeGetType(key) == IndexRedisModuleType) {
@@ -55,16 +55,10 @@ Index* Index_Get(RedisModuleCtx *ctx, const char *graph, const char *label, cons
   return idx;
 }
 
-void _index_free(Index *idx) {
-  skiplistFree(idx->string_sl);
-  skiplistFree(idx->numeric_sl);
-  free(idx->label);
-  free(idx->property);
-  free(idx);
-}
-
 void Index_Delete(RedisModuleCtx *ctx, const char *graphName, const char *label, const char *prop) {
-  RedisModuleKey *key = Index_LookupKey(ctx, graphName, label, prop);
+  RedisModule_ReplyWithArray(ctx, 2);
+
+  RedisModuleKey *key = _index_LookupKey(ctx, graphName, label, prop);
   char *reply;
   if (RedisModule_ModuleTypeGetType(key) != IndexRedisModuleType) {
     // Reply with error if this key does not exist or does not correspond to an index object
@@ -77,7 +71,7 @@ void Index_Delete(RedisModuleCtx *ctx, const char *graphName, const char *label,
   }
 
   Index *idx = RedisModule_ModuleTypeGetValue(key);
-  _index_free(idx);
+  Index_Free(idx);
 
   RedisModule_DeleteKey(key);
   RedisModule_ReplyWithSimpleString(ctx, "Removed 1 index.");
@@ -97,6 +91,7 @@ Index* buildIndex(Graph *g, const GrB_Matrix label_matrix, const char *label, co
   Node *node;
   EntityProperty *prop;
 
+  skiplist *sl;
   GrB_Index node_id;
   int found;
   int prop_index = 0;
@@ -124,14 +119,9 @@ Index* buildIndex(Graph *g, const GrB_Matrix label_matrix, const char *label, co
     // This value will be cloned within the skiplistInsert routine if necessary
     SIValue *key = &prop->value;
 
-    if (key->type == T_STRING) {
-      // Safe cast? Same size, but...
-      skiplistInsert(index->string_sl, key, (void*)node_id);
-    } else if (key->type & SI_NUMERIC) {
-      skiplistInsert(index->numeric_sl, key, (void*)node_id);
-    } else { // This property was neither a string nor numeric value; raise a run-time error.
-      assert(0);
-    }
+    assert(key->type == T_STRING || key->type & SI_NUMERIC);
+    sl = (key->type & SI_NUMERIC) ? index->numeric_sl: index->string_sl;
+    skiplistInsert(sl, key, (void*)node_id);
   }
 
   TuplesIter_free(it);
@@ -142,17 +132,19 @@ Index* buildIndex(Graph *g, const GrB_Matrix label_matrix, const char *label, co
 // Create and populate index for specified property
 // (This function will create separate string and numeric indices if property has mixed types)
 void Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, const char *label, const char *prop_str) {
-  LabelStore *store = LabelStore_Get(ctx, STORE_NODE, graphName, label);
-  assert(store);
-  const GrB_Matrix label_matrix = Graph_GetLabelMatrix(g, store->id);
+  RedisModule_ReplyWithArray(ctx, 2);
 
-  RedisModuleKey *key = Index_LookupKey(ctx, graphName, label, prop_str);
+  RedisModuleKey *key = _index_LookupKey(ctx, graphName, label, prop_str);
   // Do nothing if this index already exists
   if (RedisModule_ModuleTypeGetType(key) == IndexRedisModuleType) {
     RedisModule_CloseKey(key);
     RedisModule_ReplyWithSimpleString(ctx, "(no changes, no records)");
     return;
   }
+
+  LabelStore *store = LabelStore_Get(ctx, STORE_NODE, graphName, label);
+  assert(store);
+  const GrB_Matrix label_matrix = Graph_GetLabelMatrix(g, store->id);
 
   Index *idx = buildIndex(g, label_matrix, label, prop_str);
   RedisModule_ModuleTypeSetValue(key, IndexRedisModuleType, idx);
@@ -161,7 +153,7 @@ void Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, const ch
   RedisModule_ReplyWithSimpleString(ctx, "Added 1 index.");
 }
 
-IndexCreateIter* IndexCreateIter_CreateFromFilter(Index *idx, FT_PredicateNode *filter) {
+IndexIter* IndexIter_CreateFromFilter(Index *idx, FT_PredicateNode *filter) {
   skiplist *target = filter->constVal.type == T_STRING ? idx->string_sl : idx->numeric_sl;
   SIValue *bound;
 
@@ -198,7 +190,7 @@ IndexCreateIter* IndexCreateIter_CreateFromFilter(Index *idx, FT_PredicateNode *
  * to see if a scan operation can employ an index. This function will return the iterator
  * required for constructing an indexScan operation.
  */
-IndexCreateIter* Index_IntersectFilters(RedisModuleCtx *ctx, const char *graphName, Vector *filters, const char *label) {
+IndexIter* Index_IntersectFilters(RedisModuleCtx *ctx, const char *graphName, Vector *filters, const char *label) {
   FT_PredicateNode *const_filter;
   Index *idx;
   while (Vector_Size(filters) > 0) {
@@ -206,7 +198,7 @@ IndexCreateIter* Index_IntersectFilters(RedisModuleCtx *ctx, const char *graphNa
     // Look this property up to see if it has been indexed (using the label rather than the node alias)
     if ((idx = Index_Get(ctx, graphName, label, const_filter->Lop.property)) != NULL) {
       // Build an iterator from the first matching index
-      return IndexCreateIter_CreateFromFilter(idx, const_filter);
+      return IndexIter_CreateFromFilter(idx, const_filter);
     }
   }
 
@@ -222,13 +214,15 @@ char* Index_OpPrint(AST_IndexNode *indexNode) {
   }
 }
 
-GrB_Matrix IndexCreateIter_BuildMatrix(IndexCreateIter *iter, size_t node_count) {
+GrB_Matrix IndexIter_BuildMatrix(IndexIter *iter, size_t node_count) {
   // Make index matrix of size n*n
   GrB_Matrix index_matrix;
-  GrB_Matrix_new(&index_matrix, GrB_BOOL, node_count, node_count);
+  GrB_Info info = GrB_Matrix_new(&index_matrix, GrB_BOOL, node_count, node_count);
+  assert (info == GrB_SUCCESS);
 
   GrB_Index node_id;
-  while ((node_id = (GrB_Index)IndexCreateIter_Next(iter)) != Index_DEPLETED) {
+  while ((node_id = (GrB_Index)IndexIter_Next(iter)) != Index_DEPLETED) {
+    assert (node_id < node_count);
     // Obey constraint here?
     GrB_Matrix_setElement_BOOL(index_matrix, true, node_id, node_id);
   }
@@ -237,29 +231,19 @@ GrB_Matrix IndexCreateIter_BuildMatrix(IndexCreateIter *iter, size_t node_count)
 }
 
 
-void* IndexCreateIter_Next(IndexCreateIter *iter) {
+void* IndexIter_Next(IndexIter *iter) {
   return skiplistIterator_Next(iter);
 }
 
-void IndexCreateIter_Free(IndexCreateIter *iter) {
+void IndexIter_Free(IndexIter *iter) {
   skiplistIterate_Free(iter);
 }
 
-// TODO all unused
-/*
-void IndexCreateIter_Reset(IndexCreateIter *iter) {
-  skiplistIterate_Reset(iter);
+void Index_Free(Index *idx) {
+  skiplistFree(idx->string_sl);
+  skiplistFree(idx->numeric_sl);
+  free(idx->label);
+  free(idx->property);
+  free(idx);
 }
 
-void* IndexScanIterator_Next(IndexScanIterator *iter, GrB_Index *row, GrB_Index *node_id) {
-  return TuplesIter_next(iter, row, node_id);
-}
-
-void IndexScanIterator_Reset(IndexScanIterator *iter) {
-  TuplesIter_reset(iter);
-}
-
-void IndexScanIterator_Free(IndexScanIterator *iter) {
-  TuplesIter_free(iter);
-}
-*/

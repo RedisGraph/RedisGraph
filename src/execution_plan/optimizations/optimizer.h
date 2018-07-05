@@ -7,7 +7,4 @@
 /* Try to optimize an execution plan */
 void optimizePlan(RedisModuleCtx *ctx, ExecutionPlan *plan, const char *graph_name, Graph *g);
 
-/* Replace LabelScans with IndexScans when viable */
-void utilizeIndices(RedisModuleCtx *ctx, ExecutionPlan *plan, const char *graph_name, Graph *g);
-
 #endif

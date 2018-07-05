@@ -4,8 +4,8 @@
 #include "../../src/index/index.h"
 
 // These functions are defined in index.c, but not declared in index.h
-extern IndexCreateIter* IndexCreateIter_CreateFromFilter(Index *idx, FT_PredicateNode *filter);
-extern void _index_free(Index *idx);
+extern IndexIter* IndexIter_CreateFromFilter(Index *idx, FT_PredicateNode *filter);
+extern Index* buildIndex(Graph *g, const GrB_Matrix label_matrix, const char *label, const char *prop_str);
 
 const char *label = "test_label";
 char *str_key = "string_prop";
@@ -78,7 +78,7 @@ void validate_string_index(Graph *g, Index *idx) {
   // Build an iterator from a constant filter - this will include all elements
   SIValue lb = SI_StringVal("");
   FT_FilterNode *filter = CreateConstFilterNode(label, str_key, GE, lb);
-  IndexCreateIter *iter = IndexCreateIter_CreateFromFilter(idx, &filter->pred);
+  IndexIter *iter = IndexIter_CreateFromFilter(idx, &filter->pred);
   FilterTree_Free(filter);
 
   GrB_Index node_id;
@@ -87,7 +87,7 @@ void validate_string_index(Graph *g, Index *idx) {
   SIValue *cur_prop;
 
   int num_vals = 0;
-  while ((node_id = (GrB_Index)IndexCreateIter_Next(iter)) != Index_DEPLETED) {
+  while ((node_id = (GrB_Index)IndexIter_Next(iter)) != Index_DEPLETED) {
     // Retrieve the node from the graph
     cur = Graph_GetNode(g, node_id);
     // Retrieve the indexed property from the node
@@ -98,7 +98,7 @@ void validate_string_index(Graph *g, Index *idx) {
   }
   assert(num_vals == 100);
   SIValue_Free(&lb);
-  IndexCreateIter_Free(iter);
+  IndexIter_Free(iter);
 }
 
 void validate_numeric_index(Graph *g, Index *idx) {
@@ -113,7 +113,7 @@ void validate_numeric_index(Graph *g, Index *idx) {
   // Build an iterator from a constant filter - this will include all elements
   SIValue lb = SI_DoubleVal(0);
   FT_FilterNode *filter = CreateConstFilterNode(label, str_key, GE, lb);
-  IndexCreateIter *iter = IndexCreateIter_CreateFromFilter(idx, &filter->pred);
+  IndexIter *iter = IndexIter_CreateFromFilter(idx, &filter->pred);
   FilterTree_Free(filter);
 
 
@@ -123,7 +123,7 @@ void validate_numeric_index(Graph *g, Index *idx) {
   SIValue *cur_prop;
 
   int num_vals = 0;
-  while ((node_id = (GrB_Index)IndexCreateIter_Next(iter)) != Index_DEPLETED) {
+  while ((node_id = (GrB_Index)IndexIter_Next(iter)) != Index_DEPLETED) {
     // Retrieve the node from the graph
     cur = Graph_GetNode(g, node_id);
     // Retrieve the indexed property from the node
@@ -134,7 +134,7 @@ void validate_numeric_index(Graph *g, Index *idx) {
     // SIValue_Print(stdout, (SIValue*)cur_prop);
   }
   assert(num_vals == 100);
-  IndexCreateIter_Free(iter);
+  IndexIter_Free(iter);
 }
 
 int main() {
@@ -149,8 +149,8 @@ int main() {
   validate_string_index(g, str_index);
   validate_numeric_index(g, num_index);
 
-  _index_free(str_index);
-  _index_free(num_index);
+  Index_Free(str_index);
+  Index_Free(num_index);
 
   Graph_Free(g);
 

@@ -41,7 +41,6 @@
 
 void _index_operation(RedisModuleCtx *ctx, const char *graphName, Graph *g, AST_IndexNode *indexNode) {
   // Set up array response for printing statistics
-  RedisModule_ReplyWithArray(ctx, 2);
   switch(indexNode->operation) {
     case CREATE_INDEX:
       Index_Create(ctx, graphName, g, indexNode->label, indexNode->property);

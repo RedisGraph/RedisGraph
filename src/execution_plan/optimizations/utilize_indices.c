@@ -1,4 +1,5 @@
-#include "optimizer.h"
+#include "utilize_indices.h"
+#include "../ops/op_index_scan.h"
 
 /* The utilizeIndices optimization finds Label Scan operations with Filter parents and, if
  * any constant predicate filter matches a viable index, replaces the Label Scan with an Index Scan.
