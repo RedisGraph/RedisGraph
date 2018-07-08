@@ -7,13 +7,8 @@ OpBase* NewCondTraverseOp(Graph *g, QueryGraph* qg, AlgebraicExpression *algebra
 CondTraverse* NewCondTraverse(Graph *g, QueryGraph* qg, AlgebraicExpression *algebraic_expression) {
     CondTraverse *traverse = calloc(1, sizeof(CondTraverse));
     traverse->graph = g;
-    traverse->algebraic_results = AlgebraicExpression_Execute(algebraic_expression);
-    traverse->M = traverse->algebraic_results->m;
-
-    GrB_Index nrows;
-    GrB_Matrix_nrows(&nrows, traverse->M);
-    GrB_Vector_new(&(traverse->V), GrB_BOOL, nrows);
-    traverse->iter = TuplesIter_new((GrB_Matrix) traverse->V);
+    traverse->algebraic_expression = algebraic_expression;
+    traverse->algebraic_results = NULL;
 
     // Set our Op operations
     traverse->op.name = "Conditional Traverse";
@@ -25,9 +20,9 @@ CondTraverse* NewCondTraverse(Graph *g, QueryGraph* qg, AlgebraicExpression *alg
     traverse->op.modifies = NewVector(char*, 2);
 
     char *modified = NULL;
-    modified = QueryGraph_GetNodeAlias(qg, *traverse->algebraic_results->src_node);
+    modified = QueryGraph_GetNodeAlias(qg, *traverse->algebraic_expression->src_node);
     Vector_Push(traverse->op.modifies, modified);
-    modified = QueryGraph_GetNodeAlias(qg, *traverse->algebraic_results->dest_node);
+    modified = QueryGraph_GetNodeAlias(qg, *traverse->algebraic_expression->dest_node);
     Vector_Push(traverse->op.modifies, modified);
 
     return traverse;
@@ -50,6 +45,13 @@ OpResult CondTraverseConsume(OpBase *opBase, QueryGraph* graph) {
     
     /* Not initialized. */
     if(op->state == CondTraverseUninitialized) {
+        op->algebraic_results = AlgebraicExpression_Execute(op->algebraic_expression);
+        op->M = op->algebraic_results->m;
+
+        GrB_Index nrows;
+        GrB_Matrix_nrows(&nrows, op->M);
+        GrB_Vector_new(&(op->V), GrB_BOOL, nrows);
+        op->iter = TuplesIter_new((GrB_Matrix) op->V);
         return OP_REFRESH;
     }
 
@@ -81,6 +83,7 @@ OpResult CondTraverseReset(OpBase *ctx) {
 void CondTraverseFree(OpBase *ctx) {
     CondTraverse *op = (CondTraverse*)ctx;
     TuplesIter_free(op->iter);
-    AlgebraicExpressionResult_Free(op->algebraic_results);
+    if(op->algebraic_results)
+        AlgebraicExpressionResult_Free(op->algebraic_results);
     free(op);
 }

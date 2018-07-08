@@ -22,9 +22,14 @@ void GxB_Matrix_print(GrB_Matrix m) {
 
 AlgebraicExpressionResult *_AlgebraicExpressionResult_New(GrB_Matrix M, AlgebraicExpression *ae) {
     AlgebraicExpressionResult *aer = malloc(sizeof(AlgebraicExpressionResult));
+
+    // Are we required to transpose result?
+    /* TODO: It might be cheaper to transpose using a 
+     * descriptor when performing the last multiplication on the output. */
     aer->m = M;
     aer->src_node = ae->src_node;
     aer->dest_node = ae->dest_node;
+    aer->_transpose = ae->transpose;
     /* Free either when a multiplication was performed,
      * or a single operand was transposed */
     aer->_free_m = (ae->operand_count > 1 || ae->operands[0].transpose);
@@ -36,6 +41,7 @@ AlgebraicExpression *_AE_MUL(size_t operand_count) {
     ae->op = AL_EXP_MUL;
     ae->operand_count = operand_count;
     ae->operands = malloc(sizeof(AlgebraicExpressionOperand) * operand_count);
+    ae->transpose = false;
     return ae;
 }
 
@@ -172,6 +178,12 @@ inline void _AlgebraicExpression_Execute_MUL(GrB_Matrix C, GrB_Matrix A, GrB_Mat
 AlgebraicExpressionResult *AlgebraicExpression_Execute(AlgebraicExpression *ae) {
     assert(ae);
     
+    /* TODO: there are cases where we don't need to transpose,
+     * for example when there's only a single operand and both the operand 
+     * is required to be transposed and the result is requested to be
+     * transposed, in that case transpose(transpose(A)) = A. 
+     * And so in that case we'll perform two unnecessary transpose. */
+
     GrB_Matrix A = ae->operands[0].operand;
     GrB_Matrix C = A;
     int operand_count = ae->operand_count;
@@ -209,9 +221,39 @@ AlgebraicExpressionResult *AlgebraicExpression_Execute(AlgebraicExpression *ae) 
 
         GrB_Descriptor_free(&desc);
     }
-        
+
+    if(ae->transpose) {
+        GrB_transpose(C, NULL, NULL, C, NULL);
+        // Swap src and dest nodes.
+        Node **n = ae->src_node;
+        ae->src_node = ae->dest_node;
+        ae->dest_node = n;
+    }
+
     AlgebraicExpressionResult *res = _AlgebraicExpressionResult_New(C, ae);
     return res;
+}
+
+void AlgebraicExpression_AppendTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transpose) {
+    assert(ae);
+    ae->operand_count++;
+    ae->operands = realloc(ae->operands, sizeof(AlgebraicExpressionOperand) * ae->operand_count);
+    ae->operands[ae->operand_count-1].transpose = transpose;
+    ae->operands[ae->operand_count-1].operand = m;
+}
+
+void AlgebraicExpression_PrependTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transpose) {
+    assert(ae);
+    ae->operand_count++;
+    ae->operands = realloc(ae->operands, sizeof(AlgebraicExpressionOperand) * ae->operand_count);
+    // TODO: might be optimized with memcpy.
+    // Shift operands to the right, making room at the begining.
+    for(int i = ae->operand_count-1; i > 0 ; i--) {
+        ae->operands[i] = ae->operands[i-1];
+    }
+
+    ae->operands[0].transpose = transpose;
+    ae->operands[0].operand = m;
 }
 
 void AlgebraicExpression_Free(AlgebraicExpression* ae) {
@@ -220,6 +262,7 @@ void AlgebraicExpression_Free(AlgebraicExpression* ae) {
 }
 
 void AlgebraicExpressionResult_Free(AlgebraicExpressionResult *aer) {
+    if(aer->_transpose) GrB_transpose(aer->m, NULL, NULL, aer->m, NULL);
     if(aer->_free_m) GrB_Matrix_free(&aer->m);
     free(aer);
 }

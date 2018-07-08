@@ -67,7 +67,6 @@ class ImdbFlowTest(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.actors_played_in_movie_straight_outta_compton_query)
 
-
     def test_actors_over_50_that_played_in_blockbusters(self):
         global redis_graph
         actual_result = redis_graph.query(queries.actors_over_50_that_played_in_blockbusters_query.query)
@@ -151,7 +150,6 @@ class ImdbFlowTest(FlowTestsBase):
 
         # assert query run time
         self._assert_run_time(actual_result, queries.find_ten_oldest_actors_query)
-
 
 if __name__ == '__main__':
     unittest.main()

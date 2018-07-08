@@ -7,6 +7,7 @@
 #include "../query_executor.h"
 #include "../arithmetic/algebraic_expression.h"
 #include "./optimizations/optimizer.h"
+#include "./optimizations/optimizations.h"
 
 /* Forward declarations */
 OpResult PullFromStreams(OpNode *source, QueryGraph *graph);
@@ -110,6 +111,19 @@ void _OpNode_PushAbove(OpNode *a, OpNode *b) {
 
     /* B is the only child of A. */
     _OpNode_AddChild(a, b);
+}
+
+void ExecutionPlan_RemoveOp(OpNode *op) {
+    assert(op->parent != NULL);
+    
+    // Remove op from its parent.
+    OpNode* parent = op->parent;
+    _OpNode_RemoveChild(op->parent, op);
+
+    // Add each of op's children as a child of op's parent.
+    for(int i = 0; i < op->childCount; i++) {
+        _OpNode_AddChild(parent, op->children[i]);
+    }
 }
 
 Vector* _ExecutionPlan_Locate_References(OpNode *root, OpNode **op, Vector *references) {
@@ -217,6 +231,7 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g, const char *graph
     execution_plan->root = NewOpNode(NULL);    
     execution_plan->graph_name = graph_name;
     execution_plan->result_set = NewResultSet(ast);
+    execution_plan->filter_tree = NULL;
     Vector *ops = NewVector(OpNode*, 1);
     OpNode *op;
 
@@ -228,6 +243,9 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g, const char *graph
     _Determine_Graph_Size(ast, &node_count, &edge_count);
     QueryGraph *q = NewQueryGraph_WithCapacity(node_count, edge_count);
     execution_plan->graph = q;
+    
+    if(ast->whereNode != NULL)
+        execution_plan->filter_tree = BuildFiltersTree(ast->whereNode->filters);
 
     if(ast->matchNode) {
         BuildQueryGraph(ctx, g, graph_name, q, ast->matchNode->graphEntities);
@@ -236,24 +254,32 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g, const char *graph
         if(q->edge_count == 0) {
             /* Node scan. */
             Node *n = q->nodes[0];
-            if(n->label) {
+            if(n->label)
                 op = NewOpNode(NewNodeByLabelScanOp(ctx, q, g, graph_name, q->nodes, n->label));
-                Vector_Push(ops, op);
-            } else {
+            else
                 op = NewOpNode(NewAllNodeScanOp(q, g, q->nodes));
-                Vector_Push(ops, op);
-            }
-        } else {
-            size_t exp_count = 0;
-            AlgebraicExpression **algebraic_expressions = AlgebraicExpression_From_Query(ast, q, &exp_count);
-            op = NewOpNode(NewTraverseOp(g, q, algebraic_expressions[exp_count-1]));
             Vector_Push(ops, op);
-            for(int i = exp_count-2; i >= 0; i--) {
-                // OpNode *child_op = NewOpNode(NewCondTraverseOp(g, algebraic_expressions[i]));
-                // _OpNode_AddChild(child_op, op);
-                // op = child_op;
-                op = NewOpNode(NewCondTraverseOp(g, q, algebraic_expressions[i]));
+        } else {
+            size_t expCount = 0;
+            AlgebraicExpression **exps = AlgebraicExpression_From_Query(ast, q, &expCount);
+            
+            TRAVERSE_ORDER order = determineTraverseOrder(q, execution_plan->filter_tree, exps, expCount);
+            if(order == TRAVERSE_ORDER_LAST) {
+                op = NewOpNode(NewTraverseOp(g, q, exps[expCount-1]));
                 Vector_Push(ops, op);
+                for(int i = expCount-2; i >= 0; i--) {
+                    op = NewOpNode(NewCondTraverseOp(g, q, exps[i]));
+                    Vector_Push(ops, op);
+                }
+            } else {
+                exps[0]->transpose = true;
+                op = NewOpNode(NewTraverseOp(g, q, exps[0]));
+                Vector_Push(ops, op);
+                for(int i = 1; i < expCount; i++) {
+                    exps[i]->transpose = true;
+                    op = NewOpNode(NewCondTraverseOp(g, q, exps[i]));
+                    Vector_Push(ops, op);
+                }
             }
         }
     }
@@ -303,10 +329,8 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g, const char *graph
         parent_op = child_op;
     }
 
-        if(ast->whereNode != NULL) {
-        FT_FilterNode *filter_tree = BuildFiltersTree(ast->whereNode->filters);
-        execution_plan->filter_tree = filter_tree;
-        Vector *sub_trees = FilterTree_SubTrees(filter_tree);
+    if(ast->whereNode != NULL) {
+        Vector *sub_trees = FilterTree_SubTrees(execution_plan->filter_tree);
 
         /* For each filter tree find the earliest position along the execution 
          * after which the filter tree can be applied. */
@@ -321,7 +345,7 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g, const char *graph
             OpNode *op = ExecutionPlan_Locate_References(execution_plan->root, references);
             assert(op);
 
-            /* Create filter node,
+            /* Create filter node.
              * Introduce filter op right below located op. */
             OpNode *filter_op = NewOpNode(NewFilterOp(tree, q));
             _OpNode_PushBelow(op, filter_op);

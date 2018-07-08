@@ -173,7 +173,7 @@ void _CommitNewEntities(OpCreate *op) {
         for(int i = 0; i < node_count; i++) {
             Node *n;
             Vector_Get(op->created_nodes, i, &n);
-            LabelStore *store;
+            LabelStore *store = NULL;
             const char *label = n->label;
             if(label == NULL) {
                labels[i] = GRAPH_NO_LABEL; 
@@ -190,7 +190,7 @@ void _CommitNewEntities(OpCreate *op) {
             if(n->prop_count > 0) {
                 char *properties[n->prop_count];
                 for(int j = 0; j < n->prop_count; j++) properties[j] = n->properties[j].name;
-                if(store) LabelStore_UpdateSchema(store, n->prop_count, properties);
+                if(label) LabelStore_UpdateSchema(store, n->prop_count, properties);
                 LabelStore_UpdateSchema(allStore, n->prop_count, properties);
             }
         }

@@ -9,11 +9,19 @@
  * such that in the case of a no match on the queried pattern
  * we'll be able to create the original entities. */
 void _SaveQueryGraphEntities(const QueryGraph *qg, OpMerge *op) {
-    op->nodes = malloc(sizeof(Node*) * qg->node_count);
-    memcpy(op->nodes, qg->nodes, sizeof(Node*) * qg->node_count);
+    if(qg->node_count) {
+        op->nodes = malloc(sizeof(Node*) * qg->node_count);
+        memcpy(op->nodes, qg->nodes, sizeof(Node*) * qg->node_count);
+    } else {
+        op->nodes = NULL;
+    }
 
-    op->edges = malloc(sizeof(Edge*) * qg->edge_count);
-    memcpy(op->edges, qg->edges, sizeof(Node*) * qg->edge_count);
+    if(qg->edge_count) {
+        op->edges = malloc(sizeof(Edge*) * qg->edge_count);
+        memcpy(op->edges, qg->edges, sizeof(Node*) * qg->edge_count);
+    } else {
+        op->edges = NULL;
+    }
 }
 
 OpBase* NewMergeOp(RedisModuleCtx *ctx, AST_Query *ast, Graph *g, QueryGraph *qg, const char *graph_name, ResultSet *result_set) {
@@ -21,7 +29,7 @@ OpBase* NewMergeOp(RedisModuleCtx *ctx, AST_Query *ast, Graph *g, QueryGraph *qg
 }
 
 OpMerge* NewMerge(RedisModuleCtx *ctx, AST_Query *ast, Graph *g, QueryGraph *qg, const char *graph_name, ResultSet *result_set) {
-    OpMerge *op_merge = calloc(1, sizeof(OpMerge));
+    OpMerge *op_merge = malloc(sizeof(OpMerge));
 
     op_merge->ctx = ctx;
     op_merge->ast = ast;
@@ -87,6 +95,7 @@ void OpMergeFree(OpBase *ctx) {
         _CreateEntities(op);
     }
 
-    free(op->nodes);
+    if(op->nodes) free(op->nodes);
+    if(op->edges) free(op->edges);
     free(op);
 }
