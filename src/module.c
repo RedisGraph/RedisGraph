@@ -89,7 +89,7 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     // Try to get graph.
     Graph *g = Graph_Get(ctx, argv[1]);
     if(!g) {
-        if(ast->createNode) {
+        if(ast->createNode || ast->mergeNode) {
             g = _MGraph_CreateGraph(ctx, argv[1]);
             /* TODO: free graph if no entities were created. */
         } else {
@@ -98,17 +98,13 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
         }
     }
 
+    ModifyAST(ctx, ast, graph_name);
+
     char *reason;
     if (AST_Validate(ast, &reason) != AST_VALID) {
         RedisModule_ReplyWithError(ctx, reason);
         return REDISMODULE_OK;
-    }
-    
-    /* Modify AST */
-    if(ReturnClause_ContainsCollapsedNodes(ast->returnNode) == 1) {
-        /* Expand collapsed nodes. */
-        ReturnClause_ExpandCollapsedNodes(ctx, ast, graph_name);
-    }
+    }    
 
     ExecutionPlan *plan = NewExecutionPlan(ctx, g, graph_name, ast);
     ResultSet* resultSet = ExecutionPlan_Execute(plan);
@@ -118,14 +114,8 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     ResultSet_Replay(ctx, resultSet);
 
     /* Replicate query only if it modified the keyspace. */
-    if(Query_Modifies_KeySpace(ast) &&
-       (resultSet->labels_added > 0 ||
-       resultSet->nodes_created > 0 ||
-       resultSet->properties_set > 0 ||
-       resultSet->relationships_created > 0 ||
-       resultSet->nodes_deleted > 0 ||
-       resultSet->relationships_deleted > 0)) {
-           RedisModule_ReplicateVerbatim(ctx);
+    if(ResultSetStat_IndicateModification(resultSet->stats)) {
+        RedisModule_ReplicateVerbatim(ctx);
     }
 
     ResultSet_Free(ctx, resultSet);
@@ -153,35 +143,35 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     const char *query;
     RMUtil_ParseArgs(argv, argc, 1, "cc", &graph_name, &query);
 
-    // Try to get graph.
-    Graph *g = Graph_Get(ctx, argv[1]);
-    if(!g) {
-        /* At the moment EXPLAIN requires that the graph would exists. */
-        RedisModule_ReplyWithError(ctx, "key doesn't contains a graph object.");
-        return REDISMODULE_OK;
-    }
-
     /* Parse query, get AST. */
     char *errMsg = NULL;
     AST_Query* ast = ParseQuery(query, strlen(query), &errMsg);
-    
+
+     // Try to get graph.
+    Graph *g = Graph_Get(ctx, argv[1]);
+    if(!g) {
+        if(ast->createNode || ast->mergeNode) {
+            g = _MGraph_CreateGraph(ctx, argv[1]);
+            /* TODO: free graph if no entities were created. */
+        } else {
+            RedisModule_ReplyWithError(ctx, "key doesn't contains a graph object.");
+            return REDISMODULE_OK;
+        }
+    }
+
     if (!ast) {
         RedisModule_Log(ctx, "debug", "Error parsing query: %s", errMsg);
         RedisModule_ReplyWithError(ctx, errMsg);
         free(errMsg);
         return REDISMODULE_OK;
     }
-    
+
+    ModifyAST(ctx, ast, graph_name);    
+
     char *reason;
     if (AST_Validate(ast, &reason) != AST_VALID) {
         RedisModule_ReplyWithError(ctx, reason);
         return REDISMODULE_OK;
-    }
-    
-    /* Modify AST */
-    if(ReturnClause_ContainsCollapsedNodes(ast->returnNode) == 1) {
-        /* Expand collapsed nodes. */
-        ReturnClause_ExpandCollapsedNodes(ctx, ast, graph_name);
     }
 
     ExecutionPlan *plan = NewExecutionPlan(ctx, g, graph_name, ast);

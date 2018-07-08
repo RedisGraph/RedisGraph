@@ -5,6 +5,7 @@
 #include "edge.h"
 #include "graph.h"
 #include "../rmutil/vector.h"
+#include "../resultset/resultset_statistics.h"
 
 #define DEFAULT_GRAPH_CAP 32 /* Number of edges/nodes within the graph. */
 
@@ -66,6 +67,10 @@ char* QueryGraph_GetEdgeAlias(const QueryGraph *g, const Edge *e);
 GraphEntity** QueryGraph_GetEntityRef(const QueryGraph *g, const char *alias);
 Node** QueryGraph_GetNodeRef(const QueryGraph *g, const Node *n);
 Edge** QueryGraph_GetEdgeRef(const QueryGraph *g, const Edge *e);
+
+/* Saves every entity within the query graph into the actual graph.
+ * return statistics regarding the number of entities create and properties set. */
+ResultSetStatistics CommitGraph(RedisModuleCtx *ctx, const QueryGraph *qg, Graph *g, const char *graph_name);
 
 /* Frees entire graph */
 void QueryGraph_Free(QueryGraph* g);

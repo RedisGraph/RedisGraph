@@ -144,7 +144,14 @@ void _BuildQueryGraphAddEdge(const Graph *g,
         e->mat = g->adjacency_matrix;
     } else {
         LabelStore *s = LabelStore_Get(ctx, STORE_EDGE, graph_name, edge->ge.label);
-        if(s) e->mat = Graph_GetRelationMatrix(g, s->id);
+        if(s) {
+            e->mat = Graph_GetRelationMatrix(g, s->id);
+        }
+        else {
+            /* Use a zeroed matrix.
+             * TODO: either use a static zero matrix, or free this one. */
+            GrB_Matrix_new(&e->mat, GrB_BOOL, g->node_count, g->node_count);
+        }
     }
 
     QueryGraph_ConnectNodes(graph, src, dest, e, edge->ge.alias);
@@ -351,6 +358,90 @@ Edge** QueryGraph_GetEdgeRef(const QueryGraph *g, const Edge *e) {
     }
     
     return NULL;
+}
+
+ResultSetStatistics CommitGraph(RedisModuleCtx *ctx, const QueryGraph *qg, Graph *g, const char *graph_name) {
+    ResultSetStatistics stats = {0};
+    size_t node_count = qg->node_count;
+    size_t edge_count = qg->edge_count;
+
+    // Start by creating nodes.
+    if(node_count > 0) {
+        int labels[node_count];
+        LabelStore *allStore = LabelStore_Get(ctx, STORE_NODE, graph_name, NULL);
+
+        for(int i = 0; i < node_count; i++) {
+            Node *n = qg->nodes[i];
+            const char *label = n->label;
+
+            // Set, create label.
+            LabelStore *store = NULL;
+            if(label == NULL) {
+               labels[i] = GRAPH_NO_LABEL; 
+            } else {
+                store = LabelStore_Get(ctx, STORE_NODE, graph_name, label);
+                /* This is the first time we encounter label, create its store */
+                if(store == NULL) {
+                    int label_id = Graph_AddLabelMatrix(g);
+                    store = LabelStore_New(ctx, STORE_NODE, graph_name, label, label_id);
+                    stats.labels_added++;
+                }
+                labels[i] = store->id;
+            }
+
+            // Update tracked schema.
+            if(n->prop_count > 0) {
+                char *properties[n->prop_count];
+                for(int j = 0; j < n->prop_count; j++) properties[j] = n->properties[j].name;
+                if(store) LabelStore_UpdateSchema(store, n->prop_count, properties);
+                LabelStore_UpdateSchema(allStore, n->prop_count, properties);
+            }
+        }
+
+        // Create nodes and set properties.
+        NodeIterator *it;
+        size_t graph_node_count = g->node_count;
+        Graph_CreateNodes(g, node_count, labels, &it);
+
+        for(int i = 0; i < node_count; i++) {
+            Node *new_node = NodeIterator_Next(it);
+            Node *temp_node = qg->nodes[i];
+            new_node->properties = temp_node->properties;
+            new_node->prop_count = temp_node->prop_count;
+            new_node->id = graph_node_count + i;
+            temp_node->id = new_node->id;   /* Formed edges refer to temp_node. */
+            temp_node->properties = NULL;   /* Prevents temp_node from freeing its property set. */
+            stats.properties_set += new_node->prop_count;
+        }
+
+        stats.nodes_created = node_count;
+    }
+
+    // Create edges.
+    if(edge_count > 0) {
+        GrB_Index connections[edge_count * 3];
+
+        for(int i = 0; i < edge_count; i++) {
+            Edge *e = qg->edges[i];
+            int con_idx = i*3;
+
+            connections[con_idx] = e->src->id;
+            connections[con_idx + 1] = e->dest->id;
+            
+            LabelStore *s = LabelStore_Get(ctx, STORE_EDGE, graph_name, e->relationship);
+            if(s == NULL) {
+                int relation_id = Graph_AddRelationMatrix(g);
+                s = LabelStore_New(ctx, STORE_EDGE, graph_name, e->relationship, relation_id);
+                s->id = relation_id;
+            }
+
+            connections[con_idx + 2] = s->id;
+        }
+
+        Graph_ConnectNodes(g, edge_count*3, connections);
+        stats.relationships_created = edge_count;
+    }
+    return stats;
 }
 
 /* Frees entire graph. */

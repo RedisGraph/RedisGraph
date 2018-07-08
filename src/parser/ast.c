@@ -6,14 +6,16 @@
 #include "./ast_arithmetic_expression.h"
 
 AST_Query *New_AST_Query(AST_MatchNode *matchNode, AST_WhereNode *whereNode,
-                         AST_CreateNode *createNode, AST_SetNode *setNode,
-                         AST_DeleteNode *deleteNode, AST_ReturnNode *returnNode,
-                         AST_OrderNode *orderNode, AST_LimitNode *limitNode) {
+                         AST_CreateNode *createNode, AST_MergeNode *mergeNode,
+                         AST_SetNode *setNode, AST_DeleteNode *deleteNode,
+                         AST_ReturnNode *returnNode, AST_OrderNode *orderNode,
+                         AST_LimitNode *limitNode) {
   AST_Query *queryExpressionNode = (AST_Query *)malloc(sizeof(AST_Query));
 
   queryExpressionNode->matchNode = matchNode;
   queryExpressionNode->whereNode = whereNode;
   queryExpressionNode->createNode = createNode;
+  queryExpressionNode->mergeNode = mergeNode;
   queryExpressionNode->setNode = setNode;
   queryExpressionNode->deleteNode = deleteNode;
   queryExpressionNode->returnNode = returnNode;
@@ -155,13 +157,13 @@ AST_Validation _Validate_WHERE_Clause(const AST_Query *ast, char **reason) {
 
 AST_Validation AST_Validate(const AST_Query *ast, char **reason) {
   /* AST must include either a MATCH or CREATE clause. */
-  if (!(ast->matchNode || ast->createNode)) {
+  if (!(ast->matchNode || ast->createNode || ast->mergeNode)) {
     *reason = "Query must specify either MATCH or CREATE clause.";
     return AST_INVALID;
   }
 
   /* MATCH clause must be followed by either a CREATE or a RETURN clause. */
-  if (ast->matchNode && !(ast->createNode || ast->returnNode || ast->setNode || ast->deleteNode)) {
+  if (ast->matchNode && !(ast->createNode || ast->returnNode || ast->setNode || ast->deleteNode || ast->mergeNode)) {
     *reason = "MATCH must be followed by either a RETURN or a CREATE clause.";
     return AST_INVALID;
   }

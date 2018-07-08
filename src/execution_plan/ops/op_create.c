@@ -168,31 +168,30 @@ void _CommitNewEntities(OpCreate *op) {
 
     if(node_count > 0) {
         int labels[node_count];
+        LabelStore *allStore = LabelStore_Get(ctx, STORE_NODE, op->graph_name, NULL);
 
         for(int i = 0; i < node_count; i++) {
             Node *n;
             Vector_Get(op->created_nodes, i, &n);
+            LabelStore *store;
             const char *label = n->label;
             if(label == NULL) {
                labels[i] = GRAPH_NO_LABEL; 
             } else {
-                LabelStore *store = LabelStore_Get(ctx, STORE_NODE, op->graph_name, label);
-                LabelStore *allStore = LabelStore_Get(ctx, STORE_NODE, op->graph_name, NULL);
+                store = LabelStore_Get(ctx, STORE_NODE, op->graph_name, label);                
                 if(store == NULL) {
                     int label_id = Graph_AddLabelMatrix(op->g);
                     store = LabelStore_New(ctx, STORE_NODE, op->graph_name, label, label_id);
-                    op->result_set->labels_added++;
+                    op->result_set->stats.labels_added++;
                 }
                 labels[i] = store->id;
+            }
 
-                if(n->prop_count > 0) {
-                    char *properties[n->prop_count];
-                    for(int j = 0; j < n->prop_count; j++) {
-                        properties[j] = n->properties[j].name;
-                    }
-                    LabelStore_UpdateSchema(store, n->prop_count, properties);
-                    LabelStore_UpdateSchema(allStore, n->prop_count, properties);
-                }
+            if(n->prop_count > 0) {
+                char *properties[n->prop_count];
+                for(int j = 0; j < n->prop_count; j++) properties[j] = n->properties[j].name;
+                if(store) LabelStore_UpdateSchema(store, n->prop_count, properties);
+                LabelStore_UpdateSchema(allStore, n->prop_count, properties);
             }
         }
 
@@ -210,10 +209,10 @@ void _CommitNewEntities(OpCreate *op) {
             new_node->id = graph_node_count + i;
             temp_node->id = new_node->id;   /* Formed edges refer to temp_node. */
             temp_node->properties = NULL;   /* Do not free temp_node's property set. */
-            op->result_set->properties_set += new_node->prop_count;
+            op->result_set->stats.properties_set += new_node->prop_count;
         }
 
-        op->result_set->nodes_created = node_count;
+        op->result_set->stats.nodes_created = node_count;
     }
 
     if(edge_count > 0) {
@@ -227,18 +226,22 @@ void _CommitNewEntities(OpCreate *op) {
             connections[con_idx] = e->src->id;
             connections[con_idx + 1] = e->dest->id;
             
-            LabelStore *s = LabelStore_Get(ctx, STORE_EDGE, op->graph_name, e->relationship);
-            if(s != NULL) connections[con_idx + 2] = s->id;
-            else {                
-                int relation_id = Graph_AddRelationMatrix(op->g);
-                LabelStore_New(op->ctx, STORE_EDGE, op->graph_name, e->relationship, relation_id);
-                connections[con_idx + 2] = relation_id;
+            if(!e->relationship) {
+                connections[con_idx + 2] = GRAPH_NO_RELATION;
+            } else {
+                LabelStore *s = LabelStore_Get(ctx, STORE_EDGE, op->graph_name, e->relationship);
+                if(s != NULL) connections[con_idx + 2] = s->id;
+                else {
+                    int relation_id = Graph_AddRelationMatrix(op->g);
+                    LabelStore_New(op->ctx, STORE_EDGE, op->graph_name, e->relationship, relation_id);
+                    connections[con_idx + 2] = relation_id;
+                }
             }
             Edge_Free(e);
         }
 
         Graph_ConnectNodes(op->g, edge_count*3, connections);
-        op->result_set->relationships_created = edge_count;
+        op->result_set->stats.relationships_created = edge_count;
     }
 
     for(int i = 0; i < node_count; i++) {
@@ -289,4 +292,6 @@ void OpCreateFree(OpBase *ctx) {
     if(op->edges_to_create != NULL) {
         free(op->edges_to_create);
     }
+
+    free(op);
 }

@@ -36,27 +36,31 @@
 query ::= expr(A). { ctx->root = A; }
 
 expr(A) ::= matchClause(B) whereClause(C) createClause(D) returnClause(E) orderClause(F) limitClause(G). {
-	A = New_AST_Query(B, C, D, NULL, NULL, E, F, G);
+	A = New_AST_Query(B, C, D, NULL, NULL, NULL, E, F, G);
 }
 
 expr(A) ::= matchClause(B) whereClause(C) createClause(D). {
-	A = New_AST_Query(B, C, D, NULL, NULL, NULL, NULL, NULL);
+	A = New_AST_Query(B, C, D, NULL, NULL, NULL, NULL, NULL, NULL);
 }
 
 expr(A) ::= matchClause(B) whereClause(C) deleteClause(D). {
-	A = New_AST_Query(B, C, NULL, NULL, D, NULL, NULL, NULL);
+	A = New_AST_Query(B, C, NULL, NULL, NULL, D, NULL, NULL, NULL);
 }
 
 expr(A) ::= matchClause(B) whereClause(C) setClause(D). {
-	A = New_AST_Query(B, C, NULL, D, NULL, NULL, NULL, NULL);
+	A = New_AST_Query(B, C, NULL, NULL, D, NULL, NULL, NULL, NULL);
 }
 
 expr(A) ::= matchClause(B) whereClause(C) setClause(D) returnClause(E) orderClause(F) limitClause(G). {
-	A = New_AST_Query(B, C, NULL, D, NULL, E, F, G);
+	A = New_AST_Query(B, C, NULL, NULL, D, NULL, E, F, G);
 }
 
 expr(A) ::= createClause(B). {
-	A = New_AST_Query(NULL, NULL, B, NULL, NULL, NULL, NULL, NULL);
+	A = New_AST_Query(NULL, NULL, B, NULL, NULL, NULL, NULL, NULL, NULL);
+}
+
+expr(A) ::= mergeClause(B). {
+	A = New_AST_Query(NULL, NULL, NULL, B, NULL, NULL, NULL, NULL, NULL);
 }
 
 %type matchClause { AST_MatchNode* }
@@ -74,6 +78,12 @@ createClause(A) ::= . {
 
 createClause(A) ::= CREATE chains(B). {
 	A = New_AST_CreateNode(B);
+}
+
+%type mergeClause { AST_MergeNode* }
+
+mergeClause(A) ::= MERGE chain(B). {
+	A = New_AST_MergeNode(B);
 }
 
 %type setClause { AST_SetNode* }

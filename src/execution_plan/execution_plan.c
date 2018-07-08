@@ -269,6 +269,11 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g, const char *graph
         Vector_Push(ops, opCreate);
     }
 
+    if(ast->mergeNode) {
+        OpNode *opMerge = NewOpNode(NewMergeOp(ctx, ast, g, q, graph_name, execution_plan->result_set));
+        Vector_Push(ops, opMerge);
+    }
+
     if(ast->deleteNode) {
         OpNode *opDelete = NewOpNode(NewDeleteOp(ast->deleteNode, q, g, execution_plan->result_set));
         Vector_Push(ops, opDelete);
@@ -298,7 +303,7 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g, const char *graph
         parent_op = child_op;
     }
 
-    if(ast->whereNode != NULL) {
+        if(ast->whereNode != NULL) {
         FT_FilterNode *filter_tree = BuildFiltersTree(ast->whereNode->filters);
         execution_plan->filter_tree = filter_tree;
         Vector *sub_trees = FilterTree_SubTrees(filter_tree);
@@ -461,7 +466,6 @@ void _ExecutionPlanFreeRecursive(OpNode* op) {
 
 void ExecutionPlanFree(ExecutionPlan *plan) {
     _ExecutionPlanFreeRecursive(plan->root);
-    /* TODO: Free query graph! */
     // QueryGraph_Free(plan->graph);
     if(plan->filter_tree)
         FilterTree_Free(plan->filter_tree);
