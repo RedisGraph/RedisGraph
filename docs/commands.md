@@ -143,7 +143,7 @@ There's no difference between inlined predicates and predicates specified within
 #### RETURN
 
 In its simple form, Return defines which properties the returned result-set will contain.
-Its structure is a list of `alias.property` seperated by commas.
+Its structure is a list of `alias.property` separated by commas.
 For convenience, it's possible to specify the alias only when you're interested in every attribute an entity possesses,
 and don't want to specify each attribute individually. e.g.
 
@@ -219,13 +219,12 @@ The simplest example of CREATE would be a single node creation:
 CREATE (n)
 ```
 
-It's possible to create multiple entities by seperating them with a comma.
+It's possible to create multiple entities by separating them with a comma. 
 
 ```sh
 CREATE (n),(m)
 ```
 
-Label and properties can be specified at creation time
 
 ```sh
 CREATE (:person {name: 'Kurt', age:27})
