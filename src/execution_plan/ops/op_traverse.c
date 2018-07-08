@@ -1,4 +1,5 @@
 #include "op_traverse.h"
+#include <assert.h>
 
 OpBase* NewTraverseOp(Graph *g, QueryGraph* qg, AlgebraicExpression *ae) {
     return (OpBase*)NewTraverse(g, qg, ae);
@@ -7,10 +8,8 @@ OpBase* NewTraverseOp(Graph *g, QueryGraph* qg, AlgebraicExpression *ae) {
 Traverse* NewTraverse(Graph *g, QueryGraph* qg, AlgebraicExpression *ae) {
     Traverse *traverse = calloc(1, sizeof(Traverse));
     traverse->graph = g;
-    traverse->algebraic_results = AlgebraicExpression_Execute(ae);
-
-    GrB_Matrix M = traverse->algebraic_results->m;
-    traverse->it = TuplesIter_new(M);
+    traverse->algebraic_expression = ae;
+    traverse->algebraic_results = NULL;    
 
     // Set our Op operations
     traverse->op.name = "Traverse";
@@ -21,9 +20,9 @@ Traverse* NewTraverse(Graph *g, QueryGraph* qg, AlgebraicExpression *ae) {
     traverse->op.modifies = NewVector(char*, 2);
 
     char *modified = NULL;
-    modified = QueryGraph_GetNodeAlias(qg, *traverse->algebraic_results->src_node);
+    modified = QueryGraph_GetNodeAlias(qg, *traverse->algebraic_expression->src_node);
     Vector_Push(traverse->op.modifies, modified);
-    modified = QueryGraph_GetNodeAlias(qg, *traverse->algebraic_results->dest_node);
+    modified = QueryGraph_GetNodeAlias(qg, *traverse->algebraic_expression->dest_node);
     Vector_Push(traverse->op.modifies, modified);
 
     return traverse;
@@ -36,6 +35,11 @@ OpResult TraverseConsume(OpBase *opBase, QueryGraph* graph) {
     Traverse *op = (Traverse*)opBase;
     GrB_Index src_id;
     GrB_Index dest_id;
+
+    if(op->algebraic_results == NULL) {
+        op->algebraic_results = AlgebraicExpression_Execute(op->algebraic_expression);
+        op->it = TuplesIter_new(op->algebraic_results->m);
+    }
 
     if (TuplesIter_next(op->it, &src_id, &dest_id) == TuplesIter_DEPLETED) return OP_DEPLETED;
 
@@ -60,6 +64,8 @@ OpResult TraverseReset(OpBase *ctx) {
 void TraverseFree(OpBase *ctx) {
     Traverse *op = (Traverse*)ctx;
     TuplesIter_free(op->it);
-    AlgebraicExpressionResult_Free(op->algebraic_results);
+    if(op->algebraic_results)
+        AlgebraicExpressionResult_Free(op->algebraic_results);
+
     free(op);
 }

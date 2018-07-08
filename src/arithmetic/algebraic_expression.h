@@ -18,6 +18,7 @@ typedef struct {
     Node **src_node;    // Nodes represented by matrix rows.
     Node **dest_node;   // Nodes represented by matrix columns.
     bool _free_m;       // Should M be freed or not.
+    bool _transpose;    // Result got transposed.
 } AlgebraicExpressionResult;
 
 /* AlgebraicExpressionOperand a single operand within an
@@ -34,6 +35,7 @@ typedef struct {
     AlgebraicExpressionOperand *operands;   // Array of operands.
     Node **src_node;                        // Nodes represented by the first operand rows.
     Node **dest_node;                       // Nodes represented by the last operand columns.
+    bool transpose;                         // Transpose result.
 } AlgebraicExpression;
 
 /* Construct an algebraic expression from a query. */
@@ -41,6 +43,12 @@ AlgebraicExpression **AlgebraicExpression_From_Query(const AST_Query *ast, const
 
 /* Executes given expression. */
 AlgebraicExpressionResult *AlgebraicExpression_Execute(AlgebraicExpression *ae);
+
+/* Appends m as the last term in the expression ae. */
+void AlgebraicExpression_AppendTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transpose);
+
+/* Prepend m as the first term in the expression ae. */
+void AlgebraicExpression_PrependTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transpose);
 
 void AlgebraicExpression_Free(AlgebraicExpression* ae);
 void AlgebraicExpressionResult_Free(AlgebraicExpressionResult *aer);
