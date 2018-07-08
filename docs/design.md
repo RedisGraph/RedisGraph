@@ -84,7 +84,7 @@ RedisGraph will reply with:
 2) "Straight Outta Compton,123.000000,37.000000,26.000000,30.750000"
 ```
 
-The first row is our result-set hearder which name each column according to the return clause.
+The first row is our result-set header which name each column according to the return clause.
 Second row contains our query result.
 
 Let's try another query, this time we'll find in how many movies each actor played.
@@ -198,7 +198,7 @@ clause is used to construct a filter tree. Each node within the tree is either a
 ### Query processing
 The MATCH clause describes relations between queried entities (nodes), a node can have an alias which will allow us to
 refer to it at later stages within the executing query lifetime (WHERE, RETURN clause), but all nodes must eventually
-be assign an ID. The process of assigning IDs to nodes is refered to as the search phase.
+be assign an ID. The process of assigning IDs to nodes is referred to as the search phase.
 
 During the search we'll be querying the Hexastore for IDs according to the MATCH clause structure.
 For instance, in our example we'll start our search by looking for movies in which Aldis Hodge played in.
