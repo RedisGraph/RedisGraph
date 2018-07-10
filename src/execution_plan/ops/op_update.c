@@ -113,7 +113,7 @@ void _UpdateEntities(OpUpdate *op) {
         SIValue new_value = op->entities_to_update[i].new_value;
         dest_entity_prop->value = new_value;
     }
-    op->result_set->properties_set = op->entities_to_update_count;
+    op->result_set->stats.properties_set = op->entities_to_update_count;
 }
 
 /* Update tracked schemas according to set properties.

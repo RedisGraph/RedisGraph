@@ -17,6 +17,7 @@ def redis():
 class SocialFlowTest(FlowTestsBase):
     @classmethod
     def setUpClass(cls):
+        print "SocialFlowTest"
         global redis_graph
         cls.r = redis()
         cls.r.start()

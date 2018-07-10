@@ -310,11 +310,11 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g, const char *graph
 
                 // Connect traversal operations.
                 OpNode *childOp;
-                OpNode *patentOp;
-                Vector_Pop(traversals, &patentOp);
+                OpNode *parentOp;
+                Vector_Pop(traversals, &parentOp);
                 while(Vector_Pop(traversals, &childOp)) {
-                    _OpNode_AddChild(patentOp, childOp);
-                    patentOp = childOp;   
+                    _OpNode_AddChild(parentOp, childOp);
+                    parentOp = childOp;
                 }
             } else {
                 for(int traversalIdx = 0; traversalIdx < Vector_Size(traversals); traversalIdx++) {
@@ -336,6 +336,11 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g, const char *graph
                                         execution_plan->result_set));
 
         Vector_Push(ops, opCreate);
+    }
+
+    if(ast->mergeNode) {
+        OpNode *opMerge = NewOpNode(NewMergeOp(ctx, ast, g, q, graph_name, execution_plan->result_set));
+        Vector_Push(ops, opMerge);
     }
 
     if(ast->deleteNode) {
@@ -528,7 +533,6 @@ void _ExecutionPlanFreeRecursive(OpNode* op) {
 
 void ExecutionPlanFree(ExecutionPlan *plan) {
     _ExecutionPlanFreeRecursive(plan->root);
-    /* TODO: Free query graph! */
     // QueryGraph_Free(plan->graph);
     if(plan->filter_tree)
         FilterTree_Free(plan->filter_tree);

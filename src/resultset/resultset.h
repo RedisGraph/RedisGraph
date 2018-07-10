@@ -3,6 +3,7 @@
 
 #include "record.h"
 #include "resultset_header.h"
+#include "resultset_statistics.h"
 #include "../parser/ast.h"
 #include "../redismodule.h"
 #include "../rmutil/vector.h"
@@ -27,12 +28,7 @@ typedef struct {
     int direction;              /* Sort direction ASC/DESC. */
     int limit;                  /* Max number of records in result-set. */
     int distinct;               /* Rather or not each record is unique. */
-    int labels_added;           /* Number of labels added as part of a create query. */
-    int nodes_created;          /* Number of nodes created as part of a create query. */
-    int properties_set;         /* Number of properties created as part of a create query. */
-    int relationships_created;  /* Number of edges created as part of a create query. */
-    int nodes_deleted;          /* Number of nodes removed as part of a delete query.*/
-    int relationships_deleted;  /* Number of edges removed as part of a delete query.*/
+    ResultSetStatistics stats;  /* ResultSet statistics. */
 } ResultSet;
 
 ResultSet* NewResultSet(AST_Query* ast);

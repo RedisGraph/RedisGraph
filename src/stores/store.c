@@ -83,32 +83,6 @@ LabelStore *LabelStore_Get(RedisModuleCtx *ctx, LabelStoreType type, const char 
 	return store;
 }
 
-/* Get all stores of given type. */
-void LabelStore_Get_ALL(RedisModuleCtx *ctx, LabelStoreType type, const char *graph, LabelStore **stores, size_t *stores_len) {
-    char *pattern;
-    LabelStore_Id(&pattern, type, graph, "*");
-
-    size_t key_count = 128;             /* Maximum number of keys we're willing to process. */
-    RedisModuleString *str_keys[128];   /* Keys returned by SCAN. */
-
-    RMUtil_SCAN(ctx, pattern, str_keys, &key_count);
-    free(pattern);
-
-    /* Consume SCAN */
-    for(int i = 0; i < key_count; i++) {
-        RedisModuleString *store_key = str_keys[i];
-        if(i < *stores_len) {
-            RedisModuleKey *key = RedisModule_OpenKey(ctx, store_key, REDISMODULE_WRITE);
-            stores[i] = RedisModule_ModuleTypeGetValue(key);
-            RedisModule_CloseKey(key);
-        }
-        RedisModule_FreeString(ctx, store_key);
-    }
-
-    /* Update number of stores fetched. */
-    *stores_len = key_count;
-}
-
 void LabelStore_UpdateSchema(LabelStore *store, int prop_count, char **properties) {
     for(int idx = 0; idx < prop_count; idx++) {
         char *property = properties[idx];

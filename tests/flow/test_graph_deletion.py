@@ -16,6 +16,7 @@ def redis():
 class GraphDeletionFlowTest(FlowTestsBase):
     @classmethod
     def setUpClass(cls):
+        print "GraphDeletionFlowTest"
         global redis_graph
         cls.r = redis()
         cls.r.start()

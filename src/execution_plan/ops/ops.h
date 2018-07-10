@@ -14,4 +14,5 @@
 #include "op_traverse.h"
 #include "op_conditional_traverse.h"
 #include "op_cartesian_product.h"
+#include "op_merge.h"
 #endif

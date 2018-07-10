@@ -13,9 +13,10 @@ redis_graph = None
 def redis():
     return DisposableRedis(loadmodule=os.path.dirname(os.path.abspath(__file__)) + '/../../src/redisgraph.so')
 
-class GraphDeletionFlowTest(FlowTestsBase):
+class GraphMultiPatternQueryFlowTest(FlowTestsBase):
     @classmethod
     def setUpClass(cls):
+        print "GraphMultiPatternQueryFlowTest"
         global redis_graph
         cls.r = redis()
         cls.r.start()
