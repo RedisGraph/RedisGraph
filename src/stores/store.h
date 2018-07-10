@@ -24,9 +24,6 @@ LabelStore *LabelStore_New(RedisModuleCtx *ctx, LabelStoreType type, const char 
 /* Get a label store. */
 LabelStore *LabelStore_Get(RedisModuleCtx *ctx, LabelStoreType type, const char *graph, const char* label);
 
-/* Get all stores of given type. */
-void LabelStore_Get_ALL(RedisModuleCtx *ctx, LabelStoreType type, const char *graph, LabelStore **stores, size_t *stores_len);
-
 /* Update store schema with given properties. */
 void LabelStore_UpdateSchema(LabelStore *store, int prop_count, char **properties);
 

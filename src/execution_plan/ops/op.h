@@ -22,7 +22,8 @@ OPType_NODE_BY_LABEL_SCAN,
 OPType_PRODUCE_RESULTS,
 OPType_CREATE,
 OPType_UPDATE,
-OPType_DELETE
+OPType_DELETE,
+OPType_MERGE
 } OPType;
 
 typedef enum {
