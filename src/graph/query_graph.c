@@ -101,14 +101,37 @@ void _BuildQueryGraphAddProps(AST_GraphEntity *entity, GraphEntity* e) {
     }
 }
 
+// Extend node with label and attributes from graph entity.
+void _MergeNodeWithGraphEntity(Node *n, const AST_GraphEntity *ge) {
+    if(n->label == NULL && ge->label != NULL)
+        n->label = strdup(ge->label);
+
+    if(ge->properties) {
+        size_t propCount = Vector_Size(ge->properties);
+        for(int i = 0; i < propCount; i+=2) {
+            SIValue *key;
+            SIValue *val;
+            Vector_Get(ge->properties, i, &key);
+            if(Node_Get_Property(n, key->stringval) == PROPERTY_NOTFOUND) {
+                Vector_Get(ge->properties, i+1, &val);
+                Node_Add_Properties(n, 1, &key->stringval, val);
+            }
+        }
+    }
+}
+
 void _BuildQueryGraphAddNode(AST_GraphEntity *entity, QueryGraph *graph) {
     /* Check for duplications. */
-    if(QueryGraph_GetNodeByAlias(graph, entity->alias) != NULL) return;
-
-    /* Create a new node, set its properties, and add it to the graph. */
-    Node *n = Node_New(INVALID_ENTITY_ID, entity->label);
-    _BuildQueryGraphAddProps(entity, (GraphEntity*)n);
-    QueryGraph_AddNode(graph, n, entity->alias);
+    Node *n = QueryGraph_GetNodeByAlias(graph, entity->alias);
+    if(n == NULL) {
+        /* Create a new node, set its properties, and add it to the graph. */
+        Node *n = Node_New(INVALID_ENTITY_ID, entity->label);
+        _BuildQueryGraphAddProps(entity, (GraphEntity*)n);
+        QueryGraph_AddNode(graph, n, entity->alias);
+    } else {
+        /* Merge nodes. */
+        _MergeNodeWithGraphEntity(n, entity);
+    }
 }
 
 void _BuildQueryGraphAddEdge(const Graph *g,

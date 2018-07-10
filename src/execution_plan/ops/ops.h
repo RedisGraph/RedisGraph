@@ -13,5 +13,5 @@
 #include "op_update.h"
 #include "op_traverse.h"
 #include "op_conditional_traverse.h"
-
+#include "op_cartesian_product.h"
 #endif

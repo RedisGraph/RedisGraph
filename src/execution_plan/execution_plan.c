@@ -216,7 +216,7 @@ void _Determine_Graph_Size(const AST_Query *ast, size_t *node_count, size_t *edg
     Vector *entities;
     
     if(ast->matchNode) {
-        entities = ast->matchNode->graphEntities;
+        entities = ast->matchNode->_mergedPatterns;
         _Count_Graph_Entities(entities, node_count, edge_count);
     }
 
@@ -248,40 +248,83 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g, const char *graph
         execution_plan->filter_tree = BuildFiltersTree(ast->whereNode->filters);
 
     if(ast->matchNode) {
-        BuildQueryGraph(ctx, g, graph_name, q, ast->matchNode->graphEntities);
+        BuildQueryGraph(ctx, g, graph_name, q, ast->matchNode->_mergedPatterns);
 
-        /* Do we required to perform traversal? */
-        if(q->edge_count == 0) {
-            /* Node scan. */
-            Node *n = q->nodes[0];
-            if(n->label)
-                op = NewOpNode(NewNodeByLabelScanOp(ctx, q, g, graph_name, q->nodes, n->label));
-            else
-                op = NewOpNode(NewAllNodeScanOp(q, g, q->nodes));
-            Vector_Push(ops, op);
-        } else {
-            size_t expCount = 0;
-            AlgebraicExpression **exps = AlgebraicExpression_From_Query(ast, q, &expCount);
-            
-            TRAVERSE_ORDER order = determineTraverseOrder(q, execution_plan->filter_tree, exps, expCount);
-            if(order == TRAVERSE_ORDER_LAST) {
-                op = NewOpNode(NewTraverseOp(g, q, exps[expCount-1]));
-                Vector_Push(ops, op);
-                for(int i = expCount-2; i >= 0; i--) {
-                    op = NewOpNode(NewCondTraverseOp(g, q, exps[i]));
-                    Vector_Push(ops, op);
+        // For every pattern in match clause.
+        size_t patternCount = Vector_Size(ast->matchNode->patterns);
+        
+        /* Incase we're dealing with multiple patterns
+         * we'll simply join them all together with a join operation. */
+        bool multiPattern = patternCount > 1;
+        OpNode *cartesianProduct = NULL;
+        if(multiPattern) {
+            cartesianProduct = NewOpNode(NewCartesianProductOp());
+            Vector_Push(ops, cartesianProduct);
+        }
+        
+        // Keep track after all traversal operations along a pattern.
+        Vector *traversals = NewVector(OpNode*, 1);
+
+        for(int i = 0; i < patternCount; i++) {
+            Vector *pattern;
+            Vector_Get(ast->matchNode->patterns, i, &pattern);
+
+            if(Vector_Size(pattern) > 1) {
+                size_t expCount = 0;
+                AlgebraicExpression **exps = AlgebraicExpression_From_Query(ast, pattern, q, &expCount);
+                
+                TRAVERSE_ORDER order = determineTraverseOrder(q, execution_plan->filter_tree, exps, expCount);
+                if(order == TRAVERSE_ORDER_LAST) {
+                    op = NewOpNode(NewTraverseOp(g, q, exps[expCount-1]));
+                    Vector_Push(traversals, op);
+                    for(int i = expCount-2; i >= 0; i--) {
+                        op = NewOpNode(NewCondTraverseOp(g, q, exps[i]));
+                        Vector_Push(traversals, op);
+                    }
+                } else {
+                    exps[0]->transpose = true;
+                    op = NewOpNode(NewTraverseOp(g, q, exps[0]));
+                    Vector_Push(traversals, op);
+                    for(int i = 1; i < expCount; i++) {
+                        exps[i]->transpose = true;
+                        op = NewOpNode(NewCondTraverseOp(g, q, exps[i]));
+                        Vector_Push(traversals, op);
+                    }
                 }
             } else {
-                exps[0]->transpose = true;
-                op = NewOpNode(NewTraverseOp(g, q, exps[0]));
-                Vector_Push(ops, op);
-                for(int i = 1; i < expCount; i++) {
-                    exps[i]->transpose = true;
-                    op = NewOpNode(NewCondTraverseOp(g, q, exps[i]));
+                /* Node scan. */
+                AST_GraphEntity *ge;
+                Vector_Get(pattern, 0, &ge);
+                Node **n = QueryGraph_GetNodeRef(q, QueryGraph_GetNodeByAlias(q, ge->alias));
+                if(ge->label)
+                    op = NewOpNode(NewNodeByLabelScanOp(ctx, q, g, graph_name, n, ge->label));
+                else
+                    op = NewOpNode(NewAllNodeScanOp(q, g, n));
+                Vector_Push(traversals, op);
+            }
+            
+            if(multiPattern) {
+                // Connect cartesian product to the root of traversal.
+                Vector_Get(traversals, 0, &op);
+                _OpNode_AddChild(cartesianProduct, op);
+
+                // Connect traversal operations.
+                OpNode *childOp;
+                OpNode *patentOp;
+                Vector_Pop(traversals, &patentOp);
+                while(Vector_Pop(traversals, &childOp)) {
+                    _OpNode_AddChild(patentOp, childOp);
+                    patentOp = childOp;   
+                }
+            } else {
+                for(int traversalIdx = 0; traversalIdx < Vector_Size(traversals); traversalIdx++) {
+                    Vector_Get(traversals, traversalIdx, &op);
                     Vector_Push(ops, op);
                 }
             }
+            Vector_Clear(traversals);
         }
+        Vector_Free(traversals);
     }
 
     /* Set root operation */
