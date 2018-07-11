@@ -3,6 +3,11 @@ import csv
 import os
 import click
 
+# Argument is the container class for the metadata parameters to be sent in a Redis query.
+# An object of this type is comprised of the type of the inserted entity ("NODES" or "RELATIONS"),
+# the number of entities, and one Descriptor for each entity.
+# The 'unroll' method generates this sequence as a list to be passed as part of a Redis query
+# (followed by the entities themselves).
 class Argument:
     def __init__(self, argtype):
 	self.argtype = argtype
@@ -47,8 +52,7 @@ class Descriptor:
 # [label name, node count, attribute count, attributes[0..n]]
 class LabelDescriptor(Descriptor):
     def __init__(self, name):
-	self.name = name
-	self.pending_inserts = 0
+	Descriptor.__init__(self, name)
 	self.attribute_count = 0
 	self.attributes = []
 
@@ -61,6 +65,9 @@ class LabelDescriptor(Descriptor):
 
 # TODO This seems kind of unnecessary, and should maybe be refactored
 class RelationDescriptor(Descriptor):
+    def __init__(self, name):
+	Descriptor.__init__(self, name)
+
     def token_count(self):
 	# Relations have 2 tokens: name and pending insertion count.
 	return 2
