@@ -36,10 +36,10 @@ class Argument:
 	return ret
 
     def token_count(self):
-	return sum(descriptor.token_count() for descriptor in self.descriptors)
+	# ["NODES"/"RELATIONS", number of entities to insert, number of different entity types, list of type descriptors]
+	return 3 + sum(descriptor.token_count() for descriptor in self.descriptors)
 
 # The structure is:
-# ["NODES"/"RELATIONS", number of entities to insert, number of different entity types, list of type descriptors]
 # structure of nodeinsert:
 # ["NODES", node count, label count, label_descriptors[0..n]]
 # structure of a label descriptor:
@@ -74,6 +74,7 @@ class RelationDescriptor(Descriptor):
 	return [self.name, self.pending_inserts]
 
 MAX_TOKENS = 1024 * 1024
+#  MAX_TOKENS = 8
 graphname = None
 redis_client = None
 
@@ -81,9 +82,7 @@ def QueryRedis(metadata, entities):
     #  pipe = redis_client.pipeline()
     #  result = pipe.execute_command("GRAPH.BULK", graph, *ARGS)
     #  pipe.execute()
-    print "Inserting: "
     cmd = metadata.unroll() + entities
-    print cmd
     result = redis_client.execute_command("GRAPH.BULK",
 	    graphname,
 	    *cmd
@@ -112,7 +111,8 @@ def ProcessNodes(nodes_csv_files):
 			# Update counts
 			header_len = len(header_row)
 			descriptor.attribute_count += header_len
-			TOKEN_COUNT += header_len
+			# 3 tokens for the descriptor name, insert count, and attribute count, and 1 for every attribute
+			TOKEN_COUNT += 3 + header_len
 
 			# New label - process header row and add to `labels`
 			labels.descriptors.append(descriptor)
@@ -126,7 +126,8 @@ def ProcessNodes(nodes_csv_files):
 				    QueryRedis(labels, NODES)
 				    # Reset values post-query
 				    labels.reset_tokens()
-				    TOKEN_COUNT = 2 + labels.token_count()
+				    # Reset token count, including the one remaining row
+				    TOKEN_COUNT = 2 + labels.token_count() + len(row)
 				    NODES = []
 				    # If 1 or more CSVs have been depleted, remove their descriptors
 				    if depleted_labels > 0:
@@ -139,7 +140,6 @@ def ProcessNodes(nodes_csv_files):
 			# A CSV has been fully processed; after the next insert its descriptor should be deleted
 			depleted_labels += 1
 	# Insert all remaining nodes
-	#  QueryRedis(labels + [item for sublist in LABEL_descriptorS for item in sublist] + NODES)
 	QueryRedis(labels, NODES)
 
 # TODO This might be sufficiently similar to ProcessNodes to allow for just one function with different descriptors
@@ -172,7 +172,8 @@ def ProcessRelations(relations_csv_files):
 				    QueryRedis(rels, RELATIONS)
 				    # After the query, subtract submitted counts from rels
 				    rels.reset_tokens()
-				    TOKEN_COUNT = 2 + rels.token_count()
+				    # Reset token count, including the one remaining row
+				    TOKEN_COUNT = 2 + rels.token_count() + len(row)
 				    RELATIONS = []
 				    # If 1 or more CSVs have been depleted, remove their descriptors
 				    if depleted_relations > 0:
