@@ -74,7 +74,6 @@ class RelationDescriptor(Descriptor):
 	return [self.name, self.pending_inserts]
 
 MAX_TOKENS = 1024 * 1024
-#  MAX_TOKENS = 8
 graphname = None
 redis_client = None
 
@@ -87,6 +86,10 @@ def QueryRedis(metadata, entities):
 	    graphname,
 	    *cmd
 	    )
+    print result
+    # TODO Choose some more useful logging approach
+    #  nodes_created = int(stats[0].split(' ')[0])
+    #  edges_created = int(stats[1].split(' ')[0])
 
 def ProcessNodes(nodes_csv_files):
         labels = Argument("NODES")
