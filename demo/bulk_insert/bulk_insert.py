@@ -22,8 +22,6 @@ class Argument:
 	self.type_count -= delete_count
 
     def unroll(self):
-	if self.pending_inserts <= 0:
-	    print "No pending inserts on Argument?"
 	ret = [self.argtype, self.pending_inserts, self.type_count]
         for descriptor in self.descriptors:
 	    # Don't include a descriptor unless we are inserting its entities.
@@ -39,17 +37,15 @@ class Argument:
 	# ["NODES"/"RELATIONS", number of entities to insert, number of different entity types, list of type descriptors]
 	return 3 + sum(descriptor.token_count() for descriptor in self.descriptors)
 
-# The structure is:
-# structure of nodeinsert:
+# Structure of a node insertion:
 # ["NODES", node count, label count, label_descriptors[0..n]]
-# structure of a label descriptor:
-# [label name, node count, attribute count, attributes[0..n]]
 class Descriptor:
     def __init__(self, name):
 	self.name = name
 	self.pending_inserts = 0
 
-
+# Structure of a label descriptor:
+# [label name, node count, attribute count, attributes[0..n]]
 class LabelDescriptor(Descriptor):
     def __init__(self, name):
 	self.name = name
@@ -78,10 +74,14 @@ graphname = None
 redis_client = None
 
 def QueryRedis(metadata, entities):
-    #  pipe = redis_client.pipeline()
-    #  result = pipe.execute_command("GRAPH.BULK", graph, *ARGS)
-    #  pipe.execute()
     cmd = metadata.unroll() + entities
+    # TODO - asynchronous execution of these queries would be really nice; we don't need to
+    # wait for a response. These two approaches take about the same time, though -
+    # find a solution
+
+    #  pipe = redis_client.pipeline()
+    #  result = pipe.execute_command("GRAPH.BULK", graphname, *cmd)
+    #  pipe.execute()
     result = redis_client.execute_command("GRAPH.BULK",
 	    graphname,
 	    *cmd
