@@ -379,9 +379,9 @@ void Graph_DeleteEdge(Graph *g, int src_id, int dest_id) {
 void Graph_LabelNodes(Graph *g, int start_node_id, int end_node_id, int label, NodeIterator **it) {
     assert(g &&
            start_node_id < g->node_count &&
-           start_node_id >=0 &&
+           start_node_id >= 0 &&
            start_node_id < end_node_id &&
-           end_node_id < g->node_count);
+           end_node_id <= g->node_count);
     
     GrB_Matrix m = Graph_GetLabelMatrix(g, label);
     for(int node_id = start_node_id; node_id <= end_node_id; node_id++) {
