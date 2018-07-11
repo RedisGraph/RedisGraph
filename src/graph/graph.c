@@ -380,7 +380,7 @@ void Graph_LabelNodes(Graph *g, int start_node_id, int end_node_id, int label, N
     assert(g &&
            start_node_id < g->node_count &&
            start_node_id >= 0 &&
-           start_node_id < end_node_id &&
+           start_node_id <= end_node_id &&
            end_node_id <= g->node_count);
     
     GrB_Matrix m = Graph_GetLabelMatrix(g, label);

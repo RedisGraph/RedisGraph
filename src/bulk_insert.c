@@ -179,7 +179,7 @@ RedisModuleString** _Bulk_Insert_Insert_Nodes(RedisModuleCtx *ctx, RedisModuleSt
             LabelDesc l = labels[label_idx];
 
             // Label nodes.
-            Graph_LabelNodes(g, number_of_labeled_nodes + start_offset, number_of_labeled_nodes + start_offset + l.node_count,
+            Graph_LabelNodes(g, number_of_labeled_nodes + start_offset, number_of_labeled_nodes + start_offset + l.node_count - 1,
                              l.label_id, NULL);
 
             if(l.attribute_count > 0) {
