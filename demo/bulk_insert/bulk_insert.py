@@ -2,8 +2,6 @@ import redis
 import csv
 import os
 import click
-# TODO for debugging only; remove
-import ipdb
 
 class Argument:
     def __init__(self, argtype):
@@ -11,6 +9,7 @@ class Argument:
 	self.pending_inserts = 0
 	self.type_count = 0
 	self.descriptors = []
+	self.entities_created = 0
 
     def reset_tokens(self):
 	self.pending_inserts = 0
@@ -86,10 +85,9 @@ def QueryRedis(metadata, entities):
 	    graphname,
 	    *cmd
 	    )
-    print result
-    # TODO Choose some more useful logging approach
-    #  nodes_created = int(stats[0].split(' ')[0])
-    #  edges_created = int(stats[1].split(' ')[0])
+    stats = result.split(', ')
+    metadata.entities_created += int(stats[0].split(' ')[0])
+    metadata.entities_created += int(stats[1].split(' ')[0])
 
 def ProcessNodes(nodes_csv_files):
         labels = Argument("NODES")
@@ -144,6 +142,7 @@ def ProcessNodes(nodes_csv_files):
 			depleted_labels += 1
 	# Insert all remaining nodes
 	QueryRedis(labels, NODES)
+	print str(labels.entities_created) + " Nodes created."
 
 # TODO This might be sufficiently similar to ProcessNodes to allow for just one function with different descriptors
 def ProcessRelations(relations_csv_files):
@@ -191,6 +190,7 @@ def ProcessRelations(relations_csv_files):
 
 	# Insert all remaining relations
 	QueryRedis(rels, RELATIONS)
+	print str(rels.entities_created) + " Relations created."
 
 def help():
 	pass
