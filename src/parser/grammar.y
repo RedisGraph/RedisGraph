@@ -123,18 +123,15 @@ chain(A) ::= chain(B) link(C) node(D). {
 	A = B;
 }
 
+// Vector of Vectors, each representing a single chain.
 %type chains {Vector*}
 chains(A) ::= chain(B). {
-	A = B;
+	A = NewVector(Vector*, 1);
+	Vector_Push(A, B);
 }
 
 chains(A) ::= chains(B) COMMA chain(C). {
-	for(int i = 0; i < Vector_Size(C); i++) {
-		AST_GraphEntity *entity;
-		Vector_Get(C, i, &entity);
-		Vector_Push(B, entity);
-	}
-	Vector_Free(C);
+	Vector_Push(B, C);
 	A = B;
 }
 

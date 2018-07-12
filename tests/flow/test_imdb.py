@@ -17,6 +17,7 @@ def redis():
 class ImdbFlowTest(FlowTestsBase):
     @classmethod
     def setUpClass(cls):
+        print "ImdbFlowTest"
         global redis_graph
         cls.r = redis()
         cls.r.start()

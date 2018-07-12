@@ -39,7 +39,7 @@ typedef struct {
 } AlgebraicExpression;
 
 /* Construct an algebraic expression from a query. */
-AlgebraicExpression **AlgebraicExpression_From_Query(const AST_Query *ast, const QueryGraph *q, size_t *exp_count);
+AlgebraicExpression **AlgebraicExpression_From_Query(const AST_Query *ast, Vector *matchPattern, const QueryGraph *q, size_t *exp_count);
 
 /* Executes given expression. */
 AlgebraicExpressionResult *AlgebraicExpression_Execute(AlgebraicExpression *ae);

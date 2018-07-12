@@ -1,43 +1,75 @@
 #include "./match.h"
 #include "../ast_common.h"
 
-AST_MatchNode* New_AST_MatchNode(Vector *elements) {
+AST_MatchNode* New_AST_MatchNode(Vector *patterns) {
 	AST_MatchNode *matchNode = (AST_MatchNode*)malloc(sizeof(AST_MatchNode));
-	matchNode->graphEntities = elements;
+	matchNode->patterns = patterns;
+	matchNode->_mergedPatterns = NewVector(AST_GraphEntity*, 1);
+
+	for(int i = 0; i < Vector_Size(patterns); i++) {
+		Vector *pattern;
+		Vector_Get(patterns, i, &pattern);
+
+		size_t patternLength = Vector_Size(pattern);
+		for(int j = 0; j < patternLength; j++) {
+			AST_GraphEntity *ge;
+			Vector_Get(pattern, j, &ge);
+			Vector_Push(matchNode->_mergedPatterns, ge);
+		}
+	}
 	return matchNode;
 }
 
-void MatchClause_ReferredNodes(const AST_MatchNode *match_node, TrieMap *referred_nodes) {
-	if(!match_node) return;
-	int match_element_count = Vector_Size(match_node->graphEntities);
+void MatchClause_ReferredNodes(const AST_MatchNode *matchNode, TrieMap *referred_nodes) {
+	if(!matchNode) return;
 
-    for(int i = 0; i < match_element_count; i++) {
-        AST_GraphEntity *match_element;
-        Vector_Get(match_node->graphEntities, i, &match_element);
-		TrieMap_Add(referred_nodes, match_element->alias, strlen(match_element->alias), NULL, NULL);
-    }
+	int entityCount = Vector_Size(matchNode->_mergedPatterns);
+	for(int i = 0; i < entityCount; i++) {
+		AST_GraphEntity *entity;
+		Vector_Get(matchNode->_mergedPatterns, i, &entity);
+		TrieMap_Add(referred_nodes, entity->alias, strlen(entity->alias), NULL, NULL);
+	}
 }
 
 AST_GraphEntity* MatchClause_GetEntity(const AST_MatchNode *matchNode, const char* alias) {
 	if(!matchNode) return NULL;
-	size_t match_entity_count = Vector_Size(matchNode->graphEntities);
-	for(int i = 0; i < match_entity_count; i++) {
-		AST_GraphEntity *ge;
-		Vector_Get(matchNode->graphEntities, i, &ge);
-		if(strcmp(ge->alias, alias) == 0) return ge;
+
+	int entityCount = Vector_Size(matchNode->_mergedPatterns);
+	for(int i = 0; i < entityCount; i++) {
+		AST_GraphEntity *entity;
+		Vector_Get(matchNode->_mergedPatterns, i, &entity);
+		if(strcmp(entity->alias, alias) == 0) return entity;
 	}
 
 	return NULL;
 }
 
+void MatchClause_NameAnonymousNodes(AST_MatchNode *matchNode, int *entityID) {
+	if(!matchNode) return;
+
+	int entityCount = Vector_Size(matchNode->_mergedPatterns);
+	for(int i = 0; i < entityCount; i++) {
+		AST_GraphEntity *entity;
+		Vector_Get(matchNode->_mergedPatterns, i, &entity);
+        if (entity->alias == NULL) {
+            asprintf(&entity->alias, "anon_%d", *entityID);
+            (*entityID)++;
+        }
+    }
+}
+
 void Free_AST_MatchNode(AST_MatchNode *matchNode) {
 	if(!matchNode) return;
-	for(int i = 0; i < Vector_Size(matchNode->graphEntities); i++) {
-		AST_GraphEntity *ge;
-		Vector_Get(matchNode->graphEntities, i, &ge);
-		Free_AST_GraphEntity(ge);
+	Vector *pattern;
+	while(Vector_Pop(matchNode->patterns, &pattern)) {
+		for(int i = 0; i < Vector_Size(pattern); i++) {
+			AST_GraphEntity *ge;
+			Vector_Get(pattern, i, &ge);
+			Free_AST_GraphEntity(ge);
+		}
+		Vector_Free(pattern);
 	}
 
-	Vector_Free(matchNode->graphEntities);
+	Vector_Free(matchNode->patterns);
 	free(matchNode);
 }

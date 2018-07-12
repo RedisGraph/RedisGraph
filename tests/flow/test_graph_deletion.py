@@ -16,6 +16,7 @@ def redis():
 class GraphDeletionFlowTest(FlowTestsBase):
     @classmethod
     def setUpClass(cls):
+        print "GraphDeletionFlowTest"
         global redis_graph
         cls.r = redis()
         cls.r.start()
@@ -24,6 +25,7 @@ class GraphDeletionFlowTest(FlowTestsBase):
 
         # cls.r = redis.Redis()
         # redis_graph = Graph("G", cls.r)
+
         cls.populate_graph()
 
     @classmethod
@@ -36,7 +38,7 @@ class GraphDeletionFlowTest(FlowTestsBase):
         global redis_graph
         
         nodes = {}
-         # Create country entities
+         # Create entities
         people = ["Roi", "Alon", "Ailon", "Boaz", "Tal", "Omri", "Ori"]
         for p in people:
             node = Node(label="person", properties={"name": p})

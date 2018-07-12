@@ -86,6 +86,8 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
         return REDISMODULE_OK;
     }
     
+    ModifyAST(ctx, ast, graph_name);
+
     // Try to get graph.
     Graph *g = Graph_Get(ctx, argv[1]);
     if(!g) {
@@ -98,13 +100,11 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
         }
     }
 
-    ModifyAST(ctx, ast, graph_name);
-
     char *reason;
     if (AST_Validate(ast, &reason) != AST_VALID) {
         RedisModule_ReplyWithError(ctx, reason);
         return REDISMODULE_OK;
-    }    
+    }
 
     ExecutionPlan *plan = NewExecutionPlan(ctx, g, graph_name, ast);
     ResultSet* resultSet = ExecutionPlan_Execute(plan);
@@ -147,7 +147,7 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     char *errMsg = NULL;
     AST_Query* ast = ParseQuery(query, strlen(query), &errMsg);
 
-     // Try to get graph.
+    // Try to get graph.
     Graph *g = Graph_Get(ctx, argv[1]);
     if(!g) {
         if(ast->createNode || ast->mergeNode) {
@@ -166,7 +166,7 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
         return REDISMODULE_OK;
     }
 
-    ModifyAST(ctx, ast, graph_name);    
+    ModifyAST(ctx, ast, graph_name);
 
     char *reason;
     if (AST_Validate(ast, &reason) != AST_VALID) {

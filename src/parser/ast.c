@@ -25,18 +25,6 @@ AST_Query *New_AST_Query(AST_MatchNode *matchNode, AST_WhereNode *whereNode,
   return queryExpressionNode;
 }
 
-void Free_AST_Query(AST_Query *queryExpressionNode) {
-  Free_AST_MatchNode(queryExpressionNode->matchNode);
-  Free_AST_CreateNode(queryExpressionNode->createNode);
-  Free_AST_MergeNode(queryExpressionNode->mergeNode);
-  Free_AST_DeleteNode(queryExpressionNode->deleteNode);
-  Free_AST_SetNode(queryExpressionNode->setNode);
-  Free_AST_WhereNode(queryExpressionNode->whereNode);
-  Free_AST_ReturnNode(queryExpressionNode->returnNode);
-  Free_AST_OrderNode(queryExpressionNode->orderNode);
-  free(queryExpressionNode);
-}
-
 AST_Validation Validate_Aliases_In_Match_Clause(TrieMap *aliasesToCheck,
                                                 const AST_MatchNode *match_node,
                                                 char **undefined_alias) {
@@ -193,4 +181,26 @@ AST_Validation AST_Validate(const AST_Query *ast, char **reason) {
   }
 
   return AST_VALID;
+}
+
+void AST_NameAnonymousNodes(AST_Query *ast) {
+  int entity_id = 0;
+  
+  if(ast->matchNode)
+    MatchClause_NameAnonymousNodes(ast->matchNode, &entity_id);
+
+  if(ast->createNode)
+    CreateClause_NameAnonymousNodes(ast->createNode, &entity_id);
+}
+
+void Free_AST_Query(AST_Query *queryExpressionNode) {
+  Free_AST_MatchNode(queryExpressionNode->matchNode);
+  Free_AST_CreateNode(queryExpressionNode->createNode);
+  Free_AST_MergeNode(queryExpressionNode->mergeNode);
+  Free_AST_DeleteNode(queryExpressionNode->deleteNode);
+  Free_AST_SetNode(queryExpressionNode->setNode);
+  Free_AST_WhereNode(queryExpressionNode->whereNode);
+  Free_AST_ReturnNode(queryExpressionNode->returnNode);
+  Free_AST_OrderNode(queryExpressionNode->orderNode);
+  free(queryExpressionNode);
 }

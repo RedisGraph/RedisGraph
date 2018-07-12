@@ -61,7 +61,7 @@ int _referred_node(const Node *n, const QueryGraph *q, TrieMap *return_nodes) {
 
 /* Break down expression into sub expressions.
  * considering referenced intermidate nodes. */
-AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(AlgebraicExpression *exp, const AST_Query *ast, const QueryGraph *q, size_t *exp_count) {
+AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(AlgebraicExpression *exp, const AST_Query *ast, Vector *matchPattern, const QueryGraph *q, size_t *exp_count) {
     /* Allocating maximum number of expression possible. */
     AlgebraicExpression **expressions = malloc(sizeof(AlgebraicExpression *) * q->edge_count);
     int expIdx = 0;     // Sub expression index.
@@ -69,7 +69,6 @@ AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(AlgebraicExpr
     int transpose;     // Indicate if matrix operand needs to be transposed.    
     Node *dest = NULL;
     Edge *e = NULL;
-    Vector *matchPattern = ast->matchNode->graphEntities;
 
     TrieMap *ref_nodes = NewTrieMap();
     ReturnClause_ReferredNodes(ast->returnNode, ref_nodes);
@@ -117,7 +116,7 @@ AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(AlgebraicExpr
     return expressions;
 }
 
-AlgebraicExpression **AlgebraicExpression_From_Query(const AST_Query *ast, const QueryGraph *q, size_t *exp_count) {
+AlgebraicExpression **AlgebraicExpression_From_Query(const AST_Query *ast, Vector *matchPattern, const QueryGraph *q, size_t *exp_count) {
     assert(q->edge_count != 0);
 
     AlgebraicExpression *exp = _AE_MUL(q->edge_count);
@@ -126,7 +125,6 @@ AlgebraicExpression **AlgebraicExpression_From_Query(const AST_Query *ast, const
     Node *dest = NULL;
     Node *src = NULL;
     Edge *e = NULL;
-    Vector *matchPattern = ast->matchNode->graphEntities;
     
     // Scan MATCH clause from left to right.
     for(int i = 0; i < Vector_Size(matchPattern); i++) {
@@ -155,7 +153,7 @@ AlgebraicExpression **AlgebraicExpression_From_Query(const AST_Query *ast, const
     }
     exp->dest_node = QueryGraph_GetNodeRef(q, dest);
     
-    AlgebraicExpression **expressions = _AlgebraicExpression_Intermidate_Expressions(exp, ast, q, exp_count);
+    AlgebraicExpression **expressions = _AlgebraicExpression_Intermidate_Expressions(exp, ast, matchPattern, q, exp_count);
     AlgebraicExpression_Free(exp);
     return expressions;
 }
