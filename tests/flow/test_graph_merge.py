@@ -16,13 +16,15 @@ def redis():
 class GraphMergeFlowTest(FlowTestsBase):
     @classmethod
     def setUpClass(cls):
+        print "GraphMergeFlowTest"
         global redis_graph
         cls.r = redis()
         cls.r.start()
         redis_con = cls.r.client()
         redis_graph = Graph("G", redis_con)
 
-        # redis_graph = Graph("G", redis.Redis())
+        # cls.r = redis.Redis()
+        # redis_graph = Graph("G", cls.r)
 
     @classmethod
     def tearDownClass(cls):

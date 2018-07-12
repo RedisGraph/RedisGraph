@@ -49,16 +49,8 @@ void ReturnClause_ExpandCollapsedNodes(RedisModuleCtx *ctx, AST_Query *ast, cons
             
             /* Return clause doesn't contains entity's label,
              * Find collapsed entity's label. */
-            AST_GraphEntity *collapsed_entity = NULL;
-            for(int j = 0; j < Vector_Size(ast->matchNode->graphEntities); j++) {
-                AST_GraphEntity *ge;
-                Vector_Get(ast->matchNode->graphEntities, j, &ge);
-                if(strcmp(ge->alias, exp->operand.variadic.alias) == 0) {
-                    collapsed_entity = ge;
-                    break;
-                }
-            }
-            
+            AST_GraphEntity *collapsed_entity = MatchClause_GetEntity(ast->matchNode, exp->operand.variadic.alias);
+
             /* Failed to find collapsed entity. */
             if(collapsed_entity == NULL) {
                 /* Invalid query, return clause refers to none existing entity. */
@@ -110,39 +102,21 @@ void ReturnClause_ExpandCollapsedNodes(RedisModuleCtx *ctx, AST_Query *ast, cons
 /* Shares merge pattern with match clause. */
 void _replicateMergeClauseToMatchClause(AST_Query *ast) {    
     assert(ast->mergeNode && !ast->matchNode);
-    ast->matchNode = New_AST_MatchNode(ast->mergeNode->graphEntities);
-}
 
-void _nameAnonymousNodes(Vector *entities, int *entity_id) {
-    /* Foreach graph entity: node/edge. */
-    for(int i = 0; i < Vector_Size(entities); i++) {
-        AST_GraphEntity *entity;
-        Vector_Get(entities, i, &entity);
-        
-        if (entity->alias == NULL) {
-            asprintf(&entity->alias, "anon_%d", *entity_id);
-            (*entity_id)++;
-        }
-    }
-}
-
-void nameAnonymousNodes(AST_Query *ast) {
-    int entity_id = 0;
-
-    if(ast->matchNode)
-        _nameAnonymousNodes(ast->matchNode->graphEntities, &entity_id);
-
-    if(ast->createNode)
-        _nameAnonymousNodes(ast->createNode->graphEntities, &entity_id);
-    
-    if(ast->mergeNode)
-        _nameAnonymousNodes(ast->mergeNode->graphEntities, &entity_id);
+    /* Match node is expecting a vector of vectors,
+     * and so we have to wrap merge graph entities vector
+     * within another vector
+     * wrappedEntities will be freed by match clause. */
+    Vector *wrappedEntities = NewVector(Vector*, 1);
+    Vector_Push(wrappedEntities, ast->mergeNode->graphEntities);
+    ast->matchNode = New_AST_MatchNode(wrappedEntities);
 }
 
 void inlineProperties(AST_Query *ast) {
     /* Migrate inline filters to WHERE clause. */
     if(!ast->matchNode) return;
-    Vector *entities = ast->matchNode->graphEntities;
+    // Vector *entities = ast->matchNode->graphEntities;
+    Vector *entities = ast->matchNode->_mergedPatterns;
 
     /* Foreach entity. */
     for(int i = 0; i < Vector_Size(entities); i++) {
@@ -185,16 +159,12 @@ int Query_Modifies_KeySpace(const AST_Query *ast) {
 }
 
 AST_Query* ParseQuery(const char *query, size_t qLen, char **errMsg) {
-    AST_Query *ast = Query_Parse(query, qLen, errMsg);
-    
-    if (!ast) {
-        return NULL;
-    }
-    return ast;
+    return Query_Parse(query, qLen, errMsg);
 }
 
 void ModifyAST(RedisModuleCtx *ctx, AST_Query *ast, const char *graph_name) {
-    nameAnonymousNodes(ast);    
+    AST_NameAnonymousNodes(ast);
+
     if(ReturnClause_ContainsCollapsedNodes(ast->returnNode) == 1) {
         /* Expand collapsed nodes. */
         ReturnClause_ExpandCollapsedNodes(ctx, ast, graph_name);

@@ -27,26 +27,24 @@ void _SetModifiedEntities(OpCreate *op) {
             if(ge->t == N_ENTITY) {
                 // Node.
                 Node *n = QueryGraph_GetNodeByAlias(op->qg, ge->alias);
-                if(n->id == INVALID_ENTITY_ID) {
-                    Node **ppn = QueryGraph_GetNodeRef(op->qg, n);
-                    op->nodes_to_create[node_idx].original_node = n;
-                    op->nodes_to_create[node_idx].original_node_ref = ppn;
-                    n->id = 0;  /* Mark node. */
-                    node_idx++;
-                }
+                if(n->id == 0) continue;   // Node already marked for creation.
+                Node **ppn = QueryGraph_GetNodeRef(op->qg, n);
+                op->nodes_to_create[node_idx].original_node = n;
+                op->nodes_to_create[node_idx].original_node_ref = ppn;
+                n->id = 0;  /* Mark node. */
+                node_idx++;
             } else {
                 // Edge.
                 Edge *e = QueryGraph_GetEdgeByAlias(op->qg, ge->alias);
-                if(e->id == INVALID_ENTITY_ID) {
-                    op->edges_to_create[edge_idx].original_edge = e;
-                    op->edges_to_create[edge_idx].original_edge_ref = QueryGraph_GetEdgeRef(op->qg, e);
-                    assert(QueryGraph_ContainsNode(graph, e->src));
-                    assert(QueryGraph_ContainsNode(graph, e->dest));
-                    op->edges_to_create[edge_idx].src_node_alias = QueryGraph_GetNodeAlias(graph, e->src);
-                    op->edges_to_create[edge_idx].dest_node_alias = QueryGraph_GetNodeAlias(graph, e->dest);
-                    e->id = 0;  /* Mark edge. */
-                    edge_idx++;
-                }
+                if(e->id == 0) continue;   // Edge already marked for creation.
+                op->edges_to_create[edge_idx].original_edge = e;
+                op->edges_to_create[edge_idx].original_edge_ref = QueryGraph_GetEdgeRef(op->qg, e);
+                assert(QueryGraph_ContainsNode(graph, e->src));
+                assert(QueryGraph_ContainsNode(graph, e->dest));
+                op->edges_to_create[edge_idx].src_node_alias = QueryGraph_GetNodeAlias(graph, e->src);
+                op->edges_to_create[edge_idx].dest_node_alias = QueryGraph_GetNodeAlias(graph, e->dest);
+                e->id = 0;  /* Mark edge. */
+                edge_idx++;
             }
         }
     }

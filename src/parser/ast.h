@@ -39,6 +39,8 @@ AST_Validation _Validate_SET_Clause(const AST_Query* ast, char **reason);
 AST_Validation _Validate_WHERE_Clause(const AST_Query* ast, char **reason);
 AST_Validation AST_Validate(const AST_Query* ast, char **reason);
 
+void AST_NameAnonymousNodes(AST_Query *ast);
+
 void Free_AST_Query(AST_Query *queryExpressionNode);
 
 #endif
