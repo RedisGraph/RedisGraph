@@ -15,6 +15,7 @@ class Argument:
 	self.type_count = 0
 	self.descriptors = []
 	self.entities_created = 0
+	self.queries_processed = 0
 
     def reset_tokens(self):
 	self.pending_inserts = 0
@@ -75,7 +76,7 @@ class RelationDescriptor(Descriptor):
     def unroll(self):
 	return [self.name, self.pending_inserts]
 
-MAX_TOKENS = 1024 * 1024
+max_tokens = 1024 * 1024
 graphname = None
 redis_client = None
 
@@ -95,6 +96,7 @@ def QueryRedis(metadata, entities):
     stats = result.split(', ')
     metadata.entities_created += int(stats[0].split(' ')[0])
     metadata.entities_created += int(stats[1].split(' ')[0])
+    metadata.queries_processed += 1
 
 def ProcessNodes(nodes_csv_files):
         labels = Argument("NODES")
@@ -129,8 +131,8 @@ def ProcessNodes(nodes_csv_files):
 			# Labeled nodes
 			for row in reader:
 				TOKEN_COUNT += len(row)
-				if TOKEN_COUNT > MAX_TOKENS:
-				    # MAX_TOKENS has been reached; submit all but the most recent node
+				if TOKEN_COUNT > max_tokens:
+				    # max_tokens has been reached; submit all but the most recent node
 				    QueryRedis(labels, NODES)
 				    # Reset values post-query
 				    labels.reset_tokens()
@@ -149,7 +151,7 @@ def ProcessNodes(nodes_csv_files):
 			depleted_labels += 1
 	# Insert all remaining nodes
 	QueryRedis(labels, NODES)
-	print str(labels.entities_created) + " Nodes created."
+	print "%d Nodes created in %d queries." % (labels.entities_created, labels.queries_processed)
 
 # TODO This might be sufficiently similar to ProcessNodes to allow for just one function with different descriptors
 def ProcessRelations(relations_csv_files):
@@ -176,8 +178,8 @@ def ProcessRelations(relations_csv_files):
 
 			for row in reader:
 				TOKEN_COUNT += len(row)
-				if TOKEN_COUNT > MAX_TOKENS:
-				    # MAX_TOKENS has been reached; submit all but the most recent entity
+				if TOKEN_COUNT > max_tokens:
+				    # max_tokens has been reached; submit all but the most recent entity
 				    QueryRedis(rels, RELATIONS)
 				    # After the query, subtract submitted counts from rels
 				    rels.reset_tokens()
@@ -197,7 +199,7 @@ def ProcessRelations(relations_csv_files):
 
 	# Insert all remaining relations
 	QueryRedis(rels, RELATIONS)
-	print str(rels.entities_created) + " Relations created."
+	print "%d Relations created in %d queries." % (rels.entities_created, rels.queries_processed)
 
 def help():
 	pass
@@ -208,12 +210,14 @@ def help():
 @click.option('--port', '-p', default=6379, help='Redis server port')
 @click.option('--nodes', '-n', multiple=True, help='path to node csv file')
 @click.option('--relations', '-r', multiple=True, help='path to relation csv file')
-def bulk_insert(graph, host, port, nodes, relations):
+@click.option('--max_buffer_size', '-m', default=1024*1024, help='max token count per Redis query')
+def bulk_insert(graph, host, port, nodes, relations, max_buffer_size):
         global graphname
 	global redis_client
+	global max_tokens
         graphname = graph
 	redis_client = redis.StrictRedis(host=host, port=port)
-
+	max_tokens = max_buffer_size
 	if nodes:
 	    ProcessNodes(nodes)
 
