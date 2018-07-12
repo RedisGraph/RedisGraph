@@ -28,7 +28,7 @@ AST_Query *New_AST_Query(AST_MatchNode *matchNode, AST_WhereNode *whereNode,
 void Free_AST_Query(AST_Query *queryExpressionNode) {
   Free_AST_MatchNode(queryExpressionNode->matchNode);
   Free_AST_CreateNode(queryExpressionNode->createNode);
-  // Free_AST_MergeNode(queryExpressionNode->mergeNode);
+  Free_AST_MergeNode(queryExpressionNode->mergeNode);
   Free_AST_DeleteNode(queryExpressionNode->deleteNode);
   Free_AST_SetNode(queryExpressionNode->setNode);
   Free_AST_WhereNode(queryExpressionNode->whereNode);
@@ -157,7 +157,7 @@ AST_Validation _Validate_WHERE_Clause(const AST_Query *ast, char **reason) {
 
 AST_Validation AST_Validate(const AST_Query *ast, char **reason) {
   /* AST must include either a MATCH or CREATE clause. */
-  if (!(ast->matchNode || ast->createNode || ast->mergeNode)) {
+  if (!(ast->matchNode || ast->createNode || ast->mergeNode || ast->returnNode)) {
     *reason = "Query must specify either MATCH or CREATE clause.";
     return AST_INVALID;
   }

@@ -69,9 +69,6 @@ void ReturnClause_ExpandCollapsedNodes(RedisModuleCtx *ctx, AST_Query *ast, cons
 
             /* Find label's properties. */
             LabelStoreType store_type = (collapsed_entity->t == N_ENTITY) ? STORE_NODE : STORE_EDGE;
-            void *ptr = NULL;       /* Label store property value, (not in use). */
-            char *prop = NULL;      /* Entity property. */
-            tm_len_t prop_len = 0;  /* Length of entity's property. */
             LabelStore *store;
                         
             if(collapsed_entity->label) {
@@ -82,19 +79,30 @@ void ReturnClause_ExpandCollapsedNodes(RedisModuleCtx *ctx, AST_Query *ast, cons
                 store = LabelStore_Get(ctx, store_type, graphName, NULL);
             }
 
-            TrieMapIterator *it = TrieMap_Iterate(store->properties, "", 0);
-            while(TrieMapIterator_Next(it, &prop, &prop_len, &ptr)) {
-                prop[prop_len] = 0;
-                /* Create a new return element foreach property. */
-                AST_ArithmeticExpressionNode *expanded_exp =
-                    New_AST_AR_EXP_VariableOperandNode(collapsed_entity->alias, prop);
-
-                AST_ReturnElementNode *retElem =
-                    New_AST_ReturnElementNode(expanded_exp, ret_elem->alias);
-
+            void *ptr = NULL;       /* Label store property value, (not in use). */
+            char *prop = NULL;      /* Entity property. */
+            tm_len_t prop_len = 0;  /* Length of entity's property. */
+            AST_ArithmeticExpressionNode *expanded_exp;
+            AST_ReturnElementNode *retElem;
+            if(store->properties->cardinality == 0) {
+                /* Label doesn't have any properties.
+                 * Create a fake return element. */
+                expanded_exp = New_AST_AR_EXP_ConstOperandNode(SI_StringVal(""));
+                // Incase an alias is given use it, otherwise use the variable name.
+                if(ret_elem->alias) retElem = New_AST_ReturnElementNode(expanded_exp, ret_elem->alias);
+                else retElem = New_AST_ReturnElementNode(expanded_exp, exp->operand.variadic.alias);
                 Vector_Push(expandReturnElements, retElem);
+            } else {
+                TrieMapIterator *it = TrieMap_Iterate(store->properties, "", 0);
+                while(TrieMapIterator_Next(it, &prop, &prop_len, &ptr)) {
+                    prop[prop_len] = 0;
+                    /* Create a new return element foreach property. */
+                    expanded_exp = New_AST_AR_EXP_VariableOperandNode(collapsed_entity->alias, prop);
+                    retElem = New_AST_ReturnElementNode(expanded_exp, ret_elem->alias);
+                    Vector_Push(expandReturnElements, retElem);
+                }
+                TrieMapIterator_Free(it);
             }
-            TrieMapIterator_Free(it);
 
             /* Discard collapsed return element. */
             Free_AST_ReturnElementNode(ret_elem);
@@ -194,7 +202,7 @@ AST_Query* ParseQuery(const char *query, size_t qLen, char **errMsg) {
 }
 
 void ModifyAST(RedisModuleCtx *ctx, AST_Query *ast, const char *graph_name) {
-    nameAnonymousNodes(ast);    
+    nameAnonymousNodes(ast);
     if(ReturnClause_ContainsCollapsedNodes(ast->returnNode) == 1) {
         /* Expand collapsed nodes. */
         ReturnClause_ExpandCollapsedNodes(ctx, ast, graph_name);
