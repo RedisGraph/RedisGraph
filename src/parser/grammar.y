@@ -63,6 +63,10 @@ expr(A) ::= mergeClause(B). {
 	A = New_AST_Query(NULL, NULL, NULL, B, NULL, NULL, NULL, NULL, NULL);
 }
 
+expr(A) ::= returnClause(B). {
+	A = New_AST_Query(NULL, NULL, NULL, NULL, NULL, NULL, B, NULL, NULL);
+}
+
 %type matchClause { AST_MatchNode* }
 
 matchClause(A) ::= MATCH chains(B). {
@@ -448,6 +452,7 @@ value(A) ::= FLOAT(B). {  A = SI_DoubleVal(B.dval); }
 value(A) ::= DASH FLOAT(B). {  A = SI_DoubleVal(-B.dval); }
 value(A) ::= TRUE. { A = SI_BoolVal(1); }
 value(A) ::= FALSE. { A = SI_BoolVal(0); }
+value(A) ::= NULLVAL. { A = SI_NullVal(); }
 
 %code {
 

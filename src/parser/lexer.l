@@ -36,6 +36,7 @@ int yycolumn = 1;
 "ASC"       { return ASC; }
 "DESC"      { return DESC; }
 "LIMIT"     { return LIMIT; }
+"NULL"      { return NULLVAL; }
 
 
 [0-9]*\.[0-9]+    {

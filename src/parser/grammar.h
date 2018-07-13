@@ -41,3 +41,4 @@
 #define FLOAT                           41
 #define TRUE                            42
 #define FALSE                           43
+#define NULLVAL                         44
