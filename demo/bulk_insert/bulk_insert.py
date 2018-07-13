@@ -217,7 +217,11 @@ def bulk_insert(graph, host, port, nodes, relations, max_buffer_size):
 	global max_tokens
         graphname = graph
 	redis_client = redis.StrictRedis(host=host, port=port)
-	max_tokens = max_buffer_size
+	if max_buffer_size > max_tokens:
+	    print "Requested buffer size too large, capping queries at %d." % max_tokens
+	else:
+	    max_tokens = max_buffer_size
+
 	if nodes:
 	    ProcessNodes(nodes)
 
