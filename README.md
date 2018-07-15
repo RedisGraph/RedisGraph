@@ -31,4 +31,4 @@ Read the docs at [redisgraph.io](http://redisgraph.io).
 
 ## License
 
-AGPLv3 - see [LICENSE](LICENSE)
+Apache 2.0 with Commons Clause - see [LICENSE](LICENSE)
