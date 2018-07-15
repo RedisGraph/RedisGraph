@@ -175,8 +175,13 @@ FT_FilterNode* BuildFiltersTree(const AST_FilterNode *root) {
 /* Applies a single filter to a single result.
  * Compares given values, tests if values maintain desired relation (op) */
 int _applyFilter(SIValue* aVal, SIValue* bVal, CmpFunc f, int op) {
-    /* TODO: Make sure values are of the same type
-     * TODO: Make sure values type confirms with compare function. */
+    /* TODO: Make sure values type confirms with compare function
+     * TODO: If there's a type mismatch should we try to find a common type and compare ? */
+    if(aVal->type != bVal->type) {
+        // Type mismatch!
+        return 0;
+    }
+
     int rel = f(aVal, bVal);
 
     switch(op) {
