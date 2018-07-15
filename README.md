@@ -1,3 +1,5 @@
+![docs/images/logo.svg](docs/images/logo.svg)
+
 # Redis Graph
 
 This project is a Redis module that implements a graph database. Nodes in the graph represent entities such as persons
@@ -29,4 +31,4 @@ Read the docs at [redisgraph.io](http://redisgraph.io).
 
 ## License
 
-AGPLv3 - see [LICENSE](LICENSE)
+Apache 2.0 with Commons Clause - see [LICENSE](LICENSE)

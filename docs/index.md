@@ -1,3 +1,6 @@
+
+<center>![images/logo.svg](images/logo.svg)</center>
+
 # Redis Graph
 
 This project is a Redis module that implements a graph database. Nodes in the graph represent entities such as persons or places, and connections such as 'visit' are made between the different entities.
