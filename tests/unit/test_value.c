@@ -46,10 +46,11 @@ void test_value_parse() {
     assert(v.type == T_STRING);
     assert(strcmp(v.stringval, "1.0001e10001") == 0);
     SIValue_Free(&v);
+    printf("test_value - PASS!\n");
 }
 
-int main(int argc, char **argv) {
-    test_value_parse();
-    printf("test_value - PASS!\n");
-    return 0;
-}
+// int main(int argc, char **argv) {
+    // test_value_parse();
+    // printf("test_value - PASS!\n");
+    // return 0;
+// }

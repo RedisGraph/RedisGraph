@@ -12,6 +12,10 @@
 #include <stdio.h>
 #include "./rmutil/vector.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef char *SIId;
 
 /* Type defines the supported types by the indexing system. The types are powers
@@ -115,4 +119,9 @@ int SIValue_Compare(SIValue a, SIValue b);
 
 void SIValue_Print(FILE *outstream, SIValue *v);
 
+#ifdef __cplusplus
+}
 #endif
+
+#endif // __SECONDARY_VALUE_H__
+

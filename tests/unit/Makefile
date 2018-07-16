@@ -1,3 +1,23 @@
+# Adapted from the sample Makefile provided with GoogleTest
+
+# Points to the root of Google Test, relative to where this file is.
+# Remember to tweak this if you move this file.
+GTEST_DIR = ../googletest
+
+# Flags passed to the preprocessor.
+# Set Google Test's header directory as a system directory, such that
+# the compiler doesn't generate warnings in Google Test headers.
+CPPFLAGS += -isystem $(GTEST_DIR)/include
+
+# Flags passed to the C++ compiler.
+CXXFLAGS += -g -Wall -Wextra -pthread
+CXXSUPPRESS = -Wno-write-strings
+
+# Google Test headers - do not modify
+GTEST_HEADERS = $(GTEST_DIR)/include/gtest/*.h \
+                $(GTEST_DIR)/include/gtest/internal/*.h
+
+# RedisGraph flags and libraries
 CFLAGS:=$(CFLAGS)
 CC_OBJECTS:=$(CC_OBJECTS)
 LIBRMUTIL=../../src/rmutil/librmutil.a
@@ -7,62 +27,55 @@ LIBGRAPHBLAS=../../deps/GraphBLAS/build/libgraphblas.a
 LIBS=$(LIBTRIEMAP) $(LIBRMUTIL) $(LIBGRAPHBLAS)
 DEPS=$(CC_OBJECTS) $(LIBS)
 
+# Tests
+TESTS = value_handler
+
+run_tests: $(TESTS)
+	@(sh -c ./value_handler)
+
+all : $(TESTS) run_tests
+
+clean :
+	rm -f $(TESTS) gtest.a gtest_main.a *.o
+
+# Builds gtest.a and gtest_main.a.
+
+# Usually you shouldn't tweak such internal variables, indicated by a
+# trailing _.
+GTEST_SRCS_ = $(GTEST_DIR)/src/*.cc $(GTEST_DIR)/src/*.h $(GTEST_HEADERS)
+
+# For simplicity and to avoid depending on Google Test's
+# implementation details, the dependencies specified below are
+# conservative and not optimized.  This is fine as Google Test
+# compiles fast and for ordinary users its source rarely changes.
+gtest-all.o : $(GTEST_SRCS_)
+	$(CXX) $(CPPFLAGS) -I$(GTEST_DIR) $(CXXFLAGS) -c \
+            $(GTEST_DIR)/src/gtest-all.cc
+
+gtest_main.o : $(GTEST_SRCS_)
+	$(CXX) $(CPPFLAGS) -I$(GTEST_DIR) $(CXXFLAGS) -c \
+            $(GTEST_DIR)/src/gtest_main.cc
+
+gtest.a : gtest-all.o
+	$(AR) $(ARFLAGS) $@ $^
+
+gtest_main.a : gtest-all.o gtest_main.o
+	$(AR) $(ARFLAGS) $@ $^
+
+# A test should link with either gtest.a or gtest_main.a, depending on whether it defines its own main()
+# function.
+
 SRCDIR := $(shell pwd)
 LDFLAGS :=  -lc -lm -ldl -lpthread
 
-.SUFFIXES: .c .so .xo .o
+.SUFFIXES: .cc .c .so .xo .o
 
-graph: test_graph.o
-	$(CC) $(CFLAGS) -o test_graph test_graph.o  $(DEPS) $(LDFLAGS)
+test_value.o : test_value.c
+	$(CC) $(CFLAGS) -c test_value.c $(LDFLAGS)
 
-algebraic_expression: test_algebraic_expression.o
-	$(CC) $(CFLAGS) -o test_algebraic_expression test_algebraic_expression.o  $(DEPS) $(LDFLAGS)
+value_handler.o : value_handler.cc $(GTEST_HEADERS)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(CXXSUPPRESS) -c value_handler.cc $(LDFLAGS)
 
-tuples_iter: test_tuples_iter.o
-	$(CC) $(CFLAGS) -o test_tuples_iter test_tuples_iter.o  $(DEPS) $(LDFLAGS)
+value_handler: ../../src/value.o test_value.o value_handler.o gtest_main.a
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(CXXSUPPRESS) -lpthread $^ -o $@
 
-filter_tree: test_filter_tree.o
-	$(CC) $(CFLAGS) -o test_filter_tree test_filter_tree.o  $(DEPS) $(LDFLAGS)
-
-value: test_value.o
-	$(CC) $(CFLAGS)  -o test_value test_value.o  $(DEPS) $(LDFLAGS)
-
-arithmetic_expression: test_arithmetic_expression.o
-	$(CC) $(CFLAGS)  -o test_arithmetic_expression test_arithmetic_expression.o  $(DEPS) $(LDFLAGS)
-
-resultset_record: test_resultset_record.o
-	$(CC) $(CFLAGS)  -o test_resultset_record test_resultset_record.o  $(DEPS) $(LDFLAGS)
-
-build: graph algebraic_expression tuples_iter filter_tree value arithmetic_expression resultset_record
-
-test_graph:
-	@(sh -c ./test_graph)
-.PHONY: test_graph
-
-test_algebraic_expression:
-	@(sh -c ./test_algebraic_expression)
-.PHONY: test_algebraic_expression
-
-test_tuples_iter:
-	@(sh -c ./test_tuples_iter)
-.PHONY: test_tuples_iter
-
-test_filter_tree:
-	@(sh -c ./test_filter_tree)
-.PHONY: test_filter_tree
-
-test_value:
-	@(sh -c ./test_value)
-.PHONY: test_value
-
-test_arithmetic_expression:
-	@(sh -c ./test_arithmetic_expression)
-.PHONY: test_arithmetic_expression
-
-test_resultset_record:
-	@(sh -c ./test_resultset_record)
-.PHONY: test_resultset_record
-
-test: test_graph test_algebraic_expression test_tuples_iter test_filter_tree test_value test_arithmetic_expression test_resultset_record
-
-all: build test
