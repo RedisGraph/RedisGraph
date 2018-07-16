@@ -23,6 +23,8 @@ class Argument:
 	    descriptor.pending_inserts = 0
 
     def remove_descriptors(self, delete_count):
+	for descriptor in self.descriptors[:delete_count]:
+	    print 'Finished inserting "%s".' % descriptor.name
 	del self.descriptors[:delete_count]
 	self.type_count -= delete_count
 
@@ -47,7 +49,22 @@ class Argument:
 class Descriptor:
     def __init__(self, name):
 	self.name = name
+	self.total_entities = 0
+	self.entities_created = 0
 	self.pending_inserts = 0
+
+    def count_entities(self, csv_reader, reset_pos):
+	# Count number of lines in file
+	self.total_entities = sum(1 for row in csv_reader)
+	# Reset iterator to start of entities
+	# (0 for relations, end of header row for nodes)
+	csv_reader.seek(reset_pos)
+
+    def print_progress(self):
+	print '%.2f%% (%d / %d) of "%s" inserted.' % (float(self.entities_created) * 100 / self.total_entities,
+		self.entities_created,
+		self.total_entities,
+		self.name)
 
 # Structure of a label descriptor:
 # [label name, node count, attribute count, attributes[0..n]]
@@ -109,6 +126,7 @@ def ProcessNodes(nodes_csv_files):
 	# Process labeled nodes.
 	for node_csv_file in nodes_csv_files:
 		with open(node_csv_file, 'rb') as csvfile:
+			# Open the CSV file
 			reader = csv.reader(csvfile)
 			header_row = reader.next()
 
@@ -118,9 +136,15 @@ def ProcessNodes(nodes_csv_files):
 			# The first row of a label CSV contains its attributes
 			descriptor.attributes = header_row
 
+
 			# Update counts
 			header_len = len(header_row)
 			descriptor.attribute_count += header_len
+
+			# Count number of entities (line count - 1 for header row)
+			descriptor.count_entities(csvfile, header_len)
+			print 'Inserting Label "%s" - %d nodes' % (label_name, descriptor.total_entities)
+
 			# 3 tokens for the descriptor name, insert count, and attribute count, and 1 for every attribute
 			TOKEN_COUNT += 3 + header_len
 
@@ -143,6 +167,8 @@ def ProcessNodes(nodes_csv_files):
 				    if depleted_labels > 0:
 					labels.remove_descriptors(depleted_labels)
 					depleted_labels = 0
+				    descriptor.entities_created = reader.line_num - 1
+				    descriptor.print_progress()
 				labels.pending_inserts += 1
 				descriptor.pending_inserts += 1
 				NODES += row
@@ -151,6 +177,7 @@ def ProcessNodes(nodes_csv_files):
 			depleted_labels += 1
 	# Insert all remaining nodes
 	QueryRedis(labels, NODES)
+	# TODO should we manually delete labels and remaining descriptors here?
 	print "%d Nodes created in %d queries." % (labels.entities_created, labels.queries_processed)
 
 # TODO This might be sufficiently similar to ProcessNodes to allow for just one function with different descriptors
@@ -158,20 +185,25 @@ def ProcessRelations(relations_csv_files):
 	# Introduce relations
 	rels = Argument("RELATIONS")
 	RELATIONS = []			    # Relations to be constructed
-	TOKEN_COUNT = 2 # "GRAPH.BULK [graphname]
+	TOKEN_COUNT = 5 # "GRAPH.BULK [graphname] RELATIONS [entity_count] [relation_count]
 
 	depleted_relations = 0
 
 	# Process relations.
 	for relation_csv_file in relations_csv_files:
 		with open(relation_csv_file, 'rb') as csvfile:
+			# Open the CSV file
 			reader = csv.reader(csvfile)
 
 			# Make a new descriptor for this relation
 			relation_name = os.path.splitext(os.path.basename(relation_csv_file))[0]
 			descriptor = RelationDescriptor(relation_name)
 
+			# Count number of entities
+			descriptor.count_entities(csvfile, 0)
 			rels.descriptors.append(descriptor)
+			print 'Inserting Relation "%s" - %d edges.' % (relation_name, descriptor.total_entities)
+
 			# Increase counts to accommodate two additional relation tokens (name and count)
 			TOKEN_COUNT += 2
 			rels.type_count += 1
@@ -190,6 +222,9 @@ def ProcessRelations(relations_csv_files):
 				    if depleted_relations > 0:
 					rels.remove_descriptors(depleted_relations)
 					depleted_relations = 0
+				    # If a descriptor has been partially inserted, print its progress
+				    descriptor.entities_created = reader.line_num
+				    descriptor.print_progress()
 				rels.pending_inserts += 1
 				descriptor.pending_inserts += 1
 				RELATIONS += row
