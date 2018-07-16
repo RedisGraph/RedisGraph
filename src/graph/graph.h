@@ -90,20 +90,26 @@ NodeIterator *Graph_ScanNodes (
     const Graph *g
 );
 
-// Retrieves a label matrix, incase the matrix does not exists it is created.
-// Matrix is resized to match the adjacency matrix dimenstions.
-GrB_Matrix Graph_GetLabelMatrix (
-    const Graph *g,     // Graph from which to get adjacency matrix.
-    int label           // Label described by matrix.
-);
-
 // Creates a new label matrix, returns id given to label.
 int Graph_AddLabelMatrix (
     Graph *g
 );
 
+// Retrieves the adjacency matrix.
+// Matrix is resized if its size doesn't match graph's node count.
+GrB_Matrix Graph_GetAdjacencyMatrix (
+    const Graph *g
+);
+
+// Retrieves a label matrix.
+// Matrix is resized if its size doesn't match graph's node count.
+GrB_Matrix Graph_GetLabelMatrix (
+    const Graph *g,     // Graph from which to get adjacency matrix.
+    int label           // Label described by matrix.
+);
+
 // Retrieves a typed adjacency matrix.
-// Matrix is resized if its size doesn't match graph's main adjacency matrix.
+// Matrix is resized if its size doesn't match graph's node count.
 GrB_Matrix Graph_GetRelationMatrix (
     const Graph *g,     // Graph from which to get adjacency matrix.
     int relation        // Relation described by matrix.
@@ -111,6 +117,11 @@ GrB_Matrix Graph_GetRelationMatrix (
 
 // Creates a new relation matrix, returns id given to relation.
 int Graph_AddRelationMatrix (
+    Graph *g
+);
+
+// Commit GraphBLAS pending operations.
+void Graph_CommitPendingOps (
     Graph *g
 );
 
