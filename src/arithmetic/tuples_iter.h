@@ -6,8 +6,8 @@
 
 typedef enum
 {
-    TuplesIter_OK,
-    TuplesIter_DEPLETED
+    TuplesIter_DEPLETED,
+    TuplesIter_OK
 } TuplesIter_Info ;
 
 typedef struct

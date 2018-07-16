@@ -408,23 +408,25 @@ void test_graph_remove_multiple_nodes() {
     GrB_Vector_new(&col, GrB_BOOL, g->node_count);
 
     // Make sure last and before last rows and column are zeroed out.
-    GrB_Col_extract(row, NULL, NULL, g->adjacency_matrix, GrB_ALL, g->node_count, 7, desc);
-    GrB_Col_extract(col, NULL, NULL, g->adjacency_matrix, GrB_ALL, g->node_count, 7, NULL);
+    GrB_Matrix adj = Graph_GetAdjacencyMatrix(g);
+
+    GrB_Col_extract(row, NULL, NULL, adj, GrB_ALL, g->node_count, 7, desc);
+    GrB_Col_extract(col, NULL, NULL, adj, GrB_ALL, g->node_count, 7, NULL);
     GrB_Vector_nvals(&rowNvals, row);
     GrB_Vector_nvals(&colNvals, col);
     assert(rowNvals == 0);
     assert(colNvals == 0);
 
-    GrB_Col_extract(row, NULL, NULL, g->adjacency_matrix, GrB_ALL, g->node_count, 6, desc);
-    GrB_Col_extract(col, NULL, NULL, g->adjacency_matrix, GrB_ALL, g->node_count, 6, NULL);
+    GrB_Col_extract(row, NULL, NULL, adj, GrB_ALL, g->node_count, 6, desc);
+    GrB_Col_extract(col, NULL, NULL, adj, GrB_ALL, g->node_count, 6, NULL);
     GrB_Vector_nvals(&rowNvals, row);
     GrB_Vector_nvals(&colNvals, col);
     assert(rowNvals == 0);
     assert(colNvals == 0);
 
     // Validate replaced first row and column.
-    GrB_Col_extract(row, NULL, NULL, g->adjacency_matrix, GrB_ALL, g->node_count, 0, desc);
-    GrB_Col_extract(col, NULL, NULL, g->adjacency_matrix, GrB_ALL, g->node_count, 0, NULL);
+    GrB_Col_extract(row, NULL, NULL, adj, GrB_ALL, g->node_count, 0, desc);
+    GrB_Col_extract(col, NULL, NULL, adj, GrB_ALL, g->node_count, 0, NULL);
     GrB_Vector_nvals(&rowNvals, row);
     GrB_Vector_nvals(&colNvals, col);
 
@@ -444,7 +446,10 @@ void test_graph_remove_edges() {
     GrB_Index row;
     GrB_Index col;
     GrB_Index relationEdgeCount;
-    Graph *g = _random_graph(32, 4);
+    int nodeCount = 32;
+    int edgeCount = 4;
+    Graph *g = _random_graph(nodeCount, edgeCount);
+    GrB_Matrix adj = Graph_GetAdjacencyMatrix(g);
     bool exists = false;
 
     // Delete every edge in the graph.
@@ -456,6 +461,8 @@ void test_graph_remove_edges() {
         TuplesIter *iter = TuplesIter_new(M);
 
         int edgeIdx = 0;
+        // We cannot modify the matrix being interated,
+        // Collect edge indicies.
         while(TuplesIter_next(iter, &row, &col) != TuplesIter_DEPLETED) {
             edgeToDelete[edgeIdx++] = row;
             edgeToDelete[edgeIdx++] = col;
@@ -463,14 +470,17 @@ void test_graph_remove_edges() {
 
         TuplesIter_free(iter);
 
+        // Delete edges.
         for(int j = 0; j < relationEdgeCount*2; j+=2) {
             row = edgeToDelete[j];
             col = edgeToDelete[j+1];
-            Graph_DeleteEdge(g, row, col);            
-
-            // Validate delete.
+            Graph_DeleteEdge(g, row, col);
+        }
+        
+        // Validate delete.
+        for(int j = 0; j < relationEdgeCount*2; j+=2) {
             exists = false;
-            GrB_Matrix_extractElement_BOOL(&exists, g->adjacency_matrix, row, col);
+            GrB_Matrix_extractElement_BOOL(&exists, adj, row, col);
             assert(exists == false);
             GrB_Matrix_extractElement_BOOL(&exists, M, row, col);
             assert(exists == false);
