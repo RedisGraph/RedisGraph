@@ -1,3 +1,10 @@
+/*
+* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+*
+* This file is available under the Apache License, Version 2.0,
+* modified with the Commons Clause restriction.
+*/
+
 #include "ast_arithmetic_expression.h"
 
 AST_ArithmeticExpressionNode* New_AST_AR_EXP_VariableOperandNode(char* alias, char *property) {

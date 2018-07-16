@@ -1,3 +1,10 @@
+/*
+* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+*
+* This file is available under the Apache License, Version 2.0,
+* modified with the Commons Clause restriction.
+*/
+
 #include "op_node_by_label_scan.h"
 
 OpBase *NewNodeByLabelScanOp(RedisModuleCtx *ctx, QueryGraph *qg, Graph *g, const char *graph_name, Node **node, const char *label) {

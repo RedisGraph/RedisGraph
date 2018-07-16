@@ -1,3 +1,10 @@
+/*
+* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+*
+* This file is available under the Apache License, Version 2.0,
+* modified with the Commons Clause restriction.
+*/
+
 #include "op_produce_results.h"
 #include "../../resultset/record.h"
 #include "../../arithmetic/arithmetic_expression.h"
