@@ -21,12 +21,6 @@ extern "C" {
 }
 #endif
 
-// #include <time.h>
-// #include <stdio.h>
-// #include <string.h>
-// #include <stdlib.h>
-// #include "assert.h"
-
 // Console text colors for benchmark printing
 #define KGRN  "\x1B[32m"
 #define KRED  "\x1B[31m"
