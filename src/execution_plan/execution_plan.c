@@ -181,7 +181,6 @@ Vector* _ExecutionPlan_Locate_References(OpNode *root, OpNode **op, Vector *refe
         for(; j < seen_count; j++) {
             char *resolved;
             Vector_Get(seen, j, &resolved);
-
             if(!strcmp(reference, resolved)) {
                 /* Match! */
                 break;
@@ -289,11 +288,11 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g, const char *graph
                         Vector_Push(traversals, op);
                     }
                 } else {
-                    exps[0]->transpose = true;
+                    AlgebraicExpression_Transpose(exps[0]);
                     op = NewOpNode(NewTraverseOp(g, q, exps[0]));
                     Vector_Push(traversals, op);
                     for(int i = 1; i < expCount; i++) {
-                        exps[i]->transpose = true;
+                        AlgebraicExpression_Transpose(exps[i]);
                         op = NewOpNode(NewCondTraverseOp(g, q, exps[i]));
                         Vector_Push(traversals, op);
                     }
@@ -311,14 +310,12 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g, const char *graph
             }
             
             if(multiPattern) {
-                // Connect cartesian product to the root of traversal.
-                Vector_Get(traversals, 0, &op);
-                _OpNode_AddChild(cartesianProduct, op);
-
                 // Connect traversal operations.
                 OpNode *childOp;
                 OpNode *parentOp;
                 Vector_Pop(traversals, &parentOp);
+                // Connect cartesian product to the root of traversal.
+                _OpNode_AddChild(cartesianProduct, parentOp);
                 while(Vector_Pop(traversals, &childOp)) {
                     _OpNode_AddChild(parentOp, childOp);
                     parentOp = childOp;

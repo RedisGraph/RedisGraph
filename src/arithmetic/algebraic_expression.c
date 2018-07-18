@@ -182,24 +182,26 @@ inline void _AlgebraicExpression_Execute_MUL(GrB_Matrix C, GrB_Matrix A, GrB_Mat
  * operation (multiply) and a number of operands. */
 AlgebraicExpressionResult *AlgebraicExpression_Execute(AlgebraicExpression *ae) {
     assert(ae);
-    
-    /* TODO: there are cases where we don't need to transpose,
-     * for example when there's only a single operand and both the operand 
-     * is required to be transposed and the result is requested to be
-     * transposed, in that case transpose(transpose(A)) = A. 
-     * And so in that case we'll perform two unnecessary transpose. */
 
     GrB_Matrix A = ae->operands[0].operand;
     GrB_Matrix C = A;
     int operand_count = ae->operand_count;
-    
+
     if(operand_count == 1) {
+        /* AlgebraicExpression_Transpose guarantees that
+         * either the expression is marked as transposed or
+         * the single term, but never both. */
+        assert(!(ae->transpose && ae->operands[0].transpose));
+
+        /* When transposing we must duplicate, as graph matrices
+         * should be considered immutable. */
         if(ae->operands[0].transpose) {
-            GrB_Matrix dup;
-            /* TODO: replace assert with if, log, exit 1. */
-            assert(GrB_Matrix_dup(&dup, A) == GrB_SUCCESS);
-            assert(GrB_transpose(dup, NULL, NULL, dup, NULL) == GrB_SUCCESS);
-            C = dup;
+            GrB_Matrix transposed;
+            GrB_Index nrows;
+            GrB_Matrix_nrows(&nrows, A);
+            GrB_Matrix_new(&transposed, GrB_BOOL, nrows, nrows);
+            assert(GrB_transpose(transposed, NULL, NULL, A, NULL) == GrB_SUCCESS);
+            C = transposed;
         }
     }
 
@@ -213,11 +215,16 @@ AlgebraicExpressionResult *AlgebraicExpression_Execute(AlgebraicExpression *ae) 
         GrB_Matrix_new(&C, GrB_BOOL, nrows, nrows);
         
         for(int i = 1; i < operand_count; i++) {
-            GrB_Matrix B = ae->operands[i].operand;
-            if(ae->operands[i].transpose) GrB_Descriptor_set(desc, GrB_INP1, GrB_TRAN);
+            AlgebraicExpressionOperand term = ae->operands[i];
+            GrB_Matrix B = term.operand;
+            if(term.transpose) GrB_Descriptor_set(desc, GrB_INP1, GrB_TRAN);
 
             _AlgebraicExpression_Execute_MUL(C, A, B, desc);
             A = C;
+
+            // Graph matrices mustn't be modified, restore to original form.
+            // TODO: Verify that descriptor indeed changes underline input.
+            // if(term.transpose) GrB_transpose(B, NULL, NULL, B, NULL);
 
             // Restore descriptor to default.
             GrB_Descriptor_set(desc, GrB_INP0, GxB_DEFAULT);
@@ -227,13 +234,7 @@ AlgebraicExpressionResult *AlgebraicExpression_Execute(AlgebraicExpression *ae) 
         GrB_Descriptor_free(&desc);
     }
 
-    if(ae->transpose) {
-        GrB_transpose(C, NULL, NULL, C, NULL);
-        // Swap src and dest nodes.
-        Node **n = ae->src_node;
-        ae->src_node = ae->dest_node;
-        ae->dest_node = n;
-    }
+    if(ae->transpose) GrB_transpose(C, NULL, NULL, C, NULL);
 
     AlgebraicExpressionResult *res = _AlgebraicExpressionResult_New(C, ae);
     return res;
@@ -259,6 +260,23 @@ void AlgebraicExpression_PrependTerm(AlgebraicExpression *ae, GrB_Matrix m, bool
 
     ae->operands[0].transpose = transpose;
     ae->operands[0].operand = m;
+}
+
+void AlgebraicExpression_Transpose(AlgebraicExpression *ae) {
+
+    // Switch expression src and dest nodes.
+    Node **n = ae->src_node;
+    ae->src_node = ae->dest_node;
+    ae->dest_node = n;
+
+    if(ae->operand_count == 1) {
+        // Expression transpose is determined by its only term.
+        ae->transpose = false;
+        ae->operands[0].transpose = !ae->operands[0].transpose;
+    } else {
+        // Flip expression transpose flag.
+        ae->transpose = !ae->transpose;
+    }
 }
 
 void AlgebraicExpression_Free(AlgebraicExpression* ae) {
