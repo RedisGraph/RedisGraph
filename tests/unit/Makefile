@@ -8,7 +8,7 @@ CPPFLAGS += -isystem $(GTEST_DIR)/include
 
 # Flags passed to the C++ compiler.
 CXXFLAGS += -g -Wall -Wextra -pthread
-CXX_SUPPRESS = -Wno-sign-compare -Wno-unused-variable
+CXX_SUPPRESS = -Wno-sign-compare
 
 # Google Test headers - do not modify
 GTEST_HEADERS = $(GTEST_DIR)/include/gtest/*.h \
@@ -48,11 +48,11 @@ TEST_EXECUTABLES = $(patsubst %.cpp, %.run, $(TEST_SOURCES))
 
 # Compile object files from unit test sources
 %.o: %.cpp
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -c -o $@ $<
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(CXX_SUPPRESS) $(LDFLAGS) -c -o $@ $<
 
 # Build '*.run' binaries for each source
 %.run: %.o gtest_main.a $(DEPS)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) $^ -o $@
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(CXX_SUPPRESS) $(LDFLAGS) $^ -o $@
 
 
 all: build test

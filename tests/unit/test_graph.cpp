@@ -611,7 +611,7 @@ TEST_F(GraphTest, RemoveMultipleNodes) {
 
     simple_tic(tic);
     Graph_DeleteNodes(g, nodeToDelete, 2);
-    double elapsed = simple_toc(tic);
+    // double elapsed = simple_toc(tic);
     // printf("Nodes deletion took: %14.6f ms\n", elapsed*1000);
 
     EXPECT_EQ(g->node_count, 8-2);
