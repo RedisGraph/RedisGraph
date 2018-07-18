@@ -41,16 +41,14 @@ extern "C" {
 
 class GraphTest: public ::testing::Test {
   protected:
-    // These functions are run for each TEST_F invocation
-    // (where they had previously been run once)
-    void SetUp() override {
+    static void SetUpTestCase() {
       // Initialize GraphBLAS.
       GrB_Info info;
       OK(GrB_init(GrB_NONBLOCKING));
       srand(time(NULL));
     }
 
-    void TearDown() override {
+    static void TearDownTestCase() {
       GrB_finalize();
     }
 };
