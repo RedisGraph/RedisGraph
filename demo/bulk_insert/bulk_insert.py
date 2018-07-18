@@ -53,12 +53,11 @@ class Descriptor:
 	self.entities_created = 0
 	self.pending_inserts = 0
 
-    def count_entities(self, csv_reader, reset_pos):
+    def count_entities(self, csv_reader):
 	# Count number of lines in file
 	self.total_entities = sum(1 for row in csv_reader)
-	# Reset iterator to start of entities
-	# (0 for relations, end of header row for nodes)
-	csv_reader.seek(reset_pos)
+	# Reset iterator to start of file
+	csv_reader.seek(0)
 
     def print_progress(self):
 	print '%.2f%% (%d / %d) of "%s" inserted.' % (float(self.entities_created) * 100 / self.total_entities,
@@ -142,7 +141,10 @@ def ProcessNodes(nodes_csv_files):
 			descriptor.attribute_count += header_len
 
 			# Count number of entities (line count - 1 for header row)
-			descriptor.count_entities(csvfile, header_len)
+			descriptor.count_entities(csvfile)
+
+			# Skip header row
+			reader.next()
 			print 'Inserting Label "%s" - %d nodes' % (label_name, descriptor.total_entities)
 
 			# 3 tokens for the descriptor name, insert count, and attribute count, and 1 for every attribute
@@ -200,7 +202,7 @@ def ProcessRelations(relations_csv_files):
 			descriptor = RelationDescriptor(relation_name)
 
 			# Count number of entities
-			descriptor.count_entities(csvfile, 0)
+			descriptor.count_entities(csvfile)
 			rels.descriptors.append(descriptor)
 			print 'Inserting Relation "%s" - %d edges.' % (relation_name, descriptor.total_entities)
 
