@@ -57,6 +57,10 @@ void AlgebraicExpression_AppendTerm(AlgebraicExpression *ae, GrB_Matrix m, bool 
 /* Prepend m as the first term in the expression ae. */
 void AlgebraicExpression_PrependTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transpose);
 
+/* Whenever we decide to transpose an expression, call this function
+ * directly accessing expression transpose flag is forbidden. */
+void AlgebraicExpression_Transpose(AlgebraicExpression *ae);
+
 void AlgebraicExpression_Free(AlgebraicExpression* ae);
 void AlgebraicExpressionResult_Free(AlgebraicExpressionResult *aer);
 
