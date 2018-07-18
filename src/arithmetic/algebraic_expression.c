@@ -196,10 +196,12 @@ AlgebraicExpressionResult *AlgebraicExpression_Execute(AlgebraicExpression *ae) 
         /* When transposing we must duplicate, as graph matrices
          * should be considered immutable. */
         if(ae->operands[0].transpose) {
-            GrB_Matrix dup;
-            assert(GrB_Matrix_dup(&dup, A) == GrB_SUCCESS);
-            assert(GrB_transpose(dup, NULL, NULL, dup, NULL) == GrB_SUCCESS);
-            C = dup;
+            GrB_Matrix transposed;
+            GrB_Index nrows;
+            GrB_Matrix_nrows(&nrows, A);
+            GrB_Matrix_new(&transposed, GrB_BOOL, nrows, nrows);
+            assert(GrB_transpose(transposed, NULL, NULL, A, NULL) == GrB_SUCCESS);
+            C = transposed;
         }
     }
 
