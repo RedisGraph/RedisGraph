@@ -1,5 +1,17 @@
 # Redis Graph Commands
 
+## GRAPH.QUERY
+
+Executes the given query against a specified graph.
+
+Arguments: `Graph name, Query`
+
+Returns: `Result set`
+
+```sh
+GRAPH.QUERY us_government "MATCH (p:president)-[:born]->(:state {name:'Hawaii'}) RETURN p"
+```
+
 ## GRAPH.EXPLAIN
 
 Constructs a query execution plan but does not run it. Inspect this execution plan to better
@@ -13,18 +25,6 @@ Returns: `String representation of a query execution plan`
 GRAPH.EXPLAIN us_government "MATCH (p:president)-[:born]->(h:state {name:'Hawaii'}) RETURN p"
 ```
 
-## GRAPH.QUERY
-
-Executes the given query against a specified graph.
-
-Arguments: `Graph name, Query`
-
-Returns: `Result set`
-
-```sh
-GRAPH.QUERY us_government "MATCH (p:president)-[:born]->(:state {name:'Hawaii'}) RETURN p"
-```
-
 ### Query language
 
 The syntax is based on [openCypher](http://www.opencypher.org/) and currently only a subset of the language is
@@ -32,8 +32,6 @@ supported.
 
 1. [Clauses](#query-structure)
 2. [Functions](#functions)
-
-A query is composed of five parts:
 
 ### Query structure
 
@@ -43,23 +41,20 @@ A query is composed of five parts:
 - ORDER BY
 - LIMIT
 - CREATE
+- MERGE
 - DELETE
 - SET
 
 #### MATCH
 
-Describes the relationship between queried entities, it is composed of three parts:
+Describes the relationship between queried entities, use ascii art to represent pattern(s) to match against
 
-- Source node (S)
-- Relationship [R]
-- Destination node (D)
-
-Combining the three together
-`(S)-[R]->(D)`
+Node are represented by parenthesis `()`
+while edges are represented by brackets `[]`
 
 Each graph entity node/edge can contain an alias and a label, but both can be left empty if needed.
 
-Entity structure: `alias:label {filters}` alias, label and filters are all optional.
+Entity structure: `alias:label {filters}` alias, label and filters are all optional, please note: currently only nodes can have filters.
 
 Example:
 
@@ -103,7 +98,7 @@ Here we're interested in knowing which of my friends have visited at least one c
 This clause is not mandatory, but in order to filter results you can define predicates of two kinds:
 
 1.Compare against constant value: `alias.property operation value`
-where `value` is a primitive type (int, float, string and boolean)
+where `value` is a primitive type: numeric or a string.
 
 2.Compare between nodes properties: `alias.property operation alias.property`
 
@@ -129,21 +124,20 @@ WHERE (actor.name = "john doe" OR movie.rating > 8.8) AND movie.votes <= 250)
 WHERE actor.age >= director.age AND actor.age > 32
 ```
 
-It is also possible to specify equality predicates within nodes and edges using the curly braces as such:
+It is also possible to specify equality predicates within nodes using the curly braces as such:
 
 ```sh
-(:president {name:"Barack Obama"})-[:won {term:2}]->(:state)
+(:president {name:"Barack Obama"})-[:won]->(:state)
 ```
 
-Here we've required that the president node's name will have the value "Barack Obama"
-and the won edge term property will equal 2.
+Here we've required that the president node's name will have the value "Barack Obama".
 
 There's no difference between inlined predicates and predicates specified within the WHERE clause.
 
 #### RETURN
 
 In its simple form, Return defines which properties the returned result-set will contain.
-Its structure is a list of `alias.property` seperated by commas.
+Its structure is a list of `alias.property` separated by commas.
 For convenience, it's possible to specify the alias only when you're interested in every attribute an entity possesses,
 and don't want to specify each attribute individually. e.g.
 
@@ -180,6 +174,9 @@ Supported aggregation functions:
 - `min`
 - `max`
 - `count`
+- `percentileCont`
+- `percentileDisc`
+- `stDev`
 
 #### ORDER BY
 
@@ -219,13 +216,13 @@ The simplest example of CREATE would be a single node creation:
 CREATE (n)
 ```
 
-It's possible to create multiple entities by seperating them with a comma.
+It's possible to create multiple entities by separating them with a comma.
+
 
 ```sh
 CREATE (n),(m)
 ```
 
-Label and properties can be specified at creation time
 
 ```sh
 CREATE (:person {name: 'Kurt', age:27})
@@ -236,13 +233,13 @@ once found we create a new relationship and destination node.
 
 ```sh
 MATCH(a:person)
-WHEREE a.name = 'Kurt'
-CREATE (a)-[member {position:"lead singer"}]->(:band {name:"Nirvana"})
+WHERE a.name = 'Kurt'
+CREATE (a)-[:member]->(:band {name:"Nirvana"})
 RETURN
 ```
 
 Here the source node is a bounded node while the destination node is unbounded,
-as a result a new node is created representing the band Nirvana and a new relation connects Kurt as the lead singer of the band.
+as a result a new node is created representing the band Nirvana and a new relation connects Kurt to the band.
 
 Lastly we'll create a complete pattern, all entities within the pattern which are not bounded will be created.
 ```sh
@@ -271,12 +268,9 @@ This query will delete all `friend` outgoing relationships from the node with th
 
 #### SET
 
-The `SET` clause is used to update properties on nodes and relationships.
+The `SET` clause is used to create or update properties on nodes.
 
-
-To set a property on a node or relationship, use `SET`.
-
-Query.
+To set a property on a node, use `SET`.
 
 ```sh
 MATCH (n { name: 'Jim' }) SET n.name = 'Bob'
@@ -285,11 +279,53 @@ MATCH (n { name: 'Jim' }) SET n.name = 'Bob'
 Set multiple properties using one `SET` clause
 If you want to set multiple properties in one go, simply separate them with a comma.
 
-Query.
-
 ```sh
 MATCH (n { name: 'Jim', age:32 })
 SET n.age = 33, n.name = 'Bob'
+```
+
+To remove node's property simply set property value to NULL.
+
+```sh
+MATCH (n { name: 'Jim' }) SET n.name = NULL
+```
+
+#### MERGE
+
+The MERGE clause ensures that a pattern exists in the graph.
+
+Either the pattern already exists, or it needs to be created.
+
+MERGE either matches existing nodes and binds them, or it creates new data and binds that.
+
+It’s like a combination of MATCH and CREATE that additionally allows you to specify what happens if the data was matched or created.
+
+For example, you can specify that the graph must contain a node for a user with a certain name. If there isn’t a node with the correct name, a new node will be created and its name property set.
+
+When using MERGE on full patterns, the behavior is that either the whole pattern matches, or the whole pattern is created. MERGE will not partially use existing patterns — it’s all or nothing.
+
+Merge single node with a label
+
+```sh
+MERGE (robert:Critic)
+```
+
+Merge single node with properties
+
+```sh
+MERGE (charlie { name: 'Charlie Sheen', age: 10 })
+```
+
+Merge single node specifying both label and property
+
+```sh
+MERGE (michael:Person { name: 'Michael Douglas' })
+```
+
+Merge on a relation
+
+```sh
+MERGE (charlie { name: 'Charlie Sheen', age: 10 })-[r:ACTED_IN]->(wallStreet:MOVIE)
 ```
 
 ### Functions
@@ -298,6 +334,7 @@ This section contains information on all supported functions from the OpenCypher
 * [Aggregating functions](#aggregating-functions)
 * [Mathematical functions](#mathematical-functions)
 * [String functions](#string-functions)
+* [Scalar functions](#scalar-functions)
 
 ## Aggregating functions
 
@@ -308,7 +345,9 @@ This section contains information on all supported functions from the OpenCypher
 |max() | Returns the maximum value in a set of values.|
 |min() | Returns the minimum value in a set of values.|
 |sum() | Returns the sum of a set of numeric values.|
-
+|percentileDisc() | Returns the percentile of the given value over a group, with a percentile from 0.0 to 1.0.|
+|percentileCont() | Returns the percentile of the given value over a group, with a percentile from 0.0 to 1.0.|
+|stDev() | Returns the standard deviation for the given value over a group.|
 
 ## Mathematical functions
 |Function | Description|
@@ -334,3 +373,9 @@ This section contains information on all supported functions from the OpenCypher
 |toString() | Converts an integer, float or boolean value to a string.|
 |toUpper() | Returns the original string in uppercase.|
 |trim() | Returns the original string with leading and trailing whitespace removed.|
+
+## Scalar functions
+
+|Function | Description|
+| ------- |:-----------|
+|id() | Returns the id of a relationship or node.|
