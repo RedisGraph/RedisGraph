@@ -315,10 +315,10 @@ void benchmark_edge_creation_no_relationships() {
     for(int i = 0; i < samples; i++) {
         // Describe connections;
         // Node I is connected to Node I+1.
-        for(int i = 0; i < edge_count*3; i+=3) {
-            connections[i] = rand()%node_count;     // Source node id.
-            connections[i+1] = rand()%node_count;   // Destination node id.
-            connections[i+2] = GRAPH_NO_RELATION;   // Relation.
+        for(int j = 0; i < edge_count*3; j+=3) {
+            connections[j] = rand()%node_count;     // Source node id.
+            connections[j+1] = rand()%node_count;   // Destination node id.
+            connections[j+2] = GRAPH_NO_RELATION;   // Relation.
         }
 
         simple_tic(tic);
@@ -364,10 +364,10 @@ void benchmark_edge_creation_with_relationships() {
         // Describe connections;
         // Node I is connected to Node I+1,
         // Connection type is relationships[I%4].
-        for(int i = 0; i < edge_count*3; i+=3) {
-            connections[i] = rand()%node_count;     // Source node id.
-            connections[i+1] = rand()%node_count;   // Destination node id.
-            connections[i+2] = (i%(relation_count+1))-1; // Relation, (-1 for GRAPH_NO_RELATION).
+        for(int j = 0; j < edge_count*3; j+=3) {
+            connections[j] = rand()%node_count;     // Source node id.
+            connections[j+1] = rand()%node_count;   // Destination node id.
+            connections[j+2] = (i%(relation_count+1))-1; // Relation, (-1 for GRAPH_NO_RELATION).
         }
 
         simple_tic(tic);
@@ -423,10 +423,10 @@ TEST_F(GraphTest, NewGraph) {
     OK(GrB_Matrix_nrows(&nrows, g->adjacency_matrix));
     OK(GrB_Matrix_nvals(&nvals, g->adjacency_matrix));
 
-    EXPECT_NE(g->nodes_blocks, nullptr);
-    EXPECT_NE(g->_relations, nullptr);
-    EXPECT_NE(g->_labels, nullptr);
-    EXPECT_NE(g->adjacency_matrix, nullptr);
+    EXPECT_TRUE(g->nodes_blocks != NULL);
+    EXPECT_TRUE(g->_relations != NULL);
+    EXPECT_TRUE(g->_labels != NULL);
+    EXPECT_TRUE(g->adjacency_matrix != NULL);
     EXPECT_EQ(g->node_count, 0);
     EXPECT_EQ(g->node_cap, GRAPH_DEFAULT_NODE_CAP);
     EXPECT_EQ(nrows, GRAPH_DEFAULT_NODE_CAP);
