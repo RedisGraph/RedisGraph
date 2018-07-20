@@ -1,5 +1,5 @@
 # Path to Google Test source
-GTEST_DIR = ../googletest
+GTEST_DIR = ../../deps/googletest
 
 # Flags passed to the preprocessor.
 # Set Google Test's header directory as a system directory, such that

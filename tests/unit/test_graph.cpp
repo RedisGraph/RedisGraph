@@ -5,7 +5,7 @@
 * modified with the Commons Clause restriction.
 */
 
-#include "../googletest/include/gtest/gtest.h"
+#include "../../deps/googletest/include/gtest/gtest.h"
 
 #ifdef __cplusplus
 extern "C" {
