@@ -69,7 +69,7 @@ class GraphDeletionFlowTest(FlowTestsBase):
                     WHERE d.name = "Boaz" AND d.name = "Ori"
                     RETURN COUNT(s)"""
         actual_result = redis_graph.query(query)
-        assert(actual_result.result_set is None)
+        assert(len(actual_result.result_set) is 1)
 
     # Remove both Alon and Boaz from the graph. 
     def test03_delete_nodes(self):
@@ -88,7 +88,7 @@ class GraphDeletionFlowTest(FlowTestsBase):
                     WHERE s.name = "Boaz" OR s.name = "Alon"
                     RETURN s"""
         actual_result = redis_graph.query(query)
-        assert(actual_result.result_set is None)
+        assert(len(actual_result.result_set) is 1)
 
     # Make sure Alon and Boaz are the only removed nodes.
     def test05_verify_node_deletion(self):

@@ -25,27 +25,29 @@
 #define DIR_ASC 1
 
 typedef struct {
+    RedisModuleCtx *ctx;
     Vector* records;            /* Vector of Records. */
     heap_t* heap;               /* Holds top n records. */
     TrieMap* trie;              /* When using distinct, used to identify unique records. */
-    AST_Query* ast;
     ResultSetHeader* header;    /* Describes how records should look like. */
-    int aggregated;             /* Rather or not this is an aggregated result set. */
-    int ordered;                /* Rather or not this result set is ordered. */
+    bool aggregated;            /* Rather or not this is an aggregated result set. */
+    bool ordered;               /* Rather or not this result set is ordered. */
     int direction;              /* Sort direction ASC/DESC. */
     int limit;                  /* Max number of records in result-set. */
-    int distinct;               /* Rather or not each record is unique. */
+    bool distinct;              /* Rather or not each record is unique. */
+    bool streaming;             /* Streams records back to client. */
+    size_t recordCount;         /* Number of records introduced. */
+    char *buffer;               /* Reusable buffer for record streaming. */
+    size_t bufferLen;           /* Size of buffer in bytes. */
     ResultSetStatistics stats;  /* ResultSet statistics. */
 } ResultSet;
 
-ResultSet* NewResultSet(AST_Query* ast);
+ResultSet* NewResultSet(AST_Query* ast, RedisModuleCtx *ctx);
 
 int ResultSet_AddRecord(ResultSet* set, Record *record);
 
-void ResultSet_Free(RedisModuleCtx* ctx, ResultSet* set);
+void ResultSet_Replay(ResultSet* set);
 
-int ResultSet_Full(const ResultSet* set);
-
-void ResultSet_Replay(RedisModuleCtx* ctx, ResultSet* set);
+void ResultSet_Free(ResultSet* set);
 
 #endif

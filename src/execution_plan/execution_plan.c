@@ -232,11 +232,15 @@ void _Determine_Graph_Size(const AST_Query *ast, size_t *node_count, size_t *edg
     }
 }
 
-ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g, const char *graph_name, AST_Query *ast) {
+ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g,
+                                const char *graph_name,
+                                AST_Query *ast,
+                                bool explain) {
+
     ExecutionPlan *execution_plan = (ExecutionPlan*)calloc(1, sizeof(ExecutionPlan));
     execution_plan->root = NewOpNode(NULL);    
     execution_plan->graph_name = graph_name;
-    execution_plan->result_set = NewResultSet(ast);
+    execution_plan->result_set = (explain) ? NULL: NewResultSet(ast, ctx);
     execution_plan->filter_tree = NULL;
     Vector *ops = NewVector(OpNode*, 1);
     OpNode *op;
@@ -358,7 +362,7 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g, const char *graph
     }
 
     if(ast->returnNode) {
-        if(execution_plan->result_set->aggregated) {
+        if(ReturnClause_ContainsAggregation(ast->returnNode)) {
            op = NewOpNode(NewAggregateOp(ctx, ast));
         } else {
             op = NewOpNode(NewProduceResultsOp(ast, execution_plan->result_set));
@@ -414,7 +418,7 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g, const char *graph
          * apply this rule to reduce the number of filter operations. */
     }
     
-    optimizePlan(execution_plan);
+    if(!explain) optimizePlan(execution_plan);
     return execution_plan;
 }
 

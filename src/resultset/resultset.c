@@ -11,7 +11,7 @@
 #include "../arithmetic/aggregate.h"
 #include "../query_executor.h"
 
-int _heap_elem_compare(const void * A, const void * B, const void *udata) {
+int _heap_elem_compare(const void *A, const void *B, const void *udata) {
     ResultSet* set = (ResultSet*)udata;
     int direction = set->direction;
     const Record *aRec = (Record*)A;
@@ -21,7 +21,7 @@ int _heap_elem_compare(const void * A, const void * B, const void *udata) {
 
 /* Checks if we've already seen given records
  * Returns 1 if the string did not exist otherwise 0. */
-int __encounteredRecord(ResultSet* set, const Record* record) {
+int __encounteredRecord(ResultSet *set, const Record *record) {
     char *str = NULL;
     size_t len = 0;
     len = Record_ToString(record, &str, &len);
@@ -32,7 +32,160 @@ int __encounteredRecord(ResultSet* set, const Record* record) {
     return !newRecord;
 }
 
-Column* NewColumn(const char* name, const char* alias, int aggregated) {
+char *_ResultSetHeader_ToString(const ResultSetHeader *header, size_t *strLen) {
+    size_t len = 0;
+
+    // Determine required buffer length.
+    for(int i = 0; i < header->columns_len; i++) {
+        Column *c = header->columns[i];
+        if(c->alias != NULL) {
+            len += strlen(c->alias)+1;
+        } else {
+            len += strlen(c->name)+1;
+        }
+    }
+
+    char *str = calloc(len + 1, sizeof(char));
+    len = 0;
+
+    for(int i = 0; i < header->columns_len; i++) {
+        Column *c = header->columns[i];
+        if(c->alias != NULL) {
+            len += sprintf(str+len, "%s,", c->alias);
+        } else {
+            len += sprintf(str+len, "%s,", c->name);
+        }
+    }
+
+    str[len] = 0; // Replace last comma with NULL.
+    len--;
+    if(strLen != NULL) *strLen = len;
+
+    return str;
+}
+
+// Prepare replay.
+void _ResultSet_SetupReply(ResultSet *set) {
+    // resultset + statistics, in that order.
+    RedisModule_ReplyWithArray(set->ctx, 2);
+
+    if(set->streaming) {
+        // We don't know at this point the number of records, we're about to return.
+        RedisModule_ReplyWithArray(set->ctx, REDISMODULE_POSTPONED_ARRAY_LEN);
+        if(set->header) {
+            /* Replay with table header. */
+            size_t str_header_len = 0;
+            size_t str_record_len = 0;
+            char *str_header = _ResultSetHeader_ToString(set->header, &str_header_len);
+            RedisModule_ReplyWithStringBuffer(set->ctx, str_header, str_header_len);
+            free(str_header);
+        }
+    }
+}
+
+// Checks to see if resultset can acecpt additional records.
+bool _ResultSet_Full(const ResultSet* set) {
+    if(set->ordered) {
+        /* Must process all records. */
+        return false;
+    } else {
+        return (set->limit != RESULTSET_UNLIMITED && set->recordCount >= set->limit);
+    }
+}
+
+// Add record to response buffer.
+void _ResultSet_StreamRecord(ResultSet *set, const Record *record) {
+    size_t recordStrLen = Record_ToString(record, &set->buffer, &set->bufferLen);
+    RedisModule_ReplyWithStringBuffer(set->ctx, set->buffer, recordStrLen);    
+}
+
+void _ResultSet_ReplayStats(RedisModuleCtx* ctx, ResultSet* set) {
+    char buff[512] = {0};
+    size_t resultset_size = 1; /* query execution time. */
+
+    if(set->stats.labels_added > 0) resultset_size++;
+    if(set->stats.nodes_created > 0) resultset_size++;
+    if(set->stats.properties_set > 0) resultset_size++;
+    if(set->stats.relationships_created > 0) resultset_size++;
+    if(set->stats.nodes_deleted > 0) resultset_size++;
+    if(set->stats.relationships_deleted > 0) resultset_size++;
+
+    RedisModule_ReplyWithArray(ctx, resultset_size);
+
+    if(set->stats.labels_added > 0) {
+        sprintf(buff, "Labels added: %d", set->stats.labels_added);
+        RedisModule_ReplyWithSimpleString(ctx, (const char*)buff);
+    }
+
+    if(set->stats.nodes_created > 0) {
+        sprintf(buff, "Nodes created: %d", set->stats.nodes_created);
+        RedisModule_ReplyWithSimpleString(ctx, (const char*)buff);
+    }
+
+    if(set->stats.properties_set > 0) {
+        sprintf(buff, "Properties set: %d", set->stats.properties_set);
+        RedisModule_ReplyWithSimpleString(ctx, (const char*)buff);
+    }
+
+    if(set->stats.relationships_created > 0) {
+        sprintf(buff, "Relationships created: %d", set->stats.relationships_created);
+        RedisModule_ReplyWithSimpleString(ctx, (const char*)buff);
+    }
+
+    if(set->stats.nodes_deleted > 0) {
+        sprintf(buff, "Nodes deleted: %d", set->stats.nodes_deleted);
+        RedisModule_ReplyWithSimpleString(ctx, (const char*)buff);
+    }
+
+    if(set->stats.relationships_deleted > 0) {
+        sprintf(buff, "Relationships deleted: %d", set->stats.relationships_deleted);
+        RedisModule_ReplyWithSimpleString(ctx, (const char*)buff);
+    }
+}
+
+void _aggregateResultSet(RedisModuleCtx* ctx, ResultSet* set) {
+    char *key;
+    Group *group;
+    CacheGroupIterator *iter = CacheGroupIter();
+
+    /* Scan entire groups cache. */
+    while(CacheGroupIterNext(iter, &key, &group) != 0) {
+        /* Construct response */
+        Record* record = Record_FromGroup(set->header, group);
+        if(ResultSet_AddRecord(set, record) == RESULTSET_FULL) {
+            break;
+        }
+    }
+    
+    FreeGroupCache();
+    InitGroupCache();
+}
+
+/* TODO: Drop heap, use some sort algo. */
+Record** _sortResultSet(const ResultSet *set, const Vector* records) {
+    size_t len = Vector_Size(records);
+
+    Record **arrRecords = malloc(sizeof(Record*) * len);
+    heap_t *heap = heap_new(_heap_elem_compare, set);
+
+    /* Push records to heap. */
+    for(int i = 0; i < len; i++) {
+        Record *r = NULL;
+        Vector_Get(records, i, &r);
+        heap_offer(&heap, r);
+    }
+
+    /* Pop items from heap. */
+    int i = 0;
+    while(heap_count(heap) > 0) {
+        Record *record = heap_poll(heap);
+        arrRecords[i] = record;
+        i++;
+    }
+    return arrRecords;
+}
+
+Column* NewColumn(const char *name, const char *alias, int aggregated) {
     Column* column = malloc(sizeof(Column));
     column->name = NULL;
     column->alias = NULL;
@@ -49,17 +202,9 @@ Column* NewColumn(const char* name, const char* alias, int aggregated) {
     return column;
 }
 
-void Column_Free(Column* column) {
-    if(column->name != NULL) {
-        free(column->name);
-    }
-    if(column->alias != NULL) {
-        free(column->alias);
-    }
-    free(column);
-}
-
 ResultSetHeader* NewResultSetHeader(const AST_Query *ast) {
+    if(!ast->returnNode) return NULL;
+
     ResultSetHeader* header = malloc(sizeof(ResultSetHeader));
     header->columns_len = 0;
     header->orderby_len = 0;
@@ -127,62 +272,22 @@ ResultSetHeader* NewResultSetHeader(const AST_Query *ast) {
     return header;
 }
 
-char *ResultSetHeader_ToString(const ResultSetHeader *header, size_t *strLen) {
-    size_t len = 0;
-
-    // Determine required buffer length.
-    for(int i = 0; i < header->columns_len; i++) {
-        Column *c = header->columns[i];
-        if(c->alias != NULL) {
-            len += strlen(c->alias)+1;
-        } else {
-            len += strlen(c->name)+1;
-        }
-    }
-
-    char *str = calloc(len + 1, sizeof(char));
-    len = 0;
-
-    for(int i = 0; i < header->columns_len; i++) {
-        Column *c = header->columns[i];
-        if(c->alias != NULL) {
-            len += sprintf(str+len, "%s,", c->alias);
-        } else {
-            len += sprintf(str+len, "%s,", c->name);
-        }
-    }
-
-    str[len] = 0; // Replace last comma with NULL.
-    len--;
-    if(strLen != NULL) *strLen = len;
-
-    return str;
-}
-
-void ResultSetHeader_Free(ResultSetHeader* header) {
-    for(int i = 0; i < header->columns_len; i++) Column_Free(header->columns[i]);
-
-    if(header->columns != NULL) {
-        free(header->columns);
-    }
-    if(header->orderBys != NULL) {
-        free(header->orderBys);
-    }
-    free(header);
-}
-
-ResultSet* NewResultSet(AST_Query* ast) {
+ResultSet* NewResultSet(AST_Query* ast, RedisModuleCtx *ctx) {
     ResultSet* set = (ResultSet*)malloc(sizeof(ResultSet));
-    set->ast = ast;
+    set->ctx = ctx;
     set->heap = NULL;
-    set->trie = NULL;
+    set->trie = NULL;    
     set->aggregated = ReturnClause_ContainsAggregation(ast->returnNode);
     set->ordered = (ast->orderNode != NULL);
     set->limit = RESULTSET_UNLIMITED;
     set->direction = DIR_ASC;
     set->distinct = (ast->returnNode && ast->returnNode->distinct);
+    set->recordCount = 0;    
     set->header = NewResultSetHeader(ast);
     set->records = NewVector(Record*, 0);
+    set->bufferLen = 2048;
+    set->buffer = malloc(set->bufferLen);
+    set->streaming = (set->header && !(set->ordered || set->aggregated));
     set->stats.labels_added = 0;
     set->stats.nodes_created = 0;
     set->stats.properties_set = 0;
@@ -206,12 +311,15 @@ ResultSet* NewResultSet(AST_Query* ast) {
         set->trie = NewTrieMap();
     }
 
+    _ResultSet_SetupReply(set);
+
     set->records = NewVector(Record*, set->limit);
+
     return set;
 }
 
 int ResultSet_AddRecord(ResultSet* set, Record* record) {
-    if(ResultSet_Full(set)) {
+    if(_ResultSet_Full(set)) {
         return RESULTSET_FULL;
     }
     
@@ -221,13 +329,23 @@ int ResultSet_AddRecord(ResultSet* set, Record* record) {
         /* TODO: indicate we've skipped record. */
         return RESULTSET_OK;
     }
+    
+    if(set->streaming) {
+        set->recordCount++;
+        _ResultSet_StreamRecord(set, record);
+        Record_Free(record);
+        return RESULTSET_OK;
+    }
 
     if(set->ordered && set->limit != RESULTSET_UNLIMITED) {
         if(heap_count(set->heap) < set->limit) {
             /* There's room in heap for record */
+            set->recordCount++;
             heap_offer(&set->heap, record);            
         } else {
-            if(_heap_elem_compare(heap_peek(set->heap), record, set) > 0) {                
+            if(_heap_elem_compare(heap_peek(set->heap), record, set) > 0) {
+                /* We don't increase record count here,
+                 * as we're replacing one record with another. */
                 Record *replaced = heap_poll(set->heap);
                 heap_offer(&set->heap, record);
             }
@@ -235,142 +353,42 @@ int ResultSet_AddRecord(ResultSet* set, Record* record) {
     } else {
         /* Not using a heap and there's room for record. */
         Vector_Push(set->records, record);
+        set->recordCount++;
     }
 
     return RESULTSET_OK;
 }
 
-int ResultSet_Full(const ResultSet* set) {
-    if(set->ordered) {
-        /* Must process all records. */
-        return 0;
-    } else {
-        return (set->limit != RESULTSET_UNLIMITED && Vector_Size(set->records) >= set->limit);
-    }
-}
-
-void _aggregateResultSet(RedisModuleCtx* ctx, ResultSet* set) {
-    char *key;
-    Group *group;
-    CacheGroupIterator *iter = CacheGroupIter();
-
-    /* Scan entire groups cache. */
-    while(CacheGroupIterNext(iter, &key, &group) != 0) {
-        /* Construct response */
-        Record* record = Record_FromGroup(set->header, group);
-        if(ResultSet_AddRecord(set, record) == RESULTSET_FULL) {
-            break;
-        }
-    }
-    
-    FreeGroupCache();
-    InitGroupCache();
-}
-
-/* TODO: Drop heap, use some sort algo. */
-Record** _sortResultSet(const ResultSet *set, const Vector* records) {
-    size_t len = Vector_Size(records);
-
-    Record **arrRecords = malloc(sizeof(Record*) * len);
-    heap_t *heap = heap_new(_heap_elem_compare, set);
-
-    /* Push records to heap. */
-    for(int i = 0; i < len; i++) {
-        Record *r = NULL;
-        Vector_Get(records, i, &r);
-        heap_offer(&heap, r);
-    }
-
-    /* Pop items from heap. */
-    int i = 0;
-    while(heap_count(heap) > 0) {
-        Record *record = heap_poll(heap);
-        arrRecords[i] = record;
-        i++;
-    }
-    return arrRecords;
-}
-
-void _ResultSet_ReplayStats(RedisModuleCtx* ctx, ResultSet* set) {
-    char buff[512] = {0};
-    size_t resultset_size = 1; /* query execution time. */
-
-    if(set->stats.labels_added > 0) resultset_size++;
-    if(set->stats.nodes_created > 0) resultset_size++;
-    if(set->stats.properties_set > 0) resultset_size++;
-    if(set->stats.relationships_created > 0) resultset_size++;
-    if(set->stats.nodes_deleted > 0) resultset_size++;
-    if(set->stats.relationships_deleted > 0) resultset_size++;
-
-    RedisModule_ReplyWithArray(ctx, resultset_size);
-
-    if(set->stats.labels_added > 0) {
-        sprintf(buff, "Labels added: %d", set->stats.labels_added);
-        RedisModule_ReplyWithSimpleString(ctx, (const char*)buff);
-    }
-
-    if(set->stats.nodes_created > 0) {
-        sprintf(buff, "Nodes created: %d", set->stats.nodes_created);
-        RedisModule_ReplyWithSimpleString(ctx, (const char*)buff);
-    }
-
-    if(set->stats.properties_set > 0) {
-        sprintf(buff, "Properties set: %d", set->stats.properties_set);
-        RedisModule_ReplyWithSimpleString(ctx, (const char*)buff);
-    }
-
-    if(set->stats.relationships_created > 0) {
-        sprintf(buff, "Relationships created: %d", set->stats.relationships_created);
-        RedisModule_ReplyWithSimpleString(ctx, (const char*)buff);
-    }
-
-    if(set->stats.nodes_deleted > 0) {
-        sprintf(buff, "Nodes deleted: %d", set->stats.nodes_deleted);
-        RedisModule_ReplyWithSimpleString(ctx, (const char*)buff);
-    }
-
-    if(set->stats.relationships_deleted > 0) {
-        sprintf(buff, "Relationships deleted: %d", set->stats.relationships_deleted);
-        RedisModule_ReplyWithSimpleString(ctx, (const char*)buff);
-    }
-}
-
-void ResultSet_Replay(RedisModuleCtx* ctx, ResultSet* set) {
+void ResultSet_Replay(ResultSet* set) {
+    // Start with aggregation, as it might change our record count.
     if(set->aggregated) {
-        _aggregateResultSet(ctx, set);
+        _aggregateResultSet(set->ctx, set);
     }
-        
-    size_t resultset_size = 0;
-    bool results_available = false;
-    int redis_response_size = 1;    /* Statistics. */
+
+    size_t resultset_size = set->recordCount;
+    if(set->header) resultset_size++;
+
+    if(set->streaming) {
+        /* ResultSet been streamed, all that's left to do
+         * is let redis know how many records been sent
+         * and append some statistics. */
+        RedisModule_ReplySetArrayLength(set->ctx, resultset_size);
+        _ResultSet_ReplayStats(set->ctx, set);
+        return;
+    }    
     
-    if(set->ordered && set->limit != RESULTSET_UNLIMITED) {
-        resultset_size += heap_count(set->heap);
-    } else {
-        resultset_size += Vector_Size(set->records);
-    }
+    RedisModule_ReplyWithArray(set->ctx, resultset_size);
 
-    results_available = resultset_size > 0;
-
-    if(results_available) {
-        resultset_size++; /* Header row. */
-        redis_response_size++;   /* Result-set. */
-    }
-
-    /* Resultset + statistics. */
-    RedisModule_ReplyWithArray(ctx, redis_response_size);
-    
-    if(results_available) {
-        /* First element, resultset. */
-        RedisModule_ReplyWithArray(ctx, resultset_size);
-
+    if(set->header) {
         /* Replay with table header. */
-        size_t str_header_len = 0;
-        size_t str_record_len = 0;
-        char *str_header = ResultSetHeader_ToString(set->header, &str_header_len);
-        RedisModule_ReplyWithStringBuffer(ctx, str_header, str_header_len);
+        size_t str_header_len = 0;        
+        char *str_header = _ResultSetHeader_ToString(set->header, &str_header_len);
+        RedisModule_ReplyWithStringBuffer(set->ctx, str_header, str_header_len);
         free(str_header);
+    }
 
+    if(set->recordCount) {
+        size_t str_record_len = 0;
         size_t str_record_cap = 2048;
         char *str_record = malloc(str_record_cap);
 
@@ -393,7 +411,7 @@ void ResultSet_Replay(RedisModuleCtx* ctx, ResultSet* set) {
                 while(record_idx) {
                     record = records[--record_idx];
                     str_record_len = Record_ToString(record, &str_record, &str_record_cap);
-                    RedisModule_ReplyWithStringBuffer(ctx, str_record, str_record_len);
+                    RedisModule_ReplyWithStringBuffer(set->ctx, str_record, str_record_len);
                     Record_Free(record);
                 }
 
@@ -405,7 +423,7 @@ void ResultSet_Replay(RedisModuleCtx* ctx, ResultSet* set) {
                 for(int i = Vector_Size(set->records)-1; i >=0;  i--) {
                     Record* record = sorted_records[i];
                     str_record_len = Record_ToString(record, &str_record, &str_record_cap);
-                    RedisModule_ReplyWithStringBuffer(ctx, str_record, str_record_len);
+                    RedisModule_ReplyWithStringBuffer(set->ctx, str_record, str_record_len);
                 }
                 free(sorted_records);
             }
@@ -415,39 +433,64 @@ void ResultSet_Replay(RedisModuleCtx* ctx, ResultSet* set) {
                 Vector_Get(set->records, i, &record);
                 
                 str_record_len = Record_ToString(record, &str_record, &str_record_cap);
-                RedisModule_ReplyWithStringBuffer(ctx, str_record, str_record_len);
+                RedisModule_ReplyWithStringBuffer(set->ctx, str_record, str_record_len);
             }
         }
 
         free(str_record);
     }
-    _ResultSet_ReplayStats(ctx, set);
+
+    _ResultSet_ReplayStats(set->ctx, set);
 }
 
-void ResultSet_Free(RedisModuleCtx *ctx, ResultSet *set) {
-    if(set != NULL) {
-        /* Free each record */
-        for(int i = 0; i < Vector_Size(set->records); i++) {
-            Record *record;
-            Vector_Get(set->records, i, &record);
-            Record_Free(record);
-            record = NULL;
-        }
-        Vector_Free(set->records);
-
-        if(set->heap != NULL) {
-            while(heap_count(set->heap) > 0) {
-                Record* record = heap_poll(set->heap);
-                Record_Free(record);
-            }
-            heap_free(set->heap);
-        }
-
-        if(set->trie != NULL) {
-            TrieMap_Free(set->trie, TrieMap_NOP_CB);
-        }
-
-        ResultSetHeader_Free(set->header);
-        free(set);
+void Column_Free(Column* column) {
+    if(column->name != NULL) {
+        free(column->name);
     }
+    if(column->alias != NULL) {
+        free(column->alias);
+    }
+    free(column);
+}
+
+void ResultSetHeader_Free(ResultSetHeader* header) {
+    if(!header) return;
+
+    for(int i = 0; i < header->columns_len; i++) Column_Free(header->columns[i]);
+
+    if(header->columns != NULL) {
+        free(header->columns);
+    }
+    if(header->orderBys != NULL) {
+        free(header->orderBys);
+    }
+    free(header);
+}
+
+void ResultSet_Free(ResultSet *set) {
+    if(!set) return;
+    /* Free each record */
+    for(int i = 0; i < Vector_Size(set->records); i++) {
+        Record *record;
+        Vector_Get(set->records, i, &record);
+        Record_Free(record);
+        record = NULL;
+    }
+    Vector_Free(set->records);
+
+    if(set->heap != NULL) {
+        while(heap_count(set->heap) > 0) {
+            Record* record = heap_poll(set->heap);
+            Record_Free(record);
+        }
+        heap_free(set->heap);
+    }
+
+    if(set->trie != NULL) {
+        TrieMap_Free(set->trie, TrieMap_NOP_CB);
+    }
+
+    free(set->buffer);
+    ResultSetHeader_Free(set->header);
+    free(set);
 }
