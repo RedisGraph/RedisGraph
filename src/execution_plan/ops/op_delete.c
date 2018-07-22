@@ -143,8 +143,10 @@ void OpDeleteFree(OpBase *ctx) {
     OpDelete *op = (OpDelete*)ctx;
 
     _DeleteEntities(op);
-    op->result_set->stats.nodes_deleted = op->deleted_nodes->cardinality;
-    op->result_set->stats.relationships_deleted = op->deleted_edges->cardinality;
+    if(op->result_set) {
+        op->result_set->stats.nodes_deleted = op->deleted_nodes->cardinality;
+        op->result_set->stats.relationships_deleted = op->deleted_edges->cardinality;
+    }
 
     free(op->nodes_to_delete);
     free(op->edges_to_delete);

@@ -48,10 +48,14 @@ typedef struct {
 } ExecutionPlan;
 
 /* Creates a new execution plan from AST */
-ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx,
-                                Graph *g,
-                                const char *graph_name,
-                                AST_Query *ast);
+ExecutionPlan* NewExecutionPlan
+(
+    RedisModuleCtx *ctx,        // Redis context
+    Graph *g,                   // Queried graph
+    const char *graph_name,     // Graph ID
+    AST_Query *ast,             // Query parsed AST
+    bool explain                // Construct execution plan, do not execute
+);
 
 /* Prints execution plan */
 char* ExecutionPlanPrint(const ExecutionPlan *plan);

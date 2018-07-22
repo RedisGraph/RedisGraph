@@ -108,19 +108,19 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
         return REDISMODULE_OK;
     }
 
-    ExecutionPlan *plan = NewExecutionPlan(ctx, g, graph_name, ast);
+    ExecutionPlan *plan = NewExecutionPlan(ctx, g, graph_name, ast, false);
     ResultSet* resultSet = ExecutionPlan_Execute(plan);
     ExecutionPlanFree(plan);
 
     /* Send result-set back to client. */
-    ResultSet_Replay(ctx, resultSet);
+    ResultSet_Replay(resultSet);
 
     /* Replicate query only if it modified the keyspace. */
     if(ResultSetStat_IndicateModification(resultSet->stats)) {
         RedisModule_ReplicateVerbatim(ctx);
     }
 
-    ResultSet_Free(ctx, resultSet);
+    ResultSet_Free(resultSet);
 
     /* Report execution timing. */
     t = simple_toc(tic) * 1000;
@@ -176,7 +176,7 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
         return REDISMODULE_OK;
     }
 
-    ExecutionPlan *plan = NewExecutionPlan(ctx, g, graph_name, ast);
+    ExecutionPlan *plan = NewExecutionPlan(ctx, g, graph_name, ast, true);
     char* strPlan = ExecutionPlanPrint(plan);
     RedisModule_ReplyWithStringBuffer(ctx, strPlan, strlen(strPlan));
     
