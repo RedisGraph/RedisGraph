@@ -367,6 +367,7 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g,
     }
 
     if(ast->whereNode != NULL) {
+        FilterTree_bindEntities(execution_plan->filter_tree, execution_plan->graph);
         Vector *sub_trees = FilterTree_SubTrees(execution_plan->filter_tree);
 
         /* For each filter tree find the earliest position along the execution 
@@ -396,12 +397,6 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g,
             ExecutionPlanPrint(execution_plan);
         }
         Vector_Free(sub_trees);
-
-        /* Optimization rule:
-         * two following filter operations
-         * might be combined into a single filter operation
-         * if their root is not an OR.
-         * apply this rule to reduce the number of filter operations. */
     }
     
     if(!explain) optimizePlan(execution_plan);

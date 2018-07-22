@@ -9,9 +9,6 @@
 
 OpBase* NewFilterOp(FT_FilterNode *filterTree, const QueryGraph *qg) {
     Filter *filter = malloc(sizeof(Filter));
-
-    /* Bind filter tree with filter nodes. */
-    FilterTree_bindEntities(filterTree, qg);
     filter->filterTree = filterTree;
 
     // Set our Op operations
