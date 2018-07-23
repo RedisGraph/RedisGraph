@@ -47,10 +47,13 @@ def populate_graph(redis_con, redis_graph):
             person = row[0]
             country = row[1]
             purpose = row[2]
+            # edge = Edge(persons[person],
+            #             "visited",
+            #             countries[country],
+            #             properties={'purpose': purpose})
             edge = Edge(persons[person],
                         "visited",
-                        countries[country],
-                        properties={'purpose': purpose})
+                        countries[country])
             redis_graph.add_edge(edge)
 
     # Connect friends

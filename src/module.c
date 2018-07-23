@@ -90,6 +90,13 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     
     ModifyAST(ctx, ast, graph_name);
 
+    char *reason;
+    if (AST_Validate(ast, &reason) != AST_VALID) {
+        RedisModule_ReplyWithError(ctx, reason);
+        free(reason);
+        return REDISMODULE_OK;
+    }
+
     // Try to get graph.
     Graph *g = Graph_Get(ctx, argv[1]);
     if(!g) {
@@ -100,12 +107,6 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
             RedisModule_ReplyWithError(ctx, "key doesn't contains a graph object.");
             return REDISMODULE_OK;
         }
-    }
-
-    char *reason;
-    if (AST_Validate(ast, &reason) != AST_VALID) {
-        RedisModule_ReplyWithError(ctx, reason);
-        return REDISMODULE_OK;
     }
 
     ExecutionPlan *plan = NewExecutionPlan(ctx, g, graph_name, ast, false);
@@ -149,22 +150,17 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     char *errMsg = NULL;
     AST_Query* ast = ParseQuery(query, strlen(query), &errMsg);
 
-    // Try to get graph.
-    Graph *g = Graph_Get(ctx, argv[1]);
-    if(!g) {
-        if(ast->createNode || ast->mergeNode) {
-            g = _MGraph_CreateGraph(ctx, argv[1]);
-            /* TODO: free graph if no entities were created. */
-        } else {
-            RedisModule_ReplyWithError(ctx, "key doesn't contains a graph object.");
-            return REDISMODULE_OK;
-        }
-    }
-
     if (!ast) {
         RedisModule_Log(ctx, "debug", "Error parsing query: %s", errMsg);
         RedisModule_ReplyWithError(ctx, errMsg);
         free(errMsg);
+        return REDISMODULE_OK;
+    }
+
+    // Try to get graph.
+    Graph *g = Graph_Get(ctx, argv[1]);
+    if(!g) {
+        RedisModule_ReplyWithError(ctx, "key doesn't contains a graph object.");
         return REDISMODULE_OK;
     }
 
@@ -173,6 +169,7 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     char *reason;
     if (AST_Validate(ast, &reason) != AST_VALID) {
         RedisModule_ReplyWithError(ctx, reason);
+        free(reason);
         return REDISMODULE_OK;
     }
 
