@@ -11,6 +11,7 @@
 extern "C" {
 #endif
 
+#include "assert.h"
 #include "../../src/value.h"
 #include "../../src/graph/graph.h"
 #include "../../src/query_executor.h"
@@ -149,9 +150,9 @@ class AlgebraicExpressionTest: public ::testing::Test {
         NodeIterator_Free(it);
 
         // Creates a relation matrices.
-        int friend_relation_id = Graph_AddRelationMatrix(g);
-        int visit_relation_id = Graph_AddRelationMatrix(g);
-        int war_relation_id = Graph_AddRelationMatrix(g);
+        GrB_Index friend_relation_id = Graph_AddRelationMatrix(g);
+        GrB_Index visit_relation_id = Graph_AddRelationMatrix(g);
+        GrB_Index war_relation_id = Graph_AddRelationMatrix(g);
 
         // Introduce relations, connect nodes.
         /* friendship matrix 
@@ -288,8 +289,6 @@ TEST_F(AlgebraicExpressionTest, MultipleIntermidateReturnNodes) {
     Free_AST_Query(ast);
     for(int i = 0; i < exp_count; i++) AlgebraicExpression_Free(ae[i]);
     free(ae);
-
-    // printf("%stest_multiple_intermidate_return_nodes - PASS!%s\n", KGRN, KNRM);
 }
 
 TEST_F(AlgebraicExpressionTest, OneIntermidateReturnNode) {
@@ -328,8 +327,6 @@ TEST_F(AlgebraicExpressionTest, OneIntermidateReturnNode) {
     Free_AST_Query(ast);
     for(int i = 0; i < exp_count; i++) AlgebraicExpression_Free(ae[i]);
     free(ae);
-
-    // printf("%stest_one_intermidate_return_node - PASS!%s\n", KGRN, KNRM);
 }
 
 TEST_F(AlgebraicExpressionTest, NoIntermidateReturnNodes) {
@@ -360,8 +357,6 @@ TEST_F(AlgebraicExpressionTest, NoIntermidateReturnNodes) {
     Free_AST_Query(ast);
     AlgebraicExpression_Free(exp);
     free(ae);
-
-    // printf("%stest_no_intermidate_return_nodes - PASS!%s\n", KGRN, KNRM);
 }
 
 TEST_F(AlgebraicExpressionTest, ExpressionExecute) {
@@ -414,6 +409,4 @@ TEST_F(AlgebraicExpressionTest, ExpressionExecute) {
     free(ae);
     free(res);
     GrB_Matrix_free(&M);
-
-    // printf("%stest_expression_execute - PASS!%s\n", KGRN, KNRM);
 }

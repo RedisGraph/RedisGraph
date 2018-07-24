@@ -5,13 +5,22 @@
 * modified with the Commons Clause restriction.
 */
 
+#include "../../deps/googletest/include/gtest/gtest.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdio.h>
-#include "assert.h"
 #include "../../src/resultset/record.h"
 #include "../../src/value.h"
 
-void test_record_to_string() {
-    Record *record = NewRecord(6);    
+#ifdef __cplusplus
+}
+#endif
+
+TEST(ResultsetRecordTest, RecordToString) {
+    Record *record = NewRecord(6);
     SIValue v_string = SI_StringVal("Hello");
     SIValue v_int = SI_IntVal(-24);
     SIValue v_uint = SI_UintVal(24);
@@ -30,16 +39,10 @@ void test_record_to_string() {
     char *record_str = NULL;
     size_t record_str_len = Record_ToString(record, &record_str, &record_str_cap);
 
-    assert(strcmp(record_str, "Hello,-24,24,0.314000,NULL,true") == 0);
-    assert(record_str_len == 31);
+    EXPECT_EQ(strcmp(record_str, "Hello,-24,24,0.314000,NULL,true"), 0);
+    EXPECT_EQ(record_str_len, 31);
     
     SIValue_Free(&v_string);
     free(record_str);
     Record_Free(record);
-}
-
-int main(int argc, char **argv) {
-    test_record_to_string();
-    printf("test_resultset_record - PASS!\n");
-    return 0;
 }
