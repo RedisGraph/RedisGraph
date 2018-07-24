@@ -158,7 +158,9 @@ RETURN DISTINCT friend_of_friend.name
 ```
 
 In the above example, suppose we have two friends, Joe and Miesha,
-and both know Dominick. DISTINCT will make sure Dominick will only appear once
+and both know Dominick.
+
+DISTINCT will make sure Dominick will only appear once
 in the final result set.
 
 
@@ -255,27 +257,33 @@ As a result, a new node is created representing the band Nirvana and a new relat
 Lastly we'll create a complete pattern.
 
 All entities within the pattern which are not bounded will be created.
+
 ```sh
 CREATE (jim:person{name:'Jim', age:29})-[friends]->(pam:person {name:'Pam', age:27})-[works]->(:employer {name:'Dunder Mifflin'})
 ```
+
 This query will create three nodes and two relationships.
 
 #### DELETE
+
 DELETE is used to remove both nodes and relationships.
 
 Please remember that deleting a node will also delete all of its incoming and outgoing relationships.
 
 To delete a node and all of its relationships:
+
 ```sh
 MATCH (p:person {name:'Jim'})
 DELETE p
 ```
 
 To delete relationship:
+
 ```sh
 MATCH (p:person {name:'Jim'})-[r:friends]->()
 DELETE r
 ```
+
 This query will delete all `friend` outgoing relationships from the node with the name 'Jim'.
 
 #### SET
