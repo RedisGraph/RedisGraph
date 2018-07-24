@@ -20,6 +20,7 @@ def redis():
 class GraphBulkInsertFlowTest(FlowTestsBase):
 	@classmethod
 	def setUpClass(cls):
+		print "GraphBulkInsertFlowTest"
 		global redis_con
 		global port
 

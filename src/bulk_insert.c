@@ -272,7 +272,8 @@ RedisModuleString** _Bulk_Insert_Insert_Edges(RedisModuleCtx *ctx, RedisModuleSt
     }
 
     long long total_labeled_edges = 0;
-    GrB_Index connections[relations_count*3];       // Triplet (src,dest,relation)
+    // As we can have over 500k relations, this is safer as a heap allocation.
+    GrB_Index *connections = malloc(relations_count * 3 * sizeof(GrB_Index));       // Triplet (src,dest,relation)
     LabelRelation labelRelations[label_count + 1];  // Extra one for unlabeled relations.
 
     if(label_count > 0) {
@@ -331,6 +332,9 @@ RedisModuleString** _Bulk_Insert_Insert_Edges(RedisModuleCtx *ctx, RedisModuleSt
     }
 
     Graph_ConnectNodes(g, relations_count*3, connections);
+
+    free(connections);
+
     return argv;
 }
 
