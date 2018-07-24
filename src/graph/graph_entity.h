@@ -12,7 +12,8 @@
 #define INVALID_ENTITY_ID -1l
 
 
-SIValue *PROPERTY_NOTFOUND;
+// Defined in graph_entity.c
+extern SIValue *PROPERTY_NOTFOUND;
 
 typedef struct {
     char *name;

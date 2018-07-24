@@ -115,4 +115,5 @@ int SIValue_Compare(SIValue a, SIValue b);
 
 void SIValue_Print(FILE *outstream, SIValue *v);
 
-#endif
+#endif // __SECONDARY_VALUE_H__
+

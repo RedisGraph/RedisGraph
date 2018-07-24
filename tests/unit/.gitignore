@@ -1,8 +1,5 @@
-# Extension-less binaries
-*
-!/**/
-!*.*
-!Makefile
+# Unit test binaries
+*.run
 
 # Object files
 *.o
