@@ -8,7 +8,7 @@ CPPFLAGS += -isystem $(GTEST_DIR)/include
 
 # Flags passed to the C++ compiler.
 CXXFLAGS += -g -Wall -Wextra -pthread
-CXX_SUPPRESS = -Wno-sign-compare
+CXX_SUPPRESS = -Wno-sign-compare -Wno-format -Wno-write-strings
 
 # Google Test headers - do not modify
 GTEST_HEADERS = $(GTEST_DIR)/include/gtest/*.h \
