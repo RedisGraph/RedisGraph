@@ -151,12 +151,17 @@ def ProcessNodes(nodes_csv_files):
 		print 'Inserting Label "%s" - %d nodes' % (descriptor.name, descriptor.total_entities)
 
 		# 3 tokens for the descriptor name, insert count, and attribute count, and 1 for every attribute
-		TOKEN_COUNT += 3 + descriptor.attribute_count
+		TOKEN_COUNT += descriptor.token_count()
 		labels.descriptors.append(descriptor)
 
 		# Labeled nodes
 		for row in descriptor.reader:
-		    TOKEN_COUNT += len(row)
+		    if len(row) != descriptor.attribute_count:
+			err_msg = """%d fields read, %d expected.\n(%s:%d) "%s" """ % (
+				len(row), descriptor.attribute_count,
+				node_csv_file, descriptor.reader.line_num, row)
+			raise ValueError(err_msg)
+		    TOKEN_COUNT += descriptor.attribute_count
 		    if TOKEN_COUNT > max_tokens:
 			# max_tokens has been reached; submit all but the most recent node
 			QueryRedis(labels, NODES)
@@ -169,8 +174,8 @@ def ProcessNodes(nodes_csv_files):
 			    labels.remove_descriptors(depleted_labels)
 			    depleted_labels = 0
 			descriptor.print_progress()
-			# Following an insertion, TOKEN_COUNT is set to accommodate all labels
-			# and attributes, plus the individual tokens from the uninserted current row
+			# Following an insertion, TOKEN_COUNT is set to accommodate "GRAPH.BULK", graphname,
+			# all labels and attributes, plus the individual tokens from the uninserted current row
 			TOKEN_COUNT = 2 + labels.token_count() + len(row)
 		    descriptor.pending_inserts += 1
 		    NODES += row
@@ -198,11 +203,14 @@ def ProcessRelations(relations_csv_files):
 		print 'Inserting Relation "%s" - %d edges.' % (descriptor.name, descriptor.total_entities)
 
 		# Increase counts to accommodate two additional relation tokens (name and count)
-		TOKEN_COUNT += 2
+		TOKEN_COUNT += descriptor.token_count()
 		rels.descriptors.append(descriptor)
 
 		for row in descriptor.reader:
-		    TOKEN_COUNT += len(row)
+		    if len(row) != 2:
+			err_msg = "(%s:%d) Expected source ID, destination ID - %d fields encountered." % (relation_csv_file, descriptor.reader.line_num, len(row))
+			raise ValueError(err_msg)
+		    TOKEN_COUNT += 2
 		    if TOKEN_COUNT > max_tokens:
 		    # max_tokens has been reached; submit all but the most recent entity
 			QueryRedis(rels, RELATIONS)
