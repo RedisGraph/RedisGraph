@@ -375,7 +375,7 @@ TEST_F(AlgebraicExpressionTest, ExpressionExecute) {
     assert(res->dest_node == dest);
 
     GrB_Matrix M = res->m;
-    double timing = simple_toc(tic);
+    // double timing = simple_toc(tic);
     // printf("AlgebraicExpression_Execute, time: %.6f sec\n", timing);
     
     // Validate result matrix.

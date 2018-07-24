@@ -32,7 +32,6 @@ gtest_main.a : gtest-all.o gtest_main.o
 	$(AR) $(ARFLAGS) $@ $^
 
 # RedisGraph flags and libraries
-LDFLAGS :=  -lc -lm -ldl -lpthread
 CC_OBJECTS:=$(CC_OBJECTS)
 LIBRMUTIL=../../src/rmutil/librmutil.a
 LIBTRIEMAP=../../src/util/triemap/libtriemap.a
@@ -48,11 +47,11 @@ TEST_EXECUTABLES = $(patsubst %.cpp, %.run, $(TEST_SOURCES))
 
 # Compile object files from unit test sources
 %.o: %.cpp
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(CXX_SUPPRESS) $(LDFLAGS) -c -o $@ $<
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(CXX_SUPPRESS) -c -o $@ $<
 
 # Build '*.run' binaries for each source
 %.run: %.o gtest_main.a $(DEPS)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(CXX_SUPPRESS) $(LDFLAGS) $^ -o $@
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(CXX_SUPPRESS) $^ -o $@
 
 
 all: build test
