@@ -315,7 +315,7 @@ void benchmark_edge_creation_no_relationships() {
     for(int i = 0; i < samples; i++) {
         // Describe connections;
         // Node I is connected to Node I+1.
-        for(int j = 0; i < edge_count*3; j+=3) {
+        for(int j = 0; j < edge_count*3; j+=3) {
             connections[j] = rand()%node_count;     // Source node id.
             connections[j+1] = rand()%node_count;   // Destination node id.
             connections[j+2] = GRAPH_NO_RELATION;   // Relation.
