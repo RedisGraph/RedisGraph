@@ -1,3 +1,10 @@
+/*
+* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+*
+* This file is available under the Apache License, Version 2.0,
+* modified with the Commons Clause restriction.
+*/
+
 #include <assert.h>
 
 #include "execution_plan.h"
@@ -174,7 +181,6 @@ Vector* _ExecutionPlan_Locate_References(OpNode *root, OpNode **op, Vector *refe
         for(; j < seen_count; j++) {
             char *resolved;
             Vector_Get(seen, j, &resolved);
-
             if(!strcmp(reference, resolved)) {
                 /* Match! */
                 break;
@@ -216,7 +222,7 @@ void _Determine_Graph_Size(const AST_Query *ast, size_t *node_count, size_t *edg
     Vector *entities;
     
     if(ast->matchNode) {
-        entities = ast->matchNode->graphEntities;
+        entities = ast->matchNode->_mergedPatterns;
         _Count_Graph_Entities(entities, node_count, edge_count);
     }
 
@@ -226,11 +232,15 @@ void _Determine_Graph_Size(const AST_Query *ast, size_t *node_count, size_t *edg
     }
 }
 
-ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g, const char *graph_name, AST_Query *ast) {
+ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g,
+                                const char *graph_name,
+                                AST_Query *ast,
+                                bool explain) {
+
     ExecutionPlan *execution_plan = (ExecutionPlan*)calloc(1, sizeof(ExecutionPlan));
     execution_plan->root = NewOpNode(NULL);    
     execution_plan->graph_name = graph_name;
-    execution_plan->result_set = NewResultSet(ast);
+    execution_plan->result_set = (explain) ? NULL: NewResultSet(ast, ctx);
     execution_plan->filter_tree = NULL;
     Vector *ops = NewVector(OpNode*, 1);
     OpNode *op;
@@ -248,40 +258,81 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g, const char *graph
         execution_plan->filter_tree = BuildFiltersTree(ast->whereNode->filters);
 
     if(ast->matchNode) {
-        BuildQueryGraph(ctx, g, graph_name, q, ast->matchNode->graphEntities);
+        BuildQueryGraph(ctx, g, graph_name, q, ast->matchNode->_mergedPatterns);
 
-        /* Do we required to perform traversal? */
-        if(q->edge_count == 0) {
-            /* Node scan. */
-            Node *n = q->nodes[0];
-            if(n->label)
-                op = NewOpNode(NewNodeByLabelScanOp(ctx, q, g, graph_name, q->nodes, n->label));
-            else
-                op = NewOpNode(NewAllNodeScanOp(q, g, q->nodes));
-            Vector_Push(ops, op);
-        } else {
-            size_t expCount = 0;
-            AlgebraicExpression **exps = AlgebraicExpression_From_Query(ast, q, &expCount);
-            
-            TRAVERSE_ORDER order = determineTraverseOrder(q, execution_plan->filter_tree, exps, expCount);
-            if(order == TRAVERSE_ORDER_LAST) {
-                op = NewOpNode(NewTraverseOp(g, q, exps[expCount-1]));
-                Vector_Push(ops, op);
-                for(int i = expCount-2; i >= 0; i--) {
-                    op = NewOpNode(NewCondTraverseOp(g, q, exps[i]));
-                    Vector_Push(ops, op);
+        // For every pattern in match clause.
+        size_t patternCount = Vector_Size(ast->matchNode->patterns);
+        
+        /* Incase we're dealing with multiple patterns
+         * we'll simply join them all together with a join operation. */
+        bool multiPattern = patternCount > 1;
+        OpNode *cartesianProduct = NULL;
+        if(multiPattern) {
+            cartesianProduct = NewOpNode(NewCartesianProductOp());
+            Vector_Push(ops, cartesianProduct);
+        }
+        
+        // Keep track after all traversal operations along a pattern.
+        Vector *traversals = NewVector(OpNode*, 1);
+
+        for(int i = 0; i < patternCount; i++) {
+            Vector *pattern;
+            Vector_Get(ast->matchNode->patterns, i, &pattern);
+
+            if(Vector_Size(pattern) > 1) {
+                size_t expCount = 0;
+                AlgebraicExpression **exps = AlgebraicExpression_From_Query(ast, pattern, q, &expCount);
+                
+                TRAVERSE_ORDER order = determineTraverseOrder(q, execution_plan->filter_tree, exps, expCount);
+                if(order == TRAVERSE_ORDER_LAST) {
+                    op = NewOpNode(NewTraverseOp(g, q, exps[expCount-1]));
+                    Vector_Push(traversals, op);
+                    for(int i = expCount-2; i >= 0; i--) {
+                        op = NewOpNode(NewCondTraverseOp(g, q, exps[i]));
+                        Vector_Push(traversals, op);
+                    }
+                } else {
+                    AlgebraicExpression_Transpose(exps[0]);
+                    op = NewOpNode(NewTraverseOp(g, q, exps[0]));
+                    Vector_Push(traversals, op);
+                    for(int i = 1; i < expCount; i++) {
+                        AlgebraicExpression_Transpose(exps[i]);
+                        op = NewOpNode(NewCondTraverseOp(g, q, exps[i]));
+                        Vector_Push(traversals, op);
+                    }
                 }
             } else {
-                exps[0]->transpose = true;
-                op = NewOpNode(NewTraverseOp(g, q, exps[0]));
-                Vector_Push(ops, op);
-                for(int i = 1; i < expCount; i++) {
-                    exps[i]->transpose = true;
-                    op = NewOpNode(NewCondTraverseOp(g, q, exps[i]));
+                /* Node scan. */
+                AST_GraphEntity *ge;
+                Vector_Get(pattern, 0, &ge);
+                Node **n = QueryGraph_GetNodeRef(q, QueryGraph_GetNodeByAlias(q, ge->alias));
+                if(ge->label)
+                    op = NewOpNode(NewNodeByLabelScanOp(ctx, q, g, graph_name, n, ge->label));
+                else
+                    op = NewOpNode(NewAllNodeScanOp(q, g, n));
+                Vector_Push(traversals, op);
+            }
+            
+            if(multiPattern) {
+                // Connect traversal operations.
+                OpNode *childOp;
+                OpNode *parentOp;
+                Vector_Pop(traversals, &parentOp);
+                // Connect cartesian product to the root of traversal.
+                _OpNode_AddChild(cartesianProduct, parentOp);
+                while(Vector_Pop(traversals, &childOp)) {
+                    _OpNode_AddChild(parentOp, childOp);
+                    parentOp = childOp;
+                }
+            } else {
+                for(int traversalIdx = 0; traversalIdx < Vector_Size(traversals); traversalIdx++) {
+                    Vector_Get(traversals, traversalIdx, &op);
                     Vector_Push(ops, op);
                 }
             }
+            Vector_Clear(traversals);
         }
+        Vector_Free(traversals);
     }
 
     /* Set root operation */
@@ -295,6 +346,11 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g, const char *graph
         Vector_Push(ops, opCreate);
     }
 
+    if(ast->mergeNode) {
+        OpNode *opMerge = NewOpNode(NewMergeOp(ctx, ast, g, q, graph_name, execution_plan->result_set));
+        Vector_Push(ops, opMerge);
+    }
+
     if(ast->deleteNode) {
         OpNode *opDelete = NewOpNode(NewDeleteOp(ast->deleteNode, q, g, execution_plan->result_set));
         Vector_Push(ops, opDelete);
@@ -306,7 +362,7 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g, const char *graph
     }
 
     if(ast->returnNode) {
-        if(execution_plan->result_set->aggregated) {
+        if(ReturnClause_ContainsAggregation(ast->returnNode)) {
            op = NewOpNode(NewAggregateOp(ctx, ast));
         } else {
             op = NewOpNode(NewProduceResultsOp(ast, execution_plan->result_set));
@@ -362,7 +418,7 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g, const char *graph
          * apply this rule to reduce the number of filter operations. */
     }
     
-    optimizePlan(execution_plan);
+    if(!explain) optimizePlan(execution_plan);
     return execution_plan;
 }
 
@@ -485,7 +541,6 @@ void _ExecutionPlanFreeRecursive(OpNode* op) {
 
 void ExecutionPlanFree(ExecutionPlan *plan) {
     _ExecutionPlanFreeRecursive(plan->root);
-    /* TODO: Free query graph! */
     // QueryGraph_Free(plan->graph);
     if(plan->filter_tree)
         FilterTree_Free(plan->filter_tree);

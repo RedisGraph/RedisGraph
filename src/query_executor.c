@@ -1,3 +1,10 @@
+/*
+* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+*
+* This file is available under the Apache License, Version 2.0,
+* modified with the Commons Clause restriction.
+*/
+
 #include "assert.h"
 #include "graph/graph.h"
 #include "graph/node.h"
@@ -49,86 +56,52 @@ void ReturnClause_ExpandCollapsedNodes(RedisModuleCtx *ctx, AST_Query *ast, cons
             
             /* Return clause doesn't contains entity's label,
              * Find collapsed entity's label. */
-            AST_GraphEntity *collapsed_entity = NULL;
-            for(int j = 0; j < Vector_Size(ast->matchNode->graphEntities); j++) {
-                AST_GraphEntity *ge;
-                Vector_Get(ast->matchNode->graphEntities, j, &ge);
-                if(strcmp(ge->alias, exp->operand.variadic.alias) == 0) {
-                    collapsed_entity = ge;
-                    break;
-                }
-            }
-            
+            AST_GraphEntity *collapsed_entity = MatchClause_GetEntity(ast->matchNode, exp->operand.variadic.alias);
+
             /* Failed to find collapsed entity. */
             if(collapsed_entity == NULL) {
                 /* Invalid query, return clause refers to none existing entity. */
                 /* TODO: Validate query. */
-                printf("Error, could not find collapsed entity\n");
                 return;
             }
 
             /* Find label's properties. */
             LabelStoreType store_type = (collapsed_entity->t == N_ENTITY) ? STORE_NODE : STORE_EDGE;
+            LabelStore *store;
+                        
+            if(collapsed_entity->label) {
+                /* Collapsed entity has a label. */
+                store = LabelStore_Get(ctx, store_type, graphName, collapsed_entity->label);
+            } else {
+                /* Entity does have a label, Consult with "ALL" store. */
+                store = LabelStore_Get(ctx, store_type, graphName, NULL);
+            }
+
             void *ptr = NULL;       /* Label store property value, (not in use). */
             char *prop = NULL;      /* Entity property. */
             tm_len_t prop_len = 0;  /* Length of entity's property. */
-
-            /* Collapsed entity has a label. */
-            if(collapsed_entity->label) {
-                LabelStore *store = LabelStore_Get(ctx, store_type, graphName, collapsed_entity->label);
+            AST_ArithmeticExpressionNode *expanded_exp;
+            AST_ReturnElementNode *retElem;
+            if(store->properties->cardinality == 0) {
+                /* Label doesn't have any properties.
+                 * Create a fake return element. */
+                expanded_exp = New_AST_AR_EXP_ConstOperandNode(SI_StringVal(""));
+                // Incase an alias is given use it, otherwise use the variable name.
+                if(ret_elem->alias) retElem = New_AST_ReturnElementNode(expanded_exp, ret_elem->alias);
+                else retElem = New_AST_ReturnElementNode(expanded_exp, exp->operand.variadic.alias);
+                Vector_Push(expandReturnElements, retElem);
+            } else {
                 TrieMapIterator *it = TrieMap_Iterate(store->properties, "", 0);
                 while(TrieMapIterator_Next(it, &prop, &prop_len, &ptr)) {
                     prop[prop_len] = 0;
                     /* Create a new return element foreach property. */
-                    AST_ArithmeticExpressionNode *expanded_exp =
-                        New_AST_AR_EXP_VariableOperandNode(collapsed_entity->alias, prop);
-
-                    AST_ReturnElementNode *retElem =
-                        New_AST_ReturnElementNode(expanded_exp, ret_elem->alias);
-
+                    expanded_exp = New_AST_AR_EXP_VariableOperandNode(collapsed_entity->alias, prop);
+                    retElem = New_AST_ReturnElementNode(expanded_exp, ret_elem->alias);
                     Vector_Push(expandReturnElements, retElem);
                 }
                 TrieMapIterator_Free(it);
-            } else {
-                /* Entity does have a label.
-                 * We don't have a choice but to retrieve all know properties. */
-                size_t stores_len = 128;    /* Limit number of labels we'll consider. */
-                LabelStore *stores[128];    /* Label stores. */
-
-                LabelStore_Get_ALL(ctx, store_type, graphName, stores, &stores_len);
-                TrieMap *properties = NewTrieMap(); /* Holds all properties, discards duplicates. */
-
-                /* Get properties out of label store. */
-                for(int store_idx = 0; store_idx < stores_len; store_idx++) {
-                    LabelStore *s = stores[store_idx];
-                    if(!s->label) continue; /* No label, (this is 'ALL' store). */
-                    TrieMapIterator *it = TrieMap_Iterate(s->properties, "", 0);
-
-                    /* Add property to properties triemap. */
-                    while(TrieMapIterator_Next(it, &prop, &prop_len, &ptr)) {
-                        prop[prop_len] = 0;
-                        TrieMap_Add(properties, prop, prop_len, prop, TrieMap_DONT_CARE_REPLACE);
-                    }
-                    /* TODO: Free iterator. */
-                    // TrieMapIterator_Free(it);
-                }
-
-                /* Add each property to return clause. */
-                TrieMapIterator *it = TrieMap_Iterate(properties, "", 0);
-                while(TrieMapIterator_Next(it, &prop, &prop_len, &ptr)) {
-                    /* Create a new return element foreach property. */
-                    prop[prop_len] = 0;
-                    AST_ArithmeticExpressionNode *expanded_exp =
-                        New_AST_AR_EXP_VariableOperandNode(collapsed_entity->alias, prop);
-
-                    AST_ReturnElementNode *retElem =
-                        New_AST_ReturnElementNode(expanded_exp, ret_elem->alias);
-
-                    Vector_Push(expandReturnElements, retElem);
-                }
-                TrieMapIterator_Free(it);
-                TrieMap_Free(properties, TrieMap_NOP_CB);
             }
+
             /* Discard collapsed return element. */
             Free_AST_ReturnElementNode(ret_elem);
         } else {
@@ -140,33 +113,24 @@ void ReturnClause_ExpandCollapsedNodes(RedisModuleCtx *ctx, AST_Query *ast, cons
     ast->returnNode->returnElements = expandReturnElements;
 }
 
-void _nameAnonymousNodes(Vector *entities, int *entity_id) {
-    /* Foreach graph entity: node/edge. */
-    for(int i = 0; i < Vector_Size(entities); i++) {
-        AST_GraphEntity *entity;
-        Vector_Get(entities, i, &entity);
-        
-        if (entity->alias == NULL) {
-            asprintf(&entity->alias, "anon_%d", *entity_id);
-            (*entity_id)++;
-        }
-    }
-}
+/* Shares merge pattern with match clause. */
+void _replicateMergeClauseToMatchClause(AST_Query *ast) {    
+    assert(ast->mergeNode && !ast->matchNode);
 
-void nameAnonymousNodes(AST_Query *ast) {
-    int entity_id = 0;
-
-    if(ast->matchNode)
-        _nameAnonymousNodes(ast->matchNode->graphEntities, &entity_id);
-
-    if(ast->createNode)
-        _nameAnonymousNodes(ast->createNode->graphEntities, &entity_id);
+    /* Match node is expecting a vector of vectors,
+     * and so we have to wrap merge graph entities vector
+     * within another vector
+     * wrappedEntities will be freed by match clause. */
+    Vector *wrappedEntities = NewVector(Vector*, 1);
+    Vector_Push(wrappedEntities, ast->mergeNode->graphEntities);
+    ast->matchNode = New_AST_MatchNode(wrappedEntities);
 }
 
 void inlineProperties(AST_Query *ast) {
     /* Migrate inline filters to WHERE clause. */
     if(!ast->matchNode) return;
-    Vector *entities = ast->matchNode->graphEntities;
+    // Vector *entities = ast->matchNode->graphEntities;
+    Vector *entities = ast->matchNode->_mergedPatterns;
 
     /* Foreach entity. */
     for(int i = 0; i < Vector_Size(entities); i++) {
@@ -205,19 +169,23 @@ void inlineProperties(AST_Query *ast) {
 }
 
 int Query_Modifies_KeySpace(const AST_Query *ast) {
-    return (ast->createNode || ast->deleteNode || ast->setNode);
+    return (ast->createNode || ast->deleteNode || ast->setNode || ast->mergeNode);
 }
 
 AST_Query* ParseQuery(const char *query, size_t qLen, char **errMsg) {
-    AST_Query *ast = Query_Parse(query, qLen, errMsg);
-    
-    if (!ast) {
-        return NULL;
-    }
-    
-    /* Modify AST. */
-    nameAnonymousNodes(ast);
-    inlineProperties(ast);
+    return Query_Parse(query, qLen, errMsg);
+}
 
-    return ast;
+void ModifyAST(RedisModuleCtx *ctx, AST_Query *ast, const char *graph_name) {
+    AST_NameAnonymousNodes(ast);
+    if(ReturnClause_ContainsCollapsedNodes(ast->returnNode) == 1) {
+        /* Expand collapsed nodes. */
+        ReturnClause_ExpandCollapsedNodes(ctx, ast, graph_name);
+    }
+    if(ast->mergeNode) {
+        /* Create match clause which will try to match 
+         * against pattern specified within merge clause. */
+        _replicateMergeClauseToMatchClause(ast);
+    }
+    inlineProperties(ast);
 }

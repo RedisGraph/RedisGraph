@@ -84,6 +84,8 @@ RedisGraph will reply with:
 
 The first row is our result-set header which name each column according to the return clause.
 
+Second row contains our query result.
+
 The second row contains our query result.
 
 Let's try another query. This time, we'll find in how many movies each actor played.

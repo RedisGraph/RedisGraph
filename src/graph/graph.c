@@ -1,3 +1,10 @@
+/*
+* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+*
+* This file is available under the Apache License, Version 2.0,
+* modified with the Commons Clause restriction.
+*/
+
 #include "graph.h"
 #include "graph_type.h"
 #include "assert.h"
@@ -86,7 +93,7 @@ void _Graph_MigrateRowCol(Graph *g, int src, int dest) {
     GrB_Vector zero;
     GrB_Descriptor desc;
     GrB_Index nrows = g->node_count;
-    GrB_Matrix M = g->adjacency_matrix;
+    GrB_Matrix M = Graph_GetAdjacencyMatrix(g);
 
     GrB_Descriptor_new(&desc);
     GrB_Descriptor_set(desc, GrB_INP0, GrB_TRAN);
@@ -162,11 +169,7 @@ Graph *Graph_Get(RedisModuleCtx *ctx, RedisModuleString *graph_name) {
     Graph *g = NULL;
 
     RedisModuleKey *key = RedisModule_OpenKey(ctx, graph_name, REDISMODULE_WRITE);
-    int type = RedisModule_KeyType(key);
-
-    // Key does not exists.
-	if (type != REDISMODULE_KEYTYPE_EMPTY &&
-        RedisModule_ModuleTypeGetType(key) == GraphRedisModuleType) {
+	if (RedisModule_ModuleTypeGetType(key) == GraphRedisModuleType) {
         g = RedisModule_ModuleTypeGetValue(key);
 	}
 
@@ -205,19 +208,19 @@ void Graph_CreateNodes(Graph* g, size_t n, int* labels, NodeIterator **it) {
 
 void Graph_ConnectNodes(Graph *g, size_t n, GrB_Index *connections) {
     assert(g && connections);
-
+    GrB_Matrix adj = Graph_GetAdjacencyMatrix(g);
     // Update graph's adjacency matrices, setting mat[dest,src] to 1.
     for(int i = 0; i < n; i+=3) {
         int src_id = connections[i];
         int dest_id = connections[i+1];
         int r = connections[i+2];
 
-        GrB_Matrix_setElement_BOOL(g->adjacency_matrix, true, src_id, dest_id);
+        GrB_Matrix_setElement_BOOL(adj, true, src_id, dest_id);
 
         if(r != GRAPH_NO_RELATION) {
             // Typed edge.
-            GrB_Matrix m = Graph_GetRelationMatrix(g, r);
-            GrB_Matrix_setElement_BOOL(m, true, src_id, dest_id);
+            GrB_Matrix M = Graph_GetRelationMatrix(g, r);
+            GrB_Matrix_setElement_BOOL(M, true, src_id, dest_id);
         }
     }
 }
@@ -338,11 +341,11 @@ void Graph_DeleteEdge(Graph *g, int src_id, int dest_id) {
     
     // See if there's an edge between src and dest.
     bool connected = false;
-    GrB_Matrix_extractElement_BOOL(&connected, g->adjacency_matrix, src_id, dest_id);
+    GrB_Matrix M = Graph_GetAdjacencyMatrix(g);
+    GrB_Matrix_extractElement_BOOL(&connected, M, src_id, dest_id);
     
     if(!connected) return;
 
-    GrB_Matrix M = g->adjacency_matrix;
     GrB_Index nrows = g->node_count;
 
     GrB_Vector mask;
@@ -379,8 +382,8 @@ void Graph_DeleteEdge(Graph *g, int src_id, int dest_id) {
 void Graph_LabelNodes(Graph *g, int start_node_id, int end_node_id, int label, NodeIterator **it) {
     assert(g &&
            start_node_id < g->node_count &&
-           start_node_id >=0 &&
-           start_node_id < end_node_id &&
+           start_node_id >= 0 &&
+           start_node_id <= end_node_id &&
            end_node_id < g->node_count);
     
     GrB_Matrix m = Graph_GetLabelMatrix(g, label);
@@ -401,13 +404,6 @@ NodeIterator *Graph_ScanNodes(const Graph *g) {
     return NodeIterator_New(g->nodes_blocks[0], 0, g->node_count, 1);
 }
 
-GrB_Matrix Graph_GetLabelMatrix(const Graph *g, int label_idx) {
-    assert(g && label_idx < g->label_count);
-    GrB_Matrix m = g->_labels[label_idx];
-    _Graph_ResizeMatrix(g, m);
-    return m;
-}
-
 int Graph_AddLabelMatrix(Graph *g) {
     assert(g);
 
@@ -419,6 +415,20 @@ int Graph_AddLabelMatrix(Graph *g) {
 
     GrB_Matrix_new(&g->_labels[g->label_count++], GrB_BOOL, g->node_cap, g->node_cap);
     return g->label_count-1;
+}
+
+GrB_Matrix Graph_GetAdjacencyMatrix(const Graph *g) {
+    assert(g);
+    GrB_Matrix m = g->adjacency_matrix;
+    _Graph_ResizeMatrix(g, m);
+    return m;
+}
+
+GrB_Matrix Graph_GetLabelMatrix(const Graph *g, int label_idx) {
+    assert(g && label_idx < g->label_count);
+    GrB_Matrix m = g->_labels[label_idx];
+    _Graph_ResizeMatrix(g, m);
+    return m;
 }
 
 GrB_Matrix Graph_GetRelationMatrix(const Graph *g, int relation_idx) {
@@ -441,6 +451,28 @@ int Graph_AddRelationMatrix(Graph *g) {
     return g->relation_count-1;
 }
 
+void Graph_CommitPendingOps(Graph *g) {
+    /* GraphBLAS might delay execution of operations to a later stage,
+     * here we're forcing GraphBLAS to execute all of its pending operations
+     * by asking for the number of entries in each matrix. */
+
+    GrB_Matrix M;
+    GrB_Index nvals;
+    
+    M = Graph_GetAdjacencyMatrix(g);
+    GrB_Matrix_nvals(&nvals, M);
+
+    for(int i = 0; i < g->relation_count; i++) {
+        M = Graph_GetRelationMatrix(g, i);
+        GrB_Matrix_nvals(&nvals, M);
+    }
+
+    for(int i = 0; i < g->label_count; i++) {
+        M = Graph_GetLabelMatrix(g, i);
+        GrB_Matrix_nvals(&nvals, M);
+    }
+}
+
 void Graph_Free(Graph *g) {
     assert(g);
         
@@ -459,16 +491,19 @@ void Graph_Free(Graph *g) {
     free(g->nodes_blocks);
 
     // Free matrices.
-    GrB_Matrix_free(&g->adjacency_matrix);
+    GrB_Matrix m;
+    m = Graph_GetAdjacencyMatrix(g);
+
+    GrB_Matrix_free(&m);
     for(int i = 0; i < g->relation_count; i++) {
-        GrB_Matrix m = Graph_GetRelationMatrix(g, i);
+        m = Graph_GetRelationMatrix(g, i);
         GrB_Matrix_free(&m);
     }
     free(g->_relations);
     
     // Free matrices.
     for(int i = 0; i < g->label_count; i++) {
-        GrB_Matrix m = Graph_GetLabelMatrix(g, i);
+        m = Graph_GetLabelMatrix(g, i);
         GrB_Matrix_free(&m);
     }
     free(g->_labels);

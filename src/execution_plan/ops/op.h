@@ -1,3 +1,10 @@
+/*
+* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+*
+* This file is available under the Apache License, Version 2.0,
+* modified with the Commons Clause restriction.
+*/
+
 #ifndef __OP_H__
 #define __OP_H__
 
@@ -22,7 +29,9 @@ OPType_NODE_BY_LABEL_SCAN,
 OPType_PRODUCE_RESULTS,
 OPType_CREATE,
 OPType_UPDATE,
-OPType_DELETE
+OPType_DELETE,
+OPType_CARTESIAN_PRODUCT,
+OPType_MERGE
 } OPType;
 
 typedef enum {

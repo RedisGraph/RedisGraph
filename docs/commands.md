@@ -232,7 +232,6 @@ CREATE (n)
 
 It's possible to create multiple entities by separating them with a comma.
 
-
 ```sh
 CREATE (n),(m)
 ```

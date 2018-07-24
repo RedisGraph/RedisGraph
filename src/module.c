@@ -1,3 +1,10 @@
+/*
+* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+*
+* This file is available under the Apache License, Version 2.0,
+* modified with the Commons Clause restriction.
+*/
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -36,26 +43,21 @@
 
 #include "execution_plan/execution_plan.h"
 
-/* Tries to retrieve graph object stored within Redis under graph_name key,
- * If specified key does not exists and create is set to 1, a new graph object
- * is created and stored, in case key already stores a different object type
- * NULL is returned. */
+/* Retrieve graph stored within Redis under graph_name key,
+ * If specified key does not exists a new graph object is created and stored
+ * in case graph already exists NULL is returned. */
 Graph *_MGraph_CreateGraph(RedisModuleCtx *ctx, RedisModuleString *graph_name) {
     Graph *g = NULL;
-
     RedisModuleKey *key = RedisModule_OpenKey(ctx, graph_name, REDISMODULE_WRITE);
-    int type = RedisModule_KeyType(key);
 
-    // Key does not exists, create a new graph.
-	if (type == REDISMODULE_KEYTYPE_EMPTY) {
+    // Key does not exists, create a new graph and store within Redis keyspace.
+	if (RedisModule_KeyType(key) == REDISMODULE_KEYTYPE_EMPTY) {
 		g = Graph_New(GRAPH_DEFAULT_NODE_CAP);
-		RedisModule_ModuleTypeSetValue(key, GraphRedisModuleType, g);        
+		RedisModule_ModuleTypeSetValue(key, GraphRedisModuleType, g);
 	} else {
-        RedisModule_ReplyWithError(ctx, "can not create graph, graph name is used by some other key.");
-        RedisModule_CloseKey(key);
+        RedisModule_ReplyWithError(ctx, "Can not create graph, graph ID is used by some other key.");
     }
 
-    // Returned stored graph.
     RedisModule_CloseKey(key);
     return g;
 }
@@ -86,10 +88,19 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
         return REDISMODULE_OK;
     }
     
+    ModifyAST(ctx, ast, graph_name);
+
+    char *reason;
+    if (AST_Validate(ast, &reason) != AST_VALID) {
+        RedisModule_ReplyWithError(ctx, reason);
+        free(reason);
+        return REDISMODULE_OK;
+    }
+
     // Try to get graph.
     Graph *g = Graph_Get(ctx, argv[1]);
     if(!g) {
-        if(ast->createNode) {
+        if(ast->createNode || ast->mergeNode) {
             g = _MGraph_CreateGraph(ctx, argv[1]);
             /* TODO: free graph if no entities were created. */
         } else {
@@ -98,37 +109,19 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
         }
     }
 
-    char *reason;
-    if (AST_Validate(ast, &reason) != AST_VALID) {
-        RedisModule_ReplyWithError(ctx, reason);
-        return REDISMODULE_OK;
-    }
-    
-    /* Modify AST */
-    if(ReturnClause_ContainsCollapsedNodes(ast->returnNode) == 1) {
-        /* Expand collapsed nodes. */
-        ReturnClause_ExpandCollapsedNodes(ctx, ast, graph_name);
-    }
-
-    ExecutionPlan *plan = NewExecutionPlan(ctx, g, graph_name, ast);
+    ExecutionPlan *plan = NewExecutionPlan(ctx, g, graph_name, ast, false);
     ResultSet* resultSet = ExecutionPlan_Execute(plan);
     ExecutionPlanFree(plan);
 
     /* Send result-set back to client. */
-    ResultSet_Replay(ctx, resultSet);
+    ResultSet_Replay(resultSet);
 
     /* Replicate query only if it modified the keyspace. */
-    if(Query_Modifies_KeySpace(ast) &&
-       (resultSet->labels_added > 0 ||
-       resultSet->nodes_created > 0 ||
-       resultSet->properties_set > 0 ||
-       resultSet->relationships_created > 0 ||
-       resultSet->nodes_deleted > 0 ||
-       resultSet->relationships_deleted > 0)) {
-           RedisModule_ReplicateVerbatim(ctx);
+    if(ResultSetStat_IndicateModification(resultSet->stats)) {
+        RedisModule_ReplicateVerbatim(ctx);
     }
 
-    ResultSet_Free(ctx, resultSet);
+    ResultSet_Free(resultSet);
 
     /* Report execution timing. */
     t = simple_toc(tic) * 1000;
@@ -153,38 +146,34 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     const char *query;
     RMUtil_ParseArgs(argv, argc, 1, "cc", &graph_name, &query);
 
-    // Try to get graph.
-    Graph *g = Graph_Get(ctx, argv[1]);
-    if(!g) {
-        /* At the moment EXPLAIN requires that the graph would exists. */
-        RedisModule_ReplyWithError(ctx, "key doesn't contains a graph object.");
-        return REDISMODULE_OK;
-    }
-
     /* Parse query, get AST. */
     char *errMsg = NULL;
     AST_Query* ast = ParseQuery(query, strlen(query), &errMsg);
-    
+
     if (!ast) {
         RedisModule_Log(ctx, "debug", "Error parsing query: %s", errMsg);
         RedisModule_ReplyWithError(ctx, errMsg);
         free(errMsg);
         return REDISMODULE_OK;
     }
-    
+
+    // Try to get graph.
+    Graph *g = Graph_Get(ctx, argv[1]);
+    if(!g) {
+        RedisModule_ReplyWithError(ctx, "key doesn't contains a graph object.");
+        return REDISMODULE_OK;
+    }
+
+    ModifyAST(ctx, ast, graph_name);
+
     char *reason;
     if (AST_Validate(ast, &reason) != AST_VALID) {
         RedisModule_ReplyWithError(ctx, reason);
+        free(reason);
         return REDISMODULE_OK;
     }
-    
-    /* Modify AST */
-    if(ReturnClause_ContainsCollapsedNodes(ast->returnNode) == 1) {
-        /* Expand collapsed nodes. */
-        ReturnClause_ExpandCollapsedNodes(ctx, ast, graph_name);
-    }
 
-    ExecutionPlan *plan = NewExecutionPlan(ctx, g, graph_name, ast);
+    ExecutionPlan *plan = NewExecutionPlan(ctx, g, graph_name, ast, true);
     char* strPlan = ExecutionPlanPrint(plan);
     RedisModule_ReplyWithStringBuffer(ctx, strPlan, strlen(strPlan));
     
@@ -195,38 +184,31 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
 int MGraph_BulkInsert(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     double tic [2], t;
-    /*
-    GRAPH.BULK my_graph NODES 6 2 Person 2 2 first_name last_name Country 2 2 name population roi lipman hila rahamani Israel 7000000 Japan 127000000 2 key1 val1 key2 2 2 foo bar bar baz RELATIONS 5 2 knows 2 visited 2 0 1 1 0 0 2 1 3 4 5
-    */
 
     Graph *g;           // Graph to populate.
     size_t nodes = 0;   // Number of nodes created.
     size_t edges = 0;   // Number of edge created.
     RedisModuleString *rs_graph_name = argv[1];
     const char *graph_name = RedisModule_StringPtrLen(argv[1], NULL);
-
-    // Get graph from Redis keyspace, create if missing.
+    
+    // Try to get graph, if graph does not exists create it.
     g = Graph_Get(ctx, rs_graph_name);
-    if(g == NULL) {
+    if(g == NULL)
         g = _MGraph_CreateGraph(ctx, rs_graph_name);
-        if(g == NULL) {
-            // Specified graph name points to an existing key which is not of type Graph.
-            // Error already emitted.
-            return REDISMODULE_OK;
-        }
-    }
 
-    // simple_tic(tic);
+    simple_tic(tic);
     Bulk_Insert(ctx, argv+2, argc-2, g, graph_name, &nodes, &edges);
 
+    // Force graph pendding operations to complete.
+    Graph_CommitPendingOps(g);
+
     // Replay to caller.
-    // t = simple_toc(tic);
+    t = simple_toc(tic);
     char timings[1024] = {0};
-    // sprintf(timings, "%zu Nodes created, %zu Edges created, time: %.6f sec\n", nodes, edges, t);
-    sprintf(timings, "%zu Nodes created, %zu Edges created\n", nodes, edges);
+    sprintf(timings, "%zu Nodes created, %zu Edges created, time: %.6f sec\n", nodes, edges, t);
     RedisModule_ReplyWithStringBuffer(ctx, timings, strlen(timings));
     
-    /* Replicate query only if it modified the keyspace. */
+    /* Replicate query. */
     RedisModule_ReplicateVerbatim(ctx);
     return REDISMODULE_OK;
 }

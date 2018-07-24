@@ -1,3 +1,10 @@
+/*
+* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+*
+* This file is available under the Apache License, Version 2.0,
+* modified with the Commons Clause restriction.
+*/
+
 #ifndef __LABEL_STORE_H__
 #define __LABEL_STORE_H__
 
@@ -23,9 +30,6 @@ LabelStore *LabelStore_New(RedisModuleCtx *ctx, LabelStoreType type, const char 
 
 /* Get a label store. */
 LabelStore *LabelStore_Get(RedisModuleCtx *ctx, LabelStoreType type, const char *graph, const char* label);
-
-/* Get all stores of given type. */
-void LabelStore_Get_ALL(RedisModuleCtx *ctx, LabelStoreType type, const char *graph, LabelStore **stores, size_t *stores_len);
 
 /* Update store schema with given properties. */
 void LabelStore_UpdateSchema(LabelStore *store, int prop_count, char **properties);

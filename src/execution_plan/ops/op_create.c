@@ -1,3 +1,10 @@
+/*
+* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+*
+* This file is available under the Apache License, Version 2.0,
+* modified with the Commons Clause restriction.
+*/
+
 #include "../../stores/store.h"
 #include "op_create.h"
 #include <assert.h>
@@ -27,26 +34,24 @@ void _SetModifiedEntities(OpCreate *op) {
             if(ge->t == N_ENTITY) {
                 // Node.
                 Node *n = QueryGraph_GetNodeByAlias(op->qg, ge->alias);
-                if(n->id == INVALID_ENTITY_ID) {
-                    Node **ppn = QueryGraph_GetNodeRef(op->qg, n);
-                    op->nodes_to_create[node_idx].original_node = n;
-                    op->nodes_to_create[node_idx].original_node_ref = ppn;
-                    n->id = 0;  /* Mark node. */
-                    node_idx++;
-                }
+                if(n->id == 0) continue;   // Node already marked for creation.
+                Node **ppn = QueryGraph_GetNodeRef(op->qg, n);
+                op->nodes_to_create[node_idx].original_node = n;
+                op->nodes_to_create[node_idx].original_node_ref = ppn;
+                n->id = 0;  /* Mark node. */
+                node_idx++;
             } else {
                 // Edge.
                 Edge *e = QueryGraph_GetEdgeByAlias(op->qg, ge->alias);
-                if(e->id == INVALID_ENTITY_ID) {
-                    op->edges_to_create[edge_idx].original_edge = e;
-                    op->edges_to_create[edge_idx].original_edge_ref = QueryGraph_GetEdgeRef(op->qg, e);
-                    assert(QueryGraph_ContainsNode(graph, e->src));
-                    assert(QueryGraph_ContainsNode(graph, e->dest));
-                    op->edges_to_create[edge_idx].src_node_alias = QueryGraph_GetNodeAlias(graph, e->src);
-                    op->edges_to_create[edge_idx].dest_node_alias = QueryGraph_GetNodeAlias(graph, e->dest);
-                    e->id = 0;  /* Mark edge. */
-                    edge_idx++;
-                }
+                if(e->id == 0) continue;   // Edge already marked for creation.
+                op->edges_to_create[edge_idx].original_edge = e;
+                op->edges_to_create[edge_idx].original_edge_ref = QueryGraph_GetEdgeRef(op->qg, e);
+                assert(QueryGraph_ContainsNode(graph, e->src));
+                assert(QueryGraph_ContainsNode(graph, e->dest));
+                op->edges_to_create[edge_idx].src_node_alias = QueryGraph_GetNodeAlias(graph, e->src);
+                op->edges_to_create[edge_idx].dest_node_alias = QueryGraph_GetNodeAlias(graph, e->dest);
+                e->id = 0;  /* Mark edge. */
+                edge_idx++;
             }
         }
     }
@@ -168,31 +173,30 @@ void _CommitNewEntities(OpCreate *op) {
 
     if(node_count > 0) {
         int labels[node_count];
+        LabelStore *allStore = LabelStore_Get(ctx, STORE_NODE, op->graph_name, NULL);
 
         for(int i = 0; i < node_count; i++) {
             Node *n;
             Vector_Get(op->created_nodes, i, &n);
+            LabelStore *store = NULL;
             const char *label = n->label;
             if(label == NULL) {
                labels[i] = GRAPH_NO_LABEL; 
             } else {
-                LabelStore *store = LabelStore_Get(ctx, STORE_NODE, op->graph_name, label);
-                LabelStore *allStore = LabelStore_Get(ctx, STORE_NODE, op->graph_name, NULL);
+                store = LabelStore_Get(ctx, STORE_NODE, op->graph_name, label);                
                 if(store == NULL) {
                     int label_id = Graph_AddLabelMatrix(op->g);
                     store = LabelStore_New(ctx, STORE_NODE, op->graph_name, label, label_id);
-                    op->result_set->labels_added++;
+                    op->result_set->stats.labels_added++;
                 }
                 labels[i] = store->id;
+            }
 
-                if(n->prop_count > 0) {
-                    char *properties[n->prop_count];
-                    for(int j = 0; j < n->prop_count; j++) {
-                        properties[j] = n->properties[j].name;
-                    }
-                    LabelStore_UpdateSchema(store, n->prop_count, properties);
-                    LabelStore_UpdateSchema(allStore, n->prop_count, properties);
-                }
+            if(n->prop_count > 0) {
+                char *properties[n->prop_count];
+                for(int j = 0; j < n->prop_count; j++) properties[j] = n->properties[j].name;
+                if(label) LabelStore_UpdateSchema(store, n->prop_count, properties);
+                LabelStore_UpdateSchema(allStore, n->prop_count, properties);
             }
         }
 
@@ -210,10 +214,10 @@ void _CommitNewEntities(OpCreate *op) {
             new_node->id = graph_node_count + i;
             temp_node->id = new_node->id;   /* Formed edges refer to temp_node. */
             temp_node->properties = NULL;   /* Do not free temp_node's property set. */
-            op->result_set->properties_set += new_node->prop_count;
+            op->result_set->stats.properties_set += new_node->prop_count;
         }
 
-        op->result_set->nodes_created = node_count;
+        op->result_set->stats.nodes_created = node_count;
     }
 
     if(edge_count > 0) {
@@ -227,18 +231,22 @@ void _CommitNewEntities(OpCreate *op) {
             connections[con_idx] = e->src->id;
             connections[con_idx + 1] = e->dest->id;
             
-            LabelStore *s = LabelStore_Get(ctx, STORE_EDGE, op->graph_name, e->relationship);
-            if(s != NULL) connections[con_idx + 2] = s->id;
-            else {                
-                int relation_id = Graph_AddRelationMatrix(op->g);
-                LabelStore_New(op->ctx, STORE_EDGE, op->graph_name, e->relationship, relation_id);
-                connections[con_idx + 2] = relation_id;
+            if(!e->relationship) {
+                connections[con_idx + 2] = GRAPH_NO_RELATION;
+            } else {
+                LabelStore *s = LabelStore_Get(ctx, STORE_EDGE, op->graph_name, e->relationship);
+                if(s != NULL) connections[con_idx + 2] = s->id;
+                else {
+                    int relation_id = Graph_AddRelationMatrix(op->g);
+                    LabelStore_New(op->ctx, STORE_EDGE, op->graph_name, e->relationship, relation_id);
+                    connections[con_idx + 2] = relation_id;
+                }
             }
             Edge_Free(e);
         }
 
         Graph_ConnectNodes(op->g, edge_count*3, connections);
-        op->result_set->relationships_created = edge_count;
+        op->result_set->stats.relationships_created = edge_count;
     }
 
     for(int i = 0; i < node_count; i++) {
@@ -289,4 +297,6 @@ void OpCreateFree(OpBase *ctx) {
     if(op->edges_to_create != NULL) {
         free(op->edges_to_create);
     }
+
+    free(op);
 }

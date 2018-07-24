@@ -35,6 +35,10 @@ CMakeFiles/
 CMakeCache.txt
 DartConfiguration.tcl
 
+# Project
+.cproject
+.project
+
 # Debug files
 *.dSYM/
 *.su

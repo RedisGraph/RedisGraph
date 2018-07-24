@@ -1,3 +1,10 @@
+/*
+* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+*
+* This file is available under the Apache License, Version 2.0,
+* modified with the Commons Clause restriction.
+*/
+
 #include "bulk_insert.h"
 #include "./stores/store.h"
 #include <assert.h>
@@ -14,7 +21,7 @@ void _Bulk_Insert_Reply_With_Syntax_Error(RedisModuleCtx *ctx, const char* err) 
     RedisModule_ReplyWithError(ctx, err);
 }
 
-// Parse label from agrv.
+// Parse label from argv.
 RedisModuleString** _Bulk_Insert_Parse_Label(RedisModuleCtx *ctx, RedisModuleString **argv, int *argc, LabelDesc *label) {
     // Minimum of 3 arguments: label name, number of labeled nodes and attribute count.
     if(*argc < 3) {
@@ -157,6 +164,7 @@ RedisModuleString** _Bulk_Insert_Insert_Nodes(RedisModuleCtx *ctx, RedisModuleSt
     }
     
     *nodes = nodes_to_create;
+    int start_offset = g->node_count;
     Graph_CreateNodes(g, nodes_to_create, NULL, &it);
 
     long long label_count = 0;          // Number of unique lables.
@@ -178,7 +186,7 @@ RedisModuleString** _Bulk_Insert_Insert_Nodes(RedisModuleCtx *ctx, RedisModuleSt
             LabelDesc l = labels[label_idx];
 
             // Label nodes.
-            Graph_LabelNodes(g, number_of_labeled_nodes, number_of_labeled_nodes + l.node_count -1,
+            Graph_LabelNodes(g, number_of_labeled_nodes + start_offset, number_of_labeled_nodes + start_offset + l.node_count - 1,
                              l.label_id, NULL);
 
             if(l.attribute_count > 0) {

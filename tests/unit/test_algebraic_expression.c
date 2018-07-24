@@ -1,3 +1,10 @@
+/*
+* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+*
+* This file is available under the Apache License, Version 2.0,
+* modified with the Commons Clause restriction.
+*/
+
 #include "../../src/value.h"
 #include "../../src/graph/graph.h"
 #include "../../src/query_executor.h"
@@ -214,7 +221,7 @@ void test_multiple_intermidate_return_nodes(const char *query, const QueryGraph 
     AST_Query *ast = ParseQuery(query, strlen(query), NULL);
     
     size_t exp_count = 0;
-    AlgebraicExpression **ae = AlgebraicExpression_From_Query(ast, query_graph, &exp_count);
+    AlgebraicExpression **ae = AlgebraicExpression_From_Query(ast, ast->matchNode->_mergedPatterns, query_graph, &exp_count);
     assert(exp_count == 3);
     
     // Validate first expression.
@@ -251,7 +258,7 @@ void test_one_intermidate_return_node(const char *query, const QueryGraph *query
     AST_Query *ast = ParseQuery(query, strlen(query), NULL);
 
     size_t exp_count = 0;
-    AlgebraicExpression **ae = AlgebraicExpression_From_Query(ast, query_graph, &exp_count);
+    AlgebraicExpression **ae = AlgebraicExpression_From_Query(ast, ast->matchNode->_mergedPatterns, query_graph, &exp_count);
     assert(exp_count == 2);
 
     // Validate first expression.
@@ -290,7 +297,7 @@ void test_no_intermidate_return_nodes(const char *query, const QueryGraph *query
     AST_Query *ast = ParseQuery(query, strlen(query), NULL);
 
     size_t exp_count = 0;
-    AlgebraicExpression **ae = AlgebraicExpression_From_Query(ast, query_graph, &exp_count);
+    AlgebraicExpression **ae = AlgebraicExpression_From_Query(ast, ast->matchNode->_mergedPatterns, query_graph, &exp_count);
     assert(exp_count == 1);
 
     AlgebraicExpression *exp = ae[0];
@@ -320,7 +327,7 @@ void test_no_intermidate_return_nodes(const char *query, const QueryGraph *query
 void test_expression_execute(const char *query, Graph *g, QueryGraph *query_graph) {
     AST_Query *ast = ParseQuery(query, strlen(query), NULL);
     size_t exp_count = 0;
-    AlgebraicExpression **ae = AlgebraicExpression_From_Query(ast, query_graph, &exp_count);
+    AlgebraicExpression **ae = AlgebraicExpression_From_Query(ast, ast->matchNode->_mergedPatterns, query_graph, &exp_count);
 
     double tic [2];
     simple_tic(tic);

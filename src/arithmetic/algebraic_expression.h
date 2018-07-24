@@ -1,3 +1,10 @@
+/*
+* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+*
+* This file is available under the Apache License, Version 2.0,
+* modified with the Commons Clause restriction.
+*/
+
 #ifndef ALGEBRAIC_EXPRESSION_H
 #define ALGEBRAIC_EXPRESSION_H
 
@@ -35,11 +42,11 @@ typedef struct {
     AlgebraicExpressionOperand *operands;   // Array of operands.
     Node **src_node;                        // Nodes represented by the first operand rows.
     Node **dest_node;                       // Nodes represented by the last operand columns.
-    bool transpose;                         // Transpose result.
+    bool _transpose;                         // Transpose result.
 } AlgebraicExpression;
 
 /* Construct an algebraic expression from a query. */
-AlgebraicExpression **AlgebraicExpression_From_Query(const AST_Query *ast, const QueryGraph *q, size_t *exp_count);
+AlgebraicExpression **AlgebraicExpression_From_Query(const AST_Query *ast, Vector *matchPattern, const QueryGraph *q, size_t *exp_count);
 
 /* Executes given expression. */
 AlgebraicExpressionResult *AlgebraicExpression_Execute(AlgebraicExpression *ae);
@@ -49,6 +56,10 @@ void AlgebraicExpression_AppendTerm(AlgebraicExpression *ae, GrB_Matrix m, bool 
 
 /* Prepend m as the first term in the expression ae. */
 void AlgebraicExpression_PrependTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transpose);
+
+/* Whenever we decide to transpose an expression, call this function
+ * directly accessing expression transpose flag is forbidden. */
+void AlgebraicExpression_Transpose(AlgebraicExpression *ae);
 
 void AlgebraicExpression_Free(AlgebraicExpression* ae);
 void AlgebraicExpressionResult_Free(AlgebraicExpressionResult *aer);

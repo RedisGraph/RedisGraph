@@ -31,10 +31,12 @@ int yycolumn = 1;
 "DISTINCT"  { return DISTINCT; }
 "WHERE" 	  { return WHERE; }
 "ORDER"     { return ORDER; }
+"MERGE"     { return MERGE; }
 "BY"        { return BY; }
 "ASC"       { return ASC; }
 "DESC"      { return DESC; }
 "LIMIT"     { return LIMIT; }
+"NULL"      { return NULLVAL; }
 
 
 [0-9]*\.[0-9]+    {

@@ -1,3 +1,10 @@
+/*
+* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+*
+* This file is available under the Apache License, Version 2.0,
+* modified with the Commons Clause restriction.
+*/
+
 #ifndef __TUPLES_ITER_H__
 #define __TUPLES_ITER_H__
 
@@ -6,8 +13,8 @@
 
 typedef enum
 {
-    TuplesIter_OK,
-    TuplesIter_DEPLETED
+    TuplesIter_DEPLETED,
+    TuplesIter_OK
 } TuplesIter_Info ;
 
 typedef struct

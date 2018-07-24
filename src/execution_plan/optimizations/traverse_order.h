@@ -1,3 +1,10 @@
+/*
+* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+*
+* This file is available under the Apache License, Version 2.0,
+* modified with the Commons Clause restriction.
+*/
+
 #ifndef __TRAVERSE_ORDER_H__
 #define __TRAVERSE_ORDER_H__
 

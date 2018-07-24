@@ -1,3 +1,10 @@
+/*
+* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+*
+* This file is available under the Apache License, Version 2.0,
+* modified with the Commons Clause restriction.
+*/
+
 #include "ast.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -6,14 +13,16 @@
 #include "./ast_arithmetic_expression.h"
 
 AST_Query *New_AST_Query(AST_MatchNode *matchNode, AST_WhereNode *whereNode,
-                         AST_CreateNode *createNode, AST_SetNode *setNode,
-                         AST_DeleteNode *deleteNode, AST_ReturnNode *returnNode,
-                         AST_OrderNode *orderNode, AST_LimitNode *limitNode) {
+                         AST_CreateNode *createNode, AST_MergeNode *mergeNode,
+                         AST_SetNode *setNode, AST_DeleteNode *deleteNode,
+                         AST_ReturnNode *returnNode, AST_OrderNode *orderNode,
+                         AST_LimitNode *limitNode) {
   AST_Query *queryExpressionNode = (AST_Query *)malloc(sizeof(AST_Query));
 
   queryExpressionNode->matchNode = matchNode;
   queryExpressionNode->whereNode = whereNode;
   queryExpressionNode->createNode = createNode;
+  queryExpressionNode->mergeNode = mergeNode;
   queryExpressionNode->setNode = setNode;
   queryExpressionNode->deleteNode = deleteNode;
   queryExpressionNode->returnNode = returnNode;
@@ -23,19 +32,7 @@ AST_Query *New_AST_Query(AST_MatchNode *matchNode, AST_WhereNode *whereNode,
   return queryExpressionNode;
 }
 
-void Free_AST_Query(AST_Query *queryExpressionNode) {
-  Free_AST_MatchNode(queryExpressionNode->matchNode);
-  Free_AST_CreateNode(queryExpressionNode->createNode);
-  // Free_AST_MergeNode(queryExpressionNode->mergeNode);
-  Free_AST_DeleteNode(queryExpressionNode->deleteNode);
-  Free_AST_SetNode(queryExpressionNode->setNode);
-  Free_AST_WhereNode(queryExpressionNode->whereNode);
-  Free_AST_ReturnNode(queryExpressionNode->returnNode);
-  Free_AST_OrderNode(queryExpressionNode->orderNode);
-  free(queryExpressionNode);
-}
-
-AST_Validation Validate_Aliases_In_Match_Clause(TrieMap *aliasesToCheck,
+AST_Validation _Validate_Aliases_In_Match_Clause(TrieMap *aliasesToCheck,
                                                 const AST_MatchNode *match_node,
                                                 char **undefined_alias) {
   /* Check that all the aliases that are in aliasesToCheck exists in the match clause */
@@ -50,8 +47,7 @@ AST_Validation Validate_Aliases_In_Match_Clause(TrieMap *aliasesToCheck,
 
   while(TrieMapIterator_Next(it, &ptr, &len, &value)) {
     if(TrieMap_Find(matchAliases, ptr, len) == TRIEMAP_NOTFOUND) {
-      *undefined_alias = malloc(sizeof(char) * (strlen(" not defined") + len + 1));
-      sprintf(*undefined_alias, "%s not defined", ptr);
+      asprintf(undefined_alias, "%s not defined", ptr);
       res = AST_INVALID;
       break;
     }
@@ -66,8 +62,6 @@ AST_Validation _Validate_CREATE_Clause(const AST_Query *ast, char **reason) {
 }
 
 AST_Validation _Validate_DELETE_Clause(const AST_Query *ast, char **reason) {
-  AST_Validation res = AST_VALID;
-  char *undefined_alias;
 
   if (!ast->deleteNode) {
     return AST_VALID;
@@ -80,19 +74,37 @@ AST_Validation _Validate_DELETE_Clause(const AST_Query *ast, char **reason) {
   TrieMap *delete_aliases = NewTrieMap();
   DeleteClause_ReferredNodes(ast->deleteNode, delete_aliases);
 
-  if (Validate_Aliases_In_Match_Clause(delete_aliases,
-                                       ast->matchNode,
-                                       &undefined_alias) != AST_VALID) {
-    *reason = undefined_alias;
-    res = AST_INVALID;
-  }
-  
+  AST_Validation res = _Validate_Aliases_In_Match_Clause(delete_aliases, ast->matchNode, reason);
   TrieMap_Free(delete_aliases, TrieMap_NOP_CB);
   return res;
 }
 
 AST_Validation _Validate_MATCH_Clause(const AST_Query *ast, char **reason) {
-  return AST_VALID;
+  if(!ast->matchNode) return AST_VALID;
+  
+  // Check to see if an edge is being reused.
+  AST_Validation res = AST_VALID;
+  TrieMap *edgeAliases = NewTrieMap();  // Will let us know if duplicates.
+
+  // Scan mentioned edges.
+  size_t entityCount = Vector_Size(ast->matchNode->_mergedPatterns);
+  for(int i = 0; i < entityCount; i++) {
+    AST_GraphEntity *entity;
+    Vector_Get(ast->matchNode->_mergedPatterns, i, &entity);
+
+    if(entity->t != N_LINK) continue;
+
+    char *alias = entity->alias;
+    int new = TrieMap_Add(edgeAliases, alias, strlen(alias), NULL, TrieMap_DONT_CARE_REPLACE);
+    if(!new) {
+      asprintf(reason, "Cannot use the same relationship variable '%s' for multiple patterns.", alias);
+      res = AST_INVALID;
+      break;
+    }
+  }
+
+  TrieMap_Free(edgeAliases, TrieMap_NOP_CB);
+  return res;
 }
 
 AST_Validation _Validate_RETURN_Clause(const AST_Query *ast, char **reason) {
@@ -109,17 +121,9 @@ AST_Validation _Validate_RETURN_Clause(const AST_Query *ast, char **reason) {
   TrieMap *return_aliases = NewTrieMap();
   ReturnClause_ReferredNodes(ast->returnNode, return_aliases);
   
-  AST_Validation res = Validate_Aliases_In_Match_Clause(
-      return_aliases, ast->matchNode, &undefined_alias);
-
+  AST_Validation res = _Validate_Aliases_In_Match_Clause( return_aliases, ast->matchNode, reason);
   TrieMap_Free(return_aliases, TrieMap_NOP_CB);
-
-  if (res != AST_VALID) {
-    *reason = undefined_alias;
-    return AST_INVALID;
-  }
-
-  return AST_VALID;
+  return res;
 }
 
 AST_Validation _Validate_SET_Clause(const AST_Query *ast, char **reason) {
@@ -136,33 +140,34 @@ AST_Validation _Validate_SET_Clause(const AST_Query *ast, char **reason) {
   TrieMap *setAliases = NewTrieMap();
   SetClause_ReferredNodes(ast->setNode, setAliases);
   
-  AST_Validation res = Validate_Aliases_In_Match_Clause(
-      setAliases, ast->matchNode, &undefined_alias);
-  
+  AST_Validation res = _Validate_Aliases_In_Match_Clause(setAliases, ast->matchNode, reason);
   TrieMap_Free(setAliases, TrieMap_NOP_CB);
-
-  if (res != AST_VALID) {
-    *reason = undefined_alias;
-    return AST_INVALID;
-  }
-
-  return AST_VALID;
+  
+  return res;
 }
 
 AST_Validation _Validate_WHERE_Clause(const AST_Query *ast, char **reason) {
-  return AST_VALID;
+  if (!ast->whereNode) return AST_VALID;
+  if (!ast->matchNode) return AST_INVALID;
+
+  TrieMap *where_aliases = NewTrieMap();
+  WhereClause_ReferredNodes(ast->whereNode, where_aliases);
+
+  AST_Validation res = _Validate_Aliases_In_Match_Clause(where_aliases, ast->matchNode, reason);
+  TrieMap_Free(where_aliases, TrieMap_NOP_CB);
+  return res;
 }
 
 AST_Validation AST_Validate(const AST_Query *ast, char **reason) {
   /* AST must include either a MATCH or CREATE clause. */
-  if (!(ast->matchNode || ast->createNode)) {
-    *reason = "Query must specify either MATCH or CREATE clause.";
+  if (!(ast->matchNode || ast->createNode || ast->mergeNode || ast->returnNode)) {
+    asprintf(reason, "Query must specify either MATCH or CREATE clause");
     return AST_INVALID;
   }
 
   /* MATCH clause must be followed by either a CREATE or a RETURN clause. */
-  if (ast->matchNode && !(ast->createNode || ast->returnNode || ast->setNode || ast->deleteNode)) {
-    *reason = "MATCH must be followed by either a RETURN or a CREATE clause.";
+  if (ast->matchNode && !(ast->createNode || ast->returnNode || ast->setNode || ast->deleteNode || ast->mergeNode)) {
+    asprintf(reason, "Query cannot conclude with MATCH (must be RETURN or an update clause)");
     return AST_INVALID;
   }
 
@@ -191,4 +196,26 @@ AST_Validation AST_Validate(const AST_Query *ast, char **reason) {
   }
 
   return AST_VALID;
+}
+
+void AST_NameAnonymousNodes(AST_Query *ast) {
+  int entity_id = 0;
+  
+  if(ast->matchNode)
+    MatchClause_NameAnonymousNodes(ast->matchNode, &entity_id);
+
+  if(ast->createNode)
+    CreateClause_NameAnonymousNodes(ast->createNode, &entity_id);
+}
+
+void Free_AST_Query(AST_Query *queryExpressionNode) {
+  Free_AST_MatchNode(queryExpressionNode->matchNode);
+  Free_AST_CreateNode(queryExpressionNode->createNode);
+  Free_AST_MergeNode(queryExpressionNode->mergeNode);
+  Free_AST_DeleteNode(queryExpressionNode->deleteNode);
+  Free_AST_SetNode(queryExpressionNode->setNode);
+  Free_AST_WhereNode(queryExpressionNode->whereNode);
+  Free_AST_ReturnNode(queryExpressionNode->returnNode);
+  Free_AST_OrderNode(queryExpressionNode->orderNode);
+  free(queryExpressionNode);
 }

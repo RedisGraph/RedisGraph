@@ -1,3 +1,10 @@
+/*
+* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+*
+* This file is available under the Apache License, Version 2.0,
+* modified with the Commons Clause restriction.
+*/
+
 #include "op_update.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
@@ -113,7 +120,8 @@ void _UpdateEntities(OpUpdate *op) {
         SIValue new_value = op->entities_to_update[i].new_value;
         dest_entity_prop->value = new_value;
     }
-    op->result_set->properties_set = op->entities_to_update_count;
+    if(op->result_set)
+        op->result_set->stats.properties_set = op->entities_to_update_count;
 }
 
 /* Update tracked schemas according to set properties.

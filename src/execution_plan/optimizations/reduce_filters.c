@@ -1,3 +1,10 @@
+/*
+* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+*
+* This file is available under the Apache License, Version 2.0,
+* modified with the Commons Clause restriction.
+*/
+
 #include "reduce_filters.h"
 #include "../ops/op_filter.h"
 #include "../../filter_tree/filter_tree.h"

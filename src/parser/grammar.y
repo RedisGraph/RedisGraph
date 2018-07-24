@@ -36,27 +36,35 @@
 query ::= expr(A). { ctx->root = A; }
 
 expr(A) ::= matchClause(B) whereClause(C) createClause(D) returnClause(E) orderClause(F) limitClause(G). {
-	A = New_AST_Query(B, C, D, NULL, NULL, E, F, G);
+	A = New_AST_Query(B, C, D, NULL, NULL, NULL, E, F, G);
 }
 
 expr(A) ::= matchClause(B) whereClause(C) createClause(D). {
-	A = New_AST_Query(B, C, D, NULL, NULL, NULL, NULL, NULL);
+	A = New_AST_Query(B, C, D, NULL, NULL, NULL, NULL, NULL, NULL);
 }
 
 expr(A) ::= matchClause(B) whereClause(C) deleteClause(D). {
-	A = New_AST_Query(B, C, NULL, NULL, D, NULL, NULL, NULL);
+	A = New_AST_Query(B, C, NULL, NULL, NULL, D, NULL, NULL, NULL);
 }
 
 expr(A) ::= matchClause(B) whereClause(C) setClause(D). {
-	A = New_AST_Query(B, C, NULL, D, NULL, NULL, NULL, NULL);
+	A = New_AST_Query(B, C, NULL, NULL, D, NULL, NULL, NULL, NULL);
 }
 
 expr(A) ::= matchClause(B) whereClause(C) setClause(D) returnClause(E) orderClause(F) limitClause(G). {
-	A = New_AST_Query(B, C, NULL, D, NULL, E, F, G);
+	A = New_AST_Query(B, C, NULL, NULL, D, NULL, E, F, G);
 }
 
 expr(A) ::= createClause(B). {
-	A = New_AST_Query(NULL, NULL, B, NULL, NULL, NULL, NULL, NULL);
+	A = New_AST_Query(NULL, NULL, B, NULL, NULL, NULL, NULL, NULL, NULL);
+}
+
+expr(A) ::= mergeClause(B). {
+	A = New_AST_Query(NULL, NULL, NULL, B, NULL, NULL, NULL, NULL, NULL);
+}
+
+expr(A) ::= returnClause(B). {
+	A = New_AST_Query(NULL, NULL, NULL, NULL, NULL, NULL, B, NULL, NULL);
 }
 
 %type matchClause { AST_MatchNode* }
@@ -74,6 +82,12 @@ createClause(A) ::= . {
 
 createClause(A) ::= CREATE chains(B). {
 	A = New_AST_CreateNode(B);
+}
+
+%type mergeClause { AST_MergeNode* }
+
+mergeClause(A) ::= MERGE chain(B). {
+	A = New_AST_MergeNode(B);
 }
 
 %type setClause { AST_SetNode* }
@@ -109,18 +123,15 @@ chain(A) ::= chain(B) link(C) node(D). {
 	A = B;
 }
 
+// Vector of Vectors, each representing a single chain.
 %type chains {Vector*}
 chains(A) ::= chain(B). {
-	A = B;
+	A = NewVector(Vector*, 1);
+	Vector_Push(A, B);
 }
 
 chains(A) ::= chains(B) COMMA chain(C). {
-	for(int i = 0; i < Vector_Size(C); i++) {
-		AST_GraphEntity *entity;
-		Vector_Get(C, i, &entity);
-		Vector_Push(B, entity);
-	}
-	Vector_Free(C);
+	Vector_Push(B, C);
 	A = B;
 }
 
@@ -181,23 +192,23 @@ link(A) ::= LEFT_ARROW edge(B) DASH . {
 
 %type edge {AST_LinkEntity*}
 // Empty edge []
-edge(A) ::= LEFT_BRACKET properties(B) RIGHT_BRACKET . { 
-	A = New_AST_LinkEntity(NULL, NULL, B, N_DIR_UNKNOWN);
+edge(A) ::= LEFT_BRACKET RIGHT_BRACKET . { 
+	A = New_AST_LinkEntity(NULL, NULL, NULL, N_DIR_UNKNOWN);
 }
 
 // Edge with alias [alias]
-edge(A) ::= LEFT_BRACKET UQSTRING(B) properties(C) RIGHT_BRACKET . { 
-	A = New_AST_LinkEntity(B.strval, NULL, C, N_DIR_UNKNOWN);
+edge(A) ::= LEFT_BRACKET UQSTRING(B) RIGHT_BRACKET . { 
+	A = New_AST_LinkEntity(B.strval, NULL, NULL, N_DIR_UNKNOWN);
 }
 
 // Edge with label [:label]
-edge(A) ::= LEFT_BRACKET COLON UQSTRING(B) properties(C) RIGHT_BRACKET . { 
-	A = New_AST_LinkEntity(NULL, B.strval, C, N_DIR_UNKNOWN);
+edge(A) ::= LEFT_BRACKET COLON UQSTRING(B) RIGHT_BRACKET . { 
+	A = New_AST_LinkEntity(NULL, B.strval, NULL, N_DIR_UNKNOWN);
 }
 
 // Edge with alias and label [alias:label]
-edge(A) ::= LEFT_BRACKET UQSTRING(B) COLON UQSTRING(C) properties(D) RIGHT_BRACKET . { 
-	A = New_AST_LinkEntity(B.strval, C.strval, D, N_DIR_UNKNOWN);
+edge(A) ::= LEFT_BRACKET UQSTRING(B) COLON UQSTRING(C) RIGHT_BRACKET . { 
+	A = New_AST_LinkEntity(B.strval, C.strval, NULL, N_DIR_UNKNOWN);
 }
 
 %type properties {Vector*}
@@ -441,6 +452,7 @@ value(A) ::= FLOAT(B). {  A = SI_DoubleVal(B.dval); }
 value(A) ::= DASH FLOAT(B). {  A = SI_DoubleVal(-B.dval); }
 value(A) ::= TRUE. { A = SI_BoolVal(1); }
 value(A) ::= FALSE. { A = SI_BoolVal(0); }
+value(A) ::= NULLVAL. { A = SI_NullVal(); }
 
 %code {
 

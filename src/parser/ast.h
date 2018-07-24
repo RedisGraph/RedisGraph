@@ -1,3 +1,10 @@
+/*
+* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+*
+* This file is available under the Apache License, Version 2.0,
+* modified with the Commons Clause restriction.
+*/
+
 #ifndef AST_H
 #define AST_H
 
@@ -25,9 +32,10 @@ typedef struct {
 } AST_Query;
 
 AST_Query* New_AST_Query(AST_MatchNode *matchNode, AST_WhereNode *whereNode,
-													 AST_CreateNode *createNode,AST_SetNode *setNode,
-													 AST_DeleteNode *deleteNode, AST_ReturnNode *returnNode,
-													 AST_OrderNode *orderNode, AST_LimitNode *limitNode);
+						 AST_CreateNode *createNode, AST_MergeNode *mergeNode,
+						 AST_SetNode *setNode, AST_DeleteNode *deleteNode,
+						 AST_ReturnNode *returnNode, AST_OrderNode *orderNode,
+						 AST_LimitNode *limitNode);
 
 /* AST clause validations. */
 AST_Validation _Validate_CREATE_Clause(const AST_Query* ast, char **reason);
@@ -37,6 +45,8 @@ AST_Validation _Validate_RETURN_Clause(const AST_Query* ast, char **reason);
 AST_Validation _Validate_SET_Clause(const AST_Query* ast, char **reason);
 AST_Validation _Validate_WHERE_Clause(const AST_Query* ast, char **reason);
 AST_Validation AST_Validate(const AST_Query* ast, char **reason);
+
+void AST_NameAnonymousNodes(AST_Query *ast);
 
 void Free_AST_Query(AST_Query *queryExpressionNode);
 

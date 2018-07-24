@@ -1,3 +1,10 @@
+/*
+* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+*
+* This file is available under the Apache License, Version 2.0,
+* modified with the Commons Clause restriction.
+*/
+
 #ifndef __EXECUTION_PLAN_H__
 #define __EXECUTION_PLAN_H__
 
@@ -41,10 +48,14 @@ typedef struct {
 } ExecutionPlan;
 
 /* Creates a new execution plan from AST */
-ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx,
-                                Graph *g,
-                                const char *graph_name,
-                                AST_Query *ast);
+ExecutionPlan* NewExecutionPlan
+(
+    RedisModuleCtx *ctx,        // Redis context
+    Graph *g,                   // Queried graph
+    const char *graph_name,     // Graph ID
+    AST_Query *ast,             // Query parsed AST
+    bool explain                // Construct execution plan, do not execute
+);
 
 /* Prints execution plan */
 char* ExecutionPlanPrint(const ExecutionPlan *plan);

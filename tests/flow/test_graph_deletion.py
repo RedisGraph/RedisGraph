@@ -16,6 +16,7 @@ def redis():
 class GraphDeletionFlowTest(FlowTestsBase):
     @classmethod
     def setUpClass(cls):
+        print "GraphDeletionFlowTest"
         global redis_graph
         cls.r = redis()
         cls.r.start()
@@ -24,6 +25,7 @@ class GraphDeletionFlowTest(FlowTestsBase):
 
         # cls.r = redis.Redis()
         # redis_graph = Graph("G", cls.r)
+
         cls.populate_graph()
 
     @classmethod
@@ -36,7 +38,7 @@ class GraphDeletionFlowTest(FlowTestsBase):
         global redis_graph
         
         nodes = {}
-         # Create country entities
+         # Create entities
         people = ["Roi", "Alon", "Ailon", "Boaz", "Tal", "Omri", "Ori"]
         for p in people:
             node = Node(label="person", properties={"name": p})
@@ -67,7 +69,7 @@ class GraphDeletionFlowTest(FlowTestsBase):
                     WHERE d.name = "Boaz" AND d.name = "Ori"
                     RETURN COUNT(s)"""
         actual_result = redis_graph.query(query)
-        assert(actual_result.result_set is None)
+        assert(len(actual_result.result_set) is 1)
 
     # Remove both Alon and Boaz from the graph. 
     def test03_delete_nodes(self):
@@ -86,7 +88,7 @@ class GraphDeletionFlowTest(FlowTestsBase):
                     WHERE s.name = "Boaz" OR s.name = "Alon"
                     RETURN s"""
         actual_result = redis_graph.query(query)
-        assert(actual_result.result_set is None)
+        assert(len(actual_result.result_set) is 1)
 
     # Make sure Alon and Boaz are the only removed nodes.
     def test05_verify_node_deletion(self):
