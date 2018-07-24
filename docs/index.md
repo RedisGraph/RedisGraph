@@ -6,13 +6,13 @@ RedisGraph is the first queryable property graph database to use sparse adjacenc
 
 Primary features:
 
-* Graphs are represented as sparse adjacency matrices
-* Cypher queries are translated into linear algebra expressions
-* Nodes may have attributes
-* Nodes and edges can be labeled
-* Supports [openCypher](http://www.opencypher.org/) queries
+* Graphs represented as sparse adjacency matrices
+* Cypher queries translated into linear algebra expressions
+* Nodes that may have attributes
+* Nodes and edges that can be labeled
+* Support for [openCypher](http://www.opencypher.org/) queries
 
-To see RedisGraph in action see [Demos](https://github.com/RedisLabsModules/redis-module-graph/tree/master/demo)
+To see RedisGraph in action, visit [Demos](https://github.com/RedisLabsModules/redis-module-graph/tree/master/demo).
 
 ## Quickstart
 
@@ -35,18 +35,17 @@ Congratulations! You can find the compiled binary at `src/redisgraph.so`.
 
 ## Loading RedisGraph into Redis
 
-RedisGraph is hosted by [Redis](https://redis.io), as such we'll have to load it as a module to a redis server.
-Requirements:
+RedisGraph is hosted by [Redis](https://redis.io), so you'll first have to load it as a Module to a Redis server: running [Redis v4.0 or above](https://redis.io/download).
 
-* [Redis v4.0 or above](https://redis.io/download)
-
-We recommend you have Redis load RedisGraph during startup by adding the following to your redis.conf file:
+We recommend having Redis load RedisGraph during startup by adding the following to your redis.conf file:
 
 ```
 loadmodule /path/to/module/src/redisgraph.so
 ```
 
-In the line above replace `/path/to/module/src/redisgraph.so` with the actual path to RedisGraph's library. Alternatively, you can have Redis load RedisGraph using the following command line argument syntax:
+In the line above, replace `/path/to/module/src/redisgraph.so` with the actual path to RedisGraph's library.
+
+Alternatively, you can have Redis load RedisGraph using the following command line argument syntax:
 
 ```sh
 ~/$ redis-server --loadmodule /path/to/module/src/redisgraph.so
@@ -54,7 +53,7 @@ In the line above replace `/path/to/module/src/redisgraph.so` with the actual pa
 
 Lastly, you can also use the [`MODULE LOAD`](http://redis.io/commands/module-load) command. Note, however, that `MODULE LOAD` is a dangerous command and may be blocked/deprecated in the future due to security considerations.
 
-Once the RedisGraph has been loaded successfully, the Redis log should have lines similar to:
+Once you've successfully loaded RedisGraph your Redis log should have lines similar to:
 
 ```
 ...
@@ -84,7 +83,7 @@ Depending on your client of choice, the exact method for doing that may vary.
 
 #### Python example
 
-This code snippet shows how to use RedisGraph with raw Redis commands from Python with
+This code snippet shows how to use RedisGraph with raw Redis commands from Python via
 [redis-py](https://github.com/andymccurdy/redis-py):
 
 ```python

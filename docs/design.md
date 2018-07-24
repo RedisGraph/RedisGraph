@@ -191,9 +191,6 @@ Depending on the underlying hardware results may vary.
 That said, inserting a new relationship is done in O(1).
 RedisGraph is able to create over 1 million nodes under half a second and form 500K relations within 0.3 of a second.
 
-Retrieving data really depends on the size of the graph and the type of query you're executing,
-.........
-
 ## License
 
 RedisGraph is published under Apache 2.0 with Commons Clause.

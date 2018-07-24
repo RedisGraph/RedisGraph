@@ -27,7 +27,7 @@ GRAPH.EXPLAIN us_government "MATCH (p:president)-[:born]->(h:state {name:'Hawaii
 
 ### Query language
 
-The syntax is based on [openCypher](http://www.opencypher.org/) and currently only a subset of the language is
+The syntax is based on [openCypher](http://www.opencypher.org/), and only a subset of the language currently
 supported.
 
 1. [Clauses](#query-structure)
@@ -47,14 +47,16 @@ supported.
 
 #### MATCH
 
-Describes the relationship between queried entities, use ascii art to represent pattern(s) to match against
+Match describes the relationship between queried entities, using ascii art to represent pattern(s) to match against.
 
-Node are represented by parenthesis `()`
-while edges are represented by brackets `[]`
+Nodes are represented by parenthesis `()`,
+while edges are represented by brackets `[]`.
 
 Each graph entity node/edge can contain an alias and a label, but both can be left empty if needed.
 
-Entity structure: `alias:label {filters}` alias, label and filters are all optional, please note: currently only nodes can have filters.
+Entity structure: `alias:label {filters}`.
+
+Alias, label and filters are all optional, and currently only nodes can have filters.
 
 Example:
 
@@ -68,13 +70,13 @@ Example:
 
 `act` is the relationship type.
 
-`m` an alias for the destination node.
+`m` is an alias for the destination node.
 
 `movie` destination node is of "type" movie.
 
 `{title:"straight outta compton"}` requires the node's title attribute to equal "straight outta compton".
 
-As such, we're interested in actor entities which have the relation "act" with **the** entity representing the
+In this example, we're interested in actor entities which have the relation "act" with **the** entity representing the
 "straight outta compton" movie.
 
 It is possible to describe broader relationships by composing a multi-hop query such as:
@@ -83,7 +85,7 @@ It is possible to describe broader relationships by composing a multi-hop query 
 (me {name:'swilly'})-[:friends_with]->()-[:friends_with]->(fof)
 ```
 
-Here we're interested in finding out who are my friends' friends.
+Here we're interested in finding out who my friends' friends are.
 
 Nodes can have more than one edge coming in or out of them, for instance:
 
@@ -91,16 +93,16 @@ Nodes can have more than one edge coming in or out of them, for instance:
 (me {name:'swilly'})-[:visited]->(c:country)<-[:visited]-(friend)<-[:friends_with]-({name:'swilly'})
 ```
 
-Here we're interested in knowing which of my friends have visited at least one country i've been to.
+Here we're interested in knowing which of my friends have visited at least one country I've been to.
 
 #### WHERE
 
-This clause is not mandatory, but in order to filter results you can define predicates of two kinds:
+This clause is not mandatory, but if you want to filter results, you can define two kinds of predicates:
 
-1.Compare against constant value: `alias.property operation value`
-where `value` is a primitive type: numeric or a string.
+1.Compare against constant value: `alias.property operation value`,
+where `value` is a primitive type: numeric or string.
 
-2.Compare between nodes properties: `alias.property operation alias.property`
+2.Compare between node properties: `alias.property operation alias.property`
 
 Supported operations:
 
@@ -111,7 +113,9 @@ Supported operations:
 - `>`
 - `>=`
 
-Predicates can be combined using AND / OR. Be sure to wrap predicates within parentheses to control precedence.
+Predicates can be combined using AND / OR.
+
+Be sure to wrap predicates within parentheses to control precedence.
 
 
 Examples:
@@ -137,7 +141,9 @@ There's no difference between inlined predicates and predicates specified within
 #### RETURN
 
 In its simple form, Return defines which properties the returned result-set will contain.
+
 Its structure is a list of `alias.property` separated by commas.
+
 For convenience, it's possible to specify the alias only when you're interested in every attribute an entity possesses,
 and don't want to specify each attribute individually. e.g.
 
@@ -152,11 +158,13 @@ RETURN DISTINCT friend_of_friend.name
 ```
 
 In the above example, suppose we have two friends, Joe and Miesha,
-and both know Dominick. Then DISTINCT will make sure that Dominick will only appear once
-in the final result-set.
+and both know Dominick. DISTINCT will make sure Dominick will only appear once
+in the final result set.
 
 
-Return can also be used to aggregate data similar to SQL group by. Once an aggregation function is added to the return
+Return can also be used to aggregate data similar to SQL group by.
+
+Once an aggregation function is added to the return
 list, all other "none" aggregated values are considered as group keys, for example:
 
 ```sh
@@ -167,7 +175,7 @@ Here we group data by movie title and for each movie, we find its youngest and o
 
 #### Aggregations
 
-Supported aggregation functions:
+Supported aggregation functions include:
 
 - `sum`
 - `avg`
@@ -180,17 +188,20 @@ Supported aggregation functions:
 
 #### ORDER BY
 
-Specifies that the output should be sorted and how.
+Order by specifies that the output should be sorted and how.
 
 You can order by multiple properties by stating each variable in the ORDER BY clause.
-The result will be sorted by the first variable listed, and for equal values, go to the next property in the ORDER BY
+
+The result will be sorted by the first variable listed.
+
+For equal values, it will go to the next property in the ORDER BY
 clause, and so on.
 
 ```sh
 ORDER BY <alias.property list> [ASC/DESC]
 ```
 
-Below we sort our friends by height. For similar heights, weight is used to break even.
+Below we sort our friends by height. For equal heights, weight is used to break ties.
 
 ```sh
 ORDER BY friend.height, friend.weight DESC
@@ -209,7 +220,8 @@ If not specified, there's no limit to the number of records returned by a query.
 
 #### CREATE
 
-CREATE query is used to introduce new nodes and relationships.
+CREATE is used to introduce new nodes and relationships.
+
 The simplest example of CREATE would be a single node creation:
 
 ```sh
@@ -228,38 +240,38 @@ CREATE (n),(m)
 CREATE (:person {name: 'Kurt', age:27})
 ```
 
-Adding relations between nodes, in the following example we first locate an existing source node,
-once found we create a new relationship and destination node.
+To add relations between nodes, in the following example we first locate an existing source node, and once found we create a new relationship and destination node.
 
 ```sh
 MATCH(a:person)
 WHERE a.name = 'Kurt'
 CREATE (a)-[:member]->(:band {name:"Nirvana"})
-RETURN
 ```
 
-Here the source node is a bounded node while the destination node is unbounded,
-as a result a new node is created representing the band Nirvana and a new relation connects Kurt to the band.
+Here the source node is a bounded node, while the destination node is unbounded.
 
-Lastly we'll create a complete pattern, all entities within the pattern which are not bounded will be created.
+As a result, a new node is created representing the band Nirvana and a new relation connects Kurt to the band.
+
+Lastly we'll create a complete pattern.
+
+All entities within the pattern which are not bounded will be created.
 ```sh
-CREATE 
-(jim:person{name:'Jim', age:29})-[friends]->(pam:person {name:'Pam', age:27})-[works]->(:employer {name:'Dunder Mifflin'})
-RETURN
+CREATE (jim:person{name:'Jim', age:29})-[friends]->(pam:person {name:'Pam', age:27})-[works]->(:employer {name:'Dunder Mifflin'})
 ```
 This query will create three nodes and two relationships.
 
 #### DELETE
-DELETE query is used to remove both nodes and relationships, please remember that deleting a node will also delete
-all of its incoming and outgoing relationships.
+DELETE is used to remove both nodes and relationships.
 
-Delete a node and all of its relationships:
+Please remember that deleting a node will also delete all of its incoming and outgoing relationships.
+
+To delete a node and all of its relationships:
 ```sh
 MATCH (p:person {name:'Jim'})
 DELETE p
 ```
 
-Delete a relationship
+To delete relationship:
 ```sh
 MATCH (p:person {name:'Jim'})-[r:friends]->()
 DELETE r
@@ -268,7 +280,7 @@ This query will delete all `friend` outgoing relationships from the node with th
 
 #### SET
 
-The `SET` clause is used to create or update properties on nodes.
+SET is used to create or update properties on nodes.
 
 To set a property on a node, use `SET`.
 
@@ -276,15 +288,14 @@ To set a property on a node, use `SET`.
 MATCH (n { name: 'Jim' }) SET n.name = 'Bob'
 ```
 
-Set multiple properties using one `SET` clause
-If you want to set multiple properties in one go, simply separate them with a comma.
+If you want to set multiple properties in one go, simply separate them with a comma to set multiple properties using a single SET clause.
 
 ```sh
 MATCH (n { name: 'Jim', age:32 })
 SET n.age = 33, n.name = 'Bob'
 ```
 
-To remove node's property simply set property value to NULL.
+To remove a node's property, simply set property value to NULL.
 
 ```sh
 MATCH (n { name: 'Jim' }) SET n.name = NULL
@@ -292,44 +303,46 @@ MATCH (n { name: 'Jim' }) SET n.name = NULL
 
 #### MERGE
 
-The MERGE clause ensures that a pattern exists in the graph.
-
-Either the pattern already exists, or it needs to be created.
+The MERGE clause ensures that a pattern exists in the graph (either the pattern already exists, or it needs to be created).
 
 MERGE either matches existing nodes and binds them, or it creates new data and binds that.
 
 It’s like a combination of MATCH and CREATE that additionally allows you to specify what happens if the data was matched or created.
 
-For example, you can specify that the graph must contain a node for a user with a certain name. If there isn’t a node with the correct name, a new node will be created and its name property set.
+For example, you can specify that the graph must contain a node for a user with a certain name.
 
-When using MERGE on full patterns, the behavior is that either the whole pattern matches, or the whole pattern is created. MERGE will not partially use existing patterns — it’s all or nothing.
+If there isn’t a node with the correct name, a new node will be created and its name property set.
 
-Merge single node with a label
+When using MERGE on full patterns, either the whole pattern matches, or the whole pattern is created.
+
+MERGE will not partially use existing patterns — it’s all or nothing.
+
+To merge a single node with a label:
 
 ```sh
 MERGE (robert:Critic)
 ```
 
-Merge single node with properties
+To merge a single node with properties:
 
 ```sh
 MERGE (charlie { name: 'Charlie Sheen', age: 10 })
 ```
 
-Merge single node specifying both label and property
+To merge a single node, specifying both label and property:
 
 ```sh
 MERGE (michael:Person { name: 'Michael Douglas' })
 ```
 
-Merge on a relation
+To merge on a relation:
 
 ```sh
 MERGE (charlie { name: 'Charlie Sheen', age: 10 })-[r:ACTED_IN]->(wallStreet:MOVIE)
 ```
 
 ### Functions
-This section contains information on all supported functions from the OpenCypher query language.
+This section contains information on all supported functions from the openCypher query language.
 
 * [Aggregating functions](#aggregating-functions)
 * [Mathematical functions](#mathematical-functions)
@@ -378,4 +391,4 @@ This section contains information on all supported functions from the OpenCypher
 
 |Function | Description|
 | ------- |:-----------|
-|id() | Returns the id of a relationship or node.|
+|id() | Returns the ID of a relationship or node.|
