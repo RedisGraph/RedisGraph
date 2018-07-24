@@ -107,15 +107,13 @@ AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(AlgebraicExpr
 /* Return index of matrix operand within algebraic expression
  * which has the least number of none zero values. */
 int _AlgebraicExpression_MinMatPos(const AlgebraicExpression *ae) {
-    int minMatPos = 0;  // Position of matrix within ae operands.
+    GrB_Matrix M;       // Matrix with least number of NNZ.
     GrB_Index nvals;    // number of NNZ.
-    GrB_Index minNvals; // minimum number of NNZ.
-    
-    GrB_Matrix M = ae->operands[0].operand;
-    GrB_Matrix_nvals(&minNvals, M);
+    int minMatPos = 0;  // Position of matrix within ae operands.
+    GrB_Index minNvals = ULLONG_MAX; // minimum number of NNZ.
 
     // Search for minumum.
-    for(int i = 1; i < ae->operand_count; i++) {
+    for(int i = 0; i < ae->operand_count; i++) {
         M = ae->operands[i].operand;
         GrB_Matrix_nvals(&nvals, M);
         if(nvals < minNvals) {
@@ -127,7 +125,7 @@ int _AlgebraicExpression_MinMatPos(const AlgebraicExpression *ae) {
     return minMatPos;
 }
 
-inline void _AlgebraicExpression_Execute_MUL(GrB_Matrix C, GrB_Matrix A, GrB_Matrix B, GrB_Descriptor desc) {
+static inline void _AlgebraicExpression_Execute_MUL(GrB_Matrix C, GrB_Matrix A, GrB_Matrix B, GrB_Descriptor desc) {
     GrB_mxm(
         C,                  // Output
         NULL,               // Mask
@@ -230,23 +228,10 @@ AlgebraicExpressionResult *AlgebraicExpression_Execute(AlgebraicExpression *ae) 
                 leftTerm = ae->operands[0];
                 rightTerm = ae->operands[secondOperandPos];
             } else {
-                /* Intermidate operand, prefer second operand
-                * to have the least NNZ between the two options. */
-                GrB_Index leftNvals;
-                GrB_Index rightNvals;
-                GrB_Matrix_nvals(&leftNvals, ae->operands[minMatPos-1].operand);
-                GrB_Matrix_nvals(&rightNvals, ae->operands[minMatPos+1].operand);
-                if(leftNvals < rightNvals) {
-                    // Multiply to the right.
-                    secondOperandPos = minMatPos-1;
-                    rightTerm = ae->operands[minMatPos];
-                    leftTerm = ae->operands[secondOperandPos];
-                } else {
-                    // Multiply to the left.
-                    secondOperandPos = minMatPos+1;
-                    leftTerm = ae->operands[minMatPos];
-                    rightTerm = ae->operands[secondOperandPos];
-                }
+                /* Intermidate operand, prefer multiplying to the right. */
+                secondOperandPos = minMatPos-1;
+                rightTerm = ae->operands[minMatPos];
+                leftTerm = ae->operands[secondOperandPos];
             }
 
             // Terms must be consecutive.
