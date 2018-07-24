@@ -42,7 +42,7 @@ typedef struct {
     AlgebraicExpressionOperand *operands;   // Array of operands.
     Node **src_node;                        // Nodes represented by the first operand rows.
     Node **dest_node;                       // Nodes represented by the last operand columns.
-    bool transpose;                         // Transpose result.
+    bool _transpose;                         // Transpose result.
 } AlgebraicExpression;
 
 /* Construct an algebraic expression from a query. */
