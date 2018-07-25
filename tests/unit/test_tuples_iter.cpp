@@ -27,6 +27,31 @@ class TuplesTest: public ::testing::Test {
     static void TearDownTestCase() {
       GrB_finalize();
     }
+
+    GrB_Matrix CreateSquareNByNDiagonalMatrix(GrB_Index n) {
+      GrB_Matrix A = CreateSquareNByNEmptyMatrix(n);
+
+      GrB_Index I[n];
+      GrB_Index J[n];
+      bool X[n];
+
+      // Initialize.
+      for(int i = 0; i < n; i++) {
+        I[i] = i;
+        J[i] = i;
+        X[i] = i;
+      }
+
+      GrB_Matrix_build_BOOL(A, I, J, X, n, GrB_FIRST_BOOL);
+      
+      return A;
+    }
+
+    GrB_Matrix CreateSquareNByNEmptyMatrix(GrB_Index n) {
+      GrB_Matrix A;
+      GrB_Matrix_new(&A, GrB_BOOL, n, n);
+      return A;
+    }
 };
 
 TEST_F(TuplesTest, RandomVectorTest) {
@@ -112,7 +137,7 @@ TEST_F(TuplesTest, VectorIteratorTest) {
   EXPECT_EQ(TuplesIter_next(iter, &row, NULL), TuplesIter_DEPLETED);
 
   //--------------------------------------------------------------------------
-  // Reset iterator an re-verify.
+  // Reset iterator and re-verify.
   //--------------------------------------------------------------------------
 
   TuplesIter_reset(iter);
@@ -193,17 +218,10 @@ TEST_F(TuplesTest, MatrixIteratorTest) {
   // Build a 4X4 matrix
   //--------------------------------------------------------------------------
 
-  GrB_Matrix A;
-  GrB_Matrix_new(&A, GrB_BOOL, 4, 4);
-
   GrB_Index nvals = 4;
-  GrB_Index I[4] = {0,1,2,3};
-  GrB_Index J[4] = {0,1,2,3};
-  bool X[4] = {true, true, true, true};
+  GrB_Matrix A = CreateSquareNByNDiagonalMatrix(nvals);
   GrB_Index I_expected[nvals];
   GrB_Index J_expected[nvals];
-
-  GrB_Matrix_build_BOOL(A, I, J, X, nvals, GrB_FIRST_BOOL);
   GrB_Matrix_extractTuples_BOOL(I_expected, J_expected, NULL, &nvals, A);
 
   //--------------------------------------------------------------------------
@@ -241,4 +259,77 @@ TEST_F(TuplesTest, MatrixIteratorTest) {
   //--------------------------------------------------------------------------
   TuplesIter_free(iter);
   GrB_Matrix_free(&A);
+}
+
+TEST_F(TuplesTest, ColumnIteratorTest) {
+  //--------------------------------------------------------------------------
+  // Build a 4X4 matrix
+  //--------------------------------------------------------------------------
+
+  GrB_Index nvals = 4;
+  GrB_Matrix A = CreateSquareNByNDiagonalMatrix(nvals);
+  GrB_Index I_expected[nvals];
+  GrB_Vector v;
+  GrB_Index row;
+  GrB_Index col;
+  GrB_Index nrows = nvals;
+  GrB_Index ncols = nvals;
+  TuplesIter *iter = TuplesIter_new(A);
+
+  for(int j = 0; j < ncols; j++) {
+    GrB_Vector_new(&v, GrB_BOOL, nrows);
+    GrB_Col_extract(v, NULL, NULL, A, GrB_ALL, nrows, j, NULL);
+    GrB_Vector_extractTuples_BOOL(I_expected, NULL, &nvals, v);
+
+    //--------------------------------------------------------------------------
+    // Test iterating over each column twice, this is to check
+    // iterator reusability.
+    //--------------------------------------------------------------------------
+    
+    int reuse = 2;
+    for(int k = 0; k < reuse; k++) {
+      //--------------------------------------------------------------------------
+      // Get an iterator over the current column.
+      //--------------------------------------------------------------------------
+      iter = TuplesIter_iterate_column(iter, j);
+
+      //--------------------------------------------------------------------------
+      // Verify iterator returned values.
+      //--------------------------------------------------------------------------
+      for(int i = 0; i < nvals; i++) {
+        EXPECT_EQ(TuplesIter_next(iter, &row, &col), TuplesIter_OK);
+        EXPECT_EQ(row, I_expected[i]);
+        EXPECT_EQ(col, j);
+      }
+      EXPECT_EQ(TuplesIter_next(iter, &row, &col), TuplesIter_DEPLETED);
+    }
+
+    GrB_Vector_free(&v);
+  }
+}
+
+TEST_F(TuplesTest, ColumnIteratorEmptyMatrixTest) {
+    //--------------------------------------------------------------------------
+    // Build a 4X4 empty matrix
+    //--------------------------------------------------------------------------
+
+    GrB_Index nvals = 4;
+    GrB_Matrix A = CreateSquareNByNEmptyMatrix(nvals);
+    GrB_Index row;
+    GrB_Index col;
+    GrB_Index ncols = nvals;
+    TuplesIter *iter = TuplesIter_new(A);
+
+    for(int j = 0; j < ncols; j++) {      
+
+      //--------------------------------------------------------------------------
+      // Get an iterator over the current column.
+      //--------------------------------------------------------------------------
+      iter = TuplesIter_iterate_column(iter, j);
+
+      //--------------------------------------------------------------------------
+      // Verify iterator returned values.
+      //--------------------------------------------------------------------------
+      EXPECT_EQ(TuplesIter_next(iter, &row, &col), TuplesIter_DEPLETED);
+    }
 }
