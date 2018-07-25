@@ -69,55 +69,55 @@ void _groupFilters(AlgebraicExpression *ae,
     }
 }
 
-GrB_Matrix _filtersToMatrix(FT_FilterNode *filter, AlgebraicExpressionOperand *term, bool transpose, const Graph *g, Node **filteredEntity) {
-    GrB_Matrix M = term->operand;
+// GrB_Matrix _filtersToMatrix(FT_FilterNode *filter, AlgebraicExpressionOperand *term, bool transpose, const Graph *g, Node **filteredEntity) {
+//     GrB_Matrix M = term->operand;
     
-    // Determin which columns are active.
-    GrB_Descriptor desc;
-    GrB_Descriptor_new(&desc);
+//     // Determin which columns are active.
+//     GrB_Descriptor desc;
+//     GrB_Descriptor_new(&desc);
 
-    /* Matrix reduction is performed on rows 
-     * while we're interested in reducing columns
-     * and so if the term is transposed then we're all set
-     * otherwise we have to transpose. */
-    if(transpose) {
-        GrB_Descriptor_set(desc, GrB_INP1, GrB_TRAN);
-    }
-    GrB_Index nrows;
-    GrB_Matrix_nrows(&nrows, M);
+//     /* Matrix reduction is performed on rows 
+//      * while we're interested in reducing columns
+//      * and so if the term is transposed then we're all set
+//      * otherwise we have to transpose. */
+//     if(transpose) {
+//         GrB_Descriptor_set(desc, GrB_INP1, GrB_TRAN);
+//     }
+//     GrB_Index nrows;
+//     GrB_Matrix_nrows(&nrows, M);
 
-    GrB_Vector activeEntries;
-    GrB_Vector_new(&activeEntries, GrB_BOOL, nrows);
-    GrB_Matrix_reduce_BinaryOp(activeEntries, NULL, NULL, GrB_LOR, M, desc);
-    GrB_Descriptor_free(&desc);
+//     GrB_Vector activeEntries;
+//     GrB_Vector_new(&activeEntries, GrB_BOOL, nrows);
+//     GrB_Matrix_reduce_BinaryOp(activeEntries, NULL, NULL, GrB_LOR, M, desc);
+//     GrB_Descriptor_free(&desc);
 
-    GrB_Index nvals;
-    GrB_Vector_nvals(&nvals, activeEntries);
+//     GrB_Index nvals;
+//     GrB_Vector_nvals(&nvals, activeEntries);
 
-    // Create filter matrix.    
-    GrB_Matrix filterMatrix;
-    GrB_Matrix_new(&filterMatrix, GrB_BOOL, nrows, nrows);
+//     // Create filter matrix.    
+//     GrB_Matrix filterMatrix;
+//     GrB_Matrix_new(&filterMatrix, GrB_BOOL, nrows, nrows);
 
-    // Scan active entries, apply filter to each entry.
-    GrB_Index entryIdx;
-    Node *originalNode = *filteredEntity;
-    TuplesIter *iter = TuplesIter_new((GrB_Matrix)activeEntries);
-    while(TuplesIter_next(iter, &entryIdx, NULL) != TuplesIter_DEPLETED) {
-        Node *node = Graph_GetNode(g, entryIdx);
-        *filteredEntity = node;
-        if(FilterTree_applyFilters(filter)) {
-            GrB_Matrix_setElement_BOOL(filterMatrix, true, entryIdx, entryIdx);
-        }
-    }
+//     // Scan active entries, apply filter to each entry.
+//     GrB_Index entryIdx;
+//     Node *originalNode = *filteredEntity;
+//     TuplesIter *iter = TuplesIter_new((GrB_Matrix)activeEntries);
+//     while(TuplesIter_next(iter, &entryIdx, NULL) != TuplesIter_DEPLETED) {
+//         Node *node = Graph_GetNode(g, entryIdx);
+//         *filteredEntity = node;
+//         if(FilterTree_applyFilters(filter)) {
+//             GrB_Matrix_setElement_BOOL(filterMatrix, true, entryIdx, entryIdx);
+//         }
+//     }
 
-    TuplesIter_free(iter);
-    GrB_Vector_free(&activeEntries);
+//     TuplesIter_free(iter);
+//     GrB_Vector_free(&activeEntries);
     
-    // Restore filtered entity node.
-    *filteredEntity = originalNode;
+//     // Restore filtered entity node.
+//     *filteredEntity = originalNode;
     
-    return filterMatrix;
-}
+//     return filterMatrix;
+// }
 
 /* Filter last algebraic expression term columns by applying filter */
 void _applyRightHandFilters(FT_FilterNode *filterTree, AlgebraicExpression *ae, const Graph *g) {
@@ -155,7 +155,6 @@ void _applyRightHandFilters(FT_FilterNode *filterTree, AlgebraicExpression *ae, 
         if(nvals == 0) continue;
 
         Node *n = Graph_GetNode(g, colIdx);
-        n->id = colIdx;
         *filteredNode = n;
         if(FilterTree_applyFilters(filterTree)) {
             GrB_Col_assign(filteredMatrix, NULL, NULL, col, GrB_ALL, g->node_count, colIdx, NULL);
@@ -202,7 +201,6 @@ void _applyLeftHandFilters(FT_FilterNode *filterTree, AlgebraicExpression *ae, c
     /* Apply filter to every active row. */
     while(TuplesIter_next(it, &rowIdx, NULL) != TuplesIter_DEPLETED) {
         Node *n = Graph_GetNode(g, rowIdx);
-        n->id = rowIdx;
         // Update node and apply filter.
         *filteredNode = n;
         if(FilterTree_applyFilters(filterTree)) {

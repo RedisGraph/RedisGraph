@@ -307,7 +307,7 @@ void AlgebraicExpression_Transpose(AlgebraicExpression *ae) {
 
 bool AlgebraicExpression_IsTranspose(const AlgebraicExpression *ae) {
     if(ae->operand_count == 1) return ae->operands[0].transpose;
-    else return ae->transpose;
+    else return ae->_transpose;
 }
 
 void AlgebraicExpressionResult_Free(AlgebraicExpressionResult *aer) {
