@@ -37,11 +37,7 @@ CondTraverse* NewCondTraverse(Graph *g, QueryGraph* qg, AlgebraicExpression *alg
 
 void extractColumn(CondTraverse *op) {
     GrB_Index column_idx = (*op->algebraic_results->dest_node)->id;
-    GrB_Index nrows;
-    GrB_Matrix_nrows(&nrows, op->M);
-
-    GrB_Col_extract(op->V, NULL, NULL, op->M, GrB_ALL, nrows, column_idx, NULL);
-    TuplesIter_reuse(op->iter, (GrB_Matrix)op->V);
+    op->iter = TuplesIter_iterate_column(op->iter, column_idx);
 }
 
 /* CondTraverseConsume next operation 
@@ -54,11 +50,7 @@ OpResult CondTraverseConsume(OpBase *opBase, QueryGraph* graph) {
     if(op->state == CondTraverseUninitialized) {
         op->algebraic_results = AlgebraicExpression_Execute(op->algebraic_expression);
         op->M = op->algebraic_results->m;
-
-        GrB_Index nrows;
-        GrB_Matrix_nrows(&nrows, op->M);
-        GrB_Vector_new(&(op->V), GrB_BOOL, nrows);
-        op->iter = TuplesIter_new((GrB_Matrix) op->V);
+        op->iter = TuplesIter_new(op->M);
         return OP_REFRESH;
     }
 

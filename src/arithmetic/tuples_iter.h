@@ -28,7 +28,13 @@ typedef struct
 
 TuplesIter *TuplesIter_new
 (
-    GrB_Matrix M
+    GrB_Matrix A
+) ;
+
+TuplesIter *TuplesIter_iterate_column
+(
+    TuplesIter *iter,
+    GrB_Index colIdx
 ) ;
 
 TuplesIter_Info TuplesIter_next
@@ -46,7 +52,7 @@ void TuplesIter_reset
 void TuplesIter_reuse
 (
     TuplesIter *iter,
-    GrB_Matrix M
+    GrB_Matrix A
 ) ;
 
 void TuplesIter_free

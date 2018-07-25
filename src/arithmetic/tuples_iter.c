@@ -22,6 +22,20 @@ TuplesIter *TuplesIter_new
     return iter ;
 }
 
+TuplesIter *TuplesIter_iterate_column
+(
+    TuplesIter *iter,
+    GrB_Index colIdx
+)
+{
+    assert(iter) ;
+    iter->nvals = iter->A->p[colIdx+1] ;
+    iter->nnz_idx = iter->A->p[colIdx] ;
+    iter->col_idx = colIdx ;
+    iter->p = 0 ;
+    return iter ;
+}
+
 TuplesIter_Info TuplesIter_next
 (
     TuplesIter *iter,
@@ -81,13 +95,13 @@ void TuplesIter_reset
 void TuplesIter_reuse
 (
     TuplesIter *iter,
-    GrB_Matrix M
+    GrB_Matrix A
 )
 {
     assert (iter) ;
-    iter->A = M;
-    GrB_Matrix_nvals (&iter->nvals, M) ;
-    TuplesIter_reset(iter);
+    iter->A = A ;
+    GrB_Matrix_nvals (&iter->nvals, A) ;
+    TuplesIter_reset(iter) ;
 }
 
 void TuplesIter_free
