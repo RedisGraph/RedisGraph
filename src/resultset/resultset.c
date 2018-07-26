@@ -32,36 +32,26 @@ int __encounteredRecord(ResultSet *set, const Record *record) {
     return !newRecord;
 }
 
-char *_ResultSetHeader_ToString(const ResultSetHeader *header, size_t *strLen) {
-    size_t len = 0;
-
-    // Determine required buffer length.
+void _ResultSet_ReplayHeader(const ResultSet *set, const ResultSetHeader *header) {    
+    RedisModule_ReplyWithArray(set->ctx, header->columns_len);
     for(int i = 0; i < header->columns_len; i++) {
         Column *c = header->columns[i];
-        if(c->alias != NULL) {
-            len += strlen(c->alias)+1;
+        if(c->alias) {
+            RedisModule_ReplyWithStringBuffer(set->ctx, c->alias, strlen(c->alias));
         } else {
-            len += strlen(c->name)+1;
+            RedisModule_ReplyWithStringBuffer(set->ctx, c->name, strlen(c->name));
         }
     }
+}
 
-    char *str = calloc(len + 1, sizeof(char));
-    len = 0;
+void _ResultSet_ReplayRecord(const ResultSet *s, const Record* r) {
+    char value[2048] = {0};
+    RedisModule_ReplyWithArray(s->ctx, r->len);
 
-    for(int i = 0; i < header->columns_len; i++) {
-        Column *c = header->columns[i];
-        if(c->alias != NULL) {
-            len += sprintf(str+len, "%s,", c->alias);
-        } else {
-            len += sprintf(str+len, "%s,", c->name);
-        }
+    for(int i = 0; i < r->len; i++) {
+        int written = SIValue_ToString(r->values[i], value, 2048);
+        RedisModule_ReplyWithStringBuffer(s->ctx, value, written);
     }
-
-    str[len] = 0; // Replace last comma with NULL.
-    len--;
-    if(strLen != NULL) *strLen = len;
-
-    return str;
 }
 
 // Prepare replay.
@@ -74,11 +64,7 @@ void _ResultSet_SetupReply(ResultSet *set) {
         RedisModule_ReplyWithArray(set->ctx, REDISMODULE_POSTPONED_ARRAY_LEN);
         if(set->header) {
             /* Replay with table header. */
-            size_t str_header_len = 0;
-            size_t str_record_len = 0;
-            char *str_header = _ResultSetHeader_ToString(set->header, &str_header_len);
-            RedisModule_ReplyWithStringBuffer(set->ctx, str_header, str_header_len);
-            free(str_header);
+            _ResultSet_ReplayHeader(set, set->header);
         }
     }
 }
@@ -95,8 +81,7 @@ bool _ResultSet_Full(const ResultSet* set) {
 
 // Add record to response buffer.
 void _ResultSet_StreamRecord(ResultSet *set, const Record *record) {
-    size_t recordStrLen = Record_ToString(record, &set->buffer, &set->bufferLen);
-    RedisModule_ReplyWithStringBuffer(set->ctx, set->buffer, recordStrLen);    
+    _ResultSet_ReplayRecord(set, record);
 }
 
 void _ResultSet_ReplayStats(RedisModuleCtx* ctx, ResultSet* set) {
@@ -381,10 +366,7 @@ void ResultSet_Replay(ResultSet* set) {
 
     if(set->header) {
         /* Replay with table header. */
-        size_t str_header_len = 0;        
-        char *str_header = _ResultSetHeader_ToString(set->header, &str_header_len);
-        RedisModule_ReplyWithStringBuffer(set->ctx, str_header, str_header_len);
-        free(str_header);
+        _ResultSet_ReplayHeader(set, set->header);
     }
 
     if(set->recordCount) {
@@ -410,8 +392,7 @@ void ResultSet_Replay(ResultSet* set) {
                 /* Replay records. */
                 while(record_idx) {
                     record = records[--record_idx];
-                    str_record_len = Record_ToString(record, &str_record, &str_record_cap);
-                    RedisModule_ReplyWithStringBuffer(set->ctx, str_record, str_record_len);
+                    _ResultSet_ReplayRecord(set, record);
                     Record_Free(record);
                 }
 
@@ -422,8 +403,7 @@ void ResultSet_Replay(ResultSet* set) {
 
                 for(int i = Vector_Size(set->records)-1; i >=0;  i--) {
                     Record* record = sorted_records[i];
-                    str_record_len = Record_ToString(record, &str_record, &str_record_cap);
-                    RedisModule_ReplyWithStringBuffer(set->ctx, str_record, str_record_len);
+                    _ResultSet_ReplayRecord(set, record);
                 }
                 free(sorted_records);
             }
@@ -431,9 +411,7 @@ void ResultSet_Replay(ResultSet* set) {
             for(int i = 0; i < Vector_Size(set->records); i++) {
                 Record* record = NULL;
                 Vector_Get(set->records, i, &record);
-                
-                str_record_len = Record_ToString(record, &str_record, &str_record_cap);
-                RedisModule_ReplyWithStringBuffer(set->ctx, str_record, str_record_len);
+                _ResultSet_ReplayRecord(set, record);
             }
         }
 
