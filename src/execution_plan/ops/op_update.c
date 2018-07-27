@@ -143,9 +143,7 @@ void _UpdateSchemas(const OpUpdate *op) {
         LabelStoreType t = (ge->t == N_ENTITY) ? STORE_NODE : STORE_EDGE;
 
         LabelStore *store = LabelStore_Get(op->ctx, t, op->graphName, l);
-        // TODO if this label does not exist, we will not make any updates.
-        // Verify that this behavior matches the Cypher specification.
-        if (!store) return;
+        if (!store) continue;
 
         LabelStore *allStore = LabelStore_Get(op->ctx, t, op->graphName, NULL);
         LabelStore_UpdateSchema(store, 1, &entityProp);
