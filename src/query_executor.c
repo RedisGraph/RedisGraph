@@ -82,8 +82,9 @@ void ReturnClause_ExpandCollapsedNodes(RedisModuleCtx *ctx, AST_Query *ast, cons
             tm_len_t prop_len = 0;  /* Length of entity's property. */
             AST_ArithmeticExpressionNode *expanded_exp;
             AST_ReturnElementNode *retElem;
-            if(store->properties->cardinality == 0) {
-                /* Label doesn't have any properties.
+            if(!store || store->properties->cardinality == 0) {
+                /* Label store was not found or
+                 * label doesn't have any properties.
                  * Create a fake return element. */
                 expanded_exp = New_AST_AR_EXP_ConstOperandNode(SI_StringVal(""));
                 // Incase an alias is given use it, otherwise use the variable name.
