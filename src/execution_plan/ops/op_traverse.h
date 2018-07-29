@@ -26,7 +26,6 @@ typedef struct {
 
 /* Creates a new Traverse operation */
 OpBase* NewTraverseOp(Graph *g, QueryGraph* qg, AlgebraicExpression *ae);
-Traverse* NewTraverse(Graph *g, QueryGraph* qg, AlgebraicExpression *ae);
 
 /* TraverseConsume next operation 
  * each call will update the graph

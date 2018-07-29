@@ -23,24 +23,8 @@ typedef enum {
     StreamDepleted,
 } StreamState;
 
-struct OpNode;
-
-struct OpNode {
-    OpBase *operation;          /* Node operation. */
-    struct OpNode **children;   /* Child operations. */
-    int childCount;             /* Number of children. */
-    struct OpNode *parent;     /* Parent operations. */
-    StreamState state;          /* Stream state. */
-};
-
-typedef struct OpNode OpNode;
-
-OpNode* NewOpNode(OpBase *op);
-void OpNode_Free(OpNode* op);
-
-
 typedef struct {
-    OpNode *root;
+    OpBase *root;
     QueryGraph *graph;
     FT_FilterNode *filter_tree;
     const char *graph_name;
@@ -60,7 +44,7 @@ ExecutionPlan* NewExecutionPlan
 /* Prints execution plan */
 char* ExecutionPlanPrint(const ExecutionPlan *plan);
 
-void ExecutionPlan_RemoveOp(OpNode *op);
+void ExecutionPlan_RemoveOp(OpBase *op);
 
 /* Executes plan */
 ResultSet* ExecutionPlan_Execute(ExecutionPlan *plan);

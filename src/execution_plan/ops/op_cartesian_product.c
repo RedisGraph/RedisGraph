@@ -8,13 +8,8 @@
 #include "op_cartesian_product.h"
 
 OpBase* NewCartesianProductOp() {
-    return (OpBase*)NewCartesianProduct();
-}
-
-CartesianProduct* NewCartesianProduct() {
     CartesianProduct *cp = malloc(sizeof(CartesianProduct));
-    cp->refresh = 1;
-
+    cp->init = true;
     // Set our Op operations
     cp->op.name = "Cartesian Product";
     cp->op.type = OPType_CARTESIAN_PRODUCT;
@@ -22,19 +17,80 @@ CartesianProduct* NewCartesianProduct() {
     cp->op.reset = CartesianProductReset;
     cp->op.free = CartesianProductFree;
     cp->op.modifies = NULL;
+    cp->op.childCount = 0;
+    cp->op.children = NULL;
+    cp->op.parent = NULL;
 
-    return cp;
+    return (OpBase*)cp;
+}
+
+OpResult _ResetStreams(CartesianProduct *cp, int streamIdx) {
+    OpResult res;
+    for(int i = 0; i < streamIdx; i++) {
+        OpBase *child = cp->op.children[i];
+        res = child->reset(child);
+        if(res != OP_OK) return res;        
+    }
+    return OP_OK;
+}
+
+OpResult _PullFromStreams(CartesianProduct *cp, QueryGraph* graph) {
+    OpResult res;
+    int i = 1;
+
+    for(; i < cp->op.childCount; i++) {
+        OpBase *child = cp->op.children[i];
+        res = child->consume(child, graph);
+        if(res == OP_OK) {
+            /* Managed to get new data
+             * Reset stream (0-i) */
+            res = _ResetStreams(cp, i);
+            if(res != OP_OK) return res;
+
+            // Pull from resetted streams.
+            for(int j = 0; j < i; j++) {
+                child = cp->op.children[j];
+                res = child->consume(child, graph);
+                if(res != OP_OK) return res;
+            }
+            // Ready to continue.
+            return OP_OK;
+        } else if(res == OP_ERR) {
+            return res;
+        }
+    }
+
+    /* If we're here, then we didn't manged to get new data.
+     * Last stream depleted. */
+    return OP_DEPLETED;
 }
 
 OpResult CartesianProductConsume(OpBase *opBase, QueryGraph* graph) {
     CartesianProduct *cp = (CartesianProduct*)opBase;
+    OpResult res;
+    OpBase *child;
 
-    if(cp->refresh) {
-        cp->refresh = 0;
-        return OP_REFRESH;
+    if(cp->init) {
+        cp->init = false;
+        for(int i = 0; i < cp->op.childCount; i++) {
+            child = cp->op.children[i];
+            OpResult res = child->consume(child, graph);
+            if(res != OP_OK) return res;
+        }
+        return OP_OK;
     }
-    
-    cp->refresh = 1;
+
+    // Pull from first stream.
+    child = cp->op.children[0];
+    res = child->consume(child, graph);
+
+    if(res == OP_ERR) {
+        return res;
+    } else if(res == OP_DEPLETED) {
+        res = _PullFromStreams(cp, graph);
+        if(res != OP_OK) return res;
+    }
+
     return OP_OK;
 }
 
@@ -43,6 +99,4 @@ OpResult CartesianProductReset(OpBase *opBase) {
 }
 
 void CartesianProductFree(OpBase *opBase) {
-    CartesianProduct *cp = (CartesianProduct*)opBase;
-    free(cp);
 }

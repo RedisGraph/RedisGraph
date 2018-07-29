@@ -17,7 +17,6 @@ OpBase* NewUpdateOp(RedisModuleCtx *ctx, AST_Query *ast, QueryGraph *q, ResultSe
     op_update->ctx = ctx;
     op_update->graphName = graphName;
     op_update->result_set = result_set;
-    op_update->request_refresh = 1;
     op_update->update_expressions = NULL;
     op_update->update_expressions_count = 0;
     op_update->entities_to_update_count = 0;
@@ -33,6 +32,9 @@ OpBase* NewUpdateOp(RedisModuleCtx *ctx, AST_Query *ast, QueryGraph *q, ResultSe
     op_update->op.reset = OpUpdateReset;
     op_update->op.free = OpUpdateFree;
     op_update->op.modifies = NULL;
+    op_update->op.childCount = 0;
+    op_update->op.children = NULL;
+    op_update->op.parent = NULL;
 
     return (OpBase*)op_update;
 }
@@ -75,11 +77,9 @@ void _OpUpdate_QueueUpdate(OpUpdate *op, EntityProperty *dest_entity_prop, SIVal
 
 OpResult OpUpdateConsume(OpBase *opBase, QueryGraph* graph) {
     OpUpdate *op = (OpUpdate*)opBase;
-
-    if(op->request_refresh) {
-        op->request_refresh = 0;
-        return OP_REFRESH;
-    }
+    OpBase *child = op->op.children[0];
+    OpResult res = child->consume(child, graph);
+    if(res != OP_OK) return res;
 
     /* Evaluate each update expression and store result 
      * for later execution. */
@@ -105,7 +105,6 @@ OpResult OpUpdateConsume(OpBase *opBase, QueryGraph* graph) {
         }
     }
 
-    op->request_refresh = 1;
     return OP_OK;
 }
 
@@ -164,5 +163,4 @@ void OpUpdateFree(OpBase *ctx) {
 
     free(op->update_expressions);
     free(op->entities_to_update);
-    free(op);
 }

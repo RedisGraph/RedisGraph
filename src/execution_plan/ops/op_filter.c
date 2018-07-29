@@ -8,17 +8,11 @@
 #include "op_filter.h"
 
 OpBase* NewFilterOp(FT_FilterNode *filterTree, const QueryGraph *qg) {
-    return (OpBase*)NewFilter(filterTree, qg);
-}
-
-Filter* NewFilter(FT_FilterNode *filterTree, const QueryGraph *qg) {
     Filter *filter = malloc(sizeof(Filter));
 
     /* Bind filter tree with filter nodes. */
     FilterTree_bindEntities(filterTree, qg);
-
     filter->filterTree = filterTree;
-    filter->state = FilterUninitialized;
 
     // Set our Op operations
     filter->op.name = "Filter";
@@ -27,39 +21,37 @@ Filter* NewFilter(FT_FilterNode *filterTree, const QueryGraph *qg) {
     filter->op.reset = FilterReset;
     filter->op.free = FilterFree;
     filter->op.modifies = NULL;
+    filter->op.childCount = 0;
+    filter->op.children = NULL;
+    filter->op.parent = NULL;
     
-    return filter;
+    return (OpBase*)filter;
 }
 
 /* FilterConsume next operation 
  * returns OP_OK when graph passes filter tree. */
 OpResult FilterConsume(OpBase *opBase, QueryGraph* graph) {
     Filter *filter = (Filter*)opBase;
-    
-    if(filter->state == FilterUninitialized || filter->state == FilterRequestRefresh) {
-        return OP_REFRESH;
+    OpBase *child = filter->op.children[0];
+    int pass = FILTER_FAIL;
+
+    while(pass != FILTER_PASS) {
+        OpResult res = child->consume(child, graph);
+        if(res != OP_OK) return res;
+
+        /* Pass graph through filter tree */
+        pass = FilterTree_applyFilters(filter->filterTree);
     }
 
-    /* Pass graph through filter tree */
-    int pass = FilterTree_applyFilters(filter->filterTree);
-
-    filter->state = FilterRequestRefresh;
-
-    /* Incase graph fails to pass filter, request new data. */
-    if(pass != FILTER_PASS) return OP_REFRESH;
-    
     return OP_OK;
 }
 
 /* Restart iterator */
 OpResult FilterReset(OpBase *ctx) {
     Filter *filter = (Filter*)ctx;
-    filter->state = FilterResetted;
     return OP_OK;
 }
 
 /* Frees Filter*/
 void FilterFree(OpBase *ctx) {
-    Filter *filter = (Filter*)ctx;
-    free(filter);
 }

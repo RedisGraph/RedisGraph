@@ -11,22 +11,17 @@
 void _LocateEntities(OpDelete *op_delete, QueryGraph *graph, AST_DeleteNode *ast_delete_node);
 
 OpBase* NewDeleteOp(AST_DeleteNode *ast_delete_node, QueryGraph *qg, Graph *g, ResultSet *result_set) {
-    return (OpBase*)_NewDeleteOp(ast_delete_node, qg, g, result_set);
-}
-
-OpDelete* _NewDeleteOp(AST_DeleteNode *ast_delete_node, QueryGraph *qg, Graph *g, ResultSet *result_set) {
     OpDelete *op_delete = malloc(sizeof(OpDelete));
 
     op_delete->g = g;
     op_delete->qg = qg;
-    op_delete->request_refresh = 1;
     op_delete->nodes_to_delete = malloc(sizeof(Node**) * Vector_Size(ast_delete_node->graphEntities));
     op_delete->node_count = 0;
     op_delete->edges_to_delete = malloc(sizeof(EdgeEnds) * Vector_Size(ast_delete_node->graphEntities));
     op_delete->edge_count = 0;
     op_delete->deleted_nodes = NewTrieMap();
     op_delete->deleted_edges = NewTrieMap();
-    op_delete->result_set = result_set;
+    op_delete->result_set = result_set;    
     
     _LocateEntities(op_delete, qg, ast_delete_node);
 
@@ -37,7 +32,11 @@ OpDelete* _NewDeleteOp(AST_DeleteNode *ast_delete_node, QueryGraph *qg, Graph *g
     op_delete->op.reset = OpDeleteReset;
     op_delete->op.free = OpDeleteFree;
     op_delete->op.modifies = NULL;
-    return op_delete;
+    op_delete->op.childCount = 0;
+    op_delete->op.children = NULL;
+    op_delete->op.parent = NULL;
+
+    return (OpBase*)op_delete;
 }
 
 void _LocateEntities(OpDelete *op, QueryGraph *qg, AST_DeleteNode *ast_delete_node) {
@@ -110,11 +109,10 @@ void _DeleteEntities(OpDelete *op) {
 
 OpResult OpDeleteConsume(OpBase *opBase, QueryGraph* graph) {
     OpDelete *op = (OpDelete*)opBase;
+    OpBase *child = op->op.children[0];
 
-    if(op->request_refresh) {
-        op->request_refresh = 0;
-        return OP_REFRESH;
-    }
+    OpResult res = child->consume(child, graph);
+    if(res != OP_OK) return res;
 
     /* Enqueue entities for deletion. */
     char entity_id[256];
@@ -131,7 +129,6 @@ OpResult OpDeleteConsume(OpBase *opBase, QueryGraph* graph) {
         _EnqueueEdgeForDeletion(op->deleted_edges, e);
     }
 
-    op->request_refresh = 1;
     return OP_OK;
 }
 

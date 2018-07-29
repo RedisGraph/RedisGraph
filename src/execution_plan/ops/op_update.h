@@ -27,7 +27,6 @@ typedef struct {
 
 typedef struct {
     OpBase op;
-    int request_refresh;
     ResultSet *result_set;
     EntityUpdateEvalCtx *update_expressions;  /* List of entities to update and their arithmetic expressions. */
     size_t update_expressions_count;

@@ -22,6 +22,8 @@ Group* NewGroup(int key_count, SIValue* keys, Vector* funcs) {
 void FreeGroup(Group* group) {
     if(group == NULL) return;
 
-    /* TODO: Free keys. */
+    if(group->key_count)
+        free(group->keys);
+
     free(group);
 }

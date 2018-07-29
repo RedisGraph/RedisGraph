@@ -9,10 +9,6 @@
 #include <assert.h>
 
 OpBase* NewTraverseOp(Graph *g, QueryGraph* qg, AlgebraicExpression *ae) {
-    return (OpBase*)NewTraverse(g, qg, ae);
-}
-
-Traverse* NewTraverse(Graph *g, QueryGraph* qg, AlgebraicExpression *ae) {
     Traverse *traverse = calloc(1, sizeof(Traverse));
     traverse->graph = g;
     traverse->algebraic_expression = ae;
@@ -25,6 +21,9 @@ Traverse* NewTraverse(Graph *g, QueryGraph* qg, AlgebraicExpression *ae) {
     traverse->op.reset = TraverseReset;
     traverse->op.free = TraverseFree;
     traverse->op.modifies = NewVector(char*, 2);
+    traverse->op.childCount = 0;
+    traverse->op.children = NULL;
+    traverse->op.parent = NULL;
 
     char *modified = NULL;
     modified = QueryGraph_GetNodeAlias(qg, *traverse->algebraic_expression->src_node);
@@ -32,7 +31,7 @@ Traverse* NewTraverse(Graph *g, QueryGraph* qg, AlgebraicExpression *ae) {
     modified = QueryGraph_GetNodeAlias(qg, *traverse->algebraic_expression->dest_node);
     Vector_Push(traverse->op.modifies, modified);
 
-    return traverse;
+    return (OpBase*)traverse;
 }
 
 /* TraverseConsume next operation 
@@ -73,6 +72,4 @@ void TraverseFree(OpBase *ctx) {
     TuplesIter_free(op->it);
     if(op->algebraic_results)
         AlgebraicExpressionResult_Free(op->algebraic_results);
-
-    free(op);
 }

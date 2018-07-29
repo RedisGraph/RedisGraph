@@ -35,7 +35,6 @@ typedef struct {
 } OpMerge;
 
 OpBase* NewMergeOp(RedisModuleCtx *ctx, AST_Query *ast, Graph *g, QueryGraph *qg, const char *graph_name, ResultSet *result_set);
-OpMerge* NewMerge(RedisModuleCtx *ctx, AST_Query *ast, Graph *g, QueryGraph *qg, const char *graph_name, ResultSet *result_set);
 OpResult OpMergeConsume(OpBase *opBase, QueryGraph* graph);
 OpResult OpMergeReset(OpBase *ctx);
 void OpMergeFree(OpBase *ctx);

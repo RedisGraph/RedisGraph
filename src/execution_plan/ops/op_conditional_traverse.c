@@ -8,14 +8,11 @@
 #include "op_conditional_traverse.h"
 
 OpBase* NewCondTraverseOp(Graph *g, QueryGraph* qg, AlgebraicExpression *algebraic_expression) {
-    return (OpBase*)NewCondTraverse(g, qg, algebraic_expression);
-}
-
-CondTraverse* NewCondTraverse(Graph *g, QueryGraph* qg, AlgebraicExpression *algebraic_expression) {
     CondTraverse *traverse = calloc(1, sizeof(CondTraverse));
     traverse->graph = g;
     traverse->algebraic_expression = algebraic_expression;
     traverse->algebraic_results = NULL;
+    traverse->iter = NULL;
 
     // Set our Op operations
     traverse->op.name = "Conditional Traverse";
@@ -23,8 +20,10 @@ CondTraverse* NewCondTraverse(Graph *g, QueryGraph* qg, AlgebraicExpression *alg
     traverse->op.consume = CondTraverseConsume;
     traverse->op.reset = CondTraverseReset;
     traverse->op.free = CondTraverseFree;
-    traverse->state = CondTraverseUninitialized;
     traverse->op.modifies = NewVector(char*, 2);
+    traverse->op.childCount = 0;
+    traverse->op.children = NULL;
+    traverse->op.parent = NULL;
 
     char *modified = NULL;
     modified = QueryGraph_GetNodeAlias(qg, *traverse->algebraic_expression->src_node);
@@ -32,7 +31,7 @@ CondTraverse* NewCondTraverse(Graph *g, QueryGraph* qg, AlgebraicExpression *alg
     modified = QueryGraph_GetNodeAlias(qg, *traverse->algebraic_expression->dest_node);
     Vector_Push(traverse->op.modifies, modified);
 
-    return traverse;
+    return (OpBase*)traverse;
 }
 
 void extractColumn(CondTraverse *op) {
@@ -45,36 +44,37 @@ void extractColumn(CondTraverse *op) {
  * returns OP_DEPLETED when no additional updates are available */
 OpResult CondTraverseConsume(OpBase *opBase, QueryGraph* graph) {
     CondTraverse *op = (CondTraverse*)opBase;
-    
+    OpBase *child = op->op.children[0];
+
     /* Not initialized. */
-    if(op->state == CondTraverseUninitialized) {
+    if(op->iter == NULL) {
         op->algebraic_results = AlgebraicExpression_Execute(op->algebraic_expression);
         op->M = op->algebraic_results->m;
         op->iter = TuplesIter_new(op->M);
-        return OP_REFRESH;
-    }
 
-    /* Pick a column. */
-    if(op->state == CondTraverseResetted) {
-        op->state = CondTraverseConsuming;
+        if(child->consume(child, graph) == OP_DEPLETED) return OP_DEPLETED;
+
+        /* Pick a column. */
         extractColumn(op);
     }
 
     /* Get node from current column. */
     GrB_Index src_id;
-    if(TuplesIter_next(op->iter, &src_id, NULL) == TuplesIter_DEPLETED) return OP_REFRESH;
+    while(TuplesIter_next(op->iter, &src_id, NULL) == TuplesIter_DEPLETED) {
+        OpResult res = child->consume(child, graph);
+        if(res != OP_OK) return res;
+        extractColumn(op);
+    }
 
     Node *src_node = Graph_GetNode(op->graph, src_id);
     src_node->id = src_id;
     *op->algebraic_results->src_node = src_node;
-
     return OP_OK;
 }
 
 OpResult CondTraverseReset(OpBase *ctx) {
     CondTraverse *op = (CondTraverse*)ctx;
     TuplesIter_reset(op->iter);
-    op->state = CondTraverseResetted;
     return OP_OK;
 }
 
@@ -84,5 +84,4 @@ void CondTraverseFree(OpBase *ctx) {
     TuplesIter_free(op->iter);
     if(op->algebraic_results)
         AlgebraicExpressionResult_Free(op->algebraic_results);
-    free(op);
 }

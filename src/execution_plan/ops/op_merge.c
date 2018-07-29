@@ -32,10 +32,6 @@ void _SaveQueryGraphEntities(const QueryGraph *qg, OpMerge *op) {
 }
 
 OpBase* NewMergeOp(RedisModuleCtx *ctx, AST_Query *ast, Graph *g, QueryGraph *qg, const char *graph_name, ResultSet *result_set) {
-    return (OpBase*)NewMerge(ctx, ast, g, qg, graph_name, result_set);
-}
-
-OpMerge* NewMerge(RedisModuleCtx *ctx, AST_Query *ast, Graph *g, QueryGraph *qg, const char *graph_name, ResultSet *result_set) {
     OpMerge *op_merge = malloc(sizeof(OpMerge));
 
     op_merge->ctx = ctx;
@@ -43,7 +39,6 @@ OpMerge* NewMerge(RedisModuleCtx *ctx, AST_Query *ast, Graph *g, QueryGraph *qg,
     op_merge->g = g;
     op_merge->qg = qg;
     op_merge->result_set = result_set;
-    op_merge->request_refresh = true;
     op_merge->graph_name = graph_name;
     op_merge->matched = false;
 
@@ -56,23 +51,26 @@ OpMerge* NewMerge(RedisModuleCtx *ctx, AST_Query *ast, Graph *g, QueryGraph *qg,
     op_merge->op.reset = OpMergeReset;
     op_merge->op.free = OpMergeFree;
     op_merge->op.modifies = NULL;
+    op_merge->op.childCount = 0;
+    op_merge->op.children = NULL;
+    op_merge->op.parent = NULL;
 
-    return op_merge;
+    return (OpBase*)op_merge;
 }
 
 OpResult OpMergeConsume(OpBase *opBase, QueryGraph* graph) {
     OpMerge *op = (OpMerge*)opBase;
 
-    if(op->request_refresh) {
-        op->request_refresh = false;
-        return OP_REFRESH;
+    OpBase *child = op->op.children[0];
+    OpResult res = child->consume(child, graph);
+    if(res == OP_OK) {
+        /* If we're here that means pattern was matched! 
+        * in that case there's no need to create any graph entity,
+        * we can simply return. */
+        op->matched = true;
+        return OP_DEPLETED;
     }
-
-    /* If we're here that means pattern was matched! 
-     * in that case there's no need to create any graph entity,
-     * we can simply return. */
-    op->matched = true;
-    return OP_DEPLETED;
+    return res;
 }
 
 OpResult OpMergeReset(OpBase *ctx) {
@@ -104,5 +102,4 @@ void OpMergeFree(OpBase *ctx) {
 
     if(op->nodes) free(op->nodes);
     if(op->edges) free(op->edges);
-    free(op);
 }

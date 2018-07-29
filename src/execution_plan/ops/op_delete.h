@@ -21,7 +21,6 @@ typedef struct {
 
 typedef struct {
     OpBase op;
-    int request_refresh;
     Graph *g;
     QueryGraph *qg;
 
@@ -37,8 +36,6 @@ typedef struct {
 } OpDelete;
 
 OpBase* NewDeleteOp(AST_DeleteNode *ast_delete_node, QueryGraph *qg, Graph *g, ResultSet *result_set);
-OpDelete* _NewDeleteOp(AST_DeleteNode *ast_delete_node, QueryGraph *qg, Graph *g, ResultSet *result_set);
-
 OpResult OpDeleteConsume(OpBase *opBase, QueryGraph* graph);
 OpResult OpDeleteReset(OpBase *ctx);
 void OpDeleteFree(OpBase *ctx);

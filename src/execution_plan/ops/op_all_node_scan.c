@@ -8,10 +8,6 @@
 #include "op_all_node_scan.h"
 
 OpBase* NewAllNodeScanOp(QueryGraph *qg, const Graph *g, Node **n) {
-    return (OpBase*)NewAllNodeScan(qg, g, n);
-}
-
-AllNodeScan* NewAllNodeScan(QueryGraph *qg, const Graph *g, Node **n) {
     AllNodeScan *allNodeScan = malloc(sizeof(AllNodeScan));
     allNodeScan->node = n;
     allNodeScan->_node = *n;
@@ -24,19 +20,20 @@ AllNodeScan* NewAllNodeScan(QueryGraph *qg, const Graph *g, Node **n) {
     allNodeScan->op.reset = AllNodeScanReset;
     allNodeScan->op.free = AllNodeScanFree;
     allNodeScan->op.modifies = NewVector(char*, 1);
-    
+    allNodeScan->op.childCount = 0;
+    allNodeScan->op.children = NULL;
+    allNodeScan->op.parent = NULL;
+
     Vector_Push(allNodeScan->op.modifies, QueryGraph_GetNodeAlias(qg, *n));
 
-    return allNodeScan;
+    return (OpBase*)allNodeScan;
 }
 
 OpResult AllNodeScanConsume(OpBase *opBase, QueryGraph* graph) {
     AllNodeScan *op = (AllNodeScan*)opBase;
     
     Node *node = NodeIterator_Next(op->iter);
-    if(node == NULL) {
-        return OP_DEPLETED;
-    }
+    if(node == NULL) return OP_DEPLETED;
 
     *op->node = node;
 
@@ -56,5 +53,4 @@ void AllNodeScanFree(OpBase *ctx) {
     AllNodeScan *op = (AllNodeScan *)ctx;
     NodeIterator_Free(op->iter);
     Vector_Free(op->op.modifies);
-    free(op);
 }

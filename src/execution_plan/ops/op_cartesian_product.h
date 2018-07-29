@@ -16,11 +16,10 @@
  * we'll implement its logic. */
  typedef struct {
      OpBase op;
-     int refresh;
+     bool init;
  } CartesianProduct;
 
 OpBase* NewCartesianProductOp();
-CartesianProduct* NewCartesianProduct();
 OpResult CartesianProductConsume(OpBase *opBase, QueryGraph* graph);
 OpResult CartesianProductReset(OpBase *opBase);
 void CartesianProductFree(OpBase *opBase);
