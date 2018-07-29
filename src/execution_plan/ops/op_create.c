@@ -90,15 +90,12 @@ OpBase* NewCreateOp(RedisModuleCtx *ctx, AST_Query *ast, Graph *g, QueryGraph *q
     _SetModifiedEntities(op_create);
 
     // Set our Op operations
+    OpBase_Init(&op_create->op);
     op_create->op.name = "Create";
     op_create->op.type = OPType_CREATE;
     op_create->op.consume = OpCreateConsume;
     op_create->op.reset = OpCreateReset;
     op_create->op.free = OpCreateFree;
-    op_create->op.modifies = NULL;
-    op_create->op.childCount = 0;
-    op_create->op.children = NULL;
-    op_create->op.parent = NULL;
 
     return (OpBase*)op_create;
 }

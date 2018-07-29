@@ -22,8 +22,6 @@ OPType_AGGREGATE,
 OPType_ALL_NODE_SCAN,
 OPType_TRAVERSE,
 OPType_CONDITIONAL_TRAVERSE,
-OPType_EXPAND_ALL,
-OPType_EXPAND_INTO,
 OPType_FILTER,
 OPType_NODE_BY_LABEL_SCAN,
 OPType_PRODUCE_RESULTS,
@@ -59,6 +57,7 @@ struct OpBase {
 };
 typedef struct OpBase OpBase;
 
+void OpBase_Init(OpBase *op);
 void OpBase_Free(OpBase *op);
 
 #endif

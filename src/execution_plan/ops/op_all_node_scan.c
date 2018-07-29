@@ -14,15 +14,13 @@ OpBase* NewAllNodeScanOp(QueryGraph *qg, const Graph *g, Node **n) {
     allNodeScan->iter = Graph_ScanNodes(g);
 
     // Set our Op operations
+    OpBase_Init(&allNodeScan->op);
     allNodeScan->op.name = "All Node Scan";
     allNodeScan->op.type = OPType_ALL_NODE_SCAN;
     allNodeScan->op.consume = AllNodeScanConsume;
     allNodeScan->op.reset = AllNodeScanReset;
     allNodeScan->op.free = AllNodeScanFree;
     allNodeScan->op.modifies = NewVector(char*, 1);
-    allNodeScan->op.childCount = 0;
-    allNodeScan->op.children = NULL;
-    allNodeScan->op.parent = NULL;
 
     Vector_Push(allNodeScan->op.modifies, QueryGraph_GetNodeAlias(qg, *n));
 

@@ -26,15 +26,12 @@ OpBase* NewDeleteOp(AST_DeleteNode *ast_delete_node, QueryGraph *qg, Graph *g, R
     _LocateEntities(op_delete, qg, ast_delete_node);
 
     // Set our Op operations
+    OpBase_Init(&op_delete->op);
     op_delete->op.name = "Delete";
     op_delete->op.type = OPType_DELETE;
     op_delete->op.consume = OpDeleteConsume;
     op_delete->op.reset = OpDeleteReset;
     op_delete->op.free = OpDeleteFree;
-    op_delete->op.modifies = NULL;
-    op_delete->op.childCount = 0;
-    op_delete->op.children = NULL;
-    op_delete->op.parent = NULL;
 
     return (OpBase*)op_delete;
 }

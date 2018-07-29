@@ -15,15 +15,13 @@ OpBase* NewTraverseOp(Graph *g, QueryGraph* qg, AlgebraicExpression *ae) {
     traverse->algebraic_results = NULL;    
 
     // Set our Op operations
+    OpBase_Init(&traverse->op);
     traverse->op.name = "Traverse";
     traverse->op.type = OPType_TRAVERSE;
     traverse->op.consume = TraverseConsume;
     traverse->op.reset = TraverseReset;
     traverse->op.free = TraverseFree;
     traverse->op.modifies = NewVector(char*, 2);
-    traverse->op.childCount = 0;
-    traverse->op.children = NULL;
-    traverse->op.parent = NULL;
 
     char *modified = NULL;
     modified = QueryGraph_GetNodeAlias(qg, *traverse->algebraic_expression->src_node);

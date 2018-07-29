@@ -11,15 +11,12 @@ OpBase* NewCartesianProductOp() {
     CartesianProduct *cp = malloc(sizeof(CartesianProduct));
     cp->init = true;
     // Set our Op operations
+    OpBase_Init(&cp->op);
     cp->op.name = "Cartesian Product";
     cp->op.type = OPType_CARTESIAN_PRODUCT;
     cp->op.consume = CartesianProductConsume;
     cp->op.reset = CartesianProductReset;
     cp->op.free = CartesianProductFree;
-    cp->op.modifies = NULL;
-    cp->op.childCount = 0;
-    cp->op.children = NULL;
-    cp->op.parent = NULL;
 
     return (OpBase*)cp;
 }
@@ -36,9 +33,7 @@ OpResult _ResetStreams(CartesianProduct *cp, int streamIdx) {
 
 OpResult _PullFromStreams(CartesianProduct *cp, QueryGraph* graph) {
     OpResult res;
-    int i = 1;
-
-    for(; i < cp->op.childCount; i++) {
+    for(int i = 1; i < cp->op.childCount; i++) {
         OpBase *child = cp->op.children[i];
         res = child->consume(child, graph);
         if(res == OP_OK) {

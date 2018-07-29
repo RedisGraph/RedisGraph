@@ -21,15 +21,12 @@ OpBase* NewAggregateOp(RedisModuleCtx *ctx, AST_Query *ast) {
     aggregate->none_aggregated_expressions = NULL;
     aggregate->group_keys = NULL;
 
+    OpBase_Init(&aggregate->op);
     aggregate->op.name = "Aggregate";
     aggregate->op.type = OPType_AGGREGATE;
     aggregate->op.consume = AggregateConsume;
     aggregate->op.reset = AggregateReset;
     aggregate->op.free = AggregateFree;
-    aggregate->op.modifies = NULL;
-    aggregate->op.childCount = 0;
-    aggregate->op.children = NULL;
-    aggregate->op.parent = NULL;
 
     return (OpBase*)aggregate;
 }

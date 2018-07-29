@@ -26,15 +26,12 @@ OpBase* NewUpdateOp(RedisModuleCtx *ctx, AST_Query *ast, QueryGraph *q, ResultSe
     _OpUpdate_BuildUpdateEvalCtx(op_update, ast->setNode, q);
 
     // Set our Op operations
+    OpBase_Init(&op_update->op);
     op_update->op.name = "Update";
     op_update->op.type = OPType_CREATE;
     op_update->op.consume = OpUpdateConsume;
     op_update->op.reset = OpUpdateReset;
     op_update->op.free = OpUpdateFree;
-    op_update->op.modifies = NULL;
-    op_update->op.childCount = 0;
-    op_update->op.children = NULL;
-    op_update->op.parent = NULL;
 
     return (OpBase*)op_update;
 }

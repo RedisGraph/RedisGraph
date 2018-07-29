@@ -26,18 +26,16 @@ OpBase *NewNodeByLabelScanOp(RedisModuleCtx *ctx, QueryGraph *qg, Graph *g, cons
     }
 
     // Set our Op operations
+    OpBase_Init(&nodeByLabelScan->op);
     nodeByLabelScan->op.name = "Node By Label Scan";
     nodeByLabelScan->op.type = OPType_NODE_BY_LABEL_SCAN;
     nodeByLabelScan->op.consume = NodeByLabelScanConsume;
     nodeByLabelScan->op.reset = NodeByLabelScanReset;
     nodeByLabelScan->op.free = NodeByLabelScanFree;
+    
     nodeByLabelScan->op.modifies = NewVector(char*, 1);
-    nodeByLabelScan->op.childCount = 0;
-    nodeByLabelScan->op.children = NULL;
-    nodeByLabelScan->op.parent = NULL;
-    
     Vector_Push(nodeByLabelScan->op.modifies, QueryGraph_GetNodeAlias(qg, *node));
-    
+
     return (OpBase*)nodeByLabelScan;
 }
 

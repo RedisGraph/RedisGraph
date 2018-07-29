@@ -43,15 +43,13 @@ OpBase* NewProduceResultsOp(AST_Query *ast, ResultSet *result_set, QueryGraph* g
     _BuildArithmeticExpressions(produceResults, ast->returnNode, graph);
 
     // Set our Op operations
+    OpBase_Init(&produceResults->op);
     produceResults->op.name = "Produce Results";
     produceResults->op.type = OPType_PRODUCE_RESULTS;
     produceResults->op.consume = ProduceResultsConsume;
     produceResults->op.reset = ProduceResultsReset;
     produceResults->op.free = ProduceResultsFree;
-    produceResults->op.modifies = NULL;
-    produceResults->op.childCount = 0;
-    produceResults->op.children = NULL;
-    produceResults->op.parent = NULL;
+
     return (OpBase*)produceResults;
 }
 

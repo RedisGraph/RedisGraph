@@ -7,6 +7,13 @@
 
 #include "op.h"
 
+void OpBase_Init(OpBase *op) {
+    op->modifies = NULL;
+    op->childCount = 0;
+    op->children = NULL;
+    op->parent = NULL;
+}
+
 void OpBase_Free(OpBase *op) {
     // Free internal operation
     op->free(op);

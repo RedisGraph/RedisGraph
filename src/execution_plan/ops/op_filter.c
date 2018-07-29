@@ -15,16 +15,13 @@ OpBase* NewFilterOp(FT_FilterNode *filterTree, const QueryGraph *qg) {
     filter->filterTree = filterTree;
 
     // Set our Op operations
+    OpBase_Init(&filter->op);
     filter->op.name = "Filter";
     filter->op.type = OPType_FILTER;
     filter->op.consume = FilterConsume;
     filter->op.reset = FilterReset;
     filter->op.free = FilterFree;
-    filter->op.modifies = NULL;
-    filter->op.childCount = 0;
-    filter->op.children = NULL;
-    filter->op.parent = NULL;
-    
+
     return (OpBase*)filter;
 }
 

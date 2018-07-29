@@ -15,15 +15,13 @@ OpBase* NewCondTraverseOp(Graph *g, QueryGraph* qg, AlgebraicExpression *algebra
     traverse->iter = NULL;
 
     // Set our Op operations
+    OpBase_Init(&traverse->op);
     traverse->op.name = "Conditional Traverse";
     traverse->op.type = OPType_CONDITIONAL_TRAVERSE;
     traverse->op.consume = CondTraverseConsume;
     traverse->op.reset = CondTraverseReset;
     traverse->op.free = CondTraverseFree;
     traverse->op.modifies = NewVector(char*, 2);
-    traverse->op.childCount = 0;
-    traverse->op.children = NULL;
-    traverse->op.parent = NULL;
 
     char *modified = NULL;
     modified = QueryGraph_GetNodeAlias(qg, *traverse->algebraic_expression->src_node);

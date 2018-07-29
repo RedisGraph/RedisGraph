@@ -45,15 +45,12 @@ OpBase* NewMergeOp(RedisModuleCtx *ctx, AST_Query *ast, Graph *g, QueryGraph *qg
     _SaveQueryGraphEntities(qg, op_merge);
 
     // Set our Op operations
+    OpBase_Init(&op_merge->op);
     op_merge->op.name = "Merge";
     op_merge->op.type = OPType_MERGE;
     op_merge->op.consume = OpMergeConsume;
     op_merge->op.reset = OpMergeReset;
     op_merge->op.free = OpMergeFree;
-    op_merge->op.modifies = NULL;
-    op_merge->op.childCount = 0;
-    op_merge->op.children = NULL;
-    op_merge->op.parent = NULL;
 
     return (OpBase*)op_merge;
 }
