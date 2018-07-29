@@ -21,7 +21,7 @@ RUN set -ex;\
 
 # Package the runner
 FROM redis:latest
-ENV LIBDIR /var/lib/redis/modules
+ENV LIBDIR /use/lib/redis/modules
 WORKDIR /data
 RUN set -ex;\
     mkdir -p "$LIBDIR";
@@ -29,4 +29,4 @@ RUN set -ex;\
 COPY --from=builder /redisgraph/src/redisgraph.so "$LIBDIR"
 
 EXPOSE 6379
-CMD ["redis-server", "--loadmodule", "/var/lib/redis/modules/redisgraph.so"]
+CMD ["redis-server", "--loadmodule", "/usr/lib/redis/modules/redisgraph.so"]
