@@ -21,7 +21,7 @@ RUN set -ex;\
 
 # Package the runner
 FROM redis:latest
-ENV LIBDIR /use/lib/redis/modules
+ENV LIBDIR /usr/lib/redis/modules
 WORKDIR /data
 RUN set -ex;\
     mkdir -p "$LIBDIR";
