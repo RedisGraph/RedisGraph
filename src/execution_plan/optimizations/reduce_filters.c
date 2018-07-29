@@ -10,18 +10,18 @@
 #include "../../filter_tree/filter_tree.h"
 #include "../../parser/grammar.h"
 
-void _reduceFilter(OpNode *op) {
-    OpNode *parent = op;
-    Filter *filter = (Filter*)parent->operation;
+void _reduceFilter(OpBase *op) {
+    OpBase *parent = op;
+    Filter *filter = (Filter*)parent;
     FT_FilterNode *tree = filter->filterTree;
-    OpNode *child = NULL;
+    OpBase *child = NULL;
 
     /* Filter operation is promised to have only one child. */
     while(parent->childCount == 1) {
         child = parent->children[0];
-        if(child->operation->type != OPType_FILTER) break;
+        if(child->type != OPType_FILTER) break;
 
-        Filter *childFilter = (Filter*)child->operation;
+        Filter *childFilter = (Filter*)child;
 
         /* Create a new root for the tree, merge trees using an AND. */
         FT_FilterNode *root = CreateCondFilterNode(AND);
@@ -37,10 +37,10 @@ void _reduceFilter(OpNode *op) {
     if(filter->filterTree != tree) {
         filter->filterTree = tree;
         // Remove intermidate filter ops.
-        OpNode *intermidateChild = child->parent;
+        OpBase *intermidateChild = child->parent;
         while(intermidateChild != op) {
             parent = intermidateChild->parent;
-            OpNode_Free(intermidateChild);
+            OpBase_Free(intermidateChild);
             intermidateChild = parent;
         }
         
@@ -52,10 +52,10 @@ void _reduceFilter(OpNode *op) {
     }
 }
 
-void _reduceFilters(OpNode *op) {
+void _reduceFilters(OpBase *op) {
     if(op == NULL) return;
     
-    if(op->operation->type == OPType_FILTER) {
+    if(op->type == OPType_FILTER) {
         _reduceFilter(op);
     }
 

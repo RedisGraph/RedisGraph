@@ -71,10 +71,6 @@ void _SetModifiedEntities(OpCreate *op) {
 }
 
 OpBase* NewCreateOp(RedisModuleCtx *ctx, AST_Query *ast, Graph *g, QueryGraph *qg, const char *graph_name, int request_refresh, ResultSet *result_set) {
-    return (OpBase*)NewCreate(ctx, ast, g, qg, graph_name, request_refresh, result_set);
-}
-
-OpCreate* NewCreate(RedisModuleCtx *ctx, AST_Query *ast, Graph *g, QueryGraph *qg, const char *graph_name, int request_refresh, ResultSet *result_set) {
     OpCreate *op_create = calloc(1, sizeof(OpCreate));
 
     op_create->ctx = ctx;
@@ -82,7 +78,6 @@ OpCreate* NewCreate(RedisModuleCtx *ctx, AST_Query *ast, Graph *g, QueryGraph *q
     op_create->g = g;
     op_create->qg = qg;
     op_create->graph_name = graph_name;
-    op_create->request_refresh = request_refresh;
     
     op_create->nodes_to_create = NULL;
     op_create->node_count = 0;
@@ -95,13 +90,14 @@ OpCreate* NewCreate(RedisModuleCtx *ctx, AST_Query *ast, Graph *g, QueryGraph *q
     _SetModifiedEntities(op_create);
 
     // Set our Op operations
+    OpBase_Init(&op_create->op);
     op_create->op.name = "Create";
     op_create->op.type = OPType_CREATE;
     op_create->op.consume = OpCreateConsume;
     op_create->op.reset = OpCreateReset;
     op_create->op.free = OpCreateFree;
-    op_create->op.modifies = NULL;
-    return op_create;
+
+    return (OpBase*)op_create;
 }
 
 void _CreateNodes(OpCreate *op) {
@@ -257,19 +253,22 @@ void _CommitNewEntities(OpCreate *op) {
 }
 
 OpResult OpCreateConsume(OpBase *opBase, QueryGraph* graph) {
+    OpResult res = OP_OK;
     OpCreate *op = (OpCreate*)opBase;
 
-    if(op->request_refresh) {
-        op->request_refresh = 0;
-        return OP_REFRESH;
+    if(op->op.childCount) {
+        OpBase *child = op->op.children[0];
+        res = child->consume(child, graph);
     }
 
-    /* Create entities. */
-    _CreateNodes(op);
-    _CreateEdges(op);
-    
-    op->request_refresh = 1;
-    return OP_OK;
+    if(res == OP_OK) {
+        /* Create entities. */
+        _CreateNodes(op);
+        _CreateEdges(op);
+    }
+
+    if(op->op.childCount == 0) return OP_DEPLETED;
+    else return res;
 }
 
 OpResult OpCreateReset(OpBase *ctx) {
@@ -297,6 +296,4 @@ void OpCreateFree(OpBase *ctx) {
     if(op->edges_to_create != NULL) {
         free(op->edges_to_create);
     }
-
-    free(op);
 }

@@ -112,17 +112,17 @@ void _applyRightHandFilters(FT_FilterNode *filter, AlgebraicExpression *ae, cons
 
 /* Populate filterOps vector with execution plan filter operations
  * applied to given traverseOp. */
-void _locateTraverseFilters(const OpNode *traverseOp, Vector *filterOps) {
-    assert(traverseOp->operation->type == OPType_TRAVERSE ||
-           traverseOp->operation->type == OPType_CONDITIONAL_TRAVERSE);
+void _locateTraverseFilters(const OpBase *traverseOp, Vector *filterOps) {
+    assert(traverseOp->type == OPType_TRAVERSE ||
+           traverseOp->type == OPType_CONDITIONAL_TRAVERSE);
 
     /* Scanning execution plan from traverseOp "downwards" using parent pointer
      * until we hit a none filter operation. */
-    OpNode *current = traverseOp->parent;
-    while(current->operation->type == OPType_FILTER) {
+    OpBase *current = traverseOp->parent;
+    while(current->type == OPType_FILTER) {
         /* We're only interested in filters which apply to a single entity,
          * Extract modified aliases from filter tree. */
-        Filter *filterOp = (Filter*)current->operation;
+        Filter *filterOp = (Filter*)current;
         FT_FilterNode *filterTree = filterOp->filterTree;
         Vector *filteredEntities = FilterTree_CollectAliases(filterTree);
 
@@ -139,11 +139,11 @@ void _locateTraverseFilters(const OpNode *traverseOp, Vector *filterOps) {
 }
 
 // Populate traverseOps vector with execution plan traverse operations.
-void _locateTraverseOp(OpNode *root, Vector *traverseOps) {
+void _locateTraverseOp(OpBase *root, Vector *traverseOps) {
 
     // Is this a traverse operation?
-    if(root->operation->type == OPType_TRAVERSE ||
-       root->operation->type == OPType_CONDITIONAL_TRAVERSE) {
+    if(root->type == OPType_TRAVERSE ||
+       root->type == OPType_CONDITIONAL_TRAVERSE) {
            Vector_Push(traverseOps, root);
     }
 
@@ -155,13 +155,13 @@ void _locateTraverseOp(OpNode *root, Vector *traverseOps) {
 
 void translateFilters(ExecutionPlan *plan) {
     // Get a list of all traverse operations within execution plan.
-    Vector *traverseOps = NewVector(OpNode*, 0);
+    Vector *traverseOps = NewVector(OpBase*, 0);
     _locateTraverseOp(plan->root, traverseOps);
 
     /* For each traverse op, locate filters applied 
      * to their modified entities. */
-    OpNode *traverseOp;
-    Vector *filterOps = NewVector(OpNode*, 0);
+    OpBase *traverseOp;
+    Vector *filterOps = NewVector(OpBase*, 0);
 
     while(Vector_Pop(traverseOps, &traverseOp)) {
         _locateTraverseFilters(traverseOp, filterOps);
@@ -170,9 +170,9 @@ void translateFilters(ExecutionPlan *plan) {
         // Extract actual filter trees.
         Vector *filters = NewVector(FT_FilterNode*, Vector_Size(filterOps));
         for(int i = 0; i < Vector_Size(filterOps); i++) {            
-            OpNode *opFilter;
+            OpBase *opFilter;
             Vector_Get(filterOps, i, &opFilter);
-            Filter *f = (Filter *)opFilter->operation;
+            Filter *f = (Filter *)opFilter;
             Vector_Push(filters, f->filterTree);
         }
 
@@ -181,20 +181,20 @@ void translateFilters(ExecutionPlan *plan) {
 
         /* Reduce traverse operation and filters into a single 
          * traverse operation. */
-        OpNode *filteredTraverseOp;
+        OpBase *filteredTraverseOp;
         Traverse *t;
         CondTraverse *ct;
         AlgebraicExpression *ae;
         Graph *g;
 
-        switch(traverseOp->operation->type) {
+        switch(traverseOp->type) {
             case OPType_TRAVERSE:
-                t = (Traverse*)(traverseOp->operation);
+                t = (Traverse*)(traverseOp);
                 ae = t->algebraic_expression;
                 g = t->graph;
                 break;
             case OPType_CONDITIONAL_TRAVERSE:
-                ct = (CondTraverse*)(traverseOp->operation);
+                ct = (CondTraverse*)(traverseOp);
                 ae = ct->algebraic_expression;
                 g = ct->graph;
                 break;
@@ -212,10 +212,10 @@ void translateFilters(ExecutionPlan *plan) {
 
         // Remove reduced filter operations from execution plan.
         for(int i = 0; i < Vector_Size(filterOps); i++) {
-            OpNode* filterOp;
+            OpBase* filterOp;
             Vector_Get(filterOps, i, &filterOp);
             ExecutionPlan_RemoveOp(filterOp);
-            OpNode_Free(filterOp);
+            OpBase_Free(filterOp);
         }
         Vector_Clear(filterOps);        
     }

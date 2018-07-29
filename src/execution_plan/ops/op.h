@@ -22,8 +22,6 @@ OPType_AGGREGATE,
 OPType_ALL_NODE_SCAN,
 OPType_TRAVERSE,
 OPType_CONDITIONAL_TRAVERSE,
-OPType_EXPAND_ALL,
-OPType_EXPAND_INTO,
 OPType_FILTER,
 OPType_NODE_BY_LABEL_SCAN,
 OPType_PRODUCE_RESULTS,
@@ -46,15 +44,20 @@ struct OpBase;
 typedef OpResult (*fpConsume)(struct OpBase*, QueryGraph* graph);
 typedef OpResult (*fpReset)(struct OpBase*);
 typedef void (*fpFree)(struct OpBase*);
-
 struct OpBase {
-    OPType type;
-    fpConsume consume;
-    fpReset reset;
-    fpFree free;
-    char *name;
-    Vector *modifies;   // List of aliases, this op modifies.
+    OPType type;                // Type of operation
+    fpConsume consume;          // Produce next record.
+    fpReset reset;              // Reset operation state.
+    fpFree free;                // Free operation.
+    char *name;                 // Operation name.
+    Vector *modifies;           // List of aliases, this op modifies.
+    struct OpBase **children;   // Child operations.
+    int childCount;             // Number of children.
+    struct OpBase *parent;      // Parent operations.
 };
 typedef struct OpBase OpBase;
+
+void OpBase_Init(OpBase *op);
+void OpBase_Free(OpBase *op);
 
 #endif

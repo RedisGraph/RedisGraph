@@ -8,10 +8,6 @@
 #include "op_node_by_label_scan.h"
 
 OpBase *NewNodeByLabelScanOp(RedisModuleCtx *ctx, QueryGraph *qg, Graph *g, const char *graph_name, Node **node, const char *label) {
-    return (OpBase*)NewNodeByLabelScan(ctx, qg, g, graph_name, node, label);
-}
-
-NodeByLabelScan* NewNodeByLabelScan(RedisModuleCtx *ctx, QueryGraph *qg, Graph *g, const char *graph_name, Node **node, const char *label) {
     NodeByLabelScan *nodeByLabelScan = malloc(sizeof(NodeByLabelScan));
     nodeByLabelScan->g = g;
     nodeByLabelScan->node = node;
@@ -30,16 +26,17 @@ NodeByLabelScan* NewNodeByLabelScan(RedisModuleCtx *ctx, QueryGraph *qg, Graph *
     }
 
     // Set our Op operations
+    OpBase_Init(&nodeByLabelScan->op);
     nodeByLabelScan->op.name = "Node By Label Scan";
     nodeByLabelScan->op.type = OPType_NODE_BY_LABEL_SCAN;
     nodeByLabelScan->op.consume = NodeByLabelScanConsume;
     nodeByLabelScan->op.reset = NodeByLabelScanReset;
     nodeByLabelScan->op.free = NodeByLabelScanFree;
+    
     nodeByLabelScan->op.modifies = NewVector(char*, 1);
-    
     Vector_Push(nodeByLabelScan->op.modifies, QueryGraph_GetNodeAlias(qg, *node));
-    
-    return nodeByLabelScan;
+
+    return (OpBase*)nodeByLabelScan;
 }
 
 OpResult NodeByLabelScanConsume(OpBase *opBase, QueryGraph* graph) {
@@ -75,6 +72,4 @@ void NodeByLabelScanFree(OpBase *op) {
     if(nodeByLabelScan->_zero_matrix != NULL) {
         GrB_Matrix_free(&nodeByLabelScan->_zero_matrix);
     }
-
-    free(nodeByLabelScan);
 }

@@ -13,26 +13,22 @@
 #include "../../query_executor.h"
 
 OpBase* NewAggregateOp(RedisModuleCtx *ctx, AST_Query *ast) {
-    return (OpBase*)NewAggregate(ctx, ast);
-}
-
-Aggregate* NewAggregate(RedisModuleCtx *ctx, AST_Query *ast) {
     Aggregate *aggregate = malloc(sizeof(Aggregate));
     aggregate->ctx = ctx;
     aggregate->ast = ast;
-    aggregate->refreshAfterPass = 0;
     aggregate->init = 0;
     aggregate->none_aggregated_expression_count = 0;
     aggregate->none_aggregated_expressions = NULL;
     aggregate->group_keys = NULL;
 
+    OpBase_Init(&aggregate->op);
     aggregate->op.name = "Aggregate";
     aggregate->op.type = OPType_AGGREGATE;
     aggregate->op.consume = AggregateConsume;
     aggregate->op.reset = AggregateReset;
     aggregate->op.free = AggregateFree;
-    aggregate->op.modifies = NULL;
-    return aggregate;
+
+    return (OpBase*)aggregate;
 }
 
 /* Construct an aggregated expression tree foreach aggregated term. 
@@ -104,6 +100,7 @@ void _aggregateRecord(Aggregate *op, QueryGraph *g) {
 
 OpResult AggregateConsume(OpBase *opBase, QueryGraph* graph) {
     Aggregate *op = (Aggregate*)opBase;
+    OpBase *child = op->op.children[0];
 
     if(!op->init) {
         Build_None_Aggregated_Arithmetic_Expressions(op->ast->returnNode,
@@ -115,17 +112,13 @@ OpResult AggregateConsume(OpBase *opBase, QueryGraph* graph) {
             op->group_keys = malloc(sizeof(SIValue) * op->none_aggregated_expression_count);
         }
         op->init = 1;
-        return OP_REFRESH;
     }
 
-    if(op->refreshAfterPass == 1) {
-        op->refreshAfterPass = 0;
-        return OP_REFRESH;
-    }
+    OpResult res = child->consume(child, graph);
+    if(res != OP_OK) return res;
 
     _aggregateRecord(op, graph);
-    op->refreshAfterPass = 1;
-    
+
     return OP_OK;
 }
 
@@ -135,5 +128,10 @@ OpResult AggregateReset(OpBase *opBase) {
 
 void AggregateFree(OpBase *opBase) {
     Aggregate *op = (Aggregate*)opBase;
-    free(op);
+    if(op->none_aggregated_expression_count) {
+        for(int i = 0; i < op->none_aggregated_expression_count; i++) {
+            AR_EXP_Free(op->none_aggregated_expressions[i]);
+        }
+        free(op->none_aggregated_expressions);
+    }
 }

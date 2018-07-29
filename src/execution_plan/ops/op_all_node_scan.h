@@ -25,7 +25,6 @@
  } AllNodeScan;
 
 OpBase* NewAllNodeScanOp(QueryGraph *qg, const Graph *g, Node **n);
-AllNodeScan* NewAllNodeScan(QueryGraph *qg, const Graph *g, Node **n);
 OpResult AllNodeScanConsume(OpBase *opBase, QueryGraph* graph);
 OpResult AllNodeScanReset(OpBase *op);
 void AllNodeScanFree(OpBase *ctx);
