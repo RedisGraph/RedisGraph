@@ -13,7 +13,17 @@
 #include "../../../deps/GraphBLAS/Include/GraphBLAS.h"
 #include <assert.h>
 
-void singleMatrixFilter(AlgebraicExpression *ae, Graph *g, Vector *filters);
+typedef struct {
+    Graph *g;
+    AlgebraicExpression *ae;
+    FT_FilterNode *filter;
+    bool transposed;
+} MatrixFilter;
+
+
+//------------------------------------------------------------------------------
+//=== GraphBLAS select functions ===============================================
+//------------------------------------------------------------------------------
 
 bool _filter_row_select_op(const GrB_Index i, const GrB_Index j, const GrB_Index nrows,
                     const GrB_Index ncols, const void *x, const void *k) {
@@ -22,6 +32,49 @@ bool _filter_row_select_op(const GrB_Index i, const GrB_Index j, const GrB_Index
     bool mark = false;
     GrB_Vector_extractElement_BOOL(&mark, v, i);
     return mark;
+}
+
+// _single_matrix_filter_select_op is called for every none zero entry
+// within a matrix A, we return true if current inspected entry passes
+// filter, this will carry the entry over to a filtered matrix, otherwise
+// the entry is dropped from filtered matrix.
+bool _single_matrix_filter_select_op(const GrB_Index i, const GrB_Index j,
+                                     const GrB_Index nrows, const GrB_Index ncols,
+                                     const void *x, const void *k) {
+    MatrixFilter *mf = (MatrixFilter*)k;
+    AlgebraicExpression *ae = mf->ae;
+    FT_FilterNode *filter = mf->filter;
+    Graph *g = mf->g;
+    bool transposed = mf->transposed;
+
+    Node *srcNode = Graph_GetNode(g, i);
+    Node *destNode = Graph_GetNode(g, j);
+    if(transposed) {
+        *ae->src_node = destNode;
+        *ae->dest_node = srcNode;
+    } else {
+        *ae->src_node = srcNode;
+        *ae->dest_node = destNode;
+    }
+    return FilterTree_applyFilters(filter);
+}
+
+// Merge filters using ANDs.
+FT_FilterNode *_combineFilter(Vector *filters) {    
+    FT_FilterNode *root = NULL;
+    for(int i = 0; i < Vector_Size(filters); i++) {            
+        FT_FilterNode *filterTree;
+        Vector_Get(filters, i, &filterTree);
+        if(root == NULL) {
+            root = filterTree;
+        } else {
+            FT_FilterNode *and = CreateCondFilterNode(AND);
+            AppendLeftChild(and, filterTree);
+            AppendRightChild(and, root);
+            root = and;
+        }
+    }
+    return root;
 }
 
 /* Separates filters into two groups:
@@ -69,63 +122,13 @@ void _groupFilters(AlgebraicExpression *ae,
     }
 }
 
-// GrB_Matrix _filtersToMatrix(FT_FilterNode *filter, AlgebraicExpressionOperand *term, bool transpose, const Graph *g, Node **filteredEntity) {
-//     GrB_Matrix M = term->operand;
-    
-//     // Determin which columns are active.
-//     GrB_Descriptor desc;
-//     GrB_Descriptor_new(&desc);
-
-//     /* Matrix reduction is performed on rows 
-//      * while we're interested in reducing columns
-//      * and so if the term is transposed then we're all set
-//      * otherwise we have to transpose. */
-//     if(transpose) {
-//         GrB_Descriptor_set(desc, GrB_INP1, GrB_TRAN);
-//     }
-//     GrB_Index nrows;
-//     GrB_Matrix_nrows(&nrows, M);
-
-//     GrB_Vector activeEntries;
-//     GrB_Vector_new(&activeEntries, GrB_BOOL, nrows);
-//     GrB_Matrix_reduce_BinaryOp(activeEntries, NULL, NULL, GrB_LOR, M, desc);
-//     GrB_Descriptor_free(&desc);
-
-//     GrB_Index nvals;
-//     GrB_Vector_nvals(&nvals, activeEntries);
-
-//     // Create filter matrix.    
-//     GrB_Matrix filterMatrix;
-//     GrB_Matrix_new(&filterMatrix, GrB_BOOL, nrows, nrows);
-
-//     // Scan active entries, apply filter to each entry.
-//     GrB_Index entryIdx;
-//     Node *originalNode = *filteredEntity;
-//     TuplesIter *iter = TuplesIter_new((GrB_Matrix)activeEntries);
-//     while(TuplesIter_next(iter, &entryIdx, NULL) != TuplesIter_DEPLETED) {
-//         Node *node = Graph_GetNode(g, entryIdx);
-//         *filteredEntity = node;
-//         if(FilterTree_applyFilters(filter)) {
-//             GrB_Matrix_setElement_BOOL(filterMatrix, true, entryIdx, entryIdx);
-//         }
-//     }
-
-//     TuplesIter_free(iter);
-//     GrB_Vector_free(&activeEntries);
-    
-//     // Restore filtered entity node.
-//     *filteredEntity = originalNode;
-    
-//     return filterMatrix;
-// }
-
 /* Filter last algebraic expression term columns by applying filter */
 void _applyRightHandFilters(FT_FilterNode *filterTree, AlgebraicExpression *ae, const Graph *g) {
     /* Filter the rightmost matrix in given expression.
      * Steps:    
      * 1. Scans through matrix active columns
      * 2. Apply filter tree to each active column id
-     * 3. Remove columns which did not pass filter. */
+     * 3. Remove columns which did not pass filter */
 
     if(!filterTree) return;
     // Create filtered matrix, as we can't modified original term.
@@ -172,6 +175,7 @@ void _applyRightHandFilters(FT_FilterNode *filterTree, AlgebraicExpression *ae, 
     GrB_Vector_free(&col);
 }
 
+/* Filter first algebraic expression term rows by applying filter */
 void _applyLeftHandFilters(FT_FilterNode *filterTree, AlgebraicExpression *ae, const Graph *g) {
     /* Filter the leftmost matrix in given expression.
      * Steps:    
@@ -272,7 +276,37 @@ void _locateTraverseOp(OpBase *root, Vector *traverseOps) {
     }
 }
 
-void translateFilters(ExecutionPlan *plan) {    
+// Filters matrix rows and columns by applying GraphBLAS select operation.
+void _singleMatrixFilter(AlgebraicExpression *ae, Graph *g, Vector *filters) {
+    // Combine filters.
+    FT_FilterNode *root = _combineFilter(filters);
+
+    MatrixFilter mf;
+    mf.g = g;
+    mf.ae = ae;
+    mf.filter = root;
+    mf.transposed = AlgebraicExpression_IsTranspose(ae);
+
+    // Backup.
+    Node *srcOrg = *ae->src_node;
+    Node *destOrg = *ae->dest_node;
+
+    GxB_SelectOp select;
+    GxB_SelectOp_new(&select, &_single_matrix_filter_select_op, NULL);
+    
+    GrB_Matrix filteredMatrix;
+    GrB_Matrix_new(&filteredMatrix, GrB_BOOL, g->node_count, g->node_count);
+    GxB_Matrix_select(filteredMatrix, NULL, NULL, select, ae->operands[0].operand, &mf, NULL);
+
+    // Restore
+    *ae->src_node = srcOrg;
+    *ae->dest_node = destOrg;
+
+    ae->operands[0].operand = filteredMatrix;
+    ae->operands[0].free = true;
+}
+
+void translateFilters(ExecutionPlan *plan) {
     // Get a list of all traverse operations within execution plan.
     Vector *traverseOps = NewVector(OpBase*, 0);
     _locateTraverseOp(plan->root, traverseOps);
@@ -281,23 +315,9 @@ void translateFilters(ExecutionPlan *plan) {
      * to their modified entities. */
     OpBase *traverseOp;
     Vector *filterOps = NewVector(OpBase*, 0);
+    Vector *filters = NewVector(FT_FilterNode*, 0);
 
-    while(Vector_Pop(traverseOps, &traverseOp)) {
-        _locateTraverseFilters(traverseOp, filterOps);
-        if(Vector_Size(filterOps) == 0) continue;
-
-        // Extract actual filter trees.
-        Vector *filters = NewVector(FT_FilterNode*, Vector_Size(filterOps));
-        for(int i = 0; i < Vector_Size(filterOps); i++) {            
-            OpBase *opFilter;
-            Vector_Get(filterOps, i, &opFilter);
-            Filter *f = (Filter *)opFilter;
-            Vector_Push(filters, f->filterTree);
-        }
-
-        const char *srcNodeAlias;
-        const char *destNodeAlias;
-
+    while(Vector_Pop(traverseOps, &traverseOp)) {        
         /* Reduce traverse operation and filters into a single 
          * traverse operation. */
         OpBase *filteredTraverseOp;
@@ -321,6 +341,8 @@ void translateFilters(ExecutionPlan *plan) {
                 assert(0);
         }
 
+        Vector_Clear(filterOps);
+        Vector_Clear(filters);
         _locateTraverseFilters(traverseOp, filterOps);
 
         // No filters.
@@ -329,15 +351,20 @@ void translateFilters(ExecutionPlan *plan) {
         // Extract actual filter trees.
         Vector *filters = NewVector(FT_FilterNode*, Vector_Size(filterOps));
         for(int i = 0; i < Vector_Size(filterOps); i++) {            
-            OpNode *opFilter;
+            OpBase *opFilter;
             Vector_Get(filterOps, i, &opFilter);
-            Filter *f = (Filter *)opFilter->operation;
+            Filter *f = (Filter *)opFilter;
             Vector_Push(filters, f->filterTree);
         }
 
-        // Don't care, as no multiplications will be performed.
         if(ae->operand_count == 1) {
-            singleMatrixFilter(ae, g, filters);
+            /* Apply filter only if query is NOT limited,
+             * reason why: if query is limited to N records,
+             * then we're only required to apply "N" filter 
+             * operations on the matrix, compared to NNZ filter operations,
+             * consider LIMIT 1 for a 2M NNZ matrix. */
+            if(!ResultSet_Limited(plan->result_set)) _singleMatrixFilter(ae, g, filters);
+            else continue;
         } else {
             const char *srcNodeAlias = NULL;
             const char *destNodeAlias = NULL;
@@ -363,78 +390,10 @@ void translateFilters(ExecutionPlan *plan) {
             ExecutionPlan_RemoveOp(filterOp);
             OpBase_Free(filterOp);
         }
-        Vector_Clear(filterOps);
-        Vector_Free(filters);
     }
 
     // Cleanup
+    Vector_Free(filters);
     Vector_Free(filterOps);
     Vector_Free(traverseOps);
-}
-
-typedef struct {
-    Graph *g;
-    AlgebraicExpression *ae;
-    FT_FilterNode *filter;
-    bool transposed;
-} MatrixFilter;
-
-bool _single_matrix_filter_select_op(const GrB_Index i, const GrB_Index j, const GrB_Index nrows, const GrB_Index ncols, const void *x, const void *k) {
-    MatrixFilter *mf = (MatrixFilter*)k;
-    AlgebraicExpression *ae = mf->ae;
-    FT_FilterNode *filter = mf->filter;
-    Graph *g = mf->g;
-    bool transposed = mf->transposed;
-
-    Node *srcNode = Graph_GetNode(g, i);
-    Node *destNode = Graph_GetNode(g, j);
-    if(transposed) {
-        *ae->src_node = destNode;
-        *ae->dest_node = srcNode;
-    } else {
-        *ae->src_node = srcNode;
-        *ae->dest_node = destNode;
-    }
-    return FilterTree_applyFilters(filter);
-}
-
-void singleMatrixFilter(AlgebraicExpression *ae, Graph *g, Vector *filters) {
-    // Combine filters.
-    FT_FilterNode *root = NULL;
-    for(int i = 0; i < Vector_Size(filters); i++) {            
-        FT_FilterNode *filterTree;
-        Vector_Get(filters, i, &filterTree);
-        if(root == NULL) {
-            root = filterTree;
-        } else {
-            FT_FilterNode *and = CreateCondFilterNode(AND);
-            AppendLeftChild(and, filterTree);
-            AppendRightChild(and, root);
-            root = and;
-        }
-    }
-
-    MatrixFilter mf;
-    mf.g = g;
-    mf.ae = ae;
-    mf.filter = root;
-    mf.transposed = AlgebraicExpression_IsTranspose(ae);
-
-    // Backup.
-    Node *srcOrg = *ae->src_node;
-    Node *destOrg = *ae->dest_node;
-
-    GxB_SelectOp select;
-    GxB_SelectOp_new(&select, &_single_matrix_filter_select_op, NULL);
-    
-    GrB_Matrix filteredMatrix;
-    GrB_Matrix_new(&filteredMatrix, GrB_BOOL, g->node_count, g->node_count);
-    GxB_Matrix_select(filteredMatrix, NULL, NULL, select, ae->operands[0].operand, &mf, NULL);
-
-    // Restore
-    *ae->src_node = srcOrg;
-    *ae->dest_node = destOrg;
-
-    ae->operands[0].operand = filteredMatrix;
-    ae->operands[0].free = true;
 }

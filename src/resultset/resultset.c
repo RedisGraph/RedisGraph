@@ -303,6 +303,10 @@ ResultSet* NewResultSet(AST_Query* ast, RedisModuleCtx *ctx) {
     return set;
 }
 
+bool ResultSet_Limited(const ResultSet* set) {
+    return (set->limit != RESULTSET_UNLIMITED);
+}
+
 int ResultSet_AddRecord(ResultSet* set, Record* record) {
     if(_ResultSet_Full(set)) {
         return RESULTSET_FULL;
