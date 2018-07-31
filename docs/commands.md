@@ -12,19 +12,6 @@ Returns: `Result set`
 GRAPH.QUERY us_government "MATCH (p:president)-[:born]->(:state {name:'Hawaii'}) RETURN p"
 ```
 
-## GRAPH.EXPLAIN
-
-Constructs a query execution plan but does not run it. Inspect this execution plan to better
-understand how your query will get executed.
-
-Arguments: `Graph name, Query`
-
-Returns: `String representation of a query execution plan`
-
-```sh
-GRAPH.EXPLAIN us_government "MATCH (p:president)-[:born]->(h:state {name:'Hawaii'}) RETURN p"
-```
-
 ### Query language
 
 The syntax is based on [openCypher](http://www.opencypher.org/), and only a subset of the language currently
@@ -399,3 +386,16 @@ This section contains information on all supported functions from the openCypher
 |Function | Description|
 | ------- |:-----------|
 |id() | Returns the ID of a relationship or node.|
+
+## GRAPH.EXPLAIN
+
+Constructs a query execution plan but does not run it. Inspect this execution plan to better
+understand how your query will get executed.
+
+Arguments: `Graph name, Query`
+
+Returns: `String representation of a query execution plan`
+
+```sh
+GRAPH.EXPLAIN us_government "MATCH (p:president)-[:born]->(h:state {name:'Hawaii'}) RETURN p"
+```
