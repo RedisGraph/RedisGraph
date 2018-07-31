@@ -32,6 +32,7 @@ typedef struct {
  * algebraic expression. */
 typedef struct  {
     bool transpose;         // Should the matrix be transposed.
+    bool free;              // Should the matrix be freed?
     GrB_Matrix operand;
 } AlgebraicExpressionOperand;
 
@@ -60,6 +61,9 @@ void AlgebraicExpression_PrependTerm(AlgebraicExpression *ae, GrB_Matrix m, bool
 /* Whenever we decide to transpose an expression, call this function
  * directly accessing expression transpose flag is forbidden. */
 void AlgebraicExpression_Transpose(AlgebraicExpression *ae);
+
+/* Checks to see if expression is transposed. */
+bool AlgebraicExpression_IsTranspose(const AlgebraicExpression *ae);
 
 void AlgebraicExpression_Free(AlgebraicExpression* ae);
 void AlgebraicExpressionResult_Free(AlgebraicExpressionResult *aer);

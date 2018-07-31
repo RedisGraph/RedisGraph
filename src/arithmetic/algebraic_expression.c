@@ -170,6 +170,7 @@ AlgebraicExpression **AlgebraicExpression_From_Query(const AST_Query *ast, Vecto
 
         exp->operands[operandIdx].operand = e->mat;
         exp->operands[operandIdx].transpose = transpose;
+        exp->operands[operandIdx].free = false;
         operandIdx++;
     }
     exp->dest_node = QueryGraph_GetNodeRef(q, dest);
@@ -304,13 +305,24 @@ void AlgebraicExpression_Transpose(AlgebraicExpression *ae) {
     }
 }
 
+bool AlgebraicExpression_IsTranspose(const AlgebraicExpression *ae) {
+    if(ae->operand_count == 1) return ae->operands[0].transpose;
+    else return ae->_transpose;
+}
+
 void AlgebraicExpressionResult_Free(AlgebraicExpressionResult *aer) {
-    if(aer->_transpose) GrB_transpose(aer->m, NULL, NULL, aer->m, NULL);
+    // Transpose only if we're not required to free result matrix.
+    if(!aer->_free_m && aer->_transpose) GrB_transpose(aer->m, NULL, NULL, aer->m, NULL);
+
     if(aer->_free_m) GrB_Matrix_free(&aer->m);
     free(aer);
 }
 
 void AlgebraicExpression_Free(AlgebraicExpression* ae) {
+    for(int i = 0; i < ae->operand_count; i++)
+        if(ae->operands[i].free)
+            GrB_Matrix_free(&ae->operands[i].operand);
+
     free(ae->operands);
     free(ae);
 }

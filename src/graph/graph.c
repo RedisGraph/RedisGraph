@@ -236,7 +236,9 @@ Node* Graph_GetNode(const Graph *g, int id) {
     }
 
     NodeBlock *block = g->nodes_blocks[block_id];
-    return &block->nodes[id%NODEBLOCK_CAP];
+    Node *n = &block->nodes[id%NODEBLOCK_CAP];
+    n->id = id;
+    return n;
 }
 
 void Graph_DeleteNodes(Graph *g, int *IDs, size_t IDCount) {
