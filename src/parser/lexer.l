@@ -36,6 +36,9 @@ int yycolumn = 1;
 "ASC"       { return ASC; }
 "DESC"      { return DESC; }
 "LIMIT"     { return LIMIT; }
+"INDEX"     { return INDEX; }
+"ON"        { return ON; }
+"DROP"      { return DROP; }
 "NULL"      { return NULLVAL; }
 
 

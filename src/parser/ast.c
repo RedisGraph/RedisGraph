@@ -16,7 +16,7 @@ AST_Query *New_AST_Query(AST_MatchNode *matchNode, AST_WhereNode *whereNode,
                          AST_CreateNode *createNode, AST_MergeNode *mergeNode,
                          AST_SetNode *setNode, AST_DeleteNode *deleteNode,
                          AST_ReturnNode *returnNode, AST_OrderNode *orderNode,
-                         AST_LimitNode *limitNode) {
+                         AST_LimitNode *limitNode, AST_IndexNode *indexNode) {
   AST_Query *queryExpressionNode = (AST_Query *)malloc(sizeof(AST_Query));
 
   queryExpressionNode->matchNode = matchNode;
@@ -28,6 +28,7 @@ AST_Query *New_AST_Query(AST_MatchNode *matchNode, AST_WhereNode *whereNode,
   queryExpressionNode->returnNode = returnNode;
   queryExpressionNode->orderNode = orderNode;
   queryExpressionNode->limitNode = limitNode;
+  queryExpressionNode->indexNode = indexNode;
 
   return queryExpressionNode;
 }
@@ -160,7 +161,7 @@ AST_Validation _Validate_WHERE_Clause(const AST_Query *ast, char **reason) {
 
 AST_Validation AST_Validate(const AST_Query *ast, char **reason) {
   /* AST must include either a MATCH or CREATE clause. */
-  if (!(ast->matchNode || ast->createNode || ast->mergeNode || ast->returnNode)) {
+  if (!(ast->matchNode || ast->createNode || ast->mergeNode || ast->returnNode || ast->indexNode)) {
     asprintf(reason, "Query must specify either MATCH or CREATE clause");
     return AST_INVALID;
   }

@@ -43,6 +43,23 @@
 
 #include "execution_plan/execution_plan.h"
 
+#include "index/index.h"
+#include "index/index_type.h"
+
+void _index_operation(RedisModuleCtx *ctx, const char *graphName, Graph *g, AST_IndexNode *indexNode) {
+  // Set up array response for printing statistics
+  switch(indexNode->operation) {
+    case CREATE_INDEX:
+      Index_Create(ctx, graphName, g, indexNode->label, indexNode->property);
+      break;
+    case DROP_INDEX:
+      Index_Delete(ctx, graphName, indexNode->label, indexNode->property);
+      break;
+    default:
+      assert(0);
+  }
+}
+
 /* Retrieve graph stored within Redis under graph_name key,
  * If specified key does not exists a new graph object is created and stored
  * in case graph already exists NULL is returned. */
@@ -99,6 +116,7 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
     // Try to get graph.
     Graph *g = Graph_Get(ctx, argv[1]);
+
     if(!g) {
         if(ast->createNode || ast->mergeNode) {
             g = _MGraph_CreateGraph(ctx, argv[1]);
@@ -109,19 +127,24 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
         }
     }
 
-    ExecutionPlan *plan = NewExecutionPlan(ctx, g, graph_name, ast, false);
-    ResultSet* resultSet = ExecutionPlan_Execute(plan);
-    ExecutionPlanFree(plan);
+    if (ast->indexNode) { // index operation
+        _index_operation(ctx, graph_name, g, ast->indexNode);
+		} else {
 
-    /* Send result-set back to client. */
-    ResultSet_Replay(resultSet);
+      ExecutionPlan *plan = NewExecutionPlan(ctx, g, graph_name, ast, false);
+      ResultSet* resultSet = ExecutionPlan_Execute(plan);
+      ExecutionPlanFree(plan);
 
-    /* Replicate query only if it modified the keyspace. */
-    if(ResultSetStat_IndicateModification(resultSet->stats)) {
+      /* Send result-set back to client. */
+      ResultSet_Replay(resultSet);
+
+      /* Replicate query only if it modified the keyspace. */
+      if(ResultSetStat_IndicateModification(resultSet->stats)) {
         RedisModule_ReplicateVerbatim(ctx);
-    }
+      }
 
-    ResultSet_Free(resultSet);
+      ResultSet_Free(resultSet);
+    }
 
     /* Report execution timing. */
     t = simple_toc(tic) * 1000;
@@ -221,6 +244,11 @@ int _RegisterDataTypes(RedisModuleCtx *ctx) {
 
     if(GraphType_Register(ctx) == REDISMODULE_ERR) {
         printf("Failed to register graphtype\n");
+        return REDISMODULE_ERR;
+    }
+
+    if(IndexType_Register(ctx) == REDISMODULE_ERR) {
+        printf("Failed to register indextype\n");
         return REDISMODULE_ERR;
     }
 

@@ -15,4 +15,6 @@ void optimizePlan(ExecutionPlan *plan) {
 
     /* Try to reduce a number of filters into a single filter op. */
     reduceFilters(plan);
+
+    // utilizeIndices(ctx, plan, graph_name, g);
 }

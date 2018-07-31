@@ -11,5 +11,6 @@
 #include "./reduce_filters.h"
 #include "./translate_filters.h"
 #include "./traverse_order.h"
+#include "./utilize_indices.h"
 
 #endif

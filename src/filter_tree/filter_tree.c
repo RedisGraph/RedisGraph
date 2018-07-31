@@ -328,6 +328,44 @@ Vector *FilterTree_CollectAliases(const FT_FilterNode *root) {
     return aliases;
 }
 
+/* TODO There is likely a more elegant approach to this in light of
+ * the new FilterTree optimizations */
+void _FilterTree_CollectAliasConsts(const FT_FilterNode *root, const char *alias, Vector **filters) {
+  if(root == NULL) {
+    return;
+  }
+
+  if (IsNodeVaryingPredicate(root)) {
+    return;
+  }
+
+  // OR conditions in the filter tree make the current indexScan operation unsafe,
+  // as no reliable lower or upper bound can be set.
+  if (root->t == FT_N_COND && root->cond.op == OR) {
+    Vector_Free(*filters);
+    *filters = NULL;
+    return;
+  }
+
+  if (IsNodeConstantPredicate(root) && (!strcmp(alias, root->pred.Lop.alias))) {
+    Vector_Push(*filters, &root->pred);
+    return;
+  }
+
+  _FilterTree_CollectAliasConsts(root->cond.left, alias, filters);
+  _FilterTree_CollectAliasConsts(root->cond.right, alias, filters);
+}
+
+/*
+ * Traverse the FilterTree to collect all constant predicates associated with the given alias.
+ * Populates a Vector of FT_PredicateNode pointers.  */
+Vector* FilterTree_CollectAliasConsts(const FT_FilterNode *root, const char *alias) {
+  Vector *filters = NewVector(FT_PredicateNode*, 1);
+  _FilterTree_CollectAliasConsts(root, alias, &filters);
+
+  return filters;
+}
+
 void _FilterTree_Print(const FT_FilterNode *root, int ident) {
     // Ident
     printf("%*s", ident, "");
