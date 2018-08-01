@@ -47,8 +47,8 @@ bool _single_matrix_filter_select_op(const GrB_Index i, const GrB_Index j,
     Graph *g = mf->g;
     bool transposed = mf->transposed;
 
-    Node *srcNode = Graph_GetNode(g, i);
-    Node *destNode = Graph_GetNode(g, j);
+    Node *srcNode = Graph_GetNode(g, j);
+    Node *destNode = Graph_GetNode(g, i);
     if(transposed) {
         *ae->src_node = destNode;
         *ae->dest_node = srcNode;
@@ -107,8 +107,8 @@ void _groupFilters(AlgebraicExpression *ae,
 
         // Determin if filter aplies to source node or dest node.
         FT_FilterNode **hand;
-        if(strcmp(alias, srcNodeAlias) == 0) hand = leftHand;
-        else hand = rightHand;
+        if(strcmp(alias, srcNodeAlias) == 0) hand = rightHand;
+        else hand = leftHand;
 
         // Extend filter by ANDing.
         if(*hand == NULL) {
@@ -122,7 +122,7 @@ void _groupFilters(AlgebraicExpression *ae,
     }
 }
 
-/* Filter last algebraic expression term columns by applying filter */
+/* Filter rightmost algebraic expression term columns by applying filter */
 void _applyRightHandFilters(FT_FilterNode *filterTree, AlgebraicExpression *ae, const Graph *g) {
     /* Filter the rightmost matrix in given expression.
      * Steps:    
@@ -141,8 +141,8 @@ void _applyRightHandFilters(FT_FilterNode *filterTree, AlgebraicExpression *ae, 
 
     // Save original node to be restored when we're done.
     Node **filteredNode;
-    if(AlgebraicExpression_IsTranspose(ae)) filteredNode = ae->src_node;
-    else filteredNode = ae->dest_node;
+    if(AlgebraicExpression_IsTranspose(ae)) filteredNode = ae->dest_node;
+    else filteredNode = ae->src_node;
     Node *originalNode = *filteredNode;
 
     GrB_Vector col = NULL;
@@ -175,7 +175,7 @@ void _applyRightHandFilters(FT_FilterNode *filterTree, AlgebraicExpression *ae, 
     GrB_Vector_free(&col);
 }
 
-/* Filter first algebraic expression term rows by applying filter */
+/* Filter leftmost algebraic expression term rows by applying filter */
 void _applyLeftHandFilters(FT_FilterNode *filterTree, AlgebraicExpression *ae, const Graph *g) {
     /* Filter the leftmost matrix in given expression.
      * Steps:    
@@ -195,8 +195,8 @@ void _applyLeftHandFilters(FT_FilterNode *filterTree, AlgebraicExpression *ae, c
     
     // Save original node to be restored when we're done.
     Node **filteredNode;
-    if(AlgebraicExpression_IsTranspose(ae)) filteredNode = ae->dest_node;
-    else filteredNode = ae->src_node;
+    if(AlgebraicExpression_IsTranspose(ae)) filteredNode = ae->src_node;
+    else filteredNode = ae->dest_node;
     Node *originalNode = *filteredNode;
 
     GrB_Index rowIdx;

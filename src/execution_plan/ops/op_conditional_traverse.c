@@ -21,11 +21,9 @@ OpBase* NewCondTraverseOp(Graph *g, QueryGraph* qg, AlgebraicExpression *algebra
     traverse->op.consume = CondTraverseConsume;
     traverse->op.reset = CondTraverseReset;
     traverse->op.free = CondTraverseFree;
-    traverse->op.modifies = NewVector(char*, 2);
+    traverse->op.modifies = NewVector(char*, 1);
 
-    char *modified = NULL;
-    modified = QueryGraph_GetNodeAlias(qg, *traverse->algebraic_expression->src_node);
-    Vector_Push(traverse->op.modifies, modified);
+    char *modified = NULL;    
     modified = QueryGraph_GetNodeAlias(qg, *traverse->algebraic_expression->dest_node);
     Vector_Push(traverse->op.modifies, modified);
 
@@ -33,7 +31,7 @@ OpBase* NewCondTraverseOp(Graph *g, QueryGraph* qg, AlgebraicExpression *algebra
 }
 
 void extractColumn(CondTraverse *op) {
-    GrB_Index column_idx = (*op->algebraic_results->dest_node)->id;
+    GrB_Index column_idx = (*op->algebraic_results->src_node)->id;
     op->iter = TuplesIter_iterate_column(op->iter, column_idx);
 }
 
@@ -57,16 +55,15 @@ OpResult CondTraverseConsume(OpBase *opBase, QueryGraph* graph) {
     }
 
     /* Get node from current column. */
-    GrB_Index src_id;
-    while(TuplesIter_next(op->iter, &src_id, NULL) == TuplesIter_DEPLETED) {
+    GrB_Index dest_id;
+    while(TuplesIter_next(op->iter, &dest_id, NULL) == TuplesIter_DEPLETED) {
         OpResult res = child->consume(child, graph);
         if(res != OP_OK) return res;
         extractColumn(op);
     }
 
-    Node *src_node = Graph_GetNode(op->graph, src_id);
-    src_node->id = src_id;
-    *op->algebraic_results->src_node = src_node;
+    Node *dest_node = Graph_GetNode(op->graph, dest_id);
+    *op->algebraic_results->dest_node = dest_node;
     return OP_OK;
 }
 
