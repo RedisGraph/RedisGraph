@@ -42,15 +42,13 @@ OpBase *NewNodeByLabelScanOp(RedisModuleCtx *ctx, QueryGraph *qg, Graph *g, cons
 OpResult NodeByLabelScanConsume(OpBase *opBase, QueryGraph* graph) {
     NodeByLabelScan *op = (NodeByLabelScan*)opBase;
 
-    GrB_Index row;
     GrB_Index col;
 
-    if(TuplesIter_next(op->iter, &row, &col) == TuplesIter_DEPLETED) {
+    if(TuplesIter_next(op->iter, NULL, &col) == TuplesIter_DEPLETED) {
         return OP_DEPLETED;
     }
 
-    Node *n = Graph_GetNode(op->g, row);
-    n->id = row;
+    Node *n = Graph_GetNode(op->g, col);
     *op->node = n;
 
     return OP_OK;

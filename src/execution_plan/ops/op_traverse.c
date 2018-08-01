@@ -45,7 +45,7 @@ OpResult TraverseConsume(OpBase *opBase, QueryGraph* graph) {
         op->it = TuplesIter_new(op->algebraic_results->m);
     }
 
-    if (TuplesIter_next(op->it, &src_id, &dest_id) == TuplesIter_DEPLETED) return OP_DEPLETED;
+    if (TuplesIter_next(op->it, &dest_id, &src_id) == TuplesIter_DEPLETED) return OP_DEPLETED;
 
     Node *src_node = Graph_GetNode(op->graph, src_id);
     Node *dest_node = Graph_GetNode(op->graph, dest_id);
