@@ -12,10 +12,14 @@
 #include "../query_executor.h"
 #include "../rmutil/vector.h"
 
+// TODO allows for better printing, but may not belong here
+// Lookup map for converting op numbers to strings
+const char* ops[] = {"", "OR", "AND", "ADD", "DASH", "MUL", "DIV", "EQ", "GT", "GE", "LT", "LE"};
+
 FT_FilterNode* LeftChild(const FT_FilterNode *node) { return node->cond.left; }
 FT_FilterNode* RightChild(const FT_FilterNode *node) { return node->cond.right; }
 
-int static inline IsNodeConstantPredicate(const FT_FilterNode *node) {
+int IsNodeConstantPredicate(const FT_FilterNode *node) {
     return (node->t == FT_N_PRED && node->pred.t == FT_N_CONSTANT);
 }
 
@@ -328,44 +332,6 @@ Vector *FilterTree_CollectAliases(const FT_FilterNode *root) {
     return aliases;
 }
 
-/* TODO There is likely a more elegant approach to this in light of
- * the new FilterTree optimizations */
-void _FilterTree_CollectAliasConsts(const FT_FilterNode *root, const char *alias, Vector **filters) {
-  if(root == NULL) {
-    return;
-  }
-
-  if (IsNodeVaryingPredicate(root)) {
-    return;
-  }
-
-  // OR conditions in the filter tree make the current indexScan operation unsafe,
-  // as no reliable lower or upper bound can be set.
-  if (root->t == FT_N_COND && root->cond.op == OR) {
-    Vector_Free(*filters);
-    *filters = NULL;
-    return;
-  }
-
-  if (IsNodeConstantPredicate(root) && (!strcmp(alias, root->pred.Lop.alias))) {
-    Vector_Push(*filters, &root->pred);
-    return;
-  }
-
-  _FilterTree_CollectAliasConsts(root->cond.left, alias, filters);
-  _FilterTree_CollectAliasConsts(root->cond.right, alias, filters);
-}
-
-/*
- * Traverse the FilterTree to collect all constant predicates associated with the given alias.
- * Populates a Vector of FT_PredicateNode pointers.  */
-Vector* FilterTree_CollectAliasConsts(const FT_FilterNode *root, const char *alias) {
-  Vector *filters = NewVector(FT_PredicateNode*, 1);
-  _FilterTree_CollectAliasConsts(root, alias, &filters);
-
-  return filters;
-}
-
 void _FilterTree_Print(const FT_FilterNode *root, int ident) {
     // Ident
     printf("%*s", ident, "");
@@ -373,26 +339,26 @@ void _FilterTree_Print(const FT_FilterNode *root, int ident) {
     if(IsNodeConstantPredicate(root)) {
         char value[64] = {0};
         SIValue_ToString(root->pred.constVal, value, 64);
-        printf("%s.%s %d %s\n",
+        printf("%s.%s %s %s\n",
             root->pred.Lop.alias,
             root->pred.Lop.property,
-            root->pred.op,
+            ops[root->pred.op],
             value
         );
         return;
     }
     if(IsNodeVaryingPredicate(root)) {
-        printf("%s.%s %d %s.%s\n",
+        printf("%s.%s %s %s.%s\n",
             root->pred.Lop.alias,
             root->pred.Lop.property,
-            root->pred.op,
+            ops[root->pred.op],
             root->pred.Rop.alias,
             root->pred.Rop.property
         );
         return;
     }
 
-    printf("%d\n", root->cond.op);
+    printf("%s\n", ops[root->cond.op]);
     _FilterTree_Print(LeftChild(root), ident+4);
     _FilterTree_Print(RightChild(root), ident+4);
 }

@@ -94,7 +94,7 @@ void _OpBase_PushBelow(OpBase *a, OpBase *b) {
 /* Push b right above a. */
 void _OpBase_PushAbove(OpBase *a, OpBase *b) {
     /* B shouldn't have its children set. */
-    assert(b->children != NULL);
+    assert(b->children == NULL);
 
     /* Remove each child of A and add it as a child of B. */
     while(a->childCount) {
@@ -118,6 +118,15 @@ void ExecutionPlan_RemoveOp(OpBase *op) {
     for(int i = 0; i < op->childCount; i++) {
         _OpBase_AddChild(parent, op->children[i]);
     }
+}
+
+// TODO It might be nice to spell out some more of these steps,
+// I think some unnecessary freeing is occurring
+void ExecutionPlan_ReplaceOp(OpBase *op, OpBase *replacement) {
+    assert(op->parent != NULL);
+
+    _OpBase_PushAbove(op, replacement);
+    ExecutionPlan_RemoveOp(op);
 }
 
 Vector* _ExecutionPlan_Locate_References(OpBase *root, OpBase **op, Vector *references) {
@@ -399,7 +408,7 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g,
         Vector_Free(sub_trees);
     }
     
-    if(!explain) optimizePlan(execution_plan);
+    if(!explain) optimizePlan(ctx, graph_name, execution_plan);
     return execution_plan;
 }
 

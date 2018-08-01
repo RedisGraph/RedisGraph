@@ -100,4 +100,6 @@ Vector* FilterTree_SubTrees(const FT_FilterNode *root);
 
 void FilterTree_Free(FT_FilterNode *root);
 
+int IsNodeConstantPredicate(const FT_FilterNode *node);
+
 #endif // _FILTER_TREE_H 

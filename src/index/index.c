@@ -218,25 +218,12 @@ char* Index_OpPrint(AST_IndexNode *indexNode) {
   }
 }
 
-GrB_Matrix IndexIter_BuildMatrix(IndexIter *iter, size_t node_count) {
-  // Make index matrix of size n*n
-  GrB_Matrix index_matrix;
-  GrB_Info info = GrB_Matrix_new(&index_matrix, GrB_BOOL, node_count, node_count);
-  assert (info == GrB_SUCCESS);
-
-  GrB_Index *node_id;
-  while ((node_id = (GrB_Index *)IndexIter_Next(iter)) != NULL) {
-    assert (*node_id < node_count);
-    // Obey constraint here?
-    GrB_Matrix_setElement_BOOL(index_matrix, true, *node_id, *node_id);
-  }
-
-  return index_matrix;
-}
-
-
 GrB_Index* IndexIter_Next(IndexIter *iter) {
   return skiplistIterator_Next(iter);
+}
+
+void IndexIter_Reset(IndexIter *iter) {
+  skiplistIterate_Reset(iter);
 }
 
 void IndexIter_Free(IndexIter *iter) {

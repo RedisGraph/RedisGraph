@@ -8,31 +8,24 @@
 #include "op_index_scan.h"
 
 OpBase *NewIndexScanOp(QueryGraph *qg, Graph *g, Node **node, IndexIter *iter) {
-  return (OpBase*)NewIndexScan(qg, g, node, iter);
-}
-
-IndexScan* NewIndexScan(QueryGraph *qg, Graph *g, Node **node, IndexIter *iter) {
-
   IndexScan *indexScan = malloc(sizeof(IndexScan));
+  indexScan->g = g;
   indexScan->node = node;
   indexScan->_node = *node;
-  indexScan->g = g;
+  indexScan->iter = iter;
 
   // Set our Op operations
+  OpBase_Init(&indexScan->op);
   indexScan->op.name = "Index Scan";
   indexScan->op.type = OPType_INDEX_SCAN;
   indexScan->op.consume = IndexScanConsume;
   indexScan->op.reset = IndexScanReset;
   indexScan->op.free = IndexScanFree;
-  indexScan->op.modifies = NewVector(char*, 1);
 
+  indexScan->op.modifies = NewVector(char*, 1);
   Vector_Push(indexScan->op.modifies, QueryGraph_GetNodeAlias(qg, *node));
 
-  indexScan->M = IndexIter_BuildMatrix(iter, g->node_count);
-  // Should be masked in IndexIterator
-  indexScan->iter = TuplesIter_new(indexScan->M);
-
-  return indexScan;
+  return (OpBase*)indexScan;
 }
 
   /*
@@ -41,13 +34,17 @@ IndexScan* NewIndexScan(QueryGraph *qg, Graph *g, Node **node, IndexIter *iter) 
 OpResult IndexScanConsume(OpBase *opBase, QueryGraph* graph) {
   IndexScan *op = (IndexScan*)opBase;
 
-  GrB_Index node_id;
-  if (TuplesIter_next(op->iter, NULL, &node_id) == TuplesIter_DEPLETED) {
+  GrB_Index *node_id = IndexIter_Next(op->iter);
+  if (!node_id) return OP_DEPLETED;
+
+  *op->node = Graph_GetNode(op->g, *node_id);
+
+  // TODO should be unnecessary
+  if (*op->node == NULL) {
     return OP_DEPLETED;
   }
 
-  *op->node = Graph_GetNode(op->g, node_id);
-  (*op->node)->id = node_id;
+  (*op->node)->id = *node_id;
 
   return OP_OK;
 }
@@ -58,14 +55,13 @@ OpResult IndexScanReset(OpBase *ctx) {
   /* Restore original node. */
   *indexScan->node = indexScan->_node;
   // Verify that this call does what we want
-  TuplesIter_reset(indexScan->iter);
+  IndexIter_Reset(indexScan->iter);
 
   return OP_OK;
 }
 
 void IndexScanFree(OpBase *op) {
   IndexScan *indexScan = (IndexScan *)op;
-  TuplesIter_free(indexScan->iter);
-  GrB_Matrix_free(&indexScan->M);
-  free(indexScan);
+  IndexIter_Free(indexScan->iter);
 }
+

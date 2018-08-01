@@ -45,6 +45,7 @@ ExecutionPlan* NewExecutionPlan
 char* ExecutionPlanPrint(const ExecutionPlan *plan);
 
 void ExecutionPlan_RemoveOp(OpBase *op);
+void ExecutionPlan_ReplaceOp(OpBase *op, OpBase *replacement);
 
 /* Executes plan */
 ResultSet* ExecutionPlan_Execute(ExecutionPlan *plan);

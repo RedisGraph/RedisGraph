@@ -8,7 +8,10 @@
 #include "./optimizer.h"
 #include "./optimizations.h"
 
-void optimizePlan(ExecutionPlan *plan) {
+void optimizePlan(RedisModuleCtx *ctx, const char *graph_name, ExecutionPlan *plan) {
+    updateScanOps(ctx, graph_name, plan);
+
+    // FilterTree_bindEntities(plan->filter_tree, plan->graph);
     /* Try convert filters into matrices
      * and incorporate them with traversal operations. */
     translateFilters(plan);

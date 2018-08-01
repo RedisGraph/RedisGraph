@@ -30,6 +30,9 @@ typedef struct {
   skiplist *numeric_sl;
 } Index;
 
+Index* Index_Get(RedisModuleCtx *ctx, const char *graph, const char *label, const char *property);
+IndexIter* IndexIter_CreateFromFilter(Index *idx, FT_PredicateNode *filter);
+
 void Index_Delete(RedisModuleCtx *ctx, const char *graphName, const char *label, const char *prop);
 void Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, const char *label, const char *prop_str);
 
@@ -41,6 +44,7 @@ char* Index_OpPrint(AST_IndexNode *indexNode);
 GrB_Matrix IndexIter_BuildMatrix(IndexIter *iter, size_t node_count);
 
 GrB_Index* IndexIter_Next(IndexIter *iter);
+void IndexIter_Reset(IndexIter *iter);
 void IndexIter_Free(IndexIter *iter);
 
 void Index_Free(Index *idx);
