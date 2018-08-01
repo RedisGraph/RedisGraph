@@ -1,3 +1,10 @@
+/*
+* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+*
+* This file is available under the Apache License, Version 2.0,
+* modified with the Commons Clause restriction.
+*/
+
 #include "op_index_scan.h"
 
 OpBase *NewIndexScanOp(QueryGraph *qg, Graph *g, Node **node, IndexIter *iter) {
