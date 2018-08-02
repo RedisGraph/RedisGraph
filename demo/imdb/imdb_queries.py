@@ -158,6 +158,22 @@ find_ten_oldest_actors_query = QueryInfo(
                      ['Judi Dench', '84.000000']]
 )
 
+actors_over_85_index_scan = QueryInfo(
+    query="""MATCH (a:actor)
+             WHERE a.age > 85
+             RETURN a.name, a.age""",
+    description='Actors over 85 on indexed property?',
+    max_run_time_ms=1.5,
+    expected_result=[['Ellen Burstyn', '86.000000'],
+        ['Robert Duvall', '87.000000'],
+        ['Olympia Dukakis', '87.000000'],
+        ['Lois Smith', '88.000000'],
+        ['John Cullum', '88.000000'],
+        ['Cloris Leachman', '92.000000'],
+        ['George Kennedy', '93.000000'],
+        ['Vincent Price', '107.000000']]
+)
+
 queries_info = [
     actors_played_with_nicolas_cage_query,
     find_three_actors_played_with_nicolas_cage_query,
@@ -168,5 +184,6 @@ queries_info = [
     actors_played_with_cameron_diaz_and_younger_than_her_query,
     sum_and_average_age_of_straight_outta_compton_cast_query,
     how_many_movies_cameron_diaz_played_query,
-    find_ten_oldest_actors_query
+    find_ten_oldest_actors_query,
+    actors_over_85_index_scan
 ]

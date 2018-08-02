@@ -79,9 +79,7 @@ void updateScanOps(RedisModuleCtx *ctx, const char *graph_name, ExecutionPlan *p
     FT_FilterNode *ft;
     // TODO can maybe be woven into above loop
     for (int i = 0; i < Vector_Size(filters); i ++) {
-      printf("FT %d:\n", i);
       Vector_Get(filters, i, &ft);
-      FilterTree_Print(ft);
       /* ft will be a predicate or a tree with an OR root, which means
        * we can safely employ it if it's a const predicate and ignore it otherwise. */
       if (!IsNodeConstantPredicate(ft)) continue;

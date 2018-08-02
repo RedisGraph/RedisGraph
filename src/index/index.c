@@ -60,6 +60,7 @@ Index* Index_Get(RedisModuleCtx *ctx, const char *graph, const char *label, cons
 }
 
 void Index_Delete(RedisModuleCtx *ctx, const char *graphName, const char *label, const char *prop) {
+  RedisModule_ReplyWithArray(ctx, 1);
   RedisModule_ReplyWithArray(ctx, 2);
 
   RedisModuleKey *key = _index_LookupKey(ctx, graphName, label, prop);
@@ -136,6 +137,8 @@ Index* buildIndex(Graph *g, const GrB_Matrix label_matrix, const char *label, co
 // Create and populate index for specified property
 // (This function will create separate string and numeric indices if property has mixed types)
 void Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, const char *label, const char *prop_str) {
+  // Set up a reply of just statistics
+  RedisModule_ReplyWithArray(ctx, 1);
   RedisModule_ReplyWithArray(ctx, 2);
 
   RedisModuleKey *key = _index_LookupKey(ctx, graphName, label, prop_str);

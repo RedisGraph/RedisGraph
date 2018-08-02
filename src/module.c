@@ -196,6 +196,12 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
         return REDISMODULE_OK;
     }
 
+    if (ast->indexNode != NULL) { // index operation
+      char *strPlan = Index_OpPrint(ast->indexNode);
+      RedisModule_ReplyWithStringBuffer(ctx, strPlan, strlen(strPlan));
+      return REDISMODULE_OK;
+    }
+
     ExecutionPlan *plan = NewExecutionPlan(ctx, g, graph_name, ast, true);
     char* strPlan = ExecutionPlanPrint(plan);
     RedisModule_ReplyWithStringBuffer(ctx, strPlan, strlen(strPlan));
