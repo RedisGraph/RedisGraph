@@ -76,10 +76,15 @@ void Index_Delete(RedisModuleCtx *ctx, const char *graphName, const char *label,
   }
 
   Index *idx = RedisModule_ModuleTypeGetValue(key);
-  Index_Free(idx);
 
+  // The DeleteKey routine will free the index and skiplists
   RedisModule_DeleteKey(key);
   RedisModule_ReplyWithSimpleString(ctx, "Removed 1 index.");
+}
+
+void initialize_skiplists(Index *index) {
+  index->string_sl = skiplistCreate(compareStrings, compareNodes, cloneKey, freeKey);
+  index->numeric_sl = skiplistCreate(compareNumerics, compareNodes, cloneKey, freeKey);
 }
 
 Index* buildIndex(Graph *g, const GrB_Matrix label_matrix, const char *label, const char *prop_str) {
@@ -88,8 +93,7 @@ Index* buildIndex(Graph *g, const GrB_Matrix label_matrix, const char *label, co
   index->label = strdup(label);
   index->property = strdup(prop_str);
 
-  index->string_sl = skiplistCreate(compareStrings, compareNodes, cloneKey, freeKey);
-  index->numeric_sl = skiplistCreate(compareNumerics, compareNodes, cloneKey, freeKey);
+  initialize_skiplists(index);
 
   TuplesIter *it = TuplesIter_new(label_matrix);
 

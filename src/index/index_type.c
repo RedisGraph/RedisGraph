@@ -12,7 +12,7 @@ RedisModuleType *IndexRedisModuleType;
 
 void saveSIValue(RedisModuleIO *rdb, SIValue *v) {
   // Elem 1: key type
-  RedisModule_SaveUnsigned(rdb, v->type);
+  RedisModule_SaveUnsigned(rdb, (uint64_t)v->type);
 
   // Elem 2: key val
   if (v->type == T_STRING) {
@@ -64,8 +64,7 @@ void serializeSkiplistNode(RedisModuleIO *rdb, skiplistNode *sl_node) {
 
   for (int i = 0; i < sl_node->numVals; i ++) {
     node_id = (GrB_Index)sl_node->vals[i];
-    // graph_node->id is of type `long int`
-    RedisModule_SaveUnsigned(rdb, (uint64_t)node_id);
+    RedisModule_SaveUnsigned(rdb, node_id);
   }
 }
 
@@ -96,28 +95,29 @@ void loadSkiplist(RedisModuleIO *rdb, skiplist *sl) {
 
   for (int i = 0; i < sl_len; i ++) {
     // Loop over key-val pairs
-    SIValue key = loadSIValue(rdb);
+    // TODO ensure this gets freed
+    SIValue *key = malloc(sizeof(SIValue));
+    *key = loadSIValue(rdb);
 
     node_num_vals = RedisModule_LoadUnsigned(rdb);
     for (int j = 0; j < node_num_vals; j ++) {
-      uint64_t node_id = RedisModule_LoadUnsigned(rdb);
-      // printf("ID: %lu\n", node_id);
-      // skiplistInsert(sl, key, node);
+      GrB_Index node_id = RedisModule_LoadUnsigned(rdb);
+      skiplistInsert(sl, key, node_id);
     }
   }
 }
 
 void *IndexType_RdbLoad(RedisModuleIO *rdb, int encver) {
-  if (encver != 0) {
-    return NULL;
-  }
 
   const char *label = RedisModule_LoadStringBuffer(rdb, NULL);
   const char *property = RedisModule_LoadStringBuffer(rdb, NULL);
 
   Index *index = malloc(sizeof(Index));
+  // TODO I don't think these need to be duped
   index->label = strdup(label);
   index->property = strdup(property);
+
+  initialize_skiplists(index);
 
   loadSkiplist(rdb, index->string_sl);
   loadSkiplist(rdb, index->numeric_sl);
