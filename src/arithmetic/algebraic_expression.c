@@ -27,6 +27,7 @@ AlgebraicExpressionResult *_AlgebraicExpressionResult_New(GrB_Matrix M, Algebrai
 AlgebraicExpression *_AE_MUL(size_t operand_count) {
     AlgebraicExpression *ae = malloc(sizeof(AlgebraicExpression));
     ae->op = AL_EXP_MUL;
+    ae->operand_cap = operand_count + 2;
     ae->operand_count = operand_count;
     ae->operands = malloc(sizeof(AlgebraicExpressionOperand) * operand_count);
     ae->_transpose = false;
@@ -84,7 +85,7 @@ AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(AlgebraicExpr
 
         iexp->operands[iexp->operand_count++] = exp->operands[operandIdx++];
 
-        /* If intermidate node is referenced create a new algebraic expression. */
+        /* If intermidate node is referenced, create a new algebraic expression. */
         if(_intermidate_node(dest) && _referred_node(dest, q, ref_nodes)) {
             // Finalize current expression.
             iexp->dest_node = QueryGraph_GetNodeRef(q, dest);
@@ -201,18 +202,17 @@ AlgebraicExpression **AlgebraicExpression_From_Query(const AST_Query *ast, Vecto
 AlgebraicExpressionResult *AlgebraicExpression_Execute(AlgebraicExpression *ae) {
     assert(ae);
 
-    GrB_Matrix A = ae->operands[0].operand;
+    size_t operand_count = ae->operand_count;
+    AlgebraicExpressionOperand operands[operand_count];
+    memcpy(operands, ae->operands, sizeof(AlgebraicExpressionOperand) * operand_count);
+
+    GrB_Matrix A = operands[0].operand;
     GrB_Matrix C = A;
 
-    if(ae->operand_count == 1) {
-        /* AlgebraicExpression_Transpose guarantees that
-         * either the expression is marked as transposed or
-         * the single term, but never both. */
-        assert(!(ae->_transpose && ae->operands[0].transpose));
-
+    if(operand_count == 1) {
         /* When transposing we must duplicate, as graph matrices
          * should be considered immutable. */
-        if(ae->operands[0].transpose) {
+        if(operands[0].transpose) {
             GrB_Matrix transposed;
             GrB_Index nrows;
             GrB_Matrix_nrows(&nrows, A);
@@ -221,40 +221,28 @@ AlgebraicExpressionResult *AlgebraicExpression_Execute(AlgebraicExpression *ae) 
             C = transposed;
         }
     } else {
+        C = NULL;
         GrB_Descriptor desc;
         GrB_Descriptor_new(&desc);
-
-        GrB_Index nrows;
-        GrB_Matrix_nrows(&nrows, A);
-        GrB_Matrix_new(&C, GrB_BOOL, nrows, nrows);
-
         AlgebraicExpressionOperand leftTerm;
         AlgebraicExpressionOperand rightTerm;
 
-        while(ae->operand_count > 1) {
-            // Pick matrix with min NNZ.
-            int minMatPos = _AlgebraicExpression_MinMatPos(ae);
-            int secondOperandPos = -1;
-            // Pick second operand, either left or right of minMatPos.
-            if(minMatPos == ae->operand_count-1) {
-                // Last operand, multiply to the right.
-                secondOperandPos = minMatPos-1;
-                rightTerm = ae->operands[minMatPos];
-                leftTerm = ae->operands[secondOperandPos];
-            } else if(minMatPos == 0) {
-                // First operand, multiply to the left.
-                secondOperandPos = 1;
-                leftTerm = ae->operands[0];
-                rightTerm = ae->operands[secondOperandPos];
-            } else {
-                /* Intermidate operand, prefer multiplying to the right. */
-                secondOperandPos = minMatPos-1;
-                rightTerm = ae->operands[minMatPos];
-                leftTerm = ae->operands[secondOperandPos];
+        /* Multiply right to left,
+         * A*B*C*D,
+         * X = C*D
+         * Y = B*X
+         * Z = A*Y */
+        while(operand_count > 1) {
+            rightTerm = operands[operand_count-1];
+            leftTerm = operands[operand_count-2];
+            
+            if(!C) {
+                GrB_Index nrows;
+                GrB_Index ncols;
+                GrB_Matrix_nrows(&nrows, leftTerm.operand);
+                GrB_Matrix_ncols(&ncols, rightTerm.operand);
+                GrB_Matrix_new(&C, GrB_BOOL, nrows, ncols);
             }
-
-            // Terms must be consecutive.
-            assert(abs(minMatPos - secondOperandPos) == 1);
 
             // Multiply and reduce.
             if(leftTerm.transpose) GrB_Descriptor_set(desc, GrB_INP0, GrB_TRAN);
@@ -266,36 +254,38 @@ AlgebraicExpressionResult *AlgebraicExpression_Execute(AlgebraicExpression *ae) 
             GrB_Descriptor_set(desc, GrB_INP0, GxB_DEFAULT);
             GrB_Descriptor_set(desc, GrB_INP1, GxB_DEFAULT);
 
-            // Assign result to minMatPos position and shrink operands array.
-            ae->operands[minMatPos].operand = C;
-            ae->operands[minMatPos].transpose = false;
-
-            // Shift left.
-            for(int i = secondOperandPos; i < ae->operand_count-1; i++)
-                ae->operands[i] = ae->operands[i+1];
-
-            ae->operand_count--;
+            // Assign result and update operands count.
+            operands[operand_count-2].operand = C;
+            operands[operand_count-2].transpose = false;
+            operand_count--;
         }
 
         GrB_Descriptor_free(&desc);
-    }
+    }    
 
-    if(ae->_transpose) GrB_transpose(C, NULL, NULL, C, NULL);
+    // if(ae->_transpose) GrB_transpose(C, NULL, NULL, C, NULL);
     return _AlgebraicExpressionResult_New(C, ae);
 }
 
 void AlgebraicExpression_AppendTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transpose) {
-    assert(ae);
+    assert(ae);    
+    if(ae->operand_count+1 >= ae->operand_cap)
+        ae->operand_cap += 4;
+        ae->operands = realloc(ae->operands, sizeof(AlgebraicExpressionOperand) * ae->operand_cap);
+
+    ae->operands[ae->operand_count].transpose = transpose;
+    ae->operands[ae->operand_count].operand = m;
     ae->operand_count++;
-    ae->operands = realloc(ae->operands, sizeof(AlgebraicExpressionOperand) * ae->operand_count);
-    ae->operands[ae->operand_count-1].transpose = transpose;
-    ae->operands[ae->operand_count-1].operand = m;
 }
 
 void AlgebraicExpression_PrependTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transpose) {
     assert(ae);
+
     ae->operand_count++;
-    ae->operands = realloc(ae->operands, sizeof(AlgebraicExpressionOperand) * ae->operand_count);
+    if(ae->operand_count >= ae->operand_cap)
+        ae->operand_cap += 4;
+        ae->operands = realloc(ae->operands, sizeof(AlgebraicExpressionOperand) * ae->operand_cap);
+
     // TODO: might be optimized with memcpy.
     // Shift operands to the right, making room at the begining.
     for(int i = ae->operand_count-1; i > 0 ; i--) {
@@ -306,26 +296,40 @@ void AlgebraicExpression_PrependTerm(AlgebraicExpression *ae, GrB_Matrix m, bool
     ae->operands[0].operand = m;
 }
 
-void AlgebraicExpression_Transpose(AlgebraicExpression *ae) {
+void AlgebraicExpression_RemoveTerm(AlgebraicExpression *ae, int idx, AlgebraicExpressionOperand *operand) {
+    if(idx < 0 || idx >= ae->operand_count) return;
+    if(operand) *operand = ae->operands[idx];
 
+    // Shift left.
+    for(int i = idx; i < ae->operand_count-1; i++) {
+        ae->operands[i] = ae->operands[i+1];
+    }
+
+    ae->operand_count--;
+}
+
+bool AlgebraicExpression_IsTranspose(const AlgebraicExpression *ae) {
+    return ae->_transpose;
+}
+
+void AlgebraicExpression_Transpose(AlgebraicExpression *ae) {
+    /* Actually transpose expression:
+     * E = A*B*C 
+     * Transpose(E) = 
+     * = Transpose(A*B*C) = 
+     * = CT*BT*AT */
+    
     // Switch expression src and dest nodes.
     Node **n = ae->src_node;
     ae->src_node = ae->dest_node;
     ae->dest_node = n;
 
-    if(ae->operand_count == 1) {
-        // Expression transpose is determined by its only term.
-        ae->_transpose = false;
-        ae->operands[0].transpose = !ae->operands[0].transpose;
-    } else {
-        // Flip expression transpose flag.
-        ae->_transpose = !ae->_transpose;
-    }
-}
+    _AlgebraicExpression_ReverseOperandOrder(ae);
 
-bool AlgebraicExpression_IsTranspose(const AlgebraicExpression *ae) {
-    if(ae->operand_count == 1) return ae->operands[0].transpose;
-    else return ae->_transpose;
+    for(int i = 0; i < ae->operand_count; i++)
+        ae->operands[i].transpose = !ae->operands[i].transpose;
+
+    ae->_transpose = !ae->_transpose;
 }
 
 void AlgebraicExpressionResult_Free(AlgebraicExpressionResult *aer) {

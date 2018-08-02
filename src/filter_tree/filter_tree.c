@@ -321,7 +321,9 @@ Vector *FilterTree_CollectAliases(const FT_FilterNode *root) {
     void *value;
 
     while(TrieMapIterator_Next(it, &ptr, &len, &value)) {
-        Vector_Push(aliases, strdup(ptr));
+        char *alias = strdup(ptr);
+        alias[len] = 0;
+        Vector_Push(aliases, alias);
     }
 
     TrieMap_Free(t, NULL);

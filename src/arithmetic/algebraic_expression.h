@@ -40,6 +40,7 @@ typedef struct  {
 typedef struct {
     AL_EXP_OP op;                           // Operation to perform.
     size_t operand_count;                   // Number of operands.
+    size_t operand_cap;                     // Number of operands.
     AlgebraicExpressionOperand *operands;   // Array of operands.
     Node **src_node;                        // Nodes represented by the first operand rows.
     Node **dest_node;                       // Nodes represented by the last operand columns.
@@ -57,6 +58,9 @@ void AlgebraicExpression_AppendTerm(AlgebraicExpression *ae, GrB_Matrix m, bool 
 
 /* Prepend m as the first term in the expression ae. */
 void AlgebraicExpression_PrependTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transpose);
+
+/* Removes operand at position idx */
+void AlgebraicExpression_RemoveTerm(AlgebraicExpression *ae, int idx, AlgebraicExpressionOperand *operand);
 
 /* Whenever we decide to transpose an expression, call this function
  * directly accessing expression transpose flag is forbidden. */

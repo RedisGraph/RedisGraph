@@ -18,14 +18,14 @@ TRAVERSE_ORDER determineTraverseOrder(const QueryGraph *qg,
                                       size_t expCount) {
 
     if(expCount == 1 || !filterTree) {
-        return TRAVERSE_ORDER_LAST;
+        return TRAVERSE_ORDER_FIRST;
     }
     
     char *destAlias;
     char *srcAlias;
     AlgebraicExpression *exp;
-
     TRAVERSE_ORDER order = TRAVERSE_ORDER_FIRST;
+
     Vector *aliases = FilterTree_CollectAliases(filterTree);
     size_t aliasesCount = Vector_Size(aliases);
 
@@ -58,6 +58,11 @@ TRAVERSE_ORDER determineTraverseOrder(const QueryGraph *qg,
     }
 
 cleanup:
+    for(int i = 0; i < aliasesCount; i++) {
+        char *alias;
+        Vector_Get(aliases, i, &alias);
+        free(alias);
+    }
     Vector_Free(aliases);
     return order;
 }

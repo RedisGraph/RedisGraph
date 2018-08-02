@@ -49,13 +49,15 @@ bool _single_matrix_filter_select_op(const GrB_Index i, const GrB_Index j,
 
     Node *srcNode = Graph_GetNode(g, j);
     Node *destNode = Graph_GetNode(g, i);
-    if(transposed) {
-        *ae->src_node = destNode;
-        *ae->dest_node = srcNode;
-    } else {
-        *ae->src_node = srcNode;
-        *ae->dest_node = destNode;
-    }
+    // if(transposed) {
+    //     *ae->src_node = destNode;
+    //     *ae->dest_node = srcNode;
+    // } else {
+    //     *ae->src_node = srcNode;
+    //     *ae->dest_node = destNode;
+    // }
+    *ae->src_node = srcNode;
+    *ae->dest_node = destNode;
     return FilterTree_applyFilters(filter);
 }
 
@@ -119,6 +121,7 @@ void _groupFilters(AlgebraicExpression *ae,
             AppendRightChild(and, *hand);
             *hand = and;
         }
+        free(alias);
     }
 }
 
@@ -141,8 +144,9 @@ void _applyRightHandFilters(FT_FilterNode *filterTree, AlgebraicExpression *ae, 
 
     // Save original node to be restored when we're done.
     Node **filteredNode;
-    if(AlgebraicExpression_IsTranspose(ae)) filteredNode = ae->dest_node;
-    else filteredNode = ae->src_node;
+    // if(AlgebraicExpression_IsTranspose(ae)) filteredNode = ae->dest_node;
+    // else filteredNode = ae->src_node;
+    filteredNode = ae->src_node;
     Node *originalNode = *filteredNode;
 
     GrB_Vector col = NULL;
@@ -195,8 +199,9 @@ void _applyLeftHandFilters(FT_FilterNode *filterTree, AlgebraicExpression *ae, c
     
     // Save original node to be restored when we're done.
     Node **filteredNode;
-    if(AlgebraicExpression_IsTranspose(ae)) filteredNode = ae->src_node;
-    else filteredNode = ae->dest_node;
+    // if(AlgebraicExpression_IsTranspose(ae)) filteredNode = ae->src_node;
+    // else filteredNode = ae->dest_node;
+    filteredNode = ae->dest_node;
     Node *originalNode = *filteredNode;
 
     GrB_Index rowIdx;
@@ -254,6 +259,7 @@ void _locateTraverseFilters(const OpBase *traverseOp, Vector *filterOps) {
         if(Vector_Size(filteredEntities) == 1) {
             Vector_Push(filterOps, current);
         }
+        // TODO: Free filteredEntities elements.
         Vector_Free(filteredEntities);
 
         // Advance to the next operation.
@@ -368,13 +374,15 @@ void translateFilters(ExecutionPlan *plan) {
         } else {
             const char *srcNodeAlias = NULL;
             const char *destNodeAlias = NULL;
-            if(AlgebraicExpression_IsTranspose(ae)) {
-                destNodeAlias = QueryGraph_GetNodeAlias(plan->graph, *ae->src_node);
-                srcNodeAlias = QueryGraph_GetNodeAlias(plan->graph, *ae->dest_node);
-            } else {
-                srcNodeAlias = QueryGraph_GetNodeAlias(plan->graph, *ae->src_node);
-                destNodeAlias = QueryGraph_GetNodeAlias(plan->graph, *ae->dest_node);
-            }
+            // if(AlgebraicExpression_IsTranspose(ae)) {
+            //     destNodeAlias = QueryGraph_GetNodeAlias(plan->graph, *ae->src_node);
+            //     srcNodeAlias = QueryGraph_GetNodeAlias(plan->graph, *ae->dest_node);
+            // } else {
+            //     srcNodeAlias = QueryGraph_GetNodeAlias(plan->graph, *ae->src_node);
+            //     destNodeAlias = QueryGraph_GetNodeAlias(plan->graph, *ae->dest_node);
+            // }
+            srcNodeAlias = QueryGraph_GetNodeAlias(plan->graph, *ae->src_node);
+            destNodeAlias = QueryGraph_GetNodeAlias(plan->graph, *ae->dest_node);
 
             FT_FilterNode *leftHand = NULL;
             FT_FilterNode *rightHand = NULL;
