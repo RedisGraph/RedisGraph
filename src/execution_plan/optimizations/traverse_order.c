@@ -23,14 +23,18 @@ TRAVERSE_ORDER determineTraverseOrder(const QueryGraph *qg,
     
     char *destAlias;
     char *srcAlias;
+    bool firstExpLabeled = false;
+    bool lastExpLabeled = false;
     AlgebraicExpression *exp;
     TRAVERSE_ORDER order = TRAVERSE_ORDER_FIRST;
-
+    
     Vector *aliases = FilterTree_CollectAliases(filterTree);
     size_t aliasesCount = Vector_Size(aliases);
 
     // See if there's a filter applied to the first expression.
     exp = exps[0];
+    firstExpLabeled |= (*exp->src_node)->label != NULL;
+    firstExpLabeled |= (*exp->dest_node)->label != NULL;    
     destAlias = QueryGraph_GetNodeAlias(qg, *exp->dest_node);
     srcAlias = QueryGraph_GetNodeAlias(qg, *exp->src_node);
 
@@ -45,6 +49,8 @@ TRAVERSE_ORDER determineTraverseOrder(const QueryGraph *qg,
 
     // See if there's a filter applied to the last expression.
     exp = exps[expCount-1];
+    lastExpLabeled |= (*exp->src_node)->label != NULL;
+    lastExpLabeled |= (*exp->dest_node)->label != NULL;
     destAlias = QueryGraph_GetNodeAlias(qg, *exp->dest_node);
     srcAlias = QueryGraph_GetNodeAlias(qg, *exp->src_node);
 
@@ -56,6 +62,12 @@ TRAVERSE_ORDER determineTraverseOrder(const QueryGraph *qg,
             goto cleanup;
         }
     }
+
+    /* If we're here, that means both first and last expressions
+     * do not have a filter applied to them. In that case
+     * prefer the expression which have a label specified
+     * for either its source or destination node. */
+    if(lastExpLabeled) order = TRAVERSE_ORDER_LAST;
 
 cleanup:
     for(int i = 0; i < aliasesCount; i++) {
