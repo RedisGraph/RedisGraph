@@ -29,7 +29,7 @@ AlgebraicExpression *_AE_MUL(size_t operand_count) {
     ae->op = AL_EXP_MUL;
     ae->operand_cap = operand_count + 2;
     ae->operand_count = operand_count;
-    ae->operands = malloc(sizeof(AlgebraicExpressionOperand) * operand_count);
+    ae->operands = malloc(sizeof(AlgebraicExpressionOperand) * ae->operand_cap);
     ae->_transpose = false;
     return ae;
 }
