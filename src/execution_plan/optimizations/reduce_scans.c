@@ -23,8 +23,8 @@ void _reduceScans(ExecutionPlan *plan, OpBase *op) {
             // Consecutive traverse scan operations, no filters.
             // Replace Conditional Traverse operation with Traverse.
             OpBase *traverse = NewTraverseOp(condTraversal->graph, plan->graph, condTraversal->algebraic_expression);
-            ExecutionPlan_ReplaceOp(condTraversal, traverse);
-            OpBase_Free(condTraversal);
+            ExecutionPlan_ReplaceOp((OpBase*)condTraversal, (OpBase*)traverse);
+            OpBase_Free((OpBase*)condTraversal);
             return;
         }
     }

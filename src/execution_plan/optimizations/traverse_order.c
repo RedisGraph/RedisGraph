@@ -33,8 +33,7 @@ TRAVERSE_ORDER determineTraverseOrder(const QueryGraph *qg,
 
     // See if there's a filter applied to the first expression.
     exp = exps[0];
-    firstExpLabeled |= (*exp->src_node)->label != NULL;
-    firstExpLabeled |= (*exp->dest_node)->label != NULL;    
+    firstExpLabeled = (*exp->src_node)->label || (*exp->dest_node)->label;
     destAlias = QueryGraph_GetNodeAlias(qg, *exp->dest_node);
     srcAlias = QueryGraph_GetNodeAlias(qg, *exp->src_node);
 
@@ -49,8 +48,7 @@ TRAVERSE_ORDER determineTraverseOrder(const QueryGraph *qg,
 
     // See if there's a filter applied to the last expression.
     exp = exps[expCount-1];
-    lastExpLabeled |= (*exp->src_node)->label != NULL;
-    lastExpLabeled |= (*exp->dest_node)->label != NULL;
+    lastExpLabeled = (*exp->src_node)->label || (*exp->dest_node)->label;
     destAlias = QueryGraph_GetNodeAlias(qg, *exp->dest_node);
     srcAlias = QueryGraph_GetNodeAlias(qg, *exp->src_node);
 

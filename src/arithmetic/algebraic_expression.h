@@ -25,7 +25,6 @@ typedef struct {
     Node **src_node;    // Nodes represented by matrix rows.
     Node **dest_node;   // Nodes represented by matrix columns.
     bool _free_m;       // Should M be freed or not.
-    bool _transpose;    // Result got transposed.
 } AlgebraicExpressionResult;
 
 /* AlgebraicExpressionOperand a single operand within an
@@ -44,7 +43,6 @@ typedef struct {
     AlgebraicExpressionOperand *operands;   // Array of operands.
     Node **src_node;                        // Nodes represented by the first operand rows.
     Node **dest_node;                       // Nodes represented by the last operand columns.
-    bool _transpose;                         // Transpose result.
 } AlgebraicExpression;
 
 /* Construct an algebraic expression from a query. */

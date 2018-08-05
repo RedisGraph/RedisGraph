@@ -17,7 +17,6 @@ AlgebraicExpressionResult *_AlgebraicExpressionResult_New(GrB_Matrix M, Algebrai
     aer->m = M;
     aer->src_node = ae->src_node;
     aer->dest_node = ae->dest_node;
-    aer->_transpose = ae->_transpose;
     /* Free either when a multiplication was performed,
      * or a single operand was transposed */
     aer->_free_m = (ae->operand_count > 1 || ae->operands[0].transpose);
@@ -30,7 +29,6 @@ AlgebraicExpression *_AE_MUL(size_t operand_count) {
     ae->operand_cap = operand_count + 2;
     ae->operand_count = operand_count;
     ae->operands = malloc(sizeof(AlgebraicExpressionOperand) * ae->operand_cap);
-    ae->_transpose = false;
     return ae;
 }
 
@@ -308,10 +306,6 @@ void AlgebraicExpression_RemoveTerm(AlgebraicExpression *ae, int idx, AlgebraicE
     ae->operand_count--;
 }
 
-bool AlgebraicExpression_IsTranspose(const AlgebraicExpression *ae) {
-    return ae->_transpose;
-}
-
 void AlgebraicExpression_Transpose(AlgebraicExpression *ae) {
     /* Actually transpose expression:
      * E = A*B*C 
@@ -328,14 +322,9 @@ void AlgebraicExpression_Transpose(AlgebraicExpression *ae) {
 
     for(int i = 0; i < ae->operand_count; i++)
         ae->operands[i].transpose = !ae->operands[i].transpose;
-
-    ae->_transpose = !ae->_transpose;
 }
 
 void AlgebraicExpressionResult_Free(AlgebraicExpressionResult *aer) {
-    // Transpose only if we're not required to free result matrix.
-    if(!aer->_free_m && aer->_transpose) GrB_transpose(aer->m, NULL, NULL, aer->m, NULL);
-
     if(aer->_free_m) GrB_Matrix_free(&aer->m);
     free(aer);
 }
