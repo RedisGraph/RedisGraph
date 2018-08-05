@@ -43,6 +43,7 @@ void extractColumn(CondTraverse *op) {
     AlgebraicExpression_AppendTerm(op->algebraic_expression, (GrB_Matrix)v, false);
 
     // Evaluate expression, result is a vector.
+    if(op->algebraic_results) AlgebraicExpressionResult_Free(op->algebraic_results);
     op->algebraic_results = AlgebraicExpression_Execute(op->algebraic_expression);    
     op->M = op->algebraic_results->m;
     // Remove vector operand.
