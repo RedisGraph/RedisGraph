@@ -233,6 +233,10 @@ void AST_NameAnonymousNodes(AST_Query *ast) {
     CreateClause_NameAnonymousNodes(ast->createNode, &entity_id);
 }
 
+bool AST_ReadOnly(const AST_Query *ast) {
+  return !(ast->createNode != NULL || ast->mergeNode != NULL || ast->deleteNode != NULL || ast->setNode != NULL);
+}
+
 void Free_AST_Query(AST_Query *queryExpressionNode) {
   Free_AST_MatchNode(queryExpressionNode->matchNode);
   Free_AST_CreateNode(queryExpressionNode->createNode);

@@ -9,8 +9,7 @@ endif
 
 # Default CFLAGS
 CFLAGS = -Wall -Wno-unused-function -Wno-unused-variable -Wno-unused-result -fPIC \
- 	-D_GNU_SOURCE -std=gnu99 -I"$(shell pwd)" -DREDIS_MODULE_TARGET \
-	-DREDISMODULE_EXPERIMENTAL_API
+ 	-D_GNU_SOURCE -std=gnu99 -I"$(shell pwd)" -DREDIS_MODULE_TARGET
 CFLAGS += $(DEBUGFLAGS)
 
 # Compile flags for linux / osx
@@ -26,6 +25,7 @@ export CFLAGS
 SOURCEDIR=$(shell pwd -P)
 CC_SOURCES = $(wildcard $(SOURCEDIR)/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/bulk_insert/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/execution_plan/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/execution_plan/ops/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/execution_plan/optimizations/*.c)
@@ -43,6 +43,7 @@ CC_SOURCES += $(wildcard $(SOURCEDIR)/resultset/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/stores/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/util/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/util/hashmap/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/util/thpool/*.c)
 
 # Convert all sources to .o files
 CC_OBJECTS = $(patsubst %.c, %.o, $(CC_SOURCES) )

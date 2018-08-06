@@ -8,6 +8,7 @@
 #ifndef AST_H
 #define AST_H
 
+#include <stdbool.h>
 #include "../value.h"
 #include "./ast_common.h"
 #include "../redismodule.h"
@@ -37,16 +38,13 @@ AST_Query* New_AST_Query(AST_MatchNode *matchNode, AST_WhereNode *whereNode,
 						 AST_ReturnNode *returnNode, AST_OrderNode *orderNode,
 						 AST_LimitNode *limitNode);
 
-/* AST clause validations. */
-AST_Validation _Validate_CREATE_Clause(const AST_Query* ast, char **reason);
-AST_Validation _Validate_DELETE_Clause(const AST_Query* ast, char **reason);
-AST_Validation _Validate_MATCH_Clause(const AST_Query* ast, char **reason);
-AST_Validation _Validate_RETURN_Clause(const AST_Query* ast, char **reason);
-AST_Validation _Validate_SET_Clause(const AST_Query* ast, char **reason);
-AST_Validation _Validate_WHERE_Clause(const AST_Query* ast, char **reason);
+// AST clause validations.
 AST_Validation AST_Validate(const AST_Query* ast, char **reason);
 
 void AST_NameAnonymousNodes(AST_Query *ast);
+
+// Checks if AST represent a read only query.
+bool AST_ReadOnly(const AST_Query *ast);
 
 void Free_AST_Query(AST_Query *queryExpressionNode);
 
