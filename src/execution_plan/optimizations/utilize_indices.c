@@ -45,7 +45,6 @@ void updateScanOps(RedisModuleCtx *ctx, const char *graph_name, ExecutionPlan *p
 
   // Collect all filters on scanned entities
   NodeByLabelScan *scanOp;
-
   Vector *filterOps = NewVector(OpBase*, 0);
   Vector *filters = NewVector(FT_FilterNode*, 0);
 
@@ -62,6 +61,7 @@ void updateScanOps(RedisModuleCtx *ctx, const char *graph_name, ExecutionPlan *p
     if (Vector_Size(filterOps) == 0) continue;
 
     // Extract actual filter trees.
+    // TODO should this be in this loop?
     Vector *filters = NewVector(FT_FilterNode*, Vector_Size(filterOps));
     for (int i = 0; i < Vector_Size(filterOps); i ++) {
       OpBase *opFilter;
@@ -75,8 +75,11 @@ void updateScanOps(RedisModuleCtx *ctx, const char *graph_name, ExecutionPlan *p
      * equal or higher precedence OR filters, we can switch to an index scan. */
 
     IndexIter *iter = NULL;
-    Index *idx;
+    Index *idx = NULL;
     FT_FilterNode *ft;
+    /* We'll currently use the first matching index, but apply all the filters on
+     * that property. A later optimization would be to find the index with the
+     * most filters, or use some heuristic for trying to select the minimal range. */
     // TODO can maybe be woven into above loop
     for (int i = 0; i < Vector_Size(filters); i ++) {
       Vector_Get(filters, i, &ft);
@@ -84,13 +87,23 @@ void updateScanOps(RedisModuleCtx *ctx, const char *graph_name, ExecutionPlan *p
        * we can safely employ it if it's a const predicate and ignore it otherwise. */
       if (!IsNodeConstantPredicate(ft)) continue;
 
-      // Is it indexed?
-      // does it specify a new/better bound?
+      // If we've already selected an index on a different property, continue
+      if (idx && strcmp(idx->property, ft->pred.Lop.property)) continue;
 
-      // for starters, apply first viable bound and break
-      if ((idx = Index_Get(ctx, graph_name, label, ft->pred.Lop.property)) != NULL) {
-        iter = IndexIter_CreateFromFilter(idx, &ft->pred);
-        break;
+      // Try to retrieve an index if one has not been selected yet
+      if (!idx) {
+        idx = Index_Get(ctx, graph_name, label, ft->pred.Lop.property);
+        if (!idx) continue;
+        iter = IndexIter_Create(idx, ft->pred.constVal.type);
+      }
+
+      // Tighten the iterator range if possible
+      if (IndexIter_ApplyBound(iter, &ft->pred)) {
+        // Remove filter operations that have been folded into the index scan iterator
+        OpBase* filterOp;
+        Vector_Get(filterOps, i, &filterOp);
+        ExecutionPlan_RemoveOp(filterOp);
+        OpBase_Free(filterOp);
       }
     }
 
@@ -117,43 +130,3 @@ void updateScanOps(RedisModuleCtx *ctx, const char *graph_name, ExecutionPlan *p
   Vector_Free(scanOps);
 }
 
-/* The utilizeIndices optimization finds Label Scan operations with Filter parents and, if
- * any constant predicate filter matches a viable index, replaces the Label Scan with an Index Scan.
- * This allows for the consideration of fewer candidate nodes and significantly increases the speed
- * of the operation.
- */
-/*
-void _utilizeIndices(RedisModuleCtx *ctx, ExecutionPlan *plan, const char *graph_name, Graph *g, OpNode *op) {
-  if (op == NULL) return;
-
-  OpNode *scan_op;
-  Node **scan_target;
-  OpNode *index_op;
-  char *label;
-  if (op->operation->type == OPType_FILTER) {
-    if (op->children[0]->operation->type == OPType_NODE_BY_LABEL_SCAN) {
-      scan_op = op->children[0];
-      scan_target = ((NodeByLabelScan*)scan_op->operation)->node;
-      // TODO replace with better FT traversal
-      Vector *filters = FilterTree_CollectAliasConsts(((Filter*)op->operation)->filterTree,
-          QueryGraph_GetNodeAlias(plan->graph, *scan_target));
-      if (filters != NULL) {
-        IndexIter *iter = Index_IntersectFilters(ctx, graph_name, filters, (*scan_target)->label);
-        Vector_Free(filters);
-        if (iter != NULL) {
-          index_op = NewOpNode(NewIndexScanOp(plan->graph, g, scan_target, iter));
-          ExecutionPlan_ReplaceOp(scan_op, index_op);
-        }
-      }
-    }
-  }
-
-  for (int i = 0; i < op->childCount; i ++) {
-    _utilizeIndices(ctx, plan, graph_name, g, op->children[i]);
-  }
-}
-
-void utilizeIndices(RedisModuleCtx *ctx, ExecutionPlan *plan, const char *graph_name, Graph *g) {
-  return _utilizeIndices(ctx, plan, graph_name, g, plan->root);
-}
-*/

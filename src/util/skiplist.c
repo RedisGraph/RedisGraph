@@ -44,7 +44,6 @@
 
 #include <math.h>
 #include <stdlib.h>
-#include <sys/types.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -382,6 +381,63 @@ skiplistKey skiplistPopTail(skiplist *sl) {
   skiplistKey key = x->key;
   skiplistDelete(sl, key, NULL);
   return key;
+}
+
+void _update_lower_bound(skiplistIterator *iter, skiplistKey bound, int exclusive) {
+  int cmp = iter->sl->compare(iter->current->key, bound);
+  if (cmp < 0) {
+    // This filter improves the bound
+    iter->current = skiplistFindAtLeast(iter->sl, bound, exclusive);
+    iter->minExclusive = exclusive;
+  } else if (cmp == 0 && exclusive && !iter->minExclusive) {
+    // Handle the unlikely edge that we compared equally, but are now specifying
+    // GT rather than GE
+    iter->current = iter->current->level[0].forward;
+    iter->minExclusive = 1;
+  }
+}
+
+void _update_upper_bound(skiplistIterator *iter, skiplistKey bound, int exclusive) {
+  if (!iter->rangeMax) {
+    // TODO This is a bit hard to read, though it's nice to not reference SIValues directly
+    iter->rangeMax = bound;
+    iter->sl->cloneKey(&iter->rangeMax);
+    iter->maxExclusive = exclusive;
+    return;
+  }
+
+  int cmp = iter->sl->compare(iter->rangeMax, bound);
+  if (cmp > 0) {
+    iter->rangeMax = bound;
+    iter->sl->cloneKey(&iter->rangeMax);
+    iter->maxExclusive = exclusive;
+  } else if (cmp == 0 && exclusive != iter->maxExclusive) {
+    // Handle the unlikely edge that we compared equally and are now specifying
+    // different exclusivity - regardless of order, the bound can be exclusive now
+    iter->maxExclusive = 1;
+  }
+}
+
+/*
+ * Update skiplist bounds according to specified op - returns 1 if filter was applicable
+ * (regardless of whether it improves upon original bound) and 0 otherwise. */
+bool skiplistIter_UpdateBound(skiplistIterator *iter, skiplistKey bound, int op) {
+  switch(op) {
+    case EQ:
+      /* EQ should set an inclusive lower and upper bound on the same key, unless
+       * that key is outside the range already specified by the interator
+       * (like a < 10 AND a = 20). */
+      _update_lower_bound(iter, bound, 0);
+      _update_upper_bound(iter, bound, 0);
+      return 1;
+    case LT | LE:
+      _update_upper_bound(iter, bound, op == LT);
+      return 1;
+    case GT | GE:
+      _update_lower_bound(iter, bound, op == GT);
+      return 1;
+  }
+  return 0;
 }
 
 skiplistIterator* skiplistIterateRange(skiplist *sl, skiplistKey min, skiplistKey max,

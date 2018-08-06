@@ -164,6 +164,8 @@ class ImdbFlowTest(FlowTestsBase):
 
         actual_result = redis_graph.query(queries.actors_over_85_index_scan.query)
 
+        redis_graph.redis_con.execute_command("GRAPH.QUERY", redis_graph.name, "DROP INDEX ON :actor(age)")
+
         # assert result set
         self._assert_only_expected_results_are_in_actual_results(
             actual_result,

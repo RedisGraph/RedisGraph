@@ -111,7 +111,8 @@ TEST_F(IndexTest, StringIndex) {
   // Build an iterator from a constant filter - this will include all elements
   SIValue lb = SI_StringVal("");
   FT_FilterNode *filter = CreateConstFilterNode(label, str_key, GE, lb);
-  IndexIter *iter = IndexIter_CreateFromFilter(str_idx, &filter->pred);
+  IndexIter *iter = IndexIter_Create(str_idx, T_STRING);
+  IndexIter_ApplyBound(iter, &filter->pred);
   FilterTree_Free(filter);
 
   GrB_Index *node_id;
@@ -146,7 +147,8 @@ TEST_F(IndexTest, NumericIndex) {
   // Build an iterator from a constant filter - this will include all elements
   SIValue lb = SI_DoubleVal(0);
   FT_FilterNode *filter = CreateConstFilterNode(label, str_key, GE, lb);
-  IndexIter *iter = IndexIter_CreateFromFilter(num_idx, &filter->pred);
+  IndexIter *iter = IndexIter_Create(num_idx, T_DOUBLE);
+  IndexIter_ApplyBound(iter, &filter->pred);
   FilterTree_Free(filter);
 
 

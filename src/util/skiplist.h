@@ -31,7 +31,10 @@
 #ifndef __DISQUE_SKIPLIST_H
 #define __DISQUE_SKIPLIST_H
 
-// TODO this seems like a lot to add
+// Required to interpret tokens like EQ and LT for updating bounds
+#include "../parser/grammar.h"
+
+// TODO these are being included just for the typedefs here
 #include "../value.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 
@@ -91,9 +94,9 @@ typedef struct {
   skiplist *sl;
 } skiplistIterator;
 
+bool skiplistIter_UpdateBound(skiplistIterator *iter, skiplistKey bound, int op);
 skiplistIterator* skiplistIterateRange(skiplist *sl, skiplistKey min, skiplistKey max,
-                                      int minExclusive, int maxExclusive);
-
+                                       int minExclusive, int maxExclusive);
 skiplistIterator* skiplistIterateAll(skiplist *sl);
 
 void skiplistIterate_Reset(skiplistIterator *iter);

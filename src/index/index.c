@@ -37,7 +37,6 @@ int compareNumerics(SIValue *a, SIValue *b) {
  * The index must maintain its own copy of the indexed SIValue
  * so that it becomes outdated but not broken by updates to the property.
  */
-// TODO This can now be built directly into the skiplist-internal functions
 void cloneKey(SIValue **property) {
   SIValue *redirect = *property;
   *redirect = SI_Clone(*redirect);
@@ -164,58 +163,7 @@ void Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, const ch
   RedisModule_ReplyWithSimpleString(ctx, "Added 1 index.");
 }
 
-IndexIter* IndexIter_CreateFromFilter(Index *idx, FT_PredicateNode *filter) {
-  skiplist *target = filter->constVal.type == T_STRING ? idx->string_sl : idx->numeric_sl;
-  SIValue *bound;
-
-  switch(filter->op) {
-    case EQ:
-      // Only cases that set an upper bound for the skiplist require a cloned value,
-      // as the lower bound is only checked within the skiplistIterateRange call here
-      bound = malloc(sizeof(SIValue));
-      *bound = SI_Clone(filter->constVal);
-      return skiplistIterateRange(target, bound, bound, 0, 0);
-
-    case LE:
-      bound = malloc(sizeof(SIValue));
-      *bound = SI_Clone(filter->constVal);
-      return skiplistIterateRange(target, NULL, bound, 0, 0);
-
-    case LT:
-      bound = malloc(sizeof(SIValue));
-      *bound = SI_Clone(filter->constVal);
-      return skiplistIterateRange(target, NULL, bound, 0, 1);
-
-    case GE:
-      return skiplistIterateRange(target, &filter->constVal, NULL, 0, 0);
-
-    case GT:
-      return skiplistIterateRange(target, &filter->constVal, NULL, 1, 0);
-  }
-
-  return NULL;
-}
-
-/*
- * Before the ExecutionPlan has been constructed, we can analyze the FilterTree
- * to see if a scan operation can employ an index. This function will return the iterator
- * required for constructing an indexScan operation.
- */
-IndexIter* Index_IntersectFilters(RedisModuleCtx *ctx, const char *graphName, Vector *filters, const char *label) {
-  FT_PredicateNode *const_filter;
-  Index *idx;
-  while (Vector_Size(filters) > 0) {
-    Vector_Pop(filters, &const_filter);
-    // Look this property up to see if it has been indexed (using the label rather than the node alias)
-    if ((idx = Index_Get(ctx, graphName, label, const_filter->Lop.property)) != NULL) {
-      // Build an iterator from the first matching index
-      return IndexIter_CreateFromFilter(idx, const_filter);
-    }
-  }
-
-  return NULL;
-}
-
+/* Output text for EXPLAIN calls */
 char* Index_OpPrint(AST_IndexNode *indexNode) {
   switch(indexNode->operation) {
     case CREATE_INDEX:
@@ -223,6 +171,17 @@ char* Index_OpPrint(AST_IndexNode *indexNode) {
     default:
       return "Drop Index";
   }
+}
+
+/* Generate an iterator with no lower or upper bound. */
+IndexIter* IndexIter_Create(Index *idx, SIType type) {
+  skiplist *sl = type == T_STRING ? idx->string_sl : idx->numeric_sl;
+  return skiplistIterateAll(sl);
+}
+
+/* Apply a filter to an iterator, returns 1 if filter can be deleted */
+bool IndexIter_ApplyBound(IndexIter *iter, FT_PredicateNode *filter) {
+  return skiplistIter_UpdateBound(iter, &filter->constVal, filter->op);
 }
 
 GrB_Index* IndexIter_Next(IndexIter *iter) {
