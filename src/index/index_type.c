@@ -1,60 +1,27 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Apache License, Version 2.0,
-* modified with the Commons Clause restriction.
-*/
+ * Copyright 2018-2019 Redis Labs Ltd. and Contributors
+ *
+ * This file is available under the Apache License, Version 2.0,
+ * modified with the Commons Clause restriction.
+ */
 
 #include "index_type.h"
 
 /* declaration of the type for redis registration. */
 RedisModuleType *IndexRedisModuleType;
 
-void saveSIValue(RedisModuleIO *rdb, SIValue *v) {
-  // Elem 1: key type
-  RedisModule_SaveUnsigned(rdb, (uint64_t)v->type);
-
-  // Elem 2: key val
+void _IndexType_SaveSkiplistNode(RedisModuleIO *rdb, skiplistNode *sl_node) {
+  /* Format:
+   * Skiplist property key (string or double value only; type will be inferred)
+   * #values
+   *   value X N
+   */
+  SIValue *v = sl_node->key;
   if (v->type == T_STRING) {
-      RedisModule_SaveStringBuffer(rdb, v->stringval, strlen(v->stringval) + 1);
-  } else if (v->type && SI_NUMERIC) {
-    RedisModule_SaveDouble(rdb, v->doubleval);
-    /*
-       TODO we compare numeric keys exclusively as doubles -
-       verify that this assumption is valid. Else, something like below routine?
-       RedisModule_* functions always operate on 64-bit values
-    */
-    /*
-    double converted;
-    if (SIValue_To_Double(v, &converted)) {
-      RedisModule_SaveDouble(rdb, converted);
-    } else {
-      // Conversion to double failed
-    }
-    */
-  }
-}
-
-SIValue loadSIValue(RedisModuleIO *rdb) {
-  // Elem 1: key type
-  SIValue v;
-  // TODO assumes 64 bit
-  v.type = RedisModule_LoadUnsigned(rdb);
-
-  // Elem 2: key val
-  if (v.type == T_STRING) {
-    // TODO safe?
-    v.stringval = RedisModule_LoadStringBuffer(rdb, NULL);
+    RedisModule_SaveStringBuffer(rdb, v->stringval, strlen(v->stringval) + 1);
   } else {
-    v.doubleval = RedisModule_LoadDouble(rdb);
+    RedisModule_SaveDouble(rdb, v->doubleval);
   }
-
-  return v;
-}
-
-void serializeSkiplistNode(RedisModuleIO *rdb, skiplistNode *sl_node) {
-  // Elem 1: SIValue key
-  saveSIValue(rdb, sl_node->key);
 
   // Elem 2: value (Node ID) count
   RedisModule_SaveUnsigned(rdb, (uint64_t)sl_node->numVals);
@@ -68,28 +35,33 @@ void serializeSkiplistNode(RedisModuleIO *rdb, skiplistNode *sl_node) {
   }
 }
 
-void serializeSkiplist(RedisModuleIO *rdb, skiplist *sl) {
-  // Elem: skiplist length
+void _IndexType_SaveSkiplist(RedisModuleIO *rdb, skiplist *sl) {
+  /* Format:
+   * #skiplist keys N
+   *   key N
+   *   #nodes with key M
+   *     Nodes X M
+   */
   RedisModule_SaveUnsigned(rdb, (uint64_t)sl->length);
 
   skiplistNode *node = sl->header->level[0].forward;
   while (node) {
-    // Need to serialize key-val pairs; levels don't matter (and should in fact be restructured on skiplist load)
-    serializeSkiplistNode(rdb, node);
-    // Could free each node at this point
+    // Need to serialize key-val pairs; levels don't matter
+    // (and should in fact be restructured on skiplist load)
+    _IndexType_SaveSkiplistNode(rdb, node);
     node = node->level[0].forward;
   }
 }
 
-void serializeIndex(RedisModuleIO *rdb, Index *index) {
-  RedisModule_SaveStringBuffer(rdb, index->label, strlen(index->label) + 1);
-  RedisModule_SaveStringBuffer(rdb, index->property, strlen(index->property) + 1);
-
-  serializeSkiplist(rdb, index->string_sl);
-  serializeSkiplist(rdb, index->numeric_sl);
-}
-
-void loadSkiplist(RedisModuleIO *rdb, skiplist *sl) {
+/* TODO We're using the default skiplist-building functions right now,
+ * but given that we know all of our elements, it would be better to
+ * switch to a non-randomized method of choosing how to build levels. */
+void _IndexType_LoadSkiplist(RedisModuleIO *rdb, skiplist *sl, SIType valtype) {
+  /* Format:
+   * Skiplist key value (string or double value only; type will be inferred)
+   * #skiplist nodes N
+   *   node X N
+   */
   uint64_t sl_len = RedisModule_LoadUnsigned(rdb);
   uint64_t node_num_vals;
 
@@ -97,7 +69,13 @@ void loadSkiplist(RedisModuleIO *rdb, skiplist *sl) {
     // Loop over key-val pairs
     // TODO ensure this gets freed
     SIValue *key = malloc(sizeof(SIValue));
-    *key = loadSIValue(rdb);
+    if (valtype == T_STRING) {
+      *key = SI_StringVal(RedisModule_LoadStringBuffer(rdb, NULL));
+    
+    } else {
+      *key = SI_DoubleVal(RedisModule_LoadDouble(rdb));
+    
+    }
 
     node_num_vals = RedisModule_LoadUnsigned(rdb);
     for (int j = 0; j < node_num_vals; j ++) {
@@ -108,27 +86,41 @@ void loadSkiplist(RedisModuleIO *rdb, skiplist *sl) {
 }
 
 void *IndexType_RdbLoad(RedisModuleIO *rdb, int encver) {
-
+  /* Format:
+   * label
+   * property
+   * string skiplist
+   * numeric skiplist
+   */
   const char *label = RedisModule_LoadStringBuffer(rdb, NULL);
   const char *property = RedisModule_LoadStringBuffer(rdb, NULL);
 
-  Index *index = malloc(sizeof(Index));
-  // TODO I don't think these need to be duped
-  index->label = strdup(label);
-  index->property = strdup(property);
+  Index *idx = malloc(sizeof(Index));
+  idx->label = strdup(label);
+  idx->property = strdup(property);
 
-  initialize_skiplists(index);
+  initialize_skiplists(idx);
 
-  loadSkiplist(rdb, index->string_sl);
-  loadSkiplist(rdb, index->numeric_sl);
+  _IndexType_LoadSkiplist(rdb, idx->string_sl, T_STRING);
+  _IndexType_LoadSkiplist(rdb, idx->numeric_sl, T_DOUBLE);
 
-  return index;
+  return idx;
 }
 
 void IndexType_RdbSave(RedisModuleIO *rdb, void *value) {
-  Index *index = value;
+  /* Format:
+   * label
+   * property
+   * string skiplist
+   * numeric skiplist
+   */
+  Index *idx = (Index *)value;
 
-  serializeIndex(rdb, index);
+  RedisModule_SaveStringBuffer(rdb, idx->label, strlen(idx->label) + 1);
+  RedisModule_SaveStringBuffer(rdb, idx->property, strlen(idx->property) + 1);
+
+  _IndexType_SaveSkiplist(rdb, idx->string_sl);
+  _IndexType_SaveSkiplist(rdb, idx->numeric_sl);
 }
 
 void IndexType_AofRewrite(RedisModuleIO *aof, RedisModuleString *key, void *value) {
@@ -153,3 +145,4 @@ int IndexType_Register(RedisModuleCtx *ctx) {
   }
   return REDISMODULE_OK;
 }
+

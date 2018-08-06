@@ -28,9 +28,6 @@ OpBase *NewIndexScanOp(QueryGraph *qg, Graph *g, Node **node, IndexIter *iter) {
   return (OpBase*)indexScan;
 }
 
-  /*
-     TODO deletes probably make the basic assumption that IDs are immutable invalid
-   */
 OpResult IndexScanConsume(OpBase *opBase, QueryGraph* graph) {
   IndexScan *op = (IndexScan*)opBase;
 
@@ -38,11 +35,6 @@ OpResult IndexScanConsume(OpBase *opBase, QueryGraph* graph) {
   if (!node_id) return OP_DEPLETED;
 
   *op->node = Graph_GetNode(op->g, *node_id);
-
-  // TODO should be unnecessary
-  if (*op->node == NULL) {
-    return OP_DEPLETED;
-  }
 
   (*op->node)->id = *node_id;
 
@@ -54,7 +46,6 @@ OpResult IndexScanReset(OpBase *ctx) {
 
   /* Restore original node. */
   *indexScan->node = indexScan->_node;
-  // Verify that this call does what we want
   IndexIter_Reset(indexScan->iter);
 
   return OP_OK;

@@ -93,9 +93,9 @@ void _OpBase_PushBelow(OpBase *a, OpBase *b) {
 
 /* Push b right above a. */
 void _OpBase_PushAbove(OpBase *a, OpBase *b) {
-    /* B shouldn't have its children set. */
-    assert(b->children == NULL);
-
+    /* B is a new operation. */
+    assert(!(b->parent || b->children));
+    assert(a->children);
     /* Remove each child of A and add it as a child of B. */
     while(a->childCount) {
         OpBase* child = a->children[0];
@@ -105,28 +105,6 @@ void _OpBase_PushAbove(OpBase *a, OpBase *b) {
 
     /* B is the only child of A. */
     _OpBase_AddChild(a, b);
-}
-
-void ExecutionPlan_RemoveOp(OpBase *op) {
-    assert(op->parent != NULL);
-    
-    // Remove op from its parent.
-    OpBase* parent = op->parent;
-    _OpBase_RemoveChild(op->parent, op);
-
-    // Add each of op's children as a child of op's parent.
-    for(int i = 0; i < op->childCount; i++) {
-        _OpBase_AddChild(parent, op->children[i]);
-    }
-}
-
-// TODO It might be nice to spell out some more of these steps,
-// I think some unnecessary freeing is occurring
-void ExecutionPlan_ReplaceOp(OpBase *op, OpBase *replacement) {
-    assert(op->parent != NULL);
-
-    _OpBase_PushAbove(op, replacement);
-    ExecutionPlan_RemoveOp(op);
 }
 
 Vector* _ExecutionPlan_Locate_References(OpBase *root, OpBase **op, Vector *references) {
@@ -190,6 +168,25 @@ Vector* _ExecutionPlan_Locate_References(OpBase *root, OpBase **op, Vector *refe
 
     if(!match) *op = root;
     return seen;
+}
+
+void ExecutionPlan_AddOp(OpBase *parent, OpBase *newOp) {
+    _OpBase_AddChild(parent, newOp);
+}
+ void ExecutionPlan_ReplaceOp(OpBase *a, OpBase *b) {
+    _OpBase_PushAbove(a->parent, b);
+    ExecutionPlan_RemoveOp(a);
+}
+ void ExecutionPlan_RemoveOp(OpBase *op) {
+    assert(op->parent != NULL);
+
+    // Remove op from its parent.
+    OpBase* parent = op->parent;
+    _OpBase_RemoveChild(op->parent, op);
+     // Add each of op's children as a child of op's parent.
+    for(int i = 0; i < op->childCount; i++) {
+        _OpBase_AddChild(parent, op->children[i]);
+    }
 }
 
 OpBase* ExecutionPlan_Locate_References(OpBase *root, Vector *references) {

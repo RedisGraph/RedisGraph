@@ -430,11 +430,17 @@ bool skiplistIter_UpdateBound(skiplistIterator *iter, skiplistKey bound, int op)
       _update_lower_bound(iter, bound, 0);
       _update_upper_bound(iter, bound, 0);
       return 1;
-    case LT | LE:
-      _update_upper_bound(iter, bound, op == LT);
+    case LT:
+      _update_upper_bound(iter, bound, 1);
       return 1;
-    case GT | GE:
-      _update_lower_bound(iter, bound, op == GT);
+    case LE:
+      _update_upper_bound(iter, bound, 0);
+      return 1;
+    case GT:
+      _update_lower_bound(iter, bound, 1);
+      return 1;
+    case GE:
+      _update_lower_bound(iter, bound, 0);
       return 1;
   }
   return 0;

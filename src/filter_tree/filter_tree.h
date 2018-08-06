@@ -86,9 +86,6 @@ void FilterTree_bindEntities(FT_FilterNode* root, const QueryGraph *g);
  * without duplications. */
 Vector *FilterTree_CollectAliases(const FT_FilterNode *root);
 
-/* Builds Vector of constant filters associated with specific alias */
-Vector* FilterTree_CollectAliasConsts(const FT_FilterNode *root, const char *alias);
-
 /* Prints tree. */
 void FilterTree_Print(const FT_FilterNode *root);
 

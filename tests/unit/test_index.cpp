@@ -151,7 +151,6 @@ TEST_F(IndexTest, NumericIndex) {
   IndexIter_ApplyBound(iter, &filter->pred);
   FilterTree_Free(filter);
 
-
   GrB_Index *node_id;
   Node *cur;
   SIValue last_prop = lb;

@@ -349,7 +349,7 @@ void translateFilters(ExecutionPlan *plan) {
         if(Vector_Size(filterOps) == 0) continue;
 
         // Extract actual filter trees.
-        Vector *filters = NewVector(FT_FilterNode*, Vector_Size(filterOps));
+        Vector_Resize(filters, Vector_Size(filterOps));
         for(int i = 0; i < Vector_Size(filterOps); i++) {            
             OpBase *opFilter;
             Vector_Get(filterOps, i, &opFilter);

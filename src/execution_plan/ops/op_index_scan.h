@@ -24,7 +24,6 @@ typedef struct {
 
 /* Creates a new IndexScan operation */
 OpBase *NewIndexScanOp(QueryGraph *qg, Graph *g, Node **node, IndexIter *iter);
-IndexScan* NewIndexScan(QueryGraph *qg, Graph *g, Node **node, IndexIter *iter);
 
 /* IndexScan next operation
  * called each time a new node is required */

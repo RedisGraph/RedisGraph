@@ -32,13 +32,13 @@ typedef struct {
 void initialize_skiplists(Index *index);
 Index* buildIndex(Graph *g, const GrB_Matrix label_matrix, const char *label, const char *prop_str);
 Index* Index_Get(RedisModuleCtx *ctx, const char *graph, const char *label, const char *property);
-IndexIter* IndexIter_Create(Index *idx, SIType type);
-bool IndexIter_ApplyBound(IndexIter *iter, FT_PredicateNode *filter);
-
 void Index_Delete(RedisModuleCtx *ctx, const char *graphName, const char *label, const char *prop);
 void Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, const char *label, const char *prop_str);
 
 char* Index_OpPrint(AST_IndexNode *indexNode);
+
+IndexIter* IndexIter_Create(Index *idx, SIType type);
+bool IndexIter_ApplyBound(IndexIter *iter, FT_PredicateNode *filter);
 
 GrB_Index* IndexIter_Next(IndexIter *iter);
 void IndexIter_Reset(IndexIter *iter);
