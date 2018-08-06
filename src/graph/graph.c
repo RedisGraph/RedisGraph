@@ -215,12 +215,13 @@ void Graph_ConnectNodes(Graph *g, size_t n, GrB_Index *connections) {
         int dest_id = connections[i+1];
         int r = connections[i+2];
 
-        GrB_Matrix_setElement_BOOL(adj, true, src_id, dest_id);
+        // Columns represent source nodes, rows represent destination nodes.
+        GrB_Matrix_setElement_BOOL(adj, true, dest_id, src_id);
 
         if(r != GRAPH_NO_RELATION) {
             // Typed edge.
             GrB_Matrix M = Graph_GetRelationMatrix(g, r);
-            GrB_Matrix_setElement_BOOL(M, true, src_id, dest_id);
+            GrB_Matrix_setElement_BOOL(M, true, dest_id, src_id);
         }
     }
 }
@@ -344,7 +345,7 @@ void Graph_DeleteEdge(Graph *g, int src_id, int dest_id) {
     // See if there's an edge between src and dest.
     bool connected = false;
     GrB_Matrix M = Graph_GetAdjacencyMatrix(g);
-    GrB_Matrix_extractElement_BOOL(&connected, M, src_id, dest_id);
+    GrB_Matrix_extractElement_BOOL(&connected, M, dest_id, src_id);
     
     if(!connected) return;
 
@@ -352,7 +353,7 @@ void Graph_DeleteEdge(Graph *g, int src_id, int dest_id) {
 
     GrB_Vector mask;
     GrB_Vector_new(&mask, GrB_BOOL, nrows);
-    GrB_Vector_setElement_BOOL(mask, true, src_id);
+    GrB_Vector_setElement_BOOL(mask, true, dest_id);
 
     GrB_Vector col;
     GrB_Vector_new(&col, GrB_BOOL, nrows);
@@ -362,18 +363,18 @@ void Graph_DeleteEdge(Graph *g, int src_id, int dest_id) {
     GrB_Descriptor_set(desc, GrB_OUTP, GrB_REPLACE);
     GrB_Descriptor_set(desc, GrB_MASK, GrB_SCMP);
 
-    // Extract column dest_id.
-    GrB_Col_extract(col, mask, NULL, M, GrB_ALL, nrows, dest_id, desc);
-    GrB_Col_assign(M, NULL, NULL, col, GrB_ALL, nrows, dest_id, NULL);
+    // Extract column src_id.
+    GrB_Col_extract(col, mask, NULL, M, GrB_ALL, nrows, src_id, desc);
+    GrB_Col_assign(M, NULL, NULL, col, GrB_ALL, nrows, src_id, NULL);
 
     // Update relation matrices.
     for(int i = 0; i < g->relation_count; i++) {
         M = Graph_GetRelationMatrix(g, i);
         connected = false;
-        GrB_Matrix_extractElement_BOOL(&connected, M, src_id, dest_id);
+        GrB_Matrix_extractElement_BOOL(&connected, M, dest_id, src_id);
         if(connected) {
-            GrB_Col_extract(col, mask, NULL, M, GrB_ALL, nrows, dest_id, desc);
-            GrB_Col_assign(M, NULL, NULL, col, GrB_ALL, nrows, dest_id, NULL);
+            GrB_Col_extract(col, mask, NULL, M, GrB_ALL, nrows, src_id, desc);
+            GrB_Col_assign(M, NULL, NULL, col, GrB_ALL, nrows, src_id, NULL);
         }
     }
 

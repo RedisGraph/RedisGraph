@@ -137,6 +137,20 @@ static inline void _AlgebraicExpression_Execute_MUL(GrB_Matrix C, GrB_Matrix A, 
     );
 }
 
+// Reverse order of operand within expression,
+// A*B*C will become C*B*A. 
+void _AlgebraicExpression_ReverseOperandOrder(AlgebraicExpression *exp) {
+    int right = exp->operand_count-1;
+    int left = 0;
+    while(right > left) {
+        AlgebraicExpressionOperand leftOp = exp->operands[left];
+        exp->operands[left] = exp->operands[right];
+        exp->operands[right] = leftOp;
+        right--;
+        left++;
+    }
+}
+
 AlgebraicExpression **AlgebraicExpression_From_Query(const AST_Query *ast, Vector *matchPattern, const QueryGraph *q, size_t *exp_count) {
     assert(q->edge_count != 0);
 
@@ -177,6 +191,10 @@ AlgebraicExpression **AlgebraicExpression_From_Query(const AST_Query *ast, Vecto
     
     AlgebraicExpression **expressions = _AlgebraicExpression_Intermidate_Expressions(exp, ast, matchPattern, q, exp_count);
     AlgebraicExpression_Free(exp);
+
+    /* Because matrices are column ordered, when multiplying A*B
+     * we need to reverse the order: B*A. */
+    for(int i = 0; i < *exp_count; i++) _AlgebraicExpression_ReverseOperandOrder(expressions[i]);
     return expressions;
 }
 

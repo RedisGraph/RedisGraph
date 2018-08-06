@@ -30,7 +30,7 @@ typedef struct {
     GrB_Matrix *_relations;         // Relation matrices.
     size_t relation_cap;            // Number of relations graph can hold.
     size_t relation_count;          // Number of relation matrices.
-    GrB_Matrix *_labels;             // Label matrices.
+    GrB_Matrix *_labels;            // Label matrices.
     size_t label_cap;               // Number of labels graph can hold.
     size_t label_count;             // Number of label matrices.
 } Graph;

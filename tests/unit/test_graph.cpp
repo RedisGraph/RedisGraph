@@ -26,197 +26,177 @@ extern "C" {
 #define KRED  "\x1B[31m"
 #define KNRM  "\x1B[0m"
 
-// OK(method) is a macro that calls a GraphBLAS method and checks the status;
-// if a failure occurs, it prints the detailed error message.
-#define OK(method)                                          \
-{                                                           \
-    info = method ;                                         \
-    if (! (info == GrB_SUCCESS || info == GrB_NO_VALUE))    \
-    {                                                       \
-        printf ("file %s line %d\n", __FILE__, __LINE__) ;  \
-        printf ("%s\n", GrB_error ( )) ;                    \
-        assert (false);                                     \
-    }                                                       \
-}
-
 class GraphTest: public ::testing::Test {
   protected:
     static void SetUpTestCase() {
       // Initialize GraphBLAS.
-      GrB_Info info;
-      OK(GrB_init(GrB_NONBLOCKING));
+      GrB_init(GrB_NONBLOCKING);
       srand(time(NULL));
     }
 
     static void TearDownTestCase() {
       GrB_finalize();
     }
-};
 
-/* TODO _print_matrix is unused */
-void _print_matrix(GrB_Matrix M) {
-    GrB_Index nrows;
-    GrB_Index ncols;
-    GrB_Matrix_nrows(&nrows, M);
-    GrB_Matrix_ncols(&ncols, M);
+    Graph* _random_graph(int nodes, int relations) {
+        Graph *g = Graph_New(nodes);
+        Graph_CreateNodes(g, nodes, NULL, NULL);
 
-    for(unsigned int i = 0; i < nrows; i++) {
-        for(unsigned int j = 0; j < ncols; j++) {
-            bool x = false;
-            GrB_Matrix_extractElement_BOOL(&x, M, i, j);
-            printf("%d ", x);
+        for(int i = 0; i < relations; i++) {
+            Graph_AddRelationMatrix(g);
         }
-        printf("\n");
+
+        int connectionCount = 0;
+        GrB_Index *connections = (GrB_Index*)malloc(sizeof(GrB_Index) * 3 * nodes * nodes);
+
+        double mid_point = RAND_MAX/2;
+        for(int i = 0; i < nodes; i++) {
+            for(int j = 0; j < nodes; j++) {
+                if(rand() > mid_point) {
+                    if(i == j) continue;
+                    int relation = (rand() % (relations+1) - 1);
+                    connections[connectionCount++] = i;
+                    connections[connectionCount++] = j;
+                    connections[connectionCount++] = relation;
+                }
+            }
+        }
+
+        Graph_ConnectNodes(g, connectionCount, connections);
+        return g;
     }
-    printf("\n\n\n");
-}
 
-/* TODO the various _ methods should perhaps be moved to a
- * gcc-compiled utility file, though they do work correctly here. */
-Graph* _random_graph(int nodes, int relations) {
-    Graph *g = Graph_New(nodes);
-    Graph_CreateNodes(g, nodes, NULL, NULL);
+    void _print_matrix(GrB_Matrix M) {
+        GrB_Index nrows;
+        GrB_Index ncols;
+        GrB_Matrix_nrows(&nrows, M);
+        GrB_Matrix_ncols(&ncols, M);
 
-    for(int i = 0; i < relations; i++) {
-        Graph_AddRelationMatrix(g);
+        for(unsigned int i = 0; i < nrows; i++) {
+            for(unsigned int j = 0; j < ncols; j++) {
+                bool x = false;
+                GrB_Matrix_extractElement_BOOL(&x, M, i, j);
+                printf("%d ", x);
+            }
+            printf("\n");
+        }
+        printf("\n\n\n");
     }
 
-    int connectionCount = 0;
-    GrB_Index *connections = (GrB_Index*)malloc(sizeof(GrB_Index) * 3 * nodes * nodes);
+    void _test_node_creation(Graph *g, size_t node_count) {
+        GrB_Index ncols, nrows, nvals;
+        NodeIterator *it;
 
-    double mid_point = RAND_MAX/2;
-    for(int i = 0; i < nodes; i++) {
-        for(int j = 0; j < nodes; j++) {
-            if(rand() > mid_point) {
-                if(i == j) continue;
-                int relation = (rand() % (relations+1) - 1);
-                connections[connectionCount++] = i;
-                connections[connectionCount++] = j;
-                connections[connectionCount++] = relation;
+        // Create nodes.
+        Graph_CreateNodes(g, node_count, NULL, &it);
+
+        // Validate nodes creation.
+        EXPECT_EQ(GrB_Matrix_nrows(&nrows, g->adjacency_matrix), GrB_SUCCESS);
+        EXPECT_EQ(GrB_Matrix_ncols(&ncols, g->adjacency_matrix), GrB_SUCCESS);
+        EXPECT_EQ(GrB_Matrix_nvals(&nvals, g->adjacency_matrix), GrB_SUCCESS);
+
+        EXPECT_EQ(nvals, 0);                     // No connection were formed.
+        EXPECT_EQ(ncols, g->node_count);         // Graph's adjacency matrix dimensions.
+        EXPECT_EQ(nrows, g->node_count);
+        EXPECT_EQ(g->node_count, node_count);
+        EXPECT_LE(g->node_count, g->node_cap);
+
+        // Make sure we've received an iterator over created nodes.
+        Node *n;
+        unsigned int new_node_count = 0;
+        while((n = NodeIterator_Next(it)) != NULL) { new_node_count++; }
+        EXPECT_EQ(new_node_count, node_count);
+        NodeIterator_Free(it);
+    }
+
+    void _test_edge_creation(Graph *g, size_t node_count) {
+        // Form connections.
+        size_t edge_count = (node_count-1);
+        GrB_Index connections[edge_count*3];
+
+        // Introduce relations types.
+        for(int i = 0; i < 3; i++) {
+            Graph_AddRelationMatrix(g);
+        }
+
+        // Describe connections;
+        // Node I is connected to Node I+1,
+        // Connection type is relationships[I%4].
+        int node_id = 0;
+        for(unsigned int i = 0; i < edge_count*3; i+=3) {
+            connections[i] = node_id;       // Source node id.
+            connections[i+1] = node_id+1;   // Destination node id.
+            connections[i+2] = (i%4)-1;     // Relation, (-1 for GRAPH_NO_RELATION).
+            node_id++;
+        }
+
+        Graph_ConnectNodes(g, edge_count*3, connections);
+
+        // Validate edges creation,
+        // expecting number of none zero entries to be edge_count.
+        GrB_Index nvals;
+        EXPECT_EQ(GrB_Matrix_nvals(&nvals, g->adjacency_matrix), GrB_SUCCESS);
+        EXPECT_EQ(nvals, edge_count);
+
+        // Inspect graph matrices;
+        // Graph's adjacency matrix should include all connections,
+        // relation matrices should include edges of a certain relation.
+        for(unsigned int i = 0; i < edge_count*3; i+=3) {
+            int src_id = connections[i];
+            int dest_id = connections[i+1];
+            int r = connections[i+2];
+            bool v = false;
+
+            // src_id connected to dest_id.
+            EXPECT_EQ(GrB_Matrix_extractElement_BOOL(&v, g->adjacency_matrix, dest_id, src_id), GrB_SUCCESS);
+            EXPECT_TRUE(v);
+
+            if(r != GRAPH_NO_RELATION) {
+                // Test relation matrix.
+                v = false;
+                GrB_Matrix mat = Graph_GetRelationMatrix(g, r);
+                EXPECT_EQ(GrB_Matrix_extractElement_BOOL(&v, mat, dest_id, src_id), GrB_SUCCESS);
+                EXPECT_TRUE(v);
             }
         }
     }
 
-    Graph_ConnectNodes(g, connectionCount, connections);
-    return g;
-}
+    void _test_graph_resize(Graph *g) {
+        GrB_Index ncols, nrows;
+        size_t prev_node_count = g->node_count;
+        size_t node_count = g->node_cap * 2;
 
-void _test_node_creation(Graph *g, size_t node_count) {
-    GrB_Info info;
-    GrB_Index ncols, nrows, nvals;
-    NodeIterator *it;
+        Graph_CreateNodes(g, node_count, NULL, NULL);
 
-    // Create nodes.
-    Graph_CreateNodes(g, node_count, NULL, &it);
-
-    // Validate nodes creation.
-    OK(GrB_Matrix_nrows(&nrows, g->adjacency_matrix));
-    OK(GrB_Matrix_ncols(&ncols, g->adjacency_matrix));
-    OK(GrB_Matrix_nvals(&nvals, g->adjacency_matrix));
-
-    EXPECT_EQ(nvals, 0);                     // No connection were formed.
-    EXPECT_EQ(ncols, g->node_count);         // Graph's adjacency matrix dimensions.
-    EXPECT_EQ(nrows, g->node_count);
-    EXPECT_EQ(g->node_count, node_count);
-    EXPECT_LE(g->node_count, g->node_cap);
-
-    // Make sure we've received an iterator over created nodes.
-    Node *n;
-    unsigned int new_node_count = 0;
-    while((n = NodeIterator_Next(it)) != NULL) { new_node_count++; }
-    EXPECT_EQ(new_node_count, node_count);
-    NodeIterator_Free(it);
-}
-
-void _test_edge_creation(Graph *g, size_t node_count) {
-    // Form connections.
-    GrB_Info info;
-    size_t edge_count = (node_count-1);
-    GrB_Index connections[edge_count*3];
-
-    // Introduce relations types.
-    for(int i = 0; i < 3; i++) {
-        Graph_AddRelationMatrix(g);
-    }
-
-    // Describe connections;
-    // Node I is connected to Node I+1,
-    // Connection type is relationships[I%4].
-    int node_id = 0;
-    for(unsigned int i = 0; i < edge_count*3; i+=3) {
-        connections[i] = node_id;       // Source node id.
-        connections[i+1] = node_id+1;   // Destination node id.
-        connections[i+2] = (i%4)-1;     // Relation, (-1 for GRAPH_NO_RELATION).
-        node_id++;
-    }
-
-    Graph_ConnectNodes(g, edge_count*3, connections);
-
-    // Validate edges creation,
-    // expecting number of none zero entries to be edge_count.
-    GrB_Index nvals;
-    OK(GrB_Matrix_nvals(&nvals, g->adjacency_matrix));
-    EXPECT_EQ(nvals, edge_count);
-
-    // Inspect graph matrices;
-    // Graph's adjacency matrix should include all connections,
-    // relation matrices should include edges of a certain relation.
-    for(unsigned int i = 0; i < edge_count*3; i+=3) {
-        int src_id = connections[i];
-        int dest_id = connections[i+1];
-        int r = connections[i+2];
-        bool v = false;
-
-        // src_id connected to dest_id.
-        OK(GrB_Matrix_extractElement_BOOL(&v, g->adjacency_matrix, src_id, dest_id));
-        EXPECT_TRUE(v);
-
-        if(r != GRAPH_NO_RELATION) {
-            // Test relation matrix.
-            v = false;
-            GrB_Matrix mat = Graph_GetRelationMatrix(g, r);
-            OK(GrB_Matrix_extractElement_BOOL(&v, mat, src_id, dest_id));
-            EXPECT_TRUE(v);
-        }
-    }
-}
-
-void _test_graph_resize(Graph *g) {
-    GrB_Info info;
-    GrB_Index ncols, nrows;
-    size_t prev_node_count = g->node_count;
-    size_t node_count = g->node_cap * 2;
-
-    Graph_CreateNodes(g, node_count, NULL, NULL);
-
-    // Validate nodes creation.
-    EXPECT_EQ(g->node_count, prev_node_count + node_count);
-    // Graph's adjacency matrix dimensions.
-    OK(GrB_Matrix_nrows(&nrows, g->adjacency_matrix));
-    OK(GrB_Matrix_ncols(&ncols, g->adjacency_matrix));
-    EXPECT_EQ(ncols, g->node_count);
-    EXPECT_EQ(nrows, g->node_count);
-    EXPECT_LE(g->node_count, g->node_cap);
-
-    // Verify number of created nodes.
-    Node *n;
-    unsigned int new_node_count = 0;
-    NodeIterator *it = Graph_ScanNodes(g);
-    while((n = NodeIterator_Next(it)) != NULL) { new_node_count++; }
-    EXPECT_EQ(new_node_count, prev_node_count + node_count);
-    NodeIterator_Free(it);
-
-    // Relation matrices get resize lazily,
-    // Try to fetch one of the specific relation matrices and verify its dimenstions.
-    EXPECT_GT(g->relation_count, 0);
-    for(unsigned int i = 0; i < g->relation_count; i++) {
-        GrB_Matrix r = Graph_GetRelationMatrix(g, i);
-        OK(GrB_Matrix_nrows(&nrows, r));
-        OK(GrB_Matrix_ncols(&ncols, r));
+        // Validate nodes creation.
+        EXPECT_EQ(g->node_count, prev_node_count + node_count);
+        // Graph's adjacency matrix dimensions.
+        EXPECT_EQ(GrB_Matrix_nrows(&nrows, g->adjacency_matrix), GrB_SUCCESS);
+        EXPECT_EQ(GrB_Matrix_ncols(&ncols, g->adjacency_matrix), GrB_SUCCESS);
         EXPECT_EQ(ncols, g->node_count);
         EXPECT_EQ(nrows, g->node_count);
+        EXPECT_LE(g->node_count, g->node_cap);
+
+        // Verify number of created nodes.
+        Node *n;
+        unsigned int new_node_count = 0;
+        NodeIterator *it = Graph_ScanNodes(g);
+        while((n = NodeIterator_Next(it)) != NULL) { new_node_count++; }
+        EXPECT_EQ(new_node_count, prev_node_count + node_count);
+        NodeIterator_Free(it);
+
+        // Relation matrices get resize lazily,
+        // Try to fetch one of the specific relation matrices and verify its dimenstions.
+        EXPECT_GT(g->relation_count, 0);
+        for(unsigned int i = 0; i < g->relation_count; i++) {
+            GrB_Matrix r = Graph_GetRelationMatrix(g, i);
+            EXPECT_EQ(GrB_Matrix_nrows(&nrows, r), GrB_SUCCESS);
+            EXPECT_EQ(GrB_Matrix_ncols(&ncols, r), GrB_SUCCESS);
+            EXPECT_EQ(ncols, g->node_count);
+            EXPECT_EQ(nrows, g->node_count);
+        }
     }
-}
+};
 
 /* TODO benchmark functions are currently not invoked */
 void benchmark_node_creation_with_labels() {
@@ -396,32 +376,15 @@ void benchmark_graph() {
     printf("%sgraph benchmark - PASS!%s\n", KGRN, KNRM);
 }
 
-/*
-int main(int argc, char **argv) {
-    // Initialize GraphBLAS.
-    GrB_Info info;
-    OK(GrB_init(GrB_NONBLOCKING));
-    srand(time(NULL));
-
-    // benchmark_graph();
-
-    GrB_finalize();
-
-	printf("%stest_graph - PASS!%s\n", KGRN, KNRM);
-    return 0;
-}
-*/
-
 // Validate the creation of a graph,
 // Make sure graph's defaults are applied.
 TEST_F(GraphTest, NewGraph) {
-    GrB_Info info;
     GrB_Index ncols, nrows, nvals;
     Graph *g = Graph_New(GRAPH_DEFAULT_NODE_CAP);
 
-    OK(GrB_Matrix_ncols(&ncols, g->adjacency_matrix));
-    OK(GrB_Matrix_nrows(&nrows, g->adjacency_matrix));
-    OK(GrB_Matrix_nvals(&nvals, g->adjacency_matrix));
+    EXPECT_EQ(GrB_Matrix_ncols(&ncols, g->adjacency_matrix), GrB_SUCCESS);
+    EXPECT_EQ(GrB_Matrix_nrows(&nrows, g->adjacency_matrix), GrB_SUCCESS);
+    EXPECT_EQ(GrB_Matrix_nvals(&nvals, g->adjacency_matrix), GrB_SUCCESS);
 
     EXPECT_TRUE(g->nodes_blocks != NULL);
     EXPECT_TRUE(g->_relations != NULL);
@@ -611,8 +574,6 @@ TEST_F(GraphTest, RemoveMultipleNodes) {
 
     simple_tic(tic);
     Graph_DeleteNodes(g, nodeToDelete, 2);
-    // double elapsed = simple_toc(tic);
-    // printf("Nodes deletion took: %14.6f ms\n", elapsed*1000);
 
     EXPECT_EQ(g->node_count, 8-2);
     GrB_Descriptor desc;
@@ -652,9 +613,9 @@ TEST_F(GraphTest, RemoveMultipleNodes) {
     GrB_Vector_nvals(&rowNvals, row);
     GrB_Vector_nvals(&colNvals, col);
 
-    GrB_Vector_extractElement_BOOL(&x, row, 1);
-    EXPECT_EQ(rowNvals, 1);
-    EXPECT_EQ(colNvals, 0);
+    GrB_Vector_extractElement_BOOL(&x, col, 1);
+    EXPECT_EQ(rowNvals, 0);
+    EXPECT_EQ(colNvals, 1);
     EXPECT_EQ(x, true);
 
     // Clean up.
@@ -665,8 +626,8 @@ TEST_F(GraphTest, RemoveMultipleNodes) {
 }
 
 TEST_F(GraphTest, RemoveEdges) {
-    GrB_Index row;
-    GrB_Index col;
+    GrB_Index src;
+    GrB_Index dest;
     GrB_Index relationEdgeCount;
     int nodeCount = 32;
     int edgeCount = 4;
@@ -685,31 +646,31 @@ TEST_F(GraphTest, RemoveEdges) {
         int edgeIdx = 0;
         // We cannot modify the matrix being interated,
         // Collect edge indicies.
-        while(TuplesIter_next(iter, &row, &col) != TuplesIter_DEPLETED) {
-            edgeToDelete[edgeIdx++] = row;
-            edgeToDelete[edgeIdx++] = col;
+        while(TuplesIter_next(iter, &dest, &src) != TuplesIter_DEPLETED) {
+            edgeToDelete[edgeIdx++] = src;
+            edgeToDelete[edgeIdx++] = dest;
         }
 
         TuplesIter_free(iter);
 
         // Delete edges.
         for(unsigned int j = 0; j < relationEdgeCount*2; j+=2) {
-            row = edgeToDelete[j];
-            col = edgeToDelete[j+1];
-            Graph_DeleteEdge(g, row, col);
+            src = edgeToDelete[j];
+            dest = edgeToDelete[j+1];
+            Graph_DeleteEdge(g, src, dest);
         }
 
         // Validate delete.
         for(unsigned int j = 0; j < relationEdgeCount*2; j+=2) {
             exists = false;
-            GrB_Matrix_extractElement_BOOL(&exists, adj, row, col);
+            GrB_Matrix_extractElement_BOOL(&exists, adj, dest, src);
             EXPECT_EQ(exists, false);
-            GrB_Matrix_extractElement_BOOL(&exists, M, row, col);
+            GrB_Matrix_extractElement_BOOL(&exists, M, dest, src);
             EXPECT_EQ(exists, false);
         }
 
         iter = TuplesIter_new(M);
-        EXPECT_EQ(TuplesIter_next(iter, &row, &col), TuplesIter_DEPLETED);
+        EXPECT_EQ(TuplesIter_next(iter, &dest, &src), TuplesIter_DEPLETED);
 
         GrB_Matrix_nvals(&relationEdgeCount, M);
         EXPECT_EQ(relationEdgeCount, 0);

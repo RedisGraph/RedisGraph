@@ -193,7 +193,7 @@ Vector* _ExecutionPlan_Locate_References(OpBase *root, OpBase **op, Vector *refe
 }
 
 OpBase* ExecutionPlan_Locate_References(OpBase *root, Vector *references) {
-    OpBase *op = NULL;
+    OpBase *op = NULL;    
     Vector *temp = _ExecutionPlan_Locate_References(root, &op, references);
     Vector_Free(temp);
     return op;
@@ -280,18 +280,18 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g,
                 AlgebraicExpression **exps = AlgebraicExpression_From_Query(ast, pattern, q, &expCount);
                 
                 TRAVERSE_ORDER order = determineTraverseOrder(q, execution_plan->filter_tree, exps, expCount);
-                if(order == TRAVERSE_ORDER_LAST) {
-                    op = NewTraverseOp(g, q, exps[expCount-1]);
+                if(order == TRAVERSE_ORDER_FIRST) {
+                    op = NewTraverseOp(g, q, exps[0]);
                     Vector_Push(traversals, op);
-                    for(int i = expCount-2; i >= 0; i--) {
+                    for(int i = 1; i < expCount; i++) {
                         op = NewCondTraverseOp(g, q, exps[i]);
                         Vector_Push(traversals, op);
                     }
                 } else {
-                    AlgebraicExpression_Transpose(exps[0]);
-                    op = NewTraverseOp(g, q, exps[0]);
+                    AlgebraicExpression_Transpose(exps[expCount-1]);
+                    op = NewTraverseOp(g, q, exps[expCount-1]);
                     Vector_Push(traversals, op);
-                    for(int i = 1; i < expCount; i++) {
+                    for(int i = expCount-2; i >= 0; i--) {
                         AlgebraicExpression_Transpose(exps[i]);
                         op = NewCondTraverseOp(g, q, exps[i]);
                         Vector_Push(traversals, op);

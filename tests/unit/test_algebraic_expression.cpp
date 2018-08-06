@@ -308,10 +308,10 @@ TEST_F(AlgebraicExpressionTest, OneIntermidateReturnNode) {
     
     Edge *e;
     e = QueryGraph_GetEdgeByAlias(query_graph, "ef");
-    EXPECT_EQ(exp->operands[0].operand, e->mat);
+    EXPECT_EQ(exp->operands[1].operand, e->mat);
 
     e = QueryGraph_GetEdgeByAlias(query_graph, "ev");
-    EXPECT_EQ(exp->operands[1].operand, e->mat);
+    EXPECT_EQ(exp->operands[0].operand, e->mat);
 
     // Validate second expression.
     exp = ae[1];
@@ -345,13 +345,13 @@ TEST_F(AlgebraicExpressionTest, NoIntermidateReturnNodes) {
 
     Edge *e;
     e = QueryGraph_GetEdgeByAlias(query_graph, "ef");
-    EXPECT_EQ(exp->operands[0].operand, e->mat);
+    EXPECT_EQ(exp->operands[2].operand, e->mat);
 
     e = QueryGraph_GetEdgeByAlias(query_graph, "ev");
     EXPECT_EQ(exp->operands[1].operand, e->mat);
 
     e = QueryGraph_GetEdgeByAlias(query_graph, "ew");
-    EXPECT_EQ(exp->operands[2].operand, e->mat);
+    EXPECT_EQ(exp->operands[0].operand, e->mat);
 
     // Clean up.
     Free_AST_Query(ast);
@@ -386,13 +386,14 @@ TEST_F(AlgebraicExpressionTest, ExpressionExecute) {
     assert(nrows == g->node_count);
 
     // Expected result.
-    // 0   0   1   0   0   0
-    // 0   0   0   1   0   0
-    // 0   0   1   0   0   0
-    // 0   0   1   1   0   0
-    // 0   0   1   1   0   0
-    // 0   0   0   1   0   0
-    GrB_Index expected_entries[16] = {0,2, 1,3, 2,2, 3,2, 3,3, 4,2, 4,3, 5,3};
+    // 0   0   0   0   0   0
+    // 0   0   0   0   0   0
+    // 1   0   1   1   1   0
+    // 0   1   0   1   1   1
+    // 0   0   0   0   0   0
+    // 0   0   0   0   0   0
+
+    GrB_Index expected_entries[16] = {2,0, 3,1, 2,2, 2,3, 3,3, 2,4, 3,4, 3,5};
     GrB_Matrix expected = NULL;
 
     GrB_Matrix_dup(&expected, M);
