@@ -427,7 +427,8 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g,
         Vector_Free(sub_trees);
     }
     
-    if(!explain) optimizePlan(ctx, graph_name, execution_plan);
+    optimizePlan(ctx, graph_name, execution_plan);
+
     return execution_plan;
 }
 

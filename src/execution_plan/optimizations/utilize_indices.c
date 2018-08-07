@@ -6,18 +6,15 @@ void _locateScanFilters(NodeByLabelScan *scanOp, Vector *filterOps) {
    * the active entity. */
   OpBase *current = scanOp->op.parent;
   while(current->type == OPType_FILTER) {
-    /* We're only interested in filters which apply to a single entity,
-     * Extract modified aliases from filter tree. */
     Filter *filterOp = (Filter*)current;
     FT_FilterNode *filterTree = filterOp->filterTree;
-    Vector *filteredEntities = FilterTree_CollectAliases(filterTree);
 
-    /* At this point we're promised that if a filter operation is
-     * applied to a single entity E, then E is modified by given traverse op. */
-    if (Vector_Size(filteredEntities) == 1) {
+    /* filterTree will either be a predicate or a tree with an OR root.
+     * We'll store ops on const predicate filters, and can otherwise safely ignore them -
+     * no filter tree in this sequence can invalidate another. */
+    if (IsNodeConstantPredicate(filterTree)) {
       Vector_Push(filterOps, current);
     }
-    Vector_Free(filteredEntities);
 
     // Advance to the next operation.
     current = current->parent;
@@ -74,10 +71,6 @@ void utilizeIndices(RedisModuleCtx *ctx, const char *graph_name, ExecutionPlan *
       OpBase *opFilter;
       Vector_Get(filterOps, i, &opFilter);
       ft = ((Filter *)opFilter)->filterTree;
-
-      /* ft will be a predicate or a tree with an OR root, which means
-       * we can safely employ it if it's a const predicate and ignore it otherwise. */
-      if (!IsNodeConstantPredicate(ft)) continue;
 
       // If we've already selected an index on a different property, continue
       if (idx && strcmp(idx->property, ft->pred.Lop.property)) continue;

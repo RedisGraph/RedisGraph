@@ -17,24 +17,19 @@ extern "C" {
 }
 #endif
 
-// TODO Maybe find cleaner solution
-const char *label = "test_label";
-char *str_key = "string_prop";
-char *num_key = "num_prop";
-int label_id;
-Graph *g;
-Index *str_idx;
-Index *num_idx;
-
 class IndexTest: public ::testing::Test {
   protected:
+    static const size_t expected_n;
+    static const char *label;
+    static char *str_key;
+    static char *num_key;
+    static int label_id;
+    static Graph *g;
+    static Index *str_idx;
+    static Index *num_idx;
+
     static void SetUpTestCase() {
       srand(time(NULL));
-      g = build_test_graph();
-
-      // Build separate indices on the string and numeric property of each node
-      str_idx = test_index_create(g, label, str_key);
-      num_idx = test_index_create(g, label, num_key);
     }
 
     static void TearDownTestCase() {
@@ -44,14 +39,14 @@ class IndexTest: public ::testing::Test {
       Graph_Free(g);
     }
 
-    static Index* test_index_create(Graph *g, const char *label, const char *property) {
-      const GrB_Matrix label_matrix = g->_labels[label_id];
+    static Index* _indexCreate(Graph *g, const char *label, const char *property) {
+      const GrB_Matrix label_matrix = Graph_GetLabelMatrix(g, label_id);
       return buildIndex(g, label_matrix, label, property);
     }
 
     static Graph* build_test_graph() {
       // Allocate graph
-      size_t n = 100;
+      size_t n = expected_n;
       Graph *g = Graph_New(n);
 
       // Build a label matrix and add to graph
@@ -99,6 +94,18 @@ class IndexTest: public ::testing::Test {
     }
 };
 
+// Define static members of IndexTest class
+const size_t IndexTest::expected_n = 100;
+const char* IndexTest::label = "test_label";
+char* IndexTest::str_key = "string_prop";
+char* IndexTest::num_key = "num_prop";
+int IndexTest::label_id;
+
+Graph* IndexTest::g = build_test_graph();
+// Build separate indices on the string and numeric property of each node
+Index* IndexTest::str_idx = _indexCreate(g, label, str_key);
+Index* IndexTest::num_idx = _indexCreate(g, label, num_key);
+
 TEST_F(IndexTest, StringIndex) {
   // Check the label and property tags on the index
   EXPECT_STREQ(label, str_idx->label);
@@ -130,7 +137,7 @@ TEST_F(IndexTest, StringIndex) {
     EXPECT_LE(SIValue_Compare(last_prop, *cur_prop), 0);
     num_vals ++;
   }
-  EXPECT_EQ(num_vals, 100);
+  EXPECT_EQ(num_vals, expected_n);
   SIValue_Free(&lb);
   IndexIter_Free(iter);
 }
@@ -146,7 +153,7 @@ TEST_F(IndexTest, NumericIndex) {
 
   // Build an iterator from a constant filter - this will include all elements
   SIValue lb = SI_DoubleVal(0);
-  FT_FilterNode *filter = CreateConstFilterNode(label, str_key, GE, lb);
+  FT_FilterNode *filter = CreateConstFilterNode(label, num_key, GE, lb);
   IndexIter *iter = IndexIter_Create(num_idx, T_DOUBLE);
   IndexIter_ApplyBound(iter, &filter->pred);
   FilterTree_Free(filter);
@@ -161,12 +168,99 @@ TEST_F(IndexTest, NumericIndex) {
     // Retrieve the node from the graph
     cur = Graph_GetNode(g, *node_id);
     // Retrieve the indexed property from the node
-    cur_prop = GraphEntity_Get_Property((GraphEntity*)cur, str_key);
+    cur_prop = GraphEntity_Get_Property((GraphEntity*)cur, num_key);
     // Values should be sorted in increasing value - duplicates are allowed
     EXPECT_LE(SIValue_Compare(last_prop, *cur_prop), 0);
     num_vals ++;
-    // SIValue_Print(stdout, (SIValue*)cur_prop);
   }
-  EXPECT_EQ(num_vals, 100);
+  EXPECT_EQ(num_vals, expected_n);
   IndexIter_Free(iter);
 }
+
+static int count_iter_vals(IndexIter *iter) {
+  int ctr = 0;
+  GrB_Index *id;
+  while ((id = IndexIter_Next(iter)) != NULL) {
+    ctr ++;
+  }
+  return ctr;
+}
+
+/* Validate the progressive application of iterator bounds
+ * on the numeric skiplist. */
+TEST_F(IndexTest, IteratorBounds) {
+  IndexIter *iter = IndexIter_Create(num_idx, T_DOUBLE);
+  // Verify total number of values in index without range
+  int prev_vals = count_iter_vals(iter);
+  EXPECT_EQ(prev_vals, expected_n);
+  IndexIter_Reset(iter);
+
+  /* Apply a non-exclusive lower bound X */
+  GrB_Index *node_id;
+  Node *cur;
+  SIValue *lb;
+  int ctr = 0;
+  // Find the value of the 10th element in the index
+  while ((node_id = IndexIter_Next(iter)) != NULL) {
+    cur = Graph_GetNode(g, *node_id);
+    lb = GraphEntity_Get_Property((GraphEntity*)cur, num_key);
+    ctr ++;
+    if (ctr == 10) break;
+  }
+
+  FT_FilterNode *lb_filter_ge = CreateConstFilterNode(label, num_key, GE, *lb);
+  IndexIter_Reset(iter);
+  IndexIter_ApplyBound(iter, &lb_filter_ge->pred);
+  /* Lower bound should reduce the number of values iterated over */
+  int cur_vals = count_iter_vals(iter);
+  EXPECT_LT(cur_vals, prev_vals);
+
+  /* Set the same lower bound, but exclusive.
+   * Number of values should again be reduced. */
+  IndexIter_Reset(iter);
+  FT_FilterNode *lb_filter_gt = CreateConstFilterNode(label, num_key, GT, *lb);
+  IndexIter_ApplyBound(iter, &lb_filter_gt->pred);
+  cur_vals = count_iter_vals(iter);
+  EXPECT_LT(cur_vals, prev_vals);
+
+  /* Apply a non-exclusive upper bound at next indexed value */
+  prev_vals = cur_vals;
+  IndexIter_Reset(iter);
+  SIValue *ub;
+  while ((node_id = IndexIter_Next(iter)) != NULL) {
+    cur = Graph_GetNode(g, *node_id);
+    ub = GraphEntity_Get_Property((GraphEntity*)cur, num_key);
+    if (ub->doubleval > lb->doubleval) break;
+  }
+  FT_FilterNode *ub_filter_le = CreateConstFilterNode(label, num_key, LE, *ub);
+  IndexIter_ApplyBound(iter, &ub_filter_le->pred);
+  /* Upper bound should reduce the number of values iterated over */
+  cur_vals = count_iter_vals(iter);
+  EXPECT_LT(cur_vals, prev_vals);
+  prev_vals = cur_vals;
+
+  /* Set the same upper bound, but exclusive.
+   * Number of values should again be reduced. */
+  IndexIter_Reset(iter);
+  FT_FilterNode *ub_filter_lt = CreateConstFilterNode(label, num_key, LT, *ub);
+  IndexIter_ApplyBound(iter, &ub_filter_lt->pred);
+  cur_vals = count_iter_vals(iter);
+  EXPECT_LT(cur_vals, prev_vals);
+
+  /* Set an upper bound beneath the current lower bound.
+   * Number of values should be 0. */
+  IndexIter_Reset(iter);
+  SIValue ub_last = SI_DoubleVal(lb->doubleval - 1);
+  FT_FilterNode *ub_filter_last = CreateConstFilterNode(label, num_key, LT, ub_last);
+  IndexIter_ApplyBound(iter, &ub_filter_last->pred);
+  cur_vals = count_iter_vals(iter);
+  EXPECT_EQ(cur_vals, 0);
+
+  free(lb_filter_gt);
+  free(lb_filter_ge);
+  free(ub_filter_le);
+  free(ub_filter_lt);
+  free(ub_filter_last);
+  IndexIter_Free(iter);
+}
+

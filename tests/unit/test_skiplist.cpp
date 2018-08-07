@@ -26,50 +26,55 @@ extern void freeKey(SIValue *key);
 }
 #endif
 
-char *words[] = {"foo",  "bar",     "zap",    "pomo",
-                 "pera", "arancio", "limone", NULL};
-
-const char *node_label = "default_label";
-char *prop_key = "default_prop_key";
 
 class SkiplistTest: public ::testing::Test {
   protected:
+    static char *words[];
+    static const char *node_label;
+    static char *prop_key;
+
     static void SetUpTestCase() {
     }
 
     static void TearDownTestCase() {
     }
+
+    skiplist* build_skiplist(void) {
+      skiplist *sl = skiplistCreate(compareStrings, compareNodes, cloneKey, freeKey);
+      Node *node_a, *node_b;
+
+      for (long i = 0; words[i] != NULL; i ++) {
+        node_a = Node_New(10 + i, node_label);
+        SIValue *node_a_prop = (SIValue*)malloc(sizeof(SIValue));
+        *node_a_prop = SIValue_FromString(words[i]);
+        Node_Add_Properties(node_a, 1, &prop_key, node_a_prop);
+        skiplistInsert(sl, node_a_prop, node_a->id);
+
+        node_b = Node_New(i, node_label);
+        SIValue *node_b_prop = (SIValue*)malloc(sizeof(SIValue));
+        *node_b_prop = SIValue_FromString(words[6 - i]);
+        Node_Add_Properties(node_b, 1, &prop_key, node_b_prop);
+        skiplistInsert(sl, node_b_prop, node_b->id);
+      }
+
+      return sl;
+    }
+
+
+    // Update key-value pair
+    skiplistNode* update_skiplist(skiplist *sl, skiplistVal val, skiplistKey old_key, skiplistKey new_key) {
+      // Ignore the return value from skiplistDelete
+      skiplistDelete(sl, old_key, &val);
+      return skiplistInsert(sl, new_key, val);
+    }
 };
 
-skiplist* build_skiplist(void) {
-  skiplist *sl = skiplistCreate(compareStrings, compareNodes, cloneKey, freeKey);
-  Node *node_a, *node_b;
+char* SkiplistTest::words[] = {"foo",  "bar",     "zap",    "pomo",
+                               "pera", "arancio", "limone", NULL};
+const char* SkiplistTest::node_label = "default_label";
+char* SkiplistTest::prop_key = "default_prop_key";
 
-  for (long i = 0; words[i] != NULL; i ++) {
-    node_a = Node_New(10 + i, node_label);
-    SIValue *node_a_prop = (SIValue*)malloc(sizeof(SIValue));
-    *node_a_prop = SIValue_FromString(words[i]);
-    Node_Add_Properties(node_a, 1, &prop_key, node_a_prop);
-    skiplistInsert(sl, node_a_prop, node_a->id);
-
-    node_b = Node_New(i, node_label);
-    SIValue *node_b_prop = (SIValue*)malloc(sizeof(SIValue));
-    *node_b_prop = SIValue_FromString(words[6 - i]);
-    Node_Add_Properties(node_b, 1, &prop_key, node_b_prop);
-    skiplistInsert(sl, node_b_prop, node_b->id);
-  }
-
-  return sl;
-}
-
-// Update key-value pair
-skiplistNode* update_skiplist(skiplist *sl, skiplistVal val, skiplistKey old_key, skiplistKey new_key) {
-  // Ignore the return value from skiplistDelete
-  skiplistDelete(sl, old_key, &val);
-  return skiplistInsert(sl, new_key, val);
-}
-
-void test_skiplist_range(void) {
+TEST_F(SkiplistTest, SkiplistRange) {
   skiplist *sl = skiplistCreate(compareNumerics, compareNodes, cloneKey, freeKey);
   Node *cur_node;
   SIValue cur_prop;

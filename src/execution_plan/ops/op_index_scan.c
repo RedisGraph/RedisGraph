@@ -36,8 +36,6 @@ OpResult IndexScanConsume(OpBase *opBase, QueryGraph* graph) {
 
   *op->node = Graph_GetNode(op->g, *node_id);
 
-  (*op->node)->id = *node_id;
-
   return OP_OK;
 }
 

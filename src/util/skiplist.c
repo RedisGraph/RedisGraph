@@ -388,6 +388,7 @@ void _update_lower_bound(skiplistIterator *iter, skiplistKey bound, int exclusiv
   if (cmp < 0) {
     // This filter improves the bound
     iter->current = skiplistFindAtLeast(iter->sl, bound, exclusive);
+    iter->rangeMin = bound;
     iter->minExclusive = exclusive;
   } else if (cmp == 0 && exclusive && !iter->minExclusive) {
     // Handle the unlikely edge that we compared equally, but are now specifying
@@ -501,11 +502,20 @@ void skiplistIterate_Free(skiplistIterator *iter) {
 
 skiplistVal* skiplistIterator_Next(skiplistIterator *it) {
 
-  skiplistVal *ret = NULL;
-
   if (!it->current) {
-    return ret;
+    return NULL;
   }
+
+  // make sure we don't pass the range max. NULL means +inf
+  if (it->current && it->rangeMax) {
+    int c = it->sl->compare(it->current->key, it->rangeMax);
+    if (c > 0 || (c == 0 && it->maxExclusive)) {
+      it->current = NULL;
+      return NULL;
+    }
+  }
+
+  skiplistVal *ret = NULL;
 
   if (it->currentValOffset < it->current->numVals) {
     ret = &it->current->vals[it->currentValOffset++];
@@ -514,15 +524,8 @@ skiplistVal* skiplistIterator_Next(skiplistIterator *it) {
   if (it->currentValOffset == it->current->numVals) {
     it->current = it->current->level[0].forward;
     it->currentValOffset = 0;
-
-    // make sure we don't pass the range max. NULL means +inf
-    if (it->current && it->rangeMax) {
-      int c = it->sl->compare(it->current->key, it->rangeMax);
-      if (c > 0 || (c == 0 && it->maxExclusive)) {
-        it->current = NULL;
-      }
-    }
   }
+
   return ret;
 }
 

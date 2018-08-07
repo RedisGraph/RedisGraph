@@ -21,6 +21,8 @@ RedisModuleKey* _index_LookupKey(RedisModuleCtx *ctx, const char *graph, const c
   return key;
 }
 
+/* Memory management and comparator functions that get attached to
+ * string and numeric skiplists as function pointers. */
 int compareNodes(GrB_Index a, GrB_Index b) {
   return a - b;
 }
@@ -33,26 +35,33 @@ int compareNumerics(SIValue *a, SIValue *b) {
   return a->doubleval - b->doubleval;
 }
 
-/*
- * The index must maintain its own copy of the indexed SIValue
- * so that it becomes outdated but not broken by updates to the property.
- */
+/* The index must maintain its own copy of the indexed SIValue
+ * so that it becomes outdated but not broken by updates to the property. */
 void cloneKey(SIValue **property) {
-  SIValue *redirect = *property;
-  *redirect = SI_Clone(*redirect);
+  SIValue *clone = *property;
+  *clone = SI_Clone(*clone);
 }
 
 void freeKey(SIValue *key) {
   SIValue_Free(key);
 }
 
+/* Construct key and retrieve index from Redis keyspace */
 Index* Index_Get(RedisModuleCtx *ctx, const char *graph, const char *label, const char *property) {
-  RedisModuleKey *key = _index_LookupKey(ctx, graph, label, property);
   Index *idx = NULL;
+  char *strKey;
+  int keylen = asprintf(&strKey, "%s_%s_%s_%s", INDEX_PREFIX, graph, label, property);
+
+  RedisModuleString *rmIndexId = RedisModule_CreateString(ctx, strKey, keylen);
+  free(strKey);
+
+  RedisModuleKey *key = RedisModule_OpenKey(ctx, rmIndexId, REDISMODULE_READ);
+  RedisModule_FreeString(ctx, rmIndexId);
 
   if (RedisModule_ModuleTypeGetType(key) == IndexRedisModuleType) {
     idx = RedisModule_ModuleTypeGetValue(key);
   }
+
   RedisModule_CloseKey(key);
 
   return idx;
@@ -63,11 +72,10 @@ void Index_Delete(RedisModuleCtx *ctx, const char *graphName, const char *label,
   RedisModule_ReplyWithArray(ctx, 2);
 
   RedisModuleKey *key = _index_LookupKey(ctx, graphName, label, prop);
-  char *reply;
   if (RedisModule_ModuleTypeGetType(key) != IndexRedisModuleType) {
     // Reply with error if this key does not exist or does not correspond to an index object
     RedisModule_CloseKey(key);
-
+    char *reply;
     asprintf(&reply, "ERR Unable to drop index on :%s(%s): no such index.", label, prop);
     RedisModule_ReplyWithError(ctx, reply);
     free(reply);
@@ -81,7 +89,7 @@ void Index_Delete(RedisModuleCtx *ctx, const char *graphName, const char *label,
   RedisModule_ReplyWithSimpleString(ctx, "Removed 1 index.");
 }
 
-void initialize_skiplists(Index *index) {
+void initializeSkiplists(Index *index) {
   index->string_sl = skiplistCreate(compareStrings, compareNodes, cloneKey, freeKey);
   index->numeric_sl = skiplistCreate(compareNumerics, compareNodes, cloneKey, freeKey);
 }
@@ -92,7 +100,7 @@ Index* buildIndex(Graph *g, const GrB_Matrix label_matrix, const char *label, co
   index->label = strdup(label);
   index->property = strdup(prop_str);
 
-  initialize_skiplists(index);
+  initializeSkiplists(index);
 
   TuplesIter *it = TuplesIter_new(label_matrix);
 
@@ -145,8 +153,8 @@ void Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, const ch
   RedisModule_ReplyWithArray(ctx, 2);
 
   RedisModuleKey *key = _index_LookupKey(ctx, graphName, label, prop_str);
-  // Do nothing if this index already exists
-  if (RedisModule_ModuleTypeGetType(key) == IndexRedisModuleType) {
+  // Do nothing if this key already exists
+  if (RedisModule_ModuleTypeGetType(key) != REDISMODULE_KEYTYPE_EMPTY) {
     RedisModule_CloseKey(key);
     RedisModule_ReplyWithSimpleString(ctx, "(no changes, no records)");
     return;

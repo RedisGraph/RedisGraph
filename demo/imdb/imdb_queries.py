@@ -161,7 +161,8 @@ find_ten_oldest_actors_query = QueryInfo(
 actors_over_85_index_scan = QueryInfo(
     query="""MATCH (a:actor)
              WHERE a.age > 85
-             RETURN a.name, a.age""",
+             RETURN a.name, a.age
+             ORDER BY a.age""",
     description='Actors over 85 on indexed property?',
     max_run_time_ms=1.5,
     expected_result=[['Ellen Burstyn', '86.000000'],

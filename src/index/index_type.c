@@ -99,7 +99,7 @@ void *IndexType_RdbLoad(RedisModuleIO *rdb, int encver) {
   idx->label = strdup(label);
   idx->property = strdup(property);
 
-  initialize_skiplists(idx);
+  initializeSkiplists(idx);
 
   _IndexType_LoadSkiplist(rdb, idx->string_sl, T_STRING);
   _IndexType_LoadSkiplist(rdb, idx->numeric_sl, T_DOUBLE);

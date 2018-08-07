@@ -12,10 +12,6 @@
 #include "../query_executor.h"
 #include "../rmutil/vector.h"
 
-// TODO allows for better printing, but may not belong here
-// Lookup map for converting op numbers to strings
-const char* ops[] = {"", "OR", "AND", "ADD", "DASH", "MUL", "DIV", "EQ", "GT", "GE", "LT", "LE"};
-
 FT_FilterNode* LeftChild(const FT_FilterNode *node) { return node->cond.left; }
 FT_FilterNode* RightChild(const FT_FilterNode *node) { return node->cond.right; }
 
@@ -341,26 +337,26 @@ void _FilterTree_Print(const FT_FilterNode *root, int ident) {
     if(IsNodeConstantPredicate(root)) {
         char value[64] = {0};
         SIValue_ToString(root->pred.constVal, value, 64);
-        printf("%s.%s %s %s\n",
+        printf("%s.%s %d %s\n",
             root->pred.Lop.alias,
             root->pred.Lop.property,
-            ops[root->pred.op],
+            root->pred.op,
             value
         );
         return;
     }
     if(IsNodeVaryingPredicate(root)) {
-        printf("%s.%s %s %s.%s\n",
+        printf("%s.%s %d %s.%s\n",
             root->pred.Lop.alias,
             root->pred.Lop.property,
-            ops[root->pred.op],
+            root->pred.op,
             root->pred.Rop.alias,
             root->pred.Rop.property
         );
         return;
     }
 
-    printf("%s\n", ops[root->cond.op]);
+    printf("%d\n", root->cond.op);
     _FilterTree_Print(LeftChild(root), ident+4);
     _FilterTree_Print(RightChild(root), ident+4);
 }
