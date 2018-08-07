@@ -1,3 +1,5 @@
+[![CircleCI](https://circleci.com/gh/RedisLabsModules/redis-graph/tree/master.svg?style=svg)](https://circleci.com/gh/RedisLabsModules/redis-graph/tree/master)
+
 # RedisGraph
 
 RedisGraph is the first queryable property graph database to use sparse adjacency matrices and linear algebra to represent and query graphs.
