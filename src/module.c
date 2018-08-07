@@ -81,14 +81,22 @@ void _MGraph_AcquireReadLock() {
 }
 
 /* Acquire lock for write, only a single thread can perform work
- * while holding a write lock. */
-void _MGraph_AcquireWriteLock() {
+ * while holding a write lock,
+ * In addition we're also acquiring Redis global lock
+ * this is to prevent concurent writing while redis
+ * might be performing replication or persists data to disk. */
+void _MGraph_AcquireWriteLock(RedisModuleCtx *ctx) {
     pthread_rwlock_wrlock(&_rwlock);
+    RedisModule_ThreadSafeContextLock(ctx);
 }
 
 // Release read/write lock.
-void _MGraph_ReleaseLock() {
+void _MGraph_ReleaseLock(RedisModuleCtx *ctx) {
     pthread_rwlock_unlock(&_rwlock);
+    /* Release Redis global lock,
+     * this should only have an effect when the read/write lock
+     * was acquired for writing. */
+    RedisModule_ThreadSafeContextUnlock(ctx);
 }
 
 /* Retrieve graph stored within Redis under graph_name key,
@@ -126,8 +134,8 @@ void _MGraph_Query(void *args) {
     }
 
     // If this is a write query, acquire write lock.
-    if(AST_ReadOnly(ast)) _MGraph_AcquireWriteLock();
-    else _MGraph_AcquireReadLock();
+    if(AST_ReadOnly(ast)) _MGraph_AcquireReadLock();
+    else _MGraph_AcquireWriteLock(ctx);
 
     // Try to get graph.
     Graph *g = Graph_Get(ctx, qctx->graphName);
@@ -137,7 +145,7 @@ void _MGraph_Query(void *args) {
             /* TODO: free graph if no entities were created. */
         } else {
             RedisModule_ReplyWithError(ctx, "key doesn't contains a graph object.");
-            _MGraph_ReleaseLock();
+            _MGraph_ReleaseLock(ctx);
             return;
         }
     }
@@ -147,7 +155,7 @@ void _MGraph_Query(void *args) {
     ExecutionPlanFree(plan);
 
     // Done accessing graph data, release lock.
-    _MGraph_ReleaseLock();
+    _MGraph_ReleaseLock(ctx);
 
     /* Send result-set back to client. */
     ResultSet_Replay(resultSet);
@@ -184,7 +192,7 @@ void _MGraph_BulkInsert(void *args) {
     RedisModuleCtx *ctx = RedisModule_GetThreadSafeContext(context->bc);
     const char *graph_name = RedisModule_StringPtrLen(argv[1], NULL);
 
-    _MGraph_AcquireWriteLock();
+    _MGraph_AcquireWriteLock(ctx);
     
     // Try to get graph, if graph does not exists create it.
     g = Graph_Get(ctx, rs_graph_name);
@@ -196,12 +204,12 @@ void _MGraph_BulkInsert(void *args) {
     // Force graph pendding operations to complete.
     Graph_CommitPendingOps(g);
 
-    _MGraph_ReleaseLock();
+    _MGraph_ReleaseLock(ctx);
 
     // Replay to caller.
     double t = simple_toc(context->tic);
     char timings[1024] = {0};
-    sprintf(timings, "%zu Nodes created, %zu Edges created, time: %.6f sec\n", nodes, edges, t);
+    snprintf(timings, 1024, "%zu Nodes created, %zu Edges created, time: %.6f sec\n", nodes, edges, t);
     RedisModule_ReplyWithStringBuffer(ctx, timings, strlen(timings));
 
     // Replicate query.

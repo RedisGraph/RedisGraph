@@ -19,7 +19,6 @@ BulkInsertContext* BulkInsertContext_New
     BulkInsertContext *context = malloc(sizeof(BulkInsertContext));
 
     context->bc = bc;
-    context->argv = argv;
     context->argc = argc;
     
     // Retain strings arguments.
