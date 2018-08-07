@@ -70,7 +70,7 @@ void _ResultSet_SetupReply(ResultSet *set) {
 }
 
 // Checks to see if resultset can acecpt additional records.
-bool _ResultSet_Full(const ResultSet* set) {
+bool ResultSet_Full(const ResultSet* set) {
     if(set->ordered) {
         /* Must process all records. */
         return false;
@@ -308,7 +308,7 @@ bool ResultSet_Limited(const ResultSet* set) {
 }
 
 int ResultSet_AddRecord(ResultSet* set, Record* record) {
-    if(_ResultSet_Full(set)) {
+    if(ResultSet_Full(set)) {
         return RESULTSET_FULL;
     }
     

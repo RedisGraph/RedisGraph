@@ -13,10 +13,9 @@ void optimizePlan(RedisModuleCtx *ctx, const char *graph_name, ExecutionPlan *pl
      * with index scans. */
     utilizeIndices(ctx, graph_name, plan);
 
-    /* Try convert filters into matrices
-     * and incorporate them with traversal operations. */
-    translateFilters(plan);
-
     /* Try to reduce a number of filters into a single filter op. */
     reduceFilters(plan);
+
+    /* Remove redundant SCAN operations. */
+    reduceScans(plan);
 }
