@@ -41,10 +41,17 @@ ExecutionPlan* NewExecutionPlan
     bool explain                // Construct execution plan, do not execute
 );
 
-/* Prints execution plan */
+/* Prints execution plan. */
 char* ExecutionPlanPrint(const ExecutionPlan *plan);
 
+/* Removes operation from execution plan. */
 void ExecutionPlan_RemoveOp(OpBase *op);
+
+/* Adds operation to execution plan as a child of parent. */
+void ExecutionPlan_AddOp(OpBase *parent, OpBase *newOp);
+
+/* Replace a with b. */
+void ExecutionPlan_ReplaceOp(OpBase *a, OpBase *b);
 
 /* Executes plan */
 ResultSet* ExecutionPlan_Execute(ExecutionPlan *plan);

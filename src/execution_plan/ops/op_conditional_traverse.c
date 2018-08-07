@@ -31,8 +31,29 @@ OpBase* NewCondTraverseOp(Graph *g, QueryGraph* qg, AlgebraicExpression *algebra
 }
 
 void extractColumn(CondTraverse *op) {
-    GrB_Index column_idx = (*op->algebraic_results->src_node)->id;
-    op->iter = TuplesIter_iterate_column(op->iter, column_idx);
+    GrB_Index src_id = (*op->algebraic_expression->src_node)->id;
+
+    // Create hypersparse vector.
+    // TODO: Find a quickerway to clear out a vector.
+    GrB_Vector v;
+    GrB_Vector_new(&v, GrB_BOOL, op->graph->node_count);
+    GrB_Vector_setElement_BOOL(v, true, src_id);
+
+    // Append vector to algebraic expression, as the right most operand.
+    AlgebraicExpression_AppendTerm(op->algebraic_expression, (GrB_Matrix)v, false);
+
+    // Evaluate expression, result is a vector.
+    if(op->algebraic_results) AlgebraicExpressionResult_Free(op->algebraic_results);
+    op->algebraic_results = AlgebraicExpression_Execute(op->algebraic_expression);    
+    op->M = op->algebraic_results->m;
+    // Remove vector operand.
+    AlgebraicExpression_RemoveTerm(op->algebraic_expression, op->algebraic_expression->operand_count-1, NULL);
+
+    if(op->iter == NULL) op->iter = TuplesIter_new(op->M);
+    else TuplesIter_reuse(op->iter, op->M);
+
+    op->iter = TuplesIter_iterate_column(op->iter, 0);
+    GrB_Vector_free(&v);
 }
 
 /* CondTraverseConsume next operation 
@@ -44,12 +65,7 @@ OpResult CondTraverseConsume(OpBase *opBase, QueryGraph* graph) {
 
     /* Not initialized. */
     if(op->iter == NULL) {
-        op->algebraic_results = AlgebraicExpression_Execute(op->algebraic_expression);
-        op->M = op->algebraic_results->m;
-        op->iter = TuplesIter_new(op->M);
-
         if(child->consume(child, graph) == OP_DEPLETED) return OP_DEPLETED;
-
         /* Pick a column. */
         extractColumn(op);
     }

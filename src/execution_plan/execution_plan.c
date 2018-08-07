@@ -74,7 +74,7 @@ void _OpBase_RemoveChild(OpBase *parent, OpBase *child) {
 
 /* Push b right below a. */
 void _OpBase_PushBelow(OpBase *a, OpBase *b) {
-    /* B shouldn't have its parent set. */
+    /* B is a new operation. */
     assert(!(b->parent || b->children));
     assert(a->parent);
 
@@ -93,8 +93,9 @@ void _OpBase_PushBelow(OpBase *a, OpBase *b) {
 
 /* Push b right above a. */
 void _OpBase_PushAbove(OpBase *a, OpBase *b) {
-    /* B shouldn't have its children set. */
-    assert(b->children != NULL);
+    /* B is a new operation. */
+    assert(!(b->parent || b->children));
+    assert(a->children);
 
     /* Remove each child of A and add it as a child of B. */
     while(a->childCount) {
@@ -105,19 +106,6 @@ void _OpBase_PushAbove(OpBase *a, OpBase *b) {
 
     /* B is the only child of A. */
     _OpBase_AddChild(a, b);
-}
-
-void ExecutionPlan_RemoveOp(OpBase *op) {
-    assert(op->parent != NULL);
-    
-    // Remove op from its parent.
-    OpBase* parent = op->parent;
-    _OpBase_RemoveChild(op->parent, op);
-
-    // Add each of op's children as a child of op's parent.
-    for(int i = 0; i < op->childCount; i++) {
-        _OpBase_AddChild(parent, op->children[i]);
-    }
 }
 
 Vector* _ExecutionPlan_Locate_References(OpBase *root, OpBase **op, Vector *references) {
@@ -183,6 +171,28 @@ Vector* _ExecutionPlan_Locate_References(OpBase *root, OpBase **op, Vector *refe
     return seen;
 }
 
+void ExecutionPlan_AddOp(OpBase *parent, OpBase *newOp) {
+    _OpBase_AddChild(parent, newOp);
+}
+
+void ExecutionPlan_ReplaceOp(OpBase *a, OpBase *b) {
+    _OpBase_PushAbove(a->parent, b);
+    ExecutionPlan_RemoveOp(a);
+}
+
+void ExecutionPlan_RemoveOp(OpBase *op) {
+    assert(op->parent != NULL);
+    
+    // Remove op from its parent.
+    OpBase* parent = op->parent;
+    _OpBase_RemoveChild(op->parent, op);
+
+    // Add each of op's children as a child of op's parent.
+    for(int i = 0; i < op->childCount; i++) {
+        _OpBase_AddChild(parent, op->children[i]);
+    }
+}
+
 OpBase* ExecutionPlan_Locate_References(OpBase *root, Vector *references) {
     OpBase *op = NULL;    
     Vector *temp = _ExecutionPlan_Locate_References(root, &op, references);
@@ -240,9 +250,10 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g,
     _Determine_Graph_Size(ast, &node_count, &edge_count);
     QueryGraph *q = NewQueryGraph_WithCapacity(node_count, edge_count);
     execution_plan->graph = q;
-    
+    FT_FilterNode *filter_tree = NULL;
     if(ast->whereNode != NULL)
-        execution_plan->filter_tree = BuildFiltersTree(ast->whereNode->filters);
+        filter_tree = BuildFiltersTree(ast->whereNode->filters);
+        execution_plan->filter_tree = filter_tree;
 
     if(ast->matchNode) {
         BuildQueryGraph(ctx, g, graph_name, q, ast->matchNode->_mergedPatterns);
@@ -270,19 +281,36 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g,
                 size_t expCount = 0;
                 AlgebraicExpression **exps = AlgebraicExpression_From_Query(ast, pattern, q, &expCount);
                 
-                TRAVERSE_ORDER order = determineTraverseOrder(q, execution_plan->filter_tree, exps, expCount);
+                TRAVERSE_ORDER order = determineTraverseOrder(q, filter_tree, exps, expCount);
                 if(order == TRAVERSE_ORDER_FIRST) {
-                    op = NewTraverseOp(g, q, exps[0]);
-                    Vector_Push(traversals, op);
-                    for(int i = 1; i < expCount; i++) {
+                    AlgebraicExpression *exp = exps[0];
+                    selectEntryPoint(exp, q, filter_tree);
+
+                    // Create SCAN operation.
+                    if((*exp->src_node)->label) {
+                        op = NewNodeByLabelScanOp(ctx, q, g, graph_name, exp->src_node, (*exp->src_node)->label);
+                        Vector_Push(traversals, op);
+                    } else {
+                        op = NewAllNodeScanOp(q, g, exp->src_node);
+                        Vector_Push(traversals, op);
+                    }
+                    for(int i = 0; i < expCount; i++) {
                         op = NewCondTraverseOp(g, q, exps[i]);
                         Vector_Push(traversals, op);
                     }
                 } else {
-                    AlgebraicExpression_Transpose(exps[expCount-1]);
-                    op = NewTraverseOp(g, q, exps[expCount-1]);
-                    Vector_Push(traversals, op);
-                    for(int i = expCount-2; i >= 0; i--) {
+                    AlgebraicExpression *exp = exps[expCount-1];
+                    selectEntryPoint(exp, q, filter_tree);
+                    // Create SCAN operation.
+                    if((*exp->dest_node)->label) {
+                        op = NewNodeByLabelScanOp(ctx, q, g, graph_name, exp->dest_node, (*exp->dest_node)->label);
+                        Vector_Push(traversals, op);
+                    } else {
+                        op = NewAllNodeScanOp(q, g, exp->dest_node);
+                        Vector_Push(traversals, op);
+                    }
+
+                    for(int i = expCount-1; i >= 0; i--) {
                         AlgebraicExpression_Transpose(exps[i]);
                         op = NewCondTraverseOp(g, q, exps[i]);
                         Vector_Push(traversals, op);

@@ -46,6 +46,8 @@ ResultSet* NewResultSet(AST_Query* ast, RedisModuleCtx *ctx);
 
 bool ResultSet_Limited(const ResultSet* set);
 
+bool ResultSet_Full(const ResultSet* set);
+
 int ResultSet_AddRecord(ResultSet* set, Record *record);
 
 void ResultSet_Replay(ResultSet* set);
