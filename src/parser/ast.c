@@ -11,6 +11,8 @@
 #include <string.h>
 #include "../graph/graph_entity.h"
 #include "./ast_arithmetic_expression.h"
+#include "../arithmetic/repository.h"
+#include "../arithmetic/arithmetic_expression.h"
 
 AST_Query *New_AST_Query(AST_MatchNode *matchNode, AST_WhereNode *whereNode,
                          AST_CreateNode *createNode, AST_MergeNode *mergeNode,
@@ -121,8 +123,34 @@ AST_Validation _Validate_RETURN_Clause(const AST_Query *ast, char **reason) {
   TrieMap *return_aliases = NewTrieMap();
   ReturnClause_ReferredNodes(ast->returnNode, return_aliases);
   
-  AST_Validation res = _Validate_Aliases_In_Match_Clause( return_aliases, ast->matchNode, reason);
+  AST_Validation res = _Validate_Aliases_In_Match_Clause(return_aliases, ast->matchNode, reason);
   TrieMap_Free(return_aliases, TrieMap_NOP_CB);
+  if(res != AST_VALID) return res;
+
+  // Make sure all referenced function do exists.
+  TrieMap *ref_functions = NewTrieMap();
+  ReturnClause_ReferredFunctions(ast->returnNode, ref_functions);
+
+  void *value;
+  tm_len_t len;
+  char *refFuncName;
+  char funcName[1024];
+  TrieMapIterator *it = TrieMap_Iterate(ref_functions, "", 0);
+
+  // TODO: return RAX.
+  while(TrieMapIterator_Next(it, &refFuncName, &len, &value)) {
+    if(len >= 1023) len = 1023;
+    memcpy(funcName, refFuncName, len);
+    funcName[len] = 0;
+    if(!AR_FuncExists(funcName) && !Agg_FuncExists(funcName)) {
+      asprintf(reason, "Unknown function '%s'", funcName);
+      res = AST_INVALID;
+      break;
+    }
+  }
+
+  TrieMap_Free(ref_functions, TrieMap_NOP_CB);
+
   return res;
 }
 

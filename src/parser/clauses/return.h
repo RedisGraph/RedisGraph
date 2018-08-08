@@ -27,6 +27,7 @@ AST_ReturnNode* New_AST_ReturnNode(Vector* returnElements, int distinct);
 int ReturnClause_ContainsCollapsedNodes(const AST_ReturnNode *return_node);
 int ReturnClause_ContainsAggregation(const AST_ReturnNode *return_node);
 void ReturnClause_ReferredNodes(const AST_ReturnNode *return_node, TrieMap *referred_nodes);
+void ReturnClause_ReferredFunctions(const AST_ReturnNode *return_node, TrieMap *referred_funcs);
 void Free_AST_ReturnElementNode(AST_ReturnElementNode *returnElementNode);
 void Free_AST_ReturnNode(AST_ReturnNode *returnNode);
 

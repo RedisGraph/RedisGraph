@@ -28,7 +28,7 @@ void SetClause_ReferredNodes(const AST_SetNode *set_node, TrieMap *referred_node
         Vector_Get(set_node->set_elements, i, &set_element);
 
 		TrieMap_Add(referred_nodes, set_element->entity->alias, strlen(set_element->entity->alias), NULL, NULL);
-        AR_EXP_GetAllAliases(set_element->exp, referred_nodes);
+        AR_EXP_GetAliases(set_element->exp, referred_nodes);
     }
 }
 
