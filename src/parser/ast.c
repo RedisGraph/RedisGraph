@@ -133,16 +133,13 @@ AST_Validation _Validate_RETURN_Clause(const AST_Query *ast, char **reason) {
 
   void *value;
   tm_len_t len;
-  char *refFuncName;
-  char funcName[1024];
+  char *funcName;
   TrieMapIterator *it = TrieMap_Iterate(ref_functions, "", 0);
 
   // TODO: return RAX.
-  while(TrieMapIterator_Next(it, &refFuncName, &len, &value)) {
-    if(len >= 1023) len = 1023;
-    memcpy(funcName, refFuncName, len);
+  while(TrieMapIterator_Next(it, &funcName, &len, &value)) {
     funcName[len] = 0;
-    if(!AR_FuncExists(funcName) && !Agg_FuncExists(funcName)) {
+    if( (len > 32) || (!AR_FuncExists(funcName) && !Agg_FuncExists(funcName)) ) {
       asprintf(reason, "Unknown function '%s'", funcName);
       res = AST_INVALID;
       break;
