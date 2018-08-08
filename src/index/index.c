@@ -8,14 +8,15 @@
 #include "index.h"
 #include "index_type.h"
 
-RedisModuleKey* _index_LookupKey(RedisModuleCtx *ctx, const char *graph, const char *label, const char *property) {
+RedisModuleKey* _index_LookupKey(RedisModuleCtx *ctx, const char *graph, const char *label, const char *property, bool write_access) {
   char *strKey;
   int keylen = asprintf(&strKey, "%s_%s_%s_%s", INDEX_PREFIX, graph, label, property);
 
   RedisModuleString *rmIndexId = RedisModule_CreateString(ctx, strKey, keylen);
   free(strKey);
 
-  RedisModuleKey *key = RedisModule_OpenKey(ctx, rmIndexId, REDISMODULE_WRITE);
+  int mode = write_access ? REDISMODULE_WRITE : REDISMODULE_READ;
+  RedisModuleKey *key = RedisModule_OpenKey(ctx, rmIndexId, mode);
   RedisModule_FreeString(ctx, rmIndexId);
 
   return key;
@@ -23,7 +24,7 @@ RedisModuleKey* _index_LookupKey(RedisModuleCtx *ctx, const char *graph, const c
 
 /* Memory management and comparator functions that get attached to
  * string and numeric skiplists as function pointers. */
-int compareNodes(GrB_Index a, GrB_Index b) {
+int compareNodes(NodeID a, NodeID b) {
   return a - b;
 }
 
@@ -49,14 +50,8 @@ void freeKey(SIValue *key) {
 /* Construct key and retrieve index from Redis keyspace */
 Index* Index_Get(RedisModuleCtx *ctx, const char *graph, const char *label, const char *property) {
   Index *idx = NULL;
-  char *strKey;
-  int keylen = asprintf(&strKey, "%s_%s_%s_%s", INDEX_PREFIX, graph, label, property);
-
-  RedisModuleString *rmIndexId = RedisModule_CreateString(ctx, strKey, keylen);
-  free(strKey);
-
-  RedisModuleKey *key = RedisModule_OpenKey(ctx, rmIndexId, REDISMODULE_READ);
-  RedisModule_FreeString(ctx, rmIndexId);
+  // Open key with read-only access
+  RedisModuleKey *key = _index_LookupKey(ctx, graph, label, property, false);
 
   if (RedisModule_ModuleTypeGetType(key) == IndexRedisModuleType) {
     idx = RedisModule_ModuleTypeGetValue(key);
@@ -67,26 +62,20 @@ Index* Index_Get(RedisModuleCtx *ctx, const char *graph, const char *label, cons
   return idx;
 }
 
-void Index_Delete(RedisModuleCtx *ctx, const char *graphName, const char *label, const char *prop) {
-  RedisModule_ReplyWithArray(ctx, 1);
-  RedisModule_ReplyWithArray(ctx, 2);
-
-  RedisModuleKey *key = _index_LookupKey(ctx, graphName, label, prop);
+int Index_Delete(RedisModuleCtx *ctx, const char *graphName, const char *label, const char *prop) {
+  // Open key with write access
+  RedisModuleKey *key = _index_LookupKey(ctx, graphName, label, prop, true);
   if (RedisModule_ModuleTypeGetType(key) != IndexRedisModuleType) {
     // Reply with error if this key does not exist or does not correspond to an index object
     RedisModule_CloseKey(key);
-    char *reply;
-    asprintf(&reply, "ERR Unable to drop index on :%s(%s): no such index.", label, prop);
-    RedisModule_ReplyWithError(ctx, reply);
-    free(reply);
-    return;
+    return INDEX_FAIL;
   }
 
   Index *idx = RedisModule_ModuleTypeGetValue(key);
 
   // The DeleteKey routine will free the index and skiplists
   RedisModule_DeleteKey(key);
-  RedisModule_ReplyWithSimpleString(ctx, "Removed 1 index.");
+  return INDEX_OK;
 }
 
 void initializeSkiplists(Index *index) {
@@ -94,6 +83,8 @@ void initializeSkiplists(Index *index) {
   index->numeric_sl = skiplistCreate(compareNumerics, compareNodes, cloneKey, freeKey);
 }
 
+/* buildIndex allocates an Index object and populates it with a label-property pair
+ * by traversing a label matrix with a TuplesIter. */
 Index* buildIndex(Graph *g, const GrB_Matrix label_matrix, const char *label, const char *prop_str) {
   Index *index = malloc(sizeof(Index));
 
@@ -108,7 +99,7 @@ Index* buildIndex(Graph *g, const GrB_Matrix label_matrix, const char *label, co
   EntityProperty *prop;
 
   skiplist *sl;
-  GrB_Index node_id;
+  NodeID node_id;
   int found;
   int prop_index = 0;
   while(TuplesIter_next(it, NULL, &node_id) != TuplesIter_DEPLETED) {
@@ -147,17 +138,13 @@ Index* buildIndex(Graph *g, const GrB_Matrix label_matrix, const char *label, co
 
 // Create and populate index for specified property
 // (This function will create separate string and numeric indices if property has mixed types)
-void Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, const char *label, const char *prop_str) {
-  // Set up a reply of just statistics
-  RedisModule_ReplyWithArray(ctx, 1);
-  RedisModule_ReplyWithArray(ctx, 2);
-
-  RedisModuleKey *key = _index_LookupKey(ctx, graphName, label, prop_str);
+int Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, const char *label, const char *prop_str) {
+  // Open key with write access
+  RedisModuleKey *key = _index_LookupKey(ctx, graphName, label, prop_str, true);
   // Do nothing if this key already exists
   if (RedisModule_ModuleTypeGetType(key) != REDISMODULE_KEYTYPE_EMPTY) {
     RedisModule_CloseKey(key);
-    RedisModule_ReplyWithSimpleString(ctx, "(no changes, no records)");
-    return;
+    return INDEX_FAIL;
   }
 
   LabelStore *store = LabelStore_Get(ctx, STORE_NODE, graphName, label);
@@ -168,7 +155,7 @@ void Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, const ch
   RedisModule_ModuleTypeSetValue(key, IndexRedisModuleType, idx);
   RedisModule_CloseKey(key);
 
-  RedisModule_ReplyWithSimpleString(ctx, "Added 1 index.");
+  return INDEX_OK;
 }
 
 /* Output text for EXPLAIN calls */
@@ -187,12 +174,15 @@ IndexIter* IndexIter_Create(Index *idx, SIType type) {
   return skiplistIterateAll(sl);
 }
 
-/* Apply a filter to an iterator, returns 1 if filter can be deleted */
+/* Apply a filter to an iterator, modifying the appropriate bound if
+ * it narrows the iterator range.
+ * Returns 1 if the filter was a comparison type that can be translated into a bound
+ * (effectively, any type but '!='), which indicates that it is now redundant. */
 bool IndexIter_ApplyBound(IndexIter *iter, FT_PredicateNode *filter) {
   return skiplistIter_UpdateBound(iter, &filter->constVal, filter->op);
 }
 
-GrB_Index* IndexIter_Next(IndexIter *iter) {
+NodeID* IndexIter_Next(IndexIter *iter) {
   return skiplistIterator_Next(iter);
 }
 

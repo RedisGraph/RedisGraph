@@ -27,10 +27,10 @@ void _IndexType_SaveSkiplistNode(RedisModuleIO *rdb, skiplistNode *sl_node) {
   RedisModule_SaveUnsigned(rdb, (uint64_t)sl_node->numVals);
 
   // Elem 3-x: buffer of Node IDs
-  GrB_Index node_id;
+  NodeID node_id;
 
   for (int i = 0; i < sl_node->numVals; i ++) {
-    node_id = (GrB_Index)sl_node->vals[i];
+    node_id = sl_node->vals[i];
     RedisModule_SaveUnsigned(rdb, node_id);
   }
 }
@@ -71,15 +71,13 @@ void _IndexType_LoadSkiplist(RedisModuleIO *rdb, skiplist *sl, SIType valtype) {
     SIValue *key = malloc(sizeof(SIValue));
     if (valtype == T_STRING) {
       *key = SI_StringVal(RedisModule_LoadStringBuffer(rdb, NULL));
-    
     } else {
       *key = SI_DoubleVal(RedisModule_LoadDouble(rdb));
-    
     }
 
     node_num_vals = RedisModule_LoadUnsigned(rdb);
     for (int j = 0; j < node_num_vals; j ++) {
-      GrB_Index node_id = RedisModule_LoadUnsigned(rdb);
+      NodeID node_id = RedisModule_LoadUnsigned(rdb);
       skiplistInsert(sl, key, node_id);
     }
   }

@@ -507,7 +507,7 @@ skiplistVal* skiplistIterator_Next(skiplistIterator *it) {
   }
 
   // make sure we don't pass the range max. NULL means +inf
-  if (it->current && it->rangeMax) {
+  if (it->currentValOffset == 0 && it->rangeMax) {
     int c = it->sl->compare(it->current->key, it->rangeMax);
     if (c > 0 || (c == 0 && it->maxExclusive)) {
       it->current = NULL;

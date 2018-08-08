@@ -47,13 +47,34 @@
 #include "index/index_type.h"
 
 void _index_operation(RedisModuleCtx *ctx, const char *graphName, Graph *g, AST_IndexNode *indexNode) {
-  // Set up array response for printing statistics
+  /* Set up nested array response for index creation and deletion.
+   * As we need no result set, there is only one top-level element, for statistics.
+   * Index_Create or Index_Delete will enqueue one string response
+   * to indicate the success of the operation, and the query runtime will be appended
+   * after this call returns. */
+  RedisModule_ReplyWithArray(ctx, 1);
+  RedisModule_ReplyWithArray(ctx, 2);
+
+  int ret;
   switch(indexNode->operation) {
     case CREATE_INDEX:
-      Index_Create(ctx, graphName, g, indexNode->label, indexNode->property);
+      ret = Index_Create(ctx, graphName, g, indexNode->label, indexNode->property);
+      if (ret == INDEX_OK) {
+        RedisModule_ReplyWithSimpleString(ctx, "Added 1 index.");
+      } else {
+        RedisModule_ReplyWithSimpleString(ctx, "(no changes, no records)");
+      }
       break;
     case DROP_INDEX:
-      Index_Delete(ctx, graphName, indexNode->label, indexNode->property);
+      ret = Index_Delete(ctx, graphName, indexNode->label, indexNode->property);
+      if (ret == INDEX_OK) {
+        RedisModule_ReplyWithSimpleString(ctx, "Removed 1 index.");
+      } else {
+        char *reply;
+        asprintf(&reply, "ERR Unable to drop index on :%s(%s): no such index.", indexNode->label, indexNode->property);
+        RedisModule_ReplyWithError(ctx, reply);
+        free(reply);
+      }
       break;
     default:
       assert(0);

@@ -158,9 +158,8 @@ class ImdbFlowTest(FlowTestsBase):
         # Execute this command directly, as its response does not contain the result set that
         # 'redis_graph.query()' expects
         redis_graph.redis_con.execute_command("GRAPH.QUERY", redis_graph.name, "CREATE INDEX ON :actor(age)")
-        # TODO EXPLAIN queries don't apply optimizations, so this check is disabled for now
-        #  execution_plan = redis_graph.execution_plan(queries.actors_over_85_index_scan.query)
-        #  self.assertIn('Index Scan', execution_plan)
+        execution_plan = redis_graph.execution_plan(queries.actors_over_85_index_scan.query)
+        self.assertIn('Index Scan', execution_plan)
 
         actual_result = redis_graph.query(queries.actors_over_85_index_scan.query)
 

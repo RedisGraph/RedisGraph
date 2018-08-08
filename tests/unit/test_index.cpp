@@ -12,6 +12,7 @@ extern "C" {
 #endif
 
 #include "../../src/index/index.h"
+extern Index* buildIndex(Graph *g, const GrB_Matrix label_matrix, const char *label, const char *prop_str);
 
 #ifdef __cplusplus
 }
