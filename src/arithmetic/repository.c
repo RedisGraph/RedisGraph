@@ -29,7 +29,21 @@ int Agg_RegisterFunc(const char* name, AggFuncInit f) {
     return Vector_Push(__aggRegisteredFuncs, e);
 }
 
- void Agg_GetFunc(const char* name, AggCtx** ctx) {
+bool Agg_FuncExists(const char* name) {
+    if (!__aggRegisteredFuncs) return false;
+
+    for (int i = 0; i < Vector_Size(__aggRegisteredFuncs); i++) {
+        __aggFuncEntry *e = NULL;
+        Vector_Get(__aggRegisteredFuncs, i, &e);
+        if (e != NULL && !strcasecmp(name, e->name)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void Agg_GetFunc(const char* name, AggCtx** ctx) {
      if (!__aggRegisteredFuncs) {
          *ctx = NULL;
          return;

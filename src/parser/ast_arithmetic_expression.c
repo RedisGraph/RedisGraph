@@ -37,13 +37,13 @@ AST_ArithmeticExpressionNode* New_AST_AR_EXP_OpNode(char *func, Vector *args) {
 	return node;
 }
 
-void AR_EXP_GetAllAliases(const AST_ArithmeticExpressionNode *exp, TrieMap *aliases) {
+void AR_EXP_GetAliases(const AST_ArithmeticExpressionNode *exp, TrieMap *aliases) {
 	if (exp->type == AST_AR_EXP_OP) {
     /* Process operands. */
     for (int i = 0; i < Vector_Size(exp->op.args); i++) {
       AST_ArithmeticExpressionNode *child;
       Vector_Get(exp->op.args, i, &child);
-      AR_EXP_GetAllAliases(child, aliases);
+      AR_EXP_GetAliases(child, aliases);
     }
   } else {
     /* Check specific operand */
@@ -52,6 +52,18 @@ void AR_EXP_GetAllAliases(const AST_ArithmeticExpressionNode *exp, TrieMap *alia
 			TrieMap_Add(aliases, alias, strlen(alias), NULL, NULL);
     }
   }
+}
+
+void AR_EXP_GetFunctions(const AST_ArithmeticExpressionNode *exp, TrieMap *functions) {
+	if(exp->type == AST_AR_EXP_OP) {
+		AST_ArithmeticExpressionOP op = exp->op;
+		TrieMap_Add(functions, op.function, strlen(op.function), NULL, NULL);
+		for(int i = 0; i < Vector_Size(op.args); i++) {
+			AST_ArithmeticExpressionNode *arg;
+			Vector_Get(op.args, i, &arg);
+			AR_EXP_GetFunctions(arg, functions);
+		}
+	}
 }
 
 void Free_AST_ArithmeticExpressionNode(AST_ArithmeticExpressionNode *arExpNode) {

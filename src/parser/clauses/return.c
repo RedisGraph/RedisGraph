@@ -90,8 +90,21 @@ void ReturnClause_ReferredNodes(const AST_ReturnNode *return_node, TrieMap *refe
         Vector_Get(return_node->returnElements, i, &return_element);
         
         AST_ArithmeticExpressionNode *exp = return_element->exp;
-        AR_EXP_GetAllAliases(exp, referred_nodes);
+        AR_EXP_GetAliases(exp, referred_nodes);
     }
+}
+
+void ReturnClause_ReferredFunctions(const AST_ReturnNode *return_node, TrieMap *referred_funcs) {
+    if(!return_node) return;
+    int return_element_count = Vector_Size(return_node->returnElements);
+
+    for(int i = 0; i < return_element_count; i++) {
+        AST_ReturnElementNode *node;
+        Vector_Get(return_node->returnElements, i, &node);
+        
+        AST_ArithmeticExpressionNode *exp = node->exp;
+        AR_EXP_GetFunctions(exp, referred_funcs);
+  }
 }
 
 void Free_AST_ReturnElementNode(AST_ReturnElementNode *returnElementNode) {

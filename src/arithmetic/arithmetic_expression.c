@@ -585,6 +585,14 @@ AR_Func AR_GetFunc(char *func_name) {
     return NULL;
 }
 
+bool AR_FuncExists(const char *func_name) {
+    char lower_func_name[32] = {0};
+    size_t lower_func_name_len = 32;
+    _toLower(func_name, &lower_func_name[0], &lower_func_name_len);
+    void *f = TrieMap_Find(__aeRegisteredFuncs, lower_func_name, lower_func_name_len);
+    return (f != TRIEMAP_NOTFOUND);
+}
+
 void AR_RegisterFuncs() {
     char lower_func_name[32] = {0};
     size_t lower_func_name_len = 32;
