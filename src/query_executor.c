@@ -178,15 +178,18 @@ AST_Query* ParseQuery(const char *query, size_t qLen, char **errMsg) {
 }
 
 void ModifyAST(RedisModuleCtx *ctx, AST_Query *ast, const char *graph_name) {
-    AST_NameAnonymousNodes(ast);
-    if(ReturnClause_ContainsCollapsedNodes(ast->returnNode) == 1) {
-        /* Expand collapsed nodes. */
-        ReturnClause_ExpandCollapsedNodes(ctx, ast, graph_name);
-    }
     if(ast->mergeNode) {
         /* Create match clause which will try to match 
          * against pattern specified within merge clause. */
         _replicateMergeClauseToMatchClause(ast);
     }
+
+    AST_NameAnonymousNodes(ast);
+
+    if(ReturnClause_ContainsCollapsedNodes(ast->returnNode) == 1) {
+        /* Expand collapsed nodes. */
+        ReturnClause_ExpandCollapsedNodes(ctx, ast, graph_name);
+    }
+
     inlineProperties(ast);
 }
