@@ -1,4 +1,4 @@
-[![CircleCI](https://circleci.com/gh/RedisLabsModules/redis-graph/tree/master.svg?style=svg)](https://circleci.com/gh/RedisLabsModules/redis-graph/tree/master)
+[![CircleCI](https://circleci.com/gh/RedisLabs/JRedisGraphh/tree/master.svg?style=svg)](https://circleci.com/gh/RedisLabs/JRedisGraph/tree/master)
 
 # RedisGraph
 
