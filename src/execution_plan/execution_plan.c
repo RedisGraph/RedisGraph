@@ -377,7 +377,9 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g,
 
     if(ast->returnNode) {
         if(ReturnClause_ContainsAggregation(ast->returnNode)) {
-           op = NewAggregateOp(ctx, ast);
+            TrieMap *groups = NewTrieMap();
+            op = NewAggregateOp(ctx, ast, groups);
+            if(execution_plan->result_set) execution_plan->result_set->groups = groups;
         } else {
             op = NewProduceResultsOp(ast, execution_plan->result_set, q);
         }

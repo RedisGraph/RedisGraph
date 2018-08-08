@@ -130,7 +130,7 @@ void _MGraph_Query(void *args) {
     if (AST_Validate(ast, &reason) != AST_VALID) {
         RedisModule_ReplyWithError(ctx, reason);
         free(reason);
-        return;
+        goto cleanup;
     }
 
     // If this is a write query, acquire write lock.
@@ -171,13 +171,13 @@ void _MGraph_Query(void *args) {
     char* strElapsed;
     asprintf(&strElapsed, "Query internal execution time: %.6f milliseconds", t);
     RedisModule_ReplyWithStringBuffer(ctx, strElapsed, strlen(strElapsed));
-
-    RedisModule_UnblockClient(qctx->bc, NULL);
-
-    // Clean up.
     free(strElapsed);
+    
+    // Clean up.
+cleanup:
+    RedisModule_UnblockClient(qctx->bc, NULL);
     Free_AST_Query(ast);
-    RedisModule_Free(qctx->graphName);
+    // RedisModule_Free(qctx->graphName);
     free(qctx);
 }
 
@@ -334,8 +334,6 @@ int _RegisterDataTypes(RedisModuleCtx *ctx) {
 int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     assert(GrB_init(GrB_NONBLOCKING) == GrB_SUCCESS);
     /* TODO: when module unloads call GrB_finalize. */
-
-    InitGroupCache();
     Agg_RegisterFuncs();
     AR_RegisterFuncs(); /* Register arithmetic expression functions. */
 

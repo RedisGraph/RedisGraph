@@ -8,31 +8,27 @@
 #include "group_cache.h"
 #include "../rmutil/vector.h"
 
-void InitGroupCache() {
-    __groupCache = NewTrieMap();
-}
-
-void CacheGroupAdd(char *key, Group *group) {
-    TrieMap_Add(__groupCache, key, strlen(key), group, NULL);
+void CacheGroupAdd(TrieMap *groups, char *key, Group *group) {
+    TrieMap_Add(groups, key, strlen(key), group, NULL);
 }
 
 // Retrives a group,
 // Sets group to NULL if key is missing.
-void CacheGroupGet(char *key, Group **group) {
-    *group = TrieMap_Find(__groupCache, key, strlen(key));
+void CacheGroupGet(TrieMap *groups, char *key, Group **group) {
+    *group = TrieMap_Find(groups, key, strlen(key));
     if (*group == TRIEMAP_NOTFOUND) {
         *group = NULL;
     }
 }
 
-void FreeGroupCache() {
-    TrieMap_Free(__groupCache, (void (*)(void *))FreeGroup);
+void FreeGroupCache(TrieMap *groups) {
+    TrieMap_Free(groups, (void (*)(void *))FreeGroup);
 }
 
 // Returns an iterator to scan entire group cache
-CacheGroupIterator* CacheGroupIter() {
-    char* prefix = strdup("");
-	return TrieMap_Iterate(__groupCache, prefix, strlen(prefix));
+CacheGroupIterator* CacheGroupIter(TrieMap *groups) {
+    char *prefix = "";
+	return TrieMap_Iterate(groups, prefix, strlen(prefix));
 }
 
 // Advance iterator and returns key & value in current position.
