@@ -146,7 +146,7 @@ void _MGraph_Query(void *args) {
         } else {
             RedisModule_ReplyWithError(ctx, "key doesn't contains a graph object.");
             _MGraph_ReleaseLock(ctx);
-            return;
+            goto cleanup;
         }
     }
 
