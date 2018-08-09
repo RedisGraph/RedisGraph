@@ -137,7 +137,6 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
     // Try to get graph.
     Graph *g = Graph_Get(ctx, argv[1]);
-
     if(!g) {
         if(ast->createNode || ast->mergeNode) {
             g = _MGraph_CreateGraph(ctx, argv[1]);
@@ -150,21 +149,20 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
     if (ast->indexNode) { // index operation
         _index_operation(ctx, graph_name, g, ast->indexNode);
-		} else {
+    } else {
+        ExecutionPlan *plan = NewExecutionPlan(ctx, g, graph_name, ast, false);
+        ResultSet* resultSet = ExecutionPlan_Execute(plan);
+        ExecutionPlanFree(plan);
 
-      ExecutionPlan *plan = NewExecutionPlan(ctx, g, graph_name, ast, false);
-      ResultSet* resultSet = ExecutionPlan_Execute(plan);
-      ExecutionPlanFree(plan);
+        /* Send result-set back to client. */
+        ResultSet_Replay(resultSet);
 
-      /* Send result-set back to client. */
-      ResultSet_Replay(resultSet);
+        /* Replicate query only if it modified the keyspace. */
+        if(ResultSetStat_IndicateModification(resultSet->stats)) {
+            RedisModule_ReplicateVerbatim(ctx);
+        }
 
-      /* Replicate query only if it modified the keyspace. */
-      if(ResultSetStat_IndicateModification(resultSet->stats)) {
-        RedisModule_ReplicateVerbatim(ctx);
-      }
-
-      ResultSet_Free(resultSet);
+        ResultSet_Free(resultSet);
     }
 
     /* Report execution timing. */
@@ -218,9 +216,9 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     }
 
     if (ast->indexNode != NULL) { // index operation
-      char *strPlan = Index_OpPrint(ast->indexNode);
-      RedisModule_ReplyWithStringBuffer(ctx, strPlan, strlen(strPlan));
-      return REDISMODULE_OK;
+        const char *strPlan = Index_OpPrint(ast->indexNode);
+        RedisModule_ReplyWithSimpleString(ctx, strPlan);
+        return REDISMODULE_OK;
     }
 
     ExecutionPlan *plan = NewExecutionPlan(ctx, g, graph_name, ast, true);

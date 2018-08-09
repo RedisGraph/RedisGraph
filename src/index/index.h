@@ -53,7 +53,7 @@ void initializeSkiplists(Index *index);
 int Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, const char *label, const char *prop_str);
 
 /* Prepare output text for EXPLAIN calls on "drop index" and "create index" */
-char* Index_OpPrint(AST_IndexNode *indexNode);
+const char* Index_OpPrint(AST_IndexNode *indexNode);
 
 /* Build a new iterator to traverse all indexed values of the specified type. */
 IndexIter* IndexIter_Create(Index *idx, SIType type);

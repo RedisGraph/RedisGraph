@@ -159,7 +159,7 @@ int Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, const cha
 }
 
 /* Output text for EXPLAIN calls */
-char* Index_OpPrint(AST_IndexNode *indexNode) {
+const char* Index_OpPrint(AST_IndexNode *indexNode) {
   switch(indexNode->operation) {
     case CREATE_INDEX:
       return "Create Index";
