@@ -20,32 +20,27 @@ extern Index* buildIndex(Graph *g, const GrB_Matrix label_matrix, const char *la
 
 class IndexTest: public ::testing::Test {
   protected:
-    static const size_t expected_n;
-    static const char *label;
-    static char *str_key;
-    static char *num_key;
-    static int label_id;
-    static Graph *g;
-    static Index *str_idx;
-    static Index *num_idx;
+    size_t expected_n = 100;
+    const char *label = "test_label";
+    char *str_key = "string_prop";
+    char *num_key = "num_prop";
+    int label_id;
+    Graph *g = build_test_graph();
 
     static void SetUpTestCase() {
       srand(time(NULL));
     }
 
-    static void TearDownTestCase() {
-      Index_Free(str_idx);
-      Index_Free(num_idx);
-
+    void TearDown() {
       Graph_Free(g);
     }
 
-    static Index* _indexCreate(Graph *g, const char *label, const char *property) {
+    Index* _indexCreate(Graph *g, const char *label, const char *property) {
       const GrB_Matrix label_matrix = Graph_GetLabelMatrix(g, label_id);
       return buildIndex(g, label_matrix, label, property);
     }
 
-    static Graph* build_test_graph() {
+    Graph* build_test_graph() {
       // Allocate graph
       size_t n = expected_n;
       Graph *g = Graph_New(n);
@@ -95,19 +90,9 @@ class IndexTest: public ::testing::Test {
     }
 };
 
-// Define static members of IndexTest class
-const size_t IndexTest::expected_n = 100;
-const char* IndexTest::label = "test_label";
-char* IndexTest::str_key = "string_prop";
-char* IndexTest::num_key = "num_prop";
-int IndexTest::label_id;
-
-Graph* IndexTest::g = build_test_graph();
-// Build separate indices on the string and numeric property of each node
-Index* IndexTest::str_idx = _indexCreate(g, label, str_key);
-Index* IndexTest::num_idx = _indexCreate(g, label, num_key);
-
 TEST_F(IndexTest, StringIndex) {
+  // Index the label's string property
+  Index* str_idx = _indexCreate(g, label, str_key);
   // Check the label and property tags on the index
   EXPECT_STREQ(label, str_idx->label);
   EXPECT_STREQ(str_key, str_idx->property);
@@ -123,7 +108,7 @@ TEST_F(IndexTest, StringIndex) {
   IndexIter_ApplyBound(iter, &filter->pred);
   FilterTree_Free(filter);
 
-  GrB_Index *node_id;
+  NodeID *node_id;
   Node *cur;
   SIValue last_prop = lb;
   SIValue *cur_prop;
@@ -141,9 +126,12 @@ TEST_F(IndexTest, StringIndex) {
   EXPECT_EQ(num_vals, expected_n);
   SIValue_Free(&lb);
   IndexIter_Free(iter);
+  Index_Free(str_idx);
 }
 
 TEST_F(IndexTest, NumericIndex) {
+  // Index the label's numeric property
+  Index *num_idx = _indexCreate(g, label, num_key);
   // Check the label and property tags on the index
   EXPECT_STREQ(label, num_idx->label);
   EXPECT_STREQ(num_key, num_idx->property);
@@ -159,7 +147,7 @@ TEST_F(IndexTest, NumericIndex) {
   IndexIter_ApplyBound(iter, &filter->pred);
   FilterTree_Free(filter);
 
-  GrB_Index *node_id;
+  NodeID *node_id;
   Node *cur;
   SIValue last_prop = lb;
   SIValue *cur_prop;
@@ -175,12 +163,14 @@ TEST_F(IndexTest, NumericIndex) {
     num_vals ++;
   }
   EXPECT_EQ(num_vals, expected_n);
+
   IndexIter_Free(iter);
+  Index_Free(num_idx);
 }
 
 static int count_iter_vals(IndexIter *iter) {
   int ctr = 0;
-  GrB_Index *id;
+  NodeID *id;
   while ((id = IndexIter_Next(iter)) != NULL) {
     ctr ++;
   }
@@ -190,6 +180,7 @@ static int count_iter_vals(IndexIter *iter) {
 /* Validate the progressive application of iterator bounds
  * on the numeric skiplist. */
 TEST_F(IndexTest, IteratorBounds) {
+  Index *num_idx = _indexCreate(g, label, num_key);
   IndexIter *iter = IndexIter_Create(num_idx, T_DOUBLE);
   // Verify total number of values in index without range
   int prev_vals = count_iter_vals(iter);
@@ -197,16 +188,17 @@ TEST_F(IndexTest, IteratorBounds) {
   IndexIter_Reset(iter);
 
   /* Apply a non-exclusive lower bound X */
-  GrB_Index *node_id;
+  NodeID *node_id;
   Node *cur;
   SIValue *lb;
   int ctr = 0;
   // Find the value of the 10th element in the index
   while ((node_id = IndexIter_Next(iter)) != NULL) {
-    cur = Graph_GetNode(g, *node_id);
-    lb = GraphEntity_Get_Property((GraphEntity*)cur, num_key);
     ctr ++;
-    if (ctr == 10) break;
+    if (ctr == 10) {
+      cur = Graph_GetNode(g, *node_id);
+      lb = GraphEntity_Get_Property((GraphEntity*)cur, num_key);
+    }
   }
 
   FT_FilterNode *lb_filter_ge = CreateConstFilterNode(label, num_key, GE, *lb);

@@ -46,7 +46,6 @@ char* ExecutionPlanPrint(const ExecutionPlan *plan);
 
 /* Removes operation from execution plan. */
 void ExecutionPlan_RemoveOp(OpBase *op);
-void ExecutionPlan_ReplaceOp(OpBase *op, OpBase *replacement);
 
 /* Adds operation to execution plan as a child of parent. */
 void ExecutionPlan_AddOp(OpBase *parent, OpBase *newOp);

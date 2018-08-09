@@ -26,18 +26,12 @@ extern void freeKey(SIValue *key);
 }
 #endif
 
-
 class SkiplistTest: public ::testing::Test {
   protected:
-    static char *words[];
-    static const char *node_label;
-    static char *prop_key;
-
-    static void SetUpTestCase() {
-    }
-
-    static void TearDownTestCase() {
-    }
+    char *words[8] = {"foo", "bar", "zap", "pomo",
+                     "pera", "arancio", "limone", NULL};
+    const char *node_label = "default_label";
+    char *prop_key = "default_prop_key";
 
     skiplist* build_skiplist(void) {
       skiplist *sl = skiplistCreate(compareStrings, compareNodes, cloneKey, freeKey);
@@ -63,16 +57,10 @@ class SkiplistTest: public ::testing::Test {
 
     // Update key-value pair
     skiplistNode* update_skiplist(skiplist *sl, skiplistVal val, skiplistKey old_key, skiplistKey new_key) {
-      // Ignore the return value from skiplistDelete
       skiplistDelete(sl, old_key, &val);
       return skiplistInsert(sl, new_key, val);
     }
 };
-
-char* SkiplistTest::words[] = {"foo",  "bar",     "zap",    "pomo",
-                               "pera", "arancio", "limone", NULL};
-const char* SkiplistTest::node_label = "default_label";
-char* SkiplistTest::prop_key = "default_prop_key";
 
 TEST_F(SkiplistTest, SkiplistRange) {
   skiplist *sl = skiplistCreate(compareNumerics, compareNodes, cloneKey, freeKey);
