@@ -12,23 +12,19 @@
 #include "../util/triemap/triemap.h"
 #include "../rmutil/vector.h"
 
-typedef TrieMap CacheGroup;
 typedef TrieMapIterator CacheGroupIterator;
-
-static CacheGroup *__groupCache = NULL;
-
 void InitGroupCache();
 
-void CacheGroupAdd(char *key, Group *group);
+void CacheGroupAdd(TrieMap *groups, char *key, Group *group);
 
 // Retrives a group,
 // Sets group to NULL if key is missing.
-void CacheGroupGet(char *key, Group **group);
+void CacheGroupGet(TrieMap *groups, char *key, Group **group);
 
-void FreeGroupCache();
+void FreeGroupCache(TrieMap *groups);
 
 // Returns an iterator to scan hashtable
-CacheGroupIterator* CacheGroupIter();
+CacheGroupIterator* CacheGroupIter(TrieMap *groups);
 // Advance iterator and returns key & value in current position.
 int CacheGroupIterNext(CacheGroupIterator *iter, char **key, Group **group);
 

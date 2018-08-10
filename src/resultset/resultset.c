@@ -131,7 +131,7 @@ void _ResultSet_ReplayStats(RedisModuleCtx* ctx, ResultSet* set) {
 void _aggregateResultSet(RedisModuleCtx* ctx, ResultSet* set) {
     char *key;
     Group *group;
-    CacheGroupIterator *iter = CacheGroupIter();
+    CacheGroupIterator *iter = CacheGroupIter(set->groups);
 
     /* Scan entire groups cache. */
     while(CacheGroupIterNext(iter, &key, &group) != 0) {
@@ -141,9 +141,8 @@ void _aggregateResultSet(RedisModuleCtx* ctx, ResultSet* set) {
             break;
         }
     }
-    
-    FreeGroupCache();
-    InitGroupCache();
+
+    FreeGroupCache(set->groups);
 }
 
 /* TODO: Drop heap, use some sort algo. */

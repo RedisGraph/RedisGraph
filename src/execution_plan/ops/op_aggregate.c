@@ -12,7 +12,7 @@
 #include "../../grouping/group_cache.h"
 #include "../../query_executor.h"
 
-OpBase* NewAggregateOp(RedisModuleCtx *ctx, AST_Query *ast) {
+OpBase* NewAggregateOp(RedisModuleCtx *ctx, AST_Query *ast, TrieMap *groups) {
     Aggregate *aggregate = malloc(sizeof(Aggregate));
     aggregate->ctx = ctx;
     aggregate->ast = ast;
@@ -20,6 +20,7 @@ OpBase* NewAggregateOp(RedisModuleCtx *ctx, AST_Query *ast) {
     aggregate->none_aggregated_expression_count = 0;
     aggregate->none_aggregated_expressions = NULL;
     aggregate->group_keys = NULL;
+    aggregate->groups = groups;
 
     OpBase_Init(&aggregate->op);
     aggregate->op.name = "Aggregate";
@@ -72,7 +73,7 @@ void _aggregateRecord(Aggregate *op, QueryGraph *g) {
     /* Get group */
     Group* group = NULL;
     char *group_key = _computeGroupKey(op, op->group_keys);
-    CacheGroupGet(group_key, &group);
+    CacheGroupGet(op->groups, group_key, &group);
 
     if(!group) {
         /* Create a new group
@@ -87,7 +88,7 @@ void _aggregateRecord(Aggregate *op, QueryGraph *g) {
         }
 
         group = NewGroup(key_count, group_keys, agg_exps);
-        CacheGroupAdd(group_key, group);
+        CacheGroupAdd(op->groups, group_key, group);
     }
     
     // Aggregate group expressions.

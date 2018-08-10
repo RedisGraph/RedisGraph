@@ -24,10 +24,11 @@
      int none_aggregated_expression_count; /* Number of return terms which are not aggregated. */
      AR_ExpNode **none_aggregated_expressions;
      SIValue *group_keys;   /* Array of values composing an aggregated group. */
+     TrieMap *groups;
      int init;
  } Aggregate;
 
-OpBase* NewAggregateOp(RedisModuleCtx *ctx, AST_Query *ast);
+OpBase* NewAggregateOp(RedisModuleCtx *ctx, AST_Query *ast, TrieMap *groups);
 OpResult AggregateConsume(OpBase *opBase, QueryGraph* graph);
 OpResult AggregateReset(OpBase *opBase);
 void AggregateFree(OpBase *opBase);
