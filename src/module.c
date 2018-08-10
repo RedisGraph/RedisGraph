@@ -190,6 +190,8 @@ void _MGraph_Query(void *args) {
 
     if (ast->indexNode) { // index operation
         _index_operation(ctx, graph_name, g, ast->indexNode);
+        // Release read lock
+        _MGraph_ReleaseLock(ctx);
     } else {
         ExecutionPlan *plan = NewExecutionPlan(ctx, g, graph_name, ast, false);
         ResultSet* resultSet = ExecutionPlan_Execute(plan);
