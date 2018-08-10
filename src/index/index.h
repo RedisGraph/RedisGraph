@@ -23,7 +23,6 @@
 #define INDEX_PREFIX "redis_graph_INDEX"
 
 typedef skiplistIterator IndexIter;
-typedef GrB_Index NodeID;
 
 /* Properties are not required to be of a consistent type, and index construction
  * will store values in separate string and numeric skiplists with different comparator
