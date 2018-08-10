@@ -267,9 +267,10 @@ AlgebraicExpressionResult *AlgebraicExpression_Execute(AlgebraicExpression *ae) 
 
 void AlgebraicExpression_AppendTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transpose) {
     assert(ae);    
-    if(ae->operand_count+1 >= ae->operand_cap)
+    if(ae->operand_count+1 >= ae->operand_cap) {
         ae->operand_cap += 4;
         ae->operands = realloc(ae->operands, sizeof(AlgebraicExpressionOperand) * ae->operand_cap);
+    }
 
     ae->operands[ae->operand_count].transpose = transpose;
     ae->operands[ae->operand_count].operand = m;
@@ -280,9 +281,10 @@ void AlgebraicExpression_PrependTerm(AlgebraicExpression *ae, GrB_Matrix m, bool
     assert(ae);
 
     ae->operand_count++;
-    if(ae->operand_count >= ae->operand_cap)
+    if(ae->operand_count >= ae->operand_cap) {
         ae->operand_cap += 4;
         ae->operands = realloc(ae->operands, sizeof(AlgebraicExpressionOperand) * ae->operand_cap);
+    }
 
     // TODO: might be optimized with memcpy.
     // Shift operands to the right, making room at the begining.
