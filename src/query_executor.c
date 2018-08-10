@@ -17,6 +17,20 @@
 #include "arithmetic/repository.h"
 #include "parser/parser_common.h"
 
+QueryContext* QueryContext_New(RedisModuleCtx *ctx, RedisModuleBlockedClient *bc, AST_Query* ast, RedisModuleString *graphName) {
+    QueryContext* context = malloc(sizeof(QueryContext));
+    context->bc = bc;
+    context->ast = ast;
+    context->graphName = graphName;
+    RedisModule_RetainString(ctx, context->graphName);
+    return context;
+}
+
+void QueryContext_Free(QueryContext* ctx) {
+    RedisModule_Free(ctx->graphName);
+    free(ctx);
+}
+
 /* Construct an expression tree foreach none aggregated term.
  * Returns a vector of none aggregated expression trees. */
 void Build_None_Aggregated_Arithmetic_Expressions(AST_ReturnNode *return_node, AR_ExpNode ***expressions, int *expressions_count, QueryGraph *g) {
@@ -169,24 +183,23 @@ void inlineProperties(AST_Query *ast) {
     }
 }
 
-int Query_Modifies_KeySpace(const AST_Query *ast) {
-    return (ast->createNode || ast->deleteNode || ast->setNode || ast->mergeNode);
-}
-
 AST_Query* ParseQuery(const char *query, size_t qLen, char **errMsg) {
     return Query_Parse(query, qLen, errMsg);
 }
 
 void ModifyAST(RedisModuleCtx *ctx, AST_Query *ast, const char *graph_name) {
-    AST_NameAnonymousNodes(ast);
-    if(ReturnClause_ContainsCollapsedNodes(ast->returnNode) == 1) {
-        /* Expand collapsed nodes. */
-        ReturnClause_ExpandCollapsedNodes(ctx, ast, graph_name);
-    }
     if(ast->mergeNode) {
         /* Create match clause which will try to match 
          * against pattern specified within merge clause. */
         _replicateMergeClauseToMatchClause(ast);
     }
+
+    AST_NameAnonymousNodes(ast);
+
+    if(ReturnClause_ContainsCollapsedNodes(ast->returnNode) == 1) {
+        /* Expand collapsed nodes. */
+        ReturnClause_ExpandCollapsedNodes(ctx, ast, graph_name);
+    }
+
     inlineProperties(ast);
 }

@@ -72,7 +72,9 @@ SIValue AR_ID(SIValue *argv, int argc);        /* returns the id of a relationsh
 
 void AR_RegisterFuncs();                       /* Registers all arithmetic functions. */
 AR_Func AR_GetFunc(char *func_name);           /* Get arithmetic function. */
-/* Registe an arithmetic function. */
+bool AR_FuncExists(const char *func_name);     /* Check to see if function exists. */
+
+/* Register an arithmetic function. */
 void AR_RegFunc(char *func_name, size_t func_name_len, AR_Func func);
 
 /* Op represents an operation applied to child args. */

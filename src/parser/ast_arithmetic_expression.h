@@ -54,8 +54,12 @@ AST_ArithmeticExpressionNode* New_AST_AR_EXP_VariableOperandNode(char* alias, ch
 AST_ArithmeticExpressionNode* New_AST_AR_EXP_ConstOperandNode(SIValue constant);
 AST_ArithmeticExpressionNode* New_AST_AR_EXP_OpNode(char *func, Vector *args);
 
-/* Find all the aliases in an expression */
-void AR_EXP_GetAllAliases(const AST_ArithmeticExpressionNode *exp, TrieMap *aliases);
+/* Find all the aliases in expression */
+void AR_EXP_GetAliases(const AST_ArithmeticExpressionNode *exp, TrieMap *aliases);
+
+/* Find all functions in expression */
+void AR_EXP_GetFunctions(const AST_ArithmeticExpressionNode *exp, TrieMap *functions);
+
 void Free_AST_ArithmeticExpressionNode(AST_ArithmeticExpressionNode *arExpNode);
 
 #endif

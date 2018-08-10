@@ -26,10 +26,11 @@
 
 typedef struct {
     RedisModuleCtx *ctx;
-    Vector* records;            /* Vector of Records. */
-    heap_t* heap;               /* Holds top n records. */
-    TrieMap* trie;              /* When using distinct, used to identify unique records. */
-    ResultSetHeader* header;    /* Describes how records should look like. */
+    Vector *records;            /* Vector of Records. */
+    heap_t *heap;               /* Holds top n records. */
+    TrieMap *groups;            /* When aggregating, stores groups by group key. */
+    TrieMap *trie;              /* When using distinct, used to identify unique records. */
+    ResultSetHeader *header;    /* Describes how records should look like. */
     bool aggregated;            /* Rather or not this is an aggregated result set. */
     bool ordered;               /* Rather or not this result set is ordered. */
     int direction;              /* Sort direction ASC/DESC. */

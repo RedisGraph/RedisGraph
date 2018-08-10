@@ -1,3 +1,5 @@
+[![CircleCI](https://circleci.com/gh/RedisLabsModules/redis-graph/tree/master.svg?style=svg)](https://circleci.com/gh/RedisLabsModules/redis-graph/tree/master)
+
 # RedisGraph
 
 RedisGraph is the first queryable property graph database to use sparse adjacency matrices and linear algebra to represent and query graphs.
@@ -144,7 +146,8 @@ Some languages have client libraries that provide support for RedisGraph's comma
 
 | Project | Language | License | Author | URL |
 | ------- | -------- | ------- | ------ | --- |
-| redisgraph-py | Python | BSD | [Redis Labs](https://redislabs.com) | [GitHub](https://github.com/swilly22/redisgraph-py) |
+| redisgraph-py | Python | BSD | [Redis Labs](https://redislabs.com) | [GitHub](https://github.com/RedisLabs/redisgraph-py) |
+| JRedisGraph | Java | BSD | [Redis Labs](https://redislabs.com) | [GitHub](https://github.com/RedisLabs/JRedisGraph) |
 
 ## Documentation
 

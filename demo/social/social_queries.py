@@ -23,7 +23,7 @@ friends_of_friends_query = QueryInfo(
     query="""MATCH (ME:person {name:"Roi Lipman"})-[:friend]->(:person)-[:friend]->(fof:person) 
              RETURN fof.name""",
     description='Friends of friends?',
-    max_run_time_ms=0.25,
+    max_run_time_ms=0.3,
     expected_result=[['Valerie Abigail Arad'],
                      ['Shelly Laslo Rooz'],
                      ['Noam Nativ'],
@@ -34,12 +34,13 @@ friends_of_friends_query = QueryInfo(
 )
 
 
+
 friends_of_friends_single_and_over_30_query = QueryInfo(
     query="""MATCH (ME:person {name:"Roi Lipman"})-[:friend]->(:person)-[:friend]->(fof:person {status:"single"})
              WHERE fof.age > 30
              RETURN fof""",
     description='Friends of friends who are single and over 30?',
-    max_run_time_ms=0.25,
+    max_run_time_ms=0.35,
     expected_result=[['Noam Nativ', '34.000000', 'male', 'single']]
 )
 
@@ -49,7 +50,7 @@ friends_of_friends_visited_amsterdam_and_single_query = QueryInfo(
                 (fof:person {status:"single"})-[:visited]->(:country {name:"Amsterdam"})
              RETURN fof.name""",
     description='Friends of friends who visited Amsterdam and are single?',
-    max_run_time_ms=0.3,
+    max_run_time_ms=0.35,
     expected_result=[['Noam Nativ'],
                      ['Gal Derriere']]
 )
