@@ -387,6 +387,18 @@ This section contains information on all supported functions from the openCypher
 | ------- |:-----------|
 |id() | Returns the ID of a relationship or node.|
 
+## GRAPH.DELETE
+
+Completely removes graph and all of its entities.
+
+Arguments: `Graph name`
+
+Returns: `String indicating if operation succeeded or failed.`
+
+```sh
+GRAPH.DELETE us_government
+```
+
 ## GRAPH.EXPLAIN
 
 Constructs a query execution plan but does not run it. Inspect this execution plan to better
