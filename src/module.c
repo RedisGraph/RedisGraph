@@ -258,6 +258,49 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     return REDISMODULE_OK;
 }
 
+/* Delete graph, removes every Redis key related to given graph 
+ * free every resource allocated by the graph. */
+int MGraph_Delete(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+    if (argc != 2) return RedisModule_WrongArity(ctx);
+    
+    RedisModuleString *graphID = argv[1];
+    const char *graphIDStr = RedisModule_StringPtrLen(graphID, NULL);
+
+    _MGraph_AcquireReadLock();
+    
+    Graph *g = Graph_Get(ctx, graphID);
+
+    // Graph does not exists, nothing to delete.
+    if(!g) goto cleanup;
+
+    // Remove Label stores.
+    size_t keyCount = 0;
+    RedisModuleString **keys = LabelStore_GetKeys(ctx, graphIDStr, &keyCount);
+    assert(keyCount>0 && keys);
+    
+    for(int idx = 0; idx < keyCount; idx++) {
+        RedisModuleString *storeKeyStr = keys[idx];
+        RedisModuleKey *key = RedisModule_OpenKey(ctx, storeKeyStr, REDISMODULE_WRITE);
+        if(RedisModule_DeleteKey(key) != REDISMODULE_OK) {
+            // Log error!
+        }
+        RedisModule_Free(storeKeyStr);
+    }
+    free(keys);
+
+    // Remove Graph from Redis keyspace.
+    RedisModuleKey *key = RedisModule_OpenKey(ctx, graphID, REDISMODULE_WRITE);
+    if(RedisModule_DeleteKey(key) != REDISMODULE_OK) {
+        // Log error!
+    }
+
+cleanup:
+    _MGraph_ReleaseLock(ctx);
+
+    RedisModule_ReplyWithStringBuffer(ctx, "Graph removed.", 14);
+    return REDISMODULE_OK;
+}
+
 /* Builds an execution plan but does not execute it
  * reports plan back to the client
  * Args:
@@ -355,6 +398,10 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
     }
 
     if(RedisModule_CreateCommand(ctx, "graph.QUERY", MGraph_Query, "write", 1, 1, 1) == REDISMODULE_ERR) {
+        return REDISMODULE_ERR;
+    }
+
+    if(RedisModule_CreateCommand(ctx, "graph.DELETE", MGraph_Delete, "write", 1, 1, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
     }
 

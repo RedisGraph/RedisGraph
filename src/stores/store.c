@@ -59,12 +59,6 @@ LabelStore *LabelStore_New(RedisModuleCtx *ctx, LabelStoreType type, const char 
     return store;
 }
 
-void LabelStore_Free(LabelStore *store) {
-    TrieMap_Free(store->properties, TrieMap_NOP_CB);
-    if(store->label) free(store->label);
-    free(store);
-}
-
 LabelStore *LabelStore_Get(RedisModuleCtx *ctx, LabelStoreType type, const char *graph, const char* label) {
 	LabelStore *store = NULL;
     char *strKey;
@@ -95,4 +89,47 @@ void LabelStore_UpdateSchema(LabelStore *store, int prop_count, char **propertie
         char *property = properties[idx];
         TrieMap_Add(store->properties, property, strlen(property), NULL, NULL);
     }
+}
+
+RedisModuleString **LabelStore_GetKeys(RedisModuleCtx *ctx, const char *graphID, size_t *keyCount) {
+    assert(ctx && graphID && keyCount);
+    char *pattern;
+    RedisModuleCallReply *keysCallReply;
+
+    // Search for keys with prefix: 'LABELSTORE_PREFIX_graphID_*'.
+    asprintf(&pattern, "%s_%s_*", LABELSTORE_PREFIX, graphID);
+    keysCallReply = RedisModule_Call(ctx, "KEYS", "c", pattern);    
+    free(pattern);
+
+    if(!keysCallReply) {
+        *keyCount = 0;
+        NULL;
+    }
+    
+    size_t matchedKeyCount = RedisModule_CallReplyLength(keysCallReply);
+    RedisModuleString **storeKeys = malloc(sizeof(RedisModuleString*) * matchedKeyCount);
+
+    int storeKeyIdx = 0;
+    for(int idx = 0; idx < matchedKeyCount; idx++) {
+        RedisModuleCallReply *reply = RedisModule_CallReplyArrayElement(keysCallReply, idx);
+        RedisModuleString *storeKeyStr = RedisModule_CreateStringFromCallReply(reply);
+        RedisModuleKey *key = RedisModule_OpenKey(ctx, storeKeyStr, REDISMODULE_WRITE);
+
+        if (RedisModule_ModuleTypeGetType(key) == StoreRedisModuleType) {
+            storeKeys[storeKeyIdx++] = storeKeyStr;
+        } else {
+            RedisModule_Free(storeKeyStr);
+        }
+        RedisModule_CloseKey(key);
+    }
+
+    RedisModule_Free(keysCallReply);
+    *keyCount = storeKeyIdx;
+    return storeKeys;
+}
+
+void LabelStore_Free(LabelStore *store) {
+    TrieMap_Free(store->properties, TrieMap_NOP_CB);
+    if(store->label) free(store->label);
+    free(store);
 }
