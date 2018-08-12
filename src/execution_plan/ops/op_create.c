@@ -106,7 +106,7 @@ void _CreateNodes(OpCreate *op) {
         Node *n = op->nodes_to_create[i].original_node;
 
         /* Create a new node. */
-        long id = op->g->node_count + Vector_Size(op->created_nodes);
+        long id = Graph_NodeCount(op->g) + Vector_Size(op->created_nodes);
         Node *node = Node_New(id, n->label);
 
         /* Add properties.*/
@@ -197,7 +197,7 @@ void _CommitNewEntities(OpCreate *op) {
         }
 
         NodeIterator *it;
-        size_t graph_node_count = op->g->node_count;
+        size_t graph_node_count = Graph_NodeCount(op->g);
         Graph_CreateNodes(op->g, node_count, labels, &it);
 
         for(int i = 0; i < node_count; i++) {

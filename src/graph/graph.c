@@ -177,6 +177,11 @@ Graph *Graph_Get(RedisModuleCtx *ctx, RedisModuleString *graph_name) {
     return g;
 }
 
+size_t Graph_NodeCount(const Graph *g) {
+    assert(g);
+    return g->node_count;
+}
+
 void Graph_CreateNodes(Graph* g, size_t n, int* labels, NodeIterator **it) {
     assert(g);
     

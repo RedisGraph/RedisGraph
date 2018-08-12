@@ -36,11 +36,11 @@ void extractColumn(CondTraverse *op) {
     // Create hypersparse vector.
     // TODO: Find a quickerway to clear out a vector.
     GrB_Vector v;
-    GrB_Vector_new(&v, GrB_BOOL, op->graph->node_count);
+    GrB_Vector_new(&v, GrB_BOOL, Graph_NodeCount(op->graph));
     GrB_Vector_setElement_BOOL(v, true, src_id);
 
     // Append vector to algebraic expression, as the right most operand.
-    AlgebraicExpression_AppendTerm(op->algebraic_expression, (GrB_Matrix)v, false);
+    AlgebraicExpression_AppendTerm(op->algebraic_expression, (GrB_Matrix)v, false, false);
 
     // Evaluate expression, result is a vector.
     if(op->algebraic_results) AlgebraicExpressionResult_Free(op->algebraic_results);

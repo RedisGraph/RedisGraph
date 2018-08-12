@@ -51,11 +51,14 @@ AlgebraicExpression **AlgebraicExpression_From_Query(const AST_Query *ast, Vecto
 /* Executes given expression. */
 AlgebraicExpressionResult *AlgebraicExpression_Execute(AlgebraicExpression *ae);
 
+/* Removes all operands from expression. */
+void AlgebraicExpression_ClearOperands(AlgebraicExpression *ae);
+
 /* Appends m as the last term in the expression ae. */
-void AlgebraicExpression_AppendTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transpose);
+void AlgebraicExpression_AppendTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transposeOp, bool freeOp);
 
 /* Prepend m as the first term in the expression ae. */
-void AlgebraicExpression_PrependTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transpose);
+void AlgebraicExpression_PrependTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transposeOp, bool freeOp);
 
 /* Removes operand at position idx */
 void AlgebraicExpression_RemoveTerm(AlgebraicExpression *ae, int idx, AlgebraicExpressionOperand *operand);

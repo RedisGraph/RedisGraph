@@ -55,7 +55,7 @@ actors_over_50_that_played_in_blockbusters_query = QueryInfo(
              WHERE a.age >= 50 AND m.votes > 10000 AND m.rating > 8.2
              RETURN a, m""",
     description='Which actors who are over 50 played in blockbuster movies?',
-    max_run_time_ms=3.5,
+    max_run_time_ms=4.0,
     expected_result=[['Bill Irwin', '68.000000', 'Interstellar', '2014.000000', '961763.000000', '8.600000', 'Adventure'],
                      ['Vincent Price', '107.000000', 'Vincent', '1982.000000', '18284.000000', '8.400000', 'Short'],
                      ['Ellen Burstyn', '86.000000', 'Interstellar', '2014.000000', '961763.000000', '8.600000', 'Adventure'],
