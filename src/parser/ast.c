@@ -60,6 +60,21 @@ AST_Validation _Validate_Aliases_In_Match_Clause(TrieMap *aliasesToCheck,
 }
 
 AST_Validation _Validate_CREATE_Clause(const AST_Query *ast, char **reason) {
+  if(!ast->createNode) return AST_VALID;
+  AST_CreateNode *createNode = ast->createNode;
+  
+  size_t entityCount = Vector_Size(createNode->graphEntities);
+  for(int i = 0; i < entityCount; i++) {
+    AST_GraphEntity *entity;
+    Vector_Get(createNode->graphEntities, i, &entity);
+    
+    if(entity->t == N_ENTITY) continue;
+    if (!entity->label) {
+      asprintf(reason, "Exactly one relationship type must be specified for CREATE");
+      return AST_INVALID;
+    }
+  }
+
   return AST_VALID;
 }
 
