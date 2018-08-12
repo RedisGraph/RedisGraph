@@ -34,6 +34,9 @@ LabelStore *LabelStore_Get(RedisModuleCtx *ctx, LabelStoreType type, const char 
 /* Update store schema with given properties. */
 void LabelStore_UpdateSchema(LabelStore *store, int prop_count, char **properties);
 
+/* Returns every Redis key name holding a label store object, for given graph. */
+RedisModuleString **LabelStore_GetKeys(RedisModuleCtx *ctx, const char *graphID, size_t *keyCount);
+
 /* Free store. */
 void LabelStore_Free(LabelStore *store);
 

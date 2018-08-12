@@ -22,6 +22,7 @@
 #include "graph/edge.h"
 
 #include "value.h"
+#include "delete_graph.h"
 #include "query_executor.h"
 #include "bulk_insert/bulk_insert.h"
 #include "bulk_insert/bulk_insert_context.h"
@@ -177,7 +178,6 @@ void _MGraph_Query(void *args) {
 cleanup:
     RedisModule_UnblockClient(qctx->bc, NULL);
     Free_AST_Query(ast);
-    // RedisModule_Free(qctx->graphName);
     free(qctx);
 }
 
@@ -220,6 +220,56 @@ void _MGraph_BulkInsert(void *args) {
     BulkInsertContext_Free(context);
 }
 
+void _MGraph_Delete(void *args) {
+    double tic[2];
+    simple_tic(tic);
+    DeleteGraphContext *dCtx = (DeleteGraphContext *)args;
+    RedisModuleBlockedClient *bc = dCtx->bc;
+    RedisModuleString *graphID = dCtx->graphID;
+
+    RedisModuleCtx *ctx = RedisModule_GetThreadSafeContext(bc);
+    const char *graphIDStr = RedisModule_StringPtrLen(graphID, NULL);
+
+    _MGraph_AcquireWriteLock(ctx);
+    
+    Graph *g = Graph_Get(ctx, graphID);
+
+    // Graph does not exists, nothing to delete.
+    if(!g) goto cleanup;
+
+    // Remove Label stores.
+    size_t keyCount = 0;
+    RedisModuleString **keys = LabelStore_GetKeys(ctx, graphIDStr, &keyCount);
+    assert(keyCount>0 && keys);
+    
+    for(int idx = 0; idx < keyCount; idx++) {
+        RedisModuleString *storeKeyStr = keys[idx];
+        RedisModuleKey *key = RedisModule_OpenKey(ctx, storeKeyStr, REDISMODULE_WRITE);
+        if(RedisModule_DeleteKey(key) != REDISMODULE_OK) {
+            // Log error!
+        }
+        RedisModule_Free(storeKeyStr);
+    }
+    free(keys);
+
+    // Remove Graph from Redis keyspace.
+    RedisModuleKey *key = RedisModule_OpenKey(ctx, graphID, REDISMODULE_WRITE);
+    if(RedisModule_DeleteKey(key) != REDISMODULE_OK) {
+        // Log error!
+    }
+
+cleanup:
+    _MGraph_ReleaseLock(ctx);
+    DeleteGraphContext_free(dCtx);
+
+    char* strElapsed;
+    double t = simple_toc(tic) * 1000;
+    asprintf(&strElapsed, "Graph removed, internal execution time: %.6f milliseconds", t);
+    RedisModule_ReplyWithStringBuffer(ctx, strElapsed, strlen(strElapsed));
+    free(strElapsed);
+    RedisModule_UnblockClient(bc, NULL);
+}
+
 //------------------------------------------------------------------------------
 // Module Commands
 //------------------------------------------------------------------------------
@@ -254,6 +304,22 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     context->tic[1] = tic[1];    
 
     thpool_add_work(_thpool, _MGraph_Query, context);
+
+    return REDISMODULE_OK;
+}
+
+/* Delete graph, removes every Redis key related to given graph 
+ * free every resource allocated by the graph. */
+int MGraph_Delete(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+    if (argc != 2) return RedisModule_WrongArity(ctx);
+    
+    // Construct delete operation context.
+    RedisModuleString *graphID = argv[1];
+    RedisModule_RetainString(ctx, graphID);
+    RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
+    DeleteGraphContext *dCtx = DeleteGraphContext_new(graphID, bc);
+
+    thpool_add_work(_thpool, _MGraph_Delete, dCtx);
 
     return REDISMODULE_OK;
 }
@@ -355,6 +421,10 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
     }
 
     if(RedisModule_CreateCommand(ctx, "graph.QUERY", MGraph_Query, "write", 1, 1, 1) == REDISMODULE_ERR) {
+        return REDISMODULE_ERR;
+    }
+
+    if(RedisModule_CreateCommand(ctx, "graph.DELETE", MGraph_Delete, "write", 1, 1, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
     }
 
