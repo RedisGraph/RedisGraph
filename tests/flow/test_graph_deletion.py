@@ -56,14 +56,14 @@ class GraphDeletionFlowTest(FlowTestsBase):
 
     # Delete edges pointing into either Boaz or Ori.
     def test01_delete_edges(self):
-        query = """MATCH(s:person)-[e:know]->(d:person) WHERE d.name = "Boaz" OR d.name = "Ori" DELETE e"""
+        query = """MATCH (s:person)-[e:know]->(d:person) WHERE d.name = "Boaz" OR d.name = "Ori" DELETE e"""
         actual_result = redis_graph.query(query)
         assert (actual_result.relationships_deleted == 12)
         assert (actual_result.nodes_deleted == 0)
 
     # Make sure there are no edges going into either Boaz or Ori.
     def test02_verify_edge_deletion(self):
-        query = """MATCH(s:person)-[e:know]->(d:person)                    
+        query = """MATCH (s:person)-[e:know]->(d:person)                    
                     WHERE d.name = "Boaz" AND d.name = "Ori"
                     RETURN COUNT(s)"""
         actual_result = redis_graph.query(query)
@@ -71,7 +71,7 @@ class GraphDeletionFlowTest(FlowTestsBase):
 
     # Remove both Alon and Boaz from the graph. 
     def test03_delete_nodes(self):
-        query = """MATCH(s:person)
+        query = """MATCH (s:person)
                     WHERE s.name = "Boaz" OR s.name = "Alon"
                     DELETE s"""
         actual_result = redis_graph.query(query)        
@@ -80,7 +80,7 @@ class GraphDeletionFlowTest(FlowTestsBase):
 
     # Make sure Alon and Boaz are not in the graph.
     def test04_get_deleted_nodes(self):
-        query = """MATCH(s:person)
+        query = """MATCH (s:person)
                     WHERE s.name = "Boaz" OR s.name = "Alon"
                     RETURN s"""
         actual_result = redis_graph.query(query)
@@ -88,23 +88,28 @@ class GraphDeletionFlowTest(FlowTestsBase):
 
     # Make sure Alon and Boaz are the only removed nodes.
     def test05_verify_node_deletion(self):
-        query = """MATCH(s:person)
+        query = """MATCH (s:person)
                    RETURN COUNT(s)"""
         actual_result = redis_graph.query(query)
         nodeCount = int(float(actual_result.result_set[1][0]))
         assert(nodeCount == 5)
 
     def test06_delete_entire_graph(self):
-        redis_con = redis_graph.redis_con
-        redis_con.execute_command("GRAPH.DELETE", GRAPH_ID)
+        # Make sure graph exists.
+        query = """MATCH (n) RETURN COUNT(n)"""
+        result = redis_graph.query(query)
+        nodeCount = int(float(result.result_set[1][0]))
+        assert(nodeCount > 0)
+        
+        # Delete graph.
+        redis_graph.delete()
 
         # Try to query a deleted graph should raise an exception.
         try:
-            query = """MATCH(n) RETURN n"""
             redis_graph.query(query)
             assert(False)
         except:
             pass
-        
+
 if __name__ == '__main__':
     unittest.main()
