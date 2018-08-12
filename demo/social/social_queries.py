@@ -61,7 +61,7 @@ friends_visited_same_places_as_me_query = QueryInfo(
                 [:friend]-(:person {name:"Roi Lipman"}) 
              RETURN f.name, c""",
     description='Friends who have been to places I have visited?',
-    max_run_time_ms=0.3,
+    max_run_time_ms=0.45,
     expected_result=[['Tal Doron', 'Japan'],
                      ['Alon Fital', 'Prague'],
                      ['Tal Doron', 'USA'],

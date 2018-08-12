@@ -164,7 +164,7 @@ RedisModuleString** _Bulk_Insert_Insert_Nodes(RedisModuleCtx *ctx, RedisModuleSt
     }
     
     *nodes = nodes_to_create;
-    int start_offset = g->node_count;
+    int start_offset = Graph_NodeCount(g);
     Graph_CreateNodes(g, nodes_to_create, NULL, &it);
 
     long long label_count = 0;          // Number of unique lables.

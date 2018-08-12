@@ -265,24 +265,36 @@ AlgebraicExpressionResult *AlgebraicExpression_Execute(AlgebraicExpression *ae) 
     return _AlgebraicExpressionResult_New(C, ae);
 }
 
-void AlgebraicExpression_AppendTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transpose) {
+void AlgebraicExpression_ClearOperands(AlgebraicExpression *ae) {
+    for(int i = 0; i < ae->operand_count; i++) {
+        if(ae->operands[i].free)
+            GrB_Matrix_free(&ae->operands[i].operand);
+    }
+
+    ae->operand_count = 0;
+}
+
+void AlgebraicExpression_AppendTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transposeOp, bool freeOp) {
     assert(ae);    
-    if(ae->operand_count+1 >= ae->operand_cap)
+    if(ae->operand_count+1 >= ae->operand_cap) {
         ae->operand_cap += 4;
         ae->operands = realloc(ae->operands, sizeof(AlgebraicExpressionOperand) * ae->operand_cap);
+    }
 
-    ae->operands[ae->operand_count].transpose = transpose;
+    ae->operands[ae->operand_count].transpose = transposeOp;
+    ae->operands[ae->operand_count].free = freeOp;
     ae->operands[ae->operand_count].operand = m;
     ae->operand_count++;
 }
 
-void AlgebraicExpression_PrependTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transpose) {
+void AlgebraicExpression_PrependTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transposeOp, bool freeOp) {
     assert(ae);
 
     ae->operand_count++;
-    if(ae->operand_count >= ae->operand_cap)
+    if(ae->operand_count >= ae->operand_cap) {
         ae->operand_cap += 4;
         ae->operands = realloc(ae->operands, sizeof(AlgebraicExpressionOperand) * ae->operand_cap);
+    }
 
     // TODO: might be optimized with memcpy.
     // Shift operands to the right, making room at the begining.
@@ -290,7 +302,8 @@ void AlgebraicExpression_PrependTerm(AlgebraicExpression *ae, GrB_Matrix m, bool
         ae->operands[i] = ae->operands[i-1];
     }
 
-    ae->operands[0].transpose = transpose;
+    ae->operands[0].transpose = transposeOp;
+    ae->operands[0].free = freeOp;
     ae->operands[0].operand = m;
 }
 
