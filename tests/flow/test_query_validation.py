@@ -35,10 +35,9 @@ class QueryValidationFlowTest(FlowTestsBase):
 
     # Expect an error when trying to use a function which does not exists.
     def test01_none_existing_function(self):
-        global redis_graph
         query = """MATCH (n) RETURN noneExistingFunc(n.age) AS cast"""
         try:
-            result = redis_graph.query(query)
+            redis_graph.query(query)
             assert(False)
         except redis.exceptions.ResponseError:
             # Expecting an error.
@@ -46,13 +45,21 @@ class QueryValidationFlowTest(FlowTestsBase):
 
     # Make sure function validation is type case insensitive.
     def test02_case_insensitive_function_name(self):
-        global redis_graph
         try:
             query = """MATCH (n) RETURN mAx(n.age)"""
-            result = redis_graph.query(query)
+            redis_graph.query(query)
         except redis.exceptions.ResponseError:
             # function validation should be case insensitive.
             assert(False)
+    
+    def test03_edge_missing_relation_type(self):
+        try:
+            query = """CREATE (n:Person {age:32})-[]->(:person {age:30})"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError:
+            # Expecting an error.
+            pass
 
 if __name__ == '__main__':
     unittest.main()
