@@ -150,7 +150,7 @@ void _GraphType_SaveNodes(RedisModuleIO *rdb, const Graph *g) {
      * #nodes 
      * nodes */
     
-    RedisModule_SaveUnsigned(rdb, g->node_count);
+    RedisModule_SaveUnsigned(rdb, Graph_NodeCount(g));
     NodeIterator *iter = Graph_ScanNodes(g);
     Node *n;
     while((n = NodeIterator_Next(iter))) {

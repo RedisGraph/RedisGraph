@@ -382,8 +382,8 @@ TEST_F(AlgebraicExpressionTest, ExpressionExecute) {
     GrB_Index ncols, nrows;
     GrB_Matrix_ncols(&ncols, M);
     GrB_Matrix_nrows(&nrows, M);    
-    assert(ncols == g->node_count);
-    assert(nrows == g->node_count);
+    assert(ncols == Graph_NodeCount(g));
+    assert(nrows == Graph_NodeCount(g));
 
     // Expected result.
     // 0   0   0   0   0   0

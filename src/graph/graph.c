@@ -177,6 +177,11 @@ Graph *Graph_Get(RedisModuleCtx *ctx, RedisModuleString *graph_name) {
     return g;
 }
 
+size_t Graph_NodeCount(const Graph *g) {
+    assert(g);
+    return g->node_count;
+}
+
 void Graph_CreateNodes(Graph* g, size_t n, int* labels, NodeIterator **it) {
     assert(g);
     
@@ -479,9 +484,17 @@ void Graph_CommitPendingOps(Graph *g) {
 void Graph_Free(Graph *g) {
     assert(g);
         
+    
+    /* TODO: Free nodes, currently we can't free nodes
+     * as they are embedded within the chain block, as a result
+     * we can't call free on a single node.
+     * on the other hand when freeing a query graph, we're able
+     * to call free on node. this will be resolved once we'll
+     * introduce property stores. */
+
     // Free each node.
     // Node *node;
-    // NodeIterator *it = NodeIterator_New(g->nodes_blocks[0], 0, g->node_count);
+    // NodeIterator *it = Graph_ScanNodes(g);
     // while((node = NodeIterator_Next(it)) != NULL) {
     //     Node_Free(node);
     // }

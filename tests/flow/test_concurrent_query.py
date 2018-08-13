@@ -49,6 +49,18 @@ def query_write(graph, query, threadID):
             assertions[threadID] = False
             break
 
+def delete_graph(graph, threadID):
+    global assertions
+    assertions[threadID] = True
+
+    # Try to delete graph multiple times.
+    for i in range(10):
+        try:
+            graph.delete()
+        except:
+            # Graph deletion failed.
+            assertions[threadID] = False
+
 class ConcurrentQueryFlowTest(FlowTestsBase):
     @classmethod
     def setUpClass(cls):
@@ -72,9 +84,8 @@ class ConcurrentQueryFlowTest(FlowTestsBase):
     def populate_graph(cls):
         nodes = {}
         graph = graphs[0]
-         
-         # Create entities
-        
+
+        # Create entities
         for p in people:
             node = Node(label="person", properties={"name": p})
             graph.add_node(node)
@@ -134,6 +145,22 @@ class ConcurrentQueryFlowTest(FlowTestsBase):
             threads.append(t)
             t.start()
 
+        # Wait for threads to return.
+        for i in range(CLIENT_COUNT):
+            t = threads[i]
+            t.join()
+            assert(assertions[i])
+    
+    # Try to delete graph multiple times.
+    def test_04_concurrent_delete(self):
+        threads = []
+        for i in range(CLIENT_COUNT):
+            graph = graphs[i]
+            t = threading.Thread(target=delete_graph, args=(graph, i))
+            t.setDaemon(True)
+            threads.append(t)
+            t.start()
+        
         # Wait for threads to return.
         for i in range(CLIENT_COUNT):
             t = threads[i]

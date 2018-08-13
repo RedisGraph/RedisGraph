@@ -50,6 +50,9 @@ Graph *Graph_Get(
     RedisModuleString *graph_name
 );
 
+// Returns number of nodes in the graph.
+size_t Graph_NodeCount(const Graph *g);
+
 // Creates N new nodes.
 // Returns node iterator.
 void Graph_CreateNodes (

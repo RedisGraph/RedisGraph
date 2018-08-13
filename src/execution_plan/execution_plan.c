@@ -171,35 +171,6 @@ Vector* _ExecutionPlan_Locate_References(OpBase *root, OpBase **op, Vector *refe
     return seen;
 }
 
-void ExecutionPlan_AddOp(OpBase *parent, OpBase *newOp) {
-    _OpBase_AddChild(parent, newOp);
-}
-
-void ExecutionPlan_ReplaceOp(OpBase *a, OpBase *b) {
-    _OpBase_PushAbove(a->parent, b);
-    ExecutionPlan_RemoveOp(a);
-}
-
-void ExecutionPlan_RemoveOp(OpBase *op) {
-    assert(op->parent != NULL);
-
-    // Remove op from its parent.
-    OpBase* parent = op->parent;
-    _OpBase_RemoveChild(op->parent, op);
-
-    // Add each of op's children as a child of op's parent.
-    for(int i = 0; i < op->childCount; i++) {
-        _OpBase_AddChild(parent, op->children[i]);
-    }
-}
-
-OpBase* ExecutionPlan_Locate_References(OpBase *root, Vector *references) {
-    OpBase *op = NULL;    
-    Vector *temp = _ExecutionPlan_Locate_References(root, &op, references);
-    Vector_Free(temp);
-    return op;
-}
-
 void _Count_Graph_Entities(const Vector *entities, size_t *node_count, size_t *edge_count) {
     for(int i = 0; i < Vector_Size(entities); i++) {
         AST_GraphEntity *entity;
@@ -227,6 +198,65 @@ void _Determine_Graph_Size(const AST_Query *ast, size_t *node_count, size_t *edg
         entities = ast->createNode->graphEntities;
         _Count_Graph_Entities(entities, node_count, edge_count);
     }
+}
+
+/* Enforce destination type by multiplying to the right by label matrix,
+ * such that if destination node is labeled as person, then we would enforce that
+ * by multiplying to the right by the person label matrix. */
+void _ExecutionPlan_EnforceExpDestNodeType(RedisModuleCtx *ctx, Graph *g,
+                                           AlgebraicExpression **exps, size_t expCount,
+                                           const char *graphID) {
+    for(int i = 0; i < expCount; i++) {
+        AlgebraicExpression *exp = exps[i];
+        Node *dest = *exp->dest_node;
+        if(!dest->label) continue;
+
+        // Get label matrix.        
+        LabelStore *ls = LabelStore_Get(ctx, STORE_NODE, graphID, dest->label);
+        if(!ls) {
+            /* Label does not exists,
+             * replace entire expression with a NULL matrix. */
+            GrB_Matrix zero;
+            GrB_Index nrows;
+            GrB_Index ncols;
+            nrows = ncols = Graph_NodeCount(g);
+            GrB_Matrix_new(&zero, GrB_BOOL, nrows, ncols);
+            AlgebraicExpression_ClearOperands(exp);
+            AlgebraicExpression_PrependTerm(exp, zero, false, true);
+        } else {
+            GrB_Matrix M = Graph_GetLabelMatrix(g, ls->id);
+            AlgebraicExpression_PrependTerm(exp, M, false, false);
+        }
+    }
+}
+
+void ExecutionPlan_AddOp(OpBase *parent, OpBase *newOp) {
+    _OpBase_AddChild(parent, newOp);
+}
+
+void ExecutionPlan_ReplaceOp(OpBase *a, OpBase *b) {
+    _OpBase_PushAbove(a->parent, b);
+    ExecutionPlan_RemoveOp(a);
+}
+
+void ExecutionPlan_RemoveOp(OpBase *op) {
+    assert(op->parent != NULL);
+    
+    // Remove op from its parent.
+    OpBase* parent = op->parent;
+    _OpBase_RemoveChild(op->parent, op);
+
+    // Add each of op's children as a child of op's parent.
+    for(int i = 0; i < op->childCount; i++) {
+        _OpBase_AddChild(parent, op->children[i]);
+    }
+}
+
+OpBase* ExecutionPlan_Locate_References(OpBase *root, Vector *references) {
+    OpBase *op = NULL;    
+    Vector *temp = _ExecutionPlan_Locate_References(root, &op, references);
+    Vector_Free(temp);
+    return op;
 }
 
 ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g,
@@ -281,7 +311,8 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g,
             if(Vector_Size(pattern) > 1) {
                 size_t expCount = 0;
                 AlgebraicExpression **exps = AlgebraicExpression_From_Query(ast, pattern, q, &expCount);
-                
+                _ExecutionPlan_EnforceExpDestNodeType(ctx, g, exps, expCount, graph_name);
+
                 TRAVERSE_ORDER order = determineTraverseOrder(q, filter_tree, exps, expCount);
                 if(order == TRAVERSE_ORDER_FIRST) {
                     AlgebraicExpression *exp = exps[0];
