@@ -281,9 +281,10 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g,
     QueryGraph *q = NewQueryGraph_WithCapacity(node_count, edge_count);
     execution_plan->graph = q;
     FT_FilterNode *filter_tree = NULL;
-    if(ast->whereNode != NULL)
+    if(ast->whereNode != NULL) {
         filter_tree = BuildFiltersTree(ast->whereNode->filters);
         execution_plan->filter_tree = filter_tree;
+    }
 
     if(ast->matchNode) {
         BuildQueryGraph(ctx, g, graph_name, q, ast->matchNode->_mergedPatterns);
@@ -460,7 +461,8 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g,
         Vector_Free(sub_trees);
     }
     
-    if(!explain) optimizePlan(execution_plan);
+    optimizePlan(ctx, graph_name, execution_plan);
+
     return execution_plan;
 }
 

@@ -15,7 +15,7 @@
 FT_FilterNode* LeftChild(const FT_FilterNode *node) { return node->cond.left; }
 FT_FilterNode* RightChild(const FT_FilterNode *node) { return node->cond.right; }
 
-int static inline IsNodeConstantPredicate(const FT_FilterNode *node) {
+int IsNodeConstantPredicate(const FT_FilterNode *node) {
     return (node->t == FT_N_PRED && node->pred.t == FT_N_CONSTANT);
 }
 

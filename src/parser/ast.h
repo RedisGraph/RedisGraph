@@ -30,13 +30,14 @@ typedef struct {
 	AST_ReturnNode *returnNode;
 	AST_OrderNode *orderNode;
 	AST_LimitNode *limitNode;
+	AST_IndexNode *indexNode;
 } AST_Query;
 
 AST_Query* New_AST_Query(AST_MatchNode *matchNode, AST_WhereNode *whereNode,
 						 AST_CreateNode *createNode, AST_MergeNode *mergeNode,
 						 AST_SetNode *setNode, AST_DeleteNode *deleteNode,
 						 AST_ReturnNode *returnNode, AST_OrderNode *orderNode,
-						 AST_LimitNode *limitNode);
+						 AST_LimitNode *limitNode, AST_IndexNode *indexNode);
 
 // AST clause validations.
 AST_Validation AST_Validate(const AST_Query* ast, char **reason);

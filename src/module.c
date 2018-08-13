@@ -50,6 +50,9 @@
 
 #include "execution_plan/execution_plan.h"
 
+#include "index/index.h"
+#include "index/index_type.h"
+
 /* Thread pool. */
 static threadpool _thpool = NULL;
 
@@ -98,6 +101,41 @@ void _MGraph_ReleaseLock(RedisModuleCtx *ctx) {
      * this should only have an effect when the read/write lock
      * was acquired for writing. */
     RedisModule_ThreadSafeContextUnlock(ctx);
+}
+
+void _index_operation(RedisModuleCtx *ctx, const char *graphName, Graph *g, AST_IndexNode *indexNode) {
+  /* Set up nested array response for index creation and deletion.
+   * As we need no result set, there is only one top-level element, for statistics.
+   * Index_Create or Index_Delete will enqueue one string response
+   * to indicate the success of the operation, and the query runtime will be appended
+   * after this call returns. */
+  RedisModule_ReplyWithArray(ctx, 1);
+  RedisModule_ReplyWithArray(ctx, 2);
+
+  int ret;
+  switch(indexNode->operation) {
+    case CREATE_INDEX:
+      ret = Index_Create(ctx, graphName, g, indexNode->label, indexNode->property);
+      if (ret == INDEX_OK) {
+        RedisModule_ReplyWithSimpleString(ctx, "Added 1 index.");
+      } else {
+        RedisModule_ReplyWithSimpleString(ctx, "(no changes, no records)");
+      }
+      break;
+    case DROP_INDEX:
+      ret = Index_Delete(ctx, graphName, indexNode->label, indexNode->property);
+      if (ret == INDEX_OK) {
+        RedisModule_ReplyWithSimpleString(ctx, "Removed 1 index.");
+      } else {
+        char *reply;
+        asprintf(&reply, "ERR Unable to drop index on :%s(%s): no such index.", indexNode->label, indexNode->property);
+        RedisModule_ReplyWithError(ctx, reply);
+        free(reply);
+      }
+      break;
+    default:
+      assert(0);
+  }
 }
 
 /* Retrieve graph stored within Redis under graph_name key,
@@ -151,21 +189,27 @@ void _MGraph_Query(void *args) {
         }
     }
 
-    ExecutionPlan *plan = NewExecutionPlan(ctx, g, graph_name, ast, false);
-    ResultSet* resultSet = ExecutionPlan_Execute(plan);
-    ExecutionPlanFree(plan);
+    if (ast->indexNode) { // index operation
+        _index_operation(ctx, graph_name, g, ast->indexNode);
+        // Release read lock
+        _MGraph_ReleaseLock(ctx);
+    } else {
+        ExecutionPlan *plan = NewExecutionPlan(ctx, g, graph_name, ast, false);
+        ResultSet* resultSet = ExecutionPlan_Execute(plan);
+        ExecutionPlanFree(plan);
 
-    // Done accessing graph data, release lock.
-    _MGraph_ReleaseLock(ctx);
+        // Done accessing graph data, release lock.
+        _MGraph_ReleaseLock(ctx);
 
-    /* Send result-set back to client. */
-    ResultSet_Replay(resultSet);
+        /* Send result-set back to client. */
+        ResultSet_Replay(resultSet);
 
-    /* Replicate query only if it modified the keyspace. */
-    if(ResultSetStat_IndicateModification(resultSet->stats))
-        RedisModule_ReplicateVerbatim(ctx);
+        /* Replicate query only if it modified the keyspace. */
+        if(ResultSetStat_IndicateModification(resultSet->stats))
+            RedisModule_ReplicateVerbatim(ctx);
 
-    ResultSet_Free(resultSet);
+        ResultSet_Free(resultSet);
+    }
 
     /* Report execution timing. */
     double t = simple_toc(qctx->tic) * 1000;
@@ -363,6 +407,12 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
         return REDISMODULE_OK;
     }
 
+    if (ast->indexNode != NULL) { // index operation
+        const char *strPlan = Index_OpPrint(ast->indexNode);
+        RedisModule_ReplyWithSimpleString(ctx, strPlan);
+        return REDISMODULE_OK;
+    }
+
     ExecutionPlan *plan = NewExecutionPlan(ctx, g, graph_name, ast, true);
     char* strPlan = ExecutionPlanPrint(plan);
     RedisModule_ReplyWithStringBuffer(ctx, strPlan, strlen(strPlan));
@@ -391,6 +441,11 @@ int _RegisterDataTypes(RedisModuleCtx *ctx) {
 
     if(GraphType_Register(ctx) == REDISMODULE_ERR) {
         printf("Failed to register graphtype\n");
+        return REDISMODULE_ERR;
+    }
+
+    if(IndexType_Register(ctx) == REDISMODULE_ERR) {
+        printf("Failed to register indextype\n");
         return REDISMODULE_ERR;
     }
 

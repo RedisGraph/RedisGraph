@@ -21,6 +21,9 @@
 #define GRAPH_DEFAULT_LABEL_CAP 16      // Default number of different labels a graph can hold before resizing.
 #define GRAPH_NO_LABEL -1               // Labels are numbered [0-N], -1 represents no label.
 #define GRAPH_NO_RELATION -1            // Relations are numbered [0-N], -1 represents no relation.
+
+typedef GrB_Index NodeID;
+
 typedef struct {
     NodeBlock **nodes_blocks;       // Graph nodes arranged in blocks.
     size_t block_count;             // Number of node blocks.

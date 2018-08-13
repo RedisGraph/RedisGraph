@@ -207,8 +207,10 @@ TEST_F(FilterTreeTest, CollectAliases) {
     }
 
     /* Clean up. */
-    for(int i = 0; i < Vector_Size(aliases); i++)
-        Vector_Get(aliases, i, &alias); free(alias);
+    for(int i = 0; i < Vector_Size(aliases); i++) {
+        Vector_Get(aliases, i, &alias);
+        free(alias);
+    }
     Vector_Free(aliases);
     FilterTree_Free(tree);
 }

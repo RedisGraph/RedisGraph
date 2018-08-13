@@ -11,6 +11,6 @@
 #include "../execution_plan.h"
 
 /* Try to optimize an execution plan */
-void optimizePlan(ExecutionPlan *plan);
+void optimizePlan(RedisModuleCtx *ctx, const char *graph_name, ExecutionPlan *plan);
 
 #endif
