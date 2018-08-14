@@ -20,6 +20,7 @@ struct Edge {
 		EntityProperty *properties;
 	};
 	char* relationship;
+	int relationship_id;			// ID of relationship matrix.
 	Node* src;
 	Node* dest;
 	GrB_Matrix mat;					// Adjacency matrix, associated with edge.

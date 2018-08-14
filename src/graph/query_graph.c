@@ -171,10 +171,12 @@ void _BuildQueryGraphAddEdge(const Graph *g,
 
     // Get relation matrix.
     if(edge->ge.label == NULL) {
+        e->relationship_id = GRAPH_NO_RELATION;
         e->mat = Graph_GetAdjacencyMatrix(g);
     } else {
         LabelStore *s = LabelStore_Get(ctx, STORE_EDGE, graph_name, edge->ge.label);
         if(s) {
+            e->relationship_id = s->id;
             e->mat = Graph_GetRelationMatrix(g, s->id);
         }
         else {

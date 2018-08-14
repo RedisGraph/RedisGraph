@@ -8,6 +8,8 @@
 #ifndef GRAPH_H
 #define GRAPH_H
 
+#include <pthread.h>
+
 #include "node.h"
 #include "edge.h"
 #include "node_block.h"
@@ -36,6 +38,8 @@ typedef struct {
     GrB_Matrix *_labels;            // Label matrices.
     size_t label_cap;               // Number of labels graph can hold.
     size_t label_count;             // Number of label matrices.
+    pthread_mutex_t _mutex;         // Mutex for accessing critical sections.
+
 } Graph;
 
 // Create a new graph.
@@ -73,26 +77,27 @@ void Graph_ConnectNodes (
 // Returns NULL if node_id wasn't found.
 Node *Graph_GetNode (
     const Graph *g,
-    int node_id
+    NodeID node_id
 );
 
 // Removes a set of nodes and all of their connections
 // within the graph.
-void Graph_DeleteNodes(Graph *g, int *IDs, size_t IDCount);
+void Graph_DeleteNodes(Graph *g, NodeID *IDs, size_t IDCount);
 
 // Removes edge connecting src node to dest node.
 void Graph_DeleteEdge (
     Graph *g,
-    int src_id,
-    int dest_id
+    NodeID src_id,
+    NodeID dest_id,
+    int relation
 );
 
 // Label all nodes between start_node_id and end_node_id
 // with given label.
 void Graph_LabelNodes (
     Graph *g,
-    int start_node_id,
-    int end_node_id,
+    NodeID start_node_id,
+    NodeID end_node_id,
     int label,
     NodeIterator **it
 );
