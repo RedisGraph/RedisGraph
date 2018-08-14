@@ -74,7 +74,7 @@ void Graph_ConnectNodes (
 // Returns NULL if node_id wasn't found.
 Node *Graph_GetNode (
     const Graph *g,
-    int node_id
+    NodeID node_id
 );
 
 // Removes a set of nodes and all of their connections
@@ -84,16 +84,17 @@ void Graph_DeleteNodes(Graph *g, NodeID *IDs, size_t IDCount);
 // Removes edge connecting src node to dest node.
 void Graph_DeleteEdge (
     Graph *g,
-    int src_id,
-    int dest_id
+    NodeID src_id,
+    NodeID dest_id,
+    int relation
 );
 
 // Label all nodes between start_node_id and end_node_id
 // with given label.
 void Graph_LabelNodes (
     Graph *g,
-    int start_node_id,
-    int end_node_id,
+    NodeID start_node_id,
+    NodeID end_node_id,
     int label,
     NodeIterator **it
 );

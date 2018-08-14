@@ -42,7 +42,7 @@ Node *NodeIterator_Next(NodeIterator *iter) {
 
     // Advance to next block if current block consumed.
     if(iter->_block_pos >= NODEBLOCK_CAP) {
-        iter->_block_pos = 0;
+        iter->_block_pos -= NODEBLOCK_CAP;
         iter->_current_block = iter->_current_block->next;
     }
 

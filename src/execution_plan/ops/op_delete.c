@@ -6,6 +6,14 @@
 */
 
 #include "./op_delete.h"
+#include "../../util/qsort.h"
+#include <assert.h>
+
+#define nodeIDislt(a,b) (a<b)
+
+#define edgeIDislt(a,b) ( ( a->src < b->src ) ||\
+    ( ( a->src == b->src ) && ( a->dest < b->dest ) ) ||\
+    ( ( a->src == b->src ) && ( a->dest == b->dest ) && ( a->relation_type < b->relation_type ) ) )
 
 /* Forward declarations. */
 void _LocateEntities(OpDelete *op_delete, QueryGraph *graph, AST_DeleteNode *ast_delete_node);
@@ -19,9 +27,16 @@ OpBase* NewDeleteOp(AST_DeleteNode *ast_delete_node, QueryGraph *qg, Graph *g, R
     op_delete->node_count = 0;
     op_delete->edges_to_delete = malloc(sizeof(EdgeEnds) * Vector_Size(ast_delete_node->graphEntities));
     op_delete->edge_count = 0;
-    op_delete->deleted_nodes = NewTrieMap();
-    op_delete->deleted_edges = NewTrieMap();
-    op_delete->result_set = result_set;    
+
+    op_delete->deleted_node_cap = 1024;
+    op_delete->deleted_node_count = 0;
+    op_delete->deleted_nodes = malloc(sizeof(NodeID) * op_delete->deleted_node_cap);
+
+    op_delete->deleted_edge_cap = 1024;
+    op_delete->deleted_edge_count = 0;
+    op_delete->deleted_edges = malloc(sizeof(struct EdgeID) * op_delete->deleted_edge_cap);
+
+    op_delete->result_set = result_set;
     
     _LocateEntities(op_delete, qg, ast_delete_node);
 
@@ -48,59 +63,86 @@ void _LocateEntities(OpDelete *op, QueryGraph *qg, AST_DeleteNode *ast_delete_no
             continue;
         }
 
-        // FOR NOW, SAVE REF TO SRC AND DEST NODES.
+        // Save reference t source and destination nodes.
         Edge *e = QueryGraph_GetEdgeByAlias(qg, entity_alias);
-        if(e != NULL) {
-            Edge **edge_ref = QueryGraph_GetEdgeRef(qg, e);
-            op->edges_to_delete[op->edge_count].src = QueryGraph_GetNodeRef(op->qg, e->src);
-            op->edges_to_delete[op->edge_count].dest = QueryGraph_GetNodeRef(op->qg, e->dest);
-            op->edge_count++;
-        }
+        assert(e != NULL);
+
+        op->edges_to_delete[op->edge_count].src = QueryGraph_GetNodeRef(op->qg, e->src);
+        op->edges_to_delete[op->edge_count].dest = QueryGraph_GetNodeRef(op->qg, e->dest);
+        op->edges_to_delete[op->edge_count].relation_type = e->relationship_id;
+        op->edge_count++;
     }
 }
 
-void _EnqueueNodeForDeletion(TrieMap *queue, Node *node) {
-    char entity_id[128];
-    size_t id_len = sprintf(entity_id, "%ld", node->id);
-    TrieMap_Add(queue, entity_id, id_len, NULL, TrieMap_DONT_CARE_REPLACE);
+void _EnqueueNodeForDeletion(OpDelete *op, Node *node) {
+    // Make sure we've got enough room for node ID.
+    if(op->deleted_node_count >= op->deleted_node_cap) {
+        op->deleted_node_cap *= 2;
+        op->deleted_nodes = realloc(op->deleted_nodes, sizeof(NodeID) * op->deleted_node_cap);
+    }
+
+    op->deleted_nodes[op->deleted_node_count++] = node->id;
 }
 
-void _EnqueueEdgeForDeletion(TrieMap *queue, EdgeEnds *edge) {
-    char entity_id[256];
-    size_t id_len = sprintf(entity_id, "%ld:%ld", (*edge->src)->id, (*edge->dest)->id);
-    TrieMap_Add(queue, entity_id, id_len, NULL, TrieMap_DONT_CARE_REPLACE);
+void _EnqueueEdgeForDeletion(OpDelete *op, EdgeEnds *edge) {
+    // Make sure we've got enough room for edge ID.
+    if(op->deleted_edge_count >= op->deleted_edge_cap) {
+        op->deleted_edge_cap *= 2;
+        op->deleted_edges = realloc(op->deleted_edges, sizeof(struct EdgeID) * op->deleted_edge_cap);
+    }
+
+    op->deleted_edges[op->deleted_edge_count].src = (*edge->src)->id;
+    op->deleted_edges[op->deleted_edge_count].dest = (*edge->dest)->id;
+    op->deleted_edges[op->deleted_edge_count].relation_type = edge->relation_type;
+    op->deleted_edge_count++;
 }
 
 void _DeleteEntities(OpDelete *op) {
-    char ID[128];
-    char *prefix;
-    tm_len_t prefixLen;
-    TrieMapIterator *it;
-    void *v;
+    /* We must start with edge deletion as node deletion moves nodes around. */
+    if(op->deleted_edge_count > 0) {
+        // Sort.
+        QSORT(struct EdgeID, op->deleted_edges, op->deleted_edge_count, edgeIDislt);
 
-    /* We must start with edge deletion as node deletion moves nodes around. */    
-    it = TrieMap_Iterate(op->deleted_edges, "", 0);
-    
-    while(TrieMapIterator_Next(it, &prefix, &prefixLen, &v)) {
-        memcpy(ID, prefix, prefixLen);
-        ID[prefixLen] = 0;
-        // Extract src node id and dest node id from id.
-        int srcNodeID = atoi(strtok(ID, ":"));
-        int destNodeID = atoi(strtok(NULL, ":"));
-        Graph_DeleteEdge(op->g, srcNodeID, destNodeID);
-    }
-    TrieMapIterator_Free(it);    
+        for(int i = 0; i < op->deleted_edge_count; i++) {
+            struct EdgeID current = op->deleted_edges[i];
+            NodeID srcNodeID = current.src;
+            NodeID destNodeID = current.dest;
 
-    if(op->deleted_nodes->cardinality > 0) {
-        int *nodesToDelete = malloc(sizeof(int) * op->deleted_nodes->cardinality);
-        int i = 0;
-        it = TrieMap_Iterate(op->deleted_nodes, "", 0);
-        while(TrieMapIterator_Next(it, &prefix, &prefixLen, &v)) {
-            nodesToDelete[i++] = atoi(prefix);
+            // Skip duplicates.
+            while(i < (op->deleted_edge_count-1) && 
+            srcNodeID == op->deleted_edges[i+1].src && 
+            destNodeID == op->deleted_edges[i+1].dest ) {
+                i++;
+            }
+
+            Graph_DeleteEdge(op->g, srcNodeID, destNodeID, current.relation_type);
         }
-        Graph_DeleteNodes(op->g, nodesToDelete, i);
-        free(nodesToDelete);
-        TrieMapIterator_Free(it);
+    }
+
+    if(op->deleted_node_count > 0) {
+        // Sort.
+        QSORT(NodeID, op->deleted_nodes, op->deleted_node_count, nodeIDislt);
+        
+        // Remove duplicates.
+        int j = 0;  // Index into dup_free_nodes_ids.
+        
+        // Array of unique node IDs.
+        NodeID *dup_free_nodes_ids = malloc(sizeof(NodeID) * op->deleted_node_count);
+
+        for(int i = 0; i < op->deleted_node_count; i++) {
+            NodeID current = op->deleted_nodes[i];
+            
+            // Skip duplicates.
+            while(i < (op->deleted_node_count-1) && current == op->deleted_nodes[i+1]) {
+                i++;
+            }
+            
+            dup_free_nodes_ids[j++] = current;
+        }
+
+        Graph_DeleteNodes(op->g, dup_free_nodes_ids, j);
+
+        free(dup_free_nodes_ids);
     }
 }
 
@@ -112,18 +154,13 @@ OpResult OpDeleteConsume(OpBase *opBase, QueryGraph* graph) {
     if(res != OP_OK) return res;
 
     /* Enqueue entities for deletion. */
-    char entity_id[256];
-    size_t id_len;
-    Node *n;
-    EdgeEnds *e;
-
     for(int i = 0; i < op->node_count; i++) {
-        n = *(op->nodes_to_delete[i]);        
-        _EnqueueNodeForDeletion(op->deleted_nodes, n);
+        Node *n = *(op->nodes_to_delete[i]);        
+        _EnqueueNodeForDeletion(op, n);
     }
     for(int i = 0; i < op->edge_count; i++) {
-        e = op->edges_to_delete + i;
-        _EnqueueEdgeForDeletion(op->deleted_edges, e);
+        EdgeEnds *e = op->edges_to_delete + i;
+        _EnqueueEdgeForDeletion(op, e);
     }
 
     return OP_OK;
@@ -138,12 +175,12 @@ void OpDeleteFree(OpBase *ctx) {
 
     _DeleteEntities(op);
     if(op->result_set) {
-        op->result_set->stats.nodes_deleted = op->deleted_nodes->cardinality;
-        op->result_set->stats.relationships_deleted = op->deleted_edges->cardinality;
+        op->result_set->stats.nodes_deleted = op->deleted_node_count;
+        op->result_set->stats.relationships_deleted = op->deleted_edge_count;
     }
 
     free(op->nodes_to_delete);
     free(op->edges_to_delete);
-    TrieMap_Free(op->deleted_nodes, TrieMap_NOP_CB);
-    TrieMap_Free(op->deleted_edges, TrieMap_NOP_CB);
+    free(op->deleted_nodes);
+    free(op->deleted_edges);
 }

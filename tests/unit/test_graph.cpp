@@ -439,7 +439,7 @@ TEST_F(GraphTest, RemoveNodes) {
     GrB_Descriptor_set(desc, GrB_INP0, GrB_TRAN);
 
     // Remove all nodes, one node at a time.
-    int nodesToDelete[1] = {0};
+    NodeID nodesToDelete[1] = {0};
     for(unsigned int nodeID = 0; nodeID < nodeCount; nodeID++) {
         GrB_Index replacementID = g->node_count - 1;
         GrB_Index nrows = g->node_count;
@@ -568,7 +568,7 @@ TEST_F(GraphTest, RemoveMultipleNodes) {
     Graph_ConnectNodes(g, 27, connections);
 
     // Delete first and last nodes.
-    int nodeToDelete[2];
+    NodeID nodeToDelete[2];
     nodeToDelete[0] = 7; // Remove last node.
     nodeToDelete[1] = 0; // Remove first node.
 
@@ -626,8 +626,8 @@ TEST_F(GraphTest, RemoveMultipleNodes) {
 }
 
 TEST_F(GraphTest, RemoveEdges) {
-    GrB_Index src;
-    GrB_Index dest;
+    NodeID src;
+    NodeID dest;
     GrB_Index relationEdgeCount;
     int nodeCount = 32;
     int edgeCount = 4;
@@ -657,7 +657,7 @@ TEST_F(GraphTest, RemoveEdges) {
         for(unsigned int j = 0; j < relationEdgeCount*2; j+=2) {
             src = edgeToDelete[j];
             dest = edgeToDelete[j+1];
-            Graph_DeleteEdge(g, src, dest);
+            Graph_DeleteEdge(g, src, dest, GRAPH_NO_RELATION);
         }
 
         // Validate delete.

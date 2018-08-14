@@ -152,6 +152,73 @@ void _Graph_MigrateRowCol(Graph *g, int src, int dest) {
     GrB_Vector_free(&zero);
     GrB_Descriptor_free(&desc);
 }
+
+/* Removes a single entry from given matrix. */
+void _Graph_ClearMatrixEntry(Graph *g, GrB_Matrix M, GrB_Index src, GrB_Index dest) {
+    GrB_Vector mask;
+    GrB_Index nrows = g->node_count;
+    GrB_Vector_new(&mask, GrB_BOOL, nrows);
+    GrB_Vector_setElement_BOOL(mask, true, dest);
+
+    GrB_Vector col;
+    GrB_Vector_new(&col, GrB_BOOL, nrows);
+
+    GrB_Descriptor desc;
+    GrB_Descriptor_new(&desc);
+    GrB_Descriptor_set(desc, GrB_OUTP, GrB_REPLACE);
+    GrB_Descriptor_set(desc, GrB_MASK, GrB_SCMP);
+
+    // Extract column src_id.
+    GrB_Col_extract(col, mask, NULL, M, GrB_ALL, nrows, src, desc);
+    GrB_Col_assign(M, NULL, NULL, col, GrB_ALL, nrows, src, NULL);
+
+    GrB_Descriptor_free(&desc);
+    GrB_Vector_free(&col);
+    GrB_Vector_free(&mask);
+}
+
+/* Deletes all edges connecting source to destination. */
+void _Graph_DeleteEdges(Graph *g, NodeID src_id, NodeID dest_id) {
+    GrB_Matrix M = Graph_GetAdjacencyMatrix(g);
+    _Graph_ClearMatrixEntry(g, M, src_id, dest_id);
+
+    // Update relation matrices.
+    for(int i = 0; i < g->relation_count; i++) {
+        M = Graph_GetRelationMatrix(g, i);
+        bool connected = false;
+        GrB_Matrix_extractElement_BOOL(&connected, M, dest_id, src_id);
+        if(connected)
+            _Graph_ClearMatrixEntry(g, M, src_id, dest_id);
+    }
+}
+
+/* Deletes typed edge connecting source to destination. */
+void _Graph_DeleteTypedEdges(Graph *g, NodeID src_id, NodeID dest_id, int relation) {
+    bool connected = false;
+    GrB_Matrix M = Graph_GetRelationMatrix(g, relation);
+    assert(M);
+
+    GrB_Matrix_extractElement_BOOL(&connected, M, dest_id, src_id);
+    if(!connected) return;
+
+    _Graph_ClearMatrixEntry(g, M, src_id, dest_id);
+
+    // See if source is connected to destination with additional edges.
+    for(int i = 0; i < g->relation_count; i++) {
+        M = Graph_GetRelationMatrix(g, i);
+        connected = false;
+        GrB_Matrix_extractElement_BOOL(&connected, M, dest_id, src_id);
+        if(connected) break;
+    }
+
+    /* There are no additional edges connecting source to destination
+     * Remove edge from THE adjacency matrix. */
+    if(!connected) {
+        M = Graph_GetAdjacencyMatrix(g);
+        _Graph_ClearMatrixEntry(g, M, src_id, dest_id);
+    }
+}
+
 /*================================ Graph API ================================ */
 Graph *Graph_New(size_t n) {
     assert(n > 0);
@@ -179,7 +246,12 @@ Graph *Graph_New(size_t n) {
     g->_relations = malloc(sizeof(GrB_Matrix) * g->relation_cap);
     g->_labels = malloc(sizeof(GrB_Matrix) * g->label_cap);
     GrB_Matrix_new(&g->adjacency_matrix, GrB_BOOL, g->node_cap, g->node_cap);
+
+    /* TODO: We might want a mutex per matrix,
+     * such that when a thread is resizing matrix A
+     * another thread could be resizing matrix B. */
     assert(pthread_mutex_init(&g->_mutex, NULL) == 0);
+
     return g;
 }
 
@@ -244,7 +316,7 @@ void Graph_ConnectNodes(Graph *g, size_t n, GrB_Index *connections) {
     }
 }
 
-Node* Graph_GetNode(const Graph *g, int id) {
+Node* Graph_GetNode(const Graph *g, NodeID id) {
     assert(g && id >= 0 && id < g->node_count);
 
     int block_id = GRAPH_NODE_ID_TO_BLOCK_INDEX(id);
@@ -357,50 +429,26 @@ void Graph_DeleteNodes(Graph *g, NodeID *IDs, size_t IDCount) {
     free(replacements);
 }
 
-void Graph_DeleteEdge(Graph *g, int src_id, int dest_id) {
+void Graph_DeleteEdge(Graph *g, NodeID src_id, NodeID dest_id, int relation) {
     assert(src_id < g->node_count && dest_id < g->node_count);
-    
+
     // See if there's an edge between src and dest.
     bool connected = false;
     GrB_Matrix M = Graph_GetAdjacencyMatrix(g);
     GrB_Matrix_extractElement_BOOL(&connected, M, dest_id, src_id);
-    
+
     if(!connected) return;
 
-    GrB_Index nrows = g->node_count;
-
-    GrB_Vector mask;
-    GrB_Vector_new(&mask, GrB_BOOL, nrows);
-    GrB_Vector_setElement_BOOL(mask, true, dest_id);
-
-    GrB_Vector col;
-    GrB_Vector_new(&col, GrB_BOOL, nrows);
-
-    GrB_Descriptor desc;
-    GrB_Descriptor_new(&desc);
-    GrB_Descriptor_set(desc, GrB_OUTP, GrB_REPLACE);
-    GrB_Descriptor_set(desc, GrB_MASK, GrB_SCMP);
-
-    // Extract column src_id.
-    GrB_Col_extract(col, mask, NULL, M, GrB_ALL, nrows, src_id, desc);
-    GrB_Col_assign(M, NULL, NULL, col, GrB_ALL, nrows, src_id, NULL);
-
-    // Update relation matrices.
-    for(int i = 0; i < g->relation_count; i++) {
-        M = Graph_GetRelationMatrix(g, i);
-        connected = false;
-        GrB_Matrix_extractElement_BOOL(&connected, M, dest_id, src_id);
-        if(connected) {
-            GrB_Col_extract(col, mask, NULL, M, GrB_ALL, nrows, src_id, desc);
-            GrB_Col_assign(M, NULL, NULL, col, GrB_ALL, nrows, src_id, NULL);
-        }
+    if(relation == GRAPH_NO_RELATION) {
+        // Remove every edge connecting source to destination.
+        _Graph_DeleteEdges(g, src_id, dest_id);
+    } else {
+        // Remove typed edge connecting source to destination.
+        _Graph_DeleteTypedEdges(g, src_id, dest_id, relation);
     }
-
-    GrB_Descriptor_free(&desc);
-    GrB_Vector_free(&col);
 }
 
-void Graph_LabelNodes(Graph *g, int start_node_id, int end_node_id, int label, NodeIterator **it) {
+void Graph_LabelNodes(Graph *g, NodeID start_node_id, NodeID end_node_id, int label, NodeIterator **it) {
     assert(g &&
            start_node_id < g->node_count &&
            start_node_id >= 0 &&
