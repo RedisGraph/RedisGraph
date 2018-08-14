@@ -8,6 +8,8 @@
 #ifndef GRAPH_H
 #define GRAPH_H
 
+#include <pthread.h>
+
 #include "node.h"
 #include "edge.h"
 #include "node_block.h"
@@ -21,6 +23,9 @@
 #define GRAPH_DEFAULT_LABEL_CAP 16      // Default number of different labels a graph can hold before resizing.
 #define GRAPH_NO_LABEL -1               // Labels are numbered [0-N], -1 represents no label.
 #define GRAPH_NO_RELATION -1            // Relations are numbered [0-N], -1 represents no relation.
+
+typedef GrB_Index NodeID;
+
 typedef struct {
     NodeBlock **nodes_blocks;       // Graph nodes arranged in blocks.
     size_t block_count;             // Number of node blocks.
@@ -33,6 +38,8 @@ typedef struct {
     GrB_Matrix *_labels;            // Label matrices.
     size_t label_cap;               // Number of labels graph can hold.
     size_t label_count;             // Number of label matrices.
+    pthread_mutex_t _mutex;         // Mutex for accessing critical sections.
+
 } Graph;
 
 // Create a new graph.
@@ -72,7 +79,7 @@ Node *Graph_GetNode (
 
 // Removes a set of nodes and all of their connections
 // within the graph.
-void Graph_DeleteNodes(Graph *g, int *IDs, size_t IDCount);
+void Graph_DeleteNodes(Graph *g, NodeID *IDs, size_t IDCount);
 
 // Removes edge connecting src node to dest node.
 void Graph_DeleteEdge (

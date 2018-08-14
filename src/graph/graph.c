@@ -34,14 +34,31 @@
     g->nodes_blocks[GRAPH_NODE_ID_TO_BLOCK_INDEX(id)]
 
 /*========================= Graph utility functions ========================= */
+
+/* Acquire mutex. */
+void _Graph_EnterCriticalSection(Graph *g) {
+    pthread_mutex_lock(&g->_mutex);
+}
+
+/* Release mutex. */
+void _Graph_LeaveCriticalSection(Graph *g) {
+    pthread_mutex_unlock(&g->_mutex);
+}
+
 // Resize given matrix to match graph's adjacency matrix dimensions.
 void _Graph_ResizeMatrix(const Graph *g, GrB_Matrix m) {
     GrB_Index n_rows;
-    
+
     GrB_Matrix_nrows(&n_rows, m);
     if(n_rows != g->node_count) {
-        GrB_Info res = GxB_Matrix_resize(m, g->node_count, g->node_count);
-        assert(res == GrB_SUCCESS);
+        _Graph_EnterCriticalSection((Graph *)g);
+        {
+            // Double check now that we're in critical section.
+            GrB_Matrix_nrows(&n_rows, m);
+            if(n_rows != g->node_count)
+                assert(GxB_Matrix_resize(m, g->node_count, g->node_count) == GrB_SUCCESS);
+        }
+        _Graph_LeaveCriticalSection((Graph *)g);
     }
 }
 
@@ -162,6 +179,7 @@ Graph *Graph_New(size_t n) {
     g->_relations = malloc(sizeof(GrB_Matrix) * g->relation_cap);
     g->_labels = malloc(sizeof(GrB_Matrix) * g->label_cap);
     GrB_Matrix_new(&g->adjacency_matrix, GrB_BOOL, g->node_cap, g->node_cap);
+    assert(pthread_mutex_init(&g->_mutex, NULL) == 0);
     return g;
 }
 
@@ -242,7 +260,7 @@ Node* Graph_GetNode(const Graph *g, int id) {
     return n;
 }
 
-void Graph_DeleteNodes(Graph *g, int *IDs, size_t IDCount) {
+void Graph_DeleteNodes(Graph *g, NodeID *IDs, size_t IDCount) {
     assert(g && IDs);
     if(IDCount == 0) return;
 
@@ -519,5 +537,6 @@ void Graph_Free(Graph *g) {
     }
     free(g->_labels);
 
+    pthread_mutex_destroy(&g->_mutex);
     free(g);
 }
