@@ -439,7 +439,7 @@ int SIValue_Compare(SIValue a, SIValue b) {
     return 1;
   }
 
-  return a.type - b.type;
+  return b.type - a.type;
 }
 
 void SIValue_Print(FILE *outstream, SIValue *v) {
