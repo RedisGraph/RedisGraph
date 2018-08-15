@@ -40,6 +40,9 @@ int Vector_Get(const Vector *v, size_t pos, void *ptr);
 /* Get the element at the end of the vector, decreasing the size by one */
 int Vector_Pop(Vector *v, void *ptr);
 
+/* Retrieve the data array from a vector */
+void* Vector_Data(const Vector *v);
+
 //#define Vector_Getx(v, pos, ptr) pos < v->cap ? 1 : 0; *ptr =
 //*(typeof(ptr))(v->data + v->elemSize*pos)
 
@@ -71,7 +74,5 @@ void Vector_Clear(Vector *v);
 /* free the vector and the underlying data. Does not release its elements if
  * they are pointers*/
 void Vector_Free(Vector *v);
-
-int __vecotr_PutPtr(Vector *v, size_t pos, void *elem);
 
 #endif
