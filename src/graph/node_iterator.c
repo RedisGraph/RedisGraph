@@ -36,6 +36,9 @@ Node *NodeIterator_Next(NodeIterator *iter) {
     NodeBlock *block = iter->_current_block;
     Node *n = &block->nodes[iter->_block_pos];
 
+    // Update node ID
+    n->id = iter->_current_pos;
+
     // Advance to next position.
     iter->_block_pos += iter->_step;
     iter->_current_pos += iter->_step;
