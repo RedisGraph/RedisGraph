@@ -61,10 +61,12 @@ TRAVERSE_ORDER determineTraverseOrder(const QueryGraph *qg,
         }
     }
 
-    /* If we're here, that means both first and last expressions
-     * do not have a filter applied to them. In that case
-     * prefer the expression which have a label specified
-     * for either its source or destination node. */
+    /* If we're here, there are no filters on either the first or the last
+     * expression. The next-best criteria for choosing traversal order is
+     * to prefer an expression in which the source or destination has a label,
+     * as label scans are significantly faster than scanning all nodes.
+     * If both expressions use labels (or neither do), we'll default
+     * to TRAVERSE_ORDER_FIRST. */
     if(!firstExpLabeled && lastExpLabeled) order = TRAVERSE_ORDER_LAST;
 
 cleanup:
