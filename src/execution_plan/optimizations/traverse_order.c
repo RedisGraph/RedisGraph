@@ -65,7 +65,7 @@ TRAVERSE_ORDER determineTraverseOrder(const QueryGraph *qg,
      * do not have a filter applied to them. In that case
      * prefer the expression which have a label specified
      * for either its source or destination node. */
-    if(lastExpLabeled) order = TRAVERSE_ORDER_LAST;
+    if(!firstExpLabeled && lastExpLabeled) order = TRAVERSE_ORDER_LAST;
 
 cleanup:
     for(int i = 0; i < aliasesCount; i++) {
