@@ -182,7 +182,7 @@ void _BuildQueryGraphAddEdge(const Graph *g,
         else {
             /* Use a zeroed matrix.
              * TODO: either use a static zero matrix, or free this one. */
-            GrB_Matrix_new(&e->mat, GrB_BOOL, g->node_count, g->node_count);
+            GrB_Matrix_new(&e->mat, GrB_BOOL, Graph_NodeCount(g), Graph_NodeCount(g));
         }
     }
 
@@ -431,12 +431,12 @@ ResultSetStatistics CommitGraph(RedisModuleCtx *ctx, const QueryGraph *qg, Graph
         }
 
         // Create nodes and set properties.
-        NodeIterator *it;
-        size_t graph_node_count = g->node_count;
+        DataBlockIterator *it;
+        size_t graph_node_count = Graph_NodeCount(g);
         Graph_CreateNodes(g, node_count, labels, &it);
 
         for(int i = 0; i < node_count; i++) {
-            Node *new_node = NodeIterator_Next(it);
+            Node *new_node = (Node*)DataBlockIterator_Next(it);
             Node *temp_node = qg->nodes[i];
             new_node->properties = temp_node->properties;
             new_node->prop_count = temp_node->prop_count;

@@ -196,12 +196,12 @@ void _CommitNewEntities(OpCreate *op) {
             }
         }
 
-        NodeIterator *it;
+        DataBlockIterator *it;
         size_t graph_node_count = Graph_NodeCount(op->g);
         Graph_CreateNodes(op->g, node_count, labels, &it);
 
         for(int i = 0; i < node_count; i++) {
-            Node *new_node = NodeIterator_Next(it);
+            Node *new_node = (Node*)DataBlockIterator_Next(it);
             Node *temp_node;
             Vector_Get(op->created_nodes, i, &temp_node);
 

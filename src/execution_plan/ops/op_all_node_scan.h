@@ -12,7 +12,7 @@
 #include "../../graph/query_graph.h"
 #include "../../graph/node.h"
 #include "../../graph/graph.h"
-#include "../../graph/node_iterator.h"
+#include "../../util/datablock/datablock_iterator.h"
 
 /* AllNodesScan
  * Scans entire graph */
@@ -21,7 +21,7 @@
     OpBase op;
     Node **node;
     Node *_node;
-    NodeIterator *iter;
+    DataBlockIterator *iter;
  } AllNodeScan;
 
 OpBase* NewAllNodeScanOp(QueryGraph *qg, const Graph *g, Node **n);

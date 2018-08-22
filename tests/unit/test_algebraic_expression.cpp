@@ -131,23 +131,23 @@ class AlgebraicExpressionTest: public ::testing::Test {
         int labels[11] = {person_label, person_label, person_label, person_label, person_label, person_label,
                         country_label, country_label, country_label, country_label, country_label};
 
-        NodeIterator *it;
+        DataBlockIterator *it;
         Graph_CreateNodes(g, node_count, labels ,&it);
 
         // Assign attributes to nodes.
         char *default_property_name = (char *)"name";
         for(int i = 0; i < person_count; i++) {
-            Node *n = NodeIterator_Next(it);
+            Node *n = (Node*)DataBlockIterator_Next(it);
             SIValue name = SI_StringVal(persons[i]);
             Node_Add_Properties(n, 1, &default_property_name, &name);
         }
         for(int i = 0; i < country_count; i++) {
-            Node *n = NodeIterator_Next(it);
+            Node *n = (Node*)DataBlockIterator_Next(it);
             SIValue name = SI_StringVal(countries[i]);
             Node_Add_Properties(n, 1, &default_property_name, &name);
         }
 
-        NodeIterator_Free(it);
+        DataBlockIterator_Free(it);
 
         // Creates a relation matrices.
         GrB_Index friend_relation_id = Graph_AddRelationMatrix(g);

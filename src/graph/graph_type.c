@@ -67,11 +67,11 @@ void _GraphType_LoadNodes(RedisModuleIO *rdb, Graph *g) {
      */
 
     uint64_t nodeCount = RedisModule_LoadUnsigned(rdb);
-    NodeIterator *iter;
+    DataBlockIterator *iter;
     Graph_CreateNodes(g, nodeCount, NULL, &iter);
 
     Node *n;
-    while((n = NodeIterator_Next(iter))) {
+    while((n = (Node*)DataBlockIterator_Next(iter))) {
         uint64_t propCount = RedisModule_LoadUnsigned(rdb);
         size_t propNameLen;
         char *propName[propCount];
@@ -91,7 +91,7 @@ void _GraphType_LoadNodes(RedisModuleIO *rdb, Graph *g) {
         Node_Add_Properties(n, propCount, propName, propValue);
     }
 
-    NodeIterator_Free(iter);
+    DataBlockIterator_Free(iter);
 }
 
 void *GraphType_RdbLoad(RedisModuleIO *rdb, int encver) {
@@ -151,13 +151,13 @@ void _GraphType_SaveNodes(RedisModuleIO *rdb, const Graph *g) {
      * nodes */
     
     RedisModule_SaveUnsigned(rdb, Graph_NodeCount(g));
-    NodeIterator *iter = Graph_ScanNodes(g);
+    DataBlockIterator *iter = Graph_ScanNodes(g);
     Node *n;
-    while((n = NodeIterator_Next(iter))) {
+    while((n = (Node*)DataBlockIterator_Next(iter))) {
         _GraphType_SaveNode(rdb, n);
     }
 
-    NodeIterator_Free(iter);
+    DataBlockIterator_Free(iter);
 }
 
 void _GraphType_SaveMatrix(RedisModuleIO *rdb, GrB_Matrix m) {

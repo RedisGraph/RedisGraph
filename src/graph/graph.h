@@ -12,13 +12,14 @@
 
 #include "node.h"
 #include "edge.h"
-#include "node_block.h"
-#include "node_iterator.h"
+#include "../util/datablock/datablock.h"
+#include "../util/datablock/datablock_iterator.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 #include "../redismodule.h"
 #include "../util/triemap/triemap.h"
 
 #define GRAPH_DEFAULT_NODE_CAP 16384    // Default number of nodes a graph can hold before resizing.
+// #define GRAPH_DEFAULT_NODE_CAP 2
 #define GRAPH_DEFAULT_RELATION_CAP 16   // Default number of different relationships a graph can hold before resizing.
 #define GRAPH_DEFAULT_LABEL_CAP 16      // Default number of different labels a graph can hold before resizing.
 #define GRAPH_NO_LABEL -1               // Labels are numbered [0-N], -1 represents no label.
@@ -27,10 +28,8 @@
 typedef GrB_Index NodeID;
 
 typedef struct {
-    NodeBlock **nodes_blocks;       // Graph nodes arranged in blocks.
-    size_t block_count;             // Number of node blocks.
-    size_t node_cap;                // Number of nodes graph can hold.
-    size_t node_count;              // Number of nodes stored.
+    DataBlock *nodes;               // Graph nodes stored in blocks.
+    DataBlock *edges;               // Graph edges stored in blocks.
     GrB_Matrix adjacency_matrix;    // Adjacency matrix, holds all graph connections.
     GrB_Matrix *_relations;         // Relation matrices.
     size_t relation_cap;            // Number of relations graph can hold.
@@ -63,7 +62,7 @@ void Graph_CreateNodes (
     Graph* g,               // Graph for which nodes will be added.
     size_t n,               // Number of nodes to create.
     int* labels,            // Lables Node i with label i.
-    NodeIterator **it       // [Optional] iterator over new nodes.
+    DataBlockIterator **it  // [Optional] iterator over new nodes.
 );
 
 // Connects src[i] to dest[i] with edge of type relation[i].
@@ -98,13 +97,12 @@ void Graph_LabelNodes (
     Graph *g,
     NodeID start_node_id,
     NodeID end_node_id,
-    int label,
-    NodeIterator **it
+    int label
 );
 
 // Retrieves a node iterator which can be used to access
 // every node in the graph.
-NodeIterator *Graph_ScanNodes (
+DataBlockIterator *Graph_ScanNodes (
     const Graph *g
 );
 

@@ -56,7 +56,7 @@ class IndexTest: public ::testing::Test {
       }
 
       // Populate graph with nodes
-      NodeIterator *it;
+      DataBlockIterator *it;
       Graph_CreateNodes(g, n, label_ids, &it);
 
       // Variables to store data for node properties
@@ -70,8 +70,7 @@ class IndexTest: public ::testing::Test {
       int denom = RAND_MAX / 20 + 1;
 
       for (int i = 0; i < n; i ++) {
-        node = NodeIterator_Next(it);
-        node->id = i;
+        node = (Node*)DataBlockIterator_Next(it);
         // Properties will have a random value between 1 and 20
         int prop_val = rand() / denom + 1;
         char str_prop[10];
@@ -84,7 +83,7 @@ class IndexTest: public ::testing::Test {
 
         SIValue_Free(&prop_vals[0]);
       }
-      NodeIterator_Free(it);
+      DataBlockIterator_Free(it);
 
       return g;
     }

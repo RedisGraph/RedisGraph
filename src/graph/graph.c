@@ -10,29 +10,6 @@
 #include "assert.h"
 #include "../arithmetic/tuples_iter.h"
 
-#define MAX(a, b) \
-    ((a > b) ? a : b)
-
-// Computes the number of blocks required to accommodate n nodes.
-#define GRAPH_NODE_COUNT_TO_BLOCK_COUNT(n) \
-    MAX(1, n / NODEBLOCK_CAP)
-
-// Computes block index for given node id.
-#define GRAPH_NODE_ID_TO_BLOCK_INDEX(id) \
-    (id / NODEBLOCK_CAP)
-
-// Computes node position within a block.
-#define GRAPH_NODE_POSITION_WITHIN_BLOCK(id) \
-    (id % NODEBLOCK_CAP)
-
-// Get currently active block.
-#define GRAPH_ACTIVE_BLOCK(g) \
-    g->nodes_blocks[GRAPH_NODE_ID_TO_BLOCK_INDEX(g->node_count)]
-
-// Retrieves block in which node id resides.
-#define GRAPH_GET_NODE_BLOCK(g, id) \
-    g->nodes_blocks[GRAPH_NODE_ID_TO_BLOCK_INDEX(id)]
-
 /*========================= Graph utility functions ========================= */
 
 /* Acquire mutex. */
@@ -50,57 +27,26 @@ void _Graph_ResizeMatrix(const Graph *g, GrB_Matrix m) {
     GrB_Index n_rows;
 
     GrB_Matrix_nrows(&n_rows, m);
-    if(n_rows != g->node_count) {
+    if(n_rows != Graph_NodeCount(g)) {
         _Graph_EnterCriticalSection((Graph *)g);
         {
             // Double check now that we're in critical section.
             GrB_Matrix_nrows(&n_rows, m);
-            if(n_rows != g->node_count)
-                assert(GxB_Matrix_resize(m, g->node_count, g->node_count) == GrB_SUCCESS);
+            if(n_rows != Graph_NodeCount(g))
+                assert(GxB_Matrix_resize(m, Graph_NodeCount(g), Graph_NodeCount(g)) == GrB_SUCCESS);
         }
         _Graph_LeaveCriticalSection((Graph *)g);
     }
 }
 
-// Resize graph's node array to contain at least n nodes.
-void _Graph_ResizeNodes(Graph *g, size_t n) {
-    int total_nodes = g->node_count + n;
-
-    // Make sure we have room to store nodes.
-    if (total_nodes < g->node_cap)
-        return;
-
-    int last_block = g->block_count - 1;
-
-    // Increase NodeBlock count by the smallest multiple required to contain all nodes
-    int increase_factor = (total_nodes / g->node_cap) + 2;
-    g->block_count *= increase_factor;
-
-    g->nodes_blocks = realloc(g->nodes_blocks, sizeof(NodeBlock*) * g->block_count);
-    // Create and link blocks.
-    for(int i = last_block; i < g->block_count-1; i++) {
-        NodeBlock *block = g->nodes_blocks[i];
-        NodeBlock *next_block = NodeBlock_New();
-        g->nodes_blocks[i+1] = next_block;
-        block->next = next_block;
-    }
-
-    g->node_cap = g->block_count * NODEBLOCK_CAP;
+// Return number of nodes graph can contain.
+size_t _Graph_NodeCap(const Graph *g) {
+    return g->nodes->itemCap;
 }
 
-/* Relocate src node to dest node, overriding dest. */
-void _Graph_NodeBlockMigrateNode(Graph *g, int src, int dest) {
-    // Get the block in which dest node resides.
-    NodeBlock *destNodeBlock = GRAPH_GET_NODE_BLOCK(g, dest);
-    
-    // Get node position within its block.
-    int destNodeBlockIdx = GRAPH_NODE_POSITION_WITHIN_BLOCK(dest);
-
-    // Get the src node in the graph.
-    Node *srcNode = Graph_GetNode(g, src);
-
-    // Replace dest node with src node.
-    destNodeBlock->nodes[destNodeBlockIdx] = *srcNode;
+// Resize graph's node array to contain at least n nodes.
+void _Graph_ResizeNodes(Graph *g, size_t n) {
+    DataBlock_AddItems(g->nodes, n, NULL);
 }
 
 /* Relocate src row and column, overriding dest. */
@@ -109,7 +55,7 @@ void _Graph_MigrateRowCol(Graph *g, int src, int dest) {
     GrB_Vector col;
     GrB_Vector zero;
     GrB_Descriptor desc;
-    GrB_Index nrows = g->node_count;
+    GrB_Index nrows = Graph_NodeCount(g);
     GrB_Matrix M = Graph_GetAdjacencyMatrix(g);
 
     GrB_Descriptor_new(&desc);
@@ -156,7 +102,7 @@ void _Graph_MigrateRowCol(Graph *g, int src, int dest) {
 /* Removes a single entry from given matrix. */
 void _Graph_ClearMatrixEntry(Graph *g, GrB_Matrix M, GrB_Index src, GrB_Index dest) {
     GrB_Vector mask;
-    GrB_Index nrows = g->node_count;
+    GrB_Index nrows = Graph_NodeCount(g);
     GrB_Vector_new(&mask, GrB_BOOL, nrows);
     GrB_Vector_setElement_BOOL(mask, true, dest);
 
@@ -224,28 +170,15 @@ Graph *Graph_New(size_t n) {
     assert(n > 0);
     Graph *g = malloc(sizeof(Graph));
     
-    g->node_cap = GRAPH_NODE_COUNT_TO_BLOCK_COUNT(n) * NODEBLOCK_CAP;
-    g->node_count = 0;
+    g->nodes = DataBlock_New(n, sizeof(Node));
+    g->edges = DataBlock_New(n, sizeof(Edge));
     g->relation_cap = GRAPH_DEFAULT_RELATION_CAP;
     g->relation_count = 0;
     g->label_cap = GRAPH_DEFAULT_LABEL_CAP;
     g->label_count = 0;
-    
-    g->block_count = GRAPH_NODE_COUNT_TO_BLOCK_COUNT(n);
-    g->nodes_blocks = malloc(sizeof(NodeBlock*) * g->block_count);
-    
-    // Allocates blocks.
-    for(int i = 0; i < g->block_count; i++) {
-        g->nodes_blocks[i] = NodeBlock_New();
-        if(i > 0) {
-            // Link blocks.
-            g->nodes_blocks[i-1]->next = g->nodes_blocks[i];
-        }
-    }
-
     g->_relations = malloc(sizeof(GrB_Matrix) * g->relation_cap);
     g->_labels = malloc(sizeof(GrB_Matrix) * g->label_cap);
-    GrB_Matrix_new(&g->adjacency_matrix, GrB_BOOL, g->node_cap, g->node_cap);
+    GrB_Matrix_new(&g->adjacency_matrix, GrB_BOOL, _Graph_NodeCap(g), _Graph_NodeCap(g));
 
     /* TODO: We might want a mutex per matrix,
      * such that when a thread is resizing matrix A
@@ -269,25 +202,20 @@ Graph *Graph_Get(RedisModuleCtx *ctx, RedisModuleString *graph_name) {
 
 size_t Graph_NodeCount(const Graph *g) {
     assert(g);
-    return g->node_count;
+    return g->nodes->itemCount;
 }
 
-void Graph_CreateNodes(Graph* g, size_t n, int* labels, NodeIterator **it) {
+void Graph_CreateNodes(Graph* g, size_t n, int* labels, DataBlockIterator **it) {
     assert(g);
-    
+
+    NodeID node_id = (NodeID)Graph_NodeCount(g);
+
     _Graph_ResizeNodes(g, n);
-
-    if(it != NULL) {
-        *it = NodeIterator_New(GRAPH_ACTIVE_BLOCK(g),
-                               g->node_count,
-                               g->node_count + n,
-                               1);
-    }
-
-    int node_id = g->node_count;
-    g->node_count += n;
-
     _Graph_ResizeMatrix(g, g->adjacency_matrix);
+
+    if(it) {
+        *it = DataBlockIterator_New(DataBlock_GetItemBlock(g->nodes, node_id), node_id, node_id + n, 1);
+    }
 
     if(labels) {
         for(int idx = 0; idx < n; idx++) {
@@ -322,17 +250,8 @@ void Graph_ConnectNodes(Graph *g, size_t n, GrB_Index *connections) {
 }
 
 Node* Graph_GetNode(const Graph *g, NodeID id) {
-    assert(g && id >= 0 && id < g->node_count);
-
-    int block_id = GRAPH_NODE_ID_TO_BLOCK_INDEX(id);
-
-    // Make sure block_id is within range.
-    if(block_id >= g->block_count) {
-        return NULL;
-    }
-
-    NodeBlock *block = g->nodes_blocks[block_id];
-    Node *n = &block->nodes[id%NODEBLOCK_CAP];
+    assert(g);
+    Node *n = (Node*)DataBlock_GetItem(g->nodes, id);
     n->id = id;
     return n;
 }
@@ -351,15 +270,15 @@ void Graph_DeleteNodes(Graph *g, NodeID *IDs, size_t IDCount) {
 
     /* Allocate replacement candidates. */
     for(int i = 0; i < IDCount; i++) {
-        replacements[i].replacementID = g->node_count - (IDCount - i);
+        replacements[i].replacementID = Graph_NodeCount(g) - (IDCount - i);
         replacements[i].delete = false;
     }
 
     /* Locate which soon to deleted nodes are also replacement candidates. */
     for(int i = 0; i < IDCount; i++) {
         int id = IDs[i];
-        if(id >= (g->node_count - IDCount)) {
-            int j = IDCount - (g->node_count - id);
+        if(id >= (Graph_NodeCount(g) - IDCount)) {
+            int j = IDCount - (Graph_NodeCount(g) - id);
             replacements[j].nodeID = id;
             replacements[j].delete = true;
         }
@@ -370,7 +289,7 @@ void Graph_DeleteNodes(Graph *g, NodeID *IDs, size_t IDCount) {
     for(int j = 0, i = 0; i < IDCount; i++) {
         int id = IDs[i];
         // Require a replacement?
-        if(id < (g->node_count - IDCount)) {
+        if(id < (Graph_NodeCount(g) - IDCount)) {
             // Locate a valid replacement.
             while(replacements[j].delete) j++;
             replacements[j++].nodeID = id;
@@ -378,13 +297,18 @@ void Graph_DeleteNodes(Graph *g, NodeID *IDs, size_t IDCount) {
     }
 
     /* Replace removed nodes within node blocks. */
+    size_t deletedNodeCount = 0;
     for(int j = 0, i = 0; i < IDCount; i++) {
         Replacement r = replacements[i];
-        // No need to perform replacement.
-        if(r.delete) continue;
-        // Override nodeID with replacementID.
-        _Graph_NodeBlockMigrateNode(g, r.replacementID, r.nodeID);
+        if(r.delete) {
+            // No need to perform replacement.
+            deletedNodeCount++;
+        } else {
+            // Override nodeID with replacementID.
+            DataBlock_MigrateItem(g->nodes, r.replacementID, r.nodeID);
+        }
     }
+    DataBlock_FreeTop(g->nodes, deletedNodeCount);
 
     /* Replace rows, columns. */
     for(int i = 0; i < IDCount; i++) {
@@ -396,7 +320,7 @@ void Graph_DeleteNodes(Graph *g, NodeID *IDs, size_t IDCount) {
 
     // Zero vector to clear entire row/column.
     GrB_Vector zero;
-    GrB_Vector_new(&zero, GrB_BOOL, g->node_cap);
+    GrB_Vector_new(&zero, GrB_BOOL, Graph_NodeCount(g));
 
     // Update label matrices.
     for(int i = 0; i < g->label_count; i++) {
@@ -411,7 +335,7 @@ void Graph_DeleteNodes(Graph *g, NodeID *IDs, size_t IDCount) {
             // Clear, dest.
             if(destExists) {
                 if(!srcExists || (srcExists && r.delete) ) {
-                    GrB_Col_assign(M, NULL, NULL, zero, GrB_ALL, g->node_cap, r.replacementID, NULL);
+                    GrB_Col_assign(M, NULL, NULL, zero, GrB_ALL, Graph_NodeCount(g), r.replacementID, NULL);
                 }
             }
 
@@ -424,18 +348,13 @@ void Graph_DeleteNodes(Graph *g, NodeID *IDs, size_t IDCount) {
         }
     }
 
-    g->node_count -= IDCount;
-
-    // Force matrix resizing.
-    _Graph_ResizeMatrix(g, g->adjacency_matrix);
-
     // Clean up.
     GrB_Vector_free(&zero);
     free(replacements);
 }
 
 void Graph_DeleteEdge(Graph *g, NodeID src_id, NodeID dest_id, int relation) {
-    assert(src_id < g->node_count && dest_id < g->node_count);
+    assert(src_id < Graph_NodeCount(g) && dest_id < Graph_NodeCount(g));
 
     // See if there's an edge between src and dest.
     bool connected = false;
@@ -453,29 +372,22 @@ void Graph_DeleteEdge(Graph *g, NodeID src_id, NodeID dest_id, int relation) {
     }
 }
 
-void Graph_LabelNodes(Graph *g, NodeID start_node_id, NodeID end_node_id, int label, NodeIterator **it) {
+void Graph_LabelNodes(Graph *g, NodeID start_node_id, NodeID end_node_id, int label) {
     assert(g &&
-           start_node_id < g->node_count &&
+           start_node_id < Graph_NodeCount(g) &&
            start_node_id >= 0 &&
            start_node_id <= end_node_id &&
-           end_node_id < g->node_count);
+           end_node_id < Graph_NodeCount(g));
     
     GrB_Matrix m = Graph_GetLabelMatrix(g, label);
     for(int node_id = start_node_id; node_id <= end_node_id; node_id++) {
         GrB_Matrix_setElement_BOOL(m, true, node_id, node_id);
     }
-    
-    if(it) {
-        *it = NodeIterator_New(GRAPH_GET_NODE_BLOCK(g, start_node_id),
-                               start_node_id,
-                               end_node_id+1,
-                               1);
-    }
 }
 
-NodeIterator *Graph_ScanNodes(const Graph *g) {
+DataBlockIterator *Graph_ScanNodes(const Graph *g) {
     assert(g);
-    return NodeIterator_New(g->nodes_blocks[0], 0, g->node_count, 1);
+    return DataBlock_Scan(g->nodes);
 }
 
 int Graph_AddLabelMatrix(Graph *g) {
@@ -487,7 +399,7 @@ int Graph_AddLabelMatrix(Graph *g) {
         g->_labels = realloc(g->_labels, g->label_cap * sizeof(GrB_Matrix));
     }
 
-    GrB_Matrix_new(&g->_labels[g->label_count++], GrB_BOOL, g->node_cap, g->node_cap);
+    GrB_Matrix_new(&g->_labels[g->label_count++], GrB_BOOL, _Graph_NodeCap(g), _Graph_NodeCap(g));
     return g->label_count-1;
 }
 
@@ -521,7 +433,7 @@ int Graph_AddRelationMatrix(Graph *g) {
         g->_relations = realloc(g->_relations, g->relation_cap * sizeof(GrB_Matrix));
     }
 
-    GrB_Matrix_new(&g->_relations[g->relation_count++], GrB_BOOL, g->node_cap, g->node_cap);
+    GrB_Matrix_new(&g->_relations[g->relation_count++], GrB_BOOL, _Graph_NodeCap(g), _Graph_NodeCap(g));
     return g->relation_count-1;
 }
 
@@ -565,12 +477,6 @@ void Graph_Free(Graph *g) {
     //     Node_Free(node);
     // }
     // NodeIterator_Free(it);
-    
-    // Free node blocks.
-    for(int i = 0; i<g->block_count; i++) {
-        NodeBlock_Free(g->nodes_blocks[i]);
-    }
-    free(g->nodes_blocks);
 
     // Free matrices.
     GrB_Matrix m;
@@ -589,6 +495,10 @@ void Graph_Free(Graph *g) {
         GrB_Matrix_free(&m);
     }
     free(g->_labels);
+
+    // Free node blocks.
+    DataBlock_Free(g->nodes);
+    DataBlock_Free(g->edges);
 
     pthread_mutex_destroy(&g->_mutex);
     free(g);

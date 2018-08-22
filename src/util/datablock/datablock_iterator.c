@@ -5,17 +5,17 @@
 * modified with the Commons Clause restriction.
 */
 
-#include "node_iterator.h"
+#include "datablock_iterator.h"
 #include "assert.h"
 #include <stdio.h>
 
-NodeIterator *NodeIterator_New(NodeBlock *block, int start_pos, int end_pos, int step) {
-    assert(block && start_pos >=0 && end_pos >= start_pos && step >= 1);
+DataBlockIterator *DataBlockIterator_New(Block *block, int start_pos, int end_pos, int step) {
+    assert(block && start_pos >= 0 && end_pos >= start_pos && step >= 1);
     
-    NodeIterator *iter = malloc(sizeof(NodeIterator));
+    DataBlockIterator *iter = malloc(sizeof(DataBlockIterator));
     iter->_start_block = block;
     iter->_current_block = block;
-    iter->_block_pos = start_pos % NODEBLOCK_CAP;
+    iter->_block_pos = start_pos % BLOCK_CAP;
     iter->_start_pos = start_pos;
     iter->_current_pos = iter->_start_pos;
     iter->_end_pos = end_pos;
@@ -23,40 +23,40 @@ NodeIterator *NodeIterator_New(NodeBlock *block, int start_pos, int end_pos, int
     return iter;
 }
 
-NodeIterator *NodeIterator_Clone(const NodeIterator *it) {
-    return NodeIterator_New(it->_start_block, it->_start_pos, it->_end_pos, it->_step);
+DataBlockIterator *DataBlockIterator_Clone(const DataBlockIterator *it) {
+    return DataBlockIterator_New(it->_start_block, it->_start_pos, it->_end_pos, it->_step);
 }
 
-Node *NodeIterator_Next(NodeIterator *iter) {
+void *DataBlockIterator_Next(DataBlockIterator *iter) {
     assert(iter);
     // Have we reached the end of our iterator?
     if(iter->_current_pos >= iter->_end_pos || iter->_current_block == NULL) return NULL;
     
     // Get node at current position.
-    NodeBlock *block = iter->_current_block;
-    Node *n = &block->nodes[iter->_block_pos];
+    Block *block = iter->_current_block;
+    void *item = block->data + (iter->_block_pos * block->itemSize);
 
     // Advance to next position.
     iter->_block_pos += iter->_step;
     iter->_current_pos += iter->_step;
 
     // Advance to next block if current block consumed.
-    if(iter->_block_pos >= NODEBLOCK_CAP) {
-        iter->_block_pos -= NODEBLOCK_CAP;
+    if(iter->_block_pos >= BLOCK_CAP) {
+        iter->_block_pos -= BLOCK_CAP;
         iter->_current_block = iter->_current_block->next;
     }
 
-    return n;
+    return item;
 }
 
-void NodeIterator_Reset(NodeIterator *iter) {
+void DataBlockIterator_Reset(DataBlockIterator *iter) {
     assert(iter);
-    iter->_block_pos = iter->_start_pos % NODEBLOCK_CAP;
+    iter->_block_pos = iter->_start_pos % BLOCK_CAP;
     iter->_current_block = iter->_start_block;
     iter->_current_pos = iter->_start_pos;
 }
 
-void NodeIterator_Free(NodeIterator *iter) {
+void DataBlockIterator_Free(DataBlockIterator *iter) {
     assert(iter);
     free(iter);
 }

@@ -148,7 +148,7 @@ RedisModuleString** _Bulk_Insert_Insert_Nodes(RedisModuleCtx *ctx, RedisModuleSt
                                               int *argc, Graph *g, const char *graph_name,
                                               size_t *nodes) {
     Node *n;                        // Current node.
-    NodeIterator *it;               // Iterator over nodes.
+    DataBlockIterator *it;          // Iterator over nodes.
     long long nodes_to_create = 0;  // Total number of nodes to create.
 
     if(*argc < 2) {
@@ -187,7 +187,7 @@ RedisModuleString** _Bulk_Insert_Insert_Nodes(RedisModuleCtx *ctx, RedisModuleSt
 
             // Label nodes.
             Graph_LabelNodes(g, number_of_labeled_nodes + start_offset, number_of_labeled_nodes + start_offset + l.node_count - 1,
-                             l.label_id, NULL);
+                             l.label_id);
 
             if(l.attribute_count > 0) {
                 SIValue values[l.attribute_count];
@@ -195,7 +195,7 @@ RedisModuleString** _Bulk_Insert_Insert_Nodes(RedisModuleCtx *ctx, RedisModuleSt
                 for(int i = 0; i < l.node_count; i++) {
                     argv = _Bulk_Insert_Read_Labeled_Node_Attributes(ctx, argv, argc, l.attribute_count, values);
                     if(argv == NULL) break;
-                    n = NodeIterator_Next(it);
+                    n = (Node*)DataBlockIterator_Next(it);
                     Node_Add_Properties(n, l.attribute_count, l.attributes, values);
                 }
             }
@@ -215,7 +215,7 @@ RedisModuleString** _Bulk_Insert_Insert_Nodes(RedisModuleCtx *ctx, RedisModuleSt
 
     // Unlabeled nodes.
     long long attribute_count = 0;
-    while((n = NodeIterator_Next(it)) != NULL) {
+    while((n = (Node*)DataBlockIterator_Next(it)) != NULL) {
         if(*argc < 1) {
             _Bulk_Insert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, failed to parse unlabeled node attributes.");
             return NULL;
