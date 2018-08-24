@@ -163,10 +163,11 @@ void _MGraph_Query(void *args) {
     AST_Query* ast = qctx->ast;
     const char *graph_name = RedisModule_StringPtrLen(qctx->graphName, NULL);
 
-    ModifyAST(ctx, ast, graph_name);
-
     char *reason;
-    if (AST_Validate(ast, &reason) != AST_VALID) {
+    AST_Validation res = ModifyAST(ctx, ast, graph_name, &reason);
+
+    // If ModifyAST failed or AST_Validate fails, clean up and return an error
+    if ((res != AST_VALID) || AST_Validate(ast, &reason) != AST_VALID) {
         RedisModule_ReplyWithError(ctx, reason);
         free(reason);
         goto cleanup;
@@ -398,10 +399,11 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
         return REDISMODULE_OK;
     }
 
-    ModifyAST(ctx, ast, graph_name);
-
     char *reason;
-    if (AST_Validate(ast, &reason) != AST_VALID) {
+    AST_Validation res = ModifyAST(ctx, ast, graph_name, &reason);
+
+    // If ModifyAST failed or AST_Validate fails, clean up and return an error
+    if ((res != AST_VALID) || AST_Validate(ast, &reason) != AST_VALID) {
         RedisModule_ReplyWithError(ctx, reason);
         free(reason);
         return REDISMODULE_OK;

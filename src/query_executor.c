@@ -49,7 +49,7 @@ void Build_None_Aggregated_Arithmetic_Expressions(AST_ReturnNode *return_node, A
     }
 }
 
-void ReturnClause_ExpandCollapsedNodes(RedisModuleCtx *ctx, AST_Query *ast, const char *graphName) {
+AST_Validation ReturnClause_ExpandCollapsedNodes(RedisModuleCtx *ctx, AST_Query *ast, const char *graphName, char **reason) {
      /* Create a new return clause */
     Vector *expandReturnElements = NewVector(AST_ReturnElementNode*, Vector_Size(ast->returnNode->returnElements));
 
@@ -74,9 +74,30 @@ void ReturnClause_ExpandCollapsedNodes(RedisModuleCtx *ctx, AST_Query *ast, cons
 
             /* Failed to find collapsed entity. */
             if(collapsed_entity == NULL) {
-                /* Invalid query, return clause refers to none existing entity. */
-                /* TODO: Validate query. */
-                return;
+                /* Invalid query, return clause refers to non-existent entity. */
+                asprintf(reason, "%s not defined", exp->operand.variadic.alias);
+
+                /* We've partially freed return elements and partially constructed
+                 * some replacement elements, so some cleanup is required. */
+
+                /* Free the replacement elements that have been built so far. */
+                for (int j = 0; i < Vector_Size(expandReturnElements); j ++) {
+                    Vector_Get(expandReturnElements, i, &ret_elem);
+                    Free_AST_ReturnElementNode(ret_elem);
+                }
+                Vector_Free(expandReturnElements);
+
+                /* Free the remaining elements in the return clause. */
+                for(; i < Vector_Size(ast->returnNode->returnElements); i++) {
+                    AST_ReturnElementNode *ret_elem;
+                    Vector_Get(ast->returnNode->returnElements, i, &ret_elem);
+                    Free_AST_ReturnElementNode(ret_elem);
+                }
+                Vector_Free(ast->returnNode->returnElements);
+                free(ast->returnNode);
+                ast->returnNode = NULL;
+
+                return AST_INVALID;
             }
 
             /* Find label's properties. */
@@ -126,6 +147,8 @@ void ReturnClause_ExpandCollapsedNodes(RedisModuleCtx *ctx, AST_Query *ast, cons
     /* Override previous return clause. */
     Vector_Free(ast->returnNode->returnElements);
     ast->returnNode->returnElements = expandReturnElements;
+
+    return AST_VALID;
 }
 
 /* Shares merge pattern with match clause. */
@@ -187,7 +210,7 @@ AST_Query* ParseQuery(const char *query, size_t qLen, char **errMsg) {
     return Query_Parse(query, qLen, errMsg);
 }
 
-void ModifyAST(RedisModuleCtx *ctx, AST_Query *ast, const char *graph_name) {
+AST_Validation ModifyAST(RedisModuleCtx *ctx, AST_Query *ast, const char *graph_name, char **reason) {
     if(ast->mergeNode) {
         /* Create match clause which will try to match 
          * against pattern specified within merge clause. */
@@ -198,8 +221,11 @@ void ModifyAST(RedisModuleCtx *ctx, AST_Query *ast, const char *graph_name) {
 
     if(ReturnClause_ContainsCollapsedNodes(ast->returnNode) == 1) {
         /* Expand collapsed nodes. */
-        ReturnClause_ExpandCollapsedNodes(ctx, ast, graph_name);
+        AST_Validation res = ReturnClause_ExpandCollapsedNodes(ctx, ast, graph_name, reason) != AST_VALID;
+        if (res != AST_VALID) return AST_INVALID;
     }
 
     inlineProperties(ast);
+
+    return AST_VALID;
 }

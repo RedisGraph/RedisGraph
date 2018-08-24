@@ -31,6 +31,6 @@ void Build_None_Aggregated_Arithmetic_Expressions(AST_ReturnNode *return_node, A
 AST_Query* ParseQuery(const char *query, size_t qLen, char **errMsg);
 
 /* Performs a number of adjustments to given AST. */
-void ModifyAST(RedisModuleCtx *ctx, AST_Query *ast, const char *graph_name);
+AST_Validation ModifyAST(RedisModuleCtx *ctx, AST_Query *ast, const char *graph_name, char **reason);
 
 #endif
