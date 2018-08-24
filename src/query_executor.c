@@ -75,10 +75,7 @@ AST_Validation ReturnClause_ExpandCollapsedNodes(RedisModuleCtx *ctx, AST_Query 
             /* Failed to find collapsed entity. */
             if(collapsed_entity == NULL) {
                 /* Invalid query, return clause refers to non-existent entity. */
-                asprintf(reason, "%s not defined", exp->operand.variadic.alias);
-
-                /* We've partially freed return elements and partially constructed
-                 * some replacement elements, so some cleanup is required. */
+                asprintf(reason, "Variable '%s' not defined", exp->operand.variadic.alias);
 
                 /* Free the replacement elements that have been built so far. */
                 for (int j = 0; i < Vector_Size(expandReturnElements); j ++) {
@@ -86,16 +83,6 @@ AST_Validation ReturnClause_ExpandCollapsedNodes(RedisModuleCtx *ctx, AST_Query 
                     Free_AST_ReturnElementNode(ret_elem);
                 }
                 Vector_Free(expandReturnElements);
-
-                /* Free the remaining elements in the return clause. */
-                for(; i < Vector_Size(ast->returnNode->returnElements); i++) {
-                    AST_ReturnElementNode *ret_elem;
-                    Vector_Get(ast->returnNode->returnElements, i, &ret_elem);
-                    Free_AST_ReturnElementNode(ret_elem);
-                }
-                Vector_Free(ast->returnNode->returnElements);
-                free(ast->returnNode);
-                ast->returnNode = NULL;
 
                 return AST_INVALID;
             }
@@ -140,6 +127,9 @@ AST_Validation ReturnClause_ExpandCollapsedNodes(RedisModuleCtx *ctx, AST_Query 
 
             /* Discard collapsed return element. */
             Free_AST_ReturnElementNode(ret_elem);
+            /* NULL out freed elements so we can properly free the return clause
+             * if we return from this function early. */
+            Vector_Put(ast->returnNode->returnElements, i, NULL);
         } else {
             Vector_Push(expandReturnElements, ret_elem);
         }
