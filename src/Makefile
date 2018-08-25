@@ -19,6 +19,8 @@ else
 	CFLAGS += -mmacosx-version-min=10.12
 	SHOBJ_LDFLAGS ?= -macosx_version_min 10.12 -exported_symbol _RedisModule_OnLoad -bundle -undefined dynamic_lookup -ldl -lpthread
 endif
+SHOBJ_LDFLAGS += $(LDFLAGS)
+
 export CFLAGS
 
 # Sources
