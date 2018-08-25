@@ -12,31 +12,33 @@
 
 #include "node.h"
 #include "edge.h"
+#include "../redismodule.h"
+#include "../util/uthash.h"
+#include "../util/triemap/triemap.h"
 #include "../util/datablock/datablock.h"
 #include "../util/datablock/datablock_iterator.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
-#include "../redismodule.h"
-#include "../util/triemap/triemap.h"
 
 #define GRAPH_DEFAULT_NODE_CAP 16384    // Default number of nodes a graph can hold before resizing.
-// #define GRAPH_DEFAULT_NODE_CAP 2
 #define GRAPH_DEFAULT_RELATION_CAP 16   // Default number of different relationships a graph can hold before resizing.
 #define GRAPH_DEFAULT_LABEL_CAP 16      // Default number of different labels a graph can hold before resizing.
 #define GRAPH_NO_LABEL -1               // Labels are numbered [0-N], -1 represents no label.
 #define GRAPH_NO_RELATION -1            // Relations are numbered [0-N], -1 represents no relation.
 
 typedef GrB_Index NodeID;
+typedef GrB_Index EdgeID;
 
 typedef struct {
     DataBlock *nodes;               // Graph nodes stored in blocks.
     DataBlock *edges;               // Graph edges stored in blocks.
+    Edge *_edgesHashTbl;            // Hash table containing edges.
     GrB_Matrix adjacency_matrix;    // Adjacency matrix, holds all graph connections.
     GrB_Matrix *_relations;         // Relation matrices.
     size_t relation_cap;            // Number of relations graph can hold.
     size_t relation_count;          // Number of relation matrices.
     GrB_Matrix *_labels;            // Label matrices.
     size_t label_cap;               // Number of labels graph can hold.
-    size_t label_count;             // Number of label matrices.
+    size_t label_count;             // Number of label matrices.    
     pthread_mutex_t _mutex;         // Mutex for accessing critical sections.
 
 } Graph;
@@ -55,6 +57,9 @@ Graph *Graph_Get(
 
 // Returns number of nodes in the graph.
 size_t Graph_NodeCount(const Graph *g);
+
+// Returns number of edges in the graph.
+size_t Graph_EdgeCount(const Graph *g);
 
 // Creates N new nodes.
 // Returns node iterator.

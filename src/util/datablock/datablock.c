@@ -40,7 +40,7 @@
 
 Block *_Block_New(size_t itemSize) {
     assert(itemSize > 0);
-    Block *block = malloc(sizeof(Block) + BLOCK_CAP * itemSize);
+    Block *block = calloc(1, sizeof(Block) + BLOCK_CAP * itemSize);
     block->itemSize = itemSize;
     block->next = NULL;
     return block;

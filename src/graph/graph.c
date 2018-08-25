@@ -10,6 +10,7 @@
 #include "assert.h"
 #include "../arithmetic/tuples_iter.h"
 
+
 /*========================= Graph utility functions ========================= */
 
 /* Acquire mutex. */
@@ -22,7 +23,8 @@ void _Graph_LeaveCriticalSection(Graph *g) {
     pthread_mutex_unlock(&g->_mutex);
 }
 
-// Resize given matrix to match graph's adjacency matrix dimensions.
+/* Resize given matrix, such that its number of row and columns
+ * matches the number of nodes in the graph. */
 void _Graph_ResizeMatrix(const Graph *g, GrB_Matrix m) {
     GrB_Index n_rows;
 
@@ -45,8 +47,13 @@ size_t _Graph_NodeCap(const Graph *g) {
 }
 
 // Resize graph's node array to contain at least n nodes.
-void _Graph_ResizeNodes(Graph *g, size_t n) {
-    DataBlock_AddItems(g->nodes, n, NULL);
+void _Graph_AddNodes(Graph *g, size_t n, DataBlockIterator **it) {
+    DataBlock_AddItems(g->nodes, n, it);
+}
+
+// Resize graph's edge array to contain at least n edges.
+void _Graph_AddEdges(Graph *g, size_t n, DataBlockIterator **it) {
+    DataBlock_AddItems(g->edges, n, it);
 }
 
 /* Relocate src row and column, overriding dest. */
@@ -172,6 +179,7 @@ Graph *Graph_New(size_t n) {
     
     g->nodes = DataBlock_New(n, sizeof(Node));
     g->edges = DataBlock_New(n, sizeof(Edge));
+    g->_edgesHashTbl = NULL;    // Init to NULL, required by uthash.
     g->relation_cap = GRAPH_DEFAULT_RELATION_CAP;
     g->relation_count = 0;
     g->label_cap = GRAPH_DEFAULT_LABEL_CAP;
@@ -205,20 +213,21 @@ size_t Graph_NodeCount(const Graph *g) {
     return g->nodes->itemCount;
 }
 
+size_t Graph_EdgeCount(const Graph *g) {
+    assert(g);
+    return g->edges->itemCount;
+}
+
 void Graph_CreateNodes(Graph* g, size_t n, int* labels, DataBlockIterator **it) {
     assert(g);
 
     NodeID node_id = (NodeID)Graph_NodeCount(g);
 
-    _Graph_ResizeNodes(g, n);
+    _Graph_AddNodes(g, n, it);
     _Graph_ResizeMatrix(g, g->adjacency_matrix);
 
-    if(it) {
-        *it = DataBlockIterator_New(DataBlock_GetItemBlock(g->nodes, node_id), node_id, node_id + n, 1);
-    }
-
     if(labels) {
-        for(int idx = 0; idx < n; idx++) {
+        for(size_t idx = 0; idx < n; idx++) {
             int l = labels[idx];
             if(l != GRAPH_NO_LABEL) {
                 GrB_Matrix m = Graph_GetLabelMatrix(g, l);
@@ -231,20 +240,34 @@ void Graph_CreateNodes(Graph* g, size_t n, int* labels, DataBlockIterator **it) 
 
 void Graph_ConnectNodes(Graph *g, size_t n, GrB_Index *connections) {
     assert(g && connections);
+
+    DataBlockIterator *it;
     GrB_Matrix adj = Graph_GetAdjacencyMatrix(g);
+    _Graph_AddEdges(g, n, &it);
+
     // Update graph's adjacency matrices, setting mat[dest,src] to 1.
     for(int i = 0; i < n; i+=3) {
-        int src_id = connections[i];
-        int dest_id = connections[i+1];
+        int srcId = connections[i];
+        int destId = connections[i+1];
         int r = connections[i+2];
 
+        // Create edge.
+        EdgeID edgeId = Graph_EdgeCount(g);
+        Node *srcNode = Graph_GetNode(g, srcId);
+        Node *destNode = Graph_GetNode(g, destId);
+        Edge *edge = (Edge *)DataBlockIterator_Next(it);
+        edge->id = edgeId;
+        edge->src = srcNode;
+        edge->dest = destNode;
+        edge->prop_count = 0;
+        
         // Columns represent source nodes, rows represent destination nodes.
-        GrB_Matrix_setElement_BOOL(adj, true, dest_id, src_id);
+        GrB_Matrix_setElement_BOOL(adj, true, destId, srcId);
 
         if(r != GRAPH_NO_RELATION) {
             // Typed edge.
             GrB_Matrix M = Graph_GetRelationMatrix(g, r);
-            GrB_Matrix_setElement_BOOL(M, true, dest_id, src_id);
+            GrB_Matrix_setElement_BOOL(M, true, destId, srcId);
         }
     }
 }
@@ -261,24 +284,24 @@ void Graph_DeleteNodes(Graph *g, NodeID *IDs, size_t IDCount) {
     if(IDCount == 0) return;
 
     typedef struct {
-        int nodeID;         // Node being deleted.
-        int replacementID;  // Node taking over.
-        bool delete;        // No need to replace, simply delete.
+        NodeID nodeID;          // Node being deleted.
+        NodeID replacementID;   // Node taking over.
+        bool delete;            // No need to replace, simply delete.
     } Replacement;
 
     Replacement *replacements = malloc(sizeof(Replacement) * IDCount);
 
     /* Allocate replacement candidates. */
-    for(int i = 0; i < IDCount; i++) {
+    for(size_t i = 0; i < IDCount; i++) {
         replacements[i].replacementID = Graph_NodeCount(g) - (IDCount - i);
         replacements[i].delete = false;
     }
 
     /* Locate which soon to deleted nodes are also replacement candidates. */
-    for(int i = 0; i < IDCount; i++) {
-        int id = IDs[i];
+    for(size_t i = 0; i < IDCount; i++) {
+        NodeID id = IDs[i];
         if(id >= (Graph_NodeCount(g) - IDCount)) {
-            int j = IDCount - (Graph_NodeCount(g) - id);
+            size_t j = IDCount - (Graph_NodeCount(g) - id);
             replacements[j].nodeID = id;
             replacements[j].delete = true;
         }
@@ -286,8 +309,8 @@ void Graph_DeleteNodes(Graph *g, NodeID *IDs, size_t IDCount) {
 
     /* For nodes marked for deletion which do require a replacement
      * find a replacement which is not marked for quick deletion. */
-    for(int j = 0, i = 0; i < IDCount; i++) {
-        int id = IDs[i];
+    for(size_t j = 0, i = 0; i < IDCount; i++) {
+        NodeID id = IDs[i];
         // Require a replacement?
         if(id < (Graph_NodeCount(g) - IDCount)) {
             // Locate a valid replacement.
@@ -296,22 +319,8 @@ void Graph_DeleteNodes(Graph *g, NodeID *IDs, size_t IDCount) {
         }
     }
 
-    /* Replace removed nodes within node blocks. */
-    size_t deletedNodeCount = 0;
-    for(int j = 0, i = 0; i < IDCount; i++) {
-        Replacement r = replacements[i];
-        if(r.delete) {
-            // No need to perform replacement.
-            deletedNodeCount++;
-        } else {
-            // Override nodeID with replacementID.
-            DataBlock_MigrateItem(g->nodes, r.replacementID, r.nodeID);
-        }
-    }
-    DataBlock_FreeTop(g->nodes, deletedNodeCount);
-
     /* Replace rows, columns. */
-    for(int i = 0; i < IDCount; i++) {
+    for(size_t i = 0; i < IDCount; i++) {
         Replacement r = replacements[i];
         if(!r.delete) {
             _Graph_MigrateRowCol(g, r.replacementID, r.nodeID);
@@ -323,9 +332,9 @@ void Graph_DeleteNodes(Graph *g, NodeID *IDs, size_t IDCount) {
     GrB_Vector_new(&zero, GrB_BOOL, Graph_NodeCount(g));
 
     // Update label matrices.
-    for(int i = 0; i < g->label_count; i++) {
+    for(size_t i = 0; i < g->label_count; i++) {
         GrB_Matrix M = Graph_GetLabelMatrix(g, i);
-        for(int j = 0; j < IDCount; j++) {
+        for(size_t j = 0; j < IDCount; j++) {
             Replacement r = replacements[j];
             bool srcExists = false;
             bool destExists = false;
@@ -335,7 +344,7 @@ void Graph_DeleteNodes(Graph *g, NodeID *IDs, size_t IDCount) {
             // Clear, dest.
             if(destExists) {
                 if(!srcExists || (srcExists && r.delete) ) {
-                    GrB_Col_assign(M, NULL, NULL, zero, GrB_ALL, Graph_NodeCount(g), r.replacementID, NULL);
+                    GrB_Col_assign(M, NULL, NULL, zero, GrB_ALL, Graph_NodeCount(g), r.nodeID, NULL);
                 }
             }
 
@@ -347,6 +356,20 @@ void Graph_DeleteNodes(Graph *g, NodeID *IDs, size_t IDCount) {
             }
         }
     }
+
+    /* Replace removed nodes within node blocks. */
+    size_t deletedNodeCount = 0;
+    for(size_t i = 0; i < IDCount; i++) {
+        Replacement r = replacements[i];
+        if(r.delete) {
+            // No need to perform replacement.
+            deletedNodeCount++;
+        } else {
+            // Override nodeID with replacementID.
+            DataBlock_MigrateItem(g->nodes, r.replacementID, r.nodeID);
+        }
+    }
+    DataBlock_FreeTop(g->nodes, deletedNodeCount);
 
     // Clean up.
     GrB_Vector_free(&zero);
@@ -380,7 +403,7 @@ void Graph_LabelNodes(Graph *g, NodeID start_node_id, NodeID end_node_id, int la
            end_node_id < Graph_NodeCount(g));
     
     GrB_Matrix m = Graph_GetLabelMatrix(g, label);
-    for(int node_id = start_node_id; node_id <= end_node_id; node_id++) {
+    for(NodeID node_id = start_node_id; node_id <= end_node_id; node_id++) {
         GrB_Matrix_setElement_BOOL(m, true, node_id, node_id);
     }
 }

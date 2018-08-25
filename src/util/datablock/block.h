@@ -12,10 +12,9 @@
 
 // Number of items in a block. Should always be a power of 2.
 #define BLOCK_CAP 16384
-// #define BLOCK_CAP 2
 
 
-/* Data block is a type agnostic continues block of memory 
+/* Data block is a type agnostic continuous block of memory 
  * used to hold items of the same type, each block has a next 
  * pointer to another block or NULL if this is the last block. */
 

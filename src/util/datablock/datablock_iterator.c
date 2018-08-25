@@ -32,7 +32,7 @@ void *DataBlockIterator_Next(DataBlockIterator *iter) {
     // Have we reached the end of our iterator?
     if(iter->_current_pos >= iter->_end_pos || iter->_current_block == NULL) return NULL;
     
-    // Get node at current position.
+    // Get item at current position.
     Block *block = iter->_current_block;
     void *item = block->data + (iter->_block_pos * block->itemSize);
 

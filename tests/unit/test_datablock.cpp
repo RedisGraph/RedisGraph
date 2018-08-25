@@ -28,15 +28,15 @@ void DataBlock_MigrateItem(DataBlock *dataBlock, size_t src, size_t dest)
 void DataBlock_Free(DataBlock *block)
 */
 TEST_F(DataBlockTest, NewDataBlock) {
-    // Create a new data block, which can hold 1024 items
+    // Create a new data block, which can hold at least 1024 items
     // each item is an integer.
     size_t itemSize = sizeof(int);
     DataBlock *dataBlock = DataBlock_New(1024, itemSize);
 
     EXPECT_EQ(dataBlock->itemCount, 0);     // No items were added. 
-    EXPECT_EQ(dataBlock->itemCap, 1024);
+    EXPECT_GE(dataBlock->itemCap, 1024);
     EXPECT_EQ(dataBlock->itemSize, itemSize);      
-    EXPECT_EQ(dataBlock->blockCount, 1024/BLOCK_CAP);
+    EXPECT_GE(dataBlock->blockCount, 1024/BLOCK_CAP);
 
     for(int i = 0; i < dataBlock->blockCount; i++) {
         Block *block = dataBlock->blocks[i];
@@ -55,7 +55,7 @@ TEST_F(DataBlockTest, AddItemToDataBlock) {
     size_t itemCount = 512;
     DataBlockIterator *it;
     DataBlock_AddItems(dataBlock, itemCount, &it);
-    EXPECT_EQ(dataBlock->blockCount, itemCount);
+    EXPECT_EQ(dataBlock->itemCount, itemCount);
 
     // Set items.
     for(int i = 0 ; i < itemCount; i++) {
@@ -71,7 +71,7 @@ TEST_F(DataBlockTest, AddItemToDataBlock) {
 
     // Add enough item to cause datablock to re-allocate.
     size_t prevItemCount = dataBlock->itemCount;
-    itemCount*=8;
+    itemCount*=64;
     DataBlock_AddItems(dataBlock, itemCount, &it);
     EXPECT_EQ(dataBlock->itemCount, prevItemCount+itemCount);
     

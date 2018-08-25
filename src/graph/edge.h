@@ -8,10 +8,11 @@
 #ifndef EDGE_H_
 #define EDGE_H_
 
-#include "../../deps/GraphBLAS/Include/GraphBLAS.h"
-#include "graph_entity.h"
 #include "node.h"
 #include "../value.h"
+#include "graph_entity.h"
+#include "../util/uthash.h"
+#include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 
 struct Edge {
 	struct {
@@ -20,10 +21,11 @@ struct Edge {
 		EntityProperty *properties;
 	};
 	char* relationship;
-	int relationship_id;			// ID of relationship matrix.
+	int relationship_id;	// ID of relationship matrix.
 	Node* src;
 	Node* dest;
-	GrB_Matrix mat;					// Adjacency matrix, associated with edge.
+	GrB_Matrix mat;			// Adjacency matrix, associated with edge.
+	UT_hash_handle hh;		// makes this structure hashable.
 };
 
 typedef struct Edge Edge;
