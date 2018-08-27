@@ -128,6 +128,12 @@ AR_ExpNode* AR_EXP_NewVariableOperandNode(GraphEntity **entity, const char *enti
 AR_ExpNode* AR_EXP_NewOpNode(char *func_name, int child_count);
 
 /* Utility functions */
+/* Link variadics in expression tree to their corresponding QueryGraph entities. */
+void AR_EXP_BindVariadics(AR_ExpNode *root, const QueryGraph *qg);
+/* Traverse an expression tree and add all graph entity aliases
+ * (from variadics) to a triemap. */
+void AR_EXP_CollectAliases(AR_ExpNode *root, TrieMap *aliases);
+
 /* Search for an aggregation node within the expression tree.
  * Return 1 and sets agg_node to the aggregation node if exists,
  * Please note an expression tree can only contain a single aggregation node. */

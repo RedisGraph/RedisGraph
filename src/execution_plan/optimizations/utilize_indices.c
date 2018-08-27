@@ -12,9 +12,11 @@ void _locateScanFilters(NodeByLabelScan *scanOp, Vector *filterOps) {
     /* filterTree will either be a predicate or a tree with an OR root.
      * We'll store ops on const predicate filters, and can otherwise safely ignore them -
      * no filter tree in this sequence can invalidate another. */
+    /*
     if (IsNodeConstantPredicate(filterTree)) {
       Vector_Push(filterOps, current);
     }
+    */
 
     // Advance to the next operation.
     current = current->parent;
@@ -44,7 +46,7 @@ void utilizeIndices(RedisModuleCtx *ctx, const char *graph_name, ExecutionPlan *
   NodeByLabelScan *scanOp;
   Vector *filterOps = NewVector(OpBase*, 0);
   FT_FilterNode *ft;
-  char *label;
+  // char *label;
 
   IndexIter *iter = NULL;
   Index *idx = NULL;
@@ -52,7 +54,7 @@ void utilizeIndices(RedisModuleCtx *ctx, const char *graph_name, ExecutionPlan *
   while (Vector_Pop(scanOps, &scanOp)) {
     /* Get the label string for the scan target.
      * The label will be used to retrieve the index. */
-    label = (*scanOp->node)->label;
+    // label = (*scanOp->node)->label;
     Vector_Clear(filterOps);
     _locateScanFilters(scanOp, filterOps);
 
@@ -73,6 +75,7 @@ void utilizeIndices(RedisModuleCtx *ctx, const char *graph_name, ExecutionPlan *
       ft = ((Filter *)opFilter)->filterTree;
 
       // If we've already selected an index on a different property, continue
+      /*
       if (idx && strcmp(idx->property, ft->pred.Lop.property)) continue;
 
       // Try to retrieve an index if one has not been selected yet
@@ -81,6 +84,7 @@ void utilizeIndices(RedisModuleCtx *ctx, const char *graph_name, ExecutionPlan *
         if (!idx) continue;
         iter = IndexIter_Create(idx, ft->pred.constVal.type);
       }
+      */
 
       // Tighten the iterator range if possible
       if (IndexIter_ApplyBound(iter, &ft->pred)) {

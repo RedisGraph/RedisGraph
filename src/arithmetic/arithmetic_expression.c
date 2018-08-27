@@ -141,6 +141,32 @@ AR_ExpNode* AR_EXP_NewOpNode(char *func_name, int child_count) {
     return node;
 }
 
+void AR_EXP_BindVariadics(AR_ExpNode *root, const QueryGraph *qg) {
+    if (root->type == AR_EXP_OP) {
+        for (int i = 0; i < root->op.child_count; i ++) {
+            AR_EXP_BindVariadics(root->op.children[i], qg);
+        }
+    } else { // type == AR_EXP_OPERAND
+        if (root->operand.type == AR_EXP_VARIADIC) {
+            char *alias = root->operand.variadic.entity_alias;
+            if (alias) root->operand.variadic.entity = QueryGraph_GetEntityRef(qg, alias);
+        }
+    }
+}
+
+void AR_EXP_CollectAliases(AR_ExpNode *root, TrieMap *aliases) {
+    if (root->type == AR_EXP_OP) {
+        for (int i = 0; i < root->op.child_count; i ++) {
+            AR_EXP_CollectAliases(root->op.children[i], aliases);
+        }
+    } else { // type == AR_EXP_OPERAND
+        if (root->operand.type == AR_EXP_VARIADIC) {
+            char *alias = root->operand.variadic.entity_alias;
+            if (alias) TrieMap_Add(aliases, alias, strlen(alias), NULL, NULL);
+        }
+    }
+}
+
 int AR_EXP_ContainsAggregation(AR_ExpNode *root, AR_ExpNode **agg_node) {
     if(root->type == AR_EXP_OP && root->op.type == AR_OP_AGGREGATE) {
         if(agg_node != NULL) *agg_node = root;
@@ -251,7 +277,10 @@ AR_ExpNode* AR_EXP_BuildFromAST(const AST_ArithmeticExpressionNode *exp, const Q
         if(exp->operand.type == AST_AR_EXP_CONSTANT) {
             root = AR_EXP_NewConstOperandNode(exp->operand.constant);
         } else {
-            GraphEntity **entity = QueryGraph_GetEntityRef(g, exp->operand.variadic.alias);
+            GraphEntity **entity = NULL;
+            /* Entities will be bound separately when an expression is evaluated before the
+             * query graph is populated (such as during the construction of the filter tree). */
+            if (g) entity = QueryGraph_GetEntityRef(g, exp->operand.variadic.alias);
             root = AR_EXP_NewVariableOperandNode(entity,
                                                  exp->operand.variadic.property,
                                                  exp->operand.variadic.alias);

@@ -20,8 +20,8 @@ typedef enum {
 } AST_ArithmeticExpression_NodeType;
 
 typedef enum {
-    AST_AR_EXP_CONSTANT = 1,
-    AST_AR_EXP_VARIADIC = 2,
+    AST_AR_EXP_CONSTANT,
+    AST_AR_EXP_VARIADIC,
 } AST_ArithmeticExpression_OperandNodeType;
 
 typedef struct {
@@ -44,7 +44,7 @@ typedef struct {
 
 typedef struct {
 	union {
-		AST_ArithmeticExpressionOperand operand;
+        AST_ArithmeticExpressionOperand operand;
         AST_ArithmeticExpressionOP op;
     };
     AST_ArithmeticExpression_NodeType type;

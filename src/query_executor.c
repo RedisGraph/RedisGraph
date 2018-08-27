@@ -147,10 +147,17 @@ void inlineProperties(AST_Query *ast) {
     // Vector *entities = ast->matchNode->graphEntities;
     Vector *entities = ast->matchNode->_mergedPatterns;
 
+    char *alias;
+    char *property;
+    AST_ArithmeticExpressionNode *lhs;
+    AST_ArithmeticExpressionNode *rhs;
+
     /* Foreach entity. */
     for(int i = 0; i < Vector_Size(entities); i++) {
         AST_GraphEntity *entity;
         Vector_Get(entities, i, &entity);
+
+        alias = entity->alias;
 
         Vector *properties = entity->properties;
         if(properties == NULL) {
@@ -162,13 +169,18 @@ void inlineProperties(AST_Query *ast) {
             SIValue *key;
             SIValue *val;
 
+            // Build the left-hand filter value from the node alias and property
             Vector_Get(properties, j, &key);
+            property = key->stringval;
+            lhs = New_AST_AR_EXP_VariableOperandNode(alias, property);
+
+            // Build the right-hand filter value from the specified constant
+            // TODO can update grammar so that this constant is already an ExpressionNode
+            // instead of an SIValue
             Vector_Get(properties, j+1, &val);
+            rhs = New_AST_AR_EXP_ConstOperandNode(*val);
 
-            const char *alias = entity->alias;
-            const char *property = key->stringval;
-
-            AST_FilterNode *filterNode = New_AST_ConstantPredicateNode(alias, property, EQ, *val);
+            AST_FilterNode *filterNode = New_AST_PredicateNode(lhs, EQ, rhs);
             
             /* Create WHERE clause if missing. */
             if(ast->whereNode == NULL) {

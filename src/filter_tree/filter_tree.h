@@ -23,34 +23,12 @@ typedef enum {
   FT_N_COND,
 } FT_FilterNodeType;
 
-typedef enum {
-	FT_N_CONSTANT,
-	FT_N_VARYING,
-  FT_N_FUNCTION,
-} FT_CompareValueType;
-
 struct FT_FilterNode;
 
 typedef struct {
-  union {
-    AR_ExpNode *func;
-    struct {			    /* Left side of predicate. */
-      char* alias;		/* Element in question alias. */
-      char* property;		/* Element's property to check. */
-      GraphEntity **e;	/* Left side entity. */
-    } Lop;
-  };
+	AR_ExpNode *lhs;
+	AR_ExpNode *rhs;
 	int op;					/* Operation (<, <=, =, =>, >, !). */
-	union {					/* Right side of predicate. */
-		SIValue constVal;	/* Value to compare against. */
-		struct {
-			char* alias;		/* Element in question alias. */
-			char* property;		/* Element's property to check. */
-			GraphEntity **e;	/* Right side entity. */
-		} Rop;
-	};
-	FT_CompareValueType t; 	/* Compared value type, constant/node/function. */
-	CmpFunc cf;				/* Compare function, determines relation between val and element property. */
 } FT_PredicateNode;
 
 typedef struct {
@@ -74,8 +52,6 @@ typedef struct FT_FilterNode FT_FilterNode;
  * This is done to speed up the filtering process. */
 FT_FilterNode* BuildFiltersTree(const AST_FilterNode *root);
 
-FT_FilterNode* CreateVaryingFilterNode(const char *LAlias, const char *LProperty, const char *RAlias, const char *RProperty, int op);
-FT_FilterNode* CreateConstFilterNode(const char *alias, const char *property, int op, SIValue val);
 FT_FilterNode* CreateCondFilterNode(int op);
 
 FT_FilterNode *AppendLeftChild(FT_FilterNode *root, FT_FilterNode *child);
@@ -101,7 +77,5 @@ void FilterTree_Print(const FT_FilterNode *root);
 Vector* FilterTree_SubTrees(const FT_FilterNode *root);
 
 void FilterTree_Free(FT_FilterNode *root);
-
-int IsNodeConstantPredicate(const FT_FilterNode *node);
 
 #endif // _FILTER_TREE_H 

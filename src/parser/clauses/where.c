@@ -15,86 +15,13 @@ AST_WhereNode* New_AST_WhereNode(AST_FilterNode *filters) {
 }
 
 AST_FilterNode* New_AST_PredicateNode(AST_ArithmeticExpressionNode *lhs, int op, AST_ArithmeticExpressionNode *rhs) {
-  int lhs_type = AR_EXP_GetOpType(lhs);
-  int rhs_type = AR_EXP_GetOpType(rhs);
-  if (lhs_type == AST_AR_EXP_VARIADIC) {
-    if (rhs_type == AST_AR_EXP_VARIADIC) {
-      // me.age > friend.age
-      return New_AST_VaryingPredicateNode(lhs->operand.variadic.alias, lhs->operand.variadic.property, op, rhs->operand.variadic.alias, rhs->operand.variadic.property);
-    } else if (rhs_type == AST_AR_EXP_CONSTANT) {
-      // me.age > 30
-      return New_AST_ConstantPredicateNode(lhs->operand.variadic.alias, lhs->operand.variadic.property, op, rhs->operand.constant);
-    }
-  } else if (lhs_type == 0) {
-    // Function on left hand of filter
-    /* TODO Ultimately, it makes sense to support functions against variadics as well as functions
-     * against functions, but I'm currently only adding (arithmetic) functions against constants. */
-    if (rhs_type == AST_AR_EXP_CONSTANT) {
-      // ID(a) = 5
-      return New_AST_FunctionPredicateNode(lhs->op, op, rhs->operand.constant);
-    }
-  }
-
-  return NULL;
-}
-
-AST_FilterNode* New_AST_FunctionPredicateNode(AST_ArithmeticExpressionOP func, int op, SIValue value) {
 	AST_FilterNode *n = malloc(sizeof(AST_FilterNode));
   n->t = N_PRED;
-
-  n->pn.t = N_FUNC;
-  // TODO logic needs to be updated for multi-argument functions (WHERE LEFT(a.name, 3) = 'The') 
-  assert(Vector_Size(func.args) == 1);
-  n->pn.func.function = strdup(func.function);
-  AST_ArithmeticExpressionNode *exp = NULL;
-  Vector_Get(func.args, 0, &exp);
-  assert(exp->type == AST_AR_EXP_OPERAND);
-  assert(exp->operand.type == AST_AR_EXP_VARIADIC);
-
-  n->pn.alias = strdup(exp->operand.variadic.alias);
-  if (exp->operand.variadic.property) {
-    n->pn.property = strdup(exp->operand.variadic.property);
-  } else {
-    n->pn.property = NULL;
-  }
+  n->pn.lhs = lhs;
   n->pn.op = op;
-	n->pn.func.constVal = value;
+  n->pn.rhs = rhs;
 
   return n;
-}
-
-AST_FilterNode* New_AST_ConstantPredicateNode(const char* alias, const char* property, int op, SIValue value) {
-	AST_FilterNode *n = malloc(sizeof(AST_FilterNode));
-  	n->t = N_PRED;
-
-	n->pn.t = N_CONSTANT;
-  	n->pn.alias = strdup(alias);
-	n->pn.property = strdup(property);
-
-	n->pn.op = op;
-	n->pn.constVal = value;
-
-	return n;
-}
-
-AST_FilterNode* New_AST_VaryingPredicateNode(const char* lAlias, const char* lProperty, int op, const char* rAlias, const char* rProperty) {
-	AST_FilterNode *n = malloc(sizeof(AST_FilterNode));
-	n->t = N_PRED;
-
-	n->pn.t = N_VARYING;
-	n->pn.alias = (char*)malloc(strlen(lAlias) + 1);
-	n->pn.property = (char*)malloc(strlen(lProperty) + 1);
-	n->pn.nodeVal.alias = (char*)malloc(strlen(rAlias) + 1);
-	n->pn.nodeVal.property = (char*)malloc(strlen(rProperty) + 1);
-
-	strcpy(n->pn.alias, lAlias);
-	strcpy(n->pn.property, lProperty);
-	strcpy(n->pn.nodeVal.alias, rAlias);
-	strcpy(n->pn.nodeVal.property, rProperty);
-
-	n->pn.op = op;
-
-	return n;
 }
 
 AST_FilterNode *New_AST_ConditionNode(AST_FilterNode *left, int op, AST_FilterNode *right) {
@@ -109,6 +36,8 @@ AST_FilterNode *New_AST_ConditionNode(AST_FilterNode *left, int op, AST_FilterNo
 
 void FreePredicateNode(AST_PredicateNode* predicateNode) {
 
+  // TODO free, but maybe leave arithmetic expressions alone
+  /*
 	if(predicateNode->alias) {
 		free(predicateNode->alias);
 	}
@@ -126,6 +55,7 @@ void FreePredicateNode(AST_PredicateNode* predicateNode) {
 			free(predicateNode->nodeVal.property);
 		}
 	}
+  */
 
 	// TODO: Should I free constVal?
 }
@@ -137,18 +67,8 @@ void _WhereClause_ReferredNodes(AST_FilterNode *root, TrieMap *referred_nodes) {
 			_WhereClause_ReferredNodes(root->cn.right, referred_nodes);
 			break;
 		case N_PRED:
-			TrieMap_Add(referred_nodes,
-						root->pn.alias,
-						strlen(root->pn.alias),
-						NULL,
-						TrieMap_DONT_CARE_REPLACE);
-			if(root->pn.t == N_VARYING) {
-				TrieMap_Add(referred_nodes,
-							root->pn.nodeVal.alias,
-							strlen(root->pn.nodeVal.alias),
-							NULL,
-							TrieMap_DONT_CARE_REPLACE);
-			}
+      AR_EXP_GetAliases(root->pn.lhs, referred_nodes);
+      AR_EXP_GetAliases(root->pn.rhs, referred_nodes);
 			break;
 		default:
 			assert(0);

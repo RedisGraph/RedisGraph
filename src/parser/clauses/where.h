@@ -18,32 +18,12 @@ typedef enum {
   N_COND,
 } AST_FilterNodeType;
 
-typedef enum {
-	N_CONSTANT,
-	N_VARYING,
-	N_FUNC,
-} AST_CompareValueType;
-
-typedef struct functionFilter {
-  SIValue constVal;
-  char *function; // TODO just make AR_ExpNode in parser?
-} AST_FunctionFilter;
-
 struct filterNode;
 
 typedef struct {
-	union {
-		SIValue constVal;
-		struct {
-			char *alias;
-			char *property;
-		} nodeVal;
-    AST_FunctionFilter func;
-	};
-	AST_CompareValueType t; // Compared value type, constant/node
-	char *alias;			// Node alias
-	char *property; 		// Node property
-	int op;					// Type of comparison
+  AST_ArithmeticExpressionNode *lhs;  // Left-hand expression
+  AST_ArithmeticExpressionNode *rhs;  // Right-hand expression
+  int op;                             // Type of comparison
 } AST_PredicateNode;
 
 typedef struct conditionNode {
@@ -66,9 +46,6 @@ typedef struct {
 
 AST_WhereNode* New_AST_WhereNode(AST_FilterNode *filters);
 AST_FilterNode* New_AST_PredicateNode(AST_ArithmeticExpressionNode *lhs, int op, AST_ArithmeticExpressionNode *rhs);
-AST_FilterNode* New_AST_FunctionPredicateNode(AST_ArithmeticExpressionOP func, int op, SIValue value);
-AST_FilterNode* New_AST_ConstantPredicateNode(const char *alias, const char *property, int op, SIValue value);
-AST_FilterNode* New_AST_VaryingPredicateNode(const char *lAlias, const char *lProperty, int op, const char *rAlias, const char *rProperty);
 AST_FilterNode* New_AST_ConditionNode(AST_FilterNode *left, int op, AST_FilterNode *right);
 void WhereClause_ReferredNodes(const AST_WhereNode *where_node, TrieMap *referred_nodes);
 void Free_AST_FilterNode(AST_FilterNode *filterNode);

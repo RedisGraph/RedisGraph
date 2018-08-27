@@ -15,6 +15,7 @@ extern "C" {
 #include <string.h>
 #include "../../src/rmutil/vector.h"
 #include "../../src/parser/grammar.h"
+#include "../../src/parser/ast_arithmetic_expression.h"
 #include "../../src/filter_tree/filter_tree.h"
 
 #ifdef __cplusplus
@@ -26,24 +27,35 @@ class FilterTreeTest: public ::testing::Test {
 
     FT_FilterNode* _build_simple_const_tree() {
         SIValue value = SI_DoubleVal(34);
-        AST_FilterNode *root = New_AST_ConstantPredicateNode("me", "age", EQ, value);
+        AST_ArithmeticExpressionNode *lhs = New_AST_AR_EXP_VariableOperandNode("me", "age");
+        AST_ArithmeticExpressionNode *rhs = New_AST_AR_EXP_ConstOperandNode(value);
+
+        AST_FilterNode *root = New_AST_PredicateNode(lhs, EQ, rhs);
         FT_FilterNode *tree = BuildFiltersTree(root);
         Free_AST_FilterNode(root);
         return tree;
     }
 
     FT_FilterNode* _build_simple_varying_tree() {
-        AST_FilterNode *root = New_AST_VaryingPredicateNode("me", "age", GT, "him", "age");
+        AST_ArithmeticExpressionNode *lhs = New_AST_AR_EXP_VariableOperandNode("me", "age");
+        AST_ArithmeticExpressionNode *rhs = New_AST_AR_EXP_VariableOperandNode("him", "age");
+        AST_FilterNode *root = New_AST_PredicateNode(lhs, GT, rhs);
         FT_FilterNode *tree = BuildFiltersTree(root);
         Free_AST_FilterNode(root);
         return tree;
     }
 
     FT_FilterNode* _build_cond_tree(int cond) {
+        AST_ArithmeticExpressionNode *left_lhs = New_AST_AR_EXP_VariableOperandNode("me", "age");
         SIValue age = SI_DoubleVal(34);
+        AST_ArithmeticExpressionNode *left_rhs = New_AST_AR_EXP_ConstOperandNode(age);
+        AST_FilterNode *left = New_AST_PredicateNode(left_lhs, GT, left_rhs);
+
+        AST_ArithmeticExpressionNode *right_lhs = New_AST_AR_EXP_VariableOperandNode("me", "height");
         SIValue height = SI_DoubleVal(188);
-        AST_FilterNode *left = New_AST_ConstantPredicateNode("me", "age", GT, age);
-        AST_FilterNode *right = New_AST_ConstantPredicateNode("me", "height", LE, height);
+        AST_ArithmeticExpressionNode *right_rhs = New_AST_AR_EXP_ConstOperandNode(height);
+        AST_FilterNode *right = New_AST_PredicateNode(right_lhs, LE, right_rhs);
+
         AST_FilterNode *root = New_AST_ConditionNode(left, cond, right);
         FT_FilterNode *tree = BuildFiltersTree(root);
         Free_AST_FilterNode(root);
@@ -62,15 +74,26 @@ class FilterTreeTest: public ::testing::Test {
         /* Build a tree with an AND at the root
         * AND as a left child
         * OR as a right child */
-        SIValue age = SI_DoubleVal(34);
-        SIValue height = SI_DoubleVal(188);
 
-        AST_FilterNode *left_left_child = New_AST_ConstantPredicateNode("me", "age", GT, age);
-        AST_FilterNode *left_right_child = New_AST_ConstantPredicateNode("he", "height", LE, height);
+        // Build out the variadic nodes to use in filters
+        AST_ArithmeticExpressionNode *left_left_variable = New_AST_AR_EXP_VariableOperandNode("me", "age");
+        AST_ArithmeticExpressionNode *left_right_variable = New_AST_AR_EXP_VariableOperandNode("he", "height");
+        AST_ArithmeticExpressionNode *right_left_variable = New_AST_AR_EXP_VariableOperandNode("she", "age");
+        AST_ArithmeticExpressionNode *right_right_variable = New_AST_AR_EXP_VariableOperandNode("theirs", "height");
+
+        // Build out the constant nodes to filter against
+        SIValue age = SI_DoubleVal(34);
+        AST_ArithmeticExpressionNode *age_expression = New_AST_AR_EXP_ConstOperandNode(age);
+        SIValue height = SI_DoubleVal(188);
+        AST_ArithmeticExpressionNode *height_expression = New_AST_AR_EXP_ConstOperandNode(height);
+
+        // Build the AST filter nodes
+        AST_FilterNode *left_left_child = New_AST_PredicateNode(left_left_variable, GT, age_expression);
+        AST_FilterNode *left_right_child = New_AST_PredicateNode(left_right_variable, LE, height_expression);
         AST_FilterNode *left = New_AST_ConditionNode(left_left_child, AND, left_right_child);
 
-        AST_FilterNode *right_left_child = New_AST_ConstantPredicateNode("she", "age", GT, age);
-        AST_FilterNode *right_right_child = New_AST_ConstantPredicateNode("theirs", "height", LE, height);
+        AST_FilterNode *right_left_child = New_AST_PredicateNode(right_left_variable, GT, age_expression);
+        AST_FilterNode *right_right_child = New_AST_PredicateNode(right_right_variable, LE, height_expression);
         AST_FilterNode *right = New_AST_ConditionNode(right_left_child, OR, right_right_child);
 
         AST_FilterNode *root = New_AST_ConditionNode(left, AND, right);
@@ -80,36 +103,33 @@ class FilterTreeTest: public ::testing::Test {
         return tree;
     }
 
-    void _compareFilterTreeVaryingNode(const FT_FilterNode *a, const FT_FilterNode *b) {
+    void _compareFilterTreePredicateNode(const FT_FilterNode *a, const FT_FilterNode *b) {
         EXPECT_EQ(a->t, b->t);
+        EXPECT_EQ(a->t, FT_N_PRED);
         EXPECT_EQ(a->pred.op, b->pred.op);
-        EXPECT_EQ(a->pred.t, b->pred.t);
-        EXPECT_EQ(a->pred.cf, b->pred.cf);
-        EXPECT_EQ(strcmp(a->pred.Lop.alias, b->pred.Lop.alias), 0);
-        EXPECT_EQ(strcmp(a->pred.Lop.property, b->pred.Lop.property), 0);
-        EXPECT_EQ(strcmp(a->pred.Rop.alias, b->pred.Rop.alias), 0);
-        EXPECT_EQ(strcmp(a->pred.Rop.property, b->pred.Rop.property), 0);
-    }
 
-    void _compareFilterTreeConstNode(const FT_FilterNode *a, const FT_FilterNode *b) {
-        EXPECT_EQ(a->t, b->t);
-        EXPECT_EQ(a->pred.op, b->pred.op);
-        EXPECT_EQ(a->pred.t, b->pred.t);
-        EXPECT_EQ(a->pred.cf, b->pred.cf);
-        EXPECT_EQ(strcmp(a->pred.Lop.alias, b->pred.Lop.alias), 0);
-        EXPECT_EQ(strcmp(a->pred.Lop.property, b->pred.Lop.property), 0);
-        EXPECT_EQ(a->pred.constVal.type, b->pred.constVal.type);
+        char *a_variable;
+        char *b_variable;
+        AR_EXP_ToString(a->pred.lhs, &a_variable);
+        AR_EXP_ToString(b->pred.lhs, &b_variable);
+        EXPECT_STREQ(a_variable, b_variable);
+
+        free(a_variable);
+        free(b_variable);
+
+        AR_EXP_ToString(a->pred.rhs, &a_variable);
+        AR_EXP_ToString(b->pred.rhs, &b_variable);
+        EXPECT_STREQ(a_variable, b_variable);
+
+        free(a_variable);
+        free(b_variable);
     }
 
     void compareFilterTrees(const FT_FilterNode *a, const FT_FilterNode *b) {
         EXPECT_EQ(a->t, b->t);
         
         if(a->t == FT_N_PRED) {
-            if(a->pred.t == FT_N_CONSTANT) {
-                _compareFilterTreeConstNode(a, b);
-            } else {
-                _compareFilterTreeVaryingNode(a, b);
-            }
+            _compareFilterTreePredicateNode(a, b);
         } else {
             EXPECT_EQ(a->cond.op, b->cond.op);
             compareFilterTrees(a->cond.left, b->cond.left);

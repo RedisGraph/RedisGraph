@@ -411,13 +411,21 @@ size_t SIValue_StringConcat(SIValue* strings, unsigned int string_count, char *b
   return offset;
 }
 
+/* Returns 1 if argument is positive, -1 if argument is negative,
+ * and 0 if argument is zero (matching the return style of the strcmp family).
+ * This is necessary to construct safe integer returns when the delta between
+ * two double values is < 1.0 (and would thus be rounded to 0). */
+#define COMPARE_RETVAL(a) ((a) > 0) - ((a) < 0)
+
 int SIValue_Compare(SIValue a, SIValue b) {
   // Types are identical
   if (a.type == b.type) {
     if (a.type == T_DOUBLE) {
       /* TODO - inf, -inf, and  NaN do not behave canonically in this routine,
        * though they do not break anything. Low-priority bug. */
-      return a.doubleval - b.doubleval;
+      double diff = a.doubleval - b.doubleval;
+      return COMPARE_RETVAL(diff);
+      // return a.doubleval - b.doubleval;
     } else if (a.type == T_STRING) {
       return strcasecmp(a.stringval, b.stringval);
     } else {
@@ -432,7 +440,8 @@ int SIValue_Compare(SIValue a, SIValue b) {
     /* Both values are numeric, and both now have double representations.
      * TODO worry about precision and overflows. This approach will
      * not be adequate if we have high-value longs, especially. */
-    return tmp_a - tmp_b;
+    double diff = tmp_a - tmp_b;
+    return COMPARE_RETVAL(diff);
   }
 
   /* Types differ and are not comparable, so we will fall back to satisfying
