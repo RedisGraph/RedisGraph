@@ -113,6 +113,10 @@ AST_Validation _Validate_MATCH_Clause(const AST_Query *ast, char **reason) {
     if(entity->t != N_LINK) continue;
 
     char *alias = entity->alias;
+    /* The query is validated before and after aliasing anonymous entities,
+     * so alias may be NULL at this time. */
+    if (!alias) continue;
+
     int new = TrieMap_Add(edgeAliases, alias, strlen(alias), NULL, TrieMap_DONT_CARE_REPLACE);
     if(!new) {
       asprintf(reason, "Cannot use the same relationship variable '%s' for multiple patterns.", alias);

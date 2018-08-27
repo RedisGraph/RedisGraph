@@ -72,12 +72,8 @@ void ReturnClause_ExpandCollapsedNodes(RedisModuleCtx *ctx, AST_Query *ast, cons
              * Find collapsed entity's label. */
             AST_GraphEntity *collapsed_entity = MatchClause_GetEntity(ast->matchNode, exp->operand.variadic.alias);
 
-            /* Failed to find collapsed entity. */
-            if(collapsed_entity == NULL) {
-                /* Invalid query, return clause refers to none existing entity. */
-                /* TODO: Validate query. */
-                return;
-            }
+            /* We have already validated the query at this point, so all entity lookups should succeed. */
+            assert(collapsed_entity);
 
             /* Find label's properties. */
             LabelStoreType store_type = (collapsed_entity->t == N_ENTITY) ? STORE_NODE : STORE_EDGE;
