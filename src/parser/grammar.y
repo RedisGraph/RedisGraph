@@ -284,14 +284,16 @@ whereClause(A) ::= WHERE cond(B). {
 %destructor cond { Free_AST_FilterNode($$); }
 
 // me.age > friend.age
-cond(A) ::= UQSTRING(B) DOT UQSTRING(C) relation(D) UQSTRING(E) DOT UQSTRING(F). { A = New_AST_VaryingPredicateNode(B.strval, C.strval, D, E.strval, F.strval); }
+/* cond(A) ::= UQSTRING(B) DOT UQSTRING(C) relation(D) UQSTRING(E) DOT UQSTRING(F). { A = New_AST_VaryingPredicateNode(B.strval, C.strval, D, E.strval, F.strval); } */
 // me.age > 30
 // TODO: change value to arithmetic_expression.
-cond(A) ::= UQSTRING(B) DOT UQSTRING(C) relation(D) value(E). { A = New_AST_ConstantPredicateNode(B.strval, C.strval, D, E); }
+/* cond(A) ::= UQSTRING(B) DOT UQSTRING(C) relation(D) value(E). { A = New_AST_ConstantPredicateNode(B.strval, C.strval, D, E); } */
+// arithmetic expression
+cond(A) ::= arithmetic_expression(B) relation(C) arithmetic_expression(D). { A = New_AST_PredicateNode(B, C, D); }
+
 cond(A) ::= LEFT_PARENTHESIS cond(B) RIGHT_PARENTHESIS. { A = B; }
 cond(A) ::= cond(B) AND cond(C). { A = New_AST_ConditionNode(B, AND, C); }
 cond(A) ::= cond(B) OR cond(C). { A = New_AST_ConditionNode(B, OR, C); }
-
 
 %type returnClause {AST_ReturnNode*}
 

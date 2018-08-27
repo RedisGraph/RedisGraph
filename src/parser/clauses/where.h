@@ -11,6 +11,7 @@
 #include "../../value.h"
 #include "../../rmutil/vector.h"
 #include "../../util/triemap/triemap.h"
+#include "../ast_arithmetic_expression.h"
 
 typedef enum {
   N_PRED,
@@ -20,7 +21,13 @@ typedef enum {
 typedef enum {
 	N_CONSTANT,
 	N_VARYING,
+	N_FUNC,
 } AST_CompareValueType;
+
+typedef struct functionFilter {
+  SIValue constVal;
+  char *function; // TODO just make AR_ExpNode in parser?
+} AST_FunctionFilter;
 
 struct filterNode;
 
@@ -31,6 +38,7 @@ typedef struct {
 			char *alias;
 			char *property;
 		} nodeVal;
+    AST_FunctionFilter func;
 	};
 	AST_CompareValueType t; // Compared value type, constant/node
 	char *alias;			// Node alias
@@ -57,6 +65,8 @@ typedef struct {
 } AST_WhereNode;
 
 AST_WhereNode* New_AST_WhereNode(AST_FilterNode *filters);
+AST_FilterNode* New_AST_PredicateNode(AST_ArithmeticExpressionNode *lhs, int op, AST_ArithmeticExpressionNode *rhs);
+AST_FilterNode* New_AST_FunctionPredicateNode(AST_ArithmeticExpressionOP func, int op, SIValue value);
 AST_FilterNode* New_AST_ConstantPredicateNode(const char *alias, const char *property, int op, SIValue value);
 AST_FilterNode* New_AST_VaryingPredicateNode(const char *lAlias, const char *lProperty, int op, const char *rAlias, const char *rProperty);
 AST_FilterNode* New_AST_ConditionNode(AST_FilterNode *left, int op, AST_FilterNode *right);

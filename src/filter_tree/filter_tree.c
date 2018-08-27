@@ -19,6 +19,10 @@ int IsNodeConstantPredicate(const FT_FilterNode *node) {
     return (node->t == FT_N_PRED && node->pred.t == FT_N_CONSTANT);
 }
 
+int static inline IsNodeFunctionPredicate(const FT_FilterNode *node) {
+    return (node->t == FT_N_PRED && node->pred.t == FT_N_FUNCTION);
+}
+
 int static inline IsNodeVaryingPredicate(const FT_FilterNode *node) {
     return (node->t == FT_N_PRED && node->pred.t == FT_N_VARYING);
 }
@@ -50,43 +54,33 @@ FT_FilterNode* CreateVaryingFilterNode(const char *LAlias, const char *LProperty
     return filterNode;
 }
 
-FT_FilterNode* CreateConstFilterNode(const char *alias, const char *property, int op, SIValue val) {
+CmpFunc _SetCompareFunction(FT_FilterNode *filterNode, SIValue val) {
     CmpFunc compareFunc = NULL;
-    FT_FilterNode* filterNode = (FT_FilterNode*)malloc(sizeof(FT_FilterNode));
 
     // Find out which compare function should we use.
     switch(val.type) {
         case T_STRING:
-            compareFunc = cmp_string;
-            break;
+            return cmp_string;
         case T_INT32:
-            compareFunc = cmp_int;
-            break;
+            return cmp_int;
         case T_INT64:
-            compareFunc = cmp_long;
-            break;
+            return cmp_long;
         case T_UINT:
-            compareFunc = cmp_uint;
-            break;
+            return cmp_uint;
         case T_BOOL:
-            compareFunc = cmp_int;
-            break;
+            return cmp_int;
         case T_FLOAT:
-            compareFunc = cmp_float;
-            break;
+            return cmp_float;
         case T_DOUBLE:
-            compareFunc = cmp_double;
-            break;
+            return cmp_double;
         default:
-            compareFunc = NULL;
-            break;
+            return NULL;
     }
+    return NULL;
+}
 
-    // Couldn't figure out which compare function to use.
-    if(compareFunc == NULL) {
-        // ERROR.
-        return NULL;
-    }
+FT_FilterNode* CreateConstFilterNode(const char *alias, const char *property, int op, SIValue val) {
+    FT_FilterNode* filterNode = (FT_FilterNode*)malloc(sizeof(FT_FilterNode));
 
     // Create predicate node
     filterNode->t = FT_N_PRED;
@@ -98,7 +92,15 @@ FT_FilterNode* CreateConstFilterNode(const char *alias, const char *property, in
 
     filterNode->pred.op = op;
     filterNode->pred.constVal = val;
-    filterNode->pred.cf = compareFunc;
+
+    filterNode->pred.cf = _SetCompareFunction(filterNode, val);
+    if (filterNode->pred.cf == NULL) {
+        // ERROR - Couldn't figure out which compare function to use.
+        // TODO initialize function to free
+        // _FilterTree_FreePredNode(filterNode);
+        return NULL;
+    }
+
     return filterNode;
 }
 
@@ -106,6 +108,33 @@ FT_FilterNode* CreateCondFilterNode(int op) {
     FT_FilterNode* filterNode = (FT_FilterNode*)malloc(sizeof(FT_FilterNode));
     filterNode->t = FT_N_COND;
     filterNode->cond.op = op;
+    return filterNode;
+}
+
+FT_FilterNode* CreateFunctionFilterNode(const char *alias, const char *property, int op, SIValue val, char *func) {
+    FT_FilterNode* filterNode = malloc(sizeof(FT_FilterNode));
+
+    // Create function predicate node
+    filterNode->t = FT_N_PRED;
+    filterNode->pred.t = FT_N_FUNCTION;
+    // Build an Ar_Exp parent (function) and child (const val)
+    AR_ExpNode *exp_root = AR_EXP_NewOpNode(func, 1);
+    // exp_root->op.children[0] = AR_EXP_NewConstOperandNode(val);
+    // GraphEntity *entity = QueryGraph_GetEntityRef(g, root->pred.Lop.alias);
+    exp_root->op.children[0] = AR_EXP_NewVariableOperandNode(NULL, property, alias);
+
+    filterNode->pred.func = exp_root;
+    filterNode->pred.op = op;
+    filterNode->pred.constVal = val;
+
+    filterNode->pred.cf = _SetCompareFunction(filterNode, val);
+    if (filterNode->pred.cf == NULL) {
+        // ERROR - Couldn't figure out which compare function to use.
+        // TODO initialize function to free
+        // _FilterTree_FreePredNode(filterNode);
+        return NULL;
+    }
+
     return filterNode;
 }
 
@@ -125,6 +154,10 @@ FT_FilterNode* _CreateVaryingFilterNode(AST_PredicateNode n) {
 
 FT_FilterNode* _CreateConstFilterNode(AST_PredicateNode n) {
     return CreateConstFilterNode(n.alias, n.property, n.op, n.constVal);
+}
+
+FT_FilterNode* _CreateFunctionFilterNode(AST_PredicateNode n) {
+    return CreateFunctionFilterNode(n.alias, n.property, n.op, n.func.constVal, n.func.function);
 }
 
 void _FilterTree_SubTrees(const FT_FilterNode *root, Vector *sub_trees) {
@@ -166,8 +199,10 @@ FT_FilterNode* BuildFiltersTree(const AST_FilterNode *root) {
     if(root->t == N_PRED) {
         if(root->pn.t == N_CONSTANT) {
             return _CreateConstFilterNode(root->pn);
-        } else {
+        } else if (root->pn.t == N_VARYING) {
             return _CreateVaryingFilterNode(root->pn);
+        } else { // root->pn.t == N_FUNC
+            return _CreateFunctionFilterNode(root->pn);
         }
 	}
 
@@ -182,14 +217,15 @@ FT_FilterNode* BuildFiltersTree(const AST_FilterNode *root) {
 /* Applies a single filter to a single result.
  * Compares given values, tests if values maintain desired relation (op) */
 int _applyFilter(SIValue* aVal, SIValue* bVal, CmpFunc f, int op) {
-    /* TODO: Make sure values type confirms with compare function
-     * TODO: If there's a type mismatch should we try to find a common type and compare ? */
+    int rel;
     if(aVal->type != bVal->type) {
-        // Type mismatch!
-        return 0;
+        /* Value types differ. Attempt a more explicit comparison
+         * (converting numeric types to doubles)
+         * TODO Consider updating all logical around comparison routines */
+        rel = SIValue_Compare(*aVal, *bVal);
+    } else {
+        rel = f(aVal, bVal);
     }
-
-    int rel = f(aVal, bVal);
 
     switch(op) {
         case EQ:
@@ -227,6 +263,13 @@ int _applyPredicateFilters(const FT_FilterNode* root) {
 
     if(IsNodeConstantPredicate(root)) {
         bVal = (SIValue *)&root->pred.constVal;
+    } else if (IsNodeFunctionPredicate(root)) {
+        // Evaluate the function to obtain the left-hand value
+        SIValue lhs = AR_EXP_Evaluate(root->pred.func);
+        // entity = *root->pred.func->op.children[0]->operand.variadic.entity;
+        // aVal = GraphEntity_Get_Property(entity, root->pred.Lop.property);
+        bVal = (SIValue *)&root->pred.constVal;
+        return _applyFilter(&lhs, bVal, root->pred.cf, root->pred.op);
     } else {
         entity = *root->pred.Rop.e;
         assert (entity && entity->id != INVALID_ENTITY_ID);
@@ -269,6 +312,10 @@ void FilterTree_bindEntities(FT_FilterNode* root, const QueryGraph *g) {
             FilterTree_bindEntities(root->cond.right, g);
             break;
         case FT_N_PRED:
+            if (IsNodeFunctionPredicate(root)) {
+              char *alias = root->pred.func->op.children[0]->operand.variadic.entity_alias;
+              root->pred.func->op.children[0]->operand.variadic.entity = QueryGraph_GetEntityRef(g, alias);
+            }
             root->pred.Lop.e = QueryGraph_GetEntityRef(g, root->pred.Lop.alias);
             if(root->pred.t == FT_N_VARYING) {
                 root->pred.Rop.e = QueryGraph_GetEntityRef(g, root->pred.Rop.alias);
@@ -293,7 +340,13 @@ void _FilterTree_CollectAliases(const FT_FilterNode *root, TrieMap *aliases) {
         case FT_N_PRED:
         {
             // Add alias to triemap.
-            char *alias = root->pred.Lop.alias;
+            char *alias;
+            if (IsNodeFunctionPredicate(root)) {
+                // TODO clean this up!
+                alias = root->pred.func->op.children[0]->operand.variadic.entity_alias;
+            } else {
+                alias = root->pred.Lop.alias;
+            }
             TrieMap_Add(aliases, alias, strlen(alias), NULL, NULL);
             if(root->pred.t == FT_N_VARYING) {
                 alias = root->pred.Rop.alias;
@@ -384,9 +437,13 @@ void _FreeConstFilterNode(FT_PredicateNode node) {
 void _FilterTree_FreePredNode(FT_PredicateNode node) {
     if(node.t == FT_N_CONSTANT) {
         _FreeConstFilterNode(node);
+    } else if (node.t == FT_N_FUNCTION) {
+      AR_EXP_Free(node.func);
+      // TODO free SIValue RHS?
     } else {
         _FreeVaryingFilterNode(node);
     }
+    // TODO free node itself
 }
 
 void FilterTree_Free(FT_FilterNode *root) {

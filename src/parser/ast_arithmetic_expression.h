@@ -20,13 +20,13 @@ typedef enum {
 } AST_ArithmeticExpression_NodeType;
 
 typedef enum {
-    AST_AR_EXP_CONSTANT,
-    AST_AR_EXP_VARIADIC,
+    AST_AR_EXP_CONSTANT = 1,
+    AST_AR_EXP_VARIADIC = 2,
 } AST_ArithmeticExpression_OperandNodeType;
 
 typedef struct {
     char *function; /* Name of operation. */
-	Vector *args;	/* Vector of AST_ArithmeticExpressionNode pointers. */
+    Vector *args;	/* Vector of AST_ArithmeticExpressionNode pointers. */
 } AST_ArithmeticExpressionOP;
 
 /* OperandNode represents either a constant numeric value, 
@@ -59,6 +59,8 @@ void AR_EXP_GetAliases(const AST_ArithmeticExpressionNode *exp, TrieMap *aliases
 
 /* Find all functions in expression */
 void AR_EXP_GetFunctions(const AST_ArithmeticExpressionNode *exp, TrieMap *functions);
+
+int AR_EXP_GetOpType(AST_ArithmeticExpressionNode *exp);
 
 void Free_AST_ArithmeticExpressionNode(AST_ArithmeticExpressionNode *arExpNode);
 

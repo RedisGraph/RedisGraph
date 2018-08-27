@@ -14,6 +14,55 @@ AST_WhereNode* New_AST_WhereNode(AST_FilterNode *filters) {
 	return whereNode;
 }
 
+AST_FilterNode* New_AST_PredicateNode(AST_ArithmeticExpressionNode *lhs, int op, AST_ArithmeticExpressionNode *rhs) {
+  int lhs_type = AR_EXP_GetOpType(lhs);
+  int rhs_type = AR_EXP_GetOpType(rhs);
+  if (lhs_type == AST_AR_EXP_VARIADIC) {
+    if (rhs_type == AST_AR_EXP_VARIADIC) {
+      // me.age > friend.age
+      return New_AST_VaryingPredicateNode(lhs->operand.variadic.alias, lhs->operand.variadic.property, op, rhs->operand.variadic.alias, rhs->operand.variadic.property);
+    } else if (rhs_type == AST_AR_EXP_CONSTANT) {
+      // me.age > 30
+      return New_AST_ConstantPredicateNode(lhs->operand.variadic.alias, lhs->operand.variadic.property, op, rhs->operand.constant);
+    }
+  } else if (lhs_type == 0) {
+    // Function on left hand of filter
+    /* TODO Ultimately, it makes sense to support functions against variadics as well as functions
+     * against functions, but I'm currently only adding (arithmetic) functions against constants. */
+    if (rhs_type == AST_AR_EXP_CONSTANT) {
+      // ID(a) = 5
+      return New_AST_FunctionPredicateNode(lhs->op, op, rhs->operand.constant);
+    }
+  }
+
+  return NULL;
+}
+
+AST_FilterNode* New_AST_FunctionPredicateNode(AST_ArithmeticExpressionOP func, int op, SIValue value) {
+	AST_FilterNode *n = malloc(sizeof(AST_FilterNode));
+  n->t = N_PRED;
+
+  n->pn.t = N_FUNC;
+  // TODO logic needs to be updated for multi-argument functions (WHERE LEFT(a.name, 3) = 'The') 
+  assert(Vector_Size(func.args) == 1);
+  n->pn.func.function = strdup(func.function);
+  AST_ArithmeticExpressionNode *exp = NULL;
+  Vector_Get(func.args, 0, &exp);
+  assert(exp->type == AST_AR_EXP_OPERAND);
+  assert(exp->operand.type == AST_AR_EXP_VARIADIC);
+
+  n->pn.alias = strdup(exp->operand.variadic.alias);
+  if (exp->operand.variadic.property) {
+    n->pn.property = strdup(exp->operand.variadic.property);
+  } else {
+    n->pn.property = NULL;
+  }
+  n->pn.op = op;
+	n->pn.func.constVal = value;
+
+  return n;
+}
+
 AST_FilterNode* New_AST_ConstantPredicateNode(const char* alias, const char* property, int op, SIValue value) {
 	AST_FilterNode *n = malloc(sizeof(AST_FilterNode));
   	n->t = N_PRED;

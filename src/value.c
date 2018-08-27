@@ -427,7 +427,20 @@ int SIValue_Compare(SIValue a, SIValue b) {
   }
 
   // Types differ
-  /* Cypher specifies the following ascending order of disjoint types:
+  double tmp_a, tmp_b;
+  if (SIValue_ToDouble(&a, &tmp_a) && SIValue_ToDouble(&b, &tmp_b)) {
+    /* Both values are numeric, and both now have double representations.
+     * TODO worry about precision and overflows. This approach will
+     * not be adequate if we have high-value longs, especially. */
+    return tmp_a - tmp_b;
+  }
+
+  /* Types differ and are not comparable, so we will fall back to satisfying
+   * ordering constraints.
+   * TODO Later, we may want to separate ordering logic from comparison logic -
+   * the below is useful for ORDER BY clauses, but could be misleading in WHERE clauses.
+   *
+   * Cypher specifies the following ascending order of disjoint types:
    * - String
    * - Number
    * - NULL

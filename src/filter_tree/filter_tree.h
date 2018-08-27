@@ -12,6 +12,7 @@
 #include "../parser/ast.h"
 #include "../graph/query_graph.h"
 #include "../redismodule.h"
+#include "../arithmetic/arithmetic_expression.h"
 
 #define FILTER_FAIL 0
 #define FILTER_PASS 1
@@ -25,16 +26,20 @@ typedef enum {
 typedef enum {
 	FT_N_CONSTANT,
 	FT_N_VARYING,
+  FT_N_FUNCTION,
 } FT_CompareValueType;
 
 struct FT_FilterNode;
 
 typedef struct {
-	struct {			    /* Left side of predicate. */
-		char* alias;		/* Element in question alias. */
-		char* property;		/* Element's property to check. */
-		GraphEntity **e;	/* Left side entity. */
-	} Lop;
+  union {
+    AR_ExpNode *func;
+    struct {			    /* Left side of predicate. */
+      char* alias;		/* Element in question alias. */
+      char* property;		/* Element's property to check. */
+      GraphEntity **e;	/* Left side entity. */
+    } Lop;
+  };
 	int op;					/* Operation (<, <=, =, =>, >, !). */
 	union {					/* Right side of predicate. */
 		SIValue constVal;	/* Value to compare against. */
@@ -44,8 +49,8 @@ typedef struct {
 			GraphEntity **e;	/* Right side entity. */
 		} Rop;
 	};
-	FT_CompareValueType t; 	/* Compared value type, constant/node. */
-	CmpFunc cf;				/* Compare function, determins relation between val and element property. */
+	FT_CompareValueType t; 	/* Compared value type, constant/node/function. */
+	CmpFunc cf;				/* Compare function, determines relation between val and element property. */
 } FT_PredicateNode;
 
 typedef struct {
@@ -60,7 +65,7 @@ struct FT_FilterNode {
     FT_PredicateNode pred;
     FT_ConditionNode cond;
   };
-  FT_FilterNodeType t;	/* Determins actual type of this node. */
+  FT_FilterNodeType t;	/* Determines actual type of this node. */
 };
 
 typedef struct FT_FilterNode FT_FilterNode;

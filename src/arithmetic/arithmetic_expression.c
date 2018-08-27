@@ -121,7 +121,7 @@ AR_ExpNode* AR_EXP_NewOpNode(char *func_name, int child_count) {
     node->op.child_count = child_count;
     node->op.children = (AR_ExpNode **)malloc(child_count * sizeof(AR_ExpNode*));
 
-    /* Determin function type. */
+    /* Determine function type. */
     AR_Func func = AR_GetFunc(func_name);
     if(func != NULL) {
         node->op.f = func;

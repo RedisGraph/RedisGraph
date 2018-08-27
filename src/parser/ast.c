@@ -145,6 +145,7 @@ AST_Validation _Validate_RETURN_Clause(const AST_Query *ast, char **reason) {
 
   // Make sure all referenced function do exists.
   TrieMap *ref_functions = NewTrieMap();
+  // TODO check WHERE too
   ReturnClause_ReferredFunctions(ast->returnNode, ref_functions);
 
   void *value;
