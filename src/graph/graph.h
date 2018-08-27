@@ -25,9 +25,6 @@
 #define GRAPH_NO_LABEL -1               // Labels are numbered [0-N], -1 represents no label.
 #define GRAPH_NO_RELATION -1            // Relations are numbered [0-N], -1 represents no relation.
 
-typedef GrB_Index NodeID;
-typedef GrB_Index EdgeID;
-
 typedef struct {
     DataBlock *nodes;               // Graph nodes stored in blocks.
     DataBlock *edges;               // Graph edges stored in blocks.
@@ -70,18 +67,45 @@ void Graph_CreateNodes (
     DataBlockIterator **it  // [Optional] iterator over new nodes.
 );
 
+// Describes a connection between two nodes.
+typedef struct {
+    NodeID srcId;   // Source node ID.
+    NodeID destId;  // Destination node ID.
+    int relationId; // Relation type ID.
+} ConnectionDesc;
+
 // Connects src[i] to dest[i] with edge of type relation[i].
 void Graph_ConnectNodes (
-        Graph *g,                   // Graph in which connections are formed. 
-        size_t n,                   // Number of elements in connections array.
-        GrB_Index *connections      // Triplets (src_id, dest_id, relation).
+        Graph *g,                       // Graph in which connections are formed. 
+        ConnectionDesc *connections,    // Array of triplets (src_id, dest_id, relation).
+        size_t connectionCount,         // Number of elements in connections array.
+        DataBlockIterator **it          // Pointer to edge iterator.
 );
 
-// Retrieves node with given node_id from graph,
-// Returns NULL if node_id wasn't found.
+// Retrieves node with given id from graph,
+// Returns NULL if node wasn't found.
 Node *Graph_GetNode (
     const Graph *g,
-    NodeID node_id
+    NodeID id
+);
+
+// Retrieves edge with given id from graph,
+// Returns NULL if edge wasn't found.
+Edge *Graph_GetEdge (
+    const Graph *g,
+    EdgeID id
+);
+
+// Retrieves edges connecting source to destination,
+// relation is optional, pass GRAPH_NO_RELATION if you do not care
+// of edge type.
+void Graph_GetEdgesConnectingNodes (
+    const Graph *g,
+    NodeID src,
+    NodeID dest,
+    int relation,
+    Edge **edges,       // Array of length edgeCount.
+    size_t *edgeCount   // Updated to number of edges found.
 );
 
 // Removes a set of nodes and all of their connections
@@ -108,6 +132,12 @@ void Graph_LabelNodes (
 // Retrieves a node iterator which can be used to access
 // every node in the graph.
 DataBlockIterator *Graph_ScanNodes (
+    const Graph *g
+);
+
+// Retrieves an edge iterator which can be used to access
+// every edge in the graph.
+DataBlockIterator *Graph_ScanEdges (
     const Graph *g
 );
 

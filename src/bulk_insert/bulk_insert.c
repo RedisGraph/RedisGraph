@@ -273,7 +273,7 @@ RedisModuleString** _Bulk_Insert_Insert_Edges(RedisModuleCtx *ctx, RedisModuleSt
 
     long long total_labeled_edges = 0;
     // As we can have over 500k relations, this is safer as a heap allocation.
-    GrB_Index *connections = malloc(relations_count * 3 * sizeof(GrB_Index));       // Triplet (src,dest,relation)
+    ConnectionDesc *connections = malloc(relations_count * sizeof(ConnectionDesc));
     LabelRelation labelRelations[label_count + 1];  // Extra one for unlabeled relations.
 
     if(label_count > 0) {
@@ -319,19 +319,20 @@ RedisModuleString** _Bulk_Insert_Insert_Edges(RedisModuleCtx *ctx, RedisModuleSt
         LabelRelation labelRelation = labelRelations[i];
 
         for(int j = 0; j < labelRelation.edge_count; j++) {
-            if(RedisModule_StringToLongLong(*argv++, (long long*)&connections[connection_idx++]) != REDISMODULE_OK) {
+            if(RedisModule_StringToLongLong(*argv++, (long long*)&connections[connection_idx].srcId) != REDISMODULE_OK) {
                 _Bulk_Insert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, failed to read relation source node id.");
                 return NULL;
             }
-            if(RedisModule_StringToLongLong(*argv++, (long long*)&connections[connection_idx++]) != REDISMODULE_OK) {
+            if(RedisModule_StringToLongLong(*argv++, (long long*)&connections[connection_idx].destId) != REDISMODULE_OK) {
                 _Bulk_Insert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, failed to read relation destination node id.");
                 return NULL;
             }
-            connections[connection_idx++] = labelRelation.label_id;
+            connections[connection_idx].relationId = labelRelation.label_id;
+            connection_idx++;
         }
     }
 
-    Graph_ConnectNodes(g, relations_count*3, connections);
+    Graph_ConnectNodes(g, connections, relations_count, NULL);
 
     free(connections);
 

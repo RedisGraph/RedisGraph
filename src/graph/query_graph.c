@@ -451,14 +451,12 @@ ResultSetStatistics CommitGraph(RedisModuleCtx *ctx, const QueryGraph *qg, Graph
 
     // Create edges.
     if(edge_count > 0) {
-        GrB_Index connections[edge_count * 3];
+        ConnectionDesc connections[edge_count];
 
         for(int i = 0; i < edge_count; i++) {
             Edge *e = qg->edges[i];
-            int con_idx = i*3;
-
-            connections[con_idx] = e->src->id;
-            connections[con_idx + 1] = e->dest->id;
+            connections[i].srcId = e->src->id;
+            connections[i].destId = e->dest->id;
             
             LabelStore *s = LabelStore_Get(ctx, STORE_EDGE, graph_name, e->relationship);
             if(s == NULL) {
@@ -467,10 +465,10 @@ ResultSetStatistics CommitGraph(RedisModuleCtx *ctx, const QueryGraph *qg, Graph
                 s->id = relation_id;
             }
 
-            connections[con_idx + 2] = s->id;
+            connections[i].relationId = s->id;
         }
 
-        Graph_ConnectNodes(g, edge_count*3, connections);
+        Graph_ConnectNodes(g, connections, edge_count, NULL);
         stats.relationships_created = edge_count;
     }
     return stats;

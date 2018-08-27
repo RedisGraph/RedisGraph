@@ -42,7 +42,6 @@ Block *_Block_New(size_t itemSize) {
     assert(itemSize > 0);
     Block *block = calloc(1, sizeof(Block) + BLOCK_CAP * itemSize);
     block->itemSize = itemSize;
-    block->next = NULL;
     return block;
 }
 
@@ -65,10 +64,12 @@ void _DataBlock_AddBlocks(DataBlock *dataBlock, size_t blockCount) {
     else
         dataBlock->blocks = realloc(dataBlock->blocks, sizeof(Block*) * dataBlock->blockCount);
 
-    for(int i = prevBlockCount; i < dataBlock->blockCount; i++) {
+    int i;
+    for(i = prevBlockCount; i < dataBlock->blockCount; i++) {
         dataBlock->blocks[i] = _Block_New(dataBlock->itemSize);
         if(i>0) dataBlock->blocks[i-1]->next = dataBlock->blocks[i];
     }
+    dataBlock->blocks[i-1]->next = NULL;
 
     dataBlock->itemCap = dataBlock->blockCount * BLOCK_CAP;
 }
@@ -116,8 +117,8 @@ void DataBlock_AddItems(DataBlock *dataBlock, size_t itemCount, DataBlockIterato
     if(dataBlock->itemCount + itemCount >= dataBlock->itemCap) {
         // Allocate twice as much items then we currently hold.
         size_t newCap = (dataBlock->itemCount + itemCount) * 2;
-        size_t requiredBlocks = ITEM_COUNT_TO_BLOCK_COUNT(newCap);
-       _DataBlock_AddBlocks(dataBlock, requiredBlocks);
+        size_t requiredAdditionalBlocks = ITEM_COUNT_TO_BLOCK_COUNT(newCap) - dataBlock->blockCount;
+       _DataBlock_AddBlocks(dataBlock, requiredAdditionalBlocks);
     }
 
     if(it) {

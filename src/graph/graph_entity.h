@@ -9,11 +9,14 @@
 #define GRAPH_ENTITY_H_
 
 #include "../value.h"
-#define INVALID_ENTITY_ID -1l
+#include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 
+#define INVALID_ENTITY_ID -1l
 
 // Defined in graph_entity.c
 extern SIValue *PROPERTY_NOTFOUND;
+typedef GrB_Index NodeID;
+typedef GrB_Index EdgeID;
 
 typedef struct {
     char *name;
@@ -21,7 +24,7 @@ typedef struct {
 } EntityProperty;
 
 typedef struct {
-    long int id;                    /* unique id (might be empty) */
+    NodeID id;                    /* unique id (might be empty) */
     int prop_count;
     EntityProperty *properties;
 } GraphEntity;

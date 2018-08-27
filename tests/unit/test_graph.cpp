@@ -53,7 +53,7 @@ class GraphTest : public ::testing::Test
         }
 
         int connectionCount = 0;
-        GrB_Index *connections = (GrB_Index *)malloc(sizeof(GrB_Index) * 3 * nodes * nodes);
+        ConnectionDesc *connections = (ConnectionDesc*)malloc(sizeof(ConnectionDesc) * nodes * nodes);
 
         double mid_point = RAND_MAX / 2;
         for (int i = 0; i < nodes; i++)
@@ -65,14 +65,15 @@ class GraphTest : public ::testing::Test
                     if (i == j)
                         continue;
                     int relation = (rand() % (relations + 1) - 1);
-                    connections[connectionCount++] = i;
-                    connections[connectionCount++] = j;
-                    connections[connectionCount++] = relation;
+                    connections[connectionCount].srcId = i;
+                    connections[connectionCount].destId = j;
+                    connections[connectionCount].relationId = relation;
+                    connectionCount++;
                 }
             }
         }
 
-        Graph_ConnectNodes(g, connectionCount, connections);
+        Graph_ConnectNodes(g, connections, connectionCount, NULL);
         return g;
     }
 
@@ -129,7 +130,7 @@ class GraphTest : public ::testing::Test
     {
         // Form connections.
         size_t edge_count = (node_count - 1);
-        GrB_Index connections[edge_count * 3];
+        ConnectionDesc connections[edge_count];
 
         // Introduce relations types.
         for (int i = 0; i < 3; i++)
@@ -141,15 +142,15 @@ class GraphTest : public ::testing::Test
         // Node I is connected to Node I+1,
         // Connection type is relationships[I%4].
         int node_id = 0;
-        for (unsigned int i = 0; i < edge_count * 3; i += 3)
+        for (unsigned int i = 0; i < edge_count; i++)
         {
-            connections[i] = node_id;         // Source node id.
-            connections[i + 1] = node_id + 1; // Destination node id.
-            connections[i + 2] = (i % 4) - 1; // Relation, (-1 for GRAPH_NO_RELATION).
+            connections[i].srcId = node_id;         // Source node id.
+            connections[i].destId = node_id + 1; // Destination node id.
+            connections[i].relationId = (i % 4) - 1; // Relation, (-1 for GRAPH_NO_RELATION).
             node_id++;
         }
 
-        Graph_ConnectNodes(g, edge_count * 3, connections);
+        Graph_ConnectNodes(g, connections, edge_count, NULL);
 
         // Validate edges creation,
         // expecting number of none zero entries to be edge_count.
@@ -160,11 +161,11 @@ class GraphTest : public ::testing::Test
         // Inspect graph matrices;
         // Graph's adjacency matrix should include all connections,
         // relation matrices should include edges of a certain relation.
-        for (unsigned int i = 0; i < edge_count * 3; i += 3)
+        for (unsigned int i = 0; i < edge_count; i++)
         {
-            int src_id = connections[i];
-            int dest_id = connections[i + 1];
-            int r = connections[i + 2];
+            int src_id = connections[i].srcId;
+            int dest_id = connections[i].destId;
+            int r = connections[i].relationId;
             bool v = false;
 
             // src_id connected to dest_id.
@@ -325,7 +326,7 @@ void benchmark_edge_creation_no_relationships()
     // int node_count = GRAPH_DEFAULT_NODE_CAP;
     int edge_count = 1000000 * 1.10;
     int node_count = 1000000;
-    GrB_Index connections[edge_count * 3];
+    ConnectionDesc connections[edge_count];
 
     Graph *g = Graph_New(GRAPH_DEFAULT_NODE_CAP);
     Graph_CreateNodes(g, node_count, NULL, NULL);
@@ -334,15 +335,15 @@ void benchmark_edge_creation_no_relationships()
     {
         // Describe connections;
         // Node I is connected to Node I+1.
-        for (int j = 0; j < edge_count * 3; j += 3)
+        for (int j = 0; j < edge_count; j++)
         {
-            connections[j] = rand() % node_count;     // Source node id.
-            connections[j + 1] = rand() % node_count; // Destination node id.
-            connections[j + 2] = GRAPH_NO_RELATION;   // Relation.
+            connections[j].srcId = rand() % node_count;     // Source node id.
+            connections[j].destId = rand() % node_count; // Destination node id.
+            connections[j].relationId = GRAPH_NO_RELATION;   // Relation.
         }
 
         simple_tic(tic);
-        Graph_ConnectNodes(g, edge_count * 3, connections);
+        Graph_ConnectNodes(g, connections, edge_count, NULL);
         timings[i] = simple_toc(tic);
         printf("%d Formed connections, time: %.6f sec\n", edge_count, timings[i]);
         if (timings[i] > threshold)
@@ -373,7 +374,7 @@ void benchmark_edge_creation_with_relationships()
     int edge_count = 1000000 * 1.10;
     int node_count = 1000000;
     int relation_count = 3;
-    GrB_Index connections[edge_count * 3];
+    ConnectionDesc connections[edge_count];
 
     Graph *g = Graph_New(GRAPH_DEFAULT_NODE_CAP);
 
@@ -390,15 +391,15 @@ void benchmark_edge_creation_with_relationships()
         // Describe connections;
         // Node I is connected to Node I+1,
         // Connection type is relationships[I%4].
-        for (int j = 0; j < edge_count * 3; j += 3)
+        for (int j = 0; j < edge_count; j++)
         {
-            connections[j] = rand() % node_count;                // Source node id.
-            connections[j + 1] = rand() % node_count;            // Destination node id.
-            connections[j + 2] = (i % (relation_count + 1)) - 1; // Relation, (-1 for GRAPH_NO_RELATION).
+            connections[j].srcId = rand() % node_count;                // Source node id.
+            connections[j].destId = rand() % node_count;            // Destination node id.
+            connections[j].relationId = (i % (relation_count + 1)) - 1; // Relation, (-1 for GRAPH_NO_RELATION).
         }
 
         simple_tic(tic);
-        Graph_ConnectNodes(g, edge_count * 3, connections);
+        Graph_ConnectNodes(g, connections, edge_count, NULL);
         timings[i] = simple_toc(tic);
         printf("%d Formed connections, time: %.6f sec\n", edge_count, timings[i]);
         if (timings[i] > threshold)
@@ -456,10 +457,10 @@ TEST_F(GraphTest, GraphConstruction)
     size_t node_count = GRAPH_DEFAULT_NODE_CAP / 2;
     Graph *g = Graph_New(node_count);
     _test_node_creation(g, node_count);
-    _test_edge_creation(g, node_count);
+    // _test_edge_creation(g, node_count);
 
     // Introduce additional nodes which will cause graph to resize.
-    _test_graph_resize(g);
+    // _test_graph_resize(g);
 
     Graph_Free(g);
 }
@@ -587,48 +588,48 @@ TEST_F(GraphTest, RemoveMultipleNodes)
     Graph *g = Graph_New(32);
     Graph_CreateNodes(g, 8, NULL, NULL);
 
-    GrB_Index connections[3 * 9];
+    ConnectionDesc connections[9];
 
     // First node.
-    connections[0] = 0;
-    connections[1] = 2;
-    connections[2] = GRAPH_NO_RELATION;
+    connections[0].srcId = 0;
+    connections[0].destId = 2;
+    connections[0].relationId = GRAPH_NO_RELATION;
 
-    connections[3] = 0;
-    connections[4] = 6;
-    connections[5] = GRAPH_NO_RELATION;
+    connections[1].srcId = 0;
+    connections[1].destId = 6;
+    connections[1].relationId = GRAPH_NO_RELATION;
 
-    connections[6] = 0;
-    connections[7] = 7;
-    connections[8] = GRAPH_NO_RELATION;
+    connections[2].srcId = 0;
+    connections[2].destId = 7;
+    connections[2].relationId = GRAPH_NO_RELATION;
 
     // Right before last node.
-    connections[9] = 6;
-    connections[10] = 0;
-    connections[11] = GRAPH_NO_RELATION;
+    connections[3].srcId = 6;
+    connections[3].destId = 0;
+    connections[3].relationId = GRAPH_NO_RELATION;
 
-    connections[12] = 6;
-    connections[13] = 1;
-    connections[14] = GRAPH_NO_RELATION;
+    connections[4].srcId = 6;
+    connections[4].destId = 1;
+    connections[4].relationId = GRAPH_NO_RELATION;
 
-    connections[15] = 6;
-    connections[16] = 7;
-    connections[17] = GRAPH_NO_RELATION;
+    connections[5].srcId = 6;
+    connections[5].destId = 7;
+    connections[5].relationId = GRAPH_NO_RELATION;
 
     // Last node.
-    connections[18] = 7;
-    connections[19] = 0;
-    connections[20] = GRAPH_NO_RELATION;
+    connections[6].srcId = 7;
+    connections[6].destId = 0;
+    connections[6].relationId = GRAPH_NO_RELATION;
 
-    connections[21] = 7;
-    connections[22] = 1;
-    connections[23] = GRAPH_NO_RELATION;
+    connections[7].srcId = 7;
+    connections[7].destId = 1;
+    connections[7].relationId = GRAPH_NO_RELATION;
 
-    connections[24] = 7;
-    connections[25] = 6;
-    connections[26] = GRAPH_NO_RELATION;
+    connections[8].srcId = 7;
+    connections[8].destId = 6;
+    connections[8].relationId = GRAPH_NO_RELATION;
 
-    Graph_ConnectNodes(g, 27, connections);
+    Graph_ConnectNodes(g, connections, 9, NULL);
 
     // Delete first and last nodes.
     NodeID nodeToDelete[2];
@@ -743,4 +744,174 @@ TEST_F(GraphTest, RemoveEdges)
         GrB_Matrix_nvals(&relationEdgeCount, M);
         EXPECT_EQ(relationEdgeCount, 0);
     }
+}
+
+TEST_F(GraphTest, GetNode)
+{
+    /* Create a graph with nodeCount nodes,
+     * Make sure node retrival works as expected:
+     * 1. try to get nodes (0 - nodeCount)
+     * 2. try to get node with ID >= nodeCount. */
+
+    Node *n = NULL;
+    size_t nodeCount = 16;
+    Graph *g = Graph_New(nodeCount);
+    Graph_CreateNodes(g, nodeCount, NULL, NULL);
+    
+    // Get nodes 0 - nodeCount.
+    for(NodeID i = 0; i < nodeCount; i++) {
+        n = Graph_GetNode(g, i);
+        EXPECT_TRUE(n != NULL);
+    }
+
+    Graph_Free(g);
+}
+
+TEST_F(GraphTest, GetEdge)
+{
+    /* Create a graph with both nodes and edges.
+     * Make sure edge retrival works as expected: 
+     * 1. try to get edges by ID 
+     * 2. try to get edges connecting source to destination node 
+     * 3. try to get none existing edges. */
+
+    Edge *e = NULL;
+    int relationCount = 4;
+    size_t nodeCount = 5;
+    size_t edgeCount = 5;
+    int relations[relationCount];
+
+    Graph *g = Graph_New(nodeCount);
+    Graph_CreateNodes(g, nodeCount, NULL, NULL);
+
+    for(int i = 0; i < relationCount; i++) {
+        relations[i] = Graph_AddRelationMatrix(g);
+    }
+
+    /* Connect nodes:
+     * 1. nodes (0-1) will be connected by relation 0. 
+     * 2. nodes (0-1) will be connected by relation 1.
+     * 3. nodes (1-2) will be connected by relation 1.
+     * 4. nodes (2-3) will be connected by relation 2.
+     * 5. nodes (3-4) will be connected by relation 3. */
+
+    size_t connectionCount = edgeCount;
+    ConnectionDesc connections[connectionCount];
+    
+    connections[0].srcId = 0;
+    connections[0].destId = 1;
+    connections[0].relationId = relations[0];
+
+    connections[1].srcId = 0;
+    connections[1].destId = 1;
+    connections[1].relationId = relations[1];
+
+    connections[2].srcId = 1;
+    connections[2].destId = 2;
+    connections[2].relationId = relations[1];
+
+    connections[3].srcId = 2;
+    connections[3].destId = 3;
+    connections[3].relationId = relations[2];
+    
+    connections[4].srcId = 3;
+    connections[4].destId = 4;
+    connections[4].relationId = relations[3];
+
+    Graph_ConnectNodes(g, connections, connectionCount, NULL);
+
+    // Validations
+    // Try to get edges by ID
+    for(EdgeID i = 0; i < edgeCount; i++) {
+        e = Graph_GetEdge(g, i);
+        EXPECT_TRUE(e != NULL);
+        EXPECT_EQ(e->id, i);
+    }
+
+    // Try to get edges connecting source to destination node.
+    NodeID src;
+    NodeID dest;
+    int relation;
+    Edge *edges[edgeCount];
+
+    /* Get all edges connecting node 0 to node 1,
+     * expecting 2 edges. */
+    src = 0;
+    dest = 1;
+    relation = GRAPH_NO_RELATION;   // Relation agnostic.
+    Graph_GetEdgesConnectingNodes(g, src, dest, relation, edges, &edgeCount);
+    EXPECT_EQ(edgeCount, 2);
+    for(int i = 0; i < 2; i++) {
+        e = edges[i];
+        relation = relations[i];
+        EXPECT_TRUE(e != NULL);
+        EXPECT_EQ(e->src_id, src);
+        EXPECT_EQ(e->dest_id, dest);
+        EXPECT_EQ(e->relationship_id, relation);
+    }
+
+    /* Get all edges connecting node 0 to node 1, limit edges array to 
+     * length of 1, expecting 1 edge. */
+    edgeCount = 1;
+    Graph_GetEdgesConnectingNodes(g, src, dest, relation, edges, &edgeCount);
+    EXPECT_EQ(edgeCount, 1);
+
+    edgeCount = 5; // Reset edge count.
+
+    for(NodeID i = 1; i < nodeCount-2; i++) {
+        src = i;
+        dest = i+1;
+        relation = i;
+        Graph_GetEdgesConnectingNodes(g, src, dest, relation, edges, &edgeCount);
+        EXPECT_EQ(edgeCount, 1);
+        e = edges[0];
+        EXPECT_TRUE(e != NULL);
+        EXPECT_EQ(e->src_id, src);
+        EXPECT_EQ(e->dest_id, dest);
+        EXPECT_EQ(e->relationship_id, relation);
+        edgeCount = 5; // Reset edge count.
+    }
+
+    // Try to get none existing edges:
+
+    // Node 0 is not connected to 2.
+    src = 0;
+    dest = 2;
+    relation = GRAPH_NO_RELATION;
+    Graph_GetEdgesConnectingNodes(g, src, dest, relation, edges, &edgeCount);
+    EXPECT_EQ(edgeCount, 0);
+    edgeCount = 5; // Reset edge count.
+
+    // Node 0 is not connected to 1 via relation 2.
+    src = 0;
+    dest = 1;
+    relation = relations[2];
+    Graph_GetEdgesConnectingNodes(g, src, dest, relation, edges, &edgeCount);
+    EXPECT_EQ(edgeCount, 0);
+    edgeCount = 5; // Reset edge count.
+
+    // Node 1 is not connected to 0 via relation 0.
+    src = 1;
+    dest = 0;
+    relation = relations[0];
+    Graph_GetEdgesConnectingNodes(g, src, dest, relation, edges, &edgeCount);
+    EXPECT_EQ(edgeCount, 0);
+    edgeCount = 5; // Reset edge count.
+
+    // No node connects to itself.
+    for(NodeID i = 0; i < nodeCount; i++) {
+        for(int j = 0; j < relationCount; j++) {
+            src = i;
+            relation = relations[j];
+            Graph_GetEdgesConnectingNodes(g, src, src, relation, edges, &edgeCount);
+            EXPECT_EQ(edgeCount, 0);
+            edgeCount = 5; // Reset edge count.
+        }
+        relation = GRAPH_NO_RELATION;
+        Graph_GetEdgesConnectingNodes(g, src, src, relation, edges, &edgeCount);
+        EXPECT_EQ(edgeCount, 0);
+        edgeCount = 5; // Reset edge count.
+    }
+
+    Graph_Free(g);
 }

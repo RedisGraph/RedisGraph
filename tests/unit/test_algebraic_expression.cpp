@@ -179,36 +179,116 @@ class AlgebraicExpressionTest: public ::testing::Test {
             0 0 1 0 0 0
             0 0 0 0 0 0
         */
-        GrB_Index relations[81] = {
-            0, 1, friend_relation_id,
-            0, 3, friend_relation_id,
-            0, 5, friend_relation_id,
-            1, 2, friend_relation_id,
-            1, 4, friend_relation_id,
-            2, 3, friend_relation_id,
-            2, 4, friend_relation_id,
-            2, 5, friend_relation_id,
-            3, 0, friend_relation_id,
-            3, 5, friend_relation_id,
-            4, 2, friend_relation_id,
-            4, 3, friend_relation_id,
-            5, 0, friend_relation_id,
-            5, 4, friend_relation_id,
-            0, 0, visit_relation_id,
-            0, 1, visit_relation_id,
-            1, 2, visit_relation_id,
-            1, 4, visit_relation_id,
-            2, 0, visit_relation_id,
-            2, 1, visit_relation_id,
-            2, 3, visit_relation_id,
-            3, 4, visit_relation_id,
-            4, 3, visit_relation_id,
-            5, 4, visit_relation_id,
-            0, 3, war_relation_id,
-            1, 3, war_relation_id,
-            4, 2, war_relation_id};
+        ConnectionDesc relations[27];        
+        relations[0].srcId = 0;
+        relations[0].destId = 1;
+        relations[0].relationId = friend_relation_id;
 
-        Graph_ConnectNodes(g, 81, relations);
+        relations[1].srcId = 0;
+        relations[1].destId = 3;
+        relations[1].relationId = friend_relation_id;
+
+        relations[2].srcId = 0;
+        relations[2].destId = 5;
+        relations[2].relationId = friend_relation_id;
+
+        relations[3].srcId = 1;
+        relations[3].destId = 2;
+        relations[3].relationId = friend_relation_id;
+
+        relations[4].srcId = 1;
+        relations[4].destId = 4;
+        relations[4].relationId = friend_relation_id;
+
+        relations[5].srcId = 2;
+        relations[5].destId = 3;
+        relations[5].relationId = friend_relation_id;
+
+        relations[6].srcId = 2;
+        relations[6].destId = 4;
+        relations[6].relationId = friend_relation_id;
+
+        relations[7].srcId = 2;
+        relations[7].destId = 5;
+        relations[7].relationId = friend_relation_id;
+
+        relations[8].srcId = 3;
+        relations[8].destId = 0;
+        relations[8].relationId = friend_relation_id;
+
+        relations[9].srcId = 3;
+        relations[9].destId = 5;
+        relations[9].relationId = friend_relation_id;
+
+        relations[10].srcId = 4;
+        relations[10].destId = 2;
+        relations[10].relationId = friend_relation_id;
+
+        relations[11].srcId = 4;
+        relations[11].destId = 3;
+        relations[11].relationId = friend_relation_id;
+
+        relations[12].srcId = 5;
+        relations[12].destId = 0;
+        relations[12].relationId = friend_relation_id;
+
+        relations[13].srcId = 5;
+        relations[13].destId = 4;
+        relations[13].relationId = friend_relation_id;
+
+        relations[14].srcId = 0;
+        relations[14].destId = 0;
+        relations[14].relationId = visit_relation_id;
+
+        relations[15].srcId = 0;
+        relations[15].destId = 1;
+        relations[15].relationId = visit_relation_id;
+
+        relations[16].srcId = 1;
+        relations[16].destId = 2;
+        relations[16].relationId = visit_relation_id;
+
+        relations[17].srcId = 1;
+        relations[17].destId = 4;
+        relations[17].relationId = visit_relation_id;
+
+        relations[18].srcId = 2;
+        relations[18].destId = 0;
+        relations[18].relationId = visit_relation_id;
+
+        relations[19].srcId = 2;
+        relations[19].destId = 1;
+        relations[19].relationId = visit_relation_id;
+
+        relations[20].srcId = 2;
+        relations[20].destId = 3;
+        relations[20].relationId = visit_relation_id;
+
+        relations[21].srcId = 3;
+        relations[21].destId = 4;
+        relations[21].relationId = visit_relation_id;
+
+        relations[22].srcId = 4;
+        relations[22].destId = 3;
+        relations[22].relationId = visit_relation_id;
+
+        relations[23].srcId = 5;
+        relations[23].destId = 4;
+        relations[23].relationId = visit_relation_id;
+
+        relations[24].srcId = 0;
+        relations[24].destId = 3;
+        relations[24].relationId = war_relation_id;
+
+        relations[25].srcId = 1;
+        relations[25].destId = 3;
+        relations[25].relationId = war_relation_id;
+
+        relations[26].srcId = 4;
+        relations[26].destId = 2;
+        relations[26].relationId = war_relation_id;
+
+        Graph_ConnectNodes(g, relations, 27, NULL);
         return g;
     }
 

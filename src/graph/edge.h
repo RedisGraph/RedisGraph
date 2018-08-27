@@ -16,22 +16,24 @@
 
 struct Edge {
 	struct {
-		long int id;
+		EdgeID id;
 		int prop_count;
 		EntityProperty *properties;
 	};
+	NodeID src_id;				// ID of source node.
+	NodeID dest_id;				// ID of destination node.
+	int relationship_id;		// ID of relationship matrix.
 	char* relationship;
-	int relationship_id;	// ID of relationship matrix.
 	Node* src;
 	Node* dest;
-	GrB_Matrix mat;			// Adjacency matrix, associated with edge.
-	UT_hash_handle hh;		// makes this structure hashable.
+	GrB_Matrix mat;				// Adjacency matrix, associated with edge.
+	UT_hash_handle hh;			// makes this structure hashable.
 };
 
 typedef struct Edge Edge;
 
 /* Creates a new edge, connecting src to dest node. */
-Edge* Edge_New(long int id, Node *src, Node *dest, const char *relationship);
+Edge* Edge_New(EdgeID id, Node *src, Node *dest, const char *relationship);
 
 /* Adds a properties to node
  * propCount - number of new properties to add 

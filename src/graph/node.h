@@ -8,16 +8,17 @@
 #ifndef NODE_H_
 #define NODE_H_
 
-#include "graph_entity.h"
 #include "../value.h"
+#include "graph_entity.h"
 #include "../rmutil/vector.h"
+#include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 
 /* Forward declaration of edge */
 struct Edge;
 typedef struct {
 	// GraphEntity entity;
 	struct {
-		long int id;
+		NodeID id;
 		int prop_count;
 		EntityProperty *properties;
 	};
@@ -27,7 +28,7 @@ typedef struct {
 } Node;
 
 /* Creates a new node. */
-Node* Node_New(long int id, const char *label);
+Node* Node_New(NodeID id, const char *label);
 
 /* Checks if nodes are "equal" */
 int Node_Compare(const Node *a, const Node *b);
@@ -49,7 +50,7 @@ void Node_Add_Properties(Node *node, int prop_count, char **keys, SIValue *value
  * constant value PROPERTY_NOTFOUND. */
 SIValue* Node_Get_Property(const Node *node, const char *key);
 
-/* Frees alocated space by given node. */
+/* Frees allocated space by given node. */
 void Node_Free(Node* node);
 
 #endif

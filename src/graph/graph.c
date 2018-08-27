@@ -172,14 +172,40 @@ void _Graph_DeleteTypedEdges(Graph *g, NodeID src_id, NodeID dest_id, int relati
     }
 }
 
+/* Initialize edge and store it within graph's edge hashtable
+ * edge key within the hashtable is composed of:
+ * 1. Edge relation ID
+ * 2. Edge source node ID
+ * 3. Edge destination node ID */
+void _Graph_InitEdge(Graph *g, Edge *e, EdgeID id, NodeID srcId, NodeID destId, int r) {
+
+    // Set edge composite ID.
+    e->id = id;
+    e->src_id = srcId;
+    e->dest_id = destId;
+    e->relationship_id = r;
+
+    // Insert only if edge not already in hashtable.
+    Edge *edge;
+    size_t edgeCount = 1;
+    Graph_GetEdgesConnectingNodes(g, srcId, destId, r, &edge, &edgeCount);
+    if(edgeCount == 0) {
+        /* Store edge within graph's edge hashtable,
+         * calculate the key length including padding using formula:
+         * offset of last key field + size of last key field - offset of first key field */
+        unsigned keylen = offsetof(Edge, relationship_id) + sizeof(e->relationship_id) - offsetof(Edge, src_id);
+        HASH_ADD(hh, g->_edgesHashTbl, src_id, keylen, e);
+    }
+}
+
 /*================================ Graph API ================================ */
 Graph *Graph_New(size_t n) {
     assert(n > 0);
     Graph *g = malloc(sizeof(Graph));
-    
+
     g->nodes = DataBlock_New(n, sizeof(Node));
     g->edges = DataBlock_New(n, sizeof(Edge));
-    g->_edgesHashTbl = NULL;    // Init to NULL, required by uthash.
+    g->_edgesHashTbl = NULL;            // Init to NULL, required by uthash.
     g->relation_cap = GRAPH_DEFAULT_RELATION_CAP;
     g->relation_count = 0;
     g->label_cap = GRAPH_DEFAULT_LABEL_CAP;
@@ -200,9 +226,9 @@ Graph *Graph_Get(RedisModuleCtx *ctx, RedisModuleString *graph_name) {
     Graph *g = NULL;
 
     RedisModuleKey *key = RedisModule_OpenKey(ctx, graph_name, REDISMODULE_WRITE);
-	if (RedisModule_ModuleTypeGetType(key) == GraphRedisModuleType) {
+    if (RedisModule_ModuleTypeGetType(key) == GraphRedisModuleType) {
         g = RedisModule_ModuleTypeGetValue(key);
-	}
+    }
 
     RedisModule_CloseKey(key);
     return g;
@@ -238,29 +264,25 @@ void Graph_CreateNodes(Graph* g, size_t n, int* labels, DataBlockIterator **it) 
     }
 }
 
-void Graph_ConnectNodes(Graph *g, size_t n, GrB_Index *connections) {
+void Graph_ConnectNodes(Graph *g, ConnectionDesc *connections, size_t connectionCount, DataBlockIterator **it) {
     assert(g && connections);
 
-    DataBlockIterator *it;
+    DataBlockIterator *iter;
     GrB_Matrix adj = Graph_GetAdjacencyMatrix(g);
-    _Graph_AddEdges(g, n, &it);
+
+    EdgeID edgeID = Graph_EdgeCount(g);
+    _Graph_AddEdges(g, connectionCount, &iter);
 
     // Update graph's adjacency matrices, setting mat[dest,src] to 1.
-    for(int i = 0; i < n; i+=3) {
-        int srcId = connections[i];
-        int destId = connections[i+1];
-        int r = connections[i+2];
+    for(size_t i = 0; i < connectionCount; i++) {
+        // Create, initialize and store edge.
+        Edge *e = (Edge*)DataBlockIterator_Next(iter);
+        ConnectionDesc conn = connections[i];
+        NodeID srcId = conn.srcId;
+        NodeID destId = conn.destId;
+        int r = conn.relationId;
+        _Graph_InitEdge(g, e, edgeID++, srcId, destId, r);
 
-        // Create edge.
-        EdgeID edgeId = Graph_EdgeCount(g);
-        Node *srcNode = Graph_GetNode(g, srcId);
-        Node *destNode = Graph_GetNode(g, destId);
-        Edge *edge = (Edge *)DataBlockIterator_Next(it);
-        edge->id = edgeId;
-        edge->src = srcNode;
-        edge->dest = destNode;
-        edge->prop_count = 0;
-        
         // Columns represent source nodes, rows represent destination nodes.
         GrB_Matrix_setElement_BOOL(adj, true, destId, srcId);
 
@@ -270,13 +292,67 @@ void Graph_ConnectNodes(Graph *g, size_t n, GrB_Index *connections) {
             GrB_Matrix_setElement_BOOL(M, true, destId, srcId);
         }
     }
+
+    /* If access to newly created edges is requested
+     * reset iterator pass it back to caller. */
+    if(it) {
+        *it = iter;
+        DataBlockIterator_Reset(*it);
+    } else {
+        DataBlockIterator_Free(iter);
+    }
 }
 
 Node* Graph_GetNode(const Graph *g, NodeID id) {
-    assert(g);
+    assert(g && id < Graph_NodeCount(g));
     Node *n = (Node*)DataBlock_GetItem(g->nodes, id);
     n->id = id;
     return n;
+}
+
+Edge *Graph_GetEdge(const Graph *g, EdgeID id) {
+    assert(g && id < Graph_EdgeCount(g));
+    Edge *e = (Edge*)DataBlock_GetItem(g->edges, id);
+    e->id = id;
+    return e;
+}
+
+void Graph_GetEdgesConnectingNodes(const Graph *g, NodeID src, NodeID dest, int relation, Edge **edges, size_t *edgeCount) {
+    assert(g && src < Graph_NodeCount(g) && dest < Graph_NodeCount(g) && edges && edgeCount && *edgeCount > 0);
+
+    Edge *e = NULL;
+    size_t edgesFound = 0;  // Number of edges connecting src to dest we've found.
+
+    // Use a fake edge object as a lookup key.
+    Edge lookupKey;
+    lookupKey.relationship_id = relation;
+    lookupKey.src_id = src;
+    lookupKey.dest_id = dest;
+
+    // Composite key length.
+    unsigned keylen = offsetof(Edge, relationship_id)
+                      + sizeof(lookupKey.relationship_id)
+                      - offsetof(Edge, src_id);
+
+    // Search for edges.
+    if(lookupKey.relationship_id != GRAPH_NO_RELATION) {
+        // Relation type specified.
+        HASH_FIND(hh, g->_edgesHashTbl, &lookupKey.src_id, keylen, edges[edgesFound]);
+        if(edges[edgesFound]) edgesFound += 1;
+    } else {
+        // Relation type missing, scan through each edge type.
+        for(int r = 0; r < g->relation_count && edgesFound < *edgeCount; r++) {
+            // Update lookup key relation id.
+            lookupKey.relationship_id = r;
+
+            // See if there's an edge of type 'r' connecting source to destination.
+            HASH_FIND(hh, g->_edgesHashTbl, &lookupKey.src_id, keylen, edges[edgesFound]);
+            if(edges[edgesFound]) edgesFound += 1;
+        }
+    }
+
+    // Let caller know how many edges we've found.
+    *edgeCount = edgesFound;
 }
 
 void Graph_DeleteNodes(Graph *g, NodeID *IDs, size_t IDCount) {
@@ -401,7 +477,7 @@ void Graph_LabelNodes(Graph *g, NodeID start_node_id, NodeID end_node_id, int la
            start_node_id >= 0 &&
            start_node_id <= end_node_id &&
            end_node_id < Graph_NodeCount(g));
-    
+
     GrB_Matrix m = Graph_GetLabelMatrix(g, label);
     for(NodeID node_id = start_node_id; node_id <= end_node_id; node_id++) {
         GrB_Matrix_setElement_BOOL(m, true, node_id, node_id);
@@ -411,6 +487,11 @@ void Graph_LabelNodes(Graph *g, NodeID start_node_id, NodeID end_node_id, int la
 DataBlockIterator *Graph_ScanNodes(const Graph *g) {
     assert(g);
     return DataBlock_Scan(g->nodes);
+}
+
+DataBlockIterator *Graph_ScanEdges(const Graph *g) {
+    assert(g);
+    return DataBlock_Scan(g->edges);
 }
 
 int Graph_AddLabelMatrix(Graph *g) {
@@ -467,7 +548,7 @@ void Graph_CommitPendingOps(Graph *g) {
 
     GrB_Matrix M;
     GrB_Index nvals;
-    
+
     M = Graph_GetAdjacencyMatrix(g);
     GrB_Matrix_nvals(&nvals, M);
 
@@ -484,8 +565,8 @@ void Graph_CommitPendingOps(Graph *g) {
 
 void Graph_Free(Graph *g) {
     assert(g);
-        
-    
+
+
     /* TODO: Free nodes, currently we can't free nodes
      * as they are embedded within the chain block, as a result
      * we can't call free on a single node.
@@ -511,7 +592,7 @@ void Graph_Free(Graph *g) {
         GrB_Matrix_free(&m);
     }
     free(g->_relations);
-    
+
     // Free matrices.
     for(int i = 0; i < g->label_count; i++) {
         m = Graph_GetLabelMatrix(g, i);

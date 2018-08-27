@@ -217,31 +217,30 @@ void _CommitNewEntities(OpCreate *op) {
     }
 
     if(edge_count > 0) {
-        GrB_Index connections[edge_count * 3];
+        ConnectionDesc connections[edge_count];
 
         for(int i = 0; i < edge_count; i++) {
             Edge *e;
-            int con_idx = i*3;
             Vector_Pop(op->created_edges, &e);
 
-            connections[con_idx] = e->src->id;
-            connections[con_idx + 1] = e->dest->id;
+            connections[i].srcId = e->src->id;
+            connections[i].destId = e->dest->id;
             
             if(!e->relationship) {
-                connections[con_idx + 2] = GRAPH_NO_RELATION;
+                connections[i].relationId = GRAPH_NO_RELATION;
             } else {
                 LabelStore *s = LabelStore_Get(ctx, STORE_EDGE, op->graph_name, e->relationship);
-                if(s != NULL) connections[con_idx + 2] = s->id;
+                if(s != NULL) connections[i].relationId = s->id;
                 else {
                     int relation_id = Graph_AddRelationMatrix(op->g);
                     LabelStore_New(op->ctx, STORE_EDGE, op->graph_name, e->relationship, relation_id);
-                    connections[con_idx + 2] = relation_id;
+                    connections[i].relationId = relation_id;
                 }
             }
             Edge_Free(e);
         }
 
-        Graph_ConnectNodes(op->g, edge_count*3, connections);
+        Graph_ConnectNodes(op->g, connections, edge_count, NULL);
         op->result_set->stats.relationships_created = edge_count;
     }
 
