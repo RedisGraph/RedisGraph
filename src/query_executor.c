@@ -72,16 +72,8 @@ void ReturnClause_ExpandCollapsedNodes(RedisModuleCtx *ctx, AST_Query *ast, cons
              * Find collapsed entity's label. */
             AST_GraphEntity *collapsed_entity = MatchClause_GetEntity(ast->matchNode, exp->operand.variadic.alias);
 
-            /* Invalid query, return clause refers to non-existent entity. */
-            if(collapsed_entity == NULL) {
-                /* Free the replacement elements that have been built so far. */
-                for (int j = 0; i < Vector_Size(expandReturnElements); j ++) {
-                    Vector_Get(expandReturnElements, i, &ret_elem);
-                    Free_AST_ReturnElementNode(ret_elem);
-                }
-                Vector_Free(expandReturnElements);
-                return;
-            }
+            /* We have already validated the query at this point, so all entity lookups should succeed. */
+            assert(collapsed_entity);
 
             /* Find label's properties. */
             LabelStoreType store_type = (collapsed_entity->t == N_ENTITY) ? STORE_NODE : STORE_EDGE;
@@ -123,9 +115,6 @@ void ReturnClause_ExpandCollapsedNodes(RedisModuleCtx *ctx, AST_Query *ast, cons
 
             /* Discard collapsed return element. */
             Free_AST_ReturnElementNode(ret_elem);
-            /* NULL out freed elements so we can properly free the return clause
-             * if we return from this function early. */
-            Vector_Put(ast->returnNode->returnElements, i, NULL);
         } else {
             Vector_Push(expandReturnElements, ret_elem);
         }
