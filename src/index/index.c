@@ -179,8 +179,7 @@ IndexIter* IndexIter_Create(Index *idx, SIType type) {
  * Returns 1 if the filter was a comparison type that can be translated into a bound
  * (effectively, any type but '!='), which indicates that it is now redundant. */
 bool IndexIter_ApplyBound(IndexIter *iter, FT_PredicateNode *filter) {
-  // return skiplistIter_UpdateBound(iter, &filter->constVal, filter->op);
-  return false;
+  return skiplistIter_UpdateBound(iter, &filter->rhs->operand.constant, filter->op);
 }
 
 NodeID* IndexIter_Next(IndexIter *iter) {

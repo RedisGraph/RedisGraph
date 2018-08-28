@@ -52,6 +52,8 @@ typedef struct FT_FilterNode FT_FilterNode;
  * This is done to speed up the filtering process. */
 FT_FilterNode* BuildFiltersTree(const AST_FilterNode *root);
 
+int IsNodePredicate(const FT_FilterNode *node);
+
 FT_FilterNode* CreateCondFilterNode(int op);
 
 FT_FilterNode *AppendLeftChild(FT_FilterNode *root, FT_FilterNode *child);

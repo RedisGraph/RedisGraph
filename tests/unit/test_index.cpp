@@ -21,7 +21,7 @@ extern Index* buildIndex(Graph *g, const GrB_Matrix label_matrix, const char *la
 class IndexTest: public ::testing::Test {
   protected:
     size_t expected_n = 100;
-    const char *label = "test_label";
+    char *label = "test_label";
     char *str_key = "string_prop";
     char *num_key = "num_prop";
     int label_id;
@@ -103,7 +103,12 @@ TEST_F(IndexTest, StringIndex) {
 
   // Build an iterator from a constant filter - this will include all elements
   SIValue lb = SI_StringVal("");
-  FT_FilterNode *filter = CreateConstFilterNode(label, str_key, GE, lb);
+
+  AST_ArithmeticExpressionNode *lhs = New_AST_AR_EXP_VariableOperandNode(label, str_key);
+  AST_ArithmeticExpressionNode *rhs = New_AST_AR_EXP_ConstOperandNode(lb);
+  AST_FilterNode *root = New_AST_PredicateNode(lhs, GE, rhs);
+  FT_FilterNode *filter = BuildFiltersTree(root);
+
   IndexIter *iter = IndexIter_Create(str_idx, T_STRING);
   IndexIter_ApplyBound(iter, &filter->pred);
   FilterTree_Free(filter);
@@ -142,7 +147,10 @@ TEST_F(IndexTest, NumericIndex) {
 
   // Build an iterator from a constant filter - this will include all elements
   SIValue lb = SI_DoubleVal(0);
-  FT_FilterNode *filter = CreateConstFilterNode(label, num_key, GE, lb);
+  AST_ArithmeticExpressionNode *lhs = New_AST_AR_EXP_VariableOperandNode(label, num_key);
+  AST_ArithmeticExpressionNode *rhs = New_AST_AR_EXP_ConstOperandNode(lb);
+  AST_FilterNode *root = New_AST_PredicateNode(lhs, GE, rhs);
+  FT_FilterNode *filter = BuildFiltersTree(root);
   IndexIter *iter = IndexIter_Create(num_idx, T_DOUBLE);
   IndexIter_ApplyBound(iter, &filter->pred);
   FilterTree_Free(filter);
@@ -201,7 +209,10 @@ TEST_F(IndexTest, IteratorBounds) {
     }
   }
 
-  FT_FilterNode *lb_filter_ge = CreateConstFilterNode(label, num_key, GE, *lb);
+  AST_ArithmeticExpressionNode *lhs = New_AST_AR_EXP_VariableOperandNode(label, num_key);
+  AST_ArithmeticExpressionNode *rhs = New_AST_AR_EXP_ConstOperandNode(*lb);
+  AST_FilterNode *root_ge = New_AST_PredicateNode(lhs, GE, rhs);
+  FT_FilterNode *lb_filter_ge = BuildFiltersTree(root_ge);
   IndexIter_Reset(iter);
   IndexIter_ApplyBound(iter, &lb_filter_ge->pred);
   /* Lower bound should reduce the number of values iterated over */
@@ -211,7 +222,8 @@ TEST_F(IndexTest, IteratorBounds) {
   /* Set the same lower bound, but exclusive.
    * Number of values should again be reduced. */
   IndexIter_Reset(iter);
-  FT_FilterNode *lb_filter_gt = CreateConstFilterNode(label, num_key, GT, *lb);
+  AST_FilterNode *root_gt = New_AST_PredicateNode(lhs, GT, rhs);
+  FT_FilterNode *lb_filter_gt = BuildFiltersTree(root_gt);
   IndexIter_ApplyBound(iter, &lb_filter_gt->pred);
   cur_vals = count_iter_vals(iter);
   EXPECT_LT(cur_vals, prev_vals);
@@ -225,7 +237,9 @@ TEST_F(IndexTest, IteratorBounds) {
     ub = GraphEntity_Get_Property((GraphEntity*)cur, num_key);
     if (ub->doubleval > lb->doubleval) break;
   }
-  FT_FilterNode *ub_filter_le = CreateConstFilterNode(label, num_key, LE, *ub);
+  rhs = New_AST_AR_EXP_ConstOperandNode(*ub);
+  AST_FilterNode *root_le = New_AST_PredicateNode(lhs, LE, rhs);
+  FT_FilterNode *ub_filter_le = BuildFiltersTree(root_le);
   IndexIter_ApplyBound(iter, &ub_filter_le->pred);
   /* Upper bound should reduce the number of values iterated over */
   cur_vals = count_iter_vals(iter);
@@ -235,7 +249,8 @@ TEST_F(IndexTest, IteratorBounds) {
   /* Set the same upper bound, but exclusive.
    * Number of values should again be reduced. */
   IndexIter_Reset(iter);
-  FT_FilterNode *ub_filter_lt = CreateConstFilterNode(label, num_key, LT, *ub);
+  AST_FilterNode *root_lt = New_AST_PredicateNode(lhs, LT, rhs);
+  FT_FilterNode *ub_filter_lt = BuildFiltersTree(root_lt);
   IndexIter_ApplyBound(iter, &ub_filter_lt->pred);
   cur_vals = count_iter_vals(iter);
   EXPECT_LT(cur_vals, prev_vals);
@@ -244,7 +259,9 @@ TEST_F(IndexTest, IteratorBounds) {
    * Number of values should be 0. */
   IndexIter_Reset(iter);
   SIValue ub_last = SI_DoubleVal(lb->doubleval - 1);
-  FT_FilterNode *ub_filter_last = CreateConstFilterNode(label, num_key, LT, ub_last);
+  rhs = New_AST_AR_EXP_ConstOperandNode(ub_last);
+  AST_FilterNode *root_lt_last = New_AST_PredicateNode(lhs, LT, rhs);
+  FT_FilterNode *ub_filter_last = BuildFiltersTree(root_lt_last);
   IndexIter_ApplyBound(iter, &ub_filter_last->pred);
   cur_vals = count_iter_vals(iter);
   EXPECT_EQ(cur_vals, 0);

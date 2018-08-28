@@ -2,7 +2,7 @@
 #include "../ops/op_index_scan.h"
 
 void _locateScanFilters(NodeByLabelScan *scanOp, Vector *filterOps) {
-  /* We begin with a LabelScan, and want to find const filters that modify
+  /* We begin with a LabelScan, and want to find predicate filters that modify
    * the active entity. */
   OpBase *current = scanOp->op.parent;
   while(current->type == OPType_FILTER) {
@@ -12,11 +12,9 @@ void _locateScanFilters(NodeByLabelScan *scanOp, Vector *filterOps) {
     /* filterTree will either be a predicate or a tree with an OR root.
      * We'll store ops on const predicate filters, and can otherwise safely ignore them -
      * no filter tree in this sequence can invalidate another. */
-    /*
-    if (IsNodeConstantPredicate(filterTree)) {
+    if (IsNodePredicate(filterTree)) {
       Vector_Push(filterOps, current);
     }
-    */
 
     // Advance to the next operation.
     current = current->parent;
@@ -46,7 +44,7 @@ void utilizeIndices(RedisModuleCtx *ctx, const char *graph_name, ExecutionPlan *
   NodeByLabelScan *scanOp;
   Vector *filterOps = NewVector(OpBase*, 0);
   FT_FilterNode *ft;
-  // char *label;
+  char *label;
 
   IndexIter *iter = NULL;
   Index *idx = NULL;
@@ -54,7 +52,7 @@ void utilizeIndices(RedisModuleCtx *ctx, const char *graph_name, ExecutionPlan *
   while (Vector_Pop(scanOps, &scanOp)) {
     /* Get the label string for the scan target.
      * The label will be used to retrieve the index. */
-    // label = (*scanOp->node)->label;
+    label = (*scanOp->node)->label;
     Vector_Clear(filterOps);
     _locateScanFilters(scanOp, filterOps);
 
@@ -73,18 +71,21 @@ void utilizeIndices(RedisModuleCtx *ctx, const char *graph_name, ExecutionPlan *
       OpBase *opFilter;
       Vector_Get(filterOps, i, &opFilter);
       ft = ((Filter *)opFilter)->filterTree;
+      // TODO for the moment, only use filters with left-hand node-property pairs
+      // and right-hand values. This should be pretty easy to improve upon.
+      if (!AR_EXP_IsNodeVariadicOperand(ft->pred.lhs)) continue;
+      if (!AR_EXP_IsNodeConstantOperand(ft->pred.rhs)) continue;
 
+      char *filter_prop = ft->pred.lhs->operand.variadic.entity_prop;
       // If we've already selected an index on a different property, continue
-      /*
-      if (idx && strcmp(idx->property, ft->pred.Lop.property)) continue;
+      if (idx && strcmp(idx->property, filter_prop)) continue;
 
       // Try to retrieve an index if one has not been selected yet
       if (!idx) {
-        idx = Index_Get(ctx, graph_name, label, ft->pred.Lop.property);
+        idx = Index_Get(ctx, graph_name, label, filter_prop);
         if (!idx) continue;
-        iter = IndexIter_Create(idx, ft->pred.constVal.type);
+        iter = IndexIter_Create(idx, ft->pred.rhs->operand.constant.type);
       }
-      */
 
       // Tighten the iterator range if possible
       if (IndexIter_ApplyBound(iter, &ft->pred)) {

@@ -17,6 +17,15 @@
 /* Arithmetic function repository. */
 static TrieMap *__aeRegisteredFuncs = NULL;
 
+/* Utility functions */
+int AR_EXP_IsNodeVariadicOperand(AR_ExpNode *exp) {
+    return (exp->type == AR_EXP_OPERAND) && (exp->operand.type == AR_EXP_VARIADIC);
+}
+
+int AR_EXP_IsNodeConstantOperand(AR_ExpNode *exp) {
+    return (exp->type == AR_EXP_OPERAND) && (exp->operand.type == AR_EXP_CONSTANT);
+}
+
 SIValue AR_EXP_Evaluate(const AR_ExpNode *root) {
 
     SIValue result;

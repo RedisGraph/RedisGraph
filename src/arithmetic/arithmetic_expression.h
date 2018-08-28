@@ -117,6 +117,9 @@ struct AR_ExpNode {
 
 typedef struct AR_ExpNode AR_ExpNode;
 
+int AR_EXP_IsNodeVariadicOperand(AR_ExpNode *exp);
+int AR_EXP_IsNodeConstantOperand(AR_ExpNode *exp);
+
 /* Evaluate arithmetic expression tree. */
 SIValue AR_EXP_Evaluate(const AR_ExpNode *root);
 void AR_EXP_Aggregate(const AR_ExpNode *root);
