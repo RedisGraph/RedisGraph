@@ -133,6 +133,7 @@ void _Graph_ClearMatrixEntry(Graph *g, GrB_Matrix M, GrB_Index src, GrB_Index de
 /* Deletes all edges connecting source to destination. */
 void _Graph_DeleteEdges(Graph *g, NodeID src_id, NodeID dest_id) {
     GrB_Matrix M = Graph_GetAdjacencyMatrix(g);
+    // Guarantee src connected to dest.
     _Graph_ClearMatrixEntry(g, M, src_id, dest_id);
 
     // Update relation matrices.
@@ -324,15 +325,13 @@ Edge *Graph_GetEdge(const Graph *g, EdgeID id) {
 void Graph_GetEdgesConnectingNodes(const Graph *g, NodeID src, NodeID dest, int relation, Edge **edges, size_t *edgeCount) {
     assert(g && src < Graph_NodeCount(g) && dest < Graph_NodeCount(g) && edges && edgeCount && *edgeCount > 0);
 
-    Edge *e = NULL;
     size_t edgesFound = 0;  // Number of edges connecting src to dest we've found.
+    Node *srcNode = Graph_GetNode(g, src);
+    Node *destNode = Graph_GetNode(g, dest);
 
     // Use a fake edge object as a lookup key.
     Edge lookupKey;
-    Node *srcNode = Graph_GetNode(g, src);
-    Node *destNode = Graph_GetNode(g, dest);
-    EdgeDesc *pEdgeDesc;
-
+    memset(&lookupKey, 0, sizeof(Edge));
     Edge_SetSrcNode(&lookupKey, srcNode);
     Edge_SetDestNode(&lookupKey, destNode);
     Edge_SetRelationID(&lookupKey, relation);
@@ -340,7 +339,6 @@ void Graph_GetEdgesConnectingNodes(const Graph *g, NodeID src, NodeID dest, int 
     // Search for edges.
     if(relation != GRAPH_NO_RELATION) {
         // Relation type specified.
-        // printf("Searching for edge with composite ID: srcId: %llu destId: %llu relationId: %d\n", lookupKey.edgeDesc.srcId, lookupKey.edgeDesc.destId, lookupKey.edgeDesc.relationId);
         HASH_FIND(hh, g->_edgesHashTbl, &lookupKey.edgeDesc, sizeof(EdgeDesc), edges[edgesFound]);
         if(edges[edgesFound]) edgesFound += 1;
     } else {
@@ -348,19 +346,11 @@ void Graph_GetEdgesConnectingNodes(const Graph *g, NodeID src, NodeID dest, int 
         for(int r = 0; r < g->relation_count && edgesFound < *edgeCount; r++) {
             // Update lookup key relation id.
             Edge_SetRelationID(&lookupKey, r);
-            // printf("Searching for edge with composite ID: srcId: %llu destId: %llu relationId: %d\n", lookupKey.edgeDesc.srcId, lookupKey.edgeDesc.destId, lookupKey.edgeDesc.relationId);
             // See if there's an edge of type 'r' connecting source to destination.
             HASH_FIND(hh, g->_edgesHashTbl, &lookupKey.edgeDesc, sizeof(EdgeDesc), edges[edgesFound]);
             if(edges[edgesFound]) edgesFound += 1;
         }
     }
-
-    // printf("PRE INSERT!\n");
-    // printf("EDGES IN HASH\n");
-    // Edge *edge;
-    // for(edge=g->_edgesHashTbl; edge != NULL; edge=edge->hh.next) {
-    //     printf("edge composite ID: srcId: %llu destId: %llu relationId: %d\n", edge->edgeDesc.srcId, edge->edgeDesc.destId, edge->edgeDesc.relationId);
-    // }
 
     // Let caller know how many edges we've found.
     *edgeCount = edgesFound;

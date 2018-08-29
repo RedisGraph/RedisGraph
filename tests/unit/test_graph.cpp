@@ -48,9 +48,7 @@ class GraphTest : public ::testing::Test
         Graph_CreateNodes(g, nodes, NULL, NULL);
 
         for (int i = 0; i < relations; i++)
-        {
             Graph_AddRelationMatrix(g);
-        }
 
         int connectionCount = 0;
         EdgeDesc *connections = (EdgeDesc*)malloc(sizeof(EdgeDesc) * nodes * nodes);
@@ -62,9 +60,8 @@ class GraphTest : public ::testing::Test
             {
                 if (rand() > mid_point)
                 {
-                    if (i == j)
-                        continue;
-                    int relation = (rand() % (relations + 1) - 1);
+                    if (i == j) continue;
+                    int relation = rand() % relations;
                     connections[connectionCount].srcId = i;
                     connections[connectionCount].destId = j;
                     connections[connectionCount].relationId = relation;
@@ -129,14 +126,13 @@ class GraphTest : public ::testing::Test
     void _test_edge_creation(Graph *g, size_t node_count)
     {
         // Form connections.
+        int relationCount = 3;
         size_t edge_count = (node_count - 1);
         EdgeDesc connections[edge_count];
 
         // Introduce relations types.
-        for (int i = 0; i < 3; i++)
-        {
+        for (int i = 0; i < relationCount; i++)
             Graph_AddRelationMatrix(g);
-        }
 
         // Describe connections;
         // Node I is connected to Node I+1,
@@ -144,9 +140,9 @@ class GraphTest : public ::testing::Test
         int node_id = 0;
         for (unsigned int i = 0; i < edge_count; i++)
         {
-            connections[i].srcId = node_id;         // Source node id.
-            connections[i].destId = node_id + 1; // Destination node id.
-            connections[i].relationId = (i % 4) - 1; // Relation, (-1 for GRAPH_NO_RELATION).
+            connections[i].srcId = node_id;                     // Source node id.
+            connections[i].destId = node_id + 1;                // Destination node id.
+            connections[i].relationId = (i % relationCount);    // Relation.
             node_id++;
         }
 
@@ -172,14 +168,11 @@ class GraphTest : public ::testing::Test
             EXPECT_EQ(GrB_Matrix_extractElement_BOOL(&v, g->adjacency_matrix, dest_id, src_id), GrB_SUCCESS);
             EXPECT_TRUE(v);
 
-            if (r != GRAPH_NO_RELATION)
-            {
-                // Test relation matrix.
-                v = false;
-                GrB_Matrix mat = Graph_GetRelationMatrix(g, r);
-                EXPECT_EQ(GrB_Matrix_extractElement_BOOL(&v, mat, dest_id, src_id), GrB_SUCCESS);
-                EXPECT_TRUE(v);
-            }
+            // Test relation matrix.
+            v = false;
+            GrB_Matrix mat = Graph_GetRelationMatrix(g, r);
+            EXPECT_EQ(GrB_Matrix_extractElement_BOOL(&v, mat, dest_id, src_id), GrB_SUCCESS);
+            EXPECT_TRUE(v);
         }
     }
 
@@ -314,54 +307,7 @@ void benchmark_node_creation_no_labels()
     Graph_Free(g);
 }
 
-void benchmark_edge_creation_no_relationships()
-{
-    printf("benchmark_edge_creation_no_relationships\n");
-    double tic[2];
-    int samples = 64;
-    double timings[samples];
-    int outliers = 0;
-    float threshold = 0.001;
-    // int edge_count = GRAPH_DEFAULT_NODE_CAP * 1.10;
-    // int node_count = GRAPH_DEFAULT_NODE_CAP;
-    int edge_count = 1000000 * 1.10;
-    int node_count = 1000000;
-    EdgeDesc connections[edge_count];
 
-    Graph *g = Graph_New(GRAPH_DEFAULT_NODE_CAP);
-    Graph_CreateNodes(g, node_count, NULL, NULL);
-
-    for (int i = 0; i < samples; i++)
-    {
-        // Describe connections;
-        // Node I is connected to Node I+1.
-        for (int j = 0; j < edge_count; j++)
-        {
-            connections[j].srcId = rand() % node_count;     // Source node id.
-            connections[j].destId = rand() % node_count; // Destination node id.
-            connections[j].relationId = GRAPH_NO_RELATION;   // Relation.
-        }
-
-        simple_tic(tic);
-        Graph_ConnectNodes(g, connections, edge_count, NULL);
-        timings[i] = simple_toc(tic);
-        printf("%d Formed connections, time: %.6f sec\n", edge_count, timings[i]);
-        if (timings[i] > threshold)
-            outliers++;
-    }
-
-    if (outliers > samples * 0.1)
-    {
-        printf("Node creation took too long\n");
-        for (int i = 0; i < samples; i++)
-        {
-            printf("%d Formed connections, time: %.6f sec\n", edge_count, timings[i]);
-        }
-        // assert(false);
-    }
-
-    Graph_Free(g);
-}
 
 void benchmark_edge_creation_with_relationships()
 {
@@ -380,9 +326,7 @@ void benchmark_edge_creation_with_relationships()
 
     // Introduce relations types.
     for (int i = 0; i < relation_count; i++)
-    {
         Graph_AddRelationMatrix(g);
-    }
 
     Graph_CreateNodes(g, node_count, NULL, NULL);
 
@@ -393,9 +337,9 @@ void benchmark_edge_creation_with_relationships()
         // Connection type is relationships[I%4].
         for (int j = 0; j < edge_count; j++)
         {
-            connections[j].srcId = rand() % node_count;                // Source node id.
-            connections[j].destId = rand() % node_count;            // Destination node id.
-            connections[j].relationId = (i % (relation_count + 1)) - 1; // Relation, (-1 for GRAPH_NO_RELATION).
+            connections[j].srcId = rand() % node_count;     // Source node id.
+            connections[j].destId = rand() % node_count;    // Destination node id.
+            connections[j].relationId = i % relation_count; // Relation.
         }
 
         simple_tic(tic);
@@ -424,7 +368,6 @@ void benchmark_graph()
     benchmark_node_creation_no_labels();
     benchmark_node_creation_with_labels();
     benchmark_edge_creation_with_relationships();
-    benchmark_edge_creation_no_relationships();
     printf("%sgraph benchmark - PASS!%s\n", KGRN, KNRM);
 }
 
@@ -588,47 +531,48 @@ TEST_F(GraphTest, RemoveMultipleNodes)
 
     Graph *g = Graph_New(32);
     Graph_CreateNodes(g, 8, NULL, NULL);
+    int relation = Graph_AddRelationMatrix(g);
 
     EdgeDesc connections[9];
 
     // First node.
     connections[0].srcId = 0;
     connections[0].destId = 2;
-    connections[0].relationId = GRAPH_NO_RELATION;
+    connections[0].relationId = relation;
 
     connections[1].srcId = 0;
     connections[1].destId = 6;
-    connections[1].relationId = GRAPH_NO_RELATION;
+    connections[1].relationId = relation;
 
     connections[2].srcId = 0;
     connections[2].destId = 7;
-    connections[2].relationId = GRAPH_NO_RELATION;
+    connections[2].relationId = relation;
 
     // Right before last node.
     connections[3].srcId = 6;
     connections[3].destId = 0;
-    connections[3].relationId = GRAPH_NO_RELATION;
+    connections[3].relationId = relation;
 
     connections[4].srcId = 6;
     connections[4].destId = 1;
-    connections[4].relationId = GRAPH_NO_RELATION;
+    connections[4].relationId = relation;
 
     connections[5].srcId = 6;
     connections[5].destId = 7;
-    connections[5].relationId = GRAPH_NO_RELATION;
+    connections[5].relationId = relation;
 
     // Last node.
     connections[6].srcId = 7;
     connections[6].destId = 0;
-    connections[6].relationId = GRAPH_NO_RELATION;
+    connections[6].relationId = relation;
 
     connections[7].srcId = 7;
     connections[7].destId = 1;
-    connections[7].relationId = GRAPH_NO_RELATION;
+    connections[7].relationId = relation;
 
     connections[8].srcId = 7;
     connections[8].destId = 6;
-    connections[8].relationId = GRAPH_NO_RELATION;
+    connections[8].relationId = relation;
 
     Graph_ConnectNodes(g, connections, 9, NULL);
 
