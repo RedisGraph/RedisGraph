@@ -14,15 +14,22 @@
 #include "../util/uthash.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 
+// Encapsulate the essence of an edge.
+typedef struct {
+    NodeID srcId;   // Source node ID.
+    NodeID destId;  // Destination node ID.
+    int relationId; // Relation type ID.
+} EdgeDesc;
+
+/* TODO: note it is possible to get into an incontinence 
+ * if we set edge src node and edgeDesc srcId to different nodes. */
 struct Edge {
 	struct {
 		EdgeID id;
 		int prop_count;
 		EntityProperty *properties;
 	};
-	NodeID src_id;				// ID of source node.
-	NodeID dest_id;				// ID of destination node.
-	int relationship_id;		// ID of relationship matrix.
+	EdgeDesc edgeDesc;
 	char* relationship;
 	Node* src;
 	Node* dest;
@@ -34,6 +41,30 @@ typedef struct Edge Edge;
 
 /* Creates a new edge, connecting src to dest node. */
 Edge* Edge_New(EdgeID id, Node *src, Node *dest, const char *relationship);
+
+// Retrieve edge source node ID.
+NodeID Edge_GetSrcNodeID(const Edge *edge);
+
+// Retrieve edge destination node ID.
+NodeID Edge_GetDestNodeID(const Edge *edge);
+
+// Retrieve edge relation ID.
+int Edge_GetRelationID(const Edge *edge);
+
+// Retrieve edge source node.
+Node* Edge_GetSrcNode(Edge *e);
+
+// Retrieve edge destination node.
+Node* Edge_GetDestNode(Edge *e);
+
+// Sets edge source node.
+void Edge_SetSrcNode(Edge *e, Node *src);
+
+// Sets edge destination node.
+void Edge_SetDestNode(Edge *e, Node *dest);
+
+// Sets edge relation type.
+void Edge_SetRelationID(Edge *e, int relationId);
 
 /* Adds a properties to node
  * propCount - number of new properties to add 

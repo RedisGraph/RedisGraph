@@ -67,19 +67,12 @@ void Graph_CreateNodes (
     DataBlockIterator **it  // [Optional] iterator over new nodes.
 );
 
-// Describes a connection between two nodes.
-typedef struct {
-    NodeID srcId;   // Source node ID.
-    NodeID destId;  // Destination node ID.
-    int relationId; // Relation type ID.
-} ConnectionDesc;
-
 // Connects src[i] to dest[i] with edge of type relation[i].
 void Graph_ConnectNodes (
-        Graph *g,                       // Graph in which connections are formed. 
-        ConnectionDesc *connections,    // Array of triplets (src_id, dest_id, relation).
-        size_t connectionCount,         // Number of elements in connections array.
-        DataBlockIterator **it          // Pointer to edge iterator.
+        Graph *g,                   // Graph in which connections are formed. 
+        EdgeDesc *connections,      // Array of triplets (src_id, dest_id, relation).
+        size_t connectionCount,     // Number of elements in connections array.
+        DataBlockIterator **it      // Pointer to edge iterator.
 );
 
 // Retrieves node with given id from graph,

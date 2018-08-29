@@ -81,11 +81,11 @@ void FreePredicateNode(AST_PredicateNode* predicateNode) {
 	// TODO: Should I free constVal?
 }
 
-void _WhereClause_ReferredNodes(AST_FilterNode *root, TrieMap *referred_nodes) {
+void _WhereClause_ReferredEntities(AST_FilterNode *root, TrieMap *referred_nodes) {
 	switch(root->t) {
 		case N_COND:
-			_WhereClause_ReferredNodes(root->cn.left, referred_nodes);
-			_WhereClause_ReferredNodes(root->cn.right, referred_nodes);
+			_WhereClause_ReferredEntities(root->cn.left, referred_nodes);
+			_WhereClause_ReferredEntities(root->cn.right, referred_nodes);
 			break;
 		case N_PRED:
 			TrieMap_Add(referred_nodes,
@@ -107,9 +107,9 @@ void _WhereClause_ReferredNodes(AST_FilterNode *root, TrieMap *referred_nodes) {
 	}
 }
 
-void WhereClause_ReferredNodes(const AST_WhereNode *where_node, TrieMap *referred_nodes) {
+void WhereClause_ReferredEntities(const AST_WhereNode *where_node, TrieMap *referred_nodes) {
 	if(!where_node) return;
-	_WhereClause_ReferredNodes(where_node->filters, referred_nodes);
+	_WhereClause_ReferredEntities(where_node->filters, referred_nodes);
 }
 
 void Free_AST_FilterNode(AST_FilterNode* filterNode) {

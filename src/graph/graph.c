@@ -177,25 +177,25 @@ void _Graph_DeleteTypedEdges(Graph *g, NodeID src_id, NodeID dest_id, int relati
  * 1. Edge relation ID
  * 2. Edge source node ID
  * 3. Edge destination node ID */
-void _Graph_InitEdge(Graph *g, Edge *e, EdgeID id, NodeID srcId, NodeID destId, int r) {
-
-    // Set edge composite ID.
-    e->id = id;
-    e->src_id = srcId;
-    e->dest_id = destId;
-    e->relationship_id = r;
-
+int _Graph_InitEdge(Graph *g, Edge *e, EdgeID id, Node *src, Node *dest, int r) {
     // Insert only if edge not already in hashtable.
     Edge *edge;
     size_t edgeCount = 1;
-    Graph_GetEdgesConnectingNodes(g, srcId, destId, r, &edge, &edgeCount);
-    if(edgeCount == 0) {
-        /* Store edge within graph's edge hashtable,
-         * calculate the key length including padding using formula:
-         * offset of last key field + size of last key field - offset of first key field */
-        unsigned keylen = offsetof(Edge, relationship_id) + sizeof(e->relationship_id) - offsetof(Edge, src_id);
-        HASH_ADD(hh, g->_edgesHashTbl, src_id, keylen, e);
+    Graph_GetEdgesConnectingNodes(g, src->id, dest->id, r, &edge, &edgeCount);
+    if(edgeCount == 1) {
+        /* TODO: Currently we only support a single edge of type T
+         * between tow nodes. */
+        return 0;
     }
+
+    // Set edge composite ID.
+    Edge_SetSrcNode(e, src);
+    Edge_SetDestNode(e, dest);
+    Edge_SetRelationID(e, r);
+
+    // Store edge within graph's edge hashtable
+    HASH_ADD(hh, g->_edgesHashTbl, edgeDesc, sizeof(EdgeDesc), e);
+    return 1;
 }
 
 /*================================ Graph API ================================ */
@@ -264,7 +264,7 @@ void Graph_CreateNodes(Graph* g, size_t n, int* labels, DataBlockIterator **it) 
     }
 }
 
-void Graph_ConnectNodes(Graph *g, ConnectionDesc *connections, size_t connectionCount, DataBlockIterator **it) {
+void Graph_ConnectNodes(Graph *g, EdgeDesc *connections, size_t connectionCount, DataBlockIterator **it) {
     assert(g && connections);
 
     DataBlockIterator *iter;
@@ -277,21 +277,25 @@ void Graph_ConnectNodes(Graph *g, ConnectionDesc *connections, size_t connection
     for(size_t i = 0; i < connectionCount; i++) {
         // Create, initialize and store edge.
         Edge *e = (Edge*)DataBlockIterator_Next(iter);
-        ConnectionDesc conn = connections[i];
-        NodeID srcId = conn.srcId;
-        NodeID destId = conn.destId;
+        EdgeDesc conn = connections[i];
+        Node *srcNode = Graph_GetNode(g, conn.srcId);
+        Node *destNode = Graph_GetNode(g, conn.destId);
+        assert(srcNode && destNode);
         int r = conn.relationId;
-        _Graph_InitEdge(g, e, edgeID++, srcId, destId, r);
-
-        // Columns represent source nodes, rows represent destination nodes.
-        GrB_Matrix_setElement_BOOL(adj, true, destId, srcId);
-
-        if(r != GRAPH_NO_RELATION) {
-            // Typed edge.
+        if(_Graph_InitEdge(g, e, edgeID++, srcNode, destNode, r)) {
+            // Columns represent source nodes, rows represent destination nodes.
             GrB_Matrix M = Graph_GetRelationMatrix(g, r);
-            GrB_Matrix_setElement_BOOL(M, true, destId, srcId);
+            GrB_Matrix_setElement_BOOL(adj, true, destNode->id, srcNode->id);
+            GrB_Matrix_setElement_BOOL(M, true, destNode->id, srcNode->id);
         }
     }
+
+    // printf("POST INSERT\n");
+    // printf("EDGES IN HASH\n");
+    // Edge *edge;
+    // for(edge=g->_edgesHashTbl; edge != NULL; edge=edge->hh.next) {
+    //     printf("edge composite ID: srcId: %llu destId: %llu relationId: %d\n", edge->edgeDesc.srcId, edge->edgeDesc.destId, edge->edgeDesc.relationId);
+    // }
 
     /* If access to newly created edges is requested
      * reset iterator pass it back to caller. */
@@ -325,31 +329,38 @@ void Graph_GetEdgesConnectingNodes(const Graph *g, NodeID src, NodeID dest, int 
 
     // Use a fake edge object as a lookup key.
     Edge lookupKey;
-    lookupKey.relationship_id = relation;
-    lookupKey.src_id = src;
-    lookupKey.dest_id = dest;
+    Node *srcNode = Graph_GetNode(g, src);
+    Node *destNode = Graph_GetNode(g, dest);
+    EdgeDesc *pEdgeDesc;
 
-    // Composite key length.
-    unsigned keylen = offsetof(Edge, relationship_id)
-                      + sizeof(lookupKey.relationship_id)
-                      - offsetof(Edge, src_id);
+    Edge_SetSrcNode(&lookupKey, srcNode);
+    Edge_SetDestNode(&lookupKey, destNode);
+    Edge_SetRelationID(&lookupKey, relation);
 
     // Search for edges.
-    if(lookupKey.relationship_id != GRAPH_NO_RELATION) {
+    if(relation != GRAPH_NO_RELATION) {
         // Relation type specified.
-        HASH_FIND(hh, g->_edgesHashTbl, &lookupKey.src_id, keylen, edges[edgesFound]);
+        // printf("Searching for edge with composite ID: srcId: %llu destId: %llu relationId: %d\n", lookupKey.edgeDesc.srcId, lookupKey.edgeDesc.destId, lookupKey.edgeDesc.relationId);
+        HASH_FIND(hh, g->_edgesHashTbl, &lookupKey.edgeDesc, sizeof(EdgeDesc), edges[edgesFound]);
         if(edges[edgesFound]) edgesFound += 1;
     } else {
         // Relation type missing, scan through each edge type.
         for(int r = 0; r < g->relation_count && edgesFound < *edgeCount; r++) {
             // Update lookup key relation id.
-            lookupKey.relationship_id = r;
-
+            Edge_SetRelationID(&lookupKey, r);
+            // printf("Searching for edge with composite ID: srcId: %llu destId: %llu relationId: %d\n", lookupKey.edgeDesc.srcId, lookupKey.edgeDesc.destId, lookupKey.edgeDesc.relationId);
             // See if there's an edge of type 'r' connecting source to destination.
-            HASH_FIND(hh, g->_edgesHashTbl, &lookupKey.src_id, keylen, edges[edgesFound]);
+            HASH_FIND(hh, g->_edgesHashTbl, &lookupKey.edgeDesc, sizeof(EdgeDesc), edges[edgesFound]);
             if(edges[edgesFound]) edgesFound += 1;
         }
     }
+
+    // printf("PRE INSERT!\n");
+    // printf("EDGES IN HASH\n");
+    // Edge *edge;
+    // for(edge=g->_edgesHashTbl; edge != NULL; edge=edge->hh.next) {
+    //     printf("edge composite ID: srcId: %llu destId: %llu relationId: %d\n", edge->edgeDesc.srcId, edge->edgeDesc.destId, edge->edgeDesc.relationId);
+    // }
 
     // Let caller know how many edges we've found.
     *edgeCount = edgesFound;
@@ -603,7 +614,7 @@ void Graph_Free(Graph *g) {
     // Free node blocks.
     DataBlock_Free(g->nodes);
     DataBlock_Free(g->edges);
-
+    HASH_CLEAR(hh,g->_edgesHashTbl);
     pthread_mutex_destroy(&g->_mutex);
     free(g);
 }

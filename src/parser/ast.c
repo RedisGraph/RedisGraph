@@ -137,7 +137,7 @@ AST_Validation _Validate_RETURN_Clause(const AST_Query *ast, char **reason) {
   }
 
   TrieMap *return_aliases = NewTrieMap();
-  ReturnClause_ReferredNodes(ast->returnNode, return_aliases);
+  ReturnClause_ReferredEntities(ast->returnNode, return_aliases);
   
   AST_Validation res = _Validate_Aliases_In_Match_Clause(return_aliases, ast->matchNode, reason);
   TrieMap_Free(return_aliases, TrieMap_NOP_CB);
@@ -192,7 +192,7 @@ AST_Validation _Validate_WHERE_Clause(const AST_Query *ast, char **reason) {
   if (!ast->matchNode) return AST_INVALID;
 
   TrieMap *where_aliases = NewTrieMap();
-  WhereClause_ReferredNodes(ast->whereNode, where_aliases);
+  WhereClause_ReferredEntities(ast->whereNode, where_aliases);
 
   AST_Validation res = _Validate_Aliases_In_Match_Clause(where_aliases, ast->matchNode, reason);
   TrieMap_Free(where_aliases, TrieMap_NOP_CB);

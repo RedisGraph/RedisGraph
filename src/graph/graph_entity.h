@@ -15,6 +15,7 @@
 
 // Defined in graph_entity.c
 extern SIValue *PROPERTY_NOTFOUND;
+typedef GrB_Index EntityID;
 typedef GrB_Index NodeID;
 typedef GrB_Index EdgeID;
 

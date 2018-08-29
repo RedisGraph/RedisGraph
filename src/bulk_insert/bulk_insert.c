@@ -273,7 +273,7 @@ RedisModuleString** _Bulk_Insert_Insert_Edges(RedisModuleCtx *ctx, RedisModuleSt
 
     long long total_labeled_edges = 0;
     // As we can have over 500k relations, this is safer as a heap allocation.
-    ConnectionDesc *connections = malloc(relations_count * sizeof(ConnectionDesc));
+    EdgeDesc *connections = malloc(relations_count * sizeof(EdgeDesc));
     LabelRelation labelRelations[label_count + 1];  // Extra one for unlabeled relations.
 
     if(label_count > 0) {

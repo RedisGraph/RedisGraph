@@ -31,6 +31,9 @@ class AlgebraicExpressionTest: public ::testing::Test {
     const char *query_no_intermidate_return_nodes;
     const char *query_one_intermidate_return_nodes;
     const char *query_multiple_intermidate_return_nodes;
+    const char *query_return_first_edge;
+    const char *query_return_intermidate_edge;
+    const char *query_return_last_edge;
 
     void SetUp() {
         // Initialize GraphBLAS.
@@ -46,6 +49,10 @@ class AlgebraicExpressionTest: public ::testing::Test {
         query_no_intermidate_return_nodes = "MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN p, e";
         query_one_intermidate_return_nodes = "MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN p, c, e";
         query_multiple_intermidate_return_nodes = "MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN p, f, c, e";
+
+        query_return_first_edge = "MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN ef";
+        query_return_intermidate_edge = "MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN ev";
+        query_return_last_edge = "MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN ew";
     }
 
     void TearDown() {
@@ -179,7 +186,7 @@ class AlgebraicExpressionTest: public ::testing::Test {
             0 0 1 0 0 0
             0 0 0 0 0 0
         */
-        ConnectionDesc relations[27];        
+        EdgeDesc relations[27];
         relations[0].srcId = 0;
         relations[0].destId = 1;
         relations[0].relationId = friend_relation_id;
@@ -436,6 +443,120 @@ TEST_F(AlgebraicExpressionTest, NoIntermidateReturnNodes) {
     // Clean up.
     Free_AST_Query(ast);
     AlgebraicExpression_Free(exp);
+    free(ae);
+}
+
+TEST_F(AlgebraicExpressionTest, OneIntermidateReturnEdge) {
+    Edge *e;
+    AST_Query *ast;
+    size_t exp_count;
+    const char *query;
+    AlgebraicExpression **ae;
+    AlgebraicExpression *exp;
+
+    //==============================================================================
+    //=== MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN ef
+    //==============================================================================
+    query = query_return_first_edge;
+    ast = ParseQuery(query, strlen(query), NULL);
+
+    exp_count = 0;
+    ae = AlgebraicExpression_From_Query(ast, ast->matchNode->_mergedPatterns, query_graph, &exp_count);
+    EXPECT_EQ(exp_count, 2);
+
+    // Validate first expression.
+    exp = ae[0];
+    EXPECT_EQ(exp->op, AL_EXP_MUL);
+    EXPECT_EQ(exp->operand_count, 1);
+    e = QueryGraph_GetEdgeByAlias(query_graph, "ef");
+    EXPECT_EQ(exp->operands[0].operand, e->mat);
+    EXPECT_TRUE(exp->edge != NULL);
+    
+    // Validate second expression.
+    exp = ae[1];
+    EXPECT_EQ(exp->op, AL_EXP_MUL);
+    EXPECT_EQ(exp->operand_count, 2);
+    e = QueryGraph_GetEdgeByAlias(query_graph, "ew");
+    EXPECT_EQ(exp->operands[0].operand, e->mat);
+    e = QueryGraph_GetEdgeByAlias(query_graph, "ev");
+    EXPECT_EQ(exp->operands[1].operand, e->mat);
+    EXPECT_TRUE(exp->edge == NULL);
+
+    // Clean up.
+    Free_AST_Query(ast);
+    for(int i = 0; i < exp_count; i++) AlgebraicExpression_Free(ae[i]);
+    free(ae);
+
+    //==============================================================================
+    //=== MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN ev
+    //==============================================================================
+    query = query_return_intermidate_edge;
+    ast = ParseQuery(query, strlen(query), NULL);
+
+    exp_count = 0;
+    ae = AlgebraicExpression_From_Query(ast, ast->matchNode->_mergedPatterns, query_graph, &exp_count);
+    EXPECT_EQ(exp_count, 3);
+
+    // Validate first expression.
+    exp = ae[0];
+    EXPECT_EQ(exp->op, AL_EXP_MUL);
+    EXPECT_EQ(exp->operand_count, 1);
+    e = QueryGraph_GetEdgeByAlias(query_graph, "ef");
+    EXPECT_EQ(exp->operands[0].operand, e->mat);
+    EXPECT_TRUE(exp->edge == NULL);
+
+    // Validate second expression.
+    exp = ae[1];
+    EXPECT_EQ(exp->op, AL_EXP_MUL);
+    EXPECT_EQ(exp->operand_count, 1);
+    e = QueryGraph_GetEdgeByAlias(query_graph, "ev");
+    EXPECT_EQ(exp->operands[0].operand, e->mat);
+    EXPECT_TRUE(exp->edge != NULL);
+
+    // Validate third expression.
+    exp = ae[2];
+    EXPECT_EQ(exp->op, AL_EXP_MUL);
+    EXPECT_EQ(exp->operand_count, 1);
+    e = QueryGraph_GetEdgeByAlias(query_graph, "ew");
+    EXPECT_EQ(exp->operands[0].operand, e->mat);
+    EXPECT_TRUE(exp->edge == NULL);
+
+    // Clean up.
+    Free_AST_Query(ast);
+    for(int i = 0; i < exp_count; i++) AlgebraicExpression_Free(ae[i]);
+    free(ae);
+
+    //==============================================================================
+    //=== MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN ew
+    //==============================================================================
+    query = query_return_last_edge;
+    ast = ParseQuery(query, strlen(query), NULL);
+
+    exp_count = 0;
+    ae = AlgebraicExpression_From_Query(ast, ast->matchNode->_mergedPatterns, query_graph, &exp_count);
+    EXPECT_EQ(exp_count, 2);
+
+    // Validate first expression.
+    exp = ae[0];
+    EXPECT_EQ(exp->op, AL_EXP_MUL);
+    EXPECT_EQ(exp->operand_count, 2);
+    e = QueryGraph_GetEdgeByAlias(query_graph, "ev");
+    EXPECT_EQ(exp->operands[0].operand, e->mat);
+    e = QueryGraph_GetEdgeByAlias(query_graph, "ef");
+    EXPECT_EQ(exp->operands[1].operand, e->mat);
+    EXPECT_TRUE(exp->edge == NULL);
+
+    // Validate second expression.
+    exp = ae[1];
+    EXPECT_EQ(exp->op, AL_EXP_MUL);
+    EXPECT_EQ(exp->operand_count, 1);
+    e = QueryGraph_GetEdgeByAlias(query_graph, "ew");
+    EXPECT_EQ(exp->operands[0].operand, e->mat);
+    EXPECT_TRUE(exp->edge != NULL);
+
+    // Clean up.
+    Free_AST_Query(ast);
+    for(int i = 0; i < exp_count; i++) AlgebraicExpression_Free(ae[i]);
     free(ae);
 }
 

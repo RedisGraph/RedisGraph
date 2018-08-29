@@ -168,15 +168,16 @@ void _BuildQueryGraphAddEdge(const Graph *g,
     Node *src = QueryGraph_GetNodeByAlias(graph, src_node->alias);
     Node *dest = QueryGraph_GetNodeByAlias(graph, dest_node->alias);
     Edge *e = Edge_New(INVALID_ENTITY_ID, src, dest, edge->ge.label);
+    _BuildQueryGraphAddProps(entity, (GraphEntity*)e);
 
     // Get relation matrix.
     if(edge->ge.label == NULL) {
-        e->relationship_id = GRAPH_NO_RELATION;
+        Edge_SetRelationID(e, GRAPH_NO_RELATION);
         e->mat = Graph_GetAdjacencyMatrix(g);
     } else {
         LabelStore *s = LabelStore_Get(ctx, STORE_EDGE, graph_name, edge->ge.label);
         if(s) {
-            e->relationship_id = s->id;
+            Edge_SetRelationID(e, s->id);
             e->mat = Graph_GetRelationMatrix(g, s->id);
         }
         else {
@@ -289,20 +290,6 @@ GraphEntity* QueryGraph_GetEntityByAlias(const QueryGraph *g, const char *alias)
     }
     
     return (GraphEntity*)QueryGraph_GetEdgeByAlias(g, alias);
-}
-
-Vector* QueryGraph_GetNDegreeNodes(const QueryGraph* g, int degree) {
-    Vector* nodes = NewVector(Node*, 0);
-    Node* n = NULL;
-    
-    for(int i = 0; i < g->node_count; i++) {
-        n = g->nodes[i];
-        if(Vector_Size(n->incoming_edges) == degree) {
-            Vector_Push(nodes, n);
-        }
-    }
-
-    return nodes;
 }
 
 char* QueryGraph_GetNodeAlias(const QueryGraph *g, const Node *n) {
@@ -451,7 +438,7 @@ ResultSetStatistics CommitGraph(RedisModuleCtx *ctx, const QueryGraph *qg, Graph
 
     // Create edges.
     if(edge_count > 0) {
-        ConnectionDesc connections[edge_count];
+        EdgeDesc connections[edge_count];
 
         for(int i = 0; i < edge_count; i++) {
             Edge *e = qg->edges[i];

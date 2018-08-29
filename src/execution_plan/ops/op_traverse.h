@@ -22,6 +22,10 @@ typedef struct {
     AlgebraicExpression *algebraic_expression;
     AlgebraicExpressionResult *algebraic_results;
     TuplesIter *it;
+    size_t edgeIdx;
+    size_t edgeCap;
+    size_t edgeCount;
+    Edge **edges;
 } Traverse;
 
 /* Creates a new Traverse operation */

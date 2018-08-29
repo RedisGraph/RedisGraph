@@ -5,18 +5,16 @@
 * modified with the Commons Clause restriction.
 */
 
+#include <math.h>
 #include <string.h>
 #include <assert.h>
 #include <stdio.h>
 #include "datablock.h"
 #include "datablock_iterator.h"
 
-#define MAX(a, b) \
-    ((a > b) ? a : b)
-
 // Computes the number of blocks required to accommodate n items.
 #define ITEM_COUNT_TO_BLOCK_COUNT(n) \
-    MAX(1, n / BLOCK_CAP)
+    ceil((double)n / BLOCK_CAP)
 
 // Computes block index from item index.
 #define ITEM_INDEX_TO_BLOCK_INDEX(idx) \

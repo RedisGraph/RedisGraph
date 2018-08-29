@@ -112,7 +112,7 @@ void _GraphType_LoadEdges(RedisModuleIO *rdb, Graph *g) {
     uint64_t edgeCount = RedisModule_LoadUnsigned(rdb);
     /* TODO: it might be better to process edges in batches,
      * such that we do not allocate huge chunks of memory. */
-    ConnectionDesc *connections = malloc(edgeCount * sizeof(ConnectionDesc));
+    EdgeDesc *connections = malloc(edgeCount * sizeof(EdgeDesc));
 
     // Construct connections.
     for(int i = 0; i < edgeCount; i++) {
@@ -191,9 +191,9 @@ void _GraphType_SaveEdges(RedisModuleIO *rdb, const Graph *g) {
     DataBlockIterator *iter = Graph_ScanEdges(g);
     Edge *e;
     while((e = (Edge*)DataBlockIterator_Next(iter))) {
-        RedisModule_SaveUnsigned(rdb, e->src_id);
-        RedisModule_SaveUnsigned(rdb, e->dest_id);
-        RedisModule_SaveUnsigned(rdb, e->relationship_id);
+        RedisModule_SaveUnsigned(rdb, Edge_GetSrcNodeID(e));
+        RedisModule_SaveUnsigned(rdb, Edge_GetDestNodeID(e));
+        RedisModule_SaveUnsigned(rdb, Edge_GetRelationID(e));
     }
     DataBlockIterator_Reset(iter);
 

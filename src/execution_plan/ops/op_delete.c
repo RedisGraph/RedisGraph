@@ -69,7 +69,7 @@ void _LocateEntities(OpDelete *op, QueryGraph *qg, AST_DeleteNode *ast_delete_no
 
         op->edges_to_delete[op->edge_count].src = QueryGraph_GetNodeRef(op->qg, e->src);
         op->edges_to_delete[op->edge_count].dest = QueryGraph_GetNodeRef(op->qg, e->dest);
-        op->edges_to_delete[op->edge_count].relation_type = e->relationship_id;
+        op->edges_to_delete[op->edge_count].relation_type = Edge_GetRelationID(e);
         op->edge_count++;
     }
 }
