@@ -60,6 +60,7 @@ void _Graph_ResizeMatrix(const Graph *g, GrB_Matrix m) {
         }
         _Graph_LeaveCriticalSection((Graph *)g);
     }
+
 }
 
 // Resize graph's node array to contain at least n nodes.
@@ -92,7 +93,7 @@ void _Graph_ResizeNodes(Graph *g, size_t n) {
 void _Graph_NodeBlockMigrateNode(Graph *g, int src, int dest) {
     // Get the block in which dest node resides.
     NodeBlock *destNodeBlock = GRAPH_GET_NODE_BLOCK(g, dest);
-    
+
     // Get node position within its block.
     int destNodeBlockIdx = GRAPH_NODE_POSITION_WITHIN_BLOCK(dest);
 
@@ -151,6 +152,28 @@ void _Graph_MigrateRowCol(Graph *g, int src, int dest) {
     GrB_Vector_free(&col);
     GrB_Vector_free(&zero);
     GrB_Descriptor_free(&desc);
+}
+
+void _Graph_ReplaceDeletedNode(Graph *g, GrB_Vector zero, NodeID replacement, NodeID to_delete) {
+    // Update label matrices.
+    for (int i = 0; i < g->label_count; i ++) {
+        bool src_has_label = false;
+        bool dest_has_label = false;
+        GrB_Matrix M = Graph_GetLabelMatrix(g, i);
+        GrB_Matrix_extractElement_BOOL(&src_has_label, M, replacement, replacement);
+        GrB_Matrix_extractElement_BOOL(&dest_has_label, M, to_delete, to_delete);
+
+        if (dest_has_label && !src_has_label) {
+            // Zero out the destination column if the deleted node possesses the label and the replacement does not
+            assert(GrB_Col_assign(M, NULL, NULL, zero, GrB_ALL, Graph_NodeCount(g), to_delete, NULL) == GrB_SUCCESS);
+        } else if (!dest_has_label && src_has_label) {
+            // Set the destination column if the replacement possesses the label and the destination does not
+            GrB_Matrix_setElement_BOOL(M, true, to_delete, to_delete);
+        }
+    }
+
+    _Graph_MigrateRowCol(g, replacement, to_delete);
+    _Graph_NodeBlockMigrateNode(g, replacement, to_delete);
 }
 
 /* Removes a single entry from given matrix. */
@@ -223,17 +246,17 @@ void _Graph_DeleteTypedEdges(Graph *g, NodeID src_id, NodeID dest_id, int relati
 Graph *Graph_New(size_t n) {
     assert(n > 0);
     Graph *g = malloc(sizeof(Graph));
-    
+
     g->node_cap = GRAPH_NODE_COUNT_TO_BLOCK_COUNT(n) * NODEBLOCK_CAP;
     g->node_count = 0;
     g->relation_cap = GRAPH_DEFAULT_RELATION_CAP;
     g->relation_count = 0;
     g->label_cap = GRAPH_DEFAULT_LABEL_CAP;
     g->label_count = 0;
-    
+
     g->block_count = GRAPH_NODE_COUNT_TO_BLOCK_COUNT(n);
     g->nodes_blocks = malloc(sizeof(NodeBlock*) * g->block_count);
-    
+
     // Allocates blocks.
     for(int i = 0; i < g->block_count; i++) {
         g->nodes_blocks[i] = NodeBlock_New();
@@ -274,7 +297,7 @@ size_t Graph_NodeCount(const Graph *g) {
 
 void Graph_CreateNodes(Graph* g, size_t n, int* labels, NodeIterator **it) {
     assert(g);
-    
+
     _Graph_ResizeNodes(g, n);
 
     if(it != NULL) {
@@ -337,101 +360,65 @@ Node* Graph_GetNode(const Graph *g, NodeID id) {
     return n;
 }
 
+/* Accepts a *sorted* array of IDs for nodes to be deleted.
+ * The deletion is performed by swapping higher-ID nodes not scheduled
+ * for deletion into lower vacant positions, until all IDs greater than
+ * the updated node count are scheduled for deletion. The adjacency matrix
+ * is then resized to remove these. */
 void Graph_DeleteNodes(Graph *g, NodeID *IDs, size_t IDCount) {
     assert(g && IDs);
     if(IDCount == 0) return;
 
-    typedef struct {
-        int nodeID;         // Node being deleted.
-        int replacementID;  // Node taking over.
-        bool delete;        // No need to replace, simply delete.
-    } Replacement;
+    int post_delete_count = Graph_NodeCount(g) - IDCount;
 
-    Replacement *replacements = malloc(sizeof(Replacement) * IDCount);
+    // Track the highest remaining ID in the graph
+    NodeID id_to_save = Graph_NodeCount(g) - 1;
 
-    /* Allocate replacement candidates. */
-    for(int i = 0; i < IDCount; i++) {
-        replacements[i].replacementID = g->node_count - (IDCount - i);
-        replacements[i].delete = false;
-    }
+    // Track the highest ID scheduled for deletion that is less than id_to_save
+    int largest_delete_idx = IDCount - 1;
+    NodeID largest_delete = IDs[largest_delete_idx];
 
-    /* Locate which soon to deleted nodes are also replacement candidates. */
-    for(int i = 0; i < IDCount; i++) {
-        int id = IDs[i];
-        if(id >= (g->node_count - IDCount)) {
-            int j = IDCount - (g->node_count - id);
-            replacements[j].nodeID = id;
-            replacements[j].delete = true;
-        }
-    }
-
-    /* For nodes marked for deletion which do require a replacement
-     * find a replacement which is not marked for quick deletion. */
-    for(int j = 0, i = 0; i < IDCount; i++) {
-        int id = IDs[i];
-        // Require a replacement?
-        if(id < (g->node_count - IDCount)) {
-            // Locate a valid replacement.
-            while(replacements[j].delete) j++;
-            replacements[j++].nodeID = id;
-        }
-    }
-
-    /* Replace removed nodes within node blocks. */
-    for(int j = 0, i = 0; i < IDCount; i++) {
-        Replacement r = replacements[i];
-        // No need to perform replacement.
-        if(r.delete) continue;
-        // Override nodeID with replacementID.
-        _Graph_NodeBlockMigrateNode(g, r.replacementID, r.nodeID);
-    }
-
-    /* Replace rows, columns. */
-    for(int i = 0; i < IDCount; i++) {
-        Replacement r = replacements[i];
-        if(!r.delete) {
-            _Graph_MigrateRowCol(g, r.replacementID, r.nodeID);
-        }
-    }
-
-    // Zero vector to clear entire row/column.
     GrB_Vector zero;
-    GrB_Vector_new(&zero, GrB_BOOL, g->node_cap);
+    GrB_Vector_new(&zero, GrB_BOOL, Graph_NodeCount(g));
 
-    // Update label matrices.
-    for(int i = 0; i < g->label_count; i++) {
-        GrB_Matrix M = Graph_GetLabelMatrix(g, i);
-        for(int j = 0; j < IDCount; j++) {
-            Replacement r = replacements[j];
-            bool srcExists = false;
-            bool destExists = false;
-            GrB_Matrix_extractElement_BOOL(&srcExists, M, r.replacementID, r.replacementID);
-            GrB_Matrix_extractElement_BOOL(&destExists, M, r.nodeID, r.nodeID);
+    // Track the lowest ID scheduled for deletion as the destination slot for
+    // id_to_save
+    int id_to_replace_idx = 0;
+    NodeID id_to_replace;
 
-            // Clear, dest.
-            if(destExists) {
-                if(!srcExists || (srcExists && r.delete) ) {
-                    GrB_Col_assign(M, NULL, NULL, zero, GrB_ALL, g->node_cap, r.replacementID, NULL);
-                }
-            }
-
-            // Set dest
-            if(!destExists) {
-                if(srcExists && !r.delete) {
-                    GrB_Matrix_setElement_BOOL(M, true, r.nodeID, r.nodeID);
-                }
-            }
+    /* The outer while loop iterates over IDs to be deleted, starting with the
+     * lowest, until reaching an ID greater than or equal to the post-delete node count.
+     * Once this condition is met, we've guaranteed that all IDs below the count are
+     * not marked for deletion, and all nodes above or equal are, and can thus be removed
+     * with matrix resizes. */
+    while ((id_to_replace = IDs[id_to_replace_idx]) < post_delete_count) {
+        /* Track the largest deletion candidate lower than the next ID we plan to save.
+         * (This loop will frequently not trigger at all.) */
+        while (id_to_save < largest_delete) {
+            largest_delete = IDs[--largest_delete_idx];
         }
+        // Ensure that we don't save any nodes scheduled for deletion
+        if (id_to_save == largest_delete) {
+            id_to_save --;
+            continue;
+        }
+
+        // Perform all necessary substitutions in node storage and
+        // adjacency and label matrices
+        _Graph_ReplaceDeletedNode(g, zero, id_to_save, id_to_replace);
+
+        // A swap has been made, so we'll update our source and destination indices.
+        id_to_replace_idx ++;
+        if (id_to_replace_idx >= IDCount) break;
+        id_to_save --;
     }
 
-    g->node_count -= IDCount;
+    g->node_count = post_delete_count;
 
     // Force matrix resizing.
     _Graph_ResizeMatrix(g, g->adjacency_matrix);
 
-    // Clean up.
     GrB_Vector_free(&zero);
-    free(replacements);
 }
 
 void Graph_DeleteEdge(Graph *g, NodeID src_id, NodeID dest_id, int relation) {
@@ -459,12 +446,12 @@ void Graph_LabelNodes(Graph *g, NodeID start_node_id, NodeID end_node_id, int la
            start_node_id >= 0 &&
            start_node_id <= end_node_id &&
            end_node_id < g->node_count);
-    
+
     GrB_Matrix m = Graph_GetLabelMatrix(g, label);
     for(int node_id = start_node_id; node_id <= end_node_id; node_id++) {
         GrB_Matrix_setElement_BOOL(m, true, node_id, node_id);
     }
-    
+
     if(it) {
         *it = NodeIterator_New(GRAPH_GET_NODE_BLOCK(g, start_node_id),
                                start_node_id,
@@ -532,7 +519,7 @@ void Graph_CommitPendingOps(Graph *g) {
 
     GrB_Matrix M;
     GrB_Index nvals;
-    
+
     M = Graph_GetAdjacencyMatrix(g);
     GrB_Matrix_nvals(&nvals, M);
 
@@ -549,8 +536,7 @@ void Graph_CommitPendingOps(Graph *g) {
 
 void Graph_Free(Graph *g) {
     assert(g);
-        
-    
+
     /* TODO: Free nodes, currently we can't free nodes
      * as they are embedded within the chain block, as a result
      * we can't call free on a single node.
@@ -565,7 +551,7 @@ void Graph_Free(Graph *g) {
     //     Node_Free(node);
     // }
     // NodeIterator_Free(it);
-    
+
     // Free node blocks.
     for(int i = 0; i<g->block_count; i++) {
         NodeBlock_Free(g->nodes_blocks[i]);
@@ -582,7 +568,7 @@ void Graph_Free(Graph *g) {
         GrB_Matrix_free(&m);
     }
     free(g->_relations);
-    
+
     // Free matrices.
     for(int i = 0; i < g->label_count; i++) {
         m = Graph_GetLabelMatrix(g, i);

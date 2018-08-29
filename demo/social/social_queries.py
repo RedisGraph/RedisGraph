@@ -180,6 +180,25 @@ delete_person_query = QueryInfo(
     expected_result=[]
 )
 
+post_delete_label_query = QueryInfo(
+    query="""MATCH (p:person) RETURN p.name""",
+    description='Retrieve all nodes with person label',
+    max_run_time_ms=0.5,
+    expected_result=[['Boaz Arad'],
+                     ['Valerie Abigail Arad'],
+                     ['Ori Laslo'],
+                     ['Shelly Laslo Rooz'],
+                     ['Ailon Velger'],
+                     ['Noam Nativ'],
+                     ['Jane Chernomorin'],
+                     ['Alon Fital'],
+                     ['Mor Yesharim'],
+                     ['Gal Derriere'],
+                     ['Lucy Yanfital'],
+                     ['Tal Doron'],
+                     ['Omri Traub']]
+)
+
 queries_info = [
     my_friends_query,
     friends_of_friends_query,
@@ -192,7 +211,8 @@ queries_info = [
     happy_birthday_query,
     friends_age_statistics_query,
     delete_friendships_query,
-    delete_person_query
+    delete_person_query,
+    post_delete_label_query
 ]
 
 # queries_info = [
