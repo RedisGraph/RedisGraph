@@ -173,5 +173,17 @@ class ImdbFlowTest(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.actors_over_85_index_scan)
 
+    def test_find_titles_starting_with_american(self):
+        global redis_graph
+        actual_result = redis_graph.query(queries.find_titles_starting_with_american_query.query)
+
+        # assert result set
+        self._assert_only_expected_results_are_in_actual_results(
+            actual_result,
+            queries.find_titles_starting_with_american_query)
+
+        # assert query run time
+        self._assert_run_time(actual_result, queries.find_titles_starting_with_american_query)
+
 if __name__ == '__main__':
     unittest.main()

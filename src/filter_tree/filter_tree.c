@@ -126,10 +126,10 @@ int _applyPredicateFilters(const FT_FilterNode* root) {
     /* A op B
      * Evaluate the left and right sides of the predicate to obtain
      * comparable SIValues. */
-     SIValue lhs = AR_EXP_Evaluate(root->pred.lhs);
-     SIValue rhs = AR_EXP_Evaluate(root->pred.rhs);
+    SIValue lhs = AR_EXP_Evaluate(root->pred.lhs);
+    SIValue rhs = AR_EXP_Evaluate(root->pred.rhs);
 
-     return _applyFilter(&lhs, &rhs, root->pred.op);
+    return _applyFilter(&lhs, &rhs, root->pred.op);
 }
 
 int FilterTree_applyFilters(const FT_FilterNode* root) {
@@ -155,7 +155,6 @@ int FilterTree_applyFilters(const FT_FilterNode* root) {
 }
 
 void FilterTree_bindEntities(FT_FilterNode* root, const QueryGraph *g) {
-    char *alias;
     switch(root->t) {
         case FT_N_COND:
             FilterTree_bindEntities(root->cond.left, g);
@@ -187,7 +186,7 @@ void _FilterTree_CollectAliases(const FT_FilterNode *root, TrieMap *aliases) {
             /* Traverse left and right-hand expressions, adding all encountered aliases
              * to the triemap.
              * We'll typically encounter 0 or 1 aliases in each expression,
-             * but there are multi-argument exceptions (like concat). */
+             * but there are multi-argument exceptions. */
             AR_EXP_CollectAliases(root->pred.lhs, aliases);
             AR_EXP_CollectAliases(root->pred.rhs, aliases);
 

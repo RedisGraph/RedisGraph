@@ -14,6 +14,29 @@
 #include "../arithmetic/repository.h"
 #include "../arithmetic/arithmetic_expression.h"
 
+/* Compares a triemap of user-specified functions with the registered functions we provide. */
+AST_Validation _AST_ValidateReferredFunctions(TrieMap *referred_functions, char **reason) {
+  void *value;
+  tm_len_t len;
+  char *funcName;
+  TrieMapIterator *it = TrieMap_Iterate(referred_functions, "", 0);
+  AST_Validation res = AST_VALID;
+
+  // TODO: return RAX.
+  while(TrieMapIterator_Next(it, &funcName, &len, &value)) {
+    funcName[len] = 0;
+    if( (len > 32) || (!AR_FuncExists(funcName) && !Agg_FuncExists(funcName)) ) {
+      asprintf(reason, "Unknown function '%s'", funcName);
+      res = AST_INVALID;
+      break;
+    }
+  }
+
+  TrieMapIterator_Free(it);
+
+  return res;
+}
+
 AST_Query *New_AST_Query(AST_MatchNode *matchNode, AST_WhereNode *whereNode,
                          AST_CreateNode *createNode, AST_MergeNode *mergeNode,
                          AST_SetNode *setNode, AST_DeleteNode *deleteNode,
@@ -56,6 +79,7 @@ AST_Validation _Validate_Aliases_In_Match_Clause(TrieMap *aliasesToCheck,
     }
   }
 
+  TrieMapIterator_Free(it);
   TrieMap_Free(matchAliases, TrieMap_NOP_CB);
   return res;
 }
@@ -143,25 +167,12 @@ AST_Validation _Validate_RETURN_Clause(const AST_Query *ast, char **reason) {
   TrieMap_Free(return_aliases, TrieMap_NOP_CB);
   if(res != AST_VALID) return res;
 
-  // Make sure all referenced function do exists.
+  // Retrieve all user-specified functions in RETURN clause.
   TrieMap *ref_functions = NewTrieMap();
-  // TODO check WHERE too
   ReturnClause_ReferredFunctions(ast->returnNode, ref_functions);
 
-  void *value;
-  tm_len_t len;
-  char *funcName;
-  TrieMapIterator *it = TrieMap_Iterate(ref_functions, "", 0);
-
-  // TODO: return RAX.
-  while(TrieMapIterator_Next(it, &funcName, &len, &value)) {
-    funcName[len] = 0;
-    if( (len > 32) || (!AR_FuncExists(funcName) && !Agg_FuncExists(funcName)) ) {
-      asprintf(reason, "Unknown function '%s'", funcName);
-      res = AST_INVALID;
-      break;
-    }
-  }
+  // Verify that referred functions exist.
+  res = _AST_ValidateReferredFunctions(ref_functions, reason);
 
   TrieMap_Free(ref_functions, TrieMap_NOP_CB);
 
@@ -197,6 +208,18 @@ AST_Validation _Validate_WHERE_Clause(const AST_Query *ast, char **reason) {
 
   AST_Validation res = _Validate_Aliases_In_Match_Clause(where_aliases, ast->matchNode, reason);
   TrieMap_Free(where_aliases, TrieMap_NOP_CB);
+
+  if (res != AST_VALID) return res;
+
+  // Retrieve all user-specified functions in WHERE clause.
+  TrieMap *ref_functions = NewTrieMap();
+  WhereClause_ReferredFunctions(ast->whereNode->filters, ref_functions);
+
+  // Verify that referred functions exist.
+  res = _AST_ValidateReferredFunctions(ref_functions, reason);
+
+  TrieMap_Free(ref_functions, TrieMap_NOP_CB);
+
   return res;
 }
 

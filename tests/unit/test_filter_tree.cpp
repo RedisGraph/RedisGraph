@@ -32,7 +32,11 @@ class FilterTreeTest: public ::testing::Test {
 
         AST_FilterNode *root = New_AST_PredicateNode(lhs, EQ, rhs);
         FT_FilterNode *tree = BuildFiltersTree(root);
+
+        Free_AST_ArithmeticExpressionNode(lhs);
+        Free_AST_ArithmeticExpressionNode(rhs);
         Free_AST_FilterNode(root);
+
         return tree;
     }
 
@@ -41,7 +45,11 @@ class FilterTreeTest: public ::testing::Test {
         AST_ArithmeticExpressionNode *rhs = New_AST_AR_EXP_VariableOperandNode("him", "age");
         AST_FilterNode *root = New_AST_PredicateNode(lhs, GT, rhs);
         FT_FilterNode *tree = BuildFiltersTree(root);
+
+        Free_AST_ArithmeticExpressionNode(lhs);
+        Free_AST_ArithmeticExpressionNode(rhs);
         Free_AST_FilterNode(root);
+
         return tree;
     }
 
@@ -58,7 +66,13 @@ class FilterTreeTest: public ::testing::Test {
 
         AST_FilterNode *root = New_AST_ConditionNode(left, cond, right);
         FT_FilterNode *tree = BuildFiltersTree(root);
+
+        Free_AST_ArithmeticExpressionNode(left_lhs);
+        Free_AST_ArithmeticExpressionNode(left_rhs);
+        Free_AST_ArithmeticExpressionNode(right_lhs);
+        Free_AST_ArithmeticExpressionNode(right_rhs);
         Free_AST_FilterNode(root);
+
         return tree;
     }
 
@@ -86,7 +100,6 @@ class FilterTreeTest: public ::testing::Test {
         AST_ArithmeticExpressionNode *age_expression = New_AST_AR_EXP_ConstOperandNode(age);
         SIValue height = SI_DoubleVal(188);
         AST_ArithmeticExpressionNode *height_expression = New_AST_AR_EXP_ConstOperandNode(height);
-
         // Build the AST filter nodes
         AST_FilterNode *left_left_child = New_AST_PredicateNode(left_left_variable, GT, age_expression);
         AST_FilterNode *left_right_child = New_AST_PredicateNode(left_right_variable, LE, height_expression);
@@ -99,7 +112,10 @@ class FilterTreeTest: public ::testing::Test {
         AST_FilterNode *root = New_AST_ConditionNode(left, AND, right);
         FT_FilterNode *tree = BuildFiltersTree(root);
 
+        Free_AST_ArithmeticExpressionNode(age_expression);
+        Free_AST_ArithmeticExpressionNode(height_expression);
         Free_AST_FilterNode(root);
+
         return tree;
     }
 

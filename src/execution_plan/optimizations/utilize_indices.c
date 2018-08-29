@@ -71,8 +71,10 @@ void utilizeIndices(RedisModuleCtx *ctx, const char *graph_name, ExecutionPlan *
       OpBase *opFilter;
       Vector_Get(filterOps, i, &opFilter);
       ft = ((Filter *)opFilter)->filterTree;
-      // TODO for the moment, only use filters with left-hand node-property pairs
-      // and right-hand values. This should be pretty easy to improve upon.
+      /* We'll only employ indices when we have filters of the form:
+       * node.property [rel] constant
+       * If we are not comparing against a constant, then we cannot pre-define useful bounds
+       * for the index iterator, which diminishes their utility. */
       if (!AR_EXP_IsNodeVariadicOperand(ft->pred.lhs)) continue;
       if (!AR_EXP_IsNodeConstantOperand(ft->pred.rhs)) continue;
 
