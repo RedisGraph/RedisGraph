@@ -569,8 +569,8 @@ TEST_F(GraphTest, RemoveMultipleNodes) {
 
     // Delete first and last nodes.
     NodeID nodeToDelete[2];
-    nodeToDelete[0] = 0; // Remove last node.
-    nodeToDelete[1] = 7; // Remove first node.
+    nodeToDelete[0] = 0; // Remove first node.
+    nodeToDelete[1] = 7; // Remove last node.
 
     simple_tic(tic);
     Graph_DeleteNodes(g, nodeToDelete, 2);
