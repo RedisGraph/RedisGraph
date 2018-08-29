@@ -217,6 +217,7 @@ Vector *FilterTree_CollectAliases(const FT_FilterNode *root) {
         Vector_Push(aliases, alias);
     }
 
+    TrieMapIterator_Free(it);
     TrieMap_Free(t, NULL);
     return aliases;
 }

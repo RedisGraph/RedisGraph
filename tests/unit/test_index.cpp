@@ -129,6 +129,10 @@ TEST_F(IndexTest, StringIndex) {
     num_vals ++;
   }
   EXPECT_EQ(num_vals, expected_n);
+
+  Free_AST_FilterNode(root);
+  Free_AST_ArithmeticExpressionNode(lhs);
+  Free_AST_ArithmeticExpressionNode(rhs);
   SIValue_Free(&lb);
   IndexIter_Free(iter);
   Index_Free(str_idx);
@@ -172,6 +176,9 @@ TEST_F(IndexTest, NumericIndex) {
   }
   EXPECT_EQ(num_vals, expected_n);
 
+  Free_AST_FilterNode(root);
+  Free_AST_ArithmeticExpressionNode(lhs);
+  Free_AST_ArithmeticExpressionNode(rhs);
   IndexIter_Free(iter);
   Index_Free(num_idx);
 }
@@ -200,6 +207,7 @@ TEST_F(IndexTest, IteratorBounds) {
   Node *cur;
   SIValue *lb;
   int ctr = 0;
+  // TODO ensure lower bound is not still first value
   // Find the value of the 10th element in the index
   while ((node_id = IndexIter_Next(iter)) != NULL) {
     ctr ++;
@@ -237,6 +245,7 @@ TEST_F(IndexTest, IteratorBounds) {
     ub = GraphEntity_Get_Property((GraphEntity*)cur, num_key);
     if (ub->doubleval > lb->doubleval) break;
   }
+  Free_AST_ArithmeticExpressionNode(rhs);
   rhs = New_AST_AR_EXP_ConstOperandNode(*ub);
   AST_FilterNode *root_le = New_AST_PredicateNode(lhs, LE, rhs);
   FT_FilterNode *ub_filter_le = BuildFiltersTree(root_le);
@@ -259,6 +268,7 @@ TEST_F(IndexTest, IteratorBounds) {
    * Number of values should be 0. */
   IndexIter_Reset(iter);
   SIValue ub_last = SI_DoubleVal(lb->doubleval - 1);
+  Free_AST_ArithmeticExpressionNode(rhs);
   rhs = New_AST_AR_EXP_ConstOperandNode(ub_last);
   AST_FilterNode *root_lt_last = New_AST_PredicateNode(lhs, LT, rhs);
   FT_FilterNode *ub_filter_last = BuildFiltersTree(root_lt_last);
@@ -266,11 +276,18 @@ TEST_F(IndexTest, IteratorBounds) {
   cur_vals = count_iter_vals(iter);
   EXPECT_EQ(cur_vals, 0);
 
-  free(lb_filter_gt);
-  free(lb_filter_ge);
-  free(ub_filter_le);
-  free(ub_filter_lt);
-  free(ub_filter_last);
+  Free_AST_ArithmeticExpressionNode(lhs);
+  Free_AST_ArithmeticExpressionNode(rhs);
+  Free_AST_FilterNode(root_ge);
+  Free_AST_FilterNode(root_gt);
+  Free_AST_FilterNode(root_le);
+  Free_AST_FilterNode(root_lt);
+  Free_AST_FilterNode(root_lt_last);
+  FilterTree_Free(lb_filter_gt);
+  FilterTree_Free(lb_filter_ge);
+  FilterTree_Free(ub_filter_le);
+  FilterTree_Free(ub_filter_lt);
+  FilterTree_Free(ub_filter_last);
   IndexIter_Free(iter);
 }
 
