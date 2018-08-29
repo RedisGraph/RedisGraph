@@ -410,7 +410,6 @@ TEST_F(GraphTest, GraphConstruction)
 
 TEST_F(GraphTest, RemoveNodes)
 {
-    return;
     unsigned int nodeCount = 32;
     int relationCount = 4;
 
