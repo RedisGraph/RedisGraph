@@ -130,12 +130,8 @@ AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(AlgebraicExpr
             // Finalize current expression.
             iexp->dest_node = QueryGraph_GetNodeRef(q, dest);
             assert(iexp->operand_count > 0);
-            if(iexp->edge) {
-                printf("Strange\n");
-                printf("iexp->operand_count: %zu\n", iexp->operand_count);
-                assert(iexp->operand_count == 1);
-            }
-            
+            if(iexp->edge) assert(iexp->operand_count == 1);
+
             /* Create a new algebraic expression. */
             iexp = _AE_MUL(exp->operand_count - operandIdx);
             iexp->operand_count = 0;

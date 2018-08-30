@@ -184,5 +184,16 @@ class SocialFlowTest(FlowTestsBase):
 
         # assert query run time
         self._assert_run_time(actual_result, queries.delete_person_query)
+
+    def test_15_post_delete_label(self):
+        global redis_graph
+        actual_result = redis_graph.query(queries.post_delete_label_query.query)
+         # assert result set
+        self._assert_only_expected_results_are_in_actual_results(
+            actual_result,
+            queries.post_delete_label_query)
+        # assert query run time
+        self._assert_run_time(actual_result, queries.post_delete_label_query)
+
 if __name__ == '__main__':
     unittest.main()
