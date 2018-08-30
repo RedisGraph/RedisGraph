@@ -117,8 +117,8 @@ struct AR_ExpNode {
 
 typedef struct AR_ExpNode AR_ExpNode;
 
-int AR_EXP_IsNodeVariadicOperand(AR_ExpNode *exp);
-int AR_EXP_IsNodeConstantOperand(AR_ExpNode *exp);
+/* Return AR_OperandNodeType for operands and -1 for operations. */
+int AR_EXP_GetOperandType(AR_ExpNode *exp);
 
 /* Evaluate arithmetic expression tree. */
 SIValue AR_EXP_Evaluate(const AR_ExpNode *root);
@@ -131,8 +131,6 @@ AR_ExpNode* AR_EXP_NewVariableOperandNode(GraphEntity **entity, const char *enti
 AR_ExpNode* AR_EXP_NewOpNode(char *func_name, int child_count);
 
 /* Utility functions */
-/* Link variadics in expression tree to their corresponding QueryGraph entities. */
-void AR_EXP_BindVariadics(AR_ExpNode *root, const QueryGraph *qg);
 /* Traverse an expression tree and add all graph entity aliases
  * (from variadics) to a triemap. */
 void AR_EXP_CollectAliases(AR_ExpNode *root, TrieMap *aliases);

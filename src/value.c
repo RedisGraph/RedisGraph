@@ -411,12 +411,6 @@ size_t SIValue_StringConcat(SIValue* strings, unsigned int string_count, char *b
   return offset;
 }
 
-/* Returns 1 if argument is positive, -1 if argument is negative,
- * and 0 if argument is zero (matching the return style of the strcmp family).
- * This is necessary to construct safe integer returns when the delta between
- * two double values is < 1.0 (and would thus be rounded to 0). */
-#define COMPARE_RETVAL(a) ((a) > 0) - ((a) < 0)
-
 int SIValue_Compare(SIValue a, SIValue b) {
   // Types are identical
   if (a.type == b.type) {

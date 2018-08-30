@@ -31,7 +31,7 @@ class FilterTreeTest: public ::testing::Test {
         AST_ArithmeticExpressionNode *rhs = New_AST_AR_EXP_ConstOperandNode(value);
 
         AST_FilterNode *root = New_AST_PredicateNode(lhs, EQ, rhs);
-        FT_FilterNode *tree = BuildFiltersTree(root);
+        FT_FilterNode *tree = BuildFiltersTree(root, NULL);
 
         Free_AST_ArithmeticExpressionNode(lhs);
         Free_AST_ArithmeticExpressionNode(rhs);
@@ -44,7 +44,7 @@ class FilterTreeTest: public ::testing::Test {
         AST_ArithmeticExpressionNode *lhs = New_AST_AR_EXP_VariableOperandNode("me", "age");
         AST_ArithmeticExpressionNode *rhs = New_AST_AR_EXP_VariableOperandNode("him", "age");
         AST_FilterNode *root = New_AST_PredicateNode(lhs, GT, rhs);
-        FT_FilterNode *tree = BuildFiltersTree(root);
+        FT_FilterNode *tree = BuildFiltersTree(root, NULL);
 
         Free_AST_ArithmeticExpressionNode(lhs);
         Free_AST_ArithmeticExpressionNode(rhs);
@@ -65,7 +65,7 @@ class FilterTreeTest: public ::testing::Test {
         AST_FilterNode *right = New_AST_PredicateNode(right_lhs, LE, right_rhs);
 
         AST_FilterNode *root = New_AST_ConditionNode(left, cond, right);
-        FT_FilterNode *tree = BuildFiltersTree(root);
+        FT_FilterNode *tree = BuildFiltersTree(root, NULL);
 
         Free_AST_ArithmeticExpressionNode(left_lhs);
         Free_AST_ArithmeticExpressionNode(left_rhs);
@@ -110,7 +110,7 @@ class FilterTreeTest: public ::testing::Test {
         AST_FilterNode *right = New_AST_ConditionNode(right_left_child, OR, right_right_child);
 
         AST_FilterNode *root = New_AST_ConditionNode(left, AND, right);
-        FT_FilterNode *tree = BuildFiltersTree(root);
+        FT_FilterNode *tree = BuildFiltersTree(root, NULL);
 
         Free_AST_ArithmeticExpressionNode(age_expression);
         Free_AST_ArithmeticExpressionNode(height_expression);

@@ -173,6 +173,27 @@ class ImdbFlowTest(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.actors_over_85_index_scan)
 
+    def test_index_scan_eighties_movies(self):
+        global redis_graph
+
+        # Execute this command directly, as its response does not contain the result set that
+        # 'redis_graph.query()' expects
+        redis_graph.redis_con.execute_command("GRAPH.QUERY", redis_graph.name, "CREATE INDEX ON :movie(year)")
+        execution_plan = redis_graph.execution_plan(queries.eighties_movies_index_scan.query)
+        self.assertIn('Index Scan', execution_plan)
+
+        actual_result = redis_graph.query(queries.eighties_movies_index_scan.query)
+
+        redis_graph.redis_con.execute_command("GRAPH.QUERY", redis_graph.name, "DROP INDEX ON :movie(year)")
+
+        # assert result set
+        self._assert_only_expected_results_are_in_actual_results(
+            actual_result,
+            queries.eighties_movies_index_scan)
+
+        # assert query run time
+        self._assert_run_time(actual_result, queries.eighties_movies_index_scan)
+
     def test_find_titles_starting_with_american(self):
         global redis_graph
         actual_result = redis_graph.query(queries.find_titles_starting_with_american_query.query)

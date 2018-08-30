@@ -19,7 +19,7 @@ extern "C" {
 extern int compareNodes(GrB_Index a, GrB_Index b);
 extern int compareStrings(SIValue *a, SIValue *b);
 extern int compareNumerics(SIValue *a, SIValue *b);
-extern void cloneKey(SIValue **property);
+extern SIValue* cloneKey(SIValue *property);
 extern void freeKey(SIValue *key);
 
 #ifdef __cplusplus

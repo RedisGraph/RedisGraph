@@ -66,11 +66,6 @@ void AR_EXP_GetFunctions(const AST_ArithmeticExpressionNode *exp, TrieMap *funct
 	}
 }
 
-int AR_EXP_GetOpType(AST_ArithmeticExpressionNode *exp) {
-  if (exp->type == AST_AR_EXP_OPERAND) return exp->operand.type;
-  return 0;
-}
-
 void Free_AST_ArithmeticExpressionNode(AST_ArithmeticExpressionNode *arExpNode) {
 	/* Free arithmetic expression operation. */
 	if(arExpNode->type == AST_AR_EXP_OP) {

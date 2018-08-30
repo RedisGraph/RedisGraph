@@ -26,6 +26,15 @@ FT_FilterNode* CreateCondFilterNode(int op) {
     return filterNode;
 }
 
+FT_FilterNode* _CreatePredicateFilterNode(const AST_PredicateNode *pn, const QueryGraph *qg) {
+    FT_FilterNode *filterNode = malloc(sizeof(FT_FilterNode));
+    filterNode->t= FT_N_PRED;
+    filterNode->pred.op = pn->op;
+    filterNode->pred.lhs = AR_EXP_BuildFromAST(pn->lhs, qg);
+    filterNode->pred.rhs = AR_EXP_BuildFromAST(pn->rhs, qg);
+    return filterNode;
+}
+
 FT_FilterNode *AppendLeftChild(FT_FilterNode *root, FT_FilterNode *child) {
     root->cond.left = child;
     return root->cond.left;
@@ -71,19 +80,15 @@ Vector* FilterTree_SubTrees(const FT_FilterNode *root) {
     return sub_trees;
 }
 
-FT_FilterNode* BuildFiltersTree(const AST_FilterNode *root) {
+FT_FilterNode* BuildFiltersTree(const AST_FilterNode *root, const QueryGraph *qg) {
     FT_FilterNode *filterNode;
 
     if(root->t == N_PRED) {
-        filterNode = malloc(sizeof(FT_FilterNode));
-        filterNode->t= FT_N_PRED;
-        filterNode->pred.op = root->pn.op;
-        filterNode->pred.lhs = AR_EXP_BuildFromAST(root->pn.lhs, NULL);
-        filterNode->pred.rhs = AR_EXP_BuildFromAST(root->pn.rhs, NULL);
+        filterNode = _CreatePredicateFilterNode(&root->pn, qg);
     } else {
         filterNode = CreateCondFilterNode(root->cn.op);
-        AppendLeftChild(filterNode, BuildFiltersTree(root->cn.left));
-        AppendRightChild(filterNode, BuildFiltersTree(root->cn.right));
+        AppendLeftChild(filterNode, BuildFiltersTree(root->cn.left, qg));
+        AppendRightChild(filterNode, BuildFiltersTree(root->cn.right, qg));
     }
 
     return filterNode;
@@ -155,19 +160,9 @@ int FilterTree_applyFilters(const FT_FilterNode* root) {
 }
 
 void FilterTree_bindEntities(FT_FilterNode* root, const QueryGraph *g) {
-    switch(root->t) {
-        case FT_N_COND:
-            FilterTree_bindEntities(root->cond.left, g);
-            FilterTree_bindEntities(root->cond.right, g);
-            break;
-        case FT_N_PRED:
-            /* Bind all entities in left and right-hand arithmetic expressions */
-            AR_EXP_BindVariadics(root->pred.lhs, g);
-            AR_EXP_BindVariadics(root->pred.rhs, g);
-            break;
-        default:
-            assert(0);
-            break;
+    if (root->t == FT_N_COND) {
+        FilterTree_bindEntities(root->cond.left, g);
+        FilterTree_bindEntities(root->cond.right, g);
     }
 }
 

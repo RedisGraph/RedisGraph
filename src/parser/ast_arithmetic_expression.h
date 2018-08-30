@@ -60,8 +60,6 @@ void AR_EXP_GetAliases(const AST_ArithmeticExpressionNode *exp, TrieMap *aliases
 /* Find all functions in expression */
 void AR_EXP_GetFunctions(const AST_ArithmeticExpressionNode *exp, TrieMap *functions);
 
-int AR_EXP_GetOpType(AST_ArithmeticExpressionNode *exp);
-
 void Free_AST_ArithmeticExpressionNode(AST_ArithmeticExpressionNode *arExpNode);
 
 #endif
