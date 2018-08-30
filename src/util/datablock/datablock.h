@@ -43,8 +43,8 @@ void DataBlock_AddItems(DataBlock *dataBlock, size_t itemCount, DataBlockIterato
 Block *DataBlock_GetItemBlock(const DataBlock *dataBlock, size_t itemIdx);
 
 // Overides item at index dest with item at index src
-// Reduces datablock item count by 1.
-void DataBlock_MigrateItem(DataBlock *dataBlock, size_t src, size_t dest);
+// Does not modify datablock item count or free item at index src
+void DataBlock_CopyItem(DataBlock *dataBlock, size_t src, size_t dest);
 
 // Free count last elements.
 void DataBlock_FreeTop(DataBlock *dataBlock, size_t count);

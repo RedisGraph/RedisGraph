@@ -23,10 +23,6 @@ class DataBlockTest: public ::testing::Test {
 };
 
 
-/*
-void DataBlock_MigrateItem(DataBlock *dataBlock, size_t src, size_t dest)
-void DataBlock_Free(DataBlock *block)
-*/
 TEST_F(DataBlockTest, NewDataBlock) {
     // Create a new data block, which can hold at least 1024 items
     // each item is an integer.
@@ -159,7 +155,8 @@ TEST_F(DataBlockTest, MigrateItem) {
 
     for(int i = dataBlock->itemCount-1; i > 0; i--) {
         int *migratedItem = (int*)DataBlock_GetItem(dataBlock, i);
-        DataBlock_MigrateItem(dataBlock, i, 0);
+        DataBlock_CopyItem(dataBlock, i, 0);
+        DataBlock_FreeTop(dataBlock, 1);
         int *item = (int*)DataBlock_GetItem(dataBlock, 0);
         EXPECT_EQ(*migratedItem, *item);
         EXPECT_EQ(dataBlock->itemCount, i);

@@ -133,7 +133,7 @@ Block *DataBlock_GetItemBlock(const DataBlock *dataBlock, size_t itemIdx) {
     return GET_ITEM_BLOCK(dataBlock, itemIdx);
 }
 
-void DataBlock_MigrateItem(DataBlock *dataBlock, size_t src, size_t dest) {
+void DataBlock_CopyItem(DataBlock *dataBlock, size_t src, size_t dest) {
     assert(dataBlock);
 
     // Get the block in which dest item resides.
@@ -148,8 +148,6 @@ void DataBlock_MigrateItem(DataBlock *dataBlock, size_t src, size_t dest) {
 
     // Replace dest node with src node.
     memcpy(destItemBlock->data + destItemOffset, srcItem, dataBlock->itemSize);
-
-    dataBlock->itemCount--;
 }
 
 void DataBlock_FreeTop(DataBlock *dataBlock, size_t count) {
