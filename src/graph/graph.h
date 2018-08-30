@@ -12,6 +12,7 @@
 
 #include "node.h"
 #include "edge.h"
+#include "edge_iterator.h"
 #include "../redismodule.h"
 #include "../util/uthash.h"
 #include "../util/triemap/triemap.h"
@@ -97,8 +98,7 @@ void Graph_GetEdgesConnectingNodes (
     NodeID src,
     NodeID dest,
     int relation,
-    Edge **edges,       // Array of length edgeCount.
-    size_t *edgeCount   // Updated to number of edges found.
+    EdgeIterator *it
 );
 
 // Removes a set of nodes and all of their connections

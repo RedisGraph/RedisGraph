@@ -11,6 +11,7 @@
 #include "op.h"
 #include "../../rmutil/sds.h"
 #include "../../parser/ast.h"
+#include "../../graph/edge_iterator.h"
 #include "../../arithmetic/algebraic_expression.h"
 #include "../../arithmetic/tuples_iter.h"
 #include "../../rmutil/vector.h"
@@ -22,6 +23,8 @@ typedef struct {
     AlgebraicExpression *algebraic_expression;
     AlgebraicExpressionResult *algebraic_results;
     GrB_Matrix M;
+    int edgeRelationType;
+    EdgeIterator *edgeIter;
     TuplesIter *iter;
 } CondTraverse;
 
