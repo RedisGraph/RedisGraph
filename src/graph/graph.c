@@ -101,14 +101,6 @@ void _Graph_ReplaceDeletedNode(Graph *g, GrB_Vector zero, NodeID replacement, No
         GrB_Matrix_extractElement_BOOL(&dest_has_label, M, to_delete, to_delete);
 
         if (dest_has_label && !src_has_label) {
-            // TODO this is obviously not ideal, but the call to `DataBlock_MigrateItem` causes a label matrix resize
-            // every time this function is called.
-            GrB_Index zero_size;
-            GrB_Vector_size(&zero_size, zero);
-            GrB_Index node_count = (GrB_Index)Graph_NodeCount(g);
-            if (zero_size != node_count) {
-                GxB_Vector_resize(zero, node_count);
-            }
             // Zero out the destination column if the deleted node possesses the label and the replacement does not
             assert(GrB_Col_assign(M, NULL, NULL, zero, GrB_ALL, Graph_NodeCount(g), to_delete, NULL) == GrB_SUCCESS);
         } else if (!dest_has_label && src_has_label) {
@@ -118,7 +110,7 @@ void _Graph_ReplaceDeletedNode(Graph *g, GrB_Vector zero, NodeID replacement, No
     }
 
     _Graph_MigrateRowCol(g, replacement, to_delete);
-    DataBlock_MigrateItem(g->nodes, replacement, to_delete);
+    DataBlock_CopyItem(g->nodes, replacement, to_delete);
 }
 
 // Return number of nodes graph can contain.
@@ -444,8 +436,8 @@ void Graph_DeleteNodes(Graph *g, NodeID *IDs, size_t IDCount) {
         id_to_save --;
     }
 
-    // Free the nodes that didn't get released in the above loop
-    DataBlock_FreeTop(g->nodes, IDCount - id_to_replace_idx);
+    // Free all deleted nodes from datablock
+    DataBlock_FreeTop(g->nodes, IDCount);
     // Force matrix resizing.
     _Graph_ResizeMatrix(g, g->adjacency_matrix);
 
@@ -602,8 +594,10 @@ void Graph_Free(Graph *g) {
 
     // Free node blocks.
     DataBlock_Free(g->nodes);
-    DataBlock_Free(g->edges);
+    // Free the edges hash table before modifying the edge blocks.
     HASH_CLEAR(hh,g->_edgesHashTbl);
+    // Free the edge blocks.
+    DataBlock_Free(g->edges);
     pthread_mutex_destroy(&g->_mutex);
     free(g);
 }
