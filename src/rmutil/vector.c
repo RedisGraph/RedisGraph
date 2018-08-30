@@ -32,6 +32,10 @@ inline int Vector_Pop(Vector *v, void *ptr) {
   return 0;
 }
 
+void* Vector_Data(const Vector *v) {
+  return (void*)v->data;
+}
+
 inline int __vector_PutPtr(Vector *v, size_t pos, void *elem) {
   // resize if pos is out of bounds
   if (pos >= v->cap) {

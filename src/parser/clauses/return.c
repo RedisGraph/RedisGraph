@@ -120,7 +120,7 @@ void Free_AST_ReturnElementNode(AST_ReturnElementNode *returnElementNode) {
 }
 
 void Free_AST_ReturnNode(AST_ReturnNode *returnNode) {
-    if(! returnNode) return;
+	if (!returnNode) return;
 	for (int i = 0; i < Vector_Size(returnNode->returnElements); i++) {
 		AST_ReturnElementNode *node;
 		Vector_Get(returnNode->returnElements, i, &node);
