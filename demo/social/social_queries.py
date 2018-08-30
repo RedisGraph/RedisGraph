@@ -210,6 +210,9 @@ queries_info = [
     how_many_countries_each_friend_visited_query,
     happy_birthday_query,
     friends_age_statistics_query,
+    visit_purpose_of_each_country_i_visited_query,
+    who_was_on_business_trip_query,
+    number_of_vacations_per_person_query,
     delete_friendships_query,
     delete_person_query,
     post_delete_label_query

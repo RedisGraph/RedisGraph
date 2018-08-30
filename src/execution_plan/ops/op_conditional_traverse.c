@@ -7,31 +7,18 @@
 
 #include "op_conditional_traverse.h"
 
-OpBase* NewCondTraverseOp(Graph *g, QueryGraph* qg, AlgebraicExpression *algebraic_expression) {
-    CondTraverse *traverse = calloc(1, sizeof(CondTraverse));
-    traverse->graph = g;
-    traverse->algebraic_expression = algebraic_expression;
-    traverse->algebraic_results = NULL;
-    traverse->iter = NULL;
-
-    // Set our Op operations
-    OpBase_Init(&traverse->op);
-    traverse->op.name = "Conditional Traverse";
-    traverse->op.type = OPType_CONDITIONAL_TRAVERSE;
-    traverse->op.consume = CondTraverseConsume;
-    traverse->op.reset = CondTraverseReset;
-    traverse->op.free = CondTraverseFree;
-    traverse->op.modifies = NewVector(char*, 1);
-
-    char *modified = NULL;    
-    modified = QueryGraph_GetNodeAlias(qg, *traverse->algebraic_expression->dest_node);
-    Vector_Push(traverse->op.modifies, modified);
-
-    return (OpBase*)traverse;
+// Updates query graph edge.
+OpResult _CondTraverse_SetEdge(CondTraverse *op) {
+    // Consumed edges connecting current source and destination nodes.
+    Edge *e = EdgeIterator_Next(op->edgeIter);
+    if(e == NULL) return OP_DEPLETED;
+    
+    *op->algebraic_expression->edge = e;
+    return OP_OK;
 }
 
-void extractColumn(CondTraverse *op) {
-    GrB_Index src_id = (*op->algebraic_expression->src_node)->id;
+void _extractColumn(CondTraverse *op) {
+    NodeID src_id = (*op->algebraic_expression->src_node)->id;
 
     // Create hypersparse vector.
     // TODO: Find a quickerway to clear out a vector.
@@ -56,6 +43,36 @@ void extractColumn(CondTraverse *op) {
     GrB_Vector_free(&v);
 }
 
+OpBase* NewCondTraverseOp(Graph *g, QueryGraph* qg, AlgebraicExpression *algebraic_expression) {
+    CondTraverse *traverse = calloc(1, sizeof(CondTraverse));
+    traverse->graph = g;
+    traverse->algebraic_expression = algebraic_expression;
+    traverse->algebraic_results = NULL;
+    traverse->iter = NULL;
+    
+    // Set our Op operations
+    OpBase_Init(&traverse->op);
+    traverse->op.name = "Conditional Traverse";
+    traverse->op.type = OPType_CONDITIONAL_TRAVERSE;
+    traverse->op.consume = CondTraverseConsume;
+    traverse->op.reset = CondTraverseReset;
+    traverse->op.free = CondTraverseFree;
+    traverse->op.modifies = NewVector(char*, 1);
+
+    char *modified = NULL;    
+    modified = QueryGraph_GetNodeAlias(qg, *traverse->algebraic_expression->dest_node);
+    Vector_Push(traverse->op.modifies, modified);
+
+    if(algebraic_expression->edge) {
+        modified = QueryGraph_GetEdgeAlias(qg, *traverse->algebraic_expression->edge);
+        Vector_Push(traverse->op.modifies, modified);
+        traverse->edgeIter = EdgeIterator_New();
+        traverse->edgeRelationType = Edge_GetRelationID(*algebraic_expression->edge);
+    }
+
+    return (OpBase*)traverse;
+}
+
 /* CondTraverseConsume next operation 
  * each call will update the graph
  * returns OP_DEPLETED when no additional updates are available */
@@ -67,19 +84,35 @@ OpResult CondTraverseConsume(OpBase *opBase, QueryGraph* graph) {
     if(op->iter == NULL) {
         if(child->consume(child, graph) == OP_DEPLETED) return OP_DEPLETED;
         /* Pick a column. */
-        extractColumn(op);
+        _extractColumn(op);
     }
 
-    /* Get node from current column. */
-    GrB_Index dest_id;
+    /* If we're required to update edge,
+     * try to get an edge, if successful we can return quickly,
+     * otherwise try to get a new pair of source and destination nodes. */
+    if(op->algebraic_expression->edge) {
+        if(_CondTraverse_SetEdge(op) == OP_OK) return OP_OK;
+    }
+    
+    NodeID dest_id;
     while(TuplesIter_next(op->iter, &dest_id, NULL) == TuplesIter_DEPLETED) {
         OpResult res = child->consume(child, graph);
         if(res != OP_OK) return res;
-        extractColumn(op);
+        _extractColumn(op);
     }
 
+    /* Get node from current column. */    
+    NodeID src_id = (*op->algebraic_expression->src_node)->id;
     Node *dest_node = Graph_GetNode(op->graph, dest_id);
     *op->algebraic_results->dest_node = dest_node;
+
+    if(op->algebraic_expression->edge != NULL) {
+        // We're guarantee to have at least one edge.
+        EdgeIterator_Reuse(op->edgeIter);
+        Graph_GetEdgesConnectingNodes(op->graph, src_id, dest_id, op->edgeRelationType, op->edgeIter);
+        return _CondTraverse_SetEdge(op);
+    }
+
     return OP_OK;
 }
 
@@ -93,6 +126,10 @@ OpResult CondTraverseReset(OpBase *ctx) {
 void CondTraverseFree(OpBase *ctx) {
     CondTraverse *op = (CondTraverse*)ctx;
     TuplesIter_free(op->iter);
+    
+    if(op->edgeIter)
+        EdgeIterator_Free(op->edgeIter);
+
     if(op->algebraic_results)
         AlgebraicExpressionResult_Free(op->algebraic_results);
 }

@@ -203,9 +203,14 @@ void _Graph_DeleteTypedEdges(Graph *g, NodeID src_id, NodeID dest_id, int relati
 int _Graph_InitEdge(Graph *g, Edge *e, EdgeID id, Node *src, Node *dest, int r) {
     // Insert only if edge not already in hashtable.
     Edge *edge;
-    size_t edgeCount = 1;
-    Graph_GetEdgesConnectingNodes(g, src->id, dest->id, r, &edge, &edgeCount);
-    if(edgeCount == 1) {
+    Edge lookupKey;
+    memset(&lookupKey, 0, sizeof(Edge));
+    Edge_SetSrcNode(&lookupKey, src);
+    Edge_SetDestNode(&lookupKey, dest);
+    Edge_SetRelationID(&lookupKey, r);
+    HASH_FIND(hh, g->_edgesHashTbl, &lookupKey.edgeDesc, sizeof(EdgeDesc), edge);
+
+    if(edge) {
         /* TODO: Currently we only support a single edge of type T
          * between tow nodes. */
         return 0;
@@ -313,13 +318,6 @@ void Graph_ConnectNodes(Graph *g, EdgeDesc *connections, size_t connectionCount,
         }
     }
 
-    // printf("POST INSERT\n");
-    // printf("EDGES IN HASH\n");
-    // Edge *edge;
-    // for(edge=g->_edgesHashTbl; edge != NULL; edge=edge->hh.next) {
-    //     printf("edge composite ID: srcId: %llu destId: %llu relationId: %d\n", edge->edgeDesc.srcId, edge->edgeDesc.destId, edge->edgeDesc.relationId);
-    // }
-
     /* If access to newly created edges is requested
      * reset iterator pass it back to caller. */
     if(it) {
@@ -344,10 +342,12 @@ Edge *Graph_GetEdge(const Graph *g, EdgeID id) {
     return e;
 }
 
-void Graph_GetEdgesConnectingNodes(const Graph *g, NodeID src, NodeID dest, int relation, Edge **edges, size_t *edgeCount) {
-    assert(g && src < Graph_NodeCount(g) && dest < Graph_NodeCount(g) && edges && edgeCount && *edgeCount > 0);
+void Graph_GetEdgesConnectingNodes(const Graph *g, NodeID src, NodeID dest, int relation, EdgeIterator *it) {
+    assert(g && src < Graph_NodeCount(g) && dest < Graph_NodeCount(g) && it);
 
-    size_t edgesFound = 0;  // Number of edges connecting src to dest we've found.
+    size_t edgeCount = 0;
+    size_t edgeCap = it->edgeCap;
+    Edge **edges = it->edges;
     Node *srcNode = Graph_GetNode(g, src);
     Node *destNode = Graph_GetNode(g, dest);
 
@@ -361,21 +361,26 @@ void Graph_GetEdgesConnectingNodes(const Graph *g, NodeID src, NodeID dest, int 
     // Search for edges.
     if(relation != GRAPH_NO_RELATION) {
         // Relation type specified.
-        HASH_FIND(hh, g->_edgesHashTbl, &lookupKey.edgeDesc, sizeof(EdgeDesc), edges[edgesFound]);
-        if(edges[edgesFound]) edgesFound += 1;
+        HASH_FIND(hh, g->_edgesHashTbl, &lookupKey.edgeDesc, sizeof(EdgeDesc), edges[edgeCount]);
+        if(edges[edgeCount]) edgeCount += 1;
     } else {
         // Relation type missing, scan through each edge type.
-        for(int r = 0; r < g->relation_count && edgesFound < *edgeCount; r++) {
+        for(int r = 0; r < g->relation_count; r++) {
             // Update lookup key relation id.
             Edge_SetRelationID(&lookupKey, r);
             // See if there's an edge of type 'r' connecting source to destination.
-            HASH_FIND(hh, g->_edgesHashTbl, &lookupKey.edgeDesc, sizeof(EdgeDesc), edges[edgesFound]);
-            if(edges[edgesFound]) edgesFound += 1;
+            HASH_FIND(hh, g->_edgesHashTbl, &lookupKey.edgeDesc, sizeof(EdgeDesc), edges[edgeCount]);
+            if(edges[edgeCount]) edgeCount++;
+            if(edgeCount >= edgeCap) {
+                edgeCap *= 2;
+                edges = realloc(edges, sizeof(Edge*) * edgeCap);
+            }
         }
     }
 
-    // Let caller know how many edges we've found.
-    *edgeCount = edgesFound;
+    it->edges = edges;
+    it->edgeCap = edgeCap;
+    it->edgeCount = edgeCount;
 }
 
 /* Accepts a *sorted* array of IDs for nodes to be deleted.

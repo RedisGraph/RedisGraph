@@ -13,6 +13,7 @@
 #include "../../parser/ast.h"
 #include "../../arithmetic/algebraic_expression.h"
 #include "../../rmutil/vector.h"
+#include "../../graph/edge_iterator.h"
 #include "../../arithmetic/tuples_iter.h"
 
 /* OP Traverse */
@@ -21,11 +22,9 @@ typedef struct {
     Graph *graph;
     AlgebraicExpression *algebraic_expression;
     AlgebraicExpressionResult *algebraic_results;
+    int edgeRelationType;
+    EdgeIterator *edgeIter;
     TuplesIter *it;
-    size_t edgeIdx;
-    size_t edgeCap;
-    size_t edgeCount;
-    Edge **edges;
 } Traverse;
 
 /* Creates a new Traverse operation */

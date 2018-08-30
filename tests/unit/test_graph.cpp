@@ -776,45 +776,24 @@ TEST_F(GraphTest, GetEdge)
     NodeID src;
     NodeID dest;
     int relation;
-    Edge *edges[edgeCount];
+    EdgeIterator *it = EdgeIterator_New();
 
     /* Get all edges connecting node 0 to node 1,
      * expecting 2 edges. */
     src = 0;
     dest = 1;
     relation = GRAPH_NO_RELATION;   // Relation agnostic.
-    Graph_GetEdgesConnectingNodes(g, src, dest, relation, edges, &edgeCount);
-    EXPECT_EQ(edgeCount, 2);
+    Graph_GetEdgesConnectingNodes(g, src, dest, relation, it);
+    EXPECT_EQ(it->edgeCount, 2);
     for(int i = 0; i < 2; i++) {
-        e = edges[i];
+        e = EdgeIterator_Next(it);
         relation = relations[i];
         EXPECT_TRUE(e != NULL);
         EXPECT_EQ(Edge_GetSrcNodeID(e), src);
         EXPECT_EQ(Edge_GetDestNodeID(e), dest);
         EXPECT_EQ(Edge_GetRelationID(e), relation);
     }
-
-    /* Get all edges connecting node 0 to node 1, limit edges array to 
-     * length of 1, expecting 1 edge. */
-    edgeCount = 1;
-    Graph_GetEdgesConnectingNodes(g, src, dest, relation, edges, &edgeCount);
-    EXPECT_EQ(edgeCount, 1);
-
-    edgeCount = 5; // Reset edge count.
-
-    for(NodeID i = 1; i < nodeCount-2; i++) {
-        src = i;
-        dest = i+1;
-        relation = i;
-        Graph_GetEdgesConnectingNodes(g, src, dest, relation, edges, &edgeCount);
-        EXPECT_EQ(edgeCount, 1);
-        e = edges[0];
-        EXPECT_TRUE(e != NULL);
-        EXPECT_EQ(Edge_GetSrcNodeID(e), src);
-        EXPECT_EQ(Edge_GetDestNodeID(e), dest);
-        EXPECT_EQ(Edge_GetRelationID(e), relation);
-        edgeCount = 5; // Reset edge count.
-    }
+    EdgeIterator_Reuse(it);
 
     // Try to get none existing edges:
 
@@ -822,40 +801,41 @@ TEST_F(GraphTest, GetEdge)
     src = 0;
     dest = 2;
     relation = GRAPH_NO_RELATION;
-    Graph_GetEdgesConnectingNodes(g, src, dest, relation, edges, &edgeCount);
-    EXPECT_EQ(edgeCount, 0);
-    edgeCount = 5; // Reset edge count.
+    Graph_GetEdgesConnectingNodes(g, src, dest, relation, it);
+    EXPECT_EQ(it->edgeCount, 0);
+    EdgeIterator_Reset(it); // Reset edge count.
 
     // Node 0 is not connected to 1 via relation 2.
     src = 0;
     dest = 1;
     relation = relations[2];
-    Graph_GetEdgesConnectingNodes(g, src, dest, relation, edges, &edgeCount);
-    EXPECT_EQ(edgeCount, 0);
-    edgeCount = 5; // Reset edge count.
+    Graph_GetEdgesConnectingNodes(g, src, dest, relation, it);
+    EXPECT_EQ(it->edgeCount, 0);
+    EdgeIterator_Reset(it); // Reset edge count.
 
     // Node 1 is not connected to 0 via relation 0.
     src = 1;
     dest = 0;
     relation = relations[0];
-    Graph_GetEdgesConnectingNodes(g, src, dest, relation, edges, &edgeCount);
-    EXPECT_EQ(edgeCount, 0);
-    edgeCount = 5; // Reset edge count.
+    Graph_GetEdgesConnectingNodes(g, src, dest, relation, it);
+    EXPECT_EQ(it->edgeCount, 0);
+    EdgeIterator_Reset(it); // Reset edge count.
 
     // No node connects to itself.
     for(NodeID i = 0; i < nodeCount; i++) {
         for(int j = 0; j < relationCount; j++) {
             src = i;
             relation = relations[j];
-            Graph_GetEdgesConnectingNodes(g, src, src, relation, edges, &edgeCount);
-            EXPECT_EQ(edgeCount, 0);
-            edgeCount = 5; // Reset edge count.
+            Graph_GetEdgesConnectingNodes(g, src, src, relation, it);
+            EXPECT_EQ(it->edgeCount, 0);
+            EdgeIterator_Reset(it); // Reset edge count.
         }
         relation = GRAPH_NO_RELATION;
-        Graph_GetEdgesConnectingNodes(g, src, src, relation, edges, &edgeCount);
-        EXPECT_EQ(edgeCount, 0);
-        edgeCount = 5; // Reset edge count.
+        Graph_GetEdgesConnectingNodes(g, src, src, relation, it);
+        EXPECT_EQ(it->edgeCount, 0);
+        EdgeIterator_Reset(it); // Reset edge count.
     }
 
+    EdgeIterator_Free(it);
     Graph_Free(g);
 }
