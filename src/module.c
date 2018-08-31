@@ -95,11 +95,15 @@ void _MGraph_AcquireWriteLock(RedisModuleCtx *ctx) {
 }
 
 // Release read/write lock.
-void _MGraph_ReleaseLock(RedisModuleCtx *ctx) {
+void _MGraph_ReleaseLock() {
     pthread_rwlock_unlock(&_rwlock);
-    /* Release Redis global lock,
-     * this should only have an effect when the read/write lock
-     * was acquired for writing. */
+}
+
+/* Release the Redis global lock if it is held.
+ * This should only have an effect if a thread-safe context lock
+ * was acquired (which is only necessary when performing operations
+ * that modify the keyspace). */
+void _MGraphUnlockContext(RedisModuleCtx *ctx) {
     RedisModule_ThreadSafeContextUnlock(ctx);
 }
 
@@ -172,6 +176,7 @@ void _MGraph_Query(void *args) {
     RedisModuleCtx *ctx = RedisModule_GetThreadSafeContext(qctx->bc);
     AST_Query* ast = qctx->ast;
     const char *graph_name = RedisModule_StringPtrLen(qctx->graphName, NULL);
+    bool holds_lock = false;
 
     // Perform query validations before and after ModifyAST
     if (_AST_PerformValidations(ctx, ast) != AST_VALID) goto cleanup;
@@ -180,8 +185,12 @@ void _MGraph_Query(void *args) {
     if (_AST_PerformValidations(ctx, ast) != AST_VALID) goto cleanup;
 
     // If this is a write query, acquire write lock.
-    if(AST_ReadOnly(ast)) _MGraph_AcquireReadLock();
-    else _MGraph_AcquireWriteLock(ctx);
+    holds_lock = !AST_ReadOnly(ast);
+    if (holds_lock) {
+      _MGraph_AcquireWriteLock(ctx);
+    } else {
+      _MGraph_AcquireReadLock();
+    }
 
     // Try to get graph.
     Graph *g = Graph_Get(ctx, qctx->graphName);
@@ -191,7 +200,7 @@ void _MGraph_Query(void *args) {
             /* TODO: free graph if no entities were created. */
         } else {
             RedisModule_ReplyWithError(ctx, "key doesn't contains a graph object.");
-            _MGraph_ReleaseLock(ctx);
+            _MGraph_ReleaseLock();
             goto cleanup;
         }
     }
@@ -199,21 +208,27 @@ void _MGraph_Query(void *args) {
     if (ast->indexNode) { // index operation
         _index_operation(ctx, graph_name, g, ast->indexNode);
         // Release read lock
-        _MGraph_ReleaseLock(ctx);
+        _MGraph_ReleaseLock();
     } else {
         ExecutionPlan *plan = NewExecutionPlan(ctx, g, graph_name, ast, false);
         ResultSet* resultSet = ExecutionPlan_Execute(plan);
         ExecutionPlanFree(plan);
 
         // Done accessing graph data, release lock.
-        _MGraph_ReleaseLock(ctx);
-
-        /* Send result-set back to client. */
-        ResultSet_Replay(resultSet);
+        _MGraph_ReleaseLock();
 
         /* Replicate query only if it modified the keyspace. */
         if(ResultSetStat_IndicateModification(resultSet->stats))
             RedisModule_ReplicateVerbatim(ctx);
+
+        /* Release the Redis main thread if it is held. */
+        if (holds_lock) {
+            _MGraphUnlockContext(ctx);
+            holds_lock = false;
+        }
+
+        /* Send result-set back to client. */
+        ResultSet_Replay(resultSet);
 
         ResultSet_Free(resultSet);
     }
@@ -227,6 +242,7 @@ void _MGraph_Query(void *args) {
     
     // Clean up.
 cleanup:
+    if (holds_lock) _MGraphUnlockContext(ctx);
     RedisModule_UnblockClient(qctx->bc, NULL);
     Free_AST_Query(ast);
     free(qctx);
@@ -252,10 +268,11 @@ void _MGraph_BulkInsert(void *args) {
 
     Bulk_Insert(ctx, argv+2, argc-2, g, graph_name, &nodes, &edges);
 
-    // Force graph pendding operations to complete.
+    // Force graph pending operations to complete.
     Graph_CommitPendingOps(g);
 
-    _MGraph_ReleaseLock(ctx);
+    _MGraph_ReleaseLock();
+    _MGraphUnlockContext(ctx);
 
     // Replay to caller.
     double t = simple_toc(context->tic);
@@ -310,7 +327,8 @@ void _MGraph_Delete(void *args) {
     }
 
 cleanup:
-    _MGraph_ReleaseLock(ctx);
+    _MGraph_ReleaseLock();
+    _MGraphUnlockContext(ctx);
     DeleteGraphContext_free(dCtx);
 
     char* strElapsed;
