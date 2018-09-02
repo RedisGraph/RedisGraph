@@ -205,15 +205,15 @@ void _MGraph_Query(void *args) {
         ResultSet* resultSet = ExecutionPlan_Execute(plan);
         ExecutionPlanFree(plan);
 
-        // Done accessing graph data, release lock.
-        _MGraph_ReleaseLock(ctx);
-
         /* Send result-set back to client. */
         ResultSet_Replay(resultSet);
 
         /* Replicate query only if it modified the keyspace. */
         if(ResultSetStat_IndicateModification(resultSet->stats))
             RedisModule_ReplicateVerbatim(ctx);
+
+        // Done accessing graph data, release lock.
+        _MGraph_ReleaseLock(ctx);
 
         ResultSet_Free(resultSet);
     }
@@ -252,7 +252,7 @@ void _MGraph_BulkInsert(void *args) {
 
     Bulk_Insert(ctx, argv+2, argc-2, g, graph_name, &nodes, &edges);
 
-    // Force graph pendding operations to complete.
+    // Force graph pending operations to complete.
     Graph_CommitPendingOps(g);
 
     _MGraph_ReleaseLock(ctx);
