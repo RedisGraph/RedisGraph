@@ -11,31 +11,19 @@
 #include "../../value.h"
 #include "../../rmutil/vector.h"
 #include "../../util/triemap/triemap.h"
+#include "../ast_arithmetic_expression.h"
 
 typedef enum {
   N_PRED,
   N_COND,
 } AST_FilterNodeType;
 
-typedef enum {
-	N_CONSTANT,
-	N_VARYING,
-} AST_CompareValueType;
-
 struct filterNode;
 
 typedef struct {
-	union {
-		SIValue constVal;
-		struct {
-			char *alias;
-			char *property;
-		} nodeVal;
-	};
-	AST_CompareValueType t; // Compared value type, constant/node
-	char *alias;			// Node alias
-	char *property; 		// Node property
-	int op;					// Type of comparison
+  AST_ArithmeticExpressionNode *lhs;  // Left-hand expression
+  AST_ArithmeticExpressionNode *rhs;  // Right-hand expression
+  int op;                             // Type of comparison
 } AST_PredicateNode;
 
 typedef struct conditionNode {
@@ -57,10 +45,12 @@ typedef struct {
 } AST_WhereNode;
 
 AST_WhereNode* New_AST_WhereNode(AST_FilterNode *filters);
-AST_FilterNode* New_AST_ConstantPredicateNode(const char *alias, const char *property, int op, SIValue value);
-AST_FilterNode* New_AST_VaryingPredicateNode(const char *lAlias, const char *lProperty, int op, const char *rAlias, const char *rProperty);
+AST_FilterNode* New_AST_PredicateNode(AST_ArithmeticExpressionNode *lhs, int op, AST_ArithmeticExpressionNode *rhs);
 AST_FilterNode* New_AST_ConditionNode(AST_FilterNode *left, int op, AST_FilterNode *right);
+
 void WhereClause_ReferredNodes(const AST_WhereNode *where_node, TrieMap *referred_nodes);
+void WhereClause_ReferredFunctions(const AST_FilterNode *return_node, TrieMap *referred_funcs);
+
 void Free_AST_FilterNode(AST_FilterNode *filterNode);
 void Free_AST_WhereNode(AST_WhereNode *whereNode);
 

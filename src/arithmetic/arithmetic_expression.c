@@ -17,6 +17,11 @@
 /* Arithmetic function repository. */
 static TrieMap *__aeRegisteredFuncs = NULL;
 
+int AR_EXP_GetOperandType(AR_ExpNode *exp) {
+    if (exp->type == AR_EXP_OPERAND) return exp->operand.type;
+    return -1;
+}
+
 SIValue AR_EXP_Evaluate(const AR_ExpNode *root) {
 
     SIValue result;
@@ -121,7 +126,7 @@ AR_ExpNode* AR_EXP_NewOpNode(char *func_name, int child_count) {
     node->op.child_count = child_count;
     node->op.children = (AR_ExpNode **)malloc(child_count * sizeof(AR_ExpNode*));
 
-    /* Determin function type. */
+    /* Determine function type. */
     AR_Func func = AR_GetFunc(func_name);
     if(func != NULL) {
         node->op.f = func;
@@ -139,6 +144,19 @@ AR_ExpNode* AR_EXP_NewOpNode(char *func_name, int child_count) {
     }
 
     return node;
+}
+
+void AR_EXP_CollectAliases(AR_ExpNode *root, TrieMap *aliases) {
+    if (root->type == AR_EXP_OP) {
+        for (int i = 0; i < root->op.child_count; i ++) {
+            AR_EXP_CollectAliases(root->op.children[i], aliases);
+        }
+    } else { // type == AR_EXP_OPERAND
+        if (root->operand.type == AR_EXP_VARIADIC) {
+            char *alias = root->operand.variadic.entity_alias;
+            if (alias) TrieMap_Add(aliases, alias, strlen(alias), NULL, NULL);
+        }
+    }
 }
 
 int AR_EXP_ContainsAggregation(AR_ExpNode *root, AR_ExpNode **agg_node) {

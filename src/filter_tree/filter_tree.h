@@ -12,6 +12,7 @@
 #include "../parser/ast.h"
 #include "../graph/query_graph.h"
 #include "../redismodule.h"
+#include "../arithmetic/arithmetic_expression.h"
 
 #define FILTER_FAIL 0
 #define FILTER_PASS 1
@@ -22,30 +23,12 @@ typedef enum {
   FT_N_COND,
 } FT_FilterNodeType;
 
-typedef enum {
-	FT_N_CONSTANT,
-	FT_N_VARYING,
-} FT_CompareValueType;
-
 struct FT_FilterNode;
 
 typedef struct {
-	struct {			    /* Left side of predicate. */
-		char* alias;		/* Element in question alias. */
-		char* property;		/* Element's property to check. */
-		GraphEntity **e;	/* Left side entity. */
-	} Lop;
+	AR_ExpNode *lhs;
+	AR_ExpNode *rhs;
 	int op;					/* Operation (<, <=, =, =>, >, !). */
-	union {					/* Right side of predicate. */
-		SIValue constVal;	/* Value to compare against. */
-		struct {
-			char* alias;		/* Element in question alias. */
-			char* property;		/* Element's property to check. */
-			GraphEntity **e;	/* Right side entity. */
-		} Rop;
-	};
-	FT_CompareValueType t; 	/* Compared value type, constant/node. */
-	CmpFunc cf;				/* Compare function, determins relation between val and element property. */
 } FT_PredicateNode;
 
 typedef struct {
@@ -60,17 +43,17 @@ struct FT_FilterNode {
     FT_PredicateNode pred;
     FT_ConditionNode cond;
   };
-  FT_FilterNodeType t;	/* Determins actual type of this node. */
+  FT_FilterNodeType t;	/* Determines actual type of this node. */
 };
 
 typedef struct FT_FilterNode FT_FilterNode;
 
 /* Given AST's WHERE subtree constructs a filter tree
  * This is done to speed up the filtering process. */
-FT_FilterNode* BuildFiltersTree(const AST_FilterNode *root);
+FT_FilterNode* BuildFiltersTree(const AST_FilterNode *root, const QueryGraph *qg);
 
-FT_FilterNode* CreateVaryingFilterNode(const char *LAlias, const char *LProperty, const char *RAlias, const char *RProperty, int op);
-FT_FilterNode* CreateConstFilterNode(const char *alias, const char *property, int op, SIValue val);
+int IsNodePredicate(const FT_FilterNode *node);
+
 FT_FilterNode* CreateCondFilterNode(int op);
 
 FT_FilterNode *AppendLeftChild(FT_FilterNode *root, FT_FilterNode *child);
@@ -78,9 +61,6 @@ FT_FilterNode *AppendRightChild(FT_FilterNode *root, FT_FilterNode *child);
 
 /* Runs val through the filter tree. */
 int FilterTree_applyFilters(const FT_FilterNode* root);
-
-/* Binds filtered entities to query graph. */
-void FilterTree_bindEntities(FT_FilterNode* root, const QueryGraph *g);
 
 /* Extract every alias mentioned in the tree
  * without duplications. */
@@ -96,7 +76,5 @@ void FilterTree_Print(const FT_FilterNode *root);
 Vector* FilterTree_SubTrees(const FT_FilterNode *root);
 
 void FilterTree_Free(FT_FilterNode *root);
-
-int IsNodeConstantPredicate(const FT_FilterNode *node);
 
 #endif // _FILTER_TREE_H 

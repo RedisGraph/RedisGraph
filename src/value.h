@@ -39,6 +39,12 @@ typedef enum {
 
 #define SI_NUMERIC (T_INT32 | T_INT64 | T_UINT | T_FLOAT | T_DOUBLE)
 
+/* Returns 1 if argument is positive, -1 if argument is negative,
+ * and 0 if argument is zero (matching the return style of the strcmp family).
+ * This is necessary to construct safe integer returns when the delta between
+ * two double values is < 1.0 (and would thus be rounded to 0). */
+#define COMPARE_RETVAL(a) ((a) > 0) - ((a) < 0)
+
 typedef struct {
   union {
     int32_t intval;
