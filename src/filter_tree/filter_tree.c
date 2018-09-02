@@ -159,13 +159,6 @@ int FilterTree_applyFilters(const FT_FilterNode* root) {
     return pass;
 }
 
-void FilterTree_bindEntities(FT_FilterNode* root, const QueryGraph *g) {
-    if (root->t == FT_N_COND) {
-        FilterTree_bindEntities(root->cond.left, g);
-        FilterTree_bindEntities(root->cond.right, g);
-    }
-}
-
 void _FilterTree_CollectAliases(const FT_FilterNode *root, TrieMap *aliases) {
     if(root == NULL) return;
 

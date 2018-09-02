@@ -433,7 +433,6 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g,
     }
 
     if(ast->whereNode != NULL) {
-        FilterTree_bindEntities(execution_plan->filter_tree, execution_plan->graph);
         Vector *sub_trees = FilterTree_SubTrees(execution_plan->filter_tree);
 
         /* For each filter tree find the earliest position along the execution 

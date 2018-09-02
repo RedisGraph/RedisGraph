@@ -62,9 +62,6 @@ FT_FilterNode *AppendRightChild(FT_FilterNode *root, FT_FilterNode *child);
 /* Runs val through the filter tree. */
 int FilterTree_applyFilters(const FT_FilterNode* root);
 
-/* Binds filtered entities to query graph. */
-void FilterTree_bindEntities(FT_FilterNode* root, const QueryGraph *g);
-
 /* Extract every alias mentioned in the tree
  * without duplications. */
 Vector *FilterTree_CollectAliases(const FT_FilterNode *root);
