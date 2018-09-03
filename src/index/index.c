@@ -8,9 +8,9 @@
 #include "index.h"
 #include "index_type.h"
 
-RedisModuleKey* _index_LookupKey(RedisModuleCtx *ctx, const char *graph, const char *label, const char *property, bool write_access) {
+RedisModuleKey* _index_LookupKey(RedisModuleCtx *ctx, const char *graph, size_t index_id, bool write_access) {
   char *strKey;
-  int keylen = asprintf(&strKey, "%s_%s_%s_%s", INDEX_PREFIX, graph, label, property);
+  int keylen = asprintf(&strKey, "%s_%s_%lu", INDEX_PREFIX, graph, index_id);
 
   RedisModuleString *rmIndexId = RedisModule_CreateString(ctx, strKey, keylen);
   free(strKey);
@@ -51,10 +51,19 @@ void freeKey(SIValue *key) {
 }
 
 /* Construct key and retrieve index from Redis keyspace */
-Index* Index_Get(RedisModuleCtx *ctx, const char *graph, const char *label, const char *property) {
+Index* Index_Get(RedisModuleCtx *ctx, const char *graph, const char *label, char *property) {
   Index *idx = NULL;
+
+  LabelStore *store = LabelStore_Get(ctx, STORE_NODE, graph, label);
+  if (!store) return NULL;
+
+  size_t *index_id = TrieMap_Find(store->properties, property, strlen(property));
+
+  // index_id will be NULL if the label-property pair is not indexed
+  if (!index_id) return NULL;
+
   // Open key with read-only access
-  RedisModuleKey *key = _index_LookupKey(ctx, graph, label, property, false);
+  RedisModuleKey *key = _index_LookupKey(ctx, graph, *index_id, false);
 
   if (RedisModule_ModuleTypeGetType(key) == IndexRedisModuleType) {
     idx = RedisModule_ModuleTypeGetValue(key);
@@ -65,9 +74,29 @@ Index* Index_Get(RedisModuleCtx *ctx, const char *graph, const char *label, cons
   return idx;
 }
 
-int Index_Delete(RedisModuleCtx *ctx, const char *graphName, const char *label, const char *prop) {
+/* Manage the updates of index IDs in the LabelStore schema and in the Redis keyspace. */
+/*
+void Index_ReplaceID(RedisModuleCtx *ctx, Graph *g, const char *graphName, RedisModuleKey *dest_key, size_t *dest_id) {
+}
+*/
+
+int Index_Delete(RedisModuleCtx *ctx, const char *graphName, Graph *g, const char *label, char *prop) {
+  LabelStore *store = LabelStore_Get(ctx, STORE_NODE, graphName, label);
+  assert(store);
+
+  size_t *index_id = TrieMap_Find(store->properties, prop, strlen(prop));
+
+  if (index_id == NULL) return INDEX_FAIL;
+
+  // Decrement the total index count
+  g->index_count --;
+
+  // NULL out the dropped index in its label schema
+  LabelStore_AssignValue(store, prop, NULL);
+
   // Open key with write access
-  RedisModuleKey *key = _index_LookupKey(ctx, graphName, label, prop, true);
+  RedisModuleKey *key = _index_LookupKey(ctx, graphName, *index_id, true);
+
   if (RedisModule_ModuleTypeGetType(key) != IndexRedisModuleType) {
     // Reply with error if this key does not exist or does not correspond to an index object
     RedisModule_CloseKey(key);
@@ -76,8 +105,38 @@ int Index_Delete(RedisModuleCtx *ctx, const char *graphName, const char *label, 
 
   Index *idx = RedisModule_ModuleTypeGetValue(key);
 
+  // Index_ReplaceID(ctx, g, graphName, key, index_id);
+
+  size_t src_id = g->index_count;
+  // No need to migrate if we're replacing the last ID
+  if (*index_id == src_id) {
+    RedisModule_DeleteKey(key);
+    RedisModule_CloseKey(key);
+    return INDEX_OK;
+  }
+
+  // retrieve last index
+  RedisModuleKey *src_key = _index_LookupKey(ctx, graphName, src_id, true);
+  Index *src = RedisModule_ModuleTypeGetValue(src_key);
+
+  src->id = *index_id;
+  // Update the label schema
+  // TODO multi-label will make this inadequate
+  LabelStore *src_store = LabelStore_Get(ctx, STORE_NODE, graphName, src->label);
+  // Update the ID of the retained index in its label schema
+  LabelStore_AssignValue(src_store, src->property, index_id);
+
+  // Update the Redis keyspace
+  RedisModule_ModuleTypeSetValue(key, IndexRedisModuleType, src);
+  // TODO can't delete OR set to null because it will free index
+  /*
+  RedisModule_ModuleTypeSetValue(src_key, NULL, NULL);
+  RedisModule_DeleteKey(src_key);
+  */
+
   // The DeleteKey routine will free the index and skiplists
-  RedisModule_DeleteKey(key);
+  // RedisModule_DeleteKey(key);
+  RedisModule_CloseKey(key);
   return INDEX_OK;
 }
 
@@ -141,20 +200,34 @@ Index* buildIndex(Graph *g, const GrB_Matrix label_matrix, const char *label, co
 
 // Create and populate index for specified property
 // (This function will create separate string and numeric indices if property has mixed types)
-int Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, const char *label, const char *prop_str) {
+int Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, const char *label, char *prop_str) {
+
+  LabelStore *store = LabelStore_Get(ctx, STORE_NODE, graphName, label);
+  assert(store);
+
+  size_t *index_id = TrieMap_Find(store->properties, prop_str, strlen(prop_str));
+  if (index_id) return INDEX_FAIL; // This property is already indexed.
+
+  // Create a unique index ID and attach it as a value to the property in the label schema.
+  // TODO This will only update the passed label; multi-label support will require
+  // iterating over labels and updating all schemas.
+  index_id = malloc(sizeof(size_t));
+  *index_id = Graph_AddIndexID(g);
+  LabelStore_AssignValue(store, prop_str, index_id);
+
   // Open key with write access
-  RedisModuleKey *key = _index_LookupKey(ctx, graphName, label, prop_str, true);
+  RedisModuleKey *key = _index_LookupKey(ctx, graphName, *index_id, true);
   // Do nothing if this key already exists
   if (RedisModule_ModuleTypeGetType(key) != REDISMODULE_KEYTYPE_EMPTY) {
     RedisModule_CloseKey(key);
     return INDEX_FAIL;
   }
 
-  LabelStore *store = LabelStore_Get(ctx, STORE_NODE, graphName, label);
-  assert(store);
   const GrB_Matrix label_matrix = Graph_GetLabel(g, store->id);
 
   Index *idx = buildIndex(g, label_matrix, label, prop_str);
+  idx->id = *index_id;
+
   RedisModule_ModuleTypeSetValue(key, IndexRedisModuleType, idx);
   RedisModule_CloseKey(key);
 

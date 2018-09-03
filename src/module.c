@@ -133,7 +133,7 @@ void _index_operation(RedisModuleCtx *ctx, const char *graphName, Graph *g, AST_
       }
       break;
     case DROP_INDEX:
-      ret = Index_Delete(ctx, graphName, indexNode->label, indexNode->property);
+      ret = Index_Delete(ctx, graphName, g, indexNode->label, indexNode->property);
       if (ret == INDEX_OK) {
         RedisModule_ReplyWithSimpleString(ctx, "Removed 1 index.");
       } else {

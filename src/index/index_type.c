@@ -85,15 +85,18 @@ void _IndexType_LoadSkiplist(RedisModuleIO *rdb, skiplist *sl, SIType valtype) {
 
 void *IndexType_RdbLoad(RedisModuleIO *rdb, int encver) {
   /* Format:
+   * ID
    * label
    * property
    * string skiplist
    * numeric skiplist
    */
+  size_t id =  RedisModule_LoadUnsigned(rdb);
   const char *label = RedisModule_LoadStringBuffer(rdb, NULL);
   const char *property = RedisModule_LoadStringBuffer(rdb, NULL);
 
   Index *idx = malloc(sizeof(Index));
+  idx->id = id;
   idx->label = strdup(label);
   idx->property = strdup(property);
 
@@ -107,6 +110,7 @@ void *IndexType_RdbLoad(RedisModuleIO *rdb, int encver) {
 
 void IndexType_RdbSave(RedisModuleIO *rdb, void *value) {
   /* Format:
+   * ID
    * label
    * property
    * string skiplist
@@ -114,6 +118,7 @@ void IndexType_RdbSave(RedisModuleIO *rdb, void *value) {
    */
   Index *idx = (Index *)value;
 
+  RedisModule_SaveUnsigned(rdb, idx->id);
   RedisModule_SaveStringBuffer(rdb, idx->label, strlen(idx->label) + 1);
   RedisModule_SaveStringBuffer(rdb, idx->property, strlen(idx->property) + 1);
 
@@ -126,7 +131,7 @@ void IndexType_AofRewrite(RedisModuleIO *aof, RedisModuleString *key, void *valu
 }
 
 void IndexType_Free(void *value) {
-  Index_Free((Index*)value);
+  if (value) Index_Free((Index*)value);
 }
 
 int IndexType_Register(RedisModuleCtx *ctx) {

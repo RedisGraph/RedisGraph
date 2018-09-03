@@ -80,8 +80,22 @@ LabelStore *LabelStore_Get(RedisModuleCtx *ctx, LabelStoreType type, const char 
 	}
 
 	store = RedisModule_ModuleTypeGetValue(key);
-    RedisModule_CloseKey(key);
+	RedisModule_CloseKey(key);
 	return store;
+}
+
+/* TrieMapReplaceFunc */
+/* By default, the triemap stores update values by first freeing the original.
+ * This alternate routine assigns a pointer to a value without a free, which is preferable
+ * for us when updating IDs to replace dropped indices. */
+void* TrieMapReplaceWithoutFree(void *oldval, void *newval) {
+    return newval;
+}
+
+void LabelStore_AssignValue(LabelStore *store, char *property, size_t *id) {
+    // TODO if the pointer is not shared, it *should* be freed in this routine
+    TrieMap_Add(store->properties, property, strlen(property), (void *)id, TrieMapReplaceWithoutFree);
+    // TrieMap_Add(store->properties, property, strlen(property), (void *)id, NULL);
 }
 
 void LabelStore_UpdateSchema(LabelStore *store, int prop_count, char **properties) {

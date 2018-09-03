@@ -36,7 +36,8 @@ typedef struct {
     size_t relation_count;          // Number of relation matrices.
     GrB_Matrix *_labels;            // Label matrices.
     size_t label_cap;               // Number of labels graph can hold.
-    size_t label_count;             // Number of label matrices.    
+    size_t label_count;             // Number of label matrices.
+    size_t index_count;             // Number of unique indices attached to graph.
     pthread_mutex_t _mutex;         // Mutex for accessing critical sections.
 
 } Graph;
@@ -58,6 +59,9 @@ size_t Graph_NodeCount(const Graph *g);
 
 // Returns number of edges in the graph.
 size_t Graph_EdgeCount(const Graph *g);
+
+// Returns a valid index ID and increments the graph's index count.
+size_t Graph_AddIndexID(Graph *g);
 
 // Creates N new nodes.
 // Returns node iterator.

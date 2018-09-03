@@ -264,6 +264,7 @@ Graph *Graph_New(size_t n) {
     g->relation_count = 0;
     g->label_cap = GRAPH_DEFAULT_LABEL_CAP;
     g->label_count = 0;
+    g->index_count = 0;
     g->_relations = malloc(sizeof(GrB_Matrix) * g->relation_cap);
     g->_labels = malloc(sizeof(GrB_Matrix) * g->label_cap);
     GrB_Matrix_new(&g->adjacency_matrix, GrB_BOOL, _Graph_NodeCap(g), _Graph_NodeCap(g));
@@ -296,6 +297,12 @@ size_t Graph_NodeCount(const Graph *g) {
 size_t Graph_EdgeCount(const Graph *g) {
     assert(g);
     return g->edges->itemCount;
+}
+
+size_t Graph_AddIndexID(Graph *g) {
+    assert(g);
+    size_t latest_idx = g->index_count ++;
+    return latest_idx;
 }
 
 void Graph_CreateNodes(Graph* g, size_t n, int* labels, DataBlockIterator **it) {

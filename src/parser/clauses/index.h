@@ -8,11 +8,11 @@ typedef enum {
 
 typedef struct {
   const char *label;
-  const char *property;
+  char *property;
   AST_IndexOpType operation;
 } AST_IndexNode;
 
-AST_IndexNode* New_AST_IndexNode(const char *label, const char *property, AST_IndexOpType optype);
+AST_IndexNode* New_AST_IndexNode(const char *label, char *property, AST_IndexOpType optype);
 void Free_AST_IndexNode(AST_IndexNode *indexNode);
 
 #endif

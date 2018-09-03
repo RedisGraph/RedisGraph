@@ -30,6 +30,7 @@ typedef skiplistIterator IndexIter;
  * When building Index Scan operations, the types of values described by filters will
  * specify which skiplist should be traversed. */
 typedef struct {
+  size_t id;
   char *label;
   char *property;
   skiplist *string_sl;
@@ -37,10 +38,10 @@ typedef struct {
 } Index;
 
 /* Index_Get attempts to retrieve an index from the Redis keyspace. */
-Index* Index_Get(RedisModuleCtx *ctx, const char *graph, const char *label, const char *property);
+Index* Index_Get(RedisModuleCtx *ctx, const char *graph, const char *label, char *property);
 
 /* Index_Delete drops an index from the Redis keyspace and frees its associated constructs.  */
-int Index_Delete(RedisModuleCtx *ctx, const char *graphName, const char *label, const char *prop);
+int Index_Delete(RedisModuleCtx *ctx, const char *graphName, Graph *g, const char *label, char *prop);
 
 /* initializeSkiplists prepares the string and numeric skiplists for a new Index,
  * pointing them to the appropriate internal comparator routines. It is exposed in
@@ -49,7 +50,7 @@ void initializeSkiplists(Index *index);
 
 /* Index_Create is a wrapper for the buildIndex function. It retrieves the appropriate label
  * matrix from the graph and saves the index in the Redis keyspace. */
-int Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, const char *label, const char *prop_str);
+int Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, const char *label, char *prop_str);
 
 /* Prepare output text for EXPLAIN calls on "drop index" and "create index" */
 const char* Index_OpPrint(AST_IndexNode *indexNode);
