@@ -30,7 +30,7 @@ LabelStore *LabelStore_New(RedisModuleCtx *ctx, LabelStoreType type, const char 
 
 /* Assign an ID to a label-property pair.
  * Label store schema values are currently size_t pointers that represent the ID of the index on that property
- * (if any). That usage is not defined within the LabelStore, however. */
+ * (if any). That usage is not mandated by the LabelStore, however. */
 void LabelStore_AssignValue(LabelStore *store, char *property, size_t *id);
 
 /* Get a label store. */

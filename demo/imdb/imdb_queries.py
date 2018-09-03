@@ -190,7 +190,7 @@ eighties_movies_index_scan = QueryInfo(
 find_titles_starting_with_american_query = QueryInfo(
     query="""MATCH (m:movie)
              WHERE LEFT(m.title, 8) = 'American'
-             RETURN m.title 
+             RETURN m.title
              ORDER BY m.title""",
     description='Movies starting with "American"?',
     max_run_time_ms=4,

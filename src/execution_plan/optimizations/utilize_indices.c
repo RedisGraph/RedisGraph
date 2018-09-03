@@ -111,6 +111,8 @@ void utilizeIndices(RedisModuleCtx *ctx, const char *graph_name, ExecutionPlan *
         // When the constant is on the left, reverse the relation in the inequality
         // to properly set the bounds.
         op = _reverseOp(ft->pred.op);
+      } else {
+        continue;
       }
 
       // If we've already selected an index on a different property, continue

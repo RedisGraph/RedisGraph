@@ -37,7 +37,7 @@ typedef struct {
     GrB_Matrix *_labels;            // Label matrices.
     size_t label_cap;               // Number of labels graph can hold.
     size_t label_count;             // Number of label matrices.
-    size_t index_count;             // Number of unique indices attached to graph.
+    size_t index_ctr;               // Next index ID to be attached to graph.
     pthread_mutex_t _mutex;         // Mutex for accessing critical sections.
 
 } Graph;

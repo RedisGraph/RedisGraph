@@ -74,12 +74,6 @@ Index* Index_Get(RedisModuleCtx *ctx, const char *graph, const char *label, char
   return idx;
 }
 
-/* Manage the updates of index IDs in the LabelStore schema and in the Redis keyspace. */
-/*
-void Index_ReplaceID(RedisModuleCtx *ctx, Graph *g, const char *graphName, RedisModuleKey *dest_key, size_t *dest_id) {
-}
-*/
-
 int Index_Delete(RedisModuleCtx *ctx, const char *graphName, Graph *g, const char *label, char *prop) {
   LabelStore *store = LabelStore_Get(ctx, STORE_NODE, graphName, label);
   assert(store);
@@ -87,12 +81,6 @@ int Index_Delete(RedisModuleCtx *ctx, const char *graphName, Graph *g, const cha
   size_t *index_id = TrieMap_Find(store->properties, prop, strlen(prop));
 
   if (index_id == NULL) return INDEX_FAIL;
-
-  // Decrement the total index count
-  g->index_count --;
-
-  // NULL out the dropped index in its label schema
-  LabelStore_AssignValue(store, prop, NULL);
 
   // Open key with write access
   RedisModuleKey *key = _index_LookupKey(ctx, graphName, *index_id, true);
@@ -103,40 +91,12 @@ int Index_Delete(RedisModuleCtx *ctx, const char *graphName, Graph *g, const cha
     return INDEX_FAIL;
   }
 
-  Index *idx = RedisModule_ModuleTypeGetValue(key);
-
-  // Index_ReplaceID(ctx, g, graphName, key, index_id);
-
-  size_t src_id = g->index_count;
-  // No need to migrate if we're replacing the last ID
-  if (*index_id == src_id) {
-    RedisModule_DeleteKey(key);
-    RedisModule_CloseKey(key);
-    return INDEX_OK;
-  }
-
-  // retrieve last index
-  RedisModuleKey *src_key = _index_LookupKey(ctx, graphName, src_id, true);
-  Index *src = RedisModule_ModuleTypeGetValue(src_key);
-
-  src->id = *index_id;
-  // Update the label schema
-  // TODO multi-label will make this inadequate
-  LabelStore *src_store = LabelStore_Get(ctx, STORE_NODE, graphName, src->label);
-  // Update the ID of the retained index in its label schema
-  LabelStore_AssignValue(src_store, src->property, index_id);
-
-  // Update the Redis keyspace
-  RedisModule_ModuleTypeSetValue(key, IndexRedisModuleType, src);
-  // TODO can't delete OR set to null because it will free index
-  /*
-  RedisModule_ModuleTypeSetValue(src_key, NULL, NULL);
-  RedisModule_DeleteKey(src_key);
-  */
-
-  // The DeleteKey routine will free the index and skiplists
-  // RedisModule_DeleteKey(key);
+  RedisModule_DeleteKey(key);
   RedisModule_CloseKey(key);
+
+  // NULL out the dropped index in its label schema
+  LabelStore_AssignValue(store, prop, NULL);
+
   return INDEX_OK;
 }
 
