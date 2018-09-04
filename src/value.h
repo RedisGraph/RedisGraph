@@ -15,7 +15,11 @@
 typedef char *SIId;
 
 /* Type defines the supported types by the indexing system. The types are powers
- * of 2 so they can be used in bitmasks of matching types */
+ * of 2 so they can be used in bitmasks of matching types.
+ *
+ * The order of these values is significant, as the delta between values of
+ * differing types is used to maintain the Cypher-defined global sort order
+ * in the SIValue_Compare routine. */
 typedef enum {
   T_NULL = 0,
   T_STRING = 0x001,

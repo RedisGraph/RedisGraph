@@ -412,12 +412,34 @@ size_t SIValue_StringConcat(SIValue* strings, unsigned int string_count, char *b
 }
 
 int SIValue_Compare(SIValue a, SIValue b) {
-  // TODO: Use SI_NUMERIC.
-  if(a.type == T_DOUBLE) {
-    return a.doubleval - b.doubleval;
-  } else {
-    return strcasecmp(a.stringval, b.stringval);
+  // Types are identical
+  if (a.type == b.type) {
+    if (a.type == T_DOUBLE) {
+      /* TODO - inf, -inf, and  NaN do not behave canonically in this routine,
+       * though they do not break anything. Low-priority bug. */
+      return a.doubleval - b.doubleval;
+    } else if (a.type == T_STRING) {
+      return strcasecmp(a.stringval, b.stringval);
+    } else {
+      // TODO matching unhandled types - revisit this when introducing other numerics
+      return 0;
+    }
   }
+
+  // Types differ
+  /* Cypher specifies the following ascending order of disjoint types:
+   * - String
+   * - Number
+   * - NULL
+   */
+  if (a.type == T_STRING) {
+    return -1;
+  }
+  if (b.type == T_STRING) {
+    return 1;
+  }
+
+  return b.type - a.type;
 }
 
 void SIValue_Print(FILE *outstream, SIValue *v) {

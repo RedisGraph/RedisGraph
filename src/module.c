@@ -103,6 +103,16 @@ void _MGraph_ReleaseLock(RedisModuleCtx *ctx) {
     RedisModule_ThreadSafeContextUnlock(ctx);
 }
 
+AST_Validation _AST_PerformValidations(RedisModuleCtx *ctx, AST_Query *ast) {
+    char *reason;
+    if (AST_Validate(ast, &reason) != AST_VALID) {
+        RedisModule_ReplyWithError(ctx, reason);
+        free(reason);
+        return AST_INVALID;
+    }
+    return AST_VALID;
+}
+
 void _index_operation(RedisModuleCtx *ctx, const char *graphName, Graph *g, AST_IndexNode *indexNode) {
   /* Set up nested array response for index creation and deletion.
    * As we need no result set, there is only one top-level element, for statistics.
@@ -163,14 +173,11 @@ void _MGraph_Query(void *args) {
     AST_Query* ast = qctx->ast;
     const char *graph_name = RedisModule_StringPtrLen(qctx->graphName, NULL);
 
-    ModifyAST(ctx, ast, graph_name);
+    // Perform query validations before and after ModifyAST
+    if (_AST_PerformValidations(ctx, ast) != AST_VALID) goto cleanup;
 
-    char *reason;
-    if (AST_Validate(ast, &reason) != AST_VALID) {
-        RedisModule_ReplyWithError(ctx, reason);
-        free(reason);
-        goto cleanup;
-    }
+    ModifyAST(ctx, ast, graph_name);
+    if (_AST_PerformValidations(ctx, ast) != AST_VALID) goto cleanup;
 
     // If this is a write query, acquire write lock.
     if(AST_ReadOnly(ast)) _MGraph_AcquireReadLock();
@@ -398,14 +405,11 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
         return REDISMODULE_OK;
     }
 
-    ModifyAST(ctx, ast, graph_name);
+    // Perform query validations before and after ModifyAST
+    if (_AST_PerformValidations(ctx, ast) != AST_VALID) return REDISMODULE_OK;
 
-    char *reason;
-    if (AST_Validate(ast, &reason) != AST_VALID) {
-        RedisModule_ReplyWithError(ctx, reason);
-        free(reason);
-        return REDISMODULE_OK;
-    }
+    ModifyAST(ctx, ast, graph_name);
+    if (_AST_PerformValidations(ctx, ast) != AST_VALID) return REDISMODULE_OK;
 
     if (ast->indexNode != NULL) { // index operation
         const char *strPlan = Index_OpPrint(ast->indexNode);
