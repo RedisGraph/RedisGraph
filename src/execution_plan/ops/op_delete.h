@@ -14,36 +14,17 @@
 #include "../../util/triemap/triemap.h"
 /* Delets entities specified within the DELETE clause. */
 
-typedef struct {
-    Node **src;
-    Node **dest;
-    int relation_type;
-} EdgeEnds;
-
-struct EdgeID {
-    NodeID src;
-    NodeID dest;
-    int relation_type;
-};
 
 typedef struct {
     OpBase op;
     Graph *g;
     QueryGraph *qg;
-
     size_t node_count;
     Node ***nodes_to_delete;
-
     size_t edge_count;
-    EdgeEnds *edges_to_delete;
-
-    size_t deleted_node_cap;            // Size of deleted_nodes.
-    size_t deleted_node_count;          // Number of node IDs in deleted_nodes.
-    NodeID *deleted_nodes;              // Array of nodes to be removed.
-
-    size_t deleted_edge_cap;            // Size of deleted_edges.
-    size_t deleted_edge_count;          // Number of edge IDs in deleted_edges.
-    struct EdgeID *deleted_edges;       // Array of edges to be removed.
+    Edge ***edges_to_delete;
+    NodeID *deleted_nodes;              // Array of nodes to be removed.    
+    EdgeID *deleted_edges;              // Array of edges to be removed.
 
     ResultSet *result_set;
 } OpDelete;

@@ -224,7 +224,7 @@ void _ExecutionPlan_EnforceExpDestNodeType(RedisModuleCtx *ctx, Graph *g,
             AlgebraicExpression_ClearOperands(exp);
             AlgebraicExpression_PrependTerm(exp, zero, false, true);
         } else {
-            GrB_Matrix M = Graph_GetLabelMatrix(g, ls->id);
+            GrB_Matrix M = Graph_GetLabel(g, ls->id);
             AlgebraicExpression_PrependTerm(exp, M, false, false);
         }
     }

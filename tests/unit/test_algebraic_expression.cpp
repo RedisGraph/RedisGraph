@@ -133,8 +133,8 @@ class AlgebraicExpressionTest: public ::testing::Test {
         size_t node_count = person_count + country_count;
 
         /* Introduce person and country labels. */
-        int person_label = Graph_AddLabelMatrix(g);
-        int country_label = Graph_AddLabelMatrix(g);
+        int person_label = Graph_AddLabel(g);
+        int country_label = Graph_AddLabel(g);
         int labels[11] = {person_label, person_label, person_label, person_label, person_label, person_label,
                         country_label, country_label, country_label, country_label, country_label};
 
@@ -157,9 +157,9 @@ class AlgebraicExpressionTest: public ::testing::Test {
         DataBlockIterator_Free(it);
 
         // Creates a relation matrices.
-        GrB_Index friend_relation_id = Graph_AddRelationMatrix(g);
-        GrB_Index visit_relation_id = Graph_AddRelationMatrix(g);
-        GrB_Index war_relation_id = Graph_AddRelationMatrix(g);
+        GrB_Index friend_relation_id = Graph_AddRelation(g);
+        GrB_Index visit_relation_id = Graph_AddRelation(g);
+        GrB_Index war_relation_id = Graph_AddRelation(g);
 
         // Introduce relations, connect nodes.
         /* friendship matrix 
@@ -304,7 +304,7 @@ class AlgebraicExpressionTest: public ::testing::Test {
         * MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) */
         QueryGraph *q = QueryGraph_New();
 
-        // The following indicies are synced with Graph_AddRelationMatrix call order
+        // The following indicies are synced with Graph_AddRelation call order
         // within _build_graph, this is not ideal, but for now this will do.
         int friend_relation_id = 0;
         int visit_relation_id = 1;
@@ -323,9 +323,9 @@ class AlgebraicExpressionTest: public ::testing::Test {
         
         // Set edges matrices according to the order they've been presented
         // during graph construction.
-        pff->mat = Graph_GetRelationMatrix(g, 0);
-        fvc->mat = Graph_GetRelationMatrix(g, 1);
-        cwe->mat = Graph_GetRelationMatrix(g, 2);
+        pff->mat = Graph_GetRelation(g, 0);
+        fvc->mat = Graph_GetRelation(g, 1);
+        cwe->mat = Graph_GetRelation(g, 2);
 
         // Construct query graph
         QueryGraph_AddNode(q, p, (char*)"p");

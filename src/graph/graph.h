@@ -12,7 +12,6 @@
 
 #include "node.h"
 #include "edge.h"
-#include "edge_iterator.h"
 #include "../redismodule.h"
 #include "../util/uthash.h"
 #include "../util/triemap/triemap.h"
@@ -25,6 +24,7 @@
 #define GRAPH_DEFAULT_LABEL_CAP 16      // Default number of different labels a graph can hold before resizing.
 #define GRAPH_NO_LABEL -1               // Labels are numbered [0-N], -1 represents no label.
 #define GRAPH_NO_RELATION -1            // Relations are numbered [0-N], -1 represents no relation.
+
 
 typedef struct {
     DataBlock *nodes;               // Graph nodes stored in blocks.
@@ -73,7 +73,7 @@ void Graph_ConnectNodes (
         Graph *g,                   // Graph in which connections are formed. 
         EdgeDesc *connections,      // Array of triplets (src_id, dest_id, relation).
         size_t connectionCount,     // Number of elements in connections array.
-        DataBlockIterator **it      // Pointer to edge iterator.
+        DataBlockIterator **edges   // Pointer to edge iterator.
 );
 
 // Retrieves node with given id from graph,
@@ -98,7 +98,14 @@ void Graph_GetEdgesConnectingNodes (
     NodeID src,
     NodeID dest,
     int relation,
-    EdgeIterator *it
+    Vector *edges
+);
+
+// Get both incoming and outgoing node edges.
+void Graph_GetNodeEdges (
+    const Graph *g,
+    const Node *n,
+    Vector *edges
 );
 
 // Removes a set of nodes and all of their connections
@@ -106,11 +113,10 @@ void Graph_GetEdgesConnectingNodes (
 void Graph_DeleteNodes(Graph *g, NodeID *IDs, size_t IDCount);
 
 // Removes edge connecting src node to dest node.
-void Graph_DeleteEdge (
+void Graph_DeleteEdges (
     Graph *g,
-    NodeID src_id,
-    NodeID dest_id,
-    int relation
+    EdgeID *IDs,
+    size_t IDCount
 );
 
 // Label all nodes between start_node_id and end_node_id
@@ -135,7 +141,7 @@ DataBlockIterator *Graph_ScanEdges (
 );
 
 // Creates a new label matrix, returns id given to label.
-int Graph_AddLabelMatrix (
+int Graph_AddLabel (
     Graph *g
 );
 
@@ -147,20 +153,20 @@ GrB_Matrix Graph_GetAdjacencyMatrix (
 
 // Retrieves a label matrix.
 // Matrix is resized if its size doesn't match graph's node count.
-GrB_Matrix Graph_GetLabelMatrix (
+GrB_Matrix Graph_GetLabel (
     const Graph *g,     // Graph from which to get adjacency matrix.
     int label           // Label described by matrix.
 );
 
 // Retrieves a typed adjacency matrix.
 // Matrix is resized if its size doesn't match graph's node count.
-GrB_Matrix Graph_GetRelationMatrix (
+GrB_Matrix Graph_GetRelation (
     const Graph *g,     // Graph from which to get adjacency matrix.
     int relation        // Relation described by matrix.
 );
 
 // Creates a new relation matrix, returns id given to relation.
-int Graph_AddRelationMatrix (
+int Graph_AddRelation (
     Graph *g
 );
 

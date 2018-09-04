@@ -5,9 +5,11 @@
 * modified with the Commons Clause restriction.
 */
 
+#include <assert.h>
+
 #include "graph.h"
 #include "graph_type.h"
-#include "assert.h"
+#include "../util/qsort.h"
 #include "../arithmetic/tuples_iter.h"
 
 
@@ -70,7 +72,7 @@ void _Graph_MigrateRowCol(Graph *g, int src, int dest) {
     GrB_Col_assign(M, NULL, NULL, col, GrB_ALL, nrows, dest, NULL);
 
     for(int i = 0; i < g->relation_count; i++) {
-        M = Graph_GetRelationMatrix(g, i);
+        M = Graph_GetRelation(g, i);
 
         // Clear dest column.
         GrB_Col_assign(M, NULL, NULL, zero, GrB_ALL, nrows, dest, NULL);
@@ -91,12 +93,52 @@ void _Graph_MigrateRowCol(Graph *g, int src, int dest) {
     GrB_Descriptor_free(&desc);
 }
 
+/* Whenever an edge is replaced by another edge 
+ * update the replacement edge ID. */
+void _Graph_ReplaceDeletedEdge(Graph *g, EdgeID replacement, EdgeID to_delete) {
+    Edge *e = Graph_GetEdge(g, replacement);
+    e->id = to_delete;
+}
+
 void _Graph_ReplaceDeletedNode(Graph *g, GrB_Vector zero, NodeID replacement, NodeID to_delete) {
+    Node *deletedNode = Graph_GetNode(g, to_delete);
+    Node *replacementNode = Graph_GetNode(g, replacement);
+    
+    // Get edges of replacement node.
+    Vector *edges = NewVector(Edge*, 32);
+    Graph_GetNodeEdges(g, replacementNode, edges);
+    size_t edgeCount = Vector_Size(edges);
+
+    // Update replacement node ID.
+    replacementNode->id = to_delete;
+
+    /* Update replacement edges;
+     * forevery incoming/outgoing edge of replacement node
+     * remove edge from its current position within graph
+     * hashtable, once removed, we're allowed to update edge
+     * composite key and re-add it to graph hashtable. */    
+    for(int i = 0; i < edgeCount; i++) {
+        Edge *e;
+        Vector_Get(edges, i, &e);
+
+        HASH_DEL(g->_edgesHashTbl, e);
+
+        /* Update edge source/dest node,
+         * as we've changed replacement node id. */
+        if(Edge_GetSrcNodeID(e) == replacement) {
+            Edge_SetSrcNode(e, replacementNode);
+        } else {
+            Edge_SetDestNode(e, replacementNode);
+        }
+
+        HASH_ADD(hh, g->_edgesHashTbl, edgeDesc, sizeof(e->edgeDesc), e);
+    }
+
     // Update label matrices.
     for (int i = 0; i < g->label_count; i ++) {
         bool src_has_label = false;
         bool dest_has_label = false;
-        GrB_Matrix M = Graph_GetLabelMatrix(g, i);
+        GrB_Matrix M = Graph_GetLabel(g, i);
         GrB_Matrix_extractElement_BOOL(&src_has_label, M, replacement, replacement);
         GrB_Matrix_extractElement_BOOL(&dest_has_label, M, to_delete, to_delete);
 
@@ -109,7 +151,7 @@ void _Graph_ReplaceDeletedNode(Graph *g, GrB_Vector zero, NodeID replacement, No
         }
     }
 
-    _Graph_MigrateRowCol(g, replacement, to_delete);
+    _Graph_MigrateRowCol(g, replacement, to_delete);        
     DataBlock_CopyItem(g->nodes, replacement, to_delete);
 }
 
@@ -152,49 +194,6 @@ void _Graph_ClearMatrixEntry(Graph *g, GrB_Matrix M, GrB_Index src, GrB_Index de
     GrB_Vector_free(&mask);
 }
 
-/* Deletes all edges connecting source to destination. */
-void _Graph_DeleteEdges(Graph *g, NodeID src_id, NodeID dest_id) {
-    GrB_Matrix M = Graph_GetAdjacencyMatrix(g);
-    // Guarantee src connected to dest.
-    _Graph_ClearMatrixEntry(g, M, src_id, dest_id);
-
-    // Update relation matrices.
-    for(int i = 0; i < g->relation_count; i++) {
-        M = Graph_GetRelationMatrix(g, i);
-        bool connected = false;
-        GrB_Matrix_extractElement_BOOL(&connected, M, dest_id, src_id);
-        if(connected)
-            _Graph_ClearMatrixEntry(g, M, src_id, dest_id);
-    }
-}
-
-/* Deletes typed edge connecting source to destination. */
-void _Graph_DeleteTypedEdges(Graph *g, NodeID src_id, NodeID dest_id, int relation) {
-    bool connected = false;
-    GrB_Matrix M = Graph_GetRelationMatrix(g, relation);
-    assert(M);
-
-    GrB_Matrix_extractElement_BOOL(&connected, M, dest_id, src_id);
-    if(!connected) return;
-
-    _Graph_ClearMatrixEntry(g, M, src_id, dest_id);
-
-    // See if source is connected to destination with additional edges.
-    for(int i = 0; i < g->relation_count; i++) {
-        M = Graph_GetRelationMatrix(g, i);
-        connected = false;
-        GrB_Matrix_extractElement_BOOL(&connected, M, dest_id, src_id);
-        if(connected) break;
-    }
-
-    /* There are no additional edges connecting source to destination
-     * Remove edge from THE adjacency matrix. */
-    if(!connected) {
-        M = Graph_GetAdjacencyMatrix(g);
-        _Graph_ClearMatrixEntry(g, M, src_id, dest_id);
-    }
-}
-
 /* Initialize edge and store it within graph's edge hashtable
  * edge key within the hashtable is composed of:
  * 1. Edge relation ID
@@ -217,6 +216,7 @@ int _Graph_InitEdge(Graph *g, Edge *e, EdgeID id, Node *src, Node *dest, int r) 
     }
 
     // Set edge composite ID.
+    e->id = id;
     Edge_SetSrcNode(e, src);
     Edge_SetDestNode(e, dest);
     Edge_SetRelationID(e, r);
@@ -224,6 +224,36 @@ int _Graph_InitEdge(Graph *g, Edge *e, EdgeID id, Node *src, Node *dest, int r) 
     // Store edge within graph's edge hashtable
     HASH_ADD(hh, g->_edgesHashTbl, edgeDesc, sizeof(EdgeDesc), e);
     return 1;
+}
+
+/* Removes an edge from Graph's hashtable and updates 
+ * graph relevent matrices. */
+void _Graph_DeleteEdge(Graph *g, Edge *e) {
+    // Remove edge from hashtable.
+    HASH_DEL(g->_edgesHashTbl, e);
+
+    // Update relation matrices.
+    int r = Edge_GetRelationID(e);
+    NodeID src_id = Edge_GetSrcNodeID(e);
+    NodeID dest_id = Edge_GetDestNodeID(e);
+
+    GrB_Matrix M = Graph_GetRelation(g, r);
+    _Graph_ClearMatrixEntry(g, M, src_id, dest_id);
+
+    // See if source is connected to destination with additional edges.
+    bool connected = false;
+    for(int i = 0; i < g->relation_count; i++) {
+        M = Graph_GetRelation(g, i);
+        GrB_Matrix_extractElement_BOOL(&connected, M, dest_id, src_id);
+        if(connected) break;
+    }
+
+    /* There are no additional edges connecting source to destination
+     * Remove edge from THE adjacency matrix. */
+    if(!connected) {
+        M = Graph_GetAdjacencyMatrix(g);
+        _Graph_ClearMatrixEntry(g, M, src_id, dest_id);
+    }
 }
 
 /*================================ Graph API ================================ */
@@ -284,7 +314,7 @@ void Graph_CreateNodes(Graph* g, size_t n, int* labels, DataBlockIterator **it) 
         for(size_t idx = 0; idx < n; idx++) {
             int l = labels[idx];
             if(l != GRAPH_NO_LABEL) {
-                GrB_Matrix m = Graph_GetLabelMatrix(g, l);
+                GrB_Matrix m = Graph_GetLabel(g, l);
                 GrB_Matrix_setElement_BOOL(m, true, node_id, node_id);
             }
             node_id++;
@@ -292,7 +322,7 @@ void Graph_CreateNodes(Graph* g, size_t n, int* labels, DataBlockIterator **it) 
     }
 }
 
-void Graph_ConnectNodes(Graph *g, EdgeDesc *connections, size_t connectionCount, DataBlockIterator **it) {
+void Graph_ConnectNodes(Graph *g, EdgeDesc *connections, size_t connectionCount, DataBlockIterator **edges) {
     assert(g && connections);
 
     DataBlockIterator *iter;
@@ -312,7 +342,7 @@ void Graph_ConnectNodes(Graph *g, EdgeDesc *connections, size_t connectionCount,
         int r = conn.relationId;
         if(_Graph_InitEdge(g, e, edgeID++, srcNode, destNode, r)) {
             // Columns represent source nodes, rows represent destination nodes.
-            GrB_Matrix M = Graph_GetRelationMatrix(g, r);
+            GrB_Matrix M = Graph_GetRelation(g, r);
             GrB_Matrix_setElement_BOOL(adj, true, destNode->id, srcNode->id);
             GrB_Matrix_setElement_BOOL(M, true, destNode->id, srcNode->id);
         }
@@ -320,9 +350,9 @@ void Graph_ConnectNodes(Graph *g, EdgeDesc *connections, size_t connectionCount,
 
     /* If access to newly created edges is requested
      * reset iterator pass it back to caller. */
-    if(it) {
-        *it = iter;
-        DataBlockIterator_Reset(*it);
+    if(edges) {
+        *edges = iter;
+        DataBlockIterator_Reset(*edges);
     } else {
         DataBlockIterator_Free(iter);
     }
@@ -342,12 +372,9 @@ Edge *Graph_GetEdge(const Graph *g, EdgeID id) {
     return e;
 }
 
-void Graph_GetEdgesConnectingNodes(const Graph *g, NodeID src, NodeID dest, int relation, EdgeIterator *it) {
-    assert(g && src < Graph_NodeCount(g) && dest < Graph_NodeCount(g) && it);
-
-    size_t edgeCount = 0;
-    size_t edgeCap = it->edgeCap;
-    Edge **edges = it->edges;
+void Graph_GetEdgesConnectingNodes(const Graph *g, NodeID src, NodeID dest, int relation, Vector *edges) {
+    assert(g && src < Graph_NodeCount(g) && dest < Graph_NodeCount(g) && edges);
+    Edge *e;
     Node *srcNode = Graph_GetNode(g, src);
     Node *destNode = Graph_GetNode(g, dest);
 
@@ -361,26 +388,129 @@ void Graph_GetEdgesConnectingNodes(const Graph *g, NodeID src, NodeID dest, int 
     // Search for edges.
     if(relation != GRAPH_NO_RELATION) {
         // Relation type specified.
-        HASH_FIND(hh, g->_edgesHashTbl, &lookupKey.edgeDesc, sizeof(EdgeDesc), edges[edgeCount]);
-        if(edges[edgeCount]) edgeCount += 1;
+        HASH_FIND(hh, g->_edgesHashTbl, &lookupKey.edgeDesc, sizeof(EdgeDesc), e);
+        if(e) Vector_Push(edges, e);
     } else {
         // Relation type missing, scan through each edge type.
         for(int r = 0; r < g->relation_count; r++) {
             // Update lookup key relation id.
             Edge_SetRelationID(&lookupKey, r);
             // See if there's an edge of type 'r' connecting source to destination.
-            HASH_FIND(hh, g->_edgesHashTbl, &lookupKey.edgeDesc, sizeof(EdgeDesc), edges[edgeCount]);
-            if(edges[edgeCount]) edgeCount++;
-            if(edgeCount >= edgeCap) {
-                edgeCap *= 2;
-                edges = realloc(edges, sizeof(Edge*) * edgeCap);
-            }
+            HASH_FIND(hh, g->_edgesHashTbl, &lookupKey.edgeDesc, sizeof(EdgeDesc), e);
+            if(e) Vector_Push(edges, e);
         }
     }
+}
 
-    it->edges = edges;
-    it->edgeCap = edgeCap;
-    it->edgeCount = edgeCount;
+/* Retrieves all either incoming or outgoing edges 
+ * to/from given node N, depending on given direction. */
+void Graph_GetNodeEdges(const Graph *g, const Node *n, Vector *edges) {
+    assert(g && n && edges);
+    NodeID srcNodeID;
+    NodeID destNodeID;
+    TuplesIter *tupleIter;
+    size_t nodeCount = Graph_NodeCount(g);
+    GrB_Matrix M = Graph_GetAdjacencyMatrix(g);
+
+    // Outgoing.    
+    srcNodeID = n->id;
+    GrB_Vector outgoing;
+    GrB_Vector_new(&outgoing, GrB_BOOL, nodeCount);
+    GrB_Col_extract(outgoing, NULL, NULL, M, GrB_ALL, nodeCount, n->id, NULL);
+
+    tupleIter = TuplesIter_new((GrB_Matrix)outgoing);
+    while(TuplesIter_next(tupleIter, &destNodeID, NULL) != TuplesIter_DEPLETED)
+        Graph_GetEdgesConnectingNodes(g, n->id, destNodeID, GRAPH_NO_RELATION, edges);
+
+    // Incoming.
+    GrB_Vector incoming;
+    GrB_Vector_new(&incoming, GrB_BOOL, nodeCount);
+
+    GrB_Descriptor desc;
+    GrB_Descriptor_new(&desc);
+    GrB_Descriptor_set(desc, GrB_INP0, GrB_TRAN);        
+    
+    GrB_Col_extract(incoming, NULL, NULL, M, GrB_ALL, nodeCount, n->id, desc);
+    GrB_Descriptor_free(&desc);
+
+    TuplesIter_reuse(tupleIter, (GrB_Matrix)incoming);
+    while(TuplesIter_next(tupleIter, &srcNodeID, NULL) != TuplesIter_DEPLETED)
+        Graph_GetEdgesConnectingNodes(g, srcNodeID, n->id, GRAPH_NO_RELATION, edges);
+
+    // Clean up.
+    TuplesIter_free(tupleIter);
+    GrB_Vector_free(&outgoing);
+    GrB_Vector_free(&incoming);
+}
+
+void _Graph_DeleteEntities(Graph *g, EntityID *IDs, size_t IDCount, DataBlock *entityStore) {
+    int post_delete_count = entityStore->itemCount - IDCount;
+
+    // Track the highest remaining ID in the graph
+    EntityID id_to_save = entityStore->itemCount - 1;
+
+    // Track the highest ID scheduled for deletion that is less than id_to_save
+    size_t largest_delete_idx = IDCount - 1;
+    EntityID largest_delete = IDs[largest_delete_idx];
+
+    GrB_Vector zero;
+    GrB_Vector_new(&zero, GrB_BOOL, Graph_NodeCount(g));
+
+    // Track the lowest ID scheduled for deletion as the destination slot for
+    // id_to_save
+    int id_to_replace_idx = 0;
+    EntityID id_to_replace;
+
+    /* The outer while loop iterates over IDs to be deleted, starting with the
+     * lowest, until reaching an ID greater than or equal to the post-delete entity count.
+     * Once this condition is met, we've guaranteed that all IDs below the count are
+     * not marked for deletion, and all entities above or equal are, and can thus be removed
+     * with matrix resizes. */
+    while ((id_to_replace = IDs[id_to_replace_idx]) < post_delete_count) {
+        /* Track the largest deletion candidate lower than the next ID we plan to save.
+         * (This loop will frequently not trigger at all.) */
+        while (id_to_save < largest_delete) {
+            largest_delete = IDs[--largest_delete_idx];
+        }
+        // Ensure that we don't save any entity scheduled for deletion
+        if (id_to_save == largest_delete) {
+            id_to_save --;
+            continue;
+        }
+
+        // Perform all necessary entity substitution.
+        if(entityStore == g->nodes) {
+            // Substitute entity within storage and adjacency and label matrices.
+            _Graph_ReplaceDeletedNode(g, zero, id_to_save, id_to_replace);
+        } else {
+            // Update edge id.
+            Edge *e = Graph_GetEdge(g, id_to_save);
+            e->id = id_to_replace;
+            DataBlock_CopyItem(entityStore, id_to_save, id_to_replace);
+        }
+
+        // A swap has been made, so we'll update our source and destination indices.
+        id_to_replace_idx ++;
+        if (id_to_replace_idx >= IDCount) break;
+        id_to_save --;
+    }
+
+    // Free all deleted entities from datablock
+    DataBlock_FreeTop(entityStore, IDCount);
+
+    GrB_Vector_free(&zero);
+}
+
+/* Accepts a *sorted* array of IDs for edges to be deleted. */
+void Graph_DeleteEdges(Graph *g, EdgeID *IDs, size_t IDCount) {
+    for(int i = 0; i < IDCount; i++) {
+        Edge *e = Graph_GetEdge(g, IDs[i]);
+        // Removes edge from graph hashtable and updates relevent matrices.
+        _Graph_DeleteEdge(g, e);
+    }
+
+    // Remove edges from datablock.
+    _Graph_DeleteEntities(g, IDs, IDCount, g->edges);
 }
 
 /* Accepts a *sorted* array of IDs for nodes to be deleted.
@@ -392,75 +522,42 @@ void Graph_DeleteNodes(Graph *g, NodeID *IDs, size_t IDCount) {
     assert(g && IDs);
     if(IDCount == 0) return;
 
-    int post_delete_count = Graph_NodeCount(g) - IDCount;
-
-    // Track the highest remaining ID in the graph
-    NodeID id_to_save = Graph_NodeCount(g) - 1;
-
-    // Track the highest ID scheduled for deletion that is less than id_to_save
-    int largest_delete_idx = IDCount - 1;
-    NodeID largest_delete = IDs[largest_delete_idx];
-
-    GrB_Vector zero;
-    GrB_Vector_new(&zero, GrB_BOOL, Graph_NodeCount(g));
-
-    // Track the lowest ID scheduled for deletion as the destination slot for
-    // id_to_save
-    int id_to_replace_idx = 0;
-    NodeID id_to_replace;
-
-    /* The outer while loop iterates over IDs to be deleted, starting with the
-     * lowest, until reaching an ID greater than or equal to the post-delete node count.
-     * Once this condition is met, we've guaranteed that all IDs below the count are
-     * not marked for deletion, and all nodes above or equal are, and can thus be removed
-     * with matrix resizes. */
-    while ((id_to_replace = IDs[id_to_replace_idx]) < post_delete_count) {
-        /* Track the largest deletion candidate lower than the next ID we plan to save.
-         * (This loop will frequently not trigger at all.) */
-        while (id_to_save < largest_delete) {
-            largest_delete = IDs[--largest_delete_idx];
-        }
-        // Ensure that we don't save any nodes scheduled for deletion
-        if (id_to_save == largest_delete) {
-            id_to_save --;
-            continue;
-        }
-
-        // Perform all necessary substitutions in node storage and
-        // adjacency and label matrices
-        _Graph_ReplaceDeletedNode(g, zero, id_to_save, id_to_replace);
-
-        // A swap has been made, so we'll update our source and destination indices.
-        id_to_replace_idx ++;
-        if (id_to_replace_idx >= IDCount) break;
-        id_to_save --;
+    /* Delete incoming/outgoing edges of deleted nodes;
+     * For every node marked for deletion, get a list of 
+     * both incoming and outgoing edges and delete thoese edges. */
+    Vector *edges = NewVector(Edge*, 32);
+    for(int i = 0; i < IDCount; i++) {
+        Node *n = Graph_GetNode(g, IDs[i]);
+        Graph_GetNodeEdges(g, n, edges);
     }
 
-    // Free all deleted nodes from datablock
-    DataBlock_FreeTop(g->nodes, IDCount);
+    // Compose a sorted array of edge ids.
+    Edge *e;
+    size_t edgeCount = Vector_Size(edges);
+    EdgeID *edgeIDs = malloc(sizeof(EdgeID) * edgeCount);
+    EdgeID *dupFreeIDs = malloc(sizeof(EdgeID) * edgeCount);
+    for(size_t i = 0; i < edgeCount; i++) {
+        Vector_Get(edges, i, &e);
+        edgeIDs[i] = e->id;
+    } 
+
+    // Sort and remove duplicates.
+    QSORT(EdgeID, edgeIDs, edgeCount, ENTITY_ID_ISLT);
+
+    // Remove duplicates.
+    size_t j = 0;  // Index into dupFreeIDs.
+    for(int i = 0; i < edgeCount; i++) {
+        EdgeID current = edgeIDs[i];
+        // Skip duplicates.
+        while(i < (edgeCount-1) && current == edgeIDs[i+1]) i++;
+        dupFreeIDs[j++] = current;
+    }
+
+    Graph_DeleteEdges(g, dupFreeIDs, j);
+    _Graph_DeleteEntities(g, IDs, IDCount, g->nodes);
+
     // Force matrix resizing.
     _Graph_ResizeMatrix(g, g->adjacency_matrix);
-
-    GrB_Vector_free(&zero);
-}
-
-void Graph_DeleteEdge(Graph *g, NodeID src_id, NodeID dest_id, int relation) {
-    assert(src_id < Graph_NodeCount(g) && dest_id < Graph_NodeCount(g));
-
-    // See if there's an edge between src and dest.
-    bool connected = false;
-    GrB_Matrix M = Graph_GetAdjacencyMatrix(g);
-    GrB_Matrix_extractElement_BOOL(&connected, M, dest_id, src_id);
-
-    if(!connected) return;
-
-    if(relation == GRAPH_NO_RELATION) {
-        // Remove every edge connecting source to destination.
-        _Graph_DeleteEdges(g, src_id, dest_id);
-    } else {
-        // Remove typed edge connecting source to destination.
-        _Graph_DeleteTypedEdges(g, src_id, dest_id, relation);
-    }
 }
 
 void Graph_LabelNodes(Graph *g, NodeID start_node_id, NodeID end_node_id, int label) {
@@ -470,7 +567,7 @@ void Graph_LabelNodes(Graph *g, NodeID start_node_id, NodeID end_node_id, int la
            start_node_id <= end_node_id &&
            end_node_id < Graph_NodeCount(g));
 
-    GrB_Matrix m = Graph_GetLabelMatrix(g, label);
+    GrB_Matrix m = Graph_GetLabel(g, label);
     for(NodeID node_id = start_node_id; node_id <= end_node_id; node_id++) {
         GrB_Matrix_setElement_BOOL(m, true, node_id, node_id);
     }
@@ -486,7 +583,7 @@ DataBlockIterator *Graph_ScanEdges(const Graph *g) {
     return DataBlock_Scan(g->edges);
 }
 
-int Graph_AddLabelMatrix(Graph *g) {
+int Graph_AddLabel(Graph *g) {
     assert(g);
 
     // Make sure we've got room for a new label matrix.
@@ -499,28 +596,7 @@ int Graph_AddLabelMatrix(Graph *g) {
     return g->label_count-1;
 }
 
-GrB_Matrix Graph_GetAdjacencyMatrix(const Graph *g) {
-    assert(g);
-    GrB_Matrix m = g->adjacency_matrix;
-    _Graph_ResizeMatrix(g, m);
-    return m;
-}
-
-GrB_Matrix Graph_GetLabelMatrix(const Graph *g, int label_idx) {
-    assert(g && label_idx < g->label_count);
-    GrB_Matrix m = g->_labels[label_idx];
-    _Graph_ResizeMatrix(g, m);
-    return m;
-}
-
-GrB_Matrix Graph_GetRelationMatrix(const Graph *g, int relation_idx) {
-    assert(g && relation_idx < g->relation_count);
-    GrB_Matrix m = g->_relations[relation_idx];
-    _Graph_ResizeMatrix(g, m);
-    return m;
-}
-
-int Graph_AddRelationMatrix(Graph *g) {
+int Graph_AddRelation(Graph *g) {
     assert(g);
 
     // Make sure we've got room for a new relation matrix.
@@ -531,6 +607,27 @@ int Graph_AddRelationMatrix(Graph *g) {
 
     GrB_Matrix_new(&g->_relations[g->relation_count++], GrB_BOOL, _Graph_NodeCap(g), _Graph_NodeCap(g));
     return g->relation_count-1;
+}
+
+GrB_Matrix Graph_GetAdjacencyMatrix(const Graph *g) {
+    assert(g);
+    GrB_Matrix m = g->adjacency_matrix;
+    _Graph_ResizeMatrix(g, m);
+    return m;
+}
+
+GrB_Matrix Graph_GetLabel(const Graph *g, int label_idx) {
+    assert(g && label_idx < g->label_count);
+    GrB_Matrix m = g->_labels[label_idx];
+    _Graph_ResizeMatrix(g, m);
+    return m;
+}
+
+GrB_Matrix Graph_GetRelation(const Graph *g, int relation_idx) {
+    assert(g && relation_idx < g->relation_count);
+    GrB_Matrix m = g->_relations[relation_idx];
+    _Graph_ResizeMatrix(g, m);
+    return m;
 }
 
 void Graph_CommitPendingOps(Graph *g) {
@@ -545,12 +642,12 @@ void Graph_CommitPendingOps(Graph *g) {
     GrB_Matrix_nvals(&nvals, M);
 
     for(int i = 0; i < g->relation_count; i++) {
-        M = Graph_GetRelationMatrix(g, i);
+        M = Graph_GetRelation(g, i);
         GrB_Matrix_nvals(&nvals, M);
     }
 
     for(int i = 0; i < g->label_count; i++) {
-        M = Graph_GetLabelMatrix(g, i);
+        M = Graph_GetLabel(g, i);
         GrB_Matrix_nvals(&nvals, M);
     }
 }
@@ -580,14 +677,14 @@ void Graph_Free(Graph *g) {
 
     GrB_Matrix_free(&m);
     for(int i = 0; i < g->relation_count; i++) {
-        m = Graph_GetRelationMatrix(g, i);
+        m = Graph_GetRelation(g, i);
         GrB_Matrix_free(&m);
     }
     free(g->_relations);
 
     // Free matrices.
     for(int i = 0; i < g->label_count; i++) {
-        m = Graph_GetLabelMatrix(g, i);
+        m = Graph_GetLabel(g, i);
         GrB_Matrix_free(&m);
     }
     free(g->_labels);

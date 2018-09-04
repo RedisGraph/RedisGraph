@@ -149,7 +149,7 @@ int Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, const cha
 
   LabelStore *store = LabelStore_Get(ctx, STORE_NODE, graphName, label);
   assert(store);
-  const GrB_Matrix label_matrix = Graph_GetLabelMatrix(g, store->id);
+  const GrB_Matrix label_matrix = Graph_GetLabel(g, store->id);
 
   Index *idx = buildIndex(g, label_matrix, label, prop_str);
   RedisModule_ModuleTypeSetValue(key, IndexRedisModuleType, idx);

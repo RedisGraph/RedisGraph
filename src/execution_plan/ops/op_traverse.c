@@ -11,9 +11,9 @@
 // Updates query graph edge.
 OpResult _Traverse_SetEdge(Traverse *op) {
     // Consumed edges connecting current source and destination nodes.
-    Edge *e = EdgeIterator_Next(op->edgeIter);
-    if(e == NULL) return OP_DEPLETED;
-    
+    Edge *e;
+    if(!Vector_Pop(op->edges, &e)) return OP_DEPLETED;
+
     *op->algebraic_expression->edge = e;
     return OP_OK;
 }
@@ -23,7 +23,7 @@ OpBase* NewTraverseOp(Graph *g, QueryGraph* qg, AlgebraicExpression *ae) {
     traverse->graph = g;
     traverse->algebraic_expression = ae;
     traverse->algebraic_results = NULL;
-    traverse->edgeIter = NULL;
+    traverse->edges = NULL;
 
     // Set our Op operations
     OpBase_Init(&traverse->op);
@@ -41,7 +41,7 @@ OpBase* NewTraverseOp(Graph *g, QueryGraph* qg, AlgebraicExpression *ae) {
     Vector_Push(traverse->op.modifies, modified);
     
     if(ae->edge != NULL) {
-        traverse->edgeIter = EdgeIterator_New();
+        traverse->edges = NewVector(Edge*, 32);
         traverse->edgeRelationType = Edge_GetRelationID(*ae->edge);
         modified = QueryGraph_GetEdgeAlias(qg, *ae->edge);
         Vector_Push(traverse->op.modifies, modified);
@@ -79,8 +79,7 @@ OpResult TraverseConsume(OpBase *opBase, QueryGraph* graph) {
 
     if(op->algebraic_expression->edge != NULL) {
         // We're guarantee to have at least one edge.
-        EdgeIterator_Reuse(op->edgeIter);
-        Graph_GetEdgesConnectingNodes(op->graph, src_id, dest_id, op->edgeRelationType, op->edgeIter);
+        Graph_GetEdgesConnectingNodes(op->graph, src_id, dest_id, op->edgeRelationType, op->edges);
         return _Traverse_SetEdge(op);
     }
 
@@ -98,8 +97,8 @@ void TraverseFree(OpBase *ctx) {
     Traverse *op = (Traverse*)ctx;
     TuplesIter_free(op->it);
 
-    if(op->edgeIter)
-        EdgeIterator_Free(op->edgeIter);
+    if(op->edges)
+        Vector_Free(op->edges);
 
     if(op->algebraic_results)
         AlgebraicExpressionResult_Free(op->algebraic_results);

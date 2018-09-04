@@ -36,7 +36,7 @@ class IndexTest: public ::testing::Test {
     }
 
     Index* _indexCreate(Graph *g, const char *label, const char *property) {
-      const GrB_Matrix label_matrix = Graph_GetLabelMatrix(g, label_id);
+      const GrB_Matrix label_matrix = Graph_GetLabel(g, label_id);
       return buildIndex(g, label_matrix, label, property);
     }
 
@@ -47,7 +47,7 @@ class IndexTest: public ::testing::Test {
 
       // Build a label matrix and add to graph
       // (this does not need to be associated with an actual label string)
-      label_id = Graph_AddLabelMatrix(g);
+      label_id = Graph_AddLabel(g);
 
       // Associate all nodes in graph with this label
       int label_ids[n];

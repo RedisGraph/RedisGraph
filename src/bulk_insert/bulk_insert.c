@@ -88,7 +88,7 @@ RedisModuleString** _Bulk_Insert_Parse_Labels(RedisModuleCtx *ctx, RedisModuleSt
         LabelStore *store = LabelStore_Get(ctx, STORE_NODE, graph_name, labels[label_idx].label);
         LabelStore *allStore = LabelStore_Get(ctx, STORE_NODE, graph_name, NULL);
         if(store == NULL) {
-            int label_id = Graph_AddLabelMatrix(g);
+            int label_id = Graph_AddLabel(g);
             store = LabelStore_New(ctx, STORE_NODE, graph_name, labels[label_idx].label, label_id);
         }
 
@@ -294,7 +294,7 @@ RedisModuleString** _Bulk_Insert_Insert_Edges(RedisModuleCtx *ctx, RedisModuleSt
             if(s != NULL) {
                 labelRelations[i].label_id = s->id;
             } else {
-                labelRelations[i].label_id = Graph_AddRelationMatrix(g);
+                labelRelations[i].label_id = Graph_AddRelation(g);
                 LabelStore *s = LabelStore_New(ctx, STORE_EDGE, graph_name,
                                                labelRelations[i].label,
                                                labelRelations[i].label_id);

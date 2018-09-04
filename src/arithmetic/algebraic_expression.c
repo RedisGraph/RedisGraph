@@ -98,6 +98,7 @@ AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(AlgebraicExpr
     ReturnClause_ReferredEntities(ast->returnNode, ref_entities);
     CreateClause_ReferredEntities(ast->createNode, ref_entities);
     WhereClause_ReferredEntities(ast->whereNode, ref_entities);
+    DeleteClause_ReferredNodes(ast->deleteNode, ref_entities);
     _referred_edge_ends(ref_entities, q);
 
     AlgebraicExpression *iexp = _AE_MUL(q->edge_count);

@@ -178,7 +178,7 @@ void _BuildQueryGraphAddEdge(const Graph *g,
         LabelStore *s = LabelStore_Get(ctx, STORE_EDGE, graph_name, edge->ge.label);
         if(s) {
             Edge_SetRelationID(e, s->id);
-            e->mat = Graph_GetRelationMatrix(g, s->id);
+            e->mat = Graph_GetRelation(g, s->id);
         }
         else {
             /* Use a zeroed matrix.
@@ -401,7 +401,7 @@ ResultSetStatistics CommitGraph(RedisModuleCtx *ctx, const QueryGraph *qg, Graph
                 store = LabelStore_Get(ctx, STORE_NODE, graph_name, label);
                 /* This is the first time we encounter label, create its store */
                 if(store == NULL) {
-                    int label_id = Graph_AddLabelMatrix(g);
+                    int label_id = Graph_AddLabel(g);
                     store = LabelStore_New(ctx, STORE_NODE, graph_name, label, label_id);
                     stats.labels_added++;
                 }
@@ -447,7 +447,7 @@ ResultSetStatistics CommitGraph(RedisModuleCtx *ctx, const QueryGraph *qg, Graph
             
             LabelStore *s = LabelStore_Get(ctx, STORE_EDGE, graph_name, e->relationship);
             if(s == NULL) {
-                int relation_id = Graph_AddRelationMatrix(g);
+                int relation_id = Graph_AddRelation(g);
                 s = LabelStore_New(ctx, STORE_EDGE, graph_name, e->relationship, relation_id);
                 s->id = relation_id;
             }

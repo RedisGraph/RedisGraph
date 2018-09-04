@@ -197,7 +197,7 @@ void _CommitNewEntities(OpCreate *op) {
             } else {
                 store = LabelStore_Get(ctx, STORE_NODE, op->graph_name, label);                
                 if(store == NULL) {
-                    int label_id = Graph_AddLabelMatrix(op->g);
+                    int label_id = Graph_AddLabel(op->g);
                     store = LabelStore_New(ctx, STORE_NODE, op->graph_name, label, label_id);
                     op->result_set->stats.labels_added++;
                 }
@@ -232,7 +232,7 @@ void _CommitNewEntities(OpCreate *op) {
             LabelStore *store = LabelStore_Get(ctx, STORE_EDGE, op->graph_name, e->relationship);
             if(store != NULL) relation_id = store->id;
             else {
-                relation_id = Graph_AddRelationMatrix(op->g);
+                relation_id = Graph_AddRelation(op->g);
                 store = LabelStore_New(op->ctx, STORE_EDGE, op->graph_name, e->relationship, relation_id);
             }
 
