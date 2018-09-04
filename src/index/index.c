@@ -194,6 +194,38 @@ int Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, const cha
   return INDEX_OK;
 }
 
+// TODO separate skiplist logic?
+void Index_DeleteNode(Index *idx, NodeID node, SIValue *val) {
+  skiplist *sl = val->type == T_STRING ? idx->string_sl : idx->numeric_sl;
+  skiplistDelete(sl, val, &node);
+}
+
+void Index_InsertNode(Index *idx, NodeID node, SIValue *val) {
+  skiplist *sl = val->type == T_STRING ? idx->string_sl : idx->numeric_sl;
+  skiplistInsert(sl, val, node);
+}
+
+void Index_UpdateNodeValue(Index *idx, NodeID node, SIValue *prev, SIValue *new) {
+  // It is valid for the key type to have changed in the property update,
+  // so the type-checking logic in these calls is not redundant.
+  Index_DeleteNode(idx, node, prev);
+  Index_InsertNode(idx, node, new);
+}
+
+void Index_UpdateNodeID(Index *idx, NodeID prev_id, NodeID new_id, SIValue *val) {
+  // needs new op
+}
+
+void Index_DeleteNodes(NodeID *IDs, size_t IDCount) {
+  // Responsible for finding all indexed properties and making all updates.
+  // Don't have access to labels at this point? Maybe iterate over all labels
+  // (somewhat redundant with Graph_DeleteNodes logic)
+  for (size_t i = 0; i < IDCount; i ++) {
+    // check labels?
+    // QueryGraph_GetNodeById?
+  }
+}
+
 /* Output text for EXPLAIN calls */
 const char* Index_OpPrint(AST_IndexNode *indexNode) {
   switch(indexNode->operation) {

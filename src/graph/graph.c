@@ -462,6 +462,24 @@ void _Graph_DeleteEntities(Graph *g, EntityID *IDs, size_t IDCount, DataBlock *e
     // id_to_save
     int id_to_replace_idx = 0;
     EntityID id_to_replace;
+    /* It might make sense to update indices before going into this function,
+     * as we need access to the original property values and this will free them all.
+     * Not knowing how many will be migrated and how many just deleted would be a problem,
+     * but updates are not distinct from a delete then insert, so it might be sensible to
+     * delete all indexed values, then insert the first id_to_replace_idx nodes in IDs.
+     *
+     * Finding which indices to update - and which IDs within them - should be as non-redundant
+     * as possible, though the set of indices for deletions and for insertions are unrelated.
+     * (The latter are basically not known until after this loop, though they all have IDs higher
+     * than post_delete_count).
+     *
+     * Can make a triemap of indexed and referenced label-properties, with values being arrays
+     * of IDs requiring deletion (or after, insertion). Deletion arrays have a max size of IDCount,
+     * insertion of id_to_replace_idx.
+     *
+     * Insertion op is actually not a delete or update, as property is unchanged - task is to replace
+     * old ID with new one. Probably requires new skiplist op.
+     */
 
     /* The outer while loop iterates over IDs to be deleted, starting with the
      * lowest, until reaching an ID greater than or equal to the post-delete entity count.
