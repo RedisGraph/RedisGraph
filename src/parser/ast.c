@@ -310,7 +310,7 @@ void AST_NameAnonymousNodes(AST_Query *ast) {
 }
 
 bool AST_ReadOnly(const AST_Query *ast) {
-  return !(ast->createNode != NULL || ast->mergeNode != NULL || ast->deleteNode != NULL || ast->setNode != NULL);
+  return !(ast->createNode != NULL || ast->mergeNode != NULL || ast->deleteNode != NULL || ast->setNode != NULL || ast->indexNode != NULL);
 }
 
 void Free_AST_Query(AST_Query *queryExpressionNode) {
