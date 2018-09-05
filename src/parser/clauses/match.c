@@ -27,7 +27,7 @@ AST_MatchNode* New_AST_MatchNode(Vector *patterns) {
 	return matchNode;
 }
 
-void MatchClause_ReferredNodes(const AST_MatchNode *matchNode, TrieMap *referred_nodes) {
+void MatchClause_ReferredEntities(const AST_MatchNode *matchNode, TrieMap *referred_entities) {
 	if(!matchNode) return;
 
 	int entityCount = Vector_Size(matchNode->_mergedPatterns);
@@ -35,7 +35,7 @@ void MatchClause_ReferredNodes(const AST_MatchNode *matchNode, TrieMap *referred
 		AST_GraphEntity *entity;
 		Vector_Get(matchNode->_mergedPatterns, i, &entity);
 		if (!entity->alias) continue;
-		TrieMap_Add(referred_nodes, entity->alias, strlen(entity->alias), NULL, NULL);
+		TrieMap_Add(referred_entities, entity->alias, strlen(entity->alias), NULL, NULL);
 	}
 }
 

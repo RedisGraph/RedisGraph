@@ -89,7 +89,7 @@ AST_Validation _Validate_Aliases_In_Match_Clause(TrieMap *aliasesToCheck,
   /* Check that all the aliases that are in aliasesToCheck exists in the match clause */
   AST_Validation res = AST_VALID;
   TrieMap *matchAliases = NewTrieMap();
-  MatchClause_ReferredNodes(match_node, matchAliases);
+  MatchClause_ReferredEntities(match_node, matchAliases);
 
   TrieMapIterator *it = TrieMap_Iterate(aliasesToCheck, "", 0);
   char *ptr;
@@ -139,7 +139,7 @@ AST_Validation _Validate_DELETE_Clause(const AST_Query *ast, char **reason) {
   }
 
   TrieMap *delete_aliases = NewTrieMap();
-  DeleteClause_ReferredNodes(ast->deleteNode, delete_aliases);
+  DeleteClause_ReferredEntities(ast->deleteNode, delete_aliases);
 
   AST_Validation res = _Validate_Aliases_In_Match_Clause(delete_aliases, ast->matchNode, reason);
   TrieMap_Free(delete_aliases, TrieMap_NOP_CB);
@@ -220,7 +220,7 @@ AST_Validation _Validate_SET_Clause(const AST_Query *ast, char **reason) {
   }
   
   TrieMap *setAliases = NewTrieMap();
-  SetClause_ReferredNodes(ast->setNode, setAliases);
+  SetClause_ReferredEntities(ast->setNode, setAliases);
   
   AST_Validation res = _Validate_Aliases_In_Match_Clause(setAliases, ast->matchNode, reason);
   TrieMap_Free(setAliases, TrieMap_NOP_CB);
