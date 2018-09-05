@@ -47,8 +47,8 @@ void _WhereClause_ReferredEntities(AST_FilterNode *root, TrieMap *referred_entit
 			_WhereClause_ReferredEntities(root->cn.right, referred_entities);
 			break;
 		case N_PRED:
-			AR_EXP_GetAliases(root->pn.lhs, referred_nodes);
-			AR_EXP_GetAliases(root->pn.rhs, referred_nodes);
+			AR_EXP_GetAliases(root->pn.lhs, referred_entities);
+			AR_EXP_GetAliases(root->pn.rhs, referred_entities);
 			break;
 		default:
 			assert(0);
