@@ -168,21 +168,22 @@ void _BuildQueryGraphAddEdge(const Graph *g,
     Node *src = QueryGraph_GetNodeByAlias(graph, src_node->alias);
     Node *dest = QueryGraph_GetNodeByAlias(graph, dest_node->alias);
     Edge *e = Edge_New(INVALID_ENTITY_ID, src, dest, edge->ge.label);
+    _BuildQueryGraphAddProps(entity, (GraphEntity*)e);
 
     // Get relation matrix.
     if(edge->ge.label == NULL) {
-        e->relationship_id = GRAPH_NO_RELATION;
+        Edge_SetRelationID(e, GRAPH_NO_RELATION);
         e->mat = Graph_GetAdjacencyMatrix(g);
     } else {
         LabelStore *s = LabelStore_Get(ctx, STORE_EDGE, graph_name, edge->ge.label);
         if(s) {
-            e->relationship_id = s->id;
-            e->mat = Graph_GetRelationMatrix(g, s->id);
+            Edge_SetRelationID(e, s->id);
+            e->mat = Graph_GetRelation(g, s->id);
         }
         else {
             /* Use a zeroed matrix.
              * TODO: either use a static zero matrix, or free this one. */
-            GrB_Matrix_new(&e->mat, GrB_BOOL, g->node_count, g->node_count);
+            GrB_Matrix_new(&e->mat, GrB_BOOL, Graph_NodeCount(g), Graph_NodeCount(g));
         }
     }
 
@@ -289,20 +290,6 @@ GraphEntity* QueryGraph_GetEntityByAlias(const QueryGraph *g, const char *alias)
     }
     
     return (GraphEntity*)QueryGraph_GetEdgeByAlias(g, alias);
-}
-
-Vector* QueryGraph_GetNDegreeNodes(const QueryGraph* g, int degree) {
-    Vector* nodes = NewVector(Node*, 0);
-    Node* n = NULL;
-    
-    for(int i = 0; i < g->node_count; i++) {
-        n = g->nodes[i];
-        if(Vector_Size(n->incoming_edges) == degree) {
-            Vector_Push(nodes, n);
-        }
-    }
-
-    return nodes;
 }
 
 char* QueryGraph_GetNodeAlias(const QueryGraph *g, const Node *n) {
@@ -414,7 +401,7 @@ ResultSetStatistics CommitGraph(RedisModuleCtx *ctx, const QueryGraph *qg, Graph
                 store = LabelStore_Get(ctx, STORE_NODE, graph_name, label);
                 /* This is the first time we encounter label, create its store */
                 if(store == NULL) {
-                    int label_id = Graph_AddLabelMatrix(g);
+                    int label_id = Graph_AddLabel(g);
                     store = LabelStore_New(ctx, STORE_NODE, graph_name, label, label_id);
                     stats.labels_added++;
                 }
@@ -431,12 +418,12 @@ ResultSetStatistics CommitGraph(RedisModuleCtx *ctx, const QueryGraph *qg, Graph
         }
 
         // Create nodes and set properties.
-        NodeIterator *it;
-        size_t graph_node_count = g->node_count;
+        DataBlockIterator *it;
+        size_t graph_node_count = Graph_NodeCount(g);
         Graph_CreateNodes(g, node_count, labels, &it);
 
         for(int i = 0; i < node_count; i++) {
-            Node *new_node = NodeIterator_Next(it);
+            Node *new_node = (Node*)DataBlockIterator_Next(it);
             Node *temp_node = qg->nodes[i];
             new_node->properties = temp_node->properties;
             new_node->prop_count = temp_node->prop_count;
@@ -451,26 +438,24 @@ ResultSetStatistics CommitGraph(RedisModuleCtx *ctx, const QueryGraph *qg, Graph
 
     // Create edges.
     if(edge_count > 0) {
-        GrB_Index connections[edge_count * 3];
+        EdgeDesc connections[edge_count];
 
         for(int i = 0; i < edge_count; i++) {
             Edge *e = qg->edges[i];
-            int con_idx = i*3;
-
-            connections[con_idx] = e->src->id;
-            connections[con_idx + 1] = e->dest->id;
+            connections[i].srcId = e->src->id;
+            connections[i].destId = e->dest->id;
             
             LabelStore *s = LabelStore_Get(ctx, STORE_EDGE, graph_name, e->relationship);
             if(s == NULL) {
-                int relation_id = Graph_AddRelationMatrix(g);
+                int relation_id = Graph_AddRelation(g);
                 s = LabelStore_New(ctx, STORE_EDGE, graph_name, e->relationship, relation_id);
                 s->id = relation_id;
             }
 
-            connections[con_idx + 2] = s->id;
+            connections[i].relationId = s->id;
         }
 
-        Graph_ConnectNodes(g, edge_count*3, connections);
+        Graph_ConnectNodes(g, connections, edge_count, NULL);
         stats.relationships_created = edge_count;
     }
     return stats;

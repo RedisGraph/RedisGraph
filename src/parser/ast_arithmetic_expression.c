@@ -39,15 +39,15 @@ AST_ArithmeticExpressionNode* New_AST_AR_EXP_OpNode(char *func, Vector *args) {
 
 void AR_EXP_GetAliases(const AST_ArithmeticExpressionNode *exp, TrieMap *aliases) {
 	if (exp->type == AST_AR_EXP_OP) {
-    /* Process operands. */
-    for (int i = 0; i < Vector_Size(exp->op.args); i++) {
-      AST_ArithmeticExpressionNode *child;
-      Vector_Get(exp->op.args, i, &child);
-      AR_EXP_GetAliases(child, aliases);
-    }
-  } else {
-    /* Check specific operand */
-    if (exp->operand.type == AST_AR_EXP_VARIADIC) {
+		/* Process operands. */
+		for (int i = 0; i < Vector_Size(exp->op.args); i++) {
+			AST_ArithmeticExpressionNode *child;
+			Vector_Get(exp->op.args, i, &child);
+			AR_EXP_GetAliases(child, aliases);
+		}
+	} else {
+		/* Check specific operand */
+		if (exp->operand.type == AST_AR_EXP_VARIADIC) {
 			char *alias = exp->operand.variadic.alias;
 			if (alias) TrieMap_Add(aliases, alias, strlen(alias), NULL, NULL);
     }

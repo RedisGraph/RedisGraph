@@ -22,6 +22,8 @@ typedef struct {
     AlgebraicExpression *algebraic_expression;
     AlgebraicExpressionResult *algebraic_results;
     GrB_Matrix M;
+    int edgeRelationType;
+    Vector *edges;
     TuplesIter *iter;
 } CondTraverse;
 

@@ -40,15 +40,15 @@ void FreePredicateNode(AST_PredicateNode* predicateNode) {
 	free(predicateNode);
 }
 
-void _WhereClause_ReferredNodes(AST_FilterNode *root, TrieMap *referred_nodes) {
+void _WhereClause_ReferredEntities(AST_FilterNode *root, TrieMap *referred_entities) {
 	switch(root->t) {
 		case N_COND:
-			_WhereClause_ReferredNodes(root->cn.left, referred_nodes);
-			_WhereClause_ReferredNodes(root->cn.right, referred_nodes);
+			_WhereClause_ReferredEntities(root->cn.left, referred_entities);
+			_WhereClause_ReferredEntities(root->cn.right, referred_entities);
 			break;
 		case N_PRED:
-			AR_EXP_GetAliases(root->pn.lhs, referred_nodes);
-			AR_EXP_GetAliases(root->pn.rhs, referred_nodes);
+			AR_EXP_GetAliases(root->pn.lhs, referred_entities);
+			AR_EXP_GetAliases(root->pn.rhs, referred_entities);
 			break;
 		default:
 			assert(0);
@@ -56,9 +56,9 @@ void _WhereClause_ReferredNodes(AST_FilterNode *root, TrieMap *referred_nodes) {
 	}
 }
 
-void WhereClause_ReferredNodes(const AST_WhereNode *where_node, TrieMap *referred_nodes) {
-	if (!where_node) return;
-	_WhereClause_ReferredNodes(where_node->filters, referred_nodes);
+void WhereClause_ReferredEntities(const AST_WhereNode *where_node, TrieMap *referred_entities) {
+	if(!where_node) return;
+	_WhereClause_ReferredEntities(where_node->filters, referred_entities);
 }
 
 void WhereClause_ReferredFunctions(const AST_FilterNode *root, TrieMap *referred_funcs) {

@@ -31,6 +31,9 @@ class AlgebraicExpressionTest: public ::testing::Test {
     const char *query_no_intermidate_return_nodes;
     const char *query_one_intermidate_return_nodes;
     const char *query_multiple_intermidate_return_nodes;
+    const char *query_return_first_edge;
+    const char *query_return_intermidate_edge;
+    const char *query_return_last_edge;
 
     void SetUp() {
         // Initialize GraphBLAS.
@@ -46,6 +49,10 @@ class AlgebraicExpressionTest: public ::testing::Test {
         query_no_intermidate_return_nodes = "MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN p, e";
         query_one_intermidate_return_nodes = "MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN p, c, e";
         query_multiple_intermidate_return_nodes = "MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN p, f, c, e";
+
+        query_return_first_edge = "MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN ef";
+        query_return_intermidate_edge = "MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN ev";
+        query_return_last_edge = "MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN ew";
     }
 
     void TearDown() {
@@ -126,33 +133,33 @@ class AlgebraicExpressionTest: public ::testing::Test {
         size_t node_count = person_count + country_count;
 
         /* Introduce person and country labels. */
-        int person_label = Graph_AddLabelMatrix(g);
-        int country_label = Graph_AddLabelMatrix(g);
+        int person_label = Graph_AddLabel(g);
+        int country_label = Graph_AddLabel(g);
         int labels[11] = {person_label, person_label, person_label, person_label, person_label, person_label,
                         country_label, country_label, country_label, country_label, country_label};
 
-        NodeIterator *it;
+        DataBlockIterator *it;
         Graph_CreateNodes(g, node_count, labels ,&it);
 
         // Assign attributes to nodes.
         char *default_property_name = (char *)"name";
         for(int i = 0; i < person_count; i++) {
-            Node *n = NodeIterator_Next(it);
+            Node *n = (Node*)DataBlockIterator_Next(it);
             SIValue name = SI_StringVal(persons[i]);
             Node_Add_Properties(n, 1, &default_property_name, &name);
         }
         for(int i = 0; i < country_count; i++) {
-            Node *n = NodeIterator_Next(it);
+            Node *n = (Node*)DataBlockIterator_Next(it);
             SIValue name = SI_StringVal(countries[i]);
             Node_Add_Properties(n, 1, &default_property_name, &name);
         }
 
-        NodeIterator_Free(it);
+        DataBlockIterator_Free(it);
 
         // Creates a relation matrices.
-        GrB_Index friend_relation_id = Graph_AddRelationMatrix(g);
-        GrB_Index visit_relation_id = Graph_AddRelationMatrix(g);
-        GrB_Index war_relation_id = Graph_AddRelationMatrix(g);
+        GrB_Index friend_relation_id = Graph_AddRelation(g);
+        GrB_Index visit_relation_id = Graph_AddRelation(g);
+        GrB_Index war_relation_id = Graph_AddRelation(g);
 
         // Introduce relations, connect nodes.
         /* friendship matrix 
@@ -179,36 +186,116 @@ class AlgebraicExpressionTest: public ::testing::Test {
             0 0 1 0 0 0
             0 0 0 0 0 0
         */
-        GrB_Index relations[81] = {
-            0, 1, friend_relation_id,
-            0, 3, friend_relation_id,
-            0, 5, friend_relation_id,
-            1, 2, friend_relation_id,
-            1, 4, friend_relation_id,
-            2, 3, friend_relation_id,
-            2, 4, friend_relation_id,
-            2, 5, friend_relation_id,
-            3, 0, friend_relation_id,
-            3, 5, friend_relation_id,
-            4, 2, friend_relation_id,
-            4, 3, friend_relation_id,
-            5, 0, friend_relation_id,
-            5, 4, friend_relation_id,
-            0, 0, visit_relation_id,
-            0, 1, visit_relation_id,
-            1, 2, visit_relation_id,
-            1, 4, visit_relation_id,
-            2, 0, visit_relation_id,
-            2, 1, visit_relation_id,
-            2, 3, visit_relation_id,
-            3, 4, visit_relation_id,
-            4, 3, visit_relation_id,
-            5, 4, visit_relation_id,
-            0, 3, war_relation_id,
-            1, 3, war_relation_id,
-            4, 2, war_relation_id};
+        EdgeDesc relations[27];
+        relations[0].srcId = 0;
+        relations[0].destId = 1;
+        relations[0].relationId = friend_relation_id;
 
-        Graph_ConnectNodes(g, 81, relations);
+        relations[1].srcId = 0;
+        relations[1].destId = 3;
+        relations[1].relationId = friend_relation_id;
+
+        relations[2].srcId = 0;
+        relations[2].destId = 5;
+        relations[2].relationId = friend_relation_id;
+
+        relations[3].srcId = 1;
+        relations[3].destId = 2;
+        relations[3].relationId = friend_relation_id;
+
+        relations[4].srcId = 1;
+        relations[4].destId = 4;
+        relations[4].relationId = friend_relation_id;
+
+        relations[5].srcId = 2;
+        relations[5].destId = 3;
+        relations[5].relationId = friend_relation_id;
+
+        relations[6].srcId = 2;
+        relations[6].destId = 4;
+        relations[6].relationId = friend_relation_id;
+
+        relations[7].srcId = 2;
+        relations[7].destId = 5;
+        relations[7].relationId = friend_relation_id;
+
+        relations[8].srcId = 3;
+        relations[8].destId = 0;
+        relations[8].relationId = friend_relation_id;
+
+        relations[9].srcId = 3;
+        relations[9].destId = 5;
+        relations[9].relationId = friend_relation_id;
+
+        relations[10].srcId = 4;
+        relations[10].destId = 2;
+        relations[10].relationId = friend_relation_id;
+
+        relations[11].srcId = 4;
+        relations[11].destId = 3;
+        relations[11].relationId = friend_relation_id;
+
+        relations[12].srcId = 5;
+        relations[12].destId = 0;
+        relations[12].relationId = friend_relation_id;
+
+        relations[13].srcId = 5;
+        relations[13].destId = 4;
+        relations[13].relationId = friend_relation_id;
+
+        relations[14].srcId = 0;
+        relations[14].destId = 0;
+        relations[14].relationId = visit_relation_id;
+
+        relations[15].srcId = 0;
+        relations[15].destId = 1;
+        relations[15].relationId = visit_relation_id;
+
+        relations[16].srcId = 1;
+        relations[16].destId = 2;
+        relations[16].relationId = visit_relation_id;
+
+        relations[17].srcId = 1;
+        relations[17].destId = 4;
+        relations[17].relationId = visit_relation_id;
+
+        relations[18].srcId = 2;
+        relations[18].destId = 0;
+        relations[18].relationId = visit_relation_id;
+
+        relations[19].srcId = 2;
+        relations[19].destId = 1;
+        relations[19].relationId = visit_relation_id;
+
+        relations[20].srcId = 2;
+        relations[20].destId = 3;
+        relations[20].relationId = visit_relation_id;
+
+        relations[21].srcId = 3;
+        relations[21].destId = 4;
+        relations[21].relationId = visit_relation_id;
+
+        relations[22].srcId = 4;
+        relations[22].destId = 3;
+        relations[22].relationId = visit_relation_id;
+
+        relations[23].srcId = 5;
+        relations[23].destId = 4;
+        relations[23].relationId = visit_relation_id;
+
+        relations[24].srcId = 0;
+        relations[24].destId = 3;
+        relations[24].relationId = war_relation_id;
+
+        relations[25].srcId = 1;
+        relations[25].destId = 3;
+        relations[25].relationId = war_relation_id;
+
+        relations[26].srcId = 4;
+        relations[26].destId = 2;
+        relations[26].relationId = war_relation_id;
+
+        Graph_ConnectNodes(g, relations, 27, NULL);
         return g;
     }
 
@@ -217,7 +304,7 @@ class AlgebraicExpressionTest: public ::testing::Test {
         * MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) */
         QueryGraph *q = QueryGraph_New();
 
-        // The following indicies are synced with Graph_AddRelationMatrix call order
+        // The following indicies are synced with Graph_AddRelation call order
         // within _build_graph, this is not ideal, but for now this will do.
         int friend_relation_id = 0;
         int visit_relation_id = 1;
@@ -236,9 +323,9 @@ class AlgebraicExpressionTest: public ::testing::Test {
         
         // Set edges matrices according to the order they've been presented
         // during graph construction.
-        pff->mat = Graph_GetRelationMatrix(g, 0);
-        fvc->mat = Graph_GetRelationMatrix(g, 1);
-        cwe->mat = Graph_GetRelationMatrix(g, 2);
+        pff->mat = Graph_GetRelation(g, 0);
+        fvc->mat = Graph_GetRelation(g, 1);
+        cwe->mat = Graph_GetRelation(g, 2);
 
         // Construct query graph
         QueryGraph_AddNode(q, p, (char*)"p");
@@ -356,6 +443,120 @@ TEST_F(AlgebraicExpressionTest, NoIntermidateReturnNodes) {
     // Clean up.
     Free_AST_Query(ast);
     AlgebraicExpression_Free(exp);
+    free(ae);
+}
+
+TEST_F(AlgebraicExpressionTest, OneIntermidateReturnEdge) {
+    Edge *e;
+    AST_Query *ast;
+    size_t exp_count;
+    const char *query;
+    AlgebraicExpression **ae;
+    AlgebraicExpression *exp;
+
+    //==============================================================================
+    //=== MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN ef
+    //==============================================================================
+    query = query_return_first_edge;
+    ast = ParseQuery(query, strlen(query), NULL);
+
+    exp_count = 0;
+    ae = AlgebraicExpression_From_Query(ast, ast->matchNode->_mergedPatterns, query_graph, &exp_count);
+    EXPECT_EQ(exp_count, 2);
+
+    // Validate first expression.
+    exp = ae[0];
+    EXPECT_EQ(exp->op, AL_EXP_MUL);
+    EXPECT_EQ(exp->operand_count, 1);
+    e = QueryGraph_GetEdgeByAlias(query_graph, "ef");
+    EXPECT_EQ(exp->operands[0].operand, e->mat);
+    EXPECT_TRUE(exp->edge != NULL);
+    
+    // Validate second expression.
+    exp = ae[1];
+    EXPECT_EQ(exp->op, AL_EXP_MUL);
+    EXPECT_EQ(exp->operand_count, 2);
+    e = QueryGraph_GetEdgeByAlias(query_graph, "ew");
+    EXPECT_EQ(exp->operands[0].operand, e->mat);
+    e = QueryGraph_GetEdgeByAlias(query_graph, "ev");
+    EXPECT_EQ(exp->operands[1].operand, e->mat);
+    EXPECT_TRUE(exp->edge == NULL);
+
+    // Clean up.
+    Free_AST_Query(ast);
+    for(int i = 0; i < exp_count; i++) AlgebraicExpression_Free(ae[i]);
+    free(ae);
+
+    //==============================================================================
+    //=== MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN ev
+    //==============================================================================
+    query = query_return_intermidate_edge;
+    ast = ParseQuery(query, strlen(query), NULL);
+
+    exp_count = 0;
+    ae = AlgebraicExpression_From_Query(ast, ast->matchNode->_mergedPatterns, query_graph, &exp_count);
+    EXPECT_EQ(exp_count, 3);
+
+    // Validate first expression.
+    exp = ae[0];
+    EXPECT_EQ(exp->op, AL_EXP_MUL);
+    EXPECT_EQ(exp->operand_count, 1);
+    e = QueryGraph_GetEdgeByAlias(query_graph, "ef");
+    EXPECT_EQ(exp->operands[0].operand, e->mat);
+    EXPECT_TRUE(exp->edge == NULL);
+
+    // Validate second expression.
+    exp = ae[1];
+    EXPECT_EQ(exp->op, AL_EXP_MUL);
+    EXPECT_EQ(exp->operand_count, 1);
+    e = QueryGraph_GetEdgeByAlias(query_graph, "ev");
+    EXPECT_EQ(exp->operands[0].operand, e->mat);
+    EXPECT_TRUE(exp->edge != NULL);
+
+    // Validate third expression.
+    exp = ae[2];
+    EXPECT_EQ(exp->op, AL_EXP_MUL);
+    EXPECT_EQ(exp->operand_count, 1);
+    e = QueryGraph_GetEdgeByAlias(query_graph, "ew");
+    EXPECT_EQ(exp->operands[0].operand, e->mat);
+    EXPECT_TRUE(exp->edge == NULL);
+
+    // Clean up.
+    Free_AST_Query(ast);
+    for(int i = 0; i < exp_count; i++) AlgebraicExpression_Free(ae[i]);
+    free(ae);
+
+    //==============================================================================
+    //=== MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN ew
+    //==============================================================================
+    query = query_return_last_edge;
+    ast = ParseQuery(query, strlen(query), NULL);
+
+    exp_count = 0;
+    ae = AlgebraicExpression_From_Query(ast, ast->matchNode->_mergedPatterns, query_graph, &exp_count);
+    EXPECT_EQ(exp_count, 2);
+
+    // Validate first expression.
+    exp = ae[0];
+    EXPECT_EQ(exp->op, AL_EXP_MUL);
+    EXPECT_EQ(exp->operand_count, 2);
+    e = QueryGraph_GetEdgeByAlias(query_graph, "ev");
+    EXPECT_EQ(exp->operands[0].operand, e->mat);
+    e = QueryGraph_GetEdgeByAlias(query_graph, "ef");
+    EXPECT_EQ(exp->operands[1].operand, e->mat);
+    EXPECT_TRUE(exp->edge == NULL);
+
+    // Validate second expression.
+    exp = ae[1];
+    EXPECT_EQ(exp->op, AL_EXP_MUL);
+    EXPECT_EQ(exp->operand_count, 1);
+    e = QueryGraph_GetEdgeByAlias(query_graph, "ew");
+    EXPECT_EQ(exp->operands[0].operand, e->mat);
+    EXPECT_TRUE(exp->edge != NULL);
+
+    // Clean up.
+    Free_AST_Query(ast);
+    for(int i = 0; i < exp_count; i++) AlgebraicExpression_Free(ae[i]);
     free(ae);
 }
 

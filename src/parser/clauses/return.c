@@ -81,7 +81,7 @@ int ReturnClause_ContainsAggregation(const AST_ReturnNode *return_node) {
     return 0;
 }
 
-void ReturnClause_ReferredNodes(const AST_ReturnNode *return_node, TrieMap *referred_nodes) {
+void ReturnClause_ReferredEntities(const AST_ReturnNode *return_node, TrieMap *referred_nodes) {
     if(!return_node) return;
     int return_element_count = Vector_Size(return_node->returnElements);
 

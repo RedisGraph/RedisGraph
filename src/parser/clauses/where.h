@@ -47,10 +47,8 @@ typedef struct {
 AST_WhereNode* New_AST_WhereNode(AST_FilterNode *filters);
 AST_FilterNode* New_AST_PredicateNode(AST_ArithmeticExpressionNode *lhs, int op, AST_ArithmeticExpressionNode *rhs);
 AST_FilterNode* New_AST_ConditionNode(AST_FilterNode *left, int op, AST_FilterNode *right);
-
-void WhereClause_ReferredNodes(const AST_WhereNode *where_node, TrieMap *referred_nodes);
+void WhereClause_ReferredEntities(const AST_WhereNode *where_node, TrieMap *referred_entities);
 void WhereClause_ReferredFunctions(const AST_FilterNode *return_node, TrieMap *referred_funcs);
-
 void Free_AST_FilterNode(AST_FilterNode *filterNode);
 void Free_AST_WhereNode(AST_WhereNode *whereNode);
 

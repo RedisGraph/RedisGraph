@@ -88,7 +88,7 @@ RedisModuleString** _Bulk_Insert_Parse_Labels(RedisModuleCtx *ctx, RedisModuleSt
         LabelStore *store = LabelStore_Get(ctx, STORE_NODE, graph_name, labels[label_idx].label);
         LabelStore *allStore = LabelStore_Get(ctx, STORE_NODE, graph_name, NULL);
         if(store == NULL) {
-            int label_id = Graph_AddLabelMatrix(g);
+            int label_id = Graph_AddLabel(g);
             store = LabelStore_New(ctx, STORE_NODE, graph_name, labels[label_idx].label, label_id);
         }
 
@@ -148,7 +148,7 @@ RedisModuleString** _Bulk_Insert_Insert_Nodes(RedisModuleCtx *ctx, RedisModuleSt
                                               int *argc, Graph *g, const char *graph_name,
                                               size_t *nodes) {
     Node *n;                        // Current node.
-    NodeIterator *it;               // Iterator over nodes.
+    DataBlockIterator *it;          // Iterator over nodes.
     long long nodes_to_create = 0;  // Total number of nodes to create.
 
     if(*argc < 2) {
@@ -187,7 +187,7 @@ RedisModuleString** _Bulk_Insert_Insert_Nodes(RedisModuleCtx *ctx, RedisModuleSt
 
             // Label nodes.
             Graph_LabelNodes(g, number_of_labeled_nodes + start_offset, number_of_labeled_nodes + start_offset + l.node_count - 1,
-                             l.label_id, NULL);
+                             l.label_id);
 
             if(l.attribute_count > 0) {
                 SIValue values[l.attribute_count];
@@ -195,7 +195,7 @@ RedisModuleString** _Bulk_Insert_Insert_Nodes(RedisModuleCtx *ctx, RedisModuleSt
                 for(int i = 0; i < l.node_count; i++) {
                     argv = _Bulk_Insert_Read_Labeled_Node_Attributes(ctx, argv, argc, l.attribute_count, values);
                     if(argv == NULL) break;
-                    n = NodeIterator_Next(it);
+                    n = (Node*)DataBlockIterator_Next(it);
                     Node_Add_Properties(n, l.attribute_count, l.attributes, values);
                 }
             }
@@ -215,7 +215,7 @@ RedisModuleString** _Bulk_Insert_Insert_Nodes(RedisModuleCtx *ctx, RedisModuleSt
 
     // Unlabeled nodes.
     long long attribute_count = 0;
-    while((n = NodeIterator_Next(it)) != NULL) {
+    while((n = (Node*)DataBlockIterator_Next(it)) != NULL) {
         if(*argc < 1) {
             _Bulk_Insert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, failed to parse unlabeled node attributes.");
             return NULL;
@@ -273,7 +273,7 @@ RedisModuleString** _Bulk_Insert_Insert_Edges(RedisModuleCtx *ctx, RedisModuleSt
 
     long long total_labeled_edges = 0;
     // As we can have over 500k relations, this is safer as a heap allocation.
-    GrB_Index *connections = malloc(relations_count * 3 * sizeof(GrB_Index));       // Triplet (src,dest,relation)
+    EdgeDesc *connections = malloc(relations_count * sizeof(EdgeDesc));
     LabelRelation labelRelations[label_count + 1];  // Extra one for unlabeled relations.
 
     if(label_count > 0) {
@@ -294,7 +294,7 @@ RedisModuleString** _Bulk_Insert_Insert_Edges(RedisModuleCtx *ctx, RedisModuleSt
             if(s != NULL) {
                 labelRelations[i].label_id = s->id;
             } else {
-                labelRelations[i].label_id = Graph_AddRelationMatrix(g);
+                labelRelations[i].label_id = Graph_AddRelation(g);
                 LabelStore *s = LabelStore_New(ctx, STORE_EDGE, graph_name,
                                                labelRelations[i].label,
                                                labelRelations[i].label_id);
@@ -319,19 +319,20 @@ RedisModuleString** _Bulk_Insert_Insert_Edges(RedisModuleCtx *ctx, RedisModuleSt
         LabelRelation labelRelation = labelRelations[i];
 
         for(int j = 0; j < labelRelation.edge_count; j++) {
-            if(RedisModule_StringToLongLong(*argv++, (long long*)&connections[connection_idx++]) != REDISMODULE_OK) {
+            if(RedisModule_StringToLongLong(*argv++, (long long*)&connections[connection_idx].srcId) != REDISMODULE_OK) {
                 _Bulk_Insert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, failed to read relation source node id.");
                 return NULL;
             }
-            if(RedisModule_StringToLongLong(*argv++, (long long*)&connections[connection_idx++]) != REDISMODULE_OK) {
+            if(RedisModule_StringToLongLong(*argv++, (long long*)&connections[connection_idx].destId) != REDISMODULE_OK) {
                 _Bulk_Insert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, failed to read relation destination node id.");
                 return NULL;
             }
-            connections[connection_idx++] = labelRelation.label_id;
+            connections[connection_idx].relationId = labelRelation.label_id;
+            connection_idx++;
         }
     }
 
-    Graph_ConnectNodes(g, relations_count*3, connections);
+    Graph_ConnectNodes(g, connections, relations_count, NULL);
 
     free(connections);
 

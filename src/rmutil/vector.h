@@ -69,6 +69,7 @@ int Vector_Size(const Vector *v);
 /* return the actual capacity */
 int Vector_Cap(Vector *v);
 
+/* clears vector, maintains vector capacity. */
 void Vector_Clear(Vector *v);
 
 /* free the vector and the underlying data. Does not release its elements if

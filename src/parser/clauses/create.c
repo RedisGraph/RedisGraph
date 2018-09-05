@@ -27,7 +27,7 @@ AST_CreateNode* New_AST_CreateNode(Vector *patterns) {
 	return createNode;
 }
 
-void CreateClause_ReferredNodes(const AST_CreateNode *createNode, TrieMap *referredNodes) {
+void CreateClause_ReferredEntities(const AST_CreateNode *createNode, TrieMap *referredNodes) {
 	if(!createNode) return;
 
 	int entities_count = Vector_Size(createNode->graphEntities);

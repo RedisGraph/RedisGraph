@@ -41,8 +41,9 @@ typedef struct {
     size_t operand_count;                   // Number of operands.
     size_t operand_cap;                     // Allocated number of operands.
     AlgebraicExpressionOperand *operands;   // Array of operands.
-    Node **src_node;                        // Nodes represented by the first operand rows.
-    Node **dest_node;                       // Nodes represented by the last operand columns.
+    Node **src_node;                        // Nodes represented by the first operand columns.
+    Node **dest_node;                       // Nodes represented by the last operand rows.
+    Edge **edge;                            // Edge represented by sole operand.
 } AlgebraicExpression;
 
 /* Construct an algebraic expression from a query. */

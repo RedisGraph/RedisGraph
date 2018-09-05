@@ -30,7 +30,7 @@ OpBase* NewAllNodeScanOp(QueryGraph *qg, const Graph *g, Node **n) {
 OpResult AllNodeScanConsume(OpBase *opBase, QueryGraph* graph) {
     AllNodeScan *op = (AllNodeScan*)opBase;
     
-    Node *node = NodeIterator_Next(op->iter);
+    Node *node = (Node*)DataBlockIterator_Next(op->iter);
     if(node == NULL) return OP_DEPLETED;
 
     *op->node = node;
@@ -42,13 +42,13 @@ OpResult AllNodeScanReset(OpBase *op) {
     AllNodeScan *allNodeScan = (AllNodeScan*)op;
     
     *allNodeScan->node = allNodeScan->_node;
-    NodeIterator_Reset(allNodeScan->iter);
+    DataBlockIterator_Reset(allNodeScan->iter);
     
     return OP_OK;
 }
 
 void AllNodeScanFree(OpBase *ctx) {
-    AllNodeScan *op = (AllNodeScan *)ctx;
-    NodeIterator_Free(op->iter);
+    AllNodeScan *op = (AllNodeScan *)ctx;    
+    DataBlockIterator_Free(op->iter);
     Vector_Free(op->op.modifies);
 }

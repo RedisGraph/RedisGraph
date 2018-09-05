@@ -29,25 +29,62 @@ AlgebraicExpression *_AE_MUL(size_t operand_count) {
     ae->operand_cap = operand_count + 2;
     ae->operand_count = operand_count;
     ae->operands = malloc(sizeof(AlgebraicExpressionOperand) * ae->operand_cap);
+    ae->edge = NULL;
     return ae;
 }
 
 int _intermidate_node(const Node *n) {
     /* ->()<- 
      * <-()->
-     * ->()-> */
+     * ->()->
+     * <-()<- */
     return ((Vector_Size(n->incoming_edges) > 1) ||
             (Vector_Size(n->outgoing_edges) > 1) ||
             ((Vector_Size(n->incoming_edges) > 0) && (Vector_Size(n->outgoing_edges) > 0)));
 }
 
-int _referred_node(const Node *n, const QueryGraph *q, TrieMap *return_nodes) {
-    char *node_alias = QueryGraph_GetNodeAlias(q, n);
-    return TRIEMAP_NOTFOUND != TrieMap_Find(return_nodes, node_alias, strlen(node_alias));
+int _referred_entity(char *alias, TrieMap *ref_entities) {
+    return TRIEMAP_NOTFOUND != TrieMap_Find(ref_entities, alias, strlen(alias));
+}
+
+int _referred_node(const Node *n, const QueryGraph *q, TrieMap *ref_entities) {
+    char *alias = QueryGraph_GetNodeAlias(q, n);
+    return _referred_entity(alias, ref_entities);
+}
+
+/* For every referenced edge, add edge source and destination nodes
+ * as referenced entities. */
+void _referred_edge_ends(TrieMap *ref_entities, const QueryGraph *q) {
+    char *alias;
+    tm_len_t len;
+    void *value;
+    Vector *aliases = NewVector(char*, 0);
+    TrieMapIterator *it = TrieMap_Iterate(ref_entities, "", 0);
+
+    /* Scan ref_entities for referenced edges.
+     * note, we can not modify triemap which scanning it. */
+    while(TrieMapIterator_Next(it, &alias, &len, &value)) {
+        Edge *e = QueryGraph_GetEdgeByAlias(q, alias);
+        if(!e) continue;
+
+        // Remember edge ends.
+        char *srcAlias = QueryGraph_GetNodeAlias(q, e->src);
+        Vector_Push(aliases, srcAlias);
+        char *destAlias = QueryGraph_GetNodeAlias(q, e->dest);
+        Vector_Push(aliases, destAlias);
+    }
+
+    // Add edges ends as referenced entities.
+    for(int i = 0; i < Vector_Size(aliases); i++) {
+        Vector_Get(aliases, i, &alias);
+        TrieMap_Add(ref_entities, alias, strlen(alias), NULL, TrieMap_DONT_CARE_REPLACE);
+    }
+
+    Vector_Free(aliases);
 }
 
 /* Break down expression into sub expressions.
- * considering referenced intermidate nodes. */
+ * considering referenced intermidate nodes and edges. */
 AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(AlgebraicExpression *exp, const AST_Query *ast, Vector *matchPattern, const QueryGraph *q, size_t *exp_count) {
     /* Allocating maximum number of expression possible. */
     AlgebraicExpression **expressions = malloc(sizeof(AlgebraicExpression *) * q->edge_count);
@@ -57,10 +94,12 @@ AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(AlgebraicExpr
     Node *dest = NULL;
     Edge *e = NULL;
 
-    TrieMap *ref_nodes = NewTrieMap();
-    ReturnClause_ReferredNodes(ast->returnNode, ref_nodes);
-    CreateClause_ReferredNodes(ast->createNode, ref_nodes);
-    WhereClause_ReferredNodes(ast->whereNode, ref_nodes);
+    TrieMap *ref_entities = NewTrieMap();
+    ReturnClause_ReferredEntities(ast->returnNode, ref_entities);
+    CreateClause_ReferredEntities(ast->createNode, ref_entities);
+    WhereClause_ReferredEntities(ast->whereNode, ref_entities);
+    DeleteClause_ReferredNodes(ast->deleteNode, ref_entities);
+    _referred_edge_ends(ref_entities, q);
 
     AlgebraicExpression *iexp = _AE_MUL(q->edge_count);
     iexp->src_node = exp->src_node;
@@ -77,18 +116,23 @@ AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(AlgebraicExpr
         AST_LinkEntity *edge = (AST_LinkEntity*)match_element;
         transpose = (edge->direction == N_RIGHT_TO_LEFT);
         e = QueryGraph_GetEdgeByAlias(q, edge->ge.alias);
-
+        
         if(transpose) dest = e->src;
         else dest = e->dest;
+
+        // If edge is referenced, set expression edge pointer.
+        if(_referred_entity(edge->ge.alias, ref_entities))
+            iexp->edge = QueryGraph_GetEdgeRef(q, e);
 
         iexp->operands[iexp->operand_count++] = exp->operands[operandIdx++];
 
         /* If intermidate node is referenced, create a new algebraic expression. */
-        if(_intermidate_node(dest) && _referred_node(dest, q, ref_nodes)) {
+        if(_intermidate_node(dest) && _referred_node(dest, q, ref_entities)) {
             // Finalize current expression.
             iexp->dest_node = QueryGraph_GetNodeRef(q, dest);
             assert(iexp->operand_count > 0);
-            
+            if(iexp->edge) assert(iexp->operand_count == 1);
+
             /* Create a new algebraic expression. */
             iexp = _AE_MUL(exp->operand_count - operandIdx);
             iexp->operand_count = 0;
@@ -99,7 +143,7 @@ AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(AlgebraicExpr
     }
     
     *exp_count = expIdx;
-    TrieMap_Free(ref_nodes, TrieMap_NOP_CB);
+    TrieMap_Free(ref_entities, TrieMap_NOP_CB);
     return expressions;
 }
 

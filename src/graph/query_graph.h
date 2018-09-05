@@ -62,9 +62,6 @@ void QueryGraph_AddNode(QueryGraph* g, Node *n, char *alias);
 /* Adds a new edge to the graph */
 void QueryGraph_ConnectNodes(QueryGraph *g, Node *src, Node *dest, Edge *e, char *edge_alias);
 
-/* Finds a node with given input degree */
-Vector* QueryGraph_GetNDegreeNodes(const QueryGraph *g, int degree);
-
 /* Looks up node's alias within the graph */
 char* QueryGraph_GetNodeAlias(const QueryGraph *g, const Node *n);
 
