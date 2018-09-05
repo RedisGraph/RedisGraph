@@ -26,7 +26,7 @@ typedef enum {
 
 typedef struct {
     char *function; /* Name of operation. */
-	Vector *args;	/* Vector of AST_ArithmeticExpressionNode pointers. */
+    Vector *args;	/* Vector of AST_ArithmeticExpressionNode pointers. */
 } AST_ArithmeticExpressionOP;
 
 /* OperandNode represents either a constant numeric value, 
@@ -44,7 +44,7 @@ typedef struct {
 
 typedef struct {
 	union {
-		AST_ArithmeticExpressionOperand operand;
+        AST_ArithmeticExpressionOperand operand;
         AST_ArithmeticExpressionOP op;
     };
     AST_ArithmeticExpression_NodeType type;

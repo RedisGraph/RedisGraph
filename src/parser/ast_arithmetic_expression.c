@@ -49,9 +49,9 @@ void AR_EXP_GetAliases(const AST_ArithmeticExpressionNode *exp, TrieMap *aliases
 		/* Check specific operand */
 		if (exp->operand.type == AST_AR_EXP_VARIADIC) {
 			char *alias = exp->operand.variadic.alias;
-			TrieMap_Add(aliases, alias, strlen(alias), NULL, NULL);
-		}
-	}
+			if (alias) TrieMap_Add(aliases, alias, strlen(alias), NULL, NULL);
+    }
+  }
 }
 
 void AR_EXP_GetFunctions(const AST_ArithmeticExpressionNode *exp, TrieMap *functions) {
@@ -83,6 +83,6 @@ void Free_AST_ArithmeticExpressionNode(AST_ArithmeticExpressionNode *arExpNode) 
 			free(arExpNode->operand.variadic.property);
 		}
 	}
-	/* Finaly we can free the node. */
+	/* Finally we can free the node. */
 	free(arExpNode);
 }

@@ -193,7 +193,7 @@ skiplistNode *skiplistInsert(skiplist *sl, skiplistKey key, skiplistVal val) {
    * volatile keys like SIValues), use it; otherwise the skiplistNode key
    * will be set through pointer assignment.
    */
-  if (sl->cloneKey) sl->cloneKey(&key);
+  if (sl->cloneKey) key = sl->cloneKey(key);
   x = skiplistCreateNode(level, key, &val);
   for (i = 0; i < level; i++) {
     x->level[i].forward = update[i]->level[i].forward;
@@ -400,17 +400,15 @@ void _update_lower_bound(skiplistIterator *iter, skiplistKey bound, int exclusiv
 
 void _update_upper_bound(skiplistIterator *iter, skiplistKey bound, int exclusive) {
   if (!iter->rangeMax) {
-    // TODO This is a bit hard to read, though it's nice to not reference SIValues directly
-    iter->rangeMax = bound;
-    iter->sl->cloneKey(&iter->rangeMax);
+    iter->rangeMax = iter->sl->cloneKey(bound);
     iter->maxExclusive = exclusive;
     return;
   }
 
   int cmp = iter->sl->compare(iter->rangeMax, bound);
   if (cmp > 0) {
-    iter->rangeMax = bound;
-    iter->sl->cloneKey(&iter->rangeMax);
+    iter->sl->freeKey(iter->rangeMax);
+    iter->rangeMax = iter->sl->cloneKey(bound);
     iter->maxExclusive = exclusive;
   } else if (cmp == 0 && exclusive != iter->maxExclusive) {
     // Handle the unlikely edge that we compared equally and are now specifying
@@ -497,6 +495,10 @@ void skiplistIterate_Reset(skiplistIterator *iter) {
 }
 
 void skiplistIterate_Free(skiplistIterator *iter) {
+  // If we have an upper bound and a free routine, free the bound.
+  if (iter->rangeMax && iter->sl->freeKey) {
+    iter->sl->freeKey(iter->rangeMax);
+  }
   zfree(iter);
 }
 

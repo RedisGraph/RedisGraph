@@ -59,7 +59,7 @@ IndexIter* IndexIter_Create(Index *idx, SIType type);
 
 /* Update the lower or upper bound of an index iterator based on a constant predicate filter
  * (if that filter represents a narrower bound than the current one). */
-bool IndexIter_ApplyBound(IndexIter *iter, FT_PredicateNode *filter);
+bool IndexIter_ApplyBound(IndexIter *iter, SIValue *bound, int op);
 
 /* Returns a pointer to the next Node ID in the index, or NULL if the iterator has been depleted. */
 GrB_Index* IndexIter_Next(IndexIter *iter);

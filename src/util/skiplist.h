@@ -59,7 +59,7 @@ typedef struct skiplistNode {
 typedef int (*skiplistCmpFunc)(skiplistKey p1, skiplistKey p2);
 typedef int (*skiplistValCmpFunc)(const skiplistVal p1, const skiplistVal p2);
 
-typedef void (*skiplistCloneKeyFunc)(skiplistKey *key);
+typedef skiplistKey (*skiplistCloneKeyFunc)(skiplistKey key);
 typedef void (*skiplistFreeKeyFunc)(skiplistKey key);
 
 typedef struct skiplist {

@@ -21,7 +21,7 @@ extern Index* buildIndex(Graph *g, const GrB_Matrix label_matrix, const char *la
 class IndexTest: public ::testing::Test {
   protected:
     size_t expected_n = 100;
-    const char *label = "test_label";
+    char *label = "test_label";
     char *str_key = "string_prop";
     char *num_key = "num_prop";
     int label_id;
@@ -102,10 +102,9 @@ TEST_F(IndexTest, StringIndex) {
 
   // Build an iterator from a constant filter - this will include all elements
   SIValue lb = SI_StringVal("");
-  FT_FilterNode *filter = CreateConstFilterNode(label, str_key, GE, lb);
+
   IndexIter *iter = IndexIter_Create(str_idx, T_STRING);
-  IndexIter_ApplyBound(iter, &filter->pred);
-  FilterTree_Free(filter);
+  IndexIter_ApplyBound(iter, &lb, GE);
 
   NodeID *node_id;
   Node *cur;
@@ -123,6 +122,7 @@ TEST_F(IndexTest, StringIndex) {
     num_vals ++;
   }
   EXPECT_EQ(num_vals, expected_n);
+
   SIValue_Free(&lb);
   IndexIter_Free(iter);
   Index_Free(str_idx);
@@ -141,10 +141,8 @@ TEST_F(IndexTest, NumericIndex) {
 
   // Build an iterator from a constant filter - this will include all elements
   SIValue lb = SI_DoubleVal(0);
-  FT_FilterNode *filter = CreateConstFilterNode(label, num_key, GE, lb);
   IndexIter *iter = IndexIter_Create(num_idx, T_DOUBLE);
-  IndexIter_ApplyBound(iter, &filter->pred);
-  FilterTree_Free(filter);
+  IndexIter_ApplyBound(iter, &lb, GE);
 
   NodeID *node_id;
   Node *cur;
@@ -191,6 +189,7 @@ TEST_F(IndexTest, IteratorBounds) {
   Node *cur;
   SIValue *lb;
   int ctr = 0;
+  // TODO ensure lower bound is not still first value
   // Find the value of the 10th element in the index
   while ((node_id = IndexIter_Next(iter)) != NULL) {
     ctr ++;
@@ -200,9 +199,8 @@ TEST_F(IndexTest, IteratorBounds) {
     }
   }
 
-  FT_FilterNode *lb_filter_ge = CreateConstFilterNode(label, num_key, GE, *lb);
   IndexIter_Reset(iter);
-  IndexIter_ApplyBound(iter, &lb_filter_ge->pred);
+  IndexIter_ApplyBound(iter, lb, GE);
   /* Lower bound should reduce the number of values iterated over */
   int cur_vals = count_iter_vals(iter);
   EXPECT_LT(cur_vals, prev_vals);
@@ -210,8 +208,7 @@ TEST_F(IndexTest, IteratorBounds) {
   /* Set the same lower bound, but exclusive.
    * Number of values should again be reduced. */
   IndexIter_Reset(iter);
-  FT_FilterNode *lb_filter_gt = CreateConstFilterNode(label, num_key, GT, *lb);
-  IndexIter_ApplyBound(iter, &lb_filter_gt->pred);
+  IndexIter_ApplyBound(iter, lb, GT);
   cur_vals = count_iter_vals(iter);
   EXPECT_LT(cur_vals, prev_vals);
 
@@ -224,8 +221,7 @@ TEST_F(IndexTest, IteratorBounds) {
     ub = GraphEntity_Get_Property((GraphEntity*)cur, num_key);
     if (ub->doubleval > lb->doubleval) break;
   }
-  FT_FilterNode *ub_filter_le = CreateConstFilterNode(label, num_key, LE, *ub);
-  IndexIter_ApplyBound(iter, &ub_filter_le->pred);
+  IndexIter_ApplyBound(iter, ub, LE);
   /* Upper bound should reduce the number of values iterated over */
   cur_vals = count_iter_vals(iter);
   EXPECT_LT(cur_vals, prev_vals);
@@ -234,8 +230,7 @@ TEST_F(IndexTest, IteratorBounds) {
   /* Set the same upper bound, but exclusive.
    * Number of values should again be reduced. */
   IndexIter_Reset(iter);
-  FT_FilterNode *ub_filter_lt = CreateConstFilterNode(label, num_key, LT, *ub);
-  IndexIter_ApplyBound(iter, &ub_filter_lt->pred);
+  IndexIter_ApplyBound(iter, ub, LT);
   cur_vals = count_iter_vals(iter);
   EXPECT_LT(cur_vals, prev_vals);
 
@@ -243,16 +238,11 @@ TEST_F(IndexTest, IteratorBounds) {
    * Number of values should be 0. */
   IndexIter_Reset(iter);
   SIValue ub_last = SI_DoubleVal(lb->doubleval - 1);
-  FT_FilterNode *ub_filter_last = CreateConstFilterNode(label, num_key, LT, ub_last);
-  IndexIter_ApplyBound(iter, &ub_filter_last->pred);
+  IndexIter_ApplyBound(iter, &ub_last, LT);
   cur_vals = count_iter_vals(iter);
   EXPECT_EQ(cur_vals, 0);
 
-  free(lb_filter_gt);
-  free(lb_filter_ge);
-  free(ub_filter_le);
-  free(ub_filter_lt);
-  free(ub_filter_last);
   IndexIter_Free(iter);
+  Index_Free(num_idx);
 }
 

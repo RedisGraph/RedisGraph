@@ -29,10 +29,10 @@
 #define LEFT_CURLY_BRACKET              29
 #define RIGHT_CURLY_BRACKET             30
 #define WHERE                           31
-#define DOT                             32
-#define RETURN                          33
-#define DISTINCT                        34
-#define AS                              35
+#define RETURN                          32
+#define DISTINCT                        33
+#define AS                              34
+#define DOT                             35
 #define ORDER                           36
 #define BY                              37
 #define ASC                             38

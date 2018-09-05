@@ -33,18 +33,21 @@ int compareStrings(SIValue *a, SIValue *b) {
 }
 
 int compareNumerics(SIValue *a, SIValue *b) {
-  return a->doubleval - b->doubleval;
+  double diff = a->doubleval - b->doubleval;
+  return COMPARE_RETVAL(diff);
 }
 
 /* The index must maintain its own copy of the indexed SIValue
  * so that it becomes outdated but not broken by updates to the property. */
-void cloneKey(SIValue **property) {
-  SIValue *clone = *property;
-  *clone = SI_Clone(*clone);
+SIValue* cloneKey(SIValue *property) {
+  SIValue *clone = malloc(sizeof(SIValue));
+  *clone = SI_Clone(*property);
+  return clone;
 }
 
 void freeKey(SIValue *key) {
   SIValue_Free(key);
+  free(key);
 }
 
 /* Construct key and retrieve index from Redis keyspace */
@@ -178,8 +181,8 @@ IndexIter* IndexIter_Create(Index *idx, SIType type) {
  * it narrows the iterator range.
  * Returns 1 if the filter was a comparison type that can be translated into a bound
  * (effectively, any type but '!='), which indicates that it is now redundant. */
-bool IndexIter_ApplyBound(IndexIter *iter, FT_PredicateNode *filter) {
-  return skiplistIter_UpdateBound(iter, &filter->constVal, filter->op);
+bool IndexIter_ApplyBound(IndexIter *iter, SIValue *bound, int op) {
+  return skiplistIter_UpdateBound(iter, bound, op);
 }
 
 NodeID* IndexIter_Next(IndexIter *iter) {

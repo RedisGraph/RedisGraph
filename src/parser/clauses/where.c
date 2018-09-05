@@ -1,9 +1,9 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Apache License, Version 2.0,
-* modified with the Commons Clause restriction.
-*/
+ * Copyright 2018-2019 Redis Labs Ltd. and Contributors
+ *
+ * This file is available under the Apache License, Version 2.0,
+ * modified with the Commons Clause restriction.
+ */
 
 #include "./where.h"
 #include <assert.h>
@@ -14,71 +14,30 @@ AST_WhereNode* New_AST_WhereNode(AST_FilterNode *filters) {
 	return whereNode;
 }
 
-AST_FilterNode* New_AST_ConstantPredicateNode(const char* alias, const char* property, int op, SIValue value) {
-	AST_FilterNode *n = malloc(sizeof(AST_FilterNode));
-  	n->t = N_PRED;
-
-	n->pn.t = N_CONSTANT;
-  	n->pn.alias = strdup(alias);
-	n->pn.property = strdup(property);
-
-	n->pn.op = op;
-	n->pn.constVal = value;
-
-	return n;
-}
-
-AST_FilterNode* New_AST_VaryingPredicateNode(const char* lAlias, const char* lProperty, int op, const char* rAlias, const char* rProperty) {
+AST_FilterNode* New_AST_PredicateNode(AST_ArithmeticExpressionNode *lhs, int op, AST_ArithmeticExpressionNode *rhs) {
 	AST_FilterNode *n = malloc(sizeof(AST_FilterNode));
 	n->t = N_PRED;
-
-	n->pn.t = N_VARYING;
-	n->pn.alias = (char*)malloc(strlen(lAlias) + 1);
-	n->pn.property = (char*)malloc(strlen(lProperty) + 1);
-	n->pn.nodeVal.alias = (char*)malloc(strlen(rAlias) + 1);
-	n->pn.nodeVal.property = (char*)malloc(strlen(rProperty) + 1);
-
-	strcpy(n->pn.alias, lAlias);
-	strcpy(n->pn.property, lProperty);
-	strcpy(n->pn.nodeVal.alias, rAlias);
-	strcpy(n->pn.nodeVal.property, rProperty);
-
+	n->pn.lhs = lhs;
 	n->pn.op = op;
+	n->pn.rhs = rhs;
 
 	return n;
 }
 
 AST_FilterNode *New_AST_ConditionNode(AST_FilterNode *left, int op, AST_FilterNode *right) {
-  AST_FilterNode *n = malloc(sizeof(AST_FilterNode));
-  n->t = N_COND;
-  n->cn.left = left;
-  n->cn.right = right;
-  n->cn.op = op;
+	AST_FilterNode *n = malloc(sizeof(AST_FilterNode));
+	n->t = N_COND;
+	n->cn.left = left;
+	n->cn.right = right;
+	n->cn.op = op;
 
-  return n;
+	return n;
 }
 
 void FreePredicateNode(AST_PredicateNode* predicateNode) {
-
-	if(predicateNode->alias) {
-		free(predicateNode->alias);
-	}
-
-	if(predicateNode->property) {
-		free(predicateNode->property);
-	}
-
-	if(predicateNode->t == N_VARYING) {
-		if(predicateNode->nodeVal.alias) {
-			free(predicateNode->nodeVal.alias);
-		}
-
-		if(predicateNode->nodeVal.property) {
-			free(predicateNode->nodeVal.property);
-		}
-	}
-
-	// TODO: Should I free constVal?
+	// Don't free arithmetic expression nodes, as they have already
+	// been freed with the filter tree
+	free(predicateNode);
 }
 
 void _WhereClause_ReferredEntities(AST_FilterNode *root, TrieMap *referred_entities) {
@@ -88,18 +47,8 @@ void _WhereClause_ReferredEntities(AST_FilterNode *root, TrieMap *referred_entit
 			_WhereClause_ReferredEntities(root->cn.right, referred_entities);
 			break;
 		case N_PRED:
-			TrieMap_Add(referred_entities,
-						root->pn.alias,
-						strlen(root->pn.alias),
-						NULL,
-						TrieMap_DONT_CARE_REPLACE);
-			if(root->pn.t == N_VARYING) {
-				TrieMap_Add(referred_entities,
-							root->pn.nodeVal.alias,
-							strlen(root->pn.nodeVal.alias),
-							NULL,
-							TrieMap_DONT_CARE_REPLACE);
-			}
+			AR_EXP_GetAliases(root->pn.lhs, referred_nodes);
+			AR_EXP_GetAliases(root->pn.rhs, referred_nodes);
 			break;
 		default:
 			assert(0);
@@ -110,6 +59,21 @@ void _WhereClause_ReferredEntities(AST_FilterNode *root, TrieMap *referred_entit
 void WhereClause_ReferredEntities(const AST_WhereNode *where_node, TrieMap *referred_entities) {
 	if(!where_node) return;
 	_WhereClause_ReferredEntities(where_node->filters, referred_entities);
+}
+
+void WhereClause_ReferredFunctions(const AST_FilterNode *root, TrieMap *referred_funcs) {
+	if (!root) return;
+	if (root->t == N_PRED) {
+		// Check expressions on each side of predicate filters
+		AST_ArithmeticExpressionNode *exp = root->pn.lhs;
+		AR_EXP_GetFunctions(exp, referred_funcs);
+		exp = root->pn.rhs;
+		AR_EXP_GetFunctions(exp, referred_funcs);
+	} else {
+		// Visit both children of conditional nodes
+		WhereClause_ReferredFunctions(root->cn.left, referred_funcs);
+		WhereClause_ReferredFunctions(root->cn.right, referred_funcs);
+	}
 }
 
 void Free_AST_FilterNode(AST_FilterNode* filterNode) {

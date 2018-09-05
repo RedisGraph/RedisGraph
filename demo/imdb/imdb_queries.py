@@ -175,6 +175,29 @@ actors_over_85_index_scan = QueryInfo(
         ['Vincent Price', '107.000000']]
 )
 
+eighties_movies_index_scan = QueryInfo(
+    query="""MATCH (m:movie)
+             WHERE 1980 <= m.year
+             AND m.year < 1990
+             RETURN m.title, m.year
+             ORDER BY m.year""",
+    description='Multiple filters on indexed property?',
+    max_run_time_ms=1.5,
+    expected_result=[['The Evil Dead', '1981.000000'],
+                     ['Vincent', '1982.000000']]
+)
+
+find_titles_starting_with_american_query = QueryInfo(
+    query="""MATCH (m:movie)
+             WHERE LEFT(m.title, 8) = 'American'
+             RETURN m.title 
+             ORDER BY m.title""",
+    description='Movies starting with "American"?',
+    max_run_time_ms=4,
+    expected_result=[['American Honey'],
+                     ['American Pastoral'],
+                     ['American Sniper']]
+)
 queries_info = [
     actors_played_with_nicolas_cage_query,
     find_three_actors_played_with_nicolas_cage_query,
@@ -186,5 +209,7 @@ queries_info = [
     sum_and_average_age_of_straight_outta_compton_cast_query,
     how_many_movies_cameron_diaz_played_query,
     find_ten_oldest_actors_query,
-    actors_over_85_index_scan
+    actors_over_85_index_scan,
+    eighties_movies_index_scan,
+    find_titles_starting_with_american_query
 ]
