@@ -202,12 +202,8 @@ void _Graph_ClearMatrixEntry(Graph *g, GrB_Matrix M, GrB_Index src, GrB_Index de
 int _Graph_InitEdge(Graph *g, Edge *e, EdgeID id, Node *src, Node *dest, int r) {
     // Insert only if edge not already in hashtable.
     Edge *edge;
-    Edge lookupKey;
-    memset(&lookupKey, 0, sizeof(Edge));
-    Edge_SetSrcNode(&lookupKey, src);
-    Edge_SetDestNode(&lookupKey, dest);
-    Edge_SetRelationID(&lookupKey, r);
-    HASH_FIND(hh, g->_edgesHashTbl, &lookupKey.edgeDesc, sizeof(EdgeDesc), edge);
+    EdgeDesc lookupKey = {src->id, dest->id, r};
+    HASH_FIND(hh, g->_edgesHashTbl, &lookupKey, sizeof(EdgeDesc), edge);
 
     if(edge) {
         /* TODO: Currently we only support a single edge of type T
@@ -375,28 +371,20 @@ Edge *Graph_GetEdge(const Graph *g, EdgeID id) {
 void Graph_GetEdgesConnectingNodes(const Graph *g, NodeID src, NodeID dest, int relation, Vector *edges) {
     assert(g && src < Graph_NodeCount(g) && dest < Graph_NodeCount(g) && edges);
     Edge *e;
-    Node *srcNode = Graph_GetNode(g, src);
-    Node *destNode = Graph_GetNode(g, dest);
-
-    // Use a fake edge object as a lookup key.
-    Edge lookupKey;
-    memset(&lookupKey, 0, sizeof(Edge));
-    Edge_SetSrcNode(&lookupKey, srcNode);
-    Edge_SetDestNode(&lookupKey, destNode);
-    Edge_SetRelationID(&lookupKey, relation);
-
+    EdgeDesc lookupKey = {src, dest, relation};
+    
     // Search for edges.
     if(relation != GRAPH_NO_RELATION) {
         // Relation type specified.
-        HASH_FIND(hh, g->_edgesHashTbl, &lookupKey.edgeDesc, sizeof(EdgeDesc), e);
+        HASH_FIND(hh, g->_edgesHashTbl, &lookupKey, sizeof(EdgeDesc), e);
         if(e) Vector_Push(edges, e);
     } else {
         // Relation type missing, scan through each edge type.
         for(int r = 0; r < g->relation_count; r++) {
-            // Update lookup key relation id.
-            Edge_SetRelationID(&lookupKey, r);
+            // Update lookup relation id.
+            lookupKey.relationId = r;
             // See if there's an edge of type 'r' connecting source to destination.
-            HASH_FIND(hh, g->_edgesHashTbl, &lookupKey.edgeDesc, sizeof(EdgeDesc), e);
+            HASH_FIND(hh, g->_edgesHashTbl, &lookupKey, sizeof(EdgeDesc), e);
             if(e) Vector_Push(edges, e);
         }
     }
@@ -539,7 +527,7 @@ void Graph_DeleteNodes(Graph *g, NodeID *IDs, size_t IDCount) {
     for(size_t i = 0; i < edgeCount; i++) {
         Vector_Get(edges, i, &e);
         edgeIDs[i] = e->id;
-    } 
+    }
 
     // Sort and remove duplicates.
     QSORT(EdgeID, edgeIDs, edgeCount, ENTITY_ID_ISLT);
@@ -558,6 +546,11 @@ void Graph_DeleteNodes(Graph *g, NodeID *IDs, size_t IDCount) {
 
     // Force matrix resizing.
     _Graph_ResizeMatrix(g, g->adjacency_matrix);
+
+    // Cleanup.
+    free(edgeIDs);
+    free(dupFreeIDs);
+    Vector_Free(edges);
 }
 
 void Graph_LabelNodes(Graph *g, NodeID start_node_id, NodeID end_node_id, int label) {

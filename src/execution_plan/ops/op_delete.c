@@ -26,6 +26,7 @@ OpBase* NewDeleteOp(AST_DeleteNode *ast_delete_node, QueryGraph *qg, Graph *g, R
     op_delete->qg = qg;
     op_delete->nodes_to_delete = malloc(sizeof(Node**) * Vector_Size(ast_delete_node->graphEntities));
     op_delete->node_count = 0;
+    op_delete->edge_count = 0;
     op_delete->edges_to_delete = malloc(sizeof(Edge**) * Vector_Size(ast_delete_node->graphEntities));
     op_delete->deleted_nodes = array_new(NodeID, 32);
     op_delete->deleted_edges = array_new(EdgeID, 32);

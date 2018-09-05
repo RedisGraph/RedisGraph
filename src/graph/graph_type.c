@@ -88,6 +88,8 @@ void _GraphType_LoadNodes(RedisModuleIO *rdb, Graph *g) {
      * #nodes
     */
     uint64_t nodeCount = RedisModule_LoadUnsigned(rdb);
+    if(nodeCount == 0) return;
+
     DataBlockIterator *iter;
     Graph_CreateNodes(g, nodeCount, NULL, &iter);
 
@@ -110,6 +112,8 @@ void _GraphType_LoadEdges(RedisModuleIO *rdb, Graph *g) {
     */
 
     uint64_t edgeCount = RedisModule_LoadUnsigned(rdb);
+    if(edgeCount == 0) return;
+
     /* TODO: it might be better to process edges in batches,
      * such that we do not allocate huge chunks of memory. */
     EdgeDesc *connections = malloc(edgeCount * sizeof(EdgeDesc));

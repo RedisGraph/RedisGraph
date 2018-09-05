@@ -11,7 +11,7 @@
 #include "../value.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 
-#define ENTITY_ID_ISLT(a,b) (a<b)
+#define ENTITY_ID_ISLT(a,b) ((*a)<(*b))
 #define INVALID_ENTITY_ID -1l
 
 // Defined in graph_entity.c

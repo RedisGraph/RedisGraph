@@ -16,12 +16,12 @@
 
 // Encapsulate the essence of an edge.
 typedef struct {
-    NodeID srcId;   // Source node ID.
-    NodeID destId;  // Destination node ID.
-    int relationId; // Relation type ID.
+    NodeID srcId;   	// Source node ID.
+    NodeID destId;  	// Destination node ID.
+    int64_t relationId; // Relation type ID.
 } EdgeDesc;
 
-/* TODO: note it is possible to get into an incontinence 
+/* TODO: note it is possible to get into an inconsistency 
  * if we set edge src node and edgeDesc srcId to different nodes. */
 struct Edge {
 	struct {
