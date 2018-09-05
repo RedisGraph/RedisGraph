@@ -49,6 +49,7 @@ void _OpUpdate_BuildUpdateEvalCtx(OpUpdate* op, AST_SetNode *setNode, QueryGraph
 
         /* Get a reference to the updated entity. */
         op->update_expressions[i].entity = QueryGraph_GetEntityRef(graph, element->entity->alias);
+        op->update_expressions[i].alias = strdup(element->entity->alias);
         op->update_expressions[i].property = strdup(element->entity->property);
         op->update_expressions[i].exp = AR_EXP_BuildFromAST(element->exp, graph);
     }
@@ -58,7 +59,7 @@ void _OpUpdate_BuildUpdateEvalCtx(OpUpdate* op, AST_SetNode *setNode, QueryGraph
  * more than once, we'll have to delay updates until all entities 
  * are processed, and so _OpUpdate_QueueUpdate will queue up 
  * all information necessary to perform an update. */
-void _OpUpdate_QueueUpdate(OpUpdate *op, EntityProperty *dest_entity_prop, SIValue new_value) {
+void _OpUpdate_QueueUpdate(OpUpdate *op, EntityUpdateEvalCtx *eval_ctx, EntityProperty *dest_entity_prop, SIValue new_value) {
     /* Make sure we've got enough room in queue. */
     if(op->entities_to_update_count == op->entities_to_update_cap) {
         op->entities_to_update_cap *= 2;
@@ -67,6 +68,8 @@ void _OpUpdate_QueueUpdate(OpUpdate *op, EntityProperty *dest_entity_prop, SIVal
     }
 
     int i = op->entities_to_update_count;
+    op->entities_to_update[i].alias = eval_ctx->alias;
+    op->entities_to_update[i].id = (*eval_ctx->entity)->id;
     op->entities_to_update[i].dest_entity_prop = dest_entity_prop;
     op->entities_to_update[i].new_value = new_value;
     op->entities_to_update_count++;
@@ -88,7 +91,7 @@ OpResult OpUpdateConsume(OpBase *opBase, QueryGraph* graph) {
         int j = 0;
         for(; j < entity->prop_count; j++) {
             if(strcmp(entity->properties[j].name, update_expression->property) == 0) {
-                _OpUpdate_QueueUpdate(op, &entity->properties[j], new_value);
+                _OpUpdate_QueueUpdate(op, update_expression, &entity->properties[j], new_value);
                 break;
             }
         }
@@ -98,7 +101,7 @@ OpResult OpUpdateConsume(OpBase *opBase, QueryGraph* graph) {
              * For the time being set the new property value to PROPERTY_NOTFOUND.
              * Once we commit the update, we'll set the actual value. */
             GraphEntity_Add_Properties(entity, 1, &update_expression->property, PROPERTY_NOTFOUND);
-            _OpUpdate_QueueUpdate(op, &entity->properties[entity->prop_count-1], new_value);
+            _OpUpdate_QueueUpdate(op, update_expression, &entity->properties[entity->prop_count-1], new_value);
         }
     }
 
@@ -109,11 +112,33 @@ OpResult OpUpdateReset(OpBase *ctx) {
     return OP_OK;
 }
 
+/* Updates indices for all entities getting modified. This must be invoked
+ * before _UpdateEntities, while we still have access to the original property. */
+void _UpdateIndices(OpUpdate *op) {
+    for(int i = 0; i < op->entities_to_update_count; i++) {
+        // Locate node label
+        char *alias = op->entities_to_update[i].alias;
+        AST_GraphEntity* ge = MatchClause_GetEntity(op->ast->matchNode, alias);
+        // Only interested in nodes, not edges
+        if (ge->t != N_ENTITY) continue;
+
+        LabelStore *store = LabelStore_Get(op->ctx, STORE_NODE, op->graphName, ge->label);
+        if (!store) continue;
+
+        EntityProperty *dest_entity_prop = op->entities_to_update[i].dest_entity_prop;
+        SIValue new_value = op->entities_to_update[i].new_value;
+
+        NodeID id = op->entities_to_update[i].id;
+        Indices_UpdateNode(op->ctx, store, op->graphName, id, dest_entity_prop, &new_value);
+    }
+}
+
 /* Executes delayed updates. */
 void _UpdateEntities(OpUpdate *op) {
     for(int i = 0; i < op->entities_to_update_count; i++) {
         EntityProperty *dest_entity_prop = op->entities_to_update[i].dest_entity_prop;
         SIValue new_value = op->entities_to_update[i].new_value;
+        // TODO free dest_entity_prop->value?
         dest_entity_prop->value = new_value;
     }
     if(op->result_set)
@@ -149,11 +174,13 @@ void _UpdateSchemas(const OpUpdate *op) {
 
 void OpUpdateFree(OpBase *ctx) {
     OpUpdate *op = (OpUpdate*)ctx;
+    _UpdateIndices(op);
     _UpdateEntities(op);
     _UpdateSchemas(op);
     
-    /* Free each update context. */
+    /* Free each UpdateEval context. */
     for(int i = 0; i < op->update_expressions_count; i++) {
+        free(op->update_expressions[i].alias);
         free(op->update_expressions[i].property);
         AR_EXP_Free(op->update_expressions[i].exp);
     }
@@ -161,3 +188,4 @@ void OpUpdateFree(OpBase *ctx) {
     free(op->update_expressions);
     free(op->entities_to_update);
 }
+

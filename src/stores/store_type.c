@@ -16,7 +16,8 @@ void* StoreType_RdbLoad(RedisModuleIO *rdb, int encver) {
      * id 
      * label
      * #properties
-     * properties */
+     * property key (name)
+     * property value (index ID) */
     
     LabelStore *s = calloc(1, sizeof(LabelStore));
 
@@ -28,18 +29,25 @@ void* StoreType_RdbLoad(RedisModuleIO *rdb, int encver) {
     for(int i = 0; i < propCount; i++) {
         size_t propLen;
         char *prop = RedisModule_LoadStringBuffer(rdb, &propLen);
-        TrieMap_Add(s->properties, prop, propLen, NULL, NULL);
+        size_t index_id = RedisModule_LoadUnsigned(rdb);
+        if (index_id != NO_INDEX) {
+            size_t *val = malloc(sizeof(size_t));
+            *val = index_id;
+            TrieMap_Add(s->properties, prop, propLen, val, NULL);
+        } else {
+            TrieMap_Add(s->properties, prop, propLen, NULL, NULL);
+        }
     }
 
     return s;
 }
-
 void StoreType_RdbSave(RedisModuleIO *rdb, void *value) {
     /* Format:
      * id 
      * label
      * #properties
-     * properties */
+     * property key (name)
+     * property value (index ID) */
 
     LabelStore *s = value;
 
@@ -51,9 +59,16 @@ void StoreType_RdbSave(RedisModuleIO *rdb, void *value) {
         char *ptr;
         tm_len_t len;
         void *v;
+        size_t *index_id;
         TrieMapIterator *it = TrieMap_Iterate(s->properties, "", 0);
         while(TrieMapIterator_Next(it, &ptr, &len, &v)) {
             RedisModule_SaveStringBuffer(rdb, ptr, len);
+            index_id = (size_t *)v;
+            if (index_id) {
+                RedisModule_SaveUnsigned(rdb, *index_id);
+            } else {
+                RedisModule_SaveUnsigned(rdb, NO_INDEX);
+            }
         }
         TrieMapIterator_Free(it);
     }

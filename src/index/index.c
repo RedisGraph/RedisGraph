@@ -205,11 +205,11 @@ void Index_InsertNode(Index *idx, NodeID node, SIValue *val) {
   skiplistInsert(sl, val, node);
 }
 
-void Index_UpdateNodeValue(Index *idx, NodeID node, SIValue *prev, SIValue *new) {
+void Index_UpdateNodeValue(Index *idx, NodeID node, SIValue *oldval, SIValue *newval) {
   // It is valid for the key type to have changed in the property update,
   // so the type-checking logic in these calls is not redundant.
-  Index_DeleteNode(idx, node, prev);
-  Index_InsertNode(idx, node, new);
+  Index_DeleteNode(idx, node, oldval);
+  Index_InsertNode(idx, node, newval);
 }
 
 void Index_UpdateNodeID(Index *idx, NodeID prev_id, NodeID new_id, SIValue *val) {
@@ -224,6 +224,41 @@ void Index_DeleteNodes(NodeID *IDs, size_t IDCount) {
     // check labels?
     // QueryGraph_GetNodeById?
   }
+}
+
+/* Invoked from the op_create context */
+void Indices_AddNode(RedisModuleCtx *ctx, LabelStore *store, const char *graphName, Node *node) {
+  size_t *index_id;
+  EntityProperty prop;
+  Index *idx;
+  for (int i = 0; i < node->prop_count; i ++) {
+    prop = node->properties[i];
+    index_id = TrieMap_Find(store->properties, prop.name, strlen(prop.name));
+    if (!index_id) continue;
+
+    // Retrieve index with write access
+    RedisModuleKey *key = _index_LookupKey(ctx, graphName, *index_id, true);
+    assert(RedisModule_ModuleTypeGetType(key) == IndexRedisModuleType);
+    idx = RedisModule_ModuleTypeGetValue(key);
+    Index_InsertNode(idx, node->id, &prop.value);
+  }
+}
+
+/* Invoked from the op_update context */
+// void Indices_UpdateNode(RedisModuleCtx *ctx, const char *graphName, NodeID id, SIValue *oldval, SIValue *newval) {
+void Indices_UpdateNode(RedisModuleCtx *ctx, LabelStore *store, const char *graphName,
+                        NodeID id, EntityProperty *oldval, SIValue *newval) {
+  size_t *index_id = TrieMap_Find(store->properties, oldval->name, strlen(oldval->name));
+  // Label-property pair is not indexed
+  if (!index_id) return;
+
+  // Retrieve index with write access
+  RedisModuleKey *key = _index_LookupKey(ctx, graphName, *index_id, true);
+  assert(RedisModule_ModuleTypeGetType(key) == IndexRedisModuleType);
+  Index *idx = RedisModule_ModuleTypeGetValue(key);
+
+  // Replace old value with new
+  Index_UpdateNodeValue(idx, id, &oldval->value, newval);
 }
 
 /* Output text for EXPLAIN calls */

@@ -60,14 +60,14 @@ LabelStore *LabelStore_New(RedisModuleCtx *ctx, LabelStoreType type, const char 
 }
 
 LabelStore *LabelStore_Get(RedisModuleCtx *ctx, LabelStoreType type, const char *graph, const char* label) {
-	LabelStore *store = NULL;
+    LabelStore *store = NULL;
     char *strKey;
     LabelStore_Id(&strKey, type, graph, label);
 
     RedisModuleString *rmStoreId = RedisModule_CreateString(ctx, strKey, strlen(strKey));
     free(strKey);
     
-	RedisModuleKey *key = RedisModule_OpenKey(ctx, rmStoreId, REDISMODULE_WRITE);
+    RedisModuleKey *key = RedisModule_OpenKey(ctx, rmStoreId, REDISMODULE_WRITE);
     RedisModule_FreeString(ctx, rmStoreId);
 
     /* Create "ALL" store if doesn't exists. */
@@ -91,7 +91,7 @@ void LabelStore_AssignValue(LabelStore *store, char *property, size_t *id) {
 void LabelStore_UpdateSchema(LabelStore *store, int prop_count, char **properties) {
     for(int idx = 0; idx < prop_count; idx++) {
         char *property = properties[idx];
-        TrieMap_Add(store->properties, property, strlen(property), NULL, NULL);
+        TrieMap_Add(store->properties, property, strlen(property), NULL, TrieMap_NOP_REPLACE);
     }
 }
 
