@@ -8,7 +8,7 @@ Primary features:
 
 * Graphs represented as sparse adjacency matrices
 * Cypher queries translated into linear algebra expressions
-* Nodes that may have attributes
+* Nodes and edges that may have attributes
 * Nodes and edges that can be labeled
 * Support for [openCypher](http://www.opencypher.org/) queries
 

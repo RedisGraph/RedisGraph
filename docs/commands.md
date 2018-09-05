@@ -43,7 +43,7 @@ Each graph entity node/edge can contain an alias and a label, but both can be le
 
 Entity structure: `alias:label {filters}`.
 
-Alias, label and filters are all optional, and currently only nodes can have filters.
+Alias, label and filters are all optional.
 
 Example:
 
@@ -69,7 +69,7 @@ In this example, we're interested in actor entities which have the relation "act
 It is possible to describe broader relationships by composing a multi-hop query such as:
 
 ```sh
-(me {name:'swilly'})-[:friends_with]->()-[:friends_with]->(fof)
+(me {name:'swilly'})-[:friends_with]->()-[:friends_with]->(foaf)
 ```
 
 Here we're interested in finding out who my friends' friends are.
@@ -84,12 +84,7 @@ Here we're interested in knowing which of my friends have visited at least one c
 
 #### WHERE
 
-This clause is not mandatory, but if you want to filter results, you can define two kinds of predicates:
-
-1.Compare against constant value: `alias.property operation value`,
-where `value` is a primitive type: numeric or string.
-
-2.Compare between node properties: `alias.property operation alias.property`
+This clause is not mandatory, but if you want to filter results, you can specify your predicates here.
 
 Supported operations:
 
@@ -103,7 +98,6 @@ Supported operations:
 Predicates can be combined using AND / OR.
 
 Be sure to wrap predicates within parentheses to control precedence.
-
 
 Examples:
 
@@ -134,7 +128,7 @@ Its structure is a list of `alias.property` separated by commas.
 For convenience, it's possible to specify the alias only when you're interested in every attribute an entity possesses,
 and don't want to specify each attribute individually. e.g.
 
-```sh 
+```sh
 RETURN movie.title, actor
 ```
 
@@ -223,7 +217,6 @@ It's possible to create multiple entities by separating them with a comma.
 CREATE (n),(m)
 ```
 
-
 ```sh
 CREATE (:person {name: 'Kurt', age:27})
 ```
@@ -274,7 +267,7 @@ This query will delete all `friend` outgoing relationships from the node with th
 
 #### SET
 
-SET is used to create or update properties on nodes.
+SET is used to create or update properties on nodes and edges.
 
 To set a property on a node, use `SET`.
 
@@ -336,6 +329,7 @@ MERGE (charlie { name: 'Charlie Sheen', age: 10 })-[r:ACTED_IN]->(wallStreet:MOV
 ```
 
 ### Functions
+
 This section contains information on all supported functions from the openCypher query language.
 
 * [Aggregating functions](#aggregating-functions)
@@ -357,6 +351,7 @@ This section contains information on all supported functions from the openCypher
 |stDev() | Returns the standard deviation for the given value over a group.|
 
 ## Mathematical functions
+
 |Function | Description|
 | ------- |:-----------|
 |abs() | Returns the absolute value of a number.|
