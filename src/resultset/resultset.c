@@ -12,8 +12,6 @@
 #include "../query_executor.h"
 #include "../util/qsort.h"
 
-#define MAX(a,b) (((a) > (b)) ? (a) : (b))
-
 int _heap_elem_compare(const void *A, const void *B, const void *udata) {
     ResultSet* set = (ResultSet*)udata;
     int direction = set->direction;
