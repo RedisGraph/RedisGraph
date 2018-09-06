@@ -66,7 +66,8 @@ AST_Query *New_AST_Query(AST_MatchNode *matchNode, AST_WhereNode *whereNode,
                          AST_CreateNode *createNode, AST_MergeNode *mergeNode,
                          AST_SetNode *setNode, AST_DeleteNode *deleteNode,
                          AST_ReturnNode *returnNode, AST_OrderNode *orderNode,
-                         AST_LimitNode *limitNode, AST_IndexNode *indexNode) {
+                         AST_SkipNode *skipNode, AST_LimitNode *limitNode,
+                         AST_IndexNode *indexNode) {
   AST_Query *queryExpressionNode = (AST_Query *)malloc(sizeof(AST_Query));
 
   queryExpressionNode->matchNode = matchNode;
@@ -77,6 +78,7 @@ AST_Query *New_AST_Query(AST_MatchNode *matchNode, AST_WhereNode *whereNode,
   queryExpressionNode->deleteNode = deleteNode;
   queryExpressionNode->returnNode = returnNode;
   queryExpressionNode->orderNode = orderNode;
+  queryExpressionNode->skipNode = skipNode;
   queryExpressionNode->limitNode = limitNode;
   queryExpressionNode->indexNode = indexNode;
 
@@ -314,6 +316,7 @@ void Free_AST_Query(AST_Query *queryExpressionNode) {
   Free_AST_SetNode(queryExpressionNode->setNode);
   Free_AST_WhereNode(queryExpressionNode->whereNode);
   Free_AST_ReturnNode(queryExpressionNode->returnNode);
+  Free_AST_SkipNode(queryExpressionNode->skipNode);
   Free_AST_OrderNode(queryExpressionNode->orderNode);
   free(queryExpressionNode);
 }

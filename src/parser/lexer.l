@@ -30,6 +30,7 @@ int yycolumn = 1;
 "AS" 	      { return AS; }
 "DISTINCT"  { return DISTINCT; }
 "WHERE" 	  { return WHERE; }
+"SKIP"      { return SKIP; }
 "ORDER"     { return ORDER; }
 "MERGE"     { return MERGE; }
 "BY"        { return BY; }

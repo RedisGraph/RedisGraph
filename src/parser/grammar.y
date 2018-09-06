@@ -35,40 +35,40 @@
 
 query ::= expr(A). { ctx->root = A; }
 
-expr(A) ::= matchClause(B) whereClause(C) createClause(D) returnClause(E) orderClause(F) limitClause(G). {
-	A = New_AST_Query(B, C, D, NULL, NULL, NULL, E, F, G, NULL);
+expr(A) ::= matchClause(B) whereClause(C) createClause(D) returnClause(E) orderClause(F) skipClause(G) limitClause(H). {
+	A = New_AST_Query(B, C, D, NULL, NULL, NULL, E, F, G, H, NULL);
 }
 
 expr(A) ::= matchClause(B) whereClause(C) createClause(D). {
-	A = New_AST_Query(B, C, D, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	A = New_AST_Query(B, C, D, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 }
 
 expr(A) ::= matchClause(B) whereClause(C) deleteClause(D). {
-	A = New_AST_Query(B, C, NULL, NULL, NULL, D, NULL, NULL, NULL, NULL);
+	A = New_AST_Query(B, C, NULL, NULL, NULL, D, NULL, NULL, NULL, NULL, NULL);
 }
 
 expr(A) ::= matchClause(B) whereClause(C) setClause(D). {
-	A = New_AST_Query(B, C, NULL, NULL, D, NULL, NULL, NULL, NULL, NULL);
+	A = New_AST_Query(B, C, NULL, NULL, D, NULL, NULL, NULL, NULL, NULL, NULL);
 }
 
-expr(A) ::= matchClause(B) whereClause(C) setClause(D) returnClause(E) orderClause(F) limitClause(G). {
-	A = New_AST_Query(B, C, NULL, NULL, D, NULL, E, F, G, NULL);
+expr(A) ::= matchClause(B) whereClause(C) setClause(D) returnClause(E) orderClause(F) skipClause(G) limitClause(H). {
+	A = New_AST_Query(B, C, NULL, NULL, D, NULL, E, F, G, H, NULL);
 }
 
 expr(A) ::= createClause(B). {
-	A = New_AST_Query(NULL, NULL, B, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	A = New_AST_Query(NULL, NULL, B, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 }
 
 expr(A) ::= indexClause(B). {
-	A = New_AST_Query(NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, B);
+	A = New_AST_Query(NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, B);
 }
 
 expr(A) ::= mergeClause(B). {
-	A = New_AST_Query(NULL, NULL, NULL, B, NULL, NULL, NULL, NULL, NULL, NULL);
+	A = New_AST_Query(NULL, NULL, NULL, B, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 }
 
 expr(A) ::= returnClause(B). {
-	A = New_AST_Query(NULL, NULL, NULL, NULL, NULL, NULL, B, NULL, NULL, NULL);
+	A = New_AST_Query(NULL, NULL, NULL, NULL, NULL, NULL, B, NULL, NULL, NULL, NULL);
 }
 
 %type matchClause { AST_MatchNode* }
@@ -436,6 +436,15 @@ columnName(A) ::= variable(B). {
 	}
 
 	Free_AST_Variable(B);
+}
+
+%type skipClause {AST_SkipNode*}
+
+skipClause(A) ::= . {
+	A = NULL;
+}
+skipClause(A) ::= SKIP INTEGER(B). {
+	A = New_AST_SkipNode(B.intval);
 }
 
 %type limitClause {AST_LimitNode*}

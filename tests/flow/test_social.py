@@ -28,6 +28,18 @@ class SocialFlowTest(FlowTestsBase):
     @classmethod
     def tearDownClass(cls):
         cls.r.stop()
+    
+    def test00_subset_of_people(self):
+        global redis_graph
+        actual_result = redis_graph.query(queries.subset_of_people.query)
+
+        # assert result set
+        self._assert_only_expected_results_are_in_actual_results(
+            actual_result,
+            queries.subset_of_people)
+
+        # assert query run time
+        self._assert_run_time(actual_result, queries.subset_of_people)
 
     def test01_my_friends(self):
         global redis_graph

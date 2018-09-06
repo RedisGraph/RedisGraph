@@ -18,5 +18,6 @@
 #include "./set.h"
 #include "./where.h"
 #include "./index.h"
+#include "./skip.h"
 
 #endif
