@@ -7,14 +7,7 @@
 
 #include "./op_delete.h"
 #include "../../util/arr.h"
-#include "../../util/qsort.h"
 #include <assert.h>
-
-#define nodeIDislt(a,b) (a<b)
-
-#define edgeIDislt(a,b) ( ( a->src < b->src ) ||\
-    ( ( a->src == b->src ) && ( a->dest < b->dest ) ) ||\
-    ( ( a->src == b->src ) && ( a->dest == b->dest ) && ( a->relation_type < b->relation_type ) ) )
 
 /* Forward declarations. */
 void _LocateEntities(OpDelete *op_delete, QueryGraph *graph, AST_DeleteNode *ast_delete_node);
@@ -66,51 +59,24 @@ void _LocateEntities(OpDelete *op, QueryGraph *qg, AST_DeleteNode *ast_delete_no
     }
 }
 
-EntityID *_SortNRemoveDups(EntityID *entities, size_t entityCount, size_t *dupFreeCount) {
-    // Sort.
-    QSORT(EntityID, entities, entityCount, ENTITY_ID_ISLT);
-
-    // Remove duplicates.
-    int j = 0;  // Index into dup_free_ids.
-
-    // Array of unique IDs.
-    EntityID *dup_free_ids = malloc(sizeof(EntityID) * entityCount);
-
-    for(int i = 0; i < entityCount; i++) {
-        EntityID current = entities[i];
-
-        // Skip duplicates.
-        while(i < (entityCount-1) && current == entities[i+1]) i++;
-
-        dup_free_ids[j++] = current;
-    }
-
-    *dupFreeCount = j;
-    return dup_free_ids;
-}
-
 void _DeleteEntities(OpDelete *op) {
     /* We must start with edge deletion as node deletion moves nodes around. */
     size_t deletedEdgeCount = array_len(op->deleted_edges);
     if(deletedEdgeCount > 0) {
         // Sort and remove duplicates.
-        size_t dupFreeEdgeIDsCount = 0;
-        EntityID *dupFreeEdgeIDs = _SortNRemoveDups(op->deleted_edges, deletedEdgeCount, &dupFreeEdgeIDsCount);
+        size_t dupFreeEdgeIDsCount = SortAndUniqueEntities(op->deleted_edges, deletedEdgeCount);
         assert(dupFreeEdgeIDsCount > 0);
-        Graph_DeleteEdges(op->g, dupFreeEdgeIDs, dupFreeEdgeIDsCount);
+        Graph_DeleteEdges(op->g, op->deleted_edges, dupFreeEdgeIDsCount);
         if(op->result_set) op->result_set->stats.relationships_deleted = dupFreeEdgeIDsCount;
-        free(dupFreeEdgeIDs);
     }
 
     size_t deletedNodeCount = array_len(op->deleted_nodes);
     if(deletedNodeCount > 0) {
         // Sort and remove duplicates.
-        size_t dupFreeNodeIDsCount = 0;
-        EntityID *dupFreeNodeIDs = _SortNRemoveDups(op->deleted_nodes, deletedNodeCount, &dupFreeNodeIDsCount);
+        size_t dupFreeNodeIDsCount = SortAndUniqueEntities(op->deleted_nodes, deletedNodeCount);
         assert(dupFreeNodeIDsCount > 0);
-        Graph_DeleteNodes(op->g, dupFreeNodeIDs, dupFreeNodeIDsCount);
+        Graph_DeleteNodes(op->g, op->deleted_nodes, dupFreeNodeIDsCount);
         if(op->result_set) op->result_set->stats.nodes_deleted = dupFreeNodeIDsCount;
-        free(dupFreeNodeIDs);
     }                
 }
 

@@ -42,6 +42,10 @@ void GraphEntity_Add_Properties(GraphEntity *e, int prop_count, char **keys, SIV
  * constant value PROPERTY_NOTFOUND. */
 SIValue* GraphEntity_Get_Property(const GraphEntity *e, const char* key);
 
+/* Sorts and removes duplicates from an array of entity IDs in-place
+ * and returns the updated entity count. */
+int SortAndUniqueEntities(EntityID *entities, size_t entityCount);
+
 /* Release all memory allocated by entity */
 void FreeGraphEntity(GraphEntity *e);
 

@@ -5,8 +5,15 @@
 * modified with the Commons Clause restriction.
 */
 
-#include "graph_entity.h"
 #include <stdio.h>
+#include "graph_entity.h"
+#include "../util/qsort.h"
+
+#define nodeIDislt(a,b) (a<b)
+
+#define edgeIDislt(a,b) ( ( a->src < b->src ) ||\
+    ( ( a->src == b->src ) && ( a->dest < b->dest ) ) ||\
+    ( ( a->src == b->src ) && ( a->dest == b->dest ) && ( a->relation_type < b->relation_type ) ) )
 
 SIValue *PROPERTY_NOTFOUND = &(SIValue){.intval = 0, .type = T_NULL};
 
@@ -33,6 +40,21 @@ SIValue* GraphEntity_Get_Property(const GraphEntity *e, const char* key) {
 		}
 	}
 	return PROPERTY_NOTFOUND;
+}
+
+int SortAndUniqueEntities(EntityID *entities, size_t entityCount) {
+    // Sort.
+    QSORT(EntityID, entities, entityCount, ENTITY_ID_ISLT);
+
+    int j = 0;  // Index to next unique entity
+    for(int i = 0; i < entityCount - 1; i++) {
+        if (entities[i] != entities[i + 1]) {
+            entities[j++] = entities[i];
+        }
+    }
+    // Copy the final element
+    entities[j++] = entities[entityCount - 1];
+    return j;
 }
 
 void FreeGraphEntity(GraphEntity *e) {

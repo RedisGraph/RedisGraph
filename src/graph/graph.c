@@ -155,6 +155,33 @@ void _Graph_ReplaceDeletedNode(Graph *g, GrB_Vector zero, NodeID replacement, No
     DataBlock_CopyItem(g->nodes, replacement, to_delete);
 }
 
+/* Delete incoming/outgoing edges of deleted nodes. */
+void _Graph_DeleteReferredEdges(Graph *g, NodeID *IDs, size_t IDCount) {
+    /* For every node marked for deletion, collect all
+     * incoming and outgoing edges and delete them. */
+    Vector *edges = NewVector(Edge*, 32);
+    for(int i = 0; i < IDCount; i++) {
+        Node *n = Graph_GetNode(g, IDs[i]);
+        Graph_GetNodeEdges(g, n, edges);
+    }
+
+    // Compose a sorted array of edge ids.
+    Edge *e;
+    size_t edgeCount = Vector_Size(edges);
+    EdgeID *edgeIDs = malloc(sizeof(EdgeID) * edgeCount);
+    for(size_t i = 0; i < edgeCount; i++) {
+        Vector_Get(edges, i, &e);
+        edgeIDs[i] = e->id;
+    }
+
+    size_t dupFreeEdgeCount = SortAndUniqueEntities(edgeIDs, edgeCount);
+    Graph_DeleteEdges(g, edgeIDs, dupFreeEdgeCount);
+
+    // Cleanup.
+    free(edgeIDs);
+    Vector_Free(edges);
+}
+
 // Return number of nodes graph can contain.
 size_t _Graph_NodeCap(const Graph *g) {
     return g->nodes->itemCap;
@@ -542,47 +569,14 @@ void Graph_DeleteNodes(Graph *g, NodeID *IDs, size_t IDCount) {
     assert(g && IDs);
     if(IDCount == 0) return;
 
-    /* Delete incoming/outgoing edges of deleted nodes;
-     * For every node marked for deletion, get a list of 
-     * both incoming and outgoing edges and delete thoese edges. */
-    Vector *edges = NewVector(Edge*, 32);
-    for(int i = 0; i < IDCount; i++) {
-        Node *n = Graph_GetNode(g, IDs[i]);
-        Graph_GetNodeEdges(g, n, edges, GRAPH_EDGE_DIR_BOTH, GRAPH_NO_RELATION);
-    }
+    // Delete the edges connecting nodes pending deletion
+    _Graph_DeleteReferredEdges(g, IDs, IDCount);
 
-    // Compose a sorted array of edge ids.
-    Edge *e;
-    size_t edgeCount = Vector_Size(edges);
-    EdgeID *edgeIDs = malloc(sizeof(EdgeID) * edgeCount);
-    EdgeID *dupFreeIDs = malloc(sizeof(EdgeID) * edgeCount);
-    for(size_t i = 0; i < edgeCount; i++) {
-        Vector_Get(edges, i, &e);
-        edgeIDs[i] = e->id;
-    }
-
-    // Sort and remove duplicates.
-    QSORT(EdgeID, edgeIDs, edgeCount, ENTITY_ID_ISLT);
-
-    // Remove duplicates.
-    size_t j = 0;  // Index into dupFreeIDs.
-    for(int i = 0; i < edgeCount; i++) {
-        EdgeID current = edgeIDs[i];
-        // Skip duplicates.
-        while(i < (edgeCount-1) && current == edgeIDs[i+1]) i++;
-        dupFreeIDs[j++] = current;
-    }
-
-    Graph_DeleteEdges(g, dupFreeIDs, j);
+     // Delete the nodes themselves.
     _Graph_DeleteEntities(g, IDs, IDCount, g->nodes);
 
     // Force matrix resizing.
     _Graph_ResizeMatrix(g, g->adjacency_matrix);
-
-    // Cleanup.
-    free(edgeIDs);
-    free(dupFreeIDs);
-    Vector_Free(edges);
 }
 
 void Graph_LabelNodes(Graph *g, NodeID start_node_id, NodeID end_node_id, int label) {

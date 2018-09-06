@@ -12,7 +12,7 @@
 #include "../../graph/node.h"
 #include "../../resultset/resultset.h"
 #include "../../util/triemap/triemap.h"
-/* Delets entities specified within the DELETE clause. */
+/* Deletes entities specified within the DELETE clause. */
 
 
 typedef struct {
