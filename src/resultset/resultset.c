@@ -374,7 +374,14 @@ void ResultSet_Replay(ResultSet* set) {
         _aggregateResultSet(set->ctx, set);
     }
 
-    size_t resultset_size = MAX(0, set->recordCount - set->skip);
+    // Ensure that we're returning a valid number of records.
+    size_t resultset_size;
+    if (set->skip < set->recordCount) {
+      resultset_size = set->recordCount - set->skip;
+    } else {
+      resultset_size = 0;
+    }
+
     if(set->header) resultset_size++;
 
     if(set->streaming) {
