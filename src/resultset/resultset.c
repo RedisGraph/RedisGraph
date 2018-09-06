@@ -45,7 +45,13 @@ void _ResultSet_ReplayHeader(const ResultSet *set, const ResultSetHeader *header
     }
 }
 
-void _ResultSet_ReplayRecord(const ResultSet *s, const Record* r) {
+void _ResultSet_ReplayRecord(ResultSet *s, const Record* r) {
+    // Skip record.
+    if(s->skip > 0) {
+        s->skip--;
+        return;
+    }
+
     char value[2048] = {0};
     RedisModule_ReplyWithArray(s->ctx, r->len);
 
@@ -266,10 +272,11 @@ ResultSet* NewResultSet(AST_Query* ast, RedisModuleCtx *ctx) {
     ResultSet* set = (ResultSet*)malloc(sizeof(ResultSet));
     set->ctx = ctx;
     set->heap = NULL;
-    set->trie = NULL;    
+    set->trie = NULL;
     set->aggregated = ReturnClause_ContainsAggregation(ast->returnNode);
     set->ordered = (ast->orderNode != NULL);
     set->limit = RESULTSET_UNLIMITED;
+    set->skip = (ast->skipNode) ? ast->skipNode->skip : 0;
     set->direction = DIR_ASC;
     set->distinct = (ast->returnNode && ast->returnNode->distinct);
     set->recordCount = 0;    
@@ -290,7 +297,8 @@ ResultSet* NewResultSet(AST_Query* ast, RedisModuleCtx *ctx) {
     }
 
     if(ast->limitNode != NULL) {
-        set->limit = ast->limitNode->limit;
+        // Account for skipped records.
+        set->limit = set->skip + ast->limitNode->limit;
     }
 
     if(set->limit != RESULTSET_UNLIMITED && set->ordered) {
@@ -363,7 +371,7 @@ void ResultSet_Replay(ResultSet* set) {
         _aggregateResultSet(set->ctx, set);
     }
 
-    size_t resultset_size = set->recordCount;
+    size_t resultset_size = set->recordCount - set->skip;
     if(set->header) resultset_size++;
 
     if(set->streaming) {

@@ -41,6 +41,7 @@ typedef struct {
     char *buffer;               /* Reusable buffer for record streaming. */
     size_t bufferLen;           /* Size of buffer in bytes. */
     ResultSetStatistics stats;  /* ResultSet statistics. */
+    size_t skip;                /* Skips first N records from resultset. */
 } ResultSet;
 
 ResultSet* NewResultSet(AST_Query* ast, RedisModuleCtx *ctx);

@@ -66,7 +66,8 @@ AST_Query *New_AST_Query(AST_MatchNode *matchNode, AST_WhereNode *whereNode,
                          AST_CreateNode *createNode, AST_MergeNode *mergeNode,
                          AST_SetNode *setNode, AST_DeleteNode *deleteNode,
                          AST_ReturnNode *returnNode, AST_OrderNode *orderNode,
-                         AST_LimitNode *limitNode, AST_IndexNode *indexNode) {
+                         AST_SkipNode *skipNode, AST_LimitNode *limitNode,
+                         AST_IndexNode *indexNode) {
   AST_Query *queryExpressionNode = (AST_Query *)malloc(sizeof(AST_Query));
 
   queryExpressionNode->matchNode = matchNode;
@@ -77,6 +78,7 @@ AST_Query *New_AST_Query(AST_MatchNode *matchNode, AST_WhereNode *whereNode,
   queryExpressionNode->deleteNode = deleteNode;
   queryExpressionNode->returnNode = returnNode;
   queryExpressionNode->orderNode = orderNode;
+  queryExpressionNode->skipNode = skipNode;
   queryExpressionNode->limitNode = limitNode;
   queryExpressionNode->indexNode = indexNode;
 
@@ -252,6 +254,17 @@ AST_Validation _Validate_WHERE_Clause(const AST_Query *ast, char **reason) {
   return res;
 }
 
+AST_Validation _Validate_SKIP_Clause(const AST_Query *ast, char **reason) {
+  if(!ast->skipNode) return AST_VALID;
+
+  if(ast->skipNode->skip < 0) {
+    asprintf(reason, "Invalid input '%lld' is not a valid value, must be a positive integer", ast->skipNode->skip);
+    return AST_INVALID;
+  }
+
+  return AST_VALID;
+}
+
 AST_Validation AST_Validate(const AST_Query *ast, char **reason) {
   /* AST must include either a MATCH or CREATE clause. */
   if (!(ast->matchNode || ast->createNode || ast->mergeNode || ast->returnNode || ast->indexNode)) {
@@ -285,6 +298,10 @@ AST_Validation AST_Validate(const AST_Query *ast, char **reason) {
     return AST_INVALID;
   }
 
+  if (_Validate_SKIP_Clause(ast, reason) != AST_VALID) {
+    return AST_INVALID;
+  }
+
   if (_Validate_RETURN_Clause(ast, reason) != AST_VALID) {
     return AST_INVALID;
   }
@@ -314,6 +331,7 @@ void Free_AST_Query(AST_Query *queryExpressionNode) {
   Free_AST_SetNode(queryExpressionNode->setNode);
   Free_AST_WhereNode(queryExpressionNode->whereNode);
   Free_AST_ReturnNode(queryExpressionNode->returnNode);
+  Free_AST_SkipNode(queryExpressionNode->skipNode);
   Free_AST_OrderNode(queryExpressionNode->orderNode);
   free(queryExpressionNode);
 }

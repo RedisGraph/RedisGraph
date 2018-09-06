@@ -4,6 +4,16 @@ import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../')
 from demo import QueryInfo
 
+subset_of_people = QueryInfo(
+    query="""MATCH (p:person) RETURN p.name ORDER BY p.name SKIP 3 LIMIT 5""",
+    description='Get a subset of people.',
+    max_run_time_ms=0.2,
+    expected_result=[["Gal Derriere"],
+                    ["Jane Chernomorin"],
+                    ["Lucy Yanfital"],
+                    ["Mor Yesharim"],
+                    ["Noam Nativ"]]
+)
 
 my_friends_query = QueryInfo(
     query="""MATCH (ME:person {name:"Roi Lipman"})-[:friend]->(f:person) 
@@ -18,7 +28,6 @@ my_friends_query = QueryInfo(
                      ['Alon Fital']]
 )
 
-
 friends_of_friends_query = QueryInfo(
     query="""MATCH (ME:person {name:"Roi Lipman"})-[:friend]->(:person)-[:friend]->(fof:person) 
              RETURN fof.name""",
@@ -32,8 +41,6 @@ friends_of_friends_query = QueryInfo(
                      ['Gal Derriere'],
                      ['Lucy Yanfital']]
 )
-
-
 
 friends_of_friends_single_and_over_30_query = QueryInfo(
     query="""MATCH (ME:person {name:"Roi Lipman"})-[:friend]->(:person)-[:friend]->(fof:person {status:"single"})
@@ -200,6 +207,7 @@ post_delete_label_query = QueryInfo(
 )
 
 queries_info = [
+    subset_of_people,
     my_friends_query,
     friends_of_friends_query,
     friends_of_friends_single_and_over_30_query,
@@ -217,19 +225,3 @@ queries_info = [
     delete_person_query,
     post_delete_label_query
 ]
-
-# queries_info = [
-#     my_friends_query,
-#     friends_of_friends_query,
-#     friends_of_friends_single_and_over_30_query,
-#     friends_of_friends_visited_amsterdam_and_single_query,
-#     friends_visited_same_places_as_me_query,
-#     friends_older_than_me_query,
-#     friends_age_difference_query,
-#     how_many_countries_each_friend_visited_query,
-#     happy_birthday_query,
-#     friends_age_statistics_query,
-#     visit_purpose_of_each_country_i_visited_query,
-#     who_was_on_business_trip_query,
-#     number_of_vacations_per_person_query
-# ]
