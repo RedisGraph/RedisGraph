@@ -254,17 +254,6 @@ AST_Validation _Validate_WHERE_Clause(const AST_Query *ast, char **reason) {
   return res;
 }
 
-AST_Validation _Validate_SKIP_Clause(const AST_Query *ast, char **reason) {
-  if(!ast->skipNode) return AST_VALID;
-
-  if(ast->skipNode->skip < 0) {
-    asprintf(reason, "Invalid input '%lld' is not a valid value, must be a positive integer", ast->skipNode->skip);
-    return AST_INVALID;
-  }
-
-  return AST_VALID;
-}
-
 AST_Validation AST_Validate(const AST_Query *ast, char **reason) {
   /* AST must include either a MATCH or CREATE clause. */
   if (!(ast->matchNode || ast->createNode || ast->mergeNode || ast->returnNode || ast->indexNode)) {
@@ -295,10 +284,6 @@ AST_Validation AST_Validate(const AST_Query *ast, char **reason) {
   }
 
   if (_Validate_DELETE_Clause(ast, reason) != AST_VALID) {
-    return AST_INVALID;
-  }
-
-  if (_Validate_SKIP_Clause(ast, reason) != AST_VALID) {
     return AST_INVALID;
   }
 

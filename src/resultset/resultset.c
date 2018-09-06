@@ -12,6 +12,8 @@
 #include "../query_executor.h"
 #include "../util/qsort.h"
 
+#define MAX(a,b) (((a) > (b)) ? (a) : (b))
+
 int _heap_elem_compare(const void *A, const void *B, const void *udata) {
     ResultSet* set = (ResultSet*)udata;
     int direction = set->direction;
@@ -47,8 +49,8 @@ void _ResultSet_ReplayHeader(const ResultSet *set, const ResultSetHeader *header
 
 void _ResultSet_ReplayRecord(ResultSet *s, const Record* r) {
     // Skip record.
-    if(s->skip > 0) {
-        s->skip--;
+    if(s->skipped < s->skip) {
+        s->skipped++;
         return;
     }
 
@@ -277,6 +279,7 @@ ResultSet* NewResultSet(AST_Query* ast, RedisModuleCtx *ctx) {
     set->ordered = (ast->orderNode != NULL);
     set->limit = RESULTSET_UNLIMITED;
     set->skip = (ast->skipNode) ? ast->skipNode->skip : 0;
+    set->skipped = 0;
     set->direction = DIR_ASC;
     set->distinct = (ast->returnNode && ast->returnNode->distinct);
     set->recordCount = 0;    
@@ -371,7 +374,7 @@ void ResultSet_Replay(ResultSet* set) {
         _aggregateResultSet(set->ctx, set);
     }
 
-    size_t resultset_size = set->recordCount - set->skip;
+    size_t resultset_size = MAX(0, set->recordCount - set->skip);
     if(set->header) resultset_size++;
 
     if(set->streaming) {
@@ -381,7 +384,7 @@ void ResultSet_Replay(ResultSet* set) {
         RedisModule_ReplySetArrayLength(set->ctx, resultset_size);
         _ResultSet_ReplayStats(set->ctx, set);
         return;
-    }    
+    }
     
     RedisModule_ReplyWithArray(set->ctx, resultset_size);
 

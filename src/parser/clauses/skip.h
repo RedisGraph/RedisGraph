@@ -11,10 +11,10 @@
 #include <stdlib.h>
 
 typedef struct {
-	int64_t skip; // Number of records to skip.
+	size_t skip; // Number of records to skip.
 } AST_SkipNode;
 
-AST_SkipNode* New_AST_SkipNode(int64_t n);
+AST_SkipNode* New_AST_SkipNode(size_t n);
 void Free_AST_SkipNode(AST_SkipNode *skipNode);
 
 #endif

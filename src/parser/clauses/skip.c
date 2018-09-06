@@ -7,7 +7,7 @@
 
 #include "./skip.h"
 
-AST_SkipNode* New_AST_SkipNode(int64_t n) {
+AST_SkipNode* New_AST_SkipNode(size_t n) {
     AST_SkipNode* skipNode = malloc(sizeof(AST_SkipNode));
     skipNode->skip = n;
     return skipNode;
