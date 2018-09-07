@@ -216,14 +216,108 @@ void Index_UpdateNodeID(Index *idx, NodeID prev_id, NodeID new_id, SIValue *val)
   // needs new op
 }
 
-void Index_DeleteNodes(NodeID *IDs, size_t IDCount) {
-  // Responsible for finding all indexed properties and making all updates.
-  // Don't have access to labels at this point? Maybe iterate over all labels
-  // (somewhat redundant with Graph_DeleteNodes logic)
-  for (size_t i = 0; i < IDCount; i ++) {
-    // check labels?
-    // QueryGraph_GetNodeById?
+TrieMap* Indices_BuildDeletionMap(RedisModuleCtx *ctx, Graph *g, const char *graph_name, NodeID *IDs, size_t IDCount) {
+  TrieMap *index_updates = NewTrieMap();
+  Node *delete_candidate;
+  Vector *to_update;
+  char *prop_name;
+
+  NodeID current_node;
+  GrB_Matrix M;
+  bool has_label;
+  char *label;
+  LabelStore *store;
+
+  char *update_key;
+  for (int i = 0; i < IDCount; i ++) {
+    current_node = IDs[i];
+    delete_candidate = Graph_GetNode(g, current_node);
+    // Find all matching labels for each node
+    for (int j = 0; j < g->label_count; j ++) {
+      M = Graph_GetLabel(g, j);
+      has_label = false;
+      GrB_Matrix_extractElement_BOOL(&has_label, M, current_node, current_node);
+      if (!has_label) continue;
+
+      label = g->label_strings[j];
+      store = LabelStore_Get(ctx, STORE_NODE, graph_name, label);
+
+      for (int k = 0; k < delete_candidate->prop_count; k ++) {
+        prop_name = delete_candidate->properties[k].name;
+        size_t *index_id = TrieMap_Find(store->properties, prop_name, strlen(prop_name));
+        // This property is not indexed; we can ignore it
+        if (!index_id) continue;
+
+        // TODO probably better options than this for forming a key
+        asprintf(&update_key, "%zu", *index_id);
+
+        // Retrieve the Vector of pending updates to this index
+        to_update = TrieMap_Find(index_updates, update_key, strlen(update_key));
+        if (to_update == TRIEMAP_NOTFOUND) {
+          // We have not encountered this label-property pair yet,
+          // create a new Vector
+          // TODO can use vector, arr.h, or just stack array
+          Vector *v = NewVector(NodeID, 1);
+          Vector_Push(v, current_node);
+          // Add trie with vector of IDs as value if label-property pair is indexed
+          TrieMap_Add(index_updates, update_key, strlen(update_key), v, NULL);
+        } else if (to_update != NULL) {
+          // Retrieved a vector for an index update - append current node
+          // can also push index of property within node if desired, space-computation tradeoff
+          Vector_Push(to_update, current_node);
+        } else {
+          // TODO I think impossible?
+          assert(0);
+        }
+        free(update_key);
+      }
+    }
   }
+  if (index_updates->cardinality == 0) {
+    TrieMap_Free(index_updates, NULL);
+    return NULL;
+  }
+  return index_updates;
+}
+
+
+void Indices_DeleteNodes(RedisModuleCtx *ctx, Graph *g, const char *graph_name, TrieMap *delete_map) {
+  char *ptr;
+  tm_len_t len;
+  void *v;
+  void *last_ptr = NULL;
+  size_t index_id;
+  RedisModuleKey *key = NULL;
+  Index *idx = NULL;
+
+  Vector *node_ids;
+  NodeID node_id;
+  Node *current_node;
+
+  TrieMapIterator *it = TrieMap_Iterate(delete_map, "", 0);
+  while(TrieMapIterator_Next(it, &ptr, &len, &v)) {
+    node_ids = v;
+    sscanf(ptr, "%zu", &index_id);
+    if (ptr != last_ptr) {
+      // We've switched to a new index
+      RedisModule_CloseKey(key);
+      key = _index_LookupKey(ctx, graph_name, index_id, true);
+      assert(RedisModule_ModuleTypeGetType(key) == IndexRedisModuleType);
+      idx = RedisModule_ModuleTypeGetValue(key);
+      last_ptr = ptr;
+    }
+
+    while(Vector_Pop(node_ids, &node_id)) {
+      Node *current_node = Graph_GetNode(g, node_id);
+      for (int i = 0; i < current_node->prop_count; i ++) {
+        if (!strcmp(idx->property, current_node->properties[i].name)) {
+          Index_DeleteNode(idx, node_id, &current_node->properties[i].value);
+          break;
+        }
+      }
+    }
+  }
+  RedisModule_CloseKey(key);
 }
 
 /* Invoked from the op_create context */
@@ -259,6 +353,8 @@ void Indices_UpdateNode(RedisModuleCtx *ctx, LabelStore *store, const char *grap
 
   // Replace old value with new
   Index_UpdateNodeValue(idx, id, &oldval->value, newval);
+
+  // TODO close key
 }
 
 /* Output text for EXPLAIN calls */

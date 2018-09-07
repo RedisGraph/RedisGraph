@@ -295,6 +295,7 @@ Graph *Graph_New(size_t n) {
 
     g->_relations = malloc(sizeof(GrB_Matrix) * g->relation_cap);
     g->_labels = malloc(sizeof(GrB_Matrix) * g->label_cap);
+    g->label_strings = malloc(sizeof(char*) * g->label_cap);
     GrB_Matrix_new(&g->adjacency_matrix, GrB_BOOL, _Graph_NodeCap(g), _Graph_NodeCap(g));
 
     /* TODO: We might want a mutex per matrix,
@@ -472,9 +473,12 @@ void Graph_GetNodeEdges(const Graph *g, const Node *n, Vector *edges, GRAPH_EDGE
     TuplesIter_free(tupleIter);    
 }
 
-void _Graph_DeleteEntities(Graph *g, EntityID *IDs, size_t IDCount, DataBlock *entityStore) {
-    int post_delete_count = entityStore->itemCount - IDCount;
+EntityID* _Graph_EnqueueMigrations(DataBlock *entityStore, EntityID *IDs, size_t IDCount, size_t *migration_count) {
+    size_t post_delete_count = entityStore->itemCount - IDCount;
 
+    if (post_delete_count == 0) return NULL;
+
+    EntityID *migrations = malloc(post_delete_count * sizeof(EntityID));
     // Track the highest remaining ID in the graph
     EntityID id_to_save = entityStore->itemCount - 1;
 
@@ -482,31 +486,10 @@ void _Graph_DeleteEntities(Graph *g, EntityID *IDs, size_t IDCount, DataBlock *e
     size_t largest_delete_idx = IDCount - 1;
     EntityID largest_delete = IDs[largest_delete_idx];
 
-    GrB_Vector zero;
-    GrB_Vector_new(&zero, GrB_BOOL, Graph_NodeCount(g));
-
     // Track the lowest ID scheduled for deletion as the destination slot for
     // id_to_save
-    int id_to_replace_idx = 0;
+    size_t id_to_replace_idx = 0;
     EntityID id_to_replace;
-    /* It might make sense to update indices before going into this function,
-     * as we need access to the original property values and this will free them all.
-     * Not knowing how many will be migrated and how many just deleted would be a problem,
-     * but updates are not distinct from a delete then insert, so it might be sensible to
-     * delete all indexed values, then insert the first id_to_replace_idx nodes in IDs.
-     *
-     * Finding which indices to update - and which IDs within them - should be as non-redundant
-     * as possible, though the set of indices for deletions and for insertions are unrelated.
-     * (The latter are basically not known until after this loop, though they all have IDs higher
-     * than post_delete_count).
-     *
-     * Can make a triemap of indexed and referenced label-properties, with values being arrays
-     * of IDs requiring deletion (or after, insertion). Deletion arrays have a max size of IDCount,
-     * insertion of id_to_replace_idx.
-     *
-     * Insertion op is actually not a delete or update, as property is unchanged - task is to replace
-     * old ID with new one. Probably requires new skiplist op.
-     */
 
     /* The outer while loop iterates over IDs to be deleted, starting with the
      * lowest, until reaching an ID greater than or equal to the post-delete entity count.
@@ -525,16 +508,7 @@ void _Graph_DeleteEntities(Graph *g, EntityID *IDs, size_t IDCount, DataBlock *e
             continue;
         }
 
-        // Perform all necessary entity substitution.
-        if(entityStore == g->nodes) {
-            // Substitute entity within storage and adjacency and label matrices.
-            _Graph_ReplaceDeletedNode(g, zero, id_to_save, id_to_replace);
-        } else {
-            // Update edge id.
-            Edge *e = Graph_GetEdge(g, id_to_save);
-            e->id = id_to_replace;
-            DataBlock_CopyItem(entityStore, id_to_save, id_to_replace);
-        }
+        migrations[id_to_replace_idx] = id_to_save;
 
         // A swap has been made, so we'll update our source and destination indices.
         id_to_replace_idx ++;
@@ -542,9 +516,40 @@ void _Graph_DeleteEntities(Graph *g, EntityID *IDs, size_t IDCount, DataBlock *e
         id_to_save --;
     }
 
+    *migration_count = id_to_replace_idx;
+    return migrations;
+}
+
+void _Graph_DeleteEntities(Graph *g, EntityID *IDs, size_t IDCount, DataBlock *entityStore) {
+    GrB_Vector zero;
+    GrB_Vector_new(&zero, GrB_BOOL, Graph_NodeCount(g));
+
+    size_t migration_count = 0;
+    EntityID *migrations = _Graph_EnqueueMigrations(entityStore, IDs, IDCount, &migration_count);
+
+    // TODO need to build triemap here, as we won't have access to properties afterward
+    // TrieMap *replacement_map = Indices_BuildDeletionMap(ctx, g, graph_name, migrations, id_to_replace_idx);
+
+    for (int i = 0; i < migration_count; i ++) {
+        EntityID id_to_replace = IDs[i];
+        EntityID id_to_migrate = migrations[i];
+
+        // Perform all necessary entity substitution.
+        if(entityStore == g->nodes) {
+            // Substitute entity within storage and adjacency and label matrices.
+            _Graph_ReplaceDeletedNode(g, zero, id_to_migrate, id_to_replace);
+        } else {
+            // Update edge id.
+            Edge *e = Graph_GetEdge(g, id_to_migrate);
+            e->id = id_to_replace;
+            DataBlock_CopyItem(entityStore, id_to_migrate, id_to_replace);
+        }
+    }
+
     // Free all deleted entities from datablock
     DataBlock_FreeTop(entityStore, IDCount);
 
+    free(migrations);
     GrB_Vector_free(&zero);
 }
 
@@ -609,6 +614,7 @@ int Graph_AddLabel(Graph *g) {
     if(g->label_count == g->label_cap) {
         g->label_cap += 4;   // allocate room for 4 new matrices.
         g->_labels = realloc(g->_labels, g->label_cap * sizeof(GrB_Matrix));
+        g->label_strings = realloc(g->label_strings, g->label_cap * sizeof(char*));
     }
 
     GrB_Matrix_new(&g->_labels[g->label_count++], GrB_BOOL, _Graph_NodeCap(g), _Graph_NodeCap(g));
@@ -711,8 +717,10 @@ void Graph_Free(Graph *g) {
     for(int i = 0; i < g->label_count; i++) {
         m = Graph_GetLabel(g, i);
         GrB_Matrix_free(&m);
+        free(g->label_strings[i]);
     }
     free(g->_labels);
+    free(g->label_strings);
 
     // Free node blocks.
     DataBlock_Free(g->nodes);

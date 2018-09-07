@@ -208,6 +208,7 @@ void _CommitNewEntities(OpCreate *op) {
                 store = LabelStore_Get(ctx, STORE_NODE, op->graph_name, label);                
                 if(store == NULL) {
                     int label_id = Graph_AddLabel(op->g);
+                    op->g->label_strings[i] = strdup(label);
                     store = LabelStore_New(ctx, STORE_NODE, op->graph_name, label, label_id);
                     op->result_set->stats.labels_added++;
                 }

@@ -12,12 +12,15 @@
 #include "../../graph/node.h"
 #include "../../resultset/resultset.h"
 #include "../../util/triemap/triemap.h"
+#include "../../index/index.h"
 /* Deletes entities specified within the DELETE clause. */
 
 
 typedef struct {
     OpBase op;
+    RedisModuleCtx *ctx;
     Graph *g;
+    const char *graph_name;
     QueryGraph *qg;
     size_t node_count;
     Node ***nodes_to_delete;
@@ -29,7 +32,7 @@ typedef struct {
     ResultSet *result_set;
 } OpDelete;
 
-OpBase* NewDeleteOp(AST_DeleteNode *ast_delete_node, QueryGraph *qg, Graph *g, ResultSet *result_set);
+OpBase* NewDeleteOp(RedisModuleCtx *ctx, AST_DeleteNode *ast_delete_node, QueryGraph *qg, Graph *g, const char *graph_name, ResultSet *result_set);
 OpResult OpDeleteConsume(OpBase *opBase, QueryGraph* graph);
 OpResult OpDeleteReset(OpBase *ctx);
 void OpDeleteFree(OpBase *ctx);

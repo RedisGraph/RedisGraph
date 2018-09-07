@@ -52,6 +52,10 @@ void initializeSkiplists(Index *index);
  * matrix from the graph and saves the index in the Redis keyspace. */
 int Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, const char *label, char *prop_str);
 
+TrieMap* Indices_BuildDeletionMap(RedisModuleCtx *ctx, Graph *g, const char *graph_name, NodeID *IDs, size_t IDCount);
+
+void Indices_DeleteNodes(RedisModuleCtx *ctx, Graph *g, const char *graph_name, TrieMap *delete_map);
+
 void Indices_AddNode(RedisModuleCtx *ctx, LabelStore *store, const char *graphName, Node *node);
 
 void Indices_UpdateNode(RedisModuleCtx *ctx, LabelStore *store, const char *graphName,

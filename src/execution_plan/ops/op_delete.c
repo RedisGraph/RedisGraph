@@ -12,10 +12,12 @@
 /* Forward declarations. */
 void _LocateEntities(OpDelete *op_delete, QueryGraph *graph, AST_DeleteNode *ast_delete_node);
 
-OpBase* NewDeleteOp(AST_DeleteNode *ast_delete_node, QueryGraph *qg, Graph *g, ResultSet *result_set) {
+OpBase* NewDeleteOp(RedisModuleCtx *ctx, AST_DeleteNode *ast_delete_node, QueryGraph *qg, Graph *g, const char *graph_name, ResultSet *result_set) {
     OpDelete *op_delete = malloc(sizeof(OpDelete));
 
+    op_delete->ctx = ctx;
     op_delete->g = g;
+    op_delete->graph_name = graph_name;
     op_delete->qg = qg;
     op_delete->nodes_to_delete = malloc(sizeof(Node**) * Vector_Size(ast_delete_node->graphEntities));
     op_delete->node_count = 0;
@@ -75,9 +77,20 @@ void _DeleteEntities(OpDelete *op) {
         // Sort and remove duplicates.
         size_t dupFreeNodeIDsCount = SortAndUniqueEntities(op->deleted_nodes, deletedNodeCount);
         assert(dupFreeNodeIDsCount > 0);
+        // Remove nodes being deleted from indices
+        if (op->g->index_ctr > 0) {
+          // Build a triemap with index IDs as keys and Vectors containing
+          //  all matching nodes as values
+          TrieMap *delete_map = Indices_BuildDeletionMap(op->ctx, op->g, op->graph_name, op->deleted_nodes, dupFreeNodeIDsCount);
+          if (delete_map) {
+            // Traverse the triemap and delete all described nodes from indices
+            Indices_DeleteNodes(op->ctx, op->g, op->graph_name, delete_map);
+            TrieMap_Free(delete_map, NULL);
+          }
+        }
         Graph_DeleteNodes(op->g, op->deleted_nodes, dupFreeNodeIDsCount);
         if(op->result_set) op->result_set->stats.nodes_deleted = dupFreeNodeIDsCount;
-    }                
+    }
 }
 
 OpResult OpDeleteConsume(OpBase *opBase, QueryGraph* graph) {

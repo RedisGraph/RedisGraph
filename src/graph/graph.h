@@ -35,6 +35,9 @@ typedef struct {
     size_t relation_cap;            // Number of relations graph can hold.
     size_t relation_count;          // Number of relation matrices.
     GrB_Matrix *_labels;            // Label matrices.
+    // TODO move this elsewhere, update it more consistently
+    // (maybe in Graph_AddLabel)
+    char **label_strings;           // Names associated with label matrices.
     size_t label_cap;               // Number of labels graph can hold.
     size_t label_count;             // Number of label matrices.
     size_t index_ctr;               // Next index ID to be attached to graph.
