@@ -56,19 +56,21 @@ OpBase* NewProduceResultsOp(AST_Query *ast, ResultSet *result_set, QueryGraph* g
 /* ProduceResults consume operation
  * called each time a new result record is required */
 OpResult ProduceResultsConsume(OpBase *opBase, QueryGraph* graph) {
-    OpResult res;
+    OpResult res = OP_DEPLETED;
     ProduceResults *op = (ProduceResults*)opBase;
     if(ResultSet_Full(op->result_set)) return OP_ERR;
 
-    OpBase *child = op->op.children[0];
-    res = child->consume(child, graph);
-    if(res != OP_OK) return res;
+    if(op->op.childCount > 0) {
+        OpBase *child = op->op.children[0];
+        res = child->consume(child, graph);
+        if(res != OP_OK) return res;
+    }
 
     /* Append to final result set. */
     Record *r = _ProduceResultsetRecord(op);
     if(ResultSet_AddRecord(op->result_set, r) != RESULTSET_OK) return OP_ERR;
 
-    return OP_OK;
+    return res;
 }
 
 /* Restart */
