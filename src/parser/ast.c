@@ -187,10 +187,6 @@ AST_Validation _Validate_RETURN_Clause(const AST_Query *ast, char **reason) {
     return AST_VALID;
   }
 
-  if (!ast->matchNode) {
-    return AST_INVALID;
-  }
-
   TrieMap *return_aliases = NewTrieMap();
   ReturnClause_ReferredEntities(ast->returnNode, return_aliases);
   
