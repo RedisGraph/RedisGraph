@@ -23,11 +23,11 @@ AlgebraicExpressionResult *_AlgebraicExpressionResult_New(GrB_Matrix M, Algebrai
     return aer;
 }
 
-AlgebraicExpression *_AE_MUL(size_t operand_count) {
+AlgebraicExpression *_AE_MUL(size_t operand_cap) {
     AlgebraicExpression *ae = malloc(sizeof(AlgebraicExpression));
     ae->op = AL_EXP_MUL;
-    ae->operand_cap = operand_count + 2;
-    ae->operand_count = operand_count;
+    ae->operand_cap = operand_cap;
+    ae->operand_count = 0;
     ae->operands = malloc(sizeof(AlgebraicExpressionOperand) * ae->operand_cap);
     ae->edge = NULL;
     return ae;
@@ -87,11 +87,12 @@ void _referred_edge_ends(TrieMap *ref_entities, const QueryGraph *q) {
  * considering referenced intermidate nodes and edges. */
 AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(AlgebraicExpression *exp, const AST_Query *ast, Vector *matchPattern, const QueryGraph *q, size_t *exp_count) {
     /* Allocating maximum number of expression possible. */
-    AlgebraicExpression **expressions = malloc(sizeof(AlgebraicExpression *) * q->edge_count);
+    AlgebraicExpression **expressions = malloc(sizeof(AlgebraicExpression *) * exp->operand_count);
     int expIdx = 0;     // Sub expression index.
     int operandIdx = 0; // Index to currently inspected operand.
     int transpose;     // Indicate if matrix operand needs to be transposed.    
     Node *dest = NULL;
+    Node *src = NULL;
     Edge *e = NULL;
 
     TrieMap *ref_entities = NewTrieMap();
@@ -102,7 +103,7 @@ AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(AlgebraicExpr
     SetClause_ReferredEntities(ast->setNode, ref_entities);
     _referred_edge_ends(ref_entities, q);
 
-    AlgebraicExpression *iexp = _AE_MUL(q->edge_count);
+    AlgebraicExpression *iexp = _AE_MUL(exp->operand_count);
     iexp->src_node = exp->src_node;
     iexp->dest_node = exp->dest_node;
     iexp->operand_count = 0;
@@ -117,22 +118,32 @@ AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(AlgebraicExpr
         AST_LinkEntity *edge = (AST_LinkEntity*)match_element;
         transpose = (edge->direction == N_RIGHT_TO_LEFT);
         e = QueryGraph_GetEdgeByAlias(q, edge->ge.alias);
-        
-        if(transpose) dest = e->src;
-        else dest = e->dest;
 
         // If edge is referenced, set expression edge pointer.
         if(_referred_entity(edge->ge.alias, ref_entities))
             iexp->edge = QueryGraph_GetEdgeRef(q, e);
 
+        dest = e->dest;
+        src = e->src;
+        if(transpose) {
+            dest = e->src;
+            src = e->dest;
+        }        
+
+        if(operandIdx == 0 && src->mat) {
+            iexp->operands[iexp->operand_count++] = exp->operands[operandIdx++];
+        }
+
         iexp->operands[iexp->operand_count++] = exp->operands[operandIdx++];
+
+        if(dest->mat) {
+            iexp->operands[iexp->operand_count++] = exp->operands[operandIdx++];
+        }
 
         /* If intermidate node is referenced, create a new algebraic expression. */
         if(_intermidate_node(dest) && _referred_node(dest, q, ref_entities)) {
             // Finalize current expression.
             iexp->dest_node = QueryGraph_GetNodeRef(q, dest);
-            assert(iexp->operand_count > 0);
-            if(iexp->edge) assert(iexp->operand_count == 1);
 
             /* Create a new algebraic expression. */
             iexp = _AE_MUL(exp->operand_count - operandIdx);
@@ -195,12 +206,44 @@ void _AlgebraicExpression_ReverseOperandOrder(AlgebraicExpression *exp) {
     }
 }
 
+void AlgebraicExpression_AppendTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transposeOp, bool freeOp) {
+    assert(ae);    
+    if(ae->operand_count+1 >= ae->operand_cap) {
+        ae->operand_cap += 4;
+        ae->operands = realloc(ae->operands, sizeof(AlgebraicExpressionOperand) * ae->operand_cap);
+    }
+
+    ae->operands[ae->operand_count].transpose = transposeOp;
+    ae->operands[ae->operand_count].free = freeOp;
+    ae->operands[ae->operand_count].operand = m;
+    ae->operand_count++;
+}
+
+void AlgebraicExpression_PrependTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transposeOp, bool freeOp) {
+    assert(ae);
+
+    ae->operand_count++;
+    if(ae->operand_count >= ae->operand_cap) {
+        ae->operand_cap += 4;
+        ae->operands = realloc(ae->operands, sizeof(AlgebraicExpressionOperand) * ae->operand_cap);
+    }
+
+    // TODO: might be optimized with memcpy.
+    // Shift operands to the right, making room at the begining.
+    for(int i = ae->operand_count-1; i > 0 ; i--) {
+        ae->operands[i] = ae->operands[i-1];
+    }
+
+    ae->operands[0].transpose = transposeOp;
+    ae->operands[0].free = freeOp;
+    ae->operands[0].operand = m;
+}
+
 AlgebraicExpression **AlgebraicExpression_From_Query(const AST_Query *ast, Vector *matchPattern, const QueryGraph *q, size_t *exp_count) {
     assert(q->edge_count != 0);
 
-    AlgebraicExpression *exp = _AE_MUL(q->edge_count);
+    AlgebraicExpression *exp = _AE_MUL(q->edge_count + q->node_count);
     int transpose; // Indicate if matrix operand needs to be transposed.    
-    int operandIdx = 0;
     Node *dest = NULL;
     Node *src = NULL;
     Edge *e = NULL;
@@ -224,15 +267,15 @@ AlgebraicExpression **AlgebraicExpression_From_Query(const AST_Query *ast, Vecto
             src = e->dest;
         }
 
-        if(operandIdx == 0) exp->src_node = QueryGraph_GetNodeRef(q, src);
-
-        exp->operands[operandIdx].operand = e->mat;
-        exp->operands[operandIdx].transpose = transpose;
-        exp->operands[operandIdx].free = false;
-        operandIdx++;
+        if(exp->operand_count == 0) {
+            exp->src_node = QueryGraph_GetNodeRef(q, src);
+            if(src->mat) AlgebraicExpression_AppendTerm(exp, src->mat, false, false);
+        }
+        AlgebraicExpression_AppendTerm(exp, e->mat, transpose, false);
+        if(dest->mat) AlgebraicExpression_AppendTerm(exp, dest->mat, false, false);
     }
+
     exp->dest_node = QueryGraph_GetNodeRef(q, dest);
-    
     AlgebraicExpression **expressions = _AlgebraicExpression_Intermidate_Expressions(exp, ast, matchPattern, q, exp_count);
     AlgebraicExpression_Free(exp);
 
@@ -319,41 +362,8 @@ void AlgebraicExpression_ClearOperands(AlgebraicExpression *ae) {
     ae->operand_count = 0;
 }
 
-void AlgebraicExpression_AppendTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transposeOp, bool freeOp) {
-    assert(ae);    
-    if(ae->operand_count+1 >= ae->operand_cap) {
-        ae->operand_cap += 4;
-        ae->operands = realloc(ae->operands, sizeof(AlgebraicExpressionOperand) * ae->operand_cap);
-    }
-
-    ae->operands[ae->operand_count].transpose = transposeOp;
-    ae->operands[ae->operand_count].free = freeOp;
-    ae->operands[ae->operand_count].operand = m;
-    ae->operand_count++;
-}
-
-void AlgebraicExpression_PrependTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transposeOp, bool freeOp) {
-    assert(ae);
-
-    ae->operand_count++;
-    if(ae->operand_count >= ae->operand_cap) {
-        ae->operand_cap += 4;
-        ae->operands = realloc(ae->operands, sizeof(AlgebraicExpressionOperand) * ae->operand_cap);
-    }
-
-    // TODO: might be optimized with memcpy.
-    // Shift operands to the right, making room at the begining.
-    for(int i = ae->operand_count-1; i > 0 ; i--) {
-        ae->operands[i] = ae->operands[i-1];
-    }
-
-    ae->operands[0].transpose = transposeOp;
-    ae->operands[0].free = freeOp;
-    ae->operands[0].operand = m;
-}
-
 void AlgebraicExpression_RemoveTerm(AlgebraicExpression *ae, int idx, AlgebraicExpressionOperand *operand) {
-    if(idx < 0 || idx >= ae->operand_count) return;
+    assert(idx >= 0 && idx < ae->operand_count);
     if(operand) *operand = ae->operands[idx];
 
     // Shift left.

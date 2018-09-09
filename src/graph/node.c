@@ -16,6 +16,7 @@ Node* Node_New(NodeID id, const char *label) {
 	Node* node = (Node*)calloc(1, sizeof(Node));
 	
 	node->id = id;
+	node->mat = NULL;
 	node->prop_count = 0;
 	node->outgoing_edges = NewVector(Edge*, 0);
 	node->incoming_edges = NewVector(Edge*, 0);
