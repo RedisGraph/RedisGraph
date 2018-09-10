@@ -98,6 +98,11 @@ void _Graph_MigrateRowCol(Graph *g, int src, int dest) {
 void _Graph_ReplaceDeletedEdge(Graph *g, EdgeID replacement, EdgeID to_delete) {
     Edge *e = Graph_GetEdge(g, replacement);
     e->id = to_delete;
+    DataBlock_CopyItem(g->edges, replacement, to_delete);
+    e = Graph_GetEdge(g, to_delete);
+    Edge *replaced; // unused, but required argument to HASH_REPLACE
+    // Update the hashtable to fix pointer to migrated node
+    HASH_REPLACE(hh, g->_edgesHashTbl, edgeDesc, sizeof(e->edgeDesc), e, replaced);
 }
 
 void _Graph_ReplaceDeletedNode(Graph *g, GrB_Vector zero, NodeID replacement, NodeID to_delete) {
@@ -537,10 +542,8 @@ void _Graph_DeleteEntities(Graph *g, EntityID *IDs, size_t IDCount, DataBlock *e
             // Substitute entity within storage and adjacency and label matrices.
             _Graph_ReplaceDeletedNode(g, zero, id_to_migrate, id_to_replace);
         } else {
-            // Update edge id.
-            Edge *e = Graph_GetEdge(g, id_to_migrate);
-            e->id = id_to_replace;
-            DataBlock_CopyItem(entityStore, id_to_migrate, id_to_replace);
+            // Update edge id and hashtable associations.
+            _Graph_ReplaceDeletedEdge(g, id_to_migrate, id_to_replace);
         }
     }
 
