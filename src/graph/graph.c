@@ -525,10 +525,8 @@ void _Graph_DeleteEntities(Graph *g, EntityID *IDs, size_t IDCount, DataBlock *e
     GrB_Vector_new(&zero, GrB_BOOL, Graph_NodeCount(g));
 
     size_t migration_count = 0;
+    // TODO double call when coming from DeleteNodes
     EntityID *migrations = _Graph_EnqueueMigrations(entityStore, IDs, IDCount, &migration_count);
-
-    // TODO need to build triemap here, as we won't have access to properties afterward
-    // TrieMap *replacement_map = Indices_BuildDeletionMap(ctx, g, graph_name, migrations, id_to_replace_idx);
 
     for (int i = 0; i < migration_count; i ++) {
         EntityID id_to_replace = IDs[i];

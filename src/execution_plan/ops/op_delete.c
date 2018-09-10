@@ -61,6 +61,9 @@ void _LocateEntities(OpDelete *op, QueryGraph *qg, AST_DeleteNode *ast_delete_no
     }
 }
 
+// TODO relocate this function
+extern EntityID* _Graph_EnqueueMigrations(DataBlock *entityStore, EntityID *IDs, size_t IDCount, size_t *migration_count);
+
 void _DeleteEntities(OpDelete *op) {
     /* We must start with edge deletion as node deletion moves nodes around. */
     size_t deletedEdgeCount = array_len(op->deleted_edges);
@@ -80,12 +83,20 @@ void _DeleteEntities(OpDelete *op) {
         // Remove nodes being deleted from indices
         if (op->g->index_ctr > 0) {
           // Build a triemap with index IDs as keys and Vectors containing
-          //  all matching nodes as values
-          TrieMap *delete_map = Indices_BuildDeletionMap(op->ctx, op->g, op->graph_name, op->deleted_nodes, dupFreeNodeIDsCount);
+          // all matching nodes as values
+          TrieMap *delete_map = Indices_BuildDeletionMap(op->ctx, op->g, op->graph_name, op->deleted_nodes, NULL, dupFreeNodeIDsCount);
           if (delete_map) {
             // Traverse the triemap and delete all described nodes from indices
             Indices_DeleteNodes(op->ctx, op->g, op->graph_name, delete_map);
             TrieMap_Free(delete_map, NULL);
+          }
+          size_t migration_count = 0;
+          EntityID *migrations = _Graph_EnqueueMigrations(op->g->nodes, op->deleted_nodes, dupFreeNodeIDsCount, &migration_count);
+          // Build a triemap with index IDs as keys and Vectors containing
+          // all matching nodes and their replacement IDs as values
+          TrieMap *replacement_map = Indices_BuildDeletionMap(op->ctx, op->g, op->graph_name, migrations, op->deleted_nodes, migration_count);
+          if (replacement_map) {
+            Indices_UpdateNodeIDs(op->ctx, op->g, op->graph_name, replacement_map);
           }
         }
         Graph_DeleteNodes(op->g, op->deleted_nodes, dupFreeNodeIDsCount);

@@ -9,12 +9,6 @@
 #include "graph_entity.h"
 #include "../util/qsort.h"
 
-#define nodeIDislt(a,b) (a<b)
-
-#define edgeIDislt(a,b) ( ( a->src < b->src ) ||\
-    ( ( a->src == b->src ) && ( a->dest < b->dest ) ) ||\
-    ( ( a->src == b->src ) && ( a->dest == b->dest ) && ( a->relation_type < b->relation_type ) ) )
-
 SIValue *PROPERTY_NOTFOUND = &(SIValue){.intval = 0, .type = T_NULL};
 
 /* Expecting e to be either *Node or *Edge */

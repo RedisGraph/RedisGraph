@@ -1,9 +1,9 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Apache License, Version 2.0,
-* modified with the Commons Clause restriction.
-*/
+ * Copyright 2018-2019 Redis Labs Ltd. and Contributors
+ *
+ * This file is available under the Apache License, Version 2.0,
+ * modified with the Commons Clause restriction.
+ */
 
 #ifndef __INDEX_H__
 #define __INDEX_H__
@@ -52,9 +52,11 @@ void initializeSkiplists(Index *index);
  * matrix from the graph and saves the index in the Redis keyspace. */
 int Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, const char *label, char *prop_str);
 
-TrieMap* Indices_BuildDeletionMap(RedisModuleCtx *ctx, Graph *g, const char *graph_name, NodeID *IDs, size_t IDCount);
+TrieMap* Indices_BuildDeletionMap(RedisModuleCtx *ctx, Graph *g, const char *graph_name, NodeID *IDs, NodeID *replacement_IDs, size_t IDCount);
 
 void Indices_DeleteNodes(RedisModuleCtx *ctx, Graph *g, const char *graph_name, TrieMap *delete_map);
+
+void Indices_UpdateNodeIDs(RedisModuleCtx *ctx, Graph *g, const char *graph_name, TrieMap *update_map);
 
 void Indices_AddNode(RedisModuleCtx *ctx, LabelStore *store, const char *graphName, Node *node);
 

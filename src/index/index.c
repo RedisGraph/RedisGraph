@@ -213,37 +213,38 @@ void Index_UpdateNodeValue(Index *idx, NodeID node, SIValue *oldval, SIValue *ne
 }
 
 void Index_UpdateNodeID(Index *idx, NodeID prev_id, NodeID new_id, SIValue *val) {
-  // needs new op
+  skiplist *sl = val->type == T_STRING ? idx->string_sl : idx->numeric_sl;
+  skiplistNode *node = skiplistFind(sl, val);
+  assert(node);
+  int i;
+  for (i = 0; i < node->numVals; i ++) {
+    if (node->vals[i] == prev_id) {
+      node->vals[i] = new_id;
+      break;
+    }
+  }
+  // Ensure that we found the node.
+  assert(i < node->numVals);
 }
 
-TrieMap* Indices_BuildDeletionMap(RedisModuleCtx *ctx, Graph *g, const char *graph_name, NodeID *IDs, size_t IDCount) {
+TrieMap* Indices_BuildDeletionMap(RedisModuleCtx *ctx, Graph *g, const char *graph_name, NodeID *IDs, NodeID *replacement_IDs, size_t IDCount) {
   TrieMap *index_updates = NewTrieMap();
-  Node *delete_candidate;
-  Vector *to_update;
-  char *prop_name;
-
-  NodeID current_node;
-  GrB_Matrix M;
-  bool has_label;
-  char *label;
-  LabelStore *store;
-
   char *update_key;
   for (int i = 0; i < IDCount; i ++) {
-    current_node = IDs[i];
-    delete_candidate = Graph_GetNode(g, current_node);
+    NodeID current_node = IDs[i];
+    Node *delete_candidate = Graph_GetNode(g, current_node);
     // Find all matching labels for each node
     for (int j = 0; j < g->label_count; j ++) {
-      M = Graph_GetLabel(g, j);
-      has_label = false;
+      GrB_Matrix M = Graph_GetLabel(g, j);
+      bool has_label = false;
       GrB_Matrix_extractElement_BOOL(&has_label, M, current_node, current_node);
       if (!has_label) continue;
 
-      label = g->label_strings[j];
-      store = LabelStore_Get(ctx, STORE_NODE, graph_name, label);
+      char *label = g->label_strings[j];
+      LabelStore *store = LabelStore_Get(ctx, STORE_NODE, graph_name, label);
 
       for (int k = 0; k < delete_candidate->prop_count; k ++) {
-        prop_name = delete_candidate->properties[k].name;
+        char *prop_name = delete_candidate->properties[k].name;
         size_t *index_id = TrieMap_Find(store->properties, prop_name, strlen(prop_name));
         // This property is not indexed; we can ignore it
         if (!index_id) continue;
@@ -252,23 +253,22 @@ TrieMap* Indices_BuildDeletionMap(RedisModuleCtx *ctx, Graph *g, const char *gra
         asprintf(&update_key, "%zu", *index_id);
 
         // Retrieve the Vector of pending updates to this index
-        to_update = TrieMap_Find(index_updates, update_key, strlen(update_key));
+        Vector *to_update = TrieMap_Find(index_updates, update_key, strlen(update_key));
+        // Skip unindexed properties
+        if (to_update == NULL) continue;
+
         if (to_update == TRIEMAP_NOTFOUND) {
-          // We have not encountered this label-property pair yet,
-          // create a new Vector
+          // We have not encountered this label-property pair yet, create a new vector.
           // TODO can use vector, arr.h, or just stack array
-          Vector *v = NewVector(NodeID, 1);
-          Vector_Push(v, current_node);
+          to_update = NewVector(NodeID, 2);
           // Add trie with vector of IDs as value if label-property pair is indexed
-          TrieMap_Add(index_updates, update_key, strlen(update_key), v, NULL);
-        } else if (to_update != NULL) {
-          // Retrieved a vector for an index update - append current node
-          // can also push index of property within node if desired, space-computation tradeoff
-          Vector_Push(to_update, current_node);
-        } else {
-          // TODO I think impossible?
-          assert(0);
+          TrieMap_Add(index_updates, update_key, strlen(update_key), to_update, NULL);
         }
+        // Retrieved or built a vector for an index update - append current node
+        // can also push index of property within node if desired, space-computation tradeoff
+        Vector_Push(to_update, current_node);
+        if (replacement_IDs) Vector_Push(to_update, replacement_IDs[i]);
+
         free(update_key);
       }
     }
@@ -280,7 +280,6 @@ TrieMap* Indices_BuildDeletionMap(RedisModuleCtx *ctx, Graph *g, const char *gra
   return index_updates;
 }
 
-
 void Indices_DeleteNodes(RedisModuleCtx *ctx, Graph *g, const char *graph_name, TrieMap *delete_map) {
   char *ptr;
   tm_len_t len;
@@ -289,14 +288,11 @@ void Indices_DeleteNodes(RedisModuleCtx *ctx, Graph *g, const char *graph_name, 
   size_t index_id;
   RedisModuleKey *key = NULL;
   Index *idx = NULL;
-
-  Vector *node_ids;
   NodeID node_id;
-  Node *current_node;
 
   TrieMapIterator *it = TrieMap_Iterate(delete_map, "", 0);
   while(TrieMapIterator_Next(it, &ptr, &len, &v)) {
-    node_ids = v;
+    Vector *node_ids = v;
     sscanf(ptr, "%zu", &index_id);
     if (ptr != last_ptr) {
       // We've switched to a new index
@@ -312,6 +308,47 @@ void Indices_DeleteNodes(RedisModuleCtx *ctx, Graph *g, const char *graph_name, 
       for (int i = 0; i < current_node->prop_count; i ++) {
         if (!strcmp(idx->property, current_node->properties[i].name)) {
           Index_DeleteNode(idx, node_id, &current_node->properties[i].value);
+          break;
+        }
+      }
+    }
+  }
+  RedisModule_CloseKey(key);
+}
+
+void Indices_UpdateNodeIDs(RedisModuleCtx *ctx, Graph *g, const char *graph_name, TrieMap *update_map) {
+  NodeID src;
+  NodeID dest;
+  char *ptr;
+  tm_len_t len;
+  void *v;
+  void *last_ptr = NULL;
+  size_t index_id;
+  RedisModuleKey *key = NULL;
+  Index *idx = NULL;
+
+  TrieMapIterator *it = TrieMap_Iterate(update_map, "", 0);
+  while(TrieMapIterator_Next(it, &ptr, &len, &v)) {
+    Vector *node_ids = v;
+    sscanf(ptr, "%zu", &index_id);
+    if (ptr != last_ptr) {
+      // We've switched to a new index
+      RedisModule_CloseKey(key);
+      key = _index_LookupKey(ctx, graph_name, index_id, true);
+      assert(RedisModule_ModuleTypeGetType(key) == IndexRedisModuleType);
+      idx = RedisModule_ModuleTypeGetValue(key);
+      last_ptr = ptr;
+    }
+
+    int count = Vector_Size(node_ids);
+    for (int i = 0; i < count; i += 2) {
+      Vector_Pop(node_ids, &dest);
+      Vector_Pop(node_ids, &src);
+
+      Node *current_node = Graph_GetNode(g, src);
+      for (int j = 0; j < current_node->prop_count; j ++) {
+        if (!strcmp(idx->property, current_node->properties[j].name)) {
+          Index_UpdateNodeID(idx, src, dest, &current_node->properties[j].value);
           break;
         }
       }

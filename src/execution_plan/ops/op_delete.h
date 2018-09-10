@@ -13,8 +13,8 @@
 #include "../../resultset/resultset.h"
 #include "../../util/triemap/triemap.h"
 #include "../../index/index.h"
-/* Deletes entities specified within the DELETE clause. */
 
+/* Deletes entities specified within the DELETE clause. */
 
 typedef struct {
     OpBase op;
