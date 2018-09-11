@@ -54,6 +54,7 @@ class IndexTest: public ::testing::Test {
       for (int i = 0; i < n; i ++) {
         label_ids[i] = label_id;
       }
+      g->label_strings[label_id] = strdup(label);
 
       // Populate graph with nodes
       DataBlockIterator *it;

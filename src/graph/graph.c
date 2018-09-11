@@ -179,8 +179,10 @@ void _Graph_DeleteReferredEdges(Graph *g, NodeID *IDs, size_t IDCount) {
         edgeIDs[i] = e->id;
     }
 
-    size_t dupFreeEdgeCount = SortAndUniqueEntities(edgeIDs, edgeCount);
-    Graph_DeleteEdges(g, edgeIDs, dupFreeEdgeCount);
+    if (edgeCount > 0) {
+        size_t dupFreeEdgeCount = SortAndUniqueEntities(edgeIDs, edgeCount);
+        Graph_DeleteEdges(g, edgeIDs, dupFreeEdgeCount);
+    }
 
     // Cleanup.
     free(edgeIDs);
@@ -393,6 +395,19 @@ void Graph_ConnectNodes(Graph *g, EdgeDesc *connections, size_t connectionCount,
     } else {
         DataBlockIterator_Free(iter);
     }
+}
+
+size_t Graph_GetNodeLabels(const Graph *g, NodeID id, size_t **labels) {
+    *labels = malloc(g->label_count * sizeof(size_t));
+    size_t label_count = 0;
+    // Find all matching labels for each node
+    for (size_t i = 0; i < g->label_count; i ++) {
+      GrB_Matrix M = Graph_GetLabel(g, i);
+      bool has_label = false;
+      GrB_Matrix_extractElement_BOOL(&has_label, M, id, id);
+      if (has_label) *labels[label_count++] = i;
+    }
+    return label_count;
 }
 
 Node* Graph_GetNode(const Graph *g, NodeID id) {

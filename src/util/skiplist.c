@@ -421,6 +421,9 @@ void _update_upper_bound(skiplistIterator *iter, skiplistKey bound, int exclusiv
  * Update skiplist bounds according to specified op - returns 1 if filter was applicable
  * (regardless of whether it improves upon original bound) and 0 otherwise. */
 bool skiplistIter_UpdateBound(skiplistIterator *iter, skiplistKey bound, int op) {
+  /* If the iterator is already depleted, this index scan will return nothing, which
+   * is a valid result (contradictory filters, specifying incorrect property types). */
+  if (iter->current == NULL) return 1;
   switch(op) {
     case EQ:
       /* EQ should set an inclusive lower and upper bound on the same key, unless

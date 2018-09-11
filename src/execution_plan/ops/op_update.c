@@ -11,17 +11,18 @@
 /* Forward declarations. */
 void _OpUpdate_BuildUpdateEvalCtx(OpUpdate* op, AST_SetNode *setNode, QueryGraph *q);
 
-OpBase* NewUpdateOp(RedisModuleCtx *ctx, AST_Query *ast, QueryGraph *q, ResultSet *result_set, const char *graphName) {
+OpBase* NewUpdateOp(RedisModuleCtx *ctx, AST_Query *ast, QueryGraph *q, Graph *g, ResultSet *result_set, const char *graphName) {
     OpUpdate* op_update = calloc(1, sizeof(OpUpdate));
     op_update->ast = ast;
     op_update->ctx = ctx;
+    op_update->g = g;
     op_update->graphName = graphName;
     op_update->result_set = result_set;
     op_update->update_expressions = NULL;
     op_update->update_expressions_count = 0;
     op_update->entities_to_update_count = 0;
     op_update->entities_to_update_cap = 16; /* 16 seems reasonable number to start with. */
-    op_update->entities_to_update = malloc(sizeof(EntityUpdateEvalCtx) * op_update->entities_to_update_cap);
+    op_update->entities_to_update = malloc(sizeof(EntityUpdateCtx) * op_update->entities_to_update_cap);
 
     _OpUpdate_BuildUpdateEvalCtx(op_update, ast->setNode, q);
 
@@ -64,7 +65,7 @@ void _OpUpdate_QueueUpdate(OpUpdate *op, EntityUpdateEvalCtx *eval_ctx, EntityPr
     if(op->entities_to_update_count == op->entities_to_update_cap) {
         op->entities_to_update_cap *= 2;
         op->entities_to_update = realloc(op->entities_to_update, 
-                                         op->entities_to_update_cap * sizeof(EntityUpdateEvalCtx));
+                                         op->entities_to_update_cap * sizeof(EntityUpdateCtx));
     }
 
     int i = op->entities_to_update_count;
@@ -117,19 +118,29 @@ OpResult OpUpdateReset(OpBase *ctx) {
 void _UpdateIndices(OpUpdate *op) {
     for(int i = 0; i < op->entities_to_update_count; i++) {
         // Locate node label
+        // TODO still necessary?
         char *alias = op->entities_to_update[i].alias;
         AST_GraphEntity* ge = MatchClause_GetEntity(op->ast->matchNode, alias);
         // Only interested in nodes, not edges
         if (ge->t != N_ENTITY) continue;
 
-        LabelStore *store = LabelStore_Get(op->ctx, STORE_NODE, op->graphName, ge->label);
-        if (!store) continue;
+        // Retrieve and iterate over all labels associated with each node
+        size_t *node_labels = NULL;
+        size_t label_count = Graph_GetNodeLabels(op->g, op->entities_to_update[i].id, &node_labels);
+        for (int j = 0; j < label_count; j ++) {
+            size_t label_id = node_labels[j];
+            char *label = op->g->label_strings[label_id];
 
-        EntityProperty *dest_entity_prop = op->entities_to_update[i].dest_entity_prop;
-        SIValue new_value = op->entities_to_update[i].new_value;
+            LabelStore *store = LabelStore_Get(op->ctx, STORE_NODE, op->graphName, label);
+            if (!store) continue;
 
-        NodeID id = op->entities_to_update[i].id;
-        Indices_UpdateNode(op->ctx, store, op->graphName, id, dest_entity_prop, &new_value);
+            EntityProperty *dest_entity_prop = op->entities_to_update[i].dest_entity_prop;
+            SIValue new_value = op->entities_to_update[i].new_value;
+
+            NodeID id = op->entities_to_update[i].id;
+            Indices_UpdateNode(op->ctx, store, op->graphName, id, dest_entity_prop, &new_value);
+        }
+        free(node_labels);
     }
 }
 
@@ -159,6 +170,9 @@ void _UpdateSchemas(const OpUpdate *op) {
         char *entityProp = setElement->entity->property;
 
         /* Locate node label. */
+        // TODO match clause does not necessarily provide labels, in which case l
+        // will be NULL and we'll just update allStore twice. which is redundant but
+        // safe, however, actual label stores will become out of date.
         AST_GraphEntity* ge = MatchClause_GetEntity(op->ast->matchNode, entityAlias);
         char *l = ge->label;
         LabelStoreType t = (ge->t == N_ENTITY) ? STORE_NODE : STORE_EDGE;

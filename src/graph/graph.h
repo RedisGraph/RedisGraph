@@ -83,6 +83,10 @@ void Graph_ConnectNodes (
         DataBlockIterator **edges   // Pointer to edge iterator.
 );
 
+// Populate an array of label iDs associated with a given node
+// and return the label count.
+size_t Graph_GetNodeLabels(const Graph *g, NodeID id, size_t **labels);
+
 // Retrieves node with given id from graph,
 // Returns NULL if node wasn't found.
 Node *Graph_GetNode (

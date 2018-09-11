@@ -212,19 +212,22 @@ void Index_UpdateNodeValue(Index *idx, NodeID node, SIValue *oldval, SIValue *ne
   Index_InsertNode(idx, node, newval);
 }
 
+// TODO difficulty inserting into skiplist ahead of first position?
 void Index_UpdateNodeID(Index *idx, NodeID prev_id, NodeID new_id, SIValue *val) {
   skiplist *sl = val->type == T_STRING ? idx->string_sl : idx->numeric_sl;
   skiplistNode *node = skiplistFind(sl, val);
   assert(node);
+  bool found = false;
   int i;
   for (i = 0; i < node->numVals; i ++) {
     if (node->vals[i] == prev_id) {
       node->vals[i] = new_id;
+      found = true;
       break;
     }
   }
   // Ensure that we found the node.
-  assert(i < node->numVals);
+  assert(found);
 }
 
 TrieMap* Indices_BuildDeletionMap(RedisModuleCtx *ctx, Graph *g, const char *graph_name, NodeID *IDs, NodeID *replacement_IDs, size_t IDCount) {
@@ -234,13 +237,11 @@ TrieMap* Indices_BuildDeletionMap(RedisModuleCtx *ctx, Graph *g, const char *gra
     NodeID current_node = IDs[i];
     Node *delete_candidate = Graph_GetNode(g, current_node);
     // Find all matching labels for each node
-    for (int j = 0; j < g->label_count; j ++) {
-      GrB_Matrix M = Graph_GetLabel(g, j);
-      bool has_label = false;
-      GrB_Matrix_extractElement_BOOL(&has_label, M, current_node, current_node);
-      if (!has_label) continue;
-
-      char *label = g->label_strings[j];
+    size_t *node_labels = NULL;
+    size_t label_count = Graph_GetNodeLabels(g, current_node, &node_labels);
+    for (int j = 0; j < label_count; j ++) {
+      size_t label_id = node_labels[j];
+      char *label = g->label_strings[label_id];
       LabelStore *store = LabelStore_Get(ctx, STORE_NODE, graph_name, label);
 
       for (int k = 0; k < delete_candidate->prop_count; k ++) {
@@ -272,6 +273,7 @@ TrieMap* Indices_BuildDeletionMap(RedisModuleCtx *ctx, Graph *g, const char *gra
         free(update_key);
       }
     }
+    free(node_labels);
   }
   if (index_updates->cardinality == 0) {
     TrieMap_Free(index_updates, NULL);
@@ -284,9 +286,7 @@ void Indices_DeleteNodes(RedisModuleCtx *ctx, Graph *g, const char *graph_name, 
   char *ptr;
   tm_len_t len;
   void *v;
-  void *last_ptr = NULL;
   size_t index_id;
-  RedisModuleKey *key = NULL;
   Index *idx = NULL;
   NodeID node_id;
 
@@ -294,14 +294,12 @@ void Indices_DeleteNodes(RedisModuleCtx *ctx, Graph *g, const char *graph_name, 
   while(TrieMapIterator_Next(it, &ptr, &len, &v)) {
     Vector *node_ids = v;
     sscanf(ptr, "%zu", &index_id);
-    if (ptr != last_ptr) {
-      // We've switched to a new index
-      RedisModule_CloseKey(key);
-      key = _index_LookupKey(ctx, graph_name, index_id, true);
-      assert(RedisModule_ModuleTypeGetType(key) == IndexRedisModuleType);
-      idx = RedisModule_ModuleTypeGetValue(key);
-      last_ptr = ptr;
-    }
+    // We've switched to a new index
+    RedisModuleKey *key = _index_LookupKey(ctx, graph_name, index_id, true);
+    assert(RedisModule_ModuleTypeGetType(key) == IndexRedisModuleType);
+    idx = RedisModule_ModuleTypeGetValue(key);
+    // Unnecessary, but keep for now
+    assert(idx);
 
     while(Vector_Pop(node_ids, &node_id)) {
       Node *current_node = Graph_GetNode(g, node_id);
@@ -312,8 +310,8 @@ void Indices_DeleteNodes(RedisModuleCtx *ctx, Graph *g, const char *graph_name, 
         }
       }
     }
+    RedisModule_CloseKey(key);
   }
-  RedisModule_CloseKey(key);
 }
 
 void Indices_UpdateNodeIDs(RedisModuleCtx *ctx, Graph *g, const char *graph_name, TrieMap *update_map) {
@@ -322,39 +320,37 @@ void Indices_UpdateNodeIDs(RedisModuleCtx *ctx, Graph *g, const char *graph_name
   char *ptr;
   tm_len_t len;
   void *v;
-  void *last_ptr = NULL;
   size_t index_id;
-  RedisModuleKey *key = NULL;
   Index *idx = NULL;
 
   TrieMapIterator *it = TrieMap_Iterate(update_map, "", 0);
   while(TrieMapIterator_Next(it, &ptr, &len, &v)) {
     Vector *node_ids = v;
     sscanf(ptr, "%zu", &index_id);
-    if (ptr != last_ptr) {
-      // We've switched to a new index
-      RedisModule_CloseKey(key);
-      key = _index_LookupKey(ctx, graph_name, index_id, true);
-      assert(RedisModule_ModuleTypeGetType(key) == IndexRedisModuleType);
-      idx = RedisModule_ModuleTypeGetValue(key);
-      last_ptr = ptr;
-    }
+    RedisModuleKey *key = _index_LookupKey(ctx, graph_name, index_id, true);
+    assert(RedisModule_ModuleTypeGetType(key) == IndexRedisModuleType);
+    idx = RedisModule_ModuleTypeGetValue(key);
+    // Unnecessary, but keep for now
+    assert(idx);
 
     int count = Vector_Size(node_ids);
     for (int i = 0; i < count; i += 2) {
       Vector_Pop(node_ids, &dest);
       Vector_Pop(node_ids, &src);
 
+      bool prop_found = false;
       Node *current_node = Graph_GetNode(g, src);
       for (int j = 0; j < current_node->prop_count; j ++) {
         if (!strcmp(idx->property, current_node->properties[j].name)) {
           Index_UpdateNodeID(idx, src, dest, &current_node->properties[j].value);
+          prop_found = true;
           break;
         }
       }
+      assert(prop_found);
     }
+    RedisModule_CloseKey(key);
   }
-  RedisModule_CloseKey(key);
 }
 
 /* Invoked from the op_create context */

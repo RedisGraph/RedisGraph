@@ -39,10 +39,11 @@ typedef struct {
     size_t entities_to_update_count;
     AST_Query *ast;
     RedisModuleCtx *ctx;
+    Graph *g;
     const char *graphName;
 } OpUpdate;
 
-OpBase* NewUpdateOp(RedisModuleCtx *ctx, AST_Query *ast, QueryGraph *q, ResultSet *result_set, const char *graphName);
+OpBase* NewUpdateOp(RedisModuleCtx *ctx, AST_Query *ast, QueryGraph *q, Graph *g, ResultSet *result_set, const char *graphName);
 OpResult OpUpdateConsume(OpBase *opBase, QueryGraph *graph);
 OpResult OpUpdateReset(OpBase *ctx);
 void OpUpdateFree(OpBase *ctx);

@@ -22,6 +22,10 @@
 #define INDEX_FAIL 0
 #define INDEX_PREFIX "redis_graph_INDEX"
 
+// TODO also in store_type.h
+#include <stdint.h>
+#define NO_INDEX SIZE_MAX
+
 typedef skiplistIterator IndexIter;
 
 /* Properties are not required to be of a consistent type, and index construction

@@ -400,7 +400,7 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g,
     }
 
     if(ast->setNode) {
-        OpBase *op_update = NewUpdateOp(ctx, ast, q, execution_plan->result_set, graph_name);
+        OpBase *op_update = NewUpdateOp(ctx, ast, q, g, execution_plan->result_set, graph_name);
         Vector_Push(ops, op_update);
     }
 
