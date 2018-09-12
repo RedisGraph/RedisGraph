@@ -17,5 +17,5 @@ void optimizePlan(RedisModuleCtx *ctx, const char *graph_name, ExecutionPlan *pl
     reduceFilters(plan);
 
     /* Remove redundant SCAN operations. */
-    reduceScans(plan);
+    // reduceScans(plan);
 }

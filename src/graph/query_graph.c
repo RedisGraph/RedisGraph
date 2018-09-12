@@ -127,30 +127,45 @@ void _MergeNodeWithGraphEntity(Node *n, const AST_GraphEntity *ge) {
     }
 }
 
-void _BuildQueryGraphAddNode(AST_GraphEntity *entity, QueryGraph *graph) {
+void _BuildQueryGraphAddNode(RedisModuleCtx *ctx, const char *graph_name,
+                             const Graph *g, AST_GraphEntity *entity,
+                             QueryGraph *qg) {
     /* Check for duplications. */
-    Node *n = QueryGraph_GetNodeByAlias(graph, entity->alias);
+    Node *n = QueryGraph_GetNodeByAlias(qg, entity->alias);
     if(n == NULL) {
         /* Create a new node, set its properties, and add it to the graph. */
-        Node *n = Node_New(INVALID_ENTITY_ID, entity->label);
+        n = Node_New(INVALID_ENTITY_ID, entity->label);
         _BuildQueryGraphAddProps(entity, (GraphEntity*)n);
-        QueryGraph_AddNode(graph, n, entity->alias);
+        QueryGraph_AddNode(qg, n, entity->alias);
     } else {
         /* Merge nodes. */
         _MergeNodeWithGraphEntity(n, entity);
     }
+    
+    /* Set node matrix.
+     * TODO: revisit when supporting multiple labels. */
+    if(n->label && !n->mat) {
+        LabelStore *s = LabelStore_Get(ctx, STORE_NODE, graph_name, entity->label);
+        if(s) {
+            n->mat = Graph_GetLabel(g, s->id);
+        } else {
+            /* Use a zeroed matrix.
+             * TODO: either use a static zero matrix, or free this one. */
+            GrB_Matrix_new(&n->mat, GrB_BOOL, Graph_NodeCount(g), Graph_NodeCount(g));
+        }
+    }
 }
 
-void _BuildQueryGraphAddEdge(const Graph *g,
+void _BuildQueryGraphAddEdge(RedisModuleCtx *ctx,
+                        const char *graph_name,
+                        const Graph *g,
                         AST_GraphEntity *entity,
                         AST_GraphEntity *l_entity,
                         AST_GraphEntity *r_entity,
-                        RedisModuleCtx *ctx,
-                        const char *graph_name,
-                        QueryGraph *graph) {
+                        QueryGraph *qg) {
 
     /* Check for duplications. */
-    if(QueryGraph_GetEdgeByAlias(graph, entity->alias) != NULL) return;
+    if(QueryGraph_GetEdgeByAlias(qg, entity->alias) != NULL) return;
 
     AST_LinkEntity* edge = (AST_LinkEntity*)entity;
     AST_NodeEntity *src_node;
@@ -165,8 +180,8 @@ void _BuildQueryGraphAddEdge(const Graph *g,
         dest_node = l_entity;
     }
 
-    Node *src = QueryGraph_GetNodeByAlias(graph, src_node->alias);
-    Node *dest = QueryGraph_GetNodeByAlias(graph, dest_node->alias);
+    Node *src = QueryGraph_GetNodeByAlias(qg, src_node->alias);
+    Node *dest = QueryGraph_GetNodeByAlias(qg, dest_node->alias);
     Edge *e = Edge_New(INVALID_ENTITY_ID, src, dest, edge->ge.label);
     _BuildQueryGraphAddProps(entity, (GraphEntity*)e);
 
@@ -187,7 +202,7 @@ void _BuildQueryGraphAddEdge(const Graph *g,
         }
     }
 
-    QueryGraph_ConnectNodes(graph, src, dest, e, edge->ge.alias);
+    QueryGraph_ConnectNodes(qg, src, dest, e, edge->ge.alias);
 }
 
 QueryGraph* QueryGraph_New() {
@@ -214,13 +229,13 @@ QueryGraph* NewQueryGraph_WithCapacity(size_t node_cap, size_t edge_cap) {
     return graph;
 }
 
-void BuildQueryGraph(RedisModuleCtx *ctx, const Graph *g, const char *graph_name, QueryGraph *query_graph, Vector *entities) {    
+void BuildQueryGraph(RedisModuleCtx *ctx, const Graph *g, const char *graph_name, QueryGraph *qg, Vector *entities) {    
     /* Introduce nodes first. */
     for(int i = 0; i < Vector_Size(entities); i++) {
         AST_GraphEntity *entity;
         Vector_Get(entities, i, &entity);
         if(entity->t != N_ENTITY) continue;
-        _BuildQueryGraphAddNode(entity, query_graph);
+        _BuildQueryGraphAddNode(ctx, graph_name, g, entity, qg);
     }
 
     /* Introduce edges. */
@@ -232,7 +247,8 @@ void BuildQueryGraph(RedisModuleCtx *ctx, const Graph *g, const char *graph_name
         AST_GraphEntity *r_entity;
         Vector_Get(entities, i-1, &l_entity);
         Vector_Get(entities, i+1, &r_entity);
-        _BuildQueryGraphAddEdge(g, entity, l_entity, r_entity, ctx, graph_name, query_graph);
+
+        _BuildQueryGraphAddEdge(ctx, graph_name, g, entity, l_entity, r_entity, qg);
     }
 }
 

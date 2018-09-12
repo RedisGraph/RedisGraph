@@ -200,36 +200,6 @@ void _Determine_Graph_Size(const AST_Query *ast, size_t *node_count, size_t *edg
     }
 }
 
-/* Enforce destination type by multiplying to the right by label matrix,
- * such that if destination node is labeled as person, then we would enforce that
- * by multiplying to the right by the person label matrix. */
-void _ExecutionPlan_EnforceExpDestNodeType(RedisModuleCtx *ctx, Graph *g,
-                                           AlgebraicExpression **exps, size_t expCount,
-                                           const char *graphID) {
-    for(int i = 0; i < expCount; i++) {
-        AlgebraicExpression *exp = exps[i];
-        Node *dest = *exp->dest_node;
-        if(!dest->label) continue;
-
-        // Get label matrix.        
-        LabelStore *ls = LabelStore_Get(ctx, STORE_NODE, graphID, dest->label);
-        if(!ls) {
-            /* Label does not exists,
-             * replace entire expression with a NULL matrix. */
-            GrB_Matrix zero;
-            GrB_Index nrows;
-            GrB_Index ncols;
-            nrows = ncols = Graph_NodeCount(g);
-            GrB_Matrix_new(&zero, GrB_BOOL, nrows, ncols);
-            AlgebraicExpression_ClearOperands(exp);
-            AlgebraicExpression_PrependTerm(exp, zero, false, true);
-        } else {
-            GrB_Matrix M = Graph_GetLabel(g, ls->id);
-            AlgebraicExpression_PrependTerm(exp, M, false, false);
-        }
-    }
-}
-
 void ExecutionPlan_AddOp(OpBase *parent, OpBase *newOp) {
     _OpBase_AddChild(parent, newOp);
 }
@@ -315,7 +285,6 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g,
             if(Vector_Size(pattern) > 1) {
                 size_t expCount = 0;
                 AlgebraicExpression **exps = AlgebraicExpression_From_Query(ast, pattern, q, &expCount);
-                _ExecutionPlan_EnforceExpDestNodeType(ctx, g, exps, expCount, graph_name);
 
                 TRAVERSE_ORDER order = determineTraverseOrder(q, filter_tree, exps, expCount);
                 if(order == TRAVERSE_ORDER_FIRST) {
@@ -324,6 +293,9 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g,
 
                     // Create SCAN operation.
                     if((*exp->src_node)->label) {
+                        /* There's no longer need for the last matrix operand
+                         * as it's been replaced by label scan. */
+                        AlgebraicExpression_RemoveTerm(exp, exp->operand_count-1, NULL);
                         op = NewNodeByLabelScanOp(ctx, q, g, graph_name, exp->src_node, (*exp->src_node)->label);
                         Vector_Push(traversals, op);
                     } else {
@@ -339,6 +311,9 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g,
                     selectEntryPoint(exp, q, filter_tree);
                     // Create SCAN operation.
                     if((*exp->dest_node)->label) {
+                        /* There's no longer need for the last matrix operand
+                         * as it's been replaced by label scan. */
+                        AlgebraicExpression_RemoveTerm(exp, exp->operand_count-1, NULL);
                         op = NewNodeByLabelScanOp(ctx, q, g, graph_name, exp->dest_node, (*exp->dest_node)->label);
                         Vector_Push(traversals, op);
                     } else {

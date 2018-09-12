@@ -23,6 +23,7 @@ typedef struct {
 		EntityProperty *properties;
 	};
 	char *label;			/* label attached to node */
+	GrB_Matrix mat;			/* Label matrix, associated with node. */
 	Vector* outgoing_edges;	/* list of incoming edges (ME)<-(SRC) */
 	Vector* incoming_edges;	/* list on outgoing edges (ME)->(DEST) */
 } Node;
