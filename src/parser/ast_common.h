@@ -36,12 +36,19 @@ typedef struct {
 } AST_Variable;
 
 typedef struct {
+	unsigned int minHops;
+	float maxHops;
+} AST_LinkLength;
+
+typedef struct {
 	AST_GraphEntity ge;
 	AST_LinkDirection direction;
+	AST_LinkLength *length;			// If NULL, edge is of length 1.
 } AST_LinkEntity;
 
 AST_NodeEntity* New_AST_NodeEntity(char *alias, char *label, Vector *properties);
-AST_LinkEntity* New_AST_LinkEntity(char *alias, char *relationship, Vector *properties, AST_LinkDirection dir);
+AST_LinkEntity* New_AST_LinkEntity(char *alias, char *label, Vector *properties, AST_LinkDirection dir, AST_LinkLength *length);
+AST_LinkLength* New_AST_LinkLength(unsigned int minHops, float maxHops);
 AST_Variable* New_AST_Variable(const char *alias, const char *property);
 void Free_AST_GraphEntity(AST_GraphEntity *entity);
 void Free_AST_Variable(AST_Variable *v);

@@ -104,6 +104,14 @@ void TuplesIter_reuse
     TuplesIter_reset(iter) ;
 }
 
+void TuplesIter_clear
+(
+    TuplesIter *iter
+)
+{
+    iter->nvals = 0;
+}
+
 void TuplesIter_free
 (
     TuplesIter *iter

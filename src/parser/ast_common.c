@@ -21,9 +21,10 @@ AST_Variable* New_AST_Variable(const char* alias, const char* property) {
 	return v;
 }
 
-AST_LinkEntity* New_AST_LinkEntity(char *alias, char *label, Vector *properties, AST_LinkDirection dir) {
+AST_LinkEntity* New_AST_LinkEntity(char *alias, char *label, Vector *properties, AST_LinkDirection dir, AST_LinkLength *length) {
 	AST_LinkEntity* le = (AST_LinkEntity*)calloc(1, sizeof(AST_LinkEntity));
 	le->direction = dir;
+	le->length = length;
 	le->ge.t = N_LINK;
 	le->ge.properties = properties;
 	
@@ -35,6 +36,13 @@ AST_LinkEntity* New_AST_LinkEntity(char *alias, char *label, Vector *properties,
 	}
 
 	return le;
+}
+
+AST_LinkLength* New_AST_LinkLength(unsigned int minHops, float maxHops) {
+	AST_LinkLength *linkLength = malloc(sizeof(AST_LinkLength));
+	linkLength->minHops = minHops;
+	linkLength->maxHops = maxHops;
+	return linkLength;
 }
 
 AST_NodeEntity* New_AST_NodeEntity(char *alias, char *label, Vector *properties) {
@@ -67,6 +75,10 @@ void Free_AST_GraphEntity(AST_GraphEntity *graphEntity) {
 			free(val);
 		}
 		Vector_Free(graphEntity->properties);
+	}
+	if(graphEntity->t == N_LINK) {
+		AST_LinkEntity *link = (AST_LinkEntity*)graphEntity;
+		if(link->length) free(link->length);
 	}
 	free(graphEntity);
 }

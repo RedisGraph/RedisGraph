@@ -10,6 +10,7 @@
 	#include <stdlib.h>
 	#include <stdio.h>
 	#include <assert.h>
+	#include <math.h>
 	#include "token.h"	
 	#include "grammar.h"
 	#include "ast.h"
@@ -216,22 +217,54 @@ link(A) ::= LEFT_ARROW edge(B) DASH . {
 %type edge {AST_LinkEntity*}
 // Empty edge []
 edge(A) ::= LEFT_BRACKET properties(B) RIGHT_BRACKET . { 
-	A = New_AST_LinkEntity(NULL, NULL, B, N_DIR_UNKNOWN);
+	A = New_AST_LinkEntity(NULL, NULL, B, N_DIR_UNKNOWN, NULL);
 }
 
 // Edge with alias [alias]
 edge(A) ::= LEFT_BRACKET UQSTRING(B) properties(C) RIGHT_BRACKET . { 
-	A = New_AST_LinkEntity(B.strval, NULL, C, N_DIR_UNKNOWN);
+	A = New_AST_LinkEntity(B.strval, NULL, C, N_DIR_UNKNOWN, NULL);
 }
 
 // Edge with label [:label]
-edge(A) ::= LEFT_BRACKET COLON UQSTRING(B) properties(C) RIGHT_BRACKET . { 
-	A = New_AST_LinkEntity(NULL, B.strval, C, N_DIR_UNKNOWN);
+edge(A) ::= LEFT_BRACKET COLON UQSTRING(B) edgeLength(C) properties(D) RIGHT_BRACKET . { 
+	A = New_AST_LinkEntity(NULL, B.strval, D, N_DIR_UNKNOWN, C);
 }
 
 // Edge with alias and label [alias:label]
-edge(A) ::= LEFT_BRACKET UQSTRING(B) COLON UQSTRING(C) properties(D) RIGHT_BRACKET . { 
-	A = New_AST_LinkEntity(B.strval, C.strval, D, N_DIR_UNKNOWN);
+edge(A) ::= LEFT_BRACKET UQSTRING(B) COLON UQSTRING(C) edgeLength(D) properties(E) RIGHT_BRACKET . { 
+	A = New_AST_LinkEntity(B.strval, C.strval, E, N_DIR_UNKNOWN, D);
+}
+
+// Edge with length [alias:*1..3]
+edge(A) ::= LEFT_BRACKET UQSTRING(B) COLON edgeLength(C) properties(D) RIGHT_BRACKET . { 
+	A = New_AST_LinkEntity(B.strval, NULL, D, N_DIR_UNKNOWN, C);
+}
+
+// Edge with length [:*1..3]
+edge(A) ::= LEFT_BRACKET COLON edgeLength(B) properties(C) RIGHT_BRACKET . { 
+	A = New_AST_LinkEntity(NULL, NULL, C, N_DIR_UNKNOWN, B);
+}
+
+%type edgeLength {AST_LinkLength*}
+
+// Edge length not specified.
+edgeLength(A) ::= . {
+	A = NULL;
+}
+
+// *minHops..maxHops
+edgeLength(A) ::= MUL INTEGER(B) DOT DOT INTEGER(C). {
+	A = New_AST_LinkLength(B.intval, C.intval);
+}
+
+// *hops
+edgeLength(A) ::= MUL INTEGER(B). {
+	A = New_AST_LinkLength(1, B.intval);
+}
+
+// *
+edgeLength(A) ::= MUL. {
+	A = New_AST_LinkLength(1, INFINITY);
 }
 
 %type properties {Vector*}
