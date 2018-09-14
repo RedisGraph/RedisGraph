@@ -86,11 +86,12 @@ class IndexUpdatesFlowTest(FlowTestsBase):
             self.assertIn('Index Scan', resp)
             indexed_result = redis_graph.query("""MATCH (a:%s) WHERE a.doubleval < 100 RETURN a.doubleval ORDER BY a.doubleval""" % (label))
             scan_result = redis_graph.query("""MATCH (a:%s) RETURN a.doubleval ORDER BY a.doubleval""" % (label))
-            # TODO can encounter errors of the type:
-            #  First differing element 259:
-            #  ['0.000000']
-            #  ['-0.000000']
-            self.assertEqual(indexed_result.result_set, scan_result.result_set)
+
+            # Collect any elements between the two result sets that fail a string comparison
+            # so that we may compare them as doubles (specifically, -0 and 0 should be considered equal)
+            differences = [[i[0], j[0]] for i, j in zip(indexed_result.result_set, scan_result.result_set) if i != j]
+            for pair in differences:
+                self.assertEqual(float(pair[0]), float(pair[1]))
 
     # Validate a series of premises to ensure that the graph has not been modified unexpectedly
     def validate_state(self):
@@ -135,7 +136,11 @@ class IndexUpdatesFlowTest(FlowTestsBase):
             assert(result.nodes_deleted == 1)
             node_ctr -= 1
         self.validate_state()
+
         # Delete all nodes matching a filter
+        result = redis_graph.query("MATCH (a:label_a) WHERE a.group = 'Group A' DELETE a")
+        assert(result.nodes_deleted > 0)
+        self.validate_state()
 
 if __name__ == '__main__':
     unittest.main()

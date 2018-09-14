@@ -7,7 +7,7 @@ from demo import QueryInfo
 subset_of_people = QueryInfo(
     query="""MATCH (p:person) RETURN p.name ORDER BY p.name SKIP 3 LIMIT 5""",
     description='Get a subset of people.',
-    max_run_time_ms=0.2,
+    max_run_time_ms=0.8,
     expected_result=[["Gal Derriere"],
                     ["Jane Chernomorin"],
                     ["Lucy Yanfital"],
@@ -68,7 +68,7 @@ friends_visited_same_places_as_me_query = QueryInfo(
                 [:friend]-(:person {name:"Roi Lipman"}) 
              RETURN f.name, c""",
     description='Friends who have been to places I have visited?',
-    max_run_time_ms=1,
+    max_run_time_ms=1.3,
     expected_result=[['Tal Doron', 'Japan'],
                      ['Alon Fital', 'Prague'],
                      ['Tal Doron', 'USA'],

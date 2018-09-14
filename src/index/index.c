@@ -60,7 +60,7 @@ Index* Index_Get(RedisModuleCtx *ctx, const char *graph, const char *label, char
   size_t *index_id = TrieMap_Find(store->properties, property, strlen(property));
 
   // index_id will be NULL if the label-property pair is not indexed
-  if (!index_id) return NULL;
+  if (!index_id || index_id == TRIEMAP_NOTFOUND) return NULL;
 
   // Open key with read-only access
   RedisModuleKey *key = _index_LookupKey(ctx, graph, *index_id, false);
@@ -161,7 +161,6 @@ Index* buildIndex(Graph *g, const GrB_Matrix label_matrix, const char *label, co
 // Create and populate index for specified property
 // (This function will create separate string and numeric indices if property has mixed types)
 int Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, const char *label, char *prop_str) {
-
   LabelStore *store = LabelStore_Get(ctx, STORE_NODE, graphName, label);
   assert(store);
 
@@ -248,7 +247,7 @@ TrieMap* Indices_BuildDeletionMap(RedisModuleCtx *ctx, Graph *g, const char *gra
         char *prop_name = delete_candidate->properties[k].name;
         size_t *index_id = TrieMap_Find(store->properties, prop_name, strlen(prop_name));
         // This property is not indexed; we can ignore it
-        if (!index_id) continue;
+        if (!index_id || index_id == TRIEMAP_NOTFOUND) continue;
 
         // TODO probably better options than this for forming a key
         asprintf(&update_key, "%zu", *index_id);
@@ -361,7 +360,7 @@ void Indices_AddNode(RedisModuleCtx *ctx, LabelStore *store, const char *graphNa
   for (int i = 0; i < node->prop_count; i ++) {
     prop = node->properties[i];
     index_id = TrieMap_Find(store->properties, prop.name, strlen(prop.name));
-    if (!index_id) continue;
+    if (!index_id || index_id == TRIEMAP_NOTFOUND) continue;
 
     // Retrieve index with write access
     RedisModuleKey *key = _index_LookupKey(ctx, graphName, *index_id, true);
@@ -377,17 +376,16 @@ void Indices_UpdateNode(RedisModuleCtx *ctx, LabelStore *store, const char *grap
                         NodeID id, EntityProperty *oldval, SIValue *newval) {
   size_t *index_id = TrieMap_Find(store->properties, oldval->name, strlen(oldval->name));
   // Label-property pair is not indexed
-  if (!index_id) return;
+  if (!index_id || index_id == TRIEMAP_NOTFOUND) return;
 
   // Retrieve index with write access
   RedisModuleKey *key = _index_LookupKey(ctx, graphName, *index_id, true);
   assert(RedisModule_ModuleTypeGetType(key) == IndexRedisModuleType);
   Index *idx = RedisModule_ModuleTypeGetValue(key);
+  RedisModule_CloseKey(key);
 
   // Replace old value with new
   Index_UpdateNodeValue(idx, id, &oldval->value, newval);
-
-  // TODO close key
 }
 
 /* Output text for EXPLAIN calls */
