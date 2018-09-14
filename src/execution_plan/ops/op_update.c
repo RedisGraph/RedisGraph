@@ -127,7 +127,7 @@ void _UpdateIndices(OpUpdate *op) {
         // Retrieve and iterate over all labels associated with each node
         size_t *node_labels = NULL;
         size_t label_count = Graph_GetNodeLabels(op->g, op->entities_to_update[i].id, &node_labels);
-        for (int j = 0; j < label_count; j ++) {
+        for (size_t j = 0; j < label_count; j ++) {
             size_t label_id = node_labels[j];
             char *label = op->g->label_strings[label_id];
 
@@ -149,7 +149,7 @@ void _UpdateEntities(OpUpdate *op) {
     for(int i = 0; i < op->entities_to_update_count; i++) {
         EntityProperty *dest_entity_prop = op->entities_to_update[i].dest_entity_prop;
         SIValue new_value = op->entities_to_update[i].new_value;
-        // TODO free dest_entity_prop->value?
+        SIValue_Free(&dest_entity_prop->value);
         dest_entity_prop->value = new_value;
     }
     if(op->result_set)

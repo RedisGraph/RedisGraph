@@ -159,7 +159,7 @@ void _CreateEdges(OpCreate *op) {
     }
 }
 
-void _SetEntitiesProperties(OpCreate *op, Vector *entities, LabelStore **stores, DataBlockIterator *it, EntityID baseID) {
+void _SetEntitiesProperties(OpCreate *op, Vector *entities, DataBlockIterator *it, EntityID baseID) {
     GraphEntity *new_entity;
     size_t idx = 0;
     while((new_entity = (GraphEntity*)DataBlockIterator_Next(it))) { 
@@ -171,9 +171,6 @@ void _SetEntitiesProperties(OpCreate *op, Vector *entities, LabelStore **stores,
         new_entity->id = baseID + idx;
         tempEntity->id = new_entity->id;    /* Formed edges refer to tempEntity. */
         tempEntity->properties = NULL;      /* Do not free temp_node's property set. */
-        if (op->g->index_ctr > 0 && stores && stores[idx] != NULL) {
-            Indices_AddNode(op->ctx, stores[idx], op->graph_name, (Node*)new_entity);
-        }
         op->result_set->stats.properties_set += new_entity->prop_count;
         idx++;
     }
@@ -189,17 +186,14 @@ void _CommitNewEntities(OpCreate *op) {
     if(node_count > 0) {
         int labels[node_count];
         allStore = LabelStore_Get(ctx, STORE_NODE, op->graph_name, NULL);
-        // TODO fairly redundant
-        LabelStore *stores[node_count];
 
-        for(int i = 0; i < node_count; i++) {
+        for(size_t i = 0; i < node_count; i++) {
             Node *n;
             Vector_Get(op->created_nodes, i, &n);
             LabelStore *store = NULL;
             const char *label = n->label;
             if(label == NULL) {
                labels[i] = GRAPH_NO_LABEL; 
-               stores[i] = NULL;
             } else {
                 store = LabelStore_Get(ctx, STORE_NODE, op->graph_name, label);                
                 if(store == NULL) {
@@ -209,16 +203,11 @@ void _CommitNewEntities(OpCreate *op) {
                     op->result_set->stats.labels_added++;
                 }
                 labels[i] = store->id;
-                stores[i] = store;
             }
 
             if(n->prop_count > 0) {
                 char *properties[n->prop_count];
                 for(int j = 0; j < n->prop_count; j++) properties[j] = n->properties[j].name;
-                // TODO lot of unnecessary updates
-                /* It might make more sense to start with a find, then record whether there is an index
-                 * (and update if find fails). Though we'll still be doing this for every prop for every node,
-                 * so I'm sure we could still do better. */
                 if(label) LabelStore_UpdateSchema(store, n->prop_count, properties);
                 LabelStore_UpdateSchema(allStore, n->prop_count, properties);
             }
@@ -227,7 +216,24 @@ void _CommitNewEntities(OpCreate *op) {
         DataBlockIterator *it;
         size_t baseNodeID = Graph_NodeCount(op->g);
         Graph_CreateNodes(op->g, node_count, labels, &it);
-        _SetEntitiesProperties(op, op->created_nodes, stores, it, baseNodeID);
+        _SetEntitiesProperties(op, op->created_nodes, it, baseNodeID);
+
+        if (op->g->index_ctr > 0) {
+            // Prepare array of new node IDs
+            NodeID new_nodes[node_count];
+            for (size_t i = 0; i < node_count; i ++) {
+                new_nodes[i] = baseNodeID + i;
+            }
+            // Build a triemap with index IDs as keys and vectors containing
+            // all matching nodes as values
+            TrieMap *create_map = Indices_BuildModificationMap(op->ctx, op->g, op->graph_name, new_nodes, NULL, node_count);
+            if (create_map) {
+                // Update all relevant indices
+                Indices_AddNodes(op->ctx, op->g, op->graph_name, create_map);
+                TrieMap_Free(create_map, NULL);
+            }
+        }
+
         DataBlockIterator_Free(it);
         op->result_set->stats.nodes_created = node_count;
     }
@@ -263,7 +269,7 @@ void _CommitNewEntities(OpCreate *op) {
         DataBlockIterator *it;
         EdgeID baseId = Graph_EdgeCount(op->g);
         Graph_ConnectNodes(op->g, connections, edge_count, &it);
-        _SetEntitiesProperties(op, op->created_edges, NULL, it, baseId);
+        _SetEntitiesProperties(op, op->created_edges, it, baseId);
         DataBlockIterator_Free(it);
         op->result_set->stats.relationships_created = edge_count;
     }

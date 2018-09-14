@@ -14,13 +14,6 @@
 /* Functions triggered by query clauses (CREATE, SET, DELETE)
  * that indirectly modify indexed values. */
 
-/* SET OPERATIONS */
-/* Index_UpdateNodeValue takes a node that has just had a property added
- * or modified and updates the index to reflect the change. */
-void Index_UpdateNodeValue(RedisModuleCtx *ctx, LabelStore *store, const char *graphName,
-                           NodeID id, EntityProperty *oldval, SIValue *newval);
-
-/* DELETE OPERATIONS */
 /* Indices_BuildModificationMap accepts an array of Node IDs and builds a triemap
  * in which the keys are the IDs of indices that require updates, and each value is 
  * a vector of Node IDs that must be represented in that update. If the replacement_IDs
@@ -29,6 +22,13 @@ void Index_UpdateNodeValue(RedisModuleCtx *ctx, LabelStore *store, const char *g
 TrieMap* Indices_BuildModificationMap(RedisModuleCtx *ctx, Graph *g, const char *graph_name,
                                   NodeID *IDs, NodeID *replacement_IDs, size_t IDCount);
 
+/* SET OPERATIONS */
+/* Index_UpdateNodeValue takes a node that has just had a property added
+ * or modified and updates the index to reflect the change. */
+void Index_UpdateNodeValue(RedisModuleCtx *ctx, LabelStore *store, const char *graphName,
+                           NodeID id, EntityProperty *oldval, SIValue *newval);
+
+/* DELETE OPERATIONS */
 /* Indices_DeleteNodes visits all indices described by a triemap and removes
  * nodes scheduled for deletion. */
 void Indices_DeleteNodes(RedisModuleCtx *ctx, Graph *g, const char *graph_name, TrieMap *delete_map);
@@ -38,9 +38,8 @@ void Indices_DeleteNodes(RedisModuleCtx *ctx, Graph *g, const char *graph_name, 
 void Indices_UpdateNodeIDs(RedisModuleCtx *ctx, Graph *g, const char *graph_name, TrieMap *update_map);
 
 /* CREATE OPERATIONS */
-/* Indices_AddNode accepts a newly-created node and adds it to all indices that
- * match its label and properties. */
-// TODO Possibly update this to operate on triemap like delete operations
-void Indices_AddNode(RedisModuleCtx *ctx, LabelStore *store, const char *graphName, Node *node);
+/* Indices_DeleteNodes visits all indices described by a triemap and adds
+ * newly-created nodes with matching properties. */
+void Indices_AddNodes(RedisModuleCtx *ctx, Graph *g, const char *graph_name, TrieMap *create_map);
 
 #endif

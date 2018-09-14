@@ -25,26 +25,6 @@ void _index_UpdateNodeID(Index *idx, NodeID prev_id, NodeID new_id, SIValue *val
   assert(i < node->numVals);
 }
 
-/* Invoked from the op_update context */
-void Index_UpdateNodeValue(RedisModuleCtx *ctx, LabelStore *store, const char *graphName,
-                        NodeID id, EntityProperty *oldval, SIValue *newval) {
-  size_t *index_id = TrieMap_Find(store->properties, oldval->name, strlen(oldval->name));
-  // Label-property pair is not indexed
-  if (!index_id || index_id == TRIEMAP_NOTFOUND) return;
-
-  // Retrieve index with write access
-  RedisModuleKey *key = Index_LookupKey(ctx, graphName, *index_id, true);
-  assert(RedisModule_ModuleTypeGetType(key) == IndexRedisModuleType);
-  Index *idx = RedisModule_ModuleTypeGetValue(key);
-  RedisModule_CloseKey(key);
-
-  /* Replace old property with new.
-   * It is valid for the key type to have changed in the property update,
-   * so the type-checking logic in these calls is not redundant. */
-  _index_DeleteNode(idx, id, &oldval->value);
-  _index_InsertNode(idx, id, newval);
-}
-
 TrieMap* Indices_BuildModificationMap(RedisModuleCtx *ctx, Graph *g, const char *graph_name, NodeID *IDs, NodeID *replacement_IDs, size_t IDCount) {
   TrieMap *index_updates = NewTrieMap();
   char *update_key;
@@ -96,6 +76,26 @@ TrieMap* Indices_BuildModificationMap(RedisModuleCtx *ctx, Graph *g, const char 
   return index_updates;
 }
 
+/* Invoked from the op_update context */
+void Index_UpdateNodeValue(RedisModuleCtx *ctx, LabelStore *store, const char *graphName,
+                        NodeID id, EntityProperty *oldval, SIValue *newval) {
+  size_t *index_id = TrieMap_Find(store->properties, oldval->name, strlen(oldval->name));
+  // Label-property pair is not indexed
+  if (!index_id || index_id == TRIEMAP_NOTFOUND) return;
+
+  // Retrieve index with write access
+  RedisModuleKey *key = Index_LookupKey(ctx, graphName, *index_id, true);
+  assert(RedisModule_ModuleTypeGetType(key) == IndexRedisModuleType);
+  Index *idx = RedisModule_ModuleTypeGetValue(key);
+  RedisModule_CloseKey(key);
+
+  /* Replace old property with new.
+   * It is valid for the key type to have changed in the property update,
+   * so the type-checking logic in these calls is not redundant. */
+  _index_DeleteNode(idx, id, &oldval->value);
+  _index_InsertNode(idx, id, newval);
+}
+
 void Indices_DeleteNodes(RedisModuleCtx *ctx, Graph *g, const char *graph_name, TrieMap *delete_map) {
   char *ptr;
   tm_len_t len;
@@ -112,6 +112,7 @@ void Indices_DeleteNodes(RedisModuleCtx *ctx, Graph *g, const char *graph_name, 
     RedisModuleKey *key = Index_LookupKey(ctx, graph_name, index_id, true);
     assert(RedisModule_ModuleTypeGetType(key) == IndexRedisModuleType);
     idx = RedisModule_ModuleTypeGetValue(key);
+    RedisModule_CloseKey(key);
 
     while(Vector_Pop(node_ids, &node_id)) {
       Node *current_node = Graph_GetNode(g, node_id);
@@ -122,7 +123,6 @@ void Indices_DeleteNodes(RedisModuleCtx *ctx, Graph *g, const char *graph_name, 
         }
       }
     }
-    RedisModule_CloseKey(key);
   }
 }
 
@@ -165,21 +165,33 @@ void Indices_UpdateNodeIDs(RedisModuleCtx *ctx, Graph *g, const char *graph_name
 }
 
 /* Invoked from the op_create context */
-void Indices_AddNode(RedisModuleCtx *ctx, LabelStore *store, const char *graphName, Node *node) {
-  size_t *index_id;
-  EntityProperty prop;
-  Index *idx;
-  for (int i = 0; i < node->prop_count; i ++) {
-    prop = node->properties[i];
-    index_id = TrieMap_Find(store->properties, prop.name, strlen(prop.name));
-    if (!index_id || index_id == TRIEMAP_NOTFOUND) continue;
+void Indices_AddNodes(RedisModuleCtx *ctx, Graph *g, const char *graph_name, TrieMap *create_map) {
+  char *ptr;
+  tm_len_t len;
+  void *v;
+  size_t index_id;
+  Index *idx = NULL;
+  NodeID node_id;
 
-    // Retrieve index with write access
-    RedisModuleKey *key = Index_LookupKey(ctx, graphName, *index_id, true);
+  TrieMapIterator *it = TrieMap_Iterate(create_map, "", 0);
+  while(TrieMapIterator_Next(it, &ptr, &len, &v)) {
+    Vector *node_ids = v;
+    sscanf(ptr, "%zu", &index_id);
+    // We've switched to a new index
+    RedisModuleKey *key = Index_LookupKey(ctx, graph_name, index_id, true);
     assert(RedisModule_ModuleTypeGetType(key) == IndexRedisModuleType);
     idx = RedisModule_ModuleTypeGetValue(key);
     RedisModule_CloseKey(key);
-    _index_InsertNode(idx, node->id, &prop.value);
+
+    while(Vector_Pop(node_ids, &node_id)) {
+      Node *current_node = Graph_GetNode(g, node_id);
+      for (int i = 0; i < current_node->prop_count; i ++) {
+        if (!strcmp(idx->property, current_node->properties[i].name)) {
+          _index_InsertNode(idx, node_id, &current_node->properties[i].value);
+          break;
+        }
+      }
+    }
   }
 }
 
