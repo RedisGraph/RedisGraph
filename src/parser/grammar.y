@@ -235,16 +235,6 @@ edge(A) ::= LEFT_BRACKET UQSTRING(B) COLON UQSTRING(C) edgeLength(D) properties(
 	A = New_AST_LinkEntity(B.strval, C.strval, E, N_DIR_UNKNOWN, D);
 }
 
-// Edge with length [alias:*1..3]
-edge(A) ::= LEFT_BRACKET UQSTRING(B) COLON edgeLength(C) properties(D) RIGHT_BRACKET . { 
-	A = New_AST_LinkEntity(B.strval, NULL, D, N_DIR_UNKNOWN, C);
-}
-
-// Edge with length [:*1..3]
-edge(A) ::= LEFT_BRACKET COLON edgeLength(B) properties(C) RIGHT_BRACKET . { 
-	A = New_AST_LinkEntity(NULL, NULL, C, N_DIR_UNKNOWN, B);
-}
-
 %type edgeLength {AST_LinkLength*}
 
 // Edge length not specified.
@@ -253,8 +243,18 @@ edgeLength(A) ::= . {
 }
 
 // *minHops..maxHops
-edgeLength(A) ::= MUL INTEGER(B) DOT DOT INTEGER(C). {
+edgeLength(A) ::= MUL INTEGER(B) DOTDOT INTEGER(C). {
 	A = New_AST_LinkLength(B.intval, C.intval);
+}
+
+// *minHops..
+edgeLength(A) ::= MUL INTEGER(B) DOTDOT. {
+	A = New_AST_LinkLength(B.intval, INFINITY);
+}
+
+// *..maxHops
+edgeLength(A) ::= MUL DOTDOT INTEGER(B). {
+	A = New_AST_LinkLength(1, B.intval);
 }
 
 // *hops

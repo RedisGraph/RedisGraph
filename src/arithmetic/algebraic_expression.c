@@ -30,6 +30,7 @@ AlgebraicExpression *_AE_MUL(size_t operand_cap) {
     ae->operand_count = 0;
     ae->operands = malloc(sizeof(AlgebraicExpressionOperand) * ae->operand_cap);
     ae->edge = NULL;
+    ae->edgeLength = NULL;
     return ae;
 }
 
@@ -83,6 +84,29 @@ void _referred_edge_ends(TrieMap *ref_entities, const QueryGraph *q) {
     Vector_Free(aliases);
 }
 
+/* Variable length edges require their own algebraic expression,
+ * therefor mark both variable length edge ends as referenced. */
+void _referred_variable_length_edges(TrieMap *ref_entities, Vector *matchPattern, const QueryGraph *q) {
+    Edge *e;
+    char *alias;
+    AST_LinkEntity *edge;
+    AST_GraphEntity *match_element;
+
+    for(int i = 0; i < Vector_Size(matchPattern); i++) {
+        Vector_Get(matchPattern, i, &match_element);
+        if(match_element->t != N_LINK) continue;
+        
+        AST_LinkEntity *edge = (AST_LinkEntity*)match_element;
+        if(!edge->length) continue;
+
+        e = QueryGraph_GetEdgeByAlias(q, edge->ge.alias);
+        alias = QueryGraph_GetNodeAlias(q, e->src);
+        TrieMap_Add(ref_entities, alias, strlen(alias), NULL, TrieMap_DONT_CARE_REPLACE);
+        alias = QueryGraph_GetNodeAlias(q, e->dest);
+        TrieMap_Add(ref_entities, alias, strlen(alias), NULL, TrieMap_DONT_CARE_REPLACE);
+    }
+}
+
 /* Break down expression into sub expressions.
  * considering referenced intermidate nodes and edges. */
 AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(AlgebraicExpression *exp, const AST_Query *ast, Vector *matchPattern, const QueryGraph *q, size_t *exp_count) {
@@ -102,6 +126,7 @@ AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(AlgebraicExpr
     DeleteClause_ReferredEntities(ast->deleteNode, ref_entities);    
     SetClause_ReferredEntities(ast->setNode, ref_entities);
     _referred_edge_ends(ref_entities, q);
+    _referred_variable_length_edges(ref_entities, matchPattern, q);
 
     AlgebraicExpression *iexp = _AE_MUL(exp->operand_count);
     iexp->src_node = exp->src_node;
@@ -119,9 +144,12 @@ AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(AlgebraicExpr
         transpose = (edge->direction == N_RIGHT_TO_LEFT);
         e = QueryGraph_GetEdgeByAlias(q, edge->ge.alias);
 
-        // If edge is referenced, set expression edge pointer.
+        /* If edge is referenced, set expression edge pointer. */
         if(_referred_entity(edge->ge.alias, ref_entities))
             iexp->edge = QueryGraph_GetEdgeRef(q, e);
+        /* If this is a variable length edge, remember edge length. */
+        if(edge->length)
+            iexp->edgeLength = edge->length;
 
         dest = e->dest;
         src = e->src;

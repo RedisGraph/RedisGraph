@@ -102,7 +102,7 @@ OpResult CondTraverseConsume(OpBase *opBase, QueryGraph* graph) {
         _extractColumn(op);
     }
 
-    /* Get node from current column. */    
+    /* Get node from current column. */
     NodeID src_id = (*op->algebraic_expression->src_node)->id;
     Node *dest_node = Graph_GetNode(op->graph, dest_id);
     *op->algebraic_results->dest_node = dest_node;

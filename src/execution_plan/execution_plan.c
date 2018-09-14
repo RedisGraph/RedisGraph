@@ -303,7 +303,16 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g,
                         Vector_Push(traversals, op);
                     }
                     for(int i = 0; i < expCount; i++) {
-                        op = NewCondTraverseOp(g, q, exps[i]);
+                        if(exps[i]->edgeLength) {
+                            op = NewCondVarLenTraverseOp(exps[i],
+                                                         exps[i]->edgeLength->minHops,
+                                                         exps[i]->edgeLength->maxHops,
+                                                         g,
+                                                         q);
+                        }
+                        else {
+                            op = NewCondTraverseOp(g, q, exps[i]);
+                        }
                         Vector_Push(traversals, op);
                     }
                 } else {
@@ -323,7 +332,16 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g,
 
                     for(int i = expCount-1; i >= 0; i--) {
                         AlgebraicExpression_Transpose(exps[i]);
-                        op = NewCondTraverseOp(g, q, exps[i]);
+                        if(exps[i]->edgeLength) {
+                            op = NewCondVarLenTraverseOp(exps[i],
+                                                         exps[i]->edgeLength->minHops,
+                                                         exps[i]->edgeLength->maxHops,
+                                                         g,
+                                                         q);
+                        }
+                        else {
+                            op = NewCondTraverseOp(g, q, exps[i]);
+                        }
                         Vector_Push(traversals, op);
                     }
                 }

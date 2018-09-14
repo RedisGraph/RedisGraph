@@ -44,6 +44,7 @@ typedef struct {
     Node **src_node;                        // Nodes represented by the first operand columns.
     Node **dest_node;                       // Nodes represented by the last operand rows.
     Edge **edge;                            // Edge represented by sole operand.
+    AST_LinkLength *edgeLength;             // Repeatable edge length.
 } AlgebraicExpression;
 
 /* Construct an algebraic expression from a query. */
