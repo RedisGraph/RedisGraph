@@ -12,6 +12,7 @@ extern "C" {
 #endif
 
 #include "../../src/index/index.h"
+#include "../../src/index/index_iter.h"
 extern Index* buildIndex(Graph *g, const GrB_Matrix label_matrix, const char *label, const char *prop_str);
 
 #ifdef __cplusplus
@@ -185,18 +186,19 @@ TEST_F(IndexTest, IteratorBounds) {
   EXPECT_EQ(prev_vals, expected_n);
   IndexIter_Reset(iter);
 
-  /* Apply a non-exclusive lower bound X */
+  /* Apply a non-exclusive lower bound from the second-lowest key in the index. */
   NodeID *node_id;
   Node *cur;
   SIValue *lb;
-  int ctr = 0;
-  // TODO ensure lower bound is not still first value
-  // Find the value of the 10th element in the index
-  while ((node_id = IndexIter_Next(iter)) != NULL) {
-    ctr ++;
-    if (ctr == 10) {
+  double lowest = iter->current->key->doubleval;
+  while (1) {
+    double lb_val = iter->current->key->doubleval;
+    node_id = IndexIter_Next(iter);
+    /* Stop iterating once we encounter a value greater than the index's minimum. */
+    if (lb_val > lowest) {
       cur = Graph_GetNode(g, *node_id);
       lb = GraphEntity_Get_Property((GraphEntity*)cur, num_key);
+      break;
     }
   }
 

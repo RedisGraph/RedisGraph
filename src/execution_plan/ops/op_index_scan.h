@@ -11,7 +11,7 @@
 #include "op.h"
 #include "../../graph/graph.h"
 #include "../../graph/node.h"
-#include "../../index/index.h"
+#include "../../index/index_iter.h"
 
 
 typedef struct {

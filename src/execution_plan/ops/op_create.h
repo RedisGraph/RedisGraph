@@ -13,7 +13,7 @@
 #include "../../graph/edge.h"
 #include "../../parser/ast.h"
 #include "../../resultset/resultset.h"
-#include "../../index/index.h"
+#include "../../index/index_updates.h"
 
 /* Creates new entities according to the CREATE clause. */
 

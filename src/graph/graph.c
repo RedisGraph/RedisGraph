@@ -548,7 +548,7 @@ void _Graph_DeleteEntities(Graph *g, EntityID *IDs, size_t IDCount, DataBlock *e
     // TODO double call when coming from DeleteNodes
     EntityID *migrations = _Graph_EnqueueMigrations(entityStore, IDs, IDCount, &migration_count);
 
-    for (int i = 0; i < migration_count; i ++) {
+    for (size_t i = 0; i < migration_count; i ++) {
         EntityID id_to_replace = IDs[i];
         EntityID id_to_migrate = migrations[i];
 

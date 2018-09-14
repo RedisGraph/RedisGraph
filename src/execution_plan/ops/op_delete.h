@@ -12,7 +12,7 @@
 #include "../../graph/node.h"
 #include "../../resultset/resultset.h"
 #include "../../util/triemap/triemap.h"
-#include "../../index/index.h"
+#include "../../index/index_updates.h"
 
 /* Deletes entities specified within the DELETE clause. */
 

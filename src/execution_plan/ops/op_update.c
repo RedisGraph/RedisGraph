@@ -138,7 +138,7 @@ void _UpdateIndices(OpUpdate *op) {
             SIValue new_value = op->entities_to_update[i].new_value;
 
             NodeID id = op->entities_to_update[i].id;
-            Indices_UpdateNode(op->ctx, store, op->graphName, id, dest_entity_prop, &new_value);
+            Index_UpdateNodeValue(op->ctx, store, op->graphName, id, dest_entity_prop, &new_value);
         }
         free(node_labels);
     }

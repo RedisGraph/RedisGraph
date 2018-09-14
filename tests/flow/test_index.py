@@ -60,8 +60,6 @@ class IndexUpdatesFlowTest(FlowTestsBase):
     # Validate that all properties are indexed
     def validate_indexed(self):
         for field in fields:
-            # Empty string causing connection error?
-            #  resp = redis_graph.execution_plan("""MATCH (a:label_a) WHERE a.%s > '' RETURN a""" % (field))
             resp = redis_graph.execution_plan("""MATCH (a:label_a) WHERE a.%s > 0 RETURN a""" % (field))
             self.assertIn('Index Scan', resp)
 

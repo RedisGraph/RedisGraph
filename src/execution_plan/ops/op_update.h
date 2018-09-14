@@ -13,7 +13,7 @@
 #include "../../graph/edge.h"
 #include "../../resultset/resultset.h"
 #include "../../arithmetic/arithmetic_expression.h"
-#include "../../index/index.h"
+#include "../../index/index_updates.h"
 
 typedef struct {
     GraphEntity **entity;   /* Entity to update. */

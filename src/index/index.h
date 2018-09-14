@@ -22,12 +22,6 @@
 #define INDEX_FAIL 0
 #define INDEX_PREFIX "redis_graph_INDEX"
 
-// TODO also in store_type.h
-#include <stdint.h>
-#define NO_INDEX SIZE_MAX
-
-typedef skiplistIterator IndexIter;
-
 /* Properties are not required to be of a consistent type, and index construction
  * will store values in separate string and numeric skiplists with different comparator
  * functions if necessary.
@@ -40,6 +34,8 @@ typedef struct {
   skiplist *string_sl;
   skiplist *numeric_sl;
 } Index;
+
+RedisModuleKey* Index_LookupKey(RedisModuleCtx *ctx, const char *graph, size_t index_id, bool write_access);
 
 /* Index_Get attempts to retrieve an index from the Redis keyspace. */
 Index* Index_Get(RedisModuleCtx *ctx, const char *graph, const char *label, char *property);
@@ -56,35 +52,8 @@ void initializeSkiplists(Index *index);
  * matrix from the graph and saves the index in the Redis keyspace. */
 int Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, const char *label, char *prop_str);
 
-TrieMap* Indices_BuildDeletionMap(RedisModuleCtx *ctx, Graph *g, const char *graph_name, NodeID *IDs, NodeID *replacement_IDs, size_t IDCount);
-
-void Indices_DeleteNodes(RedisModuleCtx *ctx, Graph *g, const char *graph_name, TrieMap *delete_map);
-
-void Indices_UpdateNodeIDs(RedisModuleCtx *ctx, Graph *g, const char *graph_name, TrieMap *update_map);
-
-void Indices_AddNode(RedisModuleCtx *ctx, LabelStore *store, const char *graphName, Node *node);
-
-void Indices_UpdateNode(RedisModuleCtx *ctx, LabelStore *store, const char *graphName,
-                        NodeID id, EntityProperty *oldval, SIValue *newval);
-
 /* Prepare output text for EXPLAIN calls on "drop index" and "create index" */
 const char* Index_OpPrint(AST_IndexNode *indexNode);
-
-/* Build a new iterator to traverse all indexed values of the specified type. */
-IndexIter* IndexIter_Create(Index *idx, SIType type);
-
-/* Update the lower or upper bound of an index iterator based on a constant predicate filter
- * (if that filter represents a narrower bound than the current one). */
-bool IndexIter_ApplyBound(IndexIter *iter, SIValue *bound, int op);
-
-/* Returns a pointer to the next Node ID in the index, or NULL if the iterator has been depleted. */
-GrB_Index* IndexIter_Next(IndexIter *iter);
-
-/* Reset an iterator to its original position. */
-void IndexIter_Reset(IndexIter *iter);
-
-/* Free an index iterator. */
-void IndexIter_Free(IndexIter *iter);
 
 /* Free an index object and all its members (skiplists and strings) */
 void Index_Free(Index *idx);

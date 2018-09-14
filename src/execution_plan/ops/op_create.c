@@ -171,11 +171,7 @@ void _SetEntitiesProperties(OpCreate *op, Vector *entities, LabelStore **stores,
         new_entity->id = baseID + idx;
         tempEntity->id = new_entity->id;    /* Formed edges refer to tempEntity. */
         tempEntity->properties = NULL;      /* Do not free temp_node's property set. */
-        // TODO as a first-pass solution, we'll invoke this for every new node. Ultimately,
-        // I think that this is wildly redundant - possibly resolve with triemap union/intersection
-        // functionality
-        // Also, skip this for graphs with 0 indices, etc
-        if (stores && stores[idx] != NULL) {
+        if (op->g->index_ctr > 0 && stores && stores[idx] != NULL) {
             Indices_AddNode(op->ctx, stores[idx], op->graph_name, (Node*)new_entity);
         }
         op->result_set->stats.properties_set += new_entity->prop_count;
