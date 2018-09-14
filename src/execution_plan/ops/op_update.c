@@ -50,7 +50,6 @@ void _OpUpdate_BuildUpdateEvalCtx(OpUpdate* op, AST_SetNode *setNode, QueryGraph
 
         /* Get a reference to the updated entity. */
         op->update_expressions[i].entity = QueryGraph_GetEntityRef(graph, element->entity->alias);
-        op->update_expressions[i].alias = strdup(element->entity->alias);
         op->update_expressions[i].property = strdup(element->entity->property);
         op->update_expressions[i].exp = AR_EXP_BuildFromAST(element->exp, graph);
     }
@@ -60,7 +59,7 @@ void _OpUpdate_BuildUpdateEvalCtx(OpUpdate* op, AST_SetNode *setNode, QueryGraph
  * more than once, we'll have to delay updates until all entities 
  * are processed, and so _OpUpdate_QueueUpdate will queue up 
  * all information necessary to perform an update. */
-void _OpUpdate_QueueUpdate(OpUpdate *op, EntityUpdateEvalCtx *eval_ctx, EntityProperty *dest_entity_prop, SIValue new_value) {
+void _OpUpdate_QueueUpdate(OpUpdate *op, NodeID id, EntityProperty *dest_entity_prop, SIValue new_value) {
     /* Make sure we've got enough room in queue. */
     if(op->entities_to_update_count == op->entities_to_update_cap) {
         op->entities_to_update_cap *= 2;
@@ -68,9 +67,8 @@ void _OpUpdate_QueueUpdate(OpUpdate *op, EntityUpdateEvalCtx *eval_ctx, EntityPr
                                          op->entities_to_update_cap * sizeof(EntityUpdateCtx));
     }
 
-    int i = op->entities_to_update_count;
-    op->entities_to_update[i].alias = eval_ctx->alias;
-    op->entities_to_update[i].id = (*eval_ctx->entity)->id;
+    size_t i = op->entities_to_update_count;
+    op->entities_to_update[i].id = id;
     op->entities_to_update[i].dest_entity_prop = dest_entity_prop;
     op->entities_to_update[i].new_value = new_value;
     op->entities_to_update_count++;
@@ -85,14 +83,16 @@ OpResult OpUpdateConsume(OpBase *opBase, QueryGraph* graph) {
     /* Evaluate each update expression and store result 
      * for later execution. */
     EntityUpdateEvalCtx *update_expression = op->update_expressions;
-    for(int i = 0; i < op->update_expressions_count; i++, update_expression++) {
+    for(size_t i = 0; i < op->update_expressions_count; i++, update_expression++) {
         SIValue new_value = AR_EXP_Evaluate(update_expression->exp);
         /* Find ref to property. */
         GraphEntity *entity = *update_expression->entity;
+        // TODO verify that the entity is a node
+        NodeID id = entity->id;
         int j = 0;
         for(; j < entity->prop_count; j++) {
             if(strcmp(entity->properties[j].name, update_expression->property) == 0) {
-                _OpUpdate_QueueUpdate(op, update_expression, &entity->properties[j], new_value);
+                _OpUpdate_QueueUpdate(op, id, &entity->properties[j], new_value);
                 break;
             }
         }
@@ -102,7 +102,7 @@ OpResult OpUpdateConsume(OpBase *opBase, QueryGraph* graph) {
              * For the time being set the new property value to PROPERTY_NOTFOUND.
              * Once we commit the update, we'll set the actual value. */
             GraphEntity_Add_Properties(entity, 1, &update_expression->property, PROPERTY_NOTFOUND);
-            _OpUpdate_QueueUpdate(op, update_expression, &entity->properties[entity->prop_count-1], new_value);
+            _OpUpdate_QueueUpdate(op, id, &entity->properties[entity->prop_count-1], new_value);
         }
     }
 
@@ -117,13 +117,6 @@ OpResult OpUpdateReset(OpBase *ctx) {
  * before _UpdateEntities, while we still have access to the original property. */
 void _UpdateIndices(OpUpdate *op) {
     for(int i = 0; i < op->entities_to_update_count; i++) {
-        // Locate node label
-        // TODO still necessary?
-        char *alias = op->entities_to_update[i].alias;
-        AST_GraphEntity* ge = MatchClause_GetEntity(op->ast->matchNode, alias);
-        // Only interested in nodes, not edges
-        if (ge->t != N_ENTITY) continue;
-
         // Retrieve and iterate over all labels associated with each node
         size_t *node_labels = NULL;
         size_t label_count = Graph_GetNodeLabels(op->g, op->entities_to_update[i].id, &node_labels);
@@ -194,7 +187,6 @@ void OpUpdateFree(OpBase *ctx) {
     
     /* Free each UpdateEval context. */
     for(int i = 0; i < op->update_expressions_count; i++) {
-        free(op->update_expressions[i].alias);
         free(op->update_expressions[i].property);
         AR_EXP_Free(op->update_expressions[i].exp);
     }

@@ -17,13 +17,11 @@
 
 typedef struct {
     GraphEntity **entity;   /* Entity to update. */
-    char *alias;
     char *property;         /* Property to update. */
     AR_ExpNode *exp;        /* Expression to evaluate. */
 } EntityUpdateEvalCtx;
 
 typedef struct {
-    char *alias; // can also use label
     NodeID id;
     EntityProperty *dest_entity_prop;   /* Entity's property to update. */
     SIValue new_value;                  /* Constant value to set. */
