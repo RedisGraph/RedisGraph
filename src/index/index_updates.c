@@ -27,7 +27,8 @@ void _index_UpdateNodeID(Index *idx, NodeID prev_id, NodeID new_id, SIValue *val
 
 TrieMap* Indices_BuildModificationMap(RedisModuleCtx *ctx, Graph *g, const char *graph_name, NodeID *IDs, NodeID *replacement_IDs, size_t IDCount) {
   TrieMap *index_updates = NewTrieMap();
-  char *update_key;
+  // The maximum possible number of digits in a size_t is 20 
+  char update_key[21];
   for (int i = 0; i < IDCount; i ++) {
     NodeID current_node = IDs[i];
     Node *delete_candidate = Graph_GetNode(g, current_node);
@@ -45,8 +46,7 @@ TrieMap* Indices_BuildModificationMap(RedisModuleCtx *ctx, Graph *g, const char 
         // This property is not indexed; we can ignore it
         if (!index_id || index_id == TRIEMAP_NOTFOUND) continue;
 
-        // TODO probably better options than this for forming a key
-        asprintf(&update_key, "%zu", *index_id);
+        snprintf(update_key, 21, "%zu", *index_id);
 
         // Retrieve the Vector of pending updates to this index
         Vector *to_update = TrieMap_Find(index_updates, update_key, strlen(update_key));
@@ -63,8 +63,6 @@ TrieMap* Indices_BuildModificationMap(RedisModuleCtx *ctx, Graph *g, const char 
         // can also push index of property within node if desired, space-computation tradeoff
         Vector_Push(to_update, current_node);
         if (replacement_IDs) Vector_Push(to_update, replacement_IDs[i]);
-
-        free(update_key);
       }
     }
     free(node_labels);
