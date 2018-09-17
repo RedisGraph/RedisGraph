@@ -80,7 +80,13 @@ int Index_Delete(RedisModuleCtx *ctx, const char *graphName, Graph *g, const cha
 
   size_t *index_id = TrieMap_Find(store->properties, prop, strlen(prop));
 
-  if (index_id == NULL) return INDEX_FAIL;
+  if (index_id == TRIEMAP_NOTFOUND) {
+    assert(0);
+  } else if (index_id == NULL) {
+    return INDEX_FAIL;
+  }
+
+  size_t dest_id = *index_id;
 
   // Open key with write access
   RedisModuleKey *key = Index_LookupKey(ctx, graphName, *index_id, true);
@@ -91,11 +97,40 @@ int Index_Delete(RedisModuleCtx *ctx, const char *graphName, Graph *g, const cha
     return INDEX_FAIL;
   }
 
-  RedisModule_DeleteKey(key);
-  RedisModule_CloseKey(key);
+  // Decrement the index counter
+  g->index_ctr --;
 
   // NULL out the dropped index in its label schema
   LabelStore_AssignValue(store, prop, NULL);
+
+  size_t src_id = g->index_ctr;
+  // No need to migrate if we're replacing the last ID
+  if (dest_id == src_id) {
+    RedisModule_DeleteKey(key);
+    RedisModule_CloseKey(key);
+    return INDEX_OK;
+  }
+
+  // retrieve last index
+  RedisModuleKey *src_key = Index_LookupKey(ctx, graphName, src_id, true);
+  Index *src = RedisModule_ModuleTypeGetValue(src_key);
+  src->id = dest_id;
+  // Update the label schema
+  // TODO multi-label will make this inadequate
+  LabelStore *src_store = LabelStore_Get(ctx, STORE_NODE, graphName, src->label);
+  // Update the ID of the retained index in its label schema
+  size_t *updated_id = malloc(sizeof(size_t));
+  *updated_id = dest_id;
+  LabelStore_AssignValue(src_store, src->property, updated_id);
+
+  // Don't allow the migrated index to be freed on keyspace update
+  src->keepalive ++;
+  // Update the Redis keyspace
+  RedisModule_ModuleTypeSetValue(key, IndexRedisModuleType, src);
+  RedisModule_DeleteKey(src_key);
+  RedisModule_CloseKey(src_key);
+
+  RedisModule_CloseKey(key);
 
   return INDEX_OK;
 }
@@ -112,6 +147,7 @@ Index* buildIndex(Graph *g, const GrB_Matrix label_matrix, const char *label, co
 
   index->label = strdup(label);
   index->property = strdup(prop_str);
+  index->keepalive = 0;
 
   initializeSkiplists(index);
 
@@ -204,6 +240,7 @@ const char* Index_OpPrint(AST_IndexNode *indexNode) {
 }
 
 void Index_Free(Index *idx) {
+  if (idx->keepalive-- > 0) return;
   skiplistFree(idx->string_sl);
   skiplistFree(idx->numeric_sl);
   free(idx->label);

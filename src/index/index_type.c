@@ -99,6 +99,7 @@ void *IndexType_RdbLoad(RedisModuleIO *rdb, int encver) {
   idx->id = id;
   idx->label = strdup(label);
   idx->property = strdup(property);
+  idx->keepalive = 0;
 
   initializeSkiplists(idx);
 

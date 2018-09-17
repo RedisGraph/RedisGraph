@@ -33,6 +33,7 @@ typedef struct {
   char *property;
   skiplist *string_sl;
   skiplist *numeric_sl;
+  int keepalive; // lifecycle management counter to prevent early freeing
 } Index;
 
 RedisModuleKey* Index_LookupKey(RedisModuleCtx *ctx, const char *graph, size_t index_id, bool write_access);
