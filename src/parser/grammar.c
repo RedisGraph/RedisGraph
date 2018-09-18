@@ -29,7 +29,7 @@
 	#include <stdlib.h>
 	#include <stdio.h>
 	#include <assert.h>
-	#include <math.h>
+	#include <limits.h>
 	#include "token.h"	
 	#include "grammar.h"
 	#include "ast.h"
@@ -1541,7 +1541,7 @@ static void yy_reduce(
       case 42: /* edgeLength ::= MUL INTEGER DOTDOT */
 #line 251 "grammar.y"
 {
-	yymsp[-2].minor.yy138 = New_AST_LinkLength(yymsp[-1].minor.yy0.intval, INFINITY);
+	yymsp[-2].minor.yy138 = New_AST_LinkLength(yymsp[-1].minor.yy0.intval, UINT_MAX-1);
 }
 #line 1547 "grammar.c"
         break;
@@ -1562,7 +1562,7 @@ static void yy_reduce(
       case 45: /* edgeLength ::= MUL */
 #line 266 "grammar.y"
 {
-	yymsp[0].minor.yy138 = New_AST_LinkLength(1, INFINITY);
+	yymsp[0].minor.yy138 = New_AST_LinkLength(1, UINT_MAX-1);
 }
 #line 1568 "grammar.c"
         break;

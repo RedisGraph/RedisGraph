@@ -10,7 +10,7 @@
 	#include <stdlib.h>
 	#include <stdio.h>
 	#include <assert.h>
-	#include <math.h>
+	#include <limits.h>
 	#include "token.h"	
 	#include "grammar.h"
 	#include "ast.h"
@@ -249,7 +249,7 @@ edgeLength(A) ::= MUL INTEGER(B) DOTDOT INTEGER(C). {
 
 // *minHops..
 edgeLength(A) ::= MUL INTEGER(B) DOTDOT. {
-	A = New_AST_LinkLength(B.intval, INFINITY);
+	A = New_AST_LinkLength(B.intval, UINT_MAX-1);
 }
 
 // *..maxHops
@@ -264,7 +264,7 @@ edgeLength(A) ::= MUL INTEGER(B). {
 
 // *
 edgeLength(A) ::= MUL. {
-	A = New_AST_LinkLength(1, INFINITY);
+	A = New_AST_LinkLength(1, UINT_MAX-1);
 }
 
 %type properties {Vector*}

@@ -38,7 +38,7 @@ AST_LinkEntity* New_AST_LinkEntity(char *alias, char *label, Vector *properties,
 	return le;
 }
 
-AST_LinkLength* New_AST_LinkLength(unsigned int minHops, float maxHops) {
+AST_LinkLength* New_AST_LinkLength(unsigned int minHops, unsigned int maxHops) {
 	AST_LinkLength *linkLength = malloc(sizeof(AST_LinkLength));
 	linkLength->minHops = minHops;
 	linkLength->maxHops = maxHops;

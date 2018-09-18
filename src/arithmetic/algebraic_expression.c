@@ -148,8 +148,10 @@ AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(AlgebraicExpr
         if(_referred_entity(edge->ge.alias, ref_entities))
             iexp->edge = QueryGraph_GetEdgeRef(q, e);
         /* If this is a variable length edge, remember edge length. */
-        if(edge->length)
+        if(edge->length) {
             iexp->edgeLength = edge->length;
+            iexp->edge = QueryGraph_GetEdgeRef(q, e);
+        }
 
         dest = e->dest;
         src = e->src;
@@ -377,7 +379,6 @@ AlgebraicExpressionResult *AlgebraicExpression_Execute(AlgebraicExpression *ae) 
         GrB_Descriptor_free(&desc);
     }    
 
-    // if(ae->_transpose) GrB_transpose(C, NULL, NULL, C, NULL);
     return _AlgebraicExpressionResult_New(C, ae);
 }
 

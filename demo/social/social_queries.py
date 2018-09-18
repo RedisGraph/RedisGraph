@@ -173,6 +173,28 @@ number_of_vacations_per_person_query = QueryInfo(
                      ['Valerie Abigail Arad', '2.000000']]
 )
 
+all_reachable_friends_query = QueryInfo(
+    query="""
+    MATCH (a {name:'Roi Lipman'})-[:friend*]->(b)
+             RETURN b.name as reachable_friends
+             ORDER BY b.name""",
+    description='Find all reachable friends',
+    max_run_time_ms=0.3,
+    expected_result=[['Ailon Velger'],
+                     ['Alon Fital'],
+                     ['Boaz Arad'],
+                     ['Gal Derriere'],
+                     ['Jane Chernomorin'],
+                     ['Lucy Yanfital'],
+                     ['Mor Yesharim'],
+                     ['Noam Nativ'],
+                     ['Omri Traub'],
+                     ['Ori Laslo'],
+                     ['Shelly Laslo Rooz'],
+                     ['Tal Doron'],
+                     ['Valerie Abigail Arad']]
+)
+
 delete_friendships_query = QueryInfo(
     query="""MATCH (ME:person {name:'Roi Lipman'})-[e:friend]->() DELETE e""",
     description='Delete frienships',
@@ -221,6 +243,7 @@ queries_info = [
     visit_purpose_of_each_country_i_visited_query,
     who_was_on_business_trip_query,
     number_of_vacations_per_person_query,
+    all_reachable_friends_query,
     delete_friendships_query,
     delete_person_query,
     post_delete_label_query

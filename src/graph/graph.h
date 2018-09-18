@@ -101,11 +101,19 @@ void Graph_GetEdgesConnectingNodes (
     Vector *edges
 );
 
-// Get both incoming and outgoing node edges.
+// Get node edges.
+typedef enum {
+    GRAPH_EDGE_DIR_INCOMING,
+    GRAPH_EDGE_DIR_OUTGOING,
+    GRAPH_EDGE_DIR_BOTH,
+} GRAPH_EDGE_DIR;
+
 void Graph_GetNodeEdges (
     const Graph *g,
     const Node *n,
-    Vector *edges
+    Vector *edges,
+    GRAPH_EDGE_DIR dir,
+    int edgeType
 );
 
 // Removes a set of nodes and all of their connections
