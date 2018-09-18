@@ -18,6 +18,7 @@ Patterns are fully supported with the exceptions:
 - Path variables (alternating sequence of nodes and relationships)
 
 ### Composite types
+  **Unsupported:**
 - Lists
 - Maps
 
