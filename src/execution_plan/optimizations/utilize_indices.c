@@ -63,16 +63,16 @@ void utilizeIndices(RedisModuleCtx *ctx, const char *graph_name, ExecutionPlan *
   FT_FilterNode *ft;
   char *label;
 
-  IndexIter *iter = NULL;
-  Index *idx = NULL;
-
-  // Variables to be used when comparing filters against avalible indices
+  // Variables to be used when comparing filters against available indices
   char *filterProp = NULL;
   SIValue constVal;
   int lhsType, rhsType;
   int op = 0;
 
   while (Vector_Pop(scanOps, &scanOp)) {
+    IndexIter *iter = NULL;
+    Index *idx = NULL;
+
     /* Get the label string for the scan target.
      * The label will be used to retrieve the index. */
     label = (*scanOp->node)->label;
