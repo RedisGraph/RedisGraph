@@ -28,6 +28,7 @@ pages:
     - 'Commands': commands.md
     - 'Design': design.md
     - 'Contributor agreement': contrib.md
+    - 'Cypher coverage': cypher_support.md
 
 markdown_extensions:
   - admonition
