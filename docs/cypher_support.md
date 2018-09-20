@@ -3,22 +3,22 @@ RedisGraph implements a subset of the Cypher language, which is growing as devel
 This document is based on comparison to the Cypher Query Language Reference (version 9), available at [OpenCypher Resources](https://www.opencypher.org/resources).
 
 ## Patterns
-Patterns are fully supported with the exceptions:
-- Variable-length paths (in progress)
-- The OR (`|`) operator to explicitly specify a set of relation types (`MATCH (:person)-[:knows|related]->(:person)`)
+Patterns are fully supported with the exception of the OR (`[:rel_a|:rel_b]`) operator to explicitly specify multiple relation types.
 
 ## Types
 ### Structural types
 + Nodes
-  - Nodes are fully supported save that a node can only be associated with a single label.
+    - Nodes are fully supported save that a node can only be associated with a single label.
 + Edges
-  - Undirected edges are not supported.
+    - Undirected edges are not supported.
 
   **Unsupported:**
+
 - Path variables (alternating sequence of nodes and relationships)
 
 ### Composite types
   **Unsupported:**
+
 - Lists
 - Maps
 
@@ -27,6 +27,7 @@ Patterns are fully supported with the exceptions:
 + String literals
 
   **Unsupported:**
+
 - Hexadecimal and octal numerics
 - Booleans
 
@@ -44,6 +45,7 @@ We do not support any of these properties at the type level, meaning nodes and e
 + MATCH
 
   **Unsupported:**
+
 - OPTIONAL MATCH
 - MANDATORY MATCH
 
@@ -52,33 +54,37 @@ We do not support any of these properties at the type level, meaning nodes and e
 + AS
 
   **Unsupported:**
+
 - WITH
 - UNWIND
 
 ### Reading sub-clauses
 + WHERE
 + ORDER BY
-  - ASC and DESC are supported at the level of the sub-clause, but not for individual properties (issue #96)
+    - ASC and DESC are supported at the level of the sub-clause, but not for individual properties (issue #96)
 + SKIP
 + LIMIT
 
 ### Writing Clauses
 + CREATE
 + DELETE
-  + We actually implement DETACH DELETE, the distinction being that relationships invalidated by node deletions are automatically deleted.
+    + We actually implement DETACH DELETE, the distinction being that relationships invalidated by node deletions are automatically deleted.
 + SET
 
   **Unsupported:**
+
 - REMOVE (to modify properties)
 
 ### Reading/Writing Clauses
 + MERGE
 
   **Unsupported:**
+
 - CALL (stored procedures)
 
 ### Set Operations
 **Unsupported:**
+
 - UNION / UNION ALL
 
 ## Functions
@@ -86,6 +92,7 @@ We do not support any of these properties at the type level, meaning nodes and e
 + id
 
   **Unsupported:**
+
 - coalesce
 - timestamp
 - Casting functions (toBoolean, toFloat, toInteger)
@@ -104,6 +111,7 @@ We do not support any of these properties at the type level, meaning nodes and e
 + sum
 
   **Unsupported:**
+
 - collect
 
 ### Math functions - numeric
@@ -113,6 +121,7 @@ We do not support any of these properties at the type level, meaning nodes and e
 + sign
 
   **Unsupported:**
+
 - rand
 - round
 
@@ -129,10 +138,12 @@ We do not support any of these properties at the type level, meaning nodes and e
 + toString
 
   **Unsupported:**
+
 - replace
 - split
 
 ### Unsupported function classes
+
 - Logarithmetic math functions
 - Trigonometric math functions
 - List functions
@@ -146,6 +157,7 @@ We do not support any of these properties at the type level, meaning nodes and e
 + Multiplication, addition, subtraction, division
 
   **Unsupported:**
+
 - Modulo, exponentiation
 
 ### String operators
@@ -157,6 +169,7 @@ String operators (STARTS WITH, ENDS WITH, CONTAINS) are not supported, though eq
 + NOT (currently implemented with the syntax `!=`)
 
   **Unsupported:**
+
 - XOR
 
 ### Other
