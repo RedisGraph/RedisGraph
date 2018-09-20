@@ -459,7 +459,7 @@ TEST_F(GraphTest, RemoveNodes)
     //==============================================================================
 
     // First node should have 2 edges.
-    Graph_GetNodeEdges(g, Graph_GetNode(g, 0), edges);
+    Graph_GetNodeEdges(g, Graph_GetNode(g, 0), edges, GRAPH_EDGE_DIR_BOTH, GRAPH_NO_RELATION);
     EXPECT_EQ(Vector_Size(edges), 2);
     Vector_Clear(edges);
 

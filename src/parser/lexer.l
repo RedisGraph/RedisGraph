@@ -82,6 +82,7 @@ int yycolumn = 1;
 "<" 	{ return LT; }
 "-" 	{ return DASH; }
 ":" 	{ return COLON; }
+".." 	{ return DOTDOT; }
 "." 	{ return DOT; }
 "/"   { return DIV; }
 "*"   { return MUL; }

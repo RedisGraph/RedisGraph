@@ -55,6 +55,11 @@ void TuplesIter_reuse
     GrB_Matrix A
 ) ;
 
+void TuplesIter_clear
+(
+    TuplesIter *iter
+) ;
+
 void TuplesIter_free
 (
     TuplesIter *iter

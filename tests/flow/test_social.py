@@ -183,21 +183,60 @@ class SocialFlowTest(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.number_of_vacations_per_person_query)
 
-    def test13_delete_friendships(self):
+    def test13_all_reachable_friends_query(self):
+        global redis_graph
+
+        actual_result = redis_graph.query(queries.all_reachable_friends_query.query)
+
+        # assert result set
+        self._assert_only_expected_results_are_in_actual_results(
+            actual_result,
+            queries.all_reachable_friends_query)
+
+        # assert query run time
+        self._assert_run_time(actual_result, queries.all_reachable_friends_query)
+    
+    def test14_all_reachable_countries_query(self):
+        global redis_graph
+
+        actual_result = redis_graph.query(queries.all_reachable_countries_query.query)
+
+        # assert result set
+        self._assert_only_expected_results_are_in_actual_results(
+            actual_result,
+            queries.all_reachable_countries_query)
+
+        # assert query run time
+        self._assert_run_time(actual_result, queries.all_reachable_countries_query)
+    
+    def test15_all_reachable_entities_query(self):
+        global redis_graph
+
+        actual_result = redis_graph.query(queries.all_reachable_entities_query.query)
+
+        # assert result set
+        self._assert_only_expected_results_are_in_actual_results(
+            actual_result,
+            queries.all_reachable_entities_query)
+
+        # assert query run time
+        self._assert_run_time(actual_result, queries.all_reachable_entities_query)
+
+    def test16_delete_friendships(self):
         global redis_graph
         actual_result = redis_graph.query(queries.delete_friendships_query.query)
 
         # assert query run time
         self._assert_run_time(actual_result, queries.delete_friendships_query)
 
-    def test14_delete_person(self):
+    def test17_delete_person(self):
         global redis_graph
         actual_result = redis_graph.query(queries.delete_person_query.query)
 
         # assert query run time
         self._assert_run_time(actual_result, queries.delete_person_query)
 
-    def test_15_post_delete_label(self):
+    def test_18_post_delete_label(self):
         global redis_graph
         actual_result = redis_graph.query(queries.post_delete_label_query.query)
 

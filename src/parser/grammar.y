@@ -10,6 +10,7 @@
 	#include <stdlib.h>
 	#include <stdio.h>
 	#include <assert.h>
+	#include <limits.h>
 	#include "token.h"	
 	#include "grammar.h"
 	#include "ast.h"
@@ -215,23 +216,55 @@ link(A) ::= LEFT_ARROW edge(B) DASH . {
 
 %type edge {AST_LinkEntity*}
 // Empty edge []
-edge(A) ::= LEFT_BRACKET properties(B) RIGHT_BRACKET . { 
-	A = New_AST_LinkEntity(NULL, NULL, B, N_DIR_UNKNOWN);
+edge(A) ::= LEFT_BRACKET properties(B) edgeLength(C) RIGHT_BRACKET . { 
+	A = New_AST_LinkEntity(NULL, NULL, B, N_DIR_UNKNOWN, C);
 }
 
 // Edge with alias [alias]
 edge(A) ::= LEFT_BRACKET UQSTRING(B) properties(C) RIGHT_BRACKET . { 
-	A = New_AST_LinkEntity(B.strval, NULL, C, N_DIR_UNKNOWN);
+	A = New_AST_LinkEntity(B.strval, NULL, C, N_DIR_UNKNOWN, NULL);
 }
 
 // Edge with label [:label]
-edge(A) ::= LEFT_BRACKET COLON UQSTRING(B) properties(C) RIGHT_BRACKET . { 
-	A = New_AST_LinkEntity(NULL, B.strval, C, N_DIR_UNKNOWN);
+edge(A) ::= LEFT_BRACKET COLON UQSTRING(B) edgeLength(C) properties(D) RIGHT_BRACKET . { 
+	A = New_AST_LinkEntity(NULL, B.strval, D, N_DIR_UNKNOWN, C);
 }
 
 // Edge with alias and label [alias:label]
 edge(A) ::= LEFT_BRACKET UQSTRING(B) COLON UQSTRING(C) properties(D) RIGHT_BRACKET . { 
-	A = New_AST_LinkEntity(B.strval, C.strval, D, N_DIR_UNKNOWN);
+	A = New_AST_LinkEntity(B.strval, C.strval, D, N_DIR_UNKNOWN, NULL);
+}
+
+%type edgeLength {AST_LinkLength*}
+
+// Edge length not specified.
+edgeLength(A) ::= . {
+	A = NULL;
+}
+
+// *minHops..maxHops
+edgeLength(A) ::= MUL INTEGER(B) DOTDOT INTEGER(C). {
+	A = New_AST_LinkLength(B.intval, C.intval);
+}
+
+// *minHops..
+edgeLength(A) ::= MUL INTEGER(B) DOTDOT. {
+	A = New_AST_LinkLength(B.intval, UINT_MAX-1);
+}
+
+// *..maxHops
+edgeLength(A) ::= MUL DOTDOT INTEGER(B). {
+	A = New_AST_LinkLength(1, B.intval);
+}
+
+// *hops
+edgeLength(A) ::= MUL INTEGER(B). {
+	A = New_AST_LinkLength(1, B.intval);
+}
+
+// *
+edgeLength(A) ::= MUL. {
+	A = New_AST_LinkLength(1, UINT_MAX-1);
 }
 
 %type properties {Vector*}

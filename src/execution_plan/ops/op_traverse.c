@@ -95,7 +95,8 @@ OpResult TraverseReset(OpBase *ctx) {
 /* Frees Traverse */
 void TraverseFree(OpBase *ctx) {
     Traverse *op = (Traverse*)ctx;
-    TuplesIter_free(op->it);
+    if(op->it)
+        TuplesIter_free(op->it);
 
     if(op->edges)
         Vector_Free(op->edges);

@@ -106,7 +106,7 @@ void _Graph_ReplaceDeletedNode(Graph *g, GrB_Vector zero, NodeID replacement, No
     
     // Get edges of replacement node.
     Vector *edges = NewVector(Edge*, 32);
-    Graph_GetNodeEdges(g, replacementNode, edges);
+    Graph_GetNodeEdges(g, replacementNode, edges, GRAPH_EDGE_DIR_BOTH, GRAPH_NO_RELATION);
     size_t edgeCount = Vector_Size(edges);
 
     // Update replacement node ID.
@@ -392,43 +392,49 @@ void Graph_GetEdgesConnectingNodes(const Graph *g, NodeID src, NodeID dest, int 
 
 /* Retrieves all either incoming or outgoing edges 
  * to/from given node N, depending on given direction. */
-void Graph_GetNodeEdges(const Graph *g, const Node *n, Vector *edges) {
+void Graph_GetNodeEdges(const Graph *g, const Node *n, Vector *edges, GRAPH_EDGE_DIR dir, int edgeType) {
     assert(g && n && edges);
     NodeID srcNodeID;
     NodeID destNodeID;
-    TuplesIter *tupleIter;
+    TuplesIter *tupleIter = NULL;
     size_t nodeCount = Graph_NodeCount(g);
     GrB_Matrix M = Graph_GetAdjacencyMatrix(g);
 
-    // Outgoing.    
-    srcNodeID = n->id;
-    GrB_Vector outgoing;
-    GrB_Vector_new(&outgoing, GrB_BOOL, nodeCount);
-    GrB_Col_extract(outgoing, NULL, NULL, M, GrB_ALL, nodeCount, n->id, NULL);
+    // Outgoing.
+    if(dir == GRAPH_EDGE_DIR_OUTGOING || dir == GRAPH_EDGE_DIR_BOTH) {
+        srcNodeID = n->id;
+        GrB_Vector outgoing;
+        GrB_Vector_new(&outgoing, GrB_BOOL, nodeCount);
+        GrB_Col_extract(outgoing, NULL, NULL, M, GrB_ALL, nodeCount, n->id, NULL);
 
-    tupleIter = TuplesIter_new((GrB_Matrix)outgoing);
-    while(TuplesIter_next(tupleIter, &destNodeID, NULL) != TuplesIter_DEPLETED)
-        Graph_GetEdgesConnectingNodes(g, n->id, destNodeID, GRAPH_NO_RELATION, edges);
+        tupleIter = TuplesIter_new((GrB_Matrix)outgoing);
+        while(TuplesIter_next(tupleIter, &destNodeID, NULL) != TuplesIter_DEPLETED)
+            Graph_GetEdgesConnectingNodes(g, n->id, destNodeID, edgeType, edges);
+
+        GrB_Vector_free(&outgoing);
+    }
 
     // Incoming.
-    GrB_Vector incoming;
-    GrB_Vector_new(&incoming, GrB_BOOL, nodeCount);
+    if(dir == GRAPH_EDGE_DIR_INCOMING || dir == GRAPH_EDGE_DIR_BOTH) {
+        GrB_Vector incoming;
+        GrB_Vector_new(&incoming, GrB_BOOL, nodeCount);
 
-    GrB_Descriptor desc;
-    GrB_Descriptor_new(&desc);
-    GrB_Descriptor_set(desc, GrB_INP0, GrB_TRAN);        
-    
-    GrB_Col_extract(incoming, NULL, NULL, M, GrB_ALL, nodeCount, n->id, desc);
-    GrB_Descriptor_free(&desc);
+        GrB_Descriptor desc;
+        GrB_Descriptor_new(&desc);
+        GrB_Descriptor_set(desc, GrB_INP0, GrB_TRAN);        
+        
+        GrB_Col_extract(incoming, NULL, NULL, M, GrB_ALL, nodeCount, n->id, desc);
+        GrB_Descriptor_free(&desc);
 
-    TuplesIter_reuse(tupleIter, (GrB_Matrix)incoming);
-    while(TuplesIter_next(tupleIter, &srcNodeID, NULL) != TuplesIter_DEPLETED)
-        Graph_GetEdgesConnectingNodes(g, srcNodeID, n->id, GRAPH_NO_RELATION, edges);
+        TuplesIter_reuse(tupleIter, (GrB_Matrix)incoming);
+        while(TuplesIter_next(tupleIter, &srcNodeID, NULL) != TuplesIter_DEPLETED)
+            Graph_GetEdgesConnectingNodes(g, srcNodeID, n->id, edgeType, edges);
+
+        GrB_Vector_free(&incoming);
+    }
 
     // Clean up.
-    TuplesIter_free(tupleIter);
-    GrB_Vector_free(&outgoing);
-    GrB_Vector_free(&incoming);
+    TuplesIter_free(tupleIter);    
 }
 
 void _Graph_DeleteEntities(Graph *g, EntityID *IDs, size_t IDCount, DataBlock *entityStore) {
@@ -516,7 +522,7 @@ void Graph_DeleteNodes(Graph *g, NodeID *IDs, size_t IDCount) {
     Vector *edges = NewVector(Edge*, 32);
     for(int i = 0; i < IDCount; i++) {
         Node *n = Graph_GetNode(g, IDs[i]);
-        Graph_GetNodeEdges(g, n, edges);
+        Graph_GetNodeEdges(g, n, edges, GRAPH_EDGE_DIR_BOTH, GRAPH_NO_RELATION);
     }
 
     // Compose a sorted array of edge ids.
@@ -617,9 +623,15 @@ GrB_Matrix Graph_GetLabel(const Graph *g, int label_idx) {
 }
 
 GrB_Matrix Graph_GetRelation(const Graph *g, int relation_idx) {
-    assert(g && relation_idx < g->relation_count);
-    GrB_Matrix m = g->_relations[relation_idx];
-    _Graph_ResizeMatrix(g, m);
+    assert(g && (relation_idx == GRAPH_NO_RELATION || relation_idx < g->relation_count));
+    GrB_Matrix m;
+
+    if(relation_idx == GRAPH_NO_RELATION) {
+        m = Graph_GetAdjacencyMatrix(g);
+    } else {
+        m = g->_relations[relation_idx];
+        _Graph_ResizeMatrix(g, m);
+    }
     return m;
 }
 
