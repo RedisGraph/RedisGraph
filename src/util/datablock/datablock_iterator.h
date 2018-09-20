@@ -30,6 +30,8 @@ DataBlockIterator *DataBlockIterator_New (
     int step            // To scan entire range, set step to 1.
 );
 
+#define DataBlockIterator_Position(a) (a)->_current_pos
+
 // Clones given iterator.
 DataBlockIterator *DataBlockIterator_Clone (
     const DataBlockIterator *it  // Iterator to clone.
