@@ -101,13 +101,12 @@ void Graph_GetEdgesConnectingNodes (
     Vector *edges
 );
 
-// Get node edges.
 typedef enum {
     GRAPH_EDGE_DIR_INCOMING,
     GRAPH_EDGE_DIR_OUTGOING,
     GRAPH_EDGE_DIR_BOTH,
 } GRAPH_EDGE_DIR;
-
+// Get node edges.
 void Graph_GetNodeEdges (
     const Graph *g,
     const Node *n,

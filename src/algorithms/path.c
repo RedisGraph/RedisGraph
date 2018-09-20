@@ -9,22 +9,17 @@
 #include "../util/arr.h"
 
 Path Path_new(size_t len) {
-    Path p = array_new(Edge*, len);
-    return p;
+    return array_new(Edge*, len);
 }
 
 Path Path_append(Path p, Edge *e) {
-    p = array_append(p, e);
-    return p;
+    return array_append(p, e);
 }
 
 Edge *Path_pop(Path p) {
     size_t pathLen = array_len(p);
     if(pathLen == 0) return NULL;
-    
-    Edge *e = p[pathLen-1];
-    array_pop(p);
-    return e;
+    return array_pop(p);
 }
 
 size_t Path_len(const Path p) {
@@ -44,8 +39,8 @@ Path Path_clone(const Path p) {
 
 void Path_print(Path p) {
     assert(p);
-    Edge *e;
     NodeID n;
+    Edge *e = NULL;
     int pathLen = Path_len(p);
 
     for(int i = 0; i < pathLen; i++) {

@@ -20,7 +20,9 @@ OpBase* NewCondVarLenTraverseOp(AlgebraicExpression *ae, unsigned int minHops, u
     condVarLenTraverse->destNode = ae->dest_node;
     condVarLenTraverse->minHops = minHops;
     condVarLenTraverse->maxHops = maxHops;
-    condVarLenTraverse->paths = array_new(Path, 32);
+    condVarLenTraverse->pathsCount = 0;
+    condVarLenTraverse->pathsCap = 32;
+    condVarLenTraverse->paths = malloc(sizeof(Path) * condVarLenTraverse->pathsCap);
 
     // Set our Op operations
     OpBase_Init(&condVarLenTraverse->op);
@@ -45,18 +47,15 @@ OpResult CondVarLenTraverseConsume(OpBase *opBase, QueryGraph* graph) {
     OpBase *child = op->op.children[0];
 
     OpResult res;
-    GrB_Index src_id;
-    GrB_Index dest_id;
 
     /* Not initialized. */
-    while(array_len(op->paths) == 0) {
+    while(op->pathsCount == 0) {
         res = child->consume(child, graph);
         if(res != OP_OK) return res;
-        printf("op->maxHops: %d\n", op->maxHops);
-        AllPaths(op->g, op->relationID, (*op->srcNode)->id, op->minHops, op->maxHops, &op->paths);
+        op->pathsCount = AllPaths(op->g, op->relationID, (*op->srcNode)->id, op->minHops, op->maxHops, &op->pathsCap, &op->paths);
     }
 
-    Path p = array_pop(op->paths);
+    Path p = op->paths[--op->pathsCount];
     Edge *e = Path_pop(p);
     Path_free(p);
 
@@ -67,19 +66,14 @@ OpResult CondVarLenTraverseConsume(OpBase *opBase, QueryGraph* graph) {
 
 OpResult CondVarLenTraverseReset(OpBase *ctx) {
     CondVarLenTraverse *op = (CondVarLenTraverse*)ctx;
-    // Empty paths.
-    size_t pathCount = array_len(op->paths);
-    for(int i = pathCount-1; i >= 0; i--) {
-        Path p = op->paths[i];
-        Path_free(p);
-        array_pop(op->paths);
-    }
-
+    for(int i = 0; i < op->pathsCount; i++) Path_free(op->paths[i]);
+    op->pathsCount = 0;
     // TODO: I think Reset should propegate to child nodes.
     return OP_OK;
 }
 
 void CondVarLenTraverseFree(OpBase *ctx) {
     CondVarLenTraverse *op = (CondVarLenTraverse*)ctx;
-    array_free(op->paths);
+    for(int i = 0; i < op->pathsCount; i++) Path_free(op->paths[i]);
+    free(op->paths);
 }

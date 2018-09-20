@@ -22,7 +22,9 @@ typedef struct {
     int relationID;         /* Relation we're traversing. */
     unsigned int minHops;   /* Maximum number of hops to perform. */
     unsigned int maxHops;   /* Maximum number of hops to perform. */    
-    Path *paths;            /* Paths found. */
+    size_t pathsCount;      /* Length of Paths. */
+    size_t pathsCap;        /* Capacity of Paths. */
+    Path *paths;            /* Array of paths. */
 } CondVarLenTraverse;
 
 OpBase* NewCondVarLenTraverseOp(AlgebraicExpression *ae, unsigned int minHops, unsigned int maxHops, Graph *g, const QueryGraph *qg);

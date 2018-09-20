@@ -53,9 +53,6 @@ AlgebraicExpression **AlgebraicExpression_From_Query(const AST_Query *ast, Vecto
 /* Executes given expression. */
 AlgebraicExpressionResult *AlgebraicExpression_Execute(AlgebraicExpression *ae);
 
-/* Removes all operands from expression. */
-void AlgebraicExpression_ClearOperands(AlgebraicExpression *ae);
-
 /* Appends m as the last term in the expression ae. */
 void AlgebraicExpression_AppendTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transposeOp, bool freeOp);
 
@@ -68,9 +65,6 @@ void AlgebraicExpression_RemoveTerm(AlgebraicExpression *ae, int idx, AlgebraicE
 /* Whenever we decide to transpose an expression, call this function
  * directly accessing expression transpose flag is forbidden. */
 void AlgebraicExpression_Transpose(AlgebraicExpression *ae);
-
-/* Checks to see if expression is transposed. */
-bool AlgebraicExpression_IsTranspose(const AlgebraicExpression *ae);
 
 void AlgebraicExpression_Free(AlgebraicExpression* ae);
 void AlgebraicExpressionResult_Free(AlgebraicExpressionResult *aer);

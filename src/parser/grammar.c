@@ -215,7 +215,7 @@ typedef union {
 **  yy_default[]       Default action for each state.
 **
 *********** Begin parsing tables **********************************************/
-#define YY_ACTTAB_COUNT (285)
+#define YY_ACTTAB_COUNT (284)
 static const YYACTIONTYPE yy_action[] = {
  /*     0 */    85,  302,   84,   16,   14,   13,   12,  265,  266,  269,
  /*    10 */   267,  268,   71,   16,   14,   13,   12,  115,  280,   59,
@@ -229,23 +229,23 @@ static const YYACTIONTYPE yy_action[] = {
  /*    90 */    62,    1,  271,    9,  351,   27,   21,  271,  350,  270,
  /*   100 */   101,   36,  271,  350,   66,   20,  305,   39,  273,  274,
  /*   110 */   276,  277,  278,  273,  274,  276,  277,  278,  273,  274,
- /*   120 */   276,  277,  278,  362,   95,  351,   28,  351,   28,  351,
+ /*   120 */   276,  277,  278,  362,   44,  351,   28,  351,   28,  351,
  /*   130 */    65,  351,   61,   45,  350,  336,  350,   68,  350,  360,
  /*   140 */   350,  351,   63,   72,  340,  351,   64,  351,  348,   50,
- /*   150 */   350,   93,    3,    5,  350,   40,  350,  351,  347,  351,
+ /*   150 */   350,   90,    3,    5,  350,   40,  350,  351,  347,  351,
  /*   160 */    74,  351,   60,  351,   70,   48,  350,  106,  350,   80,
  /*   170 */   350,   33,  350,   33,  105,  362,  305,  272,  305,   88,
  /*   180 */    34,   99,   35,    3,    5,   97,   26,    7,   48,  247,
- /*   190 */    67,  361,   11,   48,  275,   48,   91,   89,   94,   13,
+ /*   190 */    67,  361,   11,   48,  275,   48,   94,   92,   91,   13,
  /*   200 */    12,  100,  233,  256,  257,  110,   77,  295,   75,   37,
- /*   210 */   208,   83,   30,   69,   86,   48,   41,   87,   92,  102,
- /*   220 */   114,   98,   43,   96,  287,  306,  331,  112,  103,  104,
+ /*   210 */   208,   83,   30,   69,   86,   48,   41,   87,   89,  102,
+ /*   220 */   114,   98,   95,   96,  287,  306,  331,  112,  103,  104,
  /*   230 */   113,   51,   52,    1,   53,  283,   57,   55,   56,    6,
  /*   240 */    17,  196,  197,   76,   38,   78,    5,   25,  209,   82,
- /*   250 */    10,   24,  215,   42,   44,  218,  110,   22,  282,   46,
- /*   260 */   213,  223,  221,   29,   90,  219,  217,  216,  281,  211,
- /*   270 */   214,  212,  210,   47,  227,  281,    8,  281,   49,  241,
- /*   280 */   253,  281,  281,  262,  264,
+ /*   250 */    10,   24,  215,   42,   43,  218,  110,   22,  282,   46,
+ /*   260 */   219,  217,  213,  223,   29,  214,  221,  216,   93,  211,
+ /*   270 */   212,   49,  210,  281,   47,  262,  281,  227,    8,  241,
+ /*   280 */   253,  281,  281,  264,
 };
 static const YYCODETYPE yy_lookahead[] = {
  /*     0 */    69,   70,   71,    3,    4,    5,    6,    7,    8,    9,
@@ -274,14 +274,14 @@ static const YYCODETYPE yy_lookahead[] = {
  /*   230 */    42,   58,   57,   34,   56,   59,   56,   58,   57,   33,
  /*   240 */    54,   18,   20,   18,   15,   14,    2,   23,   18,   23,
  /*   250 */     7,   23,    4,   18,   18,   28,   37,   39,    0,   18,
- /*   260 */    20,   29,   29,   17,   30,   28,   28,   28,   88,   20,
- /*   270 */    25,   20,   20,   23,   32,   88,   23,   88,   18,   18,
- /*   280 */    18,   88,   88,   29,   29,   88,   88,   88,   88,   88,
+ /*   260 */    28,   28,   20,   29,   17,   25,   29,   28,   30,   20,
+ /*   270 */    20,   18,   20,   88,   23,   29,   88,   32,   23,   18,
+ /*   280 */    18,   88,   88,   29,   88,   88,   88,   88,   88,   88,
  /*   290 */    88,   88,   88,   88,   88,   88,   88,   88,   88,   88,
  /*   300 */    88,   88,   88,   88,   88,   88,   88,   88,   88,   88,
  /*   310 */    88,   88,   88,   88,   88,   88,   88,   88,   88,   88,
  /*   320 */    88,   88,   88,   88,   88,   88,   88,   88,   88,   88,
- /*   330 */    88,   88,   88,   88,   88,
+ /*   330 */    88,   88,   88,   88,
 };
 #define YY_SHIFT_COUNT    (115)
 #define YY_SHIFT_MIN      (0)
@@ -296,9 +296,9 @@ static const unsigned short int yy_shift_ofst[] = {
  /*    60 */    10,   35,   44,   44,   44,   44,  182,  163,  151,  167,
  /*    70 */   194,  148,  169,  168,  194,  223,  222,  225,  229,  231,
  /*    80 */   224,  244,  230,  226,  243,  228,  248,  227,  235,  232,
- /*    90 */   233,  234,  237,  236,  238,  239,  245,  240,  249,  241,
- /*   100 */   251,  250,  246,  242,  252,  260,  224,  253,  261,  253,
- /*   110 */   262,  219,  218,  254,  255,  258,
+ /*    90 */   236,  233,  234,  237,  238,  239,  240,  242,  249,  241,
+ /*   100 */   250,  251,  247,  245,  252,  253,  224,  255,  261,  255,
+ /*   110 */   262,  219,  218,  246,  254,  258,
 };
 #define YY_REDUCE_COUNT (59)
 #define YY_REDUCE_MIN   (-69)
@@ -321,7 +321,7 @@ static const YYACTIONTYPE yy_default[] = {
  /*    60 */   279,  342,  334,  304,  352,  353,  279,  357,  333,  327,
  /*    70 */   345,  279,  279,  354,  346,  279,  279,  279,  279,  279,
  /*    80 */   292,  337,  279,  309,  279,  301,  279,  279,  279,  279,
- /*    90 */   324,  326,  279,  279,  279,  279,  279,  279,  279,  279,
+ /*    90 */   279,  279,  279,  324,  326,  279,  279,  279,  279,  279,
  /*   100 */   279,  330,  279,  279,  279,  279,  294,  339,  279,  338,
  /*   110 */   279,  354,  279,  279,  279,  279,
 };
@@ -560,10 +560,10 @@ static const char *const yyRuleName[] = {
  /*  33 */ "node ::= LEFT_PARENTHESIS properties RIGHT_PARENTHESIS",
  /*  34 */ "link ::= DASH edge RIGHT_ARROW",
  /*  35 */ "link ::= LEFT_ARROW edge DASH",
- /*  36 */ "edge ::= LEFT_BRACKET properties RIGHT_BRACKET",
+ /*  36 */ "edge ::= LEFT_BRACKET properties edgeLength RIGHT_BRACKET",
  /*  37 */ "edge ::= LEFT_BRACKET UQSTRING properties RIGHT_BRACKET",
  /*  38 */ "edge ::= LEFT_BRACKET COLON UQSTRING edgeLength properties RIGHT_BRACKET",
- /*  39 */ "edge ::= LEFT_BRACKET UQSTRING COLON UQSTRING edgeLength properties RIGHT_BRACKET",
+ /*  39 */ "edge ::= LEFT_BRACKET UQSTRING COLON UQSTRING properties RIGHT_BRACKET",
  /*  40 */ "edgeLength ::=",
  /*  41 */ "edgeLength ::= MUL INTEGER DOTDOT INTEGER",
  /*  42 */ "edgeLength ::= MUL INTEGER DOTDOT",
@@ -1078,10 +1078,10 @@ static const struct {
   {   73,   -3 }, /* (33) node ::= LEFT_PARENTHESIS properties RIGHT_PARENTHESIS */
   {   74,   -3 }, /* (34) link ::= DASH edge RIGHT_ARROW */
   {   74,   -3 }, /* (35) link ::= LEFT_ARROW edge DASH */
-  {   77,   -3 }, /* (36) edge ::= LEFT_BRACKET properties RIGHT_BRACKET */
+  {   77,   -4 }, /* (36) edge ::= LEFT_BRACKET properties edgeLength RIGHT_BRACKET */
   {   77,   -4 }, /* (37) edge ::= LEFT_BRACKET UQSTRING properties RIGHT_BRACKET */
   {   77,   -6 }, /* (38) edge ::= LEFT_BRACKET COLON UQSTRING edgeLength properties RIGHT_BRACKET */
-  {   77,   -7 }, /* (39) edge ::= LEFT_BRACKET UQSTRING COLON UQSTRING edgeLength properties RIGHT_BRACKET */
+  {   77,   -6 }, /* (39) edge ::= LEFT_BRACKET UQSTRING COLON UQSTRING properties RIGHT_BRACKET */
   {   78,    0 }, /* (40) edgeLength ::= */
   {   78,   -4 }, /* (41) edgeLength ::= MUL INTEGER DOTDOT INTEGER */
   {   78,   -3 }, /* (42) edgeLength ::= MUL INTEGER DOTDOT */
@@ -1496,10 +1496,10 @@ static void yy_reduce(
 }
 #line 1498 "grammar.c"
         break;
-      case 36: /* edge ::= LEFT_BRACKET properties RIGHT_BRACKET */
+      case 36: /* edge ::= LEFT_BRACKET properties edgeLength RIGHT_BRACKET */
 #line 219 "grammar.y"
 { 
-	yymsp[-2].minor.yy61 = New_AST_LinkEntity(NULL, NULL, yymsp[-1].minor.yy130, N_DIR_UNKNOWN, NULL);
+	yymsp[-3].minor.yy61 = New_AST_LinkEntity(NULL, NULL, yymsp[-2].minor.yy130, N_DIR_UNKNOWN, yymsp[-1].minor.yy138);
 }
 #line 1505 "grammar.c"
         break;
@@ -1517,10 +1517,10 @@ static void yy_reduce(
 }
 #line 1519 "grammar.c"
         break;
-      case 39: /* edge ::= LEFT_BRACKET UQSTRING COLON UQSTRING edgeLength properties RIGHT_BRACKET */
+      case 39: /* edge ::= LEFT_BRACKET UQSTRING COLON UQSTRING properties RIGHT_BRACKET */
 #line 234 "grammar.y"
 { 
-	yymsp[-6].minor.yy61 = New_AST_LinkEntity(yymsp[-5].minor.yy0.strval, yymsp[-3].minor.yy0.strval, yymsp[-1].minor.yy130, N_DIR_UNKNOWN, yymsp[-2].minor.yy138);
+	yymsp[-5].minor.yy61 = New_AST_LinkEntity(yymsp[-4].minor.yy0.strval, yymsp[-2].minor.yy0.strval, yymsp[-1].minor.yy130, N_DIR_UNKNOWN, NULL);
 }
 #line 1526 "grammar.c"
         break;

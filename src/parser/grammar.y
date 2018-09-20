@@ -216,8 +216,8 @@ link(A) ::= LEFT_ARROW edge(B) DASH . {
 
 %type edge {AST_LinkEntity*}
 // Empty edge []
-edge(A) ::= LEFT_BRACKET properties(B) RIGHT_BRACKET . { 
-	A = New_AST_LinkEntity(NULL, NULL, B, N_DIR_UNKNOWN, NULL);
+edge(A) ::= LEFT_BRACKET properties(B) edgeLength(C) RIGHT_BRACKET . { 
+	A = New_AST_LinkEntity(NULL, NULL, B, N_DIR_UNKNOWN, C);
 }
 
 // Edge with alias [alias]
@@ -231,8 +231,8 @@ edge(A) ::= LEFT_BRACKET COLON UQSTRING(B) edgeLength(C) properties(D) RIGHT_BRA
 }
 
 // Edge with alias and label [alias:label]
-edge(A) ::= LEFT_BRACKET UQSTRING(B) COLON UQSTRING(C) edgeLength(D) properties(E) RIGHT_BRACKET . { 
-	A = New_AST_LinkEntity(B.strval, C.strval, E, N_DIR_UNKNOWN, D);
+edge(A) ::= LEFT_BRACKET UQSTRING(B) COLON UQSTRING(C) properties(D) RIGHT_BRACKET . { 
+	A = New_AST_LinkEntity(B.strval, C.strval, D, N_DIR_UNKNOWN, NULL);
 }
 
 %type edgeLength {AST_LinkLength*}

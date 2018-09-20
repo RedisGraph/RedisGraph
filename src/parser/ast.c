@@ -163,6 +163,15 @@ AST_Validation _Validate_MATCH_Clause(const AST_Query *ast, char **reason) {
 
     if(entity->t != N_LINK) continue;
 
+    AST_LinkEntity *edge = (AST_LinkEntity*) entity;
+    if(edge->length) {
+      if(edge->length->minHops > edge->length->maxHops) {
+        asprintf(reason, "Variable length path, maximum number of hops must be greater or equal to minimum number of hops.");
+        res = AST_INVALID;
+        break;
+      }
+    }
+
     char *alias = entity->alias;
     /* The query is validated before and after aliasing anonymous entities,
      * so alias may be NULL at this time. */

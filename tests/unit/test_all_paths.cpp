@@ -12,7 +12,6 @@ extern "C" {
 #endif
 
 #include "../../src/algorithms/algorithms.h"
-#include "../../src/util/arr.h"
 
 #ifdef __cplusplus
 }
@@ -99,10 +98,12 @@ TEST_F(AllPathsTest, NoPaths) {
     NodeID src = 0;
     unsigned int minLen = 999;
     unsigned int maxLen = minLen + 1;
-    size_t pathCount = 0;
-    Path *paths = array_new(Path, 0);
-    AllPaths(g, GRAPH_NO_RELATION, src, minLen, maxLen, &paths);
-    EXPECT_EQ(array_len(paths), 0);
+    size_t pathsCap = 1;
+    Path *paths = (Path*)malloc(sizeof(Path) * pathsCap);
+    size_t pathsCount = AllPaths(g, GRAPH_NO_RELATION, src, minLen, maxLen, &pathsCap, &paths);
+    EXPECT_EQ(pathsCount, 0);
+    
+    free(paths);
     Graph_Free(g);
 }
 
@@ -112,18 +113,22 @@ TEST_F(AllPathsTest, LongestPaths) {
     NodeID src = 0;
     unsigned int minLen = 0;
     unsigned int maxLen = UINT_MAX;
-    size_t pathCount = 0;
-    Path *paths = array_new(Path, 0);
-    AllPaths(g, GRAPH_NO_RELATION, src, minLen, maxLen, &paths);
+    size_t pathsCap = 1;
+    Path *paths = (Path*)malloc(sizeof(Path) * pathsCap);
+    size_t pathsCount = AllPaths(g, GRAPH_NO_RELATION, src, minLen, maxLen, &pathsCap, &paths);
 
     unsigned int longestPath = 0;
-    for(int i = 0; i < pathCount; i++) {
+    for(int i = 0; i < pathsCount; i++) {
         size_t pathLen = Path_len(paths[i]);
         if(longestPath < pathLen) longestPath = pathLen;
     }
 
     // 0,2,3,0,1,2,1,0
     EXPECT_EQ(longestPath, 7);
+
+    for(int i = 0; i < pathsCount; i++) Path_free(paths[i]);
+    free(paths);
+    Graph_Free(g);
 }
 
 TEST_F(AllPathsTest, UpToThreeLegsPaths) {
@@ -132,10 +137,10 @@ TEST_F(AllPathsTest, UpToThreeLegsPaths) {
     NodeID src = 0;
     unsigned int minLen = 1;
     unsigned int maxLen = 3;
-    size_t pathCount = 0;
-    Path *paths = array_new(Path, 12);
-    AllPaths(g, GRAPH_NO_RELATION, src, minLen, maxLen, &paths);
-    ASSERT_EQ(array_len(paths), 12);
+    size_t pathsCap = 2;
+    Path *paths = (Path*)malloc(sizeof(Path) * pathsCap);
+    size_t pathsCount = AllPaths(g, GRAPH_NO_RELATION, src, minLen, maxLen, &pathsCap, &paths);
+    ASSERT_EQ(pathsCount, 12);
 
     /* Connections:
      * 0 -> 1
@@ -167,13 +172,13 @@ TEST_F(AllPathsTest, UpToThreeLegsPaths) {
     NodeID *expectedPaths[12] = {p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11};
     
 
-    for(int i = 0; i < pathCount; i++) {
+    for(int i = 0; i < pathsCount; i++) {
         NodeID *expectedPath = expectedPaths[i];
         size_t expectedPathLen = expectedPath[0];
         expectedPath++; // Skip path length.
         bool expectedPathFound = false;
 
-        for(int j = 0; j < pathCount; j++) {
+        for(int j = 0; j < pathsCount; j++) {
             Path p = paths[j];
             if(Path_len(p) != expectedPathLen) continue;
             
@@ -191,6 +196,9 @@ TEST_F(AllPathsTest, UpToThreeLegsPaths) {
         EXPECT_TRUE(expectedPathFound);
     }
 
+    for(int i = 0; i < pathsCount; i++) Path_free(paths[i]);
+    
+    free(paths);
     Graph_Free(g);
 }
 
@@ -200,10 +208,10 @@ TEST_F(AllPathsTest, TwoLegPaths) {
     NodeID src = 0;
     unsigned int minLen = 2;
     unsigned int maxLen = 2;
-    size_t pathCount = 0;
-    Path *paths = array_new(Path, 4);
-    AllPaths(g, GRAPH_NO_RELATION, src, minLen, maxLen, &paths);
-    ASSERT_EQ(array_len(paths), 4);
+    size_t pathsCap = 1;
+    Path *paths = (Path*)malloc(sizeof(Path) * pathsCap);
+    size_t pathsCount = AllPaths(g, GRAPH_NO_RELATION, src, minLen, maxLen, &pathsCap, &paths);
+    ASSERT_EQ(pathsCount, 4);
 
     /* Connections:
      * 0 -> 1
@@ -220,11 +228,11 @@ TEST_F(AllPathsTest, TwoLegPaths) {
     NodeID *expectedPaths[4] = {p0, p1, p2, p3};
 
     
-    for(int i = 0; i < pathCount; i++) {
+    for(int i = 0; i < pathsCount; i++) {
         NodeID *expectedPath = expectedPaths[i];
         bool expectedPathFound = false;
 
-        for(int j = 0; j < pathCount; j++) {
+        for(int j = 0; j < pathsCount; j++) {
             Path p = paths[j];
             ASSERT_EQ(Path_len(p), 2);
             Edge *e0 = p[0];
@@ -239,5 +247,7 @@ TEST_F(AllPathsTest, TwoLegPaths) {
         EXPECT_TRUE(expectedPathFound);
     }
 
+    for(int i = 0; i < pathsCount; i++) Path_free(paths[i]);
+    free(paths);
     Graph_Free(g);
 }

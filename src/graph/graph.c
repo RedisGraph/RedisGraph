@@ -396,7 +396,7 @@ void Graph_GetNodeEdges(const Graph *g, const Node *n, Vector *edges, GRAPH_EDGE
     assert(g && n && edges);
     NodeID srcNodeID;
     NodeID destNodeID;
-    TuplesIter *tupleIter;
+    TuplesIter *tupleIter = NULL;
     size_t nodeCount = Graph_NodeCount(g);
     GrB_Matrix M = Graph_GetAdjacencyMatrix(g);
 

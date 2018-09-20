@@ -7,7 +7,6 @@
 
 #include <assert.h>
 #include "./all_paths.h"
-#include "../util/arr.h"
 
 void _AllPaths
 (
@@ -20,12 +19,21 @@ void _AllPaths
     float hop,              // Path current length.
     GrB_Matrix visited,     // Edges visited on path.
     Path *path,             // Current path.    
+    size_t *pathsCount,     // Number of paths constructed.
+    size_t *pathsCap,       // Paths array capacity.
     Path **paths            // Paths constructed.
 )
 {
         if(hop >= minHops && hop <= maxHops) {
             Path clone = Path_clone(*path);
-            array_append(*paths, clone);
+
+            if(*pathsCount >= *pathsCap) {
+                (*pathsCap) = (*pathsCap) * 2 + 1;
+                (*paths) = realloc(*paths, sizeof(Path) * (*pathsCap));
+            }
+
+            (*paths)[*pathsCount] = clone;
+            (*pathsCount) = (*pathsCount) + 1;
         }
 
         if(hop >= maxHops) {
@@ -53,7 +61,7 @@ void _AllPaths
 
             *path = Path_append(*path, e);
 
-            _AllPaths(g, Edge_GetDestNode(e), relationID, relation, minHops, maxHops, hop+1, visited, path, paths);
+            _AllPaths(g, Edge_GetDestNode(e), relationID, relation, minHops, maxHops, hop+1, visited, path, pathsCount, pathsCap, paths);
 
             Path_pop(*path);
 
@@ -64,17 +72,18 @@ void _AllPaths
         free(outGoingEdges);
 }
 
-void AllPaths
+size_t AllPaths
 (
     const Graph *g,
     int relationID,
     NodeID src,
     unsigned int minLen,
     unsigned int maxLen,
+    size_t *pathsCap,
     Path **paths
 )
 {
-    assert(g && minLen >= 0 && minLen <= maxLen && paths);
+    assert(g && minLen >= 0 && minLen <= maxLen && pathsCap && paths);
 
     GrB_Matrix relation = Graph_GetRelation(g, relationID);    
     /* Avoid revisiting edges along a constructed path by, marking visited edges,
@@ -86,5 +95,7 @@ void AllPaths
     size_t pathLen = maxLen-minLen;
     Path p = Path_new(pathLen);
 
-    _AllPaths(g, Graph_GetNode(g, src), relationID, relation, minLen, maxLen, 0, visited, &p, paths);
+    size_t pathsCount = 0;
+    _AllPaths(g, Graph_GetNode(g, src), relationID, relation, minLen, maxLen, 0, visited, &p, &pathsCount, pathsCap, paths);
+    return pathsCount;
 }
