@@ -30,9 +30,11 @@ OpBase* NewAllNodeScanOp(QueryGraph *qg, const Graph *g, Node **n) {
 OpResult AllNodeScanConsume(OpBase *opBase, QueryGraph* graph) {
     AllNodeScan *op = (AllNodeScan*)opBase;
     
+    NodeID id = DataBlockIterator_Position(op->iter);
     Node *node = (Node*)DataBlockIterator_Next(op->iter);
     if(node == NULL) return OP_DEPLETED;
 
+    node->id = id;
     *op->node = node;
 
     return OP_OK;

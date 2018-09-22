@@ -156,10 +156,10 @@ Graph *_MGraph_CreateGraph(RedisModuleCtx *ctx, RedisModuleString *graph_name) {
     RedisModuleKey *key = RedisModule_OpenKey(ctx, graph_name, REDISMODULE_WRITE);
 
     // Key does not exists, create a new graph and store within Redis keyspace.
-	if (RedisModule_KeyType(key) == REDISMODULE_KEYTYPE_EMPTY) {
-		g = Graph_New(GRAPH_DEFAULT_NODE_CAP);
-		RedisModule_ModuleTypeSetValue(key, GraphRedisModuleType, g);
-	} else {
+    if (RedisModule_KeyType(key) == REDISMODULE_KEYTYPE_EMPTY) {
+        g = Graph_New(GRAPH_DEFAULT_NODE_CAP);
+        RedisModule_ModuleTypeSetValue(key, GraphRedisModuleType, g);
+    } else {
         RedisModule_ReplyWithError(ctx, "Can not create graph, graph ID is used by some other key.");
     }
 
@@ -233,29 +233,32 @@ cleanup:
 }
 
 void _MGraph_BulkInsert(void *args) {
+    // Establish thread-safe environment for batch insertion
     BulkInsertContext *context = (BulkInsertContext *)args;
-    Graph *g;           // Graph to populate.
-    size_t nodes = 0;   // Number of nodes created.
-    size_t edges = 0;   // Number of edge created.
+    RedisModuleCtx *ctx = RedisModule_GetThreadSafeContext(context->bc);
+    _MGraph_AcquireWriteLock(ctx);
+
     int argc = context->argc;
     RedisModuleString **argv = context->argv;
     RedisModuleString *rs_graph_name = argv[1];
-    RedisModuleCtx *ctx = RedisModule_GetThreadSafeContext(context->bc);
-    const char *graph_name = RedisModule_StringPtrLen(argv[1], NULL);
+    const char *graph_name = RedisModule_StringPtrLen(rs_graph_name, NULL);
+    size_t nodes = 0;   // Number of nodes created.
+    size_t edges = 0;   // Number of edge created.
 
-    _MGraph_AcquireWriteLock(ctx);
-    
     // Try to get graph, if graph does not exists create it.
-    g = Graph_Get(ctx, rs_graph_name);
-    if(g == NULL)
-        g = _MGraph_CreateGraph(ctx, rs_graph_name);
+    Graph *g = Graph_Get(ctx, rs_graph_name);
+    if (g == NULL) g = _MGraph_CreateGraph(ctx, rs_graph_name);
 
-    Bulk_Insert(ctx, argv+2, argc-2, g, graph_name, &nodes, &edges);
+    // Exit if graph creation failed
+    if (g == NULL) goto cleanup;
+
+    int rc = Bulk_Insert(ctx, argv+2, argc-2, g, graph_name, &nodes, &edges);
+
+    // Exit if insertion failed
+    if (rc == BULK_FAIL) goto cleanup;
 
     // Force graph pending operations to complete.
     Graph_CommitPendingOps(g);
-
-    _MGraph_ReleaseLock(ctx);
 
     // Replay to caller.
     double t = simple_toc(context->tic);
@@ -265,9 +268,11 @@ void _MGraph_BulkInsert(void *args) {
 
     // Replicate query.
     RedisModule_ReplicateVerbatim(ctx);
-    RedisModule_UnblockClient(context->bc, NULL);
 
     // Clean up
+cleanup:
+    _MGraph_ReleaseLock(ctx);
+    RedisModule_UnblockClient(context->bc, NULL);
     BulkInsertContext_Free(context);
 }
 
@@ -427,6 +432,7 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 }
 
 int MGraph_BulkInsert(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+    if (argc < 4) return RedisModule_WrongArity(ctx);
     // Prepare context.
     RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
     BulkInsertContext *context = BulkInsertContext_New(ctx, bc, argv, argc);

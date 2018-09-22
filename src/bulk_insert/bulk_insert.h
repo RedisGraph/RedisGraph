@@ -11,6 +11,9 @@
 #include "redismodule.h"
 #include "./graph/graph.h"
 
+#define BULK_OK 1
+#define BULK_FAIL 0
+
 /*
 Bulk insert performs fast insertion of large amount of data,
 it's an alternative to Cypher's CREATE query, one should prefer using
@@ -84,7 +87,7 @@ RELATIONS               // relations section.
 */
 
 /* Parse bulk insert format and inserts new entities */
-void Bulk_Insert (
+int Bulk_Insert (
     RedisModuleCtx *ctx,        // Redis module context.
     RedisModuleString **argv,   // Arguments passed to bulk insert command.
     int argc,                   // Number of elements in argv.
