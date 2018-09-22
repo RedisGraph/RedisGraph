@@ -30,7 +30,7 @@ DataBlockIterator *DataBlockIterator_New (
     int step            // To scan entire range, set step to 1.
 );
 
-#define DataBlockIterator_Position(a) (a)->_current_pos
+#define DataBlockIterator_Position(iter) (iter)->_current_pos
 
 // Clones given iterator.
 DataBlockIterator *DataBlockIterator_Clone (
@@ -40,6 +40,9 @@ DataBlockIterator *DataBlockIterator_Clone (
 // Returns the next item, unless we've reached the end
 // in which case NULL is returned.
 void *DataBlockIterator_Next(DataBlockIterator *iter);
+
+// Jump the iterator forward by a specified number.
+void DataBlockIterator_Skip(DataBlockIterator *iter, int advance);
 
 // Reset iterator to original position.
 void DataBlockIterator_Reset(DataBlockIterator *iter);

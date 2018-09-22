@@ -49,6 +49,22 @@ void *DataBlockIterator_Next(DataBlockIterator *iter) {
     return item;
 }
 
+void DataBlockIterator_Skip(DataBlockIterator *iter, int advance) {
+    assert(iter);
+
+    // Advance the iterator by the specified value. If this causes the iterator to go
+    // past its endpoint, it will return NULL on the next call to DataBlockIterator_Next
+    iter->_current_pos += advance;
+    if (iter->_current_pos >= iter->_end_pos) return;
+
+    iter->_block_pos += advance;
+    // Seek the appropriate block if we've advanced past the current one.
+    while (iter->_block_pos >= BLOCK_CAP) {
+        iter->_block_pos -= BLOCK_CAP;
+        iter->_current_block = iter->_current_block->next;
+    }
+}
+
 void DataBlockIterator_Reset(DataBlockIterator *iter) {
     assert(iter);
     iter->_block_pos = iter->_start_pos % BLOCK_CAP;

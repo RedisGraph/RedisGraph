@@ -144,12 +144,6 @@ RedisModuleString** _Bulk_Insert_Read_Unlabeled_Node_Attributes(RedisModuleCtx *
     return argv;
 }
 
-void _Bulk_Insert_AllStoreUpdate(RedisModuleCtx *ctx, const char *graph_name, char **keys, int attribute_count) {
-    LabelStore *allStore = LabelStore_Get(ctx, STORE_NODE, graph_name, NULL);
-    LabelStore_UpdateSchema(allStore, attribute_count, keys);
-}
-
-
 RedisModuleString** _Bulk_Insert_Insert_Nodes(RedisModuleCtx *ctx, RedisModuleString **argv,
                                               int *argc, Graph *g, const char *graph_name,
                                               size_t *nodes) {
@@ -162,7 +156,6 @@ RedisModuleString** _Bulk_Insert_Insert_Nodes(RedisModuleCtx *ctx, RedisModuleSt
         return NULL;
     }
     *argc -= 1;
-    assert(nodes_to_create < *argc);
 
     *nodes = nodes_to_create;
     size_t start_offset = Graph_NodeCount(g);
@@ -177,7 +170,6 @@ RedisModuleString** _Bulk_Insert_Insert_Nodes(RedisModuleCtx *ctx, RedisModuleSt
         return NULL;
     }
     *argc -= 1;
-    assert(label_count <= *argc);
 
     // Labeled nodes.
     if(label_count > 0) {
@@ -201,6 +193,8 @@ RedisModuleString** _Bulk_Insert_Insert_Nodes(RedisModuleCtx *ctx, RedisModuleSt
                     n = (Node*)DataBlockIterator_Next(it);
                     Node_Add_Properties(n, l.attribute_count, l.attributes, values);
                 }
+            } else {
+                DataBlockIterator_Skip(it, l.node_count);
             }
             number_of_labeled_nodes += l.node_count;
         }
@@ -215,6 +209,10 @@ RedisModuleString** _Bulk_Insert_Insert_Nodes(RedisModuleCtx *ctx, RedisModuleSt
 
         if(argv == NULL) return NULL;
     }
+
+    // Retrieve the node store so that we can update the schema for
+    // unlabeled nodes.
+    LabelStore *allStore = LabelStore_Get(ctx, STORE_NODE, graph_name, NULL);
 
     // Unlabeled nodes.
     long long attribute_count = 0;
@@ -239,7 +237,7 @@ RedisModuleString** _Bulk_Insert_Insert_Nodes(RedisModuleCtx *ctx, RedisModuleSt
         argv = _Bulk_Insert_Read_Unlabeled_Node_Attributes(ctx, argv, argc, keys, values, attribute_count);
         if(argv == NULL) return NULL;
         Node_Add_Properties(n, attribute_count, keys, values);
-        _Bulk_Insert_AllStoreUpdate(ctx, graph_name, keys, attribute_count);
+        LabelStore_UpdateSchema(allStore, attribute_count, keys);
     }
 
     return argv;
