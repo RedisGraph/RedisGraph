@@ -82,6 +82,27 @@ Nodes can have more than one edge coming in or out of them, for instance:
 
 Here we're interested in knowing which of my friends have visited at least one country I've been to.
 
+#### Variable length relationships
+
+Nodes that are a variable number of relationship→node hops away can be found using the following syntax:
+
+```sh
+-[:type*minHops..maxHops]→
+```
+
+`type`, `minHops` and `maxHops` are all optional and default to: type agnostic, 1 and infinity respectively.
+
+When no bounds are given the dots may be omitted. The dots may also be omitted when setting only one bound and this implies a fixed length pattern.
+
+Example:
+
+```sh
+MATCH (martin:actor { name: 'Charlie Sheen' })-[:PLAYED_WITH*1..3]-(colleague:actor)
+RETURN colleague
+```
+
+Returns all actors related to 'Charlie Sheen' by 1 to 3 hops.
+
 #### WHERE
 
 This clause is not mandatory, but if you want to filter results, you can specify your predicates here.

@@ -8,6 +8,7 @@
 #ifndef _AST_COMMON_H
 #define _AST_COMMON_H
 
+#include <stdbool.h>
 #include "../rmutil/vector.h"
 
 typedef enum {
@@ -36,7 +37,9 @@ typedef struct {
 } AST_Variable;
 
 typedef struct {
+	bool minHopsSpecified;
 	unsigned int minHops;
+	bool maxHopsSpecified;
 	unsigned int maxHops;
 } AST_LinkLength;
 
@@ -48,8 +51,9 @@ typedef struct {
 
 AST_NodeEntity* New_AST_NodeEntity(char *alias, char *label, Vector *properties);
 AST_LinkEntity* New_AST_LinkEntity(char *alias, char *label, Vector *properties, AST_LinkDirection dir, AST_LinkLength *length);
-AST_LinkLength* New_AST_LinkLength(unsigned int minHops, unsigned int maxHops);
+AST_LinkLength* New_AST_LinkLength(unsigned int minHops, unsigned int maxHops, bool minHopsSpecified, bool maxHopsSpecified);
 AST_Variable* New_AST_Variable(const char *alias, const char *property);
+bool AST_LinkEntity_FixedLengthEdge(AST_LinkEntity* edge);
 void Free_AST_GraphEntity(AST_GraphEntity *entity);
 void Free_AST_Variable(AST_Variable *v);
 

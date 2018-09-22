@@ -1534,35 +1534,35 @@ static void yy_reduce(
       case 41: /* edgeLength ::= MUL INTEGER DOTDOT INTEGER */
 #line 246 "grammar.y"
 {
-	yymsp[-3].minor.yy138 = New_AST_LinkLength(yymsp[-2].minor.yy0.intval, yymsp[0].minor.yy0.intval);
+	yymsp[-3].minor.yy138 = New_AST_LinkLength(yymsp[-2].minor.yy0.intval, yymsp[0].minor.yy0.intval, true, true);
 }
 #line 1540 "grammar.c"
         break;
       case 42: /* edgeLength ::= MUL INTEGER DOTDOT */
 #line 251 "grammar.y"
 {
-	yymsp[-2].minor.yy138 = New_AST_LinkLength(yymsp[-1].minor.yy0.intval, UINT_MAX-1);
+	yymsp[-2].minor.yy138 = New_AST_LinkLength(yymsp[-1].minor.yy0.intval, UINT_MAX-1, true, false);
 }
 #line 1547 "grammar.c"
         break;
       case 43: /* edgeLength ::= MUL DOTDOT INTEGER */
 #line 256 "grammar.y"
 {
-	yymsp[-2].minor.yy138 = New_AST_LinkLength(1, yymsp[0].minor.yy0.intval);
+	yymsp[-2].minor.yy138 = New_AST_LinkLength(1, yymsp[0].minor.yy0.intval, false, true);
 }
 #line 1554 "grammar.c"
         break;
       case 44: /* edgeLength ::= MUL INTEGER */
 #line 261 "grammar.y"
 {
-	yymsp[-1].minor.yy138 = New_AST_LinkLength(1, yymsp[0].minor.yy0.intval);
+	yymsp[-1].minor.yy138 = New_AST_LinkLength(1, yymsp[0].minor.yy0.intval, false, true);
 }
 #line 1561 "grammar.c"
         break;
       case 45: /* edgeLength ::= MUL */
 #line 266 "grammar.y"
 {
-	yymsp[0].minor.yy138 = New_AST_LinkLength(1, UINT_MAX-1);
+	yymsp[0].minor.yy138 = New_AST_LinkLength(1, UINT_MAX-1, false, false);
 }
 #line 1568 "grammar.c"
         break;

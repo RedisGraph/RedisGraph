@@ -200,8 +200,9 @@ AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(AlgebraicExpr
         /* If edge is referenced, set expression edge pointer. */
         if(_referred_entity(edge->ge.alias, ref_entities))
             iexp->edge = QueryGraph_GetEdgeRef(q, e);
-        /* If this is a variable length edge, remember edge length. */
-        if(edge->length) {
+        /* If this is a variable length edge, which is not fixed in length
+         * remember edge length. */
+        if(edge->length && !AST_LinkEntity_FixedLengthEdge(edge)) {
             iexp->edgeLength = edge->length;
             iexp->edge = QueryGraph_GetEdgeRef(q, e);
         }
@@ -217,7 +218,15 @@ AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(AlgebraicExpr
             iexp->operands[iexp->operand_count++] = exp->operands[operandIdx++];
         }
 
-        iexp->operands[iexp->operand_count++] = exp->operands[operandIdx++];
+        unsigned int hops = 1;
+        /* Expand fixed variable length edge */
+        if(edge->length && AST_LinkEntity_FixedLengthEdge(edge)) {
+            hops = (edge->length->minHopsSpecified) ? edge->length->minHops : edge->length->maxHops;
+        }
+
+        for(int i = 0; i < hops; i++) {
+            iexp->operands[iexp->operand_count++] = exp->operands[operandIdx++];
+        }
 
         if(dest->mat) {
             iexp->operands[iexp->operand_count++] = exp->operands[operandIdx++];
@@ -240,27 +249,6 @@ AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(AlgebraicExpr
     *exp_count = expIdx;
     TrieMap_Free(ref_entities, TrieMap_NOP_CB);
     return expressions;
-}
-
-/* Return index of matrix operand within algebraic expression
- * which has the least number of none zero values. */
-int _AlgebraicExpression_MinMatPos(const AlgebraicExpression *ae) {
-    GrB_Matrix M;       // Matrix with least number of NNZ.
-    GrB_Index nvals;    // number of NNZ.
-    int minMatPos = 0;  // Position of matrix within ae operands.
-    GrB_Index minNvals = ULLONG_MAX; // minimum number of NNZ.
-
-    // Search for minumum.
-    for(int i = 0; i < ae->operand_count; i++) {
-        M = ae->operands[i].operand;
-        GrB_Matrix_nvals(&nvals, M);
-        if(nvals < minNvals) {
-            minNvals = nvals;
-            minMatPos = i;
-        }
-    }
-    
-    return minMatPos;
 }
 
 static inline void _AlgebraicExpression_Execute_MUL(GrB_Matrix C, GrB_Matrix A, GrB_Matrix B, GrB_Descriptor desc) {
@@ -354,7 +342,17 @@ AlgebraicExpression **AlgebraicExpression_From_Query(const AST_Query *ast, Vecto
             exp->src_node = QueryGraph_GetNodeRef(q, src);
             if(src->mat) AlgebraicExpression_AppendTerm(exp, src->mat, false, false);
         }
-        AlgebraicExpression_AppendTerm(exp, e->mat, transpose, false);
+
+        unsigned int hops = 1;
+        /* Expand fixed variable length edge */
+        if(edge->length && AST_LinkEntity_FixedLengthEdge(edge)) {
+            hops = (edge->length->minHopsSpecified) ? edge->length->minHops : edge->length->maxHops;
+        }
+
+        for(int i = 0; i < hops; i++) {
+            AlgebraicExpression_AppendTerm(exp, e->mat, transpose, false);
+        }
+
         if(dest->mat) AlgebraicExpression_AppendTerm(exp, dest->mat, false, false);
     }
 
@@ -419,6 +417,11 @@ AlgebraicExpressionResult *AlgebraicExpression_Execute(AlgebraicExpression *ae) 
             if(rightTerm.transpose) GrB_Descriptor_set(desc, GrB_INP1, GrB_TRAN);
 
             _AlgebraicExpression_Execute_MUL(C, leftTerm.operand, rightTerm.operand, desc);
+
+            // Quick return if C is ZERO, there's no way to make progress.
+            GrB_Index nvals = 0;
+            GrB_Matrix_nvals(&nvals, C);
+            if(nvals == 0) break;
 
             // Restore descriptor to default.
             GrB_Descriptor_set(desc, GrB_INP0, GxB_DEFAULT);

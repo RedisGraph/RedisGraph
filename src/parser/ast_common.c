@@ -38,10 +38,12 @@ AST_LinkEntity* New_AST_LinkEntity(char *alias, char *label, Vector *properties,
 	return le;
 }
 
-AST_LinkLength* New_AST_LinkLength(unsigned int minHops, unsigned int maxHops) {
+AST_LinkLength* New_AST_LinkLength(unsigned int minHops, unsigned int maxHops, bool minHopsSpecified, bool maxHopsSpecified) {
 	AST_LinkLength *linkLength = malloc(sizeof(AST_LinkLength));
 	linkLength->minHops = minHops;
 	linkLength->maxHops = maxHops;
+	linkLength->minHopsSpecified = minHopsSpecified;
+	linkLength->maxHopsSpecified = maxHopsSpecified;
 	return linkLength;
 }
 
@@ -58,6 +60,13 @@ AST_NodeEntity* New_AST_NodeEntity(char *alias, char *label, Vector *properties)
 	}
 
 	return ne;
+}
+
+bool AST_LinkEntity_FixedLengthEdge(AST_LinkEntity* edge) {
+	return (edge->length && 
+	((edge->length->minHopsSpecified && !edge->length->maxHopsSpecified) ||
+	 (!edge->length->minHopsSpecified && edge->length->maxHopsSpecified)
+	));
 }
 
 void Free_AST_GraphEntity(AST_GraphEntity *graphEntity) {
