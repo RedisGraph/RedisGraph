@@ -338,6 +338,11 @@ size_t Graph_EdgeCount(const Graph *g) {
 size_t Graph_AddIndexID(Graph *g) {
     assert(g);
     size_t latest_idx = g->index_ctr ++;
+    if (!g->indices) {
+      g->indices = malloc(sizeof(Index*));
+    } else {
+      realloc(g->indices, g->index_ctr * sizeof(void*));
+    }
     return latest_idx;
 }
 
@@ -398,6 +403,7 @@ void Graph_ConnectNodes(Graph *g, EdgeDesc *connections, size_t connectionCount,
 }
 
 size_t Graph_GetNodeLabels(const Graph *g, NodeID id, size_t **labels) {
+    // stack allocation (passed in)
     *labels = malloc(g->label_count * sizeof(size_t));
     size_t label_count = 0;
     // Find all matching labels for each node

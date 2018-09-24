@@ -218,6 +218,8 @@ void _CommitNewEntities(OpCreate *op) {
         Graph_CreateNodes(op->g, node_count, labels, &it);
         _SetEntitiesProperties(op, op->created_nodes, it, baseNodeID);
 
+        // TODO add interface access
+        // if (Graph_HasIndices(op->g)
         if (op->g->index_ctr > 0) {
             // Prepare array of new node IDs
             NodeID new_nodes[node_count];

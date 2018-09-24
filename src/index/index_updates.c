@@ -43,8 +43,15 @@ TrieMap* Indices_BuildModificationMap(RedisModuleCtx *ctx, Graph *g, const char 
       for (int k = 0; k < delete_candidate->prop_count; k ++) {
         char *prop_name = delete_candidate->properties[k].name;
         size_t *index_id = TrieMap_Find(store->properties, prop_name, strlen(prop_name));
+        // loop over indices to see if this label-property pair is present
+        // (instead of retrieving label store)
         // This property is not indexed; we can ignore it
         if (!index_id || index_id == TRIEMAP_NOTFOUND) continue;
+        // Update index here
+        // create op
+        // delete op (node is getting migrated) - src and dest IDs
+        // delete (deleted) - lookup and remove
+        // update property op
 
         snprintf(update_key, 21, "%zu", *index_id);
 

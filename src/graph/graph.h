@@ -25,7 +25,6 @@
 #define GRAPH_NO_LABEL -1               // Labels are numbered [0-N], -1 represents no label.
 #define GRAPH_NO_RELATION -1            // Relations are numbered [0-N], -1 represents no relation.
 
-
 typedef struct {
     DataBlock *nodes;               // Graph nodes stored in blocks.
     DataBlock *edges;               // Graph edges stored in blocks.
@@ -40,6 +39,7 @@ typedef struct {
     char **label_strings;           // Names associated with label matrices.
     size_t label_cap;               // Number of labels graph can hold.
     size_t label_count;             // Number of label matrices.
+    // struct Index **indices;                // Array of indices. TODO move
     size_t index_ctr;               // Next index ID to be attached to graph.
     pthread_mutex_t _mutex;         // Mutex for accessing critical sections.
 

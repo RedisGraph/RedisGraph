@@ -68,6 +68,7 @@ void _OpUpdate_QueueUpdate(OpUpdate *op, NodeID id, EntityProperty *dest_entity_
     }
 
     size_t i = op->entities_to_update_count;
+    // retain evalctx info
     op->entities_to_update[i].id = id;
     op->entities_to_update[i].dest_entity_prop = dest_entity_prop;
     op->entities_to_update[i].new_value = new_value;
@@ -124,6 +125,7 @@ void _UpdateIndices(OpUpdate *op) {
             size_t label_id = node_labels[j];
             char *label = op->g->label_strings[label_id];
 
+            // iterate over indices instead of retrieving stores
             LabelStore *store = LabelStore_Get(op->ctx, STORE_NODE, op->graphName, label);
             if (!store) continue;
 

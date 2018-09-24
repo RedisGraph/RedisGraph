@@ -222,6 +222,7 @@ int Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, const cha
 
   Index *idx = buildIndex(g, label_matrix, label, prop_str);
   idx->id = *index_id;
+  g->indices[*index_id] = idx;
 
   RedisModule_ModuleTypeSetValue(key, IndexRedisModuleType, idx);
   RedisModule_CloseKey(key);
