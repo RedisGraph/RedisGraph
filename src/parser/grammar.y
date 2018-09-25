@@ -259,7 +259,7 @@ edgeLength(A) ::= MUL DOTDOT INTEGER(B). {
 
 // *hops
 edgeLength(A) ::= MUL INTEGER(B). {
-	A = New_AST_LinkLength(1, B.intval);
+	A = New_AST_LinkLength(B.intval, B.intval);
 }
 
 // *

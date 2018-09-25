@@ -60,6 +60,10 @@ AST_NodeEntity* New_AST_NodeEntity(char *alias, char *label, Vector *properties)
 	return ne;
 }
 
+bool AST_LinkEntity_FixedLengthEdge(AST_LinkEntity* edge) {
+	return (!edge->length || edge->length->minHops == edge->length->maxHops);
+}
+
 void Free_AST_GraphEntity(AST_GraphEntity *graphEntity) {
 	if(graphEntity->label != NULL) {
 		free(graphEntity->label);

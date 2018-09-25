@@ -1555,7 +1555,7 @@ static void yy_reduce(
       case 44: /* edgeLength ::= MUL INTEGER */
 #line 261 "grammar.y"
 {
-	yymsp[-1].minor.yy138 = New_AST_LinkLength(1, yymsp[0].minor.yy0.intval);
+	yymsp[-1].minor.yy138 = New_AST_LinkLength(yymsp[0].minor.yy0.intval, yymsp[0].minor.yy0.intval);
 }
 #line 1561 "grammar.c"
         break;
