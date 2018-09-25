@@ -221,7 +221,7 @@ AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(AlgebraicExpr
         unsigned int hops = 1;
         /* Expand fixed variable length edge */
         if(edge->length && AST_LinkEntity_FixedLengthEdge(edge)) {
-            hops = (edge->length->minHopsSpecified) ? edge->length->minHops : edge->length->maxHops;
+            hops = edge->length->minHops;
         }
 
         for(int i = 0; i < hops; i++) {
@@ -346,7 +346,7 @@ AlgebraicExpression **AlgebraicExpression_From_Query(const AST_Query *ast, Vecto
         unsigned int hops = 1;
         /* Expand fixed variable length edge */
         if(edge->length && AST_LinkEntity_FixedLengthEdge(edge)) {
-            hops = (edge->length->minHopsSpecified) ? edge->length->minHops : edge->length->maxHops;
+            hops = edge->length->minHops;
         }
 
         for(int i = 0; i < hops; i++) {

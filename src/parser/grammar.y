@@ -244,27 +244,27 @@ edgeLength(A) ::= . {
 
 // *minHops..maxHops
 edgeLength(A) ::= MUL INTEGER(B) DOTDOT INTEGER(C). {
-	A = New_AST_LinkLength(B.intval, C.intval, true, true);
+	A = New_AST_LinkLength(B.intval, C.intval);
 }
 
 // *minHops..
 edgeLength(A) ::= MUL INTEGER(B) DOTDOT. {
-	A = New_AST_LinkLength(B.intval, UINT_MAX-1, true, false);
+	A = New_AST_LinkLength(B.intval, UINT_MAX-1);
 }
 
 // *..maxHops
 edgeLength(A) ::= MUL DOTDOT INTEGER(B). {
-	A = New_AST_LinkLength(1, B.intval, false, true);
+	A = New_AST_LinkLength(1, B.intval);
 }
 
 // *hops
 edgeLength(A) ::= MUL INTEGER(B). {
-	A = New_AST_LinkLength(1, B.intval, false, true);
+	A = New_AST_LinkLength(B.intval, B.intval);
 }
 
 // *
 edgeLength(A) ::= MUL. {
-	A = New_AST_LinkLength(1, UINT_MAX-1, false, false);
+	A = New_AST_LinkLength(1, UINT_MAX-1);
 }
 
 %type properties {Vector*}
