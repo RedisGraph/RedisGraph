@@ -53,7 +53,9 @@ void _GraphType_LoadMatrices(RedisModuleIO *rdb, Graph *g) {
 
     uint64_t labelMatricesCount = RedisModule_LoadUnsigned(rdb);
     for(int i = 0; i < labelMatricesCount; i++) {
-        int matrixIdx = Graph_AddLabel(g);
+        // TODO I don't want to serialize label strings here -
+        // evaluate options
+        int matrixIdx = Graph_AddLabel(g, NULL);
         GrB_Matrix m = Graph_GetLabel(g, matrixIdx);
         _GraphType_LoadMatrix(rdb, m);
     }

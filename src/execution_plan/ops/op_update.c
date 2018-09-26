@@ -88,8 +88,7 @@ OpResult OpUpdateConsume(OpBase *opBase, QueryGraph* graph) {
         SIValue new_value = AR_EXP_Evaluate(update_expression->exp);
         /* Find ref to property. */
         GraphEntity *entity = *update_expression->entity;
-        // TODO verify that the entity is a node
-        NodeID id = entity->id;
+        EntityID id = entity->id;
         int j = 0;
         for(; j < entity->prop_count; j++) {
             if(strcmp(entity->properties[j].name, update_expression->property) == 0) {
@@ -114,36 +113,16 @@ OpResult OpUpdateReset(OpBase *ctx) {
     return OP_OK;
 }
 
-/* Updates indices for all entities getting modified. This must be invoked
- * before _UpdateEntities, while we still have access to the original property. */
-void _UpdateIndices(OpUpdate *op) {
-    for(int i = 0; i < op->entities_to_update_count; i++) {
-        // Retrieve and iterate over all labels associated with each node
-        size_t *node_labels = NULL;
-        size_t label_count = Graph_GetNodeLabels(op->g, op->entities_to_update[i].id, &node_labels);
-        for (size_t j = 0; j < label_count; j ++) {
-            size_t label_id = node_labels[j];
-            char *label = op->g->label_strings[label_id];
-
-            // iterate over indices instead of retrieving stores
-            LabelStore *store = LabelStore_Get(op->ctx, STORE_NODE, op->graphName, label);
-            if (!store) continue;
-
-            EntityProperty *dest_entity_prop = op->entities_to_update[i].dest_entity_prop;
-            SIValue new_value = op->entities_to_update[i].new_value;
-
-            NodeID id = op->entities_to_update[i].id;
-            Index_UpdateNodeValue(op->ctx, store, op->graphName, id, dest_entity_prop, &new_value);
-        }
-        free(node_labels);
-    }
-}
-
 /* Executes delayed updates. */
 void _UpdateEntities(OpUpdate *op) {
     for(int i = 0; i < op->entities_to_update_count; i++) {
-        EntityProperty *dest_entity_prop = op->entities_to_update[i].dest_entity_prop;
-        SIValue new_value = op->entities_to_update[i].new_value;
+        EntityUpdateCtx *ctx = &op->entities_to_update[i];
+        EntityProperty *dest_entity_prop = ctx->dest_entity_prop;
+        SIValue new_value = ctx->new_value;
+
+        // Update any indices affected by this change
+        Index_UpdateNodeValue(op->ctx, op->g, op->graphName, ctx->id, dest_entity_prop, &new_value);
+
         SIValue_Free(&dest_entity_prop->value);
         dest_entity_prop->value = new_value;
     }
@@ -183,7 +162,6 @@ void _UpdateSchemas(const OpUpdate *op) {
 
 void OpUpdateFree(OpBase *ctx) {
     OpUpdate *op = (OpUpdate*)ctx;
-    _UpdateIndices(op);
     _UpdateEntities(op);
     _UpdateSchemas(op);
     

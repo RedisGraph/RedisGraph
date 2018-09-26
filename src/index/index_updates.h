@@ -14,32 +14,24 @@
 /* Functions triggered by query clauses (CREATE, SET, DELETE)
  * that indirectly modify indexed values. */
 
-/* Indices_BuildModificationMap accepts an array of Node IDs and builds a triemap
- * in which the keys are the IDs of indices that require updates, and each value is 
- * a vector of Node IDs that must be represented in that update. If the replacement_IDs
- * argument is provided, vectors will also store destination IDs so that node migrations
- * can be handled as well as node deletions. */
-TrieMap* Indices_BuildModificationMap(RedisModuleCtx *ctx, Graph *g, const char *graph_name,
-                                  NodeID *IDs, NodeID *replacement_IDs, size_t IDCount);
 
 /* SET OPERATIONS */
 /* Index_UpdateNodeValue takes a node that has just had a property added
  * or modified and updates the index to reflect the change. */
-void Index_UpdateNodeValue(RedisModuleCtx *ctx, LabelStore *store, const char *graphName,
-                           NodeID id, EntityProperty *oldval, SIValue *newval);
+void Index_UpdateNodeValue(RedisModuleCtx *ctx, Graph *g, const char *graph_name, NodeID id, EntityProperty *oldval, SIValue *newval);
 
 /* DELETE OPERATIONS */
-/* Indices_DeleteNodes visits all indices described by a triemap and removes
- * nodes scheduled for deletion. */
-void Indices_DeleteNodes(RedisModuleCtx *ctx, Graph *g, const char *graph_name, TrieMap *delete_map);
+/* Indices_DeleteNodes accepts an array of Node IDs and removes each from all indices
+ * they are represented in. */
+void Indices_DeleteNodes(RedisModuleCtx *ctx, Graph *g, const char *graph_name, NodeID *IDs, size_t IDCount);
 
-/* Indices_UpdateNodeIDs visits all indices described by a triemap and updates the specified node IDs
- * so that migrated nodes remain accurately represented. */
-void Indices_UpdateNodeIDs(RedisModuleCtx *ctx, Graph *g, const char *graph_name, TrieMap *update_map);
+/* Indices_UpdateNodeIDs accepts an array of Node IDs and updates all indices
+ * each is represented in so that their new ID is stored. */
+void Indices_UpdateNodeIDs(RedisModuleCtx *ctx, Graph *g, const char *graph_name, NodeID *IDs, NodeID *replacementIDs, size_t IDCount);
 
 /* CREATE OPERATIONS */
-/* Indices_DeleteNodes visits all indices described by a triemap and adds
- * newly-created nodes with matching properties. */
-void Indices_AddNodes(RedisModuleCtx *ctx, Graph *g, const char *graph_name, TrieMap *create_map);
+/* Indices_AddNodes visits all indices described and adds
+ * newly-created nodes with matching labels and properties. */
+void Indices_AddNodes(RedisModuleCtx *ctx, Graph *g, const char *graph_name, int *labels, NodeID start_id, NodeID end_id);
 
 #endif

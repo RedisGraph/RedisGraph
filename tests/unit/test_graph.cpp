@@ -234,8 +234,8 @@ void benchmark_node_creation_with_labels()
     // Introduce labels and relations to graph.
     for (int i = 0; i < label_count; i++)
     {
-        Graph_AddRelation(g); // Typed relation.
-        Graph_AddLabel(g);    // Typed node.
+        Graph_AddRelation(g);     // Typed relation.
+        Graph_AddLabel(g, NULL);  // Typed node.
     }
 
     int labels[n];

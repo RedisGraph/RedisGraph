@@ -11,6 +11,7 @@ import social_utils
 
 redis_graph = None
 
+# TODO revert timings
 def redis():
     return DisposableRedis(loadmodule=os.path.dirname(os.path.abspath(__file__)) + '/../../src/redisgraph.so')
 

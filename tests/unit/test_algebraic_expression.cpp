@@ -133,10 +133,8 @@ class AlgebraicExpressionTest: public ::testing::Test {
         size_t node_count = person_count + country_count;
 
         /* Introduce person and country labels. */
-        int person_label = Graph_AddLabel(g);
-        g->label_strings[person_label] = strdup("person");
-        int country_label = Graph_AddLabel(g);
-        g->label_strings[country_label] = strdup("country");
+        int person_label = Graph_AddLabel(g, "person");
+        int country_label = Graph_AddLabel(g, "country");
         int labels[11] = {person_label, person_label, person_label, person_label, person_label, person_label,
                         country_label, country_label, country_label, country_label, country_label};
 

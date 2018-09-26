@@ -53,6 +53,9 @@
 #include "index/index.h"
 #include "index/index_type.h"
 
+// TODO maybe temp
+#include "graph/graph_context.h"
+
 /* Thread pool. */
 static threadpool _thpool = NULL;
 
@@ -500,6 +503,9 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
     if(RedisModule_CreateCommand(ctx, "graph.BULK", MGraph_BulkInsert, "write", 1, 1, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
     }
+
+    // TODO not the ideal method
+    GraphContext_New();
 
     return REDISMODULE_OK;
 }

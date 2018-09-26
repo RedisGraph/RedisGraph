@@ -197,8 +197,7 @@ void _CommitNewEntities(OpCreate *op) {
             } else {
                 store = LabelStore_Get(ctx, STORE_NODE, op->graph_name, label);                
                 if(store == NULL) {
-                    int label_id = Graph_AddLabel(op->g);
-                    op->g->label_strings[label_id] = strdup(label);
+                    int label_id = Graph_AddLabel(op->g, label);
                     store = LabelStore_New(ctx, STORE_NODE, op->graph_name, label, label_id);
                     op->result_set->stats.labels_added++;
                 }
@@ -218,23 +217,7 @@ void _CommitNewEntities(OpCreate *op) {
         Graph_CreateNodes(op->g, node_count, labels, &it);
         _SetEntitiesProperties(op, op->created_nodes, it, baseNodeID);
 
-        // TODO add interface access
-        // if (Graph_HasIndices(op->g)
-        if (op->g->index_ctr > 0) {
-            // Prepare array of new node IDs
-            NodeID new_nodes[node_count];
-            for (size_t i = 0; i < node_count; i ++) {
-                new_nodes[i] = baseNodeID + i;
-            }
-            // Build a triemap with index IDs as keys and vectors containing
-            // all matching nodes as values
-            TrieMap *create_map = Indices_BuildModificationMap(op->ctx, op->g, op->graph_name, new_nodes, NULL, node_count);
-            if (create_map) {
-                // Update all relevant indices
-                Indices_AddNodes(op->ctx, op->g, op->graph_name, create_map);
-                TrieMap_Free(create_map, NULL);
-            }
-        }
+        Indices_AddNodes(op->ctx, op->g, op->graph_name, labels, baseNodeID, baseNodeID + node_count);
 
         DataBlockIterator_Free(it);
         op->result_set->stats.nodes_created = node_count;

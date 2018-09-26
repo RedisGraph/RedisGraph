@@ -61,9 +61,6 @@ void _LocateEntities(OpDelete *op, QueryGraph *qg, AST_DeleteNode *ast_delete_no
     }
 }
 
-// TODO relocate this function
-extern EntityID* _Graph_EnqueueMigrations(DataBlock *entityStore, EntityID *IDs, size_t IDCount, size_t *migration_count);
-
 void _DeleteEntities(OpDelete *op) {
     /* We must start with edge deletion as node deletion moves nodes around. */
     size_t deletedEdgeCount = array_len(op->deleted_edges);
@@ -81,24 +78,16 @@ void _DeleteEntities(OpDelete *op) {
         size_t dupFreeNodeIDsCount = SortAndUniqueEntities(op->deleted_nodes, deletedNodeCount);
         assert(dupFreeNodeIDsCount > 0);
         // Remove nodes being deleted from indices
-        if (op->g->index_ctr > 0) {
-            // Build a triemap with index IDs as keys and Vectors containing
-            // all matching nodes as values
-            TrieMap *delete_map = Indices_BuildModificationMap(op->ctx, op->g, op->graph_name, op->deleted_nodes, NULL, dupFreeNodeIDsCount);
-            if (delete_map) {
-                // Traverse the triemap and delete all described nodes from indices
-                Indices_DeleteNodes(op->ctx, op->g, op->graph_name, delete_map);
-                TrieMap_Free(delete_map, NULL);
-            }
-            size_t migration_count = 0;
-            EntityID *migrations = _Graph_EnqueueMigrations(op->g->nodes, op->deleted_nodes, dupFreeNodeIDsCount, &migration_count);
-            // Build a triemap with index IDs as keys and Vectors containing
-            // all matching nodes and their replacement IDs as values
-            TrieMap *replacement_map = Indices_BuildModificationMap(op->ctx, op->g, op->graph_name, migrations, op->deleted_nodes, migration_count);
-            if (replacement_map) {
-                Indices_UpdateNodeIDs(op->ctx, op->g, op->graph_name, replacement_map);
-            }
-        }
+        Indices_DeleteNodes(op->ctx, op->g, op->graph_name, op->deleted_nodes, dupFreeNodeIDsCount);
+
+        // Generate an array of IDs to be migrated
+        size_t migration_count = 0;
+        EntityID *migrations = Graph_EnqueueMigrations(op->g->nodes, op->deleted_nodes, dupFreeNodeIDsCount, &migration_count);
+
+        // Update indices to assign correct IDs for migrated nodes
+        Indices_UpdateNodeIDs(op->ctx, op->g, op->graph_name, migrations, op->deleted_nodes, migration_count);
+
+        // Perform all delete operations on data blocks and matrices
         Graph_DeleteNodes(op->g, op->deleted_nodes, dupFreeNodeIDsCount);
         if(op->result_set) op->result_set->stats.nodes_deleted = dupFreeNodeIDsCount;
     }

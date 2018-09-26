@@ -18,6 +18,7 @@
 #include "../util/datablock/datablock.h"
 #include "../util/datablock/datablock_iterator.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
+#include "graph_context.h"
 
 #define GRAPH_DEFAULT_NODE_CAP 16384    // Default number of nodes a graph can hold before resizing.
 #define GRAPH_DEFAULT_RELATION_CAP 16   // Default number of different relationships a graph can hold before resizing.
@@ -34,13 +35,9 @@ typedef struct {
     size_t relation_cap;            // Number of relations graph can hold.
     size_t relation_count;          // Number of relation matrices.
     GrB_Matrix *_labels;            // Label matrices.
-    // TODO move this elsewhere, update it more consistently
-    // (maybe in Graph_AddLabel)
     char **label_strings;           // Names associated with label matrices.
     size_t label_cap;               // Number of labels graph can hold.
     size_t label_count;             // Number of label matrices.
-    // struct Index **indices;                // Array of indices. TODO move
-    size_t index_ctr;               // Next index ID to be attached to graph.
     pthread_mutex_t _mutex;         // Mutex for accessing critical sections.
 
 } Graph;
@@ -85,7 +82,7 @@ void Graph_ConnectNodes (
 
 // Populate an array of label IDs associated with a given node
 // and return the label count.
-size_t Graph_GetNodeLabels(const Graph *g, NodeID id, size_t **labels);
+uint32_t Graph_GetNodeLabels(const Graph *g, NodeID id, uint32_t *labels);
 
 // Retrieves node with given id from graph,
 // Returns NULL if node wasn't found.
@@ -126,14 +123,27 @@ void Graph_GetNodeEdges (
     int edgeType
 );
 
-// Removes a set of nodes and all of their connections
-// within the graph.
-void Graph_DeleteNodes(Graph *g, NodeID *IDs, size_t IDCount);
+// TODO This shouldn't really need to be a non-static function, but
+// it currently gets invoked from op_delete.c as well
+EntityID* Graph_EnqueueMigrations (
+    DataBlock *entityStore,
+    EntityID *IDs,
+    size_t IDCount,
+    size_t *migration_count
+);
 
 // Removes edge connecting src node to dest node.
 void Graph_DeleteEdges (
     Graph *g,
     EdgeID *IDs,
+    size_t IDCount
+);
+
+// Removes a set of nodes and all of their connections
+// within the graph.
+void Graph_DeleteNodes (
+    Graph *g,
+    NodeID *IDs, 
     size_t IDCount
 );
 
@@ -160,7 +170,8 @@ DataBlockIterator *Graph_ScanEdges (
 
 // Creates a new label matrix, returns id given to label.
 int Graph_AddLabel (
-    Graph *g
+    Graph *g,
+    const char *labelname
 );
 
 // Retrieves the adjacency matrix.
@@ -182,6 +193,9 @@ GrB_Matrix Graph_GetRelation (
     const Graph *g,     // Graph from which to get adjacency matrix.
     int relation        // Relation described by matrix.
 );
+
+// Retrieves the string associated with a given label ID.
+const char* Graph_GetLabelName(const Graph *g, int label_id);
 
 // Creates a new relation matrix, returns id given to relation.
 int Graph_AddRelation (

@@ -22,7 +22,7 @@ typedef struct {
 } EntityUpdateEvalCtx;
 
 typedef struct {
-    NodeID id;
+    EntityID id;
     EntityProperty *dest_entity_prop;   /* Entity's property to update. */
     SIValue new_value;                  /* Constant value to set. */
 } EntityUpdateCtx;

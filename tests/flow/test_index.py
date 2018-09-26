@@ -85,17 +85,30 @@ class IndexUpdatesFlowTest(FlowTestsBase):
             indexed_result = redis_graph.query("""MATCH (a:%s) WHERE a.doubleval < 100 RETURN a.doubleval ORDER BY a.doubleval""" % (label))
             scan_result = redis_graph.query("""MATCH (a:%s) RETURN a.doubleval ORDER BY a.doubleval""" % (label))
 
+            self.assertEqual(len(indexed_result.result_set), len(scan_result.result_set))
             # Collect any elements between the two result sets that fail a string comparison
             # so that we may compare them as doubles (specifically, -0 and 0 should be considered equal)
             differences = [[i[0], j[0]] for i, j in zip(indexed_result.result_set, scan_result.result_set) if i != j]
             for pair in differences:
                 self.assertEqual(float(pair[0]), float(pair[1]))
 
+    # The intval property can be assessed similar to doubleval, but the result sets should be identical
+    def validate_intval(self):
+        for label in ["label_a", "label_b"]:
+            resp = redis_graph.execution_plan("""MATCH (a:%s) WHERE a.intval > 0 RETURN a.intval ORDER BY a.intval""" % (label))
+            self.assertIn('Index Scan', resp)
+            indexed_result = redis_graph.query("""MATCH (a:%s) WHERE a.intval > 0 RETURN a.intval ORDER BY a.intval""" % (label))
+            scan_result = redis_graph.query("""MATCH (a:%s) RETURN a.intval ORDER BY a.intval""" % (label))
+
+            self.assertEqual(indexed_result.result_set, scan_result.result_set)
+
+
     # Validate a series of premises to ensure that the graph has not been modified unexpectedly
     def validate_state(self):
         self.validate_unique()
         self.validate_indexed()
         self.validate_doubleval()
+        self.validate_intval()
 
     # Modify a property, triggering updates to all nodes in two indices
     def test_full_property_update(self):

@@ -62,16 +62,7 @@ Index* Index_Get(RedisModuleCtx *ctx, const char *graph, const char *label, char
   // index_id will be NULL if the label-property pair is not indexed
   if (!index_id || index_id == TRIEMAP_NOTFOUND) return NULL;
 
-  // Open key with read-only access
-  RedisModuleKey *key = Index_LookupKey(ctx, graph, *index_id, false);
-
-  if (RedisModule_ModuleTypeGetType(key) == IndexRedisModuleType) {
-    idx = RedisModule_ModuleTypeGetValue(key);
-  }
-
-  RedisModule_CloseKey(key);
-
-  return idx;
+  return gc->indices[*index_id];
 }
 
 int Index_Delete(RedisModuleCtx *ctx, const char *graphName, Graph *g, const char *label, char *prop) {
@@ -88,6 +79,7 @@ int Index_Delete(RedisModuleCtx *ctx, const char *graphName, Graph *g, const cha
 
   size_t dest_id = *index_id;
 
+  // TODO a lot of this should be unnecessary now
   // Open key with write access
   RedisModuleKey *key = Index_LookupKey(ctx, graphName, *index_id, true);
 
@@ -98,12 +90,12 @@ int Index_Delete(RedisModuleCtx *ctx, const char *graphName, Graph *g, const cha
   }
 
   // Decrement the index counter
-  g->index_ctr --;
+  gc->index_ctr --;
 
   // NULL out the dropped index in its label schema
   LabelStore_AssignValue(store, prop, NULL);
 
-  size_t src_id = g->index_ctr;
+  size_t src_id = gc->index_ctr;
   // No need to migrate if we're replacing the last ID
   if (dest_id == src_id) {
     RedisModule_DeleteKey(key);
@@ -207,7 +199,7 @@ int Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, const cha
   // TODO This will only update the passed label; multi-label support will require
   // iterating over labels and updating all schemas.
   index_id = malloc(sizeof(size_t));
-  *index_id = Graph_AddIndexID(g);
+  *index_id = GraphContext_AddIndexID();
   LabelStore_AssignValue(store, prop_str, index_id);
 
   // Open key with write access
@@ -222,7 +214,7 @@ int Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, const cha
 
   Index *idx = buildIndex(g, label_matrix, label, prop_str);
   idx->id = *index_id;
-  g->indices[*index_id] = idx;
+  gc->indices[*index_id] = idx;
 
   RedisModule_ModuleTypeSetValue(key, IndexRedisModuleType, idx);
   RedisModule_CloseKey(key);

@@ -47,15 +47,13 @@ class IndexTest: public ::testing::Test {
       Graph *g = Graph_New(n);
 
       // Build a label matrix and add to graph
-      // (this does not need to be associated with an actual label string)
-      label_id = Graph_AddLabel(g);
+      label_id = Graph_AddLabel(g, label);
 
       // Associate all nodes in graph with this label
       int label_ids[n];
       for (int i = 0; i < n; i ++) {
         label_ids[i] = label_id;
       }
-      g->label_strings[label_id] = strdup(label);
 
       // Populate graph with nodes
       DataBlockIterator *it;

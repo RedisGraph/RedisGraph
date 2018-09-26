@@ -17,6 +17,7 @@
 #include "../graph/node.h"
 #include "../filter_tree/filter_tree.h"
 #include "../arithmetic/tuples_iter.h"
+#include "../graph/graph_context.h"
 
 #define INDEX_OK 1
 #define INDEX_FAIL 0

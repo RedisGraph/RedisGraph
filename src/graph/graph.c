@@ -167,7 +167,7 @@ void _Graph_DeleteReferredEdges(Graph *g, NodeID *IDs, size_t IDCount) {
     Vector *edges = NewVector(Edge*, 32);
     for(int i = 0; i < IDCount; i++) {
         Node *n = Graph_GetNode(g, IDs[i]);
-        Graph_GetNodeEdges(g, n, edges);
+        Graph_GetNodeEdges(g, n, edges, GRAPH_EDGE_DIR_BOTH, GRAPH_NO_RELATION);
     }
 
     // Compose a sorted array of edge ids.
@@ -298,7 +298,7 @@ Graph *Graph_New(size_t n) {
     g->relation_count = 0;
     g->label_cap = GRAPH_DEFAULT_LABEL_CAP;
     g->label_count = 0;
-    g->index_ctr = 0;
+    GraphContext_New();
 
     g->_relations = malloc(sizeof(GrB_Matrix) * g->relation_cap);
     g->_labels = malloc(sizeof(GrB_Matrix) * g->label_cap);
@@ -333,17 +333,6 @@ size_t Graph_NodeCount(const Graph *g) {
 size_t Graph_EdgeCount(const Graph *g) {
     assert(g);
     return g->edges->itemCount;
-}
-
-size_t Graph_AddIndexID(Graph *g) {
-    assert(g);
-    size_t latest_idx = g->index_ctr ++;
-    if (!g->indices) {
-      g->indices = malloc(sizeof(Index*));
-    } else {
-      realloc(g->indices, g->index_ctr * sizeof(void*));
-    }
-    return latest_idx;
 }
 
 void Graph_CreateNodes(Graph* g, size_t n, int* labels, DataBlockIterator **it) {
@@ -402,16 +391,14 @@ void Graph_ConnectNodes(Graph *g, EdgeDesc *connections, size_t connectionCount,
     }
 }
 
-size_t Graph_GetNodeLabels(const Graph *g, NodeID id, size_t **labels) {
-    // stack allocation (passed in)
-    *labels = malloc(g->label_count * sizeof(size_t));
-    size_t label_count = 0;
+uint32_t Graph_GetNodeLabels(const Graph *g, NodeID id, uint32_t *labels) {
+    uint32_t label_count = 0;
     // Find all matching labels for each node
-    for (size_t i = 0; i < g->label_count; i ++) {
+    for (uint32_t i = 0; i < g->label_count; i ++) {
       GrB_Matrix M = Graph_GetLabel(g, i);
       bool has_label = false;
       GrB_Matrix_extractElement_BOOL(&has_label, M, id, id);
-      if (has_label) *labels[label_count++] = i;
+      if (has_label) labels[label_count++] = i;
     }
     return label_count;
 }
@@ -499,7 +486,38 @@ void Graph_GetNodeEdges(const Graph *g, const Node *n, Vector *edges, GRAPH_EDGE
     TuplesIter_free(tupleIter);    
 }
 
-EntityID* _Graph_EnqueueMigrations(DataBlock *entityStore, EntityID *IDs, size_t IDCount, size_t *migration_count) {
+void _Graph_DeleteEntities(Graph *g, EntityID *IDs, size_t IDCount, DataBlock *entityStore) {
+    GrB_Vector zero;
+    GrB_Vector_new(&zero, GrB_BOOL, Graph_NodeCount(g));
+
+    size_t migration_count = 0;
+    /* TODO When nodes are being deleted, this call has already been made once so that indices
+     * could be updated properly. Executing it again here is safe, but wastes some cycles -
+     * the design generally needs to be improved. */
+    EntityID *migrations = Graph_EnqueueMigrations(entityStore, IDs, IDCount, &migration_count);
+
+    for (size_t i = 0; i < migration_count; i ++) {
+        EntityID id_to_replace = IDs[i];
+        EntityID id_to_migrate = migrations[i];
+
+        // Perform all necessary entity substitution.
+        if(entityStore == g->nodes) {
+            // Substitute entity within storage and adjacency and label matrices.
+            _Graph_ReplaceDeletedNode(g, zero, id_to_migrate, id_to_replace);
+        } else {
+            // Update edge id and hashtable associations.
+            _Graph_ReplaceDeletedEdge(g, id_to_migrate, id_to_replace);
+        }
+    }
+
+    // Free all deleted entities from datablock
+    DataBlock_FreeTop(entityStore, IDCount);
+
+    free(migrations);
+    GrB_Vector_free(&zero);
+}
+
+EntityID* Graph_EnqueueMigrations(DataBlock *entityStore, EntityID *IDs, size_t IDCount, size_t *migration_count) {
     size_t post_delete_count = entityStore->itemCount - IDCount;
 
     if (post_delete_count == 0) return NULL;
@@ -544,35 +562,6 @@ EntityID* _Graph_EnqueueMigrations(DataBlock *entityStore, EntityID *IDs, size_t
 
     *migration_count = id_to_replace_idx;
     return migrations;
-}
-
-void _Graph_DeleteEntities(Graph *g, EntityID *IDs, size_t IDCount, DataBlock *entityStore) {
-    GrB_Vector zero;
-    GrB_Vector_new(&zero, GrB_BOOL, Graph_NodeCount(g));
-
-    size_t migration_count = 0;
-    // TODO double call when coming from DeleteNodes
-    EntityID *migrations = _Graph_EnqueueMigrations(entityStore, IDs, IDCount, &migration_count);
-
-    for (size_t i = 0; i < migration_count; i ++) {
-        EntityID id_to_replace = IDs[i];
-        EntityID id_to_migrate = migrations[i];
-
-        // Perform all necessary entity substitution.
-        if(entityStore == g->nodes) {
-            // Substitute entity within storage and adjacency and label matrices.
-            _Graph_ReplaceDeletedNode(g, zero, id_to_migrate, id_to_replace);
-        } else {
-            // Update edge id and hashtable associations.
-            _Graph_ReplaceDeletedEdge(g, id_to_migrate, id_to_replace);
-        }
-    }
-
-    // Free all deleted entities from datablock
-    DataBlock_FreeTop(entityStore, IDCount);
-
-    free(migrations);
-    GrB_Vector_free(&zero);
 }
 
 /* Accepts a *sorted* array of IDs for edges to be deleted. */
@@ -629,7 +618,7 @@ DataBlockIterator *Graph_ScanEdges(const Graph *g) {
     return DataBlock_Scan(g->edges);
 }
 
-int Graph_AddLabel(Graph *g) {
+int Graph_AddLabel(Graph *g, const char *labelname) {
     assert(g);
 
     // Make sure we've got room for a new label matrix.
@@ -639,6 +628,10 @@ int Graph_AddLabel(Graph *g) {
         g->label_strings = realloc(g->label_strings, g->label_cap * sizeof(char*));
     }
 
+    // TODO At present, serialization and some tests don't provide label
+    // strings, though we may want to require them if we move to
+    // a GraphContext-style approach
+    if (labelname) g->label_strings[g->label_count] = strdup(labelname);
     GrB_Matrix_new(&g->_labels[g->label_count++], GrB_BOOL, _Graph_NodeCap(g), _Graph_NodeCap(g));
     return g->label_count-1;
 }
@@ -681,6 +674,11 @@ GrB_Matrix Graph_GetRelation(const Graph *g, int relation_idx) {
         _Graph_ResizeMatrix(g, m);
     }
     return m;
+}
+
+const char* Graph_GetLabelName(const Graph *g, int label_id) {
+    assert(g && label_id < g->label_count);
+    return g->label_strings[label_id];
 }
 
 void Graph_CommitPendingOps(Graph *g) {
