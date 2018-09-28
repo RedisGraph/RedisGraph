@@ -26,7 +26,7 @@ typedef struct {
 } EntityProperty;
 
 typedef struct {
-    NodeID id;                    /* unique id (might be empty) */
+    EntityID id;    // unique id
     int prop_count;
     EntityProperty *properties;
 } GraphEntity;

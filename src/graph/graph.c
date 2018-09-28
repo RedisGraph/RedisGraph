@@ -257,7 +257,7 @@ Graph *Graph_New(size_t n) {
     assert(n > 0);
     Graph *g = malloc(sizeof(Graph));
 
-    g->nodes = DataBlock_New(n, sizeof(Node));
+    g->nodes = DataBlock_New(n, sizeof(GraphEntity));
     g->edges = DataBlock_New(n, sizeof(Edge));
     g->_edgesHashTbl = NULL;            // Init to NULL, required by uthash.
     g->relation_cap = GRAPH_DEFAULT_RELATION_CAP;
