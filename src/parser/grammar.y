@@ -412,6 +412,7 @@ arithmetic_expression(A) ::= value(B). {
 // a.name
 arithmetic_expression(A) ::= variable(B). {
 	A = New_AST_AR_EXP_VariableOperandNode(B->alias, B->property);
+	free(B);
 }
 
 // Vector of AST_ArithmeticExpressionNode pointers.
@@ -521,6 +522,7 @@ value(A) ::= NULLVAL. { A = SI_NullVal(); }
 	/* Definitions of flex stuff */
 	typedef struct yy_buffer_state *YY_BUFFER_STATE;
 	int             yylex( void );
+	extern int             yylex_destroy (void);
 	YY_BUFFER_STATE yy_scan_string( const char * );
   	YY_BUFFER_STATE yy_scan_bytes( const char *, size_t );
   	extern int yylineno;
@@ -535,7 +537,7 @@ value(A) ::= NULLVAL. { A = SI_NullVal(); }
 
 		parseCtx ctx = {.root = NULL, .ok = 1, .errorMsg = NULL};
 
-  		while( (t = yylex()) != 0) {
+		while( (t = yylex()) != 0) {
 			Parse(pParser, t, tok, &ctx);
 		}
 		if (ctx.ok) {
@@ -545,6 +547,7 @@ value(A) ::= NULLVAL. { A = SI_NullVal(); }
 		if (err) {
 			*err = ctx.errorMsg;
 		}
+		yylex_destroy();
 		return ctx.root;
 	}
 }
