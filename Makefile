@@ -25,3 +25,6 @@ deploydocs: builddocs
 
 test:
 	$(MAKE) -C ./src test
+
+test_valgrind:
+	$(MAKE) -C ./src test_valgrind
