@@ -78,6 +78,7 @@ void Free_AST_MatchNode(AST_MatchNode *matchNode) {
 		Vector_Free(pattern);
 	}
 
+	Vector_Free(matchNode->_mergedPatterns);
 	Vector_Free(matchNode->patterns);
 	free(matchNode);
 }

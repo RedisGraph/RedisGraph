@@ -39,6 +39,7 @@ void FreeGraphEntity(GraphEntity *e) {
 	if(e->properties != NULL) {
 		for(int i = 0; i < e->prop_count; i++) {
 			free(e->properties[i].name);
+			SIValue_Free(&e->properties[i].value);
 		}		
 		free(e->properties);
 	}

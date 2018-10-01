@@ -78,6 +78,7 @@ void _referred_edge_ends(TrieMap *ref_entities, const QueryGraph *q) {
         TrieMap_Add(ref_entities, alias, strlen(alias), NULL, TrieMap_DONT_CARE_REPLACE);
     }
 
+    TrieMapIterator_Free(it);
     Vector_Free(aliases);
 }
 

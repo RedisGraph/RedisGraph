@@ -8,7 +8,8 @@
 #include "./ast_common.h"
 #include "../value.h"
 
-AST_Variable* New_AST_Variable(const char* alias, const char* property) {
+// TODO I think a lot of unnecessary allocations here are unnecessary
+AST_Variable* New_AST_Variable(const char *alias, const char *property) {
 	AST_Variable *v = (AST_Variable*)calloc(1, sizeof(AST_Variable));
 
 	if(alias != NULL) {
@@ -50,12 +51,8 @@ AST_NodeEntity* New_AST_NodeEntity(char *alias, char *label, Vector *properties)
 	ne->t = N_ENTITY;
 	ne->properties = properties;
 	
-	if(alias != NULL) {
-		ne->alias = strdup(alias);
-	}
-	if(label != NULL) {
-		ne->label = strdup(label);
-	}
+	if(alias != NULL) ne->alias = alias;
+	if(label != NULL) ne->label = label;
 
 	return ne;
 }
@@ -65,12 +62,6 @@ bool AST_LinkEntity_FixedLengthEdge(AST_LinkEntity* edge) {
 }
 
 void Free_AST_GraphEntity(AST_GraphEntity *graphEntity) {
-	if(graphEntity->label != NULL) {
-		free(graphEntity->label);
-	}
-	if(graphEntity->alias != NULL) {
-		free(graphEntity->alias);
-	}
 	if(graphEntity->properties != NULL) {
 		for(int i = 0; i < Vector_Size(graphEntity->properties); i++) {
 			SIValue *val;
