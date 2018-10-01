@@ -224,7 +224,7 @@ AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(AlgebraicExpr
             hops = edge->length->minHops;
         }
 
-        for(int i = 0; i < hops; i++) {
+        for(int j = 0; j < hops; j++) {
             iexp->operands[iexp->operand_count++] = exp->operands[operandIdx++];
         }
 
