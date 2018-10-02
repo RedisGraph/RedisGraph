@@ -227,8 +227,8 @@ void _MGraph_Query(void *args) {
     
     // Clean up.
 cleanup:
-    RedisModule_UnblockClient(qctx->bc, NULL);
     Free_AST_Query(ast);
+    RedisModule_UnblockClient(qctx->bc, NULL);
     free(qctx);
 }
 
@@ -403,6 +403,7 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
         return REDISMODULE_OK;
     }
 
+    ExecutionPlan *plan = NULL;
     // Try to get graph.
     Graph *g = Graph_Get(ctx, argv[1]);
     if(!g) {
@@ -422,12 +423,12 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
         goto cleanup;
     }
 
-    ExecutionPlan *plan = NewExecutionPlan(ctx, g, graph_name, ast, true);
+    plan = NewExecutionPlan(ctx, g, graph_name, ast, true);
     char* strPlan = ExecutionPlanPrint(plan);
     RedisModule_ReplyWithStringBuffer(ctx, strPlan, strlen(strPlan));
-    ExecutionPlanFree(plan);
 
 cleanup:
+    ExecutionPlanFree(plan);
     Free_AST_Query(ast);
     return REDISMODULE_OK;
 }

@@ -497,6 +497,8 @@ void _ExecutionPlanFreeRecursive(OpBase* op) {
 }
 
 void ExecutionPlanFree(ExecutionPlan *plan) {
+    if (plan == NULL) return;
+
     _ExecutionPlanFreeRecursive(plan->root);
     if(plan->filter_tree) FilterTree_Free(plan->filter_tree);
     if(plan->query_graph) QueryGraph_Free(plan->query_graph);
