@@ -14,6 +14,7 @@ int yycolumn = 1;
 #define YY_USER_ACTION yycolumn += yyleng; \
     tok.pos = yycolumn; \
     tok.s = yytext;
+    /* tok.s = strdup(yytext); */
 %}
 
 %%
