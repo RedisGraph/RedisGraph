@@ -29,7 +29,6 @@ ResultSetRecord* ResultSetRecord_FromGroup(const ResultSetHeader *resultset_head
             AR_ExpNode *agg_exp;
             Vector_Get(g->aggregationFunctions, agg_idx, &agg_exp);
             AR_EXP_Reduce(agg_exp);
-            printf("AR EXP below should be constant, no need for record.\n");
             r->values[i] = AR_EXP_Evaluate(agg_exp, NULL);
             agg_idx++;
         } else {

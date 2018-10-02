@@ -26,9 +26,6 @@ class AggregateTest: public ::testing::Test {
       AR_RegisterFuncs();
       Agg_RegisterFuncs();
     }
-
-    // static void TearDownTestCase() {
-    // }
 };
 
 TEST_F(AggregateTest, PercentileContTest) {

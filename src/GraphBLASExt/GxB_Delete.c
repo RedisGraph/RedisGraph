@@ -10,13 +10,16 @@ GrB_Info GxB_Matrix_Delete
     GrB_Matrix Z ;  // 1X1 empty matrix.
     GrB_Matrix_new (&Z, GrB_BOOL, 1, 1) ;
 
-    return GxB_Matrix_subassign (M,
-                                 GrB_NULL,
-                                 GrB_NULL,
-                                 Z,
-                                 &row,
-                                 1,
-                                 &col,
-                                 1,
-                                 GrB_NULL) ;
+    GrB_Info info = GxB_Matrix_subassign (M,
+                                          GrB_NULL,
+                                          GrB_NULL,
+                                          Z,
+                                          &row,
+                                          1,
+                                          &col,
+                                          1,
+                                          GrB_NULL) ;
+
+    GrB_Matrix_free(&Z);
+    return info;
 }
