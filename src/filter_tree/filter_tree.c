@@ -30,8 +30,8 @@ FT_FilterNode* _CreatePredicateFilterNode(const AST_PredicateNode *pn, const Que
     FT_FilterNode *filterNode = malloc(sizeof(FT_FilterNode));
     filterNode->t= FT_N_PRED;
     filterNode->pred.op = pn->op;
-    filterNode->pred.lhs = AR_EXP_BuildFromAST(pn->lhs, qg);
-    filterNode->pred.rhs = AR_EXP_BuildFromAST(pn->rhs, qg);
+    filterNode->pred.lhs = AR_EXP_BuildFromAST(pn->lhs);
+    filterNode->pred.rhs = AR_EXP_BuildFromAST(pn->rhs);
     return filterNode;
 }
 
@@ -127,33 +127,33 @@ int _applyFilter(SIValue* aVal, SIValue* bVal, int op) {
     return 0;
 }
 
-int _applyPredicateFilters(const FT_FilterNode* root) {
+int _applyPredicateFilters(const FT_FilterNode* root, const Record r) {
     /* A op B
      * Evaluate the left and right sides of the predicate to obtain
      * comparable SIValues. */
-    SIValue lhs = AR_EXP_Evaluate(root->pred.lhs);
-    SIValue rhs = AR_EXP_Evaluate(root->pred.rhs);
+    SIValue lhs = AR_EXP_Evaluate(root->pred.lhs, r);
+    SIValue rhs = AR_EXP_Evaluate(root->pred.rhs, r);
 
     return _applyFilter(&lhs, &rhs, root->pred.op);
 }
 
-int FilterTree_applyFilters(const FT_FilterNode* root) {
+int FilterTree_applyFilters(const FT_FilterNode* root, const Record r) {
     /* Handle predicate node. */
     if(IsNodePredicate(root)) {
-        return _applyPredicateFilters(root);
+        return _applyPredicateFilters(root, r);
     }
 
     /* root->t == FT_N_COND, visit left subtree. */
-    int pass = FilterTree_applyFilters(LeftChild(root));
+    int pass = FilterTree_applyFilters(LeftChild(root), r);
     
     if(root->cond.op == AND && pass == 1) {
         /* Visit right subtree. */
-        pass *= FilterTree_applyFilters(RightChild(root));
+        pass *= FilterTree_applyFilters(RightChild(root), r);
     }
 
     if(root->cond.op == OR && pass == 0) {
         /* Visit right subtree. */
-        pass = FilterTree_applyFilters(RightChild(root));
+        pass = FilterTree_applyFilters(RightChild(root), r);
     }
 
     return pass;

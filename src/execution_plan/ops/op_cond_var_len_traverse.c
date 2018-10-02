@@ -11,13 +11,13 @@
 #include "../../algorithms/all_paths.h"
 #include "./op_cond_var_len_traverse.h"
 
-OpBase* NewCondVarLenTraverseOp(AlgebraicExpression *ae, unsigned int minHops, unsigned int maxHops, Graph *g, const QueryGraph *qg) {
-    assert(ae && minHops <= maxHops && g && qg && ae->operand_count == 1);
+OpBase* NewCondVarLenTraverseOp(AlgebraicExpression *ae, unsigned int minHops, unsigned int maxHops, Graph *g) {
+    assert(ae && minHops <= maxHops && g && ae->operand_count == 1);
     CondVarLenTraverse *condVarLenTraverse = malloc(sizeof(CondVarLenTraverse));
     condVarLenTraverse->g = g;
-    condVarLenTraverse->relationID = Edge_GetRelationID(*ae->edge);
-    condVarLenTraverse->srcNode = ae->src_node;
-    condVarLenTraverse->destNode = ae->dest_node;
+    condVarLenTraverse->relationID = Edge_GetRelationID(ae->edge);
+    condVarLenTraverse->srcNodeAlias = ae->src_node->alias;
+    condVarLenTraverse->destNodeAlias = ae->dest_node->alias;
     condVarLenTraverse->minHops = minHops;
     condVarLenTraverse->maxHops = maxHops;
     condVarLenTraverse->pathsCount = 0;
@@ -31,18 +31,16 @@ OpBase* NewCondVarLenTraverseOp(AlgebraicExpression *ae, unsigned int minHops, u
     condVarLenTraverse->op.consume = CondVarLenTraverseConsume;
     condVarLenTraverse->op.reset = CondVarLenTraverseReset;
     condVarLenTraverse->op.free = CondVarLenTraverseFree;
-    condVarLenTraverse->op.modifies = NewVector(char*, 2);
+    condVarLenTraverse->op.modifies = NewVector(char*, 1);
 
-    char *modified = NULL;
-    modified = QueryGraph_GetNodeAlias(qg, *condVarLenTraverse->srcNode);
-    Vector_Push(condVarLenTraverse->op.modifies, modified);
-    modified = QueryGraph_GetNodeAlias(qg, *condVarLenTraverse->destNode);
+    const char *modified = NULL;
+    modified = condVarLenTraverse->destNodeAlias;
     Vector_Push(condVarLenTraverse->op.modifies, modified);
 
     return (OpBase*)condVarLenTraverse;
 }
 
-OpResult CondVarLenTraverseConsume(OpBase *opBase, QueryGraph* graph) {
+OpResult CondVarLenTraverseConsume(OpBase *opBase, Record *r) {
     CondVarLenTraverse *op = (CondVarLenTraverse*)opBase;
     OpBase *child = op->op.children[0];
 
@@ -50,9 +48,10 @@ OpResult CondVarLenTraverseConsume(OpBase *opBase, QueryGraph* graph) {
 
     /* Not initialized. */
     while(op->pathsCount == 0) {
-        res = child->consume(child, graph);
+        res = child->consume(child, r);
         if(res != OP_OK) return res;
-        op->pathsCount = AllPaths(op->g, op->relationID, (*op->srcNode)->id, op->minHops, op->maxHops, &op->pathsCap, &op->paths);
+        Node *srcNode = Record_GetNode(*r, op->srcNodeAlias);
+        op->pathsCount = AllPaths(op->g, op->relationID, srcNode->id, op->minHops, op->maxHops, &op->pathsCap, &op->paths);
     }
 
     Path p = op->paths[--op->pathsCount];
@@ -60,7 +59,8 @@ OpResult CondVarLenTraverseConsume(OpBase *opBase, QueryGraph* graph) {
     Path_free(p);
 
     Node *destNode = Edge_GetDestNode(e);
-    *op->destNode = destNode;
+    Record_AddEntry(r, op->destNodeAlias, SI_PtrVal(destNode));
+
     return OP_OK;
 }
 

@@ -12,9 +12,8 @@
 #include "../../grouping/group_cache.h"
 #include "../../query_executor.h"
 
-OpBase* NewAggregateOp(RedisModuleCtx *ctx, AST_Query *ast, TrieMap *groups) {
+OpBase* NewAggregateOp(AST_Query *ast, TrieMap *groups) {
     Aggregate *aggregate = malloc(sizeof(Aggregate));
-    aggregate->ctx = ctx;
     aggregate->ast = ast;
     aggregate->init = 0;
     aggregate->none_aggregated_expression_count = 0;
@@ -34,14 +33,14 @@ OpBase* NewAggregateOp(RedisModuleCtx *ctx, AST_Query *ast, TrieMap *groups) {
 
 /* Construct an aggregated expression tree foreach aggregated term. 
  * Returns a vector of aggregated expression trees. */
-Vector* _build_aggregated_expressions(AST_Query *ast, QueryGraph* g) {
+Vector* _build_aggregated_expressions(AST_Query *ast) {
     Vector *aggregated_expressions = NewVector(AR_ExpNode*, 1);
 
     for(int i = 0; i < Vector_Size(ast->returnNode->returnElements); i++) {
         AST_ReturnElementNode *returnElement;
         Vector_Get(ast->returnNode->returnElements, i, &returnElement);
 
-        AR_ExpNode *expression = AR_EXP_BuildFromAST(returnElement->exp, g);
+        AR_ExpNode *expression = AR_EXP_BuildFromAST(returnElement->exp);
         if(AR_EXP_ContainsAggregation(expression, NULL)) {
             Vector_Push(aggregated_expressions, expression);
         }
@@ -52,13 +51,13 @@ Vector* _build_aggregated_expressions(AST_Query *ast, QueryGraph* g) {
 
 /* Construct group key based on none aggregated terms. 
  * Returns group name which must be freed by caller. */
-char* _computeGroupKey(Aggregate *op, SIValue *group_keys) {
+char* _computeGroupKey(Aggregate *op, SIValue *group_keys, Record r) {
     if(!group_keys) return "SINGLE_GROUP";
     char *str_group;
 
     for(int i = 0; i < op->none_aggregated_expression_count; i++) {
         AR_ExpNode *exp = op->none_aggregated_expressions[i];
-        group_keys[i] = AR_EXP_Evaluate(exp);
+        group_keys[i] = AR_EXP_Evaluate(exp, r);
     }
 
     // Determine required size for group string representation.
@@ -69,16 +68,16 @@ char* _computeGroupKey(Aggregate *op, SIValue *group_keys) {
     return str_group;
 }
 
-void _aggregateRecord(Aggregate *op, QueryGraph *g) {
+void _aggregateRecord(Aggregate *op, Record r) {
     /* Get group */
     Group* group = NULL;
-    char *group_key = _computeGroupKey(op, op->group_keys);
+    char *group_key = _computeGroupKey(op, op->group_keys, r);
     CacheGroupGet(op->groups, group_key, &group);
 
     if(!group) {
         /* Create a new group
          * Get aggregation functions. */
-        Vector *agg_exps = _build_aggregated_expressions(op->ast, g);
+        Vector *agg_exps = _build_aggregated_expressions(op->ast);
 
         /* Clone group keys. */
         size_t key_count = op->none_aggregated_expression_count;
@@ -95,19 +94,18 @@ void _aggregateRecord(Aggregate *op, QueryGraph *g) {
     for(int i = 0; i < Vector_Size(group->aggregationFunctions); i++) {
         AR_ExpNode *exp;
         Vector_Get(group->aggregationFunctions, i, &exp);
-        AR_EXP_Aggregate(exp);
+        AR_EXP_Aggregate(exp, r);
     }
 }
 
-OpResult AggregateConsume(OpBase *opBase, QueryGraph* graph) {
+OpResult AggregateConsume(OpBase *opBase, Record *r) {
     Aggregate *op = (Aggregate*)opBase;
     OpBase *child = op->op.children[0];
 
     if(!op->init) {
         Build_None_Aggregated_Arithmetic_Expressions(op->ast->returnNode,
                                                      &op->none_aggregated_expressions,
-                                                     &op->none_aggregated_expression_count,
-                                                     graph);
+                                                     &op->none_aggregated_expression_count);
         /* Allocate memory for group keys. */
         if(op->none_aggregated_expression_count > 0) {
             op->group_keys = malloc(sizeof(SIValue) * op->none_aggregated_expression_count);
@@ -115,10 +113,10 @@ OpResult AggregateConsume(OpBase *opBase, QueryGraph* graph) {
         op->init = 1;
     }
 
-    OpResult res = child->consume(child, graph);
+    OpResult res = child->consume(child, r);
     if(res != OP_OK) return res;
 
-    _aggregateRecord(op, graph);
+    _aggregateRecord(op, *r);
 
     return OP_OK;
 }

@@ -12,7 +12,7 @@ extern "C" {
 #endif
 
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
-#include "../../src/arithmetic/tuples_iter.h"
+#include "../../src/GraphBLASExt/tuples_iter.h"
 
 #ifdef __cplusplus
 }

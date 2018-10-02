@@ -5,20 +5,20 @@
 * modified with the Commons Clause restriction.
 */
 
-#include "record.h"
+#include "resultset_record.h"
 #include "../rmutil/strings.h"
 #include "../query_executor.h"
 
-Record* NewRecord(size_t len) {
-    Record *r = (Record*)malloc(sizeof(Record));
+ResultSetRecord* NewResultSetRecord(size_t len) {
+    ResultSetRecord *r = (ResultSetRecord*)malloc(sizeof(ResultSetRecord));
     r->len = len;
     r->values = malloc(sizeof(SIValue) * len);
     return r;
 }
 
 /* Creates a new result-set record from an aggregated group. */
-Record* Record_FromGroup(const ResultSetHeader *resultset_header, const Group *g) {
-    Record *r = NewRecord(resultset_header->columns_len);
+ResultSetRecord* ResultSetRecord_FromGroup(const ResultSetHeader *resultset_header, const Group *g) {
+    ResultSetRecord *r = NewResultSetRecord(resultset_header->columns_len);
     
     int key_idx = 0;
     int agg_idx = 0;
@@ -29,7 +29,7 @@ Record* Record_FromGroup(const ResultSetHeader *resultset_header, const Group *g
             AR_ExpNode *agg_exp;
             Vector_Get(g->aggregationFunctions, agg_idx, &agg_exp);
             AR_EXP_Reduce(agg_exp);
-            r->values[i] = AR_EXP_Evaluate(agg_exp);
+            r->values[i] = AR_EXP_Evaluate(agg_exp, NULL);
             agg_idx++;
         } else {
             r->values[i] = g->keys[key_idx];
@@ -40,7 +40,7 @@ Record* Record_FromGroup(const ResultSetHeader *resultset_header, const Group *g
     return r;
 }
 
-size_t Record_ToString(const Record *record, char **buf, size_t *buf_cap) {
+size_t ResultSetRecord_ToString(const ResultSetRecord *record, char **buf, size_t *buf_cap) {
     size_t required_len = SIValue_StringConcatLen(record->values, record->len);
 
     if(*buf_cap < required_len) {
@@ -51,7 +51,7 @@ size_t Record_ToString(const Record *record, char **buf, size_t *buf_cap) {
     return SIValue_StringConcat(record->values, record->len, *buf, *buf_cap);
 }
 
-int Records_Compare(const Record *A, const Record *B, int* compareIndices, size_t compareIndicesLen) {
+int ResultSetRecord_Compare(const ResultSetRecord *A, const ResultSetRecord *B, int* compareIndices, size_t compareIndicesLen) {
     SIValue a;
     SIValue b;
 
@@ -68,7 +68,7 @@ int Records_Compare(const Record *A, const Record *B, int* compareIndices, size_
 }
 
 /* Frees given record. */
-void Record_Free(Record *r) {
+void ResultSetRecord_Free(ResultSetRecord *r) {
     if(r == NULL) return;
     free(r->values);
     free(r);

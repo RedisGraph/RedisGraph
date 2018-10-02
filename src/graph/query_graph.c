@@ -134,7 +134,7 @@ void _BuildQueryGraphAddNode(RedisModuleCtx *ctx, const char *graph_name,
     Node *n = QueryGraph_GetNodeByAlias(qg, entity->alias);
     if(n == NULL) {
         /* Create a new node, set its properties, and add it to the graph. */
-        n = Node_New(INVALID_ENTITY_ID, entity->label);
+        n = Node_New(INVALID_ENTITY_ID, entity->label, entity->alias);
         _BuildQueryGraphAddProps(entity, (GraphEntity*)n);
         QueryGraph_AddNode(qg, n, entity->alias);
     } else {
@@ -182,7 +182,7 @@ void _BuildQueryGraphAddEdge(RedisModuleCtx *ctx,
 
     Node *src = QueryGraph_GetNodeByAlias(qg, src_node->alias);
     Node *dest = QueryGraph_GetNodeByAlias(qg, dest_node->alias);
-    Edge *e = Edge_New(INVALID_ENTITY_ID, src, dest, edge->ge.label);
+    Edge *e = Edge_New(INVALID_ENTITY_ID, src, dest, edge->ge.label, edge->ge.alias);
     _BuildQueryGraphAddProps(entity, (GraphEntity*)e);
 
     // Get relation matrix.
@@ -306,37 +306,6 @@ GraphEntity* QueryGraph_GetEntityByAlias(const QueryGraph *g, const char *alias)
     }
     
     return (GraphEntity*)QueryGraph_GetEdgeByAlias(g, alias);
-}
-
-char* QueryGraph_GetNodeAlias(const QueryGraph *g, const Node *n) {
-    assert(g && n);
-    
-    int i;
-    int node_count = g->node_count;
-
-    for(i = 0; i < node_count; i++) {
-        if(n == g->nodes[i]) {
-            return g->node_aliases[i];
-        }
-    }
-
-    assert(0);
-    return NULL;
-}
-
-char* QueryGraph_GetEdgeAlias(const QueryGraph *g, const Edge *e) {
-    assert(g && e);
-    
-    int i;
-    int edge_count = g->edge_count;
-
-    for(i = 0; i < edge_count; i++) {
-        if(e == g->edges[i]) {
-            return g->edge_aliases[i];
-        }
-    }
-    
-    return NULL;
 }
 
 GraphEntity** QueryGraph_GetEntityRef(const QueryGraph *g, const char *alias) {

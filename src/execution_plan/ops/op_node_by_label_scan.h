@@ -9,29 +9,28 @@
 #define __OP_NODE_BY_LABEL_SCAN_H
 
 #include "op.h"
-#include "../../graph/query_graph.h"
 #include "../../graph/node.h"
 #include "../../graph/graph.h"
-#include "../../arithmetic/tuples_iter.h"
+#include "../../GraphBLASExt/tuples_iter.h"
 #include "../../../deps/GraphBLAS/Include/GraphBLAS.h"
 
 /* NodeByLabelScan, scans entire label. */
 
 typedef struct {
     OpBase op;
-    Node **node;            /* Node being scanned */
-    Node *_node;
+    Node *node;                 /* Node being scanned */
     Graph *g;
     TuplesIter *iter;
-    GrB_Matrix _zero_matrix;           /* Fake matrix, in-case label does not exists. */
+    GrB_Matrix _zero_matrix;    /* Fake matrix, in-case label does not exists. */
 } NodeByLabelScan;
 
 /* Creates a new NodeByLabelScan operation */
-OpBase *NewNodeByLabelScanOp(RedisModuleCtx *ctx, QueryGraph *qg, Graph *g, const char *graph_name, Node **node, const char *label);
+OpBase *NewNodeByLabelScanOp(RedisModuleCtx *ctx, Graph *g,
+                             const char *graph_name, Node *node);
 
 /* NodeByLabelScan next operation
  * called each time a new ID is required */
-OpResult NodeByLabelScanConsume(OpBase *opBase, QueryGraph* graph);
+OpResult NodeByLabelScanConsume(OpBase *opBase, Record *r);
 
 /* Restart iterator */
 OpResult NodeByLabelScanReset(OpBase *ctx);

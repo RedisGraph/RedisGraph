@@ -7,7 +7,7 @@
 
 #include "op_filter.h"
 
-OpBase* NewFilterOp(FT_FilterNode *filterTree, const QueryGraph *qg) {
+OpBase* NewFilterOp(FT_FilterNode *filterTree) {
     Filter *filter = malloc(sizeof(Filter));
     filter->filterTree = filterTree;
 
@@ -24,17 +24,17 @@ OpBase* NewFilterOp(FT_FilterNode *filterTree, const QueryGraph *qg) {
 
 /* FilterConsume next operation 
  * returns OP_OK when graph passes filter tree. */
-OpResult FilterConsume(OpBase *opBase, QueryGraph* graph) {
+OpResult FilterConsume(OpBase *opBase, Record *r) {
     Filter *filter = (Filter*)opBase;
     OpBase *child = filter->op.children[0];
     int pass = FILTER_FAIL;
 
     while(pass != FILTER_PASS) {
-        OpResult res = child->consume(child, graph);
+        OpResult res = child->consume(child, r);
         if(res != OP_OK) return res;
 
         /* Pass graph through filter tree */
-        pass = FilterTree_applyFilters(filter->filterTree);
+        pass = FilterTree_applyFilters(filter->filterTree, *r);
     }
 
     return OP_OK;

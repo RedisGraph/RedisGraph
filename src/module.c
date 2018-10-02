@@ -45,8 +45,8 @@
 #include "grouping/group_cache.h"
 #include "arithmetic/agg_funcs.h"
 
-#include "resultset/record.h"
 #include "resultset/resultset.h"
+#include "resultset/resultset_record.h"
 
 #include "execution_plan/execution_plan.h"
 

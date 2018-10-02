@@ -8,6 +8,7 @@
 #ifndef __ARITHMETIC_EXPRESSION_H
 #define __ARITHMETIC_EXPRESSION_H
 
+#include "../execution_plan/record.h"
 #include "../graph/graph_entity.h"
 #include "../graph/query_graph.h"
 #include "../parser/ast.h"
@@ -95,7 +96,6 @@ typedef struct {
     union {
         SIValue constant;
         struct {
-            GraphEntity **entity;
             char *entity_alias;
 			char *entity_prop;
 		} variadic;
@@ -121,13 +121,13 @@ typedef struct AR_ExpNode AR_ExpNode;
 int AR_EXP_GetOperandType(AR_ExpNode *exp);
 
 /* Evaluate arithmetic expression tree. */
-SIValue AR_EXP_Evaluate(const AR_ExpNode *root);
-void AR_EXP_Aggregate(const AR_ExpNode *root);
+SIValue AR_EXP_Evaluate(const AR_ExpNode *root, const Record r);
+void AR_EXP_Aggregate(const AR_ExpNode *root, const Record r);
 void AR_EXP_Reduce(const AR_ExpNode *root);
 
 /* Create arithmetic expression node. */
 AR_ExpNode* AR_EXP_NewConstOperandNode(SIValue constant);
-AR_ExpNode* AR_EXP_NewVariableOperandNode(GraphEntity **entity, const char *entity_prop, const char *entity_alias);
+AR_ExpNode* AR_EXP_NewVariableOperandNode(const char *entity_prop, const char *entity_alias);
 AR_ExpNode* AR_EXP_NewOpNode(char *func_name, int child_count);
 
 /* Utility functions */
@@ -144,7 +144,7 @@ int AR_EXP_ContainsAggregation(AR_ExpNode *root, AR_ExpNode **agg_node);
 void AR_EXP_ToString(const AR_ExpNode *root, char **str);
 
 /* Construct an arithmetic expression tree from ast arithmetic expression node. */
-AR_ExpNode* AR_EXP_BuildFromAST(const AST_ArithmeticExpressionNode *exp, const QueryGraph *g);
+AR_ExpNode* AR_EXP_BuildFromAST(const AST_ArithmeticExpressionNode *exp);
 
 /* Free arithmetic expression tree. */
 void AR_EXP_Free(AR_ExpNode *root);

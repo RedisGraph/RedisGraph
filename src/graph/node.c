@@ -12,7 +12,7 @@
 #include "assert.h"
 #include "graph_entity.h"
 
-Node* Node_New(NodeID id, const char *label) {
+Node* Node_New(NodeID id, const char *label, const char *alias) {
 	Node* node = (Node*)calloc(1, sizeof(Node));
 	
 	node->id = id;
@@ -20,10 +20,9 @@ Node* Node_New(NodeID id, const char *label) {
 	node->prop_count = 0;
 	node->outgoing_edges = NewVector(Edge*, 0);
 	node->incoming_edges = NewVector(Edge*, 0);
-	
-	if(label != NULL) {
-		node->label = strdup(label);
-	}
+
+	if(label != NULL) node->label = strdup(label);
+	if(alias != NULL) node->alias = strdup(alias);
 
 	return node;
 }
@@ -55,14 +54,10 @@ void Node_Free(Node* node) {
 
 	FreeGraphEntity((GraphEntity*)node);
 
-	if(node->label != NULL) {
-		free(node->label);
-	}
-
-	if(node->outgoing_edges)
-		Vector_Free(node->outgoing_edges);
-	if(node->incoming_edges)
-		Vector_Free(node->incoming_edges);
+	if(node->label != NULL) free(node->label);
+	if(node->alias != NULL) free(node->alias);
+	if(node->outgoing_edges) Vector_Free(node->outgoing_edges);
+	if(node->incoming_edges) Vector_Free(node->incoming_edges);
 
 	free(node);
 	node = NULL;

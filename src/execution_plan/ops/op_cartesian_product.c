@@ -31,11 +31,11 @@ OpResult _ResetStreams(CartesianProduct *cp, int streamIdx) {
     return OP_OK;
 }
 
-OpResult _PullFromStreams(CartesianProduct *cp, QueryGraph* graph) {
+OpResult _PullFromStreams(CartesianProduct *cp, Record *r) {
     OpResult res;
     for(int i = 1; i < cp->op.childCount; i++) {
         OpBase *child = cp->op.children[i];
-        res = child->consume(child, graph);
+        res = child->consume(child, r);
         if(res == OP_OK) {
             /* Managed to get new data
              * Reset stream (0-i) */
@@ -45,7 +45,7 @@ OpResult _PullFromStreams(CartesianProduct *cp, QueryGraph* graph) {
             // Pull from resetted streams.
             for(int j = 0; j < i; j++) {
                 child = cp->op.children[j];
-                res = child->consume(child, graph);
+                res = child->consume(child, r);
                 if(res != OP_OK) return res;
             }
             // Ready to continue.
@@ -60,7 +60,7 @@ OpResult _PullFromStreams(CartesianProduct *cp, QueryGraph* graph) {
     return OP_DEPLETED;
 }
 
-OpResult CartesianProductConsume(OpBase *opBase, QueryGraph* graph) {
+OpResult CartesianProductConsume(OpBase *opBase, Record *r) {
     CartesianProduct *cp = (CartesianProduct*)opBase;
     OpResult res;
     OpBase *child;
@@ -69,7 +69,7 @@ OpResult CartesianProductConsume(OpBase *opBase, QueryGraph* graph) {
         cp->init = false;
         for(int i = 0; i < cp->op.childCount; i++) {
             child = cp->op.children[i];
-            OpResult res = child->consume(child, graph);
+            OpResult res = child->consume(child, r);
             if(res != OP_OK) return res;
         }
         return OP_OK;
@@ -77,12 +77,12 @@ OpResult CartesianProductConsume(OpBase *opBase, QueryGraph* graph) {
 
     // Pull from first stream.
     child = cp->op.children[0];
-    res = child->consume(child, graph);
+    res = child->consume(child, r);
 
     if(res == OP_ERR) {
         return res;
     } else if(res == OP_DEPLETED) {
-        res = _PullFromStreams(cp, graph);
+        res = _PullFromStreams(cp, r);
         if(res != OP_OK) return res;
     }
 

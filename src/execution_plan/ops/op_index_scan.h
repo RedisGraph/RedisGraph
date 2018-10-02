@@ -16,18 +16,17 @@
 
 typedef struct {
     OpBase op;
-    Node **node;            /* node being scanned */
-    Node *_node;
+    Node *node;            /* node being scanned */
     Graph *g;
     IndexIter *iter;
 } IndexScan;
 
 /* Creates a new IndexScan operation */
-OpBase *NewIndexScanOp(QueryGraph *qg, Graph *g, Node **node, IndexIter *iter);
+OpBase *NewIndexScanOp(Graph *g, Node *node, IndexIter *iter);
 
 /* IndexScan next operation
  * called each time a new node is required */
-OpResult IndexScanConsume(OpBase *opBase, QueryGraph* graph);
+OpResult IndexScanConsume(OpBase *opBase, Record *r);
 
 /* Restart iterator */
 OpResult IndexScanReset(OpBase *ctx);

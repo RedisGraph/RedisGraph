@@ -62,12 +62,6 @@ void QueryGraph_AddNode(QueryGraph* g, Node *n, char *alias);
 /* Adds a new edge to the graph */
 void QueryGraph_ConnectNodes(QueryGraph *g, Node *src, Node *dest, Edge *e, char *edge_alias);
 
-/* Looks up node's alias within the graph */
-char* QueryGraph_GetNodeAlias(const QueryGraph *g, const Node *n);
-
-/* Looks up edge's alias within the graph */
-char* QueryGraph_GetEdgeAlias(const QueryGraph *g, const Edge *e);
-
 GraphEntity** QueryGraph_GetEntityRef(const QueryGraph *g, const char *alias);
 Node** QueryGraph_GetNodeRef(const QueryGraph *g, const Node *n);
 Edge** QueryGraph_GetEdgeRef(const QueryGraph *g, const Edge *e);

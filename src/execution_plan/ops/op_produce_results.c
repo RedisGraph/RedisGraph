@@ -6,7 +6,7 @@
 */
 
 #include "op_produce_results.h"
-#include "../../resultset/record.h"
+#include "../../resultset/resultset_record.h"
 #include "../../arithmetic/arithmetic_expression.h"
 #include "../../query_executor.h"
 
@@ -18,19 +18,19 @@ void _BuildArithmeticExpressions(ProduceResults* op, AST_ReturnNode *return_node
         AST_ReturnElementNode *ret_node;
         Vector_Get(return_node->returnElements, i, &ret_node);
 
-        AR_ExpNode *ae = AR_EXP_BuildFromAST(ret_node->exp, graph);
+        AR_ExpNode *ae = AR_EXP_BuildFromAST(ret_node->exp);
         Vector_Push(op->return_elements, ae);
     }
 }
 
-Record *_ProduceResultsetRecord(ProduceResults* op) {
-    Record *r = NewRecord(Vector_Size(op->return_elements));
+ResultSetRecord *_ProduceResultsetRecord(ProduceResults* op, const Record r) {
+    ResultSetRecord *resRec = NewResultSetRecord(Vector_Size(op->return_elements));
     for(int i = 0; i < Vector_Size(op->return_elements); i++) {
         AR_ExpNode *ae;
         Vector_Get(op->return_elements, i, &ae);
-        r->values[i] = AR_EXP_Evaluate(ae);
+        resRec->values[i] = AR_EXP_Evaluate(ae, r);
     }
-    return r;
+    return resRec;
 }
 
 OpBase* NewProduceResultsOp(AST_Query *ast, ResultSet *result_set, QueryGraph* graph) {
@@ -55,20 +55,20 @@ OpBase* NewProduceResultsOp(AST_Query *ast, ResultSet *result_set, QueryGraph* g
 
 /* ProduceResults consume operation
  * called each time a new result record is required */
-OpResult ProduceResultsConsume(OpBase *opBase, QueryGraph* graph) {
-    OpResult res = OP_DEPLETED;
+OpResult ProduceResultsConsume(OpBase *opBase, Record *r) {
+    OpResult res = OP_DEPLETED;    
     ProduceResults *op = (ProduceResults*)opBase;
     if(ResultSet_Full(op->result_set)) return OP_ERR;
 
     if(op->op.childCount > 0) {
         OpBase *child = op->op.children[0];
-        res = child->consume(child, graph);
+        res = child->consume(child, r);
         if(res != OP_OK) return res;
     }
 
     /* Append to final result set. */
-    Record *r = _ProduceResultsetRecord(op);
-    if(ResultSet_AddRecord(op->result_set, r) != RESULTSET_OK) return OP_ERR;
+    ResultSetRecord *record = _ProduceResultsetRecord(op, *r);
+    if(ResultSet_AddRecord(op->result_set, record) != RESULTSET_OK) return OP_ERR;
 
     return res;
 }

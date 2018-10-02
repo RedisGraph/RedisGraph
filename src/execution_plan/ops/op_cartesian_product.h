@@ -20,7 +20,7 @@
  } CartesianProduct;
 
 OpBase* NewCartesianProductOp();
-OpResult CartesianProductConsume(OpBase *opBase, QueryGraph* graph);
+OpResult CartesianProductConsume(OpBase *opBase, Record *r);
 OpResult CartesianProductReset(OpBase *opBase);
 void CartesianProductFree(OpBase *opBase);
 

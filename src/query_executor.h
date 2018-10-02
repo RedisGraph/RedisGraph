@@ -26,7 +26,7 @@ QueryContext* QueryContext_New(RedisModuleCtx *ctx, RedisModuleBlockedClient *bc
 void QueryContext_Free(QueryContext* ctx);
 
 /* Constructs an arithmetic expression tree foreach none aggregated term. */
-void Build_None_Aggregated_Arithmetic_Expressions(AST_ReturnNode *return_node, AR_ExpNode ***expressions, int *expressions_count, QueryGraph *g);
+void Build_None_Aggregated_Arithmetic_Expressions(AST_ReturnNode *return_node, AR_ExpNode ***expressions, int *expressions_count);
 
 AST_Query* ParseQuery(const char *query, size_t qLen, char **errMsg);
 

@@ -22,8 +22,7 @@ int AR_EXP_GetOperandType(AR_ExpNode *exp) {
     return -1;
 }
 
-SIValue AR_EXP_Evaluate(const AR_ExpNode *root) {
-
+SIValue AR_EXP_Evaluate(const AR_ExpNode *root, const Record r) {
     SIValue result;
     /* Deal with Operation node. */
     if(root->type == AR_EXP_OP) {
@@ -36,7 +35,7 @@ SIValue AR_EXP_Evaluate(const AR_ExpNode *root) {
             /* Evaluate each child before evaluating current node. */
             SIValue sub_trees[root->op.child_count];
             for(int child_idx = 0; child_idx < root->op.child_count; child_idx++) {
-                sub_trees[child_idx] = AR_EXP_Evaluate(root->op.children[child_idx]);
+                sub_trees[child_idx] = AR_EXP_Evaluate(root->op.children[child_idx], r);
             }
             /* Evaluate self. */
             result = root->op.f(sub_trees, root->op.child_count);
@@ -48,11 +47,13 @@ SIValue AR_EXP_Evaluate(const AR_ExpNode *root) {
         } else {
             // Fetch entity property value.
             if (root->operand.variadic.entity_prop != NULL) {
-                SIValue *property = GraphEntity_Get_Property(*root->operand.variadic.entity, root->operand.variadic.entity_prop);
+                SIValue entry = Record_GetEntry(r, root->operand.variadic.entity_alias);
+                GraphEntity *entity = (GraphEntity*)entry.ptrval;
+                SIValue *property = GraphEntity_Get_Property(entity, root->operand.variadic.entity_prop);
                 /* TODO: Handle PROPERTY_NOTFOUND. */
                 result = *property;
             } else {
-                result = SI_PtrVal(*root->operand.variadic.entity);
+                result = Record_GetEntry(r, root->operand.variadic.entity_alias);
             }
         }
     }
@@ -60,8 +61,7 @@ SIValue AR_EXP_Evaluate(const AR_ExpNode *root) {
     return result;
 }
 
-void AR_EXP_Aggregate(const AR_ExpNode *root) {
-
+void AR_EXP_Aggregate(const AR_ExpNode *root, const Record r) {
     if(root->type == AR_EXP_OP) {
         if(root->op.type == AR_OP_AGGREGATE) {
             /* Process child nodes before aggregating. */
@@ -69,7 +69,7 @@ void AR_EXP_Aggregate(const AR_ExpNode *root) {
             int i = 0;
             for(; i < root->op.child_count; i++) {
                 AR_ExpNode *child = root->op.children[i];
-                sub_trees[i] = AR_EXP_Evaluate(child);
+                sub_trees[i] = AR_EXP_Evaluate(child, r);
             }
 
             /* Aggregate. */
@@ -79,7 +79,7 @@ void AR_EXP_Aggregate(const AR_ExpNode *root) {
             /* Keep searching for aggregation nodes. */
             for(int i = 0; i < root->op.child_count; i++) {
                 AR_ExpNode *child = root->op.children[i];
-                AR_EXP_Aggregate(child);
+                AR_EXP_Aggregate(child, r);
             }
         }
     }
@@ -109,11 +109,10 @@ AR_ExpNode* AR_EXP_NewConstOperandNode(SIValue constant) {
     return node;
 }
 
-AR_ExpNode* AR_EXP_NewVariableOperandNode(GraphEntity **entity, const char *entity_prop, const char *entity_alias) {
+AR_ExpNode* AR_EXP_NewVariableOperandNode(const char *entity_prop, const char *entity_alias) {
     AR_ExpNode *node = calloc(1, sizeof(AR_ExpNode));
     node->type = AR_EXP_OPERAND;
     node->operand.type = AR_EXP_VARIADIC;
-    node->operand.variadic.entity = entity;
     node->operand.variadic.entity_alias = strdup(entity_alias);
     node->operand.variadic.entity_prop = entity_prop != NULL ? strdup(entity_prop) : NULL;
     return node;
@@ -254,7 +253,7 @@ void AR_EXP_ToString(const AR_ExpNode *root, char **str) {
     _AR_EXP_ToString(root, str, &str_size, &bytes_written);
 }
 
-AR_ExpNode* AR_EXP_BuildFromAST(const AST_ArithmeticExpressionNode *exp, const QueryGraph *g) {
+AR_ExpNode* AR_EXP_BuildFromAST(const AST_ArithmeticExpressionNode *exp) {
     AR_ExpNode *root;
 
     if(exp->type == AST_AR_EXP_OP) {
@@ -263,15 +262,13 @@ AR_ExpNode* AR_EXP_BuildFromAST(const AST_ArithmeticExpressionNode *exp, const Q
         for(int i = 0; i < root->op.child_count; i++) {
             AST_ArithmeticExpressionNode *child;
             Vector_Get(exp->op.args, i, &child);
-            root->op.children[i] = AR_EXP_BuildFromAST(child, g);
+            root->op.children[i] = AR_EXP_BuildFromAST(child);
         }
     } else {
         if(exp->operand.type == AST_AR_EXP_CONSTANT) {
             root = AR_EXP_NewConstOperandNode(exp->operand.constant);
         } else {
-            GraphEntity **entity = QueryGraph_GetEntityRef(g, exp->operand.variadic.alias);
-            root = AR_EXP_NewVariableOperandNode(entity,
-                                                 exp->operand.variadic.property,
+            root = AR_EXP_NewVariableOperandNode(exp->operand.variadic.property,
                                                  exp->operand.variadic.alias);
         }
     }

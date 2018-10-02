@@ -9,9 +9,9 @@
 #include "../../arithmetic/arithmetic_expression.h"
 
 /* Forward declarations. */
-void _OpUpdate_BuildUpdateEvalCtx(OpUpdate* op, AST_SetNode *setNode, QueryGraph *q);
+void _OpUpdate_BuildUpdateEvalCtx(OpUpdate* op, AST_SetNode *setNode);
 
-OpBase* NewUpdateOp(RedisModuleCtx *ctx, AST_Query *ast, QueryGraph *q, ResultSet *result_set, const char *graphName) {
+OpBase* NewUpdateOp(RedisModuleCtx *ctx, AST_Query *ast, ResultSet *result_set, const char *graphName) {
     OpUpdate* op_update = calloc(1, sizeof(OpUpdate));
     op_update->ast = ast;
     op_update->ctx = ctx;
@@ -23,7 +23,7 @@ OpBase* NewUpdateOp(RedisModuleCtx *ctx, AST_Query *ast, QueryGraph *q, ResultSe
     op_update->entities_to_update_cap = 16; /* 16 seems reasonable number to start with. */
     op_update->entities_to_update = malloc(sizeof(EntityUpdateEvalCtx) * op_update->entities_to_update_cap);
 
-    _OpUpdate_BuildUpdateEvalCtx(op_update, ast->setNode, q);
+    _OpUpdate_BuildUpdateEvalCtx(op_update, ast->setNode);
 
     // Set our Op operations
     OpBase_Init(&op_update->op);
@@ -39,7 +39,7 @@ OpBase* NewUpdateOp(RedisModuleCtx *ctx, AST_Query *ast, QueryGraph *q, ResultSe
 /* Build an evaluation tree foreach update expression.
  * Save each eval tree and updated graph entity within 
  * the update op. */
-void _OpUpdate_BuildUpdateEvalCtx(OpUpdate* op, AST_SetNode *setNode, QueryGraph *graph) {
+void _OpUpdate_BuildUpdateEvalCtx(OpUpdate* op, AST_SetNode *setNode) {
     op->update_expressions_count = Vector_Size(setNode->set_elements);
     op->update_expressions = malloc(sizeof(EntityUpdateEvalCtx) * op->update_expressions_count);
 
@@ -48,9 +48,9 @@ void _OpUpdate_BuildUpdateEvalCtx(OpUpdate* op, AST_SetNode *setNode, QueryGraph
         Vector_Get(setNode->set_elements, i, &element);
 
         /* Get a reference to the updated entity. */
-        op->update_expressions[i].entity = QueryGraph_GetEntityRef(graph, element->entity->alias);
-        op->update_expressions[i].property = strdup(element->entity->property);
-        op->update_expressions[i].exp = AR_EXP_BuildFromAST(element->exp, graph);
+        op->update_expressions[i].alias = element->entity->alias;
+        op->update_expressions[i].property = element->entity->property;
+        op->update_expressions[i].exp = AR_EXP_BuildFromAST(element->exp);
     }
 }
 
@@ -72,19 +72,20 @@ void _OpUpdate_QueueUpdate(OpUpdate *op, EntityProperty *dest_entity_prop, SIVal
     op->entities_to_update_count++;
 }
 
-OpResult OpUpdateConsume(OpBase *opBase, QueryGraph* graph) {
+OpResult OpUpdateConsume(OpBase *opBase, Record *r) {
     OpUpdate *op = (OpUpdate*)opBase;
     OpBase *child = op->op.children[0];
-    OpResult res = child->consume(child, graph);
+    OpResult res = child->consume(child, r);
     if(res != OP_OK) return res;
 
     /* Evaluate each update expression and store result 
      * for later execution. */
     EntityUpdateEvalCtx *update_expression = op->update_expressions;
     for(int i = 0; i < op->update_expressions_count; i++, update_expression++) {
-        SIValue new_value = AR_EXP_Evaluate(update_expression->exp);
+        SIValue new_value = AR_EXP_Evaluate(update_expression->exp, *r);
         /* Find ref to property. */
-        GraphEntity *entity = *update_expression->entity;
+        SIValue entry = Record_GetEntry(*r, update_expression->alias);
+        GraphEntity *entity = (GraphEntity*) entry.ptrval;
         int j = 0;
         for(; j < entity->prop_count; j++) {
             if(strcmp(entity->properties[j].name, update_expression->property) == 0) {
@@ -154,7 +155,6 @@ void OpUpdateFree(OpBase *ctx) {
     
     /* Free each update context. */
     for(int i = 0; i < op->update_expressions_count; i++) {
-        free(op->update_expressions[i].property);
         AR_EXP_Free(op->update_expressions[i].exp);
     }
 

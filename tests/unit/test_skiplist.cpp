@@ -38,13 +38,13 @@ class SkiplistTest: public ::testing::Test {
       Node *node_a, *node_b;
 
       for (long i = 0; words[i] != NULL; i ++) {
-        node_a = Node_New(10 + i, node_label);
+        node_a = Node_New(10 + i, node_label, NULL);
         SIValue *node_a_prop = (SIValue*)malloc(sizeof(SIValue));
         *node_a_prop = SIValue_FromString(words[i]);
         Node_Add_Properties(node_a, 1, &prop_key, node_a_prop);
         skiplistInsert(sl, node_a_prop, node_a->id);
 
-        node_b = Node_New(i, node_label);
+        node_b = Node_New(i, node_label, NULL);
         SIValue *node_b_prop = (SIValue*)malloc(sizeof(SIValue));
         *node_b_prop = SIValue_FromString(words[6 - i]);
         Node_Add_Properties(node_b, 1, &prop_key, node_b_prop);
@@ -74,7 +74,7 @@ TEST_F(SkiplistTest, SkiplistRange) {
   long ids[] = {5, 2, 0, 6, 3, 4, 1};
 
   for (long i = 0; keys[i] != NULL; i ++) {
-    cur_node = Node_New(ids[i], node_label);
+    cur_node = Node_New(ids[i], node_label, NULL);
     cur_prop = SIValue_FromString(keys[i]);
     Node_Add_Properties(cur_node, 1, &prop_key, &cur_prop);
     skiplistInsert(sl, &cur_prop, cur_node->id);

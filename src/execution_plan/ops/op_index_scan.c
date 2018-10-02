@@ -7,11 +7,10 @@
 
 #include "op_index_scan.h"
 
-OpBase *NewIndexScanOp(QueryGraph *qg, Graph *g, Node **node, IndexIter *iter) {
+OpBase *NewIndexScanOp(Graph *g, Node *node, IndexIter *iter) {
   IndexScan *indexScan = malloc(sizeof(IndexScan));
   indexScan->g = g;
   indexScan->node = node;
-  indexScan->_node = *node;
   indexScan->iter = iter;
 
   // Set our Op operations
@@ -23,27 +22,25 @@ OpBase *NewIndexScanOp(QueryGraph *qg, Graph *g, Node **node, IndexIter *iter) {
   indexScan->op.free = IndexScanFree;
 
   indexScan->op.modifies = NewVector(char*, 1);
-  Vector_Push(indexScan->op.modifies, QueryGraph_GetNodeAlias(qg, *node));
+  Vector_Push(indexScan->op.modifies, node->alias);
 
   return (OpBase*)indexScan;
 }
 
-OpResult IndexScanConsume(OpBase *opBase, QueryGraph* graph) {
+OpResult IndexScanConsume(OpBase *opBase, Record *r) {
   IndexScan *op = (IndexScan*)opBase;
 
-  GrB_Index *node_id = IndexIter_Next(op->iter);
-  if (!node_id) return OP_DEPLETED;
+  EntityID *nodeId = IndexIter_Next(op->iter);
+  if (!nodeId) return OP_DEPLETED;
 
-  *op->node = Graph_GetNode(op->g, *node_id);
+  Node *n = Graph_GetNode(op->g, *nodeId);
+  Record_AddEntry(r, op->node->alias, SI_PtrVal(n));
 
   return OP_OK;
 }
 
 OpResult IndexScanReset(OpBase *ctx) {
   IndexScan *indexScan = (IndexScan*)ctx;
-
-  /* Restore original node. */
-  *indexScan->node = indexScan->_node;
   IndexIter_Reset(indexScan->iter);
 
   return OP_OK;
@@ -53,4 +50,3 @@ void IndexScanFree(OpBase *op) {
   IndexScan *indexScan = (IndexScan *)op;
   IndexIter_Free(indexScan->iter);
 }
-

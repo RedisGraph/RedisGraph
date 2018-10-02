@@ -101,7 +101,7 @@ void TuplesIter_reuse
     assert (iter) ;
     iter->A = A ;
     GrB_Matrix_nvals (&iter->nvals, A) ;
-    TuplesIter_reset(iter) ;
+    TuplesIter_reset (iter) ;
 }
 
 void TuplesIter_clear

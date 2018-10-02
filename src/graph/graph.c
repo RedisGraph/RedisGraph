@@ -10,7 +10,7 @@
 #include "graph.h"
 #include "graph_type.h"
 #include "../util/qsort.h"
-#include "../arithmetic/tuples_iter.h"
+#include "../GraphBLASExt/tuples_iter.h"
 
 
 /*========================= Graph utility functions ========================= */
@@ -257,7 +257,7 @@ Graph *Graph_New(size_t n) {
     assert(n > 0);
     Graph *g = malloc(sizeof(Graph));
 
-    g->nodes = DataBlock_New(n, sizeof(Node));
+    g->nodes = DataBlock_New(n, sizeof(GraphEntity));
     g->edges = DataBlock_New(n, sizeof(Edge));
     g->_edgesHashTbl = NULL;            // Init to NULL, required by uthash.
     g->relation_cap = GRAPH_DEFAULT_RELATION_CAP;
@@ -334,13 +334,12 @@ void Graph_ConnectNodes(Graph *g, EdgeDesc *connections, size_t connectionCount,
         EdgeDesc conn = connections[i];
         Node *srcNode = Graph_GetNode(g, conn.srcId);
         Node *destNode = Graph_GetNode(g, conn.destId);
-        assert(srcNode && destNode);
-        int r = conn.relationId;
+        int r = conn.relationId;        
         if(_Graph_InitEdge(g, e, edgeID++, srcNode, destNode, r)) {
             // Columns represent source nodes, rows represent destination nodes.
             GrB_Matrix M = Graph_GetRelation(g, r);
-            GrB_Matrix_setElement_BOOL(adj, true, destNode->id, srcNode->id);
-            GrB_Matrix_setElement_BOOL(M, true, destNode->id, srcNode->id);
+            GrB_Matrix_setElement_BOOL(adj, true, conn.destId, conn.srcId);
+            GrB_Matrix_setElement_BOOL(M, true, conn.destId, conn.srcId);
         }
     }
 

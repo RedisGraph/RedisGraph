@@ -12,7 +12,6 @@
 void _SetModifiedEntities(OpCreate *op) {
     /* Determin which entities are modified by create op.
      * Search uninitialized nodes. */
-    QueryGraph* graph = op->qg;
     size_t create_entity_count = Vector_Size(op->ast->createNode->graphEntities);
     op->nodes_to_create = malloc(sizeof(NodeCreateCtx) * create_entity_count);
     op->edges_to_create = malloc(sizeof(EdgeCreateCtx) * create_entity_count);
@@ -46,10 +45,10 @@ void _SetModifiedEntities(OpCreate *op) {
                 if(e->id == 0) continue;   // Edge already marked for creation.
                 op->edges_to_create[edge_idx].original_edge = e;
                 op->edges_to_create[edge_idx].original_edge_ref = QueryGraph_GetEdgeRef(op->qg, e);
-                assert(QueryGraph_ContainsNode(graph, e->src));
-                assert(QueryGraph_ContainsNode(graph, e->dest));
-                op->edges_to_create[edge_idx].src_node_alias = QueryGraph_GetNodeAlias(graph, e->src);
-                op->edges_to_create[edge_idx].dest_node_alias = QueryGraph_GetNodeAlias(graph, e->dest);
+                assert(QueryGraph_ContainsNode(op->qg, e->src));
+                assert(QueryGraph_ContainsNode(op->qg, e->dest));
+                op->edges_to_create[edge_idx].src_node_alias = e->src->alias;
+                op->edges_to_create[edge_idx].dest_node_alias = e->dest->alias;
                 e->id = 0;  /* Mark edge. */
                 edge_idx++;
             }
@@ -70,7 +69,7 @@ void _SetModifiedEntities(OpCreate *op) {
     assert((op->node_count + op->edge_count) > 0);
 }
 
-OpBase* NewCreateOp(RedisModuleCtx *ctx, AST_Query *ast, Graph *g, QueryGraph *qg, const char *graph_name, int request_refresh, ResultSet *result_set) {
+OpBase* NewCreateOp(RedisModuleCtx *ctx, AST_Query *ast, Graph *g, QueryGraph *qg, const char *graph_name, ResultSet *result_set) {
     OpCreate *op_create = calloc(1, sizeof(OpCreate));
 
     op_create->ctx = ctx;
@@ -100,14 +99,15 @@ OpBase* NewCreateOp(RedisModuleCtx *ctx, AST_Query *ast, Graph *g, QueryGraph *q
     return (OpBase*)op_create;
 }
 
-void _CreateNodes(OpCreate *op) {
+void _CreateNodes(OpCreate *op, Record *r) {
+    SIValue entry;
     for(int i = 0; i < op->node_count; i++) {
         /* Get specified node to create. */
         Node *n = op->nodes_to_create[i].original_node;
 
         /* Create a new node. */
         long id = Graph_NodeCount(op->g) + Vector_Size(op->created_nodes);
-        Node *node = Node_New(id, n->label);
+        Node *newNode = Node_New(id, n->label, NULL);
 
         /* Add properties.*/
         if(n->prop_count > 0) {
@@ -118,28 +118,28 @@ void _CreateNodes(OpCreate *op) {
                 keys[prop_idx] = prop.name;
                 vals[prop_idx] = prop.value;
             }
-            Node_Add_Properties(node, n->prop_count, keys, vals);
+            Node_Add_Properties(newNode, n->prop_count, keys, vals);
         }
 
         /* Save node for later insertion. */
-        Vector_Push(op->created_nodes, node);
+        Vector_Push(op->created_nodes, newNode);
 
-        /* Update query graph with new node. */
-        *(op->nodes_to_create[i].original_node_ref) = node;
+        /* Update record with new node. */
+        Record_AddEntry(r, n->alias, SI_PtrVal(newNode));
     }
 }
 
-void _CreateEdges(OpCreate *op) {
+void _CreateEdges(OpCreate *op, Record *r) {
     for(int i = 0; i < op->edge_count; i++) {
         /* Get specified edge to create. */
         Edge *e = op->edges_to_create[i].original_edge;
 
         /* Retrieve source and dest nodes. */
-        Node *src_node = QueryGraph_GetNodeByAlias(op->qg, op->edges_to_create[i].src_node_alias);
-        Node *dest_node = QueryGraph_GetNodeByAlias(op->qg, op->edges_to_create[i].dest_node_alias);
+        Node *src_node = Record_GetNode(*r, op->edges_to_create[i].src_node_alias);
+        Node *dest_node = Record_GetNode(*r, op->edges_to_create[i].dest_node_alias);
 
         /* Create the actual edge. */
-        Edge *edge = Edge_New(INVALID_ENTITY_ID, src_node, dest_node, e->relationship);
+        Edge *newEdge = Edge_New(INVALID_ENTITY_ID, src_node, dest_node, e->relationship, NULL);
 
         /* Add properties.*/
         char *keys[e->prop_count];
@@ -149,13 +149,13 @@ void _CreateEdges(OpCreate *op) {
             keys[prop_idx] = prop.name;
             vals[prop_idx] = prop.value;
         }
-        Edge_Add_Properties(edge, e->prop_count, keys, vals);
+        Edge_Add_Properties(newEdge, e->prop_count, keys, vals);
         
         /* Save edge for later insertion. */
-        Vector_Push(op->created_edges, edge);
+        Vector_Push(op->created_edges, newEdge);
 
-        /* Update query graph with new node. */
-        *(op->edges_to_create[i].original_edge_ref) = edge;
+        /* Update query graph with new edge. */
+        Record_AddEntry(r, op->edges_to_create[i].original_edge->alias, SI_PtrVal(newEdge));
     }
 }
 
@@ -269,19 +269,19 @@ void _CommitNewEntities(OpCreate *op) {
     }
 }
 
-OpResult OpCreateConsume(OpBase *opBase, QueryGraph* graph) {
+OpResult OpCreateConsume(OpBase *opBase, Record *r) {
     OpResult res = OP_OK;
     OpCreate *op = (OpCreate*)opBase;
 
     if(op->op.childCount) {
         OpBase *child = op->op.children[0];
-        res = child->consume(child, graph);
+        res = child->consume(child, r);
     }
 
     if(res == OP_OK) {
         /* Create entities. */
-        _CreateNodes(op);
-        _CreateEdges(op);
+        _CreateNodes(op, r);
+        _CreateEdges(op, r);
     }
 
     if(op->op.childCount == 0) return OP_DEPLETED;

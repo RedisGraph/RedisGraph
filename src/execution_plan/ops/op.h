@@ -8,6 +8,7 @@
 #ifndef __OP_H__
 #define __OP_H__
 
+#include "../record.h"
 #include "../../redismodule.h"
 #include "../../graph/query_graph.h"
 #include "../../graph/node.h"
@@ -43,7 +44,7 @@ typedef enum {
 
 struct OpBase;
 
-typedef OpResult (*fpConsume)(struct OpBase*, QueryGraph* graph);
+typedef OpResult (*fpConsume)(struct OpBase*, Record *r);
 typedef OpResult (*fpReset)(struct OpBase*);
 typedef void (*fpFree)(struct OpBase*);
 struct OpBase {
