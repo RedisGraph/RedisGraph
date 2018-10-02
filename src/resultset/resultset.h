@@ -8,7 +8,7 @@
 #ifndef __GRAPH_RESULTSET_H__
 #define __GRAPH_RESULTSET_H__
 
-#include "record.h"
+#include "resultset_record.h"
 #include "resultset_header.h"
 #include "resultset_statistics.h"
 #include "../parser/ast.h"
@@ -51,7 +51,7 @@ bool ResultSet_Limited(const ResultSet* set);
 
 bool ResultSet_Full(const ResultSet* set);
 
-int ResultSet_AddRecord(ResultSet* set, Record *record);
+int ResultSet_AddRecord(ResultSet* set, ResultSetRecord *record);
 
 void ResultSet_Replay(ResultSet* set);
 

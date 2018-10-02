@@ -15,6 +15,7 @@ extern "C" {
 #include "../../src/value.h"
 #include "../../src/graph/node.h"
 #include "../../src/arithmetic/agg_funcs.h"
+#include "../../src/execution_plan/record.h"
 
 #ifdef __cplusplus
 }
@@ -22,6 +23,7 @@ extern "C" {
 
 class ArithmeticTest: public ::testing::Test {
   protected:
+    Record emptyRecord = Record_Empty();
     static void SetUpTestCase() {
       AR_RegisterFuncs();
       Agg_RegisterFuncs();
@@ -38,30 +40,21 @@ void _test_string(const AR_ExpNode *exp, const char *expected) {
   free(str);
 }
 
-void _test_ar_func(AR_ExpNode *root, SIValue expected) {
-  SIValue res = AR_EXP_Evaluate(root);
+void _test_ar_func(AR_ExpNode *root, SIValue expected, const Record r) {
+  SIValue res = AR_EXP_Evaluate(root, r);
   EXPECT_EQ(res.doubleval, expected.doubleval);
 }
 
-void test_rand() {
-  AR_ExpNode *root = AR_EXP_NewOpNode("RAND", 0);
-  for(int i = 0; i < 10; i++) {
-    SIValue res = AR_EXP_Evaluate(root);
-    EXPECT_GE(res.doubleval, 0);
-    EXPECT_LE(res.doubleval, 1);
-  }
-}
-
-TEST_F(ArithmeticTest, ExpressionTest) {
+TEST_F(ArithmeticTest, ExpressionTest) {  
   /* muchacho */
   AR_ExpNode *string = AR_EXP_NewConstOperandNode(SI_StringVal("muchacho"));
-  SIValue result = AR_EXP_Evaluate(string);
+  SIValue result = AR_EXP_Evaluate(string, emptyRecord);
   EXPECT_STREQ(result.stringval, "muchacho");
   AR_EXP_Free(string);
 
   /* 1 */
   AR_ExpNode *one = AR_EXP_NewConstOperandNode(SI_DoubleVal(1));
-  result = AR_EXP_Evaluate(one);
+  result = AR_EXP_Evaluate(one, emptyRecord);
   EXPECT_EQ(result.doubleval, 1);
 
   /* 1+2*3 */
@@ -76,7 +69,7 @@ TEST_F(ArithmeticTest, ExpressionTest) {
   mul->op.children[0] = two;
   mul->op.children[1] = three;
 
-  result = AR_EXP_Evaluate(add);
+  result = AR_EXP_Evaluate(add, emptyRecord);
   EXPECT_EQ(result.doubleval, 7);
   AR_EXP_Free(add);
 
@@ -102,7 +95,7 @@ TEST_F(ArithmeticTest, ExpressionTest) {
   add_1->op.children[0] = add_2;
   add_1->op.children[1] = add_3;
 
-  result = AR_EXP_Evaluate(add_1);
+  result = AR_EXP_Evaluate(add_1, emptyRecord);
   EXPECT_EQ(result.doubleval, 6);
 
   /* Don't free as one is referenced multiple times. */
@@ -123,48 +116,51 @@ TEST_F(ArithmeticTest, ExpressionTest) {
   mul->op.children[0] = two;
   mul->op.children[1] = one;
 
-  result = AR_EXP_Evaluate(absolute);
+  result = AR_EXP_Evaluate(absolute, emptyRecord);
   EXPECT_EQ(result.doubleval, 3);
 
   AR_EXP_Free(absolute);
 }
 
-TEST_F(ArithmeticTest, VariadicTest) {
+TEST_F(ArithmeticTest, VariadicTest) {  
   /* person.age += 1 */
-  Node *node = Node_New(1, "person");
+  Node *personNode = Node_New(1, "person", "joe");
   char *props[2] = {"age", "name"};
   SIValue vals[2] = {SI_DoubleVal(33), SI_StringVal("joe")};
-  GraphEntity_Add_Properties((GraphEntity*)node, 2, props, vals);
+  GraphEntity_Add_Properties((GraphEntity*)personNode, 2, props, vals);
+  
+  Record r = Record_Empty();
+  Record_AddEntry(&r, personNode->alias, SI_PtrVal(personNode));
 
   AR_ExpNode *one = AR_EXP_NewConstOperandNode(SI_DoubleVal(1));
-  AR_ExpNode *person = AR_EXP_NewVariableOperandNode((GraphEntity **)(&node), "age", "joe");
+  AR_ExpNode *personAge = AR_EXP_NewVariableOperandNode("age", "joe");
   AR_ExpNode *add = AR_EXP_NewOpNode("ADD", 2);
   add->op.children[0] = one;
-  add->op.children[1] = person;
+  add->op.children[1] = personAge;
 
-  SIValue result = AR_EXP_Evaluate(person);
+  SIValue result = AR_EXP_Evaluate(personAge, r);
   EXPECT_EQ(result.doubleval, 33);
 
-  result = AR_EXP_Evaluate(one);
+  result = AR_EXP_Evaluate(one, r);
   EXPECT_EQ(result.doubleval, 1);
 
-  result = AR_EXP_Evaluate(add);
+  result = AR_EXP_Evaluate(add, r);
   EXPECT_EQ(result.doubleval, 34);
   AR_EXP_Free(add);
 }
 
 TEST_F(ArithmeticTest, AggregateTest) {
-  /* SUM(1) */
+  /* SUM(1) */  
   AR_ExpNode *sum = AR_EXP_NewOpNode("SUM", 1);
   AR_ExpNode *one = AR_EXP_NewConstOperandNode(SI_DoubleVal(1));
   sum->op.children[0] = one;
 
-  AR_EXP_Aggregate(sum);
-  AR_EXP_Aggregate(sum);
-  AR_EXP_Aggregate(sum);
+  AR_EXP_Aggregate(sum, emptyRecord);
+  AR_EXP_Aggregate(sum, emptyRecord);
+  AR_EXP_Aggregate(sum, emptyRecord);
 
   AR_EXP_Reduce(sum);
-  SIValue result = AR_EXP_Evaluate(sum);
+  SIValue result = AR_EXP_Evaluate(sum, emptyRecord);
   EXPECT_EQ(result.doubleval, 3);
 
   /* 2+SUM(1) */
@@ -174,15 +170,15 @@ TEST_F(ArithmeticTest, AggregateTest) {
   sum->op.children[0] = one;
   add->op.children[0] = two;
   add->op.children[1] = sum;
-  AR_EXP_Aggregate(add);
-  AR_EXP_Aggregate(add);
-  AR_EXP_Aggregate(add);
+  AR_EXP_Aggregate(add, emptyRecord);
+  AR_EXP_Aggregate(add, emptyRecord);
+  AR_EXP_Aggregate(add, emptyRecord);
 
   AR_EXP_Reduce(add);
 
   /* Just for the kick of it, call reduce more than once.*/
   AR_EXP_Reduce(add);
-  result = AR_EXP_Evaluate(add);
+  result = AR_EXP_Evaluate(add, emptyRecord);
   EXPECT_EQ(result.doubleval, 5);
   AR_EXP_Free(add);
 }
@@ -193,7 +189,7 @@ TEST_F(ArithmeticTest, StringTest) {
   _test_string(one, "1.000000");
 
   /* Variadic. */
-  AR_ExpNode *person = AR_EXP_NewVariableOperandNode(NULL, "age", "joe");
+  AR_ExpNode *person = AR_EXP_NewVariableOperandNode("age", "joe");
   _test_string(person, "joe.age");
 
   /* Aggregation. */
@@ -222,23 +218,23 @@ TEST_F(ArithmeticTest, AbsTest) {
   AR_ExpNode *one = AR_EXP_NewConstOperandNode(SI_DoubleVal(1));
   AR_ExpNode *minus_one = AR_EXP_NewConstOperandNode(SI_DoubleVal(-1));
   AR_ExpNode *zero = AR_EXP_NewConstOperandNode(SI_DoubleVal(0));
-  AR_ExpNode *null = AR_EXP_NewConstOperandNode(SI_NullVal());
+  AR_ExpNode *null = AR_EXP_NewConstOperandNode(SI_NullVal());  
 
   root->op.children[0] = one;
   SIValue expected = SI_DoubleVal(1);
-  _test_ar_func(root, expected);
+  _test_ar_func(root, expected, emptyRecord);
 
   root->op.children[0] = minus_one;
   expected = SI_DoubleVal(1);
-  _test_ar_func(root, expected);
+  _test_ar_func(root, expected, emptyRecord);
 
   root->op.children[0] = zero;
   expected = SI_DoubleVal(0);
-  _test_ar_func(root, expected);
+  _test_ar_func(root, expected, emptyRecord);
 
   root->op.children[0] = null;
   expected = SI_NullVal();
-  _test_ar_func(root, expected);
+  _test_ar_func(root, expected, emptyRecord);
 }
 
 TEST_F(ArithmeticTest, CeilTest) {
@@ -250,19 +246,19 @@ TEST_F(ArithmeticTest, CeilTest) {
 
   root->op.children[0] = half;
   SIValue expected = SI_DoubleVal(1);
-  _test_ar_func(root, expected);
+  _test_ar_func(root, expected, emptyRecord);
 
   root->op.children[0] = one;
   expected = SI_DoubleVal(1);
-  _test_ar_func(root, expected);
+  _test_ar_func(root, expected, emptyRecord);
 
   root->op.children[0] = dot_one;
   expected = SI_DoubleVal(1);
-  _test_ar_func(root, expected);
+  _test_ar_func(root, expected, emptyRecord);
 
   root->op.children[0] = null;
   expected = SI_NullVal();
-  _test_ar_func(root, expected);
+  _test_ar_func(root, expected, emptyRecord);
 }
 
 TEST_F(ArithmeticTest, FloorTest) {
@@ -275,22 +271,22 @@ TEST_F(ArithmeticTest, FloorTest) {
   /* floor(0.5) */
   root->op.children[0] = half;
   SIValue expected = SI_DoubleVal(0);
-  _test_ar_func(root, expected);
+  _test_ar_func(root, expected, emptyRecord);
 
   /* floor(1) */
   root->op.children[0] = one;
   expected = SI_DoubleVal(1);
-  _test_ar_func(root, expected);
+  _test_ar_func(root, expected, emptyRecord);
 
   /* floor(0.1) */
   root->op.children[0] = dot_one;
   expected = SI_DoubleVal(0);
-  _test_ar_func(root, expected);
+  _test_ar_func(root, expected, emptyRecord);
 
   /* floor(null) */
   root->op.children[0] = null;
   expected = SI_NullVal();
-  _test_ar_func(root, expected);
+  _test_ar_func(root, expected, emptyRecord);
 }
 
 TEST_F(ArithmeticTest, RoundTest) {
@@ -304,27 +300,27 @@ TEST_F(ArithmeticTest, RoundTest) {
   /* round(0) */
   root->op.children[0] = zero;
   SIValue expected = SI_DoubleVal(0);
-  _test_ar_func(root, expected);
+  _test_ar_func(root, expected, emptyRecord);
 
   /* round(0.49) */
   root->op.children[0] = dot_four;
   expected = SI_DoubleVal(0);
-  _test_ar_func(root, expected);
+  _test_ar_func(root, expected, emptyRecord);
 
   /* round(0.5) */
   root->op.children[0] = half;
   expected = SI_DoubleVal(1);
-  _test_ar_func(root, expected);
+  _test_ar_func(root, expected, emptyRecord);
 
   /* round(1) */
   root->op.children[0] = one;
   expected = SI_DoubleVal(1);
-  _test_ar_func(root, expected);
+  _test_ar_func(root, expected, emptyRecord);
 
   /* null */
   root->op.children[0] = null;
   expected = SI_NullVal();
-  _test_ar_func(root, expected);
+  _test_ar_func(root, expected, emptyRecord);
 }
 
 TEST_F(ArithmeticTest, SignTest) {
@@ -337,22 +333,22 @@ TEST_F(ArithmeticTest, SignTest) {
   /* sign(0) */
   root->op.children[0] = zero;
   SIValue expected = SI_DoubleVal(0);
-  _test_ar_func(root, expected);
+  _test_ar_func(root, expected, emptyRecord);
 
   /* sign(-) */
   root->op.children[0] = negative;
   expected = SI_DoubleVal(-1);
-  _test_ar_func(root, expected);
+  _test_ar_func(root, expected, emptyRecord);
 
   /* sign(+) */
   root->op.children[0] = positive;
   expected = SI_DoubleVal(1);
-  _test_ar_func(root, expected);
+  _test_ar_func(root, expected, emptyRecord);
 
   /* sign(null) */
   root->op.children[0] = null;
   expected = SI_NullVal();
-  _test_ar_func(root, expected);
+  _test_ar_func(root, expected, emptyRecord);
 }
 
 TEST_F(ArithmeticTest, ReverseTest) {
@@ -362,17 +358,17 @@ TEST_F(ArithmeticTest, ReverseTest) {
   AR_ExpNode *null = AR_EXP_NewConstOperandNode(SI_NullVal());
 
   root->op.children[0] = str;
-  SIValue result = AR_EXP_Evaluate(root);
+  SIValue result = AR_EXP_Evaluate(root, emptyRecord);
   const char *expected = "ohcahcum";
   EXPECT_STREQ(result.stringval, expected);
 
   root->op.children[0] = empty_str;
-  result = AR_EXP_Evaluate(root);
+  result = AR_EXP_Evaluate(root, emptyRecord);
   expected = "";
   EXPECT_STREQ(result.stringval, expected);
 
   root->op.children[0] = null;
-  result = AR_EXP_Evaluate(root);
+  result = AR_EXP_Evaluate(root, emptyRecord);
   EXPECT_EQ(result.type, T_NULL);
 }
 
@@ -385,19 +381,19 @@ TEST_F(ArithmeticTest, LeftTest) {
 
   root->op.children[0] = str;
   root->op.children[1] = left;
-  SIValue result = AR_EXP_Evaluate(root);
+  SIValue result = AR_EXP_Evaluate(root, emptyRecord);
   const char *expected = "much";
   EXPECT_STREQ(result.stringval, expected);
 
   root->op.children[0] = str;
   root->op.children[1] = entire_string_len;
-  result = AR_EXP_Evaluate(root);
+  result = AR_EXP_Evaluate(root, emptyRecord);
   expected = "muchacho";
   EXPECT_STREQ(result.stringval, expected);
 
   root->op.children[0] = null;
   root->op.children[1] = entire_string_len;
-  result = AR_EXP_Evaluate(root);
+  result = AR_EXP_Evaluate(root, emptyRecord);
   EXPECT_EQ(result.type, T_NULL);
 }
 
@@ -410,19 +406,19 @@ TEST_F(ArithmeticTest, RightTest) {
 
   root->op.children[0] = str;
   root->op.children[1] = right;
-  SIValue result = AR_EXP_Evaluate(root);
+  SIValue result = AR_EXP_Evaluate(root, emptyRecord);
   const char *expected = "acho";
   EXPECT_STREQ(result.stringval, expected);
 
   root->op.children[0] = str;
   root->op.children[1] = entire_string_len;
-  result = AR_EXP_Evaluate(root);
+  result = AR_EXP_Evaluate(root, emptyRecord);
   expected = "muchacho";
   EXPECT_STREQ(result.stringval, expected);
 
   root->op.children[0] = null;
   root->op.children[1] = entire_string_len;
-  result = AR_EXP_Evaluate(root);
+  result = AR_EXP_Evaluate(root, emptyRecord);
   EXPECT_EQ(result.type, T_NULL);
 }
 
@@ -435,27 +431,27 @@ TEST_F(ArithmeticTest, LTrimTest) {
   AR_ExpNode *null = AR_EXP_NewConstOperandNode(SI_NullVal());
 
   root->op.children[0] = left_spaced_str;
-  SIValue result = AR_EXP_Evaluate(root);
+  SIValue result = AR_EXP_Evaluate(root, emptyRecord);
   const char *expected = "muchacho";
   EXPECT_STREQ(result.stringval, expected);
 
   root->op.children[0] = right_spaced_str;
-  result = AR_EXP_Evaluate(root);
+  result = AR_EXP_Evaluate(root, emptyRecord);
   expected = "muchacho   ";
   EXPECT_STREQ(result.stringval, expected);
 
   root->op.children[0] = spaced_str;
-  result = AR_EXP_Evaluate(root);
+  result = AR_EXP_Evaluate(root, emptyRecord);
   expected = "much   acho   ";
   EXPECT_STREQ(result.stringval, expected);
 
   root->op.children[0] = no_space_str;
-  result = AR_EXP_Evaluate(root);
+  result = AR_EXP_Evaluate(root, emptyRecord);
   expected = "muchacho";
   EXPECT_STREQ(result.stringval, expected);
 
   root->op.children[0] = null;
-  result = AR_EXP_Evaluate(root);
+  result = AR_EXP_Evaluate(root, emptyRecord);
   EXPECT_EQ(result.type, T_NULL);
 }
 
@@ -468,27 +464,27 @@ TEST_F(ArithmeticTest, RTrimTest) {
   AR_ExpNode *null = AR_EXP_NewConstOperandNode(SI_NullVal());
 
   root->op.children[0] = left_spaced_str;
-  SIValue result = AR_EXP_Evaluate(root);
+  SIValue result = AR_EXP_Evaluate(root, emptyRecord);
   const char *expected = "   muchacho";
   EXPECT_STREQ(result.stringval, expected);
 
   root->op.children[0] = right_spaced_str;
-  result = AR_EXP_Evaluate(root);
+  result = AR_EXP_Evaluate(root, emptyRecord);
   expected = "muchacho";
   EXPECT_STREQ(result.stringval, expected);
 
   root->op.children[0] = spaced_str;
-  result = AR_EXP_Evaluate(root);
+  result = AR_EXP_Evaluate(root, emptyRecord);
   expected = "   much   acho";
   EXPECT_STREQ(result.stringval, expected);
 
   root->op.children[0] = no_space_str;
-  result = AR_EXP_Evaluate(root);
+  result = AR_EXP_Evaluate(root, emptyRecord);
   expected = "muchacho";
   EXPECT_STREQ(result.stringval, expected);
 
   root->op.children[0] = null;
-  result = AR_EXP_Evaluate(root);
+  result = AR_EXP_Evaluate(root, emptyRecord);
   EXPECT_EQ(result.type, T_NULL);
 }
 
@@ -504,21 +500,21 @@ TEST_F(ArithmeticTest, SubstringTest) {
   root->op.children[0] = original_str;
   root->op.children[1] = start;
   root->op.children[2] = length;
-  SIValue result = AR_EXP_Evaluate(root);
+  SIValue result = AR_EXP_Evaluate(root, emptyRecord);
   const char *expected = "much";
   EXPECT_STREQ(result.stringval, expected);
 
   root->op.children[0] = original_str;
   root->op.children[1] = start_middel;
   root->op.children[2] = length_overflow;
-  result = AR_EXP_Evaluate(root);
+  result = AR_EXP_Evaluate(root, emptyRecord);
   expected = "hacho";
   EXPECT_STREQ(result.stringval, expected);
 
   root->op.children[0] = null;
   root->op.children[1] = start_middel;
   root->op.children[2] = length_overflow;
-  result = AR_EXP_Evaluate(root);
+  result = AR_EXP_Evaluate(root, emptyRecord);
   EXPECT_EQ(result.type, T_NULL);
 }
 
@@ -529,17 +525,17 @@ TEST_F(ArithmeticTest, ToLowerTest) {
   AR_ExpNode *null = AR_EXP_NewConstOperandNode(SI_NullVal());
 
   root->op.children[0] = str1;
-  SIValue result = AR_EXP_Evaluate(root);
+  SIValue result = AR_EXP_Evaluate(root, emptyRecord);
   const char *expected = "muchacho";
   EXPECT_STREQ(result.stringval, expected);
 
   root->op.children[0] = str2;
-  result = AR_EXP_Evaluate(root);
+  result = AR_EXP_Evaluate(root, emptyRecord);
   expected = "muchacho";
   EXPECT_STREQ(result.stringval, expected);
 
   root->op.children[0] = null;
-  result = AR_EXP_Evaluate(root);
+  result = AR_EXP_Evaluate(root, emptyRecord);
   EXPECT_EQ(result.type, T_NULL);
 }
 
@@ -550,17 +546,17 @@ TEST_F(ArithmeticTest, ToUpperTest) {
   AR_ExpNode *null = AR_EXP_NewConstOperandNode(SI_NullVal());
 
   root->op.children[0] = str1;
-  SIValue result = AR_EXP_Evaluate(root);
+  SIValue result = AR_EXP_Evaluate(root, emptyRecord);
   const char *expected = "MUCHACHO";
   EXPECT_STREQ(result.stringval, expected);
 
   root->op.children[0] = str2;
-  result = AR_EXP_Evaluate(root);
+  result = AR_EXP_Evaluate(root, emptyRecord);
   expected = "MUCHACHO";
   EXPECT_STREQ(result.stringval, expected);
 
   root->op.children[0] = null;
-  result = AR_EXP_Evaluate(root);
+  result = AR_EXP_Evaluate(root, emptyRecord);
   EXPECT_EQ(result.type, T_NULL);
 }
 
@@ -571,17 +567,17 @@ TEST_F(ArithmeticTest, ToStringTest) {
   AR_ExpNode *null = AR_EXP_NewConstOperandNode(SI_NullVal());
 
   root->op.children[0] = str;
-  SIValue result = AR_EXP_Evaluate(root);
+  SIValue result = AR_EXP_Evaluate(root, emptyRecord);
   const char *expected = "muchacho";
   EXPECT_STREQ(result.stringval, expected);
 
   root->op.children[0] = number;
-  result = AR_EXP_Evaluate(root);
+  result = AR_EXP_Evaluate(root, emptyRecord);
   expected = "3.140000";
   EXPECT_STREQ(result.stringval, expected);
 
   root->op.children[0] = null;
-  result = AR_EXP_Evaluate(root);
+  result = AR_EXP_Evaluate(root, emptyRecord);
   EXPECT_EQ(result.type, T_NULL);
 }
 
@@ -594,38 +590,40 @@ TEST_F(ArithmeticTest, TrimTest) {
   AR_ExpNode *null = AR_EXP_NewConstOperandNode(SI_NullVal());
 
   root->op.children[0] = left_spaced_str;
-  SIValue result = AR_EXP_Evaluate(root);
+  SIValue result = AR_EXP_Evaluate(root, emptyRecord);
   const char *expected = "muchacho";
   EXPECT_STREQ(result.stringval, expected);
 
   root->op.children[0] = right_spaced_str;
-  result = AR_EXP_Evaluate(root);
+  result = AR_EXP_Evaluate(root, emptyRecord);
   expected = "muchacho";
   EXPECT_STREQ(result.stringval, expected);
 
   root->op.children[0] = spaced_str;
-  result = AR_EXP_Evaluate(root);
+  result = AR_EXP_Evaluate(root, emptyRecord);
   expected = "much   acho";
   EXPECT_STREQ(result.stringval, expected);
 
   root->op.children[0] = no_space_str;
-  result = AR_EXP_Evaluate(root);
+  result = AR_EXP_Evaluate(root, emptyRecord);
   expected = "muchacho";
   EXPECT_STREQ(result.stringval, expected);
 
   root->op.children[0] = null;
-  result = AR_EXP_Evaluate(root);
+  result = AR_EXP_Evaluate(root, emptyRecord);
   EXPECT_EQ(result.type, T_NULL);
 }
 
 TEST_F(ArithmeticTest, IDTest) {
   AR_ExpNode *root = AR_EXP_NewOpNode("id", 1);
 
-  Node *node = Node_New(12345, "person");
-  AR_ExpNode *person_with_id = AR_EXP_NewVariableOperandNode((GraphEntity **)(&node), NULL, "Joe");
+  Node *node = Node_New(12345, "person", "Joe");
+  AR_ExpNode *person_with_id = AR_EXP_NewVariableOperandNode(NULL, "Joe");
+
+  Record r = Record_Empty();
+  Record_AddEntry(&r, node->alias, SI_PtrVal(node));
 
   root->op.children[0] = person_with_id;
-  SIValue result = AR_EXP_Evaluate(root);
+  SIValue result = AR_EXP_Evaluate(root, r);
   EXPECT_EQ(result.longval, node->id);
 }
-

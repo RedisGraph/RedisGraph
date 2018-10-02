@@ -19,13 +19,12 @@
 
  typedef struct {
     OpBase op;
-    Node **node;
-    Node *_node;
+    Node *node;
     DataBlockIterator *iter;
  } AllNodeScan;
 
-OpBase* NewAllNodeScanOp(QueryGraph *qg, const Graph *g, Node **n);
-OpResult AllNodeScanConsume(OpBase *opBase, QueryGraph* graph);
+OpBase* NewAllNodeScanOp(const Graph *g, Node *n);
+OpResult AllNodeScanConsume(OpBase *opBase, Record *r);
 OpResult AllNodeScanReset(OpBase *op);
 void AllNodeScanFree(OpBase *ctx);
 

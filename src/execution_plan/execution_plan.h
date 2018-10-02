@@ -25,7 +25,7 @@ typedef enum {
 
 typedef struct {
     OpBase *root;
-    QueryGraph *graph;
+    QueryGraph *query_graph;
     FT_FilterNode *filter_tree;
     const char *graph_name;
     ResultSet *result_set;

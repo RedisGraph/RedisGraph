@@ -12,7 +12,7 @@
 #include "edge.h"
 #include "graph_entity.h"
 
-Edge* Edge_New(EdgeID id, Node *src, Node *dest, const char *relationship) {
+Edge* Edge_New(EdgeID id, Node *src, Node *dest, const char *relationship, const char *alias) {
 	assert(src && dest);
 
 	Edge* e = (Edge*)calloc(1, sizeof(Edge));
@@ -23,6 +23,9 @@ Edge* Edge_New(EdgeID id, Node *src, Node *dest, const char *relationship) {
 
 	if(relationship != NULL) {
 		e->relationship = strdup(relationship);
+	}
+	if(alias != NULL) {
+		e->alias = strdup(alias);
 	}
 
 	return e;
@@ -83,9 +86,8 @@ void Edge_Free(Edge* edge) {
 
 	FreeGraphEntity((GraphEntity*)edge);
 
-	if(edge->relationship != NULL) {
-		free(edge->relationship);
-	}
+	if(edge->alias != NULL) free(edge->alias);
+	if(edge->relationship != NULL) free(edge->relationship);
 	
 	free(edge);
 }

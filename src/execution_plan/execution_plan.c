@@ -249,7 +249,7 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g,
     size_t edge_count;
     _Determine_Graph_Size(ast, &node_count, &edge_count);
     QueryGraph *q = NewQueryGraph_WithCapacity(node_count, edge_count);
-    execution_plan->graph = q;
+    execution_plan->query_graph = q;
 
     // Build the query graph in advance, as it will be used to construct the filter tree
     if(ast->matchNode) {
@@ -286,20 +286,20 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g,
                 size_t expCount = 0;
                 AlgebraicExpression **exps = AlgebraicExpression_From_Query(ast, pattern, q, &expCount);
 
-                TRAVERSE_ORDER order = determineTraverseOrder(q, filter_tree, exps, expCount);
+                TRAVERSE_ORDER order = determineTraverseOrder(filter_tree, exps, expCount);
                 if(order == TRAVERSE_ORDER_FIRST) {
                     AlgebraicExpression *exp = exps[0];
-                    selectEntryPoint(exp, q, filter_tree);
+                    selectEntryPoint(exp, filter_tree);
 
                     // Create SCAN operation.
-                    if((*exp->src_node)->label) {
+                    if(exp->src_node->label) {
                         /* There's no longer need for the last matrix operand
                          * as it's been replaced by label scan. */
                         AlgebraicExpression_RemoveTerm(exp, exp->operand_count-1, NULL);
-                        op = NewNodeByLabelScanOp(ctx, q, g, graph_name, exp->src_node, (*exp->src_node)->label);
+                        op = NewNodeByLabelScanOp(ctx, g, graph_name, exp->src_node);
                         Vector_Push(traversals, op);
                     } else {
-                        op = NewAllNodeScanOp(q, g, exp->src_node);
+                        op = NewAllNodeScanOp(g, exp->src_node);
                         Vector_Push(traversals, op);
                     }
                     for(int i = 0; i < expCount; i++) {
@@ -307,26 +307,25 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g,
                             op = NewCondVarLenTraverseOp(exps[i],
                                                          exps[i]->edgeLength->minHops,
                                                          exps[i]->edgeLength->maxHops,
-                                                         g,
-                                                         q);
+                                                         g);
                         }
                         else {
-                            op = NewCondTraverseOp(g, q, exps[i]);
+                            op = NewCondTraverseOp(g, exps[i]);
                         }
                         Vector_Push(traversals, op);
                     }
                 } else {
                     AlgebraicExpression *exp = exps[expCount-1];
-                    selectEntryPoint(exp, q, filter_tree);
+                    selectEntryPoint(exp, filter_tree);
                     // Create SCAN operation.
-                    if((*exp->dest_node)->label) {
+                    if(exp->dest_node->label) {
                         /* There's no longer need for the last matrix operand
                          * as it's been replaced by label scan. */
                         AlgebraicExpression_RemoveTerm(exp, exp->operand_count-1, NULL);
-                        op = NewNodeByLabelScanOp(ctx, q, g, graph_name, exp->dest_node, (*exp->dest_node)->label);
+                        op = NewNodeByLabelScanOp(ctx, g, graph_name, exp->dest_node);
                         Vector_Push(traversals, op);
                     } else {
-                        op = NewAllNodeScanOp(q, g, exp->dest_node);
+                        op = NewAllNodeScanOp(g, exp->dest_node);
                         Vector_Push(traversals, op);
                     }
 
@@ -336,11 +335,10 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g,
                             op = NewCondVarLenTraverseOp(exps[i],
                                                          exps[i]->edgeLength->minHops,
                                                          exps[i]->edgeLength->maxHops,
-                                                         g,
-                                                         q);
+                                                         g);
                         }
                         else {
-                            op = NewCondTraverseOp(g, q, exps[i]);
+                            op = NewCondTraverseOp(g, exps[i]);
                         }
                         Vector_Push(traversals, op);
                     }
@@ -351,9 +349,9 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g,
                 Vector_Get(pattern, 0, &ge);
                 Node **n = QueryGraph_GetNodeRef(q, QueryGraph_GetNodeByAlias(q, ge->alias));
                 if(ge->label)
-                    op = NewNodeByLabelScanOp(ctx, q, g, graph_name, n, ge->label);
+                    op = NewNodeByLabelScanOp(ctx, g, graph_name, *n);
                 else
-                    op = NewAllNodeScanOp(q, g, n);
+                    op = NewAllNodeScanOp(g, *n);
                 Vector_Push(traversals, op);
             }
             
@@ -382,15 +380,13 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g,
     /* Set root operation */
     if(ast->createNode) {
         BuildQueryGraph(ctx, g, graph_name, q, ast->createNode->graphEntities);
-
-        int request_refresh = (ast->matchNode != NULL);
-        OpBase *opCreate = NewCreateOp(ctx, ast, g, q, graph_name, request_refresh, execution_plan->result_set);
+        OpBase *opCreate = NewCreateOp(ctx, ast, g, q, graph_name, execution_plan->result_set);
 
         Vector_Push(ops, opCreate);
     }
 
     if(ast->mergeNode) {
-        OpBase *opMerge = NewMergeOp(ctx, ast, g, q, graph_name, execution_plan->result_set);
+        OpBase *opMerge = NewMergeOp(ctx, g, q, graph_name, execution_plan->result_set);
         Vector_Push(ops, opMerge);
     }
 
@@ -400,14 +396,14 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g,
     }
 
     if(ast->setNode) {
-        OpBase *op_update = NewUpdateOp(ctx, ast, q, execution_plan->result_set, graph_name);
+        OpBase *op_update = NewUpdateOp(ctx, ast, execution_plan->result_set, graph_name);
         Vector_Push(ops, op_update);
     }
 
     if(ast->returnNode) {
         if(ReturnClause_ContainsAggregation(ast->returnNode)) {
             TrieMap *groups = NewTrieMap();
-            op = NewAggregateOp(ctx, ast, groups);
+            op = NewAggregateOp(ast, groups);
             if(execution_plan->result_set) execution_plan->result_set->groups = groups;
         } else {
             op = NewProduceResultsOp(ast, execution_plan->result_set, q);
@@ -443,7 +439,7 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g,
 
             /* Create filter node.
              * Introduce filter op right below located op. */
-            OpBase *filter_op = NewFilterOp(tree, q);
+            OpBase *filter_op = NewFilterOp(tree);
             _OpBase_PushBelow(op, filter_op);
             for(int j = 0; j < Vector_Size(references); j++) {
                 char *ref;
@@ -486,7 +482,10 @@ char* ExecutionPlanPrint(const ExecutionPlan *plan) {
 
 ResultSet* ExecutionPlan_Execute(ExecutionPlan *plan) {
     OpBase *op = plan->root;
-    while(op->consume(op, plan->graph) == OP_OK);
+    Record r = NULL;
+    while(op->consume(op, &r) == OP_OK);
+
+    Record_Free(r);
     return plan->result_set;
 }
 
@@ -499,8 +498,7 @@ void _ExecutionPlanFreeRecursive(OpBase* op) {
 
 void ExecutionPlanFree(ExecutionPlan *plan) {
     _ExecutionPlanFreeRecursive(plan->root);
-    // QueryGraph_Free(plan->graph);
-    if(plan->filter_tree)
-        FilterTree_Free(plan->filter_tree);
+    if(plan->filter_tree) FilterTree_Free(plan->filter_tree);
+    if(plan->query_graph) QueryGraph_Free(plan->query_graph);
     free(plan);
 }

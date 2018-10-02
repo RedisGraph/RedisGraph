@@ -13,6 +13,7 @@ extern "C" {
 
 #include "../../src/arithmetic/arithmetic_expression.h"
 #include "../../src/arithmetic/agg_funcs.h"
+#include "../../src/execution_plan/record.h"
 
 #ifdef __cplusplus
 }
@@ -20,13 +21,14 @@ extern "C" {
 
 class AggregateTest: public ::testing::Test {
   protected:
+    Record r = NULL;
     static void SetUpTestCase() {
       AR_RegisterFuncs();
       Agg_RegisterFuncs();
     }
 
-    static void TearDownTestCase() {
-    }
+    // static void TearDownTestCase() {
+    // }
 };
 
 TEST_F(AggregateTest, PercentileContTest) {
@@ -79,10 +81,10 @@ TEST_F(AggregateTest, PercentileContTest) {
     }
     // The last child of this node will be the requested percentile
     perc->op.children[5] = test_percentiles[i];
-    AR_EXP_Aggregate(perc);
+    AR_EXP_Aggregate(perc, r);
     // Reduce sorts the list and applies the percentile formula
     AR_EXP_Reduce(perc);
-    result = AR_EXP_Evaluate(perc);
+    result = AR_EXP_Evaluate(perc, r);
     EXPECT_EQ(result.doubleval, expected_values[i]);
     AR_EXP_Free(perc);
   }
@@ -109,11 +111,11 @@ TEST_F(AggregateTest, PercentileDiscTest) {
     }
     // The last child of this node will be the requested percentile
     perc->op.children[5] = test_percentiles[i];
-    AR_EXP_Aggregate(perc);
+    AR_EXP_Aggregate(perc, r);
     // Reduce sorts the list and applies the percentile formula
     AR_EXP_Reduce(perc);
-    SIValue res = AR_EXP_Evaluate(perc);
-    expected_outcome = AR_EXP_Evaluate(perc->op.children[expected[i]]);
+    SIValue res = AR_EXP_Evaluate(perc, r);
+    expected_outcome = AR_EXP_Evaluate(perc->op.children[expected[i]], r);
     EXPECT_EQ(res.doubleval, expected_outcome.doubleval);
     AR_EXP_Free(perc);
   }
@@ -125,9 +127,9 @@ TEST_F(AggregateTest, StDevTest) {
   // Edge case - operation called on < 2 values
   AR_ExpNode *stdev = AR_EXP_NewOpNode("stDev", 1);
   stdev->op.children[0] = AR_EXP_NewConstOperandNode(SI_DoubleVal(5.1));
-  AR_EXP_Aggregate(stdev);
+  AR_EXP_Aggregate(stdev, r);
   AR_EXP_Reduce(stdev);
-  SIValue result = AR_EXP_Evaluate(stdev);
+  SIValue result = AR_EXP_Evaluate(stdev, r);
   EXPECT_EQ(result.doubleval, 0);
   AR_EXP_Free(stdev);
 
@@ -146,9 +148,9 @@ TEST_F(AggregateTest, StDevTest) {
   double sample_variance = tmp_variance / 9;
   double sample_result = sqrt(sample_variance);
 
-  AR_EXP_Aggregate(stdev);
+  AR_EXP_Aggregate(stdev, r);
   AR_EXP_Reduce(stdev);
-  result = AR_EXP_Evaluate(stdev);
+  result = AR_EXP_Evaluate(stdev, r);
 
   EXPECT_EQ(result.doubleval, sample_result);
   AR_EXP_Free(stdev);
@@ -162,9 +164,9 @@ TEST_F(AggregateTest, StDevTest) {
   double pop_variance = tmp_variance / 10;
   double pop_result = sqrt(pop_variance);
 
-  AR_EXP_Aggregate(stdevp);
+  AR_EXP_Aggregate(stdevp, r);
   AR_EXP_Reduce(stdevp);
-  result = AR_EXP_Evaluate(stdevp);
+  result = AR_EXP_Evaluate(stdevp, r);
 
   EXPECT_EQ(result.doubleval, pop_result);
   AR_EXP_Free(stdevp);

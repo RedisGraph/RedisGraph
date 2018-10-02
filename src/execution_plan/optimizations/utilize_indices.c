@@ -75,7 +75,7 @@ void utilizeIndices(RedisModuleCtx *ctx, const char *graph_name, ExecutionPlan *
 
     /* Get the label string for the scan target.
      * The label will be used to retrieve the index. */
-    label = (*scanOp->node)->label;
+    label = scanOp->node->label;
     Vector_Clear(filterOps);
     _locateScanFilters(scanOp, filterOps);
 
@@ -132,7 +132,7 @@ void utilizeIndices(RedisModuleCtx *ctx, const char *graph_name, ExecutionPlan *
     }
 
     if (iter != NULL) {
-      OpBase *indexOp = NewIndexScanOp(plan->graph, scanOp->g, scanOp->node, iter);
+      OpBase *indexOp = NewIndexScanOp(scanOp->g, scanOp->node, iter);
       ExecutionPlan_ReplaceOp((OpBase*)scanOp, indexOp);
     }
   }

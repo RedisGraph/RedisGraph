@@ -7,15 +7,15 @@
 
 #include "./select_entry_point.h"
 
-void selectEntryPoint(AlgebraicExpression *ae, const QueryGraph *q, const FT_FilterNode *tree) {
+void selectEntryPoint(AlgebraicExpression *ae, const FT_FilterNode *tree) {
     Vector *aliases = FilterTree_CollectAliases(tree);
-    char *srcAlias = QueryGraph_GetNodeAlias(q, *ae->src_node);
-    char *destAlias = QueryGraph_GetNodeAlias(q, *ae->dest_node);
+    char *srcAlias = ae->src_node->alias;
+    char *destAlias = ae->dest_node->alias;
 
     bool srcFiltered = false;
     bool destFiltered = false;
-    bool srcLabeled = (*ae->src_node)->label != NULL;
-    bool destLabeled = (*ae->dest_node)->label != NULL;
+    bool srcLabeled = ae->src_node->label != NULL;
+    bool destLabeled = ae->dest_node->label != NULL;
 
     // See if either source or destination nodes are filtered.
     for(int i = 0; i < Vector_Size(aliases); i++) {

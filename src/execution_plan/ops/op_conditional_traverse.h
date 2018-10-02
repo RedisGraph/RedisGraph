@@ -12,7 +12,7 @@
 #include "../../rmutil/sds.h"
 #include "../../parser/ast.h"
 #include "../../arithmetic/algebraic_expression.h"
-#include "../../arithmetic/tuples_iter.h"
+#include "../../GraphBLASExt/tuples_iter.h"
 #include "../../rmutil/vector.h"
 
 /* OP Traverse */
@@ -21,6 +21,7 @@ typedef struct {
     Graph *graph;
     AlgebraicExpression *algebraic_expression;
     AlgebraicExpressionResult *algebraic_results;
+    GrB_Matrix F;
     GrB_Matrix M;
     int edgeRelationType;
     Vector *edges;
@@ -28,12 +29,12 @@ typedef struct {
 } CondTraverse;
 
 /* Creates a new Traverse operation */
-OpBase* NewCondTraverseOp(Graph *g, QueryGraph* qg, AlgebraicExpression *algebraic_expression);
+OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *algebraic_expression);
 
 /* TraverseConsume next operation 
  * each call will update the graph
  * returns OP_DEPLETED when no additional updates are available */
-OpResult CondTraverseConsume(OpBase *opBase, QueryGraph* graph);
+OpResult CondTraverseConsume(OpBase *opBase, Record *r);
 
 /* Restart iterator */
 OpResult CondTraverseReset(OpBase *ctx);

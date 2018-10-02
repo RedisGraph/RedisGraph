@@ -48,9 +48,8 @@ int _referred_entity(char *alias, TrieMap *ref_entities) {
     return TRIEMAP_NOTFOUND != TrieMap_Find(ref_entities, alias, strlen(alias));
 }
 
-int _referred_node(const Node *n, const QueryGraph *q, TrieMap *ref_entities) {
-    char *alias = QueryGraph_GetNodeAlias(q, n);
-    return _referred_entity(alias, ref_entities);
+int _referred_node(const Node *n, TrieMap *ref_entities) {
+    return _referred_entity(n->alias, ref_entities);
 }
 
 /* For every referenced edge, add edge source and destination nodes
@@ -68,11 +67,9 @@ void _referred_edge_ends(TrieMap *ref_entities, const QueryGraph *q) {
         Edge *e = QueryGraph_GetEdgeByAlias(q, alias);
         if(!e) continue;
 
-        // Remember edge ends.
-        char *srcAlias = QueryGraph_GetNodeAlias(q, e->src);
-        Vector_Push(aliases, srcAlias);
-        char *destAlias = QueryGraph_GetNodeAlias(q, e->dest);
-        Vector_Push(aliases, destAlias);
+        // Remember edge ends.        
+        Vector_Push(aliases, e->src->alias);
+        Vector_Push(aliases, e->dest->alias);
     }
 
     // Add edges ends as referenced entities.
@@ -88,7 +85,6 @@ void _referred_edge_ends(TrieMap *ref_entities, const QueryGraph *q) {
  * therefor mark both variable length edge ends as referenced. */
 void _referred_variable_length_edges(TrieMap *ref_entities, Vector *matchPattern, const QueryGraph *q) {
     Edge *e;
-    char *alias;
     AST_LinkEntity *edge;
     AST_GraphEntity *match_element;
 
@@ -100,10 +96,8 @@ void _referred_variable_length_edges(TrieMap *ref_entities, Vector *matchPattern
         if(!edge->length) continue;
 
         e = QueryGraph_GetEdgeByAlias(q, edge->ge.alias);
-        alias = QueryGraph_GetNodeAlias(q, e->src);
-        TrieMap_Add(ref_entities, alias, strlen(alias), NULL, TrieMap_DONT_CARE_REPLACE);
-        alias = QueryGraph_GetNodeAlias(q, e->dest);
-        TrieMap_Add(ref_entities, alias, strlen(alias), NULL, TrieMap_DONT_CARE_REPLACE);
+        TrieMap_Add(ref_entities, e->src->alias, strlen(e->src->alias), NULL, TrieMap_DONT_CARE_REPLACE);
+        TrieMap_Add(ref_entities, e->dest->alias, strlen(e->dest->alias), NULL, TrieMap_DONT_CARE_REPLACE);
     }
 }
 
@@ -130,8 +124,8 @@ AlgebraicExpression** _AlgebraicExpression_IsolateVariableLenExps(AlgebraicExpre
         /* We only care about destination node, in the case of a variable length edge 
          * expression where there's a labeled source node, then the execution plan 
          * will turn that node into a label scan and discard of the source node matrix. */
-        Edge *e = *exp->edge;
-        Node *dest = *exp->dest_node;
+        Edge *e = exp->edge;
+        Node *dest = exp->dest_node;
 
         res[newExpCount++] = exp;
 
@@ -199,12 +193,12 @@ AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(AlgebraicExpr
 
         /* If edge is referenced, set expression edge pointer. */
         if(_referred_entity(edge->ge.alias, ref_entities))
-            iexp->edge = QueryGraph_GetEdgeRef(q, e);
+            iexp->edge = e;
         /* If this is a variable length edge, which is not fixed in length
          * remember edge length. */
         if(edge->length && !AST_LinkEntity_FixedLengthEdge(edge)) {
             iexp->edgeLength = edge->length;
-            iexp->edge = QueryGraph_GetEdgeRef(q, e);
+            iexp->edge = e;
         }
 
         dest = e->dest;
@@ -233,9 +227,9 @@ AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(AlgebraicExpr
         }
 
         /* If intermidate node is referenced, create a new algebraic expression. */
-        if(_intermidate_node(dest) && _referred_node(dest, q, ref_entities)) {
+        if(_intermidate_node(dest) && _referred_node(dest, ref_entities)) {
             // Finalize current expression.
-            iexp->dest_node = QueryGraph_GetNodeRef(q, dest);
+            iexp->dest_node = dest;
 
             /* Create a new algebraic expression. */
             iexp = _AE_MUL(exp->operand_count - operandIdx);
@@ -339,7 +333,7 @@ AlgebraicExpression **AlgebraicExpression_From_Query(const AST_Query *ast, Vecto
         }
 
         if(exp->operand_count == 0) {
-            exp->src_node = QueryGraph_GetNodeRef(q, src);
+            exp->src_node = src;
             if(src->mat) AlgebraicExpression_AppendTerm(exp, src->mat, false, false);
         }
 
@@ -356,7 +350,7 @@ AlgebraicExpression **AlgebraicExpression_From_Query(const AST_Query *ast, Vecto
         if(dest->mat) AlgebraicExpression_AppendTerm(exp, dest->mat, false, false);
     }
 
-    exp->dest_node = QueryGraph_GetNodeRef(q, dest);
+    exp->dest_node = dest;
     AlgebraicExpression **expressions = _AlgebraicExpression_Intermidate_Expressions(exp, ast, matchPattern, q, exp_count);
     expressions = _AlgebraicExpression_IsolateVariableLenExps(expressions, exp_count);
     AlgebraicExpression_Free(exp);
@@ -459,7 +453,7 @@ void AlgebraicExpression_Transpose(AlgebraicExpression *ae) {
      * = CT*BT*AT */
     
     // Switch expression src and dest nodes.
-    Node **n = ae->src_node;
+    Node *n = ae->src_node;
     ae->src_node = ae->dest_node;
     ae->dest_node = n;
 

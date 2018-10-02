@@ -12,8 +12,7 @@
  * suggest traversal entry point to be either the first expression or the
  * last expression, in the future we'll want to be able to begin traversal from 
  * any expression. */
-TRAVERSE_ORDER determineTraverseOrder(const QueryGraph *qg,
-                                      const FT_FilterNode *filterTree,
+TRAVERSE_ORDER determineTraverseOrder(const FT_FilterNode *filterTree,
                                       AlgebraicExpression **exps,
                                       size_t expCount) {
 
@@ -33,9 +32,9 @@ TRAVERSE_ORDER determineTraverseOrder(const QueryGraph *qg,
 
     // See if there's a filter applied to the first expression.
     exp = exps[0];
-    firstExpLabeled = (*exp->src_node)->label || (*exp->dest_node)->label;
-    destAlias = QueryGraph_GetNodeAlias(qg, *exp->dest_node);
-    srcAlias = QueryGraph_GetNodeAlias(qg, *exp->src_node);
+    firstExpLabeled = exp->src_node->label || exp->dest_node->label;
+    destAlias = exp->dest_node->alias;
+    srcAlias = exp->src_node->alias;
 
     for(int i = 0; i < aliasesCount; i++) {
         char *alias;
@@ -48,9 +47,9 @@ TRAVERSE_ORDER determineTraverseOrder(const QueryGraph *qg,
 
     // See if there's a filter applied to the last expression.
     exp = exps[expCount-1];
-    lastExpLabeled = (*exp->src_node)->label || (*exp->dest_node)->label;
-    destAlias = QueryGraph_GetNodeAlias(qg, *exp->dest_node);
-    srcAlias = QueryGraph_GetNodeAlias(qg, *exp->src_node);
+    lastExpLabeled = exp->src_node->label || exp->dest_node->label;
+    destAlias = exp->dest_node->alias;
+    srcAlias = exp->src_node->alias;
 
     for(int i = 0; i < aliasesCount; i++) {
         char *alias;

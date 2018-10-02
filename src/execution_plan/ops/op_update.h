@@ -15,9 +15,9 @@
 #include "../../arithmetic/arithmetic_expression.h"
 
 typedef struct {
-    GraphEntity **entity;   /* Entity to update. */
-    char *property;         /* Property to update. */
-    AR_ExpNode *exp;        /* Expression to evaluate. */
+    char *alias;        /* Entity alias. */
+    char *property;     /* Property to update. */
+    AR_ExpNode *exp;    /* Expression to evaluate. */
 } EntityUpdateEvalCtx;
 
 typedef struct {
@@ -38,8 +38,8 @@ typedef struct {
     const char *graphName;
 } OpUpdate;
 
-OpBase* NewUpdateOp(RedisModuleCtx *ctx, AST_Query *ast, QueryGraph *q, ResultSet *result_set, const char *graphName);
-OpResult OpUpdateConsume(OpBase *opBase, QueryGraph *graph);
+OpBase* NewUpdateOp(RedisModuleCtx *ctx, AST_Query *ast, ResultSet *result_set, const char *graphName);
+OpResult OpUpdateConsume(OpBase *opBase, Record *r);
 OpResult OpUpdateReset(OpBase *ctx);
 void OpUpdateFree(OpBase *ctx);
 

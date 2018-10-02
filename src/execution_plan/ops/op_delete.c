@@ -24,10 +24,10 @@ OpBase* NewDeleteOp(AST_DeleteNode *ast_delete_node, QueryGraph *qg, Graph *g, R
 
     op_delete->g = g;
     op_delete->qg = qg;
-    op_delete->nodes_to_delete = malloc(sizeof(Node**) * Vector_Size(ast_delete_node->graphEntities));
     op_delete->node_count = 0;
     op_delete->edge_count = 0;
-    op_delete->edges_to_delete = malloc(sizeof(Edge**) * Vector_Size(ast_delete_node->graphEntities));
+    op_delete->nodes_to_delete = malloc(sizeof(char*) * Vector_Size(ast_delete_node->graphEntities));
+    op_delete->edges_to_delete = malloc(sizeof(char*) * Vector_Size(ast_delete_node->graphEntities));
     op_delete->deleted_nodes = array_new(NodeID, 32);
     op_delete->deleted_edges = array_new(EdgeID, 32);
     op_delete->result_set = result_set;
@@ -50,19 +50,15 @@ void _LocateEntities(OpDelete *op, QueryGraph *qg, AST_DeleteNode *ast_delete_no
         char *entity_alias;
         Vector_Get(ast_delete_node->graphEntities, i, &entity_alias);
 
+        // Current entity is a node.
         Node *n = QueryGraph_GetNodeByAlias(qg, entity_alias);
         if (n != NULL) {
-            Node** node_ref = QueryGraph_GetNodeRef(qg, n);
-            op->nodes_to_delete[op->node_count++] = node_ref;
+            op->nodes_to_delete[op->node_count++] = entity_alias;
             continue;
         }
 
-        // Save reference to source and destination nodes.
-        Edge *e = QueryGraph_GetEdgeByAlias(qg, entity_alias);
-        assert(e != NULL);
-
-        Edge **edge_ref = QueryGraph_GetEdgeRef(qg, e);
-        op->edges_to_delete[op->edge_count++] = edge_ref;
+        // Current entity is an edge.
+        op->edges_to_delete[op->edge_count++] = entity_alias;
     }
 }
 
@@ -114,20 +110,24 @@ void _DeleteEntities(OpDelete *op) {
     }                
 }
 
-OpResult OpDeleteConsume(OpBase *opBase, QueryGraph* graph) {
+OpResult OpDeleteConsume(OpBase *opBase, Record *r) {
     OpDelete *op = (OpDelete*)opBase;
     OpBase *child = op->op.children[0];
 
-    OpResult res = child->consume(child, graph);
+    OpResult res = child->consume(child, r);
     if(res != OP_OK) return res;
 
     /* Enqueue entities for deletion. */
+    char *alias = NULL;
     for(int i = 0; i < op->node_count; i++) {
-        Node *n = *(op->nodes_to_delete[i]);
+        alias = op->nodes_to_delete[i];
+        Node *n = Record_GetNode(*r, alias);
         op->deleted_nodes = array_append(op->deleted_nodes, n->id);
     }
+
     for(int i = 0; i < op->edge_count; i++) {
-        Edge *e = *(op->edges_to_delete[i]);
+        alias = op->edges_to_delete[i];
+        Edge *e = Record_GetEdge(*r, alias);
         op->deleted_edges = array_append(op->deleted_edges, e->id);
     }
 

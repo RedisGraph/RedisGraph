@@ -7,15 +7,14 @@
 
 #include "op_node_by_label_scan.h"
 
-OpBase *NewNodeByLabelScanOp(RedisModuleCtx *ctx, QueryGraph *qg, Graph *g, const char *graph_name, Node **node, const char *label) {
+OpBase *NewNodeByLabelScanOp(RedisModuleCtx *ctx, Graph *g, const char *graph_name, Node *node) {
     NodeByLabelScan *nodeByLabelScan = malloc(sizeof(NodeByLabelScan));
     nodeByLabelScan->g = g;
     nodeByLabelScan->node = node;
-    nodeByLabelScan->_node = *node;
     nodeByLabelScan->_zero_matrix = NULL;
 
     /* Find out label matrix ID. */
-    LabelStore *store = LabelStore_Get(ctx, STORE_NODE, graph_name, label);
+    LabelStore *store = LabelStore_Get(ctx, STORE_NODE, graph_name, node->label);
     if(store != NULL) {
         int label_id = store->id;
         nodeByLabelScan->iter = TuplesIter_new(Graph_GetLabel(g, label_id));
@@ -34,31 +33,28 @@ OpBase *NewNodeByLabelScanOp(RedisModuleCtx *ctx, QueryGraph *qg, Graph *g, cons
     nodeByLabelScan->op.free = NodeByLabelScanFree;
     
     nodeByLabelScan->op.modifies = NewVector(char*, 1);
-    Vector_Push(nodeByLabelScan->op.modifies, QueryGraph_GetNodeAlias(qg, *node));
+    Vector_Push(nodeByLabelScan->op.modifies, node->alias);
 
     return (OpBase*)nodeByLabelScan;
 }
 
-OpResult NodeByLabelScanConsume(OpBase *opBase, QueryGraph* graph) {
+OpResult NodeByLabelScanConsume(OpBase *opBase, Record *r) {
     NodeByLabelScan *op = (NodeByLabelScan*)opBase;
 
-    GrB_Index col;
+    GrB_Index nodeId;
 
-    if(TuplesIter_next(op->iter, NULL, &col) == TuplesIter_DEPLETED) {
+    if(TuplesIter_next(op->iter, NULL, &nodeId) == TuplesIter_DEPLETED) {
         return OP_DEPLETED;
     }
 
-    Node *n = Graph_GetNode(op->g, col);
-    *op->node = n;
+    Node *n = Graph_GetNode(op->g, nodeId);
+    Record_AddEntry(r, op->node->alias, SI_PtrVal(n));
 
     return OP_OK;
 }
 
 OpResult NodeByLabelScanReset(OpBase *ctx) {
     NodeByLabelScan *op = (NodeByLabelScan*)ctx;
-
-    /* Restore original node. */
-    *op->node = op->_node;    
     TuplesIter_reset(op->iter);
     return OP_OK;
 }

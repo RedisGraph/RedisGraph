@@ -23,13 +23,14 @@ typedef struct {
 		EntityProperty *properties;
 	};
 	char *label;			/* label attached to node */
+	char *alias;			/* alias attached to node */
 	GrB_Matrix mat;			/* Label matrix, associated with node. */
 	Vector* outgoing_edges;	/* list of incoming edges (ME)<-(SRC) */
 	Vector* incoming_edges;	/* list on outgoing edges (ME)->(DEST) */
 } Node;
 
 /* Creates a new node. */
-Node* Node_New(NodeID id, const char *label);
+Node* Node_New(NodeID id, const char *label, const char *alias);
 
 /* Checks if nodes are "equal" */
 int Node_Compare(const Node *a, const Node *b);

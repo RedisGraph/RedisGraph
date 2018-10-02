@@ -7,10 +7,9 @@
 
 #include "op_all_node_scan.h"
 
-OpBase* NewAllNodeScanOp(QueryGraph *qg, const Graph *g, Node **n) {
+OpBase* NewAllNodeScanOp(const Graph *g, Node *n) {
     AllNodeScan *allNodeScan = malloc(sizeof(AllNodeScan));
     allNodeScan->node = n;
-    allNodeScan->_node = *n;
     allNodeScan->iter = Graph_ScanNodes(g);
 
     // Set our Op operations
@@ -22,12 +21,12 @@ OpBase* NewAllNodeScanOp(QueryGraph *qg, const Graph *g, Node **n) {
     allNodeScan->op.free = AllNodeScanFree;
     allNodeScan->op.modifies = NewVector(char*, 1);
 
-    Vector_Push(allNodeScan->op.modifies, QueryGraph_GetNodeAlias(qg, *n));
+    Vector_Push(allNodeScan->op.modifies, n->alias);
 
     return (OpBase*)allNodeScan;
 }
 
-OpResult AllNodeScanConsume(OpBase *opBase, QueryGraph* graph) {
+OpResult AllNodeScanConsume(OpBase *opBase, Record *r) {
     AllNodeScan *op = (AllNodeScan*)opBase;
     
     NodeID id = DataBlockIterator_Position(op->iter);
@@ -35,15 +34,13 @@ OpResult AllNodeScanConsume(OpBase *opBase, QueryGraph* graph) {
     if(node == NULL) return OP_DEPLETED;
 
     node->id = id;
-    *op->node = node;
+    Record_AddEntry(r, op->node->alias, SI_PtrVal(node));
 
     return OP_OK;
 }
 
 OpResult AllNodeScanReset(OpBase *op) {
     AllNodeScan *allNodeScan = (AllNodeScan*)op;
-    
-    *allNodeScan->node = allNodeScan->_node;
     DataBlockIterator_Reset(allNodeScan->iter);
     
     return OP_OK;

@@ -31,7 +31,7 @@ OpBase* NewProduceResultsOp(AST_Query *ast, ResultSet *result_set, QueryGraph *g
 
 /* ProduceResults next operation
  * called each time a new result record is required */
-OpResult ProduceResultsConsume(OpBase *op, QueryGraph* graph);
+OpResult ProduceResultsConsume(OpBase *op, Record *r);
 
 /* Restart iterator */
 OpResult ProduceResultsReset(OpBase *ctx);

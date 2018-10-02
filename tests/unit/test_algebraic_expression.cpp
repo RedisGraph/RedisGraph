@@ -311,15 +311,15 @@ class AlgebraicExpressionTest: public ::testing::Test {
         int war_relation_id = 2;
 
         // Create Nodes
-        Node *p = Node_New(0, "Person");
-        Node *f = Node_New(1, "Person");
-        Node *c = Node_New(2, "City");
-        Node *e = Node_New(3, "City");
+        Node *p = Node_New(0, "Person", "p");
+        Node *f = Node_New(1, "Person", "f");
+        Node *c = Node_New(2, "City", "c");
+        Node *e = Node_New(3, "City", "e");
 
         // Create edges
-        Edge *pff = Edge_New(friend_relation_id, p, f, "friend");
-        Edge *fvc = Edge_New(visit_relation_id, f, c, "visit");
-        Edge *cwe = Edge_New(war_relation_id, c, e, "war");
+        Edge *pff = Edge_New(friend_relation_id, p, f, "friend", "pff");
+        Edge *fvc = Edge_New(visit_relation_id, f, c, "visit", "fvc");
+        Edge *cwe = Edge_New(war_relation_id, c, e, "war", "cwe");
         
         // Set edges matrices according to the order they've been presented
         // during graph construction.
@@ -570,8 +570,8 @@ TEST_F(AlgebraicExpressionTest, ExpressionExecute) {
     simple_tic(tic);
     AlgebraicExpressionResult *res = AlgebraicExpression_Execute(ae[0]);
 
-    Node **src = QueryGraph_GetNodeRef(query_graph, QueryGraph_GetNodeByAlias(query_graph, "p"));
-    Node **dest = QueryGraph_GetNodeRef(query_graph, QueryGraph_GetNodeByAlias(query_graph, "e"));
+    Node *src = QueryGraph_GetNodeByAlias(query_graph, "p");
+    Node *dest = QueryGraph_GetNodeByAlias(query_graph, "e");
     assert(res->src_node == src);
     assert(res->dest_node == dest);
 

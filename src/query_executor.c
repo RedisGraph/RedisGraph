@@ -33,7 +33,7 @@ void QueryContext_Free(QueryContext* ctx) {
 
 /* Construct an expression tree foreach none aggregated term.
  * Returns a vector of none aggregated expression trees. */
-void Build_None_Aggregated_Arithmetic_Expressions(AST_ReturnNode *return_node, AR_ExpNode ***expressions, int *expressions_count, QueryGraph *g) {
+void Build_None_Aggregated_Arithmetic_Expressions(AST_ReturnNode *return_node, AR_ExpNode ***expressions, int *expressions_count) {
     *expressions = malloc(sizeof(AR_ExpNode *) * Vector_Size(return_node->returnElements));
     *expressions_count = 0;
 
@@ -41,7 +41,7 @@ void Build_None_Aggregated_Arithmetic_Expressions(AST_ReturnNode *return_node, A
         AST_ReturnElementNode *returnElement;
         Vector_Get(return_node->returnElements, i, &returnElement);
 
-        AR_ExpNode *expression = AR_EXP_BuildFromAST(returnElement->exp, g);
+        AR_ExpNode *expression = AR_EXP_BuildFromAST(returnElement->exp);
         if(!AR_EXP_ContainsAggregation(expression, NULL)) {
             (*expressions)[*expressions_count] = expression;
             (*expressions_count)++;

@@ -13,6 +13,7 @@
 #include "../graph/query_graph.h"
 #include "../redismodule.h"
 #include "../arithmetic/arithmetic_expression.h"
+#include "../execution_plan/record.h"
 
 #define FILTER_FAIL 0
 #define FILTER_PASS 1
@@ -60,7 +61,7 @@ FT_FilterNode *AppendLeftChild(FT_FilterNode *root, FT_FilterNode *child);
 FT_FilterNode *AppendRightChild(FT_FilterNode *root, FT_FilterNode *child);
 
 /* Runs val through the filter tree. */
-int FilterTree_applyFilters(const FT_FilterNode* root);
+int FilterTree_applyFilters(const FT_FilterNode* root, const Record r);
 
 /* Extract every alias mentioned in the tree
  * without duplications. */

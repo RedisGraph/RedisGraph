@@ -30,6 +30,7 @@ struct Edge {
 		EntityProperty *properties;
 	};
 	EdgeDesc edgeDesc;
+	char *alias;
 	char* relationship;
 	Node* src;
 	Node* dest;
@@ -40,7 +41,7 @@ struct Edge {
 typedef struct Edge Edge;
 
 /* Creates a new edge, connecting src to dest node. */
-Edge* Edge_New(EdgeID id, Node *src, Node *dest, const char *relationship);
+Edge* Edge_New(EdgeID id, Node *src, Node *dest, const char *relationship, const char *alias);
 
 // Retrieve edge source node ID.
 NodeID Edge_GetSrcNodeID(const Edge *edge);

@@ -22,8 +22,8 @@ typedef enum {
 // Result of an algebraic expression evaluation.
 typedef struct {
     GrB_Matrix m;       // Resulting matrix.
-    Node **src_node;    // Nodes represented by matrix rows.
-    Node **dest_node;   // Nodes represented by matrix columns.
+    Node *src_node;     // Nodes represented by matrix rows.
+    Node *dest_node;    // Nodes represented by matrix columns.
     bool _free_m;       // Should M be freed or not.
 } AlgebraicExpressionResult;
 
@@ -41,9 +41,9 @@ typedef struct {
     size_t operand_count;                   // Number of operands.
     size_t operand_cap;                     // Allocated number of operands.
     AlgebraicExpressionOperand *operands;   // Array of operands.
-    Node **src_node;                        // Nodes represented by the first operand columns.
-    Node **dest_node;                       // Nodes represented by the last operand rows.
-    Edge **edge;                            // Edge represented by sole operand.
+    Node *src_node;                         // Nodes represented by the first operand columns.
+    Node *dest_node;                        // Nodes represented by the last operand rows.
+    Edge *edge;                             // Edge represented by sole operand.
     AST_LinkLength *edgeLength;             // Repeatable edge length.
 } AlgebraicExpression;
 

@@ -14,7 +14,7 @@ extern "C"
 
 #include "../../src/graph/graph.h"
 #include "../../src/util/simple_timer.h"
-#include "../../src/arithmetic/tuples_iter.h"
+#include "../../src/GraphBLASExt/tuples_iter.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 #include "../../src/util/datablock/datablock_iterator.h"
 

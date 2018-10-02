@@ -21,8 +21,7 @@ typedef enum {
  * be used as the first traverse operation, we will prefer using an expression
  * which has a filter applied to it, as we wish to filter as early as we can,
  * that way we expect the number of entities inspected to be reduced at an early stage. */
-TRAVERSE_ORDER determineTraverseOrder(const QueryGraph *qg,
-                                      const FT_FilterNode *filterTree,
+TRAVERSE_ORDER determineTraverseOrder(const FT_FilterNode *filterTree,
                                       AlgebraicExpression **exps,
                                       size_t expCount);
 
