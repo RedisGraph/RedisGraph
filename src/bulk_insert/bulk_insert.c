@@ -147,8 +147,8 @@ RedisModuleString** _Bulk_Insert_Read_Unlabeled_Node_Attributes(RedisModuleCtx *
 RedisModuleString** _Bulk_Insert_Insert_Nodes(RedisModuleCtx *ctx, RedisModuleString **argv,
                                               int *argc, Graph *g, const char *graph_name,
                                               size_t *nodes) {
-    Node *n;                        // Current node.
-    DataBlockIterator *it;          // Iterator over nodes.
+    GraphEntity *n;                 // Current node.
+    DataBlockIterator *it = NULL;   // Iterator over nodes.
     long long nodes_to_create = 0;  // Total number of nodes to create.
 
     if(*argc < 1 || RedisModule_StringToLongLong(*argv++, &nodes_to_create) != REDISMODULE_OK) {
@@ -190,8 +190,8 @@ RedisModuleString** _Bulk_Insert_Insert_Nodes(RedisModuleCtx *ctx, RedisModuleSt
                 for(int i = 0; i < l.node_count; i++) {
                     argv = _Bulk_Insert_Read_Labeled_Node_Attributes(ctx, argv, argc, l.attribute_count, values);
                     if(argv == NULL) break;
-                    n = (Node*)DataBlockIterator_Next(it);
-                    Node_Add_Properties(n, l.attribute_count, l.attributes, values);
+                    n = (GraphEntity*)DataBlockIterator_Next(it);
+                    GraphEntity_Add_Properties(n, l.attribute_count, l.attributes, values);
                 }
             } else {
                 DataBlockIterator_Skip(it, l.node_count);
@@ -202,9 +202,7 @@ RedisModuleString** _Bulk_Insert_Insert_Nodes(RedisModuleCtx *ctx, RedisModuleSt
         // Free label attributes.
         for(int label_idx = 0; label_idx < label_count; label_idx++) {
             LabelDesc l = labels[label_idx];
-             if(l.attribute_count > 0) {
-                 free(l.attributes);
-             }
+            if (l.attribute_count > 0) free(l.attributes);
         }
 
         if(argv == NULL) return NULL;
@@ -216,7 +214,7 @@ RedisModuleString** _Bulk_Insert_Insert_Nodes(RedisModuleCtx *ctx, RedisModuleSt
 
     // Unlabeled nodes.
     long long attribute_count = 0;
-    while((n = (Node*)DataBlockIterator_Next(it)) != NULL) {
+    while((n = (GraphEntity*)DataBlockIterator_Next(it)) != NULL) {
         if(*argc < 1) {
             _Bulk_Insert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, expected additional unlabeled nodes.");
             return NULL;
@@ -236,7 +234,7 @@ RedisModuleString** _Bulk_Insert_Insert_Nodes(RedisModuleCtx *ctx, RedisModuleSt
 
         argv = _Bulk_Insert_Read_Unlabeled_Node_Attributes(ctx, argv, argc, keys, values, attribute_count);
         if(argv == NULL) return NULL;
-        Node_Add_Properties(n, attribute_count, keys, values);
+        GraphEntity_Add_Properties(n, attribute_count, keys, values);
         LabelStore_UpdateSchema(allStore, attribute_count, keys);
     }
 

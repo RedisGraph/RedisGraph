@@ -227,8 +227,8 @@ void _MGraph_Query(void *args) {
     
     // Clean up.
 cleanup:
-    RedisModule_UnblockClient(qctx->bc, NULL);
     Free_AST_Query(ast);
+    RedisModule_UnblockClient(qctx->bc, NULL);
     free(qctx);
 }
 

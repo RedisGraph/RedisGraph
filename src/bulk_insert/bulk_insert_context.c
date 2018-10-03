@@ -20,13 +20,7 @@ BulkInsertContext* BulkInsertContext_New
 
     context->bc = bc;
     context->argc = argc;
-    
-    // Retain strings arguments.
-    for(int i = 0; i < argc; i++)
-        RedisModule_RetainString(ctx, argv[i]);
-
-    context->argv = malloc(sizeof(RedisModuleString*) * argc);
-    memcpy(context->argv, argv, argc * sizeof(RedisModuleString*));
+    context->argv = argv;
 
     return context;
 }
@@ -35,8 +29,5 @@ void BulkInsertContext_Free
 (
     BulkInsertContext* ctx
 ) {
-    for(int i = 0; i < ctx->argc; i++)
-        RedisModule_Free(ctx->argv[i]);
-    free(ctx->argv);
     free(ctx);
 }

@@ -257,6 +257,8 @@ Graph *Graph_New(size_t n) {
     assert(n > 0);
     Graph *g = malloc(sizeof(Graph));
 
+    // TODO Our node iterators always cast the elements of this
+    // to Nodes, but only the GraphEntity portion can be safely accessed
     g->nodes = DataBlock_New(n, sizeof(GraphEntity));
     g->edges = DataBlock_New(n, sizeof(Edge));
     g->_edgesHashTbl = NULL;            // Init to NULL, required by uthash.
@@ -693,6 +695,18 @@ void Graph_Free(Graph *g) {
     }
     free(g->_labels);
 
+    DataBlockIterator *it = Graph_ScanNodes(g);
+    GraphEntity *node;
+    while ((node = (GraphEntity*)DataBlockIterator_Next(it)) != NULL) {
+      FreeGraphEntity(node);
+    }
+    DataBlockIterator_Free(it);
+
+    it = Graph_ScanEdges(g);
+    Edge *edge;
+    while ((edge = (Edge*)DataBlockIterator_Next(it)) != NULL) {
+      Edge_Free(edge);
+    }
     // Free node blocks.
     DataBlock_Free(g->nodes);
     // Free the edges hash table before modifying the edge blocks.
