@@ -302,7 +302,7 @@ class AlgebraicExpressionTest: public ::testing::Test {
     QueryGraph *_build_query_graph(Graph *g) {
         /* Query
         * MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) */
-        QueryGraph *q = NewQueryGraph_WithCapacity(1, 1);
+        QueryGraph *q = QueryGraph_New(1, 1);
 
         // The following indicies are synced with Graph_AddRelation call order
         // within _build_graph, this is not ideal, but for now this will do.

@@ -27,8 +27,9 @@ typedef struct {
     size_t edge_cap;
 } QueryGraph;
 
-QueryGraph* QueryGraph_New();
-QueryGraph* NewQueryGraph_WithCapacity(size_t node_cap, size_t edge_cap);
+/* Prepare a new query graph with initial allocations for
+ * the provided node and edge counts. */
+QueryGraph* QueryGraph_New(size_t node_cap, size_t edge_cap);
 
 /* Given AST's MATCH node constructs a graph
  * representing queried entities and the relationships
