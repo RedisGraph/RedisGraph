@@ -447,12 +447,11 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g,
                 free(ref);
             }
             Vector_Free(references);
-
-            ExecutionPlanPrint(execution_plan);
         }
         Vector_Free(sub_trees);
     }
     
+    Vector_Free(ops);
     optimizePlan(ctx, graph_name, execution_plan);
 
     return execution_plan;

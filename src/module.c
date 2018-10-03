@@ -228,6 +228,7 @@ void _MGraph_Query(void *args) {
     // Clean up.
 cleanup:
     Free_AST_Query(ast);
+    RedisModule_FreeThreadSafeContext(ctx);
     RedisModule_UnblockClient(qctx->bc, NULL);
     free(qctx);
 }
@@ -272,6 +273,7 @@ void _MGraph_BulkInsert(void *args) {
     // Clean up
 cleanup:
     _MGraph_ReleaseLock(ctx);
+    RedisModule_FreeThreadSafeContext(ctx);
     RedisModule_UnblockClient(context->bc, NULL);
     BulkInsertContext_Free(context);
 }
@@ -323,6 +325,7 @@ cleanup:
     asprintf(&strElapsed, "Graph removed, internal execution time: %.6f milliseconds", t);
     RedisModule_ReplyWithStringBuffer(ctx, strElapsed, strlen(strElapsed));
     free(strElapsed);
+    RedisModule_FreeThreadSafeContext(ctx);
     RedisModule_UnblockClient(bc, NULL);
 }
 

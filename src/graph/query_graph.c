@@ -211,10 +211,6 @@ QueryGraph* QueryGraph_New() {
     g->edge_count = 0;
     g->node_cap = DEFAULT_GRAPH_CAP;
     g->edge_cap = DEFAULT_GRAPH_CAP;
-    g->nodes = (Node**)malloc(sizeof(Node*) * g->node_cap);
-    g->edges = (Edge**)malloc(sizeof(Edge*) * g->edge_cap);
-    g->node_aliases = (char**)malloc(sizeof(char*) * g->node_cap);
-    g->edge_aliases = (char**)malloc(sizeof(char*) * g->edge_cap);
     return g;
 }
 
@@ -462,5 +458,7 @@ void QueryGraph_Free(QueryGraph* g) {
     /* Edges are freed internally by nodes. */
     free(g->nodes);
     free(g->edges);
+    free(g->node_aliases);
+    free(g->edge_aliases);
     free(g);
 }

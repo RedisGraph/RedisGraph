@@ -79,5 +79,13 @@ OpResult ProduceResultsReset(OpBase *op) {
 }
 
 /* Frees ProduceResults */
-void ProduceResultsFree(OpBase *op) {
+void ProduceResultsFree(OpBase *opBase) {
+    ProduceResults *op = (ProduceResults*)opBase;
+    AR_ExpNode *ae;
+    for(int i = 0; i < Vector_Size(op->return_elements); i++) {
+        Vector_Get(op->return_elements, i, &ae);
+        AR_EXP_Free(ae);
+    }
+    Vector_Free(op->return_elements);
 }
+
