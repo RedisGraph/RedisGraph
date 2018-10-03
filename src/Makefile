@@ -114,3 +114,7 @@ package: redisgraph.so
 test: $(MODULE) redisgraph.so
 	# unit tests
 	$(MAKE) -C ../tests test
+
+test_valgrind: $(MODULE) redisgraph.so
+	# Run unit tests under Valgrind
+	$(MAKE) -C ../tests test_valgrind
