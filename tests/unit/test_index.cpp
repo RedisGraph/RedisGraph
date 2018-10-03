@@ -80,8 +80,6 @@ class IndexTest: public ::testing::Test {
         prop_vals[1] = SI_DoubleVal(prop_val);
 
         Node_Add_Properties(node, 2, prop_keys, prop_vals);
-
-        SIValue_Free(&prop_vals[0]);
       }
       DataBlockIterator_Free(it);
 

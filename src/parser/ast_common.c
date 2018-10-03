@@ -8,7 +8,7 @@
 #include "./ast_common.h"
 #include "../value.h"
 
-AST_Variable* New_AST_Variable(const char* alias, const char* property) {
+AST_Variable* New_AST_Variable(const char *alias, const char *property) {
 	AST_Variable *v = (AST_Variable*)calloc(1, sizeof(AST_Variable));
 
 	if(alias != NULL) {
@@ -50,12 +50,8 @@ AST_NodeEntity* New_AST_NodeEntity(char *alias, char *label, Vector *properties)
 	ne->t = N_ENTITY;
 	ne->properties = properties;
 	
-	if(alias != NULL) {
-		ne->alias = strdup(alias);
-	}
-	if(label != NULL) {
-		ne->label = strdup(label);
-	}
+	ne->alias = alias;
+	ne->label = label;
 
 	return ne;
 }
@@ -65,21 +61,8 @@ bool AST_LinkEntity_FixedLengthEdge(AST_LinkEntity* edge) {
 }
 
 void Free_AST_GraphEntity(AST_GraphEntity *graphEntity) {
-	if(graphEntity->label != NULL) {
-		free(graphEntity->label);
-	}
-	if(graphEntity->alias != NULL) {
-		free(graphEntity->alias);
-	}
-	if(graphEntity->properties != NULL) {
-		for(int i = 0; i < Vector_Size(graphEntity->properties); i++) {
-			SIValue *val;
-			Vector_Get(graphEntity->properties, i, &val);
-			SIValue_Free(val);
-			free(val);
-		}
-		Vector_Free(graphEntity->properties);
-	}
+	if(graphEntity->properties != NULL) Vector_Free(graphEntity->properties);
+
 	if(graphEntity->t == N_LINK) {
 		AST_LinkEntity *link = (AST_LinkEntity*)graphEntity;
 		if(link->length) free(link->length);

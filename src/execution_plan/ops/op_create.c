@@ -100,7 +100,6 @@ OpBase* NewCreateOp(RedisModuleCtx *ctx, AST_Query *ast, Graph *g, QueryGraph *q
 }
 
 void _CreateNodes(OpCreate *op, Record *r) {
-    SIValue entry;
     for(int i = 0; i < op->node_count; i++) {
         /* Get specified node to create. */
         Node *n = op->nodes_to_create[i].original_node;
@@ -306,11 +305,9 @@ void OpCreateFree(OpBase *ctx) {
     OpCreate *op = (OpCreate*)ctx;
     _CommitNewEntities(op);
 
-    if(op->nodes_to_create != NULL) {
-        free(op->nodes_to_create);
-    }
+    if(op->nodes_to_create) free(op->nodes_to_create);
+    if(op->edges_to_create) free(op->edges_to_create);
 
-    if(op->edges_to_create != NULL) {
-        free(op->edges_to_create);
-    }
+    if (op->created_nodes) Vector_Free(op->created_nodes);
+    if (op->created_edges) Vector_Free(op->created_edges);
 }

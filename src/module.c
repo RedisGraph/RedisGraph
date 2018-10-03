@@ -403,11 +403,12 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
         return REDISMODULE_OK;
     }
 
+    ExecutionPlan *plan = NULL;
     // Try to get graph.
     Graph *g = Graph_Get(ctx, argv[1]);
     if(!g) {
         RedisModule_ReplyWithError(ctx, "key doesn't contains a graph object.");
-        return REDISMODULE_OK;
+        goto cleanup;
     }
 
     // Perform query validations before and after ModifyAST
@@ -419,13 +420,14 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     if (ast->indexNode != NULL) { // index operation
         const char *strPlan = Index_OpPrint(ast->indexNode);
         RedisModule_ReplyWithSimpleString(ctx, strPlan);
-        return REDISMODULE_OK;
+        goto cleanup;
     }
 
-    ExecutionPlan *plan = NewExecutionPlan(ctx, g, graph_name, ast, true);
+    plan = NewExecutionPlan(ctx, g, graph_name, ast, true);
     char* strPlan = ExecutionPlanPrint(plan);
     RedisModule_ReplyWithStringBuffer(ctx, strPlan, strlen(strPlan));
-    
+
+cleanup:
     ExecutionPlanFree(plan);
     Free_AST_Query(ast);
     return REDISMODULE_OK;

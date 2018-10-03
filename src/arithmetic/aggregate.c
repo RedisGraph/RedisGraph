@@ -28,6 +28,7 @@ void AggCtx_Free(AggCtx *ctx) {
   if (ctx->err) {
     free(ctx->err);
   }
+  free(ctx->fctx);
   SIValue_Free(&ctx->result);
   free(ctx);
 }
