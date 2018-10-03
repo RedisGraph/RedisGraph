@@ -88,6 +88,4 @@ void Edge_Free(Edge* edge) {
 
 	if(edge->alias != NULL) free(edge->alias);
 	if(edge->relationship != NULL) free(edge->relationship);
-	
-	free(edge);
 }

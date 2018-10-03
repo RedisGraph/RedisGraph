@@ -22,6 +22,8 @@ typedef struct {
 		int prop_count;
 		EntityProperty *properties;
 	};
+  // TODO These elements should separated into a QueryGraph_Node type
+  // so that we can correct datablock sizing for nodes
 	char *label;			/* label attached to node */
 	char *alias;			/* alias attached to node */
 	GrB_Matrix mat;			/* Label matrix, associated with node. */
