@@ -260,6 +260,23 @@ int RMUtil_ParseArgsAfter(const char *token, RedisModuleString **argv, int argc,
         
 }
 
+RedisModuleString **RMUtil_RetainArgv(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+    RedisModuleString **retainStrings = RedisModule_Alloc(sizeof(RedisModuleString*) * argc);
+
+    for(int i = 0; i < argc; i++) {
+        retainStrings[i] = argv[i];
+        RedisModule_RetainString(ctx, retainStrings[i]);
+    }
+
+    return retainStrings;
+}
+
+void RMUtil_FreeRetainArgv(RedisModuleString **argv, int argc) {
+    // Release retained argv.
+    for(int i = 0; i < argc; i++) RedisModule_Free(argv[i]);
+    RedisModule_Free(argv);
+}
+
 RedisModuleCallReply *RedisModule_CallReplyArrayElementByPath(
     RedisModuleCallReply *rep, const char *path) {
   if (rep == NULL) return NULL;

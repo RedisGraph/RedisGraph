@@ -7,6 +7,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include "../rmutil/util.h"
 #include "./bulk_insert_context.h"
 
 BulkInsertContext* BulkInsertContext_New
@@ -20,7 +21,7 @@ BulkInsertContext* BulkInsertContext_New
 
     context->bc = bc;
     context->argc = argc;
-    context->argv = argv;
+    context->argv = RMUtil_RetainArgv(ctx, argv, argc);
 
     return context;
 }
@@ -29,5 +30,6 @@ void BulkInsertContext_Free
 (
     BulkInsertContext* ctx
 ) {
+    RMUtil_FreeRetainArgv(ctx->argv, ctx->argc);
     free(ctx);
 }

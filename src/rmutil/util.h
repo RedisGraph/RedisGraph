@@ -50,6 +50,12 @@ This is useful for optional stuff like [LIMIT [offset] [limit]]
 */
 int RMUtil_ParseArgsAfter(const char *token, RedisModuleString **argv, int argc, const char *fmt, ...);
 
+/* Creates a thread safe clone of argv. */
+RedisModuleString **RMUtil_RetainArgv(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
+
+/* Free retained argv. */
+void RMUtil_FreeRetainArgv(RedisModuleString **argv, int argc);
+
 int rmutil_vparseArgs(RedisModuleString **argv, int argc, int offset, const char *fmt, va_list ap);
 
 // A single key/value entry in a redis info map
