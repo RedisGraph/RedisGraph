@@ -282,7 +282,6 @@ ResultSet* NewResultSet(AST_Query* ast, RedisModuleCtx *ctx) {
     set->distinct = (ast->returnNode && ast->returnNode->distinct);
     set->recordCount = 0;    
     set->header = NewResultSetHeader(ast);
-    set->records = NewVector(ResultSetRecord*, 0);
     set->bufferLen = 2048;
     set->buffer = malloc(set->bufferLen);
     set->streaming = (set->header && !(set->ordered || set->aggregated));

@@ -205,28 +205,19 @@ void _BuildQueryGraphAddEdge(RedisModuleCtx *ctx,
     QueryGraph_ConnectNodes(qg, src, dest, e, edge->ge.alias);
 }
 
-QueryGraph* QueryGraph_New() {
-    QueryGraph* g = (QueryGraph*)malloc(sizeof(QueryGraph));
+QueryGraph* QueryGraph_New(size_t node_cap, size_t edge_cap) {
+    QueryGraph* g = malloc(sizeof(QueryGraph));
     g->node_count = 0;
     g->edge_count = 0;
-    g->node_cap = DEFAULT_GRAPH_CAP;
-    g->edge_cap = DEFAULT_GRAPH_CAP;
-    g->nodes = (Node**)malloc(sizeof(Node*) * g->node_cap);
-    g->edges = (Edge**)malloc(sizeof(Edge*) * g->edge_cap);
-    g->node_aliases = (char**)malloc(sizeof(char*) * g->node_cap);
-    g->edge_aliases = (char**)malloc(sizeof(char*) * g->edge_cap);
-    return g;
-}
+    g->node_cap = node_cap;
+    g->edge_cap = edge_cap;
 
-QueryGraph* NewQueryGraph_WithCapacity(size_t node_cap, size_t edge_cap) {
-    QueryGraph *graph = QueryGraph_New();
-    graph->node_cap = node_cap;
-    graph->edge_cap = edge_cap;
-    graph->nodes = (Node**)malloc(sizeof(Node*) * node_cap);
-    graph->edges = (Edge**)malloc(sizeof(Edge*) * edge_cap);
-    graph->node_aliases = (char**)malloc(sizeof(char*) * node_cap);
-    graph->edge_aliases = (char**)malloc(sizeof(char*) * edge_cap);
-    return graph;
+    g->nodes = malloc(sizeof(Node*) * node_cap);
+    g->edges = malloc(sizeof(Edge*) * edge_cap);
+    g->node_aliases = malloc(sizeof(char*) * node_cap);
+    g->edge_aliases = malloc(sizeof(char*) * edge_cap);
+
+    return g;
 }
 
 void BuildQueryGraph(RedisModuleCtx *ctx, const Graph *g, const char *graph_name, QueryGraph *qg, Vector *entities) {    
@@ -462,5 +453,7 @@ void QueryGraph_Free(QueryGraph* g) {
     /* Edges are freed internally by nodes. */
     free(g->nodes);
     free(g->edges);
+    free(g->node_aliases);
+    free(g->edge_aliases);
     free(g);
 }

@@ -18,5 +18,6 @@ void OpBase_Free(OpBase *op) {
     // Free internal operation
     op->free(op);
     if(op->children) free(op->children);
+    if(op->modifies) Vector_Free(op->modifies);
     free(op);
 }

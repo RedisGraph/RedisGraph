@@ -248,7 +248,7 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g,
     size_t node_count;
     size_t edge_count;
     _Determine_Graph_Size(ast, &node_count, &edge_count);
-    QueryGraph *q = NewQueryGraph_WithCapacity(node_count, edge_count);
+    QueryGraph *q = QueryGraph_New(node_count, edge_count);
     execution_plan->query_graph = q;
 
     // Build the query graph in advance, as it will be used to construct the filter tree
@@ -447,12 +447,11 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g,
                 free(ref);
             }
             Vector_Free(references);
-
-            ExecutionPlanPrint(execution_plan);
         }
         Vector_Free(sub_trees);
     }
     
+    Vector_Free(ops);
     optimizePlan(ctx, graph_name, execution_plan);
 
     return execution_plan;

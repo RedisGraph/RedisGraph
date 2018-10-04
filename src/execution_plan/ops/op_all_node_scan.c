@@ -49,5 +49,4 @@ OpResult AllNodeScanReset(OpBase *op) {
 void AllNodeScanFree(OpBase *ctx) {
     AllNodeScan *op = (AllNodeScan *)ctx;    
     DataBlockIterator_Free(op->iter);
-    Vector_Free(op->op.modifies);
 }
