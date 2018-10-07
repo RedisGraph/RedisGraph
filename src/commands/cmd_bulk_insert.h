@@ -5,10 +5,14 @@
 * modified with the Commons Clause restriction.
 */
 
-#ifndef BULKINSERT_CONTEXT_H
-#define BULKINSERT_CONTEXT_H
+#ifndef GRAPH_BULK_INSERT_H
+#define GRAPH_BULK_INSERT_H
 
+#define REDISMODULE_EXPERIMENTAL_API    // Required for block client.
 #include "../redismodule.h"
+#include "../util/thpool/thpool.h"
+
+extern threadpool _thpool;
 
 /* Multi threaded bulk insert context. */
 typedef struct {
@@ -30,5 +34,7 @@ void BulkInsertContext_Free
 (
     BulkInsertContext* ctx
 );
+
+int MGraph_BulkInsert(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
 
 #endif
