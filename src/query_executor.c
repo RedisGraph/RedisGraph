@@ -5,51 +5,20 @@
 * modified with the Commons Clause restriction.
 */
 
-#include "assert.h"
+#include <assert.h>
+#include "query_executor.h"
 #include "graph/graph.h"
 #include "graph/node.h"
+#include "graph/graph_type.h"
 #include "stores/store.h"
 #include "rmutil/vector.h"
 #include "rmutil/util.h"
-#include "query_executor.h"
 #include "parser/grammar.h"
 #include "arithmetic/agg_ctx.h"
 #include "arithmetic/repository.h"
 #include "parser/parser_common.h"
 
-QueryContext* QueryContext_New(RedisModuleCtx *ctx, RedisModuleBlockedClient *bc, AST_Query* ast, RedisModuleString *graphName) {
-    QueryContext* context = malloc(sizeof(QueryContext));
-    context->bc = bc;
-    context->ast = ast;
-    context->graphName = graphName;
-    RedisModule_RetainString(ctx, context->graphName);
-    return context;
-}
-
-void QueryContext_Free(QueryContext* ctx) {
-    RedisModule_Free(ctx->graphName);
-    free(ctx);
-}
-
-/* Construct an expression tree foreach none aggregated term.
- * Returns a vector of none aggregated expression trees. */
-void Build_None_Aggregated_Arithmetic_Expressions(AST_ReturnNode *return_node, AR_ExpNode ***expressions, int *expressions_count) {
-    *expressions = malloc(sizeof(AR_ExpNode *) * Vector_Size(return_node->returnElements));
-    *expressions_count = 0;
-
-    for(int i = 0; i < Vector_Size(return_node->returnElements); i++) {
-        AST_ReturnElementNode *returnElement;
-        Vector_Get(return_node->returnElements, i, &returnElement);
-
-        AR_ExpNode *expression = AR_EXP_BuildFromAST(returnElement->exp);
-        if(!AR_EXP_ContainsAggregation(expression, NULL)) {
-            (*expressions)[*expressions_count] = expression;
-            (*expressions_count)++;
-        }
-    }
-}
-
-void ReturnClause_ExpandCollapsedNodes(RedisModuleCtx *ctx, AST_Query *ast, const char *graphName) {
+static void _returnClause_ExpandCollapsedNodes(RedisModuleCtx *ctx, AST_Query *ast, const char *graphName) {
      /* Create a new return clause */
     Vector *expandReturnElements = NewVector(AST_ReturnElementNode*, Vector_Size(ast->returnNode->returnElements));
 
@@ -124,20 +93,7 @@ void ReturnClause_ExpandCollapsedNodes(RedisModuleCtx *ctx, AST_Query *ast, cons
     ast->returnNode->returnElements = expandReturnElements;
 }
 
-/* Shares merge pattern with match clause. */
-void _replicateMergeClauseToMatchClause(AST_Query *ast) {    
-    assert(ast->mergeNode && !ast->matchNode);
-
-    /* Match node is expecting a vector of vectors,
-     * and so we have to wrap merge graph entities vector
-     * within another vector
-     * wrappedEntities will be freed by match clause. */
-    Vector *wrappedEntities = NewVector(Vector*, 1);
-    Vector_Push(wrappedEntities, ast->mergeNode->graphEntities);
-    ast->matchNode = New_AST_MatchNode(wrappedEntities);
-}
-
-void inlineProperties(AST_Query *ast) {
+static void _inlineProperties(AST_Query *ast) {
     /* Migrate inline filters to WHERE clause. */
     if(!ast->matchNode) return;
     // Vector *entities = ast->matchNode->graphEntities;
@@ -191,8 +147,88 @@ void inlineProperties(AST_Query *ast) {
     }
 }
 
+/* Shares merge pattern with match clause. */
+static void _replicateMergeClauseToMatchClause(AST_Query *ast) {    
+    assert(ast->mergeNode && !ast->matchNode);
+
+    /* Match node is expecting a vector of vectors,
+     * and so we have to wrap merge graph entities vector
+     * within another vector
+     * wrappedEntities will be freed by match clause. */
+    Vector *wrappedEntities = NewVector(Vector*, 1);
+    Vector_Push(wrappedEntities, ast->mergeNode->graphEntities);
+    ast->matchNode = New_AST_MatchNode(wrappedEntities);
+}
+
+//------------------------------------------------------------------------------
+// Read/Write lock
+//------------------------------------------------------------------------------
+
+void MGraph_AcquireReadLock() {
+    pthread_rwlock_rdlock(&_rwlock);
+}
+
+void MGraph_AcquireWriteLock(RedisModuleCtx *ctx) {
+    pthread_rwlock_wrlock(&_rwlock);
+    RedisModule_ThreadSafeContextLock(ctx);
+}
+
+void MGraph_ReleaseLock(RedisModuleCtx *ctx) {
+    pthread_rwlock_unlock(&_rwlock);
+    /* Release Redis global lock,
+     * this should only have an effect when the read/write lock
+     * was acquired for writing. */
+    RedisModule_ThreadSafeContextUnlock(ctx);
+}
+
+//------------------------------------------------------------------------------
+
+Graph *MGraph_CreateGraph(RedisModuleCtx *ctx, RedisModuleString *graph_name) {
+    Graph *g = NULL;
+    RedisModuleKey *key = RedisModule_OpenKey(ctx, graph_name, REDISMODULE_WRITE);
+
+    // Key does not exists, create a new graph and store within Redis keyspace.
+    if (RedisModule_KeyType(key) == REDISMODULE_KEYTYPE_EMPTY) {
+        g = Graph_New(GRAPH_DEFAULT_NODE_CAP);
+        RedisModule_ModuleTypeSetValue(key, GraphRedisModuleType, g);
+    } else {
+        RedisModule_ReplyWithError(ctx, "Can not create graph, graph ID is used by some other key.");
+    }
+
+    RedisModule_CloseKey(key);
+    return g;
+}
+
+/* Construct an expression tree foreach none aggregated term.
+ * Returns a vector of none aggregated expression trees. */
+void Build_None_Aggregated_Arithmetic_Expressions(AST_ReturnNode *return_node, AR_ExpNode ***expressions, int *expressions_count) {
+    *expressions = malloc(sizeof(AR_ExpNode *) * Vector_Size(return_node->returnElements));
+    *expressions_count = 0;
+
+    for(int i = 0; i < Vector_Size(return_node->returnElements); i++) {
+        AST_ReturnElementNode *returnElement;
+        Vector_Get(return_node->returnElements, i, &returnElement);
+
+        AR_ExpNode *expression = AR_EXP_BuildFromAST(returnElement->exp);
+        if(!AR_EXP_ContainsAggregation(expression, NULL)) {
+            (*expressions)[*expressions_count] = expression;
+            (*expressions_count)++;
+        }
+    }
+}
+
 AST_Query* ParseQuery(const char *query, size_t qLen, char **errMsg) {
     return Query_Parse(query, qLen, errMsg);
+}
+
+AST_Validation AST_PerformValidations(RedisModuleCtx *ctx, AST_Query *ast) {
+    char *reason;
+    if (AST_Validate(ast, &reason) != AST_VALID) {
+        RedisModule_ReplyWithError(ctx, reason);
+        free(reason);
+        return AST_INVALID;
+    }
+    return AST_VALID;
 }
 
 void ModifyAST(RedisModuleCtx *ctx, AST_Query *ast, const char *graph_name) {
@@ -206,8 +242,8 @@ void ModifyAST(RedisModuleCtx *ctx, AST_Query *ast, const char *graph_name) {
 
     if(ReturnClause_ContainsCollapsedNodes(ast->returnNode) == 1) {
         /* Expand collapsed nodes. */
-        ReturnClause_ExpandCollapsedNodes(ctx, ast, graph_name);
+        _returnClause_ExpandCollapsedNodes(ctx, ast, graph_name);
     }
 
-    inlineProperties(ast);
+    _inlineProperties(ast);
 }

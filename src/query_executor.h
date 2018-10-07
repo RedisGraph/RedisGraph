@@ -8,27 +8,50 @@
 #ifndef __QUERY_EXECUTOR_H
 #define __QUERY_EXECUTOR_H
 
-#include "graph/query_graph.h"
-#include "parser/ast.h"
+#define REDISMODULE_EXPERIMENTAL_API    // Required for block client.
 #include "redismodule.h"
+
+#include "parser/ast.h"
+#include "graph/query_graph.h"
 #include "arithmetic/arithmetic_expression.h"
 
-/* Query context, used for concurent query processing. */
-typedef struct {
-    RedisModuleBlockedClient *bc;   // Blocked client.
-    AST_Query* ast;                 // Parsed AST.
-    RedisModuleString *graphName;   // Graph ID.
-    double tic[2];                  // timings.
-} QueryContext;
+extern pthread_rwlock_t _rwlock;
 
-QueryContext* QueryContext_New(RedisModuleCtx *ctx, RedisModuleBlockedClient *bc, AST_Query* ast, RedisModuleString *graphName);
+//------------------------------------------------------------------------------
+// Read/Write lock
+//------------------------------------------------------------------------------
 
-void QueryContext_Free(QueryContext* ctx);
+/* Acquire lock for read, multiple threads might be reading concurrently. */
+void MGraph_AcquireReadLock();
 
-/* Constructs an arithmetic expression tree foreach none aggregated term. */
-void Build_None_Aggregated_Arithmetic_Expressions(AST_ReturnNode *return_node, AR_ExpNode ***expressions, int *expressions_count);
+/* Acquire lock for write, only a single thread can perform work
+ * while holding a write lock,
+ * In addition we're also acquiring Redis global lock
+ * this is to prevent concurent writing while redis
+ * might be performing replication or persists data to disk. */
+void MGraph_AcquireWriteLock(RedisModuleCtx *ctx);
 
+/* Release read/write lock. */
+void MGraph_ReleaseLock(RedisModuleCtx *ctx);
+
+//------------------------------------------------------------------------------
+
+/* Create an AST from raw query. */
 AST_Query* ParseQuery(const char *query, size_t qLen, char **errMsg);
+
+/* Make sure AST is valid. */
+AST_Validation AST_PerformValidations(RedisModuleCtx *ctx, AST_Query *ast);
+
+/* Retrieve graph stored within Redis under graph_name key,
+ * If specified key does not exists a new graph object is created and stored
+ * in case graph already exists NULL is returned. */
+Graph *MGraph_CreateGraph(RedisModuleCtx *ctx, RedisModuleString *graph_name);
+
+/* Construct an expression tree foreach none aggregated term.
+ * Returns a vector of none aggregated expression trees. */
+void Build_None_Aggregated_Arithmetic_Expressions(AST_ReturnNode *return_node,
+                                                  AR_ExpNode ***expressions,
+                                                  int *expressions_count);
 
 /* Performs a number of adjustments to given AST. */
 void ModifyAST(RedisModuleCtx *ctx, AST_Query *ast, const char *graph_name);
