@@ -9,8 +9,8 @@
 
 #include "execution_plan.h"
 #include "./ops/ops.h"
-#include "../graph/edge.h"
 #include "../util/vector.h"
+#include "../graph/entities/edge.h"
 #include "../query_executor.h"
 #include "../arithmetic/algebraic_expression.h"
 #include "./optimizations/optimizer.h"

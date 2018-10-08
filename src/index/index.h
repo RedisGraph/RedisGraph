@@ -10,12 +10,9 @@
 
 #include <assert.h>
 #include "../redismodule.h"
-#include "../graph/graph_entity.h"
-#include "../stores/store.h"
+#include "../graph/entities/graph_entity.h"
 #include "../util/skiplist.h"
-#include "../parser/ast.h"
-#include "../graph/node.h"
-#include "../filter_tree/filter_tree.h"
+#include "../util/datablock/datablock.h"
 #include "../GraphBLASExt/tuples_iter.h"
 
 #define INDEX_OK 1
@@ -47,12 +44,9 @@ int Index_Delete(RedisModuleCtx *ctx, const char *graphName, const char *label, 
  * the header so that it can be used by the Index load functions in index_type. */
 void initializeSkiplists(Index *index);
 
-/* Index_Create is a wrapper for the buildIndex function. It retrieves the appropriate label
- * matrix from the graph and saves the index in the Redis keyspace. */
-int Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, const char *label, const char *prop_str);
-
-/* Prepare output text for EXPLAIN calls on "drop index" and "create index" */
-const char* Index_OpPrint(AST_IndexNode *indexNode);
+/* Index_Create builds an index for a label-property pair so that queries reliant
+ * on these entities can use expedited scan logic. */
+Index* Index_Create(DataBlock *entities, TuplesIter *it, const char *label, const char *prop_str);
 
 /* Build a new iterator to traverse all indexed values of the specified type. */
 IndexIter* IndexIter_Create(Index *idx, SIType type);

@@ -8,8 +8,8 @@
 #ifndef QUERY_GRAPH_H_
 #define QUERY_GRAPH_H_
 
-#include "node.h"
-#include "edge.h"
+#include "entities/node.h"
+#include "entities/edge.h"
 #include "graph.h"
 #include "../util/vector.h"
 #include "../resultset/resultset_statistics.h"

@@ -9,7 +9,7 @@
 #define __LABEL_STORE_H__
 
 #include "../redismodule.h"
-#include "../graph/graph_entity.h"
+#include "../graph/entities/graph_entity.h"
 #include "../util/triemap/triemap.h"
 
 #define LABELSTORE_PREFIX "redis_graph_store"

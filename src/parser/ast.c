@@ -9,7 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "../graph/graph_entity.h"
+#include "../graph/entities/graph_entity.h"
 #include "./ast_arithmetic_expression.h"
 #include "../arithmetic/repository.h"
 #include "../arithmetic/arithmetic_expression.h"

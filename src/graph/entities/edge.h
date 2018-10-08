@@ -9,10 +9,10 @@
 #define EDGE_H_
 
 #include "node.h"
-#include "../value.h"
+#include "../../value.h"
 #include "graph_entity.h"
-#include "../util/uthash.h"
-#include "../../deps/GraphBLAS/Include/GraphBLAS.h"
+#include "../../util/uthash.h"
+#include "../../../deps/GraphBLAS/Include/GraphBLAS.h"
 
 // Encapsulate the essence of an edge.
 typedef struct {

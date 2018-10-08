@@ -10,7 +10,7 @@
 
 #include "op.h"
 #include "../../graph/query_graph.h"
-#include "../../graph/node.h"
+#include "../../graph/entities/node.h"
 #include "../../graph/graph.h"
 #include "../../util/datablock/datablock_iterator.h"
 

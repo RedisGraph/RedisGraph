@@ -8,7 +8,7 @@
 #ifndef _PATH_H_
 #define _PATH_H_
 
-#include "../graph/edge.h"
+#include "../graph/entities/edge.h"
 
 typedef Edge** Path;
 

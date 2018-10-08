@@ -12,7 +12,7 @@ extern "C" {
 #endif
 #include "../../src/util/skiplist.h"
 #include "../../src/value.h"
-#include "../../src/graph/node.h"
+#include "../../src/graph/entities/node.h"
 #include "../../src/index/index.h"
 #include "../../src/util/rmalloc.h"
 

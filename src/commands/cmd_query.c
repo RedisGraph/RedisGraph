@@ -37,11 +37,16 @@ void _index_operation(RedisModuleCtx *ctx, const char *graphName, Graph *g, AST_
   int ret;
   switch(indexNode->operation) {
     case CREATE_INDEX:
-      ret = Index_Create(ctx, graphName, g, indexNode->label, indexNode->property);
-      if (ret == INDEX_OK) {
-        RedisModule_ReplyWithSimpleString(ctx, "Added 1 index.");
-      } else {
+      if (GraphContext_GetIndex(indexNode->label, indexNode->property)) {
         RedisModule_ReplyWithSimpleString(ctx, "(no changes, no records)");
+      } else {
+        // retrieve label matrix
+        int label_id = GraphContext_GetLabelIDFromString(indexNode->label);
+        const GrB_Matrix label_matrix = Graph_GetLabel(g, label_id);
+        TuplesIter *it = TuplesIter_new(label_matrix);
+        Index_Create(g->nodes, it, indexNode->label, indexNode->property);
+        RedisModule_ReplyWithSimpleString(ctx, "Added 1 index.");
+        TuplesIter_free(it);
       }
       break;
     case DROP_INDEX:

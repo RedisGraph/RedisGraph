@@ -9,7 +9,7 @@ endif
 
 # Default CFLAGS
 CFLAGS = -Wall -Wno-unused-function -Wno-unused-variable -Wno-unused-result -fPIC \
- 	-D_GNU_SOURCE -std=gnu99 -I"$(shell pwd)" -DREDIS_MODULE_TARGET
+ 	-D_GNU_SOURCE -std=gnu11 -I"$(shell pwd)" -DREDIS_MODULE_TARGET
 CFLAGS += $(DEBUGFLAGS)
 
 # Compile flags for linux / osx
@@ -43,6 +43,7 @@ CC_SOURCES += $(wildcard $(SOURCEDIR)/execution_plan/ops/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/execution_plan/optimizations/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/filter_tree/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/graph/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/graph/entities/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/grouping/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/hexastore/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/parser/clauses/*.c)

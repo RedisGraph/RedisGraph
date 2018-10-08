@@ -8,8 +8,8 @@
 #ifndef BULKINSERT_H
 #define BULKINSERT_H
 
-#include "redismodule.h"
-#include "./graph/graph.h"
+#include "../redismodule.h"
+#include "../graph/graph.h"
 
 #define BULK_OK 1
 #define BULK_FAIL 0

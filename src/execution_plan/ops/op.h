@@ -11,8 +11,8 @@
 #include "../record.h"
 #include "../../redismodule.h"
 #include "../../graph/query_graph.h"
-#include "../../graph/node.h"
-#include "../../graph/edge.h"
+#include "../../graph/entities/node.h"
+#include "../../graph/entities/edge.h"
 #include "../../stores/store.h"
 #include "../../util/vector.h"
 
