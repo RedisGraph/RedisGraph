@@ -610,5 +610,6 @@ TEST_F(AlgebraicExpressionTest, ExpressionExecute) {
     AlgebraicExpression_Free(ae[0]);
     free(ae);
     free(res);
+    GrB_Matrix_free(&expected);
     GrB_Matrix_free(&M);
 }

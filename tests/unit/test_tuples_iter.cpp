@@ -100,6 +100,8 @@ TEST_F(TuplesTest, RandomVectorTest) {
   //--------------------------------------------------------------------------
   // Clean up.
   //--------------------------------------------------------------------------
+  free(I);
+  free(X);
   TuplesIter_free(iter);
   GrB_Vector_free(&A);
 }
@@ -207,6 +209,9 @@ TEST_F(TuplesTest, RandomMatrixTest) {
   //--------------------------------------------------------------------------
   // Clean up.
   //--------------------------------------------------------------------------
+  free(I);
+  free(J);
+  free(X);
   free(I_expected);
   free(J_expected);
   TuplesIter_free(iter);
@@ -306,6 +311,8 @@ TEST_F(TuplesTest, ColumnIteratorTest) {
 
     GrB_Vector_free(&v);
   }
+  TuplesIter_free(iter);
+  GrB_Matrix_free(&A);
 }
 
 TEST_F(TuplesTest, ColumnIteratorEmptyMatrixTest) {
@@ -332,4 +339,7 @@ TEST_F(TuplesTest, ColumnIteratorEmptyMatrixTest) {
       //--------------------------------------------------------------------------
       EXPECT_EQ(TuplesIter_next(iter, &row, &col), TuplesIter_DEPLETED);
     }
+
+    TuplesIter_free(iter);
+    GrB_Matrix_free(&A);
 }
