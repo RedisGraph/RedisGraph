@@ -21,7 +21,7 @@ void GraphContextType_RdbSave(RedisModuleIO *rdb, void *value) {
   RedisModule_SaveUnsigned(rdb, gc->index_count);
 
   for (int i = 0; i < gc->node_count; i ++) {
-    RedisModule_SaveStringBuffer(rdb, gc->node_labels[i], strlen(gc->node_labels[i]) + 1);
+    RedisModule_SaveStringBuffer(rdb, gc->node_stores[i].label, strlen(gc->node_stores[i].label) + 1);
   }
 
   for (int i = 0; i < gc->index_count; i ++) {
@@ -42,9 +42,9 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
   gc->node_count = RedisModule_LoadUnsigned(rdb);
   gc->index_count = RedisModule_LoadUnsigned(rdb);
 
-  gc->node_labels = malloc(gc->node_count * sizeof(char*));
+  gc->node_stores = calloc(gc->node_count, sizeof(LabelStore));
   for (int i = 0; i < gc->node_count; i ++) {
-    gc->node_labels[i] = RedisModule_LoadStringBuffer(rdb, NULL);
+    gc->node_stores[i].label = RedisModule_LoadStringBuffer(rdb, NULL);
   }
 
   gc->indices = malloc(gc->index_count * sizeof(Index*));

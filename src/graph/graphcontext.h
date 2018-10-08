@@ -16,18 +16,12 @@
 // This would really belong in store.h, but I'm putting it here momentarily for visiility
 typedef struct {
   LabelStore *store;
-  char *storename;
-  LabelStoreType type;
+  char *label;
 } StoreHandle;
 
 typedef struct {
   RedisModuleCtx *ctx;
   char *graph_name;
-
-  // We could possibly move Graph's label and relation cap and count variables
-  // here as well
-  char **relation_labels;
-  char **node_labels;
 
   // TODO dups of Graph members; should belong exclusively to one
   size_t relation_cap;            // Number of relations graph can hold.
@@ -38,19 +32,17 @@ typedef struct {
   Index **indices;
   int index_count;
 
-  LabelStore *edge_allstore;
+  LabelStore *relation_allstore;
   LabelStore *node_allstore;
-  LabelStore **edge_stores;
-  LabelStore **node_stores;
-  // StoreHandle **edge_stores;
-  // StoreHandle **node_stores;
+  StoreHandle *relation_stores;
+  StoreHandle *node_stores;
 } GraphContext;
 
 void GraphContext_New(RedisModuleCtx *ctx, const char *graph_name);
 
 void GraphContext_Get(RedisModuleCtx *ctx, const char *graph_name);
 
-void GraphContext_AddNode(const char *label);
+LabelStore* GraphContext_AddNode(const char *label);
 void GraphContext_AddRelation(const char *label);
 
 const char* GraphContext_GetLabelString(int label_idx, LabelStoreType t);
@@ -61,7 +53,7 @@ Index* GraphContext_GetIndex(const char *label, const char *property);
 void GraphContext_AddIndex(Index* idx);
 
 LabelStore* GraphContext_AllStore(LabelStoreType t);
-LabelStore* GraphContext_GetStoreByString(const char *label, LabelStoreType t);
+LabelStore* GraphContext_GetNodeStore(const char *label);
 
 void GraphContext_Free();
 

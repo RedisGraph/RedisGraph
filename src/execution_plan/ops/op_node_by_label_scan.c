@@ -14,9 +14,8 @@ OpBase *NewNodeByLabelScanOp(RedisModuleCtx *ctx, Graph *g, const char *graph_na
     nodeByLabelScan->_zero_matrix = NULL;
 
     /* Find out label matrix ID. */
-    LabelStore *store = LabelStore_Get(ctx, STORE_NODE, graph_name, node->label);
-    if(store != NULL) {
-        int label_id = store->id;
+    int label_id = GraphContext_GetLabelID(node->label, STORE_NODE);
+    if (label_id != GRAPH_NO_LABEL) {
         nodeByLabelScan->iter = TuplesIter_new(Graph_GetLabel(g, label_id));
     } else {
         /* Label does not exists, use a fake empty matrix. */
