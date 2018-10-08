@@ -374,13 +374,12 @@ ResultSetStatistics CommitGraph(RedisModuleCtx *ctx, const QueryGraph *qg, Graph
             if(label == NULL) {
                labels[i] = GRAPH_NO_LABEL; 
             } else {
-                store = LabelStore_Get(ctx, STORE_NODE, graph_name, label);
+                store = GraphContext_GetNodeStore(label);
                 /* This is the first time we encounter label, create its store */
                 if(store == NULL) {
                     // TODO dislike these dual calls
                     int label_id = Graph_AddLabel(g);
-                    GraphContext_AddNode(label);
-                    store = LabelStore_New(ctx, STORE_NODE, graph_name, label, label_id);
+                    store = GraphContext_AddNode(label);
                     stats.labels_added++;
                 }
                 labels[i] = store->id;

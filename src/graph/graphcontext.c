@@ -9,13 +9,14 @@ void _contextRebuild(RedisModuleCtx *ctx) {
 
 void GraphContext_New(RedisModuleCtx *ctx, const char *graph_name) {
   gc = malloc(sizeof(GraphContext));
+  gc->ctx = ctx;
   gc->graph_name = strdup(graph_name);
-  gc->node_labels = malloc(sizeof(char*) * GRAPH_DEFAULT_NODE_CAP);
-  gc->relation_labels = malloc(sizeof(char*) * GRAPH_DEFAULT_RELATION_CAP);
+  gc->node_stores = calloc(GRAPH_DEFAULT_LABEL_CAP, sizeof(StoreHandle));
+  gc->relation_stores = calloc(GRAPH_DEFAULT_RELATION_CAP, sizeof(StoreHandle));
 
   gc->relation_cap = GRAPH_DEFAULT_RELATION_CAP;
   gc->relation_count = 0;
-  gc->node_cap = GRAPH_DEFAULT_NODE_CAP;
+  gc->node_cap = GRAPH_DEFAULT_LABEL_CAP;
   gc->node_count = 0;
   gc->index_count = 0;
 
@@ -29,7 +30,9 @@ void GraphContext_New(RedisModuleCtx *ctx, const char *graph_name) {
   // LabelStore_Get will construct allstores if they don't already exist,
   // though I'd like to refactor its logic somewhat more generally.
   gc->node_allstore = LabelStore_Get(ctx, STORE_NODE, graph_name, NULL);
-  gc->edge_allstore = LabelStore_Get(ctx, STORE_EDGE, graph_name, NULL);
+  gc->relation_allstore = LabelStore_Get(ctx, STORE_EDGE, graph_name, NULL);
+
+  // TODO is there a way to populate store arrays here?
 
   RedisModuleString *rm_graphctx = RedisModule_CreateString(ctx, strKey, keylen);
   RedisModuleKey *key = RedisModule_OpenKey(ctx, rm_graphctx, REDISMODULE_WRITE);
@@ -53,7 +56,7 @@ void GraphContext_Get(RedisModuleCtx *ctx, const char *graph_name) {
 
   // TODO doesn't really belong here
   gc->node_allstore = LabelStore_Get(ctx, STORE_NODE, graph_name, NULL);
-  gc->edge_allstore = LabelStore_Get(ctx, STORE_EDGE, graph_name, NULL);
+  gc->relation_allstore = LabelStore_Get(ctx, STORE_EDGE, graph_name, NULL);
 
   // Retrieve all label stores?
   // Can iterate over all label strings, but that sounds awful
@@ -62,43 +65,44 @@ void GraphContext_Get(RedisModuleCtx *ctx, const char *graph_name) {
 }
 
 // TODO next two functions are nearly identical; maybe consolidate
-void GraphContext_AddNode(const char *label) {
+LabelStore* GraphContext_AddNode(const char *label) {
   if(gc->node_count == gc->node_cap) {
     gc->node_cap += 4;
-    gc->node_labels = realloc(gc->node_labels, gc->node_cap * sizeof(char*));
+    gc->node_stores = realloc(gc->node_stores, (gc->node_cap) * sizeof(StoreHandle));
+    memset(gc->node_stores + gc->node_count, 0, 4 * sizeof(StoreHandle));
   }
-  gc->node_labels[gc->node_count++] = strdup(label);
+  LabelStore *store = LabelStore_New(gc->ctx, STORE_NODE, gc->graph_name, label, gc->node_count);
+  gc->node_stores[gc->node_count].store = store;
+  gc->node_stores[gc->node_count].label = strdup(label);
+  gc->node_count++;
+
+  return store;
 }
 
 void GraphContext_AddRelation(const char *label) {
   if(gc->relation_count == gc->relation_cap) {
     gc->relation_cap += 4;
-    gc->relation_labels = realloc(gc->relation_labels, gc->relation_cap * sizeof(char*));
+    gc->relation_stores = realloc(gc->relation_stores, (gc->relation_cap) * sizeof(StoreHandle));
+    memset(gc->relation_stores + gc->relation_count, 0, 4 * sizeof(StoreHandle));
   }
-  gc->relation_labels[gc->relation_count++] = strdup(label);
-}
-
-// TODO what to return from these 2
-const char* GraphContext_GetLabel(int id) {
-  assert(gc && id < gc->node_count);
-  return gc->node_labels[id];
+  gc->relation_stores[gc->relation_count++].label = strdup(label);
 }
 
 int GraphContext_GetLabelID(const char *label, LabelStoreType t) {
-  char **labels;
+  StoreHandle *labels;
   size_t count;
   if (t == STORE_NODE) {
-    labels = gc->node_labels;
+    labels = gc->node_stores;
     count = gc->node_count;
   } else {
-    labels = gc->relation_labels;
+    labels = gc->relation_stores;
     count = gc->relation_count;
   }
 
   for (int i = 0; i < count; i ++) {
-    if (!strcmp(label, labels[i])) return i;
+    if (!strcmp(label, labels[i].label)) return i;
   }
-  return -1;
+  return GRAPH_NO_LABEL;
 }
 
 Index* GraphContext_GetIndex(const char *label, const char *property) {
@@ -121,14 +125,21 @@ void GraphContext_AddIndex(Index *idx) {
 
 LabelStore* GraphContext_AllStore(LabelStoreType t) {
   if (t == STORE_NODE) return gc->node_allstore;
-  return gc->edge_allstore;
+  return gc->relation_allstore;
 }
 
-LabelStore* GraphContext_GetStoreByString(const char *label, LabelStoreType t) {
-  int id = GraphContext_GetLabelID(label, t);
-  assert(id >= 0);
-  if (t == STORE_NODE) return gc->node_stores[id];
-  return gc->edge_stores[id];
+LabelStore* GraphContext_GetNodeStore(const char *label) {
+  int id = GraphContext_GetLabelID(label, STORE_NODE);
+  if (id == GRAPH_NO_LABEL) return NULL;
+
+  // Check cached stores
+  if (gc->node_stores[id].store) return gc->node_stores[id].store;
+
+  // If store is not cached, retrieve from keyspace
+  LabelStore *store = LabelStore_Get(gc->ctx, STORE_NODE, gc->graph_name, label);
+  gc->relation_stores[id].store = store;
+
+  return store;
 }
 
 void GraphContext_Free() {

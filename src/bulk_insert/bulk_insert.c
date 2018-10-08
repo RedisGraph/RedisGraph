@@ -85,12 +85,11 @@ RedisModuleString** _Bulk_Insert_Parse_Labels(RedisModuleCtx *ctx, RedisModuleSt
         }
 
         // TODO: Have label store hold on to attributes array.
-        LabelStore *store = LabelStore_Get(ctx, STORE_NODE, graph_name, labels[label_idx].label);
+        LabelStore *store = GraphContext_GetNodeStore(labels[label_idx].label);
         LabelStore *allStore = GraphContext_AllStore(STORE_NODE);
         if(store == NULL) {
             int label_id = Graph_AddLabel(g);
-            GraphContext_AddNode(labels[label_idx].label);
-            store = LabelStore_New(ctx, STORE_NODE, graph_name, labels[label_idx].label, label_id);
+            store = GraphContext_AddNode(labels[label_idx].label);
         }
 
         labels[label_idx].label_id = store->id;
