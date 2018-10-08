@@ -53,6 +53,7 @@ static void _returnClause_ExpandCollapsedNodes(RedisModuleCtx *ctx, AST_Query *a
                 store = LabelStore_Get(ctx, store_type, graphName, collapsed_entity->label);
             } else {
                 /* Entity does have a label, Consult with "ALL" store. */
+                // The GraphContext has not been instantiated yet, so use keyspace lookup.
                 store = LabelStore_Get(ctx, store_type, graphName, NULL);
             }
 

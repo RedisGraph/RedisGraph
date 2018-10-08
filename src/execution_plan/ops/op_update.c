@@ -142,7 +142,7 @@ void _UpdateSchemas(const OpUpdate *op) {
         LabelStore *store = LabelStore_Get(op->ctx, t, op->graphName, l);
         if (!store) continue;
 
-        LabelStore *allStore = LabelStore_Get(op->ctx, t, op->graphName, NULL);
+        LabelStore *allStore = GraphContext_AllStore(t);
         LabelStore_UpdateSchema(store, 1, &entityProp);
         LabelStore_UpdateSchema(allStore, 1, &entityProp);
     }

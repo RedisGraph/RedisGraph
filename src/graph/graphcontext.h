@@ -38,8 +38,8 @@ typedef struct {
   Index **indices;
   int index_count;
 
-  LabelStore *edge_all_store;
-  LabelStore *node_all_store;
+  LabelStore *edge_allstore;
+  LabelStore *node_allstore;
   StoreHandle **edge_stores;
   StoreHandle **node_stores;
 } GraphContext;
@@ -56,6 +56,8 @@ int GraphContext_GetLabelIDFromString(const char *label);
 bool GraphContext_HasIndices(void);
 Index* GraphContext_GetIndex(const char *label, const char *property);
 void GraphContext_AddIndex(Index* idx);
+
+LabelStore* GraphContext_AllStore(LabelStoreType t);
 
 void GraphContext_Free();
 

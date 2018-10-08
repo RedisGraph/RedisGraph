@@ -24,6 +24,11 @@ void GraphContext_New(RedisModuleCtx *ctx, const char *graph_name) {
   strcat(strKey, graph_name);
   strcat(strKey, "_ctx");
 
+  // LabelStore_Get will construct allstores if they don't already exist,
+  // though I'd like to refactor its logic somewhat more generally.
+  gc->node_allstore = LabelStore_Get(ctx, STORE_NODE, graph_name, NULL);
+  gc->edge_allstore = LabelStore_Get(ctx, STORE_EDGE, graph_name, NULL);
+
   RedisModuleString *rm_graphctx = RedisModule_CreateString(ctx, strKey, keylen);
   RedisModuleKey *key = RedisModule_OpenKey(ctx, rm_graphctx, REDISMODULE_WRITE);
   assert(RedisModule_ModuleTypeGetType(key) == REDISMODULE_KEYTYPE_EMPTY);
@@ -44,6 +49,13 @@ void GraphContext_Get(RedisModuleCtx *ctx, const char *graph_name) {
   RedisModuleKey *key = RedisModule_OpenKey(ctx, rm_graphctx, REDISMODULE_WRITE);
   assert(RedisModule_ModuleTypeGetType(key) == GraphContextRedisModuleType); gc = RedisModule_ModuleTypeGetValue(key);
 
+  // TODO doesn't really belong here
+  gc->node_allstore = LabelStore_Get(ctx, STORE_NODE, graph_name, NULL);
+  gc->edge_allstore = LabelStore_Get(ctx, STORE_EDGE, graph_name, NULL);
+
+  // Retrieve all label stores?
+  // Can iterate over all label strings, but that sounds awful
+
   RedisModule_CloseKey(key);
 }
 
@@ -58,14 +70,12 @@ void GraphContext_AddLabel(const char *label) {
 
 // TODO what to return from these 2
 const char* GraphContext_GetLabelFromID(int id) {
-  // assert(gc && label_id < gc->label_count);
-  assert(gc);
+  assert(gc && id < gc->label_count);
   return gc->label_strings[id];
 }
 
+// Different IDs by type?
 int GraphContext_GetLabelIDFromString(const char *label) {
-  // assert(gc && label_id < gc->label_count);
-  assert(gc);
   for (int i = 0; i < gc->label_count; i ++) {
     if (!strcmp(label, gc->label_strings[i])) return i;
   }
@@ -89,6 +99,11 @@ bool GraphContext_HasIndices() {
 void GraphContext_AddIndex(Index *idx) {
   gc->indices = realloc(gc->indices, gc->index_count + 1);
   gc->indices[gc->index_count++] = idx;
+}
+
+LabelStore* GraphContext_AllStore(LabelStoreType t) {
+  if (t == STORE_NODE) return gc->node_allstore;
+  return gc->edge_allstore;
 }
 
 void GraphContext_Free() {
