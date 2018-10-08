@@ -9,8 +9,8 @@
 #define __OP_UPDATE_H
 
 #include "op.h"
-#include "../../graph/node.h"
-#include "../../graph/edge.h"
+#include "../../graph/entities/node.h"
+#include "../../graph/entities/edge.h"
 #include "../../resultset/resultset.h"
 #include "../../arithmetic/arithmetic_expression.h"
 

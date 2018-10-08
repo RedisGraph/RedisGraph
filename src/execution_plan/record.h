@@ -10,8 +10,8 @@
 
 #include "../value.h"
 #include "../util/uthash.h"
-#include "../graph/node.h"
-#include "../graph/edge.h"
+#include "../graph/entities/node.h"
+#include "../graph/entities/edge.h"
 
 typedef struct {
     const char *alias;

@@ -13,7 +13,7 @@ extern "C" {
 
 #include "../../src/arithmetic/arithmetic_expression.h"
 #include "../../src/value.h"
-#include "../../src/graph/node.h"
+#include "../../src/graph/entities/node.h"
 #include "../../src/arithmetic/agg_funcs.h"
 #include "../../src/execution_plan/record.h"
 

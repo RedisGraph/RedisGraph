@@ -6,7 +6,7 @@
 */
 
 #include "bulk_insert.h"
-#include "./stores/store.h"
+#include "../stores/store.h"
 #include <assert.h>
 
 typedef struct {

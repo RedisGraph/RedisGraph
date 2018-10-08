@@ -707,6 +707,8 @@ void Graph_Free(Graph *g) {
     while ((edge = (Edge*)DataBlockIterator_Next(it)) != NULL) {
       Edge_Free(edge);
     }
+    DataBlockIterator_Free(it);
+
     // Free node blocks.
     DataBlock_Free(g->nodes);
     // Free the edges hash table before modifying the edge blocks.

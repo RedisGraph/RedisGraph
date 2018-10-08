@@ -49,8 +49,8 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     if (AST_PerformValidations(ctx, ast) != AST_VALID) return REDISMODULE_OK;
 
     if (ast->indexNode != NULL) { // index operation
-        const char *strPlan = Index_OpPrint(ast->indexNode);
-        RedisModule_ReplyWithSimpleString(ctx, strPlan);
+        char *reply = (ast->indexNode->operation == CREATE_INDEX) ? "Create Index" : "Drop Index";
+        RedisModule_ReplyWithSimpleString(ctx, reply);
         goto cleanup;
     }
 

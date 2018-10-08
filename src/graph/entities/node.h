@@ -8,10 +8,10 @@
 #ifndef NODE_H_
 #define NODE_H_
 
-#include "../value.h"
+#include "../../value.h"
 #include "graph_entity.h"
-#include "../rmutil/vector.h"
-#include "../../deps/GraphBLAS/Include/GraphBLAS.h"
+#include "../../rmutil/vector.h"
+#include "../../../deps/GraphBLAS/Include/GraphBLAS.h"
 
 /* Forward declaration of edge */
 struct Edge;

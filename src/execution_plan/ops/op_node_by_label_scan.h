@@ -9,7 +9,7 @@
 #define __OP_NODE_BY_LABEL_SCAN_H
 
 #include "op.h"
-#include "../../graph/node.h"
+#include "../../graph/entities/node.h"
 #include "../../graph/graph.h"
 #include "../../GraphBLASExt/tuples_iter.h"
 #include "../../../deps/GraphBLAS/Include/GraphBLAS.h"

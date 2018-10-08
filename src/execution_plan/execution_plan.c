@@ -9,7 +9,7 @@
 
 #include "execution_plan.h"
 #include "./ops/ops.h"
-#include "../graph/edge.h"
+#include "../graph/entities/edge.h"
 #include "../rmutil/vector.h"
 #include "../query_executor.h"
 #include "../arithmetic/algebraic_expression.h"

@@ -87,8 +87,8 @@ void initializeSkiplists(Index *index) {
 }
 
 /* buildIndex allocates an Index object and populates it with a label-property pair
- * by traversing a label matrix with a TuplesIter. */
-Index* buildIndex(Graph *g, const GrB_Matrix label_matrix, const char *label, const char *prop_str) {
+ * by accessing DataBlock elements referred to by a TuplesIter over a label matrix. */
+Index* Index_Create(DataBlock *entities, TuplesIter *it, const char *label, const char *prop_str) {
   Index *index = malloc(sizeof(Index));
 
   index->label = strdup(label);
@@ -96,23 +96,22 @@ Index* buildIndex(Graph *g, const GrB_Matrix label_matrix, const char *label, co
 
   initializeSkiplists(index);
 
-  TuplesIter *it = TuplesIter_new(label_matrix);
-
-  Node *node;
   EntityProperty *prop;
 
   skiplist *sl;
-  NodeID node_id;
+  EntityID entity_id;
+  GraphEntity *entity;
+
   int found;
   int prop_index = 0;
-  while(TuplesIter_next(it, NULL, &node_id) != TuplesIter_DEPLETED) {
-    node = Graph_GetNode(g, node_id);
+  while(TuplesIter_next(it, NULL, &entity_id) != TuplesIter_DEPLETED) {
+    entity = DataBlock_GetItem(entities, entity_id);
     // If the sought property is at a different offset than it occupied in the previous node,
     // then seek and update
-    if (strcmp(prop_str, node->properties[prop_index].name)) {
+    if (strcmp(prop_str, entity->properties[prop_index].name)) {
       found = 0;
-      for (int i = 0; i < node->prop_count; i ++) {
-        prop = node->properties + i;
+      for (int i = 0; i < entity->prop_count; i ++) {
+        prop = entity->properties + i;
         if (!strcmp(prop_str, prop->name)) {
           prop_index = i;
           found = 1;
@@ -125,50 +124,18 @@ Index* buildIndex(Graph *g, const GrB_Matrix label_matrix, const char *label, co
     // The targeted property does not exist on this node
     if (!found) continue;
 
-    prop = node->properties + prop_index;
+    prop = entity->properties + prop_index;
     // This value will be cloned within the skiplistInsert routine if necessary
     SIValue *key = &prop->value;
 
     assert(key->type == T_STRING || key->type & SI_NUMERIC);
     sl = (key->type & SI_NUMERIC) ? index->numeric_sl: index->string_sl;
-    skiplistInsert(sl, key, node_id);
+    skiplistInsert(sl, key, entity_id);
   }
 
   TuplesIter_free(it);
 
   return index;
-}
-
-// Create and populate index for specified property
-// (This function will create separate string and numeric indices if property has mixed types)
-int Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, const char *label, const char *prop_str) {
-  // Open key with write access
-  RedisModuleKey *key = _index_LookupKey(ctx, graphName, label, prop_str, true);
-  // Do nothing if this key already exists
-  if (RedisModule_ModuleTypeGetType(key) != REDISMODULE_KEYTYPE_EMPTY) {
-    RedisModule_CloseKey(key);
-    return INDEX_FAIL;
-  }
-
-  LabelStore *store = LabelStore_Get(ctx, STORE_NODE, graphName, label);
-  assert(store);
-  const GrB_Matrix label_matrix = Graph_GetLabel(g, store->id);
-
-  Index *idx = buildIndex(g, label_matrix, label, prop_str);
-  RedisModule_ModuleTypeSetValue(key, IndexRedisModuleType, idx);
-  RedisModule_CloseKey(key);
-
-  return INDEX_OK;
-}
-
-/* Output text for EXPLAIN calls */
-const char* Index_OpPrint(AST_IndexNode *indexNode) {
-  switch(indexNode->operation) {
-    case CREATE_INDEX:
-      return "Create Index";
-    default:
-      return "Drop Index";
-  }
 }
 
 /* Generate an iterator with no lower or upper bound. */
