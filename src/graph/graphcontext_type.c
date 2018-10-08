@@ -17,11 +17,11 @@ void GraphContextType_RdbSave(RedisModuleIO *rdb, void *value) {
   RedisModule_SaveStringBuffer(rdb, gc->graph_name, strlen(gc->graph_name) + 1);
 
   RedisModule_SaveUnsigned(rdb, gc->relation_count);
-  RedisModule_SaveUnsigned(rdb, gc->label_count);
+  RedisModule_SaveUnsigned(rdb, gc->node_count);
   RedisModule_SaveUnsigned(rdb, gc->index_count);
 
-  for (int i = 0; i < gc->label_count; i ++) {
-    RedisModule_SaveStringBuffer(rdb, gc->label_strings[i], strlen(gc->label_strings[i]) + 1);
+  for (int i = 0; i < gc->node_count; i ++) {
+    RedisModule_SaveStringBuffer(rdb, gc->node_labels[i], strlen(gc->node_labels[i]) + 1);
   }
 
   for (int i = 0; i < gc->index_count; i ++) {
@@ -39,12 +39,12 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
   gc->graph_name = RedisModule_LoadStringBuffer(rdb, NULL);
 
   gc->relation_count = RedisModule_LoadUnsigned(rdb);
-  gc->label_count = RedisModule_LoadUnsigned(rdb);
+  gc->node_count = RedisModule_LoadUnsigned(rdb);
   gc->index_count = RedisModule_LoadUnsigned(rdb);
 
-  gc->label_strings = malloc(gc->label_count * sizeof(char*));
-  for (int i = 0; i < gc->label_count; i ++) {
-    gc->label_strings[i] = RedisModule_LoadStringBuffer(rdb, NULL);
+  gc->node_labels = malloc(gc->node_count * sizeof(char*));
+  for (int i = 0; i < gc->node_count; i ++) {
+    gc->node_labels[i] = RedisModule_LoadStringBuffer(rdb, NULL);
   }
 
   gc->indices = malloc(gc->index_count * sizeof(Index*));
@@ -56,6 +56,10 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
   for (int i = 0; i < gc->index_count; i ++) {
     gc->indices[i] = IndexType_RdbLoad(rdb, encver);
   }
+
+  // gc->node_all_store = LabelStore_Get(ctx, STORE_NODE, graph_name, NULL);
+  // gc->edge_all_store = LabelStore_Get(ctx, STORE_EDGE, graph_name, NULL);
+
   return gc;
 }
 

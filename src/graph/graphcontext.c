@@ -10,12 +10,14 @@ void _contextRebuild(RedisModuleCtx *ctx) {
 void GraphContext_New(RedisModuleCtx *ctx, const char *graph_name) {
   gc = malloc(sizeof(GraphContext));
   gc->graph_name = strdup(graph_name);
-  gc->label_strings = malloc(sizeof(char*) * GRAPH_DEFAULT_LABEL_CAP);
+  gc->node_labels = malloc(sizeof(char*) * GRAPH_DEFAULT_NODE_CAP);
+  gc->relation_labels = malloc(sizeof(char*) * GRAPH_DEFAULT_RELATION_CAP);
 
   gc->relation_cap = GRAPH_DEFAULT_RELATION_CAP;
   gc->relation_count = 0;
-  gc->label_cap = GRAPH_DEFAULT_LABEL_CAP;
-  gc->label_count = 0;
+  gc->node_cap = GRAPH_DEFAULT_NODE_CAP;
+  gc->node_count = 0;
+  gc->index_count = 0;
 
   // TODO I will probably make a macro for building context keys on the stack
   int keylen = strlen(graph_name) + 4;
@@ -59,27 +61,43 @@ void GraphContext_Get(RedisModuleCtx *ctx, const char *graph_name) {
   RedisModule_CloseKey(key);
 }
 
-void GraphContext_AddLabel(const char *label) {
-  // Make sure we've got room for a new label matrix.
-  if(gc->label_count == gc->label_cap) {
-    gc->label_cap += 4;   // allocate room for 4 new matrices.
-    gc->label_strings = realloc(gc->label_strings, gc->label_cap * sizeof(char*));
+// TODO next two functions are nearly identical; maybe consolidate
+void GraphContext_AddNode(const char *label) {
+  if(gc->node_count == gc->node_cap) {
+    gc->node_cap += 4;
+    gc->node_labels = realloc(gc->node_labels, gc->node_cap * sizeof(char*));
   }
-  gc->label_strings[gc->label_count++] = strdup(label);
+  gc->node_labels[gc->node_count++] = strdup(label);
+}
+
+void GraphContext_AddRelation(const char *label) {
+  if(gc->relation_count == gc->relation_cap) {
+    gc->relation_cap += 4;
+    gc->relation_labels = realloc(gc->relation_labels, gc->relation_cap * sizeof(char*));
+  }
+  gc->relation_labels[gc->relation_count++] = strdup(label);
 }
 
 // TODO what to return from these 2
-const char* GraphContext_GetLabelFromID(int id) {
-  assert(gc && id < gc->label_count);
-  return gc->label_strings[id];
+const char* GraphContext_GetLabel(int id) {
+  assert(gc && id < gc->node_count);
+  return gc->node_labels[id];
 }
 
-// Different IDs by type?
-int GraphContext_GetLabelIDFromString(const char *label) {
-  for (int i = 0; i < gc->label_count; i ++) {
-    if (!strcmp(label, gc->label_strings[i])) return i;
+int GraphContext_GetLabelID(const char *label, LabelStoreType t) {
+  char **labels;
+  size_t count;
+  if (t == STORE_NODE) {
+    labels = gc->node_labels;
+    count = gc->node_count;
+  } else {
+    labels = gc->relation_labels;
+    count = gc->relation_count;
   }
-  assert(0);
+
+  for (int i = 0; i < count; i ++) {
+    if (!strcmp(label, labels[i])) return i;
+  }
   return -1;
 }
 
@@ -104,6 +122,13 @@ void GraphContext_AddIndex(Index *idx) {
 LabelStore* GraphContext_AllStore(LabelStoreType t) {
   if (t == STORE_NODE) return gc->node_allstore;
   return gc->edge_allstore;
+}
+
+LabelStore* GraphContext_GetStoreByString(const char *label, LabelStoreType t) {
+  int id = GraphContext_GetLabelID(label, t);
+  assert(id >= 0);
+  if (t == STORE_NODE) return gc->node_stores[id];
+  return gc->edge_stores[id];
 }
 
 void GraphContext_Free() {
