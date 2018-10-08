@@ -28,8 +28,8 @@ typedef struct {
 
   LabelStore *relation_allstore;
   LabelStore *node_allstore;
-  LabelStore *relation_stores;
-  LabelStore *node_stores;
+  LabelStore **relation_stores;
+  LabelStore **node_stores;
 } GraphContext;
 
 void GraphContext_New(RedisModuleCtx *ctx, const char *graph_name);

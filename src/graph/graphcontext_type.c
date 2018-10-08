@@ -38,16 +38,18 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
   gc->node_count = RedisModule_LoadUnsigned(rdb);
   gc->index_count = RedisModule_LoadUnsigned(rdb);
 
-  gc->node_stores = calloc(gc->node_count, sizeof(LabelStore));
+  gc->node_stores = calloc(gc->node_count, sizeof(LabelStore*));
 
-  gc->indices = malloc(gc->index_count * sizeof(Index*));
+  gc->indices = NULL;
   /* TODO I'm curious about the idea of serializing index keys in Redis as before, and
    * retrieving the pointers from the keyspace to save here. That way the keys will still
    * be modular and we won't have a hugely bloated GraphContext value, but once a GraphContext
-   * is loaded we won't need to access the keyspace to retrieve indices.
-   * (Extend this logic to label stores as well.) */
-  for (int i = 0; i < gc->index_count; i ++) {
-    gc->indices[i] = IndexType_RdbLoad(rdb, encver);
+   * is loaded we won't need to access the keyspace to retrieve indices. */
+  if (gc->index_count > 0) {
+    gc->indices = malloc(gc->index_count * sizeof(Index*));
+    for (int i = 0; i < gc->index_count; i ++) {
+      gc->indices[i] = IndexType_RdbLoad(rdb, encver);
+    }
   }
 
   return gc;

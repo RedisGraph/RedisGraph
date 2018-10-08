@@ -145,9 +145,9 @@ void _BuildQueryGraphAddNode(RedisModuleCtx *ctx, const char *graph_name,
     /* Set node matrix.
      * TODO: revisit when supporting multiple labels. */
     if(n->label && !n->mat) {
-        int label_id = GraphContext_GetLabelID(entity->label, STORE_NODE);
-        if(label_id >= 0) {
-            n->mat = Graph_GetLabel(g, label_id);
+        LabelStore *s = GraphContext_GetNodeStore(entity->label);
+        if(s) {
+            n->mat = Graph_GetLabel(g, s->id);
         } else {
             /* Use a zeroed matrix.
              * TODO: either use a static zero matrix, or free this one. */
@@ -422,8 +422,9 @@ ResultSetStatistics CommitGraph(RedisModuleCtx *ctx, const QueryGraph *qg, Graph
             connections[i].srcId = e->src->id;
             connections[i].destId = e->dest->id;
             
+            // TODO unsafe for rdb-loaded contexts until edge handling matches node handling
             int relation_id = GraphContext_GetLabelID(e->relationship, STORE_EDGE);
-            if(relation_id < 0) {
+            if(relation_id == GRAPH_NO_LABEL) {
                 relation_id = Graph_AddRelation(g);
                 LabelStore *s = LabelStore_New(ctx, STORE_EDGE, graph_name, e->relationship, relation_id);
                 GraphContext_AddRelation(e->relationship);
