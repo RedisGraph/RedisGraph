@@ -89,7 +89,7 @@ RedisModuleString** _Bulk_Insert_Parse_Labels(RedisModuleCtx *ctx, RedisModuleSt
         LabelStore *allStore = GraphContext_AllStore(STORE_NODE);
         if(store == NULL) {
             int label_id = Graph_AddLabel(g);
-            GraphContext_AddLabel(labels[label_idx].label);
+            GraphContext_AddNode(labels[label_idx].label);
             store = LabelStore_New(ctx, STORE_NODE, graph_name, labels[label_idx].label, label_id);
         }
 
@@ -298,6 +298,7 @@ RedisModuleString** _Bulk_Insert_Insert_Edges(RedisModuleCtx *ctx, RedisModuleSt
                 labelRelations[i].label_id = s->id;
             } else {
                 labelRelations[i].label_id = Graph_AddRelation(g);
+                GraphContext_AddRelation(labelRelations[i].label);
                 LabelStore *s = LabelStore_New(ctx, STORE_EDGE, graph_name,
                                                labelRelations[i].label,
                                                labelRelations[i].label_id);

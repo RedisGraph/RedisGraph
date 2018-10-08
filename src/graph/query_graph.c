@@ -145,9 +145,9 @@ void _BuildQueryGraphAddNode(RedisModuleCtx *ctx, const char *graph_name,
     /* Set node matrix.
      * TODO: revisit when supporting multiple labels. */
     if(n->label && !n->mat) {
-        LabelStore *s = LabelStore_Get(ctx, STORE_NODE, graph_name, entity->label);
-        if(s) {
-            n->mat = Graph_GetLabel(g, s->id);
+        int label_id = GraphContext_GetLabelID(entity->label, STORE_NODE);
+        if(label_id >= 0) {
+            n->mat = Graph_GetLabel(g, label_id);
         } else {
             /* Use a zeroed matrix.
              * TODO: either use a static zero matrix, or free this one. */
@@ -363,7 +363,7 @@ ResultSetStatistics CommitGraph(RedisModuleCtx *ctx, const QueryGraph *qg, Graph
     // Start by creating nodes.
     if(node_count > 0) {
         int labels[node_count];
-        LabelStore *allStore = LabelStore_Get(ctx, STORE_NODE, graph_name, NULL);
+        LabelStore *allStore = GraphContext_AllStore(STORE_NODE);
 
         for(int i = 0; i < node_count; i++) {
             Node *n = qg->nodes[i];
@@ -379,7 +379,7 @@ ResultSetStatistics CommitGraph(RedisModuleCtx *ctx, const QueryGraph *qg, Graph
                 if(store == NULL) {
                     // TODO dislike these dual calls
                     int label_id = Graph_AddLabel(g);
-                    GraphContext_AddLabel(label);
+                    GraphContext_AddNode(label);
                     store = LabelStore_New(ctx, STORE_NODE, graph_name, label, label_id);
                     stats.labels_added++;
                 }
@@ -423,14 +423,15 @@ ResultSetStatistics CommitGraph(RedisModuleCtx *ctx, const QueryGraph *qg, Graph
             connections[i].srcId = e->src->id;
             connections[i].destId = e->dest->id;
             
-            LabelStore *s = LabelStore_Get(ctx, STORE_EDGE, graph_name, e->relationship);
-            if(s == NULL) {
-                int relation_id = Graph_AddRelation(g);
-                s = LabelStore_New(ctx, STORE_EDGE, graph_name, e->relationship, relation_id);
+            int relation_id = GraphContext_GetLabelID(e->relationship, STORE_EDGE);
+            if(relation_id < 0) {
+                relation_id = Graph_AddRelation(g);
+                LabelStore *s = LabelStore_New(ctx, STORE_EDGE, graph_name, e->relationship, relation_id);
+                GraphContext_AddRelation(e->relationship);
                 s->id = relation_id;
             }
 
-            connections[i].relationId = s->id;
+            connections[i].relationId = relation_id;
         }
 
         Graph_ConnectNodes(g, connections, edge_count, NULL);

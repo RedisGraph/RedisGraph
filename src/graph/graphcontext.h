@@ -26,38 +26,42 @@ typedef struct {
 
   // We could possibly move Graph's label and relation cap and count variables
   // here as well
-  char **relation_strings;
-  char **label_strings;
+  char **relation_labels;
+  char **node_labels;
 
   // TODO dups of Graph members; should belong exclusively to one
   size_t relation_cap;            // Number of relations graph can hold.
   size_t relation_count;          // Number of relation matrices.
-  size_t label_cap;               // Number of labels graph can hold.
-  size_t label_count;             // Number of label matrices.
+  size_t node_cap;               // Number of labels graph can hold.
+  size_t node_count;             // Number of label matrices.
 
   Index **indices;
   int index_count;
 
   LabelStore *edge_allstore;
   LabelStore *node_allstore;
-  StoreHandle **edge_stores;
-  StoreHandle **node_stores;
+  LabelStore **edge_stores;
+  LabelStore **node_stores;
+  // StoreHandle **edge_stores;
+  // StoreHandle **node_stores;
 } GraphContext;
 
 void GraphContext_New(RedisModuleCtx *ctx, const char *graph_name);
 
 void GraphContext_Get(RedisModuleCtx *ctx, const char *graph_name);
 
-void GraphContext_AddLabel(const char *label);
+void GraphContext_AddNode(const char *label);
+void GraphContext_AddRelation(const char *label);
 
-const char* GraphContext_GetLabelStringFromID(int label_idx);
-int GraphContext_GetLabelIDFromString(const char *label);
+const char* GraphContext_GetLabelString(int label_idx, LabelStoreType t);
+int GraphContext_GetLabelID(const char *label, LabelStoreType t);
 
 bool GraphContext_HasIndices(void);
 Index* GraphContext_GetIndex(const char *label, const char *property);
 void GraphContext_AddIndex(Index* idx);
 
 LabelStore* GraphContext_AllStore(LabelStoreType t);
+LabelStore* GraphContext_GetStoreByString(const char *label, LabelStoreType t);
 
 void GraphContext_Free();
 
