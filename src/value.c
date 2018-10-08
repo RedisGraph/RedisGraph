@@ -411,6 +411,10 @@ size_t SIValue_StringConcat(SIValue* strings, unsigned int string_count, char *b
   return offset;
 }
 
+int SIValue_ValuesAreComparable(const SIValue a, const SIValue b) {
+  return (a.type == b.type) || (a.type & SI_NUMERIC && b.type & SI_NUMERIC);
+}
+
 int SIValue_Compare(SIValue a, SIValue b) {
   // Types are identical
   if (a.type == b.type) {

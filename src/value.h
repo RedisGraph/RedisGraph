@@ -119,8 +119,12 @@ size_t SIValue_StringConcatLen(SIValue* strings, unsigned int string_count);
 /* Concats strings as a comma separated string. */
 size_t SIValue_StringConcat(SIValue* strings, unsigned int string_count, char *buf, size_t buf_len);
 
-/* Compares two SIValues, expecting a and b to be of the same type,
- * return value is similar to strcmp. */
+/* Returns true if a and b are of the same type or are both numeric types. */
+int SIValue_ValuesAreComparable(const SIValue a, const SIValue b);
+
+/* Compares two SIValues and returns a value similar to strcmp.
+ * If the values are not both strings or both numerics, the return value reflects
+ * Cypher's orderability constraint, where string > number > NULL. */
 int SIValue_Compare(SIValue a, SIValue b);
 
 void SIValue_Print(FILE *outstream, SIValue *v);
