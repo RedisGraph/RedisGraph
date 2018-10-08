@@ -183,7 +183,7 @@ void MGraph_ReleaseLock(RedisModuleCtx *ctx) {
 
 //------------------------------------------------------------------------------
 
-Graph *MGraph_CreateGraph(RedisModuleCtx *ctx, RedisModuleString *graph_name) {
+Graph *MGraph_CreateGraph(RedisModuleCtx *ctx, RedisModuleString *graph_name, const char *name_str) {
     Graph *g = NULL;
     RedisModuleKey *key = RedisModule_OpenKey(ctx, graph_name, REDISMODULE_WRITE);
 
@@ -196,6 +196,10 @@ Graph *MGraph_CreateGraph(RedisModuleCtx *ctx, RedisModuleString *graph_name) {
     }
 
     RedisModule_CloseKey(key);
+
+    // TODO can place this in cmd_query and cmd_bulk_insert instead
+    GraphContext_New(ctx, name_str);
+
     return g;
 }
 

@@ -12,6 +12,11 @@ void GraphContext_New(RedisModuleCtx *ctx, const char *graph_name) {
   gc->graph_name = strdup(graph_name);
   gc->label_strings = malloc(sizeof(char*) * GRAPH_DEFAULT_LABEL_CAP);
 
+  gc->relation_cap = GRAPH_DEFAULT_RELATION_CAP;
+  gc->relation_count = 0;
+  gc->label_cap = GRAPH_DEFAULT_LABEL_CAP;
+  gc->label_count = 0;
+
   // TODO I will probably make a macro for building context keys on the stack
   int keylen = strlen(graph_name) + 4;
   char strKey[keylen + 1];
@@ -42,8 +47,13 @@ void GraphContext_Get(RedisModuleCtx *ctx, const char *graph_name) {
   RedisModule_CloseKey(key);
 }
 
-bool GraphContext_HasIndices() {
-  return gc->index_count > 0;
+void GraphContext_AddLabel(const char *label) {
+  // Make sure we've got room for a new label matrix.
+  if(gc->label_count == gc->label_cap) {
+    gc->label_cap += 4;   // allocate room for 4 new matrices.
+    gc->label_strings = realloc(gc->label_strings, gc->label_cap * sizeof(char*));
+  }
+  gc->label_strings[gc->label_count++] = strdup(label);
 }
 
 // TODO what to return from these 2
@@ -70,6 +80,15 @@ Index* GraphContext_GetIndex(const char *label, const char *property) {
     if (!strcmp(label, idx->label) && !strcmp(property, idx->property)) return idx;
   }
   return NULL;
+}
+
+bool GraphContext_HasIndices() {
+  return gc->index_count > 0;
+}
+
+void GraphContext_AddIndex(Index *idx) {
+  gc->indices = realloc(gc->indices, gc->index_count + 1);
+  gc->indices[gc->index_count++] = idx;
 }
 
 void GraphContext_Free() {

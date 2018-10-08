@@ -11,6 +11,7 @@
 #include "entities/node.h"
 #include "entities/edge.h"
 #include "graph.h"
+#include "graphcontext.h"
 #include "../rmutil/vector.h"
 #include "../resultset/resultset_statistics.h"
 

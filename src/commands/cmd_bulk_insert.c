@@ -40,10 +40,13 @@ void _MGraph_BulkInsert(void *args) {
 
     // Try to get graph, if graph does not exists create it.
     Graph *g = Graph_Get(ctx, rs_graph_name);
-    if (g == NULL) g = MGraph_CreateGraph(ctx, rs_graph_name);
+    if (g == NULL) g = MGraph_CreateGraph(ctx, rs_graph_name, graph_name);
 
     // Exit if graph creation failed
     if (g == NULL) goto cleanup;
+
+    // Retrieve graph context
+    GraphContext_Get(ctx, graph_name);
 
     int rc = Bulk_Insert(ctx, argv+2, argc-2, g, graph_name, &nodes, &edges);
 

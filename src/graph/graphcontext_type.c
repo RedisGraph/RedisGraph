@@ -7,6 +7,7 @@
 
 #include "graphcontext.h"
 #include "graphcontext_type.h"
+#include "../index/index_type.h"
 
 /* Declaration of the type for redis registration. */
 RedisModuleType *GraphContextRedisModuleType;
@@ -18,6 +19,15 @@ void GraphContextType_RdbSave(RedisModuleIO *rdb, void *value) {
   RedisModule_SaveUnsigned(rdb, gc->relation_count);
   RedisModule_SaveUnsigned(rdb, gc->label_count);
   RedisModule_SaveUnsigned(rdb, gc->index_count);
+
+  for (int i = 0; i < gc->label_count; i ++) {
+    RedisModule_SaveStringBuffer(rdb, gc->label_strings[i], strlen(gc->label_strings[i]) + 1);
+  }
+
+  for (int i = 0; i < gc->index_count; i ++) {
+    // TODO ick
+    IndexType_RdbSave(rdb, gc->indices[i]);
+  }
 }
 
 void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
@@ -32,6 +42,20 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
   gc->label_count = RedisModule_LoadUnsigned(rdb);
   gc->index_count = RedisModule_LoadUnsigned(rdb);
 
+  gc->label_strings = malloc(gc->label_count * sizeof(char*));
+  for (int i = 0; i < gc->label_count; i ++) {
+    gc->label_strings[i] = RedisModule_LoadStringBuffer(rdb, NULL);
+  }
+
+  gc->indices = malloc(gc->index_count * sizeof(Index*));
+  /* TODO I'm curious about the idea of serializing index keys in Redis as before, and
+   * retrieving the pointers from the keyspace to save here. That way the keys will still
+   * be modular and we won't have a hugely bloated GraphContext value, but once a GraphContext
+   * is loaded we won't need to access the keyspace to retrieve indices.
+   * (Extend this logic to label stores as well.) */
+  for (int i = 0; i < gc->index_count; i ++) {
+    gc->indices[i] = IndexType_RdbLoad(rdb, encver);
+  }
   return gc;
 }
 
@@ -51,7 +75,7 @@ int GraphContextType_Register(RedisModuleCtx *ctx) {
                                .aof_rewrite = GraphContextType_AofRewrite,
                                .free = GraphContextType_Free};
 
-  GraphContextRedisModuleType = RedisModule_CreateDataType(ctx, "gcontext1", GRAPHCONTEXT_TYPE_ENCODING_VERSION, &tm);
+  GraphContextRedisModuleType = RedisModule_CreateDataType(ctx, "g_context", GRAPHCONTEXT_TYPE_ENCODING_VERSION, &tm);
   if (GraphContextRedisModuleType == NULL) {
     return REDISMODULE_ERR;
   }

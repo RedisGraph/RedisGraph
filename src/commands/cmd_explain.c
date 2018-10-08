@@ -41,6 +41,7 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
         RedisModule_ReplyWithError(ctx, "key doesn't contains a graph object.");
         goto cleanup;
     }
+    GraphContext_Get(ctx, graph_name);
 
     // Perform query validations before and after ModifyAST
     if (AST_PerformValidations(ctx, ast) != AST_VALID) return REDISMODULE_OK;

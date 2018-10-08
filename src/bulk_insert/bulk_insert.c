@@ -89,6 +89,7 @@ RedisModuleString** _Bulk_Insert_Parse_Labels(RedisModuleCtx *ctx, RedisModuleSt
         LabelStore *allStore = LabelStore_Get(ctx, STORE_NODE, graph_name, NULL);
         if(store == NULL) {
             int label_id = Graph_AddLabel(g);
+            GraphContext_AddLabel(labels[label_idx].label);
             store = LabelStore_New(ctx, STORE_NODE, graph_name, labels[label_idx].label, label_id);
         }
 
