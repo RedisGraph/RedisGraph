@@ -86,7 +86,7 @@ RedisModuleString** _Bulk_Insert_Parse_Labels(RedisModuleCtx *ctx, RedisModuleSt
 
         // TODO: Have label store hold on to attributes array.
         LabelStore *store = LabelStore_Get(ctx, STORE_NODE, graph_name, labels[label_idx].label);
-        LabelStore *allStore = LabelStore_Get(ctx, STORE_NODE, graph_name, NULL);
+        LabelStore *allStore = GraphContext_AllStore(STORE_NODE);
         if(store == NULL) {
             int label_id = Graph_AddLabel(g);
             GraphContext_AddLabel(labels[label_idx].label);
@@ -211,7 +211,7 @@ RedisModuleString** _Bulk_Insert_Insert_Nodes(RedisModuleCtx *ctx, RedisModuleSt
 
     // Retrieve the node store so that we can update the schema for
     // unlabeled nodes.
-    LabelStore *allStore = LabelStore_Get(ctx, STORE_NODE, graph_name, NULL);
+    LabelStore *allStore = GraphContext_AllStore(STORE_NODE);
 
     // Unlabeled nodes.
     long long attribute_count = 0;

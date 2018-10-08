@@ -184,7 +184,7 @@ void _CommitNewEntities(OpCreate *op) {
 
     if(node_count > 0) {
         int labels[node_count];
-        allStore = LabelStore_Get(ctx, STORE_NODE, op->graph_name, NULL);
+        allStore = GraphContext_AllStore(STORE_NODE);
 
         for(int i = 0; i < node_count; i++) {
             Node *n;
@@ -222,7 +222,7 @@ void _CommitNewEntities(OpCreate *op) {
 
     if(edge_count > 0) {
         EdgeDesc connections[edge_count];
-        allStore = LabelStore_Get(ctx, STORE_EDGE, op->graph_name, NULL);
+        allStore = GraphContext_AllStore(STORE_EDGE);
 
         for(int i = 0; i < edge_count; i++) {
             Edge *e;
