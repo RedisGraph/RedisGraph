@@ -29,7 +29,7 @@ typedef struct {
   char **relation_strings;
   char **label_strings;
 
-  // TODO dups of Graph members; should belong ecclusively to one
+  // TODO dups of Graph members; should belong exclusively to one
   size_t relation_cap;            // Number of relations graph can hold.
   size_t relation_count;          // Number of relation matrices.
   size_t label_cap;               // Number of labels graph can hold.
@@ -48,14 +48,14 @@ void GraphContext_New(RedisModuleCtx *ctx, const char *graph_name);
 
 void GraphContext_Get(RedisModuleCtx *ctx, const char *graph_name);
 
-bool GraphContext_HasIndices(void);
-
-// int GraphContext_AddLabel();
+void GraphContext_AddLabel(const char *label);
 
 const char* GraphContext_GetLabelStringFromID(int label_idx);
 int GraphContext_GetLabelIDFromString(const char *label);
 
+bool GraphContext_HasIndices(void);
 Index* GraphContext_GetIndex(const char *label, const char *property);
+void GraphContext_AddIndex(Index* idx);
 
 void GraphContext_Free();
 

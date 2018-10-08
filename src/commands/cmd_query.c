@@ -44,7 +44,8 @@ void _index_operation(RedisModuleCtx *ctx, const char *graphName, Graph *g, AST_
         int label_id = GraphContext_GetLabelIDFromString(indexNode->label);
         const GrB_Matrix label_matrix = Graph_GetLabel(g, label_id);
         TuplesIter *it = TuplesIter_new(label_matrix);
-        Index_Create(g->nodes, it, indexNode->label, indexNode->property);
+        Index *idx = Index_Create(g->nodes, it, indexNode->label, indexNode->property);
+        GraphContext_AddIndex(idx);
         RedisModule_ReplyWithSimpleString(ctx, "Added 1 index.");
         TuplesIter_free(it);
       }
@@ -86,7 +87,7 @@ void _MGraph_Query(void *args) {
     Graph *g = Graph_Get(ctx, qctx->graphName);
     if(!g) {
         if(ast->createNode || ast->mergeNode) {
-            g = MGraph_CreateGraph(ctx, qctx->graphName);
+            g = MGraph_CreateGraph(ctx, qctx->graphName, graph_name);
             /* TODO: free graph if no entities were created. */
         } else {
             RedisModule_ReplyWithError(ctx, "key doesn't contains a graph object.");
@@ -95,6 +96,7 @@ void _MGraph_Query(void *args) {
         }
     }
 
+    GraphContext_Get(ctx, graph_name);
     if (ast->indexNode) { // index operation
         _index_operation(ctx, graph_name, g, ast->indexNode);
     } else {

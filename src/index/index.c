@@ -50,21 +50,25 @@ void freeKey(SIValue *key) {
   free(key);
 }
 
+// TODO Currently not serializing indices in keyspace - see graphcontext_type comment
 /* Construct key and retrieve index from Redis keyspace */
-Index* Index_Get(RedisModuleCtx *ctx, const char *graph, const char *label, const char *property) {
-  Index *idx = NULL;
-  // Open key with read-only access
-  RedisModuleKey *key = _index_LookupKey(ctx, graph, label, property, false);
+/*
+ * Index* Index_Get(RedisModuleCtx *ctx, const char *graph, const char *label, const char *property) {
+ *   Index *idx = NULL;
+ *   // Open key with read-only access
+ *   RedisModuleKey *key = _index_LookupKey(ctx, graph, label, property, false);
+ *
+ *   if (RedisModule_ModuleTypeGetType(key) == IndexRedisModuleType) {
+ *     idx = RedisModule_ModuleTypeGetValue(key);
+ *   }
+ *
+ *   RedisModule_CloseKey(key);
+ *
+ *   return idx;
+ * }
+ */
 
-  if (RedisModule_ModuleTypeGetType(key) == IndexRedisModuleType) {
-    idx = RedisModule_ModuleTypeGetValue(key);
-  }
-
-  RedisModule_CloseKey(key);
-
-  return idx;
-}
-
+// TODO non-functional until serialization resolved
 int Index_Delete(RedisModuleCtx *ctx, const char *graphName, const char *label, const char *prop) {
   // Open key with write access
   RedisModuleKey *key = _index_LookupKey(ctx, graphName, label, prop, true);
@@ -86,7 +90,7 @@ void initializeSkiplists(Index *index) {
   index->numeric_sl = skiplistCreate(compareNumerics, compareNodes, cloneKey, freeKey);
 }
 
-/* buildIndex allocates an Index object and populates it with a label-property pair
+/* Index_Create allocates an Index object and populates it with a label-property pair
  * by accessing DataBlock elements referred to by a TuplesIter over a label matrix. */
 Index* Index_Create(DataBlock *entities, TuplesIter *it, const char *label, const char *prop_str) {
   Index *index = malloc(sizeof(Index));
@@ -132,8 +136,6 @@ Index* Index_Create(DataBlock *entities, TuplesIter *it, const char *label, cons
     sl = (key->type & SI_NUMERIC) ? index->numeric_sl: index->string_sl;
     skiplistInsert(sl, key, entity_id);
   }
-
-  TuplesIter_free(it);
 
   return index;
 }

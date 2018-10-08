@@ -609,12 +609,6 @@ DataBlockIterator *Graph_ScanEdges(const Graph *g) {
 int Graph_AddLabel(Graph *g) {
     assert(g);
 
-    // Make sure we've got room for a new label matrix.
-    if(g->label_count == g->label_cap) {
-        g->label_cap += 4;   // allocate room for 4 new matrices.
-        g->_labels = rm_realloc(g->_labels, g->label_cap * sizeof(GrB_Matrix));
-    }
-
     GrB_Matrix_new(&g->_labels[g->label_count++], GrB_BOOL, _Graph_NodeCap(g), _Graph_NodeCap(g));
     return g->label_count-1;
 }

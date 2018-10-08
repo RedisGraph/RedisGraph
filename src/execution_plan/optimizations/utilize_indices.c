@@ -118,7 +118,8 @@ void utilizeIndices(RedisModuleCtx *ctx, const char *graph_name, ExecutionPlan *
 
       // Try to retrieve an index if one has not been selected yet
       if (!idx) {
-        idx = Index_Get(ctx, graph_name, label, filterProp);
+        idx = GraphContext_GetIndex(label, filterProp);
+        // idx = Index_Get(ctx, graph_name, label, filterProp);
         if (!idx) continue;
         iter = IndexIter_Create(idx, constVal.type);
       }
