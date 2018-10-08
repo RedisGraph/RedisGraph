@@ -194,11 +194,10 @@ void _CommitNewEntities(OpCreate *op) {
             if(label == NULL) {
                labels[i] = GRAPH_NO_LABEL; 
             } else {
-                store = LabelStore_Get(ctx, STORE_NODE, op->graph_name, label);                
+                store = GraphContext_GetNodeStore(label);
                 if(store == NULL) {
                     int label_id = Graph_AddLabel(op->g);
-                    GraphContext_AddNode(label);
-                    store = LabelStore_New(ctx, STORE_NODE, op->graph_name, label, label_id);
+                    store = GraphContext_AddNode(label);
                     op->result_set->stats.labels_added++;
                 }
                 labels[i] = store->id;
