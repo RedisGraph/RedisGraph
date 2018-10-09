@@ -422,16 +422,13 @@ ResultSetStatistics CommitGraph(RedisModuleCtx *ctx, const QueryGraph *qg, Graph
             connections[i].srcId = e->src->id;
             connections[i].destId = e->dest->id;
             
-            // TODO unsafe for rdb-loaded contexts until edge handling matches node handling
-            int relation_id = GraphContext_GetLabelID(e->relationship, STORE_EDGE);
-            if(relation_id == GRAPH_NO_LABEL) {
-                relation_id = Graph_AddRelation(g);
-                LabelStore *s = LabelStore_New(ctx, STORE_EDGE, graph_name, e->relationship, relation_id);
-                GraphContext_AddRelation(e->relationship);
-                s->id = relation_id;
+            LabelStore *s = GraphContext_GetRelationStore(e->relationship);
+            if (!s) {
+                Graph_AddRelation(g);
+                s = GraphContext_AddRelation(e->relationship);
             }
 
-            connections[i].relationId = relation_id;
+            connections[i].relationId = s->id;
         }
 
         Graph_ConnectNodes(g, connections, edge_count, NULL);

@@ -292,17 +292,13 @@ RedisModuleString** _Bulk_Insert_Insert_Edges(RedisModuleCtx *ctx, RedisModuleSt
                 return NULL;
             }
             total_labeled_edges += labelRelations[i].edge_count;
-            LabelStore *s = LabelStore_Get(ctx, STORE_EDGE, graph_name, labelRelations[i].label);
-            if(s != NULL) {
-                labelRelations[i].label_id = s->id;
-            } else {
-                labelRelations[i].label_id = Graph_AddRelation(g);
-                GraphContext_AddRelation(labelRelations[i].label);
-                LabelStore *s = LabelStore_New(ctx, STORE_EDGE, graph_name,
-                                               labelRelations[i].label,
-                                               labelRelations[i].label_id);
+            LabelStore *s = GraphContext_GetRelationStore(labelRelations[i].label);
+            if(!s) {
+                Graph_AddRelation(g);
+                s = GraphContext_AddRelation(labelRelations[i].label);
                 // TODO: once we'll support edge attribute, need to update store schema.
             }
+            labelRelations[i].label_id = s->id;
         }
     }
 

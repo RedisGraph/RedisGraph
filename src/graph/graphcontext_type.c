@@ -39,6 +39,7 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
   gc->index_count = RedisModule_LoadUnsigned(rdb);
 
   gc->node_stores = calloc(gc->node_count, sizeof(LabelStore*));
+  gc->relation_stores = calloc(gc->relation_count, sizeof(LabelStore*));
 
   gc->indices = NULL;
   /* TODO I'm curious about the idea of serializing index keys in Redis as before, and

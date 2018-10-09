@@ -227,23 +227,20 @@ void _CommitNewEntities(OpCreate *op) {
             Edge *e;
             Vector_Get(op->created_edges, i, &e);
 
-            int relation_id;
-            LabelStore *store = LabelStore_Get(ctx, STORE_EDGE, op->graph_name, e->relationship);
-            if(store != NULL) relation_id = store->id;
-            else {
-                relation_id = Graph_AddRelation(op->g);
-                GraphContext_AddRelation(e->relationship);
-                store = LabelStore_New(op->ctx, STORE_EDGE, op->graph_name, e->relationship, relation_id);
+            LabelStore *s = GraphContext_GetRelationStore(e->relationship);
+            if (!s) {
+                Graph_AddRelation(op->g);
+                s = GraphContext_AddRelation(e->relationship);
             }
 
             connections[i].srcId = Edge_GetSrcNodeID(e);
             connections[i].destId = Edge_GetDestNodeID(e);
-            connections[i].relationId = relation_id;
+            connections[i].relationId = s->id;
 
             if(e->prop_count > 0) {
                 char *properties[e->prop_count];
                 for(int j = 0; j < e->prop_count; j++) properties[j] = e->properties[j].name;
-                LabelStore_UpdateSchema(store, e->prop_count, properties);
+                LabelStore_UpdateSchema(s, e->prop_count, properties);
                 LabelStore_UpdateSchema(allStore, e->prop_count, properties);
             }
         }

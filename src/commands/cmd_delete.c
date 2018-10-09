@@ -43,6 +43,14 @@ void _MGraph_Delete(void *args) {
     RedisModuleCtx *ctx = RedisModule_GetThreadSafeContext(bc);
     const char *graphIDStr = RedisModule_StringPtrLen(graphID, NULL);
 
+    // TODO Improve later and generalize GraphContext key logic in that file
+    int keylen = strlen(graphIDStr) + 4;
+    char contextStr[keylen + 1];
+    contextStr[0] = '\0';
+    strcat(contextStr, graphIDStr);
+    strcat(contextStr, "_ctx");
+    RedisModuleString *rm_graphctx = RedisModule_CreateString(ctx, contextStr, keylen);
+
     MGraph_AcquireWriteLock(ctx);
     
     Graph *g = Graph_Get(ctx, graphID);
@@ -67,6 +75,12 @@ void _MGraph_Delete(void *args) {
 
     // Remove Graph from Redis keyspace.
     RedisModuleKey *key = RedisModule_OpenKey(ctx, graphID, REDISMODULE_WRITE);
+    if(RedisModule_DeleteKey(key) != REDISMODULE_OK) {
+        // Log error!
+    }
+
+    // Remove GraphContext from keyspace.
+    key = RedisModule_OpenKey(ctx, rm_graphctx, REDISMODULE_WRITE);
     if(RedisModule_DeleteKey(key) != REDISMODULE_OK) {
         // Log error!
     }
