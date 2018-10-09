@@ -97,6 +97,10 @@ FT_FilterNode* BuildFiltersTree(const AST_FilterNode *root, const QueryGraph *qg
 /* Applies a single filter to a single result.
  * Compares given values, tests if values maintain desired relation (op) */
 int _applyFilter(SIValue* aVal, SIValue* bVal, int op) {
+
+    /* Always return false if values are not of comparable types. */
+    if (!SI_COMPARABLE(*aVal, *bVal)) return 0;
+
     /* TODO Consider updating all logic around comparison routines */
     int rel = SIValue_Compare(*aVal, *bVal);
 

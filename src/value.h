@@ -39,6 +39,9 @@ typedef enum {
 
 #define SI_NUMERIC (T_INT32 | T_INT64 | T_UINT | T_FLOAT | T_DOUBLE)
 
+/* Returns true if aVal and bVal are of the same type or are both numeric types. */
+#define SI_COMPARABLE(aVal, bVal) ((aVal).type == (bVal).type || (((aVal).type & SI_NUMERIC) && (bVal).type & SI_NUMERIC))
+
 /* Returns 1 if argument is positive, -1 if argument is negative,
  * and 0 if argument is zero (matching the return style of the strcmp family).
  * This is necessary to construct safe integer returns when the delta between
@@ -119,8 +122,9 @@ size_t SIValue_StringConcatLen(SIValue* strings, unsigned int string_count);
 /* Concats strings as a comma separated string. */
 size_t SIValue_StringConcat(SIValue* strings, unsigned int string_count, char *buf, size_t buf_len);
 
-/* Compares two SIValues, expecting a and b to be of the same type,
- * return value is similar to strcmp. */
+/* Compares two SIValues and returns a value similar to strcmp.
+ * If the values are not both strings or both numerics, the return value reflects
+ * Cypher's orderability constraint, where string > number > NULL. */
 int SIValue_Compare(SIValue a, SIValue b);
 
 void SIValue_Print(FILE *outstream, SIValue *v);
