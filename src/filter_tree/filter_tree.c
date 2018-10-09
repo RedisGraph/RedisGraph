@@ -99,7 +99,7 @@ FT_FilterNode* BuildFiltersTree(const AST_FilterNode *root, const QueryGraph *qg
 int _applyFilter(SIValue* aVal, SIValue* bVal, int op) {
 
     /* Always return false if values are not of comparable types. */
-    if (!SIValue_ValuesAreComparable(*aVal, *bVal)) return 0;
+    if (!SI_COMPARABLE(*aVal, *bVal)) return 0;
 
     /* TODO Consider updating all logic around comparison routines */
     int rel = SIValue_Compare(*aVal, *bVal);
