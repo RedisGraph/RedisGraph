@@ -140,6 +140,8 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
         return REDISMODULE_OK;
     }
 
+    bool readonly = AST_ReadOnly(ast);
+
     // Construct concurent query context.
     RedisModuleBlockedClient *bc =
         RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
@@ -152,6 +154,6 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     thpool_add_work(_thpool, _MGraph_Query, context);
 
     // Replicate only if query has potential to modify key space.
-    if(!AST_ReadOnly(ast)) RedisModule_ReplicateVerbatim(ctx);
+    if(!readonly) RedisModule_ReplicateVerbatim(ctx);
     return REDISMODULE_OK;
 }
