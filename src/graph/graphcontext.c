@@ -10,6 +10,7 @@ void GraphContext_New(RedisModuleCtx *ctx, const char *graph_name) {
   gc->graph_name = strdup(graph_name);
   gc->node_stores = calloc(GRAPH_DEFAULT_LABEL_CAP, sizeof(LabelStore*));
   gc->relation_stores = calloc(GRAPH_DEFAULT_RELATION_CAP, sizeof(LabelStore*));
+  gc->indices = NULL;
 
   gc->relation_cap = GRAPH_DEFAULT_RELATION_CAP;
   gc->relation_count = 0;
@@ -65,7 +66,7 @@ void GraphContext_Get(RedisModuleCtx *ctx, const char *graph_name) {
 LabelStore* GraphContext_AddNode(const char *label) {
   if(gc->node_count == gc->node_cap) {
     gc->node_cap += 4;
-    gc->node_stores = realloc(gc->node_stores, (gc->node_cap) * sizeof(LabelStore*));
+    gc->node_stores = realloc(gc->node_stores, gc->node_cap * sizeof(LabelStore*));
     memset(gc->node_stores + gc->node_count, 0, 4 * sizeof(LabelStore*));
   }
   LabelStore *store = LabelStore_New(gc->ctx, STORE_NODE, gc->graph_name, label, gc->node_count);
@@ -75,15 +76,18 @@ LabelStore* GraphContext_AddNode(const char *label) {
   return store;
 }
 
-void GraphContext_AddRelation(const char *label) {
+LabelStore* GraphContext_AddRelation(const char *label) {
   if(gc->relation_count == gc->relation_cap) {
     gc->relation_cap += 4;
-    gc->relation_stores = realloc(gc->relation_stores, (gc->relation_cap) * sizeof(LabelStore*));
+    gc->relation_stores = realloc(gc->relation_stores, gc->relation_cap * sizeof(LabelStore*));
     memset(gc->relation_stores + gc->relation_count, 0, 4 * sizeof(LabelStore*));
   }
-  // TODO This function is pointless until bringing back the relationship label string array
-  // or updating it to handle stores like AddNode
-  // gc->relation_stores[gc->relation_count++].label = strdup(label);
+
+  LabelStore *store = LabelStore_New(gc->ctx, STORE_EDGE, gc->graph_name, label, gc->relation_count);
+  gc->relation_stores[gc->relation_count] = store;
+  gc->relation_count++;
+
+  return store;
 }
 
 int GraphContext_GetLabelID(const char *label, LabelStoreType t) {
@@ -146,8 +150,24 @@ LabelStore* GraphContext_GetNodeStore(const char *label) {
   return store;
 }
 
+LabelStore* GraphContext_GetRelationStore(const char *label) {
+  // Check cached stores
+  int id = GraphContext_GetLabelID(label, STORE_EDGE);
+  if (id != GRAPH_NO_LABEL) return gc->relation_stores[id];
+
+  // If store is not cached, retrieve from keyspace
+  LabelStore *store = LabelStore_Get(gc->ctx, STORE_EDGE, gc->graph_name, label);
+  if (!store) return NULL;
+
+  assert(store->id < gc->relation_count);
+  gc->relation_stores[store->id] = store;
+
+  return store;
+}
+
 void GraphContext_Free() {
-  free(gc->graph_name);
-  free(gc);
+  // TODO double free possible on flushdb
+  // free(gc->graph_name);
+  // free(gc);
 }
 

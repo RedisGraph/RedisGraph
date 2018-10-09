@@ -37,7 +37,7 @@ void GraphContext_New(RedisModuleCtx *ctx, const char *graph_name);
 void GraphContext_Get(RedisModuleCtx *ctx, const char *graph_name);
 
 LabelStore* GraphContext_AddNode(const char *label);
-void GraphContext_AddRelation(const char *label);
+LabelStore* GraphContext_AddRelation(const char *label);
 
 int GraphContext_GetLabelID(const char *label, LabelStoreType t);
 
@@ -47,6 +47,7 @@ void GraphContext_AddIndex(Index* idx);
 
 LabelStore* GraphContext_AllStore(LabelStoreType t);
 LabelStore* GraphContext_GetNodeStore(const char *label);
+LabelStore* GraphContext_GetRelationStore(const char *label);
 
 void GraphContext_Free();
 
