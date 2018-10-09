@@ -700,6 +700,7 @@ void Graph_Free(Graph *g) {
     while ((node = (GraphEntity*)DataBlockIterator_Next(it)) != NULL) {
       FreeGraphEntity(node);
     }
+    // Free node iterator.
     DataBlockIterator_Free(it);
 
     it = Graph_ScanEdges(g);
@@ -707,6 +708,9 @@ void Graph_Free(Graph *g) {
     while ((edge = (Edge*)DataBlockIterator_Next(it)) != NULL) {
       Edge_Free(edge);
     }
+
+    // Free edge iterator.
+    DataBlockIterator_Free(it);
     // Free node blocks.
     DataBlock_Free(g->nodes);
     // Free the edges hash table before modifying the edge blocks.

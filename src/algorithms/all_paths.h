@@ -12,6 +12,8 @@
 #include "../graph/graph.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 
+#define PATH_UNBOUNDED (UINT_MAX - 1)
+
 /* Find all paths of length between minLength and maxLength starting at src.
  * A path is an array of edges, where edge at position i
  * leads to edge at position i+1.
@@ -25,7 +27,7 @@ size_t AllPaths
     NodeID src,             // Node from which to traverse.
     unsigned int minLen,    // Path minimum length.
     unsigned int maxLen,    // Path max length.
-    size_t *pathsCap,       // Size of paths.
+    size_t *pathsCap,       // Number of paths.
     Path **paths            // Pre allocated array.
 );
 
