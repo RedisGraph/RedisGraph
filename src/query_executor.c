@@ -185,7 +185,7 @@ void MGraph_ReleaseLock(RedisModuleCtx *ctx) {
 
 //------------------------------------------------------------------------------
 
-Graph *MGraph_CreateGraph(RedisModuleCtx *ctx, RedisModuleString *graph_name, const char *name_str) {
+GraphContext *MGraph_CreateGraph(RedisModuleCtx *ctx, RedisModuleString *graph_name, const char *name_str) {
     Graph *g = NULL;
     RedisModuleKey *key = RedisModule_OpenKey(ctx, graph_name, REDISMODULE_WRITE);
 
@@ -200,9 +200,9 @@ Graph *MGraph_CreateGraph(RedisModuleCtx *ctx, RedisModuleString *graph_name, co
     RedisModule_CloseKey(key);
 
     // TODO can place this in cmd_query and cmd_bulk_insert instead
-    GraphContext_New(ctx, name_str);
+    GraphContext *gc = GraphContext_New(ctx, graph_name, name_str);
 
-    return g;
+    return gc;
 }
 
 /* Construct an expression tree foreach none aggregated term.

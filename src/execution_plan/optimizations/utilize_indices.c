@@ -52,9 +52,9 @@ void _locateScanOp(OpBase *root, Vector *scanOps) {
   }
 }
 
-void utilizeIndices(RedisModuleCtx *ctx, const char *graph_name, ExecutionPlan *plan) {
+void utilizeIndices(GraphContext *gc, ExecutionPlan *plan) {
   // Return immediately if the graph has no indices
-  if (!GraphContext_HasIndices()) return;
+  if (!GraphContext_HasIndices(gc)) return;
 
   // Collect all label scans
   Vector *scanOps = NewVector(NodeByLabelScan*, 0);
@@ -123,7 +123,7 @@ void utilizeIndices(RedisModuleCtx *ctx, const char *graph_name, ExecutionPlan *
 
       // Try to retrieve an index if one has not been selected yet
       if (!idx) {
-        idx = GraphContext_GetIndex(label, filterProp);
+        idx = GraphContext_GetIndex(gc, label, filterProp);
         // idx = Index_Get(ctx, graph_name, label, filterProp);
         if (!idx) continue;
         iter = IndexIter_Create(idx, constVal.type);

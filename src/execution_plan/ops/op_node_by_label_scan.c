@@ -7,16 +7,16 @@
 
 #include "op_node_by_label_scan.h"
 
-OpBase *NewNodeByLabelScanOp(RedisModuleCtx *ctx, Graph *g, const char *graph_name, Node *node) {
+OpBase *NewNodeByLabelScanOp(GraphContext *gc, Node *node) {
     NodeByLabelScan *nodeByLabelScan = malloc(sizeof(NodeByLabelScan));
-    nodeByLabelScan->g = g;
+    nodeByLabelScan->g = gc->g;
     nodeByLabelScan->node = node;
     nodeByLabelScan->_zero_matrix = NULL;
 
     /* Find out label matrix ID. */
-    int label_id = GraphContext_GetLabelID(node->label, STORE_NODE);
+    int label_id = GraphContext_GetLabelID(gc, node->label, STORE_NODE);
     if (label_id != GRAPH_NO_LABEL) {
-        nodeByLabelScan->iter = TuplesIter_new(Graph_GetLabel(g, label_id));
+        nodeByLabelScan->iter = TuplesIter_new(Graph_GetLabel(gc->g, label_id));
     } else {
         /* Label does not exists, use a fake empty matrix. */
         GrB_Matrix_new(&nodeByLabelScan->_zero_matrix, GrB_BOOL, 1, 1);

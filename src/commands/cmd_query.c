@@ -25,7 +25,9 @@ void _queryContext_Free(QueryContext* ctx) {
     free(ctx);
 }
 
-void _index_operation(RedisModuleCtx *ctx, const char *graphName, Graph *g, AST_IndexNode *indexNode) {
+void _index_operation(GraphContext *gc, AST_IndexNode *indexNode) {
+  RedisModuleCtx *ctx = gc->ctx;
+  Graph *g = gc->g;
   /* Set up nested array response for index creation and deletion.
    * As we need no result set, there is only one top-level element, for statistics.
    * Index_Create or Index_Delete will enqueue one string response
@@ -37,21 +39,21 @@ void _index_operation(RedisModuleCtx *ctx, const char *graphName, Graph *g, AST_
   int ret;
   switch(indexNode->operation) {
     case CREATE_INDEX:
-      if (GraphContext_GetIndex(indexNode->label, indexNode->property)) {
+      if (GraphContext_GetIndex(gc, indexNode->label, indexNode->property)) {
         RedisModule_ReplyWithSimpleString(ctx, "(no changes, no records)");
       } else {
         // retrieve label matrix
-        LabelStore *store = GraphContext_GetNodeStore(indexNode->label);
+        LabelStore *store = GraphContext_GetNodeStore(gc, indexNode->label);
         const GrB_Matrix label_matrix = Graph_GetLabel(g, store->id);
         TuplesIter *it = TuplesIter_new(label_matrix);
         Index *idx = Index_Create(g->nodes, it, indexNode->label, indexNode->property);
-        GraphContext_AddIndex(idx);
+        GraphContext_AddIndex(gc, idx);
         RedisModule_ReplyWithSimpleString(ctx, "Added 1 index.");
         TuplesIter_free(it);
       }
       break;
     case DROP_INDEX:
-      ret = Index_Delete(ctx, graphName, indexNode->label, indexNode->property);
+      ret = Index_Delete(ctx, gc->graph_name, indexNode->label, indexNode->property);
       if (ret == INDEX_OK) {
         RedisModule_ReplyWithSimpleString(ctx, "Removed 1 index.");
       } else {
@@ -83,11 +85,11 @@ void _MGraph_Query(void *args) {
     if(AST_ReadOnly(ast)) MGraph_AcquireReadLock();
     else MGraph_AcquireWriteLock(ctx);
 
-    // Try to get graph.
-    Graph *g = Graph_Get(ctx, qctx->graphName);
-    if(!g) {
+    // Try to get graph context.
+    GraphContext *gc = GraphContext_Get(ctx, qctx->graphName, graph_name);
+    if(!gc) {
         if(ast->createNode || ast->mergeNode) {
-            g = MGraph_CreateGraph(ctx, qctx->graphName, graph_name);
+            gc = MGraph_CreateGraph(ctx, qctx->graphName, graph_name);
             /* TODO: free graph if no entities were created. */
         } else {
             RedisModule_ReplyWithError(ctx, "key doesn't contains a graph object.");
@@ -96,11 +98,10 @@ void _MGraph_Query(void *args) {
         }
     }
 
-    GraphContext_Get(ctx, graph_name);
     if (ast->indexNode) { // index operation
-        _index_operation(ctx, graph_name, g, ast->indexNode);
+        _index_operation(gc, ast->indexNode);
     } else {
-        ExecutionPlan *plan = NewExecutionPlan(ctx, g, graph_name, ast, false);
+        ExecutionPlan *plan = NewExecutionPlan(gc, ast, false);
         resultSet = ExecutionPlan_Execute(plan);
         ExecutionPlanFree(plan);
         ResultSet_Replay(resultSet);    // Send result-set back to client.

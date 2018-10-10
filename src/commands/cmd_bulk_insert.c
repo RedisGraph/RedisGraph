@@ -38,17 +38,14 @@ void _MGraph_BulkInsert(void *args) {
     size_t nodes = 0;   // Number of nodes created.
     size_t edges = 0;   // Number of edge created.
 
-    // Try to get graph, if graph does not exists create it.
-    Graph *g = Graph_Get(ctx, rs_graph_name);
-    if (g == NULL) g = MGraph_CreateGraph(ctx, rs_graph_name, graph_name);
+    // Try to retrieve GraphContext. If context and graph do not exist, create them.
+    GraphContext *gc = GraphContext_Get(ctx, rs_graph_name, graph_name);
+    if (gc == NULL) gc = MGraph_CreateGraph(ctx, rs_graph_name, graph_name);
 
     // Exit if graph creation failed
-    if (g == NULL) goto cleanup;
+    if (gc == NULL) goto cleanup;
 
-    // Retrieve graph context
-    GraphContext_Get(ctx, graph_name);
-
-    int rc = Bulk_Insert(ctx, argv+2, argc-2, g, graph_name, &nodes, &edges);
+    int rc = Bulk_Insert(argv+2, argc-2, gc, &nodes, &edges);
 
     // Exit if insertion failed
     if (rc == BULK_FAIL) goto cleanup;

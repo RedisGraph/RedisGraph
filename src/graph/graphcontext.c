@@ -1,9 +1,6 @@
 #include "graphcontext.h"
 #include "graphcontext_type.h"
 
-// TODO Change to portable thread_local definition
-_Thread_local GraphContext *gc;
-
 RedisModuleKey* GraphContext_Key(RedisModuleCtx *ctx, const char *graph_name) {
   int keylen = strlen(graph_name) + 4;
   char strKey[keylen + 1];
@@ -16,9 +13,13 @@ RedisModuleKey* GraphContext_Key(RedisModuleCtx *ctx, const char *graph_name) {
   return key;
 }
 
-void GraphContext_New(RedisModuleCtx *ctx, const char *graph_name) {
-  gc = malloc(sizeof(GraphContext));
+GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rm_name, const char *graph_name) {
+  Graph *g = Graph_Get(ctx, rm_name);
+  if (!g) return NULL;
+
+  GraphContext *gc = malloc(sizeof(GraphContext));
   gc->ctx = ctx;
+  gc->g = g;
   gc->graph_name = strdup(graph_name);
   gc->node_stores = calloc(GRAPH_DEFAULT_LABEL_CAP, sizeof(LabelStore*));
   gc->relation_stores = calloc(GRAPH_DEFAULT_RELATION_CAP, sizeof(LabelStore*));
@@ -41,30 +42,38 @@ void GraphContext_New(RedisModuleCtx *ctx, const char *graph_name) {
   assert(RedisModule_ModuleTypeGetType(key) == REDISMODULE_KEYTYPE_EMPTY);
   RedisModule_ModuleTypeSetValue(key, GraphContextRedisModuleType, gc);
   RedisModule_CloseKey(key);
+
+  return gc;
 }
 
-// TODO not the best name, as it doesn't return
-void GraphContext_Get(RedisModuleCtx *ctx, const char *graph_name) {
+GraphContext* GraphContext_Get(RedisModuleCtx *ctx, RedisModuleString *rs_graph_name, const char *graph_name) {
+  Graph *g = Graph_Get(ctx, rs_graph_name);
+  if (!g) return NULL;
+
   RedisModuleKey *key = GraphContext_Key(ctx, graph_name);
   assert(RedisModule_ModuleTypeGetType(key) == GraphContextRedisModuleType);
-  gc = RedisModule_ModuleTypeGetValue(key);
+  GraphContext *gc = RedisModule_ModuleTypeGetValue(key);
   RedisModule_CloseKey(key);
 
   gc->ctx = ctx;
+  gc->g = g;
   gc->node_allstore = LabelStore_Get(ctx, STORE_NODE, graph_name, NULL);
   gc->relation_allstore = LabelStore_Get(ctx, STORE_EDGE, graph_name, NULL);
 
   // Retrieve all label stores?
-  // Can iterate over all label strings, but that sounds awful
+  // Can iterate over all label strings or serialize them within GraphContext value
+
+  return gc;
 }
 
 // TODO next two functions are nearly identical; maybe consolidate
-LabelStore* GraphContext_AddNode(const char *label) {
+LabelStore* GraphContext_AddNode(GraphContext *gc, const char *label) {
   if(gc->node_count == gc->node_cap) {
     gc->node_cap += 4;
     gc->node_stores = realloc(gc->node_stores, gc->node_cap * sizeof(LabelStore*));
     memset(gc->node_stores + gc->node_count, 0, 4 * sizeof(LabelStore*));
   }
+  // Graph_AddLabel(gc->g);
   LabelStore *store = LabelStore_New(gc->ctx, STORE_NODE, gc->graph_name, label, gc->node_count);
   gc->node_stores[gc->node_count] = store;
   gc->node_count++;
@@ -72,7 +81,7 @@ LabelStore* GraphContext_AddNode(const char *label) {
   return store;
 }
 
-LabelStore* GraphContext_AddRelation(const char *label) {
+LabelStore* GraphContext_AddRelation(GraphContext *gc, const char *label) {
   if(gc->relation_count == gc->relation_cap) {
     gc->relation_cap += 4;
     gc->relation_stores = realloc(gc->relation_stores, gc->relation_cap * sizeof(LabelStore*));
@@ -86,7 +95,7 @@ LabelStore* GraphContext_AddRelation(const char *label) {
   return store;
 }
 
-int GraphContext_GetLabelID(const char *label, LabelStoreType t) {
+int GraphContext_GetLabelID(const GraphContext *gc, const char *label, LabelStoreType t) {
   LabelStore **labels;
   size_t count;
   if (t == STORE_NODE) {
@@ -103,7 +112,7 @@ int GraphContext_GetLabelID(const char *label, LabelStoreType t) {
   return GRAPH_NO_LABEL;
 }
 
-Index* GraphContext_GetIndex(const char *label, const char *property) {
+Index* GraphContext_GetIndex(GraphContext *gc, const char *label, const char *property) {
   Index *idx;
   for (int i = 0; i < gc->index_count; i ++) {
     idx = gc->indices[i];
@@ -112,11 +121,11 @@ Index* GraphContext_GetIndex(const char *label, const char *property) {
   return NULL;
 }
 
-bool GraphContext_HasIndices() {
+bool GraphContext_HasIndices(GraphContext *gc) {
   return gc->index_count > 0;
 }
 
-void GraphContext_AddIndex(Index *idx) {
+void GraphContext_AddIndex(GraphContext *gc, Index *idx) {
   gc->index_count++;
   if (!gc->indices) {
     gc->indices = malloc(gc->index_count * sizeof(Index*));
@@ -126,14 +135,14 @@ void GraphContext_AddIndex(Index *idx) {
   gc->indices[gc->index_count - 1] = idx;
 }
 
-LabelStore* GraphContext_AllStore(LabelStoreType t) {
+LabelStore* GraphContext_AllStore(const GraphContext *gc, LabelStoreType t) {
   if (t == STORE_NODE) return gc->node_allstore;
   return gc->relation_allstore;
 }
 
-LabelStore* GraphContext_GetNodeStore(const char *label) {
+LabelStore* GraphContext_GetNodeStore(const GraphContext *gc, const char *label) {
   // Check cached stores
-  int id = GraphContext_GetLabelID(label, STORE_NODE);
+  int id = GraphContext_GetLabelID(gc, label, STORE_NODE);
   if (id != GRAPH_NO_LABEL) return gc->node_stores[id];
 
   // If store is not cached, retrieve from keyspace
@@ -146,9 +155,9 @@ LabelStore* GraphContext_GetNodeStore(const char *label) {
   return store;
 }
 
-LabelStore* GraphContext_GetRelationStore(const char *label) {
+LabelStore* GraphContext_GetRelationStore(const GraphContext *gc, const char *label) {
   // Check cached stores
-  int id = GraphContext_GetLabelID(label, STORE_EDGE);
+  int id = GraphContext_GetLabelID(gc, label, STORE_EDGE);
   if (id != GRAPH_NO_LABEL) return gc->relation_stores[id];
 
   // If store is not cached, retrieve from keyspace

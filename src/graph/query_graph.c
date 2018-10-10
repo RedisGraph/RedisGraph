@@ -127,9 +127,10 @@ void _MergeNodeWithGraphEntity(Node *n, const AST_GraphEntity *ge) {
     }
 }
 
-void _BuildQueryGraphAddNode(RedisModuleCtx *ctx, const char *graph_name,
-                             const Graph *g, AST_GraphEntity *entity,
+void _BuildQueryGraphAddNode(const GraphContext *gc,
+                             AST_GraphEntity *entity,
                              QueryGraph *qg) {
+    const Graph *g = gc->g;
     /* Check for duplications. */
     Node *n = QueryGraph_GetNodeByAlias(qg, entity->alias);
     if(n == NULL) {
@@ -145,7 +146,7 @@ void _BuildQueryGraphAddNode(RedisModuleCtx *ctx, const char *graph_name,
     /* Set node matrix.
      * TODO: revisit when supporting multiple labels. */
     if(n->label && !n->mat) {
-        LabelStore *s = GraphContext_GetNodeStore(entity->label);
+        LabelStore *s = GraphContext_GetNodeStore(gc, entity->label);
         if(s) {
             n->mat = Graph_GetLabel(g, s->id);
         } else {
@@ -156,9 +157,7 @@ void _BuildQueryGraphAddNode(RedisModuleCtx *ctx, const char *graph_name,
     }
 }
 
-void _BuildQueryGraphAddEdge(RedisModuleCtx *ctx,
-                        const char *graph_name,
-                        const Graph *g,
+void _BuildQueryGraphAddEdge(const GraphContext *gc,
                         AST_GraphEntity *entity,
                         AST_GraphEntity *l_entity,
                         AST_GraphEntity *r_entity,
@@ -167,6 +166,7 @@ void _BuildQueryGraphAddEdge(RedisModuleCtx *ctx,
     /* Check for duplications. */
     if(QueryGraph_GetEdgeByAlias(qg, entity->alias) != NULL) return;
 
+    const Graph *g = gc->g;
     AST_LinkEntity* edge = (AST_LinkEntity*)entity;
     AST_NodeEntity *src_node;
     AST_NodeEntity *dest_node;
@@ -190,7 +190,7 @@ void _BuildQueryGraphAddEdge(RedisModuleCtx *ctx,
         Edge_SetRelationID(e, GRAPH_NO_RELATION);
         e->mat = Graph_GetAdjacencyMatrix(g);
     } else {
-        LabelStore *s = LabelStore_Get(ctx, STORE_EDGE, graph_name, edge->ge.label);
+        LabelStore *s = GraphContext_GetRelationStore(gc, edge->ge.label);
         if(s) {
             Edge_SetRelationID(e, s->id);
             e->mat = Graph_GetRelation(g, s->id);
@@ -220,13 +220,13 @@ QueryGraph* QueryGraph_New(size_t node_cap, size_t edge_cap) {
     return g;
 }
 
-void BuildQueryGraph(RedisModuleCtx *ctx, const Graph *g, const char *graph_name, QueryGraph *qg, Vector *entities) {    
+void BuildQueryGraph(const GraphContext *gc, QueryGraph *qg, Vector *entities) {    
     /* Introduce nodes first. */
     for(int i = 0; i < Vector_Size(entities); i++) {
         AST_GraphEntity *entity;
         Vector_Get(entities, i, &entity);
         if(entity->t != N_ENTITY) continue;
-        _BuildQueryGraphAddNode(ctx, graph_name, g, entity, qg);
+        _BuildQueryGraphAddNode(gc, entity, qg);
     }
 
     /* Introduce edges. */
@@ -239,7 +239,7 @@ void BuildQueryGraph(RedisModuleCtx *ctx, const Graph *g, const char *graph_name
         Vector_Get(entities, i-1, &l_entity);
         Vector_Get(entities, i+1, &r_entity);
 
-        _BuildQueryGraphAddEdge(ctx, graph_name, g, entity, l_entity, r_entity, qg);
+        _BuildQueryGraphAddEdge(gc, entity, l_entity, r_entity, qg);
     }
 }
 
@@ -355,7 +355,8 @@ Edge** QueryGraph_GetEdgeRef(const QueryGraph *g, const Edge *e) {
     return NULL;
 }
 
-ResultSetStatistics CommitGraph(RedisModuleCtx *ctx, const QueryGraph *qg, Graph *g, const char *graph_name) {
+ResultSetStatistics CommitGraph(GraphContext *gc, const QueryGraph *qg) {
+    Graph *g = gc->g;
     ResultSetStatistics stats = {0};
     size_t node_count = qg->node_count;
     size_t edge_count = qg->edge_count;
@@ -363,7 +364,7 @@ ResultSetStatistics CommitGraph(RedisModuleCtx *ctx, const QueryGraph *qg, Graph
     // Start by creating nodes.
     if(node_count > 0) {
         int labels[node_count];
-        LabelStore *allStore = GraphContext_AllStore(STORE_NODE);
+        LabelStore *allStore = GraphContext_AllStore(gc, STORE_NODE);
 
         for(int i = 0; i < node_count; i++) {
             Node *n = qg->nodes[i];
@@ -374,12 +375,12 @@ ResultSetStatistics CommitGraph(RedisModuleCtx *ctx, const QueryGraph *qg, Graph
             if(label == NULL) {
                labels[i] = GRAPH_NO_LABEL; 
             } else {
-                store = GraphContext_GetNodeStore(label);
+                store = GraphContext_GetNodeStore(gc, label);
                 /* This is the first time we encounter label, create its store */
                 if(store == NULL) {
                     // TODO dislike these dual calls
-                    int label_id = Graph_AddLabel(g);
-                    store = GraphContext_AddNode(label);
+                    int label_id = Graph_AddLabel(gc->g);
+                    store = GraphContext_AddNode(gc, label);
                     stats.labels_added++;
                 }
                 labels[i] = store->id;
@@ -422,10 +423,10 @@ ResultSetStatistics CommitGraph(RedisModuleCtx *ctx, const QueryGraph *qg, Graph
             connections[i].srcId = e->src->id;
             connections[i].destId = e->dest->id;
             
-            LabelStore *s = GraphContext_GetRelationStore(e->relationship);
+            LabelStore *s = GraphContext_GetRelationStore(gc, e->relationship);
             if (!s) {
                 Graph_AddRelation(g);
-                s = GraphContext_AddRelation(e->relationship);
+                s = GraphContext_AddRelation(gc, e->relationship);
             }
 
             connections[i].relationId = s->id;

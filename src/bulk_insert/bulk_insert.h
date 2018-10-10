@@ -10,6 +10,7 @@
 
 #include "../redismodule.h"
 #include "../graph/graph.h"
+#include "../graph/graphcontext.h"
 
 #define BULK_OK 1
 #define BULK_FAIL 0
@@ -88,11 +89,9 @@ RELATIONS               // relations section.
 
 /* Parse bulk insert format and inserts new entities */
 int Bulk_Insert (
-    RedisModuleCtx *ctx,        // Redis module context.
     RedisModuleString **argv,   // Arguments passed to bulk insert command.
     int argc,                   // Number of elements in argv.
-    Graph *g,                   // Graph to populate.
-    const char *graph_name,     // Name of the graph.
+    GraphContext *gc,           // GraphContext hosting data stores and Graph.
     size_t *nodes,              // [Optional] number of nodes created.
     size_t *edges               // [Optional] number of edges created.
 );

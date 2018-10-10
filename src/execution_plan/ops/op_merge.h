@@ -22,16 +22,14 @@
 
 typedef struct {
     OpBase op;              // Base op.
-    Graph *g;               // Graph been queried.
+    GraphContext *gc;
     QueryGraph *qg;         // Query graph.
     AST_Query *ast;         // Query abstract syntax tree.
-    RedisModuleCtx *ctx;    // Redis context.
     ResultSet *result_set;  // Required for statistics updates.
-    const char *graph_name; // Required to fetch label stores from keyspace.
     bool matched;           // Was the entire pattern been matched.
 } OpMerge;
 
-OpBase* NewMergeOp(RedisModuleCtx *ctx, Graph *g, QueryGraph *qg, const char *graph_name, ResultSet *result_set);
+OpBase* NewMergeOp(GraphContext *gc, QueryGraph *qg, ResultSet *result_set);
 OpResult OpMergeConsume(OpBase *opBase, Record *r);
 OpResult OpMergeReset(OpBase *ctx);
 void OpMergeFree(OpBase *ctx);

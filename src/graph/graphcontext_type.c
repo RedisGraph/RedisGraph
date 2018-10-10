@@ -34,6 +34,7 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
   }
 
   GraphContext *gc = malloc(sizeof(GraphContext));
+  gc->g = NULL;
   gc->graph_name = RedisModule_LoadStringBuffer(rdb, NULL);
 
   gc->node_cap = RedisModule_LoadUnsigned(rdb);

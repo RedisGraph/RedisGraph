@@ -29,11 +29,9 @@ typedef struct {
 
 typedef struct {
     OpBase op;
-    RedisModuleCtx *ctx;
+    GraphContext *gc;
     AST_Query *ast;
-    Graph *g;
     QueryGraph *qg;
-    const char *graph_name;
 
     NodeCreateCtx *nodes_to_create;
     size_t node_count;
@@ -46,7 +44,7 @@ typedef struct {
     ResultSet *result_set;
 } OpCreate;
 
-OpBase* NewCreateOp(RedisModuleCtx *ctx, AST_Query *ast, Graph *g, QueryGraph *qg, const char *graph_name, ResultSet *result_set);
+OpBase* NewCreateOp(GraphContext *gc, AST_Query *ast, QueryGraph *qg, ResultSet *result_set);
 
 OpResult OpCreateConsume(OpBase *opBase, Record *r);
 OpResult OpCreateReset(OpBase *ctx);

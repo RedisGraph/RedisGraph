@@ -25,8 +25,7 @@ typedef struct {
 } NodeByLabelScan;
 
 /* Creates a new NodeByLabelScan operation */
-OpBase *NewNodeByLabelScanOp(RedisModuleCtx *ctx, Graph *g,
-                             const char *graph_name, Node *node);
+OpBase *NewNodeByLabelScanOp(GraphContext *gc, Node *node);
 
 /* NodeByLabelScan next operation
  * called each time a new ID is required */

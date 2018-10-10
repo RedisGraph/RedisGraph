@@ -11,14 +11,12 @@
 #include "op_merge.h"
 #include <assert.h>
 
-OpBase* NewMergeOp(RedisModuleCtx *ctx, Graph *g, QueryGraph *qg, const char *graph_name, ResultSet *result_set) {
+OpBase* NewMergeOp(GraphContext *gc, QueryGraph *qg, ResultSet *result_set) {
     OpMerge *op_merge = malloc(sizeof(OpMerge));
 
-    op_merge->ctx = ctx;
-    op_merge->g = g;
+    op_merge->gc = gc;
     op_merge->qg = qg;
     op_merge->result_set = result_set;
-    op_merge->graph_name = graph_name;
     op_merge->matched = false;
 
     // Set our Op operations
@@ -54,7 +52,7 @@ OpResult OpMergeReset(OpBase *ctx) {
 
 void _CreateEntities(OpMerge *op) {
     // Commit query graph and set resultset statistics.
-    op->result_set->stats = CommitGraph(op->ctx, op->qg, op->g, op->graph_name);
+    op->result_set->stats = CommitGraph(op->gc, op->qg);
 }
 
 void OpMergeFree(OpBase *ctx) {

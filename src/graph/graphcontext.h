@@ -5,6 +5,7 @@
 #include "../redismodule.h"
 #include "../index/index.h"
 #include "../stores/store.h"
+#include "graph.h"
 
 // graph.h defines
 #define GRAPH_DEFAULT_NODE_CAP 16384    // Default number of nodes a graph can hold before resizing.
@@ -15,6 +16,7 @@
 
 typedef struct {
   RedisModuleCtx *ctx;
+  Graph *g;
   char *graph_name;
 
   // TODO dups of Graph members; should belong exclusively to one
@@ -34,22 +36,22 @@ typedef struct {
 
 RedisModuleKey* GraphContext_Key(RedisModuleCtx *ctx, const char *graph_name);
 
-void GraphContext_New(RedisModuleCtx *ctx, const char *graph_name);
+GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rm_name, const char *graph_name);
 
-void GraphContext_Get(RedisModuleCtx *ctx, const char *graph_name);
+GraphContext* GraphContext_Get(RedisModuleCtx *ctx, RedisModuleString *rs_graph_name, const char *graph_name);
 
-LabelStore* GraphContext_AddNode(const char *label);
-LabelStore* GraphContext_AddRelation(const char *label);
+LabelStore* GraphContext_AddNode(GraphContext *gc, const char *label);
+LabelStore* GraphContext_AddRelation(GraphContext *gc, const char *label);
 
-int GraphContext_GetLabelID(const char *label, LabelStoreType t);
+int GraphContext_GetLabelID(const GraphContext *gc, const char *label, LabelStoreType t);
 
-bool GraphContext_HasIndices(void);
-Index* GraphContext_GetIndex(const char *label, const char *property);
-void GraphContext_AddIndex(Index* idx);
+bool GraphContext_HasIndices(GraphContext *gc);
+Index* GraphContext_GetIndex(GraphContext *gc, const char *label, const char *property);
+void GraphContext_AddIndex(GraphContext *gc, Index* idx);
 
-LabelStore* GraphContext_AllStore(LabelStoreType t);
-LabelStore* GraphContext_GetNodeStore(const char *label);
-LabelStore* GraphContext_GetRelationStore(const char *label);
+LabelStore* GraphContext_AllStore(const GraphContext *gc, LabelStoreType t);
+LabelStore* GraphContext_GetNodeStore(const GraphContext *gc, const char *label);
+LabelStore* GraphContext_GetRelationStore(const GraphContext *gc, const char *label);
 
 void GraphContext_Free(GraphContext *gc);
 

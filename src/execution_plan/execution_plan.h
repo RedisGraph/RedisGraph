@@ -27,16 +27,13 @@ typedef struct {
     OpBase *root;
     QueryGraph *query_graph;
     FT_FilterNode *filter_tree;
-    const char *graph_name;
     ResultSet *result_set;
 } ExecutionPlan;
 
 /* Creates a new execution plan from AST */
 ExecutionPlan* NewExecutionPlan
 (
-    RedisModuleCtx *ctx,        // Redis context
-    Graph *g,                   // Queried graph
-    const char *graph_name,     // Graph ID
+    GraphContext *gc,           // Module context and data stores
     AST_Query *ast,             // Query parsed AST
     bool explain                // Construct execution plan, do not execute
 );

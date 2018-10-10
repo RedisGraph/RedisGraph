@@ -11,11 +11,10 @@
 /* Forward declarations. */
 void _OpUpdate_BuildUpdateEvalCtx(OpUpdate* op, AST_SetNode *setNode);
 
-OpBase* NewUpdateOp(RedisModuleCtx *ctx, AST_Query *ast, ResultSet *result_set, const char *graphName) {
+OpBase* NewUpdateOp(GraphContext *gc, AST_Query *ast, ResultSet *result_set) {
     OpUpdate* op_update = calloc(1, sizeof(OpUpdate));
+    op_update->gc = gc;
     op_update->ast = ast;
-    op_update->ctx = ctx;
-    op_update->graphName = graphName;
     op_update->result_set = result_set;
     op_update->update_expressions = NULL;
     op_update->update_expressions_count = 0;
@@ -137,12 +136,12 @@ void _UpdateSchemas(const OpUpdate *op) {
         /* Locate node label. */
         AST_GraphEntity* ge = MatchClause_GetEntity(op->ast->matchNode, entityAlias);
         char *l = ge->label;
-        LabelStore *store = GraphContext_GetNodeStore(l);
+        LabelStore *store = GraphContext_GetNodeStore(op->gc, l);
         // TODO we don't update allStore if label store isn't found?
         if (!store) continue;
 
         LabelStoreType t = (ge->t == N_ENTITY) ? STORE_NODE : STORE_EDGE;
-        LabelStore *allStore = GraphContext_AllStore(t);
+        LabelStore *allStore = GraphContext_AllStore(op->gc, t);
         LabelStore_UpdateSchema(store, 1, &entityProp);
         LabelStore_UpdateSchema(allStore, 1, &entityProp);
     }

@@ -229,14 +229,14 @@ OpBase* ExecutionPlan_Locate_References(OpBase *root, Vector *references) {
     return op;
 }
 
-ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g,
-                                const char *graph_name,
+ExecutionPlan* NewExecutionPlan(GraphContext *gc,
                                 AST_Query *ast,
                                 bool explain) {
 
+    RedisModuleCtx *ctx = gc->ctx;
+    Graph *g = gc->g;
     ExecutionPlan *execution_plan = (ExecutionPlan*)calloc(1, sizeof(ExecutionPlan));
     // execution_plan->root = NewOpNode(NULL);    
-    execution_plan->graph_name = graph_name;
     execution_plan->result_set = (explain) ? NULL: NewResultSet(ast, ctx);
     execution_plan->filter_tree = NULL;
     Vector *ops = NewVector(OpBase*, 1);
@@ -253,7 +253,7 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g,
 
     // Build the query graph in advance, as it will be used to construct the filter tree
     if(ast->matchNode) {
-        BuildQueryGraph(ctx, g, graph_name, q, ast->matchNode->_mergedPatterns);
+        BuildQueryGraph(gc, q, ast->matchNode->_mergedPatterns);
     }
 
     FT_FilterNode *filter_tree = NULL;
@@ -296,7 +296,7 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g,
                         /* There's no longer need for the last matrix operand
                          * as it's been replaced by label scan. */
                         AlgebraicExpression_RemoveTerm(exp, exp->operand_count-1, NULL);
-                        op = NewNodeByLabelScanOp(ctx, g, graph_name, exp->src_node);
+                        op = NewNodeByLabelScanOp(gc, exp->src_node);
                         Vector_Push(traversals, op);
                     } else {
                         op = NewAllNodeScanOp(g, exp->src_node);
@@ -323,7 +323,7 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g,
                         /* There's no longer need for the last matrix operand
                          * as it's been replaced by label scan. */
                         AlgebraicExpression_RemoveTerm(exp, exp->operand_count-1, NULL);
-                        op = NewNodeByLabelScanOp(ctx, g, graph_name, exp->dest_node);
+                        op = NewNodeByLabelScanOp(gc, exp->dest_node);
                         Vector_Push(traversals, op);
                     } else {
                         op = NewAllNodeScanOp(g, exp->dest_node);
@@ -351,7 +351,7 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g,
                 Vector_Get(pattern, 0, &ge);
                 Node **n = QueryGraph_GetNodeRef(q, QueryGraph_GetNodeByAlias(q, ge->alias));
                 if(ge->label)
-                    op = NewNodeByLabelScanOp(ctx, g, graph_name, *n);
+                    op = NewNodeByLabelScanOp(gc, *n);
                 else
                     op = NewAllNodeScanOp(g, *n);
                 Vector_Push(traversals, op);
@@ -381,14 +381,14 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g,
 
     /* Set root operation */
     if(ast->createNode) {
-        BuildQueryGraph(ctx, g, graph_name, q, ast->createNode->graphEntities);
-        OpBase *opCreate = NewCreateOp(ctx, ast, g, q, graph_name, execution_plan->result_set);
+        BuildQueryGraph(gc, q, ast->createNode->graphEntities);
+        OpBase *opCreate = NewCreateOp(gc, ast, q, execution_plan->result_set);
 
         Vector_Push(ops, opCreate);
     }
 
     if(ast->mergeNode) {
-        OpBase *opMerge = NewMergeOp(ctx, g, q, graph_name, execution_plan->result_set);
+        OpBase *opMerge = NewMergeOp(gc, q, execution_plan->result_set);
         Vector_Push(ops, opMerge);
     }
 
@@ -398,7 +398,7 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g,
     }
 
     if(ast->setNode) {
-        OpBase *op_update = NewUpdateOp(ctx, ast, execution_plan->result_set, graph_name);
+        OpBase *op_update = NewUpdateOp(gc, ast, execution_plan->result_set);
         Vector_Push(ops, op_update);
     }
 
@@ -454,7 +454,7 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g,
     }
     
     Vector_Free(ops);
-    optimizePlan(ctx, graph_name, execution_plan);
+    optimizePlan(gc, execution_plan);
 
     return execution_plan;
 }
