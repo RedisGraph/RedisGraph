@@ -92,7 +92,7 @@ size_t AllPaths
     size_t nodeCount = Graph_NodeCount(g);
     GrB_Matrix_new(&visited, GrB_BOOL, nodeCount, nodeCount);
 
-    unsigned int pathLen = (maxLen == PATH_UNBOUNDED) ? 16 : maxLen - minLen;
+    unsigned int pathLen = MIN(16, maxLen - minLen);
     Path p = Path_new(pathLen);
 
     size_t pathsCount = 0;

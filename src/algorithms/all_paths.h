@@ -12,7 +12,8 @@
 #include "../graph/graph.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 
-#define PATH_UNBOUNDED (UINT_MAX - 1)
+#undef MIN
+#define MIN(a,b) (((a) < (b)) ? (a) : (b))
 
 /* Find all paths of length between minLength and maxLength starting at src.
  * A path is an array of edges, where edge at position i
