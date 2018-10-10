@@ -53,6 +53,9 @@ void _locateScanOp(OpBase *root, Vector *scanOps) {
 }
 
 void utilizeIndices(RedisModuleCtx *ctx, const char *graph_name, ExecutionPlan *plan) {
+  // Return immediately if the graph has no indices
+  if (!GraphContext_HasIndices()) return;
+
   // Collect all label scans
   Vector *scanOps = NewVector(NodeByLabelScan*, 0);
   _locateScanOp(plan->root, scanOps);

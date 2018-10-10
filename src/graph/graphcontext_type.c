@@ -16,6 +16,8 @@ void GraphContextType_RdbSave(RedisModuleIO *rdb, void *value) {
   GraphContext *gc = value;
   RedisModule_SaveStringBuffer(rdb, gc->graph_name, strlen(gc->graph_name) + 1);
 
+  RedisModule_SaveUnsigned(rdb, gc->node_cap);
+  RedisModule_SaveUnsigned(rdb, gc->relation_cap);
   RedisModule_SaveUnsigned(rdb, gc->relation_count);
   RedisModule_SaveUnsigned(rdb, gc->node_count);
   RedisModule_SaveUnsigned(rdb, gc->index_count);
@@ -34,12 +36,14 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
   GraphContext *gc = malloc(sizeof(GraphContext));
   gc->graph_name = RedisModule_LoadStringBuffer(rdb, NULL);
 
+  gc->node_cap = RedisModule_LoadUnsigned(rdb);
+  gc->relation_cap = RedisModule_LoadUnsigned(rdb);
   gc->relation_count = RedisModule_LoadUnsigned(rdb);
   gc->node_count = RedisModule_LoadUnsigned(rdb);
   gc->index_count = RedisModule_LoadUnsigned(rdb);
 
-  gc->node_stores = calloc(gc->node_count, sizeof(LabelStore*));
-  gc->relation_stores = calloc(gc->relation_count, sizeof(LabelStore*));
+  gc->node_stores = calloc(gc->node_cap, sizeof(LabelStore*));
+  gc->relation_stores = calloc(gc->relation_cap, sizeof(LabelStore*));
 
   gc->indices = NULL;
   /* TODO I'm curious about the idea of serializing index keys in Redis as before, and

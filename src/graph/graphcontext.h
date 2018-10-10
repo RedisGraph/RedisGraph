@@ -32,6 +32,8 @@ typedef struct {
   LabelStore **node_stores;
 } GraphContext;
 
+RedisModuleKey* GraphContext_Key(RedisModuleCtx *ctx, const char *graph_name);
+
 void GraphContext_New(RedisModuleCtx *ctx, const char *graph_name);
 
 void GraphContext_Get(RedisModuleCtx *ctx, const char *graph_name);
@@ -49,7 +51,7 @@ LabelStore* GraphContext_AllStore(LabelStoreType t);
 LabelStore* GraphContext_GetNodeStore(const char *label);
 LabelStore* GraphContext_GetRelationStore(const char *label);
 
-void GraphContext_Free();
+void GraphContext_Free(GraphContext *gc);
 
 #endif
 
