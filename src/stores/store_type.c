@@ -68,16 +68,3 @@ void StoreType_Free(void *value) {
     LabelStore_Free(s);
 }
 
-int StoreType_Register(RedisModuleCtx *ctx) {
-    RedisModuleTypeMethods tm = {.version = REDISMODULE_TYPE_METHOD_VERSION,
-                                 .rdb_load = StoreType_RdbLoad,
-                                 .rdb_save = StoreType_RdbSave,
-                                 .aof_rewrite = StoreType_AofRewrite,
-                                 .free = StoreType_Free};
-  
-    StoreRedisModuleType = RedisModule_CreateDataType(ctx, "storetype", STORE_TYPE_ENCODING_VERSION, &tm);
-    if (StoreRedisModuleType == NULL) {
-        return REDISMODULE_ERR;
-    }
-    return REDISMODULE_OK;
-}

@@ -55,6 +55,6 @@ void Build_None_Aggregated_Arithmetic_Expressions(AST_ReturnNode *return_node,
                                                   int *expressions_count);
 
 /* Performs a number of adjustments to given AST. */
-void ModifyAST(RedisModuleCtx *ctx, AST_Query *ast, const char *graph_name);
+void ModifyAST(GraphContext *gc, AST_Query *ast);
 
 #endif

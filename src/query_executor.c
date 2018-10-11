@@ -17,7 +17,7 @@
 #include "arithmetic/repository.h"
 #include "parser/parser_common.h"
 
-static void _returnClause_ExpandCollapsedNodes(RedisModuleCtx *ctx, AST_Query *ast, const char *graphName) {
+static void _returnClause_ExpandCollapsedNodes(GraphContext *gc, AST_Query *ast) {
      /* Create a new return clause */
     Vector *expandReturnElements = NewVector(AST_ReturnElementNode*, Vector_Size(ast->returnNode->returnElements));
 
@@ -49,11 +49,10 @@ static void _returnClause_ExpandCollapsedNodes(RedisModuleCtx *ctx, AST_Query *a
                         
             if(collapsed_entity->label) {
                 /* Collapsed entity has a label. */
-                store = LabelStore_Get(ctx, store_type, graphName, collapsed_entity->label);
+                store = GraphContext_GetStore(gc, collapsed_entity->label, store_type);
             } else {
                 /* Entity does have a label, Consult with "ALL" store. */
-                // The GraphContext has not been instantiated yet, so use keyspace lookup.
-                store = LabelStore_Get(ctx, store_type, graphName, NULL);
+                store = GraphContext_AllStore(gc, store_type);
             }
 
             void *ptr = NULL;       /* Label store property value, (not in use). */
@@ -237,7 +236,7 @@ AST_Validation AST_PerformValidations(RedisModuleCtx *ctx, AST_Query *ast) {
     return AST_VALID;
 }
 
-void ModifyAST(RedisModuleCtx *ctx, AST_Query *ast, const char *graph_name) {
+void ModifyAST(GraphContext *gc, AST_Query *ast) {
     if(ast->mergeNode) {
         /* Create match clause which will try to match 
          * against pattern specified within merge clause. */
@@ -248,7 +247,7 @@ void ModifyAST(RedisModuleCtx *ctx, AST_Query *ast, const char *graph_name) {
 
     if(ReturnClause_ContainsCollapsedNodes(ast->returnNode) == 1) {
         /* Expand collapsed nodes. */
-        _returnClause_ExpandCollapsedNodes(ctx, ast, graph_name);
+        _returnClause_ExpandCollapsedNodes(gc, ast);
     }
 
     _inlineProperties(ast);

@@ -22,8 +22,8 @@ GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rm_name, 
   gc->ctx = ctx;
   gc->g = g;
   gc->graph_name = strdup(graph_name);
-  gc->node_stores = calloc(GRAPH_DEFAULT_LABEL_CAP, sizeof(LabelStore*));
-  gc->relation_stores = calloc(GRAPH_DEFAULT_RELATION_CAP, sizeof(LabelStore*));
+  gc->node_stores = malloc(GRAPH_DEFAULT_LABEL_CAP * sizeof(LabelStore*));
+  gc->relation_stores = malloc(GRAPH_DEFAULT_RELATION_CAP * sizeof(LabelStore*));
   gc->indices = NULL;
 
   gc->relation_cap = GRAPH_DEFAULT_RELATION_CAP;
@@ -32,12 +32,8 @@ GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rm_name, 
   gc->label_count = 0;
   gc->index_count = 0;
 
-  // LabelStore_Get will construct allstores if they don't already exist,
-  // though I'd like to refactor its logic somewhat more generally.
-  gc->node_allstore = LabelStore_Get(ctx, STORE_NODE, graph_name, NULL);
-  gc->relation_allstore = LabelStore_Get(ctx, STORE_EDGE, graph_name, NULL);
-
-  // TODO is there a way to populate store arrays here?
+  gc->node_allstore = LabelStore_New("ALL", GRAPH_NO_LABEL);
+  gc->relation_allstore = LabelStore_New("ALL", GRAPH_NO_RELATION);
 
   RedisModuleKey *key = GraphContext_Key(ctx, graph_name);
   assert(RedisModule_ModuleTypeGetType(key) == REDISMODULE_KEYTYPE_EMPTY);
@@ -59,11 +55,6 @@ GraphContext* GraphContext_Get(RedisModuleCtx *ctx, RedisModuleString *rs_graph_
 
   gc->ctx = ctx;
   gc->g = g;
-  gc->node_allstore = LabelStore_Get(ctx, STORE_NODE, graph_name, NULL);
-  gc->relation_allstore = LabelStore_Get(ctx, STORE_EDGE, graph_name, NULL);
-
-  // Retrieve all label stores?
-  // Can iterate over all label strings or serialize them within GraphContext value
 
   return gc;
 }
@@ -74,14 +65,13 @@ LabelStore* GraphContext_AddLabel(GraphContext *gc, const char *label) {
     gc->label_cap += 4;
     // Add space for additional label stores.
     gc->node_stores = realloc(gc->node_stores, gc->label_cap * sizeof(LabelStore*));
-    memset(gc->node_stores + gc->label_count, 0, 4 * sizeof(LabelStore*));
     // Add space for additional label matrices.
     // TODO is this too much of an abstraction breakage?
     gc->g->_labels = realloc(gc->g->_labels, gc->label_cap * sizeof(GrB_Matrix));
 
   }
   Graph_AddLabel(gc->g);
-  LabelStore *store = LabelStore_New(gc->ctx, STORE_NODE, gc->graph_name, label, gc->label_count);
+  LabelStore *store = LabelStore_New(label, gc->label_count);
   gc->node_stores[gc->label_count] = store;
   gc->label_count++;
 
@@ -92,12 +82,11 @@ LabelStore* GraphContext_AddRelationType(GraphContext *gc, const char *label) {
   if(gc->relation_count == gc->relation_cap) {
     gc->relation_cap += 4;
     gc->relation_stores = realloc(gc->relation_stores, gc->relation_cap * sizeof(LabelStore*));
-    memset(gc->relation_stores + gc->relation_count, 0, 4 * sizeof(LabelStore*));
     gc->g->_relations = realloc(gc->g->_relations, gc->relation_cap * sizeof(GrB_Matrix));
   }
   Graph_AddRelationType(gc->g);
 
-  LabelStore *store = LabelStore_New(gc->ctx, STORE_EDGE, gc->graph_name, label, gc->relation_count);
+  LabelStore *store = LabelStore_New(label, gc->relation_count);
   gc->relation_stores[gc->relation_count] = store;
   gc->relation_count++;
 
@@ -116,7 +105,7 @@ int GraphContext_GetLabelID(const GraphContext *gc, const char *label, LabelStor
   }
 
   for (int i = 0; i < count; i ++) {
-    if (labels[i] && !strcmp(label, labels[i]->label)) return i;
+    if (!strcmp(label, labels[i]->label)) return i;
   }
   return GRAPH_NO_LABEL; // equivalent to GRAPH_NO_RELATION
 }
@@ -150,28 +139,12 @@ LabelStore* GraphContext_AllStore(const GraphContext *gc, LabelStoreType t) {
 }
 
 LabelStore* GraphContext_GetStore(const GraphContext *gc, const char *label, LabelStoreType t) {
-  LabelStore **stores;
-  size_t count;
-  if (t == STORE_NODE) {
-    stores = gc->node_stores;
-    count = gc->label_count;
-  } else {
-    stores = gc->relation_stores;
-    count = gc->relation_count;
-  }
+  LabelStore **stores = (t == STORE_NODE) ? gc->node_stores : gc->relation_stores;
 
-  // Check cached stores
   int id = GraphContext_GetLabelID(gc, label, t);
-  if (id != GRAPH_NO_LABEL) return stores[id];
+  if (id == GRAPH_NO_LABEL) return NULL;
 
-  // If store is not cached, retrieve from keyspace
-  LabelStore *store = LabelStore_Get(gc->ctx, t, gc->graph_name, label);
-  if (!store) return NULL;
-
-  assert(store->id < count);
-  gc->relation_stores[store->id] = store;
-
-  return store;
+  return stores[id];
 }
 
 void GraphContext_Free(GraphContext *gc) {

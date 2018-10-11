@@ -8,7 +8,6 @@
 #include "cmd_delete.h"
 
 #include <assert.h>
-#include "stores/store.h"
 #include "../graph/graph.h"
 #include "../query_executor.h"
 #include "../util/simple_timer.h"
@@ -49,21 +48,6 @@ void _MGraph_Delete(void *args) {
 
     // Graph does not exists, nothing to delete.
     if(!g) goto cleanup;
-
-    // Remove Label stores.
-    size_t keyCount = 0;
-    RedisModuleString **keys = LabelStore_GetKeys(ctx, graphIDStr, &keyCount);
-    assert(keyCount>0 && keys);
-    
-    for(int idx = 0; idx < keyCount; idx++) {
-        RedisModuleString *storeKeyStr = keys[idx];
-        RedisModuleKey *key = RedisModule_OpenKey(ctx, storeKeyStr, REDISMODULE_WRITE);
-        if(RedisModule_DeleteKey(key) != REDISMODULE_OK) {
-            // Log error!
-        }
-        RedisModule_Free(storeKeyStr);
-    }
-    free(keys);
 
     // Remove Graph from Redis keyspace.
     RedisModuleKey *key = RedisModule_OpenKey(ctx, graphID, REDISMODULE_WRITE);

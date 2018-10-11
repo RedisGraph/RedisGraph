@@ -12,8 +12,6 @@
 #include "../graph/entities/graph_entity.h"
 #include "../util/triemap/triemap.h"
 
-#define LABELSTORE_PREFIX "redis_graph_store"
-
 typedef enum {
   STORE_NODE,
   STORE_EDGE,
@@ -26,16 +24,10 @@ typedef struct {
 } LabelStore;
 
 // Creates a new label store.
-LabelStore *LabelStore_New(RedisModuleCtx *ctx, LabelStoreType type, const char *graph, const char* label, int id);
-
-/* Get a label store. */
-LabelStore *LabelStore_Get(RedisModuleCtx *ctx, LabelStoreType type, const char *graph, const char* label);
+LabelStore* LabelStore_New(const char *label, int id);
 
 /* Update store schema with given properties. */
 void LabelStore_UpdateSchema(LabelStore *store, int prop_count, char **properties);
-
-/* Returns every Redis key name holding a label store object, for given graph. */
-RedisModuleString **LabelStore_GetKeys(RedisModuleCtx *ctx, const char *graphID, size_t *keyCount);
 
 /* Free store. */
 void LabelStore_Free(LabelStore *store);

@@ -8,6 +8,7 @@
 #include "graphcontext.h"
 #include "graphcontext_type.h"
 #include "../index/index_type.h"
+#include "../stores/store_type.h"
 
 /* Declaration of the type for redis registration. */
 RedisModuleType *GraphContextRedisModuleType;
@@ -21,6 +22,20 @@ void GraphContextType_RdbSave(RedisModuleIO *rdb, void *value) {
   RedisModule_SaveUnsigned(rdb, gc->relation_count);
   RedisModule_SaveUnsigned(rdb, gc->label_count);
   RedisModule_SaveUnsigned(rdb, gc->index_count);
+
+  // Serialize label all store
+  StoreType_RdbSave(rdb, gc->node_allstore);
+  // Serialize each label store
+  for (int i = 0; i < gc->label_count; i ++) {
+    StoreType_RdbSave(rdb, gc->node_stores[i]);
+  }
+
+  // Serialize relation all store
+  StoreType_RdbSave(rdb, gc->relation_allstore);
+  // Serialize each relation type store
+  for (int i = 0; i < gc->relation_count; i ++) {
+    StoreType_RdbSave(rdb, gc->relation_stores[i]);
+  }
 
   for (int i = 0; i < gc->index_count; i ++) {
     // TODO make better solution
@@ -43,14 +58,25 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
   gc->label_count = RedisModule_LoadUnsigned(rdb);
   gc->index_count = RedisModule_LoadUnsigned(rdb);
 
-  gc->node_stores = calloc(gc->label_cap, sizeof(LabelStore*));
-  gc->relation_stores = calloc(gc->relation_cap, sizeof(LabelStore*));
+  // Retrieve all store for labels
+  gc->node_allstore = StoreType_RdbLoad(rdb, encver);
+
+  // Retrieve each label store
+  gc->node_stores = malloc(gc->label_cap * sizeof(LabelStore*));
+  for (int i = 0; i < gc->label_count; i ++) {
+    gc->node_stores[i] = StoreType_RdbLoad(rdb, encver);
+  }
+
+  // Retrieve all store for relations
+  gc->relation_allstore = StoreType_RdbLoad(rdb, encver);
+
+  // Retrieve each relation type store
+  gc->relation_stores = malloc(gc->relation_cap * sizeof(LabelStore*));
+  for (int i = 0; i < gc->relation_count; i ++) {
+    gc->relation_stores[i] = StoreType_RdbLoad(rdb, encver);
+  }
 
   gc->indices = NULL;
-  /* TODO I'm curious about the idea of serializing index keys in Redis as before, and
-   * retrieving the pointers from the keyspace to save here. That way the keys will still
-   * be modular and we won't have a hugely bloated GraphContext value, but once a GraphContext
-   * is loaded we won't need to access the keyspace to retrieve indices. */
   if (gc->index_count > 0) {
     gc->indices = malloc(gc->index_count * sizeof(Index*));
     for (int i = 0; i < gc->index_count; i ++) {

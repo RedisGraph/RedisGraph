@@ -33,8 +33,7 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     }
 
     ExecutionPlan *plan = NULL;
-    // Try to get graph.
-    // TODO validate
+    // Try to get GraphContext.
     GraphContext *gc = GraphContext_Get(ctx, argv[1], graph_name);
     if(!gc) {
         RedisModule_ReplyWithError(ctx, "key doesn't contains a graph object.");
@@ -44,7 +43,7 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     // Perform query validations before and after ModifyAST
     if (AST_PerformValidations(ctx, ast) != AST_VALID) return REDISMODULE_OK;
 
-    ModifyAST(ctx, ast, graph_name);
+    ModifyAST(gc, ast);
     if (AST_PerformValidations(ctx, ast) != AST_VALID) return REDISMODULE_OK;
 
     if (ast->indexNode != NULL) { // index operation

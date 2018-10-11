@@ -12,9 +12,7 @@
 #include "version.h"
 #include "commands/commands.h"
 #include "graph/graph_type.h"
-#include "index/index_type.h"
 #include "graph/graphcontext_type.h"
-#include "stores/store_type.h"
 #include "util/thpool/thpool.h"
 #include "arithmetic/agg_funcs.h"
 #include "arithmetic/arithmetic_expression.h"
@@ -41,11 +39,6 @@ int _Setup_ThreadPOOL(int threadCount) {
 }
 
 int _RegisterDataTypes(RedisModuleCtx *ctx) {
-    if(StoreType_Register(ctx) == REDISMODULE_ERR) {
-        printf("Failed to register storetype\n");
-        return REDISMODULE_ERR;
-    }
-
     if(GraphType_Register(ctx) == REDISMODULE_ERR) {
         printf("Failed to register graphtype\n");
         return REDISMODULE_ERR;
@@ -53,11 +46,6 @@ int _RegisterDataTypes(RedisModuleCtx *ctx) {
 
     if(GraphContextType_Register(ctx) == REDISMODULE_ERR) {
         printf("Failed to register GraphContext type\n");
-        return REDISMODULE_ERR;
-    }
-
-    if(IndexType_Register(ctx) == REDISMODULE_ERR) {
-        printf("Failed to register indextype\n");
         return REDISMODULE_ERR;
     }
 

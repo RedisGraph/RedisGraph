@@ -75,18 +75,19 @@ void _MGraph_Query(void *args) {
     ResultSet* resultSet = NULL;
     const char *graph_name = RedisModule_StringPtrLen(qctx->graphName, NULL);
 
+    // Try to get graph context.
+    GraphContext *gc = GraphContext_Get(ctx, qctx->graphName, graph_name);
+
     // Perform query validations before and after ModifyAST
     if (AST_PerformValidations(ctx, ast) != AST_VALID) goto cleanup;
 
-    ModifyAST(ctx, ast, graph_name);
+    ModifyAST(gc, ast);
     if (AST_PerformValidations(ctx, ast) != AST_VALID) goto cleanup;
 
     // If this is a write query, acquire write lock.
     if(AST_ReadOnly(ast)) MGraph_AcquireReadLock();
     else MGraph_AcquireWriteLock(ctx);
 
-    // Try to get graph context.
-    GraphContext *gc = GraphContext_Get(ctx, qctx->graphName, graph_name);
     if(!gc) {
         if(ast->createNode || ast->mergeNode) {
             gc = MGraph_CreateGraph(ctx, qctx->graphName, graph_name);
