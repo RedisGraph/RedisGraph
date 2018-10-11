@@ -14,8 +14,9 @@ RedisModuleKey* GraphContext_Key(RedisModuleCtx *ctx, const char *graph_name) {
 }
 
 GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rm_name, const char *graph_name) {
+  if (GraphContext_Get(ctx, rm_name, graph_name) != NULL) return NULL;
+
   Graph *g = Graph_Get(ctx, rm_name);
-  if (!g) return NULL;
 
   GraphContext *gc = malloc(sizeof(GraphContext));
   gc->ctx = ctx;
@@ -51,7 +52,8 @@ GraphContext* GraphContext_Get(RedisModuleCtx *ctx, RedisModuleString *rs_graph_
   if (!g) return NULL;
 
   RedisModuleKey *key = GraphContext_Key(ctx, graph_name);
-  assert(RedisModule_ModuleTypeGetType(key) == GraphContextRedisModuleType);
+  if (RedisModule_ModuleTypeGetType(key) != GraphContextRedisModuleType) return NULL;
+
   GraphContext *gc = RedisModule_ModuleTypeGetValue(key);
   RedisModule_CloseKey(key);
 
@@ -109,7 +111,7 @@ int GraphContext_GetLabelID(const GraphContext *gc, const char *label, LabelStor
   for (int i = 0; i < count; i ++) {
     if (labels[i] && !strcmp(label, labels[i]->label)) return i;
   }
-  return GRAPH_NO_LABEL;
+  return GRAPH_NO_LABEL; // equivalent to GRAPH_NO_RELATION
 }
 
 Index* GraphContext_GetIndex(GraphContext *gc, const char *label, const char *property) {
@@ -140,31 +142,26 @@ LabelStore* GraphContext_AllStore(const GraphContext *gc, LabelStoreType t) {
   return gc->relation_allstore;
 }
 
-LabelStore* GraphContext_GetNodeStore(const GraphContext *gc, const char *label) {
+LabelStore* GraphContext_GetStore(const GraphContext *gc, const char *label, LabelStoreType t) {
+  LabelStore **stores;
+  size_t count;
+  if (t == STORE_NODE) {
+    stores = gc->node_stores;
+    count = gc->node_count;
+  } else {
+    stores = gc->relation_stores;
+    count = gc->relation_count;
+  }
+
   // Check cached stores
-  int id = GraphContext_GetLabelID(gc, label, STORE_NODE);
-  if (id != GRAPH_NO_LABEL) return gc->node_stores[id];
+  int id = GraphContext_GetLabelID(gc, label, t);
+  if (id != GRAPH_NO_LABEL) return stores[id];
 
   // If store is not cached, retrieve from keyspace
-  LabelStore *store = LabelStore_Get(gc->ctx, STORE_NODE, gc->graph_name, label);
+  LabelStore *store = LabelStore_Get(gc->ctx, t, gc->graph_name, label);
   if (!store) return NULL;
 
-  assert(store->id < gc->node_count);
-  gc->node_stores[store->id] = store;
-
-  return store;
-}
-
-LabelStore* GraphContext_GetRelationStore(const GraphContext *gc, const char *label) {
-  // Check cached stores
-  int id = GraphContext_GetLabelID(gc, label, STORE_EDGE);
-  if (id != GRAPH_NO_LABEL) return gc->relation_stores[id];
-
-  // If store is not cached, retrieve from keyspace
-  LabelStore *store = LabelStore_Get(gc->ctx, STORE_EDGE, gc->graph_name, label);
-  if (!store) return NULL;
-
-  assert(store->id < gc->relation_count);
+  assert(store->id < count);
   gc->relation_stores[store->id] = store;
 
   return store;

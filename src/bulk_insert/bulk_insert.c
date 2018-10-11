@@ -86,7 +86,7 @@ RedisModuleString** _Bulk_Insert_Parse_Labels(GraphContext *gc, LabelDesc *label
         }
 
         // TODO: Have label store hold on to attributes array.
-        LabelStore *store = GraphContext_GetNodeStore(gc, labels[label_idx].label);
+        LabelStore *store = GraphContext_GetStore(gc, labels[label_idx].label, STORE_NODE);
         LabelStore *allStore = GraphContext_AllStore(gc, STORE_NODE);
         if(store == NULL) {
             int label_id = Graph_AddLabel(gc->g);
@@ -297,7 +297,7 @@ RedisModuleString** _Bulk_Insert_Insert_Edges(GraphContext *gc, size_t *edges,
                 return NULL;
             }
             total_labeled_edges += labelRelations[i].edge_count;
-            LabelStore *s = GraphContext_GetRelationStore(gc, labelRelations[i].label);
+            LabelStore *s = GraphContext_GetStore(gc, labelRelations[i].label, STORE_EDGE);
             if(!s) {
                 Graph_AddRelation(g);
                 s = GraphContext_AddRelation(gc, labelRelations[i].label);

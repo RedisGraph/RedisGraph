@@ -146,7 +146,7 @@ void _BuildQueryGraphAddNode(const GraphContext *gc,
     /* Set node matrix.
      * TODO: revisit when supporting multiple labels. */
     if(n->label && !n->mat) {
-        LabelStore *s = GraphContext_GetNodeStore(gc, entity->label);
+        LabelStore *s = GraphContext_GetStore(gc, entity->label, STORE_NODE);
         if(s) {
             n->mat = Graph_GetLabel(g, s->id);
         } else {
@@ -190,7 +190,7 @@ void _BuildQueryGraphAddEdge(const GraphContext *gc,
         Edge_SetRelationID(e, GRAPH_NO_RELATION);
         e->mat = Graph_GetAdjacencyMatrix(g);
     } else {
-        LabelStore *s = GraphContext_GetRelationStore(gc, edge->ge.label);
+        LabelStore *s = GraphContext_GetStore(gc, edge->ge.label, STORE_EDGE);
         if(s) {
             Edge_SetRelationID(e, s->id);
             e->mat = Graph_GetRelation(g, s->id);
@@ -375,7 +375,7 @@ ResultSetStatistics CommitGraph(GraphContext *gc, const QueryGraph *qg) {
             if(label == NULL) {
                labels[i] = GRAPH_NO_LABEL; 
             } else {
-                store = GraphContext_GetNodeStore(gc, label);
+                store = GraphContext_GetStore(gc, label, STORE_NODE);
                 /* This is the first time we encounter label, create its store */
                 if(store == NULL) {
                     // TODO dislike these dual calls
@@ -423,7 +423,7 @@ ResultSetStatistics CommitGraph(GraphContext *gc, const QueryGraph *qg) {
             connections[i].srcId = e->src->id;
             connections[i].destId = e->dest->id;
             
-            LabelStore *s = GraphContext_GetRelationStore(gc, e->relationship);
+            LabelStore *s = GraphContext_GetStore(gc, e->relationship, STORE_EDGE);
             if (!s) {
                 Graph_AddRelation(g);
                 s = GraphContext_AddRelation(gc, e->relationship);

@@ -50,8 +50,7 @@ Index* GraphContext_GetIndex(GraphContext *gc, const char *label, const char *pr
 void GraphContext_AddIndex(GraphContext *gc, Index* idx);
 
 LabelStore* GraphContext_AllStore(const GraphContext *gc, LabelStoreType t);
-LabelStore* GraphContext_GetNodeStore(const GraphContext *gc, const char *label);
-LabelStore* GraphContext_GetRelationStore(const GraphContext *gc, const char *label);
+LabelStore* GraphContext_GetStore(const GraphContext *gc, const char *label, LabelStoreType t);
 
 void GraphContext_Free(GraphContext *gc);
 

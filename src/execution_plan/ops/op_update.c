@@ -136,11 +136,11 @@ void _UpdateSchemas(const OpUpdate *op) {
         /* Locate node label. */
         AST_GraphEntity* ge = MatchClause_GetEntity(op->ast->matchNode, entityAlias);
         char *l = ge->label;
-        LabelStore *store = GraphContext_GetNodeStore(op->gc, l);
+        LabelStoreType t = (ge->t == N_ENTITY) ? STORE_NODE : STORE_EDGE;
+        LabelStore *store = GraphContext_GetStore(op->gc, l, t);
         // TODO we don't update allStore if label store isn't found?
         if (!store) continue;
 
-        LabelStoreType t = (ge->t == N_ENTITY) ? STORE_NODE : STORE_EDGE;
         LabelStore *allStore = GraphContext_AllStore(op->gc, t);
         LabelStore_UpdateSchema(store, 1, &entityProp);
         LabelStore_UpdateSchema(allStore, 1, &entityProp);

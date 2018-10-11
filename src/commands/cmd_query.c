@@ -43,7 +43,7 @@ void _index_operation(GraphContext *gc, AST_IndexNode *indexNode) {
         RedisModule_ReplyWithSimpleString(ctx, "(no changes, no records)");
       } else {
         // retrieve label matrix
-        LabelStore *store = GraphContext_GetNodeStore(gc, indexNode->label);
+        LabelStore *store = GraphContext_GetStore(gc, indexNode->label, STORE_NODE);
         const GrB_Matrix label_matrix = Graph_GetLabel(g, store->id);
         TuplesIter *it = TuplesIter_new(label_matrix);
         Index *idx = Index_Create(g->nodes, it, indexNode->label, indexNode->property);

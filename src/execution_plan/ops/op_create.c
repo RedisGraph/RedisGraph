@@ -194,7 +194,7 @@ void _CommitNewEntities(OpCreate *op) {
             if(label == NULL) {
                labels[i] = GRAPH_NO_LABEL; 
             } else {
-                store = GraphContext_GetNodeStore(op->gc, label);
+                store = GraphContext_GetStore(op->gc, label, STORE_NODE);
                 if(store == NULL) {
                     // TODO merge dual calls
                     int label_id = Graph_AddLabel(g);
@@ -228,7 +228,7 @@ void _CommitNewEntities(OpCreate *op) {
             Edge *e;
             Vector_Get(op->created_edges, i, &e);
 
-            LabelStore *s = GraphContext_GetRelationStore(op->gc, e->relationship);
+            LabelStore *s = GraphContext_GetStore(op->gc, e->relationship, STORE_EDGE);
             if (!s) {
                 Graph_AddRelation(g);
                 s = GraphContext_AddRelation(op->gc, e->relationship);
