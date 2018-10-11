@@ -196,9 +196,7 @@ void _CommitNewEntities(OpCreate *op) {
             } else {
                 store = GraphContext_GetStore(op->gc, label, STORE_NODE);
                 if(store == NULL) {
-                    // TODO merge dual calls
-                    int label_id = Graph_AddLabel(g);
-                    store = GraphContext_AddNode(op->gc, label);
+                    store = GraphContext_AddLabel(op->gc, label);
                     op->result_set->stats.labels_added++;
                 }
                 labels[i] = store->id;
@@ -230,8 +228,7 @@ void _CommitNewEntities(OpCreate *op) {
 
             LabelStore *s = GraphContext_GetStore(op->gc, e->relationship, STORE_EDGE);
             if (!s) {
-                Graph_AddRelation(g);
-                s = GraphContext_AddRelation(op->gc, e->relationship);
+                s = GraphContext_AddRelationType(op->gc, e->relationship);
             }
 
             connections[i].srcId = Edge_GetSrcNodeID(e);

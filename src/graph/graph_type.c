@@ -47,15 +47,15 @@ void _GraphType_LoadMatrices(RedisModuleIO *rdb, Graph *g) {
 
     uint64_t relationMatricesCount = RedisModule_LoadUnsigned(rdb);
     for(int i = 0; i < relationMatricesCount; i++) {
-        int matrixIdx = Graph_AddRelation(g);
-        GrB_Matrix m = Graph_GetRelation(g, matrixIdx);
+        Graph_AddRelationType(g);
+        GrB_Matrix m = Graph_GetRelation(g, i);
         _GraphType_LoadMatrix(rdb, m);
     }
 
     uint64_t labelMatricesCount = RedisModule_LoadUnsigned(rdb);
     for(int i = 0; i < labelMatricesCount; i++) {
-        int matrixIdx = Graph_AddLabel(g);
-        GrB_Matrix m = Graph_GetLabel(g, matrixIdx);
+        Graph_AddLabel(g);
+        GrB_Matrix m = Graph_GetLabel(g, i);
         _GraphType_LoadMatrix(rdb, m);
     }
 }

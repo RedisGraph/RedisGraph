@@ -16,10 +16,10 @@ void GraphContextType_RdbSave(RedisModuleIO *rdb, void *value) {
   GraphContext *gc = value;
   RedisModule_SaveStringBuffer(rdb, gc->graph_name, strlen(gc->graph_name) + 1);
 
-  RedisModule_SaveUnsigned(rdb, gc->node_cap);
+  RedisModule_SaveUnsigned(rdb, gc->label_cap);
   RedisModule_SaveUnsigned(rdb, gc->relation_cap);
   RedisModule_SaveUnsigned(rdb, gc->relation_count);
-  RedisModule_SaveUnsigned(rdb, gc->node_count);
+  RedisModule_SaveUnsigned(rdb, gc->label_count);
   RedisModule_SaveUnsigned(rdb, gc->index_count);
 
   for (int i = 0; i < gc->index_count; i ++) {
@@ -37,13 +37,13 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
   gc->g = NULL;
   gc->graph_name = RedisModule_LoadStringBuffer(rdb, NULL);
 
-  gc->node_cap = RedisModule_LoadUnsigned(rdb);
+  gc->label_cap = RedisModule_LoadUnsigned(rdb);
   gc->relation_cap = RedisModule_LoadUnsigned(rdb);
   gc->relation_count = RedisModule_LoadUnsigned(rdb);
-  gc->node_count = RedisModule_LoadUnsigned(rdb);
+  gc->label_count = RedisModule_LoadUnsigned(rdb);
   gc->index_count = RedisModule_LoadUnsigned(rdb);
 
-  gc->node_stores = calloc(gc->node_cap, sizeof(LabelStore*));
+  gc->node_stores = calloc(gc->label_cap, sizeof(LabelStore*));
   gc->relation_stores = calloc(gc->relation_cap, sizeof(LabelStore*));
 
   gc->indices = NULL;

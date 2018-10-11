@@ -160,9 +160,9 @@ class AlgebraicExpressionTest: public ::testing::Test {
         DataBlockIterator_Free(it);
 
         // Creates a relation matrices.
-        GrB_Index friend_relation_id = Graph_AddRelation(g);
-        GrB_Index visit_relation_id = Graph_AddRelation(g);
-        GrB_Index war_relation_id = Graph_AddRelation(g);
+        GrB_Index friend_relation_id = Graph_AddRelationType(g);
+        GrB_Index visit_relation_id = Graph_AddRelationType(g);
+        GrB_Index war_relation_id = Graph_AddRelationType(g);
 
         // Introduce relations, connect nodes.
         /* friendship matrix 
@@ -307,7 +307,7 @@ class AlgebraicExpressionTest: public ::testing::Test {
         * MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) */
         QueryGraph *q = QueryGraph_New(1, 1);
 
-        // The following indicies are synced with Graph_AddRelation call order
+        // The following indices are synced with Graph_AddRelationType call order
         // within _build_graph, this is not ideal, but for now this will do.
         int friend_relation_id = 0;
         int visit_relation_id = 1;

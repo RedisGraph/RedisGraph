@@ -31,13 +31,10 @@ typedef struct {
     Edge *_edgesHashTbl;            // Hash table containing edges.
     GrB_Matrix adjacency_matrix;    // Adjacency matrix, holds all graph connections.
     GrB_Matrix *_relations;         // Relation matrices.
-    size_t relation_cap;            // Number of relations graph can hold.
     size_t relation_count;          // Number of relation matrices.
     GrB_Matrix *_labels;            // Label matrices.
-    size_t label_cap;               // Number of labels graph can hold.
     size_t label_count;             // Number of label matrices.    
     pthread_mutex_t _mutex;         // Mutex for accessing critical sections.
-
 } Graph;
 
 // Create a new graph.
@@ -172,7 +169,7 @@ GrB_Matrix Graph_GetRelation (
 );
 
 // Creates a new relation matrix, returns id given to relation.
-int Graph_AddRelation (
+int Graph_AddRelationType (
     Graph *g
 );
 

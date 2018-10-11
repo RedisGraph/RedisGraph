@@ -7,26 +7,18 @@
 #include "../stores/store.h"
 #include "graph.h"
 
-// graph.h defines
-#define GRAPH_DEFAULT_NODE_CAP 16384    // Default number of nodes a graph can hold before resizing.
-#define GRAPH_DEFAULT_RELATION_CAP 16   // Default number of different relationships a graph can hold before resizing.
-#define GRAPH_DEFAULT_LABEL_CAP 16      // Default number of different labels a graph can hold before resizing.
-#define GRAPH_NO_LABEL -1               // Labels are numbered [0-N], -1 represents no label.
-#define GRAPH_NO_RELATION -1            // Relations are numbered [0-N], -1 represents no relation.
-
 typedef struct {
   RedisModuleCtx *ctx;
   Graph *g;
   char *graph_name;
 
-  // TODO dups of Graph members; should belong exclusively to one
-  size_t relation_cap;            // Number of relations graph can hold.
-  size_t relation_count;          // Number of relation matrices.
-  size_t node_cap;               // Number of labels graph can hold.
-  size_t node_count;             // Number of label matrices.
+  unsigned int relation_cap;       // Current allocation size for relation type storage.
+  unsigned int relation_count;     // Number of relation matrices.
+  unsigned int label_cap;          // Current allocation size for node label storage.
+  unsigned int label_count;        // Number of label matrices.
 
   Index **indices;
-  int index_count;
+  unsigned int index_count;
 
   LabelStore *relation_allstore;
   LabelStore *node_allstore;
@@ -40,8 +32,8 @@ GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rm_name, 
 
 GraphContext* GraphContext_Get(RedisModuleCtx *ctx, RedisModuleString *rs_graph_name, const char *graph_name);
 
-LabelStore* GraphContext_AddNode(GraphContext *gc, const char *label);
-LabelStore* GraphContext_AddRelation(GraphContext *gc, const char *label);
+LabelStore* GraphContext_AddLabel(GraphContext *gc, const char *label);
+LabelStore* GraphContext_AddRelationType(GraphContext *gc, const char *label);
 
 int GraphContext_GetLabelID(const GraphContext *gc, const char *label, LabelStoreType t);
 

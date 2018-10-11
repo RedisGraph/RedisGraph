@@ -28,8 +28,8 @@ GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rm_name, 
 
   gc->relation_cap = GRAPH_DEFAULT_RELATION_CAP;
   gc->relation_count = 0;
-  gc->node_cap = GRAPH_DEFAULT_LABEL_CAP;
-  gc->node_count = 0;
+  gc->label_cap = GRAPH_DEFAULT_LABEL_CAP;
+  gc->label_count = 0;
   gc->index_count = 0;
 
   // LabelStore_Get will construct allstores if they don't already exist,
@@ -69,26 +69,33 @@ GraphContext* GraphContext_Get(RedisModuleCtx *ctx, RedisModuleString *rs_graph_
 }
 
 // TODO next two functions are nearly identical; maybe consolidate
-LabelStore* GraphContext_AddNode(GraphContext *gc, const char *label) {
-  if(gc->node_count == gc->node_cap) {
-    gc->node_cap += 4;
-    gc->node_stores = realloc(gc->node_stores, gc->node_cap * sizeof(LabelStore*));
-    memset(gc->node_stores + gc->node_count, 0, 4 * sizeof(LabelStore*));
+LabelStore* GraphContext_AddLabel(GraphContext *gc, const char *label) {
+  if(gc->label_count == gc->label_cap) {
+    gc->label_cap += 4;
+    // Add space for additional label stores.
+    gc->node_stores = realloc(gc->node_stores, gc->label_cap * sizeof(LabelStore*));
+    memset(gc->node_stores + gc->label_count, 0, 4 * sizeof(LabelStore*));
+    // Add space for additional label matrices.
+    // TODO is this too much of an abstraction breakage?
+    gc->g->_labels = realloc(gc->g->_labels, gc->label_cap * sizeof(GrB_Matrix));
+
   }
-  // Graph_AddLabel(gc->g);
-  LabelStore *store = LabelStore_New(gc->ctx, STORE_NODE, gc->graph_name, label, gc->node_count);
-  gc->node_stores[gc->node_count] = store;
-  gc->node_count++;
+  Graph_AddLabel(gc->g);
+  LabelStore *store = LabelStore_New(gc->ctx, STORE_NODE, gc->graph_name, label, gc->label_count);
+  gc->node_stores[gc->label_count] = store;
+  gc->label_count++;
 
   return store;
 }
 
-LabelStore* GraphContext_AddRelation(GraphContext *gc, const char *label) {
+LabelStore* GraphContext_AddRelationType(GraphContext *gc, const char *label) {
   if(gc->relation_count == gc->relation_cap) {
     gc->relation_cap += 4;
     gc->relation_stores = realloc(gc->relation_stores, gc->relation_cap * sizeof(LabelStore*));
     memset(gc->relation_stores + gc->relation_count, 0, 4 * sizeof(LabelStore*));
+    gc->g->_relations = realloc(gc->g->_relations, gc->relation_cap * sizeof(GrB_Matrix));
   }
+  Graph_AddRelationType(gc->g);
 
   LabelStore *store = LabelStore_New(gc->ctx, STORE_EDGE, gc->graph_name, label, gc->relation_count);
   gc->relation_stores[gc->relation_count] = store;
@@ -102,7 +109,7 @@ int GraphContext_GetLabelID(const GraphContext *gc, const char *label, LabelStor
   size_t count;
   if (t == STORE_NODE) {
     labels = gc->node_stores;
-    count = gc->node_count;
+    count = gc->label_count;
   } else {
     labels = gc->relation_stores;
     count = gc->relation_count;
@@ -147,7 +154,7 @@ LabelStore* GraphContext_GetStore(const GraphContext *gc, const char *label, Lab
   size_t count;
   if (t == STORE_NODE) {
     stores = gc->node_stores;
-    count = gc->node_count;
+    count = gc->label_count;
   } else {
     stores = gc->relation_stores;
     count = gc->relation_count;

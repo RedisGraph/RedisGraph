@@ -286,12 +286,10 @@ Graph *Graph_New(size_t n) {
     g->nodes = DataBlock_New(n, sizeof(GraphEntity));
     g->edges = DataBlock_New(n, sizeof(Edge));
     g->_edgesHashTbl = NULL;            // Init to NULL, required by uthash.
-    g->relation_cap = GRAPH_DEFAULT_RELATION_CAP;
     g->relation_count = 0;
-    g->label_cap = GRAPH_DEFAULT_LABEL_CAP;
     g->label_count = 0;
-    g->_relations = rm_malloc(sizeof(GrB_Matrix) * g->relation_cap);
-    g->_labels = rm_malloc(sizeof(GrB_Matrix) * g->label_cap);
+    g->_relations = rm_malloc(sizeof(GrB_Matrix) * GRAPH_DEFAULT_RELATION_CAP);
+    g->_labels = rm_malloc(sizeof(GrB_Matrix) * GRAPH_DEFAULT_LABEL_CAP);
     GrB_Matrix_new(&g->adjacency_matrix, GrB_BOOL, _Graph_NodeCap(g), _Graph_NodeCap(g));
 
     /* TODO: We might want a mutex per matrix,
@@ -608,26 +606,14 @@ DataBlockIterator *Graph_ScanEdges(const Graph *g) {
 
 int Graph_AddLabel(Graph *g) {
     assert(g);
-
-    // Make sure we've got room for a new label matrix.
-    if(g->label_count == g->label_cap) {
-        g->label_cap += 4;   // allocate room for 4 new matrices.
-        g->_labels = realloc(g->_labels, g->label_cap * sizeof(GrB_Matrix));
-    }
-
+    // The array capacity is guaranteed by the GraphContext calling function.
     GrB_Matrix_new(&g->_labels[g->label_count++], GrB_BOOL, _Graph_NodeCap(g), _Graph_NodeCap(g));
     return g->label_count-1;
 }
 
-int Graph_AddRelation(Graph *g) {
+int Graph_AddRelationType(Graph *g) {
     assert(g);
-
-    // Make sure we've got room for a new relation matrix.
-    if(g->relation_count == g->relation_cap) {
-        g->relation_cap += 4;   // allocate room for 4 new matrices.
-        g->_relations = rm_realloc(g->_relations, g->relation_cap * sizeof(GrB_Matrix));
-    }
-
+    // The array capacity is guaranteed by the GraphContext calling function.
     GrB_Matrix_new(&g->_relations[g->relation_count++], GrB_BOOL, _Graph_NodeCap(g), _Graph_NodeCap(g));
     return g->relation_count-1;
 }

@@ -89,8 +89,7 @@ RedisModuleString** _Bulk_Insert_Parse_Labels(GraphContext *gc, LabelDesc *label
         LabelStore *store = GraphContext_GetStore(gc, labels[label_idx].label, STORE_NODE);
         LabelStore *allStore = GraphContext_AllStore(gc, STORE_NODE);
         if(store == NULL) {
-            int label_id = Graph_AddLabel(gc->g);
-            store = GraphContext_AddNode(gc, labels[label_idx].label);
+            store = GraphContext_AddLabel(gc, labels[label_idx].label);
         }
 
         labels[label_idx].label_id = store->id;
@@ -299,8 +298,7 @@ RedisModuleString** _Bulk_Insert_Insert_Edges(GraphContext *gc, size_t *edges,
             total_labeled_edges += labelRelations[i].edge_count;
             LabelStore *s = GraphContext_GetStore(gc, labelRelations[i].label, STORE_EDGE);
             if(!s) {
-                Graph_AddRelation(g);
-                s = GraphContext_AddRelation(gc, labelRelations[i].label);
+                s = GraphContext_AddRelationType(gc, labelRelations[i].label);
                 // TODO: once we'll support edge attribute, need to update store schema.
             }
             labelRelations[i].label_id = s->id;

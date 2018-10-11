@@ -378,9 +378,7 @@ ResultSetStatistics CommitGraph(GraphContext *gc, const QueryGraph *qg) {
                 store = GraphContext_GetStore(gc, label, STORE_NODE);
                 /* This is the first time we encounter label, create its store */
                 if(store == NULL) {
-                    // TODO dislike these dual calls
-                    int label_id = Graph_AddLabel(gc->g);
-                    store = GraphContext_AddNode(gc, label);
+                    store = GraphContext_AddLabel(gc, label);
                     stats.labels_added++;
                 }
                 labels[i] = store->id;
@@ -425,8 +423,7 @@ ResultSetStatistics CommitGraph(GraphContext *gc, const QueryGraph *qg) {
             
             LabelStore *s = GraphContext_GetStore(gc, e->relationship, STORE_EDGE);
             if (!s) {
-                Graph_AddRelation(g);
-                s = GraphContext_AddRelation(gc, e->relationship);
+                s = GraphContext_AddRelationType(gc, e->relationship);
             }
 
             connections[i].relationId = s->id;
