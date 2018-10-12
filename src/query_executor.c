@@ -18,6 +18,10 @@
 #include "parser/parser_common.h"
 
 static void _returnClause_ExpandCollapsedNodes(GraphContext *gc, AST_Query *ast) {
+    /* gc can validly be NULL if the query is a CREATE or MERGE, but in those cases
+     * we would have already issued a syntax error if a return clause was included. */
+    assert(gc);
+
      /* Create a new return clause */
     Vector *expandReturnElements = NewVector(AST_ReturnElementNode*, Vector_Size(ast->returnNode->returnElements));
 
@@ -184,24 +188,9 @@ void MGraph_ReleaseLock(RedisModuleCtx *ctx) {
 
 //------------------------------------------------------------------------------
 
+// TODO elide this function?
 GraphContext *MGraph_CreateGraph(RedisModuleCtx *ctx, RedisModuleString *graph_name, const char *name_str) {
-    Graph *g = NULL;
-    RedisModuleKey *key = RedisModule_OpenKey(ctx, graph_name, REDISMODULE_WRITE);
-
-    // Key does not exists, create a new graph and store within Redis keyspace.
-    if (RedisModule_KeyType(key) == REDISMODULE_KEYTYPE_EMPTY) {
-        g = Graph_New(GRAPH_DEFAULT_NODE_CAP);
-        RedisModule_ModuleTypeSetValue(key, GraphRedisModuleType, g);
-    } else {
-        RedisModule_ReplyWithError(ctx, "Can not create graph, graph ID is used by some other key.");
-    }
-
-    RedisModule_CloseKey(key);
-
-    // TODO can place this in cmd_query and cmd_bulk_insert instead
-    GraphContext *gc = GraphContext_New(ctx, graph_name, name_str);
-
-    return gc;
+    return GraphContext_New(ctx, graph_name, name_str);
 }
 
 /* Construct an expression tree foreach none aggregated term.

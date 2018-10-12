@@ -129,18 +129,3 @@ void IndexType_Free(void *value) {
   Index_Free((Index*)value);
 }
 
-int IndexType_Register(RedisModuleCtx *ctx) {
-  RedisModuleTypeMethods tm = {.version = REDISMODULE_TYPE_METHOD_VERSION,
-                               .rdb_load = IndexType_RdbLoad,
-                               .rdb_save = IndexType_RdbSave,
-                               .aof_rewrite = IndexType_AofRewrite,
-                               .free = IndexType_Free};
-
-  IndexRedisModuleType = RedisModule_CreateDataType(ctx, "indextype", INDEX_TYPE_ENCODING_VERSION, &tm);
-
-  if (IndexRedisModuleType == NULL) {
-    return REDISMODULE_ERR;
-  }
-  return REDISMODULE_OK;
-}
-

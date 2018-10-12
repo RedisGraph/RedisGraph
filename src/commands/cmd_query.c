@@ -75,8 +75,16 @@ void _MGraph_Query(void *args) {
     ResultSet* resultSet = NULL;
     const char *graph_name = RedisModule_StringPtrLen(qctx->graphName, NULL);
 
+    // If this is a write query, acquire write lock.
+    if(AST_ReadOnly(ast)) MGraph_AcquireReadLock();
+    else MGraph_AcquireWriteLock(ctx);
+
     // Try to get graph context.
     GraphContext *gc = GraphContext_Get(ctx, qctx->graphName, graph_name);
+    if (!gc && !ast->createNode && !ast->mergeNode) {
+        RedisModule_ReplyWithError(ctx, "key doesn't contains a graph object.");
+        goto cleanup;
+    }
 
     // Perform query validations before and after ModifyAST
     if (AST_PerformValidations(ctx, ast) != AST_VALID) goto cleanup;
@@ -84,19 +92,9 @@ void _MGraph_Query(void *args) {
     ModifyAST(gc, ast);
     if (AST_PerformValidations(ctx, ast) != AST_VALID) goto cleanup;
 
-    // If this is a write query, acquire write lock.
-    if(AST_ReadOnly(ast)) MGraph_AcquireReadLock();
-    else MGraph_AcquireWriteLock(ctx);
-
     if(!gc) {
-        if(ast->createNode || ast->mergeNode) {
-            gc = MGraph_CreateGraph(ctx, qctx->graphName, graph_name);
-            /* TODO: free graph if no entities were created. */
-        } else {
-            RedisModule_ReplyWithError(ctx, "key doesn't contains a graph object.");
-            MGraph_ReleaseLock(ctx);
-            goto cleanup;
-        }
+        gc = MGraph_CreateGraph(ctx, qctx->graphName, graph_name);
+        /* TODO: free graph if no entities were created. */
     }
 
     if (ast->indexNode) { // index operation
@@ -108,9 +106,6 @@ void _MGraph_Query(void *args) {
         ResultSet_Replay(resultSet);    // Send result-set back to client.
     }
 
-    // Done accessing graph data, release lock.
-    MGraph_ReleaseLock(ctx);
-
     /* Report execution timing. */
     char* strElapsed;
     double t = simple_toc(qctx->tic) * 1000;
@@ -120,6 +115,8 @@ void _MGraph_Query(void *args) {
 
     // Clean up.
 cleanup:
+    // Done accessing graph data, release lock.
+    MGraph_ReleaseLock(ctx);
     Free_AST_Query(ast);
     ResultSet_Free(resultSet);
     RedisModule_FreeThreadSafeContext(ctx);    
