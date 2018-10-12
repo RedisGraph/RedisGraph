@@ -4,7 +4,7 @@ repo_url: https://github.com/RedisLabsModules/redis-graph
 repo_name: RedisLabsModules/redis-graph
 
 google_analytics:
-  - 'UA-92003007-1'
+  - 'UA-92003007-8'
   - 'auto'
 
 use_directory_urls: true
