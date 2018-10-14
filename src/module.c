@@ -8,6 +8,7 @@
 #include <unistd.h>
 #define REDISMODULE_EXPERIMENTAL_API    // Required for block client.
 #include "redismodule.h"
+#include "version.h"
 #include "commands/commands.h"
 #include "graph/graph_type.h"
 #include "index/index_type.h"
@@ -66,7 +67,7 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
     // Initialize read write lock.
     if (pthread_rwlock_init(&_rwlock, NULL)) return REDISMODULE_ERR;
 
-    if (RedisModule_Init(ctx, "graph", 1, REDISMODULE_APIVER_1) == REDISMODULE_ERR) {
+    if (RedisModule_Init(ctx, "graph", REDISGRAPH_MODULE_VERSION, REDISMODULE_APIVER_1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
     }
 
