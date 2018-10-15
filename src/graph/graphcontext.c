@@ -19,17 +19,18 @@ GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rm_name, 
   if (GraphContext_Get(ctx, rm_name, graph_name) != NULL) return NULL;
 
   GraphContext *gc = malloc(sizeof(GraphContext));
-  gc->ctx = ctx;
-  gc->graph_name = strdup(graph_name);
-  gc->node_stores = malloc(GRAPH_DEFAULT_LABEL_CAP * sizeof(LabelStore*));
-  gc->relation_stores = malloc(GRAPH_DEFAULT_RELATION_CAP * sizeof(LabelStore*));
-  gc->indices = NULL;
-
   gc->relation_cap = GRAPH_DEFAULT_RELATION_CAP;
   gc->relation_count = 0;
   gc->label_cap = GRAPH_DEFAULT_LABEL_CAP;
   gc->label_count = 0;
+  gc->index_cap = 4;
   gc->index_count = 0;
+
+  gc->ctx = ctx;
+  gc->graph_name = strdup(graph_name);
+  gc->node_stores = malloc(gc->label_cap * sizeof(LabelStore*));
+  gc->relation_stores = malloc(gc->relation_cap * sizeof(LabelStore*));
+  gc->indices = malloc(gc->index_cap * sizeof(Index*));
 
   gc->node_allstore = LabelStore_New("ALL", GRAPH_NO_LABEL);
   gc->relation_allstore = LabelStore_New("ALL", GRAPH_NO_RELATION);
@@ -47,7 +48,6 @@ GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rm_name, 
   assert(RedisModule_KeyType(key) == REDISMODULE_KEYTYPE_EMPTY);
   RedisModule_ModuleTypeSetValue(key, GraphRedisModuleType, gc->g);
   RedisModule_CloseKey(key);
-
 
   return gc;
 }
@@ -117,6 +117,10 @@ int GraphContext_GetLabelID(const GraphContext *gc, const char *label, LabelStor
   return GRAPH_NO_LABEL; // equivalent to GRAPH_NO_RELATION
 }
 
+bool GraphContext_HasIndices(GraphContext *gc) {
+  return gc->index_count > 0;
+}
+
 Index* GraphContext_GetIndex(GraphContext *gc, const char *label, const char *property) {
   Index *idx;
   for (int i = 0; i < gc->index_count; i ++) {
@@ -126,18 +130,29 @@ Index* GraphContext_GetIndex(GraphContext *gc, const char *label, const char *pr
   return NULL;
 }
 
-bool GraphContext_HasIndices(GraphContext *gc) {
-  return gc->index_count > 0;
+void GraphContext_AddIndex(GraphContext *gc, const char *label, const char *property) {
+  if(gc->index_count == gc->index_cap) {
+    gc->index_cap += 4;
+    gc->indices = realloc(gc->indices, gc->index_cap * sizeof(Index*));
+  }
+
+  LabelStore *store = GraphContext_GetStore(gc, label, STORE_NODE);
+  const GrB_Matrix label_matrix = Graph_GetLabel(gc->g, store->id);
+  TuplesIter *it = TuplesIter_new(label_matrix);
+  Index *idx = Index_Create(gc->g->nodes, it, label, property);
+  TuplesIter_free(it);
+  gc->indices[gc->index_count] = idx;
+  gc->index_count++;
 }
 
-void GraphContext_AddIndex(GraphContext *gc, Index *idx) {
-  gc->index_count++;
-  if (!gc->indices) {
-    gc->indices = malloc(gc->index_count * sizeof(Index*));
-  } else {
-    gc->indices = realloc(gc->indices, gc->index_count * sizeof(Index*));
-  }
-  gc->indices[gc->index_count - 1] = idx;
+int GraphContext_DeleteIndex(GraphContext *gc, const char *label, const char *property) {
+  // TODO don't use this call; need array offset
+  Index *idx = GraphContext_GetIndex(gc, label, property);
+  if (!idx) return INDEX_FAIL;
+
+  Index_Free(idx);
+  // TODO don't leave holes in index array
+  return INDEX_OK;
 }
 
 LabelStore* GraphContext_AllStore(const GraphContext *gc, LabelStoreType t) {
@@ -155,12 +170,11 @@ LabelStore* GraphContext_GetStore(const GraphContext *gc, const char *label, Lab
 }
 
 void GraphContext_Free(GraphContext *gc) {
-  // TODO if the GraphContext is loaded from rdb, it does not own graph_name and should not free it.
   free(gc->graph_name);
   for (int i = 0; i < gc->index_count; i ++) {
     Index_Free(gc->indices[i]);
   }
-  if (gc->indices) free(gc->indices);
+  free(gc->indices);
   free(gc->relation_stores);
   free(gc->node_stores);
   free(gc);

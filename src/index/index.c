@@ -6,21 +6,6 @@
 */
 
 #include "index.h"
-#include "index_type.h"
-
-RedisModuleKey* _index_LookupKey(RedisModuleCtx *ctx, const char *graph, const char *label, const char *property, bool write_access) {
-  char *strKey;
-  int keylen = asprintf(&strKey, "%s_%s_%s_%s", INDEX_PREFIX, graph, label, property);
-
-  RedisModuleString *rmIndexId = RedisModule_CreateString(ctx, strKey, keylen);
-  free(strKey);
-
-  int mode = write_access ? REDISMODULE_WRITE : REDISMODULE_READ;
-  RedisModuleKey *key = RedisModule_OpenKey(ctx, rmIndexId, mode);
-  RedisModule_FreeString(ctx, rmIndexId);
-
-  return key;
-}
 
 /* Memory management and comparator functions that get attached to
  * string and numeric skiplists as function pointers. */
@@ -48,41 +33,6 @@ SIValue* cloneKey(SIValue *property) {
 void freeKey(SIValue *key) {
   SIValue_Free(key);
   free(key);
-}
-
-// TODO Currently not serializing indices in keyspace - see graphcontext_type comment
-/* Construct key and retrieve index from Redis keyspace */
-/*
- * Index* Index_Get(RedisModuleCtx *ctx, const char *graph, const char *label, const char *property) {
- *   Index *idx = NULL;
- *   // Open key with read-only access
- *   RedisModuleKey *key = _index_LookupKey(ctx, graph, label, property, false);
- *
- *   if (RedisModule_ModuleTypeGetType(key) == IndexRedisModuleType) {
- *     idx = RedisModule_ModuleTypeGetValue(key);
- *   }
- *
- *   RedisModule_CloseKey(key);
- *
- *   return idx;
- * }
- */
-
-// TODO non-functional until serialization resolved
-int Index_Delete(RedisModuleCtx *ctx, const char *graphName, const char *label, const char *prop) {
-  // Open key with write access
-  RedisModuleKey *key = _index_LookupKey(ctx, graphName, label, prop, true);
-  if (RedisModule_ModuleTypeGetType(key) != IndexRedisModuleType) {
-    // Reply with error if this key does not exist or does not correspond to an index object
-    RedisModule_CloseKey(key);
-    return INDEX_FAIL;
-  }
-
-  Index *idx = RedisModule_ModuleTypeGetValue(key);
-
-  // The DeleteKey routine will free the index and skiplists
-  RedisModule_DeleteKey(key);
-  return INDEX_OK;
 }
 
 void initializeSkiplists(Index *index) {

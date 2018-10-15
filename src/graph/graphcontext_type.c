@@ -7,7 +7,6 @@
 
 #include "graphcontext.h"
 #include "graphcontext_type.h"
-#include "../index/index_type.h"
 #include "../stores/store_type.h"
 
 /* Declaration of the type for redis registration. */
@@ -19,6 +18,7 @@ void GraphContextType_RdbSave(RedisModuleIO *rdb, void *value) {
 
   RedisModule_SaveUnsigned(rdb, gc->label_cap);
   RedisModule_SaveUnsigned(rdb, gc->relation_cap);
+  RedisModule_SaveUnsigned(rdb, gc->index_cap);
   RedisModule_SaveUnsigned(rdb, gc->relation_count);
   RedisModule_SaveUnsigned(rdb, gc->label_count);
   RedisModule_SaveUnsigned(rdb, gc->index_count);
@@ -37,9 +37,11 @@ void GraphContextType_RdbSave(RedisModuleIO *rdb, void *value) {
     StoreType_RdbSave(rdb, gc->relation_stores[i]);
   }
 
+  Index *idx;
   for (int i = 0; i < gc->index_count; i ++) {
-    // TODO make better solution
-    IndexType_RdbSave(rdb, gc->indices[i]);
+    idx = gc->indices[i];
+    RedisModule_SaveStringBuffer(rdb, idx->label, strlen(idx->label) + 1);
+    RedisModule_SaveStringBuffer(rdb, idx->property, strlen(idx->property) + 1);
   }
 }
 
@@ -50,10 +52,14 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
 
   GraphContext *gc = malloc(sizeof(GraphContext));
   gc->g = NULL;
-  gc->graph_name = RedisModule_LoadStringBuffer(rdb, NULL);
+  // Duplicating string so that it can be safely freed if GraphContext
+  // is deleted.
+  gc->graph_name = strdup(RedisModule_LoadStringBuffer(rdb, NULL));
 
+  // TODO bother serializing caps?
   gc->label_cap = RedisModule_LoadUnsigned(rdb);
   gc->relation_cap = RedisModule_LoadUnsigned(rdb);
+  gc->index_cap = RedisModule_LoadUnsigned(rdb);
   gc->relation_count = RedisModule_LoadUnsigned(rdb);
   gc->label_count = RedisModule_LoadUnsigned(rdb);
   gc->index_count = RedisModule_LoadUnsigned(rdb);
@@ -76,12 +82,12 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
     gc->relation_stores[i] = StoreType_RdbLoad(rdb, encver);
   }
 
-  gc->indices = NULL;
-  if (gc->index_count > 0) {
-    gc->indices = malloc(gc->index_count * sizeof(Index*));
-    for (int i = 0; i < gc->index_count; i ++) {
-      gc->indices[i] = IndexType_RdbLoad(rdb, encver);
-    }
+  gc->indices = malloc(gc->index_cap * sizeof(Index*));
+  for (int i = 0; i < gc->index_count; i ++) {
+    gc->indices[i] = malloc(sizeof(Index));
+    const char *label = RedisModule_LoadStringBuffer(rdb, NULL);
+    const char *property = RedisModule_LoadStringBuffer(rdb, NULL);
+    GraphContext_AddIndex(gc, label, property);
   }
 
   return gc;

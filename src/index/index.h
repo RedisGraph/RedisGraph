@@ -17,7 +17,6 @@
 
 #define INDEX_OK 1
 #define INDEX_FAIL 0
-#define INDEX_PREFIX "redis_graph_INDEX"
 
 typedef skiplistIterator IndexIter;
 
@@ -32,17 +31,6 @@ typedef struct {
   skiplist *string_sl;
   skiplist *numeric_sl;
 } Index;
-
-/* Index_Get attempts to retrieve an index from the Redis keyspace. */
-Index* Index_Get(RedisModuleCtx *ctx, const char *graph, const char *label, const char *property);
-
-/* Index_Delete drops an index from the Redis keyspace and frees its associated constructs.  */
-int Index_Delete(RedisModuleCtx *ctx, const char *graphName, const char *label, const char *prop);
-
-/* initializeSkiplists prepares the string and numeric skiplists for a new Index,
- * pointing them to the appropriate internal comparator routines. It is exposed in
- * the header so that it can be used by the Index load functions in index_type. */
-void initializeSkiplists(Index *index);
 
 /* Index_Create builds an index for a label-property pair so that queries reliant
  * on these entities can use expedited scan logic. */

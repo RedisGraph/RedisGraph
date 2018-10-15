@@ -7,9 +7,7 @@
 
 #include "cmd_query.h"
 #include "../graph/graph.h"
-#include "../index/index.h"
 #include "../query_executor.h"
-#include "../index/index_type.h"
 #include "../util/simple_timer.h"
 #include "../execution_plan/execution_plan.h"
 
@@ -30,31 +28,23 @@ void _index_operation(GraphContext *gc, AST_IndexNode *indexNode) {
   Graph *g = gc->g;
   /* Set up nested array response for index creation and deletion.
    * As we need no result set, there is only one top-level element, for statistics.
-   * Index_Create or Index_Delete will enqueue one string response
-   * to indicate the success of the operation, and the query runtime will be appended
-   * after this call returns. */
+   * We'll enqueue one string response to indicate the operation's success,
+   * and the query runtime will be appended after this call returns. */
   RedisModule_ReplyWithArray(ctx, 1);
   RedisModule_ReplyWithArray(ctx, 2);
 
-  int ret;
   switch(indexNode->operation) {
     case CREATE_INDEX:
       if (GraphContext_GetIndex(gc, indexNode->label, indexNode->property)) {
         RedisModule_ReplyWithSimpleString(ctx, "(no changes, no records)");
       } else {
         // retrieve label matrix
-        LabelStore *store = GraphContext_GetStore(gc, indexNode->label, STORE_NODE);
-        const GrB_Matrix label_matrix = Graph_GetLabel(g, store->id);
-        TuplesIter *it = TuplesIter_new(label_matrix);
-        Index *idx = Index_Create(g->nodes, it, indexNode->label, indexNode->property);
-        GraphContext_AddIndex(gc, idx);
+        GraphContext_AddIndex(gc, indexNode->label, indexNode->property);
         RedisModule_ReplyWithSimpleString(ctx, "Added 1 index.");
-        TuplesIter_free(it);
       }
       break;
     case DROP_INDEX:
-      ret = Index_Delete(ctx, gc->graph_name, indexNode->label, indexNode->property);
-      if (ret == INDEX_OK) {
+      if (GraphContext_DeleteIndex(gc, indexNode->label, indexNode->property) == INDEX_OK) {
         RedisModule_ReplyWithSimpleString(ctx, "Removed 1 index.");
       } else {
         char *reply;
