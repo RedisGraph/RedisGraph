@@ -11,7 +11,6 @@
 #include "./path.h"
 #include "../graph/graph.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
-#include "../util/math.h"
 
 /* Find all paths of length between minLength and maxLength starting at src.
  * A path is an array of edges, where edge at position i

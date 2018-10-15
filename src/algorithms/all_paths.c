@@ -6,6 +6,7 @@
 */
 
 #include <assert.h>
+#include <sys/param.h>
 #include "./all_paths.h"
 
 void _AllPaths
