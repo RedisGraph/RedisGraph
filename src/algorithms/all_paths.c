@@ -6,6 +6,7 @@
 */
 
 #include <assert.h>
+#include <sys/param.h>
 #include "./all_paths.h"
 
 void _AllPaths
@@ -18,7 +19,7 @@ void _AllPaths
     float maxHops,          // Path max length.
     float hop,              // Path current length.
     GrB_Matrix visited,     // Edges visited on path.
-    Path *path,             // Current path.    
+    Path *path,             // Current path.
     size_t *pathsCount,     // Number of paths constructed.
     size_t *pathsCap,       // Paths array capacity.
     Path **paths            // Paths constructed.
@@ -69,7 +70,7 @@ void _AllPaths
             GrB_Matrix_setElement_BOOL(visited, false, neighborID, frontierID);
         }
 
-        free(outGoingEdges);
+        Vector_Free(outGoingEdges);
 }
 
 size_t AllPaths
@@ -92,10 +93,14 @@ size_t AllPaths
     size_t nodeCount = Graph_NodeCount(g);
     GrB_Matrix_new(&visited, GrB_BOOL, nodeCount, nodeCount);
 
-    size_t pathLen = maxLen-minLen;
+    unsigned int pathLen = MIN(16, maxLen - minLen);
     Path p = Path_new(pathLen);
 
     size_t pathsCount = 0;
     _AllPaths(g, Graph_GetNode(g, src), relationID, relation, minLen, maxLen, 0, visited, &p, &pathsCount, pathsCap, paths);
+
+    Path_free(p);
+    GrB_Matrix_free(&visited);
+
     return pathsCount;
 }

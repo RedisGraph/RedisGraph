@@ -25,7 +25,7 @@ size_t AllPaths
     NodeID src,             // Node from which to traverse.
     unsigned int minLen,    // Path minimum length.
     unsigned int maxLen,    // Path max length.
-    size_t *pathsCap,       // Size of paths.
+    size_t *pathsCap,       // Number of paths.
     Path **paths            // Pre allocated array.
 );
 
