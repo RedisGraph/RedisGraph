@@ -128,7 +128,8 @@ OpResult CondTraverseReset(OpBase *ctx) {
 void CondTraverseFree(OpBase *ctx) {
     CondTraverse *op = (CondTraverse*)ctx;
     if(op->iter) TuplesIter_free(op->iter);
-    if(op->F) GrB_Matrix_free(&op->F);
+    // TODO It seems that this should be a safe free, but it causes a lot of errors in parallel queries.
+    // if(op->F) GrB_Matrix_free(&op->F);
     if(op->edges) Vector_Free(op->edges);
     if(op->algebraic_results) AlgebraicExpressionResult_Free(op->algebraic_results);
 }
