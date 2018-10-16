@@ -74,7 +74,7 @@ elseif ("${CMAKE_C_COMPILER_ID}" STREQUAL "Clang")
     # options for clang
     set (CMAKE_C_FLAGS  "-DREDIS_MODULE_TARGET -DMALLOC=rm_malloc -DCALLOC=rm_calloc -DREALLOC=rm_realloc -DFREE=rm_free")
     if (CMAKE_C_COMPILER_VERSION VERSION_LESS 3.3)
-        message (FATAL_ERROR "clang version must be at least 3.3")
+        message (FATAL_ERROR "-g clang version must be at least 3.3")
     endif ( )
 elseif ("${CMAKE_C_COMPILER_ID}" STREQUAL "MSVC")
     # options for MicroSoft Visual Studio
