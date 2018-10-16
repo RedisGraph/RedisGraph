@@ -57,6 +57,8 @@ void _GraphType_LoadMatrices(RedisModuleIO *rdb, Graph *g) {
         GrB_Matrix m = Graph_GetLabel(g, matrixIdx);
         _GraphType_LoadMatrix(rdb, m);
     }
+    // Flush all pending changes to graphs
+    GrB_wait();
 }
 
 void _GraphType_LoadEntity(RedisModuleIO *rdb, GraphEntity *e) {

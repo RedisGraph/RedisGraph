@@ -13,7 +13,7 @@
 #include "../util/simple_timer.h"
 #include "../execution_plan/execution_plan.h"
 
-QueryContext* _queryContext_New(RedisModuleCtx *ctx, RedisModuleBlockedClient *bc, AST_Query* ast, RedisModuleString *graphName) {
+QueryContext* _queryContext_New(RedisModuleBlockedClient *bc, AST_Query* ast, RedisModuleString *graphName) {
     QueryContext* context = malloc(sizeof(QueryContext));
     context->bc = bc;
     context->ast = ast;
@@ -146,8 +146,9 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     RedisModuleBlockedClient *bc =
         RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
 
-    QueryContext *context = _queryContext_New(ctx, bc, ast, argv[1]);
+    QueryContext *context = _queryContext_New(bc, ast, argv[1]);
 
+    RedisModule_RetainString(ctx, argv[1]);
     context->tic[0] = tic[0];
     context->tic[1] = tic[1];    
 
