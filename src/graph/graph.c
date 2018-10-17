@@ -11,6 +11,7 @@
 #include "graph_type.h"
 #include "../util/qsort.h"
 #include "../GraphBLASExt/tuples_iter.h"
+#include "../GraphBLASExt/GxB_Pending.h"
 #include "../util/rmalloc.h"
 
 
@@ -26,22 +27,36 @@ void _Graph_LeaveCriticalSection(Graph *g) {
     pthread_mutex_unlock(&g->_mutex);
 }
 
+/* Force execution of all pending operations on a matrix. */
+static inline void _Graph_SynchronizeMatrix(GrB_Matrix m) {
+    GrB_Index nvals;
+    GrB_Matrix_nvals(&nvals, m);
+}
+
 /* Resize given matrix, such that its number of row and columns
  * matches the number of nodes in the graph. */
 void _Graph_ResizeMatrix(const Graph *g, GrB_Matrix m) {
     GrB_Index n_rows;
-
     GrB_Matrix_nrows(&n_rows, m);
+
+    bool locked = false;
+
     if(n_rows != Graph_NodeCount(g)) {
         _Graph_EnterCriticalSection((Graph *)g);
-        {
-            // Double check now that we're in critical section.
-            GrB_Matrix_nrows(&n_rows, m);
-            if(n_rows != Graph_NodeCount(g))
-                assert(GxB_Matrix_resize(m, Graph_NodeCount(g), Graph_NodeCount(g)) == GrB_SUCCESS);
-        }
-        _Graph_LeaveCriticalSection((Graph *)g);
+        locked = true;
+        // Double check now that we're in critical section.
+        GrB_Matrix_nrows(&n_rows, m);
+        if(n_rows != Graph_NodeCount(g))
+          assert(GxB_Matrix_resize(m, Graph_NodeCount(g), Graph_NodeCount(g)) == GrB_SUCCESS);
     }
+
+    if (GxB_Matrix_Pending(m)) {
+        if (!locked) _Graph_EnterCriticalSection((Graph *)g);
+        locked = true;
+        _Graph_SynchronizeMatrix(m);
+    }
+
+    if (locked) _Graph_LeaveCriticalSection((Graph *)g);
 }
 
 /* Relocate src row and column, overriding dest. */
