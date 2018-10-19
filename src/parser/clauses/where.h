@@ -9,7 +9,7 @@
 #define _CLAUSE_WHERE_H
 
 #include "../../value.h"
-#include "../../rmutil/vector.h"
+#include "../../util/vector.h"
 #include "../../util/triemap/triemap.h"
 #include "../ast_arithmetic_expression.h"
 

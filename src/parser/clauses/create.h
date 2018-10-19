@@ -8,7 +8,7 @@
 #ifndef _CLAUSE_CREATE_H
 #define _CLAUSE_CREATE_H
 
-#include "../../rmutil/vector.h"
+#include "../../util/vector.h"
 #include "../../util/triemap/triemap.h"
 
 typedef struct {

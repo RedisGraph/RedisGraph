@@ -8,7 +8,7 @@
 #ifndef _CLAUSE_ORDER_H
 #define _CLAUSE_ORDER_H
 
-#include "../../rmutil/vector.h"
+#include "../../util/vector.h"
 #include "../ast_common.h"
 
 typedef enum {

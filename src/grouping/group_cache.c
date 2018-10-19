@@ -6,7 +6,7 @@
 */
 
 #include "group_cache.h"
-#include "../rmutil/vector.h"
+#include "../util/vector.h"
 
 void CacheGroupAdd(TrieMap *groups, char *key, Group *group) {
     TrieMap_Add(groups, key, strlen(key), group, NULL);

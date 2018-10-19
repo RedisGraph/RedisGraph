@@ -13,7 +13,7 @@
 #include "resultset_statistics.h"
 #include "../parser/ast.h"
 #include "../redismodule.h"
-#include "../rmutil/vector.h"
+#include "../util/vector.h"
 #include "../util/heap.h"
 #include "../util/triemap/triemap.h"
 

@@ -10,7 +10,7 @@
 #include "filter_tree.h"
 #include "../parser/grammar.h"
 #include "../query_executor.h"
-#include "../rmutil/vector.h"
+#include "../util/vector.h"
 
 FT_FilterNode* LeftChild(const FT_FilterNode *node) { return node->cond.left; }
 FT_FilterNode* RightChild(const FT_FilterNode *node) { return node->cond.right; }

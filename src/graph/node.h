@@ -10,7 +10,7 @@
 
 #include "../value.h"
 #include "graph_entity.h"
-#include "../rmutil/vector.h"
+#include "../util/vector.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 
 /* Forward declaration of edge */

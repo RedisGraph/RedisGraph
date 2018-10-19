@@ -9,7 +9,7 @@
 #define _CLAUSE_MATCH_H
 
 #include "../ast_common.h"
-#include "../../rmutil/vector.h"
+#include "../../util/vector.h"
 #include "../../util/triemap/triemap.h"
 
 typedef struct {

@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include "./rmutil/vector.h"
+#include "./util/vector.h"
 
 typedef char *SIId;
 

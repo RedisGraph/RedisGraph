@@ -11,7 +11,7 @@
 #include "node.h"
 #include "edge.h"
 #include "graph.h"
-#include "../rmutil/vector.h"
+#include "../util/vector.h"
 #include "../resultset/resultset_statistics.h"
 
 #define DEFAULT_GRAPH_CAP 32 /* Number of edges/nodes within the graph. */

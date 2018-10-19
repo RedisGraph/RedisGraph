@@ -8,7 +8,7 @@
 #ifndef _CLAUSE_MERGE_H
 #define _CLAUSE_MERGE_H
 
-#include "../../rmutil/vector.h"
+#include "../../util/vector.h"
 
 typedef struct {
 	Vector *graphEntities; /* Vector of AST_NodeEntity pointers. */
