@@ -12,7 +12,6 @@
 #include "graph/graph_type.h"
 #include "stores/store.h"
 #include "rmutil/vector.h"
-#include "rmutil/util.h"
 #include "parser/grammar.h"
 #include "arithmetic/agg_ctx.h"
 #include "arithmetic/repository.h"

@@ -8,7 +8,6 @@
 #ifndef _FILTER_TREE_H
 #define _FILTER_TREE_H
 
-#include "../value_cmp.h"
 #include "../parser/ast.h"
 #include "../graph/query_graph.h"
 #include "../redismodule.h"

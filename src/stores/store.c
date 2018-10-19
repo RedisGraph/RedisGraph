@@ -7,8 +7,6 @@
 
 #include "store.h"
 #include "store_type.h"
-#include "../rmutil/util.h"
-#include "../rmutil/strings.h"
 #include <assert.h>
 
 /* Generates an ID for a new LabelStore. */

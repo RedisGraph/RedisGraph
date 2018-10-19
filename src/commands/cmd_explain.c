@@ -6,7 +6,6 @@
 */
 
 #include "cmd_explain.h"
-#include "../rmutil/util.h"
 #include "../index/index.h"
 #include "../query_executor.h"
 #include "../execution_plan/execution_plan.h"
@@ -19,9 +18,8 @@
 int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     if (argc < 3) return RedisModule_WrongArity(ctx);
 
-    const char *graph_name;
-    const char *query;
-    RMUtil_ParseArgs(argv, argc, 1, "cc", &graph_name, &query);
+    const char *graph_name = RedisModule_StringPtrLen(argv[1], NULL);
+    const char *query = RedisModule_StringPtrLen(argv[2], NULL);
 
     /* Parse query, get AST. */
     char *errMsg = NULL;
