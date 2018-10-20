@@ -6,7 +6,6 @@
 */
 
 #include "resultset_record.h"
-#include "../rmutil/strings.h"
 #include "../query_executor.h"
 
 ResultSetRecord* NewResultSetRecord(size_t len) {

@@ -9,7 +9,7 @@
 #define _AST_COMMON_H
 
 #include <stdbool.h>
-#include "../rmutil/vector.h"
+#include "../util/vector.h"
 
 typedef enum {
 	N_ENTITY,

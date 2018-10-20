@@ -8,7 +8,7 @@
 #ifndef GROUP_H_
 #define GROUP_H_
 
-#include "../rmutil/vector.h"
+#include "../util/vector.h"
 #include "../arithmetic/agg_ctx.h"
 
 typedef struct {

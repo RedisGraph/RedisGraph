@@ -14,7 +14,7 @@
 #include "../../graph/node.h"
 #include "../../graph/edge.h"
 #include "../../stores/store.h"
-#include "../../rmutil/vector.h"
+#include "../../util/vector.h"
 
 #define OP_REQUIRE_NEW_DATA(opRes) (opRes & (OP_DEPLETED | OP_REFRESH)) > 0
 

@@ -60,12 +60,11 @@ export CC_OBJECTS
 CC_DEPS = $(patsubst %.c, %.d, $(CC_SOURCES) )
 
 # Library dependencies
-LIBRMUTIL=rmutil/librmutil.a
 LIBTRIEMAP=util/triemap/libtriemap.a
 GRAPHBLAS=../deps/GraphBLAS/build/libgraphblas.a
 
 # Compilation deps for the module
-LIBS=$(LIBTRIEMAP) $(LIBRMUTIL) $(GRAPHBLAS)
+LIBS=$(LIBTRIEMAP) $(GRAPHBLAS)
 MODULE=$(CC_OBJECTS) $(LIBS)
 
 %.c: %.y
@@ -79,11 +78,6 @@ all: redisgraph.so
 
 # Include all dependency files for C files
 -include $(CC_DEPS)
-
-# Library compile rules
-$(LIBRMUTIL):
-	$(MAKE) -C rmutil
-.PHONY: $(LIBRMUTIL)
 
 $(LIBTRIEMAP):
 	$(MAKE) -C util/triemap

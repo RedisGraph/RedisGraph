@@ -12,7 +12,7 @@
 #include "../value.h"
 #include "./ast_common.h"
 #include "../redismodule.h"
-#include "../rmutil/vector.h"
+#include "../util/vector.h"
 #include "./clauses/clauses.h"
 
 typedef enum {

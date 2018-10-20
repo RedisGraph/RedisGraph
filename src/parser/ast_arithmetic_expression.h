@@ -8,7 +8,7 @@
 #ifndef _AST_ARITHMETIC_EXPRESSION_H
 #define _AST_ARITHMETIC_EXPRESSION_H
 
-#include "../rmutil/vector.h"
+#include "../util/vector.h"
 #include "../util/triemap/triemap.h"
 #include "../value.h"
 

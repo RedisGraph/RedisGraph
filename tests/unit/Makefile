@@ -33,11 +33,10 @@ gtest_main.a : gtest-all.o gtest_main.o
 
 # RedisGraph flags and libraries
 CC_OBJECTS:=$(CC_OBJECTS)
-LIBRMUTIL=../../src/rmutil/librmutil.a
 LIBTRIEMAP=../../src/util/triemap/libtriemap.a
 LIBGRAPHBLAS=../../deps/GraphBLAS/build/libgraphblas.a
 
-LIBS=$(LIBTRIEMAP) $(LIBRMUTIL) $(LIBGRAPHBLAS)
+LIBS=$(LIBTRIEMAP) $(LIBGRAPHBLAS)
 DEPS=$(CC_OBJECTS) $(LIBS)
 
 # Build and run a test for each cpp file in directory

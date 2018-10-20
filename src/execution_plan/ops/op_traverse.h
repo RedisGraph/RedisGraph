@@ -9,10 +9,9 @@
 #define __OP_TRAVERSE_H
 
 #include "op.h"
-#include "../../rmutil/sds.h"
 #include "../../parser/ast.h"
 #include "../../arithmetic/algebraic_expression.h"
-#include "../../rmutil/vector.h"
+#include "../../util/vector.h"
 #include "../../GraphBLASExt/tuples_iter.h"
 
 /* OP Traverse */

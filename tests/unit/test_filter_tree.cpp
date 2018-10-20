@@ -13,7 +13,7 @@ extern "C" {
 
 #include <stdio.h>
 #include <string.h>
-#include "../../src/rmutil/vector.h"
+#include "../../src/util/vector.h"
 #include "../../src/parser/grammar.h"
 #include "../../src/parser/ast_arithmetic_expression.h"
 #include "../../src/filter_tree/filter_tree.h"

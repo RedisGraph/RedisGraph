@@ -9,7 +9,7 @@
 #define _CLAUSE_RETURN_H
 
 #include "../ast_arithmetic_expression.h"
-#include "../../rmutil/vector.h"
+#include "../../util/vector.h"
 
 typedef struct {
 	char *alias; 		// Alias given to this return element (using the AS keyword)

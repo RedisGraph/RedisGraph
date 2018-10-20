@@ -9,11 +9,10 @@
 #define __OP_COND_TRAVERSE_H
 
 #include "op.h"
-#include "../../rmutil/sds.h"
 #include "../../parser/ast.h"
 #include "../../arithmetic/algebraic_expression.h"
 #include "../../GraphBLASExt/tuples_iter.h"
-#include "../../rmutil/vector.h"
+#include "../../util/vector.h"
 
 /* OP Traverse */
 typedef struct {

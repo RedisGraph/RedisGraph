@@ -6,7 +6,7 @@
 */
 
 #include "repository.h"
-#include "../rmutil/vector.h"
+#include "../util/vector.h"
 
 typedef struct {
     const char *name;

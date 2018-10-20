@@ -7,7 +7,6 @@
 
 #include "op_aggregate.h"
 #include "../../arithmetic/aggregate.h"
-#include "../../rmutil/strings.h"
 #include "../../grouping/group.h"
 #include "../../grouping/group_cache.h"
 #include "../../query_executor.h"

@@ -8,7 +8,7 @@
 #ifndef _CLAUSE_LIMIT_H
 #define _CLAUSE_LIMIT_H
 
-#include "../../rmutil/vector.h"
+#include "../../util/vector.h"
 
 typedef struct {
 	int limit;

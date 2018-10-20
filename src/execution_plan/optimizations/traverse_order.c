@@ -6,7 +6,7 @@
 */
 
 #include "./traverse_order.h"
-#include "../../rmutil/vector.h"
+#include "../../util/vector.h"
 
 /* Given a set of algebraic expressions and the entire filter tree,
  * suggest traversal entry point to be either the first expression or the

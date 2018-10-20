@@ -10,7 +10,7 @@
 
 #include "group.h"
 #include "../util/triemap/triemap.h"
-#include "../rmutil/vector.h"
+#include "../util/vector.h"
 
 typedef TrieMapIterator CacheGroupIterator;
 void InitGroupCache();
