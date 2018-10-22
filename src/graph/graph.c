@@ -34,29 +34,26 @@ static inline void _Graph_SynchronizeMatrix(GrB_Matrix m) {
 }
 
 /* Resize given matrix, such that its number of row and columns
- * matches the number of nodes in the graph. */
+ * matches the number of nodes in the graph. Also, synchronize
+ * matrix to execute any pending operations. */
 void _Graph_ResizeMatrix(const Graph *g, GrB_Matrix m) {
     GrB_Index n_rows;
     GrB_Matrix_nrows(&n_rows, m);
 
-    bool locked = false;
-
-    if(n_rows != Graph_NodeCount(g)) {
+    // If the matrix requires has pending operations or requires
+    // a resize, enter critical section.
+    if(GxB_Matrix_Pending(m) || (n_rows != Graph_NodeCount(g))) {
         _Graph_EnterCriticalSection((Graph *)g);
-        locked = true;
-        // Double check now that we're in critical section.
+        // Double-check if resize is necessary.
         GrB_Matrix_nrows(&n_rows, m);
         if(n_rows != Graph_NodeCount(g))
           assert(GxB_Matrix_resize(m, Graph_NodeCount(g), Graph_NodeCount(g)) == GrB_SUCCESS);
-    }
 
-    if (GxB_Matrix_Pending(m)) {
-        if (!locked) _Graph_EnterCriticalSection((Graph *)g);
-        locked = true;
-        _Graph_SynchronizeMatrix(m);
-    }
+        // Flush changes to matrices if necessary.
+        if (GxB_Matrix_Pending(m)) _Graph_SynchronizeMatrix(m);
 
-    if (locked) _Graph_LeaveCriticalSection((Graph *)g);
+        _Graph_LeaveCriticalSection((Graph *)g);
+    }
 }
 
 /* Relocate src row and column, overriding dest. */
