@@ -60,7 +60,7 @@ include_directories ( Source/Template Source Source/Generated Include Demo/Inclu
 if ("${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
     # cmake 2.8 workaround: gcc needs to be told to do ANSI C11.
     # cmake 3.0 doesn't have this problem.
-    set (CMAKE_C_FLAGS  "-std=c11 -lm -fPIC -DREDIS_MODULE_TARGET -DMALLOC=rm_malloc -DCALLOC=rm_calloc -DREALLOC=rm_realloc -DFREE=rm_free")
+    set (CMAKE_C_FLAGS  "-std=c11 -lm -fopenmp -fPIC -DREDIS_MODULE_TARGET -DMALLOC=rm_malloc -DCALLOC=rm_calloc -DREALLOC=rm_realloc -DFREE=rm_free")
     if (CMAKE_C_COMPILER_VERSION VERSION_LESS 4.9)
         message (FATAL_ERROR "gcc version must be at least 4.9")
     endif ( )
@@ -72,9 +72,9 @@ elseif ("${CMAKE_C_COMPILER_ID}" STREQUAL "Intel")
     endif ( )
 elseif ("${CMAKE_C_COMPILER_ID}" STREQUAL "Clang")
     # options for clang
-    set (CMAKE_C_FLAGS  "-DREDIS_MODULE_TARGET -DMALLOC=rm_malloc -DCALLOC=rm_calloc -DREALLOC=rm_realloc -DFREE=rm_free")
+    set (CMAKE_C_FLAGS  "-Xpreprocessor -fopenmp -DREDIS_MODULE_TARGET -DMALLOC=rm_malloc -DCALLOC=rm_calloc -DREALLOC=rm_realloc -DFREE=rm_free")
     if (CMAKE_C_COMPILER_VERSION VERSION_LESS 3.3)
-        message (FATAL_ERROR "-g clang version must be at least 3.3")
+        message (FATAL_ERROR "clang version must be at least 3.3")
     endif ( )
 elseif ("${CMAKE_C_COMPILER_ID}" STREQUAL "MSVC")
     # options for MicroSoft Visual Studio

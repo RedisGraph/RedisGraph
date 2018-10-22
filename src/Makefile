@@ -14,10 +14,11 @@ CFLAGS += $(DEBUGFLAGS)
 
 # Compile flags for linux / osx
 ifeq ($(uname_S),Linux)
-	SHOBJ_LDFLAGS ?= -shared -Bsymbolic -Bsymbolic-functions -ldl -lpthread
+	SHOBJ_LDFLAGS ?= -shared -Bsymbolic -Bsymbolic-functions -fopenmp -ldl -lpthread
+	LD = $(CC) # Link with GCC to exploit openmp
 else
-	CFLAGS += -mmacosx-version-min=10.12
-	SHOBJ_LDFLAGS ?= -macosx_version_min 10.12 -exported_symbol _RedisModule_OnLoad -bundle -undefined dynamic_lookup -ldl -lpthread
+	CFLAGS += -mmacosx-version-min=10.12 -Xpreprocessor -fopenmp
+	SHOBJ_LDFLAGS ?= -macosx_version_min 10.12 -exported_symbol _RedisModule_OnLoad -bundle -undefined dynamic_lookup -lomp -ldl -lpthread
 endif
 SHOBJ_LDFLAGS += $(LDFLAGS)
 
