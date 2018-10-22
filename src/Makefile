@@ -19,6 +19,16 @@ ifeq ($(uname_S),Linux)
 else
 	CFLAGS += -mmacosx-version-min=10.12 -Xpreprocessor -fopenmp
 	SHOBJ_LDFLAGS ?= -macosx_version_min 10.12 -exported_symbol _RedisModule_OnLoad -bundle -undefined dynamic_lookup -lomp -ldl -lpthread
+
+	# If we are using the Apple toolchain compiler, some extra work is required to validate dependencies.
+	compiler := $(findstring Apple LLVM,$(shell sh -c '$(CC) --version'))
+	ifneq (,$(compiler))
+	# Verify that the user has separately installed the OpenMP dependency.
+		openmp_support := $(shell sh -c 'brew ls --versions libomp || echo no_openmp')
+		ifeq ($(openmp_support), no_openmp)
+      $(error "Error: OpenMP is required for compilation. Install by running 'brew install libomp'.")
+		endif
+	endif
 endif
 SHOBJ_LDFLAGS += $(LDFLAGS)
 

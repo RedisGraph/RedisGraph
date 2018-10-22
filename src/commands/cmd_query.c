@@ -148,7 +148,6 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
     QueryContext *context = _queryContext_New(bc, ast, argv[1]);
 
-    RedisModule_RetainString(ctx, argv[1]);
     context->tic[0] = tic[0];
     context->tic[1] = tic[1];    
 
