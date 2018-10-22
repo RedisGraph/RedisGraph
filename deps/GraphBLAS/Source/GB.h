@@ -264,6 +264,8 @@ mexErrMsgTxt ("gotcha: " __FILE__ " line: " GB_XSTR(__LINE__)) ;
 // GraphBLAS can be compiled with -DMALLOC=mymallocfunc to redefine
 // the malloc function and other memory management functions.
 // By default, these are simply the system malloc, free, etc, routines.
+// Using Redis allocators requires that those functions be visible to GraphBLAS
+#include "../../../src/util/rmalloc.h"
 #ifndef MALLOC
 #define MALLOC malloc
 #endif
