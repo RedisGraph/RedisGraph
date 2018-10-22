@@ -17,6 +17,7 @@ extern "C"
 #include "../../src/GraphBLASExt/tuples_iter.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 #include "../../src/util/datablock/datablock_iterator.h"
+#include "../../src/util/rmalloc.h"
 
 #ifdef __cplusplus
 }
@@ -35,6 +36,9 @@ class GraphTest : public ::testing::Test
         // Initialize GraphBLAS.
         GrB_init(GrB_NONBLOCKING);
         srand(time(NULL));
+
+        // Use the malloc family for allocations
+        Alloc_Reset();
     }
 
     static void TearDownTestCase()

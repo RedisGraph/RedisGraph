@@ -18,6 +18,7 @@ extern "C" {
 #include "../../src/graph/query_graph.h"
 #include "../../src/util/simple_timer.h"
 #include "../../src/arithmetic/algebraic_expression.h"
+#include "../../src/util/rmalloc.h"
 
 #ifdef __cplusplus
 }
@@ -40,6 +41,8 @@ class AlgebraicExpressionTest: public ::testing::Test {
         assert(GrB_init(GrB_NONBLOCKING) == GrB_SUCCESS);
         srand(time(NULL));
 
+        // Use the malloc family for allocations
+        Alloc_Reset();
         // Create a graph
         g = _build_graph();
 

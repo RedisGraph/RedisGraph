@@ -14,6 +14,7 @@ extern "C" {
 #include "../../src/value.h"
 #include "../../src/graph/node.h"
 #include "../../src/index/index.h"
+#include "../../src/util/rmalloc.h"
 
 // Skiplist comparator functions
 extern int compareNodes(GrB_Index a, GrB_Index b);
@@ -28,6 +29,11 @@ extern void freeKey(SIValue *key);
 
 class SkiplistTest: public ::testing::Test {
   protected:
+    static void SetUpTestCase() {
+        // Use the malloc family for allocations
+        Alloc_Reset();
+    }
+
     char *words[8] = {"foo", "bar", "zap", "pomo",
                      "pera", "arancio", "limone", NULL};
     const char *node_label = "default_label";

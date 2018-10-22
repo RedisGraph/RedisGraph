@@ -12,6 +12,7 @@ extern "C" {
 #endif
 
 #include "../../src/index/index.h"
+#include "../../src/util/rmalloc.h"
 extern Index* buildIndex(Graph *g, const GrB_Matrix label_matrix, const char *label, const char *prop_str);
 
 #ifdef __cplusplus
@@ -29,6 +30,9 @@ class IndexTest: public ::testing::Test {
 
     static void SetUpTestCase() {
       srand(time(NULL));
+
+      // Use the malloc family for allocations
+      Alloc_Reset();
     }
 
     void TearDown() {

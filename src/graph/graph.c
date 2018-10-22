@@ -11,6 +11,7 @@
 #include "graph_type.h"
 #include "../util/qsort.h"
 #include "../GraphBLASExt/tuples_iter.h"
+#include "../util/rmalloc.h"
 
 
 /*========================= Graph utility functions ========================= */
@@ -255,7 +256,7 @@ void _Graph_DeleteEdge(Graph *g, Edge *e) {
 /*================================ Graph API ================================ */
 Graph *Graph_New(size_t n) {
     assert(n > 0);
-    Graph *g = malloc(sizeof(Graph));
+    Graph *g = rm_malloc(sizeof(Graph));
 
     // TODO Our node iterators always cast the elements of this
     // to Nodes, but only the GraphEntity portion can be safely accessed
@@ -266,8 +267,8 @@ Graph *Graph_New(size_t n) {
     g->relation_count = 0;
     g->label_cap = GRAPH_DEFAULT_LABEL_CAP;
     g->label_count = 0;
-    g->_relations = malloc(sizeof(GrB_Matrix) * g->relation_cap);
-    g->_labels = malloc(sizeof(GrB_Matrix) * g->label_cap);
+    g->_relations = rm_malloc(sizeof(GrB_Matrix) * g->relation_cap);
+    g->_labels = rm_malloc(sizeof(GrB_Matrix) * g->label_cap);
     GrB_Matrix_new(&g->adjacency_matrix, GrB_BOOL, _Graph_NodeCap(g), _Graph_NodeCap(g));
 
     /* TODO: We might want a mutex per matrix,
@@ -589,7 +590,7 @@ int Graph_AddLabel(Graph *g) {
     // Make sure we've got room for a new label matrix.
     if(g->label_count == g->label_cap) {
         g->label_cap += 4;   // allocate room for 4 new matrices.
-        g->_labels = realloc(g->_labels, g->label_cap * sizeof(GrB_Matrix));
+        g->_labels = rm_realloc(g->_labels, g->label_cap * sizeof(GrB_Matrix));
     }
 
     GrB_Matrix_new(&g->_labels[g->label_count++], GrB_BOOL, _Graph_NodeCap(g), _Graph_NodeCap(g));
@@ -602,7 +603,7 @@ int Graph_AddRelation(Graph *g) {
     // Make sure we've got room for a new relation matrix.
     if(g->relation_count == g->relation_cap) {
         g->relation_cap += 4;   // allocate room for 4 new matrices.
-        g->_relations = realloc(g->_relations, g->relation_cap * sizeof(GrB_Matrix));
+        g->_relations = rm_realloc(g->_relations, g->relation_cap * sizeof(GrB_Matrix));
     }
 
     GrB_Matrix_new(&g->_relations[g->relation_count++], GrB_BOOL, _Graph_NodeCap(g), _Graph_NodeCap(g));
@@ -686,14 +687,14 @@ void Graph_Free(Graph *g) {
         m = Graph_GetRelation(g, i);
         GrB_Matrix_free(&m);
     }
-    free(g->_relations);
+    rm_free(g->_relations);
 
     // Free matrices.
     for(int i = 0; i < g->label_count; i++) {
         m = Graph_GetLabel(g, i);
         GrB_Matrix_free(&m);
     }
-    free(g->_labels);
+    rm_free(g->_labels);
 
     DataBlockIterator *it = Graph_ScanNodes(g);
     GraphEntity *node;
@@ -718,5 +719,5 @@ void Graph_Free(Graph *g) {
     // Free the edge blocks.
     DataBlock_Free(g->edges);
     pthread_mutex_destroy(&g->_mutex);
-    free(g);
+    rm_free(g);
 }

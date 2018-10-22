@@ -11,11 +11,17 @@
 extern "C" {
 #endif
 #include "../../src/GraphBLASExt/GxB_Delete.h"
+#include "../../src/util/rmalloc.h"
 #ifdef __cplusplus
 }
 #endif
 
 class GxB_DeleteTest: public ::testing::Test {
+  protected:
+    static void SetUpTestCase() {
+        // Use the malloc family for allocations
+        Alloc_Reset();
+    }
 };
 
 TEST_F(GxB_DeleteTest, GxB_Delete) {
