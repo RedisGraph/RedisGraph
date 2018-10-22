@@ -158,4 +158,4 @@ Some languages have client libraries that provide support for RedisGraph's comma
 
 ## License
 
-Apache 2.0 with Commons Clause - see [LICENSE](LICENSE)
+Apache 2.0 with Commons Clause - see [LICENSE](https://raw.githubusercontent.com/RedisLabsModules/redis-graph/master/LICENSE)
