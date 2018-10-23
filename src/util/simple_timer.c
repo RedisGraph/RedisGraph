@@ -21,7 +21,13 @@ void simple_tic         /* returns current time in seconds and nanoseconds */
 )
 {
 
-    #if defined ( __linux__ )
+    #if defined ( _OPENMP )
+
+        /* OpenMP is available; use the OpenMP timer function */
+        tic [0] = omp_get_wtime ( ) ;
+        tic [1] = 0 ;
+
+    #elif defined ( __linux__ )
 
         /* Linux has a very low resolution clock() function, so use the high
            resolution clock_gettime instead.  May require -lrt */

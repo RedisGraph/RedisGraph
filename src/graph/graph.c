@@ -28,7 +28,7 @@ void _Graph_LeaveCriticalSection(Graph *g) {
 }
 
 /* Force execution of all pending operations on a matrix. */
-static inline void _Graph_SynchronizeMatrix(GrB_Matrix m) {
+static inline void _Graph_ApplyPending(GrB_Matrix m) {
     GrB_Index nvals;
     GrB_Matrix_nvals(&nvals, m);
 }
@@ -36,11 +36,11 @@ static inline void _Graph_SynchronizeMatrix(GrB_Matrix m) {
 /* Resize given matrix, such that its number of row and columns
  * matches the number of nodes in the graph. Also, synchronize
  * matrix to execute any pending operations. */
-void _Graph_ResizeMatrix(const Graph *g, GrB_Matrix m) {
+void _Graph_SynchronizeMatrix(const Graph *g, GrB_Matrix m) {
     GrB_Index n_rows;
     GrB_Matrix_nrows(&n_rows, m);
 
-    // If the matrix requires has pending operations or requires
+    // If the matrix has pending operations or requires
     // a resize, enter critical section.
     if(GxB_Matrix_Pending(m) || (n_rows != Graph_NodeCount(g))) {
         _Graph_EnterCriticalSection((Graph *)g);
@@ -50,7 +50,7 @@ void _Graph_ResizeMatrix(const Graph *g, GrB_Matrix m) {
           assert(GxB_Matrix_resize(m, Graph_NodeCount(g), Graph_NodeCount(g)) == GrB_SUCCESS);
 
         // Flush changes to matrices if necessary.
-        if (GxB_Matrix_Pending(m)) _Graph_SynchronizeMatrix(m);
+        if (GxB_Matrix_Pending(m)) _Graph_ApplyPending(m);
 
         _Graph_LeaveCriticalSection((Graph *)g);
     }
@@ -319,7 +319,7 @@ void Graph_CreateNodes(Graph* g, size_t n, int* labels, DataBlockIterator **it) 
     NodeID node_id = (NodeID)Graph_NodeCount(g);
 
     _Graph_AddNodes(g, n, it);
-    _Graph_ResizeMatrix(g, g->adjacency_matrix);
+    _Graph_SynchronizeMatrix(g, g->adjacency_matrix);
 
     if(labels) {
         for(size_t idx = 0; idx < n; idx++) {
@@ -565,7 +565,7 @@ void Graph_DeleteNodes(Graph *g, NodeID *IDs, size_t IDCount) {
     _Graph_DeleteEntities(g, IDs, IDCount, g->nodes);
 
     // Force matrix resizing.
-    _Graph_ResizeMatrix(g, g->adjacency_matrix);
+    _Graph_SynchronizeMatrix(g, g->adjacency_matrix);
 
     // Cleanup.
     free(edgeIDs);
@@ -625,14 +625,14 @@ int Graph_AddRelation(Graph *g) {
 GrB_Matrix Graph_GetAdjacencyMatrix(const Graph *g) {
     assert(g);
     GrB_Matrix m = g->adjacency_matrix;
-    _Graph_ResizeMatrix(g, m);
+    _Graph_SynchronizeMatrix(g, m);
     return m;
 }
 
 GrB_Matrix Graph_GetLabel(const Graph *g, int label_idx) {
     assert(g && label_idx < g->label_count);
     GrB_Matrix m = g->_labels[label_idx];
-    _Graph_ResizeMatrix(g, m);
+    _Graph_SynchronizeMatrix(g, m);
     return m;
 }
 
@@ -644,7 +644,7 @@ GrB_Matrix Graph_GetRelation(const Graph *g, int relation_idx) {
         m = Graph_GetAdjacencyMatrix(g);
     } else {
         m = g->_relations[relation_idx];
-        _Graph_ResizeMatrix(g, m);
+        _Graph_SynchronizeMatrix(g, m);
     }
     return m;
 }
