@@ -15,10 +15,9 @@ CFLAGS += $(DEBUGFLAGS)
 # Compile flags for linux / osx
 ifeq ($(uname_S),Linux)
 	SHOBJ_LDFLAGS ?= -shared -Bsymbolic -Bsymbolic-functions -fopenmp -ldl -lpthread
-	LD = $(CC) # Link with GCC to exploit openmp
 else
 	CFLAGS += -mmacosx-version-min=10.12 -Xpreprocessor -fopenmp
-	SHOBJ_LDFLAGS ?= -macosx_version_min 10.12 -exported_symbol _RedisModule_OnLoad -bundle -undefined dynamic_lookup -lomp -ldl -lpthread
+	SHOBJ_LDFLAGS ?= -mmacosx-version-min=10.12 -bundle -undefined dynamic_lookup -lomp -ldl -lpthread
 
 	# If we are using the Apple toolchain compiler, some extra work is required to validate dependencies.
 	compiler := $(findstring Apple LLVM,$(shell sh -c '$(CC) --version'))
@@ -107,7 +106,7 @@ parser:
 
 # Build the module...
 redisgraph.so: $(MODULE)
-	$(LD) -o $@ $(MODULE) $(SHOBJ_LDFLAGS) -lc -lm
+	$(CC) -o $@ $(MODULE) $(SHOBJ_LDFLAGS) -lc -lm
 
 clean:
 	find . -name '*.[oad]' -type f -delete
