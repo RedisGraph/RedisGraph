@@ -7,19 +7,20 @@
 
 #include "graph_entity.h"
 #include <stdio.h>
+#include "../util/rmalloc.h"
 
 SIValue *PROPERTY_NOTFOUND = &(SIValue){.intval = 0, .type = T_NULL};
 
 /* Expecting e to be either *Node or *Edge */
 void GraphEntity_Add_Properties(GraphEntity *e, int prop_count, char **keys, SIValue *values) {
 	if(e->properties == NULL) {
-		e->properties = malloc(sizeof(EntityProperty) * prop_count);
+		e->properties = rm_malloc(sizeof(EntityProperty) * prop_count);
 	} else {
-		e->properties = realloc(e->properties, sizeof(EntityProperty) * (e->prop_count + prop_count));
+		e->properties = rm_realloc(e->properties, sizeof(EntityProperty) * (e->prop_count + prop_count));
 	}
 	
 	for(int i = 0; i < prop_count; i++) {
-		e->properties[e->prop_count + i].name = strdup(keys[i]);
+		e->properties[e->prop_count + i].name = rm_strdup(keys[i]);
 		e->properties[e->prop_count + i].value = values[i];
 	}
 
@@ -38,8 +39,8 @@ SIValue* GraphEntity_Get_Property(const GraphEntity *e, const char* key) {
 void FreeGraphEntity(GraphEntity *e) {
 	if(e->properties != NULL) {
 		for(int i = 0; i < e->prop_count; i++) {
-			free(e->properties[i].name);
+			rm_free(e->properties[i].name);
 		}
-		free(e->properties);
+		rm_free(e->properties);
   }
 }

@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include "datablock.h"
 #include "datablock_iterator.h"
+#include "../rmalloc.h"
 
 // Computes the number of blocks required to accommodate n items.
 #define ITEM_COUNT_TO_BLOCK_COUNT(n) \
@@ -38,14 +39,14 @@
 
 Block *_Block_New(size_t itemSize) {
     assert(itemSize > 0);
-    Block *block = calloc(1, sizeof(Block) + BLOCK_CAP * itemSize);
+    Block *block = rm_calloc(1, sizeof(Block) + BLOCK_CAP * itemSize);
     block->itemSize = itemSize;
     return block;
 }
 
 void _Block_Free(Block *block) {
     assert(block);
-    free(block);
+    rm_free(block);
 }
 
 //------------------------------------------------------------------------------
@@ -58,9 +59,9 @@ void _DataBlock_AddBlocks(DataBlock *dataBlock, size_t blockCount) {
     size_t prevBlockCount = dataBlock->blockCount;
     dataBlock->blockCount += blockCount;
     if(!dataBlock->blocks)
-        dataBlock->blocks = malloc(sizeof(Block*) * dataBlock->blockCount);
+        dataBlock->blocks = rm_malloc(sizeof(Block*) * dataBlock->blockCount);
     else
-        dataBlock->blocks = realloc(dataBlock->blocks, sizeof(Block*) * dataBlock->blockCount);
+        dataBlock->blocks = rm_realloc(dataBlock->blocks, sizeof(Block*) * dataBlock->blockCount);
 
     int i;
     for(i = prevBlockCount; i < dataBlock->blockCount; i++) {
@@ -73,7 +74,7 @@ void _DataBlock_AddBlocks(DataBlock *dataBlock, size_t blockCount) {
 }
 
 DataBlock *DataBlock_New(size_t itemCap, size_t itemSize) {
-    DataBlock *dataBlock = malloc(sizeof(DataBlock));    
+    DataBlock *dataBlock = rm_malloc(sizeof(DataBlock));
     dataBlock->itemCount = 0;
     dataBlock->itemSize = itemSize;
     dataBlock->blockCount = 0;
@@ -159,6 +160,6 @@ void DataBlock_Free(DataBlock *dataBlock) {
     for(int i = 0; i < dataBlock->blockCount; i++)
         _Block_Free(dataBlock->blocks[i]);
 
-    free(dataBlock->blocks);
-    free(dataBlock);
+    rm_free(dataBlock->blocks);
+    rm_free(dataBlock);
 }

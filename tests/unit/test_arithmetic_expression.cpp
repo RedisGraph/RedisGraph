@@ -16,6 +16,7 @@ extern "C" {
 #include "../../src/graph/node.h"
 #include "../../src/arithmetic/agg_funcs.h"
 #include "../../src/execution_plan/record.h"
+#include "../../src/util/rmalloc.h"
 
 #ifdef __cplusplus
 }
@@ -25,6 +26,9 @@ class ArithmeticTest: public ::testing::Test {
   protected:
     Record emptyRecord = Record_Empty();
     static void SetUpTestCase() {
+      // Use the malloc family for allocations
+      Alloc_Reset();
+
       AR_RegisterFuncs();
       Agg_RegisterFuncs();
     }

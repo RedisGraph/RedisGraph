@@ -12,6 +12,7 @@ extern "C" {
 #endif
 
 #include "../../src/algorithms/algorithms.h"
+#include "../../src/util/rmalloc.h"
 
 #ifdef __cplusplus
 }
@@ -23,6 +24,9 @@ class AllPathsTest: public ::testing::Test {
     {
         // Initialize GraphBLAS.
         GrB_init(GrB_NONBLOCKING);
+
+        // Use the malloc family for allocations
+        Alloc_Reset();
     }
 
     static void TearDownTestCase()

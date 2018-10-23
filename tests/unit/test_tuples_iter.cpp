@@ -13,6 +13,7 @@ extern "C" {
 
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 #include "../../src/GraphBLASExt/tuples_iter.h"
+#include "../../src/util/rmalloc.h"
 
 #ifdef __cplusplus
 }
@@ -22,6 +23,9 @@ class TuplesTest: public ::testing::Test {
   protected:
     static void SetUpTestCase() {
       GrB_init(GrB_NONBLOCKING);
+
+      // Use the malloc family for allocations
+      Alloc_Reset();
     }
 
     static void TearDownTestCase() {

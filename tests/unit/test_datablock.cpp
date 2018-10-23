@@ -14,12 +14,18 @@ extern "C" {
 #include <stdio.h>
 #include <string.h>
 #include "../../src/util/datablock/datablock.h"
+#include "../../src/util/rmalloc.h"
 
 #ifdef __cplusplus
 }
 #endif
 
 class DataBlockTest: public ::testing::Test {
+  protected:
+    static void SetUpTestCase() {
+        // Use the malloc family for allocations
+        Alloc_Reset();
+    }
 };
 
 
