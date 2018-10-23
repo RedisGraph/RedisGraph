@@ -29,9 +29,9 @@ typedef struct {
 
 RedisModuleKey* GraphContext_Key(RedisModuleCtx *ctx, const char *graph_name);
 
-GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rm_name, const char *graph_name);
+GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rs_name);
 
-GraphContext* GraphContext_Get(RedisModuleCtx *ctx, RedisModuleString *rs_graph_name, const char *graph_name);
+GraphContext* GraphContext_Get(RedisModuleCtx *ctx, RedisModuleString *rs_graph_name);
 
 LabelStore* GraphContext_AddLabel(GraphContext *gc, const char *label);
 LabelStore* GraphContext_AddRelationType(GraphContext *gc, const char *label);

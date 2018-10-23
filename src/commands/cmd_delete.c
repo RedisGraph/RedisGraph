@@ -70,8 +70,8 @@ cleanup:
     asprintf(&strElapsed, "Graph removed, internal execution time: %.6f milliseconds", t);
     RedisModule_ReplyWithStringBuffer(ctx, strElapsed, strlen(strElapsed));
     free(strElapsed);
-    RedisModule_FreeThreadSafeContext(ctx);
     RedisModule_UnblockClient(bc, NULL);
+    RedisModule_FreeThreadSafeContext(ctx);
 }
 
 int MGraph_Delete(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {

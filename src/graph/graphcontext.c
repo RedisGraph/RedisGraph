@@ -15,8 +15,15 @@ RedisModuleKey* GraphContext_Key(RedisModuleCtx *ctx, const char *graph_name) {
   return key;
 }
 
-GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rm_name, const char *graph_name) {
-  if (GraphContext_Get(ctx, rm_name, graph_name) != NULL) return NULL;
+GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rs_name) {
+  // Create key for GraphContext
+  const char *graph_name = RedisModule_StringPtrLen(rs_name, NULL);
+  RedisModuleKey *key = GraphContext_Key(ctx, graph_name);
+  if (RedisModule_ModuleTypeGetType(key) != REDISMODULE_KEYTYPE_EMPTY) {
+    // Return NULL if key already exists
+    RedisModule_CloseKey(key);
+    return NULL;
+  }
 
   GraphContext *gc = malloc(sizeof(GraphContext));
   gc->relation_cap = GRAPH_DEFAULT_RELATION_CAP;
@@ -35,16 +42,14 @@ GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rm_name, 
   gc->node_allstore = LabelStore_New("ALL", GRAPH_NO_LABEL);
   gc->relation_allstore = LabelStore_New("ALL", GRAPH_NO_RELATION);
 
-  // Create key for GraphContext
-  RedisModuleKey *key = GraphContext_Key(ctx, graph_name);
-  assert(RedisModule_KeyType(key) == REDISMODULE_KEYTYPE_EMPTY);
+  // Set and close GraphContext in keyspace
   RedisModule_ModuleTypeSetValue(key, GraphContextRedisModuleType, gc);
   RedisModule_CloseKey(key);
 
   gc->g = Graph_New(GRAPH_DEFAULT_NODE_CAP);
-  // Create key for Graph
+  // Add new Graph to keyspace
   // TODO this separation feels rather clunky
-  key = RedisModule_OpenKey(ctx, rm_name, REDISMODULE_WRITE);
+  key = RedisModule_OpenKey(ctx, rs_name, REDISMODULE_WRITE);
   assert(RedisModule_KeyType(key) == REDISMODULE_KEYTYPE_EMPTY);
   RedisModule_ModuleTypeSetValue(key, GraphRedisModuleType, gc->g);
   RedisModule_CloseKey(key);
@@ -52,14 +57,15 @@ GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rm_name, 
   return gc;
 }
 
-GraphContext* GraphContext_Get(RedisModuleCtx *ctx, RedisModuleString *rs_graph_name, const char *graph_name) {
+GraphContext* GraphContext_Get(RedisModuleCtx *ctx, RedisModuleString *rs_name) {
+  const char *graph_name = RedisModule_StringPtrLen(rs_name, NULL);
   RedisModuleKey *key = GraphContext_Key(ctx, graph_name);
   if (RedisModule_ModuleTypeGetType(key) != GraphContextRedisModuleType) return NULL;
 
   GraphContext *gc = RedisModule_ModuleTypeGetValue(key);
   RedisModule_CloseKey(key);
 
-  gc->g = Graph_Get(ctx, rs_graph_name);
+  gc->g = Graph_Get(ctx, rs_name);
 
   gc->ctx = ctx;
 

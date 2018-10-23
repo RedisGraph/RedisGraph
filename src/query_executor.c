@@ -188,11 +188,6 @@ void MGraph_ReleaseLock(RedisModuleCtx *ctx) {
 
 //------------------------------------------------------------------------------
 
-// TODO elide this function?
-GraphContext *MGraph_CreateGraph(RedisModuleCtx *ctx, RedisModuleString *graph_name, const char *name_str) {
-    return GraphContext_New(ctx, graph_name, name_str);
-}
-
 /* Construct an expression tree foreach none aggregated term.
  * Returns a vector of none aggregated expression trees. */
 void Build_None_Aggregated_Arithmetic_Expressions(AST_ReturnNode *return_node, AR_ExpNode ***expressions, int *expressions_count) {

@@ -43,11 +43,6 @@ AST_Query* ParseQuery(const char *query, size_t qLen, char **errMsg);
 /* Make sure AST is valid. */
 AST_Validation AST_PerformValidations(RedisModuleCtx *ctx, AST_Query *ast);
 
-/* Retrieve graph stored within Redis under graph_name key,
- * If specified key does not exists a new graph object is created and stored
- * in case graph already exists NULL is returned. */
-GraphContext *MGraph_CreateGraph(RedisModuleCtx *ctx, RedisModuleString *graph_name, const char *name_str);
-
 /* Construct an expression tree foreach none aggregated term.
  * Returns a vector of none aggregated expression trees. */
 void Build_None_Aggregated_Arithmetic_Expressions(AST_ReturnNode *return_node,

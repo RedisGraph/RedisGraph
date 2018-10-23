@@ -94,6 +94,7 @@ void _ResultSet_StreamRecord(ResultSet *set, const ResultSetRecord *record) {
 void _ResultSet_ReplayStats(RedisModuleCtx* ctx, ResultSet* set) {
     char buff[512] = {0};
     size_t resultset_size = 1; /* query execution time. */
+    int buflen = 0;
 
     if(set->stats.labels_added > 0) resultset_size++;
     if(set->stats.nodes_created > 0) resultset_size++;
@@ -105,33 +106,33 @@ void _ResultSet_ReplayStats(RedisModuleCtx* ctx, ResultSet* set) {
     RedisModule_ReplyWithArray(ctx, resultset_size);
 
     if(set->stats.labels_added > 0) {
-        sprintf(buff, "Labels added: %d", set->stats.labels_added);
-        RedisModule_ReplyWithSimpleString(ctx, (const char*)buff);
+        buflen = sprintf(buff, "Labels added: %d", set->stats.labels_added);
+        RedisModule_ReplyWithStringBuffer(ctx, (const char*)buff, buflen + 1);
     }
 
     if(set->stats.nodes_created > 0) {
         sprintf(buff, "Nodes created: %d", set->stats.nodes_created);
-        RedisModule_ReplyWithSimpleString(ctx, (const char*)buff);
+        RedisModule_ReplyWithStringBuffer(ctx, (const char*)buff, buflen + 1);
     }
 
     if(set->stats.properties_set > 0) {
         sprintf(buff, "Properties set: %d", set->stats.properties_set);
-        RedisModule_ReplyWithSimpleString(ctx, (const char*)buff);
+        RedisModule_ReplyWithStringBuffer(ctx, (const char*)buff, buflen + 1);
     }
 
     if(set->stats.relationships_created > 0) {
         sprintf(buff, "Relationships created: %d", set->stats.relationships_created);
-        RedisModule_ReplyWithSimpleString(ctx, (const char*)buff);
+        RedisModule_ReplyWithStringBuffer(ctx, (const char*)buff, buflen + 1);
     }
 
     if(set->stats.nodes_deleted > 0) {
         sprintf(buff, "Nodes deleted: %d", set->stats.nodes_deleted);
-        RedisModule_ReplyWithSimpleString(ctx, (const char*)buff);
+        RedisModule_ReplyWithStringBuffer(ctx, (const char*)buff, buflen + 1);
     }
 
     if(set->stats.relationships_deleted > 0) {
         sprintf(buff, "Relationships deleted: %d", set->stats.relationships_deleted);
-        RedisModule_ReplyWithSimpleString(ctx, (const char*)buff);
+        RedisModule_ReplyWithStringBuffer(ctx, (const char*)buff, buflen + 1);
     }
 }
 

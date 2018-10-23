@@ -63,14 +63,13 @@ void _MGraph_Query(void *args) {
     RedisModuleCtx *ctx = RedisModule_GetThreadSafeContext(qctx->bc);
     AST_Query* ast = qctx->ast;
     ResultSet* resultSet = NULL;
-    const char *graph_name = RedisModule_StringPtrLen(qctx->graphName, NULL);
 
     // If this is a write query, acquire write lock.
     if(AST_ReadOnly(ast)) MGraph_AcquireReadLock();
     else MGraph_AcquireWriteLock(ctx);
 
     // Try to get graph context.
-    GraphContext *gc = GraphContext_Get(ctx, qctx->graphName, graph_name);
+    GraphContext *gc = GraphContext_Get(ctx, qctx->graphName);
     if (!gc && !ast->createNode && !ast->mergeNode) {
         RedisModule_ReplyWithError(ctx, "key doesn't contains a graph object.");
         goto cleanup;
@@ -83,7 +82,7 @@ void _MGraph_Query(void *args) {
     if (AST_PerformValidations(ctx, ast) != AST_VALID) goto cleanup;
 
     if(!gc) {
-        gc = MGraph_CreateGraph(ctx, qctx->graphName, graph_name);
+        gc = GraphContext_New(ctx, qctx->graphName);
         /* TODO: free graph if no entities were created. */
     }
 
@@ -109,8 +108,8 @@ cleanup:
     MGraph_ReleaseLock(ctx);
     Free_AST_Query(ast);
     ResultSet_Free(resultSet);
-    RedisModule_FreeThreadSafeContext(ctx);    
     RedisModule_UnblockClient(qctx->bc, NULL);
+    RedisModule_FreeThreadSafeContext(ctx);
     _queryContext_Free(qctx);
 }
 

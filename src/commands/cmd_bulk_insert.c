@@ -39,8 +39,8 @@ void _MGraph_BulkInsert(void *args) {
     size_t edges = 0;   // Number of edge created.
 
     // Try to retrieve GraphContext. If context and graph do not exist, create them.
-    GraphContext *gc = GraphContext_Get(ctx, rs_graph_name, graph_name);
-    if (gc == NULL) gc = MGraph_CreateGraph(ctx, rs_graph_name, graph_name);
+    GraphContext *gc = GraphContext_Get(ctx, rs_graph_name);
+    if (gc == NULL) gc = GraphContext_New(ctx, rs_graph_name);
 
     // Exit if graph creation failed
     if (gc == NULL) goto cleanup;

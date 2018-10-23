@@ -8,9 +8,7 @@
 #include "store.h"
 #include "store_type.h"
 
-/* Declaration of the type for redis registration. */
-RedisModuleType *StoreRedisModuleType;
-
+// TODO stores are no longer independent types; move thse.
 void* StoreType_RdbLoad(RedisModuleIO *rdb, int encver) {
     /* Format:
      * id 
@@ -57,14 +55,5 @@ void StoreType_RdbSave(RedisModuleIO *rdb, void *value) {
         }
         TrieMapIterator_Free(it);
     }
-}
-
-void StoreType_AofRewrite(RedisModuleIO *aof, RedisModuleString *key, void *value) {
-    // TODO: implement.
-}
-
-void StoreType_Free(void *value) {
-    LabelStore *s = value;
-    LabelStore_Free(s);
 }
 
