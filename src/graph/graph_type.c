@@ -301,6 +301,9 @@ void *GraphType_RdbLoad(RedisModuleIO *rdb, int encver) {
     // Load edges.
     _GraphType_LoadEdges(rdb, g);
 
+    // Flush all pending changes to graphs.
+    GrB_wait();
+
     return g;
 }
 

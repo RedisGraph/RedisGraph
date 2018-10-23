@@ -10,6 +10,16 @@ CPPFLAGS += -isystem $(GTEST_DIR)/include
 CXXFLAGS += -g -Wall -Wextra -pthread -std=c++11
 CXX_SUPPRESS = -Wno-sign-compare -Wno-format -Wno-write-strings
 
+uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
+# Platform-specific compilation flags
+ifeq ($(uname_S),Linux)
+	CXXFLAGS += -fopenmp
+	LDFLAGS += -fopenmp
+else
+	CXXFLAGS += -Xpreprocessor -fopenmp
+	LDFLAGS += -lomp
+endif
+
 # Google Test headers - do not modify
 GTEST_HEADERS = $(GTEST_DIR)/include/gtest/*.h \
                 $(GTEST_DIR)/include/gtest/internal/*.h
@@ -50,7 +60,7 @@ TEST_EXECUTABLES = $(patsubst %.cpp, %.run, $(TEST_SOURCES))
 
 # Build '*.run' binaries for each source
 %.run: %.o gtest_main.a $(DEPS)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(CXX_SUPPRESS) $^ -o $@
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(CXX_SUPPRESS) $(LDFLAGS) $^ -o $@
 
 
 all: build test
