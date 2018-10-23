@@ -3,6 +3,16 @@
 // TODO needed for the key-value creation logic for the Graph
 extern RedisModuleType *GraphRedisModuleType;
 
+// TODO should be unnecessary
+int _GraphContext_IndexOffset(GraphContext *gc, const char *label, const char *property) {
+  Index *idx;
+  for (int i = 0; i < gc->index_count; i ++) {
+    idx = gc->indices[i];
+    if (!strcmp(label, idx->label) && !strcmp(property, idx->property)) return i;
+  }
+  return -1;
+}
+
 RedisModuleKey* GraphContext_Key(RedisModuleCtx *ctx, const char *graph_name) {
   int keylen = strlen(graph_name) + 4;
   char strKey[keylen + 1];
@@ -128,12 +138,10 @@ bool GraphContext_HasIndices(GraphContext *gc) {
 }
 
 Index* GraphContext_GetIndex(GraphContext *gc, const char *label, const char *property) {
-  Index *idx;
-  for (int i = 0; i < gc->index_count; i ++) {
-    idx = gc->indices[i];
-    if (!strcmp(label, idx->label) && !strcmp(property, idx->property)) return idx;
-  }
-  return NULL;
+  int offset = _GraphContext_IndexOffset(gc, label, property);
+  if (offset < 0) return INDEX_FAIL;
+
+  return gc->indices[offset];
 }
 
 void GraphContext_AddIndex(GraphContext *gc, const char *label, const char *property) {
@@ -152,12 +160,14 @@ void GraphContext_AddIndex(GraphContext *gc, const char *label, const char *prop
 }
 
 int GraphContext_DeleteIndex(GraphContext *gc, const char *label, const char *property) {
-  // TODO don't use this call; need array offset
-  Index *idx = GraphContext_GetIndex(gc, label, property);
-  if (!idx) return INDEX_FAIL;
+  int offset = _GraphContext_IndexOffset(gc, label, property);
+  if (offset < 0) return INDEX_FAIL;
 
+  Index *idx = gc->indices[offset];
   Index_Free(idx);
-  // TODO don't leave holes in index array
+  gc->index_count --;
+  gc->indices[offset] = gc->indices[gc->index_count];
+
   return INDEX_OK;
 }
 
