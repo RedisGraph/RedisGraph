@@ -43,7 +43,6 @@ GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rs_name) 
   gc->index_cap = 4;
   gc->index_count = 0;
 
-  gc->ctx = ctx;
   gc->graph_name = strdup(graph_name);
   gc->node_stores = malloc(gc->label_cap * sizeof(LabelStore*));
   gc->relation_stores = malloc(gc->relation_cap * sizeof(LabelStore*));
@@ -76,8 +75,6 @@ GraphContext* GraphContext_Get(RedisModuleCtx *ctx, RedisModuleString *rs_name) 
   RedisModule_CloseKey(key);
 
   gc->g = Graph_Get(ctx, rs_name);
-
-  gc->ctx = ctx;
 
   return gc;
 }

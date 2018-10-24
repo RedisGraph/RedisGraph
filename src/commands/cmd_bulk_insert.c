@@ -45,7 +45,7 @@ void _MGraph_BulkInsert(void *args) {
     // Exit if graph creation failed
     if (gc == NULL) goto cleanup;
 
-    int rc = Bulk_Insert(gc, &nodes, &edges, argv+2, argc-2);
+    int rc = Bulk_Insert(ctx, gc, &nodes, &edges, argv+2, argc-2);
 
     // Exit if insertion failed
     if (rc == BULK_FAIL) goto cleanup;

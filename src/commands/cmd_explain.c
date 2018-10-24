@@ -52,7 +52,7 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
         goto cleanup;
     }
 
-    plan = NewExecutionPlan(gc, ast, true);
+    plan = NewExecutionPlan(ctx, gc, ast, true);
     char* strPlan = ExecutionPlanPrint(plan);
     RedisModule_ReplyWithStringBuffer(ctx, strPlan, strlen(strPlan));
 

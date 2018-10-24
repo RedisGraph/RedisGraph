@@ -29,6 +29,7 @@ typedef struct {
 
 typedef struct {
     OpBase op;
+    RedisModuleCtx *ctx;
     GraphContext *gc;
     AST_Query *ast;
     QueryGraph *qg;
@@ -44,7 +45,7 @@ typedef struct {
     ResultSet *result_set;
 } OpCreate;
 
-OpBase* NewCreateOp(GraphContext *gc, AST_Query *ast, QueryGraph *qg, ResultSet *result_set);
+OpBase* NewCreateOp(RedisModuleCtx *ctx, GraphContext *gc, AST_Query *ast, QueryGraph *qg, ResultSet *result_set);
 
 OpResult OpCreateConsume(OpBase *opBase, Record *r);
 OpResult OpCreateReset(OpBase *ctx);

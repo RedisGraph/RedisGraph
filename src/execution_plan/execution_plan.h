@@ -33,7 +33,8 @@ typedef struct {
 /* Creates a new execution plan from AST */
 ExecutionPlan* NewExecutionPlan
 (
-    GraphContext *gc,           // Module context and data stores
+    RedisModuleCtx *ctx,        // Module-level context
+    GraphContext *gc,           // Graph access and data stores
     AST_Query *ast,             // Query parsed AST
     bool explain                // Construct execution plan, do not execute
 );

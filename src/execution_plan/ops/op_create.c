@@ -69,9 +69,9 @@ void _SetModifiedEntities(OpCreate *op) {
     assert((op->node_count + op->edge_count) > 0);
 }
 
-OpBase* NewCreateOp(GraphContext *gc, AST_Query *ast, QueryGraph *qg, ResultSet *result_set) {
+OpBase* NewCreateOp(RedisModuleCtx *ctx, GraphContext *gc, AST_Query *ast, QueryGraph *qg, ResultSet *result_set) {
     OpCreate *op_create = calloc(1, sizeof(OpCreate));
-
+    op_create->ctx = ctx;
     op_create->gc = gc;
     op_create->ast = ast;
     op_create->qg = qg;
@@ -176,7 +176,7 @@ void _SetEntitiesProperties(OpCreate *op, Vector *entities, DataBlockIterator *i
 
 /* Commit insertions. */
 void _CommitNewEntities(OpCreate *op) {
-    RedisModuleCtx *ctx = op->gc->ctx;
+    RedisModuleCtx *ctx = op->ctx;
     Graph *g = op->gc->g;
     size_t node_count = Vector_Size(op->created_nodes);
     size_t edge_count = Vector_Size(op->created_edges);

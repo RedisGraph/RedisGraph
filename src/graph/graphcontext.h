@@ -8,7 +8,6 @@
 #include "graph.h"
 
 typedef struct {
-  RedisModuleCtx *ctx;
   Graph *g;
   char *graph_name;
 

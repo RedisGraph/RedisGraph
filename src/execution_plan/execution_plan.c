@@ -229,11 +229,11 @@ OpBase* ExecutionPlan_Locate_References(OpBase *root, Vector *references) {
     return op;
 }
 
-ExecutionPlan* NewExecutionPlan(GraphContext *gc,
+ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx,
+                                GraphContext *gc,
                                 AST_Query *ast,
                                 bool explain) {
 
-    RedisModuleCtx *ctx = gc->ctx;
     Graph *g = gc->g;
     ExecutionPlan *execution_plan = (ExecutionPlan*)calloc(1, sizeof(ExecutionPlan));
     // execution_plan->root = NewOpNode(NULL);    
@@ -382,7 +382,7 @@ ExecutionPlan* NewExecutionPlan(GraphContext *gc,
     /* Set root operation */
     if(ast->createNode) {
         BuildQueryGraph(gc, q, ast->createNode->graphEntities);
-        OpBase *opCreate = NewCreateOp(gc, ast, q, execution_plan->result_set);
+        OpBase *opCreate = NewCreateOp(ctx, gc, ast, q, execution_plan->result_set);
 
         Vector_Push(ops, opCreate);
     }

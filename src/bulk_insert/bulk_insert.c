@@ -68,9 +68,8 @@ RedisModuleString** _Bulk_Insert_Parse_Label(RedisModuleCtx *ctx, LabelDesc *lab
     return argv;
 }
 
-RedisModuleString** _Bulk_Insert_Parse_Labels(GraphContext *gc, LabelDesc *labels, size_t label_count,
+RedisModuleString** _Bulk_Insert_Parse_Labels(RedisModuleCtx *ctx, GraphContext *gc, LabelDesc *labels, size_t label_count,
                                               RedisModuleString **argv, int *argc) {
-    RedisModuleCtx *ctx = gc->ctx;
 
     // Consume labels.
     for(int label_idx = 0; label_idx < label_count; label_idx++) {
@@ -144,13 +143,12 @@ RedisModuleString** _Bulk_Insert_Read_Unlabeled_Node_Attributes(RedisModuleCtx *
     return argv;
 }
 
-RedisModuleString** _Bulk_Insert_Insert_Nodes(GraphContext *gc, size_t *nodes,
+RedisModuleString** _Bulk_Insert_Insert_Nodes(RedisModuleCtx *ctx, GraphContext *gc, size_t *nodes,
                                               RedisModuleString **argv, int *argc) {
     GraphEntity *n;                 // Current node.
     DataBlockIterator *it = NULL;   // Iterator over nodes.
     long long nodes_to_create = 0;  // Total number of nodes to create.
 
-    RedisModuleCtx *ctx = gc->ctx;
     Graph *g = gc->g;
 
     if(*argc < 1 || RedisModule_StringToLongLong(*argv++, &nodes_to_create) != REDISMODULE_OK) {
@@ -176,7 +174,7 @@ RedisModuleString** _Bulk_Insert_Insert_Nodes(GraphContext *gc, size_t *nodes,
     // Labeled nodes.
     if(label_count > 0) {
         LabelDesc labels[label_count];
-        argv = _Bulk_Insert_Parse_Labels(gc, labels, label_count, argv, argc);
+        argv = _Bulk_Insert_Parse_Labels(ctx, gc, labels, label_count, argv, argc);
         if(argv == NULL) return NULL;
                 
         for(int label_idx = 0; label_idx < label_count; label_idx++) {
@@ -243,7 +241,7 @@ RedisModuleString** _Bulk_Insert_Insert_Nodes(GraphContext *gc, size_t *nodes,
     return argv;
 }
 
-RedisModuleString** _Bulk_Insert_Insert_Edges(GraphContext *gc, size_t *edges,
+RedisModuleString** _Bulk_Insert_Insert_Edges(RedisModuleCtx *ctx, GraphContext *gc, size_t *edges,
                                               RedisModuleString **argv, int *argc) {
     typedef struct {
         long long edge_count;   // Total number of edges.
@@ -254,7 +252,6 @@ RedisModuleString** _Bulk_Insert_Insert_Edges(GraphContext *gc, size_t *edges,
     long long relations_count = 0;  // Total number of edges to create.
     long long label_count = 0;      // Number of labels.
 
-    RedisModuleCtx *ctx = gc->ctx;
     Graph *g = gc->g;
 
     if(*argc < 2) {
@@ -341,10 +338,10 @@ RedisModuleString** _Bulk_Insert_Insert_Edges(GraphContext *gc, size_t *edges,
     return argv;
 }
 
-int Bulk_Insert(GraphContext *gc, size_t *nodes, size_t *edges, RedisModuleString **argv, int argc) {
+int Bulk_Insert(RedisModuleCtx *ctx, GraphContext *gc, size_t *nodes, size_t *edges, RedisModuleString **argv, int argc) {
 
     if(argc < 1) {
-        _Bulk_Insert_Reply_With_Syntax_Error(gc->ctx, "Bulk insert format error, failed to parse bulk insert sections.");
+        _Bulk_Insert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, failed to parse bulk insert sections.");
         return BULK_FAIL;
     }
 
@@ -355,7 +352,7 @@ int Bulk_Insert(GraphContext *gc, size_t *nodes, size_t *edges, RedisModuleStrin
     //TODO: Keep track and validate argc, make sure we don't overflow.
     if(strcmp(section, "NODES") == 0) {
         section_found = true;
-        argv = _Bulk_Insert_Insert_Nodes(gc, nodes, argv, &argc);
+        argv = _Bulk_Insert_Insert_Nodes(ctx, gc, nodes, argv, &argc);
         if (argv == NULL) {
             return BULK_FAIL;
         } else if (argc == 0) {
@@ -367,19 +364,19 @@ int Bulk_Insert(GraphContext *gc, size_t *nodes, size_t *edges, RedisModuleStrin
 
     if(strcmp(section, "RELATIONS") == 0) {
         section_found = true;
-        argv = _Bulk_Insert_Insert_Edges(gc, edges, argv, &argc);
+        argv = _Bulk_Insert_Insert_Edges(ctx, gc, edges, argv, &argc);
     }
 
     if (!section_found) {
         char *error;
         asprintf(&error, "Unexpected token %s, expected NODES or RELATIONS.", section);
-        _Bulk_Insert_Reply_With_Syntax_Error(gc->ctx, error);
+        _Bulk_Insert_Reply_With_Syntax_Error(ctx, error);
         free(error);
         return BULK_FAIL;
     }
 
     if(argc != 0) {
-        _Bulk_Insert_Reply_With_Syntax_Error(gc->ctx, "Bulk insert format error, extra arguments.");
+        _Bulk_Insert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, extra arguments.");
         return BULK_FAIL;
     }
     return BULK_OK;

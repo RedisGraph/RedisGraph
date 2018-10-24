@@ -23,8 +23,7 @@ void _queryContext_Free(QueryContext* ctx) {
     free(ctx);
 }
 
-void _index_operation(GraphContext *gc, AST_IndexNode *indexNode) {
-  RedisModuleCtx *ctx = gc->ctx;
+void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST_IndexNode *indexNode) {
   Graph *g = gc->g;
   /* Set up nested array response for index creation and deletion.
    * As we need no result set, there is only one top-level element, for statistics.
@@ -87,9 +86,9 @@ void _MGraph_Query(void *args) {
     }
 
     if (ast->indexNode) { // index operation
-        _index_operation(gc, ast->indexNode);
+        _index_operation(ctx, gc, ast->indexNode);
     } else {
-        ExecutionPlan *plan = NewExecutionPlan(gc, ast, false);
+        ExecutionPlan *plan = NewExecutionPlan(ctx, gc, ast, false);
         resultSet = ExecutionPlan_Execute(plan);
         ExecutionPlanFree(plan);
         ResultSet_Replay(resultSet);    // Send result-set back to client.
