@@ -1,9 +1,10 @@
 #include "graphcontext.h"
 #include "graphcontext_type.h"
-// TODO needed for the key-value creation logic for the Graph
+#include "../util/rmalloc.h"
+
+// Needed for the key-value creation logic for the Graph
 extern RedisModuleType *GraphRedisModuleType;
 
-// TODO should be unnecessary
 int _GraphContext_IndexOffset(GraphContext *gc, const char *label, const char *property) {
   Index *idx;
   for (int i = 0; i < gc->index_count; i ++) {
@@ -35,7 +36,7 @@ GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rs_name) 
     return NULL;
   }
 
-  GraphContext *gc = malloc(sizeof(GraphContext));
+  GraphContext *gc = rm_malloc(sizeof(GraphContext));
   gc->relation_cap = GRAPH_DEFAULT_RELATION_CAP;
   gc->relation_count = 0;
   gc->label_cap = GRAPH_DEFAULT_LABEL_CAP;
@@ -43,10 +44,10 @@ GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rs_name) 
   gc->index_cap = 4;
   gc->index_count = 0;
 
-  gc->graph_name = strdup(graph_name);
-  gc->node_stores = malloc(gc->label_cap * sizeof(LabelStore*));
-  gc->relation_stores = malloc(gc->relation_cap * sizeof(LabelStore*));
-  gc->indices = malloc(gc->index_cap * sizeof(Index*));
+  gc->graph_name = rm_strdup(graph_name);
+  gc->node_stores = rm_malloc(gc->label_cap * sizeof(LabelStore*));
+  gc->relation_stores = rm_malloc(gc->relation_cap * sizeof(LabelStore*));
+  gc->indices = rm_malloc(gc->index_cap * sizeof(Index*));
 
   gc->node_allstore = LabelStore_New("ALL", GRAPH_NO_LABEL);
   gc->relation_allstore = LabelStore_New("ALL", GRAPH_NO_RELATION);
@@ -84,10 +85,10 @@ LabelStore* GraphContext_AddLabel(GraphContext *gc, const char *label) {
   if(gc->label_count == gc->label_cap) {
     gc->label_cap += 4;
     // Add space for additional label stores.
-    gc->node_stores = realloc(gc->node_stores, gc->label_cap * sizeof(LabelStore*));
+    gc->node_stores = rm_realloc(gc->node_stores, gc->label_cap * sizeof(LabelStore*));
     // Add space for additional label matrices.
     // TODO is this too much of an abstraction breakage?
-    gc->g->_labels = realloc(gc->g->_labels, gc->label_cap * sizeof(GrB_Matrix));
+    gc->g->_labels = rm_realloc(gc->g->_labels, gc->label_cap * sizeof(GrB_Matrix));
 
   }
   Graph_AddLabel(gc->g);
@@ -101,8 +102,8 @@ LabelStore* GraphContext_AddLabel(GraphContext *gc, const char *label) {
 LabelStore* GraphContext_AddRelationType(GraphContext *gc, const char *label) {
   if(gc->relation_count == gc->relation_cap) {
     gc->relation_cap += 4;
-    gc->relation_stores = realloc(gc->relation_stores, gc->relation_cap * sizeof(LabelStore*));
-    gc->g->_relations = realloc(gc->g->_relations, gc->relation_cap * sizeof(GrB_Matrix));
+    gc->relation_stores = rm_realloc(gc->relation_stores, gc->relation_cap * sizeof(LabelStore*));
+    gc->g->_relations = rm_realloc(gc->g->_relations, gc->relation_cap * sizeof(GrB_Matrix));
   }
   Graph_AddRelationType(gc->g);
 
@@ -144,7 +145,7 @@ Index* GraphContext_GetIndex(GraphContext *gc, const char *label, const char *pr
 void GraphContext_AddIndex(GraphContext *gc, const char *label, const char *property) {
   if(gc->index_count == gc->index_cap) {
     gc->index_cap += 4;
-    gc->indices = realloc(gc->indices, gc->index_cap * sizeof(Index*));
+    gc->indices = rm_realloc(gc->indices, gc->index_cap * sizeof(Index*));
   }
 
   LabelStore *store = GraphContext_GetStore(gc, label, STORE_NODE);
@@ -163,7 +164,7 @@ int GraphContext_DeleteIndex(GraphContext *gc, const char *label, const char *pr
   Index *idx = gc->indices[offset];
   Index_Free(idx);
   gc->index_count --;
-  gc->indices[offset] = gc->indices[gc->index_count];
+  if (offset < gc->index_count) gc->indices[offset] = gc->indices[gc->index_count];
 
   return INDEX_OK;
 }
@@ -183,13 +184,13 @@ LabelStore* GraphContext_GetStore(const GraphContext *gc, const char *label, Lab
 }
 
 void GraphContext_Free(GraphContext *gc) {
-  free(gc->graph_name);
+  rm_free(gc->graph_name);
   for (int i = 0; i < gc->index_count; i ++) {
     Index_Free(gc->indices[i]);
   }
-  free(gc->indices);
-  free(gc->relation_stores);
-  free(gc->node_stores);
-  free(gc);
+  rm_free(gc->indices);
+  rm_free(gc->relation_stores);
+  rm_free(gc->node_stores);
+  rm_free(gc);
 }
 

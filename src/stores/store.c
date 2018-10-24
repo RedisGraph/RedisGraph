@@ -6,7 +6,6 @@
 */
 
 #include "store.h"
-#include "store_type.h"
 #include <assert.h>
 
 /* Creates a new LabelStore. */

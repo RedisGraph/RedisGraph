@@ -6,6 +6,7 @@
 */
 
 #include "index.h"
+#include "../util/rmalloc.h"
 
 /* Memory management and comparator functions that get attached to
  * string and numeric skiplists as function pointers. */
@@ -25,14 +26,14 @@ int compareNumerics(SIValue *a, SIValue *b) {
 /* The index must maintain its own copy of the indexed SIValue
  * so that it becomes outdated but not broken by updates to the property. */
 SIValue* cloneKey(SIValue *property) {
-  SIValue *clone = malloc(sizeof(SIValue));
+  SIValue *clone = rm_malloc(sizeof(SIValue));
   *clone = SI_Clone(*property);
   return clone;
 }
 
 void freeKey(SIValue *key) {
   SIValue_Free(key);
-  free(key);
+  rm_free(key);
 }
 
 void initializeSkiplists(Index *index) {
@@ -43,10 +44,10 @@ void initializeSkiplists(Index *index) {
 /* Index_Create allocates an Index object and populates it with a label-property pair
  * by accessing DataBlock elements referred to by a TuplesIter over a label matrix. */
 Index* Index_Create(DataBlock *entities, TuplesIter *it, const char *label, const char *prop_str) {
-  Index *index = malloc(sizeof(Index));
+  Index *index = rm_malloc(sizeof(Index));
 
-  index->label = strdup(label);
-  index->property = strdup(prop_str);
+  index->label = rm_strdup(label);
+  index->property = rm_strdup(prop_str);
 
   initializeSkiplists(index);
 
@@ -119,8 +120,8 @@ void IndexIter_Free(IndexIter *iter) {
 void Index_Free(Index *idx) {
   skiplistFree(idx->string_sl);
   skiplistFree(idx->numeric_sl);
-  free(idx->label);
-  free(idx->property);
-  free(idx);
+  rm_free(idx->label);
+  rm_free(idx->property);
+  rm_free(idx);
 }
 

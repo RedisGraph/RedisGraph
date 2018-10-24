@@ -46,9 +46,12 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include "rmalloc.h"
 
-#define zmalloc malloc
-#define zfree free
+#define zmalloc rm_malloc
+#define zrealloc rm_realloc
+#define zcalloc rm_calloc
+#define zfree rm_free
 
 static inline unsigned long skiplistLength(skiplist *sl) { return sl->length; }
 
@@ -79,7 +82,7 @@ skiplistNode *skiplistNodeAppendValue(skiplistNode *n, skiplistVal val,
 
   if (n->numVals >= n->valsAllocated) {
     n->valsAllocated *= 2;
-    n->vals = realloc(n->vals, n->valsAllocated * sizeof(skiplistVal *));
+    n->vals = zrealloc(n->vals, n->valsAllocated * sizeof(skiplistVal *));
   }
 
   // Insert the new value
@@ -288,7 +291,7 @@ int skiplistDelete(skiplist *sl, skiplistKey key, skiplistVal *val) {
           // shrink the array
           if (x->numVals > 0 && x->valsAllocated >= x->numVals * 4) {
             x->valsAllocated = x->numVals * 2;
-            x->vals = realloc(x->vals, x->valsAllocated * sizeof(*val));
+            x->vals = zrealloc(x->vals, x->valsAllocated * sizeof(*val));
           }
           break;
         }
@@ -476,7 +479,7 @@ skiplistIterator* skiplistIterateRange(skiplist *sl, skiplistKey min, skiplistKe
 }
 
 skiplistIterator* skiplistIterateAll(skiplist *sl) {
-  skiplistIterator *iter = calloc(1, sizeof(skiplistIterator));
+  skiplistIterator *iter = zcalloc(1, sizeof(skiplistIterator));
   iter->current = sl->header->level[0].forward;
   iter->sl = sl;
   return iter;
