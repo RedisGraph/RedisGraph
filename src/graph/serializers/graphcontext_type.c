@@ -7,6 +7,7 @@
 
 #include "../graphcontext.h"
 #include "graphcontext_type.h"
+#include "serialize_graph.h"
 #include "serialize_store.h"
 #include "../../util/rmalloc.h"
 
@@ -19,6 +20,7 @@ void GraphContextType_RdbSave(RedisModuleIO *rdb, void *value) {
    * #label stores
    * #relation stores
    * #indices
+   * graph object
    * label allstore
    * label store X #label stores
    * relation allstore
@@ -32,6 +34,9 @@ void GraphContextType_RdbSave(RedisModuleIO *rdb, void *value) {
   RedisModule_SaveUnsigned(rdb, gc->label_count);
   RedisModule_SaveUnsigned(rdb, gc->relation_count);
   RedisModule_SaveUnsigned(rdb, gc->index_count);
+
+  // Serialize graph object
+  RdbSaveGraph(rdb, gc->g);
 
   // Serialize label all store
   RdbSaveStore(rdb, gc->node_allstore);
@@ -62,6 +67,7 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
    * #label stores
    * #relation stores
    * #indices
+   * graph object
    * label allstore
    * label store X #label stores
    * relation allstore
@@ -87,6 +93,9 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
   gc->relation_cap = gc->relation_count;
   gc->index_cap = gc->index_count;
 
+  // Retrieve Graph object
+  gc->g = RdbLoadGraph(rdb);
+
   // Retrieve all store for labels
   gc->node_allstore = RdbLoadStore(rdb);
 
@@ -110,7 +119,6 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
     gc->indices[i] = rm_malloc(sizeof(Index));
     const char *label = RedisModule_LoadStringBuffer(rdb, NULL);
     const char *property = RedisModule_LoadStringBuffer(rdb, NULL);
-    // TODO unsafe; assumes Graph has been loaded
     GraphContext_AddIndex(gc, label, property);
   }
 
@@ -133,7 +141,7 @@ int GraphContextType_Register(RedisModuleCtx *ctx) {
                                .aof_rewrite = GraphContextType_AofRewrite,
                                .free = GraphContextType_Free};
 
-  GraphContextRedisModuleType = RedisModule_CreateDataType(ctx, "g_context", GRAPHCONTEXT_TYPE_ENCODING_VERSION, &tm);
+  GraphContextRedisModuleType = RedisModule_CreateDataType(ctx, "graphdata", GRAPHCONTEXT_TYPE_ENCODING_VERSION, &tm);
   if (GraphContextRedisModuleType == NULL) {
     return REDISMODULE_ERR;
   }

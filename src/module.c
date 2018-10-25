@@ -11,7 +11,6 @@
 #include "config.h"
 #include "version.h"
 #include "commands/commands.h"
-#include "graph/serializers/graph_type.h"
 #include "graph/serializers/graphcontext_type.h"
 #include "util/thpool/thpool.h"
 #include "arithmetic/agg_funcs.h"
@@ -39,11 +38,6 @@ int _Setup_ThreadPOOL(int threadCount) {
 }
 
 int _RegisterDataTypes(RedisModuleCtx *ctx) {
-    if(GraphType_Register(ctx) == REDISMODULE_ERR) {
-        printf("Failed to register graphtype\n");
-        return REDISMODULE_ERR;
-    }
-
     if(GraphContextType_Register(ctx) == REDISMODULE_ERR) {
         printf("Failed to register GraphContext type\n");
         return REDISMODULE_ERR;

@@ -2,9 +2,6 @@
 #include "serializers/graphcontext_type.h"
 #include "../util/rmalloc.h"
 
-// Needed for the key-value creation logic for the Graph
-extern RedisModuleType *GraphRedisModuleType;
-
 int _GraphContext_IndexOffset(GraphContext *gc, const char *label, const char *property) {
   Index *idx;
   for (int i = 0; i < gc->index_count; i ++) {
@@ -14,6 +11,7 @@ int _GraphContext_IndexOffset(GraphContext *gc, const char *label, const char *p
   return -1;
 }
 
+// TODO consider changing key name
 RedisModuleKey* GraphContext_Key(RedisModuleCtx *ctx, const char *graph_name) {
   int keylen = strlen(graph_name) + 4;
   char strKey[keylen + 1];
@@ -44,6 +42,9 @@ GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rs_name) 
   gc->index_cap = 4;
   gc->index_count = 0;
 
+  // TODO Make sure this is still an appropriate function.
+  gc->g = Graph_New(GRAPH_DEFAULT_NODE_CAP);
+
   gc->graph_name = rm_strdup(graph_name);
   gc->node_stores = rm_malloc(gc->label_cap * sizeof(LabelStore*));
   gc->relation_stores = rm_malloc(gc->relation_cap * sizeof(LabelStore*));
@@ -56,13 +57,6 @@ GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rs_name) 
   RedisModule_ModuleTypeSetValue(key, GraphContextRedisModuleType, gc);
   RedisModule_CloseKey(key);
 
-  gc->g = Graph_New(GRAPH_DEFAULT_NODE_CAP);
-  // Add new Graph to keyspace
-  // TODO this separation feels rather clunky
-  key = RedisModule_OpenKey(ctx, rs_name, REDISMODULE_WRITE);
-  assert(RedisModule_KeyType(key) == REDISMODULE_KEYTYPE_EMPTY);
-  RedisModule_ModuleTypeSetValue(key, GraphRedisModuleType, gc->g);
-  RedisModule_CloseKey(key);
 
   return gc;
 }
@@ -74,8 +68,6 @@ GraphContext* GraphContext_Get(RedisModuleCtx *ctx, RedisModuleString *rs_name) 
 
   GraphContext *gc = RedisModule_ModuleTypeGetValue(key);
   RedisModule_CloseKey(key);
-
-  gc->g = Graph_Get(ctx, rs_name);
 
   return gc;
 }
@@ -184,6 +176,7 @@ LabelStore* GraphContext_GetStore(const GraphContext *gc, const char *label, Lab
 }
 
 void GraphContext_Free(GraphContext *gc) {
+  Graph_Free(gc->g);
   rm_free(gc->graph_name);
   for (int i = 0; i < gc->index_count; i ++) {
     Index_Free(gc->indices[i]);

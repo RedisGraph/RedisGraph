@@ -8,7 +8,6 @@
 #include <assert.h>
 
 #include "graph.h"
-#include "serializers/graph_type.h"
 #include "../util/qsort.h"
 #include "../GraphBLASExt/tuples_iter.h"
 #include "../GraphBLASExt/GxB_Pending.h"
@@ -297,18 +296,6 @@ Graph *Graph_New(size_t n) {
      * another thread could be resizing matrix B. */
     assert(pthread_mutex_init(&g->_mutex, NULL) == 0);
 
-    return g;
-}
-
-Graph *Graph_Get(RedisModuleCtx *ctx, RedisModuleString *graph_name) {
-    Graph *g = NULL;
-
-    RedisModuleKey *key = RedisModule_OpenKey(ctx, graph_name, REDISMODULE_WRITE);
-    if (RedisModule_ModuleTypeGetType(key) == GraphRedisModuleType) {
-        g = RedisModule_ModuleTypeGetValue(key);
-    }
-
-    RedisModule_CloseKey(key);
     return g;
 }
 

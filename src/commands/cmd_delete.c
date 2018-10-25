@@ -44,24 +44,12 @@ void _MGraph_Delete(void *args) {
 
     MGraph_AcquireWriteLock(ctx);
     
-    Graph *g = Graph_Get(ctx, graphID);
-
-    // Graph does not exists, nothing to delete.
-    if(!g) goto cleanup;
-
-    // Remove Graph from Redis keyspace.
-    RedisModuleKey *key = RedisModule_OpenKey(ctx, graphID, REDISMODULE_WRITE);
-    if(RedisModule_DeleteKey(key) != REDISMODULE_OK) {
-        // Log error!
-    }
-
     // Remove GraphContext from keyspace.
-    key = GraphContext_Key(ctx, graphIDStr);
+    RedisModuleKey *key = GraphContext_Key(ctx, graphIDStr);
     if(RedisModule_DeleteKey(key) != REDISMODULE_OK) {
         // Log error!
     }
 
-cleanup:
     MGraph_ReleaseLock(ctx);
     DeleteGraphContext_free(dCtx);
 

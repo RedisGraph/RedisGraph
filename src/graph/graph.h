@@ -42,13 +42,6 @@ Graph *Graph_New (
     size_t n    // Initial number of nodes in the graph.
 );
 
-// Retrieves a graph from redis keyspace,
-// incase graph_name was not found NULL is returned.
-Graph *Graph_Get(
-    RedisModuleCtx *ctx,
-    RedisModuleString *graph_name
-);
-
 // Returns number of nodes in the graph.
 size_t Graph_NodeCount(const Graph *g);
 
