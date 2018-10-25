@@ -72,7 +72,7 @@ elseif ("${CMAKE_C_COMPILER_ID}" STREQUAL "Intel")
     endif ( )
 elseif ("${CMAKE_C_COMPILER_ID}" STREQUAL "Clang")
     # options for clang
-    set (CMAKE_C_FLAGS  "-Xpreprocessor -fopenmp -DREDIS_MODULE_TARGET -DMALLOC=rm_malloc -DCALLOC=rm_calloc -DREALLOC=rm_realloc -DFREE=rm_free")
+    set (CMAKE_C_FLAGS  "-Xpreprocessor -fopenmp -L/usr/local/opt/libomp/lib -I/usr/local/opt/libomp/include -DREDIS_MODULE_TARGET -DMALLOC=rm_malloc -DCALLOC=rm_calloc -DREALLOC=rm_realloc -DFREE=rm_free -Wno-unused-command-line-argument")
     if (CMAKE_C_COMPILER_VERSION VERSION_LESS 3.3)
         message (FATAL_ERROR "clang version must be at least 3.3")
     endif ( )
