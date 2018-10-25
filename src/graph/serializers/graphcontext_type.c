@@ -5,64 +5,13 @@
  * modified with the Commons Clause restriction.
  */
 
-#include "graphcontext.h"
+#include "../graphcontext.h"
 #include "graphcontext_type.h"
-#include "../util/rmalloc.h"
+#include "serialize_store.h"
+#include "../../util/rmalloc.h"
 
 /* Declaration of the type for redis registration. */
 RedisModuleType *GraphContextRedisModuleType;
-
-/* Deserialize label store */
-void* GraphContextType_RdbLoadStore(RedisModuleIO *rdb, int encver) {
-  /* Format:
-   * id
-   * label
-   * #properties
-   * properties
-   */
-
-  LabelStore *s = rm_calloc(1, sizeof(LabelStore));
-
-  s->id = RedisModule_LoadUnsigned(rdb);
-  s->label = rm_strdup(RedisModule_LoadStringBuffer(rdb, NULL));
-  s->properties = NewTrieMap();
-
-  uint64_t propCount = RedisModule_LoadUnsigned(rdb);
-  for(int i = 0; i < propCount; i++) {
-    size_t propLen;
-    char *prop = RedisModule_LoadStringBuffer(rdb, &propLen);
-    TrieMap_Add(s->properties, prop, propLen, NULL, NULL);
-  }
-
-  return s;
-}
-
-/* Serialize label store */
-void GraphContextType_RdbSaveStore(RedisModuleIO *rdb, void *value) {
-  /* Format:
-   * id
-   * label
-   * #properties
-   * properties
-   */
-
-  LabelStore *s = value;
-
-  RedisModule_SaveUnsigned(rdb, s->id);
-  RedisModule_SaveStringBuffer(rdb, s->label, strlen(s->label) + 1);
-  RedisModule_SaveUnsigned(rdb, s->properties->cardinality);
-
-  if(s->properties->cardinality) {
-    char *ptr;
-    tm_len_t len;
-    void *v;
-    TrieMapIterator *it = TrieMap_Iterate(s->properties, "", 0);
-    while(TrieMapIterator_Next(it, &ptr, &len, &v)) {
-      RedisModule_SaveStringBuffer(rdb, ptr, len);
-    }
-    TrieMapIterator_Free(it);
-  }
-}
 
 void GraphContextType_RdbSave(RedisModuleIO *rdb, void *value) {
   /* Format:
@@ -85,19 +34,20 @@ void GraphContextType_RdbSave(RedisModuleIO *rdb, void *value) {
   RedisModule_SaveUnsigned(rdb, gc->index_count);
 
   // Serialize label all store
-  GraphContextType_RdbSaveStore(rdb, gc->node_allstore);
+  RdbSaveStore(rdb, gc->node_allstore);
   // Serialize each label store
   for (int i = 0; i < gc->label_count; i ++) {
-    GraphContextType_RdbSaveStore(rdb, gc->node_stores[i]);
+    RdbSaveStore(rdb, gc->node_stores[i]);
   }
 
   // Serialize relation all store
-  GraphContextType_RdbSaveStore(rdb, gc->relation_allstore);
+  RdbSaveStore(rdb, gc->relation_allstore);
   // Serialize each relation type store
   for (int i = 0; i < gc->relation_count; i ++) {
-    GraphContextType_RdbSaveStore(rdb, gc->relation_stores[i]);
+    RdbSaveStore(rdb, gc->relation_stores[i]);
   }
 
+  // Serialize each index
   Index *idx;
   for (int i = 0; i < gc->index_count; i ++) {
     idx = gc->indices[i];
@@ -138,21 +88,21 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
   gc->index_cap = gc->index_count;
 
   // Retrieve all store for labels
-  gc->node_allstore = GraphContextType_RdbLoadStore(rdb, encver);
+  gc->node_allstore = RdbLoadStore(rdb);
 
   // Retrieve each label store
   gc->node_stores = rm_malloc(gc->label_count * sizeof(LabelStore*));
   for (int i = 0; i < gc->label_count; i ++) {
-    gc->node_stores[i] = GraphContextType_RdbLoadStore(rdb, encver);
+    gc->node_stores[i] = RdbLoadStore(rdb);
   }
 
   // Retrieve all store for relations
-  gc->relation_allstore = GraphContextType_RdbLoadStore(rdb, encver);
+  gc->relation_allstore = RdbLoadStore(rdb);
 
   // Retrieve each relation type store
   gc->relation_stores = rm_malloc(gc->relation_count * sizeof(LabelStore*));
   for (int i = 0; i < gc->relation_count; i ++) {
-    gc->relation_stores[i] = GraphContextType_RdbLoadStore(rdb, encver);
+    gc->relation_stores[i] = RdbLoadStore(rdb);
   }
 
   gc->indices = rm_malloc(gc->index_count * sizeof(Index*));

@@ -8,7 +8,6 @@
 #include <assert.h>
 #include "query_executor.h"
 #include "graph/graph.h"
-#include "graph/graph_type.h"
 #include "graph/entities/node.h"
 #include "stores/store.h"
 #include "util/vector.h"

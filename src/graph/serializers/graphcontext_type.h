@@ -8,7 +8,7 @@
 #ifndef GRAPHCONTEXT_TYPE_H
 #define GRAPHCONTEXT_TYPE_H
 
-#include "../redismodule.h"
+#include "../../redismodule.h"
 
 extern RedisModuleType *GraphContextRedisModuleType;
 

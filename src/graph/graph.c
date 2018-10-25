@@ -8,7 +8,7 @@
 #include <assert.h>
 
 #include "graph.h"
-#include "graph_type.h"
+#include "serializers/graph_type.h"
 #include "../util/qsort.h"
 #include "../GraphBLASExt/tuples_iter.h"
 #include "../GraphBLASExt/GxB_Pending.h"

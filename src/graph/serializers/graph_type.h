@@ -8,7 +8,7 @@
 #ifndef GRAPH_TYPE_H
 #define GRAPH_TYPE_H
 
-#include "../redismodule.h"
+#include "../../redismodule.h"
 
 extern RedisModuleType *GraphRedisModuleType;
 

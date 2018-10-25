@@ -1,5 +1,5 @@
 #include "graphcontext.h"
-#include "graphcontext_type.h"
+#include "serializers/graphcontext_type.h"
 #include "../util/rmalloc.h"
 
 // Needed for the key-value creation logic for the Graph
