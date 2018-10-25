@@ -50,9 +50,6 @@ void _MGraph_BulkInsert(void *args) {
     // Exit if insertion failed
     if (rc == BULK_FAIL) goto cleanup;
 
-    // Force graph pending operations to complete.
-    Graph_CommitPendingOps(g);
-
     // Replay to caller.
     double t = simple_toc(context->tic);
     char timings[1024] = {0};
