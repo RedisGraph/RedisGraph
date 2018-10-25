@@ -74,7 +74,8 @@ void _MGraph_Query(void *args) {
     if (AST_PerformValidations(ctx, ast) != AST_VALID) goto cleanup;
 
     // If this is a write query, acquire write lock.
-    if(AST_ReadOnly(ast)) MGraph_AcquireReadLock();
+    bool readonly = AST_ReadOnly(ast);
+    if(readonly) MGraph_AcquireReadLock();
     else MGraph_AcquireWriteLock(ctx);
 
     // Try to get graph.
@@ -89,6 +90,8 @@ void _MGraph_Query(void *args) {
             goto cleanup;
         }
     }
+    // If we've acquired a write lock, we don't need to worry about races in graph access.
+    g->locked = !readonly;
 
     if (ast->indexNode) { // index operation
         _index_operation(ctx, graph_name, g, ast->indexNode);

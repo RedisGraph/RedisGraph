@@ -42,6 +42,8 @@ void _MGraph_BulkInsert(void *args) {
     Graph *g = Graph_Get(ctx, rs_graph_name);
     if (g == NULL) g = MGraph_CreateGraph(ctx, rs_graph_name);
 
+    g->locked = true; // Graph is held by a single thread.
+
     // Exit if graph creation failed
     if (g == NULL) goto cleanup;
 

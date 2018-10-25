@@ -8,7 +8,7 @@
 #include "cmd_delete.h"
 
 #include <assert.h>
-#include "stores/store.h"
+#include "../stores/store.h"
 #include "../graph/graph.h"
 #include "../query_executor.h"
 #include "../util/simple_timer.h"
@@ -49,6 +49,7 @@ void _MGraph_Delete(void *args) {
 
     // Graph does not exists, nothing to delete.
     if(!g) goto cleanup;
+    g->locked = true; // Graph is held by a single thread.
 
     // Remove Label stores.
     size_t keyCount = 0;
