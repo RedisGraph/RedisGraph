@@ -38,7 +38,6 @@ typedef struct {
     size_t label_cap;               // Number of labels graph can hold.
     size_t label_count;             // Number of label matrices.    
     pthread_mutex_t _mutex;         // Mutex for accessing critical sections.
-    bool locked;                    // True if graph can only be accessed by a single thread.
 
 } Graph;
 

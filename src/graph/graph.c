@@ -40,14 +40,6 @@ void _Graph_SynchronizeMatrix(const Graph *g, GrB_Matrix m) {
     GrB_Index n_rows;
     GrB_Matrix_nrows(&n_rows, m);
 
-    // If the graph belongs to one thread, we don't need to flush pending operations
-    // or lock the mutex.
-    if (g->locked) {
-        if (n_rows != Graph_NodeCount(g)) {
-            assert(GxB_Matrix_resize(m, Graph_NodeCount(g), Graph_NodeCount(g)) == GrB_SUCCESS);
-        }
-        return;
-    }
     // If the matrix has pending operations or requires
     // a resize, enter critical section.
     if(GxB_Matrix_Pending(m) || (n_rows != Graph_NodeCount(g))) {
