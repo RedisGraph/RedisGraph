@@ -33,6 +33,9 @@ static inline void _Graph_ApplyPending(GrB_Matrix m) {
     GrB_Matrix_nvals(&nvals, m);
 }
 
+/* module.c global indicating whether the process is locked by a writer. */
+extern bool _writelocked;
+
 /* Resize given matrix, such that its number of row and columns
  * matches the number of nodes in the graph. Also, synchronize
  * matrix to execute any pending operations. */
@@ -40,6 +43,14 @@ void _Graph_SynchronizeMatrix(const Graph *g, GrB_Matrix m) {
     GrB_Index n_rows;
     GrB_Matrix_nrows(&n_rows, m);
 
+    // If the graph belongs to one thread, we don't need to flush pending operations
+    // or lock the mutex.
+    if (_writelocked) {
+        if (n_rows != Graph_NodeCount(g)) {
+            assert(GxB_Matrix_resize(m, Graph_NodeCount(g), Graph_NodeCount(g)) == GrB_SUCCESS);
+        }
+        return;
+    }
     // If the matrix has pending operations or requires
     // a resize, enter critical section.
     if(GxB_Matrix_Pending(m) || (n_rows != Graph_NodeCount(g))) {

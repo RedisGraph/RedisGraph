@@ -169,10 +169,12 @@ void MGraph_AcquireReadLock() {
 
 void MGraph_AcquireWriteLock(RedisModuleCtx *ctx) {
     pthread_rwlock_wrlock(&_rwlock);
+    _writelocked = true;
     RedisModule_ThreadSafeContextLock(ctx);
 }
 
 void MGraph_ReleaseLock(RedisModuleCtx *ctx) {
+    _writelocked = false;
     pthread_rwlock_unlock(&_rwlock);
     /* Release Redis global lock,
      * this should only have an effect when the read/write lock
