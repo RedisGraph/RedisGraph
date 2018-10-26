@@ -53,13 +53,12 @@ def delete_graph(graph, threadID):
     global assertions
     assertions[threadID] = True
 
-    # Try to delete graph multiple times.
-    for i in range(10):
-        try:
-            graph.delete()
-        except:
-            # Graph deletion failed.
-            assertions[threadID] = False
+    # Try to delete graph.
+    try:
+        graph.delete()
+    except:
+        # Graph deletion failed.
+        assertions[threadID] = False
 
 class ConcurrentQueryFlowTest(FlowTestsBase):
     @classmethod
@@ -165,7 +164,9 @@ class ConcurrentQueryFlowTest(FlowTestsBase):
         for i in range(CLIENT_COUNT):
             t = threads[i]
             t.join()
-            assert(assertions[i])
+
+        # Exactly one thread should have successfully deleted the graph.
+        assert(assertions.count(True) == 1)
 
 if __name__ == '__main__':
     unittest.main()
