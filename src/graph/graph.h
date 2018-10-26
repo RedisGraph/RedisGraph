@@ -26,11 +26,13 @@
 #define GRAPH_NO_RELATION -1            // Relations are numbered [0-N], -1 represents no relation.
 
 typedef struct {
+    // TODO where to keep DataBlocks?
     DataBlock *nodes;               // Graph nodes stored in blocks.
     DataBlock *edges;               // Graph edges stored in blocks.
     Edge *_edgesHashTbl;            // Hash table containing edges.
     GrB_Matrix adjacency_matrix;    // Adjacency matrix, holds all graph connections.
     GrB_Matrix *_relations;         // Relation matrices.
+    // TODO
     size_t relation_count;          // Number of relation matrices.
     GrB_Matrix *_labels;            // Label matrices.
     size_t label_count;             // Number of label matrices.    
@@ -95,13 +97,15 @@ typedef enum {
     GRAPH_EDGE_DIR_OUTGOING,
     GRAPH_EDGE_DIR_BOTH,
 } GRAPH_EDGE_DIR;
+
 // Get node edges.
 void Graph_GetNodeEdges (
     const Graph *g,
     const Node *n,
     Vector *edges,
     GRAPH_EDGE_DIR dir,
-    int edgeType
+    int edgeType,
+    bool locked         // True if we've already acquired a write lock.
 );
 
 // Removes a set of nodes and all of their connections
@@ -144,21 +148,24 @@ int Graph_AddLabel (
 // Retrieves the adjacency matrix.
 // Matrix is resized if its size doesn't match graph's node count.
 GrB_Matrix Graph_GetAdjacencyMatrix (
-    const Graph *g
+    const Graph *g,
+    bool locked         // True if we've already acquired a write lock.
 );
 
 // Retrieves a label matrix.
 // Matrix is resized if its size doesn't match graph's node count.
 GrB_Matrix Graph_GetLabel (
     const Graph *g,     // Graph from which to get adjacency matrix.
-    int label           // Label described by matrix.
+    int label,          // Label described by matrix.
+    bool locked         // True if we've already acquired a write lock.
 );
 
 // Retrieves a typed adjacency matrix.
 // Matrix is resized if its size doesn't match graph's node count.
 GrB_Matrix Graph_GetRelation (
     const Graph *g,     // Graph from which to get adjacency matrix.
-    int relation        // Relation described by matrix.
+    int relation,       // Relation described by matrix.
+    bool locked         // True if we've already acquired a write lock.
 );
 
 // Creates a new relation matrix, returns id given to relation.
@@ -168,7 +175,8 @@ int Graph_AddRelationType (
 
 // Commit GraphBLAS pending operations.
 void Graph_CommitPendingOps (
-    Graph *g
+    Graph *g,
+    bool locked         // True if we've already acquired a write lock.
 );
 
 // Free graph.
@@ -177,3 +185,4 @@ void Graph_Free (
 );
 
 #endif
+

@@ -174,7 +174,7 @@ class GraphTest : public ::testing::Test
 
             // Test relation matrix.
             v = false;
-            GrB_Matrix mat = Graph_GetRelation(g, r);
+            GrB_Matrix mat = Graph_GetRelation(g, r, true);
             EXPECT_EQ(GrB_Matrix_extractElement_BOOL(&v, mat, dest_id, src_id), GrB_SUCCESS);
             EXPECT_TRUE(v);
         }
@@ -212,7 +212,7 @@ class GraphTest : public ::testing::Test
         EXPECT_GT(g->relation_count, 0);
         for (unsigned int i = 0; i < g->relation_count; i++)
         {
-            GrB_Matrix r = Graph_GetRelation(g, i);
+            GrB_Matrix r = Graph_GetRelation(g, i, true);
             EXPECT_EQ(GrB_Matrix_nrows(&nrows, r), GrB_SUCCESS);
             EXPECT_EQ(GrB_Matrix_ncols(&ncols, r), GrB_SUCCESS);
             EXPECT_EQ(ncols, Graph_NodeCount(g));
@@ -448,11 +448,11 @@ TEST_F(GraphTest, RemoveNodes)
 
     // Validate graph creation.
     EXPECT_EQ(Graph_NodeCount(g), 3);
-    M = Graph_GetRelation(g, r);
+    M = Graph_GetRelation(g, r, true);
     GrB_Matrix_nvals(&nnz, M);
     EXPECT_EQ(nnz, 3);
 
-    M = Graph_GetAdjacencyMatrix(g);
+    M = Graph_GetAdjacencyMatrix(g, true);
     GrB_Matrix_nvals(&nnz, M);
     EXPECT_EQ(nnz, 3);
 
@@ -463,7 +463,7 @@ TEST_F(GraphTest, RemoveNodes)
     //==============================================================================
 
     // First node should have 2 edges.
-    Graph_GetNodeEdges(g, Graph_GetNode(g, 0), edges, GRAPH_EDGE_DIR_BOTH, GRAPH_NO_RELATION);
+    Graph_GetNodeEdges(g, Graph_GetNode(g, 0), edges, GRAPH_EDGE_DIR_BOTH, GRAPH_NO_RELATION, true);
     EXPECT_EQ(Vector_Size(edges), 2);
     Vector_Clear(edges);
 
@@ -555,7 +555,7 @@ TEST_F(GraphTest, RemoveMultipleNodes)
     GrB_Vector_new(&col, GrB_BOOL, Graph_NodeCount(g));
 
     // Make sure last and before last rows and column are zeroed out.
-    GrB_Matrix adj = Graph_GetAdjacencyMatrix(g);
+    GrB_Matrix adj = Graph_GetAdjacencyMatrix(g, true);
 
     GrB_Col_extract(row, NULL, NULL, adj, GrB_ALL, Graph_NodeCount(g), 7, desc);
     GrB_Col_extract(col, NULL, NULL, adj, GrB_ALL, Graph_NodeCount(g), 7, NULL);
@@ -625,11 +625,11 @@ TEST_F(GraphTest, RemoveEdges)
     Graph_ConnectNodes(g, connections, 3, NULL);
 
     // Validate graph creation.
-    M = Graph_GetRelation(g, r);
+    M = Graph_GetRelation(g, r, true);
     GrB_Matrix_nvals(&nnz, M);
     EXPECT_EQ(nnz, 3);
 
-    M = Graph_GetAdjacencyMatrix(g);
+    M = Graph_GetAdjacencyMatrix(g, true);
     GrB_Matrix_nvals(&nnz, M);
     EXPECT_EQ(nnz, 3);
 
@@ -661,7 +661,7 @@ TEST_F(GraphTest, RemoveEdges)
     EXPECT_EQ(lastEdge->id, removedEdgeID);
     
     // Validate matrix update.    
-    M = Graph_GetRelation(g, r);
+    M = Graph_GetRelation(g, r, true);
     // Relation matrix at [destID, srcID] should be empty.
     bool x = false;
     GrB_Matrix_extractElement_BOOL(&x, M, destID, srcID);
@@ -671,7 +671,7 @@ TEST_F(GraphTest, RemoveEdges)
 
     // Adjacency matrix at [] should be empty.
     x = false;
-    M = Graph_GetAdjacencyMatrix(g);
+    M = Graph_GetAdjacencyMatrix(g, true);
     GrB_Matrix_extractElement_BOOL(&x, M, destID, srcID);
     EXPECT_FALSE(x);
     GrB_Matrix_nvals(&nnz, M);
@@ -699,7 +699,7 @@ TEST_F(GraphTest, RemoveEdges)
     EXPECT_EQ(firstEdge->id, firstEdgeID);
 
     // Validate matrix update.    
-    M = Graph_GetRelation(g, r);
+    M = Graph_GetRelation(g, r, true);
     // Relation matrix at [destID, srcID] should be empty.
     x = false;
     GrB_Matrix_extractElement_BOOL(&x, M, destID, srcID);
@@ -709,7 +709,7 @@ TEST_F(GraphTest, RemoveEdges)
 
     // Adjacency matrix at [] should be empty.
     x = false;
-    M = Graph_GetAdjacencyMatrix(g);
+    M = Graph_GetAdjacencyMatrix(g, true);
     GrB_Matrix_extractElement_BOOL(&x, M, destID, srcID);
     EXPECT_FALSE(x);
     GrB_Matrix_nvals(&nnz, M);
@@ -729,11 +729,11 @@ TEST_F(GraphTest, RemoveEdges)
     EXPECT_EQ(Graph_EdgeCount(g), 0);
 
     // Validate matrix update.
-    M = Graph_GetRelation(g, r);
+    M = Graph_GetRelation(g, r, true);
     GrB_Matrix_nvals(&nnz, M);
     EXPECT_EQ(nnz, 0);
 
-    M = Graph_GetAdjacencyMatrix(g);
+    M = Graph_GetAdjacencyMatrix(g, true);
     GrB_Matrix_nvals(&nnz, M);
     EXPECT_EQ(nnz, 0);
 

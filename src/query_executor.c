@@ -163,29 +163,6 @@ static void _replicateMergeClauseToMatchClause(AST_Query *ast) {
 }
 
 //------------------------------------------------------------------------------
-// Read/Write lock
-//------------------------------------------------------------------------------
-
-void MGraph_AcquireReadLock() {
-    pthread_rwlock_rdlock(&_rwlock);
-}
-
-void MGraph_AcquireWriteLock(RedisModuleCtx *ctx) {
-    pthread_rwlock_wrlock(&_rwlock);
-    _writelocked = true;
-    RedisModule_ThreadSafeContextLock(ctx);
-}
-
-void MGraph_ReleaseLock(RedisModuleCtx *ctx) {
-    _writelocked = false;
-    pthread_rwlock_unlock(&_rwlock);
-    /* Release Redis global lock,
-     * this should only have an effect when the read/write lock
-     * was acquired for writing. */
-    RedisModule_ThreadSafeContextUnlock(ctx);
-}
-
-//------------------------------------------------------------------------------
 
 /* Construct an expression tree foreach none aggregated term.
  * Returns a vector of none aggregated expression trees. */

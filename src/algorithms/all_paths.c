@@ -23,7 +23,8 @@ void _AllPaths
     Path *path,             // Current path.
     size_t *pathsCount,     // Number of paths constructed.
     size_t *pathsCap,       // Paths array capacity.
-    Path **paths            // Paths constructed.
+    Path **paths,           // Paths constructed.
+    bool locked
 )
 {
     if(hop >= minHops && hop <= maxHops) {
@@ -91,12 +92,13 @@ size_t AllPaths
     unsigned int minLen,
     unsigned int maxLen,
     size_t *pathsCap,
-    Path **paths
+    Path **paths,
+    bool locked
 )
 {
     assert(g && minLen >= 0 && minLen <= maxLen && pathsCap && paths);
 
-    GrB_Matrix relation = Graph_GetRelation(g, relationID);    
+    GrB_Matrix relation = Graph_GetRelation(g, relationID, locked);
     /* Avoid revisiting edges along a constructed path by, marking visited edges,
      * for every traversed edge (A)-[]->(B) visited[A,B] is set. */
     GrB_Matrix visited;

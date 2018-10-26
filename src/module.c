@@ -61,9 +61,9 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
     if (!_Setup_ThreadPOOL(threadCount)) return REDISMODULE_ERR;
     RedisModule_Log(ctx, "notice", "Thread pool created, using %d threads.", threadCount);
 
-    // Initialize read write lock.
-    if (pthread_rwlock_init(&_rwlock, NULL)) return REDISMODULE_ERR;
-    _writelocked = false;
+    if (RedisModule_Init(ctx, "graph", REDISGRAPH_MODULE_VERSION, REDISMODULE_APIVER_1) == REDISMODULE_ERR) {
+        return REDISMODULE_ERR;
+    }
 
     if (_RegisterDataTypes(ctx) != REDISMODULE_OK) return REDISMODULE_ERR;
 

@@ -148,7 +148,7 @@ void _BuildQueryGraphAddNode(const GraphContext *gc,
     if(n->label && !n->mat) {
         LabelStore *s = GraphContext_GetStore(gc, entity->label, STORE_NODE);
         if(s) {
-            n->mat = Graph_GetLabel(g, s->id);
+            n->mat = Graph_GetLabel(g, s->id, gc->_writelocked);
         } else {
             /* Use a zeroed matrix.
              * TODO: either use a static zero matrix, or free this one. */
@@ -188,12 +188,12 @@ void _BuildQueryGraphAddEdge(const GraphContext *gc,
     // Get relation matrix.
     if(edge->ge.label == NULL) {
         Edge_SetRelationID(e, GRAPH_NO_RELATION);
-        e->mat = Graph_GetAdjacencyMatrix(g);
+        e->mat = Graph_GetAdjacencyMatrix(g, gc->_writelocked);
     } else {
         LabelStore *s = GraphContext_GetStore(gc, edge->ge.label, STORE_EDGE);
         if(s) {
             Edge_SetRelationID(e, s->id);
-            e->mat = Graph_GetRelation(g, s->id);
+            e->mat = Graph_GetRelation(g, s->id, gc->_writelocked);
         }
         else {
             /* Use a zeroed matrix.

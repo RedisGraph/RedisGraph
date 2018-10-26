@@ -24,13 +24,25 @@ typedef struct {
   LabelStore *node_allstore;
   LabelStore **relation_stores;
   LabelStore **node_stores;
+
+  // Synchronization members:
+  /* Read-write lock to allow one writer or N readers to concurrently
+   * access this graph database. */
+  pthread_rwlock_t _rwlock;
+  // _writelocked is true if the read-write lock was acquired by a writer
+  bool _writelocked;
 } GraphContext;
+
+// Synchronization functions
+void GraphContext_AcquireReadLock(GraphContext *gc);
+void GraphContext_AcquireWriteLock(GraphContext *gc);
+void GraphContext_ReleaseLock(GraphContext *gc);
 
 RedisModuleKey* GraphContext_Key(RedisModuleCtx *ctx, const char *graph_name);
 
 GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rs_name);
 
-GraphContext* GraphContext_Get(RedisModuleCtx *ctx, RedisModuleString *rs_graph_name);
+GraphContext* GraphContext_Get(RedisModuleCtx *ctx, RedisModuleString *rs_graph_name, bool readonly);
 
 LabelStore* GraphContext_AddLabel(GraphContext *gc, const char *label);
 LabelStore* GraphContext_AddRelationType(GraphContext *gc, const char *label);

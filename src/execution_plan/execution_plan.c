@@ -308,7 +308,7 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx,
                             op = NewCondVarLenTraverseOp(exps[i],
                                                          exps[i]->edgeLength->minHops,
                                                          exps[i]->edgeLength->maxHops,
-                                                         g);
+                                                         gc);
                         }
                         else {
                             op = NewCondTraverseOp(g, exps[i]);
@@ -337,7 +337,7 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx,
                             op = NewCondVarLenTraverseOp(exps[i],
                                                          exps[i]->edgeLength->minHops,
                                                          exps[i]->edgeLength->maxHops,
-                                                         g);
+                                                         gc);
                         }
                         else {
                             op = NewCondTraverseOp(g, exps[i]);

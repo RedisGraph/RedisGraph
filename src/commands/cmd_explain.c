@@ -34,7 +34,7 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
     ExecutionPlan *plan = NULL;
     // Try to get GraphContext.
-    GraphContext *gc = GraphContext_Get(ctx, argv[1]);
+    GraphContext *gc = GraphContext_Get(ctx, argv[1], true);
     if(!gc) {
         RedisModule_ReplyWithError(ctx, "key doesn't contains a graph object.");
         goto cleanup;
@@ -57,6 +57,7 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     RedisModule_ReplyWithStringBuffer(ctx, strPlan, strlen(strPlan));
 
 cleanup:
+    GraphContext_ReleaseLock(gc);
     ExecutionPlanFree(plan);
     Free_AST_Query(ast);
     return REDISMODULE_OK;

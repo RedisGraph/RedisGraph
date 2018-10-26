@@ -11,10 +11,10 @@
 #include "../../algorithms/all_paths.h"
 #include "./op_cond_var_len_traverse.h"
 
-OpBase* NewCondVarLenTraverseOp(AlgebraicExpression *ae, unsigned int minHops, unsigned int maxHops, Graph *g) {
-    assert(ae && minHops <= maxHops && g && ae->operand_count == 1);
+OpBase* NewCondVarLenTraverseOp(AlgebraicExpression *ae, unsigned int minHops, unsigned int maxHops, GraphContext *gc) {
+    assert(ae && minHops <= maxHops && gc && ae->operand_count == 1);
     CondVarLenTraverse *condVarLenTraverse = malloc(sizeof(CondVarLenTraverse));
-    condVarLenTraverse->g = g;
+    condVarLenTraverse->gc = gc;
     condVarLenTraverse->relationID = Edge_GetRelationID(ae->edge);
     condVarLenTraverse->srcNodeAlias = ae->src_node->alias;
     condVarLenTraverse->destNodeAlias = ae->dest_node->alias;

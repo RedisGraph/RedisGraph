@@ -41,8 +41,7 @@ void _MGraph_Delete(void *args) {
 
     RedisModuleCtx *ctx = RedisModule_GetThreadSafeContext(bc);
     const char *graphIDStr = RedisModule_StringPtrLen(graphID, NULL);
-
-    MGraph_AcquireWriteLock(ctx);
+    RedisModule_ThreadSafeContextLock(ctx);
     
     // Remove GraphContext from keyspace.
     RedisModuleKey *key = GraphContext_Key(ctx, graphIDStr);
@@ -50,7 +49,7 @@ void _MGraph_Delete(void *args) {
         // Log error!
     }
 
-    MGraph_ReleaseLock(ctx);
+    RedisModule_ThreadSafeContextUnlock(ctx);
     DeleteGraphContext_free(dCtx);
 
     char* strElapsed;

@@ -45,14 +45,14 @@ void _RdbLoadMatrices(RedisModuleIO *rdb, Graph *g) {
     uint64_t relationMatricesCount = RedisModule_LoadUnsigned(rdb);
     for(int i = 0; i < relationMatricesCount; i++) {
         Graph_AddRelationType(g);
-        GrB_Matrix m = Graph_GetRelation(g, i);
+        GrB_Matrix m = Graph_GetRelation(g, i, true);
         _RdbLoadMatrix(rdb, m);
     }
 
     uint64_t labelMatricesCount = RedisModule_LoadUnsigned(rdb);
     for(int i = 0; i < labelMatricesCount; i++) {
         Graph_AddLabel(g);
-        GrB_Matrix m = Graph_GetLabel(g, i);
+        GrB_Matrix m = Graph_GetLabel(g, i, true);
         _RdbLoadMatrix(rdb, m);
     }
 }
@@ -257,13 +257,13 @@ void _RdbSaveMatrices(RedisModuleIO *rdb, Graph *g) {
 
     RedisModule_SaveUnsigned(rdb, g->relation_count);
     for(int i = 0; i < g->relation_count; i++) {
-        GrB_Matrix m = Graph_GetRelation(g, i);
+        GrB_Matrix m = Graph_GetRelation(g, i, true);
         _RdbSaveMatrix(rdb, m);
     }
 
     RedisModule_SaveUnsigned(rdb, g->label_count);
     for(int i = 0; i < g->label_count; i++) {
-        GrB_Matrix m = Graph_GetLabel(g, i);
+        GrB_Matrix m = Graph_GetLabel(g, i, true);
         _RdbSaveMatrix(rdb, m);
     }
 }

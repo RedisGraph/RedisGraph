@@ -32,19 +32,16 @@ static inline void _Graph_ApplyPending(GrB_Matrix m) {
     GrB_Matrix_nvals(&nvals, m);
 }
 
-/* module.c global indicating whether the process is locked by a writer. */
-extern bool _writelocked;
-
 /* Resize given matrix, such that its number of row and columns
  * matches the number of nodes in the graph. Also, synchronize
  * matrix to execute any pending operations. */
-void _Graph_SynchronizeMatrix(const Graph *g, GrB_Matrix m) {
+void _Graph_SynchronizeMatrix(const Graph *g, GrB_Matrix m, bool locked) {
     GrB_Index n_rows;
     GrB_Matrix_nrows(&n_rows, m);
 
     // If the graph belongs to one thread, we don't need to flush pending operations
     // or lock the mutex.
-    if (_writelocked) {
+    if (locked) {
         if (n_rows != Graph_NodeCount(g)) {
             assert(GxB_Matrix_resize(m, Graph_NodeCount(g), Graph_NodeCount(g)) == GrB_SUCCESS);
         }
@@ -73,7 +70,7 @@ void _Graph_MigrateRowCol(Graph *g, int src, int dest) {
     GrB_Vector zero;
     GrB_Descriptor desc;
     GrB_Index nrows = Graph_NodeCount(g);
-    GrB_Matrix M = Graph_GetAdjacencyMatrix(g);
+    GrB_Matrix M = Graph_GetAdjacencyMatrix(g, true);
 
     GrB_Descriptor_new(&desc);
     GrB_Descriptor_set(desc, GrB_INP0, GrB_TRAN);
@@ -95,7 +92,7 @@ void _Graph_MigrateRowCol(Graph *g, int src, int dest) {
     GrB_Col_assign(M, NULL, NULL, col, GrB_ALL, nrows, dest, NULL);
 
     for(int i = 0; i < g->relation_count; i++) {
-        M = Graph_GetRelation(g, i);
+        M = Graph_GetRelation(g, i, true);
 
         // Clear dest column.
         GrB_Col_assign(M, NULL, NULL, zero, GrB_ALL, nrows, dest, NULL);
@@ -129,7 +126,7 @@ void _Graph_ReplaceDeletedNode(Graph *g, GrB_Vector zero, NodeID replacement, No
     
     // Get edges of replacement node.
     Vector *edges = NewVector(Edge*, 32);
-    Graph_GetNodeEdges(g, replacementNode, edges, GRAPH_EDGE_DIR_BOTH, GRAPH_NO_RELATION);
+    Graph_GetNodeEdges(g, replacementNode, edges, GRAPH_EDGE_DIR_BOTH, GRAPH_NO_RELATION, true);
     size_t edgeCount = Vector_Size(edges);
 
     // Update replacement node ID.
@@ -161,7 +158,7 @@ void _Graph_ReplaceDeletedNode(Graph *g, GrB_Vector zero, NodeID replacement, No
     for (int i = 0; i < g->label_count; i ++) {
         bool src_has_label = false;
         bool dest_has_label = false;
-        GrB_Matrix M = Graph_GetLabel(g, i);
+        GrB_Matrix M = Graph_GetLabel(g, i, true);
         GrB_Matrix_extractElement_BOOL(&src_has_label, M, replacement, replacement);
         GrB_Matrix_extractElement_BOOL(&dest_has_label, M, to_delete, to_delete);
 
@@ -256,13 +253,13 @@ void _Graph_DeleteEdge(Graph *g, Edge *e) {
     NodeID src_id = Edge_GetSrcNodeID(e);
     NodeID dest_id = Edge_GetDestNodeID(e);
 
-    GrB_Matrix M = Graph_GetRelation(g, r);
+    GrB_Matrix M = Graph_GetRelation(g, r, true);
     _Graph_ClearMatrixEntry(g, M, src_id, dest_id);
 
     // See if source is connected to destination with additional edges.
     bool connected = false;
     for(int i = 0; i < g->relation_count; i++) {
-        M = Graph_GetRelation(g, i);
+        M = Graph_GetRelation(g, i, true);
         GrB_Matrix_extractElement_BOOL(&connected, M, dest_id, src_id);
         if(connected) break;
     }
@@ -270,7 +267,7 @@ void _Graph_DeleteEdge(Graph *g, Edge *e) {
     /* There are no additional edges connecting source to destination
      * Remove edge from THE adjacency matrix. */
     if(!connected) {
-        M = Graph_GetAdjacencyMatrix(g);
+        M = Graph_GetAdjacencyMatrix(g, true);
         _Graph_ClearMatrixEntry(g, M, src_id, dest_id);
     }
 }
@@ -315,13 +312,13 @@ void Graph_CreateNodes(Graph* g, size_t n, int* labels, DataBlockIterator **it) 
     NodeID node_id = (NodeID)Graph_NodeCount(g);
 
     _Graph_AddNodes(g, n, it);
-    _Graph_SynchronizeMatrix(g, g->adjacency_matrix);
+    _Graph_SynchronizeMatrix(g, g->adjacency_matrix, true);
 
     if(labels) {
         for(size_t idx = 0; idx < n; idx++) {
             int l = labels[idx];
             if(l != GRAPH_NO_LABEL) {
-                GrB_Matrix m = Graph_GetLabel(g, l);
+                GrB_Matrix m = Graph_GetLabel(g, l, true);
                 GrB_Matrix_setElement_BOOL(m, true, node_id, node_id);
             }
             node_id++;
@@ -333,7 +330,7 @@ void Graph_ConnectNodes(Graph *g, EdgeDesc *connections, size_t connectionCount,
     assert(g && connections);
 
     DataBlockIterator *iter;
-    GrB_Matrix adj = Graph_GetAdjacencyMatrix(g);
+    GrB_Matrix adj = Graph_GetAdjacencyMatrix(g, true);
 
     EdgeID edgeID = Graph_EdgeCount(g);
     _Graph_AddEdges(g, connectionCount, &iter);
@@ -348,7 +345,7 @@ void Graph_ConnectNodes(Graph *g, EdgeDesc *connections, size_t connectionCount,
         int r = conn.relationId;        
         if(_Graph_InitEdge(g, e, edgeID++, srcNode, destNode, r)) {
             // Columns represent source nodes, rows represent destination nodes.
-            GrB_Matrix M = Graph_GetRelation(g, r);
+            GrB_Matrix M = Graph_GetRelation(g, r, true);
             GrB_Matrix_setElement_BOOL(adj, true, conn.destId, conn.srcId);
             GrB_Matrix_setElement_BOOL(M, true, conn.destId, conn.srcId);
         }
@@ -402,13 +399,14 @@ void Graph_GetEdgesConnectingNodes(const Graph *g, NodeID src, NodeID dest, int 
 
 /* Retrieves all either incoming or outgoing edges 
  * to/from given node N, depending on given direction. */
-void Graph_GetNodeEdges(const Graph *g, const Node *n, Vector *edges, GRAPH_EDGE_DIR dir, int edgeType) {
+// TODO don't love having 'locked' here
+void Graph_GetNodeEdges(const Graph *g, const Node *n, Vector *edges, GRAPH_EDGE_DIR dir, int edgeType, bool locked) {
     assert(g && n && edges);
     NodeID srcNodeID;
     NodeID destNodeID;
     TuplesIter *tupleIter = NULL;
     size_t nodeCount = Graph_NodeCount(g);
-    GrB_Matrix M = Graph_GetAdjacencyMatrix(g);
+    GrB_Matrix M = Graph_GetAdjacencyMatrix(g, locked);
 
     // Outgoing.
     if(dir == GRAPH_EDGE_DIR_OUTGOING || dir == GRAPH_EDGE_DIR_BOTH) {
@@ -531,7 +529,7 @@ void Graph_DeleteNodes(Graph *g, NodeID *IDs, size_t IDCount) {
     Vector *edges = NewVector(Edge*, 32);
     for(int i = 0; i < IDCount; i++) {
         Node *n = Graph_GetNode(g, IDs[i]);
-        Graph_GetNodeEdges(g, n, edges, GRAPH_EDGE_DIR_BOTH, GRAPH_NO_RELATION);
+        Graph_GetNodeEdges(g, n, edges, GRAPH_EDGE_DIR_BOTH, GRAPH_NO_RELATION, true);
     }
 
     // Compose a sorted array of edge ids.
@@ -560,7 +558,7 @@ void Graph_DeleteNodes(Graph *g, NodeID *IDs, size_t IDCount) {
     _Graph_DeleteEntities(g, IDs, IDCount, g->nodes);
 
     // Force matrix resizing.
-    _Graph_SynchronizeMatrix(g, g->adjacency_matrix);
+    _Graph_SynchronizeMatrix(g, g->adjacency_matrix, true);
 
     // Cleanup.
     free(edgeIDs);
@@ -575,7 +573,7 @@ void Graph_LabelNodes(Graph *g, NodeID start_node_id, NodeID end_node_id, int la
            start_node_id <= end_node_id &&
            end_node_id < Graph_NodeCount(g));
 
-    GrB_Matrix m = Graph_GetLabel(g, label);
+    GrB_Matrix m = Graph_GetLabel(g, label, true);
     for(NodeID node_id = start_node_id; node_id <= end_node_id; node_id++) {
         GrB_Matrix_setElement_BOOL(m, true, node_id, node_id);
     }
@@ -605,34 +603,34 @@ int Graph_AddRelationType(Graph *g) {
     return g->relation_count-1;
 }
 
-GrB_Matrix Graph_GetAdjacencyMatrix(const Graph *g) {
+GrB_Matrix Graph_GetAdjacencyMatrix(const Graph *g, bool locked) {
     assert(g);
     GrB_Matrix m = g->adjacency_matrix;
-    _Graph_SynchronizeMatrix(g, m);
+    _Graph_SynchronizeMatrix(g, m, locked);
     return m;
 }
 
-GrB_Matrix Graph_GetLabel(const Graph *g, int label_idx) {
+GrB_Matrix Graph_GetLabel(const Graph *g, int label_idx, bool locked) {
     assert(g && label_idx < g->label_count);
     GrB_Matrix m = g->_labels[label_idx];
-    _Graph_SynchronizeMatrix(g, m);
+    _Graph_SynchronizeMatrix(g, m, locked);
     return m;
 }
 
-GrB_Matrix Graph_GetRelation(const Graph *g, int relation_idx) {
+GrB_Matrix Graph_GetRelation(const Graph *g, int relation_idx, bool locked) {
     assert(g && (relation_idx == GRAPH_NO_RELATION || relation_idx < g->relation_count));
     GrB_Matrix m;
 
     if(relation_idx == GRAPH_NO_RELATION) {
-        m = Graph_GetAdjacencyMatrix(g);
+        m = Graph_GetAdjacencyMatrix(g, locked);
     } else {
         m = g->_relations[relation_idx];
-        _Graph_SynchronizeMatrix(g, m);
+        _Graph_SynchronizeMatrix(g, m, locked);
     }
     return m;
 }
 
-void Graph_CommitPendingOps(Graph *g) {
+void Graph_CommitPendingOps(Graph *g, bool locked) {
     /* GraphBLAS might delay execution of operations to a later stage,
      * here we're forcing GraphBLAS to execute all of its pending operations
      * by asking for the number of entries in each matrix. */
@@ -640,16 +638,16 @@ void Graph_CommitPendingOps(Graph *g) {
     GrB_Matrix M;
     GrB_Index nvals;
 
-    M = Graph_GetAdjacencyMatrix(g);
+    M = Graph_GetAdjacencyMatrix(g, locked);
     GrB_Matrix_nvals(&nvals, M);
 
     for(int i = 0; i < g->relation_count; i++) {
-        M = Graph_GetRelation(g, i);
+        M = Graph_GetRelation(g, i, locked);
         GrB_Matrix_nvals(&nvals, M);
     }
 
     for(int i = 0; i < g->label_count; i++) {
-        M = Graph_GetLabel(g, i);
+        M = Graph_GetLabel(g, i, locked);
         GrB_Matrix_nvals(&nvals, M);
     }
 }
@@ -675,18 +673,18 @@ void Graph_Free(Graph *g) {
 
     // Free matrices.
     GrB_Matrix m;
-    m = Graph_GetAdjacencyMatrix(g);
+    m = Graph_GetAdjacencyMatrix(g, true);
 
     GrB_Matrix_free(&m);
     for(int i = 0; i < g->relation_count; i++) {
-        m = Graph_GetRelation(g, i);
+        m = Graph_GetRelation(g, i, true);
         GrB_Matrix_free(&m);
     }
     rm_free(g->_relations);
 
     // Free matrices.
     for(int i = 0; i < g->label_count; i++) {
-        m = Graph_GetLabel(g, i);
+        m = Graph_GetLabel(g, i, true);
         GrB_Matrix_free(&m);
     }
     rm_free(g->_labels);

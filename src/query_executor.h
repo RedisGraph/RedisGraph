@@ -15,9 +15,6 @@
 #include "graph/query_graph.h"
 #include "arithmetic/arithmetic_expression.h"
 
-extern pthread_rwlock_t _rwlock;
-extern bool _writelocked;
-
 //------------------------------------------------------------------------------
 // Read/Write lock
 //------------------------------------------------------------------------------

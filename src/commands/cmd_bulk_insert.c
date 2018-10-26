@@ -29,7 +29,7 @@ void _MGraph_BulkInsert(void *args) {
     // Establish thread-safe environment for batch insertion
     BulkInsertContext *context = (BulkInsertContext *)args;
     RedisModuleCtx *ctx = RedisModule_GetThreadSafeContext(context->bc);
-    MGraph_AcquireWriteLock(ctx);
+    RedisModule_ThreadSafeContextLock(ctx);
 
     int argc = context->argc;
     RedisModuleString **argv = context->argv;
@@ -39,7 +39,7 @@ void _MGraph_BulkInsert(void *args) {
     size_t edges = 0;   // Number of edge created.
 
     // Try to retrieve GraphContext. If context and graph do not exist, create them.
-    GraphContext *gc = GraphContext_Get(ctx, rs_graph_name);
+    GraphContext *gc = GraphContext_Get(ctx, rs_graph_name, false);
     if (gc == NULL) gc = GraphContext_New(ctx, rs_graph_name);
 
     // Exit if graph creation failed
@@ -57,7 +57,8 @@ void _MGraph_BulkInsert(void *args) {
     RedisModule_ReplyWithStringBuffer(ctx, timings, strlen(timings));
 
 cleanup:
-    MGraph_ReleaseLock(ctx);
+    GraphContext_ReleaseLock(gc);
+    RedisModule_ThreadSafeContextUnlock(ctx);
     RedisModule_FreeThreadSafeContext(ctx);
     RedisModule_UnblockClient(context->bc, NULL);
     BulkInsertContext_Free(context);

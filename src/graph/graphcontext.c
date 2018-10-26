@@ -11,6 +11,24 @@ int _GraphContext_IndexOffset(GraphContext *gc, const char *label, const char *p
   return -1;
 }
 
+//------------------------------------------------------------------------------
+// Read/Write lock
+//------------------------------------------------------------------------------
+
+void GraphContext_AcquireReadLock(GraphContext *gc) {
+    pthread_rwlock_rdlock(&gc->_rwlock);
+}
+
+void GraphContext_AcquireWriteLock(GraphContext *gc) {
+    pthread_rwlock_wrlock(&gc->_rwlock);
+    gc->_writelocked = true;
+}
+
+void GraphContext_ReleaseLock(GraphContext *gc) {
+    gc->_writelocked = false;
+    pthread_rwlock_unlock(&gc->_rwlock);
+}
+
 // TODO consider changing key name
 RedisModuleKey* GraphContext_Key(RedisModuleCtx *ctx, const char *graph_name) {
   int keylen = strlen(graph_name) + 4;
@@ -35,6 +53,13 @@ GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rs_name) 
   }
 
   GraphContext *gc = rm_malloc(sizeof(GraphContext));
+
+  // Initialize a read-write lock scoped to the individual graph db.
+  assert(pthread_rwlock_init(&gc->_rwlock, NULL) == 0);
+
+  GraphContext_AcquireWriteLock(gc);
+  gc->_writelocked = true;
+
   gc->relation_cap = GRAPH_DEFAULT_RELATION_CAP;
   gc->relation_count = 0;
   gc->label_cap = GRAPH_DEFAULT_LABEL_CAP;
@@ -61,18 +86,24 @@ GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rs_name) 
   return gc;
 }
 
-GraphContext* GraphContext_Get(RedisModuleCtx *ctx, RedisModuleString *rs_name) {
+GraphContext* GraphContext_Get(RedisModuleCtx *ctx, RedisModuleString *rs_name, bool readonly) {
   const char *graph_name = RedisModule_StringPtrLen(rs_name, NULL);
   RedisModuleKey *key = GraphContext_Key(ctx, graph_name);
   if (RedisModule_ModuleTypeGetType(key) != GraphContextRedisModuleType) return NULL;
-
   GraphContext *gc = RedisModule_ModuleTypeGetValue(key);
+
+  // Acquire the appropriate read-write lock
+  if (readonly) {
+    GraphContext_AcquireReadLock(gc);
+  } else {
+    GraphContext_AcquireWriteLock(gc);
+  }
+
   RedisModule_CloseKey(key);
 
   return gc;
 }
 
-// TODO next two functions are nearly identical; maybe consolidate
 LabelStore* GraphContext_AddLabel(GraphContext *gc, const char *label) {
   if(gc->label_count == gc->label_cap) {
     gc->label_cap += 4;
@@ -141,7 +172,7 @@ void GraphContext_AddIndex(GraphContext *gc, const char *label, const char *prop
   }
 
   LabelStore *store = GraphContext_GetStore(gc, label, STORE_NODE);
-  const GrB_Matrix label_matrix = Graph_GetLabel(gc->g, store->id);
+  const GrB_Matrix label_matrix = Graph_GetLabel(gc->g, store->id, gc->_writelocked);
   TuplesIter *it = TuplesIter_new(label_matrix);
   Index *idx = Index_Create(gc->g->nodes, it, label, property);
   TuplesIter_free(it);
@@ -184,6 +215,12 @@ void GraphContext_Free(GraphContext *gc) {
   rm_free(gc->indices);
   rm_free(gc->relation_stores);
   rm_free(gc->node_stores);
+
+  GraphContext_ReleaseLock(gc);
+  // Destroy read-write lock
+  pthread_rwlock_destroy(&gc->_rwlock);
+
   rm_free(gc);
+
 }
 

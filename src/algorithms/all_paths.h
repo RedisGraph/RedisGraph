@@ -27,7 +27,8 @@ size_t AllPaths
     unsigned int minLen,    // Path minimum length.
     unsigned int maxLen,    // Path max length.
     size_t *pathsCap,       // Number of paths.
-    Path **paths            // Pre allocated array.
+    Path **paths,           // Pre allocated array.
+    bool locked
 );
 
 #endif
