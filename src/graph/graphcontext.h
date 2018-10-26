@@ -38,10 +38,7 @@ void GraphContext_AcquireReadLock(GraphContext *gc);
 void GraphContext_AcquireWriteLock(GraphContext *gc);
 void GraphContext_ReleaseLock(GraphContext *gc);
 
-RedisModuleKey* GraphContext_Key(RedisModuleCtx *ctx, const char *graph_name);
-
 GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rs_name);
-
 GraphContext* GraphContext_Get(RedisModuleCtx *ctx, RedisModuleString *rs_graph_name, bool readonly);
 
 LabelStore* GraphContext_AddLabel(GraphContext *gc, const char *label);

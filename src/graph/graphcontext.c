@@ -29,24 +29,11 @@ void GraphContext_ReleaseLock(GraphContext *gc) {
     pthread_rwlock_unlock(&gc->_rwlock);
 }
 
-// TODO consider changing key name
-RedisModuleKey* GraphContext_Key(RedisModuleCtx *ctx, const char *graph_name) {
-  int keylen = strlen(graph_name) + 4;
-  char strKey[keylen + 1];
-  sprintf(strKey, "%s_ctx", graph_name);
-
-  RedisModuleString *rm_graphctx = RedisModule_CreateString(ctx, strKey, keylen);
-  RedisModuleKey *key = RedisModule_OpenKey(ctx, rm_graphctx, REDISMODULE_WRITE);
-  RedisModule_FreeString(ctx, rm_graphctx);
-
-  return key;
-}
-
 GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rs_name) {
   // Create key for GraphContext
   const char *graph_name = RedisModule_StringPtrLen(rs_name, NULL);
-  RedisModuleKey *key = GraphContext_Key(ctx, graph_name);
-  if (RedisModule_ModuleTypeGetType(key) != REDISMODULE_KEYTYPE_EMPTY) {
+  RedisModuleKey *key = RedisModule_OpenKey(ctx, rs_name, REDISMODULE_WRITE);
+  if (RedisModule_KeyType(key) != REDISMODULE_KEYTYPE_EMPTY) {
     // Return NULL if key already exists
     RedisModule_CloseKey(key);
     return NULL;
@@ -87,9 +74,11 @@ GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rs_name) 
 }
 
 GraphContext* GraphContext_Get(RedisModuleCtx *ctx, RedisModuleString *rs_name, bool readonly) {
-  const char *graph_name = RedisModule_StringPtrLen(rs_name, NULL);
-  RedisModuleKey *key = GraphContext_Key(ctx, graph_name);
-  if (RedisModule_ModuleTypeGetType(key) != GraphContextRedisModuleType) return NULL;
+  RedisModuleKey *key = RedisModule_OpenKey(ctx, rs_name, REDISMODULE_WRITE);
+  if (RedisModule_ModuleTypeGetType(key) != GraphContextRedisModuleType) {
+    RedisModule_CloseKey(key);
+    return NULL;
+  }
   GraphContext *gc = RedisModule_ModuleTypeGetValue(key);
 
   // Acquire the appropriate read-write lock

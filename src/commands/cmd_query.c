@@ -84,6 +84,10 @@ void _MGraph_Query(void *args) {
     if(!gc) {
         assert(!readonly);
         gc = GraphContext_New(ctx, qctx->graphName);
+        if (!gc) {
+          RedisModule_ReplyWithError(ctx, "Graph name already in use as a Redis key.");
+          goto cleanup;
+        }
         /* TODO: free graph if no entities were created. */
     }
 
@@ -105,7 +109,7 @@ void _MGraph_Query(void *args) {
 
     // Clean up.
 cleanup:
-    GraphContext_ReleaseLock(gc);
+    if (gc) GraphContext_ReleaseLock(gc);
     // Release Redis global lock if it was acquired
     if (!readonly) {
       RedisModule_ThreadSafeContextUnlock(ctx);
