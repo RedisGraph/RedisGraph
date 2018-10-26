@@ -2,6 +2,10 @@
 #include "serializers/graphcontext_type.h"
 #include "../util/rmalloc.h"
 
+//------------------------------------------------------------------------------
+// Private functions
+//------------------------------------------------------------------------------
+// This is a pretty weak approach to index retrieval - revisit later.
 int _GraphContext_IndexOffset(GraphContext *gc, const char *label, const char *property) {
   Index *idx;
   for (int i = 0; i < gc->index_count; i ++) {
@@ -21,17 +25,20 @@ void GraphContext_AcquireReadLock(GraphContext *gc) {
 
 void GraphContext_AcquireWriteLock(GraphContext *gc) {
     pthread_rwlock_wrlock(&gc->_rwlock);
-    gc->_writelocked = true;
+    gc->writelocked = true;
 }
 
 void GraphContext_ReleaseLock(GraphContext *gc) {
-    gc->_writelocked = false;
+    gc->writelocked = false;
     pthread_rwlock_unlock(&gc->_rwlock);
 }
 
+//------------------------------------------------------------------------------
+// GraphContext API
+//------------------------------------------------------------------------------
+
 GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rs_name) {
-  // Create key for GraphContext
-  const char *graph_name = RedisModule_StringPtrLen(rs_name, NULL);
+  // Create key for GraphContext from the unmodified string provided by the user
   RedisModuleKey *key = RedisModule_OpenKey(ctx, rs_name, REDISMODULE_WRITE);
   if (RedisModule_KeyType(key) != REDISMODULE_KEYTYPE_EMPTY) {
     // Return NULL if key already exists
@@ -44,20 +51,21 @@ GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rs_name) 
   // Initialize a read-write lock scoped to the individual graph db.
   assert(pthread_rwlock_init(&gc->_rwlock, NULL) == 0);
 
+  // GraphContext_New can only be invoked from writing contexts
   GraphContext_AcquireWriteLock(gc);
-  gc->_writelocked = true;
+  gc->writelocked = true;
 
   gc->relation_cap = GRAPH_DEFAULT_RELATION_CAP;
   gc->relation_count = 0;
   gc->label_cap = GRAPH_DEFAULT_LABEL_CAP;
   gc->label_count = 0;
-  gc->index_cap = 4;
+  gc->index_cap = DEFAULT_INDEX_CAP;
   gc->index_count = 0;
 
-  // TODO Make sure this is still an appropriate function.
+
   gc->g = Graph_New(GRAPH_DEFAULT_NODE_CAP);
 
-  gc->graph_name = rm_strdup(graph_name);
+  gc->graph_name = rm_strdup(RedisModule_StringPtrLen(rs_name, NULL));
   gc->node_stores = rm_malloc(gc->label_cap * sizeof(LabelStore*));
   gc->relation_stores = rm_malloc(gc->relation_cap * sizeof(LabelStore*));
   gc->indices = rm_malloc(gc->index_cap * sizeof(Index*));
@@ -93,6 +101,40 @@ GraphContext* GraphContext_Get(RedisModuleCtx *ctx, RedisModuleString *rs_name, 
   return gc;
 }
 
+//------------------------------------------------------------------------------
+// LabelStore API
+//------------------------------------------------------------------------------
+int GraphContext_GetLabelID(const GraphContext *gc, const char *label, LabelStoreType t) {
+  LabelStore **labels;
+  size_t count;
+  if (t == STORE_NODE) {
+    labels = gc->node_stores;
+    count = gc->label_count;
+  } else {
+    labels = gc->relation_stores;
+    count = gc->relation_count;
+  }
+
+  for (int i = 0; i < count; i ++) {
+    if (!strcmp(label, labels[i]->label)) return i;
+  }
+  return GRAPH_NO_LABEL; // equivalent to GRAPH_NO_RELATION
+}
+
+LabelStore* GraphContext_AllStore(const GraphContext *gc, LabelStoreType t) {
+  if (t == STORE_NODE) return gc->node_allstore;
+  return gc->relation_allstore;
+}
+
+LabelStore* GraphContext_GetStore(const GraphContext *gc, const char *label, LabelStoreType t) {
+  LabelStore **stores = (t == STORE_NODE) ? gc->node_stores : gc->relation_stores;
+
+  int id = GraphContext_GetLabelID(gc, label, t);
+  if (id == GRAPH_NO_LABEL) return NULL;
+
+  return stores[id];
+}
+
 LabelStore* GraphContext_AddLabel(GraphContext *gc, const char *label) {
   if(gc->label_count == gc->label_cap) {
     gc->label_cap += 4;
@@ -126,23 +168,9 @@ LabelStore* GraphContext_AddRelationType(GraphContext *gc, const char *label) {
   return store;
 }
 
-int GraphContext_GetLabelID(const GraphContext *gc, const char *label, LabelStoreType t) {
-  LabelStore **labels;
-  size_t count;
-  if (t == STORE_NODE) {
-    labels = gc->node_stores;
-    count = gc->label_count;
-  } else {
-    labels = gc->relation_stores;
-    count = gc->relation_count;
-  }
-
-  for (int i = 0; i < count; i ++) {
-    if (!strcmp(label, labels[i]->label)) return i;
-  }
-  return GRAPH_NO_LABEL; // equivalent to GRAPH_NO_RELATION
-}
-
+//------------------------------------------------------------------------------
+// Index API
+//------------------------------------------------------------------------------
 bool GraphContext_HasIndices(GraphContext *gc) {
   return gc->index_count > 0;
 }
@@ -161,7 +189,7 @@ void GraphContext_AddIndex(GraphContext *gc, const char *label, const char *prop
   }
 
   LabelStore *store = GraphContext_GetStore(gc, label, STORE_NODE);
-  const GrB_Matrix label_matrix = Graph_GetLabel(gc->g, store->id, gc->_writelocked);
+  const GrB_Matrix label_matrix = Graph_GetLabel(gc->g, store->id, gc->writelocked);
   TuplesIter *it = TuplesIter_new(label_matrix);
   Index *idx = Index_Create(gc->g->nodes, it, label, property);
   TuplesIter_free(it);
@@ -181,20 +209,7 @@ int GraphContext_DeleteIndex(GraphContext *gc, const char *label, const char *pr
   return INDEX_OK;
 }
 
-LabelStore* GraphContext_AllStore(const GraphContext *gc, LabelStoreType t) {
-  if (t == STORE_NODE) return gc->node_allstore;
-  return gc->relation_allstore;
-}
-
-LabelStore* GraphContext_GetStore(const GraphContext *gc, const char *label, LabelStoreType t) {
-  LabelStore **stores = (t == STORE_NODE) ? gc->node_stores : gc->relation_stores;
-
-  int id = GraphContext_GetLabelID(gc, label, t);
-  if (id == GRAPH_NO_LABEL) return NULL;
-
-  return stores[id];
-}
-
+// Free all data associated with graph
 void GraphContext_Free(GraphContext *gc) {
   Graph_Free(gc->g);
   rm_free(gc->graph_name);
@@ -210,6 +225,5 @@ void GraphContext_Free(GraphContext *gc) {
   pthread_rwlock_destroy(&gc->_rwlock);
 
   rm_free(gc);
-
 }
 

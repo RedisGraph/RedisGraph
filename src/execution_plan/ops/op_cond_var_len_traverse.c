@@ -7,7 +7,6 @@
 
 #include <assert.h>
 
-#include "../../util/arr.h"
 #include "../../algorithms/all_paths.h"
 #include "./op_cond_var_len_traverse.h"
 

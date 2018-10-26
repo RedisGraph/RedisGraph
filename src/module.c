@@ -19,12 +19,6 @@
 /* Thread pool. */
 threadpool _thpool = NULL;
 
-/* Read Write lock */
-pthread_rwlock_t _rwlock;
-
-/* _writelocked is true if the read-write lock was acquired by a writer */
-bool _writelocked;
-
 /* Set up thread pool,
  * number of threads within pool should be
  * the number of available hyperthreads.
@@ -85,3 +79,4 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 
     return REDISMODULE_OK;
 }
+

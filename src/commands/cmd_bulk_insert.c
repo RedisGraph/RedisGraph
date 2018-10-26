@@ -34,7 +34,6 @@ void _MGraph_BulkInsert(void *args) {
     int argc = context->argc;
     RedisModuleString **argv = context->argv;
     RedisModuleString *rs_graph_name = argv[1];
-    const char *graph_name = RedisModule_StringPtrLen(rs_graph_name, NULL);
     size_t nodes = 0;   // Number of nodes created.
     size_t edges = 0;   // Number of edge created.
 

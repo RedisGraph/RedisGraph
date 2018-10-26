@@ -22,11 +22,11 @@
 
 typedef struct {
     OpBase op;              // Base op.
-    GraphContext *gc;
+    GraphContext *gc;       // Graph data.
     QueryGraph *qg;         // Query graph.
     AST_Query *ast;         // Query abstract syntax tree.
     ResultSet *result_set;  // Required for statistics updates.
-    bool matched;           // Was the entire pattern been matched.
+    bool matched;           // Has the entire pattern been matched.
 } OpMerge;
 
 OpBase* NewMergeOp(GraphContext *gc, QueryGraph *qg, ResultSet *result_set);

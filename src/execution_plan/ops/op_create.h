@@ -29,7 +29,6 @@ typedef struct {
 
 typedef struct {
     OpBase op;
-    RedisModuleCtx *ctx;
     GraphContext *gc;
     AST_Query *ast;
     QueryGraph *qg;

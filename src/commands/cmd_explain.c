@@ -18,7 +18,6 @@
 int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     if (argc < 3) return RedisModule_WrongArity(ctx);
 
-    const char *graph_name = RedisModule_StringPtrLen(argv[1], NULL);
     const char *query = RedisModule_StringPtrLen(argv[2], NULL);
 
     /* Parse query, get AST. */

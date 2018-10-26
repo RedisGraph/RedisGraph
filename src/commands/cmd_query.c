@@ -24,7 +24,6 @@ void _queryContext_Free(QueryContext* ctx) {
 }
 
 void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST_IndexNode *indexNode) {
-  Graph *g = gc->g;
   /* Set up nested array response for index creation and deletion.
    * As we need no result set, there is only one top-level element, for statistics.
    * We'll enqueue one string response to indicate the operation's success,
@@ -65,7 +64,8 @@ void _MGraph_Query(void *args) {
 
     bool readonly = AST_ReadOnly(ast);
     // If the query modifies the keyspace, acquire the Redis global lock
-    // TODO Think about this, because I think it may be broader here than necessary
+    // TODO I think this locking may be overzealous - revisit later
+    // and see if we can reduce the lock's lifetime
     if (!readonly) RedisModule_ThreadSafeContextLock(ctx);
 
     // Try to get graph context.
@@ -109,11 +109,10 @@ void _MGraph_Query(void *args) {
 
     // Clean up.
 cleanup:
+    // Release the read-write lock
     if (gc) GraphContext_ReleaseLock(gc);
     // Release Redis global lock if it was acquired
-    if (!readonly) {
-      RedisModule_ThreadSafeContextUnlock(ctx);
-    }
+    if (!readonly) RedisModule_ThreadSafeContextUnlock(ctx);
     Free_AST_Query(ast);
     ResultSet_Free(resultSet);
     RedisModule_UnblockClient(qctx->bc, NULL);

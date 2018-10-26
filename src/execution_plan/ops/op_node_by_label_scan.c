@@ -16,7 +16,7 @@ OpBase *NewNodeByLabelScanOp(GraphContext *gc, Node *node) {
     /* Find out label matrix ID. */
     int label_id = GraphContext_GetLabelID(gc, node->label, STORE_NODE);
     if (label_id != GRAPH_NO_LABEL) {
-        nodeByLabelScan->iter = TuplesIter_new(Graph_GetLabel(gc->g, label_id, gc->_writelocked));
+        nodeByLabelScan->iter = TuplesIter_new(Graph_GetLabel(gc->g, label_id, gc->writelocked));
     } else {
         /* Label does not exists, use a fake empty matrix. */
         GrB_Matrix_new(&nodeByLabelScan->_zero_matrix, GrB_BOOL, 1, 1);

@@ -26,13 +26,11 @@
 #define GRAPH_NO_RELATION -1            // Relations are numbered [0-N], -1 represents no relation.
 
 typedef struct {
-    // TODO where to keep DataBlocks?
     DataBlock *nodes;               // Graph nodes stored in blocks.
     DataBlock *edges;               // Graph edges stored in blocks.
     Edge *_edgesHashTbl;            // Hash table containing edges.
     GrB_Matrix adjacency_matrix;    // Adjacency matrix, holds all graph connections.
     GrB_Matrix *_relations;         // Relation matrices.
-    // TODO
     size_t relation_count;          // Number of relation matrices.
     GrB_Matrix *_labels;            // Label matrices.
     size_t label_count;             // Number of label matrices.    
@@ -171,12 +169,6 @@ GrB_Matrix Graph_GetRelation (
 // Creates a new relation matrix, returns id given to relation.
 int Graph_AddRelationType (
     Graph *g
-);
-
-// Commit GraphBLAS pending operations.
-void Graph_CommitPendingOps (
-    Graph *g,
-    bool locked         // True if we've already acquired a write lock.
 );
 
 // Free graph.

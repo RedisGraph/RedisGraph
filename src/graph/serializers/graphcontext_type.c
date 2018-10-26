@@ -124,7 +124,7 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
 
   // Initialize a read-write lock scoped to the individual graph db.
   assert(pthread_rwlock_init(&gc->_rwlock, NULL) == 0);
-  gc->_writelocked = false;
+  gc->writelocked = false;
 
   return gc;
 }

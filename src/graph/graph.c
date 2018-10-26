@@ -121,7 +121,6 @@ void _Graph_ReplaceDeletedEdge(Graph *g, EdgeID replacement, EdgeID to_delete) {
 }
 
 void _Graph_ReplaceDeletedNode(Graph *g, GrB_Vector zero, NodeID replacement, NodeID to_delete) {
-    Node *deletedNode = Graph_GetNode(g, to_delete);
     Node *replacementNode = Graph_GetNode(g, replacement);
     
     // Get edges of replacement node.
@@ -628,28 +627,6 @@ GrB_Matrix Graph_GetRelation(const Graph *g, int relation_idx, bool locked) {
         _Graph_SynchronizeMatrix(g, m, locked);
     }
     return m;
-}
-
-void Graph_CommitPendingOps(Graph *g, bool locked) {
-    /* GraphBLAS might delay execution of operations to a later stage,
-     * here we're forcing GraphBLAS to execute all of its pending operations
-     * by asking for the number of entries in each matrix. */
-
-    GrB_Matrix M;
-    GrB_Index nvals;
-
-    M = Graph_GetAdjacencyMatrix(g, locked);
-    GrB_Matrix_nvals(&nvals, M);
-
-    for(int i = 0; i < g->relation_count; i++) {
-        M = Graph_GetRelation(g, i, locked);
-        GrB_Matrix_nvals(&nvals, M);
-    }
-
-    for(int i = 0; i < g->label_count; i++) {
-        M = Graph_GetLabel(g, i, locked);
-        GrB_Matrix_nvals(&nvals, M);
-    }
 }
 
 void Graph_Free(Graph *g) {
