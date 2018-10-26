@@ -22,6 +22,9 @@ threadpool _thpool = NULL;
 /* Read Write lock */
 pthread_rwlock_t _rwlock;
 
+/* _writelocked is true if the read-write lock was acquired by a writer */
+bool _writelocked;
+
 /* Set up thread pool,
  * number of threads within pool should be
  * the number of available hyperthreads.
@@ -66,6 +69,7 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 
     // Initialize read write lock.
     if (pthread_rwlock_init(&_rwlock, NULL)) return REDISMODULE_ERR;
+    _writelocked = false;
 
     if (RedisModule_Init(ctx, "graph", REDISGRAPH_MODULE_VERSION, REDISMODULE_APIVER_1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
