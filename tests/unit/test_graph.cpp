@@ -387,8 +387,8 @@ TEST_F(GraphTest, NewGraph)
     EXPECT_EQ(GrB_Matrix_nvals(&nvals, g->adjacency_matrix), GrB_SUCCESS);
 
     EXPECT_TRUE(g->nodes != NULL);
-    EXPECT_TRUE(g->_relations != NULL);
-    EXPECT_TRUE(g->_labels != NULL);
+    EXPECT_TRUE(g->relations != NULL);
+    EXPECT_TRUE(g->labels != NULL);
     EXPECT_TRUE(g->adjacency_matrix != NULL);
     EXPECT_EQ(Graph_NodeCount(g), 0);
     EXPECT_EQ(nrows, GRAPH_DEFAULT_NODE_CAP);

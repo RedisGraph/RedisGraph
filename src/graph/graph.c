@@ -283,8 +283,8 @@ Graph *Graph_New(size_t n) {
     g->_edgesHashTbl = NULL;            // Init to NULL, required by uthash.
     g->relation_count = 0;
     g->label_count = 0;
-    g->_relations = rm_malloc(sizeof(GrB_Matrix) * GRAPH_DEFAULT_RELATION_CAP);
-    g->_labels = rm_malloc(sizeof(GrB_Matrix) * GRAPH_DEFAULT_LABEL_CAP);
+    g->relations = rm_malloc(sizeof(GrB_Matrix) * GRAPH_DEFAULT_RELATION_CAP);
+    g->labels = rm_malloc(sizeof(GrB_Matrix) * GRAPH_DEFAULT_LABEL_CAP);
     GrB_Matrix_new(&g->adjacency_matrix, GrB_BOOL, _Graph_NodeCap(g), _Graph_NodeCap(g));
 
     /* TODO: We might want a mutex per matrix,
@@ -591,14 +591,14 @@ DataBlockIterator *Graph_ScanEdges(const Graph *g) {
 int Graph_AddLabel(Graph *g) {
     assert(g);
     // The array capacity is guaranteed by the GraphContext calling function.
-    GrB_Matrix_new(&g->_labels[g->label_count++], GrB_BOOL, _Graph_NodeCap(g), _Graph_NodeCap(g));
+    GrB_Matrix_new(&g->labels[g->label_count++], GrB_BOOL, _Graph_NodeCap(g), _Graph_NodeCap(g));
     return g->label_count-1;
 }
 
 int Graph_AddRelationType(Graph *g) {
     assert(g);
     // The array capacity is guaranteed by the GraphContext calling function.
-    GrB_Matrix_new(&g->_relations[g->relation_count++], GrB_BOOL, _Graph_NodeCap(g), _Graph_NodeCap(g));
+    GrB_Matrix_new(&g->relations[g->relation_count++], GrB_BOOL, _Graph_NodeCap(g), _Graph_NodeCap(g));
     return g->relation_count-1;
 }
 
@@ -611,7 +611,7 @@ GrB_Matrix Graph_GetAdjacencyMatrix(const Graph *g, bool locked) {
 
 GrB_Matrix Graph_GetLabel(const Graph *g, int label_idx, bool locked) {
     assert(g && label_idx < g->label_count);
-    GrB_Matrix m = g->_labels[label_idx];
+    GrB_Matrix m = g->labels[label_idx];
     _Graph_SynchronizeMatrix(g, m, locked);
     return m;
 }
@@ -623,7 +623,7 @@ GrB_Matrix Graph_GetRelation(const Graph *g, int relation_idx, bool locked) {
     if(relation_idx == GRAPH_NO_RELATION) {
         m = Graph_GetAdjacencyMatrix(g, locked);
     } else {
-        m = g->_relations[relation_idx];
+        m = g->relations[relation_idx];
         _Graph_SynchronizeMatrix(g, m, locked);
     }
     return m;
@@ -657,14 +657,14 @@ void Graph_Free(Graph *g) {
         m = Graph_GetRelation(g, i, true);
         GrB_Matrix_free(&m);
     }
-    rm_free(g->_relations);
+    rm_free(g->relations);
 
     // Free matrices.
     for(int i = 0; i < g->label_count; i++) {
         m = Graph_GetLabel(g, i, true);
         GrB_Matrix_free(&m);
     }
-    rm_free(g->_labels);
+    rm_free(g->labels);
 
     DataBlockIterator *it = Graph_ScanNodes(g);
     GraphEntity *node;

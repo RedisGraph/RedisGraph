@@ -45,9 +45,14 @@ void GraphContext_ReleaseLock(GraphContext *gc);
 GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rs_name);
 GraphContext* GraphContext_Get(RedisModuleCtx *ctx, RedisModuleString *rs_graph_name, bool readonly);
 
+// TODO I think it might be cleaner to make the node and edge DataBlocks members of the
+// GraphContext, and use Graph as exclusively a matrix API (possibly renaming it).
+// Both would then have similar sections here.
+
+/* Matrix API */
+GrB_Matrix GraphContext_GetMatrix(const GraphContext *gc, const char *label, LabelStoreType t);
+
 /* LabelStore API */
-// Get the offset of the given node label or relation type into the matrix and LabelStore arrays
-int GraphContext_GetLabelID(const GraphContext *gc, const char *label, LabelStoreType t);
 // Retrieve the generic store for node labels or relation types
 LabelStore* GraphContext_AllStore(const GraphContext *gc, LabelStoreType t);
 // Retrieve the specific store for the provided node label or relation type string
@@ -60,7 +65,7 @@ LabelStore* GraphContext_AddRelationType(GraphContext *gc, const char *label);
 /* Index API */
 bool GraphContext_HasIndices(GraphContext *gc);
 // Attempt to retrieve an index on the given label and property
-Index* GraphContext_GetIndex(GraphContext *gc, const char *label, const char *property);
+Index* GraphContext_GetIndex(const GraphContext *gc, const char *label, const char *property);
 // Create and populate an index for the given label and property
 void GraphContext_AddIndex(GraphContext *gc, const char *label, const char *property);
 // Remove and free an index

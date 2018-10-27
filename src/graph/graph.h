@@ -30,9 +30,9 @@ typedef struct {
     DataBlock *edges;               // Graph edges stored in blocks.
     Edge *_edgesHashTbl;            // Hash table containing edges.
     GrB_Matrix adjacency_matrix;    // Adjacency matrix, holds all graph connections.
-    GrB_Matrix *_relations;         // Relation matrices.
+    GrB_Matrix *relations;         // Relation matrices.
     size_t relation_count;          // Number of relation matrices.
-    GrB_Matrix *_labels;            // Label matrices.
+    GrB_Matrix *labels;            // Label matrices.
     size_t label_count;             // Number of label matrices.    
     pthread_mutex_t _mutex;         // Mutex for accessing critical sections.
 } Graph;
