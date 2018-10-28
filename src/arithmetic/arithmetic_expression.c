@@ -48,8 +48,8 @@ SIValue AR_EXP_Evaluate(const AR_ExpNode *root, const Record r) {
             // Fetch entity property value.
             if (root->operand.variadic.entity_prop != NULL) {
                 SIValue entry = Record_GetEntry(r, root->operand.variadic.entity_alias);
-                GraphEntity *entity = (GraphEntity*)entry.ptrval;
-                SIValue *property = GraphEntity_Get_Property(entity, root->operand.variadic.entity_prop);
+                GraphEntity *ge = (GraphEntity*)entry.ptrval;
+                SIValue *property = GraphEntity_Get_Property(ge, root->operand.variadic.entity_prop);
                 /* TODO: Handle PROPERTY_NOTFOUND. */
                 result = *property;
             } else {
@@ -578,7 +578,7 @@ SIValue AR_ID(SIValue *argv, int argc) {
     assert(argc == 1);
     assert(argv[0].type == T_PTR);
     GraphEntity *graph_entity = (GraphEntity*)argv[0].ptrval;
-    return SI_LongVal(graph_entity->id);
+    return SI_LongVal(ENTITY_GET_ID(graph_entity));
 }
 
 void AR_RegFunc(char *func_name, size_t func_name_len, AR_Func func) {

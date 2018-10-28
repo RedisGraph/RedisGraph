@@ -15,7 +15,7 @@ GraphEntity* _QueryGraph_GetEntityById(GraphEntity **entity_list, int entity_cou
 
     for(i = 0; i < entity_count; i++) {
         GraphEntity *entity = entity_list[i];
-        if(entity->id == id) {
+        if(ENTITY_GET_ID(entity) == id) {
             return entity;
         }
     }
@@ -58,7 +58,7 @@ GraphEntity* _QueryGraph_GetEntityByAlias(GraphEntity **entity_list, char **alia
 char* _QueryGraph_GetEntityAlias(GraphEntity *entity, GraphEntity **entities, char **aliases, int entity_count) {
     int i;
     for(i = 0; i < entity_count; i++) {
-        if(entities[i]->id == entity->id) {
+        if(ENTITY_GET_ID(entities[i]) == ENTITY_GET_ID(entity)) {
             return aliases[i];
         }
     }
@@ -86,45 +86,9 @@ void QueryGraph_AddNode(QueryGraph *g, Node *n, char *alias) {
     &g->node_cap);
 }
 
-/* Adds properties to given graph entity
- * based on the property-set specified in the AST entity. */
-void _BuildQueryGraphAddProps(AST_GraphEntity *entity, GraphEntity* e) {
-    if(entity->properties) {
-        size_t prop_count = Vector_Size(entity->properties);
-        char *keys[prop_count];
-        SIValue values[prop_count];
-
-        for(int prop_idx = 0; prop_idx < prop_count; prop_idx+=2) {
-            SIValue *key;
-            SIValue *value;
-            Vector_Get(entity->properties, prop_idx, &key);
-            Vector_Get(entity->properties, prop_idx+1, &value);
-
-            values[prop_idx/2] = *value;
-            keys[prop_idx/2] = key->stringval;
-        }
-
-        GraphEntity_Add_Properties(e, prop_count/2, keys, values);
-    }
-}
-
 // Extend node with label and attributes from graph entity.
 void _MergeNodeWithGraphEntity(Node *n, const AST_GraphEntity *ge) {
-    if(n->label == NULL && ge->label != NULL)
-        n->label = strdup(ge->label);
-
-    if(ge->properties) {
-        size_t propCount = Vector_Size(ge->properties);
-        for(int i = 0; i < propCount; i+=2) {
-            SIValue *key;
-            SIValue *val;
-            Vector_Get(ge->properties, i, &key);
-            if(Node_Get_Property(n, key->stringval) == PROPERTY_NOTFOUND) {
-                Vector_Get(ge->properties, i+1, &val);
-                Node_Add_Properties(n, 1, &key->stringval, val);
-            }
-        }
-    }
+    if(n->label == NULL && ge->label != NULL) n->label = strdup(ge->label);
 }
 
 void _BuildQueryGraphAddNode(const GraphContext *gc,
@@ -135,8 +99,7 @@ void _BuildQueryGraphAddNode(const GraphContext *gc,
     Node *n = QueryGraph_GetNodeByAlias(qg, entity->alias);
     if(n == NULL) {
         /* Create a new node, set its properties, and add it to the graph. */
-        n = Node_New(INVALID_ENTITY_ID, entity->label, entity->alias);
-        _BuildQueryGraphAddProps(entity, (GraphEntity*)n);
+        n = Node_New(entity->label, entity->alias);
         QueryGraph_AddNode(qg, n, entity->alias);
     } else {
         /* Merge nodes. */
@@ -182,8 +145,7 @@ void _BuildQueryGraphAddEdge(const GraphContext *gc,
 
     Node *src = QueryGraph_GetNodeByAlias(qg, src_node->alias);
     Node *dest = QueryGraph_GetNodeByAlias(qg, dest_node->alias);
-    Edge *e = Edge_New(INVALID_ENTITY_ID, src, dest, edge->ge.label, edge->ge.alias);
-    _BuildQueryGraphAddProps(entity, (GraphEntity*)e);
+    Edge *e = Edge_New(src, dest, edge->ge.label, edge->ge.alias);
 
     // Get relation matrix.
     if(edge->ge.label == NULL) {
@@ -193,7 +155,7 @@ void _BuildQueryGraphAddEdge(const GraphContext *gc,
         LabelStore *s = GraphContext_GetStore(gc, edge->ge.label, STORE_EDGE);
         if(s) {
             Edge_SetRelationID(e, s->id);
-            e->mat = Graph_GetRelation(g, s->id);
+            e->mat = Graph_GetRelationMatrix(g, s->id);
         }
         else {
             /* Use a zeroed matrix.
@@ -353,86 +315,6 @@ Edge** QueryGraph_GetEdgeRef(const QueryGraph *g, const Edge *e) {
     }
     
     return NULL;
-}
-
-ResultSetStatistics CommitGraph(GraphContext *gc, const QueryGraph *qg) {
-    Graph *g = gc->g;
-    ResultSetStatistics stats = {0};
-    size_t node_count = qg->node_count;
-    size_t edge_count = qg->edge_count;
-
-    // Start by creating nodes.
-    if(node_count > 0) {
-        int labels[node_count];
-        LabelStore *allStore = GraphContext_AllStore(gc, STORE_NODE);
-
-        for(int i = 0; i < node_count; i++) {
-            Node *n = qg->nodes[i];
-            const char *label = n->label;
-
-            // Set, create label.
-            LabelStore *store = NULL;
-            if(label == NULL) {
-               labels[i] = GRAPH_NO_LABEL; 
-            } else {
-                store = GraphContext_GetStore(gc, label, STORE_NODE);
-                /* This is the first time we encounter label, create its store */
-                if(store == NULL) {
-                    store = GraphContext_AddLabel(gc, label);
-                    stats.labels_added++;
-                }
-                labels[i] = store->id;
-            }
-
-            // Update tracked schema.
-            if(n->prop_count > 0) {
-                char *properties[n->prop_count];
-                for(int j = 0; j < n->prop_count; j++) properties[j] = n->properties[j].name;
-                if(store) LabelStore_UpdateSchema(store, n->prop_count, properties);
-                LabelStore_UpdateSchema(allStore, n->prop_count, properties);
-            }
-        }
-
-        // Create nodes and set properties.
-        DataBlockIterator *it;
-        size_t graph_node_count = Graph_NodeCount(g);
-        Graph_CreateNodes(g, node_count, labels, &it);
-
-        for(int i = 0; i < node_count; i++) {
-            Node *new_node = (Node*)DataBlockIterator_Next(it);
-            Node *temp_node = qg->nodes[i];
-            new_node->properties = temp_node->properties;
-            new_node->prop_count = temp_node->prop_count;
-            new_node->id = graph_node_count + i;
-            temp_node->id = new_node->id;   /* Formed edges refer to temp_node. */
-            temp_node->properties = NULL;   /* Prevents temp_node from freeing its property set. */
-            stats.properties_set += new_node->prop_count;
-        }
-
-        stats.nodes_created = node_count;
-    }
-
-    // Create edges.
-    if(edge_count > 0) {
-        EdgeDesc connections[edge_count];
-
-        for(int i = 0; i < edge_count; i++) {
-            Edge *e = qg->edges[i];
-            connections[i].srcId = e->src->id;
-            connections[i].destId = e->dest->id;
-            
-            LabelStore *s = GraphContext_GetStore(gc, e->relationship, STORE_EDGE);
-            if (!s) {
-                s = GraphContext_AddRelationType(gc, e->relationship);
-            }
-
-            connections[i].relationId = s->id;
-        }
-
-        Graph_ConnectNodes(g, connections, edge_count, NULL);
-        stats.relationships_created = edge_count;
-    }
-    return stats;
 }
 
 /* Frees entire graph. */

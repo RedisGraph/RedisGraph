@@ -21,27 +21,24 @@ typedef struct {
     int64_t relationId; // Relation type ID.
 } EdgeDesc;
 
-/* TODO: note it is possible to get into an inconsistency 
- * if we set edge src node and edgeDesc srcId to different nodes. */
+/* TODO: note it is possible to get into an inconsistency
+ * if we set src and srcNodeID to different nodes. */
 struct Edge {
-	struct {
-		EdgeID id;
-		int prop_count;
-		EntityProperty *properties;
-	};
-	EdgeDesc edgeDesc;
-	char *alias;
-	char* relationship;
-	Node* src;
-	Node* dest;
-	GrB_Matrix mat;				// Adjacency matrix, associated with edge.
-	UT_hash_handle hh;			// makes this structure hashable.
+	Entity *entity;			// MUST be the first property of Edge.
+	char *alias;			// Alias attached to edge.
+	char* relationship;		// Label attached to edge.
+	int relationId;			// Label ID.
+	Node* src;				// Pointer to source node.
+	Node* dest;				// Pointer to destination node.
+	NodeID srcNodeID;		// Source node ID.
+	NodeID destNodeID;		// Destination node ID.
+	GrB_Matrix mat;			// Adjacency matrix, associated with edge.
 };
 
 typedef struct Edge Edge;
 
 /* Creates a new edge, connecting src to dest node. */
-Edge* Edge_New(EdgeID id, Node *src, Node *dest, const char *relationship, const char *alias);
+Edge* Edge_New(Node *src, Node *dest, const char *relationship, const char *alias);
 
 // Retrieve edge source node ID.
 NodeID Edge_GetSrcNodeID(const Edge *edge);
@@ -66,17 +63,6 @@ void Edge_SetDestNode(Edge *e, Node *dest);
 
 // Sets edge relation type.
 void Edge_SetRelationID(Edge *e, int relationId);
-
-/* Adds a properties to node
- * propCount - number of new properties to add 
- * keys - array of properties keys 
- * values - array of properties values */
-void Edge_Add_Properties(Edge *edge, int propCount, char **keys, SIValue *values);
-
-/* Retrieves edge's property
- * NOTE: If the key does not exist, we return the special
- * constant value Edge_PROPERTY_NOTFOUND. */
-SIValue* Edge_Get_Property(const Edge *edge, const char *key);
 
 // Frees allocated space by given edge
 void Edge_Free(Edge *edge);

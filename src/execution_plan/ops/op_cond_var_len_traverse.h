@@ -17,6 +17,7 @@
 typedef struct {
     OpBase op;
     Graph *g;
+    AlgebraicExpression *ae;
     const char *srcNodeAlias;       /* Node set by operation. */
     const char *destNodeAlias;      /* Node set by operation. */
     int relationID;                 /* Relation we're traversing. */

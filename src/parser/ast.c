@@ -256,13 +256,13 @@ AST_Validation _Validate_SET_Clause(const AST_Query *ast, char **reason) {
   if (!ast->matchNode) {
     return AST_INVALID;
   }
-  
+
   TrieMap *setAliases = NewTrieMap();
   SetClause_ReferredEntities(ast->setNode, setAliases);
-  
+
   AST_Validation res = _Validate_Aliases_In_Match_Clause(setAliases, ast->matchNode, reason);
   TrieMap_Free(setAliases, TrieMap_NOP_CB);
-  
+
   return res;
 }
 

@@ -44,22 +44,30 @@ class SkiplistTest: public ::testing::Test {
       Node *node_a, *node_b;
 
       for (long i = 0; words[i] != NULL; i ++) {
-        node_a = Node_New(10 + i, node_label, NULL);
+        node_a = Node_New(node_label, NULL);
+        node_a->entity = (Entity*)malloc(sizeof(Entity));
+        node_a->entity->id = 10 + i;
+        node_a->entity->prop_count = 0;
+        node_a->entity->properties = NULL;
+
         SIValue *node_a_prop = (SIValue*)malloc(sizeof(SIValue));
         *node_a_prop = SIValue_FromString(words[i]);
-        Node_Add_Properties(node_a, 1, &prop_key, node_a_prop);
-        skiplistInsert(sl, node_a_prop, node_a->id);
+        GraphEntity_Add_Properties((GraphEntity*)node_a, 1, &prop_key, node_a_prop);
+        skiplistInsert(sl, node_a_prop, ENTITY_GET_ID(node_a));
 
-        node_b = Node_New(i, node_label, NULL);
+        node_b = Node_New(node_label, NULL);
+        node_b->entity = (Entity*)malloc(sizeof(Entity));
+        node_b->entity->id = i;
+        node_b->entity->prop_count = 0;
+        node_b->entity->properties = NULL;
         SIValue *node_b_prop = (SIValue*)malloc(sizeof(SIValue));
         *node_b_prop = SIValue_FromString(words[6 - i]);
-        Node_Add_Properties(node_b, 1, &prop_key, node_b_prop);
-        skiplistInsert(sl, node_b_prop, node_b->id);
+        GraphEntity_Add_Properties((GraphEntity*)node_b, 1, &prop_key, node_b_prop);
+        skiplistInsert(sl, node_b_prop, ENTITY_GET_ID(node_b));
       }
 
       return sl;
     }
-
 
     // Update key-value pair
     skiplistNode* update_skiplist(skiplist *sl, skiplistVal val, skiplistKey old_key, skiplistKey new_key) {
@@ -80,10 +88,15 @@ TEST_F(SkiplistTest, SkiplistRange) {
   long ids[] = {5, 2, 0, 6, 3, 4, 1};
 
   for (long i = 0; keys[i] != NULL; i ++) {
-    cur_node = Node_New(ids[i], node_label, NULL);
+    cur_node = Node_New(node_label, NULL);
+    cur_node->entity = (Entity*)malloc(sizeof(Entity));
+    cur_node->entity->id = ids[i];
+    cur_node->entity->prop_count = 0;
+    cur_node->entity->properties = NULL;
+
     cur_prop = SIValue_FromString(keys[i]);
-    Node_Add_Properties(cur_node, 1, &prop_key, &cur_prop);
-    skiplistInsert(sl, &cur_prop, cur_node->id);
+    GraphEntity_Add_Properties((GraphEntity*)cur_node, 1, &prop_key, &cur_prop);
+    skiplistInsert(sl, &cur_prop, ENTITY_GET_ID(cur_node));
   }
 
   GrB_Index *ret_node;

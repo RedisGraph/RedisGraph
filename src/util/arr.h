@@ -163,5 +163,10 @@ static void array_free(array_t arr) {
     assert(array_hdr(arr)->len > 0); \
     arr[--(array_hdr(arr)->len)];    \
   })
+/* Clears the array, such that array_len will return 0. */
+#define array_clear(arr)             \
+  ({                                 \
+    array_hdr(arr)->len = 0;         \
+  })
 
 #endif

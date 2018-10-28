@@ -61,7 +61,7 @@ RedisModuleString** _BulkInsert_Parse_Label(RedisModuleCtx *ctx, LabelDesc *labe
         label->attributes = malloc(sizeof(char*) * attribute_count);
         for(int j = 0; j < attribute_count; j++) {
             char *attribute = (char*)RedisModule_StringPtrLen(*argv++, NULL);
-            label->attributes[j] = attribute;   // Attribute is being duplicated by Node_Add_Properties.
+            label->attributes[j] = attribute;   // Attribute is being duplicated by GraphEntity_Add_Properties.
         }
     }
 
@@ -158,8 +158,7 @@ RedisModuleString** _BulkInsert_Insert_Nodes(RedisModuleCtx *ctx, GraphContext *
     *argc -= 1;
 
     *nodes = nodes_to_create;
-    size_t start_offset = Graph_NodeCount(g);
-    Graph_CreateNodes(g, nodes_to_create, NULL, &it);
+    Graph_AllocateNodes(g, nodes_to_create);
 
     long long label_count = 0;          // Number of unique labels.
     int number_of_labeled_nodes = 0;    // Count number of nodes labeled so far.
@@ -178,23 +177,17 @@ RedisModuleString** _BulkInsert_Insert_Nodes(RedisModuleCtx *ctx, GraphContext *
         if(argv == NULL) return NULL;
                 
         for(int label_idx = 0; label_idx < label_count; label_idx++) {
+            Node n;
             LabelDesc l = labels[label_idx];
-
-            // Label nodes.
-            Graph_LabelNodes(g, number_of_labeled_nodes + start_offset, number_of_labeled_nodes + start_offset + l.node_count - 1,
-                             l.label_id);
-
-            if(l.attribute_count > 0) {
-                SIValue values[l.attribute_count];
-                // Set nodes attributes.
-                for(int i = 0; i < l.node_count; i++) {
+            for(int i = 0; i < l.node_count; i++) {
+                Graph_CreateNode(g, l.label_id, &n);
+                if(l.attribute_count > 0) {
+                    SIValue values[l.attribute_count];
+                    // Set nodes attributes.
                     argv = _BulkInsert_Read_Labeled_Node_Attributes(ctx, l.attribute_count, values, argv, argc);
                     if(argv == NULL) break;
-                    n = (GraphEntity*)DataBlockIterator_Next(it);
-                    GraphEntity_Add_Properties(n, l.attribute_count, l.attributes, values);
+                    GraphEntity_Add_Properties((GraphEntity*)&n, l.attribute_count, l.attributes, values);
                 }
-            } else {
-                DataBlockIterator_Skip(it, l.node_count);
             }
             number_of_labeled_nodes += l.node_count;
         }
@@ -214,7 +207,10 @@ RedisModuleString** _BulkInsert_Insert_Nodes(RedisModuleCtx *ctx, GraphContext *
 
     // Unlabeled nodes.
     long long attribute_count = 0;
-    while((n = (GraphEntity*)DataBlockIterator_Next(it)) != NULL) {
+    long long unlabeled_node_count = nodes_to_create - number_of_labeled_nodes;
+    for(int i = 0; i < unlabeled_node_count; i++) {
+        Node n;
+        Graph_CreateNode(g, GRAPH_NO_LABEL, &n);
         if(*argc < 1) {
             _BulkInsert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, expected additional unlabeled nodes.");
             return NULL;
@@ -234,7 +230,7 @@ RedisModuleString** _BulkInsert_Insert_Nodes(RedisModuleCtx *ctx, GraphContext *
 
         argv = _BulkInsert_Read_Unlabeled_Node_Attributes(ctx, keys, values, attribute_count, argv, argc);
         if(argv == NULL) return NULL;
-        GraphEntity_Add_Properties(n, attribute_count, keys, values);
+        GraphEntity_Add_Properties((GraphEntity*)&n, attribute_count, keys, values);
         LabelStore_UpdateSchema(allStore, attribute_count, keys);
     }
 
@@ -267,6 +263,7 @@ RedisModuleString** _BulkInsert_Insert_Edges(RedisModuleCtx *ctx, GraphContext *
     }
 
     *edges = relations_count;
+    Graph_AllocateEdges(g, relations_count);
 
     // Read number of unique labels.
     if(RedisModule_StringToLongLong(*argv++, &label_count) != REDISMODULE_OK) {
@@ -275,8 +272,6 @@ RedisModuleString** _BulkInsert_Insert_Edges(RedisModuleCtx *ctx, GraphContext *
     }
 
     long long total_labeled_edges = 0;
-    // As we can have over 500k relations, this is safer as a heap allocation.
-    EdgeDesc *connections = malloc(relations_count * sizeof(EdgeDesc));
     LabelRelation labelRelations[label_count + 1];  // Extra one for unlabeled relations.
 
     if(label_count > 0) {
@@ -313,28 +308,25 @@ RedisModuleString** _BulkInsert_Insert_Edges(RedisModuleCtx *ctx, GraphContext *
     labelRelations[label_count].label_id = GRAPH_NO_RELATION;
 
     // Introduce relations.
-    int connection_idx = 0;
+    NodeID srcId;
+    NodeID destId;
     for(int i = 0; i < label_count+1; i++) {
         LabelRelation labelRelation = labelRelations[i];
 
         for(int j = 0; j < labelRelation.edge_count; j++) {
-            if(RedisModule_StringToLongLong(*argv++, (long long*)&connections[connection_idx].srcId) != REDISMODULE_OK) {
+            if(RedisModule_StringToLongLong(*argv++, (long long*)&srcId) != REDISMODULE_OK) {
                 _BulkInsert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, failed to read relation source node id.");
                 return NULL;
             }
-            if(RedisModule_StringToLongLong(*argv++, (long long*)&connections[connection_idx].destId) != REDISMODULE_OK) {
+            if(RedisModule_StringToLongLong(*argv++, (long long*)&destId) != REDISMODULE_OK) {
                 _BulkInsert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, failed to read relation destination node id.");
                 return NULL;
             }
-            connections[connection_idx].relationId = labelRelation.label_id;
-            connection_idx++;
+
+            Edge e;
+            Graph_ConnectNodes(g, srcId, destId, labelRelation.label_id, &e);
         }
     }
-
-    Graph_ConnectNodes(g, connections, relations_count, NULL);
-
-    free(connections);
-
     return argv;
 }
 

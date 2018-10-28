@@ -12,38 +12,32 @@
 #include "edge.h"
 #include "graph_entity.h"
 
-Edge* Edge_New(EdgeID id, Node *src, Node *dest, const char *relationship, const char *alias) {
+Edge* Edge_New(Node *src, Node *dest, const char *relationship, const char *alias) {
 	assert(src && dest);
 
-	Edge* e = (Edge*)calloc(1, sizeof(Edge));
-	e->id = id;
+	Edge* e = calloc(1, sizeof(Edge));
 	Edge_SetSrcNode(e, src);
 	Edge_SetDestNode(e, dest);
-	e->prop_count = 0;
 
-	if(relationship != NULL) {
-		e->relationship = strdup(relationship);
-	}
-	if(alias != NULL) {
-		e->alias = strdup(alias);
-	}
+	if(relationship != NULL) e->relationship = strdup(relationship);
+	if(alias != NULL) e->alias = strdup(alias);
 
 	return e;
 }
 
 NodeID Edge_GetSrcNodeID(const Edge* edge) {
 	assert(edge);
-	return edge->edgeDesc.srcId;
+	return edge->srcNodeID;
 }
 
 NodeID Edge_GetDestNodeID(const Edge* edge) {
 	assert(edge);
-	return edge->edgeDesc.destId;
+	return edge->destNodeID;
 }
 
 int Edge_GetRelationID(const Edge *edge) {
 	assert(edge);
-	return edge->edgeDesc.relationId;
+	return edge->relationId;
 }
 
 Node* Edge_GetSrcNode(Edge *e) {
@@ -59,33 +53,24 @@ Node* Edge_GetDestNode(Edge *e) {
 void Edge_SetSrcNode(Edge *e, Node *src) {
 	assert(e && src);
 	e->src = src;
-	e->edgeDesc.srcId = src->id;
+	e->srcNodeID = ENTITY_GET_ID(src);
 }
 
 void Edge_SetDestNode(Edge *e, Node *dest) {
 	assert(e && dest);
 	e->dest = dest;
-	e->edgeDesc.destId = dest->id;
+	e->destNodeID = ENTITY_GET_ID(dest);
 }
 
 void Edge_SetRelationID(Edge *e, int relationId) {
 	assert(e);
-	e->edgeDesc.relationId = relationId;
-}
-
-void Edge_Add_Properties(Edge *edge, int prop_count, char **keys, SIValue *values) {
-	GraphEntity_Add_Properties((GraphEntity*)edge, prop_count, keys, values);
-}
-
-SIValue* Edge_Get_Property(const Edge *edge, const char* key) {
-	return GraphEntity_Get_Property((GraphEntity*)edge, key);
+	e->relationId = relationId;
 }
 
 void Edge_Free(Edge* edge) {
 	if(!edge) return;
 
-	FreeGraphEntity((GraphEntity*)edge);
-
 	if(edge->alias != NULL) free(edge->alias);
 	if(edge->relationship != NULL) free(edge->relationship);
+	free(edge);
 }

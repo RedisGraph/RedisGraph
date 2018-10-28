@@ -20,7 +20,7 @@ void DeleteClause_ReferredEntities(const AST_DeleteNode *delete_node, TrieMap *r
     for(int i = 0; i < delete_element_count; i++) {
         char *delete_element;
         Vector_Get(delete_node->graphEntities, i, &delete_element);
-		TrieMap_Add(referred_entities, delete_element, strlen(delete_element), NULL, NULL);
+		TrieMap_Add(referred_entities, delete_element, strlen(delete_element), delete_element, TrieMap_DONT_CARE_REPLACE);
     }
 }
 

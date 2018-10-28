@@ -41,9 +41,6 @@ DataBlockIterator *DataBlockIterator_Clone (
 // in which case NULL is returned.
 void *DataBlockIterator_Next(DataBlockIterator *iter);
 
-// Jump the iterator forward by a specified number.
-void DataBlockIterator_Skip(DataBlockIterator *iter, int advance);
-
 // Reset iterator to original position.
 void DataBlockIterator_Reset(DataBlockIterator *iter);
 

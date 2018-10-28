@@ -14,6 +14,10 @@
 #define ENTITY_ID_ISLT(a,b) ((*a)<(*b))
 #define INVALID_ENTITY_ID -1l
 
+#define ENTITY_GET_ID(graphEntity) ((graphEntity)->entity ? (graphEntity)->entity->id : INVALID_ENTITY_ID)
+#define ENTITY_PROP_COUNT(graphEntity) ((graphEntity)->entity->prop_count)
+#define ENTITY_PROPS(graphEntity) ((graphEntity)->entity->properties)
+
 // Defined in graph_entity.c
 extern SIValue *PROPERTY_NOTFOUND;
 typedef GrB_Index EntityID;
@@ -25,17 +29,24 @@ typedef struct {
     SIValue value;
 } EntityProperty;
 
+// Essence of a graph entity.
+// TODO: see if pragma pack 0 will cause memory access violation on ARM.
 typedef struct {
-    EntityID id;    // unique id
-    int prop_count;
-    EntityProperty *properties;
+    EntityID id;                    // Unique id
+    int prop_count;                 // Number of properties.
+    EntityProperty *properties;     // Key value pair of attributes.
+} Entity;
+
+// Common denominator between nodes and edges.
+typedef struct {
+    Entity *entity;
 } GraphEntity;
 
 /* Adds a properties to entity
  * prop_count - number of new properties to add 
  * keys - array of properties keys 
  * values - array of properties values */
-void GraphEntity_Add_Properties(GraphEntity *e, int prop_count, char **keys, SIValue *values);
+void GraphEntity_Add_Properties(GraphEntity *ge, int prop_count, char **keys, SIValue *values);
 
 /* Retrieves entity's property
  * NOTE: If the key does not exist, we return the special
@@ -43,6 +54,6 @@ void GraphEntity_Add_Properties(GraphEntity *e, int prop_count, char **keys, SIV
 SIValue* GraphEntity_Get_Property(const GraphEntity *e, const char* key);
 
 /* Release all memory allocated by entity */
-void FreeGraphEntity(GraphEntity *e);
+void FreeEntity(Entity *e);
 
 #endif

@@ -21,7 +21,7 @@ typedef struct {
     AlgebraicExpression *algebraic_expression;
     AlgebraicExpressionResult *algebraic_results;
     int edgeRelationType;
-    Vector *edges;
+    Edge *edges;    
     TuplesIter *it;
 } Traverse;
 

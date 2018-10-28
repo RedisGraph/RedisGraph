@@ -13,6 +13,7 @@ extern "C" {
 
 #include <stdio.h>
 #include <string.h>
+#include "../../src/util/arr.h"
 #include "../../src/util/datablock/datablock.h"
 #include "../../src/util/rmalloc.h"
 
@@ -29,7 +30,7 @@ class DataBlockTest: public ::testing::Test {
 };
 
 
-TEST_F(DataBlockTest, NewDataBlock) {
+TEST_F(DataBlockTest, New) {
     // Create a new data block, which can hold at least 1024 items
     // each item is an integer.
     size_t itemSize = sizeof(int);
@@ -52,17 +53,16 @@ TEST_F(DataBlockTest, NewDataBlock) {
     DataBlock_Free(dataBlock);
 }
 
-TEST_F(DataBlockTest, AddItemToDataBlock) {
+TEST_F(DataBlockTest, AddItem) {
     DataBlock *dataBlock = DataBlock_New(1024, sizeof(int));
     size_t itemCount = 512;
-    DataBlockIterator *it;
-    DataBlock_AddItems(dataBlock, itemCount, &it);
-    EXPECT_EQ(dataBlock->itemCount, itemCount);
+    DataBlock_Accommodate(dataBlock, itemCount);
+    EXPECT_GE(dataBlock->itemCap, itemCount);
 
     // Set items.
     for(int i = 0 ; i < itemCount; i++) {
-        int *value = (int*)DataBlockIterator_Next(it);
-        *value = i;        
+        int *value = (int*)DataBlock_AllocateItem(dataBlock, NULL);
+        *value = i;
     }
 
     // Read items.
@@ -74,12 +74,12 @@ TEST_F(DataBlockTest, AddItemToDataBlock) {
     // Add enough item to cause datablock to re-allocate.
     size_t prevItemCount = dataBlock->itemCount;
     itemCount*=64;
-    DataBlock_AddItems(dataBlock, itemCount, &it);
-    EXPECT_EQ(dataBlock->itemCount, prevItemCount+itemCount);
+    DataBlock_Accommodate(dataBlock, itemCount);
+    EXPECT_GE(dataBlock->itemCap, prevItemCount+itemCount);
     
     // Set items.
     for(int i = 0 ; i < itemCount; i++) {
-        int *value = (int*)DataBlockIterator_Next(it);
+        int *value = (int*)DataBlock_AllocateItem(dataBlock, NULL);
         *value = prevItemCount + i;
     }
 
@@ -89,18 +89,18 @@ TEST_F(DataBlockTest, AddItemToDataBlock) {
         EXPECT_EQ(*value, i);
     }
 
-    DataBlockIterator_Free(it);
     DataBlock_Free(dataBlock);
 }
 
-TEST_F(DataBlockTest, ScanDataBlock) {
+TEST_F(DataBlockTest, Scan) {
     DataBlock *dataBlock = DataBlock_New(1024, sizeof(int));
     size_t itemCount = 2048;
-    DataBlock_AddItems(dataBlock, itemCount, NULL);
+    DataBlock_Accommodate(dataBlock, itemCount);
 
     // Set items.
     for(int i = 0 ; i < itemCount; i++) {
-        DataBlock_SetItem(dataBlock, &i, i);
+        int *item = (int *)DataBlock_AllocateItem(dataBlock, NULL);
+        *item = i;
     }
 
     // Scan through items.
@@ -114,7 +114,7 @@ TEST_F(DataBlockTest, ScanDataBlock) {
     EXPECT_EQ(count, itemCount);
 
     item = (int*)DataBlockIterator_Next(it);
-    // EXPECT_EQ(item, NULL);
+    EXPECT_TRUE(item == NULL);
 
     DataBlockIterator_Reset(it);
 
@@ -128,46 +128,62 @@ TEST_F(DataBlockTest, ScanDataBlock) {
     EXPECT_EQ(count, itemCount);
 
     item = (int*)DataBlockIterator_Next(it);
-    // EXPECT_EQ(item, NULL);
+    EXPECT_TRUE(item == NULL);
 
     DataBlock_Free(dataBlock);
     DataBlockIterator_Free(it);
 }
 
-TEST_F(DataBlockTest, GetItemBlock) {
+TEST_F(DataBlockTest, RemoveItem) {
     DataBlock *dataBlock = DataBlock_New(1024, sizeof(int));
-    size_t itemCount = 2048;
-    DataBlock_AddItems(dataBlock, itemCount, NULL);
+    uint itemCount = 32;
+    DataBlock_Accommodate(dataBlock, itemCount);
 
     // Set items.
     for(int i = 0 ; i < itemCount; i++) {
-        DataBlock_SetItem(dataBlock, &i, i);
+        int *item = (int *)DataBlock_AllocateItem(dataBlock, NULL);
+        *item = i;
     }
 
-    for(int i = 0 ; i < itemCount; i++) {
-        Block *block = DataBlock_GetItemBlock(dataBlock, i);
-        EXPECT_EQ(block, dataBlock->blocks[i/BLOCK_CAP]);
-    }
-    DataBlock_Free(dataBlock);
-}
+    // Validate item at position 0.
+    int *item = (int*)DataBlock_GetItem(dataBlock, 0);
+    EXPECT_FALSE(item == NULL);
+    EXPECT_EQ(*item, 0);
 
-TEST_F(DataBlockTest, MigrateItem) {
-    DataBlock *dataBlock = DataBlock_New(1024, sizeof(int));
-    size_t itemCount = 2048;
-    DataBlock_AddItems(dataBlock, itemCount, NULL);
+    // Remove item at position 0 and perform validations
+    // A DELETED_MARKER should mark cell as deleted
+    // Index 0 should be added to datablock deletedIdx array.
+    DataBlock_DeleteItem(dataBlock, 0);
+    EXPECT_EQ(dataBlock->itemCount, itemCount-1);
+    EXPECT_EQ(array_len(dataBlock->deletedIdx), 1);
+    EXPECT_TRUE((char)dataBlock->blocks[0]->data[0] && (char)DELETED_MARKER);
 
-    // Set items.
-    for(int i = 0 ; i < itemCount; i++) {
-        DataBlock_SetItem(dataBlock, &i, i);
-    }
+    // Try to get item from deleted cell.
+    item = (int*)DataBlock_GetItem(dataBlock, 0);
+    EXPECT_TRUE(item == NULL);
 
-    for(int i = dataBlock->itemCount-1; i > 0; i--) {
-        int *migratedItem = (int*)DataBlock_GetItem(dataBlock, i);
-        DataBlock_CopyItem(dataBlock, i, 0);
-        DataBlock_FreeTop(dataBlock, 1);
-        int *item = (int*)DataBlock_GetItem(dataBlock, 0);
-        EXPECT_EQ(*migratedItem, *item);
-        EXPECT_EQ(dataBlock->itemCount, i);
-    }
+    // Iterate over datablock, deleted item should be skipped.
+    DataBlockIterator *it = DataBlock_Scan(dataBlock);
+    uint counter = 0;
+    while(DataBlockIterator_Next(it)) counter++;
+    EXPECT_EQ(counter, itemCount-1);
+    DataBlockIterator_Free(it);
+
+    // There's no harm in deleting a deleted item.
+    DataBlock_DeleteItem(dataBlock, 0);
+
+    // Add a new item, expecting deleted cell to be reused.
+    int *newItem = (int *)DataBlock_AllocateItem(dataBlock, NULL);
+    EXPECT_EQ(dataBlock->itemCount, itemCount);
+    EXPECT_EQ(array_len(dataBlock->deletedIdx), 0);
+    EXPECT_TRUE((void*)newItem == (void*)(&dataBlock->blocks[0]->data));
+
+    it = DataBlock_Scan(dataBlock);
+    counter = 0;
+    while(DataBlockIterator_Next(it)) counter++;
+    EXPECT_EQ(counter, itemCount);
+    DataBlockIterator_Free(it);
+
+    // Cleanup.
     DataBlock_Free(dataBlock);
 }

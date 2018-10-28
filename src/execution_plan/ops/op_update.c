@@ -86,19 +86,19 @@ OpResult OpUpdateConsume(OpBase *opBase, Record *r) {
         SIValue entry = Record_GetEntry(*r, update_expression->alias);
         GraphEntity *entity = (GraphEntity*) entry.ptrval;
         int j = 0;
-        for(; j < entity->prop_count; j++) {
-            if(strcmp(entity->properties[j].name, update_expression->property) == 0) {
-                _OpUpdate_QueueUpdate(op, &entity->properties[j], new_value);
+        for(; j < ENTITY_PROP_COUNT(entity); j++) {
+            if(strcmp(ENTITY_PROPS(entity)[j].name, update_expression->property) == 0) {
+                _OpUpdate_QueueUpdate(op, &ENTITY_PROPS(entity)[j], new_value);
                 break;
             }
         }
 
-        if(j == entity->prop_count) {
+        if(j == ENTITY_PROP_COUNT(entity)) {
             /* Property does not exists for entity, create it.
              * For the time being set the new property value to PROPERTY_NOTFOUND.
              * Once we commit the update, we'll set the actual value. */
             GraphEntity_Add_Properties(entity, 1, &update_expression->property, PROPERTY_NOTFOUND);
-            _OpUpdate_QueueUpdate(op, &entity->properties[entity->prop_count-1], new_value);
+            _OpUpdate_QueueUpdate(op, &ENTITY_PROPS(entity)[ENTITY_PROP_COUNT(entity)-1], new_value);
         }
     }
 

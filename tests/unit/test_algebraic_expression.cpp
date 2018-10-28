@@ -141,23 +141,18 @@ class AlgebraicExpressionTest: public ::testing::Test {
         int labels[11] = {person_label, person_label, person_label, person_label, person_label, person_label,
                         country_label, country_label, country_label, country_label, country_label};
 
-        DataBlockIterator *it;
-        Graph_CreateNodes(g, node_count, labels ,&it);
+        char *default_property_name = (char *)"name";        
+        Graph_AllocateNodes(g, node_count);
 
-        // Assign attributes to nodes.
-        char *default_property_name = (char *)"name";
-        for(int i = 0; i < person_count; i++) {
-            Node *n = (Node*)DataBlockIterator_Next(it);
-            SIValue name = SI_StringVal(persons[i]);
-            Node_Add_Properties(n, 1, &default_property_name, &name);
-        }
-        for(int i = 0; i < country_count; i++) {
-            Node *n = (Node*)DataBlockIterator_Next(it);
-            SIValue name = SI_StringVal(countries[i]);
-            Node_Add_Properties(n, 1, &default_property_name, &name);
-        }
+        for(int i = 0; i<node_count; i++) {
+            Node n;
+            SIValue name;
+            Graph_CreateNode(g, labels[i], &n);
 
-        DataBlockIterator_Free(it);
+            if(i < person_count) name = SI_StringVal(persons[i]);                
+            else name = SI_StringVal(countries[i]);
+            GraphEntity_Add_Properties((GraphEntity*)&n, 1, &default_property_name, &name);
+        }
 
         // Creates a relation matrices.
         GrB_Index friend_relation_id = Graph_AddRelationType(g);
@@ -189,146 +184,58 @@ class AlgebraicExpressionTest: public ::testing::Test {
             0 0 1 0 0 0
             0 0 0 0 0 0
         */
-        EdgeDesc relations[27];
-        relations[0].srcId = 0;
-        relations[0].destId = 1;
-        relations[0].relationId = friend_relation_id;
-
-        relations[1].srcId = 0;
-        relations[1].destId = 3;
-        relations[1].relationId = friend_relation_id;
-
-        relations[2].srcId = 0;
-        relations[2].destId = 5;
-        relations[2].relationId = friend_relation_id;
-
-        relations[3].srcId = 1;
-        relations[3].destId = 2;
-        relations[3].relationId = friend_relation_id;
-
-        relations[4].srcId = 1;
-        relations[4].destId = 4;
-        relations[4].relationId = friend_relation_id;
-
-        relations[5].srcId = 2;
-        relations[5].destId = 3;
-        relations[5].relationId = friend_relation_id;
-
-        relations[6].srcId = 2;
-        relations[6].destId = 4;
-        relations[6].relationId = friend_relation_id;
-
-        relations[7].srcId = 2;
-        relations[7].destId = 5;
-        relations[7].relationId = friend_relation_id;
-
-        relations[8].srcId = 3;
-        relations[8].destId = 0;
-        relations[8].relationId = friend_relation_id;
-
-        relations[9].srcId = 3;
-        relations[9].destId = 5;
-        relations[9].relationId = friend_relation_id;
-
-        relations[10].srcId = 4;
-        relations[10].destId = 2;
-        relations[10].relationId = friend_relation_id;
-
-        relations[11].srcId = 4;
-        relations[11].destId = 3;
-        relations[11].relationId = friend_relation_id;
-
-        relations[12].srcId = 5;
-        relations[12].destId = 0;
-        relations[12].relationId = friend_relation_id;
-
-        relations[13].srcId = 5;
-        relations[13].destId = 4;
-        relations[13].relationId = friend_relation_id;
-
-        relations[14].srcId = 0;
-        relations[14].destId = 0;
-        relations[14].relationId = visit_relation_id;
-
-        relations[15].srcId = 0;
-        relations[15].destId = 1;
-        relations[15].relationId = visit_relation_id;
-
-        relations[16].srcId = 1;
-        relations[16].destId = 2;
-        relations[16].relationId = visit_relation_id;
-
-        relations[17].srcId = 1;
-        relations[17].destId = 4;
-        relations[17].relationId = visit_relation_id;
-
-        relations[18].srcId = 2;
-        relations[18].destId = 0;
-        relations[18].relationId = visit_relation_id;
-
-        relations[19].srcId = 2;
-        relations[19].destId = 1;
-        relations[19].relationId = visit_relation_id;
-
-        relations[20].srcId = 2;
-        relations[20].destId = 3;
-        relations[20].relationId = visit_relation_id;
-
-        relations[21].srcId = 3;
-        relations[21].destId = 4;
-        relations[21].relationId = visit_relation_id;
-
-        relations[22].srcId = 4;
-        relations[22].destId = 3;
-        relations[22].relationId = visit_relation_id;
-
-        relations[23].srcId = 5;
-        relations[23].destId = 4;
-        relations[23].relationId = visit_relation_id;
-
-        relations[24].srcId = 0;
-        relations[24].destId = 3;
-        relations[24].relationId = war_relation_id;
-
-        relations[25].srcId = 1;
-        relations[25].destId = 3;
-        relations[25].relationId = war_relation_id;
-
-        relations[26].srcId = 4;
-        relations[26].destId = 2;
-        relations[26].relationId = war_relation_id;
-
-        Graph_ConnectNodes(g, relations, 27, NULL);
+        Edge e;
+        Graph_ConnectNodes(g, 0, 1, friend_relation_id, &e);
+        Graph_ConnectNodes(g, 0, 3, friend_relation_id, &e);
+        Graph_ConnectNodes(g, 0, 5, friend_relation_id, &e);
+        Graph_ConnectNodes(g, 1, 2, friend_relation_id, &e);
+        Graph_ConnectNodes(g, 1, 4, friend_relation_id, &e);
+        Graph_ConnectNodes(g, 2, 3, friend_relation_id, &e);
+        Graph_ConnectNodes(g, 2, 4, friend_relation_id, &e);
+        Graph_ConnectNodes(g, 2, 5, friend_relation_id, &e);
+        Graph_ConnectNodes(g, 3, 0, friend_relation_id, &e);
+        Graph_ConnectNodes(g, 3, 5, friend_relation_id, &e);
+        Graph_ConnectNodes(g, 4, 2, friend_relation_id, &e);
+        Graph_ConnectNodes(g, 4, 3, friend_relation_id, &e);
+        Graph_ConnectNodes(g, 5, 0, friend_relation_id, &e);
+        Graph_ConnectNodes(g, 5, 4, friend_relation_id, &e);
+        Graph_ConnectNodes(g, 0, 0, visit_relation_id, &e);
+        Graph_ConnectNodes(g, 0, 1, visit_relation_id, &e);
+        Graph_ConnectNodes(g, 1, 2, visit_relation_id, &e);
+        Graph_ConnectNodes(g, 1, 4, visit_relation_id, &e);
+        Graph_ConnectNodes(g, 2, 0, visit_relation_id, &e);
+        Graph_ConnectNodes(g, 2, 1, visit_relation_id, &e);
+        Graph_ConnectNodes(g, 2, 3, visit_relation_id, &e);
+        Graph_ConnectNodes(g, 3, 4, visit_relation_id, &e);
+        Graph_ConnectNodes(g, 4, 3, visit_relation_id, &e);
+        Graph_ConnectNodes(g, 5, 4, visit_relation_id, &e);
+        Graph_ConnectNodes(g, 0, 3, war_relation_id, &e);
+        Graph_ConnectNodes(g, 1, 3, war_relation_id, &e);
+        Graph_ConnectNodes(g, 4, 2, war_relation_id, &e);
         return g;
     }
 
     QueryGraph *_build_query_graph(Graph *g) {
         /* Query
         * MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) */
+        
         QueryGraph *q = QueryGraph_New(1, 1);
-
-        // The following indices are synced with Graph_AddRelationType call order
-        // within _build_graph, this is not ideal, but for now this will do.
-        int friend_relation_id = 0;
-        int visit_relation_id = 1;
-        int war_relation_id = 2;
-
         // Create Nodes
-        Node *p = Node_New(0, "Person", "p");
-        Node *f = Node_New(1, "Person", "f");
-        Node *c = Node_New(2, "City", "c");
-        Node *e = Node_New(3, "City", "e");
+        Node *p = Node_New("Person", "p");
+        Node *f = Node_New("Person", "f");
+        Node *c = Node_New("City", "c");
+        Node *e = Node_New("City", "e");
 
         // Create edges
-        Edge *pff = Edge_New(friend_relation_id, p, f, "friend", "pff");
-        Edge *fvc = Edge_New(visit_relation_id, f, c, "visit", "fvc");
-        Edge *cwe = Edge_New(war_relation_id, c, e, "war", "cwe");
+        Edge *pff = Edge_New(p, f, "friend", "pff");
+        Edge *fvc = Edge_New(f, c, "visit", "fvc");
+        Edge *cwe = Edge_New(c, e, "war", "cwe");
         
         // Set edges matrices according to the order they've been presented
         // during graph construction.
-        pff->mat = Graph_GetRelation(g, 0);
-        fvc->mat = Graph_GetRelation(g, 1);
-        cwe->mat = Graph_GetRelation(g, 2);
+        pff->mat = Graph_GetRelationMatrix(g, 0);
+        fvc->mat = Graph_GetRelationMatrix(g, 1);
+        cwe->mat = Graph_GetRelationMatrix(g, 2);
 
         // Construct query graph
         QueryGraph_AddNode(q, p, (char*)"p");
@@ -586,8 +493,8 @@ TEST_F(AlgebraicExpressionTest, ExpressionExecute) {
     GrB_Index ncols, nrows;
     GrB_Matrix_ncols(&ncols, M);
     GrB_Matrix_nrows(&nrows, M);    
-    assert(ncols == Graph_NodeCount(g));
-    assert(nrows == Graph_NodeCount(g));
+    assert(ncols == Graph_RequiredMatrixDim(g));
+    assert(nrows == Graph_RequiredMatrixDim(g));
 
     // Expected result.
     // 0   0   0   0   0   0

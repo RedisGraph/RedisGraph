@@ -54,22 +54,21 @@ class IndexTest: public ::testing::Test {
         label_ids[i] = label_id;
       }
 
-      // Populate graph with nodes
-      DataBlockIterator *it;
-      Graph_CreateNodes(g, n, label_ids, &it);
+      Graph_AllocateNodes(g, n);
 
+      // Populate graph with nodes
       // Variables to store data for node properties
-      Node *node;
+      
+      Node node;
       char *prop_keys[2];
       prop_keys[0] = str_key;
       prop_keys[1] = num_key;
       SIValue prop_vals[2];
 
-      // Limiter for random values
-      int denom = RAND_MAX / 20 + 1;
-
-      for (int i = 0; i < n; i ++) {
-        node = (Node*)DataBlockIterator_Next(it);
+      for(int i = 0; i < n; i++) {
+        Graph_CreateNode(g, label_ids[i], &node);
+        // Limiter for random values
+        int denom = RAND_MAX / 20 + 1;
         // Properties will have a random value between 1 and 20
         int prop_val = rand() / denom + 1;
         char str_prop[10];
@@ -77,10 +76,8 @@ class IndexTest: public ::testing::Test {
         sprintf(str_prop, "%d", prop_val);
         prop_vals[0] = SI_StringVal(str_prop);
         prop_vals[1] = SI_DoubleVal(prop_val);
-
-        Node_Add_Properties(node, 2, prop_keys, prop_vals);
+        GraphEntity_Add_Properties((GraphEntity*)&node, 2, prop_keys, prop_vals);
       }
-      DataBlockIterator_Free(it);
 
       return g;
     }
@@ -104,16 +101,16 @@ TEST_F(IndexTest, StringIndex) {
   IndexIter_ApplyBound(iter, &lb, GE);
 
   NodeID *node_id;
-  Node *cur;
+  Node cur;
   SIValue last_prop = lb;
   SIValue *cur_prop;
 
   int num_vals = 0;
   while ((node_id = IndexIter_Next(iter)) != NULL) {
     // Retrieve the node from the graph
-    cur = Graph_GetNode(g, *node_id);
+    Graph_GetNode(g, *node_id, &cur);
     // Retrieve the indexed property from the node
-    cur_prop = GraphEntity_Get_Property((GraphEntity*)cur, str_key);
+    cur_prop = GraphEntity_Get_Property((GraphEntity*)&cur, str_key);
     // Values should be sorted in increasing value - duplicates are allowed
     EXPECT_LE(SIValue_Compare(last_prop, *cur_prop), 0);
     num_vals ++;
@@ -142,16 +139,16 @@ TEST_F(IndexTest, NumericIndex) {
   IndexIter_ApplyBound(iter, &lb, GE);
 
   NodeID *node_id;
-  Node *cur;
+  Node cur;
   SIValue last_prop = lb;
   SIValue *cur_prop;
 
   int num_vals = 0;
   while ((node_id = IndexIter_Next(iter)) != NULL) {
     // Retrieve the node from the graph
-    cur = Graph_GetNode(g, *node_id);
+    Graph_GetNode(g, *node_id, &cur);
     // Retrieve the indexed property from the node
-    cur_prop = GraphEntity_Get_Property((GraphEntity*)cur, num_key);
+    cur_prop = GraphEntity_Get_Property((GraphEntity*)&cur, num_key);
     // Values should be sorted in increasing value - duplicates are allowed
     EXPECT_LE(SIValue_Compare(last_prop, *cur_prop), 0);
     num_vals ++;
@@ -183,7 +180,7 @@ TEST_F(IndexTest, IteratorBounds) {
 
   /* Apply a non-exclusive lower bound X */
   NodeID *node_id;
-  Node *cur;
+  Node cur;
   SIValue *lb;
   int ctr = 0;
   // TODO ensure lower bound is not still first value
@@ -191,8 +188,8 @@ TEST_F(IndexTest, IteratorBounds) {
   while ((node_id = IndexIter_Next(iter)) != NULL) {
     ctr ++;
     if (ctr == 10) {
-      cur = Graph_GetNode(g, *node_id);
-      lb = GraphEntity_Get_Property((GraphEntity*)cur, num_key);
+      Graph_GetNode(g, *node_id, &cur);
+      lb = GraphEntity_Get_Property((GraphEntity*)&cur, num_key);
     }
   }
 
@@ -214,8 +211,8 @@ TEST_F(IndexTest, IteratorBounds) {
   IndexIter_Reset(iter);
   SIValue *ub;
   while ((node_id = IndexIter_Next(iter)) != NULL) {
-    cur = Graph_GetNode(g, *node_id);
-    ub = GraphEntity_Get_Property((GraphEntity*)cur, num_key);
+    Graph_GetNode(g, *node_id, &cur);
+    ub = GraphEntity_Get_Property((GraphEntity*)&cur, num_key);
     if (ub->doubleval > lb->doubleval) break;
   }
   IndexIter_ApplyBound(iter, ub, LE);
