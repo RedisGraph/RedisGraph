@@ -415,7 +415,7 @@ Returns: `String indicating if operation succeeded or failed.`
 GRAPH.DELETE us_government
 ```
 
-*Note*: if you'd like to delete a node from the graph (not the entire graph), you simply execute a `MATCH` query and pass the alias to the Redis `DELETE` command:
+*Note*: if you'd like to delete a node from the graph (not the entire graph), you simply execute a `MATCH` query and pass the alias to the `DELETE` clause:
 
 ```
 MATCH (x:y {propname: propvalue}) DELETE x
