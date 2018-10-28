@@ -421,7 +421,7 @@ GRAPH.DELETE us_government
 MATCH (x:y {propname: propvalue}) DELETE x
 ```
 
-Beware that deleting a node, all of the node's incoming/outgoing edges will also be removed.
+Beware that when you delete a node, all of the node's incoming/outgoing edges will also be removed.
 
 ## GRAPH.EXPLAIN
 
