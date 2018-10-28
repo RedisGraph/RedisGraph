@@ -415,6 +415,14 @@ Returns: `String indicating if operation succeeded or failed.`
 GRAPH.DELETE us_government
 ```
 
+*Note*: if you'd like to delete a node from the graph (not the entire graph), you simply execute a `MATCH` query and pass the alias to the `DELETE` clause:
+
+```
+MATCH (x:y {propname: propvalue}) DELETE x
+```
+
+Beware that when you delete a node, all of the node's incoming/outgoing edges will also be removed.
+
 ## GRAPH.EXPLAIN
 
 Constructs a query execution plan but does not run it. Inspect this execution plan to better
