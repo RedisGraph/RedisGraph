@@ -77,7 +77,7 @@ We do not support any of these properties at the type level, meaning nodes and e
 
 ### Reading/Writing Clauses
 + MERGE
-
+    - MERGE is only supported as a standalone clause, and as such cannot be combined with other directives such as MATCH or RETURN.
   **Unsupported:**
 
 - CALL (stored procedures)
