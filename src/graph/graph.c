@@ -94,11 +94,11 @@ void _SynchronizeMatrix(const Graph *g, GrB_Matrix m) {
 }
 
 void Graph_SetSynchronization(Graph *g, bool enable) {
-  if (enable) {
-    g->SynchronizeMatrix = _SynchronizeMatrix;
-  } else {
-    g->SynchronizeMatrix = _DontSynchronizeMatrix;
-  }
+    if (enable) {
+        g->SynchronizeMatrix = _SynchronizeMatrix;
+    } else {
+        g->SynchronizeMatrix = _DontSynchronizeMatrix;
+    }
 }
 
 // Return number of nodes graph can contain.
