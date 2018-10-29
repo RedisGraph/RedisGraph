@@ -313,6 +313,8 @@ MATCH (n { name: 'Jim' }) SET n.name = NULL
 
 The MERGE clause ensures that a pattern exists in the graph (either the pattern already exists, or it needs to be created).
 
+Currently, MERGE only functions as a standalone clause, and as such cannot be combined with other directives such as MATCH or RETURN.
+
 MERGE either matches existing nodes and binds them, or it creates new data and binds that.
 
 It’s like a combination of MATCH and CREATE that additionally allows you to specify what happens if the data was matched or created.
