@@ -8,6 +8,7 @@
 #include <unistd.h>
 #define REDISMODULE_EXPERIMENTAL_API    // Required for block client.
 #include "redismodule.h"
+#include "config.h"
 #include "version.h"
 #include "commands/commands.h"
 #include "graph/graph_type.h"
@@ -29,12 +30,9 @@ bool _writelocked;
  * number of threads within pool should be
  * the number of available hyperthreads.
  * Returns 1 if thread pool initialized, 0 otherwise. */
-int _Setup_ThreadPOOL() {
+int _Setup_ThreadPOOL(int threadCount) {
     // Create thread pool.
-    int CPUCount = sysconf(_SC_NPROCESSORS_ONLN);
-    if(CPUCount == -1) return 0;
-
-    _thpool = thpool_init(CPUCount);
+    _thpool = thpool_init(threadCount);
     if(_thpool == NULL) return 0;
 
     return 1;
@@ -60,20 +58,23 @@ int _RegisterDataTypes(RedisModuleCtx *ctx) {
 }
 
 int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-    assert(GrB_init(GrB_NONBLOCKING) == GrB_SUCCESS);
     /* TODO: when module unloads call GrB_finalize. */
-
-    AR_RegisterFuncs();     // Register arithmetic functions.
-    Agg_RegisterFuncs();    // Register aggregation functions.
-    if (!_Setup_ThreadPOOL()) return REDISMODULE_ERR;
-
-    // Initialize read write lock.
-    if (pthread_rwlock_init(&_rwlock, NULL)) return REDISMODULE_ERR;
-    _writelocked = false;
+    assert(GrB_init(GrB_NONBLOCKING) == GrB_SUCCESS);
 
     if (RedisModule_Init(ctx, "graph", REDISGRAPH_MODULE_VERSION, REDISMODULE_APIVER_1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
     }
+
+    AR_RegisterFuncs();     // Register arithmetic functions.
+    Agg_RegisterFuncs();    // Register aggregation functions.
+
+    long long threadCount = Config_GetThreadCount(ctx, argv, argc);
+    if (!_Setup_ThreadPOOL(threadCount)) return REDISMODULE_ERR;
+    RedisModule_Log(ctx, "notice", "Thread pool created, using %d threads.", threadCount);
+
+    // Initialize read write lock.
+    if (pthread_rwlock_init(&_rwlock, NULL)) return REDISMODULE_ERR;
+    _writelocked = false;
 
     if (_RegisterDataTypes(ctx) != REDISMODULE_OK) return REDISMODULE_ERR;
 
