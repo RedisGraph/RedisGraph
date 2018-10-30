@@ -3,14 +3,14 @@ RedisGraph implements a subset of the Cypher language, which is growing as devel
 This document is based on comparison to the Cypher Query Language Reference (version 9), available at [OpenCypher Resources](https://www.opencypher.org/resources).
 
 ## Patterns
-Patterns are fully supported with the exception of the OR (`[:rel_a|:rel_b]`) operator to explicitly specify multiple relation types.
+Patterns are fully supported with the exception of the OR (`[:rel_a|:rel_b]`) operator to explicitly specify multiple relationship types.
 
 ## Types
 ### Structural types
 + Nodes
     - Nodes are fully supported save that a node can only be associated with a single label.
-+ Edges
-    - Undirected edges are not supported.
++ Relationships
+    - Undirected relationships are not supported.
 
   **Unsupported:**
 
@@ -38,7 +38,7 @@ NULL is supported as a representation of a missing or undefined value.
 This is a somewhat nebulous area in Cypher itself, with a lot of edge cases.
 Broadly speaking, RedisGraph behaves as expected with string and numeric values.
 There are likely some behaviors involving the numerics NaN, -inf, inf, and possibly -0.0 that deviate from the Cypher standard.
-We do not support any of these properties at the type level, meaning nodes and edges are not internally comparable.
+We do not support any of these properties at the type level, meaning nodes and relationships are not internally comparable.
 
 ## Clauses
 ### Reading Clauses
