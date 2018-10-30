@@ -88,7 +88,7 @@ RELATIONS               // relations section.
 */
 
 /* Parse bulk insert format and inserts new entities */
-int Bulk_Insert (
+int BulkInsert (
     RedisModuleCtx *ctx,        // Redis thread-safe context.
     GraphContext *gc,           // GraphContext hosting data stores and Graph.
     size_t *nodes,              // [Optional] number of nodes created.
