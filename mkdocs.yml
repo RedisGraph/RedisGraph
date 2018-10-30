@@ -1,4 +1,4 @@
-site_name: Redis Graph - a graph database module for Redis
+site_name: RedisGraph - a graph database module for Redis
 site_url: http://redisgraph.io
 repo_url: https://github.com/RedisLabsModules/redis-graph
 repo_name: RedisLabsModules/redis-graph
