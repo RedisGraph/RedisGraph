@@ -158,21 +158,22 @@ Index* GraphContext_GetIndex(const GraphContext *gc, const char *label, const ch
   return gc->indices[offset];
 }
 
-void GraphContext_AddIndex(GraphContext *gc, const char *label, const char *property) {
+int GraphContext_AddIndex(GraphContext *gc, const char *label, const char *property) {
   if(gc->index_count == gc->index_cap) {
     gc->index_cap += 4;
     gc->indices = rm_realloc(gc->indices, gc->index_cap * sizeof(Index*));
   }
 
-  // Generate an iterator over the specified label
+  // Find the ID of the specified label
   int label_id = GraphContext_GetLabelID(gc, label, STORE_NODE);
-  const GrB_Matrix label_matrix = Graph_GetLabel(gc->g, label_id);
-  TuplesIter *it = TuplesIter_new(label_matrix);
+  if (label_id < 0 ) return INDEX_FAIL;
+
   // Populate an index by using this iterator to seek into the data block.
-  Index *idx = Index_Create(gc->g->nodes, it, label, property);
-  TuplesIter_free(it);
+  Index *idx = Index_Create(gc->g, label_id, label, property);
   gc->indices[gc->index_count] = idx;
   gc->index_count++;
+
+  return INDEX_OK;
 }
 
 int GraphContext_DeleteIndex(GraphContext *gc, const char *label, const char *property) {

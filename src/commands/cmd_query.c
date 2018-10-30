@@ -36,7 +36,10 @@ void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST_IndexNode *inde
       if (GraphContext_GetIndex(gc, indexNode->label, indexNode->property)) {
         RedisModule_ReplyWithSimpleString(ctx, "(no changes, no records)");
       } else {
-        GraphContext_AddIndex(gc, indexNode->label, indexNode->property);
+        if (GraphContext_AddIndex(gc, indexNode->label, indexNode->property) != INDEX_OK) {
+          RedisModule_ReplyWithSimpleString(ctx, "(no changes, no records)");
+          break;
+        }
         RedisModule_ReplyWithSimpleString(ctx, "Added 1 index.");
       }
       break;

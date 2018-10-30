@@ -49,7 +49,7 @@ bool GraphContext_HasIndices(GraphContext *gc);
 // Attempt to retrieve an index on the given label and property
 Index* GraphContext_GetIndex(const GraphContext *gc, const char *label, const char *property);
 // Create and populate an index for the given label and property
-void GraphContext_AddIndex(GraphContext *gc, const char *label, const char *property);
+int GraphContext_AddIndex(GraphContext *gc, const char *label, const char *property);
 // Remove and free an index
 int GraphContext_DeleteIndex(GraphContext *gc, const char *label, const char *property);
 

@@ -43,7 +43,10 @@ void initializeSkiplists(Index *index) {
 
 /* Index_Create allocates an Index object and populates it with a label-property pair
  * by accessing DataBlock elements referred to by a TuplesIter over a label matrix. */
-Index* Index_Create(DataBlock *entities, TuplesIter *it, const char *label, const char *prop_str) {
+Index* Index_Create(Graph *g, int label_id, const char *label, const char *prop_str) {
+  const GrB_Matrix label_matrix = Graph_GetLabel(g, label_id);
+  TuplesIter *it = TuplesIter_new(label_matrix);
+
   Index *index = rm_malloc(sizeof(Index));
 
   index->label = rm_strdup(label);
@@ -60,7 +63,7 @@ Index* Index_Create(DataBlock *entities, TuplesIter *it, const char *label, cons
   int found;
   int prop_index = 0;
   while(TuplesIter_next(it, NULL, &entity_id) != TuplesIter_DEPLETED) {
-    entity = DataBlock_GetItem(entities, entity_id);
+    entity = (GraphEntity*)Graph_GetNode(g, entity_id);
     // If the sought property is at a different offset than it occupied in the previous node,
     // then seek and update
     if (strcmp(prop_str, entity->properties[prop_index].name)) {
@@ -87,6 +90,8 @@ Index* Index_Create(DataBlock *entities, TuplesIter *it, const char *label, cons
     sl = (key->type & SI_NUMERIC) ? index->numeric_sl: index->string_sl;
     skiplistInsert(sl, key, entity_id);
   }
+
+  TuplesIter_free(it);
 
   return index;
 }

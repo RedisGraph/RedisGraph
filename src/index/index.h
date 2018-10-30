@@ -10,9 +10,9 @@
 
 #include <assert.h>
 #include "../redismodule.h"
+#include "../graph/graph.h"
 #include "../graph/entities/graph_entity.h"
 #include "../util/skiplist.h"
-#include "../util/datablock/datablock.h"
 #include "../GraphBLASExt/tuples_iter.h"
 
 #define INDEX_OK 1
@@ -34,7 +34,7 @@ typedef struct {
 
 /* Index_Create builds an index for a label-property pair so that queries reliant
  * on these entities can use expedited scan logic. */
-Index* Index_Create(DataBlock *entities, TuplesIter *it, const char *label, const char *prop_str);
+Index* Index_Create(Graph *g, int label_id, const char *label, const char *prop_str);
 
 /* Build a new iterator to traverse all indexed values of the specified type. */
 IndexIter* IndexIter_Create(Index *idx, SIType type);
