@@ -1,6 +1,6 @@
 [![CircleCI](https://circleci.com/gh/RedisLabsModules/redis-graph/tree/master.svg?style=svg)](https://circleci.com/gh/RedisLabsModules/redis-graph/tree/master)
 
-# RedisGraph
+# RedisGraph - A graph database module for Redis
 
 RedisGraph is the first queryable [Property Graph](https://github.com/opencypher/openCypher/blob/master/docs/property-graph-model.adoc) database to use compressed sparse adjacency matrices and linear algebra to represent and query graphs.
 
