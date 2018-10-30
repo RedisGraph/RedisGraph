@@ -56,7 +56,7 @@ void _MGraph_BulkInsert(void *args) {
     RedisModule_ReplyWithStringBuffer(ctx, timings, strlen(timings));
 
 cleanup:
-    GraphContext_ReleaseLock(gc);
+    Graph_ReleaseLock(gc->g);
     RedisModule_ThreadSafeContextUnlock(ctx);
     RedisModule_FreeThreadSafeContext(ctx);
     RedisModule_UnblockClient(context->bc, NULL);

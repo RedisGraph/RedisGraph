@@ -36,7 +36,6 @@ void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST_IndexNode *inde
       if (GraphContext_GetIndex(gc, indexNode->label, indexNode->property)) {
         RedisModule_ReplyWithSimpleString(ctx, "(no changes, no records)");
       } else {
-        // retrieve label matrix
         GraphContext_AddIndex(gc, indexNode->label, indexNode->property);
         RedisModule_ReplyWithSimpleString(ctx, "Added 1 index.");
       }
@@ -70,9 +69,18 @@ void _MGraph_Query(void *args) {
 
     // Try to get graph context.
     GraphContext *gc = GraphContext_Get(ctx, qctx->graphName, readonly);
-    if (!gc && !ast->createNode && !ast->mergeNode) {
-        RedisModule_ReplyWithError(ctx, "key doesn't contains a graph object.");
-        goto cleanup;
+    if(!gc) {
+        if (!ast->createNode && !ast->mergeNode) {
+            RedisModule_ReplyWithError(ctx, "key doesn't contains a graph object.");
+            goto cleanup;
+        }
+        assert(!readonly);
+        gc = GraphContext_New(ctx, qctx->graphName);
+        if (!gc) {
+            RedisModule_ReplyWithError(ctx, "Graph name already in use as a Redis key.");
+            goto cleanup;
+        }
+        /* TODO: free graph if no entities were created. */
     }
 
     // Perform query validations before and after ModifyAST
@@ -80,16 +88,6 @@ void _MGraph_Query(void *args) {
 
     ModifyAST(gc, ast);
     if (AST_PerformValidations(ctx, ast) != AST_VALID) goto cleanup;
-
-    if(!gc) {
-        assert(!readonly);
-        gc = GraphContext_New(ctx, qctx->graphName);
-        if (!gc) {
-          RedisModule_ReplyWithError(ctx, "Graph name already in use as a Redis key.");
-          goto cleanup;
-        }
-        /* TODO: free graph if no entities were created. */
-    }
 
     if (ast->indexNode) { // index operation
         _index_operation(ctx, gc, ast->indexNode);
@@ -110,7 +108,7 @@ void _MGraph_Query(void *args) {
     // Clean up.
 cleanup:
     // Release the read-write lock
-    if (gc) GraphContext_ReleaseLock(gc);
+    if (gc) Graph_ReleaseLock(gc->g); // TODO choose sensible interface for this
     // Release Redis global lock if it was acquired
     if (!readonly) RedisModule_ThreadSafeContextUnlock(ctx);
     Free_AST_Query(ast);

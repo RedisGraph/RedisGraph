@@ -9,7 +9,7 @@ endif
 
 # Default CFLAGS
 CFLAGS = -Wall -Wno-unused-function -Wno-unused-variable -Wno-unused-result -fPIC \
- 	-D_GNU_SOURCE -std=gnu11 -I"$(shell pwd)" -DREDIS_MODULE_TARGET
+ 	-D_GNU_SOURCE -std=gnu99 -I"$(shell pwd)" -DREDIS_MODULE_TARGET
 CFLAGS += $(DEBUGFLAGS)
 
 # Compile flags for linux / osx

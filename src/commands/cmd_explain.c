@@ -56,8 +56,9 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     RedisModule_ReplyWithStringBuffer(ctx, strPlan, strlen(strPlan));
 
 cleanup:
-    GraphContext_ReleaseLock(gc);
+    Graph_ReleaseLock(gc->g); // TODO choose sensible interface for this
     ExecutionPlanFree(plan);
     Free_AST_Query(ast);
     return REDISMODULE_OK;
 }
+

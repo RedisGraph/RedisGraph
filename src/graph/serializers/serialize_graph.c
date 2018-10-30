@@ -45,14 +45,14 @@ void _RdbLoadMatrices(RedisModuleIO *rdb, Graph *g) {
     uint64_t relationMatricesCount = RedisModule_LoadUnsigned(rdb);
     for(int i = 0; i < relationMatricesCount; i++) {
         Graph_AddRelationType(g);
-        GrB_Matrix m = Graph_GetRelation(g, i, true);
+        GrB_Matrix m = Graph_GetRelation(g, i);
         _RdbLoadMatrix(rdb, m);
     }
 
     uint64_t labelMatricesCount = RedisModule_LoadUnsigned(rdb);
     for(int i = 0; i < labelMatricesCount; i++) {
         Graph_AddLabel(g);
-        GrB_Matrix m = Graph_GetLabel(g, i, true);
+        GrB_Matrix m = Graph_GetLabel(g, i);
         _RdbLoadMatrix(rdb, m);
     }
 }
@@ -83,16 +83,7 @@ void _RdbLoadEntity(RedisModuleIO *rdb, GraphEntity *e) {
 
     for(int i = 0; i < propCount; i++) {
         propName[i] = RedisModule_LoadStringBuffer(rdb, &propNameLen);
-<<<<<<< HEAD
         propValue[i] = _RdbLoadSIValue(rdb);
-=======
-        SIType t = RedisModule_LoadUnsigned(rdb);
-        if(t & SI_NUMERIC) {
-            propValue[i] = SI_DoubleVal(RedisModule_LoadDouble(rdb));
-        } else {
-            propValue[i] = SI_StringVal(RedisModule_LoadStringBuffer(rdb, NULL));
-        }
->>>>>>> Delete unused and clarify function purposes
     }
 
     if(propCount) GraphEntity_Add_Properties(e, propCount, propName, propValue);
@@ -266,13 +257,13 @@ void _RdbSaveMatrices(RedisModuleIO *rdb, Graph *g) {
 
     RedisModule_SaveUnsigned(rdb, g->relation_count);
     for(int i = 0; i < g->relation_count; i++) {
-        GrB_Matrix m = Graph_GetRelation(g, i, true);
+        GrB_Matrix m = Graph_GetRelation(g, i);
         _RdbSaveMatrix(rdb, m);
     }
 
     RedisModule_SaveUnsigned(rdb, g->label_count);
     for(int i = 0; i < g->label_count; i++) {
-        GrB_Matrix m = Graph_GetLabel(g, i, true);
+        GrB_Matrix m = Graph_GetLabel(g, i);
         _RdbSaveMatrix(rdb, m);
     }
 }
@@ -331,6 +322,10 @@ void *RdbLoadGraph(RedisModuleIO *rdb) {
 
     // Flush all pending changes to graphs.
     GrB_wait();
+
+    // Initialize a read-write lock scoped to this graph.
+    pthread_rwlock_init(&g->_rwlock, NULL);
+    g->_writelocked = false;
 
     return g;
 }

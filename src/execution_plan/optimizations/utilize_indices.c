@@ -124,7 +124,6 @@ void utilizeIndices(GraphContext *gc, ExecutionPlan *plan) {
       // Try to retrieve an index if one has not been selected yet
       if (!idx) {
         idx = GraphContext_GetIndex(gc, label, filterProp);
-        // idx = Index_Get(ctx, graph_name, label, filterProp);
         if (!idx) continue;
         iter = IndexIter_Create(idx, constVal.type);
       }

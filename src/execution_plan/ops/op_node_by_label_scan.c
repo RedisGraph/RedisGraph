@@ -13,10 +13,10 @@ OpBase *NewNodeByLabelScanOp(GraphContext *gc, Node *node) {
     nodeByLabelScan->node = node;
     nodeByLabelScan->_zero_matrix = NULL;
 
-    /* Retrieve label matrix. */
-    GrB_Matrix label_matrix = GraphContext_GetMatrix(gc, node->label, STORE_NODE);
-    if (label_matrix) {
-        nodeByLabelScan->iter = TuplesIter_new(label_matrix);
+    /* Find out label matrix ID. */
+    int label_id = GraphContext_GetLabelID(gc, node->label, STORE_NODE);
+    if(label_id >= 0) {
+        nodeByLabelScan->iter = TuplesIter_new(Graph_GetLabel(gc->g, label_id));
     } else {
         /* Label does not exist, use a fake empty matrix. */
         GrB_Matrix_new(&nodeByLabelScan->_zero_matrix, GrB_BOOL, 1, 1);

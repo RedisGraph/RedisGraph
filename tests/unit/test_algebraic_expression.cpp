@@ -326,9 +326,9 @@ class AlgebraicExpressionTest: public ::testing::Test {
         
         // Set edges matrices according to the order they've been presented
         // during graph construction.
-        pff->mat = Graph_GetRelation(g, 0, true);
-        fvc->mat = Graph_GetRelation(g, 1, true);
-        cwe->mat = Graph_GetRelation(g, 2, true);
+        pff->mat = Graph_GetRelation(g, 0);
+        fvc->mat = Graph_GetRelation(g, 1);
+        cwe->mat = Graph_GetRelation(g, 2);
 
         // Construct query graph
         QueryGraph_AddNode(q, p, (char*)"p");

@@ -15,42 +15,6 @@ int _GraphContext_IndexOffset(const GraphContext *gc, const char *label, const c
   return -1;
 }
 
-int _GraphContext_GetLabelID(const GraphContext *gc, const char *label, LabelStoreType t) {
-  LabelStore **labels;
-  size_t count;
-  if (t == STORE_NODE) {
-    labels = gc->node_stores;
-    count = gc->label_count;
-  } else {
-    labels = gc->relation_stores;
-    count = gc->relation_count;
-  }
-
-  // TODO optimize lookup
-  for (int i = 0; i < count; i ++) {
-    if (!strcmp(label, labels[i]->label)) return i;
-  }
-  return GRAPH_NO_LABEL; // equivalent to GRAPH_NO_RELATION
-}
-
-//------------------------------------------------------------------------------
-// Read/Write lock
-//------------------------------------------------------------------------------
-
-void GraphContext_AcquireReadLock(GraphContext *gc) {
-    pthread_rwlock_rdlock(&gc->_rwlock);
-}
-
-void GraphContext_AcquireWriteLock(GraphContext *gc) {
-    pthread_rwlock_wrlock(&gc->_rwlock);
-    gc->writelocked = true;
-}
-
-void GraphContext_ReleaseLock(GraphContext *gc) {
-    gc->writelocked = false;
-    pthread_rwlock_unlock(&gc->_rwlock);
-}
-
 //------------------------------------------------------------------------------
 // GraphContext API
 //------------------------------------------------------------------------------
@@ -65,13 +29,6 @@ GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rs_name) 
   }
 
   GraphContext *gc = rm_malloc(sizeof(GraphContext));
-
-  // Initialize a read-write lock scoped to the individual graph and its data
-  assert(pthread_rwlock_init(&gc->_rwlock, NULL) == 0);
-
-  // GraphContext_New can only be invoked from writing contexts
-  GraphContext_AcquireWriteLock(gc);
-  gc->writelocked = true;
 
   gc->relation_cap = GRAPH_DEFAULT_RELATION_CAP;
   gc->relation_count = 0;
@@ -109,28 +66,36 @@ GraphContext* GraphContext_Get(RedisModuleCtx *ctx, RedisModuleString *rs_name, 
   GraphContext *gc = RedisModule_ModuleTypeGetValue(key);
   RedisModule_CloseKey(key);
 
-  // Acquire the appropriate read-write lock
   if (readonly) {
-    GraphContext_AcquireReadLock(gc);
+    Graph_AcquireReadLock(gc->g);
   } else {
-    GraphContext_AcquireWriteLock(gc);
+    Graph_AcquireWriteLock(gc->g);
   }
 
   return gc;
 }
 
 //------------------------------------------------------------------------------
-// Matrix API
-//------------------------------------------------------------------------------
-GrB_Matrix GraphContext_GetMatrix(const GraphContext *gc, const char *label, LabelStoreType t) {
-  int id = _GraphContext_GetLabelID(gc, label, t);
-  if (id == GRAPH_NO_LABEL) return NULL;
-  return Graph_GetLabel(gc->g, id, gc->writelocked);
-}
-
-//------------------------------------------------------------------------------
 // LabelStore API
 //------------------------------------------------------------------------------
+int GraphContext_GetLabelID(const GraphContext *gc, const char *label, LabelStoreType t) {
+  LabelStore **labels;
+  size_t count;
+  if (t == STORE_NODE) {
+    labels = gc->node_stores;
+    count = gc->label_count;
+  } else {
+    labels = gc->relation_stores;
+    count = gc->relation_count;
+  }
+
+  // TODO optimize lookup
+  for (int i = 0; i < count; i ++) {
+    if (!strcmp(label, labels[i]->label)) return i;
+  }
+  return GRAPH_NO_LABEL; // equivalent to GRAPH_NO_RELATION
+}
+
 LabelStore* GraphContext_AllStore(const GraphContext *gc, LabelStoreType t) {
   if (t == STORE_NODE) return gc->node_allstore;
   return gc->relation_allstore;
@@ -139,7 +104,7 @@ LabelStore* GraphContext_AllStore(const GraphContext *gc, LabelStoreType t) {
 LabelStore* GraphContext_GetStore(const GraphContext *gc, const char *label, LabelStoreType t) {
   LabelStore **stores = (t == STORE_NODE) ? gc->node_stores : gc->relation_stores;
 
-  int id = _GraphContext_GetLabelID(gc, label, t);
+  int id = GraphContext_GetLabelID(gc, label, t);
   if (id == GRAPH_NO_LABEL) return NULL;
 
   return stores[id];
@@ -200,7 +165,8 @@ void GraphContext_AddIndex(GraphContext *gc, const char *label, const char *prop
   }
 
   // Generate an iterator over the specified label
-  const GrB_Matrix label_matrix = GraphContext_GetMatrix(gc, label, STORE_NODE);
+  int label_id = GraphContext_GetLabelID(gc, label, STORE_NODE);
+  const GrB_Matrix label_matrix = Graph_GetLabel(gc->g, label_id);
   TuplesIter *it = TuplesIter_new(label_matrix);
   // Populate an index by using this iterator to seek into the data block.
   Index *idx = Index_Create(gc->g->nodes, it, label, property);
@@ -248,10 +214,6 @@ void GraphContext_Free(GraphContext *gc) {
     Index_Free(gc->indices[i]);
   }
   rm_free(gc->indices);
-
-  GraphContext_ReleaseLock(gc);
-  // Destroy read-write lock
-  pthread_rwlock_destroy(&gc->_rwlock);
 
   rm_free(gc);
 }

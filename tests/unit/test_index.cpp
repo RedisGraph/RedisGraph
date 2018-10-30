@@ -88,7 +88,7 @@ class IndexTest: public ::testing::Test {
 
 TEST_F(IndexTest, StringIndex) {
   // Index the label's string property
-  const GrB_Matrix label_matrix = Graph_GetLabel(g, label_id, true);
+  const GrB_Matrix label_matrix = Graph_GetLabel(g, label_id);
   TuplesIter *it = TuplesIter_new(label_matrix);
   Index* str_idx = Index_Create(g->nodes, it, label, str_key);
   // Check the label and property tags on the index
@@ -129,7 +129,7 @@ TEST_F(IndexTest, StringIndex) {
 
 TEST_F(IndexTest, NumericIndex) {
   // Index the label's numeric property
-  const GrB_Matrix label_matrix = Graph_GetLabel(g, label_id, true);
+  const GrB_Matrix label_matrix = Graph_GetLabel(g, label_id);
   TuplesIter *it = TuplesIter_new(label_matrix);
   Index *num_idx = Index_Create(g->nodes, it, label, num_key);
   // Check the label and property tags on the index
@@ -178,7 +178,7 @@ static int count_iter_vals(IndexIter *iter) {
 /* Validate the progressive application of iterator bounds
  * on the numeric skiplist. */
 TEST_F(IndexTest, IteratorBounds) {
-  const GrB_Matrix label_matrix = Graph_GetLabel(g, label_id, true);
+  const GrB_Matrix label_matrix = Graph_GetLabel(g, label_id);
   TuplesIter *it = TuplesIter_new(label_matrix);
   Index *num_idx = Index_Create(g->nodes, it, label, num_key);
   IndexIter *iter = IndexIter_Create(num_idx, T_DOUBLE);

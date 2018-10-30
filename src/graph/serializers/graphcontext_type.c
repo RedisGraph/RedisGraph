@@ -122,10 +122,6 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
     GraphContext_AddIndex(gc, label, property);
   }
 
-  // Initialize a read-write lock scoped to the individual graph db.
-  assert(pthread_rwlock_init(&gc->_rwlock, NULL) == 0);
-  gc->writelocked = false;
-
   return gc;
 }
 

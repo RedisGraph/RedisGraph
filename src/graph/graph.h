@@ -30,12 +30,24 @@ typedef struct {
     DataBlock *edges;               // Graph edges stored in blocks.
     Edge *_edgesHashTbl;            // Hash table containing edges.
     GrB_Matrix adjacency_matrix;    // Adjacency matrix, holds all graph connections.
-    GrB_Matrix *relations;         // Relation matrices.
+    GrB_Matrix *relations;          // Relation matrices.
     size_t relation_count;          // Number of relation matrices.
-    GrB_Matrix *labels;            // Label matrices.
+    GrB_Matrix *labels;             // Label matrices.
     size_t label_count;             // Number of label matrices.    
     pthread_mutex_t _mutex;         // Mutex for accessing critical sections.
+    pthread_rwlock_t _rwlock;       // Read-write lock scoped to this specific graph
+    bool _writelocked;              // true if the read-write lock was acquired by a writer
 } Graph;
+
+/* Graph synchronization functions
+ * The graph is initialized with a read-write lock allowing
+ * concurrent access from one writer or N readers. */
+/* Acquire a lock that does not restrict access from additional reader threads */
+void Graph_AcquireReadLock(Graph *g);
+/* Acquire a lock for exclusive access to this graph's data */
+void Graph_AcquireWriteLock(Graph *g);
+/* Release the held lock */
+void Graph_ReleaseLock(Graph *g);
 
 // Create a new graph.
 Graph *Graph_New (
@@ -102,8 +114,7 @@ void Graph_GetNodeEdges (
     const Node *n,
     Vector *edges,
     GRAPH_EDGE_DIR dir,
-    int edgeType,
-    bool locked         // True if we've already acquired a write lock.
+    int edgeType
 );
 
 // Removes a set of nodes and all of their connections
@@ -146,24 +157,21 @@ int Graph_AddLabel (
 // Retrieves the adjacency matrix.
 // Matrix is resized if its size doesn't match graph's node count.
 GrB_Matrix Graph_GetAdjacencyMatrix (
-    const Graph *g,
-    bool locked         // True if we've already acquired a write lock.
+    const Graph *g
 );
 
 // Retrieves a label matrix.
 // Matrix is resized if its size doesn't match graph's node count.
 GrB_Matrix Graph_GetLabel (
     const Graph *g,     // Graph from which to get adjacency matrix.
-    int label,          // Label described by matrix.
-    bool locked         // True if we've already acquired a write lock.
+    int label           // Label described by matrix.
 );
 
 // Retrieves a typed adjacency matrix.
 // Matrix is resized if its size doesn't match graph's node count.
 GrB_Matrix Graph_GetRelation (
     const Graph *g,     // Graph from which to get adjacency matrix.
-    int relation,       // Relation described by matrix.
-    bool locked         // True if we've already acquired a write lock.
+    int relation        // Relation described by matrix.
 );
 
 // Creates a new relation matrix, returns id given to relation.

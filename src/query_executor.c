@@ -17,8 +17,6 @@
 #include "parser/parser_common.h"
 
 static void _returnClause_ExpandCollapsedNodes(GraphContext *gc, AST_Query *ast) {
-    /* gc can validly be NULL if the query is a CREATE or MERGE, but in those cases
-     * we would have already issued a syntax error if a return clause was included. */
     assert(gc);
 
      /* Create a new return clause */

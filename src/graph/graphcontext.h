@@ -26,33 +26,15 @@ typedef struct {
   unsigned int index_cap;          // Capacity of indices array
   unsigned int index_count;        // Number of indices
   Index **indices;                 // Array of all indices on label-property pairs
-
-  pthread_rwlock_t _rwlock;        // Read-write lock scoped to this specific graph
-  bool writelocked;                // true if the read-write lock was acquired by a writer
 } GraphContext;
-
-/* GraphContext synchronization functions
- * The GraphContext is initialized with a read-write lock allowing
- * concurrent access from one writer or N readers. */
-// Acquire a lock that does not restrict access from additional reader threads
-void GraphContext_AcquireReadLock(GraphContext *gc);
-// Acquire a lock for exclusive access to this graph's data
-void GraphContext_AcquireWriteLock(GraphContext *gc);
-// Release the held lock
-void GraphContext_ReleaseLock(GraphContext *gc);
 
 /* GraphContext API */
 GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rs_name);
 GraphContext* GraphContext_Get(RedisModuleCtx *ctx, RedisModuleString *rs_graph_name, bool readonly);
 
-// TODO I think it might be cleaner to make the node and edge DataBlocks members of the
-// GraphContext, and use Graph as exclusively a matrix API (possibly renaming it).
-// Both would then have similar sections here.
-
-/* Matrix API */
-GrB_Matrix GraphContext_GetMatrix(const GraphContext *gc, const char *label, LabelStoreType t);
-
 /* LabelStore API */
+// Find the ID associated with a label for store and matrix access
+int GraphContext_GetLabelID(const GraphContext *gc, const char *label, LabelStoreType t);
 // Retrieve the generic store for node labels or relation types
 LabelStore* GraphContext_AllStore(const GraphContext *gc, LabelStoreType t);
 // Retrieve the specific store for the provided node label or relation type string

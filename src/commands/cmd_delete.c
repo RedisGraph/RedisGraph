@@ -57,7 +57,7 @@ void _MGraph_Delete(void *args) {
     // The DeleteKey call will free the GraphContext, but we must first fetch it
     // to acquire the lock.
     GraphContext *gc = RedisModule_ModuleTypeGetValue(key);
-    GraphContext_AcquireWriteLock(gc);
+    Graph_AcquireWriteLock(gc->g);
 
     // Remove GraphContext from keyspace.
     if(RedisModule_DeleteKey(key) == REDISMODULE_OK) {
