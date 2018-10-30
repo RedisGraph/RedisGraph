@@ -2,15 +2,16 @@
 
 # RedisGraph
 
-RedisGraph is the first queryable property graph database to use sparse adjacency matrices and linear algebra to represent and query graphs.
+RedisGraph is the first queryable [Property Graph](https://github.com/opencypher/openCypher/blob/master/docs/property-graph-model.adoc) database to use compressed sparse adjacency matrices and linear algebra to represent and query graphs.
 
 Primary features:
-
-* Graphs represented as sparse adjacency matrices
-* Cypher queries translated into linear algebra expressions
-* Nodes and edges that may have attributes
-* Nodes and edges that can be labeled
-* Support for [openCypher](http://www.opencypher.org/) queries
+* Adopting the [Property Graph Model](https://github.com/opencypher/openCypher/blob/master/docs/property-graph-model.adoc)
+  * Nodes (vertices) and Relationships (edges) that may have attributes
+  * Nodes that can be labeled
+  * Relationships have a relationship type
+* Graphs represented as compressed sparse adjacency matrices
+* [Cypher](http://www.opencypher.org/) as query language
+  * Cypher queries translated into linear algebra expressions
 
 To see RedisGraph in action, visit [Demos](https://github.com/RedisLabsModules/redis-module-graph/tree/master/demo).
 
