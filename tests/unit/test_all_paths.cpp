@@ -104,7 +104,7 @@ TEST_F(AllPathsTest, NoPaths) {
     unsigned int maxLen = minLen + 1;
     size_t pathsCap = 1;
     Path *paths = (Path*)malloc(sizeof(Path) * pathsCap);
-    size_t pathsCount = AllPaths(g, GRAPH_NO_RELATION, src, minLen, maxLen, &pathsCap, &paths);
+    size_t pathsCount = AllPaths(g, GRAPH_NO_RELATION, src, GRAPH_EDGE_DIR_OUTGOING, minLen, maxLen, &pathsCap, &paths);
     EXPECT_EQ(pathsCount, 0);
     
     free(paths);
@@ -119,7 +119,7 @@ TEST_F(AllPathsTest, LongestPaths) {
     unsigned int maxLen = UINT_MAX;
     size_t pathsCap = 1;
     Path *paths = (Path*)malloc(sizeof(Path) * pathsCap);
-    size_t pathsCount = AllPaths(g, GRAPH_NO_RELATION, src, minLen, maxLen, &pathsCap, &paths);
+    size_t pathsCount = AllPaths(g, GRAPH_NO_RELATION, src, GRAPH_EDGE_DIR_OUTGOING, minLen, maxLen, &pathsCap, &paths);
 
     unsigned int longestPath = 0;
     for(int i = 0; i < pathsCount; i++) {
@@ -143,7 +143,7 @@ TEST_F(AllPathsTest, UpToThreeLegsPaths) {
     unsigned int maxLen = 3;
     size_t pathsCap = 2;
     Path *paths = (Path*)malloc(sizeof(Path) * pathsCap);
-    size_t pathsCount = AllPaths(g, GRAPH_NO_RELATION, src, minLen, maxLen, &pathsCap, &paths);
+    size_t pathsCount = AllPaths(g, GRAPH_NO_RELATION, src, GRAPH_EDGE_DIR_OUTGOING, minLen, maxLen, &pathsCap, &paths);
     ASSERT_EQ(pathsCount, 12);
 
     /* Connections:
@@ -214,7 +214,7 @@ TEST_F(AllPathsTest, TwoLegPaths) {
     unsigned int maxLen = 2;
     size_t pathsCap = 1;
     Path *paths = (Path*)malloc(sizeof(Path) * pathsCap);
-    size_t pathsCount = AllPaths(g, GRAPH_NO_RELATION, src, minLen, maxLen, &pathsCap, &paths);
+    size_t pathsCount = AllPaths(g, GRAPH_NO_RELATION, src, GRAPH_EDGE_DIR_OUTGOING, minLen, maxLen, &pathsCap, &paths);
     ASSERT_EQ(pathsCount, 4);
 
     /* Connections:

@@ -17,14 +17,15 @@
 typedef struct {
     OpBase op;
     Graph *g;
-    const char *srcNodeAlias;   /* Node set by operation. */
-    const char *destNodeAlias;  /* Node set by operation. */
-    int relationID;             /* Relation we're traversing. */
-    unsigned int minHops;       /* Maximum number of hops to perform. */
-    unsigned int maxHops;       /* Maximum number of hops to perform. */    
-    size_t pathsCount;          /* Length of Paths. */
-    size_t pathsCap;            /* Capacity of Paths. */
-    Path *paths;                /* Array of paths. */
+    const char *srcNodeAlias;       /* Node set by operation. */
+    const char *destNodeAlias;      /* Node set by operation. */
+    int relationID;                 /* Relation we're traversing. */
+    GRAPH_EDGE_DIR traverseDir;     /* Traverse direction. */
+    unsigned int minHops;           /* Maximum number of hops to perform. */
+    unsigned int maxHops;           /* Maximum number of hops to perform. */    
+    size_t pathsCount;              /* Length of Paths. */
+    size_t pathsCap;                /* Capacity of Paths. */
+    Path *paths;                    /* Array of paths. */
 } CondVarLenTraverse;
 
 OpBase* NewCondVarLenTraverseOp(AlgebraicExpression *ae, unsigned int minHops, unsigned int maxHops, Graph *g);

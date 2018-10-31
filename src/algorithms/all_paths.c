@@ -13,6 +13,7 @@ void _AllPaths
 (
     const Graph *g,         // Graph traversed.
     Node *frontier,         // Last node reached on path.
+    GRAPH_EDGE_DIR dir,     // Traversal direction.
     int relationID,         // Edge type to traverse.
     GrB_Matrix relation,    // Edge matrix.
     unsigned int minHops,   // Path minimum length.
@@ -25,52 +26,60 @@ void _AllPaths
     Path **paths            // Paths constructed.
 )
 {
-        if(hop >= minHops && hop <= maxHops) {
-            Path clone = Path_clone(*path);
+    if(hop >= minHops && hop <= maxHops) {
+        Path clone = Path_clone(*path);
 
-            if(*pathsCount >= *pathsCap) {
-                (*pathsCap) = (*pathsCap) * 2 + 1;
-                (*paths) = realloc(*paths, sizeof(Path) * (*pathsCap));
-            }
-
-            (*paths)[*pathsCount] = clone;
-            (*pathsCount) = (*pathsCount) + 1;
+        if(*pathsCount >= *pathsCap) {
+            (*pathsCap) = (*pathsCap) * 2 + 1;
+            (*paths) = realloc(*paths, sizeof(Path) * (*pathsCap));
         }
 
-        if(hop >= maxHops) {
-            // We've over extended the path.
-            return;
+        (*paths)[*pathsCount] = clone;
+        (*pathsCount) = (*pathsCount) + 1;
+    }
+
+    if(hop >= maxHops) {
+        // We've over extended the path.
+        return;
+    }
+
+    NodeID frontierID = frontier->id;
+    Vector *neighbors = NewVector(Edge*, 32);
+    Graph_GetNodeEdges(g, frontier, neighbors, dir, relationID);
+    size_t neighborsCount = Vector_Size(neighbors);
+
+    for(size_t i = 0; i < neighborsCount; i++) {
+        Edge *e;
+        Vector_Get(neighbors, i, &e);
+        NodeID neighborID;
+        Node *neighbor;
+        if(dir == GRAPH_EDGE_DIR_OUTGOING) {
+            neighborID = Edge_GetDestNodeID(e);
+            neighbor = Edge_GetDestNode(e);
+        } else {
+            neighborID = Edge_GetSrcNodeID(e);
+            neighbor = Edge_GetSrcNode(e);
         }
 
-        NodeID frontierID = frontier->id;
-        Vector *outGoingEdges = NewVector(Edge*, 32);
-        Graph_GetNodeEdges(g, frontier, outGoingEdges, GRAPH_EDGE_DIR_OUTGOING, relationID);
-        size_t outGoingEdgesCount = Vector_Size(outGoingEdges);
+        // See if edge frontier->neighbor been used.
+        bool used = false;
+        GrB_Matrix_extractElement_BOOL(&used, visited, neighborID, frontierID);
+        if(used) continue;
 
-        for(size_t i = 0; i < outGoingEdgesCount; i++) {
-            Edge *e;
-            Vector_Get(outGoingEdges, i, &e);
-            NodeID neighborID = Edge_GetDestNodeID(e);
-            
-            // See if edge frontier->neighbor been used.
-            bool used = false;
-            GrB_Matrix_extractElement_BOOL(&used, visited, neighborID, frontierID);
-            if(used) continue;
+        // Mark edge as visited.
+        GrB_Matrix_setElement_BOOL(visited, true, neighborID, frontierID);
 
-            // Mark edge as visited.
-            GrB_Matrix_setElement_BOOL(visited, true, neighborID, frontierID);
+        *path = Path_append(*path, e);
 
-            *path = Path_append(*path, e);
+        _AllPaths(g, neighbor, dir, relationID, relation, minHops, maxHops, hop+1, visited, path, pathsCount, pathsCap, paths);
 
-            _AllPaths(g, Edge_GetDestNode(e), relationID, relation, minHops, maxHops, hop+1, visited, path, pathsCount, pathsCap, paths);
+        Path_pop(*path);
 
-            Path_pop(*path);
+        // Mark edge as unvisited.
+        GrB_Matrix_setElement_BOOL(visited, false, neighborID, frontierID);
+    }
 
-            // Mark edge as unvisited.
-            GrB_Matrix_setElement_BOOL(visited, false, neighborID, frontierID);
-        }
-
-        Vector_Free(outGoingEdges);
+    Vector_Free(neighbors);
 }
 
 size_t AllPaths
@@ -78,6 +87,7 @@ size_t AllPaths
     const Graph *g,
     int relationID,
     NodeID src,
+    GRAPH_EDGE_DIR dir,
     unsigned int minLen,
     unsigned int maxLen,
     size_t *pathsCap,
@@ -97,7 +107,7 @@ size_t AllPaths
     Path p = Path_new(pathLen);
 
     size_t pathsCount = 0;
-    _AllPaths(g, Graph_GetNode(g, src), relationID, relation, minLen, maxLen, 0, visited, &p, &pathsCount, pathsCap, paths);
+    _AllPaths(g, Graph_GetNode(g, src), dir, relationID, relation, minLen, maxLen, 0, visited, &p, &pathsCount, pathsCap, paths);
 
     Path_free(p);
     GrB_Matrix_free(&visited);

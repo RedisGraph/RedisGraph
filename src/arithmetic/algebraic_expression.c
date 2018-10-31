@@ -109,8 +109,8 @@ void _referred_variable_length_edges(TrieMap *ref_entities, Vector *matchPattern
 AlgebraicExpression** _AlgebraicExpression_IsolateVariableLenExps(AlgebraicExpression **expressions, size_t *expCount) {
     /* Return value is a new set of expressions, where each variable length expression
       * is guaranteed to have a single operand, as such in the worst case the number of
-      * expressions doubles. */
-    AlgebraicExpression **res = malloc(sizeof(AlgebraicExpression*) * (*expCount) * 2);
+      * expressions doubles + 1. */
+    AlgebraicExpression **res = malloc(sizeof(AlgebraicExpression*) * ((*expCount) * 2) + 1);
     size_t newExpCount = 0;
 
     /* Scan through each expression, locate expression which 
@@ -121,12 +121,27 @@ AlgebraicExpression** _AlgebraicExpression_IsolateVariableLenExps(AlgebraicExpre
             res[newExpCount++] = exp;
             continue;
         }
-        
-        /* We only care about destination node, in the case of a variable length edge 
-         * expression where there's a labeled source node, then the execution plan 
-         * will turn that node into a label scan and discard of the source node matrix. */
+
         Edge *e = exp->edge;
+        Node *src = exp->src_node;
         Node *dest = exp->dest_node;
+        
+        // A variable length expression with a labeled source node
+        // We only care about the source label matrix, when it comes to
+        // the first expression, as in the following expressions
+        // src is the destination of the previous expression.
+        if(src->mat && expIdx == 0) {
+            // Remove src node matrix from expression.
+            AlgebraicExpressionOperand op;
+            AlgebraicExpression_RemoveTerm(exp, 0, &op);
+
+            /* Create a new expression. */
+            AlgebraicExpression *newExp = _AE_MUL(1);
+            newExp->src_node = exp->src_node;
+            newExp->dest_node = exp->src_node;
+            AlgebraicExpression_PrependTerm(newExp, op.operand, op.transpose, op.free);
+            res[newExpCount++] = newExp;
+        }
 
         res[newExpCount++] = exp;
 

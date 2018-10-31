@@ -23,6 +23,7 @@ size_t AllPaths
     const Graph *g,         // Graph traversed.
     int relationID,         // Edge type to traverse.
     NodeID src,             // Node from which to traverse.
+    GRAPH_EDGE_DIR dir,     // Traversal direction.
     unsigned int minLen,    // Path minimum length.
     unsigned int maxLen,    // Path max length.
     size_t *pathsCap,       // Number of paths.
