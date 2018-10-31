@@ -14,7 +14,7 @@ GRAPH.QUERY us_government "MATCH (p:president)-[:born]->(:state {name:'Hawaii'})
 
 ### Query language
 
-The syntax is based on [openCypher](http://www.opencypher.org/), and only a subset of the language currently
+The syntax is based on [Cypher](http://www.opencypher.org/), and only a subset of the language currently
 supported.
 
 1. [Clauses](#query-structure)
@@ -37,13 +37,13 @@ supported.
 Match describes the relationship between queried entities, using ascii art to represent pattern(s) to match against.
 
 Nodes are represented by parenthesis `()`,
-while edges are represented by brackets `[]`.
+while Relationsips are represented by brackets `[]`.
 
-Each graph entity node/edge can contain an alias and a label, but both can be left empty if needed.
+Each graph entity node/relationship can contain an alias and a label/relationship type, but both can be left empty if needed.
 
 Entity structure: `alias:label {filters}`.
 
-Alias, label and filters are all optional.
+Alias, label/relationship type and filters are all optional.
 
 Example:
 
@@ -74,7 +74,7 @@ It is possible to describe broader relationships by composing a multi-hop query 
 
 Here we're interested in finding out who my friends' friends are.
 
-Nodes can have more than one edge coming in or out of them, for instance:
+Nodes can have more than one relationship coming in or out of them, for instance:
 
 ```sh
 (me {name:'swilly'})-[:visited]->(c:country)<-[:visited]-(friend)<-[:friends_with]-({name:'swilly'})
@@ -288,7 +288,7 @@ This query will delete all `friend` outgoing relationships from the node with th
 
 #### SET
 
-SET is used to create or update properties on nodes and edges.
+SET is used to create or update properties on nodes and relationships.
 
 To set a property on a node, use `SET`.
 
@@ -353,7 +353,7 @@ MERGE (charlie { name: 'Charlie Sheen', age: 10 })-[r:ACTED_IN]->(wallStreet:MOV
 
 ### Functions
 
-This section contains information on all supported functions from the openCypher query language.
+This section contains information on all supported functions from the Cypher query language.
 
 * [Aggregating functions](#aggregating-functions)
 * [Mathematical functions](#mathematical-functions)
@@ -423,7 +423,7 @@ GRAPH.DELETE us_government
 MATCH (x:y {propname: propvalue}) DELETE x
 ```
 
-Beware that when you delete a node, all of the node's incoming/outgoing edges will also be removed.
+Beware that when you delete a node, all of the node's incoming/outgoing relationships will also be removed.
 
 ## GRAPH.EXPLAIN
 

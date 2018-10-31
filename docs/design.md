@@ -105,11 +105,11 @@ movies_count DESC"
 
 ### Representation
 
-RedisGraph uses sparse adjacency matrices to represent graphs. As directed edge connecting source node S to destination node T is
+RedisGraph uses sparse adjacency matrices to represent graphs. As directed relationship connecting source node S to destination node T is
 recorded within an adjacency matrix M, by setting M's S,T entry to 1 (M[S,T]=1).
 As a rule of thumb, matrix rows represent source nodes while matrix columns represent destination nodes.
 
-Every graph stored within RedisGraph has at least one matrix, referred to as THE adjacency matrix (relation type agnostic). In addition, every typed relation has its own dedicated typed matrix. Consider a graph with two types of edges:
+Every graph stored within RedisGraph has at least one matrix, referred to as THE adjacency matrix (relation type agnostic). In addition, every typed relation has its own dedicated typed matrix. Consider a graph with two relationships types:
 
 1. visits
 2. friend
@@ -120,15 +120,15 @@ The underline graph data structure would maintain three matrices:
 2. visit matrix - marking visit connections
 3. friend matrix - marking friend connections
 
-A visit edge E, connecting node A to node B, would set THE adjacency matrix at position [A,B] to 1, in addition the visit matrix V would also set position V[A,B] to 1.
+A 'visit' relationship E, connecting node A to node B, would set THE adjacency matrix at position [A,B] to 1, in addition the visit matrix V would also set position V[A,B] to 1.
 
 To accommodate typed nodes, additional matrices are allocated one per label, and a label matrix is symmetric with ones along the main diagonal. Assume node N was labeled as a Person, then the Person matrix P would set position P[N,N] to 1.
 
 This design enables RedisGraph to modify its graph with ease:
 
 - Adding new nodes simply extend matrices, adding additional rows and columns.
-- Adding new edges is done by setting the relevant entries at the relevant matrices.
-- Removing edges clear relevant entries.
+- Adding new relationships is done by setting the relevant entries at the relevant matrices.
+- Removing relationships clear relevant entries.
 - Deleting nodes is achieved by matrix row/column deletion.
 
 One of the main reasons we've chosen to represent our graphs as sparse matrices is graph traversal.
