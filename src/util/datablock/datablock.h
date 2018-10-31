@@ -9,6 +9,7 @@
 #define _DATA_BLOCK_H_
 
 #include <stdlib.h>
+#include <stdint.h>
 #include "./block.h"
 #include "./datablock_iterator.h"
 

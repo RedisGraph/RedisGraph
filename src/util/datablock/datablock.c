@@ -74,18 +74,21 @@ void _DataBlock_AddBlocks(DataBlock *dataBlock, size_t blockCount) {
     dataBlock->itemCap = dataBlock->blockCount * BLOCK_CAP;
 }
 
-void static inline _DataBlock_MarkItemAsDeleted(const DataBlock *dataBlock, char* item) {
-    for(int i = 0; i < dataBlock->itemSize; i++) item[i] = DELETED_MARKER;
+void static inline _DataBlock_MarkItemAsDeleted(const DataBlock *dataBlock, unsigned char* item) {
+    memset(item, DELETED_MARKER, dataBlock->itemSize);
 }
 
-void static inline _DataBlock_MarkItemAsUndelete(const DataBlock *dataBlock, char* item) {
+void static inline _DataBlock_MarkItemAsUndelete(const DataBlock *dataBlock, unsigned char* item) {
     item[0] = !DELETED_MARKER;
 }
 
-int static inline _DataBlock_IsItemDeleted(const DataBlock *dataBlock, char* item) {
-    char deleted = 0xFF;
-    for(int i = 0; i < dataBlock->itemSize; i++) deleted &= (item[i] & DELETED_MARKER);
-    return deleted;
+int static inline _DataBlock_IsItemDeleted(const DataBlock *dataBlock, unsigned char* item) {
+    for(int i = 0; i < dataBlock->itemSize; i++) {
+        if(item[i] != DELETED_MARKER) {
+            return 0;
+        }
+    }
+    return 1;
 }
 
 // Checks to see if idx is within global array bounds
@@ -138,7 +141,7 @@ void *DataBlock_GetItem(const DataBlock *dataBlock, size_t idx) {
     Block *block = GET_ITEM_BLOCK(dataBlock, idx);
     idx = ITEM_POSITION_WITHIN_BLOCK(idx);
     
-    char *item = block->data + (idx * block->itemSize);
+    unsigned char *item = block->data + (idx * block->itemSize);
 
     // Incase item is marked as deleted, return NULL.
     if(_DataBlock_IsItemDeleted(dataBlock, item)) return NULL;
@@ -168,7 +171,7 @@ void* DataBlock_AllocateItem(DataBlock *dataBlock, u_int64_t *idx) {
     Block *block = GET_ITEM_BLOCK(dataBlock, pos);
     pos = ITEM_POSITION_WITHIN_BLOCK(pos);
     
-    char *item = block->data + (pos * block->itemSize);
+    unsigned char *item = block->data + (pos * block->itemSize);
     _DataBlock_MarkItemAsUndelete(dataBlock, item);
 
     return (void*)item;
@@ -182,12 +185,11 @@ void DataBlock_DeleteItem(DataBlock *dataBlock, u_int64_t idx) {
     size_t blockIdx = ITEM_INDEX_TO_BLOCK_INDEX(idx);
     Block *block = dataBlock->blocks[blockIdx];
 
-    // Add item to block.
     uint blockPos = ITEM_POSITION_WITHIN_BLOCK(idx);
     size_t offset = blockPos * block->itemSize;
 
     // Return if item already deleted.
-    char *item = block->data + offset;
+    unsigned char *item = block->data + offset;
     if(_DataBlock_IsItemDeleted(dataBlock, item)) return;
 
     _DataBlock_MarkItemAsDeleted(dataBlock, item);

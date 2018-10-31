@@ -25,8 +25,8 @@ typedef struct DataBlockIterator {
 // Creates a new datablock iterator.
 DataBlockIterator *DataBlockIterator_New (
     Block *block,       // Block from which iteration begins.
-    int start_pos,      // Iteration starts here.
-    int end_pos,        // Iteration stops here.
+    int64_t start_pos,      // Iteration starts here.
+    int64_t end_pos,        // Iteration stops here.
     int step            // To scan entire range, set step to 1.
 );
 

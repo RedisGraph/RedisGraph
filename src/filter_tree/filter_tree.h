@@ -9,7 +9,6 @@
 #define _FILTER_TREE_H
 
 #include "../parser/ast.h"
-#include "../graph/query_graph.h"
 #include "../redismodule.h"
 #include "../arithmetic/arithmetic_expression.h"
 #include "../execution_plan/record.h"

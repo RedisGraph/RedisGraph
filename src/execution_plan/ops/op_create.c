@@ -31,10 +31,7 @@ void _SetModifiedEntities(OpCreate *op) {
         /* See if current entity needs to be created:
          * 1. current entity is NOT in MATCH clause.
          * 2. We've yet to accounted for this entity. */
-        if(TrieMap_Find(matchEntities, alias, strlen(alias)) != TRIEMAP_NOTFOUND) continue;
-
-        // Remember this entity to avoid duplications.
-        TrieMap_Add(matchEntities, alias, strlen(alias), NULL, TrieMap_DONT_CARE_REPLACE);
+        if(TrieMap_Add(matchEntities, alias, strlen(alias), NULL, TrieMap_DONT_CARE_REPLACE) == 0) continue;
         if(create_ge->t == N_ENTITY) {
             // Node.
             Node *n = QueryGraph_GetNodeByAlias(op->qg, create_ge->alias);

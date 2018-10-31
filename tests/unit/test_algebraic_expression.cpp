@@ -138,19 +138,20 @@ class AlgebraicExpressionTest: public ::testing::Test {
         /* Introduce person and country labels. */
         int person_label = Graph_AddLabel(g);
         int country_label = Graph_AddLabel(g);
-        int labels[11] = {person_label, person_label, person_label, person_label, person_label, person_label,
-                        country_label, country_label, country_label, country_label, country_label};
-
         char *default_property_name = (char *)"name";        
         Graph_AllocateNodes(g, node_count);
 
-        for(int i = 0; i<node_count; i++) {
+        for(int i = 0; i < person_count; i++) {
             Node n;
-            SIValue name;
-            Graph_CreateNode(g, labels[i], &n);
+            Graph_CreateNode(g, person_label, &n);
+            SIValue name = SI_StringVal(persons[i]);
+            GraphEntity_Add_Properties((GraphEntity*)&n, 1, &default_property_name, &name);
+        }
 
-            if(i < person_count) name = SI_StringVal(persons[i]);                
-            else name = SI_StringVal(countries[i]);
+        for(int i = 0; i < country_count; i++) {
+            Node n;
+            Graph_CreateNode(g, country_label, &n);
+            SIValue name = SI_StringVal(countries[i]);
             GraphEntity_Add_Properties((GraphEntity*)&n, 1, &default_property_name, &name);
         }
 

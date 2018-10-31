@@ -143,10 +143,9 @@ Entity* _Graph_GetEdgeConnectingNodes(const Graph *g, NodeID src, NodeID dest, i
 
     EdgeID edgeId = 0;
     GrB_Info res = GrB_Matrix_extractElement_UINT64(&edgeId, relationMap, dest, src);
-    
     // No entry at [dest, src], src is not connected to dest with relation R.
     if(res == GrB_NO_VALUE) return NULL;
-    
+
     Entity *en = DataBlock_GetItem(g->edges, edgeId);
     assert(en);
     return en;
@@ -433,7 +432,8 @@ int Graph_DeleteEdge(Graph *g, Edge *e) {
         res = GxB_Matrix_Delete(M, dest_id, src_id);
     }
 
-    // Remove edges from datablock.
+    // Free and remove edges from datablock.
+    FreeEntity(e->entity);
     DataBlock_DeleteItem(g->edges, ENTITY_GET_ID(e));
     return 1;
 }
@@ -458,6 +458,8 @@ int Graph_DeleteNode(Graph *g, Node *n) {
         GrB_Matrix M = Graph_GetLabel(g, i);
         GxB_Matrix_Delete(M, ENTITY_GET_ID(n), ENTITY_GET_ID(n));
     }
+
+    FreeEntity(n->entity);
     DataBlock_DeleteItem(g->nodes, ENTITY_GET_ID(n));
 
     // Cleanup.

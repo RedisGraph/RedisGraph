@@ -31,7 +31,7 @@ void _AllPaths
         Path clone = Path_clone(*path);
 
         if(*pathsCount >= *pathsCap) {
-            (*pathsCap) = (*pathsCap) * 2 + 1;
+            (*pathsCap) = (*pathsCap) * 2;
             (*paths) = realloc(*paths, sizeof(Path) * (*pathsCap));
         }
 

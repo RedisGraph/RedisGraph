@@ -10,13 +10,16 @@
 #include "assert.h"
 #include <stdio.h>
 
-int static inline _IsItemDeleted(int itemSize, char* item) {
-    char deleted = 0xFF;
-    for(int i = 0; i < itemSize; i++) deleted &= (item[i] & DELETED_MARKER);
-    return deleted;
+int static inline _IsItemDeleted(int itemSize, unsigned char* item) {
+    for(int i = 0; i < itemSize; i++) {
+        if(item[i] != DELETED_MARKER) {
+            return 0;
+        }
+    }
+    return 1;
 }
 
-DataBlockIterator *DataBlockIterator_New(Block *block, int start_pos, int end_pos, int step) {
+DataBlockIterator *DataBlockIterator_New(Block *block, int64_t start_pos, int64_t end_pos, int step) {
     assert(block && start_pos >= 0 && end_pos >= start_pos && step >= 1);
     
     DataBlockIterator *iter = malloc(sizeof(DataBlockIterator));
@@ -39,7 +42,7 @@ void *DataBlockIterator_Next(DataBlockIterator *iter) {
     
     if(iter->_current_pos >= iter->_end_pos || iter->_current_block == NULL) return NULL;
     
-    char *item = NULL;
+    unsigned char *item = NULL;
     // Have we reached the end of our iterator?
     while(iter->_current_pos < iter->_end_pos && iter->_current_block != NULL) {
         // Get item at current position.
