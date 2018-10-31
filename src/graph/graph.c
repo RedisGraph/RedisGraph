@@ -8,16 +8,14 @@
 #include <assert.h>
 
 #include "graph.h"
-#include "graph_type.h"
 #include "../util/qsort.h"
 #include "../GraphBLASExt/tuples_iter.h"
 #include "../GraphBLASExt/GxB_Pending.h"
 #include "../util/rmalloc.h"
 
+/*========================= Synchronization functions ========================= */
 
-/*========================= Graph utility functions ========================= */
-
-/* Acquire mutex. */
+/* Acquire mutex when a reader thread may modify shared data. */
 void _Graph_EnterCriticalSection(Graph *g) {
     pthread_mutex_lock(&g->_mutex);
 }
@@ -27,14 +25,30 @@ void _Graph_LeaveCriticalSection(Graph *g) {
     pthread_mutex_unlock(&g->_mutex);
 }
 
+/* Acquire a lock that does not restrict access from additional reader threads */
+void Graph_AcquireReadLock(Graph *g) {
+    pthread_rwlock_rdlock(&g->_rwlock);
+}
+
+/* Acquire a lock for exclusive access to this graph's data */
+void Graph_AcquireWriteLock(Graph *g) {
+    pthread_rwlock_wrlock(&g->_rwlock);
+    g->_writelocked = true;
+}
+
+/* Release the held lock */
+void Graph_ReleaseLock(Graph *g) {
+    g->_writelocked = false;
+    pthread_rwlock_unlock(&g->_rwlock);
+}
+
 /* Force execution of all pending operations on a matrix. */
 static inline void _Graph_ApplyPending(GrB_Matrix m) {
     GrB_Index nvals;
     GrB_Matrix_nvals(&nvals, m);
 }
 
-/* module.c global indicating whether the process is locked by a writer. */
-extern bool _writelocked;
+/*========================= Graph utility functions ========================= */
 
 /* Resize given matrix, such that its number of row and columns
  * matches the number of nodes in the graph. Also, synchronize
@@ -45,7 +59,7 @@ void _Graph_SynchronizeMatrix(const Graph *g, GrB_Matrix m) {
 
     // If the graph belongs to one thread, we don't need to flush pending operations
     // or lock the mutex.
-    if (_writelocked) {
+    if (g->_writelocked) {
         if (n_rows != Graph_NodeCount(g)) {
             assert(GxB_Matrix_resize(m, Graph_NodeCount(g), Graph_NodeCount(g)) == GrB_SUCCESS);
         }
@@ -125,7 +139,6 @@ void _Graph_ReplaceDeletedEdge(Graph *g, EdgeID replacement, EdgeID to_delete) {
 }
 
 void _Graph_ReplaceDeletedNode(Graph *g, GrB_Vector zero, NodeID replacement, NodeID to_delete) {
-    Node *deletedNode = Graph_GetNode(g, to_delete);
     Node *replacementNode = Graph_GetNode(g, replacement);
     
     // Get edges of replacement node.
@@ -286,31 +299,24 @@ Graph *Graph_New(size_t n) {
     g->nodes = DataBlock_New(n, sizeof(GraphEntity));
     g->edges = DataBlock_New(n, sizeof(Edge));
     g->_edgesHashTbl = NULL;            // Init to NULL, required by uthash.
-    g->relation_cap = GRAPH_DEFAULT_RELATION_CAP;
     g->relation_count = 0;
-    g->label_cap = GRAPH_DEFAULT_LABEL_CAP;
     g->label_count = 0;
-    g->_relations = rm_malloc(sizeof(GrB_Matrix) * g->relation_cap);
-    g->_labels = rm_malloc(sizeof(GrB_Matrix) * g->label_cap);
+    g->relations = rm_malloc(sizeof(GrB_Matrix) * GRAPH_DEFAULT_RELATION_CAP);
+    g->labels = rm_malloc(sizeof(GrB_Matrix) * GRAPH_DEFAULT_LABEL_CAP);
     GrB_Matrix_new(&g->adjacency_matrix, GrB_BOOL, _Graph_NodeCap(g), _Graph_NodeCap(g));
+
+    // Initialize a read-write lock scoped to the individual graph
+    assert(pthread_rwlock_init(&g->_rwlock, NULL) == 0);
+
+    // Graph_New can only be invoked from writing contexts
+    Graph_AcquireWriteLock(g);
+    g->_writelocked = true;
 
     /* TODO: We might want a mutex per matrix,
      * such that when a thread is resizing matrix A
      * another thread could be resizing matrix B. */
     assert(pthread_mutex_init(&g->_mutex, NULL) == 0);
 
-    return g;
-}
-
-Graph *Graph_Get(RedisModuleCtx *ctx, RedisModuleString *graph_name) {
-    Graph *g = NULL;
-
-    RedisModuleKey *key = RedisModule_OpenKey(ctx, graph_name, REDISMODULE_WRITE);
-    if (RedisModule_ModuleTypeGetType(key) == GraphRedisModuleType) {
-        g = RedisModule_ModuleTypeGetValue(key);
-    }
-
-    RedisModule_CloseKey(key);
     return g;
 }
 
@@ -608,27 +614,15 @@ DataBlockIterator *Graph_ScanEdges(const Graph *g) {
 
 int Graph_AddLabel(Graph *g) {
     assert(g);
-
-    // Make sure we've got room for a new label matrix.
-    if(g->label_count == g->label_cap) {
-        g->label_cap += 4;   // allocate room for 4 new matrices.
-        g->_labels = rm_realloc(g->_labels, g->label_cap * sizeof(GrB_Matrix));
-    }
-
-    GrB_Matrix_new(&g->_labels[g->label_count++], GrB_BOOL, _Graph_NodeCap(g), _Graph_NodeCap(g));
+    // The array capacity is guaranteed by the GraphContext calling function.
+    GrB_Matrix_new(&g->labels[g->label_count++], GrB_BOOL, _Graph_NodeCap(g), _Graph_NodeCap(g));
     return g->label_count-1;
 }
 
-int Graph_AddRelation(Graph *g) {
+int Graph_AddRelationType(Graph *g) {
     assert(g);
-
-    // Make sure we've got room for a new relation matrix.
-    if(g->relation_count == g->relation_cap) {
-        g->relation_cap += 4;   // allocate room for 4 new matrices.
-        g->_relations = rm_realloc(g->_relations, g->relation_cap * sizeof(GrB_Matrix));
-    }
-
-    GrB_Matrix_new(&g->_relations[g->relation_count++], GrB_BOOL, _Graph_NodeCap(g), _Graph_NodeCap(g));
+    // The array capacity is guaranteed by the GraphContext calling function.
+    GrB_Matrix_new(&g->relations[g->relation_count++], GrB_BOOL, _Graph_NodeCap(g), _Graph_NodeCap(g));
     return g->relation_count-1;
 }
 
@@ -641,7 +635,7 @@ GrB_Matrix Graph_GetAdjacencyMatrix(const Graph *g) {
 
 GrB_Matrix Graph_GetLabel(const Graph *g, int label_idx) {
     assert(g && label_idx < g->label_count);
-    GrB_Matrix m = g->_labels[label_idx];
+    GrB_Matrix m = g->labels[label_idx];
     _Graph_SynchronizeMatrix(g, m);
     return m;
 }
@@ -653,32 +647,10 @@ GrB_Matrix Graph_GetRelation(const Graph *g, int relation_idx) {
     if(relation_idx == GRAPH_NO_RELATION) {
         m = Graph_GetAdjacencyMatrix(g);
     } else {
-        m = g->_relations[relation_idx];
+        m = g->relations[relation_idx];
         _Graph_SynchronizeMatrix(g, m);
     }
     return m;
-}
-
-void Graph_CommitPendingOps(Graph *g) {
-    /* GraphBLAS might delay execution of operations to a later stage,
-     * here we're forcing GraphBLAS to execute all of its pending operations
-     * by asking for the number of entries in each matrix. */
-
-    GrB_Matrix M;
-    GrB_Index nvals;
-
-    M = Graph_GetAdjacencyMatrix(g);
-    GrB_Matrix_nvals(&nvals, M);
-
-    for(int i = 0; i < g->relation_count; i++) {
-        M = Graph_GetRelation(g, i);
-        GrB_Matrix_nvals(&nvals, M);
-    }
-
-    for(int i = 0; i < g->label_count; i++) {
-        M = Graph_GetLabel(g, i);
-        GrB_Matrix_nvals(&nvals, M);
-    }
 }
 
 void Graph_Free(Graph *g) {
@@ -709,14 +681,14 @@ void Graph_Free(Graph *g) {
         m = Graph_GetRelation(g, i);
         GrB_Matrix_free(&m);
     }
-    rm_free(g->_relations);
+    rm_free(g->relations);
 
     // Free matrices.
     for(int i = 0; i < g->label_count; i++) {
         m = Graph_GetLabel(g, i);
         GrB_Matrix_free(&m);
     }
-    rm_free(g->_labels);
+    rm_free(g->labels);
 
     DataBlockIterator *it = Graph_ScanNodes(g);
     GraphEntity *node;
@@ -740,6 +712,12 @@ void Graph_Free(Graph *g) {
     HASH_CLEAR(hh,g->_edgesHashTbl);
     // Free the edge blocks.
     DataBlock_Free(g->edges);
+
+    // Destroy graph-scoped locks.
     pthread_mutex_destroy(&g->_mutex);
+    Graph_ReleaseLock(g);
+    pthread_rwlock_destroy(&g->_rwlock);
+
     rm_free(g);
 }
+

@@ -69,14 +69,11 @@ void _SetModifiedEntities(OpCreate *op) {
     assert((op->node_count + op->edge_count) > 0);
 }
 
-OpBase* NewCreateOp(RedisModuleCtx *ctx, AST_Query *ast, Graph *g, QueryGraph *qg, const char *graph_name, ResultSet *result_set) {
+OpBase* NewCreateOp(RedisModuleCtx *ctx, GraphContext *gc, AST_Query *ast, QueryGraph *qg, ResultSet *result_set) {
     OpCreate *op_create = calloc(1, sizeof(OpCreate));
-
-    op_create->ctx = ctx;
+    op_create->gc = gc;
     op_create->ast = ast;
-    op_create->g = g;
     op_create->qg = qg;
-    op_create->graph_name = graph_name;
     
     op_create->nodes_to_create = NULL;
     op_create->node_count = 0;
@@ -100,12 +97,13 @@ OpBase* NewCreateOp(RedisModuleCtx *ctx, AST_Query *ast, Graph *g, QueryGraph *q
 }
 
 void _CreateNodes(OpCreate *op, Record *r) {
+    Graph *g = op->gc->g;
     for(int i = 0; i < op->node_count; i++) {
         /* Get specified node to create. */
         Node *n = op->nodes_to_create[i].original_node;
 
         /* Create a new node. */
-        long id = Graph_NodeCount(op->g) + Vector_Size(op->created_nodes);
+        long id = Graph_NodeCount(g) + Vector_Size(op->created_nodes);
         Node *newNode = Node_New(id, n->label, NULL);
 
         /* Add properties.*/
@@ -177,14 +175,14 @@ void _SetEntitiesProperties(OpCreate *op, Vector *entities, DataBlockIterator *i
 
 /* Commit insertions. */
 void _CommitNewEntities(OpCreate *op) {
-    RedisModuleCtx *ctx = op->ctx;
+    Graph *g = op->gc->g;
     size_t node_count = Vector_Size(op->created_nodes);
     size_t edge_count = Vector_Size(op->created_edges);
     LabelStore *allStore;
 
     if(node_count > 0) {
         int labels[node_count];
-        allStore = LabelStore_Get(ctx, STORE_NODE, op->graph_name, NULL);
+        allStore = GraphContext_AllStore(op->gc, STORE_NODE);
 
         for(int i = 0; i < node_count; i++) {
             Node *n;
@@ -194,10 +192,9 @@ void _CommitNewEntities(OpCreate *op) {
             if(label == NULL) {
                labels[i] = GRAPH_NO_LABEL; 
             } else {
-                store = LabelStore_Get(ctx, STORE_NODE, op->graph_name, label);                
+                store = GraphContext_GetStore(op->gc, label, STORE_NODE);
                 if(store == NULL) {
-                    int label_id = Graph_AddLabel(op->g);
-                    store = LabelStore_New(ctx, STORE_NODE, op->graph_name, label, label_id);
+                    store = GraphContext_AddLabel(op->gc, label);
                     op->result_set->stats.labels_added++;
                 }
                 labels[i] = store->id;
@@ -212,8 +209,8 @@ void _CommitNewEntities(OpCreate *op) {
         }
 
         DataBlockIterator *it;
-        size_t baseNodeID = Graph_NodeCount(op->g);
-        Graph_CreateNodes(op->g, node_count, labels, &it);
+        size_t baseNodeID = Graph_NodeCount(g);
+        Graph_CreateNodes(g, node_count, labels, &it);
         _SetEntitiesProperties(op, op->created_nodes, it, baseNodeID);
         DataBlockIterator_Free(it);
         op->result_set->stats.nodes_created = node_count;
@@ -221,35 +218,32 @@ void _CommitNewEntities(OpCreate *op) {
 
     if(edge_count > 0) {
         EdgeDesc connections[edge_count];
-        allStore = LabelStore_Get(ctx, STORE_EDGE, op->graph_name, NULL);
+        allStore = GraphContext_AllStore(op->gc, STORE_EDGE);
 
         for(int i = 0; i < edge_count; i++) {
             Edge *e;
             Vector_Get(op->created_edges, i, &e);
 
-            int relation_id;
-            LabelStore *store = LabelStore_Get(ctx, STORE_EDGE, op->graph_name, e->relationship);
-            if(store != NULL) relation_id = store->id;
-            else {
-                relation_id = Graph_AddRelation(op->g);
-                store = LabelStore_New(op->ctx, STORE_EDGE, op->graph_name, e->relationship, relation_id);
+            LabelStore *s = GraphContext_GetStore(op->gc, e->relationship, STORE_EDGE);
+            if (!s) {
+                s = GraphContext_AddRelationType(op->gc, e->relationship);
             }
 
             connections[i].srcId = Edge_GetSrcNodeID(e);
             connections[i].destId = Edge_GetDestNodeID(e);
-            connections[i].relationId = relation_id;
+            connections[i].relationId = s->id;
 
             if(e->prop_count > 0) {
                 char *properties[e->prop_count];
                 for(int j = 0; j < e->prop_count; j++) properties[j] = e->properties[j].name;
-                LabelStore_UpdateSchema(store, e->prop_count, properties);
+                LabelStore_UpdateSchema(s, e->prop_count, properties);
                 LabelStore_UpdateSchema(allStore, e->prop_count, properties);
             }
         }
 
         DataBlockIterator *it;
-        EdgeID baseId = Graph_EdgeCount(op->g);
-        Graph_ConnectNodes(op->g, connections, edge_count, &it);
+        EdgeID baseId = Graph_EdgeCount(g);
+        Graph_ConnectNodes(g, connections, edge_count, &it);
         _SetEntitiesProperties(op, op->created_edges, it, baseId);
         DataBlockIterator_Free(it);
         op->result_set->stats.relationships_created = edge_count;

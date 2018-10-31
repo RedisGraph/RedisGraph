@@ -86,7 +86,6 @@ void _referred_edge_ends(TrieMap *ref_entities, const QueryGraph *q) {
  * therefor mark both variable length edge ends as referenced. */
 void _referred_variable_length_edges(TrieMap *ref_entities, Vector *matchPattern, const QueryGraph *q) {
     Edge *e;
-    AST_LinkEntity *edge;
     AST_GraphEntity *match_element;
 
     for(int i = 0; i < Vector_Size(matchPattern); i++) {

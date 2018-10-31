@@ -10,8 +10,8 @@
 
 #include <pthread.h>
 
-#include "node.h"
-#include "edge.h"
+#include "entities/node.h"
+#include "entities/edge.h"
 #include "../redismodule.h"
 #include "../util/uthash.h"
 #include "../util/triemap/triemap.h"
@@ -30,26 +30,28 @@ typedef struct {
     DataBlock *edges;               // Graph edges stored in blocks.
     Edge *_edgesHashTbl;            // Hash table containing edges.
     GrB_Matrix adjacency_matrix;    // Adjacency matrix, holds all graph connections.
-    GrB_Matrix *_relations;         // Relation matrices.
-    size_t relation_cap;            // Number of relations graph can hold.
+    GrB_Matrix *relations;          // Relation matrices.
     size_t relation_count;          // Number of relation matrices.
-    GrB_Matrix *_labels;            // Label matrices.
-    size_t label_cap;               // Number of labels graph can hold.
+    GrB_Matrix *labels;             // Label matrices.
     size_t label_count;             // Number of label matrices.    
     pthread_mutex_t _mutex;         // Mutex for accessing critical sections.
-
+    pthread_rwlock_t _rwlock;       // Read-write lock scoped to this specific graph
+    bool _writelocked;              // true if the read-write lock was acquired by a writer
 } Graph;
+
+/* Graph synchronization functions
+ * The graph is initialized with a read-write lock allowing
+ * concurrent access from one writer or N readers. */
+/* Acquire a lock that does not restrict access from additional reader threads */
+void Graph_AcquireReadLock(Graph *g);
+/* Acquire a lock for exclusive access to this graph's data */
+void Graph_AcquireWriteLock(Graph *g);
+/* Release the held lock */
+void Graph_ReleaseLock(Graph *g);
 
 // Create a new graph.
 Graph *Graph_New (
     size_t n    // Initial number of nodes in the graph.
-);
-
-// Retrieves a graph from redis keyspace,
-// incase graph_name was not found NULL is returned.
-Graph *Graph_Get(
-    RedisModuleCtx *ctx,
-    RedisModuleString *graph_name
 );
 
 // Returns number of nodes in the graph.
@@ -105,6 +107,7 @@ typedef enum {
     GRAPH_EDGE_DIR_OUTGOING,
     GRAPH_EDGE_DIR_BOTH,
 } GRAPH_EDGE_DIR;
+
 // Get node edges.
 void Graph_GetNodeEdges (
     const Graph *g,
@@ -172,12 +175,7 @@ GrB_Matrix Graph_GetRelation (
 );
 
 // Creates a new relation matrix, returns id given to relation.
-int Graph_AddRelation (
-    Graph *g
-);
-
-// Commit GraphBLAS pending operations.
-void Graph_CommitPendingOps (
+int Graph_AddRelationType (
     Graph *g
 );
 
@@ -187,3 +185,4 @@ void Graph_Free (
 );
 
 #endif
+

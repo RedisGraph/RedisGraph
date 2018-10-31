@@ -8,8 +8,8 @@
 #ifndef GRAPH_ENTITY_H_
 #define GRAPH_ENTITY_H_
 
-#include "../value.h"
-#include "../../deps/GraphBLAS/Include/GraphBLAS.h"
+#include "../../value.h"
+#include "../../../deps/GraphBLAS/Include/GraphBLAS.h"
 
 #define ENTITY_ID_ISLT(a,b) ((*a)<(*b))
 #define INVALID_ENTITY_ID -1l

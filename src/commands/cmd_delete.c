@@ -8,93 +8,86 @@
 #include "cmd_delete.h"
 
 #include <assert.h>
-#include "stores/store.h"
 #include "../graph/graph.h"
 #include "../query_executor.h"
 #include "../util/simple_timer.h"
 
-/* DeleteGraphContext is used to hold all information required 
- * in order to delete a graph. */
-typedef struct {
-    RedisModuleString *graphID;     /* Graph ID been deleted. */
-    RedisModuleBlockedClient *bc;   /* Redis blocked client. */
-} DeleteGraphContext;
+extern RedisModuleType *GraphContextRedisModuleType;
 
-DeleteGraphContext *DeleteGraphContext_new(RedisModuleString *graphID, RedisModuleBlockedClient *bc) {
-    DeleteGraphContext *ctx = malloc(sizeof(DeleteGraphContext));
+/* DeleteContext contains the Redis string used as the graph's key
+ * and a blocked Redis client to interact with. */
+typedef struct {
+    RedisModuleString *graph_name;  /* Name of graph to delete. */
+    RedisModuleBlockedClient *bc;   /* Redis blocked client. */
+} DeleteContext;
+
+DeleteContext* _DeleteContext_New(RedisModuleString *graph_name, RedisModuleBlockedClient *bc) {
+    DeleteContext *ctx = malloc(sizeof(DeleteContext));
     ctx->bc = bc;
-    ctx->graphID = graphID;
+    ctx->graph_name = graph_name;
     return ctx;
 }
 
-void DeleteGraphContext_free(DeleteGraphContext *ctx) {
+void _DeleteContext_Free(DeleteContext *ctx) {
     free(ctx);
 }
 
-/* Delete graph, removes every Redis key related to given graph 
- * free every resource allocated by the graph. */
+/* Delete graph, removing the key from Redis and
+ * freeing every resource allocated by the graph. */
 void _MGraph_Delete(void *args) {
     double tic[2];
     simple_tic(tic);
-    DeleteGraphContext *dCtx = (DeleteGraphContext *)args;
+    DeleteContext *dCtx = args;
     RedisModuleBlockedClient *bc = dCtx->bc;
-    RedisModuleString *graphID = dCtx->graphID;
+    RedisModuleString *graph_name = dCtx->graph_name;
 
     RedisModuleCtx *ctx = RedisModule_GetThreadSafeContext(bc);
-    const char *graphIDStr = RedisModule_StringPtrLen(graphID, NULL);
+    RedisModule_ThreadSafeContextLock(ctx);
 
-    MGraph_AcquireWriteLock(ctx);
-    
-    Graph *g = Graph_Get(ctx, graphID);
-
-    // Graph does not exists, nothing to delete.
-    if(!g) goto cleanup;
-
-    // Remove Label stores.
-    size_t keyCount = 0;
-    RedisModuleString **keys = LabelStore_GetKeys(ctx, graphIDStr, &keyCount);
-    assert(keyCount>0 && keys);
-    
-    for(int idx = 0; idx < keyCount; idx++) {
-        RedisModuleString *storeKeyStr = keys[idx];
-        RedisModuleKey *key = RedisModule_OpenKey(ctx, storeKeyStr, REDISMODULE_WRITE);
-        if(RedisModule_DeleteKey(key) != REDISMODULE_OK) {
-            // Log error!
-        }
-        RedisModule_Free(storeKeyStr);
+    RedisModuleKey *key = RedisModule_OpenKey(ctx, graph_name, REDISMODULE_WRITE);
+    int keytype = RedisModule_KeyType(key);
+    if (keytype == REDISMODULE_KEYTYPE_EMPTY) {
+      RedisModule_ReplyWithError(ctx, "Graph was not found in database.");
+      goto cleanup;
+    } else if (keytype != REDISMODULE_KEYTYPE_MODULE) {
+      RedisModule_ReplyWithError(ctx, "Specified graph name referred to incorrect key type.");
+      goto cleanup;
     }
-    free(keys);
 
-    // Remove Graph from Redis keyspace.
-    RedisModuleKey *key = RedisModule_OpenKey(ctx, graphID, REDISMODULE_WRITE);
-    if(RedisModule_DeleteKey(key) != REDISMODULE_OK) {
-        // Log error!
+    // The DeleteKey call will free the GraphContext, but we must first fetch it
+    // to acquire the lock.
+    GraphContext *gc = RedisModule_ModuleTypeGetValue(key);
+    Graph_AcquireWriteLock(gc->g);
+
+    // Remove GraphContext from keyspace.
+    if(RedisModule_DeleteKey(key) == REDISMODULE_OK) {
+      char* strElapsed;
+      double t = simple_toc(tic) * 1000;
+      asprintf(&strElapsed, "Graph removed, internal execution time: %.6f milliseconds", t);
+      RedisModule_ReplyWithStringBuffer(ctx, strElapsed, strlen(strElapsed));
+      free(strElapsed);
+    } else {
+      RedisModule_ReplyWithError(ctx, "Graph deletion failed!");
     }
 
 cleanup:
-    MGraph_ReleaseLock(ctx);
-    DeleteGraphContext_free(dCtx);
-
-    char* strElapsed;
-    double t = simple_toc(tic) * 1000;
-    asprintf(&strElapsed, "Graph removed, internal execution time: %.6f milliseconds", t);
-    RedisModule_ReplyWithStringBuffer(ctx, strElapsed, strlen(strElapsed));
-    free(strElapsed);
-    RedisModule_FreeThreadSafeContext(ctx);
+    RedisModule_ThreadSafeContextUnlock(ctx);
+    _DeleteContext_Free(dCtx);
     RedisModule_UnblockClient(bc, NULL);
+    RedisModule_FreeThreadSafeContext(ctx);
 }
 
 int MGraph_Delete(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     if (argc != 2) return RedisModule_WrongArity(ctx);
-    
+
     // Construct delete operation context.
-    RedisModuleString *graphID = argv[1];
-    RedisModule_RetainString(ctx, graphID);
+    RedisModuleString *graph_name = argv[1];
     RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
-    DeleteGraphContext *dCtx = DeleteGraphContext_new(graphID, bc);
+    DeleteContext *dCtx = _DeleteContext_New(graph_name, bc);
 
     thpool_add_work(_thpool, _MGraph_Delete, dCtx);
     RedisModule_ReplicateVerbatim(ctx);
 
     return REDISMODULE_OK;
 }
+

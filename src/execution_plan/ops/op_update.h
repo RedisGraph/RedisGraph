@@ -9,8 +9,8 @@
 #define __OP_UPDATE_H
 
 #include "op.h"
-#include "../../graph/node.h"
-#include "../../graph/edge.h"
+#include "../../graph/entities/node.h"
+#include "../../graph/entities/edge.h"
 #include "../../resultset/resultset.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
@@ -34,11 +34,10 @@ typedef struct {
     size_t entities_to_update_cap;
     size_t entities_to_update_count;
     AST_Query *ast;
-    RedisModuleCtx *ctx;
-    const char *graphName;
+    GraphContext *gc;
 } OpUpdate;
 
-OpBase* NewUpdateOp(RedisModuleCtx *ctx, AST_Query *ast, ResultSet *result_set, const char *graphName);
+OpBase* NewUpdateOp(GraphContext *gc, AST_Query *ast, ResultSet *result_set);
 OpResult OpUpdateConsume(OpBase *opBase, Record *r);
 OpResult OpUpdateReset(OpBase *ctx);
 void OpUpdateFree(OpBase *ctx);

@@ -8,9 +8,10 @@
 #ifndef QUERY_GRAPH_H_
 #define QUERY_GRAPH_H_
 
-#include "node.h"
-#include "edge.h"
+#include "entities/node.h"
+#include "entities/edge.h"
 #include "graph.h"
+#include "graphcontext.h"
 #include "../util/vector.h"
 #include "../resultset/resultset_statistics.h"
 
@@ -34,7 +35,7 @@ QueryGraph* QueryGraph_New(size_t node_cap, size_t edge_cap);
 /* Given AST's MATCH node constructs a graph
  * representing queried entities and the relationships
  * between them. */
-void BuildQueryGraph(RedisModuleCtx *ctx, const Graph *g, const char *graph_name, QueryGraph *query_graph, Vector *entities);
+void BuildQueryGraph(const GraphContext *gc, QueryGraph *query_graph, Vector *entities);
 
 /* Checks if graph contains given node
  * Returns 1 if so, 0 otherwise */ 
@@ -69,7 +70,7 @@ Edge** QueryGraph_GetEdgeRef(const QueryGraph *g, const Edge *e);
 
 /* Saves every entity within the query graph into the actual graph.
  * return statistics regarding the number of entities create and properties set. */
-ResultSetStatistics CommitGraph(RedisModuleCtx *ctx, const QueryGraph *qg, Graph *g, const char *graph_name);
+ResultSetStatistics CommitGraph(GraphContext *gc, const QueryGraph *qg);
 
 /* Frees entire graph */
 void QueryGraph_Free(QueryGraph* g);

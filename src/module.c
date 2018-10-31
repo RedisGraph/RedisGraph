@@ -6,25 +6,19 @@
 */
 
 #include <unistd.h>
+#include <assert.h>
 #define REDISMODULE_EXPERIMENTAL_API    // Required for block client.
 #include "redismodule.h"
 #include "config.h"
 #include "version.h"
 #include "commands/commands.h"
-#include "graph/graph_type.h"
-#include "index/index_type.h"
-#include "stores/store_type.h"
+#include "graph/serializers/graphcontext_type.h"
 #include "util/thpool/thpool.h"
 #include "arithmetic/agg_funcs.h"
+#include "arithmetic/arithmetic_expression.h"
 
 /* Thread pool. */
 threadpool _thpool = NULL;
-
-/* Read Write lock */
-pthread_rwlock_t _rwlock;
-
-/* _writelocked is true if the read-write lock was acquired by a writer */
-bool _writelocked;
 
 /* Set up thread pool,
  * number of threads within pool should be
@@ -39,18 +33,8 @@ int _Setup_ThreadPOOL(int threadCount) {
 }
 
 int _RegisterDataTypes(RedisModuleCtx *ctx) {
-    if(StoreType_Register(ctx) == REDISMODULE_ERR) {
-        printf("Failed to register storetype\n");
-        return REDISMODULE_ERR;
-    }
-
-    if(GraphType_Register(ctx) == REDISMODULE_ERR) {
-        printf("Failed to register graphtype\n");
-        return REDISMODULE_ERR;
-    }
-
-    if(IndexType_Register(ctx) == REDISMODULE_ERR) {
-        printf("Failed to register indextype\n");
+    if(GraphContextType_Register(ctx) == REDISMODULE_ERR) {
+        printf("Failed to register GraphContext type\n");
         return REDISMODULE_ERR;
     }
 
@@ -72,10 +56,6 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
     if (!_Setup_ThreadPOOL(threadCount)) return REDISMODULE_ERR;
     RedisModule_Log(ctx, "notice", "Thread pool created, using %d threads.", threadCount);
 
-    // Initialize read write lock.
-    if (pthread_rwlock_init(&_rwlock, NULL)) return REDISMODULE_ERR;
-    _writelocked = false;
-
     if (_RegisterDataTypes(ctx) != REDISMODULE_OK) return REDISMODULE_ERR;
 
     if(RedisModule_CreateCommand(ctx, "graph.QUERY", MGraph_Query, "write deny-oom deny-script", 1, 1, 1) == REDISMODULE_ERR) {
@@ -96,3 +76,4 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 
     return REDISMODULE_OK;
 }
+

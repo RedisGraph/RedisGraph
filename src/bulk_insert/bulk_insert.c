@@ -6,7 +6,7 @@
 */
 
 #include "bulk_insert.h"
-#include "./stores/store.h"
+#include "../stores/store.h"
 #include <assert.h>
 
 typedef struct {
@@ -17,15 +17,16 @@ typedef struct {
     char **attributes;      // Array of attributes.
 } LabelDesc;
 
-void _Bulk_Insert_Reply_With_Syntax_Error(RedisModuleCtx *ctx, const char* err) {
+void _BulkInsert_Reply_With_Syntax_Error(RedisModuleCtx *ctx, const char* err) {
     RedisModule_ReplyWithError(ctx, err);
 }
 
 // Parse label from argv.
-RedisModuleString** _Bulk_Insert_Parse_Label(RedisModuleCtx *ctx, RedisModuleString **argv, int *argc, LabelDesc *label) {
+RedisModuleString** _BulkInsert_Parse_Label(RedisModuleCtx *ctx, LabelDesc *label,
+                                             RedisModuleString **argv, int *argc) {
     // Minimum of 3 arguments: label name, number of labeled nodes and attribute count.
     if(*argc < 3) {
-        _Bulk_Insert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, missing label parameters.");
+        _BulkInsert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, missing label parameters.");
         return NULL;
     }
     *argc -= 3;
@@ -36,7 +37,7 @@ RedisModuleString** _Bulk_Insert_Parse_Label(RedisModuleCtx *ctx, RedisModuleStr
     // Number of nodes under this label.
     long long node_count = 0;
     if (RedisModule_StringToLongLong(*argv++, &node_count) != REDISMODULE_OK) {
-        _Bulk_Insert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, failed to parse labeled node count.");
+        _BulkInsert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, failed to parse labeled node count.");
         return NULL;
     }
 
@@ -45,14 +46,14 @@ RedisModuleString** _Bulk_Insert_Parse_Label(RedisModuleCtx *ctx, RedisModuleStr
     // Label's attribute count.
     long long attribute_count = 0;
     if(RedisModule_StringToLongLong(*argv++, &attribute_count) != REDISMODULE_OK) {
-        _Bulk_Insert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, failed to parse label attributes count.");
+        _BulkInsert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, failed to parse label attributes count.");
         return NULL;
     }
     label->attribute_count = attribute_count;
 
     if(attribute_count > 0) {
         if(*argc < attribute_count) {
-            _Bulk_Insert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, missing label attributes.");
+            _BulkInsert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, missing label attributes.");
             return NULL;
         }
         *argc -= attribute_count;
@@ -67,13 +68,12 @@ RedisModuleString** _Bulk_Insert_Parse_Label(RedisModuleCtx *ctx, RedisModuleStr
     return argv;
 }
 
-RedisModuleString** _Bulk_Insert_Parse_Labels(RedisModuleCtx *ctx, RedisModuleString **argv,
-                                              int *argc, Graph *g, const char* graph_name,
-                                              LabelDesc *labels, size_t label_count) {
+RedisModuleString** _BulkInsert_Parse_Labels(RedisModuleCtx *ctx, GraphContext *gc, LabelDesc *labels, size_t label_count,
+                                              RedisModuleString **argv, int *argc) {
 
     // Consume labels.
     for(int label_idx = 0; label_idx < label_count; label_idx++) {
-        argv = _Bulk_Insert_Parse_Label(ctx, argv, argc, &labels[label_idx]);
+        argv = _BulkInsert_Parse_Label(ctx, &labels[label_idx], argv, argc);
         if(argv == NULL) {
             // Free previous parsed labels.
             for(int i = 0; i < label_idx; i++) {
@@ -85,11 +85,10 @@ RedisModuleString** _Bulk_Insert_Parse_Labels(RedisModuleCtx *ctx, RedisModuleSt
         }
 
         // TODO: Have label store hold on to attributes array.
-        LabelStore *store = LabelStore_Get(ctx, STORE_NODE, graph_name, labels[label_idx].label);
-        LabelStore *allStore = LabelStore_Get(ctx, STORE_NODE, graph_name, NULL);
+        LabelStore *store = GraphContext_GetStore(gc, labels[label_idx].label, STORE_NODE);
+        LabelStore *allStore = GraphContext_AllStore(gc, STORE_NODE);
         if(store == NULL) {
-            int label_id = Graph_AddLabel(g);
-            store = LabelStore_New(ctx, STORE_NODE, graph_name, labels[label_idx].label, label_id);
+            store = GraphContext_AddLabel(gc, labels[label_idx].label);
         }
 
         labels[label_idx].label_id = store->id;
@@ -100,13 +99,13 @@ RedisModuleString** _Bulk_Insert_Parse_Labels(RedisModuleCtx *ctx, RedisModuleSt
     return argv;
 }
 
-RedisModuleString** _Bulk_Insert_Read_Labeled_Node_Attributes(RedisModuleCtx *ctx,
-                                                              RedisModuleString **argv,
-                                                              int *argc, int attribute_count,
-                                                              SIValue *values) {
+RedisModuleString** _BulkInsert_Read_Labeled_Node_Attributes(RedisModuleCtx *ctx,
+                                                              int attribute_count,
+                                                              SIValue *values,
+                                                              RedisModuleString **argv, int *argc) {
 
     if(*argc < attribute_count) {
-        _Bulk_Insert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, failed to parse labeled node attributes.");
+        _BulkInsert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, failed to parse labeled node attributes.");
         return NULL;
     }
     *argc -= attribute_count;
@@ -120,14 +119,14 @@ RedisModuleString** _Bulk_Insert_Read_Labeled_Node_Attributes(RedisModuleCtx *ct
     return argv;
 }
 
-RedisModuleString** _Bulk_Insert_Read_Unlabeled_Node_Attributes(RedisModuleCtx *ctx,
-                                                                RedisModuleString **argv,
-                                                                int *argc,
+RedisModuleString** _BulkInsert_Read_Unlabeled_Node_Attributes(RedisModuleCtx *ctx,
                                                                 char **keys,
                                                                 SIValue *values,
-                                                                long long attribute_count) {
+                                                                long long attribute_count,
+                                                                RedisModuleString **argv,
+                                                                int *argc) {
     if(*argc < attribute_count * 2) {
-        _Bulk_Insert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, failed to parse unlabeled node attributes.");
+        _BulkInsert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, failed to parse unlabeled node attributes.");
         return NULL;
     }
     *argc -= attribute_count * 2;
@@ -144,15 +143,16 @@ RedisModuleString** _Bulk_Insert_Read_Unlabeled_Node_Attributes(RedisModuleCtx *
     return argv;
 }
 
-RedisModuleString** _Bulk_Insert_Insert_Nodes(RedisModuleCtx *ctx, RedisModuleString **argv,
-                                              int *argc, Graph *g, const char *graph_name,
-                                              size_t *nodes) {
+RedisModuleString** _BulkInsert_Insert_Nodes(RedisModuleCtx *ctx, GraphContext *gc, size_t *nodes,
+                                              RedisModuleString **argv, int *argc) {
     GraphEntity *n;                 // Current node.
     DataBlockIterator *it = NULL;   // Iterator over nodes.
     long long nodes_to_create = 0;  // Total number of nodes to create.
 
+    Graph *g = gc->g;
+
     if(*argc < 1 || RedisModule_StringToLongLong(*argv++, &nodes_to_create) != REDISMODULE_OK) {
-        _Bulk_Insert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, failed to parse number of nodes.");
+        _BulkInsert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, failed to parse number of nodes.");
         return NULL;
     }
     *argc -= 1;
@@ -166,7 +166,7 @@ RedisModuleString** _Bulk_Insert_Insert_Nodes(RedisModuleCtx *ctx, RedisModuleSt
 
     // Read number of unique labels.
     if(RedisModule_StringToLongLong(*argv++, &label_count) != REDISMODULE_OK) {
-        _Bulk_Insert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, failed to parse number of unique labels.");
+        _BulkInsert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, failed to parse number of unique labels.");
         return NULL;
     }
     *argc -= 1;
@@ -174,7 +174,7 @@ RedisModuleString** _Bulk_Insert_Insert_Nodes(RedisModuleCtx *ctx, RedisModuleSt
     // Labeled nodes.
     if(label_count > 0) {
         LabelDesc labels[label_count];
-        argv = _Bulk_Insert_Parse_Labels(ctx, argv, argc, g, graph_name, labels, label_count);
+        argv = _BulkInsert_Parse_Labels(ctx, gc, labels, label_count, argv, argc);
         if(argv == NULL) return NULL;
                 
         for(int label_idx = 0; label_idx < label_count; label_idx++) {
@@ -188,7 +188,7 @@ RedisModuleString** _Bulk_Insert_Insert_Nodes(RedisModuleCtx *ctx, RedisModuleSt
                 SIValue values[l.attribute_count];
                 // Set nodes attributes.
                 for(int i = 0; i < l.node_count; i++) {
-                    argv = _Bulk_Insert_Read_Labeled_Node_Attributes(ctx, argv, argc, l.attribute_count, values);
+                    argv = _BulkInsert_Read_Labeled_Node_Attributes(ctx, l.attribute_count, values, argv, argc);
                     if(argv == NULL) break;
                     n = (GraphEntity*)DataBlockIterator_Next(it);
                     GraphEntity_Add_Properties(n, l.attribute_count, l.attributes, values);
@@ -210,19 +210,19 @@ RedisModuleString** _Bulk_Insert_Insert_Nodes(RedisModuleCtx *ctx, RedisModuleSt
 
     // Retrieve the node store so that we can update the schema for
     // unlabeled nodes.
-    LabelStore *allStore = LabelStore_Get(ctx, STORE_NODE, graph_name, NULL);
+    LabelStore *allStore = GraphContext_AllStore(gc, STORE_NODE);
 
     // Unlabeled nodes.
     long long attribute_count = 0;
     while((n = (GraphEntity*)DataBlockIterator_Next(it)) != NULL) {
         if(*argc < 1) {
-            _Bulk_Insert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, expected additional unlabeled nodes.");
+            _BulkInsert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, expected additional unlabeled nodes.");
             return NULL;
         }
 
         // Total number of attributes for a single unlabeled node.
         if(RedisModule_StringToLongLong(*argv++, &attribute_count) != REDISMODULE_OK) {
-            _Bulk_Insert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, failed to parse unlabeled node attribute count.");
+            _BulkInsert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, failed to parse unlabeled node attribute count.");
             return NULL;
         }
         *argc -= 1;
@@ -232,7 +232,7 @@ RedisModuleString** _Bulk_Insert_Insert_Nodes(RedisModuleCtx *ctx, RedisModuleSt
         char* keys[attribute_count];
         SIValue values[attribute_count];
 
-        argv = _Bulk_Insert_Read_Unlabeled_Node_Attributes(ctx, argv, argc, keys, values, attribute_count);
+        argv = _BulkInsert_Read_Unlabeled_Node_Attributes(ctx, keys, values, attribute_count, argv, argc);
         if(argv == NULL) return NULL;
         GraphEntity_Add_Properties(n, attribute_count, keys, values);
         LabelStore_UpdateSchema(allStore, attribute_count, keys);
@@ -241,9 +241,8 @@ RedisModuleString** _Bulk_Insert_Insert_Nodes(RedisModuleCtx *ctx, RedisModuleSt
     return argv;
 }
 
-RedisModuleString** _Bulk_Insert_Insert_Edges(RedisModuleCtx *ctx, RedisModuleString **argv,
-                                              int *argc, Graph *g, const char *graph_name,
-                                              size_t *edges) {
+RedisModuleString** _BulkInsert_Insert_Edges(RedisModuleCtx *ctx, GraphContext *gc, size_t *edges,
+                                              RedisModuleString **argv, int *argc) {
     typedef struct {
         long long edge_count;   // Total number of edges.
         const char *label;      // Label given to edges.
@@ -253,15 +252,17 @@ RedisModuleString** _Bulk_Insert_Insert_Edges(RedisModuleCtx *ctx, RedisModuleSt
     long long relations_count = 0;  // Total number of edges to create.
     long long label_count = 0;      // Number of labels.
 
+    Graph *g = gc->g;
+
     if(*argc < 2) {
-        _Bulk_Insert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, failed to parse RELATION section.");
+        _BulkInsert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, failed to parse RELATION section.");
         return NULL;
     }
     *argc -= 2;
 
     // Read number of edges to create.
     if(RedisModule_StringToLongLong(*argv++, &relations_count) != REDISMODULE_OK) {
-        _Bulk_Insert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, failed to parse number of relations to create.");
+        _BulkInsert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, failed to parse number of relations to create.");
         return NULL;
     }
 
@@ -269,7 +270,7 @@ RedisModuleString** _Bulk_Insert_Insert_Edges(RedisModuleCtx *ctx, RedisModuleSt
 
     // Read number of unique labels.
     if(RedisModule_StringToLongLong(*argv++, &label_count) != REDISMODULE_OK) {
-        _Bulk_Insert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, failed to parse number of relation labels.");
+        _BulkInsert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, failed to parse number of relation labels.");
         return NULL;
     }
 
@@ -280,7 +281,7 @@ RedisModuleString** _Bulk_Insert_Insert_Edges(RedisModuleCtx *ctx, RedisModuleSt
 
     if(label_count > 0) {
         if(*argc < label_count * 2) {
-            _Bulk_Insert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, failed to parse relations labels.");
+            _BulkInsert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, failed to parse relations labels.");
             return NULL;
         }
         *argc -= label_count * 2;
@@ -288,25 +289,21 @@ RedisModuleString** _Bulk_Insert_Insert_Edges(RedisModuleCtx *ctx, RedisModuleSt
         for(int i = 0; i < label_count; i++) {
             labelRelations[i].label = RedisModule_StringPtrLen(*argv++, NULL);
             if(RedisModule_StringToLongLong(*argv++, &labelRelations[i].edge_count) != REDISMODULE_OK) {
-                _Bulk_Insert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, failed to parse relation label edge count.");
+                _BulkInsert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, failed to parse relation label edge count.");
                 return NULL;
             }
             total_labeled_edges += labelRelations[i].edge_count;
-            LabelStore *s = LabelStore_Get(ctx, STORE_EDGE, graph_name, labelRelations[i].label);
-            if(s != NULL) {
-                labelRelations[i].label_id = s->id;
-            } else {
-                labelRelations[i].label_id = Graph_AddRelation(g);
-                LabelStore *s = LabelStore_New(ctx, STORE_EDGE, graph_name,
-                                               labelRelations[i].label,
-                                               labelRelations[i].label_id);
+            LabelStore *s = GraphContext_GetStore(gc, labelRelations[i].label, STORE_EDGE);
+            if(!s) {
+                s = GraphContext_AddRelationType(gc, labelRelations[i].label);
                 // TODO: once we'll support edge attribute, need to update store schema.
             }
+            labelRelations[i].label_id = s->id;
         }
     }
 
     if(*argc < relations_count * 2) {
-        _Bulk_Insert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, failed to parse relations.");
+        _BulkInsert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, failed to parse relations.");
         return NULL;
     }
     *argc -= relations_count * 2;
@@ -322,11 +319,11 @@ RedisModuleString** _Bulk_Insert_Insert_Edges(RedisModuleCtx *ctx, RedisModuleSt
 
         for(int j = 0; j < labelRelation.edge_count; j++) {
             if(RedisModule_StringToLongLong(*argv++, (long long*)&connections[connection_idx].srcId) != REDISMODULE_OK) {
-                _Bulk_Insert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, failed to read relation source node id.");
+                _BulkInsert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, failed to read relation source node id.");
                 return NULL;
             }
             if(RedisModule_StringToLongLong(*argv++, (long long*)&connections[connection_idx].destId) != REDISMODULE_OK) {
-                _Bulk_Insert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, failed to read relation destination node id.");
+                _BulkInsert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, failed to read relation destination node id.");
                 return NULL;
             }
             connections[connection_idx].relationId = labelRelation.label_id;
@@ -341,11 +338,10 @@ RedisModuleString** _Bulk_Insert_Insert_Edges(RedisModuleCtx *ctx, RedisModuleSt
     return argv;
 }
 
-int Bulk_Insert(RedisModuleCtx *ctx, RedisModuleString **argv, int argc, Graph *g,
-                 const char *graph_name, size_t *nodes, size_t *edges) {
+int BulkInsert(RedisModuleCtx *ctx, GraphContext *gc, size_t *nodes, size_t *edges, RedisModuleString **argv, int argc) {
 
     if(argc < 1) {
-        _Bulk_Insert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, failed to parse bulk insert sections.");
+        _BulkInsert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, failed to parse bulk insert sections.");
         return BULK_FAIL;
     }
 
@@ -356,7 +352,7 @@ int Bulk_Insert(RedisModuleCtx *ctx, RedisModuleString **argv, int argc, Graph *
     //TODO: Keep track and validate argc, make sure we don't overflow.
     if(strcmp(section, "NODES") == 0) {
         section_found = true;
-        argv = _Bulk_Insert_Insert_Nodes(ctx, argv, &argc, g, graph_name, nodes);
+        argv = _BulkInsert_Insert_Nodes(ctx, gc, nodes, argv, &argc);
         if (argv == NULL) {
             return BULK_FAIL;
         } else if (argc == 0) {
@@ -368,19 +364,19 @@ int Bulk_Insert(RedisModuleCtx *ctx, RedisModuleString **argv, int argc, Graph *
 
     if(strcmp(section, "RELATIONS") == 0) {
         section_found = true;
-        argv = _Bulk_Insert_Insert_Edges(ctx, argv, &argc, g, graph_name, edges);
+        argv = _BulkInsert_Insert_Edges(ctx, gc, edges, argv, &argc);
     }
 
     if (!section_found) {
         char *error;
         asprintf(&error, "Unexpected token %s, expected NODES or RELATIONS.", section);
-        _Bulk_Insert_Reply_With_Syntax_Error(ctx, error);
+        _BulkInsert_Reply_With_Syntax_Error(ctx, error);
         free(error);
         return BULK_FAIL;
     }
 
     if(argc != 0) {
-        _Bulk_Insert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, extra arguments.");
+        _BulkInsert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, extra arguments.");
         return BULK_FAIL;
     }
     return BULK_OK;

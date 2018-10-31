@@ -8,8 +8,7 @@
 #include <assert.h>
 #include "query_executor.h"
 #include "graph/graph.h"
-#include "graph/node.h"
-#include "graph/graph_type.h"
+#include "graph/entities/node.h"
 #include "stores/store.h"
 #include "util/vector.h"
 #include "parser/grammar.h"
@@ -17,7 +16,9 @@
 #include "arithmetic/repository.h"
 #include "parser/parser_common.h"
 
-static void _returnClause_ExpandCollapsedNodes(RedisModuleCtx *ctx, AST_Query *ast, const char *graphName) {
+static void _returnClause_ExpandCollapsedNodes(GraphContext *gc, AST_Query *ast) {
+    assert(gc);
+
      /* Create a new return clause */
     Vector *expandReturnElements = NewVector(AST_ReturnElementNode*, Vector_Size(ast->returnNode->returnElements));
 
@@ -49,10 +50,10 @@ static void _returnClause_ExpandCollapsedNodes(RedisModuleCtx *ctx, AST_Query *a
                         
             if(collapsed_entity->label) {
                 /* Collapsed entity has a label. */
-                store = LabelStore_Get(ctx, store_type, graphName, collapsed_entity->label);
+                store = GraphContext_GetStore(gc, collapsed_entity->label, store_type);
             } else {
                 /* Entity does have a label, Consult with "ALL" store. */
-                store = LabelStore_Get(ctx, store_type, graphName, NULL);
+                store = GraphContext_AllStore(gc, store_type);
             }
 
             void *ptr = NULL;       /* Label store property value, (not in use). */
@@ -160,45 +161,6 @@ static void _replicateMergeClauseToMatchClause(AST_Query *ast) {
 }
 
 //------------------------------------------------------------------------------
-// Read/Write lock
-//------------------------------------------------------------------------------
-
-void MGraph_AcquireReadLock() {
-    pthread_rwlock_rdlock(&_rwlock);
-}
-
-void MGraph_AcquireWriteLock(RedisModuleCtx *ctx) {
-    pthread_rwlock_wrlock(&_rwlock);
-    _writelocked = true;
-    RedisModule_ThreadSafeContextLock(ctx);
-}
-
-void MGraph_ReleaseLock(RedisModuleCtx *ctx) {
-    _writelocked = false;
-    pthread_rwlock_unlock(&_rwlock);
-    /* Release Redis global lock,
-     * this should only have an effect when the read/write lock
-     * was acquired for writing. */
-    RedisModule_ThreadSafeContextUnlock(ctx);
-}
-
-//------------------------------------------------------------------------------
-
-Graph *MGraph_CreateGraph(RedisModuleCtx *ctx, RedisModuleString *graph_name) {
-    Graph *g = NULL;
-    RedisModuleKey *key = RedisModule_OpenKey(ctx, graph_name, REDISMODULE_WRITE);
-
-    // Key does not exists, create a new graph and store within Redis keyspace.
-    if (RedisModule_KeyType(key) == REDISMODULE_KEYTYPE_EMPTY) {
-        g = Graph_New(GRAPH_DEFAULT_NODE_CAP);
-        RedisModule_ModuleTypeSetValue(key, GraphRedisModuleType, g);
-    } else {
-        RedisModule_ReplyWithError(ctx, "Can not create graph, graph ID is used by some other key.");
-    }
-
-    RedisModule_CloseKey(key);
-    return g;
-}
 
 /* Construct an expression tree foreach none aggregated term.
  * Returns a vector of none aggregated expression trees. */
@@ -232,7 +194,7 @@ AST_Validation AST_PerformValidations(RedisModuleCtx *ctx, AST_Query *ast) {
     return AST_VALID;
 }
 
-void ModifyAST(RedisModuleCtx *ctx, AST_Query *ast, const char *graph_name) {
+void ModifyAST(GraphContext *gc, AST_Query *ast) {
     if(ast->mergeNode) {
         /* Create match clause which will try to match 
          * against pattern specified within merge clause. */
@@ -243,7 +205,7 @@ void ModifyAST(RedisModuleCtx *ctx, AST_Query *ast, const char *graph_name) {
 
     if(ReturnClause_ContainsCollapsedNodes(ast->returnNode) == 1) {
         /* Expand collapsed nodes. */
-        _returnClause_ExpandCollapsedNodes(ctx, ast, graph_name);
+        _returnClause_ExpandCollapsedNodes(gc, ast);
     }
 
     _inlineProperties(ast);

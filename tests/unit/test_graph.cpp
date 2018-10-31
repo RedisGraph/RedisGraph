@@ -52,7 +52,7 @@ class GraphTest : public ::testing::Test
         Graph_CreateNodes(g, nodes, NULL, NULL);
 
         for (int i = 0; i < relations; i++)
-            Graph_AddRelation(g);
+            Graph_AddRelationType(g);
 
         int connectionCount = 0;
         EdgeDesc *connections = (EdgeDesc*)malloc(sizeof(EdgeDesc) * nodes * nodes);
@@ -136,7 +136,7 @@ class GraphTest : public ::testing::Test
 
         // Introduce relations types.
         for (int i = 0; i < relationCount; i++)
-            Graph_AddRelation(g);
+            Graph_AddRelationType(g);
 
         // Describe connections;
         // Node I is connected to Node I+1,
@@ -238,7 +238,7 @@ void benchmark_node_creation_with_labels()
     // Introduce labels and relations to graph.
     for (int i = 0; i < label_count; i++)
     {
-        Graph_AddRelation(g); // Typed relation.
+        Graph_AddRelationType(g); // Typed relation.
         Graph_AddLabel(g);    // Typed node.
     }
 
@@ -323,6 +323,9 @@ void benchmark_edge_creation_with_relationships()
     float threshold = 0.002;
     int edge_count = 1000000 * 1.10;
     int node_count = 1000000;
+    // Unit tests cannot realloc the Graph relation and label arrays
+    // (as that is managed by the GraphContext).
+    // As such, this value cannot exceed GRAPH_DEFAULT_RELATION_CAP, currently 16.
     int relation_count = 3;
     EdgeDesc connections[edge_count];
 
@@ -330,7 +333,7 @@ void benchmark_edge_creation_with_relationships()
 
     // Introduce relations types.
     for (int i = 0; i < relation_count; i++)
-        Graph_AddRelation(g);
+        Graph_AddRelationType(g);
 
     Graph_CreateNodes(g, node_count, NULL, NULL);
 
@@ -387,8 +390,8 @@ TEST_F(GraphTest, NewGraph)
     EXPECT_EQ(GrB_Matrix_nvals(&nvals, g->adjacency_matrix), GrB_SUCCESS);
 
     EXPECT_TRUE(g->nodes != NULL);
-    EXPECT_TRUE(g->_relations != NULL);
-    EXPECT_TRUE(g->_labels != NULL);
+    EXPECT_TRUE(g->relations != NULL);
+    EXPECT_TRUE(g->labels != NULL);
     EXPECT_TRUE(g->adjacency_matrix != NULL);
     EXPECT_EQ(Graph_NodeCount(g), 0);
     EXPECT_EQ(nrows, GRAPH_DEFAULT_NODE_CAP);
@@ -421,7 +424,7 @@ TEST_F(GraphTest, RemoveNodes)
 
     // Create 3 nodes.
     Graph_CreateNodes(g, 3, NULL, NULL);
-    int r = Graph_AddRelation(g);
+    int r = Graph_AddRelationType(g);
 
     /* Connections:
      * 0 connected to 1. 
@@ -486,7 +489,7 @@ TEST_F(GraphTest, RemoveMultipleNodes)
 
     Graph *g = Graph_New(32);
     Graph_CreateNodes(g, 8, NULL, NULL);
-    int relation = Graph_AddRelation(g);
+    int relation = Graph_AddRelationType(g);
 
     EdgeDesc connections[9];
 
@@ -599,7 +602,7 @@ TEST_F(GraphTest, RemoveEdges)
 
     // Create 3 nodes.
     Graph_CreateNodes(g, 3, NULL, NULL);
-    int r = Graph_AddRelation(g);
+    int r = Graph_AddRelationType(g);
 
     /* Connections:
      * 0 connected to 1. 
@@ -780,7 +783,7 @@ TEST_F(GraphTest, GetEdge)
     Graph_CreateNodes(g, nodeCount, NULL, NULL);
 
     for(int i = 0; i < relationCount; i++) {
-        relations[i] = Graph_AddRelation(g);
+        relations[i] = Graph_AddRelationType(g);
     }
 
     /* Connect nodes:

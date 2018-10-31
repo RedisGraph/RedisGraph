@@ -76,7 +76,7 @@ OpResult TraverseConsume(OpBase *opBase, Record *r) {
     Node *srcNode = Graph_GetNode(op->graph, src_id);
     Node *destNode = Graph_GetNode(op->graph, dest_id);
     Record_AddEntry(r, op->algebraic_results->src_node->alias, SI_PtrVal(srcNode));
-    Record_AddEntry(r, op->algebraic_results->dest_node->alias, SI_PtrVal(srcNode));
+    Record_AddEntry(r, op->algebraic_results->dest_node->alias, SI_PtrVal(destNode));
 
     if(op->algebraic_expression->edge != NULL) {
         // We're guarantee to have at least one edge.

@@ -6,83 +6,16 @@
 */
 
 #include "store.h"
-#include "store_type.h"
 #include <assert.h>
 
-/* Generates an ID for a new LabelStore. */
-int LabelStore_Id(char **id, LabelStoreType type, const char *graph, const char *label) {
-    if(label == NULL) {
-        label = "ALL";
-    }
-
-    const char* storeType = NULL;
-
-    switch(type) {
-        case STORE_NODE:
-            storeType = "NODE";
-            break;
-        case STORE_EDGE:
-            storeType = "EDGE";
-            break;
-        default:
-            // Unexpected store type.
-            break;
-    }
-    
-    return asprintf(id, "%s_%s_%s_%s", LABELSTORE_PREFIX, graph, storeType, label);
-}
-
 /* Creates a new LabelStore. */
-LabelStore *LabelStore_New(RedisModuleCtx *ctx, LabelStoreType type, const char *graph, const char* label, int id) {
-    assert(ctx && graph && label);
-
-    LabelStore *store = calloc(1, sizeof(LabelStore));
+LabelStore* LabelStore_New(const char *label, int id) {
+    LabelStore *store = malloc(sizeof(LabelStore));
     store->properties = NewTrieMap();
     store->label = strdup(label);
     store->id = id;
     
-    // Store labelstore within redis keyspace.
-    char *strKey;
-    LabelStore_Id(&strKey, type, graph, label);
-
-    RedisModuleString *rmStoreId = RedisModule_CreateString(ctx, strKey, strlen(strKey));
-    free(strKey);
-    
-    RedisModuleKey *key = RedisModule_OpenKey(ctx, rmStoreId, REDISMODULE_WRITE);
-    RedisModule_FreeString(ctx, rmStoreId);
-    assert(RedisModule_KeyType(key) == REDISMODULE_KEYTYPE_EMPTY);
-    
-    RedisModule_ModuleTypeSetValue(key, StoreRedisModuleType, store);
-        
     return store;
-}
-
-LabelStore *LabelStore_Get(RedisModuleCtx *ctx, LabelStoreType type, const char *graph, const char* label) {
-	LabelStore *store = NULL;
-  char *strKey;
-  LabelStore_Id(&strKey, type, graph, label);
-
-  RedisModuleString *rmStoreId = RedisModule_CreateString(ctx, strKey, strlen(strKey));
-  free(strKey);
-
-  RedisModuleKey *key = RedisModule_OpenKey(ctx, rmStoreId, REDISMODULE_WRITE);
-  RedisModule_FreeString(ctx, rmStoreId);
-
-  if((RedisModule_KeyType(key) == REDISMODULE_KEYTYPE_EMPTY)) {
-      RedisModule_CloseKey(key);
-      if(label == NULL) {
-          /* Create "ALL" store if it doesn't exist and no label was specified. */
-          return LabelStore_New(ctx, type, graph, "ALL", -1);
-      }
-      /* Label does not yet exist. */
-      return NULL;
-  }
-
-  assert(RedisModule_ModuleTypeGetType(key) == StoreRedisModuleType);
-
-  store = RedisModule_ModuleTypeGetValue(key);
-  RedisModule_CloseKey(key);
-  return store;
 }
 
 void LabelStore_UpdateSchema(LabelStore *store, int prop_count, char **properties) {
@@ -90,43 +23,6 @@ void LabelStore_UpdateSchema(LabelStore *store, int prop_count, char **propertie
         char *property = properties[idx];
         TrieMap_Add(store->properties, property, strlen(property), NULL, NULL);
     }
-}
-
-RedisModuleString **LabelStore_GetKeys(RedisModuleCtx *ctx, const char *graphID, size_t *keyCount) {
-    assert(ctx && graphID && keyCount);
-    char *pattern;
-    RedisModuleCallReply *keysCallReply;
-
-    // Search for keys with prefix: 'LABELSTORE_PREFIX_graphID_*'.
-    asprintf(&pattern, "%s_%s_*", LABELSTORE_PREFIX, graphID);
-    keysCallReply = RedisModule_Call(ctx, "KEYS", "c", pattern);    
-    free(pattern);
-
-    if(!keysCallReply) {
-        *keyCount = 0;
-        NULL;
-    }
-    
-    size_t matchedKeyCount = RedisModule_CallReplyLength(keysCallReply);
-    RedisModuleString **storeKeys = malloc(sizeof(RedisModuleString*) * matchedKeyCount);
-
-    int storeKeyIdx = 0;
-    for(int idx = 0; idx < matchedKeyCount; idx++) {
-        RedisModuleCallReply *reply = RedisModule_CallReplyArrayElement(keysCallReply, idx);
-        RedisModuleString *storeKeyStr = RedisModule_CreateStringFromCallReply(reply);
-        RedisModuleKey *key = RedisModule_OpenKey(ctx, storeKeyStr, REDISMODULE_WRITE);
-
-        if (RedisModule_ModuleTypeGetType(key) == StoreRedisModuleType) {
-            storeKeys[storeKeyIdx++] = storeKeyStr;
-        } else {
-            RedisModule_Free(storeKeyStr);
-        }
-        RedisModule_CloseKey(key);
-    }
-
-    RedisModule_Free(keysCallReply);
-    *keyCount = storeKeyIdx;
-    return storeKeys;
 }
 
 void LabelStore_Free(LabelStore *store) {

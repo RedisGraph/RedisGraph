@@ -9,7 +9,7 @@
 #define __OP_DELETE_H
 
 #include "op.h"
-#include "../../graph/node.h"
+#include "../../graph/entities/node.h"
 #include "../../resultset/resultset.h"
 #include "../../util/triemap/triemap.h"
 /* Delets entities specified within the DELETE clause. */

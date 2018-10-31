@@ -18,7 +18,6 @@
 int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     if (argc < 3) return RedisModule_WrongArity(ctx);
 
-    const char *graph_name = RedisModule_StringPtrLen(argv[1], NULL);
     const char *query = RedisModule_StringPtrLen(argv[2], NULL);
 
     /* Parse query, get AST. */
@@ -33,9 +32,9 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     }
 
     ExecutionPlan *plan = NULL;
-    // Try to get graph.
-    Graph *g = Graph_Get(ctx, argv[1]);
-    if(!g) {
+    // Retrieve the GraphContext and acquire a read lock.
+    GraphContext *gc = GraphContext_Retrieve(ctx, argv[1], true);
+    if(!gc) {
         RedisModule_ReplyWithError(ctx, "key doesn't contains a graph object.");
         goto cleanup;
     }
@@ -43,21 +42,23 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     // Perform query validations before and after ModifyAST
     if (AST_PerformValidations(ctx, ast) != AST_VALID) return REDISMODULE_OK;
 
-    ModifyAST(ctx, ast, graph_name);
+    ModifyAST(gc, ast);
     if (AST_PerformValidations(ctx, ast) != AST_VALID) return REDISMODULE_OK;
 
     if (ast->indexNode != NULL) { // index operation
-        const char *strPlan = Index_OpPrint(ast->indexNode);
-        RedisModule_ReplyWithSimpleString(ctx, strPlan);
+        char *reply = (ast->indexNode->operation == CREATE_INDEX) ? "Create Index" : "Drop Index";
+        RedisModule_ReplyWithSimpleString(ctx, reply);
         goto cleanup;
     }
 
-    plan = NewExecutionPlan(ctx, g, graph_name, ast, true);
+    plan = NewExecutionPlan(ctx, gc, ast, true);
     char* strPlan = ExecutionPlanPrint(plan);
     RedisModule_ReplyWithStringBuffer(ctx, strPlan, strlen(strPlan));
 
 cleanup:
+    GraphContext_Release(gc);
     ExecutionPlanFree(plan);
     Free_AST_Query(ast);
     return REDISMODULE_OK;
 }
+

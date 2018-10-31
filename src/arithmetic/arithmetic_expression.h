@@ -9,7 +9,7 @@
 #define __ARITHMETIC_EXPRESSION_H
 
 #include "../execution_plan/record.h"
-#include "../graph/graph_entity.h"
+#include "../graph/entities/graph_entity.h"
 #include "../graph/query_graph.h"
 #include "../parser/ast.h"
 #include "./agg_ctx.h"

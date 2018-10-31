@@ -11,9 +11,9 @@
 extern "C" {
 #endif
 
+#include "../../src/graph/graph.h"
 #include "../../src/index/index.h"
 #include "../../src/util/rmalloc.h"
-extern Index* buildIndex(Graph *g, const GrB_Matrix label_matrix, const char *label, const char *prop_str);
 
 #ifdef __cplusplus
 }
@@ -37,11 +37,6 @@ class IndexTest: public ::testing::Test {
 
     void TearDown() {
       Graph_Free(g);
-    }
-
-    Index* _indexCreate(Graph *g, const char *label, const char *property) {
-      const GrB_Matrix label_matrix = Graph_GetLabel(g, label_id);
-      return buildIndex(g, label_matrix, label, property);
     }
 
     Graph* build_test_graph() {
@@ -93,7 +88,7 @@ class IndexTest: public ::testing::Test {
 
 TEST_F(IndexTest, StringIndex) {
   // Index the label's string property
-  Index* str_idx = _indexCreate(g, label, str_key);
+  Index* str_idx = Index_Create(g, label_id, label, str_key);
   // Check the label and property tags on the index
   EXPECT_STREQ(label, str_idx->label);
   EXPECT_STREQ(str_key, str_idx->property);
@@ -132,7 +127,7 @@ TEST_F(IndexTest, StringIndex) {
 
 TEST_F(IndexTest, NumericIndex) {
   // Index the label's numeric property
-  Index *num_idx = _indexCreate(g, label, num_key);
+  Index *num_idx = Index_Create(g, label_id, label, num_key);
   // Check the label and property tags on the index
   EXPECT_STREQ(label, num_idx->label);
   EXPECT_STREQ(num_key, num_idx->property);
@@ -179,7 +174,7 @@ static int count_iter_vals(IndexIter *iter) {
 /* Validate the progressive application of iterator bounds
  * on the numeric skiplist. */
 TEST_F(IndexTest, IteratorBounds) {
-  Index *num_idx = _indexCreate(g, label, num_key);
+  Index *num_idx = Index_Create(g, label_id, label, num_key);
   IndexIter *iter = IndexIter_Create(num_idx, T_DOUBLE);
   // Verify total number of values in index without range
   int prev_vals = count_iter_vals(iter);

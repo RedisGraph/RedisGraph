@@ -7,9 +7,7 @@
 
 #include "cmd_query.h"
 #include "../graph/graph.h"
-#include "../index/index.h"
 #include "../query_executor.h"
-#include "../index/index_type.h"
 #include "../util/simple_timer.h"
 #include "../execution_plan/execution_plan.h"
 
@@ -25,28 +23,30 @@ void _queryContext_Free(QueryContext* ctx) {
     free(ctx);
 }
 
-void _index_operation(RedisModuleCtx *ctx, const char *graphName, Graph *g, AST_IndexNode *indexNode) {
+void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST_IndexNode *indexNode) {
   /* Set up nested array response for index creation and deletion.
    * As we need no result set, there is only one top-level element, for statistics.
-   * Index_Create or Index_Delete will enqueue one string response
-   * to indicate the success of the operation, and the query runtime will be appended
-   * after this call returns. */
+   * We'll enqueue one string response to indicate the operation's success,
+   * and the query runtime will be appended after this call returns. */
   RedisModule_ReplyWithArray(ctx, 1);
   RedisModule_ReplyWithArray(ctx, 2);
 
-  int ret;
   switch(indexNode->operation) {
     case CREATE_INDEX:
-      ret = Index_Create(ctx, graphName, g, indexNode->label, indexNode->property);
-      if (ret == INDEX_OK) {
-        RedisModule_ReplyWithSimpleString(ctx, "Added 1 index.");
-      } else {
+      if (GraphContext_GetIndex(gc, indexNode->label, indexNode->property)) {
+        // Index already exists on label-property pair.
         RedisModule_ReplyWithSimpleString(ctx, "(no changes, no records)");
+      } else {
+        if (GraphContext_AddIndex(gc, indexNode->label, indexNode->property) != INDEX_OK) {
+          // Index creation may have failed if the specified label or property was invalid.
+          RedisModule_ReplyWithSimpleString(ctx, "(no changes, no records)");
+          break;
+        }
+        RedisModule_ReplyWithSimpleString(ctx, "Added 1 index.");
       }
       break;
     case DROP_INDEX:
-      ret = Index_Delete(ctx, graphName, indexNode->label, indexNode->property);
-      if (ret == INDEX_OK) {
+      if (GraphContext_DeleteIndex(gc, indexNode->label, indexNode->property) == INDEX_OK) {
         RedisModule_ReplyWithSimpleString(ctx, "Removed 1 index.");
       } else {
         char *reply;
@@ -65,42 +65,41 @@ void _MGraph_Query(void *args) {
     RedisModuleCtx *ctx = RedisModule_GetThreadSafeContext(qctx->bc);
     AST_Query* ast = qctx->ast;
     ResultSet* resultSet = NULL;
-    const char *graph_name = RedisModule_StringPtrLen(qctx->graphName, NULL);
+
+    bool readonly = AST_ReadOnly(ast);
+    // If the query modifies the keyspace, acquire the Redis global lock
+    if (!readonly) RedisModule_ThreadSafeContextLock(ctx);
+
+    // Try to access the GraphContext and acquire the appropriate lock.
+    GraphContext *gc = GraphContext_Retrieve(ctx, qctx->graphName, readonly);
+    if(!gc) {
+        if (!ast->createNode && !ast->mergeNode) {
+            RedisModule_ReplyWithError(ctx, "key doesn't contains a graph object.");
+            goto cleanup;
+        }
+        assert(!readonly);
+        gc = GraphContext_New(ctx, qctx->graphName);
+        if (!gc) {
+            RedisModule_ReplyWithError(ctx, "Graph name already in use as a Redis key.");
+            goto cleanup;
+        }
+        /* TODO: free graph if no entities were created. */
+    }
 
     // Perform query validations before and after ModifyAST
     if (AST_PerformValidations(ctx, ast) != AST_VALID) goto cleanup;
 
-    ModifyAST(ctx, ast, graph_name);
+    ModifyAST(gc, ast);
     if (AST_PerformValidations(ctx, ast) != AST_VALID) goto cleanup;
 
-    // If this is a write query, acquire write lock.
-    if(AST_ReadOnly(ast)) MGraph_AcquireReadLock();
-    else MGraph_AcquireWriteLock(ctx);
-
-    // Try to get graph.
-    Graph *g = Graph_Get(ctx, qctx->graphName);
-    if(!g) {
-        if(ast->createNode || ast->mergeNode) {
-            g = MGraph_CreateGraph(ctx, qctx->graphName);
-            /* TODO: free graph if no entities were created. */
-        } else {
-            RedisModule_ReplyWithError(ctx, "key doesn't contains a graph object.");
-            MGraph_ReleaseLock(ctx);
-            goto cleanup;
-        }
-    }
-
     if (ast->indexNode) { // index operation
-        _index_operation(ctx, graph_name, g, ast->indexNode);
+        _index_operation(ctx, gc, ast->indexNode);
     } else {
-        ExecutionPlan *plan = NewExecutionPlan(ctx, g, graph_name, ast, false);
+        ExecutionPlan *plan = NewExecutionPlan(ctx, gc, ast, false);
         resultSet = ExecutionPlan_Execute(plan);
         ExecutionPlanFree(plan);
         ResultSet_Replay(resultSet);    // Send result-set back to client.
     }
-
-    // Done accessing graph data, release lock.
-    MGraph_ReleaseLock(ctx);
 
     /* Report execution timing. */
     char* strElapsed;
@@ -111,10 +110,14 @@ void _MGraph_Query(void *args) {
 
     // Clean up.
 cleanup:
+    // Release the read-write lock
+    if (gc) GraphContext_Release(gc);
+    // Release Redis global lock if it was acquired
+    if (!readonly) RedisModule_ThreadSafeContextUnlock(ctx);
     Free_AST_Query(ast);
     ResultSet_Free(resultSet);
-    RedisModule_FreeThreadSafeContext(ctx);    
     RedisModule_UnblockClient(qctx->bc, NULL);
+    RedisModule_FreeThreadSafeContext(ctx);
     _queryContext_Free(qctx);
 }
 
@@ -129,7 +132,7 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     simple_tic(tic);
 
     // Parse AST.
-    // TODO: support concurent parsing.
+    // TODO: support concurrent parsing.
     char *errMsg = NULL;
     const char *query = RedisModule_StringPtrLen(argv[2], NULL);
     AST_Query* ast = ParseQuery(query, strlen(query), &errMsg);

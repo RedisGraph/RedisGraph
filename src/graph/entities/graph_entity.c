@@ -7,7 +7,7 @@
 
 #include "graph_entity.h"
 #include <stdio.h>
-#include "../util/rmalloc.h"
+#include "../../util/rmalloc.h"
 
 SIValue *PROPERTY_NOTFOUND = &(SIValue){.intval = 0, .type = T_NULL};
 

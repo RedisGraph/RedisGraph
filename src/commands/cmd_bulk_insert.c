@@ -29,23 +29,23 @@ void _MGraph_BulkInsert(void *args) {
     // Establish thread-safe environment for batch insertion
     BulkInsertContext *context = (BulkInsertContext *)args;
     RedisModuleCtx *ctx = RedisModule_GetThreadSafeContext(context->bc);
-    MGraph_AcquireWriteLock(ctx);
+    RedisModule_ThreadSafeContextLock(ctx);
 
     int argc = context->argc;
     RedisModuleString **argv = context->argv;
     RedisModuleString *rs_graph_name = argv[1];
-    const char *graph_name = RedisModule_StringPtrLen(rs_graph_name, NULL);
     size_t nodes = 0;   // Number of nodes created.
     size_t edges = 0;   // Number of edge created.
 
-    // Try to get graph, if graph does not exists create it.
-    Graph *g = Graph_Get(ctx, rs_graph_name);
-    if (g == NULL) g = MGraph_CreateGraph(ctx, rs_graph_name);
+    // Retrieve the GraphContext and acquire a write lock.
+    GraphContext *gc = GraphContext_Retrieve(ctx, rs_graph_name, false);
+    // If the graph and its interfaces do not exist, create them.
+    if (gc == NULL) gc = GraphContext_New(ctx, rs_graph_name);
 
     // Exit if graph creation failed
-    if (g == NULL) goto cleanup;
+    if (gc == NULL) goto cleanup;
 
-    int rc = Bulk_Insert(ctx, argv+2, argc-2, g, graph_name, &nodes, &edges);
+    int rc = BulkInsert(ctx, gc, &nodes, &edges, argv+2, argc-2);
 
     // Exit if insertion failed
     if (rc == BULK_FAIL) goto cleanup;
@@ -57,7 +57,8 @@ void _MGraph_BulkInsert(void *args) {
     RedisModule_ReplyWithStringBuffer(ctx, timings, strlen(timings));
 
 cleanup:
-    MGraph_ReleaseLock(ctx);
+    GraphContext_Release(gc);
+    RedisModule_ThreadSafeContextUnlock(ctx);
     RedisModule_FreeThreadSafeContext(ctx);
     RedisModule_UnblockClient(context->bc, NULL);
     BulkInsertContext_Free(context);

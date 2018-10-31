@@ -10,17 +10,13 @@
 
 #include <assert.h>
 #include "../redismodule.h"
-#include "../graph/graph_entity.h"
-#include "../stores/store.h"
+#include "../graph/graph.h"
+#include "../graph/entities/graph_entity.h"
 #include "../util/skiplist.h"
-#include "../parser/ast.h"
-#include "../graph/node.h"
-#include "../filter_tree/filter_tree.h"
 #include "../GraphBLASExt/tuples_iter.h"
 
 #define INDEX_OK 1
 #define INDEX_FAIL 0
-#define INDEX_PREFIX "redis_graph_INDEX"
 
 typedef skiplistIterator IndexIter;
 
@@ -36,23 +32,9 @@ typedef struct {
   skiplist *numeric_sl;
 } Index;
 
-/* Index_Get attempts to retrieve an index from the Redis keyspace. */
-Index* Index_Get(RedisModuleCtx *ctx, const char *graph, const char *label, const char *property);
-
-/* Index_Delete drops an index from the Redis keyspace and frees its associated constructs.  */
-int Index_Delete(RedisModuleCtx *ctx, const char *graphName, const char *label, const char *prop);
-
-/* initializeSkiplists prepares the string and numeric skiplists for a new Index,
- * pointing them to the appropriate internal comparator routines. It is exposed in
- * the header so that it can be used by the Index load functions in index_type. */
-void initializeSkiplists(Index *index);
-
-/* Index_Create is a wrapper for the buildIndex function. It retrieves the appropriate label
- * matrix from the graph and saves the index in the Redis keyspace. */
-int Index_Create(RedisModuleCtx *ctx, const char *graphName, Graph *g, const char *label, const char *prop_str);
-
-/* Prepare output text for EXPLAIN calls on "drop index" and "create index" */
-const char* Index_OpPrint(AST_IndexNode *indexNode);
+/* Index_Create builds an index for a label-property pair so that queries reliant
+ * on these entities can use expedited scan logic. */
+Index* Index_Create(Graph *g, int label_id, const char *label, const char *prop_str);
 
 /* Build a new iterator to traverse all indexed values of the specified type. */
 IndexIter* IndexIter_Create(Index *idx, SIType type);

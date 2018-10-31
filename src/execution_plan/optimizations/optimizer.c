@@ -8,10 +8,10 @@
 #include "./optimizer.h"
 #include "./optimizations.h"
 
-void optimizePlan(RedisModuleCtx *ctx, const char *graph_name, ExecutionPlan *plan) {
+void optimizePlan(GraphContext *gc, ExecutionPlan *plan) {
     /* When possible, replace label scan and filter ops
      * with index scans. */
-    utilizeIndices(ctx, graph_name, plan);
+    utilizeIndices(gc, plan);
 
     /* Try to reduce a number of filters into a single filter op. */
     reduceFilters(plan);

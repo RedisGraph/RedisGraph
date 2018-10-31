@@ -6,15 +6,12 @@
 */
 
 #include <assert.h>
-#include "graph.h"
-#include "graph_type.h"
-#include "../GraphBLASExt/tuples_iter.h"
+#include "../graph.h"
+#include "serialize_graph.h"
+#include "../../GraphBLASExt/tuples_iter.h"
 
-/* Declaration of the type for redis registration. */
-RedisModuleType *GraphRedisModuleType;
-
-void _GraphType_LoadMatrix(RedisModuleIO *rdb, GrB_Matrix m) {
-    /* Format:     
+void _RdbLoadMatrix(RedisModuleIO *rdb, GrB_Matrix m) {
+    /* Format:
      *      #entries N
      *      (row index,column index) X N
      */
@@ -32,35 +29,35 @@ void _GraphType_LoadMatrix(RedisModuleIO *rdb, GrB_Matrix m) {
     }
 }
 
-void _GraphType_LoadMatrices(RedisModuleIO *rdb, Graph *g) {
+void _RdbLoadMatrices(RedisModuleIO *rdb, Graph *g) {
     /* Format:
      * adjacency matrix
      * #relation matrices
      *      #entries N
-     *      (row index,column index) X N 
+     *      (row index,column index) X N
      * #label matrices
      *      #entries N
-     *      (row index,column index) X N 
+     *      (row index,column index) X N
      */
 
-    _GraphType_LoadMatrix(rdb, g->adjacency_matrix);
+    _RdbLoadMatrix(rdb, g->adjacency_matrix);
 
     uint64_t relationMatricesCount = RedisModule_LoadUnsigned(rdb);
     for(int i = 0; i < relationMatricesCount; i++) {
-        int matrixIdx = Graph_AddRelation(g);
-        GrB_Matrix m = Graph_GetRelation(g, matrixIdx);
-        _GraphType_LoadMatrix(rdb, m);
+        Graph_AddRelationType(g);
+        GrB_Matrix m = Graph_GetRelation(g, i);
+        _RdbLoadMatrix(rdb, m);
     }
 
     uint64_t labelMatricesCount = RedisModule_LoadUnsigned(rdb);
     for(int i = 0; i < labelMatricesCount; i++) {
-        int matrixIdx = Graph_AddLabel(g);
-        GrB_Matrix m = Graph_GetLabel(g, matrixIdx);
-        _GraphType_LoadMatrix(rdb, m);
+        Graph_AddLabel(g);
+        GrB_Matrix m = Graph_GetLabel(g, i);
+        _RdbLoadMatrix(rdb, m);
     }
 }
 
-SIValue _GraphType_LoadSIValue(RedisModuleIO *rdb) {
+SIValue _RdbLoadSIValue(RedisModuleIO *rdb) {
     /* Format:
      * SIType
      * Value */
@@ -74,7 +71,7 @@ SIValue _GraphType_LoadSIValue(RedisModuleIO *rdb) {
     }
 }
 
-void _GraphType_LoadEntity(RedisModuleIO *rdb, GraphEntity *e) {
+void _RdbLoadEntity(RedisModuleIO *rdb, GraphEntity *e) {
     /* Format:
      * #properties N
      * (name, SIValue) X N
@@ -86,13 +83,13 @@ void _GraphType_LoadEntity(RedisModuleIO *rdb, GraphEntity *e) {
 
     for(int i = 0; i < propCount; i++) {
         propName[i] = RedisModule_LoadStringBuffer(rdb, &propNameLen);
-        propValue[i] = _GraphType_LoadSIValue(rdb);
+        propValue[i] = _RdbLoadSIValue(rdb);
     }
 
     if(propCount) GraphEntity_Add_Properties(e, propCount, propName, propValue);
 }
 
-void _GraphType_LoadNodes(RedisModuleIO *rdb, Graph *g) {
+void _RdbLoadNodes(RedisModuleIO *rdb, Graph *g) {
     /* Format:
      * #nodes
     */
@@ -104,13 +101,13 @@ void _GraphType_LoadNodes(RedisModuleIO *rdb, Graph *g) {
 
     Node *n;
     while((n = (Node*)DataBlockIterator_Next(iter))) {
-        _GraphType_LoadEntity(rdb, (GraphEntity*)n);
+        _RdbLoadEntity(rdb, (GraphEntity*)n);
     }
 
     DataBlockIterator_Free(iter);
 }
 
-void _GraphType_LoadEdges(RedisModuleIO *rdb, Graph *g) {
+void _RdbLoadEdges(RedisModuleIO *rdb, Graph *g) {
     /* Format:
      * #edges (N)
      * {
@@ -140,13 +137,13 @@ void _GraphType_LoadEdges(RedisModuleIO *rdb, Graph *g) {
 
     Edge *e;
     while((e = (Edge*)DataBlockIterator_Next(iter))) {
-        _GraphType_LoadEntity(rdb, (GraphEntity*)e);
+        _RdbLoadEntity(rdb, (GraphEntity*)e);
     }
 
     DataBlockIterator_Free(iter);
 }
 
-  void _GraphType_SaveSIValue(RedisModuleIO *rdb, const SIValue *v) {
+void _RdbSaveSIValue(RedisModuleIO *rdb, const SIValue *v) {
     /* Format:
      * SIType
      * Value */
@@ -162,7 +159,7 @@ void _GraphType_LoadEdges(RedisModuleIO *rdb, Graph *g) {
     }
 }
 
-void _GraphType_SaveEntity(RedisModuleIO *rdb, const GraphEntity *e) {
+void _RdbSaveEntity(RedisModuleIO *rdb, const GraphEntity *e) {
     /* Format:
      * #properties N
      * (name, SIValue) X N */
@@ -172,34 +169,34 @@ void _GraphType_SaveEntity(RedisModuleIO *rdb, const GraphEntity *e) {
     for(int i = 0; i < e->prop_count; i++) {
         EntityProperty prop = e->properties[i];
         RedisModule_SaveStringBuffer(rdb, prop.name, strlen(prop.name) + 1);
-        _GraphType_SaveSIValue(rdb, &prop.value);
+        _RdbSaveSIValue(rdb, &prop.value);
     }
 }
 
-void _GraphType_SaveNode(RedisModuleIO *rdb, const Node *n) {
-    _GraphType_SaveEntity(rdb, (GraphEntity*)n);
+void _RdbSaveNode(RedisModuleIO *rdb, const Node *n) {
+    _RdbSaveEntity(rdb, (GraphEntity*)n);
 }
 
-void _GraphType_SaveNodes(RedisModuleIO *rdb, const Graph *g) {
+void _RdbSaveNodes(RedisModuleIO *rdb, const Graph *g) {
     /* Format:
-     * #nodes 
+     * #nodes
      * nodes */
-    
+
     RedisModule_SaveUnsigned(rdb, Graph_NodeCount(g));
     DataBlockIterator *iter = Graph_ScanNodes(g);
     Node *n;
     while((n = (Node*)DataBlockIterator_Next(iter))) {
-        _GraphType_SaveNode(rdb, n);
+        _RdbSaveNode(rdb, n);
     }
 
     DataBlockIterator_Free(iter);
 }
 
-void _GraphType_SaveEdge(RedisModuleIO *rdb, const Edge *e) {
-    _GraphType_SaveEntity(rdb, (GraphEntity*)e);
+void _RdbSaveEdge(RedisModuleIO *rdb, const Edge *e) {
+    _RdbSaveEntity(rdb, (GraphEntity*)e);
 }
 
-void _GraphType_SaveEdges(RedisModuleIO *rdb, const Graph *g) {
+void _RdbSaveEdges(RedisModuleIO *rdb, const Graph *g) {
     /* Format:
      * #edges (N)
      * {
@@ -208,7 +205,7 @@ void _GraphType_SaveEdges(RedisModuleIO *rdb, const Graph *g) {
      *  relation type
      * } X N
      * edge properties X N */
-    
+
     RedisModule_SaveUnsigned(rdb, Graph_EdgeCount(g));
     DataBlockIterator *iter = Graph_ScanEdges(g);
     Edge *e;
@@ -220,22 +217,22 @@ void _GraphType_SaveEdges(RedisModuleIO *rdb, const Graph *g) {
     DataBlockIterator_Reset(iter);
 
     while((e = (Edge*)DataBlockIterator_Next(iter))) {
-        _GraphType_SaveEdge(rdb, e);
+        _RdbSaveEdge(rdb, e);
     }
 
     DataBlockIterator_Free(iter);
 }
 
-void _GraphType_SaveMatrix(RedisModuleIO *rdb, GrB_Matrix m) {
+void _RdbSaveMatrix(RedisModuleIO *rdb, GrB_Matrix m) {
     /* Format:
      * #entries N
      * (row index,column index) X N */
     TuplesIter *iter = TuplesIter_new(m);
-    
+
     GrB_Index nvals;
     GrB_Index row;
     GrB_Index col;
-    
+
     GrB_Matrix_nvals(&nvals, m);
     RedisModule_SaveUnsigned(rdb, nvals);
 
@@ -247,103 +244,89 @@ void _GraphType_SaveMatrix(RedisModuleIO *rdb, GrB_Matrix m) {
     TuplesIter_free(iter);
 }
 
-void _GraphType_SaveMatrices(RedisModuleIO *rdb, Graph *g) {
-    /* Format: 
+void _RdbSaveMatrices(RedisModuleIO *rdb, Graph *g) {
+    /* Format:
      * adjacency matrix
      * #relation matrices
      * relation matrices
      * #label matrices
      * label matrices
      * */
-    
-    _GraphType_SaveMatrix(rdb, g->adjacency_matrix);
+
+    _RdbSaveMatrix(rdb, g->adjacency_matrix);
 
     RedisModule_SaveUnsigned(rdb, g->relation_count);
     for(int i = 0; i < g->relation_count; i++) {
         GrB_Matrix m = Graph_GetRelation(g, i);
-        _GraphType_SaveMatrix(rdb, m);
+        _RdbSaveMatrix(rdb, m);
     }
 
     RedisModule_SaveUnsigned(rdb, g->label_count);
     for(int i = 0; i < g->label_count; i++) {
         GrB_Matrix m = Graph_GetLabel(g, i);
-        _GraphType_SaveMatrix(rdb, m);
+        _RdbSaveMatrix(rdb, m);
     }
 }
 
-void GraphType_RdbSave(RedisModuleIO *rdb, void *value) {
-    /* Format:
-     * nodes 
-     * relations
-     * edges */
-
-    Graph *g = (Graph *)value;
-
-    // Dump nodes.
-    _GraphType_SaveNodes(rdb, g);
-
-    // Dump relations.
-    _GraphType_SaveMatrices(rdb, g);
-
-    // Dump edges.
-    _GraphType_SaveEdges(rdb, g);
-}
-
-void *GraphType_RdbLoad(RedisModuleIO *rdb, int encver) {
+void RdbSaveGraph(RedisModuleIO *rdb, void *value) {
     /* Format:
      * #nodes
      *      #properties N
-     *      (name, value type, value) X N 
+     *      (name, value type, value) X N
      *
      * adjacency matrix
      * #relation matrices
      *      #entries N
-     *      (row index,column index) X N 
+     *      (row index,column index) X N
      * #label matrices
      *      #entries N
-     *      (row index,column index) X N 
+     *      (row index,column index) X N
      */
-    
-    if (encver > GRAPH_TYPE_ENCODING_VERSION) {
-        return NULL;
-    }
 
+    Graph *g = (Graph *)value;
+
+    // Dump nodes.
+    _RdbSaveNodes(rdb, g);
+
+    // Dump relation and label matrices.
+    _RdbSaveMatrices(rdb, g);
+
+    // Dump edges.
+    _RdbSaveEdges(rdb, g);
+}
+
+void *RdbLoadGraph(RedisModuleIO *rdb) {
+    /* Format:
+     * #nodes
+     *      #properties N
+     *      (name, value type, value) X N
+     *
+     * adjacency matrix
+     * #relation matrices
+     *      #entries N
+     *      (row index,column index) X N
+     * #label matrices
+     *      #entries N
+     *      (row index,column index) X N
+     */
     Graph *g = Graph_New(GRAPH_DEFAULT_NODE_CAP);
 
     // Load nodes.
-    _GraphType_LoadNodes(rdb, g);
+    _RdbLoadNodes(rdb, g);
 
     // Load matrices.
-    _GraphType_LoadMatrices(rdb, g);
-    
+    _RdbLoadMatrices(rdb, g);
+
     // Load edges.
-    _GraphType_LoadEdges(rdb, g);
+    _RdbLoadEdges(rdb, g);
 
     // Flush all pending changes to graphs.
     GrB_wait();
 
+    // Initialize a read-write lock scoped to this graph.
+    pthread_rwlock_init(&g->_rwlock, NULL);
+    g->_writelocked = false;
+
     return g;
 }
 
-void GraphType_AofRewrite(RedisModuleIO *aof, RedisModuleString *key, void *value) {
-  // TODO: implement.
-}
-
-void GraphType_Free(void *value) {
-  Graph *g = value;
-  Graph_Free(g);
-}
-
-int GraphType_Register(RedisModuleCtx *ctx) {
-  RedisModuleTypeMethods tm = {.version = REDISMODULE_TYPE_METHOD_VERSION,
-                               .rdb_load = GraphType_RdbLoad,
-                               .rdb_save = GraphType_RdbSave,
-                               .aof_rewrite = GraphType_AofRewrite,
-                               .free = GraphType_Free};
-  
-  GraphRedisModuleType = RedisModule_CreateDataType(ctx, "graphtype", GRAPH_TYPE_ENCODING_VERSION, &tm);
-  if (GraphRedisModuleType == NULL) {
-    return REDISMODULE_ERR;
-  }
-  return REDISMODULE_OK;
-}
