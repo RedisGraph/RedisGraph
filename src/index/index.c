@@ -41,8 +41,8 @@ void initializeSkiplists(Index *index) {
   index->numeric_sl = skiplistCreate(compareNumerics, compareNodes, cloneKey, freeKey);
 }
 
-/* Index_Create allocates an Index object and populates it with a label-property pair
- * by accessing DataBlock elements referred to by a TuplesIter over a label matrix. */
+/* Index_Create allocates an Index object and populates it with all unique IDs and values
+ * that possess the provided label and property. */
 Index* Index_Create(Graph *g, int label_id, const char *label, const char *prop_str) {
   const GrB_Matrix label_matrix = Graph_GetLabel(g, label_id);
   TuplesIter *it = TuplesIter_new(label_matrix);

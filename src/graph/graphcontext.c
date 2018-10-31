@@ -5,7 +5,6 @@
 //------------------------------------------------------------------------------
 // Private functions
 //------------------------------------------------------------------------------
-// This is a pretty weak approach to index retrieval - revisit later.
 int _GraphContext_IndexOffset(const GraphContext *gc, const char *label, const char *property) {
   Index *idx;
   for (int i = 0; i < gc->index_count; i ++) {
@@ -57,8 +56,8 @@ GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rs_name) 
   return gc;
 }
 
-GraphContext* GraphContext_Get(RedisModuleCtx *ctx, RedisModuleString *rs_name, bool readonly) {
-  RedisModuleKey *key = RedisModule_OpenKey(ctx, rs_name, REDISMODULE_WRITE);
+GraphContext* GraphContext_Retrieve(RedisModuleCtx *ctx, RedisModuleString *rs_name, bool readonly) {
+  RedisModuleKey *key = RedisModule_OpenKey(ctx, rs_name, REDISMODULE_READ);
   if (RedisModule_ModuleTypeGetType(key) != GraphContextRedisModuleType) {
     RedisModule_CloseKey(key);
     return NULL;
@@ -73,6 +72,11 @@ GraphContext* GraphContext_Get(RedisModuleCtx *ctx, RedisModuleString *rs_name, 
   }
 
   return gc;
+}
+
+// Release locks held by the calling thread
+void GraphContext_Release(GraphContext *gc) {
+  Graph_ReleaseLock(gc->g);
 }
 
 //------------------------------------------------------------------------------
@@ -132,7 +136,9 @@ LabelStore* GraphContext_AddLabel(GraphContext *gc, const char *label) {
 LabelStore* GraphContext_AddRelationType(GraphContext *gc, const char *label) {
   if(gc->relation_count == gc->relation_cap) {
     gc->relation_cap += 4;
+    // Add space for additional relation type stores.
     gc->relation_stores = rm_realloc(gc->relation_stores, gc->relation_cap * sizeof(LabelStore*));
+    // Add space for additional relation type matrices.
     gc->g->relations = rm_realloc(gc->g->relations, gc->relation_cap * sizeof(GrB_Matrix));
   }
   Graph_AddRelationType(gc->g);
@@ -168,7 +174,7 @@ int GraphContext_AddIndex(GraphContext *gc, const char *label, const char *prope
   int label_id = GraphContext_GetLabelID(gc, label, STORE_NODE);
   if (label_id < 0 ) return INDEX_FAIL;
 
-  // Populate an index by using this iterator to seek into the data block.
+  // Populate an index for the label-property pair using the Graph interfaces.
   Index *idx = Index_Create(gc->g, label_id, label, property);
   gc->indices[gc->index_count] = idx;
   gc->index_count++;

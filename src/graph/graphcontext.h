@@ -30,7 +30,9 @@ typedef struct {
 
 /* GraphContext API */
 GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rs_name);
-GraphContext* GraphContext_Get(RedisModuleCtx *ctx, RedisModuleString *rs_graph_name, bool readonly);
+GraphContext* GraphContext_Retrieve(RedisModuleCtx *ctx, RedisModuleString *rs_graph_name, bool readonly);
+// Release locks held by the calling thread
+void GraphContext_Release(GraphContext *gc);
 
 /* LabelStore API */
 // Find the ID associated with a label for store and matrix access

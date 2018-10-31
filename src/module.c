@@ -56,10 +56,6 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
     if (!_Setup_ThreadPOOL(threadCount)) return REDISMODULE_ERR;
     RedisModule_Log(ctx, "notice", "Thread pool created, using %d threads.", threadCount);
 
-    if (RedisModule_Init(ctx, "graph", REDISGRAPH_MODULE_VERSION, REDISMODULE_APIVER_1) == REDISMODULE_ERR) {
-        return REDISMODULE_ERR;
-    }
-
     if (_RegisterDataTypes(ctx) != REDISMODULE_OK) return REDISMODULE_ERR;
 
     if(RedisModule_CreateCommand(ctx, "graph.QUERY", MGraph_Query, "write deny-oom deny-script", 1, 1, 1) == REDISMODULE_ERR) {

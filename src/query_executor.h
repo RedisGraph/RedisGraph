@@ -15,25 +15,6 @@
 #include "graph/query_graph.h"
 #include "arithmetic/arithmetic_expression.h"
 
-//------------------------------------------------------------------------------
-// Read/Write lock
-//------------------------------------------------------------------------------
-
-/* Acquire lock for read, multiple threads might be reading concurrently. */
-void MGraph_AcquireReadLock();
-
-/* Acquire lock for write, only a single thread can perform work
- * while holding a write lock,
- * In addition we're also acquiring Redis global lock
- * this is to prevent concurent writing while redis
- * might be performing replication or persists data to disk. */
-void MGraph_AcquireWriteLock(RedisModuleCtx *ctx);
-
-/* Release read/write lock. */
-void MGraph_ReleaseLock(RedisModuleCtx *ctx);
-
-//------------------------------------------------------------------------------
-
 /* Create an AST from raw query. */
 AST_Query* ParseQuery(const char *query, size_t qLen, char **errMsg);
 

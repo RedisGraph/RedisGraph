@@ -34,9 +34,11 @@ void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST_IndexNode *inde
   switch(indexNode->operation) {
     case CREATE_INDEX:
       if (GraphContext_GetIndex(gc, indexNode->label, indexNode->property)) {
+        // Index already exists on label-property pair.
         RedisModule_ReplyWithSimpleString(ctx, "(no changes, no records)");
       } else {
         if (GraphContext_AddIndex(gc, indexNode->label, indexNode->property) != INDEX_OK) {
+          // Index creation may have failed if the specified label or property was invalid.
           RedisModule_ReplyWithSimpleString(ctx, "(no changes, no records)");
           break;
         }
@@ -66,12 +68,10 @@ void _MGraph_Query(void *args) {
 
     bool readonly = AST_ReadOnly(ast);
     // If the query modifies the keyspace, acquire the Redis global lock
-    // TODO I think this locking may be overzealous - revisit later
-    // and see if we can reduce the lock's lifetime
     if (!readonly) RedisModule_ThreadSafeContextLock(ctx);
 
-    // Try to get graph context.
-    GraphContext *gc = GraphContext_Get(ctx, qctx->graphName, readonly);
+    // Try to access the GraphContext and acquire the appropriate lock.
+    GraphContext *gc = GraphContext_Retrieve(ctx, qctx->graphName, readonly);
     if(!gc) {
         if (!ast->createNode && !ast->mergeNode) {
             RedisModule_ReplyWithError(ctx, "key doesn't contains a graph object.");
@@ -111,7 +111,7 @@ void _MGraph_Query(void *args) {
     // Clean up.
 cleanup:
     // Release the read-write lock
-    if (gc) Graph_ReleaseLock(gc->g); // TODO choose sensible interface for this
+    if (gc) GraphContext_Release(gc);
     // Release Redis global lock if it was acquired
     if (!readonly) RedisModule_ThreadSafeContextUnlock(ctx);
     Free_AST_Query(ast);
@@ -132,7 +132,7 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     simple_tic(tic);
 
     // Parse AST.
-    // TODO: support concurent parsing.
+    // TODO: support concurrent parsing.
     char *errMsg = NULL;
     const char *query = RedisModule_StringPtrLen(argv[2], NULL);
     AST_Query* ast = ParseQuery(query, strlen(query), &errMsg);
