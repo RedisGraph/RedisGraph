@@ -5,6 +5,7 @@
 * modified with the Commons Clause restriction.
 */
 
+#include <assert.h>
 #include "graph.h"
 #include "graph_type.h"
 #include "../GraphBLASExt/tuples_iter.h"
@@ -59,10 +60,24 @@ void _GraphType_LoadMatrices(RedisModuleIO *rdb, Graph *g) {
     }
 }
 
+SIValue _GraphType_LoadSIValue(RedisModuleIO *rdb) {
+    /* Format:
+     * SIType
+     * Value */
+    SIType t = RedisModule_LoadUnsigned(rdb);
+    if(t & SI_NUMERIC) {
+        return SI_DoubleVal(RedisModule_LoadDouble(rdb));
+    } else if (t == T_BOOL) {
+        return SI_BoolVal(RedisModule_LoadUnsigned(rdb));
+    } else {
+        return SI_StringVal(RedisModule_LoadStringBuffer(rdb, NULL));
+    }
+}
+
 void _GraphType_LoadEntity(RedisModuleIO *rdb, GraphEntity *e) {
     /* Format:
      * #properties N
-     * (name, value type, value) X N
+     * (name, SIValue) X N
     */
     uint64_t propCount = RedisModule_LoadUnsigned(rdb);
     size_t propNameLen;
@@ -71,13 +86,7 @@ void _GraphType_LoadEntity(RedisModuleIO *rdb, GraphEntity *e) {
 
     for(int i = 0; i < propCount; i++) {
         propName[i] = RedisModule_LoadStringBuffer(rdb, &propNameLen);
-        SIType t = RedisModule_LoadUnsigned(rdb);
-        SIValue val;
-        if(t & SI_NUMERIC) {
-            propValue[i] = SI_DoubleVal(RedisModule_LoadDouble(rdb));
-        } else {
-            propValue[i] = SI_StringVal(RedisModule_LoadStringBuffer(rdb, NULL));
-        }
+        propValue[i] = _GraphType_LoadSIValue(rdb);
     }
 
     if(propCount) GraphEntity_Add_Properties(e, propCount, propName, propValue);
@@ -137,24 +146,33 @@ void _GraphType_LoadEdges(RedisModuleIO *rdb, Graph *g) {
     DataBlockIterator_Free(iter);
 }
 
+  void _GraphType_SaveSIValue(RedisModuleIO *rdb, const SIValue *v) {
+    /* Format:
+     * SIType
+     * Value */
+    RedisModule_SaveUnsigned(rdb, v->type);
+    if(v->type & SI_NUMERIC) {
+        RedisModule_SaveDouble(rdb, v->doubleval);
+    } else if (v->type == T_BOOL) {
+        RedisModule_SaveUnsigned(rdb, v->boolval);
+    } else if (v->type == T_STRING) {
+        RedisModule_SaveStringBuffer(rdb, v->stringval, strlen(v->stringval) + 1);
+    } else {
+        assert(0 && "Attempted to serialize value of invalid type.");
+    }
+}
+
 void _GraphType_SaveEntity(RedisModuleIO *rdb, const GraphEntity *e) {
     /* Format:
      * #properties N
-     * (name, value type, value) X N */
+     * (name, SIValue) X N */
 
     RedisModule_SaveUnsigned(rdb, e->prop_count);
 
     for(int i = 0; i < e->prop_count; i++) {
         EntityProperty prop = e->properties[i];
         RedisModule_SaveStringBuffer(rdb, prop.name, strlen(prop.name) + 1);
-        
-        RedisModule_SaveUnsigned(rdb, prop.value.type);
-        
-        if(prop.value.type & SI_NUMERIC) {
-            RedisModule_SaveDouble(rdb, prop.value.doubleval);
-        } else {
-            RedisModule_SaveStringBuffer(rdb, prop.value.stringval, strlen(prop.value.stringval) + 1);
-        }        
+        _GraphType_SaveSIValue(rdb, &prop.value);
     }
 }
 
