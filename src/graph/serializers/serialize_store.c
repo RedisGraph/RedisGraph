@@ -25,11 +25,12 @@ void* RdbLoadStore(RedisModuleIO *rdb) {
   s->properties = NewTrieMap();
 
   uint64_t propCount = RedisModule_LoadUnsigned(rdb);
+  char *propStrings[propCount];
   for(int i = 0; i < propCount; i++) {
-    char *prop = RedisModule_LoadStringBuffer(rdb, NULL);
-    LabelStore_UpdateSchema(s, 1, &prop);
+    propStrings[i] = RedisModule_LoadStringBuffer(rdb, NULL);
   }
 
+  LabelStore_UpdateSchema(s, propCount, propStrings);
   return s;
 }
 
