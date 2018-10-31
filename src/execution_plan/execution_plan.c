@@ -303,6 +303,7 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g,
                         Vector_Push(traversals, op);
                     }
                     for(int i = 0; i < expCount; i++) {
+                        if(exps[i]->operand_count == 0) continue;
                         if(exps[i]->edgeLength) {
                             op = NewCondVarLenTraverseOp(exps[i],
                                                          exps[i]->edgeLength->minHops,
@@ -330,6 +331,7 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, Graph *g,
                     }
 
                     for(int i = expCount-1; i >= 0; i--) {
+                        if(exps[i]->operand_count == 0) continue;
                         AlgebraicExpression_Transpose(exps[i]);
                         if(exps[i]->edgeLength) {
                             op = NewCondVarLenTraverseOp(exps[i],

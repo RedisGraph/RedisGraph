@@ -23,6 +23,7 @@ OpBase* NewCondVarLenTraverseOp(AlgebraicExpression *ae, unsigned int minHops, u
     condVarLenTraverse->pathsCount = 0;
     condVarLenTraverse->pathsCap = 32;
     condVarLenTraverse->paths = malloc(sizeof(Path) * condVarLenTraverse->pathsCap);
+    condVarLenTraverse->traverseDir = (ae->operands[0].transpose) ? GRAPH_EDGE_DIR_INCOMING : GRAPH_EDGE_DIR_OUTGOING;
 
     // Set our Op operations
     OpBase_Init(&condVarLenTraverse->op);
@@ -51,15 +52,17 @@ OpResult CondVarLenTraverseConsume(OpBase *opBase, Record *r) {
         res = child->consume(child, r);
         if(res != OP_OK) return res;
         Node *srcNode = Record_GetNode(*r, op->srcNodeAlias);
-        op->pathsCount = AllPaths(op->g, op->relationID, srcNode->id, op->minHops, op->maxHops, &op->pathsCap, &op->paths);
+        op->pathsCount = AllPaths(op->g, op->relationID, srcNode->id, op->traverseDir, op->minHops, op->maxHops, &op->pathsCap, &op->paths);
     }
 
     Path p = op->paths[--op->pathsCount];
     Edge *e = Path_pop(p);
-    Path_free(p);
+    Node *neighbor;
+    if(op->traverseDir == GRAPH_EDGE_DIR_OUTGOING) neighbor = Edge_GetDestNode(e);
+    else neighbor = Edge_GetSrcNode(e);
 
-    Node *destNode = Edge_GetDestNode(e);
-    Record_AddEntry(r, op->destNodeAlias, SI_PtrVal(destNode));
+    Path_free(p);
+    Record_AddEntry(r, op->destNodeAlias, SI_PtrVal(neighbor));
 
     return OP_OK;
 }

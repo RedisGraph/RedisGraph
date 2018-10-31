@@ -437,6 +437,7 @@ void Graph_GetNodeEdges(const Graph *g, const Node *n, Vector *edges, GRAPH_EDGE
             Graph_GetEdgesConnectingNodes(g, n->id, destNodeID, edgeType, edges);
 
         GrB_Vector_free(&outgoing);
+        TuplesIter_free(tupleIter);
     }
 
     // Incoming.
@@ -451,15 +452,13 @@ void Graph_GetNodeEdges(const Graph *g, const Node *n, Vector *edges, GRAPH_EDGE
         GrB_Col_extract(incoming, NULL, NULL, M, GrB_ALL, nodeCount, n->id, desc);
         GrB_Descriptor_free(&desc);
 
-        TuplesIter_reuse(tupleIter, (GrB_Matrix)incoming);
+        tupleIter = TuplesIter_new((GrB_Matrix)incoming);
         while(TuplesIter_next(tupleIter, &srcNodeID, NULL) != TuplesIter_DEPLETED)
             Graph_GetEdgesConnectingNodes(g, srcNodeID, n->id, edgeType, edges);
 
         GrB_Vector_free(&incoming);
+        TuplesIter_free(tupleIter);
     }
-
-    // Clean up.
-    TuplesIter_free(tupleIter);    
 }
 
 void _Graph_DeleteEntities(Graph *g, EntityID *IDs, size_t IDCount, DataBlock *entityStore) {
