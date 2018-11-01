@@ -189,12 +189,15 @@ AST_Validation _Validate_MATCH_Clause(const AST_Query *ast, char **reason) {
 
   /* Verify that no alias appears in multiple independent patterns.
    * TODO We should introduce support for this when possible. */
-  size_t patternCount = Vector_Size(ast->matchNode->patterns);
+  int patternCount = Vector_Size(ast->matchNode->patterns);
   if (Vector_Size(ast->matchNode->patterns) > 1) {
     TrieMap *reused_entities = NewTrieMap();
     Vector *pattern;
     AST_GraphEntity *elem;
-    for (size_t i = 0; i < patternCount; i ++) {
+
+    int pattern_ids[patternCount];
+    for (int i = 0; i < patternCount; i ++) {
+      pattern_ids[i] = i;
       Vector_Get(ast->matchNode->patterns, i, &pattern);
       for (int j = 0; j < Vector_Size(pattern); j ++) {
         Vector_Get(pattern, j, &elem);
@@ -202,13 +205,13 @@ AST_Validation _Validate_MATCH_Clause(const AST_Query *ast, char **reason) {
         if (!alias) continue;
         void *val = TrieMap_Find(reused_entities, alias, strlen(alias));
         // If this alias has been used in a previous pattern, emit an error.
-        if (val != TRIEMAP_NOTFOUND && (size_t)val != i) {
+        if (val != TRIEMAP_NOTFOUND && *(int*)val != i) {
           asprintf(reason, "Alias '%s' reused. Entities with the same alias may not be referenced in multiple patterns.", alias);
           res = AST_INVALID;
           break;
         }
         // Use the pattern index as a value, as it is valid to reuse a node alias within a pattern.
-        TrieMap_Add(reused_entities, alias, strlen(alias), (void *)i, TrieMap_DONT_CARE_REPLACE);
+        TrieMap_Add(reused_entities, alias, strlen(alias), &pattern_ids[i], TrieMap_DONT_CARE_REPLACE);
       }
     }
     TrieMap_Free(reused_entities, TrieMap_NOP_CB);
