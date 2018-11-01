@@ -60,23 +60,32 @@ class GraphMultiPatternQueryFlowTest(FlowTestsBase):
         assert(friend_count == 6)
     
     # Connect every node to every node.
-    def test_03_create_fully_connected_graph(self):
+    def test03_create_fully_connected_graph(self):
         query = """MATCH(r:person), (f:person) CREATE (r)-[:friend]->(f)"""
         actual_result = redis_graph.query(query)
         assert (actual_result.relationships_created == 49)
     
-    def test_04_verify_fully_connected_graph(self):
+    def test04_verify_fully_connected_graph(self):
         query = """MATCH(r:person)-[]->(f:person) RETURN count(r)"""
         actual_result = redis_graph.query(query)
         friend_count = int(float(actual_result.result_set[1][0]))
         assert(friend_count == 49)
     
     # Perform a cartesian product of 3 sets.
-    def test_05_cartesian_product(self):
+    def test05_cartesian_product(self):
         query = """MATCH(a), (b), (c) RETURN count(a)"""
         actual_result = redis_graph.query(query)
         friend_count = int(float(actual_result.result_set[1][0]))
         assert(friend_count == 343)
+
+    # Ensure that an error is issued when an alias from one pattern is referenced by another.
+    def test06_interdependent_patterns(self):
+        query = """MATCH(a)-[]->(b), (b)-[]->(c) RETURN count(b)"""
+        try:
+            actual_result = redis_graph.query(query)
+            assert(False)
+        except Exception, e:
+            assert("may not be referenced in multiple patterns") in e.message
 
 if __name__ == '__main__':
     unittest.main()
