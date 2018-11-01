@@ -108,6 +108,8 @@ OpResult CondTraverseConsume(OpBase *opBase, Record *r) {
     char *destNodeAlias = op->algebraic_results->dest_node->alias;
     Record_AddEntry(r, destNodeAlias, SI_PtrVal(destNode));
 
+    // TODO If edge were set here, the failing fixed-length test would be resolved.
+    // The changes I've thought to make to introduce that, however, have caused other issues.
     if(op->algebraic_expression->edge != NULL) {
         // We're guarantee to have at least one edge.
         Node *srcNode = Record_GetNode(*r, op->algebraic_expression->src_node->alias);

@@ -34,6 +34,8 @@ AlgebraicExpression *_AE_MUL(size_t operand_cap) {
     return ae;
 }
 
+// TODO This function incorrectly returns true when a node is repeatedly referenced,
+// as with (a)-[]->(a)
 int _intermidate_node(const Node *n) {
     /* ->()<- 
      * <-()->
@@ -242,6 +244,8 @@ AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(AlgebraicExpr
         }
 
         /* If intermidate node is referenced, create a new algebraic expression. */
+        // TODO This will falsely trigger in the given cases, but that does not seem
+        // to impact the results of these particular queries.
         if(_intermidate_node(dest) && _referred_node(dest, ref_entities)) {
             // Finalize current expression.
             iexp->dest_node = dest;
@@ -254,7 +258,7 @@ AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(AlgebraicExpr
             expressions[expIdx++] = iexp;
         }
     }
-    
+
     *exp_count = expIdx;
     TrieMap_Free(ref_entities, TrieMap_NOP_CB);
     return expressions;
