@@ -1,3 +1,4 @@
+#include <sys/param.h>
 #include "graphcontext.h"
 #include "serializers/graphcontext_type.h"
 #include "../util/rmalloc.h"
@@ -38,6 +39,50 @@ GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rs_name) 
 
   // Initialize the graph's matrices and datablock storage
   gc->g = Graph_New(GRAPH_DEFAULT_NODE_CAP);
+
+  gc->graph_name = rm_strdup(RedisModule_StringPtrLen(rs_name, NULL));
+  // Allocate the default space for stores and indices
+  gc->node_stores = rm_malloc(gc->label_cap * sizeof(LabelStore*));
+  gc->relation_stores = rm_malloc(gc->relation_cap * sizeof(LabelStore*));
+  gc->indices = rm_malloc(gc->index_cap * sizeof(Index*));
+
+  // Initialize the generic label and relation stores
+  gc->node_allstore = LabelStore_New("ALL", GRAPH_NO_LABEL);
+  gc->relation_allstore = LabelStore_New("ALL", GRAPH_NO_RELATION);
+
+  // Set and close GraphContext key in Redis keyspace
+  RedisModule_ModuleTypeSetValue(key, GraphContextRedisModuleType, gc);
+  RedisModule_CloseKey(key);
+
+  return gc;
+}
+
+GraphContext* GraphContext_NewWithCapacity(RedisModuleCtx *ctx, RedisModuleString *rs_name,
+                                           size_t node_cap, size_t edge_cap) {
+  // Create key for GraphContext from the unmodified string provided by the user
+  RedisModuleKey *key = RedisModule_OpenKey(ctx, rs_name, REDISMODULE_WRITE);
+  if (RedisModule_KeyType(key) != REDISMODULE_KEYTYPE_EMPTY) {
+    // Return NULL if key already exists
+    RedisModule_CloseKey(key);
+    return NULL;
+  }
+
+  GraphContext *gc = rm_malloc(sizeof(GraphContext));
+
+  // Always allocate at least one datablock for nodes and edges.
+  node_cap = MAX(node_cap, GRAPH_DEFAULT_NODE_CAP);
+  edge_cap = MAX(edge_cap, GRAPH_DEFAULT_NODE_CAP);
+
+  // Initial counts and capacities for distinct labels and relation types
+  gc->relation_cap = GRAPH_DEFAULT_RELATION_CAP;
+  gc->relation_count = 0;
+  gc->label_cap = GRAPH_DEFAULT_LABEL_CAP;
+  gc->label_count = 0;
+  gc->index_cap = DEFAULT_INDEX_CAP;
+  gc->index_count = 0;
+
+  // Initialize the graph's matrices and datablock storage
+  gc->g = Graph_NewWithCapacity(node_cap, edge_cap);
 
   gc->graph_name = rm_strdup(RedisModule_StringPtrLen(rs_name, NULL));
   // Allocate the default space for stores and indices
