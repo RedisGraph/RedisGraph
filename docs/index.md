@@ -1,6 +1,6 @@
 <center>![images/logo.svg](images/logo.svg)</center>
 
-# RedisGraph 
+# RedisGraph
 
 RedisGraph is the first queryable [Property Graph](https://github.com/opencypher/openCypher/blob/master/docs/property-graph-model.adoc) database to use [sparse matrices](https://en.wikipedia.org/wiki/Sparse_matrix) to represent the [adjacency matrix](https://en.wikipedia.org/wiki/Adjacency_matrix) in graphs and [linear algebra](http://faculty.cse.tamu.edu/davis/GraphBLAS.html) to query the graph.
 
@@ -78,7 +78,7 @@ How many riders represent team Ducati?
 
 Requirements:
 
-* The RedisGraph repository: `git clone https://github.com/RedisLabsModules/redis-graph.git`
+* The RedisGraph repository: `git clone https://github.com/RedisLabsModules/RedisGraph.git`
 * The build-essential and cmake packages: `apt-get install build-essential cmake`
 
 To build, run `make` in the project's directory
@@ -161,4 +161,4 @@ Some languages have client libraries that provide support for RedisGraph's comma
 
 ## License
 
-Apache 2.0 with Commons Clause - see [LICENSE](https://raw.githubusercontent.com/RedisLabsModules/redis-graph/master/LICENSE)
+Apache 2.0 with Commons Clause - see [LICENSE](https://raw.githubusercontent.com/RedisLabsModules/RedisGraph/master/LICENSE)

@@ -1,4 +1,4 @@
-[![CircleCI](https://circleci.com/gh/RedisLabsModules/redis-graph/tree/master.svg?style=svg)](https://circleci.com/gh/RedisLabsModules/redis-graph/tree/master)
+[![CircleCI](https://circleci.com/gh/RedisLabsModules/RedisGraph/tree/master.svg?style=svg)](https://circleci.com/gh/RedisLabsModules/RedisGraph/tree/master)
 
 # RedisGraph - A graph database module for Redis
 
@@ -77,7 +77,7 @@ How many riders represent team Ducati?
 
 Requirements:
 
-* The RedisGraph repository: `git clone https://github.com/RedisLabsModules/redis-graph.git`
+* The RedisGraph repository: `git clone https://github.com/RedisLabsModules/RedisGraph.git`
 * The build-essential and cmake packages: `apt-get install build-essential cmake`
 
 To build, run `make` in the project's directory
