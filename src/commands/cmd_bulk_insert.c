@@ -34,7 +34,7 @@ int _BeginBulkInsert(RedisModuleCtx *ctx, RedisModuleString *graph_name,
         char *err;
         if (keytype == REDISMODULE_KEYTYPE_MODULE) {
             err = "Bulk insertion not allowed on pre-existing graph.";
-        } else if (keytype != REDISMODULE_KEYTYPE_EMPTY) {
+        } else {
             err = "Graph name already in use as different key type.";
         }
         RedisModule_CloseKey(key);
@@ -62,8 +62,8 @@ void _MGraph_BulkInsert(void *args) {
     // TODO Only create key and lock context in the END block
     RedisModule_ThreadSafeContextLock(ctx);
 
-    RedisModuleString **argv = context->argv + 1; // skip "GRAPH.BULK" token
-    int argc = context->argc - 2; // skip GRAPH.BULK [GRAPHNAME]
+    RedisModuleString **argv = context->argv + 1; // skip "GRAPH.BULK"
+    int argc = context->argc - 2; // skip "GRAPH.BULK [GRAPHNAME]"
     RedisModuleString *rs_graph_name = *argv++;
     RedisModuleKey *key;
     size_t nodes = 0;   // Number of nodes created.
@@ -80,15 +80,30 @@ void _MGraph_BulkInsert(void *args) {
         if (_BeginBulkInsert(ctx, rs_graph_name, &final_node_count, &final_edge_count, argv) != BULK_OK) {
             goto cleanup;
         }
-        argv += 2; // skip [NODE_COUNT] [EDGE_COUNT]
-        argc -= 2; // skip [NODE_COUNT] [EDGE_COUNT]
+        argv += 3; // skip "BEGIN [NODE_COUNT] [EDGE_COUNT]"
+        argc -= 3; // skip "BEGIN [NODE_COUNT] [EDGE_COUNT]"
 
         // Create graph and initialize its data stores.
         gc = GraphContext_NewWithCapacity(ctx, rs_graph_name,
                                           final_node_count, final_edge_count);
 
         // Exit if graph creation failed
-        if (gc == NULL) goto cleanup;
+        if (gc == NULL) {
+            RedisModule_ReplyWithError(ctx, "Failed to allocate space for graph.");
+            goto cleanup;
+        } else if (argc == 0) {
+            // Only the allocation string was received, so our work is done.
+            char success[1024] = {0};
+            int len = snprintf(success, 1024, "Initialized a graph to accommodate %lld nodes and %lld edges.", final_node_count, final_edge_count);
+            RedisModule_ReplyWithStringBuffer(ctx, success, len);
+            goto cleanup;
+        }
+    } else {
+        gc = GraphContext_Retrieve(ctx, rs_graph_name, false);
+        if (gc == NULL) {
+            RedisModule_ReplyWithError(ctx, "Bulk insert query did not include a BEGIN token and graph was not found.");
+            goto cleanup;
+        }
     }
 
     // Lock the graph for writing.
