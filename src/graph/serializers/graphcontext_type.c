@@ -86,6 +86,9 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
    * (index label, index property) X #indices
    */
 
+  // Enable matrix synchronization
+  Graph_SetSynchronization(true);
+
   if (encver > GRAPHCONTEXT_TYPE_ENCODING_VERSION) {
     // Not forward compatible.
     printf("Failed loading Graph, RedisGraph version (%d) is not forward compatible.\n", REDISGRAPH_MODULE_VERSION);

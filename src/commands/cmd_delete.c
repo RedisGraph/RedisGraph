@@ -35,6 +35,8 @@ void _DeleteContext_Free(DeleteContext *ctx) {
 /* Delete graph, removing the key from Redis and
  * freeing every resource allocated by the graph. */
 void _MGraph_Delete(void *args) {
+    // Disable matrix synchronization
+    Graph_SetSynchronization(false);
     double tic[2];
     simple_tic(tic);
     DeleteContext *dCtx = args;
