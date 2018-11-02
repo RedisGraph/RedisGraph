@@ -31,6 +31,9 @@ void _MGraph_BulkInsert(void *args) {
     RedisModuleCtx *ctx = RedisModule_GetThreadSafeContext(context->bc);
     RedisModule_ThreadSafeContextLock(ctx);
 
+    // Disable matrix synchronization
+    Graph_SetSynchronization(false);
+
     int argc = context->argc;
     RedisModuleString **argv = context->argv;
     RedisModuleString *rs_graph_name = argv[1];

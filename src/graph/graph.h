@@ -49,6 +49,9 @@ void Graph_AcquireWriteLock(Graph *g);
 /* Release the held lock */
 void Graph_ReleaseLock(Graph *g);
 
+/* Choose the current matrix synchronization policy. */
+void Graph_SetSynchronization(bool on);
+
 // Create a new graph.
 Graph *Graph_New (
     size_t n    // Initial number of nodes in the graph.

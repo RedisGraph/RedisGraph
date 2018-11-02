@@ -75,6 +75,9 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
    * (index label, index property) X #indices
    */
 
+  // Enable matrix synchronization
+  Graph_SetSynchronization(true);
+
   if (encver > GRAPHCONTEXT_TYPE_ENCODING_VERSION) {
     return NULL;
   }

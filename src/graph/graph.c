@@ -50,10 +50,23 @@ static inline void _Graph_ApplyPending(GrB_Matrix m) {
 
 /*========================= Graph utility functions ========================= */
 
+/* Allow different operations to choose their matrix synchronization policy.
+ * Bulk insertion and whole-graph deletion do not need to resize matrices
+ * or force completion of pending GraphBLAS operations. */
+
+// typedef for synchronization function pointer
+typedef void (*SynchronizeMatrixFunc)(const Graph*, GrB_Matrix);
+SynchronizeMatrixFunc _Graph_SynchronizeMatrix;
+
+/* Do not modify matrices upon retrieval. */
+void _Graph_DontSynchronize(const Graph *g, GrB_Matrix m) {
+  return;
+}
+
 /* Resize given matrix, such that its number of row and columns
  * matches the number of nodes in the graph. Also, synchronize
  * matrix to execute any pending operations. */
-void _Graph_SynchronizeMatrix(const Graph *g, GrB_Matrix m) {
+void _Graph_Synchronize(const Graph *g, GrB_Matrix m) {
     GrB_Index n_rows;
     GrB_Matrix_nrows(&n_rows, m);
 
@@ -79,6 +92,14 @@ void _Graph_SynchronizeMatrix(const Graph *g, GrB_Matrix m) {
 
         _Graph_LeaveCriticalSection((Graph *)g);
     }
+}
+
+void Graph_SetSynchronization(bool sync_on) {
+  if (sync_on) {
+    _Graph_SynchronizeMatrix = _Graph_Synchronize;
+  } else {
+    _Graph_SynchronizeMatrix = _Graph_DontSynchronize;
+  }
 }
 
 /* Relocate src row and column, overriding dest. */

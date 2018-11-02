@@ -131,6 +131,9 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
     simple_tic(tic);
 
+    // Enable matrix synchronization
+    Graph_SetSynchronization(true);
+
     // Parse AST.
     // TODO: support concurrent parsing.
     char *errMsg = NULL;
