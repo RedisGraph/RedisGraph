@@ -18,12 +18,6 @@
 int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     if (argc < 3) return RedisModule_WrongArity(ctx);
 
-    // Enable matrix synchronization.
-    // This is not necessary for the EXPLAIN operations themselves,
-    // but as there can be concurrent EXPLAIN and QUERY ops, we must
-    // use a consistent policy.
-    Graph_SetSynchronization(true);
-
     const char *query = RedisModule_StringPtrLen(argv[2], NULL);
 
     /* Parse query, get AST. */

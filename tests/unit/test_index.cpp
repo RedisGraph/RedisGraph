@@ -33,8 +33,6 @@ class IndexTest: public ::testing::Test {
 
       // Use the malloc family for allocations
       Alloc_Reset();
-      // Enable matrix synchronization
-      Graph_SetSynchronization(true);
     }
 
     void TearDown() {
