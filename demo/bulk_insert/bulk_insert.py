@@ -2,6 +2,53 @@ import redis
 import csv
 import os
 import click
+import ipdb
+
+class CSVError(Exception):
+    pass
+
+def validate_label_csvs(csvs):
+    count = 0
+    # Iterate over all CSV inputs 
+    for f in csvs:
+        with open(f, 'rt') as csvfile:
+            reader = csv.reader(csvfile)
+            # Expect all rows to have the same column count as the header.
+            expected_col_count = len(next(reader))
+            for row in reader:
+                # Raise an exception if the wrong number of columns are found
+                if len(row) != expected_col_count:
+                    raise CSVError ("%s:%d Expected %d columns, encountered %d ('%s')"
+                                    % (f, reader.line_num, expected_col_count, len(row), ','.join(row)))
+            # Subtract 1 from each file's entity count
+            # to compensate for the header.
+            count += reader.line_num - 1
+    return count
+
+def validate_relation_csvs(csvs):
+    count = 0
+    # Edge files should have two columns.
+    expected_col_count = 2
+    # Iterate over all CSV inputs 
+    for f in csvs:
+        with open(f, 'rt') as csvfile:
+            reader = csv.reader(csvfile)
+            for row in reader:
+                # Raise an exception if the wrong number of columns are found
+                if len(row) != expected_col_count:
+                    raise CSVError ("%s:%d Expected %d columns, encountered %d ('%s')"
+                                    % (f, reader.line_num, expected_col_count, len(row), ','.join(row)))
+                for elem in row:
+                    # Raise an exception if an element cannot be read as an integer
+                    try:
+                        int(elem)
+                    except:
+                        raise CSVError ("%s:%d Token '%s' was not a node ID)"
+                                % (f, reader.line_num, elem))
+            count += reader.line_num
+    return count
+
+
 
 # Argument is the container class for the metadata parameters to be sent in a Redis query.
 # An object of this type is comprised of the type of the inserted entity ("NODES" or "RELATIONS"),
@@ -117,24 +164,25 @@ class RelationDescriptor(Descriptor):
 max_tokens = 1024 * 1024
 graphname = None
 redis_client = None
+query_count = 0
+node_count = 0
 
 def QueryRedis(metadata, entities):
-  cmd = metadata.unroll() + entities
   # TODO - asynchronous execution of these queries would be really nice; we don't need to
   # wait for a response. These two approaches take about the same time, though -
   # find a solution
-
-  #  pipe = redis_client.pipeline()
-  #  result = pipe.execute_command("GRAPH.BULK", graphname, *cmd)
-  #  pipe.execute()
-  result = redis_client.execute_command("GRAPH.BULK",
-      graphname,
-      *cmd
-      )
+  global query_count
+  cmd_prefix = ["GRAPH.BULK", graphname]
+  if query_count == 0:
+      cmd_prefix.append("BEGIN");
+  cmd = cmd_prefix + metadata.unroll() + entities
+  # Send query to Redis client
+  result = redis_client.execute_command(*cmd)
   stats = result.split(', '.encode())
   metadata.entities_created += int(stats[0].split(' '.encode())[0])
   metadata.entities_created += int(stats[1].split(' '.encode())[0])
   metadata.queries_processed += 1
+  query_count += 1
 
 def ProcessNodes(nodes_csv_files):
     labels = Argument("NODES")
@@ -187,7 +235,6 @@ def ProcessNodes(nodes_csv_files):
     labels.remove_descriptors(depleted_labels)
     print("%d Nodes created in %d queries." % (labels.entities_created, labels.queries_processed))
 
-# TODO This might be sufficiently similar to ProcessNodes to allow for just one function with different descriptors
 def ProcessRelations(relations_csv_files):
     # Introduce relations
     rels = Argument("RELATIONS")
@@ -242,27 +289,38 @@ def help():
 
 @click.command()
 @click.argument('graph')
+# Redis server connection settings
 @click.option('--host', '-h', default='127.0.0.1', help='Redis server host')
 @click.option('--port', '-p', default=6379, help='Redis server port')
-@click.option('--nodes', '-n', multiple=True, help='path to node csv file')
+@click.option('--password', '-P', default=None, help='Redis server password')
+@click.option('--ssl', '-s', default=False, help='Server is SSL-enabled')
+# CSV file paths
+@click.option('--nodes', '-n', required=True, multiple=True, help='path to node csv file')
 @click.option('--relations', '-r', multiple=True, help='path to relation csv file')
-@click.option('--max_buffer_size', '-m', default=1024*1024, help='max token count per Redis query')
-def bulk_insert(graph, host, port, nodes, relations, max_buffer_size):
+# Debug options
+@click.option('--max_buffer_size', '-m', default=1024*1024, help='(DEBUG ONLY) - max token count per Redis query')
+# ssh, pw
+def bulk_insert(graph, host, port, password, ssl, nodes, relations, max_buffer_size):
     global graphname
     global redis_client
     global max_tokens
     graphname = graph
-    redis_client = redis.StrictRedis(host=host, port=port)
+    redis_client = redis.StrictRedis(host=host, port=port, password=password, ssl=ssl)
     if max_buffer_size > max_tokens:
-      print("Requested buffer size too large, capping queries at %d." % max_tokens)
+        print("Requested buffer size too large, capping queries at %d." % max_tokens)
     else:
-      max_tokens = max_buffer_size
+        max_tokens = max_buffer_size
 
-    if nodes:
-      ProcessNodes(nodes)
+    node_count = validate_label_csvs(nodes)
 
+    relation_count = 0
     if relations:
-      ProcessRelations(relations)
+        relation_count = validate_relation_csvs(relations)
+
+    ProcessNodes(nodes)
+    if relations:
+        ProcessRelations(relations)
 
 if __name__ == '__main__':
   bulk_insert()
+
