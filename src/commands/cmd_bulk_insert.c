@@ -31,9 +31,6 @@ void _MGraph_BulkInsert(void *args) {
     RedisModuleCtx *ctx = RedisModule_GetThreadSafeContext(context->bc);
     RedisModule_ThreadSafeContextLock(ctx);
 
-    // Disable matrix synchronization
-    Graph_SetSynchronization(false);
-
     int argc = context->argc;
     RedisModuleString **argv = context->argv;
     RedisModuleString *rs_graph_name = argv[1];
@@ -47,6 +44,9 @@ void _MGraph_BulkInsert(void *args) {
 
     // Exit if graph creation failed
     if (gc == NULL) goto cleanup;
+
+    // Disable matrix synchronization for bulk insert operation
+    Graph_SetSynchronization(gc->g, false);
 
     int rc = BulkInsert(ctx, gc, &nodes, &edges, argv+2, argc-2);
 

@@ -35,8 +35,6 @@ void _DeleteContext_Free(DeleteContext *ctx) {
 /* Delete graph, removing the key from Redis and
  * freeing every resource allocated by the graph. */
 void _MGraph_Delete(void *args) {
-    // Disable matrix synchronization
-    Graph_SetSynchronization(false);
     double tic[2];
     simple_tic(tic);
     DeleteContext *dCtx = args;
@@ -60,6 +58,9 @@ void _MGraph_Delete(void *args) {
     // to acquire the lock.
     GraphContext *gc = RedisModule_ModuleTypeGetValue(key);
     Graph_AcquireWriteLock(gc->g);
+
+    // Disable matrix synchronization for graph deletion.
+    Graph_SetSynchronization(gc->g, false);
 
     // Remove GraphContext from keyspace.
     if(RedisModule_DeleteKey(key) == REDISMODULE_OK) {

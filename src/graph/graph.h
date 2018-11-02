@@ -25,20 +25,26 @@
 #define GRAPH_NO_LABEL -1               // Labels are numbered [0-N], -1 represents no label.
 #define GRAPH_NO_RELATION -1            // Relations are numbered [0-N], -1 represents no relation.
 
-typedef struct {
-    DataBlock *nodes;               // Graph nodes stored in blocks.
-    DataBlock *edges;               // Graph edges stored in blocks.
-    Edge *_edgesHashTbl;            // Hash table containing edges.
-    GrB_Matrix adjacency_matrix;    // Adjacency matrix, holds all graph connections.
-    GrB_Matrix *relations;          // Relation matrices.
-    size_t relation_count;          // Number of relation matrices.
-    GrB_Matrix *labels;             // Label matrices.
-    size_t label_count;             // Number of label matrices.    
-    pthread_mutex_t _mutex;         // Mutex for accessing critical sections.
-    pthread_rwlock_t _rwlock;       // Read-write lock scoped to this specific graph
-    bool _writelocked;              // true if the read-write lock was acquired by a writer
-} Graph;
 
+// Forward declaration of Graph struct
+typedef struct Graph Graph;
+// typedef for synchronization function pointer
+typedef void (*SyncMatrixFunc)(const Graph*, GrB_Matrix);
+
+struct Graph {
+    SyncMatrixFunc SynchronizeMatrix; // Function pointer to matrix synchronization routine.
+    DataBlock *nodes;                 // Graph nodes stored in blocks.
+    DataBlock *edges;                 // Graph edges stored in blocks.
+    Edge *_edgesHashTbl;              // Hash table containing edges.
+    GrB_Matrix adjacency_matrix;      // Adjacency matrix, holds all graph connections.
+    GrB_Matrix *relations;            // Relation matrices.
+    size_t relation_count;            // Number of relation matrices.
+    GrB_Matrix *labels;               // Label matrices.
+    size_t label_count;               // Number of label matrices.
+    pthread_mutex_t _mutex;           // Mutex for accessing critical sections.
+    pthread_rwlock_t _rwlock;         // Read-write lock scoped to this specific graph
+    bool _writelocked;                // true if the read-write lock was acquired by a writer
+};
 /* Graph synchronization functions
  * The graph is initialized with a read-write lock allowing
  * concurrent access from one writer or N readers. */
@@ -50,7 +56,7 @@ void Graph_AcquireWriteLock(Graph *g);
 void Graph_ReleaseLock(Graph *g);
 
 /* Choose the current matrix synchronization policy. */
-void Graph_SetSynchronization(bool on);
+void Graph_SetSynchronization(Graph *g, bool enable);
 
 // Create a new graph.
 Graph *Graph_New (

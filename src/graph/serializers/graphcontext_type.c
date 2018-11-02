@@ -75,9 +75,6 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
    * (index label, index property) X #indices
    */
 
-  // Enable matrix synchronization
-  Graph_SetSynchronization(true);
-
   if (encver > GRAPHCONTEXT_TYPE_ENCODING_VERSION) {
     return NULL;
   }
@@ -134,6 +131,7 @@ void GraphContextType_AofRewrite(RedisModuleIO *aof, RedisModuleString *key, voi
 
 void GraphContextType_Free(void *value) {
   GraphContext *gc = value;
+  Graph_SetSynchronization(gc->g, false);
   GraphContext_Free(gc);
 }
 
