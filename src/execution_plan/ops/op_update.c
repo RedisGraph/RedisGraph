@@ -20,7 +20,7 @@ OpBase* NewUpdateOp(GraphContext *gc, AST_Query *ast, ResultSet *result_set) {
     op_update->update_expressions_count = 0;
     op_update->entities_to_update_count = 0;
     op_update->entities_to_update_cap = 16; /* 16 seems reasonable number to start with. */
-    op_update->entities_to_update = malloc(sizeof(EntityUpdateEvalCtx) * op_update->entities_to_update_cap);
+    op_update->entities_to_update = malloc(sizeof(EntityUpdateCtx) * op_update->entities_to_update_cap);
 
     _OpUpdate_BuildUpdateEvalCtx(op_update, ast->setNode);
 
@@ -47,7 +47,8 @@ void _OpUpdate_BuildUpdateEvalCtx(OpUpdate* op, AST_SetNode *setNode) {
         Vector_Get(setNode->set_elements, i, &element);
 
         /* Get a reference to the updated entity. */
-        op->update_expressions[i].alias = element->entity->alias;
+        op->update_expressions[i].ge = MatchClause_GetEntity(op->ast->matchNode,
+                                                             element->entity->alias);
         op->update_expressions[i].property = element->entity->property;
         op->update_expressions[i].exp = AR_EXP_BuildFromAST(element->exp);
     }
@@ -62,13 +63,41 @@ void _OpUpdate_QueueUpdate(OpUpdate *op, EntityProperty *dest_entity_prop, SIVal
     if(op->entities_to_update_count == op->entities_to_update_cap) {
         op->entities_to_update_cap *= 2;
         op->entities_to_update = realloc(op->entities_to_update, 
-                                         op->entities_to_update_cap * sizeof(EntityUpdateEvalCtx));
+                                         op->entities_to_update_cap * sizeof(EntityUpdateCtx));
     }
 
     int i = op->entities_to_update_count;
     op->entities_to_update[i].dest_entity_prop = dest_entity_prop;
     op->entities_to_update[i].new_value = new_value;
     op->entities_to_update_count++;
+}
+
+/* If a new property was introduced, add it to the schema associated
+ * with its label. */
+void _UpdateSchema(const OpUpdate *op, EntityUpdateEvalCtx *expression, EntityID id) {
+    LabelStore *store = NULL;
+    AST_GraphEntity *ge = expression->ge;
+    LabelStoreType t = (ge->t == N_ENTITY) ? STORE_NODE : STORE_EDGE;
+    if (ge->label) {
+        /* If a label was provided on the match clause, retrieve the associated store. */
+        // TODO In this scenario, the previous method (updating stores once per
+        // distinct update expression) was sufficient. This is rather more work, as it
+        // trigger for every entity that receives a new property. Once we implement
+        // multi-label, regardless, checking the MATCH clause will not be adequate.
+        store = GraphContext_GetStore(op->gc, ge->label, t);
+    } else {
+        /* Label was not provided; seek the appropriate store from the GraphContext. */
+        if (t == STORE_NODE) {
+          store = GraphContext_FindNodeLabel(op->gc, id);
+        } else {
+          // TODO Need to retrieve the relation type store given an edge ID.
+          // This might be achievable by accessing the QueryGraph.
+        }
+    }
+    if (store == NULL) return; // Unlabeled entity
+
+    /* Add property to store if not already present. */
+    LabelStore_UpdateSchema(store, 1, &expression->property);
 }
 
 OpResult OpUpdateConsume(OpBase *opBase, Record *r) {
@@ -83,7 +112,7 @@ OpResult OpUpdateConsume(OpBase *opBase, Record *r) {
     for(int i = 0; i < op->update_expressions_count; i++, update_expression++) {
         SIValue new_value = AR_EXP_Evaluate(update_expression->exp, *r);
         /* Find ref to property. */
-        SIValue entry = Record_GetEntry(*r, update_expression->alias);
+        SIValue entry = Record_GetEntry(*r, update_expression->ge->alias);
         GraphEntity *entity = (GraphEntity*) entry.ptrval;
         int j = 0;
         for(; j < entity->prop_count; j++) {
@@ -99,6 +128,10 @@ OpResult OpUpdateConsume(OpBase *opBase, Record *r) {
              * Once we commit the update, we'll set the actual value. */
             GraphEntity_Add_Properties(entity, 1, &update_expression->property, PROPERTY_NOTFOUND);
             _OpUpdate_QueueUpdate(op, &entity->properties[entity->prop_count-1], new_value);
+
+            /* Add new property to schema associated with this entity. Updates do not need to be enqueued,
+             * as they only use the new property's name and repeated insertions have no effect. */
+            _UpdateSchema(op, update_expression, entity->id);
         }
     }
 
@@ -120,30 +153,17 @@ void _UpdateEntities(OpUpdate *op) {
         op->result_set->stats.properties_set = op->entities_to_update_count;
 }
 
-/* Update tracked schemas according to set properties.
- * Because SET can be used to introduce new properties
- * We have to update our schemas to track newly created properties. */
-void _UpdateSchemas(const OpUpdate *op) {
-
-    AST_SetNode *setNode = op->ast->setNode;
+/* Update the schemas not scoped to specific labels
+ * to include any properties that were just introduced
+ * by the SET clause. */
+void _UpdateGenericSchemas(const OpUpdate *op) {
+    EntityUpdateEvalCtx *update_expression;
     for(int i = 0; i < op->update_expressions_count; i++) {
-        AST_SetElement *setElement;
+        char *entityAlias = op->update_expressions[i].ge->alias;
+        char *entityProp = op->update_expressions[i].property;
 
-        Vector_Get(setNode->set_elements, i, &setElement);
-        char *entityAlias = setElement->entity->alias;
-        char *entityProp = setElement->entity->property;
-
-        /* Locate node label. */
-        AST_GraphEntity* ge = MatchClause_GetEntity(op->ast->matchNode, entityAlias);
-        char *l = ge->label;
-        // TODO If the match clause does not provide a label, we must update all the stores
-        // affected by the SET clause.
-        LabelStoreType t = (ge->t == N_ENTITY) ? STORE_NODE : STORE_EDGE;
-        LabelStore *store = GraphContext_GetStore(op->gc, l, t);
-        if (!store) continue;
-
+        LabelStoreType t = (op->update_expressions[i].ge->t == N_ENTITY) ? STORE_NODE : STORE_EDGE;
         LabelStore *allStore = GraphContext_AllStore(op->gc, t);
-        LabelStore_UpdateSchema(store, 1, &entityProp);
         LabelStore_UpdateSchema(allStore, 1, &entityProp);
     }
 }
@@ -151,7 +171,7 @@ void _UpdateSchemas(const OpUpdate *op) {
 void OpUpdateFree(OpBase *ctx) {
     OpUpdate *op = (OpUpdate*)ctx;
     _UpdateEntities(op);
-    _UpdateSchemas(op);
+    _UpdateGenericSchemas(op);
     
     /* Free each update context. */
     for(int i = 0; i < op->update_expressions_count; i++) {

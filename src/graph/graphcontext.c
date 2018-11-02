@@ -150,6 +150,19 @@ LabelStore* GraphContext_AddRelationType(GraphContext *gc, const char *label) {
   return store;
 }
 
+// Find the offset of the label store for the provided node.
+// TODO Will only return the first match (if any), which will not be adequate
+// when we implement multi-label
+LabelStore* GraphContext_FindNodeLabel(const GraphContext *gc, NodeID id) {
+  for (int i = 0; i < gc->label_count; i ++) {
+    GrB_Matrix M = Graph_GetLabel(gc->g, i);
+    bool has_label = false;
+    GrB_Matrix_extractElement_BOOL(&has_label, M, id, id);
+    if (has_label) return gc->node_stores[i];
+  }
+  return NULL;
+}
+
 //------------------------------------------------------------------------------
 // Index API
 //------------------------------------------------------------------------------

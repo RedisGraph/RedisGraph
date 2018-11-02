@@ -45,6 +45,8 @@ LabelStore* GraphContext_GetStore(const GraphContext *gc, const char *label, Lab
 LabelStore* GraphContext_AddLabel(GraphContext *gc, const char *label);
 // Add a new store and matrix for the given relation type 
 LabelStore* GraphContext_AddRelationType(GraphContext *gc, const char *label);
+// Given a Node ID, return the LabelStore it is associated with.
+LabelStore* GraphContext_FindNodeLabel(const GraphContext *gc, NodeID id);
 
 /* Index API */
 bool GraphContext_HasIndices(GraphContext *gc);
