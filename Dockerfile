@@ -1,6 +1,6 @@
 FROM redis:latest as builder
 
-ENV DEPS "python python-setuptools python-pip wget build-essential cmake"
+ENV DEPS "python python-setuptools python-pip wget build-essential cmake libomp-dev"
 
 # Set up a build environment
 RUN set -ex;\
