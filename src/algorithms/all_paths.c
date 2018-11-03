@@ -96,8 +96,8 @@ size_t AllPaths
 )
 {
     assert(g && minLen >= 0 && minLen <= maxLen && pathsCap && paths);
+    GrB_Matrix relation = Graph_GetRelationMatrix(g, relationID);
 
-    GrB_Matrix relation = Graph_GetRelationMatrix(g, relationID);    
     /* Avoid revisiting edges along a constructed path by, marking visited edges,
      * for every traversed edge (A)-[]->(B) visited[A,B] is set. */
     GrB_Matrix visited;
