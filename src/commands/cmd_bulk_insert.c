@@ -45,6 +45,9 @@ void _MGraph_BulkInsert(void *args) {
     // Exit if graph creation failed
     if (gc == NULL) goto cleanup;
 
+    // Disable matrix synchronization for bulk insert operation
+    Graph_SetSynchronization(gc->g, false);
+
     int rc = BulkInsert(ctx, gc, &nodes, &edges, argv+2, argc-2);
 
     // Exit if insertion failed

@@ -59,6 +59,9 @@ void _MGraph_Delete(void *args) {
     GraphContext *gc = RedisModule_ModuleTypeGetValue(key);
     Graph_AcquireWriteLock(gc->g);
 
+    // Disable matrix synchronization for graph deletion.
+    Graph_SetSynchronization(gc->g, false);
+
     // Remove GraphContext from keyspace.
     if(RedisModule_DeleteKey(key) == REDISMODULE_OK) {
       char* strElapsed;

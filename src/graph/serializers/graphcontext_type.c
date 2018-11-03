@@ -131,6 +131,7 @@ void GraphContextType_AofRewrite(RedisModuleIO *aof, RedisModuleString *key, voi
 
 void GraphContextType_Free(void *value) {
   GraphContext *gc = value;
+  Graph_SetSynchronization(gc->g, false);
   GraphContext_Free(gc);
 }
 

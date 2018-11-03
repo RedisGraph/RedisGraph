@@ -50,10 +50,19 @@ static inline void _Graph_ApplyPending(GrB_Matrix m) {
 
 /*========================= Graph utility functions ========================= */
 
+/* Allow different operations to choose their matrix synchronization policy.
+ * Bulk insertion and whole-graph deletion do not need to resize matrices
+ * or force completion of pending GraphBLAS operations. */
+
+/* Do not modify matrices upon retrieval. */
+void _DontSynchronizeMatrix(const Graph *g, GrB_Matrix m) {
+  return;
+}
+
 /* Resize given matrix, such that its number of row and columns
  * matches the number of nodes in the graph. Also, synchronize
  * matrix to execute any pending operations. */
-void _Graph_SynchronizeMatrix(const Graph *g, GrB_Matrix m) {
+void _SynchronizeMatrix(const Graph *g, GrB_Matrix m) {
     GrB_Index n_rows;
     GrB_Matrix_nrows(&n_rows, m);
 
@@ -79,6 +88,14 @@ void _Graph_SynchronizeMatrix(const Graph *g, GrB_Matrix m) {
 
         _Graph_LeaveCriticalSection((Graph *)g);
     }
+}
+
+void Graph_SetSynchronization(Graph *g, bool enable) {
+  if (enable) {
+    g->SynchronizeMatrix = _SynchronizeMatrix;
+  } else {
+    g->SynchronizeMatrix = _DontSynchronizeMatrix;
+  }
 }
 
 /* Relocate src row and column, overriding dest. */
@@ -308,6 +325,9 @@ Graph *Graph_New(size_t n) {
     // Initialize a read-write lock scoped to the individual graph
     assert(pthread_rwlock_init(&g->_rwlock, NULL) == 0);
 
+    // Force GraphBLAS updates and resize matrices to node count by default
+    Graph_SetSynchronization(g, true);
+
     // Graph_New can only be invoked from writing contexts
     Graph_AcquireWriteLock(g);
     g->_writelocked = true;
@@ -336,7 +356,7 @@ void Graph_CreateNodes(Graph* g, size_t n, int* labels, DataBlockIterator **it) 
     NodeID node_id = (NodeID)Graph_NodeCount(g);
 
     _Graph_AddNodes(g, n, it);
-    _Graph_SynchronizeMatrix(g, g->adjacency_matrix);
+    g->SynchronizeMatrix(g, g->adjacency_matrix);
 
     if(labels) {
         for(size_t idx = 0; idx < n; idx++) {
@@ -581,7 +601,7 @@ void Graph_DeleteNodes(Graph *g, NodeID *IDs, size_t IDCount) {
     _Graph_DeleteEntities(g, IDs, IDCount, g->nodes);
 
     // Force matrix resizing.
-    _Graph_SynchronizeMatrix(g, g->adjacency_matrix);
+    g->SynchronizeMatrix(g, g->adjacency_matrix);
 
     // Cleanup.
     free(edgeIDs);
@@ -629,14 +649,14 @@ int Graph_AddRelationType(Graph *g) {
 GrB_Matrix Graph_GetAdjacencyMatrix(const Graph *g) {
     assert(g);
     GrB_Matrix m = g->adjacency_matrix;
-    _Graph_SynchronizeMatrix(g, m);
+    g->SynchronizeMatrix(g, m);
     return m;
 }
 
 GrB_Matrix Graph_GetLabel(const Graph *g, int label_idx) {
     assert(g && label_idx < g->label_count);
     GrB_Matrix m = g->labels[label_idx];
-    _Graph_SynchronizeMatrix(g, m);
+    g->SynchronizeMatrix(g, m);
     return m;
 }
 
@@ -648,7 +668,7 @@ GrB_Matrix Graph_GetRelation(const Graph *g, int relation_idx) {
         m = Graph_GetAdjacencyMatrix(g);
     } else {
         m = g->relations[relation_idx];
-        _Graph_SynchronizeMatrix(g, m);
+        g->SynchronizeMatrix(g, m);
     }
     return m;
 }

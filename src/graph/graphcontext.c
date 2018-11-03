@@ -65,6 +65,9 @@ GraphContext* GraphContext_Retrieve(RedisModuleCtx *ctx, RedisModuleString *rs_n
   GraphContext *gc = RedisModule_ModuleTypeGetValue(key);
   RedisModule_CloseKey(key);
 
+  // Force GraphBLAS updates and resize matrices to node count by default
+  Graph_SetSynchronization(gc->g, true);
+
   if (readonly) {
     Graph_AcquireReadLock(gc->g);
   } else {
