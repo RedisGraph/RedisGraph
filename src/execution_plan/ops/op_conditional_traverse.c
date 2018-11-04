@@ -122,8 +122,17 @@ OpResult CondTraverseConsume(OpBase *opBase, Record *r) {
 
     if(op->algebraic_expression->edge != NULL) {
         // We're guarantee to have at least one edge.
-        Node *srcNode = op->algebraic_expression->src_node;
-        Node *destNode = op->algebraic_expression->dest_node;
+        Node *srcNode;
+        Node *destNode;
+
+        if(op->algebraic_expression->operands[0].transpose) {
+            srcNode = op->algebraic_expression->dest_node;
+            destNode = op->algebraic_expression->src_node;
+        } else {
+            srcNode = op->algebraic_expression->src_node;
+            destNode = op->algebraic_expression->dest_node;            
+        }
+
         Graph_GetEdgesConnectingNodes(op->graph,
                                       ENTITY_GET_ID(srcNode),
                                       ENTITY_GET_ID(destNode),

@@ -10,6 +10,30 @@
 #include "serialize_graph.h"
 #include "../../GraphBLASExt/tuples_iter.h"
 #include "../../util/arr.h"
+#include "../../util/qsort.h"
+
+// Find elem position within array, if elem isn't present in array
+// its insertion position is returned.
+static uint64_t _binarySearch(uint64_t *array, NodeID id) {
+    uint32_t deletedIndiciesCount = array_len(array);
+    uint32_t left = 0;
+    uint32_t right = deletedIndiciesCount-1;
+    uint32_t pos;
+    while(left <= right) {
+        pos = (right + left)/2;
+        if(id < array[pos]) right = pos-1;
+        else left = pos+1;
+    }
+    return pos;
+}
+
+static NodeID _updatedID(uint64_t *array, NodeID id) {
+    uint32_t itemCount = array_len(array);
+    if(itemCount == 0) return id;
+    else if(id > array[itemCount-1]) return id - itemCount;
+    else if(id < array[0]) return id;
+    else return id - _binarySearch(array, id);
+}
 
 SIValue _RdbLoadSIValue(RedisModuleIO *rdb) {
     /* Format:
@@ -171,6 +195,9 @@ void _RdbSaveEdges(RedisModuleIO *rdb, const Graph *g) {
      * } X N
      * edge properties X N */
 
+    // Sort deleted indicies.
+    QSORT(NodeID, g->nodes->deletedIdx, array_len(g->nodes->deletedIdx), ENTITY_ID_ISLT);    
+
     // #edges (N)
     RedisModule_SaveUnsigned(rdb, Graph_EdgeCount(g));
 
@@ -187,8 +214,10 @@ void _RdbSaveEdges(RedisModuleIO *rdb, const Graph *g) {
             // Edge ID.
             RedisModule_SaveUnsigned(rdb, edgeID);
             // Source node ID.
+            src = _updatedID(g->nodes->deletedIdx, src);
             RedisModule_SaveUnsigned(rdb, src);
             // Destination node ID.
+            dest = _updatedID(g->nodes->deletedIdx, dest);
             RedisModule_SaveUnsigned(rdb, dest);
             // Relation type.
             RedisModule_SaveUnsigned(rdb, r);

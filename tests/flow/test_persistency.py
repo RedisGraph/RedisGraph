@@ -65,51 +65,60 @@ class GraphPersistency(FlowTestsBase):
                 redis_graph.add_edge(edge)
 
             redis_graph.commit()
-            
+
+            # Delete nodes, to introduce deleted item within our datablock
+            query = """MATCH (n:person) WHERE n.name = 'Roi' or n.name = 'Ailon' DELETE n"""
+            redis_graph.query(query)
+
+            query = """MATCH (n:country) WHERE n.name = 'USA' DELETE n"""
+            redis_graph.query(query)
+
             # Create index.
             actual_result = redis_con.execute_command("GRAPH.QUERY", GRAPH_NAME, "CREATE INDEX ON :person(name)")
             actual_result = redis_con.execute_command("GRAPH.QUERY", GRAPH_NAME, "CREATE INDEX ON :country(name)")
 
     # Connect a single node to all other nodes.
-    def test01_dump_restore(self):
-        # Save RDB & Load from RDB
-        redis_con.execute_command("DEBUG", "RELOAD")
+    def test01_save_load_rdb(self):
+        for i in range(2):
+            if i == 1:
+                # Save RDB & Load from RDB
+                redis_con.execute_command("DEBUG", "RELOAD")
 
-        # Verify
-        # Expecting len(people) person entities.
-        query = """MATCH (p:person) return COUNT(p)"""
-        actual_result = redis_graph.query(query)
-        nodeCount = int(float(actual_result.result_set[1][0]))
-        assert(nodeCount == len(people))
+            # Verify
+            # Expecting 5 person entities.
+            query = """MATCH (p:person) RETURN COUNT(p)"""
+            actual_result = redis_graph.query(query)
+            nodeCount = int(float(actual_result.result_set[1][0]))
+            assert(nodeCount == 5)
 
-        query = """MATCH (p:person) WHERE p.name='Roi' RETURN COUNT(p)"""
-        actual_result = redis_graph.query(query)
-        nodeCount = int(float(actual_result.result_set[1][0]))
-        assert(nodeCount == 1)
+            query = """MATCH (p:person) WHERE p.name='Alon' RETURN COUNT(p)"""
+            actual_result = redis_graph.query(query)
+            nodeCount = int(float(actual_result.result_set[1][0]))
+            assert(nodeCount == 1)
 
-        # Expecting len(countries) country entities.
-        query = """MATCH (c:country) RETURN COUNT(c)"""
-        actual_result = redis_graph.query(query)
-        nodeCount = int(float(actual_result.result_set[1][0]))
-        assert(nodeCount == len(countries))
+            # Expecting 3 country entities.
+            query = """MATCH (c:country) RETURN COUNT(c)"""
+            actual_result = redis_graph.query(query)
+            nodeCount = int(float(actual_result.result_set[1][0]))
+            assert(nodeCount == 3)
 
-        query = """MATCH (c:country) WHERE c.name = 'Israel' RETURN COUNT(c)"""
-        actual_result = redis_graph.query(query)
-        nodeCount = int(float(actual_result.result_set[1][0]))
-        assert(nodeCount == 1)
+            query = """MATCH (c:country) WHERE c.name = 'Israel' RETURN COUNT(c)"""
+            actual_result = redis_graph.query(query)
+            nodeCount = int(float(actual_result.result_set[1][0]))
+            assert(nodeCount == 1)
 
-        # Expecting len(visits) visit edges.
-        query = """MATCH (n:person)-[e:visit]->(c:country) WHERE e.purpose='pleasure' RETURN COUNT(e)"""
-        actual_result = redis_graph.query(query)
-        edgeCount = int(float(actual_result.result_set[1][0]))
-        assert(edgeCount == len(visits))
+            # Expecting 2 visit edges.
+            query = """MATCH (n:person)-[e:visit]->(c:country) WHERE e.purpose='pleasure' RETURN COUNT(e)"""
+            actual_result = redis_graph.query(query)        
+            edgeCount = int(float(actual_result.result_set[1][0]))
+            assert(edgeCount == 2)
 
-        # Verify indices exists.
-        actual_result = redis_con.execute_command("GRAPH.EXPLAIN", "G", "match (n:person) where n.name = 'Roi' RETURN n")
-        assert("Index Scan" in actual_result)
+            # Verify indices exists.
+            actual_result = redis_con.execute_command("GRAPH.EXPLAIN", "G", "match (n:person) where n.name = 'Roi' RETURN n")
+            assert("Index Scan" in actual_result)
 
-        actual_result = redis_con.execute_command("GRAPH.EXPLAIN", "G", "match (n:country) where n.name = 'Israel' RETURN n")
-        assert("Index Scan" in actual_result)
+            actual_result = redis_con.execute_command("GRAPH.EXPLAIN", "G", "match (n:country) where n.name = 'Israel' RETURN n")
+            assert("Index Scan" in actual_result)
 
 if __name__ == '__main__':
     unittest.main()
