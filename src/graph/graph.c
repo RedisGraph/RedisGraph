@@ -174,7 +174,6 @@ Graph *Graph_New(size_t n) {
 
     // Graph_New can only be invoked from writing contexts
     Graph_AcquireWriteLock(g);
-    g->_writelocked = true;
 
     /* TODO: We might want a mutex per matrix,
      * such that when a thread is resizing matrix A
@@ -232,10 +231,9 @@ int Graph_GetEdge(const Graph *g, EdgeID id, Edge *e) {
     return (e->entity!=NULL);
 }
 
-int Graph_GetNodeLabel(const Graph *g, const Node *n) {
-    assert(g && n);
+int Graph_GetNodeLabel(const Graph *g, NodeID nodeID) {
+    assert(g);
     int label = GRAPH_NO_LABEL;
-    NodeID nodeID = ENTITY_GET_ID(n);
     for(int i = 0; i < array_len(g->labels); i++) {
         bool x = false;
         GrB_Matrix M = Graph_GetLabel(g, i);

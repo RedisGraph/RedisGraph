@@ -10,47 +10,64 @@
 #include "serialize_graph.h"
 #include "serialize_store.h"
 #include "../../util/rmalloc.h"
+#include "../../version.h"
 
 /* Declaration of the type for redis registration. */
 RedisModuleType *GraphContextRedisModuleType;
 
 void GraphContextType_RdbSave(RedisModuleIO *rdb, void *value) {
   /* Format:
-   * graph name
+   * version
+   * graph name   
    * #label stores
-   * #relation stores
-   * #indices
-   * graph object
    * label allstore
-   * label store X #label stores
+   * label store X #label stores   
+   * #relation stores
    * relation allstore
-   * relation store X #relation stores
+   * relation store X #relation
+   * graph object
+   * #indices
    * (index label, index property) X #indices
    */
 
+  // Version 
+  RedisModule_SaveUnsigned(rdb, REDISGRAPH_VERSION_MAJOR);
+  RedisModule_SaveUnsigned(rdb, REDISGRAPH_VERSION_MINOR);
+  RedisModule_SaveUnsigned(rdb, REDISGRAPH_VERSION_PATCH);
+  
+  // Graph name.
   GraphContext *gc = value;
   RedisModule_SaveStringBuffer(rdb, gc->graph_name, strlen(gc->graph_name) + 1);
 
-  RedisModule_SaveUnsigned(rdb, gc->label_count);
-  RedisModule_SaveUnsigned(rdb, gc->relation_count);
-  RedisModule_SaveUnsigned(rdb, gc->index_count);
+  // #Label stores.
+  RedisModule_SaveUnsigned(rdb, gc->label_count + 1);
+
+  // Serialize label all store.
+  RdbSaveStore(rdb, gc->node_allstore);
+  
+  // Name of label X #label stores.
+  for(int i = 0; i < gc->label_count; i++) {
+    LabelStore *s = gc->node_stores[i];
+    RdbSaveStore(rdb, s);
+  }
+
+  // #Relation stores.
+  RedisModule_SaveUnsigned(rdb, gc->relation_count + 1);
+  
+  // Serialize relation all store.
+  RdbSaveStore(rdb, gc->relation_allstore);
+
+  // Name of relation X #relation.
+  for(int i = 0; i < gc->relation_count; i++) {
+    LabelStore *s = gc->relation_stores[i];
+    RdbSaveStore(rdb, s);
+  }
 
   // Serialize graph object
   RdbSaveGraph(rdb, gc->g);
 
-  // Serialize label all store
-  RdbSaveStore(rdb, gc->node_allstore);
-  // Serialize each label store
-  for (int i = 0; i < gc->label_count; i ++) {
-    RdbSaveStore(rdb, gc->node_stores[i]);
-  }
-
-  // Serialize relation all store
-  RdbSaveStore(rdb, gc->relation_allstore);
-  // Serialize each relation type store
-  for (int i = 0; i < gc->relation_count; i ++) {
-    RdbSaveStore(rdb, gc->relation_stores[i]);
-  }
+  // #Indices.
+  RedisModule_SaveUnsigned(rdb, gc->index_count);
 
   // Serialize each index
   Index *idx;
@@ -63,15 +80,16 @@ void GraphContextType_RdbSave(RedisModuleIO *rdb, void *value) {
 
 void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
   /* Format:
-   * graph name
+   * version
+   * graph name   
    * #label stores
-   * #relation stores
-   * #indices
-   * graph object
    * label allstore
-   * label store X #label stores
+   * name of label X #label stores
+   * #relation stores
    * relation allstore
-   * relation store X #relation stores
+   * name of relation X #relation   
+   * graph object
+   * #indices
    * (index label, index property) X #indices
    */
 
@@ -79,49 +97,69 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
     return NULL;
   }
 
+  // Version 
+  uint64_t versionMajor = RedisModule_LoadUnsigned(rdb);
+  uint64_t versionMinor = RedisModule_LoadUnsigned(rdb);
+  uint64_t versionPatch = RedisModule_LoadUnsigned(rdb);
+
   GraphContext *gc = rm_malloc(sizeof(GraphContext));
-  gc->g = NULL;
+  
+  // Initialize the generic label and relation stores
+  gc->node_stores = NULL;
+  gc->relation_stores = NULL;
+  gc->indices = NULL;    
+  
+  // Graph name
   // Duplicating string so that it can be safely freed if GraphContext
   // is deleted.
   gc->graph_name = rm_strdup(RedisModule_LoadStringBuffer(rdb, NULL));
-
-  gc->label_count = RedisModule_LoadUnsigned(rdb);
-  gc->relation_count = RedisModule_LoadUnsigned(rdb);
-  gc->index_count = RedisModule_LoadUnsigned(rdb);
-
+  gc->g = Graph_New(GRAPH_DEFAULT_NODE_CAP);
+  
+  // #Label stores
+  gc->label_count = RedisModule_LoadUnsigned(rdb) - 1;
   gc->label_cap = gc->label_count;
-  gc->relation_cap = gc->relation_count;
-  gc->index_cap = gc->index_count;
 
-  // Retrieve Graph object
-  gc->g = RdbLoadGraph(rdb);
-
-  // Retrieve all store for labels
+  // label all store.
   gc->node_allstore = RdbLoadStore(rdb);
 
   // Retrieve each label store
-  gc->node_stores = rm_malloc(gc->label_count * sizeof(LabelStore*));
+  gc->node_stores = rm_malloc((gc->label_count) * sizeof(LabelStore*));
   for (int i = 0; i < gc->label_count; i ++) {
     gc->node_stores[i] = RdbLoadStore(rdb);
+    Graph_AddLabel(gc->g);
   }
 
-  // Retrieve all store for relations
+  // #Relation stores
+  gc->relation_count = RedisModule_LoadUnsigned(rdb) - 1;
+  gc->relation_cap = gc->relation_count;
+
+  // Relation all store.
   gc->relation_allstore = RdbLoadStore(rdb);
 
-  // Retrieve each relation type store
-  gc->relation_stores = rm_malloc(gc->relation_count * sizeof(LabelStore*));
+  // Retrieve each relation store
+  gc->relation_stores = rm_malloc((gc->relation_count) * sizeof(LabelStore*));
   for (int i = 0; i < gc->relation_count; i ++) {
     gc->relation_stores[i] = RdbLoadStore(rdb);
+    Graph_AddRelationType(gc->g);
   }
 
-  gc->indices = rm_malloc(gc->index_count * sizeof(Index*));
-  for (int i = 0; i < gc->index_count; i ++) {
-    gc->indices[i] = rm_malloc(sizeof(Index));
+  // Graph object.
+  RdbLoadGraph(rdb, gc->g);
+
+  // #Indices
+  // (index label, index property) X #indices
+  uint64_t index_count = RedisModule_LoadUnsigned(rdb);
+  gc->index_count = 0;
+  gc->index_cap = index_count;
+  gc->indices = rm_malloc(gc->index_cap * sizeof(Index*));
+  for (int i = 0; i < index_count; i ++) {
     const char *label = RedisModule_LoadStringBuffer(rdb, NULL);
     const char *property = RedisModule_LoadStringBuffer(rdb, NULL);
     GraphContext_AddIndex(gc, label, property);
   }
 
+  // TODO: Try to remove Graph's Graph_AcquireWriteLock(g); from Graph_new.
+  GraphContext_Release(gc);
   return gc;
 }
 
@@ -148,4 +186,3 @@ int GraphContextType_Register(RedisModuleCtx *ctx) {
   }
   return REDISMODULE_OK;
 }
-

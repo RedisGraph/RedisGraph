@@ -169,7 +169,7 @@ int Graph_GetNode (
 // returns GRAPH_NO_LABEL if node has no label.
 int Graph_GetNodeLabel (
     const Graph *g,
-    const Node *n
+    NodeID nodeID
 );
 
 // Retrieves edge with given id from graph,

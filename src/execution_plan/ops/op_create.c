@@ -205,7 +205,7 @@ static void _CommitEdges(OpCreate *op) {
         else srcNodeID = ENTITY_GET_ID(Edge_GetSrcNode(e));
         
         NodeID destNodeID;
-        if(e->srcNodeID != INVALID_ENTITY_ID) destNodeID = e->destNodeID;
+        if(e->destNodeID != INVALID_ENTITY_ID) destNodeID = e->destNodeID;
         else destNodeID = ENTITY_GET_ID(Edge_GetDestNode(e));
 
         LabelStore *store = GraphContext_GetStore(op->gc, e->relationship, STORE_EDGE);
