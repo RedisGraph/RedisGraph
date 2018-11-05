@@ -37,7 +37,7 @@ supported.
 Match describes the relationship between queried entities, using ascii art to represent pattern(s) to match against.
 
 Nodes are represented by parenthesis `()`,
-while Relationsips are represented by brackets `[]`.
+while Relationships are represented by brackets `[]`.
 
 Each graph entity node/relationship can contain an alias and a label/relationship type, but both can be left empty if needed.
 
