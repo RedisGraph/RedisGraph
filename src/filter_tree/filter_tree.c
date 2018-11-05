@@ -26,7 +26,7 @@ FT_FilterNode* CreateCondFilterNode(int op) {
     return filterNode;
 }
 
-FT_FilterNode* _CreatePredicateFilterNode(const AST_PredicateNode *pn, const QueryGraph *qg) {
+FT_FilterNode* _CreatePredicateFilterNode(const AST_PredicateNode *pn) {
     FT_FilterNode *filterNode = malloc(sizeof(FT_FilterNode));
     filterNode->t= FT_N_PRED;
     filterNode->pred.op = pn->op;
@@ -80,15 +80,15 @@ Vector* FilterTree_SubTrees(const FT_FilterNode *root) {
     return sub_trees;
 }
 
-FT_FilterNode* BuildFiltersTree(const AST_FilterNode *root, const QueryGraph *qg) {
+FT_FilterNode* BuildFiltersTree(const AST_FilterNode *root) {
     FT_FilterNode *filterNode;
 
     if(root->t == N_PRED) {
-        filterNode = _CreatePredicateFilterNode(&root->pn, qg);
+        filterNode = _CreatePredicateFilterNode(&root->pn);
     } else {
         filterNode = CreateCondFilterNode(root->cn.op);
-        AppendLeftChild(filterNode, BuildFiltersTree(root->cn.left, qg));
-        AppendRightChild(filterNode, BuildFiltersTree(root->cn.right, qg));
+        AppendLeftChild(filterNode, BuildFiltersTree(root->cn.left));
+        AppendRightChild(filterNode, BuildFiltersTree(root->cn.right));
     }
 
     return filterNode;

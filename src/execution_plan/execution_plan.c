@@ -251,18 +251,15 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx,
     QueryGraph *q = QueryGraph_New(node_count, edge_count);
     execution_plan->query_graph = q;
 
-    // Build the query graph in advance, as it will be used to construct the filter tree
-    if(ast->matchNode) {
-        BuildQueryGraph(gc, q, ast->matchNode->_mergedPatterns);
-    }
-
     FT_FilterNode *filter_tree = NULL;
     if(ast->whereNode != NULL) {
-        filter_tree = BuildFiltersTree(ast->whereNode->filters, q);
+        filter_tree = BuildFiltersTree(ast->whereNode->filters);
         execution_plan->filter_tree = filter_tree;
     }
 
     if(ast->matchNode) {
+        BuildQueryGraph(gc, q, ast->matchNode->_mergedPatterns);
+
         // For every pattern in match clause.
         size_t patternCount = Vector_Size(ast->matchNode->patterns);
         
@@ -388,7 +385,7 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx,
     }
 
     if(ast->mergeNode) {
-        OpBase *opMerge = NewMergeOp(gc, q, execution_plan->result_set);
+        OpBase *opMerge = NewMergeOp(gc, ast, q, execution_plan->result_set);
         Vector_Push(ops, opMerge);
     }
 

@@ -209,6 +209,7 @@ AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(AlgebraicExpr
         /* If edge is referenced, set expression edge pointer. */
         if(_referred_entity(edge->ge.alias, ref_entities))
             iexp->edge = e;
+
         /* If this is a variable length edge, which is not fixed in length
          * remember edge length. */
         if(edge->length && !AST_LinkEntity_FixedLengthEdge(edge)) {
@@ -288,7 +289,7 @@ void _AlgebraicExpression_ReverseOperandOrder(AlgebraicExpression *exp) {
 
 void AlgebraicExpression_AppendTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transposeOp, bool freeOp) {
     assert(ae);    
-    if(ae->operand_count+1 >= ae->operand_cap) {
+    if(ae->operand_count+1 > ae->operand_cap) {
         ae->operand_cap += 4;
         ae->operands = realloc(ae->operands, sizeof(AlgebraicExpressionOperand) * ae->operand_cap);
     }
@@ -303,7 +304,7 @@ void AlgebraicExpression_PrependTerm(AlgebraicExpression *ae, GrB_Matrix m, bool
     assert(ae);
 
     ae->operand_count++;
-    if(ae->operand_count >= ae->operand_cap) {
+    if(ae->operand_count+1 > ae->operand_cap) {
         ae->operand_cap += 4;
         ae->operands = realloc(ae->operands, sizeof(AlgebraicExpressionOperand) * ae->operand_cap);
     }

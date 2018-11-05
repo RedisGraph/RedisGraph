@@ -208,22 +208,28 @@ void GraphContext_Free(GraphContext *gc) {
   LabelStore_Free(gc->relation_allstore);
 
   // Free all node stores
-  for (int i = 0; i < gc->label_count; i ++) {
-    LabelStore_Free(gc->node_stores[i]);
+  if(gc->node_stores) {
+    for (int i = 0; i < gc->label_count; i ++) {
+      LabelStore_Free(gc->node_stores[i]);
+    }
+    rm_free(gc->node_stores);
   }
-  rm_free(gc->node_stores);
 
   // Free all relation stores
-  for (int i = 0; i < gc->relation_count; i ++) {
-    LabelStore_Free(gc->relation_stores[i]);
+  if(gc->relation_stores) {
+    for (int i = 0; i < gc->relation_count; i ++) {
+      LabelStore_Free(gc->relation_stores[i]);
+    }
+    rm_free(gc->relation_stores);
   }
-  rm_free(gc->relation_stores);
 
   // Free all indices
-  for (int i = 0; i < gc->index_count; i ++) {
-    Index_Free(gc->indices[i]);
+  if(gc->indices) {
+    for (int i = 0; i < gc->index_count; i ++) {
+      Index_Free(gc->indices[i]);
+    }
+    rm_free(gc->indices);
   }
-  rm_free(gc->indices);
 
   rm_free(gc);
 }

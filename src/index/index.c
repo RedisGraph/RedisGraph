@@ -54,22 +54,24 @@ Index* Index_Create(Graph *g, int label_id, const char *label, const char *prop_
 
   initializeSkiplists(index);
 
+  Node node;
   EntityProperty *prop;
 
   skiplist *sl;
-  EntityID entity_id;
+  NodeID node_id;
   GraphEntity *entity;
 
   int found;
   int prop_index = 0;
-  while(TuplesIter_next(it, NULL, &entity_id) != TuplesIter_DEPLETED) {
-    entity = (GraphEntity*)Graph_GetNode(g, entity_id);
+
+  while(TuplesIter_next(it, NULL, &node_id) != TuplesIter_DEPLETED) {
+    Graph_GetNode(g, node_id, &node);
     // If the sought property is at a different offset than it occupied in the previous node,
     // then seek and update
-    if (strcmp(prop_str, entity->properties[prop_index].name)) {
+    if (strcmp(prop_str, ENTITY_PROPS(&node)[prop_index].name)) {
       found = 0;
-      for (int i = 0; i < entity->prop_count; i ++) {
-        prop = entity->properties + i;
+      for (int i = 0; i < ENTITY_PROP_COUNT(&node); i ++) {
+        prop = ENTITY_PROPS(&node) + i;
         if (!strcmp(prop_str, prop->name)) {
           prop_index = i;
           found = 1;
@@ -82,13 +84,13 @@ Index* Index_Create(Graph *g, int label_id, const char *label, const char *prop_
     // The targeted property does not exist on this node
     if (!found) continue;
 
-    prop = entity->properties + prop_index;
+    prop = ENTITY_PROPS(&node) + prop_index;
     // This value will be cloned within the skiplistInsert routine if necessary
     SIValue *key = &prop->value;
 
     assert(key->type == T_STRING || key->type & SI_NUMERIC);
     sl = (key->type & SI_NUMERIC) ? index->numeric_sl: index->string_sl;
-    skiplistInsert(sl, key, entity_id);
+    skiplistInsert(sl, key, node_id);
   }
 
   TuplesIter_free(it);

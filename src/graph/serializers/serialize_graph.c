@@ -9,52 +9,30 @@
 #include "../graph.h"
 #include "serialize_graph.h"
 #include "../../GraphBLASExt/tuples_iter.h"
+#include "../../util/arr.h"
+#include "../../util/qsort.h"
 
-void _RdbLoadMatrix(RedisModuleIO *rdb, GrB_Matrix m) {
-    /* Format:
-     *      #entries N
-     *      (row index,column index) X N
-     */
-
-    GrB_Index i;
-    GrB_Index j;
-    GrB_Index nvals;
-    nvals = RedisModule_LoadUnsigned(rdb);
-
-    while(nvals) {
-        i = RedisModule_LoadUnsigned(rdb);
-        j = RedisModule_LoadUnsigned(rdb);
-        GrB_Matrix_setElement_BOOL(m, true, i, j);
-        nvals--;
+// Find elem position within array, if elem isn't present in array
+// its insertion position is returned.
+static uint64_t _binarySearch(uint64_t *array, NodeID id) {
+    uint32_t deletedIndiciesCount = array_len(array);
+    uint32_t left = 0;
+    uint32_t right = deletedIndiciesCount-1;
+    uint32_t pos;
+    while(left <= right) {
+        pos = (right + left)/2;
+        if(id < array[pos]) right = pos-1;
+        else left = pos+1;
     }
+    return pos;
 }
 
-void _RdbLoadMatrices(RedisModuleIO *rdb, Graph *g) {
-    /* Format:
-     * adjacency matrix
-     * #relation matrices
-     *      #entries N
-     *      (row index,column index) X N
-     * #label matrices
-     *      #entries N
-     *      (row index,column index) X N
-     */
-
-    _RdbLoadMatrix(rdb, g->adjacency_matrix);
-
-    uint64_t relationMatricesCount = RedisModule_LoadUnsigned(rdb);
-    for(int i = 0; i < relationMatricesCount; i++) {
-        Graph_AddRelationType(g);
-        GrB_Matrix m = Graph_GetRelation(g, i);
-        _RdbLoadMatrix(rdb, m);
-    }
-
-    uint64_t labelMatricesCount = RedisModule_LoadUnsigned(rdb);
-    for(int i = 0; i < labelMatricesCount; i++) {
-        Graph_AddLabel(g);
-        GrB_Matrix m = Graph_GetLabel(g, i);
-        _RdbLoadMatrix(rdb, m);
-    }
+static NodeID _updatedID(uint64_t *array, NodeID id) {
+    uint32_t itemCount = array_len(array);
+    if(itemCount == 0) return id;
+    else if(id > array[itemCount-1]) return id - itemCount;
+    else if(id < array[0]) return id;
+    else return id - _binarySearch(array, id);
 }
 
 SIValue _RdbLoadSIValue(RedisModuleIO *rdb) {
@@ -74,7 +52,7 @@ SIValue _RdbLoadSIValue(RedisModuleIO *rdb) {
 void _RdbLoadEntity(RedisModuleIO *rdb, GraphEntity *e) {
     /* Format:
      * #properties N
-     * (name, SIValue) X N
+     * (name, value type, value) X N
     */
     uint64_t propCount = RedisModule_LoadUnsigned(rdb);
     size_t propNameLen;
@@ -92,55 +70,55 @@ void _RdbLoadEntity(RedisModuleIO *rdb, GraphEntity *e) {
 void _RdbLoadNodes(RedisModuleIO *rdb, Graph *g) {
     /* Format:
      * #nodes
+     *      ID
+     *      #labels M
+     *      (labels) X M
+     *      #properties N
+     *      (name, value type, value) X N
     */
     uint64_t nodeCount = RedisModule_LoadUnsigned(rdb);
     if(nodeCount == 0) return;
 
-    DataBlockIterator *iter;
-    Graph_CreateNodes(g, nodeCount, NULL, &iter);
+    for(uint64_t i = 0; i < nodeCount; i++) {
+        Node n;
+        // * ID
+        NodeID id = RedisModule_LoadUnsigned(rdb);
 
-    Node *n;
-    while((n = (Node*)DataBlockIterator_Next(iter))) {
-        _RdbLoadEntity(rdb, (GraphEntity*)n);
+        // * #labels M
+        // * (labels) X M
+        uint64_t nodeLabelCount = RedisModule_LoadUnsigned(rdb);
+        // Ignore nodeLabelCount.
+        uint64_t l = RedisModule_LoadUnsigned(rdb);
+        Graph_CreateNode(g, l, &n);
+
+        _RdbLoadEntity(rdb, (GraphEntity*)&n);
     }
-
-    DataBlockIterator_Free(iter);
 }
 
 void _RdbLoadEdges(RedisModuleIO *rdb, Graph *g) {
     /* Format:
      * #edges (N)
      * {
+     *  edge ID, currently not in use.
      *  source node ID
      *  destination node ID
      *  relation type
      * } X N
-    */
+     * edge properties X N */
 
     uint64_t edgeCount = RedisModule_LoadUnsigned(rdb);
     if(edgeCount == 0) return;
 
-    /* TODO: it might be better to process edges in batches,
-     * such that we do not allocate huge chunks of memory. */
-    EdgeDesc *connections = malloc(edgeCount * sizeof(EdgeDesc));
-
     // Construct connections.
     for(int i = 0; i < edgeCount; i++) {
-        connections[i].srcId = RedisModule_LoadUnsigned(rdb);
-        connections[i].destId = RedisModule_LoadUnsigned(rdb);
-        connections[i].relationId = RedisModule_LoadUnsigned(rdb);
-    }
-
-    DataBlockIterator *iter;
-    Graph_ConnectNodes(g, connections, edgeCount, &iter);
-    free(connections);
-
-    Edge *e;
-    while((e = (Edge*)DataBlockIterator_Next(iter))) {
-        _RdbLoadEntity(rdb, (GraphEntity*)e);
-    }
-
-    DataBlockIterator_Free(iter);
+        Edge e;
+        EdgeID edgeId = RedisModule_LoadUnsigned(rdb);
+        NodeID srcId = RedisModule_LoadUnsigned(rdb);
+        NodeID destId = RedisModule_LoadUnsigned(rdb);
+        uint64_t relation = RedisModule_LoadUnsigned(rdb);
+        assert(Graph_ConnectNodes(g, srcId, destId, relation, &e));
+        _RdbLoadEntity(rdb, (GraphEntity*)&e);
+    }    
 }
 
 void _RdbSaveSIValue(RedisModuleIO *rdb, const SIValue *v) {
@@ -159,10 +137,10 @@ void _RdbSaveSIValue(RedisModuleIO *rdb, const SIValue *v) {
     }
 }
 
-void _RdbSaveEntity(RedisModuleIO *rdb, const GraphEntity *e) {
+void _RdbSaveEntity(RedisModuleIO *rdb, const Entity *e) {
     /* Format:
      * #properties N
-     * (name, SIValue) X N */
+     * (name, value type, value) X N  */
 
     RedisModule_SaveUnsigned(rdb, e->prop_count);
 
@@ -173,114 +151,101 @@ void _RdbSaveEntity(RedisModuleIO *rdb, const GraphEntity *e) {
     }
 }
 
-void _RdbSaveNode(RedisModuleIO *rdb, const Node *n) {
-    _RdbSaveEntity(rdb, (GraphEntity*)n);
-}
-
 void _RdbSaveNodes(RedisModuleIO *rdb, const Graph *g) {
     /* Format:
      * #nodes
-     * nodes */
+     *      ID
+     *      #labels M
+     *      (labels) X M
+     *      #properties N
+     *      (name, value type, value) X N */
 
+    // #Nodes
     RedisModule_SaveUnsigned(rdb, Graph_NodeCount(g));
+
+    Entity *e;
     DataBlockIterator *iter = Graph_ScanNodes(g);
-    Node *n;
-    while((n = (Node*)DataBlockIterator_Next(iter))) {
-        _RdbSaveNode(rdb, n);
+    while((e = (Entity*)DataBlockIterator_Next(iter))) {
+        // ID, currently ignored.
+        RedisModule_SaveUnsigned(rdb, e->id);
+
+        // #labels, currently only one label per node.
+        RedisModule_SaveUnsigned(rdb, 1);
+
+        // (labels) X M
+        int l = Graph_GetNodeLabel(g, e->id);
+        RedisModule_SaveUnsigned(rdb, l);
+        
+        // properties N
+        // (name, value type, value) X N
+        _RdbSaveEntity(rdb, e);
     }
 
     DataBlockIterator_Free(iter);
-}
-
-void _RdbSaveEdge(RedisModuleIO *rdb, const Edge *e) {
-    _RdbSaveEntity(rdb, (GraphEntity*)e);
 }
 
 void _RdbSaveEdges(RedisModuleIO *rdb, const Graph *g) {
     /* Format:
      * #edges (N)
      * {
+     *  edge ID, currently not in use.
      *  source node ID
      *  destination node ID
      *  relation type
      * } X N
      * edge properties X N */
 
+    // Sort deleted indicies.
+    QSORT(NodeID, g->nodes->deletedIdx, array_len(g->nodes->deletedIdx), ENTITY_ID_ISLT);    
+
+    // #edges (N)
     RedisModule_SaveUnsigned(rdb, Graph_EdgeCount(g));
-    DataBlockIterator *iter = Graph_ScanEdges(g);
-    Edge *e;
-    while((e = (Edge*)DataBlockIterator_Next(iter))) {
-        RedisModule_SaveUnsigned(rdb, Edge_GetSrcNodeID(e));
-        RedisModule_SaveUnsigned(rdb, Edge_GetDestNodeID(e));
-        RedisModule_SaveUnsigned(rdb, Edge_GetRelationID(e));
-    }
-    DataBlockIterator_Reset(iter);
 
-    while((e = (Edge*)DataBlockIterator_Next(iter))) {
-        _RdbSaveEdge(rdb, e);
-    }
+    for(int r = 0; r < array_len(g->_relations_map); r++) {
+        Edge e;
+        NodeID src;
+        NodeID dest;
+        EdgeID edgeID;
+        GrB_Matrix M = g->_relations_map[r];
+        TuplesIter *it = TuplesIter_new(M);
 
-    DataBlockIterator_Free(iter);
-}
+        while(TuplesIter_next(it, &dest, &src) == TuplesIter_OK) {
+            GrB_Matrix_extractElement_UINT64(&edgeID, M, dest, src);
+            // Edge ID.
+            RedisModule_SaveUnsigned(rdb, edgeID);
+            // Source node ID.
+            src = _updatedID(g->nodes->deletedIdx, src);
+            RedisModule_SaveUnsigned(rdb, src);
+            // Destination node ID.
+            dest = _updatedID(g->nodes->deletedIdx, dest);
+            RedisModule_SaveUnsigned(rdb, dest);
+            // Relation type.
+            RedisModule_SaveUnsigned(rdb, r);
+            // Edge properties.
+            Graph_GetEdge(g, edgeID, &e);
+            _RdbSaveEntity(rdb, e.entity);
+        }
 
-void _RdbSaveMatrix(RedisModuleIO *rdb, GrB_Matrix m) {
-    /* Format:
-     * #entries N
-     * (row index,column index) X N */
-    TuplesIter *iter = TuplesIter_new(m);
-
-    GrB_Index nvals;
-    GrB_Index row;
-    GrB_Index col;
-
-    GrB_Matrix_nvals(&nvals, m);
-    RedisModule_SaveUnsigned(rdb, nvals);
-
-    while(TuplesIter_next(iter, &row, &col) == TuplesIter_OK) {
-        RedisModule_SaveUnsigned(rdb, row);
-        RedisModule_SaveUnsigned(rdb, col);
-    }
-
-    TuplesIter_free(iter);
-}
-
-void _RdbSaveMatrices(RedisModuleIO *rdb, Graph *g) {
-    /* Format:
-     * adjacency matrix
-     * #relation matrices
-     * relation matrices
-     * #label matrices
-     * label matrices
-     * */
-
-    _RdbSaveMatrix(rdb, g->adjacency_matrix);
-
-    RedisModule_SaveUnsigned(rdb, g->relation_count);
-    for(int i = 0; i < g->relation_count; i++) {
-        GrB_Matrix m = Graph_GetRelation(g, i);
-        _RdbSaveMatrix(rdb, m);
-    }
-
-    RedisModule_SaveUnsigned(rdb, g->label_count);
-    for(int i = 0; i < g->label_count; i++) {
-        GrB_Matrix m = Graph_GetLabel(g, i);
-        _RdbSaveMatrix(rdb, m);
+        TuplesIter_free(it);
     }
 }
 
 void RdbSaveGraph(RedisModuleIO *rdb, void *value) {
     /* Format:
      * #nodes
+     *      ID
+     *      #labels M
+     *      (labels) X M
      *      #properties N
      *      (name, value type, value) X N
      *
-     * adjacency matrix
-     * #relation matrices
-     *      #entries N
-     *      (row index,column index) X N
-     * #label matrices
-     *      #entries N
-     *      (row index,column index) X N
+     * #edges
+     *      edge ID, currently not in use.
+     *      relation type
+     *      source node ID
+     *      destination node ID
+     *      #properties N
+     *      (name, value type, value) X N
      */
 
     Graph *g = (Graph *)value;
@@ -288,45 +253,33 @@ void RdbSaveGraph(RedisModuleIO *rdb, void *value) {
     // Dump nodes.
     _RdbSaveNodes(rdb, g);
 
-    // Dump relation and label matrices.
-    _RdbSaveMatrices(rdb, g);
-
     // Dump edges.
     _RdbSaveEdges(rdb, g);
 }
 
-void *RdbLoadGraph(RedisModuleIO *rdb) {
-    /* Format:
+void RdbLoadGraph(RedisModuleIO *rdb, Graph *g) {
+     /* Format:
      * #nodes
+     *      #labels M
+     *      (labels) X M
      *      #properties N
      *      (name, value type, value) X N
      *
-     * adjacency matrix
-     * #relation matrices
-     *      #entries N
-     *      (row index,column index) X N
-     * #label matrices
-     *      #entries N
-     *      (row index,column index) X N
+     * #edges
+     *      relation type
+     *      source node ID
+     *      destination node ID
+     *      #properties N
+     *      (name, value type, value) X N
      */
-    Graph *g = Graph_New(GRAPH_DEFAULT_NODE_CAP);
 
     // Load nodes.
     _RdbLoadNodes(rdb, g);
-
-    // Load matrices.
-    _RdbLoadMatrices(rdb, g);
 
     // Load edges.
     _RdbLoadEdges(rdb, g);
 
     // Flush all pending changes to graphs.
     GrB_wait();
-
-    // Initialize a read-write lock scoped to this graph.
-    pthread_rwlock_init(&g->_rwlock, NULL);
-    g->_writelocked = false;
-
-    return g;
+    Graph_ReleaseLock(g);
 }
-

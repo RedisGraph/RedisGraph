@@ -533,4 +533,3 @@ skiplistVal* skiplistIterator_Next(skiplistIterator *it) {
 
   return ret;
 }
-

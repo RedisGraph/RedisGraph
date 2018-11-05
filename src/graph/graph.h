@@ -25,6 +25,11 @@
 #define GRAPH_NO_LABEL -1               // Labels are numbered [0-N], -1 represents no label.
 #define GRAPH_NO_RELATION -1            // Relations are numbered [0-N], -1 represents no relation.
 
+typedef enum {
+    GRAPH_EDGE_DIR_INCOMING,
+    GRAPH_EDGE_DIR_OUTGOING,
+    GRAPH_EDGE_DIR_BOTH,
+} GRAPH_EDGE_DIR;
 
 // Forward declaration of Graph struct
 typedef struct Graph Graph;
@@ -32,26 +37,26 @@ typedef struct Graph Graph;
 typedef void (*SyncMatrixFunc)(const Graph*, GrB_Matrix);
 
 struct Graph {
-    SyncMatrixFunc SynchronizeMatrix; // Function pointer to matrix synchronization routine.
-    DataBlock *nodes;                 // Graph nodes stored in blocks.
-    DataBlock *edges;                 // Graph edges stored in blocks.
-    Edge *_edgesHashTbl;              // Hash table containing edges.
-    GrB_Matrix adjacency_matrix;      // Adjacency matrix, holds all graph connections.
-    GrB_Matrix *relations;            // Relation matrices.
-    size_t relation_count;            // Number of relation matrices.
-    GrB_Matrix *labels;               // Label matrices.
-    size_t label_count;               // Number of label matrices.
-    pthread_mutex_t _mutex;           // Mutex for accessing critical sections.
-    pthread_rwlock_t _rwlock;         // Read-write lock scoped to this specific graph
-    bool _writelocked;                // true if the read-write lock was acquired by a writer
+    DataBlock *nodes;                   // Graph nodes stored in blocks.
+    DataBlock *edges;                   // Graph edges stored in blocks.
+    GrB_Matrix adjacency_matrix;        // Adjacency matrix, holds all graph connections.
+    GrB_Matrix *labels;                 // Label matrices.
+    GrB_Matrix *relations;              // Relation matrices.
+    GrB_Matrix *_relations_map;         // Maps from (relation, row, col) to edge id.
+    pthread_mutex_t _mutex;             // Mutex for accessing critical sections.
+    pthread_rwlock_t _rwlock;           // Read-write lock scoped to this specific graph
+    bool _writelocked;                  // true if the read-write lock was acquired by a writer
+    SyncMatrixFunc SynchronizeMatrix;   // Function pointer to matrix synchronization routine.
 };
 /* Graph synchronization functions
  * The graph is initialized with a read-write lock allowing
  * concurrent access from one writer or N readers. */
 /* Acquire a lock that does not restrict access from additional reader threads */
 void Graph_AcquireReadLock(Graph *g);
+
 /* Acquire a lock for exclusive access to this graph's data */
 void Graph_AcquireWriteLock(Graph *g);
+
 /* Release the held lock */
 void Graph_ReleaseLock(Graph *g);
 
@@ -60,90 +65,65 @@ void Graph_SetSynchronization(Graph *g, bool enable);
 
 // Create a new graph.
 Graph *Graph_New (
-    size_t n    // Initial number of nodes in the graph.
+    size_t n        // Initial number of nodes in the graph.
 );
 
-// Returns number of nodes in the graph.
-size_t Graph_NodeCount(const Graph *g);
+// Creates a new label matrix, returns id given to label.
+int Graph_AddLabel (
+    Graph *g
+);
 
-// Returns number of edges in the graph.
-size_t Graph_EdgeCount(const Graph *g);
+// Creates a new relation matrix, returns id given to relation.
+int Graph_AddRelationType (
+    Graph *g
+);
 
-// Creates N new nodes.
-// Returns node iterator.
-void Graph_CreateNodes (
+// Make sure graph can hold an additional N nodes.
+void Graph_AllocateNodes (
     Graph* g,               // Graph for which nodes will be added.
-    size_t n,               // Number of nodes to create.
-    int* labels,            // Lables Node i with label i.
-    DataBlockIterator **it  // [Optional] iterator over new nodes.
+    size_t n                // Number of nodes to create.    
 );
 
-// Connects src[i] to dest[i] with edge of type relation[i].
-void Graph_ConnectNodes (
-        Graph *g,                   // Graph in which connections are formed. 
-        EdgeDesc *connections,      // Array of triplets (src_id, dest_id, relation).
-        size_t connectionCount,     // Number of elements in connections array.
-        DataBlockIterator **edges   // Pointer to edge iterator.
+// Make sure graph can hold an additional N edges.
+void Graph_AllocateEdges (
+    Graph *g,               // Graph for which nodes will be added.
+    size_t n                // Number of edges to create.
 );
 
-// Retrieves node with given id from graph,
-// Returns NULL if node wasn't found.
-Node *Graph_GetNode (
-    const Graph *g,
-    NodeID id
+// Create a single node and labels it accordingly.
+// Return newly created node.
+void Graph_CreateNode (
+    Graph* g,
+    int label,
+    Node* n
 );
 
-// Retrieves edge with given id from graph,
-// Returns NULL if edge wasn't found.
-Edge *Graph_GetEdge (
-    const Graph *g,
-    EdgeID id
+// Connects source node to destination node.
+// Returns 1 if connection is formed, 0 otherwise.
+int Graph_ConnectNodes (
+    Graph *g,           // Graph on which to operate.
+    NodeID src,         // Source node ID.
+    NodeID dest,        // Destination node ID.
+    int r,              // Edge type.
+    Edge *e
 );
 
-// Retrieves edges connecting source to destination,
-// relation is optional, pass GRAPH_NO_RELATION if you do not care
-// of edge type.
-void Graph_GetEdgesConnectingNodes (
-    const Graph *g,
-    NodeID src,
-    NodeID dest,
-    int relation,
-    Vector *edges
-);
-
-typedef enum {
-    GRAPH_EDGE_DIR_INCOMING,
-    GRAPH_EDGE_DIR_OUTGOING,
-    GRAPH_EDGE_DIR_BOTH,
-} GRAPH_EDGE_DIR;
-
-// Get node edges.
-void Graph_GetNodeEdges (
-    const Graph *g,
-    const Node *n,
-    Vector *edges,
-    GRAPH_EDGE_DIR dir,
-    int edgeType
-);
-
-// Removes a set of nodes and all of their connections
-// within the graph.
-void Graph_DeleteNodes(Graph *g, NodeID *IDs, size_t IDCount);
-
-// Removes edge connecting src node to dest node.
-void Graph_DeleteEdges (
+// Removes node and all of its connections within the graph.
+int Graph_DeleteNode (
     Graph *g,
-    EdgeID *IDs,
-    size_t IDCount
+    Node *node
 );
 
-// Label all nodes between start_node_id and end_node_id
-// with given label.
-void Graph_LabelNodes (
+// Removes an edge from Graph and updates graph relevent matrices.
+int Graph_DeleteEdge (
     Graph *g,
-    NodeID start_node_id,
-    NodeID end_node_id,
-    int label
+    Edge *e
+);
+
+// All graph matrices are required to be squared NXN
+// where N is Graph_RequiredMatrixDim.
+size_t Graph_RequiredMatrixDim (
+    const Graph *g
 );
 
 // Retrieves a node iterator which can be used to access
@@ -158,9 +138,73 @@ DataBlockIterator *Graph_ScanEdges (
     const Graph *g
 );
 
-// Creates a new label matrix, returns id given to label.
-int Graph_AddLabel (
-    Graph *g
+// Returns number of nodes in the graph.
+size_t Graph_NodeCount (
+    const Graph *g
+);
+
+// Returns number of edges in the graph.
+size_t Graph_EdgeCount (
+    const Graph *g
+);
+
+// Returns number of different edge types.
+int Graph_RelationTypeCount (
+    const Graph *g
+);
+
+// Returns number of different node types.
+int Graph_LabelTypeCount (
+    const Graph *g
+);
+
+// Retrieves node with given id from graph,
+// Returns NULL if node wasn't found.
+int Graph_GetNode (
+    const Graph *g,
+    NodeID id,
+    Node *n
+);
+
+// Retrieves node label
+// returns GRAPH_NO_LABEL if node has no label.
+int Graph_GetNodeLabel (
+    const Graph *g,
+    NodeID nodeID
+);
+
+// Retrieves edge with given id from graph,
+// Returns NULL if edge wasn't found.
+int Graph_GetEdge (
+    const Graph *g,
+    EdgeID id,
+    Edge *e
+);
+
+// Retrieves edge relation.
+int Graph_GetEdgeRelation (
+    const Graph *g,
+    Edge *e
+);
+
+// Retrieves edges connecting source to destination,
+// relation is optional, pass GRAPH_NO_RELATION if you do not care
+// of edge type.
+void Graph_GetEdgesConnectingNodes (
+    const Graph *g,     // Graph to get edges from.
+    NodeID srcID,       // Source node of edge
+    NodeID destID,      // Destination node of edge
+    int r,              // Edge type.
+    Edge **edges        // array_t of edges connecting src to dest of type r.
+);
+
+// Get node edges.
+void Graph_GetNodeEdges (
+    const Graph *g,         // Graph to get edges from.
+    const Node *n,          // Node to extract edges from.
+    GRAPH_EDGE_DIR dir,     // Edge direction.
+    int edgeType,           // Relation type.
+    Edge **edges            // array_t incoming/outgoing edges.
 );
 
 // Retrieves the adjacency matrix.
@@ -178,14 +222,9 @@ GrB_Matrix Graph_GetLabel (
 
 // Retrieves a typed adjacency matrix.
 // Matrix is resized if its size doesn't match graph's node count.
-GrB_Matrix Graph_GetRelation (
+GrB_Matrix Graph_GetRelationMatrix (
     const Graph *g,     // Graph from which to get adjacency matrix.
     int relation        // Relation described by matrix.
-);
-
-// Creates a new relation matrix, returns id given to relation.
-int Graph_AddRelationType (
-    Graph *g
 );
 
 // Free graph.
@@ -194,4 +233,3 @@ void Graph_Free (
 );
 
 #endif
-

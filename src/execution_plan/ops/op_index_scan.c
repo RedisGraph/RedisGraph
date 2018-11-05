@@ -33,8 +33,8 @@ OpResult IndexScanConsume(OpBase *opBase, Record *r) {
   EntityID *nodeId = IndexIter_Next(op->iter);
   if (!nodeId) return OP_DEPLETED;
 
-  Node *n = Graph_GetNode(op->g, *nodeId);
-  Record_AddEntry(r, op->node->alias, SI_PtrVal(n));
+  Graph_GetNode(op->g, *nodeId, op->node);
+  Record_AddEntry(r, op->node->alias, SI_PtrVal(op->node));
 
   return OP_OK;
 }

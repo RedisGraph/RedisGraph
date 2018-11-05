@@ -10,7 +10,7 @@
 
 #include "../../redismodule.h"
 
-void* RdbLoadGraph(RedisModuleIO *rdb);
+void RdbLoadGraph(RedisModuleIO *rdb, Graph *g);
 void RdbSaveGraph(RedisModuleIO *rdb, void *value);
 
 #endif

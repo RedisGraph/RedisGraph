@@ -125,7 +125,12 @@ TEST_F(ArithmeticTest, ExpressionTest) {
 
 TEST_F(ArithmeticTest, VariadicTest) {  
   /* person.age += 1 */
-  Node *personNode = Node_New(1, "person", "joe");
+  Node *personNode = Node_New("person", "joe");
+  personNode->entity = (Entity*)malloc(sizeof(Entity));
+  personNode->entity->id = 0;
+  personNode->entity->prop_count = 0;
+  personNode->entity->properties = NULL;
+
   char *props[2] = {"age", "name"};
   SIValue vals[2] = {SI_DoubleVal(33), SI_StringVal("joe")};
   GraphEntity_Add_Properties((GraphEntity*)personNode, 2, props, vals);
@@ -148,6 +153,7 @@ TEST_F(ArithmeticTest, VariadicTest) {
   result = AR_EXP_Evaluate(add, r);
   EXPECT_EQ(result.doubleval, 34);
 
+  FreeEntity(personNode->entity);
   Node_Free(personNode);
   AR_EXP_Free(add);
 }
@@ -695,7 +701,11 @@ TEST_F(ArithmeticTest, TrimTest) {
 TEST_F(ArithmeticTest, IDTest) {
   AR_ExpNode *root = AR_EXP_NewOpNode("id", 1);
 
-  Node *node = Node_New(12345, "person", "Joe");
+  Node *node = Node_New("person", "Joe");
+  node->entity = (Entity*) malloc(sizeof(Entity));
+  node->entity->id = 1;
+  node->entity->prop_count = 0;
+  node->entity->properties = NULL;
   AR_ExpNode *person_with_id = AR_EXP_NewVariableOperandNode(NULL, "Joe");
 
   Record r = Record_Empty();
@@ -703,8 +713,9 @@ TEST_F(ArithmeticTest, IDTest) {
 
   root->op.children[0] = person_with_id;
   SIValue result = AR_EXP_Evaluate(root, r);
-  EXPECT_EQ(result.longval, node->id);
+  EXPECT_EQ(result.longval, ENTITY_GET_ID(node));
 
+  FreeEntity(node->entity);
   Node_Free(node);
   AR_EXP_Free(root);
 }

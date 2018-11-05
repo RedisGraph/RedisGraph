@@ -68,10 +68,6 @@ GraphEntity** QueryGraph_GetEntityRef(const QueryGraph *g, const char *alias);
 Node** QueryGraph_GetNodeRef(const QueryGraph *g, const Node *n);
 Edge** QueryGraph_GetEdgeRef(const QueryGraph *g, const Edge *e);
 
-/* Saves every entity within the query graph into the actual graph.
- * return statistics regarding the number of entities create and properties set. */
-ResultSetStatistics CommitGraph(GraphContext *gc, const QueryGraph *qg);
-
 /* Frees entire graph */
 void QueryGraph_Free(QueryGraph* g);
 

@@ -10,11 +10,11 @@
 
 #include "../graph/entities/edge.h"
 
-typedef Edge** Path;
+typedef Edge* Path;
 
 Path Path_new(size_t len);
-Path Path_append(Path p, Edge *e);
-Edge* Path_pop(Path p);
+Path Path_append(Path p, Edge e);
+Edge Path_pop(Path p);
 size_t Path_len(const Path p);
 Path Path_clone(const Path p);
 void Path_free(Path p);

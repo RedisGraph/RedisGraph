@@ -8,6 +8,7 @@
 #include <assert.h>
 #include <sys/param.h>
 #include "./all_paths.h"
+#include "../util/arr.h"
 
 void _AllPaths
 (
@@ -30,7 +31,7 @@ void _AllPaths
         Path clone = Path_clone(*path);
 
         if(*pathsCount >= *pathsCap) {
-            (*pathsCap) = (*pathsCap) * 2 + 1;
+            (*pathsCap) = (*pathsCap) * 2;
             (*paths) = realloc(*paths, sizeof(Path) * (*pathsCap));
         }
 
@@ -43,43 +44,43 @@ void _AllPaths
         return;
     }
 
-    NodeID frontierID = frontier->id;
-    Vector *neighbors = NewVector(Edge*, 32);
-    Graph_GetNodeEdges(g, frontier, neighbors, dir, relationID);
-    size_t neighborsCount = Vector_Size(neighbors);
+    NodeID frontierID = ENTITY_GET_ID(frontier);
+    Edge *neighbors = array_new(Edge, 32);
+
+    // TODO: Extremely wastefull when dir is GRAPH_EDGE_DIR_INCOMING
+    // See if we can instead pass a transposed matrix.
+    Graph_GetNodeEdges(g, frontier, dir, relationID, &neighbors);
+    size_t neighborsCount = array_len(neighbors);
 
     for(size_t i = 0; i < neighborsCount; i++) {
-        Edge *e;
-        Vector_Get(neighbors, i, &e);
+        Edge *e = neighbors + i;
         NodeID neighborID;
-        Node *neighbor;
-        if(dir == GRAPH_EDGE_DIR_OUTGOING) {
-            neighborID = Edge_GetDestNodeID(e);
-            neighbor = Edge_GetDestNode(e);
-        } else {
-            neighborID = Edge_GetSrcNodeID(e);
-            neighbor = Edge_GetSrcNode(e);
-        }
+        Node neighbor;
+
+        if(dir == GRAPH_EDGE_DIR_OUTGOING) neighborID = Edge_GetDestNodeID(e);
+        else neighborID = Edge_GetSrcNodeID(e);
 
         // See if edge frontier->neighbor been used.
         bool used = false;
         GrB_Matrix_extractElement_BOOL(&used, visited, neighborID, frontierID);
         if(used) continue;
 
+        Graph_GetNode(g, neighborID, &neighbor);
+
         // Mark edge as visited.
         GrB_Matrix_setElement_BOOL(visited, true, neighborID, frontierID);
 
-        *path = Path_append(*path, e);
+        *path = Path_append(*path, *e);
 
-        _AllPaths(g, neighbor, dir, relationID, relation, minHops, maxHops, hop+1, visited, path, pathsCount, pathsCap, paths);
-
+        _AllPaths(g, &neighbor, dir, relationID, relation, minHops, maxHops, hop+1, visited, path, pathsCount, pathsCap, paths);
+        
         Path_pop(*path);
 
         // Mark edge as unvisited.
         GrB_Matrix_setElement_BOOL(visited, false, neighborID, frontierID);
     }
 
-    Vector_Free(neighbors);
+    array_free(neighbors);
 }
 
 size_t AllPaths
@@ -95,19 +96,20 @@ size_t AllPaths
 )
 {
     assert(g && minLen >= 0 && minLen <= maxLen && pathsCap && paths);
+    GrB_Matrix relation = Graph_GetRelationMatrix(g, relationID);
 
-    GrB_Matrix relation = Graph_GetRelation(g, relationID);    
     /* Avoid revisiting edges along a constructed path by, marking visited edges,
      * for every traversed edge (A)-[]->(B) visited[A,B] is set. */
     GrB_Matrix visited;
-    size_t nodeCount = Graph_NodeCount(g);
-    GrB_Matrix_new(&visited, GrB_BOOL, nodeCount, nodeCount);
+    GrB_Matrix_new(&visited, GrB_BOOL, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g));
 
     unsigned int pathLen = MIN(16, maxLen - minLen);
     Path p = Path_new(pathLen);
 
     size_t pathsCount = 0;
-    _AllPaths(g, Graph_GetNode(g, src), dir, relationID, relation, minLen, maxLen, 0, visited, &p, &pathsCount, pathsCap, paths);
+    Node srcNode;
+    Graph_GetNode(g, src, &srcNode);
+    _AllPaths(g, &srcNode, dir, relationID, relation, minLen, maxLen, 0, visited, &p, &pathsCount, pathsCap, paths);
 
     Path_free(p);
     GrB_Matrix_free(&visited);

@@ -36,11 +36,12 @@ class AllPathsTest: public ::testing::Test {
 
     static Graph* BuildGraph()
     {
+        Edge e;
+        Node n;
         size_t nodeCount = 4;
-
         Graph *g = Graph_New(nodeCount);
         int relation = Graph_AddRelationType(g);
-        Graph_CreateNodes(g, nodeCount, NULL, NULL);
+        for(int i = 0; i < 4; i++) Graph_CreateNode(g, GRAPH_NO_LABEL, &n);
 
         /* Connections:
          * 0 -> 1
@@ -51,47 +52,21 @@ class AllPathsTest: public ::testing::Test {
          * 2 -> 3
          * 3 -> 0 */
 
-        int connectionCount = 7;
-        EdgeDesc *connections = (EdgeDesc*)malloc(sizeof(EdgeDesc) * connectionCount);
-        
         // Connections:
         // 0 -> 1
-        connections[0].srcId = 0;
-        connections[0].destId = 1;
-        connections[0].relationId = relation;
-
+        Graph_ConnectNodes(g, 0, 1, relation, &e);
         // 0 -> 2
-        connections[1].srcId = 0;
-        connections[1].destId = 2;
-        connections[1].relationId = relation;
-
+        Graph_ConnectNodes(g, 0, 2, relation, &e);
         // 1 -> 0
-        connections[2].srcId = 1;
-        connections[2].destId = 0;
-        connections[2].relationId = relation;
-
+        Graph_ConnectNodes(g, 1, 0, relation, &e);
         // 1 -> 2
-        connections[3].srcId = 1;
-        connections[3].destId = 2;
-        connections[3].relationId = relation;
-
+        Graph_ConnectNodes(g, 1, 2, relation, &e);
         // 2 -> 1
-        connections[4].srcId = 2;
-        connections[4].destId = 1;
-        connections[4].relationId = relation;
-
+        Graph_ConnectNodes(g, 2, 1, relation, &e);
         // 2 -> 3
-        connections[5].srcId = 2;
-        connections[5].destId = 3;
-        connections[5].relationId = relation;
-
+        Graph_ConnectNodes(g, 2, 3, relation, &e);
         // 3 -> 0
-        connections[6].srcId = 3;
-        connections[6].destId = 0;
-        connections[6].relationId = relation;
-
-        Graph_ConnectNodes(g, connections, connectionCount, NULL);        
-        free(connections);
+        Graph_ConnectNodes(g, 3, 0, relation, &e);
         return g;
     }
 };
@@ -188,9 +163,9 @@ TEST_F(AllPathsTest, UpToThreeLegsPaths) {
             
             int k = 0;
             for(; k < expectedPathLen; k++) {
-                Edge *e = p[k];
-                if(Edge_GetSrcNodeID(e) != expectedPath[k]) break;
-                if(Edge_GetDestNodeID(e) != expectedPath[k+1]) break;
+                Edge e = p[k];
+                if(Edge_GetSrcNodeID(&e) != expectedPath[k]) break;
+                if(Edge_GetDestNodeID(&e) != expectedPath[k+1]) break;
             }
             if(k == expectedPathLen) {
                 expectedPathFound = true;
@@ -239,12 +214,12 @@ TEST_F(AllPathsTest, TwoLegPaths) {
         for(int j = 0; j < pathsCount; j++) {
             Path p = paths[j];
             ASSERT_EQ(Path_len(p), 2);
-            Edge *e0 = p[0];
-            Edge *e1 = p[1];
-            if(Edge_GetSrcNodeID(e0) != expectedPath[0]) continue;
-            if(Edge_GetDestNodeID(e0) != expectedPath[1]) continue;
-            if(Edge_GetSrcNodeID(e1) != expectedPath[1]) continue;
-            if(Edge_GetDestNodeID(e1) != expectedPath[2]) continue;
+            Edge e0 = p[0];
+            Edge e1 = p[1];
+            if(Edge_GetSrcNodeID(&e0) != expectedPath[0]) continue;
+            if(Edge_GetDestNodeID(&e0) != expectedPath[1]) continue;
+            if(Edge_GetSrcNodeID(&e1) != expectedPath[1]) continue;
+            if(Edge_GetDestNodeID(&e1) != expectedPath[2]) continue;
             expectedPathFound = true;
             break;
         }

@@ -42,13 +42,16 @@ OpResult NodeByLabelScanConsume(OpBase *opBase, Record *r) {
 
     GrB_Index nodeId;
 
+    // First call to consume.
+    if(ENTITY_GET_ID(op->node) == INVALID_ENTITY_ID) {
+        Record_AddEntry(r, op->node->alias, SI_PtrVal(op->node));
+    }
+
     if(TuplesIter_next(op->iter, NULL, &nodeId) == TuplesIter_DEPLETED) {
         return OP_DEPLETED;
     }
 
-    Node *n = Graph_GetNode(op->g, nodeId);
-    Record_AddEntry(r, op->node->alias, SI_PtrVal(n));
-
+    Graph_GetNode(op->g, nodeId, op->node);
     return OP_OK;
 }
 

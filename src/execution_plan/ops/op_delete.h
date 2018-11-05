@@ -23,8 +23,8 @@ typedef struct {
     size_t edge_count;
     char **nodes_to_delete;
     char **edges_to_delete;
-    NodeID *deleted_nodes;              // Array of nodes to be removed.    
-    EdgeID *deleted_edges;              // Array of edges to be removed.
+    Node *deleted_nodes;    // Array of nodes to be removed.    
+    Edge *deleted_edges;    // Array of edges to be removed.
 
     ResultSet *result_set;
 } OpDelete;

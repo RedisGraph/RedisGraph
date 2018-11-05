@@ -9,7 +9,6 @@
 #define _FILTER_TREE_H
 
 #include "../parser/ast.h"
-#include "../graph/query_graph.h"
 #include "../redismodule.h"
 #include "../arithmetic/arithmetic_expression.h"
 #include "../execution_plan/record.h"
@@ -50,7 +49,7 @@ typedef struct FT_FilterNode FT_FilterNode;
 
 /* Given AST's WHERE subtree constructs a filter tree
  * This is done to speed up the filtering process. */
-FT_FilterNode* BuildFiltersTree(const AST_FilterNode *root, const QueryGraph *qg);
+FT_FilterNode* BuildFiltersTree(const AST_FilterNode *root);
 
 int IsNodePredicate(const FT_FilterNode *node);
 

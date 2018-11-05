@@ -35,7 +35,7 @@ void MatchClause_ReferredEntities(const AST_MatchNode *matchNode, TrieMap *refer
 		AST_GraphEntity *entity;
 		Vector_Get(matchNode->_mergedPatterns, i, &entity);
 		if (!entity->alias) continue;
-		TrieMap_Add(referred_entities, entity->alias, strlen(entity->alias), NULL, NULL);
+		TrieMap_Add(referred_entities, entity->alias, strlen(entity->alias), entity, TrieMap_DONT_CARE_REPLACE);
 	}
 }
 

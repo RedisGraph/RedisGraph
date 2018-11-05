@@ -29,7 +29,7 @@ typedef struct {
     bool matched;           // Has the entire pattern been matched.
 } OpMerge;
 
-OpBase* NewMergeOp(GraphContext *gc, QueryGraph *qg, ResultSet *result_set);
+OpBase* NewMergeOp(GraphContext *gc, AST_Query *ast, QueryGraph *qg, ResultSet *result_set);
 OpResult OpMergeConsume(OpBase *opBase, Record *r);
 OpResult OpMergeReset(OpBase *ctx);
 void OpMergeFree(OpBase *ctx);

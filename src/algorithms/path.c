@@ -9,16 +9,15 @@
 #include "../util/arr.h"
 
 Path Path_new(size_t len) {
-    return array_new(Edge*, len);
+    return array_new(Edge, len);
 }
 
-Path Path_append(Path p, Edge *e) {
+Path Path_append(Path p, Edge e) {
     return array_append(p, e);
 }
 
-Edge *Path_pop(Path p) {
+Edge Path_pop(Path p) {
     size_t pathLen = array_len(p);
-    if(pathLen == 0) return NULL;
     return array_pop(p);
 }
 
@@ -44,7 +43,7 @@ void Path_print(Path p) {
     int pathLen = Path_len(p);
 
     for(int i = 0; i < pathLen; i++) {
-        e = p[i];
+        e = p+i;
         n = Edge_GetSrcNodeID(e);
         printf("%llu", n);
     }

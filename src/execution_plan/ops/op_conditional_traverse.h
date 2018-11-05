@@ -23,7 +23,7 @@ typedef struct {
     GrB_Matrix F;
     GrB_Matrix M;
     int edgeRelationType;
-    Vector *edges;
+    Edge *edges;
     TuplesIter *iter;
 } CondTraverse;
 

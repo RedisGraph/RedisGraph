@@ -12,27 +12,22 @@
 #include "assert.h"
 #include "graph_entity.h"
 
-Node* Node_New(NodeID id, const char *label, const char *alias) {
-	Node* node = (Node*)calloc(1, sizeof(Node));
-	
-	node->id = id;
-	node->mat = NULL;
-	node->prop_count = 0;
-	node->outgoing_edges = NewVector(Edge*, 0);
-	node->incoming_edges = NewVector(Edge*, 0);
+Node* Node_New(const char *label, const char *alias) {
+	Node* n = calloc(1, sizeof(Node));
+	n->outgoing_edges = NewVector(Edge*, 0);
+	n->incoming_edges = NewVector(Edge*, 0);
 
-	if(label != NULL) node->label = strdup(label);
-	if(alias != NULL) node->alias = strdup(alias);
+	if(label != NULL) n->label = strdup(label);
+	if(alias != NULL) n->alias = strdup(alias);
 
-	return node;
+	return n;
 }
 
 int Node_Compare(const Node *a, const Node *b) {
-	return a->id == b->id;
+	return ENTITY_GET_ID(a) == ENTITY_GET_ID(b);
 }
 
 void Node_ConnectNode(Node* src, Node* dest, struct Edge* e) {
-	// assert(src && dest && e->src == src && e->dest == dest);
 	Vector_Push(src->outgoing_edges, e);
 	Vector_Push(dest->incoming_edges, e);
 }
@@ -41,18 +36,8 @@ int Node_IncomeDegree(const Node *n) {
 	return Vector_Size(n->incoming_edges);
 }
 
-void Node_Add_Properties(Node *node, int prop_count, char **keys, SIValue *values) {
-	GraphEntity_Add_Properties((GraphEntity*)node, prop_count, keys, values);
-}
-
-SIValue* Node_Get_Property(const Node *node, const char* key) {
-	return GraphEntity_Get_Property((GraphEntity*)node, key);
-}
-
-void Node_Free(Node* node) {	
+void Node_Free(Node* node) {
 	if(!node) return;
-
-	FreeGraphEntity((GraphEntity*)node);
 
 	if(node->label != NULL) free(node->label);
 	if(node->alias != NULL) free(node->alias);

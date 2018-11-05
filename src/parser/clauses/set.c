@@ -28,8 +28,12 @@ void SetClause_ReferredEntities(const AST_SetNode *set_node, TrieMap *referred_e
     for(int i = 0; i < set_element_count; i++) {
         AST_SetElement *set_element;
         Vector_Get(set_node->set_elements, i, &set_element);
+        TrieMap_Add(referred_entities,
+                    set_element->entity->alias,
+                    strlen(set_element->entity->alias),
+                    NULL,
+                    NULL);
 
-		TrieMap_Add(referred_entities, set_element->entity->alias, strlen(set_element->entity->alias), NULL, NULL);
         AR_EXP_GetAliases(set_element->exp, referred_entities);
     }
 }

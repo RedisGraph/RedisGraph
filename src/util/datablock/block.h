@@ -21,7 +21,7 @@
 typedef struct Block {
     size_t itemSize;        // Size of a single Item in bytes.
     struct Block *next;     // Pointer to next block.
-    char data[];            // Item array. MUST BE LAST MEMBER OF THE STRUCT!
+    unsigned char data[];   // Item array. MUST BE LAST MEMBER OF THE STRUCT!
 } Block;
 
 #endif

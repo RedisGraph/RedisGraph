@@ -28,14 +28,16 @@ OpBase* NewAllNodeScanOp(const Graph *g, Node *n) {
 
 OpResult AllNodeScanConsume(OpBase *opBase, Record *r) {
     AllNodeScan *op = (AllNodeScan*)opBase;
-    
-    NodeID id = DataBlockIterator_Position(op->iter);
-    Node *node = (Node*)DataBlockIterator_Next(op->iter);
-    if(node == NULL) return OP_DEPLETED;
 
-    node->id = id;
-    Record_AddEntry(r, op->node->alias, SI_PtrVal(node));
+    // Uninitialized, first call to consume.
+    if(ENTITY_GET_ID(op->node) == INVALID_ENTITY_ID) {
+        Record_AddEntry(r, op->node->alias, SI_PtrVal(op->node));
+    }
 
+    Entity *en = (Entity*)DataBlockIterator_Next(op->iter);
+    if(en == NULL) return OP_DEPLETED;
+
+    op->node->entity = en;
     return OP_OK;
 }
 
