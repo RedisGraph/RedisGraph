@@ -111,7 +111,7 @@ GraphContext* GraphContext_Retrieve(RedisModuleCtx *ctx, RedisModuleString *rs_n
   RedisModule_CloseKey(key);
 
   // Force GraphBLAS updates and resize matrices to node count by default
-  Graph_SetSynchronization(gc->g, true);
+  Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
 
   return gc;
 }

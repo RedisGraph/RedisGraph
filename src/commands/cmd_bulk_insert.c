@@ -110,7 +110,7 @@ void _MGraph_BulkInsert(void *args) {
     Graph_AcquireWriteLock(gc->g);
 
     // Disable matrix synchronization for bulk insert operation
-    Graph_SetSynchronization(gc->g, false);
+    Graph_SetMatrixPolicy(gc->g, RESIZE_TO_CAPACITY);
 
     int rc = BulkInsert(ctx, gc, &nodes, &edges, argv, argc);
 

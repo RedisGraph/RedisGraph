@@ -31,6 +31,12 @@ typedef enum {
     GRAPH_EDGE_DIR_BOTH,
 } GRAPH_EDGE_DIR;
 
+typedef enum {
+    SYNC_AND_MINIMIZE_SPACE,
+    RESIZE_TO_CAPACITY,
+    DISABLED,
+} MATRIX_POLICY;
+
 // Forward declaration of Graph struct
 typedef struct Graph Graph;
 // typedef for synchronization function pointer
@@ -61,11 +67,16 @@ void Graph_AcquireWriteLock(Graph *g);
 void Graph_ReleaseLock(Graph *g);
 
 /* Choose the current matrix synchronization policy. */
-void Graph_SetSynchronization(Graph *g, bool enable);
+void Graph_SetMatrixPolicy(Graph *g, MATRIX_POLICY policy);
 
 // Create a new graph.
 Graph *Graph_New (
     size_t n        // Initial number of nodes in the graph.
+);
+
+Graph *Graph_NewWithCapacity (
+    size_t node_cap,    // Allocation size for node datablocks and matrix dimensions.
+    size_t edge_cap     // Allocation size for edge datablocks.
 );
 
 // Creates a new label matrix, returns id given to label.
