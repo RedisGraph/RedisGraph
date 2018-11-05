@@ -129,6 +129,7 @@ class AlgebraicExpressionTest: public ::testing::Test {
     * Relations: 'friend', 'visit' and 'war'. */
     Graph *_build_graph() {
         Graph *g = Graph_New(16);
+        Graph_AcquireWriteLock(g);
         size_t person_count = 6;
         const char *persons[6] = {"Brian", "Stipe", "Max", "Robert", "Francis", "Daniel"};
         size_t country_count = 5;

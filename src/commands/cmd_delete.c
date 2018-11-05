@@ -56,6 +56,8 @@ void _MGraph_Delete(void *args) {
 
     // Retrieve the GraphContext to disable synchronization.
     GraphContext *gc = RedisModule_ModuleTypeGetValue(key);
+    // Lock the graph for writing.
+    Graph_AcquireWriteLock(gc->g);
     // Disable matrix synchronization for graph deletion.
     Graph_SetSynchronization(gc->g, false);
 
@@ -67,6 +69,7 @@ void _MGraph_Delete(void *args) {
       RedisModule_ReplyWithStringBuffer(ctx, strElapsed, strlen(strElapsed));
       free(strElapsed);
     } else {
+      Graph_ReleaseLock(gc->g);
       RedisModule_ReplyWithError(ctx, "Graph deletion failed!");
     }
 

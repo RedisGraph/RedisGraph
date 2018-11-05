@@ -580,6 +580,7 @@ void Graph_Free(Graph *g) {
 
     // Destroy graph-scoped locks.
     pthread_mutex_destroy(&g->_mutex);
+    Graph_ReleaseLock(g);
     pthread_rwlock_destroy(&g->_rwlock);
 
     rm_free(g);
