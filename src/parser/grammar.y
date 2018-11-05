@@ -19,6 +19,13 @@
 	#include "../value.h"
 
 	void yyerror(char *s);
+
+	/*
+	**    YYSTACKDEPTH       is the maximum depth of the parser's stack.  If
+	**                       zero the stack is dynamically sized using realloc()
+	*/
+	// Increase depth from 100 to 1000 to handel deep recursion.
+	#define YYSTACKDEPTH 1000
 } // END %include
 
 %syntax_error {
