@@ -39,7 +39,7 @@ class AllPathsTest: public ::testing::Test {
         Edge e;
         Node n;
         size_t nodeCount = 4;
-        Graph *g = Graph_New(nodeCount);
+        Graph *g = Graph_New(nodeCount, nodeCount);
         int relation = Graph_AddRelationType(g);
         for(int i = 0; i < 4; i++) Graph_CreateNode(g, GRAPH_NO_LABEL, &n);
 

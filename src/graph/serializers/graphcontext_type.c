@@ -103,7 +103,7 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
   // Duplicating string so that it can be safely freed if GraphContext
   // is deleted.
   gc->graph_name = rm_strdup(RedisModule_LoadStringBuffer(rdb, NULL));
-  gc->g = Graph_New(GRAPH_DEFAULT_NODE_CAP);
+  gc->g = Graph_New(GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
 
   // #Label stores
   gc->label_count = RedisModule_LoadUnsigned(rdb);

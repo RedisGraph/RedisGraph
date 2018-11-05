@@ -84,8 +84,7 @@ void _MGraph_BulkInsert(void *args) {
         argc -= 3; // skip "BEGIN [NODE_COUNT] [EDGE_COUNT]"
 
         // Create graph and initialize its data stores.
-        gc = GraphContext_NewWithCapacity(ctx, rs_graph_name,
-                                          final_node_count, final_edge_count);
+        gc = GraphContext_New(ctx, rs_graph_name, final_node_count, final_edge_count);
         // Exit if graph creation failed
         if (gc == NULL) {
             RedisModule_ReplyWithError(ctx, "Failed to allocate space for graph.");
@@ -98,7 +97,7 @@ void _MGraph_BulkInsert(void *args) {
             goto cleanup;
         }
     } else {
-        gc = GraphContext_Retrieve(ctx, rs_graph_name, false);
+        gc = GraphContext_Retrieve(ctx, rs_graph_name);
         if (gc == NULL) {
             RedisModule_ReplyWithError(ctx, "Bulk insert query did not include a BEGIN token and graph was not found.");
             goto cleanup;

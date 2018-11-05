@@ -19,11 +19,12 @@
 #include "../util/datablock/datablock_iterator.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 
-#define GRAPH_DEFAULT_NODE_CAP 16384    // Default number of nodes a graph can hold before resizing.
-#define GRAPH_DEFAULT_RELATION_CAP 16   // Default number of different relationships a graph can hold before resizing.
-#define GRAPH_DEFAULT_LABEL_CAP 16      // Default number of different labels a graph can hold before resizing.
-#define GRAPH_NO_LABEL -1               // Labels are numbered [0-N], -1 represents no label.
-#define GRAPH_NO_RELATION -1            // Relations are numbered [0-N], -1 represents no relation.
+#define GRAPH_DEFAULT_NODE_CAP 16384         // Default number of nodes a graph can hold before resizing.
+#define GRAPH_DEFAULT_EDGE_CAP 16384         // Default number of edges a graph can hold before resizing.
+#define GRAPH_DEFAULT_RELATION_TYPE_CAP 16   // Default number of different relationship types a graph can hold before resizing.
+#define GRAPH_DEFAULT_LABEL_CAP 16           // Default number of different labels a graph can hold before resizing.
+#define GRAPH_NO_LABEL -1                    // Labels are numbered [0-N], -1 represents no label.
+#define GRAPH_NO_RELATION -1                 // Relations are numbered [0-N], -1 represents no relation.
 
 typedef enum {
     GRAPH_EDGE_DIR_INCOMING,
@@ -71,10 +72,6 @@ void Graph_SetMatrixPolicy(Graph *g, MATRIX_POLICY policy);
 
 // Create a new graph.
 Graph *Graph_New (
-    size_t n        // Initial number of nodes in the graph.
-);
-
-Graph *Graph_NewWithCapacity (
     size_t node_cap,    // Allocation size for node datablocks and matrix dimensions.
     size_t edge_cap     // Allocation size for edge datablocks.
 );

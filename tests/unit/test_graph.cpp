@@ -175,7 +175,7 @@ void benchmark_node_creation_with_labels()
     float threshold = 0.0018;
     // size_t n = GRAPH_DEFAULT_NODE_CAP;
     size_t n = 1000000;
-    Graph *g = Graph_New(n);
+    Graph *g = Graph_New(n,n);
     Graph_AcquireWriteLock(g);
 
     // Introduce labels and relations to graph.
@@ -228,7 +228,7 @@ void benchmark_node_creation_no_labels()
     // size_t n = GRAPH_DEFAULT_NODE_CAP;
     Node node;
     size_t n = 1000000;
-    Graph *g = Graph_New(n);
+    Graph *g = Graph_New(n,n);
     Graph_AcquireWriteLock(g);
 
     for (int i = 0; i < samples; i++)
@@ -271,7 +271,7 @@ void benchmark_edge_creation_with_relationships()
     EdgeDesc connections[edge_count];
     Node node;
     Edge edge;
-    Graph *g = Graph_New(GRAPH_DEFAULT_NODE_CAP);
+    Graph *g = Graph_New(GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
     Graph_AcquireWriteLock(g);
 
     // Introduce relations types.
@@ -323,7 +323,7 @@ void benchmark_graph()
 TEST_F(GraphTest, NewGraph)
 {
     GrB_Index ncols, nrows, nvals;
-    Graph *g = Graph_New(GRAPH_DEFAULT_NODE_CAP);
+    Graph *g = Graph_New(GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
     Graph_AcquireWriteLock(g);
 
     EXPECT_EQ(GrB_Matrix_ncols(&ncols, g->adjacency_matrix), GrB_SUCCESS);
@@ -346,7 +346,7 @@ TEST_F(GraphTest, NewGraph)
 TEST_F(GraphTest, GraphConstruction)
 {
     size_t node_count = GRAPH_DEFAULT_NODE_CAP / 2;
-    Graph *g = Graph_New(node_count);
+    Graph *g = Graph_New(node_count, node_count);
     Graph_AcquireWriteLock(g);
     _test_node_creation(g, node_count);
     // _test_edge_creation(g, node_count);
@@ -362,7 +362,7 @@ TEST_F(GraphTest, RemoveNodes)
     // Construct graph.
     GrB_Matrix M;
     GrB_Index nnz;
-    Graph *g = Graph_New(32);
+    Graph *g = Graph_New(32, 32);
     Graph_AcquireWriteLock(g);
 
     // Create 3 nodes.
@@ -426,7 +426,7 @@ TEST_F(GraphTest, RemoveMultipleNodes)
 
     Node n;
     Edge e;
-    Graph *g = Graph_New(32);
+    Graph *g = Graph_New(32, 32);
     Graph_AcquireWriteLock(g);
     int relation = Graph_AddRelationType(g);
     for(int i = 0; i < 8; i++) Graph_CreateNode(g, GRAPH_NO_LABEL, &n);
@@ -499,7 +499,7 @@ TEST_F(GraphTest, RemoveEdges)
     Node n;
     GrB_Matrix M;
     GrB_Index nnz;
-    Graph *g = Graph_New(32);
+    Graph *g = Graph_New(32, 32);
     Graph_AcquireWriteLock(g);
     for(int i = 0; i < 3; i++) Graph_CreateNode(g, GRAPH_NO_LABEL, &n);
     int r = Graph_AddRelationType(g);
@@ -643,7 +643,7 @@ TEST_F(GraphTest, GetNode)
 
     Node n;
     size_t nodeCount = 16;
-    Graph *g = Graph_New(nodeCount);
+    Graph *g = Graph_New(nodeCount, nodeCount);
     Graph_AcquireWriteLock(g);
     for(int i = 0 ; i < nodeCount; i++) Graph_CreateNode(g, GRAPH_NO_LABEL, &n);
     
@@ -676,7 +676,7 @@ TEST_F(GraphTest, GetEdge)
     size_t edgeCount = 5;
     int relations[relationCount];
 
-    Graph *g = Graph_New(nodeCount);
+    Graph *g = Graph_New(nodeCount, nodeCount);
     Graph_AcquireWriteLock(g);
     for(int i = 0; i < nodeCount; i++) Graph_CreateNode(g, GRAPH_NO_LABEL, &n);
     for(int i = 0; i < relationCount; i++) relations[i] = Graph_AddRelationType(g);

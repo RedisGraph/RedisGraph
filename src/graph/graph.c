@@ -178,15 +178,17 @@ void Graph_SetMatrixPolicy(Graph *g, MATRIX_POLICY policy) {
 }
 
 /*================================ Graph API ================================ */
-Graph *Graph_New(size_t n) {
-    assert(n > 0);
+Graph *Graph_New(size_t node_cap, size_t edge_cap) {
+    node_cap = MAX(node_cap, GRAPH_DEFAULT_NODE_CAP);
+    edge_cap = MAX(node_cap, GRAPH_DEFAULT_EDGE_CAP);
+
     Graph *g = rm_malloc(sizeof(Graph));
-    g->nodes = DataBlock_New(n, sizeof(Entity));
-    g->edges = DataBlock_New(n, sizeof(Entity));
+    g->nodes = DataBlock_New(node_cap, sizeof(Entity));
+    g->edges = DataBlock_New(edge_cap, sizeof(Entity));
     g->labels = array_new(GrB_Matrix, GRAPH_DEFAULT_LABEL_CAP);
-    g->relations = array_new(GrB_Matrix, GRAPH_DEFAULT_RELATION_CAP);
-    g->_relations_map = array_new(GrB_Matrix, GRAPH_DEFAULT_RELATION_CAP);
-    GrB_Matrix_new(&g->adjacency_matrix, GrB_BOOL, _Graph_NodeCap(g), _Graph_NodeCap(g));
+    g->relations = array_new(GrB_Matrix, GRAPH_DEFAULT_RELATION_TYPE_CAP);
+    g->_relations_map = array_new(GrB_Matrix, GRAPH_DEFAULT_RELATION_TYPE_CAP);
+    GrB_Matrix_new(&g->adjacency_matrix, GrB_BOOL, node_cap, node_cap);
 
     // Initialize a read-write lock scoped to the individual graph
     assert(pthread_rwlock_init(&g->_rwlock, NULL) == 0);
@@ -196,29 +198,6 @@ Graph *Graph_New(size_t n) {
 
     // Graph_New can only be invoked from writing contexts
     Graph_AcquireWriteLock(g);
-
-    /* TODO: We might want a mutex per matrix,
-     * such that when a thread is resizing matrix A
-     * another thread could be resizing matrix B. */
-    assert(pthread_mutex_init(&g->_mutex, NULL) == 0);
-
-    return g;
-}
-
-Graph *Graph_NewWithCapacity(size_t node_cap, size_t edge_cap) {
-    Graph *g = rm_malloc(sizeof(Graph));
-    g->nodes = DataBlock_New(node_cap, sizeof(Entity));
-    g->edges = DataBlock_New(edge_cap, sizeof(Entity));
-    g->labels = array_new(GrB_Matrix, GRAPH_DEFAULT_LABEL_CAP);
-    g->relations = array_new(GrB_Matrix, GRAPH_DEFAULT_RELATION_CAP);
-    g->_relations_map = array_new(GrB_Matrix, GRAPH_DEFAULT_RELATION_CAP);
-    GrB_Matrix_new(&g->adjacency_matrix, GrB_BOOL, _Graph_NodeCap(g), _Graph_NodeCap(g));
-
-    // Initialize a read-write lock scoped to the individual graph
-    assert(pthread_rwlock_init(&g->_rwlock, NULL) == 0);
-
-    // Don't force GraphBLAS updates, resize matrices to node capacity
-    Graph_SetMatrixPolicy(g, RESIZE_TO_CAPACITY);
 
     /* TODO: We might want a mutex per matrix,
      * such that when a thread is resizing matrix A
@@ -370,14 +349,12 @@ void Graph_CreateNode(Graph* g, int label, Node *n) {
 int Graph_ConnectNodes(Graph *g, NodeID src, NodeID dest, int r, Edge *e) {
     Node srcNode;
     Node destNode;
-    GrB_Matrix adj;
-    GrB_Matrix relationMat;
-    GrB_Matrix relationMapMat;
 
     assert(Graph_GetNode(g, src, &srcNode));
     assert(Graph_GetNode(g, dest, &destNode));
     assert(g && r < Graph_RelationTypeCount(g));
 
+    GrB_Matrix relationMat = Graph_GetRelationMatrix(g, r);
     e->srcNodeID = src;
     e->destNodeID = dest;
 
@@ -386,8 +363,8 @@ int Graph_ConnectNodes(Graph *g, NodeID src, NodeID dest, int r, Edge *e) {
     en->id = id;
     e->entity = en;
 
-    adj = Graph_GetAdjacencyMatrix(g);
-    relationMapMat = _Graph_GetRelationMap(g, r);
+    GrB_Matrix adj = Graph_GetAdjacencyMatrix(g);
+    GrB_Matrix relationMapMat = _Graph_GetRelationMap(g, r);
 
     // Columns represent source nodes, rows represent destination nodes.
     GrB_Matrix_setElement_BOOL(adj, true, dest, src);
