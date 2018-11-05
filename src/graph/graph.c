@@ -322,12 +322,25 @@ void Graph_CreateNode(Graph* g, int label, Node *n) {
     }
 }
 
-void Graph_ConnectNodes(Graph *g, NodeID src, NodeID dest, int r, Edge *e) {
+int Graph_ConnectNodes(Graph *g, NodeID src, NodeID dest, int r, Edge *e) {
     Node srcNode;
     Node destNode;
+    GrB_Matrix adj;
+    GrB_Matrix relationMat;
+    GrB_Matrix relationMapMat;
+
     assert(Graph_GetNode(g, src, &srcNode));
     assert(Graph_GetNode(g, dest, &destNode));
     assert(g && r < Graph_RelationTypeCount(g));
+
+    // Is src already connected to dest with edge of type r.
+    relationMat = Graph_GetRelationMatrix(g, r);
+    bool x = false;
+    GrB_Info res = GrB_Matrix_extractElement_BOOL(&x, relationMat, dest, src);
+    if(res == GrB_SUCCESS && x == true) {
+        e->entity = NULL;
+        return 0;
+    }
 
     e->srcNodeID = src;
     e->destNodeID = dest;
@@ -337,14 +350,14 @@ void Graph_ConnectNodes(Graph *g, NodeID src, NodeID dest, int r, Edge *e) {
     en->id = id;
     e->entity = en;
 
-    GrB_Matrix adj = Graph_GetAdjacencyMatrix(g);
-    GrB_Matrix relationMat = Graph_GetRelationMatrix(g, r);
-    GrB_Matrix relationMapMat = _Graph_GetRelationMap(g, r);
+    adj = Graph_GetAdjacencyMatrix(g);
+    relationMapMat = _Graph_GetRelationMap(g, r);
 
     // Columns represent source nodes, rows represent destination nodes.
     GrB_Matrix_setElement_BOOL(adj, true, dest, src);
     GrB_Matrix_setElement_BOOL(relationMat, true, dest, src);
     GrB_Matrix_setElement_UINT64(relationMapMat, id, dest, src);
+    return 1;
 }
 
 /* Retrieves all either incoming or outgoing edges 

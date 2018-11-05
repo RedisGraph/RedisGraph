@@ -84,6 +84,7 @@ static void _CommitEdges(OpMerge *op) {
     // Create edges.
     const QueryGraph *qg = op->qg;
     Graph *g = op->gc->g;
+    int relationships_created = 0;
     size_t edge_count = qg->edge_count;
 
     if(edge_count > 0) {
@@ -101,7 +102,7 @@ static void _CommitEdges(OpMerge *op) {
                 store = GraphContext_AddRelationType(op->gc, e->relationship);
             }
             int r = store->id;
-            Graph_ConnectNodes(g, srcId, destId, r, e);
+            if(!Graph_ConnectNodes(g, srcId, destId, r, e)) continue;
             
             AST_NodeEntity *entity = TrieMap_Find(referred_entities, e->alias, strlen(e->alias));
             assert(entity != NULL && entity != TRIEMAP_NOTFOUND);
@@ -129,9 +130,10 @@ static void _CommitEdges(OpMerge *op) {
                     op->result_set->stats.properties_set += propCount/2;
                 }
             }
+            relationships_created++;
         }
         TrieMap_Free(referred_entities, TrieMap_NOP_CB);
-        op->result_set->stats.relationships_created = edge_count;
+        op->result_set->stats.relationships_created = relationships_created;
     }
 }
 

@@ -116,7 +116,7 @@ void _RdbLoadEdges(RedisModuleIO *rdb, Graph *g) {
         NodeID srcId = RedisModule_LoadUnsigned(rdb);
         NodeID destId = RedisModule_LoadUnsigned(rdb);
         uint64_t relation = RedisModule_LoadUnsigned(rdb);
-        Graph_ConnectNodes(g, srcId, destId, relation, &e);
+        assert(Graph_ConnectNodes(g, srcId, destId, relation, &e));
         _RdbLoadEntity(rdb, (GraphEntity*)&e);
     }    
 }

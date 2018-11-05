@@ -99,7 +99,8 @@ void Graph_CreateNode (
 );
 
 // Connects source node to destination node.
-void Graph_ConnectNodes (
+// Returns 1 if connection is formed, 0 otherwise.
+int Graph_ConnectNodes (
     Graph *g,           // Graph on which to operate.
     NodeID src,         // Source node ID.
     NodeID dest,        // Destination node ID.

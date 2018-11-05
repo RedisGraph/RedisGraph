@@ -189,6 +189,7 @@ static void _CommitEdges(OpCreate *op) {
     Edge *e;
     int labelID;
     Graph *g = op->gc->g;
+    int relationships_created = 0;
     TrieMap *createEntities = NewTrieMap();
     LabelStore *allStore = GraphContext_AllStore(op->gc, STORE_EDGE);
     CreateClause_ReferredEntities(op->ast->createNode, createEntities);
@@ -212,7 +213,7 @@ static void _CommitEdges(OpCreate *op) {
         if(!store) store = GraphContext_AddRelationType(op->gc, e->relationship);
         relation_id = store->id;
 
-        Graph_ConnectNodes(g, srcNodeID, destNodeID, relation_id, e);
+        if(!Graph_ConnectNodes(g, srcNodeID, destNodeID, relation_id, e)) continue;
 
         // Set edge properties.
         AST_GraphEntity *entity = TrieMap_Find(createEntities, e->alias, strlen(e->alias));
@@ -240,9 +241,11 @@ static void _CommitEdges(OpCreate *op) {
                 op->result_set->stats.properties_set += propCount/2;
             }
         }
+        relationships_created++;
     }
 
     TrieMap_Free(createEntities, TrieMap_NOP_CB);
+    op->result_set->stats.relationships_created = relationships_created;
 }
 
 void _CommitNewEntities(OpCreate *op) {
@@ -254,10 +257,8 @@ void _CommitNewEntities(OpCreate *op) {
         _CommitNodes(op);
         op->result_set->stats.nodes_created = node_count;
     }
-    if(edge_count > 0) {
-        _CommitEdges(op);
-        op->result_set->stats.relationships_created = edge_count;
-    }
+
+    if(edge_count > 0) _CommitEdges(op);
 }
 
 OpResult OpCreateConsume(OpBase *opBase, Record *r) {

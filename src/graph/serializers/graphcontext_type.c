@@ -101,6 +101,13 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
   uint64_t versionMajor = RedisModule_LoadUnsigned(rdb);
   uint64_t versionMinor = RedisModule_LoadUnsigned(rdb);
   uint64_t versionPatch = RedisModule_LoadUnsigned(rdb);
+  int versionSemantic = REDISGRAPH_SEMANTIC_VERSION(versionMajor, versionMinor, versionPatch);
+  if(versionSemantic > REDISGRAPH_MODULE_VERSION) {
+    // Not forward compatible.
+    printf("RedisGraph is not forward compatible, trying to load graph data from version %d using version %d\n",
+           versionSemantic, REDISGRAPH_MODULE_VERSION);
+    return NULL;
+  }
 
   GraphContext *gc = rm_malloc(sizeof(GraphContext));
   
