@@ -145,7 +145,7 @@ void _MatrixResizeToCapacity(const Graph *g, GrB_Matrix m) {
     GrB_Index ncols;
     GrB_Matrix_ncols(&ncols, m);
 
-    if (ncols < Graph_RequiredMatrixDim(g)) {
+    if (ncols != _Graph_NodeCap(g)) {
       assert(GxB_Matrix_resize(m, _Graph_NodeCap(g), _Graph_NodeCap(g)) == GrB_SUCCESS);
     }
 }
@@ -177,6 +177,25 @@ void Graph_SetMatrixPolicy(Graph *g, MATRIX_POLICY policy) {
     }
 }
 
+/* Synchronize and resize all matrices in graph. */
+void Graph_ApplyAllPending(Graph *g) {
+    GrB_Matrix M;
+
+    for(int i = 0; i < array_len(g->labels); i ++) {
+      M = g->labels[i];
+      _Graph_ApplyPending(M);
+    }
+
+    for(int i = 0; i < array_len(g->relations); i ++) {
+      M = g->relations[i];
+      _Graph_ApplyPending(M);
+    }
+
+    for(int i = 0; i < array_len(g->_relations_map); i ++) {
+      M = g->_relations_map[i];
+      _Graph_ApplyPending(M);
+    }
+}
 /*================================ Graph API ================================ */
 Graph *Graph_New(size_t node_cap, size_t edge_cap) {
     node_cap = MAX(node_cap, GRAPH_DEFAULT_NODE_CAP);

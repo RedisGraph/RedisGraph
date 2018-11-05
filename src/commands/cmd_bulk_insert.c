@@ -31,14 +31,8 @@ int _BeginBulkInsert(RedisModuleCtx *ctx, RedisModuleString *graph_name,
     RedisModuleKey *key = RedisModule_OpenKey(ctx, graph_name, REDISMODULE_READ);
     int keytype = RedisModule_KeyType(key);
     if (keytype != REDISMODULE_KEYTYPE_EMPTY) {
-        char *err;
-        if (keytype == REDISMODULE_KEYTYPE_MODULE) {
-            err = "Bulk insertion not allowed on pre-existing graph.";
-        } else {
-            err = "Graph name already in use as different key type.";
-        }
         RedisModule_CloseKey(key);
-        RedisModule_ReplyWithError(ctx, err);
+        RedisModule_ReplyWithError(ctx, "Graph name already exists as a Redis key.");
         return BULK_FAIL;
     }
 
@@ -47,6 +41,7 @@ int _BeginBulkInsert(RedisModuleCtx *ctx, RedisModuleString *graph_name,
         RedisModule_ReplyWithError(ctx, "Error parsing total node count.");
         return BULK_FAIL;
     }
+
     if (RedisModule_StringToLongLong(*argv++, final_edge_count) != REDISMODULE_OK) {
         RedisModule_ReplyWithError(ctx, "Error parsing total relation count.");
         return BULK_FAIL;
@@ -59,7 +54,6 @@ void _MGraph_BulkInsert(void *args) {
     // Establish thread-safe environment for batch insertion
     BulkInsertContext *context = (BulkInsertContext *)args;
     RedisModuleCtx *ctx = RedisModule_GetThreadSafeContext(context->bc);
-    // TODO Only create key and lock context in the END block
     RedisModule_ThreadSafeContextLock(ctx);
 
     RedisModuleString **argv = context->argv + 1; // skip "GRAPH.BULK"
@@ -117,6 +111,8 @@ void _MGraph_BulkInsert(void *args) {
         key = RedisModule_OpenKey(ctx, rs_graph_name, REDISMODULE_WRITE);
         RedisModule_DeleteKey(key);
         goto cleanup;
+    } else if (rc == BULK_COMPLETE) {
+        goto cleanup;
     }
 
     // Replay to caller.
@@ -134,7 +130,7 @@ cleanup:
 }
 
 int MGraph_BulkInsert(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-    if (argc < 4) return RedisModule_WrongArity(ctx);
+    if (argc < 3) return RedisModule_WrongArity(ctx);
     // Prepare context.
     RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
     BulkInsertContext *context = BulkInsertContext_New(ctx, bc, argv, argc);

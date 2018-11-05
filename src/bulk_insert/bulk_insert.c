@@ -352,9 +352,25 @@ int BulkInsert(RedisModuleCtx *ctx, GraphContext *gc, size_t *nodes, size_t *edg
     if(strcmp(section, "RELATIONS") == 0) {
         section_found = true;
         argv = _BulkInsert_Insert_Edges(ctx, gc, edges, argv, &argc);
+        section = RedisModule_StringPtrLen(*argv++, NULL);
+        argc -= 1;
     }
-    // TODO possibly add a more helpful error message in the event that we processed
-    // nodes followed by a token other than "RELATIONS"
+
+    // "END" can optionally be sent after completing all inserts to resize
+    // matrices and flush pending operations, decreasing load time on immediately
+    // subsequent query operations.
+    if(strcmp(section, "END") == 0) {
+        if (argc != 0) _BulkInsert_Reply_With_Syntax_Error(ctx, "Tokens found after 'END' directive.");
+        // Set matrix sync/resize policies to default
+        Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
+        Graph_ApplyAllPending(gc->g);
+        char *reply;
+        int len = asprintf(&reply, "Successfully constructed %lu nodes and %lu edges in graph '%s'", Graph_NodeCount(gc->g), Graph_EdgeCount(gc->g), gc->graph_name);
+
+        RedisModule_ReplyWithStringBuffer(ctx, reply, len);
+        free(reply);
+        return BULK_COMPLETE;
+    }
 
     if (!section_found) {
         char *error;
@@ -364,10 +380,11 @@ int BulkInsert(RedisModuleCtx *ctx, GraphContext *gc, size_t *nodes, size_t *edg
         return BULK_FAIL;
     }
 
-    if(argc != 0) {
+    if(argc > 0) {
         _BulkInsert_Reply_With_Syntax_Error(ctx, "Bulk insert format error, extra arguments.");
         return BULK_FAIL;
     }
+
     return BULK_OK;
 }
 

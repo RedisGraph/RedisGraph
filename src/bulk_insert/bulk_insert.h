@@ -14,6 +14,7 @@
 
 #define BULK_OK 1
 #define BULK_FAIL 0
+#define BULK_COMPLETE 2
 
 /*
 Bulk insert performs fast insertion of large amount of data,

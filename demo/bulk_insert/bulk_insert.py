@@ -138,6 +138,9 @@ class LabelDescriptor(Descriptor):
             if len(row) != expected_col_count:
                 raise CSVError ("%s:%d Expected %d columns, encountered %d ('%s')"
                                 % (self.csvfile, self.reader.line_num, expected_col_count, len(row), ','.join(row)))
+            if (row[-1] == ''):
+                raise CSVError ("%s:%d Dangling comma in input. ('%s')"
+                                % (self.csvfile, self.reader.line_num, ','.join(row)))
         # Subtract 1 from each file's entity count to compensate for the header.
         self.total_entities = self.reader.line_num - 1
 
@@ -189,6 +192,11 @@ class RelationDescriptor(Descriptor):
 # Issue single Redis query to allocate space for graph
 def allocate_graph(node_count, relation_count):
     cmd = ["GRAPH.BULK", graphname, "BEGIN", node_count, relation_count]
+    result = redis_client.execute_command(*cmd)
+    print(result)
+
+def finalize_graph():
+    cmd = ["GRAPH.BULK", graphname, "END"]
     result = redis_client.execute_command(*cmd)
     print(result)
 
@@ -266,6 +274,7 @@ def bulk_insert(graph, host, port, password, ssl, nodes, relations, max_buffer_s
     label_descriptors.batch_insert_descriptors()
     if relations:
         relation_descriptors.batch_insert_descriptors()
+    finalize_graph()
 
 if __name__ == '__main__':
     bulk_insert()

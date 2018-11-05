@@ -70,6 +70,9 @@ void Graph_ReleaseLock(Graph *g);
 /* Choose the current matrix synchronization policy. */
 void Graph_SetMatrixPolicy(Graph *g, MATRIX_POLICY policy);
 
+/* Synchronize and resize all matrices in graph. */
+void Graph_ApplyAllPending(Graph *g);
+
 // Create a new graph.
 Graph *Graph_New (
     size_t node_cap,    // Allocation size for node datablocks and matrix dimensions.
