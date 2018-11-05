@@ -267,8 +267,8 @@ RedisModuleString** _BulkInsert_Insert_Edges(RedisModuleCtx *ctx, GraphContext *
         return NULL;
     }
 
-    long long total_labeled_edges = 0;
-    LabelRelation labelRelations[label_count + 1];  // Extra one for unlabeled relations.
+    long long total_edges = 0;
+    LabelRelation labelRelations[label_count];
 
     if(label_count > 0) {
         if(*argc < label_count * 2) {
@@ -286,7 +286,7 @@ RedisModuleString** _BulkInsert_Insert_Edges(RedisModuleCtx *ctx, GraphContext *
                 _BulkInsert_Reply_With_Syntax_Error(ctx, err);
                 return NULL;
             }
-            total_labeled_edges += labelRelations[i].edge_count;
+            total_edges += labelRelations[i].edge_count;
             LabelStore *s = GraphContext_GetStore(gc, labelRelations[i].label, STORE_EDGE);
             if(!s) {
                 s = GraphContext_AddRelationType(gc, labelRelations[i].label);
@@ -302,14 +302,10 @@ RedisModuleString** _BulkInsert_Insert_Edges(RedisModuleCtx *ctx, GraphContext *
     }
     *argc -= relations_count * 2;
 
-    // Update number of unlabeled relations.
-    labelRelations[label_count].edge_count = relations_count - total_labeled_edges;
-    labelRelations[label_count].label_id = GRAPH_NO_RELATION;
-
     // Introduce relations.
     NodeID srcId;
     NodeID destId;
-    for(int i = 0; i < label_count+1; i++) {
+    for(int i = 0; i < label_count; i++) {
         LabelRelation labelRelation = labelRelations[i];
 
         for(int j = 0; j < labelRelation.edge_count; j++) {

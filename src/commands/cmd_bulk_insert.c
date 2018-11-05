@@ -86,7 +86,6 @@ void _MGraph_BulkInsert(void *args) {
         // Create graph and initialize its data stores.
         gc = GraphContext_NewWithCapacity(ctx, rs_graph_name,
                                           final_node_count, final_edge_count);
-
         // Exit if graph creation failed
         if (gc == NULL) {
             RedisModule_ReplyWithError(ctx, "Failed to allocate space for graph.");
