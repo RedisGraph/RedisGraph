@@ -378,15 +378,6 @@ int Graph_ConnectNodes(Graph *g, NodeID src, NodeID dest, int r, Edge *e) {
     assert(Graph_GetNode(g, dest, &destNode));
     assert(g && r < Graph_RelationTypeCount(g));
 
-    // Is src already connected to dest with edge of type r.
-    relationMat = Graph_GetRelationMatrix(g, r);
-    bool x = false;
-    GrB_Info res = GrB_Matrix_extractElement_BOOL(&x, relationMat, dest, src);
-    if(res == GrB_SUCCESS && x == true) {
-        e->entity = NULL;
-        return 0;
-    }
-
     e->srcNodeID = src;
     e->destNodeID = dest;
 
