@@ -148,8 +148,6 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
     GraphContext_AddIndex(gc, label, property);
   }
 
-  // TODO: Try to remove Graph's Graph_AcquireWriteLock(g); from Graph_new.
-  GraphContext_Release(gc);
   return gc;
 }
 

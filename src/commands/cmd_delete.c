@@ -54,11 +54,8 @@ void _MGraph_Delete(void *args) {
       goto cleanup;
     }
 
-    // The DeleteKey call will free the GraphContext, but we must first fetch it
-    // to acquire the lock.
+    // Retrieve the GraphContext to disable synchronization.
     GraphContext *gc = RedisModule_ModuleTypeGetValue(key);
-    Graph_AcquireWriteLock(gc->g);
-
     // Disable matrix synchronization for graph deletion.
     Graph_SetSynchronization(gc->g, false);
 

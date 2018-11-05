@@ -56,7 +56,7 @@ GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rs_name) 
   return gc;
 }
 
-GraphContext* GraphContext_Retrieve(RedisModuleCtx *ctx, RedisModuleString *rs_name, bool readonly) {
+GraphContext* GraphContext_Retrieve(RedisModuleCtx *ctx, RedisModuleString *rs_name) {
   RedisModuleKey *key = RedisModule_OpenKey(ctx, rs_name, REDISMODULE_READ);
   if (RedisModule_ModuleTypeGetType(key) != GraphContextRedisModuleType) {
     RedisModule_CloseKey(key);
@@ -68,18 +68,7 @@ GraphContext* GraphContext_Retrieve(RedisModuleCtx *ctx, RedisModuleString *rs_n
   // Force GraphBLAS updates and resize matrices to node count by default
   Graph_SetSynchronization(gc->g, true);
 
-  if (readonly) {
-    Graph_AcquireReadLock(gc->g);
-  } else {
-    Graph_AcquireWriteLock(gc->g);
-  }
-
   return gc;
-}
-
-// Release locks held by the calling thread
-void GraphContext_Release(GraphContext *gc) {
-  Graph_ReleaseLock(gc->g);
 }
 
 //------------------------------------------------------------------------------
