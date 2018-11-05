@@ -2,12 +2,13 @@
 
 ## Abstract
 
-Graph-based data is everywhere now days. Facebook, Google, Twitter and Pinterest are just a few who've realize the power
-behind relationship data and are utilizing it to the fullest. As a direct result, we see a rise both in interest for and
-variety of graph data solutions.
+Graph-based data is everywhere nowadays. Facebook, Google, Twitter and Pinterest are just a few who've realize the power
+behind relationship data and are utilizing it to its fullest. As a direct result, we see a rise both in interest for and 
+the variety of graph data solutions.
 
 With the introduction of [Redis Modules](http://antirez.com/news/106) we've recognized the great potential of introducing a
-graph data structure to the Redis arsenal, and developed RedisGraph. Bringing new graph capabilities to Redis through a native C implementation with an emphasis on performance, [RedisGraph](https://github.com/RedisLabsModules/RedisGraph) is now
+graph data structure to the Redis arsenal, and developed RedisGraph. Bringing new graph capabilities to Redis 
+through a native C implementation with an emphasis on performance, [RedisGraph](https://github.com/RedisLabsModules/redis-graph) is now
 available as an open source project.
 
 In this documentation, we'll discuss the internal design and features of RedisGraph and demonstrate its current capabilities.
@@ -18,10 +19,10 @@ RedisGraph is a graph database developed from scratch on top of Redis, using the
 with new commands and capabilities. Its main features include:
 
 - Simple, fast indexing and querying
-- RAM data stored, using memory-efficient custom data structures
+- Data stored in RAM using memory-efficient custom data structures
 - On-disk persistence
 - Tabular result sets
-- The use of popular graph query language [openCypher](https://neo4j.com/docs/developer-manual/3.4/cypher/)
+- Uses the popular graph query language [openCypher](https://neo4j.com/docs/developer-manual/3.4/cypher/)
 
 ## A Little Taste: RedisGraph in Action
 
@@ -29,8 +30,11 @@ Let’s look at some of the key concepts of RedisGraph using this example over t
 
 ### Constructing a graph
 
-It is common to represent entities as nodes within a graph. In this example, we'll create a small graph with both actors and movies as its entities, and an "act" relation that will connect actors to the movies they acted in.
-We use the graph.QUERY command to issue a CREATE query, which will introduce new entities and relations to our graph.
+It is common to represent entities as nodes within a graph. In this example, 
+we'll create a small graph with both actors and movies as its entities, 
+and an "act" relation that will connect actors to the movies they acted in.
+We'll use the graph.QUERY command to issue a CREATE query, 
+which will introduce new entities and relations to our graph.
 
 ```sh
 graph.QUERY <graph_id> 'CREATE (:<label> {<attribute_name>:<attribute_value>,...})'
@@ -40,7 +44,7 @@ graph.QUERY <graph_id> 'CREATE (:<label> {<attribute_name>:<attribute_value>,...
 graph.QUERY <graph_id> 'CREATE (<source_node_alias>)-[<relation> {<attribute_name>:<attribute_value>,...}]->(<dest_node_alias>)'
 ```
 
-Construct our graph in one go:
+We'll construct our graph in one command:
 
 ```sh
 graph.QUERY IMDB 'CREATE (aldis:actor {name: "Aldis Hodge", birth_year: 1986}),
@@ -58,17 +62,17 @@ graph.QUERY IMDB 'CREATE (aldis:actor {name: "Aldis Hodge", birth_year: 1986}),
 
 ### Querying the graph
 
-RedisGraph exposes a subset of openCypher graph language. Although only some language capabilities are supported,
-there's enough functionality to extract valuable insights from your graphs. To execute a query, we use the GRAPH.QUERY
+RedisGraph exposes a subset of the openCypher graph language. Although only some language capabilities are supported,
+there's enough functionality to extract valuable insights from your graphs. To execute a query, we'll use the GRAPH.QUERY
 command:
 
 ```sh
 GRAPH.QUERY <graph_id> <query>
 ```
 
-Let's execute a number of queries against our movies graph:
+Let's execute a number of queries against our movies graph.
 
-Find the sum, max, min and avg age of the Straight Outta Compton cast:
+Find the sum, max, min and avg age of the 'Straight Outta Compton' cast:
 
 ```sh
 GRAPH.QUERY IMDB "MATCH (a:actor)-[act]->(m:movie {title:\"Straight Outta Compton\"})
@@ -82,13 +86,10 @@ RedisGraph will reply with:
 2) "Straight Outta Compton,123.000000,37.000000,26.000000,30.750000"
 ```
 
-The first row is our result-set header which name each column according to the return clause.
+* The first row is our result-set header which names each column according to the return clause.
+* The second row contains our query result.
 
-Second row contains our query result.
-
-The second row contains our query result.
-
-Let's try another query. This time, we'll find in how many movies each actor played.
+Let's try another query. This time, we'll find out how many movies each actor played in.
 
 ```sh
 GRAPH.QUERY IMDB "MATCH (actor)-[act]->(movie) RETURN actor.name, COUNT(movie.title) AS movies_count ORDER BY
@@ -107,43 +108,45 @@ movies_count DESC"
 
 RedisGraph uses sparse adjacency matrices to represent graphs. As directed relationship connecting source node S to destination node T is
 recorded within an adjacency matrix M, by setting M's S,T entry to 1 (M[S,T]=1).
+<!-- The above sentence is not clear -->
 As a rule of thumb, matrix rows represent source nodes while matrix columns represent destination nodes.
 
-Every graph stored within RedisGraph has at least one matrix, referred to as THE adjacency matrix (relation type agnostic). In addition, every typed relation has its own dedicated typed matrix. Consider a graph with two relationships types:
+Every graph stored within RedisGraph has at least one matrix, referred to as THE adjacency matrix (relation-type agnostic). In addition, every relation with a type has its own dedicated matrix. Consider a graph with two relationships types:
+<!-- What is the meaning of THE? -->
 
 1. visits
 2. friend
 
-The underline graph data structure would maintain three matrices:
+The underlying graph data structure maintains three matrices:
 
 1. THE adjacency matrix - marking every connection within the graph
 2. visit matrix - marking visit connections
 3. friend matrix - marking friend connections
 
-A 'visit' relationship E, connecting node A to node B, would set THE adjacency matrix at position [A,B] to 1, in addition the visit matrix V would also set position V[A,B] to 1.
+A 'visit' relationship E that connects node A to node B, sets THE adjacency matrix at position [A,B] to 1. Also, the visit matrix V sets position V[A,B] to 1.
 
-To accommodate typed nodes, additional matrices are allocated one per label, and a label matrix is symmetric with ones along the main diagonal. Assume node N was labeled as a Person, then the Person matrix P would set position P[N,N] to 1.
+To accommodate typed nodes, one additional matrix is allocated per label, and a label matrix is symmetric with ones along the main diagonal. Assume that node N was labeled as a Person, then the Person matrix P sets position P[N,N] to 1.
 
-This design enables RedisGraph to modify its graph with ease:
+This design lets RedisGraph modify its graph easily, including:
 
-- Adding new nodes simply extend matrices, adding additional rows and columns.
-- Adding new relationships is done by setting the relevant entries at the relevant matrices.
-- Removing relationships clear relevant entries.
-- Deleting nodes is achieved by matrix row/column deletion.
+- Adding new nodes simply extends matrices, adding additional rows and columns
+- Adding new relationships by setting the relevant entries at the relevant matrices
+- Removing relationships clears relevant entries
+- Deleting nodes by deleting matrix row/column.
 
-One of the main reasons we've chosen to represent our graphs as sparse matrices is graph traversal.
+One of the main reasons we chose to represent our graphs as sparse matrices is graph traversal.
 
 ### Traversal
 
-Graph traversal is accomplished by matrix multiplication. Suppose we wanted to find friends of friends for every node in the graph
+Graph traversal is done by matrix multiplication. For example, if we wanted to find friends of friends for every node in the graph, 
 this traversal can be expressed by FOF = F^2. F stands for the friendship relation matrix, and the result matrix FOF summarizes the traversal.
-Its rows represent source nodes, while its columns represent friends who are two hops away: if FOF[i,j] = 1 then j is a friend of a friend of i.
+The rows of the FOF represent source nodes and its columns represent friends who are two hops away: if FOF[i,j] = 1 then j is a friend of a friend of i.
 
 ### Algebraic expression
 
-When a search pattern such as `(N0)-[A]->(N1)-[B]->(N2)<-[A]-(N3)` is given as part of a query, we translate it into a set of matrix multiplications. For the given example, one possible expression would be: `A * B * Transpose(A)`.
+When a search pattern such as `(N0)-[A]->(N1)-[B]->(N2)<-[A]-(N3)` is used as part of a query, we translate it into a set of matrix multiplications. For the given example, one possible expression would be: `A * B * Transpose(A)`.
 
-We should note that matrix multiplication is an associative and distributive operation. This gives us the freedom to choose which terms we would like to multiply first (preferring terms that will produce highly sparse intermediate matrices). It also enables concurrency when evaluating an expression, e.g. we could compute A*Z and B*Y in parallel.
+Note that matrix multiplication is an associative and distributive operation. This gives us the freedom to choose which terms we want to multiply first (preferring terms that will produce highly sparse intermediate matrices). It also enables concurrency when evaluating an expression, e.g. we could compute A*Z and B*Y in parallel.
 
 ### GraphBLAS
 
@@ -151,48 +154,46 @@ To perform all of these operations for sparse matrices, RedisGraph uses [GraphBL
 
 ## Query language: openCypher
 
-There are a number of graph query languages, so we didn't want to reinvent the wheel. We decided to implement a subset of one of the most popular graph query languages out there: openCypher.
+There are a number of graph query languages, so we didn't want to reinvent the wheel. We decided to implement a subset of one of the most popular graph query languages out there: openCypher
 While the openCypher project provides a parser for the language, we decided to create our own parser. We used Lex as a tokenizer and Lemon to generate a C target parser.
 
-As mentioned earlier, only a subset of the language is currently supported, but it is our intention to continue adding new capabilities
+As mentioned earlier, only a subset of the language is currently supported, but we plan to continue adding new capabilities
 and extend RedisGraph's openCypher capabilities.
 
 ## Runtime: query execution
 
 Let's review the steps RedisGraph takes when executing a query.
 
-Consider the following query, which finds all actors who've played alongside Aldis Hodge and are over 30 years old:
+Consider this query that finds all actors who played alongside Aldis Hodge and are over 30 years old:
 
 ```sh
 MATCH (aldis::actor {name:"Aldis Hodge"})-[act]->(m:movie)<-[act]-(a:actor) WHERE a.age > 30 RETURN m.title, a.name
 ```
 
-RedisGraph will
+RedisGraph will:
 
-- Parse the query, and build an abstract syntax tree (AST);
-- Compose traversal algebraic expressions;
-- Build filter trees;
+- Parse the query, and build an abstract syntax tree (AST)
+- Compose traversal algebraic expressions
+- Build filter trees
 - Construct an optimized query execution plan composed of:
     - Filtered traverse
     - Conditional traverse
     - Filter
     - Project
-- Execute the plan; and
-- Populate a result set with matching entity attributes.
+- Execute the plan
+- Populate a result set with matching entity attributes
 
 ### Filter tree
 
-A query can filter out entities by creating predicates. In our example, we're filtering actors younger then 30.
+A query can filter out entities by creating predicates. In our example, we filter actors younger then 30.
 
-It's possible to combine predicates using OR, AND keywords to form granular conditions.
+It's possible to combine predicates using OR and AND keywords to form granular conditions.
 
 During runtime, the WHERE clause is used to construct a filter tree, and each node within the tree is either a condition (e.g. A > B) or an operation (AND/OR). When finding candidate entities, they are passed through the tree and evaluated.
 
 ## Benchmarks
 
-Depending on the underlying hardware results may vary.
-
-That said, inserting a new relationship is done in O(1).
+Depending on the underlying hardware results may vary. However, inserting a new relationship is done in O(1).
 RedisGraph is able to create over 1 million nodes under half a second and form 500K relations within 0.3 of a second.
 
 ## License

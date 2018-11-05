@@ -37,9 +37,9 @@ supported.
 Match describes the relationship between queried entities, using ascii art to represent pattern(s) to match against.
 
 Nodes are represented by parenthesis `()`,
-while Relationships are represented by brackets `[]`.
+and Relationships are represented by brackets `[]`.
 
-Each graph entity node/relationship can contain an alias and a label/relationship type, but both can be left empty if needed.
+Each graph entity node/relationship can contain an alias and a label/relationship type, but both can be left empty if necessary.
 
 Entity structure: `alias:label {filters}`.
 
@@ -90,7 +90,7 @@ Nodes that are a variable number of relationship→node hops away can be found u
 -[:type*minHops..maxHops]→
 ```
 
-`type`, `minHops` and `maxHops` are all optional and default to: type agnostic, 1 and infinity respectively.
+`type`, `minHops` and `maxHops` are all optional and default to type agnostic, 1 and infinity, respectively.
 
 When no bounds are given the dots may be omitted. The dots may also be omitted when setting only one bound and this implies a fixed length pattern.
 
@@ -133,12 +133,12 @@ WHERE actor.age >= director.age AND actor.age > 32
 It is also possible to specify equality predicates within nodes using the curly braces as such:
 
 ```sh
-(:president {name:"Barack Obama"})-[:won]->(:state)
+(:president {name:"Jed Bartlett"})-[:won]->(:state)
 ```
 
-Here we've required that the president node's name will have the value "Barack Obama".
+Here we've required that the president node's name will have the value "Jed Bartlett".
 
-There's no difference between inlined predicates and predicates specified within the WHERE clause.
+There's no difference between inline predicates and predicates specified within the WHERE clause.
 
 #### RETURN
 
@@ -147,7 +147,7 @@ In its simple form, Return defines which properties the returned result-set will
 Its structure is a list of `alias.property` separated by commas.
 
 For convenience, it's possible to specify the alias only when you're interested in every attribute an entity possesses,
-and don't want to specify each attribute individually. e.g.
+and don't want to specify each attribute individually. For example:
 
 ```sh
 RETURN movie.title, actor
@@ -166,7 +166,7 @@ DISTINCT will make sure Dominick will only appear once
 in the final result set.
 
 
-Return can also be used to aggregate data similar to SQL group by.
+Return can also be used to aggregate data, similar to group by in SQL.
 
 Once an aggregation function is added to the return
 list, all other "none" aggregated values are considered as group keys, for example:
@@ -175,7 +175,7 @@ list, all other "none" aggregated values are considered as group keys, for examp
 RETURN movie.title, MAX(actor.age), MIN(actor.age)
 ```
 
-Here we group data by movie title and for each movie, we find its youngest and oldest actor age.
+Here we group data by movie title and for each movie, and we find its youngest and oldest actor age.
 
 #### Aggregations
 
@@ -192,7 +192,7 @@ Supported aggregation functions include:
 
 #### ORDER BY
 
-Order by specifies that the output should be sorted and how.
+Order by specifies that the output be sorted and how.
 
 You can order by multiple properties by stating each variable in the ORDER BY clause.
 
@@ -213,8 +213,8 @@ ORDER BY friend.height, friend.weight DESC
 
 #### LIMIT
 
-Although not mandatory, in order to limit the number of records returned by a query, you can
-use the limit clause:
+Although not mandatory, you can use the limit clause 
+to limit the number of records returned by a query:
 
 ```sh
 LIMIT <max records to return>
@@ -242,7 +242,7 @@ CREATE (n),(m)
 CREATE (:person {name: 'Kurt', age:27})
 ```
 
-To add relations between nodes, in the following example we first locate an existing source node, and once found we create a new relationship and destination node.
+To add relations between nodes, in the following example we first find an existing source node. After it's found, we create a new relationship and destination node.
 
 ```sh
 MATCH(a:person)
@@ -254,7 +254,7 @@ Here the source node is a bounded node, while the destination node is unbounded.
 
 As a result, a new node is created representing the band Nirvana and a new relation connects Kurt to the band.
 
-Lastly we'll create a complete pattern.
+Lastly we create a complete pattern.
 
 All entities within the pattern which are not bounded will be created.
 
@@ -268,7 +268,7 @@ This query will create three nodes and two relationships.
 
 DELETE is used to remove both nodes and relationships.
 
-Please remember that deleting a node will also delete all of its incoming and outgoing relationships.
+Note that deleting a node also deletes all of its incoming and outgoing relationships.
 
 To delete a node and all of its relationships:
 
@@ -313,17 +313,17 @@ MATCH (n { name: 'Jim' }) SET n.name = NULL
 
 The MERGE clause ensures that a pattern exists in the graph (either the pattern already exists, or it needs to be created).
 
-Currently, MERGE only functions as a standalone clause, and as such cannot be combined with other directives such as MATCH or RETURN.
+Currently, MERGE only functions as a standalone clause so it cannot be combined with other directives such as MATCH or RETURN.
 
 MERGE either matches existing nodes and binds them, or it creates new data and binds that.
 
-It’s like a combination of MATCH and CREATE that additionally allows you to specify what happens if the data was matched or created.
+It’s like a combination of MATCH and CREATE that also allows you to specify what happens if the data was matched or created.
 
 For example, you can specify that the graph must contain a node for a user with a certain name.
 
 If there isn’t a node with the correct name, a new node will be created and its name property set.
 
-When using MERGE on full patterns, either the whole pattern matches, or the whole pattern is created.
+When using MERGE on full patterns, either the whole pattern matches or the whole pattern is created.
 
 MERGE will not partially use existing patterns — it’s all or nothing.
 
@@ -364,50 +364,50 @@ This section contains information on all supported functions from the Cypher que
 
 |Function | Description|
 | ------- |:-----------|
-|avg() | Returns the average of a set of numeric values.|
-|count() | Returns the number of values or rows.|
-|max() | Returns the maximum value in a set of values.|
-|min() | Returns the minimum value in a set of values.|
-|sum() | Returns the sum of a set of numeric values.|
-|percentileDisc() | Returns the percentile of the given value over a group, with a percentile from 0.0 to 1.0.|
-|percentileCont() | Returns the percentile of the given value over a group, with a percentile from 0.0 to 1.0.|
-|stDev() | Returns the standard deviation for the given value over a group.|
+|avg() | Returns the average of a set of numeric values|
+|count() | Returns the number of values or rows|
+|max() | Returns the maximum value in a set of values|
+|min() | Returns the minimum value in a set of values|
+|sum() | Returns the sum of a set of numeric values|
+|percentileDisc() | Returns the percentile of the given value over a group, with a percentile from 0.0 to 1.0|
+|percentileCont() | Returns the percentile of the given value over a group, with a percentile from 0.0 to 1.0|
+|stDev() | Returns the standard deviation for the given value over a group|
 
 ## Mathematical functions
 
 |Function | Description|
 | ------- |:-----------|
-|abs() | Returns the absolute value of a number.|
-|ceil() | Returns the smallest floating point number that is greater than or equal to a number and equal to |a mathematical integer.
-|floor() | Returns the largest floating point number that is less than or equal to a number and equal to a |mathematical integer.
-|rand() | Returns a random floating point number in the range from 0 to 1; i.e. [0,1].
-|round() | Returns the value of a number rounded to the nearest integer.|
-|sign() | Returns the signum of a number: 0 if the number is 0, -1 for any negative number, and 1 for any positive number.|
+|abs() | Returns the absolute value of a number|
+|ceil() | Returns the smallest floating point number that is greater than or equal to a number and equal to a mathematical integer |
+|floor() | Returns the largest floating point number that is less than or equal to a number and equal to a mathematical integer |
+|rand() | Returns a random floating point number in the range from 0 to 1; i.e. [0,1] |
+|round() | Returns the value of a number rounded to the nearest integer |
+|sign() | Returns the signum of a number: 0 if the number is 0, -1 for any negative number, and 1 for any positive number |
 
 ## String functions
 
 |Function | Description|
 | ------- |:-----------|
-|left() | Returns a string containing the specified number of leftmost characters of the original string.|
-|lTrim() | Returns the original string with leading whitespace removed.|
-|reverse() | Returns a string in which the order of all |characters in the original string have been reversed.|
-|right() | Returns a string containing the specified number of rightmost characters of the original string.|
-|rTrim() | Returns the original string with trailing whitespace removed.|
-|substring() | Returns a substring of the original string, beginning with a 0-based index start and length.|
-|toLower() | Returns the original string in lowercase.|
-|toString() | Converts an integer, float or boolean value to a string.|
-|toUpper() | Returns the original string in uppercase.|
-|trim() | Returns the original string with leading and trailing whitespace removed.|
+|left() | Returns a string containing the specified number of leftmost characters of the original string |
+|lTrim() | Returns the original string with leading whitespace removed |
+|reverse() | Returns a string in which the order of all characters in the original string are reversed |
+|right() | Returns a string containing the specified number of rightmost characters of the original string |
+|rTrim() | Returns the original string with trailing whitespace removed |
+|substring() | Returns a substring of the original string, beginning with a 0-based index start and length |
+|toLower() | Returns the original string in lowercase |
+|toString() | Converts an integer, float or boolean value to a string |
+|toUpper() | Returns the original string in uppercase |
+|trim() | Returns the original string with leading and trailing whitespace removed |
 
 ## Scalar functions
 
 |Function | Description|
 | ------- |:-----------|
-|id() | Returns the ID of a relationship or node.|
+|id() | Returns the ID of a relationship or node |
 
 ## GRAPH.DELETE
 
-Completely removes graph and all of its entities.
+Completely removes the graph and all of its entities.
 
 Arguments: `Graph name`
 
@@ -417,13 +417,13 @@ Returns: `String indicating if operation succeeded or failed.`
 GRAPH.DELETE us_government
 ```
 
-*Note*: if you'd like to delete a node from the graph (not the entire graph), you simply execute a `MATCH` query and pass the alias to the `DELETE` clause:
+Note: To delete a node from the graph (not the entire graph), execute a `MATCH` query and pass the alias to the `DELETE` clause:
 
 ```
 MATCH (x:y {propname: propvalue}) DELETE x
 ```
 
-Beware that when you delete a node, all of the node's incoming/outgoing relationships will also be removed.
+WARNING: When you delete a node, all of the node's incoming/outgoing relationships are also removed.
 
 ## GRAPH.EXPLAIN
 

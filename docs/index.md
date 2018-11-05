@@ -6,7 +6,7 @@ RedisGraph is the first queryable [Property Graph](https://github.com/opencypher
 
 Primary features:
 
-* Adopting the [Property Graph Model](https://github.com/opencypher/openCypher/blob/master/docs/property-graph-model.adoc)
+* Based on the [Property Graph Model](https://github.com/opencypher/openCypher/blob/master/docs/property-graph-model.adoc)
   * Nodes (vertices) and Relationships (edges) that may have attributes
   * Nodes that can be labeled
   * Relationships have a relationship type
@@ -25,7 +25,7 @@ To see RedisGraph in action, visit [Demos](https://github.com/RedisLabsModules/r
 
 ## Docker
 
-To quickly tryout RedisGraph, launch an instance using docker:
+To quickly try out RedisGraph, launch an instance using docker:
 
 ```sh
 docker run -p 6379:6379 -it --rm redislabs/redisgraph
@@ -33,10 +33,10 @@ docker run -p 6379:6379 -it --rm redislabs/redisgraph
 
 ### Give it a try
 
-Once loaded you can interact with RedisGraph using redis-cli.
+After you load RedisGraph, you can interact with it using redis-cli.
 
-Here we'll quickly create a small graph representing a subset of motorcycle riders and teams taking part in the MotoGP league,
-once created we'll start querying our data.
+Here we'll quickly create a small graph representing a subset of motorcycle riders and teams 
+taking part in the MotoGP league. Once created, we'll start querying our data.
 
 ### With `redis-cli`
 
@@ -51,7 +51,7 @@ $ redis-cli
    5) "Query internal execution time: 0.399000 milliseconds"
 ```
 
-Now that our MotoGP graph is created, we can start asking questions, for example:
+Now that our MotoGP graph is created, we can start asking questions. For example:
 Who's riding for team Yamaha?
 
 ```sh
@@ -81,13 +81,13 @@ Requirements:
 * The RedisGraph repository: `git clone https://github.com/RedisLabsModules/RedisGraph.git`
 * The build-essential and cmake packages: `apt-get install build-essential cmake`
 
-To build, run `make` in the project's directory
+To build, run `make` in the project's directory.
 
-Congratulations! You can find the compiled binary at `src/redisgraph.so`.
+Congratulations! You can find the compiled binary at: `src/redisgraph.so`
 
 ## Loading RedisGraph into Redis
 
-RedisGraph is hosted by [Redis](https://redis.io), so you'll first have to load it as a Module to a Redis server: running [Redis v4.0 or above](https://redis.io/download).
+RedisGraph is hosted by [Redis](https://redis.io), so you'll first have to load it as a Module to a Redis server running [Redis v4.0 or above](https://redis.io/download).
 
 We recommend having Redis load RedisGraph during startup by adding the following to your redis.conf file:
 
@@ -97,15 +97,15 @@ loadmodule /path/to/module/src/redisgraph.so
 
 In the line above, replace `/path/to/module/src/redisgraph.so` with the actual path to RedisGraph's library.
 
-Alternatively, you can have Redis load RedisGraph using the following command line argument syntax:
+Alternatively, you can have Redis load RedisGraph using this command-line argument syntax:
 
 ```sh
 ~/$ redis-server --loadmodule /path/to/module/src/redisgraph.so
 ```
 
-Lastly, you can also use the [`MODULE LOAD`](http://redis.io/commands/module-load) command. Note, however, that `MODULE LOAD` is a dangerous command and may be blocked/deprecated in the future due to security considerations.
+You can also use the [`MODULE LOAD`](http://redis.io/commands/module-load) command. Note, however, that `MODULE LOAD` is a dangerous command and may be blocked/deprecated in the future due to security considerations.
 
-Once you've successfully loaded RedisGraph your Redis log should have lines similar to:
+After you've successfully loaded RedisGraph, your Redis log should have lines similar to:
 
 ```
 ...
@@ -116,7 +116,7 @@ Once you've successfully loaded RedisGraph your Redis log should have lines simi
 ## Using RedisGraph
 
 Before using RedisGraph, you should familiarize yourself with its commands and syntax as detailed in the
-[commands reference](commands.md) document.
+[commands reference](commands.md).
 
 You can call RedisGraph's commands from any Redis client.
 
@@ -130,12 +130,11 @@ $ redis-cli
 ### With any other client
 
 You can interact with RedisGraph using your client's ability to send raw Redis commands.
-
-Depending on your client of choice, the exact method for doing that may vary.
+The exact method for doing that depends on your client of choice.
 
 #### Python example
 
-This code snippet shows how to use RedisGraph with raw Redis commands from Python via
+This code snippet shows how to use RedisGraph with raw Redis commands from Python using
 [redis-py](https://github.com/andymccurdy/redis-py):
 
 ```python
