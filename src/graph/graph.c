@@ -172,9 +172,6 @@ Graph *Graph_New(size_t n) {
     // Force GraphBLAS updates and resize matrices to node count by default
     Graph_SetSynchronization(g, true);
 
-    // Graph_New can only be invoked from writing contexts
-    Graph_AcquireWriteLock(g);
-
     /* TODO: We might want a mutex per matrix,
      * such that when a thread is resizing matrix A
      * another thread could be resizing matrix B. */

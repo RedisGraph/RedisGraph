@@ -70,8 +70,8 @@ void _MGraph_Query(void *args) {
     // If the query modifies the keyspace, acquire the Redis global lock
     if (!readonly) RedisModule_ThreadSafeContextLock(ctx);
 
-    // Try to access the GraphContext and acquire the appropriate lock.
-    GraphContext *gc = GraphContext_Retrieve(ctx, qctx->graphName, readonly);
+    // Try to access the GraphContext
+    GraphContext *gc = GraphContext_Retrieve(ctx, qctx->graphName);
     if(!gc) {
         if (!ast->createNode && !ast->mergeNode) {
             RedisModule_ReplyWithError(ctx, "key doesn't contains a graph object.");
@@ -85,6 +85,8 @@ void _MGraph_Query(void *args) {
         }
         /* TODO: free graph if no entities were created. */
     }
+    // Acquire the appropriate lock.
+    (readonly) ? Graph_AcquireReadLock(gc->g) : Graph_AcquireWriteLock(gc->g);
 
     // Perform query validations before and after ModifyAST
     if (AST_PerformValidations(ctx, ast) != AST_VALID) goto cleanup;
@@ -111,7 +113,7 @@ void _MGraph_Query(void *args) {
     // Clean up.
 cleanup:
     // Release the read-write lock
-    if (gc) GraphContext_Release(gc);
+    if (gc) Graph_ReleaseLock(gc->g);
     // Release Redis global lock if it was acquired
     if (!readonly) RedisModule_ThreadSafeContextUnlock(ctx);
     Free_AST_Query(ast);

@@ -43,6 +43,7 @@ class IndexTest: public ::testing::Test {
       // Allocate graph
       size_t n = expected_n;
       Graph *g = Graph_New(n);
+      Graph_AcquireWriteLock(g);
 
       // Build a label matrix and add to graph
       // (this does not need to be associated with an actual label string)

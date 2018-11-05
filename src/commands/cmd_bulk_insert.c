@@ -37,13 +37,17 @@ void _MGraph_BulkInsert(void *args) {
     size_t nodes = 0;   // Number of nodes created.
     size_t edges = 0;   // Number of edge created.
 
-    // Retrieve the GraphContext and acquire a write lock.
-    GraphContext *gc = GraphContext_Retrieve(ctx, rs_graph_name, false);
+    // Attempt to retrieve the GraphContext.
+    GraphContext *gc = GraphContext_Retrieve(ctx, rs_graph_name);
+
     // If the graph and its interfaces do not exist, create them.
     if (gc == NULL) gc = GraphContext_New(ctx, rs_graph_name);
 
     // Exit if graph creation failed
     if (gc == NULL) goto cleanup;
+
+    // Lock the graph for writing.
+    Graph_AcquireWriteLock(gc->g);
 
     // Disable matrix synchronization for bulk insert operation
     Graph_SetSynchronization(gc->g, false);
@@ -60,7 +64,7 @@ void _MGraph_BulkInsert(void *args) {
     RedisModule_ReplyWithStringBuffer(ctx, timings, strlen(timings));
 
 cleanup:
-    GraphContext_Release(gc);
+    if (gc) Graph_ReleaseLock(gc->g);
     RedisModule_ThreadSafeContextUnlock(ctx);
     RedisModule_FreeThreadSafeContext(ctx);
     RedisModule_UnblockClient(context->bc, NULL);
