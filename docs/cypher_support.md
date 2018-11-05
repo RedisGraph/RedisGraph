@@ -1,6 +1,6 @@
 # Cypher Coverage
 RedisGraph implements a subset of the Cypher language, which is growing as development continues.
-This document is based on comparison to the Cypher Query Language Reference (version 9), available at [OpenCypher Resources](https://www.opencypher.org/resources).
+This document is based on the Cypher Query Language Reference (version 9), available at [OpenCypher Resources](https://www.opencypher.org/resources).
 
 ## Patterns
 Patterns are fully supported with the exception of the OR (`[:rel_a|:rel_b]`) operator to explicitly specify multiple relationship types.
