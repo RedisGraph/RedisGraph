@@ -233,12 +233,14 @@ void _RdbSaveEdges(RedisModuleIO *rdb, const Graph *g) {
 void RdbSaveGraph(RedisModuleIO *rdb, void *value) {
     /* Format:
      * #nodes
+     *      ID
      *      #labels M
      *      (labels) X M
      *      #properties N
      *      (name, value type, value) X N
      *
      * #edges
+     *      edge ID, currently not in use.
      *      relation type
      *      source node ID
      *      destination node ID

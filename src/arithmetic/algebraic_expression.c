@@ -209,6 +209,7 @@ AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(AlgebraicExpr
         /* If edge is referenced, set expression edge pointer. */
         if(_referred_entity(edge->ge.alias, ref_entities))
             iexp->edge = e;
+
         /* If this is a variable length edge, which is not fixed in length
          * remember edge length. */
         if(edge->length && !AST_LinkEntity_FixedLengthEdge(edge)) {

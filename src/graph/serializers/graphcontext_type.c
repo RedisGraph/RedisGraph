@@ -17,7 +17,6 @@ RedisModuleType *GraphContextRedisModuleType;
 
 void GraphContextType_RdbSave(RedisModuleIO *rdb, void *value) {
   /* Format:
-   * version
    * graph name   
    * #label stores
    * label allstore
@@ -30,17 +29,12 @@ void GraphContextType_RdbSave(RedisModuleIO *rdb, void *value) {
    * (index label, index property) X #indices
    */
 
-  // Version 
-  RedisModule_SaveUnsigned(rdb, REDISGRAPH_VERSION_MAJOR);
-  RedisModule_SaveUnsigned(rdb, REDISGRAPH_VERSION_MINOR);
-  RedisModule_SaveUnsigned(rdb, REDISGRAPH_VERSION_PATCH);
-  
   // Graph name.
   GraphContext *gc = value;
   RedisModule_SaveStringBuffer(rdb, gc->graph_name, strlen(gc->graph_name) + 1);
 
   // #Label stores.
-  RedisModule_SaveUnsigned(rdb, gc->label_count + 1);
+  RedisModule_SaveUnsigned(rdb, gc->label_count);
 
   // Serialize label all store.
   RdbSaveStore(rdb, gc->node_allstore);
@@ -52,7 +46,7 @@ void GraphContextType_RdbSave(RedisModuleIO *rdb, void *value) {
   }
 
   // #Relation stores.
-  RedisModule_SaveUnsigned(rdb, gc->relation_count + 1);
+  RedisModule_SaveUnsigned(rdb, gc->relation_count);
   
   // Serialize relation all store.
   RdbSaveStore(rdb, gc->relation_allstore);
@@ -80,7 +74,6 @@ void GraphContextType_RdbSave(RedisModuleIO *rdb, void *value) {
 
 void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
   /* Format:
-   * version
    * graph name   
    * #label stores
    * label allstore
@@ -94,36 +87,26 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
    */
 
   if (encver > GRAPHCONTEXT_TYPE_ENCODING_VERSION) {
-    return NULL;
-  }
-
-  // Version 
-  uint64_t versionMajor = RedisModule_LoadUnsigned(rdb);
-  uint64_t versionMinor = RedisModule_LoadUnsigned(rdb);
-  uint64_t versionPatch = RedisModule_LoadUnsigned(rdb);
-  int versionSemantic = REDISGRAPH_SEMANTIC_VERSION(versionMajor, versionMinor, versionPatch);
-  if(versionSemantic > REDISGRAPH_MODULE_VERSION) {
     // Not forward compatible.
-    printf("RedisGraph is not forward compatible, trying to load graph data from version %d using version %d\n",
-           versionSemantic, REDISGRAPH_MODULE_VERSION);
+    printf("Failed loading Graph, RedisGraph version (%d) is not forward compatible.\n", REDISGRAPH_MODULE_VERSION);
     return NULL;
   }
 
   GraphContext *gc = rm_malloc(sizeof(GraphContext));
-  
+
   // Initialize the generic label and relation stores
   gc->node_stores = NULL;
   gc->relation_stores = NULL;
   gc->indices = NULL;    
-  
+
   // Graph name
   // Duplicating string so that it can be safely freed if GraphContext
   // is deleted.
   gc->graph_name = rm_strdup(RedisModule_LoadStringBuffer(rdb, NULL));
   gc->g = Graph_New(GRAPH_DEFAULT_NODE_CAP);
-  
+
   // #Label stores
-  gc->label_count = RedisModule_LoadUnsigned(rdb) - 1;
+  gc->label_count = RedisModule_LoadUnsigned(rdb);
   gc->label_cap = gc->label_count;
 
   // label all store.
@@ -137,7 +120,7 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
   }
 
   // #Relation stores
-  gc->relation_count = RedisModule_LoadUnsigned(rdb) - 1;
+  gc->relation_count = RedisModule_LoadUnsigned(rdb);
   gc->relation_cap = gc->relation_count;
 
   // Relation all store.
