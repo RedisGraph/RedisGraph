@@ -183,19 +183,20 @@ void Graph_ApplyAllPending(Graph *g) {
 
     for(int i = 0; i < array_len(g->labels); i ++) {
       M = g->labels[i];
-      _Graph_ApplyPending(M);
+      g->SynchronizeMatrix(g, M);
     }
 
     for(int i = 0; i < array_len(g->relations); i ++) {
       M = g->relations[i];
-      _Graph_ApplyPending(M);
+      g->SynchronizeMatrix(g, M);
     }
 
     for(int i = 0; i < array_len(g->_relations_map); i ++) {
       M = g->_relations_map[i];
-      _Graph_ApplyPending(M);
+      g->SynchronizeMatrix(g, M);
     }
 }
+
 /*================================ Graph API ================================ */
 Graph *Graph_New(size_t node_cap, size_t edge_cap) {
     node_cap = MAX(node_cap, GRAPH_DEFAULT_NODE_CAP);
