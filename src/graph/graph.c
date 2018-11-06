@@ -211,6 +211,7 @@ Graph *Graph_New(size_t node_cap, size_t edge_cap) {
 
     // Initialize a read-write lock scoped to the individual graph
     assert(pthread_rwlock_init(&g->_rwlock, NULL) == 0);
+    g->_writelocked = false;
 
     // Force GraphBLAS updates and resize matrices to node count by default
     Graph_SetMatrixPolicy(g, SYNC_AND_MINIMIZE_SPACE);
