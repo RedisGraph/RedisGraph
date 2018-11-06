@@ -29,6 +29,13 @@ extern "C"
 #define KRED "\x1B[31m"
 #define KNRM "\x1B[0m"
 
+// Encapsulate the essence of an edge.
+typedef struct {
+    NodeID srcId;   	// Source node ID.
+    NodeID destId;  	// Destination node ID.
+    int64_t relationId; // Relation type ID.
+} EdgeDesc;
+
 class GraphTest : public ::testing::Test
 {
   protected:

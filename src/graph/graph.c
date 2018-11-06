@@ -183,19 +183,20 @@ void Graph_ApplyAllPending(Graph *g) {
 
     for(int i = 0; i < array_len(g->labels); i ++) {
       M = g->labels[i];
-      _Graph_ApplyPending(M);
+      g->SynchronizeMatrix(g, M);
     }
 
     for(int i = 0; i < array_len(g->relations); i ++) {
       M = g->relations[i];
-      _Graph_ApplyPending(M);
+      g->SynchronizeMatrix(g, M);
     }
 
     for(int i = 0; i < array_len(g->_relations_map); i ++) {
       M = g->_relations_map[i];
-      _Graph_ApplyPending(M);
+      g->SynchronizeMatrix(g, M);
     }
 }
+
 /*================================ Graph API ================================ */
 Graph *Graph_New(size_t node_cap, size_t edge_cap) {
     node_cap = MAX(node_cap, GRAPH_DEFAULT_NODE_CAP);
@@ -211,6 +212,7 @@ Graph *Graph_New(size_t node_cap, size_t edge_cap) {
 
     // Initialize a read-write lock scoped to the individual graph
     assert(pthread_rwlock_init(&g->_rwlock, NULL) == 0);
+    g->_writelocked = false;
 
     // Force GraphBLAS updates and resize matrices to node count by default
     Graph_SetMatrixPolicy(g, SYNC_AND_MINIMIZE_SPACE);

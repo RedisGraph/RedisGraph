@@ -14,13 +14,6 @@
 #include "../../util/uthash.h"
 #include "../../../deps/GraphBLAS/Include/GraphBLAS.h"
 
-// Encapsulate the essence of an edge.
-typedef struct {
-    NodeID srcId;   	// Source node ID.
-    NodeID destId;  	// Destination node ID.
-    int64_t relationId; // Relation type ID.
-} EdgeDesc;
-
 /* TODO: note it is possible to get into an inconsistency
  * if we set src and srcNodeID to different nodes. */
 struct Edge {

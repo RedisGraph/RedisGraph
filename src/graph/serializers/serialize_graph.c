@@ -79,6 +79,7 @@ void _RdbLoadNodes(RedisModuleIO *rdb, Graph *g) {
     uint64_t nodeCount = RedisModule_LoadUnsigned(rdb);
     if(nodeCount == 0) return;
 
+    Graph_AllocateNodes(g, nodeCount);
     for(uint64_t i = 0; i < nodeCount; i++) {
         Node n;
         // * ID
@@ -109,6 +110,7 @@ void _RdbLoadEdges(RedisModuleIO *rdb, Graph *g) {
     uint64_t edgeCount = RedisModule_LoadUnsigned(rdb);
     if(edgeCount == 0) return;
 
+    Graph_AllocateEdges(g, edgeCount);
     // Construct connections.
     for(int i = 0; i < edgeCount; i++) {
         Edge e;
@@ -118,7 +120,7 @@ void _RdbLoadEdges(RedisModuleIO *rdb, Graph *g) {
         uint64_t relation = RedisModule_LoadUnsigned(rdb);
         assert(Graph_ConnectNodes(g, srcId, destId, relation, &e));
         _RdbLoadEntity(rdb, (GraphEntity*)&e);
-    }    
+    }
 }
 
 void _RdbSaveSIValue(RedisModuleIO *rdb, const SIValue *v) {
@@ -195,7 +197,7 @@ void _RdbSaveEdges(RedisModuleIO *rdb, const Graph *g) {
      * } X N
      * edge properties X N */
 
-    // Sort deleted indicies.
+    // Sort deleted indices.
     QSORT(NodeID, g->nodes->deletedIdx, array_len(g->nodes->deletedIdx), ENTITY_ID_ISLT);    
 
     // #edges (N)
@@ -273,12 +275,18 @@ void RdbLoadGraph(RedisModuleIO *rdb, Graph *g) {
      *      (name, value type, value) X N
      */
 
+    // While loading the graph, minimize matrix realloc and synchronization calls.
+    Graph_SetMatrixPolicy(g, RESIZE_TO_CAPACITY);
+
     // Load nodes.
     _RdbLoadNodes(rdb, g);
 
     // Load edges.
     _RdbLoadEdges(rdb, g);
 
-    // Flush all pending changes to graphs.
-    GrB_wait();
+    // Revert to default synchronization behavior
+    Graph_SetMatrixPolicy(g, SYNC_AND_MINIMIZE_SPACE);
+
+    // Resize and flush all pending changes to matrices.
+    Graph_ApplyAllPending(g);
 }
