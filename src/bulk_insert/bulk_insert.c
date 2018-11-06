@@ -352,6 +352,11 @@ int BulkInsert(RedisModuleCtx *ctx, GraphContext *gc, size_t *nodes, size_t *edg
     if(strcmp(section, "RELATIONS") == 0) {
         section_found = true;
         argv = _BulkInsert_Insert_Edges(ctx, gc, edges, argv, &argc);
+        if (argv == NULL) {
+            return BULK_FAIL;
+        } else if (argc == 0) {
+            return BULK_OK;
+        }
         section = RedisModule_StringPtrLen(*argv++, NULL);
         argc -= 1;
     }
