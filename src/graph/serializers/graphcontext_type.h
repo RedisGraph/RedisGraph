@@ -12,7 +12,7 @@
 
 extern RedisModuleType *GraphContextRedisModuleType;
 
-#define GRAPHCONTEXT_TYPE_ENCODING_VERSION 1
+#define GRAPHCONTEXT_TYPE_ENCODING_VERSION 2
 
 /* Commands related to the redis Graph registration */
 int GraphContextType_Register(RedisModuleCtx *ctx);

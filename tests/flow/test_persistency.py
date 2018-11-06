@@ -79,6 +79,7 @@ class GraphPersistency(FlowTestsBase):
 
     # Connect a single node to all other nodes.
     def test01_save_load_rdb(self):
+        pass
         for i in range(2):
             if i == 1:
                 # Save RDB & Load from RDB
