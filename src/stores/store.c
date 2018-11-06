@@ -6,13 +6,14 @@
 */
 
 #include "store.h"
+#include "../util/rmalloc.h"
 #include <assert.h>
 
 /* Creates a new LabelStore. */
 LabelStore* LabelStore_New(const char *label, int id) {
-    LabelStore *store = malloc(sizeof(LabelStore));
+    LabelStore *store = rm_malloc(sizeof(LabelStore));
     store->properties = NewTrieMap();
-    store->label = strdup(label);
+    store->label = rm_strdup(label);
     store->id = id;
     
     return store;
@@ -27,6 +28,6 @@ void LabelStore_UpdateSchema(LabelStore *store, int prop_count, char **propertie
 
 void LabelStore_Free(LabelStore *store) {
     TrieMap_Free(store->properties, TrieMap_NOP_CB);
-    if(store->label) free(store->label);
-    free(store);
+    if(store->label) rm_free(store->label);
+    rm_free(store);
 }

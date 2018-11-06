@@ -281,5 +281,4 @@ void RdbLoadGraph(RedisModuleIO *rdb, Graph *g) {
 
     // Flush all pending changes to graphs.
     GrB_wait();
-    Graph_ReleaseLock(g);
 }

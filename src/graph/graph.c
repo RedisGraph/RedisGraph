@@ -215,9 +215,6 @@ Graph *Graph_New(size_t node_cap, size_t edge_cap) {
     // Force GraphBLAS updates and resize matrices to node count by default
     Graph_SetMatrixPolicy(g, SYNC_AND_MINIMIZE_SPACE);
 
-    // Graph_New can only be invoked from writing contexts
-    Graph_AcquireWriteLock(g);
-
     /* TODO: We might want a mutex per matrix,
      * such that when a thread is resizing matrix A
      * another thread could be resizing matrix B. */
@@ -615,7 +612,6 @@ void Graph_Free(Graph *g) {
 
     // Destroy graph-scoped locks.
     pthread_mutex_destroy(&g->_mutex);
-    Graph_ReleaseLock(g);
     pthread_rwlock_destroy(&g->_rwlock);
 
     rm_free(g);
