@@ -83,7 +83,11 @@ void _MGraph_BulkInsert(void *args) {
         if (gc == NULL) {
             RedisModule_ReplyWithError(ctx, "Failed to allocate space for graph.");
             goto cleanup;
-        } else if (argc == 0) {
+        }
+        // Lock the graph for writing.
+        Graph_AcquireWriteLock(gc->g);
+
+        if (argc == 0) {
             // Only the allocation string was received, so our work is done.
             char success[1024] = {0};
             int len = snprintf(success, 1024, "Initialized a graph to accommodate %lld nodes and %lld edges.", final_node_count, final_edge_count);
@@ -91,15 +95,15 @@ void _MGraph_BulkInsert(void *args) {
             goto cleanup;
         }
     } else {
+        // Query did not start with a "BEGIN" token
         gc = GraphContext_Retrieve(ctx, rs_graph_name);
         if (gc == NULL) {
             RedisModule_ReplyWithError(ctx, "Bulk insert query did not include a BEGIN token and graph was not found.");
             goto cleanup;
         }
+        // Lock the graph for writing.
+        Graph_AcquireWriteLock(gc->g);
     }
-
-    // Lock the graph for writing.
-    Graph_AcquireWriteLock(gc->g);
 
     // Disable matrix synchronization for bulk insert operation
     Graph_SetMatrixPolicy(gc->g, RESIZE_TO_CAPACITY);
