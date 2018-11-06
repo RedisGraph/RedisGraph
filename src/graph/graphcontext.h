@@ -29,7 +29,8 @@ typedef struct {
 } GraphContext;
 
 /* GraphContext API */
-GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rs_name);
+GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rs_name,
+                               size_t node_cap, size_t edge_cap);
 GraphContext* GraphContext_Retrieve(RedisModuleCtx *ctx, RedisModuleString *rs_graph_name);
 
 /* LabelStore API */

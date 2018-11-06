@@ -61,15 +61,15 @@ class GraphMultiPatternQueryFlowTest(FlowTestsBase):
     
     # Connect every node to every node.
     def test03_create_fully_connected_graph(self):
-        query = """MATCH(r:person), (f:person) CREATE (r)-[:friend]->(f)"""
+        query = """MATCH(r:person), (f:person) WHERE f.name != r.name CREATE (r)-[:friend]->(f)"""
         actual_result = redis_graph.query(query)
-        assert (actual_result.relationships_created == 43)
+        assert (actual_result.relationships_created == 42)
     
     def test04_verify_fully_connected_graph(self):
         query = """MATCH(r:person)-[]->(f:person) RETURN count(r)"""
         actual_result = redis_graph.query(query)
         friend_count = int(float(actual_result.result_set[1][0]))
-        assert(friend_count == 49)
+        assert(friend_count == 42)
     
     # Perform a cartesian product of 3 sets.
     def test05_cartesian_product(self):

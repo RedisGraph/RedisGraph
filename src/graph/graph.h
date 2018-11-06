@@ -19,17 +19,24 @@
 #include "../util/datablock/datablock_iterator.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 
-#define GRAPH_DEFAULT_NODE_CAP 16384    // Default number of nodes a graph can hold before resizing.
-#define GRAPH_DEFAULT_RELATION_CAP 16   // Default number of different relationships a graph can hold before resizing.
-#define GRAPH_DEFAULT_LABEL_CAP 16      // Default number of different labels a graph can hold before resizing.
-#define GRAPH_NO_LABEL -1               // Labels are numbered [0-N], -1 represents no label.
-#define GRAPH_NO_RELATION -1            // Relations are numbered [0-N], -1 represents no relation.
+#define GRAPH_DEFAULT_NODE_CAP 16384         // Default number of nodes a graph can hold before resizing.
+#define GRAPH_DEFAULT_EDGE_CAP 16384         // Default number of edges a graph can hold before resizing.
+#define GRAPH_DEFAULT_RELATION_TYPE_CAP 16   // Default number of different relationship types a graph can hold before resizing.
+#define GRAPH_DEFAULT_LABEL_CAP 16           // Default number of different labels a graph can hold before resizing.
+#define GRAPH_NO_LABEL -1                    // Labels are numbered [0-N], -1 represents no label.
+#define GRAPH_NO_RELATION -1                 // Relations are numbered [0-N], -1 represents no relation.
 
 typedef enum {
     GRAPH_EDGE_DIR_INCOMING,
     GRAPH_EDGE_DIR_OUTGOING,
     GRAPH_EDGE_DIR_BOTH,
 } GRAPH_EDGE_DIR;
+
+typedef enum {
+    SYNC_AND_MINIMIZE_SPACE,
+    RESIZE_TO_CAPACITY,
+    DISABLED,
+} MATRIX_POLICY;
 
 // Forward declaration of Graph struct
 typedef struct Graph Graph;
@@ -61,11 +68,15 @@ void Graph_AcquireWriteLock(Graph *g);
 void Graph_ReleaseLock(Graph *g);
 
 /* Choose the current matrix synchronization policy. */
-void Graph_SetSynchronization(Graph *g, bool enable);
+void Graph_SetMatrixPolicy(Graph *g, MATRIX_POLICY policy);
+
+/* Synchronize and resize all matrices in graph. */
+void Graph_ApplyAllPending(Graph *g);
 
 // Create a new graph.
 Graph *Graph_New (
-    size_t n        // Initial number of nodes in the graph.
+    size_t node_cap,    // Allocation size for node datablocks and matrix dimensions.
+    size_t edge_cap     // Allocation size for edge datablocks.
 );
 
 // Creates a new label matrix, returns id given to label.

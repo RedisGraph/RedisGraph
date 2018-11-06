@@ -52,55 +52,6 @@ static inline void _Graph_ApplyPending(GrB_Matrix m) {
 
 /*========================= Graph utility functions ========================= */
 
-/* Allow different operations to choose their matrix synchronization policy.
- * Bulk insertion and whole-graph deletion do not need to resize matrices
- * or force completion of pending GraphBLAS operations. */
-
-/* Do not modify matrices upon retrieval. */
-void _DontSynchronizeMatrix(const Graph *g, GrB_Matrix m) {
-  return;
-}
-
-/* Resize given matrix, such that its number of row and columns
- * matches the number of nodes in the graph. Also, synchronize
- * matrix to execute any pending operations. */
-void _SynchronizeMatrix(const Graph *g, GrB_Matrix m) {
-    GrB_Index n_rows;
-    GrB_Matrix_nrows(&n_rows, m);
-
-    // If the graph belongs to one thread, we don't need to flush pending operations
-    // or lock the mutex.
-    if (g->_writelocked) {
-        if (n_rows != Graph_RequiredMatrixDim(g)) {
-            assert(GxB_Matrix_resize(m, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g)) == GrB_SUCCESS);
-        }
-        return;
-    }
-
-    // If the matrix has pending operations or requires
-    // a resize, enter critical section.
-    if(GxB_Matrix_Pending(m) || (n_rows != Graph_RequiredMatrixDim(g))) {
-        _Graph_EnterCriticalSection((Graph *)g);
-        // Double-check if resize is necessary.
-        GrB_Matrix_nrows(&n_rows, m);
-        if(n_rows != Graph_RequiredMatrixDim(g))
-          assert(GxB_Matrix_resize(m, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g)) == GrB_SUCCESS);
-
-        // Flush changes to matrices if necessary.
-        if (GxB_Matrix_Pending(m)) _Graph_ApplyPending(m);
-
-        _Graph_LeaveCriticalSection((Graph *)g);
-    }
-}
-
-void Graph_SetSynchronization(Graph *g, bool enable) {
-    if (enable) {
-        g->SynchronizeMatrix = _SynchronizeMatrix;
-    } else {
-        g->SynchronizeMatrix = _DontSynchronizeMatrix;
-    }
-}
-
 // Return number of nodes graph can contain.
 size_t _Graph_NodeCap(const Graph *g) {
     return g->nodes->itemCap;
@@ -117,11 +68,11 @@ size_t _Graph_EdgeCap(const Graph *g) {
 // and avoid flushing other pendding changes to it, need to verify
 // if resize flush pendding changes.
 GrB_Matrix _Graph_GetRelationMap(const Graph *g, int relation_idx) {
-    assert(g && relation_idx < array_len(g->_relations_map));
-    
+    assert(g && relation_idx >= 0 && relation_idx < array_len(g->_relations_map));
+
     GrB_Matrix m = g->_relations_map[relation_idx];
     g->SynchronizeMatrix(g, m);
-    return m; 
+    return m;
 }
 
 // Create a new mapping matrix M,
@@ -155,22 +106,117 @@ static inline Entity *_Graph_GetEntity(const DataBlock *entities, EntityID id) {
     return DataBlock_GetItem(entities, id);
 }
 
+/*============= Matrix synchronization and resizing functions =============== */
+
+/* Resize given matrix, such that its number of row and columns
+ * matches the number of nodes in the graph. Also, synchronize
+ * matrix to execute any pending operations. */
+void _MatrixSynchronize(const Graph *g, GrB_Matrix m) {
+    GrB_Index n_rows;
+    GrB_Matrix_nrows(&n_rows, m);
+
+    // If the graph belongs to one thread, we don't need to flush pending operations
+    // or lock the mutex.
+    if (g->_writelocked) {
+        if (n_rows != Graph_RequiredMatrixDim(g)) {
+            assert(GxB_Matrix_resize(m, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g)) == GrB_SUCCESS);
+        }
+        return;
+    }
+
+    // If the matrix has pending operations or requires
+    // a resize, enter critical section.
+    if(GxB_Matrix_Pending(m) || (n_rows != Graph_RequiredMatrixDim(g))) {
+        _Graph_EnterCriticalSection((Graph *)g);
+        // Double-check if resize is necessary.
+        GrB_Matrix_nrows(&n_rows, m);
+        if(n_rows != Graph_RequiredMatrixDim(g))
+          assert(GxB_Matrix_resize(m, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g)) == GrB_SUCCESS);
+
+        // Flush changes to matrices if necessary.
+        if (GxB_Matrix_Pending(m)) _Graph_ApplyPending(m);
+
+        _Graph_LeaveCriticalSection((Graph *)g);
+    }
+}
+
+/* Resize matrix to node capacity. */
+void _MatrixResizeToCapacity(const Graph *g, GrB_Matrix m) {
+    GrB_Index ncols;
+    GrB_Matrix_ncols(&ncols, m);
+
+    if (ncols != _Graph_NodeCap(g)) {
+      assert(GxB_Matrix_resize(m, _Graph_NodeCap(g), _Graph_NodeCap(g)) == GrB_SUCCESS);
+    }
+}
+
+/* Do not update matrices. */
+void _MatrixNOP(const Graph *g, GrB_Matrix m) {
+    return;
+}
+
+/* Define the current behavior for matrix creations and retrievals on this graph. */
+void Graph_SetMatrixPolicy(Graph *g, MATRIX_POLICY policy) {
+    switch (policy) {
+        case SYNC_AND_MINIMIZE_SPACE:
+            // Default behavior; forces execution of pending GraphBLAS operations
+            // when appropriate and sizes matrices to the current node count.
+            g->SynchronizeMatrix = _MatrixSynchronize;
+            break;
+        case RESIZE_TO_CAPACITY:
+            // Bulk insertion behavior; does not force pending operations
+            // and resizes matrices to the graph's current node capacity.
+            g->SynchronizeMatrix = _MatrixResizeToCapacity;
+            break;
+        case DISABLED:
+            // Used when deleting or freeing a graph; forces no matrix updates or resizes.
+            g->SynchronizeMatrix = _MatrixNOP;
+            break;
+        default:
+            assert(false);
+    }
+}
+
+/* Synchronize and resize all matrices in graph. */
+void Graph_ApplyAllPending(Graph *g) {
+    GrB_Matrix M;
+
+    for(int i = 0; i < array_len(g->labels); i ++) {
+      M = g->labels[i];
+      _Graph_ApplyPending(M);
+    }
+
+    for(int i = 0; i < array_len(g->relations); i ++) {
+      M = g->relations[i];
+      _Graph_ApplyPending(M);
+    }
+
+    for(int i = 0; i < array_len(g->_relations_map); i ++) {
+      M = g->_relations_map[i];
+      _Graph_ApplyPending(M);
+    }
+}
 /*================================ Graph API ================================ */
-Graph *Graph_New(size_t n) {
-    assert(n > 0);
+Graph *Graph_New(size_t node_cap, size_t edge_cap) {
+    node_cap = MAX(node_cap, GRAPH_DEFAULT_NODE_CAP);
+    edge_cap = MAX(node_cap, GRAPH_DEFAULT_EDGE_CAP);
+
     Graph *g = rm_malloc(sizeof(Graph));
-    g->nodes = DataBlock_New(n, sizeof(Entity));
-    g->edges = DataBlock_New(n, sizeof(Entity));
+    g->nodes = DataBlock_New(node_cap, sizeof(Entity));
+    g->edges = DataBlock_New(edge_cap, sizeof(Entity));
     g->labels = array_new(GrB_Matrix, GRAPH_DEFAULT_LABEL_CAP);
-    g->relations = array_new(GrB_Matrix, GRAPH_DEFAULT_RELATION_CAP);
-    g->_relations_map = array_new(GrB_Matrix, GRAPH_DEFAULT_RELATION_CAP);
-    GrB_Matrix_new(&g->adjacency_matrix, GrB_BOOL, _Graph_NodeCap(g), _Graph_NodeCap(g));
+    g->relations = array_new(GrB_Matrix, GRAPH_DEFAULT_RELATION_TYPE_CAP);
+    g->_relations_map = array_new(GrB_Matrix, GRAPH_DEFAULT_RELATION_TYPE_CAP);
+    GrB_Matrix_new(&g->adjacency_matrix, GrB_BOOL, node_cap, node_cap);
 
     // Initialize a read-write lock scoped to the individual graph
     assert(pthread_rwlock_init(&g->_rwlock, NULL) == 0);
 
     // Force GraphBLAS updates and resize matrices to node count by default
-    Graph_SetSynchronization(g, true);
+    Graph_SetMatrixPolicy(g, SYNC_AND_MINIMIZE_SPACE);
+
+    // Graph_New can only be invoked from writing contexts
+    Graph_AcquireWriteLock(g);
 
     /* TODO: We might want a mutex per matrix,
      * such that when a thread is resizing matrix A
@@ -322,23 +368,12 @@ void Graph_CreateNode(Graph* g, int label, Node *n) {
 int Graph_ConnectNodes(Graph *g, NodeID src, NodeID dest, int r, Edge *e) {
     Node srcNode;
     Node destNode;
-    GrB_Matrix adj;
-    GrB_Matrix relationMat;
-    GrB_Matrix relationMapMat;
 
     assert(Graph_GetNode(g, src, &srcNode));
     assert(Graph_GetNode(g, dest, &destNode));
     assert(g && r < Graph_RelationTypeCount(g));
 
-    // Is src already connected to dest with edge of type r.
-    relationMat = Graph_GetRelationMatrix(g, r);
-    bool x = false;
-    GrB_Info res = GrB_Matrix_extractElement_BOOL(&x, relationMat, dest, src);
-    if(res == GrB_SUCCESS && x == true) {
-        e->entity = NULL;
-        return 0;
-    }
-
+    GrB_Matrix relationMat = Graph_GetRelationMatrix(g, r);
     e->srcNodeID = src;
     e->destNodeID = dest;
 
@@ -347,8 +382,8 @@ int Graph_ConnectNodes(Graph *g, NodeID src, NodeID dest, int r, Edge *e) {
     en->id = id;
     e->entity = en;
 
-    adj = Graph_GetAdjacencyMatrix(g);
-    relationMapMat = _Graph_GetRelationMap(g, r);
+    GrB_Matrix adj = Graph_GetAdjacencyMatrix(g);
+    GrB_Matrix relationMapMat = _Graph_GetRelationMap(g, r);
 
     // Columns represent source nodes, rows represent destination nodes.
     GrB_Matrix_setElement_BOOL(adj, true, dest, src);

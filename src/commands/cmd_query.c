@@ -78,7 +78,7 @@ void _MGraph_Query(void *args) {
             goto cleanup;
         }
         assert(!readonly);
-        gc = GraphContext_New(ctx, qctx->graphName);
+        gc = GraphContext_New(ctx, qctx->graphName, GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
         if (!gc) {
             RedisModule_ReplyWithError(ctx, "Graph name already in use as a Redis key.");
             goto cleanup;

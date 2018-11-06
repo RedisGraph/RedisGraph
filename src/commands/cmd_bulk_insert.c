@@ -1,9 +1,9 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Apache License, Version 2.0,
-* modified with the Commons Clause restriction.
-*/
+ * Copyright 2018-2019 Redis Labs Ltd. and Contributors
+ *
+ * This file is available under the Apache License, Version 2.0,
+ * modified with the Commons Clause restriction.
+ */
 
 #include "cmd_bulk_insert.h"
 #include "../graph/graph.h"
@@ -24,6 +24,31 @@ BulkInsertContext* BulkInsertContext_New(RedisModuleCtx *ctx, RedisModuleBlocked
 void BulkInsertContext_Free(BulkInsertContext* ctx) {
     free(ctx);
 }
+int _BeginBulkInsert(RedisModuleCtx *ctx, RedisModuleString *graph_name,
+                     long long *final_node_count, long long *final_edge_count,
+                     RedisModuleString **argv) {
+
+    RedisModuleKey *key = RedisModule_OpenKey(ctx, graph_name, REDISMODULE_READ);
+    int keytype = RedisModule_KeyType(key);
+    if (keytype != REDISMODULE_KEYTYPE_EMPTY) {
+        RedisModule_CloseKey(key);
+        RedisModule_ReplyWithError(ctx, "Graph name already exists as a Redis key.");
+        return BULK_FAIL;
+    }
+
+    // Read the user-provided counts for nodes and edges in the final graph.
+    if (RedisModule_StringToLongLong(*argv++, final_node_count) != REDISMODULE_OK) {
+        RedisModule_ReplyWithError(ctx, "Error parsing total node count.");
+        return BULK_FAIL;
+    }
+
+    if (RedisModule_StringToLongLong(*argv++, final_edge_count) != REDISMODULE_OK) {
+        RedisModule_ReplyWithError(ctx, "Error parsing total relation count.");
+        return BULK_FAIL;
+    }
+
+    return BULK_OK;
+}
 
 void _MGraph_BulkInsert(void *args) {
     // Establish thread-safe environment for batch insertion
@@ -31,36 +56,69 @@ void _MGraph_BulkInsert(void *args) {
     RedisModuleCtx *ctx = RedisModule_GetThreadSafeContext(context->bc);
     RedisModule_ThreadSafeContextLock(ctx);
 
-    int argc = context->argc;
-    RedisModuleString **argv = context->argv;
-    RedisModuleString *rs_graph_name = argv[1];
+    RedisModuleString **argv = context->argv + 1; // skip "GRAPH.BULK"
+    int argc = context->argc - 2; // skip "GRAPH.BULK [GRAPHNAME]"
+    RedisModuleString *rs_graph_name = *argv++;
+    RedisModuleKey *key;
     size_t nodes = 0;   // Number of nodes created.
     size_t edges = 0;   // Number of edge created.
 
-    // Attempt to retrieve the GraphContext.
-    GraphContext *gc = GraphContext_Retrieve(ctx, rs_graph_name);
+    GraphContext *gc = NULL;
 
-    // If the graph and its interfaces do not exist, create them.
-    if (gc == NULL) gc = GraphContext_New(ctx, rs_graph_name);
+    // Type chosen to match Redis conversion function
+    long long final_node_count;
+    long long final_edge_count;
+    // Check the next to see if this is a starting query
+    if (!strcmp(RedisModule_StringPtrLen(*argv, 0), "BEGIN")) {
+        argv ++;
+        if (_BeginBulkInsert(ctx, rs_graph_name, &final_node_count, &final_edge_count, argv) != BULK_OK) {
+            goto cleanup;
+        }
+        argv += 3; // skip "BEGIN [NODE_COUNT] [EDGE_COUNT]"
+        argc -= 3; // skip "BEGIN [NODE_COUNT] [EDGE_COUNT]"
 
-    // Exit if graph creation failed
-    if (gc == NULL) goto cleanup;
+        // Create graph and initialize its data stores.
+        gc = GraphContext_New(ctx, rs_graph_name, final_node_count, final_edge_count);
+        // Exit if graph creation failed
+        if (gc == NULL) {
+            RedisModule_ReplyWithError(ctx, "Failed to allocate space for graph.");
+            goto cleanup;
+        } else if (argc == 0) {
+            // Only the allocation string was received, so our work is done.
+            char success[1024] = {0};
+            int len = snprintf(success, 1024, "Initialized a graph to accommodate %lld nodes and %lld edges.", final_node_count, final_edge_count);
+            RedisModule_ReplyWithStringBuffer(ctx, success, len);
+            goto cleanup;
+        }
+    } else {
+        gc = GraphContext_Retrieve(ctx, rs_graph_name);
+        if (gc == NULL) {
+            RedisModule_ReplyWithError(ctx, "Bulk insert query did not include a BEGIN token and graph was not found.");
+            goto cleanup;
+        }
+    }
 
     // Lock the graph for writing.
     Graph_AcquireWriteLock(gc->g);
 
     // Disable matrix synchronization for bulk insert operation
-    Graph_SetSynchronization(gc->g, false);
+    Graph_SetMatrixPolicy(gc->g, RESIZE_TO_CAPACITY);
 
-    int rc = BulkInsert(ctx, gc, &nodes, &edges, argv+2, argc-2);
+    int rc = BulkInsert(ctx, gc, &nodes, &edges, argv, argc);
 
-    // Exit if insertion failed
-    if (rc == BULK_FAIL) goto cleanup;
+    if (rc == BULK_FAIL) {
+        // If insertion failed, clean up keyspace and free added entities.
+        key = RedisModule_OpenKey(ctx, rs_graph_name, REDISMODULE_WRITE);
+        RedisModule_DeleteKey(key);
+        goto cleanup;
+    } else if (rc == BULK_COMPLETE) {
+        goto cleanup;
+    }
 
     // Replay to caller.
     double t = simple_toc(context->tic);
     char timings[1024] = {0};
-    snprintf(timings, 1024, "%zu Nodes created, %zu Edges created, time: %.6f sec\n", nodes, edges, t);
+    snprintf(timings, 1024, "%zu Nodes created, %zu Edges created, time: %.6f sec", nodes, edges, t);
     RedisModule_ReplyWithStringBuffer(ctx, timings, strlen(timings));
 
 cleanup:
@@ -72,7 +130,7 @@ cleanup:
 }
 
 int MGraph_BulkInsert(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-    if (argc < 4) return RedisModule_WrongArity(ctx);
+    if (argc < 3) return RedisModule_WrongArity(ctx);
     // Prepare context.
     RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
     BulkInsertContext *context = BulkInsertContext_New(ctx, bc, argv, argc);
@@ -84,3 +142,4 @@ int MGraph_BulkInsert(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     RedisModule_ReplicateVerbatim(ctx);
     return REDISMODULE_OK;
 }
+

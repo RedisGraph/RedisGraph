@@ -1,3 +1,4 @@
+#include <sys/param.h>
 #include "graphcontext.h"
 #include "serializers/graphcontext_type.h"
 #include "../util/rmalloc.h"
@@ -18,7 +19,8 @@ int _GraphContext_IndexOffset(const GraphContext *gc, const char *label, const c
 // GraphContext API
 //------------------------------------------------------------------------------
 
-GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rs_name) {
+GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rs_name,
+                               size_t node_cap, size_t edge_cap) {
   // Create key for GraphContext from the unmodified string provided by the user
   RedisModuleKey *key = RedisModule_OpenKey(ctx, rs_name, REDISMODULE_WRITE);
   if (RedisModule_KeyType(key) != REDISMODULE_KEYTYPE_EMPTY) {
@@ -29,7 +31,7 @@ GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rs_name) 
 
   GraphContext *gc = rm_malloc(sizeof(GraphContext));
 
-  gc->relation_cap = GRAPH_DEFAULT_RELATION_CAP;
+  gc->relation_cap = GRAPH_DEFAULT_RELATION_TYPE_CAP;
   gc->relation_count = 0;
   gc->label_cap = GRAPH_DEFAULT_LABEL_CAP;
   gc->label_count = 0;
@@ -37,7 +39,7 @@ GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rs_name) 
   gc->index_count = 0;
 
   // Initialize the graph's matrices and datablock storage
-  gc->g = Graph_New(GRAPH_DEFAULT_NODE_CAP);
+  gc->g = Graph_New(node_cap, edge_cap);
 
   gc->graph_name = rm_strdup(RedisModule_StringPtrLen(rs_name, NULL));
   // Allocate the default space for stores and indices
@@ -66,7 +68,7 @@ GraphContext* GraphContext_Retrieve(RedisModuleCtx *ctx, RedisModuleString *rs_n
   RedisModule_CloseKey(key);
 
   // Force GraphBLAS updates and resize matrices to node count by default
-  Graph_SetSynchronization(gc->g, true);
+  Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
 
   return gc;
 }

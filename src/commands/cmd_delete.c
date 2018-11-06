@@ -59,7 +59,7 @@ void _MGraph_Delete(void *args) {
     // Lock the graph for writing.
     Graph_AcquireWriteLock(gc->g);
     // Disable matrix synchronization for graph deletion.
-    Graph_SetSynchronization(gc->g, false);
+    Graph_SetMatrixPolicy(gc->g, DISABLED);
 
     // Remove GraphContext from keyspace.
     if(RedisModule_DeleteKey(key) == REDISMODULE_OK) {
