@@ -62,29 +62,6 @@ void _LocateEntities(OpDelete *op, QueryGraph *qg, AST_DeleteNode *ast_delete_no
     }
 }
 
-EntityID *_SortNRemoveDups(EntityID *entities, size_t entityCount, size_t *dupFreeCount) {
-    // Sort.
-    QSORT(EntityID, entities, entityCount, ENTITY_ID_ISLT);
-
-    // Remove duplicates.
-    int j = 0;  // Index into dup_free_ids.
-
-    // Array of unique IDs.
-    EntityID *dup_free_ids = malloc(sizeof(EntityID) * entityCount);
-
-    for(int i = 0; i < entityCount; i++) {
-        EntityID current = entities[i];
-
-        // Skip duplicates.
-        while(i < (entityCount-1) && current == entities[i+1]) i++;
-
-        dup_free_ids[j++] = current;
-    }
-
-    *dupFreeCount = j;
-    return dup_free_ids;
-}
-
 void _DeleteEntities(OpDelete *op) {
     /* We must start with edge deletion as node deletion moves nodes around. */
     size_t deletedEdgeCount = array_len(op->deleted_edges);

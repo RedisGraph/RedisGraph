@@ -23,6 +23,8 @@ typedef struct {
   LabelStore **relation_stores;    // Array of schemas for each relation type
   LabelStore **node_stores;        // Array of schemas for each node label 
 
+  // TODO These are only stored to simplify serialization, and require
+  // the addition of an ID member to the Index struct. Possibly have better options.
   unsigned int index_cap;          // Capacity of indices array
   unsigned int index_count;        // Number of indices
   Index **indices;                 // Array of all indices on label-property pairs

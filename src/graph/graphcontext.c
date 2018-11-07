@@ -4,18 +4,6 @@
 #include "../util/rmalloc.h"
 
 //------------------------------------------------------------------------------
-// Private functions
-//------------------------------------------------------------------------------
-int _GraphContext_IndexOffset(const GraphContext *gc, const char *label, const char *property) {
-  Index *idx;
-  for (int i = 0; i < gc->index_count; i ++) {
-    idx = gc->indices[i];
-    if (!strcmp(label, idx->label) && !strcmp(property, idx->property)) return i;
-  }
-  return -1;
-}
-
-//------------------------------------------------------------------------------
 // GraphContext API
 //------------------------------------------------------------------------------
 
@@ -152,10 +140,18 @@ bool GraphContext_HasIndices(GraphContext *gc) {
 }
 
 Index* GraphContext_GetIndex(const GraphContext *gc, const char *label, const char *property) {
-  int offset = _GraphContext_IndexOffset(gc, label, property);
-  if (offset < 0) return INDEX_FAIL;
+  // Find the ID of the specified label
+  int label_id = GraphContext_GetLabelID(gc, label, STORE_NODE);
+  if (label_id < 0 ) return INDEX_FAIL;
 
-  return gc->indices[offset];
+  LabelStore *store = gc->node_stores[label_id];
+
+  Index *idx = LabelStore_RetrieveValue(store, (char*)property);
+  if (idx == TRIEMAP_NOTFOUND || idx == NULL) {
+    // Property does not exist or was not indexed.
+    return INDEX_FAIL;
+  }
+  return idx;
 }
 
 int GraphContext_AddIndex(GraphContext *gc, const char *label, const char *property) {
@@ -168,23 +164,53 @@ int GraphContext_AddIndex(GraphContext *gc, const char *label, const char *prope
   int label_id = GraphContext_GetLabelID(gc, label, STORE_NODE);
   if (label_id < 0 ) return INDEX_FAIL;
 
+  LabelStore *store = gc->node_stores[label_id];
+
+  // Triemaps (for some reason) don't specify const.
+  void *property_lookup = LabelStore_RetrieveValue(store, (char*)property);
+
+  if (property_lookup == TRIEMAP_NOTFOUND || property_lookup != NULL) {
+    // Property does not exist on this label or property is already indexed.
+    return INDEX_FAIL;
+  }
+
   // Populate an index for the label-property pair using the Graph interfaces.
   Index *idx = Index_Create(gc->g, label_id, label, property);
+  idx->id = gc->index_count;
   gc->indices[gc->index_count] = idx;
-  gc->index_count++;
 
+  // Associate the new index with the property in the label store.
+  LabelStore_AssignValue(store, (char*)property, (void*)idx);
+
+  gc->index_count++;
   return INDEX_OK;
 }
 
 int GraphContext_DeleteIndex(GraphContext *gc, const char *label, const char *property) {
-  int offset = _GraphContext_IndexOffset(gc, label, property);
-  if (offset < 0) return INDEX_FAIL;
+  // Find the ID of the specified label
+  int label_id = GraphContext_GetLabelID(gc, label, STORE_NODE);
+  if (label_id < 0 ) return INDEX_FAIL;
 
-  Index *idx = gc->indices[offset];
+  LabelStore *store = gc->node_stores[label_id];
+
+  Index *idx = LabelStore_RetrieveValue(store, (char*)property);
+  if (idx == TRIEMAP_NOTFOUND || idx == NULL) {
+    // Property does not exist or was not indexed.
+    return INDEX_FAIL;
+  }
+
+  int index_id = idx->id;
+  // Remove the index association from the label store
+  LabelStore_AssignValue(store, (char*)property, NULL);
+  // Index *idx = gc->indices[offset];
   Index_Free(idx);
   gc->index_count --;
+
   // If the deleted index was not the last, swap the last into the newly-emptied position
-  if (offset < gc->index_count) gc->indices[offset] = gc->indices[gc->index_count];
+  if (index_id < gc->index_count) {
+    gc->indices[index_id] = gc->indices[gc->index_count];
+    gc->indices[index_id]->id = index_id;
+  }
 
   return INDEX_OK;
 }

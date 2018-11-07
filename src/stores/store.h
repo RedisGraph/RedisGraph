@@ -29,7 +29,13 @@ LabelStore* LabelStore_New(const char *label, int id);
 /* Update store schema with given properties. */
 void LabelStore_UpdateSchema(LabelStore *store, int prop_count, char **properties);
 
+/* Attach a pointer value to a property key. */
+void LabelStore_AssignValue(LabelStore *store, char *property, void *val);
+
+void* LabelStore_RetrieveValue(LabelStore *store, char *property);
+
 /* Free store. */
 void LabelStore_Free(LabelStore *store);
 
 #endif /* __LABEL_STORE_H__ */
+

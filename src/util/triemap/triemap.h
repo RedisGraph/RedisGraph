@@ -51,7 +51,7 @@ typedef void *(*TrieMapReplaceFunc)(void *oldval, void *newval);
 /* Add a new string to a trie. Returns 1 if the key is new to the trie or 0 if
 * it already existed.
 *
-* If value is given, it is saved as a pyaload inside the trie node.
+* If value is given, it is saved as a payload inside the trie node.
 * If the key already exists, we replace the old value with the new value, using
 * free() to free the old value.
 *
@@ -80,8 +80,11 @@ int TrieMap_Delete(TrieMap *t, char *str, tm_len_t len, void (*freeCB)(void *));
 /* Fake free callback which does absolutely nothing. */
 void TrieMap_NOP_CB(void *p);
 
-/* Fake replace callback replaces the newval with the old one. */
+/* Replace callback that replaces the oldval with the new one. */
 void* TrieMap_DONT_CARE_REPLACE(void *oldval, void *newval);
+
+/* Fake replace callback that does not overwrite old value. */
+void* TrieMap_NOP_REPLACE(void *oldval, void *newval);
 
 /* Free the trie's root and all its children recursively. If freeCB is given, we
  * call it to free individual payload values. If not, free() is used instead. */
