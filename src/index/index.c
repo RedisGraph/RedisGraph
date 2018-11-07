@@ -8,8 +8,9 @@
 #include "index.h"
 #include "../util/rmalloc.h"
 
-/* Memory management and comparator functions that get attached to
- * string and numeric skiplists as function pointers. */
+//------------------------------------------------------------------------------
+// Function pointers for skiplist routines
+//------------------------------------------------------------------------------
 int compareNodes(NodeID a, NodeID b) {
   return a - b;
 }
@@ -36,6 +37,9 @@ void freeKey(SIValue *key) {
   rm_free(key);
 }
 
+//------------------------------------------------------------------------------
+// Index creation functions
+//------------------------------------------------------------------------------
 void initializeSkiplists(Index *index) {
   index->string_sl = skiplistCreate(compareStrings, compareNodes, cloneKey, freeKey);
   index->numeric_sl = skiplistCreate(compareNumerics, compareNodes, cloneKey, freeKey);
@@ -97,6 +101,23 @@ Index* Index_Create(Graph *g, int label_id, const char *label, const char *prop_
 
   return index;
 }
+
+//------------------------------------------------------------------------------
+// Index updates
+//------------------------------------------------------------------------------
+
+void Index_DeleteNode(Index *idx, NodeID node, SIValue *val) {
+  skiplist *sl = val->type == T_STRING ? idx->string_sl : idx->numeric_sl;
+  skiplistDelete(sl, val, &node);
+}
+ void Index_InsertNode(Index *idx, NodeID node, SIValue *val) {
+  skiplist *sl = val->type == T_STRING ? idx->string_sl : idx->numeric_sl;
+  skiplistInsert(sl, val, node);
+}
+
+//------------------------------------------------------------------------------
+// Index iterator functions
+//------------------------------------------------------------------------------
 
 /* Generate an iterator with no lower or upper bound. */
 IndexIter* IndexIter_Create(Index *idx, SIType type) {

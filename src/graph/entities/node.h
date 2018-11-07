@@ -16,12 +16,12 @@
 /* Forward declaration of edge */
 struct Edge;
 typedef struct {
-	Entity *entity;			/* MUST be the first property of Edge. */
-	char *label;			/* label attached to node */
-	char *alias;			/* alias attached to node */
-	GrB_Matrix mat;			/* Label matrix, associated with node. */
-	Vector* outgoing_edges;	/* list of incoming edges (ME)<-(SRC) */
-	Vector* incoming_edges;	/* list on outgoing edges (ME)->(DEST) */
+    Entity *entity;             /* MUST be the first property of Edge. */
+    char *label;                /* label attached to node */
+    char *alias;                /* alias attached to node */
+    GrB_Matrix mat;             /* Label matrix, associated with node. */
+    Vector* outgoing_edges;     /* list of incoming edges (ME)<-(SRC) */
+    Vector* incoming_edges;     /* list on outgoing edges (ME)->(DEST) */
 } Node;
 
 /* Creates a new node. */
