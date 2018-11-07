@@ -197,6 +197,20 @@ void GraphContext_AddNodeToIndices(GraphContext *gc, LabelStore *store, Node *n)
   }
 }
 
+// TODO inefficient
+void GraphContext_UpdateNodeIndices(GraphContext *gc, NodeID id, EntityProperty *prop, SIValue *newval) {
+    if (!GraphContext_HasIndices(gc)) return;
+
+    int store_id = Graph_GetNodeLabel(gc->g, id);
+    if (store_id == GRAPH_NO_LABEL) return;
+
+    LabelStore *store = gc->node_stores[store_id];
+    Index *idx = LabelStore_RetrieveValue(store, prop->name);
+
+    Index_DeleteNode(idx, id, &prop->value);
+    Index_InsertNode(idx, id, newval);
+}
+
 int GraphContext_DeleteNodeFromIndices(GraphContext *gc, Node *n) {
   // Verify that node exists.
   if(!DataBlock_GetItem(gc->g->nodes, ENTITY_GET_ID(n))) return 0;

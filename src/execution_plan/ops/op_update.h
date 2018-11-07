@@ -23,6 +23,8 @@ typedef struct {
 typedef struct {
     EntityProperty *dest_entity_prop;   /* Entity's property to update. */
     SIValue new_value;                  /* Constant value to set. */
+    EntityID id;
+    AST_GraphEntityType t;
 } EntityUpdateCtx;
 
 typedef struct {
@@ -43,3 +45,4 @@ OpResult OpUpdateReset(OpBase *ctx);
 void OpUpdateFree(OpBase *ctx);
 
 #endif /* __OP_UPDATE_H */
+
