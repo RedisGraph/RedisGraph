@@ -1,6 +1,6 @@
 FROM redis:latest as builder
 
-ENV DEPS "python python-setuptools python-pip wget build-essential cmake libomp-dev"
+ENV DEPS "python python-setuptools python-pip wget build-essential cmake"
 
 # Set up a build environment
 RUN set -ex;\
@@ -24,6 +24,8 @@ FROM redis:latest
 ENV LIBDIR /usr/lib/redis/modules
 WORKDIR /data
 RUN set -ex;\
+    apt-get update;\
+    apt-get install -y --no-install-recommends libgomp1;\
     mkdir -p "$LIBDIR";
 
 COPY --from=builder /redisgraph/src/redisgraph.so "$LIBDIR"
