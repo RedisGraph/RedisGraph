@@ -114,6 +114,7 @@ void _UpdateEntities(OpUpdate *op) {
     for(int i = 0; i < op->entities_to_update_count; i++) {
         EntityProperty *dest_entity_prop = op->entities_to_update[i].dest_entity_prop;
         SIValue new_value = op->entities_to_update[i].new_value;
+        // Ought to update indices here, though some information is missing
         dest_entity_prop->value = new_value;
     }
     if(op->result_set)

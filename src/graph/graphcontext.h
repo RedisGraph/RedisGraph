@@ -47,6 +47,12 @@ int GraphContext_AddIndex(GraphContext *gc, const char *label, const char *prope
 // Remove and free an index
 int GraphContext_DeleteIndex(GraphContext *gc, const char *label, const char *property);
 
+// Add a single node to all indices its properties match
+void GraphContext_AddNodeToIndices(GraphContext *gc, LabelStore *store, Node *n);
+
+// Remove a single node from all indices that refer to it
+int GraphContext_DeleteNodeFromIndices(GraphContext *gc, Node *n);
+
 // Free the GraphContext and all associated graph data
 void GraphContext_Free(GraphContext *gc);
 

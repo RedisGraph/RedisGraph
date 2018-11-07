@@ -19,10 +19,10 @@
 /* Forward declarations. */
 void _LocateEntities(OpDelete *op_delete, QueryGraph *graph, AST_DeleteNode *ast_delete_node);
 
-OpBase* NewDeleteOp(AST_DeleteNode *ast_delete_node, QueryGraph *qg, Graph *g, ResultSet *result_set) {
+OpBase* NewDeleteOp(AST_DeleteNode *ast_delete_node, QueryGraph *qg, GraphContext *gc, ResultSet *result_set) {
     OpDelete *op_delete = malloc(sizeof(OpDelete));
 
-    op_delete->g = g;
+    op_delete->gc = gc;
     op_delete->qg = qg;
     op_delete->node_count = 0;
     op_delete->edge_count = 0;
@@ -67,15 +67,17 @@ void _DeleteEntities(OpDelete *op) {
     size_t deletedEdgeCount = array_len(op->deleted_edges);
     for(int i = 0; i < deletedEdgeCount; i++) {
         Edge *e = op->deleted_edges + i;
-        if(Graph_DeleteEdge(op->g, e))
+        if(Graph_DeleteEdge(op->gc->g, e))
             if(op->result_set) op->result_set->stats.relationships_deleted++;
     }
 
     size_t deletedNodeCount = array_len(op->deleted_nodes);
     for(int i = 0; i < deletedNodeCount; i++) {
         Node *n = op->deleted_nodes + i;
-        if(Graph_DeleteNode(op->g, n))
+        GraphContext_DeleteNodeFromIndices(op->gc, n);
+        if (Graph_DeleteNode(op->gc->g, n)) {
             if(op->result_set) op->result_set->stats.nodes_deleted++;
+        }
     }
 }
 
@@ -117,3 +119,4 @@ void OpDeleteFree(OpBase *ctx) {
     array_free(op->deleted_nodes);
     array_free(op->deleted_edges);
 }
+

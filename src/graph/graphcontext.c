@@ -185,6 +185,49 @@ int GraphContext_DeleteIndex(GraphContext *gc, const char *label, const char *pr
   return INDEX_OK;
 }
 
+void GraphContext_AddNodeToIndices(GraphContext *gc, LabelStore *store, Node *n) {
+  if (store && GraphContext_HasIndices(gc)) {
+    EntityProperty *props = ENTITY_PROPS(n);
+    for (int j = 0; j < ENTITY_PROP_COUNT(n); j ++) {
+      Index *idx = LabelStore_RetrieveValue(store, props[j].name);
+      if (idx != TRIEMAP_NOTFOUND && idx != NULL) {
+        Index_InsertNode(idx, n->entity->id, &props[j].value);
+      }
+    }
+  }
+}
+
+int GraphContext_DeleteNodeFromIndices(GraphContext *gc, Node *n) {
+  // Verify that node exists.
+  if(!DataBlock_GetItem(gc->g->nodes, ENTITY_GET_ID(n))) return 0;
+
+  LabelStore *store = NULL;
+  if (n->label) {
+    // Node will have a label string if one was specified in the query MATCH clause
+    store = GraphContext_GetStore(gc, n->label, STORE_NODE);
+  } else {
+    // Otherwise, look up the offset of the matching label (if any)
+    int store_id = Graph_GetNodeLabel(gc->g, n->entity->id);
+    if (store_id != GRAPH_NO_LABEL) store = gc->node_stores[store_id];
+  }
+
+  // If node is labeled and graph has indices,
+  // update all affected indices
+  if (store && GraphContext_HasIndices(gc)) {
+    EntityProperty *props = ENTITY_PROPS(n);
+    for (int j = 0; j < ENTITY_PROP_COUNT(n); j ++) {
+      Index *idx = LabelStore_RetrieveValue(store, props[j].name);
+      if (idx != TRIEMAP_NOTFOUND && idx != NULL) {
+        Index_DeleteNode(idx, n->entity->id, &props[j].value);
+      }
+    }
+  }
+}
+
+//------------------------------------------------------------------------------
+// Free routine
+//------------------------------------------------------------------------------
+
 // Free all data associated with graph
 void GraphContext_Free(GraphContext *gc) {
   Graph_Free(gc->g);

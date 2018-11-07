@@ -17,7 +17,7 @@
 
 typedef struct {
     OpBase op;
-    Graph *g;
+    GraphContext *gc;
     QueryGraph *qg;
     size_t node_count;
     size_t edge_count;
@@ -29,7 +29,7 @@ typedef struct {
     ResultSet *result_set;
 } OpDelete;
 
-OpBase* NewDeleteOp(AST_DeleteNode *ast_delete_node, QueryGraph *qg, Graph *g, ResultSet *result_set);
+OpBase* NewDeleteOp(AST_DeleteNode *ast_delete_node, QueryGraph *qg, GraphContext *gc, ResultSet *result_set);
 OpResult OpDeleteConsume(OpBase *opBase, Record *r);
 OpResult OpDeleteReset(OpBase *ctx);
 void OpDeleteFree(OpBase *ctx);
