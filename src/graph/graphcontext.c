@@ -1,6 +1,7 @@
 #include <sys/param.h>
 #include "graphcontext.h"
 #include "serializers/graphcontext_type.h"
+#include "../util/arr.h"
 #include "../util/rmalloc.h"
 
 //------------------------------------------------------------------------------
@@ -19,21 +20,14 @@ GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rs_name,
 
   GraphContext *gc = rm_malloc(sizeof(GraphContext));
 
-  gc->relation_cap = GRAPH_DEFAULT_RELATION_TYPE_CAP;
-  gc->relation_count = 0;
-  gc->label_cap = GRAPH_DEFAULT_LABEL_CAP;
-  gc->label_count = 0;
-  gc->index_cap = DEFAULT_INDEX_CAP;
-  gc->index_count = 0;
-
   // Initialize the graph's matrices and datablock storage
   gc->g = Graph_New(node_cap, edge_cap);
 
   gc->graph_name = rm_strdup(RedisModule_StringPtrLen(rs_name, NULL));
   // Allocate the default space for stores and indices
-  gc->node_stores = rm_malloc(gc->label_cap * sizeof(LabelStore*));
-  gc->relation_stores = rm_malloc(gc->relation_cap * sizeof(LabelStore*));
-  gc->indices = rm_malloc(gc->index_cap * sizeof(Index*));
+  gc->node_stores = array_new(LabelStore*, GRAPH_DEFAULT_LABEL_CAP);
+  gc->relation_stores = array_new(LabelStore*, GRAPH_DEFAULT_RELATION_TYPE_CAP);
+  gc->indices = array_new(Index*, DEFAULT_INDEX_CAP);
 
   // Initialize the generic label and relation stores
   gc->node_allstore = LabelStore_New("ALL", GRAPH_NO_LABEL);
@@ -65,18 +59,11 @@ GraphContext* GraphContext_Retrieve(RedisModuleCtx *ctx, RedisModuleString *rs_n
 // LabelStore API
 //------------------------------------------------------------------------------
 int GraphContext_GetLabelID(const GraphContext *gc, const char *label, LabelStoreType t) {
-  LabelStore **labels;
-  size_t count;
-  if (t == STORE_NODE) {
-    labels = gc->node_stores;
-    count = gc->label_count;
-  } else {
-    labels = gc->relation_stores;
-    count = gc->relation_count;
-  }
+  // Choose the appropriate store array given the entity type
+  LabelStore **labels = (t == STORE_NODE) ? gc->node_stores : gc->relation_stores;
 
   // TODO optimize lookup
-  for (int i = 0; i < count; i ++) {
+  for (uint32_t i = 0; i < array_len(labels); i ++) {
     if (!strcmp(label, labels[i]->label)) return i;
   }
   return GRAPH_NO_LABEL; // equivalent to GRAPH_NO_RELATION
@@ -99,35 +86,17 @@ LabelStore* GraphContext_GetStore(const GraphContext *gc, const char *label, Lab
 // The next two functions are identical save for whether their target is a label or relation type,
 // but modify enough variables to make consolidating them unwieldy.
 LabelStore* GraphContext_AddLabel(GraphContext *gc, const char *label) {
-  if(gc->label_count == gc->label_cap) {
-    gc->label_cap += 4;
-    // Add space for additional label stores.
-    gc->node_stores = rm_realloc(gc->node_stores, gc->label_cap * sizeof(LabelStore*));
-    // Add space for additional label matrices.
-    gc->g->labels = rm_realloc(gc->g->labels, gc->label_cap * sizeof(GrB_Matrix));
-
-  }
   Graph_AddLabel(gc->g);
-  LabelStore *store = LabelStore_New(label, gc->label_count);
-  gc->node_stores[gc->label_count] = store;
-  gc->label_count++;
+  LabelStore *store = LabelStore_New(label, array_len(gc->node_stores));
+  gc->node_stores = array_append(gc->node_stores, store);
 
   return store;
 }
 
 LabelStore* GraphContext_AddRelationType(GraphContext *gc, const char *label) {
-  if(gc->relation_count == gc->relation_cap) {
-    gc->relation_cap += 4;
-    // Add space for additional relation type stores.
-    gc->relation_stores = rm_realloc(gc->relation_stores, gc->relation_cap * sizeof(LabelStore*));
-    // Add space for additional relation type matrices.
-    gc->g->relations = rm_realloc(gc->g->relations, gc->relation_cap * sizeof(GrB_Matrix));
-  }
   Graph_AddRelationType(gc->g);
-
-  LabelStore *store = LabelStore_New(label, gc->relation_count);
-  gc->relation_stores[gc->relation_count] = store;
-  gc->relation_count++;
+  LabelStore *store = LabelStore_New(label, array_len(gc->relation_stores));
+  gc->relation_stores = array_append(gc->relation_stores, store);
 
   return store;
 }
@@ -136,7 +105,7 @@ LabelStore* GraphContext_AddRelationType(GraphContext *gc, const char *label) {
 // Index API
 //------------------------------------------------------------------------------
 bool GraphContext_HasIndices(GraphContext *gc) {
-  return gc->index_count > 0;
+  return array_len(gc->indices) > 0;
 }
 
 Index* GraphContext_GetIndex(const GraphContext *gc, const char *label, const char *property) {
@@ -155,11 +124,6 @@ Index* GraphContext_GetIndex(const GraphContext *gc, const char *label, const ch
 }
 
 int GraphContext_AddIndex(GraphContext *gc, const char *label, const char *property) {
-  if(gc->index_count == gc->index_cap) {
-    gc->index_cap += 4;
-    gc->indices = rm_realloc(gc->indices, gc->index_cap * sizeof(Index*));
-  }
-
   // Find the ID of the specified label
   int label_id = GraphContext_GetLabelID(gc, label, STORE_NODE);
   if (label_id < 0 ) return INDEX_FAIL;
@@ -176,13 +140,11 @@ int GraphContext_AddIndex(GraphContext *gc, const char *label, const char *prope
 
   // Populate an index for the label-property pair using the Graph interfaces.
   Index *idx = Index_Create(gc->g, label_id, label, property);
-  idx->id = gc->index_count;
-  gc->indices[gc->index_count] = idx;
+  gc->indices = array_append(gc->indices, idx);
 
   // Associate the new index with the property in the label store.
   LabelStore_AssignValue(store, (char*)property, (void*)idx);
 
-  gc->index_count++;
   return INDEX_OK;
 }
 
@@ -199,18 +161,26 @@ int GraphContext_DeleteIndex(GraphContext *gc, const char *label, const char *pr
     return INDEX_FAIL;
   }
 
-  int index_id = idx->id;
   // Remove the index association from the label store
   LabelStore_AssignValue(store, (char*)property, NULL);
   // Index *idx = gc->indices[offset];
-  Index_Free(idx);
-  gc->index_count --;
 
-  // If the deleted index was not the last, swap the last into the newly-emptied position
-  if (index_id < gc->index_count) {
-    gc->indices[index_id] = gc->indices[gc->index_count];
-    gc->indices[index_id]->id = index_id;
+  // Pop the last stored index
+  Index *last_idx = array_pop(gc->indices);
+  if (idx != last_idx) {
+    // If the index being deleted is not the last, swap the last into the newly-emptied position
+    uint32_t pos;
+    // Find the position of the index in the gc->indices array
+    for (pos = 0; pos < array_len(gc->indices); pos ++) {
+      if (gc->indices[pos] == idx) {
+        gc->indices[pos] = last_idx;
+        break;
+      }
+    }
   }
+
+  // Free the index
+  Index_Free(idx);
 
   return INDEX_OK;
 }
@@ -226,26 +196,26 @@ void GraphContext_Free(GraphContext *gc) {
 
   // Free all node stores
   if(gc->node_stores) {
-    for (int i = 0; i < gc->label_count; i ++) {
+    for (uint32_t i = 0; i < array_len(gc->node_stores); i ++) {
       LabelStore_Free(gc->node_stores[i]);
     }
-    rm_free(gc->node_stores);
+    array_free(gc->node_stores);
   }
 
   // Free all relation stores
   if(gc->relation_stores) {
-    for (int i = 0; i < gc->relation_count; i ++) {
+    for (uint32_t i = 0; i < array_len(gc->relation_stores); i ++) {
       LabelStore_Free(gc->relation_stores[i]);
     }
-    rm_free(gc->relation_stores);
+    array_free(gc->relation_stores);
   }
 
   // Free all indices
   if(gc->indices) {
-    for (int i = 0; i < gc->index_count; i ++) {
+    for (uint32_t i = 0; i < array_len(gc->indices); i ++) {
       Index_Free(gc->indices[i]);
     }
-    rm_free(gc->indices);
+    array_free(gc->indices);
   }
 
   rm_free(gc);

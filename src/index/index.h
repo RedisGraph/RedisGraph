@@ -26,7 +26,6 @@ typedef skiplistIterator IndexIter;
  * When building Index Scan operations, the types of values described by filters will
  * specify which skiplist should be traversed. */
 typedef struct {
-  int id; // Only required for compacting indices array
   char *label;
   char *property;
   skiplist *string_sl;

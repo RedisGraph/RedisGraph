@@ -13,20 +13,11 @@ typedef struct {
   char *graph_name;                // String associated with graph
   Graph *g;                        // Container for all matrices and entity properties
 
-  unsigned int relation_cap;       // Capacity of relation LabelStore array
-  unsigned int relation_count;     // Number of relation tyes
-  unsigned int label_cap;          // Capacity of node LabelStore array
-  unsigned int label_count;        // Number of label matrices.
-
   LabelStore *relation_allstore;   // Schema for all relation types
   LabelStore *node_allstore;       // Schema for all/unspecified node labels
   LabelStore **relation_stores;    // Array of schemas for each relation type
   LabelStore **node_stores;        // Array of schemas for each node label 
 
-  // TODO These are only stored to simplify serialization, and require
-  // the addition of an ID member to the Index struct. Possibly have better options.
-  unsigned int index_cap;          // Capacity of indices array
-  unsigned int index_count;        // Number of indices
   Index **indices;                 // Array of all indices on label-property pairs
 } GraphContext;
 
