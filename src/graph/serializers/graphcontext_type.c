@@ -18,10 +18,10 @@ RedisModuleType *GraphContextRedisModuleType;
 
 void GraphContextType_RdbSave(RedisModuleIO *rdb, void *value) {
   /* Format:
-   * graph name   
+   * graph name
    * #label stores
    * label allstore
-   * label store X #label stores   
+   * label store X #label stores
    * #relation stores
    * relation allstore
    * relation store X #relation
@@ -40,7 +40,7 @@ void GraphContextType_RdbSave(RedisModuleIO *rdb, void *value) {
 
   // Serialize label all store.
   RdbSaveStore(rdb, gc->node_allstore);
-  
+
   // Name of label X #label stores.
   for(int i = 0; i < label_count; i++) {
     LabelStore *s = gc->node_stores[i];
@@ -50,12 +50,12 @@ void GraphContextType_RdbSave(RedisModuleIO *rdb, void *value) {
   // #Relation stores.
   uint32_t relation_count = array_len(gc->relation_stores);
   RedisModule_SaveUnsigned(rdb, relation_count);
-  
+
   // Serialize relation all store.
   RdbSaveStore(rdb, gc->relation_allstore);
 
   // Name of relation X #relation.
-  for(uint32_t  i = 0; i < relation_count; i++) {
+  for(uint32_t i = 0; i < relation_count; i++) {
     LabelStore *s = gc->relation_stores[i];
     RdbSaveStore(rdb, s);
   }
@@ -69,7 +69,7 @@ void GraphContextType_RdbSave(RedisModuleIO *rdb, void *value) {
 
   // Serialize each index
   Index *idx;
-  for (uint32_t  i = 0; i < index_count; i ++) {
+  for (uint32_t i = 0; i < index_count; i ++) {
     idx = gc->indices[i];
     RedisModule_SaveStringBuffer(rdb, idx->label, strlen(idx->label) + 1);
     RedisModule_SaveStringBuffer(rdb, idx->property, strlen(idx->property) + 1);
@@ -78,13 +78,13 @@ void GraphContextType_RdbSave(RedisModuleIO *rdb, void *value) {
 
 void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
   /* Format:
-   * graph name   
+   * graph name
    * #label stores
    * label allstore
    * name of label X #label stores
    * #relation stores
    * relation allstore
-   * name of relation X #relation   
+   * name of relation X #relation
    * graph object
    * #indices
    * (index label, index property) X #indices

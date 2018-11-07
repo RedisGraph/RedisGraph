@@ -34,7 +34,7 @@ void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST_IndexNode *inde
   switch(indexNode->operation) {
     case CREATE_INDEX:
       if (GraphContext_AddIndex(gc, indexNode->label, indexNode->property) != INDEX_OK) {
-        // Index creation may have failed if the specified label or property was invalid.
+        // Index creation may have failed if the label or property was invalid, or the index already exists.
         RedisModule_ReplyWithSimpleString(ctx, "(no changes, no records)");
         break;
       }
