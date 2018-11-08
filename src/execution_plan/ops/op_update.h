@@ -15,9 +15,9 @@
 #include "../../arithmetic/arithmetic_expression.h"
 
 typedef struct {
-    char *alias;        /* Entity alias. */
-    char *property;     /* Property to update. */
-    AR_ExpNode *exp;    /* Expression to evaluate. */
+    AST_GraphEntity *ge; /* Referred entity in MATCH clause. */
+    char *property;      /* Property to update. */
+    AR_ExpNode *exp;     /* Expression to evaluate. */
 } EntityUpdateEvalCtx;
 
 typedef struct {

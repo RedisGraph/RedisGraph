@@ -104,42 +104,40 @@ LabelStore* GraphContext_AddRelationType(GraphContext *gc, const char *label) {
 //------------------------------------------------------------------------------
 // Index API
 //------------------------------------------------------------------------------
+Index* _getIndexFromStore(LabelStore *store, char *property) {
+  Index *idx = LabelStore_RetrieveValue(store, property);
+  if (idx == TRIEMAP_NOTFOUND || idx == NULL) {
+    // Property does not exist or was not indexed.
+    return NULL;
+  }
+  return idx;
+}
+
 bool GraphContext_HasIndices(GraphContext *gc) {
   return array_len(gc->indices) > 0;
 }
 
 Index* GraphContext_GetIndex(const GraphContext *gc, const char *label, const char *property) {
-  // Find the ID of the specified label
-  int label_id = GraphContext_GetLabelID(gc, label, STORE_NODE);
-  if (label_id < 0 ) return INDEX_FAIL;
-
-  LabelStore *store = gc->node_stores[label_id];
-
-  Index *idx = LabelStore_RetrieveValue(store, (char*)property);
-  if (idx == TRIEMAP_NOTFOUND || idx == NULL) {
-    // Property does not exist or was not indexed.
-    return INDEX_FAIL;
-  }
+  // Retrieve the store for this label
+  LabelStore *store = GraphContext_GetStore(gc, label, STORE_NODE);
+  if (store == NULL) return NULL;
+  Index *idx = _getIndexFromStore(store, (char*)property);
   return idx;
 }
 
 int GraphContext_AddIndex(GraphContext *gc, const char *label, const char *property) {
-  // Find the ID of the specified label
-  int label_id = GraphContext_GetLabelID(gc, label, STORE_NODE);
-  if (label_id < 0 ) return INDEX_FAIL;
+  // Retrieve the store for this label
+  LabelStore *store = GraphContext_GetStore(gc, label, STORE_NODE);
+  if (store == NULL) return INDEX_FAIL;
 
-  LabelStore *store = gc->node_stores[label_id];
-
-  // Triemaps (for some reason) don't specify const.
+  // Verify that property exists and is not already indexed.
   void *property_lookup = LabelStore_RetrieveValue(store, (char*)property);
-
   if (property_lookup == TRIEMAP_NOTFOUND || property_lookup != NULL) {
-    // Property does not exist on this label or property is already indexed.
     return INDEX_FAIL;
   }
 
   // Populate an index for the label-property pair using the Graph interfaces.
-  Index *idx = Index_Create(gc->g, label_id, label, property);
+  Index *idx = Index_Create(gc->g, store->id, label, property);
   gc->indices = array_append(gc->indices, idx);
 
   // Associate the new index with the property in the label store.
@@ -149,17 +147,13 @@ int GraphContext_AddIndex(GraphContext *gc, const char *label, const char *prope
 }
 
 int GraphContext_DeleteIndex(GraphContext *gc, const char *label, const char *property) {
-  // Find the ID of the specified label
-  int label_id = GraphContext_GetLabelID(gc, label, STORE_NODE);
-  if (label_id < 0 ) return INDEX_FAIL;
+  // Retrieve the store for this label
+  LabelStore *store = GraphContext_GetStore(gc, label, STORE_NODE);
+  if (store == NULL) return INDEX_FAIL;
 
-  LabelStore *store = gc->node_stores[label_id];
-
-  Index *idx = LabelStore_RetrieveValue(store, (char*)property);
-  if (idx == TRIEMAP_NOTFOUND || idx == NULL) {
-    // Property does not exist or was not indexed.
-    return INDEX_FAIL;
-  }
+  Index *idx = _getIndexFromStore(store, (char*)property);
+  // Property does not exist or was not indexed.
+  if (idx == NULL) return INDEX_FAIL;
 
   // Remove the index association from the label store
   LabelStore_AssignValue(store, (char*)property, NULL);
@@ -177,6 +171,8 @@ int GraphContext_DeleteIndex(GraphContext *gc, const char *label, const char *pr
         break;
       }
     }
+    // Fail if the index was somehow not in the indices array.
+    assert(pos < array_len(gc->indices));
   }
 
   // Free the index
@@ -189,40 +185,24 @@ void GraphContext_AddNodeToIndices(GraphContext *gc, LabelStore *store, Node *n)
   if (store && GraphContext_HasIndices(gc)) {
     EntityProperty *props = ENTITY_PROPS(n);
     for (int j = 0; j < ENTITY_PROP_COUNT(n); j ++) {
-      Index *idx = LabelStore_RetrieveValue(store, props[j].name);
-      if (idx != TRIEMAP_NOTFOUND && idx != NULL) {
+      Index *idx = _getIndexFromStore(store, props[j].name);
+      if (idx) {
         Index_InsertNode(idx, n->entity->id, &props[j].value);
       }
     }
   }
 }
 
-// TODO inefficient
-void GraphContext_UpdateNodeIndices(GraphContext *gc, NodeID id, EntityProperty *prop, SIValue *newval) {
-    if (!GraphContext_HasIndices(gc)) return;
-
-    int store_id = Graph_GetNodeLabel(gc->g, id);
-    if (store_id == GRAPH_NO_LABEL) return;
-
-    LabelStore *store = gc->node_stores[store_id];
-    Index *idx = LabelStore_RetrieveValue(store, prop->name);
-
-    Index_DeleteNode(idx, id, &prop->value);
-    Index_InsertNode(idx, id, newval);
-}
-
-int GraphContext_DeleteNodeFromIndices(GraphContext *gc, Node *n) {
-  // Verify that node exists.
-  if(!DataBlock_GetItem(gc->g->nodes, ENTITY_GET_ID(n))) return 0;
-
-  LabelStore *store = NULL;
-  if (n->label) {
-    // Node will have a label string if one was specified in the query MATCH clause
-    store = GraphContext_GetStore(gc, n->label, STORE_NODE);
-  } else {
-    // Otherwise, look up the offset of the matching label (if any)
-    int store_id = Graph_GetNodeLabel(gc->g, n->entity->id);
-    if (store_id != GRAPH_NO_LABEL) store = gc->node_stores[store_id];
+void GraphContext_DeleteNodeFromIndices(GraphContext *gc, LabelStore *store, Node *n) {
+  if (store == NULL) {
+    if (n->label) {
+      // Node will have a label string if one was specified in the query MATCH clause
+      store = GraphContext_GetStore(gc, n->label, STORE_NODE);
+    } else {
+      // Otherwise, look up the offset of the matching label (if any)
+      int store_id = Graph_GetNodeLabel(gc->g, n->entity->id);
+      if (store_id != GRAPH_NO_LABEL) store = gc->node_stores[store_id];
+    }
   }
 
   // If node is labeled and graph has indices,
@@ -236,6 +216,22 @@ int GraphContext_DeleteNodeFromIndices(GraphContext *gc, Node *n) {
       }
     }
   }
+}
+
+void GraphContext_UpdateNodeIndices(GraphContext *gc, LabelStore *store, NodeID id, EntityProperty *prop, SIValue *newval) {
+  if (!GraphContext_HasIndices(gc)) return;
+
+  if (store == NULL) {
+    int store_id = Graph_GetNodeLabel(gc->g, id);
+    if (store_id == GRAPH_NO_LABEL) return;
+    store = gc->node_stores[store_id];
+  }
+
+  Index *idx = _getIndexFromStore(store, prop->name);
+  if (idx == NULL) return;
+
+  Index_DeleteNode(idx, id, &prop->value);
+  Index_InsertNode(idx, id, newval);
 }
 
 //------------------------------------------------------------------------------

@@ -74,10 +74,9 @@ void _DeleteEntities(OpDelete *op) {
     size_t deletedNodeCount = array_len(op->deleted_nodes);
     for(int i = 0; i < deletedNodeCount; i++) {
         Node *n = op->deleted_nodes + i;
-        GraphContext_DeleteNodeFromIndices(op->gc, n);
-        if (Graph_DeleteNode(op->gc->g, n)) {
-            if(op->result_set) op->result_set->stats.nodes_deleted++;
-        }
+        GraphContext_DeleteNodeFromIndices(op->gc, NULL, n);
+        Graph_DeleteNode(op->gc->g, n);
+        if(op->result_set) op->result_set->stats.nodes_deleted++;
     }
 }
 

@@ -120,7 +120,7 @@ int Graph_ConnectNodes (
 );
 
 // Removes node and all of its connections within the graph.
-int Graph_DeleteNode (
+void Graph_DeleteNode (
     Graph *g,
     Node *node
 );

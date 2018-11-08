@@ -49,12 +49,10 @@ int GraphContext_DeleteIndex(GraphContext *gc, const char *label, const char *pr
 
 // Add a single node to all indices its properties match
 void GraphContext_AddNodeToIndices(GraphContext *gc, LabelStore *store, Node *n);
-
-// Remove a single node property from an index and re-insert with new value
-void GraphContext_UpdateNodeIndices(GraphContext *gc, NodeID id, EntityProperty *prop, SIValue *newval);
-
 // Remove a single node from all indices that refer to it
-int GraphContext_DeleteNodeFromIndices(GraphContext *gc, Node *n);
+void GraphContext_DeleteNodeFromIndices(GraphContext *gc, LabelStore *store, Node *n);
+// Remove a single node property from an index and re-insert with new value
+void GraphContext_UpdateNodeIndices(GraphContext *gc, LabelStore *store, NodeID id, EntityProperty *prop, SIValue *newval);
 
 // Free the GraphContext and all associated graph data
 void GraphContext_Free(GraphContext *gc);

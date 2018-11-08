@@ -8,6 +8,16 @@
 #include "index.h"
 #include "../util/rmalloc.h"
 
+// Given a value type, return the matching skiplist from an index.
+static inline skiplist* _select_skiplist(const Index *idx, const SIType t) {
+  if (t == T_STRING) {
+    return idx->string_sl;
+  } else if (t & SI_NUMERIC) {
+    return idx->numeric_sl;
+  }
+  return NULL;
+}
+
 //------------------------------------------------------------------------------
 // Function pointers for skiplist routines
 //------------------------------------------------------------------------------
@@ -92,8 +102,8 @@ Index* Index_Create(Graph *g, int label_id, const char *label, const char *prop_
     // This value will be cloned within the skiplistInsert routine if necessary
     SIValue *key = &prop->value;
 
-    assert(key->type == T_STRING || key->type & SI_NUMERIC);
-    sl = (key->type & SI_NUMERIC) ? index->numeric_sl: index->string_sl;
+    sl = _select_skiplist(index, key->type);
+    if (!sl) continue; // Value was of a type not supported by indices.
     skiplistInsert(sl, key, node_id);
   }
 
@@ -107,11 +117,13 @@ Index* Index_Create(Graph *g, int label_id, const char *label, const char *prop_
 //------------------------------------------------------------------------------
 
 void Index_DeleteNode(Index *idx, NodeID node, SIValue *val) {
-  skiplist *sl = val->type == T_STRING ? idx->string_sl : idx->numeric_sl;
+  skiplist *sl = _select_skiplist(idx, val->type);
+  if (!sl) return; // Value was of a type not supported by indices.
   skiplistDelete(sl, val, &node);
 }
  void Index_InsertNode(Index *idx, NodeID node, SIValue *val) {
-  skiplist *sl = val->type == T_STRING ? idx->string_sl : idx->numeric_sl;
+  skiplist *sl = _select_skiplist(idx, val->type);
+  if (!sl) return; // Value was of a type not supported by indices.
   skiplistInsert(sl, val, node);
 }
 
