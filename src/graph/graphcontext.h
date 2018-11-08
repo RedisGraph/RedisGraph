@@ -27,8 +27,6 @@ GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rs_name,
 GraphContext* GraphContext_Retrieve(RedisModuleCtx *ctx, RedisModuleString *rs_graph_name);
 
 /* LabelStore API */
-// Find the ID associated with a label for store and matrix access
-int GraphContext_GetLabelID(const GraphContext *gc, const char *label, LabelStoreType t);
 // Retrieve the generic store for node labels or relation types
 LabelStore* GraphContext_AllStore(const GraphContext *gc, LabelStoreType t);
 // Retrieve the specific store for the provided node label or relation type string
