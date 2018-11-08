@@ -122,7 +122,7 @@ void _UpdateEntities(OpUpdate *op) {
         entity_to_update = &op->entities_to_update[i];
         // Retrieve variables from update context
         Entity *entity = entity_to_update->entity_reference;
-        EntityProperty *dest_entity_prop = &entity->properties[entity_to_update->prop_idx];
+        EntityProperty *property = &entity->properties[entity_to_update->prop_idx];
         SIValue new_value = entity_to_update->new_value;
 
         // Only worry about index updates for nodes right now
@@ -130,9 +130,9 @@ void _UpdateEntities(OpUpdate *op) {
         if (ge->t == N_ENTITY) {
           LabelStore *store = NULL;
           if (ge->label) store = GraphContext_GetStore(op->gc, ge->label, STORE_NODE);
-          GraphContext_UpdateNodeIndices(op->gc, store, entity->id, dest_entity_prop, &new_value);
+          GraphContext_UpdateNodeIndices(op->gc, store, entity->id, property, &new_value);
         }
-        dest_entity_prop->value = new_value;
+        property->value = new_value;
     }
     if(op->result_set)
         op->result_set->stats.properties_set = op->entities_to_update_count;

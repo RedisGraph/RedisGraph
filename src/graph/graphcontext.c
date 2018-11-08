@@ -204,7 +204,7 @@ void GraphContext_DeleteNodeFromIndices(GraphContext *gc, LabelStore *store, Nod
       store = GraphContext_GetStore(gc, n->label, STORE_NODE);
     } else {
       // Otherwise, look up the offset of the matching label (if any)
-      int store_id = Graph_GetNodeLabel(gc->g, n->entity->id);
+      int store_id = Graph_GetLabelID(gc->g, n->entity->id);
       // Do nothing if node had no label
       if (store_id == GRAPH_NO_LABEL) return;
       store = gc->node_stores[store_id];
@@ -227,7 +227,7 @@ void GraphContext_UpdateNodeIndices(GraphContext *gc, LabelStore *store, NodeID 
 
   // If the query did not specify a label, retrieve the correct label store now
   if (store == NULL) {
-    int store_id = Graph_GetNodeLabel(gc->g, id);
+    int store_id = Graph_GetLabelID(gc->g, id);
     if (store_id == GRAPH_NO_LABEL) return;
     store = gc->node_stores[store_id];
   }

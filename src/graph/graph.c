@@ -273,7 +273,7 @@ int Graph_GetEdge(const Graph *g, EdgeID id, Edge *e) {
     return (e->entity!=NULL);
 }
 
-int Graph_GetNodeLabel(const Graph *g, NodeID nodeID) {
+int Graph_GetLabelID(const Graph *g, NodeID nodeID) {
     assert(g);
     int label = GRAPH_NO_LABEL;
     for(int i = 0; i < array_len(g->labels); i++) {

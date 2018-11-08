@@ -179,7 +179,7 @@ int Graph_GetNode (
 
 // Retrieves node label
 // returns GRAPH_NO_LABEL if node has no label.
-int Graph_GetNodeLabel (
+int Graph_GetLabelID (
     const Graph *g,
     NodeID nodeID
 );
