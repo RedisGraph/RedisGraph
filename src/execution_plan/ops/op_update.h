@@ -21,10 +21,10 @@ typedef struct {
 } EntityUpdateEvalCtx;
 
 typedef struct {
-    EntityProperty *dest_entity_prop;   /* Entity's property to update. */
+    Entity *entity_reference;
+    int prop_idx;
     SIValue new_value;                  /* Constant value to set. */
-    EntityID id;
-    AST_GraphEntityType t;
+    AST_GraphEntity *ge;                /* Referred entity in MATCH clause. */
 } EntityUpdateCtx;
 
 typedef struct {

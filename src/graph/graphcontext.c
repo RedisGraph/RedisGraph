@@ -187,10 +187,9 @@ void GraphContext_AddNodeToIndices(GraphContext *gc, LabelStore *store, Node *n)
   if (store && GraphContext_HasIndices(gc)) {
     EntityProperty *props = ENTITY_PROPS(n);
     for (int j = 0; j < ENTITY_PROP_COUNT(n); j ++) {
+      // If a property is indexed, update it to include the given node 
       Index *idx = _GraphContext_GetIndexFromStore(store, props[j].name);
-      if (idx) {
-        Index_InsertNode(idx, n->entity->id, &props[j].value);
-      }
+      if (idx) Index_InsertNode(idx, n->entity->id, &props[j].value);
     }
   }
 }
