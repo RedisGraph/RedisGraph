@@ -28,6 +28,44 @@ class AggregateTest: public ::testing::Test {
     }
 };
 
+// Count valid entities
+TEST_F(AggregateTest, CountTest) {
+  int num_values = 5;
+  AR_ExpNode *count_op = AR_EXP_NewOpNode("count", num_values);
+  for (int i = 0; i < num_values; i ++) {
+    count_op->op.children[i] = AR_EXP_NewConstOperandNode(SI_DoubleVal(i));
+  }
+  AR_EXP_Aggregate(count_op, r);
+  AR_EXP_Reduce(count_op);
+  SIValue res = AR_EXP_Evaluate(count_op, r);
+
+  ASSERT_EQ(res.doubleval, num_values);
+  AR_EXP_Free(count_op);
+}
+
+// Count a mix of valid and invalid entities
+TEST_F(AggregateTest, PartialCountTest) {
+  int num_values = 10;
+  AR_ExpNode *count_op = AR_EXP_NewOpNode("count", num_values);
+  for (int i = 0; i < num_values; i ++) {
+    // Every odd entity will be a valid numeric,
+    // and every even entity will be a null value
+    if (i % 2) {
+      count_op->op.children[i] = AR_EXP_NewConstOperandNode(SI_DoubleVal(i));
+    } else {
+      count_op->op.children[i] = AR_EXP_NewConstOperandNode(SI_NullVal());
+    }
+  }
+  AR_EXP_Aggregate(count_op, r);
+  AR_EXP_Reduce(count_op);
+  SIValue res = AR_EXP_Evaluate(count_op, r);
+
+  // The counted result should be half the number of inserted entities,
+  // as the null values are ignored.
+  ASSERT_EQ(res.doubleval, num_values / 2);
+  AR_EXP_Free(count_op);
+}
+
 TEST_F(AggregateTest, PercentileContTest) {
   // Percentiles to check
   AR_ExpNode *zero = AR_EXP_NewConstOperandNode(SI_DoubleVal(0));

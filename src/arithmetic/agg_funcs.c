@@ -201,7 +201,9 @@ typedef struct {
 
 int __agg_countStep(AggCtx *ctx, SIValue *argv, int argc) {
     __agg_countCtx *ac = Agg_FuncCtx(ctx);
-    ac->count += argc;
+    for (int i = 0; i < argc; i ++) {
+        if (!SIValue_IsNullPtr(&argv[i])) ac->count ++;
+    }
 
     return AGG_OK;
 }
