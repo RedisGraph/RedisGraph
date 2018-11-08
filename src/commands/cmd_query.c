@@ -126,6 +126,13 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     double tic[2];
     if (argc < 3) return RedisModule_WrongArity(ctx);
 
+    // Return immediately if invocation context is Lua or a MULTI/EXEC block
+    int flags = RedisModule_GetContextFlags(ctx);
+    if (flags & (REDISMODULE_CTX_FLAGS_MULTI | REDISMODULE_CTX_FLAGS_LUA)) {
+        RedisModule_ReplyWithError(ctx, "RedisGraph commands may not be called from non-blocking contexts.");
+        return REDISMODULE_OK;
+    }
+
     simple_tic(tic);
 
     // Parse AST.

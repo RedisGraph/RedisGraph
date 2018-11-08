@@ -136,6 +136,14 @@ cleanup:
 
 int MGraph_BulkInsert(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     if (argc < 3) return RedisModule_WrongArity(ctx);
+
+    // Return immediately if invocation context is Lua or a MULTI/EXEC block
+    int flags = RedisModule_GetContextFlags(ctx);
+    if (flags & (REDISMODULE_CTX_FLAGS_MULTI | REDISMODULE_CTX_FLAGS_LUA)) {
+        RedisModule_ReplyWithError(ctx, "RedisGraph commands may not be called from non-blocking contexts.");
+        return REDISMODULE_OK;
+    }
+
     // Prepare context.
     RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
     BulkInsertContext *context = BulkInsertContext_New(ctx, bc, argv, argc);
