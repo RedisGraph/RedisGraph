@@ -20,7 +20,7 @@ OpBase* NewUpdateOp(GraphContext *gc, AST_Query *ast, ResultSet *result_set) {
     op_update->update_expressions_count = 0;
     op_update->entities_to_update_count = 0;
     op_update->entities_to_update_cap = 16; /* 16 seems reasonable number to start with. */
-    op_update->entities_to_update = malloc(sizeof(EntityUpdateEvalCtx) * op_update->entities_to_update_cap);
+    op_update->entities_to_update = malloc(sizeof(EntityUpdateCtx) * op_update->entities_to_update_cap);
 
     _OpUpdate_BuildUpdateEvalCtx(op_update, ast->setNode);
 
@@ -44,12 +44,14 @@ void _OpUpdate_BuildUpdateEvalCtx(OpUpdate* op, AST_SetNode *setNode) {
 
     for(int i = 0; i < op->update_expressions_count; i++) {
         AST_SetElement *element;
+        /* Get a reference to the entity in the SET clause. */
         Vector_Get(setNode->set_elements, i, &element);
 
-        /* Get a reference to the updated entity. */
-        op->update_expressions[i].alias = element->entity->alias;
         op->update_expressions[i].property = element->entity->property;
         op->update_expressions[i].exp = AR_EXP_BuildFromAST(element->exp);
+
+        /* Track the parallel AST entity in the MATCH clause. */
+        op->update_expressions[i].ge = MatchClause_GetEntity(op->ast->matchNode, element->entity->alias);
     }
 }
 
@@ -57,16 +59,18 @@ void _OpUpdate_BuildUpdateEvalCtx(OpUpdate* op, AST_SetNode *setNode) {
  * more than once, we'll have to delay updates until all entities 
  * are processed, and so _OpUpdate_QueueUpdate will queue up 
  * all information necessary to perform an update. */
-void _OpUpdate_QueueUpdate(OpUpdate *op, EntityProperty *dest_entity_prop, SIValue new_value) {
+void _OpUpdate_QueueUpdate(OpUpdate *op, Entity *entity, AST_GraphEntity *ge, int prop_idx, SIValue new_value) {
     /* Make sure we've got enough room in queue. */
     if(op->entities_to_update_count == op->entities_to_update_cap) {
         op->entities_to_update_cap *= 2;
         op->entities_to_update = realloc(op->entities_to_update, 
-                                         op->entities_to_update_cap * sizeof(EntityUpdateEvalCtx));
+                                         op->entities_to_update_cap * sizeof(EntityUpdateCtx));
     }
 
     int i = op->entities_to_update_count;
-    op->entities_to_update[i].dest_entity_prop = dest_entity_prop;
+    op->entities_to_update[i].entity_reference = entity;
+    op->entities_to_update[i].ge = ge;
+    op->entities_to_update[i].prop_idx = prop_idx;
     op->entities_to_update[i].new_value = new_value;
     op->entities_to_update_count++;
 }
@@ -83,12 +87,13 @@ OpResult OpUpdateConsume(OpBase *opBase, Record *r) {
     for(int i = 0; i < op->update_expressions_count; i++, update_expression++) {
         SIValue new_value = AR_EXP_Evaluate(update_expression->exp, *r);
         /* Find ref to property. */
-        SIValue entry = Record_GetEntry(*r, update_expression->alias);
+        SIValue entry = Record_GetEntry(*r, update_expression->ge->alias);
         GraphEntity *entity = (GraphEntity*) entry.ptrval;
         int j = 0;
         for(; j < ENTITY_PROP_COUNT(entity); j++) {
             if(strcmp(ENTITY_PROPS(entity)[j].name, update_expression->property) == 0) {
-                _OpUpdate_QueueUpdate(op, &ENTITY_PROPS(entity)[j], new_value);
+                _OpUpdate_QueueUpdate(op, entity->entity, update_expression->ge,
+                                      j, new_value);
                 break;
             }
         }
@@ -98,7 +103,8 @@ OpResult OpUpdateConsume(OpBase *opBase, Record *r) {
              * For the time being set the new property value to PROPERTY_NOTFOUND.
              * Once we commit the update, we'll set the actual value. */
             GraphEntity_Add_Properties(entity, 1, &update_expression->property, PROPERTY_NOTFOUND);
-            _OpUpdate_QueueUpdate(op, &ENTITY_PROPS(entity)[ENTITY_PROP_COUNT(entity)-1], new_value);
+            _OpUpdate_QueueUpdate(op, entity->entity, update_expression->ge,
+                                  ENTITY_PROP_COUNT(entity)-1, new_value);
         }
     }
 
@@ -111,10 +117,22 @@ OpResult OpUpdateReset(OpBase *ctx) {
 
 /* Executes delayed updates. */
 void _UpdateEntities(OpUpdate *op) {
+    EntityUpdateCtx *entity_to_update;
     for(int i = 0; i < op->entities_to_update_count; i++) {
-        EntityProperty *dest_entity_prop = op->entities_to_update[i].dest_entity_prop;
-        SIValue new_value = op->entities_to_update[i].new_value;
-        dest_entity_prop->value = new_value;
+        entity_to_update = &op->entities_to_update[i];
+        // Retrieve variables from update context
+        Entity *entity = entity_to_update->entity_reference;
+        EntityProperty *property = &entity->properties[entity_to_update->prop_idx];
+        SIValue new_value = entity_to_update->new_value;
+
+        // Only worry about index updates for nodes right now
+        AST_GraphEntity *ge = entity_to_update->ge;
+        if (ge->t == N_ENTITY) {
+          LabelStore *store = NULL;
+          if (ge->label) store = GraphContext_GetStore(op->gc, ge->label, STORE_NODE);
+          GraphContext_UpdateNodeIndices(op->gc, store, entity->id, property, &new_value);
+        }
+        property->value = new_value;
     }
     if(op->result_set)
         op->result_set->stats.properties_set = op->entities_to_update_count;
@@ -125,16 +143,13 @@ void _UpdateEntities(OpUpdate *op) {
  * We have to update our schemas to track newly created properties. */
 void _UpdateSchemas(const OpUpdate *op) {
 
-    AST_SetNode *setNode = op->ast->setNode;
+    EntityUpdateEvalCtx update_expression;
     for(int i = 0; i < op->update_expressions_count; i++) {
-        AST_SetElement *setElement;
+        update_expression = op->update_expressions[i];
+        char *entityProp = update_expression.property;
 
-        Vector_Get(setNode->set_elements, i, &setElement);
-        char *entityAlias = setElement->entity->alias;
-        char *entityProp = setElement->entity->property;
-
-        /* Locate node label. */
-        AST_GraphEntity* ge = MatchClause_GetEntity(op->ast->matchNode, entityAlias);
+        /* Update store associated with the entity type. */
+        AST_GraphEntity *ge = update_expression.ge;
         LabelStoreType t = (ge->t == N_ENTITY) ? STORE_NODE : STORE_EDGE;
         LabelStore *allStore = GraphContext_AllStore(op->gc, t);
         LabelStore_UpdateSchema(allStore, 1, &entityProp);
@@ -143,6 +158,7 @@ void _UpdateSchemas(const OpUpdate *op) {
         // affected by the SET clause.
         char *l = ge->label;
         if (!l) continue;
+        /* Update store associated with the entity label. */
         LabelStore *store = GraphContext_GetStore(op->gc, l, t);
         if (!store) continue;
 
@@ -163,3 +179,4 @@ void OpUpdateFree(OpBase *ctx) {
     free(op->update_expressions);
     free(op->entities_to_update);
 }
+

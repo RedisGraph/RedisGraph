@@ -19,10 +19,10 @@
 /* Forward declarations. */
 void _LocateEntities(OpDelete *op_delete, QueryGraph *graph, AST_DeleteNode *ast_delete_node);
 
-OpBase* NewDeleteOp(AST_DeleteNode *ast_delete_node, QueryGraph *qg, Graph *g, ResultSet *result_set) {
+OpBase* NewDeleteOp(AST_DeleteNode *ast_delete_node, QueryGraph *qg, GraphContext *gc, ResultSet *result_set) {
     OpDelete *op_delete = malloc(sizeof(OpDelete));
 
-    op_delete->g = g;
+    op_delete->gc = gc;
     op_delete->qg = qg;
     op_delete->node_count = 0;
     op_delete->edge_count = 0;
@@ -62,43 +62,21 @@ void _LocateEntities(OpDelete *op, QueryGraph *qg, AST_DeleteNode *ast_delete_no
     }
 }
 
-EntityID *_SortNRemoveDups(EntityID *entities, size_t entityCount, size_t *dupFreeCount) {
-    // Sort.
-    QSORT(EntityID, entities, entityCount, ENTITY_ID_ISLT);
-
-    // Remove duplicates.
-    int j = 0;  // Index into dup_free_ids.
-
-    // Array of unique IDs.
-    EntityID *dup_free_ids = malloc(sizeof(EntityID) * entityCount);
-
-    for(int i = 0; i < entityCount; i++) {
-        EntityID current = entities[i];
-
-        // Skip duplicates.
-        while(i < (entityCount-1) && current == entities[i+1]) i++;
-
-        dup_free_ids[j++] = current;
-    }
-
-    *dupFreeCount = j;
-    return dup_free_ids;
-}
-
 void _DeleteEntities(OpDelete *op) {
     /* We must start with edge deletion as node deletion moves nodes around. */
     size_t deletedEdgeCount = array_len(op->deleted_edges);
     for(int i = 0; i < deletedEdgeCount; i++) {
         Edge *e = op->deleted_edges + i;
-        if(Graph_DeleteEdge(op->g, e))
+        if(Graph_DeleteEdge(op->gc->g, e))
             if(op->result_set) op->result_set->stats.relationships_deleted++;
     }
 
     size_t deletedNodeCount = array_len(op->deleted_nodes);
     for(int i = 0; i < deletedNodeCount; i++) {
         Node *n = op->deleted_nodes + i;
-        if(Graph_DeleteNode(op->g, n))
-            if(op->result_set) op->result_set->stats.nodes_deleted++;
+        GraphContext_DeleteNodeFromIndices(op->gc, NULL, n);
+        Graph_DeleteNode(op->gc->g, n);
+        if(op->result_set) op->result_set->stats.nodes_deleted++;
     }
 }
 
@@ -140,3 +118,4 @@ void OpDeleteFree(OpBase *ctx) {
     array_free(op->deleted_nodes);
     array_free(op->deleted_edges);
 }
+

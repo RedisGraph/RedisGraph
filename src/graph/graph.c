@@ -273,7 +273,7 @@ int Graph_GetEdge(const Graph *g, EdgeID id, Edge *e) {
     return (e->entity!=NULL);
 }
 
-int Graph_GetNodeLabel(const Graph *g, NodeID nodeID) {
+int Graph_GetLabelID(const Graph *g, NodeID nodeID) {
     assert(g);
     int label = GRAPH_NO_LABEL;
     for(int i = 0; i < array_len(g->labels); i++) {
@@ -480,12 +480,9 @@ int Graph_DeleteEdge(Graph *g, Edge *e) {
     return 1;
 }
 
-int Graph_DeleteNode(Graph *g, Node *n) {
+void Graph_DeleteNode(Graph *g, Node *n) {
     assert(g && n);
     
-    // Check to see if indeed node exists.
-    if(!DataBlock_GetItem(g->nodes, ENTITY_GET_ID(n))) return 0;
-
     // Delete incoming/outgoing edges of deleted node.
     Edge *e = NULL;
     Edge *edges = array_new(Edge, 32);
@@ -506,7 +503,6 @@ int Graph_DeleteNode(Graph *g, Node *n) {
 
     // Cleanup.
     array_free(edges);
-    return 1;
 }
 
 DataBlockIterator *Graph_ScanNodes(const Graph *g) {

@@ -492,6 +492,11 @@ void* TrieMap_DONT_CARE_REPLACE(void *oldval, void *newval) {
   return newval;
 }
 
+void* TrieMap_NOP_REPLACE(void *oldval, void *newval) {
+  (void)(newval);
+  return oldval;
+}
+
 void TrieMapNode_Free(TrieMapNode *n, void (*freeCB)(void *)) {
   for (tm_len_t i = 0; i < n->numChildren; i++) {
     TrieMapNode *child = __trieMapNode_children(n)[i];

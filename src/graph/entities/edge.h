@@ -17,15 +17,15 @@
 /* TODO: note it is possible to get into an inconsistency
  * if we set src and srcNodeID to different nodes. */
 struct Edge {
-	Entity *entity;			// MUST be the first property of Edge.
-	char *alias;			// Alias attached to edge.
-	char* relationship;		// Label attached to edge.
-	int relationId;			// Label ID.
-	Node* src;				// Pointer to source node.
-	Node* dest;				// Pointer to destination node.
-	NodeID srcNodeID;		// Source node ID.
-	NodeID destNodeID;		// Destination node ID.
-	GrB_Matrix mat;			// Adjacency matrix, associated with edge.
+    Entity *entity;          /* MUST be the first property of Edge. */
+    char *alias;             /* Alias attached to edge. */
+    char* relationship;      /* Label attached to edge. */
+    int relationId;          /* Label ID. */
+    Node* src;               /* Pointer to source node. */
+    Node* dest;              /* Pointer to destination node. */
+    NodeID srcNodeID;        /* Source node ID. */
+    NodeID destNodeID;       /* Destination node ID. */
+    GrB_Matrix mat;          /* Adjacency matrix, associated with edge. */
 };
 
 typedef struct Edge Edge;

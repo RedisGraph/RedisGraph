@@ -15,14 +15,16 @@
 #include "../../arithmetic/arithmetic_expression.h"
 
 typedef struct {
-    char *alias;        /* Entity alias. */
-    char *property;     /* Property to update. */
-    AR_ExpNode *exp;    /* Expression to evaluate. */
+    AST_GraphEntity *ge; /* Referred entity in MATCH clause. */
+    char *property;      /* Property to update. */
+    AR_ExpNode *exp;     /* Expression to evaluate. */
 } EntityUpdateEvalCtx;
 
 typedef struct {
-    EntityProperty *dest_entity_prop;   /* Entity's property to update. */
+    Entity *entity_reference;
+    int prop_idx;
     SIValue new_value;                  /* Constant value to set. */
+    AST_GraphEntity *ge;                /* Referred entity in MATCH clause. */
 } EntityUpdateCtx;
 
 typedef struct {
@@ -43,3 +45,4 @@ OpResult OpUpdateReset(OpBase *ctx);
 void OpUpdateFree(OpBase *ctx);
 
 #endif /* __OP_UPDATE_H */
+

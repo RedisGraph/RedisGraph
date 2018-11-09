@@ -120,7 +120,7 @@ int Graph_ConnectNodes (
 );
 
 // Removes node and all of its connections within the graph.
-int Graph_DeleteNode (
+void Graph_DeleteNode (
     Graph *g,
     Node *node
 );
@@ -179,7 +179,7 @@ int Graph_GetNode (
 
 // Retrieves node label
 // returns GRAPH_NO_LABEL if node has no label.
-int Graph_GetNodeLabel (
+int Graph_GetLabelID (
     const Graph *g,
     NodeID nodeID
 );

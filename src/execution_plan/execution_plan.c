@@ -390,7 +390,7 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx,
     }
 
     if(ast->deleteNode) {
-        OpBase *opDelete = NewDeleteOp(ast->deleteNode, q, g, execution_plan->result_set);
+        OpBase *opDelete = NewDeleteOp(ast->deleteNode, q, gc, execution_plan->result_set);
         Vector_Push(ops, opDelete);
     }
 

@@ -271,9 +271,6 @@ void benchmark_edge_creation_with_relationships()
     float threshold = 0.002;
     int edge_count = 1000000 * 1.10;
     int node_count = 1000000;
-    // Unit tests cannot realloc the Graph relation and label arrays
-    // (as that is managed by the GraphContext).
-    // As such, this value cannot exceed GRAPH_DEFAULT_RELATION_CAP, currently 16.
     int relation_count = 3;
     EdgeDesc connections[edge_count];
     Node node;

@@ -1,19 +1,8 @@
 #include <sys/param.h>
 #include "graphcontext.h"
 #include "serializers/graphcontext_type.h"
+#include "../util/arr.h"
 #include "../util/rmalloc.h"
-
-//------------------------------------------------------------------------------
-// Private functions
-//------------------------------------------------------------------------------
-int _GraphContext_IndexOffset(const GraphContext *gc, const char *label, const char *property) {
-  Index *idx;
-  for (int i = 0; i < gc->index_count; i ++) {
-    idx = gc->indices[i];
-    if (!strcmp(label, idx->label) && !strcmp(property, idx->property)) return i;
-  }
-  return -1;
-}
 
 //------------------------------------------------------------------------------
 // GraphContext API
@@ -31,21 +20,14 @@ GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rs_name,
 
   GraphContext *gc = rm_malloc(sizeof(GraphContext));
 
-  gc->relation_cap = GRAPH_DEFAULT_RELATION_TYPE_CAP;
-  gc->relation_count = 0;
-  gc->label_cap = GRAPH_DEFAULT_LABEL_CAP;
-  gc->label_count = 0;
-  gc->index_cap = DEFAULT_INDEX_CAP;
-  gc->index_count = 0;
-
   // Initialize the graph's matrices and datablock storage
   gc->g = Graph_New(node_cap, edge_cap);
 
   gc->graph_name = rm_strdup(RedisModule_StringPtrLen(rs_name, NULL));
   // Allocate the default space for stores and indices
-  gc->node_stores = rm_malloc(gc->label_cap * sizeof(LabelStore*));
-  gc->relation_stores = rm_malloc(gc->relation_cap * sizeof(LabelStore*));
-  gc->indices = rm_malloc(gc->index_cap * sizeof(Index*));
+  gc->node_stores = array_new(LabelStore*, GRAPH_DEFAULT_LABEL_CAP);
+  gc->relation_stores = array_new(LabelStore*, GRAPH_DEFAULT_RELATION_TYPE_CAP);
+  gc->indices = array_new(Index*, DEFAULT_INDEX_CAP);
 
   // Initialize the generic label and relation stores
   gc->node_allstore = LabelStore_New("ALL", GRAPH_NO_LABEL);
@@ -76,19 +58,13 @@ GraphContext* GraphContext_Retrieve(RedisModuleCtx *ctx, RedisModuleString *rs_n
 //------------------------------------------------------------------------------
 // LabelStore API
 //------------------------------------------------------------------------------
-int GraphContext_GetLabelID(const GraphContext *gc, const char *label, LabelStoreType t) {
-  LabelStore **labels;
-  size_t count;
-  if (t == STORE_NODE) {
-    labels = gc->node_stores;
-    count = gc->label_count;
-  } else {
-    labels = gc->relation_stores;
-    count = gc->relation_count;
-  }
+// Find the ID associated with a label for store and matrix access
+int _GraphContext_GetLabelID(const GraphContext *gc, const char *label, LabelStoreType t) {
+  // Choose the appropriate store array given the entity type
+  LabelStore **labels = (t == STORE_NODE) ? gc->node_stores : gc->relation_stores;
 
   // TODO optimize lookup
-  for (int i = 0; i < count; i ++) {
+  for (uint32_t i = 0; i < array_len(labels); i ++) {
     if (!strcmp(label, labels[i]->label)) return i;
   }
   return GRAPH_NO_LABEL; // equivalent to GRAPH_NO_RELATION
@@ -102,7 +78,7 @@ LabelStore* GraphContext_AllStore(const GraphContext *gc, LabelStoreType t) {
 LabelStore* GraphContext_GetStore(const GraphContext *gc, const char *label, LabelStoreType t) {
   LabelStore **stores = (t == STORE_NODE) ? gc->node_stores : gc->relation_stores;
 
-  int id = GraphContext_GetLabelID(gc, label, t);
+  int id = _GraphContext_GetLabelID(gc, label, t);
   if (id == GRAPH_NO_LABEL) return NULL;
 
   return stores[id];
@@ -111,35 +87,17 @@ LabelStore* GraphContext_GetStore(const GraphContext *gc, const char *label, Lab
 // The next two functions are identical save for whether their target is a label or relation type,
 // but modify enough variables to make consolidating them unwieldy.
 LabelStore* GraphContext_AddLabel(GraphContext *gc, const char *label) {
-  if(gc->label_count == gc->label_cap) {
-    gc->label_cap += 4;
-    // Add space for additional label stores.
-    gc->node_stores = rm_realloc(gc->node_stores, gc->label_cap * sizeof(LabelStore*));
-    // Add space for additional label matrices.
-    gc->g->labels = rm_realloc(gc->g->labels, gc->label_cap * sizeof(GrB_Matrix));
-
-  }
   Graph_AddLabel(gc->g);
-  LabelStore *store = LabelStore_New(label, gc->label_count);
-  gc->node_stores[gc->label_count] = store;
-  gc->label_count++;
+  LabelStore *store = LabelStore_New(label, array_len(gc->node_stores));
+  gc->node_stores = array_append(gc->node_stores, store);
 
   return store;
 }
 
 LabelStore* GraphContext_AddRelationType(GraphContext *gc, const char *label) {
-  if(gc->relation_count == gc->relation_cap) {
-    gc->relation_cap += 4;
-    // Add space for additional relation type stores.
-    gc->relation_stores = rm_realloc(gc->relation_stores, gc->relation_cap * sizeof(LabelStore*));
-    // Add space for additional relation type matrices.
-    gc->g->relations = rm_realloc(gc->g->relations, gc->relation_cap * sizeof(GrB_Matrix));
-  }
   Graph_AddRelationType(gc->g);
-
-  LabelStore *store = LabelStore_New(label, gc->relation_count);
-  gc->relation_stores[gc->relation_count] = store;
-  gc->relation_count++;
+  LabelStore *store = LabelStore_New(label, array_len(gc->relation_stores));
+  gc->relation_stores = array_append(gc->relation_stores, store);
 
   return store;
 }
@@ -147,47 +105,145 @@ LabelStore* GraphContext_AddRelationType(GraphContext *gc, const char *label) {
 //------------------------------------------------------------------------------
 // Index API
 //------------------------------------------------------------------------------
+Index* _GraphContext_GetIndexFromStore(LabelStore *store, char *property) {
+  Index *idx = LabelStore_RetrieveValue(store, property);
+  if (idx == TRIEMAP_NOTFOUND || idx == NULL) {
+    // Property does not exist or was not indexed.
+    return NULL;
+  }
+  return idx;
+}
+
 bool GraphContext_HasIndices(GraphContext *gc) {
-  return gc->index_count > 0;
+  return array_len(gc->indices) > 0;
 }
 
 Index* GraphContext_GetIndex(const GraphContext *gc, const char *label, const char *property) {
-  int offset = _GraphContext_IndexOffset(gc, label, property);
-  if (offset < 0) return INDEX_FAIL;
-
-  return gc->indices[offset];
+  // Retrieve the store for this label
+  LabelStore *store = GraphContext_GetStore(gc, label, STORE_NODE);
+  if (store == NULL) return NULL;
+  Index *idx = _GraphContext_GetIndexFromStore(store, (char*)property);
+  return idx;
 }
 
 int GraphContext_AddIndex(GraphContext *gc, const char *label, const char *property) {
-  if(gc->index_count == gc->index_cap) {
-    gc->index_cap += 4;
-    gc->indices = rm_realloc(gc->indices, gc->index_cap * sizeof(Index*));
+  // Retrieve the store for this label
+  LabelStore *store = GraphContext_GetStore(gc, label, STORE_NODE);
+  if (store == NULL) return INDEX_FAIL;
+
+  // Verify that property exists and is not already indexed.
+  void *property_lookup = LabelStore_RetrieveValue(store, (char*)property);
+  if (property_lookup == TRIEMAP_NOTFOUND || property_lookup != NULL) {
+    return INDEX_FAIL;
   }
 
-  // Find the ID of the specified label
-  int label_id = GraphContext_GetLabelID(gc, label, STORE_NODE);
-  if (label_id < 0 ) return INDEX_FAIL;
-
   // Populate an index for the label-property pair using the Graph interfaces.
-  Index *idx = Index_Create(gc->g, label_id, label, property);
-  gc->indices[gc->index_count] = idx;
-  gc->index_count++;
+  Index *idx = Index_Create(gc->g, store->id, label, property);
+  gc->indices = array_append(gc->indices, idx);
+
+  // Associate the new index with the property in the label store.
+  LabelStore_AssignValue(store, (char*)property, (void*)idx);
 
   return INDEX_OK;
 }
 
 int GraphContext_DeleteIndex(GraphContext *gc, const char *label, const char *property) {
-  int offset = _GraphContext_IndexOffset(gc, label, property);
-  if (offset < 0) return INDEX_FAIL;
+  // Retrieve the store for this label
+  LabelStore *store = GraphContext_GetStore(gc, label, STORE_NODE);
+  if (store == NULL) return INDEX_FAIL;
 
-  Index *idx = gc->indices[offset];
+  Index *idx = _GraphContext_GetIndexFromStore(store, (char*)property);
+  // Property does not exist or was not indexed.
+  if (idx == NULL) return INDEX_FAIL;
+
+  // Remove the index association from the label store
+  LabelStore_AssignValue(store, (char*)property, NULL);
+  // Index *idx = gc->indices[offset];
+
+  // Pop the last stored index
+  Index *last_idx = array_pop(gc->indices);
+  if (idx != last_idx) {
+    // If the index being deleted is not the last, swap the last into the newly-emptied position
+    uint32_t pos;
+    // Find the position of the index in the gc->indices array
+    for (pos = 0; pos < array_len(gc->indices); pos ++) {
+      if (gc->indices[pos] == idx) {
+        gc->indices[pos] = last_idx;
+        break;
+      }
+    }
+    // Fail if the index was somehow not in the indices array.
+    assert(pos < array_len(gc->indices));
+  }
+
+  // Free the index
   Index_Free(idx);
-  gc->index_count --;
-  // If the deleted index was not the last, swap the last into the newly-emptied position
-  if (offset < gc->index_count) gc->indices[offset] = gc->indices[gc->index_count];
 
   return INDEX_OK;
 }
+
+// Add references to a node to all indices built upon its properties
+void GraphContext_AddNodeToIndices(GraphContext *gc, LabelStore *store, Node *n) {
+  if (store && GraphContext_HasIndices(gc)) {
+    EntityProperty *props = ENTITY_PROPS(n);
+    for (int j = 0; j < ENTITY_PROP_COUNT(n); j ++) {
+      // If a property is indexed, update it to include the given node 
+      Index *idx = _GraphContext_GetIndexFromStore(store, props[j].name);
+      if (idx) Index_InsertNode(idx, n->entity->id, &props[j].value);
+    }
+  }
+}
+
+// Delete all references to a node from any indices built upon its properties
+void GraphContext_DeleteNodeFromIndices(GraphContext *gc, LabelStore *store, Node *n) {
+  if (!GraphContext_HasIndices(gc)) return;
+
+  if (store == NULL) {
+    if (n->label) {
+      // Node will have a label string if one was specified in the query MATCH clause
+      store = GraphContext_GetStore(gc, n->label, STORE_NODE);
+    } else {
+      // Otherwise, look up the offset of the matching label (if any)
+      int store_id = Graph_GetLabelID(gc->g, n->entity->id);
+      // Do nothing if node had no label
+      if (store_id == GRAPH_NO_LABEL) return;
+      store = gc->node_stores[store_id];
+    }
+  }
+
+  // Update any indices this entity is represented in
+  EntityProperty *props = ENTITY_PROPS(n);
+  for (int j = 0; j < ENTITY_PROP_COUNT(n); j ++) {
+    Index *idx = LabelStore_RetrieveValue(store, props[j].name);
+    if (idx != TRIEMAP_NOTFOUND && idx != NULL) {
+      Index_DeleteNode(idx, n->entity->id, &props[j].value);
+    }
+  }
+}
+
+// If the given property is indexed, update node reference within index to point to correct value
+void GraphContext_UpdateNodeIndices(GraphContext *gc, LabelStore *store, NodeID id, EntityProperty *prop, SIValue *newval) {
+  if (!GraphContext_HasIndices(gc)) return;
+
+  // If the query did not specify a label, retrieve the correct label store now
+  if (store == NULL) {
+    int store_id = Graph_GetLabelID(gc->g, id);
+    if (store_id == GRAPH_NO_LABEL) return;
+    store = gc->node_stores[store_id];
+  }
+
+  Index *idx = _GraphContext_GetIndexFromStore(store, prop->name);
+  if (idx == NULL) return;
+
+  // Delete the original node and value from the index
+  Index_DeleteNode(idx, id, &prop->value);
+  // Re-insert the node with its update value
+  Index_InsertNode(idx, id, newval);
+}
+
+//------------------------------------------------------------------------------
+// Free routine
+//------------------------------------------------------------------------------
 
 // Free all data associated with graph
 void GraphContext_Free(GraphContext *gc) {
@@ -200,26 +256,26 @@ void GraphContext_Free(GraphContext *gc) {
 
   // Free all node stores
   if(gc->node_stores) {
-    for (int i = 0; i < gc->label_count; i ++) {
+    for (uint32_t i = 0; i < array_len(gc->node_stores); i ++) {
       LabelStore_Free(gc->node_stores[i]);
     }
-    rm_free(gc->node_stores);
+    array_free(gc->node_stores);
   }
 
   // Free all relation stores
   if(gc->relation_stores) {
-    for (int i = 0; i < gc->relation_count; i ++) {
+    for (uint32_t i = 0; i < array_len(gc->relation_stores); i ++) {
       LabelStore_Free(gc->relation_stores[i]);
     }
-    rm_free(gc->relation_stores);
+    array_free(gc->relation_stores);
   }
 
   // Free all indices
   if(gc->indices) {
-    for (int i = 0; i < gc->index_count; i ++) {
+    for (uint32_t i = 0; i < array_len(gc->indices); i ++) {
       Index_Free(gc->indices[i]);
     }
-    rm_free(gc->indices);
+    array_free(gc->indices);
   }
 
   rm_free(gc);

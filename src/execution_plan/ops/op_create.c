@@ -175,7 +175,10 @@ static void _CommitNodes(OpCreate *op) {
                 }
 
                 GraphEntity_Add_Properties((GraphEntity*)n, propCount/2, keys, values);
-                if(store) LabelStore_UpdateSchema(store, propCount/2, keys);
+                if(store) {
+                    LabelStore_UpdateSchema(store, propCount/2, keys);
+                    GraphContext_AddNodeToIndices(op->gc, store, n);
+                }
                 LabelStore_UpdateSchema(allStore, propCount/2, keys);
                 op->result_set->stats.properties_set += propCount/2;
             }

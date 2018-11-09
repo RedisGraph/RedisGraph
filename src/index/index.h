@@ -36,6 +36,12 @@ typedef struct {
  * on these entities can use expedited scan logic. */
 Index* Index_Create(Graph *g, int label_id, const char *label, const char *prop_str);
 
+/* Delete a single entity from an index if it is present. */
+void Index_DeleteNode(Index *idx, NodeID node, SIValue *val);
+
+/* Insert a single entity into an index. */
+void Index_InsertNode(Index *idx, NodeID node, SIValue *val);
+
 /* Build a new iterator to traverse all indexed values of the specified type. */
 IndexIter* IndexIter_Create(Index *idx, SIType type);
 

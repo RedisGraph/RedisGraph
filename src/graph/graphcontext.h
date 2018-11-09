@@ -13,18 +13,11 @@ typedef struct {
   char *graph_name;                // String associated with graph
   Graph *g;                        // Container for all matrices and entity properties
 
-  unsigned int relation_cap;       // Capacity of relation LabelStore array
-  unsigned int relation_count;     // Number of relation tyes
-  unsigned int label_cap;          // Capacity of node LabelStore array
-  unsigned int label_count;        // Number of label matrices.
-
   LabelStore *relation_allstore;   // Schema for all relation types
   LabelStore *node_allstore;       // Schema for all/unspecified node labels
   LabelStore **relation_stores;    // Array of schemas for each relation type
   LabelStore **node_stores;        // Array of schemas for each node label 
 
-  unsigned int index_cap;          // Capacity of indices array
-  unsigned int index_count;        // Number of indices
   Index **indices;                 // Array of all indices on label-property pairs
 } GraphContext;
 
@@ -34,8 +27,6 @@ GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rs_name,
 GraphContext* GraphContext_Retrieve(RedisModuleCtx *ctx, RedisModuleString *rs_graph_name);
 
 /* LabelStore API */
-// Find the ID associated with a label for store and matrix access
-int GraphContext_GetLabelID(const GraphContext *gc, const char *label, LabelStoreType t);
 // Retrieve the generic store for node labels or relation types
 LabelStore* GraphContext_AllStore(const GraphContext *gc, LabelStoreType t);
 // Retrieve the specific store for the provided node label or relation type string
@@ -53,6 +44,13 @@ Index* GraphContext_GetIndex(const GraphContext *gc, const char *label, const ch
 int GraphContext_AddIndex(GraphContext *gc, const char *label, const char *property);
 // Remove and free an index
 int GraphContext_DeleteIndex(GraphContext *gc, const char *label, const char *property);
+
+// Add a single node to all indices its properties match
+void GraphContext_AddNodeToIndices(GraphContext *gc, LabelStore *store, Node *n);
+// Remove a single node from all indices that refer to it
+void GraphContext_DeleteNodeFromIndices(GraphContext *gc, LabelStore *store, Node *n);
+// Remove a single node property from an index and re-insert with new value
+void GraphContext_UpdateNodeIndices(GraphContext *gc, LabelStore *store, NodeID id, EntityProperty *prop, SIValue *newval);
 
 // Free the GraphContext and all associated graph data
 void GraphContext_Free(GraphContext *gc);
