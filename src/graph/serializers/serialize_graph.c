@@ -12,27 +12,40 @@
 #include "../../util/arr.h"
 #include "../../util/qsort.h"
 
-// Find elem position within array, if elem isn't present in array
-// its insertion position is returned.
-static uint64_t _binarySearch(uint64_t *array, NodeID id) {
-    uint32_t deletedIndiciesCount = array_len(array);
+// Use a modified binary search to find the number of elements in
+// the array less than the input ID.
+// This value is the number the input ID should be decremented by.
+static uint64_t shiftCount(uint64_t *array, NodeID id) {
+    uint32_t deletedIndicesCount = array_len(array);
     uint32_t left = 0;
-    uint32_t right = deletedIndiciesCount-1;
+    uint32_t right = deletedIndicesCount;
     uint32_t pos;
-    while(left <= right) {
-        pos = (right + left)/2;
-        if(id < array[pos]) right = pos-1;
-        else left = pos+1;
+    while(left < right) {
+        pos = (right + left) / 2;
+        if(array[pos] < id) {
+            left = pos + 1;
+        } else {
+            right = pos;
+        }
     }
-    return pos;
+    return left;
 }
 
 static NodeID _updatedID(uint64_t *array, NodeID id) {
     uint32_t itemCount = array_len(array);
-    if(itemCount == 0) return id;
-    else if(id > array[itemCount-1]) return id - itemCount;
-    else if(id < array[0]) return id;
-    else return id - _binarySearch(array, id);
+    if(itemCount == 0) {
+        // No deleted elements; don't modify ID
+        return id;
+    } else if(id > array[itemCount-1]) {
+        // ID is greater than all deleted elements, reduce by deleted count
+        return id - itemCount;
+    } else if(id < array[0]) {
+        // ID is lower than all deleted elements, don't modify
+        return id;
+    } else {
+        // Shift ID left by number of deleted IDs lower than it
+        return id - shiftCount(array, id);
+    }
 }
 
 SIValue _RdbLoadSIValue(RedisModuleIO *rdb) {
