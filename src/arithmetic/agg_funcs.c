@@ -201,7 +201,9 @@ typedef struct {
 
 int __agg_countStep(AggCtx *ctx, SIValue *argv, int argc) {
     __agg_countCtx *ac = Agg_FuncCtx(ctx);
-    ac->count += argc;
+    // Batch size to this function is always one, so
+    // we only need to check the first argument
+    if (!SIValue_IsNullPtr(argv)) ac->count ++;
 
     return AGG_OK;
 }
