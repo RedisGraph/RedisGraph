@@ -4,6 +4,39 @@ import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../')
 from demo import QueryInfo
 
+graph_entities = QueryInfo(
+    query="""MATCH (e) RETURN e.name, LABELS(e) as label ORDER BY label, e.name""",
+    description='Returns each node in the graph, specifing node label.',
+    max_run_time_ms=0.2,
+    expected_result=[['Amsterdam','country'],
+                     ['Andora','country'],
+                     ['Canada','country'],
+                     ['China','country'],
+                     ['Germany','country'],
+                     ['Greece','country'],
+                     ['Italy','country'],
+                     ['Japan','country'],
+                     ['Kazakhstan','country'],
+                     ['Prague','country'],
+                     ['Russia','country'],
+                     ['Thailand','country'],
+                     ['USA','country'],
+                     ['Ailon Velger','person'],
+                     ['Alon Fital','person'],
+                     ['Boaz Arad','person'],
+                     ['Gal Derriere','person'],
+                     ['Jane Chernomorin','person'],
+                     ['Lucy Yanfital','person'],
+                     ['Mor Yesharim','person'],
+                     ['Noam Nativ','person'],
+                     ['Omri Traub','person'],
+                     ['Ori Laslo','person'],
+                     ['Roi Lipman','person'],
+                     ['Shelly Laslo Rooz','person'],
+                     ['Tal Doron','person'],
+                     ['Valerie Abigail Arad','person']]
+)
+
 subset_of_people = QueryInfo(
     query="""MATCH (p:person) RETURN p.name ORDER BY p.name SKIP 3 LIMIT 5""",
     description='Get a subset of people.',
@@ -51,7 +84,6 @@ friends_of_friends_single_and_over_30_query = QueryInfo(
     expected_result=[['Noam Nativ', '34.000000', 'male', 'single']]
 )
 
-
 friends_of_friends_visited_amsterdam_and_single_query = QueryInfo(
     query="""MATCH (ME:person {name:"Roi Lipman"})-[:friend]->(:person)-[:friend]->
                 (fof:person {status:"single"})-[:visited]->(:country {name:"Amsterdam"})
@@ -61,7 +93,6 @@ friends_of_friends_visited_amsterdam_and_single_query = QueryInfo(
     expected_result=[['Noam Nativ'],
                      ['Gal Derriere']]
 )
-
 
 friends_visited_same_places_as_me_query = QueryInfo(
     query="""MATCH (:person {name:"Roi Lipman"})-[:visited]->(c:country)<-[:visited]-(f:person)<-
@@ -77,7 +108,6 @@ friends_visited_same_places_as_me_query = QueryInfo(
                      ['Ori Laslo', 'USA'],
                      ['Alon Fital', 'USA']]
 )
-
 
 friends_older_than_me_query = QueryInfo(
     query="""MATCH (ME:person {name:"Roi Lipman"})-[:friend]->(f:person)
@@ -142,7 +172,6 @@ visit_purpose_of_each_country_i_visited_query = QueryInfo(
                      ['USA', 'business']]
 )
 
-
 who_was_on_business_trip_query = QueryInfo(
     query="""MATCH (p:person)-[v:visited {purpose:"business"}]->(c:country)
              RETURN p.name, v.purpose, toUpper(c.name)""",
@@ -155,7 +184,6 @@ who_was_on_business_trip_query = QueryInfo(
                      ['Tal Doron', 'business', 'JAPAN'],
                      ['Gal Derriere', 'business', 'AMSTERDAM']]
 )
-
 
 number_of_vacations_per_person_query = QueryInfo(
     query="""MATCH (p:person)-[v:visited {purpose:"pleasure"}]->(c:country)
@@ -283,6 +311,7 @@ post_delete_label_query = QueryInfo(
 )
 
 queries_info = [
+    graph_entities,
     subset_of_people,
     my_friends_query,
     friends_of_friends_query,

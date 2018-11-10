@@ -404,6 +404,7 @@ This section contains information on all supported functions from the Cypher que
 |Function | Description|
 | ------- |:-----------|
 |id() | Returns the ID of a relationship or node |
+|labels() | Returns a string representations of the label of a node. |
 
 ## GRAPH.DELETE
 

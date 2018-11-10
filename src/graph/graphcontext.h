@@ -26,6 +26,9 @@ GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rs_name,
                                size_t node_cap, size_t edge_cap);
 GraphContext* GraphContext_Retrieve(RedisModuleCtx *ctx, RedisModuleString *rs_graph_name);
 
+// Retrives graph context from thread local storage.
+GraphContext* GraphContext_GetFromLTS();
+
 /* LabelStore API */
 // Retrieve the generic store for node labels or relation types
 LabelStore* GraphContext_AllStore(const GraphContext *gc, LabelStoreType t);
