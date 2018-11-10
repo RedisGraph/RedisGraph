@@ -4,6 +4,8 @@
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
 
+extern pthread_key_t _tlsGCKey;    // Thread local storage graph context key.
+
 //------------------------------------------------------------------------------
 // GraphContext API
 //------------------------------------------------------------------------------
@@ -37,6 +39,7 @@ GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rs_name,
   RedisModule_ModuleTypeSetValue(key, GraphContextRedisModuleType, gc);
   RedisModule_CloseKey(key);
 
+  pthread_setspecific(_tlsGCKey, gc);
   return gc;
 }
 
@@ -52,6 +55,13 @@ GraphContext* GraphContext_Retrieve(RedisModuleCtx *ctx, RedisModuleString *rs_n
   // Force GraphBLAS updates and resize matrices to node count by default
   Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
 
+  pthread_setspecific(_tlsGCKey, gc);
+  return gc;
+}
+
+GraphContext* GraphContext_GetFromLTS() {
+  GraphContext* gc = pthread_getspecific(_tlsGCKey);
+  assert(gc);
   return gc;
 }
 
@@ -204,7 +214,7 @@ void GraphContext_DeleteNodeFromIndices(GraphContext *gc, LabelStore *store, Nod
       store = GraphContext_GetStore(gc, n->label, STORE_NODE);
     } else {
       // Otherwise, look up the offset of the matching label (if any)
-      int store_id = Graph_GetLabelID(gc->g, n->entity->id);
+      int store_id = Graph_GetNodeLabel(gc->g, n->entity->id);
       // Do nothing if node had no label
       if (store_id == GRAPH_NO_LABEL) return;
       store = gc->node_stores[store_id];
@@ -227,7 +237,7 @@ void GraphContext_UpdateNodeIndices(GraphContext *gc, LabelStore *store, NodeID 
 
   // If the query did not specify a label, retrieve the correct label store now
   if (store == NULL) {
-    int store_id = Graph_GetLabelID(gc->g, id);
+    int store_id = Graph_GetNodeLabel(gc->g, id);
     if (store_id == GRAPH_NO_LABEL) return;
     store = gc->node_stores[store_id];
   }

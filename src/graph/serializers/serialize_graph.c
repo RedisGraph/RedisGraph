@@ -188,7 +188,7 @@ void _RdbSaveNodes(RedisModuleIO *rdb, const Graph *g) {
         RedisModule_SaveUnsigned(rdb, 1);
 
         // (labels) X M
-        int l = Graph_GetLabelID(g, e->id);
+        int l = Graph_GetNodeLabel(g, e->id);
         RedisModule_SaveUnsigned(rdb, l);
         
         // properties N

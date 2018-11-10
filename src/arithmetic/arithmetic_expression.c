@@ -9,6 +9,8 @@
 #include "../util/triemap/triemap.h"
 #include "./aggregate.h"
 #include "./repository.h"
+#include "../graph/graphcontext.h"
+#include "../graph/graph.h"
 
 #include "assert.h"
 #include <math.h>
@@ -562,23 +564,24 @@ SIValue AR_TRIM(SIValue *argv, int argc) {
     return trimmed;
 }
 
-// SIValue AR_REPLACE(SIValue *argv, int argc) {
-
-// }
-
-// SIValue AR_SPLIT(SIValue *argv, int argc) {
-
-// }
-
-// SIValue AR_CONCAT(SIValue *argv, int argc) {
-
-// }
-
 SIValue AR_ID(SIValue *argv, int argc) {
     assert(argc == 1);
     assert(argv[0].type == T_PTR);
     GraphEntity *graph_entity = (GraphEntity*)argv[0].ptrval;
     return SI_LongVal(ENTITY_GET_ID(graph_entity));
+}
+
+SIValue AR_LABELS(SIValue *argv, int argc) {    
+    assert(argc == 1);
+    assert(argv[0].type == T_PTR);
+
+    const char *label = "";
+    Node *node = argv[0].ptrval;
+    GraphContext *gc = GraphContext_GetFromLTS();
+    Graph *g = gc->g;
+    int labelID = Graph_GetNodeLabel(g, ENTITY_GET_ID(node));
+    if(labelID != GRAPH_NO_LABEL) label = gc->node_stores[labelID]->label;
+    return SI_StringVal(label);
 }
 
 void AR_RegFunc(char *func_name, size_t func_name_len, AR_Func func) {
@@ -696,5 +699,9 @@ void AR_RegisterFuncs() {
 
     _toLower("id", &lower_func_name[0], &lower_func_name_len);
     AR_RegFunc(lower_func_name, lower_func_name_len, AR_ID);
+    lower_func_name_len = 32;
+
+    _toLower("labels", &lower_func_name[0], &lower_func_name_len);
+    AR_RegFunc(lower_func_name, lower_func_name_len, AR_LABELS);
     lower_func_name_len = 32;
 }
