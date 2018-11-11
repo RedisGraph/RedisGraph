@@ -58,7 +58,13 @@ SIValue _RdbLoadSIValue(RedisModuleIO *rdb) {
     } else if (t == T_BOOL) {
         return SI_BoolVal(RedisModule_LoadUnsigned(rdb));
     } else {
-        return SI_StringVal(RedisModule_LoadStringBuffer(rdb, NULL));
+        // SI_StringVal, duplicates string value,
+        // until a better solution is found for handling entities attributes
+        // we have no choice but to free value.
+        char *strVal = RedisModule_LoadStringBuffer(rdb, NULL);
+        SIValue v = SI_StringVal(strVal);
+        RedisModule_Free(strVal);
+        return v;
     }
 }
 
@@ -68,16 +74,21 @@ void _RdbLoadEntity(RedisModuleIO *rdb, GraphEntity *e) {
      * (name, value type, value) X N
     */
     uint64_t propCount = RedisModule_LoadUnsigned(rdb);
-    size_t propNameLen;
+    if(!propCount) return;
+
     char *propName[propCount];
     SIValue propValue[propCount];
 
     for(int i = 0; i < propCount; i++) {
-        propName[i] = RedisModule_LoadStringBuffer(rdb, &propNameLen);
+        propName[i] = RedisModule_LoadStringBuffer(rdb, NULL);
         propValue[i] = _RdbLoadSIValue(rdb);
     }
+    GraphEntity_Add_Properties(e, propCount, propName, propValue);
 
-    if(propCount) GraphEntity_Add_Properties(e, propCount, propName, propValue);
+    // GraphEntity_Add_Properties, duplicates property name,
+    // until a better solution is found for handling entities properties
+    // we have no choice but to free property name.
+    for(int i = 0; i < propCount; i++) RedisModule_Free(propName[i]);
 }
 
 void _RdbLoadNodes(RedisModuleIO *rdb, Graph *g) {

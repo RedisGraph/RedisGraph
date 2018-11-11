@@ -101,7 +101,10 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
   // Graph name
   // Duplicating string so that it can be safely freed if GraphContext
   // is deleted.
-  gc->graph_name = rm_strdup(RedisModule_LoadStringBuffer(rdb, NULL));
+  char *graph_name = RedisModule_LoadStringBuffer(rdb, NULL);
+  gc->graph_name = rm_strdup(graph_name);
+  RedisModule_Free(graph_name);
+
   gc->g = Graph_New(GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
 
   // #Label stores
@@ -139,9 +142,11 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
   uint32_t index_count = RedisModule_LoadUnsigned(rdb);
   gc->indices = array_new(Index*, index_count);
   for (uint32_t i = 0; i < index_count; i ++) {
-    const char *label = RedisModule_LoadStringBuffer(rdb, NULL);
-    const char *property = RedisModule_LoadStringBuffer(rdb, NULL);
+    char *label = RedisModule_LoadStringBuffer(rdb, NULL);
+    char *property = RedisModule_LoadStringBuffer(rdb, NULL);
     GraphContext_AddIndex(gc, label, property);
+    RedisModule_Free(label);
+    RedisModule_Free(property);
   }
 
   return gc;

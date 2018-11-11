@@ -21,12 +21,19 @@ void* RdbLoadStore(RedisModuleIO *rdb) {
   LabelStore *s = rm_calloc(1, sizeof(LabelStore));
 
   s->id = RedisModule_LoadUnsigned(rdb);
-  s->label = rm_strdup(RedisModule_LoadStringBuffer(rdb, NULL));
+  
+  // Duplicating label so that it can be safely freed.
+  char *label = RedisModule_LoadStringBuffer(rdb, NULL);
+  s->label = rm_strdup(label);
+  RedisModule_Free(label);
+
   s->properties = NewTrieMap();
   size_t len = 0;
   uint64_t propCount = RedisModule_LoadUnsigned(rdb);
   char *propStrings[propCount];
   for(int i = 0; i < propCount; i++) {
+    // No need to call complementary RedisModule_Free, as LabelStore_UpdateSchema
+    // doesn't call strdup.
     propStrings[i] = RedisModule_LoadStringBuffer(rdb, &len);
     propStrings[i][len] = '\0';
   }
