@@ -96,10 +96,10 @@ TEST_F(TuplesTest, RandomVectorTest) {
   // Verify iterator returned values.
   //--------------------------------------------------------------------------
   for(int i = 0; i < nvals; i++) {
-    EXPECT_EQ(TuplesIter_next(iter, &row, NULL), TuplesIter_OK);
-    EXPECT_EQ(row, I_expected[i]);
+    ASSERT_EQ(TuplesIter_next(iter, &row, NULL), TuplesIter_OK);
+    ASSERT_EQ(row, I_expected[i]);
   }
-  EXPECT_EQ(TuplesIter_next(iter, &row, NULL), TuplesIter_DEPLETED);
+  ASSERT_EQ(TuplesIter_next(iter, &row, NULL), TuplesIter_DEPLETED);
 
   //--------------------------------------------------------------------------
   // Clean up.
@@ -137,10 +137,10 @@ TEST_F(TuplesTest, VectorIteratorTest) {
   // Verify iterator returned values.
   //--------------------------------------------------------------------------
   for(int i = 0; i < nvals; i++) {
-    EXPECT_EQ(TuplesIter_next(iter, &row, NULL), TuplesIter_OK);
-    EXPECT_EQ(row, I_expected[i]);
+    ASSERT_EQ(TuplesIter_next(iter, &row, NULL), TuplesIter_OK);
+    ASSERT_EQ(row, I_expected[i]);
   }
-  EXPECT_EQ(TuplesIter_next(iter, &row, NULL), TuplesIter_DEPLETED);
+  ASSERT_EQ(TuplesIter_next(iter, &row, NULL), TuplesIter_DEPLETED);
 
   //--------------------------------------------------------------------------
   // Reset iterator and re-verify.
@@ -148,10 +148,10 @@ TEST_F(TuplesTest, VectorIteratorTest) {
 
   TuplesIter_reset(iter);
   for(int i = 0; i < nvals; i++) {
-    EXPECT_EQ(TuplesIter_next(iter, &row, NULL), TuplesIter_OK);
-    EXPECT_EQ(row, I_expected[i]);
+    ASSERT_EQ(TuplesIter_next(iter, &row, NULL), TuplesIter_OK);
+    ASSERT_EQ(row, I_expected[i]);
   }
-  EXPECT_EQ(TuplesIter_next(iter, &row, NULL), TuplesIter_DEPLETED);
+  ASSERT_EQ(TuplesIter_next(iter, &row, NULL), TuplesIter_DEPLETED);
 
   //--------------------------------------------------------------------------
   // Clean up.
@@ -204,11 +204,11 @@ TEST_F(TuplesTest, RandomMatrixTest) {
   // Verify iterator returned values.
   //--------------------------------------------------------------------------
   for(int i = 0; i < nvals; i++) {
-    EXPECT_EQ(TuplesIter_next(iter, &row, &col), TuplesIter_OK);
-    EXPECT_EQ(row, I_expected[i]);
-    EXPECT_EQ(col, J_expected[i]);
+    ASSERT_EQ(TuplesIter_next(iter, &row, &col), TuplesIter_OK);
+    ASSERT_EQ(row, I_expected[i]);
+    ASSERT_EQ(col, J_expected[i]);
   }
-  EXPECT_EQ(TuplesIter_next(iter, &row, &col), TuplesIter_DEPLETED);
+  ASSERT_EQ(TuplesIter_next(iter, &row, &col), TuplesIter_DEPLETED);
 
   //--------------------------------------------------------------------------
   // Clean up.
@@ -245,11 +245,11 @@ TEST_F(TuplesTest, MatrixIteratorTest) {
   // Verify iterator returned values.
   //--------------------------------------------------------------------------
   for(int i = 0; i < nvals; i++) {
-    EXPECT_EQ(TuplesIter_next(iter, &row, &col), TuplesIter_OK);
-    EXPECT_EQ(row, I_expected[i]);
-    EXPECT_EQ(col, J_expected[i]);
+    ASSERT_EQ(TuplesIter_next(iter, &row, &col), TuplesIter_OK);
+    ASSERT_EQ(row, I_expected[i]);
+    ASSERT_EQ(col, J_expected[i]);
   }
-  EXPECT_EQ(TuplesIter_next(iter, &row, &col), TuplesIter_DEPLETED);
+  ASSERT_EQ(TuplesIter_next(iter, &row, &col), TuplesIter_DEPLETED);
 
   //--------------------------------------------------------------------------
   // Reset iterator an re-verify.
@@ -257,11 +257,11 @@ TEST_F(TuplesTest, MatrixIteratorTest) {
 
   TuplesIter_reset(iter);
   for(int i = 0; i < nvals; i++) {
-    EXPECT_EQ(TuplesIter_next(iter, &row, &col), TuplesIter_OK);
-    EXPECT_EQ(row, I_expected[i]);
-    EXPECT_EQ(col, J_expected[i]);
+    ASSERT_EQ(TuplesIter_next(iter, &row, &col), TuplesIter_OK);
+    ASSERT_EQ(row, I_expected[i]);
+    ASSERT_EQ(col, J_expected[i]);
   }
-  EXPECT_EQ(TuplesIter_next(iter, &row, &col), TuplesIter_DEPLETED);
+  ASSERT_EQ(TuplesIter_next(iter, &row, &col), TuplesIter_DEPLETED);
 
   //--------------------------------------------------------------------------
   // Clean up.
@@ -306,11 +306,11 @@ TEST_F(TuplesTest, ColumnIteratorTest) {
       // Verify iterator returned values.
       //--------------------------------------------------------------------------
       for(int i = 0; i < nvals; i++) {
-        EXPECT_EQ(TuplesIter_next(iter, &row, &col), TuplesIter_OK);
-        EXPECT_EQ(row, I_expected[i]);
-        EXPECT_EQ(col, j);
+        ASSERT_EQ(TuplesIter_next(iter, &row, &col), TuplesIter_OK);
+        ASSERT_EQ(row, I_expected[i]);
+        ASSERT_EQ(col, j);
       }
-      EXPECT_EQ(TuplesIter_next(iter, &row, &col), TuplesIter_DEPLETED);
+      ASSERT_EQ(TuplesIter_next(iter, &row, &col), TuplesIter_DEPLETED);
     }
 
     GrB_Vector_free(&v);
@@ -341,7 +341,7 @@ TEST_F(TuplesTest, ColumnIteratorEmptyMatrixTest) {
       //--------------------------------------------------------------------------
       // Verify iterator returned values.
       //--------------------------------------------------------------------------
-      EXPECT_EQ(TuplesIter_next(iter, &row, &col), TuplesIter_DEPLETED);
+      ASSERT_EQ(TuplesIter_next(iter, &row, &col), TuplesIter_DEPLETED);
     }
 
     TuplesIter_free(iter);

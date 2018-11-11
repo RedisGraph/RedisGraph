@@ -259,30 +259,30 @@ TEST_F(AlgebraicExpressionTest, MultipleIntermidateReturnNodes) {
     
     size_t exp_count = 0;
     AlgebraicExpression **ae = AlgebraicExpression_From_Query(ast, ast->matchNode->_mergedPatterns, query_graph, &exp_count);
-    EXPECT_EQ(exp_count, 3);
+    ASSERT_EQ(exp_count, 3);
     
     // Validate first expression.
     AlgebraicExpression *exp = ae[0];
-    EXPECT_EQ(exp->op, AL_EXP_MUL);
-    EXPECT_EQ(exp->operand_count, 1);
+    ASSERT_EQ(exp->op, AL_EXP_MUL);
+    ASSERT_EQ(exp->operand_count, 1);
 
     Edge *e;
     e = QueryGraph_GetEdgeByAlias(query_graph, "ef");
-    EXPECT_EQ(exp->operands[0].operand, e->mat);
+    ASSERT_EQ(exp->operands[0].operand, e->mat);
 
     // Validate second expression.
     exp = ae[1];
-    EXPECT_EQ(exp->op, AL_EXP_MUL);
-    EXPECT_EQ(exp->operand_count, 1);
+    ASSERT_EQ(exp->op, AL_EXP_MUL);
+    ASSERT_EQ(exp->operand_count, 1);
     e = QueryGraph_GetEdgeByAlias(query_graph, "ev");
-    EXPECT_EQ(exp->operands[0].operand, e->mat);
+    ASSERT_EQ(exp->operands[0].operand, e->mat);
 
     // Validate third expression.
     exp = ae[2];
-    EXPECT_EQ(exp->op, AL_EXP_MUL);
-    EXPECT_EQ(exp->operand_count, 1);
+    ASSERT_EQ(exp->op, AL_EXP_MUL);
+    ASSERT_EQ(exp->operand_count, 1);
     e = QueryGraph_GetEdgeByAlias(query_graph, "ew");
-    EXPECT_EQ(exp->operands[0].operand, e->mat);
+    ASSERT_EQ(exp->operands[0].operand, e->mat);
 
     // Clean up.
     Free_AST_Query(ast);
@@ -296,31 +296,31 @@ TEST_F(AlgebraicExpressionTest, OneIntermidateReturnNode) {
 
     size_t exp_count = 0;
     AlgebraicExpression **ae = AlgebraicExpression_From_Query(ast, ast->matchNode->_mergedPatterns, query_graph, &exp_count);
-    EXPECT_EQ(exp_count, 2);
+    ASSERT_EQ(exp_count, 2);
 
     // Validate first expression.
     AlgebraicExpression *exp = ae[0];
 
     // Validate AlgebraicExpression structure.
-    EXPECT_EQ(exp->op, AL_EXP_MUL);
-    EXPECT_EQ(exp->operand_count, 2);
+    ASSERT_EQ(exp->op, AL_EXP_MUL);
+    ASSERT_EQ(exp->operand_count, 2);
     
     Edge *e;
     e = QueryGraph_GetEdgeByAlias(query_graph, "ef");
-    EXPECT_EQ(exp->operands[1].operand, e->mat);
+    ASSERT_EQ(exp->operands[1].operand, e->mat);
 
     e = QueryGraph_GetEdgeByAlias(query_graph, "ev");
-    EXPECT_EQ(exp->operands[0].operand, e->mat);
+    ASSERT_EQ(exp->operands[0].operand, e->mat);
 
     // Validate second expression.
     exp = ae[1];
 
     // Validate AlgebraicExpression structure.
-    EXPECT_EQ(exp->op, AL_EXP_MUL);
-    EXPECT_EQ(exp->operand_count, 1);
+    ASSERT_EQ(exp->op, AL_EXP_MUL);
+    ASSERT_EQ(exp->operand_count, 1);
 
     e = QueryGraph_GetEdgeByAlias(query_graph, "ew");
-    EXPECT_EQ(exp->operands[0].operand, e->mat);
+    ASSERT_EQ(exp->operands[0].operand, e->mat);
 
     // Clean up.
     Free_AST_Query(ast);
@@ -334,23 +334,23 @@ TEST_F(AlgebraicExpressionTest, NoIntermidateReturnNodes) {
 
     size_t exp_count = 0;
     AlgebraicExpression **ae = AlgebraicExpression_From_Query(ast, ast->matchNode->_mergedPatterns, query_graph, &exp_count);
-    EXPECT_EQ(exp_count, 1);
+    ASSERT_EQ(exp_count, 1);
 
     AlgebraicExpression *exp = ae[0];
 
     // Validate AlgebraicExpression structure.
-    EXPECT_EQ(exp->op, AL_EXP_MUL);
-    EXPECT_EQ(exp->operand_count, 3);
+    ASSERT_EQ(exp->op, AL_EXP_MUL);
+    ASSERT_EQ(exp->operand_count, 3);
 
     Edge *e;
     e = QueryGraph_GetEdgeByAlias(query_graph, "ef");
-    EXPECT_EQ(exp->operands[2].operand, e->mat);
+    ASSERT_EQ(exp->operands[2].operand, e->mat);
 
     e = QueryGraph_GetEdgeByAlias(query_graph, "ev");
-    EXPECT_EQ(exp->operands[1].operand, e->mat);
+    ASSERT_EQ(exp->operands[1].operand, e->mat);
 
     e = QueryGraph_GetEdgeByAlias(query_graph, "ew");
-    EXPECT_EQ(exp->operands[0].operand, e->mat);
+    ASSERT_EQ(exp->operands[0].operand, e->mat);
 
     // Clean up.
     Free_AST_Query(ast);
@@ -374,25 +374,25 @@ TEST_F(AlgebraicExpressionTest, OneIntermidateReturnEdge) {
 
     exp_count = 0;
     ae = AlgebraicExpression_From_Query(ast, ast->matchNode->_mergedPatterns, query_graph, &exp_count);
-    EXPECT_EQ(exp_count, 2);
+    ASSERT_EQ(exp_count, 2);
 
     // Validate first expression.
     exp = ae[0];
-    EXPECT_EQ(exp->op, AL_EXP_MUL);
-    EXPECT_EQ(exp->operand_count, 1);
+    ASSERT_EQ(exp->op, AL_EXP_MUL);
+    ASSERT_EQ(exp->operand_count, 1);
     e = QueryGraph_GetEdgeByAlias(query_graph, "ef");
-    EXPECT_EQ(exp->operands[0].operand, e->mat);
-    EXPECT_TRUE(exp->edge != NULL);
+    ASSERT_EQ(exp->operands[0].operand, e->mat);
+    ASSERT_TRUE(exp->edge != NULL);
     
     // Validate second expression.
     exp = ae[1];
-    EXPECT_EQ(exp->op, AL_EXP_MUL);
-    EXPECT_EQ(exp->operand_count, 2);
+    ASSERT_EQ(exp->op, AL_EXP_MUL);
+    ASSERT_EQ(exp->operand_count, 2);
     e = QueryGraph_GetEdgeByAlias(query_graph, "ew");
-    EXPECT_EQ(exp->operands[0].operand, e->mat);
+    ASSERT_EQ(exp->operands[0].operand, e->mat);
     e = QueryGraph_GetEdgeByAlias(query_graph, "ev");
-    EXPECT_EQ(exp->operands[1].operand, e->mat);
-    EXPECT_TRUE(exp->edge == NULL);
+    ASSERT_EQ(exp->operands[1].operand, e->mat);
+    ASSERT_TRUE(exp->edge == NULL);
 
     // Clean up.
     Free_AST_Query(ast);
@@ -407,31 +407,31 @@ TEST_F(AlgebraicExpressionTest, OneIntermidateReturnEdge) {
 
     exp_count = 0;
     ae = AlgebraicExpression_From_Query(ast, ast->matchNode->_mergedPatterns, query_graph, &exp_count);
-    EXPECT_EQ(exp_count, 3);
+    ASSERT_EQ(exp_count, 3);
 
     // Validate first expression.
     exp = ae[0];
-    EXPECT_EQ(exp->op, AL_EXP_MUL);
-    EXPECT_EQ(exp->operand_count, 1);
+    ASSERT_EQ(exp->op, AL_EXP_MUL);
+    ASSERT_EQ(exp->operand_count, 1);
     e = QueryGraph_GetEdgeByAlias(query_graph, "ef");
-    EXPECT_EQ(exp->operands[0].operand, e->mat);
-    EXPECT_TRUE(exp->edge == NULL);
+    ASSERT_EQ(exp->operands[0].operand, e->mat);
+    ASSERT_TRUE(exp->edge == NULL);
 
     // Validate second expression.
     exp = ae[1];
-    EXPECT_EQ(exp->op, AL_EXP_MUL);
-    EXPECT_EQ(exp->operand_count, 1);
+    ASSERT_EQ(exp->op, AL_EXP_MUL);
+    ASSERT_EQ(exp->operand_count, 1);
     e = QueryGraph_GetEdgeByAlias(query_graph, "ev");
-    EXPECT_EQ(exp->operands[0].operand, e->mat);
-    EXPECT_TRUE(exp->edge != NULL);
+    ASSERT_EQ(exp->operands[0].operand, e->mat);
+    ASSERT_TRUE(exp->edge != NULL);
 
     // Validate third expression.
     exp = ae[2];
-    EXPECT_EQ(exp->op, AL_EXP_MUL);
-    EXPECT_EQ(exp->operand_count, 1);
+    ASSERT_EQ(exp->op, AL_EXP_MUL);
+    ASSERT_EQ(exp->operand_count, 1);
     e = QueryGraph_GetEdgeByAlias(query_graph, "ew");
-    EXPECT_EQ(exp->operands[0].operand, e->mat);
-    EXPECT_TRUE(exp->edge == NULL);
+    ASSERT_EQ(exp->operands[0].operand, e->mat);
+    ASSERT_TRUE(exp->edge == NULL);
 
     // Clean up.
     Free_AST_Query(ast);
@@ -446,25 +446,25 @@ TEST_F(AlgebraicExpressionTest, OneIntermidateReturnEdge) {
 
     exp_count = 0;
     ae = AlgebraicExpression_From_Query(ast, ast->matchNode->_mergedPatterns, query_graph, &exp_count);
-    EXPECT_EQ(exp_count, 2);
+    ASSERT_EQ(exp_count, 2);
 
     // Validate first expression.
     exp = ae[0];
-    EXPECT_EQ(exp->op, AL_EXP_MUL);
-    EXPECT_EQ(exp->operand_count, 2);
+    ASSERT_EQ(exp->op, AL_EXP_MUL);
+    ASSERT_EQ(exp->operand_count, 2);
     e = QueryGraph_GetEdgeByAlias(query_graph, "ev");
-    EXPECT_EQ(exp->operands[0].operand, e->mat);
+    ASSERT_EQ(exp->operands[0].operand, e->mat);
     e = QueryGraph_GetEdgeByAlias(query_graph, "ef");
-    EXPECT_EQ(exp->operands[1].operand, e->mat);
-    EXPECT_TRUE(exp->edge == NULL);
+    ASSERT_EQ(exp->operands[1].operand, e->mat);
+    ASSERT_TRUE(exp->edge == NULL);
 
     // Validate second expression.
     exp = ae[1];
-    EXPECT_EQ(exp->op, AL_EXP_MUL);
-    EXPECT_EQ(exp->operand_count, 1);
+    ASSERT_EQ(exp->op, AL_EXP_MUL);
+    ASSERT_EQ(exp->operand_count, 1);
     e = QueryGraph_GetEdgeByAlias(query_graph, "ew");
-    EXPECT_EQ(exp->operands[0].operand, e->mat);
-    EXPECT_TRUE(exp->edge != NULL);
+    ASSERT_EQ(exp->operands[0].operand, e->mat);
+    ASSERT_TRUE(exp->edge != NULL);
 
     // Clean up.
     Free_AST_Query(ast);

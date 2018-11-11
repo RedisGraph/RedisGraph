@@ -88,12 +88,12 @@ TEST_F(IndexTest, StringIndex) {
   // Index the label's string property
   Index* str_idx = Index_Create(g, label_id, label, str_key);
   // Check the label and property tags on the index
-  EXPECT_STREQ(label, str_idx->label);
-  EXPECT_STREQ(str_key, str_idx->property);
+  ASSERT_STREQ(label, str_idx->label);
+  ASSERT_STREQ(str_key, str_idx->property);
 
   // The string list should have some values, and the numeric list should be empty
-  EXPECT_GT(str_idx->string_sl->length, 0);
-  EXPECT_EQ(str_idx->numeric_sl->length, 0);
+  ASSERT_GT(str_idx->string_sl->length, 0);
+  ASSERT_EQ(str_idx->numeric_sl->length, 0);
 
   // Build an iterator from a constant filter - this will include all elements
   SIValue lb = SI_StringVal("");
@@ -113,10 +113,10 @@ TEST_F(IndexTest, StringIndex) {
     // Retrieve the indexed property from the node
     cur_prop = GraphEntity_Get_Property((GraphEntity*)&cur, str_key);
     // Values should be sorted in increasing value - duplicates are allowed
-    EXPECT_LE(SIValue_Compare(last_prop, *cur_prop), 0);
+    ASSERT_LE(SIValue_Compare(last_prop, *cur_prop), 0);
     num_vals ++;
   }
-  EXPECT_EQ(num_vals, expected_n);
+  ASSERT_EQ(num_vals, expected_n);
 
   SIValue_Free(&lb);
   IndexIter_Free(iter);
@@ -127,12 +127,12 @@ TEST_F(IndexTest, NumericIndex) {
   // Index the label's numeric property
   Index *num_idx = Index_Create(g, label_id, label, num_key);
   // Check the label and property tags on the index
-  EXPECT_STREQ(label, num_idx->label);
-  EXPECT_STREQ(num_key, num_idx->property);
+  ASSERT_STREQ(label, num_idx->label);
+  ASSERT_STREQ(num_key, num_idx->property);
 
   // The numeric list should have some values, and the string list should be empty
-  EXPECT_EQ(num_idx->string_sl->length,  0);
-  EXPECT_GT(num_idx->numeric_sl->length, 0);
+  ASSERT_EQ(num_idx->string_sl->length,  0);
+  ASSERT_GT(num_idx->numeric_sl->length, 0);
 
   // Build an iterator from a constant filter - this will include all elements
   SIValue lb = SI_DoubleVal(0);
@@ -151,10 +151,10 @@ TEST_F(IndexTest, NumericIndex) {
     // Retrieve the indexed property from the node
     cur_prop = GraphEntity_Get_Property((GraphEntity*)&cur, num_key);
     // Values should be sorted in increasing value - duplicates are allowed
-    EXPECT_LE(SIValue_Compare(last_prop, *cur_prop), 0);
+    ASSERT_LE(SIValue_Compare(last_prop, *cur_prop), 0);
     num_vals ++;
   }
-  EXPECT_EQ(num_vals, expected_n);
+  ASSERT_EQ(num_vals, expected_n);
 
   IndexIter_Free(iter);
   Index_Free(num_idx);
@@ -176,7 +176,7 @@ TEST_F(IndexTest, IteratorBounds) {
   IndexIter *iter = IndexIter_Create(num_idx, T_DOUBLE);
   // Verify total number of values in index without range
   int prev_vals = count_iter_vals(iter);
-  EXPECT_EQ(prev_vals, expected_n);
+  ASSERT_EQ(prev_vals, expected_n);
   IndexIter_Reset(iter);
 
   /* Apply a non-exclusive lower bound X */
@@ -198,14 +198,14 @@ TEST_F(IndexTest, IteratorBounds) {
   IndexIter_ApplyBound(iter, lb, GE);
   /* Lower bound should reduce the number of values iterated over */
   int cur_vals = count_iter_vals(iter);
-  EXPECT_LT(cur_vals, prev_vals);
+  ASSERT_LT(cur_vals, prev_vals);
 
   /* Set the same lower bound, but exclusive.
    * Number of values should again be reduced. */
   IndexIter_Reset(iter);
   IndexIter_ApplyBound(iter, lb, GT);
   cur_vals = count_iter_vals(iter);
-  EXPECT_LT(cur_vals, prev_vals);
+  ASSERT_LT(cur_vals, prev_vals);
 
   /* Apply a non-exclusive upper bound at next indexed value */
   prev_vals = cur_vals;
@@ -219,7 +219,7 @@ TEST_F(IndexTest, IteratorBounds) {
   IndexIter_ApplyBound(iter, ub, LE);
   /* Upper bound should reduce the number of values iterated over */
   cur_vals = count_iter_vals(iter);
-  EXPECT_LT(cur_vals, prev_vals);
+  ASSERT_LT(cur_vals, prev_vals);
   prev_vals = cur_vals;
 
   /* Set the same upper bound, but exclusive.
@@ -227,7 +227,7 @@ TEST_F(IndexTest, IteratorBounds) {
   IndexIter_Reset(iter);
   IndexIter_ApplyBound(iter, ub, LT);
   cur_vals = count_iter_vals(iter);
-  EXPECT_LT(cur_vals, prev_vals);
+  ASSERT_LT(cur_vals, prev_vals);
 
   /* Set an upper bound beneath the current lower bound.
    * Number of values should be 0. */
@@ -235,7 +235,7 @@ TEST_F(IndexTest, IteratorBounds) {
   SIValue ub_last = SI_DoubleVal(lb->doubleval - 1);
   IndexIter_ApplyBound(iter, &ub_last, LT);
   cur_vals = count_iter_vals(iter);
-  EXPECT_EQ(cur_vals, 0);
+  ASSERT_EQ(cur_vals, 0);
 
   IndexIter_Free(iter);
   Index_Free(num_idx);

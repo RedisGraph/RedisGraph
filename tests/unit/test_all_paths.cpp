@@ -80,7 +80,7 @@ TEST_F(AllPathsTest, NoPaths) {
     size_t pathsCap = 1;
     Path *paths = (Path*)malloc(sizeof(Path) * pathsCap);
     size_t pathsCount = AllPaths(g, GRAPH_NO_RELATION, src, GRAPH_EDGE_DIR_OUTGOING, minLen, maxLen, &pathsCap, &paths);
-    EXPECT_EQ(pathsCount, 0);
+    ASSERT_EQ(pathsCount, 0);
     
     free(paths);
     Graph_Free(g);
@@ -103,7 +103,7 @@ TEST_F(AllPathsTest, LongestPaths) {
     }
 
     // 0,2,3,0,1,2,1,0
-    EXPECT_EQ(longestPath, 7);
+    ASSERT_EQ(longestPath, 7);
 
     for(int i = 0; i < pathsCount; i++) Path_free(paths[i]);
     free(paths);
@@ -172,7 +172,7 @@ TEST_F(AllPathsTest, UpToThreeLegsPaths) {
                 break;
             }
         }
-        EXPECT_TRUE(expectedPathFound);
+        ASSERT_TRUE(expectedPathFound);
     }
 
     for(int i = 0; i < pathsCount; i++) Path_free(paths[i]);
@@ -223,7 +223,7 @@ TEST_F(AllPathsTest, TwoLegPaths) {
             expectedPathFound = true;
             break;
         }
-        EXPECT_TRUE(expectedPathFound);
+        ASSERT_TRUE(expectedPathFound);
     }
 
     for(int i = 0; i < pathsCount; i++) Path_free(paths[i]);

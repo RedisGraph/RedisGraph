@@ -105,7 +105,7 @@ TEST_F(SkiplistTest, SkiplistRange) {
   SIValue min = SI_DoubleVal(1);
   skiplistIterator *iter = skiplistIterateRange(sl, &min, NULL, 1, 0);
   while ((ret_node = skiplistIterator_Next(iter)) != NULL) {
-    EXPECT_EQ(last_id + 1, *ret_node);
+    ASSERT_EQ(last_id + 1, *ret_node);
     last_id = *ret_node;
   }
 
@@ -124,26 +124,26 @@ TEST_F(SkiplistTest, SkiplistDelete) {
 
   // Delete a single value from the skiplist
   delete_result = skiplistDelete(sl, &prop_to_delete, &node_to_delete);
-  EXPECT_EQ(delete_result, 1);
+  ASSERT_EQ(delete_result, 1);
 
   // Attempt to delete a non-existent key-value pair
   SIValue wrong_prop = SIValue_FromString(words[3]);
   delete_result = skiplistDelete(sl, &wrong_prop, &node_to_delete);
-  EXPECT_EQ(delete_result, 0);
+  ASSERT_EQ(delete_result, 0);
 
   // Attempt to delete a non-existent skiplist key
   SIValue missing_prop = SIValue_FromString("not_a_key");
   delete_result = skiplistDelete(sl, &missing_prop, NULL);
-  EXPECT_EQ(delete_result, 0);
+  ASSERT_EQ(delete_result, 0);
 
   // Delete full nodes from the skiplist - a single key and all values that share it
   prop_to_delete = SIValue_FromString(words[3]);
   delete_result = skiplistDelete(sl, &prop_to_delete, NULL);
-  EXPECT_EQ(delete_result, 1);
+  ASSERT_EQ(delete_result, 1);
 
   // Verify that the skiplistNode has been deleted
   void *search_result = skiplistFind(sl, &prop_to_delete);
-  EXPECT_TRUE(search_result == NULL);
+  ASSERT_TRUE(search_result == NULL);
 
   skiplistFree(sl);
 }
@@ -160,11 +160,11 @@ TEST_F(SkiplistTest, SkiplistUpdate) {
   skiplistNode *new_skiplist_node = update_skiplist(sl, node_to_update, &find_prop, &new_prop);
 
   // The new skiplistNode should have the new key
-  EXPECT_STREQ(new_skiplist_node->key->stringval, "updated_val");
+  ASSERT_STREQ(new_skiplist_node->key->stringval, "updated_val");
 
   // The old key-value pair must have been deleted
   int delete_result = skiplistDelete(sl, &find_prop, &node_to_update);
-  EXPECT_EQ(delete_result, 0);
+  ASSERT_EQ(delete_result, 0);
 
   // The new key-value pair can be found
   int found_index = -1;
@@ -176,7 +176,7 @@ TEST_F(SkiplistTest, SkiplistUpdate) {
         break;
       }
     }
-    EXPECT_GE(found_index, 0);
+    ASSERT_GE(found_index, 0);
   }
 
   skiplistFree(sl);

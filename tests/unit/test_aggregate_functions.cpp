@@ -31,32 +31,35 @@ class AggregateTest: public ::testing::Test {
 // Count valid entities
 TEST_F(AggregateTest, CountTest) {
   int num_values = 5;
-  AR_ExpNode *count_op = AR_EXP_NewOpNode("count", num_values);
+  AR_ExpNode *count_op = AR_EXP_NewOpNode("count", 1);
+  count_op->op.children[0] = AR_EXP_NewConstOperandNode(SI_DoubleVal(1));  
   for (int i = 0; i < num_values; i ++) {
-    count_op->op.children[i] = AR_EXP_NewConstOperandNode(SI_DoubleVal(i));
+    AR_EXP_Aggregate(count_op, r);
   }
-  AR_EXP_Aggregate(count_op, r);
   AR_EXP_Reduce(count_op);
   SIValue res = AR_EXP_Evaluate(count_op, r);
 
-  ASSERT_EQ(res.doubleval, num_values);
+  ASSERT_EQ(res.doubleval, num_values);  
   AR_EXP_Free(count_op);
 }
 
 // Count a mix of valid and invalid entities
 TEST_F(AggregateTest, PartialCountTest) {
   int num_values = 10;
-  AR_ExpNode *count_op = AR_EXP_NewOpNode("count", num_values);
+  AR_ExpNode *count_op = AR_EXP_NewOpNode("count", 1);
+  count_op->op.children[0] = AR_EXP_NewConstOperandNode(SI_DoubleVal(1));
+
   for (int i = 0; i < num_values; i ++) {
     // Every odd entity will be a valid numeric,
     // and every even entity will be a null value
+    AR_EXP_Free(count_op->op.children[0]);
     if (i % 2) {
-      count_op->op.children[i] = AR_EXP_NewConstOperandNode(SI_DoubleVal(i));
+      count_op->op.children[0] = AR_EXP_NewConstOperandNode(SI_DoubleVal(1));
     } else {
-      count_op->op.children[i] = AR_EXP_NewConstOperandNode(SI_NullVal());
+      count_op->op.children[0] = AR_EXP_NewConstOperandNode(SI_NullVal());
     }
+    AR_EXP_Aggregate(count_op, r);    
   }
-  AR_EXP_Aggregate(count_op, r);
   AR_EXP_Reduce(count_op);
   SIValue res = AR_EXP_Evaluate(count_op, r);
 
@@ -120,7 +123,7 @@ TEST_F(AggregateTest, PercentileContTest) {
     // Reduce sorts the list and applies the percentile formula
     AR_EXP_Reduce(perc);
     result = AR_EXP_Evaluate(perc, r);
-    EXPECT_EQ(result.doubleval, expected_values[i]);
+    ASSERT_EQ(result.doubleval, expected_values[i]);    
     AR_EXP_Free(perc);
   }
 }
@@ -151,7 +154,7 @@ TEST_F(AggregateTest, PercentileDiscTest) {
     AR_EXP_Reduce(perc);
     SIValue res = AR_EXP_Evaluate(perc, r);
     expected_outcome = AR_EXP_Evaluate(perc->op.children[expected[i]], r);
-    EXPECT_EQ(res.doubleval, expected_outcome.doubleval);
+    ASSERT_EQ(res.doubleval, expected_outcome.doubleval);
     AR_EXP_Free(perc);
   }
 
@@ -165,7 +168,7 @@ TEST_F(AggregateTest, StDevTest) {
   AR_EXP_Aggregate(stdev, r);
   AR_EXP_Reduce(stdev);
   SIValue result = AR_EXP_Evaluate(stdev, r);
-  EXPECT_EQ(result.doubleval, 0);
+  ASSERT_EQ(result.doubleval, 0);
   AR_EXP_Free(stdev);
 
   // Stdev of squares of first 10 positive integers
@@ -187,7 +190,7 @@ TEST_F(AggregateTest, StDevTest) {
   AR_EXP_Reduce(stdev);
   result = AR_EXP_Evaluate(stdev, r);
 
-  EXPECT_EQ(result.doubleval, sample_result);
+  ASSERT_EQ(result.doubleval, sample_result);
   AR_EXP_Free(stdev);
 
   // Perform last test with stDevP
@@ -203,7 +206,7 @@ TEST_F(AggregateTest, StDevTest) {
   AR_EXP_Reduce(stdevp);
   result = AR_EXP_Evaluate(stdevp, r);
 
-  EXPECT_EQ(result.doubleval, pop_result);
+  ASSERT_EQ(result.doubleval, pop_result);
   AR_EXP_Free(stdevp);
 
 }

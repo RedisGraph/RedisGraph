@@ -40,26 +40,26 @@ class ArithmeticTest: public ::testing::Test {
 void _test_string(const AR_ExpNode *exp, const char *expected) {
   char *str;
   AR_EXP_ToString(exp, &str);
-  EXPECT_STREQ(str, expected);
+  ASSERT_STREQ(str, expected);
   free(str);
 }
 
 void _test_ar_func(AR_ExpNode *root, SIValue expected, const Record r) {
   SIValue res = AR_EXP_Evaluate(root, r);
-  EXPECT_EQ(res.doubleval, expected.doubleval);
+  ASSERT_EQ(res.doubleval, expected.doubleval);
 }
 
 TEST_F(ArithmeticTest, ExpressionTest) {  
   /* muchacho */
   AR_ExpNode *string = AR_EXP_NewConstOperandNode(SI_StringVal("muchacho"));
   SIValue result = AR_EXP_Evaluate(string, emptyRecord);
-  EXPECT_STREQ(result.stringval, "muchacho");
+  ASSERT_STREQ(result.stringval, "muchacho");
   AR_EXP_Free(string);
 
   /* 1 */
   AR_ExpNode *one = AR_EXP_NewConstOperandNode(SI_DoubleVal(1));
   result = AR_EXP_Evaluate(one, emptyRecord);
-  EXPECT_EQ(result.doubleval, 1);
+  ASSERT_EQ(result.doubleval, 1);
 
   /* 1+2*3 */
   AR_ExpNode *two = AR_EXP_NewConstOperandNode(SI_DoubleVal(2));
@@ -74,7 +74,7 @@ TEST_F(ArithmeticTest, ExpressionTest) {
   mul->op.children[1] = three;
 
   result = AR_EXP_Evaluate(add, emptyRecord);
-  EXPECT_EQ(result.doubleval, 7);
+  ASSERT_EQ(result.doubleval, 7);
   AR_EXP_Free(add);
 
   /* 1 + 1 + 1 + 1 + 1 + 1 */
@@ -99,7 +99,7 @@ TEST_F(ArithmeticTest, ExpressionTest) {
   add_1->op.children[1] = add_3;
 
   result = AR_EXP_Evaluate(add_1, emptyRecord);
-  EXPECT_EQ(result.doubleval, 6);
+  ASSERT_EQ(result.doubleval, 6);
 
   AR_EXP_Free(add_1);
 
@@ -118,7 +118,7 @@ TEST_F(ArithmeticTest, ExpressionTest) {
   mul->op.children[1] = AR_EXP_NewConstOperandNode(SI_DoubleVal(1));
 
   result = AR_EXP_Evaluate(absolute, emptyRecord);
-  EXPECT_EQ(result.doubleval, 3);
+  ASSERT_EQ(result.doubleval, 3);
 
   AR_EXP_Free(absolute);
 }
@@ -145,13 +145,13 @@ TEST_F(ArithmeticTest, VariadicTest) {
   add->op.children[1] = personAge;
 
   SIValue result = AR_EXP_Evaluate(personAge, r);
-  EXPECT_EQ(result.doubleval, 33);
+  ASSERT_EQ(result.doubleval, 33);
 
   result = AR_EXP_Evaluate(one, r);
-  EXPECT_EQ(result.doubleval, 1);
+  ASSERT_EQ(result.doubleval, 1);
 
   result = AR_EXP_Evaluate(add, r);
-  EXPECT_EQ(result.doubleval, 34);
+  ASSERT_EQ(result.doubleval, 34);
 
   FreeEntity(personNode->entity);
   Node_Free(personNode);
@@ -170,7 +170,7 @@ TEST_F(ArithmeticTest, AggregateTest) {
 
   AR_EXP_Reduce(sum);
   SIValue result = AR_EXP_Evaluate(sum, emptyRecord);
-  EXPECT_EQ(result.doubleval, 3);
+  ASSERT_EQ(result.doubleval, 3);
 
   AR_EXP_Free(sum);
   one = AR_EXP_NewConstOperandNode(SI_DoubleVal(1));
@@ -191,7 +191,7 @@ TEST_F(ArithmeticTest, AggregateTest) {
   /* Just for the kick of it, call reduce more than once.*/
   AR_EXP_Reduce(add);
   result = AR_EXP_Evaluate(add, emptyRecord);
-  EXPECT_EQ(result.doubleval, 5);
+  ASSERT_EQ(result.doubleval, 5);
   AR_EXP_Free(add);
 }
 
@@ -397,18 +397,18 @@ TEST_F(ArithmeticTest, ReverseTest) {
   root->op.children[0] = str;
   SIValue result = AR_EXP_Evaluate(root, emptyRecord);
   const char *expected = "ohcahcum";
-  EXPECT_STREQ(result.stringval, expected);
+  ASSERT_STREQ(result.stringval, expected);
   AR_EXP_Free(str);
 
   root->op.children[0] = empty_str;
   result = AR_EXP_Evaluate(root, emptyRecord);
   expected = "";
-  EXPECT_STREQ(result.stringval, expected);
+  ASSERT_STREQ(result.stringval, expected);
   AR_EXP_Free(empty_str);
 
   root->op.children[0] = null;
   result = AR_EXP_Evaluate(root, emptyRecord);
-  EXPECT_EQ(result.type, T_NULL);
+  ASSERT_EQ(result.type, T_NULL);
 
   AR_EXP_Free(root);
 }
@@ -424,18 +424,18 @@ TEST_F(ArithmeticTest, LeftTest) {
   root->op.children[1] = left;
   SIValue result = AR_EXP_Evaluate(root, emptyRecord);
   const char *expected = "much";
-  EXPECT_STREQ(result.stringval, expected);
+  ASSERT_STREQ(result.stringval, expected);
 
   root->op.children[0] = str;
   root->op.children[1] = entire_string_len;
   result = AR_EXP_Evaluate(root, emptyRecord);
   expected = "muchacho";
-  EXPECT_STREQ(result.stringval, expected);
+  ASSERT_STREQ(result.stringval, expected);
 
   root->op.children[0] = null;
   root->op.children[1] = entire_string_len;
   result = AR_EXP_Evaluate(root, emptyRecord);
-  EXPECT_EQ(result.type, T_NULL);
+  ASSERT_EQ(result.type, T_NULL);
 
   AR_EXP_Free(left);
   AR_EXP_Free(str);
@@ -453,18 +453,18 @@ TEST_F(ArithmeticTest, RightTest) {
   root->op.children[1] = right;
   SIValue result = AR_EXP_Evaluate(root, emptyRecord);
   const char *expected = "acho";
-  EXPECT_STREQ(result.stringval, expected);
+  ASSERT_STREQ(result.stringval, expected);
 
   root->op.children[0] = str;
   root->op.children[1] = entire_string_len;
   result = AR_EXP_Evaluate(root, emptyRecord);
   expected = "muchacho";
-  EXPECT_STREQ(result.stringval, expected);
+  ASSERT_STREQ(result.stringval, expected);
 
   root->op.children[0] = null;
   root->op.children[1] = entire_string_len;
   result = AR_EXP_Evaluate(root, emptyRecord);
-  EXPECT_EQ(result.type, T_NULL);
+  ASSERT_EQ(result.type, T_NULL);
 
   AR_EXP_Free(right);
   AR_EXP_Free(str);
@@ -482,26 +482,26 @@ TEST_F(ArithmeticTest, LTrimTest) {
   root->op.children[0] = left_spaced_str;
   SIValue result = AR_EXP_Evaluate(root, emptyRecord);
   const char *expected = "muchacho";
-  EXPECT_STREQ(result.stringval, expected);
+  ASSERT_STREQ(result.stringval, expected);
 
   root->op.children[0] = right_spaced_str;
   result = AR_EXP_Evaluate(root, emptyRecord);
   expected = "muchacho   ";
-  EXPECT_STREQ(result.stringval, expected);
+  ASSERT_STREQ(result.stringval, expected);
 
   root->op.children[0] = spaced_str;
   result = AR_EXP_Evaluate(root, emptyRecord);
   expected = "much   acho   ";
-  EXPECT_STREQ(result.stringval, expected);
+  ASSERT_STREQ(result.stringval, expected);
 
   root->op.children[0] = no_space_str;
   result = AR_EXP_Evaluate(root, emptyRecord);
   expected = "muchacho";
-  EXPECT_STREQ(result.stringval, expected);
+  ASSERT_STREQ(result.stringval, expected);
 
   root->op.children[0] = null;
   result = AR_EXP_Evaluate(root, emptyRecord);
-  EXPECT_EQ(result.type, T_NULL);
+  ASSERT_EQ(result.type, T_NULL);
 
   AR_EXP_Free(left_spaced_str);
   AR_EXP_Free(right_spaced_str);
@@ -521,26 +521,26 @@ TEST_F(ArithmeticTest, RTrimTest) {
   root->op.children[0] = left_spaced_str;
   SIValue result = AR_EXP_Evaluate(root, emptyRecord);
   const char *expected = "   muchacho";
-  EXPECT_STREQ(result.stringval, expected);
+  ASSERT_STREQ(result.stringval, expected);
 
   root->op.children[0] = right_spaced_str;
   result = AR_EXP_Evaluate(root, emptyRecord);
   expected = "muchacho";
-  EXPECT_STREQ(result.stringval, expected);
+  ASSERT_STREQ(result.stringval, expected);
 
   root->op.children[0] = spaced_str;
   result = AR_EXP_Evaluate(root, emptyRecord);
   expected = "   much   acho";
-  EXPECT_STREQ(result.stringval, expected);
+  ASSERT_STREQ(result.stringval, expected);
 
   root->op.children[0] = no_space_str;
   result = AR_EXP_Evaluate(root, emptyRecord);
   expected = "muchacho";
-  EXPECT_STREQ(result.stringval, expected);
+  ASSERT_STREQ(result.stringval, expected);
 
   root->op.children[0] = null;
   result = AR_EXP_Evaluate(root, emptyRecord);
-  EXPECT_EQ(result.type, T_NULL);
+  ASSERT_EQ(result.type, T_NULL);
 
   AR_EXP_Free(left_spaced_str);
   AR_EXP_Free(right_spaced_str);
@@ -563,20 +563,20 @@ TEST_F(ArithmeticTest, SubstringTest) {
   root->op.children[2] = length;
   SIValue result = AR_EXP_Evaluate(root, emptyRecord);
   const char *expected = "much";
-  EXPECT_STREQ(result.stringval, expected);
+  ASSERT_STREQ(result.stringval, expected);
 
   root->op.children[0] = original_str;
   root->op.children[1] = start_middle;
   root->op.children[2] = length_overflow;
   result = AR_EXP_Evaluate(root, emptyRecord);
   expected = "hacho";
-  EXPECT_STREQ(result.stringval, expected);
+  ASSERT_STREQ(result.stringval, expected);
 
   root->op.children[0] = null;
   root->op.children[1] = start_middle;
   root->op.children[2] = length_overflow;
   result = AR_EXP_Evaluate(root, emptyRecord);
-  EXPECT_EQ(result.type, T_NULL);
+  ASSERT_EQ(result.type, T_NULL);
 
   AR_EXP_Free(original_str);
   AR_EXP_Free(start);
@@ -593,16 +593,16 @@ TEST_F(ArithmeticTest, ToLowerTest) {
   root->op.children[0] = str1;
   SIValue result = AR_EXP_Evaluate(root, emptyRecord);
   const char *expected = "muchacho";
-  EXPECT_STREQ(result.stringval, expected);
+  ASSERT_STREQ(result.stringval, expected);
 
   root->op.children[0] = str2;
   result = AR_EXP_Evaluate(root, emptyRecord);
   expected = "muchacho";
-  EXPECT_STREQ(result.stringval, expected);
+  ASSERT_STREQ(result.stringval, expected);
 
   root->op.children[0] = null;
   result = AR_EXP_Evaluate(root, emptyRecord);
-  EXPECT_EQ(result.type, T_NULL);
+  ASSERT_EQ(result.type, T_NULL);
 
   AR_EXP_Free(str1);
   AR_EXP_Free(str2);
@@ -618,16 +618,16 @@ TEST_F(ArithmeticTest, ToUpperTest) {
   root->op.children[0] = str1;
   SIValue result = AR_EXP_Evaluate(root, emptyRecord);
   const char *expected = "MUCHACHO";
-  EXPECT_STREQ(result.stringval, expected);
+  ASSERT_STREQ(result.stringval, expected);
 
   root->op.children[0] = str2;
   result = AR_EXP_Evaluate(root, emptyRecord);
   expected = "MUCHACHO";
-  EXPECT_STREQ(result.stringval, expected);
+  ASSERT_STREQ(result.stringval, expected);
 
   root->op.children[0] = null;
   result = AR_EXP_Evaluate(root, emptyRecord);
-  EXPECT_EQ(result.type, T_NULL);
+  ASSERT_EQ(result.type, T_NULL);
 
   AR_EXP_Free(str1);
   AR_EXP_Free(str2);
@@ -643,16 +643,16 @@ TEST_F(ArithmeticTest, ToStringTest) {
   root->op.children[0] = str;
   SIValue result = AR_EXP_Evaluate(root, emptyRecord);
   const char *expected = "muchacho";
-  EXPECT_STREQ(result.stringval, expected);
+  ASSERT_STREQ(result.stringval, expected);
 
   root->op.children[0] = number;
   result = AR_EXP_Evaluate(root, emptyRecord);
   expected = "3.140000";
-  EXPECT_STREQ(result.stringval, expected);
+  ASSERT_STREQ(result.stringval, expected);
 
   root->op.children[0] = null;
   result = AR_EXP_Evaluate(root, emptyRecord);
-  EXPECT_EQ(result.type, T_NULL);
+  ASSERT_EQ(result.type, T_NULL);
 
   AR_EXP_Free(str);
   AR_EXP_Free(number);
@@ -670,26 +670,26 @@ TEST_F(ArithmeticTest, TrimTest) {
   root->op.children[0] = left_spaced_str;
   SIValue result = AR_EXP_Evaluate(root, emptyRecord);
   const char *expected = "muchacho";
-  EXPECT_STREQ(result.stringval, expected);
+  ASSERT_STREQ(result.stringval, expected);
 
   root->op.children[0] = right_spaced_str;
   result = AR_EXP_Evaluate(root, emptyRecord);
   expected = "muchacho";
-  EXPECT_STREQ(result.stringval, expected);
+  ASSERT_STREQ(result.stringval, expected);
 
   root->op.children[0] = spaced_str;
   result = AR_EXP_Evaluate(root, emptyRecord);
   expected = "much   acho";
-  EXPECT_STREQ(result.stringval, expected);
+  ASSERT_STREQ(result.stringval, expected);
 
   root->op.children[0] = no_space_str;
   result = AR_EXP_Evaluate(root, emptyRecord);
   expected = "muchacho";
-  EXPECT_STREQ(result.stringval, expected);
+  ASSERT_STREQ(result.stringval, expected);
 
   root->op.children[0] = null;
   result = AR_EXP_Evaluate(root, emptyRecord);
-  EXPECT_EQ(result.type, T_NULL);
+  ASSERT_EQ(result.type, T_NULL);
 
   AR_EXP_Free(left_spaced_str );
   AR_EXP_Free(right_spaced_str);
@@ -713,7 +713,7 @@ TEST_F(ArithmeticTest, IDTest) {
 
   root->op.children[0] = person_with_id;
   SIValue result = AR_EXP_Evaluate(root, r);
-  EXPECT_EQ(result.longval, ENTITY_GET_ID(node));
+  ASSERT_EQ(result.longval, ENTITY_GET_ID(node));
 
   FreeEntity(node->entity);
   Node_Free(node);
