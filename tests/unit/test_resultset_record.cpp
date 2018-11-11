@@ -39,8 +39,8 @@ TEST(ResultsetRecordTest, RecordToString) {
     char *record_str = NULL;
     size_t record_str_len = ResultSetRecord_ToString(record, &record_str, &record_str_cap);
 
-    EXPECT_EQ(strcmp(record_str, "Hello,-24,24,0.314000,NULL,true"), 0);
-    EXPECT_EQ(record_str_len, 31);
+    ASSERT_EQ(strcmp(record_str, "Hello,-24,24,0.314000,NULL,true"), 0);
+    ASSERT_EQ(record_str_len, 31);
     
     SIValue_Free(&v_string);
     free(record_str);

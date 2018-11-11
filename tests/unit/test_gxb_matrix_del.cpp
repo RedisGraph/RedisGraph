@@ -36,16 +36,16 @@ TEST_F(GxB_DeleteTest, GxB_Delete) {
 
     GrB_Index nvals;
     GrB_Matrix_nvals(&nvals, M);
-    EXPECT_EQ(nvals, 10);
+    ASSERT_EQ(nvals, 10);
 
     // Clear diagonal.
     for(GrB_Index i = 0; i < 10; i++) {
         GxB_Matrix_Delete(M, i, i);
         GrB_Matrix_nvals(&nvals, M);
-        EXPECT_EQ(nvals, 10-1-i);
+        ASSERT_EQ(nvals, 10-1-i);
     }
 
     // Expecting an empty matrix.
     GrB_Matrix_nvals(&nvals, M);
-    EXPECT_EQ(nvals, 0);
+    ASSERT_EQ(nvals, 0);
 }
