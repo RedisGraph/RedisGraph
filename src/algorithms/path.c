@@ -9,20 +9,31 @@
 #include "../util/arr.h"
 
 Path Path_new(size_t len) {
-    return array_new(Edge, len);
+    return array_new(Node, len);
 }
 
-Path Path_append(Path p, Edge e) {
-    return array_append(p, e);
+Path Path_append(Path p, Node n) {
+    return array_append(p, n);
 }
 
-Edge Path_pop(Path p) {
-    size_t pathLen = array_len(p);
+Node Path_pop(Path p) {
     return array_pop(p);
 }
 
 size_t Path_len(const Path p) {
     return array_len(p);
+}
+
+bool Path_empty(const Path p) {
+    return (array_len(p) == 0);
+}
+
+bool Path_containsNode(const Path p, Node *n) {
+    uint32_t pathLen = Path_len(p);
+	for(int i = 0; i < pathLen; i++) {
+        if(ENTITY_GET_ID(p+i) == ENTITY_GET_ID(n)) return true;
+    }
+    return false;
 }
 
 Path Path_clone(const Path p) {
@@ -38,18 +49,13 @@ Path Path_clone(const Path p) {
 
 void Path_print(Path p) {
     assert(p);
-    NodeID n;
-    Edge *e = NULL;
+    Node *n = NULL;
     int pathLen = Path_len(p);
 
     for(int i = 0; i < pathLen; i++) {
-        e = p+i;
-        n = Edge_GetSrcNodeID(e);
-        printf("%llu", n);
+        n = p+i;
+        printf("%llu", ENTITY_GET_ID(n));
     }
-
-    n = Edge_GetDestNodeID(e);
-    printf("%llu", n);
 }
 
 void Path_free(Path p) {
