@@ -21,9 +21,7 @@ OpBase* NewCondVarLenTraverseOp(AlgebraicExpression *ae, unsigned int minHops, u
     condVarLenTraverse->destNodeAlias = ae->dest_node->alias;
     condVarLenTraverse->minHops = minHops;
     condVarLenTraverse->maxHops = maxHops;
-    condVarLenTraverse->pathsCount = 0;
-    condVarLenTraverse->pathsCap = 32;
-    condVarLenTraverse->paths = NULL;
+    condVarLenTraverse->allPathsCtx = NULL;
     condVarLenTraverse->traverseDir = (ae->operands[0].transpose) ? GRAPH_EDGE_DIR_INCOMING : GRAPH_EDGE_DIR_OUTGOING;
 
     // Set our Op operations
@@ -49,45 +47,43 @@ OpResult CondVarLenTraverseConsume(OpBase *opBase, Record *r) {
     OpResult res;
 
     /* Not initialized. */
-    if(!op->paths) {
-        op->paths = malloc(sizeof(Path) * op->pathsCap);
+    if(!op->allPathsCtx) {
+        res = child->consume(child, r);
+        if(res != OP_OK) return res;
+        op->allPathsCtx = AllPathsCtx_New(op->ae->src_node, op->g, op->relationID, op->traverseDir, op->minHops, op->maxHops);
         Record_AddEntry(r, op->destNodeAlias, SI_PtrVal(op->ae->dest_node));
     }
 
-    while(op->pathsCount == 0) {
+    Path p = NULL;
+    while(!(p = AllPathsCtx_NextPath(op->allPathsCtx))) {
         res = child->consume(child, r);
         if(res != OP_OK) return res;
 
         Node *srcNode = Record_GetNode(*r, op->srcNodeAlias);
-        op->pathsCount = AllPaths(op->g, op->relationID, ENTITY_GET_ID(srcNode), op->traverseDir, op->minHops, op->maxHops, &op->pathsCap, &op->paths);
+
+        AllPathsCtx_Free(op->allPathsCtx);
+        op->allPathsCtx = AllPathsCtx_New(srcNode, op->g, op->relationID, op->traverseDir, op->minHops, op->maxHops);
     }
 
-    // For the timebeing we only care for the last edge in path
-    Path p = op->paths[--op->pathsCount];
-
-    Edge e = Path_pop(p);
-    NodeID neighborID;
-    if(op->traverseDir == GRAPH_EDGE_DIR_OUTGOING) neighborID = Edge_GetDestNodeID(&e);
-    else neighborID = Edge_GetDestNodeID(&e);
-
+    // For the timebeing we only care for the last node in path
+    Node n = Path_pop(p);
     Path_free(p);
 
     // op->ae->dest_node is already in record
     // All that's left to do is update its internal entity.
-    Graph_GetNode(op->g, neighborID, op->ae->dest_node);
+    op->ae->dest_node->entity = n.entity;
     return OP_OK;
 }
 
 OpResult CondVarLenTraverseReset(OpBase *ctx) {
     CondVarLenTraverse *op = (CondVarLenTraverse*)ctx;
-    for(int i = 0; i < op->pathsCount; i++) Path_free(op->paths[i]);
-    op->pathsCount = 0;
+    AllPathsCtx_Free(op->allPathsCtx);
+    op->allPathsCtx = NULL;
     // TODO: I think Reset should propegate to child nodes.
     return OP_OK;
 }
 
 void CondVarLenTraverseFree(OpBase *ctx) {
     CondVarLenTraverse *op = (CondVarLenTraverse*)ctx;
-    for(int i = 0; i < op->pathsCount; i++) Path_free(op->paths[i]);
-    free(op->paths);
+    if(op->allPathsCtx) AllPathsCtx_Free(op->allPathsCtx);
 }

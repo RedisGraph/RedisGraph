@@ -1548,7 +1548,7 @@ static void yy_reduce(
       case 42: /* edgeLength ::= MUL INTEGER DOTDOT */
 #line 258 "grammar.y"
 {
-	yymsp[-2].minor.yy138 = New_AST_LinkLength(yymsp[-1].minor.yy0.intval, UINT_MAX-1);
+	yymsp[-2].minor.yy138 = New_AST_LinkLength(yymsp[-1].minor.yy0.intval, UINT_MAX-2);
 }
 #line 1554 "grammar.c"
         break;
@@ -1569,7 +1569,7 @@ static void yy_reduce(
       case 45: /* edgeLength ::= MUL */
 #line 273 "grammar.y"
 {
-	yymsp[0].minor.yy138 = New_AST_LinkLength(1, UINT_MAX-1);
+	yymsp[0].minor.yy138 = New_AST_LinkLength(1, UINT_MAX-2);
 }
 #line 1575 "grammar.c"
         break;
