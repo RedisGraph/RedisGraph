@@ -81,6 +81,13 @@ cleanup:
 int MGraph_Delete(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     if (argc != 2) return RedisModule_WrongArity(ctx);
 
+    // Return immediately if invocation context is Lua or a MULTI/EXEC block
+    int flags = RedisModule_GetContextFlags(ctx);
+    if (flags & (REDISMODULE_CTX_FLAGS_MULTI | REDISMODULE_CTX_FLAGS_LUA)) {
+        RedisModule_ReplyWithError(ctx, "RedisGraph commands may not be called from non-blocking contexts.");
+        return REDISMODULE_OK;
+    }
+
     // Construct delete operation context.
     RedisModuleString *graph_name = argv[1];
     RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
