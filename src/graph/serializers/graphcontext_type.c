@@ -99,11 +99,7 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
   GraphContext *gc = rm_malloc(sizeof(GraphContext));
 
   // Graph name
-  // Duplicating string so that it can be safely freed if GraphContext
-  // is deleted.
-  char *graph_name = RedisModule_LoadStringBuffer(rdb, NULL);
-  gc->graph_name = rm_strdup(graph_name);
-  RedisModule_Free(graph_name);
+  gc->graph_name = RedisModule_LoadStringBuffer(rdb, NULL);
 
   gc->g = Graph_New(GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
 
