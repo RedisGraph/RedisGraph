@@ -22,8 +22,11 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
     /* Parse query, get AST. */
     char *errMsg = NULL;
-    AST_Query* ast = ParseQuery(query, strlen(query), &errMsg);
+    AST_Query* ast = NULL;
+    GraphContext *gc = NULL;
+    ExecutionPlan *plan = NULL;
 
+    ast = ParseQuery(query, strlen(query), &errMsg);
     if (!ast) {
         RedisModule_Log(ctx, "debug", "Error parsing query: %s", errMsg);
         RedisModule_ReplyWithError(ctx, errMsg);
@@ -31,15 +34,13 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
         return REDISMODULE_OK;
     }
 
-    ExecutionPlan *plan = NULL;
     // Retrieve the GraphContext and acquire a read lock.
-    GraphContext *gc = GraphContext_Retrieve(ctx, argv[1]);
-    Graph_AcquireReadLock(gc->g);
-
+    gc = GraphContext_Retrieve(ctx, argv[1]);
     if(!gc) {
         RedisModule_ReplyWithError(ctx, "key doesn't contains a graph object.");
         goto cleanup;
     }
+    Graph_AcquireReadLock(gc->g);
 
     // Perform query validations before and after ModifyAST
     if (AST_PerformValidations(ctx, ast) != AST_VALID) return REDISMODULE_OK;
@@ -58,9 +59,9 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     RedisModule_ReplyWithStringBuffer(ctx, strPlan, strlen(strPlan));
 
 cleanup:
-    Graph_ReleaseLock(gc->g);
-    ExecutionPlanFree(plan);
-    Free_AST_Query(ast);
+    if(gc) Graph_ReleaseLock(gc->g);
+    if(plan) ExecutionPlanFree(plan);
+    if(ast) Free_AST_Query(ast);
     return REDISMODULE_OK;
 }
 
