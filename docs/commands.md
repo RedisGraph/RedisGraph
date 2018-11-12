@@ -26,6 +26,7 @@ supported.
 - WHERE
 - RETURN
 - ORDER BY
+- SKIP
 - LIMIT
 - CREATE
 - MERGE
@@ -209,6 +210,20 @@ Below we sort our friends by height. For equal heights, weight is used to break 
 
 ```sh
 ORDER BY friend.height, friend.weight DESC
+```
+
+#### SKIP
+
+The optional skip clause allows a specified number of records to be omitted from the result set.
+
+```sh
+SKIP <number of records to skip>
+```
+
+This can be useful when processing results in batches. A query that would examine the second 100-element batch of nodes with the label `person`, for example, would be:
+
+```sh
+MATCH (p:person) RETURN p ORDER BY p.name SKIP 100 LIMIT 100
 ```
 
 #### LIMIT
@@ -405,6 +420,34 @@ This section contains information on all supported functions from the Cypher que
 | ------- |:-----------|
 |id() | Returns the ID of a relationship or node |
 |labels() | Returns a string representations of the label of a node. |
+
+## Indexing
+RedisGraph supports single-property indexes for node labels.
+The creation syntax, to be provided as a GRAPH.QUERY command, is:
+
+```sh
+CREATE INDEX ON :person(age)
+```
+
+After an index is explicitly created, it will automatically be used by queries that explicitly reference that label and property in a filter.
+
+```sh
+GRAPH.EXPLAIN G "MATCH (p:person) WHERE p.age > 80 RETURN p"
+Produce Results
+    Index Scan
+```
+
+This can significantly improve the runtime of queries with very specific filters. An index on `:employer(name)`, for example, will dramatically benefit the query:
+
+```sh
+MATCH (:employer {name: 'Dunder Mifflin'})-[:employs]->(p:person) RETURN p"
+```
+
+Individual indexes can be deleted using the matching syntax:
+
+```sh
+DROP INDEX ON :person(age)
+```
 
 ## GRAPH.DELETE
 
