@@ -422,7 +422,8 @@ This section contains information on all supported functions from the Cypher que
 |Function | Description|
 | ------- |:-----------|
 |id() | Returns the ID of a relationship or node |
-|labels() | Returns a string representations of the label of a node. |
+|labels() | Returns a string representation of the label of a node. |
+|type() | Returns a string representation of the type of a relation. |
 
 ## Indexing
 RedisGraph supports single-property indexes for node labels.

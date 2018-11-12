@@ -37,6 +37,14 @@ graph_entities = QueryInfo(
                      ['Valerie Abigail Arad','person']]
 )
 
+relation_type_counts = QueryInfo(
+    query="""MATCH ()-[e]->() RETURN TYPE(e) as relation_type, COUNT(e) as num_relations ORDER BY relation_type, num_relations""",
+    description='Returns each relation type in the graph and its count.',
+    max_run_time_ms=0.4,
+    expected_result=[['friend', '13.000000'],
+                     ['visited', '35.000000']]
+)
+
 subset_of_people = QueryInfo(
     query="""MATCH (p:person) RETURN p.name ORDER BY p.name SKIP 3 LIMIT 5""",
     description='Get a subset of people.',
@@ -312,6 +320,7 @@ post_delete_label_query = QueryInfo(
 
 queries_info = [
     graph_entities,
+    relation_type_counts,
     subset_of_people,
     my_friends_query,
     friends_of_friends_query,

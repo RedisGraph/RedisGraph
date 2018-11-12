@@ -584,6 +584,19 @@ SIValue AR_LABELS(SIValue *argv, int argc) {
     return SI_StringVal(label);
 }
 
+SIValue AR_TYPE(SIValue *argv, int argc) {
+    assert(argc == 1);
+    assert(argv[0].type == T_PTR);
+
+    const char *type = "";
+    Edge *e = argv[0].ptrval;
+    GraphContext *gc = GraphContext_GetFromLTS();
+    Graph *g = gc->g;
+    int id = Graph_GetEdgeRelation(gc->g, e);
+    if(id != GRAPH_NO_RELATION) type = gc->relation_stores[id]->label;
+    return SI_StringVal(type);
+}
+
 void AR_RegFunc(char *func_name, size_t func_name_len, AR_Func func) {
     if (__aeRegisteredFuncs == NULL) {
         __aeRegisteredFuncs = NewTrieMap();
@@ -703,5 +716,9 @@ void AR_RegisterFuncs() {
 
     _toLower("labels", &lower_func_name[0], &lower_func_name_len);
     AR_RegFunc(lower_func_name, lower_func_name_len, AR_LABELS);
+    lower_func_name_len = 32;
+
+    _toLower("type", &lower_func_name[0], &lower_func_name_len);
+    AR_RegFunc(lower_func_name, lower_func_name_len, AR_TYPE);
     lower_func_name_len = 32;
 }

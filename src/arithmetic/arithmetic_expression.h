@@ -71,6 +71,7 @@ SIValue AR_CONCAT(SIValue *argv, int argc);    /* returns a string concatenation
 
 SIValue AR_ID(SIValue *argv, int argc);        /* returns the id of a relationship or node. */
 SIValue AR_LABELS(SIValue *argv, int argc);    /* returns a string representations the label of a node. */
+SIValue AR_TYPE(SIValue *argv, int argc);      /* returns a string representation of the type of a relation. */
 
 void AR_RegisterFuncs();                       /* Registers all arithmetic functions. */
 AR_Func AR_GetFunc(char *func_name);           /* Get arithmetic function. */

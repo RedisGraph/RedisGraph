@@ -41,7 +41,18 @@ class SocialFlowTest(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.subset_of_people)
         
-    def test01_subset_of_people(self):
+    def test01_relation_type_strings(self):
+        global redis_graph
+        actual_result = redis_graph.query(queries.relation_type_counts.query)
+
+         # assert result set
+        self._assert_only_expected_results_are_in_actual_results(
+            actual_result,
+            queries.relation_type_counts)
+        # assert query run time
+        self._assert_run_time(actual_result, queries.relation_type_counts)
+
+    def test02_subset_of_people(self):
         global redis_graph
         actual_result = redis_graph.query(queries.subset_of_people.query)
 
@@ -65,7 +76,7 @@ class SocialFlowTest(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.my_friends_query)
 
-    def test03_friends_of_friends(self):
+    def test04_friends_of_friends(self):
         global redis_graph
         actual_result = redis_graph.query(queries.friends_of_friends_query.query)
 
@@ -77,7 +88,7 @@ class SocialFlowTest(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.friends_of_friends_query)
 
-    def test04_friends_of_friends_single_and_over_30(self):
+    def test05_friends_of_friends_single_and_over_30(self):
         global redis_graph
         actual_result = redis_graph.query(queries.friends_of_friends_single_and_over_30_query.query)
 
@@ -89,7 +100,7 @@ class SocialFlowTest(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.friends_of_friends_single_and_over_30_query)
 
-    def test05_friends_of_friends_visited_amsterdam_and_single(self):
+    def test06_friends_of_friends_visited_amsterdam_and_single(self):
         global redis_graph
         actual_result = redis_graph.query(queries.friends_of_friends_visited_amsterdam_and_single_query.query)
 
@@ -101,7 +112,7 @@ class SocialFlowTest(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.friends_of_friends_visited_amsterdam_and_single_query)
 
-    def test06_friends_visited_same_places_as_me(self):
+    def test07_friends_visited_same_places_as_me(self):
         global redis_graph
         actual_result = redis_graph.query(queries.friends_visited_same_places_as_me_query.query)
 
@@ -113,7 +124,7 @@ class SocialFlowTest(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.friends_visited_same_places_as_me_query)
 
-    def test07_friends_older_than_me(self):
+    def test08_friends_older_than_me(self):
         global redis_graph
         actual_result = redis_graph.query(queries.friends_older_than_me_query.query)
 
@@ -125,7 +136,7 @@ class SocialFlowTest(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.friends_older_than_me_query)
 
-    def test08_how_many_countries_each_friend_visited(self):
+    def test09_how_many_countries_each_friend_visited(self):
         global redis_graph
         actual_result = redis_graph.query(queries.how_many_countries_each_friend_visited_query.query)
 
@@ -137,14 +148,14 @@ class SocialFlowTest(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.how_many_countries_each_friend_visited_query)
 
-    def test09_happy_birthday(self):
+    def test10_happy_birthday(self):
         global redis_graph
         actual_result = redis_graph.query(queries.happy_birthday_query.query)
 
         # assert query run time
         self._assert_run_time(actual_result, queries.happy_birthday_query)
 
-    def test10_friends_age_statistics(self):
+    def test11_friends_age_statistics(self):
         global redis_graph
         actual_result = redis_graph.query(queries.friends_age_statistics_query.query)
 
@@ -156,7 +167,7 @@ class SocialFlowTest(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.friends_age_statistics_query)
 
-    def test11_visit_purpose_of_each_country_i_visited(self):
+    def test12_visit_purpose_of_each_country_i_visited(self):
         global redis_graph
         actual_result = redis_graph.query(queries.visit_purpose_of_each_country_i_visited_query.query)
 
@@ -168,7 +179,7 @@ class SocialFlowTest(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.visit_purpose_of_each_country_i_visited_query)
 
-    def test12_who_was_on_business_trip(self):
+    def test13_who_was_on_business_trip(self):
         global redis_graph
         actual_result = redis_graph.query(queries.who_was_on_business_trip_query.query)
 
@@ -180,7 +191,7 @@ class SocialFlowTest(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.who_was_on_business_trip_query)
 
-    def test13_number_of_vacations_per_person(self):
+    def test14_number_of_vacations_per_person(self):
         global redis_graph
         NUM_EXPECTED_RESULTS = 6
 
@@ -195,7 +206,7 @@ class SocialFlowTest(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.number_of_vacations_per_person_query)
 
-    def test14_all_reachable_friends_query(self):
+    def test15_all_reachable_friends_query(self):
         global redis_graph
 
         actual_result = redis_graph.query(queries.all_reachable_friends_query.query)
@@ -208,7 +219,7 @@ class SocialFlowTest(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.all_reachable_friends_query)
     
-    def test15_all_reachable_countries_query(self):
+    def test16_all_reachable_countries_query(self):
         global redis_graph
 
         actual_result = redis_graph.query(queries.all_reachable_countries_query.query)
@@ -221,7 +232,7 @@ class SocialFlowTest(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.all_reachable_countries_query)
     
-    def test16_all_reachable_entities_query(self):
+    def test17_all_reachable_entities_query(self):
         global redis_graph
 
         actual_result = redis_graph.query(queries.all_reachable_entities_query.query)
@@ -234,7 +245,7 @@ class SocialFlowTest(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.all_reachable_entities_query)
 
-    def test17_delete_friendships(self):
+    def test18_delete_friendships(self):
         global redis_graph
         actual_result = redis_graph.query(queries.delete_friendships_query.query)
 
