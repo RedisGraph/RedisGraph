@@ -29,7 +29,9 @@ class IndexTest: public ::testing::Test {
     Graph *g = build_test_graph();
 
     static void SetUpTestCase() {
-      srand(time(NULL));
+      // Use seeded generator, as it is possible to create a graph with
+      // too few unique values to pass all tests.
+      srand(0);
 
       // Use the malloc family for allocations
       Alloc_Reset();

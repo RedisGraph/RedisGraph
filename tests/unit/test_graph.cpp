@@ -220,6 +220,7 @@ void benchmark_node_creation_with_labels()
         // assert(false);
     }
 
+    Graph_ReleaseLock(g);
     Graph_Free(g);
 }
 
@@ -258,6 +259,7 @@ void benchmark_node_creation_no_labels()
         // assert(false);
     }
 
+    Graph_ReleaseLock(g);
     Graph_Free(g);
 }
 
@@ -311,6 +313,7 @@ void benchmark_edge_creation_with_relationships()
         // assert(false);
     }
 
+    Graph_ReleaseLock(g);
     Graph_Free(g);
 }
 
@@ -343,6 +346,7 @@ TEST_F(GraphTest, NewGraph)
     ASSERT_EQ(ncols, GRAPH_DEFAULT_NODE_CAP);
     ASSERT_EQ(nvals, 0);
 
+    Graph_ReleaseLock(g);
     Graph_Free(g);
 }
 
@@ -358,6 +362,7 @@ TEST_F(GraphTest, GraphConstruction)
     // Introduce additional nodes which will cause graph to resize.
     // _test_graph_resize(g);
 
+    Graph_ReleaseLock(g);
     Graph_Free(g);
 }
 
@@ -493,6 +498,8 @@ TEST_F(GraphTest, RemoveMultipleNodes)
     GrB_Descriptor_free(&desc);
     GrB_Vector_free(&row);
     GrB_Vector_free(&col);
+
+    Graph_ReleaseLock(g);
     Graph_Free(g);
 }
 
@@ -635,6 +642,7 @@ TEST_F(GraphTest, RemoveEdges)
     ASSERT_EQ(nnz, 0);
 
     // Cleanup.
+    Graph_ReleaseLock(g);
     Graph_Free(g);
 }
 
@@ -662,6 +670,7 @@ TEST_F(GraphTest, GetNode)
     ASSERT_EQ(Graph_GetNode(g, i, &n), 0);
     ASSERT_TRUE(n.entity == NULL);
 
+    Graph_ReleaseLock(g);
     Graph_Free(g);
 }
 
@@ -771,5 +780,6 @@ TEST_F(GraphTest, GetEdge)
     }
 
     array_free(edges);
+    Graph_ReleaseLock(g);
     Graph_Free(g);
 }
