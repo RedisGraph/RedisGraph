@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <sys/param.h>
+#include "util/rmalloc.h"
 
 SIValue SI_IntVal(int i) { return (SIValue){.intval = i, .type = T_INT32}; }
 
@@ -31,7 +32,7 @@ SIValue SI_DoubleVal(double d) {
 }
 
 SIValue SI_StringVal(const char *s) {
-  return (SIValue){.stringval = strdup(s), .type = T_STRING};
+  return (SIValue){.stringval = rm_strdup(s), .type = T_STRING};
 }
 
 SIValue SI_BoolVal(int b) { 
@@ -84,7 +85,7 @@ inline int SIValue_IsNullPtr(SIValue *v) {
 
 void SIValue_Free(SIValue *v) {
   if (v->type == T_STRING) {
-    free(v->stringval);
+    rm_free(v->stringval);
     v->stringval = NULL;
   }
 }
@@ -166,7 +167,7 @@ int SI_ParseValue(SIValue *v, char *str) {
   switch (v->type) {
 
   case T_STRING:
-    v->stringval = strdup(str);
+    v->stringval = rm_strdup(str);
 
     break;
   case T_INT32:
@@ -234,18 +235,18 @@ inline SIValue SI_NullVal() { return (SIValue){.intval = 0, .type = T_NULL}; }
 
 SIValueVector SI_NewValueVector(size_t cap) {
   return (SIValueVector){
-      .vals = calloc(cap, sizeof(SIValue)), .cap = cap, .len = 0};
+      .vals = rm_calloc(cap, sizeof(SIValue)), .cap = cap, .len = 0};
 }
 
 inline void SIValueVector_Append(SIValueVector *v, SIValue val) {
   if (v->len == v->cap) {
     v->cap = v->cap ? MIN(v->cap * 2, 1000) : v->cap + 1;
-    v->vals = realloc(v->vals, v->cap * sizeof(SIValue));
+    v->vals = rm_realloc(v->vals, v->cap * sizeof(SIValue));
   }
   v->vals[v->len++] = val;
 }
 
-void SIValueVector_Free(SIValueVector *v) { free(v->vals); }
+void SIValueVector_Free(SIValueVector *v) { rm_free(v->vals); }
 
 int SI_LongVal_Cast(SIValue *v, SIType type) {
 
@@ -271,7 +272,7 @@ int SI_LongVal_Cast(SIValue *v, SIType type) {
     v->doubleval = (double)v->longval;
     break;
   case T_STRING: {
-    char *buf = malloc(21);
+    char *buf = rm_malloc(21);
     snprintf(buf, 21, "%lld", (long long)v->longval);
     v->stringval = buf;
     break;
@@ -306,7 +307,7 @@ int SI_DoubleVal_Cast(SIValue *v, SIType type) {
     v->floatval = (float)v->doubleval;
     break;
   case T_STRING: {
-    char *buf = malloc(256);
+    char *buf = rm_malloc(256);
     snprintf(buf, 256, "%.17f", v->doubleval);
     v->stringval = buf;
     break;
