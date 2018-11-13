@@ -1,4 +1,4 @@
-<center><img src="images/logo.svg" alt="logo" width="350"/></center>
+<img src="images/logo.svg" alt="logo" width="200"/>
 
 # RedisGraph
 
