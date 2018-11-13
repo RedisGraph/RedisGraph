@@ -123,7 +123,7 @@ AR_ExpNode* AR_EXP_NewVariableOperandNode(const char *entity_prop, const char *e
 AR_ExpNode* AR_EXP_NewOpNode(char *func_name, int child_count) {
     AR_ExpNode *node = calloc(1, sizeof(AR_ExpNode));
     node->type = AR_EXP_OP;    
-    node->op.func_name = strdup(func_name);
+    node->op.func_name = func_name;
     node->op.child_count = child_count;
     node->op.children = (AR_ExpNode **)malloc(child_count * sizeof(AR_ExpNode*));
 
@@ -284,6 +284,13 @@ void AR_EXP_Free(AR_ExpNode *root) {
             AR_EXP_Free(root->op.children[child_idx]);
         }
         free(root->op.children);
+    } else {
+        if (root->operand.type == AR_EXP_CONSTANT) {
+            SIValue_Free(&root->operand.constant);
+        } else {
+            if (root->operand.variadic.entity_alias) free(root->operand.variadic.entity_alias);
+            if (root->operand.variadic.entity_prop) free(root->operand.variadic.entity_prop);
+        }
     }
     free(root);
 }
@@ -575,7 +582,7 @@ SIValue AR_LABELS(SIValue *argv, int argc) {
     assert(argc == 1);
     assert(argv[0].type == T_PTR);
 
-    const char *label = "";
+    char *label = "";
     Node *node = argv[0].ptrval;
     GraphContext *gc = GraphContext_GetFromLTS();
     Graph *g = gc->g;
@@ -588,7 +595,7 @@ SIValue AR_TYPE(SIValue *argv, int argc) {
     assert(argc == 1);
     assert(argv[0].type == T_PTR);
 
-    const char *type = "";
+    char *type = "";
     Edge *e = argv[0].ptrval;
     GraphContext *gc = GraphContext_GetFromLTS();
     Graph *g = gc->g;

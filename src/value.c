@@ -35,9 +35,8 @@ SIValue SI_DuplicateStringVal(const char *s) {
   return (SIValue){.stringval = rm_strdup(s), .type = T_STRING};
 }
 
-SIValue SI_ConstStringVal(const char *s) {
-	// TODO bad cast
-  return (SIValue){.stringval = (char*)s, .type = T_CONSTSTRING};
+SIValue SI_ConstStringVal(char *s) {
+  return (SIValue){.stringval = s, .type = T_CONSTSTRING};
 }
 
 SIValue SI_BoolVal(int b) { 
@@ -51,9 +50,8 @@ SIValue SI_PtrVal(void* v) {
 SIValue SI_Clone(SIValue v) {
   switch (v.type) {
   case T_STRING:
+  case T_CONSTSTRING:
     return SI_DuplicateStringVal(v.stringval);
-	case T_CONSTSTRING:
-		return SI_ConstStringVal(v.stringval);
   case T_INT32:
     return SI_IntVal(v.intval);
   case T_INT64:
@@ -179,7 +177,7 @@ int SI_ParseValue(SIValue *v, char *str) {
   case T_STRING:
     v->stringval = rm_strdup(str);
     break;
-	case T_CONSTSTRING:
+  case T_CONSTSTRING:
     v->stringval = str;
     break;
   case T_INT32:
@@ -207,7 +205,7 @@ int SIValue_ToString(SIValue v, char *buf, size_t len) {
 
   switch (v.type) {
   case T_STRING:
-	case T_CONSTSTRING:
+  case T_CONSTSTRING:
     strncpy(buf, v.stringval, len);
     bytes_written = strlen(buf);
     break;

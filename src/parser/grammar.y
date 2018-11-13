@@ -290,7 +290,7 @@ mapLiteral(A) ::= UQSTRING(B) COLON value(C). {
 	A = NewVector(SIValue*, 2);
 
 	SIValue *key = malloc(sizeof(SIValue));
-	*key = SI_StringVal(B.strval);
+	*key = SI_ConstStringVal(B.strval);
 	Vector_Push(A, key);
 
 	SIValue *val = malloc(sizeof(SIValue));
@@ -300,7 +300,7 @@ mapLiteral(A) ::= UQSTRING(B) COLON value(C). {
 
 mapLiteral(A) ::= UQSTRING(B) COLON value(C) COMMA mapLiteral(D). {
 	SIValue *key = malloc(sizeof(SIValue));
-	*key = SI_StringVal(B.strval);
+	*key = SI_ConstStringVal(B.strval);
 	Vector_Push(D, key);
 
 	SIValue *val = malloc(sizeof(SIValue));
@@ -519,7 +519,7 @@ relation(A) ::= NE. { A = NE; }
 // raw value tokens - int / string / float
 value(A) ::= INTEGER(B). {  A = SI_DoubleVal(B.intval); }
 value(A) ::= DASH INTEGER(B). {  A = SI_DoubleVal(-B.intval); }
-value(A) ::= STRING(B). {  A = SI_StringVal(B.strval); }
+value(A) ::= STRING(B). {  A = SI_ConstStringVal(B.strval); }
 value(A) ::= FLOAT(B). {  A = SI_DoubleVal(B.dval); }
 value(A) ::= DASH FLOAT(B). {  A = SI_DoubleVal(-B.dval); }
 value(A) ::= TRUE. { A = SI_BoolVal(1); }

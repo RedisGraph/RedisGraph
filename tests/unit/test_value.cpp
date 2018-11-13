@@ -12,12 +12,14 @@ extern "C" {
 #endif
 
 #include "../../src/value.h"
+#include "../../src/util/rmalloc.h"
 
 #ifdef __cplusplus
 }
 #endif
 
 TEST(ValueTest, TestNumerics) {
+    Alloc_Reset();
     SIValue v;
     char const *str = "12345";
     v = SIValue_FromString(str);
@@ -45,6 +47,7 @@ TEST(ValueTest, TestNumerics) {
 }
 
 TEST(ValueTest, TestStrings) {
+    Alloc_Reset();
     SIValue v;
     char const *str = "Test!";
     v = SIValue_FromString(str);

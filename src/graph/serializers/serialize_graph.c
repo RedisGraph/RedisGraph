@@ -58,12 +58,9 @@ SIValue _RdbLoadSIValue(RedisModuleIO *rdb) {
     } else if (t == T_BOOL) {
         return SI_BoolVal(RedisModule_LoadUnsigned(rdb));
     } else {
+        // TODO strVal leaks currently 
         char *strVal = RedisModule_LoadStringBuffer(rdb, NULL);
-        // TODO could use ConstString, then re-define it as a T_STRING
-        // so it gets freed later...
-        SIValue v = SI_DuplicateStringVal(strVal);
-        RedisModule_Free(strVal);
-        return v;
+        return SI_ConstStringVal(strVal);
     }
 }
 

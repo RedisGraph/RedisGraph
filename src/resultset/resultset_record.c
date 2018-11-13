@@ -69,6 +69,9 @@ int ResultSetRecord_Compare(const ResultSetRecord *A, const ResultSetRecord *B, 
 /* Frees given record. */
 void ResultSetRecord_Free(ResultSetRecord *r) {
     if(r == NULL) return;
+    for (int i = 0; i < r->len; i ++) {
+        SIValue_Free(&r->values[i]);
+    }
     free(r->values);
     free(r);
 }

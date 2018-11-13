@@ -77,7 +77,7 @@ class IndexTest: public ::testing::Test {
         char str_prop[10];
         // Build a string and numeric property for each node out of the random value
         sprintf(str_prop, "%d", prop_val);
-        prop_vals[0] = SI_ConstStringVal(str_prop);
+        prop_vals[0] = SI_DuplicateStringVal(str_prop);
         prop_vals[1] = SI_DoubleVal(prop_val);
         GraphEntity_Add_Properties((GraphEntity*)&node, 2, prop_keys, prop_vals);
       }

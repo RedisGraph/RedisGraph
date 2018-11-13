@@ -131,9 +131,9 @@ class AlgebraicExpressionTest: public ::testing::Test {
         Graph *g = Graph_New(16, 16);
         Graph_AcquireWriteLock(g);
         size_t person_count = 6;
-        const char *persons[6] = {"Brian", "Stipe", "Max", "Robert", "Francis", "Daniel"};
+        char *persons[6] = {"Brian", "Stipe", "Max", "Robert", "Francis", "Daniel"};
         size_t country_count = 5;
-        const char *countries[5] = {"Israel", "USA", "Japan", "China", "Germany"};
+        char *countries[5] = {"Israel", "USA", "Japan", "China", "Germany"};
         size_t node_count = person_count + country_count;
 
         /* Introduce person and country labels. */

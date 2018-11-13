@@ -109,7 +109,7 @@ AlgebraicExpression** _AlgebraicExpression_IsolateVariableLenExps(AlgebraicExpre
     /* Return value is a new set of expressions, where each variable length expression
       * is guaranteed to have a single operand, as such in the worst case the number of
       * expressions doubles + 1. */
-    AlgebraicExpression **res = malloc(sizeof(AlgebraicExpression*) * ((*expCount) * 2) + 1);
+    AlgebraicExpression **res = malloc(sizeof(AlgebraicExpression*) * (*expCount * 2 + 1));
     size_t newExpCount = 0;
 
     /* Scan through each expression, locate expression which 
@@ -152,7 +152,7 @@ AlgebraicExpression** _AlgebraicExpression_IsolateVariableLenExps(AlgebraicExpre
 
             /* See if dest mat can be prepended to the following expression.
              * If not create a new expression. */            
-            if(expIdx < *expCount-1 && ! expressions[expIdx+1]->edgeLength) {
+            if(expIdx < *expCount-1 && !expressions[expIdx+1]->edgeLength) {
                 AlgebraicExpression_PrependTerm(expressions[expIdx+1], op.operand, op.transpose, op.free);
             } else {
                 AlgebraicExpression *newExp = _AE_MUL(1);

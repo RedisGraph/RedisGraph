@@ -23,14 +23,14 @@ typedef char *SIId;
 typedef enum {
   T_NULL = 0,
   T_STRING = 0x001,
-  T_CONSTSTRING = 0x002,
-  T_INT32 = 0x004,
-  T_INT64 = 0x008,
-  T_UINT = 0x010,
-  T_BOOL = 0x020,
-  T_FLOAT = 0x040,
-  T_DOUBLE = 0x080,
-  T_PTR = 0x100,
+  T_INT32 = 0x002,
+  T_INT64 = 0x004,
+  T_UINT = 0x008,
+  T_BOOL = 0x010,
+  T_FLOAT = 0x020,
+  T_DOUBLE = 0x040,
+  T_PTR = 0x080,
+  T_CONSTSTRING = 0x100,
 
   // special types for +inf and -inf on all types:
   T_INF = 0x200,
@@ -83,7 +83,7 @@ void SIValueVector_Append(SIValueVector *v, SIValue val);
 void SIValueVector_Free(SIValueVector *v);
 
 SIValue SI_DuplicateStringVal(const char *s);
-SIValue SI_ConstStringVal(const char *s);
+SIValue SI_ConstStringVal(char *s);
 SIValue SI_IntVal(int i);
 SIValue SI_LongVal(int64_t i);
 SIValue SI_UintVal(u_int64_t i);
