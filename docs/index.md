@@ -1,4 +1,4 @@
-<center>![images/logo.svg](images/logo.svg)</center>
+<img src="images/logo.svg" alt="logo" width="200"/>
 
 # RedisGraph
 
