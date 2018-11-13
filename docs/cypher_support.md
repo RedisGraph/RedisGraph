@@ -91,6 +91,8 @@ We do not support any of these properties at the type level, meaning nodes and r
 ## Functions
 ### Scalar functions
 + id
++ labels
++ type
 
   **Unsupported:**
 
@@ -179,4 +181,4 @@ CASE operators are not supported.
 ## Non-Cypher queries
 + RedisGraph provides the `GRAPH.EXPLAIN` command to print the execution plan of a provided query.
 + `GRAPH.DELETE` will remove a graph and all Redis keys associated with it.
-- We do not currently provide support for queries that retrieve schemas.
+- We do not currently provide support for queries that retrieve schemas, though the LABELS and TYPE scalar functions may be used to get a graph overview.
