@@ -145,14 +145,14 @@ class AlgebraicExpressionTest: public ::testing::Test {
         for(int i = 0; i < person_count; i++) {
             Node n;
             Graph_CreateNode(g, person_label, &n);
-            SIValue name = SI_StringVal(persons[i]);
+            SIValue name = SI_ConstStringVal(persons[i]);
             GraphEntity_Add_Properties((GraphEntity*)&n, 1, &default_property_name, &name);
         }
 
         for(int i = 0; i < country_count; i++) {
             Node n;
             Graph_CreateNode(g, country_label, &n);
-            SIValue name = SI_StringVal(countries[i]);
+            SIValue name = SI_ConstStringVal(countries[i]);
             GraphEntity_Add_Properties((GraphEntity*)&n, 1, &default_property_name, &name);
         }
 

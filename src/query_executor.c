@@ -108,7 +108,7 @@ static void _returnClause_ExpandCollapsedNodes(GraphContext *gc, AST_Query *ast)
                 /* Label store was not found or
                  * label doesn't have any properties.
                  * Create a fake return element. */
-                expanded_exp = New_AST_AR_EXP_ConstOperandNode(SI_StringVal(""));
+                expanded_exp = New_AST_AR_EXP_ConstOperandNode(SI_ConstStringVal(""));
                 // Incase an alias is given use it, otherwise use the variable name.
                 if(ret_elem->alias) retElem = New_AST_ReturnElementNode(expanded_exp, ret_elem->alias);
                 else retElem = New_AST_ReturnElementNode(expanded_exp, exp->operand.variadic.alias);

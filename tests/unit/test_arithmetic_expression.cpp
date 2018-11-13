@@ -51,7 +51,7 @@ void _test_ar_func(AR_ExpNode *root, SIValue expected, const Record r) {
 
 TEST_F(ArithmeticTest, ExpressionTest) {  
   /* muchacho */
-  AR_ExpNode *string = AR_EXP_NewConstOperandNode(SI_StringVal("muchacho"));
+  AR_ExpNode *string = AR_EXP_NewConstOperandNode(SI_ConstStringVal("muchacho"));
   SIValue result = AR_EXP_Evaluate(string, emptyRecord);
   ASSERT_STREQ(result.stringval, "muchacho");
   AR_EXP_Free(string);
@@ -132,7 +132,7 @@ TEST_F(ArithmeticTest, VariadicTest) {
   personNode->entity->properties = NULL;
 
   char *props[2] = {"age", "name"};
-  SIValue vals[2] = {SI_DoubleVal(33), SI_StringVal("joe")};
+  SIValue vals[2] = {SI_DoubleVal(33), SI_ConstStringVal("joe")};
   GraphEntity_Add_Properties((GraphEntity*)personNode, 2, props, vals);
   
   Record r = Record_Empty();
@@ -390,8 +390,8 @@ TEST_F(ArithmeticTest, SignTest) {
 
 TEST_F(ArithmeticTest, ReverseTest) {
   AR_ExpNode *root = AR_EXP_NewOpNode("REVERSE", 1);
-  AR_ExpNode *str = AR_EXP_NewConstOperandNode(SI_StringVal("muchacho"));
-  AR_ExpNode *empty_str = AR_EXP_NewConstOperandNode(SI_StringVal(""));
+  AR_ExpNode *str = AR_EXP_NewConstOperandNode(SI_ConstStringVal("muchacho"));
+  AR_ExpNode *empty_str = AR_EXP_NewConstOperandNode(SI_ConstStringVal(""));
   AR_ExpNode *null = AR_EXP_NewConstOperandNode(SI_NullVal());
 
   root->op.children[0] = str;
@@ -415,7 +415,7 @@ TEST_F(ArithmeticTest, ReverseTest) {
 
 TEST_F(ArithmeticTest, LeftTest) {
   AR_ExpNode *root = AR_EXP_NewOpNode("LEFT", 2);
-  AR_ExpNode *str = AR_EXP_NewConstOperandNode(SI_StringVal("muchacho"));
+  AR_ExpNode *str = AR_EXP_NewConstOperandNode(SI_ConstStringVal("muchacho"));
   AR_ExpNode *left = AR_EXP_NewConstOperandNode(SI_DoubleVal(4));
   AR_ExpNode *entire_string_len = AR_EXP_NewConstOperandNode(SI_DoubleVal(100));
   AR_ExpNode *null = AR_EXP_NewConstOperandNode(SI_NullVal());
@@ -444,7 +444,7 @@ TEST_F(ArithmeticTest, LeftTest) {
 
 TEST_F(ArithmeticTest, RightTest) {
   AR_ExpNode *root = AR_EXP_NewOpNode("RIGHT", 2);
-  AR_ExpNode *str = AR_EXP_NewConstOperandNode(SI_StringVal("muchacho"));
+  AR_ExpNode *str = AR_EXP_NewConstOperandNode(SI_ConstStringVal("muchacho"));
   AR_ExpNode *right = AR_EXP_NewConstOperandNode(SI_DoubleVal(4));
   AR_ExpNode *entire_string_len = AR_EXP_NewConstOperandNode(SI_DoubleVal(100));
   AR_ExpNode *null = AR_EXP_NewConstOperandNode(SI_NullVal());
@@ -473,10 +473,10 @@ TEST_F(ArithmeticTest, RightTest) {
 
 TEST_F(ArithmeticTest, LTrimTest) {
   AR_ExpNode *root = AR_EXP_NewOpNode("lTrim", 1);
-  AR_ExpNode *left_spaced_str = AR_EXP_NewConstOperandNode(SI_StringVal("   muchacho"));
-  AR_ExpNode *right_spaced_str = AR_EXP_NewConstOperandNode(SI_StringVal("muchacho   "));
-  AR_ExpNode *spaced_str = AR_EXP_NewConstOperandNode(SI_StringVal("   much   acho   "));
-  AR_ExpNode *no_space_str = AR_EXP_NewConstOperandNode(SI_StringVal("muchacho"));
+  AR_ExpNode *left_spaced_str = AR_EXP_NewConstOperandNode(SI_ConstStringVal("   muchacho"));
+  AR_ExpNode *right_spaced_str = AR_EXP_NewConstOperandNode(SI_ConstStringVal("muchacho   "));
+  AR_ExpNode *spaced_str = AR_EXP_NewConstOperandNode(SI_ConstStringVal("   much   acho   "));
+  AR_ExpNode *no_space_str = AR_EXP_NewConstOperandNode(SI_ConstStringVal("muchacho"));
   AR_ExpNode *null = AR_EXP_NewConstOperandNode(SI_NullVal());
 
   root->op.children[0] = left_spaced_str;
@@ -512,10 +512,10 @@ TEST_F(ArithmeticTest, LTrimTest) {
 
 TEST_F(ArithmeticTest, RTrimTest) {
   AR_ExpNode *root = AR_EXP_NewOpNode("rTrim", 1);
-  AR_ExpNode *left_spaced_str = AR_EXP_NewConstOperandNode(SI_StringVal("   muchacho"));
-  AR_ExpNode *right_spaced_str = AR_EXP_NewConstOperandNode(SI_StringVal("muchacho   "));
-  AR_ExpNode *spaced_str = AR_EXP_NewConstOperandNode(SI_StringVal("   much   acho   "));
-  AR_ExpNode *no_space_str = AR_EXP_NewConstOperandNode(SI_StringVal("muchacho"));
+  AR_ExpNode *left_spaced_str = AR_EXP_NewConstOperandNode(SI_ConstStringVal("   muchacho"));
+  AR_ExpNode *right_spaced_str = AR_EXP_NewConstOperandNode(SI_ConstStringVal("muchacho   "));
+  AR_ExpNode *spaced_str = AR_EXP_NewConstOperandNode(SI_ConstStringVal("   much   acho   "));
+  AR_ExpNode *no_space_str = AR_EXP_NewConstOperandNode(SI_ConstStringVal("muchacho"));
   AR_ExpNode *null = AR_EXP_NewConstOperandNode(SI_NullVal());
 
   root->op.children[0] = left_spaced_str;
@@ -551,7 +551,7 @@ TEST_F(ArithmeticTest, RTrimTest) {
 
 TEST_F(ArithmeticTest, SubstringTest) {
   AR_ExpNode *root = AR_EXP_NewOpNode("SUBSTRING", 3);
-  AR_ExpNode *original_str = AR_EXP_NewConstOperandNode(SI_StringVal("muchacho"));
+  AR_ExpNode *original_str = AR_EXP_NewConstOperandNode(SI_ConstStringVal("muchacho"));
   AR_ExpNode *start = AR_EXP_NewConstOperandNode(SI_DoubleVal(0));
   AR_ExpNode *length = AR_EXP_NewConstOperandNode(SI_DoubleVal(4));
   AR_ExpNode *start_middle = AR_EXP_NewConstOperandNode(SI_DoubleVal(3));
@@ -586,8 +586,8 @@ TEST_F(ArithmeticTest, SubstringTest) {
 
 TEST_F(ArithmeticTest, ToLowerTest) {
   AR_ExpNode *root = AR_EXP_NewOpNode("toLower", 1);
-  AR_ExpNode *str1 = AR_EXP_NewConstOperandNode(SI_StringVal("MuChAcHo"));
-  AR_ExpNode *str2 = AR_EXP_NewConstOperandNode(SI_StringVal("mUcHaChO"));
+  AR_ExpNode *str1 = AR_EXP_NewConstOperandNode(SI_ConstStringVal("MuChAcHo"));
+  AR_ExpNode *str2 = AR_EXP_NewConstOperandNode(SI_ConstStringVal("mUcHaChO"));
   AR_ExpNode *null = AR_EXP_NewConstOperandNode(SI_NullVal());
 
   root->op.children[0] = str1;
@@ -611,8 +611,8 @@ TEST_F(ArithmeticTest, ToLowerTest) {
 
 TEST_F(ArithmeticTest, ToUpperTest) {
   AR_ExpNode *root = AR_EXP_NewOpNode("toUpper", 1);
-  AR_ExpNode *str1 = AR_EXP_NewConstOperandNode(SI_StringVal("MuChAcHo"));
-  AR_ExpNode *str2 = AR_EXP_NewConstOperandNode(SI_StringVal("mUcHaChO"));
+  AR_ExpNode *str1 = AR_EXP_NewConstOperandNode(SI_ConstStringVal("MuChAcHo"));
+  AR_ExpNode *str2 = AR_EXP_NewConstOperandNode(SI_ConstStringVal("mUcHaChO"));
   AR_ExpNode *null = AR_EXP_NewConstOperandNode(SI_NullVal());
 
   root->op.children[0] = str1;
@@ -636,7 +636,7 @@ TEST_F(ArithmeticTest, ToUpperTest) {
 
 TEST_F(ArithmeticTest, ToStringTest) {
   AR_ExpNode *root = AR_EXP_NewOpNode("toString", 1);
-  AR_ExpNode *str = AR_EXP_NewConstOperandNode(SI_StringVal("muchacho"));
+  AR_ExpNode *str = AR_EXP_NewConstOperandNode(SI_ConstStringVal("muchacho"));
   AR_ExpNode *number = AR_EXP_NewConstOperandNode(SI_DoubleVal(3.14));
   AR_ExpNode *null = AR_EXP_NewConstOperandNode(SI_NullVal());
 
@@ -661,10 +661,10 @@ TEST_F(ArithmeticTest, ToStringTest) {
 
 TEST_F(ArithmeticTest, TrimTest) {
   AR_ExpNode *root = AR_EXP_NewOpNode("trim", 1);
-  AR_ExpNode *left_spaced_str = AR_EXP_NewConstOperandNode(SI_StringVal("   muchacho"));
-  AR_ExpNode *right_spaced_str = AR_EXP_NewConstOperandNode(SI_StringVal("muchacho   "));
-  AR_ExpNode *spaced_str = AR_EXP_NewConstOperandNode(SI_StringVal("   much   acho   "));
-  AR_ExpNode *no_space_str = AR_EXP_NewConstOperandNode(SI_StringVal("muchacho"));
+  AR_ExpNode *left_spaced_str = AR_EXP_NewConstOperandNode(SI_ConstStringVal("   muchacho"));
+  AR_ExpNode *right_spaced_str = AR_EXP_NewConstOperandNode(SI_ConstStringVal("muchacho   "));
+  AR_ExpNode *spaced_str = AR_EXP_NewConstOperandNode(SI_ConstStringVal("   much   acho   "));
+  AR_ExpNode *no_space_str = AR_EXP_NewConstOperandNode(SI_ConstStringVal("muchacho"));
   AR_ExpNode *null = AR_EXP_NewConstOperandNode(SI_NullVal());
 
   root->op.children[0] = left_spaced_str;

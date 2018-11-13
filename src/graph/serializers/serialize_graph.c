@@ -58,11 +58,10 @@ SIValue _RdbLoadSIValue(RedisModuleIO *rdb) {
     } else if (t == T_BOOL) {
         return SI_BoolVal(RedisModule_LoadUnsigned(rdb));
     } else {
-        // SI_StringVal, duplicates string value,
-        // until a better solution is found for handling entities attributes
-        // we have no choice but to free value.
         char *strVal = RedisModule_LoadStringBuffer(rdb, NULL);
-        SIValue v = SI_StringVal(strVal);
+        // TODO could use ConstString, then re-define it as a T_STRING
+        // so it gets freed later...
+        SIValue v = SI_DuplicateStringVal(strVal);
         RedisModule_Free(strVal);
         return v;
     }
@@ -156,7 +155,7 @@ void _RdbSaveSIValue(RedisModuleIO *rdb, const SIValue *v) {
         RedisModule_SaveDouble(rdb, v->doubleval);
     } else if (v->type == T_BOOL) {
         RedisModule_SaveUnsigned(rdb, v->boolval);
-    } else if (v->type == T_STRING) {
+    } else if (v->type & SI_STRING) {
         RedisModule_SaveStringBuffer(rdb, v->stringval, strlen(v->stringval) + 1);
     } else {
         assert(0 && "Attempted to serialize value of invalid type.");

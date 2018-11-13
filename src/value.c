@@ -31,8 +31,13 @@ SIValue SI_DoubleVal(double d) {
   return (SIValue){.doubleval = d, .type = T_DOUBLE};
 }
 
-SIValue SI_StringVal(const char *s) {
+SIValue SI_DuplicateStringVal(const char *s) {
   return (SIValue){.stringval = rm_strdup(s), .type = T_STRING};
+}
+
+SIValue SI_ConstStringVal(const char *s) {
+	// TODO bad cast
+  return (SIValue){.stringval = (char*)s, .type = T_CONSTSTRING};
 }
 
 SIValue SI_BoolVal(int b) { 
@@ -46,7 +51,9 @@ SIValue SI_PtrVal(void* v) {
 SIValue SI_Clone(SIValue v) {
   switch (v.type) {
   case T_STRING:
-    return SI_StringVal(v.stringval);
+    return SI_DuplicateStringVal(v.stringval);
+	case T_CONSTSTRING:
+		return SI_ConstStringVal(v.stringval);
   case T_INT32:
     return SI_IntVal(v.intval);
   case T_INT64:
@@ -66,6 +73,7 @@ SIValue SI_Clone(SIValue v) {
   case T_NEGINF:
     return SI_NegativeInfVal();
   case T_NULL:
+	default:
     return SI_NullVal();
   }
 }
@@ -84,10 +92,12 @@ inline int SIValue_IsNullPtr(SIValue *v) {
 }
 
 void SIValue_Free(SIValue *v) {
-  if (v->type == T_STRING) {
-    rm_free(v->stringval);
-    v->stringval = NULL;
-  }
+	// Only values of type T_STRING are heap allocations owned by the SIValue
+	// and  need to be freed.
+	if (v->type == T_STRING) {
+		rm_free(v->stringval);
+		v->stringval = NULL;
+	}
 }
 
 int _parseInt(SIValue *v, char *str) {
@@ -168,7 +178,9 @@ int SI_ParseValue(SIValue *v, char *str) {
 
   case T_STRING:
     v->stringval = rm_strdup(str);
-
+    break;
+	case T_CONSTSTRING:
+    v->stringval = str;
     break;
   case T_INT32:
   case T_INT64:
@@ -195,6 +207,7 @@ int SIValue_ToString(SIValue v, char *buf, size_t len) {
 
   switch (v.type) {
   case T_STRING:
+	case T_CONSTSTRING:
     strncpy(buf, v.stringval, len);
     bytes_written = strlen(buf);
     break;
@@ -276,7 +289,8 @@ int SI_LongVal_Cast(SIValue *v, SIType type) {
     snprintf(buf, 21, "%lld", (long long)v->longval);
     v->stringval = buf;
     break;
-  }  
+  }
+	case T_CONSTSTRING:
   default:
     // cannot convert!
     return 0;
@@ -311,7 +325,8 @@ int SI_DoubleVal_Cast(SIValue *v, SIType type) {
     snprintf(buf, 256, "%.17f", v->doubleval);
     v->stringval = buf;
     break;
-  }  
+  }
+	case T_CONSTSTRING:
   default:
     // cannot convert!
     return 0;
@@ -322,11 +337,12 @@ int SI_DoubleVal_Cast(SIValue *v, SIType type) {
 
 int SI_StringVal_Cast(SIValue *v, SIType type) {
 
-  if (v->type != T_STRING)
+  if (v->type != T_STRING && v->type != T_CONSTSTRING)
     return 0;
 
   switch (type) {
   case T_STRING:
+  case T_CONSTSTRING:
     return 1;
   // by default we just use the parsing function
   default: {
@@ -375,7 +391,7 @@ SIValue SIValue_FromString(const char *s) {
    * cannot be represented as a double.
    * Create a string SIValue. */
   if (sEnd[0] != '\0' || errno == ERANGE) {
-    return SI_StringVal(s);
+    return SI_DuplicateStringVal(s);
   }
 
   // The input was fully converted; create a double SIValue.
@@ -390,7 +406,7 @@ size_t SIValue_StringConcatLen(SIValue* strings, unsigned int string_count) {
   for(int i = 0; i < string_count; i ++) {
     /* String elements representing bytes size strings,
      * for all other SIValue types 32 bytes should be enough. */
-    elem_len = (strings[i].type == T_STRING) ? strlen(strings[i].stringval) + 1 : 32;
+    elem_len = (strings[i].type & SI_STRING) ? strlen(strings[i].stringval) + 1 : 32;
     length += elem_len;
   }
 
@@ -413,15 +429,15 @@ size_t SIValue_StringConcat(SIValue* strings, unsigned int string_count, char *b
 }
 
 int SIValue_Compare(SIValue a, SIValue b) {
-  // Types are identical
-  if (a.type == b.type) {
+  // Types are directly comparable
+  if ((a.type == b.type) || ((a.type & SI_STRING) && (b.type & SI_STRING))) {
     if (a.type == T_DOUBLE) {
       /* TODO - inf, -inf, and  NaN do not behave canonically in this routine,
        * though they do not break anything. Low-priority bug. */
       double diff = a.doubleval - b.doubleval;
       return COMPARE_RETVAL(diff);
       // return a.doubleval - b.doubleval;
-    } else if (a.type == T_STRING) {
+    } else if (a.type & SI_STRING) {
       return strcasecmp(a.stringval, b.stringval);
     } else {
       // TODO matching unhandled types - revisit this when introducing other numerics
@@ -449,10 +465,10 @@ int SIValue_Compare(SIValue a, SIValue b) {
    * - Number
    * - NULL
    */
-  if (a.type == T_STRING) {
+  if (a.type & SI_STRING) {
     return -1;
   }
-  if (b.type == T_STRING) {
+  if (b.type & SI_STRING) {
     return 1;
   }
 
@@ -462,6 +478,7 @@ int SIValue_Compare(SIValue a, SIValue b) {
 void SIValue_Print(FILE *outstream, SIValue *v) {
   switch (v->type) {
     case T_STRING:
+    case T_CONSTSTRING:
       fprintf(outstream, "%s", v->stringval);
       break;
     case T_INT32:
@@ -483,3 +500,4 @@ void SIValue_Print(FILE *outstream, SIValue *v) {
       break;
   }
 }
+

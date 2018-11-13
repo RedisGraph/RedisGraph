@@ -383,24 +383,24 @@ SIValue AR_LEFT(SIValue *argv, int argc) {
     assert(argc == 2);
     if(SIValue_IsNull(argv[0])) return SI_NullVal();
 
-    assert(argv[0].type == T_STRING);
+    assert(argv[0].type & SI_STRING);
     assert(argv[1].type == T_DOUBLE);
 
     size_t newlen = (size_t)argv[1].doubleval;
     if (strlen(argv[0].stringval) <= newlen) {
       // No need to truncate this string based on the requested length
-      return SI_StringVal(argv[0].stringval);
+      return SI_DuplicateStringVal(argv[0].stringval);
     }
     char left_str[newlen + 1];
     strncpy(left_str, argv[0].stringval, newlen * sizeof(char));
     left_str[newlen] = '\0';
-    return SI_StringVal(left_str);
+    return SI_DuplicateStringVal(left_str);
 }
 
 SIValue AR_LTRIM(SIValue *argv, int argc) {
     if(SIValue_IsNull(argv[0])) return SI_NullVal();
 
-    assert(argc == 1 && argv[0].type == T_STRING);
+    assert(argc == 1 && argv[0].type & SI_STRING);
     
     char *trimmed = argv[0].stringval;
 
@@ -408,13 +408,13 @@ SIValue AR_LTRIM(SIValue *argv, int argc) {
       trimmed ++;
     }
 
-    return SI_StringVal(trimmed);
+    return SI_DuplicateStringVal(trimmed);
 }
 
 SIValue AR_RIGHT(SIValue *argv, int argc) {
     assert(argc == 2);
     if(SIValue_IsNull(argv[0])) return SI_NullVal();
-    assert(argv[0].type == T_STRING);
+    assert(argv[0].type & SI_STRING);
     assert(argv[1].type == T_DOUBLE);
 
     int newlen = (int)argv[1].doubleval;
@@ -422,14 +422,14 @@ SIValue AR_RIGHT(SIValue *argv, int argc) {
 
     if (start <= 0) {
       // No need to truncate this string based on the requested length
-      return SI_StringVal(argv[0].stringval);
+      return SI_ConstStringVal(argv[0].stringval);
     }
-    return SI_StringVal(argv[0].stringval + start);
+    return SI_DuplicateStringVal(argv[0].stringval + start);
 }
 
 SIValue AR_RTRIM(SIValue *argv, int argc) {
     if(SIValue_IsNull(argv[0])) return SI_NullVal();
-    assert(argc == 1 && argv[0].type == T_STRING);
+    assert(argc == 1 && argv[0].type & SI_STRING);
     
     char *str = argv[0].stringval;
 
@@ -443,12 +443,12 @@ SIValue AR_RTRIM(SIValue *argv, int argc) {
     strncpy(trimmed, str, i);
     trimmed[i] = '\0';
 
-    return SI_StringVal(trimmed);
+    return SI_DuplicateStringVal(trimmed);
 }
 
 SIValue AR_REVERSE(SIValue *argv, int argc) {
     if(SIValue_IsNull(argv[0])) return SI_NullVal();
-    assert(argv[0].type == T_STRING);
+    assert(argv[0].type & SI_STRING);
     char *str = argv[0].stringval;
     size_t str_len = strlen(str);
     char reverse[str_len + 1];
@@ -457,7 +457,7 @@ SIValue AR_REVERSE(SIValue *argv, int argc) {
     int j = 0;
     while(i >= 0) { reverse[j++] = str[i--]; }
     reverse[j] = '\0';
-    return SI_StringVal(reverse);
+    return SI_DuplicateStringVal(reverse);
 }
 
 SIValue AR_SUBSTRING(SIValue *argv, int argc) {
@@ -496,7 +496,7 @@ SIValue AR_SUBSTRING(SIValue *argv, int argc) {
     strncpy(substring, original + start, length);
     substring[length] = '\0';
 
-    return SI_StringVal(substring);
+    return SI_DuplicateStringVal(substring);
 }
 
 void _toLower(const char *str, char *lower, size_t *lower_len) {
@@ -520,7 +520,7 @@ SIValue AR_TOLOWER(SIValue *argv, int argc) {
     size_t lower_len = strlen(original) + 1;
     char lower[lower_len];
     _toLower(original, lower, &lower_len);
-    return SI_StringVal(lower);
+    return SI_DuplicateStringVal(lower);
 }
 
 void _toUpper(const char *str, char *upper, size_t *upper_len) {
@@ -544,7 +544,7 @@ SIValue AR_TOUPPER(SIValue *argv, int argc) {
     size_t upper_len = strlen(original) + 1;
     char upper[upper_len];
     _toUpper(original, upper, &upper_len);
-    return SI_StringVal(upper);
+    return SI_DuplicateStringVal(upper);
 }
 
 SIValue AR_TOSTRING(SIValue *argv, int argc) {
@@ -554,7 +554,7 @@ SIValue AR_TOSTRING(SIValue *argv, int argc) {
     size_t len = 128;
     char str[128] = {0};
     SIValue_ToString(argv[0], str, len);
-    return SI_StringVal(str);
+    return SI_ConstStringVal(str);
 }
 
 SIValue AR_TRIM(SIValue *argv, int argc) {
@@ -581,7 +581,7 @@ SIValue AR_LABELS(SIValue *argv, int argc) {
     Graph *g = gc->g;
     int labelID = Graph_GetNodeLabel(g, ENTITY_GET_ID(node));
     if(labelID != GRAPH_NO_LABEL) label = gc->node_stores[labelID]->label;
-    return SI_StringVal(label);
+    return SI_ConstStringVal(label);
 }
 
 SIValue AR_TYPE(SIValue *argv, int argc) {
@@ -594,7 +594,7 @@ SIValue AR_TYPE(SIValue *argv, int argc) {
     Graph *g = gc->g;
     int id = Graph_GetEdgeRelation(gc->g, e);
     if(id != GRAPH_NO_RELATION) type = gc->relation_stores[id]->label;
-    return SI_StringVal(type);
+    return SI_ConstStringVal(type);
 }
 
 void AR_RegFunc(char *func_name, size_t func_name_len, AR_Func func) {
