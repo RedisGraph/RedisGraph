@@ -259,7 +259,7 @@ Lastly we create a complete pattern.
 All entities within the pattern which are not bounded will be created.
 
 ```sh
-CREATE (jim:person{name:'Jim', age:29})-[friends]->(pam:person {name:'Pam', age:27})-[works]->(:employer {name:'Dunder Mifflin'})
+CREATE (jim:person{name:'Jim', age:29})-[:friends]->(pam:person {name:'Pam', age:27})-[:works]->(:employer {name:'Dunder Mifflin'})
 ```
 
 This query will create three nodes and two relationships.
