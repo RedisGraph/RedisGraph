@@ -97,7 +97,7 @@ When no bounds are given the dots may be omitted. The dots may also be omitted w
 Example:
 
 ```sh
-MATCH (martin:actor { name: 'Charlie Sheen' })-[:PLAYED_WITH*1..3]-(colleague:actor)
+MATCH (martin:actor { name: 'Charlie Sheen' })-[:PLAYED_WITH*1..3]->(colleague:actor)
 RETURN colleague
 ```
 
