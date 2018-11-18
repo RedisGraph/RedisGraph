@@ -26,6 +26,7 @@ supported.
 - WHERE
 - RETURN
 - ORDER BY
+- SKIP
 - LIMIT
 - CREATE
 - MERGE
@@ -97,8 +98,9 @@ When no bounds are given the dots may be omitted. The dots may also be omitted w
 Example:
 
 ```sh
-MATCH (martin:actor { name: 'Charlie Sheen' })-[:PLAYED_WITH*1..3]-(colleague:actor)
-RETURN colleague
+GRAPH.QUERY DEMO_GRAPH
+"MATCH (martin:actor { name: 'Charlie Sheen' })-[:PLAYED_WITH*1..3]-(colleague:actor)
+RETURN colleague"
 ```
 
 Returns all actors related to 'Charlie Sheen' by 1 to 3 hops.
@@ -211,6 +213,20 @@ Below we sort our friends by height. For equal heights, weight is used to break 
 ORDER BY friend.height, friend.weight DESC
 ```
 
+#### SKIP
+
+The optional skip clause allows a specified number of records to be omitted from the result set.
+
+```sh
+SKIP <number of records to skip>
+```
+
+This can be useful when processing results in batches. A query that would examine the second 100-element batch of nodes with the label `person`, for example, would be:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH "MATCH (p:person) RETURN p ORDER BY p.name SKIP 100 LIMIT 100"
+```
+
 #### LIMIT
 
 Although not mandatory, you can use the limit clause 
@@ -245,9 +261,10 @@ CREATE (:person {name: 'Kurt', age:27})
 To add relations between nodes, in the following example we first find an existing source node. After it's found, we create a new relationship and destination node.
 
 ```sh
-MATCH(a:person)
+GRAPH.QUERY DEMO_GRAPH
+"MATCH(a:person)
 WHERE a.name = 'Kurt'
-CREATE (a)-[:member]->(:band {name:"Nirvana"})
+CREATE (a)-[:member]->(:band {name:'Nirvana'})"
 ```
 
 Here the source node is a bounded node, while the destination node is unbounded.
@@ -259,7 +276,8 @@ Lastly we create a complete pattern.
 All entities within the pattern which are not bounded will be created.
 
 ```sh
-CREATE (jim:person{name:'Jim', age:29})-[:friends]->(pam:person {name:'Pam', age:27})-[:works]->(:employer {name:'Dunder Mifflin'})
+GRAPH.QUERY DEMO_GRAPH
+"CREATE (jim:person{name:'Jim', age:29})-[:friends]->(pam:person {name:'Pam', age:27})-[:works]->(:employer {name:'Dunder Mifflin'})"
 ```
 
 This query will create three nodes and two relationships.
@@ -273,15 +291,13 @@ Note that deleting a node also deletes all of its incoming and outgoing relation
 To delete a node and all of its relationships:
 
 ```sh
-MATCH (p:person {name:'Jim'})
-DELETE p
+GRAPH.QUERY DEMO_GRAPH "MATCH (p:person {name:'Jim'}) DELETE p"
 ```
 
 To delete relationship:
 
 ```sh
-MATCH (p:person {name:'Jim'})-[r:friends]->()
-DELETE r
+GRAPH.QUERY DEMO_GRAPH "MATCH (:person {name:'Jim'})-[r:friends]->() DELETE r"
 ```
 
 This query will delete all `friend` outgoing relationships from the node with the name 'Jim'.
@@ -293,20 +309,21 @@ SET is used to create or update properties on nodes and relationships.
 To set a property on a node, use `SET`.
 
 ```sh
-MATCH (n { name: 'Jim' }) SET n.name = 'Bob'
+GRAPH.QUERY DEMO_GRAPH "MATCH (n { name: 'Jim' }) SET n.name = 'Bob'"
 ```
 
 If you want to set multiple properties in one go, simply separate them with a comma to set multiple properties using a single SET clause.
 
 ```sh
-MATCH (n { name: 'Jim', age:32 })
-SET n.age = 33, n.name = 'Bob'
+GRAPH.QUERY DEMO_GRAPH
+"MATCH (n { name: 'Jim', age:32 })
+SET n.age = 33, n.name = 'Bob'"
 ```
 
 To remove a node's property, simply set property value to NULL.
 
 ```sh
-MATCH (n { name: 'Jim' }) SET n.name = NULL
+GRAPH.QUERY DEMO_GRAPH "MATCH (n { name: 'Jim' }) SET n.name = NULL"
 ```
 
 #### MERGE
@@ -330,25 +347,26 @@ MERGE will not partially use existing patterns — it’s all or nothing.
 To merge a single node with a label:
 
 ```sh
-MERGE (robert:Critic)
+GRAPH.QUERY DEMO_GRAPH "MERGE (robert:Critic)"
 ```
 
 To merge a single node with properties:
 
 ```sh
-MERGE (charlie { name: 'Charlie Sheen', age: 10 })
+GRAPH.QUERY DEMO_GRAPH "MERGE (charlie { name: 'Charlie Sheen', age: 10 })"
 ```
 
 To merge a single node, specifying both label and property:
 
 ```sh
-MERGE (michael:Person { name: 'Michael Douglas' })
+GRAPH.QUERY DEMO_GRAPH "MERGE (michael:Person { name: 'Michael Douglas' })""
 ```
 
 To merge on a relation:
 
 ```sh
-MERGE (charlie { name: 'Charlie Sheen', age: 10 })-[r:ACTED_IN]->(wallStreet:MOVIE)
+GRAPH.QUERY DEMO_GRAPH
+"MERGE (charlie { name: 'Charlie Sheen', age: 10 })-[r:ACTED_IN]->(wallStreet:MOVIE)"
 ```
 
 ### Functions
@@ -406,6 +424,35 @@ This section contains information on all supported functions from the Cypher que
 |id() | Returns the ID of a relationship or node |
 |labels() | Returns a string representations of the label of a node. |
 
+## Indexing
+RedisGraph supports single-property indexes for node labels.
+The creation syntax is:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH "CREATE INDEX ON :person(age)"
+```
+
+After an index is explicitly created, it will automatically be used by queries that explicitly reference that label and property in a filter.
+
+```sh
+GRAPH.EXPLAIN G "MATCH (p:person) WHERE p.age > 80 RETURN p"
+Produce Results
+    Index Scan
+```
+
+This can significantly improve the runtime of queries with very specific filters. An index on `:employer(name)`, for example, will dramatically benefit the query:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH
+"MATCH (:employer {name: 'Dunder Mifflin'})-[:employs]->(p:person) RETURN p"
+```
+
+Individual indexes can be deleted using the matching syntax:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH "DROP INDEX ON :person(age)"
+```
+
 ## GRAPH.DELETE
 
 Completely removes the graph and all of its entities.
@@ -421,7 +468,7 @@ GRAPH.DELETE us_government
 Note: To delete a node from the graph (not the entire graph), execute a `MATCH` query and pass the alias to the `DELETE` clause:
 
 ```
-MATCH (x:y {propname: propvalue}) DELETE x
+GRAPH.QUERY DEMO_GRAPH "MATCH (x:y {propname: propvalue}) DELETE x"
 ```
 
 WARNING: When you delete a node, all of the node's incoming/outgoing relationships are also removed.
