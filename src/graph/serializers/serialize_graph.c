@@ -58,9 +58,10 @@ SIValue _RdbLoadSIValue(RedisModuleIO *rdb) {
     } else if (t == T_BOOL) {
         return SI_BoolVal(RedisModule_LoadUnsigned(rdb));
     } else {
-        // TODO strVal leaks currently 
         char *strVal = RedisModule_LoadStringBuffer(rdb, NULL);
-        return SI_ConstStringVal(strVal);
+        // Transfer ownership of the heap-allocated strVal to the
+        // newly-created SIValue
+        return SI_TransferStringVal(strVal);
     }
 }
 

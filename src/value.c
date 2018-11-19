@@ -40,6 +40,10 @@ SIValue SI_ConstStringVal(char *s) {
   return (SIValue){.stringval = s, .type = T_CONSTSTRING};
 }
 
+SIValue SI_TransferStringVal(char *s) {
+  return (SIValue){.stringval = s, .type = T_STRING};
+}
+
 SIValue SI_BoolVal(int b) { 
   return (SIValue) {.boolval = b, .type = T_BOOL}; 
 }

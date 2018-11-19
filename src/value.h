@@ -76,7 +76,7 @@ SIValueVector SI_NewValueVector(size_t cap);
 
 /* Free an SIValue. Since we usually allocate values on the stack, this does not
  * free the actual value object, but the underlying value if needed - basically
- * when it's a string */
+ * when it's a string only referenced by the SIValue. */
 void SIValue_Free(SIValue *v);
 
 void SIValueVector_Append(SIValueVector *v, SIValue val);
@@ -84,6 +84,7 @@ void SIValueVector_Free(SIValueVector *v);
 
 SIValue SI_DuplicateStringVal(const char *s);
 SIValue SI_ConstStringVal(char *s);
+SIValue SI_TransferStringVal(char *s);
 SIValue SI_IntVal(int i);
 SIValue SI_LongVal(int64_t i);
 SIValue SI_UintVal(u_int64_t i);
