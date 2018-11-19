@@ -339,7 +339,6 @@ returnClause(A) ::= RETURN DISTINCT returnElements(B). {
 	A = New_AST_ReturnNode(B, 1);
 }
 
-
 %type returnElements {Vector*}
 
 returnElements(A) ::= returnElements(B) COMMA returnElement(C). {
@@ -354,10 +353,13 @@ returnElements(A) ::= returnElement(B). {
 
 %type returnElement {AST_ReturnElementNode*}
 
+// RETURN *
+returnElement(A) ::= MUL. {
+	A = New_AST_ReturnElementExpandALL();
+}
 returnElement(A) ::= arithmetic_expression(B). {
 	A = New_AST_ReturnElementNode(B, NULL);
 }
-
 // me.age AS my_age
 returnElement(A) ::= arithmetic_expression(B) AS UQSTRING(C). {
 	A = New_AST_ReturnElementNode(B, C.strval);

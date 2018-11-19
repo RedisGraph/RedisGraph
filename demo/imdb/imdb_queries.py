@@ -53,7 +53,7 @@ actors_played_in_movie_straight_outta_compton_query = QueryInfo(
 actors_over_50_that_played_in_blockbusters_query = QueryInfo(
     query="""MATCH (a:actor)-[:act]->(m:movie)
              WHERE a.age >= 50 AND m.votes > 10000 AND m.rating > 8.2
-             RETURN a, m""",
+             RETURN *""",
     description='Which actors who are over 50 played in blockbuster movies?',
     max_run_time_ms=4.0,
     expected_result=[['Bill Irwin', '68.000000', 'Interstellar', '2014.000000', '961763.000000', '8.600000', 'Adventure'],
@@ -141,7 +141,7 @@ how_many_movies_cameron_diaz_played_query = QueryInfo(
 
 find_ten_oldest_actors_query = QueryInfo(
     query="""MATCH (a:actor)
-             RETURN DISTINCT a.name, a.age
+             RETURN DISTINCT *
              ORDER BY a.age DESC
              LIMIT 10""",
     description='10 Oldest actors?',
@@ -161,7 +161,7 @@ find_ten_oldest_actors_query = QueryInfo(
 actors_over_85_index_scan = QueryInfo(
     query="""MATCH (a:actor)
              WHERE a.age > 85
-             RETURN a.name, a.age
+             RETURN *
              ORDER BY a.age""",
     description='Actors over 85 on indexed property?',
     max_run_time_ms=1.5,
