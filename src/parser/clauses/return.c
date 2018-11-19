@@ -12,9 +12,16 @@ AST_ReturnElementNode* New_AST_ReturnElementNode(AST_ArithmeticExpressionNode *e
 	AST_ReturnElementNode *returnElementNode = (AST_ReturnElementNode*)malloc(sizeof(AST_ReturnElementNode));
 	returnElementNode->exp = exp;
 	returnElementNode->alias = NULL;
+    returnElementNode->asterisks = 0;
 
 	if(alias != NULL) returnElementNode->alias = strdup(alias);
 	
+	return returnElementNode;
+}
+
+AST_ReturnElementNode* New_AST_ReturnElementExpandALL() {
+    AST_ReturnElementNode *returnElementNode = New_AST_ReturnElementNode(NULL, NULL);
+    returnElementNode->asterisks = 1;
 	return returnElementNode;
 }
 
@@ -22,21 +29,25 @@ AST_ReturnNode* New_AST_ReturnNode(Vector *returnElements, int distinct) {
 	AST_ReturnNode *returnNode = (AST_ReturnNode*)malloc(sizeof(AST_ReturnNode));
 	returnNode->returnElements = returnElements;
 	returnNode->distinct = distinct;
-	return returnNode;
+    return returnNode;
 }
 
 int ReturnClause_ContainsCollapsedNodes(const AST_ReturnNode *return_node) {
     if(!return_node) return 0;
+
     for(int i = 0; i < Vector_Size(return_node->returnElements); i++) {
         AST_ReturnElementNode *ret_elem;
         Vector_Get(return_node->returnElements, i, &ret_elem);
+        if(ret_elem->asterisks) return 1;
+
         AST_ArithmeticExpressionNode *exp = ret_elem->exp;
         /* Detect collapsed entity,
          * A collapsed entity is represented by an arithmetic expression
          * of AST_AR_EXP_OPERAND type, 
          * The operand type should be AST_AR_EXP_VARIADIC,
          * lastly property should be missing. */
-        if(exp->type == AST_AR_EXP_OPERAND &&
+        if(exp &&
+            exp->type == AST_AR_EXP_OPERAND &&
             exp->operand.type == AST_AR_EXP_VARIADIC &&
             exp->operand.variadic.property == NULL) {
                 return 1;
@@ -73,6 +84,7 @@ int ReturnClause_ContainsAggregation(const AST_ReturnNode *return_node) {
         AST_ReturnElementNode *ret_elem;
         Vector_Get(return_node->returnElements, i, &ret_elem);
         AST_ArithmeticExpressionNode *exp = ret_elem->exp;
+        if(!exp) continue;
 
         /* Scan expression for an aggregation function. */
         if (_ContainsAggregation(exp)) return 1;
@@ -90,7 +102,7 @@ void ReturnClause_ReferredEntities(const AST_ReturnNode *return_node, TrieMap *r
         Vector_Get(return_node->returnElements, i, &return_element);
         
         AST_ArithmeticExpressionNode *exp = return_element->exp;
-        AR_EXP_GetAliases(exp, referred_nodes);
+        if(exp) AR_EXP_GetAliases(exp, referred_nodes);
     }
 }
 
@@ -103,20 +115,15 @@ void ReturnClause_ReferredFunctions(const AST_ReturnNode *return_node, TrieMap *
         Vector_Get(return_node->returnElements, i, &node);
         
         AST_ArithmeticExpressionNode *exp = node->exp;
-        AR_EXP_GetFunctions(exp, referred_funcs);
+        if(exp) AR_EXP_GetFunctions(exp, referred_funcs);
   }
 }
 
 void Free_AST_ReturnElementNode(AST_ReturnElementNode *returnElementNode) {
-	if(returnElementNode != NULL) {
-		Free_AST_ArithmeticExpressionNode(returnElementNode->exp);
-
-		if(returnElementNode->alias != NULL) {
-			free(returnElementNode->alias);
-		}
-
-		free(returnElementNode);
-	}
+	if(!returnElementNode) return;
+    if(returnElementNode->exp) Free_AST_ArithmeticExpressionNode(returnElementNode->exp);
+    if(returnElementNode->alias != NULL) free(returnElementNode->alias);
+    free(returnElementNode);
 }
 
 void Free_AST_ReturnNode(AST_ReturnNode *returnNode) {

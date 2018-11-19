@@ -19,13 +19,55 @@
 static void _returnClause_ExpandCollapsedNodes(GraphContext *gc, AST_Query *ast) {
     assert(gc);
 
-     /* Create a new return clause */
-    Vector *expandReturnElements = NewVector(AST_ReturnElementNode*, Vector_Size(ast->returnNode->returnElements));
+     /* Expanding the RETURN clause is a two phase operation:
+      * 1. Scan through every arithmetic expression within the original
+      * RETURN clause and add it to a temporary vector,
+      * if we bump into an asterisks marker indicating we should expand
+      * all nodes, relations and paths within the MATCH clause, add thoese
+      * to the temporary vector.
+      * 
+      * 2. Scanning though the temporary vector we expand each collapsed entity
+      * this will form the final RETURN clause. */
+
+    AST_ReturnNode *returnClause = ast->returnNode;
+    Vector *elementsToExpand = NewVector(AST_ReturnElementNode*, Vector_Size(returnClause->returnElements));
+
+    // Scan through return elements, see if we can find '*' marker.
+    size_t returnElementCount = Vector_Size(returnClause->returnElements);
+    for(int i = 0; i < returnElementCount; i++) {
+        AST_ReturnElementNode *retElement;
+        Vector_Get(returnClause->returnElements, i, &retElement);
+
+        if(retElement->asterisks) {
+            /* Expand with "RETURN *" queries.
+             * Extract all entities from MATCH clause and add them to RETURN clause.
+             * These will get expended later on. */
+
+            char *ptr;
+            tm_len_t len;
+            void *value;
+            TrieMap *matchEntities = NewTrieMap();
+            MatchClause_ReferredEntities(ast->matchNode, matchEntities);
+            TrieMapIterator *it = TrieMap_Iterate(matchEntities, "", 0);
+            while(TrieMapIterator_Next(it, &ptr, &len, &value)) {
+                AST_ArithmeticExpressionNode *arNode = New_AST_AR_EXP_VariableOperandNode(ptr, NULL);
+                AST_ReturnElementNode *returnEntity = New_AST_ReturnElementNode(arNode, NULL);
+                Vector_Push(elementsToExpand, returnEntity);
+            }
+
+            TrieMapIterator_Free(it);
+            TrieMap_Free(matchEntities, TrieMap_NOP_CB);
+            Free_AST_ReturnElementNode(retElement);
+        }
+        else Vector_Push(elementsToExpand, retElement);
+    }
+
+    Vector *expandReturnElements = NewVector(AST_ReturnElementNode*, Vector_Size(elementsToExpand));
 
     /* Scan return clause, search for collapsed nodes. */
-    for(int i = 0; i < Vector_Size(ast->returnNode->returnElements); i++) {
+    for(int i = 0; i < Vector_Size(elementsToExpand); i++) {
         AST_ReturnElementNode *ret_elem;
-        Vector_Get(ast->returnNode->returnElements, i, &ret_elem);
+        Vector_Get(elementsToExpand, i, &ret_elem);
         AST_ArithmeticExpressionNode *exp = ret_elem->exp;
         
         /* Detect collapsed entity,
@@ -33,6 +75,7 @@ static void _returnClause_ExpandCollapsedNodes(GraphContext *gc, AST_Query *ast)
          * of AST_AR_EXP_OPERAND type, 
          * The operand type should be AST_AR_EXP_VARIADIC,
          * lastly property should be missing. */
+
         if(exp->type == AST_AR_EXP_OPERAND &&
             exp->operand.type == AST_AR_EXP_VARIADIC &&
             exp->operand.variadic.property == NULL) {
@@ -89,8 +132,9 @@ static void _returnClause_ExpandCollapsedNodes(GraphContext *gc, AST_Query *ast)
         }
     }
     /* Override previous return clause. */
-    Vector_Free(ast->returnNode->returnElements);
-    ast->returnNode->returnElements = expandReturnElements;
+    Vector_Free(elementsToExpand);
+    Vector_Free(returnClause->returnElements);
+    returnClause->returnElements = expandReturnElements;
 }
 
 static void _inlineProperties(AST_Query *ast) {
@@ -201,12 +245,12 @@ void ModifyAST(GraphContext *gc, AST_Query *ast) {
         _replicateMergeClauseToMatchClause(ast);
     }
 
-    AST_NameAnonymousNodes(ast);
-
     if(ReturnClause_ContainsCollapsedNodes(ast->returnNode) == 1) {
         /* Expand collapsed nodes. */
         _returnClause_ExpandCollapsedNodes(gc, ast);
     }
+
+    AST_NameAnonymousNodes(ast);
 
     _inlineProperties(ast);
 }

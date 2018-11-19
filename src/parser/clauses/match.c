@@ -46,7 +46,7 @@ AST_GraphEntity* MatchClause_GetEntity(const AST_MatchNode *matchNode, const cha
 	for(int i = 0; i < entityCount; i++) {
 		AST_GraphEntity *entity;
 		Vector_Get(matchNode->_mergedPatterns, i, &entity);
-		if(strcmp(entity->alias, alias) == 0) return entity;
+		if(entity->alias && strcmp(entity->alias, alias) == 0) return entity;
 	}
 
 	return NULL;
