@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <sys/param.h>
+#include <assert.h>
 #include "util/rmalloc.h"
 
 SIValue SI_IntVal(int i) { return (SIValue){.intval = i, .type = T_INT32}; }
@@ -91,7 +92,7 @@ inline int SIValue_IsNullPtr(SIValue *v) {
 
 void SIValue_Free(SIValue *v) {
 	// Only values of type T_STRING are heap allocations owned by the SIValue
-	// and  need to be freed.
+	// and need to be freed.
 	if (v->type == T_STRING) {
 		rm_free(v->stringval);
 		v->stringval = NULL;
@@ -335,8 +336,7 @@ int SI_DoubleVal_Cast(SIValue *v, SIType type) {
 
 int SI_StringVal_Cast(SIValue *v, SIType type) {
 
-  if (v->type != T_STRING && v->type != T_CONSTSTRING)
-    return 0;
+  if (v->type & SI_STRING) return 0;
 
   switch (type) {
   case T_STRING:
@@ -372,6 +372,9 @@ int SIValue_ToDouble(SIValue *v, double *d) {
     return 1;
   case T_FLOAT:
     *d = (double)v->floatval;
+    return 1;
+  case T_BOOL:
+    *d = (double)v->boolval;
     return 1;
 
   default:
@@ -428,29 +431,25 @@ size_t SIValue_StringConcat(SIValue* strings, unsigned int string_count, char *b
 
 int SIValue_Compare(SIValue a, SIValue b) {
   // Types are directly comparable
-  if ((a.type == b.type) || ((a.type & SI_STRING) && (b.type & SI_STRING))) {
-    if (a.type == T_DOUBLE) {
-      /* TODO - inf, -inf, and  NaN do not behave canonically in this routine,
-       * though they do not break anything. Low-priority bug. */
-      double diff = a.doubleval - b.doubleval;
-      return COMPARE_RETVAL(diff);
-      // return a.doubleval - b.doubleval;
-    } else if (a.type & SI_STRING) {
-      return strcasecmp(a.stringval, b.stringval);
-    } else {
-      // TODO matching unhandled types - revisit this when introducing other numerics
-      return 0;
-    }
-  }
+  if (SI_COMPARABLE(a, b)) {
+    // Use strcmp if values are string types
+    if (a.type & SI_STRING) return strcmp(a.stringval, b.stringval);
 
-  // Types differ
-  double tmp_a, tmp_b;
-  if (SIValue_ToDouble(&a, &tmp_a) && SIValue_ToDouble(&b, &tmp_b)) {
-    /* Both values are numeric, and both now have double representations.
-     * TODO worry about precision and overflows. This approach will
-     * not be adequate if we have high-value longs, especially. */
-    double diff = tmp_a - tmp_b;
-    return COMPARE_RETVAL(diff);
+    // Attempt to cast both values to doubles
+    double tmp_a, tmp_b;
+    if (SIValue_ToDouble(&a, &tmp_a) && SIValue_ToDouble(&b, &tmp_b)) {
+      /* Both values are numeric, and both now have double representations.
+       * TODO worry about precision and overflows. This approach will
+       * not be adequate if we have high-value longs, especially.
+       * TODO Special values like inf, -inf, and NaN will compare properly
+       * here, but may not satisfy the prescribed openCypher sort order. */
+      double diff = tmp_a - tmp_b;
+      return COMPARE_RETVAL(diff);
+    }
+
+    // We can reach this point if receiving two SIValue pointers, which
+    // should not be possible right now.
+    assert(0);
   }
 
   /* Types differ and are not comparable, so we will fall back to satisfying
@@ -465,8 +464,7 @@ int SIValue_Compare(SIValue a, SIValue b) {
    */
   if (a.type & SI_STRING) {
     return -1;
-  }
-  if (b.type & SI_STRING) {
+  } else if (b.type & SI_STRING) {
     return 1;
   }
 

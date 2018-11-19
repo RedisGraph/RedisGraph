@@ -429,7 +429,7 @@ SIValue AR_RIGHT(SIValue *argv, int argc) {
 
     if (start <= 0) {
       // No need to truncate this string based on the requested length
-      return SI_ConstStringVal(argv[0].stringval);
+      return SI_DuplicateStringVal(argv[0].stringval);
     }
     return SI_DuplicateStringVal(argv[0].stringval + start);
 }
@@ -561,7 +561,7 @@ SIValue AR_TOSTRING(SIValue *argv, int argc) {
     size_t len = 128;
     char str[128] = {0};
     SIValue_ToString(argv[0], str, len);
-    return SI_ConstStringVal(str);
+    return SI_DuplicateStringVal(str);
 }
 
 SIValue AR_TRIM(SIValue *argv, int argc) {
