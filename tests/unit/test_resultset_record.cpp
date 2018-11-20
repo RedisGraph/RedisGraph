@@ -21,7 +21,7 @@ extern "C" {
 
 TEST(ResultsetRecordTest, RecordToString) {
     ResultSetRecord *record = NewResultSetRecord(6);
-    SIValue v_string = SI_StringVal("Hello");
+    SIValue v_string = SI_ConstStringVal("Hello");
     SIValue v_int = SI_IntVal(-24);
     SIValue v_uint = SI_UintVal(24);
     SIValue v_float = SI_FloatVal(0.314);

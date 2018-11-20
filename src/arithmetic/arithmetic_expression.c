@@ -53,7 +53,7 @@ SIValue AR_EXP_Evaluate(const AR_ExpNode *root, const Record r) {
                 GraphEntity *ge = (GraphEntity*)entry.ptrval;
                 SIValue *property = GraphEntity_Get_Property(ge, root->operand.variadic.entity_prop);
                 /* TODO: Handle PROPERTY_NOTFOUND. */
-                result = *property;
+                result = SI_ShallowCopy(*property);
             } else {
                 result = Record_GetEntry(r, root->operand.variadic.entity_alias);
             }
@@ -123,7 +123,7 @@ AR_ExpNode* AR_EXP_NewVariableOperandNode(const char *entity_prop, const char *e
 AR_ExpNode* AR_EXP_NewOpNode(char *func_name, int child_count) {
     AR_ExpNode *node = calloc(1, sizeof(AR_ExpNode));
     node->type = AR_EXP_OP;    
-    node->op.func_name = strdup(func_name);
+    node->op.func_name = func_name;
     node->op.child_count = child_count;
     node->op.children = (AR_ExpNode **)malloc(child_count * sizeof(AR_ExpNode*));
 
@@ -284,6 +284,13 @@ void AR_EXP_Free(AR_ExpNode *root) {
             AR_EXP_Free(root->op.children[child_idx]);
         }
         free(root->op.children);
+    } else {
+        if (root->operand.type == AR_EXP_CONSTANT) {
+            SIValue_Free(&root->operand.constant);
+        } else {
+            if (root->operand.variadic.entity_alias) free(root->operand.variadic.entity_alias);
+            if (root->operand.variadic.entity_prop) free(root->operand.variadic.entity_prop);
+        }
     }
     free(root);
 }
@@ -383,24 +390,24 @@ SIValue AR_LEFT(SIValue *argv, int argc) {
     assert(argc == 2);
     if(SIValue_IsNull(argv[0])) return SI_NullVal();
 
-    assert(argv[0].type == T_STRING);
+    assert(argv[0].type & SI_STRING);
     assert(argv[1].type == T_DOUBLE);
 
     size_t newlen = (size_t)argv[1].doubleval;
     if (strlen(argv[0].stringval) <= newlen) {
       // No need to truncate this string based on the requested length
-      return SI_StringVal(argv[0].stringval);
+      return SI_DuplicateStringVal(argv[0].stringval);
     }
     char left_str[newlen + 1];
     strncpy(left_str, argv[0].stringval, newlen * sizeof(char));
     left_str[newlen] = '\0';
-    return SI_StringVal(left_str);
+    return SI_DuplicateStringVal(left_str);
 }
 
 SIValue AR_LTRIM(SIValue *argv, int argc) {
     if(SIValue_IsNull(argv[0])) return SI_NullVal();
 
-    assert(argc == 1 && argv[0].type == T_STRING);
+    assert(argc == 1 && argv[0].type & SI_STRING);
     
     char *trimmed = argv[0].stringval;
 
@@ -408,13 +415,13 @@ SIValue AR_LTRIM(SIValue *argv, int argc) {
       trimmed ++;
     }
 
-    return SI_StringVal(trimmed);
+    return SI_DuplicateStringVal(trimmed);
 }
 
 SIValue AR_RIGHT(SIValue *argv, int argc) {
     assert(argc == 2);
     if(SIValue_IsNull(argv[0])) return SI_NullVal();
-    assert(argv[0].type == T_STRING);
+    assert(argv[0].type & SI_STRING);
     assert(argv[1].type == T_DOUBLE);
 
     int newlen = (int)argv[1].doubleval;
@@ -422,14 +429,14 @@ SIValue AR_RIGHT(SIValue *argv, int argc) {
 
     if (start <= 0) {
       // No need to truncate this string based on the requested length
-      return SI_StringVal(argv[0].stringval);
+      return SI_DuplicateStringVal(argv[0].stringval);
     }
-    return SI_StringVal(argv[0].stringval + start);
+    return SI_DuplicateStringVal(argv[0].stringval + start);
 }
 
 SIValue AR_RTRIM(SIValue *argv, int argc) {
     if(SIValue_IsNull(argv[0])) return SI_NullVal();
-    assert(argc == 1 && argv[0].type == T_STRING);
+    assert(argc == 1 && argv[0].type & SI_STRING);
     
     char *str = argv[0].stringval;
 
@@ -443,12 +450,12 @@ SIValue AR_RTRIM(SIValue *argv, int argc) {
     strncpy(trimmed, str, i);
     trimmed[i] = '\0';
 
-    return SI_StringVal(trimmed);
+    return SI_DuplicateStringVal(trimmed);
 }
 
 SIValue AR_REVERSE(SIValue *argv, int argc) {
     if(SIValue_IsNull(argv[0])) return SI_NullVal();
-    assert(argv[0].type == T_STRING);
+    assert(argv[0].type & SI_STRING);
     char *str = argv[0].stringval;
     size_t str_len = strlen(str);
     char reverse[str_len + 1];
@@ -457,7 +464,7 @@ SIValue AR_REVERSE(SIValue *argv, int argc) {
     int j = 0;
     while(i >= 0) { reverse[j++] = str[i--]; }
     reverse[j] = '\0';
-    return SI_StringVal(reverse);
+    return SI_DuplicateStringVal(reverse);
 }
 
 SIValue AR_SUBSTRING(SIValue *argv, int argc) {
@@ -496,7 +503,7 @@ SIValue AR_SUBSTRING(SIValue *argv, int argc) {
     strncpy(substring, original + start, length);
     substring[length] = '\0';
 
-    return SI_StringVal(substring);
+    return SI_DuplicateStringVal(substring);
 }
 
 void _toLower(const char *str, char *lower, size_t *lower_len) {
@@ -520,7 +527,7 @@ SIValue AR_TOLOWER(SIValue *argv, int argc) {
     size_t lower_len = strlen(original) + 1;
     char lower[lower_len];
     _toLower(original, lower, &lower_len);
-    return SI_StringVal(lower);
+    return SI_DuplicateStringVal(lower);
 }
 
 void _toUpper(const char *str, char *upper, size_t *upper_len) {
@@ -544,7 +551,7 @@ SIValue AR_TOUPPER(SIValue *argv, int argc) {
     size_t upper_len = strlen(original) + 1;
     char upper[upper_len];
     _toUpper(original, upper, &upper_len);
-    return SI_StringVal(upper);
+    return SI_DuplicateStringVal(upper);
 }
 
 SIValue AR_TOSTRING(SIValue *argv, int argc) {
@@ -554,7 +561,7 @@ SIValue AR_TOSTRING(SIValue *argv, int argc) {
     size_t len = 128;
     char str[128] = {0};
     SIValue_ToString(argv[0], str, len);
-    return SI_StringVal(str);
+    return SI_DuplicateStringVal(str);
 }
 
 SIValue AR_TRIM(SIValue *argv, int argc) {
@@ -575,13 +582,26 @@ SIValue AR_LABELS(SIValue *argv, int argc) {
     assert(argc == 1);
     assert(argv[0].type == T_PTR);
 
-    const char *label = "";
+    char *label = "";
     Node *node = argv[0].ptrval;
     GraphContext *gc = GraphContext_GetFromLTS();
     Graph *g = gc->g;
     int labelID = Graph_GetNodeLabel(g, ENTITY_GET_ID(node));
     if(labelID != GRAPH_NO_LABEL) label = gc->node_stores[labelID]->label;
-    return SI_StringVal(label);
+    return SI_ConstStringVal(label);
+}
+
+SIValue AR_TYPE(SIValue *argv, int argc) {
+    assert(argc == 1);
+    assert(argv[0].type == T_PTR);
+
+    char *type = "";
+    Edge *e = argv[0].ptrval;
+    GraphContext *gc = GraphContext_GetFromLTS();
+    Graph *g = gc->g;
+    int id = Graph_GetEdgeRelation(gc->g, e);
+    if(id != GRAPH_NO_RELATION) type = gc->relation_stores[id]->label;
+    return SI_ConstStringVal(type);
 }
 
 void AR_RegFunc(char *func_name, size_t func_name_len, AR_Func func) {
@@ -703,5 +723,9 @@ void AR_RegisterFuncs() {
 
     _toLower("labels", &lower_func_name[0], &lower_func_name_len);
     AR_RegFunc(lower_func_name, lower_func_name_len, AR_LABELS);
+    lower_func_name_len = 32;
+
+    _toLower("type", &lower_func_name[0], &lower_func_name_len);
+    AR_RegFunc(lower_func_name, lower_func_name_len, AR_TYPE);
     lower_func_name_len = 32;
 }

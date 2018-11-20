@@ -77,7 +77,7 @@ class IndexTest: public ::testing::Test {
         char str_prop[10];
         // Build a string and numeric property for each node out of the random value
         sprintf(str_prop, "%d", prop_val);
-        prop_vals[0] = SI_StringVal(str_prop);
+        prop_vals[0] = SI_DuplicateStringVal(str_prop);
         prop_vals[1] = SI_DoubleVal(prop_val);
         GraphEntity_Add_Properties((GraphEntity*)&node, 2, prop_keys, prop_vals);
       }
@@ -98,7 +98,7 @@ TEST_F(IndexTest, StringIndex) {
   ASSERT_EQ(str_idx->numeric_sl->length, 0);
 
   // Build an iterator from a constant filter - this will include all elements
-  SIValue lb = SI_StringVal("");
+  SIValue lb = SI_ConstStringVal("");
 
   IndexIter *iter = IndexIter_Create(str_idx, T_STRING);
   IndexIter_ApplyBound(iter, &lb, GE);

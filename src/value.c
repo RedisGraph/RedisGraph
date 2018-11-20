@@ -11,6 +11,8 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <sys/param.h>
+#include <assert.h>
+#include "util/rmalloc.h"
 
 SIValue SI_IntVal(int i) { return (SIValue){.intval = i, .type = T_INT32}; }
 
@@ -30,63 +32,53 @@ SIValue SI_DoubleVal(double d) {
   return (SIValue){.doubleval = d, .type = T_DOUBLE};
 }
 
-SIValue SI_StringVal(const char *s) {
-  return (SIValue){.stringval = strdup(s), .type = T_STRING};
+SIValue SI_NullVal(void) {
+  return (SIValue){.intval = 0, .type = T_NULL};
 }
 
-SIValue SI_BoolVal(int b) { 
-  return (SIValue) {.boolval = b, .type = T_BOOL}; 
+SIValue SI_BoolVal(int b) {
+  return (SIValue) {.boolval = b, .type = T_BOOL};
 }
 
-SIValue SI_PtrVal(void* v) { 
-  return (SIValue) {.ptrval = v, .type = T_PTR}; 
+SIValue SI_PtrVal(void* v) {
+  return (SIValue) {.ptrval = v, .type = T_PTR};
+}
+
+SIValue SI_DuplicateStringVal(const char *s) {
+  return (SIValue){.stringval = rm_strdup(s), .type = T_STRING};
+}
+
+SIValue SI_ConstStringVal(char *s) {
+  return (SIValue){.stringval = s, .type = T_CONSTSTRING};
+}
+
+SIValue SI_TransferStringVal(char *s) {
+  return (SIValue){.stringval = s, .type = T_STRING};
 }
 
 SIValue SI_Clone(SIValue v) {
-  switch (v.type) {
-  case T_STRING:
-    return SI_StringVal(v.stringval);
-  case T_INT32:
-    return SI_IntVal(v.intval);
-  case T_INT64:
-    return SI_LongVal(v.longval);
-  case T_UINT:
-    return SI_UintVal(v.uintval);  
-  case T_BOOL:
-    return SI_BoolVal(v.boolval);
-  case T_FLOAT:
-    return SI_FloatVal(v.floatval);
-  case T_DOUBLE:
-    return SI_DoubleVal(v.doubleval);
-  case T_PTR:
-    return SI_PtrVal(v.ptrval);
-  case T_INF:
-    return SI_InfVal();
-  case T_NEGINF:
-    return SI_NegativeInfVal();
-  case T_NULL:
-    return SI_NullVal();
+  if (v.type & SI_STRING) {
+    // Allocate a new copy of the input's string value
+    return SI_DuplicateStringVal(v.stringval);
   }
+  SIValue dup;
+  memcpy(&dup, &v, sizeof(SIValue));
+  return dup;
 }
 
-SIValue SI_InfVal() { return (SIValue){.intval = 0, .type = T_INF}; }
-SIValue SI_NegativeInfVal() { return (SIValue){.intval = 0, .type = T_NEGINF}; }
-
-inline int SIValue_IsInf(SIValue *v) { return v && v->type == T_INF; }
-inline int SIValue_IsNegativeInf(SIValue *v) {
-  return v && v->type == T_NEGINF;
-};
+SIValue SI_ShallowCopy(SIValue v) {
+  if (v.type & SI_STRING) {
+    // Re-use the pointer of the input's string value
+    return SI_ConstStringVal(v.stringval);
+  }
+  SIValue dup;
+  memcpy(&dup, &v, sizeof(SIValue));
+  return dup;
+}
 
 inline int SIValue_IsNull(SIValue v) { return v.type == T_NULL; }
 inline int SIValue_IsNullPtr(SIValue *v) {
   return v == NULL || v->type == T_NULL;
-}
-
-void SIValue_Free(SIValue *v) {
-  if (v->type == T_STRING) {
-    free(v->stringval);
-    v->stringval = NULL;
-  }
 }
 
 int _parseInt(SIValue *v, char *str) {
@@ -166,8 +158,10 @@ int SI_ParseValue(SIValue *v, char *str) {
   switch (v->type) {
 
   case T_STRING:
-    v->stringval = strdup(str);
-
+    v->stringval = rm_strdup(str);
+    break;
+  case T_CONSTSTRING:
+    v->stringval = str;
     break;
   case T_INT32:
   case T_INT64:
@@ -194,6 +188,7 @@ int SIValue_ToString(SIValue v, char *buf, size_t len) {
 
   switch (v.type) {
   case T_STRING:
+  case T_CONSTSTRING:
     strncpy(buf, v.stringval, len);
     bytes_written = strlen(buf);
     break;
@@ -205,7 +200,7 @@ int SIValue_ToString(SIValue v, char *buf, size_t len) {
     break;
   case T_UINT:
     bytes_written = snprintf(buf, len, "%llu", (long long)v.uintval);
-    break;  
+    break;
   case T_BOOL:
     bytes_written = snprintf(buf, len, "%s", v.boolval ? "true" : "false");
     break;
@@ -226,119 +221,8 @@ int SIValue_ToString(SIValue v, char *buf, size_t len) {
   default:
     bytes_written = snprintf(buf, len, "NULL");
   }
-  
+
   return bytes_written;
-}
-
-inline SIValue SI_NullVal() { return (SIValue){.intval = 0, .type = T_NULL}; }
-
-SIValueVector SI_NewValueVector(size_t cap) {
-  return (SIValueVector){
-      .vals = calloc(cap, sizeof(SIValue)), .cap = cap, .len = 0};
-}
-
-inline void SIValueVector_Append(SIValueVector *v, SIValue val) {
-  if (v->len == v->cap) {
-    v->cap = v->cap ? MIN(v->cap * 2, 1000) : v->cap + 1;
-    v->vals = realloc(v->vals, v->cap * sizeof(SIValue));
-  }
-  v->vals[v->len++] = val;
-}
-
-void SIValueVector_Free(SIValueVector *v) { free(v->vals); }
-
-int SI_LongVal_Cast(SIValue *v, SIType type) {
-
-  if (v->type != T_INT64)
-    return 0;
-
-  switch (type) {
-  case T_INT64: // do nothing!
-    return 1;
-  case T_INT32:
-    v->intval = (int32_t)v->longval;
-    break;
-  case T_BOOL:
-    v->boolval = v->longval ? 1 : 0;
-    break;
-  case T_UINT:
-    v->uintval = (u_int64_t)v->longval;
-    break;
-  case T_FLOAT:
-    v->floatval = (float)v->longval;
-    break;
-  case T_DOUBLE:
-    v->doubleval = (double)v->longval;
-    break;
-  case T_STRING: {
-    char *buf = malloc(21);
-    snprintf(buf, 21, "%lld", (long long)v->longval);
-    v->stringval = buf;
-    break;
-  }  
-  default:
-    // cannot convert!
-    return 0;
-  }
-  v->type = type;
-  return 1;
-}
-int SI_DoubleVal_Cast(SIValue *v, SIType type) {
-  if (v->type != T_DOUBLE)
-    return 0;
-
-  switch (type) {
-  case T_DOUBLE:
-    return 1;
-  case T_INT64: // do nothing!
-    v->longval = (int64_t)v->doubleval;
-    break;
-  case T_INT32:
-    v->intval = (int32_t)v->doubleval;
-    break;
-  case T_BOOL:
-    v->boolval = v->doubleval != 0 ? 1 : 0;
-    break;
-  case T_UINT:
-    v->uintval = (u_int64_t)v->doubleval;
-    break;
-  case T_FLOAT:
-    v->floatval = (float)v->doubleval;
-    break;
-  case T_STRING: {
-    char *buf = malloc(256);
-    snprintf(buf, 256, "%.17f", v->doubleval);
-    v->stringval = buf;
-    break;
-  }  
-  default:
-    // cannot convert!
-    return 0;
-  }
-  v->type = type;
-  return 1;
-}
-
-int SI_StringVal_Cast(SIValue *v, SIType type) {
-
-  if (v->type != T_STRING)
-    return 0;
-
-  switch (type) {
-  case T_STRING:
-    return 1;
-  // by default we just use the parsing function
-  default: {
-    SIValue tmp;
-    tmp.type = type;
-    if (SI_ParseValue(&tmp, v->stringval)) {
-      *v = tmp;
-      return 1;
-    }
-  }
-  }
-
-  return 0;
 }
 
 int SIValue_ToDouble(SIValue *v, double *d) {
@@ -358,6 +242,9 @@ int SIValue_ToDouble(SIValue *v, double *d) {
   case T_FLOAT:
     *d = (double)v->floatval;
     return 1;
+  case T_BOOL:
+    *d = (double)v->boolval;
+    return 1;
 
   default:
     // cannot convert!
@@ -374,7 +261,7 @@ SIValue SIValue_FromString(const char *s) {
    * cannot be represented as a double.
    * Create a string SIValue. */
   if (sEnd[0] != '\0' || errno == ERANGE) {
-    return SI_StringVal(s);
+    return SI_DuplicateStringVal(s);
   }
 
   // The input was fully converted; create a double SIValue.
@@ -389,7 +276,7 @@ size_t SIValue_StringConcatLen(SIValue* strings, unsigned int string_count) {
   for(int i = 0; i < string_count; i ++) {
     /* String elements representing bytes size strings,
      * for all other SIValue types 32 bytes should be enough. */
-    elem_len = (strings[i].type == T_STRING) ? strlen(strings[i].stringval) + 1 : 32;
+    elem_len = (strings[i].type & SI_STRING) ? strlen(strings[i].stringval) + 1 : 32;
     length += elem_len;
   }
 
@@ -412,30 +299,26 @@ size_t SIValue_StringConcat(SIValue* strings, unsigned int string_count, char *b
 }
 
 int SIValue_Compare(SIValue a, SIValue b) {
-  // Types are identical
-  if (a.type == b.type) {
-    if (a.type == T_DOUBLE) {
-      /* TODO - inf, -inf, and  NaN do not behave canonically in this routine,
-       * though they do not break anything. Low-priority bug. */
-      double diff = a.doubleval - b.doubleval;
-      return COMPARE_RETVAL(diff);
-      // return a.doubleval - b.doubleval;
-    } else if (a.type == T_STRING) {
-      return strcasecmp(a.stringval, b.stringval);
-    } else {
-      // TODO matching unhandled types - revisit this when introducing other numerics
-      return 0;
-    }
-  }
+  // Types are directly comparable
+  if (SI_COMPARABLE(a, b)) {
+    // Use strcmp if values are string types
+    if (a.type & SI_STRING) return strcmp(a.stringval, b.stringval);
 
-  // Types differ
-  double tmp_a, tmp_b;
-  if (SIValue_ToDouble(&a, &tmp_a) && SIValue_ToDouble(&b, &tmp_b)) {
-    /* Both values are numeric, and both now have double representations.
-     * TODO worry about precision and overflows. This approach will
-     * not be adequate if we have high-value longs, especially. */
-    double diff = tmp_a - tmp_b;
-    return COMPARE_RETVAL(diff);
+    // Attempt to cast both values to doubles
+    double tmp_a, tmp_b;
+    if (SIValue_ToDouble(&a, &tmp_a) && SIValue_ToDouble(&b, &tmp_b)) {
+      /* Both values are numeric, and both now have double representations.
+       * TODO worry about precision and overflows. This approach will
+       * not be adequate if we have high-value longs, especially.
+       * TODO Special values like inf, -inf, and NaN will compare properly
+       * here, but may not satisfy the prescribed openCypher sort order. */
+      double diff = tmp_a - tmp_b;
+      return COMPARE_RETVAL(diff);
+    }
+
+    // We can reach this point if receiving two SIValue pointers, which
+    // should not be possible right now.
+    assert(0);
   }
 
   /* Types differ and are not comparable, so we will fall back to satisfying
@@ -448,10 +331,9 @@ int SIValue_Compare(SIValue a, SIValue b) {
    * - Number
    * - NULL
    */
-  if (a.type == T_STRING) {
+  if (a.type & SI_STRING) {
     return -1;
-  }
-  if (b.type == T_STRING) {
+  } else if (b.type & SI_STRING) {
     return 1;
   }
 
@@ -461,6 +343,7 @@ int SIValue_Compare(SIValue a, SIValue b) {
 void SIValue_Print(FILE *outstream, SIValue *v) {
   switch (v->type) {
     case T_STRING:
+    case T_CONSTSTRING:
       fprintf(outstream, "%s", v->stringval);
       break;
     case T_INT32:
@@ -482,3 +365,13 @@ void SIValue_Print(FILE *outstream, SIValue *v) {
       break;
   }
 }
+
+void SIValue_Free(SIValue *v) {
+	// Only values of type T_STRING are heap allocations owned by the SIValue
+	// that need to be freed.
+	if (v->type == T_STRING) {
+		rm_free(v->stringval);
+		v->stringval = NULL;
+	}
+}
+

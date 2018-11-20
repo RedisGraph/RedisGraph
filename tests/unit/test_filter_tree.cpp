@@ -17,6 +17,7 @@ extern "C" {
 #include "../../src/parser/grammar.h"
 #include "../../src/parser/ast_arithmetic_expression.h"
 #include "../../src/filter_tree/filter_tree.h"
+#include "../../src/util/rmalloc.h"
 
 #ifdef __cplusplus
 }
@@ -24,6 +25,11 @@ extern "C" {
 
 class FilterTreeTest: public ::testing::Test {
     protected:
+
+    static void SetUpTestCase() {
+      // Use the malloc family for allocations
+      Alloc_Reset();
+    }
 
     FT_FilterNode* _build_simple_const_tree() {
         SIValue value = SI_DoubleVal(34);
