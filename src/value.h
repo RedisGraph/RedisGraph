@@ -69,7 +69,7 @@ SIValue SI_LongVal(int64_t i);
 SIValue SI_UintVal(u_int64_t i);
 SIValue SI_FloatVal(float f);
 SIValue SI_DoubleVal(double d);
-SIValue SI_NullVal();
+SIValue SI_NullVal(void);
 SIValue SI_BoolVal(int b);
 SIValue SI_PtrVal(void* v);
 SIValue SI_DuplicateStringVal(const char *s); // Duplicate and ultimately free the input string

@@ -32,7 +32,7 @@ SIValue SI_DoubleVal(double d) {
   return (SIValue){.doubleval = d, .type = T_DOUBLE};
 }
 
-inline SIValue SI_NullVal() {
+SIValue SI_NullVal(void) {
   return (SIValue){.intval = 0, .type = T_NULL};
 }
 
