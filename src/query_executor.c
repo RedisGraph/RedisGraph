@@ -84,8 +84,12 @@ static void _returnClause_ExpandCollapsedNodes(GraphContext *gc, AST_Query *ast)
              * Find collapsed entity's label. */
             AST_GraphEntity *collapsed_entity = MatchClause_GetEntity(ast->matchNode, exp->operand.variadic.alias);
 
-            /* We have already validated the query at this point, so all entity lookups should succeed. */
-            assert(collapsed_entity);
+            if(!collapsed_entity) {
+                // It is possible that the current alias
+                // represent an expression such as in the case of an unwind clause.
+                Vector_Push(expandReturnElements, ret_elem);
+                continue;
+            }
 
             /* Find label's properties. */
             LabelStoreType store_type = (collapsed_entity->t == N_ENTITY) ? STORE_NODE : STORE_EDGE;

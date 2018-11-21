@@ -41,6 +41,7 @@ int yycolumn = 1;
 "INDEX"     { return INDEX; }
 "ON"        { return ON; }
 "DROP"      { return DROP; }
+"UNWIND"    { return UNWIND; }
 "NULL"      { return NULLVAL; }
 
 
