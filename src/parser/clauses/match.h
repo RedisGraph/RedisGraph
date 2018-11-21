@@ -20,8 +20,8 @@ typedef struct {
 /* Create a new match */
 AST_MatchNode* New_AST_MatchNode(Vector *patterns);
 
-/* Populate referred_entities triemap with entities mentioned in this MATCH clause.*/
-void MatchClause_ReferredEntities(const AST_MatchNode *matchNode, TrieMap *referred_entities);
+/* Lists entities defined by this clause. */
+void MatchClause_DefinedEntities(const AST_MatchNode *matchNode, TrieMap *referred_entities);
 
 /* Get an AST_GraphEntity* aliased as given alias. */
 AST_GraphEntity* MatchClause_GetEntity(const AST_MatchNode *matchNode, const char* alias);

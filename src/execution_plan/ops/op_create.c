@@ -21,7 +21,7 @@ void _SetModifiedEntities(OpCreate *op) {
     /* For every entity within the CREATE clause see if it's also mentioned 
      * within the MATCH clause. */
     TrieMap *matchEntities = NewTrieMap();
-    MatchClause_ReferredEntities(op->ast->matchNode, matchEntities);
+    MatchClause_DefinedEntities(op->ast->matchNode, matchEntities);
 
     for(int i = 0; i < create_entity_count; i++) {
         AST_GraphEntity *create_ge;

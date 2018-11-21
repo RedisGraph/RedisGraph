@@ -44,39 +44,47 @@
 query ::= expr(A). { ctx->root = A; }
 
 expr(A) ::= matchClause(B) whereClause(C) createClause(D) returnClause(E) orderClause(F) skipClause(G) limitClause(H). {
-	A = New_AST_Query(B, C, D, NULL, NULL, NULL, E, F, G, H, NULL);
+	A = New_AST_Query(B, C, D, NULL, NULL, NULL, E, F, G, H, NULL, NULL);
 }
 
 expr(A) ::= matchClause(B) whereClause(C) createClause(D). {
-	A = New_AST_Query(B, C, D, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	A = New_AST_Query(B, C, D, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 }
 
 expr(A) ::= matchClause(B) whereClause(C) deleteClause(D). {
-	A = New_AST_Query(B, C, NULL, NULL, NULL, D, NULL, NULL, NULL, NULL, NULL);
+	A = New_AST_Query(B, C, NULL, NULL, NULL, D, NULL, NULL, NULL, NULL, NULL, NULL);
 }
 
 expr(A) ::= matchClause(B) whereClause(C) setClause(D). {
-	A = New_AST_Query(B, C, NULL, NULL, D, NULL, NULL, NULL, NULL, NULL, NULL);
+	A = New_AST_Query(B, C, NULL, NULL, D, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 }
 
 expr(A) ::= matchClause(B) whereClause(C) setClause(D) returnClause(E) orderClause(F) skipClause(G) limitClause(H). {
-	A = New_AST_Query(B, C, NULL, NULL, D, NULL, E, F, G, H, NULL);
+	A = New_AST_Query(B, C, NULL, NULL, D, NULL, E, F, G, H, NULL, NULL);
 }
 
 expr(A) ::= createClause(B). {
-	A = New_AST_Query(NULL, NULL, B, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	A = New_AST_Query(NULL, NULL, B, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+}
+
+expr(A) ::= unwindClause(B) createClause(C). {
+	A = New_AST_Query(NULL, NULL, C, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, B);
 }
 
 expr(A) ::= indexClause(B). {
-	A = New_AST_Query(NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, B);
+	A = New_AST_Query(NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, B, NULL);
 }
 
 expr(A) ::= mergeClause(B). {
-	A = New_AST_Query(NULL, NULL, NULL, B, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	A = New_AST_Query(NULL, NULL, NULL, B, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 }
 
 expr(A) ::= returnClause(B). {
-	A = New_AST_Query(NULL, NULL, NULL, NULL, NULL, NULL, B, NULL, NULL, NULL, NULL);
+	A = New_AST_Query(NULL, NULL, NULL, NULL, NULL, NULL, B, NULL, NULL, NULL, NULL, NULL);
+}
+
+expr(A) ::= unwindClause(B) returnClause(C). {
+	A = New_AST_Query(NULL, NULL, NULL, NULL, NULL, NULL, C, NULL, NULL, NULL, NULL, B);
 }
 
 %type matchClause { AST_MatchNode* }
@@ -499,6 +507,11 @@ limitClause(A) ::= LIMIT INTEGER(B). {
 	A = New_AST_LimitNode(B.intval);
 }
 
+%type unwindClause {AST_UnwindNode*}
+
+unwindClause(A) ::= UNWIND LEFT_BRACKET arithmetic_expression_list(B) RIGHT_BRACKET AS UQSTRING(C). {
+	A = New_AST_UnwindNode(B, C.strval);
+}
 
 %type relation {int}
 relation(A) ::= EQ. { A = EQ; }

@@ -376,6 +376,11 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx,
         Vector_Free(traversals);
     }
 
+    if(ast->unwindNode) {
+        OpBase *opUnwind = NewUnwindOp(ast->unwindNode);
+        Vector_Push(ops, opUnwind);
+    }
+
     /* Set root operation */
     if(ast->createNode) {
         BuildQueryGraph(gc, q, ast->createNode->graphEntities);
