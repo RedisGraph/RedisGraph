@@ -96,10 +96,12 @@ AST_Validation _Aliases_Defined(const AST_Query *ast,
   DeleteClause_ReferredEntities(ast->deleteNode, aliasesToCheck);
   SetClause_ReferredEntities(ast->setNode, aliasesToCheck);
   WhereClause_ReferredEntities(ast->whereNode, aliasesToCheck);
+  UnwindClause_ReferredEntities(ast->unwindNode, aliasesToCheck);
 
   TrieMap *definedAliases = NewTrieMap();
-  MatchClause_ReferredEntities(ast->matchNode, definedAliases);
-  UnwindClause_ReferredEntities(ast->unwindNode, definedAliases);
+  MatchClause_DefinedEntities(ast->matchNode, definedAliases);
+  UnwindClause_DefinedEntities(ast->unwindNode, definedAliases);
+  
 
   TrieMapIterator *it = TrieMap_Iterate(aliasesToCheck, "", 0);
   char *alias;

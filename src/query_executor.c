@@ -47,7 +47,7 @@ static void _returnClause_ExpandCollapsedNodes(GraphContext *gc, AST_Query *ast)
             tm_len_t len;
             void *value;
             TrieMap *matchEntities = NewTrieMap();
-            MatchClause_ReferredEntities(ast->matchNode, matchEntities);
+            MatchClause_DefinedEntities(ast->matchNode, matchEntities);
             TrieMapIterator *it = TrieMap_Iterate(matchEntities, "", 0);
             while(TrieMapIterator_Next(it, &ptr, &len, &value)) {
                 AST_ArithmeticExpressionNode *arNode = New_AST_AR_EXP_VariableOperandNode(ptr, NULL);

@@ -19,8 +19,11 @@ typedef struct {
 
 AST_UnwindNode* New_AST_UnwindNode(Vector *expressions, char *alias);
 
-/* Adds alias to referred_entities. */
+/* Lists entities consumed by this clause. */
 void UnwindClause_ReferredEntities(const AST_UnwindNode *unwindNode, TrieMap *referred_entities);
+
+/* Lists entities defined by this clause. */
+void UnwindClause_DefinedEntities(const AST_UnwindNode *unwindNode, TrieMap *definedEntities);
 
 void Free_AST_UnwindNode(AST_UnwindNode *unwindNode);
 
