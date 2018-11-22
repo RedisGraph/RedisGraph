@@ -1,4 +1,4 @@
-# import redis
+import redis
 import os
 import sys
 
@@ -22,14 +22,23 @@ def _brand_new_redis():
     r.start()
     return r.client()
 
+    # return redis.Redis()
+
 def empty_graph():
     global redis_graph
     
     redis_con = _brand_new_redis()
     redis_graph = Graph("G", redis_con)
 
+    # Create a graph with a single node.
+    redis_graph.add_node(Node())
+    redis_graph.commit()
+
+    # Delete node to have an empty graph.
+    redis_graph.query("MATCH (n) DELETE n")
+
 def any_graph():
-    empty_graph()
+    return empty_graph()
 
 def query(q):
     return redis_graph.query(q)

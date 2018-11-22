@@ -350,6 +350,8 @@ void Graph_CreateNode(Graph* g, int label, Node *n) {
     NodeID id;
     Entity *en = DataBlock_AllocateItem(g->nodes, &id);
     en->id = id;
+    en->prop_count = 0;
+    en->properties = NULL;
     n->entity = en;
 
     if(label != GRAPH_NO_LABEL) {

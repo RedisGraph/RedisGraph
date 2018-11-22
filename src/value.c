@@ -332,9 +332,9 @@ int SIValue_Compare(SIValue a, SIValue b) {
    * - NULL
    */
   if (a.type & SI_STRING) {
-    return -1;
-  } else if (b.type & SI_STRING) {
     return 1;
+  } else if (b.type & SI_STRING) {
+    return -1;
   }
 
   return b.type - a.type;
