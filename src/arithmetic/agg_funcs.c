@@ -10,8 +10,9 @@
 #include "aggregate.h"
 #include "repository.h"
 #include "../value.h"
-#include <math.h>
 #include "../util/qsort.h"
+#include <assert.h>
+#include <math.h>
 
 #define ISLT(a,b) ((*a) < (*b))
 
@@ -110,28 +111,25 @@ AggCtx* Agg_AvgFunc() {
 //------------------------------------------------------------------------
 
 typedef struct {
-    double max;
+    SIValue max;
+    bool init;
 } __agg_maxCtx;
 
 int __agg_maxStep(AggCtx *ctx, SIValue *argv, int argc) {
-    // convert the value of the input sequence to a double if possible
+    assert(argc == 1);
     __agg_maxCtx *ac = Agg_FuncCtx(ctx);
 
-    double n;
-    for(int i = 0; i < argc; i ++) {
-        if (!SIValue_ToDouble(&argv[i], &n)) {
-            if (!SIValue_IsNullPtr(&argv[i])) {
-                // not convertible to double!
-                return Agg_SetError(ctx,
-                                    "MAX Could not convert upstream value to double");
-            } else {
-                return AGG_OK;
-            }
-        }
+    // Any null values are excluded from the calculation.
+    if(SIValue_IsNull(argv[0])) return AGG_OK;
 
-        if(n > ac->max) {
-            ac->max = n;
-        }
+    if(!ac->init) {
+        ac->init = true;
+        ac->max = argv[0];
+        return AGG_OK;
+    }
+
+    if(SIValue_Compare(ac->max, argv[0]) < 0) {
+        ac->max = argv[0];
     }
 
     return AGG_OK;
@@ -139,13 +137,14 @@ int __agg_maxStep(AggCtx *ctx, SIValue *argv, int argc) {
 
 int __agg_maxReduceNext(AggCtx *ctx) {
     __agg_maxCtx *ac = Agg_FuncCtx(ctx);
-    Agg_SetResult(ctx, SI_DoubleVal(ac->max));
+    Agg_SetResult(ctx, ac->max);
     return AGG_OK;
 }
 
 AggCtx* Agg_MaxFunc() {
     __agg_maxCtx *ac = malloc(sizeof(__agg_maxCtx));
-    ac->max = -DBL_MAX;
+    // ac->max = SI_DoubleVal(DBL_MIN);
+    ac->init = false;
     
     return Agg_Reduce(ac, __agg_maxStep, __agg_maxReduceNext);
 }
@@ -153,28 +152,25 @@ AggCtx* Agg_MaxFunc() {
 //------------------------------------------------------------------------
 
 typedef struct {
-    double min;
+    SIValue min;
+    bool init;
 } __agg_minCtx;
 
 int __agg_minStep(AggCtx *ctx, SIValue *argv, int argc) {
-    // convert the value of the input sequence to a double if possible
+    assert(argc == 1);
     __agg_minCtx *ac = Agg_FuncCtx(ctx);
 
-    double n;
-    for(int i = 0; i < argc; i ++) {
-        if (!SIValue_ToDouble(&argv[i], &n)) {
-            if (!SIValue_IsNullPtr(&argv[i])) {
-                // not convertible to double!
-                return Agg_SetError(ctx,
-                                    "MIN Could not convert upstream value to double");
-            } else {
-                return AGG_OK;
-            }
-        }
+    // Any null values are excluded from the calculation.
+    if(SIValue_IsNull(argv[0])) return AGG_OK;
 
-        if(n < ac->min) {
-            ac->min = n;
-        }
+    if(!ac->init) {
+        ac->init = true;
+        ac->min = argv[0];
+        return AGG_OK;
+    }
+
+    if(SIValue_Compare(ac->min, argv[0]) > 0) {
+        ac->min = argv[0];
     }
 
     return AGG_OK;
@@ -182,13 +178,14 @@ int __agg_minStep(AggCtx *ctx, SIValue *argv, int argc) {
 
 int __agg_minReduceNext(AggCtx *ctx) {
     __agg_minCtx *ac = Agg_FuncCtx(ctx);
-    Agg_SetResult(ctx, SI_DoubleVal(ac->min));
+    Agg_SetResult(ctx, ac->min);
     return AGG_OK;
 }
 
 AggCtx* Agg_MinFunc() {
     __agg_minCtx *ac = malloc(sizeof(__agg_minCtx));
-    ac->min = DBL_MAX;
+    // ac->min = SI_DoubleVal(DBL_MAX);
+    ac->init = false;
     
     return Agg_Reduce(ac, __agg_minStep, __agg_minReduceNext);
 }

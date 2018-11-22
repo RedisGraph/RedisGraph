@@ -83,8 +83,8 @@ expr(A) ::= returnClause(B). {
 	A = New_AST_Query(NULL, NULL, NULL, NULL, NULL, NULL, B, NULL, NULL, NULL, NULL, NULL);
 }
 
-expr(A) ::= unwindClause(B) returnClause(C). {
-	A = New_AST_Query(NULL, NULL, NULL, NULL, NULL, NULL, C, NULL, NULL, NULL, NULL, B);
+expr(A) ::= unwindClause(B) returnClause(C) skipClause(D) limitClause(E). {
+	A = New_AST_Query(NULL, NULL, NULL, NULL, NULL, NULL, C, NULL, D, E, NULL, B);
 }
 
 %type matchClause { AST_MatchNode* }

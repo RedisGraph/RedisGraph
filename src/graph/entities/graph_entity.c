@@ -41,5 +41,6 @@ void FreeEntity(Entity *e) {
 	if(e->properties != NULL) {
 		for(int i = 0; i < e->prop_count; i++) free(e->properties[i].name);
 		free(e->properties);
+		e->properties = NULL;
 	}
 }

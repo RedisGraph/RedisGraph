@@ -52,6 +52,7 @@ def step_impl(context):
     # +1 for the header row.
     expected_length = len(context.table.rows) + 1
     assertions.assert_resultset_length(resultset, expected_length)
+    assertions.assert_resultset_content(resultset, context.table)
 
 @then(u'the result should be, in order')
 def step_impl(context):

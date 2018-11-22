@@ -47,7 +47,6 @@ Feature: ReturnAcceptanceTest
       | 104           |
     And no side effects
 
-  @skip
   Scenario: Limit to two hits
     Given an empty graph
     When executing query:
@@ -85,7 +84,6 @@ Feature: ReturnAcceptanceTest
       | ({name: 'B'}) |
     And no side effects
 
-  @skip
   Scenario: Start the result from the second row
     Given an empty graph
     And having executed:
@@ -137,7 +135,6 @@ Feature: ReturnAcceptanceTest
       | ({name: 'E'}) |
     And no side effects
 
-  @skip
   Scenario: Get rows in the middle
     Given an empty graph
     And having executed:
@@ -190,7 +187,6 @@ Feature: ReturnAcceptanceTest
       | ({name: 'D'}) |
     And no side effects
 
-  @skip
   Scenario: Sort on aggregated function
     Given an empty graph
     And having executed:
@@ -268,7 +264,6 @@ Feature: ReturnAcceptanceTest
       | (:B) |
     And no side effects
 
-  @skip
   Scenario: Arithmetic precedence test
     Given any graph
     When executing query:
@@ -280,7 +275,6 @@ Feature: ReturnAcceptanceTest
       | 1                  |
     And no side effects
 
-  @skip
   Scenario: Arithmetic precedence with parenthesis test
     Given any graph
     When executing query:
@@ -312,7 +306,6 @@ Feature: ReturnAcceptanceTest
       | (:L3) | 1        |
     And no side effects
 
-  @skip
   Scenario: Absolute function
     Given any graph
     When executing query:
