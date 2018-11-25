@@ -51,6 +51,7 @@ OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *algebraic_expression) {
     traverse->graph = g;
     traverse->algebraic_expression = algebraic_expression;
     traverse->algebraic_results = NULL;
+    traverse->F = NULL;
     traverse->iter = NULL;
     traverse->edges = NULL;
     
@@ -86,7 +87,7 @@ OpResult CondTraverseConsume(OpBase *opBase, Record *r) {
     
     /* Not initialized. */
     if(op->iter == NULL) {
-        if(child->consume(child, r) == OP_DEPLETED) return OP_DEPLETED;
+        if(child->consume(child, r) == OP_DEPLETED) return OP_DEPLETED;        
 
         GrB_Matrix_new(&op->F, GrB_BOOL, Graph_RequiredMatrixDim(op->graph), 1);
 
@@ -147,7 +148,14 @@ OpResult CondTraverseConsume(OpBase *opBase, Record *r) {
 OpResult CondTraverseReset(OpBase *ctx) {
     CondTraverse *op = (CondTraverse*)ctx;
     if(op->edges) array_clear(op->edges);
-    TuplesIter_reset(op->iter);
+    if(op->iter) {
+        TuplesIter_free(op->iter);
+        op->iter = NULL;
+    }
+    if(op->F) {
+        GrB_Matrix_free(&op->F);
+        op->F = NULL;
+    }
     return OP_OK;
 }
 

@@ -42,7 +42,6 @@ OpResult FilterConsume(OpBase *opBase, Record *r) {
 
 /* Restart iterator */
 OpResult FilterReset(OpBase *ctx) {
-    Filter *filter = (Filter*)ctx;
     return OP_OK;
 }
 

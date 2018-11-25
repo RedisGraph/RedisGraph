@@ -44,7 +44,6 @@ OpResult AllNodeScanConsume(OpBase *opBase, Record *r) {
 OpResult AllNodeScanReset(OpBase *op) {
     AllNodeScan *allNodeScan = (AllNodeScan*)op;
     DataBlockIterator_Reset(allNodeScan->iter);
-    
     return OP_OK;
 }
 

@@ -79,7 +79,6 @@ OpResult CondVarLenTraverseReset(OpBase *ctx) {
     CondVarLenTraverse *op = (CondVarLenTraverse*)ctx;
     AllPathsCtx_Free(op->allPathsCtx);
     op->allPathsCtx = NULL;
-    // TODO: I think Reset should propegate to child nodes.
     return OP_OK;
 }
 

@@ -21,14 +21,9 @@ OpBase* NewCartesianProductOp() {
     return (OpBase*)cp;
 }
 
-OpResult _ResetStreams(CartesianProduct *cp, int streamIdx) {
-    OpResult res;
-    for(int i = 0; i < streamIdx; i++) {
-        OpBase *child = cp->op.children[i];
-        res = child->reset(child);
-        if(res != OP_OK) return res;        
-    }
-    return OP_OK;
+void _ResetStreams(CartesianProduct *cp, int streamIdx) {
+    // Reset each child stream, Reset propagates upwards.
+    for(int i = 0; i < streamIdx; i++) OpBase_Reset(cp->op.children[i]);    
 }
 
 OpResult _PullFromStreams(CartesianProduct *cp, Record *r) {
@@ -39,8 +34,7 @@ OpResult _PullFromStreams(CartesianProduct *cp, Record *r) {
         if(res == OP_OK) {
             /* Managed to get new data
              * Reset stream (0-i) */
-            res = _ResetStreams(cp, i);
-            if(res != OP_OK) return res;
+            _ResetStreams(cp, i);
 
             // Pull from resetted streams.
             for(int j = 0; j < i; j++) {
@@ -90,6 +84,8 @@ OpResult CartesianProductConsume(OpBase *opBase, Record *r) {
 }
 
 OpResult CartesianProductReset(OpBase *opBase) {
+    CartesianProduct *cp = (CartesianProduct*)opBase;
+    cp->init = true;
     return OP_OK;
 }
 
