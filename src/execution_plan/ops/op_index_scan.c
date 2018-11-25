@@ -42,7 +42,6 @@ OpResult IndexScanConsume(OpBase *opBase, Record *r) {
 OpResult IndexScanReset(OpBase *ctx) {
   IndexScan *indexScan = (IndexScan*)ctx;
   IndexIter_Reset(indexScan->iter);
-
   return OP_OK;
 }
 

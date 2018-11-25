@@ -62,6 +62,7 @@ struct OpBase {
 typedef struct OpBase OpBase;
 
 void OpBase_Init(OpBase *op);
+void OpBase_Reset(OpBase *op);
 void OpBase_Free(OpBase *op);
 
 #endif
