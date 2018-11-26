@@ -96,6 +96,16 @@ class GraphMultiPatternQueryFlowTest(FlowTestsBase):
             assert(False)
         except Exception, e:
             assert("may not be referenced in multiple patterns") in e.message
+    
+    def test08_multiple_create_clauses(self):
+        queries = ["""CREATE (:a {v:1}), (:b {v:2, z:3}), (:c), (:a)-[:r0 {k:9}]->(:b), (:c)-[:r1]->(:d)""",
+                   """CREATE (:a {v:1}) CREATE (:b {v:2, z:3}) CREATE (:c) CREATE (:a)-[:r0 {k:9}]->(:b) CREATE (:c)-[:r1]->(:d)""",
+                   """CREATE (:a {v:1}), (:b {v:2, z:3}) CREATE (:c), (:a)-[:r0 {k:9}]->(:b) CREATE (:c)-[:r1]->(:d)"""]
+        for q in queries:
+            actual_result = redis_graph.query(q)
+            assert (actual_result.relationships_created == 2)
+            assert (actual_result.properties_set == 4)
+            assert (actual_result.nodes_created == 7)
 
 if __name__ == '__main__':
     unittest.main()

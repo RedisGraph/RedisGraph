@@ -61,6 +61,7 @@ Feature: ReturnAcceptanceTest
       | 1 |
     And no side effects
 
+  @skip
   Scenario: Limit to two hits with explicit order
     Given an empty graph
     And having executed:
@@ -187,6 +188,7 @@ Feature: ReturnAcceptanceTest
       | ({name: 'D'}) |
     And no side effects
 
+  @skip
   Scenario: Sort on aggregated function
     Given an empty graph
     And having executed:
@@ -230,6 +232,7 @@ Feature: ReturnAcceptanceTest
       | ({name: 'C'}) |
     And no side effects
 
+  @skip
   Scenario: Support column renaming
     Given an empty graph
     And having executed:

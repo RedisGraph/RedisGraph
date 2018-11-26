@@ -43,11 +43,11 @@
 
 query ::= expr(A). { ctx->root = A; }
 
-expr(A) ::= matchClause(B) whereClause(C) createClause(D) returnClause(E) orderClause(F) skipClause(G) limitClause(H). {
+expr(A) ::= matchClause(B) whereClause(C) multipleCreateClause(D) returnClause(E) orderClause(F) skipClause(G) limitClause(H). {
 	A = New_AST_Query(B, C, D, NULL, NULL, NULL, E, F, G, H, NULL, NULL);
 }
 
-expr(A) ::= matchClause(B) whereClause(C) createClause(D). {
+expr(A) ::= matchClause(B) whereClause(C) multipleCreateClause(D). {
 	A = New_AST_Query(B, C, D, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 }
 
@@ -63,11 +63,11 @@ expr(A) ::= matchClause(B) whereClause(C) setClause(D) returnClause(E) orderClau
 	A = New_AST_Query(B, C, NULL, NULL, D, NULL, E, F, G, H, NULL, NULL);
 }
 
-expr(A) ::= createClause(B). {
+expr(A) ::= multipleCreateClause(B). {
 	A = New_AST_Query(NULL, NULL, B, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 }
 
-expr(A) ::= unwindClause(B) createClause(C). {
+expr(A) ::= unwindClause(B) multipleCreateClause(C). {
 	A = New_AST_Query(NULL, NULL, C, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, B);
 }
 
@@ -93,15 +93,33 @@ matchClause(A) ::= MATCH chains(B). {
 	A = New_AST_MatchNode(B);
 }
 
-%type createClause { AST_CreateNode* }
-
-// Empty create clause.
-createClause(A) ::= . {
+%type multipleCreateClause { AST_CreateNode* }
+multipleCreateClause(A) ::= . {
 	A = NULL;
 }
 
-createClause(A) ::= CREATE chains(B). {
+multipleCreateClause(A) ::= createClauses(B). {
 	A = New_AST_CreateNode(B);
+}
+
+// Vector of Vectors, each representing a single chain.
+%type createClauses {Vector*}
+
+createClauses(A) ::= createClause(B). {
+	A = B;
+}
+ createClauses(A) ::= createClauses(B) createClause(C). {
+	Vector *v;
+	while(Vector_Pop(C, &v)) Vector_Push(B, v);
+	Vector_Free(C);
+	A = B;
+}
+
+// Vector of Vectors, each representing a single chain.
+%type createClause {Vector*}
+
+createClause(A) ::= CREATE chains(B). {
+	A = B;
 }
 
 %type indexClause { AST_IndexNode* }
