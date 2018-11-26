@@ -59,7 +59,7 @@ int ResultSetRecord_Compare(const ResultSetRecord *A, const ResultSetRecord *B, 
         int index = compareIndices[i];
         a = A->values[index];
         b = B->values[index];
-        int relation = SIValue_Compare(a, b);
+        int relation = SIValue_Order(a, b);
         if(relation) return relation;
     }
 
