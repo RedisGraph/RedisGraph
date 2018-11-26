@@ -91,23 +91,6 @@ void _OpBase_PushBelow(OpBase *a, OpBase *b) {
     _OpBase_AddChild(b, a);
 }
 
-/* Push b right above a. */
-void _OpBase_PushAbove(OpBase *a, OpBase *b) {
-    /* B is a new operation. */
-    assert(!(b->parent || b->children));
-    assert(a->children);
-
-    /* Remove each child of A and add it as a child of B. */
-    while(a->childCount) {
-        OpBase* child = a->children[0];
-        _OpBase_RemoveChild(a, child);
-        _OpBase_AddChild(b, child);
-    }
-
-    /* B is the only child of A. */
-    _OpBase_AddChild(a, b);
-}
-
 Vector* _ExecutionPlan_Locate_References(OpBase *root, OpBase **op, Vector *references) {
     /* List of entities which had their ID resolved
      * at this point of execution, should include all
@@ -205,7 +188,9 @@ void ExecutionPlan_AddOp(OpBase *parent, OpBase *newOp) {
 }
 
 void ExecutionPlan_ReplaceOp(OpBase *a, OpBase *b) {
-    _OpBase_PushAbove(a->parent, b);
+    // Insert the new operation between the original and its parent.
+    _OpBase_PushBelow(a, b);
+    // Delete the original operation.
     ExecutionPlan_RemoveOp(a);
 }
 
