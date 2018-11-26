@@ -30,6 +30,7 @@
 
 Feature: StartingPointAcceptance
 
+  @skip
   Scenario: Find all nodes
     Given an empty graph
     And having executed:
@@ -50,6 +51,7 @@ Feature: StartingPointAcceptance
       | ({name: 'c'}) |
     And no side effects
 
+  @skip
   Scenario: Find labelled nodes
     Given an empty graph
     And having executed:
@@ -70,6 +72,7 @@ Feature: StartingPointAcceptance
       | (:Animal) |
     And no side effects
 
+  @skip
   Scenario: Find nodes by property
     Given an empty graph
     And having executed:

@@ -6,7 +6,7 @@ test:
 	python -m unittest discover --verbose
 	
 	# Cypher Technology Compatibility Kit (TCK)
-	# $(MAKE) -C tck
+	$(MAKE) -C tck
 
 test_valgrind:
 	$(MAKE) -C unit test_valgrind
