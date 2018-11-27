@@ -2,19 +2,23 @@
 // GB_mx_string_to_UnaryOp.c: get a GraphBLAS operator from MATLAB strings
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
 #include "GB_mex.h"
 
-// opname_mx: a MATLAB string defining the operator name:
-// 'one', 'identity', 'ainv', 'abs', 'minv', 'not'
+// opname_mx: a MATLAB string defining the operator name (built-in):
+//      'one', 'identity', 'ainv', 'abs', 'minv', 'not'
+// or a user-defined operator defined at run-time:
+//      'conj', 'real', 'imag', 'cabs', 'angle', 'complex_real', 'complex_imag'
+// or a user-defined operator defined at compile-time:
+//      'my_scale'
 
 // default_opcode: default if opname_mx is NULL
 
-// opclass_mx: a MATLAB string defining the operator type:
+// opclass_mx: a MATLAB string defining the operator type for built-in ops:
 //  'logical', 'int8', 'uint8', 'int16', 'uint16', 'int32', 'uint32', 'int64',
 //  'uint64', 'single', 'double'
 
@@ -63,7 +67,7 @@ bool GB_mx_string_to_UnaryOp           // true if successful, false otherwise
         //----------------------------------------------------------------------
 
         // user-defined Complex unary operator
-        opcode  = GB_USER_opcode ;      // generic user-defined opcode
+        opcode  = GB_USER_R_opcode ;    // generic user-defined opcode
         opclass = mxDOUBLE_CLASS ;      // MATLAB class for complex
 
         if (len == 0)
@@ -122,16 +126,29 @@ bool GB_mx_string_to_UnaryOp           // true if successful, false otherwise
         { 
             // z = cmplx (x,0), convert x double to real part of Complex z
             op = Complex_complex_real ;
-            opcode = GB_USER_opcode ;
+            opcode = GB_USER_R_opcode ;
             opclass = mxDOUBLE_CLASS ;
         }
         else if (MATCH (opname, "complex_imag" ))
         { 
             // z = cmplx (0,x), convert x double to imag part of Complex z
             op = Complex_complex_imag ;
-            opcode = GB_USER_opcode ;
+            opcode = GB_USER_R_opcode ;
             opclass = mxDOUBLE_CLASS ;
         }
+
+        #ifdef MY_SCALE
+
+        else if (MATCH (opname, "my_scale" ))
+        { 
+            // z = my_scalar*x; default value of my_scalar is 2
+            op = My_scale ;
+            opcode = GB_USER_C_opcode ;
+            opclass = mxDOUBLE_CLASS ;
+            my_scalar = 2 ;
+        }
+
+        #endif
 
         else
         {
@@ -139,7 +156,7 @@ bool GB_mx_string_to_UnaryOp           // true if successful, false otherwise
             return (false) ;
         }
 
-        if (opcode != GB_USER_opcode)
+        if (opcode < GB_USER_C_opcode)
         {
             // get the opclass from the opclass_mx string, if present
             opclass = GB_mx_string_to_classID (opclass, opclass_mx) ;
@@ -280,7 +297,8 @@ bool GB_mx_string_to_UnaryOp           // true if successful, false otherwise
                 break ;
 
             case GB_NOP_opcode   :
-            case GB_USER_opcode   :
+            case GB_USER_R_opcode   :
+            case GB_USER_C_opcode   :
 
                 // no operation is requested so return NULL, or user-defined
                 break ;
@@ -301,7 +319,7 @@ bool GB_mx_string_to_UnaryOp           // true if successful, false otherwise
     if (opcode_return  != NULL) *opcode_return  = opcode ;
 
     // return the unary operator to the caller
-    ASSERT_OK (GB_check (op, "got unary op", 0)) ;
+    ASSERT_OK (GB_check (op, "got unary op", GB0)) ;
     (*handle) = op ;
     return (true) ;
 }

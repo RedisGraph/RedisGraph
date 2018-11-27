@@ -2,7 +2,7 @@
 // GraphBLAS/Demo/Program/mis_demo.c: maximal independent set
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -77,7 +77,7 @@ int main (int argc, char **argv)
     //--------------------------------------------------------------------------
 
     OK (GrB_Descriptor_new (&dt)) ;
-    OK (GrB_Descriptor_set (dt, GrB_INP0, GrB_TRAN)) ;
+    OK (GxB_set (dt, GrB_INP0, GrB_TRAN)) ;
     OK (GrB_Matrix_new (&C, GrB_BOOL, n, n)) ;
     OK (GrB_transpose (C, NULL, NULL, A, dt)) ;
     GrB_free (&dt) ;
@@ -190,7 +190,7 @@ int main (int argc, char **argv)
     // iset2 = iset
     OK (GrB_Vector_dup (&iset2, iset)) ;
     // iset2 = iset2 or A*iset, using the Boolean semiring
-    OK (GrB_mxv (iset2, NULL, GrB_LOR, GxB_LOR_LAND_BOOL, A, iset, NULL)) ;
+    OK (GrB_vxm (iset2, NULL, GrB_LOR, GxB_LOR_LAND_BOOL, iset, A, NULL)) ;
     OK (GrB_Vector_nvals (&nvals, iset2)) ;
     if (nvals != n)
     {

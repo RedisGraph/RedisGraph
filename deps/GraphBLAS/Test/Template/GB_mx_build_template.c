@@ -2,7 +2,7 @@
 // GB_mx_build_template: build a sparse vector or matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -37,9 +37,9 @@
 // (X (k4)) is used instead.
 
 #ifdef MATRIX
-#define MAX_NARGIN 7
+#define MAX_NARGIN 8
 #define MIN_NARGIN 3
-#define USAGE "GB_mex_Matrix_build (I,J,X,nrows,ncols,dup,class)"
+#define USAGE "GB_mex_Matrix_build (I,J,X,nrows,ncols,dup,class,csc)"
 #define I_ARG 0
 #define J_ARG 1
 #define X_ARG 2
@@ -47,12 +47,12 @@
 #define NCOLS_ARG 4
 #define DUP_ARG 5
 #define CLASS_ARG 6
+#define CSC_ARG 7
 
-#define FREE_ALL            \
-{                           \
-    GB_MATRIX_FREE (&C) ;         \
-    GB_MATRIX_FREE (&A) ;         \
-    GB_mx_put_global (malloc_debug) ; \
+#define FREE_ALL                \
+{                               \
+    GB_MATRIX_FREE (&C) ;       \
+    GB_mx_put_global (true, 0) ;        \
 }
 
 #else
@@ -65,17 +65,123 @@
 #define DUP_ARG 3
 #define CLASS_ARG 4
 
-#define FREE_ALL            \
-{                           \
-    GrB_free (&C) ;         \
-    GrB_free (&A) ;         \
-    GB_mx_put_global (malloc_debug) ; \
+#define FREE_ALL                \
+{                               \
+    GrB_free (&C) ;             \
+    GB_mx_put_global (true, 0) ;        \
 }
 
 #endif
 
 #define GET_DEEP_COPY ;
 #define FREE_DEEP_COPY ;
+
+bool malloc_debug = false ;
+
+//------------------------------------------------------------------------------
+
+GrB_Info builder
+(
+    #ifdef MATRIX
+    GrB_Matrix *Chandle,
+    #else
+    GrB_Vector *Chandle,
+    #endif
+    GrB_Type ctype,
+    GrB_Index nrows,
+    GrB_Index ncols,
+    GrB_Index *I,
+    GrB_Index *J,
+    void *X,
+    GrB_Index ni,
+    GrB_BinaryOp dup,
+    bool C_is_csc,
+    mxClassID xclass,
+    GB_Context Context
+)
+{
+
+    GrB_Info info ;
+    (*Chandle) = NULL ;
+
+    // create the GraphBLAS output object C
+    #ifdef MATRIX
+    if (C_is_csc)
+    {
+        // create a hypersparse CSC matrix
+        info = GrB_Matrix_new (Chandle, ctype, nrows, ncols) ;
+    }
+    else
+    {
+        // create a hypersparse CSR matrix
+        info = GB_new (Chandle, ctype, ncols, nrows, GB_Ap_calloc,
+            false, GB_AUTO_HYPER, GB_HYPER_DEFAULT, 1, Context) ;
+    }
+    #else
+    info = GrB_Vector_new (Chandle, ctype, nrows) ;
+    #endif
+
+    #ifdef MATRIX
+    GrB_Matrix C = (*Chandle) ;
+    #else
+    GrB_Vector C = (*Chandle) ;
+    #endif
+
+    if (info != GrB_SUCCESS)
+    {
+        FREE_ALL ;
+        return (info) ;
+    }
+
+    // build the matrix or vector from the tuples
+    #ifdef MATRIX
+    #define BUILD(type) info = GrB_Matrix_build (C,I,J,(const type *)X,ni,dup)
+    #else
+    #define BUILD(type) info = GrB_Vector_build (C,I,  (const type *)X,ni,dup)
+    #endif
+
+    ASSERT_OK (GB_check (ctype, "ctype for build", GB0)) ;
+    ASSERT_OK (GB_check (dup, "dup for build", GB0)) ;
+    // printf ("code %d biulding ni "GBd"\n", ctype->code, ni) ;
+
+    switch (xclass)
+    {
+        case mxLOGICAL_CLASS  : BUILD (bool    ) ; break ;
+        case mxINT8_CLASS     : BUILD (int8_t  ) ; break ;
+        case mxUINT8_CLASS    : BUILD (uint8_t ) ; break ;
+        case mxINT16_CLASS    : BUILD (int16_t ) ; break ;
+        case mxUINT16_CLASS   : BUILD (uint16_t) ; break ;
+        case mxINT32_CLASS    : BUILD (int32_t ) ; break ;
+        case mxUINT32_CLASS   : BUILD (uint32_t) ; break ;
+        case mxINT64_CLASS    : BUILD (int64_t ) ; break ;
+        case mxUINT64_CLASS   : BUILD (uint64_t) ; break ;
+        case mxSINGLE_CLASS   : BUILD (float   ) ; break ;
+        case mxDOUBLE_CLASS   : BUILD (double  ) ; break ;
+        case mxCELL_CLASS     :
+        case mxCHAR_CLASS     :
+        case mxUNKNOWN_CLASS  :
+        case mxFUNCTION_CLASS :
+        case mxSTRUCT_CLASS   :
+        default               :
+            FREE_ALL ;
+            mexErrMsgTxt ("X class not supported")  ;
+    }
+
+    // printf ("info %d\n", info) ;
+
+    if (info == GrB_SUCCESS)
+    {
+        ASSERT_OK (GB_check (C, "C built", GB0)) ;
+    }
+    else
+    {
+        FREE_ALL ;
+    }
+
+    return (info) ;
+}
+
+//------------------------------------------------------------------------------
 
 void mexFunction
 (
@@ -86,13 +192,18 @@ void mexFunction
 )
 {
 
-    bool malloc_debug = GB_mx_get_global ( ) ;
-    GrB_Matrix A = NULL ;
+    GrB_Info info ;
+    malloc_debug = GB_mx_get_global (true) ;
+    GrB_Index *I = NULL, ni = 0, I_range [3] ;
+    GrB_Index *J = NULL, nj = 0, J_range [3] ;
+    bool is_list ; 
     #ifdef MATRIX
     GrB_Matrix C = NULL ;
     #else
     GrB_Vector C = NULL ;
     #endif
+
+    GB_WHERE (USAGE) ;
 
     // check inputs
     if (nargout > 1 || nargin < MIN_NARGIN || nargin > MAX_NARGIN)
@@ -101,20 +212,26 @@ void mexFunction
     }
 
     // get I
-    GrB_Index *I, ni ; 
-    if (!GB_mx_mxArray_to_indices (&I, pargin [I_ARG], &ni))
+    if (!GB_mx_mxArray_to_indices (&I, pargin [I_ARG], &ni, I_range, &is_list))
     {
         FREE_ALL ;
         mexErrMsgTxt ("I failed") ;
     }
+    if (!is_list)
+    {
+        mexErrMsgTxt ("I is invalid; must be a list") ;
+    }
 
     #ifdef MATRIX
     // get J for a matrix
-    GrB_Index *J, nj ; 
-    if (!GB_mx_mxArray_to_indices (&J, pargin [J_ARG], &nj))
+    if (!GB_mx_mxArray_to_indices (&J, pargin [J_ARG], &nj, J_range, &is_list))
     {
         FREE_ALL ;
         mexErrMsgTxt ("J failed") ;
+    }
+    if (!is_list)
+    {
+        mexErrMsgTxt ("J is invalid; must be a list") ;
     }
 
     if (ni != nj)
@@ -159,7 +276,7 @@ void mexFunction
     {
         for (int64_t k = 0 ; k < ni ; k++)
         {
-            nrows = IMAX (nrows, I [k]) ;
+            nrows = GB_IMAX (nrows, I [k]) ;
         }
         nrows++ ;
     }
@@ -176,7 +293,7 @@ void mexFunction
         ncols = 0 ;
         for (int64_t k = 0 ; k < ni ; k++)
         {
-            ncols = IMAX (ncols, J [k]) ;
+            ncols = GB_IMAX (ncols, J [k]) ;
         }
         ncols++ ;
     }
@@ -195,50 +312,19 @@ void mexFunction
     mxClassID cclass = GB_mx_string_to_classID (xclass, PARGIN (CLASS_ARG)) ;
     GrB_Type ctype = GB_mx_classID_to_Type (cclass) ;
 
-    // create the GraphBLAS output object C
+    bool C_is_csc = true ;
     #ifdef MATRIX
-    METHOD (GrB_Matrix_new (&C, ctype, nrows, ncols)) ;
-    #else
-    METHOD (GrB_Vector_new (&C, ctype, nrows)) ;
-    #endif
-    if (C == NULL)
+    // get the CSC/CSR format
+    if (nargin > CSC_ARG)
     {
-        FREE_ALL ;
-        mexErrMsgTxt ("C failed") ;
+        C_is_csc = (bool) mxGetScalar (pargin [CSC_ARG]) ;
     }
-    ASSERT_OK (GB_check (C, "new C", 0)) ;
-
-    // build the matrix or vector from the tuples
-    #ifdef MATRIX
-    #define BUILD(type) METHOD (GrB_Matrix_build (C,I,J,(const type *)X,ni,dup))
-    #else
-    #define BUILD(type) METHOD (GrB_Vector_build (C,I,  (const type *)X,ni,dup))
     #endif
 
-    switch (xclass)
-    {
-        case mxLOGICAL_CLASS  : BUILD (bool    ) ; break ;
-        case mxINT8_CLASS     : BUILD (int8_t  ) ; break ;
-        case mxUINT8_CLASS    : BUILD (uint8_t ) ; break ;
-        case mxINT16_CLASS    : BUILD (int16_t ) ; break ;
-        case mxUINT16_CLASS   : BUILD (uint16_t) ; break ;
-        case mxINT32_CLASS    : BUILD (int32_t ) ; break ;
-        case mxUINT32_CLASS   : BUILD (uint32_t) ; break ;
-        case mxINT64_CLASS    : BUILD (int64_t ) ; break ;
-        case mxUINT64_CLASS   : BUILD (uint64_t) ; break ;
-        case mxSINGLE_CLASS   : BUILD (float   ) ; break ;
-        case mxDOUBLE_CLASS   : BUILD (double  ) ; break ;
-        case mxCELL_CLASS     :
-        case mxCHAR_CLASS     :
-        case mxUNKNOWN_CLASS  :
-        case mxFUNCTION_CLASS :
-        case mxSTRUCT_CLASS   :
-        default               :
-            FREE_ALL ;
-            mexErrMsgTxt ("X class not supported")  ;
-    }
+    METHOD (builder (&C, ctype, nrows, ncols, I, J, X, ni, dup,
+        C_is_csc, xclass, Context)) ;
 
-    ASSERT_OK (GB_check (C, "C", 0)) ;
+    ASSERT_OK (GB_check (C, "C built", GB0)) ;
 
     // return C to MATLAB as a struct and free the GraphBLAS C
     #ifdef MATRIX

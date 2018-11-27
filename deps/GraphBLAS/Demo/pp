@@ -1,0 +1,5 @@
+#!/bin/sh
+
+../build/pthread_demo                          > pthread_demo.out
+../build/openmp_demo                           > openmp_demo.out
+

@@ -1,7 +1,7 @@
 function test04
 %TEST04 test and demo for accumulator/mask and transpose
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 fprintf ('\n-------------------- simple mask and transpose tests\n') ;

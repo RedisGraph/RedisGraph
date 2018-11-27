@@ -2,7 +2,7 @@
 // GraphBLAS/Demo/Program/kron_demo.c: Kronkecker product
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -23,7 +23,6 @@
 // output file for C=kron(A,B), also with 1-based indices.
 
 #include "demos.h"
-// #include "../../Source/GB.h"
 
 // macro used by OK(...) to free workspace if an error occurs
 #define FREE_ALL                \
@@ -80,9 +79,6 @@ int main (int argc, char **argv)
     OK (read_matrix (&A, Afile, false, false, true, false, false)) ;
     OK (read_matrix (&B, Bfile, false, false, true, false, false)) ;
 
-    // GB_check (A, "A", 3) ;
-    // GB_check (B, "B", 3) ;
-
     fclose (Afile) ;
     fclose (Bfile) ;
     Afile = NULL ;
@@ -108,8 +104,6 @@ int main (int argc, char **argv)
 
     OK (GrB_free (&A)) ;
     OK (GrB_free (&B)) ;
-
-    // GB_check (C, "C", 3) ;
 
     //--------------------------------------------------------------------------
     // report results

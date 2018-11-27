@@ -1,90 +1,166 @@
 function test54
-%TEST54 test AxB, qsort vs bucket sort
+%TEST54 test GB_subref_numeric with I=lo:hi, J=lo:hi
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
-fprintf ('\n======================= qsort vs C transpose for C=A*B\n') ;
+fprintf ('\n==== quick test for subref and assign (lo:stride:hi):\n') ;
+clear
 
-index = ssget ;
-f = find (index.nrows == index.ncols) ;
-[ignore i] = sort (index.ncols (f)) ;
-f = f (i) ;
-nmat = length (f) ;
+m = 5 ;
+n = 7 ;
+A = sprandn (m,n,0.4) ;
 
-T = zeros (nmat,8) ;
-Nz = zeros (nmat,1) ;
+for ilo = 1:m
+    for ihi = ilo:m
+        for jlo = 1:n
+            for jhi = jlo:m
 
-for k = 1:nmat
-    id = f (k) ;
-    Prob = ssget (id, index) ;
-    A = Prob.A ;
-    if (~isreal (A))
-        A = real (A) ;
+                C = A (ilo:ihi,jlo:jhi) ;
+
+                I1 = uint64 (ilo:ihi) - 1 ;
+                J1 = uint64 (jlo:jhi) - 1 ;
+                C1 = GB_mex_Matrix_subref (A, I1, J1) ;
+                assert (isequal (C, C1)) ;
+
+                I2.begin = ilo-1 ;
+                I2.end   = ihi-1 ;
+                J2.begin = jlo-1 ;
+                J2.end   = jhi-1 ;
+                C2 = GB_mex_Matrix_subref (A, I2, J2) ;
+                assert (isequal (C, C2)) ;
+
+            end
+        end
     end
-    B = A' ;
-    n = size (A,1) ;
-    if (max (sum (spones (B))) > 16*sqrt(n))
-        continue ;
-    end
-    Nz (k) = nnz (A) ;
-
-    % C = A*B or (B'*A')'
-    tic
-    C1 = GB_mex_AxB_symbolic (A, B, false, false, false) ;
-    T(k,1) = toc ;
-    tic
-    C2 = GB_mex_AxB_symbolic (B, A, true, true, true) ;
-    T(k,2) = toc ;
-    assert (isequal (C1, C2)) ;
-
-    % C = A'*B or (B'*A)'
-    tic
-    C1 = GB_mex_AxB_symbolic (A, B, true, false, false) ;
-    T(k,3) = toc ;
-    tic
-    C2 = GB_mex_AxB_symbolic (B, A, true, false, true) ;
-    T(k,4) = toc ;
-    assert (isequal (C1, C2)) ;
-
-    % C = A*B' or (B*A')'
-    tic
-    C1 = GB_mex_AxB_symbolic (A, B, false, true, false) ;
-    T(k,5) = toc ;
-    tic
-    C2 = GB_mex_AxB_symbolic (B, A, false, true, true) ;
-    T(k,6) = toc ;
-    assert (isequal (C1, C2)) ;
-
-    % C = A'*B' or (B*A)'
-    tic
-    C1 = GB_mex_AxB_symbolic (A, B, true, true, false) ;
-    T(k,7) = toc ;
-    tic
-    C2 = GB_mex_AxB_symbolic (B, A, false, false, true) ;
-    T(k,8) = toc ;
-    assert (isequal (C1, C2)) ;
-
-    fprintf ('%10.3f   %10.3f   %10.3f   %10.3f\n', ...
-        T (k,1) ./ T (k,2), ...
-        T (k,3) ./ T (k,4), ...
-        T (k,5) ./ T (k,6), ...
-        T (k,7) ./ T (k,8)) ;
-
-    subplot (2,2,1) ;
-    loglog (Nz (1:k), T (1:k,1) ./ T (1:k,2), 'o', [1 10e6], [1 1], 'k-') ;
-
-    subplot (2,2,2) ;
-    loglog (Nz (1:k), T (1:k,3) ./ T (1:k,4), 'o', [1 10e6], [1 1], 'k-') ;
-
-    subplot (2,2,3) ;
-    loglog (Nz (1:k), T (1:k,5) ./ T (1:k,6), 'o', [1 10e6], [1 1], 'k-') ;
-
-    subplot (2,2,4) ;
-    loglog (Nz (1:k), T (1:k,7) ./ T (1:k,8), 'o', [1 10e6], [1 1], 'k-') ;
-
-    drawnow
 end
 
-fprintf ('\ntest54: all tests passed\n') ;
+C = sprandn (m, n, 0.4) ;
 
+for ilo = 1:m
+    for ihi = ilo:m
+
+        sm = ihi-ilo+1 ;
+        S = sprandn (sm, n, 0.4) ;
+
+        C0 = C ;
+        C0 (ilo:ihi,:) = S ;
+
+        I1 = uint64 (ilo:ihi) - 1 ;
+        C1 = GB_mex_subassign (C, [ ], [ ], S, I1, [ ], [ ]) ;
+        assert (isequal (C0, C1.matrix)) ;
+
+        C1b = GB_mex_assign (C, [ ], [ ], S, I1, [ ], [ ]) ;
+        assert (isequal (C0, C1b.matrix)) ;
+
+        I2.begin = ilo-1 ;
+        I2.end   = ihi-1 ;
+        C2 = GB_mex_subassign (C, [ ], [ ], S, I2, [ ], [ ]) ;
+        assert (isequal (C0, C2.matrix)) ;
+
+        C2b = GB_mex_assign (C, [ ], [ ], S, I2, [ ], [ ]) ;
+        assert (isequal (C0, C2b.matrix)) ;
+
+        S = sprandn (m, sm, 0.4) ;
+
+        C0 = C ;
+        C0 (:,ilo:ihi) = S ;
+
+        C1 = GB_mex_subassign (C, [ ], [ ], S, [ ], I1, [ ]) ;
+        assert (isequal (C0, C1.matrix)) ;
+
+        C1b = GB_mex_assign (C, [ ], [ ], S, [ ], I1, [ ]) ;
+        assert (isequal (C0, C1b.matrix)) ;
+
+        C2 = GB_mex_subassign (C, [ ], [ ], S, [ ], I2, [ ]) ;
+        assert (isequal (C0, C2.matrix)) ;
+
+        C2b = GB_mex_assign (C, [ ], [ ], S, [ ], I2, [ ]) ;
+        assert (isequal (C0, C2b.matrix)) ;
+
+        for jlo = 1:n
+            for jhi = jlo:n
+
+                sm = ihi-ilo+1 ;
+                sn = jhi-jlo+1 ;
+                S = sprandn (sm, sn, 0.4) ;
+
+                C0 = C ;
+                C0 (ilo:ihi,jlo:jhi) = S ;
+
+                I1 = uint64 (ilo:ihi) - 1 ;
+                J1 = uint64 (jlo:jhi) - 1 ;
+                C1 = GB_mex_subassign (C, [ ], [ ], S, I1, J1, [ ]) ;
+                assert (isequal (C0, C1.matrix)) ;
+
+                C1b = GB_mex_assign (C, [ ], [ ], S, I1, J1, [ ]) ;
+                assert (isequal (C0, C1b.matrix)) ;
+
+                I2.begin = ilo-1 ;
+                I2.end   = ihi-1 ;
+                J2.begin = jlo-1 ;
+                J2.end   = jhi-1 ;
+                C2 = GB_mex_subassign (C, [ ], [ ], S, I2, J2, [ ]) ;
+                assert (isequal (C0, C2.matrix)) ;
+
+                C2b = GB_mex_assign (C, [ ], [ ], S, I2, J2, [ ]) ;
+                assert (isequal (C0, C2b.matrix)) ;
+
+            end
+        end
+    end
+end
+
+clear C0 C1 C1b C2 C2b I1 J1 I2 J2
+
+fprintf ('longer tests: ') ;
+jinc_list = unique ([-1 1 3]) ;
+
+for ibegin = 1:m
+    for iend = 1:m
+        for iinc = -m:m
+
+            I = ibegin:iinc:iend ;
+            I1.begin = ibegin - 1 ;
+            I1.inc = iinc ;
+            I1.end = iend - 1 ;
+
+            fprintf ('.') ;
+
+            for jbegin = 1:3:n
+                for jend = 1:3:n
+                    for jinc = jinc_list
+
+                        J = jbegin:jinc:jend ;
+                        J1.begin = jbegin - 1 ;
+                        J1.inc = jinc ;
+                        J1.end = jend - 1 ;
+
+                        sm = length (I) ;
+                        sn = length (J) ;
+                        S = sprandn (sm, sn, 0.4) ;
+
+                        C0 = C ;
+                        C0 (I,J) = S ;
+
+                        % fprintf ('\nsubassign:\n') ;
+                        C1 = GB_mex_subassign (C, [ ], [ ], S, I1, J1, [ ]) ;
+                        assert (isequal (C0, C1.matrix)) ;
+
+                        % fprintf ('\nassign:\n') ;
+                        C2 = GB_mex_assign (C, [ ], [ ], S, I1, J1, [ ]) ;
+                        assert (isequal (C0, C2.matrix)) ;
+
+                        R = C(I,J) ;
+                        R1 = GB_mex_Matrix_subref (C, I1, J1) ;
+                        assert (isequal (R, R1)) ;
+
+                    end
+                end
+            end
+        end
+    end
+end
+
+
+fprintf ('\ntest54: all tests passed\n') ;

@@ -22,11 +22,13 @@ class AllPathsTest: public ::testing::Test {
     protected:
     static void SetUpTestCase()
     {
-        // Initialize GraphBLAS.
-        GrB_init(GrB_NONBLOCKING);
-
         // Use the malloc family for allocations
         Alloc_Reset();
+
+        // Initialize GraphBLAS.
+        GrB_init(GrB_NONBLOCKING);
+        GxB_set(GxB_FORMAT, GxB_BY_COL); // all matrices in CSC format
+        GxB_set(GxB_HYPER, GxB_NEVER_HYPER); // matrices are never hypersparse
     }
 
     static void TearDownTestCase()

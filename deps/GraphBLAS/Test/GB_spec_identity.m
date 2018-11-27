@@ -14,7 +14,7 @@ function identity = GB_spec_identity (arg1,arg2)
 % The 8 addititive monoids supported are 'min', 'max', 'plus', 'times', 'or',
 % 'and', 'xor', and 'eq'.   For the last 4 the class must be 'logical'
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 if (nargin == 1)

@@ -4,7 +4,7 @@ function C = GB_spec_select (C, Mask, accum, opname, A, k, descriptor)
 % Usage:
 % C = GB_spec_select (C, Mask, accum, opname, A, k, descriptor)
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 %-------------------------------------------------------------------------------
@@ -17,9 +17,7 @@ end
 
 C = GB_spec_matrix (C) ;
 A = GB_spec_matrix (A) ;
-
-% Mask is a dense logical matrix, not a struct
-Mask = GB_mex_cast (full (Mask), 'logical') ;
+Mask = GB_spec_getmask (Mask) ;
 [C_replace Mask_comp Atrans ~] = GB_spec_descriptor (descriptor) ;
 
 %-------------------------------------------------------------------------------

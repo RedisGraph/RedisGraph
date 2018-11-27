@@ -1,7 +1,7 @@
 function test18(fulltest)
 %TEST18 test GrB_eWiseAdd and GrB_eWiseMult
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 if (nargin < 1)
@@ -100,16 +100,38 @@ for k1 = k1test % 1:length (classes)
                         for m = [1 5 10 ]
                             for n = [ 1 5 10 ]
 
-                                A = sparse (100 * sprandn (m,n, 0.2)) ;
-                                B = sparse (100 * sprandn (m,n, 0.2)) ;
-                                C = sparse (100 * sprandn (m,n, 0.2)) ;
+                                Amat = sparse (100 * sprandn (m,n, 0.2)) ;
+                                Bmat = sparse (100 * sprandn (m,n, 0.2)) ;
+                                Cmat = sparse (100 * sprandn (m,n, 0.2)) ;
                                 w = sparse (100 * sprandn (m,1, 0.2)) ;
                                 u = sparse (100 * sprandn (m,1, 0.2)) ;
                                 v = sparse (100 * sprandn (m,1, 0.2)) ;
                                 Mask = sprandn (m,n,0.2) ~= 0 ;
                                 mask = sprandn (m,1,0.2) ~= 0 ;
-                                AT = A' ;
-                                BT = B' ;
+                                AT = Amat' ;
+                                BT = Bmat' ;
+
+                                for A_is_hyper = 0:1
+                                for A_is_csc   = 0:1
+                                for B_is_hyper = 0:1
+                                for B_is_csc   = 0:1
+                                for C_is_hyper = 0 % 0:1
+                                for C_is_csc   = 0 % 0:1
+
+                                clear A
+                                A.matrix = Amat ;
+                                A.is_hyper = A_is_hyper ;
+                                A.is_csc   = A_is_csc   ;
+
+                                clear B
+                                B.matrix = Bmat ;
+                                B.is_hyper = B_is_hyper ;
+                                B.is_csc   = B_is_csc   ;
+
+                                clear C
+                                C.matrix = Cmat ;
+                                C.is_hyper = C_is_hyper ;
+                                C.is_csc   = C_is_csc   ;
 
                                 %---------------------------------------
                                 % A+B
@@ -282,6 +304,13 @@ for k1 = k1test % 1:length (classes)
                                 C1 = GB_mex_eWiseMult_Matrix ...
                                     (C, Mask, accum, op, AT, BT, dtt);
                                 GB_spec_compare (C0, C1) ;
+
+                                end
+                                end
+                                end
+                                end
+                                end
+                                end
 
                             end
                         end

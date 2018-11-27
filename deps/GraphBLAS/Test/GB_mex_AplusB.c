@@ -2,7 +2,7 @@
 // GB_mex_AplusB: compute C=A+B
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -12,12 +12,14 @@
 
 #include "GB_mex.h"
 
+#define USAGE "C = GB_mex_AplusB (A, B, op)"
+
 #define FREE_ALL                        \
 {                                       \
     GB_MATRIX_FREE (&A) ;               \
     GB_MATRIX_FREE (&B) ;               \
     GB_MATRIX_FREE (&C) ;               \
-    GB_mx_put_global (malloc_debug) ;   \
+    GB_mx_put_global (true, 0) ;        \
 }
 
 
@@ -29,25 +31,29 @@ void mexFunction
     const mxArray *pargin [ ]
 )
 {
+    // double tic2 [2] ;
+    // simple_tic (tic2) ;
 
-    bool malloc_debug = GB_mx_get_global ( ) ;
+    bool malloc_debug = GB_mx_get_global (true) ;
     GrB_Matrix A = NULL ;
     GrB_Matrix B = NULL ;
     GrB_Matrix C = NULL ;
     GrB_BinaryOp op = NULL ;
 
+    GB_WHERE (USAGE) ;
+
     // check inputs
     if (nargout > 1 || nargin != 3)
     {
-        mexErrMsgTxt ("Usage: C = GB_mex_AplusB (A, B, op)") ;
+        mexErrMsgTxt ("Usage: " USAGE) ;
     }
 
     #define GET_DEEP_COPY ;
     #define FREE_DEEP_COPY ;
 
     // get A and B
-    A = GB_mx_mxArray_to_Matrix (pargin [0], "A", false) ;
-    B = GB_mx_mxArray_to_Matrix (pargin [1], "B", false) ;
+    A = GB_mx_mxArray_to_Matrix (pargin [0], "A", false, true) ;
+    B = GB_mx_mxArray_to_Matrix (pargin [1], "B", false, true) ;
     if (A == NULL || B == NULL)
     {
         FREE_ALL ;
@@ -63,15 +69,21 @@ void mexFunction
         mexErrMsgTxt ("op failed") ;
     }
 
-    // create the GraphBLAS output matrix C; same type as A
-    METHOD (GrB_Matrix_new (&C, A->type, A->nrows, A->ncols)) ;
+    // printf ("time so far: %g\n", simple_toc (tic2)) ;
+    // simple_tic (tic2) ;
 
     // C = A+B using the op
-    METHOD (GB_Matrix_add (C, A, B, op)) ;
+    METHOD (GB_add (&C, A->type, true, A, B, op, Context)) ;
+
+    // GrB_wait ( ) ;
+    // TOC ;
+    // printf ("time method: %g\n", simple_toc (tic2)) ;
+    // simple_tic (tic2) ;
 
     // return C to MATLAB as a plain sparse matrix
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C AplusB result", false) ;
 
     FREE_ALL ;
+    // printf ("time wrapup: %g\n", simple_toc (tic2)) ;
 }
 

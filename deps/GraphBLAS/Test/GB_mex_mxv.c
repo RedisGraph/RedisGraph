@@ -2,12 +2,14 @@
 // GB_mex_mxv: w<mask> = accum(w,A*u)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
 #include "GB_mex.h"
+
+#define USAGE "w = GB_mex_mxv (w, mask, accum, semiring, A, u, desc)"
 
 #define FREE_ALL                            \
 {                                           \
@@ -24,7 +26,7 @@
         GrB_free (&semiring) ;              \
     }                                       \
     GrB_free (&desc) ;                      \
-    GB_mx_put_global (malloc_debug) ;       \
+    GB_mx_put_global (true, AxB_method_used) ; \
 }
 
 void mexFunction
@@ -36,24 +38,25 @@ void mexFunction
 )
 {
 
-    bool malloc_debug = GB_mx_get_global ( ) ;
+    bool malloc_debug = GB_mx_get_global (true) ;
     GrB_Vector w = NULL ;
     GrB_Vector u = NULL ;
     GrB_Matrix A = NULL ;
     GrB_Vector mask = NULL ;
     GrB_Semiring semiring = NULL ;
     GrB_Descriptor desc = NULL ;
+    GrB_Desc_Value AxB_method_used = GxB_DEFAULT ;
 
     // check inputs
+    GB_WHERE (USAGE) ;
     if (nargout > 1 || nargin < 6 || nargin > 7)
     {
-        mexErrMsgTxt ("Usage: w = GB_mex_mxv "
-        "(w, mask, accum, semiring, A, u, desc)");
+        mexErrMsgTxt ("Usage: " USAGE) ;
     }
 
     // get w (make a deep copy)
     #define GET_DEEP_COPY \
-    w = GB_mx_mxArray_to_Vector (pargin [0], "w input", true) ;
+    w = GB_mx_mxArray_to_Vector (pargin [0], "w input", true, true) ;
     #define FREE_DEEP_COPY GrB_free (&w) ;
     GET_DEEP_COPY ;
     if (w == NULL)
@@ -64,7 +67,7 @@ void mexFunction
     mxClassID cclass = GB_mx_Type_to_classID (w->type) ;
 
     // get mask (shallow copy)
-    mask = GB_mx_mxArray_to_Vector (pargin [1], "mask", false) ;
+    mask = GB_mx_mxArray_to_Vector (pargin [1], "mask", false, false) ;
     if (mask == NULL && !mxIsEmpty (pargin [1]))
     {
         FREE_ALL ;
@@ -72,7 +75,7 @@ void mexFunction
     }
 
     // get A (shallow copy)
-    A = GB_mx_mxArray_to_Matrix (pargin [4], "A input", false) ;
+    A = GB_mx_mxArray_to_Matrix (pargin [4], "A input", false, true) ;
     if (A == NULL)
     {
         FREE_ALL ;
@@ -80,7 +83,7 @@ void mexFunction
     }
 
     // get u (shallow copy)
-    u = GB_mx_mxArray_to_Vector (pargin [5], "A input", false) ;
+    u = GB_mx_mxArray_to_Vector (pargin [5], "A input", false, true) ;
     if (u == NULL)
     {
         FREE_ALL ;
@@ -122,6 +125,8 @@ void mexFunction
 
     // w<mask> = accum(w,A*u)
     METHOD (GrB_mxv (w, mask, accum, semiring, A, u, desc)) ;
+
+    if (w != NULL) AxB_method_used = w->AxB_method_used ;
 
     // return w to MATLAB as a struct and free the GraphBLAS w
     pargout [0] = GB_mx_Vector_to_mxArray (&w, "w output", true) ;

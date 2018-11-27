@@ -1,51 +1,54 @@
 //------------------------------------------------------------------------------
-// GxB_Matrix_subassign_[SCALAR]: assign a scalar to matrix, via scalar expansion
+// GxB_Matrix_subassign_[SCALAR]: assign to submatrix, via scalar expansion
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
-// Assigns a single scalar to a submatrix, C(I,J)<Mask> = accum(C(I,J),x)
-// The scalar x is implicitly expanded into a matrix A of size ni-by-nj,
+// Assigns a single scalar to a submatrix:
+// C(Rows,Cols)<Mask> = accum(C(Rows,Cols),x)
+// The scalar x is implicitly expanded into a matrix A of size nRows-by-nCols,
 // with each entry in A equal to x.
+
+// Compare with GrB_Matrix_assign_scalar,
+// which uses Mask and C_Replace differently
 
 #include "GB.h"
 
-#define ASSIGN(type,T,ampersand)                                               \
-GrB_Info GxB_Matrix_subassign_ ## T    /* C(I,J)<Mask> = accum (C(I,J),x)      */ \
+#define GB_ASSIGN(type,T,ampersand)                                            \
+GrB_Info GxB_Matrix_subassign_ ## T /* C(Rows,Cols)<Mask> += x              */ \
 (                                                                              \
     GrB_Matrix C,                   /* input/output matrix for results      */ \
-    const GrB_Matrix Mask,          /* optional mask for C(I,J)             */ \
-    const GrB_BinaryOp accum,       /* optional accum for Z=accum(C(I,J),x) */ \
-    const type x,                   /* scalar to assign to C(I,J)           */ \
-    const GrB_Index *I,             /* row indices                          */ \
-    const GrB_Index ni,             /* number of row indices                */ \
-    const GrB_Index *J,             /* column indices                       */ \
-    const GrB_Index nj,             /* number of column indices             */ \
-    const GrB_Descriptor desc       /* descriptor for C(I,J) and Mask       */ \
+    const GrB_Matrix Mask,          /* optional mask for C(Rows,Cols)       */ \
+    const GrB_BinaryOp accum,       /* accum for Z=accum(C(Rows,Cols),x)    */ \
+    const type x,                   /* scalar to assign to C(Rows,Cols)     */ \
+    const GrB_Index *Rows,          /* row indices                          */ \
+    GrB_Index nRows,                /* number of row indices                */ \
+    const GrB_Index *Cols,          /* column indices                       */ \
+    GrB_Index nCols,                /* number of column indices             */ \
+    const GrB_Descriptor desc       /* descriptor for C(Rows,Cols) and Mask */ \
 )                                                                              \
 {                                                                              \
-    WHERE ("GxB_Matrix_subassign_" GB_STR(T) " (C, Mask, accum, x, I, ni, J, nj, desc)") ; \
-    RETURN_IF_NULL_OR_UNINITIALIZED (C) ;                                      \
-    RETURN_IF_UNINITIALIZED (Mask) ;                                           \
-    return (GB_subassign_scalar (C, Mask, accum,                                  \
-        ampersand x, GB_## T ## _code, I, ni, J, nj, desc)) ;                  \
+    GB_WHERE ("GxB_Matrix_subassign_" GB_STR(T)                                \
+        " (C, Mask, accum, x, Rows, nRows, Cols, nCols, desc)") ;              \
+    GB_RETURN_IF_NULL_OR_FAULTY (C) ;                                          \
+    GB_RETURN_IF_FAULTY (Mask) ;                                               \
+    return (GB_subassign_scalar (C, Mask, accum, ampersand x,                  \
+        GB_## T ## _code, Rows, nRows, Cols, nCols, desc, Context)) ;          \
 }
 
-ASSIGN (bool     , BOOL   , &) ;
-ASSIGN (int8_t   , INT8   , &) ;
-ASSIGN (uint8_t  , UINT8  , &) ;
-ASSIGN (int16_t  , INT16  , &) ;
-ASSIGN (uint16_t , UINT16 , &) ;
-ASSIGN (int32_t  , INT32  , &) ;
-ASSIGN (uint32_t , UINT32 , &) ;
-ASSIGN (int64_t  , INT64  , &) ;
-ASSIGN (uint64_t , UINT64 , &) ;
-ASSIGN (float    , FP32   , &) ;
-ASSIGN (double   , FP64   , &) ;
-ASSIGN (void *   , UDT    ,  ) ;
-
-#undef ASSIGN
+GB_ASSIGN (bool     , BOOL   , &) ;
+GB_ASSIGN (int8_t   , INT8   , &) ;
+GB_ASSIGN (uint8_t  , UINT8  , &) ;
+GB_ASSIGN (int16_t  , INT16  , &) ;
+GB_ASSIGN (uint16_t , UINT16 , &) ;
+GB_ASSIGN (int32_t  , INT32  , &) ;
+GB_ASSIGN (uint32_t , UINT32 , &) ;
+GB_ASSIGN (int64_t  , INT64  , &) ;
+GB_ASSIGN (uint64_t , UINT64 , &) ;
+GB_ASSIGN (float    , FP32   , &) ;
+GB_ASSIGN (double   , FP64   , &) ;
+GB_ASSIGN (void *   , UDT    ,  ) ;
 

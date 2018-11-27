@@ -1,7 +1,7 @@
 function GB_define 
 %GB_DEFINE create C source code for GraphBLAS.h
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 ints = {'int8','uint8', 'int16','uint16', 'int32','uint32', 'int64','uint64' } ;
@@ -24,12 +24,12 @@ n = 0 ;
 
 for k = 1:length (numeric)
 
-    xx = upper (numeric {k}) ;
-    fprintf ('    // %s monoids:\n', xx) ;
+    x2 = upper (numeric {k}) ;
+    fprintf ('    // %s monoids:\n', x2) ;
 
     for i = 1:length (ints)
         cc = upper (ints {i}) ;
-        name = sprintf ('GxB_%s_%s_MONOID,', xx, cc) ;
+        name = sprintf ('GxB_%s_%s_MONOID,', x2, cc) ;
         fprintf ('    %-25s     // identity: ', name) ;
         id = numeric_ids {k} ;
         switch id
@@ -49,7 +49,7 @@ for k = 1:length (numeric)
 
     for i = 1:length (floats)
         cc = upper (floats {i}) ;
-        name = sprintf ('GxB_%s_%s_MONOID,', xx, cc) ;
+        name = sprintf ('GxB_%s_%s_MONOID,', x2, cc) ;
         fprintf ('    %-25s     // identity: ', name) ;
         id = numeric_ids {k} ;
         switch id

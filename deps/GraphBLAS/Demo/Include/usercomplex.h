@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GraphBLAS/Demo/usercomplex.h:  complex numbers as a user-defined type
+// GraphBLAS/Demo/Include/usercomplex.h:  complex numbers as a user-defined type
 //------------------------------------------------------------------------------
 
 #ifndef USERCOMPLEX_H

@@ -1,0 +1,2940 @@
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/ssget/Mallya/lhr71_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 2985588
+nrows 70304 ncols 70304
+time to prune self-edges:     0.005591
+time to build the graph with GrB_Matrix_build:     0.027938
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.029800
+matrix 70304 by 70304, 2985588 entries, from stdin
+
+total time to read A matrix:       1.600941 sec
+
+n 70304 # edges 1492794
+U=triu(A) time:        0.011324 sec
+read A, create U memory usage: 0.109732 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.014723 sec
+# triangles 160592
+
+tricount time:         0.019616 sec (dot product method)
+tri+prep time:         0.045663 sec (incl time to compute L and U)
+compute C time:        0.018964 sec
+reduce (C) time:       0.000652 sec
+rate      32.69 million edges/sec (incl time for U=triu(A))
+rate      76.10 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.109732 GB
+
+----------------------------------- outer product method:
+tricount time:         0.031180 sec (outer product method)
+tri+prep time:         0.045903 sec (incl time to compute L)
+compute C time:        0.030533 sec
+reduce (C) time:       0.000647 sec
+rate      32.52 million edges/sec (incl time for L=tril(A))
+rate      47.88 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.109732 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/ssget/Freescale/Freescale2_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 11489868
+nrows 2999349 ncols 2999349
+time to prune self-edges:     0.019869
+time to build the graph with GrB_Matrix_build:     0.126800
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.172346
+matrix 2999349 by 2999349, 11489868 entries, from stdin
+
+total time to read A matrix:       6.760501 sec
+
+n 2999349 # edges 5744934
+U=triu(A) time:        0.065821 sec
+read A, create U memory usage: 0.509615 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.090235 sec
+# triangles 21027280
+
+tricount time:         0.319554 sec (dot product method)
+tri+prep time:         0.475611 sec (incl time to compute L and U)
+compute C time:        0.289892 sec
+reduce (C) time:       0.029662 sec
+rate      12.08 million edges/sec (incl time for U=triu(A))
+rate      17.98 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.509615 GB
+
+----------------------------------- outer product method:
+tricount time:         0.187233 sec (outer product method)
+tri+prep time:         0.277468 sec (incl time to compute L)
+compute C time:        0.157666 sec
+reduce (C) time:       0.029567 sec
+rate      20.70 million edges/sec (incl time for L=tril(A))
+rate      30.68 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.509615 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/cit-HepPh/cit-HepPh_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 841754
+nrows 34546 ncols 34546
+time to prune self-edges:     0.001327
+time to build the graph with GrB_Matrix_build:     0.008289
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.011469
+matrix 34546 by 34546, 841754 entries, from stdin
+
+total time to read A matrix:       0.455801 sec
+
+n 34546 # edges 420877
+U=triu(A) time:        0.003326 sec
+read A, create U memory usage: 0.0314095 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.004948 sec
+# triangles 1276868
+
+tricount time:         0.050720 sec (dot product method)
+tri+prep time:         0.058994 sec (incl time to compute L and U)
+compute C time:        0.046502 sec
+reduce (C) time:       0.004218 sec
+rate       7.13 million edges/sec (incl time for U=triu(A))
+rate       8.30 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.0314096 GB
+
+----------------------------------- outer product method:
+tricount time:         0.036316 sec (outer product method)
+tri+prep time:         0.041264 sec (incl time to compute L)
+compute C time:        0.032103 sec
+reduce (C) time:       0.004213 sec
+rate      10.20 million edges/sec (incl time for L=tril(A))
+rate      11.59 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.0314095 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/cit-HepTh/cit-HepTh_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 704570
+nrows 27770 ncols 27770
+time to prune self-edges:     0.001383
+time to build the graph with GrB_Matrix_build:     0.006809
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.009166
+matrix 27770 by 27770, 704570 entries, from stdin
+
+total time to read A matrix:       0.378234 sec
+
+n 27770 # edges 352285
+U=triu(A) time:        0.002774 sec
+read A, create U memory usage: 0.026254 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.004060 sec
+# triangles 1478735
+
+tricount time:         0.054238 sec (dot product method)
+tri+prep time:         0.061071 sec (incl time to compute L and U)
+compute C time:        0.050403 sec
+reduce (C) time:       0.003835 sec
+rate       5.77 million edges/sec (incl time for U=triu(A))
+rate       6.50 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.0262542 GB
+
+----------------------------------- outer product method:
+tricount time:         0.040989 sec (outer product method)
+tri+prep time:         0.045048 sec (incl time to compute L)
+compute C time:        0.037151 sec
+reduce (C) time:       0.003837 sec
+rate       7.82 million edges/sec (incl time for L=tril(A))
+rate       8.59 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.026254 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/email-EuAll/email-EuAll_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 728962
+nrows 265214 ncols 265214
+time to prune self-edges:     0.001203
+time to build the graph with GrB_Matrix_build:     0.008682
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.013403
+matrix 265214 by 265214, 728962 entries, from stdin
+
+total time to read A matrix:       0.420832 sec
+
+n 265214 # edges 364481
+U=triu(A) time:        0.005198 sec
+read A, create U memory usage: 0.0347304 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.006545 sec
+# triangles 267313
+
+tricount time:         0.033679 sec (dot product method)
+tri+prep time:         0.045421 sec (incl time to compute L and U)
+compute C time:        0.032773 sec
+reduce (C) time:       0.000906 sec
+rate       8.02 million edges/sec (incl time for U=triu(A))
+rate      10.82 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.0347305 GB
+
+----------------------------------- outer product method:
+tricount time:         0.027488 sec (outer product method)
+tri+prep time:         0.034032 sec (incl time to compute L)
+compute C time:        0.026584 sec
+reduce (C) time:       0.000903 sec
+rate      10.71 million edges/sec (incl time for L=tril(A))
+rate      13.26 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.0347304 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/soc-Epinions1/soc-Epinions1_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 811480
+nrows 75879 ncols 75879
+time to prune self-edges:     0.001601
+time to build the graph with GrB_Matrix_build:     0.008696
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.011301
+matrix 75879 by 75879, 811480 entries, from stdin
+
+total time to read A matrix:       0.439829 sec
+
+n 75879 # edges 405740
+U=triu(A) time:        0.003685 sec
+read A, create U memory usage: 0.0316423 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.005094 sec
+# triangles 1624481
+
+tricount time:         0.090085 sec (dot product method)
+tri+prep time:         0.098864 sec (incl time to compute L and U)
+compute C time:        0.086858 sec
+reduce (C) time:       0.003227 sec
+rate       4.10 million edges/sec (incl time for U=triu(A))
+rate       4.50 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.0316424 GB
+
+----------------------------------- outer product method:
+tricount time:         0.057192 sec (outer product method)
+tri+prep time:         0.062285 sec (incl time to compute L)
+compute C time:        0.053970 sec
+reduce (C) time:       0.003222 sec
+rate       6.51 million edges/sec (incl time for L=tril(A))
+rate       7.09 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.0316423 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/soc-Slashdot0811/soc-Slashdot0811_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 938360
+nrows 77360 ncols 77360
+time to prune self-edges:     0.001499
+time to build the graph with GrB_Matrix_build:     0.009896
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.013201
+matrix 77360 by 77360, 938360 entries, from stdin
+
+total time to read A matrix:       0.499325 sec
+
+n 77360 # edges 469180
+U=triu(A) time:        0.004195 sec
+read A, create U memory usage: 0.0362574 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.005847 sec
+# triangles 551724
+
+tricount time:         0.062993 sec (dot product method)
+tri+prep time:         0.073035 sec (incl time to compute L and U)
+compute C time:        0.061001 sec
+reduce (C) time:       0.001993 sec
+rate       6.42 million edges/sec (incl time for U=triu(A))
+rate       7.45 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.0362575 GB
+
+----------------------------------- outer product method:
+tricount time:         0.049311 sec (outer product method)
+tri+prep time:         0.055158 sec (incl time to compute L)
+compute C time:        0.047321 sec
+reduce (C) time:       0.001990 sec
+rate       8.51 million edges/sec (incl time for L=tril(A))
+rate       9.51 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.0362574 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/soc-Slashdot0902/soc-Slashdot0902_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 1008460
+nrows 82168 ncols 82168
+time to prune self-edges:     0.001612
+time to build the graph with GrB_Matrix_build:     0.010591
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.014228
+matrix 82168 by 82168, 1008460 entries, from stdin
+
+total time to read A matrix:       0.546905 sec
+
+n 82168 # edges 504230
+U=triu(A) time:        0.004470 sec
+read A, create U memory usage: 0.0389348 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.006283 sec
+# triangles 602592
+
+tricount time:         0.067704 sec (dot product method)
+tri+prep time:         0.078457 sec (incl time to compute L and U)
+compute C time:        0.065554 sec
+reduce (C) time:       0.002150 sec
+rate       6.43 million edges/sec (incl time for U=triu(A))
+rate       7.45 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.038935 GB
+
+----------------------------------- outer product method:
+tricount time:         0.053752 sec (outer product method)
+tri+prep time:         0.060035 sec (incl time to compute L)
+compute C time:        0.051607 sec
+reduce (C) time:       0.002145 sec
+rate       8.40 million edges/sec (incl time for L=tril(A))
+rate       9.38 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.0389348 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/amazon0312/amazon0312_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 4699738
+nrows 400727 ncols 400727
+time to prune self-edges:     0.009978
+time to build the graph with GrB_Matrix_build:     0.047608
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.087409
+matrix 400727 by 400727, 4699738 entries, from stdin
+
+total time to read A matrix:       2.652671 sec
+
+n 400727 # edges 2349869
+U=triu(A) time:        0.021302 sec
+read A, create U memory usage: 0.182015 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.032062 sec
+# triangles 3686467
+
+tricount time:         0.256229 sec (dot product method)
+tri+prep time:         0.309593 sec (incl time to compute L and U)
+compute C time:        0.236102 sec
+reduce (C) time:       0.020128 sec
+rate       7.59 million edges/sec (incl time for U=triu(A))
+rate       9.17 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.182015 GB
+
+----------------------------------- outer product method:
+tricount time:         0.180802 sec (outer product method)
+tri+prep time:         0.212864 sec (incl time to compute L)
+compute C time:        0.160692 sec
+reduce (C) time:       0.020111 sec
+rate      11.04 million edges/sec (incl time for L=tril(A))
+rate      13.00 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.182015 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/amazon0505/amazon0505_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 4878874
+nrows 410236 ncols 410236
+time to prune self-edges:     0.008622
+time to build the graph with GrB_Matrix_build:     0.049196
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.085771
+matrix 410236 by 410236, 4878874 entries, from stdin
+
+total time to read A matrix:       2.766612 sec
+
+n 410236 # edges 2439437
+U=triu(A) time:        0.022077 sec
+read A, create U memory usage: 0.188768 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.033187 sec
+# triangles 3951063
+
+tricount time:         0.269223 sec (dot product method)
+tri+prep time:         0.324487 sec (incl time to compute L and U)
+compute C time:        0.248055 sec
+reduce (C) time:       0.021168 sec
+rate       7.52 million edges/sec (incl time for U=triu(A))
+rate       9.06 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.188768 GB
+
+----------------------------------- outer product method:
+tricount time:         0.183232 sec (outer product method)
+tri+prep time:         0.216419 sec (incl time to compute L)
+compute C time:        0.162078 sec
+reduce (C) time:       0.021154 sec
+rate      11.27 million edges/sec (incl time for L=tril(A))
+rate      13.31 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.188768 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/amazon0601/amazon0601_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 4886816
+nrows 403394 ncols 403394
+time to prune self-edges:     0.011960
+time to build the graph with GrB_Matrix_build:     0.050056
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.086704
+matrix 403394 by 403394, 4886816 entries, from stdin
+
+total time to read A matrix:       2.752194 sec
+
+n 403394 # edges 2443408
+U=triu(A) time:        0.022043 sec
+read A, create U memory usage: 0.188835 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.033199 sec
+# triangles 3986507
+
+tricount time:         0.267816 sec (dot product method)
+tri+prep time:         0.323058 sec (incl time to compute L and U)
+compute C time:        0.246568 sec
+reduce (C) time:       0.021248 sec
+rate       7.56 million edges/sec (incl time for U=triu(A))
+rate       9.12 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.188835 GB
+
+----------------------------------- outer product method:
+tricount time:         0.202317 sec (outer product method)
+tri+prep time:         0.235516 sec (incl time to compute L)
+compute C time:        0.181109 sec
+reduce (C) time:       0.021208 sec
+rate      10.37 million edges/sec (incl time for L=tril(A))
+rate      12.08 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.188835 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/flickrEdges/flickrEdges_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 4633896
+nrows 105938 ncols 105938
+time to prune self-edges:     0.007984
+time to build the graph with GrB_Matrix_build:     0.041982
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.069844
+matrix 105938 by 105938, 4633896 entries, from stdin
+
+total time to read A matrix:       2.522994 sec
+
+n 105938 # edges 2316948
+U=triu(A) time:        0.017920 sec
+read A, create U memory usage: 0.170211 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.023811 sec
+# triangles 107987357
+
+tricount time:         1.337074 sec (dot product method)
+tri+prep time:         1.378805 sec (incl time to compute L and U)
+compute C time:        1.311055 sec
+reduce (C) time:       0.026020 sec
+rate       1.68 million edges/sec (incl time for U=triu(A))
+rate       1.73 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.170211 GB
+
+----------------------------------- outer product method:
+tricount time:         0.932564 sec (outer product method)
+tri+prep time:         0.956374 sec (incl time to compute L)
+compute C time:        0.906553 sec
+reduce (C) time:       0.026011 sec
+rate       2.42 million edges/sec (incl time for L=tril(A))
+rate       2.48 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.170211 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/cit-Patents/cit-Patents_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 33037894
+nrows 3774768 ncols 3774768
+time to prune self-edges:     0.053053
+time to build the graph with GrB_Matrix_build:     0.345887
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     1.554316
+matrix 3774768 by 3774768, 33037894 entries, from stdin
+
+total time to read A matrix:      20.838805 sec
+
+n 3774768 # edges 16518947
+U=triu(A) time:        0.149941 sec
+read A, create U memory usage: 1.31016 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.235603 sec
+# triangles 7515023
+
+tricount time:         3.304332 sec (dot product method)
+tri+prep time:         3.689876 sec (incl time to compute L and U)
+compute C time:        3.247598 sec
+reduce (C) time:       0.056734 sec
+rate       4.48 million edges/sec (incl time for U=triu(A))
+rate       5.00 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 1.31016 GB
+
+----------------------------------- outer product method:
+tricount time:         1.920827 sec (outer product method)
+tri+prep time:         2.156430 sec (incl time to compute L)
+compute C time:        1.864043 sec
+reduce (C) time:       0.056784 sec
+rate       7.66 million edges/sec (incl time for L=tril(A))
+rate       8.60 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 1.31016 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/ssget/SNAP/soc-LiveJournal1_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 85702474
+nrows 4847571 ncols 4847571
+time to prune self-edges:     0.138317
+time to build the graph with GrB_Matrix_build:     0.824566
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     3.080491
+matrix 4847571 by 4847571, 85702474 entries, from stdin
+
+total time to read A matrix:      51.337302 sec
+
+n 4847571 # edges 42851237
+U=triu(A) time:        0.371382 sec
+read A, create U memory usage: 3.24041 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.501397 sec
+# triangles 285730264
+
+tricount time:        18.736702 sec (dot product method)
+tri+prep time:        19.609482 sec (incl time to compute L and U)
+compute C time:       18.353948 sec
+reduce (C) time:       0.382754 sec
+rate       2.19 million edges/sec (incl time for U=triu(A))
+rate       2.29 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 3.24041 GB
+
+----------------------------------- outer product method:
+tricount time:        10.155165 sec (outer product method)
+tri+prep time:        10.656562 sec (incl time to compute L)
+compute C time:        9.780077 sec
+reduce (C) time:       0.375088 sec
+rate       4.02 million edges/sec (incl time for L=tril(A))
+rate       4.22 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 3.24041 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/ssget/Gleich/wb-edu_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 92472210
+nrows 9845725 ncols 9845725
+time to prune self-edges:     0.159049
+time to build the graph with GrB_Matrix_build:     0.931893
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     1.215298
+matrix 9845725 by 9845725, 92472210 entries, from stdin
+
+total time to read A matrix:      54.727076 sec
+
+n 9845725 # edges 46236105
+U=triu(A) time:        0.433432 sec
+read A, create U memory usage: 3.64406 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.593912 sec
+# triangles 254718147
+
+tricount time:         4.115061 sec (dot product method)
+tri+prep time:         5.142406 sec (incl time to compute L and U)
+compute C time:        3.689447 sec
+reduce (C) time:       0.425614 sec
+rate       8.99 million edges/sec (incl time for U=triu(A))
+rate      11.24 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 3.64406 GB
+
+----------------------------------- outer product method:
+tricount time:         4.463837 sec (outer product method)
+tri+prep time:         5.057749 sec (incl time to compute L)
+compute C time:        4.038203 sec
+reduce (C) time:       0.425634 sec
+rate       9.14 million edges/sec (incl time for L=tril(A))
+rate      10.36 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 3.64406 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/amazon0302/amazon0302_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 1799584
+nrows 262111 ncols 262111
+time to prune self-edges:     0.006231
+time to build the graph with GrB_Matrix_build:     0.022297
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.028711
+matrix 262111 by 262111, 1799584 entries, from stdin
+
+total time to read A matrix:       1.067131 sec
+
+n 262111 # edges 899792
+U=triu(A) time:        0.009253 sec
+read A, create U memory usage: 0.0731735 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.014300 sec
+# triangles 717719
+
+tricount time:         0.055948 sec (dot product method)
+tri+prep time:         0.079502 sec (incl time to compute L and U)
+compute C time:        0.049849 sec
+reduce (C) time:       0.006099 sec
+rate      11.32 million edges/sec (incl time for U=triu(A))
+rate      16.08 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.0731736 GB
+
+----------------------------------- outer product method:
+tricount time:         0.042509 sec (outer product method)
+tri+prep time:         0.056810 sec (incl time to compute L)
+compute C time:        0.036405 sec
+reduce (C) time:       0.006104 sec
+rate      15.84 million edges/sec (incl time for L=tril(A))
+rate      21.17 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.0731735 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/as-caida20071105/as-caida20071105_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 106762
+nrows 26475 ncols 26475
+time to prune self-edges:     0.000142
+time to build the graph with GrB_Matrix_build:     0.001387
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.001639
+matrix 26475 by 26475, 106762 entries, from stdin
+
+total time to read A matrix:       0.058910 sec
+
+n 26475 # edges 53381
+U=triu(A) time:        0.000677 sec
+read A, create U memory usage: 0.00469152 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.000917 sec
+# triangles 36365
+
+tricount time:         0.003507 sec (dot product method)
+tri+prep time:         0.005101 sec (incl time to compute L and U)
+compute C time:        0.003328 sec
+reduce (C) time:       0.000180 sec
+rate      10.46 million edges/sec (incl time for U=triu(A))
+rate      15.22 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.00469165 GB
+
+----------------------------------- outer product method:
+tricount time:         0.005148 sec (outer product method)
+tri+prep time:         0.006066 sec (incl time to compute L)
+compute C time:        0.004970 sec
+reduce (C) time:       0.000178 sec
+rate       8.80 million edges/sec (incl time for L=tril(A))
+rate      10.37 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.00469152 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/as20000102/as20000102_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 25144
+nrows 6474 ncols 6474
+time to prune self-edges:     0.000034
+time to build the graph with GrB_Matrix_build:     0.000359
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.000383
+matrix 6474 by 6474, 25144 entries, from stdin
+
+total time to read A matrix:       0.013569 sec
+
+n 6474 # edges 12572
+U=triu(A) time:        0.000286 sec
+read A, create U memory usage: 0.00111324 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.000223 sec
+# triangles 6584
+
+tricount time:         0.000622 sec (dot product method)
+tri+prep time:         0.001131 sec (incl time to compute L and U)
+compute C time:        0.000585 sec
+reduce (C) time:       0.000037 sec
+rate      11.11 million edges/sec (incl time for U=triu(A))
+rate      20.21 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.00111337 GB
+
+----------------------------------- outer product method:
+tricount time:         0.000459 sec (outer product method)
+tri+prep time:         0.000682 sec (incl time to compute L)
+compute C time:        0.000423 sec
+reduce (C) time:       0.000036 sec
+rate      18.43 million edges/sec (incl time for L=tril(A))
+rate      27.40 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.00111324 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/ca-AstroPh/ca-AstroPh_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 396100
+nrows 18772 ncols 18772
+time to prune self-edges:     0.000588
+time to build the graph with GrB_Matrix_build:     0.003806
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.005106
+matrix 18772 by 18772, 396100 entries, from stdin
+
+total time to read A matrix:       0.212310 sec
+
+n 18772 # edges 198050
+U=triu(A) time:        0.001793 sec
+read A, create U memory usage: 0.0148612 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.002294 sec
+# triangles 1351441
+
+tricount time:         0.025811 sec (dot product method)
+tri+prep time:         0.029898 sec (incl time to compute L and U)
+compute C time:        0.023499 sec
+reduce (C) time:       0.002312 sec
+rate       6.62 million edges/sec (incl time for U=triu(A))
+rate       7.67 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.0148613 GB
+
+----------------------------------- outer product method:
+tricount time:         0.019740 sec (outer product method)
+tri+prep time:         0.022034 sec (incl time to compute L)
+compute C time:        0.017430 sec
+reduce (C) time:       0.002310 sec
+rate       8.99 million edges/sec (incl time for L=tril(A))
+rate      10.03 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.0148612 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/ca-CondMat/ca-CondMat_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 186878
+nrows 23133 ncols 23133
+time to prune self-edges:     0.000246
+time to build the graph with GrB_Matrix_build:     0.002002
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.002577
+matrix 23133 by 23133, 186878 entries, from stdin
+
+total time to read A matrix:       0.101688 sec
+
+n 23133 # edges 93439
+U=triu(A) time:        0.000899 sec
+read A, create U memory usage: 0.00746875 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.001369 sec
+# triangles 173361
+
+tricount time:         0.006445 sec (dot product method)
+tri+prep time:         0.008713 sec (incl time to compute L and U)
+compute C time:        0.005592 sec
+reduce (C) time:       0.000854 sec
+rate      10.72 million edges/sec (incl time for U=triu(A))
+rate      14.50 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.00746888 GB
+
+----------------------------------- outer product method:
+tricount time:         0.005013 sec (outer product method)
+tri+prep time:         0.006382 sec (incl time to compute L)
+compute C time:        0.004165 sec
+reduce (C) time:       0.000848 sec
+rate      14.64 million edges/sec (incl time for L=tril(A))
+rate      18.64 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.00746875 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/ca-GrQc/ca-GrQc_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 28968
+nrows 5242 ncols 5242
+time to prune self-edges:     0.000039
+time to build the graph with GrB_Matrix_build:     0.000399
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.000396
+matrix 5242 by 5242, 28968 entries, from stdin
+
+total time to read A matrix:       0.015904 sec
+
+n 5242 # edges 14484
+U=triu(A) time:        0.000169 sec
+read A, create U memory usage: 0.00121148 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.000250 sec
+# triangles 48260
+
+tricount time:         0.000819 sec (dot product method)
+tri+prep time:         0.001238 sec (incl time to compute L and U)
+compute C time:        0.000698 sec
+reduce (C) time:       0.000120 sec
+rate      11.70 million edges/sec (incl time for U=triu(A))
+rate      17.69 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.00121161 GB
+
+----------------------------------- outer product method:
+tricount time:         0.000647 sec (outer product method)
+tri+prep time:         0.000898 sec (incl time to compute L)
+compute C time:        0.000528 sec
+reduce (C) time:       0.000119 sec
+rate      16.13 million edges/sec (incl time for L=tril(A))
+rate      22.37 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.00121148 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/ca-HepPh/ca-HepPh_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 236978
+nrows 12008 ncols 12008
+time to prune self-edges:     0.000311
+time to build the graph with GrB_Matrix_build:     0.002299
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.002833
+matrix 12008 by 12008, 236978 entries, from stdin
+
+total time to read A matrix:       0.124402 sec
+
+n 12008 # edges 118489
+U=triu(A) time:        0.000941 sec
+read A, create U memory usage: 0.00891635 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.001359 sec
+# triangles 3358499
+
+tricount time:         0.024937 sec (dot product method)
+tri+prep time:         0.027237 sec (incl time to compute L and U)
+compute C time:        0.023507 sec
+reduce (C) time:       0.001430 sec
+rate       4.35 million edges/sec (incl time for U=triu(A))
+rate       4.75 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.00891648 GB
+
+----------------------------------- outer product method:
+tricount time:         0.018863 sec (outer product method)
+tri+prep time:         0.020222 sec (incl time to compute L)
+compute C time:        0.017438 sec
+reduce (C) time:       0.001425 sec
+rate       5.86 million edges/sec (incl time for L=tril(A))
+rate       6.28 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.00891635 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/ca-HepTh/ca-HepTh_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 51946
+nrows 9877 ncols 9877
+time to prune self-edges:     0.000069
+time to build the graph with GrB_Matrix_build:     0.000734
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.000735
+matrix 9877 by 9877, 51946 entries, from stdin
+
+total time to read A matrix:       0.028311 sec
+
+n 9877 # edges 25973
+U=triu(A) time:        0.000298 sec
+read A, create U memory usage: 0.00218701 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.000447 sec
+# triangles 28339
+
+tricount time:         0.001286 sec (dot product method)
+tri+prep time:         0.002031 sec (incl time to compute L and U)
+compute C time:        0.001112 sec
+reduce (C) time:       0.000174 sec
+rate      12.79 million edges/sec (incl time for U=triu(A))
+rate      20.19 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.00218714 GB
+
+----------------------------------- outer product method:
+tricount time:         0.001056 sec (outer product method)
+tri+prep time:         0.001503 sec (incl time to compute L)
+compute C time:        0.000882 sec
+reduce (C) time:       0.000174 sec
+rate      17.28 million edges/sec (incl time for L=tril(A))
+rate      24.59 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.00218701 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/email-Enron/email-Enron_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 367662
+nrows 36692 ncols 36692
+time to prune self-edges:     0.000501
+time to build the graph with GrB_Matrix_build:     0.004017
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.004742
+matrix 36692 by 36692, 367662 entries, from stdin
+
+total time to read A matrix:       0.199897 sec
+
+n 36692 # edges 183831
+U=triu(A) time:        0.001680 sec
+read A, create U memory usage: 0.0144109 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.002430 sec
+# triangles 727044
+
+tricount time:         0.028159 sec (dot product method)
+tri+prep time:         0.032269 sec (incl time to compute L and U)
+compute C time:        0.026319 sec
+reduce (C) time:       0.001840 sec
+rate       5.70 million edges/sec (incl time for U=triu(A))
+rate       6.53 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.014411 GB
+
+----------------------------------- outer product method:
+tricount time:         0.019809 sec (outer product method)
+tri+prep time:         0.022240 sec (incl time to compute L)
+compute C time:        0.017973 sec
+reduce (C) time:       0.001836 sec
+rate       8.27 million edges/sec (incl time for L=tril(A))
+rate       9.28 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.0144109 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/facebook_combined/facebook_combined_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 176468
+nrows 4039 ncols 4039
+time to prune self-edges:     0.000232
+time to build the graph with GrB_Matrix_build:     0.001584
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.001706
+matrix 4039 by 4039, 176468 entries, from stdin
+
+total time to read A matrix:       0.090067 sec
+
+n 4039 # edges 88234
+U=triu(A) time:        0.000641 sec
+read A, create U memory usage: 0.00648299 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.001058 sec
+# triangles 1612010
+
+tricount time:         0.017476 sec (dot product method)
+tri+prep time:         0.019175 sec (incl time to compute L and U)
+compute C time:        0.016334 sec
+reduce (C) time:       0.001142 sec
+rate       4.60 million edges/sec (incl time for U=triu(A))
+rate       5.05 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.00648311 GB
+
+----------------------------------- outer product method:
+tricount time:         0.011937 sec (outer product method)
+tri+prep time:         0.012995 sec (incl time to compute L)
+compute C time:        0.010791 sec
+reduce (C) time:       0.001146 sec
+rate       6.79 million edges/sec (incl time for L=tril(A))
+rate       7.39 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.00648299 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/loc-brightkite_edges/loc-brightkite_edges_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 428156
+nrows 58228 ncols 58228
+time to prune self-edges:     0.000618
+time to build the graph with GrB_Matrix_build:     0.004787
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.005920
+matrix 58228 by 58228, 428156 entries, from stdin
+
+total time to read A matrix:       0.232589 sec
+
+n 58228 # edges 214078
+U=triu(A) time:        0.002331 sec
+read A, create U memory usage: 0.0172778 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.003100 sec
+# triangles 494728
+
+tricount time:         0.020848 sec (dot product method)
+tri+prep time:         0.026279 sec (incl time to compute L and U)
+compute C time:        0.019553 sec
+reduce (C) time:       0.001296 sec
+rate       8.15 million edges/sec (incl time for U=triu(A))
+rate      10.27 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.0172779 GB
+
+----------------------------------- outer product method:
+tricount time:         0.013835 sec (outer product method)
+tri+prep time:         0.016934 sec (incl time to compute L)
+compute C time:        0.012534 sec
+reduce (C) time:       0.001300 sec
+rate      12.64 million edges/sec (incl time for L=tril(A))
+rate      15.47 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.0172778 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/loc-gowalla_edges/loc-gowalla_edges_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 1900654
+nrows 196591 ncols 196591
+time to prune self-edges:     0.007830
+time to build the graph with GrB_Matrix_build:     0.022688
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.027872
+matrix 196591 by 196591, 1900654 entries, from stdin
+
+total time to read A matrix:       1.061958 sec
+
+n 196591 # edges 950327
+U=triu(A) time:        0.008752 sec
+read A, create U memory usage: 0.0747153 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.012792 sec
+# triangles 2273138
+
+tricount time:         0.151876 sec (dot product method)
+tri+prep time:         0.173420 sec (incl time to compute L and U)
+compute C time:        0.144794 sec
+reduce (C) time:       0.007081 sec
+rate       5.48 million edges/sec (incl time for U=triu(A))
+rate       6.26 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.0747155 GB
+
+----------------------------------- outer product method:
+tricount time:         0.179354 sec (outer product method)
+tri+prep time:         0.192146 sec (incl time to compute L)
+compute C time:        0.172282 sec
+reduce (C) time:       0.007072 sec
+rate       4.95 million edges/sec (incl time for L=tril(A))
+rate       5.30 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.0747153 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/oregon1_010331/oregon1_010331_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 44004
+nrows 10670 ncols 10670
+time to prune self-edges:     0.000059
+time to build the graph with GrB_Matrix_build:     0.000583
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.000654
+matrix 10670 by 10670, 44004 entries, from stdin
+
+total time to read A matrix:       0.023841 sec
+
+n 10670 # edges 22002
+U=triu(A) time:        0.000265 sec
+read A, create U memory usage: 0.00192647 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.000367 sec
+# triangles 17144
+
+tricount time:         0.001287 sec (dot product method)
+tri+prep time:         0.001919 sec (incl time to compute L and U)
+compute C time:        0.001195 sec
+reduce (C) time:       0.000092 sec
+rate      11.46 million edges/sec (incl time for U=triu(A))
+rate      17.09 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.0019266 GB
+
+----------------------------------- outer product method:
+tricount time:         0.001787 sec (outer product method)
+tri+prep time:         0.002153 sec (incl time to compute L)
+compute C time:        0.001697 sec
+reduce (C) time:       0.000090 sec
+rate      10.22 million edges/sec (incl time for L=tril(A))
+rate      12.31 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.00192647 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/oregon1_010407/oregon1_010407_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 43998
+nrows 10729 ncols 10729
+time to prune self-edges:     0.000059
+time to build the graph with GrB_Matrix_build:     0.000564
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.000650
+matrix 10729 by 10729, 43998 entries, from stdin
+
+total time to read A matrix:       0.023561 sec
+
+n 10729 # edges 21999
+U=triu(A) time:        0.000269 sec
+read A, create U memory usage: 0.00192815 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.000365 sec
+# triangles 15834
+
+tricount time:         0.001256 sec (dot product method)
+tri+prep time:         0.001890 sec (incl time to compute L and U)
+compute C time:        0.001166 sec
+reduce (C) time:       0.000090 sec
+rate      11.64 million edges/sec (incl time for U=triu(A))
+rate      17.52 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.00192827 GB
+
+----------------------------------- outer product method:
+tricount time:         0.001789 sec (outer product method)
+tri+prep time:         0.002155 sec (incl time to compute L)
+compute C time:        0.001701 sec
+reduce (C) time:       0.000089 sec
+rate      10.21 million edges/sec (incl time for L=tril(A))
+rate      12.30 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.00192815 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/oregon1_010414/oregon1_010414_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 44938
+nrows 10790 ncols 10790
+time to prune self-edges:     0.000060
+time to build the graph with GrB_Matrix_build:     0.000616
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.000657
+matrix 10790 by 10790, 44938 entries, from stdin
+
+total time to read A matrix:       0.024345 sec
+
+n 10790 # edges 22469
+U=triu(A) time:        0.000272 sec
+read A, create U memory usage: 0.00196394 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.000371 sec
+# triangles 18237
+
+tricount time:         0.001314 sec (dot product method)
+tri+prep time:         0.001957 sec (incl time to compute L and U)
+compute C time:        0.001218 sec
+reduce (C) time:       0.000096 sec
+rate      11.48 million edges/sec (incl time for U=triu(A))
+rate      17.10 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.00196407 GB
+
+----------------------------------- outer product method:
+tricount time:         0.001934 sec (outer product method)
+tri+prep time:         0.002304 sec (incl time to compute L)
+compute C time:        0.001839 sec
+reduce (C) time:       0.000095 sec
+rate       9.75 million edges/sec (incl time for L=tril(A))
+rate      11.62 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.00196394 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/oregon1_010421/oregon1_010421_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 45494
+nrows 10859 ncols 10859
+time to prune self-edges:     0.000061
+time to build the graph with GrB_Matrix_build:     0.000653
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.000660
+matrix 10859 by 10859, 45494 entries, from stdin
+
+total time to read A matrix:       0.024573 sec
+
+n 10859 # edges 22747
+U=triu(A) time:        0.000274 sec
+read A, create U memory usage: 0.00198616 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.000394 sec
+# triangles 19108
+
+tricount time:         0.001337 sec (dot product method)
+tri+prep time:         0.002005 sec (incl time to compute L and U)
+compute C time:        0.001239 sec
+reduce (C) time:       0.000098 sec
+rate      11.34 million edges/sec (incl time for U=triu(A))
+rate      17.01 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.00198629 GB
+
+----------------------------------- outer product method:
+tricount time:         0.001952 sec (outer product method)
+tri+prep time:         0.002347 sec (incl time to compute L)
+compute C time:        0.001856 sec
+reduce (C) time:       0.000097 sec
+rate       9.69 million edges/sec (incl time for L=tril(A))
+rate      11.65 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.00198616 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/oregon1_010428/oregon1_010428_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 44986
+nrows 10886 ncols 10886
+time to prune self-edges:     0.000060
+time to build the graph with GrB_Matrix_build:     0.000647
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.000657
+matrix 10886 by 10886, 44986 entries, from stdin
+
+total time to read A matrix:       0.024445 sec
+
+n 10886 # edges 22493
+U=triu(A) time:        0.000273 sec
+read A, create U memory usage: 0.00196874 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.000381 sec
+# triangles 17645
+
+tricount time:         0.001293 sec (dot product method)
+tri+prep time:         0.001947 sec (incl time to compute L and U)
+compute C time:        0.001199 sec
+reduce (C) time:       0.000094 sec
+rate      11.55 million edges/sec (incl time for U=triu(A))
+rate      17.39 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.00196887 GB
+
+----------------------------------- outer product method:
+tricount time:         0.001918 sec (outer product method)
+tri+prep time:         0.002299 sec (incl time to compute L)
+compute C time:        0.001826 sec
+reduce (C) time:       0.000092 sec
+rate       9.78 million edges/sec (incl time for L=tril(A))
+rate      11.73 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.00196874 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/oregon1_010505/oregon1_010505_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 45214
+nrows 10943 ncols 10943
+time to prune self-edges:     0.000061
+time to build the graph with GrB_Matrix_build:     0.000574
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.000668
+matrix 10943 by 10943, 45214 entries, from stdin
+
+total time to read A matrix:       0.024637 sec
+
+n 10943 # edges 22607
+U=triu(A) time:        0.000275 sec
+read A, create U memory usage: 0.00197877 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.000389 sec
+# triangles 17597
+
+tricount time:         0.001287 sec (dot product method)
+tri+prep time:         0.001951 sec (incl time to compute L and U)
+compute C time:        0.001193 sec
+reduce (C) time:       0.000094 sec
+rate      11.59 million edges/sec (incl time for U=triu(A))
+rate      17.56 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.0019789 GB
+
+----------------------------------- outer product method:
+tricount time:         0.001913 sec (outer product method)
+tri+prep time:         0.002302 sec (incl time to compute L)
+compute C time:        0.001821 sec
+reduce (C) time:       0.000092 sec
+rate       9.82 million edges/sec (incl time for L=tril(A))
+rate      11.82 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.00197877 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/oregon1_010512/oregon1_010512_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 45354
+nrows 11011 ncols 11011
+time to prune self-edges:     0.000061
+time to build the graph with GrB_Matrix_build:     0.000574
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.000664
+matrix 11011 by 11011, 45354 entries, from stdin
+
+total time to read A matrix:       0.024658 sec
+
+n 11011 # edges 22677
+U=triu(A) time:        0.000276 sec
+read A, create U memory usage: 0.00198599 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.000385 sec
+# triangles 17598
+
+tricount time:         0.001294 sec (dot product method)
+tri+prep time:         0.001955 sec (incl time to compute L and U)
+compute C time:        0.001200 sec
+reduce (C) time:       0.000094 sec
+rate      11.60 million edges/sec (incl time for U=triu(A))
+rate      17.52 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.00198611 GB
+
+----------------------------------- outer product method:
+tricount time:         0.001916 sec (outer product method)
+tri+prep time:         0.002301 sec (incl time to compute L)
+compute C time:        0.001824 sec
+reduce (C) time:       0.000093 sec
+rate       9.85 million edges/sec (incl time for L=tril(A))
+rate      11.83 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.00198599 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/oregon1_010519/oregon1_010519_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 45448
+nrows 11051 ncols 11051
+time to prune self-edges:     0.000061
+time to build the graph with GrB_Matrix_build:     0.000579
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.000667
+matrix 11051 by 11051, 45448 entries, from stdin
+
+total time to read A matrix:       0.024516 sec
+
+n 11051 # edges 22724
+U=triu(A) time:        0.000277 sec
+read A, create U memory usage: 0.00199065 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.000518 sec
+# triangles 17677
+
+tricount time:         0.001296 sec (dot product method)
+tri+prep time:         0.002091 sec (incl time to compute L and U)
+compute C time:        0.001202 sec
+reduce (C) time:       0.000094 sec
+rate      10.87 million edges/sec (incl time for U=triu(A))
+rate      17.53 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.00199078 GB
+
+----------------------------------- outer product method:
+tricount time:         0.001919 sec (outer product method)
+tri+prep time:         0.002437 sec (incl time to compute L)
+compute C time:        0.001827 sec
+reduce (C) time:       0.000093 sec
+rate       9.32 million edges/sec (incl time for L=tril(A))
+rate      11.84 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.00199065 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/oregon1_010526/oregon1_010526_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 46818
+nrows 11174 ncols 11174
+time to prune self-edges:     0.000063
+time to build the graph with GrB_Matrix_build:     0.000581
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.000680
+matrix 11174 by 11174, 46818 entries, from stdin
+
+total time to read A matrix:       0.025334 sec
+
+n 11174 # edges 23409
+U=triu(A) time:        0.000283 sec
+read A, create U memory usage: 0.0020439 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.000389 sec
+# triangles 19894
+
+tricount time:         0.001385 sec (dot product method)
+tri+prep time:         0.002056 sec (incl time to compute L and U)
+compute C time:        0.001283 sec
+reduce (C) time:       0.000101 sec
+rate      11.39 million edges/sec (incl time for U=triu(A))
+rate      16.91 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.00204403 GB
+
+----------------------------------- outer product method:
+tricount time:         0.002012 sec (outer product method)
+tri+prep time:         0.002401 sec (incl time to compute L)
+compute C time:        0.001912 sec
+reduce (C) time:       0.000100 sec
+rate       9.75 million edges/sec (incl time for L=tril(A))
+rate      11.63 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.0020439 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/oregon2_010331/oregon2_010331_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 62360
+nrows 10900 ncols 10900
+time to prune self-edges:     0.000083
+time to build the graph with GrB_Matrix_build:     0.000726
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.000820
+matrix 10900 by 10900, 62360 entries, from stdin
+
+total time to read A matrix:       0.033409 sec
+
+n 10900 # edges 31180
+U=triu(A) time:        0.000334 sec
+read A, create U memory usage: 0.00259465 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.000462 sec
+# triangles 82856
+
+tricount time:         0.002666 sec (dot product method)
+tri+prep time:         0.003463 sec (incl time to compute L and U)
+compute C time:        0.002455 sec
+reduce (C) time:       0.000211 sec
+rate       9.00 million edges/sec (incl time for U=triu(A))
+rate      11.70 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.00259478 GB
+
+----------------------------------- outer product method:
+tricount time:         0.002912 sec (outer product method)
+tri+prep time:         0.003375 sec (incl time to compute L)
+compute C time:        0.002703 sec
+reduce (C) time:       0.000210 sec
+rate       9.24 million edges/sec (incl time for L=tril(A))
+rate      10.71 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.00259465 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/oregon2_010407/oregon2_010407_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 61710
+nrows 10981 ncols 10981
+time to prune self-edges:     0.000082
+time to build the graph with GrB_Matrix_build:     0.000706
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.000821
+matrix 10981 by 10981, 61710 entries, from stdin
+
+total time to read A matrix:       0.032971 sec
+
+n 10981 # edges 30855
+U=triu(A) time:        0.000333 sec
+read A, create U memory usage: 0.00257384 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.000464 sec
+# triangles 78138
+
+tricount time:         0.002545 sec (dot product method)
+tri+prep time:         0.003342 sec (incl time to compute L and U)
+compute C time:        0.002341 sec
+reduce (C) time:       0.000204 sec
+rate       9.23 million edges/sec (incl time for U=triu(A))
+rate      12.13 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.00257397 GB
+
+----------------------------------- outer product method:
+tricount time:         0.003010 sec (outer product method)
+tri+prep time:         0.003474 sec (incl time to compute L)
+compute C time:        0.002808 sec
+reduce (C) time:       0.000202 sec
+rate       8.88 million edges/sec (incl time for L=tril(A))
+rate      10.25 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.00257384 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/oregon2_010414/oregon2_010414_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 63522
+nrows 11019 ncols 11019
+time to prune self-edges:     0.000085
+time to build the graph with GrB_Matrix_build:     0.000730
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.000843
+matrix 11019 by 11019, 63522 entries, from stdin
+
+total time to read A matrix:       0.033898 sec
+
+n 11019 # edges 31761
+U=triu(A) time:        0.000339 sec
+read A, create U memory usage: 0.00264029 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.000472 sec
+# triangles 88905
+
+tricount time:         0.002682 sec (dot product method)
+tri+prep time:         0.003493 sec (incl time to compute L and U)
+compute C time:        0.002467 sec
+reduce (C) time:       0.000215 sec
+rate       9.09 million edges/sec (incl time for U=triu(A))
+rate      11.84 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.00264042 GB
+
+----------------------------------- outer product method:
+tricount time:         0.003071 sec (outer product method)
+tri+prep time:         0.003543 sec (incl time to compute L)
+compute C time:        0.002857 sec
+reduce (C) time:       0.000214 sec
+rate       8.96 million edges/sec (incl time for L=tril(A))
+rate      10.34 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.00264029 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/oregon2_010421/oregon2_010421_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 63076
+nrows 11080 ncols 11080
+time to prune self-edges:     0.000084
+time to build the graph with GrB_Matrix_build:     0.000815
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.000831
+matrix 11080 by 11080, 63076 entries, from stdin
+
+total time to read A matrix:       0.034031 sec
+
+n 11080 # edges 31538
+U=triu(A) time:        0.000338 sec
+read A, create U memory usage: 0.00262619 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.000477 sec
+# triangles 82129
+
+tricount time:         0.002608 sec (dot product method)
+tri+prep time:         0.003423 sec (incl time to compute L and U)
+compute C time:        0.002398 sec
+reduce (C) time:       0.000210 sec
+rate       9.21 million edges/sec (incl time for U=triu(A))
+rate      12.09 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.00262631 GB
+
+----------------------------------- outer product method:
+tricount time:         0.003020 sec (outer product method)
+tri+prep time:         0.003498 sec (incl time to compute L)
+compute C time:        0.002812 sec
+reduce (C) time:       0.000209 sec
+rate       9.02 million edges/sec (incl time for L=tril(A))
+rate      10.44 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.00262619 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/oregon2_010428/oregon2_010428_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 62868
+nrows 11113 ncols 11113
+time to prune self-edges:     0.000084
+time to build the graph with GrB_Matrix_build:     0.000829
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.000829
+matrix 11113 by 11113, 62868 entries, from stdin
+
+total time to read A matrix:       0.033543 sec
+
+n 11113 # edges 31434
+U=triu(A) time:        0.000338 sec
+read A, create U memory usage: 0.00261975 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.000469 sec
+# triangles 78000
+
+tricount time:         0.002550 sec (dot product method)
+tri+prep time:         0.003358 sec (incl time to compute L and U)
+compute C time:        0.002343 sec
+reduce (C) time:       0.000207 sec
+rate       9.36 million edges/sec (incl time for U=triu(A))
+rate      12.33 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.00261988 GB
+
+----------------------------------- outer product method:
+tricount time:         0.003039 sec (outer product method)
+tri+prep time:         0.003508 sec (incl time to compute L)
+compute C time:        0.002811 sec
+reduce (C) time:       0.000228 sec
+rate       8.96 million edges/sec (incl time for L=tril(A))
+rate      10.34 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.00261975 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/oregon2_010505/oregon2_010505_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 61886
+nrows 11157 ncols 11157
+time to prune self-edges:     0.000082
+time to build the graph with GrB_Matrix_build:     0.000811
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.000820
+matrix 11157 by 11157, 61886 entries, from stdin
+
+total time to read A matrix:       0.033098 sec
+
+n 11157 # edges 30943
+U=triu(A) time:        0.000336 sec
+read A, create U memory usage: 0.00258581 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.000580 sec
+# triangles 72182
+
+tricount time:         0.002429 sec (dot product method)
+tri+prep time:         0.003345 sec (incl time to compute L and U)
+compute C time:        0.002231 sec
+reduce (C) time:       0.000199 sec
+rate       9.25 million edges/sec (incl time for U=triu(A))
+rate      12.74 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.00258594 GB
+
+----------------------------------- outer product method:
+tricount time:         0.002887 sec (outer product method)
+tri+prep time:         0.003467 sec (incl time to compute L)
+compute C time:        0.002689 sec
+reduce (C) time:       0.000197 sec
+rate       8.93 million edges/sec (incl time for L=tril(A))
+rate      10.72 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.00258581 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/oregon2_010512/oregon2_010512_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 62606
+nrows 11260 ncols 11260
+time to prune self-edges:     0.000083
+time to build the graph with GrB_Matrix_build:     0.000734
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.000829
+matrix 11260 by 11260, 62606 entries, from stdin
+
+total time to read A matrix:       0.033596 sec
+
+n 11260 # edges 31303
+U=triu(A) time:        0.000338 sec
+read A, create U memory usage: 0.00261502 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.000473 sec
+# triangles 72866
+
+tricount time:         0.002455 sec (dot product method)
+tri+prep time:         0.003266 sec (incl time to compute L and U)
+compute C time:        0.002253 sec
+reduce (C) time:       0.000202 sec
+rate       9.58 million edges/sec (incl time for U=triu(A))
+rate      12.75 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.00261515 GB
+
+----------------------------------- outer product method:
+tricount time:         0.002966 sec (outer product method)
+tri+prep time:         0.003438 sec (incl time to compute L)
+compute C time:        0.002765 sec
+reduce (C) time:       0.000201 sec
+rate       9.10 million edges/sec (incl time for L=tril(A))
+rate      10.55 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.00261502 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/oregon2_010519/oregon2_010519_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 64574
+nrows 11375 ncols 11375
+time to prune self-edges:     0.000086
+time to build the graph with GrB_Matrix_build:     0.000747
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.000850
+matrix 11375 by 11375, 64574 entries, from stdin
+
+total time to read A matrix:       0.034535 sec
+
+n 11375 # edges 32287
+U=triu(A) time:        0.000347 sec
+read A, create U memory usage: 0.00268955 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.000492 sec
+# triangles 83709
+
+tricount time:         0.002648 sec (dot product method)
+tri+prep time:         0.003487 sec (incl time to compute L and U)
+compute C time:        0.002435 sec
+reduce (C) time:       0.000213 sec
+rate       9.26 million edges/sec (incl time for U=triu(A))
+rate      12.19 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.00268968 GB
+
+----------------------------------- outer product method:
+tricount time:         0.003118 sec (outer product method)
+tri+prep time:         0.003610 sec (incl time to compute L)
+compute C time:        0.002906 sec
+reduce (C) time:       0.000212 sec
+rate       8.94 million edges/sec (incl time for L=tril(A))
+rate      10.35 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.00268955 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/oregon2_010526/oregon2_010526_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 65460
+nrows 11461 ncols 11461
+time to prune self-edges:     0.000087
+time to build the graph with GrB_Matrix_build:     0.000746
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.000860
+matrix 11461 by 11461, 65460 entries, from stdin
+
+total time to read A matrix:       0.035278 sec
+
+n 11461 # edges 32730
+U=triu(A) time:        0.000354 sec
+read A, create U memory usage: 0.0027242 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.000607 sec
+# triangles 89541
+
+tricount time:         0.002724 sec (dot product method)
+tri+prep time:         0.003685 sec (incl time to compute L and U)
+compute C time:        0.002506 sec
+reduce (C) time:       0.000219 sec
+rate       8.88 million edges/sec (incl time for U=triu(A))
+rate      12.01 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.00272433 GB
+
+----------------------------------- outer product method:
+tricount time:         0.003198 sec (outer product method)
+tri+prep time:         0.003805 sec (incl time to compute L)
+compute C time:        0.002982 sec
+reduce (C) time:       0.000216 sec
+rate       8.60 million edges/sec (incl time for L=tril(A))
+rate      10.24 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.0027242 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/p2p-Gnutella04/p2p-Gnutella04_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 79988
+nrows 10876 ncols 10876
+time to prune self-edges:     0.000106
+time to build the graph with GrB_Matrix_build:     0.000892
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.001010
+matrix 10876 by 10876, 79988 entries, from stdin
+
+total time to read A matrix:       0.042272 sec
+
+n 10876 # edges 39994
+U=triu(A) time:        0.000389 sec
+read A, create U memory usage: 0.00322849 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.000615 sec
+# triangles 934
+
+tricount time:         0.001415 sec (dot product method)
+tri+prep time:         0.002419 sec (incl time to compute L and U)
+compute C time:        0.001401 sec
+reduce (C) time:       0.000014 sec
+rate      16.53 million edges/sec (incl time for U=triu(A))
+rate      28.26 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.00322862 GB
+
+----------------------------------- outer product method:
+tricount time:         0.000995 sec (outer product method)
+tri+prep time:         0.001610 sec (incl time to compute L)
+compute C time:        0.000982 sec
+reduce (C) time:       0.000013 sec
+rate      24.84 million edges/sec (incl time for L=tril(A))
+rate      40.20 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.00322849 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/p2p-Gnutella05/p2p-Gnutella05_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 63678
+nrows 8846 ncols 8846
+time to prune self-edges:     0.000085
+time to build the graph with GrB_Matrix_build:     0.000710
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.000806
+matrix 8846 by 8846, 63678 entries, from stdin
+
+total time to read A matrix:       0.033809 sec
+
+n 8846 # edges 31839
+U=triu(A) time:        0.000318 sec
+read A, create U memory usage: 0.00257637 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.000497 sec
+# triangles 1112
+
+tricount time:         0.001161 sec (dot product method)
+tri+prep time:         0.001977 sec (incl time to compute L and U)
+compute C time:        0.001147 sec
+reduce (C) time:       0.000014 sec
+rate      16.10 million edges/sec (incl time for U=triu(A))
+rate      27.41 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.0025765 GB
+
+----------------------------------- outer product method:
+tricount time:         0.000817 sec (outer product method)
+tri+prep time:         0.001314 sec (incl time to compute L)
+compute C time:        0.000804 sec
+reduce (C) time:       0.000013 sec
+rate      24.23 million edges/sec (incl time for L=tril(A))
+rate      38.97 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.00257637 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/p2p-Gnutella06/p2p-Gnutella06_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 63050
+nrows 8717 ncols 8717
+time to prune self-edges:     0.000084
+time to build the graph with GrB_Matrix_build:     0.000701
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.000792
+matrix 8717 by 8717, 63050 entries, from stdin
+
+total time to read A matrix:       0.033301 sec
+
+n 8717 # edges 31525
+U=triu(A) time:        0.000317 sec
+read A, create U memory usage: 0.00254963 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.000491 sec
+# triangles 1142
+
+tricount time:         0.001104 sec (dot product method)
+tri+prep time:         0.001912 sec (incl time to compute L and U)
+compute C time:        0.001089 sec
+reduce (C) time:       0.000015 sec
+rate      16.49 million edges/sec (incl time for U=triu(A))
+rate      28.55 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.00254976 GB
+
+----------------------------------- outer product method:
+tricount time:         0.000804 sec (outer product method)
+tri+prep time:         0.001295 sec (incl time to compute L)
+compute C time:        0.000790 sec
+reduce (C) time:       0.000014 sec
+rate      24.35 million edges/sec (incl time for L=tril(A))
+rate      39.23 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.00254963 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/p2p-Gnutella08/p2p-Gnutella08_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 41554
+nrows 6301 ncols 6301
+time to prune self-edges:     0.000056
+time to build the graph with GrB_Matrix_build:     0.000486
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.000540
+matrix 6301 by 6301, 41554 entries, from stdin
+
+total time to read A matrix:       0.022246 sec
+
+n 6301 # edges 20777
+U=triu(A) time:        0.000215 sec
+read A, create U memory usage: 0.00169847 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.000338 sec
+# triangles 2383
+
+tricount time:         0.000888 sec (dot product method)
+tri+prep time:         0.001441 sec (incl time to compute L and U)
+compute C time:        0.000865 sec
+reduce (C) time:       0.000023 sec
+rate      14.42 million edges/sec (incl time for U=triu(A))
+rate      23.41 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.00169859 GB
+
+----------------------------------- outer product method:
+tricount time:         0.000578 sec (outer product method)
+tri+prep time:         0.000916 sec (incl time to compute L)
+compute C time:        0.000556 sec
+reduce (C) time:       0.000022 sec
+rate      22.68 million edges/sec (incl time for L=tril(A))
+rate      35.96 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.00169847 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/p2p-Gnutella09/p2p-Gnutella09_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 52026
+nrows 8114 ncols 8114
+time to prune self-edges:     0.000069
+time to build the graph with GrB_Matrix_build:     0.000611
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.000681
+matrix 8114 by 8114, 52026 entries, from stdin
+
+total time to read A matrix:       0.028061 sec
+
+n 8114 # edges 26013
+U=triu(A) time:        0.000272 sec
+read A, create U memory usage: 0.00213347 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.000422 sec
+# triangles 2354
+
+tricount time:         0.000969 sec (dot product method)
+tri+prep time:         0.001663 sec (incl time to compute L and U)
+compute C time:        0.000947 sec
+reduce (C) time:       0.000022 sec
+rate      15.64 million edges/sec (incl time for U=triu(A))
+rate      26.84 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.0021336 GB
+
+----------------------------------- outer product method:
+tricount time:         0.000697 sec (outer product method)
+tri+prep time:         0.001118 sec (incl time to compute L)
+compute C time:        0.000676 sec
+reduce (C) time:       0.000021 sec
+rate      23.26 million edges/sec (incl time for L=tril(A))
+rate      37.34 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.00213347 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/p2p-Gnutella24/p2p-Gnutella24_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 130738
+nrows 26518 ncols 26518
+time to prune self-edges:     0.000172
+time to build the graph with GrB_Matrix_build:     0.001641
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.001895
+matrix 26518 by 26518, 130738 entries, from stdin
+
+total time to read A matrix:       0.071784 sec
+
+n 26518 # edges 65369
+U=triu(A) time:        0.000745 sec
+read A, create U memory usage: 0.00555603 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.001287 sec
+# triangles 986
+
+tricount time:         0.002169 sec (dot product method)
+tri+prep time:         0.004201 sec (incl time to compute L and U)
+compute C time:        0.002153 sec
+reduce (C) time:       0.000016 sec
+rate      15.56 million edges/sec (incl time for U=triu(A))
+rate      30.14 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.00555616 GB
+
+----------------------------------- outer product method:
+tricount time:         0.004051 sec (outer product method)
+tri+prep time:         0.005338 sec (incl time to compute L)
+compute C time:        0.004037 sec
+reduce (C) time:       0.000014 sec
+rate      12.25 million edges/sec (incl time for L=tril(A))
+rate      16.14 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.00555603 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/p2p-Gnutella25/p2p-Gnutella25_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 109410
+nrows 22687 ncols 22687
+time to prune self-edges:     0.000145
+time to build the graph with GrB_Matrix_build:     0.001389
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.001589
+matrix 22687 by 22687, 109410 entries, from stdin
+
+total time to read A matrix:       0.060154 sec
+
+n 22687 # edges 54705
+U=triu(A) time:        0.000626 sec
+read A, create U memory usage: 0.00466563 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.000965 sec
+# triangles 806
+
+tricount time:         0.001783 sec (dot product method)
+tri+prep time:         0.003374 sec (incl time to compute L and U)
+compute C time:        0.001770 sec
+reduce (C) time:       0.000013 sec
+rate      16.21 million edges/sec (incl time for U=triu(A))
+rate      30.68 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.00466576 GB
+
+----------------------------------- outer product method:
+tricount time:         0.003206 sec (outer product method)
+tri+prep time:         0.004170 sec (incl time to compute L)
+compute C time:        0.003194 sec
+reduce (C) time:       0.000012 sec
+rate      13.12 million edges/sec (incl time for L=tril(A))
+rate      17.06 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.00466563 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/p2p-Gnutella30/p2p-Gnutella30_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 176656
+nrows 36682 ncols 36682
+time to prune self-edges:     0.000232
+time to build the graph with GrB_Matrix_build:     0.002223
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.002590
+matrix 36682 by 36682, 176656 entries, from stdin
+
+total time to read A matrix:       0.097054 sec
+
+n 36682 # edges 88328
+U=triu(A) time:        0.000996 sec
+read A, create U memory usage: 0.00753433 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.001541 sec
+# triangles 1590
+
+tricount time:         0.002971 sec (dot product method)
+tri+prep time:         0.005508 sec (incl time to compute L and U)
+compute C time:        0.002947 sec
+reduce (C) time:       0.000023 sec
+rate      16.04 million edges/sec (incl time for U=triu(A))
+rate      29.73 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.00753446 GB
+
+----------------------------------- outer product method:
+tricount time:         0.005479 sec (outer product method)
+tri+prep time:         0.007020 sec (incl time to compute L)
+compute C time:        0.005457 sec
+reduce (C) time:       0.000022 sec
+rate      12.58 million edges/sec (incl time for L=tril(A))
+rate      16.12 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.00753433 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/p2p-Gnutella31/p2p-Gnutella31_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 295784
+nrows 62586 ncols 62586
+time to prune self-edges:     0.000420
+time to build the graph with GrB_Matrix_build:     0.003742
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.004517
+matrix 62586 by 62586, 295784 entries, from stdin
+
+total time to read A matrix:       0.162444 sec
+
+n 62586 # edges 147892
+U=triu(A) time:        0.001724 sec
+read A, create U memory usage: 0.0126519 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.002758 sec
+# triangles 2024
+
+tricount time:         0.005085 sec (dot product method)
+tri+prep time:         0.009567 sec (incl time to compute L and U)
+compute C time:        0.005054 sec
+reduce (C) time:       0.000031 sec
+rate      15.46 million edges/sec (incl time for U=triu(A))
+rate      29.08 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.012652 GB
+
+----------------------------------- outer product method:
+tricount time:         0.009307 sec (outer product method)
+tri+prep time:         0.012065 sec (incl time to compute L)
+compute C time:        0.009278 sec
+reduce (C) time:       0.000029 sec
+rate      12.26 million edges/sec (incl time for L=tril(A))
+rate      15.89 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.0126519 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/roadNet-CA/roadNet-CA_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 5533214
+nrows 1965206 ncols 1965206
+time to prune self-edges:     0.008699
+time to build the graph with GrB_Matrix_build:     0.069888
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.098330
+matrix 1965206 by 1965206, 5533214 entries, from stdin
+
+total time to read A matrix:       3.225427 sec
+
+n 1965206 # edges 2766607
+U=triu(A) time:        0.038672 sec
+read A, create U memory usage: 0.262083 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.056350 sec
+# triangles 120676
+
+tricount time:         0.075642 sec (dot product method)
+tri+prep time:         0.170663 sec (incl time to compute L and U)
+compute C time:        0.073930 sec
+reduce (C) time:       0.001711 sec
+rate      16.21 million edges/sec (incl time for U=triu(A))
+rate      36.58 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.262083 GB
+
+----------------------------------- outer product method:
+tricount time:         0.084609 sec (outer product method)
+tri+prep time:         0.140959 sec (incl time to compute L)
+compute C time:        0.082912 sec
+reduce (C) time:       0.001697 sec
+rate      19.63 million edges/sec (incl time for L=tril(A))
+rate      32.70 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.262083 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/roadNet-PA/roadNet-PA_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 3083796
+nrows 1088092 ncols 1088092
+time to prune self-edges:     0.004761
+time to build the graph with GrB_Matrix_build:     0.039215
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.053960
+matrix 1088092 by 1088092, 3083796 entries, from stdin
+
+total time to read A matrix:       1.759984 sec
+
+n 1088092 # edges 1541898
+U=triu(A) time:        0.021248 sec
+read A, create U memory usage: 0.145836 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.031032 sec
+# triangles 67150
+
+tricount time:         0.041677 sec (dot product method)
+tri+prep time:         0.093956 sec (incl time to compute L and U)
+compute C time:        0.040719 sec
+reduce (C) time:       0.000958 sec
+rate      16.41 million edges/sec (incl time for U=triu(A))
+rate      37.00 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.145837 GB
+
+----------------------------------- outer product method:
+tricount time:         0.045416 sec (outer product method)
+tri+prep time:         0.076448 sec (incl time to compute L)
+compute C time:        0.044455 sec
+reduce (C) time:       0.000962 sec
+rate      20.17 million edges/sec (incl time for L=tril(A))
+rate      33.95 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.145836 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/snap/roadNet-TX/roadNet-TX_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 3843320
+nrows 1379917 ncols 1379917
+time to prune self-edges:     0.006743
+time to build the graph with GrB_Matrix_build:     0.048252
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.067700
+matrix 1379917 by 1379917, 3843320 entries, from stdin
+
+total time to read A matrix:       2.253870 sec
+
+n 1379917 # edges 1921660
+U=triu(A) time:        0.026793 sec
+read A, create U memory usage: 0.182518 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.039104 sec
+# triangles 82869
+
+tricount time:         0.051771 sec (dot product method)
+tri+prep time:         0.117669 sec (incl time to compute L and U)
+compute C time:        0.050590 sec
+reduce (C) time:       0.001181 sec
+rate      16.33 million edges/sec (incl time for U=triu(A))
+rate      37.12 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.182518 GB
+
+----------------------------------- outer product method:
+tricount time:         0.055723 sec (outer product method)
+tri+prep time:         0.094827 sec (incl time to compute L)
+compute C time:        0.054551 sec
+reduce (C) time:       0.001171 sec
+rate      20.26 million edges/sec (incl time for L=tril(A))
+rate      34.49 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.182518 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/synthetic/image-grid/g-1045506-262144_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 2091012
+nrows 262144 ncols 262144
+time to prune self-edges:     0.008246
+time to build the graph with GrB_Matrix_build:     0.022364
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.024168
+matrix 262144 by 262144, 2091012 entries, from stdin
+
+total time to read A matrix:       1.162641 sec
+
+n 262144 # edges 1045506
+U=triu(A) time:        0.009851 sec
+read A, create U memory usage: 0.0836659 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.012583 sec
+# triangles 1044484
+
+tricount time:         0.027120 sec (dot product method)
+tri+prep time:         0.049554 sec (incl time to compute L and U)
+compute C time:        0.019651 sec
+reduce (C) time:       0.007469 sec
+rate      21.10 million edges/sec (incl time for U=triu(A))
+rate      38.55 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.0836661 GB
+
+----------------------------------- outer product method:
+tricount time:         0.023860 sec (outer product method)
+tri+prep time:         0.036443 sec (incl time to compute L)
+compute C time:        0.016397 sec
+reduce (C) time:       0.007463 sec
+rate      28.69 million edges/sec (incl time for L=tril(A))
+rate      43.82 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.0836659 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/synthetic/image-grid/g-16764930-4194304_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 33529860
+nrows 4194304 ncols 4194304
+time to prune self-edges:     0.053411
+time to build the graph with GrB_Matrix_build:     0.307609
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.384985
+matrix 4194304 by 4194304, 33529860 entries, from stdin
+
+total time to read A matrix:      19.627180 sec
+
+n 4194304 # edges 16764930
+U=triu(A) time:        0.167096 sec
+read A, create U memory usage: 1.34129 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.206083 sec
+# triangles 16760836
+
+tricount time:         0.453237 sec (dot product method)
+tri+prep time:         0.826415 sec (incl time to compute L and U)
+compute C time:        0.332249 sec
+reduce (C) time:       0.120988 sec
+rate      20.29 million edges/sec (incl time for U=triu(A))
+rate      36.99 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 1.34129 GB
+
+----------------------------------- outer product method:
+tricount time:         0.393226 sec (outer product method)
+tri+prep time:         0.599308 sec (incl time to compute L)
+compute C time:        0.272340 sec
+reduce (C) time:       0.120885 sec
+rate      27.97 million edges/sec (incl time for L=tril(A))
+rate      42.63 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 1.34129 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/synthetic/image-grid/g-260610-65536_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 521220
+nrows 65536 ncols 65536
+time to prune self-edges:     0.000713
+time to build the graph with GrB_Matrix_build:     0.004961
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.005950
+matrix 65536 by 65536, 521220 entries, from stdin
+
+total time to read A matrix:       0.272649 sec
+
+n 65536 # edges 260610
+U=triu(A) time:        0.002460 sec
+read A, create U memory usage: 0.020862 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.003147 sec
+# triangles 260100
+
+tricount time:         0.006771 sec (dot product method)
+tri+prep time:         0.012378 sec (incl time to compute L and U)
+compute C time:        0.004906 sec
+reduce (C) time:       0.001865 sec
+rate      21.05 million edges/sec (incl time for U=triu(A))
+rate      38.49 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.0208621 GB
+
+----------------------------------- outer product method:
+tricount time:         0.005955 sec (outer product method)
+tri+prep time:         0.009102 sec (incl time to compute L)
+compute C time:        0.004086 sec
+reduce (C) time:       0.001868 sec
+rate      28.63 million edges/sec (incl time for L=tril(A))
+rate      43.76 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.020862 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/synthetic/image-grid/g-268386306-67108864_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 536772612
+nrows 67108864 ncols 67108864
+time to prune self-edges:     0.868045
+time to build the graph with GrB_Matrix_build:     4.894615
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     6.606124
+matrix 67108864 by 67108864, 536772612 entries, from stdin
+
+total time to read A matrix:     331.788135 sec
+
+n 67108864 # edges 268386306
+U=triu(A) time:        2.775573 sec
+read A, create U memory usage: 21.4713 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        3.357515 sec
+# triangles 268369924
+
+tricount time:         7.216435 sec (dot product method)
+tri+prep time:        13.349523 sec (incl time to compute L and U)
+compute C time:        5.280524 sec
+reduce (C) time:       1.935911 sec
+rate      20.10 million edges/sec (incl time for U=triu(A))
+rate      37.19 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 21.4713 GB
+
+----------------------------------- outer product method:
+tricount time:         6.311850 sec (outer product method)
+tri+prep time:         9.669364 sec (incl time to compute L)
+compute C time:        4.376875 sec
+reduce (C) time:       1.934974 sec
+rate      27.76 million edges/sec (incl time for L=tril(A))
+rate      42.52 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 21.4713 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/synthetic/image-grid/g-4188162-1048576_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 8376324
+nrows 1048576 ncols 1048576
+time to prune self-edges:     0.014072
+time to build the graph with GrB_Matrix_build:     0.076799
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.100082
+matrix 1048576 by 1048576, 8376324 entries, from stdin
+
+total time to read A matrix:       4.678419 sec
+
+n 1048576 # edges 4188162
+U=triu(A) time:        0.041167 sec
+read A, create U memory usage: 0.335103 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.051031 sec
+# triangles 4186116
+
+tricount time:         0.111936 sec (dot product method)
+tri+prep time:         0.204133 sec (incl time to compute L and U)
+compute C time:        0.081787 sec
+reduce (C) time:       0.030148 sec
+rate      20.52 million edges/sec (incl time for U=triu(A))
+rate      37.42 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.335103 GB
+
+----------------------------------- outer product method:
+tricount time:         0.097468 sec (outer product method)
+tri+prep time:         0.148499 sec (incl time to compute L)
+compute C time:        0.067378 sec
+reduce (C) time:       0.030090 sec
+rate      28.20 million edges/sec (incl time for L=tril(A))
+rate      42.97 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.335103 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/ssget/DIMACS10/hugebubbles-00020_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 63580358
+nrows 21198119 ncols 21198119
+time to prune self-edges:     0.109523
+time to build the graph with GrB_Matrix_build:     0.625152
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     2.955531
+matrix 21198119 by 21198119, 63580358 entries, from stdin
+
+total time to read A matrix:      40.929860 sec
+
+n 21198119 # edges 31790179
+U=triu(A) time:        0.422014 sec
+read A, create U memory usage: 2.96723 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.568389 sec
+# triangles 0
+
+tricount time:         3.077056 sec (dot product method)
+tri+prep time:         4.067459 sec (incl time to compute L and U)
+compute C time:        3.077044 sec
+reduce (C) time:       0.000012 sec
+rate       7.82 million edges/sec (incl time for U=triu(A))
+rate      10.33 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 2.96723 GB
+
+----------------------------------- outer product method:
+tricount time:         2.068689 sec (outer product method)
+tri+prep time:         2.637078 sec (incl time to compute L)
+compute C time:        2.068683 sec
+reduce (C) time:       0.000006 sec
+rate      12.06 million edges/sec (incl time for L=tril(A))
+rate      15.37 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 2.96723 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/ssget/vanHeukelum/cage15_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 94044692
+nrows 5154859 ncols 5154859
+time to prune self-edges:     0.241395
+time to build the graph with GrB_Matrix_build:     0.904855
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     1.256449
+matrix 5154859 by 5154859, 94044692 entries, from stdin
+
+total time to read A matrix:      56.036725 sec
+
+n 5154859 # edges 47022346
+U=triu(A) time:        0.392856 sec
+read A, create U memory usage: 3.55057 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.564620 sec
+# triangles 36106416
+
+tricount time:         2.135948 sec (dot product method)
+tri+prep time:         3.093424 sec (incl time to compute L and U)
+compute C time:        1.796780 sec
+reduce (C) time:       0.339168 sec
+rate      15.20 million edges/sec (incl time for U=triu(A))
+rate      22.01 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 3.55057 GB
+
+----------------------------------- outer product method:
+tricount time:         1.710054 sec (outer product method)
+tri+prep time:         2.274673 sec (incl time to compute L)
+compute C time:        1.370644 sec
+reduce (C) time:       0.339410 sec
+rate      20.67 million edges/sec (incl time for L=tril(A))
+rate      27.50 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 3.55057 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/ssget/Freescale/circuit5M_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 53967852
+nrows 5558326 ncols 5558326
+time to prune self-edges:     0.086556
+time to build the graph with GrB_Matrix_build:     0.481607
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.675077
+matrix 5558326 by 5558326, 53967852 entries, from stdin
+
+total time to read A matrix:      31.166656 sec
+
+n 5558326 # edges 26983926
+U=triu(A) time:        0.263849 sec
+read A, create U memory usage: 2.12071 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.279241 sec
+# triangles 31019473
+
+tricount time:         2.117871 sec (dot product method)
+tri+prep time:         2.660962 sec (incl time to compute L and U)
+compute C time:        1.819676 sec
+reduce (C) time:       0.298195 sec
+rate      10.14 million edges/sec (incl time for U=triu(A))
+rate      12.74 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 2.12071 GB
+
+----------------------------------- outer product method:
+tricount time:       458.863090 sec (outer product method)
+tri+prep time:       459.142331 sec (incl time to compute L)
+compute C time:      458.563054 sec
+reduce (C) time:       0.300036 sec
+rate       0.06 million edges/sec (incl time for L=tril(A))
+rate       0.06 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 2.12071 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/synthetic/graph500-scale18-ef16/graph500-scale18-ef16_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 7600696
+nrows 174147 ncols 174147
+time to prune self-edges:     0.015456
+time to build the graph with GrB_Matrix_build:     0.073895
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.121631
+matrix 174147 by 174147, 7600696 entries, from stdin
+
+total time to read A matrix:       4.201580 sec
+
+n 174147 # edges 3800348
+U=triu(A) time:        0.029753 sec
+read A, create U memory usage: 0.279199 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.038682 sec
+# triangles 82287285
+
+tricount time:         4.574405 sec (dot product method)
+tri+prep time:         4.642840 sec (incl time to compute L and U)
+compute C time:        4.534400 sec
+reduce (C) time:       0.040005 sec
+rate       0.82 million edges/sec (incl time for U=triu(A))
+rate       0.83 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.279199 GB
+
+----------------------------------- outer product method:
+tricount time:         3.081183 sec (outer product method)
+tri+prep time:         3.119865 sec (incl time to compute L)
+compute C time:        3.041244 sec
+reduce (C) time:       0.039939 sec
+rate       1.22 million edges/sec (incl time for L=tril(A))
+rate       1.23 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.279199 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/synthetic/graph500-scale19-ef16/graph500-scale19-ef16_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 15459350
+nrows 335318 ncols 335318
+time to prune self-edges:     0.026555
+time to build the graph with GrB_Matrix_build:     0.137583
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     0.301254
+matrix 335318 by 335318, 15459350 entries, from stdin
+
+total time to read A matrix:       8.776124 sec
+
+n 335318 # edges 7729675
+U=triu(A) time:        0.060362 sec
+read A, create U memory usage: 0.567268 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.077987 sec
+# triangles 186288972
+
+tricount time:        13.025036 sec (dot product method)
+tri+prep time:        13.163385 sec (incl time to compute L and U)
+compute C time:       12.943113 sec
+reduce (C) time:       0.081923 sec
+rate       0.59 million edges/sec (incl time for U=triu(A))
+rate       0.59 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 0.567268 GB
+
+----------------------------------- outer product method:
+tricount time:         8.364423 sec (outer product method)
+tri+prep time:         8.442410 sec (incl time to compute L)
+compute C time:        8.284242 sec
+reduce (C) time:       0.080181 sec
+rate       0.92 million edges/sec (incl time for L=tril(A))
+rate       0.92 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 0.567268 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/synthetic/graph500-scale20-ef16/graph500-scale20-ef16_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 31361722
+nrows 645820 ncols 645820
+time to prune self-edges:     0.047081
+time to build the graph with GrB_Matrix_build:     0.280524
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     1.062475
+matrix 645820 by 645820, 31361722 entries, from stdin
+
+total time to read A matrix:      17.933877 sec
+
+n 645820 # edges 15680861
+U=triu(A) time:        0.122576 sec
+read A, create U memory usage: 1.14969 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.157454 sec
+# triangles 419349784
+
+tricount time:        38.044622 sec (dot product method)
+tri+prep time:        38.324652 sec (incl time to compute L and U)
+compute C time:       37.880702 sec
+reduce (C) time:       0.163920 sec
+rate       0.41 million edges/sec (incl time for U=triu(A))
+rate       0.41 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 1.14969 GB
+
+----------------------------------- outer product method:
+tricount time:        24.362168 sec (outer product method)
+tri+prep time:        24.519622 sec (incl time to compute L)
+compute C time:       24.201368 sec
+reduce (C) time:       0.160800 sec
+rate       0.64 million edges/sec (incl time for L=tril(A))
+rate       0.64 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 1.14969 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/synthetic/graph500-scale21-ef16/graph500-scale21-ef16_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 63463300
+nrows 1243072 ncols 1243072
+time to prune self-edges:     0.102949
+time to build the graph with GrB_Matrix_build:     0.565025
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     3.296369
+matrix 1243072 by 1243072, 63463300 entries, from stdin
+
+total time to read A matrix:      38.270386 sec
+
+n 1243072 # edges 31731650
+U=triu(A) time:        0.246805 sec
+read A, create U memory usage: 2.32446 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.315361 sec
+# triangles 935100883
+
+tricount time:        93.690973 sec (dot product method)
+tri+prep time:        94.253139 sec (incl time to compute L and U)
+compute C time:       93.368338 sec
+reduce (C) time:       0.322636 sec
+rate       0.34 million edges/sec (incl time for U=triu(A))
+rate       0.34 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 2.32446 GB
+
+----------------------------------- outer product method:
+tricount time:        71.892102 sec (outer product method)
+tri+prep time:        72.207463 sec (incl time to compute L)
+compute C time:       71.568377 sec
+reduce (C) time:       0.323724 sec
+rate       0.44 million edges/sec (incl time for L=tril(A))
+rate       0.44 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 2.32446 GB
+
+
+--------------------------------------------------------------------------------
+/research/davisgroup/GraphChallenge/synthetic/graph500-scale22-ef16/graph500-scale22-ef16_adj.tsv.gz
+--------------------------------------------------------------
+ntuples: 128194008
+nrows 2393285 ncols 2393285
+time to prune self-edges:     0.212598
+time to build the graph with GrB_Matrix_build:     1.146059
+make symmetric
+A = (C+C')/2
+A = (C+C')/2 time     9.483730
+matrix 2393285 by 2393285, 128194008 entries, from stdin
+
+total time to read A matrix:      82.664172 sec
+
+n 2393285 # edges 64097004
+U=triu(A) time:        0.495666 sec
+read A, create U memory usage: 4.69157 GB
+
+------------------------------------- dot product method:
+L=tril(A) time:        0.633915 sec
+# triangles 2067392370
+
+tricount time:       257.880090 sec (dot product method)
+tri+prep time:       259.009671 sec (incl time to compute L and U)
+compute C time:      257.232100 sec
+reduce (C) time:       0.647990 sec
+rate       0.25 million edges/sec (incl time for U=triu(A))
+rate       0.25 million edges/sec (just tricount itself)
+
+tricount (dot)   memory usage: 4.69157 GB
+
+----------------------------------- outer product method:
+tricount time:       193.010055 sec (outer product method)
+tri+prep time:       193.643969 sec (incl time to compute L)
+compute C time:      192.368304 sec
+reduce (C) time:       0.641751 sec
+rate       0.33 million edges/sec (incl time for L=tril(A))
+rate       0.33 million edges/sec (just tricount itself)
+
+tricount (outer) memory usage: 4.69157 GB
+

@@ -2,7 +2,7 @@
 // GxB_Vector_select: select entries from a vector
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -19,19 +19,19 @@ GrB_Info GxB_Vector_select          // w<mask> = accum (w, select(u,k))
     const void *k,                  // optional input for select operator
     const GrB_Descriptor desc       // descriptor for w and mask
 )
-{
+{ 
 
     //--------------------------------------------------------------------------
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GxB_Vector_select (w, mask, accum, op, u, k, desc)") ;
-    RETURN_IF_NULL_OR_UNINITIALIZED (w) ;
-    RETURN_IF_UNINITIALIZED (mask) ;
-    RETURN_IF_NULL_OR_UNINITIALIZED (u) ;
+    GB_WHERE ("GxB_Vector_select (w, mask, accum, op, u, k, desc)") ;
+    GB_RETURN_IF_NULL_OR_FAULTY (w) ;
+    GB_RETURN_IF_FAULTY (mask) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (u) ;
 
     // get the descriptor
-    GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, ignore0, ignore1) ;
+    GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, xx1, xx2, xx3) ;
 
     //--------------------------------------------------------------------------
     // select the entries; do not transpose; assemble pending entries
@@ -44,6 +44,7 @@ GrB_Info GxB_Vector_select          // w<mask> = accum (w, select(u,k))
         op,                                 // operator to select the entries
         (GrB_Matrix) u,                     // first input: u
         k,                                  // optional input for select op
-        false)) ;                           // u, not transposed
+        false,                              // u, not transposed
+        Context)) ;
 }
 

@@ -1,7 +1,7 @@
-SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
-VERSION 1.2.0, Beta 4, TODO, 2018
+VERSION 2.2.0, Nov 23, 2018 (BETA3)
 
 SuiteSparse:GraphBLAS is an full implementation of the GraphBLAS standard,
 which defines a set of sparse matrix operations on an extended algebra of
@@ -35,9 +35,6 @@ To compile the library without running the demos or installing it:
 
     make library
 
-NOTE: this package has not yet been ported to Windows.  It uses cmake to build
-the package so porting to Windows should be straight-forward (in progress).
-
 --------------------------------------------------------------------------------
 Files and folders in this GraphBLAS directory:
 
@@ -70,13 +67,16 @@ Tcov            test coverage, requires MATLAB
 
 build           build directory, intially empty
 
+Config          version-dependent files used by CMake
+
+User            user-defined objects at compile-time (*.m4 files)
+
 --------------------------------------------------------------------------------
 
-SPEC: This version fully conforms to GraphBLAS C API Specification 1.1.0.  It
-includes several additional functions and features as extensions to the spec.
-These extensions are tagged with the keyword SPEC: in the code and in the User
-Guide, and in the Include/GraphBLAS.h file.  All functions and objects with the
-name GxB_* are extensions to the spec, as are all macros of the form GXB_*.
-Functions, objects, and macros with prefix GB_* must not be accessed by user
-code.  They are for internal use in GraphBLAS only.
-
+SPEC: This version fully conforms to the version 1.2.0 (May 18, 2018)
+of the GraphBLAS C API Specification.  It includes several additional functions
+and features as extensions to the spec.  These extensions are tagged with the
+keyword SPEC: in the code and in the User Guide, and in the Include/GraphBLAS.h
+file.  All functions, objects, and macros with the name GxB_* are extensions to
+the spec.  Functions, objects, and macros with prefix GB_* must not be accessed
+by user code.  They are for internal use in GraphBLAS only.

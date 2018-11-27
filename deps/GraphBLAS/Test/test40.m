@@ -1,7 +1,7 @@
 function test40
 %TEST40 test GrB_Matrix_extractElement
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 fprintf ('\n ------ quick test of GrB_Matrix_extractElement\n') ;
@@ -18,16 +18,16 @@ for i = double (1:500:m)
     end
 end
 
-ii = double (1:10:m) ;
-jj = double (1:10:n) ;
-ni = length (ii) * length (jj) ;
+i2 = double (1:10:m) ;
+j2 = double (1:10:n) ;
+ni = length (i2) * length (j2) ;
 I = zeros (ni, 1) ;
 J = zeros (ni, 1) ;
 X = zeros (ni, 1) ;
 
 k = 0 ;
-for i = ii
-    for j = jj
+for i = i2
+    for j = j2
         k = k + 1 ;
         I (k) = i ;
         J (k) = j ;
@@ -36,8 +36,8 @@ end
 
 % MATLAB loop 1
 tic
-for i = ii
-    for j = jj
+for i = i2
+    for j = j2
         x1 = full (A (i,j)) ;
     end
 end

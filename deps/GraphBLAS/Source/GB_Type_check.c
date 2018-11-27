@@ -2,7 +2,7 @@
 // GB_Type_check: print a built-in type
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -18,21 +18,24 @@ GrB_Info GB_Type_check      // check a GraphBLAS Type
 (
     const GrB_Type type,    // GraphBLAS type to print and check
     const char *name,       // name of the type from the caller; optional
-    const GB_diagnostic pr  // 0: print nothing, 1: print header and errors,
+    int pr,                 // 0: print nothing, 1: print header and errors,
                             // 2: print brief, 3: print all
+    FILE *f,                // file for output
+    GB_Context Context
 )
-{
+{ 
 
     //--------------------------------------------------------------------------
     // check inputs
     //--------------------------------------------------------------------------
 
-    if (pr > 0) printf ("GraphBLAS type: %s ", NAME) ;
+    if (pr > 0) GBPR ("GraphBLAS type: ") ;
+    if (pr > 0 && name != NULL) GBPR ("%s ", name) ;
 
     if (type == NULL)
-    {
+    { 
         // GrB_error status not modified since this may be an optional argument
-        if (pr > 0) printf ("NULL\n") ;
+        if (pr > 0) GBPR ("NULL\n") ;
         return (GrB_NULL_POINTER) ;
     }
 
@@ -40,39 +43,40 @@ GrB_Info GB_Type_check      // check a GraphBLAS Type
     // check object
     //--------------------------------------------------------------------------
 
-    CHECK_MAGIC (type, "Type") ;
+    GB_CHECK_MAGIC (type, "Type") ;
 
     switch (type->code)
     {
-        case GB_BOOL_code   : if (pr > 0) printf ("bool"     ) ; break ;
-        case GB_INT8_code   : if (pr > 0) printf ("int8_t"   ) ; break ;
-        case GB_UINT8_code  : if (pr > 0) printf ("uint8_t"  ) ; break ;
-        case GB_INT16_code  : if (pr > 0) printf ("int16_t"  ) ; break ;
-        case GB_UINT16_code : if (pr > 0) printf ("uint16_t" ) ; break ;
-        case GB_INT32_code  : if (pr > 0) printf ("int32_t"  ) ; break ;
-        case GB_UINT32_code : if (pr > 0) printf ("uint32_t" ) ; break ;
-        case GB_INT64_code  : if (pr > 0) printf ("int64_t"  ) ; break ;
-        case GB_UINT64_code : if (pr > 0) printf ("uint64_t" ) ; break ;
-        case GB_FP32_code   : if (pr > 0) printf ("float"    ) ; break ;
-        case GB_FP64_code   : if (pr > 0) printf ("double"   ) ; break ;
+        case GB_BOOL_code   : if (pr > 0) GBPR ("bool"     ) ; break ;
+        case GB_INT8_code   : if (pr > 0) GBPR ("int8_t"   ) ; break ;
+        case GB_UINT8_code  : if (pr > 0) GBPR ("uint8_t"  ) ; break ;
+        case GB_INT16_code  : if (pr > 0) GBPR ("int16_t"  ) ; break ;
+        case GB_UINT16_code : if (pr > 0) GBPR ("uint16_t" ) ; break ;
+        case GB_INT32_code  : if (pr > 0) GBPR ("int32_t"  ) ; break ;
+        case GB_UINT32_code : if (pr > 0) GBPR ("uint32_t" ) ; break ;
+        case GB_INT64_code  : if (pr > 0) GBPR ("int64_t"  ) ; break ;
+        case GB_UINT64_code : if (pr > 0) GBPR ("uint64_t" ) ; break ;
+        case GB_FP32_code   : if (pr > 0) GBPR ("float"    ) ; break ;
+        case GB_FP64_code   : if (pr > 0) GBPR ("double"   ) ; break ;
+        case GB_UCT_code    :
         case GB_UDT_code    :
-            if (pr > 0) printf ("user-defined: [%s]", type->name) ;
+            if (pr > 0) GBPR ("user-defined: [%s]", type->name) ;
             break ;
-        default             : if (pr > 0) printf ("unknown type\n") ;
-            return (ERROR (GrB_INVALID_OBJECT, (LOG,
+        default             : if (pr > 0) GBPR ("unknown type\n") ;
+            return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
                 "Type code %d is unknown: %s [%s]",
-                type->code, NAME, type->name))) ;
+                type->code, GB_NAME, type->name))) ;
     }
 
-    if (pr > 0) printf (" size: %zu\n", type->size) ;
+    if (pr > 0) GBPR (" size: %zu\n", type->size) ;
 
-    if (type->size == 0 || type->size != GB_Type_size (type->code, type->size))
-    {
-        if (pr > 0) printf ("Type has an invalid size\n") ;
-        return (ERROR (GrB_INVALID_OBJECT, (LOG,
-            "Type has an invalid size: %s [%s]", NAME, type->name))) ;
+    if (type->size == 0 || type->size != GB_code_size (type->code, type->size))
+    { 
+        if (pr > 0) GBPR ("Type has an invalid size\n") ;
+        return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
+            "Type has an invalid size: %s [%s]", GB_NAME, type->name))) ;
     }
 
-    return (GrB_SUCCESS) ; // not REPORT_SUCCESS; may mask error in caller
+    return (GrB_SUCCESS) ;
 }
 

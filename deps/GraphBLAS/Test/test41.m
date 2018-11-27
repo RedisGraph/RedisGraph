@@ -1,10 +1,10 @@
 function test41
-%TEST41 test AxB symbolic
+%TEST41 test AxB
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
-fprintf ('\n -------------- simple GB_mex_AxB symbolic and numeric tests\n') ;
+fprintf ('\n -------------- simple GB_mex_AxB numeric tests\n') ;
 
 rng ('default') ;
 
@@ -75,15 +75,6 @@ for at = [false true]
                 end
                 toc
                 assert (isequal (S, C)) ;
-
-                E = spones (C) ;
-                fprintf ('GrB sym: ') ;
-                tic
-                S = GB_mex_AxB_symbolic (A, B, at, bt, ct) ;
-                toc
-
-                assert (spok (S) == 1) ;
-                assert (isequal (S, E)) ;
 
         end
     end

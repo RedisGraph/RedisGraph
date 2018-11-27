@@ -2,7 +2,7 @@
 // GrB_init: initialize GraphBLAS
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -32,43 +32,34 @@
 // any global variables relied upon by user-defined operators and before
 // freeing any user-defined types, operators, monoids, or semirings.
 
-// This version of SuiteSparse:GraphBLAS does not actually require a call to
-// GrB_init.  All required global variables are statically initialized to their
-// proper values.  However, for best practice, GrB_init should be called prior
-// to any other call to GraphBLAS functions.
-
 #include "GB.h"
 
 //------------------------------------------------------------------------------
-// All thread local storage is held in a single struct, initialized here
+// Thread local storage
 //------------------------------------------------------------------------------
 
-_Thread_local GB_thread_local_struct GB_thread_local =
-{
-    // error status
-    .info = GrB_SUCCESS,        // last info status of user-callable routines
-    .row = 0,                   // last row index searched for
-    .col = 0,                   // last column index searched for
-    .is_matrix = 0,             // last search matrix (true) or vector (false)
-    .where = "",                // last user-callable function called
-    .file = "",                 // file where error occurred
-    .line = 0,                  // line number where error occurred
-    .details = "",              // details of the error
-    .report = "",               // report created by GrB_error
+// Thread local storage is used to to record the details of the last error
+// encountered for GrB_error.  If the user application is multi-threaded, each
+// thread that calls GraphBLAS needs its own private copy of this report.
 
-    // thread private workspace
-    .Mark = NULL,               // initialized space
-    .Mark_flag = 1,             // current watermark in Mark [...]
-    .Mark_size = 0,             // current size of Mark array
-    .Work = NULL,               // uninitialized space
-    .Work_size = 0,             // current size of Work array
-    .Flag = NULL,               // initialized space
-    .Flag_size = 0,             // size of Flag array
+#if defined (USER_POSIX_THREADS)
+// thread-local storage for POSIX THREADS
+pthread_key_t GB_thread_local_report ;
 
-    // random seed for each thread
-    .seed = 1
+#elif defined (USER_WINDOWS_THREADS)
+// for user applications that use Windows threads:
+#error Windows threading not yet supported
 
-} ;
+#elif defined (USER_ANSI_THREADS)
+// for user applications that use ANSI C11 threads:
+// (this should work per the ANSI C11 specification but is not yet supported)
+_Thread_local char GB_thread_local_report [GB_RLEN+1] = "" ;
+
+#else // USER_OPENMP_THREADS, or USER_NO_THREADS
+// OpenMP user threads, or no user threads: this is the default
+char GB_thread_local_report [GB_RLEN+1] = "" ;
+#pragma omp threadprivate (GB_thread_local_report)
+#endif
 
 //------------------------------------------------------------------------------
 // All Global storage is declared and initialized here
@@ -86,17 +77,29 @@ GB_Global_struct GB_Global =
     // GraphBLAS mode
     .mode = GrB_NONBLOCKING,    // default is nonblocking
 
+    // initialization flag
+    .GrB_init_called = false,   // GrB_init has not yet been called
+
+    // default format
+    .hyper_ratio = GB_HYPER_DEFAULT,
+    .is_csc = (GB_FORMAT_DEFAULT != GxB_BY_ROW)     // default is GxB_BY_ROW
+
+    #ifdef GB_MALLOC_TRACKING
     // malloc tracking, for testing, statistics, and debugging only
-    .nmalloc = 0,               // memory block counter
-    .malloc_debug = false,      // do not test memory handling
-    .malloc_debug_count = 0,    // counter for testing memory handling
-    .inuse = 0,                 // memory space current in use
-    .maxused = 0                // high water memory usage
+    , .nmalloc = 0                // memory block counter
+    , .malloc_debug = false       // do not test memory handling
+    , .malloc_debug_count = 0     // counter for testing memory handling
+    , .inuse = 0                  // memory space current in use
+    , .maxused = 0                // high water memory usage
+    #endif
+
 } ;
 
 //------------------------------------------------------------------------------
 // GrB_init
 //------------------------------------------------------------------------------
+
+// If GraphBLAS is used by multiple user threads, only one can call GrB_init.
 
 GrB_Info GrB_init           // start up GraphBLAS
 (
@@ -108,41 +111,55 @@ GrB_Info GrB_init           // start up GraphBLAS
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GrB_init (mode)") ;
+    GB_WHERE ("GrB_init (mode)") ;
+
+    //--------------------------------------------------------------------------
+    // create the global queue and thread-local storage
+    //--------------------------------------------------------------------------
+
+    GB_CRITICAL (GB_queue_create ( )) ;
+
+    //--------------------------------------------------------------------------
+    // initialize the global queue
+    //--------------------------------------------------------------------------
+
+    // Only one thread should initialize these settings.  If multiple threads
+    // call GrB_init, only the first thread does this work.
 
     if (! (mode == GrB_BLOCKING || mode == GrB_NONBLOCKING))
-    {
-        return (ERROR (GrB_INVALID_VALUE, (LOG,
+    { 
+        // mode is invalid; also report the error for GrB_error.
+        return (GB_ERROR (GrB_INVALID_VALUE, (GB_LOG,
             "Unknown mode: %d; must be %d (GrB_NONBLOCKING) or %d"
             " (GrB_BLOCKING)", mode, GrB_NONBLOCKING, GrB_BLOCKING))) ;
     }
 
-    //--------------------------------------------------------------------------
-    // initialize GraphBLAS
-    //--------------------------------------------------------------------------
+    bool I_was_first ;
 
-    // error status
-    GB_thread_local.info = GrB_SUCCESS ;
-    GB_thread_local.row = 0 ;
-    GB_thread_local.col = 0 ;
-    GB_thread_local.is_matrix = 0 ;
-    GB_thread_local.file = __FILE__ ;
-    GB_thread_local.line = __LINE__ ;
-    GB_thread_local.details [0] = '\0' ;
-    GB_thread_local.report  [0] = '\0' ;
+    GB_CRITICAL (GB_queue_init (mode, &I_was_first)) ;
 
-    // queue of matrices for nonblocking mode and set the mode
-    #pragma omp critical (GB_queue)
-    {
-        // clear the queue
-        GB_Global.queue_head = NULL ;
-
-        // set the mode: blocking or nonblocking
-        GB_Global.mode = mode ;             // default is non-blocking
+    if (! I_was_first)
+    { 
+        return (GB_ERROR (GrB_INVALID_VALUE, (GB_LOG,
+            "GrB_init must not be called twice"))) ;
     }
 
-    // malloc tracking
-    #pragma omp critical (GB_memory)
+    //--------------------------------------------------------------------------
+    // set the global default format
+    //--------------------------------------------------------------------------
+
+    // set the default hypersparsity ratio and CSR/CSC format;  any thread
+    // can do this later as well, so there is no race condition danger.
+
+    GB_Global.hyper_ratio = GB_HYPER_DEFAULT ;
+    GB_Global.is_csc = (GB_FORMAT_DEFAULT != GxB_BY_ROW) ;
+
+    //--------------------------------------------------------------------------
+    // initialize malloc tracking (testing and debugging only)
+    //--------------------------------------------------------------------------
+
+    #ifdef GB_MALLOC_TRACKING
+    // malloc tracking.  This is only for statistics and development.
     {
         GB_Global.nmalloc = 0 ;
         GB_Global.malloc_debug = false ;
@@ -150,19 +167,12 @@ GrB_Info GrB_init           // start up GraphBLAS
         GB_Global.inuse = 0 ;
         GB_Global.maxused = 0 ;
     }
+    #endif
 
-    // workspace
-    GB_thread_local.Mark = NULL ;       // initialized space
-    GB_thread_local.Mark_flag = 1 ;     // current watermark in Mark [...]
-    GB_thread_local.Mark_size = 0 ;     // current size of Mark array
-    GB_thread_local.Work = NULL ;       // uninitialized space
-    GB_thread_local.Work_size = 0 ;     // current size of Work array
-    GB_thread_local.Flag = NULL ;       // initialized space
-    GB_thread_local.Flag_size = 0 ;     // current size of Flag array
+    //--------------------------------------------------------------------------
+    // return result
+    //--------------------------------------------------------------------------
 
-    // random seed
-    GB_thread_local.seed = 1 ;
-
-    return (REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

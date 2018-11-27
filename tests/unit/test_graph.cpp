@@ -15,7 +15,6 @@ extern "C"
 #include "../../src/graph/graph.h"
 #include "../../src/util/arr.h"
 #include "../../src/util/simple_timer.h"
-#include "../../src/GraphBLASExt/tuples_iter.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 #include "../../src/util/datablock/datablock_iterator.h"
 #include "../../src/util/rmalloc.h"
@@ -41,12 +40,14 @@ class GraphTest : public ::testing::Test
   protected:
     static void SetUpTestCase()
     {
-        // Initialize GraphBLAS.
-        GrB_init(GrB_NONBLOCKING);
-        srand(time(NULL));
-
         // Use the malloc family for allocations
         Alloc_Reset();
+
+        // Initialize GraphBLAS.
+        GrB_init(GrB_NONBLOCKING);
+        GxB_set(GxB_FORMAT, GxB_BY_COL); // all matrices in CSC format
+        GxB_set(GxB_HYPER, GxB_NEVER_HYPER); // matrices are never hypersparse
+        srand(time(NULL));
     }
 
     static void TearDownTestCase()

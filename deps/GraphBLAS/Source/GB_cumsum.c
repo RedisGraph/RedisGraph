@@ -2,7 +2,7 @@
 // GB_cumsum: cumlative sum of an array
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -10,16 +10,15 @@
 // Compute the cumulative sum of an array count[0:n], of size n+1
 // in pseudo-MATLAB notation:
 //
+//      k = sum (count [0:n] != 0) ;
 //      count = cumsum ([0 count[0:n-1]]) ;
 //      p = count ;
-//      s = sum (count [0:n])
 //
 // Note that count [n] does not appear in the output count, although it does
 // appear in s.  GraphBLAS uses this function to compute row and column
 // pointers.  On input, count [j] is the number of nonzeros in column j of a
 // matrix, and count [n] is zero.  On output, p [0..n] contains the column
-// pointers of the matrix and the return value s is the total number of
-// nonzeros in the matrix.
+// pointers of the matrix.  k is the number of nonzeros in count [0:n].
 
 #include "GB.h"
 
@@ -42,10 +41,12 @@ int64_t GB_cumsum               // compute the cumulative sum of an array
     // count = cumsum ([0 count[0:n-1]]) ;
     //--------------------------------------------------------------------------
 
+    int64_t k = 0 ;
     int64_t s = 0 ;
     for (int64_t i = 0 ; i <= n ; i++)
-    {
+    { 
         int64_t c = count [i] ;
+        if (c != 0) k++ ;
         count [i] = s ;
         s += c ;
     }
@@ -55,9 +56,14 @@ int64_t GB_cumsum               // compute the cumulative sum of an array
     //--------------------------------------------------------------------------
 
     if (p != NULL)
-    {
+    { 
         memcpy (p, count, (n+1) * sizeof (int64_t)) ;
     }
-    return (s) ;
+
+    //--------------------------------------------------------------------------
+    // return number of nonzeros in count [0:n]
+    //--------------------------------------------------------------------------
+
+    return (k) ;
 }
 

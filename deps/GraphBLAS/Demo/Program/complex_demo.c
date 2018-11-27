@@ -2,7 +2,7 @@
 // GraphBLAS/Demo/Program/complex_demo.c: demo for user-defined complex type
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -38,7 +38,8 @@ void print_complex_matrix (GrB_Matrix A, char *name)
 
     GrB_Matrix_extractTuples_UDT (I, J, X, &nentries, A) ;
 
-    printf ("%s = sparse (%.16g,%.16g) ;\n", name, (double) nrows, (double) ncols) ;
+    printf ("%s = sparse (%.16g,%.16g) ;\n", name,
+        (double) nrows, (double) ncols) ;
     for (int64_t k = 0 ; k < nentries ; k++)
     {
         printf ("    %s (%.16g,%.16g) =  (%20.16g) + (%20.16g)*1i ;\n",

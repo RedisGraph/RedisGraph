@@ -13,7 +13,7 @@
 #include "../graph/graph.h"
 #include "../graph/entities/graph_entity.h"
 #include "../util/skiplist.h"
-#include "../GraphBLASExt/tuples_iter.h"
+#include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 
 #define INDEX_OK 1
 #define INDEX_FAIL 0

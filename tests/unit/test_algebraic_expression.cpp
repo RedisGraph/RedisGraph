@@ -19,6 +19,7 @@ extern "C" {
 #include "../../src/util/simple_timer.h"
 #include "../../src/arithmetic/algebraic_expression.h"
 #include "../../src/util/rmalloc.h"
+#include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 
 #ifdef __cplusplus
 }
@@ -36,13 +37,22 @@ class AlgebraicExpressionTest: public ::testing::Test {
     const char *query_return_intermidate_edge;
     const char *query_return_last_edge;
 
-    void SetUp() {
-        // Initialize GraphBLAS.
-        assert(GrB_init(GrB_NONBLOCKING) == GrB_SUCCESS);
-        srand(time(NULL));
-
+    static void SetUpTestCase() {
         // Use the malloc family for allocations
         Alloc_Reset();
+
+        // Initialize GraphBLAS.
+        GrB_init(GrB_NONBLOCKING);
+        GxB_set(GxB_FORMAT, GxB_BY_COL); // all matrices in CSC format
+        GxB_set(GxB_HYPER, GxB_NEVER_HYPER); // matrices are never hypersparse
+    }
+
+    static void TearDownTestCase() {
+        GrB_finalize();
+    }
+
+    void SetUp() {
+        srand(time(NULL));
         // Create a graph
         g = _build_graph();
 
@@ -61,7 +71,7 @@ class AlgebraicExpressionTest: public ::testing::Test {
     void TearDown() {
         Graph_Free(g);
         QueryGraph_Free(query_graph);
-        GrB_finalize();
+        // GrB_finalize();
     }
 
     void _print_matrix(GrB_Matrix mat) {

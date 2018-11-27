@@ -1,17 +1,17 @@
 //------------------------------------------------------------------------------
-// GB_accum_mask: accumulate results via the Mask and accum operator
+// GB_accum_mask: accumulate results via the mask and accum operator
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
-// C<Mask> = accum (C,T)
+// C<M> = accum (C,T)
 
 // The primary computation of a GraphBLAS operations is done, and the results
 // are in the T matrix.  The T matrix is then used to modify C, via the accum
-// operator and the Mask matrix.
+// operator and the mask matrix M.
 
 // The results are first accumulated into Z via the accum operator.
 
@@ -89,37 +89,39 @@
 
 ----------------------------------------------------------------------------- */
 
-// The next step is C<Mask> = Z.
+// The next step is C<M> = Z.
 
 // This denotes how the matrix Z is written into C, under the control of the
-// Mask (or ~Mask if Mask_complement is true), and the C_replace flag (which
-// indicates that C should be set to zero first.  This is C<Mask>=Z in
+// mask (or ~M if Mask_complement is true), and the C_replace flag (which
+// indicates that C should be set to zero first.  This is C<M>=Z in
 // GraphBLAS notation.  See GB_mask.c, or GB_spec_mask.m for a MATLAB script
 // that describes this step.
 
-// If Mask is not present, C = Z is returned. Otherwise, Mask defines what
-// values of C are modified. If Mask(i,j) is present and nonzero, then
+// If M is not present, C = Z is returned. Otherwise, M defines what
+// values of C are modified. If M(i,j) is present and nonzero, then
 // C(i,j)=Z(i,j) is done.  Otherwise, C(i,j) is left unchanged.
 
-// The descriptor affects how C and Mask are handled.  If the descriptor is
+// The descriptor affects how C and M are handled.  If the descriptor is
 // NULL, defaults are used.
 
-// desc [GB_MASK] = GxB_DEFAULT means to use Mask as-is
-// desc [GB_MASK] = GrB_SCMP means to use the logical negation of Mask
+// desc [GB_MASK] = GxB_DEFAULT means to use M as-is
+// desc [GB_MASK] = GrB_SCMP means to use the logical negation of M
 
 // desc [GB_OUTP] = GxB_DEFAULT means to use C as-is.
 // desc [GB_OUTP] = GrB_REPLACE means to clear C before writing Z into C.
 
 #include "GB.h"
 
-GrB_Info GB_accum_mask          // C<Mask> = accum (C,T)
+GrB_Info GB_accum_mask          // C<M> = accum (C,T)
 (
     GrB_Matrix C,               // input/output matrix for results
-    const GrB_Matrix Mask,      // optional mask for C, unused if NULL
+    const GrB_Matrix M_in,      // optional mask for C, unused if NULL
+    const GrB_Matrix MT_in,     // MT=M' if computed already in the caller
     const GrB_BinaryOp accum,   // optional accum for Z=accum(C,results)
     GrB_Matrix *Thandle,        // results of computation, freed when done
     const bool C_replace,       // if true, clear C first
-    const bool Mask_complement  // if true, complement the Mask
+    const bool Mask_complement, // if true, complement the mask
+    GB_Context Context
 )
 {
 
@@ -127,16 +129,82 @@ GrB_Info GB_accum_mask          // C<Mask> = accum (C,T)
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT_OK (GB_check (C, "C input for C<Mask>=accum(C,T)", 0)) ;
-    ASSERT_OK_OR_NULL (GB_check (Mask, "Mask", 0)) ;
-    ASSERT_OK_OR_NULL (GB_check (accum, "accum", 0)) ;
+    // C and M may be aliased but nothing else
     ASSERT (Thandle != NULL) ;
-    GrB_Matrix T = *Thandle ;
-    ASSERT_OK (GB_check (T, "[T = results of computation]", 0)) ;
+    ASSERT (GB_ALIAS_OK (C, M_in)) ;       // C can be aliased with M_in
 
-    ASSERT (!PENDING (C)) ;     ASSERT (!ZOMBIES (C)) ;
-    ASSERT (!PENDING (Mask)) ;  ASSERT (!ZOMBIES (Mask)) ;
-    ASSERT (!PENDING (T)) ;     ASSERT (!ZOMBIES (T)) ;
+    GrB_Matrix T = *Thandle ;
+    GrB_Matrix MT = NULL ;
+    GrB_Matrix M = M_in ;
+
+    ASSERT_OK (GB_check (C, "C input for C<M>=accum(C,T)", GB0)) ;
+    ASSERT_OK_OR_NULL (GB_check (M, "M for GB_accum_mask", GB0)) ;
+    ASSERT_OK_OR_NULL (GB_check (MT_in, "MT_in for GB_accum_mask", GB0)) ;
+    ASSERT_OK_OR_NULL (GB_check (accum, "accum for GB_accum_mask", GB0)) ;
+
+    // GB_extract can pass in a matrix T that is jumbled, but it does so
+    // only if T->is_csc and C->is_csc are different.  In that case, T is
+    // transposed, so the sort can be skipped.
+    ASSERT_OK_OR_JUMBLED (GB_check (T, "[T = results of computation]", GB0)) ;
+
+    ASSERT (!GB_PENDING (C)) ; ASSERT (!GB_ZOMBIES (C)) ;
+    ASSERT (!GB_PENDING (M)) ; ASSERT (!GB_ZOMBIES (M)) ;
+    ASSERT (!GB_PENDING (T)) ; ASSERT (!GB_ZOMBIES (T)) ;
+
+    ASSERT (GB_NOT_ALIASED_2 (T, C, M)) ;    // T is not aliased with anything
+
+    //--------------------------------------------------------------------------
+    // ensure M and T have the same CSR/CSC format as C
+    //--------------------------------------------------------------------------
+
+    GrB_Info info ;
+
+    if (C->is_csc != T->is_csc)
+    { 
+        // transpose: no typecast, no op, in place of T, jumbled
+        info = GB_transpose (Thandle, NULL, C->is_csc, NULL, NULL, Context) ;
+        if (info != GrB_SUCCESS)
+        { 
+            // out of memory ; Thandle already freed
+            ASSERT (*Thandle == NULL) ;
+            return (info) ;
+        }
+        T = (*Thandle) ;
+    }
+
+    ASSERT_OK (GB_check (T, "[T = transposed]", GB0)) ;
+
+    if (M != NULL && C->is_csc != M->is_csc)
+    {
+        // MT = M' to conform M to the same CSR/CSC format as C.
+        // transpose: typecast, no op, not in place
+        if (MT_in == NULL)
+        { 
+            info = GB_transpose (&MT, GrB_BOOL, C->is_csc, M, NULL, Context) ;
+            if (info != GrB_SUCCESS)
+            { 
+                // out of memory
+                GB_MATRIX_FREE (Thandle) ;
+                return (info) ;
+            }
+            // use the transpose mask
+            M = MT ;
+        }
+        else
+        { 
+            // Use the transpose mask passed in by the caller.
+            // It is the right vlen-by-vdim dimension, but its
+            // CSR/CSC format is ignored.
+            M = MT_in ;
+        }
+    }
+
+    // T and M now conform to the dimensions and CSR/CSC format of C
+    ASSERT (C->vlen == T->vlen && C->vdim == T->vdim) ;
+    ASSERT (C->is_csc == T->is_csc) ;
+    ASSERT (M == NULL || (C->vlen == M->vlen && C->vdim == M->vdim)) ;
+    ASSERT (M == NULL || (C->is_csc == M->is_csc)) ;
+    ASSERT (!GB_PENDING (M)) ; ASSERT (!GB_ZOMBIES (M)) ;
 
     //--------------------------------------------------------------------------
     // Z = accum (C,T) or Z = T if accum not present
@@ -144,81 +212,87 @@ GrB_Info GB_accum_mask          // C<Mask> = accum (C,T)
 
     // see GB_spec_accum.m for a description of this step
 
-    GrB_Matrix Z ;
-    GrB_Info info ;
+    GrB_Matrix Z = NULL ;
 
     if (accum == NULL)
-    {
+    { 
 
         //----------------------------------------------------------------------
         // Z = (ctype) T ;
         //----------------------------------------------------------------------
 
-        // [ Z is just the header; the rest can be allocated by the
-        // transplant if needed.  Z->p must be allocated if T->p is shallow
-        GB_NEW (&Z, C->type, C->nrows, C->ncols, false, T->p_shallow) ;
+        // [ Z is just the header; the rest can be allocated by the transplant
+        // if needed.  Z has the same hypersparsity as T.
+        Z = NULL ;                  // allocate a new header for Z
+        GB_NEW (&Z, C->type, C->vlen, C->vdim, GB_Ap_null, C->is_csc,
+            GB_SAME_HYPER_AS (T->is_hyper), T->hyper_ratio, T->plen) ;
         if (info != GrB_SUCCESS)
-        {
+        { 
             GB_MATRIX_FREE (Thandle) ;
+            GB_MATRIX_FREE (&MT) ;
             return (info) ;
         }
 
         // Transplant T into Z, typecasting if needed, and free T.  This may
-        // need to do a deep copy if T is shallow.  T is normally not shallow,
-        // but there are a few cases in which it can be a shallow copy of the
-        // user's input matrix.  T is freed by GB_Matrix_transplant.
-        // T may have zombies, which are transplanted into Z.
-        info = GB_Matrix_transplant (Z, C->type, Thandle) ;
-        // Z is now initialized, and Z->p, Z->i, and Z->x are allocated ]
+        // need to do a deep copy if T is shallow.  T is always freed by
+        // GB_transplant.
+
+        // FUTURE: use GB_shallow_cast and free Thandle later
+
+        // Z and T have same vlen, vdim, is_csc, is_hyper
+        info = GB_transplant (Z, C->type, Thandle, Context) ;
+        // Z is now initialized, and Z->p, Z->h, Z->i, and Z->x are allocated ]
 
     }
     else
-    {
+    { 
 
         //----------------------------------------------------------------------
         // Z = (ctype) accum (C,T) ;
         //----------------------------------------------------------------------
 
-        // [ allocate Z->p but do not initialize it
-        GB_NEW (&Z, C->type, C->nrows, C->ncols, false, true) ;
-        if (info != GrB_SUCCESS)
-        {
-            GB_MATRIX_FREE (Thandle) ;
-            return (info) ;
-        }
-
-        // Z has the same type as C but the type of C and T can differ
-        ASSERT (Z->type == C->type) ;
-        info = GB_Matrix_add (Z, C, T, accum) ;
-        // Z is now initialized ]
+        info = GB_add (&Z, C->type, C->is_csc, C, T, accum, Context) ;
         GB_MATRIX_FREE (Thandle) ;
     }
 
+    ASSERT (*Thandle == NULL) ;
+
     if (info != GrB_SUCCESS)
-    {
+    { 
         GB_MATRIX_FREE (&Z) ;
+        GB_MATRIX_FREE (&MT) ;
         return (info) ;
     }
 
     // C and Z have the same type
-    ASSERT_OK (GB_check (Z, "Z in accum_mask", 0)) ;
+    ASSERT_OK (GB_check (Z, "Z in accum_mask", GB0)) ;
     ASSERT (Z->type == C->type) ;
 
     //--------------------------------------------------------------------------
-    // C<Mask> = Z
+    // C<M> = Z
     //--------------------------------------------------------------------------
 
-    // see GB_spec_mask.m for a description of this step
-    // apply the mask, storing the results back into C, and free Z
-    ASSERT_OK (GB_check (C, "C<Mask>=Z input", 0)) ;
-    info = GB_mask (C, Mask, &Z, C_replace, Mask_complement) ;
+    // see GB_spec_mask.m for a description of this step.
+
+    // C->hyper_ratio is not modified by GB_mask, which conforms
+    // the hypersparsity of C to that parameter.
+
+    // apply the mask, storing the results back into C, and free Z.
+    ASSERT_OK (GB_check (C, "C<M>=Z input", GB0)) ;
+    info = GB_mask (C, M, &Z, C_replace, Mask_complement, Context) ;
+    ASSERT (Z == NULL) ;
+    ASSERT (!C->p_shallow && !C->h_shallow && !C->i_shallow && !C->x_shallow) ;
+
+    // free the transposed mask, if it was created here
+    GB_MATRIX_FREE (&MT) ;
+
     if (info != GrB_SUCCESS)
-    {
+    { 
+        // out of memory
         return (info) ;
     }
 
-    ASSERT_OK (GB_check (C, "C<Mask>=accum(C,T) output", 0)) ;
-    ASSERT (Z == NULL) ;
-    return (REPORT_SUCCESS)  ;
+    ASSERT_OK (GB_check (C, "C<M>=accum(C,T) output", GB0)) ;
+    return (GrB_SUCCESS)  ;
 }
 

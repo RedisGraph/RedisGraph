@@ -2,12 +2,14 @@
 // GB_mex_Vector_extract: MATLAB interface for w<mask> = accum (w,u(I))
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
 #include "GB_mex.h"
+
+#define USAGE "w = GB_mex_Vector_extract w, mask, accum, u, I, desc)"
 
 #define FREE_ALL                        \
 {                                       \
@@ -15,7 +17,7 @@
     GrB_free (&mask) ;                  \
     GrB_free (&u) ;                     \
     GrB_free (&desc) ;                  \
-    GB_mx_put_global (malloc_debug) ;   \
+    GB_mx_put_global (true, 0) ;        \
 }
 
 void mexFunction
@@ -27,22 +29,24 @@ void mexFunction
 )
 {
 
-    bool malloc_debug = GB_mx_get_global ( ) ;
+    bool malloc_debug = GB_mx_get_global (true) ;
     GrB_Vector w = NULL ;
     GrB_Vector mask = NULL ;
     GrB_Vector u = NULL ;
     GrB_Descriptor desc = NULL ;
+    GrB_Index *I = NULL, ni = 0, I_range [3] ;
+    bool ignore ;
 
     // check inputs
+    GB_WHERE (USAGE) ;
     if (nargout > 1 || nargin < 5 || nargin > 6)
     {
-        mexErrMsgTxt ("Usage: w = GB_mex_Vector_extract "
-            "(w, mask, accum, u, I, desc)");
+        mexErrMsgTxt ("Usage: " USAGE) ;
     }
 
     // get w (make a deep copy)
     #define GET_DEEP_COPY \
-    w = GB_mx_mxArray_to_Vector (pargin [0], "w input", true) ;
+    w = GB_mx_mxArray_to_Vector (pargin [0], "w input", true, true) ;
     #define FREE_DEEP_COPY GrB_free (&w) ;
     GET_DEEP_COPY ;
     if (w == NULL)
@@ -53,7 +57,7 @@ void mexFunction
     mxClassID cclass = GB_mx_Type_to_classID (w->type) ;
 
     // get mask (shallow copy)
-    mask = GB_mx_mxArray_to_Vector (pargin [1], "mask", false) ;
+    mask = GB_mx_mxArray_to_Vector (pargin [1], "mask", false, false) ;
     if (mask == NULL && !mxIsEmpty (pargin [1]))
     {
         FREE_ALL ;
@@ -61,7 +65,7 @@ void mexFunction
     }
 
     // get u (shallow copy)
-    u = GB_mx_mxArray_to_Vector (pargin [3], "A input", false) ;
+    u = GB_mx_mxArray_to_Vector (pargin [3], "A input", false, true) ;
     if (u == NULL)
     {
         FREE_ALL ;
@@ -78,8 +82,7 @@ void mexFunction
     }
 
     // get I
-    GrB_Index *I, ni ; 
-    if (!GB_mx_mxArray_to_indices (&I, pargin [4], &ni))
+    if (!GB_mx_mxArray_to_indices (&I, pargin [4], &ni, I_range, &ignore))
     {
         FREE_ALL ;
         mexErrMsgTxt ("I failed") ;

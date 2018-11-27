@@ -2,7 +2,7 @@
 // GB_mex_Matrix_extractElement: MATLAB interface for x = A(i,j)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -14,11 +14,13 @@
 
 #include "GB_mex.h"
 
+#define USAGE "x = GB_mex_Matrix_extractElement (A, I, J, xclass)"
+
 #define FREE_ALL                        \
 {                                       \
     GB_MATRIX_FREE (&A) ;               \
     GB_FREE_MEMORY (Xtemp, ni, sizeof (double complex)) ; \
-    GB_mx_put_global (malloc_debug) ;   \
+    GB_mx_put_global (true, 0) ;        \
 }
 
 void mexFunction
@@ -30,27 +32,28 @@ void mexFunction
 )
 {
 
-    bool malloc_debug = GB_mx_get_global ( ) ;
+    bool malloc_debug = GB_mx_get_global (true) ;
     GrB_Matrix A = NULL ;
     void *Y = NULL ;
     void *Xtemp = NULL ;
-    GrB_Index *I = NULL, ni = 0 ; 
-    GrB_Index *J = NULL, nj = 0 ; 
     mxClassID xclass ;
     GrB_Type xtype ;
+    GrB_Index *I = NULL, ni = 0, I_range [3] ;
+    GrB_Index *J = NULL, nj = 0, J_range [3] ;
+    bool is_list ;
 
     // check inputs
+    GB_WHERE (USAGE) ;
     if (nargout > 1 || nargin < 3 || nargin > 4)
     {
-        mexErrMsgTxt ("Usage: x = GB_mex_Matrix_extractElement "
-            "(A, I, J, xclass)");
+        mexErrMsgTxt ("Usage: " USAGE) ;
     }
 
     #define GET_DEEP_COPY ;
     #define FREE_DEEP_COPY ;
 
     // get A (shallow copy)
-    A = GB_mx_mxArray_to_Matrix (pargin [0], "A input", false) ;
+    A = GB_mx_mxArray_to_Matrix (pargin [0], "A input", false, true) ;
     if (A == NULL)
     {
         FREE_ALL ;
@@ -59,17 +62,25 @@ void mexFunction
     mxClassID aclass = GB_mx_Type_to_classID (A->type) ;
 
     // get I
-    if (!GB_mx_mxArray_to_indices (&I, pargin [1], &ni))
+    if (!GB_mx_mxArray_to_indices (&I, pargin [1], &ni, I_range, &is_list))
     {
         FREE_ALL ;
         mexErrMsgTxt ("I failed") ;
     }
+    if (!is_list)
+    {
+        mexErrMsgTxt ("I is invalid; must be a list") ;
+    }
 
     // get J
-    if (!GB_mx_mxArray_to_indices (&J, pargin [2], &nj))
+    if (!GB_mx_mxArray_to_indices (&J, pargin [2], &nj, J_range, &is_list))
     {
         FREE_ALL ;
         mexErrMsgTxt ("J failed") ;
+    }
+    if (!is_list)
+    {
+        mexErrMsgTxt ("J is invalid; must be a list") ;
     }
 
     if (ni != nj)
@@ -206,6 +217,7 @@ void mexFunction
             }
             break;
 
+        case GB_UCT_code   :
         case GB_UDT_code   :
             {
                 // user-defined complex type

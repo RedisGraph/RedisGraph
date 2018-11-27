@@ -11,7 +11,7 @@
 #include "op.h"
 #include "../../parser/ast.h"
 #include "../../arithmetic/algebraic_expression.h"
-#include "../../GraphBLASExt/tuples_iter.h"
+#include "../../../deps/GraphBLAS/Include/GraphBLAS.h"
 #include "../../util/vector.h"
 
 /* OP Traverse */
@@ -24,7 +24,7 @@ typedef struct {
     GrB_Matrix M;
     int edgeRelationType;
     Edge *edges;
-    TuplesIter *iter;
+    GxB_MatrixTupleIter *iter;
 } CondTraverse;
 
 /* Creates a new Traverse operation */

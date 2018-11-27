@@ -2,12 +2,14 @@
 // GB_mex_binaryop: parse a binaryop, for testing
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
 #include "GB_mex.h"
+
+#define USAGE "GB_mex_binaryop (binaryop_struct))"
 
 void mexFunction
 (
@@ -19,16 +21,17 @@ void mexFunction
 {
 
     // check inputs
+    GB_WHERE (USAGE) ;
     if (nargin != 1)
     {
-        mexErrMsgTxt ("Usage: GB_mex_binaryop (binaryop_struct))") ;
+        mexErrMsgTxt ("Usage: " USAGE) ;
     }
 
     GrB_BinaryOp binaryop = NULL ;
     GB_mx_mxArray_to_BinaryOp (&binaryop, pargin [0], "binaryop",
         GB_PLUS_opcode, mxDOUBLE_CLASS, false, false) ;
 
-    GrB_Info info = GB_check (binaryop, "binaryop", 3) ;
+    GrB_Info info = GB_check (binaryop, "binaryop", GB3) ;
     if (info != GrB_SUCCESS)
     {
         mexErrMsgTxt (GrB_error ( )) ;

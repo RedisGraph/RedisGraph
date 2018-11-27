@@ -2,7 +2,7 @@
 // GB_Descriptor_get: get the status of a descriptor
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -53,6 +53,13 @@
 //      as-is.  Otherwise, it is transposed first.  That is, the results are
 //      the same as if the transpose of the matrix was passed to the method.
 
+//  desc->axb                   see GraphBLAS.h; can be:
+
+//      GrB_DEFAULT         automatic selection
+//      GxB_AxB_GUSTAVSON   gather-scatter saxpy method
+//      GxB_AxB_HEAP        heap-based saxpy method
+//      GxB_AxB_DOT         dot product
+
 #include "GB.h"
 
 GrB_Info GB_Descriptor_get      // get the contents of a descriptor
@@ -61,16 +68,18 @@ GrB_Info GB_Descriptor_get      // get the contents of a descriptor
     bool *C_replace,            // if true replace C before C<Mask>=Z
     bool *Mask_comp,            // if true use logical negation of Mask
     bool *In0_transpose,        // if true transpose first input
-    bool *In1_transpose         // if true transpose second input
+    bool *In1_transpose,        // if true transpose second input
+    GrB_Desc_Value *AxB_method, // method for C=A*B
+    GB_Context Context
 )
-{
+{ 
 
     //--------------------------------------------------------------------------
     // check inputs
     //--------------------------------------------------------------------------
 
     // desc may be null, but if not NULL it must be initialized
-    RETURN_IF_UNINITIALIZED (desc) ;
+    GB_RETURN_IF_FAULTY (desc) ;
 
     //--------------------------------------------------------------------------
     // get the contents of the descriptor
@@ -81,43 +90,51 @@ GrB_Info GB_Descriptor_get      // get the contents of a descriptor
     GrB_Desc_Value Mask_desc = GxB_DEFAULT ;
     GrB_Desc_Value In0_desc  = GxB_DEFAULT ;
     GrB_Desc_Value In1_desc  = GxB_DEFAULT ;
+    GrB_Desc_Value AxB_desc  = GxB_DEFAULT ;
 
     // non-defaults descriptors
     if (desc != NULL)
-    {
+    { 
         // get the contents
         C_desc    = desc->out ;   // DEFAULT or REPLACE
         Mask_desc = desc->mask ;  // DEFAULT or SCMP
         In0_desc  = desc->in0 ;   // DEFAULT or TRAN
         In1_desc  = desc->in1 ;   // DEFAULT or TRAN
+        AxB_desc  = desc->axb ;   // DEFAULT, GUSTAVSON, HEAP, or DOT
     }
 
     // check for valid values of each descriptor field
     if (!(C_desc    == GxB_DEFAULT || C_desc    == GrB_REPLACE) ||
         !(Mask_desc == GxB_DEFAULT || Mask_desc == GrB_SCMP) ||
         !(In0_desc  == GxB_DEFAULT || In0_desc  == GrB_TRAN) ||
-        !(In1_desc  == GxB_DEFAULT || In1_desc  == GrB_TRAN))
-    {
-        return (ERROR (GrB_INVALID_OBJECT, (LOG, "Descriptor invalid"))) ;
+        !(In1_desc  == GxB_DEFAULT || In1_desc  == GrB_TRAN) ||
+        !(AxB_desc  == GxB_DEFAULT || AxB_desc  == GxB_AxB_GUSTAVSON ||
+          AxB_desc  == GxB_AxB_DOT || AxB_desc  == GxB_AxB_HEAP))
+    { 
+        return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG, "Descriptor invalid"))) ;
     }
 
     if (C_replace != NULL)
-    {
+    { 
         *C_replace = (C_desc == GrB_REPLACE) ;
     }
     if (Mask_comp != NULL)
-    {
+    { 
         *Mask_comp = (Mask_desc == GrB_SCMP) ;
     }
     if (In0_transpose != NULL)
-    {
+    { 
         *In0_transpose = (In0_desc == GrB_TRAN) ;
     }
     if (In1_transpose != NULL)
-    {
+    { 
         *In1_transpose = (In1_desc == GrB_TRAN) ;
     }
+    if (AxB_method != NULL)
+    { 
+        *AxB_method = AxB_desc ;
+    }
 
-    return (REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

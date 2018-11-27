@@ -21,6 +21,14 @@ class GxB_DeleteTest: public ::testing::Test {
     static void SetUpTestCase() {
         // Use the malloc family for allocations
         Alloc_Reset();
+        ASSERT_EQ(GrB_init(GrB_NONBLOCKING), GrB_SUCCESS);
+        GxB_set(GxB_FORMAT, GxB_BY_COL); // all matrices in CSC format
+        GxB_set(GxB_HYPER, GxB_NEVER_HYPER); // matrices are never hypersparse
+    }
+
+    static void TearDownTestCase()
+    {
+        GrB_finalize();
     }
 };
 

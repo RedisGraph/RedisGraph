@@ -1,7 +1,7 @@
 function testc7
 %TESTC7 test complex assign
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 rng ('default')
@@ -27,6 +27,7 @@ for m = [1 5 10 50]
 
                 I0 = uint64 (I-1) ;
                 J0 = uint64 (J-1) ;
+
                 C2 = GB_mex_subassign (C, [ ], [ ], A, I0, J0, []) ;
                 assert (isequal (C1, C2.matrix)) ;
 
@@ -42,6 +43,7 @@ for m = [1 5 10 50]
                 assert (isequal (C1, C2.matrix)) ;
 
             end
+            fprintf ('.') ;
         end
 
         C = GB_mex_random (m, n, 100*(m*n), 1, seed) ; seed = seed + 1 ;
@@ -57,8 +59,9 @@ for m = [1 5 10 50]
         c2 = GB_mex_reduce_to_scalar (cin, '', 'plus', C3) ;
         assert (isequal (c1,c2)) ;
 
+
     end
 end
 
-fprintf ('testc7: all complex assign C(I,J)=A tests passed\n') ;
+fprintf ('\ntestc7: all complex assign C(I,J)=A tests passed\n') ;
 

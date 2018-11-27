@@ -1,4 +1,5 @@
 function axb_compare_template (multop, do_boolean, imult, fmult)
+%AXB_COMPARE_TEMPLATE create a function for a semiring with a TxT->bool multiplier
 
 if (nargin < 4)
     fmult = imult ;
@@ -67,4 +68,5 @@ axb_method ('eq', multop, add, imult, 'bool', 'int64_t' , 'true') ;
 axb_method ('eq', multop, add, imult, 'bool', 'uint64_t', 'true') ;
 axb_method ('eq', multop, add, fmult, 'bool', 'float'   , 'true') ;
 axb_method ('eq', multop, add, fmult, 'bool', 'double'  , 'true') ;
+
 

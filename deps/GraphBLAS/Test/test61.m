@@ -1,7 +1,7 @@
 function test61
-%TEST61 test GrB_eMult performance
+%TEST61 performance test of GrB_eMult
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 fprintf ('\n----------------------------- eMult performance tests\n') ;

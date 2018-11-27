@@ -1,7 +1,7 @@
 function test23(fulltest)
 %TEST23 test GrB_*_build
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 if (nargin < 1)
@@ -109,7 +109,11 @@ for k0 = 1:size (problems,1) ;
                     % op.opname) ;
                     % fprintf ('opclass: %s ', op.opclass) ;
                     % fprintf ('xclass: %s ', xclass) ;
-                    A = GB_mex_Matrix_build (I, J, X, nrows, ncols, op, cclass);
+
+                    for A_is_csc   = 0:1
+
+                    A = GB_mex_Matrix_build (I, J, X, nrows, ncols, op, ...
+                        cclass, A_is_csc) ;
                     % A is sparse but may have explicit zeros
                     if (~spok (A.matrix*1))
                         fprintf ('test failure: invalid sparse matrix\n') ;
@@ -145,6 +149,8 @@ for k0 = 1:size (problems,1) ;
                                 assert (false) ;
                             end
                         end
+                    end
+
                     end
 
                     % build a vector in the natural order (discard J)

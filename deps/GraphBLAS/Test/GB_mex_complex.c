@@ -2,7 +2,7 @@
 // GB_mex_complex: convert a real matrix into a complex one
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -18,6 +18,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define USAGE "C = GB_mex_complex (A)"
+
 void mexFunction
 (
     int nargout,
@@ -30,7 +32,7 @@ void mexFunction
     // check inputs
     if (nargout > 1 || nargin != 1)
     {
-        mexErrMsgTxt ("Usage: C = GB_mex_complex (A)") ;
+        mexErrMsgTxt ("Usage: " USAGE) ;
     }
 
     // get the input matrix

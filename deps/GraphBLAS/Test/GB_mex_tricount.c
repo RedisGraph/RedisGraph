@@ -2,7 +2,7 @@
 // GB_mex_tricount: count the number of triangles in a graph
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 // Usage: ntri = GB_mex_tricount (method, A, E, L, U) ;
@@ -16,13 +16,15 @@
 
 #include "GB_mex.h"
 
+#define USAGE "[ntri t] = GB_mex_tricount (method, A, E, L, U)"
+
 #define FREE_ALL                        \
 {                                       \
     GB_MATRIX_FREE (&A) ;               \
     GB_MATRIX_FREE (&E) ;               \
     GB_MATRIX_FREE (&L) ;               \
     GB_MATRIX_FREE (&U) ;               \
-    GB_mx_put_global (malloc_debug) ;   \
+    GB_mx_put_global (true, 0) ;        \
 }
 
 void mexFunction
@@ -34,26 +36,27 @@ void mexFunction
 )
 {
 
-    bool malloc_debug = GB_mx_get_global ( ) ;
+    bool malloc_debug = GB_mx_get_global (true) ;
     GrB_Matrix A = NULL, E = NULL, L = NULL, U = NULL ;
 
     // check inputs
+    GB_WHERE (USAGE) ;
     if (nargout > 2 || nargin != 5)
     {
-        mexErrMsgTxt ("Usage: [ntri t] = GB_mex_tricount (method, A, E, L, U)");
+        mexErrMsgTxt ("Usage: " USAGE) ;
     }
 
     #define GET_DEEP_COPY ;
     #define FREE_DEEP_COPY ;
 
     // get the method.  Default is Sandia method (outer product)
-    GET_SCALAR (0, int, method, 3) ;
+    int GET_SCALAR (0, int, method, 3) ;
 
     // get A, E, L, and U
-    A = GB_mx_mxArray_to_Matrix (pargin [1], "A", false) ;
-    E = GB_mx_mxArray_to_Matrix (pargin [2], "E", false) ;
-    L = GB_mx_mxArray_to_Matrix (pargin [3], "L", false) ;
-    U = GB_mx_mxArray_to_Matrix (pargin [4], "U", false) ;
+    A = GB_mx_mxArray_to_Matrix (pargin [1], "A", false, true) ;
+    E = GB_mx_mxArray_to_Matrix (pargin [2], "E", false, true) ;
+    L = GB_mx_mxArray_to_Matrix (pargin [3], "L", false, true) ;
+    U = GB_mx_mxArray_to_Matrix (pargin [4], "U", false, true) ;
 
     // count the triangles
     double t [2] ;

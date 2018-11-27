@@ -2,7 +2,7 @@
 // GB_mex_cast: cast a MATLAB array using C-style casting rules
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -13,6 +13,8 @@
 
 #include "GB_mex.h"
 
+#define USAGE "C = GB_mex_cast (X, classname, cover)"
+
 void mexFunction
 (
     int nargout,
@@ -21,12 +23,21 @@ void mexFunction
     const mxArray *pargin [ ]
 )
 {
-    bool malloc_debug = GB_mx_get_global ( ) ;
+
+    // do not get coverage counts unless the 3rd arg is present
+    bool do_cover = (nargin == 3) ;
+    bool malloc_debug = GB_mx_get_global (do_cover) ;
 
     // check inputs
-    if (nargout > 2 || nargin < 1 || nargin > 2)
+    GB_WHERE (USAGE) ;
+    if (nargout > 2 || nargin < 1 || nargin > 3)
     {
-        mexErrMsgTxt ("Usage: C = GB_mex_cast (X, classname)") ;
+        mexErrMsgTxt ("Usage: " USAGE) ;
+    }
+
+    if (mxIsSparse (pargin [0]))
+    {
+        mexErrMsgTxt ("X must be dense") ;
     }
 
     // get X
@@ -70,6 +81,6 @@ void mexFunction
         // X is a shallow copy that must not be freed
     }
 
-    GB_mx_put_global (malloc_debug) ;
+    GB_mx_put_global (do_cover, 0) ;
 }
 

@@ -2,12 +2,14 @@
 // GB_mex_eWiseMult_Matrix: C<Mask> = accum(C,A.*B)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
 #include "GB_mex.h"
+
+#define USAGE "C = GB_mex_eWiseMult_Matrix (C, Mask, accum, mult, A, B, desc)"
 
 #define FREE_ALL                    \
 {                                   \
@@ -16,7 +18,7 @@
     GB_MATRIX_FREE (&C) ;           \
     GrB_free (&desc) ;              \
     GB_MATRIX_FREE (&Mask) ;        \
-    GB_mx_put_global (malloc_debug) ; \
+    GB_mx_put_global (true, 0) ;        \
 }
 
 void mexFunction
@@ -28,7 +30,7 @@ void mexFunction
 )
 {
 
-    bool malloc_debug = GB_mx_get_global ( ) ;
+    bool malloc_debug = GB_mx_get_global (true) ;
     GrB_Matrix A = NULL ;
     GrB_Matrix B = NULL ;
     GrB_Matrix C = NULL ;
@@ -36,15 +38,15 @@ void mexFunction
     GrB_Descriptor desc = NULL ;
 
     // check inputs
+    GB_WHERE (USAGE) ;
     if (nargout > 1 || nargin < 6 || nargin > 7)
     {
-        mexErrMsgTxt ("Usage: C = GB_mex_eWiseMult_Matrix "
-        "(C, Mask, accum, mult, A, B, desc)");
+        mexErrMsgTxt ("Usage: " USAGE) ;
     }
 
     // get C (make a deep copy)
     #define GET_DEEP_COPY \
-    C = GB_mx_mxArray_to_Matrix (pargin [0], "C input", true) ;
+    C = GB_mx_mxArray_to_Matrix (pargin [0], "C input", true, true) ;
     #define FREE_DEEP_COPY GB_MATRIX_FREE (&C) ;
     GET_DEEP_COPY ;
     if (C == NULL)
@@ -55,7 +57,7 @@ void mexFunction
     mxClassID cclass = GB_mx_Type_to_classID (C->type) ;
 
     // get Mask (shallow copy)
-    Mask = GB_mx_mxArray_to_Matrix (pargin [1], "Mask", false) ;
+    Mask = GB_mx_mxArray_to_Matrix (pargin [1], "Mask", false, false) ;
     if (Mask == NULL && !mxIsEmpty (pargin [1]))
     {
         FREE_ALL ;
@@ -63,7 +65,7 @@ void mexFunction
     }
 
     // get A (shallow copy)
-    A = GB_mx_mxArray_to_Matrix (pargin [4], "A input", false) ;
+    A = GB_mx_mxArray_to_Matrix (pargin [4], "A input", false, true) ;
     if (A == NULL)
     {
         FREE_ALL ;
@@ -71,7 +73,7 @@ void mexFunction
     }
 
     // get B (shallow copy)
-    B = GB_mx_mxArray_to_Matrix (pargin [5], "B input", false) ;
+    B = GB_mx_mxArray_to_Matrix (pargin [5], "B input", false, true) ;
     if (B == NULL)
     {
         FREE_ALL ;

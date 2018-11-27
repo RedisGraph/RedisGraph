@@ -2,7 +2,7 @@
 // GB_mx_get_global: get the GraphBLAS thread-local storage from MATLAB
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -14,6 +14,7 @@
 
 bool GB_mx_get_global      // true if doing malloc_debug
 (
+    bool cover
 )
 {
 
@@ -21,7 +22,6 @@ bool GB_mx_get_global      // true if doing malloc_debug
     // get malloc debug
     //--------------------------------------------------------------------------
 
-    GB_thread_local.info = GrB_SUCCESS ;
     bool malloc_debug = false ;
     bool *debug = NULL ;
     const mxArray *debug_matlab = NULL ;
@@ -45,18 +45,27 @@ bool GB_mx_get_global      // true if doing malloc_debug
     }
 
     //--------------------------------------------------------------------------
+    // clear the time
+    //--------------------------------------------------------------------------
+
+    GB_mx_clear_time ( ) ;
+
+    //--------------------------------------------------------------------------
     // get test coverage
     //--------------------------------------------------------------------------
 
     #ifdef GBCOVER
-    gbcover_get ( ) ;
+    if (cover) GB_cover_get ( ) ;
     #endif
 
     //--------------------------------------------------------------------------
     // initialize GraphBLAS
     //--------------------------------------------------------------------------
 
+    GB_Global.GrB_init_called = false ;
     GrB_init (GrB_NONBLOCKING) ;
+    GxB_set (GxB_FORMAT, GxB_BY_COL) ;
+    ASSERT (GB_Global.nmalloc == 0) ;
     Complex_init ( ) ;
 
     //--------------------------------------------------------------------------

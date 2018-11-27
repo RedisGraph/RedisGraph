@@ -1,4 +1,4 @@
-clear
+%TRI_MATLAB run tricount tests in MATLAB
 clear
 diary tri_matlab_out.txt
 
@@ -103,4 +103,5 @@ for k = 1:nfiles
     diary off
     diary on
 end
+
 

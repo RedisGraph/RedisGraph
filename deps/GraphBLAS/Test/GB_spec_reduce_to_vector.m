@@ -6,7 +6,7 @@ function w = GB_spec_reduce_to_vector (w, mask, accum, reduce, A, descriptor)
 %
 % Reduces a matrix to a vector
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 %-------------------------------------------------------------------------------
@@ -40,8 +40,9 @@ A = GB_spec_matrix (A, identity) ;
 % get the input vector
 w = GB_spec_matrix (w, identity) ;
 
-% Mask is a dense logical matrix, not a struct
-mask = GB_mex_cast (full (mask), 'logical') ;
+% get the mask
+mask = GB_spec_getmask (mask) ;
+
 [C_replace Mask_comp Atrans ~] = GB_spec_descriptor (descriptor) ;
 
 %-------------------------------------------------------------------------------

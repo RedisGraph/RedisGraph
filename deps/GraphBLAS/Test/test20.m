@@ -1,7 +1,7 @@
 function test20(fulltest)
 %TEST20 test GrB_mxm, mxv, and vxm
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 tic
@@ -20,16 +20,23 @@ end
 
 % classes to test:
 kk = 1 ;
-% this test takes about 4 hours with kk = 3
-% kk = 3 ;
-% kk = 11 ;     % max, takes 2.5 days
 
-% accumop ops to test
+% accum ops to test
 % accumops = 0:length(mult_ops) ;       % test all accum operators
-%  accumops = 0 ;                       % test with no accum
+% accumops = 0 ;                        % test with no accum
 aa = 1 ;
 
 [mult_ops unary_ops add_ops classes] = GB_spec_opsall ;
+
+if (n_semirings_max == 1)
+    k1_list = [ 7 ] ;   % times
+    k2_list = [ 3 ] ;   % plus
+    k3_list = [ 11 ] ;  % double
+else
+    k1_list = 1:length(mult_ops) ;
+    k2_list = 1:length(add_ops) ;
+    k3_list = 1:length(classes) ;
+end
 
 kk = min (kk, length (classes)) ;
 
@@ -41,20 +48,23 @@ dtt = struct ( 'inp0', 'tran', 'inp1', 'tran' ) ;
 n_semirings = 0 ;
 ntrials = 0 ;
 
-for k1 = 1:length(mult_ops)
+for k1 = k1_list % 1:length(mult_ops)
     mulop = mult_ops {k1} ;
 
-    for k2 = 1:length(add_ops)
+    for k2 = k2_list % 1:length(add_ops)
         addop = add_ops {k2} ;
         fprintf ('\nsemiring %s:%s ', addop, mulop) ;
 
-        for k3 = 1:length (classes)
+        for k3 = k3_list % 1:length (classes)
             rng ('default') ;
             clas = classes {k3} ;
 
             semiring.multiply = mulop ;
             semiring.add = addop ;
             semiring.class = clas ;
+            if (n_semirings_max == 1)
+                semiring
+            end
 
             % create the semiring.  some are not valid because the or,and,xor
             % monoids can only be used when z is boolean for z=mult(x,y).
@@ -73,7 +83,7 @@ for k1 = 1:length(mult_ops)
             end
 
             % fprintf ('\n%4d ', n_semirings) ;
-            % fprintf ('%12.2f mxm semiring %s:%s:%s ', toc, addop, mulop, clas) ;
+            % fprintf ('%12.2f mxm semiring %s:%s:%s ', toc,addop,mulop,clas) ;
             % fprintf (' id: %g ', double (identity)) ;
             n_semirings = n_semirings + 1 ;
 
@@ -88,7 +98,6 @@ for k1 = 1:length(mult_ops)
                     % nclasses = 1:length (classes) ;
                     nclasses = randperm (length (classes),kk) ;
                 end
-                fprintf ('.') ;
 
                 for k5 = nclasses
                     clear accum
@@ -129,10 +138,23 @@ for k1 = 1:length(mult_ops)
                                 dtt.outp = 'default' ;
                             end
 
+                            % pick a random class, and int32
+                            aclasses = randperm(length(classes),kk) ; %  1:length (classes)
+                            aclasses = unique ([aclasses 6]) ;
+
                             % try all matrix classes, to test casting
-                            for k6 = randperm(length(classes),kk) %  1:length (classes)
+                            for k6 = aclasses
                                 aclas = classes {k6} ;
-                                % fprintf ('.') ;
+
+                                if (isequal (aclas, 'int32') && mod (n_semirings, 100) == 1)
+                                    % single or double would lead to
+                                    % different roundoff errors
+                                    hyper_range = 0:1 ;
+                                    csc_range   = 0:1 ;
+                                else
+                                    hyper_range = 0 ;
+                                    csc_range   = 1 ;
+                                end
 
                                 % try some matrices
                                 for m = 8 % [1 5 10 ]
@@ -140,17 +162,27 @@ for k1 = 1:length(mult_ops)
                                         for s = 4 % [ 1 5 10 ]
                                         for density = [0.1 0.2 0.3 0.5]
 
+                                            % try all combinations of hyper/non-hyper and CSR/CSC
+                                            for A_is_hyper = hyper_range
+                                            for A_is_csc   = csc_range
+                                            for B_is_hyper = hyper_range
+                                            for B_is_csc   = csc_range
+                                            for C_is_hyper = hyper_range
+                                            for C_is_csc   = csc_range
+                                            for M_is_hyper = hyper_range
+                                            for M_is_csc   = csc_range
+
+                                            if (mod (ntrials, 23) == 0)
+                                                fprintf ('.') ;
+                                            end
+
                                             %---------------------------------------
                                             % A*B
                                             %---------------------------------------
 
-                                            % A = GB_spec_random (m,s,0.2,100,aclas) ;
-                                            % B = GB_spec_random (s,n,0.2,100,aclas) ;
-                                            % C = GB_spec_random (m,n,0.2,100,aclas) ;
-
-                                            A = GB_spec_random (m,s,density,100,aclas) ;
-                                            B = GB_spec_random (s,n,density,100,aclas) ;
-                                            C = GB_spec_random (m,n,density,100,aclas) ;
+                                            A = GB_spec_random (m,s,density,100,aclas, A_is_csc, A_is_hyper) ;
+                                            B = GB_spec_random (s,n,density,100,aclas, B_is_csc, B_is_hyper) ;
+                                            C = GB_spec_random (m,n,density,100,aclas, C_is_csc, C_is_hyper) ;
 
                                             % C = A*B, no mask
                                             Mask = [ ] ;
@@ -172,7 +204,8 @@ for k1 = 1:length(mult_ops)
                                             GB_spec_compare (w0, w1, identity) ;
 
                                             % C = A*B with mask
-                                            Mask = sprandn (m,n,0.2) ~= 0 ;
+                                            % Mask = sprandn (m,n,0.2) ~= 0 ;
+                                            Mask = GB_random_mask(m,n,0.2, M_is_csc, M_is_hyper) ;
                                             C0 = GB_spec_mxm (C, Mask, accum, semiring, A, B, dnn);
                                             C1 = GB_mex_mxm  (C, Mask, accum, semiring, A, B, dnn);
                                             GB_spec_compare (C0, C1, identity) ;
@@ -182,7 +215,10 @@ for k1 = 1:length(mult_ops)
                                             Mask2 = Mask1 .* spones (sprandn (m,n,0.5)) ;
                                             S = sparse (m,n) ;
                                             Mask3 = GB_mex_eWiseAdd_Matrix (S,[ ],[ ],'minus',Mask1,Mask2) ;
-                                            Mask = Mask3.matrix ;
+                                            clear Mask
+                                            Mask.matrix = Mask3.matrix ;
+                                            Mask.is_csc = M_is_csc ;
+                                            Mask.is_hyper = M_is_hyper ;
                                             clear Mask1 Mask2 Mask3
                                             % the Mask matrix will not pass spok(Mask) test since
                                             % it will have explicit zeros
@@ -191,7 +227,8 @@ for k1 = 1:length(mult_ops)
                                             GB_spec_compare (C0, C1, identity) ;
 
                                             % w = A*u with mask
-                                            mask = sprandn (m,1,0.2) ~= 0 ;
+                                            % mask = sprandn (m,1,0.2) ~= 0 ;
+                                            mask = GB_random_mask (m,1,0.2) ;
                                             w0 = GB_spec_mxv (w, mask, accum, semiring, A, u, dnn);
                                             w1 = GB_mex_mxv  (w, mask, accum, semiring, A, u, dnn);
                                             GB_spec_compare (w0, w1, identity) ;
@@ -205,9 +242,9 @@ for k1 = 1:length(mult_ops)
                                             % A'*B
                                             %---------------------------------------
 
-                                            A = GB_spec_random (s,m,density,100,aclas) ;
-                                            B = GB_spec_random (s,n,density,100,aclas) ;
-                                            C = GB_spec_random (m,n,density,100,aclas) ;
+                                            A = GB_spec_random (s,m,density,100,aclas, A_is_csc, A_is_hyper) ;
+                                            B = GB_spec_random (s,n,density,100,aclas, B_is_csc, B_is_hyper) ;
+                                            C = GB_spec_random (m,n,density,100,aclas, C_is_csc, C_is_hyper) ;
 
                                             % C = A'*B, no Mask
                                             C0 = GB_spec_mxm (C, [ ], accum, semiring, A, B, dtn);
@@ -226,7 +263,8 @@ for k1 = 1:length(mult_ops)
                                             GB_spec_compare (w0, w1, identity) ;
 
                                             % C = A'*B with mask
-                                            Mask = sprandn (m,n,0.2) ~= 0 ;
+                                            % Mask = sprandn (m,n,0.2) ~= 0 ;
+                                            Mask = GB_random_mask (m,n,0.2, M_is_csc, M_is_hyper) ;
                                             C0 = GB_spec_mxm (C, Mask, accum, semiring, A, B, dtn);
                                             C1 = GB_mex_mxm  (C, Mask, accum, semiring, A, B, dtn);
                                             GB_spec_compare (C0, C1, identity) ;
@@ -236,7 +274,10 @@ for k1 = 1:length(mult_ops)
                                             Mask2 = Mask1 .* spones (sprandn (m,n,0.5)) ;
                                             S = sparse (m,n) ;
                                             Mask3 = GB_mex_eWiseAdd_Matrix (S,[ ],[ ],'minus',Mask1,Mask2) ;
-                                            Mask = Mask3.matrix ;
+                                            clear Mask
+                                            Mask.matrix = Mask3.matrix ;
+                                            Mask.is_csc = M_is_csc ;
+                                            Mask.is_hyper = M_is_hyper ;
                                             clear Mask1 Mask2 Mask3
                                             % the Mask matrix will not pass spok(Mask) test since
                                             % it will have explicit zeros
@@ -245,7 +286,8 @@ for k1 = 1:length(mult_ops)
                                             GB_spec_compare (C0, C1, identity) ;
 
                                             % w = A'*u, with mask
-                                            mask = sprandn (m,1,0.2) ~= 0 ;
+                                            % mask = sprandn (m,1,0.2) ~= 0 ;
+                                            mask = GB_random_mask (m,1,0.2) ;
                                             w0 = GB_spec_mxv (w, mask, accum, semiring, A, u, dtn);
                                             w1 = GB_mex_mxv  (w, mask, accum, semiring, A, u, dtn);
                                             GB_spec_compare (w0, w1, identity) ;
@@ -258,19 +300,19 @@ for k1 = 1:length(mult_ops)
                                             %---------------------------------------
                                             % A*B'
                                             %---------------------------------------
-
                                             % no mask
 
-                                            A = GB_spec_random (m,s,density,100,aclas) ;
-                                            B = GB_spec_random (n,s,density,100,aclas) ;
-                                            C = GB_spec_random (m,n,density,100,aclas) ;
+                                            A = GB_spec_random (m,s,density,100,aclas, A_is_csc, A_is_hyper) ;
+                                            B = GB_spec_random (n,s,density,100,aclas, B_is_csc, B_is_hyper) ;
+                                            C = GB_spec_random (m,n,density,100,aclas, C_is_csc, C_is_hyper) ;
 
                                             C0 = GB_spec_mxm (C, [ ], accum, semiring, A, B, dnt);
                                             C1 = GB_mex_mxm  (C, [ ], accum, semiring, A, B, dnt);
                                             GB_spec_compare (C0, C1, identity) ;
 
                                             % with mask
-                                            Mask = sprandn (m,n,0.2) ~= 0 ;
+                                            % Mask = sprandn (m,n,0.2) ~= 0 ;
+                                            Mask = GB_random_mask (m,n,0.2, M_is_csc, M_is_hyper) ;
                                             C0 = GB_spec_mxm (C, Mask, accum, semiring, A, B, dnt);
                                             C1 = GB_mex_mxm  (C, Mask, accum, semiring, A, B, dnt);
                                             GB_spec_compare (C0, C1, identity) ;
@@ -281,21 +323,33 @@ for k1 = 1:length(mult_ops)
 
                                             % no Mask
 
-                                            A = GB_spec_random (s,m,density,100,aclas) ;
-                                            B = GB_spec_random (n,s,density,100,aclas) ;
-                                            C = GB_spec_random (m,n,density,100,aclas) ;
+                                            A = GB_spec_random (s,m,density,100,aclas, A_is_csc, A_is_hyper) ;
+                                            B = GB_spec_random (n,s,density,100,aclas, B_is_csc, B_is_hyper) ;
+                                            C = GB_spec_random (m,n,density,100,aclas, C_is_csc, C_is_hyper) ;
 
                                             C0 = GB_spec_mxm (C, [ ], accum, semiring, A, B, dtt);
                                             C1 = GB_mex_mxm  (C, [ ], accum, semiring, A, B, dtt);
                                             GB_spec_compare (C0, C1, identity) ;
 
                                             % A'*B', with mask
-                                            Mask = sprandn (m,n,0.2) ~= 0 ;
+                                            % Mask = sprandn (m,n,0.2) ~= 0 ;
+                                            Mask = GB_random_mask (m,n,0.2, M_is_csc, M_is_hyper) ;
                                             C0 = GB_spec_mxm (C, Mask, accum, semiring, A, B, dtt);
                                             C1 = GB_mex_mxm  (C, Mask, accum, semiring, A, B, dtt);
                                             GB_spec_compare (C0, C1, identity) ;
 
                                             ntrials = ntrials + 1 ;
+
+
+                                            end
+                                            end
+                                            end
+                                            end
+                                            end
+                                            end
+                                            end
+                                            end
+
                                         end
                                         end
                                     end

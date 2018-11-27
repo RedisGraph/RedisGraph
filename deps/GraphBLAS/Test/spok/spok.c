@@ -90,9 +90,11 @@ SPOK_INT spok
     for (j = 0 ; j < n ; j++)
     {
         ilast = -1 ;
+        // printf ("column %lld [%lld : %lld]\n", j, Ap [j], Ap [j+1]-1) ;
         for (p = Ap [j] ; p < Ap [j+1] ; p++)
         {
             i = Ai [p] ;
+            // printf ("row %lld value: ", i) ;
             if (i < 0 || i >= m)
             {
                 /* row indices out of range */
@@ -106,6 +108,7 @@ SPOK_INT spok
             s = (As == NULL) ? 0 : As [p] ;
             x = (Ax == NULL) ? 0 : Ax [p] ;
             z = (Az == NULL) ? 0 : Az [p] ;
+            // printf (" %d %g %g\n", s, x, z) ;
             if (s == 0 && x == 0 && z == 0)
             {
                 /* an explicit zero is present */

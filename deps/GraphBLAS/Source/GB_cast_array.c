@@ -2,7 +2,7 @@
 // GB_cast_array: typecast an array
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -27,7 +27,7 @@ void GB_cast_array              // typecast an array
     //--------------------------------------------------------------------------
 
     if (n == 0)
-    {
+    { 
         // no work to do, and the A and C pointer may be NULL as well
         return ;
     }
@@ -35,22 +35,22 @@ void GB_cast_array              // typecast an array
     ASSERT (C != NULL) ;
     ASSERT (A != NULL) ;
     ASSERT (n > 0) ;
-    ASSERT (code1 < GB_UDT_code) ;
-    ASSERT (code2 < GB_UDT_code) ;
-    ASSERT (GB_Type_code_compatible (code1, code2)) ;
+    ASSERT (code1 <= GB_FP64_code) ;
+    ASSERT (code2 <= GB_FP64_code) ;
+    ASSERT (GB_code_compatible (code1, code2)) ;
 
     //--------------------------------------------------------------------------
     // define the worker for the switch factory
     //--------------------------------------------------------------------------
 
-    #define WORKER(ctype,atype)             \
+    #define GB_WORKER(ctype,atype)          \
     {                                       \
         ctype *c = (ctype *) C ;            \
         atype *a = (atype *) A ;            \
         for (int64_t k = 0 ; k < n ; k++)   \
         {                                   \
             /* c [k] = a [k] ; */           \
-            CAST (c [k], a [k]) ;           \
+            GB_CAST (c [k], a [k]) ;        \
         }                                   \
     }                                       \
     break ;
@@ -61,6 +61,5 @@ void GB_cast_array              // typecast an array
 
     // There is no generic worker so the switch factory cannot be disabled.
     #include "GB_2type_template.c"
-    #undef WORKER
 }
 

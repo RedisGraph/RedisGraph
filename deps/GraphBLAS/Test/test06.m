@@ -1,21 +1,34 @@
-function test06 (A,B)
+function test06 (A,B,fulltests,method_list)
 %TEST06 test GrB_mxm on all semirings
 %
 % Usage: test06(A)
+%        test06(A,B)
+%        test06(A,B,fulltests)
 %
 % with no input, a small 10-by-10 matrix is used.  If A is a scalar, it is a
 % matrix id number from the SuiteSparse collection otherwise A is the sparse
 % matrix to use in the test
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
-fprintf ('\n-------------- GrB_mxm on all semirings\n') ;
+if (nargin < 3)
+    fprintf ('\n-------------- GrB_mxm on all semirings\n') ;
+    fulltests = 1 ;
+end
+
+if (nargin < 2)
+    B = [ ] ;
+end
+
+if (nargin < 4)
+    method_list = 0:3 ;
+end
 
 [mult_ops unary_ops add_ops classes semirings] = GB_spec_opsall ;
 
 rng ('default') ;
-if nargin < 1
+if (nargin < 1 || isempty (A))
     % w = load ('../Demo/Matrix/west0067') ;
     % A = sparse (w (:,1)+1, w (:,2)+1, w (:,3)) ;
     w = load ('../Demo/Matrix/ibm32a') ;
@@ -29,7 +42,23 @@ elseif (isscalar (A))
     A = Prob.A ;
     clear Prob
     A (1,2) = 1 ;
-    B = 2*A ;
+    if (isempty (B))
+        B = 2*A ;
+
+%       n = size (A,2) ;
+%       p = randperm (n) ;
+%       B = sparse (1:n, p, ones (n,1)) ;
+%       p = randperm (n) ;
+%       B = B + sparse (1:n, p, ones (n,1)) ;
+%       p = randperm (n) ;
+%       B = B + sparse (1:n, p, ones (n,1)) ;
+%       e = ones (n,1) ;
+%       % B = spdiags([e -2*e e], -1:1, n, n) ;
+%       % B = spdiags([-2*e e], 0:1, n, n) ;
+%       % B = speye(n);
+%       T = A ; A = B ; B = T ;
+
+    end
 end
 
 assert (issparse (A)) ;
@@ -42,12 +71,17 @@ rng ('default') ;
 [i, j, ~] = find (A) ;
 nz = nnz (A) ;
 p = randperm (nz, floor (nz/2)) ;
+
 Mask = sparse (i (p), j (p), ones (length (p),1), m, n) + ...
        spones (sprandn (m, n, 1/n)) ;
+
 
 tic
 C = A*B ;
 tm1 = toc ;
+
+% Mask = spones (A) ;
+% Mask = sparse (i (p), j (p), ones (length (p),1), m, n) ;
 
 tic
 C = A'*B ;
@@ -93,21 +127,32 @@ dtt = struct ( 'inp0', 'tran', 'inp1', 'tran' ) ;
 
 n_semirings = 0 ;
 
+if (fulltests)
+    k1_list = 1:length(mult_ops) ;
+    k2_list = 1:length(add_ops) ;
+    k3_list = 1:length (classes) ;
+else
+    % just use plus-times-double semiring
+    k1_list = 7 ;
+    k2_list = 3 ;
+    k3_list = 11 ;
+end
+
 n = size (A,1) ;
 
-for k1 = 1:length(mult_ops)
+for k1 = k1_list % 1:length(mult_ops)
     mulop = mult_ops {k1} ;
     if (n <= 500)
         fprintf ('\n%s', mulop) ;
     end
 
-    for k2 = 1:length(add_ops)
+    for k2 = k2_list % 1:length(add_ops)
         addop = add_ops {k2} ;
 
-        for k3 = 1:length (classes)
+        for k3 = k3_list % 1:length (classes)
             clas = classes {k3} ;
             if (n <= 500)
-                fprintf ('.') ;
+               fprintf ('.') ;
             end
 
             semiring.multiply = mulop ;
@@ -147,98 +192,152 @@ for k1 = 1:length(mult_ops)
             % see GrB_AxB_builtin for details.
 
             n_semirings = n_semirings + 1 ;
-            if (n > 500)
-                fprintf ('%3d ', n_semirings) ;
-                fprintf ('mult: %6s add:%6s class %8s : ', mulop, addop, clas) ;
-            end
 
-            % C = A*B, no mask
-            tic
-            C1 = GB_mex_mxm  (Cin, [ ], [ ], semiring, A, B, dnn);
-            t1 = toc ;
-            if (n < 100)
-            C2 = GB_spec_mxm (Cin, [ ], [ ], semiring, A, B, dnn);
-            GB_spec_compare (C1, C2, id) ;
-            end
+            for method = method_list % 0:3
 
-            % C = A'*B, no mask
-            tic
-            C1 = GB_mex_mxm  (Cin, [ ], [ ], semiring, A, B, dtn);
-            t2 = toc ;
-            if (n < 100)
-            C2 = GB_spec_mxm (Cin, [ ], [ ], semiring, A, B, dtn);
-            GB_spec_compare (C1, C2, id) ;
-            end
+                if (n > 500)
+                    fprintf ('%3d ', n_semirings) ;
+                    fprintf ('[%6s %6s %8s] : ', mulop, addop, clas) ;
+                end
 
-            % C = A*B', no mask
-            tic
-            C1 = GB_mex_mxm  (Cin, [ ], [ ], semiring, A, B, dnt);
-            t3 = toc ;
-            if (n < 100)
-            C2 = GB_spec_mxm (Cin, [ ], [ ], semiring, A, B, dnt);
-            GB_spec_compare (C1, C2, id) ;
-            end
+                if (method == 1)
+                    algo = 'heap' ;
+                    if (n > 500)
+                        fprintf ('heap ') ;
+                    end
+                elseif (method == 2)
+                    algo = 'gustavson' ;
+                    if (n > 500)
+                        fprintf ('g/s  ') ;
+                    end
+                elseif (method == 3)
+                    algo = 'dot' ;
+                    if (n > 500)
+                        fprintf ('dot  ') ;
+                    end
+                else
+                    algo = 'default' ;
+                    if (n > 500)
+                        fprintf ('auto ') ;
+                    end
+                end
 
-            % C = A'*B', no mask
-            tic
-            C1 = GB_mex_mxm  (Cin, [ ], [ ], semiring, A, B, dtt);
-            t4 = toc ;
-            if (n < 100)
-            C2 = GB_spec_mxm (Cin, [ ], [ ], semiring, A, B, dtt);
-            GB_spec_compare (C1, C2, id) ;
-            end
+                if (isequal (algo, 'dot'))
+                    ok = (n < 1000) ;
+                else
+                    ok = true ;
+                end
 
-            if (n > 500)
-                fprintf ('speedups %10.4f %10.4f %10.4f %10.4f ', ...
-                    tm1 /t1, tm2/t2, tm3/t3, tm4/t4) ;
-            end
+                dnn.axb = algo ;
+                dnt.axb = algo ;
+                dtn.axb = algo ;
+                dtt.axb = algo ;
 
-            % C = A*B, with mask
-            tic
-            C1 = GB_mex_mxm  (Cin, Mask, [ ], semiring, A, B, dnn);
-            t1 = toc ;
-            if (n < 100)
-            C2 = GB_spec_mxm (Cin, Mask, [ ], semiring, A, B, dnn);
-            GB_spec_compare (C1, C2, id) ;
-            end
+                t1 = nan ; method1 = 'x' ; method1m = 'x' ;
+                t2 = nan ; method2 = 'x' ; method2m = 'x' ;
+                t3 = nan ; method3 = 'x' ; method3m = 'x' ;
+                t4 = nan ; method4 = 'x' ; method4m = 'x' ;
 
-            % C = A'*B, with mask
-            tic
-            C1 = GB_mex_mxm  (Cin, Mask, [ ], semiring, A, B, dtn);
-            t2 = toc ;
-            if (n < 100)
-            C2 = GB_spec_mxm (Cin, Mask, [ ], semiring, A, B, dtn);
-            GB_spec_compare (C1, C2, id) ;
-            end
+                % C = A*B, no mask
+                % tic
+                if (ok)
+                C1 = GB_mex_mxm  (Cin, [ ], [ ], semiring, A, B, dnn) ;
+                [t1 method1] = gbresults ; % toc ;
+                if (n < 200)
+                C2 = GB_spec_mxm (Cin, [ ], [ ], semiring, A, B, dnn);
+                GB_spec_compare (C1, C2, id) ;
+                end
+                end
 
-            % C = A*B', with mask
-            tic
-            C1 = GB_mex_mxm  (Cin, Mask, [ ], semiring, A, B, dnt);
-            t3 = toc ;
-            if (n < 100)
-            C2 = GB_spec_mxm (Cin, Mask, [ ], semiring, A, B, dnt);
-            GB_spec_compare (C1, C2, id) ;
-            end
+                % C = A'*B, no mask
+                if (ok)
+                C1 = GB_mex_mxm  (Cin, [ ], [ ], semiring, A, B, dtn);
+                [t2 method2] = gbresults ; % toc ;
+                if (n < 200)
+                C2 = GB_spec_mxm (Cin, [ ], [ ], semiring, A, B, dtn);
+                GB_spec_compare (C1, C2, id) ;
+                end
+                end
 
-            % C = A'*B', with mask
-            tic
-            C1 = GB_mex_mxm  (Cin, Mask, [ ], semiring, A, B, dtt);
-            t4 = toc ;
-            if (n < 100)
-            C2 = GB_spec_mxm (Cin, Mask, [ ], semiring, A, B, dtt);
-            GB_spec_compare (C1, C2, id) ;
-            end
+                % C = A*B', no mask
+                if (ok)
+                C1 = GB_mex_mxm  (Cin, [ ], [ ], semiring, A, B, dnt);
+                [t3 method3] = gbresults ; % toc ;
+                if (n < 200)
+                C2 = GB_spec_mxm (Cin, [ ], [ ], semiring, A, B, dnt);
+                GB_spec_compare (C1, C2, id) ;
+                end
+                end
 
-            if (n > 500)
-                fprintf ('mask %10.4f %10.4f %10.4f %10.4f\n', ...
-                    tmm1 /t1, tmm2/t2, tmm3/t3, tmm4/t4) ;
-            end
+                % C = A'*B', no mask
+                if (ok)
+                C1 = GB_mex_mxm  (Cin, [ ], [ ], semiring, A, B, dtt);
+                [t4 method4] = gbresults ; % toc ;
+                if (n < 200)
+                C2 = GB_spec_mxm (Cin, [ ], [ ], semiring, A, B, dtt);
+                GB_spec_compare (C1, C2, id) ;
+                end
+                end
 
+                if (n > 500)
+                    fprintf (...
+                    'speedups %10.4f(%s) %10.4f(%s) %10.4f(%s) %10.4f(%s) ', ...
+                    tm1/t1, method1(1), tm2/t2, method2(1), ...
+                    tm3/t3, method3(1), tm4/t4, method4(1)) ;
+                end
+
+                % C = A*B, with mask
+                % tic
+                C1 = GB_mex_mxm  (Cin, Mask, [ ], semiring, A, B, dnn);
+                [t1 method1m] = gbresults ; % toc ;
+                if (n < 200)
+                C2 = GB_spec_mxm (Cin, Mask, [ ], semiring, A, B, dnn);
+                GB_spec_compare (C1, C2, id) ;
+                end
+
+                % C = A'*B, with mask
+                % tic
+                C1 = GB_mex_mxm  (Cin, Mask, [ ], semiring, A, B, dtn);
+                [t2 method2m] = gbresults ; % toc ;
+                if (n < 200)
+                C2 = GB_spec_mxm (Cin, Mask, [ ], semiring, A, B, dtn);
+                GB_spec_compare (C1, C2, id) ;
+                end
+
+                % C = A*B', with mask
+                % tic
+                C1 = GB_mex_mxm  (Cin, Mask, [ ], semiring, A, B, dnt);
+                [t3 method3m] = gbresults ; % toc ;
+                if (n < 200)
+                C2 = GB_spec_mxm (Cin, Mask, [ ], semiring, A, B, dnt);
+                GB_spec_compare (C1, C2, id) ;
+                end
+
+                % C = A'*B', with mask
+                % tic
+                C1 = GB_mex_mxm  (Cin, Mask, [ ], semiring, A, B, dtt);
+                [t4 method4m] = gbresults ; % toc ;
+                if (n < 200)
+                C2 = GB_spec_mxm (Cin, Mask, [ ], semiring, A, B, dtt);
+                GB_spec_compare (C1, C2, id) ;
+                end
+
+                if (n > 500)
+                    fprintf (...
+                    'speedups %10.4f(%s) %10.4f(%s) %10.4f(%s) %10.4f(%s) ', ...
+                    tmm1/t1, method1m(1), tmm2/t2, method2m(1), ...
+                    tmm3/t3, method3m(1), tmm4/t4, method4m(1)) ;
+                    fprintf ('\n') ;
+                end
+
+            end
         end
     end
 end
 
-n_semirings
+% n_semirings
 
-fprintf ('\ntest06: all tests passed\n') ;
+if (fulltests)
+    fprintf ('\ntest06: all tests passed\n') ;
+end
 

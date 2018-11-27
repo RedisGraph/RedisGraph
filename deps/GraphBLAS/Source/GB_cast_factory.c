@@ -2,7 +2,7 @@
 // GB_cast_factory: return a pointer to a typecasting function
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -18,13 +18,13 @@ GB_cast_function GB_cast_factory   // returns pointer to function to cast x to z
     const GB_Type_code code1,      // the type of z, the output value
     const GB_Type_code code2       // the type of x, the input value
 )
-{
+{ 
 
     //--------------------------------------------------------------------------
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT (GB_Type_code_compatible (code1, code2)) ;
+    ASSERT (GB_code_compatible (code1, code2)) ;
     ASSERT (code1 <= GB_UDT_code) ;
     ASSERT (code2 <= GB_UDT_code) ;
 
@@ -33,7 +33,7 @@ GB_cast_function GB_cast_factory   // returns pointer to function to cast x to z
     //--------------------------------------------------------------------------
 
     // the worker selects a typecast function and returns it to the caller
-    #define WORKER(ztype,xtype) return (&GB_cast_ ## ztype ## _ ## xtype) ;
+    #define GB_WORKER(ztype,xtype) return (&GB_cast_ ## ztype ## _ ## xtype) ;
 
     //--------------------------------------------------------------------------
     // launch the switch factory
@@ -42,12 +42,12 @@ GB_cast_function GB_cast_factory   // returns pointer to function to cast x to z
     // switch factory for two built-in types; user types are skipped.
     // no generic worker so the switch factory cannot be disabled.
     #include "GB_2type_template.c"
-    #undef WORKER
 
     //--------------------------------------------------------------------------
     // user-defined types fall through the switch factory to here
     //--------------------------------------------------------------------------
 
-    return (&GB_copy_user_user) ;       // if code1 or code2 are GB_UDT_code
+    // if code1 or code2 are GB_UDT_code or GB_UCT_code
+    return (&GB_copy_user_user) ;
 }
 

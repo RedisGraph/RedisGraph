@@ -2,7 +2,7 @@ function [x no_value] = GB_spec_Matrix_extractElement (A, i, j, xclass)
 %
 %GB_SPEC_MATRIX_EXTRACTELEMENT a MATLAB mimic of GrB_Matrix_extractElement
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 A = GB_spec_matrix (A) ;

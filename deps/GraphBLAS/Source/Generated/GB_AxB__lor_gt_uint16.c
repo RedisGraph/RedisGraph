@@ -1,514 +1,277 @@
+
+
+
 //------------------------------------------------------------------------------
-// GB_AxB__lor_gt_uint16:  hard-coded C=A*B
+// GB_AxB:  hard-coded C=A*B and C<M>=A*B
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
-// If this filename has a double underscore in its name ("__") then it has
-// been automatically constructed from Template/GB*AxB.[ch], via the axb*.m
+// If this filename has a double underscore in its name ("__") then it has been
+// automatically constructed from Generator/GB_AxB.c, via the Source/axb*.m
 // scripts, and should not be editted.  Edit the original source file instead.
 
 //------------------------------------------------------------------------------
 
 #include "GB.h"
 #ifndef GBCOMPACT
-#include "GB_AxB_methods.h"
+#include "GB_heap.h"
+#include "GB_AxB__semirings.h"
 
 // The C=A*B semiring is defined by the following types and operators:
 
-// A*B function:  GB_AxB__lor_gt_uint16
-// A'*B function: GB_AdotB__lor_gt_uint16
-// Z type :  bool (the type of C)
-// XY type:  uint16_t (the type of A and B)
-// Identity: false (where cij = (cij || false) does not change cij)
-// Multiply: t = (aik >  bkj)
-// Add:      cij = (cij || t)
+// A*B function (Gustavon):  GB_AgusB__lor_gt_uint16
+// A'*B function (dot):      GB_AdotB__lor_gt_uint16
+// A*B function (heap):      GB_AheapB__lor_gt_uint16
+// Z type:   bool (the type of C)
+// X type:   uint16_t (the type of x for z=mult(x,y))
+// Y type:   uint16_t (the type of y for z=mult(x,y))
+// handle flipxy: 0 (0 if mult(x,y) is commutative, 1 otherwise)
+// Identity: false (where cij = (cij || identity) does not change cij)
+// Multiply: z = x > y
+// Add:      cij = (cij || z)
+
+#define GB_XTYPE \
+    uint16_t
+#define GB_YTYPE \
+    uint16_t
+#define GB_HANDLE_FLIPXY \
+    0
+
+#define GB_MULTOP(z,x,y) \
+    z = x > y
 
 //------------------------------------------------------------------------------
-// C<M>=A*B and C=A*B: outer product
+// C<M>=A*B and C=A*B: gather/scatter saxpy-based method (Gustavson)
 //------------------------------------------------------------------------------
 
-void GB_AxB__lor_gt_uint16
+#define GB_IDENTITY \
+    false
+
+// x [i] = y
+#define GB_COPY_SCALAR_TO_ARRAY(x,i,y,s)                \
+    x [i] = y ;
+
+// x = y [i]
+#define GB_COPY_ARRAY_TO_SCALAR(x,y,i,s)                \
+    GB_btype x = y [i] ;
+
+// x [i] = y [i]
+#define GB_COPY_ARRAY_TO_ARRAY(x,i,y,j,s)               \
+    x [i] = y [j] ;
+
+// mult-add operation (no mask)
+#define GB_MULTADD_NOMASK                               \
+{                                                       \
+    /* Sauna_Work [i] += A(i,k) * B(k,j) */             \
+    GB_atype aik = Ax [pA] ;                            \
+    bool t ;                                        \
+    GB_MULTIPLY (t, aik, bkj) ;                         \
+    Sauna_Work [i] = (Sauna_Work [i] || t) ;                         \
+}
+
+// mult-add operation (with mask)
+#define GB_MULTADD_WITH_MASK                            \
+{                                                       \
+    /* Sauna_Work [i] += A(i,k) * B(k,j) */             \
+    GB_atype aik = Ax [pA] ;                            \
+    bool t ;                                        \
+    GB_MULTIPLY (t, aik, bkj) ;                         \
+    if (mark == hiwater)                                \
+    {                                                   \
+        /* first time C(i,j) seen */                    \
+        Sauna_Mark [i] = hiwater + 1 ;                  \
+        Sauna_Work [i] = t ;                            \
+    }                                                   \
+    else                                                \
+    {                                                   \
+        /* C(i,j) seen before, update it */             \
+        Sauna_Work [i] = (Sauna_Work [i] || t) ;                     \
+    }                                                   \
+}
+
+GrB_Info GB_AgusB__lor_gt_uint16
 (
     GrB_Matrix C,
-    const GrB_Matrix Mask,
+    const GrB_Matrix M,
     const GrB_Matrix A,
     const GrB_Matrix B,
-    bool flip                   // if true, A and B have been swapped
+    bool flipxy,                // if true, A and B have been swapped
+    GB_Sauna Sauna,             // sparse accumulator
+    GB_Context Context
 )
-{
+{ 
 
-    //--------------------------------------------------------------------------
-    // get A, B, and C
-    //--------------------------------------------------------------------------
-
-    // w has size C->nrows == A->nrows, each entry size zsize.  uninitialized.
-    bool *restrict w = GB_thread_local.Work ;
-
+    bool *restrict Sauna_Work = Sauna->Sauna_Work ;  // size C->vlen*zsize
     bool *restrict Cx = C->x ;
-    const uint16_t *restrict Ax = A->x ;
-    const uint16_t *restrict Bx = B->x ;
+    GrB_Info info = GrB_SUCCESS ;
 
-    const int64_t n = C->ncols ;
-    const int64_t *restrict Ap = A->p ;
-    const int64_t *restrict Ai = A->i ;
-    const int64_t *restrict Bp = B->p ;
-    const int64_t *restrict Bi = B->i ;
+    #include "GB_AxB_Gustavson_flipxy.c"
 
-    if (Mask != NULL)
-    {
-
-        //----------------------------------------------------------------------
-        // C<Mask> = A*B where Mask is pattern of C, with zombies
-        //----------------------------------------------------------------------
-
-        // get the Flag workspace (already allocated and cleared)
-        int8_t *restrict Flag = GB_thread_local.Flag ;
-
-        // get the mask
-        const int64_t *restrict Maskp = Mask->p ;
-        const int64_t *restrict Maski = Mask->i ;
-        const void    *restrict Maskx = Mask->x ;
-        GB_cast_function cast_Mask =
-            GB_cast_factory (GB_BOOL_code, Mask->type->code) ;
-        size_t msize = Mask->type->size ;
-
-        #ifdef WITH_ZOMBIES
-        // copy Maskp into C->p
-        memcpy (C->p, Maskp, (n+1) * sizeof (int64_t)) ;
-        C->magic = MAGIC ;
-        #else
-        int64_t cnz = 0 ;
-        int64_t *restrict Cp = C->p ;
-        #endif
-
-        int64_t *restrict Ci = C->i ;
-
-        for (int64_t j = 0 ; j < n ; j++)
-        {
-
-            //------------------------------------------------------------------
-            // compute C(;,j) = A * B(:,j), both values and pattern
-            //------------------------------------------------------------------
-
-            // skip this column j if the Mask is empty
-            #ifndef WITH_ZOMBIES
-            Cp [j] = cnz ;
-            #endif
-            int64_t mlo, mhi ;
-            if (empty (Maskp, Maski, j, &mlo, &mhi)) continue ;
-            bool marked = false ;
-
-            for (int64_t p = Bp [j] ; p < Bp [j+1] ; p++)
-            {
-                // B(k,j) is present
-                int64_t k = Bi [p] ;
-                // skip A(:,k) if empty or if entries out of range of Mask
-                int64_t alo, ahi ;
-                if (empty (Ap, Ai, k, &alo, &ahi)) continue ;
-                if (ahi < mlo || alo > mhi) continue ;
-                // scatter Mask(:,j) into Flag if not yet done
-                scatter_mask (j, Maskp, Maski, Maskx, msize, cast_Mask, Flag,
-                    &marked) ;
-                uint16_t bkj = Bx [p] ;
-                for (int64_t pa = Ap [k] ; pa < Ap [k+1] ; pa++)
-                {
-                    // w [i] += (A(i,k) * B(k,j)) .* Mask(i,j)
-                    int64_t i = Ai [pa] ;
-                    int8_t flag = Flag [i] ;
-                    if (flag == 0) continue ;
-                    // Mask(i,j) == 1 so do the work
-                    uint16_t aik = Ax [pa] ;
-                    bool t = aik >  bkj ;
-                    if (flag > 0)
-                    {
-                        // first time C(i,j) seen
-                        Flag [i] = -1 ;
-                        w [i] = t ;
-                    }
-                    else
-                    {
-                        // C(i,j) seen before, update it
-                        w [i] = (w [i] || t) ;
-                    }
-                }
-            }
-
-            #ifdef WITH_ZOMBIES
-
-                // gather C(:,j), both values and pattern, from the Mask(:,j)
-                if (marked)
-                {
-                    for (int64_t p = Maskp [j] ; p < Maskp [j+1] ; p++)
-                    {
-                        int64_t i = Maski [p] ;
-                        // C(i,j) is present
-                        if (Flag [i] < 0)
-                        {
-                            // C(i,j) is a live entry, gather its row and value
-                            Cx [p] = w [i] ;
-                            Ci [p] = i ;
-                        }
-                        else
-                        {
-                            // C(i,j) is a zombie; in the Mask but not in A*B
-                            Cx [p] = false ;
-                            Ci [p] = FLIP (i) ;
-                            C->nzombies++ ;
-                        }
-                        Flag [i] = 0 ;
-                    }
-                }
-                else
-                {
-                    for (int64_t p = Maskp [j] ; p < Maskp [j+1] ; p++)
-                    {
-                        int64_t i = Maski [p] ;
-                        // C(i,j) is a zombie; in the Mask but not in A*B
-                        Cx [p] = false ;
-                        Ci [p] = FLIP (i) ;
-                        C->nzombies++ ;
-                    }
-                }
-
-            #else
-
-                // gather C(:,j), both values and pattern, from the Mask(:,j)
-                if (marked)
-                {
-                    for (int64_t p = Maskp [j] ; p < Maskp [j+1] ; p++)
-                    {
-                        int64_t i = Maski [p] ;
-                        // C(i,j) is present
-                        if (Flag [i] < 0)
-                        {
-                            // C(i,j) is a live entry, gather its row and value
-                            Cx [cnz] = w [i] ;
-                            Ci [cnz++] = i ;
-                        }
-                        Flag [i] = 0 ;
-                    }
-                }
-
-            #endif
-
-        }
-
-        #ifdef WITH_ZOMBIES
-        // place C in the queue if it has zombies
-        GB_queue_insert (C) ;
-        #else
-        Cp [n] = cnz ;
-        C->magic = MAGIC ;
-        #endif
-
-    }
-    else
-    {
-
-        //----------------------------------------------------------------------
-        // C = A*B with pattern of C computed by GB_AxB_symbolic
-        //----------------------------------------------------------------------
-
-        const int64_t *restrict Cp = C->p ;
-        const int64_t *restrict Ci = C->i ;
-
-        for (int64_t j = 0 ; j < n ; j++)
-        {
-            // clear w
-            for (int64_t p = Cp [j] ; p < Cp [j+1] ; p++)
-            {
-                w [Ci [p]] = false ;
-            }
-            // compute C(;,j)
-            for (int64_t p = Bp [j] ; p < Bp [j+1] ; p++)
-            {
-                // B(k,j) is present
-                int64_t k = Bi [p] ;
-                uint16_t bkj = Bx [p] ;
-                for (int64_t pa = Ap [k] ; pa < Ap [k+1] ; pa++)
-                {
-                    // w [i] += A(i,k) * B(k,j)
-                    int64_t i = Ai [pa] ;
-                    uint16_t aik = Ax [pa] ;
-                    bool t = aik >  bkj ;
-                    w [i] = (w [i] || t) ;
-                }
-            }
-            // gather C(:,j)
-            for (int64_t p = Cp [j] ; p < Cp [j+1] ; p++)
-            {
-                Cx [p] = w [Ci [p]] ;
-            }
-        }
-    }
+    return (info) ;
 }
 
-
 //------------------------------------------------------------------------------
-// C<M>=A'*B: dot product
+// C<M>=A'*B or C=A'*B: dot product
 //------------------------------------------------------------------------------
 
-void GB_AdotB__lor_gt_uint16
+// get A(k,i)
+#define GB_DOT_GETA(pA)                                 \
+    GB_atype aki = Ax [pA] ;
+
+// get B(k,j)
+#define GB_DOT_GETB(pB)                                 \
+    GB_btype bkj = Bx [pB] ;
+
+// t = aki*bkj
+#define GB_DOT_MULT(bkj)                                \
+    bool t ;                                        \
+    GB_MULTIPLY (t, aki, bkj) ;
+
+// cij += t
+#define GB_DOT_ADD                                      \
+    cij = (cij || t) ;
+
+// cij = t
+#define GB_DOT_COPY                                     \
+    cij = t ;
+
+// cij is not a pointer but a scalar; nothing to do
+#define GB_DOT_REACQUIRE ;
+
+// clear cij
+#define GB_DOT_CLEAR                                    \
+    cij = false ;
+
+// save the value of C(i,j)
+#define GB_DOT_SAVE                                     \
+    Cx [cnz] = cij ;
+
+#define GB_DOT_WORK_TYPE \
+    GB_btype
+
+#define GB_DOT_WORK(k) Work [k]
+
+// Work [k] = Bx [pB]
+#define GB_DOT_SCATTER \
+    Work [k] = Bx [pB] ;
+
+GrB_Info GB_AdotB__lor_gt_uint16
 (
-    GrB_Matrix C,
-    const GrB_Matrix Mask,
+    GrB_Matrix *Chandle,
+    const GrB_Matrix M,
     const GrB_Matrix A,
     const GrB_Matrix B,
-    bool flip                   // if true, A and B have been swapped
+    bool flipxy,                  // if true, A and B have been swapped
+    GB_Context Context
 )
-{
+{ 
 
-    //--------------------------------------------------------------------------
-    // get A, B, C, and Mask
-    //--------------------------------------------------------------------------
+    GrB_Matrix C = (*Chandle) ;
+    bool *restrict Cx = C->x ;
+    bool cij ;
+    GrB_Info info = GrB_SUCCESS ;
+    size_t bkj_size = B->type->size ;       // no typecasting here
 
-    const int64_t *Ai = A->i ;
-    const int64_t *Bi = B->i ;
-    const int64_t *Ap = A->p ;
-    const int64_t *Bp = B->p ;
-    int64_t *Ci = C->i ;
-    int64_t *Cp = C->p ;
-    int64_t n = B->ncols ;
-    int64_t m = A->ncols ;
-    int64_t nrows = B->nrows ;
-    ASSERT (C->ncols == n) ;
-    ASSERT (C->nrows == m) ;
+    #include "GB_AxB_dot_flipxy.c"
 
-    int64_t cnz = 0 ;
-
-    const int64_t *Maskp = NULL ;
-    const int64_t *Maski = NULL ;
-    const void    *Maskx = NULL ;
-    GB_cast_function cast_Mask = NULL ;
-    size_t msize = 0 ;
-
-    if (Mask != NULL)
-    {
-        Maskp = Mask->p ;
-        Maski = Mask->i ;
-        Maskx = Mask->x ;
-        msize = Mask->type->size ;
-        // get the function pointer for casting Mask(i,j) from its current
-        // type into boolean
-        cast_Mask = GB_cast_factory (GB_BOOL_code, Mask->type->code) ;
-    }
-
-    #define MERGE                                           \
-    {                                                       \
-        uint16_t aki = Ax [pa++] ;    /* aki = A(k,i) */      \
-        uint16_t bkj = Bx [pb++] ;    /* bjk = B(k,j) */      \
-        bool t = aki >  bkj ;                          \
-        if (cij_exists)                                     \
-        {                                                   \
-            /* cij += A(k,i) * B(k,j) */                    \
-            cij = (cij || t) ;                                   \
-        }                                                   \
-        else                                                \
-        {                                                   \
-            /* cij = A(k,i) * B(k,j) */                     \
-            cij_exists = true ;                             \
-            cij = t ;                                       \
-        }                                                   \
-    }
-
-    bool *Cx = C->x ;
-    const uint16_t *Ax = A->x ;
-    const uint16_t *Bx = B->x ;
-
-    for (int64_t j = 0 ; j < n ; j++)
-    {
-
-        //----------------------------------------------------------------------
-        // C(:,j) = A'*B(:,j)
-        //----------------------------------------------------------------------
-
-        int64_t pb_start, pb_end, bjnz, ib_first, ib_last, kk1, kk2 ;
-        if (!jinit (Cp, j, cnz, Bp, Bi, Maskp, m, &pb_start, &pb_end,
-            &bjnz, &ib_first, &ib_last, &kk1, &kk2)) continue ;
-
-        for (int64_t kk = kk1 ; kk < kk2 ; kk++)
-        {
-
-            //------------------------------------------------------------------
-            // compute cij = A(:,i)' * B(:,j), using the semiring
-            //------------------------------------------------------------------
-
-            bool cij ;
-            bool cij_exists = false ;   // C(i,j) not yet in the pattern
-            int64_t i, pa, pa_end, pb, ainz ;
-            if (!cij_init (kk, Maski, Maskx, cast_Mask, msize,
-                Ap, Ai, ib_first, ib_last, pb_start,
-                &i, &pa, &pa_end, &pb, &ainz)) continue ;
-
-            // B(:,j) and A(:,i) both have at least one entry
-
-            if (bjnz == nrows && ainz == nrows)
-            {
-
-                //--------------------------------------------------------------
-                // both A(:,i) and B(:,j) are dense
-                //--------------------------------------------------------------
-
-                cij_exists = true ;
-                cij = false ;
-                for (int64_t k = 0 ; k < nrows ; k++)
-                {
-                    uint16_t aki = Ax [pa + k] ;      // aki = A(k,i)
-                    uint16_t bkj = Bx [pb + k] ;      // bkj = B(k,j)
-                    bool t = aki >  bkj ;
-                    cij = (cij || t) ;
-                }
-
-            }
-            else if (ainz == nrows)
-            {
-
-                //--------------------------------------------------------------
-                // A(:,i) is dense and B(:,j) is sparse
-                //--------------------------------------------------------------
-
-                cij_exists = true ;
-                cij = false ;
-                for ( ; pb < pb_end ; pb++)
-                {
-                    int64_t k = Bi [pb] ;
-                    uint16_t aki = Ax [pa + k] ;      // aki = A(k,i)
-                    uint16_t bkj = Bx [pb] ;          // bkj = B(k,j)
-                    bool t = aki >  bkj ;
-                    cij = (cij || t) ;
-                }
-
-            }
-            else if (bjnz == nrows)
-            {
-
-                //--------------------------------------------------------------
-                // A(:,i) is sparse and B(:,j) is dense
-                //--------------------------------------------------------------
-
-                cij_exists = true ;
-                cij = false ;
-                for ( ; pa < pa_end ; pa++)
-                {
-                    int64_t k = Ai [pa] ;
-                    uint16_t aki = Ax [pa] ;          // aki = A(k,i)
-                    uint16_t bkj = Bx [pb + k] ;      // bkj = B(k,j)
-                    bool t = aki >  bkj ;
-                    cij = (cij || t) ;
-                }
-
-            }
-            else if (ainz > 32 * bjnz)
-            {
-
-                //--------------------------------------------------------------
-                // B(:,j) is very sparse compared to A(:,i)
-                //--------------------------------------------------------------
-
-                while (pa < pa_end && pb < pb_end)
-                {
-                    int64_t ia = Ai [pa] ;
-                    int64_t ib = Bi [pb] ;
-                    if (ia < ib)
-                    {
-                        // A(ia,i) appears before B(ib,j)
-                        // discard all entries A(ia:ib-1,i)
-                        int64_t pleft = pa + 1 ;
-                        int64_t pright = pa_end ;
-                        GB_BINARY_TRIM_SEARCH (ib, Ai, pleft, pright) ;
-                        ASSERT (pleft > pa) ;
-                        pa = pleft ;
-                    }
-                    else if (ib < ia)
-                    {
-                        // B(ib,j) appears before A(ia,i)
-                        pb++ ;
-                    }
-                    else // ia == ib == k
-                    {
-                        // A(k,i) and B(k,j) are the next entries to merge
-                        MERGE ;
-                    }
-                }
-
-            }
-            else if (bjnz > 32 * ainz)
-            {
-
-                //--------------------------------------------------------------
-                // A(:,i) is very sparse compared to B(:,j)
-                //--------------------------------------------------------------
-
-                while (pa < pa_end && pb < pb_end)
-                {
-                    int64_t ia = Ai [pa] ;
-                    int64_t ib = Bi [pb] ;
-                    if (ia < ib)
-                    {
-                        // A(ia,i) appears before B(ib,j)
-                        pa++ ;
-                    }
-                    else if (ib < ia)
-                    {
-                        // B(ib,j) appears before A(ia,i)
-                        // discard all entries B(ib:ia-1,j)
-                        int64_t pleft = pb + 1 ;
-                        int64_t pright = pb_end ;
-                        GB_BINARY_TRIM_SEARCH (ia, Bi, pleft, pright) ;
-                        ASSERT (pleft > pb) ;
-                        pb = pleft ;
-                    }
-                    else // ia == ib == k
-                    {
-                        // A(k,i) and B(k,j) are the next entries to merge
-                        MERGE ;
-                    }
-                }
-
-            }
-            else
-            {
-
-                //--------------------------------------------------------------
-                // A(:,i) and B(:,j) have about the same sparsity
-                //--------------------------------------------------------------
-
-                while (pa < pa_end && pb < pb_end)
-                {
-                    int64_t ia = Ai [pa] ;
-                    int64_t ib = Bi [pb] ;
-                    if (ia < ib)
-                    {
-                        // A(ia,i) appears before B(ib,j)
-                        pa++ ;
-                    }
-                    else if (ib < ia)
-                    {
-                        // B(ib,j) appears before A(ia,i)
-                        pb++ ;
-                    }
-                    else // ia == ib == k
-                    {
-                        // A(k,i) and B(k,j) are the next entries to merge
-                        MERGE ;
-                    }
-                }
-            }
-
-            if (cij_exists)
-            {
-                // C(i,j) = cij
-                Cx [cnz] = cij ;
-                Ci [cnz++] = i ;
-            }
-        }
-    }
-    // log the end of the last column
-    Cp [n] = cnz ;
+    return (info) ;
 }
 
-#undef MERGE
+//------------------------------------------------------------------------------
+// C<M>=A*B and C=A*B: heap saxpy-based method
+//------------------------------------------------------------------------------
+
+#define GB_CIJ_GETB(pB)                                \
+    GB_btype bkj = Bx [pB] ;
+
+// C(i,j) = A(i,k) * bkj
+#define GB_CIJ_MULT(pA)                                \
+{                                                      \
+    GB_atype aik = Ax [pA] ;                           \
+    GB_MULTIPLY (cij, aik, bkj) ;                      \
+}
+
+// C(i,j) += A(i,k) * B(k,j)
+#define GB_CIJ_MULTADD(pA,pB)                          \
+{                                                      \
+    GB_atype aik = Ax [pA] ;                           \
+    GB_btype bkj = Bx [pB] ;                           \
+    bool t ;                                       \
+    GB_MULTIPLY (t, aik, bkj) ;                        \
+    cij = (cij || t) ;                                   \
+}
+
+// cij is not a pointer but a scalar; nothing to do
+#define GB_CIJ_REACQUIRE ;
+
+// cij = identity
+#define GB_CIJ_CLEAR                                   \
+    cij = false ;
+
+// save the value of C(i,j)
+#define GB_CIJ_SAVE                                    \
+    Cx [cnz] = cij ;
+
+GrB_Info GB_AheapB__lor_gt_uint16
+(
+    GrB_Matrix *Chandle,
+    const GrB_Matrix M,
+    const GrB_Matrix A,
+    const GrB_Matrix B,
+    bool flipxy,                  // if true, A and B have been swapped
+    int64_t *restrict List,
+    GB_pointer_pair *restrict pA_pair,
+    GB_Element *restrict Heap,
+    const int64_t bjnz_max,
+    GB_Context Context
+)
+{ 
+
+    GrB_Matrix C = (*Chandle) ;
+    bool *restrict Cx = C->x ;
+    bool cij ;
+    int64_t cvlen = C->vlen ;
+    GrB_Info info = GrB_SUCCESS ;
+
+    #include "GB_AxB_heap_flipxy.c"
+
+    return (info) ;
+}
+
+//------------------------------------------------------------------------------
+// clear macro definitions
+//------------------------------------------------------------------------------
+
+#undef GB_XTYPE
+#undef GB_YTYPE
+#undef GB_HANDLE_FLIPXY
+#undef GB_MULTOP
+#undef GB_IDENTITY
+#undef GB_COPY_SCALAR_TO_ARRAY
+#undef GB_COPY_ARRAY_TO_SCALAR
+#undef GB_COPY_ARRAY_TO_ARRAY
+#undef GB_MULTADD_NOMASK
+#undef GB_MULTADD_WITH_MASK
+#undef GB_DOT_GETA
+#undef GB_DOT_GETB
+#undef GB_DOT_MULT
+#undef GB_DOT_ADD
+#undef GB_DOT_COPY
+#undef GB_DOT_REACQUIRE
+#undef GB_DOT_CLEAR
+#undef GB_DOT_SAVE
+#undef GB_DOT_WORK_TYPE
+#undef GB_DOT_WORK
+#undef GB_DOT_SCATTER
+#undef GB_CIJ_GETB
+#undef GB_CIJ_MULT
+#undef GB_CIJ_MULTADD
+#undef GB_CIJ_REACQUIRE
+#undef GB_CIJ_CLEAR
+#undef GB_CIJ_SAVE
+#undef GB_MULTIPLY
 
 #endif
+

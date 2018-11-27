@@ -1,10 +1,10 @@
 function test98
-%TEST98 test GB_mxm, typecasting on the fly
+%TEST98 test GrB_mxm, typecasting on the fly
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
-% This test is for the (flops < NNZ(A)) case in GB_AxB_numeric.c
+% This test is for the case when the auto AxB method selects the heap
 
 rng ('default') ;
 

@@ -2,7 +2,7 @@
 // GB_qsort_3: sort a 3-by-n list of integers, using A[0:2][] as the key
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -15,7 +15,7 @@
 #include "GB.h"
 
 // returns true if a < b
-#define lt(A,a,B,b)                                                         \
+#define GB_lt(A,a,B,b)                                                      \
 (                                                                           \
     /* a and b are tuples of the form (j,i,k) where j is a column index, */ \
     /* i is a row index and */                                              \
@@ -56,27 +56,27 @@
 )
 
 // argument list
-#define arg(A) A ## _0, A ## _1, A ## _2
+#define GB_arg(A) A ## _0, A ## _1, A ## _2
 
 // argument list
-#define args(type,A) type A ## _0 [ ], type A ## _1 [ ], type A ## _2 [ ]
+#define GB_args(type,A) type A ## _0 [ ], type A ## _1 [ ], type A ## _2 [ ]
 
 // argument list, with offset
-#define arg_offset(A,x) A ## _0 + x, A ## _1 + x, A ## _2 + x
+#define GB_arg_offset(A,x) A ## _0 + x, A ## _1 + x, A ## _2 + x
 
 // sort a 3-by-n list
-#define K 3
+#define GB_K 3
 
 // swap A [a] and A [b]
-#define swap(A,a,b)                                                           \
+#define GB_swap(A,a,b)                                                        \
 {                                                                             \
     int64_t t0 = A ## _0 [a] ; A ## _0 [a] = A ## _0 [b] ; A ## _0 [b] = t0 ; \
     int64_t t1 = A ## _1 [a] ; A ## _1 [a] = A ## _1 [b] ; A ## _1 [b] = t1 ; \
     int64_t t2 = A ## _2 [a] ; A ## _2 [a] = A ## _2 [b] ; A ## _2 [b] = t2 ; \
 }
 
-#define partition partition_3
-#define quicksort quicksort_3
+#define GB_partition GB_partition_3
+#define GB_quicksort GB_quicksort_3
 
 #include "GB_qsort_template.c"
 
@@ -87,16 +87,8 @@ void GB_qsort_3         // sort array A of size 3-by-n, using 3 keys (A [0:2][])
     int64_t A_2 [ ],      // size n array
     const int64_t n
 )
-{
-    quicksort (arg (A), n) ;
+{ 
+    uint64_t seed = n ;
+    GB_quicksort (GB_arg (A), n, &seed) ;
 }
-
-#undef K
-#undef lt
-#undef arg
-#undef args
-#undef arg_offset
-#undef swap
-#undef partition
-#undef quicksort
 

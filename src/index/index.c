@@ -59,7 +59,8 @@ void initializeSkiplists(Index *index) {
  * that possess the provided label and property. */
 Index* Index_Create(Graph *g, int label_id, const char *label, const char *prop_str) {
   const GrB_Matrix label_matrix = Graph_GetLabel(g, label_id);
-  TuplesIter *it = TuplesIter_new(label_matrix);
+  GxB_MatrixTupleIter *it;
+  GxB_MatrixTupleIter_new(&it, label_matrix);
 
   Index *index = rm_malloc(sizeof(Index));
 
@@ -78,7 +79,10 @@ Index* Index_Create(Graph *g, int label_id, const char *label, const char *prop_
   int found;
   int prop_index = 0;
 
-  while(TuplesIter_next(it, NULL, &node_id) != TuplesIter_DEPLETED) {
+  while(true) {
+    bool depleted = false;
+    GxB_MatrixTupleIter_next(it, NULL, &node_id, &depleted);
+    if(depleted) break;
     Graph_GetNode(g, node_id, &node);
     // If the sought property is at a different offset than it occupied in the previous node,
     // then seek and update
@@ -107,7 +111,7 @@ Index* Index_Create(Graph *g, int label_id, const char *label, const char *prop_
     skiplistInsert(sl, key, node_id);
   }
 
-  TuplesIter_free(it);
+  GxB_MatrixTupleIter_free(it);
 
   return index;
 }

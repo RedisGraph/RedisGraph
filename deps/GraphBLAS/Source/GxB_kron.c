@@ -2,7 +2,7 @@
 // GxB_kron: Kronecker product
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -19,18 +19,20 @@ GrB_Info GxB_kron                   // C<Mask> = accum (C, kron(A,B))
     const GrB_Matrix B,             // second input: matrix B
     const GrB_Descriptor desc       // descriptor for C, Mask, A, and B
 )
-{
+{ 
 
     //--------------------------------------------------------------------------
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GxB_kron (C, Mask, accum, op, A, B, desc)") ;
+    GB_WHERE ("GxB_kron (C, Mask, accum, op, A, B, desc)") ;
 
     // get the descriptor
-    GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, A_tran, B_tran) ;
+    GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, A_tran, B_tran, xx) ;
 
-    // printf ("go go go\n") ;
+    //--------------------------------------------------------------------------
+    // C = kron(A,B)
+    //--------------------------------------------------------------------------
 
     // C<Mask> = accum (C,T) where T = kron(A,B), or with A' and/or B'
     return (GB_kron (
@@ -39,6 +41,7 @@ GrB_Info GxB_kron                   // C<Mask> = accum (C, kron(A,B))
         accum,                      // for accum (C,T)
         op,                         // operator that defines T=kron(A,B)
         A,          A_tran,         // A matrix and its descriptor
-        B,          B_tran)) ;      // B matrix and its descriptor
+        B,          B_tran,         // B matrix and its descriptor
+        Context)) ;
 }
 

@@ -16,11 +16,11 @@ OpBase *NewNodeByLabelScanOp(GraphContext *gc, Node *node) {
     /* Find out label matrix ID. */
     LabelStore *store = GraphContext_GetStore(gc, node->label, STORE_NODE);
     if (store) {
-        nodeByLabelScan->iter = TuplesIter_new(Graph_GetLabel(gc->g, store->id));
+        GxB_MatrixTupleIter_new(&nodeByLabelScan->iter, Graph_GetLabel(gc->g, store->id));
     } else {
         /* Label does not exist, use a fake empty matrix. */
         GrB_Matrix_new(&nodeByLabelScan->_zero_matrix, GrB_BOOL, 1, 1);
-        nodeByLabelScan->iter = TuplesIter_new(nodeByLabelScan->_zero_matrix);
+        GxB_MatrixTupleIter_new(&nodeByLabelScan->iter, nodeByLabelScan->_zero_matrix);
     }
 
     // Set our Op operations
@@ -47,9 +47,9 @@ OpResult NodeByLabelScanConsume(OpBase *opBase, Record *r) {
         Record_AddEntry(r, op->node->alias, SI_PtrVal(op->node));
     }
 
-    if(TuplesIter_next(op->iter, NULL, &nodeId) == TuplesIter_DEPLETED) {
-        return OP_DEPLETED;
-    }
+    bool depleted = false;
+    GxB_MatrixTupleIter_next(op->iter, NULL, &nodeId, &depleted);
+    if(depleted) return OP_DEPLETED;
 
     Graph_GetNode(op->g, nodeId, op->node);
     return OP_OK;
@@ -57,13 +57,13 @@ OpResult NodeByLabelScanConsume(OpBase *opBase, Record *r) {
 
 OpResult NodeByLabelScanReset(OpBase *ctx) {
     NodeByLabelScan *op = (NodeByLabelScan*)ctx;
-    TuplesIter_reset(op->iter);
+    GxB_MatrixTupleIter_reset(op->iter);
     return OP_OK;
 }
 
 void NodeByLabelScanFree(OpBase *op) {
     NodeByLabelScan *nodeByLabelScan = (NodeByLabelScan*)op;
-    TuplesIter_free(nodeByLabelScan->iter);
+    GxB_MatrixTupleIter_free(nodeByLabelScan->iter);
     
     if(nodeByLabelScan->_zero_matrix != NULL) {
         GrB_Matrix_free(&nodeByLabelScan->_zero_matrix);

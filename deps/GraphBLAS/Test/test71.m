@@ -1,4 +1,4 @@
-function test71
+function test71(f)
 %TEST71 performance comparison of triangle counting methods
 % Considers MATLAB:Sandia, GraphBLAS:Sandia, and GraphBLAS:Sandia2 only.
 %
@@ -14,7 +14,23 @@ function test71
 % This test saves its results in test71_results.mat, so it
 % can be restarted.  Results already obtained will be skipped.
 %
+% Can also run a list of matrices.  For example:
+% test71([936 2662])
+%
 % Edit ll_memory_limit and nz_limit to match the memory on your machine.
+
+%  SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+%  http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
+L = sparse (1) ;
+try
+    ssmultsym (L,L) ;
+catch
+    here = pwd ;
+    cd ../../MATLAB_Tools/SSMULT
+    ssmult_install
+    cd (here) ;
+end
 
 % matrices are too big for some methods.  Edit memory sizes as needed.
 if (ismac || ispc)
@@ -29,39 +45,43 @@ else
     nz_limit = inf ;
 end
 
-% get all square matrices and sort by nnz(A)
 index = ssget ;
-f = find (index.nrows == index.ncols) ;
-[~, i] = sort (index.nnz (f)) ;
-f = f (i) ;
 
-Kokkos = [
-2292 0.00441 79.9
-2293 0.00502 72.5
-2289 0.00580 70.0
-2284 0.00390 108 
-2286 0.00611 76.8
-2287 0.00630 80.1
-2305 0.0754  30.7
-2306 0.0177 133
-2307 0.0184 132
-2294 0.497 31.5
-2285 0.733 58.5
-1842 0.232 199
-750 nan nan
-1904 nan nan
-2482 nan nan
-916 nan nan
-2276 nan nan
-2662 nan nan
-] ;
+if (nargin == 0)
+    % get all square matrices and sort by nnz(A)
+    f = find (index.nrows == index.ncols) ;
+    [~, i] = sort (index.nnz (f)) ;
+    f = f (i) ;
 
-f = Kokkos (:,1)' ;
+    Kokkos = [
+    2292 0.00441 79.9
+    2293 0.00502 72.5
+    2289 0.00580 70.0
+    2284 0.00390 108 
+    2286 0.00611 76.8
+    2287 0.00630 80.1
+    2305 0.0754  30.7
+    2306 0.0177 133
+    2307 0.0184 132
+    2294 0.497 31.5
+    2285 0.733 58.5
+    1842 0.232 199
+    750 nan nan
+    1904 nan nan
+    2482 nan nan
+    916 nan nan
+    2276 nan nan
+    2662 nan nan
+    ] ;
 
-% f = 1323
-% f = f (1)
+    f = Kokkos (:,1)' ;
+
+    % f = 1323
+    % f = f (1)
+    figure (1)
+end
+
 nmat = length (f) ;
-figure (1)
 
 % try
 %     load (results) ;
@@ -76,18 +96,20 @@ figure (1)
 % end
 
 % merge with prior results
-try
-    old = load ('test71_results.mat') ;
-    ok = ~isnan (old.Nnodes) ;
-    Nnodes (ok) = old.Nnodes (ok) ;
-    Nedges (ok) = old.Nedges (ok) ;
-    ok = ~isnan (old.LLnz) ;
-    LLnz (ok) = old.LLnz (ok) ;
-    LLmem (ok) = old.LLmem (ok) ;
-    LLflops (ok) = old.LLflops (ok) ;
-    ok = ~isnan (Ntri) ;
-    Ntri (ok) = old.Ntri (ok) ;
-catch
+if (nargin == 0)
+    try
+        old = load ('test71_results.mat') ;
+        ok = ~isnan (old.Nnodes) ;
+        Nnodes (ok) = old.Nnodes (ok) ;
+        Nedges (ok) = old.Nedges (ok) ;
+        ok = ~isnan (old.LLnz) ;
+        LLnz (ok) = old.LLnz (ok) ;
+        LLmem (ok) = old.LLmem (ok) ;
+        LLflops (ok) = old.LLflops (ok) ;
+        ok = ~isnan (Ntri) ;
+        Ntri (ok) = old.Ntri (ok) ;
+    catch
+    end
 end
 
 tstart = cputime ;
@@ -142,7 +164,7 @@ for k = 1:nmat
 
     % count the triangles in MATLAB and in GraphBLAS
 
-    [nt1 t1] = GB_mex_tricount (3, x, x, x, Uint) ;      % C<U>=U*U
+    [nt1 t1] = GB_mex_tricount (3, x, x, Uint, x) ;      % C<L>=L*L
     fprintf ('triangles: %d\n', nt1) ;
     fprintf ('GraphBLAS outer product: %14.6f sec (rate %6.2f million/sec)', t1, 1e-6*nz/t1) ;
     T (k,1) = t1 ;
@@ -150,7 +172,7 @@ for k = 1:nmat
 
     fprintf ('\n') ;
 
-    [nt2 t2] = GB_mex_tricount (5, x, x, Lint, Uint) ;  % C<U>=L'*U
+    [nt2 t2] = GB_mex_tricount (5, x, x, Uint, Lint) ;  % C<U>=L'*U
     fprintf ('GraphBLAS dot   product: %14.6f sec (rate %6.2f million/sec)', t2, 1e-6*nz/t2) ;
     T (k,2) = t2 ;
     assert (nt1 == nt2) ;
@@ -195,7 +217,7 @@ for k = 1:nmat
 
     % save the results and redraw the plot, but wait at least 5 seconds
     tnow = cputime - tstart ;
-    if (tnow > 5)
+    if (nargin == 0 && tnow > 5)
         diary off
         diary on
         save (results, 'T', 'Nedges', 'Nnodes', 'f', ...
@@ -206,4 +228,6 @@ for k = 1:nmat
 
 end
 
-test71_plot ;
+if (nargin == 0)
+    test71_plot ;
+end

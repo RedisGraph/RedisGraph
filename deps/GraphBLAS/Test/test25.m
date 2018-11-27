@@ -1,7 +1,7 @@
 function test25
 %TEST25 test GxB_select
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 fprintf ('\nquick GxB_select tests\n') ;
@@ -16,23 +16,32 @@ m = 10 ;
 n = 6 ;
 dt = struct ('inp0', 'tran') ;
 
-for k1 = 1:length(classes)
+for k1 = 11 % Was: 1:length(classes)
     aclass = classes {k1} ;
     fprintf ('%s: ', aclass) ;
 
-    A = GB_spec_random (m, n, 0.3, 100, aclass) ;
+    for A_is_hyper = 0:1
+    for A_is_csc   = 0:1
+    for C_is_hyper = 0:1
+    for C_is_csc   = 0:1
+    for M_is_hyper = 0:1
+    for M_is_csc   = 0:1
+
+    A = GB_spec_random (m, n, 0.3, 100, aclass, A_is_csc, A_is_hyper) ;
     A.matrix (:,1) = rand (m,1) ;
     A.pattern (:,1) = true (m,1) ;
-    Cin = GB_spec_random (m, n, 0.3, 100, aclass) ;
-    B = GB_spec_random (n, m, 0.3, 100, aclass) ;
+    Cin = GB_spec_random (m, n, 0.3, 100, aclass, C_is_csc, C_is_hyper) ;
+    B = GB_spec_random (n, m, 0.3, 100, aclass, A_is_csc, A_is_hyper) ;
     cin = cast (0, aclass) ;
-    Mask = (sprand (m, n, 0.5) ~= 0) ;
+    % Mask = (sprand (m, n, 0.5) ~= 0) ;
+    Mask = GB_random_mask (m, n, 0.5, M_is_csc, M_is_hyper) ;
 
     for k2 = 1:length(select_ops)
         op = select_ops {k2} ;
-        fprintf ('%s ', op) ;
+        % fprintf ('%s ', op) ;
+        fprintf ('.') ;
 
-        for k = [-m:n]
+        for k = -m:3:n % Was: [-m:n]
 
             % no mask
             C1 = GB_spec_select (Cin, [], [], op, A, k, []) ;
@@ -75,6 +84,12 @@ for k1 = 1:length(classes)
             GB_spec_compare (C1, C2) ;
 
         end
+    end
+    end
+    end
+    end
+    end
+    end
     end
     fprintf ('\n') ;
 end

@@ -2,7 +2,7 @@
 // GB_mex_reduce_to_scalar: c = accum(c,reduce_to_scalar(A))
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -10,6 +10,8 @@
 // Reduce a matrix or vector to a scalar
 
 #include "GB_mex.h"
+
+#define USAGE "c = GB_mex_reduce_to_scalar (c, accum, reduce, A)"
 
 #define FREE_ALL                        \
 {                                       \
@@ -22,7 +24,7 @@
     {                                   \
         GB_FREE_MEMORY (c, 1, sizeof (double complex)) ; \
     }                                   \
-    GB_mx_put_global (malloc_debug) ;   \
+    GB_mx_put_global (true, 0) ;        \
 }
 
 void mexFunction
@@ -34,16 +36,16 @@ void mexFunction
 )
 {
 
-    bool malloc_debug = GB_mx_get_global ( ) ;
+    bool malloc_debug = GB_mx_get_global (true) ;
     GrB_Matrix A = NULL ;
     GrB_Monoid reduce = NULL ;
     bool reduce_is_complex = false ;
 
     // check inputs
+    GB_WHERE (USAGE) ;
     if (nargout > 1 || nargin != 4)
     {
-        mexErrMsgTxt ("Usage: c = GB_mex_reduce_to_scalar "
-            "(c, accum, reduce, A)");
+        mexErrMsgTxt ("Usage: " USAGE) ;
     }
 
     #define GET_DEEP_COPY ;
@@ -67,13 +69,12 @@ void mexFunction
     }
 
     // get A (shallow copy)
-    A = GB_mx_mxArray_to_Matrix (pargin [3], "A input", false) ;
+    A = GB_mx_mxArray_to_Matrix (pargin [3], "A input", false, true) ;
     if (A == NULL)
     {
         FREE_ALL ;
         mexErrMsgTxt ("A failed") ;
     }
-    // GB_check (A, "A to reduce", 3) ;
 
     // get reduce; default: NOP, default class is class(C)
     GrB_BinaryOp reduceop ;
@@ -126,7 +127,7 @@ void mexFunction
 
     if (A->type == Complex)
     {
-        if (A->ncols == 1)
+        if (A->vdim == 1)
         {
             GrB_Vector V ;
             V = (GrB_Vector) A ;
@@ -139,7 +140,7 @@ void mexFunction
     }
     else
     {
-        if (A->ncols == 1)
+        if (A->vdim == 1)
         {
             GrB_Vector V ;
             V = (GrB_Vector) A ;

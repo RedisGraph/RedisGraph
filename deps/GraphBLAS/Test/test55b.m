@@ -1,7 +1,7 @@
 function test55b
 %TEST55B test GrB_assign, illustrate duplicate indices, MATLAB vs GraphBLAS
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 % MATLAB and GraphBLAS differ on how repeated indices are handled

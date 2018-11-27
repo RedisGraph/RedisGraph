@@ -2,7 +2,7 @@
 # GraphBLAS/Test/Makefile
 #-------------------------------------------------------------------------------
 
-# SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+# SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 # http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 #-------------------------------------------------------------------------------
@@ -15,7 +15,7 @@ clean:
 	$(RM) *.o *.obj
 
 distclean: clean
-	$(RM) *.mex* errlog.txt spok/*.mex* log.txt
+	$(RM) *.mex* errlog.txt spok/*.mex* log.txt fprint.txt
 
 purge: distclean
 
