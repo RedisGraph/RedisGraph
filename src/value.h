@@ -16,7 +16,7 @@
  *
  * The order of these values is significant, as the delta between values of
  * differing types is used to maintain the Cypher-defined global sort order
- * in the SIValue_Compare routine. */
+ * in the SIValue_Order routine. */
 typedef enum {
   T_NULL = 0,
   T_STRING = 0x001,
@@ -48,6 +48,8 @@ typedef enum {
  * This is necessary to construct safe integer returns when the delta between
  * two double values is < 1.0 (and would thus be rounded to 0). */
 #define COMPARE_RETVAL(a) ((a) > 0) - ((a) < 0)
+
+#define DISJOINT INT_MAX
 
 typedef struct {
   union {
@@ -100,10 +102,14 @@ size_t SIValue_StringConcatLen(SIValue* strings, unsigned int string_count);
 /* Concats strings as a comma separated string. */
 size_t SIValue_StringConcat(SIValue* strings, unsigned int string_count, char *buf, size_t buf_len);
 
-/* Compares two SIValues and returns a value similar to strcmp.
- * If the values are not both strings or both numerics, the return value reflects
- * Cypher's orderability constraint, where string > number > NULL. */
+/* Compares two SIValues and returns a value similar to strcmp, or
+ * the macro DISJOINT if the values were not of comparable types. */
 int SIValue_Compare(SIValue a, SIValue b);
+
+/* Return a strcmp-style integer value indicating which value is greater according
+ * to Cypher's comparability property if applicable, and its orderability property if not.
+ * Under Cypher's orderability, where string < boolean < numeric < NULL. */
+int SIValue_Order(const SIValue a, const SIValue b);
 
 void SIValue_Print(FILE *outstream, SIValue *v);
 

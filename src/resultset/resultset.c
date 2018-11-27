@@ -158,14 +158,11 @@ static int _record_compare(ResultSetRecord *a, ResultSetRecord *b, const ResultS
     int rel;
     for(int i = 0; i < set->header->orderby_len; i++) {
       idx = set->header->orderBys[i];
-      rel = SIValue_Compare(a->values[idx], b->values[idx]);
+      rel = SIValue_Order(a->values[idx], b->values[idx]);
+      if (rel == 0) continue; // elements are equal; try next ORDER BY element
       rel *= set->direction; // flip value for descending order
-      if (rel < 0) {
-          return 0;
-      } else if (rel > 0) {
-          return 1;
-      }
-      // If rel == 0, proceed to the next ORDER BY element
+      // Return true if the current left element is less than the right.
+      return rel < 0;
     }
     return 0;
 }
@@ -430,7 +427,7 @@ void ResultSet_Replay(ResultSet* set) {
                 /* ordered, not limited, sort. */
                 _sortResultSet(set, set->records);
 
-                for(int i = Vector_Size(set->records)-1; i >=0;  i--) {
+                for(int i = 0; i < Vector_Size(set->records); i++) {
                     ResultSetRecord* record = NULL;
                     Vector_Get(set->records, i, &record);
                     _ResultSet_ReplayRecord(set, record);

@@ -299,45 +299,55 @@ size_t SIValue_StringConcat(SIValue* strings, unsigned int string_count, char *b
 }
 
 int SIValue_Compare(SIValue a, SIValue b) {
-  // Types are directly comparable
-  if (SI_COMPARABLE(a, b)) {
-    // Use strcmp if values are string types
-    if (a.type & SI_STRING) return strcmp(a.stringval, b.stringval);
-
-    // Attempt to cast both values to doubles
-    double tmp_a, tmp_b;
-    if (SIValue_ToDouble(&a, &tmp_a) && SIValue_ToDouble(&b, &tmp_b)) {
-      /* Both values are numeric, and both now have double representations.
-       * TODO worry about precision and overflows. This approach will
-       * not be adequate if we have high-value longs, especially.
-       * TODO Special values like inf, -inf, and NaN will compare properly
-       * here, but may not satisfy the prescribed openCypher sort order. */
-      double diff = tmp_a - tmp_b;
-      return COMPARE_RETVAL(diff);
-    }
-
-    // We can reach this point if receiving two SIValue pointers, which
-    // should not be possible right now.
-    assert(0);
+  // In order to be comparable, both SIValues must be strings,
+  // booleans, or numerics
+  if (!SI_COMPARABLE(a, b)) {
+    return DISJOINT;
   }
 
-  /* Types differ and are not comparable, so we will fall back to satisfying
-   * ordering constraints.
-   * TODO Later, we may want to separate ordering logic from comparison logic -
-   * the below is useful for ORDER BY clauses, but could be misleading in WHERE clauses.
-   *
-   * Cypher specifies the following ascending order of disjoint types:
-   * - String
-   * - Number
-   * - NULL
-   */
+  // Use strcmp if values are string types
+  if (a.type & SI_STRING) return strcmp(a.stringval, b.stringval);
+
+  // Attempt to cast both values to doubles
+  double tmp_a, tmp_b;
+  if (SIValue_ToDouble(&a, &tmp_a) && SIValue_ToDouble(&b, &tmp_b)) {
+    /* Both values are numeric, and both now have double representations.
+     * TODO worry about precision and overflows. This approach will
+     * not be adequate if we have high-value longs, especially.
+     * TODO Special values like inf, -inf, and NaN will compare properly
+     * here, but may not satisfy the prescribed openCypher sort order. */
+    double diff = tmp_a - tmp_b;
+    return COMPARE_RETVAL(diff);
+  }
+
+  // Reachable if values are of the same incomparable type, such as NULL
+  return DISJOINT;
+}
+
+// Return a strcmp-like value wherein -1 indicates that the value
+// on the left-hand side is lesser, and 1 indicates that is greater.
+int SIValue_Order(const SIValue a, const SIValue b) {
+  // If the values are directly comparable, return the comparison result
+  int cmp = SIValue_Compare(a, b);
+  if (cmp != DISJOINT) return cmp;
+
+  // Cypher's orderability property defines string < boolean < numeric < NULL.
   if (a.type & SI_STRING) {
-    return 1;
-  } else if (b.type & SI_STRING) {
     return -1;
+  } else if (b.type & SI_STRING) {
+    return 1;
+  } else if (a.type == T_BOOL) {
+    return -1;
+  } else if (b.type == T_BOOL) {
+    return 1;
+  } else if (a.type & SI_NUMERIC) {
+    return -1;
+  } else if (b.type & SI_NUMERIC) {
+    return 1;
   }
 
-  return b.type - a.type;
+  // We can reach here if both values are NULL, in which case no order is imposed.
+  return 0;
 }
 
 void SIValue_Print(FILE *outstream, SIValue *v) {
