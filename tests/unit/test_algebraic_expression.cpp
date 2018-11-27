@@ -43,8 +43,8 @@ class AlgebraicExpressionTest: public ::testing::Test {
 
         // Initialize GraphBLAS.
         GrB_init(GrB_NONBLOCKING);
-        GxB_set(GxB_FORMAT, GxB_BY_COL); // all matrices in CSC format
-        GxB_set(GxB_HYPER, GxB_NEVER_HYPER); // matrices are never hypersparse
+        GxB_Global_Option_set(GxB_FORMAT, GxB_BY_COL); // all matrices in CSC format
+        GxB_Global_Option_set(GxB_HYPER, GxB_NEVER_HYPER); // matrices are never hypersparse
     }
 
     static void TearDownTestCase() {
