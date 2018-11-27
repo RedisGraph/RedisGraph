@@ -25,6 +25,9 @@ cmake:
 # the same as "make library"
 static: library
 
+static_only:
+	( cd build ; cmake $(CMAKE_OPTIONS) .. ; $(MAKE) -j4 graphblas_static )
+
 # installs GraphBLAS to the install location defined by cmake, usually
 # /usr/local/lib and /usr/local/include
 install:
