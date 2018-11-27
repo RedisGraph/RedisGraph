@@ -27,18 +27,16 @@ void* RdbLoadStore(RedisModuleIO *rdb) {
   s->properties = NewTrieMap();
   size_t len = 0;
   uint64_t propCount = RedisModule_LoadUnsigned(rdb);
-  char *propStrings[propCount];
-  for(int i = 0; i < propCount; i++) {
-    propStrings[i] = RedisModule_LoadStringBuffer(rdb, &len);
-    propStrings[i][len] = '\0';
-  }
 
-  LabelStore_UpdateSchema(s, propCount, propStrings);
-
-  // Free each property string, as the label store does not maintain
-  // references to them.
   for(int i = 0; i < propCount; i++) {
-    RedisModule_Free(propStrings[i]);
+    // Load property string from RDB file
+    char *prop = RedisModule_LoadStringBuffer(rdb, &len);
+
+    // Add the string directly to the store's triemap using the RDB-given length
+    TrieMap_Add(s->properties, prop, len, NULL, TrieMap_NOP_REPLACE);
+
+    // Immediately free the string, as the store does not reference it.
+    RedisModule_Free(prop);
   }
 
   return s;
