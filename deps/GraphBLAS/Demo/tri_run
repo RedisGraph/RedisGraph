@@ -1,8 +1,0 @@
-#!/bin/csh
-# usage: tri_run files
-foreach file ($argv[1-])
-        echo ''
-        echo '--------------------------------------------------------------------------------'
-	echo $file
-	gunzip -c $file | ../build/tri_demo 1
-end

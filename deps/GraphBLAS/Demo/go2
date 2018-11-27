@@ -1,4 +1,0 @@
-#!/bin/csh
-./tri_run \
-	/research/davisgroup/GraphChallenge/ssget/Mallya/lhr71_adj.tsv.gz \
-	/research/davisgroup/GraphChallenge/snap/email-EuAll/email-EuAll_adj.tsv.gz
