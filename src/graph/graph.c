@@ -381,6 +381,8 @@ int Graph_ConnectNodes(Graph *g, NodeID src, NodeID dest, int r, Edge *e) {
     EdgeID id;
     Entity *en = DataBlock_AllocateItem(g->edges, &id);
     en->id = id;
+    en->prop_count = 0;
+    en->properties = NULL;
     e->entity = en;
 
     GrB_Matrix adj = Graph_GetAdjacencyMatrix(g);
