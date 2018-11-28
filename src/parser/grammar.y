@@ -43,23 +43,23 @@
 
 query ::= expr(A). { ctx->root = A; }
 
-expr(A) ::= matchClause(B) whereClause(C) multipleCreateClause(D) returnClause(E) orderClause(F) skipClause(G) limitClause(H). {
+expr(A) ::= multipleMatchClause(B) whereClause(C) multipleCreateClause(D) returnClause(E) orderClause(F) skipClause(G) limitClause(H). {
 	A = New_AST_Query(B, C, D, NULL, NULL, NULL, E, F, G, H, NULL, NULL);
 }
 
-expr(A) ::= matchClause(B) whereClause(C) multipleCreateClause(D). {
+expr(A) ::= multipleMatchClause(B) whereClause(C) multipleCreateClause(D). {
 	A = New_AST_Query(B, C, D, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 }
 
-expr(A) ::= matchClause(B) whereClause(C) deleteClause(D). {
+expr(A) ::= multipleMatchClause(B) whereClause(C) deleteClause(D). {
 	A = New_AST_Query(B, C, NULL, NULL, NULL, D, NULL, NULL, NULL, NULL, NULL, NULL);
 }
 
-expr(A) ::= matchClause(B) whereClause(C) setClause(D). {
+expr(A) ::= multipleMatchClause(B) whereClause(C) setClause(D). {
 	A = New_AST_Query(B, C, NULL, NULL, D, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 }
 
-expr(A) ::= matchClause(B) whereClause(C) setClause(D) returnClause(E) orderClause(F) skipClause(G) limitClause(H). {
+expr(A) ::= multipleMatchClause(B) whereClause(C) setClause(D) returnClause(E) orderClause(F) skipClause(G) limitClause(H). {
 	A = New_AST_Query(B, C, NULL, NULL, D, NULL, E, F, G, H, NULL, NULL);
 }
 
@@ -87,10 +87,28 @@ expr(A) ::= unwindClause(B) returnClause(C) skipClause(D) limitClause(E). {
 	A = New_AST_Query(NULL, NULL, NULL, NULL, NULL, NULL, C, NULL, D, E, NULL, B);
 }
 
-%type matchClause { AST_MatchNode* }
-
-matchClause(A) ::= MATCH chains(B). {
+%type multipleMatchClause { AST_MatchNode* }
+multipleMatchClause(A) ::= matchClauses(B). {
 	A = New_AST_MatchNode(B);
+}
+
+// Vector of vectors.
+%type matchClauses { Vector* }
+matchClauses(A) ::= matchClause(B). {
+	A = B;
+}
+
+matchClauses(A) ::= matchClauses(B) matchClause(C). {
+	Vector *v;
+	while(Vector_Pop(C, &v)) Vector_Push(B, v);
+	Vector_Free(C);
+	A = B;
+}
+
+// Vector of vectors.
+%type matchClause { Vector* }
+matchClause(A) ::= MATCH chains(B). {
+	A = B;
 }
 
 %type multipleCreateClause { AST_CreateNode* }
