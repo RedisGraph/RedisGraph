@@ -1,0 +1,7 @@
+#!/bin/csh
+./tri_run \
+    /research/davisgroup/GraphChallenge/snap/roadNet-CA/roadNet-CA_adj.tsv.gz \
+    /research/davisgroup/GraphChallenge/snap/roadNet-PA/roadNet-PA_adj.tsv.gz \
+    /research/davisgroup/GraphChallenge/snap/roadNet-TX/roadNet-TX_adj.tsv.gz \
+    /research/davisgroup/GraphChallenge/ssget/DIMACS10/hugebubbles-00020_adj.tsv.gz \
+    /research/davisgroup/GraphChallenge/ssget/Freescale/circuit5M_adj.tsv.gz

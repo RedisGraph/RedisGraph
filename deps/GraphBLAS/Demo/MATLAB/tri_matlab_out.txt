@@ -1,0 +1,198 @@
+
+Matrix: /research/davisgroup/GraphChallenge/ssget/Mallya/lhr71_adj.tsv.gz
+triangles 160592 prep 0.0143872 tri 0.237386 total 0.251773 rate 5.92913
+
+Matrix: /research/davisgroup/GraphChallenge/ssget/Freescale/Freescale2_adj.tsv.gz
+triangles 21027280 prep 0.107127 tri 0.634098 total 0.741226 rate 7.75059
+
+Matrix: /research/davisgroup/GraphChallenge/snap/cit-HepPh/cit-HepPh_adj.tsv.gz
+triangles 1276868 prep 0.00447468 tri 0.358224 total 0.362699 rate 1.1604
+
+Matrix: /research/davisgroup/GraphChallenge/snap/cit-HepTh/cit-HepTh_adj.tsv.gz
+triangles 1478735 prep 0.00298542 tri 0.411518 total 0.414504 rate 0.849896
+
+Matrix: /research/davisgroup/GraphChallenge/snap/email-EuAll/email-EuAll_adj.tsv.gz
+triangles 267313 prep 0.00906737 tri 1.25468 total 1.26375 rate 0.288412
+
+Matrix: /research/davisgroup/GraphChallenge/snap/soc-Epinions1/soc-Epinions1_adj.tsv.gz
+triangles 1624481 prep 0.00428148 tri 0.777762 total 0.782043 rate 0.518821
+
+Matrix: /research/davisgroup/GraphChallenge/snap/soc-Slashdot0811/soc-Slashdot0811_adj.tsv.gz
+triangles 551724 prep 0.00615945 tri 0.983542 total 0.989701 rate 0.474062
+
+Matrix: /research/davisgroup/GraphChallenge/snap/soc-Slashdot0902/soc-Slashdot0902_adj.tsv.gz
+triangles 602592 prep 0.00680812 tri 0.978685 total 0.985493 rate 0.511652
+
+Matrix: /research/davisgroup/GraphChallenge/snap/amazon0312/amazon0312_adj.tsv.gz
+triangles 3686467 prep 0.0318552 tri 1.25298 total 1.28484 rate 1.82893
+
+Matrix: /research/davisgroup/GraphChallenge/snap/amazon0505/amazon0505_adj.tsv.gz
+triangles 3951063 prep 0.0321268 tri 1.14816 total 1.18029 rate 2.06681
+
+Matrix: /research/davisgroup/GraphChallenge/snap/amazon0601/amazon0601_adj.tsv.gz
+triangles 3986507 prep 0.0283822 tri 0.989228 total 1.01761 rate 2.40112
+
+Matrix: /research/davisgroup/GraphChallenge/snap/flickrEdges/flickrEdges_adj.tsv.gz
+triangles 107987357 prep 0.0234496 tri 4.77951 total 4.80296 rate 0.4824
+
+Matrix: /research/davisgroup/GraphChallenge/snap/cit-Patents/cit-Patents_adj.tsv.gz
+triangles 7515023 prep 0.249611 tri 10.7758 total 11.0255 rate 1.49826
+
+Matrix: /research/davisgroup/GraphChallenge/ssget/SNAP/soc-LiveJournal1_adj.tsv.gz
+triangles 285730264 prep 0.613591 tri 105.862 total 106.476 rate 0.402449
+
+Matrix: /research/davisgroup/GraphChallenge/ssget/Gleich/wb-edu_adj.tsv.gz
+triangles 254718147 prep 0.664859 tri 66.9712 total 67.6361 rate 0.683601
+
+Matrix: /research/davisgroup/GraphChallenge/snap/amazon0302/amazon0302_adj.tsv.gz
+triangles 717719 prep 0.0140822 tri 0.230047 total 0.244129 rate 3.68572
+
+Matrix: /research/davisgroup/GraphChallenge/snap/as-caida20071105/as-caida20071105_adj.tsv.gz
+triangles 36365 prep 0.0010467 tri 0.108408 total 0.109454 rate 0.487701
+
+Matrix: /research/davisgroup/GraphChallenge/snap/as20000102/as20000102_adj.tsv.gz
+triangles 6584 prep 0.00537723 tri 0.025047 total 0.0304242 rate 0.413223
+
+Matrix: /research/davisgroup/GraphChallenge/snap/ca-AstroPh/ca-AstroPh_adj.tsv.gz
+triangles 1351441 prep 0.00133915 tri 0.127284 total 0.128623 rate 1.53977
+
+Matrix: /research/davisgroup/GraphChallenge/snap/ca-CondMat/ca-CondMat_adj.tsv.gz
+triangles 173361 prep 0.000961928 tri 0.0218009 total 0.0227628 rate 4.1049
+
+Matrix: /research/davisgroup/GraphChallenge/snap/ca-GrQc/ca-GrQc_adj.tsv.gz
+triangles 48260 prep 0.000192834 tri 0.00381992 total 0.00401275 rate 3.60949
+
+Matrix: /research/davisgroup/GraphChallenge/snap/ca-HepPh/ca-HepPh_adj.tsv.gz
+triangles 3358499 prep 0.000943791 tri 0.0677774 total 0.0687212 rate 1.7242
+
+Matrix: /research/davisgroup/GraphChallenge/snap/ca-HepTh/ca-HepTh_adj.tsv.gz
+triangles 28339 prep 0.000349599 tri 0.00517511 total 0.00552471 rate 4.70124
+
+Matrix: /research/davisgroup/GraphChallenge/snap/email-Enron/email-Enron_adj.tsv.gz
+triangles 727044 prep 0.0015489 tri 0.219827 total 0.221376 rate 0.830402
+
+Matrix: /research/davisgroup/GraphChallenge/snap/facebook_combined/facebook_combined_adj.tsv.gz
+triangles 1612010 prep 0.000524091 tri 0.0261147 total 0.0266388 rate 3.31223
+
+Matrix: /research/davisgroup/GraphChallenge/snap/loc-brightkite_edges/loc-brightkite_edges_adj.tsv.gz
+triangles 494728 prep 0.00281131 tri 0.11863 total 0.121441 rate 1.76281
+
+Matrix: /research/davisgroup/GraphChallenge/snap/loc-gowalla_edges/loc-gowalla_edges_adj.tsv.gz
+triangles 2273138 prep 0.0132991 tri 3.68387 total 3.69717 rate 0.257042
+
+Matrix: /research/davisgroup/GraphChallenge/snap/oregon1_010331/oregon1_010331_adj.tsv.gz
+triangles 17144 prep 0.00138479 tri 0.0380629 total 0.0394476 rate 0.557752
+
+Matrix: /research/davisgroup/GraphChallenge/snap/oregon1_010407/oregon1_010407_adj.tsv.gz
+triangles 15834 prep 0.000259382 tri 0.0383753 total 0.0386347 rate 0.56941
+
+Matrix: /research/davisgroup/GraphChallenge/snap/oregon1_010414/oregon1_010414_adj.tsv.gz
+triangles 18237 prep 0.0110612 tri 0.0421322 total 0.0531935 rate 0.422402
+
+Matrix: /research/davisgroup/GraphChallenge/snap/oregon1_010421/oregon1_010421_adj.tsv.gz
+triangles 19108 prep 0.000252379 tri 0.0403147 total 0.0405671 rate 0.560725
+
+Matrix: /research/davisgroup/GraphChallenge/snap/oregon1_010428/oregon1_010428_adj.tsv.gz
+triangles 17645 prep 0.000289668 tri 0.039345 total 0.0396347 rate 0.567508
+
+Matrix: /research/davisgroup/GraphChallenge/snap/oregon1_010505/oregon1_010505_adj.tsv.gz
+triangles 17597 prep 0.000290858 tri 0.0403442 total 0.0406351 rate 0.556342
+
+Matrix: /research/davisgroup/GraphChallenge/snap/oregon1_010512/oregon1_010512_adj.tsv.gz
+triangles 17598 prep 0.000266996 tri 0.0500232 total 0.0502902 rate 0.450923
+
+Matrix: /research/davisgroup/GraphChallenge/snap/oregon1_010519/oregon1_010519_adj.tsv.gz
+triangles 17677 prep 0.00026798 tri 0.0427906 total 0.0430586 rate 0.527746
+
+Matrix: /research/davisgroup/GraphChallenge/snap/oregon1_010526/oregon1_010526_adj.tsv.gz
+triangles 19894 prep 0.000269287 tri 0.0406778 total 0.0409471 rate 0.571689
+
+Matrix: /research/davisgroup/GraphChallenge/snap/oregon2_010331/oregon2_010331_adj.tsv.gz
+triangles 82856 prep 0.00142282 tri 0.0483695 total 0.0497923 rate 0.626201
+
+Matrix: /research/davisgroup/GraphChallenge/snap/oregon2_010407/oregon2_010407_adj.tsv.gz
+triangles 78138 prep 0.00138681 tri 0.050013 total 0.0513998 rate 0.600294
+
+Matrix: /research/davisgroup/GraphChallenge/snap/oregon2_010414/oregon2_010414_adj.tsv.gz
+triangles 88905 prep 0.000386018 tri 0.0496562 total 0.0500422 rate 0.634684
+
+Matrix: /research/davisgroup/GraphChallenge/snap/oregon2_010421/oregon2_010421_adj.tsv.gz
+triangles 82129 prep 0.000308181 tri 0.0498343 total 0.0501425 rate 0.628967
+
+Matrix: /research/davisgroup/GraphChallenge/snap/oregon2_010428/oregon2_010428_adj.tsv.gz
+triangles 78000 prep 0.000400167 tri 0.0485411 total 0.0489413 rate 0.64228
+
+Matrix: /research/davisgroup/GraphChallenge/snap/oregon2_010505/oregon2_010505_adj.tsv.gz
+triangles 72182 prep 0.00555591 tri 0.0535838 total 0.0591397 rate 0.523218
+
+Matrix: /research/davisgroup/GraphChallenge/snap/oregon2_010512/oregon2_010512_adj.tsv.gz
+triangles 72866 prep 0.000405702 tri 0.0596244 total 0.0600301 rate 0.521455
+
+Matrix: /research/davisgroup/GraphChallenge/snap/oregon2_010519/oregon2_010519_adj.tsv.gz
+triangles 83709 prep 0.000408464 tri 0.0619384 total 0.0623469 rate 0.517861
+
+Matrix: /research/davisgroup/GraphChallenge/snap/oregon2_010526/oregon2_010526_adj.tsv.gz
+triangles 89541 prep 0.00042159 tri 0.0631827 total 0.0636043 rate 0.514588
+
+Matrix: /research/davisgroup/GraphChallenge/snap/p2p-Gnutella04/p2p-Gnutella04_adj.tsv.gz
+triangles 934 prep 0.000497533 tri 0.00672949 total 0.00722702 rate 5.53395
+
+Matrix: /research/davisgroup/GraphChallenge/snap/p2p-Gnutella05/p2p-Gnutella05_adj.tsv.gz
+triangles 1112 prep 0.000394091 tri 0.00542901 total 0.0058231 rate 5.46771
+
+Matrix: /research/davisgroup/GraphChallenge/snap/p2p-Gnutella06/p2p-Gnutella06_adj.tsv.gz
+triangles 1142 prep 0.000335403 tri 0.00519042 total 0.00552583 rate 5.70503
+
+Matrix: /research/davisgroup/GraphChallenge/snap/p2p-Gnutella08/p2p-Gnutella08_adj.tsv.gz
+triangles 2383 prep 0.00679597 tri 0.00332949 total 0.0101255 rate 2.05196
+
+Matrix: /research/davisgroup/GraphChallenge/snap/p2p-Gnutella09/p2p-Gnutella09_adj.tsv.gz
+triangles 2354 prep 0.00023195 tri 0.0037709 total 0.00400285 rate 6.49862
+
+Matrix: /research/davisgroup/GraphChallenge/snap/p2p-Gnutella24/p2p-Gnutella24_adj.tsv.gz
+triangles 986 prep 0.000947353 tri 0.0119743 total 0.0129217 rate 5.05885
+
+Matrix: /research/davisgroup/GraphChallenge/snap/p2p-Gnutella25/p2p-Gnutella25_adj.tsv.gz
+triangles 806 prep 0.000687484 tri 0.0055359 total 0.00622338 rate 8.79024
+
+Matrix: /research/davisgroup/GraphChallenge/snap/p2p-Gnutella30/p2p-Gnutella30_adj.tsv.gz
+triangles 1590 prep 0.00143357 tri 0.0146289 total 0.0160624 rate 5.49904
+
+Matrix: /research/davisgroup/GraphChallenge/snap/p2p-Gnutella31/p2p-Gnutella31_adj.tsv.gz
+triangles 2024 prep 0.00264621 tri 0.0208612 total 0.0235074 rate 6.2913
+
+Matrix: /research/davisgroup/GraphChallenge/snap/roadNet-CA/roadNet-CA_adj.tsv.gz
+triangles 120676 prep 0.0736232 tri 0.217636 total 0.291259 rate 9.49877
+
+Matrix: /research/davisgroup/GraphChallenge/snap/roadNet-PA/roadNet-PA_adj.tsv.gz
+triangles 67150 prep 0.0368046 tri 0.120113 total 0.156917 rate 9.82617
+
+Matrix: /research/davisgroup/GraphChallenge/snap/roadNet-TX/roadNet-TX_adj.tsv.gz
+triangles 82869 prep 0.0470903 tri 0.156379 total 0.203469 rate 9.44448
+
+Matrix: /research/davisgroup/GraphChallenge/synthetic/image-grid/g-1045506-262144_adj.tsv.gz
+triangles 1044484 prep 0.0108022 tri 0.078203 total 0.0890052 rate 11.7466
+
+Matrix: /research/davisgroup/GraphChallenge/synthetic/image-grid/g-16764930-4194304_adj.tsv.gz
+triangles 16760836 prep 0.20142 tri 0.989628 total 1.19105 rate 14.0758
+
+Matrix: /research/davisgroup/GraphChallenge/synthetic/image-grid/g-260610-65536_adj.tsv.gz
+triangles 260100 prep 0.00280764 tri 0.0211592 total 0.0239668 rate 10.8738
+
+Matrix: /research/davisgroup/GraphChallenge/synthetic/image-grid/g-268386306-67108864_adj.tsv.gz
+triangles 268369924 prep 12.55 tri 51.8101 total 64.3601 rate 4.17007
+
+Matrix: /research/davisgroup/GraphChallenge/synthetic/image-grid/g-4188162-1048576_adj.tsv.gz
+triangles 4186116 prep 0.0496269 tri 0.258787 total 0.308413 rate 13.5797
+
+Matrix: /research/davisgroup/GraphChallenge/ssget/DIMACS10/hugebubbles-00020_adj.tsv.gz
+triangles 0 prep 0.718285 tri 6.68752 total 7.40581 rate 4.2926
+
+Matrix: /research/davisgroup/GraphChallenge/ssget/vanHeukelum/cage15_adj.tsv.gz
+triangles 36106416 prep 0.631395 tri 9.55582 total 10.1872 rate 4.61582
+
+Matrix: /research/davisgroup/GraphChallenge/synthetic/graph500-scale18-ef16/graph500-scale18-ef16_adj.tsv.gz
+triangles 82287285 prep 0.0409373 tri 58.6388 total 58.6797 rate 0.0647643
+
+Matrix: /research/davisgroup/GraphChallenge/synthetic/graph500-scale19-ef16/graph500-scale19-ef16_adj.tsv.gz
+triangles 186288972 prep 0.075334 tri 194.017 total 194.092 rate 0.0398248

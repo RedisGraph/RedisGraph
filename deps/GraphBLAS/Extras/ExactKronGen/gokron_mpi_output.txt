@@ -1,0 +1,73 @@
+
+mit $ ./gokron_mpi
+
+kron: np:1 pid:0 btype:0
+    A file: data/Theory-3-4-5-9-Bk.tsv
+    B file: data/Theory-16-25-Bk.tsv
+    C file: C.tsv
+    kron [pid:0]: time to read A and B: 0.270757 sec
+    kron [pid:0]: time to convert A and B: 0.000222231 sec
+    GraphBLAS GxB_kron [pid:0]:
+    my_A: 1200-by-1200, 8640 entries.
+    B: 442-by-442, 1600 entries.
+    my_C: 530400-by-530400, 13824000 entries.
+    time: 0.172412 seconds, rate: nval(C)/t = 80.1799 million/sec
+    kron [pid:0]: time to write C: 9.00366 sec
+
+kron: np:4 pid:3 btype:0
+    A file: data/Theory-3-4-5-9-Bk.tsv
+    B file: data/Theory-16-25-Bk.tsv
+    C file: 3_C.tsv
+
+kron: np:4 pid:0 btype:0
+    A file: data/Theory-3-4-5-9-Bk.tsv
+    B file: data/Theory-16-25-Bk.tsv
+    C file: 0_C.tsv
+
+kron: np:4 pid:1 btype:0
+    A file: data/Theory-3-4-5-9-Bk.tsv
+    B file: data/Theory-16-25-Bk.tsv
+    C file: 1_C.tsv
+
+kron: np:4 pid:2 btype:0
+    A file: data/Theory-3-4-5-9-Bk.tsv
+    B file: data/Theory-16-25-Bk.tsv
+    C file: 2_C.tsv
+    kron [pid:3]: time to read A and B: 0.061851 sec
+    kron [pid:3]: time to convert A and B: 0.000167789 sec
+    kron [pid:2]: time to read A and B: 0.0744057 sec
+    kron [pid:2]: time to convert A and B: 0.00016254 sec
+    kron [pid:0]: time to read A and B: 0.101526 sec
+    kron [pid:0]: time to convert A and B: 0.000272522 sec
+    GraphBLAS GxB_kron [pid:2]:
+    my_A: 1200-by-360, 2160 entries.
+    B: 442-by-442, 1600 entries.
+    my_C: 530400-by-159120, 3456000 entries.
+    time: 0.0556038 seconds, rate: nval(C)/t = 62.154 million/sec
+    GraphBLAS GxB_kron [pid:3]:
+    my_A: 1200-by-540, 2160 entries.
+    B: 442-by-442, 1600 entries.
+    my_C: 530400-by-238680, 3456000 entries.
+    time: 0.0730674 seconds, rate: nval(C)/t = 47.2988 million/sec
+    kron [pid:1]: time to read A and B: 0.16212 sec
+    kron [pid:1]: time to convert A and B: 0.000167091 sec
+    GraphBLAS GxB_kron [pid:0]:
+    my_A: 1200-by-60, 2160 entries.
+    B: 442-by-442, 1600 entries.
+    my_C: 530400-by-26520, 3456000 entries.
+    time: 0.0881891 seconds, rate: nval(C)/t = 39.1885 million/sec
+    GraphBLAS GxB_kron [pid:1]:
+    my_A: 1200-by-240, 2160 entries.
+    B: 442-by-442, 1600 entries.
+    my_C: 530400-by-106080, 3456000 entries.
+    time: 0.112145 seconds, rate: nval(C)/t = 30.8173 million/sec
+    kron [pid:2]: time to write C: 2.78587 sec
+    kron [pid:0]: time to write C: 2.84308 sec
+    kron [pid:3]: time to write C: 3.01881 sec
+    kron [pid:1]: time to write C: 2.89315 sec
+
+real    0m3.659s
+user    0m0.000s
+sys 0m0.000s
+mit $ 
+

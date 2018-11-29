@@ -1,0 +1,43 @@
+#!/bin/csh
+
+./krun3 \
+    ~/GraphChallenge/synthetic/image-grid/g-67084290-16777216_adj.tsv.gz \
+    ~/GraphChallenge/synthetic/graph500-scale22-ef16/graph500-scale22-ef16_adj.tsv.gz \
+    ~/GraphChallenge/synthetic/gc6/V2a.tsv.gz \
+    ~/GraphChallenge/synthetic/gc6/U1a.tsv.gz \
+    ~/GraphChallenge/synthetic/graph500-scale23-ef16/graph500-scale23-ef16_adj.tsv.gz \
+    ~/GraphChallenge/synthetic/image-grid/g-268386306-67108864_adj.tsv.gz \
+    ~/GraphChallenge/synthetic/gc6/P1a.tsv.gz \
+    ~/GraphChallenge/synthetic/gc6/A2a.tsv.gz \
+    ~/GraphChallenge/synthetic/gc6/V1r.tsv.gz \
+    ~/GraphChallenge/synthetic/graph500-scale24-ef16/graph500-scale24-ef16_adj.tsv.gz \
+    ~/GraphChallenge/synthetic/image-grid/g-1073643522-268435456_adj.tsv.gz \
+    ~/GraphChallenge/synthetic/graph500-scale25-ef16/graph500-scale25-ef16_adj.tsv.gz \
+    ~/GraphChallenge/snap/friendster/friendster_adj.tsv.gz \
+    ~/GraphChallenge/synthetic/gc5/201512012345.v18571154_e38040320.tsv.gz \
+    ~/GraphChallenge/synthetic/gc5/201512020000.v35991342_e74485420.tsv.gz \
+    ~/GraphChallenge/synthetic/gc5/201512020030.v68863315_e143414960.tsv.gz \
+    ~/GraphChallenge/synthetic/gc5/201512020130.v128568730_e270234840.tsv.gz \
+    ~/GraphChallenge/synthetic/gc5/201512020330.v226196185_e480047894.tsv.gz
+
+./krun3b \
+    ~/GraphChallenge/synthetic/graph500-scale21-ef16/graph500-scale21-ef16_adj.tsv.gz \
+    ~/GraphChallenge/synthetic/image-grid/g-67084290-16777216_adj.tsv.gz \
+    ~/GraphChallenge/synthetic/graph500-scale22-ef16/graph500-scale22-ef16_adj.tsv.gz \
+    ~/GraphChallenge/synthetic/gc6/V2a.tsv.gz \
+    ~/GraphChallenge/synthetic/gc6/U1a.tsv.gz \
+    ~/GraphChallenge/synthetic/graph500-scale23-ef16/graph500-scale23-ef16_adj.tsv.gz \
+    ~/GraphChallenge/synthetic/image-grid/g-268386306-67108864_adj.tsv.gz \
+    ~/GraphChallenge/synthetic/gc6/P1a.tsv.gz \
+    ~/GraphChallenge/synthetic/gc6/A2a.tsv.gz \
+    ~/GraphChallenge/synthetic/gc6/V1r.tsv.gz \
+    ~/GraphChallenge/synthetic/graph500-scale24-ef16/graph500-scale24-ef16_adj.tsv.gz \
+    ~/GraphChallenge/synthetic/image-grid/g-1073643522-268435456_adj.tsv.gz \
+    ~/GraphChallenge/synthetic/graph500-scale25-ef16/graph500-scale25-ef16_adj.tsv.gz \
+    ~/GraphChallenge/snap/friendster/friendster_adj.tsv.gz \
+    ~/GraphChallenge/synthetic/gc5/201512012345.v18571154_e38040320.tsv.gz \
+    ~/GraphChallenge/synthetic/gc5/201512020000.v35991342_e74485420.tsv.gz \
+    ~/GraphChallenge/synthetic/gc5/201512020030.v68863315_e143414960.tsv.gz \
+    ~/GraphChallenge/synthetic/gc5/201512020130.v128568730_e270234840.tsv.gz \
+    ~/GraphChallenge/synthetic/gc5/201512020330.v226196185_e480047894.tsv.gz
+
