@@ -132,12 +132,13 @@ OpResult CondTraverseConsume(OpBase *opBase, Record *r) {
         Node *srcNode;
         Node *destNode;
 
-        if(op->algebraic_expression->operands[0].transpose) {
+        size_t operandCount = op->algebraic_expression->operand_count - 1;
+        if(op->algebraic_expression->operands[operandCount].transpose) {
             srcNode = op->algebraic_expression->dest_node;
             destNode = op->algebraic_expression->src_node;
         } else {
             srcNode = op->algebraic_expression->src_node;
-            destNode = op->algebraic_expression->dest_node;            
+            destNode = op->algebraic_expression->dest_node;
         }
 
         Graph_GetEdgesConnectingNodes(op->graph,
