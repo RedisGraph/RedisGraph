@@ -51,6 +51,8 @@ int _RegisterDataTypes(RedisModuleCtx *ctx) {
 int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     /* TODO: when module unloads call GrB_finalize. */
     assert(GrB_init(GrB_NONBLOCKING) == GrB_SUCCESS);
+    GxB_set(GxB_FORMAT, GxB_BY_COL); // all matrices in CSC format
+    GxB_set(GxB_HYPER, GxB_NEVER_HYPER); // matrices are never hypersparse
 
     if (RedisModule_Init(ctx, "graph", REDISGRAPH_MODULE_VERSION, REDISMODULE_APIVER_1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
@@ -83,4 +85,3 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 
     return REDISMODULE_OK;
 }
-

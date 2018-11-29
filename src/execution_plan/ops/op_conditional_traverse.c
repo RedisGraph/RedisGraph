@@ -39,8 +39,8 @@ void _extractColumn(CondTraverse *op, const Record r) {
     // Remove operand.
     AlgebraicExpression_RemoveTerm(op->algebraic_expression, op->algebraic_expression->operand_count-1, NULL);
 
-    if(op->iter == NULL) op->iter = TuplesIter_new(op->M);
-    else TuplesIter_reuse(op->iter, op->M);
+    if(op->iter == NULL) GxB_MatrixTupleIter_new(&op->iter, op->M);
+    else GxB_MatrixTupleIter_reuse(op->iter, op->M);
 
     // Clear filter matrix.
     GxB_Matrix_Delete(op->F, srcId, 0);
@@ -112,7 +112,13 @@ OpResult CondTraverseConsume(OpBase *opBase, Record *r) {
     }
     
     NodeID dest_id;
-    while(TuplesIter_next(op->iter, &dest_id, NULL) == TuplesIter_DEPLETED) {
+    bool depleted = false;
+    while(true) {
+        GxB_MatrixTupleIter_next(op->iter, &dest_id, NULL, &depleted);
+
+        // Managed to get a tuple, break.
+        if(!depleted) break;
+
         OpResult res = child->consume(child, r);
         if(res != OP_OK) return res;
         _extractColumn(op, *r);
@@ -149,7 +155,7 @@ OpResult CondTraverseReset(OpBase *ctx) {
     CondTraverse *op = (CondTraverse*)ctx;
     if(op->edges) array_clear(op->edges);
     if(op->iter) {
-        TuplesIter_free(op->iter);
+        GxB_MatrixTupleIter_free(op->iter);
         op->iter = NULL;
     }
     if(op->F) {
@@ -162,7 +168,7 @@ OpResult CondTraverseReset(OpBase *ctx) {
 /* Frees CondTraverse */
 void CondTraverseFree(OpBase *ctx) {
     CondTraverse *op = (CondTraverse*)ctx;
-    if(op->iter) TuplesIter_free(op->iter);
+    if(op->iter) GxB_MatrixTupleIter_free(op->iter);
     if(op->F) GrB_Matrix_free(&op->F);
     if(op->edges) array_free(op->edges);
     if(op->algebraic_results) AlgebraicExpressionResult_Free(op->algebraic_results);

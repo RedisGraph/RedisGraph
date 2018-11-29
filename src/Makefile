@@ -96,7 +96,7 @@ $(LIBTRIEMAP):
 .PHONY: $(LIBTRIEMAP)
 
 $(GRAPHBLAS):
-	$(MAKE) CMAKE_OPTIONS="-DCMAKE_CXX_FLAGS=-std=c++11" static_only -C ../deps/GraphBLAS
+	$(MAKE) CMAKE_OPTIONS="-DUSER_POSIX=1 -DCMAKE_CXX_FLAGS=-std=c++11" static_only -C ../deps/GraphBLAS
 
 .PHONY: $(GRAPHBLAS)
 

@@ -11,7 +11,6 @@
 #include "op.h"
 #include "../../graph/entities/node.h"
 #include "../../graph/graph.h"
-#include "../../GraphBLASExt/tuples_iter.h"
 #include "../../../deps/GraphBLAS/Include/GraphBLAS.h"
 
 /* NodeByLabelScan, scans entire label. */
@@ -20,7 +19,7 @@ typedef struct {
     OpBase op;
     Node *node;                 /* Node being scanned */
     Graph *g;
-    TuplesIter *iter;
+    GxB_MatrixTupleIter *iter;
     GrB_Matrix _zero_matrix;    /* Fake matrix, in-case label does not exists. */
 } NodeByLabelScan;
 
