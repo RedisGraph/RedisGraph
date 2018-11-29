@@ -1,0 +1,3 @@
+#!/bin/csh
+./tri_run \
+	~/GraphChallenge/ssget/vanHeukelum/cage15_adj.tsv.gz

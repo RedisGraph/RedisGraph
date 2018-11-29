@@ -13,7 +13,7 @@ function [C_replace Mask_comp Atrans Btrans descriptor] = ...
 % inp0:  'default' or 'tran'
 % inp1:  'default' or 'tran'
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 if (isempty (descriptor))

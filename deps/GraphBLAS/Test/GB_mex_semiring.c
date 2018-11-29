@@ -2,19 +2,18 @@
 // GB_mex_semiring: parse a semiring, for testing; returns nothing
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
-// Usage:
-// GB_mex_semiring (semiring_struct)
-
 #include "GB_mex.h"
+
+#define USAGE "GB_mex_semiring (semiring_struct))"
 
 #define FREE_ALL            \
 {                           \
-    GB_mx_put_global (malloc_debug) ; \
+    GB_mx_put_global (true, 0) ;        \
 }
 
 void mexFunction
@@ -26,19 +25,20 @@ void mexFunction
 )
 {
 
-    bool malloc_debug = GB_mx_get_global ( ) ;
+    bool malloc_debug = GB_mx_get_global (true) ;
     GrB_Semiring semiring = NULL ;
 
     // check inputs
+    GB_WHERE (USAGE) ;
     if (nargin != 1)
     {
-        mexErrMsgTxt ("Usage: GB_mex_semiring (semiring_struct))") ;
+        mexErrMsgTxt ("Usage: " USAGE) ;
     }
 
     GB_mx_mxArray_to_Semiring (&semiring, pargin [0], "semiring",
         mxDOUBLE_CLASS) ;
 
-    GrB_Info info = GB_check (semiring, "semiring", 3) ;
+    GrB_Info info = GB_check (semiring, "semiring", GB3) ;
     if (info != GrB_SUCCESS)
     {
         mexErrMsgTxt (GrB_error ( )) ;

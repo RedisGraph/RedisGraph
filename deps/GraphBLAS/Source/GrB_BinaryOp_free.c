@@ -2,7 +2,7 @@
 // GrB_BinaryOp_free: free a binary operator
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -17,14 +17,15 @@ GrB_Info GrB_BinaryOp_free          // free a user-created binary operator
 
     if (binaryop != NULL)
     {
-        // only free a user-defined operator, not a built-in one
+        // only free a run-time user-defined operator
         GrB_BinaryOp op = *binaryop ;
-        if (op != NULL && op->opcode == GB_USER_opcode)
+        if (op != NULL && op->opcode == GB_USER_R_opcode)
         {
-            if (op->magic == MAGIC)
-            {
-                op->magic = FREED ;         // to help detect dangling pointers
-                GB_FREE_MEMORY (*binaryop, 1, sizeof (GB_BinaryOp_opaque)) ;
+            if (op->magic == GB_MAGIC)
+            { 
+                op->magic = GB_FREED ;  // to help detect dangling pointers
+                GB_FREE_MEMORY (*binaryop, 1,
+                    sizeof (struct GB_BinaryOp_opaque)) ;
             }
             (*binaryop) = NULL ;
         }

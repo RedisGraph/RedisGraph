@@ -1,10 +1,15 @@
 //------------------------------------------------------------------------------
-// GraphBLAS/Demo/bfs6_check.c: breadth first search using mxv with a mask
+// GraphBLAS/Demo/Source/bfs6_check.c: breadth first search using vxm
 //------------------------------------------------------------------------------
 
-// Modified from the GraphBLAS C API Specification, 1.0.1, provisional release,
-// by Aydin Buluc, Timothy Mattson, Scott McMillan, Jose' Moreira, Carl Yang.
-// Based on "GraphBLAS Mathematics" by Jeremy Kepner.
+// Modified from the GraphBLAS C API Specification, by Aydin Buluc, Timothy
+// Mattson, Scott McMillan, Jose' Moreira, Carl Yang.  Based on "GraphBLAS
+// Mathematics" by Jeremy Kepner.
+
+// This method has been updated as of Version 2.2 of SuiteSparse:GraphBLAS.
+// It now assumes the matrix is held by row (GxB_BY_ROW) and uses GrB_vxm
+// instead of GrB_mxv.  It now more closely matches the BFS example in the
+// GraphBLAS C API Specification.
 
 // This version uses a predefined semiring (GxB_LOR_LAND_BOOL) and a predefined
 // monoid (GxB_LOR_BOOL_MONOID), in GraphBLAS.h.  It also checks the status of
@@ -49,7 +54,7 @@ GrB_Info bfs6_check         // BFS of a graph (using unary operator)
     GrB_Index n ;                               // # of nodes in the graph
     GrB_Vector q = NULL ;                       // nodes visited at each level
     GrB_Vector v = NULL ;                       // result vector
-    GrB_Descriptor desc = NULL ;                // Descriptor for mxv
+    GrB_Descriptor desc = NULL ;                // Descriptor for vxm
     GrB_UnaryOp apply_level = NULL ;            // unary op: z = f(x) = level
 
     OK (GrB_Matrix_nrows (&n, A)) ;             // n = # of rows of A
@@ -57,10 +62,10 @@ GrB_Info bfs6_check         // BFS of a graph (using unary operator)
     OK (GrB_Vector_new (&q, GrB_BOOL, n)) ;     // Vector<bool> q(n) = false
     OK (GrB_Vector_setElement (q, true, s)) ;   // q[s] = true, false elsewhere
 
-    // descriptor: invert the mask for mxv, and clear output before assignment
+    // descriptor: invert the mask for vxm, and clear output before assignment
     OK (GrB_Descriptor_new (&desc)) ;
-    OK (GrB_Descriptor_set (desc, GrB_MASK, GrB_SCMP)) ;
-    OK (GrB_Descriptor_set (desc, GrB_OUTP, GrB_REPLACE)) ;
+    OK (GxB_set (desc, GrB_MASK, GrB_SCMP)) ;
+    OK (GxB_set (desc, GrB_OUTP, GrB_REPLACE)) ;
 
     // create a unary operator
     OK (GrB_UnaryOp_new (&apply_level, bfs_level, GrB_INT32, GrB_BOOL)) ;
@@ -80,7 +85,7 @@ GrB_Info bfs6_check         // BFS of a graph (using unary operator)
 
         // q<!v> = A ||.&& q ; finds all the unvisited successors from current
         // q, using !v as the mask
-        OK (GrB_mxv (q, v, NULL, GxB_LOR_LAND_BOOL, A, q, desc)) ;
+        OK (GrB_vxm (q, v, NULL, GxB_LOR_LAND_BOOL, q, A, desc)) ;
 
         GrB_Vector_nvals (&nvals, q) ;
     }

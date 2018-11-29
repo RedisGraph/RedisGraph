@@ -1,18 +1,22 @@
 function test15
 %TEST15 test AxB and AdotB internal functions
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 fprintf ('\n --------------------- GB_mex_AxB, GB_mex_AdotB tests\n') ;
 
 rng ('default') ;
-A = sprand (4,3,0.5) ;
-B = sprand (3,5,0.5) ;
+m = 8 ;
+k = 6 ;
+n = 10 ;
+A = sprand (m,k,0.5) ;
+B = sprand (k,n,0.5) ;
 C1 = A*B ;
 C = GB_mex_AxB (A, B) ;
 assert (spok (C) == 1) ;
-assert (isequal (C, C1)) ;
+assert (norm (C-C1,1) / norm (C,1)< 1e-12) ;
+
 
 A = A' ;
 C1 = A'*B ;

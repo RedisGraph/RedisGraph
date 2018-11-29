@@ -1,14 +1,14 @@
 function test58 (cover)
 %TEST58 test GrB_eWiseAdd
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 if (nargin < 1)
     cover = 1 ;
 end
 
-fprintf ('\n----- quick performance for GB_mex_eWiseAdd_Matrix\n') ;
+fprintf ('\ntest58: ----- quick performance for GB_mex_eWiseAdd_Matrix\n') ;
 
 
 add = 'plus' ;
@@ -25,9 +25,8 @@ if (~cover)
     C = Cin + (A+B) ;
     t1 =toc ;
 
-    tic
     C2 = GB_mex_eWiseAdd_Matrix (Cin, Mask, accum, add, A, B, [ ]) ;
-    t2 = toc ;
+    t2 = gbresults ;
     assert (isequal (C2.matrix,  C))
 
     fprintf ('MATLAB: %g GB: %g  speedup: %g\n', t1, t2, t1/t2) ;
@@ -65,11 +64,12 @@ for m = nn
         end
         t1 = toc / trials ;
 
-        tic
+        tg = 0 ;
         for k = 1:trials
             C2 = GB_mex_eWiseAdd_Matrix (Cin, [ ], accum, add, A, B, [ ]) ;
+            tg = tg + gbresults ;
         end
-        t2 = toc /trials ;
+        t2 = tg /trials ;
         assert (isequal (C1, C2.matrix)) ;
 
         fprintf ('A+B:   ') ;
@@ -85,11 +85,12 @@ for m = nn
         end
         t1 = toc / trials ;
 
-        tic
+        tg = 0 ;
         for k = 1:trials
             C2 = GB_mex_eWiseAdd_Matrix (Cin, [ ], accum, add, A, BT, Dnt) ;
+            tg = tg + gbresults ;
         end
-        t2 = toc / trials ;
+        t2 = tg /trials ;
         assert (isequal (C1, C2.matrix)) ;
 
         fprintf ('A+B'':  ') ;
@@ -105,11 +106,12 @@ for m = nn
         end
         t1 = toc / trials  ;
 
-        tic
+        tg = 0 ;
         for k = 1:trials
             C2 = GB_mex_eWiseAdd_Matrix (Cin, [ ], accum, add, AT, B, Dtn) ;
+            tg = tg + gbresults ;
         end
-        t2 = toc / trials ;
+        t2 = tg /trials ;
         assert (isequal (C1, C2.matrix)) ;
 
         fprintf ('A''+B:  ') ;
@@ -125,11 +127,12 @@ for m = nn
         end
         t1 = toc / trials ;
 
-        tic
+        tg = 0 ;
         for k = 1:trials
             C2 = GB_mex_eWiseAdd_Matrix (Cin, [ ], accum, add, AT, BT, Dtt) ;
+            tg = tg + gbresults ;
         end
-        t2 = toc / trials ;
+        t2 = tg /trials ;
         assert (isequal (C1, C2.matrix)) ;
 
         fprintf ('A''+B'': ') ;

@@ -5,7 +5,7 @@ function [Z simple] = GB_spec_accum (accum, C, T, identity)
 %
 % Apply accum binary operator to the input C and the intermediate result T.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 % get the operator; default is class(C) if class is not present

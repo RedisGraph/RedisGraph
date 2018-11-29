@@ -2,7 +2,7 @@
 // GB_Type_compatible: return true if domains are compatible
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -19,13 +19,14 @@ bool GB_Type_compatible             // check if two types can be typecast
 )
 {
 
-    if (atype->code == GB_UDT_code || btype->code == GB_UDT_code)
-    {
+    if (atype->code == GB_UCT_code || btype->code == GB_UCT_code ||
+        atype->code == GB_UDT_code || btype->code == GB_UDT_code)
+    { 
         // two user types must be identical to be compatible
         return (atype == btype) ;
     }
     else
-    {
+    { 
         // any built-in domain is compatible with any other built-in domain
         return (true) ;
     }

@@ -1,6 +1,9 @@
 # find the OS
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 
+# store absolute path to RedisGraph Makefile location
+abs_path = $(shell pwd)
+
 # if DEBUG env var is set, we compile with "debug" cflags
 DEBUGFLAGS = -g -ggdb -O3 
 ifeq ($(DEBUG), 1)
@@ -9,7 +12,7 @@ endif
 
 # Default CFLAGS
 CFLAGS = -Wall -Wno-unused-function -Wno-unused-variable -Wno-unused-result -fPIC \
- 	-D_GNU_SOURCE -std=gnu99 -I"$(shell pwd)" -DREDIS_MODULE_TARGET
+ 	-D_GNU_SOURCE -std=gnu99 -I"$(abs_path)" -DREDIS_MODULE_TARGET
 CFLAGS += $(DEBUGFLAGS)
 
 # Compile flags for linux / osx
@@ -95,8 +98,9 @@ $(LIBTRIEMAP):
 	$(MAKE) -C util/triemap
 .PHONY: $(LIBTRIEMAP)
 
+BLAS_CFLAGS = -fPIC -I $(abs_path)/util -include rmalloc.h -DREDIS_MODULE_TARGET -DMALLOC=rm_malloc -DCALLOC=rm_calloc -DREALLOC=rm_realloc -DFREE=rm_free
 $(GRAPHBLAS):
-	$(MAKE) CMAKE_OPTIONS="-DCMAKE_CXX_FLAGS=-std=c++11" static_only -C ../deps/GraphBLAS
+	$(MAKE) CMAKE_OPTIONS="-DUSER_POSIX=1 -DCMAKE_CXX_FLAGS=-std=c++11 -DCMAKE_C_FLAGS='$(BLAS_CFLAGS)'" static_only -C ../deps/GraphBLAS
 
 .PHONY: $(GRAPHBLAS)
 

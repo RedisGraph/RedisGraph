@@ -2,7 +2,7 @@
 // GB_mx_string_to_BinaryOp.c: get a GraphBLAS operator from MATLAB strings
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -71,7 +71,7 @@ bool GB_mx_string_to_BinaryOp          // true if successful, false otherwise
         //----------------------------------------------------------------------
 
         // user-defined Complex binary operator
-        opcode  = GB_USER_opcode ;      // generic user-defined opcode
+        opcode  = GB_USER_R_opcode ;    // generic user-defined opcode
         opclass = mxDOUBLE_CLASS ;      // MATLAB class for complex
 
         if (len == 0)
@@ -168,7 +168,7 @@ bool GB_mx_string_to_BinaryOp          // true if successful, false otherwise
         {
             // z = complex(x,y) = x + i*y
             op = Complex_complex ;
-            opcode = GB_USER_opcode ;
+            opcode = GB_USER_R_opcode ;
             opclass = mxDOUBLE_CLASS ;
         }
 
@@ -178,7 +178,7 @@ bool GB_mx_string_to_BinaryOp          // true if successful, false otherwise
             return (false) ;
         }
 
-        if (opcode != GB_USER_opcode)
+        if (opcode != GB_USER_R_opcode)
         {
             // get the opclass from the opclass_mx string, if present
             opclass = GB_mx_string_to_classID (opclass, opclass_mx) ;
@@ -679,7 +679,8 @@ bool GB_mx_string_to_BinaryOp          // true if successful, false otherwise
                 break ;
 
             case GB_NOP_opcode   :
-            case GB_USER_opcode   :
+            case GB_USER_C_opcode   :
+            case GB_USER_R_opcode   :
 
                 // no operation is requested so return NULL, or user-defined
                 break ;
@@ -700,7 +701,7 @@ bool GB_mx_string_to_BinaryOp          // true if successful, false otherwise
 
 
     // return the binary operator to the caller
-    ASSERT_OK_OR_NULL (GB_check (op, "got binary op", 0)) ;
+    ASSERT_OK_OR_NULL (GB_check (op, "got binary op", GB0)) ;
     (*handle) = op ;
     return (true) ;
 }

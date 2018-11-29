@@ -1,7 +1,7 @@
 function test77 (fulltest)
 %TEST77 test GxB_kron
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 if (nargin < 1)
@@ -15,7 +15,7 @@ if (fulltest)
     k1test = 1:length(classes) ;
 else
     fprintf ('--------------quick tests of GxB_kron\n') ;
-    k1test = [1 2 4 10 11] ;
+    k1test = 11 ; % Was [1 2 4 10 11] ;
 end
 
 rng ('default') ;
@@ -34,7 +34,7 @@ for k1 = k1test % 1:length (classes)
     if (fulltest)
         k2test = 1:length(bin_ops) ;
     else
-        k2test = randperm (length(bin_ops), 2) ;
+        k2test = randperm (length(bin_ops), 1) ; % Was 2
     end
 
     for k2 = k2test % 1:length(bin_ops)
@@ -97,19 +97,42 @@ for k1 = k1test % 1:length (classes)
                         end
 
                         % try some matrices
-                        for am = [1 5 10 ]
-                            for an = [ 1 5 10 ]
-                                for bm = [1 4 9 ]
-                                    for bn = [1 4 9 ]
+                        for am = 5 %  % Was [1 5 10 ]
+                            for an = 3 % [1 10 ] % Was [ 1 5 10 ]
+                                for bm = 4 %  % Was [1 4 9 ]
+                                    for bn = 2 %  % Was [1 4 9 ]
+                                        fprintf ('.') ;
 
-                                        A = sparse (100 * sprandn (am,an, 0.5));
-                                        B = sparse (100 * sprandn (bm,bn, 0.5));
+                                        Ax= sparse (100 * sprandn (am,an, 0.5));
+                                        Bx= sparse (100 * sprandn (bm,bn, 0.5));
                                         cm = am * bm ;
                                         cn = an * bn ;
-                                        C = sparse (100 * sprandn (cm,cn, 0.2));
+                                        Cx= sparse (100 * sprandn (cm,cn, 0.2));
                                         Mask = sprandn (cm,cn,0.2) ~= 0 ;
-                                        AT = A' ;
-                                        BT = B' ;
+                                        AT = Ax' ;
+                                        BT = Bx' ;
+
+                                        for A_is_hyper = 0:1
+                                        for A_is_csc   = 0:1
+                                        for B_is_hyper = 0:1
+                                        for B_is_csc   = 0:1
+                                        for C_is_hyper = 0:1
+                                        for C_is_csc   = 0:1
+
+                                        clear A
+                                        A.matrix = Ax ;
+                                        A.is_hyper = A_is_hyper ;
+                                        A.is_csc   = A_is_csc   ;
+
+                                        clear B
+                                        B.matrix = Bx ;
+                                        B.is_hyper = B_is_hyper ;
+                                        B.is_csc   = B_is_csc   ;
+
+                                        clear C
+                                        C.matrix = Cx ;
+                                        C.is_hyper = C_is_hyper ;
+                                        C.is_csc   = C_is_csc   ;
 
                                         %---------------------------------------
                                         % kron(A,B)
@@ -182,6 +205,13 @@ for k1 = k1test % 1:length (classes)
                                         C1 = GB_mex_kron ...
                                             (C, Mask, accum, op, AT, BT, dtt);
                                         GB_spec_compare (C0, C1) ;
+
+                                        end
+                                        end
+                                        end
+                                        end
+                                        end
+                                        end
 
                                     end
                                 end

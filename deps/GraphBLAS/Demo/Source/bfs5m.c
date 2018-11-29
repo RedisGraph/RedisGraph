@@ -1,10 +1,15 @@
 //------------------------------------------------------------------------------
-// GraphBLAS/Demo/bfs5m.c: breadth first search (mxv and assign/reduce)
+// GraphBLAS/Demo/Source/bfs5m.c: breadth first search (vxm and assign/reduce)
 //------------------------------------------------------------------------------
 
-// Modified from the GraphBLAS C API Specification, 1.0.1, provisional release,
-// by Aydin Buluc, Timothy Mattson, Scott McMillan, Jose' Moreira, Carl Yang.
-// Based on "GraphBLAS Mathematics" by Jeremy Kepner.
+// Modified from the GraphBLAS C API Specification, by Aydin Buluc, Timothy
+// Mattson, Scott McMillan, Jose' Moreira, Carl Yang.  Based on "GraphBLAS
+// Mathematics" by Jeremy Kepner.
+
+// This method has been updated as of Version 2.2 of SuiteSparse:GraphBLAS.
+// It now assumes the matrix is held by row (GxB_BY_ROW) and uses GrB_vxm
+// instead of GrB_mxv.  It now more closely matches the BFS example in the
+// GraphBLAS C API Specification.
 
 #include "demos.h"
 
@@ -30,17 +35,18 @@ GrB_Info bfs5m              // BFS of a graph (using vector assign & reduce)
     // set up the semiring and initialize the vector v
     //--------------------------------------------------------------------------
 
-    GrB_Info info ;
     GrB_Index n ;                          // # of nodes in the graph
     GrB_Vector q = NULL ;                  // nodes visited at each level
     GrB_Vector v = NULL ;                  // result vector
     GrB_Monoid Lor = NULL ;                // Logical-or monoid
     GrB_Semiring Boolean = NULL ;          // Boolean semiring
-    GrB_Descriptor desc = NULL ;           // Descriptor for mxv
+    GrB_Descriptor desc = NULL ;           // Descriptor for vxm
 
     GrB_Matrix_nrows (&n, A) ;             // n = # of rows of A
     GrB_Vector_new (&v, GrB_INT32, n) ;    // Vector<int32_t> v(n) = 0
-    for (int32_t i = 0 ; i < n ; i++) GrB_Vector_setElement (v, 0, i) ;
+    // This is a little faster if the whole graph is expected to be searched,
+    // but slower if only a small part of the graph is reached:
+    // for (int32_t i = 0 ; i < n ; i++) GrB_Vector_setElement (v, 0, i) ;
     GrB_Vector_new (&q, GrB_BOOL, n) ;     // Vector<bool> q(n) = false
     GrB_Vector_setElement (q, true, s) ;   // q[s] = true, false elsewhere
 
@@ -60,9 +66,9 @@ GrB_Info bfs5m              // BFS of a graph (using vector assign & reduce)
         // v<q> = level, using vector assign with q as the mask
         GrB_assign (v, q, NULL, level, GrB_ALL, n, NULL) ;
 
-        // q<!v> = A ||.&& q ; finds all the unvisited
+        // q<!v> = q ||.&& A ; finds all the unvisited
         // successors from current q, using !v as the mask
-        GrB_mxv (q, v, NULL, Boolean, A, q, desc) ;
+        GrB_vxm (q, v, NULL, Boolean, q, A, desc) ;
 
         // successor = ||(q)
         GrB_reduce (&successor, NULL, Lor, q, NULL) ;

@@ -1,10 +1,13 @@
 //------------------------------------------------------------------------------
-// GraphBLAS/Demo/mis.c: maximal independent set
+// GraphBLAS/Demo/Source/mis.c: maximal independent set
 //------------------------------------------------------------------------------
 
-// Modified from the GraphBLAS C API Specification, 1.0.1, provisional release,
-// by Aydin Buluc, Timothy Mattson, Scott McMillan, Jose' Moreira, Carl Yang.
-// Based on "GraphBLAS Mathematics" by Jeremy Kepner.
+// Modified from the GraphBLAS C API Specification, by Aydin Buluc, Timothy
+// Mattson, Scott McMillan, Jose' Moreira, Carl Yang.  Based on "GraphBLAS
+// Mathematics" by Jeremy Kepner.
+
+// This method has been updated as of Version 2.2 of SuiteSparse:GraphBLAS.  It
+// now uses GrB_vxm instead of GrB_mxv.
 
 #include "demos.h"
 
@@ -42,7 +45,7 @@ GrB_Info mis                    // compute a maximal independent set
     GrB_Vector new_neighbors = NULL ;   // new neighbors to new iset members
     GrB_Vector candidates = NULL ;      // candidate members to iset
     GrB_Monoid Max = NULL ;
-    GrB_Semiring maxSelect2nd = NULL ;  // Max/Select2nd "semiring"
+    GrB_Semiring maxSelect1st = NULL ;  // Max/Select1st "semiring"
     GrB_Monoid Lor = NULL ;
     GrB_Semiring Boolean = NULL ;       // Boolean semiring
     GrB_Descriptor r_desc = NULL ;
@@ -51,7 +54,6 @@ GrB_Info mis                    // compute a maximal independent set
     GrB_Vector degrees = NULL ;
 
     GrB_Index n ;
-    GrB_Info info ;
 
     GrB_Matrix_nrows (&n, A) ;                 // n = # of nodes in graph
 
@@ -64,9 +66,9 @@ GrB_Info mis                    // compute a maximal independent set
     // Initialize independent set vector, bool
     GrB_Vector_new (&iset, GrB_BOOL, n) ;
 
-    // create the maxSelect2nd semiring
+    // create the maxSelect1st semiring
     GrB_Monoid_new (&Max, GrB_MAX_FP32, (float) 0.0) ;
-    GrB_Semiring_new (&maxSelect2nd, Max, GrB_SECOND_FP32) ;
+    GrB_Semiring_new (&maxSelect1st, Max, GrB_FIRST_FP32) ;
 
     // create the OR-AND-BOOL semiring
     GrB_Monoid_new (&Lor, GrB_LOR, (bool) false) ;
@@ -108,8 +110,8 @@ GrB_Info mis                    // compute a maximal independent set
         GrB_apply (prob, candidates, NULL, set_random, degrees, r_desc) ;
 
         // compute the max probability of all neighbors
-        GrB_mxv (neighbor_max, candidates, NULL, maxSelect2nd,
-            A, prob, r_desc) ;
+        GrB_vxm (neighbor_max, candidates, NULL, maxSelect1st,
+            prob, A, r_desc) ;
 
         // select node if its probability is > than all its active neighbors
         GrB_eWiseAdd (new_members, NULL, NULL, GrB_GT_FP64, prob,
@@ -126,8 +128,8 @@ GrB_Info mis                    // compute a maximal independent set
         if (nvals == 0) { break ; }                  // early exit condition
 
         // Neighbors of new members can also be removed from candidates
-        GrB_mxv (new_neighbors, candidates, NULL, Boolean, A,
-            new_members, NULL) ;
+        GrB_vxm (new_neighbors, candidates, NULL, Boolean,
+            new_members, A, NULL) ;
         GrB_apply (candidates, new_neighbors, NULL, GrB_IDENTITY_BOOL,
             candidates, sr_desc) ;
 
@@ -151,7 +153,7 @@ GrB_Info mis                    // compute a maximal independent set
     GrB_free (&new_neighbors) ;
     GrB_free (&candidates) ;
     GrB_free (&Max) ;
-    GrB_free (&maxSelect2nd) ;
+    GrB_free (&maxSelect1st) ;
     GrB_free (&Lor) ;
     GrB_free (&Boolean) ;
     GrB_free (&r_desc) ;

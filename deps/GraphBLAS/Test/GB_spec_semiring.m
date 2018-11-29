@@ -23,9 +23,9 @@ function [multiply_op add_op identity zclass] = GB_spec_semiring (semiring)
 %               'uint16', 'int32', 'uint32', 'int64', 'uint64', 'single' (FP43
 %               in GraphBLAS), 'double' (FP64 in GraphBLAS).
 %
-% Refer to Source/GB_AxB_builtin.c for a list of valid semirings.
+% Refer to Source/GB_AxB_Gustavson_builtin.c for a list of valid semirings.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 % set the default semiring

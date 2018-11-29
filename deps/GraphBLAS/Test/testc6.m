@@ -1,7 +1,7 @@
 function testc6
 %TESTC6 test complex apply
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 rng 'default'
@@ -29,7 +29,7 @@ for m = [1 5 10 50 100 ]
         % test unary ops with complex x,z
         for k = 1:7
             op = complex_unary {k} ;
-            C1 = GB_mex_op (op, a) ;
+            C1 = GB_mex_op (op, a, '',1) ;
             [C2 tol] = GB_user_op (op, a) ;
             GB_user_compare (C1, C2, tol) ;
             C1 = GB_mex_apply (C, [], [], op, A, dr) ;
@@ -56,7 +56,7 @@ for m = [1 5 10 50 100 ]
         % test unary ops with complex x, real z
         for k = 8:11
             op = complex_unary {k} ;
-            C1 = GB_mex_op (op, a) ;
+            C1 = GB_mex_op (op, a, '',1) ;
             [C2 tol] = GB_user_op (op, a) ;
             GB_user_compare (C1, C2, tol) ;
             C1 = GB_mex_apply (B, [], [], op, A, dr) ;
@@ -83,7 +83,7 @@ for m = [1 5 10 50 100 ]
         % test unary ops with real x, complex z
         for k = 12:13
             op = complex_unary {k} ;
-            C1 = GB_mex_op (op, b) ;
+            C1 = GB_mex_op (op, b, '',1) ;
             [C2 tol] = GB_user_op (op, b) ;
             GB_user_compare (C1, C2, tol) ;
             C1 = GB_mex_apply (C, [], [], op, B, dr) ;

@@ -1,10 +1,10 @@
 function test50
 %TEST50 test AxB numeric and symbolic
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
-fprintf ('\n----------------------------- GB_mex_AxB numeric and symbolic\n') ;
+fprintf ('\n----------------------------- GB_mex_AxB\n') ;
 
 % Prob = ssget (2662) ;
 Prob = ssget (936)
@@ -40,21 +40,7 @@ for trial = 1:2
     % subplot (1,3,2) ; spy (B) ;
     % subplot (1,3,3) ; spy (C) ;
 
-    fprintf ('\n--- C=A*B qsort, no transpose, symbolic:\n') ;
-    tic ;
-    C1 = GB_mex_AxB_symbolic (A, B, false, false, false) ;
-    toc
-    assert (isequal (C1, C0)) ;
-    clear C1
-
-    fprintf ('\n--- C=(B''*C'')'' 3 transpose, symbolic:\n') ;
-    tic ;
-    C1 = GB_mex_AxB_symbolic (B, A, true, true, true) ;
-    toc
-    assert (isequal (C1, C0)) ;
-    clear C1
-
-    fprintf ('numerical matrix multiply:\n') ;
+    fprintf ('numerical matrix multiply (GraphBLAS):\n') ;
     tic
     S = GB_mex_AxB (A, B) ;
     toc
@@ -68,20 +54,6 @@ for trial = 1:2
     C = (A*B)' ;
     toc
     C0 = cast (C, 'logical') ;
-
-    fprintf ('\n--- C=(A*B)'' no sort needed, transpose, symbolic\n') ;
-    tic ;
-    C1 = GB_mex_AxB_symbolic (A, B, false, false, true) ;
-    toc
-    assert (isequal (C1, C0)) ;
-    clear C1
-
-    fprintf ('\n--- C=B''*A'' qsort, no transpose needed, symbolic:\n') ;
-    tic ;
-    C1 = GB_mex_AxB_symbolic (B, A, true, true, false) ;
-    toc
-    assert (isequal (C1, C0)) ;
-    clear C1
 
 end
 

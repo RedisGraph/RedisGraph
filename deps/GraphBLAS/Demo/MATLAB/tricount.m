@@ -26,7 +26,7 @@ function [ntri t] = tricount (method, A, E)
 %   Burkhardt:  ntri = sum (sum ((A^2) .* A)) / 6
 %   Cohen:      ntri = sum (sum ((L * U) .* A)) / 2
 %   Sandia:     ntri = sum (sum ((U * U) .* U))
-%   SandiaL:    ntri = sum (sum ((L * L) .* L))
+%   Sandia2:    ntri = sum (sum ((L * L) .* L))
 %
 % E is an optional sparse matrix that represents the same graph as A, but in an
 % edge incidence format.  Each column e of E has exactly two nonzeros, where
@@ -40,9 +40,9 @@ function [ntri t] = tricount (method, A, E)
 % computes (L*L).*L using KokkosKernels, but that package stores its matrices
 % in compressed sparse row form.  MATLAB stores its matrices in compressed
 % sparse column form, so the MATLAB equivalent of the Sandia method is
-% sum(sum((U*U).*L))>
+% sum(sum((U*U).*U)).
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 %-------------------------------------------------------------------------------
@@ -145,7 +145,7 @@ switch  method
     case 'Burkhardt'
     %===========================================================================
 
-        % Burkhart, 'Graphing trillions of triangles', Information
+        % Burkhardt, 'Graphing trillions of triangles', Information
         % Visualization, 16(3), Sept 2017,
         % https://doi.org/10.1177%2F1473871616666393
         %
@@ -255,7 +255,7 @@ switch  method
         % Their method stores L in row-oriented form, which is the same as the
         % matrix U in column-oriented form.  Thus, comparing MATLAB with the
         % Sandia method, the MATLAB statement is sum(sum(U*U).*U).  See also
-        % the case 'SandiaL' below.
+        % the case 'Sandia2' below.
 
         %-----------------------------------------------------------------------
         % Sandia method:
@@ -266,7 +266,7 @@ switch  method
         %-----------------------------------------------------------------------
 
     %===========================================================================
-    case 'SandiaL'  % sum (sum ((L*L).*L))
+    case 'Sandia2'  % sum (sum ((L*L).*L))
     %===========================================================================
 
         % Note that for all these methods, MATLAB computes all of U*U or L*L
@@ -278,12 +278,28 @@ switch  method
         % sum(sum(L*L).*L).
 
         %-----------------------------------------------------------------------
-        % SandiaL method:
+        % Sandia2 method:
         t.prep_time = tril_time ;   % needs L only
         tic ;
         ntri = sum (sum ((L * L) .* L)) ;
         t.triangle_count_time = toc ;
         %-----------------------------------------------------------------------
+
+    %===========================================================================
+    case 'SandiaDot'  % sum (sum ((L'*U).*U))
+    %===========================================================================
+
+        % same as Sandia method, but with L' instead of U.  The matrices are
+        % the same but MATLAB might treat the L' differently.
+
+        %-----------------------------------------------------------------------
+        % Sandia method:
+        t.prep_time = triu_time + tril_time ;
+        tic ;
+        ntri = sum (sum ((L' * U) .* U)) ;
+        t.triangle_count_time = toc ;
+        %-----------------------------------------------------------------------
+
 
     otherwise
         error ('unrecognized method') ;

@@ -2,13 +2,16 @@
 // GB_mex_wathen: construct a random finite-element matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
 #include "GB_mex.h"
-#define FREE_ALL GB_mx_put_global (malloc_debug) ;
+
+#define USAGE "A = GB_mex_wathen (nx, ny, method, scale, rho)"
+
+#define FREE_ALL GB_mx_put_global (true, 0) ;
 
 void mexFunction
 (
@@ -19,26 +22,27 @@ void mexFunction
 )
 {
 
-    bool malloc_debug = GB_mx_get_global ( ) ;
+    bool malloc_debug = GB_mx_get_global (true) ;
     GrB_Matrix A = NULL ;
 
     // check inputs
+    GB_WHERE (USAGE) ;
     if (nargout > 1 || nargin > 5)
     {
-        mexErrMsgTxt ("Usage: A = GB_mex_wathen (nx, ny, method, scale, rho)") ;
+        mexErrMsgTxt ("Usage: " USAGE) ;
     }
 
     // get nx
-    GET_SCALAR (0, int64_t, nx, 4) ;
+    int64_t GET_SCALAR (0, int64_t, nx, 4) ;
 
     // get ny
-    GET_SCALAR (1, int64_t, ny, 4) ;
+    int64_t GET_SCALAR (1, int64_t, ny, 4) ;
 
     // get method
-    GET_SCALAR (2, int, method, 0) ;
+    int GET_SCALAR (2, int, method, 0) ;
 
     // get scale
-    GET_SCALAR (3, bool, scale, false) ;
+    bool GET_SCALAR (3, bool, scale, false) ;
 
     // get rho
     double *rho = NULL ;

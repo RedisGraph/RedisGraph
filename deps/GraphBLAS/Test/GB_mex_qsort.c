@@ -2,12 +2,14 @@
 // GB_mex_qsort: sort int64's using GB_qsort_1
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
 #include "GB_mex.h"
+
+#define USAGE "J = qsort (I)"
 
 void mexFunction
 (
@@ -17,10 +19,14 @@ void mexFunction
     const mxArray *pargin [ ]
 )
 {
+
+    // check inputs
+    GB_WHERE (USAGE) ;
     if (nargin != 1)
     {
-        mexErrMsgTxt ("Usage: J = qsort (I)") ;
+        mexErrMsgTxt ("Usage: " USAGE) ;
     }
+
     if (!mxIsClass (pargin [0], "int64"))
     {
         mexErrMsgTxt ("I must be a int64 array") ;
@@ -32,6 +38,11 @@ void mexFunction
     int64_t *J = mxGetData (pargout [0]) ;
     memcpy (J, I, n * sizeof (int64_t)) ;
 
+    TIC ;
+
     GB_qsort_1 (J, n) ;
+
+    TOC ;
+    GB_mx_put_time (0) ;
 }
 

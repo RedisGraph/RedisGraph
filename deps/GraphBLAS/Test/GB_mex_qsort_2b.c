@@ -2,12 +2,14 @@
 // GB_mex_qsort_2b: sort using GB_qsort_2b
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
 #include "GB_mex.h"
+
+#define USAGE "[I,J] = qsort (I,J)"
 
 void mexFunction
 (
@@ -17,9 +19,12 @@ void mexFunction
     const mxArray *pargin [ ]
 )
 {
+
+    // check inputs
+    GB_WHERE (USAGE) ;
     if (nargin != 2 || nargout != 2)
     {
-        mexErrMsgTxt ("Usage: [I,J] = qsort (I,J)") ;
+        mexErrMsgTxt ("Usage: " USAGE) ;
     }
     if (!mxIsClass (pargin [0], "int64"))
     {
@@ -47,6 +52,11 @@ void mexFunction
     int64_t *Jout = mxGetData (pargout [1]) ;
     memcpy (Jout, J, n * sizeof (int64_t)) ;
 
+    TIC ;
+
     GB_qsort_2b (Iout, Jout, n) ;
+
+    TOC ;
+    GB_mx_put_time (0) ;
 }
 

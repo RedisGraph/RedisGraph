@@ -1,0 +1,162 @@
+#!/bin/csh
+
+# startup
+echo "function [T, Tprep, N, Nedges, Ntri, File] = tri_results" > tri_results.m
+echo "id = 0 ;" >>  tri_results.m
+echo "" > tri_grb_output.txt
+
+./tri_run \
+    ~/GraphChallenge/synthetic/gc3/Theory-16-25-B1k.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-16-25-B2k.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-16-25-Bk.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-3-4-5-B1k.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-3-4-5-B2k.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-3-4-5-Bk.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-3-4-B1k.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-3-4-B2k.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-3-4-Bk.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-4-5-9-Bk.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-4-5-B1k.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-4-5-B2k.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-4-5-Bk.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-5-9-B1k.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-5-9-B2k.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-5-9-Bk.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-9-16-B1k.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-9-16-B2k.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-9-16-Bk.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-4-5-9-B1k.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-4-5-9-B2k.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-5-9-16-B1k.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-5-9-16-B2k.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-5-9-16-Bk.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-25-81-B1k.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-25-81-B2k.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-25-81-Bk.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-3-4-5-9-Bk.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-3-4-5-9-B1k.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-3-4-5-9-B2k.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-9-16-25-Bk.tsv.gz \
+    ~/GraphChallenge/snap/as20000102/as20000102_adj.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-9-16-25-B1k.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-9-16-25-B2k.tsv.gz \
+    ~/GraphChallenge/snap/ca-GrQc/ca-GrQc_adj.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-4-5-9-16-Bk.tsv.gz \
+    ~/GraphChallenge/snap/p2p-Gnutella08/p2p-Gnutella08_adj.tsv.gz \
+    ~/GraphChallenge/snap/oregon1_010331/oregon1_010331_adj.tsv.gz \
+    ~/GraphChallenge/snap/oregon1_010407/oregon1_010407_adj.tsv.gz \
+    ~/GraphChallenge/snap/oregon1_010414/oregon1_010414_adj.tsv.gz \
+    ~/GraphChallenge/snap/oregon1_010421/oregon1_010421_adj.tsv.gz \
+    ~/GraphChallenge/snap/oregon1_010428/oregon1_010428_adj.tsv.gz \
+    ~/GraphChallenge/snap/oregon1_010505/oregon1_010505_adj.tsv.gz \
+    ~/GraphChallenge/snap/oregon1_010512/oregon1_010512_adj.tsv.gz \
+    ~/GraphChallenge/snap/oregon1_010519/oregon1_010519_adj.tsv.gz \
+    ~/GraphChallenge/snap/oregon1_010526/oregon1_010526_adj.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-4-5-9-16-B1k.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-4-5-9-16-B2k.tsv.gz \
+    ~/GraphChallenge/snap/p2p-Gnutella09/p2p-Gnutella09_adj.tsv.gz \
+    ~/GraphChallenge/snap/ca-HepTh/ca-HepTh_adj.tsv.gz \
+    ~/GraphChallenge/snap/oregon2_010331/oregon2_010331_adj.tsv.gz \
+    ~/GraphChallenge/snap/oregon2_010407/oregon2_010407_adj.tsv.gz \
+    ~/GraphChallenge/snap/oregon2_010505/oregon2_010505_adj.tsv.gz \
+    ~/GraphChallenge/snap/oregon2_010414/oregon2_010414_adj.tsv.gz \
+    ~/GraphChallenge/snap/oregon2_010421/oregon2_010421_adj.tsv.gz \
+    ~/GraphChallenge/snap/oregon2_010428/oregon2_010428_adj.tsv.gz \
+    ~/GraphChallenge/snap/oregon2_010512/oregon2_010512_adj.tsv.gz \
+    ~/GraphChallenge/snap/oregon2_010519/oregon2_010519_adj.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-81-256-B1k.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-81-256-Bk.tsv.gz \
+    ~/GraphChallenge/snap/oregon2_010526/oregon2_010526_adj.tsv.gz \
+    ~/GraphChallenge/snap/p2p-Gnutella06/p2p-Gnutella06_adj.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-81-256-B2k.tsv.gz \
+    ~/GraphChallenge/snap/p2p-Gnutella05/p2p-Gnutella05_adj.tsv.gz \
+    ~/GraphChallenge/snap/p2p-Gnutella04/p2p-Gnutella04_adj.tsv.gz \
+    ~/GraphChallenge/snap/as-caida20071105/as-caida20071105_adj.tsv.gz \
+    ~/GraphChallenge/snap/p2p-Gnutella25/p2p-Gnutella25_adj.tsv.gz \
+    ~/GraphChallenge/snap/p2p-Gnutella24/p2p-Gnutella24_adj.tsv.gz \
+    ~/GraphChallenge/snap/facebook_combined/facebook_combined_adj.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-16-25-81-Bk.tsv.gz \
+    ~/GraphChallenge/snap/p2p-Gnutella30/p2p-Gnutella30_adj.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-16-25-81-B1k.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-16-25-81-B2k.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-3-4-5-9-16-Bk.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-5-9-16-25-Bk.tsv.gz \
+    ~/GraphChallenge/snap/ca-CondMat/ca-CondMat_adj.tsv.gz \
+    ~/GraphChallenge/snap/ca-HepPh/ca-HepPh_adj.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-5-9-16-25-B1k.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-5-9-16-25-B2k.tsv.gz \
+    ~/GraphChallenge/snap/p2p-Gnutella31/p2p-Gnutella31_adj.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-3-4-5-9-16-B2k.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-3-4-5-9-16-B1k.tsv.gz \
+    ~/GraphChallenge/snap/email-Enron/email-Enron_adj.tsv.gz \
+    ~/GraphChallenge/synthetic/image-grid/g-260610-65536_adj.tsv.gz \
+    ~/GraphChallenge/snap/ca-AstroPh/ca-AstroPh_adj.tsv.gz \
+    ~/GraphChallenge/snap/loc-brightkite_edges/loc-brightkite_edges_adj.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-256-625-Bk.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-256-625-B1k.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-256-625-B2k.tsv.gz \
+    ~/GraphChallenge/snap/cit-HepTh/cit-HepTh_adj.tsv.gz \
+    ~/GraphChallenge/snap/soc-Epinions1/soc-Epinions1_adj.tsv.gz \
+    ~/GraphChallenge/snap/email-EuAll/email-EuAll_adj.tsv.gz \
+    ~/GraphChallenge/snap/cit-HepPh/cit-HepPh_adj.tsv.gz \
+    ~/GraphChallenge/snap/soc-Slashdot0811/soc-Slashdot0811_adj.tsv.gz \
+    ~/GraphChallenge/snap/soc-Slashdot0902/soc-Slashdot0902_adj.tsv.gz \
+    ~/GraphChallenge/synthetic/image-grid/g-1045506-262144_adj.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-4-5-9-16-25-Bk.tsv.gz \
+    ~/GraphChallenge/snap/loc-gowalla_edges/loc-gowalla_edges_adj.tsv.gz \
+    ~/GraphChallenge/snap/amazon0302/amazon0302_adj.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-4-5-9-16-25-B1k.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-4-5-9-16-25-B2k.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-25-81-256-Bk.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-25-81-256-B1k.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-25-81-256-B2k.tsv.gz \
+    ~/GraphChallenge/snap/roadNet-PA/roadNet-PA_adj.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-9-16-25-81-Bk.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-9-16-25-81-B1k.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-9-16-25-81-B2k.tsv.gz \
+    ~/GraphChallenge/snap/roadNet-TX/roadNet-TX_adj.tsv.gz \
+    ~/GraphChallenge/synthetic/image-grid/g-4188162-1048576_adj.tsv.gz \
+    ~/GraphChallenge/snap/flickrEdges/flickrEdges_adj.tsv.gz \
+    ~/GraphChallenge/snap/amazon0312/amazon0312_adj.tsv.gz \
+    ~/GraphChallenge/snap/amazon0505/amazon0505_adj.tsv.gz \
+    ~/GraphChallenge/snap/amazon0601/amazon0601_adj.tsv.gz \
+    ~/GraphChallenge/snap/roadNet-CA/roadNet-CA_adj.tsv.gz \
+    ~/GraphChallenge/synthetic/graph500-scale18-ef16/graph500-scale18-ef16_adj.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-3-4-5-9-16-25-Bk.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-3-4-5-9-16-25-B1k.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-3-4-5-9-16-25-B2k.tsv.gz \
+    ~/GraphChallenge/synthetic/graph500-scale19-ef16/graph500-scale19-ef16_adj.tsv.gz \
+    ~/GraphChallenge/synthetic/image-grid/g-16764930-4194304_adj.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-5-9-16-25-81-Bk.tsv.gz \
+    ~/GraphChallenge/synthetic/graph500-scale20-ef16/graph500-scale20-ef16_adj.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-5-9-16-25-81-B2k.tsv.gz \
+    ~/GraphChallenge/synthetic/gc3/Theory-5-9-16-25-81-B1k.tsv.gz \
+    ~/GraphChallenge/snap/cit-Patents/cit-Patents_adj.tsv.gz \
+    ~/GraphChallenge/synthetic/graph500-scale21-ef16/graph500-scale21-ef16_adj.tsv.gz \
+    ~/GraphChallenge/synthetic/image-grid/g-67084290-16777216_adj.tsv.gz \
+    ~/GraphChallenge/synthetic/graph500-scale22-ef16/graph500-scale22-ef16_adj.tsv.gz \
+    ~/GraphChallenge/synthetic/gc6/V2a.tsv.gz \
+    ~/GraphChallenge/synthetic/gc6/U1a.tsv.gz \
+    ~/GraphChallenge/synthetic/graph500-scale23-ef16/graph500-scale23-ef16_adj.tsv.gz \
+    ~/GraphChallenge/synthetic/image-grid/g-268386306-67108864_adj.tsv.gz \
+    ~/GraphChallenge/synthetic/gc6/P1a.tsv.gz \
+    ~/GraphChallenge/synthetic/gc6/A2a.tsv.gz \
+    ~/GraphChallenge/synthetic/gc6/V1r.tsv.gz \
+    ~/GraphChallenge/synthetic/graph500-scale24-ef16/graph500-scale24-ef16_adj.tsv.gz \
+    ~/GraphChallenge/synthetic/image-grid/g-1073643522-268435456_adj.tsv.gz \
+    ~/GraphChallenge/synthetic/graph500-scale25-ef16/graph500-scale25-ef16_adj.tsv.gz \
+    ~/GraphChallenge/snap/friendster/friendster_adj.tsv.gz
+
+# do not use tri_simple method (too slow):
+./tri_runnos \
+    ~/GraphChallenge/synthetic/gc5/201512012345.v18571154_e38040320.tsv.gz \
+    ~/GraphChallenge/synthetic/gc5/201512020000.v35991342_e74485420.tsv.gz \
+    ~/GraphChallenge/synthetic/gc5/201512020030.v68863315_e143414960.tsv.gz \
+    ~/GraphChallenge/synthetic/gc5/201512020130.v128568730_e270234840.tsv.gz \
+    ~/GraphChallenge/synthetic/gc5/201512020330.v226196185_e480047894.tsv.gz
+
+# wrapup
+echo "function [T, Tprep, N, Nedges, Ntri] = tri_grb_results" > tri_grb_results.m
+echo "id = 0 ;" >>  tri_grb_results.m
+awk -f tri_graphblas.awk < tri_grb_output.txt >> tri_grb_results.m
+

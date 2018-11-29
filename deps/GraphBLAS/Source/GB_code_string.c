@@ -2,6 +2,11 @@
 // GB_code_string: convert a type code into a string
 //------------------------------------------------------------------------------
 
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
+//------------------------------------------------------------------------------
+
 // Given GB_Type_code, return a string with the name of the type
 
 #include "GB.h"
@@ -25,6 +30,7 @@ char *GB_code_string            // return a static string for a type name
         case GB_UINT64_code : return ("uint64_t"    ) ;
         case GB_FP32_code   : return ("float"       ) ;
         case GB_FP64_code   : return ("double"      ) ;
+        case GB_UCT_code    :
         case GB_UDT_code    : return ("user-defined") ;
         default             : return ("unknown!"    ) ;
     }

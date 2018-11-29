@@ -1,8 +1,8 @@
 /* -------------------------------------------------------------------------- */
-/* GraphBLAS/Demo/simple_timer.c: a timer for performance measurements        */
+/* GraphBLAS/Demo/Source/simple_timer.c: a timer for performance measurements */
 /* -------------------------------------------------------------------------- */
 
-/* SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.    */
+/* SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved*/
 /* http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.        */
 
 /* -------------------------------------------------------------------------- */
@@ -35,6 +35,16 @@ void simple_tic         /* returns current time in seconds and nanoseconds */
         clock_gettime (CLOCK_MONOTONIC, &t) ;
         tic [0] = (double) t.tv_sec ;
         tic [1] = (double) t.tv_nsec ;
+
+    #elif defined ( __MACH__ )
+
+        clock_serv_t cclock ;
+        mach_timespec_t t ;
+        host_get_clock_service (mach_host_self ( ), SYSTEM_CLOCK, &cclock) ;
+        clock_get_time (cclock, &t) ;
+        mach_port_deallocate (mach_task_self ( ), cclock) ;
+        tic [0] = (double) t.tv_sec;
+        tic [1] = (double) t.tv_nsec;
 
     #else
 

@@ -1,0 +1,16 @@
+#!/bin/csh
+
+# do not use tri_simple method (too slow):
+./tri_runnos \
+    ~/GraphChallenge/synthetic/gc5/201512012345.v18571154_e38040320.tsv.gz \
+    ~/GraphChallenge/synthetic/gc5/201512020000.v35991342_e74485420.tsv.gz \
+    ~/GraphChallenge/synthetic/gc5/201512020030.v68863315_e143414960.tsv.gz \
+    ~/GraphChallenge/synthetic/gc5/201512020130.v128568730_e270234840.tsv.gz \
+    ~/GraphChallenge/synthetic/gc5/201512020330.v226196185_e480047894.tsv.gz
+
+# wrapup
+echo "function [T, Tprep, N, Nedges, Ntri] = tri_grb_results" > tri_grb_results.m
+echo "id = 0 ;" >>  tri_grb_results.m
+awk -f tri_graphblas.awk < tri_grb_output.txt >> tri_grb_results.m
+
+

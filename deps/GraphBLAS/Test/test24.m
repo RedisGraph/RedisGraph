@@ -2,7 +2,7 @@ function test24(fulltest)
 %TEST24 test GrB_reduce
 % test24(fulltest); fulltest=1 if longer test, 0 for quick test
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 if (nargin < 1)

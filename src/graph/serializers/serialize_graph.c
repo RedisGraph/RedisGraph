@@ -8,9 +8,9 @@
 #include <assert.h>
 #include "../graph.h"
 #include "serialize_graph.h"
-#include "../../GraphBLASExt/tuples_iter.h"
 #include "../../util/arr.h"
 #include "../../util/qsort.h"
+#include "../../../deps/GraphBLAS/Include/GraphBLAS.h"
 
 // Use a modified binary search to find the number of elements in
 // the array less than the input ID.
@@ -230,9 +230,14 @@ void _RdbSaveEdges(RedisModuleIO *rdb, const Graph *g) {
         NodeID dest;
         EdgeID edgeID;
         GrB_Matrix M = g->_relations_map[r];
-        TuplesIter *it = TuplesIter_new(M);
+        GxB_MatrixTupleIter *it;
+        GxB_MatrixTupleIter_new(&it, M);
 
-        while(TuplesIter_next(it, &dest, &src) == TuplesIter_OK) {
+        while(true) {
+            bool depleted = false;
+            GxB_MatrixTupleIter_next(it, &dest, &src, &depleted);
+            if(depleted) break;
+
             GrB_Matrix_extractElement_UINT64(&edgeID, M, dest, src);
             // Edge ID.
             RedisModule_SaveUnsigned(rdb, edgeID);
@@ -249,7 +254,7 @@ void _RdbSaveEdges(RedisModuleIO *rdb, const Graph *g) {
             _RdbSaveEntity(rdb, e.entity);
         }
 
-        TuplesIter_free(it);
+        GxB_MatrixTupleIter_free(it);
     }
 }
 

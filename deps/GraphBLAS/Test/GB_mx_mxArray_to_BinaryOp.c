@@ -2,7 +2,7 @@
 // GB_mx_mxArray_to_BinaryOp
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -71,7 +71,7 @@ bool GB_mx_mxArray_to_BinaryOp         // true if successful, false otherwise
     }
 
     // return the op
-    ASSERT_OK_OR_NULL (GB_check (op, name, 0)) ;
+    ASSERT_OK_OR_NULL (GB_check (op, name, GB0)) ;
     (*handle) = op ;
     return (true) ;
 }

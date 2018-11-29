@@ -16,7 +16,7 @@ function C = GB_spec_assign (C, Mask, accum, A, I, J, descriptor, scalar)
 % not affect any part of C outside that row or column.  Those two functions
 % have their own GB_spec_Row_assign.m and GB_spec_Col_assign.m functions.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 %-------------------------------------------------------------------------------
@@ -31,9 +31,7 @@ end
 % and with where X(~X.pattern)==identity for all matrices A, B, and C.
 C = GB_spec_matrix (C) ;
 A = GB_spec_matrix (A) ;
-
-% Mask is a dense logical matrix, not a struct
-Mask = GB_mex_cast (full (Mask), 'logical') ;
+Mask = GB_spec_getmask (Mask) ;
 [C_replace Mask_comp Atrans ignore] = GB_spec_descriptor (descriptor) ;
 
 %-------------------------------------------------------------------------------
@@ -47,11 +45,19 @@ if (Atrans)
 end
 
 % expand I and J if empty
-if (isempty (I))
+if (ischar (I) & isempty (I))
+    % I = '' is treated as the empty list
+    I = [ ] ;
+elseif (isempty (I) || isequal (I, ':'))
+    % I = [ ] is treated as ":"
     nrows = size (C.matrix, 1) ;
     I = 1:nrows ;
 end
-if (isempty (J))
+if (ischar (J) & isempty (J))
+    % J = '' is treated as the empty list
+    J = [ ] ;
+elseif (isempty (J) || isequal (J, ':'))
+    % J = [ ] is treated as the ":"
     ncols = size (C.matrix, 2) ;
     J = 1:ncols ;
 end

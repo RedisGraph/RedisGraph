@@ -1,8 +1,8 @@
 //------------------------------------------------------------------------------
-// GraphBLAS/Demo/random_matrix.c: create a random matrix
+// GraphBLAS/Demo/Source/Source/random_matrix.c: create a random matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -15,7 +15,7 @@
     GrB_free (&Aimag) ;           \
     if (I != NULL) free (I) ;     \
     if (J != NULL) free (J) ;     \
-    if (X != NULL) free (X) ;     \
+    if (X != NULL) free (X) ;
 
 #include "demos.h"
 
@@ -180,4 +180,3 @@ GrB_Info random_matrix      // create a random double-precision matrix
     return (GrB_SUCCESS) ;
 }
 
-#undef FREE_ALL

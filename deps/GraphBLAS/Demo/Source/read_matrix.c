@@ -1,8 +1,8 @@
 //------------------------------------------------------------------------------
-// GraphBLAS/Demo/read_matrix.c: read a matrix from stdin
+// GraphBLAS/Demo/Source/read_matrix.c: read a matrix from stdin
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -97,11 +97,11 @@ GrB_Info read_matrix        // read a double-precision or boolean matrix
     //--------------------------------------------------------------------------
 
     // format warnings vary with compilers, so read in as double
-    double ii, jj ;
-    while (fscanf (f, "%lg %lg %lg\n", &ii, &jj, &x) != EOF)
+    double i2, j2 ;
+    while (fscanf (f, "%lg %lg %lg\n", &i2, &j2, &x) != EOF)
     {
-        int64_t i = (int64_t) ii ;
-        int64_t j = (int64_t) jj ;
+        int64_t i = (int64_t) i2 ;
+        int64_t j = (int64_t) j2 ;
         if (ntuples >= len)
         {
             I2 = realloc (I, 2 * len * sizeof (int64_t)) ;
@@ -211,6 +211,7 @@ GrB_Info read_matrix        // read a double-precision or boolean matrix
     simple_tic (tic) ;
     GrB_Info info ;
     OK (GrB_Matrix_new (&C, xtype, nrows, ncols)) ;
+
     if (boolean)
     {
         OK (GrB_Matrix_build (C, I, J, Xbool, ntuples, xop)) ;
@@ -328,38 +329,21 @@ GrB_Info read_matrix        // read a double-precision or boolean matrix
             int64_t n = nrows + ncols ;
             OK (GrB_Matrix_new (&A, xtype, n, n)) ;
 
-            I = malloc (nrows * sizeof (int64_t)) ;
-            J = malloc (ncols * sizeof (int64_t)) ;
+            GrB_Index I_range [3], J_range [3] ;
 
-            // I = 0:nrows-1
-            // J = nrows:(nrows+ncols-1)
-            if (I == NULL || J == NULL)
-            {
-                if (pr) printf ("out of memory for index ranges\n") ;
-                FREE_ALL ;
-                return (GrB_OUT_OF_MEMORY) ;
-            }
+            I_range [GxB_BEGIN] = 0 ;
+            I_range [GxB_END  ] = nrows-1 ;
 
-            // FUTURE: GraphBLAS could use a "lo:hi" colon notation.
-            // It has GrB_ALL for A=C(:) but not A (lo:hi).
-
-            for (int64_t k = 0 ; k < nrows ; k++)
-            {
-                I [k] = k ;
-            }
-
-            for (int64_t k = 0 ; k < ncols ; k++)
-            {
-                J [k] = k + nrows ;
-            }
+            J_range [GxB_BEGIN] = nrows ;
+            J_range [GxB_END  ] = ncols+nrows-1 ;
 
             // A (nrows:n-1, 0:nrows-1) += C'
             OK (GrB_assign (A, NULL, xop2, // or NULL,
-                C, J, ncols, I, nrows, dt1)) ;
+                C, J_range, GxB_RANGE, I_range, GxB_RANGE, dt1)) ;
 
             // A (0:nrows-1, nrows:n-1) += C
             OK (GrB_assign (A, NULL, xop2, // or NULL,
-                C, I, nrows, J, ncols, NULL)) ;
+                C, I_range, GxB_RANGE, J_range, GxB_RANGE, NULL)) ;
 
             // force completion; if this statement does not appear, the
             // timing will not account for the final build, which would be
@@ -393,7 +377,8 @@ GrB_Info read_matrix        // read a double-precision or boolean matrix
     //--------------------------------------------------------------------------
 
     FREE_ALL ;
+    if (pr) printf ("\nMatrix from file:\n") ;
+    GxB_print (*A_output, pr ? GxB_SHORT : GxB_SILENT) ;
     return (GrB_SUCCESS) ;
 }
 
-#undef FREE_ALL

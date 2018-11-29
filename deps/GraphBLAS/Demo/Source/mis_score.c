@@ -1,10 +1,10 @@
 //------------------------------------------------------------------------------
-// GraphBLAS/Demo/mis_score.c: set random score
+// GraphBLAS/Demo/Source/mis_score.c: set random score
 //------------------------------------------------------------------------------
 
-// Modified from the GraphBLAS C API Specification, 1.0.1, provisional release,
-// by Aydin Buluc, Timothy Mattson, Scott McMillan, Jose' Moreira, Carl Yang.
-// Based on "GraphBLAS Mathematics" by Jeremy Kepner.
+// Modified from the GraphBLAS C API Specification, by Aydin Buluc, Timothy
+// Mattson, Scott McMillan, Jose' Moreira, Carl Yang.  Based on "GraphBLAS
+// Mathematics" by Jeremy Kepner.
 
 #include "demos.h"
 

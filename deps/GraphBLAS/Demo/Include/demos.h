@@ -1,8 +1,8 @@
 //------------------------------------------------------------------------------
-// GraphBLAS/Demo/demos.h: include file for all demo programs
+// GraphBLAS/Demo/Include/demos.h: include file for all demo programs
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -13,6 +13,40 @@
 #include "simple_rand.h"
 #include "simple_timer.h"
 #include "usercomplex.h"
+
+#ifdef MATLAB_MEX_FILE
+#include "mex.h"
+#include "matrix.h"
+#define malloc  mxMalloc
+#define free    mxFree
+#define calloc  mxCalloc
+#define realloc mxRealloc
+#endif
+
+//------------------------------------------------------------------------------
+// manage compiler warnings
+//------------------------------------------------------------------------------
+
+#if defined __INTEL_COMPILER
+#pragma warning (disable: 58 167 144 177 181 186 188 589 593 869 981 1418 1419 1572 1599 2259 2282 2557 2547 3280 )
+#elif defined __GNUC__
+
+#pragma GCC diagnostic ignored "-Wunknown-pragmas"
+#pragma GCC diagnostic ignored "-Wunknown-warning-option"
+#pragma GCC diagnostic ignored "-Wformat-truncation="
+#pragma GCC diagnostic ignored "-Wunused-variable"
+#pragma GCC diagnostic ignored "-Wunused-result"
+#pragma GCC diagnostic ignored "-Wint-in-bool-context"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wsign-compare"
+#pragma GCC diagnostic ignored "-Wtype-limits"
+#pragma GCC diagnostic ignored "-Wincompatible-pointer-types"
+
+// enable these warnings as errors
+#pragma GCC diagnostic error "-Wmisleading-indentation"
+#pragma GCC diagnostic error "-Wswitch-default"
+#endif
+
 
 #undef MIN
 #undef MAX
@@ -73,6 +107,7 @@ GrB_Info mis_check              // compute a maximal independent set
 void mis_score (float *result, uint32_t *degree) ;
 
 extern int32_t level ;
+#pragma omp threadprivate(level)
 
 void bfs_level (int32_t *result, bool *element) ;
 
@@ -124,21 +159,99 @@ GrB_Info tricount           // count # of triangles
     double t [2]            // t [0]: multiply time, t [1]: reduce time
 ) ;
 
+//------------------------------------------------------------------------------
+// page rank
+//------------------------------------------------------------------------------
+
+// dpagerank computes an array of structs for its result
+typedef struct
+{
+    double pagerank ;   // the pagerank of a node
+    GrB_Index page ;    // the node number itself
+}
+PageRank ;
+
+// ipagerank computes an array of structs for its result
+typedef struct
+{
+    uint64_t pagerank ;     // the pagerank of a node
+    GrB_Index page ;        // the node number itself
+}
+iPageRank ;
+
+// using a standard semiring and FP64 arithmetic
+GrB_Info dpagerank          // GrB_SUCCESS or error condition
+(
+    PageRank **Phandle,     // output: pointer to array of PageRank structs
+    GrB_Matrix A
+) ;
+
+// like dpagerank but with user-defined type, operators, and semiring;
+// also a stopping critirion
+GrB_Info dpagerank2         // GrB_SUCCESS or error condition
+(
+    PageRank **Phandle,     // output: pointer to array of PageRank structs
+    GrB_Matrix A,           // input graph, not modified
+    int itermax,            // max number of iterations
+    double tol,             // stop when norm (r-rnew,2) < tol
+    int *iters,             // number of iterations taken
+    GrB_Desc_Value method   // method to use for GrB_vxm (for testing only)
+) ;
+
+GrB_Info drowscale          // GrB_SUCCESS or error condition
+(
+    GrB_Matrix *Chandle,    // output matrix C = rowscale (A)
+    GrB_Matrix A            // input matrix, not modified
+) ;
+
+GrB_Info ipagerank          // GrB_SUCCESS or error condition
+(
+    iPageRank **Phandle,    // output: pointer to array of iPageRank structs
+    GrB_Matrix A            // input graph, not modified
+) ;
+
+GrB_Info irowscale          // GrB_SUCCESS or error condition
+(
+    GrB_Matrix *Chandle,    // output matrix C = rowscale (A)
+    GrB_Matrix A            // input matrix, not modified
+) ;
+
+// multiplicative scaling factor for ipagerank, ZSCALE = 2^30
+#define ZSCALE ((uint64_t) 1073741824)
+
+//------------------------------------------------------------------------------
+// CHECK: expr must be true; if not, return an error condition
+//------------------------------------------------------------------------------
+
+// the #include'ing file must define the FREE_ALL macro
+
+#define CHECK(expr,info)                                                \
+{                                                                       \
+    if (! (expr))                                                       \
+    {                                                                   \
+        /* free the result and all workspace, and return NULL */        \
+        FREE_ALL ;                                                      \
+        printf ("Failure: line %d file %s\n", __LINE__, __FILE__) ;     \
+        return (info) ;                                                 \
+    }                                                                   \
+}
+
+//------------------------------------------------------------------------------
+// OK: call a GraphBLAS method and check the result
+//------------------------------------------------------------------------------
+
 // OK(method) is a macro that calls a GraphBLAS method and checks the status;
-// if a failure occurs, it prints the detailed error message, frees all
-// allocated workspace and returns the error status to the caller.  If 'method'
-// is a GraphBLAS macro, the message can be unreadable, particularly when the
-// GraphBLAS method uses a _Generic expression in a macro.
-#define OK(method)                                          \
-{                                                           \
-    info = method ;                                         \
-    if (! (info == GrB_SUCCESS || info == GrB_NO_VALUE))    \
-    {                                                       \
-        printf ("file %s line %d\n", __FILE__, __LINE__) ;  \
-        printf ("%s\n", GrB_error ( )) ;                    \
-        FREE_ALL ;                                          \
-        return (info) ;                                     \
-    }                                                       \
+// if a failure occurs, it handles the error via the CHECK macro above, and
+// returns the error status to the caller.
+
+#define OK(method)                                                      \
+{                                                                       \
+    info = method ;                                                     \
+    if (info != GrB_SUCCESS)                                            \
+    {                                                                   \
+        printf ("GraphBLAS error:\n%s\n", GrB_error ( )) ;              \
+        CHECK (false, info) ;                                           \
+    }                                                                   \
 }
 
 #endif

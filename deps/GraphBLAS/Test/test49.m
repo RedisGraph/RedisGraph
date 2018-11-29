@@ -1,10 +1,10 @@
 function test49
 %TEST49 performance test of GrB_mxm (dot product method, A'*B)
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
-d = struct ('inp0', 'tran') ;
+d = struct ('inp0', 'tran', 'axb', 'dot') ;
 
 rng ('default') ;
 k = 1e6 ;
@@ -34,7 +34,7 @@ for m = 1:4
 
         e = norm (C - C2.matrix, 1) ;
         fprintf (...
-        'm %3d n %3d MATLAB: %10.5g  GrB: %10.5g  speedup %g e: %g\n', ...
+       'm %3d n %3d MATLAB: %10.5g  GrB: %10.5g  speedup %10.2f  err: %g\n', ...
            m, n, t1, t2, t1/t2, e) ;
     end
 end

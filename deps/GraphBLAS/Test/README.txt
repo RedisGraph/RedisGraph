@@ -1,4 +1,4 @@
-SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 GraphBLAS/Test:
@@ -84,6 +84,9 @@ stat.m          report on whether malloc debugging is enabled, and the current
                 test coverage (see ../Tcov).
 
 testall.m       a complete set of tests for GraphBLAS
+testperf.m      performance tests for GraphBLAS
+testperf_diary.txt  diary of testperf.m on a MacBookPro, 2.8 GHz Intel Core
+                    i7, 16 GB Ram, OSX 10.11.6, clang 8.0.0, MATLAB R2017A.
 
 spok            an acronym for "sparse OK"; checks if a MATLAB sparse matrix
                 is valid

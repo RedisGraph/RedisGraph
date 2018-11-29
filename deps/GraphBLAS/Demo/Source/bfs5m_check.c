@@ -1,10 +1,15 @@
 //------------------------------------------------------------------------------
-// GraphBLAS/Demo/bfs5m_check.c: breadth first search (mxv and assign/reduce)
+// GraphBLAS/Demo/Source/bfs5m_check.c: BFS with vxm and assign/reduce
 //------------------------------------------------------------------------------
 
-// Modified from the GraphBLAS C API Specification, 1.0.1, provisional release,
-// by Aydin Buluc, Timothy Mattson, Scott McMillan, Jose' Moreira, Carl Yang.
-// Based on "GraphBLAS Mathematics" by Jeremy Kepner.
+// Modified from the GraphBLAS C API Specification, by Aydin Buluc, Timothy
+// Mattson, Scott McMillan, Jose' Moreira, Carl Yang.  Based on "GraphBLAS
+// Mathematics" by Jeremy Kepner.
+
+// This method has been updated as of Version 2.2 of SuiteSparse:GraphBLAS.
+// It now assumes the matrix is held by row (GxB_BY_ROW) and uses GrB_vxm
+// instead of GrB_mxv.  It now more closely matches the BFS example in the
+// GraphBLAS C API Specification.
 
 // This version uses a predefined semiring (GxB_LOR_LAND_BOOL) and a predefined
 // monoid (GxB_LOR_BOOL_MONOID), in GraphBLAS.h.  It also checks the status of
@@ -48,21 +53,20 @@ GrB_Info bfs5m_check        // BFS of a graph (using vector assign & reduce)
     GrB_Index n ;                          // # of nodes in the graph
     GrB_Vector q = NULL ;                  // nodes visited at each level
     GrB_Vector v = NULL ;                  // result vector
-    GrB_Descriptor desc = NULL ;           // Descriptor for mxv
+    GrB_Descriptor desc = NULL ;           // Descriptor for vxm
 
     OK (GrB_Matrix_nrows (&n, A)) ;             // n = # of rows of A
     OK (GrB_Vector_new (&v, GrB_INT32, n)) ;    // Vector<int32_t> v(n) = 0
-    for (int32_t i = 0 ; i < n ; i++)
-    {
-        OK (GrB_Vector_setElement (v, 0, i)) ;
-    }
+    // This is a little faster if the whole graph is expected to be searched:
+    // but slower if only a small part of the graph is reached:
+    // for (int32_t i = 0 ; i < n ; i++) OK (GrB_Vector_setElement (v, 0, i)) ;
     OK (GrB_Vector_new (&q, GrB_BOOL, n)) ;     // Vector<bool> q(n) = false
     OK (GrB_Vector_setElement (q, true, s)) ;   // q[s] = true, false elsewhere
 
-    // descriptor: invert the mask for mxv, and clear output before assignment
+    // descriptor: invert the mask for vxm, and clear output before assignment
     OK (GrB_Descriptor_new (&desc)) ;
-    OK (GrB_Descriptor_set (desc, GrB_MASK, GrB_SCMP)) ;
-    OK (GrB_Descriptor_set (desc, GrB_OUTP, GrB_REPLACE)) ;
+    OK (GxB_set (desc, GrB_MASK, GrB_SCMP)) ;
+    OK (GxB_set (desc, GrB_OUTP, GrB_REPLACE)) ;
 
     //--------------------------------------------------------------------------
     // BFS traversal and label the nodes
@@ -74,9 +78,9 @@ GrB_Info bfs5m_check        // BFS of a graph (using vector assign & reduce)
         // v<q> = level, using vector assign with q as the mask
         OK (GrB_assign (v, q, NULL, level, GrB_ALL, n, NULL)) ;
 
-        // q<!v> = A ||.&& q ; finds all the unvisited
+        // q<!v> = q ||.&& A ; finds all the unvisited
         // successors from current q, using !v as the mask
-        OK (GrB_mxv (q, v, NULL, GxB_LOR_LAND_BOOL, A, q, desc)) ;
+        OK (GrB_vxm (q, v, NULL, GxB_LOR_LAND_BOOL, q, A, desc)) ;
 
         // successor = ||(q)
         OK (GrB_reduce (&successor, NULL, GxB_LOR_BOOL_MONOID, q, NULL)) ;
@@ -89,6 +93,4 @@ GrB_Info bfs5m_check        // BFS of a graph (using vector assign & reduce)
 
     return (GrB_SUCCESS) ;
 }
-
-#undef FREE_ALL
 

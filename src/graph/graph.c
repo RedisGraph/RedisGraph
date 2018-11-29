@@ -11,8 +11,6 @@
 #include "../util/arr.h"
 #include "../util/qsort.h"
 #include "../GraphBLASExt/GxB_Delete.h"
-#include "../GraphBLASExt/tuples_iter.h"
-#include "../GraphBLASExt/GxB_Pending.h"
 #include "../util/rmalloc.h"
 
 /*========================= Synchronization functions ========================= */
@@ -126,7 +124,9 @@ void _MatrixSynchronize(const Graph *g, GrB_Matrix m) {
 
     // If the matrix has pending operations or requires
     // a resize, enter critical section.
-    if(GxB_Matrix_Pending(m) || (n_rows != Graph_RequiredMatrixDim(g))) {
+    bool pending = false;
+    GxB_Matrix_Pending(m, &pending);
+    if(pending || (n_rows != Graph_RequiredMatrixDim(g))) {
         _Graph_EnterCriticalSection((Graph *)g);
         // Double-check if resize is necessary.
         GrB_Matrix_nrows(&n_rows, m);
@@ -134,7 +134,8 @@ void _MatrixSynchronize(const Graph *g, GrB_Matrix m) {
           assert(GxB_Matrix_resize(m, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g)) == GrB_SUCCESS);
 
         // Flush changes to matrices if necessary.
-        if (GxB_Matrix_Pending(m)) _Graph_ApplyPending(m);
+        GxB_Matrix_Pending(m, &pending);
+        if (pending) _Graph_ApplyPending(m);
 
         _Graph_LeaveCriticalSection((Graph *)g);
     }
@@ -401,19 +402,23 @@ void Graph_GetNodeEdges(const Graph *g, const Node *n, GRAPH_EDGE_DIR dir, int e
     assert(g && n && edges);
     NodeID srcNodeID;
     NodeID destNodeID;
-    TuplesIter *tupleIter;
+    GxB_MatrixTupleIter *tupleIter;
     GrB_Matrix M;
     if(edgeType == GRAPH_NO_RELATION) M = Graph_GetAdjacencyMatrix(g);
     else M = Graph_GetRelationMatrix(g, edgeType);
 
     // Outgoing.
     if(dir == GRAPH_EDGE_DIR_OUTGOING || dir == GRAPH_EDGE_DIR_BOTH) {
-        tupleIter = TuplesIter_new(M);
+        GxB_MatrixTupleIter_new(&tupleIter, M);
         srcNodeID = ENTITY_GET_ID(n);
-        TuplesIter_iterate_column(tupleIter, srcNodeID);
-        while(TuplesIter_next(tupleIter, &destNodeID, NULL) != TuplesIter_DEPLETED)
-        Graph_GetEdgesConnectingNodes(g, srcNodeID, destNodeID, edgeType, edges);
-        TuplesIter_free(tupleIter);
+        GxB_MatrixTupleIter_iterate_column(tupleIter, srcNodeID);
+        while(true) {
+            bool depleted = false;
+            GxB_MatrixTupleIter_next(tupleIter, &destNodeID, NULL, &depleted);
+            if(depleted) break;
+            Graph_GetEdgesConnectingNodes(g, srcNodeID, destNodeID, edgeType, edges);
+        }
+        GxB_MatrixTupleIter_free(tupleIter);
     }
 
     // Incoming.
@@ -431,13 +436,16 @@ void Graph_GetNodeEdges(const Graph *g, const Node *n, GRAPH_EDGE_DIR dir, int e
         GrB_Col_extract(incoming, NULL, NULL, M, GrB_ALL, nRows, destNodeID, desc);
         GrB_Descriptor_free(&desc);
 
-        tupleIter = TuplesIter_new((GrB_Matrix)incoming);
-        TuplesIter_iterate_column(tupleIter, 0);
-        while(TuplesIter_next(tupleIter, &srcNodeID, NULL) != TuplesIter_DEPLETED)
+        GxB_MatrixTupleIter_new(&tupleIter, (GrB_Matrix)incoming);
+        GxB_MatrixTupleIter_iterate_column(tupleIter, 0);
+        while(true) {
+            bool depleted = false;
+            GxB_MatrixTupleIter_next(tupleIter, &srcNodeID, NULL, &depleted);
+            if(depleted) break;
             Graph_GetEdgesConnectingNodes(g, srcNodeID, destNodeID, edgeType, edges);
-
+        }
         GrB_Vector_free(&incoming);
-        TuplesIter_free(tupleIter);
+        GxB_MatrixTupleIter_free(tupleIter);
     }
 }
 

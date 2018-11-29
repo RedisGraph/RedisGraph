@@ -1,10 +1,15 @@
 //------------------------------------------------------------------------------
-// GraphBLAS/Demo/bfs6.c: breadth first search (mxv and apply)
+// GraphBLAS/Demo/Source/bfs6.c: breadth first search (vxm and apply)
 //------------------------------------------------------------------------------
 
-// Modified from the GraphBLAS C API Specification, 1.0.1, provisional release,
-// by Aydin Buluc, Timothy Mattson, Scott McMillan, Jose' Moreira, Carl Yang.
-// Based on "GraphBLAS Mathematics" by Jeremy Kepner.
+// Modified from the GraphBLAS C API Specification, by Aydin Buluc, Timothy
+// Mattson, Scott McMillan, Jose' Moreira, Carl Yang.  Based on "GraphBLAS
+// Mathematics" by Jeremy Kepner.
+
+// This method has been updated as of Version 2.2 of SuiteSparse:GraphBLAS.
+// It now assumes the matrix is held by row (GxB_BY_ROW) and uses GrB_vxm
+// instead of GrB_mxv.  It now more closely matches the BFS example in the
+// GraphBLAS C API Specification.
 
 #include "demos.h"
 
@@ -30,13 +35,12 @@ GrB_Info bfs6               // BFS of a graph (using unary operator)
     // set up the semiring and initialize the vector v
     //--------------------------------------------------------------------------
 
-    GrB_Info info ;
     GrB_Index n ;                          // # of nodes in the graph
     GrB_Vector q = NULL ;                  // nodes visited at each level
     GrB_Vector v = NULL ;                  // result vector
     GrB_Monoid Lor = NULL ;                // Logical-or monoid
     GrB_Semiring Boolean = NULL ;          // Boolean semiring
-    GrB_Descriptor desc = NULL ;           // Descriptor for mxv
+    GrB_Descriptor desc = NULL ;           // Descriptor for vxm
     GrB_UnaryOp apply_level = NULL ;       // unary op: z = f(x) = level
 
     GrB_Matrix_nrows (&n, A) ;             // n = # of rows of A
@@ -73,9 +77,9 @@ GrB_Info bfs6               // BFS of a graph (using unary operator)
         // v.  The patterns of v and q are disjoint.
         GrB_apply (v, NULL, GrB_PLUS_INT32, apply_level, q, NULL) ;
 
-        // q<!v> = A ||.&& q ; finds all the unvisited
+        // q<!v> = q ||.&& A ; finds all the unvisited
         // successors from current q, using !v as the mask
-        GrB_mxv (q, v, NULL, Boolean, A, q, desc) ;
+        GrB_vxm (q, v, NULL, Boolean, q, A, desc) ;
 
         GrB_Vector_nvals (&nvals, q) ;
     }

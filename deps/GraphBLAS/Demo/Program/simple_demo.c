@@ -2,7 +2,7 @@
 /* GraphBLAS/Demo/Program/simple_demo.c: tests simple_rand and simple_timer   */
 /* -------------------------------------------------------------------------- */
 
-/* SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.    */
+/* SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved*/
 /* http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.        */
 
 /* -------------------------------------------------------------------------- */
@@ -86,7 +86,7 @@ int main (void)
     }
 
     /* generate random uint64_t numbers */
-    double t1, t2 ;
+    double t1 ;
 
     simple_tic (tic) ;
     for (i = 0 ; i < LEN ; i++)

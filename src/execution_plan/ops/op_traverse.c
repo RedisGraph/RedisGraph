@@ -66,7 +66,7 @@ OpResult TraverseConsume(OpBase *opBase, Record *r) {
 
     if(op->algebraic_results == NULL) {
         op->algebraic_results = AlgebraicExpression_Execute(op->algebraic_expression);
-        op->it = TuplesIter_new(op->algebraic_results->m);
+        GxB_MatrixTupleIter_new(&op->it, op->algebraic_results->m);
 
         Node *srcNode = op->algebraic_results->src_node;
         Node *destNode = op->algebraic_results->dest_node;
@@ -86,7 +86,9 @@ OpResult TraverseConsume(OpBase *opBase, Record *r) {
         if(_Traverse_SetEdge(op, r) == OP_OK) return OP_OK;
     }
 
-    if (TuplesIter_next(op->it, &dest_id, &src_id) == TuplesIter_DEPLETED) return OP_DEPLETED;
+    bool depleted = false;
+    GxB_MatrixTupleIter_next(op->it, &dest_id, &src_id, &depleted);
+    if (depleted) return OP_DEPLETED;
 
     Node *srcNode = op->algebraic_results->src_node;
     Node *destNode = op->algebraic_results->dest_node;
@@ -108,14 +110,14 @@ OpResult TraverseConsume(OpBase *opBase, Record *r) {
 
 OpResult TraverseReset(OpBase *ctx) {
     Traverse *op = (Traverse*)ctx;
-    TuplesIter_reset(op->it);
+    GxB_MatrixTupleIter_reset(op->it);
     return OP_OK;
 }
 
 /* Frees Traverse */
 void TraverseFree(OpBase *ctx) {
     Traverse *op = (Traverse*)ctx;
-    if(op->it) TuplesIter_free(op->it);
+    if(op->it) GxB_MatrixTupleIter_free(op->it);
     if(op->edges) array_free(op->edges);
     if(op->algebraic_results) AlgebraicExpressionResult_Free(op->algebraic_results);
 }

@@ -1,7 +1,7 @@
 function test63
 %TEST63 test GraphBLAS operators
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 fprintf ('\n ---------------------------- testing GB_mex_op\n') ;

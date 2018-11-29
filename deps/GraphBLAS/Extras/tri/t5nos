@@ -1,0 +1,3 @@
+#!/bin/csh
+./tri_run2nos \
+    ~/GraphChallenge/synthetic/gc5/201512012345.v18571154_e38040320.tsv.gz 

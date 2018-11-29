@@ -12,7 +12,7 @@
 #include "../../parser/ast.h"
 #include "../../arithmetic/algebraic_expression.h"
 #include "../../util/vector.h"
-#include "../../GraphBLASExt/tuples_iter.h"
+#include "../../../deps/GraphBLAS/Include/GraphBLAS.h"
 
 /* OP Traverse */
 typedef struct {
@@ -22,7 +22,7 @@ typedef struct {
     AlgebraicExpressionResult *algebraic_results;
     int edgeRelationType;
     Edge *edges;    
-    TuplesIter *it;
+    GxB_MatrixTupleIter *it;
 } Traverse;
 
 /* Creates a new Traverse operation */

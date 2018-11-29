@@ -1,5 +1,112 @@
-Version 1.2.0: TODO (Beta 4)
+Version 2.2.0 (BETA4), Nov 28, 2018
 
+    * minor change to GxB_get, GxB_set (all functions using va_arg):
+        const removed from parameter definitions to silence spurious warnings
+        from clang version 10.0.0, Mac OSX 10.14.
+    * added Doc/CONTRIBUTOR-LICENSE.txt
+    * added Doc/README_Doc.txt: includes instructions for OpenMP on the Mac
+    * minor changes to comments of GB_subref_template: to match the ACM TOMS
+        paper discussion of GrB_extract
+    * included the GraphBLAS Extras: triangle counting, k-truss, and
+        Kronecker matrix generator
+    * minor changes for gcc -Wall -Wpedantic -Wextra, and icc -w3: to fix or
+        silence warnings.  In a few cases, prior versions were relying on
+        extensions to the ANSI C11 standard in gcc, clang, xlc.  The extensions
+        are widely supported but best avoided anway.
+
+Version 2.2.0 (BETA3), Nov 23, 2018
+
+    * removed persistent thread-local O(n) workspace:  the Mark,
+        Flag, and Work arrays in GB_thread_local in prior versions are removed.
+        Replaced with temporary workspace, except for C=A*B using Gustavson's
+        method, which now uses the C->Sauna workspace, held in the output
+        matrix.
+    * better support for user-application threads: GrB_finalize is now fully
+        compliant with the spec.  User applications can use POSIX or OpenMP
+        threads, or no threading, and use GraphBLAS in a thread-safe manner.
+        Added OpenMP and POSIX pthread demos.
+    * bug fix: freeing an object (monoid, matrix, or vector) that is
+        dependent on another user-defined objects (an operator or type) that
+        has already been freed led to the reading of an invalid value: the size
+        of the object.  This only affects the memory usage statistics for
+        testing only, not production use.
+    * beta bug fix: memory leak in pagerank_demo program (bug first appears in
+        2.2.0BETA2, not in any non-BETA final release
+
+Version 2.2.0 (BETA2), Nov 15, 2018
+
+    * added additional pagerank example in Demo/
+    * beta bug fix: GxB_Monoid_define: bug fix for C struct types.  bug first
+        appears in Version 2.2.0 (BETA1), not in any non-BETA final release. 
+
+Version 2.2.0 (BETA1), Nov 2, 2018
+
+    * added GxB_*_define: to create user-defined objects at compile-time.
+        All internal macros renamed to add the GB_ prefix, to help avoid
+        name conflict with possible user-defined objects and macros.
+    * changed default format to GxB_BY_ROW
+    * performance improvements to GrB*assign* and GrB*extract
+    * added PageRank demos
+    * added GxB_*print: to display all GraphBLAS objects
+
+Version 2.1.0, Oct 14, 2018
+
+    * identical to V2.1.0 BETA2: except for a minor update to the user guide,
+        and date of release
+
+Version 2.1.0 (BETA2), Sept 17, 2018
+
+    * user function z=f(x,y): passed to GrB_BinaryOp_new, may now be called as
+        z=f(z,y), with x and z aliased.  This is permitted by the API
+        specification, and greatly improves performance of user-defined
+        semirings.
+
+Version 2.1.0 (BETA1), Sept 11, 2018
+
+    * major update: added hypersparse and CSR formats, colon notation, and
+        user selection of the method used by C=A*B.  All changes to the API are
+        backward compatible with Version 2.0, so the SO version does not
+        increase (it is still 2.x).
+    * added GxB_AxB_METHOD: for user selection of C=A*B method
+    * added GxB_RANGE, GxB_STRIDE and GxB_BACKWARDS: for MATLAB-like colon
+        notation: begin:end and begin:inc:end.
+    * added GxB_*Option* functions: to control hypersparsity and CSR/CSC format
+    * added GxB_set and GxB_set: to set/get the descriptor and other options
+    * bug fix: if the accum operator z=f(x,y) was user-defined with different
+        built-in types for x, y, and z, the typecasting was done incorrectly.
+    * GXB_* macros renamed GxB_*: old ones kept for backward compatibility
+
+Version 2.0.3: July 4, 2018
+
+    * bug fix to GxB_resize
+    * improvements to CMake script: version now defined only in CMakeLists.txt,
+        and then cmake configures Include/GraphBLAS.h, README, and User Guide
+    * bfs5 demo: asymptotically faster using sparse vector v but somewhat
+        slower if entire graph is traversed
+
+Version 2.0.2: June 25, 2018
+
+    * added -lm to library dependency
+    * minor changes to demos and user guide
+    * removed unused code from Generated/* semiring functions
+
+Version 2.0.1: Mar 15, 2018
+
+    * bug fix in GxB_kron: computed C incorrectly when A and B had pending
+        updates on input
+
+Version 2.0.0: Mar 12, 2018
+
+    * moved opaque object definitions from Include/GraphBLAS.h to Source/GB.h
+    * modifications to meet changes in the Nov 14, 2017, API specification:
+        GrB_Monoid_TYPE_new changed to GrB_Monoid_new_TYPE.
+        GrB_Type_new modified: 2nd argument no longer a type, but sizeof(type).
+        This change is not backward compatible with Version 1.x, so this
+        required an increase in the SO version, so the version number increased
+        from 1.x to 2.x.
+    * to allow non-C applications to access all GraphBLAS functions:
+        These were just macros, now defined as both macros and functions:
+        GrB_Type_new, GrB_UnaryOp_new, GrB_BinaryOp_new, and GxB_SelectOp_new.
     * added GxB_kron, GxB_resize (GxB_Matrix_resize and GxB_Vector_resize)
     * bug fix to mask:  GrB_anymethod (C, C, ... , r_desc) where r_desc.outp
         is 'replace', and C is aliased to the Mask, was incorrect.
@@ -35,7 +142,8 @@ Version 1.0.0: Nov 25, 2017
     * tested on many compilers (gcc 4.9 to 7.2 on Linux, clang 8 and gcc 6.2.0
         on the Mac, xlc 13.01 on IBM Power)
     * changed printf formats in Demo/ to silence warnings from older compilers
-    * complex.h in gcc-6.2.0 on the Mac doesn't #define CMPLX; added to usercomplex.h
+    * complex.h in gcc-6.2.0 on the Mac doesn't #define CMPLX;
+        added to usercomplex.h
     * mergesort removed, quicksort performance improved
     * performance improvement for masked matrix-matrix multiply
     * bug fix for masked matrix-matrix multiply. In 0.5.0 only the Mask

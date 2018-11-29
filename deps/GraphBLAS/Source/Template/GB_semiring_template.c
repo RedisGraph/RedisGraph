@@ -2,14 +2,14 @@
 // GB_semiring_template.c: built-in unary and binary functions and operators
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
-// This file is #include'd many times in GB_builtin.c to define the built-in
-// semirings.  That file has #define'd either BOOLEAN, or TYPE as one of the
-// 10 non-boolean types.
+// This file is #include'd many times in GB_ops.c to define the built-in
+// semirings.  That file has defined either GB_BOOLEAN, or GB_TYPE as one of
+// the 10 non-boolean types.
 
 // Using built-in types and operators, 960 unique semirings can be built.  This
 // count excludes redundant Boolean operators (for example GrB_TIMES_BOOL and
@@ -47,11 +47,11 @@
 //          (FIRST, SECOND, LOR, LAND, LXOR, EQ, GT, LT, GE, LE)
 
 //      a single instance of this file creates all 4*10 = 40 purely Boolean
-//      semirings, when T is BOOL and BOOLEAN is #define'd.
+//      semirings, when T is BOOL and GB_BOOLEAN is defined
 
 //------------------------------------------------------------------------------
 
-#ifdef BOOLEAN
+#ifdef GB_BOOLEAN
 
 //------------------------------------------------------------------------------
 // 40 purely Boolean semirings
@@ -60,56 +60,56 @@
 // All types in these 40 semirings are BOOL
 
 // 10 semirings with LOR monoid; the 2nd argument is the multiply operator
-SEMIRING ( LOR   , FIRST  ) ;
-SEMIRING ( LOR   , SECOND ) ;
-SEMIRING ( LOR   , LOR    ) ;
-SEMIRING ( LOR   , LAND   ) ;
-SEMIRING ( LOR   , LXOR   ) ;
-SEMIRING ( LOR   , EQ     ) ;
-SEMIRING ( LOR   , NE     ) ;
-SEMIRING ( LOR   , GT     ) ;
-SEMIRING ( LOR   , LT     ) ;
-SEMIRING ( LOR   , GE     ) ;
-SEMIRING ( LOR   , LE     ) ;
+GB_SEMIRING_DEFINE ( LOR   , GrB_, FIRST  )
+GB_SEMIRING_DEFINE ( LOR   , GrB_, SECOND )
+GB_SEMIRING_DEFINE ( LOR   , GxB_, LOR    )
+GB_SEMIRING_DEFINE ( LOR   , GxB_, LAND   )
+GB_SEMIRING_DEFINE ( LOR   , GxB_, LXOR   )
+GB_SEMIRING_DEFINE ( LOR   , GrB_, EQ     )
+GB_SEMIRING_DEFINE ( LOR   , GrB_, NE     )
+GB_SEMIRING_DEFINE ( LOR   , GrB_, GT     )
+GB_SEMIRING_DEFINE ( LOR   , GrB_, LT     )
+GB_SEMIRING_DEFINE ( LOR   , GrB_, GE     )
+GB_SEMIRING_DEFINE ( LOR   , GrB_, LE     )
 
 // 10 semirings with LAND monoid; the 2nd argument is the multiply operator
-SEMIRING ( LAND  , FIRST  ) ;
-SEMIRING ( LAND  , SECOND ) ;
-SEMIRING ( LAND  , LOR    ) ;
-SEMIRING ( LAND  , LAND   ) ;
-SEMIRING ( LAND  , LXOR   ) ;
-SEMIRING ( LAND  , EQ     ) ;
-SEMIRING ( LAND  , NE     ) ;
-SEMIRING ( LAND  , GT     ) ;
-SEMIRING ( LAND  , LT     ) ;
-SEMIRING ( LAND  , GE     ) ;
-SEMIRING ( LAND  , LE     ) ;
+GB_SEMIRING_DEFINE ( LAND  , GrB_, FIRST  )
+GB_SEMIRING_DEFINE ( LAND  , GrB_, SECOND )
+GB_SEMIRING_DEFINE ( LAND  , GxB_, LOR    )
+GB_SEMIRING_DEFINE ( LAND  , GxB_, LAND   )
+GB_SEMIRING_DEFINE ( LAND  , GxB_, LXOR   )
+GB_SEMIRING_DEFINE ( LAND  , GrB_, EQ     )
+GB_SEMIRING_DEFINE ( LAND  , GrB_, NE     )
+GB_SEMIRING_DEFINE ( LAND  , GrB_, GT     )
+GB_SEMIRING_DEFINE ( LAND  , GrB_, LT     )
+GB_SEMIRING_DEFINE ( LAND  , GrB_, GE     )
+GB_SEMIRING_DEFINE ( LAND  , GrB_, LE     )
 
 // 10 semirings with LXOR monoid; the 2nd argument is the multiply operator
-SEMIRING ( LXOR , FIRST  ) ;
-SEMIRING ( LXOR , SECOND ) ;
-SEMIRING ( LXOR , LOR    ) ;
-SEMIRING ( LXOR , LAND   ) ;
-SEMIRING ( LXOR , LXOR   ) ;
-SEMIRING ( LXOR , EQ     ) ;
-SEMIRING ( LXOR , NE     ) ;
-SEMIRING ( LXOR , GT     ) ;
-SEMIRING ( LXOR , LT     ) ;
-SEMIRING ( LXOR , GE     ) ;
-SEMIRING ( LXOR , LE     ) ;
+GB_SEMIRING_DEFINE ( LXOR , GrB_, FIRST  )
+GB_SEMIRING_DEFINE ( LXOR , GrB_, SECOND )
+GB_SEMIRING_DEFINE ( LXOR , GxB_, LOR    )
+GB_SEMIRING_DEFINE ( LXOR , GxB_, LAND   )
+GB_SEMIRING_DEFINE ( LXOR , GxB_, LXOR   )
+GB_SEMIRING_DEFINE ( LXOR , GrB_, EQ     )
+GB_SEMIRING_DEFINE ( LXOR , GrB_, NE     )
+GB_SEMIRING_DEFINE ( LXOR , GrB_, GT     )
+GB_SEMIRING_DEFINE ( LXOR , GrB_, LT     )
+GB_SEMIRING_DEFINE ( LXOR , GrB_, GE     )
+GB_SEMIRING_DEFINE ( LXOR , GrB_, LE     )
 
 // 10 semirings with EQ monoid; the 2nd argument is the multiply operator
-SEMIRING ( EQ   , FIRST  ) ;
-SEMIRING ( EQ   , SECOND ) ;
-SEMIRING ( EQ   , LOR    ) ;
-SEMIRING ( EQ   , LAND   ) ;
-SEMIRING ( EQ   , LXOR   ) ;
-SEMIRING ( EQ   , EQ     ) ;
-SEMIRING ( EQ   , NE     ) ;
-SEMIRING ( EQ   , GT     ) ;
-SEMIRING ( EQ   , LT     ) ;
-SEMIRING ( EQ   , GE     ) ;
-SEMIRING ( EQ   , LE     ) ;
+GB_SEMIRING_DEFINE ( EQ   , GrB_, FIRST  )
+GB_SEMIRING_DEFINE ( EQ   , GrB_, SECOND )
+GB_SEMIRING_DEFINE ( EQ   , GxB_, LOR    )
+GB_SEMIRING_DEFINE ( EQ   , GxB_, LAND   )
+GB_SEMIRING_DEFINE ( EQ   , GxB_, LXOR   )
+GB_SEMIRING_DEFINE ( EQ   , GrB_, EQ     )
+GB_SEMIRING_DEFINE ( EQ   , GrB_, NE     )
+GB_SEMIRING_DEFINE ( EQ   , GrB_, GT     )
+GB_SEMIRING_DEFINE ( EQ   , GrB_, LT     )
+GB_SEMIRING_DEFINE ( EQ   , GrB_, GE     )
+GB_SEMIRING_DEFINE ( EQ   , GrB_, LE     )
 
 #else
 
@@ -121,80 +121,80 @@ SEMIRING ( EQ   , LE     ) ;
 // the 10 non-Boolean types, not when T is BOOL.
 
 // 17 semirings with MIN monoid; the 2nd argument is the multiply operator
-SEMIRING ( MIN   , FIRST  ) ;
-SEMIRING ( MIN   , SECOND ) ;
-SEMIRING ( MIN   , MIN    ) ;
-SEMIRING ( MIN   , MAX    ) ;
-SEMIRING ( MIN   , PLUS   ) ;
-SEMIRING ( MIN   , MINUS  ) ;
-SEMIRING ( MIN   , TIMES  ) ;
-SEMIRING ( MIN   , DIV    ) ;
-SEMIRING ( MIN   , ISEQ   ) ;
-SEMIRING ( MIN   , ISNE   ) ;
-SEMIRING ( MIN   , ISGT   ) ;
-SEMIRING ( MIN   , ISLT   ) ;
-SEMIRING ( MIN   , ISGE   ) ;
-SEMIRING ( MIN   , ISLE   ) ;
-SEMIRING ( MIN   , LOR    ) ;
-SEMIRING ( MIN   , LAND   ) ;
-SEMIRING ( MIN   , LXOR   ) ;
+GB_SEMIRING_DEFINE ( MIN   , GrB_, FIRST  )
+GB_SEMIRING_DEFINE ( MIN   , GrB_, SECOND )
+GB_SEMIRING_DEFINE ( MIN   , GrB_, MIN    )
+GB_SEMIRING_DEFINE ( MIN   , GrB_, MAX    )
+GB_SEMIRING_DEFINE ( MIN   , GrB_, PLUS   )
+GB_SEMIRING_DEFINE ( MIN   , GrB_, MINUS  )
+GB_SEMIRING_DEFINE ( MIN   , GrB_, TIMES  )
+GB_SEMIRING_DEFINE ( MIN   , GrB_, DIV    )
+GB_SEMIRING_DEFINE ( MIN   , GxB_, ISEQ   )
+GB_SEMIRING_DEFINE ( MIN   , GxB_, ISNE   )
+GB_SEMIRING_DEFINE ( MIN   , GxB_, ISGT   )
+GB_SEMIRING_DEFINE ( MIN   , GxB_, ISLT   )
+GB_SEMIRING_DEFINE ( MIN   , GxB_, ISGE   )
+GB_SEMIRING_DEFINE ( MIN   , GxB_, ISLE   )
+GB_SEMIRING_DEFINE ( MIN   , GxB_, LOR    )
+GB_SEMIRING_DEFINE ( MIN   , GxB_, LAND   )
+GB_SEMIRING_DEFINE ( MIN   , GxB_, LXOR   )
 
 // 17 semirings with MAX monoid; the 2nd argument is the multiply operator
-SEMIRING ( MAX   , FIRST  ) ;
-SEMIRING ( MAX   , SECOND ) ;
-SEMIRING ( MAX   , MIN    ) ;
-SEMIRING ( MAX   , MAX    ) ;
-SEMIRING ( MAX   , PLUS   ) ;
-SEMIRING ( MAX   , MINUS  ) ;
-SEMIRING ( MAX   , TIMES  ) ;
-SEMIRING ( MAX   , DIV    ) ;
-SEMIRING ( MAX   , ISEQ   ) ;
-SEMIRING ( MAX   , ISNE   ) ;
-SEMIRING ( MAX   , ISGT   ) ;
-SEMIRING ( MAX   , ISLT   ) ;
-SEMIRING ( MAX   , ISGE   ) ;
-SEMIRING ( MAX   , ISLE   ) ;
-SEMIRING ( MAX   , LOR    ) ;
-SEMIRING ( MAX   , LAND   ) ;
-SEMIRING ( MAX   , LXOR   ) ;
+GB_SEMIRING_DEFINE ( MAX   , GrB_, FIRST  )
+GB_SEMIRING_DEFINE ( MAX   , GrB_, SECOND )
+GB_SEMIRING_DEFINE ( MAX   , GrB_, MIN    )
+GB_SEMIRING_DEFINE ( MAX   , GrB_, MAX    )
+GB_SEMIRING_DEFINE ( MAX   , GrB_, PLUS   )
+GB_SEMIRING_DEFINE ( MAX   , GrB_, MINUS  )
+GB_SEMIRING_DEFINE ( MAX   , GrB_, TIMES  )
+GB_SEMIRING_DEFINE ( MAX   , GrB_, DIV    )
+GB_SEMIRING_DEFINE ( MAX   , GxB_, ISEQ   )
+GB_SEMIRING_DEFINE ( MAX   , GxB_, ISNE   )
+GB_SEMIRING_DEFINE ( MAX   , GxB_, ISGT   )
+GB_SEMIRING_DEFINE ( MAX   , GxB_, ISLT   )
+GB_SEMIRING_DEFINE ( MAX   , GxB_, ISGE   )
+GB_SEMIRING_DEFINE ( MAX   , GxB_, ISLE   )
+GB_SEMIRING_DEFINE ( MAX   , GxB_, LOR    )
+GB_SEMIRING_DEFINE ( MAX   , GxB_, LAND   )
+GB_SEMIRING_DEFINE ( MAX   , GxB_, LXOR   )
 
 // 17 semirings with PLUS monoid; the 2nd argument is the multiply operator
-SEMIRING ( PLUS  , FIRST  ) ;
-SEMIRING ( PLUS  , SECOND ) ;
-SEMIRING ( PLUS  , MIN    ) ;
-SEMIRING ( PLUS  , MAX    ) ;
-SEMIRING ( PLUS  , PLUS   ) ;
-SEMIRING ( PLUS  , MINUS  ) ;
-SEMIRING ( PLUS  , TIMES  ) ;
-SEMIRING ( PLUS  , DIV    ) ;
-SEMIRING ( PLUS  , ISEQ   ) ;
-SEMIRING ( PLUS  , ISNE   ) ;
-SEMIRING ( PLUS  , ISGT   ) ;
-SEMIRING ( PLUS  , ISLT   ) ;
-SEMIRING ( PLUS  , ISGE   ) ;
-SEMIRING ( PLUS  , ISLE   ) ;
-SEMIRING ( PLUS  , LOR    ) ;
-SEMIRING ( PLUS  , LAND   ) ;
-SEMIRING ( PLUS  , LXOR   ) ;
+GB_SEMIRING_DEFINE ( PLUS  , GrB_, FIRST  )
+GB_SEMIRING_DEFINE ( PLUS  , GrB_, SECOND )
+GB_SEMIRING_DEFINE ( PLUS  , GrB_, MIN    )
+GB_SEMIRING_DEFINE ( PLUS  , GrB_, MAX    )
+GB_SEMIRING_DEFINE ( PLUS  , GrB_, PLUS   )
+GB_SEMIRING_DEFINE ( PLUS  , GrB_, MINUS  )
+GB_SEMIRING_DEFINE ( PLUS  , GrB_, TIMES  )
+GB_SEMIRING_DEFINE ( PLUS  , GrB_, DIV    )
+GB_SEMIRING_DEFINE ( PLUS  , GxB_, ISEQ   )
+GB_SEMIRING_DEFINE ( PLUS  , GxB_, ISNE   )
+GB_SEMIRING_DEFINE ( PLUS  , GxB_, ISGT   )
+GB_SEMIRING_DEFINE ( PLUS  , GxB_, ISLT   )
+GB_SEMIRING_DEFINE ( PLUS  , GxB_, ISGE   )
+GB_SEMIRING_DEFINE ( PLUS  , GxB_, ISLE   )
+GB_SEMIRING_DEFINE ( PLUS  , GxB_, LOR    )
+GB_SEMIRING_DEFINE ( PLUS  , GxB_, LAND   )
+GB_SEMIRING_DEFINE ( PLUS  , GxB_, LXOR   )
 
 // 17 semirings with TIMES monoid; the 2nd argument is the multiply operator
-SEMIRING ( TIMES , FIRST  ) ;
-SEMIRING ( TIMES , SECOND ) ;
-SEMIRING ( TIMES , MIN    ) ;
-SEMIRING ( TIMES , MAX    ) ;
-SEMIRING ( TIMES , PLUS   ) ;
-SEMIRING ( TIMES , MINUS  ) ;
-SEMIRING ( TIMES , TIMES  ) ;
-SEMIRING ( TIMES , DIV    ) ;
-SEMIRING ( TIMES , ISEQ   ) ;
-SEMIRING ( TIMES , ISNE   ) ;
-SEMIRING ( TIMES , ISGT   ) ;
-SEMIRING ( TIMES , ISLT   ) ;
-SEMIRING ( TIMES , ISGE   ) ;
-SEMIRING ( TIMES , ISLE   ) ;
-SEMIRING ( TIMES , LOR    ) ;
-SEMIRING ( TIMES , LAND   ) ;
-SEMIRING ( TIMES , LXOR   ) ;
+GB_SEMIRING_DEFINE ( TIMES , GrB_, FIRST  )
+GB_SEMIRING_DEFINE ( TIMES , GrB_, SECOND )
+GB_SEMIRING_DEFINE ( TIMES , GrB_, MIN    )
+GB_SEMIRING_DEFINE ( TIMES , GrB_, MAX    )
+GB_SEMIRING_DEFINE ( TIMES , GrB_, PLUS   )
+GB_SEMIRING_DEFINE ( TIMES , GrB_, MINUS  )
+GB_SEMIRING_DEFINE ( TIMES , GrB_, TIMES  )
+GB_SEMIRING_DEFINE ( TIMES , GrB_, DIV    )
+GB_SEMIRING_DEFINE ( TIMES , GxB_, ISEQ   )
+GB_SEMIRING_DEFINE ( TIMES , GxB_, ISNE   )
+GB_SEMIRING_DEFINE ( TIMES , GxB_, ISGT   )
+GB_SEMIRING_DEFINE ( TIMES , GxB_, ISLT   )
+GB_SEMIRING_DEFINE ( TIMES , GxB_, ISGE   )
+GB_SEMIRING_DEFINE ( TIMES , GxB_, ISLE   )
+GB_SEMIRING_DEFINE ( TIMES , GxB_, LOR    )
+GB_SEMIRING_DEFINE ( TIMES , GxB_, LAND   )
+GB_SEMIRING_DEFINE ( TIMES , GxB_, LXOR   )
 
 //------------------------------------------------------------------------------
 // 24 semirings of the form TxT->bool
@@ -208,41 +208,41 @@ SEMIRING ( TIMES , LXOR   ) ;
 // BOOL
 
 // 6 semrings with LOR monoid; the 2nd argument is the comparison operator
-SEMIRING_COMPARE ( LOR  , EQ ) ;
-SEMIRING_COMPARE ( LOR  , NE ) ;
-SEMIRING_COMPARE ( LOR  , GT ) ;
-SEMIRING_COMPARE ( LOR  , LT ) ;
-SEMIRING_COMPARE ( LOR  , GE ) ;
-SEMIRING_COMPARE ( LOR  , LE ) ;
+GB_SEMIRING_COMPARE_DEFINE ( LOR  , EQ )
+GB_SEMIRING_COMPARE_DEFINE ( LOR  , NE )
+GB_SEMIRING_COMPARE_DEFINE ( LOR  , GT )
+GB_SEMIRING_COMPARE_DEFINE ( LOR  , LT )
+GB_SEMIRING_COMPARE_DEFINE ( LOR  , GE )
+GB_SEMIRING_COMPARE_DEFINE ( LOR  , LE )
 
 // 6 semrings with LAND monoid; the 2nd argument is the comparison operator
-SEMIRING_COMPARE ( LAND , EQ ) ;
-SEMIRING_COMPARE ( LAND , NE ) ;
-SEMIRING_COMPARE ( LAND , GT ) ;
-SEMIRING_COMPARE ( LAND , LT ) ;
-SEMIRING_COMPARE ( LAND , GE ) ;
-SEMIRING_COMPARE ( LAND , LE ) ;
+GB_SEMIRING_COMPARE_DEFINE ( LAND , EQ )
+GB_SEMIRING_COMPARE_DEFINE ( LAND , NE )
+GB_SEMIRING_COMPARE_DEFINE ( LAND , GT )
+GB_SEMIRING_COMPARE_DEFINE ( LAND , LT )
+GB_SEMIRING_COMPARE_DEFINE ( LAND , GE )
+GB_SEMIRING_COMPARE_DEFINE ( LAND , LE )
 
 // 6 semrings with LXOR monoid; the 2nd argument is the comparison operator
-SEMIRING_COMPARE ( LXOR , EQ ) ;
-SEMIRING_COMPARE ( LXOR , NE ) ;
-SEMIRING_COMPARE ( LXOR , GT ) ;
-SEMIRING_COMPARE ( LXOR , LT ) ;
-SEMIRING_COMPARE ( LXOR , GE ) ;
-SEMIRING_COMPARE ( LXOR , LE ) ;
+GB_SEMIRING_COMPARE_DEFINE ( LXOR , EQ )
+GB_SEMIRING_COMPARE_DEFINE ( LXOR , NE )
+GB_SEMIRING_COMPARE_DEFINE ( LXOR , GT )
+GB_SEMIRING_COMPARE_DEFINE ( LXOR , LT )
+GB_SEMIRING_COMPARE_DEFINE ( LXOR , GE )
+GB_SEMIRING_COMPARE_DEFINE ( LXOR , LE )
 
 // 6 semrings with EQ monoid; the 2nd argument is the comparison operator
-SEMIRING_COMPARE ( EQ   , EQ ) ;
-SEMIRING_COMPARE ( EQ   , NE ) ;
-SEMIRING_COMPARE ( EQ   , GT ) ;
-SEMIRING_COMPARE ( EQ   , LT ) ;
-SEMIRING_COMPARE ( EQ   , GE ) ;
-SEMIRING_COMPARE ( EQ   , LE ) ;
+GB_SEMIRING_COMPARE_DEFINE ( EQ   , EQ )
+GB_SEMIRING_COMPARE_DEFINE ( EQ   , NE )
+GB_SEMIRING_COMPARE_DEFINE ( EQ   , GT )
+GB_SEMIRING_COMPARE_DEFINE ( EQ   , LT )
+GB_SEMIRING_COMPARE_DEFINE ( EQ   , GE )
+GB_SEMIRING_COMPARE_DEFINE ( EQ   , LE )
 
 #endif
 
 #undef GB
-#undef GM
-#undef GRB
-#undef BOOLEAN
+#undef GB_MONOID
+#undef GxB_NAME
+#undef GB_BOOLEAN
 

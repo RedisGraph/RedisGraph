@@ -2,7 +2,7 @@
 // GB_BinaryOp_new: create a new binary operator
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -18,47 +18,47 @@
 GrB_Info GB_BinaryOp_new
 (
     GrB_BinaryOp *binaryop,         // handle for the new binary operator
-    void *function,                 // pointer to the binary function
+    GxB_binary_function function,   // pointer to the binary function
     const GrB_Type ztype,           // type of output z
     const GrB_Type xtype,           // type of input x
     const GrB_Type ytype,           // type of input y
     const char *name                // name of the function
 )
-{
+{ 
 
     //--------------------------------------------------------------------------
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GrB_BinaryOp_new (binaryop, function, ztype, xtype, ytype)") ;
-    RETURN_IF_NULL (binaryop) ;
+    GB_WHERE ("GrB_BinaryOp_new (binaryop, function, ztype, xtype, ytype)") ;
+    GB_RETURN_IF_NULL (binaryop) ;
     (*binaryop) = NULL ;
-    RETURN_IF_NULL (function) ;
-    RETURN_IF_NULL_OR_UNINITIALIZED (ztype) ;
-    RETURN_IF_NULL_OR_UNINITIALIZED (xtype) ;
-    RETURN_IF_NULL_OR_UNINITIALIZED (ytype) ;
+    GB_RETURN_IF_NULL (function) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (ztype) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (xtype) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (ytype) ;
 
     //--------------------------------------------------------------------------
     // create the binary op
     //--------------------------------------------------------------------------
 
     // allocate the binary operator
-    GB_CALLOC_MEMORY (*binaryop, 1, sizeof (GB_BinaryOp_opaque)) ;
+    GB_CALLOC_MEMORY (*binaryop, 1, sizeof (struct GB_BinaryOp_opaque)) ;
     if (*binaryop == NULL)
-    {
-        return (ERROR (GrB_OUT_OF_MEMORY, (LOG, "out of memory"))) ;
+    { 
+        return (GB_NO_MEMORY) ;
     }
 
     // initialize the binary operator
     GrB_BinaryOp op = *binaryop ;
-    op->magic = MAGIC ;
+    op->magic = GB_MAGIC ;
     op->xtype = xtype ;
     op->ytype = ytype ;
     op->ztype = ztype ;
     op->function = function ;
     strncpy (op->name, name, GB_LEN-1) ;
-    op->opcode = GB_USER_opcode ;           // generic opcode for all user ops
-    ASSERT_OK (GB_check (op, "new user-defined binary op", 0)) ;
-    return (REPORT_SUCCESS) ;
+    op->opcode = GB_USER_R_opcode ;     // run-time user-defined operator
+    ASSERT_OK (GB_check (op, "new user-defined binary op", GB0)) ;
+    return (GrB_SUCCESS) ;
 }
 

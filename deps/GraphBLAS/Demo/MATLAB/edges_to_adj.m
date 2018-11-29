@@ -1,5 +1,5 @@
 function C = edges_to_adj (E)
-%EDGES_TO_ADJ convert incidence matrix to adjacency matrix
+%EDGES_TO_ADJ create an adjacency matrix from an edge incidence matrix
 %
 % usage: C = edges_to_adj (E)
 %
@@ -24,4 +24,5 @@ C = spones (E*E') ;
 % remove the diagonal
 C = C - diag (diag (C)) ;
 % C = tril (C,-1) + triu (C,1) ;
+
 

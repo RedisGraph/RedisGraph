@@ -2,12 +2,14 @@
 // GB_mex_mxm_alias: C<C> = accum(C,C*C)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
 #include "GB_mex.h"
+
+#define USAGE "C = GB_mex_mxm_alias (C, accum, semiring, desc)"
 
 #define FREE_ALL                            \
 {                                           \
@@ -21,7 +23,7 @@
         GrB_free (&semiring) ;              \
     }                                       \
     GrB_free (&desc) ;                      \
-    GB_mx_put_global (malloc_debug) ;       \
+    GB_mx_put_global (true, AxB_method_used) ; \
 }
 
 void mexFunction
@@ -33,20 +35,22 @@ void mexFunction
 )
 {
 
-    bool malloc_debug = GB_mx_get_global ( ) ;
+    bool malloc_debug = GB_mx_get_global (true) ;
     GrB_Matrix C = NULL ;
     GrB_Semiring semiring = NULL ;
     GrB_Descriptor desc = NULL ;
+    GrB_Desc_Value AxB_method_used = GxB_DEFAULT ;
 
     // check inputs
+    GB_WHERE (USAGE) ;
     if (nargout > 1 || nargin < 3 || nargin > 4)
     {
-        mexErrMsgTxt ("Usage: C = GB_mex_mxm_alias (C, accum, semiring, desc)");
+        mexErrMsgTxt ("Usage: " USAGE) ;
     }
 
     // get C (make a deep copy)
     #define GET_DEEP_COPY \
-    C = GB_mx_mxArray_to_Matrix (pargin [0], "C input", true) ;
+    C = GB_mx_mxArray_to_Matrix (pargin [0], "C input", true, true) ;
     #define FREE_DEEP_COPY GB_MATRIX_FREE (&C) ;
     GET_DEEP_COPY ;
     if (C == NULL)
@@ -91,6 +95,8 @@ void mexFunction
 
     // C<C> = accum(C,C*C)
     METHOD (GrB_mxm (C, C, accum, semiring, C, C, desc)) ;
+
+    if (C != NULL) AxB_method_used = C->AxB_method_used ;
 
     // return C to MATLAB as a struct and free the GraphBLAS C
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C output", true) ;

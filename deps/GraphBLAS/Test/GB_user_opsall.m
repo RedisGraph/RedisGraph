@@ -1,7 +1,7 @@
 function [complex_binaryops complex_unaryops ] = GB_user_opsall
 %GB_USER_OPSALL return list of complex operators
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 [mult_ops unary_ops add_ops classes semirings] = GB_spec_opsall ;

@@ -1,14 +1,13 @@
 function test21(fulltest)
 %TEST21 test GxB_subassign
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 if (nargin < 1)
     % do a short test, by default
     fulltest = 0 ;
 end
-
 
 [accum_ops unary_ops add_ops classes] = GB_spec_opsall ;
 
@@ -20,7 +19,7 @@ if (fulltest)
     k1test = 0:length(accum_ops) ;
 else
     fprintf ('\n--------------quick test of GB_mex_subassign\n') ;
-    k1test = [0 2 4] ;
+    k1test = [ 4 0] ; % Was [4 0 2 7] ;
 end
 
 % try all accum
@@ -37,7 +36,7 @@ for k1 = k1test
     if (fulltest)
         k2test = 1:nclasses ;
     else
-        k2test = [1 2 11] ;
+        k2test = 11 ; % Was [1 2 11] ;
     end
 
     % try all classes
@@ -79,16 +78,15 @@ for k1 = k1test
                 % try all matrix classes, to test casting
                 for k3 = kk3 % 1:length (classes)
                     aclas = classes {k3}  ;
-                    fprintf ('.') ;
 
                     % try some matrices
-                    for m = [1 5 10 ]
-                        for n = [ 1 5 10 ]
-                            for sm = [ 0 1 5 10 ]
+                    for m = [1 10] % Was [1 5 10 ]
+                        for n = [1 10] % Was [ 1 5 10 ]
+                            for sm = [0 1 5] % Was [ 0 1 5 10 ]
                                 if (sm > m)
                                     continue
                                 end
-                                for sn = [ 0 1 5 10 ]
+                                for sn = [0 1 5] % Was [ 0 1 5 10 ]
                                     if (sn > n)
                                         continue
                                     end
@@ -114,18 +112,30 @@ for k1 = k1test
                                         end
                                         J0 = uint64 (J-1) ;
 
+                                        fprintf ('.') ;
+
+                                        for A_is_hyper = 0:1
+                                        for A_is_csc   = 0:1
+                                        for C_is_hyper = 0:1
+                                        for C_is_csc   = 0:1
+                                        for M_is_hyper = 0:1
+                                        for M_is_csc   = 0:1
+
                                         if (scalar)
                                             % test scalar expansion
                                             % fprintf ('test expansion\n') ;
                                             A.matrix = sparse (rand (1)) * 100 ;
                                             A.pattern = sparse (logical (true));
                                             A.class = aclas ;
+                                            if (A_is_hyper || ~A_is_csc)
+                                                continue
+                                            end
                                         else
-                                            A = GB_spec_random (am,an,0.2,100,aclas) ;
+                                            A = GB_spec_random (am,an,0.2,100,aclas, A_is_csc, A_is_hyper) ;
                                         end
 
-                                        C = GB_spec_random (m,n,0.2,100,aclas) ;
-                                        Mask = sprandn (am,an,0.2) ~= 0 ;
+                                        C = GB_spec_random (m,n,0.2,100,aclas, C_is_csc, C_is_hyper) ;
+                                        Mask = GB_random_mask (am,an,0.2, M_is_csc, M_is_hyper) ;
 
                                         % C(I,J) = accum (C (I,J),A)
                                         % Mask = [ ] ;
@@ -157,6 +167,12 @@ for k1 = k1test
                                         GB_spec_compare (C0, C1) ;
 
                                         %---------------------------------------
+                                        end
+                                        end
+                                        end
+                                        end
+                                        end
+                                        end
 
                                     end
                                 end

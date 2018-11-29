@@ -1,7 +1,7 @@
 function test30b
-%TEST30B test GrB_assign
+%TEST30B performance test GB_mex_assign, scalar expansionb
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 %% this test is too slow when debugging
@@ -23,16 +23,24 @@ if (debug == 0)
 
     scalar = sparse (pi) ;
 
+    % tic/toc includes the mexFunction overhead of making a deep copy
+    % of the input matrix.  MATLAB can modify C in place, as can GraphBLAS,
+    % but GraphBLAS cannot safely do that through a mexFunction interface
+    % to MATLAB.
+
     fprintf ('start GraphBLAS:\n') ;
     tic 
     C2 = GB_mex_assign (A, [], [], scalar, I0, J0, []) ;
     toc
+    t = gbresults
 
     C = A ; 
     fprintf ('start MATLAB:\n') ;
     tic 
     C (I,J) = scalar ;
-    toc
+    tm = toc
+
+    fprintf ('GraphBLAS speedup over MATLAB: %g\n',  tm/t) ;
 
     assert (isequal (C, C2.matrix)) ;
     fprintf ('\ntest30b: all tests passed\n') ;

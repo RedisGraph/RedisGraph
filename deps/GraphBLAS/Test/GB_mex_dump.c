@@ -2,19 +2,21 @@
 // GB_mex_dump: copy and print a matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
+
+#include "GB_mex.h"
+
+#define USAGE "C = GB_mex_dump (A,pr)"
 
 #define FREE_ALL                        \
 {                                       \
     GB_MATRIX_FREE (&A) ;               \
     Complex_finalize ( ) ;              \
-    GB_mx_put_global (malloc_debug) ;   \
+    GB_mx_put_global (false, 0) ;       \
 }
-
-#include "GB_mex.h"
 
 void mexFunction
 (
@@ -25,17 +27,18 @@ void mexFunction
 )
 {
 
-    bool malloc_debug = GB_mx_get_global ( ) ;
+    bool malloc_debug = GB_mx_get_global (false) ;
     GrB_Matrix A = NULL ;
 
     // check inputs
+    GB_WHERE (USAGE) ;
     if (nargout > 1 || nargin < 1 || nargin > 2)
     {
-        mexErrMsgTxt ("Usage: C = GB_mex_dump (A,pr)") ;
+        mexErrMsgTxt ("Usage: " USAGE) ;
     }
 
     // get A (deep copy)
-    A = GB_mx_mxArray_to_Matrix (pargin [0], "A input", true) ;
+    A = GB_mx_mxArray_to_Matrix (pargin [0], "A input", true, true) ;
     if (A == NULL)
     {
         FREE_ALL ;
@@ -43,7 +46,7 @@ void mexFunction
     }
 
     // get pr
-    GET_SCALAR (1, GB_diagnostic, pr, 1) ;
+    int GET_SCALAR (1, int, pr, 1) ;
 
     // dump the matrix
     GrB_Info info = GB_check (A, "", pr) ;

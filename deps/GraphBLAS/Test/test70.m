@@ -1,4 +1,4 @@
-function test70
+function test70 (f)
 %TEST70 performance comparison of triangle counting methods
 %
 % This test saves its results in test70_results.mat, so it
@@ -15,41 +15,52 @@ function test70
 %   % which returns a struct with these 3 statistics, 
 %   % without doing any work, and requiring almost no memory
 %   % See SuiteSparse/MATLAB_tools/SSMULT
+%
+% The list of matrices can also be provided.  For example:
+% test70 ([936 2662])
+%
+% depends on functions in ../Demo/MATLAB
+
+%  SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+%  http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 addpath ('../Demo/MATLAB') ;
 
-% get all square matrices and sort by nnz(A)
 index = ssget ;
-f = find (index.nrows == index.ncols) ;
-[~, i] = sort (index.nnz (f)) ;
-f = f (i) ;
+if (nargin == 0)
+    % get all square matrices and sort by nnz(A)
+    f = find (index.nrows == index.ncols) ;
+    [~, i] = sort (index.nnz (f)) ;
+    f = f (i) ;
 
-% f = 936
-% f = f (1)
+    % f = 936
+    % f = f (1)
+    figure (1)
+end
+
 nmat = length (f) ;
-figure (1)
 
 % matrices too big for some methods.  0: skip that method
 if (ismac || ispc)
     % assume this is a laptop with limited memory
     results = 'test70_results' ;
     skip = [
-        %id  methods 0:9
-        1294 0 1 1 1 0 1 1 1 1 
-        2240 0 1 1 1 0 1 1 1 1
-        2229 1 1 1 1 0 1 1 1 1
-        1323 0 0 0 1 0 1 1 1 1
-        1324 0 0 0 1 0 1 1 1 1
-        1320 0 0 0 1 0 1 1 1 1
-        1321 0 0 0 1 0 1 1 1 1
-        1322 0 0 0 1 0 1 1 1 1
-        2234 0 1 1 1 0 1 1 1 1
-        1415 0 0 0 1 0 1 1 1 1
-        2275 0 0 0 1 0 1 1 1 1
-        2136 0 1 1 1 0 1 1 1 1
-        2241 0 0 0 1 0 1 1 1 1
+        %id  methods 0:11
+        1294 0 1 1 1 0 1 1 1 1 1 1
+        2240 0 1 1 1 0 1 1 1 1 1 1
+        2229 1 1 1 1 0 1 1 1 1 1 1
+        1323 0 0 0 1 0 1 1 1 1 1 1
+        1324 0 0 0 1 0 1 1 1 1 1 1
+        1320 0 0 0 1 0 1 1 1 1 1 1
+        1321 0 0 0 1 0 1 1 1 1 1 1
+        1322 0 0 0 1 0 1 1 1 1 1 1
+        2234 0 1 1 1 0 1 1 1 1 1 1
+        1415 0 0 0 1 0 1 1 1 1 1 1
+        2275 0 0 0 1 0 1 1 1 1 1 1
+        2136 0 1 1 1 0 1 1 1 1 1 1
+        2241 0 0 0 1 0 1 1 1 1 1 1
         %
-        1383 0 0 0 1 0 1 1 1 1
+        1383 0 0 0 1 0 1 1 1 1 1 1
             ] ;
     % when Nedges > limit, do only MATLAB:Sandia,
     % GraphBLAS:Sandia, and GraphBLAS:Sandia2.
@@ -64,9 +75,16 @@ else
     limit = 1e6 ;
 end
 
-try
-    load (results) ; % test70_results
-catch
+if (nargin == 0)
+    try
+        load (results) ; % test70_results
+        fprintf ('loaded prior results: %s\n', results) ;
+    catch
+        T = nan (nmat, 9) ;
+        Nedges = nan (nmat, 1) ;
+        Nnodes = nan (nmat, 1) ;
+    end
+else
     T = nan (nmat, 9) ;
     Nedges = nan (nmat, 1) ;
     Nnodes = nan (nmat, 1) ;
@@ -115,13 +133,13 @@ for k = 1:nmat
     % see what methods to skip
     dothis = find (id == skip (:,1)) ;
     if (~isempty (dothis))
-        dothis = skip (dothis, 2:10) ;
+        dothis = skip (dothis, 2:end) ;
     else
-        dothis = true (1,9) ;
+        dothis = true (1,12) ;
     end
 
     for gb = 0:1
-        for kk = 1:(5+gb)
+        for kk = 1:6
             method = method_list {kk} ;
             m = m + 1 ;
             if (nz > limit)
@@ -136,11 +154,15 @@ for k = 1:nmat
             if (dothis (m))
                 try
                     if (gb)
-                        % use GraphBLAS
-                        [nt t] = GB_mex_tricount (kk-1, A, E, L, U) ;
+                        % use GraphBLAS (note that L and U are swapped since
+                        % L in row form is the same as U in column form.
+                        % The mexFunction interface to GraphBLAS passes in
+                        % the matrices in column form to tricount.
+                        [nt t] = GB_mex_tricount (kk-1, A, E, U, L) ;
                     else
                         % use MATLAB, unless the matrix fails
                         [nt t] = tricount (method, A, E) ;
+                        t = t.prep_time + t.triangle_count_time ;
                     end
                 catch
                     % method failed (out of memory)
@@ -167,7 +189,7 @@ for k = 1:nmat
 
     % save the results and redraw the plot, but wait at least 5 seconds
     tnow = cputime - tstart ;
-    if (tnow > 5)
+    if (nargin == 0 && tnow > 5)
         save (results, 'T', 'Nedges', 'Nnodes', 'f') ;
         test70_plot (T, Nedges, Nnodes) ;
         tstart = cputime ;

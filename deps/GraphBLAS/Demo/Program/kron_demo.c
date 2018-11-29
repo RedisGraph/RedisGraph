@@ -2,7 +2,7 @@
 // GraphBLAS/Demo/Program/kron_demo.c: Kronkecker product
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -23,7 +23,6 @@
 // output file for C=kron(A,B), also with 1-based indices.
 
 #include "demos.h"
-// #include "../../Source/GB.h"
 
 // macro used by OK(...) to free workspace if an error occurs
 #define FREE_ALL                \
@@ -80,9 +79,6 @@ int main (int argc, char **argv)
     OK (read_matrix (&A, Afile, false, false, true, false, false)) ;
     OK (read_matrix (&B, Bfile, false, false, true, false, false)) ;
 
-    // GB_check (A, "A", 3) ;
-    // GB_check (B, "B", 3) ;
-
     fclose (Afile) ;
     fclose (Bfile) ;
     Afile = NULL ;
@@ -109,8 +105,6 @@ int main (int argc, char **argv)
     OK (GrB_free (&A)) ;
     OK (GrB_free (&B)) ;
 
-    // GB_check (C, "C", 3) ;
-
     //--------------------------------------------------------------------------
     // report results
     //--------------------------------------------------------------------------
@@ -120,10 +114,13 @@ int main (int argc, char **argv)
     OK (GrB_Matrix_ncols (&cncols, C)) ;
     OK (GrB_Matrix_nvals (&cnvals, C)) ;
 
+    // note that integers of type GrB_Index should be printed with the
+    // %PRIu64 format.
+
     fprintf (stderr, "GraphBLAS GxB_kron:\n"
-    "A: %lld-by-%lld, %lld entries.\n"
-    "B: %lld-by-%lld, %lld entries.\n"
-    "C: %lld-by-%lld, %lld entries.\n"
+    "A: %" PRIu64 "-by-%" PRIu64 ", %" PRIu64 " entries.\n"
+    "B: %" PRIu64 "-by-%" PRIu64 ", %" PRIu64 " entries.\n"
+    "C: %" PRIu64 "-by-%" PRIu64 ", %" PRIu64 " entries.\n"
     "time: %g seconds, rate: nval(C)/t = %g million/sec\n",
     anrows, ancols, anvals,
     bnrows, bncols, bnvals,
@@ -151,7 +148,7 @@ int main (int argc, char **argv)
 
     for (int64_t k = 0 ; k < cnvals ; k++)
     {
-        fprintf (Cfile, "%lld\t%lld\t%.17g\n", 1 + I [k], 1 + J [k], X [k]) ;
+        fprintf (Cfile, "%" PRIu64 "\t%" PRIu64 "\t%.17g\n", 1 + I [k], 1 + J [k], X [k]) ;
     }
 
     FREE_ALL ;

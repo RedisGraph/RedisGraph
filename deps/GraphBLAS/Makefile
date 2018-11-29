@@ -2,7 +2,7 @@
 # GraphBLAS/Makefile
 #-------------------------------------------------------------------------------
 
-# SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+# SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 # http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 #-------------------------------------------------------------------------------
@@ -18,6 +18,10 @@ default:
 library:
 	( cd build ; cmake $(CMAKE_OPTIONS) .. ; $(MAKE) )
 
+# just run cmake; do not compile
+cmake:
+	( cd build ; cmake $(CMAKE_OPTIONS) .. ; )
+
 # the same as "make library"
 static: library
 
@@ -27,7 +31,7 @@ static_only:
 # installs GraphBLAS to the install location defined by cmake, usually
 # /usr/local/lib and /usr/local/include
 install:
-	( cd build ; cmake $(CMAKE_OPTIONS) .. ; $(MAKE) ; $(MAKE) install )
+	( cd build ; $(MAKE) install )
 
 # create the Doc/GraphBLAS_UserGuide.pdf
 docs:
@@ -44,6 +48,7 @@ purge: distclean
 # remove all files not in the distribution
 distclean:
 	rm -rf build/* Demo/*_demo.out Demo/complex_demo_out.m Tcov/log.txt
+	rm -rf Config/*.tmp Source/control.m4
 	( cd Test ; $(MAKE) distclean )
 	( cd Tcov ; $(MAKE) distclean )
 	( cd Doc  ; $(MAKE) distclean )

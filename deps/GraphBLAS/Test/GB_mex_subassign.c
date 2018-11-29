@@ -2,7 +2,7 @@
 // GB_mex_subassign: C(I,J)<Mask> = accum (C (I,J), A)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 // This function is a wrapper for all GxB_*_subassign functions.
@@ -34,29 +34,33 @@
 
 #include "GB_mex.h"
 
+#define USAGE "[C,s,t] = GB_mex_subassign " \
+              "(C, Mask, accum, A, I, J, desc, reduce) or (C, Work)"
+
 #define FREE_ALL                        \
 {                                       \
     GB_MATRIX_FREE (&A) ;               \
     GB_MATRIX_FREE (&Mask) ;            \
     GB_MATRIX_FREE (&C) ;               \
     GrB_free (&desc) ;                  \
-    GrB_free (&op) ;                    \
     if (!reduce_is_complex) GrB_free (&reduce) ;                \
-    GB_mx_put_global (malloc_debug) ;   \
+    GB_mx_put_global (true, 0) ;        \
 }
 
 #define GET_DEEP_COPY \
-    C = GB_mx_mxArray_to_Matrix (pargin [0], "C input", true) ;
+    C = GB_mx_mxArray_to_Matrix (pargin [0], "C input", true, true) ;
 
 #define FREE_DEEP_COPY GB_MATRIX_FREE (&C) ;
 
 GrB_Matrix C = NULL ;
 GrB_Matrix Mask = NULL ;
 GrB_Matrix A = NULL ;
+GrB_Matrix mask = NULL, u = NULL ;
 GrB_Descriptor desc = NULL ;
 GrB_BinaryOp accum = NULL ;
-GrB_Index *I = NULL, ni ;
-GrB_Index *J = NULL, nj ;
+GrB_Index *I = NULL, ni = 0, I_range [3] ;
+GrB_Index *J = NULL, nj = 0, J_range [3] ;
+bool ignore ;
 bool malloc_debug = false ;
 GrB_Info info = GrB_SUCCESS ;
 GrB_Monoid reduce = NULL ;
@@ -78,22 +82,28 @@ bool reduce_is_complex = false ;
     }                                   \
 }
 
-GrB_Info assign ( )
+GrB_Info assign (GB_Context Context)
 {
     bool at = (desc != NULL && desc->in0 == GrB_TRAN) ;
     GrB_Info info ;
-    GrB_Matrix mask = NULL, u = NULL ;
 
-    if (A->nrows == 1 && A->ncols == 1 && NNZ (A) == 1)
+    int pr = 0 ;
+    bool ph = (pr > 0) ;
+
+    ASSERT_OK (GB_check (C, "C before mex assign", pr)) ;
+    ASSERT_OK_OR_NULL (GB_check (accum, "accum for mex assign", pr)) ;
+    ASSERT_OK (GB_check (A, "A for mex assign", pr)) ;
+
+    if (GB_NROWS (A) == 1 && GB_NCOLS (A) == 1 && GB_NNZ (A) == 1)
     {
         // scalar expansion to matrix or vector
         void *Ax = A->x ;
 
         if (ni == 1 && nj == 1 && Mask == NULL && I != GrB_ALL && J != GrB_ALL
-            && GB_op_is_second (accum, C->type) && A->type->code != GB_UDT_code
+            && GB_op_is_second (accum, C->type) && A->type->code <= GB_FP64_code
             && desc == NULL)
         {
-            // printf ("setElement\n") ;
+            if (ph) printf ("setElement\n") ;
             // test GrB_Matrix_setElement
             #define ASSIGN(type)                                        \
             {                                                           \
@@ -114,6 +124,7 @@ GrB_Info assign ( )
                 case GB_UINT64_code : ASSIGN (uint64_t) ;
                 case GB_FP32_code   : ASSIGN (float) ;
                 case GB_FP64_code   : ASSIGN (double) ;
+                case GB_UCT_code    :
                 case GB_UDT_code    :
                 default:
                     FREE_ALL ;
@@ -122,11 +133,11 @@ GrB_Info assign ( )
             #undef ASSIGN
 
         }
-        if (C->ncols == 1)
+        if (GB_VECTOR_OK (C) && GB_VECTOR_OK (Mask))
         {
 
             // test GxB_Vector_subassign_scalar functions
-            // printf ("scalar assign to vector\n") ;
+            if (ph) printf ("scalar assign to vector\n") ;
             #define ASSIGN(type)                                        \
             {                                                           \
                 type x = ((type *) Ax) [0] ;                            \
@@ -147,6 +158,7 @@ GrB_Info assign ( )
                 case GB_UINT64_code : ASSIGN (uint64_t) ;
                 case GB_FP32_code   : ASSIGN (float) ;
                 case GB_FP64_code   : ASSIGN (double) ;
+                case GB_UCT_code    :
                 case GB_UDT_code    :
                 {
                     OK (GxB_subassign ((GrB_Vector) C, (GrB_Vector) Mask,
@@ -164,7 +176,7 @@ GrB_Info assign ( )
         {
 
             // test Matrix_subassign_scalar functions
-            // printf ("scalar assign to matrix\n") ;
+            if (ph) printf ("scalar assign to matrix\n") ;
             #define ASSIGN(type)                                            \
             {                                                               \
                 type x = ((type *) Ax) [0] ;                                \
@@ -184,6 +196,7 @@ GrB_Info assign ( )
                 case GB_UINT64_code : ASSIGN (uint64_t) ;
                 case GB_FP32_code   : ASSIGN (float) ;
                 case GB_FP64_code   : ASSIGN (double) ;
+                case GB_UCT_code    :
                 case GB_UDT_code    :
                 {
                     OK (GxB_subassign (C, Mask, accum, Ax, I, ni, J, nj, desc));
@@ -198,37 +211,36 @@ GrB_Info assign ( )
 
         }
     }
-    else if (C->ncols == 1 && A->ncols == 1 &&
-        (Mask == NULL || Mask->ncols == 1) && !at)
+    else if (GB_VECTOR_OK (C) && GB_VECTOR_OK (A) &&
+        (Mask == NULL || GB_VECTOR_OK (Mask)) && !at)
     {
         // test GxB_Vector_subassign
-        // printf ("vector assign\n") ;
+        if (ph) printf ("vector assign\n") ;
         OK (GxB_subassign ((GrB_Vector) C, (GrB_Vector) Mask, accum,
             (GrB_Vector) A, I, ni, desc)) ;
     }
-    else if (A->ncols == 1 && nj == 1 &&
-        (Mask == NULL || Mask->ncols == 1) && !at)
+    else if (GB_VECTOR_OK (A) && nj == 1 &&
+        (Mask == NULL || GB_VECTOR_OK (Mask)) && !at)
     {
         // test GxB_Col_subassign
-        // printf ("col assign\n") ;
+        if (ph) printf ("col assign\n") ;
         OK (GxB_subassign (C, (GrB_Vector) Mask, accum, (GrB_Vector) A,
             I, ni, J [0], desc)) ;
     }
-    else if (A->nrows == 1 && ni == 1 &&
-        (Mask == NULL || Mask->nrows == 1) && !at)
+    else if (A->vlen == 1 && ni == 1 &&
+        (Mask == NULL || Mask->vlen == 1) && !at)
     {
         // test GxB_Row_subassign; this is not meant to be efficient,
         // just for testing
-        // printf ("row assign\n") ;
+        if (ph) printf ("row assign\n") ;
         if (Mask != NULL)
         {
-            GB_NEW (&mask, GrB_BOOL, Mask->ncols, Mask->nrows, false, true) ;
-            OK (info) ;
-            OK (GB_Matrix_transpose (mask, Mask, NULL, true)) ;
+            OK (GB_transpose_bucket (&mask, GrB_BOOL, true, Mask, NULL,
+                Context)) ;
+            ASSERT (GB_VECTOR_OK (mask)) ;
         }
-        GB_NEW (&u, A->type, A->ncols, A->nrows, false, true) ;
-        OK (info) ;
-        OK (GB_Matrix_transpose (u, A, NULL, true)) ;
+        OK (GB_transpose_bucket (&u, A->type, true, A, NULL, Context)) ;
+        ASSERT (GB_VECTOR_OK (u)) ;
         OK (GxB_subassign (C, (GrB_Vector) mask, accum, (GrB_Vector) u,
             I [0], J, nj, desc)) ;
         GB_MATRIX_FREE (&mask) ;
@@ -237,9 +249,11 @@ GrB_Info assign ( )
     else
     {
         // standard submatrix assignment
-        // printf ("submatrix assign\n") ;
+        if (ph) printf ("submatrix assign\n") ;
         OK (GxB_subassign (C, Mask, accum, A, I, ni, J, nj, desc)) ;
     }
+
+    ASSERT_OK (GB_check (C, "C after assign", pr)) ;
     return (info) ;
 }
 
@@ -259,13 +273,15 @@ GrB_Info many_subassign
     int fMask,
     int fdesc,
     mxClassID cclass,
-    const mxArray *pargin [ ]
+    const mxArray *pargin [ ],
+    GB_Context Context
 )
 {
     GrB_Info info = GrB_SUCCESS ;
 
     for (int64_t k = 0 ; k < nwork ; k++)
     {
+        // printf ("work %g of %g\n", (double) k, (double) nwork-1) ;
 
         //----------------------------------------------------------------------
         // get the kth work to do
@@ -284,7 +300,7 @@ GrB_Info many_subassign
         if (fMask >= 0)
         {
             p = mxGetFieldByNumber (pargin [1], k, fMask) ;
-            Mask = GB_mx_mxArray_to_Matrix (p, "Mask", false) ;
+            Mask = GB_mx_mxArray_to_Matrix (p, "Mask", false, false) ;
             if (Mask == NULL && !mxIsEmpty (p))
             {
                 FREE_ALL ;
@@ -294,7 +310,7 @@ GrB_Info many_subassign
 
         // get A (shallow copy)
         p = mxGetFieldByNumber (pargin [1], k, fA) ;
-        A = GB_mx_mxArray_to_Matrix (p, "A", false) ;
+        A = GB_mx_mxArray_to_Matrix (p, "A", false, true) ;
         if (A == NULL)
         {
             FREE_ALL ;
@@ -317,7 +333,7 @@ GrB_Info many_subassign
 
         // get I
         p = mxGetFieldByNumber (pargin [1], k, fI) ;
-        if (!GB_mx_mxArray_to_indices (&I, p, &ni))
+        if (!GB_mx_mxArray_to_indices (&I, p, &ni, I_range, &ignore))
         {
             FREE_ALL ;
             mexErrMsgTxt ("I failed") ;
@@ -325,7 +341,7 @@ GrB_Info many_subassign
 
         // get J
         p = mxGetFieldByNumber (pargin [1], k, fJ) ;
-        if (!GB_mx_mxArray_to_indices (&J, p, &nj))
+        if (!GB_mx_mxArray_to_indices (&J, p, &nj, J_range, &ignore))
         {
             FREE_ALL ;
             mexErrMsgTxt ("J failed") ;
@@ -345,13 +361,11 @@ GrB_Info many_subassign
         // restore malloc debugging to test the method
         GB_Global.malloc_debug = save ;   // ]
 
-        // GB_check (desc, "desc", 3) ;
-
         //----------------------------------------------------------------------
         // C(I,J)<Mask> = A
         //----------------------------------------------------------------------
 
-        info = assign ( ) ;
+        info = assign (Context) ;
 
         GB_MATRIX_FREE (&A) ;
         GB_MATRIX_FREE (&Mask) ;
@@ -362,6 +376,8 @@ GrB_Info many_subassign
             return (info) ;
         }
     }
+
+    OK (GrB_wait ( )) ;
     return (info) ;
 }
 
@@ -382,7 +398,7 @@ void mexFunction
     // check inputs
     //--------------------------------------------------------------------------
 
-    malloc_debug = GB_mx_get_global ( ) ;
+    malloc_debug = GB_mx_get_global (true) ;
     A = NULL ;
     C = NULL ;
     Mask = NULL ;
@@ -391,13 +407,12 @@ void mexFunction
     op = NULL ;
     reduce = NULL ;
 
+    GB_WHERE (USAGE) ;
     if (!((nargout == 1 && (nargin == 2 || nargin == 6 || nargin == 7)) ||
           ((nargout == 2 || nargout == 3) && nargin == 8)))
     {
-        mexErrMsgTxt ("Usage: [C,s,t] = GB_mex_subassign "
-       "(C, Mask, accum, A, I, J, desc, reduce) or (C, Work)");
+        mexErrMsgTxt ("Usage: " USAGE) ;
     }
-
 
     //--------------------------------------------------------------------------
     // get C (make a deep copy)
@@ -448,7 +463,7 @@ void mexFunction
         if (fA < 0 || fI < 0 || fJ < 0) mexErrMsgTxt ("A,I,J required") ;
 
         METHOD (many_subassign (nwork, fA, fI, fJ, faccum, fMask, fdesc, cclass,
-            pargin)) ;
+            pargin, Context)) ;
 
     }
     else
@@ -459,7 +474,7 @@ void mexFunction
         //----------------------------------------------------------------------
 
         // get Mask (shallow copy)
-        Mask = GB_mx_mxArray_to_Matrix (pargin [1], "Mask", false) ;
+        Mask = GB_mx_mxArray_to_Matrix (pargin [1], "Mask", false, false) ;
         if (Mask == NULL && !mxIsEmpty (pargin [1]))
         {
             FREE_ALL ;
@@ -467,7 +482,7 @@ void mexFunction
         }
 
         // get A (shallow copy)
-        A = GB_mx_mxArray_to_Matrix (pargin [3], "A", false) ;
+        A = GB_mx_mxArray_to_Matrix (pargin [3], "A", false, true) ;
         if (A == NULL)
         {
             FREE_ALL ;
@@ -484,14 +499,14 @@ void mexFunction
         }
 
         // get I
-        if (!GB_mx_mxArray_to_indices (&I, pargin [4], &ni))
+        if (!GB_mx_mxArray_to_indices (&I, pargin [4], &ni, I_range, &ignore))
         {
             FREE_ALL ;
             mexErrMsgTxt ("I failed") ;
         }
 
         // get J
-        if (!GB_mx_mxArray_to_indices (&J, pargin [5], &nj))
+        if (!GB_mx_mxArray_to_indices (&J, pargin [5], &nj, J_range, &ignore))
         {
             FREE_ALL ;
             mexErrMsgTxt ("J failed") ;
@@ -538,14 +553,13 @@ void mexFunction
 
         // C(I,J)<Mask> = A
 
-        METHOD (assign ( )) ;
+        METHOD (assign (Context)) ;
 
         // apply the reduce monoid
         if (nargin == 8 && (nargout == 2 || nargout == 3))
         {
             // if (C->nzombies > 0)
-            //    printf ("do the reduce thing, zombies %lld\n", C->nzombies) ;
-            // GB_check (C, "C to reduce", 1) ;
+            //  printf ("do the reduce thing, zombies %lld\n", C->nzombies) ;
 
             #define REDUCE(type)                                             \
             {                                                                \
@@ -602,9 +616,9 @@ void mexFunction
     // return C to MATLAB as a struct
     //--------------------------------------------------------------------------
 
-    ASSERT_OK (GB_check (C, "Final C before wait", 0)) ;
+    ASSERT_OK (GB_check (C, "Final C before wait", GB0)) ;
     GrB_wait ( ) ;
-    // GB_check (C, "C final", 1) ;
+    TOC ;
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C assign result", true) ;
     FREE_ALL ;
 }

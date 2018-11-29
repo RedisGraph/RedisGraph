@@ -2,7 +2,7 @@
 // GrB_Vector_extract: w<mask> = accum (w, u(I))
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -16,23 +16,25 @@ GrB_Info GrB_Vector_extract         // w<mask> = accum (w, u(I))
     const GrB_BinaryOp accum,       // optional accum for z=accum(w,t)
     const GrB_Vector u,             // first input:  vector u
     const GrB_Index *I,             // row indices
-    const GrB_Index ni,             // number of row indices
+    GrB_Index ni,                   // number of row indices
     const GrB_Descriptor desc       // descriptor for w and mask
 )
-{
+{ 
 
     //--------------------------------------------------------------------------
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GrB_Vector_extract (w, mask, accum, u, I, ni, desc)") ;
-
-    RETURN_IF_NULL_OR_UNINITIALIZED (w) ;
-    RETURN_IF_UNINITIALIZED (mask) ;
-    RETURN_IF_NULL_OR_UNINITIALIZED (u) ;
+    GB_WHERE ("GrB_Vector_extract (w, mask, accum, u, I, ni, desc)") ;
+    GB_RETURN_IF_NULL_OR_FAULTY (w) ;
+    GB_RETURN_IF_FAULTY (mask) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (u) ;
+    ASSERT (GB_VECTOR_OK (w)) ;
+    ASSERT (mask == NULL || GB_VECTOR_OK (mask)) ;
+    ASSERT (GB_VECTOR_OK (u)) ;
 
     // get the descriptor
-    GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, ignore1, ignore2) ;
+    GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, xx1, xx2, xx3) ;
 
     //--------------------------------------------------------------------------
     // extract entries
@@ -42,7 +44,8 @@ GrB_Info GrB_Vector_extract         // w<mask> = accum (w, u(I))
     // then T = A(I,0) followed by C<Mask>=accum(C,T) does the right thing
     // where all matrices (C, Mask, and T) are columns of size ni-by-1.  Thus,
     // GB_extract does the right thing for this case.  Note that the input u is
-    // not allowed to be transposed.
+    // not transposed.  All GrB_Matrix objects will be in CSC format, and no
+    // matrices are transposed via the C_is_vector option in GB_extract.
 
     // construct the column index list J = [ 0 ] of length nj = 1
     GrB_Index J [1] ;
@@ -58,6 +61,7 @@ GrB_Info GrB_Vector_extract         // w<mask> = accum (w, u(I))
         accum,                          // optional accum for z=accum(w,t)
         (GrB_Matrix) u,     false,      // u as matrix; never transposed
         I, ni,                          // row indices I and length ni
-        J, 1)) ;                        // one column index, nj = 1
+        J, 1,                           // one column index, nj = 1
+        Context)) ;
 }
 

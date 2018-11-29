@@ -2,7 +2,7 @@
 // GB_block: apply all pending computations if blocking mode enabled
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -11,7 +11,8 @@
 
 GrB_Info GB_block   // apply all pending computations if blocking mode enabled
 (
-    GrB_Matrix A
+    GrB_Matrix A,
+    GB_Context Context
 )
 {
 
@@ -25,11 +26,14 @@ GrB_Info GB_block   // apply all pending computations if blocking mode enabled
     // check for blocking mode
     //--------------------------------------------------------------------------
 
+    // no synchronization is needed since this value is read-only after
+    // GrB_Init sets it.
+
     if (GB_Global.mode == GrB_BLOCKING)
-    {
+    { 
         // delete any lingering zombies and assemble any pending tuples
-        APPLY_PENDING_UPDATES (A) ;
+        GB_WAIT (A) ;
     }
-    return (REPORT_SUCCESS) ;
+    return (GrB_SUCCESS) ;
 }
 

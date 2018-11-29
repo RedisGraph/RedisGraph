@@ -2,7 +2,7 @@
 // GrB_mxm: matrix-matrix multiply
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -22,24 +22,24 @@ GrB_Info GrB_mxm                    // C<Mask> = accum (C, A*B)
     const GrB_Semiring semiring,    // defines '+' and '*' for T=A*B
     const GrB_Matrix A,             // first input:  matrix A
     const GrB_Matrix B,             // second input: matrix B
-    const GrB_Descriptor desc       // descriptor for C, Mask, A, and B
+    const GrB_Descriptor desc       // descriptor for C, Mask, A, and B,
+                                    // and method used for C=A*B
 )
-{
-
+{ 
 
     //--------------------------------------------------------------------------
     // check inputs
     //--------------------------------------------------------------------------
 
-    WHERE ("GrB_mxm (C, Mask, accum, semiring, A, B, desc)") ;
-
-    RETURN_IF_NULL_OR_UNINITIALIZED (C) ;
-    RETURN_IF_UNINITIALIZED (Mask) ;
-    RETURN_IF_NULL_OR_UNINITIALIZED (A) ;
-    RETURN_IF_NULL_OR_UNINITIALIZED (B) ;
+    GB_WHERE ("GrB_mxm (C, Mask, accum, semiring, A, B, desc)") ;
+    GB_RETURN_IF_NULL_OR_FAULTY (C) ;
+    GB_RETURN_IF_FAULTY (Mask) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (A) ;
+    GB_RETURN_IF_NULL_OR_FAULTY (B) ;
 
     // get the descriptor
-    GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, A_transpose, B_transpose);
+    GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, A_transpose,
+        B_transpose, AxB_method) ;
 
     //--------------------------------------------------------------------------
     // C<Mask> = accum (C,A*B) and variations, using the mxm kernel
@@ -53,6 +53,8 @@ GrB_Info GrB_mxm                    // C<Mask> = accum (C, A*B)
         semiring,                   // semiring that defines T=A*B
         A,          A_transpose,    // A matrix and its descriptor
         B,          B_transpose,    // B matrix and its descriptor
-        false)) ;                   // use fmult(x,y), flipxy false
+        false,                      // use fmult(x,y), flipxy false
+        AxB_method,                 // algorithm selector
+        Context)) ;
 }
 

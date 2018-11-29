@@ -2,48 +2,50 @@
 // GrB_Vector_assign_[SCALAR]: assign scalar to vector, via scalar expansion
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
-// Assigns a single scalar to a subvector, w<mask>(I) = accum(w(I),x)
-// The scalar x is implicitly expanded into a vector u of size ni-by-1,
+// Assigns a single scalar to a vector, w<mask>(Rows) = accum(w(Rows),x)
+// The scalar x is implicitly expanded into a vector u of size nRows-by-1,
 // with each entry in u equal to x.
 
 #include "GB.h"
 
-#define ASSIGN(type,T,ampersand)                                               \
-GrB_Info GrB_Vector_assign_ ## T    /* w<mask>(I) = accum (w(I),x)          */ \
+#define GB_ASSIGN(type,T,ampersand)                                            \
+GrB_Info GrB_Vector_assign_ ## T    /* w<mask>(Rows) = accum (w(Rows),x)    */ \
 (                                                                              \
     GrB_Vector w,                   /* input/output vector for results      */ \
     const GrB_Vector mask,          /* optional mask for w                  */ \
-    const GrB_BinaryOp accum,       /* optional accum for Z=accum(w(I),x)   */ \
-    const type x,                   /* scalar to assign to w(I)             */ \
-    const GrB_Index *I,             /* row indices                          */ \
-    const GrB_Index ni,             /* number of row indices                */ \
+    const GrB_BinaryOp accum,       /* optional accum for Z=accum(w(Rows),x)*/ \
+    const type x,                   /* scalar to assign to w(Rows)          */ \
+    const GrB_Index *Rows,          /* row indices                          */ \
+    GrB_Index nRows,                /* number of row indices                */ \
     const GrB_Descriptor desc       /* descriptor for w and mask            */ \
 )                                                                              \
 {                                                                              \
-    WHERE ("GrB_Vector_assign_" GB_STR(T) " (w, mask, accum, x, I, ni, desc)") ; \
-    RETURN_IF_NULL_OR_UNINITIALIZED (w) ;                                      \
-    RETURN_IF_UNINITIALIZED (mask) ;                                           \
+    GB_WHERE ("GrB_Vector_assign_" GB_STR(T)                                   \
+        " (w, mask, accum, x, Rows, nRows, desc)") ;                           \
+    GB_RETURN_IF_NULL_OR_FAULTY (w) ;                                          \
+    GB_RETURN_IF_FAULTY (mask) ;                                               \
+    ASSERT (GB_VECTOR_OK (w)) ;                                                \
+    ASSERT (GB_IMPLIES (mask != NULL, GB_VECTOR_OK (mask))) ;                  \
     return (GB_assign_scalar ((GrB_Matrix) w, (GrB_Matrix) mask, accum,        \
-        ampersand x, GB_## T ## _code, I, ni, GrB_ALL, 1, desc)) ;             \
+        ampersand x, GB_## T ## _code, Rows, nRows, GrB_ALL, 1, desc,          \
+        Context)) ;                                                            \
 }
 
-ASSIGN (bool     , BOOL   , &) ;
-ASSIGN (int8_t   , INT8   , &) ;
-ASSIGN (uint8_t  , UINT8  , &) ;
-ASSIGN (int16_t  , INT16  , &) ;
-ASSIGN (uint16_t , UINT16 , &) ;
-ASSIGN (int32_t  , INT32  , &) ;
-ASSIGN (uint32_t , UINT32 , &) ;
-ASSIGN (int64_t  , INT64  , &) ;
-ASSIGN (uint64_t , UINT64 , &) ;
-ASSIGN (float    , FP32   , &) ;
-ASSIGN (double   , FP64   , &) ;
-ASSIGN (void *   , UDT    ,  ) ;
-
-#undef ASSIGN
+GB_ASSIGN (bool     , BOOL   , &)
+GB_ASSIGN (int8_t   , INT8   , &)
+GB_ASSIGN (uint8_t  , UINT8  , &)
+GB_ASSIGN (int16_t  , INT16  , &)
+GB_ASSIGN (uint16_t , UINT16 , &)
+GB_ASSIGN (int32_t  , INT32  , &)
+GB_ASSIGN (uint32_t , UINT32 , &)
+GB_ASSIGN (int64_t  , INT64  , &)
+GB_ASSIGN (uint64_t , UINT64 , &)
+GB_ASSIGN (float    , FP32   , &)
+GB_ASSIGN (double   , FP64   , &)
+GB_ASSIGN (void *   , UDT    ,  )
 

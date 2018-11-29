@@ -3,7 +3,7 @@ function [mult_ops unary_ops add_ops classes semirings selops] = GB_spec_opsall
 %
 % [mult_ops unary_ops add_ops classes semirings select_ops] = GB_spec_opsall
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 mult_ops = {

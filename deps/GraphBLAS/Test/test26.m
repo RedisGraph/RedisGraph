@@ -1,7 +1,7 @@
 function test26(longtests)
 %TEST26 performance test for GxB_select
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 fprintf ('\nperformance of GxB_select\n') ;
@@ -61,7 +61,7 @@ for probs = 1:nprobs
 
             tic
             C1 = GB_mex_select (Cin, [], [], op, A, k, []) ;
-            t1 = toc ;
+            t1 = gbresults ; % toc ;
             fprintf ('GB: %10.6f ', t1) ;
 
             C3 = 'none' ;
@@ -74,14 +74,14 @@ for probs = 1:nprobs
                     t2 = toc ;
                     tic
                     C3 = GB_mex_tril (A, k) ;
-                    t3 = toc ;
+                    t3 = gbresults ; % toc ;
                 case 'triu'
                     tic
                     C2 = triu (A,k) ;
                     t2 = toc ;
                     tic
                     C3 = GB_mex_triu (A, k) ;
-                    t3 = toc ;
+                    t3 = gbresults ; % toc ;
                 case 'diag'
                     if (size (A,2) > 1)
                         tic
@@ -90,7 +90,7 @@ for probs = 1:nprobs
                     end
                     tic
                     C3 = GB_mex_diag (A, k) ;
-                    t3 = toc ;
+                    t3 = gbresults ; % toc ;
                 case 'offdiag'
                     if (size (A,2) > 1)
                         tic
@@ -99,7 +99,7 @@ for probs = 1:nprobs
                     end
                     tic
                     C3 = GB_mex_offdiag (A, k) ;
-                    t3 = toc ;
+                    t3 = gbresults ; % toc ;
                 case 'nonzero'
                     tic
                     C2 = A .* (A ~= 0) ;
@@ -107,7 +107,7 @@ for probs = 1:nprobs
                     assert (isequal (1*C2,1*A)) ;
                     tic
                     C3 = GB_mex_nonzero (A) ;
-                    t3 = toc ;
+                    t3 = gbresults ; % toc ;
                     assert (isequal (1*C3,1*A)) ;
             end
 

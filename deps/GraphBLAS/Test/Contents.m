@@ -23,6 +23,7 @@
 %   GB_spec_eWiseMult_Vector      - a MATLAB mimic of GrB_eWiseMult_Vector
 %   GB_spec_extractTuples         - a MATLAB mimic of GrB_*_extractTuples
 %   GB_spec_identity              - the additive identity of a monoid
+%   GB_spec_kron                  - a MATLAB mimic of GxB_kron
 %   GB_spec_mask                  - a pure MATLAB implementation of GrB_mask
 %   GB_spec_matrix                - a MATLAB mimic that conforms a matrix to the GraphBLAS spec
 %   GB_spec_mxm                   - a MATLAB mimic of GrB_mxm
@@ -33,6 +34,7 @@
 %   GB_spec_random                - generate random matrix
 %   GB_spec_reduce_to_scalar      - a MATLAB mimic of GrB_reduce (to scalar)
 %   GB_spec_reduce_to_vector      - a MATLAB mimic of GrB_reduce (to vector)
+%   GB_spec_resize                - a MATLAB mimic of GxB_resize
 %   GB_spec_select                - a MATLAB mimic of GxB_select
 %   GB_spec_semiring              - create a semiring
 %   GB_spec_subassign             - a MATLAB mimic of GxB_subassign
@@ -43,6 +45,8 @@
 %   GB_user_opsall                - return list of complex operators
 %   accum_mask                    - apply the mask
 %   accum_mask2                   - a simpler version of GB_spec_accum_mask
+%   GB_random_mask                - Mask = GB_random_mask (m, n, d, M_is_csc, M_is_hyper)
+%   GB_spec_getmask               - return the mask, typecasted to logical
 %
 % Test scripts:
 %
@@ -83,18 +87,18 @@
 %   test28   - test mxm with aliased inputs, C<C> = accum(C,C*C)
 %   test29   - GrB_reduce with zombies
 %   test30   - test GxB_subassign
-%   test30b  - test GrB_assign
+%   test30b  - performance test GB_mex_assign, scalar expansionb
 %   test31   - test GrB_transpose
 %   test32   - test GrB_mxm
 %   test33   - test a semiring
 %   test34   - test GrB_eWiseAdd
 %   test35   - test GrB_*_extractTuples
-%   test36   - test matrix subref
+%   test36   - performance test of matrix subref
 %   test37   - test qsort
 %   test38   - test GrB_transpose
-%   test39   - test GrB_transpose performance
+%   test39   - performance test for GrB_transpose
 %   test40   - test GrB_Matrix_extractElement
-%   test41   - test AxB symbolic
+%   test41   - test AxB
 %   test42   - test GrB_Matrix_build
 %   test43   - test subref
 %   test44   - test qsort
@@ -102,14 +106,14 @@
 %   test46   - performance test of GxB_subassign
 %   test46b  - performance test of GrB_assign
 %   test47   - prformance test of GrB_vxm
-%   test48   - test GrB_mxm
+%   test48   - performance test of GrB_mxm
 %   test49   - performance test of GrB_mxm (dot product method, A'*B)
 %   test50   - test AxB numeric and symbolic
 %   test51   - test GxB_subassign, multiply operations
 %   test51b  - test GrB_assign, multiply operations
 %   test52   - test AdotB vs AxB
 %   test53   - test GrB_Matrix_extract
-%   test54   - test AxB, qsort vs bucket sort
+%   test54   - test GB_subref_numeric with I=lo:hi, J=lo:hi
 %   test55   - test GxB_subassign, illustrate duplicate indices, MATLAB vs GraphBLAS
 %   test55b  - test GrB_assign, illustrate duplicate indices, MATLAB vs GraphBLAS
 %   test56   - test GrB_*_build
@@ -117,7 +121,7 @@
 %   test58   - test GrB_eWiseAdd
 %   test59   - test GrB_mxm
 %   test60   - test min and max operators with NaNs
-%   test61   - test GrB_eMult performance
+%   test61   - performance test of GrB_eMult
 %   test62   - test GrB_apply
 %   test63   - test GraphBLAS operators
 %   test64   - test GxB_*_subassign, scalar expansion, with and without duplicates
@@ -131,8 +135,27 @@
 %   test73   - performance of C = A*B, with mask
 %   test74   - test GrB_mxm: dot product method
 %   test75   - test GrB_mxm and GrB_vxm on all semirings (A'B dot product)
+%   test76   - test GxB_resize
+%   test77   - test GxB_kron
+%   test78   - test subref
+%   test79   - run all matrices with test06
+%   test80   - rerun test06 with different matrices
+%   test81   - test GrB_Matrix_extract with index range, stride, & backwards
+%   test82   - test GrB_Matrix_extract with index range (hypersparse)
+%   test83   - test GrB_assign with J=lo:0:hi, an empty list, and C_replace true
+%   test84   - test GrB_assign (row and column with C in CSR format)
+%   test85   - test GrB_transpose: 1-by-n with typecasting
+%   test86   - performance test of of GrB_Matrix_extract
+%   test87   - performance test of GrB_mxm
+%   test88   - test hypersparse matrices with heap-based method
+%   test89   - performance test of complex A*B
+%   test90   - test AxB with pre-compiled semirings: plus_rdiv and plus_rdiv2
+%   test91   - test subref performance on dense vectors
+%   test92   - test GB_subref_symbolic
+%   test93   - test dpagerank and ipagerank
+%   test94   - test pagerank
 %   test97   - test GB_assign, scalar expansion and zombies
-%   test98   - test GB_mxm, typecasting on the fly
+%   test98   - test GrB_mxm, typecasting on the fly
 %   test99   - test GB_mex_transpose with explicit zeros in the Mask
 %   testc1   - test complex operators
 %   testc2   - test complex A*B, A'*B, A*B', A'*B', A+B
@@ -146,27 +169,38 @@
 %   testca   - test complex mxm, mxv, and vxm
 %   testcb   - test complex reduce
 %   testcc   - test complex transpose
+%   testperf - run all performance tests
 %
 % Helper functions
 %
-%   debug_off - turn off malloc debugging
-%   debug_on  - turn on malloc debugging
-%   gbmake    - compiles the MATLAB interface to GraphBLAS (for testing only).
-%   irand     - construct a random integer matrix 
-%   logstat   - run a GraphBLAS test and log the results to log.txt 
-%   runtest   - run a single GraphBLAS test
-%   stat      - report status of statement coverage and malloc debugging
-%   GB_define - create C source code for GraphBLAS.h
+%   debug_off  - turn off malloc debugging
+%   debug_on   - turn on malloc debugging
+%   gbmake     - compiles the MATLAB interface to GraphBLAS (for testing only).
+%   irand      - construct a random integer matrix 
+%   logstat    - run a GraphBLAS test and log the results to log.txt 
+%   runtest    - run a single GraphBLAS test
+%   stat       - report status of statement coverage and malloc debugging
+%   GB_define  - create C source code for GraphBLAS.h
+%   GB_define2 - construct part of the GB.h file, to allow user-defined objects
+%   gbresults  - return time taken by last GraphBLAS function, and AxB method
+%   isequal_roundoff - compare two matrices, allowing for roundoff errors
+%   startup    - setup the path for tests in GraphBLAS/Test
+%   test_other - installs all packages needed for extensive tests
 %
 % Triangle counting:
 %
-%   ../Demo/tricount       - count the number of triangles in an undirected unweighted graph
-%   ../Demo/adj_to_edges   - create an edge incidence matrix from an adjacency matrix
-%   ../Demo/check_adj.m    - check an adjacency list
-%   ../Demo/edges_to_adj.m - create an adjacency matrix from an edge incidence matrix
+%   ../Demo/MATLAB/tricount       - count the number of triangles in an undirected unweighted graph
+%   ../Demo/MATLAB/adj_to_edges   - create an edge incidence matrix from an adjacency matrix
+%   ../Demo/MATLAB/check_adj      - ensure A is a valid adjacency matrix
+%   ../Demo/MATLAB/edges_to_adj   - create an adjacency matrix from an edge incidence matrix
+%   ../Demo/MATLAB/tri_matlab     - run tricount tests in MATLAB
 %   test70       - performance comparison of triangle counting methods
 %   test70_plot  - plot the results from test70
 %   test71       - performance comparison of triangle counting methods
 %   test71_plot  - plot the results from test71
 %   test71_table - print the table for triangle counting results
-
+%
+% Other demos
+%
+%   ../Demo/MATLAB/kron_demo      - test Program/kron_demo.c and compare with MATLAB kron
+%   ../Demo/MATLAB/kron_test      - test kron_demo.m

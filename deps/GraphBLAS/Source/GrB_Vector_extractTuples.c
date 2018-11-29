@@ -2,7 +2,7 @@
 // GrB_Vector_extractTuples: extract all tuples from a vector
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -19,7 +19,7 @@
 
 #include "GB.h"
 
-#define EXTRACT(type,T) \
+#define GB_EXTRACT(type,T)                                                    \
 GrB_Info GrB_Vector_extractTuples_ ## T     /* [I,~,X] = find (A) */          \
 (                                                                             \
     GrB_Index *I,           /* array for returning row indices of tuples */   \
@@ -28,25 +28,24 @@ GrB_Info GrB_Vector_extractTuples_ ## T     /* [I,~,X] = find (A) */          \
     const GrB_Vector v      /* vector to extract tuples from             */   \
 )                                                                             \
 {                                                                             \
-    WHERE ("GrB_Vector_extractTuples_" GB_STR(T) " (I, X, nvals, v)") ;       \
-    RETURN_IF_NULL_OR_UNINITIALIZED (v) ;                                     \
-    RETURN_IF_NULL (p_nvals) ;                                                \
+    GB_WHERE ("GrB_Vector_extractTuples_" GB_STR(T) " (I, X, nvals, v)") ;    \
+    GB_RETURN_IF_NULL_OR_FAULTY (v) ;                                         \
+    GB_RETURN_IF_NULL (p_nvals) ;                                             \
+    ASSERT (GB_VECTOR_OK (v)) ;                                               \
     return (GB_extractTuples (I, NULL, X, p_nvals, GB_ ## T ## _code,         \
-        (GrB_Matrix) v)) ;                                                    \
+        (GrB_Matrix) v, Context)) ;                                           \
 }
 
-EXTRACT (bool     , BOOL   ) ;
-EXTRACT (int8_t   , INT8   ) ;
-EXTRACT (uint8_t  , UINT8  ) ;
-EXTRACT (int16_t  , INT16  ) ;
-EXTRACT (uint16_t , UINT16 ) ;
-EXTRACT (int32_t  , INT32  ) ;
-EXTRACT (uint32_t , UINT32 ) ;
-EXTRACT (int64_t  , INT64  ) ;
-EXTRACT (uint64_t , UINT64 ) ;
-EXTRACT (float    , FP32   ) ;
-EXTRACT (double   , FP64   ) ;
-EXTRACT (void     , UDT    ) ;
-
-#undef EXTRACT
+GB_EXTRACT (bool     , BOOL   )
+GB_EXTRACT (int8_t   , INT8   )
+GB_EXTRACT (uint8_t  , UINT8  )
+GB_EXTRACT (int16_t  , INT16  )
+GB_EXTRACT (uint16_t , UINT16 )
+GB_EXTRACT (int32_t  , INT32  )
+GB_EXTRACT (uint32_t , UINT32 )
+GB_EXTRACT (int64_t  , INT64  )
+GB_EXTRACT (uint64_t , UINT64 )
+GB_EXTRACT (float    , FP32   )
+GB_EXTRACT (double   , FP64   )
+GB_EXTRACT (void     , UDT    )
 

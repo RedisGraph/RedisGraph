@@ -1,6 +1,9 @@
 function test27
 %TEST27 test GxB_select with user-defined select op (band)
 
+%  SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+%  http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
 fprintf ('test 27: GxB_select with user-defined op (band)\n') ;
 
 for m = 1:10
@@ -10,14 +13,16 @@ for m = 1:10
         for lo = -12:12
             for hi = -12:12
 
-                C1 = GB_mex_band (A, lo, hi) ;
-                C2 = triu (tril (A,hi), lo) ;
-                assert (isequal (C1, C2)) ;
+                for pre = 0:1
 
-                C1 = GB_mex_band (A, lo, hi, 1) ;
-                C2 = triu (tril (A',hi), lo) ;
-                assert (isequal (C1, C2)) ;
+                    C1 = GB_mex_band (A, lo, hi, 0, pre) ;
+                    C2 = triu (tril (A,hi), lo) ;
+                    assert (isequal (C1, C2)) ;
 
+                    C1 = GB_mex_band (A, lo, hi, 1, pre) ;
+                    C2 = triu (tril (A',hi), lo) ;
+                    assert (isequal (C1, C2)) ;
+                end
             end
         end
     end
