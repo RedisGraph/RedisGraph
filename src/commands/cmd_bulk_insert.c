@@ -60,8 +60,6 @@ void _MGraph_BulkInsert(void *args) {
     int argc = context->argc - 2; // skip "GRAPH.BULK [GRAPHNAME]"
     RedisModuleString *rs_graph_name = *argv++;
     RedisModuleKey *key;
-    size_t nodes = 0;   // Number of nodes created.
-    size_t edges = 0;   // Number of edge created.
 
     char reply[1024] = {0}; // Prepare the Redis string response
     int len;
@@ -71,29 +69,19 @@ void _MGraph_BulkInsert(void *args) {
     // Type chosen to match Redis conversion function
     long long final_node_count;
     long long final_edge_count;
-    // Check the next to see if this is a starting query
-    if (!strcmp(RedisModule_StringPtrLen(*argv, 0), "BEGIN")) {
-        argv ++;
-        if (_BeginBulkInsert(ctx, rs_graph_name, &final_node_count, &final_edge_count, argv) != BULK_OK) {
-            goto cleanup;
-        }
-        argv += 3; // skip "BEGIN [NODE_COUNT] [EDGE_COUNT]"
-        argc -= 3; // skip "BEGIN [NODE_COUNT] [EDGE_COUNT]"
 
-        // Create graph and initialize its data stores.
-        gc = GraphContext_New(ctx, rs_graph_name, final_node_count, final_edge_count);
-        // Exit if graph creation failed
-        if (gc == NULL) {
-            RedisModule_ReplyWithError(ctx, "Failed to allocate space for graph.");
-            goto cleanup;
-        }
-    } else {
-        // Query did not start with a "BEGIN" token
-        gc = GraphContext_Retrieve(ctx, rs_graph_name);
-        if (gc == NULL) {
-            RedisModule_ReplyWithError(ctx, "Bulk insert query did not include a BEGIN token and graph was not found.");
-            goto cleanup;
-        }
+    if (_BeginBulkInsert(ctx, rs_graph_name, &final_node_count, &final_edge_count, argv) != BULK_OK) {
+      goto cleanup;
+    }
+    argv += 2; // skip "[NODE_COUNT] [EDGE_COUNT]"
+    argc -= 2; // skip "[NODE_COUNT] [EDGE_COUNT]"
+
+    // Create graph and initialize its data stores.
+    gc = GraphContext_New(ctx, rs_graph_name, final_node_count, final_edge_count);
+    // Exit if graph creation failed
+    if (gc == NULL) {
+      RedisModule_ReplyWithError(ctx, "Failed to allocate space for graph.");
+      goto cleanup;
     }
 
     // Lock the graph for writing.
@@ -102,28 +90,20 @@ void _MGraph_BulkInsert(void *args) {
     // Disable matrix synchronization for bulk insert operation
     Graph_SetMatrixPolicy(gc->g, RESIZE_TO_CAPACITY);
 
-    if (argc == 0) {
-        // Only the allocation string was received, so our work is done.
-        // (any non-BEGIN query with an argc of 0 here would have failed the arity check)
-        len = snprintf(reply, 1024, "Initialized a graph to accommodate %lld nodes and %lld edges.", final_node_count, final_edge_count);
-        RedisModule_ReplyWithStringBuffer(ctx, reply, len);
-        goto cleanup;
-    }
+    Graph_AllocateNodes(gc->g, final_node_count);
 
-    int rc = BulkInsert(ctx, gc, &nodes, &edges, argv, argc);
+    int rc = BulkInsert(ctx, gc, argv, argc);
 
     if (rc == BULK_FAIL) {
         // If insertion failed, clean up keyspace and free added entities.
         key = RedisModule_OpenKey(ctx, rs_graph_name, REDISMODULE_WRITE);
         RedisModule_DeleteKey(key);
         goto cleanup;
-    } else if (rc == BULK_COMPLETE) {
-        goto cleanup;
     }
 
     // Replay to caller.
     double t = simple_toc(context->tic);
-    len = snprintf(reply, 1024, "%zu Nodes created, %zu Edges created, time: %.6f sec", nodes, edges, t);
+    len = snprintf(reply, 1024, "%llu nodes created, %llu edges created, time: %.6f sec", final_node_count, final_edge_count, t);
     RedisModule_ReplyWithStringBuffer(ctx, reply, len);
 
 cleanup:
