@@ -1,3 +1,4 @@
+[![GitHub issues](https://img.shields.io/github/release/RedisLabsModules/RedisGraph.svg)](https://github.com/RedisLabsModules/RedisGraph/releases/latest)
 [![CircleCI](https://circleci.com/gh/RedisLabsModules/RedisGraph/tree/master.svg?style=svg)](https://circleci.com/gh/RedisLabsModules/RedisGraph/tree/master)
 
 # RedisGraph - A graph database module for Redis
