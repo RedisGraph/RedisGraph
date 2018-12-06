@@ -9,6 +9,7 @@
 #include "../../util/arr.h"
 #include "../../parser/ast.h"
 #include "../../stores/store.h"
+
 #include <assert.h>
 
 void _SetModifiedEntities(OpCreate *op) {
@@ -138,7 +139,6 @@ static void _CommitNodes(OpCreate *op) {
     
     Graph_AllocateNodes(op->gc->g, node_count);
     CreateClause_ReferredEntities(op->ast->createNode, createEntities);
-    
     for(uint i = 0; i < node_count; i++) {
         n = op->created_nodes[i];
         LabelStore *store = NULL;
@@ -201,8 +201,8 @@ static void _CommitEdges(OpCreate *op) {
     LabelStore *allStore = GraphContext_AllStore(op->gc, STORE_EDGE);
     CreateClause_ReferredEntities(op->ast->createNode, createEntities);
 
-    int createdEdgeCount = array_len(op->created_edges);
-    for(int i = 0; i < createdEdgeCount; i++) {
+    uint createdEdgeCount = array_len(op->created_edges);
+    for(uint i = 0; i < createdEdgeCount; i++) {
         e = op->created_edges[i];
         int relation_id;
         NodeID srcNodeID;
@@ -257,7 +257,7 @@ static void _CommitEdges(OpCreate *op) {
     op->result_set->stats.relationships_created = relationships_created;
 }
 
-void _CommitNewEntities(OpCreate *op) {
+static void _CommitNewEntities(OpCreate *op) {
     size_t node_count = array_len(op->created_nodes);
     size_t edge_count = array_len(op->created_edges);
     LabelStore *allStore;
@@ -303,6 +303,7 @@ void OpCreateFree(OpBase *ctx) {
 
     if(op->nodes_to_create) free(op->nodes_to_create);
     if(op->edges_to_create) free(op->edges_to_create);
+    
     if (op->created_nodes) {
         size_t nodeCount = array_len(op->created_nodes);
         for(uint i = 0; i < nodeCount; i++) {
@@ -311,12 +312,13 @@ void OpCreateFree(OpBase *ctx) {
         }
         array_free(op->created_nodes);
     }
-     if (op->created_edges) {
+
+    if (op->created_edges) {
         size_t edgeCount = array_len(op->created_edges);
         for(uint i = 0; i < edgeCount; i++) {
             // It's safe to free edge, as its internal GraphEntity wouldn't be free.
             Edge_Free(op->created_edges[i]);
         }
         array_free(op->created_edges);
-     }
+    }
 }

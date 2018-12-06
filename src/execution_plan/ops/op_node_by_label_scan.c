@@ -44,10 +44,9 @@ OpBase *NewNodeByLabelScanOp(GraphContext *gc, Node *node) {
 
 Record NodeByLabelScanConsume(OpBase *opBase) {
     NodeByLabelScan *op = (NodeByLabelScan*)opBase;
-
+    
     GrB_Index nodeId;
-
-    bool depleted = false;
+    bool depleted = false;    
     GxB_MatrixTupleIter_next(op->iter, NULL, &nodeId, &depleted);
     if(depleted) return NULL;
     

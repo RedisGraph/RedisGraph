@@ -41,7 +41,6 @@ void Record_Merge(Record a, const Record b) {
     int bLength = Record_length(b);
     assert(aLength == bLength);
 
-    // Skip header row.
     for(int i = 0; i < bLength; i++) {
         if(b[i].type != REC_TYPE_UNKNOWN) {
             a[i] = b[i];

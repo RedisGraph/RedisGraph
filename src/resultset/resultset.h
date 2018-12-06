@@ -14,26 +14,17 @@
 #include "../parser/ast.h"
 #include "../redismodule.h"
 #include "../util/vector.h"
-#include "../util/heap.h"
 #include "../util/triemap/triemap.h"
 
 #define RESULTSET_UNLIMITED 0
 #define RESULTSET_OK 1
 #define RESULTSET_FULL 0
 
-#define DIR_DESC -1
-#define DIR_ASC 1
-
 typedef struct {
     RedisModuleCtx *ctx;
     Vector *records;            /* Vector of Records. */
-    heap_t *heap;               /* Holds top n records. */
-    TrieMap *groups;            /* When aggregating, stores groups by group key. */
     TrieMap *trie;              /* When using distinct, used to identify unique records. */
     ResultSetHeader *header;    /* Describes how records should look like. */
-    bool aggregated;            /* Rather or not this is an aggregated result set. */
-    bool ordered;               /* Rather or not this result set is ordered. */
-    int direction;              /* Sort direction ASC/DESC. */
     int limit;                  /* Max number of records in result-set. */
     bool distinct;              /* Rather or not each record is unique. */
     bool streaming;             /* Streams records back to client. */

@@ -390,12 +390,16 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx,
 
     if(ast->returnNode) {
         if(ReturnClause_ContainsAggregation(ast->returnNode)) {
-            TrieMap *groups = NewTrieMap();
-            op = NewAggregateOp(ast, groups);
-            if(execution_plan->result_set) execution_plan->result_set->groups = groups;
-        } else {
-            op = NewProduceResultsOp(ast, execution_plan->result_set, q);
+            op = NewAggregateOp(ast);
+            Vector_Push(ops, op);
         }
+
+        if(ast->orderNode) {
+            op = NewOrderByOp(ast);
+            Vector_Push(ops, op);
+        }
+
+        op = NewProduceResultsOp(ast, execution_plan->result_set, q);
         Vector_Push(ops, op);
     }
 

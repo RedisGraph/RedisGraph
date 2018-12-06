@@ -130,7 +130,7 @@ void AR_EXP_Reduce(const AR_ExpNode *root);
 
 /* Utility functions */
 /* Traverse an expression tree and add all graph entity aliases
- * (from variadics) to a triemap. */
+ * (from variadic) to a triemap. */
 void AR_EXP_CollectAliases(AR_ExpNode *root, TrieMap *aliases);
 
 /* Search for an aggregation node within the expression tree.

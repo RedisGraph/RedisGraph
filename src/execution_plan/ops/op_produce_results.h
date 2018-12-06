@@ -19,7 +19,6 @@
 
 typedef struct {
     OpBase op;
-    int refreshAfterPass;
     AST *ast;
     Vector *return_elements; /* Vector of arithmetic expressions. */
     ResultSet *result_set;

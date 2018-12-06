@@ -515,35 +515,14 @@ variable(A) ::= UQSTRING(B) DOT UQSTRING(C). {
 orderClause(A) ::= . {
 	A = NULL;
 }
-orderClause(A) ::= ORDER BY columnNameList(B). {
+orderClause(A) ::= ORDER BY arithmetic_expression_list(B). {
 	A = New_AST_OrderNode(B, ORDER_DIR_ASC);
 }
-orderClause(A) ::= ORDER BY columnNameList(B) ASC. {
+orderClause(A) ::= ORDER BY arithmetic_expression_list(B) ASC. {
 	A = New_AST_OrderNode(B, ORDER_DIR_ASC);
 }
-orderClause(A) ::= ORDER BY columnNameList(B) DESC. {
+orderClause(A) ::= ORDER BY arithmetic_expression_list(B) DESC. {
 	A = New_AST_OrderNode(B, ORDER_DIR_DESC);
-}
-
-%type columnNameList {Vector*}
-columnNameList(A) ::= columnNameList(B) COMMA columnName(C). {
-	Vector_Push(B, C);
-	A = B;
-}
-columnNameList(A) ::= columnName(B). {
-	A = NewVector(AST_ColumnNode*, 1);
-	Vector_Push(A, B);
-}
-
-%type columnName {AST_ColumnNode*}
-columnName(A) ::= variable(B). {
-	if(B->property != NULL) {
-		A = AST_ColumnNodeFromVariable(B);
-	} else {
-		A = AST_ColumnNodeFromAlias(B->alias);
-	}
-
-	Free_AST_Variable(B);
 }
 
 %type skipClause {AST_SkipNode*}

@@ -24,5 +24,6 @@
 #include "op_merge.h"
 #include "op_cond_var_len_traverse.h"
 #include "op_unwind.h"
+#include "op_orderby.h"
 
 #endif

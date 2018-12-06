@@ -1,5 +1,6 @@
 #include "utilize_indices.h"
 #include "../ops/op_index_scan.h"
+#include "../../util/arr.h"
 
 /* Reverse an inequality symbol so that indices can support
  * inequalities with right-hand variables. */
@@ -18,10 +19,11 @@ int _reverseOp(int op) {
     }
 }
 
-void _locateScanFilters(NodeByLabelScan *scanOp, Vector *filterOps) {
+void _locateScanFilters(NodeByLabelScan *scanOp, OpBase ***filterOps) {
   /* We begin with a LabelScan, and want to find predicate filters that modify
    * the active entity. */
   OpBase *current = scanOp->op.parent;
+  // TODO: Not sure if this while is necessary.
   while(current->type == OPType_FILTER) {
     Filter *filterOp = (Filter*)current;
     FT_FilterNode *filterTree = filterOp->filterTree;
@@ -30,7 +32,7 @@ void _locateScanFilters(NodeByLabelScan *scanOp, Vector *filterOps) {
      * We'll store ops on const predicate filters, and can otherwise safely ignore them -
      * no filter tree in this sequence can invalidate another. */
     if (IsNodePredicate(filterTree)) {
-      Vector_Push(filterOps, current);
+      *filterOps = array_append(*filterOps, current);
     }
 
     // Advance to the next operation.
@@ -38,12 +40,12 @@ void _locateScanFilters(NodeByLabelScan *scanOp, Vector *filterOps) {
   }
 }
 
-// Populate scanOps vector with execution plan scan operations.
-void _locateScanOp(OpBase *root, Vector *scanOps) {
+// Populate scanOps array with execution plan scan operations.
+void _locateScanOp(OpBase *root, NodeByLabelScan ***scanOps) {
 
   // Is this a scan operation?
   if (root->type == OPType_NODE_BY_LABEL_SCAN) {
-    Vector_Push(scanOps, root);
+    *scanOps = array_append(*scanOps, (NodeByLabelScan*)root);
   }
 
   // Continue scanning.
@@ -57,12 +59,12 @@ void utilizeIndices(GraphContext *gc, ExecutionPlan *plan) {
   if (!GraphContext_HasIndices(gc)) return;
 
   // Collect all label scans
-  Vector *scanOps = NewVector(NodeByLabelScan*, 0);
-  _locateScanOp(plan->root, scanOps);
+  NodeByLabelScan **scanOps = array_new(NodeByLabelScan*, 0);
+  _locateScanOp(plan->root, &scanOps);
 
   // Collect all filters on scanned entities
   NodeByLabelScan *scanOp;
-  Vector *filterOps = NewVector(OpBase*, 0);
+  OpBase **filterOps = array_new(OpBase*, 0);
   FT_FilterNode *ft;
   char *label;
 
@@ -72,18 +74,21 @@ void utilizeIndices(GraphContext *gc, ExecutionPlan *plan) {
   int lhsType, rhsType;
   int op = 0;
 
-  while (Vector_Pop(scanOps, &scanOp)) {
+  int scanOpCount = array_len(scanOps);
+  for(int i = 0; i < scanOpCount; i++) {
+  // while (Vector_Pop(scanOps, &scanOp)) {
+    scanOp = scanOps[i];
     IndexIter *iter = NULL;
     Index *idx = NULL;
 
     /* Get the label string for the scan target.
      * The label will be used to retrieve the index. */
     label = scanOp->node->label;
-    Vector_Clear(filterOps);
-    _locateScanFilters(scanOp, filterOps);
+    array_clear(filterOps);
+    _locateScanFilters(scanOp, &filterOps);
 
     // No filters.
-    if (Vector_Size(filterOps) == 0) continue;
+    if(array_len(filterOps) == 0) continue;
 
     /* At this point we have all the filter ops (and thus, filter trees) associated
      * with the scanned entity. If there are valid indices on any filter and no
@@ -93,9 +98,9 @@ void utilizeIndices(GraphContext *gc, ExecutionPlan *plan) {
      * that property. A later optimization would be to find the index with the
      * most filters, or use some heuristic for trying to select the minimal range. */
 
-    for (int i = 0; i < Vector_Size(filterOps); i ++) {
-      OpBase *opFilter;
-      Vector_Get(filterOps, i, &opFilter);
+    int filterOpsCount = array_len(filterOps);
+    for (int i = 0; i < filterOpsCount; i ++) {
+      OpBase *opFilter = filterOps[i];
       ft = ((Filter *)opFilter)->filterTree;
       /* We'll only employ indices when we have filters of the form:
        * node.property [rel] constant or
@@ -143,7 +148,7 @@ void utilizeIndices(GraphContext *gc, ExecutionPlan *plan) {
   }
 
   // Cleanup
-  Vector_Free(filterOps);
-  Vector_Free(scanOps);
+  array_free(filterOps);
+  array_free(scanOps);
 }
 
