@@ -5560,6 +5560,50 @@ GrB_Info GxB_Vector_fprint          // print and check a GrB_Vector
  
 
 
+//------------------------------------------------------------------------------
+// GraphBLAS/User/rg_structured_bool.m4: RedisGraph boolean semiring
+//------------------------------------------------------------------------------
+
+#ifdef GxB_USER_INCLUDE
+// Define a boolean structured semiring which RedisGraph can use
+// while compiling GraphBLAS with GBCOMPACT.
+#define RG_STRUCTURED_BOOL
+
+    static inline void rg_bplus
+    (
+        bool *z,
+        const bool *x,
+        const bool *y
+    )
+    {
+        (*z) = true ;
+    }
+    
+    static inline void rg_bmul
+    (
+        bool *z,
+        const bool *x,
+        const bool *y
+    )
+    {
+        (*z) = true ;
+    }
+
+#endif
+
+// The two operators, bool add and multiply:
+// bplus operator
+extern GrB_BinaryOp Rg_bplus ;
+
+// bmul operator
+extern GrB_BinaryOp Rg_bmul ;
+
+// The plus monoid:
+extern GrB_Monoid Rg_Bool_plus_monoid ;
+
+// plus-bmul semiring
+extern GrB_Semiring Rg_structured_bool ;
+
 #endif
 
 #undef GxB_USER_INCLUDE
