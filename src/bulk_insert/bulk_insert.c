@@ -16,32 +16,29 @@ typedef enum {
   BI_NULL,
   BI_BOOL,
   BI_NUMERIC,
-  BI_STRING,
-  BI_INT // Count/length
+  BI_STRING
 } TYPE;
-
-// For debug printing
-char *types[] =  {"BI_NULL", "BOOL", "NUMERIC", "STRING"};
 
 int _BulkInsert_ProcessNodeFile(RedisModuleCtx *ctx, GraphContext *gc, const char *data, size_t data_len) {
 
-  int data_idx = 0;
+  size_t data_idx = 0;
 
   // Read the file header
   // First sequence is label string
-  char *label = rm_strdup(data + data_idx);
+  const char *label = data + data_idx;
   data_idx += strlen(label) + 1;
   LabelStore *store = GraphContext_AddLabel(gc, label);
 
   // Next 4 bytes are property count
-  int prop_count = *(int*)&data[data_idx];
-  data_idx += sizeof(int);
+  unsigned int prop_count = *(unsigned int*)&data[data_idx];
+  data_idx += sizeof(unsigned int);
 
   char *prop_keys[prop_count];
 
-  // The rest of the line is [int len, char *prop_key] * prop_count
-  for (int j = 0; j < prop_count; j ++) {
-    prop_keys[j] = rm_strdup(data + data_idx);
+  // The rest of the line is [char *prop_key] * prop_count
+  for (unsigned int j = 0; j < prop_count; j ++) {
+    // TODO update LabelStore and GraphEntity function signatures to expect const char * arguments
+    prop_keys[j] = (char*)data + data_idx;
     data_idx += strlen(prop_keys[j]) + 1;
     // printf("prop key %d: %s\n", j, prop_keys[j]);
   }
@@ -54,11 +51,11 @@ int _BulkInsert_ProcessNodeFile(RedisModuleCtx *ctx, GraphContext *gc, const cha
   // Reusable buffer for storing properties of each node
   SIValue values[prop_count];
 
-  int prop_num = 0;
+  unsigned int prop_num = 0;
   while (data_idx < data_len) {
     Node n;
     Graph_CreateNode(gc->g, store->id, &n);
-    for (int i = 0; i < prop_count; i ++) {
+    for (unsigned int i = 0; i < prop_count; i ++) {
       TYPE t = data[data_idx++];
       // printf("%s: ", types[t]);
       if (t == BI_NULL) {
@@ -73,7 +70,6 @@ int _BulkInsert_ProcessNodeFile(RedisModuleCtx *ctx, GraphContext *gc, const cha
         values[i] = SI_DoubleVal(d);
         // printf("%f\n", v.doubleval);
       } else if (t == BI_STRING) {
-        // Read string length
         char *s = rm_strdup(data + data_idx);
         data_idx += strlen(s) + 1;
         // printf("%s\n", v.stringval);
@@ -90,23 +86,24 @@ int _BulkInsert_ProcessNodeFile(RedisModuleCtx *ctx, GraphContext *gc, const cha
 }
 
 int _BulkInsert_ProcessRelationFile(RedisModuleCtx *ctx, GraphContext *gc, const char *data, size_t data_len) {
-  int data_idx = 0;
+  size_t data_idx = 0;
 
   // Read the file header
   // First sequence is reltype string
-  char *reltype = rm_strdup(data + data_idx);
+  const char *reltype = data + data_idx;
   data_idx += strlen(reltype) + 1;
   LabelStore *store = GraphContext_AddRelationType(gc, reltype);
 
-  int len;
+  unsigned int len;
   // Next 4 bytes are property count
-  int prop_count = *(int*)&data[data_idx];
+  unsigned int prop_count = *(unsigned int*)&data[data_idx];
   char *prop_keys[prop_count];
-  data_idx += sizeof(int);
+  data_idx += sizeof(unsigned int);
   // The rest of the line is [char *prop_key * prop_count]
   // This loop won't execute if relations do not have properties.
-  for (int j = 0; j < prop_count; j ++) {
-    prop_keys[j] = rm_strdup(data + data_idx);
+  for (unsigned int j = 0; j < prop_count; j ++) {
+    // We do not need to allocate keys, as each GraphEntity will maintain its own copy
+    prop_keys[j] = (char*)data + data_idx;
     data_idx += strlen(prop_keys[j]) + 1;
     // printf("prop key %d: %s\n", j, prop_keys[j]);
   }
@@ -119,14 +116,12 @@ int _BulkInsert_ProcessRelationFile(RedisModuleCtx *ctx, GraphContext *gc, const
   // Reusable buffer for storing properties of each relation 
   SIValue values[prop_count];
 
-  int prop_num = 0;
+  unsigned int prop_num = 0;
   NodeID src;
   NodeID dest;
 
   while (data_idx < data_len) {
-    // TODO get more data if necessary
     Edge e;
-    // Graph_CreateEdge(gc->g, &e);
 
     // Next 8 bytes are source ID
     src = *(NodeID*)&data[data_idx];
@@ -135,7 +130,7 @@ int _BulkInsert_ProcessRelationFile(RedisModuleCtx *ctx, GraphContext *gc, const
     dest = *(NodeID*)&data[data_idx];
     data_idx += sizeof(NodeID);
 
-    for (int i = 0; i < prop_count; i ++) {
+    for (unsigned int i = 0; i < prop_count; i ++) {
       TYPE t = data[data_idx++];
       // printf("%s: ", types[t]);
       if (t == BI_NULL) {
@@ -150,7 +145,6 @@ int _BulkInsert_ProcessRelationFile(RedisModuleCtx *ctx, GraphContext *gc, const
         values[i] = SI_DoubleVal(d);
         // printf("%f\n", v.doubleval);
       } else if (t == BI_STRING) {
-        // Read string length
         char *s = rm_strdup(data + data_idx);
         data_idx += strlen(s) + 1;
         // printf("%s\n", v.stringval);
@@ -191,7 +185,6 @@ int _BulkInsert_Insert_Edges(RedisModuleCtx *ctx, GraphContext *gc,
     while (argv && *argc) {
       size_t len;
       const char *data = RedisModule_StringPtrLen(**argv, &len);
-      // TODO should free argument
       *argv += 1;
       *argc -= 1;
       rc = _BulkInsert_ProcessRelationFile(ctx, gc, data, len);

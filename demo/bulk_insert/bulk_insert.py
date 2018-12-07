@@ -56,7 +56,7 @@ class Property:
         # If we've reached this point, the property is a string
         self.type = Type.STRING
         self.format_str += "%ds" % (len(prop_str) + 1)
-        self.pack_args = [prop_str]
+        self.pack_args = [str.encode(prop_str)]
 
     def to_binary(self):
         return struct.pack(self.format_str, *[self.type] + self.pack_args)
@@ -87,7 +87,7 @@ class EntityFile(object):
         args = [self.entity_str, prop_count]
         for prop in header[self.prop_offset:]:
             fmt += "%ds" % (len(prop) + 1)
-            args += [prop]
+            args += [str.encode(prop)]
         return struct.pack(fmt, *args)
 
     def pack_props(self, line):
@@ -95,15 +95,17 @@ class EntityFile(object):
         for field in line[self.prop_offset:]:
             props.append(Property(field))
 
-        return "".join(p.to_binary() for p in props)
+        return b''.join(p.to_binary() for p in props)
 
     def to_binary(self):
-        return self.packed_header + "".join(self.entities)
+        return self.packed_header + b''.join(self.entities)
 
 class NodeFile(EntityFile):
     def __init__(self, infile):
         super(NodeFile, self).__init__(infile)
         self.process_header()
+        self.process_entities()
+        self.infile.close()
 
     def process_header(self):
         # Header format:
@@ -135,13 +137,14 @@ class NodeFile(EntityFile):
             NODE_COUNT += 1
             self.entity_count += 1
             self.entities.append(self.pack_props(row))
-        self.infile.close()
 
 
 class RelationFile(EntityFile):
     def __init__(self, infile):
         super(RelationFile, self).__init__(infile)
         self.process_header()
+        self.process_entities()
+        self.infile.close()
 
     def process_header(self):
         # Header format:
@@ -175,22 +178,17 @@ class RelationFile(EntityFile):
             self.entity_count += 1
             RELATION_COUNT += 1
             self.entities.append(struct.pack(fmt, src, dest) + self.pack_props(row))
-        self.infile.close()
 
 def process_node_csvs(csvs):
     nodefiles = []
     for in_csv in csvs:
-        nodefile = NodeFile(in_csv)
-        nodefile.process_entities()
-        nodefiles.append(nodefile)
+        nodefiles.append(NodeFile(in_csv))
     return nodefiles
 
 def process_relation_csvs(csvs):
     relfiles = []
     for in_csv in csvs:
-        relfile = RelationFile(in_csv)
-        relfile.process_entities()
-        relfiles.append(relfile)
+        relfiles.append(RelationFile(in_csv))
     return relfiles
 
 
@@ -203,7 +201,7 @@ def help():
 # Redis server connection settings
 @click.option('--host', '-h', default='127.0.0.1', help='Redis server host')
 @click.option('--port', '-p', default=6379, help='Redis server port')
-@click.option('--password', '-P', default=None, help='Redis server password')
+@click.option('--password', '-a', default=None, help='Redis server password')
 # CSV file paths
 @click.option('--nodes', '-n', required=True, multiple=True, help='path to node csv file')
 @click.option('--relations', '-r', multiple=True, help='path to relation csv file')
