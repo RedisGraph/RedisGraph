@@ -10,6 +10,7 @@
 #include <errno.h>
 #include <assert.h>
 #include <libgen.h>
+#include "../util/rmalloc.h"
 
 typedef enum {
   BI_NULL,
@@ -28,7 +29,7 @@ int _BulkInsert_ProcessNodeFile(RedisModuleCtx *ctx, GraphContext *gc, const cha
 
   // Read the file header
   // First sequence is label string
-  char *label = strdup(data + data_idx);
+  char *label = rm_strdup(data + data_idx);
   data_idx += strlen(label) + 1;
   LabelStore *store = GraphContext_AddLabel(gc, label);
 
@@ -40,7 +41,7 @@ int _BulkInsert_ProcessNodeFile(RedisModuleCtx *ctx, GraphContext *gc, const cha
 
   // The rest of the line is [int len, char *prop_key] * prop_count
   for (int j = 0; j < prop_count; j ++) {
-    prop_keys[j] = strdup(data + data_idx);
+    prop_keys[j] = rm_strdup(data + data_idx);
     data_idx += strlen(prop_keys[j]) + 1;
     // printf("prop key %d: %s\n", j, prop_keys[j]);
   }
@@ -73,7 +74,7 @@ int _BulkInsert_ProcessNodeFile(RedisModuleCtx *ctx, GraphContext *gc, const cha
         // printf("%f\n", v.doubleval);
       } else if (t == BI_STRING) {
         // Read string length
-        char *s = strdup(data + data_idx);
+        char *s = rm_strdup(data + data_idx);
         data_idx += strlen(s) + 1;
         // printf("%s\n", v.stringval);
         values[i] = SI_TransferStringVal(s);
@@ -93,7 +94,7 @@ int _BulkInsert_ProcessRelationFile(RedisModuleCtx *ctx, GraphContext *gc, const
 
   // Read the file header
   // First sequence is reltype string
-  char *reltype = strdup(data + data_idx);
+  char *reltype = rm_strdup(data + data_idx);
   data_idx += strlen(reltype) + 1;
   LabelStore *store = GraphContext_AddRelationType(gc, reltype);
 
@@ -105,7 +106,7 @@ int _BulkInsert_ProcessRelationFile(RedisModuleCtx *ctx, GraphContext *gc, const
   // The rest of the line is [char *prop_key * prop_count]
   // This loop won't execute if relations do not have properties.
   for (int j = 0; j < prop_count; j ++) {
-    prop_keys[j] = strdup(data + data_idx);
+    prop_keys[j] = rm_strdup(data + data_idx);
     data_idx += strlen(prop_keys[j]) + 1;
     // printf("prop key %d: %s\n", j, prop_keys[j]);
   }
@@ -150,7 +151,7 @@ int _BulkInsert_ProcessRelationFile(RedisModuleCtx *ctx, GraphContext *gc, const
         // printf("%f\n", v.doubleval);
       } else if (t == BI_STRING) {
         // Read string length
-        char *s = strdup(data + data_idx);
+        char *s = rm_strdup(data + data_idx);
         data_idx += strlen(s) + 1;
         // printf("%s\n", v.stringval);
         values[i] = SI_TransferStringVal(s);
