@@ -262,11 +262,13 @@ AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(AlgebraicExpr
 }
 
 static inline void _AlgebraicExpression_Execute_MUL(GrB_Matrix C, GrB_Matrix A, GrB_Matrix B, GrB_Descriptor desc) {
+    // Using our own compile-time, user defined semiring see rg_structured_bool.m4
+    // A,B,C must be boolean matrices.
     GrB_mxm(
         C,                  // Output
         NULL,               // Mask
         NULL,               // Accumulator
-        GxB_LOR_LAND_BOOL,  // Semiring
+        Rg_structured_bool, // Semiring
         A,                  // First matrix
         B,                  // Second matrix
         desc                // Descriptor        

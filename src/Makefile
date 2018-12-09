@@ -98,7 +98,7 @@ $(LIBTRIEMAP):
 	$(MAKE) -C util/triemap
 .PHONY: $(LIBTRIEMAP)
 
-BLAS_CFLAGS = -fPIC -I $(abs_path)/util -include rmalloc.h -DREDIS_MODULE_TARGET -DMALLOC=rm_malloc -DCALLOC=rm_calloc -DREALLOC=rm_realloc -DFREE=rm_free
+BLAS_CFLAGS = -fPIC -I $(abs_path)/util -include rmalloc.h -DREDIS_MODULE_TARGET -DMALLOC=rm_malloc -DCALLOC=rm_calloc -DREALLOC=rm_realloc -DFREE=rm_free -DGBCOMPACT
 $(GRAPHBLAS):
 	$(MAKE) CMAKE_OPTIONS="-DUSER_POSIX=1 -DCMAKE_CXX_FLAGS=-std=c++11 -DCMAKE_C_FLAGS='$(BLAS_CFLAGS)'" static_only -C ../deps/GraphBLAS
 
