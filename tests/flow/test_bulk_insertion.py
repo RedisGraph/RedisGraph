@@ -1,18 +1,21 @@
 import os
 import sys
+import csv
 import unittest
+import click
+from click.testing import CliRunner
 
 from .disposableredis import DisposableRedis
 from redisgraph import Graph, Node, Edge
 from base import FlowTestsBase
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../demo/bulk_insert/')
 
-import click
-from click.testing import CliRunner
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../demo/bulk_insert/')
+import bulk_insert
 from bulk_insert import bulk_insert
 
 redis_con = None
 port = None
+redis_graph = None
 
 def redis():
     return DisposableRedis(loadmodule=os.path.dirname(os.path.abspath(__file__)) + '/../../src/redisgraph.so')
@@ -20,7 +23,7 @@ def redis():
 class GraphBulkInsertFlowTest(FlowTestsBase):
     @classmethod
     def setUpClass(cls):
-        print "GraphBulkInsertFlowTest"
+        print "BulkInsertFlowTest"
         global redis_con
         global port
 
@@ -33,106 +36,159 @@ class GraphBulkInsertFlowTest(FlowTestsBase):
     def tearDownClass(cls):
         cls.r.stop()
 
-    def test01_bulk_insert_single_label(self):
-        graphname = "graph1"
+    # Run bulk loader script and validate terminal output
+    def test01_run_script(self):
+        graphname = "graph"
         runner = CliRunner()
-        # Insert the 'person' label
-        csv_path = os.path.dirname(os.path.abspath(__file__)) + '/../../demo/bulk_insert/'
-        res = runner.invoke(bulk_insert, ['--port', port, '--nodes', csv_path + 'person.csv', graphname])
 
-        # The script should report 11 node creations
+        csv_path = os.path.dirname(os.path.abspath(__file__)) + '/../../demo/bulk_insert/resources/'
+        res = runner.invoke(bulk_insert, ['--port', port,
+                                          '--nodes', csv_path + 'Person.csv',
+                                          '--nodes', csv_path + 'Country.csv',
+                                          '--relations', csv_path + 'KNOWS.csv',
+                                          '--relations', csv_path + 'VISITED.csv',
+                                          graphname])
+
+        # The script should report 27 node creations and 48 edge creations
         assert res.exit_code == 0
-        assert '11 nodes created' in res.output
+        assert '27 nodes created' in res.output
+        assert '48 edges created' in res.output
+
+    # Validate that the expected nodes and properties have been constructed
+    def test02_validate_nodes(self):
+        global redis_graph
+        graphname = "graph"
+        redis_graph = Graph(graphname, redis_con)
 
         # Query the newly-created graph
-        redis_graph = Graph(graphname, redis_con)
-        query_result = redis_graph.query('MATCH (p:person) RETURN p, ID(p) ORDER BY p.first_name')
-        # Verify that the label exists, has the correct attributes, and is properly populated
-        expected_result=[['p.first_name', 'p.last_name', 'ID(p)'],
-                         ['Ailon', 'Velger', '2'],
-                         ['Alon', 'Fital', '1'],
-                         ['Hila', 'Rahamani', '7'],
-                         ['Jane', 'Velger', '9'],
-                         ['Lucy', 'Fital', '8'],
-                         ['Noam', 'Nativ', '6'],
-                         ['Omri', 'Traub', '3'],
-                         ['Ori', 'Laslo', '5'],
-                         ['Roi', 'Lipman', '0'],
-                         ['Shelly', 'Laslo', '10'],
-                         ['Tal', 'Doron', '4']]
+        query_result = redis_graph.query('MATCH (p:Person) RETURN p, ID(p) ORDER BY p.name')
+        # Verify that the Person label exists, has the correct attributes, and is properly populated
+        expected_result = [['p.name', 'p.age', 'p.gender', 'p.status', 'ID(p)'],
+                           ['Ailon Velger', '32.000000', 'male', 'married', '2'],
+                           ['Alon Fital', '32.000000', 'male', 'married', '1'],
+                           ['Boaz Arad', '31.000000', 'male', 'married', '4'],
+                           ['Gal Derriere', '26.000000', 'male', 'single', '11'],
+                           ['Jane Chernomorin', '31.000000', 'female', 'married', '8'],
+                           ['Lucy Yanfital', '30.000000', 'female', 'married', '7'],
+                           ['Mor Yesharim', '31.000000', 'female', 'married', '12'],
+                           ['Noam Nativ', '34.000000', 'male', 'single', '13'],
+                           ['Omri Traub', '33.000000', 'male', 'single', '5'],
+                           ['Ori Laslo', '32.000000', 'male', 'married', '3'],
+                           ['Roi Lipman', '32.000000', 'male', 'married', '0'],
+                           ['Shelly Laslo Rooz', '31.000000', 'female', 'married', '9'],
+                           ['Tal Doron', '32.000000', 'male', 'single', '6'],
+                           ['Valerie Abigail Arad', '31.000000', 'female', 'married', '10']]
         assert query_result.result_set == expected_result
 
-        def test02_relation_within_label(self):
-            graphname = "graph2"
-            runner = CliRunner()
-            # Insert the 'person' label and the 'know' and 'married' relations
-            csv_path = os.path.dirname(os.path.abspath(__file__)) + '/../../demo/bulk_insert/'
-            res = runner.invoke(bulk_insert, ['--port', port, '--nodes', csv_path + 'person.csv',
-                                              '--relations', csv_path + 'know.csv',
-                                              '--relations', csv_path + 'married.csv',
-                                              graphname])
+        # Verify that the Country label exists, has the correct attributes, and is properly populated
+        query_result = redis_graph.query('MATCH (c:Country) RETURN c, ID(c) ORDER BY c.name')
+        expected_result = [['c.name', 'ID(c)'],
+                           ['Amsterdam', '20'],
+                           ['Andora', '21'],
+                           ['Canada', '18'],
+                           ['China', '19'],
+                           ['Germany', '24'],
+                           ['Greece', '17'],
+                           ['Italy', '25'],
+                           ['Japan', '16'],
+                           ['Kazakhstan', '22'],
+                           ['Prague', '15'],
+                           ['Russia', '23'],
+                           ['Thailand', '26'],
+                           ['USA', '14']]
+        assert query_result.result_set == expected_result
 
-            # The script should report 11 node creations and 33 edge creations
-            assert res.exit_code == 0
-            assert '11 nodes created' in res.output
-            assert '33 relations created' in res.output
+    # Validate that the expected relations and properties have been constructed
+    def test03_validate_relations(self):
+        # Query the newly-created graph
+        query_result = redis_graph.query('MATCH (a)-[e:KNOWS]->(b) RETURN a.name, e, b.name ORDER BY e.relation, a.name')
 
-            redis_graph = Graph(graphname, redis_con)
-            # Verify that the right number of relations are found
-            query_result = redis_graph.query('MATCH (p:person)-[:know]->(q:person) RETURN COUNT(q)')
-            assert int(float(query_result.result_set[1][0])) == 29
+        expected_result = [['a.name', 'e.relation', 'b.name'],
+                           ['Ailon Velger', 'friend', 'Noam Nativ'],
+                           ['Alon Fital', 'friend', 'Mor Yesharim'],
+                           ['Alon Fital', 'friend', 'Gal Derriere'],
+                           ['Boaz Arad', 'friend', 'Valerie Abigail Arad'],
+                           ['Roi Lipman', 'friend', 'Alon Fital'],
+                           ['Roi Lipman', 'friend', 'Tal Doron'],
+                           ['Roi Lipman', 'friend', 'Omri Traub'],
+                           ['Roi Lipman', 'friend', 'Boaz Arad'],
+                           ['Roi Lipman', 'friend', 'Ori Laslo'],
+                           ['Roi Lipman', 'friend', 'Ailon Velger'],
+                           ['Ailon Velger', 'married', 'Jane Chernomorin'],
+                           ['Alon Fital', 'married', 'Lucy Yanfital'],
+                           ['Ori Laslo', 'married', 'Shelly Laslo Rooz']]
+        assert query_result.result_set == expected_result
 
-            query_result = redis_graph.query('MATCH (p:person)-[:married]->(q:person) RETURN COUNT(q)')
-            assert int(float(query_result.result_set[1][0])) == 4
+        query_result = redis_graph.query('MATCH (a)-[e:VISITED]->(b) RETURN a.name, e, b.name ORDER BY e.purpose, a.name, b.name')
 
-        def test03_multiple_labels(self):
-            graphname = "graph3"
-            runner = CliRunner()
-            # Create nodes for 'person' and 'country',
-            # intra-label relations 'know' and 'married',
-            # and inter-label relation 'visit'
-            csv_path = os.path.dirname(os.path.abspath(__file__)) + '/../../demo/bulk_insert/'
-            res = runner.invoke(bulk_insert, ['--port', port,
-                                              '--nodes', csv_path + 'person.csv',
-                                              '--nodes', csv_path + 'country.csv',
-                                              '--relations', csv_path + 'married.csv',
-                                              '--relations', csv_path + 'know.csv',
-                                              '--relations', csv_path + 'visit.csv',
-                                              graphname])
+        expected_result = [['a.name', 'e.purpose', 'b.name'],
+                           ['Alon Fital', 'both', 'Prague'],
+                           ['Alon Fital', 'both', 'USA'],
+                           ['Boaz Arad', 'both', 'Amsterdam'],
+                           ['Boaz Arad', 'both', 'USA'],
+                           ['Jane Chernomorin', 'both', 'USA'],
+                           ['Lucy Yanfital', 'both', 'USA'],
+                           ['Roi Lipman', 'both', 'Prague'],
+                           ['Tal Doron', 'both', 'USA'],
+                           ['Gal Derriere', 'business', 'Amsterdam'],
+                           ['Mor Yesharim', 'business', 'Germany'],
+                           ['Ori Laslo', 'business', 'China'],
+                           ['Ori Laslo', 'business', 'USA'],
+                           ['Roi Lipman', 'business', 'USA'],
+                           ['Tal Doron', 'business', 'Japan'],
+                           ['Alon Fital', 'pleasure', 'Greece'],
+                           ['Jane Chernomorin', 'pleasure', 'Amsterdam'],
+                           ['Jane Chernomorin', 'pleasure', 'Greece'],
+                           ['Lucy Yanfital', 'pleasure', 'Kazakhstan'],
+                           ['Lucy Yanfital', 'pleasure', 'Prague'],
+                           ['Mor Yesharim', 'pleasure', 'Greece'],
+                           ['Mor Yesharim', 'pleasure', 'Italy'],
+                           ['Noam Nativ', 'pleasure', 'Amsterdam'],
+                           ['Noam Nativ', 'pleasure', 'Germany'],
+                           ['Noam Nativ', 'pleasure', 'Thailand'],
+                           ['Omri Traub', 'pleasure', 'Andora'],
+                           ['Omri Traub', 'pleasure', 'Greece'],
+                           ['Omri Traub', 'pleasure', 'USA'],
+                           ['Ori Laslo', 'pleasure', 'Canada'],
+                           ['Roi Lipman', 'pleasure', 'Japan'],
+                           ['Shelly Laslo Rooz', 'pleasure', 'Canada'],
+                           ['Shelly Laslo Rooz', 'pleasure', 'China'],
+                           ['Shelly Laslo Rooz', 'pleasure', 'USA'],
+                           ['Tal Doron', 'pleasure', 'Andora'],
+                           ['Valerie Abigail Arad', 'pleasure', 'Amsterdam'],
+                           ['Valerie Abigail Arad', 'pleasure', 'Russia']]
+        assert query_result.result_set == expected_result
 
-            # The script should report 13 node creations and 36 edge creations assert res.exit_code == 0
-            assert '13 nodes created' in res.output
-            assert '36 relations created' in res.output
+    #  def test04_private_identifiers(self):
+        #  graphname = "tmpgraph"
+        #  with open('/tmp/nodes.tmp', mode='w') as csv_file:
+            #  out = csv.writer(csv_file)
+            #  out.writerow(["_identifier", "nodename"])
+            #  out.writerow([0, "a"])
+            #  out.writerow([5, "b"])
+            #  out.writerow([3, "c"])
+        #  with open('/tmp/relations.tmp', mode='w') as csv_file:
+            #  out = csv.writer(csv_file)
+            #  out.writerow(["src", "dest"])
+            #  out.writerow([0, 3])
+            #  out.writerow([5, 3])
 
-            redis_graph = Graph(graphname, redis_con)
-            # Verify that the right number of relations are found
-            query_result = redis_graph.query('MATCH (p:person)-[:know]->(q:person) RETURN COUNT(q)')
-            assert int(float(query_result.result_set[1][0])) == 29
+        #  runner = CliRunner()
+        #  res = runner.invoke(bulk_insert, ['--port', port,
+                                          #  '--nodes', '/tmp/nodes.tmp',
+                                          #  graphname])
 
-            query_result = redis_graph.query('MATCH (p:person)-[:married]->(q:person) RETURN COUNT(q)')
-            assert int(float(query_result.result_set[1][0])) == 4
+        #  import ipdb
+        #  ipdb.set_trace()
+        #  # The script should report 27 node creations and 48 edge creations
+        #  assert res.exit_code == 0
+        #  assert '3 nodes created' in res.output
+        #  assert '2 edges created' in res.output
+        #  tmp_graph = Graph(graphname, redis_con)
 
-            query_result = redis_graph.query('MATCH (p:person)-[:visit]->(c:country) RETURN COUNT(c)')
-            assert int(float(query_result.result_set[1][0])) == 3
+        #  os.remove('/tmp/nodes.tmp')
+        #  os.remove('/tmp/relations.tmp')
 
-            # Validate relations for some entities
-            query_result = redis_graph.query("""MATCH (p:person {first_name: 'Alon'})-[:married]->(q:person) RETURN p, q""")
-            assert query_result.result_set[1] == ['Alon', 'Fital', 'Lucy', 'Fital']
-
-            query_result = redis_graph.query("""MATCH (p:person)-[:visit]->(c:country {name: 'Israel'}) RETURN p, c""")
-            assert query_result.result_set[1] == ['Roi', 'Lipman', 'Israel', '7000000.000000']
-
-        def test04_multiple_batches(self):
-            graphname = "graph4"
-            runner = CliRunner()
-            # Create nodes for 'person' and 'country' with one Redis query per node
-            csv_path = os.path.dirname(os.path.abspath(__file__)) + '/../../demo/bulk_insert/'
-            res = runner.invoke(bulk_insert, ['--port', port,
-                                              '--max_buffer_size', 12,
-                                              '--nodes', csv_path + 'person.csv',
-                                              '--nodes', csv_path + 'country.csv',
-                                              graphname])
-            assert '13 nodes created in 13 queries' in res.output
 
 if __name__ == '__main__':
     unittest.main()
