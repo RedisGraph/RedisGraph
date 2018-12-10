@@ -212,7 +212,7 @@ def bulk_insert(graph, host, port, password, nodes, relations):
     if relations:
         relfiles = process_relation_csvs(relations)
 
-    args = [graph, NODE_COUNT, RELATION_COUNT, "NODES"] + [e.to_binary() for e in nodefiles]
+    args = [graph, "BEGIN", NODE_COUNT, RELATION_COUNT, "NODES"] + [e.to_binary() for e in nodefiles]
 
     if RELATION_COUNT > 0:
         args += ["RELATIONS"] + [e.to_binary() for e in relfiles]

@@ -66,22 +66,40 @@ void _MGraph_BulkInsert(void *args) {
 
     GraphContext *gc = NULL;
 
+    // Number of entities already created
+    int initial_node_count = 0;
+    int initial_edge_count = 0;
+
     // Type chosen to match Redis conversion function
     long long final_node_count;
     long long final_edge_count;
 
-    if (_BeginBulkInsert(ctx, rs_graph_name, &final_node_count, &final_edge_count, argv) != BULK_OK) {
-      goto cleanup;
-    }
-    argv += 2; // skip "[NODE_COUNT] [EDGE_COUNT]"
-    argc -= 2; // skip "[NODE_COUNT] [EDGE_COUNT]"
+    // Check the next to see if this is a starting query
+    if (!strcmp(RedisModule_StringPtrLen(*argv, 0), "BEGIN")) {
+        argv ++;
+        argc --;
+        if (_BeginBulkInsert(ctx, rs_graph_name, &final_node_count, &final_edge_count, argv) != BULK_OK) {
+            goto cleanup;
+        }
+        argv += 2; // skip "[NODE_COUNT] [EDGE_COUNT]"
+        argc -= 2; // skip "[NODE_COUNT] [EDGE_COUNT]"
 
-    // Create graph and initialize its data stores.
-    gc = GraphContext_New(ctx, rs_graph_name, final_node_count, final_edge_count);
-    // Exit if graph creation failed
-    if (gc == NULL) {
-      RedisModule_ReplyWithError(ctx, "Failed to allocate space for graph.");
-      goto cleanup;
+        // Create graph and initialize its data stores.
+        gc = GraphContext_New(ctx, rs_graph_name, final_node_count, final_edge_count);
+        // Exit if graph creation failed
+        if (gc == NULL) {
+            RedisModule_ReplyWithError(ctx, "Failed to allocate space for graph.");
+            goto cleanup;
+        }
+    } else {
+        // Query did not start with a "BEGIN" token
+        gc = GraphContext_Retrieve(ctx, rs_graph_name);
+        if (gc == NULL) {
+            RedisModule_ReplyWithError(ctx, "Bulk insert query did not include a BEGIN token and graph was not found.");
+            goto cleanup;
+        }
+        initial_node_count = Graph_NodeCount(gc->g);
+        initial_edge_count = Graph_EdgeCount(gc->g);
     }
 
     // Lock the graph for writing.
@@ -103,7 +121,10 @@ void _MGraph_BulkInsert(void *args) {
 
     // Replay to caller.
     double t = simple_toc(context->tic);
-    len = snprintf(reply, 1024, "%llu nodes created, %llu edges created, time: %.6f sec", final_node_count, final_edge_count, t);
+    len = snprintf(reply, 1024, "%lu nodes created, %lu edges created, time: %.6f sec",
+                   Graph_NodeCount(gc->g) - initial_node_count,
+                   Graph_EdgeCount(gc->g) - initial_edge_count,
+                   t);
     RedisModule_ReplyWithStringBuffer(ctx, reply, len);
 
 cleanup:
