@@ -25,7 +25,7 @@ void BulkInsertContext_Free(BulkInsertContext* ctx) {
     free(ctx);
 }
 int _BeginBulkInsert(RedisModuleCtx *ctx, RedisModuleString *graph_name,
-                     long long *final_node_count, long long *final_edge_count,
+                     long long *nodes_in_query, long long *relations_in_query,
                      RedisModuleString **argv) {
 
     RedisModuleKey *key = RedisModule_OpenKey(ctx, graph_name, REDISMODULE_READ);
@@ -33,17 +33,6 @@ int _BeginBulkInsert(RedisModuleCtx *ctx, RedisModuleString *graph_name,
     if (keytype != REDISMODULE_KEYTYPE_EMPTY) {
         RedisModule_CloseKey(key);
         RedisModule_ReplyWithError(ctx, "Graph name already exists as a Redis key.");
-        return BULK_FAIL;
-    }
-
-    // Read the user-provided counts for nodes and edges in the final graph.
-    if (RedisModule_StringToLongLong(*argv++, final_node_count) != REDISMODULE_OK) {
-        RedisModule_ReplyWithError(ctx, "Error parsing total node count.");
-        return BULK_FAIL;
-    }
-
-    if (RedisModule_StringToLongLong(*argv++, final_edge_count) != REDISMODULE_OK) {
-        RedisModule_ReplyWithError(ctx, "Error parsing total relation count.");
         return BULK_FAIL;
     }
 
@@ -67,25 +56,36 @@ void _MGraph_BulkInsert(void *args) {
     GraphContext *gc = NULL;
 
     // Number of entities already created
-    int initial_node_count = 0;
-    int initial_edge_count = 0;
+    size_t initial_node_count = 0;
 
-    // Type chosen to match Redis conversion function
-    long long final_node_count;
-    long long final_edge_count;
+    // Number of entities being created in this query
+    // (declared as long longs to match Redis conversion function)
+    long long nodes_in_query;
+    long long relations_in_query;
 
     // Check the next to see if this is a starting query
+    bool initial_query = false;
     if (!strcmp(RedisModule_StringPtrLen(*argv, 0), "BEGIN")) {
         argv ++;
         argc --;
-        if (_BeginBulkInsert(ctx, rs_graph_name, &final_node_count, &final_edge_count, argv) != BULK_OK) {
-            goto cleanup;
-        }
-        argv += 2; // skip "[NODE_COUNT] [EDGE_COUNT]"
-        argc -= 2; // skip "[NODE_COUNT] [EDGE_COUNT]"
+        initial_query = true;
+    }
 
+    // Read the user-provided counts for nodes and edges in the current query.
+    if (RedisModule_StringToLongLong(*argv++, &nodes_in_query) != REDISMODULE_OK) {
+        RedisModule_ReplyWithError(ctx, "Error parsing node count.");
+        goto cleanup;
+    }
+
+    if (RedisModule_StringToLongLong(*argv++, &relations_in_query) != REDISMODULE_OK) {
+        RedisModule_ReplyWithError(ctx, "Error parsing relation count.");
+        goto cleanup;
+    }
+    argc -= 2; // already read node count and edge count
+
+    if (initial_query) {
         // Create graph and initialize its data stores.
-        gc = GraphContext_New(ctx, rs_graph_name, final_node_count, final_edge_count);
+        gc = GraphContext_New(ctx, rs_graph_name, nodes_in_query, relations_in_query);
         // Exit if graph creation failed
         if (gc == NULL) {
             RedisModule_ReplyWithError(ctx, "Failed to allocate space for graph.");
@@ -99,7 +99,6 @@ void _MGraph_BulkInsert(void *args) {
             goto cleanup;
         }
         initial_node_count = Graph_NodeCount(gc->g);
-        initial_edge_count = Graph_EdgeCount(gc->g);
     }
 
     // Lock the graph for writing.
@@ -108,7 +107,8 @@ void _MGraph_BulkInsert(void *args) {
     // Disable matrix synchronization for bulk insert operation
     Graph_SetMatrixPolicy(gc->g, RESIZE_TO_CAPACITY);
 
-    Graph_AllocateNodes(gc->g, final_node_count);
+    // Allocate or extend datablocks to accommodate all incoming entities
+    Graph_AllocateNodes(gc->g, nodes_in_query + initial_node_count);
 
     int rc = BulkInsert(ctx, gc, argv, argc);
 
@@ -121,10 +121,8 @@ void _MGraph_BulkInsert(void *args) {
 
     // Replay to caller.
     double t = simple_toc(context->tic);
-    len = snprintf(reply, 1024, "%lu nodes created, %lu edges created, time: %.6f sec",
-                   Graph_NodeCount(gc->g) - initial_node_count,
-                   Graph_EdgeCount(gc->g) - initial_edge_count,
-                   t);
+    len = snprintf(reply, 1024, "%llu nodes created, %llu edges created, time: %.6f sec",
+                   nodes_in_query, relations_in_query, t);
     RedisModule_ReplyWithStringBuffer(ctx, reply, len);
 
 cleanup:

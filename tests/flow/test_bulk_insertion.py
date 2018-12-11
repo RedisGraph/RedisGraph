@@ -233,5 +233,77 @@ class GraphBulkInsertFlowTest(FlowTestsBase):
         os.remove('/tmp/nodes.tmp')
         os.remove('/tmp/relations.tmp')
 
+    def test06_batched_build(self):
+        # Create demo graph wth one query per input file 
+        graphname = "batched_graph"
+        runner = CliRunner()
+
+        csv_path = os.path.dirname(os.path.abspath(__file__)) + '/../../demo/bulk_insert/resources/'
+        res = runner.invoke(bulk_insert, ['--port', port,
+                                          '--nodes', csv_path + 'Person.csv',
+                                          '--nodes', csv_path + 'Country.csv',
+                                          '--relations', csv_path + 'KNOWS.csv',
+                                          '--relations', csv_path + 'VISITED.csv',
+                                          '--max-token-count', 1,
+                                          graphname])
+
+        assert res.exit_code == 0
+        # The script should report statistics 4 times, once per input file
+        assert res.output.count('nodes created') == 4
+        #  assert '27 nodes created' in res.output
+        #  assert '48 edges created' in res.output
+
+        new_graph = Graph(graphname, redis_con)
+
+        # Newly-created graph should be identical to graph created in single query
+        original_result = redis_graph.query('MATCH (p:Person) RETURN p, ID(p) ORDER BY p.name')
+        new_result = new_graph.query('MATCH (p:Person) RETURN p, ID(p) ORDER BY p.name')
+        assert original_result.result_set == new_result.result_set
+
+        original_result = redis_graph.query('MATCH (a)-[e:KNOWS]->(b) RETURN a.name, e, b.name ORDER BY e.relation, a.name')
+        new_result = new_graph.query('MATCH (a)-[e:KNOWS]->(b) RETURN a.name, e, b.name ORDER BY e.relation, a.name')
+        assert original_result.result_set == new_result.result_set
+
+    def test07_script_failures(self):
+        graphname = "tmpgraph3"
+        # Write temporary files
+        with open('/tmp/nodes.tmp', mode='w') as csv_file:
+            out = csv.writer(csv_file)
+            out.writerow(["id", "nodename"])
+            out.writerow([0]) # Wrong number of properites
+
+        runner = CliRunner()
+        res = runner.invoke(bulk_insert, ['--port', port,
+                                          '--nodes', '/tmp/nodes.tmp',
+                                          graphname])
+
+        # The script should fail because a row has the wrong number of fields
+        assert res.exit_code != 0
+        assert 'Expected 2 columns' in res.exception.message
+
+        # Write temporary files
+        with open('/tmp/nodes.tmp', mode='w') as csv_file:
+            out = csv.writer(csv_file)
+            out.writerow(["id", "nodename"])
+            out.writerow([0, "a"])
+
+        with open('/tmp/relations.tmp', mode='w') as csv_file:
+            out = csv.writer(csv_file)
+            out.writerow(["src"]) # Incomplete relation description
+            out.writerow([0])
+
+        runner = CliRunner()
+        res = runner.invoke(bulk_insert, ['--port', port,
+                                          '--nodes', '/tmp/nodes.tmp',
+                                          '--relations', '/tmp/relations.tmp',
+                                          graphname])
+
+        # The script should fail because a row has the wrong number of fields
+        assert res.exit_code != 0
+        assert 'should have at least 2 elements' in res.exception.message
+
+        os.remove('/tmp/nodes.tmp')
+        os.remove('/tmp/relations.tmp')
+
 if __name__ == '__main__':
     unittest.main()
