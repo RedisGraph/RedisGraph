@@ -10,7 +10,6 @@ from redisgraph import Graph, Node, Edge
 from base import FlowTestsBase
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../demo/bulk_insert/')
-import bulk_insert
 from bulk_insert import bulk_insert
 
 redis_con = None
@@ -159,36 +158,80 @@ class GraphBulkInsertFlowTest(FlowTestsBase):
                            ['Valerie Abigail Arad', 'pleasure', 'Russia']]
         assert query_result.result_set == expected_result
 
-    #  def test04_private_identifiers(self):
-        #  graphname = "tmpgraph"
-        #  with open('/tmp/nodes.tmp', mode='w') as csv_file:
-            #  out = csv.writer(csv_file)
-            #  out.writerow(["_identifier", "nodename"])
-            #  out.writerow([0, "a"])
-            #  out.writerow([5, "b"])
-            #  out.writerow([3, "c"])
-        #  with open('/tmp/relations.tmp', mode='w') as csv_file:
-            #  out = csv.writer(csv_file)
-            #  out.writerow(["src", "dest"])
-            #  out.writerow([0, 3])
-            #  out.writerow([5, 3])
+    def test04_private_identifiers(self):
+        graphname = "tmpgraph1"
+        # Write temporary files
+        with open('/tmp/nodes.tmp', mode='w') as csv_file:
+            out = csv.writer(csv_file)
+            out.writerow(["_identifier", "nodename"])
+            out.writerow([0, "a"])
+            out.writerow([5, "b"])
+            out.writerow([3, "c"])
+        with open('/tmp/relations.tmp', mode='w') as csv_file:
+            out = csv.writer(csv_file)
+            out.writerow(["src", "dest"])
+            out.writerow([0, 3])
+            out.writerow([5, 3])
 
-        #  runner = CliRunner()
-        #  res = runner.invoke(bulk_insert, ['--port', port,
-                                          #  '--nodes', '/tmp/nodes.tmp',
-                                          #  graphname])
+        runner = CliRunner()
+        res = runner.invoke(bulk_insert, ['--port', port,
+                                          '--nodes', '/tmp/nodes.tmp',
+                                          '--relations', '/tmp/relations.tmp',
+                                          graphname])
 
-        #  import ipdb
-        #  ipdb.set_trace()
-        #  # The script should report 27 node creations and 48 edge creations
-        #  assert res.exit_code == 0
-        #  assert '3 nodes created' in res.output
-        #  assert '2 edges created' in res.output
-        #  tmp_graph = Graph(graphname, redis_con)
+        # The script should report 3 node creations and 2 edge creations
+        assert res.exit_code == 0
+        assert '3 nodes created' in res.output
+        assert '2 edges created' in res.output
 
-        #  os.remove('/tmp/nodes.tmp')
-        #  os.remove('/tmp/relations.tmp')
+        # Delete temporary files
+        os.remove('/tmp/nodes.tmp')
+        os.remove('/tmp/relations.tmp')
 
+        tmp_graph = Graph(graphname, redis_con)
+        # The field "_identifier" should not be a property in the graph
+        query_result = tmp_graph.query('MATCH (a) RETURN a')
+
+        for propname in query_result.result_set[0]:
+            assert '_identifier' not in propname
+
+    def test05_reused_identifier(self):
+        graphname = "tmpgraph2"
+        # Write temporary files
+        with open('/tmp/nodes.tmp', mode='w') as csv_file:
+            out = csv.writer(csv_file)
+            out.writerow(["_identifier", "nodename"])
+            out.writerow([0, "a"])
+            out.writerow([5, "b"])
+            out.writerow([0, "c"]) # reused identifier
+        with open('/tmp/relations.tmp', mode='w') as csv_file:
+            out = csv.writer(csv_file)
+            out.writerow(["src", "dest"])
+            out.writerow([0, 3])
+
+        runner = CliRunner()
+        res = runner.invoke(bulk_insert, ['--port', port,
+                                          '--nodes', '/tmp/nodes.tmp',
+                                          '--relations', '/tmp/relations.tmp',
+                                          graphname])
+
+        # The script should fail because a node identifier is reused
+        assert res.exit_code != 0
+        assert 'used multiple times' in res.output
+
+        # Run the script again without creating relations
+        runner = CliRunner()
+        res = runner.invoke(bulk_insert, ['--port', port,
+                                          '--nodes', '/tmp/nodes.tmp',
+                                          graphname])
+
+        # The script should succeed and create 3 nodes
+        assert res.exit_code == 0
+        assert '3 nodes created' in res.output
+
+        # Delete temporary files
+        os.remove('/tmp/nodes.tmp')
+        os.remove('/tmp/relations.tmp')
 
 if __name__ == '__main__':
     unittest.main()

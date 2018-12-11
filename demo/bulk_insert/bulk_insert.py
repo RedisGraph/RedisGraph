@@ -4,10 +4,6 @@ import struct
 import redis
 import click
 
-NODE_COUNT = 0
-RELATION_COUNT = 0
-NODE_DICT = {}
-
 # Custom error class for invalid inputs
 class CSVError(Exception):
     pass
@@ -67,13 +63,12 @@ class EntityFile(object):
         self.entity_str = os.path.splitext(os.path.basename(filename))[0].encode("ascii")
         # Input file handling
         self.infile = open(filename, 'rt')
-        # Initialize CSV reader that ignores leading whitespace in each field and does not modify input quote characters
+        # Initialize CSV reader that ignores leading whitespace in each field
+        # and does not modify input quote characters
         self.reader = csv.reader(self.infile, skipinitialspace=True, quoting=csv.QUOTE_NONE)
 
         self.prop_offset = 0 # Starting index of properties in row
-        self.expected_col_count = 0
         self.prop_count = 0 # Number of properties per entity
-
         self.entity_count = 0 # Total number of entities
 
         self.packed_header = ""
@@ -101,49 +96,48 @@ class EntityFile(object):
         return self.packed_header + b''.join(self.entities)
 
 class NodeFile(EntityFile):
-    def __init__(self, infile):
+    def __init__(self, infile, node_dict, initial_node_count):
         super(NodeFile, self).__init__(infile)
-        self.process_header()
-        self.process_entities()
+        expected_col_count = self.process_header()
+        self.process_entities(node_dict, initial_node_count, expected_col_count)
         self.infile.close()
 
     def process_header(self):
         # Header format:
         # source identifier, dest identifier, properties[0..n]
         header = next(self.reader)
-        self.expected_col_count = len(header)
+        expected_col_count = len(header)
         # If identifier field begins with an underscore, don't add it as a property.
         if header[0][0] == '_':
             self.prop_offset = 1
         self.packed_header = self.pack_header(header)
+        return expected_col_count
 
-    def process_entities(self):
-        global NODE_DICT
-        global NODE_COUNT
-
+    def process_entities(self, node_dict, initial_node_count, expected_col_count):
         for row in self.reader:
             # Expect all entities to have the same property count
-            if len(row) != self.expected_col_count:
+            if len(row) != expected_col_count:
                 raise CSVError("%s:%d Expected %d columns, encountered %d ('%s')"
-                               % (self.infile.name, self.reader.line_num, self.expected_col_count, len(row), ','.join(row)))
+                               % (self.infile.name, self.reader.line_num, expected_col_count, len(row), ','.join(row)))
             # Check for dangling commma
             if row[-1] == ',':
                 raise CSVError("%s:%d Dangling comma in input. ('%s')"
                                % (self.infile.name, self.reader.line_num, ','.join(row)))
-            # Add identifier->ID pair to dictionary
-            if row[0] in NODE_DICT:
-                print("Node identifier '%s' was used multiple times - second occurrence at %s:%d" % (row[0], self.infile.name, self.reader.line_num))
-            NODE_DICT[row[0]] = NODE_COUNT
-            NODE_COUNT += 1
+            # Add identifier->ID pair to dictionary if we are building relations
+            if node_dict is not None:
+                if row[0] in node_dict:
+                    print("Node identifier '%s' was used multiple times - second occurrence at %s:%d"
+                          % (row[0], self.infile.name, self.reader.line_num))
+                node_dict[row[0]] = initial_node_count + self.entity_count
             self.entity_count += 1
             self.entities.append(self.pack_props(row))
 
 
 class RelationFile(EntityFile):
-    def __init__(self, infile):
+    def __init__(self, infile, node_dict):
         super(RelationFile, self).__init__(infile)
-        self.process_header()
-        self.process_entities()
+        expected_col_count = self.process_header()
+        self.process_entities(node_dict, expected_col_count)
         self.infile.close()
 
     def process_header(self):
@@ -151,46 +145,48 @@ class RelationFile(EntityFile):
         # source identifier, dest identifier, properties[0..n]
         header = next(self.reader)
         # Assume rectangular CSVs
-        self.expected_col_count = len(header)
-        self.prop_count = self.expected_col_count - 2
+        expected_col_count = len(header)
+        self.prop_count = expected_col_count - 2
         if self.prop_count < 0:
-            print("Relation file '%s' should have at least 2 elements in header line." % (self.infile.name))
-            return # TODO return?
+            raise CSVError("Relation file '%s' should have at least 2 elements in header line."
+                           % (self.infile.name))
 
         self.prop_offset = 2
         self.packed_header = self.pack_header(header) # skip src and dest identifiers
+        return expected_col_count
 
-    def process_entities(self):
-        global RELATION_COUNT
+    def process_entities(self, node_dict, expected_col_count):
         for row in self.reader:
             # Each row should have the same number of fields
-            if len(row) != self.expected_col_count:
+            if len(row) != expected_col_count:
                 raise CSVError("%s:%d Expected %d columns, encountered %d ('%s')"
-                               % (self.infile.name, self.reader.line_num, self.expected_col_count, len(row), ','.join(row)))
+                               % (self.infile.name, self.reader.line_num, expected_col_count, len(row), ','.join(row)))
             # Check for dangling commma
             if  row[-1] == '':
                 raise CSVError("%s:%d Dangling comma in input. ('%s')"
                                % (self.infile.name, self.reader.line_num, ','.join(row)))
 
-            src = NODE_DICT[row[0]]
-            dest = NODE_DICT[row[1]]
+            src = node_dict[row[0]]
+            dest = node_dict[row[1]]
             fmt = "=QQ" # 8-byte unsigned ints for src and dest
             self.entity_count += 1
-            RELATION_COUNT += 1
             self.entities.append(struct.pack(fmt, src, dest) + self.pack_props(row))
 
-def process_node_csvs(csvs):
+def process_node_csvs(csvs, node_dict):
     nodefiles = []
+    node_count = 0
     for in_csv in csvs:
-        nodefiles.append(NodeFile(in_csv))
-    return nodefiles
+        nodefile = NodeFile(in_csv, node_dict, node_count)
+        node_count += nodefile.entity_count
+        nodefiles.append(nodefile)
+    return nodefiles, node_count
 
-def process_relation_csvs(csvs):
+def process_relation_csvs(csvs, node_dict):
     relfiles = []
     for in_csv in csvs:
-        relfiles.append(RelationFile(in_csv))
+        rel = RelationFile(in_csv, node_dict)
+        relfiles.append(rel)
     return relfiles
-
 
 def help():
     pass
@@ -207,14 +203,23 @@ def help():
 @click.option('--relations', '-r', multiple=True, help='path to relation csv file')
 
 def bulk_insert(graph, host, port, password, nodes, relations):
-    nodefiles = process_node_csvs(nodes)
+    # Create a node dictionary if we're building relations and as such require unique identifiers
+    if relations:
+        node_dict = {}
+    else:
+        node_dict = None
+    node_count = 0
+    nodefiles, node_count = process_node_csvs(nodes, node_dict)
 
     if relations:
-        relfiles = process_relation_csvs(relations)
+        relfiles = process_relation_csvs(relations, node_dict)
+        relation_count = sum(e.entity_count for e in relfiles)
+    else:
+        relation_count = 0
 
-    args = [graph, "BEGIN", NODE_COUNT, RELATION_COUNT, "NODES"] + [e.to_binary() for e in nodefiles]
+    args = [graph, "BEGIN", node_count, relation_count, "NODES"] + [e.to_binary() for e in nodefiles]
 
-    if RELATION_COUNT > 0:
+    if relation_count > 0:
         args += ["RELATIONS"] + [e.to_binary() for e in relfiles]
 
     redis_client = redis.StrictRedis(host=host, port=port, password=password)
