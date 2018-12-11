@@ -120,7 +120,6 @@ typedef union {
   AST_DeleteNode * yy15;
   AST_SetElement* yy16;
   AST_CreateNode* yy20;
-  AST_Query* yy24;
   AST_ArithmeticExpressionNode* yy34;
   AST_UnwindNode* yy37;
   Vector* yy42;
@@ -129,6 +128,7 @@ typedef union {
   AST_SkipNode* yy59;
   AST_NodeEntity* yy81;
   AST_ReturnElementNode* yy86;
+  AST* yy91;
   int yy92;
   AST_ColumnNode* yy98;
   AST_SetNode* yy120;
@@ -1267,96 +1267,96 @@ static void yy_reduce(
         YYMINORTYPE yylhsminor;
       case 0: /* query ::= expr */
 #line 44 "grammar.y"
-{ ctx->root = yymsp[0].minor.yy24; }
+{ ctx->root = yymsp[0].minor.yy91; }
 #line 1272 "grammar.c"
         break;
       case 1: /* expr ::= multipleMatchClause whereClause multipleCreateClause returnClause orderClause skipClause limitClause */
 #line 46 "grammar.y"
 {
-	yylhsminor.yy24 = New_AST_Query(yymsp[-6].minor.yy5, yymsp[-5].minor.yy7, yymsp[-4].minor.yy20, NULL, NULL, NULL, yymsp[-3].minor.yy140, yymsp[-2].minor.yy176, yymsp[-1].minor.yy59, yymsp[0].minor.yy147, NULL, NULL);
+	yylhsminor.yy91 = AST_New(yymsp[-6].minor.yy5, yymsp[-5].minor.yy7, yymsp[-4].minor.yy20, NULL, NULL, NULL, yymsp[-3].minor.yy140, yymsp[-2].minor.yy176, yymsp[-1].minor.yy59, yymsp[0].minor.yy147, NULL, NULL);
 }
 #line 1279 "grammar.c"
-  yymsp[-6].minor.yy24 = yylhsminor.yy24;
+  yymsp[-6].minor.yy91 = yylhsminor.yy91;
         break;
       case 2: /* expr ::= multipleMatchClause whereClause multipleCreateClause */
 #line 50 "grammar.y"
 {
-	yylhsminor.yy24 = New_AST_Query(yymsp[-2].minor.yy5, yymsp[-1].minor.yy7, yymsp[0].minor.yy20, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	yylhsminor.yy91 = AST_New(yymsp[-2].minor.yy5, yymsp[-1].minor.yy7, yymsp[0].minor.yy20, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 }
 #line 1287 "grammar.c"
-  yymsp[-2].minor.yy24 = yylhsminor.yy24;
+  yymsp[-2].minor.yy91 = yylhsminor.yy91;
         break;
       case 3: /* expr ::= multipleMatchClause whereClause deleteClause */
 #line 54 "grammar.y"
 {
-	yylhsminor.yy24 = New_AST_Query(yymsp[-2].minor.yy5, yymsp[-1].minor.yy7, NULL, NULL, NULL, yymsp[0].minor.yy15, NULL, NULL, NULL, NULL, NULL, NULL);
+	yylhsminor.yy91 = AST_New(yymsp[-2].minor.yy5, yymsp[-1].minor.yy7, NULL, NULL, NULL, yymsp[0].minor.yy15, NULL, NULL, NULL, NULL, NULL, NULL);
 }
 #line 1295 "grammar.c"
-  yymsp[-2].minor.yy24 = yylhsminor.yy24;
+  yymsp[-2].minor.yy91 = yylhsminor.yy91;
         break;
       case 4: /* expr ::= multipleMatchClause whereClause setClause */
 #line 58 "grammar.y"
 {
-	yylhsminor.yy24 = New_AST_Query(yymsp[-2].minor.yy5, yymsp[-1].minor.yy7, NULL, NULL, yymsp[0].minor.yy120, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	yylhsminor.yy91 = AST_New(yymsp[-2].minor.yy5, yymsp[-1].minor.yy7, NULL, NULL, yymsp[0].minor.yy120, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 }
 #line 1303 "grammar.c"
-  yymsp[-2].minor.yy24 = yylhsminor.yy24;
+  yymsp[-2].minor.yy91 = yylhsminor.yy91;
         break;
       case 5: /* expr ::= multipleMatchClause whereClause setClause returnClause orderClause skipClause limitClause */
 #line 62 "grammar.y"
 {
-	yylhsminor.yy24 = New_AST_Query(yymsp[-6].minor.yy5, yymsp[-5].minor.yy7, NULL, NULL, yymsp[-4].minor.yy120, NULL, yymsp[-3].minor.yy140, yymsp[-2].minor.yy176, yymsp[-1].minor.yy59, yymsp[0].minor.yy147, NULL, NULL);
+	yylhsminor.yy91 = AST_New(yymsp[-6].minor.yy5, yymsp[-5].minor.yy7, NULL, NULL, yymsp[-4].minor.yy120, NULL, yymsp[-3].minor.yy140, yymsp[-2].minor.yy176, yymsp[-1].minor.yy59, yymsp[0].minor.yy147, NULL, NULL);
 }
 #line 1311 "grammar.c"
-  yymsp[-6].minor.yy24 = yylhsminor.yy24;
+  yymsp[-6].minor.yy91 = yylhsminor.yy91;
         break;
       case 6: /* expr ::= multipleCreateClause */
 #line 66 "grammar.y"
 {
-	yylhsminor.yy24 = New_AST_Query(NULL, NULL, yymsp[0].minor.yy20, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	yylhsminor.yy91 = AST_New(NULL, NULL, yymsp[0].minor.yy20, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 }
 #line 1319 "grammar.c"
-  yymsp[0].minor.yy24 = yylhsminor.yy24;
+  yymsp[0].minor.yy91 = yylhsminor.yy91;
         break;
       case 7: /* expr ::= unwindClause multipleCreateClause */
 #line 70 "grammar.y"
 {
-	yylhsminor.yy24 = New_AST_Query(NULL, NULL, yymsp[0].minor.yy20, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, yymsp[-1].minor.yy37);
+	yylhsminor.yy91 = AST_New(NULL, NULL, yymsp[0].minor.yy20, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, yymsp[-1].minor.yy37);
 }
 #line 1327 "grammar.c"
-  yymsp[-1].minor.yy24 = yylhsminor.yy24;
+  yymsp[-1].minor.yy91 = yylhsminor.yy91;
         break;
       case 8: /* expr ::= indexClause */
 #line 74 "grammar.y"
 {
-	yylhsminor.yy24 = New_AST_Query(NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, yymsp[0].minor.yy8, NULL);
+	yylhsminor.yy91 = AST_New(NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, yymsp[0].minor.yy8, NULL);
 }
 #line 1335 "grammar.c"
-  yymsp[0].minor.yy24 = yylhsminor.yy24;
+  yymsp[0].minor.yy91 = yylhsminor.yy91;
         break;
       case 9: /* expr ::= mergeClause */
 #line 78 "grammar.y"
 {
-	yylhsminor.yy24 = New_AST_Query(NULL, NULL, NULL, yymsp[0].minor.yy132, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	yylhsminor.yy91 = AST_New(NULL, NULL, NULL, yymsp[0].minor.yy132, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 }
 #line 1343 "grammar.c"
-  yymsp[0].minor.yy24 = yylhsminor.yy24;
+  yymsp[0].minor.yy91 = yylhsminor.yy91;
         break;
       case 10: /* expr ::= returnClause */
 #line 82 "grammar.y"
 {
-	yylhsminor.yy24 = New_AST_Query(NULL, NULL, NULL, NULL, NULL, NULL, yymsp[0].minor.yy140, NULL, NULL, NULL, NULL, NULL);
+	yylhsminor.yy91 = AST_New(NULL, NULL, NULL, NULL, NULL, NULL, yymsp[0].minor.yy140, NULL, NULL, NULL, NULL, NULL);
 }
 #line 1351 "grammar.c"
-  yymsp[0].minor.yy24 = yylhsminor.yy24;
+  yymsp[0].minor.yy91 = yylhsminor.yy91;
         break;
       case 11: /* expr ::= unwindClause returnClause skipClause limitClause */
 #line 86 "grammar.y"
 {
-	yylhsminor.yy24 = New_AST_Query(NULL, NULL, NULL, NULL, NULL, NULL, yymsp[-2].minor.yy140, NULL, yymsp[-1].minor.yy59, yymsp[0].minor.yy147, NULL, yymsp[-3].minor.yy37);
+	yylhsminor.yy91 = AST_New(NULL, NULL, NULL, NULL, NULL, NULL, yymsp[-2].minor.yy140, NULL, yymsp[-1].minor.yy59, yymsp[0].minor.yy147, NULL, yymsp[-3].minor.yy37);
 }
 #line 1359 "grammar.c"
-  yymsp[-3].minor.yy24 = yylhsminor.yy24;
+  yymsp[-3].minor.yy91 = yylhsminor.yy91;
         break;
       case 12: /* multipleMatchClause ::= matchClauses */
 #line 91 "grammar.y"
@@ -2364,7 +2364,7 @@ void Parse(
   	extern char *yytext;
 	extern int yycolumn;
 
-	AST_Query *Query_Parse(const char *q, size_t len, char **err) {
+	AST *Query_Parse(const char *q, size_t len, char **err) {
 		yycolumn = 1;	// Reset lexer's token tracking position
 		yy_scan_bytes(q, len);
   		void* pParser = ParseAlloc(malloc);

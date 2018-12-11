@@ -14,7 +14,7 @@
 #include "../ast_arithmetic_expression.h"
 
 typedef struct {
-	AST_Variable *entity;	/* Destination entity to update. */
+	AST_Variable *entity;				/* Destination entity to update. */
 	AST_ArithmeticExpressionNode *exp;	/* Arithmetic expression, evaluated value used for update. */
 } AST_SetElement;
 

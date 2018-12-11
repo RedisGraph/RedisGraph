@@ -25,6 +25,9 @@ typedef struct {
     int edgeRelationType;
     Edge *edges;
     GxB_MatrixTupleIter *iter;
+    int srcNodeRecIdx;
+    int destNodeRecIdx;
+    int edgeRecIdx;
 } CondTraverse;
 
 /* Creates a new Traverse operation */
@@ -33,7 +36,7 @@ OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *algebraic_expression);
 /* TraverseConsume next operation 
  * each call will update the graph
  * returns OP_DEPLETED when no additional updates are available */
-OpResult CondTraverseConsume(OpBase *opBase, Record *r);
+OpResult CondTraverseConsume(OpBase *opBase, Record r);
 
 /* Restart iterator */
 OpResult CondTraverseReset(OpBase *ctx);

@@ -39,52 +39,52 @@
 
 %extra_argument { parseCtx *ctx }
 
-%type expr {AST_Query*}
+%type expr {AST*}
 
 query ::= expr(A). { ctx->root = A; }
 
 expr(A) ::= multipleMatchClause(B) whereClause(C) multipleCreateClause(D) returnClause(E) orderClause(F) skipClause(G) limitClause(H). {
-	A = New_AST_Query(B, C, D, NULL, NULL, NULL, E, F, G, H, NULL, NULL);
+	A = AST_New(B, C, D, NULL, NULL, NULL, E, F, G, H, NULL, NULL);
 }
 
 expr(A) ::= multipleMatchClause(B) whereClause(C) multipleCreateClause(D). {
-	A = New_AST_Query(B, C, D, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	A = AST_New(B, C, D, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 }
 
 expr(A) ::= multipleMatchClause(B) whereClause(C) deleteClause(D). {
-	A = New_AST_Query(B, C, NULL, NULL, NULL, D, NULL, NULL, NULL, NULL, NULL, NULL);
+	A = AST_New(B, C, NULL, NULL, NULL, D, NULL, NULL, NULL, NULL, NULL, NULL);
 }
 
 expr(A) ::= multipleMatchClause(B) whereClause(C) setClause(D). {
-	A = New_AST_Query(B, C, NULL, NULL, D, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	A = AST_New(B, C, NULL, NULL, D, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 }
 
 expr(A) ::= multipleMatchClause(B) whereClause(C) setClause(D) returnClause(E) orderClause(F) skipClause(G) limitClause(H). {
-	A = New_AST_Query(B, C, NULL, NULL, D, NULL, E, F, G, H, NULL, NULL);
+	A = AST_New(B, C, NULL, NULL, D, NULL, E, F, G, H, NULL, NULL);
 }
 
 expr(A) ::= multipleCreateClause(B). {
-	A = New_AST_Query(NULL, NULL, B, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	A = AST_New(NULL, NULL, B, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 }
 
 expr(A) ::= unwindClause(B) multipleCreateClause(C). {
-	A = New_AST_Query(NULL, NULL, C, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, B);
+	A = AST_New(NULL, NULL, C, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, B);
 }
 
 expr(A) ::= indexClause(B). {
-	A = New_AST_Query(NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, B, NULL);
+	A = AST_New(NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, B, NULL);
 }
 
 expr(A) ::= mergeClause(B). {
-	A = New_AST_Query(NULL, NULL, NULL, B, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	A = AST_New(NULL, NULL, NULL, B, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 }
 
 expr(A) ::= returnClause(B). {
-	A = New_AST_Query(NULL, NULL, NULL, NULL, NULL, NULL, B, NULL, NULL, NULL, NULL, NULL);
+	A = AST_New(NULL, NULL, NULL, NULL, NULL, NULL, B, NULL, NULL, NULL, NULL, NULL);
 }
 
 expr(A) ::= unwindClause(B) returnClause(C) skipClause(D) limitClause(E). {
-	A = New_AST_Query(NULL, NULL, NULL, NULL, NULL, NULL, C, NULL, D, E, NULL, B);
+	A = AST_New(NULL, NULL, NULL, NULL, NULL, NULL, C, NULL, D, E, NULL, B);
 }
 
 %type multipleMatchClause { AST_MatchNode* }
@@ -587,7 +587,7 @@ value(A) ::= NULLVAL. { A = SI_NullVal(); }
   	extern char *yytext;
 	extern int yycolumn;
 
-	AST_Query *Query_Parse(const char *q, size_t len, char **err) {
+	AST *Query_Parse(const char *q, size_t len, char **err) {
 		yycolumn = 1;	// Reset lexer's token tracking position
 		yy_scan_bytes(q, len);
   		void* pParser = ParseAlloc(malloc);

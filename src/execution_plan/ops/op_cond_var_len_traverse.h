@@ -18,8 +18,8 @@ typedef struct {
     OpBase op;
     Graph *g;
     AlgebraicExpression *ae;
-    const char *srcNodeAlias;       /* Node set by operation. */
-    const char *destNodeAlias;      /* Node set by operation. */
+    int srcNodeIdx;                 /* Node set by operation. */
+    int destNodeIdx;                /* Node set by operation. */
     int relationID;                 /* Relation we're traversing. */
     GRAPH_EDGE_DIR traverseDir;     /* Traverse direction. */
     unsigned int minHops;           /* Maximum number of hops to perform. */
@@ -28,7 +28,7 @@ typedef struct {
 } CondVarLenTraverse;
 
 OpBase* NewCondVarLenTraverseOp(AlgebraicExpression *ae, unsigned int minHops, unsigned int maxHops, Graph *g);
-OpResult CondVarLenTraverseConsume(OpBase *opBase, Record *r);
+OpResult CondVarLenTraverseConsume(OpBase *opBase, Record r);
 OpResult CondVarLenTraverseReset(OpBase *ctx);
 void CondVarLenTraverseFree(OpBase *ctx);
 #endif

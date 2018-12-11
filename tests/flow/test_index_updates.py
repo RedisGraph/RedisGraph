@@ -5,6 +5,7 @@ import random
 import string
 from redisgraph import Graph, Node, Edge
 
+# import redis
 from .disposableredis import DisposableRedis
 from base import FlowTestsBase
 
@@ -27,12 +28,17 @@ class IndexUpdatesFlowTest(FlowTestsBase):
         cls.r.start()
         redis_con = cls.r.client()
         redis_graph = Graph("index_test", redis_con)
+
+        # cls.r = redis.Redis()
+        # redis_graph = Graph("index_test", cls.r)
+
         cls.populate_graph()
         cls.build_indices()
 
     @classmethod
     def tearDownClass(cls):
         cls.r.stop()
+        # pass
 
     @classmethod
     def new_node(self):

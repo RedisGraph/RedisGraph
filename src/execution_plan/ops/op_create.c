@@ -5,11 +5,13 @@
 * modified with the Commons Clause restriction.
 */
 
-#include "../../stores/store.h"
 #include "op_create.h"
+#include "../../util/arr.h"
+#include "../../stores/store.h"
 #include <assert.h>
 
 void _SetModifiedEntities(OpCreate *op) {
+    AST *ast = AST_GetFromLTS();
     /* Determin which entities are modified by create op. */
     size_t create_entity_count = Vector_Size(op->ast->createNode->graphEntities);
     op->nodes_to_create = malloc(sizeof(NodeCreateCtx) * create_entity_count);
@@ -36,18 +38,18 @@ void _SetModifiedEntities(OpCreate *op) {
             // Node.
             Node *n = QueryGraph_GetNodeByAlias(op->qg, create_ge->alias);
             Node **ppn = QueryGraph_GetNodeRef(op->qg, n);
-            op->nodes_to_create[node_idx].original_node = n;
-            op->nodes_to_create[node_idx].original_node_ref = ppn;
+            op->nodes_to_create[node_idx].node = n;
+            op->nodes_to_create[node_idx].node_rec_idx = AST_GetAliasID(ast, n->alias);
             node_idx++;
         } else {
             // Edge.
             Edge *e = QueryGraph_GetEdgeByAlias(op->qg, create_ge->alias);            
-            op->edges_to_create[edge_idx].original_edge = e;
-            op->edges_to_create[edge_idx].original_edge_ref = QueryGraph_GetEdgeRef(op->qg, e);
+            op->edges_to_create[edge_idx].edge = e;
+            op->edges_to_create[edge_idx].edge_rec_idx = AST_GetAliasID(ast, e->alias);
             assert(QueryGraph_ContainsNode(op->qg, e->src));
             assert(QueryGraph_ContainsNode(op->qg, e->dest));
-            op->edges_to_create[edge_idx].src_node_alias = e->src->alias;
-            op->edges_to_create[edge_idx].dest_node_alias = e->dest->alias;
+            op->edges_to_create[edge_idx].src_node_rec_idx = AST_GetAliasID(ast, e->src->alias);
+            op->edges_to_create[edge_idx].dest_node_rec_idx = AST_GetAliasID(ast, e->dest->alias);
             edge_idx++;
         }        
     }
@@ -60,7 +62,7 @@ void _SetModifiedEntities(OpCreate *op) {
     assert((op->node_count + op->edge_count) > 0);
 }
 
-OpBase* NewCreateOp(RedisModuleCtx *ctx, GraphContext *gc, AST_Query *ast, QueryGraph *qg, ResultSet *result_set) {
+OpBase* NewCreateOp(RedisModuleCtx *ctx, GraphContext *gc, AST *ast, QueryGraph *qg, ResultSet *result_set) {
     OpCreate *op_create = calloc(1, sizeof(OpCreate));
     op_create->gc = gc;
     op_create->ast = ast;
@@ -70,8 +72,8 @@ OpBase* NewCreateOp(RedisModuleCtx *ctx, GraphContext *gc, AST_Query *ast, Query
     op_create->node_count = 0;
     op_create->edges_to_create = NULL;
     op_create->edge_count = 0;
-    op_create->created_nodes = NewVector(Node*, 0);
-    op_create->created_edges = NewVector(Edge*, 0);
+    op_create->created_nodes = array_new(Node*, 0);
+    op_create->created_edges = array_new(Edge*, 0);
     op_create->result_set = result_set;    
 
     _SetModifiedEntities(op_create);
@@ -87,40 +89,40 @@ OpBase* NewCreateOp(RedisModuleCtx *ctx, GraphContext *gc, AST_Query *ast, Query
     return (OpBase*)op_create;
 }
 
-void _CreateNodes(OpCreate *op, Record *r) {
+void _CreateNodes(OpCreate *op, Record r) {
     Graph *g = op->gc->g;
     for(int i = 0; i < op->node_count; i++) {
         /* Get specified node to create. */
-        Node *n = op->nodes_to_create[i].original_node;
+        Node *n = op->nodes_to_create[i].node;
 
         /* Create a new node. */
         Node *newNode = Node_New(n->label, n->alias);
 
         /* Save node for later insertion. */
-        Vector_Push(op->created_nodes, newNode);
+        op->created_nodes = array_append(op->created_nodes, newNode);
 
         /* Update record with new node. */
-        Record_AddEntry(r, newNode->alias, SI_PtrVal(newNode));
+        Record_AddScalar(r, op->nodes_to_create[i].node_rec_idx, SI_PtrVal(newNode));
     }
 }
 
-void _CreateEdges(OpCreate *op, Record *r) {
+void _CreateEdges(OpCreate *op, Record r) {
     for(int i = 0; i < op->edge_count; i++) {
         /* Get specified edge to create. */
-        Edge *e = op->edges_to_create[i].original_edge;
+        Edge *e = op->edges_to_create[i].edge;
 
         /* Retrieve source and dest nodes. */
-        Node *src_node = Record_GetNode(*r, op->edges_to_create[i].src_node_alias);
-        Node *dest_node = Record_GetNode(*r, op->edges_to_create[i].dest_node_alias);
+        Node *src_node = (Node*)Record_GetGraphEntity(r, op->edges_to_create[i].src_node_rec_idx);
+        Node *dest_node = (Node*)Record_GetGraphEntity(r, op->edges_to_create[i].dest_node_rec_idx);
 
         /* Create the actual edge. */
         Edge *newEdge = Edge_New(src_node, dest_node, e->relationship, e->alias);
 
         /* Save edge for later insertion. */
-        Vector_Push(op->created_edges, newEdge);
+        op->created_edges = array_append(op->created_edges, newEdge);
 
         /* Update query graph with new edge. */
-        Record_AddEntry(r, newEdge->alias, SI_PtrVal(newEdge));
+        Record_AddEdge(r, op->edges_to_create[i].edge_rec_idx, *newEdge);
     }
 }
 
@@ -129,14 +131,15 @@ static void _CommitNodes(OpCreate *op) {
     Node *n;
     int labelID;
     Graph *g = op->gc->g;
-    size_t node_count = Vector_Size(op->created_nodes);
+    uint node_count = array_len(op->created_nodes);
     TrieMap *createEntities = NewTrieMap();
     LabelStore *allStore = GraphContext_AllStore(op->gc, STORE_NODE);
     
     Graph_AllocateNodes(op->gc->g, node_count);
     CreateClause_ReferredEntities(op->ast->createNode, createEntities);
     
-    while(Vector_Pop(op->created_nodes, &n)) {
+    for(uint i = 0; i < node_count; i++) {
+        n = op->created_nodes[i];
         LabelStore *store = NULL;
 
         // Get label ID.
@@ -197,7 +200,9 @@ static void _CommitEdges(OpCreate *op) {
     LabelStore *allStore = GraphContext_AllStore(op->gc, STORE_EDGE);
     CreateClause_ReferredEntities(op->ast->createNode, createEntities);
 
-    while(Vector_Pop(op->created_edges, &e)) {
+    int createdEdgeCount = array_len(op->created_edges);
+    for(int i = 0; i < createdEdgeCount; i++) {
+        e = op->created_edges[i];
         int relation_id;
         NodeID srcNodeID;
 
@@ -252,8 +257,8 @@ static void _CommitEdges(OpCreate *op) {
 }
 
 void _CommitNewEntities(OpCreate *op) {
-    size_t node_count = Vector_Size(op->created_nodes);
-    size_t edge_count = Vector_Size(op->created_edges);
+    size_t node_count = array_len(op->created_nodes);
+    size_t edge_count = array_len(op->created_edges);
     LabelStore *allStore;
     
     if(node_count > 0) {
@@ -264,7 +269,7 @@ void _CommitNewEntities(OpCreate *op) {
     if(edge_count > 0) _CommitEdges(op);
 }
 
-OpResult OpCreateConsume(OpBase *opBase, Record *r) {
+OpResult OpCreateConsume(OpBase *opBase, Record r) {
     OpResult res = OP_OK;
     OpCreate *op = (OpCreate*)opBase;
 
@@ -280,20 +285,11 @@ OpResult OpCreateConsume(OpBase *opBase, Record *r) {
     }
 
     if(op->op.childCount == 0) return OP_DEPLETED;
-    else return res;
+    return res;
 }
 
 OpResult OpCreateReset(OpBase *ctx) {
     OpCreate *op = (OpCreate*)ctx;
-
-    for(int i = 0; i < op->node_count; i++) {
-        *(op->nodes_to_create[i].original_node_ref) = op->nodes_to_create[i].original_node;
-    }
-
-    for(int i = 0; i < op->edge_count; i++) {
-        *(op->edges_to_create[i].original_edge_ref) = op->edges_to_create[i].original_edge;
-    }
-
     return OP_OK;
 }
 
@@ -303,6 +299,20 @@ void OpCreateFree(OpBase *ctx) {
 
     if(op->nodes_to_create) free(op->nodes_to_create);
     if(op->edges_to_create) free(op->edges_to_create);
-    if (op->created_nodes) Vector_Free(op->created_nodes);
-    if (op->created_edges) Vector_Free(op->created_edges);
+    if (op->created_nodes) {
+        size_t nodeCount = array_len(op->created_nodes);
+        for(uint i = 0; i < nodeCount; i++) {
+            // It's safe to free node, as its internal GraphEntity wouldn't be free.
+            Node_Free(op->created_nodes[i]);
+        }
+        array_free(op->created_nodes);
+    }
+     if (op->created_edges) {
+        size_t edgeCount = array_len(op->created_edges);
+        for(uint i = 0; i < edgeCount; i++) {
+            // It's safe to free edge, as its internal GraphEntity wouldn't be free.
+            Edge_Free(op->created_edges[i]);
+        }
+        array_free(op->created_edges);
+     }
 }

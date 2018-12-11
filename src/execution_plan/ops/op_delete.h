@@ -21,8 +21,8 @@ typedef struct {
     QueryGraph *qg;
     size_t node_count;
     size_t edge_count;
-    char **nodes_to_delete;
-    char **edges_to_delete;
+    int *nodes_to_delete;
+    int *edges_to_delete;
     Node *deleted_nodes;    // Array of nodes to be removed.    
     Edge *deleted_edges;    // Array of edges to be removed.
 
@@ -30,7 +30,7 @@ typedef struct {
 } OpDelete;
 
 OpBase* NewDeleteOp(AST_DeleteNode *ast_delete_node, QueryGraph *qg, GraphContext *gc, ResultSet *result_set);
-OpResult OpDeleteConsume(OpBase *opBase, Record *r);
+OpResult OpDeleteConsume(OpBase *opBase, Record r);
 OpResult OpDeleteReset(OpBase *ctx);
 void OpDeleteFree(OpBase *ctx);
 

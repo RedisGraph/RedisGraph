@@ -13,7 +13,6 @@
 #include "entities/node.h"
 #include "entities/edge.h"
 #include "../redismodule.h"
-#include "../util/uthash.h"
 #include "../util/triemap/triemap.h"
 #include "../util/datablock/datablock.h"
 #include "../util/datablock/datablock_iterator.h"

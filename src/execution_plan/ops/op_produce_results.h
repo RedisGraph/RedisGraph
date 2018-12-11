@@ -20,18 +20,18 @@
 typedef struct {
     OpBase op;
     int refreshAfterPass;
-    AST_Query *ast;
+    AST *ast;
     Vector *return_elements; /* Vector of arithmetic expressions. */
     ResultSet *result_set;
 } ProduceResults;
 
 
 /* Creates a new NodeByLabelScan operation */
-OpBase* NewProduceResultsOp(AST_Query *ast, ResultSet *result_set, QueryGraph *graph);
+OpBase* NewProduceResultsOp(AST *ast, ResultSet *result_set, QueryGraph *graph);
 
 /* ProduceResults next operation
  * called each time a new result record is required */
-OpResult ProduceResultsConsume(OpBase *op, Record *r);
+OpResult ProduceResultsConsume(OpBase *op, Record r);
 
 /* Restart iterator */
 OpResult ProduceResultsReset(OpBase *ctx);

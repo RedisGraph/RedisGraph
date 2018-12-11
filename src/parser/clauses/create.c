@@ -35,6 +35,7 @@ void CreateClause_ReferredEntities(const AST_CreateNode *createNode, TrieMap *re
     for(int i = 0; i < entities_count; i++) {
         AST_GraphEntity *entity;
         Vector_Get(createNode->graphEntities, i, &entity);
+		if (!entity->alias) continue;
 		TrieMap_Add(referredNodes, entity->alias, strlen(entity->alias), entity, TrieMap_DONT_CARE_REPLACE);
     }
 }

@@ -143,7 +143,7 @@ static void _CreateEntities(OpMerge *op) {
     _CommitEdges(op);
 }
 
-OpBase* NewMergeOp(GraphContext *gc, AST_Query *ast, QueryGraph *qg, ResultSet *result_set) {
+OpBase* NewMergeOp(GraphContext *gc, AST *ast, QueryGraph *qg, ResultSet *result_set) {
     OpMerge *op_merge = malloc(sizeof(OpMerge));
     op_merge->gc = gc;
     op_merge->ast = ast;
@@ -162,7 +162,7 @@ OpBase* NewMergeOp(GraphContext *gc, AST_Query *ast, QueryGraph *qg, ResultSet *
     return (OpBase*)op_merge;
 }
 
-OpResult OpMergeConsume(OpBase *opBase, Record *r) {
+OpResult OpMergeConsume(OpBase *opBase, Record r) {
     OpMerge *op = (OpMerge*)opBase;
 
     OpBase *child = op->op.children[0];

@@ -45,7 +45,7 @@ typedef struct {
     size_t skipped;             /* Number of records been skipped. */
 } ResultSet;
 
-ResultSet* NewResultSet(AST_Query* ast, RedisModuleCtx *ctx);
+ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx);
 
 bool ResultSet_Limited(const ResultSet* set);
 

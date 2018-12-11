@@ -33,23 +33,33 @@ typedef struct {
 	AST_SkipNode *skipNode;
 	AST_IndexNode *indexNode;
 	AST_UnwindNode *unwindNode;
-} AST_Query;
+	TrieMap *_aliasIDMapping;	// Mapping between aliases and IDs.
+} AST;
 
-AST_Query* New_AST_Query(AST_MatchNode *matchNode, AST_WhereNode *whereNode,
+AST* AST_New(AST_MatchNode *matchNode, AST_WhereNode *whereNode,
 						 AST_CreateNode *createNode, AST_MergeNode *mergeNode,
 						 AST_SetNode *setNode, AST_DeleteNode *deleteNode,
 						 AST_ReturnNode *returnNode, AST_OrderNode *orderNode,
 						 AST_SkipNode *skipNode, AST_LimitNode *limitNode,
 						 AST_IndexNode *indexNode, AST_UnwindNode *unwindNode);
 
-// AST clause validations.
-AST_Validation AST_Validate(const AST_Query* ast, char **reason);
+// Retrieve AST from thread local storage.
+AST *AST_GetFromLTS();
 
-void AST_NameAnonymousNodes(AST_Query *ast);
+// AST clause validations.
+AST_Validation AST_Validate(const AST* ast, char **reason);
+
+// Returns number of aliases defined in AST.
+int AST_AliasCount(const AST *ast);
+
+// Returns alias ID.
+int AST_GetAliasID(const AST *ast, char *alias);
+
+void AST_NameAnonymousNodes(AST *ast);
 
 // Checks if AST represent a read only query.
-bool AST_ReadOnly(const AST_Query *ast);
+bool AST_ReadOnly(const AST *ast);
 
-void Free_AST_Query(AST_Query *queryExpressionNode);
+void AST_Free(AST *queryExpressionNode);
 
 #endif

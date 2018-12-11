@@ -14,10 +14,12 @@ extern "C" {
 #include <stdio.h>
 #include <string.h>
 #include "../../src/util/vector.h"
+#include "../../src/parser/ast.h"
 #include "../../src/parser/grammar.h"
 #include "../../src/parser/ast_arithmetic_expression.h"
 #include "../../src/filter_tree/filter_tree.h"
 #include "../../src/util/rmalloc.h"
+#include "../../src/query_executor.h"
 
 #ifdef __cplusplus
 }
@@ -31,54 +33,37 @@ class FilterTreeTest: public ::testing::Test {
       Alloc_Reset();
     }
 
+    AST* _build_ast(const char *query) {
+        char *errMsg;
+        AST *ast = ParseQuery(query, strlen(query), &errMsg);
+        AST_NameAnonymousNodes(ast);
+        return ast;
+    }
+
     FT_FilterNode* _build_simple_const_tree() {
-        SIValue value = SI_DoubleVal(34);
-        AST_ArithmeticExpressionNode *lhs = New_AST_AR_EXP_VariableOperandNode("me", "age");
-        AST_ArithmeticExpressionNode *rhs = New_AST_AR_EXP_ConstOperandNode(value);
-
-        AST_FilterNode *root = New_AST_PredicateNode(lhs, EQ, rhs);
-        FT_FilterNode *tree = BuildFiltersTree(root);
-
-        Free_AST_ArithmeticExpressionNode(lhs);
-        Free_AST_ArithmeticExpressionNode(rhs);
-        Free_AST_FilterNode(root);
-
+        const char *query = "MATCH (me) WHERE me.age = 34 RETURN me";
+        AST *ast = _build_ast(query);
+        AST_FilterNode *root = ast->whereNode->filters;
+        FT_FilterNode *tree = BuildFiltersTree(ast, root);
         return tree;
     }
 
     FT_FilterNode* _build_simple_varying_tree() {
-        AST_ArithmeticExpressionNode *lhs = New_AST_AR_EXP_VariableOperandNode("me", "age");
-        AST_ArithmeticExpressionNode *rhs = New_AST_AR_EXP_VariableOperandNode("him", "age");
-        AST_FilterNode *root = New_AST_PredicateNode(lhs, GT, rhs);
-        FT_FilterNode *tree = BuildFiltersTree(root);
-
-        Free_AST_ArithmeticExpressionNode(lhs);
-        Free_AST_ArithmeticExpressionNode(rhs);
-        Free_AST_FilterNode(root);
-
+        const char *query = "MATCH (me),(him) WHERE me.age > him.age RETURN me, him";
+        AST *ast = _build_ast(query);
+        AST_FilterNode *root = ast->whereNode->filters;
+        FT_FilterNode *tree = BuildFiltersTree(ast, root);
         return tree;
     }
 
     FT_FilterNode* _build_cond_tree(int cond) {
-        AST_ArithmeticExpressionNode *left_lhs = New_AST_AR_EXP_VariableOperandNode("me", "age");
-        SIValue age = SI_DoubleVal(34);
-        AST_ArithmeticExpressionNode *left_rhs = New_AST_AR_EXP_ConstOperandNode(age);
-        AST_FilterNode *left = New_AST_PredicateNode(left_lhs, GT, left_rhs);
+        const char *query;
+        if(cond == AND) query = "MATCH (me) WHERE me.age > 34 AND me.height <= 188 RETURN me";
+        else  query = "MATCH (me) WHERE me.age > 34 OR me.height <= 188 RETURN me";
 
-        AST_ArithmeticExpressionNode *right_lhs = New_AST_AR_EXP_VariableOperandNode("me", "height");
-        SIValue height = SI_DoubleVal(188);
-        AST_ArithmeticExpressionNode *right_rhs = New_AST_AR_EXP_ConstOperandNode(height);
-        AST_FilterNode *right = New_AST_PredicateNode(right_lhs, LE, right_rhs);
-
-        AST_FilterNode *root = New_AST_ConditionNode(left, cond, right);
-        FT_FilterNode *tree = BuildFiltersTree(root);
-
-        Free_AST_ArithmeticExpressionNode(left_lhs);
-        Free_AST_ArithmeticExpressionNode(left_rhs);
-        Free_AST_ArithmeticExpressionNode(right_lhs);
-        Free_AST_ArithmeticExpressionNode(right_rhs);
-        Free_AST_FilterNode(root);
-
+        AST *ast = _build_ast(query);
+        AST_FilterNode *root = ast->whereNode->filters;
+        FT_FilterNode *tree = BuildFiltersTree(ast, root);
         return tree;
     }
 
@@ -94,34 +79,10 @@ class FilterTreeTest: public ::testing::Test {
         /* Build a tree with an AND at the root
         * AND as a left child
         * OR as a right child */
-
-        // Build out the variadic nodes to use in filters
-        AST_ArithmeticExpressionNode *left_left_variable = New_AST_AR_EXP_VariableOperandNode("me", "age");
-        AST_ArithmeticExpressionNode *left_right_variable = New_AST_AR_EXP_VariableOperandNode("he", "height");
-        AST_ArithmeticExpressionNode *right_left_variable = New_AST_AR_EXP_VariableOperandNode("she", "age");
-        AST_ArithmeticExpressionNode *right_right_variable = New_AST_AR_EXP_VariableOperandNode("theirs", "height");
-
-        // Build out the constant nodes to filter against
-        SIValue age = SI_DoubleVal(34);
-        AST_ArithmeticExpressionNode *age_expression = New_AST_AR_EXP_ConstOperandNode(age);
-        SIValue height = SI_DoubleVal(188);
-        AST_ArithmeticExpressionNode *height_expression = New_AST_AR_EXP_ConstOperandNode(height);
-        // Build the AST filter nodes
-        AST_FilterNode *left_left_child = New_AST_PredicateNode(left_left_variable, GT, age_expression);
-        AST_FilterNode *left_right_child = New_AST_PredicateNode(left_right_variable, LE, height_expression);
-        AST_FilterNode *left = New_AST_ConditionNode(left_left_child, AND, left_right_child);
-
-        AST_FilterNode *right_left_child = New_AST_PredicateNode(right_left_variable, GT, age_expression);
-        AST_FilterNode *right_right_child = New_AST_PredicateNode(right_right_variable, LE, height_expression);
-        AST_FilterNode *right = New_AST_ConditionNode(right_left_child, OR, right_right_child);
-
-        AST_FilterNode *root = New_AST_ConditionNode(left, AND, right);
-        FT_FilterNode *tree = BuildFiltersTree(root);
-
-        Free_AST_ArithmeticExpressionNode(age_expression);
-        Free_AST_ArithmeticExpressionNode(height_expression);
-        Free_AST_FilterNode(root);
-
+        const char *query = "MATCH (me),(he),(she),(theirs) WHERE (me.age > 34 AND he.height <= 188) AND (she.age > 34 OR theirs.height <= 188) RETURN me, he, she, theirs";
+        AST *ast = _build_ast(query);
+        AST_FilterNode *root = ast->whereNode->filters;
+        FT_FilterNode *tree = BuildFiltersTree(ast, root);
         return tree;
     }
 

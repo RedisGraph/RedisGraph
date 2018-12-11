@@ -23,7 +23,7 @@ OpBase* NewFilterOp(FT_FilterNode *filterTree);
 
 /* FilterConsume next operation 
  * returns OP_DEPLETED when */
-OpResult FilterConsume(OpBase *opBase, Record *r);
+OpResult FilterConsume(OpBase *opBase, Record r);
 
 /* Restart iterator */
 OpResult FilterReset(OpBase *ctx);

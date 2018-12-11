@@ -35,7 +35,7 @@ ExecutionPlan* NewExecutionPlan
 (
     RedisModuleCtx *ctx,        // Module-level context
     GraphContext *gc,           // Graph access and data stores
-    AST_Query *ast,             // Query parsed AST
+    AST *ast,             // Query parsed AST
     bool explain                // Construct execution plan, do not execute
 );
 

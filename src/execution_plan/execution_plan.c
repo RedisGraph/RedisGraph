@@ -167,7 +167,7 @@ void _Count_Graph_Entities(const Vector *entities, size_t *node_count, size_t *e
     }
 }
 
-void _Determine_Graph_Size(const AST_Query *ast, size_t *node_count, size_t *edge_count) {
+void _Determine_Graph_Size(const AST *ast, size_t *node_count, size_t *edge_count) {
     *edge_count = 0;
     *node_count = 0;
     Vector *entities;
@@ -216,7 +216,7 @@ OpBase* ExecutionPlan_Locate_References(OpBase *root, Vector *references) {
 
 ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx,
                                 GraphContext *gc,
-                                AST_Query *ast,
+                                AST *ast,
                                 bool explain) {
 
     Graph *g = gc->g;
@@ -238,7 +238,7 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx,
 
     FT_FilterNode *filter_tree = NULL;
     if(ast->whereNode != NULL) {
-        filter_tree = BuildFiltersTree(ast->whereNode->filters);
+        filter_tree = BuildFiltersTree(ast, ast->whereNode->filters);
         execution_plan->filter_tree = filter_tree;
     }
 
@@ -470,8 +470,10 @@ char* ExecutionPlanPrint(const ExecutionPlan *plan) {
 
 ResultSet* ExecutionPlan_Execute(ExecutionPlan *plan) {
     OpBase *op = plan->root;
-    Record r = NULL;
-    while(op->consume(op, &r) == OP_OK);
+    AST *ast = AST_GetFromLTS();
+
+    Record r = Record_New(AST_AliasCount(ast));
+    while(op->consume(op, r) == OP_OK);
 
     Record_Free(r);
     return plan->result_set;

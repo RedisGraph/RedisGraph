@@ -18,7 +18,7 @@ extern threadpool _thpool;
 /* Query context, used for concurent query processing. */
 typedef struct {
     RedisModuleBlockedClient *bc;   // Blocked client.
-    AST_Query* ast;                 // Parsed AST.
+    AST* ast;                 // Parsed AST.
     RedisModuleString *graphName;   // Graph ID.
     double tic[2];                  // timings.
 } QueryContext;

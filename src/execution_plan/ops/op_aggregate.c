@@ -11,7 +11,7 @@
 #include "../../grouping/group_cache.h"
 #include "../../query_executor.h"
 
-OpBase* NewAggregateOp(AST_Query *ast, TrieMap *groups) {
+OpBase* NewAggregateOp(AST *ast, TrieMap *groups) {
     Aggregate *aggregate = malloc(sizeof(Aggregate));
     aggregate->ast = ast;
     aggregate->init = 0;
@@ -32,14 +32,14 @@ OpBase* NewAggregateOp(AST_Query *ast, TrieMap *groups) {
 
 /* Construct an aggregated expression tree foreach aggregated term. 
  * Returns a vector of aggregated expression trees. */
-Vector* _build_aggregated_expressions(AST_Query *ast) {
+Vector* _build_aggregated_expressions(AST *ast) {
     Vector *aggregated_expressions = NewVector(AR_ExpNode*, 1);
 
     for(int i = 0; i < Vector_Size(ast->returnNode->returnElements); i++) {
         AST_ReturnElementNode *returnElement;
         Vector_Get(ast->returnNode->returnElements, i, &returnElement);
 
-        AR_ExpNode *expression = AR_EXP_BuildFromAST(returnElement->exp);
+        AR_ExpNode *expression = AR_EXP_BuildFromAST(ast, returnElement->exp);
         if(AR_EXP_ContainsAggregation(expression, NULL)) {
             Vector_Push(aggregated_expressions, expression);
         }
@@ -97,12 +97,12 @@ void _aggregateRecord(Aggregate *op, Record r) {
     }
 }
 
-OpResult AggregateConsume(OpBase *opBase, Record *r) {
+OpResult AggregateConsume(OpBase *opBase, Record r) {
     Aggregate *op = (Aggregate*)opBase;
     OpBase *child = op->op.children[0];
 
     if(!op->init) {
-        Build_None_Aggregated_Arithmetic_Expressions(op->ast->returnNode,
+        Build_None_Aggregated_Arithmetic_Expressions(op->ast,
                                                      &op->none_aggregated_expressions,
                                                      &op->none_aggregated_expression_count);
         /* Allocate memory for group keys. */
@@ -115,7 +115,7 @@ OpResult AggregateConsume(OpBase *opBase, Record *r) {
     OpResult res = child->consume(child, r);
     if(res != OP_OK) return res;
 
-    _aggregateRecord(op, *r);
+    _aggregateRecord(op, r);
 
     return OP_OK;
 }

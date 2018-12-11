@@ -24,13 +24,13 @@ typedef struct {
     OpBase op;              // Base op.
     GraphContext *gc;       // Graph data.
     QueryGraph *qg;         // Query graph.
-    AST_Query *ast;         // Query abstract syntax tree.
+    AST *ast;         // Query abstract syntax tree.
     ResultSet *result_set;  // Required for statistics updates.
     bool matched;           // Has the entire pattern been matched.
 } OpMerge;
 
-OpBase* NewMergeOp(GraphContext *gc, AST_Query *ast, QueryGraph *qg, ResultSet *result_set);
-OpResult OpMergeConsume(OpBase *opBase, Record *r);
+OpBase* NewMergeOp(GraphContext *gc, AST *ast, QueryGraph *qg, ResultSet *result_set);
+OpResult OpMergeConsume(OpBase *opBase, Record r);
 OpResult OpMergeReset(OpBase *ctx);
 void OpMergeFree(OpBase *ctx);
 

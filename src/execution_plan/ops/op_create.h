@@ -16,21 +16,21 @@
 /* Creates new entities according to the CREATE clause. */
 
 typedef struct {
-    Edge *original_edge;
-    Edge **original_edge_ref;
-    char *src_node_alias;
-    char *dest_node_alias;
+    Edge *edge;
+    int src_node_rec_idx;
+    int dest_node_rec_idx;
+    int edge_rec_idx;
 } EdgeCreateCtx;
 
 typedef struct {
-    Node *original_node;
-    Node **original_node_ref;
+    Node *node;
+    int node_rec_idx;
 } NodeCreateCtx;
 
 typedef struct {
     OpBase op;
     GraphContext *gc;
-    AST_Query *ast;
+    AST *ast;
     QueryGraph *qg;
 
     NodeCreateCtx *nodes_to_create;
@@ -39,14 +39,14 @@ typedef struct {
     EdgeCreateCtx *edges_to_create;
     size_t edge_count;
 
-    Vector *created_nodes;
-    Vector *created_edges;
+    Node **created_nodes;
+    Edge **created_edges;
     ResultSet *result_set;
 } OpCreate;
 
-OpBase* NewCreateOp(RedisModuleCtx *ctx, GraphContext *gc, AST_Query *ast, QueryGraph *qg, ResultSet *result_set);
+OpBase* NewCreateOp(RedisModuleCtx *ctx, GraphContext *gc, AST *ast, QueryGraph *qg, ResultSet *result_set);
 
-OpResult OpCreateConsume(OpBase *opBase, Record *r);
+OpResult OpCreateConsume(OpBase *opBase, Record r);
 OpResult OpCreateReset(OpBase *ctx);
 void OpCreateFree(OpBase *ctx);
 

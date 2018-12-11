@@ -31,7 +31,7 @@ OpBase* NewTraverseOp(Graph *g, AlgebraicExpression *ae);
 /* TraverseConsume next operation 
  * each call will update the graph
  * returns OP_DEPLETED when no additional updates are available */
-OpResult TraverseConsume(OpBase *opBase, Record *r);
+OpResult TraverseConsume(OpBase *opBase, Record r);
 
 /* Restart iterator */
 OpResult TraverseReset(OpBase *ctx);

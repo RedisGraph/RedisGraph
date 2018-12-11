@@ -6,11 +6,14 @@
 */
 
 #include "op_all_node_scan.h"
+#include "../../parser/ast.h"
 
 OpBase* NewAllNodeScanOp(const Graph *g, Node *n) {
     AllNodeScan *allNodeScan = malloc(sizeof(AllNodeScan));
-    allNodeScan->node = n;
     allNodeScan->iter = Graph_ScanNodes(g);
+
+    AST *ast = AST_GetFromLTS();
+    allNodeScan->nodeRecIdx = AST_GetAliasID(ast, n->alias);
 
     // Set our Op operations
     OpBase_Init(&allNodeScan->op);
@@ -26,18 +29,15 @@ OpBase* NewAllNodeScanOp(const Graph *g, Node *n) {
     return (OpBase*)allNodeScan;
 }
 
-OpResult AllNodeScanConsume(OpBase *opBase, Record *r) {
+OpResult AllNodeScanConsume(OpBase *opBase, Record r) {
     AllNodeScan *op = (AllNodeScan*)opBase;
-
-    // Uninitialized, first call to consume.
-    if(ENTITY_GET_ID(op->node) == INVALID_ENTITY_ID) {
-        Record_AddEntry(r, op->node->alias, SI_PtrVal(op->node));
-    }
 
     Entity *en = (Entity*)DataBlockIterator_Next(op->iter);
     if(en == NULL) return OP_DEPLETED;
+    
+    Node *n = Record_GetNode(r, op->nodeRecIdx);
+    n->entity = en;
 
-    op->node->entity = en;
     return OP_OK;
 }
 

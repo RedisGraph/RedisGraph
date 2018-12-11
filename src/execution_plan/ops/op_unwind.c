@@ -7,8 +7,9 @@
 
 #include <assert.h>
 #include "op_unwind.h"
-#include "../../arithmetic/arithmetic_expression.h"
 #include "../../util/arr.h"
+#include "../../parser/ast.h"
+#include "../../arithmetic/arithmetic_expression.h"
 
 OpBase* NewUnwindOp(AST_UnwindNode *unwindClause) {
     OpUnwind *unwind = malloc(sizeof(OpUnwind));
@@ -29,30 +30,34 @@ OpBase* NewUnwindOp(AST_UnwindNode *unwindClause) {
     return (OpBase*)unwind;
 }
 
-OpResult UnwindConsume(OpBase *opBase, Record *r) {
-    OpUnwind *unwind = (OpUnwind*)opBase;
-
+OpResult UnwindConsume(OpBase *opBase, Record r) {
+    OpUnwind *op = (OpUnwind*)opBase;
+    
     // Init
-    if(unwind->expressions == NULL) {
-        uint expCount = Vector_Size(unwind->unwindClause->expressions);
-        unwind->expressions = array_new(AR_ExpNode*, expCount);
+    if(op->expressions == NULL) {
+        AST *ast = AST_GetFromLTS();
+        uint expCount = Vector_Size(op->unwindClause->expressions);
+        op->expressions = array_new(AR_ExpNode*, expCount);
 
         for(int i = 0; i < expCount; i++) {
             AST_ArithmeticExpressionNode *exp;
-            Vector_Get(unwind->unwindClause->expressions, i, &exp);
-            unwind->expressions = array_append(unwind->expressions, AR_EXP_BuildFromAST(exp));
+            Vector_Get(op->unwindClause->expressions, i, &exp);
+            op->expressions = array_append(op->expressions, AR_EXP_BuildFromAST(ast, exp));
         }
+
+        op->unwindRecIdx = AST_GetAliasID(ast, op->unwindClause->alias);
     }
 
-    if(unwind->expIdx == array_len(unwind->expressions)) {
+    if(op->expIdx == array_len(op->expressions)) {
         return OP_DEPLETED;
     }
 
-    AR_ExpNode *exp = unwind->expressions[unwind->expIdx];
-    SIValue v = AR_EXP_Evaluate(exp, *r);
-    Record_AddEntry(r, unwind->unwindClause->alias, v);
+    AR_ExpNode *exp = op->expressions[op->expIdx];
+    SIValue v = AR_EXP_Evaluate(exp, r);
 
-    unwind->expIdx++;
+    Record_AddScalar(r, op->unwindRecIdx, v);
+
+    op->expIdx++;
     return OP_OK;
 }
 

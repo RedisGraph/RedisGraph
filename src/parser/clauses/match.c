@@ -34,7 +34,7 @@ void MatchClause_DefinedEntities(const AST_MatchNode *matchNode, TrieMap *define
 	for(int i = 0; i < entityCount; i++) {
 		AST_GraphEntity *entity;
 		Vector_Get(matchNode->_mergedPatterns, i, &entity);
-		if (!entity->alias) continue;
+		if(!entity->alias) continue;
 		TrieMap_Add(definedEntities, entity->alias, strlen(entity->alias), entity, TrieMap_DONT_CARE_REPLACE);
 	}
 }

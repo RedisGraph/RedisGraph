@@ -169,6 +169,7 @@ Feature: AggregationAcceptance
       """
       MATCH (n)
       RETURN n.y, count(n.x)
+      ORDER BY n.y
       """
     Then the result should be:
       | n.y | count(n.x) |
