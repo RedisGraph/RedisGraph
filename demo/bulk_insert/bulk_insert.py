@@ -8,6 +8,7 @@ import click
 CONFIGS = None # thresholds for batching Redis queries
 NODE_DICT = [] # global node dictionary
 TOP_NODE_ID = 0 # next ID to assign to a node
+QUERY_BUF = None # Buffer for query being constructed
 
 # Custom error class for invalid inputs
 class CSVError(Exception):
@@ -59,7 +60,6 @@ class QueryBuffer(object):
                 # Send and flush the buffer if appropriate
                 self.send_buffer()
             # Add binary data to list and update all counts
-            #  self.count += entity.entity_count
             self.redis_token_count += 1
             self.buffer_size += added_size
 
@@ -86,9 +86,9 @@ class QueryBuffer(object):
         self.redis_token_count = 0
         self.buffer_size = 0
 
+        # All constructed entities have been inserted, so clear buffers
         Label.node_count = 0
         RelationType.relation_count = 0
-
         del Label.labels[:]
         del RelationType.reltypes[:]
 
@@ -96,7 +96,6 @@ class QueryBuffer(object):
 # Supported property types are string, numeric, boolean, and NULL.
 class Property(object):
     def __init__(self, prop_str):
-        self.orig = prop_str
         # All format strings start with an unsigned char to represent our Type enum
         self.format_str = "=B"
 
@@ -116,12 +115,12 @@ class Property(object):
             pass
 
         # If field is 'false' or 'true', it is a boolean
-        if self.orig.lower() == 'false':
+        if prop_str.lower() == 'false':
             self.type = Type.BOOL
             self.format_str += "?"
             self.pack_args = [False]
             return
-        if self.orig.lower() == 'true':
+        if prop_str.lower() == 'true':
             self.type = Type.BOOL
             self.format_str += "?"
             self.pack_args = [True]
@@ -153,7 +152,7 @@ class EntityFile(object):
         #  self.entity_count = 0 # Total number of entities
 
         self.packed_header = ""
-        self.entities = []
+        self.binary_entities = []
         self.binary_size = 0 # size of binary token
 
     # entity_string refers to label or relation type string
@@ -175,7 +174,7 @@ class EntityFile(object):
         return b''.join(p.to_binary() for p in props)
 
     def to_binary(self):
-        return self.packed_header + b''.join(self.entities)
+        return self.packed_header + b''.join(self.binary_entities)
 
 # Handler class for processing label csv files.
 class Label(EntityFile):
@@ -224,13 +223,18 @@ class Label(EntityFile):
             row_binary_len = len(row_binary)
             # If the addition of this entity will the binary token too large, send the buffer now.
             if self.binary_size + row_binary_len > CONFIGS.max_token_size:
-                # flush buffer
-                pass
+                QUERY_BUF.send_buffer()
+                # TODO improve this
+                # Maybe move class variables to query buffer instance variables
+                # Delete just-inserted entities and add self again, as the query buffer has been flushed
+                self.binary_entities = []
+                self.binary_size = len(self.packed_header)
+                Label.labels.append(self)
 
             #  self.entity_count += 1
             Label.node_count += 1
             self.binary_size += row_binary_len
-            self.entities.append(row_binary)
+            self.binary_entities.append(row_binary)
 
 # Handler class for processing relation csv files.
 class RelationType(EntityFile):
@@ -277,11 +281,17 @@ class RelationType(EntityFile):
             row_binary = struct.pack(fmt, src, dest) + self.pack_props(row)
             row_binary_len = len(row_binary)
             # If the addition of this entity will the binary token too large, send the buffer now.
+            if self.binary_size + row_binary_len > CONFIGS.max_token_size:
+                QUERY_BUF.send_buffer()
+                # Delete just-inserted entities and add self again, as the query buffer has been flushed
+                self.binary_entities = []
+                self.binary_size = len(self.packed_header)
+                RelationType.reltypes.append(self)
 
             #  self.entity_count += 1
             RelationType.relation_count += 1
             self.binary_size += row_binary_len
-            self.entities.append(row_binary)
+            self.binary_entities.append(row_binary)
 
 def help():
     pass
@@ -305,6 +315,8 @@ def bulk_insert(graph, host, port, password, nodes, relations, max_token_count, 
     global CONFIGS
     global NODE_DICT
     global TOP_NODE_ID
+    global QUERY_BUF
+
     TOP_NODE_ID = 0 # reset global variable
 
     CONFIGS = Configs(max_token_count, max_buffer_size, max_token_size)
@@ -312,8 +324,8 @@ def bulk_insert(graph, host, port, password, nodes, relations, max_token_count, 
     # Connect to Redis server and initialize buffer
     client = redis.StrictRedis(host=host, port=port, password=password)
 
-    query_buf = QueryBuffer(graph, client)
-    query_buf.clear_buffer() # Reset class variables (in case we're in unit tests)
+    QUERY_BUF = QueryBuffer(graph, client)
+    QUERY_BUF.clear_buffer() # Reset class variables (in case we're in unit tests)
 
     # Create a node dictionary if we're building relations and as such require unique identifiers
     if relations:
@@ -321,13 +333,13 @@ def bulk_insert(graph, host, port, password, nodes, relations, max_token_count, 
     else:
         NODE_DICT = None
 
-    query_buf.process_entity_csvs(Label, nodes)
+    QUERY_BUF.process_entity_csvs(Label, nodes)
 
     if relations:
-        query_buf.process_entity_csvs(RelationType, relations)
+        QUERY_BUF.process_entity_csvs(RelationType, relations)
 
     # Send all remaining tokens to Redis
-    query_buf.send_buffer()
+    QUERY_BUF.send_buffer()
 
 if __name__ == '__main__':
     bulk_insert()
