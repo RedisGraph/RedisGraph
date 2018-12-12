@@ -26,12 +26,12 @@ FT_FilterNode* CreateCondFilterNode(int op) {
     return filterNode;
 }
 
-FT_FilterNode* _CreatePredicateFilterNode(const AST_PredicateNode *pn) {
+FT_FilterNode* _CreatePredicateFilterNode(const AST *ast, const AST_PredicateNode *pn) {
     FT_FilterNode *filterNode = malloc(sizeof(FT_FilterNode));
     filterNode->t= FT_N_PRED;
     filterNode->pred.op = pn->op;
-    filterNode->pred.lhs = AR_EXP_BuildFromAST(pn->lhs);
-    filterNode->pred.rhs = AR_EXP_BuildFromAST(pn->rhs);
+    filterNode->pred.lhs = AR_EXP_BuildFromAST(ast, pn->lhs);
+    filterNode->pred.rhs = AR_EXP_BuildFromAST(ast, pn->rhs);
     return filterNode;
 }
 
@@ -80,15 +80,15 @@ Vector* FilterTree_SubTrees(const FT_FilterNode *root) {
     return sub_trees;
 }
 
-FT_FilterNode* BuildFiltersTree(const AST_FilterNode *root) {
+FT_FilterNode* BuildFiltersTree(const AST *ast, const AST_FilterNode *root) {
     FT_FilterNode *filterNode;
 
     if(root->t == N_PRED) {
-        filterNode = _CreatePredicateFilterNode(&root->pn);
+        filterNode = _CreatePredicateFilterNode(ast, &root->pn);
     } else {
         filterNode = CreateCondFilterNode(root->cn.op);
-        AppendLeftChild(filterNode, BuildFiltersTree(root->cn.left));
-        AppendRightChild(filterNode, BuildFiltersTree(root->cn.right));
+        AppendLeftChild(filterNode, BuildFiltersTree(ast, root->cn.left));
+        AppendRightChild(filterNode, BuildFiltersTree(ast, root->cn.right));
     }
 
     return filterNode;

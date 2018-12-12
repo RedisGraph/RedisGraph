@@ -26,7 +26,7 @@ void _ResetStreams(CartesianProduct *cp, int streamIdx) {
     for(int i = 0; i < streamIdx; i++) OpBase_Reset(cp->op.children[i]);    
 }
 
-OpResult _PullFromStreams(CartesianProduct *cp, Record *r) {
+OpResult _PullFromStreams(CartesianProduct *cp, Record r) {
     OpResult res;
     for(int i = 1; i < cp->op.childCount; i++) {
         OpBase *child = cp->op.children[i];
@@ -54,7 +54,7 @@ OpResult _PullFromStreams(CartesianProduct *cp, Record *r) {
     return OP_DEPLETED;
 }
 
-OpResult CartesianProductConsume(OpBase *opBase, Record *r) {
+OpResult CartesianProductConsume(OpBase *opBase, Record r) {
     CartesianProduct *cp = (CartesianProduct*)opBase;
     OpResult res;
     OpBase *child;

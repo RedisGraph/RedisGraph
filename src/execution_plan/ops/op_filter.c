@@ -24,7 +24,7 @@ OpBase* NewFilterOp(FT_FilterNode *filterTree) {
 
 /* FilterConsume next operation 
  * returns OP_OK when graph passes filter tree. */
-OpResult FilterConsume(OpBase *opBase, Record *r) {
+OpResult FilterConsume(OpBase *opBase, Record r) {
     Filter *filter = (Filter*)opBase;
     OpBase *child = filter->op.children[0];
     int pass = FILTER_FAIL;
@@ -34,7 +34,7 @@ OpResult FilterConsume(OpBase *opBase, Record *r) {
         if(res != OP_OK) return res;
 
         /* Pass graph through filter tree */
-        pass = FilterTree_applyFilters(filter->filterTree, *r);
+        pass = FilterTree_applyFilters(filter->filterTree, r);
     }
 
     return OP_OK;

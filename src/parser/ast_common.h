@@ -23,10 +23,10 @@ typedef enum {
 } AST_LinkDirection;
 
 typedef struct {
-	char *alias;
-	char *label;
-	Vector *properties;
-	AST_GraphEntityType t;
+	char *alias;			// Alias given to entity.
+	char *label;			// Label of entity.
+	Vector *properties;		// Array of attributes.
+	AST_GraphEntityType t;	// Type of entity.
 } AST_GraphEntity;
 
 typedef AST_GraphEntity AST_NodeEntity;

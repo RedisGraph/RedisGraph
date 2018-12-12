@@ -16,7 +16,7 @@
 #include "arithmetic/repository.h"
 #include "parser/parser_common.h"
 
-static void _returnClause_ExpandCollapsedNodes(GraphContext *gc, AST_Query *ast) {
+static void _returnClause_ExpandCollapsedNodes(GraphContext *gc, AST *ast) {
     assert(gc);
 
      /* Expanding the RETURN clause is a two phase operation:
@@ -141,7 +141,7 @@ static void _returnClause_ExpandCollapsedNodes(GraphContext *gc, AST_Query *ast)
     returnClause->returnElements = expandReturnElements;
 }
 
-static void _inlineProperties(AST_Query *ast) {
+static void _inlineProperties(AST *ast) {
     /* Migrate inline filters to WHERE clause. */
     if(!ast->matchNode) return;
     // Vector *entities = ast->matchNode->graphEntities;
@@ -196,7 +196,7 @@ static void _inlineProperties(AST_Query *ast) {
 }
 
 /* Shares merge pattern with match clause. */
-static void _replicateMergeClauseToMatchClause(AST_Query *ast) {    
+static void _replicateMergeClauseToMatchClause(AST *ast) {    
     assert(ast->mergeNode && !ast->matchNode);
 
     /* Match node is expecting a vector of vectors,
@@ -212,7 +212,8 @@ static void _replicateMergeClauseToMatchClause(AST_Query *ast) {
 
 /* Construct an expression tree foreach none aggregated term.
  * Returns a vector of none aggregated expression trees. */
-void Build_None_Aggregated_Arithmetic_Expressions(AST_ReturnNode *return_node, AR_ExpNode ***expressions, int *expressions_count) {
+void Build_None_Aggregated_Arithmetic_Expressions(AST *ast, AR_ExpNode ***expressions, int *expressions_count) {
+    AST_ReturnNode *return_node = ast->returnNode;
     *expressions = malloc(sizeof(AR_ExpNode *) * Vector_Size(return_node->returnElements));
     *expressions_count = 0;
 
@@ -220,7 +221,7 @@ void Build_None_Aggregated_Arithmetic_Expressions(AST_ReturnNode *return_node, A
         AST_ReturnElementNode *returnElement;
         Vector_Get(return_node->returnElements, i, &returnElement);
 
-        AR_ExpNode *expression = AR_EXP_BuildFromAST(returnElement->exp);
+        AR_ExpNode *expression = AR_EXP_BuildFromAST(ast, returnElement->exp);
         if(!AR_EXP_ContainsAggregation(expression, NULL)) {
             (*expressions)[*expressions_count] = expression;
             (*expressions_count)++;
@@ -228,11 +229,11 @@ void Build_None_Aggregated_Arithmetic_Expressions(AST_ReturnNode *return_node, A
     }
 }
 
-AST_Query* ParseQuery(const char *query, size_t qLen, char **errMsg) {
+AST* ParseQuery(const char *query, size_t qLen, char **errMsg) {
     return Query_Parse(query, qLen, errMsg);
 }
 
-AST_Validation AST_PerformValidations(RedisModuleCtx *ctx, AST_Query *ast) {
+AST_Validation AST_PerformValidations(RedisModuleCtx *ctx, AST *ast) {
     char *reason;
     if (AST_Validate(ast, &reason) != AST_VALID) {
         RedisModule_ReplyWithError(ctx, reason);
@@ -242,7 +243,7 @@ AST_Validation AST_PerformValidations(RedisModuleCtx *ctx, AST_Query *ast) {
     return AST_VALID;
 }
 
-void ModifyAST(GraphContext *gc, AST_Query *ast) {
+void ModifyAST(GraphContext *gc, AST *ast) {
     if(ast->mergeNode) {
         /* Create match clause which will try to match 
          * against pattern specified within merge clause. */
@@ -255,6 +256,5 @@ void ModifyAST(GraphContext *gc, AST_Query *ast) {
     }
 
     AST_NameAnonymousNodes(ast);
-
     _inlineProperties(ast);
 }

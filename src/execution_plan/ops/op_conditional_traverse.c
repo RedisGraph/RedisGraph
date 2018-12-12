@@ -10,21 +10,18 @@
 #include "../../GraphBLASExt/GxB_Delete.h"
 
 // Updates query graph edge.
-OpResult _CondTraverse_SetEdge(CondTraverse *op, Record *r) {
+OpResult _CondTraverse_SetEdge(CondTraverse *op, Record r) {
     // Consumed edges connecting current source and destination nodes.
     if(!array_len(op->edges)) return OP_DEPLETED;
 
     Edge *e = op->edges + (array_len(op->edges)-1);
-    op->algebraic_expression->edge->entity = e->entity;
-    op->algebraic_expression->edge->srcNodeID= e->srcNodeID;
-    op->algebraic_expression->edge->destNodeID= e->destNodeID;
-    
+    Record_AddEdge(r, op->edgeRecIdx, *e);
     array_pop(op->edges);
     return OP_OK;
 }
 
 void _extractColumn(CondTraverse *op, const Record r) {
-    Node *n = Record_GetNode(r, op->algebraic_expression->src_node->alias);
+    Node *n = Record_GetNode(r, op->srcNodeRecIdx);
     NodeID srcId = ENTITY_GET_ID(n);
 
     GrB_Matrix_setElement_BOOL(op->F, true, srcId, 0);
@@ -54,6 +51,10 @@ OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *algebraic_expression) {
     traverse->F = NULL;
     traverse->iter = NULL;
     traverse->edges = NULL;
+
+    AST *ast = AST_GetFromLTS();
+    traverse->srcNodeRecIdx = AST_GetAliasID(ast, algebraic_expression->src_node->alias);
+    traverse->destNodeRecIdx = AST_GetAliasID(ast, algebraic_expression->dest_node->alias);
     
     // Set our Op operations
     OpBase_Init(&traverse->op);
@@ -73,6 +74,7 @@ OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *algebraic_expression) {
         Vector_Push(traverse->op.modifies, modified);
         traverse->edges = array_new(Edge, Graph_RelationTypeCount(g));
         traverse->edgeRelationType = Edge_GetRelationID(algebraic_expression->edge);
+        traverse->edgeRecIdx = AST_GetAliasID(ast, algebraic_expression->edge->alias);
     }
 
     return (OpBase*)traverse;
@@ -81,36 +83,29 @@ OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *algebraic_expression) {
 /* CondTraverseConsume next operation 
  * each call will update the graph
  * returns OP_DEPLETED when no additional updates are available */
-OpResult CondTraverseConsume(OpBase *opBase, Record *r) {
+OpResult CondTraverseConsume(OpBase *opBase, Record r) {
     CondTraverse *op = (CondTraverse*)opBase;
     OpBase *child = op->op.children[0];
     
     /* Not initialized. */
     if(op->iter == NULL) {
-        if(child->consume(child, r) == OP_DEPLETED) return OP_DEPLETED;        
+        if(child->consume(child, r) == OP_DEPLETED) return OP_DEPLETED;
 
         GrB_Matrix_new(&op->F, GrB_BOOL, Graph_RequiredMatrixDim(op->graph), 1);
 
         /* Pick a column. */
-        _extractColumn(op, *r);
-
-        // Introduce entities to record.
-        char *destNodeAlias = op->algebraic_results->dest_node->alias;
-        Record_AddEntry(r, destNodeAlias, SI_PtrVal(op->algebraic_expression->dest_node));
-
-        if(op->algebraic_expression->edge != NULL) {
-            char *edgeAlias = op->algebraic_expression->edge->alias;
-            Record_AddEntry(r, edgeAlias, SI_PtrVal(op->algebraic_expression->edge));
-        }
+        _extractColumn(op, r);
     }
 
     /* If we're required to update edge,
      * try to get an edge, if successful we can return quickly,
      * otherwise try to get a new pair of source and destination nodes. */
     if(op->algebraic_expression->edge) {
-        if(_CondTraverse_SetEdge(op, r) == OP_OK) return OP_OK;
+        if(_CondTraverse_SetEdge(op, r) == OP_OK) {
+            return OP_OK;
+        }
     }
-    
+
     NodeID dest_id;
     bool depleted = false;
     while(true) {
@@ -121,24 +116,25 @@ OpResult CondTraverseConsume(OpBase *opBase, Record *r) {
 
         OpResult res = child->consume(child, r);
         if(res != OP_OK) return res;
-        _extractColumn(op, *r);
+        _extractColumn(op, r);
     }
 
     /* Get node from current column. */
-    Graph_GetNode(op->graph, dest_id, op->algebraic_expression->dest_node);
+    Node *destNode = Record_GetNode(r, op->destNodeRecIdx);
+    Graph_GetNode(op->graph, dest_id, destNode);
 
     if(op->algebraic_expression->edge != NULL) {
         // We're guarantee to have at least one edge.
         Node *srcNode;
         Node *destNode;
-
         size_t operandCount = op->algebraic_expression->operand_count - 1;
+
         if(op->algebraic_expression->operands[operandCount].transpose) {
-            srcNode = op->algebraic_expression->dest_node;
-            destNode = op->algebraic_expression->src_node;
+            srcNode = Record_GetNode(r, op->destNodeRecIdx);
+            destNode = Record_GetNode(r, op->srcNodeRecIdx);
         } else {
-            srcNode = op->algebraic_expression->src_node;
-            destNode = op->algebraic_expression->dest_node;
+            srcNode = Record_GetNode(r, op->srcNodeRecIdx);
+            destNode = Record_GetNode(r, op->destNodeRecIdx);
         }
 
         Graph_GetEdgesConnectingNodes(op->graph,
@@ -146,9 +142,8 @@ OpResult CondTraverseConsume(OpBase *opBase, Record *r) {
                                       ENTITY_GET_ID(destNode),
                                       op->edgeRelationType,
                                       &op->edges);
-        return _CondTraverse_SetEdge(op, r);
+        _CondTraverse_SetEdge(op, r);
     }
-
     return OP_OK;
 }
 

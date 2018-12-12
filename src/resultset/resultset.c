@@ -196,7 +196,7 @@ Column* NewColumn(const char *name, const char *alias, int aggregated) {
     return column;
 }
 
-ResultSetHeader* NewResultSetHeader(const AST_Query *ast) {
+ResultSetHeader* NewResultSetHeader(const AST *ast) {
     if(!ast->returnNode) return NULL;
 
     ResultSetHeader* header = malloc(sizeof(ResultSetHeader));
@@ -219,7 +219,7 @@ ResultSetHeader* NewResultSetHeader(const AST_Query *ast) {
         AST_ReturnElementNode* returnElementNode;
         Vector_Get(ast->returnNode->returnElements, i, &returnElementNode);
 
-        AR_ExpNode* ar_exp = AR_EXP_BuildFromAST(returnElementNode->exp);
+        AR_ExpNode* ar_exp = AR_EXP_BuildFromAST(ast, returnElementNode->exp);
 
         char* column_name;
         AR_EXP_ToString(ar_exp, &column_name);
@@ -266,7 +266,7 @@ ResultSetHeader* NewResultSetHeader(const AST_Query *ast) {
     return header;
 }
 
-ResultSet* NewResultSet(AST_Query* ast, RedisModuleCtx *ctx) {
+ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx) {
     ResultSet* set = (ResultSet*)malloc(sizeof(ResultSet));
     set->ctx = ctx;
     set->heap = NULL;

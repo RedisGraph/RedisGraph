@@ -6,12 +6,15 @@
 */
 
 #include "op_index_scan.h"
+#include "../../parser/ast.h"
 
 OpBase *NewIndexScanOp(Graph *g, Node *node, IndexIter *iter) {
   IndexScan *indexScan = malloc(sizeof(IndexScan));
   indexScan->g = g;
-  indexScan->node = node;
   indexScan->iter = iter;
+
+  AST *ast = AST_GetFromLTS();
+  indexScan->nodeRecIdx = AST_GetAliasID(ast, node->alias);
 
   // Set our Op operations
   OpBase_Init(&indexScan->op);
@@ -27,14 +30,16 @@ OpBase *NewIndexScanOp(Graph *g, Node *node, IndexIter *iter) {
   return (OpBase*)indexScan;
 }
 
-OpResult IndexScanConsume(OpBase *opBase, Record *r) {
+OpResult IndexScanConsume(OpBase *opBase, Record r) {
   IndexScan *op = (IndexScan*)opBase;
 
   EntityID *nodeId = IndexIter_Next(op->iter);
   if (!nodeId) return OP_DEPLETED;
 
-  Graph_GetNode(op->g, *nodeId, op->node);
-  Record_AddEntry(r, op->node->alias, SI_PtrVal(op->node));
+  // Get a pointer to a heap allocated node.
+  Node *n = Record_GetNode(r, op->nodeRecIdx);
+  // Update node's internal entity pointer.
+  Graph_GetNode(op->g, *nodeId, n);
 
   return OP_OK;
 }

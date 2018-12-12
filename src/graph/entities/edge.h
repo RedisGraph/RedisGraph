@@ -11,7 +11,6 @@
 #include "node.h"
 #include "../../value.h"
 #include "graph_entity.h"
-#include "../../util/uthash.h"
 #include "../../../deps/GraphBLAS/Include/GraphBLAS.h"
 
 /* TODO: note it is possible to get into an inconsistency

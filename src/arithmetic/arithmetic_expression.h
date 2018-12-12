@@ -95,11 +95,12 @@ typedef struct {
 /* OperandNode represents either a constant numeric value, 
  * or a graph entity property. */
 typedef struct {
-	union {
-		SIValue constant;
-		struct {
-			char *entity_alias;
-			char *entity_prop;
+    union {
+        SIValue constant;
+        struct {
+            char *entity_alias;
+            int entity_alias_idx;
+            char *entity_prop;
 		} variadic;
 	};
 	AR_OperandNodeType type;
@@ -127,11 +128,6 @@ SIValue AR_EXP_Evaluate(const AR_ExpNode *root, const Record r);
 void AR_EXP_Aggregate(const AR_ExpNode *root, const Record r);
 void AR_EXP_Reduce(const AR_ExpNode *root);
 
-/* Create arithmetic expression node. */
-AR_ExpNode* AR_EXP_NewConstOperandNode(SIValue constant);
-AR_ExpNode* AR_EXP_NewVariableOperandNode(const char *entity_prop, const char *entity_alias);
-AR_ExpNode* AR_EXP_NewOpNode(char *func_name, int child_count);
-
 /* Utility functions */
 /* Traverse an expression tree and add all graph entity aliases
  * (from variadics) to a triemap. */
@@ -146,7 +142,7 @@ int AR_EXP_ContainsAggregation(AR_ExpNode *root, AR_ExpNode **agg_node);
 void AR_EXP_ToString(const AR_ExpNode *root, char **str);
 
 /* Construct an arithmetic expression tree from ast arithmetic expression node. */
-AR_ExpNode* AR_EXP_BuildFromAST(const AST_ArithmeticExpressionNode *exp);
+AR_ExpNode* AR_EXP_BuildFromAST(const AST *ast, const AST_ArithmeticExpressionNode *exp);
 
 /* Free arithmetic expression tree. */
 void AR_EXP_Free(AR_ExpNode *root);

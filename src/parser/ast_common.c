@@ -27,13 +27,9 @@ AST_LinkEntity* New_AST_LinkEntity(char *alias, char *label, Vector *properties,
 	le->length = length;
 	le->ge.t = N_LINK;
 	le->ge.properties = properties;
-	
-	if(label != NULL) {
-		le->ge.label = strdup(label);
-	}
-	if(alias != NULL) {
-		le->ge.alias = strdup(alias);
-	}
+
+	if(label != NULL) le->ge.label = strdup(label);
+	if(alias != NULL) le->ge.alias = strdup(alias);
 
 	return le;
 }

@@ -19,6 +19,75 @@
 /* Arithmetic function repository. */
 static TrieMap *__aeRegisteredFuncs = NULL;
 
+static AR_ExpNode* _AR_EXP_NewConstOperandNode(SIValue constant) {
+    AR_ExpNode *node = calloc(1, sizeof(AR_ExpNode));
+    node->type = AR_EXP_OPERAND;
+    node->operand.type = AR_EXP_CONSTANT;
+    node->operand.constant = constant;
+    return node;
+}
+
+static AR_ExpNode* _AR_EXP_NewVariableOperandNode(const AST *ast, char *entity_prop, char *entity_alias) {
+    AR_ExpNode *node = calloc(1, sizeof(AR_ExpNode));
+    node->type = AR_EXP_OPERAND;
+    node->operand.type = AR_EXP_VARIADIC;
+    node->operand.variadic.entity_alias = strdup(entity_alias);
+    node->operand.variadic.entity_alias_idx = AST_GetAliasID(ast, entity_alias);
+    node->operand.variadic.entity_prop = entity_prop != NULL ? strdup(entity_prop) : NULL;
+    return node;
+}
+
+static AR_ExpNode* _AR_EXP_NewOpNode(char *func_name, int child_count) {
+    AR_ExpNode *node = calloc(1, sizeof(AR_ExpNode));
+    node->type = AR_EXP_OP;    
+    node->op.func_name = func_name;
+    node->op.child_count = child_count;
+    node->op.children = (AR_ExpNode **)malloc(child_count * sizeof(AR_ExpNode*));
+
+    /* Determine function type. */
+    AR_Func func = AR_GetFunc(func_name);
+    if(func != NULL) {
+        node->op.f = func;
+        node->op.type = AR_OP_FUNC;
+    } else {
+        /* Either this is an aggregation function
+         * or the requested function does not exists. */
+        AggCtx* agg_func;
+        Agg_GetFunc(func_name, &agg_func);
+
+        /* TODO: handle Unknown function. */
+        assert(agg_func != NULL);
+        node->op.agg_func = agg_func;
+        node->op.type = AR_OP_AGGREGATE;
+    }
+
+    return node;
+}
+
+AR_ExpNode* AR_EXP_BuildFromAST(const AST *ast, const AST_ArithmeticExpressionNode *exp) {
+    AR_ExpNode *root;
+
+    if(exp->type == AST_AR_EXP_OP) {
+        root = _AR_EXP_NewOpNode(exp->op.function, Vector_Size(exp->op.args));
+        /* Process operands. */
+        for(int i = 0; i < root->op.child_count; i++) {
+            AST_ArithmeticExpressionNode *child;
+            Vector_Get(exp->op.args, i, &child);
+            root->op.children[i] = AR_EXP_BuildFromAST(ast, child);
+        }
+    } else {
+        if(exp->operand.type == AST_AR_EXP_CONSTANT) {
+            root = _AR_EXP_NewConstOperandNode(exp->operand.constant);
+        } else {
+            root = _AR_EXP_NewVariableOperandNode(ast,
+                                                  exp->operand.variadic.property,
+                                                  exp->operand.variadic.alias);
+        }
+    }
+
+    return root;
+}
+
 int AR_EXP_GetOperandType(AR_ExpNode *exp) {
     if (exp->type == AR_EXP_OPERAND) return exp->operand.type;
     return -1;
@@ -49,13 +118,27 @@ SIValue AR_EXP_Evaluate(const AR_ExpNode *root, const Record r) {
         } else {
             // Fetch entity property value.
             if (root->operand.variadic.entity_prop != NULL) {
-                SIValue entry = Record_GetEntry(r, root->operand.variadic.entity_alias);
-                GraphEntity *ge = (GraphEntity*)entry.ptrval;
+                GraphEntity *ge = Record_GetGraphEntity(r, root->operand.variadic.entity_alias_idx);
                 SIValue *property = GraphEntity_Get_Property(ge, root->operand.variadic.entity_prop);
                 /* TODO: Handle PROPERTY_NOTFOUND. */
                 result = SI_ShallowCopy(*property);
             } else {
-                result = Record_GetEntry(r, root->operand.variadic.entity_alias);
+                // Alias doesn't necessarily refers to a graph entity,
+                // it could also be a constant.
+                // TODO: consider moving this logic to a generic method of Record.
+                int aliasIdx = root->operand.variadic.entity_alias_idx;
+                RecordEntryType t = Record_GetType(r, aliasIdx);
+                switch(t) {
+                    case REC_TYPE_SCALAR:
+                        result = Record_GetScalar(r, aliasIdx);
+                        break;
+                    case REC_TYPE_NODE:
+                    case REC_TYPE_EDGE:
+                        result = SI_PtrVal(Record_GetGraphEntity(r, aliasIdx));
+                        break;
+                    default:
+                        assert(false);
+                }
             }
         }
     }
@@ -101,50 +184,6 @@ void AR_EXP_Reduce(const AR_ExpNode *root) {
             }
         }
     }
-}
-
-AR_ExpNode* AR_EXP_NewConstOperandNode(SIValue constant) {
-    AR_ExpNode *node = calloc(1, sizeof(AR_ExpNode));
-    node->type = AR_EXP_OPERAND;
-    node->operand.type = AR_EXP_CONSTANT;
-    node->operand.constant = constant;
-    return node;
-}
-
-AR_ExpNode* AR_EXP_NewVariableOperandNode(const char *entity_prop, const char *entity_alias) {
-    AR_ExpNode *node = calloc(1, sizeof(AR_ExpNode));
-    node->type = AR_EXP_OPERAND;
-    node->operand.type = AR_EXP_VARIADIC;
-    node->operand.variadic.entity_alias = strdup(entity_alias);
-    node->operand.variadic.entity_prop = entity_prop != NULL ? strdup(entity_prop) : NULL;
-    return node;
-}
-
-AR_ExpNode* AR_EXP_NewOpNode(char *func_name, int child_count) {
-    AR_ExpNode *node = calloc(1, sizeof(AR_ExpNode));
-    node->type = AR_EXP_OP;    
-    node->op.func_name = func_name;
-    node->op.child_count = child_count;
-    node->op.children = (AR_ExpNode **)malloc(child_count * sizeof(AR_ExpNode*));
-
-    /* Determine function type. */
-    AR_Func func = AR_GetFunc(func_name);
-    if(func != NULL) {
-        node->op.f = func;
-        node->op.type = AR_OP_FUNC;
-    } else {
-        /* Either this is an aggregation function
-         * or the requested function does not exists. */
-        AggCtx* agg_func;
-        Agg_GetFunc(func_name, &agg_func);
-
-        /* TODO: handle Unknown function. */
-        assert(agg_func != NULL);
-        node->op.agg_func = agg_func;
-        node->op.type = AR_OP_AGGREGATE;
-    }
-
-    return node;
 }
 
 void AR_EXP_CollectAliases(AR_ExpNode *root, TrieMap *aliases) {
@@ -253,29 +292,6 @@ void AR_EXP_ToString(const AR_ExpNode *root, char **str) {
     size_t bytes_written = 0;
     *str = NULL;
     _AR_EXP_ToString(root, str, &str_size, &bytes_written);
-}
-
-AR_ExpNode* AR_EXP_BuildFromAST(const AST_ArithmeticExpressionNode *exp) {
-    AR_ExpNode *root;
-
-    if(exp->type == AST_AR_EXP_OP) {
-        root = AR_EXP_NewOpNode(exp->op.function, Vector_Size(exp->op.args));
-        /* Process operands. */
-        for(int i = 0; i < root->op.child_count; i++) {
-            AST_ArithmeticExpressionNode *child;
-            Vector_Get(exp->op.args, i, &child);
-            root->op.children[i] = AR_EXP_BuildFromAST(child);
-        }
-    } else {
-        if(exp->operand.type == AST_AR_EXP_CONSTANT) {
-            root = AR_EXP_NewConstOperandNode(exp->operand.constant);
-        } else {
-            root = AR_EXP_NewVariableOperandNode(exp->operand.variadic.property,
-                                                 exp->operand.variadic.alias);
-        }
-    }
-
-    return root;
 }
 
 void AR_EXP_Free(AR_ExpNode *root) {

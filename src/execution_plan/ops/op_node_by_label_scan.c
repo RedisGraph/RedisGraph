@@ -6,12 +6,16 @@
 */
 
 #include "op_node_by_label_scan.h"
+#include "../../parser/ast.h"
 
 OpBase *NewNodeByLabelScanOp(GraphContext *gc, Node *node) {
     NodeByLabelScan *nodeByLabelScan = malloc(sizeof(NodeByLabelScan));
     nodeByLabelScan->g = gc->g;
     nodeByLabelScan->node = node;
     nodeByLabelScan->_zero_matrix = NULL;
+
+    AST *ast = AST_GetFromLTS();
+    nodeByLabelScan->node_rec_idx = AST_GetAliasID(ast, node->alias);
 
     /* Find out label matrix ID. */
     LabelStore *store = GraphContext_GetStore(gc, node->label, STORE_NODE);
@@ -37,21 +41,19 @@ OpBase *NewNodeByLabelScanOp(GraphContext *gc, Node *node) {
     return (OpBase*)nodeByLabelScan;
 }
 
-OpResult NodeByLabelScanConsume(OpBase *opBase, Record *r) {
+OpResult NodeByLabelScanConsume(OpBase *opBase, Record r) {
     NodeByLabelScan *op = (NodeByLabelScan*)opBase;
 
     GrB_Index nodeId;
 
-    // First call to consume.
-    if(ENTITY_GET_ID(op->node) == INVALID_ENTITY_ID) {
-        Record_AddEntry(r, op->node->alias, SI_PtrVal(op->node));
-    }
-
     bool depleted = false;
     GxB_MatrixTupleIter_next(op->iter, NULL, &nodeId, &depleted);
     if(depleted) return OP_DEPLETED;
-
-    Graph_GetNode(op->g, nodeId, op->node);
+    
+    // Get a pointer to a heap allocated node.
+    Node *n = Record_GetNode(r, op->node_rec_idx);
+    // Update node's internal entity pointer.
+    Graph_GetNode(op->g, nodeId, n);
     return OP_OK;
 }
 

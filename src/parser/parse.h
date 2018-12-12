@@ -11,7 +11,7 @@
 #include "ast.h"
 
 typedef struct {
-    AST_Query *root;
+    AST *root;
     int ok;
     char *errorMsg;
 } parseCtx;

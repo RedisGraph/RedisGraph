@@ -9,13 +9,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "../util/rmalloc.h"
 #include "../graph/entities/graph_entity.h"
 #include "./ast_arithmetic_expression.h"
 #include "../arithmetic/repository.h"
 #include "../arithmetic/arithmetic_expression.h"
 
+extern pthread_key_t _tlsASTKey;  // Thread local storage AST key.
+
 /* Compares a triemap of user-specified functions with the registered functions we provide. */
-AST_Validation _AST_ValidateReferredFunctions(TrieMap *referred_functions,
+static AST_Validation _AST_ValidateReferredFunctions(TrieMap *referred_functions,
                                               char **reason,
                                               bool include_aggregates) {
   void *value;
@@ -62,33 +65,33 @@ AST_Validation _AST_ValidateReferredFunctions(TrieMap *referred_functions,
   return res;
 }
 
-AST_Query *New_AST_Query(AST_MatchNode *matchNode, AST_WhereNode *whereNode,
-                         AST_CreateNode *createNode, AST_MergeNode *mergeNode,
-                         AST_SetNode *setNode, AST_DeleteNode *deleteNode,
-                         AST_ReturnNode *returnNode, AST_OrderNode *orderNode,
-                         AST_SkipNode *skipNode, AST_LimitNode *limitNode,
-                         AST_IndexNode *indexNode, AST_UnwindNode *unwindNode) {
-  AST_Query *queryExpressionNode = (AST_Query *)malloc(sizeof(AST_Query));
+static void _AST_MapAliasToID(AST *ast) {
+  uint id = 0;  
+  ast->_aliasIDMapping = NewTrieMap(); // Holds mapping between referred entities and IDs.
+  
+  // Get unique aliases, from clauses which can introduce entities.
+  TrieMap *referredEntities = NewTrieMap();
+  MatchClause_DefinedEntities(ast->matchNode, referredEntities);
+  CreateClause_ReferredEntities(ast->createNode, referredEntities);
+  UnwindClause_DefinedEntities(ast->unwindNode, referredEntities);
 
-  queryExpressionNode->matchNode = matchNode;
-  queryExpressionNode->whereNode = whereNode;
-  queryExpressionNode->createNode = createNode;
-  queryExpressionNode->mergeNode = mergeNode;
-  queryExpressionNode->setNode = setNode;
-  queryExpressionNode->deleteNode = deleteNode;
-  queryExpressionNode->returnNode = returnNode;
-  queryExpressionNode->orderNode = orderNode;
-  queryExpressionNode->skipNode = skipNode;
-  queryExpressionNode->limitNode = limitNode;
-  queryExpressionNode->indexNode = indexNode;
-  queryExpressionNode->unwindNode = unwindNode;
+  void *val;
+  char *ptr;
+  tm_len_t len;
+  TrieMapIterator *it = TrieMap_Iterate(referredEntities, "", 0);
+  // Scan through aliases and give each one an ID.
+  while(TrieMapIterator_Next(it, &ptr, &len, &val)) {
+    uint *entityID = malloc(sizeof(uint));
+    *entityID = id++;
+    TrieMap_Add(ast->_aliasIDMapping, ptr, len, entityID, TrieMap_NOP_REPLACE);
+  }
 
-  return queryExpressionNode;
+  TrieMapIterator_Free(it);
+  TrieMap_Free(referredEntities, TrieMap_NOP_CB);
 }
 
-AST_Validation _Aliases_Defined(const AST_Query *ast,
-                                char **undefined_alias) {
-  /* Check that all the aliases that are in aliasesToCheck exists in the match clause */
+/* Check that all the aliases that are in aliasesToCheck exists in the match clause */
+static AST_Validation _Aliases_Defined(const AST *ast, char **undefined_alias) {
   AST_Validation res = AST_VALID;
   
   TrieMap *aliasesToCheck = NewTrieMap();
@@ -122,7 +125,7 @@ AST_Validation _Aliases_Defined(const AST_Query *ast,
   return res;
 }
 
-AST_Validation _Validate_CREATE_Clause(const AST_Query *ast, char **reason) {
+static AST_Validation _Validate_CREATE_Clause(const AST *ast, char **reason) {
   if(!ast->createNode) return AST_VALID;
   AST_CreateNode *createNode = ast->createNode;
   
@@ -141,7 +144,7 @@ AST_Validation _Validate_CREATE_Clause(const AST_Query *ast, char **reason) {
   return AST_VALID;
 }
 
-AST_Validation _Validate_DELETE_Clause(const AST_Query *ast, char **reason) {
+static AST_Validation _Validate_DELETE_Clause(const AST *ast, char **reason) {
 
   if (!ast->deleteNode) {
     return AST_VALID;
@@ -154,7 +157,7 @@ AST_Validation _Validate_DELETE_Clause(const AST_Query *ast, char **reason) {
   return AST_VALID;
 }
 
-AST_Validation _Validate_MATCH_Clause(const AST_Query *ast, char **reason) {
+static AST_Validation _Validate_MATCH_Clause(const AST *ast, char **reason) {
   if(!ast->matchNode) return AST_VALID;
   
   // Check to see if an edge is being reused.
@@ -226,7 +229,7 @@ AST_Validation _Validate_MATCH_Clause(const AST_Query *ast, char **reason) {
   return res;
 }
 
-AST_Validation _Validate_RETURN_Clause(const AST_Query *ast, char **reason) {
+static AST_Validation _Validate_RETURN_Clause(const AST *ast, char **reason) {
   char *undefined_alias;
 
   if (!ast->returnNode) {
@@ -244,7 +247,7 @@ AST_Validation _Validate_RETURN_Clause(const AST_Query *ast, char **reason) {
   return res;
 }
 
-AST_Validation _Validate_SET_Clause(const AST_Query *ast, char **reason) {
+static AST_Validation _Validate_SET_Clause(const AST *ast, char **reason) {
   char *undefined_alias;
 
   if (!ast->setNode) {
@@ -258,7 +261,7 @@ AST_Validation _Validate_SET_Clause(const AST_Query *ast, char **reason) {
   return AST_VALID;
 }
 
-AST_Validation _Validate_WHERE_Clause(const AST_Query *ast, char **reason) {
+static AST_Validation _Validate_WHERE_Clause(const AST *ast, char **reason) {
   if (!ast->whereNode) return AST_VALID;
   if (!ast->matchNode) return AST_INVALID;
 
@@ -274,7 +277,37 @@ AST_Validation _Validate_WHERE_Clause(const AST_Query *ast, char **reason) {
   return res;
 }
 
-AST_Validation AST_Validate(const AST_Query *ast, char **reason) {
+AST *AST_New(AST_MatchNode *matchNode, AST_WhereNode *whereNode,
+                         AST_CreateNode *createNode, AST_MergeNode *mergeNode,
+                         AST_SetNode *setNode, AST_DeleteNode *deleteNode,
+                         AST_ReturnNode *returnNode, AST_OrderNode *orderNode,
+                         AST_SkipNode *skipNode, AST_LimitNode *limitNode,
+                         AST_IndexNode *indexNode, AST_UnwindNode *unwindNode) {
+  AST *ast = rm_malloc(sizeof(AST));
+
+  ast->matchNode = matchNode;
+  ast->whereNode = whereNode;
+  ast->createNode = createNode;
+  ast->mergeNode = mergeNode;
+  ast->setNode = setNode;
+  ast->deleteNode = deleteNode;
+  ast->returnNode = returnNode;
+  ast->orderNode = orderNode;
+  ast->skipNode = skipNode;
+  ast->limitNode = limitNode;
+  ast->indexNode = indexNode;
+  ast->unwindNode = unwindNode;
+  ast->_aliasIDMapping = NULL;
+  return ast;
+}
+
+AST *AST_GetFromLTS() {
+  AST* ast = pthread_getspecific(_tlsASTKey);
+  assert(ast);
+  return ast;
+}
+
+AST_Validation AST_Validate(const AST *ast, char **reason) {
   /* AST must include either a MATCH or CREATE clause. */
   if (!(ast->matchNode || ast->createNode || ast->mergeNode || ast->returnNode || ast->indexNode)) {
     asprintf(reason, "Query must specify either MATCH or CREATE clause");
@@ -318,17 +351,33 @@ AST_Validation AST_Validate(const AST_Query *ast, char **reason) {
   return AST_VALID;
 }
 
-void AST_NameAnonymousNodes(AST_Query *ast) {
+int AST_AliasCount(const AST *ast) {
+  assert(ast);
+  return ast->_aliasIDMapping->cardinality;
+}
+
+int AST_GetAliasID(const AST *ast, char *alias) {
+  assert(ast->_aliasIDMapping);
+  void *v = TrieMap_Find(ast->_aliasIDMapping, alias, strlen(alias));
+  assert(v != TRIEMAP_NOTFOUND);
+  int *id = (int*)v;
+  return *id;
+}
+
+void AST_NameAnonymousNodes(AST *ast) {
   int entity_id = 0;
-  
+
   if(ast->matchNode)
     MatchClause_NameAnonymousNodes(ast->matchNode, &entity_id);
 
   if(ast->createNode)
     CreateClause_NameAnonymousNodes(ast->createNode, &entity_id);
+  
+  // Mark each alias with a unique ID.
+  _AST_MapAliasToID(ast);
 }
 
-bool AST_ReadOnly(const AST_Query *ast) {
+bool AST_ReadOnly(const AST *ast) {
   return !(ast->createNode != NULL ||
            ast->mergeNode != NULL ||
            ast->deleteNode != NULL ||
@@ -336,16 +385,18 @@ bool AST_ReadOnly(const AST_Query *ast) {
            ast->indexNode != NULL);
 }
 
-void Free_AST_Query(AST_Query *queryExpressionNode) {
-  Free_AST_MatchNode(queryExpressionNode->matchNode);
-  Free_AST_CreateNode(queryExpressionNode->createNode);
-  Free_AST_MergeNode(queryExpressionNode->mergeNode);
-  Free_AST_DeleteNode(queryExpressionNode->deleteNode);
-  Free_AST_SetNode(queryExpressionNode->setNode);
-  Free_AST_WhereNode(queryExpressionNode->whereNode);
-  Free_AST_ReturnNode(queryExpressionNode->returnNode);
-  Free_AST_SkipNode(queryExpressionNode->skipNode);
-  Free_AST_OrderNode(queryExpressionNode->orderNode);
-  Free_AST_UnwindNode(queryExpressionNode->unwindNode);
-  free(queryExpressionNode);
+void AST_Free(AST *ast) {
+  Free_AST_MatchNode(ast->matchNode);
+  Free_AST_CreateNode(ast->createNode);
+  Free_AST_MergeNode(ast->mergeNode);
+  Free_AST_DeleteNode(ast->deleteNode);
+  Free_AST_SetNode(ast->setNode);
+  Free_AST_WhereNode(ast->whereNode);
+  Free_AST_ReturnNode(ast->returnNode);
+  Free_AST_SkipNode(ast->skipNode);
+  Free_AST_OrderNode(ast->orderNode);
+  Free_AST_UnwindNode(ast->unwindNode);
+
+  if(ast->_aliasIDMapping) TrieMap_Free(ast->_aliasIDMapping, NULL);
+  rm_free(ast);
 }

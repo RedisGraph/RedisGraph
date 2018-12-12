@@ -16,18 +16,18 @@
 #include "arithmetic/arithmetic_expression.h"
 
 /* Create an AST from raw query. */
-AST_Query* ParseQuery(const char *query, size_t qLen, char **errMsg);
+AST* ParseQuery(const char *query, size_t qLen, char **errMsg);
 
 /* Make sure AST is valid. */
-AST_Validation AST_PerformValidations(RedisModuleCtx *ctx, AST_Query *ast);
+AST_Validation AST_PerformValidations(RedisModuleCtx *ctx, AST *ast);
 
 /* Construct an expression tree foreach none aggregated term.
  * Returns a vector of none aggregated expression trees. */
-void Build_None_Aggregated_Arithmetic_Expressions(AST_ReturnNode *return_node,
+void Build_None_Aggregated_Arithmetic_Expressions(AST *ast,
                                                   AR_ExpNode ***expressions,
                                                   int *expressions_count);
 
 /* Performs a number of adjustments to given AST. */
-void ModifyAST(GraphContext *gc, AST_Query *ast);
+void ModifyAST(GraphContext *gc, AST *ast);
 
 #endif

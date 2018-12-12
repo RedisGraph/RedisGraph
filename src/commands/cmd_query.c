@@ -11,7 +11,9 @@
 #include "../util/simple_timer.h"
 #include "../execution_plan/execution_plan.h"
 
-QueryContext* _queryContext_New(RedisModuleBlockedClient *bc, AST_Query* ast, RedisModuleString *graphName) {
+extern pthread_key_t _tlsASTKey;  // Thread local storage AST key.
+
+QueryContext* _queryContext_New(RedisModuleBlockedClient *bc, AST* ast, RedisModuleString *graphName) {
     QueryContext* context = malloc(sizeof(QueryContext));
     context->bc = bc;
     context->ast = ast;
@@ -58,7 +60,10 @@ void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST_IndexNode *inde
 void _MGraph_Query(void *args) {
     QueryContext *qctx = (QueryContext*)args;
     RedisModuleCtx *ctx = RedisModule_GetThreadSafeContext(qctx->bc);
-    AST_Query* ast = qctx->ast;
+    AST* ast = qctx->ast;
+    // Add AST to thread local storage.
+    pthread_setspecific(_tlsASTKey, ast);
+
     ResultSet* resultSet = NULL;
 
     bool readonly = AST_ReadOnly(ast);
@@ -111,7 +116,7 @@ cleanup:
     if (gc) Graph_ReleaseLock(gc->g);
     // Release Redis global lock if it was acquired
     if (!readonly) RedisModule_ThreadSafeContextUnlock(ctx);
-    Free_AST_Query(ast);
+    AST_Free(ast);
     ResultSet_Free(resultSet);
     RedisModule_UnblockClient(qctx->bc, NULL);
     RedisModule_FreeThreadSafeContext(ctx);
@@ -139,7 +144,7 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     // TODO: support concurrent parsing.
     char *errMsg = NULL;
     const char *query = RedisModule_StringPtrLen(argv[2], NULL);
-    AST_Query* ast = ParseQuery(query, strlen(query), &errMsg);
+    AST* ast = ParseQuery(query, strlen(query), &errMsg);
     if (!ast) {
         RedisModule_Log(ctx, "debug", "Error parsing query: %s", errMsg);
         RedisModule_ReplyWithError(ctx, errMsg);

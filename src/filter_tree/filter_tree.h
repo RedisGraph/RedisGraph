@@ -49,7 +49,7 @@ typedef struct FT_FilterNode FT_FilterNode;
 
 /* Given AST's WHERE subtree constructs a filter tree
  * This is done to speed up the filtering process. */
-FT_FilterNode* BuildFiltersTree(const AST_FilterNode *root);
+FT_FilterNode* BuildFiltersTree(const AST *ast, const AST_FilterNode *root);
 
 int IsNodePredicate(const FT_FilterNode *node);
 

@@ -6,56 +6,63 @@
 */
 
 #include "./record.h"
-#include "../util/uthash.h"
+#include "../util/rmalloc.h"
 #include <assert.h>
 
-Record Record_Empty() {
+Record Record_New(int entries) {
+    Record r = rm_calloc(entries, sizeof(Entry));
+    return r;
+}
+
+RecordEntryType Record_GetType(const Record r, int idx) {
+    return r[idx].type;
+}
+
+SIValue Record_GetScalar(Record r,  int idx) {
+    r[idx].type = REC_TYPE_SCALAR;
+    return r[idx].value.s;
+}
+
+Node *Record_GetNode(const Record r,  int idx) {
+    r[idx].type = REC_TYPE_NODE;
+    return &r[idx].value.n;
+}
+
+Edge *Record_GetEdge(const Record r,  int idx) {
+    r[idx].type = REC_TYPE_EDGE;
+    return &r[idx].value.e;
+}
+
+GraphEntity *Record_GetGraphEntity(const Record r, int idx) {
+    Entry e = r[idx];
+    switch(e.type) {
+        case REC_TYPE_NODE:
+            return (GraphEntity*)Record_GetNode(r, idx);
+        case REC_TYPE_EDGE:
+            return (GraphEntity*)Record_GetEdge(r, idx);
+        case REC_TYPE_SCALAR:
+            return (GraphEntity*)(Record_GetScalar(r, idx).ptrval);
+        default:
+            assert(false);
+    }
     return NULL;
 }
 
-void Record_AddEntry(Record *r, const char* k, SIValue v) {
-    Entry *e;
-    HASH_FIND_STR(*r, k, e);
-    if(e) {
-         // key already exists, update entry.
-         e->v = v;
-    } else {
-        e = malloc(sizeof(Entry));
-        e->alias = k;
-        e->v = v;
-        HASH_ADD_KEYPTR(hh, *r, e->alias, strlen(e->alias), e);
-    }
+void Record_AddScalar(Record r, int idx, SIValue v) {
+    r[idx].value.s = v;
+    r[idx].type = REC_TYPE_SCALAR;
 }
 
-SIValue Record_GetEntry(Record r, const char *alias) {
-    Entry *e = NULL;
-    HASH_FIND_STR(r, alias, e);
-    assert(e);
-    return e->v;
+void Record_AddNode(Record r, int idx, Node node) {
+    r[idx].value.n = node;
+    r[idx].type = REC_TYPE_NODE;
 }
 
-Node *Record_GetNode(const Record r, const char *alias) {
-    SIValue entry = Record_GetEntry(r, alias);
-    return (Node*)entry.ptrval;
-}
-
-Edge *Record_GetEdge(const Record r, const char *alias) {
-    SIValue entry = Record_GetEntry(r, alias);
-    return (Edge*)entry.ptrval;
-}
-
-void Record_Print(const Record r) {
-    for(Entry *e = r; e != NULL; e = e->hh.next) {
-        printf("alias %s:\n", e->alias);
-    }
+void Record_AddEdge(Record r, int idx, Edge edge) {
+    r[idx].value.e = edge;
+    r[idx].type = REC_TYPE_EDGE;
 }
 
 void Record_Free(Record r) {
-    if(!r) return;
-
-    Entry *e, *tmp;
-    HASH_ITER(hh, r, e, tmp) {
-        HASH_DEL(r, e);
-        free(e);
-    }
+    rm_free(r);
 }

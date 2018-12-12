@@ -13,12 +13,14 @@
 
 OpBase* NewCondVarLenTraverseOp(AlgebraicExpression *ae, unsigned int minHops, unsigned int maxHops, Graph *g) {
     assert(ae && minHops <= maxHops && g && ae->operand_count == 1);
+    AST *ast = AST_GetFromLTS();
+
     CondVarLenTraverse *condVarLenTraverse = malloc(sizeof(CondVarLenTraverse));
     condVarLenTraverse->g = g;
     condVarLenTraverse->ae = ae;
     condVarLenTraverse->relationID = Edge_GetRelationID(ae->edge);
-    condVarLenTraverse->srcNodeAlias = ae->src_node->alias;
-    condVarLenTraverse->destNodeAlias = ae->dest_node->alias;
+    condVarLenTraverse->srcNodeIdx = AST_GetAliasID(ast, ae->src_node->alias);
+    condVarLenTraverse->destNodeIdx = AST_GetAliasID(ast, ae->dest_node->alias);
     condVarLenTraverse->minHops = minHops;
     condVarLenTraverse->maxHops = maxHops;
     condVarLenTraverse->allPathsCtx = NULL;
@@ -34,24 +36,23 @@ OpBase* NewCondVarLenTraverseOp(AlgebraicExpression *ae, unsigned int minHops, u
     condVarLenTraverse->op.modifies = NewVector(char*, 1);
 
     const char *modified = NULL;
-    modified = condVarLenTraverse->destNodeAlias;
+    modified = ae->dest_node->alias;
     Vector_Push(condVarLenTraverse->op.modifies, modified);
 
     return (OpBase*)condVarLenTraverse;
 }
 
-OpResult CondVarLenTraverseConsume(OpBase *opBase, Record *r) {
+OpResult CondVarLenTraverseConsume(OpBase *opBase, Record r) {
     CondVarLenTraverse *op = (CondVarLenTraverse*)opBase;
     OpBase *child = op->op.children[0];
-
     OpResult res;
 
     /* Not initialized. */
     if(!op->allPathsCtx) {
         res = child->consume(child, r);
         if(res != OP_OK) return res;
-        op->allPathsCtx = AllPathsCtx_New(op->ae->src_node, op->g, op->relationID, op->traverseDir, op->minHops, op->maxHops);
-        Record_AddEntry(r, op->destNodeAlias, SI_PtrVal(op->ae->dest_node));
+        Node *srcNode = Record_GetNode(r, op->srcNodeIdx);
+        op->allPathsCtx = AllPathsCtx_New(srcNode, op->g, op->relationID, op->traverseDir, op->minHops, op->maxHops);
     }
 
     Path p = NULL;
@@ -59,7 +60,7 @@ OpResult CondVarLenTraverseConsume(OpBase *opBase, Record *r) {
         res = child->consume(child, r);
         if(res != OP_OK) return res;
 
-        Node *srcNode = Record_GetNode(*r, op->srcNodeAlias);
+        Node *srcNode = Record_GetNode(r, op->srcNodeIdx);
 
         AllPathsCtx_Free(op->allPathsCtx);
         op->allPathsCtx = AllPathsCtx_New(srcNode, op->g, op->relationID, op->traverseDir, op->minHops, op->maxHops);
@@ -69,9 +70,7 @@ OpResult CondVarLenTraverseConsume(OpBase *opBase, Record *r) {
     Node n = Path_pop(p);
     Path_free(p);
 
-    // op->ae->dest_node is already in record
-    // All that's left to do is update its internal entity.
-    op->ae->dest_node->entity = n.entity;
+    Record_AddNode(r, op->destNodeIdx, n);
     return OP_OK;
 }
 

@@ -15,9 +15,10 @@
 #include "../../arithmetic/arithmetic_expression.h"
 
 typedef struct {
-    AST_GraphEntity *ge; /* Referred entity in MATCH clause. */
-    char *property;      /* Property to update. */
-    AR_ExpNode *exp;     /* Expression to evaluate. */
+    AST_GraphEntity *ge;    /* Referred entity in MATCH clause. */
+    int entityRecIdx;       /* Position of entity within record. */
+    char *property;         /* Property to update. */
+    AR_ExpNode *exp;        /* Expression to evaluate. */
 } EntityUpdateEvalCtx;
 
 typedef struct {
@@ -35,12 +36,12 @@ typedef struct {
     EntityUpdateCtx *entities_to_update;    /* List of entities to update and their actual new value. */
     size_t entities_to_update_cap;
     size_t entities_to_update_count;
-    AST_Query *ast;
+    AST *ast;
     GraphContext *gc;
 } OpUpdate;
 
-OpBase* NewUpdateOp(GraphContext *gc, AST_Query *ast, ResultSet *result_set);
-OpResult OpUpdateConsume(OpBase *opBase, Record *r);
+OpBase* NewUpdateOp(GraphContext *gc, AST *ast, ResultSet *result_set);
+OpResult OpUpdateConsume(OpBase *opBase, Record r);
 OpResult OpUpdateReset(OpBase *ctx);
 void OpUpdateFree(OpBase *ctx);
 

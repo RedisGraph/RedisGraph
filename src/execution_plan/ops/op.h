@@ -45,7 +45,7 @@ typedef enum {
 
 struct OpBase;
 
-typedef OpResult (*fpConsume)(struct OpBase*, Record *r);
+typedef OpResult (*fpConsume)(struct OpBase*, Record r);
 typedef OpResult (*fpReset)(struct OpBase*);
 typedef void (*fpFree)(struct OpBase*);
 struct OpBase {

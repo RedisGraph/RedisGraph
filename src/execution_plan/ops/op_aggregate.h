@@ -19,7 +19,7 @@
  * return clause */
  typedef struct {
      OpBase op;
-     AST_Query *ast;
+     AST *ast;
      int none_aggregated_expression_count; /* Number of return terms which are not aggregated. */
      AR_ExpNode **none_aggregated_expressions;
      SIValue *group_keys;   /* Array of values composing an aggregated group. */
@@ -27,8 +27,8 @@
      int init;
  } Aggregate;
 
-OpBase* NewAggregateOp(AST_Query *ast, TrieMap *groups);
-OpResult AggregateConsume(OpBase *opBase, Record *r);
+OpBase* NewAggregateOp(AST *ast, TrieMap *groups);
+OpResult AggregateConsume(OpBase *opBase, Record r);
 OpResult AggregateReset(OpBase *opBase);
 void AggregateFree(OpBase *opBase);
 
