@@ -88,7 +88,7 @@ void _MGraph_BulkInsert(void *args) {
         gc = GraphContext_New(ctx, rs_graph_name, nodes_in_query, relations_in_query);
         // Exit if graph creation failed
         if (gc == NULL) {
-            RedisModule_ReplyWithError(ctx, "Failed to allocate space for graph.");
+            RedisModule_ReplyWithError(ctx, "Key was already in Redis database at beginning of bulk insert operation.");
             goto cleanup;
         }
     } else {

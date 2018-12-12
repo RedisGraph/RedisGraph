@@ -248,8 +248,8 @@ class GraphBulkInsertFlowTest(FlowTestsBase):
                                           graphname])
 
         assert res.exit_code == 0
-        # The script should report statistics 4 times, once per input file
-        assert res.output.count('nodes created') == 4
+        # The script should report statistics multiple times
+        assert res.output.count('nodes created') > 1
         #  assert '27 nodes created' in res.output
         #  assert '48 edges created' in res.output
 
@@ -302,6 +302,20 @@ class GraphBulkInsertFlowTest(FlowTestsBase):
         assert res.exit_code != 0
         assert 'should have at least 2 elements' in res.exception.message
 
+        with open('/tmp/relations.tmp', mode='w') as csv_file:
+            out = csv.writer(csv_file)
+            out.writerow(["src", "dest"])
+            out.writerow([0, "fakeidentifier"])
+
+        runner = CliRunner()
+        res = runner.invoke(bulk_insert, ['--port', port,
+                                          '--nodes', '/tmp/nodes.tmp',
+                                          '--relations', '/tmp/relations.tmp',
+                                          graphname])
+
+        # The script should fail because an invalid node identifier was used
+        assert res.exit_code != 0
+        assert 'fakeidentifier' in res.exception.message
         os.remove('/tmp/nodes.tmp')
         os.remove('/tmp/relations.tmp')
 
