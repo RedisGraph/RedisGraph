@@ -12,153 +12,130 @@
 #include <libgen.h>
 #include "../util/rmalloc.h"
 
+// The first byte of each property in the binary stream
+// is used to indicate the type of the subsequent SIValue
 typedef enum {
-  BI_NULL,
-  BI_BOOL,
-  BI_NUMERIC,
-  BI_STRING
+    BI_NULL,
+    BI_BOOL,
+    BI_NUMERIC,
+    BI_STRING
 } TYPE;
 
-int _BulkInsert_ProcessNodeFile(RedisModuleCtx *ctx, GraphContext *gc, const char *data, size_t data_len) {
+// Read the header of a data stream to parse its property keys and update schemas.
+static char** _BulkInsert_ReadHeader(GraphContext *gc, LabelStoreType t,
+                                                  const char *data, size_t *data_idx,
+                                                  int *label_id, unsigned int *prop_count) {
+    // First sequence is entity name 
+    const char *name = data + *data_idx;
+    *data_idx += strlen(name) + 1;
+    LabelStore *store = (t == STORE_NODE) ? GraphContext_AddLabel(gc, name)
+                                          : GraphContext_AddRelationType(gc, name);
+    *label_id = store->id;
 
-  size_t data_idx = 0;
+    // Next 4 bytes are property count
+    *prop_count = *(unsigned int*)&data[*data_idx];
+    *data_idx += sizeof(unsigned int);
 
-  // Read the file header
-  // First sequence is label string
-  const char *label = data + data_idx;
-  data_idx += strlen(label) + 1;
-  LabelStore *store = GraphContext_AddLabel(gc, label);
+    char **prop_keys = malloc(*prop_count * sizeof(char*));
 
-  // Next 4 bytes are property count
-  unsigned int prop_count = *(unsigned int*)&data[data_idx];
-  data_idx += sizeof(unsigned int);
-
-  char *prop_keys[prop_count];
-
-  // The rest of the line is [char *prop_key] * prop_count
-  for (unsigned int j = 0; j < prop_count; j ++) {
-    // TODO update LabelStore and GraphEntity function signatures to expect const char * arguments
-    prop_keys[j] = (char*)data + data_idx;
-    data_idx += strlen(prop_keys[j]) + 1;
-    // printf("prop key %d: %s\n", j, prop_keys[j]);
-  }
-
-  // Add properties to schemas
-  LabelStore_UpdateSchema(GraphContext_AllStore(gc, STORE_NODE), prop_count, prop_keys);
-  LabelStore_UpdateSchema(store, prop_count, prop_keys);
-
-  // Entity handling
-  // Reusable buffer for storing properties of each node
-  SIValue values[prop_count];
-
-  unsigned int prop_num = 0;
-  while (data_idx < data_len) {
-    Node n;
-    Graph_CreateNode(gc->g, store->id, &n);
-    for (unsigned int i = 0; i < prop_count; i ++) {
-      TYPE t = data[data_idx++];
-      // printf("%s: ", types[t]);
-      if (t == BI_NULL) {
-        values[i] = SI_NullVal(); // TODO ensure this property doesn't get added
-      } else if (t == BI_BOOL) {
-        bool b = data[data_idx++];
-        values[i] = SI_BoolVal(b);
-        // printf("%s\n", v.boolval ? "true" : "false");
-      } else if (t == BI_NUMERIC) {
-        double d = *(double*)&data[data_idx];
-        data_idx += sizeof(double);
-        values[i] = SI_DoubleVal(d);
-        // printf("%f\n", v.doubleval);
-      } else if (t == BI_STRING) {
-        char *s = rm_strdup(data + data_idx);
-        data_idx += strlen(s) + 1;
-        // printf("%s\n", v.stringval);
-        values[i] = SI_TransferStringVal(s);
-      } else {
-        assert(0);
-      }
+    // The rest of the line is [char *prop_key] * prop_count
+    for (unsigned int j = 0; j < *prop_count; j ++) {
+        // TODO update LabelStore and GraphEntity function signatures to expect const char * arguments
+        prop_keys[j] = (char*)data + *data_idx;
+        *data_idx += strlen(prop_keys[j]) + 1;
     }
-    GraphEntity_Add_Properties((GraphEntity*)&n, prop_count, prop_keys, values);
-    // printf("%s\n", data);
-  }
 
-  return BULK_OK;
+    // Add properties to schemas
+    LabelStore_UpdateSchema(GraphContext_AllStore(gc, t), *prop_count, prop_keys);
+    LabelStore_UpdateSchema(store, *prop_count, prop_keys);
+
+    return prop_keys;
+}
+
+// Read an SIValue from the data stream and update the index appropriately
+static inline SIValue _BulkInsert_ReadProperty(const char *data, size_t *data_idx) {
+    SIValue v;
+    TYPE t = data[*data_idx];
+    *data_idx += 1;
+    if (t == BI_NULL) {
+        // TODO This property will currently get entered with a NULL key.
+        // Update so that the entire key-value pair is omitted from the node
+        v = SI_NullVal();
+    } else if (t == BI_BOOL) {
+        bool b = data[*data_idx];
+        *data_idx += 1;
+        v = SI_BoolVal(b);
+    } else if (t == BI_NUMERIC) {
+        double d = *(double*)&data[*data_idx];
+        *data_idx += sizeof(double);
+        v = SI_DoubleVal(d);
+    } else if (t == BI_STRING) {
+        char *s = rm_strdup(data + *data_idx);
+        *data_idx += strlen(s) + 1;
+        // Ownership of the string will be passed to the GraphEntity properties
+        v = SI_TransferStringVal(s);
+    } else {
+        assert(0);
+    }
+    return v;
+}
+
+int _BulkInsert_ProcessNodeFile(RedisModuleCtx *ctx, GraphContext *gc, const char *data, size_t data_len) {
+    size_t data_idx = 0;
+
+    int label_id;
+    unsigned int prop_count;
+    char **prop_keys = _BulkInsert_ReadHeader(gc, STORE_NODE, data, &data_idx, &label_id, &prop_count);
+
+    // Reusable buffer for storing properties of each node
+    SIValue values[prop_count];
+    unsigned int prop_num = 0;
+
+    while (data_idx < data_len) {
+        Node n;
+        Graph_CreateNode(gc->g, label_id, &n);
+        for (unsigned int i = 0; i < prop_count; i ++) {
+            values[i] = _BulkInsert_ReadProperty(data, &data_idx);
+        }
+        GraphEntity_Add_Properties((GraphEntity*)&n, prop_count, prop_keys, values);
+    }
+
+    free(prop_keys);
+    return BULK_OK;
 }
 
 int _BulkInsert_ProcessRelationFile(RedisModuleCtx *ctx, GraphContext *gc, const char *data, size_t data_len) {
-  size_t data_idx = 0;
+    size_t data_idx = 0;
 
-  // Read the file header
-  // First sequence is reltype string
-  const char *reltype = data + data_idx;
-  data_idx += strlen(reltype) + 1;
-  LabelStore *store = GraphContext_AddRelationType(gc, reltype);
+    int reltype_id;
+    unsigned int prop_count;
+    // Read property keys from header and update schema
+    char **prop_keys = _BulkInsert_ReadHeader(gc, STORE_EDGE, data, &data_idx, &reltype_id, &prop_count);
 
-  unsigned int len;
-  // Next 4 bytes are property count
-  unsigned int prop_count = *(unsigned int*)&data[data_idx];
-  char *prop_keys[prop_count];
-  data_idx += sizeof(unsigned int);
-  // The rest of the line is [char *prop_key * prop_count]
-  // This loop won't execute if relations do not have properties.
-  for (unsigned int j = 0; j < prop_count; j ++) {
-    // We do not need to allocate keys, as each GraphEntity will maintain its own copy
-    prop_keys[j] = (char*)data + data_idx;
-    data_idx += strlen(prop_keys[j]) + 1;
-    // printf("prop key %d: %s\n", j, prop_keys[j]);
-  }
+    // Reusable buffer for storing properties of each relation 
+    SIValue values[prop_count];
+    unsigned int prop_num = 0;
+    NodeID src;
+    NodeID dest;
 
-  // Add properties to schemas
-  LabelStore_UpdateSchema(GraphContext_AllStore(gc, STORE_EDGE), prop_count, prop_keys);
-  LabelStore_UpdateSchema(store, prop_count, prop_keys);
+    while (data_idx < data_len) {
+        Edge e;
+        // Next 8 bytes are source ID
+        src = *(NodeID*)&data[data_idx];
+        data_idx += sizeof(NodeID);
+        // Next 8 bytes are destination ID
+        dest = *(NodeID*)&data[data_idx];
+        data_idx += sizeof(NodeID);
 
-  // Entity handling
-  // Reusable buffer for storing properties of each relation 
-  SIValue values[prop_count];
-
-  unsigned int prop_num = 0;
-  NodeID src;
-  NodeID dest;
-
-  while (data_idx < data_len) {
-    Edge e;
-
-    // Next 8 bytes are source ID
-    src = *(NodeID*)&data[data_idx];
-    data_idx += sizeof(NodeID);
-    // Next 8 bytes are destination ID
-    dest = *(NodeID*)&data[data_idx];
-    data_idx += sizeof(NodeID);
-
-    for (unsigned int i = 0; i < prop_count; i ++) {
-      TYPE t = data[data_idx++];
-      // printf("%s: ", types[t]);
-      if (t == BI_NULL) {
-        values[i] = SI_NullVal(); // TODO ensure this property doesn't get added
-      } else if (t == BI_BOOL) {
-        bool b = data[data_idx++];
-        values[i] = SI_BoolVal(b);
-        // printf("%s\n", v.boolval ? "true" : "false");
-      } else if (t == BI_NUMERIC) {
-        double d = *(double*)&data[data_idx];
-        data_idx += sizeof(double);
-        values[i] = SI_DoubleVal(d);
-        // printf("%f\n", v.doubleval);
-      } else if (t == BI_STRING) {
-        char *s = rm_strdup(data + data_idx);
-        data_idx += strlen(s) + 1;
-        // printf("%s\n", v.stringval);
-        values[i] = SI_TransferStringVal(s);
-      } else {
-        assert(0);
-      }
+        for (unsigned int i = 0; i < prop_count; i ++) {
+            values[i] = _BulkInsert_ReadProperty(data, &data_idx);
+        }
+        Graph_ConnectNodes(gc->g, src, dest, reltype_id, &e);
+        GraphEntity_Add_Properties((GraphEntity*)&e, prop_count, prop_keys, values);
     }
-    Graph_ConnectNodes(gc->g, src, dest, store->id, &e);
-    GraphEntity_Add_Properties((GraphEntity*)&e, prop_count, prop_keys, values);
-    // printf("%s\n", data);
-  }
 
-  return BULK_OK;
+    free(prop_keys);
+    return BULK_OK;
 }
 
 int _BulkInsert_InsertNodes(RedisModuleCtx *ctx, GraphContext *gc,
@@ -166,6 +143,7 @@ int _BulkInsert_InsertNodes(RedisModuleCtx *ctx, GraphContext *gc,
     int rc;
     while (argv && *argc) {
       size_t len;
+      // Retrieve a pointer to the next binary stream and record its length
       const char *data = RedisModule_StringPtrLen(**argv, &len);
       // Done processing labels
       if (!strcmp(data, "RELATIONS")) {
@@ -184,6 +162,7 @@ int _BulkInsert_Insert_Edges(RedisModuleCtx *ctx, GraphContext *gc,
     int rc;
     while (argv && *argc) {
       size_t len;
+      // Retrieve a pointer to the next binary stream and record its length
       const char *data = RedisModule_StringPtrLen(**argv, &len);
       *argv += 1;
       *argc -= 1;
@@ -195,7 +174,7 @@ int _BulkInsert_Insert_Edges(RedisModuleCtx *ctx, GraphContext *gc,
 
 int BulkInsert(RedisModuleCtx *ctx, GraphContext *gc, RedisModuleString **argv, int argc) {
 
-    if(argc < 1) {
+    if (argc < 1) {
         RedisModule_ReplyWithError(ctx, "Bulk insert format error, failed to parse bulk insert sections.");
         return BULK_FAIL;
     }
@@ -204,11 +183,9 @@ int BulkInsert(RedisModuleCtx *ctx, GraphContext *gc, RedisModuleString **argv, 
     const char *section = RedisModule_StringPtrLen(*argv++, NULL);
     argc -= 1;
 
-    int rc;
-    //TODO: Keep track and validate argc, make sure we don't overflow.
     if(strcmp(section, "NODES") == 0) {
         section_found = true;
-        rc = _BulkInsert_InsertNodes(ctx, gc, &argv, &argc);
+        int rc = _BulkInsert_InsertNodes(ctx, gc, &argv, &argc);
         if (rc != BULK_OK) {
             return BULK_FAIL;
         } else if (argc == 0) {
@@ -220,7 +197,7 @@ int BulkInsert(RedisModuleCtx *ctx, GraphContext *gc, RedisModuleString **argv, 
 
     if(strcmp(section, "RELATIONS") == 0) {
         section_found = true;
-        rc = _BulkInsert_Insert_Edges(ctx, gc, &argv, &argc);
+        int rc = _BulkInsert_Insert_Edges(ctx, gc, &argv, &argc);
         if (rc != BULK_OK) {
             return BULK_FAIL;
         } else if (argc == 0) {
@@ -239,7 +216,7 @@ int BulkInsert(RedisModuleCtx *ctx, GraphContext *gc, RedisModuleString **argv, 
         return BULK_FAIL;
     }
 
-    if(argc > 0) {
+    if (argc > 0) {
         RedisModule_ReplyWithError(ctx, "Bulk insert format error, extra arguments.");
         return BULK_FAIL;
     }
