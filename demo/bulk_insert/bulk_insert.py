@@ -15,14 +15,23 @@ class Type:
     NUMERIC = 2
     STRING = 3
 
+class Configs:
+    def __init__(self, max_token_count, max_buffer_size, max_token_size):
+        # Maximum number of tokens per query
+        # 1024 * 1024 is a hard-coded Redis maximum
+        self.max_token_count = min(max_token_count, 1024 * 1024)
+        # Maximum size in bytes per query
+        self.max_buffer_size = max_buffer_size * 1000000
+        # Maximum size in bytes per token
+        # 512 megabytes is a hard-coded Redis maximum
+        self.max_token_size = min(max_token_size * 1000000, 512 * 1000000)
+
+# Global configs
+CONFIGS = None
+
 # QueryBuffer is the class that processes input CSVs and emits their binary formats to the Redis client.
 class QueryBuffer(object):
-    def __init__(self, graphname, client, max_token_count, max_buffer_size):
-        # Maximum size for each query batch
-        self.max_token_count = max_token_count
-        # Convert max buffer size from megabytes to bytes
-        self.max_buffer_size = max_buffer_size * 1024 * 1024
-
+    def __init__(self, graphname, client):
         # Redis client and data for each query
         self.client = client
         self.node_count = 0 # number of distinct nodes currently in buffer
@@ -48,8 +57,8 @@ class QueryBuffer(object):
             label_blob = label.to_binary()
             added_size = len(label_blob)
             # Check to see if the addition of this data will exceed the buffer's capacity
-            if (self.buffer_size + added_size > self.max_buffer_size
-                    or self.redis_token_count + 1 > self.max_token_count):
+            if (self.buffer_size + added_size > CONFIGS.max_buffer_size
+                    or self.redis_token_count + 1 > CONFIGS.max_token_count):
                 # Send and flush the buffer if appropriate
                 self.send_buffer()
             # Add binary data to list and update all counts
@@ -67,8 +76,8 @@ class QueryBuffer(object):
             reltype_blob = rel.to_binary()
             added_size = len(reltype_blob)
             # Check to see if the addition of this data will exceed the buffer's capacity
-            if (self.buffer_size + added_size > self.max_buffer_size
-                    or self.redis_token_count + 1 > self.max_token_count):
+            if (self.buffer_size + added_size > CONFIGS.max_buffer_size
+                    or self.redis_token_count + 1 > CONFIGS.max_token_count):
                 # Send and flush the buffer if appropriate
                 self.send_buffer()
             # Add binary data to list and update all counts
@@ -279,11 +288,16 @@ def help():
 # Buffer size restrictions
 @click.option('--max-token-count', '-t', default=1024, help='max number of tokens to send per query (default 1024)')
 @click.option('--max-buffer-size', '-b', default=4096, help='max buffer size in megabytes (default 4096)')
+@click.option('--max-token-size', '-b', default=500, help='max size of each token in megabytes (default 500, max 512)')
 
-def bulk_insert(graph, host, port, password, nodes, relations, max_token_count, max_buffer_size):
+def bulk_insert(graph, host, port, password, nodes, relations, max_token_count, max_buffer_size, max_token_size):
+    global CONFIGS
+    CONFIGS = Configs(max_token_count, max_buffer_size, max_token_size)
+
     # Connect to Redis server and initialize buffer
     client = redis.StrictRedis(host=host, port=port, password=password)
-    query_buf = QueryBuffer(graph, client, max_token_count, max_buffer_size)
+
+    query_buf = QueryBuffer(graph, client)
     # Create a node dictionary if we're building relations and as such require unique identifiers
     if relations:
         node_dict = {}
