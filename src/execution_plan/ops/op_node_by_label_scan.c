@@ -50,7 +50,9 @@ OpResult NodeByLabelScanConsume(OpBase *opBase, Record r) {
     GxB_MatrixTupleIter_next(op->iter, NULL, &nodeId, &depleted);
     if(depleted) return OP_DEPLETED;
     
+    // Get a pointer to a heap allocated node.
     Node *n = Record_GetNode(r, op->node_rec_idx);
+    // Update node's internal entity pointer.
     Graph_GetNode(op->g, nodeId, n);
     return OP_OK;
 }

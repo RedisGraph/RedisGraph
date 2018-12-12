@@ -95,12 +95,12 @@ typedef struct {
 /* OperandNode represents either a constant numeric value, 
  * or a graph entity property. */
 typedef struct {
-	union {
-		SIValue constant;
-		struct {
-			char *entity_alias;
+    union {
+        SIValue constant;
+        struct {
+            char *entity_alias;
             int entity_alias_idx;
-			char *entity_prop;
+            char *entity_prop;
 		} variadic;
 	};
 	AR_OperandNodeType type;

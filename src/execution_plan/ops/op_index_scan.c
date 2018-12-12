@@ -36,7 +36,9 @@ OpResult IndexScanConsume(OpBase *opBase, Record r) {
   EntityID *nodeId = IndexIter_Next(op->iter);
   if (!nodeId) return OP_DEPLETED;
 
+  // Get a pointer to a heap allocated node.
   Node *n = Record_GetNode(r, op->nodeRecIdx);
+  // Update node's internal entity pointer.
   Graph_GetNode(op->g, *nodeId, n);
 
   return OP_OK;

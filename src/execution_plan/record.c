@@ -40,9 +40,9 @@ GraphEntity *Record_GetGraphEntity(const Record r, int idx) {
             return (GraphEntity*)Record_GetNode(r, idx);
         case REC_TYPE_EDGE:
             return (GraphEntity*)Record_GetEdge(r, idx);
-        case REC_TYPE_SCALAR: 
+        case REC_TYPE_SCALAR:
             return (GraphEntity*)(Record_GetScalar(r, idx).ptrval);
-        case REC_TYPE_UNKNOWN:
+        default:
             assert(false);
     }
     return NULL;

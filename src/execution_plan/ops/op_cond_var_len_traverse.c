@@ -70,8 +70,6 @@ OpResult CondVarLenTraverseConsume(OpBase *opBase, Record r) {
     Node n = Path_pop(p);
     Path_free(p);
 
-    // op->ae->dest_node is already in record
-    // All that's left to do is update its internal entity.
     Record_AddNode(r, op->destNodeIdx, n);
     return OP_OK;
 }
