@@ -4,6 +4,11 @@ import struct
 import redis
 import click
 
+# Global variables
+CONFIGS = None # thresholds for batching Redis queries
+NODE_DICT = [] # global node dictionary
+TOP_NODE_ID = 0 # next ID to assign to a node
+
 # Custom error class for invalid inputs
 class CSVError(Exception):
     pass
@@ -15,6 +20,7 @@ class Type:
     NUMERIC = 2
     STRING = 3
 
+# User-configurable thresholds for when to send queries to Redis
 class Configs:
     def __init__(self, max_token_count, max_buffer_size, max_token_size):
         # Maximum number of tokens per query
@@ -26,8 +32,6 @@ class Configs:
         # 512 megabytes is a hard-coded Redis maximum
         self.max_token_size = min(max_token_size * 1000000, 512 * 1000000)
 
-# Global configs
-CONFIGS = None
 
 # QueryBuffer is the class that processes input CSVs and emits their binary formats to the Redis client.
 class QueryBuffer(object):
@@ -50,10 +54,10 @@ class QueryBuffer(object):
 
     # For each node input file, validate contents and convert to binary format.
     # If any buffer limits have been reached, flush all enqueued inserts to Redis.
-    def process_node_csvs(self, csvs, node_dict):
+    def process_node_csvs(self, csvs):
         for in_csv in csvs:
             # Build Label descriptor from input CSV
-            label = Label(in_csv, node_dict, self.node_count)
+            label = Label(in_csv)
             label_blob = label.to_binary()
             added_size = len(label_blob)
             # Check to see if the addition of this data will exceed the buffer's capacity
@@ -69,10 +73,10 @@ class QueryBuffer(object):
 
     # This function is the relations equivalent of process_node_csvs.
     # TODO it would be nice to consolidate them later.
-    def process_relation_csvs(self, csvs, node_dict):
+    def process_relation_csvs(self, csvs):
         for in_csv in csvs:
             # Build RelationType descriptor from input CSV
-            rel = RelationType(in_csv, node_dict)
+            rel = RelationType(in_csv)
             reltype_blob = rel.to_binary()
             added_size = len(reltype_blob)
             # Check to see if the addition of this data will exceed the buffer's capacity
@@ -155,6 +159,28 @@ class Property(object):
     def to_binary(self):
         return struct.pack(self.format_str, *[self.type] + self.pack_args)
 
+class EntityContainer(object):
+    def __init__(self):
+        self.blobs = []
+        self.blob_count = 0
+        self.total_size = 0
+        self.entity_count = 0
+
+    def add_entity(self, cls, infile):
+        entity = cls(infile)
+        blob = entity.to_binary()
+        added_size = len(blob)
+        # Check to see if the addition of this data will exceed the buffer's capacity
+        if (self.buffer_size + added_size > CONFIGS.max_buffer_size
+                or self.redis_token_count + 1 > CONFIGS.max_token_count):
+            # Send and flush the buffer if appropriate
+            self.send_buffer()
+        # Add binary data to list and update all counts
+        self.label_blobs.append(label_blob)
+        self.node_count += label.entity_count
+        self.redis_token_count += 1
+        self.buffer_size += added_size
+
 # Superclass for label and relation CSV files
 class EntityFile(object):
     def __init__(self, filename):
@@ -172,6 +198,7 @@ class EntityFile(object):
 
         self.packed_header = ""
         self.entities = []
+        self.binary_size = 0 # size of binary token
 
     # entity_string refers to label or relation type string
     def pack_header(self, header):
@@ -196,10 +223,10 @@ class EntityFile(object):
 
 # Handler class for processing label csv files.
 class Label(EntityFile):
-    def __init__(self, infile, node_dict, initial_node_count):
+    def __init__(self, infile):
         super(Label, self).__init__(infile)
         expected_col_count = self.process_header()
-        self.process_entities(node_dict, initial_node_count, expected_col_count)
+        self.process_entities(expected_col_count)
         self.infile.close()
 
     def process_header(self):
@@ -211,9 +238,12 @@ class Label(EntityFile):
         if header[0][0] == '_':
             self.prop_offset = 1
         self.packed_header = self.pack_header(header)
+        self.binary_size += len(self.packed_header)
         return expected_col_count
 
-    def process_entities(self, node_dict, initial_node_count, expected_col_count):
+    def process_entities(self, expected_col_count):
+        global NODE_DICT
+        global TOP_NODE_ID
         for row in self.reader:
             # Expect all entities to have the same property count
             if len(row) != expected_col_count:
@@ -224,20 +254,28 @@ class Label(EntityFile):
                 raise CSVError("%s:%d Dangling comma in input. ('%s')"
                                % (self.infile.name, self.reader.line_num, ','.join(row)))
             # Add identifier->ID pair to dictionary if we are building relations
-            if node_dict is not None:
-                if row[0] in node_dict:
+            if NODE_DICT is not None: # TODO "is not None" - necessary?
+                if row[0] in NODE_DICT:
                     print("Node identifier '%s' was used multiple times - second occurrence at %s:%d"
                           % (row[0], self.infile.name, self.reader.line_num))
-                node_dict[row[0]] = initial_node_count + self.entity_count
+                NODE_DICT[row[0]] = TOP_NODE_ID
+                TOP_NODE_ID += 1
+            row_binary = self.pack_props(row)
+            row_binary_len = len(row_binary)
+            # If the addition of this entity will the binary token too large, send the buffer now.
+            if self.binary_size + row_binary_len > CONFIGS.max_token_size:
+                # flush buffer
+                pass
+
             self.entity_count += 1
-            self.entities.append(self.pack_props(row))
+            self.entities.append(row_binary)
 
 # Handler class for processing relation csv files.
 class RelationType(EntityFile):
-    def __init__(self, infile, node_dict):
+    def __init__(self, infile):
         super(RelationType, self).__init__(infile)
         expected_col_count = self.process_header()
-        self.process_entities(node_dict, expected_col_count)
+        self.process_entities(expected_col_count)
         self.infile.close()
 
     def process_header(self):
@@ -253,9 +291,10 @@ class RelationType(EntityFile):
 
         self.prop_offset = 2
         self.packed_header = self.pack_header(header) # skip src and dest identifiers
+        self.binary_size += len(self.packed_header)
         return expected_col_count
 
-    def process_entities(self, node_dict, expected_col_count):
+    def process_entities(self, expected_col_count):
         for row in self.reader:
             # Each row should have the same number of fields
             if len(row) != expected_col_count:
@@ -266,9 +305,11 @@ class RelationType(EntityFile):
                 raise CSVError("%s:%d Dangling comma in input. ('%s')"
                                % (self.infile.name, self.reader.line_num, ','.join(row)))
 
-            src = node_dict[row[0]]
-            dest = node_dict[row[1]]
+            src = NODE_DICT[row[0]]
+            dest = NODE_DICT[row[1]]
             fmt = "=QQ" # 8-byte unsigned ints for src and dest
+            # If the addition of this entity will the binary token too large, send the buffer now.
+
             self.entity_count += 1
             self.entities.append(struct.pack(fmt, src, dest) + self.pack_props(row))
 
@@ -292,6 +333,10 @@ def help():
 
 def bulk_insert(graph, host, port, password, nodes, relations, max_token_count, max_buffer_size, max_token_size):
     global CONFIGS
+    global NODE_DICT
+    global TOP_NODE_ID
+    TOP_NODE_ID = 0 # reset global variable
+
     CONFIGS = Configs(max_token_count, max_buffer_size, max_token_size)
 
     # Connect to Redis server and initialize buffer
@@ -300,14 +345,14 @@ def bulk_insert(graph, host, port, password, nodes, relations, max_token_count, 
     query_buf = QueryBuffer(graph, client)
     # Create a node dictionary if we're building relations and as such require unique identifiers
     if relations:
-        node_dict = {}
+        NODE_DICT = {}
     else:
-        node_dict = None
+        NODE_DICT = None
 
-    query_buf.process_node_csvs(nodes, node_dict)
+    query_buf.process_node_csvs(nodes)
 
     if relations:
-        query_buf.process_relation_csvs(relations, node_dict)
+        query_buf.process_relation_csvs(relations)
 
     # Send all remaining tokens to Redis
     query_buf.send_buffer()
