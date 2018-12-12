@@ -17,6 +17,7 @@
 	#include "./clauses/clauses.h"
 	#include "parse.h"
 	#include "../value.h"
+	#include "../util/arr.h"
 
 	void yyerror(char *s);
 
@@ -277,13 +278,33 @@ edge(A) ::= LEFT_BRACKET UQSTRING(B) properties(C) RIGHT_BRACKET . {
 }
 
 // Edge with label [:label]
-edge(A) ::= LEFT_BRACKET COLON UQSTRING(B) edgeLength(C) properties(D) RIGHT_BRACKET . { 
-	A = New_AST_LinkEntity(NULL, B.strval, D, N_DIR_UNKNOWN, C);
+edge(A) ::= LEFT_BRACKET edgeLabels(B) edgeLength(C) properties(D) RIGHT_BRACKET . { 
+	A = New_AST_LinkEntity(NULL, B, D, N_DIR_UNKNOWN, C);
 }
 
 // Edge with alias and label [alias:label]
-edge(A) ::= LEFT_BRACKET UQSTRING(B) COLON UQSTRING(C) properties(D) RIGHT_BRACKET . { 
-	A = New_AST_LinkEntity(B.strval, C.strval, D, N_DIR_UNKNOWN, NULL);
+edge(A) ::= LEFT_BRACKET UQSTRING(B) edgeLabels(C) properties(D) RIGHT_BRACKET . { 
+	A = New_AST_LinkEntity(B.strval, C, D, N_DIR_UNKNOWN, NULL);
+}
+
+
+%type edgeLabel {char*}
+// Single label
+edgeLabel(A) ::= COLON UQSTRING(B) . {
+	A = B.strval;
+}
+
+%type edgeLabels {char**}
+edgeLabels(A) ::= edgeLabel(B) . {
+	A = array_new(char*, 1);
+	A = array_append(A, B);
+}
+
+// Multiple labels
+edgeLabels(A) ::= edgeLabels(B) PIPE edgeLabel(C) . {
+	char *label = C;
+	B = array_append(B, label);
+	A = B;
 }
 
 %type edgeLength {AST_LinkLength*}

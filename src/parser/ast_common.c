@@ -6,6 +6,7 @@
 */
 
 #include "./ast_common.h"
+#include "../util/arr.h"
 #include "../value.h"
 
 AST_Variable* New_AST_Variable(const char *alias, const char *property) {
@@ -21,14 +22,20 @@ AST_Variable* New_AST_Variable(const char *alias, const char *property) {
 	return v;
 }
 
-AST_LinkEntity* New_AST_LinkEntity(char *alias, char *label, Vector *properties, AST_LinkDirection dir, AST_LinkLength *length) {
+AST_LinkEntity* New_AST_LinkEntity(char *alias, char **labels, Vector *properties, AST_LinkDirection dir, AST_LinkLength *length) {
 	AST_LinkEntity* le = (AST_LinkEntity*)calloc(1, sizeof(AST_LinkEntity));
 	le->direction = dir;
 	le->length = length;
 	le->ge.t = N_LINK;
 	le->ge.properties = properties;
+	le->multipleLabels = NULL;
 
-	if(label != NULL) le->ge.label = strdup(label);
+	if(labels) {
+		le->ge.label = strdup(labels[0]);
+		if(array_len(labels) > 1) le->multipleLabels = labels;
+		else array_free(labels);
+	}
+
 	if(alias != NULL) le->ge.alias = strdup(alias);
 
 	return le;
@@ -62,6 +69,7 @@ void Free_AST_GraphEntity(AST_GraphEntity *graphEntity) {
 	if(graphEntity->t == N_LINK) {
 		AST_LinkEntity *link = (AST_LinkEntity*)graphEntity;
 		if(link->length) free(link->length);
+		if(link->multipleLabels) array_free(link->multipleLabels);
 	}
 	free(graphEntity);
 }

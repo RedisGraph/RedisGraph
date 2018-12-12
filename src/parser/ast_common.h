@@ -44,11 +44,12 @@ typedef struct {
 typedef struct {
 	AST_GraphEntity ge;
 	AST_LinkDirection direction;
-	AST_LinkLength *length;			// If NULL, edge is of length 1.
+	AST_LinkLength *length;			// NULL If edge is of length 1.
+	char **multipleLabels;			// NULL if label count <= 1.
 } AST_LinkEntity;
 
 AST_NodeEntity* New_AST_NodeEntity(char *alias, char *label, Vector *properties);
-AST_LinkEntity* New_AST_LinkEntity(char *alias, char *label, Vector *properties, AST_LinkDirection dir, AST_LinkLength *length);
+AST_LinkEntity* New_AST_LinkEntity(char *alias, char **labels, Vector *properties, AST_LinkDirection dir, AST_LinkLength *length);
 AST_LinkLength* New_AST_LinkLength(unsigned int minHops, unsigned int maxHops);
 AST_Variable* New_AST_Variable(const char *alias, const char *property);
 bool AST_LinkEntity_FixedLengthEdge(AST_LinkEntity* edge);

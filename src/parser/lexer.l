@@ -89,6 +89,7 @@ int yycolumn = 1;
 "/"   { return DIV; }
 "*"   { return MUL; }
 "+"   { return ADD; }
+"|"   { return PIPE; }
 
 [ \t]+ /* ignore whitespace */
 \n    { yycolumn = 1; } /* ignore whitespace */
