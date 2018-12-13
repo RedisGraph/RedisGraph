@@ -46,8 +46,8 @@ void _MGraph_BulkInsert(void *args) {
     RedisModule_ThreadSafeContextLock(ctx);
 
     RedisModuleString **argv = context->argv + 1; // skip "GRAPH.BULK"
-    int argc = context->argc - 2; // skip "GRAPH.BULK [GRAPHNAME]"
     RedisModuleString *rs_graph_name = *argv++;
+    int argc = context->argc - 2; // skip "GRAPH.BULK [GRAPHNAME]"
     RedisModuleKey *key;
 
     char reply[1024] = {0}; // Prepare the Redis string response
@@ -69,6 +69,12 @@ void _MGraph_BulkInsert(void *args) {
         argv ++;
         argc --;
         initial_query = true;
+        // Verify that graph does not already exist.
+        key = RedisModule_OpenKey(ctx, rs_graph_name, REDISMODULE_READ);
+        if (key) {
+            RedisModule_ReplyWithError(ctx, "Key was already in Redis database at beginning of bulk insert operation.");
+            goto cleanup;
+        }
     }
 
     // Read the user-provided counts for nodes and edges in the current query.
@@ -86,11 +92,7 @@ void _MGraph_BulkInsert(void *args) {
     if (initial_query) {
         // Create graph and initialize its data stores.
         gc = GraphContext_New(ctx, rs_graph_name, nodes_in_query, relations_in_query);
-        // Exit if graph creation failed
-        if (gc == NULL) {
-            RedisModule_ReplyWithError(ctx, "Key was already in Redis database at beginning of bulk insert operation.");
-            goto cleanup;
-        }
+        assert(gc);
     } else {
         // Query did not start with a "BEGIN" token
         gc = GraphContext_Retrieve(ctx, rs_graph_name);
@@ -116,6 +118,7 @@ void _MGraph_BulkInsert(void *args) {
         // If insertion failed, clean up keyspace and free added entities.
         key = RedisModule_OpenKey(ctx, rs_graph_name, REDISMODULE_WRITE);
         RedisModule_DeleteKey(key);
+        gc = NULL;
         goto cleanup;
     }
 

@@ -36,6 +36,7 @@ static char** _BulkInsert_ReadHeader(GraphContext *gc, LabelStoreType t,
     *prop_count = *(unsigned int*)&data[*data_idx];
     *data_idx += sizeof(unsigned int);
 
+    if (*prop_count == 0) return NULL;
     char **prop_keys = malloc(*prop_count * sizeof(char*));
 
     // The rest of the line is [char *prop_key] * prop_count
@@ -127,10 +128,14 @@ int _BulkInsert_ProcessRelationFile(RedisModuleCtx *ctx, GraphContext *gc, const
         dest = *(NodeID*)&data[data_idx];
         data_idx += sizeof(NodeID);
 
+        Graph_ConnectNodes(gc->g, src, dest, reltype_id, &e);
+
+        if (prop_count == 0) continue;
+
+        // Process and add relation properties
         for (unsigned int i = 0; i < prop_count; i ++) {
             values[i] = _BulkInsert_ReadProperty(data, &data_idx);
         }
-        Graph_ConnectNodes(gc->g, src, dest, reltype_id, &e);
         GraphEntity_Add_Properties((GraphEntity*)&e, prop_count, prop_keys, values);
     }
 

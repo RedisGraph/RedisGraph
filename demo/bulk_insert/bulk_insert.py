@@ -6,7 +6,7 @@ import click
 
 # Global variables
 CONFIGS = None # thresholds for batching Redis queries
-NODE_DICT = [] # global node dictionary
+NODE_DICT = {} # global node dictionary
 TOP_NODE_ID = 0 # next ID to assign to a node
 QUERY_BUF = None # Buffer for query being constructed
 
@@ -35,7 +35,6 @@ class Configs(object):
         # 512 megabytes is a hard-coded Redis maximum
         self.max_token_size = min(max_token_size * 1000000, 512 * 1000000)
 
-
 # QueryBuffer is the class that processes input CSVs and emits their binary formats to the Redis client.
 class QueryBuffer(object):
     def __init__(self, graphname, client):
@@ -56,42 +55,19 @@ class QueryBuffer(object):
         self.labels = [] # List containing all pending Label objects
         self.reltypes = [] # List containing all pending RelationType objects
 
-    # For each node input file, validate contents and convert to binary format.
-    # If any buffer limits have been reached, flush all enqueued inserts to Redis.
-    def process_entity_csvs(self, cls, csvs):
-        for in_csv in csvs:
-            # Build entity descriptor from input CSV
-            entity = cls(in_csv)
-            added_size = entity.binary_size
-            # Check to see if the addition of this data will exceed the buffer's capacity
-            #  import ipdb
-            #  ipdb.set_trace()
-            if (self.buffer_size + added_size > CONFIGS.max_buffer_size
-                    or self.redis_token_count + len(entity.binary_entities) >= CONFIGS.max_token_count):
-                # Send and flush the buffer if appropriate
-                self.send_buffer()
-            # Add binary data to list and update all counts
-            self.redis_token_count += len(entity.binary_entities)
-            self.buffer_size += added_size
-
     # Send all pending inserts to Redis
     def send_buffer(self):
         # Do nothing if we have no entities
         if self.node_count == 0 and self.relation_count == 0:
             return
 
+        args = [self.node_count, self.relation_count, len(self.labels), len(self.reltypes)] + self.labels + self.reltypes
+        # Prepend a "BEGIN" token if this is the first query
         if self.initial_query:
-            args = ["BEGIN"]
-        else:
-            args = []
+            args.insert(0, "BEGIN")
+            self.initial_query = False
 
-        args += [self.node_count, self.relation_count, len(self.labels), len(self.reltypes)] + self.labels + self.reltypes
-
-        result = self.client.execute_command("GRAPH.BULK",
-                                             self.graphname,
-                                             *args)
-        self.initial_query = False
-
+        result = self.client.execute_command("GRAPH.BULK", self.graphname, *args)
         print(result)
 
         self.clear_buffer()
@@ -106,50 +82,6 @@ class QueryBuffer(object):
         self.relation_count = 0
         del self.labels[:]
         del self.reltypes[:]
-
-# Property is a class for converting a single CSV property field into a binary stream.
-# Supported property types are string, numeric, boolean, and NULL.
-class Property(object):
-    def __init__(self, prop_str):
-        # All format strings start with an unsigned char to represent our Type enum
-        self.format_str = "=B"
-
-        if not prop_str:
-            # An empty field indicates a NULL property
-            self.type = Type.NULL
-            self.pack_args = []
-            return
-
-        # If field can be cast to a float, allow it
-        try:
-            self.pack_args = [float(prop_str)]
-            self.type = Type.NUMERIC
-            self.format_str += "d"
-            return
-        except:
-            pass
-
-        # If field is 'false' or 'true', it is a boolean
-        if prop_str.lower() == 'false':
-            self.type = Type.BOOL
-            self.format_str += "?"
-            self.pack_args = [False]
-            return
-        if prop_str.lower() == 'true':
-            self.type = Type.BOOL
-            self.format_str += "?"
-            self.pack_args = [True]
-            return
-
-        # If we've reached this point, the property is a string
-        self.type = Type.STRING
-        # Encoding len+1 adds a null terminator to the string
-        self.format_str += "%ds" % (len(prop_str) + 1)
-        self.pack_args = [str.encode(prop_str)]
-
-    def to_binary(self):
-        return struct.pack(self.format_str, *[self.type] + self.pack_args)
-
 
 # Superclass for label and relation CSV files
 class EntityFile(object):
@@ -175,10 +107,6 @@ class EntityFile(object):
         if len(row) != expected_col_count:
             raise CSVError("%s:%d Expected %d columns, encountered %d ('%s')"
                            % (self.infile.name, self.reader.line_num, expected_col_count, len(row), ','.join(row)))
-        # Check for dangling commma
-        if  row[-1] == '':
-            raise CSVError("%s:%d Dangling comma in input. ('%s')"
-                           % (self.infile.name, self.reader.line_num, ','.join(row)))
 
     # If part of a CSV file was sent to Redis, delete the processed entities and update the binary size
     def reset_partial_binary(self):
@@ -200,9 +128,9 @@ class EntityFile(object):
     def pack_props(self, line):
         props = []
         for field in line[self.prop_offset:]:
-            props.append(Property(field))
+            props.append(prop_to_binary(field))
 
-        return b''.join(p.to_binary() for p in props)
+        return b''.join(p for p in props)
 
     def to_binary(self):
         return self.packed_header + b''.join(self.binary_entities)
@@ -217,7 +145,7 @@ class Label(EntityFile):
 
     def process_header(self):
         # Header format:
-        # source identifier, dest identifier, properties[0..n]
+        # node identifier (which may be a property key), then all other property keys
         header = next(self.reader)
         expected_col_count = len(header)
         # If identifier field begins with an underscore, don't add it as a property.
@@ -310,6 +238,50 @@ class RelationType(EntityFile):
             self.binary_entities.append(row_binary)
         QUERY_BUF.reltypes.append(self.to_binary())
 
+# Convert a single CSV property field into a binary stream.
+# Supported property types are string, numeric, boolean, and NULL.
+def prop_to_binary(prop_str):
+    # All format strings start with an unsigned char to represent our Type enum
+    format_str = "=B"
+    if not prop_str:
+        # An empty field indicates a NULL property
+        return struct.pack(format_str, Type.NULL)
+
+    # If field can be cast to a float, allow it
+    try:
+        numeric_prop = float(prop_str)
+        return struct.pack(format_str + "d", Type.NUMERIC, numeric_prop)
+    except:
+        pass
+
+    # If field is 'false' or 'true', it is a boolean
+    if prop_str.lower() == 'false':
+        return struct.pack(format_str + '?', Type.BOOL, False)
+    elif prop_str.lower() == 'true':
+        return struct.pack(format_str + '?', Type.BOOL, True)
+
+    # If we've reached this point, the property is a string
+    # Encoding len+1 adds a null terminator to the string
+    format_str += "%ds" % (len(prop_str) + 1)
+    return struct.pack(format_str, Type.STRING, str.encode(prop_str))
+
+# For each node input file, validate contents and convert to binary format.
+# If any buffer limits have been reached, flush all enqueued inserts to Redis.
+def process_entity_csvs(cls, csvs):
+    global QUERY_BUF
+    for in_csv in csvs:
+        # Build entity descriptor from input CSV
+        entity = cls(in_csv)
+        added_size = entity.binary_size
+        # Check to see if the addition of this data will exceed the buffer's capacity
+        if (QUERY_BUF.buffer_size + added_size >= CONFIGS.max_buffer_size
+                or QUERY_BUF.redis_token_count + len(entity.binary_entities) >= CONFIGS.max_token_count):
+            # Send and flush the buffer if appropriate
+            QUERY_BUF.send_buffer()
+        # Add binary data to list and update all counts
+        QUERY_BUF.redis_token_count += len(entity.binary_entities)
+        QUERY_BUF.buffer_size += added_size
+
 # Command-line arguments
 @click.command()
 @click.argument('graph')
@@ -321,9 +293,9 @@ class RelationType(EntityFile):
 @click.option('--nodes', '-n', required=True, multiple=True, help='Path to node csv file')
 @click.option('--relations', '-r', multiple=True, help='Path to relation csv file')
 # Buffer size restrictions
-@click.option('--max-token-count', '-t', default=1024, help='max number of processed CSVs to send per query (default 1024)')
+@click.option('--max-token-count', '-c', default=1024, help='max number of processed CSVs to send per query (default 1024)')
 @click.option('--max-buffer-size', '-b', default=4096, help='max buffer size in megabytes (default 4096)')
-@click.option('--max-token-size', '-b', default=500, help='max size of each token in megabytes (default 500, max 512)')
+@click.option('--max-token-size', '-t', default=500, help='max size of each token in megabytes (default 500, max 512)')
 
 def bulk_insert(graph, host, port, password, nodes, relations, max_token_count, max_buffer_size, max_token_size):
     global CONFIGS
@@ -339,7 +311,7 @@ def bulk_insert(graph, host, port, password, nodes, relations, max_token_count, 
     client = redis.StrictRedis(host=host, port=port, password=password)
     try:
         module_list = client.execute_command("MODULE LIST")
-        if not any('graph' in module_description for module_description in module_list):
+        if not any(b'graph' in module_description for module_description in module_list):
             print("RedisGraph module not loaded on connected server.")
             exit(1)
     except redis.exceptions.ConnectionError as e:
@@ -355,10 +327,10 @@ def bulk_insert(graph, host, port, password, nodes, relations, max_token_count, 
     else:
         NODE_DICT = None
 
-    QUERY_BUF.process_entity_csvs(Label, nodes)
+    process_entity_csvs(Label, nodes)
 
     if relations:
-        QUERY_BUF.process_entity_csvs(RelationType, relations)
+        process_entity_csvs(RelationType, relations)
 
     # Send all remaining tokens to Redis
     QUERY_BUF.send_buffer()

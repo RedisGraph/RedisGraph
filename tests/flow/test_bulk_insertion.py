@@ -234,7 +234,7 @@ class GraphBulkInsertFlowTest(FlowTestsBase):
         os.remove('/tmp/relations.tmp')
 
     def test06_batched_build(self):
-        # Create demo graph wth one query per input file 
+        # Create demo graph wth one query per input file
         graphname = "batched_graph"
         runner = CliRunner()
 
@@ -318,6 +318,43 @@ class GraphBulkInsertFlowTest(FlowTestsBase):
         assert 'fakeidentifier' in res.exception.message
         os.remove('/tmp/nodes.tmp')
         os.remove('/tmp/relations.tmp')
+
+    # Verify that numeric, boolean, and null types are properly handled
+    def test08_property_types(self):
+        graphname = "tmpgraph4"
+        # Write temporary files
+        with open('/tmp/nodes.tmp', mode='w') as csv_file:
+            out = csv.writer(csv_file)
+            out.writerow(["numeric", "mixed", "bool"])
+            out.writerow([0, '', True])
+            out.writerow([5, "notnull", False])
+            out.writerow([7, '', False]) # reused identifier
+        with open('/tmp/relations.tmp', mode='w') as csv_file:
+            out = csv.writer(csv_file)
+            out.writerow(["src", "dest", "prop"])
+            out.writerow([0, 5, True])
+            out.writerow([5, 7, 3.5])
+            out.writerow([7, 0, ''])
+
+        runner = CliRunner()
+        res = runner.invoke(bulk_insert, ['--port', port,
+                                          '--nodes', '/tmp/nodes.tmp',
+                                          '--relations', '/tmp/relations.tmp',
+                                          graphname])
+
+        assert res.exit_code == 0
+        assert '3 nodes created' in res.output
+        assert '3 edges created' in res.output
+
+        graph = Graph(graphname, redis_con)
+        query_result = graph.query('MATCH (a)-[e]->() RETURN a, e ORDER BY a.numeric, e.prop')
+        expected_result = [['a.numeric', 'a.mixed', 'a.bool', 'e.prop'],
+                           ['0.000000', 'NULL', 'true', 'true'],
+                           ['5.000000', 'notnull', 'false', '3.500000'],
+                           ['7.000000', 'NULL', 'false', 'NULL']]
+
+        # The graph should have the correct types for all properties
+        assert query_result.result_set == expected_result
 
 if __name__ == '__main__':
     unittest.main()
