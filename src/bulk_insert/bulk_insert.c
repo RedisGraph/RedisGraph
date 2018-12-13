@@ -138,36 +138,32 @@ int _BulkInsert_ProcessRelationFile(RedisModuleCtx *ctx, GraphContext *gc, const
     return BULK_OK;
 }
 
-int _BulkInsert_InsertNodes(RedisModuleCtx *ctx, GraphContext *gc,
+int _BulkInsert_InsertNodes(RedisModuleCtx *ctx, GraphContext *gc, int token_count,
                              RedisModuleString ***argv, int *argc) {
     int rc;
-    while (argv && *argc) {
-      size_t len;
-      // Retrieve a pointer to the next binary stream and record its length
-      const char *data = RedisModule_StringPtrLen(**argv, &len);
-      // Done processing labels
-      if (!strcmp(data, "RELATIONS")) {
-        return BULK_OK;
-      }
-      *argv += 1;
-      *argc -= 1;
-      rc = _BulkInsert_ProcessNodeFile(ctx, gc, data, len);
-      assert (rc == BULK_OK);
+    for (int i = 0; i < token_count; i ++) {
+        size_t len;
+        // Retrieve a pointer to the next binary stream and record its length
+        const char *data = RedisModule_StringPtrLen(**argv, &len);
+        *argv += 1;
+        *argc -= 1;
+        rc = _BulkInsert_ProcessNodeFile(ctx, gc, data, len);
+        assert (rc == BULK_OK);
     }
     return BULK_OK;
 }
 
-int _BulkInsert_Insert_Edges(RedisModuleCtx *ctx, GraphContext *gc,
+int _BulkInsert_Insert_Edges(RedisModuleCtx *ctx, GraphContext *gc, int token_count,
                              RedisModuleString ***argv, int *argc) {
     int rc;
-    while (argv && *argc) {
-      size_t len;
-      // Retrieve a pointer to the next binary stream and record its length
-      const char *data = RedisModule_StringPtrLen(**argv, &len);
-      *argv += 1;
-      *argc -= 1;
-      rc = _BulkInsert_ProcessRelationFile(ctx, gc, data, len);
-      assert (rc == BULK_OK);
+    for (int i = 0; i < token_count; i ++) {
+        size_t len;
+        // Retrieve a pointer to the next binary stream and record its length
+        const char *data = RedisModule_StringPtrLen(**argv, &len);
+        *argv += 1;
+        *argc -= 1;
+        rc = _BulkInsert_ProcessRelationFile(ctx, gc, data, len);
+        assert (rc == BULK_OK);
     }
     return BULK_OK;
 }
@@ -179,47 +175,38 @@ int BulkInsert(RedisModuleCtx *ctx, GraphContext *gc, RedisModuleString **argv, 
         return BULK_FAIL;
     }
 
-    bool section_found = false;
-    const char *section = RedisModule_StringPtrLen(*argv++, NULL);
-    argc -= 1;
+    // Read the number of node tokens
+    long long node_token_count;
+    long long relation_token_count;
+    if (RedisModule_StringToLongLong(*argv++, &node_token_count)  != REDISMODULE_OK) {
+        RedisModule_ReplyWithError(ctx, "Error parsing number of node descriptor tokens.");
+        return BULK_FAIL;
+    }
 
-    if(strcmp(section, "NODES") == 0) {
-        section_found = true;
-        int rc = _BulkInsert_InsertNodes(ctx, gc, &argv, &argc);
+    if (RedisModule_StringToLongLong(*argv++, &relation_token_count)  != REDISMODULE_OK) {
+        RedisModule_ReplyWithError(ctx, "Error parsing number of relation descriptor tokens.");
+        return BULK_FAIL;
+    }
+    argc -= 2;
+    if (node_token_count > 0) {
+        int rc = _BulkInsert_InsertNodes(ctx, gc, node_token_count, &argv, &argc);
         if (rc != BULK_OK) {
             return BULK_FAIL;
         } else if (argc == 0) {
             return BULK_OK;
         }
-        section = RedisModule_StringPtrLen(*argv++, NULL);
-        argc -= 1;
     }
 
-    if(strcmp(section, "RELATIONS") == 0) {
-        section_found = true;
-        int rc = _BulkInsert_Insert_Edges(ctx, gc, &argv, &argc);
+    if (relation_token_count > 0) {
+        int rc = _BulkInsert_Insert_Edges(ctx, gc, relation_token_count, &argv, &argc);
         if (rc != BULK_OK) {
             return BULK_FAIL;
         } else if (argc == 0) {
             return BULK_OK;
         }
-        section = RedisModule_StringPtrLen(*argv++, NULL);
-        argc -= 1;
-        assert (argc == 0);
     }
 
-    if (!section_found) {
-        char *error;
-        asprintf(&error, "Unexpected token %s, expected NODES or RELATIONS.", section);
-        RedisModule_ReplyWithError(ctx, error);
-        free(error);
-        return BULK_FAIL;
-    }
-
-    if (argc > 0) {
-        RedisModule_ReplyWithError(ctx, "Bulk insert format error, extra arguments.");
-        return BULK_FAIL;
-    }
+    assert(argc == 0);
 
     return BULK_OK;
 }

@@ -27,7 +27,7 @@ class Configs(object):
         # Maximum number of tokens per query
         # 1024 * 1024 is the hard-coded Redis maximum. We'll set a slightly lower limit so
         # that we can safely ignore tokens that aren't binary strings
-        # ("GRAPH.BULK", "BEGIN", "NODES", "RELATIONS", graph name, and entity counts)
+        # ("GRAPH.BULK", "BEGIN", graph name, counts)
         self.max_token_count = min(max_token_count, 1024 * 1023)
         # Maximum size in bytes per query
         self.max_buffer_size = max_buffer_size * 1000000
@@ -47,7 +47,8 @@ class QueryBuffer(object):
         self.buffer_size = 0
 
         # The first query should include a "BEGIN" token
-        self.prefix_args = [graphname, "BEGIN"]
+        self.graphname = graphname
+        self.initial_query = True
 
         self.node_count = 0
         self.relation_count = 0
@@ -63,12 +64,14 @@ class QueryBuffer(object):
             entity = cls(in_csv)
             added_size = entity.binary_size
             # Check to see if the addition of this data will exceed the buffer's capacity
+            #  import ipdb
+            #  ipdb.set_trace()
             if (self.buffer_size + added_size > CONFIGS.max_buffer_size
-                    or self.redis_token_count + 1 > CONFIGS.max_token_count):
+                    or self.redis_token_count + len(entity.binary_entities) >= CONFIGS.max_token_count):
                 # Send and flush the buffer if appropriate
                 self.send_buffer()
             # Add binary data to list and update all counts
-            self.redis_token_count += 1
+            self.redis_token_count += len(entity.binary_entities)
             self.buffer_size += added_size
 
     # Send all pending inserts to Redis
@@ -77,17 +80,19 @@ class QueryBuffer(object):
         if self.node_count == 0 and self.relation_count == 0:
             return
 
-        args = self.prefix_args + [self.node_count, self.relation_count]
+        if self.initial_query:
+            args = ["BEGIN"]
+        else:
+            args = []
 
-        if self.labels:
-            args += ["NODES"] + [e.to_binary() for e in self.labels]
+        args += [self.node_count, self.relation_count, len(self.labels), len(self.reltypes)] + self.labels + self.reltypes
 
-        if self.reltypes:
-            args += ["RELATIONS"] + [e.to_binary() for e in self.reltypes]
-        result = self.client.execute_command("GRAPH.BULK", *args)
+        result = self.client.execute_command("GRAPH.BULK",
+                                             self.graphname,
+                                             *args)
+        self.initial_query = False
+
         print(result)
-
-        del self.prefix_args[1:] # Delete "BEGIN" token if present
 
         self.clear_buffer()
 
@@ -220,13 +225,13 @@ class Label(EntityFile):
             self.prop_offset = 1
         self.packed_header = self.pack_header(header)
         self.binary_size += len(self.packed_header)
+        #  self.binary_entities.append(self.packed_header)
         return expected_col_count
 
     def process_entities(self, expected_col_count):
         global NODE_DICT
         global TOP_NODE_ID
         global QUERY_BUF
-        QUERY_BUF.labels.append(self)
 
         for row in self.reader:
             self.validate_row(expected_col_count, row)
@@ -241,6 +246,7 @@ class Label(EntityFile):
             row_binary_len = len(row_binary)
             # If the addition of this entity will the binary token too large, send the buffer now.
             if self.binary_size + row_binary_len > CONFIGS.max_token_size:
+                QUERY_BUF.labels.append(self.to_binary())
                 QUERY_BUF.send_buffer()
                 self.reset_partial_binary()
                 # Push the label onto the query buffer again, as there are more entities to process.
@@ -249,6 +255,7 @@ class Label(EntityFile):
             QUERY_BUF.node_count += 1
             self.binary_size += row_binary_len
             self.binary_entities.append(row_binary)
+        QUERY_BUF.labels.append(self.to_binary())
 
 # Handler class for processing relation csv files.
 class RelationType(EntityFile):
@@ -272,10 +279,10 @@ class RelationType(EntityFile):
         self.prop_offset = 2
         self.packed_header = self.pack_header(header) # skip src and dest identifiers
         self.binary_size += len(self.packed_header)
+        #  self.binary_entities.append(self.packed_header)
         return expected_col_count
 
     def process_entities(self, expected_col_count):
-        QUERY_BUF.reltypes.append(self)
         for row in self.reader:
             self.validate_row(expected_col_count, row)
 
@@ -292,6 +299,7 @@ class RelationType(EntityFile):
             row_binary_len = len(row_binary)
             # If the addition of this entity will the binary token too large, send the buffer now.
             if self.binary_size + row_binary_len > CONFIGS.max_token_size:
+                QUERY_BUF.reltypes.append(self.to_binary())
                 QUERY_BUF.send_buffer()
                 self.reset_partial_binary()
                 # Push the reltype onto the query buffer again, as there are more entities to process.
@@ -300,6 +308,7 @@ class RelationType(EntityFile):
             QUERY_BUF.relation_count += 1
             self.binary_size += row_binary_len
             self.binary_entities.append(row_binary)
+        QUERY_BUF.reltypes.append(self.to_binary())
 
 # Command-line arguments
 @click.command()
@@ -337,7 +346,7 @@ def bulk_insert(graph, host, port, password, nodes, relations, max_token_count, 
         print("Could not connect to Redis server.")
         raise e
 
-    
+
     QUERY_BUF = QueryBuffer(graph, client)
 
     # Create a node dictionary if we're building relations and as such require unique identifiers
