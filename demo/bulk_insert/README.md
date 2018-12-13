@@ -29,14 +29,14 @@ The nodes and relationship flags should be specified once per input file.
 ```
 python bulk_insert.py GRAPH_DEMO -n example/Person.csv -n example/Country.csv -r example/KNOWS.csv -r example/VISITED.csv
 ```
-The label (for nodes) or relationship type (for relationships) is derived from the base name of the input CSV file. In this query, we'll construct two sets of nodes, labeled `Person` and `Country`, and two types of relationships - `KNOWS` and `VISITED`.
+The label (for nodes) or relationship type (for relationships) is derived from the base name of the input CSV file. In this example, we'll construct two sets of nodes, labeled `Person` and `Country`, and two types of relationships - `KNOWS` and `VISITED`.
 
 ## Input constraints
 ### Node identifiers
 - If both nodes and relations are being created, each node must be associated with a unique identifier.
 - The identifier is the first column of each label CSV file. If this column's name starts with an underscore (`_`), the identifier is internal to the bulk loader operation and does not appear in the resulting graph. Otherwise, it is treated as a node property.
+- Each identifier must be entirely unique across all label files.
 - Source and destination nodes in relation CSV files should be referred to by their identifiers.
-- The name of the identifier columns otherwise do not matter, so long as no node has a duplicated value.
 - The uniqueness restriction is lifted if only nodes are being created.
 
 ### Entity properties
@@ -52,7 +52,7 @@ The label (for nodes) or relationship type (for relationships) is derived from t
 - Each row must have the same number of fields.
 - Leading and trailing whitespace is ignored.
 - The first field of a label file will be the node identifier, as described in [Node Identifiers](#node-identifiers).
-- With the possible exception of the first, each field in the header is a property key. The value in that position for each node is the property associated with that key.
+- All fields are property keys that will be associated with each node.
 
 ### Relationship files
 - Each row must have the same number of fields.

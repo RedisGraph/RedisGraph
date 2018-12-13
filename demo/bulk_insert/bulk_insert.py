@@ -22,7 +22,7 @@ class Type:
     STRING = 3
 
 # User-configurable thresholds for when to send queries to Redis
-class Configs:
+class Configs(object):
     def __init__(self, max_token_count, max_buffer_size, max_token_size):
         # Maximum number of tokens per query
         # 1024 * 1024 is the hard-coded Redis maximum. We'll set a slightly lower limit so
@@ -52,8 +52,8 @@ class QueryBuffer(object):
         self.node_count = 0
         self.relation_count = 0
 
-        self.labels = []
-        self.reltypes = []
+        self.labels = [] # List containing all pending Label objects
+        self.reltypes = [] # List containing all pending RelationType objects
 
     # For each node input file, validate contents and convert to binary format.
     # If any buffer limits have been reached, flush all enqueued inserts to Redis.
@@ -301,9 +301,6 @@ class RelationType(EntityFile):
             self.binary_size += row_binary_len
             self.binary_entities.append(row_binary)
 
-def help():
-    pass
-
 # Command-line arguments
 @click.command()
 @click.argument('graph')
@@ -331,7 +328,16 @@ def bulk_insert(graph, host, port, password, nodes, relations, max_token_count, 
 
     # Connect to Redis server and initialize buffer
     client = redis.StrictRedis(host=host, port=port, password=password)
+    try:
+        module_list = client.execute_command("MODULE LIST")
+        if not any('graph' in module_description for module_description in module_list):
+            print("RedisGraph module not loaded on connected server.")
+            exit(1)
+    except redis.exceptions.ConnectionError as e:
+        print("Could not connect to Redis server.")
+        raise e
 
+    
     QUERY_BUF = QueryBuffer(graph, client)
 
     # Create a node dictionary if we're building relations and as such require unique identifiers
