@@ -24,20 +24,6 @@ BulkInsertContext* BulkInsertContext_New(RedisModuleCtx *ctx, RedisModuleBlocked
 void BulkInsertContext_Free(BulkInsertContext* ctx) {
     free(ctx);
 }
-int _BeginBulkInsert(RedisModuleCtx *ctx, RedisModuleString *graph_name,
-                     long long *nodes_in_query, long long *relations_in_query,
-                     RedisModuleString **argv) {
-
-    RedisModuleKey *key = RedisModule_OpenKey(ctx, graph_name, REDISMODULE_READ);
-    int keytype = RedisModule_KeyType(key);
-    if (keytype != REDISMODULE_KEYTYPE_EMPTY) {
-        RedisModule_CloseKey(key);
-        RedisModule_ReplyWithError(ctx, "Graph name already exists as a Redis key.");
-        return BULK_FAIL;
-    }
-
-    return BULK_OK;
-}
 
 void _MGraph_BulkInsert(void *args) {
     // Establish thread-safe environment for batch insertion
@@ -72,7 +58,11 @@ void _MGraph_BulkInsert(void *args) {
         // Verify that graph does not already exist.
         key = RedisModule_OpenKey(ctx, rs_graph_name, REDISMODULE_READ);
         if (key) {
-            RedisModule_ReplyWithError(ctx, "Key was already in Redis database at beginning of bulk insert operation.");
+            const char *graphname = RedisModule_StringPtrLen(rs_graph_name, NULL);
+            char *err;
+            asprintf(&err, "Graph with name '%s' cannot be created, as Redis key '%s' already exists.", graphname, graphname); 
+            RedisModule_ReplyWithError(ctx, err);
+            free(err);
             goto cleanup;
         }
     }

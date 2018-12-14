@@ -7,10 +7,9 @@
 
 #include "bulk_insert.h"
 #include "../stores/store.h"
+#include "../util/rmalloc.h"
 #include <errno.h>
 #include <assert.h>
-#include <libgen.h>
-#include "../util/rmalloc.h"
 
 // The first byte of each property in the binary stream
 // is used to indicate the type of the subsequent SIValue
@@ -25,11 +24,23 @@ typedef enum {
 static char** _BulkInsert_ReadHeader(GraphContext *gc, LabelStoreType t,
                                                   const char *data, size_t *data_idx,
                                                   int *label_id, unsigned int *prop_count) {
+    /* Binary header format:
+     * - entity name : null-terminated C string
+     * - property count : 4-byte unsigned integer
+     * [0..property_count] : null-terminated C string
+     */
     // First sequence is entity name 
     const char *name = data + *data_idx;
     *data_idx += strlen(name) + 1;
-    LabelStore *store = (t == STORE_NODE) ? GraphContext_AddLabel(gc, name)
-                                          : GraphContext_AddRelationType(gc, name);
+    LabelStore *store = NULL;
+    if (t == STORE_NODE) {
+      store = GraphContext_GetStore(gc, name, STORE_NODE);
+      if (store == NULL) store = GraphContext_AddLabel(gc, name);
+    } else {
+      store = GraphContext_GetStore(gc, name, STORE_EDGE);
+      if (store == NULL) store = GraphContext_AddRelationType(gc, name);
+    }
+
     *label_id = store->id;
 
     // Next 4 bytes are property count
@@ -55,6 +66,13 @@ static char** _BulkInsert_ReadHeader(GraphContext *gc, LabelStoreType t,
 
 // Read an SIValue from the data stream and update the index appropriately
 static inline SIValue _BulkInsert_ReadProperty(const char *data, size_t *data_idx) {
+    /* Binary property format:
+     * - property type : 1-byte integer corresponding to TYPE enum
+     * - Nothing if type is NULL
+     * - 1-byte true/false if type is boolean
+     * - 8-byte double if type is numeric
+     * - Null-terminated C string if type is string
+     */
     SIValue v;
     TYPE t = data[*data_idx];
     *data_idx += 1;
@@ -175,7 +193,7 @@ int _BulkInsert_Insert_Edges(RedisModuleCtx *ctx, GraphContext *gc, int token_co
 
 int BulkInsert(RedisModuleCtx *ctx, GraphContext *gc, RedisModuleString **argv, int argc) {
 
-    if (argc < 1) {
+    if (argc < 2) {
         RedisModule_ReplyWithError(ctx, "Bulk insert format error, failed to parse bulk insert sections.");
         return BULK_FAIL;
     }
@@ -193,6 +211,7 @@ int BulkInsert(RedisModuleCtx *ctx, GraphContext *gc, RedisModuleString **argv, 
         return BULK_FAIL;
     }
     argc -= 2;
+
     if (node_token_count > 0) {
         int rc = _BulkInsert_InsertNodes(ctx, gc, node_token_count, &argv, &argc);
         if (rc != BULK_OK) {

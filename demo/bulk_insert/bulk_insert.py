@@ -153,7 +153,6 @@ class Label(EntityFile):
             self.prop_offset = 1
         self.packed_header = self.pack_header(header)
         self.binary_size += len(self.packed_header)
-        #  self.binary_entities.append(self.packed_header)
         return expected_col_count
 
     def process_entities(self, expected_col_count):
@@ -168,17 +167,19 @@ class Label(EntityFile):
                 if row[0] in NODE_DICT:
                     print("Node identifier '%s' was used multiple times - second occurrence at %s:%d"
                           % (row[0], self.infile.name, self.reader.line_num))
+                    exit(1)
                 NODE_DICT[row[0]] = TOP_NODE_ID
                 TOP_NODE_ID += 1
             row_binary = self.pack_props(row)
             row_binary_len = len(row_binary)
-            # If the addition of this entity will the binary token too large, send the buffer now.
+            # If the addition of this entity will make the binary token grow too large,
+            # send the buffer now.
             if self.binary_size + row_binary_len > CONFIGS.max_token_size:
                 QUERY_BUF.labels.append(self.to_binary())
                 QUERY_BUF.send_buffer()
                 self.reset_partial_binary()
                 # Push the label onto the query buffer again, as there are more entities to process.
-                QUERY_BUF.labels.append(self)
+                QUERY_BUF.labels.append(self.to_binary())
 
             QUERY_BUF.node_count += 1
             self.binary_size += row_binary_len
@@ -207,7 +208,6 @@ class RelationType(EntityFile):
         self.prop_offset = 2
         self.packed_header = self.pack_header(header) # skip src and dest identifiers
         self.binary_size += len(self.packed_header)
-        #  self.binary_entities.append(self.packed_header)
         return expected_col_count
 
     def process_entities(self, expected_col_count):
@@ -218,20 +218,19 @@ class RelationType(EntityFile):
                 src = NODE_DICT[row[0]]
                 dest = NODE_DICT[row[1]]
             except KeyError as e:
-                print("Error - relationship specified a non-existent identifier.")
+                print("Relationship specified a non-existent identifier.")
                 raise e
-            src = NODE_DICT[row[0]]
-            dest = NODE_DICT[row[1]]
             fmt = "=QQ" # 8-byte unsigned ints for src and dest
             row_binary = struct.pack(fmt, src, dest) + self.pack_props(row)
             row_binary_len = len(row_binary)
-            # If the addition of this entity will the binary token too large, send the buffer now.
+            # If the addition of this entity will make the binary token grow too large,
+            # send the buffer now.
             if self.binary_size + row_binary_len > CONFIGS.max_token_size:
                 QUERY_BUF.reltypes.append(self.to_binary())
                 QUERY_BUF.send_buffer()
                 self.reset_partial_binary()
                 # Push the reltype onto the query buffer again, as there are more entities to process.
-                QUERY_BUF.reltypes.append(self)
+                QUERY_BUF.reltypes.append(self.to_binary())
 
             QUERY_BUF.relation_count += 1
             self.binary_size += row_binary_len
@@ -317,7 +316,6 @@ def bulk_insert(graph, host, port, password, nodes, relations, max_token_count, 
     except redis.exceptions.ConnectionError as e:
         print("Could not connect to Redis server.")
         raise e
-
 
     QUERY_BUF = QueryBuffer(graph, client)
 
