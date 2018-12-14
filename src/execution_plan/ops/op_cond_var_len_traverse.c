@@ -84,4 +84,5 @@ OpResult CondVarLenTraverseReset(OpBase *ctx) {
 void CondVarLenTraverseFree(OpBase *ctx) {
     CondVarLenTraverse *op = (CondVarLenTraverse*)ctx;
     if(op->allPathsCtx) AllPathsCtx_Free(op->allPathsCtx);
+    AlgebraicExpression_Free(op->ae);
 }

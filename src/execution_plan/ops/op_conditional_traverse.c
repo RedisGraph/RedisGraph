@@ -167,5 +167,6 @@ void CondTraverseFree(OpBase *ctx) {
     if(op->iter) GxB_MatrixTupleIter_free(op->iter);
     if(op->F) GrB_Matrix_free(&op->F);
     if(op->edges) array_free(op->edges);
+    if(op->algebraic_expression) AlgebraicExpression_Free(op->algebraic_expression);
     if(op->algebraic_results) AlgebraicExpressionResult_Free(op->algebraic_results);
 }

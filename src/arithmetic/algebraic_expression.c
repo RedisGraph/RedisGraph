@@ -6,6 +6,8 @@
 */
 
 #include "algebraic_expression.h"
+#include "../util/arr.h"
+#include "../util/rmalloc.h"
 #include <assert.h>
 
 AlgebraicExpressionResult *_AlgebraicExpressionResult_New(GrB_Matrix M, AlgebraicExpression *ae) {
@@ -337,11 +339,12 @@ AlgebraicExpression **AlgebraicExpression_From_Query(const AST *ast, Vector *mat
         Vector_Get(matchPattern, i, &match_element);
 
         if(match_element->t != N_LINK) continue;
-        AST_LinkEntity *edge = (AST_LinkEntity*)match_element;
-        transpose = (edge->direction == N_RIGHT_TO_LEFT);
-        e = QueryGraph_GetEdgeByAlias(q, edge->ge.alias);
+        AST_LinkEntity *astEdge = (AST_LinkEntity*)match_element;
+        transpose = (astEdge->direction == N_RIGHT_TO_LEFT);
+        e = QueryGraph_GetEdgeByAlias(q, astEdge->ge.alias);
         assert(e);
 
+        GrB_Matrix mat = e->mat;
         dest = e->dest;
         src = e->src;
 
@@ -355,14 +358,35 @@ AlgebraicExpression **AlgebraicExpression_From_Query(const AST *ast, Vector *mat
             if(src->mat) AlgebraicExpression_AppendTerm(exp, src->mat, false, false);
         }
 
+        // ()-[:A|:B.]->()
+        // Create matrix M, where M = A+B+...
+        if(astEdge->multipleLabels) {
+            GraphContext *gc = GraphContext_GetFromLTS();
+            Graph *g = gc->g;
+
+            GrB_Matrix m;
+            GrB_Matrix_new(&m, GrB_BOOL, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g));
+
+            int labelCount = array_len(astEdge->multipleLabels);
+            for(int i = 0; i < labelCount; i++) {
+                char *label = astEdge->multipleLabels[i];
+                LabelStore *s = GraphContext_GetStore(gc, label, STORE_EDGE);
+                if(!s) continue;
+                GrB_Matrix l = Graph_GetRelationMatrix(g, s->id);
+                GrB_Info info = GrB_eWiseAdd_Matrix_Semiring(m, NULL, NULL, Rg_structured_bool, m, l, NULL);                
+            }
+            mat = m;
+        }
+
         unsigned int hops = 1;
         /* Expand fixed variable length edge */
-        if(edge->length && AST_LinkEntity_FixedLengthEdge(edge)) {
-            hops = edge->length->minHops;
+        if(astEdge->length && AST_LinkEntity_FixedLengthEdge(astEdge)) {
+            hops = astEdge->length->minHops;
         }
 
         for(int i = 0; i < hops; i++) {
-            AlgebraicExpression_AppendTerm(exp, e->mat, transpose, false);
+            bool freeMatrix = (astEdge->multipleLabels != NULL);
+            AlgebraicExpression_AppendTerm(exp, mat, transpose, freeMatrix);
         }
 
         if(dest->mat) AlgebraicExpression_AppendTerm(exp, dest->mat, false, false);
@@ -371,7 +395,8 @@ AlgebraicExpression **AlgebraicExpression_From_Query(const AST *ast, Vector *mat
     exp->dest_node = dest;
     AlgebraicExpression **expressions = _AlgebraicExpression_Intermidate_Expressions(exp, ast, matchPattern, q, exp_count);
     expressions = _AlgebraicExpression_IsolateVariableLenExps(expressions, exp_count);
-    AlgebraicExpression_Free(exp);
+    // AlgebraicExpression_Free(exp);
+    free(exp);
 
     /* Because matrices are column ordered, when multiplying A*B
      * we need to reverse the order: B*A. */
@@ -487,10 +512,81 @@ void AlgebraicExpressionResult_Free(AlgebraicExpressionResult *aer) {
 }
 
 void AlgebraicExpression_Free(AlgebraicExpression* ae) {
-    for(int i = 0; i < ae->operand_count; i++)
-        if(ae->operands[i].free)
+    for(int i = 0; i < ae->operand_count; i++) {
+        if(ae->operands[i].free) {
             GrB_Matrix_free(&ae->operands[i].operand);
+        }
+    }
 
     free(ae->operands);
     free(ae);
+}
+
+AlgebraicExpressionNode *AlgebraicExpressionNode_NewOperationNode(AL_EXP_OP op) {
+    AlgebraicExpressionNode *node = rm_malloc(sizeof(AlgebraicExpressionNode));
+    node->type = AL_OPERATION;
+    node->operation.op = op;
+    node->operation.l = NULL;
+    node->operation.r = NULL;
+    return node;
+}
+
+AlgebraicExpressionNode *AlgebraicExpressionNode_NewOperandNode(GrB_Matrix operand) {
+    AlgebraicExpressionNode *node = rm_malloc(sizeof(AlgebraicExpressionNode));
+    node->type = AL_OPERAND;
+    node->operand = operand;
+    return node;
+}
+
+void AlgebraicExpressionNode_AppendLeftChild(AlgebraicExpressionNode *root, AlgebraicExpressionNode *child) {
+    assert(root && root->type == AL_OPERATION && root->operation.l == NULL);
+    root->operation.l = child;
+}
+
+void AlgebraicExpressionNode_AppendRightChild(AlgebraicExpressionNode *root, AlgebraicExpressionNode *child) {
+    assert(root && root->type == AL_OPERATION && root->operation.r == NULL);
+    root->operation.r = child;
+}
+
+GrB_Matrix AlgebraicExpression_Eval(const AlgebraicExpressionNode *exp) {
+    if(exp == NULL) return NULL;
+    if(exp->type == AL_OPERAND) {
+        return exp->operand;
+    } else {
+        GrB_Matrix r = AlgebraicExpression_Eval(exp->operation.r);
+        GrB_Matrix l = AlgebraicExpression_Eval(exp->operation.l);
+
+        // Determine if left or right expression needs to be transposed.
+        GrB_Descriptor desc = NULL;        
+        AlgebraicExpressionNode *rightHand = exp->operation.r;
+        AlgebraicExpressionNode *leftHand = exp->operation.l;
+        
+        if(leftHand && leftHand->type == AL_OPERATION && leftHand->operation.op == AL_EXP_TRANSPOSE) {
+            if(!desc) GrB_Descriptor_new(&desc);
+            GrB_Descriptor_set(desc, GrB_INP0, GrB_TRAN);
+        }
+        
+        if(rightHand && rightHand->type == AL_OPERATION && rightHand->operation.op == AL_EXP_TRANSPOSE) {
+            if(!desc) GrB_Descriptor_new(&desc);
+            GrB_Descriptor_set(desc, GrB_INP1, GrB_TRAN);
+        }
+
+        // Perform operation, result overrides R.
+        switch(exp->operation.op) {
+            case AL_EXP_MUL:
+                assert(GrB_mxm(r, NULL, NULL, Rg_structured_bool, l, r, desc) == GrB_SUCCESS);
+                break;
+            case AL_EXP_ADD:
+                assert(GrB_eWiseAdd_Matrix_Semiring(r, NULL, NULL, Rg_structured_bool, l, r, desc) == GrB_SUCCESS);
+                break;
+            case AL_EXP_TRANSPOSE:
+                // Transpose is an unary operation which gets delayed.
+                assert( !(l && r) && (l || r) ); // Verify unary.
+                r = (r) ? r: l;
+                break;
+            default:
+                assert(false);
+        }
+        return r;
+    }
 }
