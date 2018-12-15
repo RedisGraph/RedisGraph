@@ -360,16 +360,16 @@ AlgebraicExpression **AlgebraicExpression_From_Query(const AST *ast, Vector *mat
 
         // ()-[:A|:B.]->()
         // Create matrix M, where M = A+B+...
-        if(astEdge->multipleLabels) {
+        int labelCount = AST_LinkEntity_LabelCount(astEdge);
+        if(labelCount > 1) {
             GraphContext *gc = GraphContext_GetFromLTS();
             Graph *g = gc->g;
 
             GrB_Matrix m;
             GrB_Matrix_new(&m, GrB_BOOL, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g));
 
-            int labelCount = array_len(astEdge->multipleLabels);
             for(int i = 0; i < labelCount; i++) {
-                char *label = astEdge->multipleLabels[i];
+                char *label = astEdge->labels[i];
                 LabelStore *s = GraphContext_GetStore(gc, label, STORE_EDGE);
                 if(!s) continue;
                 GrB_Matrix l = Graph_GetRelationMatrix(g, s->id);
@@ -385,7 +385,7 @@ AlgebraicExpression **AlgebraicExpression_From_Query(const AST *ast, Vector *mat
         }
 
         for(int i = 0; i < hops; i++) {
-            bool freeMatrix = (astEdge->multipleLabels != NULL);
+            bool freeMatrix = (labelCount > 1);
             AlgebraicExpression_AppendTerm(exp, mat, transpose, freeMatrix);
         }
 

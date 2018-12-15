@@ -251,6 +251,57 @@ all_reachable_countries_query = QueryInfo(
                      ['Russia', '1.000000']]
 )
 
+reachable_countries_or_people_query = QueryInfo(
+    query="""MATCH (a:person {name:'Roi Lipman'})-[:friend|:visited]->(e)
+             RETURN e.name
+             ORDER BY e.name""",
+    description='Every person or country one hop away from source node',
+    max_run_time_ms=0.5,
+    expected_result=[["Boaz Arad"],
+                     ["Ori Laslo"],
+                     ["Ailon Velger"],
+                     ["Alon Fital"],
+                     ["Tal Doron"],
+                     ["Omri Traub"],
+                     ["USA"],
+                     ["Prague"],
+                     ["Japan"]]
+)
+
+all_reachable_countries_or_people_query = QueryInfo(
+    query="""MATCH (a:person {name:'Roi Lipman'})-[:friend|:visited*]->(e)
+             RETURN e.name, count(e.name) AS NumPathsToEntity
+             ORDER BY NumPathsToEntity DESC""",
+    description='Every reachable person or country from source node',
+    max_run_time_ms=0.5,
+    expected_result=[['USA', '9.000000'],
+                     ['Amsterdam', '5.000000'],
+                     ['Greece', '4.000000'],
+                     ['Prague', '3.000000'],
+                     ['Germany', '2.000000'],
+                     ['Japan', '2.000000'],
+                     ['Andora', '2.000000'],
+                     ['Canada', '2.000000'],
+                     ['China', '2.000000'],
+                     ['Ailon Velger', '1.000000'],
+                     ['Alon Fital', '1.000000'],
+                     ['Gal Derriere', '1.000000'],
+                     ['Jane Chernomorin', '1.000000'],
+                     ['Omri Traub', '1.000000'],
+                     ['Boaz Arad', '1.000000'],
+                     ['Noam Nativ', '1.000000'],
+                     ['Shelly Laslo Rooz', '1.000000'],
+                     ['Russia', '1.000000'],
+                     ['Valerie Abigail Arad', '1.000000'],
+                     ['Mor Yesharim', '1.000000'],
+                     ['Italy', '1.000000'],
+                     ['Tal Doron', '1.000000'],
+                     ['Thailand', '1.000000'],
+                     ['Kazakhstan', '1.000000'],
+                     ['Lucy Yanfital', '1.000000'],
+                     ['Ori Laslo', '1.000000']]
+)
+
 all_reachable_entities_query = QueryInfo(
     query="""MATCH (a:person {name:'Roi Lipman'})-[*]->(e)
              RETURN e.name, count(e.name) AS NumPathsToEntity
@@ -337,6 +388,8 @@ queries_info = [
     number_of_vacations_per_person_query,
     all_reachable_friends_query,
     all_reachable_countries_query,
+    reachable_countries_or_people_query,
+    all_reachable_countries_or_people_query,
     all_reachable_entities_query,
     delete_friendships_query,
     delete_person_query,

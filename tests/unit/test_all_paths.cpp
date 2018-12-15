@@ -11,8 +11,8 @@
 extern "C" {
 #endif
 
-#include "../../src/algorithms/algorithms.h"
 #include "../../src/util/rmalloc.h"
+#include "../../src/algorithms/algorithms.h"
 
 #ifdef __cplusplus
 }
@@ -83,11 +83,12 @@ TEST_F(AllPathsTest, NoPaths) {
     Node src;
     Graph_GetNode(g, srcNodeID, &src);
 
-    AllPathsCtx *ctx = AllPathsCtx_New(&src, g, GRAPH_NO_RELATION, GRAPH_EDGE_DIR_OUTGOING, minLen, maxLen);
+    int relationships[] = { GRAPH_NO_RELATION };
+    AllPathsCtx *ctx = AllPathsCtx_New(&src, g, relationships, 1, GRAPH_EDGE_DIR_OUTGOING, minLen, maxLen);
     Path p = AllPathsCtx_NextPath(ctx);
 
     ASSERT_TRUE(p == NULL);
-
+    
     AllPathsCtx_Free(ctx);
     Graph_Free(g);
 }
@@ -101,8 +102,8 @@ TEST_F(AllPathsTest, LongestPaths) {
 
     unsigned int minLen = 0;
     unsigned int maxLen = UINT_MAX-2;
-    
-    AllPathsCtx *ctx = AllPathsCtx_New(&src, g, GRAPH_NO_RELATION, GRAPH_EDGE_DIR_OUTGOING, minLen, maxLen);
+    int relationships[] = { GRAPH_NO_RELATION };
+    AllPathsCtx *ctx = AllPathsCtx_New(&src, g, relationships, 1, GRAPH_EDGE_DIR_OUTGOING, minLen, maxLen);
     Path path;
 
     unsigned int longestPath = 0;
@@ -113,7 +114,7 @@ TEST_F(AllPathsTest, LongestPaths) {
 
     // 0,1,2,3
     ASSERT_EQ(longestPath, 4);
-
+    
     AllPathsCtx_Free(ctx);
     Graph_Free(g);
 }
@@ -129,8 +130,8 @@ TEST_F(AllPathsTest, UpToThreeLegsPaths) {
     unsigned int minLen = 0;
     unsigned int maxLen = 3;
     uint pathsCount = 0;
-
-    AllPathsCtx *ctx = AllPathsCtx_New(&src, g, GRAPH_NO_RELATION, GRAPH_EDGE_DIR_OUTGOING, minLen, maxLen);    
+    int relationships[] = { GRAPH_NO_RELATION };
+    AllPathsCtx *ctx = AllPathsCtx_New(&src, g, relationships, 1, GRAPH_EDGE_DIR_OUTGOING, minLen, maxLen);
 
     /* Connections:
      * 0 -> 1
@@ -185,7 +186,7 @@ TEST_F(AllPathsTest, UpToThreeLegsPaths) {
     }
     ASSERT_EQ(pathsCount, 7);
 
-    AllPathsCtx_Free(ctx);
+    AllPathsCtx_Free(ctx);    
     Graph_Free(g);
 }
 
@@ -199,8 +200,8 @@ TEST_F(AllPathsTest, TwoLegPaths) {
     unsigned int minLen = 2;
     unsigned int maxLen = 2;
     unsigned int pathsCount = 0;
-
-    AllPathsCtx *ctx = AllPathsCtx_New(&src, g, GRAPH_NO_RELATION, GRAPH_EDGE_DIR_OUTGOING, minLen, maxLen);
+    int relationships[] = { GRAPH_NO_RELATION };
+    AllPathsCtx *ctx = AllPathsCtx_New(&src, g, relationships, 1, GRAPH_EDGE_DIR_OUTGOING, minLen, maxLen);
     /* Connections:
      * 0 -> 1
      * 0 -> 2
@@ -235,7 +236,7 @@ TEST_F(AllPathsTest, TwoLegPaths) {
     }
 
     ASSERT_EQ(pathsCount, 3);
-
+    
     AllPathsCtx_Free(ctx);
     Graph_Free(g);
 }

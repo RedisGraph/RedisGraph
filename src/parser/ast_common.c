@@ -28,12 +28,11 @@ AST_LinkEntity* New_AST_LinkEntity(char *alias, char **labels, Vector *propertie
 	le->length = length;
 	le->ge.t = N_LINK;
 	le->ge.properties = properties;
-	le->multipleLabels = NULL;
+	le->labels = NULL;
 
 	if(labels) {
-		le->ge.label = strdup(labels[0]);
-		if(array_len(labels) > 1) le->multipleLabels = labels;
-		else array_free(labels);
+		le->ge.label = labels[0];
+		le->labels = labels;
 	}
 
 	if(alias != NULL) le->ge.alias = strdup(alias);
@@ -59,8 +58,12 @@ AST_NodeEntity* New_AST_NodeEntity(char *alias, char *label, Vector *properties)
 	return ne;
 }
 
-bool AST_LinkEntity_FixedLengthEdge(AST_LinkEntity* edge) {
+bool AST_LinkEntity_FixedLengthEdge(const AST_LinkEntity* edge) {
 	return (!edge->length || edge->length->minHops == edge->length->maxHops);
+}
+
+int AST_LinkEntity_LabelCount(const AST_LinkEntity* edge) {
+	return array_len(edge->labels);
 }
 
 void Free_AST_GraphEntity(AST_GraphEntity *graphEntity) {
@@ -69,7 +72,7 @@ void Free_AST_GraphEntity(AST_GraphEntity *graphEntity) {
 	if(graphEntity->t == N_LINK) {
 		AST_LinkEntity *link = (AST_LinkEntity*)graphEntity;
 		if(link->length) free(link->length);
-		if(link->multipleLabels) array_free(link->multipleLabels);
+		if(link->labels) array_free(link->labels);
 	}
 	free(graphEntity);
 }

@@ -8,8 +8,27 @@
 #include <assert.h>
 
 #include "../../util/arr.h"
+#include "../../parser/ast.h"
+#include "../../graph/graphcontext.h"
 #include "../../algorithms/all_paths.h"
 #include "./op_cond_var_len_traverse.h"
+
+void _setupTraversedRelations(CondVarLenTraverse *op) {
+    AST *ast = AST_GetFromLTS();
+    GraphContext *gc = GraphContext_GetFromLTS();    
+    AST_LinkEntity *e = (AST_LinkEntity*)MatchClause_GetEntity(ast->matchNode, op->ae->edge->alias);
+    int labelCount = AST_LinkEntity_LabelCount(e);
+
+    if(labelCount > 0) {
+        for(int i = 0; i < labelCount; i++) {
+            LabelStore *s = GraphContext_GetStore(gc, e->labels[i], STORE_EDGE);
+            if(!s) continue;
+            op->relationIDs = array_append(op->relationIDs, s->id);
+        }
+    } else {
+        op->relationIDs = array_append(op->relationIDs, GRAPH_NO_RELATION);
+    }
+}
 
 OpBase* NewCondVarLenTraverseOp(AlgebraicExpression *ae, unsigned int minHops, unsigned int maxHops, Graph *g) {
     assert(ae && minHops <= maxHops && g && ae->operand_count == 1);
@@ -18,13 +37,15 @@ OpBase* NewCondVarLenTraverseOp(AlgebraicExpression *ae, unsigned int minHops, u
     CondVarLenTraverse *condVarLenTraverse = malloc(sizeof(CondVarLenTraverse));
     condVarLenTraverse->g = g;
     condVarLenTraverse->ae = ae;
-    condVarLenTraverse->relationID = Edge_GetRelationID(ae->edge);
+    condVarLenTraverse->relationIDs = array_new(int, 1);
     condVarLenTraverse->srcNodeIdx = AST_GetAliasID(ast, ae->src_node->alias);
     condVarLenTraverse->destNodeIdx = AST_GetAliasID(ast, ae->dest_node->alias);
     condVarLenTraverse->minHops = minHops;
     condVarLenTraverse->maxHops = maxHops;
     condVarLenTraverse->allPathsCtx = NULL;
     condVarLenTraverse->traverseDir = (ae->operands[0].transpose) ? GRAPH_EDGE_DIR_INCOMING : GRAPH_EDGE_DIR_OUTGOING;
+
+    _setupTraversedRelations(condVarLenTraverse);
 
     // Set our Op operations
     OpBase_Init(&condVarLenTraverse->op);
@@ -47,14 +68,6 @@ OpResult CondVarLenTraverseConsume(OpBase *opBase, Record r) {
     OpBase *child = op->op.children[0];
     OpResult res;
 
-    /* Not initialized. */
-    if(!op->allPathsCtx) {
-        res = child->consume(child, r);
-        if(res != OP_OK) return res;
-        Node *srcNode = Record_GetNode(r, op->srcNodeIdx);
-        op->allPathsCtx = AllPathsCtx_New(srcNode, op->g, op->relationID, op->traverseDir, op->minHops, op->maxHops);
-    }
-
     Path p = NULL;
     while(!(p = AllPathsCtx_NextPath(op->allPathsCtx))) {
         res = child->consume(child, r);
@@ -63,7 +76,13 @@ OpResult CondVarLenTraverseConsume(OpBase *opBase, Record r) {
         Node *srcNode = Record_GetNode(r, op->srcNodeIdx);
 
         AllPathsCtx_Free(op->allPathsCtx);
-        op->allPathsCtx = AllPathsCtx_New(srcNode, op->g, op->relationID, op->traverseDir, op->minHops, op->maxHops);
+        op->allPathsCtx = AllPathsCtx_New(srcNode,
+                                          op->g,
+                                          op->relationIDs,
+                                          array_len(op->relationIDs),
+                                          op->traverseDir,
+                                          op->minHops,
+                                          op->maxHops);
     }
 
     // For the timebeing we only care for the last node in path
@@ -85,4 +104,5 @@ void CondVarLenTraverseFree(OpBase *ctx) {
     CondVarLenTraverse *op = (CondVarLenTraverse*)ctx;
     if(op->allPathsCtx) AllPathsCtx_Free(op->allPathsCtx);
     AlgebraicExpression_Free(op->ae);
+    array_free(op->relationIDs);
 }
