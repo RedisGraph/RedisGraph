@@ -9,6 +9,27 @@
 #include "../../util/arr.h"
 #include "../../GraphBLASExt/GxB_Delete.h"
 
+static void _setupTraversedRelations(CondTraverse *op) {
+    AST *ast = AST_GetFromLTS();
+    GraphContext *gc = GraphContext_GetFromLTS();
+    const char *alias = op->algebraic_expression->edge->alias;
+    AST_LinkEntity *e = (AST_LinkEntity*)MatchClause_GetEntity(ast->matchNode, alias);
+    op->edgeRelationCount = AST_LinkEntity_LabelCount(e);
+    
+    if(op->edgeRelationCount > 0) {
+        op->edgeRelationTypes = array_new(int , op->edgeRelationCount);
+        for(int i = 0; i < op->edgeRelationCount; i++) {
+            LabelStore *s = GraphContext_GetStore(gc, e->labels[i], STORE_EDGE);
+            if(!s) continue;
+            op->edgeRelationTypes = array_append(op->edgeRelationTypes, s->id);
+        }
+    } else {
+        op->edgeRelationCount = 1;
+        op->edgeRelationTypes = array_new(int , 1);
+        op->edgeRelationTypes = array_append(op->edgeRelationTypes, GRAPH_NO_RELATION);
+    }
+}
+
 // Updates query graph edge.
 OpResult _CondTraverse_SetEdge(CondTraverse *op, Record r) {
     // Consumed edges connecting current source and destination nodes.
@@ -48,6 +69,7 @@ OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *algebraic_expression) {
     traverse->graph = g;
     traverse->algebraic_expression = algebraic_expression;
     traverse->algebraic_results = NULL;
+    traverse->edgeRelationTypes = NULL;
     traverse->F = NULL;
     traverse->iter = NULL;
     traverse->edges = NULL;
@@ -70,10 +92,10 @@ OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *algebraic_expression) {
     Vector_Push(traverse->op.modifies, modified);
 
     if(algebraic_expression->edge) {
+        _setupTraversedRelations(traverse);
         modified = traverse->algebraic_expression->edge->alias;
         Vector_Push(traverse->op.modifies, modified);
-        traverse->edges = array_new(Edge, Graph_RelationTypeCount(g));
-        traverse->edgeRelationType = Edge_GetRelationID(algebraic_expression->edge);
+        traverse->edges = array_new(Edge, 32);
         traverse->edgeRecIdx = AST_GetAliasID(ast, algebraic_expression->edge->alias);
     }
 
@@ -137,11 +159,13 @@ OpResult CondTraverseConsume(OpBase *opBase, Record r) {
             destNode = Record_GetNode(r, op->destNodeRecIdx);
         }
 
-        Graph_GetEdgesConnectingNodes(op->graph,
-                                      ENTITY_GET_ID(srcNode),
-                                      ENTITY_GET_ID(destNode),
-                                      op->edgeRelationType,
-                                      &op->edges);
+        for(int i = 0; i < op->edgeRelationCount; i++) {
+            Graph_GetEdgesConnectingNodes(op->graph,
+                                        ENTITY_GET_ID(srcNode),
+                                        ENTITY_GET_ID(destNode),
+                                        op->edgeRelationTypes[i],
+                                        &op->edges);
+        }
         _CondTraverse_SetEdge(op, r);
     }
     return OP_OK;
@@ -169,4 +193,5 @@ void CondTraverseFree(OpBase *ctx) {
     if(op->edges) array_free(op->edges);
     if(op->algebraic_expression) AlgebraicExpression_Free(op->algebraic_expression);
     if(op->algebraic_results) AlgebraicExpressionResult_Free(op->algebraic_results);
+    if(op->edgeRelationTypes) array_free(op->edgeRelationTypes);
 }

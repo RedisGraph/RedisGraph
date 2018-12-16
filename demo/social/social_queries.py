@@ -252,20 +252,20 @@ all_reachable_countries_query = QueryInfo(
 )
 
 reachable_countries_or_people_query = QueryInfo(
-    query="""MATCH (a:person {name:'Roi Lipman'})-[:friend|:visited]->(e)
-             RETURN e.name
-             ORDER BY e.name""",
+    query="""MATCH (s:person {name:'Roi Lipman'})-[e:friend|:visited]->(t)
+             RETURN s.name,TYPE(e),t.name
+             ORDER BY t.name""",
     description='Every person or country one hop away from source node',
     max_run_time_ms=0.5,
-    expected_result=[["Boaz Arad"],
-                     ["Ori Laslo"],
-                     ["Ailon Velger"],
-                     ["Alon Fital"],
-                     ["Tal Doron"],
-                     ["Omri Traub"],
-                     ["USA"],
-                     ["Prague"],
-                     ["Japan"]]
+    expected_result=[["Roi Lipman", "friend", "Ailon Velger"],
+                     ["Roi Lipman", "friend", "Alon Fital"],
+                     ["Roi Lipman", "friend", "Boaz Arad"],
+                     ["Roi Lipman", "visited", "Japan"],
+                     ["Roi Lipman", "friend", "Omri Traub"],
+                     ["Roi Lipman", "friend", "Ori Laslo"],
+                     ["Roi Lipman", "visited", "Prague"],
+                     ["Roi Lipman", "friend", "Tal Doron"],
+                     ["Roi Lipman", "visited", "USA"]]
 )
 
 all_reachable_countries_or_people_query = QueryInfo(

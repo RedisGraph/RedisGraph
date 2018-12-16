@@ -13,19 +13,22 @@
 #include "../../algorithms/all_paths.h"
 #include "./op_cond_var_len_traverse.h"
 
-void _setupTraversedRelations(CondVarLenTraverse *op) {
+static void _setupTraversedRelations(CondVarLenTraverse *op) {
     AST *ast = AST_GetFromLTS();
     GraphContext *gc = GraphContext_GetFromLTS();    
     AST_LinkEntity *e = (AST_LinkEntity*)MatchClause_GetEntity(ast->matchNode, op->ae->edge->alias);
-    int labelCount = AST_LinkEntity_LabelCount(e);
+    op->relationIDsCount = AST_LinkEntity_LabelCount(e);
 
-    if(labelCount > 0) {
-        for(int i = 0; i < labelCount; i++) {
+    if(op->relationIDsCount > 0) {
+        op->relationIDs = array_new(int, op->relationIDsCount);
+        for(int i = 0; i < op->relationIDsCount; i++) {
             LabelStore *s = GraphContext_GetStore(gc, e->labels[i], STORE_EDGE);
             if(!s) continue;
             op->relationIDs = array_append(op->relationIDs, s->id);
         }
     } else {
+        op->relationIDsCount = 1;
+        op->relationIDs = array_new(int, op->relationIDsCount);
         op->relationIDs = array_append(op->relationIDs, GRAPH_NO_RELATION);
     }
 }
@@ -37,7 +40,7 @@ OpBase* NewCondVarLenTraverseOp(AlgebraicExpression *ae, unsigned int minHops, u
     CondVarLenTraverse *condVarLenTraverse = malloc(sizeof(CondVarLenTraverse));
     condVarLenTraverse->g = g;
     condVarLenTraverse->ae = ae;
-    condVarLenTraverse->relationIDs = array_new(int, 1);
+    condVarLenTraverse->relationIDs = NULL;
     condVarLenTraverse->srcNodeIdx = AST_GetAliasID(ast, ae->src_node->alias);
     condVarLenTraverse->destNodeIdx = AST_GetAliasID(ast, ae->dest_node->alias);
     condVarLenTraverse->minHops = minHops;
@@ -79,7 +82,7 @@ OpResult CondVarLenTraverseConsume(OpBase *opBase, Record r) {
         op->allPathsCtx = AllPathsCtx_New(srcNode,
                                           op->g,
                                           op->relationIDs,
-                                          array_len(op->relationIDs),
+                                          op->relationIDsCount,
                                           op->traverseDir,
                                           op->minHops,
                                           op->maxHops);
