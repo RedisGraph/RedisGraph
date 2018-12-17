@@ -8,7 +8,7 @@ jobs:
       - run:
           name: Install prerequisite
           command: >-
-            pip install redisgraph behave &&
+            pip install redisgraph behave backports.csv &&
             apt-get update; apt-get install -y cmake
       - run:
           name: Build

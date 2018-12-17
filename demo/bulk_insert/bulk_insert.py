@@ -1,8 +1,10 @@
 import csv
 import os
+import io
 import struct
 import redis
 import click
+from backports import csv
 
 # Global variables
 CONFIGS = None # thresholds for batching Redis queries
@@ -87,9 +89,9 @@ class QueryBuffer(object):
 class EntityFile(object):
     def __init__(self, filename):
         # The label or relation type string is the basename of the file
-        self.entity_str = os.path.splitext(os.path.basename(filename))[0].encode("ascii")
+        self.entity_str = os.path.splitext(os.path.basename(filename))[0].encode('utf-8')
         # Input file handling
-        self.infile = open(filename, 'rt')
+        self.infile = io.open(filename, 'rt', encoding='utf-8')
         # Initialize CSV reader that ignores leading whitespace in each field
         # and does not modify input quote characters
         self.reader = csv.reader(self.infile, skipinitialspace=True, quoting=csv.QUOTE_NONE)
@@ -119,9 +121,10 @@ class EntityFile(object):
         # String format
         fmt = "=%dsI" % (len(self.entity_str) + 1) # Unaligned native, entity_string, count of properties
         args = [self.entity_str, prop_count]
-        for prop in header[self.prop_offset:]:
+        for p in header[self.prop_offset:]:
+            prop = p.encode('utf-8')
             fmt += "%ds" % (len(prop) + 1) # encode string with a null terminator
-            args += [str.encode(prop)]
+            args.append(prop)
         return struct.pack(fmt, *args)
 
     # Convert a list of properties into a binary string
@@ -261,8 +264,9 @@ def prop_to_binary(prop_str):
 
     # If we've reached this point, the property is a string
     # Encoding len+1 adds a null terminator to the string
-    format_str += "%ds" % (len(prop_str) + 1)
-    return struct.pack(format_str, Type.STRING, str.encode(prop_str))
+    encoded_str = prop_str.encode('utf-8')
+    format_str += "%ds" % (len(encoded_str) + 1)
+    return struct.pack(format_str, Type.STRING, encoded_str)
 
 # For each node input file, validate contents and convert to binary format.
 # If any buffer limits have been reached, flush all enqueued inserts to Redis.
