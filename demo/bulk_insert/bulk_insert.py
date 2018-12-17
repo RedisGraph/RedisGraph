@@ -306,16 +306,22 @@ def bulk_insert(graph, host, port, password, nodes, relations, max_token_count, 
 
     CONFIGS = Configs(max_token_count, max_buffer_size, max_token_size)
 
-    # Connect to Redis server and initialize buffer
-    client = redis.StrictRedis(host=host, port=port, password=password)
+    # Attempt to connect to Redis server
+    try:
+        client = redis.StrictRedis(host=host, port=port, password=password)
+    except redis.exceptions.ConnectionError as e:
+        print("Could not connect to Redis server.")
+        raise e
+
+    # Attempt to verify that RedisGraph module is loaded
     try:
         module_list = client.execute_command("MODULE LIST")
         if not any(b'graph' in module_description for module_description in module_list):
             print("RedisGraph module not loaded on connected server.")
             exit(1)
-    except redis.exceptions.ConnectionError as e:
-        print("Could not connect to Redis server.")
-        raise e
+    except redis.exceptions.ResponseError:
+        # Ignore check if the connected server does not support the "MODULE LIST" command
+        pass
 
     QUERY_BUF = QueryBuffer(graph, client)
 
