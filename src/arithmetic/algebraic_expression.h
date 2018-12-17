@@ -47,14 +47,6 @@ void AlgebraicExpressionNode_AppendRightChild(AlgebraicExpressionNode *root, Alg
 
 GrB_Matrix AlgebraicExpression_Eval(const AlgebraicExpressionNode *exp);
 
-// Result of an algebraic expression evaluation.
-typedef struct {
-    GrB_Matrix m;       // Resulting matrix.
-    Node *src_node;     // Nodes represented by matrix rows.
-    Node *dest_node;    // Nodes represented by matrix columns.
-    bool _free_m;       // Should M be freed or not.
-} AlgebraicExpressionResult;
-
 /* AlgebraicExpressionOperand a single operand within an
  * algebraic expression. */
 typedef struct  {
@@ -79,7 +71,7 @@ typedef struct {
 AlgebraicExpression **AlgebraicExpression_From_Query(const AST *ast, Vector *matchPattern, const QueryGraph *q, size_t *exp_count);
 
 /* Executes given expression. */
-AlgebraicExpressionResult *AlgebraicExpression_Execute(AlgebraicExpression *ae);
+void AlgebraicExpression_Execute(AlgebraicExpression *ae, GrB_Matrix res);
 
 /* Appends m as the last term in the expression ae. */
 void AlgebraicExpression_AppendTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transposeOp, bool freeOp);
@@ -95,6 +87,5 @@ void AlgebraicExpression_RemoveTerm(AlgebraicExpression *ae, int idx, AlgebraicE
 void AlgebraicExpression_Transpose(AlgebraicExpression *ae);
 
 void AlgebraicExpression_Free(AlgebraicExpression* ae);
-void AlgebraicExpressionResult_Free(AlgebraicExpressionResult *aer);
 
 #endif

@@ -10,21 +10,6 @@
 #include "../util/rmalloc.h"
 #include <assert.h>
 
-AlgebraicExpressionResult *_AlgebraicExpressionResult_New(GrB_Matrix M, AlgebraicExpression *ae) {
-    AlgebraicExpressionResult *aer = malloc(sizeof(AlgebraicExpressionResult));
-
-    // Are we required to transpose result?
-    /* TODO: It might be cheaper to transpose using a 
-     * descriptor when performing the last multiplication on the output. */
-    aer->m = M;
-    aer->src_node = ae->src_node;
-    aer->dest_node = ae->dest_node;
-    /* Free either when a multiplication was performed,
-     * or a single operand was transposed */
-    aer->_free_m = (ae->operand_count > 1 || ae->operands[0].transpose);
-    return aer;
-}
-
 AlgebraicExpression *_AE_MUL(size_t operand_cap) {
     AlgebraicExpression *ae = malloc(sizeof(AlgebraicExpression));
     ae->op = AL_EXP_MUL;
@@ -274,7 +259,7 @@ static inline void _AlgebraicExpression_Execute_MUL(GrB_Matrix C, GrB_Matrix A, 
         A,                  // First matrix
         B,                  // Second matrix
         desc                // Descriptor        
-    );
+    );    
 }
 
 // Reverse order of operand within expression,
@@ -404,76 +389,51 @@ AlgebraicExpression **AlgebraicExpression_From_Query(const AST *ast, Vector *mat
     return expressions;
 }
 
-AlgebraicExpressionResult *AlgebraicExpression_Execute(AlgebraicExpression *ae) {
-    assert(ae);
+void AlgebraicExpression_Execute(AlgebraicExpression *ae, GrB_Matrix res) {
+    assert(ae && res);
 
     size_t operand_count = ae->operand_count;
+    assert(operand_count > 1);
+
     AlgebraicExpressionOperand operands[operand_count];
     memcpy(operands, ae->operands, sizeof(AlgebraicExpressionOperand) * operand_count);
 
-    GrB_Matrix A = operands[0].operand;
-    GrB_Matrix C = A;
+    GrB_Descriptor desc;
+    GrB_Descriptor_new(&desc);
+    AlgebraicExpressionOperand leftTerm;
+    AlgebraicExpressionOperand rightTerm;
 
-    if(operand_count == 1) {
-        /* When transposing we must duplicate, as graph matrices
-         * should be considered immutable. */
-        if(operands[0].transpose) {
-            GrB_Matrix transposed;
-            GrB_Index nrows;
-            GrB_Matrix_nrows(&nrows, A);
-            GrB_Matrix_new(&transposed, GrB_BOOL, nrows, nrows);
-            assert(GrB_transpose(transposed, NULL, NULL, A, NULL) == GrB_SUCCESS);
-            C = transposed;
-        }
-    } else {
-        C = NULL;
-        GrB_Descriptor desc;
-        GrB_Descriptor_new(&desc);
-        AlgebraicExpressionOperand leftTerm;
-        AlgebraicExpressionOperand rightTerm;
+    /* Multiply right to left,
+     * A*B*C*D,
+     * X = C*D
+     * Y = B*X
+     * Z = A*Y */
+    while(operand_count > 1) {
+        rightTerm = operands[operand_count-1];
+        leftTerm = operands[operand_count-2];
 
-        /* Multiply right to left,
-         * A*B*C*D,
-         * X = C*D
-         * Y = B*X
-         * Z = A*Y */
-        while(operand_count > 1) {
-            rightTerm = operands[operand_count-1];
-            leftTerm = operands[operand_count-2];
-            
-            if(!C) {
-                GrB_Index nrows;
-                GrB_Index ncols;
-                GrB_Matrix_nrows(&nrows, leftTerm.operand);
-                GrB_Matrix_ncols(&ncols, rightTerm.operand);
-                GrB_Matrix_new(&C, GrB_BOOL, nrows, ncols);
-            }
+        // Multiply and reduce.
+        if(leftTerm.transpose) GrB_Descriptor_set(desc, GrB_INP0, GrB_TRAN);
+        if(rightTerm.transpose) GrB_Descriptor_set(desc, GrB_INP1, GrB_TRAN);
 
-            // Multiply and reduce.
-            if(leftTerm.transpose) GrB_Descriptor_set(desc, GrB_INP0, GrB_TRAN);
-            if(rightTerm.transpose) GrB_Descriptor_set(desc, GrB_INP1, GrB_TRAN);
+        _AlgebraicExpression_Execute_MUL(res, leftTerm.operand, rightTerm.operand, desc);
 
-            _AlgebraicExpression_Execute_MUL(C, leftTerm.operand, rightTerm.operand, desc);
+        // Quick return if C is ZERO, there's no way to make progress.
+        GrB_Index nvals = 0;
+        GrB_Matrix_nvals(&nvals, res);
+        if(nvals == 0) break;
 
-            // Quick return if C is ZERO, there's no way to make progress.
-            GrB_Index nvals = 0;
-            GrB_Matrix_nvals(&nvals, C);
-            if(nvals == 0) break;
+        // Restore descriptor to default.
+        GrB_Descriptor_set(desc, GrB_INP0, GxB_DEFAULT);
+        GrB_Descriptor_set(desc, GrB_INP1, GxB_DEFAULT);
 
-            // Restore descriptor to default.
-            GrB_Descriptor_set(desc, GrB_INP0, GxB_DEFAULT);
-            GrB_Descriptor_set(desc, GrB_INP1, GxB_DEFAULT);
+        // Assign result and update operands count.
+        operands[operand_count-2].operand = res;
+        operands[operand_count-2].transpose = false;
+        operand_count--;        
+    }
 
-            // Assign result and update operands count.
-            operands[operand_count-2].operand = C;
-            operands[operand_count-2].transpose = false;
-            operand_count--;
-        }
-
-        GrB_Descriptor_free(&desc);
-    }    
-
-    return _AlgebraicExpressionResult_New(C, ae);
+    GrB_Descriptor_free(&desc);
 }
 
 void AlgebraicExpression_RemoveTerm(AlgebraicExpression *ae, int idx, AlgebraicExpressionOperand *operand) {
@@ -504,11 +464,6 @@ void AlgebraicExpression_Transpose(AlgebraicExpression *ae) {
 
     for(int i = 0; i < ae->operand_count; i++)
         ae->operands[i].transpose = !ae->operands[i].transpose;
-}
-
-void AlgebraicExpressionResult_Free(AlgebraicExpressionResult *aer) {
-    if(aer->_free_m) GrB_Matrix_free(&aer->m);
-    free(aer);
 }
 
 void AlgebraicExpression_Free(AlgebraicExpression* ae) {

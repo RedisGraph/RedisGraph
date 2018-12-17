@@ -51,9 +51,7 @@ void _extractColumn(CondTraverse *op, const Record r) {
     AlgebraicExpression_AppendTerm(op->algebraic_expression, op->F, false, false);
 
     // Evaluate expression.
-    if(op->algebraic_results) AlgebraicExpressionResult_Free(op->algebraic_results);
-    op->algebraic_results = AlgebraicExpression_Execute(op->algebraic_expression);
-    op->M = op->algebraic_results->m;
+    AlgebraicExpression_Execute(op->algebraic_expression, op->M);
     // Remove operand.
     AlgebraicExpression_RemoveTerm(op->algebraic_expression, op->algebraic_expression->operand_count-1, NULL);
 
@@ -68,11 +66,12 @@ OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *algebraic_expression) {
     CondTraverse *traverse = calloc(1, sizeof(CondTraverse));
     traverse->graph = g;
     traverse->algebraic_expression = algebraic_expression;
-    traverse->algebraic_results = NULL;
     traverse->edgeRelationTypes = NULL;
-    traverse->F = NULL;
+    traverse->F = NULL;    
     traverse->iter = NULL;
     traverse->edges = NULL;
+    
+    GrB_Matrix_new(&traverse->M, GrB_BOOL, Graph_RequiredMatrixDim(g), 1);
 
     AST *ast = AST_GetFromLTS();
     traverse->srcNodeRecIdx = AST_GetAliasID(ast, algebraic_expression->src_node->alias);
@@ -190,8 +189,8 @@ void CondTraverseFree(OpBase *ctx) {
     CondTraverse *op = (CondTraverse*)ctx;
     if(op->iter) GxB_MatrixTupleIter_free(op->iter);
     if(op->F) GrB_Matrix_free(&op->F);
+    if(op->M) GrB_Matrix_free(&op->M);
     if(op->edges) array_free(op->edges);
     if(op->algebraic_expression) AlgebraicExpression_Free(op->algebraic_expression);
-    if(op->algebraic_results) AlgebraicExpressionResult_Free(op->algebraic_results);
     if(op->edgeRelationTypes) array_free(op->edgeRelationTypes);
 }
