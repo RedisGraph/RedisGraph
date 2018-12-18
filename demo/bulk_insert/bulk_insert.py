@@ -102,7 +102,18 @@ class EntityFile(object):
         self.packed_header = ""
         self.binary_entities = []
         self.binary_size = 0 # size of binary token
+        self.count_entities() # number of entities/row in file.
 
+    # Count number of rows in file.
+    def count_entities(self):
+        self.entities_count = 0
+        self.entities_count = sum(1 for line in self.infile)
+        # discard header row
+        self.entities_count -= 1
+        # seek back
+        self.infile.seek(0)
+        return self.entities_count
+    
     # Simple input validations for each row of a CSV file
     def validate_row(self, expected_col_count, row):
         # Each row should have the same number of fields
@@ -162,32 +173,33 @@ class Label(EntityFile):
         global NODE_DICT
         global TOP_NODE_ID
         global QUERY_BUF
+        
+        with click.progressbar(self.reader, length=self.entities_count, label=self.entity_str) as reader:
+            for row in reader:
+                self.validate_row(expected_col_count, row)
+                # Add identifier->ID pair to dictionary if we are building relations
+                if NODE_DICT is not None:
+                    if row[0] in NODE_DICT:
+                        print("Node identifier '%s' was used multiple times - second occurrence at %s:%d"
+                            % (row[0], self.infile.name, self.reader.line_num))
+                        exit(1)
+                    NODE_DICT[row[0]] = TOP_NODE_ID
+                    TOP_NODE_ID += 1
+                row_binary = self.pack_props(row)
+                row_binary_len = len(row_binary)
+                # If the addition of this entity will make the binary token grow too large,
+                # send the buffer now.
+                if self.binary_size + row_binary_len > CONFIGS.max_token_size:
+                    QUERY_BUF.labels.append(self.to_binary())
+                    QUERY_BUF.send_buffer()
+                    self.reset_partial_binary()
+                    # Push the label onto the query buffer again, as there are more entities to process.
+                    QUERY_BUF.labels.append(self.to_binary())
 
-        for row in self.reader:
-            self.validate_row(expected_col_count, row)
-            # Add identifier->ID pair to dictionary if we are building relations
-            if NODE_DICT is not None:
-                if row[0] in NODE_DICT:
-                    print("Node identifier '%s' was used multiple times - second occurrence at %s:%d"
-                          % (row[0], self.infile.name, self.reader.line_num))
-                    exit(1)
-                NODE_DICT[row[0]] = TOP_NODE_ID
-                TOP_NODE_ID += 1
-            row_binary = self.pack_props(row)
-            row_binary_len = len(row_binary)
-            # If the addition of this entity will make the binary token grow too large,
-            # send the buffer now.
-            if self.binary_size + row_binary_len > CONFIGS.max_token_size:
-                QUERY_BUF.labels.append(self.to_binary())
-                QUERY_BUF.send_buffer()
-                self.reset_partial_binary()
-                # Push the label onto the query buffer again, as there are more entities to process.
-                QUERY_BUF.labels.append(self.to_binary())
-
-            QUERY_BUF.node_count += 1
-            self.binary_size += row_binary_len
-            self.binary_entities.append(row_binary)
-        QUERY_BUF.labels.append(self.to_binary())
+                QUERY_BUF.node_count += 1
+                self.binary_size += row_binary_len
+                self.binary_entities.append(row_binary)
+            QUERY_BUF.labels.append(self.to_binary())
 
 # Handler class for processing relation csv files.
 class RelationType(EntityFile):
@@ -214,31 +226,31 @@ class RelationType(EntityFile):
         return expected_col_count
 
     def process_entities(self, expected_col_count):
-        for row in self.reader:
-            self.validate_row(expected_col_count, row)
+        with click.progressbar(self.reader, length=self.entities_count, label=self.entity_str) as reader:
+            for row in reader:        
+                self.validate_row(expected_col_count, row)
+                try:
+                    src = NODE_DICT[row[0]]
+                    dest = NODE_DICT[row[1]]
+                except KeyError as e:
+                    print("Relationship specified a non-existent identifier.")
+                    raise e
+                fmt = "=QQ" # 8-byte unsigned ints for src and dest
+                row_binary = struct.pack(fmt, src, dest) + self.pack_props(row)
+                row_binary_len = len(row_binary)
+                # If the addition of this entity will make the binary token grow too large,
+                # send the buffer now.
+                if self.binary_size + row_binary_len > CONFIGS.max_token_size:
+                    QUERY_BUF.reltypes.append(self.to_binary())
+                    QUERY_BUF.send_buffer()
+                    self.reset_partial_binary()
+                    # Push the reltype onto the query buffer again, as there are more entities to process.
+                    QUERY_BUF.reltypes.append(self.to_binary())
 
-            try:
-                src = NODE_DICT[row[0]]
-                dest = NODE_DICT[row[1]]
-            except KeyError as e:
-                print("Relationship specified a non-existent identifier.")
-                raise e
-            fmt = "=QQ" # 8-byte unsigned ints for src and dest
-            row_binary = struct.pack(fmt, src, dest) + self.pack_props(row)
-            row_binary_len = len(row_binary)
-            # If the addition of this entity will make the binary token grow too large,
-            # send the buffer now.
-            if self.binary_size + row_binary_len > CONFIGS.max_token_size:
-                QUERY_BUF.reltypes.append(self.to_binary())
-                QUERY_BUF.send_buffer()
-                self.reset_partial_binary()
-                # Push the reltype onto the query buffer again, as there are more entities to process.
-                QUERY_BUF.reltypes.append(self.to_binary())
-
-            QUERY_BUF.relation_count += 1
-            self.binary_size += row_binary_len
-            self.binary_entities.append(row_binary)
-        QUERY_BUF.reltypes.append(self.to_binary())
+                QUERY_BUF.relation_count += 1
+                self.binary_size += row_binary_len
+                self.binary_entities.append(row_binary)
+            QUERY_BUF.reltypes.append(self.to_binary())
 
 # Convert a single CSV property field into a binary stream.
 # Supported property types are string, numeric, boolean, and NULL.
@@ -307,7 +319,6 @@ def bulk_insert(graph, host, port, password, nodes, relations, max_token_count, 
     global QUERY_BUF
 
     TOP_NODE_ID = 0 # reset global ID variable (in case we are calling bulk_insert from unit tests)
-
     CONFIGS = Configs(max_token_count, max_buffer_size, max_token_size)
 
     # Attempt to connect to Redis server
