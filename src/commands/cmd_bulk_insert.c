@@ -8,7 +8,6 @@
 #include "cmd_bulk_insert.h"
 #include "../graph/graph.h"
 #include "../query_executor.h"
-#include "../util/simple_timer.h"
 #include "../bulk_insert/bulk_insert.h"
 
 BulkInsertContext* BulkInsertContext_New(RedisModuleCtx *ctx, RedisModuleBlockedClient *bc, RedisModuleString **argv, int argc) {
@@ -113,9 +112,8 @@ void _MGraph_BulkInsert(void *args) {
     }
 
     // Replay to caller.
-    double t = simple_toc(context->tic);
-    len = snprintf(reply, 1024, "%llu nodes created, %llu edges created, time: %.6f sec",
-                   nodes_in_query, relations_in_query, t);
+    len = snprintf(reply, 1024, "%llu nodes created, %llu edges created",
+                   nodes_in_query, relations_in_query);
     RedisModule_ReplyWithStringBuffer(ctx, reply, len);
 
 cleanup:
@@ -139,7 +137,6 @@ int MGraph_BulkInsert(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     // Prepare context.
     RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
     BulkInsertContext *context = BulkInsertContext_New(ctx, bc, argv, argc);
-    simple_tic(context->tic);
 
     // Execute bulk insert on a dedicated thread.
     thpool_add_work(_thpool, _MGraph_BulkInsert, context);

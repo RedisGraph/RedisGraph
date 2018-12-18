@@ -52,7 +52,7 @@ class GraphBulkInsertFlowTest(FlowTestsBase):
         # The script should report 27 node creations and 48 edge creations
         assert res.exit_code == 0
         assert '27 nodes created' in res.output
-        assert '48 edges created' in res.output
+        assert '48 relations created' in res.output
 
     # Validate that the expected nodes and properties have been constructed
     def test02_validate_nodes(self):
@@ -183,7 +183,7 @@ class GraphBulkInsertFlowTest(FlowTestsBase):
         # The script should report 3 node creations and 2 edge creations
         assert res.exit_code == 0
         assert '3 nodes created' in res.output
-        assert '2 edges created' in res.output
+        assert '2 relations created' in res.output
 
         # Delete temporary files
         os.remove('/tmp/nodes.tmp')
@@ -251,8 +251,6 @@ class GraphBulkInsertFlowTest(FlowTestsBase):
         assert res.exit_code == 0
         # The script should report statistics multiple times
         assert res.output.count('nodes created') > 1
-        #  assert '27 nodes created' in res.output
-        #  assert '48 edges created' in res.output
 
         new_graph = Graph(graphname, redis_con)
 
@@ -345,7 +343,7 @@ class GraphBulkInsertFlowTest(FlowTestsBase):
 
         assert res.exit_code == 0
         assert '3 nodes created' in res.output
-        assert '3 edges created' in res.output
+        assert '3 relations created' in res.output
 
         graph = Graph(graphname, redis_con)
         query_result = graph.query('MATCH (a)-[e]->() RETURN a, e ORDER BY a.numeric, e.prop')

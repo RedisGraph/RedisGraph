@@ -2,6 +2,7 @@ import csv
 import os
 import io
 import struct
+from timeit import default_timer as timer
 import redis
 import click
 from backports import csv
@@ -57,6 +58,9 @@ class QueryBuffer(object):
         self.labels = [] # List containing all pending Label objects
         self.reltypes = [] # List containing all pending RelationType objects
 
+        self.nodes_created = 0 # Total number of nodes created
+        self.relations_created = 0 # Total number of relations created
+
     # Send all pending inserts to Redis
     def send_buffer(self):
         # Do nothing if we have no entities
@@ -70,7 +74,9 @@ class QueryBuffer(object):
             self.initial_query = False
 
         result = self.client.execute_command("GRAPH.BULK", self.graphname, *args)
-        print(result)
+        stats = result.split(', '.encode())
+        self.nodes_created += int(stats[0].split(' '.encode())[0])
+        self.relations_created += int(stats[1].split(' '.encode())[0])
 
         self.clear_buffer()
 
@@ -84,6 +90,10 @@ class QueryBuffer(object):
         self.relation_count = 0
         del self.labels[:]
         del self.reltypes[:]
+
+    def report_completion(self, runtime):
+        print("Construction of graph '%s' complete: %d nodes created, %d relations created in %f seconds"
+              % (self.graphname, self.nodes_created, self.relations_created, runtime))
 
 # Superclass for label and relation CSV files
 class EntityFile(object):
@@ -113,7 +123,7 @@ class EntityFile(object):
         # seek back
         self.infile.seek(0)
         return self.entities_count
-    
+
     # Simple input validations for each row of a CSV file
     def validate_row(self, expected_col_count, row):
         # Each row should have the same number of fields
@@ -173,7 +183,8 @@ class Label(EntityFile):
         global NODE_DICT
         global TOP_NODE_ID
         global QUERY_BUF
-        
+
+        entities_created = 0
         with click.progressbar(self.reader, length=self.entities_count, label=self.entity_str) as reader:
             for row in reader:
                 self.validate_row(expected_col_count, row)
@@ -197,9 +208,11 @@ class Label(EntityFile):
                     QUERY_BUF.labels.append(self.to_binary())
 
                 QUERY_BUF.node_count += 1
+                entities_created += 1
                 self.binary_size += row_binary_len
                 self.binary_entities.append(row_binary)
             QUERY_BUF.labels.append(self.to_binary())
+        print("%d nodes created with label '%s'" % (entities_created, self.entity_str))
 
 # Handler class for processing relation csv files.
 class RelationType(EntityFile):
@@ -226,8 +239,9 @@ class RelationType(EntityFile):
         return expected_col_count
 
     def process_entities(self, expected_col_count):
+        entities_created = 0
         with click.progressbar(self.reader, length=self.entities_count, label=self.entity_str) as reader:
-            for row in reader:        
+            for row in reader:
                 self.validate_row(expected_col_count, row)
                 try:
                     src = NODE_DICT[row[0]]
@@ -248,9 +262,11 @@ class RelationType(EntityFile):
                     QUERY_BUF.reltypes.append(self.to_binary())
 
                 QUERY_BUF.relation_count += 1
+                entities_created += 1
                 self.binary_size += row_binary_len
                 self.binary_entities.append(row_binary)
             QUERY_BUF.reltypes.append(self.to_binary())
+        print("%d relations created for type '%s'" % (entities_created, self.entity_str))
 
 # Convert a single CSV property field into a binary stream.
 # Supported property types are string, numeric, boolean, and NULL.
@@ -309,7 +325,7 @@ def process_entity_csvs(cls, csvs):
 @click.option('--relations', '-r', multiple=True, help='Path to relation csv file')
 # Buffer size restrictions
 @click.option('--max-token-count', '-c', default=1024, help='max number of processed CSVs to send per query (default 1024)')
-@click.option('--max-buffer-size', '-b', default=4096, help='max buffer size in megabytes (default 4096)')
+@click.option('--max-buffer-size', '-b', default=2048, help='max buffer size in megabytes (default 2048)')
 @click.option('--max-token-size', '-t', default=500, help='max size of each token in megabytes (default 500, max 512)')
 
 def bulk_insert(graph, host, port, password, nodes, relations, max_token_count, max_buffer_size, max_token_size):
@@ -321,6 +337,7 @@ def bulk_insert(graph, host, port, password, nodes, relations, max_token_count, 
     TOP_NODE_ID = 0 # reset global ID variable (in case we are calling bulk_insert from unit tests)
     CONFIGS = Configs(max_token_count, max_buffer_size, max_token_size)
 
+    start_time = timer()
     # Attempt to connect to Redis server
     try:
         client = redis.StrictRedis(host=host, port=port, password=password)
@@ -353,6 +370,9 @@ def bulk_insert(graph, host, port, password, nodes, relations, max_token_count, 
 
     # Send all remaining tokens to Redis
     QUERY_BUF.send_buffer()
+
+    end_time = timer()
+    QUERY_BUF.report_completion(end_time - start_time)
 
 if __name__ == '__main__':
     bulk_insert()
