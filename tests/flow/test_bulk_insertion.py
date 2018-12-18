@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import os
 import sys
 import csv
@@ -51,7 +52,7 @@ class GraphBulkInsertFlowTest(FlowTestsBase):
         # The script should report 27 node creations and 48 edge creations
         assert res.exit_code == 0
         assert '27 nodes created' in res.output
-        assert '48 edges created' in res.output
+        assert '48 relations created' in res.output
 
     # Validate that the expected nodes and properties have been constructed
     def test02_validate_nodes(self):
@@ -182,7 +183,7 @@ class GraphBulkInsertFlowTest(FlowTestsBase):
         # The script should report 3 node creations and 2 edge creations
         assert res.exit_code == 0
         assert '3 nodes created' in res.output
-        assert '2 edges created' in res.output
+        assert '2 relations created' in res.output
 
         # Delete temporary files
         os.remove('/tmp/nodes.tmp')
@@ -250,8 +251,6 @@ class GraphBulkInsertFlowTest(FlowTestsBase):
         assert res.exit_code == 0
         # The script should report statistics multiple times
         assert res.output.count('nodes created') > 1
-        #  assert '27 nodes created' in res.output
-        #  assert '48 edges created' in res.output
 
         new_graph = Graph(graphname, redis_con)
 
@@ -344,7 +343,7 @@ class GraphBulkInsertFlowTest(FlowTestsBase):
 
         assert res.exit_code == 0
         assert '3 nodes created' in res.output
-        assert '3 edges created' in res.output
+        assert '3 relations created' in res.output
 
         graph = Graph(graphname, redis_con)
         query_result = graph.query('MATCH (a)-[e]->() RETURN a, e ORDER BY a.numeric, e.prop')
@@ -355,6 +354,47 @@ class GraphBulkInsertFlowTest(FlowTestsBase):
 
         # The graph should have the correct types for all properties
         assert query_result.result_set == expected_result
+
+    # Verify that numeric, boolean, and null types are properly handled
+    def test09_utf8(self):
+        graphname = "tmpgraph5"
+        # Write temporary files
+        with open('/tmp/nodes.tmp', mode='w') as csv_file:
+            out = csv.writer(csv_file)
+            out.writerow(['id', 'utf8_str_ß'])
+            out.writerow([0, 'Straße'])
+            out.writerow([1, 'auslösen'])
+            out.writerow([2, 'zerstören'])
+            out.writerow([3, 'français'])
+            out.writerow([4, 'américaine'])
+            out.writerow([5, 'épais'])
+            out.writerow([6, '中國的'])
+            out.writerow([7, '英語'])
+            out.writerow([8, '美國人'])
+
+        runner = CliRunner()
+        res = runner.invoke(bulk_insert, ['--port', port,
+                                          '--nodes', '/tmp/nodes.tmp',
+                                          graphname])
+
+        assert res.exit_code == 0
+        assert '9 nodes created' in res.output
+
+        graph = Graph(graphname, redis_con)
+        query_result = graph.query('MATCH (a) RETURN a ORDER BY a.id')
+        expected_strs = ['a.utf8_str_ß',
+                           'Straße',
+                           'auslösen',
+                           'zerstören',
+                           'français',
+                           'américaine',
+                           'épais',
+                           '中國的',
+                           '英語',
+                           '美國人']
+
+        for i, j in zip(query_result.result_set, expected_strs):
+            self.assertEqual(repr(i[1]), repr(j))
 
 if __name__ == '__main__':
     unittest.main()
