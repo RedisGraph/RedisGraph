@@ -33,6 +33,8 @@ struct AlgebraicExpressionNode {
         GrB_Matrix operand;
         struct {
             AL_EXP_OP op;
+            bool reusable;
+            GrB_Matrix v;
             AlgebraicExpressionNode *l;
             AlgebraicExpressionNode *r;
         } operation;
@@ -44,8 +46,9 @@ AlgebraicExpressionNode *AlgebraicExpressionNode_NewOperationNode(AL_EXP_OP op);
 AlgebraicExpressionNode *AlgebraicExpressionNode_NewOperandNode(GrB_Matrix operand);
 void AlgebraicExpressionNode_AppendLeftChild(AlgebraicExpressionNode *root, AlgebraicExpressionNode *child);
 void AlgebraicExpressionNode_AppendRightChild(AlgebraicExpressionNode *root, AlgebraicExpressionNode *child);
+void AlgebraicExpression_SumOfMul(AlgebraicExpressionNode **root);
 
-GrB_Matrix AlgebraicExpression_Eval(const AlgebraicExpressionNode *exp);
+void AlgebraicExpression_Eval(AlgebraicExpressionNode *exp, GrB_Matrix res);
 
 /* AlgebraicExpressionOperand a single operand within an
  * algebraic expression. */

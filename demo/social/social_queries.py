@@ -48,7 +48,7 @@ relation_type_counts = QueryInfo(
 subset_of_people = QueryInfo(
     query="""MATCH (p:person) RETURN p.name ORDER BY p.name SKIP 3 LIMIT 5""",
     description='Get a subset of people.',
-    max_run_time_ms=0.1,
+    max_run_time_ms=0.2,
     expected_result=[["Gal Derriere"],
                     ["Jane Chernomorin"],
                     ["Lucy Yanfital"],
