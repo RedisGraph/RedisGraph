@@ -22,7 +22,7 @@ static bool _AllPathsCtx_LevelNotEmpty(const AllPathsCtx *ctx, uint level) {
     return (level < array_len(ctx->levels) && array_len(ctx->levels[level]) > 0);
 }
 
-AllPathsCtx* AllPathsCtx_New(Node *src, Graph *g, int relationID, GRAPH_EDGE_DIR dir, unsigned int minLen, unsigned int maxLen) {
+AllPathsCtx* AllPathsCtx_New(Node *src, Graph *g, int *relationIDs, int relationCount, GRAPH_EDGE_DIR dir, unsigned int minLen, unsigned int maxLen) {
     assert(src);
     
     AllPathsCtx *ctx = rm_malloc(sizeof(AllPathsCtx));
@@ -34,7 +34,8 @@ AllPathsCtx* AllPathsCtx_New(Node *src, Graph *g, int relationID, GRAPH_EDGE_DIR
     // should contain min+1..max+1 nodes.
     ctx->minLen = minLen+1;
     ctx->maxLen = maxLen+1;
-    ctx->relationID = relationID;
+    ctx->relationIDs = relationIDs;
+    ctx->relationCount = relationCount;
     ctx->levels = array_new(Node*, 1);
 	ctx->path = array_new(Node, 1);
 	_AllPathsCtx_AddNodeToLevel(ctx, 0, src);
@@ -42,6 +43,7 @@ AllPathsCtx* AllPathsCtx_New(Node *src, Graph *g, int relationID, GRAPH_EDGE_DIR
 }
 
 Path AllPathsCtx_NextPath(AllPathsCtx *ctx) {
+    if(!ctx) return NULL;
     // As long as path is not empty OR there are neighbors to traverse.
 	while(!Path_empty(ctx->path) || _AllPathsCtx_LevelNotEmpty(ctx, 0)) {
 		uint32_t depth = Path_len(ctx->path);
@@ -61,7 +63,9 @@ Path AllPathsCtx_NextPath(AllPathsCtx *ctx) {
             if(depth < ctx->maxLen) {
                 // Get frontier neighbors.
                 Edge *neighbors = array_new(Edge, 32);
-                Graph_GetNodeEdges(ctx->g, &frontier, ctx->dir, ctx->relationID, &neighbors);
+                for( int i = 0; i < ctx->relationCount; i++) {
+                    Graph_GetNodeEdges(ctx->g, &frontier, ctx->dir, ctx->relationIDs[i], &neighbors);
+                }
 
                 // Add unvisited neighbors to next level.
                 uint32_t neighborsCount = array_len(neighbors);
@@ -92,8 +96,10 @@ Path AllPathsCtx_NextPath(AllPathsCtx *ctx) {
 }
 
 void AllPathsCtx_Free(AllPathsCtx *ctx) {
+    if(!ctx) return;
     uint32_t levelsCount = array_len(ctx->levels);
     for(int i = 0; i < levelsCount; i++) array_free(ctx->levels[i]);
     Path_free(ctx->path);
     rm_free(ctx);
+    ctx = NULL;
 }

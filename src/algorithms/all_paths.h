@@ -27,7 +27,8 @@ typedef struct {
     Node **levels;          // Nodes reached at depth i.
     Path path;              // Current path.
     Graph *g;               // Graph to traverse.
-    int relationID;         // edge type to traverse.
+    int *relationIDs;       // edge type(s) to traverse.
+    int relationCount;      // length of relationIDs.
     GRAPH_EDGE_DIR dir;     // traverse direction.
     unsigned int minLen;    // Path minimum length.
     unsigned int maxLen;    // Path max length.
@@ -37,7 +38,8 @@ typedef struct {
 AllPathsCtx* AllPathsCtx_New (
     Node *src,              // Source node to traverse.
     Graph *g,               // Graph to traverse.
-    int relationID,         // Edge type on which we'll traverse.
+    int *relationIDs,       // Edge type(s) on which we'll traverse.
+    int relationCount,      // Length of relationIDs.
     GRAPH_EDGE_DIR dir,     // Traversal direction.
     unsigned int minLen,    // Path length must contain be at least minLen + 1 nodes.
     unsigned int maxLen     // Path length must not exceed maxLen + 1 nodes.

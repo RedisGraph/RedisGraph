@@ -261,6 +261,269 @@ class AlgebraicExpressionTest: public ::testing::Test {
     }
 };
 
+TEST_F(AlgebraicExpressionTest, NewAlgebraicStructure) {
+    GrB_Matrix A;
+    GrB_Matrix B;
+    GrB_Matrix C;
+    GrB_Matrix res;
+
+    // 1 1
+    // 0 0
+    GrB_Matrix_new(&A, GrB_BOOL, 2, 2);
+    GrB_Matrix_setElement_BOOL(A, true, 0, 0);
+    GrB_Matrix_setElement_BOOL(A, true, 0, 1);
+
+    GrB_Matrix I;
+    // 1 0
+    // 0 1
+    GrB_Matrix_new(&I, GrB_BOOL, 2, 2);
+    GrB_Matrix_setElement_BOOL(I, true, 0, 0);
+    GrB_Matrix_setElement_BOOL(I, true, 1, 1);
+
+    // Matrix used for intermidate computations of AlgebraicExpression_Eval
+    // but also contains the result of expression evaluation.
+    GrB_Matrix_new(&res, GrB_BOOL, 2, 2);
+    
+    // A * I
+    AlgebraicExpressionNode *exp = AlgebraicExpressionNode_NewOperationNode(AL_EXP_MUL);
+    AlgebraicExpressionNode *a = AlgebraicExpressionNode_NewOperandNode(A);
+    AlgebraicExpressionNode *i = AlgebraicExpressionNode_NewOperandNode(I);
+    AlgebraicExpressionNode_AppendLeftChild(exp, a);
+    AlgebraicExpressionNode_AppendRightChild(exp, i);
+
+    AlgebraicExpression_SumOfMul(&exp);
+    AlgebraicExpression_Eval(exp, res);
+
+    // Using the A matrix described above,
+    // A * I = A.
+    assert(_compare_matrices(res, A));
+
+    // A + A
+    exp = AlgebraicExpressionNode_NewOperationNode(AL_EXP_ADD);
+    AlgebraicExpressionNode_AppendLeftChild(exp, a);
+    AlgebraicExpressionNode_AppendRightChild(exp, a);
+    AlgebraicExpression_SumOfMul(&exp);
+    AlgebraicExpression_Eval(exp, res);
+    assert(_compare_matrices(res, A));
+
+    // Transpose(A) + A
+    AlgebraicExpressionNode *root = AlgebraicExpressionNode_NewOperationNode(AL_EXP_ADD);
+    AlgebraicExpressionNode *transpose = AlgebraicExpressionNode_NewOperationNode(AL_EXP_TRANSPOSE);        
+
+    AlgebraicExpressionNode_AppendRightChild(transpose, a);
+
+    AlgebraicExpressionNode_AppendLeftChild(root, transpose);
+    AlgebraicExpressionNode_AppendRightChild(root, a);
+    AlgebraicExpression_SumOfMul(&root);
+    AlgebraicExpression_Eval(root, res);
+
+    // Expected result:
+    // 1 1
+    // 1 0
+    GrB_Matrix_new(&B, GrB_BOOL, 2, 2);
+    GrB_Matrix_setElement_BOOL(B, true, 0, 0);
+    GrB_Matrix_setElement_BOOL(B, true, 0, 1);
+    GrB_Matrix_setElement_BOOL(B, true, 1, 0);
+    
+    assert(_compare_matrices(res, B));
+    GrB_Matrix_free(&B);
+
+    // A is:
+    // 1 1
+    // 1 0
+
+    // Transpose(A) * A
+    root = AlgebraicExpressionNode_NewOperationNode(AL_EXP_MUL);
+    transpose = AlgebraicExpressionNode_NewOperationNode(AL_EXP_TRANSPOSE);        
+
+    AlgebraicExpressionNode_AppendRightChild(transpose, a);
+
+    AlgebraicExpressionNode_AppendLeftChild(root, transpose);
+    AlgebraicExpressionNode_AppendRightChild(root, a);
+    AlgebraicExpression_SumOfMul(&root);
+    AlgebraicExpression_Eval(root, res);
+
+    // Expected result:
+    // 1 1
+    // 1 1
+    GrB_Matrix_new(&B, GrB_BOOL, 2, 2);
+    GrB_Matrix_setElement_BOOL(B, true, 0, 0);
+    GrB_Matrix_setElement_BOOL(B, true, 0, 1);
+    GrB_Matrix_setElement_BOOL(B, true, 1, 0);
+    GrB_Matrix_setElement_BOOL(B, true, 1, 1);
+    
+    assert(_compare_matrices(res, B));
+
+    GrB_Matrix_free(&A);
+    GrB_Matrix_free(&B);
+    GrB_Matrix_free(&I);
+
+    // 1 1
+    // 0 0
+    GrB_Matrix_new(&A, GrB_BOOL, 2, 2);
+    GrB_Matrix_setElement_BOOL(A, true, 0, 0);
+    GrB_Matrix_setElement_BOOL(A, true, 0, 1);
+
+    // 1 0
+    // 0 0
+    GrB_Matrix_new(&B, GrB_BOOL, 2, 2);
+    GrB_Matrix_setElement_BOOL(B, true, 0, 0);
+
+    // 0 0
+    // 0 1
+    GrB_Matrix_new(&C, GrB_BOOL, 2, 2);
+    GrB_Matrix_setElement_BOOL(C, true, 1, 1);
+
+    // A * (B+C) = A.
+    root = AlgebraicExpressionNode_NewOperationNode(AL_EXP_MUL);
+    AlgebraicExpressionNode *add = AlgebraicExpressionNode_NewOperationNode(AL_EXP_ADD);
+    AlgebraicExpressionNode *expA = AlgebraicExpressionNode_NewOperandNode(A);
+    AlgebraicExpressionNode *expB = AlgebraicExpressionNode_NewOperandNode(B);
+    AlgebraicExpressionNode *expC = AlgebraicExpressionNode_NewOperandNode(C);
+    
+    AlgebraicExpressionNode_AppendLeftChild(root, expA);
+    AlgebraicExpressionNode_AppendRightChild(root, add);
+
+    AlgebraicExpressionNode_AppendLeftChild(add, expB);
+    AlgebraicExpressionNode_AppendRightChild(add, expC);
+
+    // AB + AC.
+    AlgebraicExpression_SumOfMul(&root);
+    AlgebraicExpression_Eval(root, res);
+    ASSERT_TRUE(_compare_matrices(res, A));
+
+    GrB_Matrix_free(&A);
+    GrB_Matrix_free(&B);
+    GrB_Matrix_free(&C);
+    GrB_Matrix_free(&res);
+}
+
+TEST_F(AlgebraicExpressionTest, ExpTransform_A_Times_B_Plus_C) {
+    // Test Mul / Add transformation:
+    // A*(B+C) -> A*B + A*C
+    AlgebraicExpressionNode *root = AlgebraicExpressionNode_NewOperationNode(AL_EXP_MUL);
+    AlgebraicExpressionNode *add = AlgebraicExpressionNode_NewOperationNode(AL_EXP_ADD);
+
+    GrB_Matrix A;
+    GrB_Matrix B;    
+    GrB_Matrix C;
+    
+    GrB_Matrix_new(&A, GrB_BOOL, 2, 2);
+    GrB_Matrix_new(&B, GrB_BOOL, 2, 2);
+    GrB_Matrix_new(&C, GrB_BOOL, 2, 2);
+
+    AlgebraicExpressionNode *aExp = AlgebraicExpressionNode_NewOperandNode(A);
+    AlgebraicExpressionNode *bExp = AlgebraicExpressionNode_NewOperandNode(B);
+    AlgebraicExpressionNode *cExp = AlgebraicExpressionNode_NewOperandNode(C);
+    
+    // A*(B+C)
+    AlgebraicExpressionNode_AppendLeftChild(root, aExp);
+    AlgebraicExpressionNode_AppendRightChild(root, add);
+    AlgebraicExpressionNode_AppendLeftChild(add, bExp);
+    AlgebraicExpressionNode_AppendRightChild(add, cExp);
+
+    AlgebraicExpression_SumOfMul(&root);
+
+    // Verifications
+    // (A*B)+(A*C)
+    ASSERT_TRUE(root->type == AL_OPERATION && root->operation.op == AL_EXP_ADD);
+
+    AlgebraicExpressionNode *rootLeftChild = root->operation.l;
+    AlgebraicExpressionNode *rootRightChild = root->operation.r;
+    ASSERT_TRUE(rootLeftChild && rootLeftChild->type == AL_OPERATION && rootLeftChild->operation.op == AL_EXP_MUL);
+    ASSERT_TRUE(rootRightChild && rootRightChild->type == AL_OPERATION && rootRightChild->operation.op == AL_EXP_MUL);
+
+    AlgebraicExpressionNode *leftLeft = rootLeftChild->operation.l;
+    ASSERT_TRUE(leftLeft->type == AL_OPERAND && leftLeft->operand == A);
+
+    AlgebraicExpressionNode *leftRight = rootLeftChild->operation.r;
+    ASSERT_TRUE(leftRight->type == AL_OPERAND && leftRight->operand == B);
+
+    AlgebraicExpressionNode *rightLeft = rootRightChild->operation.l;
+    ASSERT_TRUE(rightLeft->type == AL_OPERAND && rightLeft->operand == A);
+
+    AlgebraicExpressionNode *rightRight = rootRightChild->operation.r;
+    ASSERT_TRUE(rightRight->type == AL_OPERAND && rightRight->operand == C);
+
+    GrB_Matrix_free(&A);
+    GrB_Matrix_free(&B);
+    GrB_Matrix_free(&C);
+}
+
+TEST_F(AlgebraicExpressionTest, ExpTransform_AB_Times_C_Plus_D) {
+    // Test Mul / Add transformation:
+    // A*B*(C+D) -> A*B*C + A*B*D
+    AlgebraicExpressionNode *root = AlgebraicExpressionNode_NewOperationNode(AL_EXP_MUL);
+    AlgebraicExpressionNode *mul = AlgebraicExpressionNode_NewOperationNode(AL_EXP_MUL);
+    AlgebraicExpressionNode *add = AlgebraicExpressionNode_NewOperationNode(AL_EXP_ADD);
+
+    GrB_Matrix A;
+    GrB_Matrix B;    
+    GrB_Matrix C;
+    GrB_Matrix D;
+    
+    GrB_Matrix_new(&A, GrB_BOOL, 2, 2);
+    GrB_Matrix_new(&B, GrB_BOOL, 2, 2);
+    GrB_Matrix_new(&C, GrB_BOOL, 2, 2);
+    GrB_Matrix_new(&D, GrB_BOOL, 2, 2);
+
+    AlgebraicExpressionNode *aExp = AlgebraicExpressionNode_NewOperandNode(A);
+    AlgebraicExpressionNode *bExp = AlgebraicExpressionNode_NewOperandNode(B);
+    AlgebraicExpressionNode *cExp = AlgebraicExpressionNode_NewOperandNode(C);
+    AlgebraicExpressionNode *dExp = AlgebraicExpressionNode_NewOperandNode(D);
+    
+    // A*B*(C+D)
+    AlgebraicExpressionNode_AppendLeftChild(root, mul);
+    AlgebraicExpressionNode_AppendRightChild(root, add);
+
+    AlgebraicExpressionNode_AppendLeftChild(mul, aExp);
+    AlgebraicExpressionNode_AppendRightChild(mul, bExp);
+
+    AlgebraicExpressionNode_AppendLeftChild(add, cExp);
+    AlgebraicExpressionNode_AppendRightChild(add, dExp);
+
+    AlgebraicExpression_SumOfMul(&root);
+
+    // Verifications
+    // (A*B*C)+(A*B*D)
+    ASSERT_TRUE(root->type == AL_OPERATION && root->operation.op == AL_EXP_ADD);
+
+    AlgebraicExpressionNode *rootLeftChild = root->operation.l;
+    ASSERT_TRUE(rootLeftChild && rootLeftChild->type == AL_OPERATION && rootLeftChild->operation.op == AL_EXP_MUL);
+
+    AlgebraicExpressionNode *rootRightChild = root->operation.r;
+    ASSERT_TRUE(rootRightChild && rootRightChild->type == AL_OPERATION && rootRightChild->operation.op == AL_EXP_MUL);
+
+    AlgebraicExpressionNode *leftLeft = rootLeftChild->operation.l;
+    ASSERT_TRUE(leftLeft->type == AL_OPERATION && leftLeft->operation.op == AL_EXP_MUL && leftLeft->operation.reusable == true);
+
+    AlgebraicExpressionNode *leftLeftLeft = leftLeft->operation.l;
+    ASSERT_TRUE(leftLeftLeft->type == AL_OPERAND && leftLeftLeft->operand == A);
+
+    AlgebraicExpressionNode *leftLeftRight = leftLeft->operation.r;
+    ASSERT_TRUE(leftLeftRight->type == AL_OPERAND && leftLeftRight->operand == B);
+
+    AlgebraicExpressionNode *leftRight = rootLeftChild->operation.r;
+    ASSERT_TRUE(leftRight->type == AL_OPERAND && leftRight->operand == C);
+
+    AlgebraicExpressionNode *rightLeft = rootRightChild->operation.l;
+    ASSERT_TRUE(rightLeft->type == AL_OPERATION && rightLeft->operation.op == AL_EXP_MUL && rightLeft->operation.reusable == true);
+
+    AlgebraicExpressionNode *rightLeftLeft = rightLeft->operation.l;
+    ASSERT_TRUE(rightLeftLeft->type == AL_OPERAND && rightLeftLeft->operand == A);
+
+    AlgebraicExpressionNode *rightLeftRight = rightLeft->operation.r;
+    ASSERT_TRUE(rightLeftRight->type == AL_OPERAND && rightLeftRight->operand == B);
+
+    AlgebraicExpressionNode *rightRight = rootRightChild->operation.r;
+    ASSERT_TRUE(rightRight->type == AL_OPERAND && rightRight->operand == D);
+
+    GrB_Matrix_free(&A);
+    GrB_Matrix_free(&B);
+    GrB_Matrix_free(&C);
+    GrB_Matrix_free(&D);
+}
+
 TEST_F(AlgebraicExpressionTest, MultipleIntermidateReturnNodes) {
     const char *query = query_multiple_intermidate_return_nodes;
 
@@ -489,21 +752,23 @@ TEST_F(AlgebraicExpressionTest, ExpressionExecute) {
 
     double tic [2];
     simple_tic(tic);
-    AlgebraicExpressionResult *res = AlgebraicExpression_Execute(ae[0]);
+    GrB_Matrix res;
+    GrB_Matrix_new(&res, GrB_BOOL, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g));
+    AlgebraicExpression *exp = ae[0];
+    AlgebraicExpression_Execute(exp, res);
 
     Node *src = QueryGraph_GetNodeByAlias(query_graph, "p");
     Node *dest = QueryGraph_GetNodeByAlias(query_graph, "e");
-    assert(res->src_node == src);
-    assert(res->dest_node == dest);
-
-    GrB_Matrix M = res->m;
+    assert(exp->src_node == src);
+    assert(exp->dest_node == dest);
+    
     // double timing = simple_toc(tic);
     // printf("AlgebraicExpression_Execute, time: %.6f sec\n", timing);
     
     // Validate result matrix.
     GrB_Index ncols, nrows;
-    GrB_Matrix_ncols(&ncols, M);
-    GrB_Matrix_nrows(&nrows, M);    
+    GrB_Matrix_ncols(&ncols, res);
+    GrB_Matrix_nrows(&nrows, res);    
     assert(ncols == Graph_RequiredMatrixDim(g));
     assert(nrows == Graph_RequiredMatrixDim(g));
 
@@ -518,19 +783,18 @@ TEST_F(AlgebraicExpressionTest, ExpressionExecute) {
     GrB_Index expected_entries[16] = {2,0, 3,1, 2,2, 2,3, 3,3, 2,4, 3,4, 3,5};
     GrB_Matrix expected = NULL;
 
-    GrB_Matrix_dup(&expected, M);
+    GrB_Matrix_dup(&expected, res);
     GrB_Matrix_clear(expected);
     for(int i = 0; i < 16; i+=2) {
         GrB_Matrix_setElement_BOOL(expected, true, expected_entries[i], expected_entries[i+1]);
     }
 
-    assert(_compare_matrices(M, expected));
+    assert(_compare_matrices(res, expected));
 
     // Clean up
     AST_Free(ast);
     AlgebraicExpression_Free(ae[0]);
     free(ae);
-    free(res);
     GrB_Matrix_free(&expected);
-    GrB_Matrix_free(&M);
+    GrB_Matrix_free(&res);
 }

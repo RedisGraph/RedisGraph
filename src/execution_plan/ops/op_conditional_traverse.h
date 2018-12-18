@@ -19,10 +19,10 @@ typedef struct {
     OpBase op;
     Graph *graph;
     AlgebraicExpression *algebraic_expression;
-    AlgebraicExpressionResult *algebraic_results;
     GrB_Matrix F;
     GrB_Matrix M;
-    int edgeRelationType;
+    int *edgeRelationTypes; // One or more relation types.
+    int edgeRelationCount;  // length of edgeRelationTypes.
     Edge *edges;
     GxB_MatrixTupleIter *iter;
     int srcNodeRecIdx;

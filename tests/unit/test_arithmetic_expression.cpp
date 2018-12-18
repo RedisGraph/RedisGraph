@@ -140,7 +140,6 @@ TEST_F(ArithmeticTest, AggregateTest) {
 }
 
 TEST_F(ArithmeticTest, AbsTest) {
-  SIValue result;
   const char *query;
   AR_ExpNode *arExp;
   Record r = Record_New(0);
@@ -175,7 +174,6 @@ TEST_F(ArithmeticTest, AbsTest) {
 }
 
 TEST_F(ArithmeticTest, CeilTest) {
-  SIValue result;
   SIValue expected;
   const char *query;
   AR_ExpNode *arExp;
@@ -211,7 +209,6 @@ TEST_F(ArithmeticTest, CeilTest) {
 }
 
 TEST_F(ArithmeticTest, FloorTest) {
-  SIValue result;
   SIValue expected;
   const char *query;
   AR_ExpNode *arExp;
@@ -247,7 +244,6 @@ TEST_F(ArithmeticTest, FloorTest) {
 }
 
 TEST_F(ArithmeticTest, RoundTest) {
-  SIValue result;
   SIValue expected;
   const char *query;
   AR_ExpNode *arExp;
@@ -290,7 +286,6 @@ TEST_F(ArithmeticTest, RoundTest) {
 }
 
 TEST_F(ArithmeticTest, SignTest) {
-  SIValue result;
   SIValue expected;
   const char *query;
   AR_ExpNode *arExp;

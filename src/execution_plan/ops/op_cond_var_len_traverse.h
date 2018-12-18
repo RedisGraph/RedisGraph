@@ -20,7 +20,8 @@ typedef struct {
     AlgebraicExpression *ae;
     int srcNodeIdx;                 /* Node set by operation. */
     int destNodeIdx;                /* Node set by operation. */
-    int relationID;                 /* Relation we're traversing. */
+    int *relationIDs;               /* Relation(s) we're traversing. */
+    int relationIDsCount;           /* Length of relationIDs. */
     GRAPH_EDGE_DIR traverseDir;     /* Traverse direction. */
     unsigned int minHops;           /* Maximum number of hops to perform. */
     unsigned int maxHops;           /* Maximum number of hops to perform. */        

@@ -322,15 +322,11 @@ void QueryGraph_Free(QueryGraph* g) {
     /* Free graph's nodes. */
     int i;
     int nodeCount = g->node_count;
+    int edgeCount = g->edge_count;
 
-    for(i = 0; i < nodeCount; i++) {
-        Node* n = g->nodes[i];
-        Node_Free(n);
-    }
+    for(i = 0; i < nodeCount; i++) Node_Free(g->nodes[i]);
+    for(i = 0; i < edgeCount; i++) Edge_Free(g->edges[i]);
 
-    /* TODO: Free edges. */
-
-    /* Edges are freed internally by nodes. */
     free(g->nodes);
     free(g->edges);
     free(g->node_aliases);
