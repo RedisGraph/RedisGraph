@@ -47,8 +47,8 @@ AlgebraicExpressionNode *AlgebraicExpressionNode_NewOperandNode(GrB_Matrix opera
 void AlgebraicExpressionNode_AppendLeftChild(AlgebraicExpressionNode *root, AlgebraicExpressionNode *child);
 void AlgebraicExpressionNode_AppendRightChild(AlgebraicExpressionNode *root, AlgebraicExpressionNode *child);
 void AlgebraicExpression_SumOfMul(AlgebraicExpressionNode **root);
-
 void AlgebraicExpression_Eval(AlgebraicExpressionNode *exp, GrB_Matrix res);
+void AlgebraicExpressionNode_Free(AlgebraicExpressionNode *root);
 
 /* AlgebraicExpressionOperand a single operand within an
  * algebraic expression. */
