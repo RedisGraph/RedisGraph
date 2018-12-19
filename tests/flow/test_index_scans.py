@@ -70,14 +70,17 @@ class IndexScanFlowTest(FlowTestsBase):
 
     # Validate that the appropriate bounds are respected when a Cartesian product uses the same index in two streams
     def test03_cartesian_product_reused_index(self):
-        query = "MATCH (a:country {name: 'Japan'}), (b:country {name: 'Germany'}) RETURN a, b"
+        redis_graph.redis_con.execute_command("GRAPH.QUERY", "social", "CREATE INDEX ON :person(name)")
+        query = "MATCH (a:person {name: 'Omri Traub'}), (b:person) WHERE b.age <= 30 RETURN a.name, b.name ORDER BY a.name, b.name"
 	plan = redis_graph.execution_plan(query)
         # The two streams should both use index scans
         assert plan.count('Index Scan') == 2
         self.assertNotIn('Label Scan', plan)
 
+
         expected_result = [['a.name', 'b.name'],
-                           ['Japan', 'Germany']]
+                           ['Omri Traub', 'Gal Derriere'],
+                           ['Omri Traub', 'Lucy Yanfital']]
         result = redis_graph.query(query)
 
         assert(result.result_set == expected_result)
