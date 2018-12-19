@@ -55,7 +55,8 @@ class IndexScanFlowTest(FlowTestsBase):
     def test02_cartesian_product_index_scans_only(self):
         query = "MATCH (p:person), (c:country) WHERE p.age > 0 AND c.name > '' RETURN p.age, c.name ORDER BY p.age, c.name"
 	plan = redis_graph.execution_plan(query)
-        self.assertIn('Index Scan', plan)
+        # The two streams should both use index scans
+        assert plan.count('Index Scan') == 2
         self.assertNotIn('Label Scan', plan)
         indexed_result = redis_graph.query(query)
 
@@ -67,6 +68,19 @@ class IndexScanFlowTest(FlowTestsBase):
 
 	assert(indexed_result.result_set == unindexed_result.result_set)
 
+    # Validate that the appropriate bounds are respected when a Cartesian product uses the same index in two streams
+    def test03_cartesian_product_reused_index(self):
+        query = "MATCH (a:country {name: 'Japan'}), (b:country {name: 'Germany'}) RETURN a, b"
+	plan = redis_graph.execution_plan(query)
+        # The two streams should both use index scans
+        assert plan.count('Index Scan') == 2
+        self.assertNotIn('Label Scan', plan)
+
+        expected_result = [['a.name', 'b.name'],
+                           ['Japan', 'Germany']]
+        result = redis_graph.query(query)
+
+        assert(result.result_set == expected_result)
 
 if __name__ == '__main__':
     unittest.main()
