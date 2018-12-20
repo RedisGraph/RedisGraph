@@ -391,7 +391,7 @@ void _update_lower_bound(skiplistIterator *iter, skiplistKey bound, int exclusiv
   if (cmp < 0) {
     // This filter improves the bound
     iter->current = skiplistFindAtLeast(iter->sl, bound, exclusive);
-    iter->rangeMin = bound;
+    iter->rangeMin = iter->sl->cloneKey(bound);
     iter->minExclusive = exclusive;
   } else if (cmp == 0 && exclusive && !iter->minExclusive) {
     // Handle the unlikely edge that we compared equally, but are now specifying
@@ -502,7 +502,10 @@ void skiplistIterate_Reset(skiplistIterator *iter) {
 }
 
 void skiplistIterate_Free(skiplistIterator *iter) {
-  // If we have an upper bound and a free routine, free the bound.
+  // Free lower and upper bounds if they exist and we have a free routine
+  if (iter->rangeMin && iter->sl->freeKey) {
+    iter->sl->freeKey(iter->rangeMin);
+  }
   if (iter->rangeMax && iter->sl->freeKey) {
     iter->sl->freeKey(iter->rangeMax);
   }
