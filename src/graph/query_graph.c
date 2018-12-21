@@ -91,7 +91,7 @@ void _MergeNodeWithGraphEntity(Node *n, const AST_GraphEntity *ge) {
     if(n->label == NULL && ge->label != NULL) n->label = strdup(ge->label);
 }
 
-void _BuildQueryGraphAddNode(const GraphContext *gc,
+Node* _BuildQueryGraphAddNode(const GraphContext *gc,
                              AST_GraphEntity *entity,
                              QueryGraph *qg) {
     const Graph *g = gc->g;
@@ -118,33 +118,25 @@ void _BuildQueryGraphAddNode(const GraphContext *gc,
             GrB_Matrix_new(&n->mat, GrB_BOOL, Graph_NodeCount(g), Graph_NodeCount(g));
         }
     }
+
+    return n;
 }
 
 void _BuildQueryGraphAddEdge(const GraphContext *gc,
-                        AST_GraphEntity *entity,
-                        AST_GraphEntity *l_entity,
-                        AST_GraphEntity *r_entity,
+                        AST_LinkEntity *edge,
+                        Node *src,
+                        Node *dest,
                         QueryGraph *qg) {
 
-    /* Check for duplications. */
-    if(QueryGraph_GetEdgeByAlias(qg, entity->alias) != NULL) return;
-
     const Graph *g = gc->g;
-    AST_LinkEntity* edge = (AST_LinkEntity*)entity;
-    AST_NodeEntity *src_node;
-    AST_NodeEntity *dest_node;
 
-    // Determine relation between edge and its nodes.
-    if(edge->direction == N_LEFT_TO_RIGHT) {
-        src_node = l_entity;
-        dest_node = r_entity;
-    } else {
-        src_node = r_entity;
-        dest_node = l_entity;
+    // Swap source and destination nodes if traversing from right to left
+    if(edge->direction == N_RIGHT_TO_LEFT) {
+        Node *tmp = src;
+        src = dest;
+        dest = tmp;
     }
 
-    Node *src = QueryGraph_GetNodeByAlias(qg, src_node->alias);
-    Node *dest = QueryGraph_GetNodeByAlias(qg, dest_node->alias);
     Edge *e = Edge_New(src, dest, edge->ge.label, edge->ge.alias);
 
     // Get relation matrix.
@@ -183,12 +175,17 @@ QueryGraph* QueryGraph_New(size_t node_cap, size_t edge_cap) {
 }
 
 void BuildQueryGraph(const GraphContext *gc, QueryGraph *qg, Vector *entities) {    
+    /* Store node pointers to reduce the number of lookups in edge construction.
+     * Only indices corresponding to real nodes will be valid references, and pointers
+     * may appear repeatedly. */
+    Node *nodes[Vector_Size(entities)];
+
     /* Introduce nodes first. */
     for(int i = 0; i < Vector_Size(entities); i++) {
         AST_GraphEntity *entity;
         Vector_Get(entities, i, &entity);
         if(entity->t != N_ENTITY) continue;
-        _BuildQueryGraphAddNode(gc, entity, qg);
+        nodes[i] = _BuildQueryGraphAddNode(gc, entity, qg);
     }
 
     /* Introduce edges. */
@@ -196,12 +193,7 @@ void BuildQueryGraph(const GraphContext *gc, QueryGraph *qg, Vector *entities) {
         AST_GraphEntity *entity;
         Vector_Get(entities, i, &entity);
         if(entity->t != N_LINK) continue;
-        AST_GraphEntity *l_entity;
-        AST_GraphEntity *r_entity;
-        Vector_Get(entities, i-1, &l_entity);
-        Vector_Get(entities, i+1, &r_entity);
-
-        _BuildQueryGraphAddEdge(gc, entity, l_entity, r_entity, qg);
+        _BuildQueryGraphAddEdge(gc, (AST_LinkEntity*)entity, nodes[i-1], nodes[i+1], qg);
     }
 }
 
