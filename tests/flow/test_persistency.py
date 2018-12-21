@@ -147,7 +147,7 @@ class GraphPersistency(FlowTestsBase):
     def test02_deleted_entity_migration(self):
         query = """MATCH (p) WHERE ID(p) = 0 OR ID(p) = 3 OR ID(p) = 7 OR ID(p) = 9 DELETE p"""
         actual_result = dense_graph.query(query)
-        #  assert(actual_result.nodes_deleted == 3)
+        assert(actual_result.nodes_deleted == 4)
         query = """MATCH (p)-[]->(q) RETURN p, q ORDER BY p.val, q.val"""
         first_result = dense_graph.query(query)
 
@@ -156,6 +156,29 @@ class GraphPersistency(FlowTestsBase):
 
         second_result = dense_graph.query(query)
         assert(first_result.result_set == second_result.result_set)
+
+    # Strings, numerics, booleans, and NULL properties should be properly serialized and reloaded
+    def test03_restore_properties(self):
+        graphname = "simple_props"
+        graph = Graph(graphname, redis_con)
+        query = """CREATE (:p {strval: 'str', numval: 5.5, nullval: NULL, boolval: true})"""
+        actual_result = graph.query(query)
+        # Verify that node was created correctly
+        assert(actual_result.nodes_created == 1)
+        assert(actual_result.properties_set == 4)
+
+        # Save RDB & Load from RDB
+        redis_con.execute_command("DEBUG", "RELOAD")
+
+        query = """MATCH (p) RETURN p"""
+        actual_result = graph.query(query)
+
+        # Verify that the properties are loaded correctly.
+        # Note that the order of results is not guaranteed (currently managed by the LabelStore schema),
+        # so this may need to be updated in the future.
+        expected_result = [['p.boolval', 'p.nullval', 'p.numval', 'p.strval'],
+                           ['true', 'NULL', '5.500000', 'str']]
+        assert(actual_result.result_set == expected_result)
 
 if __name__ == '__main__':
     unittest.main()
