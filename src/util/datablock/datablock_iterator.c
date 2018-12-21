@@ -8,6 +8,7 @@
 #include "datablock_iterator.h"
 #include "datablock.h"
 #include "assert.h"
+#include "../rmalloc.h"
 #include <stdio.h>
 
 int static inline _IsItemDeleted(int itemSize, unsigned char* item) {
@@ -22,7 +23,7 @@ int static inline _IsItemDeleted(int itemSize, unsigned char* item) {
 DataBlockIterator *DataBlockIterator_New(Block *block, int64_t start_pos, int64_t end_pos, int step) {
     assert(block && start_pos >= 0 && end_pos >= start_pos && step >= 1);
     
-    DataBlockIterator *iter = malloc(sizeof(DataBlockIterator));
+    DataBlockIterator *iter = rm_malloc(sizeof(DataBlockIterator));
     iter->_start_block = block;
     iter->_current_block = block;
     iter->_block_pos = start_pos % BLOCK_CAP;
@@ -79,5 +80,5 @@ void DataBlockIterator_Reset(DataBlockIterator *iter) {
 
 void DataBlockIterator_Free(DataBlockIterator *iter) {
     assert(iter);
-    free(iter);
+    rm_free(iter);
 }
