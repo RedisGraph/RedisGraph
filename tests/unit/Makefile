@@ -69,7 +69,7 @@ build: $(TEST_OBJECTS) $(TEST_EXECUTABLES) $(DEPS)
 
 test: build
 	for t in $(TEST_EXECUTABLES); do \
-		./$$t; \
+		./$$t || exit 1; \
 	done
 
 test_valgrind: build

@@ -102,15 +102,16 @@ TEST_F(SkiplistTest, SkiplistRange) {
   GrB_Index *ret_node;
   long last_id = 3;
   // Iterate over a range of keys [1, INF)
-  SIValue min = SI_DoubleVal(1);
-  skiplistIterator *iter = skiplistIterateRange(sl, &min, NULL, 1, 0);
+  SIValue *min = (SIValue*)malloc(sizeof(SIValue));
+  *min = SI_DoubleVal(1);
+  skiplistIterator *iter = skiplistIterateRange(sl, min, NULL, 1, 0);
   while ((ret_node = skiplistIterator_Next(iter)) != NULL) {
     ASSERT_EQ(last_id + 1, *ret_node);
     last_id = *ret_node;
   }
 
-  skiplistFree(sl);
   skiplistIterate_Free(iter);
+  skiplistFree(sl);
 }
 
 TEST_F(SkiplistTest, SkiplistDelete) {
