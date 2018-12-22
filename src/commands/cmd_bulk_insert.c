@@ -9,9 +9,10 @@
 #include "../graph/graph.h"
 #include "../query_executor.h"
 #include "../bulk_insert/bulk_insert.h"
+#include "../util/rmalloc.h"
 
 BulkInsertContext* BulkInsertContext_New(RedisModuleCtx *ctx, RedisModuleBlockedClient *bc, RedisModuleString **argv, int argc) {
-    BulkInsertContext *context = malloc(sizeof(BulkInsertContext));
+    BulkInsertContext *context = rm_malloc(sizeof(BulkInsertContext));
 
     context->bc = bc;
     context->argc = argc;
@@ -21,7 +22,7 @@ BulkInsertContext* BulkInsertContext_New(RedisModuleCtx *ctx, RedisModuleBlocked
 }
 
 void BulkInsertContext_Free(BulkInsertContext* ctx) {
-    free(ctx);
+    rm_free(ctx);
 }
 
 void _MGraph_BulkInsert(void *args) {

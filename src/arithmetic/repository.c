@@ -6,6 +6,7 @@
 */
 
 #include "repository.h"
+#include "../util/rmalloc.h"
 #include "../util/vector.h"
 
 typedef struct {
@@ -23,7 +24,7 @@ static void __agg_initRegistry() {
 
 int Agg_RegisterFunc(const char* name, AggFuncInit f) {
     __agg_initRegistry();
-    __aggFuncEntry *e = malloc(sizeof(__aggFuncEntry));
+    __aggFuncEntry *e = rm_malloc(sizeof(__aggFuncEntry));
     e->name = name;
     e->func = f;
     return Vector_Push(__aggRegisteredFuncs, e);
