@@ -39,7 +39,10 @@ SIValue* GraphEntity_Get_Property(const GraphEntity *e, const char* key) {
 
 void FreeEntity(Entity *e) {
 	if(e->properties != NULL) {
-		for(int i = 0; i < e->prop_count; i++) rm_free(e->properties[i].name);
+		for(int i = 0; i < e->prop_count; i++) {
+			rm_free(e->properties[i].name);
+			SIValue_Free(&e->properties[i].value);
+		}
 		rm_free(e->properties);
 		e->properties = NULL;
 	}
