@@ -40,6 +40,9 @@ void BuildQueryGraph(const GraphContext *gc, QueryGraph *query_graph, Vector *en
 /* Adds a new node to the graph */
 void QueryGraph_AddNode(QueryGraph* g, Node *n, char *alias);
 
+/* Explore a QueryGraph to find an entry point into each connected component it holds. */
+Node** QueryGraph_ConnectedComponents(const QueryGraph *qg, int *component_count);
+
 /* Retrieves node from graph */
 Node* QueryGraph_GetNodeById(const QueryGraph *g, long int id);
 

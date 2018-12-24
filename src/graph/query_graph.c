@@ -10,6 +10,27 @@
 #include "../stores/store.h"
 #include <assert.h>
 
+// Perform DFT on a node to map the connected component it is a part of.
+int _BuildConnectedComponent(TrieMap *visited, Node *n) {
+  // Add the node alias to the triemap if it is not already present.
+  int is_new = TrieMap_Add(visited, n->alias, strlen(n->alias), NULL, TrieMap_DONT_CARE_REPLACE);
+  // Nothing needs to be done on previously-visited nodes
+  if (!is_new) return 0;
+
+  // Recursively visit every node connected to the current in either direction
+  Edge *e;
+  for (int i = 0; i < Vector_Size(n->outgoing_edges); i ++) {
+    Vector_Get(n->outgoing_edges, i, &e);
+    _BuildConnectedComponent(visited, e->dest);
+  }
+  for (int i = 0; i < Vector_Size(n->incoming_edges); i ++) {
+    Vector_Get(n->incoming_edges, i, &e);
+    _BuildConnectedComponent(visited, e->src);
+  }
+
+  return 1;
+}
+
 GraphEntity* _QueryGraph_GetEntityById(GraphEntity **entity_list, int entity_count, long int id) {
     int i;
 
@@ -195,6 +216,25 @@ void QueryGraph_AddNode(QueryGraph *g, Node *n, char *alias) {
     &g->node_aliases,
     &g->node_count,
     &g->node_cap);
+}
+
+Node** QueryGraph_ConnectedComponents(const QueryGraph *qg, int *component_count) {
+    // Construct a triemap to track whether each node has been previously visited
+    TrieMap *visited = NewTrieMap();
+    // Store a starting point for each distinct component
+    Node **start_points = malloc(qg->node_count * sizeof(Node*));
+    int count = 0;
+    for (int i = 0; i < qg->node_count; i ++) {
+        Node *current_node = qg->nodes[i];
+        if (_BuildConnectedComponent(visited, current_node)) {
+            // We've fully traversed a component; increment counter and triemap value.
+            start_points[count] = current_node;
+            count ++;
+        }
+    }
+    start_points = realloc(start_points, count * sizeof(Node*));
+    *component_count = count;
+    return start_points;
 }
 
 Node* QueryGraph_GetNodeById(const QueryGraph *g, long int id) {
