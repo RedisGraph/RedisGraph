@@ -37,11 +37,8 @@ QueryGraph* QueryGraph_New(size_t node_cap, size_t edge_cap);
  * between them. */
 void BuildQueryGraph(const GraphContext *gc, QueryGraph *query_graph, Vector *entities);
 
-/* Checks if graph contains given node
- * Returns 1 if so, 0 otherwise */ 
-int QueryGraph_ContainsNode(const QueryGraph *graph, const Node *node);
-
-int QueryGraph_ContainsEdge(const QueryGraph *graph, const Edge *edge);
+/* Adds a new node to the graph */
+void QueryGraph_AddNode(QueryGraph* g, Node *n, char *alias);
 
 /* Retrieves node from graph */
 Node* QueryGraph_GetNodeById(const QueryGraph *g, long int id);
@@ -58,8 +55,11 @@ Edge* QueryGraph_GetEdgeByAlias(const QueryGraph *g, const char *alias);
 /* Search for either node/edge with given alias. */
 GraphEntity* QueryGraph_GetEntityByAlias(const QueryGraph *g, const char *alias);
 
-/* Adds a new node to the graph */
-void QueryGraph_AddNode(QueryGraph* g, Node *n, char *alias);
+/* Checks if graph contains given node
+ * Returns 1 if so, 0 otherwise */
+int QueryGraph_ContainsNode(const QueryGraph *graph, const Node *node);
+
+int QueryGraph_ContainsEdge(const QueryGraph *graph, const Edge *edge);
 
 /* Adds a new edge to the graph */
 void QueryGraph_ConnectNodes(QueryGraph *g, Node *src, Node *dest, Edge *e, char *edge_alias);

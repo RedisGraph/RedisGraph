@@ -24,9 +24,9 @@ GraphEntity* _QueryGraph_GetEntityById(GraphEntity **entity_list, int entity_cou
 
 void _QueryGraph_AddEntity(GraphEntity *entity, char *alias, GraphEntity ***entity_list,
                      char ***alias_list, size_t *entity_count, size_t *entity_cap) {
-    
+
     if(*entity_cap <= *entity_count) {
-        *entity_cap *= 2; 
+        *entity_cap *= 2;
         *entity_list = realloc(*entity_list, sizeof(GraphEntity*) * (*entity_cap));
         *alias_list = realloc(*alias_list, sizeof(char*) * (*entity_cap));
     }
@@ -62,7 +62,7 @@ char* _QueryGraph_GetEntityAlias(GraphEntity *entity, GraphEntity **entities, ch
             return aliases[i];
         }
     }
-    
+
     return NULL;
 }
 
@@ -75,15 +75,6 @@ int _QueryGraph_ContainsEntity(GraphEntity *entity, GraphEntity **entities, int 
         }
     }
     return 0;
-}
-
-void QueryGraph_AddNode(QueryGraph *g, Node *n, char *alias) {
-    _QueryGraph_AddEntity((GraphEntity*)n,
-    alias,
-    (GraphEntity ***)&g->nodes,
-    &g->node_aliases,
-    &g->node_count,
-    &g->node_cap);
 }
 
 // Extend node with label and attributes from graph entity.
@@ -105,7 +96,7 @@ Node* _BuildQueryGraphAddNode(const GraphContext *gc,
         /* Merge nodes. */
         _MergeNodeWithGraphEntity(n, entity);
     }
-    
+
     /* Set node matrix.
      * TODO: revisit when supporting multiple labels. */
     if(n->label && !n->mat) {
@@ -174,7 +165,7 @@ QueryGraph* QueryGraph_New(size_t node_cap, size_t edge_cap) {
     return g;
 }
 
-void BuildQueryGraph(const GraphContext *gc, QueryGraph *qg, Vector *entities) {    
+void BuildQueryGraph(const GraphContext *gc, QueryGraph *qg, Vector *entities) {
     /* Store node pointers to reduce the number of lookups in edge construction.
      * Only indices corresponding to real nodes will be valid references, and pointers
      * may appear repeatedly. */
@@ -195,6 +186,15 @@ void BuildQueryGraph(const GraphContext *gc, QueryGraph *qg, Vector *entities) {
         if(entity->t != N_LINK) continue;
         _BuildQueryGraphAddEdge(gc, (AST_LinkEntity*)entity, nodes[i-1], nodes[i+1], qg);
     }
+}
+
+void QueryGraph_AddNode(QueryGraph *g, Node *n, char *alias) {
+    _QueryGraph_AddEntity((GraphEntity*)n,
+    alias,
+    (GraphEntity ***)&g->nodes,
+    &g->node_aliases,
+    &g->node_count,
+    &g->node_cap);
 }
 
 Node* QueryGraph_GetNodeById(const QueryGraph *g, long int id) {
@@ -249,7 +249,7 @@ GraphEntity* QueryGraph_GetEntityByAlias(const QueryGraph *g, const char *alias)
     if(entity) {
         return entity;
     }
-    
+
     return (GraphEntity*)QueryGraph_GetEdgeByAlias(g, alias);
 }
 
@@ -281,7 +281,7 @@ GraphEntity** QueryGraph_GetEntityRef(const QueryGraph *g, const char *alias) {
 
 Node** QueryGraph_GetNodeRef(const QueryGraph *g, const Node *n) {
     assert(g && n);
-    
+
     int i;
     int node_count = g->node_count;
 
@@ -296,7 +296,7 @@ Node** QueryGraph_GetNodeRef(const QueryGraph *g, const Node *n) {
 
 Edge** QueryGraph_GetEdgeRef(const QueryGraph *g, const Edge *e) {
     assert(g && e);
-    
+
     int i;
     int edge_count = g->edge_count;
 
@@ -305,7 +305,7 @@ Edge** QueryGraph_GetEdgeRef(const QueryGraph *g, const Edge *e) {
             return &(g->edges[i]);
         }
     }
-    
+
     return NULL;
 }
 
