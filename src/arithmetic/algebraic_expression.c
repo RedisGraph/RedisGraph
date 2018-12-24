@@ -349,78 +349,75 @@ Node** AlgebraicExpression_ConnectedComponents(const QueryGraph *qg, int *compon
     return start_points;
 }
 
+int _ExpressionContainsEdge(AlgebraicExpression *exp, Edge *e) {
+  for (int i = 0; i < exp->operand_count; i ++) {
+    // TODO bad condition, matrices can be repeated
+    if (exp->operands[i].operand == e->mat) return true;
+  }
+  return false;
+}
+
+void _AddNode(AlgebraicExpressionNode *root, Node *cur) {
+  if (cur->mat) {
+    AlgebraicExpressionNode *operand = AlgebraicExpressionNode_NewOperandNode(cur->mat);
+    AlgebraicExpressionNode_AppendLeftChild(root, operand);
+    AlgebraicExpressionNode *op = AlgebraicExpressionNode_NewOperationNode(AL_EXP_MUL);
+    AlgebraicExpressionNode_AppendRightChild(root, op);
+    root = op;
+  }
+
+  Edge *e;
+  // Outgoing edges
+  for (int i = 0; i < Vector_Size(cur->outgoing_edges); i ++) {
+    Vector_Get(cur->outgoing_edges, i, &e);
+    if (_ExpressionContainsEdge(root, e)) continue;
+    // TODO If edge is variable length or covers multiple relation types,
+    // might want to handle that here
+    AlgebraicExpressionNode *operand = AlgebraicExpressionNode_NewOperandNode(e->mat);
+    AlgebraicExpressionNode_AppendLeftChild(root, operand);
+    AlgebraicExpressionNode *op = AlgebraicExpressionNode_NewOperationNode(AL_EXP_MUL);
+    AlgebraicExpressionNode_AppendRightChild(root, op);
+    root = op;
+    _AddNode(root, e->dest);
+  }
+
+  // Incoming edges (swap src and dest, transpose edge matrix)
+  for (int i = 0; i < Vector_Size(cur->incoming_edges); i ++) {
+    Vector_Get(cur->incoming_edges, i, &e);
+    if (_ExpressionContainsEdge(root, e)) continue;
+    // Transpose edge matrix for incoming edges
+    // TODO is this adequate?
+    AlgebraicExpressionNode *trans = AlgebraicExpressionNode_NewOperationNode(AL_EXP_TRANSPOSE);
+    AlgebraicExpressionNode *operand = AlgebraicExpressionNode_NewOperandNode(e->mat);
+    AlgebraicExpressionNode_AppendLeftChild(trans, operand);
+    AlgebraicExpressionNode_AppendLeftChild(root, trans);
+    AlgebraicExpressionNode *op = AlgebraicExpressionNode_NewOperationNode(AL_EXP_MUL);
+    AlgebraicExpressionNode_AppendRightChild(root, op);
+    root = op;
+    _AddNode(root, e->src);
+  }
+}
+
+AlgebraicExpressionNode* AlgebraicExpression_FromComponent(Node *src, int size) {
+  AlgebraicExpressionNode *exp = AlgebraicExpressionNode_NewOperationNode(AL_EXP_MUL);
+  _AddNode(exp, src);
+
+  return exp;
+}
+
 AlgebraicExpression **AlgebraicExpression_From_Query(const AST *ast, Vector *matchPattern, const QueryGraph *q, size_t *exp_count) {
     assert(q->edge_count != 0);
 
-    int component_count = 0;
-    Node **components = AlgebraicExpression_ConnectedComponents(q, &component_count);
+    int component_count;
+    Node **starting_points = AlgebraicExpression_ConnectedComponents(q, &component_count);
 
-    AlgebraicExpression *exp = _AE_MUL(q->edge_count + q->node_count);
-    int transpose; // Indicate if matrix operand needs to be transposed.    
-    Node *dest = NULL;
-    Node *src = NULL;
-    Edge *e = NULL;
-    
-    // Scan MATCH clause from left to right.
-    for(int i = 0; i < Vector_Size(matchPattern); i++) {
-        AST_GraphEntity *match_element;
-        Vector_Get(matchPattern, i, &match_element);
-
-        if(match_element->t != N_LINK) continue;
-        AST_LinkEntity *astEdge = (AST_LinkEntity*)match_element;
-        transpose = (astEdge->direction == N_RIGHT_TO_LEFT);
-        e = QueryGraph_GetEdgeByAlias(q, astEdge->ge.alias);
-        assert(e);
-
-        GrB_Matrix mat = e->mat;
-        dest = e->dest;
-        src = e->src;
-
-        if(transpose) {
-            dest = e->src;
-            src = e->dest;
-        }
-
-        if(exp->operand_count == 0) {
-            exp->src_node = src;
-            if(src->mat) AlgebraicExpression_AppendTerm(exp, src->mat, false, false);
-        }
-
-        // ()-[:A|:B.]->()
-        // Create matrix M, where M = A+B+...
-        int labelCount = AST_LinkEntity_LabelCount(astEdge);
-        if(labelCount > 1) {
-            GraphContext *gc = GraphContext_GetFromLTS();
-            Graph *g = gc->g;
-
-            GrB_Matrix m;
-            GrB_Matrix_new(&m, GrB_BOOL, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g));
-
-            for(int i = 0; i < labelCount; i++) {
-                char *label = astEdge->labels[i];
-                LabelStore *s = GraphContext_GetStore(gc, label, STORE_EDGE);
-                if(!s) continue;
-                GrB_Matrix l = Graph_GetRelationMatrix(g, s->id);
-                GrB_Info info = GrB_eWiseAdd_Matrix_Semiring(m, NULL, NULL, Rg_structured_bool, m, l, NULL);                
-            }
-            mat = m;
-        }
-
-        unsigned int hops = 1;
-        /* Expand fixed variable length edge */
-        if(astEdge->length && AST_LinkEntity_FixedLengthEdge(astEdge)) {
-            hops = astEdge->length->minHops;
-        }
-
-        for(int i = 0; i < hops; i++) {
-            bool freeMatrix = (labelCount > 1);
-            AlgebraicExpression_AppendTerm(exp, mat, transpose, freeMatrix);
-        }
-
-        if(dest->mat) AlgebraicExpression_AppendTerm(exp, dest->mat, false, false);
+    int max_size = q->edge_count + q->node_count;
+    AlgebraicExpressionNode *exp = NULL;
+    for (int i = 0; i < component_count; i ++) {
+      // TODO support multiple components
+      exp = AlgebraicExpression_FromComponent(starting_points[i], max_size);
     }
 
-    exp->dest_node = dest;
     AlgebraicExpression **expressions = _AlgebraicExpression_Intermidate_Expressions(exp, ast, matchPattern, q, exp_count);
     expressions = _AlgebraicExpression_IsolateVariableLenExps(expressions, exp_count);
     // AlgebraicExpression_Free(exp);
