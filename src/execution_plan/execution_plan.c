@@ -244,11 +244,20 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx,
     if(ast->matchNode) {
         BuildQueryGraph(gc, q, ast->matchNode->_mergedPatterns);
 
+        int component_count;
+        Node **starting_points = QueryGraph_ConnectedComponents(q, &component_count);
+
+
+        AlgebraicExpressionNode **ae_trees = AlgebraicExpression_BuildExps(ast, ast->matchNode->_mergedPatterns, q, starting_points, component_count);
+
+        // TODO everything below here should change
+
+
         // For every pattern in match clause.
         size_t patternCount = Vector_Size(ast->matchNode->patterns);
         
-        /* Incase we're dealing with multiple patterns
-         * we'll simply join them all together with a join operation. */
+        /* If the QueryGraph contains multiple disjoint patterns, the stream from each 
+         * will be joined by a Cartesian product root operation. */
         bool multiPattern = patternCount > 1;
         OpBase *cartesianProduct = NULL;
         if(multiPattern) {

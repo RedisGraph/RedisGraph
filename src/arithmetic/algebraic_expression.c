@@ -309,15 +309,12 @@ void AlgebraicExpression_PrependTerm(AlgebraicExpression *ae, GrB_Matrix m, bool
     ae->operands[0].operand = m;
 }
 
-int _ExpressionContainsEdge(AlgebraicExpression *exp, Edge *e) {
-  for (int i = 0; i < exp->operand_count; i ++) {
-    // TODO bad condition, matrices can be repeated
-    if (exp->operands[i].operand == e->mat) return true;
-  }
-  return false;
+int _ExpressionContainsEdge(TrieMap *t, Edge *e) {
+  return !TrieMap_Add(t, e->alias, strlen(e->alias), NULL, TrieMap_DONT_CARE_REPLACE);
 }
 
-void _AddNode(AlgebraicExpressionNode *root, Node *cur) {
+void _AddNode(AlgebraicExpressionNode *root, Node *cur, TrieMap *unique_edges) {
+  // TODO only need to add node matrix on start and end of expression
   if (cur->mat) {
     AlgebraicExpressionNode *operand = AlgebraicExpressionNode_NewOperandNode(cur->mat);
     AlgebraicExpressionNode_AppendLeftChild(root, operand);
@@ -330,7 +327,7 @@ void _AddNode(AlgebraicExpressionNode *root, Node *cur) {
   // Outgoing edges
   for (int i = 0; i < Vector_Size(cur->outgoing_edges); i ++) {
     Vector_Get(cur->outgoing_edges, i, &e);
-    if (_ExpressionContainsEdge(root, e)) continue;
+    if (_ExpressionContainsEdge(unique_edges, e)) continue;
     // TODO If edge is variable length or covers multiple relation types,
     // might want to handle that here
     AlgebraicExpressionNode *operand = AlgebraicExpressionNode_NewOperandNode(e->mat);
@@ -338,15 +335,15 @@ void _AddNode(AlgebraicExpressionNode *root, Node *cur) {
     AlgebraicExpressionNode *op = AlgebraicExpressionNode_NewOperationNode(AL_EXP_MUL);
     AlgebraicExpressionNode_AppendRightChild(root, op);
     root = op;
-    _AddNode(root, e->dest);
+    _AddNode(root, e->dest, unique_edges);
   }
 
   // Incoming edges (swap src and dest, transpose edge matrix)
   for (int i = 0; i < Vector_Size(cur->incoming_edges); i ++) {
     Vector_Get(cur->incoming_edges, i, &e);
-    if (_ExpressionContainsEdge(root, e)) continue;
+    if (_ExpressionContainsEdge(unique_edges, e)) continue;
     // Transpose edge matrix for incoming edges
-    // TODO is this adequate?
+    // TODO Improve
     AlgebraicExpressionNode *trans = AlgebraicExpressionNode_NewOperationNode(AL_EXP_TRANSPOSE);
     AlgebraicExpressionNode *operand = AlgebraicExpressionNode_NewOperandNode(e->mat);
     AlgebraicExpressionNode_AppendLeftChild(trans, operand);
@@ -354,15 +351,37 @@ void _AddNode(AlgebraicExpressionNode *root, Node *cur) {
     AlgebraicExpressionNode *op = AlgebraicExpressionNode_NewOperationNode(AL_EXP_MUL);
     AlgebraicExpressionNode_AppendRightChild(root, op);
     root = op;
-    _AddNode(root, e->src);
+    _AddNode(root, e->src, unique_edges);
   }
 }
 
-AlgebraicExpressionNode* AlgebraicExpression_FromComponent(Node *src, int size) {
+AlgebraicExpressionNode* AlgebraicExpression_FromComponent(Node *src) {
+  // Handle single disconnected entity
+  if (Vector_Size(src->incoming_edges) == 0 && Vector_Size(src->outgoing_edges) == 0) {
+    // TODO src->mat is NULL if label is not provided, which does not break this call
+    // but has to be interpreted as an all node scan elsewhere (or improve logic)
+    return AlgebraicExpressionNode_NewOperandNode(src->mat);
+  }
+  TrieMap *unique_edges = NewTrieMap();
   AlgebraicExpressionNode *exp = AlgebraicExpressionNode_NewOperationNode(AL_EXP_MUL);
-  _AddNode(exp, src);
+  _AddNode(exp, src, unique_edges);
+
+  TrieMap_Free(unique_edges, TrieMap_NOP_CB);
 
   return exp;
+}
+
+AlgebraicExpressionNode** AlgebraicExpression_BuildExps(const AST *ast, Vector *match_entities, const QueryGraph *qg, Node **starting_points, int component_count) {
+    AlgebraicExpressionNode **exps = array_new(AlgebraicExpressionNode*, component_count);
+    for (int i = 0; i < component_count; i ++) {
+      // Each component is disjoint, and will be converted into 1 or more expressions.
+      // TODO can we make just one array, or does it have to be a nested array to separate disjoint components from
+      // interlinked expressions?
+      // Should that all be handled by this call?
+      AlgebraicExpressionNode *exp = AlgebraicExpression_FromComponent(starting_points[i]);
+      exps = array_append(exps, exp);
+    }
+    return exps;
 }
 
 AlgebraicExpression **AlgebraicExpression_From_Query(const AST *ast, Vector *matchPattern, const QueryGraph *q, size_t *exp_count) {

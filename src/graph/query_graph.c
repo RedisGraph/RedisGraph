@@ -232,6 +232,7 @@ Node** QueryGraph_ConnectedComponents(const QueryGraph *qg, int *component_count
             count ++;
         }
     }
+    TrieMap_Free(visited, TrieMap_NOP_CB);
     start_points = realloc(start_points, count * sizeof(Node*));
     *component_count = count;
     return start_points;
