@@ -368,16 +368,72 @@ AlgebraicExpressionNode* AlgebraicExpression_FromComponent(Node *src, int size) 
 AlgebraicExpression **AlgebraicExpression_From_Query(const AST *ast, Vector *matchPattern, const QueryGraph *q, size_t *exp_count) {
     assert(q->edge_count != 0);
 
-    int component_count;
-    Node **starting_points = QueryGraph_ConnectedComponents(q, &component_count);
+    AlgebraicExpression *exp = _AE_MUL(q->edge_count + q->node_count);
+    int transpose; // Indicate if matrix operand needs to be transposed.    
+    Node *dest = NULL;
+    Node *src = NULL;
+    Edge *e = NULL;
+    
+    // Scan MATCH clause from left to right.
+    for(int i = 0; i < Vector_Size(matchPattern); i++) {
+        AST_GraphEntity *match_element;
+        Vector_Get(matchPattern, i, &match_element);
 
-    int max_size = q->edge_count + q->node_count;
-    AlgebraicExpressionNode *exp = NULL;
-    for (int i = 0; i < component_count; i ++) {
-      // TODO support multiple components
-      exp = AlgebraicExpression_FromComponent(starting_points[i], max_size);
+        if(match_element->t != N_LINK) continue;
+        AST_LinkEntity *astEdge = (AST_LinkEntity*)match_element;
+        transpose = (astEdge->direction == N_RIGHT_TO_LEFT);
+        e = QueryGraph_GetEdgeByAlias(q, astEdge->ge.alias);
+        assert(e);
+
+        GrB_Matrix mat = e->mat;
+        dest = e->dest;
+        src = e->src;
+
+        if(transpose) {
+            dest = e->src;
+            src = e->dest;
+        }
+
+        if(exp->operand_count == 0) {
+            exp->src_node = src;
+            if(src->mat) AlgebraicExpression_AppendTerm(exp, src->mat, false, false);
+        }
+
+        // ()-[:A|:B.]->()
+        // Create matrix M, where M = A+B+...
+        int labelCount = AST_LinkEntity_LabelCount(astEdge);
+        if(labelCount > 1) {
+            GraphContext *gc = GraphContext_GetFromLTS();
+            Graph *g = gc->g;
+
+            GrB_Matrix m;
+            GrB_Matrix_new(&m, GrB_BOOL, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g));
+
+            for(int i = 0; i < labelCount; i++) {
+                char *label = astEdge->labels[i];
+                LabelStore *s = GraphContext_GetStore(gc, label, STORE_EDGE);
+                if(!s) continue;
+                GrB_Matrix l = Graph_GetRelationMatrix(g, s->id);
+                GrB_Info info = GrB_eWiseAdd_Matrix_Semiring(m, NULL, NULL, Rg_structured_bool, m, l, NULL);                
+            }
+            mat = m;
+        }
+
+        unsigned int hops = 1;
+        /* Expand fixed variable length edge */
+        if(astEdge->length && AST_LinkEntity_FixedLengthEdge(astEdge)) {
+            hops = astEdge->length->minHops;
+        }
+
+        for(int i = 0; i < hops; i++) {
+            bool freeMatrix = (labelCount > 1);
+            AlgebraicExpression_AppendTerm(exp, mat, transpose, freeMatrix);
+        }
+
+        if(dest->mat) AlgebraicExpression_AppendTerm(exp, dest->mat, false, false);
     }
 
+    exp->dest_node = dest;
     AlgebraicExpression **expressions = _AlgebraicExpression_Intermidate_Expressions(exp, ast, matchPattern, q, exp_count);
     expressions = _AlgebraicExpression_IsolateVariableLenExps(expressions, exp_count);
     // AlgebraicExpression_Free(exp);
