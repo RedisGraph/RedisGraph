@@ -30,12 +30,12 @@ OpBase* NewUnwindOp(AST_UnwindNode *unwindClause) {
     return (OpBase*)unwind;
 }
 
-OpResult UnwindConsume(OpBase *opBase, Record r) {
+Record UnwindConsume(OpBase *opBase) {
     OpUnwind *op = (OpUnwind*)opBase;
-    
+    AST *ast = AST_GetFromLTS();
+
     // Init
-    if(op->expressions == NULL) {
-        AST *ast = AST_GetFromLTS();
+    if(op->expressions == NULL) {        
         uint expCount = Vector_Size(op->unwindClause->expressions);
         op->expressions = array_new(AR_ExpNode*, expCount);
 
@@ -48,17 +48,16 @@ OpResult UnwindConsume(OpBase *opBase, Record r) {
         op->unwindRecIdx = AST_GetAliasID(ast, op->unwindClause->alias);
     }
 
-    if(op->expIdx == array_len(op->expressions)) {
-        return OP_DEPLETED;
-    }
+    // Evaluated and returned all expressions.
+    if(op->expIdx == array_len(op->expressions)) return NULL;
 
     AR_ExpNode *exp = op->expressions[op->expIdx];
+    Record r = Record_New(AST_AliasCount(ast));
     SIValue v = AR_EXP_Evaluate(exp, r);
-
     Record_AddScalar(r, op->unwindRecIdx, v);
-
     op->expIdx++;
-    return OP_OK;
+
+    return r;
 }
 
 OpResult UnwindReset(OpBase *ctx) {

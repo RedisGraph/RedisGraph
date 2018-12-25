@@ -97,7 +97,7 @@ void _aggregateRecord(Aggregate *op, Record r) {
     }
 }
 
-OpResult AggregateConsume(OpBase *opBase, Record r) {
+Record AggregateConsume(OpBase *opBase) {
     Aggregate *op = (Aggregate*)opBase;
     OpBase *child = op->op.children[0];
 
@@ -112,12 +112,9 @@ OpResult AggregateConsume(OpBase *opBase, Record r) {
         op->init = 1;
     }
 
-    OpResult res = child->consume(child, r);
-    if(res != OP_OK) return res;
-
-    _aggregateRecord(op, r);
-
-    return OP_OK;
+    Record r = child->consume(child);
+    if(r) _aggregateRecord(op, r);
+    return r;
 }
 
 OpResult AggregateReset(OpBase *opBase) {

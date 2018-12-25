@@ -22,8 +22,8 @@ typedef struct {
 OpBase* NewFilterOp(FT_FilterNode *filterTree);
 
 /* FilterConsume next operation 
- * returns OP_DEPLETED when */
-OpResult FilterConsume(OpBase *opBase, Record r);
+ * returns NULL when depleted. */
+Record FilterConsume(OpBase *opBase);
 
 /* Restart iterator */
 OpResult FilterReset(OpBase *ctx);

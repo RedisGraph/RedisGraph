@@ -124,11 +124,11 @@ OpBase* NewUpdateOp(GraphContext *gc, AST *ast, ResultSet *result_set) {
     return (OpBase*)op_update;
 }
 
-OpResult OpUpdateConsume(OpBase *opBase, Record r) {    
+Record OpUpdateConsume(OpBase *opBase) {
     OpUpdate *op = (OpUpdate*)opBase;
     OpBase *child = op->op.children[0];
-    OpResult res = child->consume(child, r);
-    if(res != OP_OK) return res;
+    Record r = child->consume(child);
+    if(!r) return NULL;
 
     /* Evaluate each update expression and store result 
      * for later execution. */
@@ -156,7 +156,7 @@ OpResult OpUpdateConsume(OpBase *opBase, Record r) {
         }
     }
 
-    return OP_OK;
+    return r;
 }
 
 OpResult OpUpdateReset(OpBase *ctx) {

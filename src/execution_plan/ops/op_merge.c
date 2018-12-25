@@ -162,19 +162,20 @@ OpBase* NewMergeOp(GraphContext *gc, AST *ast, QueryGraph *qg, ResultSet *result
     return (OpBase*)op_merge;
 }
 
-OpResult OpMergeConsume(OpBase *opBase, Record r) {
+Record OpMergeConsume(OpBase *opBase) {
     OpMerge *op = (OpMerge*)opBase;
-
     OpBase *child = op->op.children[0];
-    OpResult res = child->consume(child, r);
-    if(res == OP_OK) {
+
+    Record r = child->consume(child);
+    if(r) {
         /* If we're here that means pattern was matched! 
         * in that case there's no need to create any graph entity,
         * we can simply return. */
         op->matched = true;
-        return OP_DEPLETED;
+        Record_Free(r);
+        return NULL;
     }
-    return res;
+    return r;
 }
 
 OpResult OpMergeReset(OpBase *ctx) {

@@ -24,20 +24,21 @@ OpBase* NewFilterOp(FT_FilterNode *filterTree) {
 
 /* FilterConsume next operation 
  * returns OP_OK when graph passes filter tree. */
-OpResult FilterConsume(OpBase *opBase, Record r) {
+Record FilterConsume(OpBase *opBase) {
+    Record r;
     Filter *filter = (Filter*)opBase;
     OpBase *child = filter->op.children[0];
-    int pass = FILTER_FAIL;
 
-    while(pass != FILTER_PASS) {
-        OpResult res = child->consume(child, r);
-        if(res != OP_OK) return res;
+    while(true) {
+        r = child->consume(child);
+        if(!r) break;
 
         /* Pass graph through filter tree */
-        pass = FilterTree_applyFilters(filter->filterTree, r);
+        if(FilterTree_applyFilters(filter->filterTree, r) == FILTER_PASS) break;
+        else Record_Free(r);
     }
 
-    return OP_OK;
+    return r;
 }
 
 /* Restart iterator */

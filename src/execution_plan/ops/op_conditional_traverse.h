@@ -28,6 +28,7 @@ typedef struct {
     int srcNodeRecIdx;
     int destNodeRecIdx;
     int edgeRecIdx;
+    Record r;
 } CondTraverse;
 
 /* Creates a new Traverse operation */
@@ -35,8 +36,8 @@ OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *algebraic_expression);
 
 /* TraverseConsume next operation 
  * each call will update the graph
- * returns OP_DEPLETED when no additional updates are available */
-OpResult CondTraverseConsume(OpBase *opBase, Record r);
+ * returns NULL when no additional updates are available */
+Record CondTraverseConsume(OpBase *opBase);
 
 /* Restart iterator */
 OpResult CondTraverseReset(OpBase *ctx);

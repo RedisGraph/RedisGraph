@@ -47,6 +47,7 @@ OpBase* NewCondVarLenTraverseOp(AlgebraicExpression *ae, unsigned int minHops, u
     condVarLenTraverse->maxHops = maxHops;
     condVarLenTraverse->allPathsCtx = NULL;
     condVarLenTraverse->traverseDir = (ae->operands[0].transpose) ? GRAPH_EDGE_DIR_INCOMING : GRAPH_EDGE_DIR_OUTGOING;
+    condVarLenTraverse->r = NULL;
 
     _setupTraversedRelations(condVarLenTraverse);
 
@@ -66,17 +67,19 @@ OpBase* NewCondVarLenTraverseOp(AlgebraicExpression *ae, unsigned int minHops, u
     return (OpBase*)condVarLenTraverse;
 }
 
-OpResult CondVarLenTraverseConsume(OpBase *opBase, Record r) {
+Record CondVarLenTraverseConsume(OpBase *opBase) {
     CondVarLenTraverse *op = (CondVarLenTraverse*)opBase;
     OpBase *child = op->op.children[0];
-    OpResult res;
 
     Path p = NULL;
     while(!(p = AllPathsCtx_NextPath(op->allPathsCtx))) {
-        res = child->consume(child, r);
-        if(res != OP_OK) return res;
+        Record childRecord = child->consume(child);
+        if(!childRecord) return NULL;
+        
+        if(op->r) Record_Free(op->r);
+        op->r = childRecord;
 
-        Node *srcNode = Record_GetNode(r, op->srcNodeIdx);
+        Node *srcNode = Record_GetNode(op->r, op->srcNodeIdx);
 
         AllPathsCtx_Free(op->allPathsCtx);
         op->allPathsCtx = AllPathsCtx_New(srcNode,
@@ -92,12 +95,13 @@ OpResult CondVarLenTraverseConsume(OpBase *opBase, Record r) {
     Node n = Path_pop(p);
     Path_free(p);
 
-    Record_AddNode(r, op->destNodeIdx, n);
-    return OP_OK;
+    Record_AddNode(op->r, op->destNodeIdx, n);
+    return Record_Clone(op->r);
 }
 
 OpResult CondVarLenTraverseReset(OpBase *ctx) {
     CondVarLenTraverse *op = (CondVarLenTraverse*)ctx;
+    if(op->r) Record_Free(op->r);
     AllPathsCtx_Free(op->allPathsCtx);
     op->allPathsCtx = NULL;
     return OP_OK;
@@ -105,7 +109,8 @@ OpResult CondVarLenTraverseReset(OpBase *ctx) {
 
 void CondVarLenTraverseFree(OpBase *ctx) {
     CondVarLenTraverse *op = (CondVarLenTraverse*)ctx;
-    if(op->allPathsCtx) AllPathsCtx_Free(op->allPathsCtx);
-    AlgebraicExpression_Free(op->ae);
     array_free(op->relationIDs);
+    AlgebraicExpression_Free(op->ae);
+    if(op->r) Record_Free(op->r);
+    if(op->allPathsCtx) AllPathsCtx_Free(op->allPathsCtx);
 }
