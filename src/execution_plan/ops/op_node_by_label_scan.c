@@ -15,7 +15,8 @@ OpBase *NewNodeByLabelScanOp(GraphContext *gc, Node *node) {
     nodeByLabelScan->_zero_matrix = NULL;
 
     AST *ast = AST_GetFromLTS();
-    nodeByLabelScan->node_rec_idx = AST_GetAliasID(ast, node->alias);
+    nodeByLabelScan->nodeRecIdx = AST_GetAliasID(ast, node->alias);
+    nodeByLabelScan->recLength = AST_AliasCount(ast);
 
     /* Find out label matrix ID. */
     LabelStore *store = GraphContext_GetStore(gc, node->label, STORE_NODE);
@@ -41,20 +42,21 @@ OpBase *NewNodeByLabelScanOp(GraphContext *gc, Node *node) {
     return (OpBase*)nodeByLabelScan;
 }
 
-OpResult NodeByLabelScanConsume(OpBase *opBase, Record r) {
+Record NodeByLabelScanConsume(OpBase *opBase) {
     NodeByLabelScan *op = (NodeByLabelScan*)opBase;
 
     GrB_Index nodeId;
 
     bool depleted = false;
     GxB_MatrixTupleIter_next(op->iter, NULL, &nodeId, &depleted);
-    if(depleted) return OP_DEPLETED;
+    if(depleted) return NULL;
     
+    Record r = Record_New(op->recLength);
     // Get a pointer to a heap allocated node.
-    Node *n = Record_GetNode(r, op->node_rec_idx);
+    Node *n = Record_GetNode(r, op->nodeRecIdx);
     // Update node's internal entity pointer.
     Graph_GetNode(op->g, nodeId, n);
-    return OP_OK;
+    return r;
 }
 
 OpResult NodeByLabelScanReset(OpBase *ctx) {

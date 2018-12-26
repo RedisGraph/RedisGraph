@@ -17,10 +17,11 @@
  typedef struct {
      OpBase op;
      bool init;
+     Record r;
  } CartesianProduct;
 
 OpBase* NewCartesianProductOp();
-OpResult CartesianProductConsume(OpBase *opBase, Record r);
+Record CartesianProductConsume(OpBase *opBase);
 OpResult CartesianProductReset(OpBase *opBase);
 void CartesianProductFree(OpBase *opBase);
 

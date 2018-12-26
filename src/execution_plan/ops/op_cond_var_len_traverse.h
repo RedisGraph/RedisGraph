@@ -26,10 +26,11 @@ typedef struct {
     unsigned int minHops;           /* Maximum number of hops to perform. */
     unsigned int maxHops;           /* Maximum number of hops to perform. */        
     AllPathsCtx *allPathsCtx;
+    Record r;
 } CondVarLenTraverse;
 
 OpBase* NewCondVarLenTraverseOp(AlgebraicExpression *ae, unsigned int minHops, unsigned int maxHops, Graph *g);
-OpResult CondVarLenTraverseConsume(OpBase *opBase, Record r);
+Record CondVarLenTraverseConsume(OpBase *opBase);
 OpResult CondVarLenTraverseReset(OpBase *ctx);
 void CondVarLenTraverseFree(OpBase *ctx);
 #endif

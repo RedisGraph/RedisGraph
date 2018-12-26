@@ -31,14 +31,14 @@ static void _setupTraversedRelations(CondTraverse *op) {
 }
 
 // Updates query graph edge.
-OpResult _CondTraverse_SetEdge(CondTraverse *op, Record r) {
+static int _CondTraverse_SetEdge(CondTraverse *op, Record r) {
     // Consumed edges connecting current source and destination nodes.
-    if(!array_len(op->edges)) return OP_DEPLETED;
+    if(!array_len(op->edges)) return 0;
 
     Edge *e = op->edges + (array_len(op->edges)-1);
     Record_AddEdge(r, op->edgeRecIdx, *e);
     array_pop(op->edges);
-    return OP_OK;
+    return 1;
 }
 
 void _extractColumn(CondTraverse *op, const Record r) {
@@ -104,26 +104,27 @@ OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *algebraic_expression) {
 /* CondTraverseConsume next operation 
  * each call will update the graph
  * returns OP_DEPLETED when no additional updates are available */
-OpResult CondTraverseConsume(OpBase *opBase, Record r) {
+Record CondTraverseConsume(OpBase *opBase) {
     CondTraverse *op = (CondTraverse*)opBase;
     OpBase *child = op->op.children[0];
     
     /* Not initialized. */
     if(op->iter == NULL) {
-        if(child->consume(child, r) == OP_DEPLETED) return OP_DEPLETED;
+        op->r = child->consume(child);
+        if(!op->r) return NULL;
 
         GrB_Matrix_new(&op->F, GrB_BOOL, Graph_RequiredMatrixDim(op->graph), 1);
 
         /* Pick a column. */
-        _extractColumn(op, r);
+        _extractColumn(op, op->r);
     }
 
     /* If we're required to update edge,
      * try to get an edge, if successful we can return quickly,
      * otherwise try to get a new pair of source and destination nodes. */
     if(op->algebraic_expression->edge) {
-        if(_CondTraverse_SetEdge(op, r) == OP_OK) {
-            return OP_OK;
+        if(_CondTraverse_SetEdge(op, op->r)) {
+            return Record_Clone(op->r);
         }
     }
 
@@ -135,13 +136,17 @@ OpResult CondTraverseConsume(OpBase *opBase, Record r) {
         // Managed to get a tuple, break.
         if(!depleted) break;
 
-        OpResult res = child->consume(child, r);
-        if(res != OP_OK) return res;
-        _extractColumn(op, r);
+        Record childRecord = child->consume(child);
+        if(!childRecord) return NULL;
+
+        Record_Free(op->r);
+        op->r = childRecord;
+
+        _extractColumn(op, op->r);
     }
 
     /* Get node from current column. */
-    Node *destNode = Record_GetNode(r, op->destNodeRecIdx);
+    Node *destNode = Record_GetNode(op->r, op->destNodeRecIdx);
     Graph_GetNode(op->graph, dest_id, destNode);
 
     if(op->algebraic_expression->edge != NULL) {
@@ -151,11 +156,11 @@ OpResult CondTraverseConsume(OpBase *opBase, Record r) {
         size_t operandCount = op->algebraic_expression->operand_count - 1;
 
         if(op->algebraic_expression->operands[operandCount].transpose) {
-            srcNode = Record_GetNode(r, op->destNodeRecIdx);
-            destNode = Record_GetNode(r, op->srcNodeRecIdx);
+            srcNode = Record_GetNode(op->r, op->destNodeRecIdx);
+            destNode = Record_GetNode(op->r, op->srcNodeRecIdx);
         } else {
-            srcNode = Record_GetNode(r, op->srcNodeRecIdx);
-            destNode = Record_GetNode(r, op->destNodeRecIdx);
+            srcNode = Record_GetNode(op->r, op->srcNodeRecIdx);
+            destNode = Record_GetNode(op->r, op->destNodeRecIdx);
         }
 
         for(int i = 0; i < op->edgeRelationCount; i++) {
@@ -165,13 +170,15 @@ OpResult CondTraverseConsume(OpBase *opBase, Record r) {
                                         op->edgeRelationTypes[i],
                                         &op->edges);
         }
-        _CondTraverse_SetEdge(op, r);
+        _CondTraverse_SetEdge(op, op->r);
     }
-    return OP_OK;
+
+    return Record_Clone(op->r);
 }
 
 OpResult CondTraverseReset(OpBase *ctx) {
     CondTraverse *op = (CondTraverse*)ctx;
+    if(op->r) Record_Free(op->r);
     if(op->edges) array_clear(op->edges);
     if(op->iter) {
         GxB_MatrixTupleIter_free(op->iter);
@@ -187,6 +194,7 @@ OpResult CondTraverseReset(OpBase *ctx) {
 /* Frees CondTraverse */
 void CondTraverseFree(OpBase *ctx) {
     CondTraverse *op = (CondTraverse*)ctx;
+    if(op->r) Record_Free(op->r);
     if(op->iter) GxB_MatrixTupleIter_free(op->iter);
     if(op->F) GrB_Matrix_free(&op->F);
     if(op->M) GrB_Matrix_free(&op->M);

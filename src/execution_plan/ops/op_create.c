@@ -7,6 +7,7 @@
 
 #include "op_create.h"
 #include "../../util/arr.h"
+#include "../../parser/ast.h"
 #include "../../stores/store.h"
 #include <assert.h>
 
@@ -269,23 +270,26 @@ void _CommitNewEntities(OpCreate *op) {
     if(edge_count > 0) _CommitEdges(op);
 }
 
-OpResult OpCreateConsume(OpBase *opBase, Record r) {
-    OpResult res = OP_OK;
+Record OpCreateConsume(OpBase *opBase) {
     OpCreate *op = (OpCreate*)opBase;
+    Record r;
 
-    if(op->op.childCount) {
+    if(!op->op.childCount) {
+        AST *ast = AST_GetFromLTS();
+        r = Record_New(AST_AliasCount(ast));
+    } else {
         OpBase *child = op->op.children[0];
-        res = child->consume(child, r);
+        Record childRecord = child->consume(child);
+        if(!childRecord) return NULL;
+        r = childRecord;
     }
+    
+    /* Create entities. */
+    _CreateNodes(op, r);
+    _CreateEdges(op, r);    
 
-    if(res == OP_OK) {
-        /* Create entities. */
-        _CreateNodes(op, r);
-        _CreateEdges(op, r);
-    }
-
-    if(op->op.childCount == 0) return OP_DEPLETED;
-    return res;
+    if(op->op.childCount == 0) return NULL;
+    return r;
 }
 
 OpResult OpCreateReset(OpBase *ctx) {

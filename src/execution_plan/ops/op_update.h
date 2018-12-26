@@ -41,7 +41,7 @@ typedef struct {
 } OpUpdate;
 
 OpBase* NewUpdateOp(GraphContext *gc, AST *ast, ResultSet *result_set);
-OpResult OpUpdateConsume(OpBase *opBase, Record r);
+Record OpUpdateConsume(OpBase *opBase);
 OpResult OpUpdateReset(OpBase *ctx);
 void OpUpdateFree(OpBase *ctx);
 

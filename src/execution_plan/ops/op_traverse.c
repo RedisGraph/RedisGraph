@@ -61,7 +61,7 @@ OpBase* NewTraverseOp(Graph *g, AlgebraicExpression *ae) {
 /* TraverseConsume next operation 
  * each call will update the graph
  * returns OP_DEPLETED when no additional updates are available */
-OpResult TraverseConsume(OpBase *opBase, Record r) {
+Record TraverseConsume(OpBase *opBase) {
     // Traverse *op = (Traverse*)opBase;
     // GrB_Index src_id;
     // GrB_Index dest_id;
@@ -107,7 +107,7 @@ OpResult TraverseConsume(OpBase *opBase, Record r) {
     //     return _Traverse_SetEdge(op, r);
     // }
 
-    return OP_OK;
+    return NULL;
 }
 
 OpResult TraverseReset(OpBase *ctx) {

@@ -20,10 +20,11 @@
     OpBase op;
     DataBlockIterator *iter;
     uint nodeRecIdx;
+    uint recLength;  // Number of entries in a record.
  } AllNodeScan;
 
 OpBase* NewAllNodeScanOp(const Graph *g, Node *n);
-OpResult AllNodeScanConsume(OpBase *opBase, Record r);
+Record AllNodeScanConsume(OpBase *opBase);
 OpResult AllNodeScanReset(OpBase *op);
 void AllNodeScanFree(OpBase *ctx);
 

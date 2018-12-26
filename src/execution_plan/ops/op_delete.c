@@ -72,12 +72,12 @@ OpBase* NewDeleteOp(AST_DeleteNode *ast_delete_node, QueryGraph *qg, GraphContex
     return (OpBase*)op_delete;
 }
 
-OpResult OpDeleteConsume(OpBase *opBase, Record r) {
+Record OpDeleteConsume(OpBase *opBase) {
     OpDelete *op = (OpDelete*)opBase;
     OpBase *child = op->op.children[0];
 
-    OpResult res = child->consume(child, r);
-    if(res != OP_OK) return res;
+    Record r = child->consume(child);
+    if(!r) return NULL;
 
     /* Enqueue entities for deletion. */
     for(int i = 0; i < op->node_count; i++) {
@@ -90,7 +90,7 @@ OpResult OpDeleteConsume(OpBase *opBase, Record r) {
         op->deleted_edges = array_append(op->deleted_edges, *e);
     }
 
-    return OP_OK;
+    return r;
 }
 
 OpResult OpDeleteReset(OpBase *ctx) {

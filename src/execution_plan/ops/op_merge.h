@@ -30,7 +30,7 @@ typedef struct {
 } OpMerge;
 
 OpBase* NewMergeOp(GraphContext *gc, AST *ast, QueryGraph *qg, ResultSet *result_set);
-OpResult OpMergeConsume(OpBase *opBase, Record r);
+Record OpMergeConsume(OpBase *opBase);
 OpResult OpMergeReset(OpBase *ctx);
 void OpMergeFree(OpBase *ctx);
 

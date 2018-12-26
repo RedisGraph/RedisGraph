@@ -28,7 +28,7 @@
  } Aggregate;
 
 OpBase* NewAggregateOp(AST *ast, TrieMap *groups);
-OpResult AggregateConsume(OpBase *opBase, Record r);
+Record AggregateConsume(OpBase *opBase);
 OpResult AggregateReset(OpBase *opBase);
 void AggregateFree(OpBase *opBase);
 

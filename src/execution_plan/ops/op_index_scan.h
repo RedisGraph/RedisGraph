@@ -16,7 +16,8 @@
 
 typedef struct {
     OpBase op;
-    int nodeRecIdx;
+    uint nodeRecIdx;
+    uint recLength;  // Number of entries in a record.
     Graph *g;
     IndexIter *iter;
 } IndexScan;
@@ -26,7 +27,7 @@ OpBase *NewIndexScanOp(Graph *g, Node *node, IndexIter *iter);
 
 /* IndexScan next operation
  * called each time a new node is required */
-OpResult IndexScanConsume(OpBase *opBase, Record r);
+Record IndexScanConsume(OpBase *opBase);
 
 /* Restart iterator */
 OpResult IndexScanReset(OpBase *ctx);

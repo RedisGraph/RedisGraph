@@ -6,10 +6,15 @@
 */
 
 #include "op_cartesian_product.h"
+#include "../../parser/ast.h"
 
 OpBase* NewCartesianProductOp() {
     CartesianProduct *cp = malloc(sizeof(CartesianProduct));
     cp->init = true;
+
+    AST *ast = AST_GetFromLTS();
+    cp->r = Record_New(AST_AliasCount(ast));
+
     // Set our Op operations
     OpBase_Init(&cp->op);
     cp->op.name = "Cartesian Product";
@@ -21,73 +26,88 @@ OpBase* NewCartesianProductOp() {
     return (OpBase*)cp;
 }
 
-void _ResetStreams(CartesianProduct *cp, int streamIdx) {
+static void _ResetStreams(CartesianProduct *cp, int streamIdx) {
     // Reset each child stream, Reset propagates upwards.
     for(int i = 0; i < streamIdx; i++) OpBase_Reset(cp->op.children[i]);    
 }
 
-OpResult _PullFromStreams(CartesianProduct *cp, Record r) {
-    OpResult res;
-    for(int i = 1; i < cp->op.childCount; i++) {
-        OpBase *child = cp->op.children[i];
-        res = child->consume(child, r);
-        if(res == OP_OK) {
+static int _PullFromStreams(CartesianProduct *op) {
+    for(int i = 1; i < op->op.childCount; i++) {
+        OpBase *child = op->op.children[i];
+        Record childRecord = child->consume(child);
+
+        if(childRecord) {
+            Record_Merge(op->r, childRecord);
+            Record_Free(childRecord);
             /* Managed to get new data
-             * Reset stream (0-i) */
-            _ResetStreams(cp, i);
+             * Reset streams [0-i] */
+            _ResetStreams(op, i);
 
             // Pull from resetted streams.
             for(int j = 0; j < i; j++) {
-                child = cp->op.children[j];
-                res = child->consume(child, r);
-                if(res != OP_OK) return res;
+                child = op->op.children[j];
+                childRecord = child->consume(child);
+                if(childRecord) {
+                    Record_Merge(op->r, childRecord);
+                    Record_Free(childRecord);                    
+                } else {
+                    return 0;
+                }
             }
             // Ready to continue.
-            return OP_OK;
-        } else if(res == OP_ERR) {
-            return res;
+            return 1;
         }
     }
 
     /* If we're here, then we didn't manged to get new data.
      * Last stream depleted. */
-    return OP_DEPLETED;
+    return 0;
 }
 
-OpResult CartesianProductConsume(OpBase *opBase, Record r) {
-    CartesianProduct *cp = (CartesianProduct*)opBase;
+Record CartesianProductConsume(OpBase *opBase) {
+    CartesianProduct *op = (CartesianProduct*)opBase;
     OpResult res;
     OpBase *child;
+    Record childRecord;
 
-    if(cp->init) {
-        cp->init = false;
-        for(int i = 0; i < cp->op.childCount; i++) {
-            child = cp->op.children[i];
-            OpResult res = child->consume(child, r);
-            if(res != OP_OK) return res;
+    if(op->init) {
+        op->init = false;
+
+        for(int i = 0; i < op->op.childCount; i++) {
+            child = op->op.children[i];
+            childRecord = child->consume(child);
+            if(!childRecord) return NULL;
+            Record_Merge(op->r, childRecord);
+            Record_Free(childRecord);
         }
-        return OP_OK;
+        return Record_Clone(op->r);
     }
 
     // Pull from first stream.
-    child = cp->op.children[0];
-    res = child->consume(child, r);
-
-    if(res == OP_ERR) {
-        return res;
-    } else if(res == OP_DEPLETED) {
-        res = _PullFromStreams(cp, r);
-        if(res != OP_OK) return res;
+    child = op->op.children[0];
+    childRecord = child->consume(child);
+        
+    if(childRecord) {
+        // Managed to get data from first stream.
+        Record_Merge(op->r, childRecord);
+        Record_Free(childRecord);
+    } else {
+        // Failed to get data from first stream,
+        // try pulling other streams for data.
+        if(!_PullFromStreams(op)) return NULL;
     }
 
-    return OP_OK;
+    // Pass down a clone of record.
+    return Record_Clone(op->r);
 }
 
 OpResult CartesianProductReset(OpBase *opBase) {
-    CartesianProduct *cp = (CartesianProduct*)opBase;
-    cp->init = true;
+    CartesianProduct *op = (CartesianProduct*)opBase;
+    op->init = true;
     return OP_OK;
 }
 
 void CartesianProductFree(OpBase *opBase) {
+    CartesianProduct *op = (CartesianProduct*)opBase;
+    Record_Free(op->r);
 }

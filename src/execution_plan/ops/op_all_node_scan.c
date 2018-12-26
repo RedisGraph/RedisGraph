@@ -14,6 +14,7 @@ OpBase* NewAllNodeScanOp(const Graph *g, Node *n) {
 
     AST *ast = AST_GetFromLTS();
     allNodeScan->nodeRecIdx = AST_GetAliasID(ast, n->alias);
+    allNodeScan->recLength = AST_AliasCount(ast);
 
     // Set our Op operations
     OpBase_Init(&allNodeScan->op);
@@ -29,16 +30,17 @@ OpBase* NewAllNodeScanOp(const Graph *g, Node *n) {
     return (OpBase*)allNodeScan;
 }
 
-OpResult AllNodeScanConsume(OpBase *opBase, Record r) {
+Record AllNodeScanConsume(OpBase *opBase) {
     AllNodeScan *op = (AllNodeScan*)opBase;
 
     Entity *en = (Entity*)DataBlockIterator_Next(op->iter);
-    if(en == NULL) return OP_DEPLETED;
+    if(en == NULL) return NULL;
     
+    Record r = Record_New(op->recLength);
     Node *n = Record_GetNode(r, op->nodeRecIdx);
     n->entity = en;
 
-    return OP_OK;
+    return r;
 }
 
 OpResult AllNodeScanReset(OpBase *op) {

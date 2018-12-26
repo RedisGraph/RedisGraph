@@ -220,8 +220,7 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx,
                                 bool explain) {
 
     Graph *g = gc->g;
-    ExecutionPlan *execution_plan = (ExecutionPlan*)calloc(1, sizeof(ExecutionPlan));
-    // execution_plan->root = NewOpNode(NULL);    
+    ExecutionPlan *execution_plan = (ExecutionPlan*)calloc(1, sizeof(ExecutionPlan));    
     execution_plan->result_set = (explain) ? NULL: NewResultSet(ast, ctx);
     execution_plan->filter_tree = NULL;
     Vector *ops = NewVector(OpBase*, 1);
@@ -470,12 +469,8 @@ char* ExecutionPlanPrint(const ExecutionPlan *plan) {
 
 ResultSet* ExecutionPlan_Execute(ExecutionPlan *plan) {
     OpBase *op = plan->root;
-    AST *ast = AST_GetFromLTS();
-
-    Record r = Record_New(AST_AliasCount(ast));
-    while(op->consume(op, r) == OP_OK);
-
-    Record_Free(r);
+    Record r;
+    while((r = op->consume(op)) != NULL) Record_Free(r);
     return plan->result_set;
 }
 

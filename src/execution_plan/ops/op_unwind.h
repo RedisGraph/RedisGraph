@@ -26,7 +26,7 @@ typedef struct {
 OpBase* NewUnwindOp(AST_UnwindNode *unwindClause);
 
 /* UnwindConsume next operation */
-OpResult UnwindConsume(OpBase *opBase, Record r);
+Record UnwindConsume(OpBase *opBase);
 
 /* Restart */
 OpResult UnwindReset(OpBase *ctx);

@@ -18,7 +18,8 @@
 typedef struct {
     OpBase op;
     Node *node;                 /* Node being scanned. */
-    int node_rec_idx;           /* Node position within record. */
+    unsigned int nodeRecIdx;    /* Node position within record. */
+    unsigned int recLength;     /* Number of entries in a record. */
     Graph *g;
     GxB_MatrixTupleIter *iter;
     GrB_Matrix _zero_matrix;    /* Fake matrix, in-case label does not exists. */
@@ -29,7 +30,7 @@ OpBase *NewNodeByLabelScanOp(GraphContext *gc, Node *node);
 
 /* NodeByLabelScan next operation
  * called each time a new ID is required */
-OpResult NodeByLabelScanConsume(OpBase *opBase, Record r);
+Record NodeByLabelScanConsume(OpBase *opBase);
 
 /* Restart iterator */
 OpResult NodeByLabelScanReset(OpBase *ctx);

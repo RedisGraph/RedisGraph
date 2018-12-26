@@ -15,6 +15,7 @@ OpBase *NewIndexScanOp(Graph *g, Node *node, IndexIter *iter) {
 
   AST *ast = AST_GetFromLTS();
   indexScan->nodeRecIdx = AST_GetAliasID(ast, node->alias);
+  indexScan->recLength = AST_AliasCount(ast);
 
   // Set our Op operations
   OpBase_Init(&indexScan->op);
@@ -30,18 +31,19 @@ OpBase *NewIndexScanOp(Graph *g, Node *node, IndexIter *iter) {
   return (OpBase*)indexScan;
 }
 
-OpResult IndexScanConsume(OpBase *opBase, Record r) {
+Record IndexScanConsume(OpBase *opBase) {
   IndexScan *op = (IndexScan*)opBase;
 
   EntityID *nodeId = IndexIter_Next(op->iter);
-  if (!nodeId) return OP_DEPLETED;
+  if (!nodeId) return NULL;
 
+  Record r = Record_New(op->recLength);
   // Get a pointer to a heap allocated node.
   Node *n = Record_GetNode(r, op->nodeRecIdx);
   // Update node's internal entity pointer.
   Graph_GetNode(op->g, *nodeId, n);
 
-  return OP_OK;
+  return r;
 }
 
 OpResult IndexScanReset(OpBase *ctx) {
