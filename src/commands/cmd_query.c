@@ -26,12 +26,14 @@ void _queryContext_Free(QueryContext* ctx) {
 }
 
 void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST_IndexNode *indexNode) {
-  /* Set up nested array response for index creation and deletion.
-   * As we need no result set, there is only one top-level element, for statistics.
-   * We'll enqueue one string response to indicate the operation's success,
-   * and the query runtime will be appended after this call returns. */
-  RedisModule_ReplyWithArray(ctx, 1);
-  RedisModule_ReplyWithArray(ctx, 2);
+    /* Set up nested array response for index creation and deletion,
+     * Following the response struture of other queries:
+     * First element is an empty result-set followed by statistics.
+     * We'll enqueue one string response to indicate the operation's success,
+     * and the query runtime will be appended after this call returns. */
+    RedisModule_ReplyWithArray(ctx, 2); // Two Array
+    RedisModule_ReplyWithArray(ctx, 0); // Empty result-set
+    RedisModule_ReplyWithArray(ctx, 2); // Statistics.
 
   switch(indexNode->operation) {
     case CREATE_INDEX:
@@ -40,11 +42,11 @@ void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST_IndexNode *inde
         RedisModule_ReplyWithSimpleString(ctx, "(no changes, no records)");
         break;
       }
-      RedisModule_ReplyWithSimpleString(ctx, "Added 1 index.");
+      RedisModule_ReplyWithSimpleString(ctx, "Indices added: 1");
       break;
     case DROP_INDEX:
       if (GraphContext_DeleteIndex(gc, indexNode->label, indexNode->property) == INDEX_OK) {
-        RedisModule_ReplyWithSimpleString(ctx, "Removed 1 index.");
+        RedisModule_ReplyWithSimpleString(ctx, "Indices removed: 1");
       } else {
         char *reply;
         asprintf(&reply, "ERR Unable to drop index on :%s(%s): no such index.", indexNode->label, indexNode->property);
