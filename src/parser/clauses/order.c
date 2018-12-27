@@ -8,18 +8,18 @@
 #include "./order.h"
 #include "../../util/arr.h"
 
-AST_OrderNode* New_AST_OrderNode(Vector *fields, AST_OrderByDirection direction) {
+AST_OrderNode* New_AST_OrderNode(Vector *expressions, AST_OrderByDirection direction) {
 	AST_OrderNode *orderNode = (AST_OrderNode*)malloc(sizeof(AST_OrderNode));
-	size_t fieldsCount = Vector_Size(fields);
+	size_t expCount = Vector_Size(expressions);
 	
 	// TODO: Remove this logic once arithmetic_expression migrates from vector to array.
-	orderNode->fields = array_new(AST_ArithmeticExpressionNode*, fieldsCount);
-	for(int i = 0; i < fieldsCount; i++) {
+	orderNode->expressions = array_new(AST_ArithmeticExpressionNode*, expCount);
+	for(int i = 0; i < expCount; i++) {
 		AST_ArithmeticExpressionNode *exp;
-		Vector_Get(fields, i, &exp);
-		orderNode->fields = array_append(orderNode->fields, exp);
+		Vector_Get(expressions, i, &exp);
+		orderNode->expressions = array_append(orderNode->expressions, exp);
 	}
-	Vector_Free(fields);
+	Vector_Free(expressions);
 
 	orderNode->direction = direction;
 	return orderNode;
@@ -27,11 +27,12 @@ AST_OrderNode* New_AST_OrderNode(Vector *fields, AST_OrderByDirection direction)
 
 void Free_AST_OrderNode(AST_OrderNode *orderNode) {
 	if(orderNode != NULL) {
-		for(int i = 0; i < array_len(orderNode->fields); i++) {
-			Free_AST_ArithmeticExpressionNode(orderNode->fields[i]);
+		size_t expCount = array_len(orderNode->expressions);
+		for(int i = 0; i < expCount; i++) {
+			Free_AST_ArithmeticExpressionNode(orderNode->expressions[i]);
 		}
 
-		array_free(orderNode->fields);
+		array_free(orderNode->expressions);
 		free(orderNode);
 	}
 }

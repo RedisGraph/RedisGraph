@@ -18,14 +18,13 @@ static void _build_expressions(Aggregate *op) {
 
     uint aggregatedIdx = 0;
     uint noneAggregatedIdx = 0;
-    uint expCount = Vector_Size(return_node->returnElements);
+    uint expCount = array_len(return_node->returnElements);
     
     op->none_aggregated_expressions = array_new(AR_ExpNode*, 1);
     op->expression_classification = rm_malloc(sizeof(int) * expCount);
 
     for(uint i = 0; i < expCount; i++) {
-        AST_ReturnElementNode *returnElement;
-        Vector_Get(return_node->returnElements, i, &returnElement);
+        AST_ReturnElementNode *returnElement = return_node->returnElements[i];
         
         AR_ExpNode *exp = AR_EXP_BuildFromAST(op->ast, returnElement->exp);
         if(!AR_EXP_ContainsAggregation(exp, NULL)) {
@@ -39,14 +38,13 @@ static void _build_expressions(Aggregate *op) {
 
 static AR_ExpNode** _build_aggregated_expressions(Aggregate *op) {
     AST_ReturnNode *return_node = op->ast->returnNode;
-    AR_ExpNode **agg_exps = array_new(AR_ExpNode *, 1);
-    uint exp_count = Vector_Size(return_node->returnElements);
+    AR_ExpNode **agg_exps = array_new(AR_ExpNode*, 1);
+    uint exp_count = array_len(return_node->returnElements);
 
     for(uint i = 0; i < exp_count; i++) {
         if(!op->expression_classification[i]) continue;
-        AST_ReturnElementNode *returnElement;
-        Vector_Get(return_node->returnElements, i, &returnElement);
-        AR_ExpNode *exp = AR_EXP_BuildFromAST(op->ast, returnElement);
+        AST_ReturnElementNode *returnElement = return_node->returnElements[i];
+        AR_ExpNode *exp = AR_EXP_BuildFromAST(op->ast, returnElement->exp);
         agg_exps = array_append(agg_exps, exp);
     }
 
@@ -140,7 +138,7 @@ static Record _handoff(Aggregate *op) {
     if(!CacheGroupIterNext(op->groupIter, &key, &group)) return NULL;
 
     // New record with len |return elements|
-    int returnElemCount = Vector_Size(op->ast->returnNode->returnElements);
+    int returnElemCount = array_len(op->ast->returnNode->returnElements);
     Record r = Record_New(returnElemCount);
 
     // Populate record.

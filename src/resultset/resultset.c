@@ -7,6 +7,7 @@
 
 #include "resultset.h"
 #include "../value.h"
+#include "../util/arr.h"
 #include "../util/rmalloc.h"
 #include "../query_executor.h"
 #include "../grouping/group_cache.h"
@@ -142,18 +143,17 @@ Column* NewColumn(const char *name, const char *alias) {
 ResultSetHeader* NewResultSetHeader(const AST *ast) {
     if(!ast->returnNode) return NULL;
 
-    ResultSetHeader* header = malloc(sizeof(ResultSetHeader));
+    ResultSetHeader* header = rm_malloc(sizeof(ResultSetHeader));
     header->columns_len = 0;
     header->columns = NULL;
 
     if(ast->returnNode != NULL) {
-        header->columns_len = Vector_Size(ast->returnNode->returnElements);
-        header->columns = malloc(sizeof(Column*) * header->columns_len);
+        header->columns_len = array_len(ast->returnNode->returnElements);
+        header->columns = rm_malloc(sizeof(Column*) * header->columns_len);
     }
 
     for(int i = 0; i < header->columns_len; i++) {
-        AST_ReturnElementNode* returnElementNode;
-        Vector_Get(ast->returnNode->returnElements, i, &returnElementNode);
+        AST_ReturnElementNode* returnElementNode = ast->returnNode->returnElements[i];
 
         AR_ExpNode* ar_exp = AR_EXP_BuildFromAST(ast, returnElementNode->exp);
 
@@ -294,10 +294,10 @@ void ResultSetHeader_Free(ResultSetHeader* header) {
     for(int i = 0; i < header->columns_len; i++) Column_Free(header->columns[i]);
 
     if(header->columns != NULL) {
-        free(header->columns);
+        rm_free(header->columns);
     }
 
-    free(header);
+    rm_free(header);
 }
 
 void ResultSet_Free(ResultSet *set) {

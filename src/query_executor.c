@@ -10,6 +10,7 @@
 #include "graph/graph.h"
 #include "graph/entities/node.h"
 #include "stores/store.h"
+#include "util/arr.h"
 #include "util/vector.h"
 #include "parser/grammar.h"
 #include "arithmetic/agg_ctx.h"
@@ -30,13 +31,12 @@ static void _returnClause_ExpandCollapsedNodes(GraphContext *gc, AST *ast) {
       * this will form the final RETURN clause. */
 
     AST_ReturnNode *returnClause = ast->returnNode;
-    Vector *elementsToExpand = NewVector(AST_ReturnElementNode*, Vector_Size(returnClause->returnElements));
+    size_t returnElementCount = array_len(returnClause->returnElements);
+    AST_ReturnElementNode **elementsToExpand = array_new(AST_ReturnElementNode*, returnElementCount);
 
     // Scan through return elements, see if we can find '*' marker.
-    size_t returnElementCount = Vector_Size(returnClause->returnElements);
     for(int i = 0; i < returnElementCount; i++) {
-        AST_ReturnElementNode *retElement;
-        Vector_Get(returnClause->returnElements, i, &retElement);
+        AST_ReturnElementNode *retElement = returnClause->returnElements[i];
 
         if(retElement->asterisks) {
             /* Expand with "RETURN *" queries.
@@ -52,22 +52,21 @@ static void _returnClause_ExpandCollapsedNodes(GraphContext *gc, AST *ast) {
             while(TrieMapIterator_Next(it, &ptr, &len, &value)) {
                 AST_ArithmeticExpressionNode *arNode = New_AST_AR_EXP_VariableOperandNode(ptr, NULL);
                 AST_ReturnElementNode *returnEntity = New_AST_ReturnElementNode(arNode, NULL);
-                Vector_Push(elementsToExpand, returnEntity);
+                elementsToExpand = array_append(elementsToExpand, returnEntity);
             }
 
             TrieMapIterator_Free(it);
             TrieMap_Free(matchEntities, TrieMap_NOP_CB);
             Free_AST_ReturnElementNode(retElement);
         }
-        else Vector_Push(elementsToExpand, retElement);
+        else elementsToExpand = array_append(elementsToExpand, retElement);
     }
 
-    Vector *expandReturnElements = NewVector(AST_ReturnElementNode*, Vector_Size(elementsToExpand));
+    AST_ReturnElementNode **expandReturnElements = array_new(AST_ReturnElementNode*, array_len(elementsToExpand));
 
     /* Scan return clause, search for collapsed nodes. */
-    for(int i = 0; i < Vector_Size(elementsToExpand); i++) {
-        AST_ReturnElementNode *ret_elem;
-        Vector_Get(elementsToExpand, i, &ret_elem);
+    for(int i = 0; i < array_len(elementsToExpand); i++) {
+        AST_ReturnElementNode *ret_elem = elementsToExpand[i];
         AST_ArithmeticExpressionNode *exp = ret_elem->exp;
         
         /* Detect collapsed entity,
@@ -87,7 +86,7 @@ static void _returnClause_ExpandCollapsedNodes(GraphContext *gc, AST *ast) {
             if(!collapsed_entity) {
                 // It is possible that the current alias
                 // represent an expression such as in the case of an unwind clause.
-                Vector_Push(expandReturnElements, ret_elem);
+                expandReturnElements = array_append(expandReturnElements, ret_elem);
                 continue;
             }
 
@@ -116,7 +115,7 @@ static void _returnClause_ExpandCollapsedNodes(GraphContext *gc, AST *ast) {
                 // Incase an alias is given use it, otherwise use the variable name.
                 if(ret_elem->alias) retElem = New_AST_ReturnElementNode(expanded_exp, ret_elem->alias);
                 else retElem = New_AST_ReturnElementNode(expanded_exp, exp->operand.variadic.alias);
-                Vector_Push(expandReturnElements, retElem);
+                expandReturnElements = array_append(expandReturnElements, retElem);
             } else {
                 TrieMapIterator *it = TrieMap_Iterate(store->properties, "", 0);
                 while(TrieMapIterator_Next(it, &prop, &prop_len, &ptr)) {
@@ -124,7 +123,7 @@ static void _returnClause_ExpandCollapsedNodes(GraphContext *gc, AST *ast) {
                     /* Create a new return element foreach property. */
                     expanded_exp = New_AST_AR_EXP_VariableOperandNode(collapsed_entity->alias, prop);
                     retElem = New_AST_ReturnElementNode(expanded_exp, ret_elem->alias);
-                    Vector_Push(expandReturnElements, retElem);
+                    expandReturnElements = array_append(expandReturnElements, retElem);
                 }
                 TrieMapIterator_Free(it);
             }
@@ -132,12 +131,12 @@ static void _returnClause_ExpandCollapsedNodes(GraphContext *gc, AST *ast) {
             /* Discard collapsed return element. */
             Free_AST_ReturnElementNode(ret_elem);
         } else {
-            Vector_Push(expandReturnElements, ret_elem);
+            expandReturnElements = array_append(expandReturnElements, ret_elem);
         }
     }
     /* Override previous return clause. */
-    Vector_Free(elementsToExpand);
-    Vector_Free(returnClause->returnElements);
+    array_free(elementsToExpand);
+    array_free(returnClause->returnElements);
     returnClause->returnElements = expandReturnElements;
 }
 
@@ -214,12 +213,12 @@ static void _replicateMergeClauseToMatchClause(AST *ast) {
  * Returns a vector of none aggregated expression trees. */
 void Build_None_Aggregated_Arithmetic_Expressions(AST *ast, AR_ExpNode ***expressions, int *expressions_count) {
     AST_ReturnNode *return_node = ast->returnNode;
-    *expressions = malloc(sizeof(AR_ExpNode *) * Vector_Size(return_node->returnElements));
+    uint returnElementsCount = array_len(return_node->returnElements);
+    *expressions = malloc(sizeof(AR_ExpNode *) * returnElementsCount);
     *expressions_count = 0;
 
-    for(int i = 0; i < Vector_Size(return_node->returnElements); i++) {
-        AST_ReturnElementNode *returnElement;
-        Vector_Get(return_node->returnElements, i, &returnElement);
+    for(int i = 0; i < returnElementsCount; i++) {
+        AST_ReturnElementNode *returnElement = return_node->returnElements[i];
 
         AR_ExpNode *expression = AR_EXP_BuildFromAST(ast, returnElement->exp);
         if(!AR_EXP_ContainsAggregation(expression, NULL)) {

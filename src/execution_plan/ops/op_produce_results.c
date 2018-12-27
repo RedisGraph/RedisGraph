@@ -6,51 +6,22 @@
 */
 
 #include "op_produce_results.h"
+#include "../../util/arr.h"
+#include "../../query_executor.h"
 #include "../../resultset/resultset_record.h"
 #include "../../arithmetic/arithmetic_expression.h"
-#include "../../query_executor.h"
-
-/* Construct arithmetic expressions from return clause. */
-void _BuildArithmeticExpressions(ProduceResults* op, AST *ast, QueryGraph *graph) {
-    AST_ReturnNode *return_node = ast->returnNode;
-    op->return_elements = NewVector(AR_ExpNode*, Vector_Size(return_node->returnElements));
-
-    for(int i = 0; i < Vector_Size(return_node->returnElements); i++) {
-        AST_ReturnElementNode *ret_node;
-        Vector_Get(return_node->returnElements, i, &ret_node);
-
-        AR_ExpNode *ae = AR_EXP_BuildFromAST(ast, ret_node->exp);
-        Vector_Push(op->return_elements, ae);
-    }
-}
 
 static ResultSetRecord *_ProduceResultsetRecord(ProduceResults* op, const Record r) {
-    ResultSetRecord *resRec = NewResultSetRecord(Vector_Size(op->return_elements));
-    for(int i = 0; i < Vector_Size(op->return_elements); i++) {
-        Column *col = op->result_set->header->columns[i];
-        
-        // TODO: get rid of this condition once op project is introduced.
-        if(col->alias && Record_ContainsKey(r, col->alias)) {
-            resRec->values[i] = Record_GetScalar(r, col->alias);
-        }
-        else if(Record_ContainsKey(r, col->name)) {
-            resRec->values[i] = Record_GetScalar(r, col->name);
-        } else {
-            AR_ExpNode *ae;
-            Vector_Get(op->return_elements, i, &ae);
-            resRec->values[i] = AR_EXP_Evaluate(ae, r);
-        }
-    }
+    uint elemCount = array_len(op->ast->returnNode->returnElements);
+    ResultSetRecord *resRec = NewResultSetRecord(elemCount);
+    for(int i = 0; i < elemCount; i++) resRec->values[i] = Record_GetScalar(r, i);
     return resRec;
 }
 
-OpBase* NewProduceResultsOp(AST *ast, ResultSet *result_set, QueryGraph* graph) {
+OpBase* NewProduceResultsOp(const AST *ast, ResultSet *result_set, QueryGraph* graph) {
     ProduceResults *produceResults = malloc(sizeof(ProduceResults));
-    produceResults->ast = ast;
     produceResults->result_set = result_set;
-    produceResults->return_elements = NULL;
-
-    _BuildArithmeticExpressions(produceResults, ast, graph);
+    produceResults->ast = ast;
 
     // Set our Op operations
     OpBase_Init(&produceResults->op);
@@ -88,13 +59,6 @@ OpResult ProduceResultsReset(OpBase *op) {
 }
 
 /* Frees ProduceResults */
-void ProduceResultsFree(OpBase *opBase) {
-    ProduceResults *op = (ProduceResults*)opBase;
-    AR_ExpNode *ae;
-    for(int i = 0; i < Vector_Size(op->return_elements); i++) {
-        Vector_Get(op->return_elements, i, &ae);
-        AR_EXP_Free(ae);
-    }
-    Vector_Free(op->return_elements);
+void ProduceResultsFree(OpBase *opBase) {    
 }
 

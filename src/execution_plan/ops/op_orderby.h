@@ -17,19 +17,19 @@
 
 typedef struct {
     OpBase op;
-    AR_ExpNode **fields;    // Array of fields to order by.
+    const AST* ast;
 	int direction;          // Ascending / desending.
     heap_t *heap;           // Holds top n records.
-    Record **buffer;        // Holds all records.
+    Record *buffer;         // Holds all records.
     uint limit;             // Total number of records to produce, 0 no limit.
 } OrderBy;
 
 /* Creates a new OrderBy operation */
-OpBase *NewOrderByOp(const AST_Query *ast);
+OpBase *NewOrderByOp(const AST *ast);
 
 /* OrderBy next operation
  * called each time a new ID is required */
-OpResult OrderByConsume(OpBase *opBase, Record *r);
+Record OrderByConsume(OpBase *opBase);
 
 /* Restart iterator */
 OpResult OrderByReset(OpBase *ctx);

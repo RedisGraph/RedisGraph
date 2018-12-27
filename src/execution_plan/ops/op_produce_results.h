@@ -19,14 +19,13 @@
 
 typedef struct {
     OpBase op;
-    AST *ast;
-    Vector *return_elements; /* Vector of arithmetic expressions. */
+    const AST *ast;
     ResultSet *result_set;
 } ProduceResults;
 
 
 /* Creates a new NodeByLabelScan operation */
-OpBase* NewProduceResultsOp(AST *ast, ResultSet *result_set, QueryGraph *graph);
+OpBase* NewProduceResultsOp(const AST *ast, ResultSet *result_set, QueryGraph *graph);
 
 /* ProduceResults next operation
  * called each time a new result record is required */

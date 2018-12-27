@@ -74,6 +74,7 @@ static void _AST_MapAliasToID(AST *ast) {
   MatchClause_DefinedEntities(ast->matchNode, referredEntities);
   CreateClause_ReferredEntities(ast->createNode, referredEntities);
   UnwindClause_DefinedEntities(ast->unwindNode, referredEntities);
+  ReturnClause_DefinedEntities(ast->returnNode, referredEntities);
 
   void *val;
   char *ptr;

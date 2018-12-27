@@ -18,11 +18,11 @@ typedef enum {
 } AST_OrderByDirection;
 
 typedef struct {
-	AST_ArithmeticExpressionNode **fields;	// Array of arithmetic expressions.
+	AST_ArithmeticExpressionNode **expressions;	// Array of arithmetic expressions to order by.
 	AST_OrderByDirection direction;
 } AST_OrderNode;
 
-AST_OrderNode* New_AST_OrderNode(Vector* fields, AST_OrderByDirection direction);
+AST_OrderNode* New_AST_OrderNode(Vector* expressions, AST_OrderByDirection direction);
 void Free_AST_OrderNode(AST_OrderNode *orderNode);
 
 #endif

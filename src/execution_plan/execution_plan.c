@@ -389,8 +389,13 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx,
     }
 
     if(ast->returnNode) {
+        // Projection before order by and produce result-set
+        // Both Aggregate and Projection perform projection.
         if(ReturnClause_ContainsAggregation(ast->returnNode)) {
             op = NewAggregateOp(ast);
+            Vector_Push(ops, op);
+        } else {            
+            op = NewProjectOp(ast);
             Vector_Push(ops, op);
         }
 

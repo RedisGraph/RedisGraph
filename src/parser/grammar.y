@@ -404,16 +404,15 @@ returnClause(A) ::= RETURN DISTINCT returnElements(B). {
 	A = New_AST_ReturnNode(B, 1);
 }
 
-%type returnElements {Vector*}
+%type returnElements {AST_ReturnElementNode**}
 
 returnElements(A) ::= returnElements(B) COMMA returnElement(C). {
-	Vector_Push(B, C);
-	A = B;
+	A = array_append(B, C);
 }
 
 returnElements(A) ::= returnElement(B). {
-	A = NewVector(AST_ReturnElementNode*, 1);
-	Vector_Push(A, B);
+	A = array_new(AST_ReturnElementNode*, 1);
+	array_append(A, B);
 }
 
 %type returnElement {AST_ReturnElementNode*}
