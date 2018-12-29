@@ -66,6 +66,7 @@ Record ProjectConsume(OpBase *opBase) {
         // on the second call.
         if(op->singleResponse) return NULL;
         op->singleResponse = true;
+        r = Record_New(0);  // Fake empty record.
     }
 
     Record projectedRec = Record_New(op->projectedRecordLen);
