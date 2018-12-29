@@ -101,19 +101,19 @@ class GraphBulkInsertFlowTest(FlowTestsBase):
     # Validate that the expected relations and properties have been constructed
     def test03_validate_relations(self):
         # Query the newly-created graph
-        query_result = redis_graph.query('MATCH (a)-[e:KNOWS]->(b) RETURN a.name, e, b.name ORDER BY e.relation, a.name')
+        query_result = redis_graph.query('MATCH (a)-[e:KNOWS]->(b) RETURN a.name, e, b.name ORDER BY e.relation, a.name, b.name')
 
         expected_result = [['a.name', 'e.relation', 'b.name'],
                            ['Ailon Velger', 'friend', 'Noam Nativ'],
-                           ['Alon Fital', 'friend', 'Mor Yesharim'],
                            ['Alon Fital', 'friend', 'Gal Derriere'],
+                           ['Alon Fital', 'friend', 'Mor Yesharim'],
                            ['Boaz Arad', 'friend', 'Valerie Abigail Arad'],
-                           ['Roi Lipman', 'friend', 'Alon Fital'],
-                           ['Roi Lipman', 'friend', 'Tal Doron'],
-                           ['Roi Lipman', 'friend', 'Omri Traub'],
-                           ['Roi Lipman', 'friend', 'Boaz Arad'],
-                           ['Roi Lipman', 'friend', 'Ori Laslo'],
                            ['Roi Lipman', 'friend', 'Ailon Velger'],
+                           ['Roi Lipman', 'friend', 'Alon Fital'],
+                           ['Roi Lipman', 'friend', 'Boaz Arad'],
+                           ['Roi Lipman', 'friend', 'Omri Traub'],
+                           ['Roi Lipman', 'friend', 'Ori Laslo'],
+                           ['Roi Lipman', 'friend', 'Tal Doron'],
                            ['Ailon Velger', 'married', 'Jane Chernomorin'],
                            ['Alon Fital', 'married', 'Lucy Yanfital'],
                            ['Ori Laslo', 'married', 'Shelly Laslo Rooz']]
