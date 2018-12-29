@@ -13,23 +13,26 @@
 
 // Creates a new group
 // arguments specify group's key.
-Group* NewGroup(int key_count, SIValue* keys, AR_ExpNode** funcs) {
+Group* NewGroup(int key_count, SIValue* keys, AR_ExpNode** funcs, Record r) {
     Group* g = rm_malloc(sizeof(Group));
     g->keys = keys;
     g->key_count = key_count;
     g->aggregationFunctions = funcs;
+    if(r) g->r = Record_Clone(r);
+    else g->r = NULL;
     return g;
 }
 
-void FreeGroup(Group* group) {
-    if(group == NULL) return;
-    if(group->key_count) rm_free(group->keys);
-    if(group->aggregationFunctions) {
-        for(uint32_t i = 0; i < array_len(group->aggregationFunctions); i++) {
-            AR_ExpNode *exp = group->aggregationFunctions[i];
+void FreeGroup(Group* g) {
+    if(g == NULL) return;
+    if(g->r) Record_Free(g->r);
+    if(g->key_count) rm_free(g->keys);
+    if(g->aggregationFunctions) {
+        for(uint32_t i = 0; i < array_len(g->aggregationFunctions); i++) {
+            AR_ExpNode *exp = g->aggregationFunctions[i];
             AR_EXP_Free(exp);
         }
-        array_free(group->aggregationFunctions);
+        array_free(g->aggregationFunctions);
     }
-    rm_free(group);
+    rm_free(g);
 }

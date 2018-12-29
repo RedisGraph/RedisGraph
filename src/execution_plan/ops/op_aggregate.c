@@ -14,10 +14,8 @@
 
 /* Construct an expression trees for both aggregated and none aggregated expressions. */
 static void _build_expressions(Aggregate *op) {
+    // RETURN expressions.
     AST_ReturnNode *return_node = op->ast->returnNode;
-
-    uint aggregatedIdx = 0;
-    uint noneAggregatedIdx = 0;
     uint expCount = array_len(return_node->returnElements);
     
     op->none_aggregated_expressions = array_new(AR_ExpNode*, 1);
@@ -32,6 +30,16 @@ static void _build_expressions(Aggregate *op) {
             op->none_aggregated_expressions = array_append(op->none_aggregated_expressions, exp);
         } else {
             op->expression_classification[i] = 1;
+        }
+    }
+
+    // ORDER-BY expressions.
+    AST_OrderNode *order_node = op->ast->orderNode;
+    if(order_node) {
+        uint expCount = array_len(order_node->expressions);
+        op->order_expressions = rm_malloc(sizeof(AR_ExpNode*) * expCount);
+        for(uint i = 0; i < expCount; i++) {
+            op->order_expressions[i] = AR_EXP_BuildFromAST(op->ast, order_node->expressions[i]);
         }
     }
 }
@@ -51,7 +59,7 @@ static AR_ExpNode** _build_aggregated_expressions(Aggregate *op) {
     return agg_exps;
 }
 
-static Group* _CreateGroup(Aggregate *op) {
+static Group* _CreateGroup(Aggregate *op, Record r) {
     /* Create a new group
      * Get a fresh copy of aggregation functions. */
     AR_ExpNode **agg_exps = _build_aggregated_expressions(op);
@@ -61,7 +69,11 @@ static Group* _CreateGroup(Aggregate *op) {
     SIValue *group_keys = rm_malloc(sizeof(SIValue) * key_count);
     for(int i = 0; i < key_count; i++) group_keys[i] = op->group_keys[i];
 
-    op->group = NewGroup(key_count, group_keys, agg_exps);
+    // There's no need to keep a reference to record
+    // if we're not performing aggregations.
+    if(!op->ast->orderNode) r = NULL;
+    op->group = NewGroup(key_count, group_keys, agg_exps, r);
+
     return op->group;
 }
 
@@ -71,7 +83,7 @@ static Group* _GetGroup(Aggregate *op, Record r) {
     // GroupBy without none-aggregated fields.
     if(!op->group_keys) {
         if(!op->group) {
-            op->group = _CreateGroup(op);
+            op->group = _CreateGroup(op, r);
             CacheGroupAdd(op->groups, "SINGLE_GROUP", op->group);
         }
         return op->group;
@@ -110,7 +122,7 @@ static Group* _GetGroup(Aggregate *op, Record r) {
 
     op->group = CacheGroupGet(op->groups, group_key);
     if(!op->group) {
-        op->group = _CreateGroup(op);
+        op->group = _CreateGroup(op, r);
         CacheGroupAdd(op->groups, group_key, op->group);
     }
     rm_free(group_key);
@@ -139,23 +151,45 @@ static Record _handoff(Aggregate *op) {
 
     // New record with len |return elements|
     int returnElemCount = array_len(op->ast->returnNode->returnElements);
-    Record r = Record_New(returnElemCount);
+    int orderElemCount = (op->ast->orderNode) ? array_len(op->ast->orderNode->expressions) : 0;
+    Record r = Record_New(returnElemCount + orderElemCount);
 
     // Populate record.
     int aggIdx = 0; // Index into group aggregated expressions.
     int keyIdx = 0; // Index into group keys.
     
     for(int i = 0; i < returnElemCount; i++) {
+        SIValue res;
         if(op->expression_classification[i]) {
-            // Aggregated expression, get aggregation value.
+            // Aggregated expression, get aggregated value.
             AR_ExpNode *exp = group->aggregationFunctions[aggIdx++];
             AR_EXP_Reduce(exp);
-            SIValue res = AR_EXP_Evaluate(exp, NULL);
+            res = AR_EXP_Evaluate(exp, NULL);
             Record_AddScalar(r, i, res);
         } else {
             // None aggregated expression.
-            Record_AddScalar(r, i, group->keys[keyIdx++]);
+            res = group->keys[keyIdx++];
+            Record_AddScalar(r, i, res);
         }
+
+        /* TODO: this entire block can be improved, performancewise.
+         * assuming the number of groups is relative small, 
+         * this might be negligible. */
+        if(op->ast->orderNode) {
+            // If expression is aliased, introduce it to group record
+            // for later evaluation by ORDER-BY expressions.
+            char *alias = op->ast->returnNode->returnElements[i]->alias;
+            if(alias) {
+                int recIdx = AST_GetAliasID(op->ast, alias);
+                Record_AddScalar(group->r, recIdx, res);
+            }
+        }
+    }
+
+    // Tack on order by expressions, for SORT operation to process.
+    for(int i = 0; i < orderElemCount; i++) {
+        SIValue res = AR_EXP_Evaluate(op->order_expressions[i], group->r);
+        Record_AddScalar(r, returnElemCount+i, res);
     }
 
     return r;
@@ -167,6 +201,7 @@ OpBase* NewAggregateOp(AST *ast) {
     aggregate->init = 0;
     aggregate->none_aggregated_expressions = NULL;
     aggregate->expression_classification = NULL;
+    aggregate->order_expressions = NULL;
     aggregate->group_keys = NULL;
     aggregate->groups = CacheGroupNew();
     aggregate->groupIter = NULL;
@@ -234,5 +269,12 @@ void AggregateFree(OpBase *opBase) {
         for(int i = 0; i < expCount; i++) AR_EXP_Free(op->none_aggregated_expressions[i]);
         array_free(op->none_aggregated_expressions);
     }
+
+    if(op->order_expressions) {
+        uint32_t expCount = array_len(op->ast->orderNode->expressions);
+        for(int i = 0; i < expCount; i++) AR_EXP_Free(op->order_expressions[i]);
+        rm_free(op->order_expressions);
+    }
+
     FreeGroupCache(op->groups);
 }

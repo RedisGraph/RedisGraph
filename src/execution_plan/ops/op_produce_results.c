@@ -8,15 +8,7 @@
 #include "op_produce_results.h"
 #include "../../util/arr.h"
 #include "../../query_executor.h"
-#include "../../resultset/resultset_record.h"
 #include "../../arithmetic/arithmetic_expression.h"
-
-static ResultSetRecord *_ProduceResultsetRecord(ProduceResults* op, const Record r) {
-    uint elemCount = array_len(op->ast->returnNode->returnElements);
-    ResultSetRecord *resRec = NewResultSetRecord(elemCount);
-    for(int i = 0; i < elemCount; i++) resRec->values[i] = Record_GetScalar(r, i);
-    return resRec;
-}
 
 OpBase* NewProduceResultsOp(const AST *ast, ResultSet *result_set, QueryGraph* graph) {
     ProduceResults *produceResults = malloc(sizeof(ProduceResults));
@@ -48,8 +40,7 @@ Record ProduceResultsConsume(OpBase *opBase) {
     }
 
     /* Append to final result set. */
-    ResultSetRecord *record = _ProduceResultsetRecord(op, r);
-    ResultSet_AddRecord(op->result_set, record);
+    ResultSet_AddRecord(op->result_set, r);
     return r;
 }
 

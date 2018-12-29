@@ -116,8 +116,8 @@ cleanup:
     if (gc) Graph_ReleaseLock(gc->g);
     // Release Redis global lock if it was acquired
     if (!readonly) RedisModule_ThreadSafeContextUnlock(ctx);
-    AST_Free(ast);
     ResultSet_Free(resultSet);
+    AST_Free(ast);
     RedisModule_UnblockClient(qctx->bc, NULL);
     RedisModule_FreeThreadSafeContext(ctx);
     _queryContext_Free(qctx);

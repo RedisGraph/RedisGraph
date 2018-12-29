@@ -92,6 +92,7 @@ Record ProjectConsume(OpBase *opBase) {
         Record_AddScalar(projectedRec, expIdx, v);
     }
 
+    Record_Free(r);
     return projectedRec;
 }
 

@@ -68,7 +68,7 @@ void Record_AddNode(Record r, int idx, Node node);
 void Record_AddEdge(Record r, int idx, Edge edge);
 
 // String representation of record.
-void Record_Print(const Record r);
+size_t Record_ToString(const Record r, char **buf, size_t *buf_cap);
 
 // Free record.
 void Record_Free(Record r);

@@ -8,12 +8,12 @@
 #ifndef __GRAPH_RESULTSET_H__
 #define __GRAPH_RESULTSET_H__
 
-#include "resultset_record.h"
 #include "resultset_header.h"
 #include "resultset_statistics.h"
 #include "../parser/ast.h"
 #include "../redismodule.h"
 #include "../util/vector.h"
+#include "../execution_plan/record.h"
 #include "../util/triemap/triemap.h"
 
 #define RESULTSET_UNLIMITED 0
@@ -22,12 +22,10 @@
 
 typedef struct {
     RedisModuleCtx *ctx;
-    Vector *records;            /* Vector of Records. */
     TrieMap *trie;              /* When using distinct, used to identify unique records. */
     ResultSetHeader *header;    /* Describes how records should look like. */
     int limit;                  /* Max number of records in result-set. */
     bool distinct;              /* Rather or not each record is unique. */
-    bool streaming;             /* Streams records back to client. */
     size_t recordCount;         /* Number of records introduced. */
     char *buffer;               /* Reusable buffer for record streaming. */
     size_t bufferLen;           /* Size of buffer in bytes. */
@@ -42,7 +40,7 @@ bool ResultSet_Limited(const ResultSet* set);
 
 bool ResultSet_Full(const ResultSet* set);
 
-int ResultSet_AddRecord(ResultSet* set, ResultSetRecord *record);
+int ResultSet_AddRecord(ResultSet* set, Record r);
 
 void ResultSet_Replay(ResultSet* set);
 

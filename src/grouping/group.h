@@ -15,10 +15,11 @@ typedef struct {
     int key_count;
     SIValue* keys;
     AR_ExpNode** aggregationFunctions;   /* Array of AR_ExpNode*, where the root is an aggregation function. */
+    Record r;   /* Representative record for all aggregated records in group. */
 } Group;
 
 /* Creates a new group */
-Group* NewGroup(int key_count, SIValue* keys, AR_ExpNode** funcs);
+Group* NewGroup(int key_count, SIValue* keys, AR_ExpNode** funcs, Record r);
 
 void FreeGroup(Group* group);
 

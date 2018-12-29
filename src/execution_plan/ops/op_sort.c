@@ -5,13 +5,13 @@
 * modified with the Commons Clause restriction.
 */
 
-#include "op_orderby.h"
+#include "op_sort.h"
 
 #include "../../util/arr.h"
 #include "../../util/qsort.h"
 #include "../../util/rmalloc.h"
 
-static bool _record_islt(Record a, Record b, const OrderBy *op) {    
+static bool _record_islt(Record a, Record b, const Sort *op) {    
     // First N values in record correspond to RETURN expressions
     // N .. M values correspond to ORDER-BY expressions
     // Query: RETURN A.V, B.V, C.V ORDER BY B.W, C.V*A.V
@@ -40,7 +40,7 @@ static bool _record_islt(Record a, Record b, const OrderBy *op) {
 
 // Compares two records on a subset of fields
 // Return value similar to strcmp
-static int _record_compare(Record a, Record b, const OrderBy *op) {
+static int _record_compare(Record a, Record b, const Sort *op) {
     // First N values in record correspond to RETURN expressions
     // N .. M values correspond to ORDER-BY expressions
     // Query: RETURN A.V, B.V, C.V ORDER BY B.W, C.V*A.V
@@ -67,13 +67,13 @@ static int _record_compare(Record a, Record b, const OrderBy *op) {
 
 // Compares two heap record nodes.
 static int _heap_elem_compare(const void *A, const void *B, const void *udata) {
-    OrderBy* op = (OrderBy*)udata;
+    Sort* op = (Sort*)udata;
     Record aRec = (Record)A;
     Record bRec = (Record)B;
     return _record_compare(aRec, bRec, op) * op->direction;
 }
 
-static void _accumulate(OrderBy *op, Record r) {
+static void _accumulate(Sort *op, Record r) {
     if(!op->limit) {
         /* Not using a heap and there's room for record. */
         op->buffer = array_append(op->buffer, r);
@@ -92,38 +92,38 @@ static void _accumulate(OrderBy *op, Record r) {
     }
 }
 
-static Record _handoff(OrderBy *op) {
+static Record _handoff(Sort *op) {
     if(array_len(op->buffer) > 0) return array_pop(op->buffer);
     return NULL;
 }
 
-OpBase *NewOrderByOp(const AST *ast) {
-    OrderBy *orderBy = malloc(sizeof(OrderBy));
-    orderBy->ast = ast;
-    orderBy->direction = (ast->orderNode->direction == ORDER_DIR_DESC) ? DIR_DESC : DIR_ASC;
-    orderBy->limit = 0;
-    orderBy->heap = NULL;
-    orderBy->buffer = NULL;
+OpBase *NewSortOp(const AST *ast) {
+    Sort *sort = malloc(sizeof(Sort));
+    sort->ast = ast;
+    sort->direction = (ast->orderNode->direction == ORDER_DIR_DESC) ? DIR_DESC : DIR_ASC;
+    sort->limit = 0;
+    sort->heap = NULL;
+    sort->buffer = NULL;
 
     if(ast->limitNode) {
-        orderBy->limit = ast->limitNode->limit;
+        sort->limit = ast->limitNode->limit;
         if(ast->skipNode) {
-            orderBy->limit += ast->skipNode->skip;
+            sort->limit += ast->skipNode->skip;
         }
     }
 
-    if(orderBy->limit) orderBy->heap = heap_new(_heap_elem_compare, orderBy);
-    else orderBy->buffer = array_new(Record, 32);
+    if(sort->limit) sort->heap = heap_new(_heap_elem_compare, sort);
+    else sort->buffer = array_new(Record, 32);
 
     // Set our Op operations
-    OpBase_Init(&orderBy->op);
-    orderBy->op.name = "OrderBy";
-    orderBy->op.type = OPType_ORDER_BY;
-    orderBy->op.consume = OrderByConsume;
-    orderBy->op.reset = OrderByReset;
-    orderBy->op.free = OrderByFree;
+    OpBase_Init(&sort->op);
+    sort->op.name = "Sort";
+    sort->op.type = OPType_SORT;
+    sort->op.consume = SortConsume;
+    sort->op.reset = SortReset;
+    sort->op.free = SortFree;
 
-    return (OpBase*)orderBy;
+    return (OpBase*)sort;
 }
 
 /* `op` is an actual variable in the caller function. Using it in a
@@ -131,8 +131,8 @@ OpBase *NewOrderByOp(const AST *ast) {
  * accept only 2 arguments. */
 #define RECORD_SORT(a, b) (_record_islt((*a), (*b), op))
 
-Record OrderByConsume(OpBase *opBase) {
-    OrderBy *op = (OrderBy*) opBase;
+Record SortConsume(OpBase *opBase) {
+    Sort *op = (Sort*) opBase;
     
     Record r = _handoff(op);
     if(r) return r;
@@ -168,8 +168,8 @@ Record OrderByConsume(OpBase *opBase) {
 }
 
 /* Restart iterator */
-OpResult OrderByReset(OpBase *ctx) {
-    OrderBy *op = (OrderBy*)ctx;
+OpResult SortReset(OpBase *ctx) {
+    Sort *op = (Sort*)ctx;
     uint recordCount;
 
     if(op->heap) {
@@ -191,9 +191,9 @@ OpResult OrderByReset(OpBase *ctx) {
     return OP_OK;
 }
 
-/* Frees OrderBy */
-void OrderByFree(OpBase *ctx) {
-    OrderBy *op = (OrderBy*)ctx;
+/* Frees Sort */
+void SortFree(OpBase *ctx) {
+    Sort *op = (Sort*)ctx;
 
     if(op->heap) {
         uint recordCount = heap_count(op->heap);

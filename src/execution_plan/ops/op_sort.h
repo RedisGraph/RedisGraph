@@ -5,8 +5,8 @@
 * modified with the Commons Clause restriction.
 */
 
-#ifndef __OP_ORDERBY_H
-#define __OP_ORDERBY_H
+#ifndef __OP_SORT_H
+#define __OP_SORT_H
 
 #include "op.h"
 #include "../../util/heap.h"
@@ -22,19 +22,17 @@ typedef struct {
     heap_t *heap;           // Holds top n records.
     Record *buffer;         // Holds all records.
     uint limit;             // Total number of records to produce, 0 no limit.
-} OrderBy;
+} Sort;
 
-/* Creates a new OrderBy operation */
-OpBase *NewOrderByOp(const AST *ast);
+/* Creates a new Sort operation */
+OpBase *NewSortOp(const AST *ast);
 
-/* OrderBy next operation
- * called each time a new ID is required */
-Record OrderByConsume(OpBase *opBase);
+Record SortConsume(OpBase *opBase);
 
 /* Restart iterator */
-OpResult OrderByReset(OpBase *ctx);
+OpResult SortReset(OpBase *ctx);
 
-/* Frees OrderBy */
-void OrderByFree(OpBase *ctx);
+/* Frees Sort */
+void SortFree(OpBase *ctx);
 
 #endif

@@ -36,8 +36,7 @@ AR_ExpNode* _exp_from_query(const char *query) {
   char *errMsg;
   AST *ast = ParseQuery(query, strlen(query), &errMsg);  
 
-  AST_ReturnElementNode *elm;
-  Vector_Get(ast->returnNode->returnElements, 0, &elm);
+  AST_ReturnElementNode *elm = ast->returnNode->returnElements[0];
 
   AST_ArithmeticExpressionNode *exp = elm->exp;
   AR_ExpNode *arExp = AR_EXP_BuildFromAST(ast, exp);
@@ -67,7 +66,6 @@ TEST_F(AggregateTest, CountTest) {
 
 // Count a mix of valid and invalid entities
 TEST_F(AggregateTest, PartialCountTest) {
-  SIValue result;
   const char *query;
   AR_ExpNode *arExp;
   AR_ExpNode *arExpOne;

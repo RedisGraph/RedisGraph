@@ -97,6 +97,21 @@ void Record_AddEdge(Record r, int idx, Edge edge) {
     r[idx].type = REC_TYPE_EDGE;
 }
 
+size_t Record_ToString(const Record r, char **buf, size_t *buf_cap) {
+    uint rLen = Record_length(r);
+    SIValue values[rLen];
+    for(int i = 0; i < rLen; i++) values[i] = r[i].value.s;
+
+    size_t required_len = SIValue_StringConcatLen(values, rLen);
+
+    if(*buf_cap < required_len) {
+        *buf = rm_realloc(*buf, sizeof(char) * required_len);
+        *buf_cap = required_len;
+    }
+
+    return SIValue_StringConcat(values, rLen, *buf, *buf_cap);
+}
+
 void Record_Free(Record r) {
     int length = Record_length(r);
     for(int i = 0; i < length; i++) {
