@@ -14,15 +14,15 @@ AST_MergeNode* New_AST_MergeNode(Vector *graphEntities) {
 	return mergeNode;
 }
 
-void MergeClause_ReferredEntities(const AST_MergeNode *merge_node, TrieMap *referred_entities) {
-    if(!merge_node) return;
+void MergeClause_DefinedEntities(const AST_MergeNode *mergeNode, TrieMap *defined_entities) {
+    if(!mergeNode) return;
 
-    int merge_element_count = Vector_Size(merge_node->graphEntities);
+    int merge_element_count = Vector_Size(mergeNode->graphEntities);
 
     for(int i = 0; i < merge_element_count; i++) {
-        AST_NodeEntity *entity;
-        Vector_Get(merge_node->graphEntities, i, &entity);
-        TrieMap_Add(referred_entities, entity->alias, strlen(entity->alias), entity, TrieMap_DONT_CARE_REPLACE);
+        AST_GraphEntity *entity;
+        Vector_Get(mergeNode->graphEntities, i, &entity);
+        TrieMap_Add(defined_entities, entity->alias, strlen(entity->alias), entity, TrieMap_DONT_CARE_REPLACE);
     }
 }
 

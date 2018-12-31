@@ -105,7 +105,7 @@ static AST_Validation _Aliases_Defined(const AST *ast, char **undefined_alias) {
   TrieMap *definedAliases = NewTrieMap();
   MatchClause_DefinedEntities(ast->matchNode, definedAliases);
   UnwindClause_DefinedEntities(ast->unwindNode, definedAliases);
-  
+  MergeClause_DefinedEntities(ast->mergeNode, definedAliases);
 
   TrieMapIterator *it = TrieMap_Iterate(aliasesToCheck, "", 0);
   char *alias;
@@ -255,7 +255,7 @@ static AST_Validation _Validate_SET_Clause(const AST *ast, char **reason) {
     return AST_VALID;
   }
 
-  if (!ast->matchNode) {
+  if (!ast->matchNode && !ast->mergeNode) {
     return AST_INVALID;
   }
 
