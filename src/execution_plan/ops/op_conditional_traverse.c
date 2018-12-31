@@ -52,6 +52,7 @@ void _extractColumn(CondTraverse *op, const Record r) {
 
     // Evaluate expression.
     AlgebraicExpression_Execute(op->algebraic_expression, op->M);
+    
     // Remove operand.
     AlgebraicExpression_RemoveTerm(op->algebraic_expression, op->algebraic_expression->operand_count-1, NULL);
 
@@ -128,8 +129,9 @@ Record CondTraverseConsume(OpBase *opBase) {
         }
     }
 
-    NodeID dest_id;
     bool depleted = false;
+    NodeID dest_id = INVALID_ENTITY_ID;
+
     while(true) {
         GxB_MatrixTupleIter_next(op->iter, &dest_id, NULL, &depleted);
 
@@ -170,6 +172,7 @@ Record CondTraverseConsume(OpBase *opBase) {
                                         op->edgeRelationTypes[i],
                                         &op->edges);
         }
+
         _CondTraverse_SetEdge(op, op->r);
     }
 

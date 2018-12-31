@@ -8,17 +8,18 @@
 #ifndef GROUP_H_
 #define GROUP_H_
 
-#include "../util/vector.h"
-#include "../arithmetic/agg_ctx.h"
+#include "../value.h"
+#include "../arithmetic/arithmetic_expression.h"
 
 typedef struct {
     int key_count;
     SIValue* keys;
-    Vector* aggregationFunctions;   /* Vector of AR_ExpNode*, where the root is an aggregation function. */
+    AR_ExpNode** aggregationFunctions;   /* Array of AR_ExpNode*, where the root is an aggregation function. */
+    Record r;   /* Representative record for all aggregated records in group. */
 } Group;
 
 /* Creates a new group */
-Group* NewGroup(int key_count, SIValue* keys, Vector* funcs);
+Group* NewGroup(int key_count, SIValue* keys, AR_ExpNode** funcs, Record r);
 
 void FreeGroup(Group* group);
 

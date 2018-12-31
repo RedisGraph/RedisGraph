@@ -12,15 +12,23 @@ extern "C" {
 #endif
 
 #include <stdio.h>
-#include "../../src/resultset/resultset_record.h"
+#include "../../src/execution_plan/record.h"
+#include "../../src/util/rmalloc.h"
 #include "../../src/value.h"
 
 #ifdef __cplusplus
 }
 #endif
 
-TEST(ResultsetRecordTest, RecordToString) {
-    ResultSetRecord *record = NewResultSetRecord(6);
+class RecordTest: public ::testing::Test {
+  protected:
+    static void SetUpTestCase() {// Use the malloc family for allocations
+      Alloc_Reset();
+    }
+};
+
+TEST_F(RecordTest, RecordToString) {
+    Record r = Record_New(6);
     SIValue v_string = SI_ConstStringVal("Hello");
     SIValue v_int = SI_IntVal(-24);
     SIValue v_uint = SI_UintVal(24);
@@ -28,21 +36,20 @@ TEST(ResultsetRecordTest, RecordToString) {
     SIValue v_null = SI_NullVal();
     SIValue v_bool = SI_BoolVal(1);
 
-    record->values[0] = v_string;
-    record->values[1] = v_int;
-    record->values[2] = v_uint;
-    record->values[3] = v_float;
-    record->values[4] = v_null;
-    record->values[5] = v_bool;
+    Record_AddScalar(r, 0, v_string);
+    Record_AddScalar(r, 1, v_int);
+    Record_AddScalar(r, 2, v_uint);
+    Record_AddScalar(r, 3, v_float);
+    Record_AddScalar(r, 4, v_null);
+    Record_AddScalar(r, 5, v_bool);
 
     size_t record_str_cap = 0;
     char *record_str = NULL;
-    size_t record_str_len = ResultSetRecord_ToString(record, &record_str, &record_str_cap);
+    size_t record_str_len = Record_ToString(r, &record_str, &record_str_cap);
 
     ASSERT_EQ(strcmp(record_str, "Hello,-24,24,0.314000,NULL,true"), 0);
     ASSERT_EQ(record_str_len, 31);
-    
-    SIValue_Free(&v_string);
-    free(record_str);
-    ResultSetRecord_Free(record);
+
+    rm_free(record_str);
+    Record_Free(r);
 }

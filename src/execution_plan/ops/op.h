@@ -34,6 +34,8 @@ OPType_DELETE,
 OPType_CARTESIAN_PRODUCT,
 OPType_MERGE,
 OPType_UNWIND,
+OPType_SORT,
+OPType_PROJECT,
 } OPType;
 
 typedef enum {

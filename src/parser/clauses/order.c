@@ -6,60 +6,33 @@
 */
 
 #include "./order.h"
+#include "../../util/arr.h"
 
-AST_OrderNode* New_AST_OrderNode(Vector *columns, AST_OrderByDirection direction) {
+AST_OrderNode* New_AST_OrderNode(Vector *expressions, AST_OrderByDirection direction) {
 	AST_OrderNode *orderNode = (AST_OrderNode*)malloc(sizeof(AST_OrderNode));
-	orderNode->columns = columns;
+	size_t expCount = Vector_Size(expressions);
+	
+	// TODO: Remove this logic once arithmetic_expression migrates from vector to array.
+	orderNode->expressions = array_new(AST_ArithmeticExpressionNode*, expCount);
+	for(int i = 0; i < expCount; i++) {
+		AST_ArithmeticExpressionNode *exp;
+		Vector_Get(expressions, i, &exp);
+		orderNode->expressions = array_append(orderNode->expressions, exp);
+	}
+	Vector_Free(expressions);
+
 	orderNode->direction = direction;
 	return orderNode;
 }
 
-AST_ColumnNode* New_AST_ColumnNode(const char *alias, const char *property, AST_ColumnNodeType type) {
-	AST_ColumnNode *node = malloc(sizeof(AST_ColumnNode));
-	node->type = type;
-	node->alias = NULL;
-	node->property = NULL;
-
-	node->alias = malloc(sizeof(char) * (strlen(alias) + 1));
-	strcpy(node->alias, alias);
-
-	if(type == N_VARIABLE) {
-		node->property = malloc(sizeof(char) * (strlen(property) + 1));
-		strcpy(node->property, property);
-	}
-
-	return node;
-}
-
-AST_ColumnNode* AST_ColumnNodeFromVariable(const AST_Variable *variable) {
-	return New_AST_ColumnNode(variable->alias, variable->property, N_VARIABLE);
-}
-
-AST_ColumnNode* AST_ColumnNodeFromAlias(const char *alias) {
-	return New_AST_ColumnNode(alias, NULL, N_ALIAS);
-}
-
-void Free_AST_ColumnNode(AST_ColumnNode* node) {
-	if(node != NULL) {
-		if(node->alias != NULL) {
-			free(node->alias);
-		}
-		if(node->type == N_VARIABLE && node->property != NULL) {
-			free(node->property);
-		}
-		free(node);
-	}
-}
-
 void Free_AST_OrderNode(AST_OrderNode *orderNode) {
 	if(orderNode != NULL) {
-		for(int i = 0; i < Vector_Size(orderNode->columns); i++) {
-			AST_ColumnNode *c = NULL;
-			Vector_Get(orderNode->columns, i , &c);
-			Free_AST_ColumnNode(c);
+		size_t expCount = array_len(orderNode->expressions);
+		for(int i = 0; i < expCount; i++) {
+			Free_AST_ArithmeticExpressionNode(orderNode->expressions[i]);
 		}
 
-		Vector_Free(orderNode->columns);
+		array_free(orderNode->expressions);
 		free(orderNode);
 	}
 }

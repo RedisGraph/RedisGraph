@@ -2,6 +2,7 @@ import os
 import sys
 import unittest
 from redisgraph import Graph, Node, Edge
+# import redis
 from .disposableredis import DisposableRedis
 from base import FlowTestsBase
 
@@ -23,12 +24,18 @@ class IndexScanFlowTest(FlowTestsBase):
         cls.r.start()
         redis_con = cls.r.client()
         redis_graph = Graph(social_utils.graph_name, redis_con)
+
+        # cls.r = redis.Redis()
+        # redis_con = cls.r
+        # redis_graph = Graph(social_utils.graph_name, cls.r)  
+
         social_utils.populate_graph(redis_con, redis_graph)
         cls.build_indices()
 
     @classmethod
     def tearDownClass(cls):
         cls.r.stop()
+        # pass
 
     @classmethod
     def build_indices(self):

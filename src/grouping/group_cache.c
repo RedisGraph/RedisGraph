@@ -6,27 +6,29 @@
 */
 
 #include "group_cache.h"
-#include "../util/vector.h"
 
-void CacheGroupAdd(TrieMap *groups, char *key, Group *group) {
+CacheGroup* CacheGroupNew() {
+    return NewTrieMap();
+}
+
+void CacheGroupAdd(CacheGroup *groups, char *key, Group *group) {
     TrieMap_Add(groups, key, strlen(key), group, NULL);
 }
 
 // Retrives a group,
 // Sets group to NULL if key is missing.
-void CacheGroupGet(TrieMap *groups, char *key, Group **group) {
-    *group = TrieMap_Find(groups, key, strlen(key));
-    if (*group == TRIEMAP_NOTFOUND) {
-        *group = NULL;
-    }
+Group* CacheGroupGet(CacheGroup *groups, char *key) {
+    Group *g = TrieMap_Find(groups, key, strlen(key));
+    if (g == TRIEMAP_NOTFOUND) return NULL;
+    return g;
 }
 
-void FreeGroupCache(TrieMap *groups) {
+void FreeGroupCache(CacheGroup *groups) {
     TrieMap_Free(groups, (void (*)(void *))FreeGroup);
 }
 
 // Returns an iterator to scan entire group cache
-CacheGroupIterator* CacheGroupIter(TrieMap *groups) {
+CacheGroupIterator* CacheGroupIter(CacheGroup *groups) {
     char *prefix = "";
 	return TrieMap_Iterate(groups, prefix, strlen(prefix));
 }
@@ -39,4 +41,8 @@ int CacheGroupIterNext(CacheGroupIterator *iter, char **key, Group **group) {
         *group = NULL;
     }
     return res;
+}
+
+void CacheGroupIterator_Free(CacheGroupIterator* iter) {
+    if(iter) TrieMapIterator_Free(iter);
 }

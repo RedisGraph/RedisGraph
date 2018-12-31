@@ -10,22 +10,26 @@
 
 #include "group.h"
 #include "../util/triemap/triemap.h"
-#include "../util/vector.h"
 
 typedef TrieMapIterator CacheGroupIterator;
-void InitGroupCache();
+typedef TrieMap CacheGroup;
 
-void CacheGroupAdd(TrieMap *groups, char *key, Group *group);
+CacheGroup* CacheGroupNew();
+
+void CacheGroupAdd(CacheGroup *groups, char *key, Group *group);
 
 // Retrives a group,
 // Sets group to NULL if key is missing.
-void CacheGroupGet(TrieMap *groups, char *key, Group **group);
+Group* CacheGroupGet(CacheGroup *groups, char *key);
 
-void FreeGroupCache(TrieMap *groups);
+void FreeGroupCache(CacheGroup *groups);
 
 // Returns an iterator to scan hashtable
-CacheGroupIterator* CacheGroupIter(TrieMap *groups);
+CacheGroupIterator* CacheGroupIter(CacheGroup *groups);
+
 // Advance iterator and returns key & value in current position.
 int CacheGroupIterNext(CacheGroupIterator *iter, char **key, Group **group);
+
+void CacheGroupIterator_Free(CacheGroupIterator* iter);
 
 #endif

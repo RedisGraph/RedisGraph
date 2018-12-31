@@ -6,11 +6,12 @@
 */
 
 #include "./arithmetic_expression.h"
-#include "../util/triemap/triemap.h"
 #include "./aggregate.h"
 #include "./repository.h"
-#include "../graph/graphcontext.h"
 #include "../graph/graph.h"
+#include "../util/rmalloc.h"
+#include "../graph/graphcontext.h"
+#include "../util/triemap/triemap.h"
 
 #include "assert.h"
 #include <math.h>
@@ -142,7 +143,6 @@ SIValue AR_EXP_Evaluate(const AR_ExpNode *root, const Record r) {
             }
         }
     }
-
     return result;
 }
 
@@ -222,12 +222,12 @@ void _AR_EXP_ToString(const AR_ExpNode *root, char **str, size_t *str_size, size
     if(*str == NULL) {
         *bytes_written = 0;
         *str_size = 128;
-        *str = calloc(*str_size, sizeof(char));
+        *str = rm_calloc(*str_size, sizeof(char));
     }
 
     if((*str_size - strlen(*str)) < 64) {
         *str_size += 128;
-        *str = realloc(*str, sizeof(char) * *str_size);
+        *str = rm_realloc(*str, sizeof(char) * *str_size);
     }
 
     /* Concat Op. */
@@ -246,7 +246,7 @@ void _AR_EXP_ToString(const AR_ExpNode *root, char **str, size_t *str_size, size
             /* Make sure there are at least 64 bytes in str. */
             if((*str_size - strlen(*str)) < 64) {
                 *str_size += 128;
-                *str = realloc(*str, sizeof(char) * *str_size);
+                *str = rm_realloc(*str, sizeof(char) * *str_size);
             }
 
             *bytes_written += sprintf((*str + *bytes_written), " %c ", binary_op);
@@ -262,7 +262,7 @@ void _AR_EXP_ToString(const AR_ExpNode *root, char **str, size_t *str_size, size
                 /* Make sure there are at least 64 bytes in str. */
                 if((*str_size - strlen(*str)) < 64) {
                     *str_size += 128;
-                    *str = realloc(*str, sizeof(char) * *str_size);
+                    *str = rm_realloc(*str, sizeof(char) * *str_size);
                 }
                 if(i < (root->op.child_count-1)) {
                     *bytes_written += sprintf((*str + *bytes_written), ",");
@@ -295,6 +295,7 @@ void AR_EXP_ToString(const AR_ExpNode *root, char **str) {
 }
 
 void AR_EXP_Free(AR_ExpNode *root) {
+    // TODO: I believe we don't handle freeing aggregated functions correctly
     if(root->type == AR_EXP_OP) {
         for(int child_idx = 0; child_idx < root->op.child_count; child_idx++) {
             AR_EXP_Free(root->op.children[child_idx]);

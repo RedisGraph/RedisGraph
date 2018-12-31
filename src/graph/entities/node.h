@@ -15,6 +15,7 @@
 
 /* Forward declaration of edge */
 struct Edge;
+
 typedef struct {
     Entity *entity;             /* MUST be the first property of Edge. */
     char *label;                /* label attached to node */

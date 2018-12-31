@@ -41,7 +41,6 @@ void Record_Merge(Record a, const Record b) {
     int bLength = Record_length(b);
     assert(aLength == bLength);
 
-    // Skip header row.
     for(int i = 0; i < bLength; i++) {
         if(b[i].type != REC_TYPE_UNKNOWN) {
             a[i] = b[i];
@@ -96,6 +95,21 @@ void Record_AddNode(Record r, int idx, Node node) {
 void Record_AddEdge(Record r, int idx, Edge edge) {
     r[idx].value.e = edge;
     r[idx].type = REC_TYPE_EDGE;
+}
+
+size_t Record_ToString(const Record r, char **buf, size_t *buf_cap) {
+    uint rLen = Record_length(r);
+    SIValue values[rLen];
+    for(int i = 0; i < rLen; i++) values[i] = r[i].value.s;
+
+    size_t required_len = SIValue_StringConcatLen(values, rLen);
+
+    if(*buf_cap < required_len) {
+        *buf = rm_realloc(*buf, sizeof(char) * required_len);
+        *buf_cap = required_len;
+    }
+
+    return SIValue_StringConcat(values, rLen, *buf, *buf_cap);
 }
 
 void Record_Free(Record r) {

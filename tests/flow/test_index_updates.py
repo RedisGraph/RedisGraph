@@ -9,6 +9,7 @@ from redisgraph import Graph, Node, Edge
 from .disposableredis import DisposableRedis
 from base import FlowTestsBase
 
+GRAPH_ID = "index_test"
 redis_graph = None
 labels = ["label_a", "label_b"]
 fields = ['unique', 'group', 'doubleval', 'intval', 'stringval']
@@ -24,13 +25,15 @@ class IndexUpdatesFlowTest(FlowTestsBase):
     def setUpClass(cls):
         print "IndexUpdatesFlowTest"
         global redis_graph
+        
         cls.r = redis()
         cls.r.start()
+
         redis_con = cls.r.client()
-        redis_graph = Graph("index_test", redis_con)
+        redis_graph = Graph(GRAPH_ID, redis_con)
 
         # cls.r = redis.Redis()
-        # redis_graph = Graph("index_test", cls.r)
+        # redis_graph = Graph(GRAPH_ID, cls.r)
 
         cls.populate_graph()
         cls.build_indices()

@@ -6,6 +6,8 @@
 */
 
 #include "./return.h"
+#include "../../util/arr.h"
+#include "../../util/rmalloc.h"
 #include "../../arithmetic/repository.h"
 
 AST_ReturnElementNode* New_AST_ReturnElementNode(AST_ArithmeticExpressionNode *exp, const char* alias) {
@@ -25,22 +27,22 @@ AST_ReturnElementNode* New_AST_ReturnElementExpandALL() {
 	return returnElementNode;
 }
 
-AST_ReturnNode* New_AST_ReturnNode(Vector *returnElements, int distinct) {
-	AST_ReturnNode *returnNode = (AST_ReturnNode*)malloc(sizeof(AST_ReturnNode));
+AST_ReturnNode* New_AST_ReturnNode(AST_ReturnElementNode **returnElements, int distinct) {
+	AST_ReturnNode *returnNode = (AST_ReturnNode*)rm_malloc(sizeof(AST_ReturnNode));
+    returnNode->distinct = distinct;
 	returnNode->returnElements = returnElements;
-	returnNode->distinct = distinct;
     return returnNode;
 }
 
-int ReturnClause_ContainsCollapsedNodes(const AST_ReturnNode *return_node) {
-    if(!return_node) return 0;
+int ReturnClause_ContainsCollapsedNodes(const AST_ReturnNode *returnNode) {
+    if(!returnNode) return 0;
 
-    for(int i = 0; i < Vector_Size(return_node->returnElements); i++) {
-        AST_ReturnElementNode *ret_elem;
-        Vector_Get(return_node->returnElements, i, &ret_elem);
-        if(ret_elem->asterisks) return 1;
+    uint elemCount = array_len(returnNode->returnElements);
+	for (uint i = 0; i < elemCount; i++) {
+		AST_ReturnElementNode *retElem = returnNode->returnElements[i];
+        if(retElem->asterisks) return 1;
 
-        AST_ArithmeticExpressionNode *exp = ret_elem->exp;
+        AST_ArithmeticExpressionNode *exp = retElem->exp;
         /* Detect collapsed entity,
          * A collapsed entity is represented by an arithmetic expression
          * of AST_AR_EXP_OPERAND type, 
@@ -77,13 +79,13 @@ int _ContainsAggregation(AST_ArithmeticExpressionNode *exp) {
 }
 
 /* Checks if return clause uses aggregation. */
-int ReturnClause_ContainsAggregation(const AST_ReturnNode *return_node) {
-    if(!return_node) return 0;
+int ReturnClause_ContainsAggregation(const AST_ReturnNode *returnNode) {
+    if(!returnNode) return 0;
 
-    for(int i = 0; i < Vector_Size(return_node->returnElements); i++) {
-        AST_ReturnElementNode *ret_elem;
-        Vector_Get(return_node->returnElements, i, &ret_elem);
-        AST_ArithmeticExpressionNode *exp = ret_elem->exp;
+    uint elemCount = array_len(returnNode->returnElements);
+	for (uint i = 0; i < elemCount; i++) {
+		AST_ReturnElementNode *retElem = returnNode->returnElements[i];
+        AST_ArithmeticExpressionNode *exp = retElem->exp;
         if(!exp) continue;
 
         /* Scan expression for an aggregation function. */
@@ -93,30 +95,47 @@ int ReturnClause_ContainsAggregation(const AST_ReturnNode *return_node) {
     return 0;
 }
 
-void ReturnClause_ReferredEntities(const AST_ReturnNode *return_node, TrieMap *referred_nodes) {
-    if(!return_node) return;
-    int return_element_count = Vector_Size(return_node->returnElements);
-
-    for(int i = 0; i < return_element_count; i++) {
-        AST_ReturnElementNode *return_element;
-        Vector_Get(return_node->returnElements, i, &return_element);
+void ReturnClause_ReferredEntities(const AST_ReturnNode *returnNode, TrieMap *referred_nodes) {
+    if(!returnNode) return;
+    
+    uint elemCount = array_len(returnNode->returnElements);
+    for (uint i = 0; i < elemCount; i++) {
+		AST_ReturnElementNode *retElem = returnNode->returnElements[i];
         
-        AST_ArithmeticExpressionNode *exp = return_element->exp;
+        AST_ArithmeticExpressionNode *exp = retElem->exp;
         if(exp) AR_EXP_GetAliases(exp, referred_nodes);
     }
 }
 
-void ReturnClause_ReferredFunctions(const AST_ReturnNode *return_node, TrieMap *referred_funcs) {
-    if(!return_node) return;
-    int return_element_count = Vector_Size(return_node->returnElements);
-
-    for(int i = 0; i < return_element_count; i++) {
-        AST_ReturnElementNode *node;
-        Vector_Get(return_node->returnElements, i, &node);
+void ReturnClause_ReferredFunctions(const AST_ReturnNode *returnNode, TrieMap *referred_funcs) {
+    if(!returnNode) return;
+    
+    uint elemCount = array_len(returnNode->returnElements);
+    for (uint i = 0; i < elemCount; i++) {
+		AST_ReturnElementNode *retElem = returnNode->returnElements[i];
         
-        AST_ArithmeticExpressionNode *exp = node->exp;
+        AST_ArithmeticExpressionNode *exp = retElem->exp;
         if(exp) AR_EXP_GetFunctions(exp, referred_funcs);
-  }
+    }
+}
+
+// Scan through RETURN clause expressions,
+// aliased expressions can be referred to by other clauses (ORDER BY)
+// these will be added to the definedEntities triemap.
+void ReturnClause_DefinedEntities(const AST_ReturnNode *returnNode, TrieMap *definedEntities) {
+    if(!returnNode) return;
+    
+    uint elemCount = array_len(returnNode->returnElements);
+    for (uint i = 0; i < elemCount; i++) {
+		AST_ReturnElementNode *retElem = returnNode->returnElements[i];
+        if(retElem->alias) {
+            TrieMap_Add(definedEntities,
+                        retElem->alias,
+                        strlen(retElem->alias),
+                        NULL,
+                        TrieMap_DONT_CARE_REPLACE);
+        }
+    }
 }
 
 void Free_AST_ReturnElementNode(AST_ReturnElementNode *returnElementNode) {
@@ -128,12 +147,13 @@ void Free_AST_ReturnElementNode(AST_ReturnElementNode *returnElementNode) {
 
 void Free_AST_ReturnNode(AST_ReturnNode *returnNode) {
 	if (!returnNode) return;
-	for (int i = 0; i < Vector_Size(returnNode->returnElements); i++) {
-		AST_ReturnElementNode *node;
-		Vector_Get(returnNode->returnElements, i, &node);
+    
+    uint elemCount = array_len(returnNode->returnElements);
+	for (uint i = 0; i < elemCount; i++) {
+		AST_ReturnElementNode *node = returnNode->returnElements[i];
 		Free_AST_ReturnElementNode(node);
 	}
 	
-	Vector_Free(returnNode->returnElements);
-	free(returnNode);
+	array_free(returnNode->returnElements);
+	rm_free(returnNode);
 }
