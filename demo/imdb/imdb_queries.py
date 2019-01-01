@@ -56,15 +56,18 @@ actors_over_50_that_played_in_blockbusters_query = QueryInfo(
              RETURN *""",
     description='Which actors who are over 50 played in blockbuster movies?',
     max_run_time_ms=4.0,
-    expected_result=[['Bill Irwin', '68.000000', 'Interstellar', '2014.000000', '961763.000000', '8.600000', 'Adventure'],
-                     ['Vincent Price', '107.000000', 'Vincent', '1982.000000', '18284.000000', '8.400000', 'Short'],
-                     ['Ellen Burstyn', '86.000000', 'Interstellar', '2014.000000', '961763.000000', '8.600000', 'Adventure'],
-                     ['Paul Reiser', '61.000000', 'Whiplash', '2014.000000', '420586.000000', '8.500000', 'Drama'],
-                     ['Francis X. McCarthy', '76.000000', 'Interstellar', '2014.000000', '961763.000000', '8.600000', 'Adventure'],
-                     ['John Lithgow', '73.000000', 'Interstellar', '2014.000000', '961763.000000', '8.600000', 'Adventure'],
-                     ['J.K. Simmons', '63.000000', 'Whiplash', '2014.000000', '420586.000000', '8.500000', 'Drama',],
-                     ['Chris Mulkey', '70.000000', 'Whiplash', '2014.000000', '420586.000000', '8.500000', 'Drama'],
-                     ['Rachael Harris', '50.000000', 'Lucifer', '2015.000000', '58703.000000', '8.300000', 'Crime']]
+    expected_result=[['Bill Irwin', '69.000000', 'Interstellar', '2014.000000', '961763.000000', '8.600000', 'Adventure'],
+                     ['Vincent Price', '108.000000', 'Vincent', '1982.000000', '18284.000000', '8.400000', 'Short'],
+                     ['Ellen Burstyn', '87.000000', 'Interstellar', '2014.000000', '961763.000000', '8.600000', 'Adventure'],
+                     ['Paul Reiser', '62.000000', 'Whiplash', '2014.000000', '420586.000000', '8.500000', 'Drama'],
+                     ['Francis X. McCarthy', '77.000000', 'Interstellar', '2014.000000', '961763.000000', '8.600000', 'Adventure'],
+                     ['John Lithgow', '74.000000', 'Interstellar', '2014.000000', '961763.000000', '8.600000', 'Adventure'],
+                     ['J.K. Simmons', '64.000000', 'Whiplash', '2014.000000', '420586.000000', '8.500000', 'Drama',],
+                     ['Chris Mulkey', '71.000000', 'Whiplash', '2014.000000', '420586.000000', '8.500000', 'Drama'],
+                     ['Rachael Harris', '51.000000', 'Lucifer', '2015.000000', '58703.000000', '8.300000', 'Crime'],
+                     ['Matthew McConaughey', '50.000000', 'Interstellar', '2014.000000', '961763.000000', '8.600000', 'Adventure'],
+                     ['D.B. Woodside', '50.000000', 'Lucifer', '2015.000000', '58703.000000', '8.300000', 'Crime']]
+
 )
 
 
@@ -100,8 +103,8 @@ young_actors_played_with_cameron_diaz_query = QueryInfo(
              RETURN a, m.title""",
     description='Which young actors played along side Cameron Diaz?',
     max_run_time_ms=5,
-    expected_result=[['Nicolette Pierini', '15.000000', 'Annie'],
-                     ['Kate Upton', '26.000000', 'The Other Woman']]
+    expected_result=[['Nicolette Pierini', '16.000000', 'Annie'],
+                     ['Kate Upton', '27.000000', 'The Other Woman']]
 )
 
 
@@ -111,13 +114,13 @@ actors_played_with_cameron_diaz_and_younger_than_her_query = QueryInfo(
              RETURN a, m.title""",
     description='Which actors played along side Cameron Diaz and are younger then her?',
     max_run_time_ms=7,
-    expected_result=[['Jason Segel', '38.000000', 'Sex Tape'],
-                     ['Ellie Kemper', '38.000000', 'Sex Tape'],
-                     ['Nicolette Pierini', '15.000000', 'Annie'],
-                     ['Rose Byrne', '39.000000', 'Annie'],
-                     ['Kate Upton', '26.000000', 'The Other Woman'],
-                     ['Nicki Minaj', '36.000000', 'The Other Woman'],
-                     ['Taylor Kinney', '37.000000', 'The Other Woman']]
+    expected_result=[['Jason Segel', '39.000000', 'Sex Tape'],
+                     ['Ellie Kemper', '39.000000', 'Sex Tape'],
+                     ['Nicolette Pierini', '16.000000', 'Annie'],
+                     ['Rose Byrne', '40.000000', 'Annie'],
+                     ['Kate Upton', '27.000000', 'The Other Woman'],
+                     ['Nicki Minaj', '37.000000', 'The Other Woman'],
+                     ['Taylor Kinney', '38.000000', 'The Other Woman']]
 )
 
 
@@ -126,7 +129,7 @@ sum_and_average_age_of_straight_outta_compton_cast_query = QueryInfo(
              RETURN m.title, SUM(a.age), AVG(a.age)""",
     description='What is the sum and average age of the Straight Outta Compton cast?',
     max_run_time_ms=4,
-    expected_result=[['Straight Outta Compton', '127.000000', '31.750000']]
+    expected_result=[['Straight Outta Compton', '131.000000', '32.750000']]
 )
 
 
@@ -146,16 +149,16 @@ find_ten_oldest_actors_query = QueryInfo(
              LIMIT 10""",
     description='10 Oldest actors?',
     max_run_time_ms=4.5,
-    expected_result=[['Vincent Price', '107.000000'],
-                     ['George Kennedy', '93.000000'],
-                     ['Cloris Leachman', '92.000000'],
-                     ['John Cullum', '88.000000'],
-                     ['Lois Smith', '88.000000'],
-                     ['Robert Duvall', '87.000000'],
-                     ['Olympia Dukakis', '87.000000'],
-                     ['Ellen Burstyn', '86.000000'],
-                     ['Michael Caine', '85.000000'],
-                     ['Judi Dench', '84.000000']]
+    expected_result=[['Vincent Price', '108.000000'],
+                     ['George Kennedy', '94.000000'],
+                     ['Cloris Leachman', '93.000000'],
+                     ['John Cullum', '89.000000'],
+                     ['Lois Smith', '89.000000'],
+                     ['Robert Duvall', '88.000000'],
+                     ['Olympia Dukakis', '88.000000'],
+                     ['Ellen Burstyn', '87.000000'],
+                     ['Michael Caine', '86.000000'],
+                     ['Judi Dench', '85.000000']]
 )
 
 actors_over_85_index_scan = QueryInfo(
@@ -165,14 +168,15 @@ actors_over_85_index_scan = QueryInfo(
              ORDER BY a.age""",
     description='Actors over 85 on indexed property?',
     max_run_time_ms=1.5,
-    expected_result=[['Ellen Burstyn', '86.000000'],
-        ['Robert Duvall', '87.000000'],
-        ['Olympia Dukakis', '87.000000'],
-        ['Lois Smith', '88.000000'],
-        ['John Cullum', '88.000000'],
-        ['Cloris Leachman', '92.000000'],
-        ['George Kennedy', '93.000000'],
-        ['Vincent Price', '107.000000']]
+    expected_result=[['Michael Caine', '86.000000'],
+                     ['Ellen Burstyn', '87.000000'],
+                     ['Robert Duvall', '88.000000'],
+                     ['Olympia Dukakis', '88.000000'],
+                     ['Lois Smith', '89.000000'],
+                     ['John Cullum', '89.000000'],
+                     ['Cloris Leachman', '93.000000'],
+                     ['George Kennedy', '94.000000'],
+                     ['Vincent Price', '108.000000']]
 )
 
 eighties_movies_index_scan = QueryInfo(
@@ -190,7 +194,7 @@ eighties_movies_index_scan = QueryInfo(
 find_titles_starting_with_american_query = QueryInfo(
     query="""MATCH (m:movie)
              WHERE LEFT(m.title, 8) = 'American'
-             RETURN m.title 
+             RETURN m.title
              ORDER BY m.title""",
     description='Movies starting with "American"?',
     max_run_time_ms=4,
