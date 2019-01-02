@@ -215,11 +215,13 @@ static AST_Validation _Validate_MATCH_Clause(const AST *ast, char **reason) {
         if (!alias) continue;
         void *val = TrieMap_Find(reused_entities, alias, strlen(alias));
         // If this alias has been used in a previous pattern, emit an error.
+        /*
         if (val != TRIEMAP_NOTFOUND && *(int*)val != i) {
           asprintf(reason, "Alias '%s' reused. Entities with the same alias may not be referenced in multiple patterns.", alias);
           res = AST_INVALID;
           break;
         }
+        */
         // Use the pattern index as a value, as it is valid to reuse a node alias within a pattern.
         TrieMap_Add(reused_entities, alias, strlen(alias), &pattern_ids[i], TrieMap_DONT_CARE_REPLACE);
       }

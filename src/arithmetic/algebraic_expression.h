@@ -30,7 +30,11 @@ typedef struct AlgebraicExpressionNode AlgebraicExpressionNode;
 
 struct AlgebraicExpressionNode {
     union {
-        GrB_Matrix operand;
+        struct {
+            bool entity_is_node;
+            void *entity;
+            GrB_Matrix mat;
+        } operand;
         struct {
             AL_EXP_OP op;
             bool reusable;
@@ -43,7 +47,7 @@ struct AlgebraicExpressionNode {
 };
 
 AlgebraicExpressionNode *AlgebraicExpressionNode_NewOperationNode(AL_EXP_OP op);
-AlgebraicExpressionNode *AlgebraicExpressionNode_NewOperandNode(GrB_Matrix operand);
+AlgebraicExpressionNode *AlgebraicExpressionNode_NewOperandNode(void *operand, bool is_node);
 void AlgebraicExpressionNode_AppendLeftChild(AlgebraicExpressionNode *root, AlgebraicExpressionNode *child);
 void AlgebraicExpressionNode_AppendRightChild(AlgebraicExpressionNode *root, AlgebraicExpressionNode *child);
 void AlgebraicExpression_SumOfMul(AlgebraicExpressionNode **root);

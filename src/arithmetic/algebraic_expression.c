@@ -10,6 +10,45 @@
 #include "../util/rmalloc.h"
 #include <assert.h>
 
+static void _AlgebraicExpression_PrintNode(AlgebraicExpressionNode *root, int indent) {
+  if (root == NULL) return;
+
+  if (root->type == AL_OPERAND) {
+      if (root->operand.entity_is_node) {
+        Node *operand = (Node*)root->operand.entity;
+        printf("%*s(%s:%s)\n", indent, "", operand->alias, operand->label);
+      } else {
+        Edge *operand = (Edge*)root->operand.entity;
+        printf("%*s[%s:%s]\n", indent, "", operand->alias, operand->relationship);
+      
+      }
+  } else {
+      char *op;
+      switch (root->operation.op) {
+        case (AL_EXP_ADD):
+          printf("%*s%s\n", indent, "", "ADD");
+          _AlgebraicExpression_PrintNode(root->operation.l, indent + 4);
+          _AlgebraicExpression_PrintNode(root->operation.r, indent + 4);
+          break;
+        case (AL_EXP_MUL):
+          printf("%*s%s\n", indent, "", "MUL");
+          _AlgebraicExpression_PrintNode(root->operation.l, indent + 4);
+          _AlgebraicExpression_PrintNode(root->operation.r, indent + 4);
+          break;
+        case (AL_EXP_TRANSPOSE):
+          printf("%*s%s\n", indent, "", "TRANS");
+          if (root->operation.l) _AlgebraicExpression_PrintNode(root->operation.l, indent + 4);
+          if (root->operation.r) _AlgebraicExpression_PrintNode(root->operation.r, indent + 4);
+          break;
+      }
+  }
+}
+
+static void AlgebraicExpression_PrintTree(AlgebraicExpressionNode *root) {
+    _AlgebraicExpression_PrintNode(root, 0);
+}
+
+
 AlgebraicExpression *_AE_MUL(size_t operand_cap) {
     AlgebraicExpression *ae = malloc(sizeof(AlgebraicExpression));
     ae->op = AL_EXP_MUL;
@@ -313,15 +352,24 @@ int _ExpressionContainsEdge(TrieMap *t, Edge *e) {
   return !TrieMap_Add(t, e->alias, strlen(e->alias), NULL, TrieMap_DONT_CARE_REPLACE);
 }
 
-void _AddNode(AlgebraicExpressionNode *root, Node *cur, TrieMap *unique_edges) {
+AlgebraicExpressionNode* _append(AlgebraicExpressionNode *root, AlgebraicExpressionNode *child) {
+    assert(root && root->type == AL_OPERATION);
+    assert(root->operation.r == NULL);
+    if (root->operation.l == NULL) {
+      AlgebraicExpressionNode_AppendLeftChild(root, child);
+      return root;
+    }
+
+    AlgebraicExpressionNode *inner = AlgebraicExpressionNode_NewOperationNode(AL_EXP_MUL);
+    AlgebraicExpressionNode_AppendLeftChild(inner, child);
+    AlgebraicExpressionNode_AppendRightChild(root, inner);
+    return inner;
+}
+
+AlgebraicExpressionNode* _AddNode(AlgebraicExpressionNode *root, Node *cur, TrieMap *unique_edges) {
   // TODO only need to add node matrix on start and end of expression
-  if (cur->mat) {
-    AlgebraicExpressionNode *operand = AlgebraicExpressionNode_NewOperandNode(cur->mat);
-    AlgebraicExpressionNode_AppendLeftChild(root, operand);
-    AlgebraicExpressionNode *op = AlgebraicExpressionNode_NewOperationNode(AL_EXP_MUL);
-    AlgebraicExpressionNode_AppendRightChild(root, op);
-    root = op;
-  }
+  AlgebraicExpressionNode *node_matrix = AlgebraicExpressionNode_NewOperandNode(cur, true);
+  root = _append(root, node_matrix);
 
   Edge *e;
   // Outgoing edges
@@ -330,29 +378,26 @@ void _AddNode(AlgebraicExpressionNode *root, Node *cur, TrieMap *unique_edges) {
     if (_ExpressionContainsEdge(unique_edges, e)) continue;
     // TODO If edge is variable length or covers multiple relation types,
     // might want to handle that here
-    AlgebraicExpressionNode *operand = AlgebraicExpressionNode_NewOperandNode(e->mat);
-    AlgebraicExpressionNode_AppendLeftChild(root, operand);
-    AlgebraicExpressionNode *op = AlgebraicExpressionNode_NewOperationNode(AL_EXP_MUL);
-    AlgebraicExpressionNode_AppendRightChild(root, op);
-    root = op;
-    _AddNode(root, e->dest, unique_edges);
+    AlgebraicExpressionNode *edge_matrix = AlgebraicExpressionNode_NewOperandNode(e, false);
+    root = _append(root, edge_matrix);
+    root = _AddNode(root, e->dest, unique_edges);
   }
 
+  return root;
   // Incoming edges (swap src and dest, transpose edge matrix)
+  /*
   for (int i = 0; i < Vector_Size(cur->incoming_edges); i ++) {
     Vector_Get(cur->incoming_edges, i, &e);
     if (_ExpressionContainsEdge(unique_edges, e)) continue;
     // Transpose edge matrix for incoming edges
-    // TODO Improve
     AlgebraicExpressionNode *trans = AlgebraicExpressionNode_NewOperationNode(AL_EXP_TRANSPOSE);
-    AlgebraicExpressionNode *operand = AlgebraicExpressionNode_NewOperandNode(e->mat);
-    AlgebraicExpressionNode_AppendLeftChild(trans, operand);
-    AlgebraicExpressionNode_AppendLeftChild(root, trans);
-    AlgebraicExpressionNode *op = AlgebraicExpressionNode_NewOperationNode(AL_EXP_MUL);
-    AlgebraicExpressionNode_AppendRightChild(root, op);
-    root = op;
+    AlgebraicExpressionNode *edge_matrix = AlgebraicExpressionNode_NewOperandNode(e, false);
+    AlgebraicExpressionNode_AppendLeftChild(trans, edge_matrix);
+    root = _append(root, trans);
+
     _AddNode(root, e->src, unique_edges);
   }
+  */
 }
 
 AlgebraicExpressionNode* AlgebraicExpression_FromComponent(Node *src) {
@@ -360,7 +405,7 @@ AlgebraicExpressionNode* AlgebraicExpression_FromComponent(Node *src) {
   if (Vector_Size(src->incoming_edges) == 0 && Vector_Size(src->outgoing_edges) == 0) {
     // TODO src->mat is NULL if label is not provided, which does not break this call
     // but has to be interpreted as an all node scan elsewhere (or improve logic)
-    return AlgebraicExpressionNode_NewOperandNode(src->mat);
+    return AlgebraicExpressionNode_NewOperandNode(src, true);
   }
   TrieMap *unique_edges = NewTrieMap();
   AlgebraicExpressionNode *exp = AlgebraicExpressionNode_NewOperationNode(AL_EXP_MUL);
@@ -380,6 +425,9 @@ AlgebraicExpressionNode** AlgebraicExpression_BuildExps(const AST *ast, Vector *
       // Should that all be handled by this call?
       AlgebraicExpressionNode *exp = AlgebraicExpression_FromComponent(starting_points[i]);
       exps = array_append(exps, exp);
+    }
+    for (int i = 0; i < array_len(exps); i ++) {
+      AlgebraicExpression_PrintTree(exps[i]);
     }
     return exps;
 }
@@ -563,10 +611,17 @@ AlgebraicExpressionNode *AlgebraicExpressionNode_NewOperationNode(AL_EXP_OP op) 
     return node;
 }
 
-AlgebraicExpressionNode *AlgebraicExpressionNode_NewOperandNode(GrB_Matrix operand) {
+AlgebraicExpressionNode *AlgebraicExpressionNode_NewOperandNode(void *operand, bool is_node) {
     AlgebraicExpressionNode *node = rm_calloc(1, sizeof(AlgebraicExpressionNode));
     node->type = AL_OPERAND;
-    node->operand = operand;
+    node->operand.entity = operand;
+    if (is_node) {
+      node->operand.entity_is_node = true;
+      node->operand.mat = ((Node*)operand)->mat;
+    } else {
+      node->operand.entity_is_node = false;
+      node->operand.mat = ((Edge*)operand)->mat;
+    }
     return node;
 }
 
@@ -748,7 +803,7 @@ static GrB_Matrix _AlgebraicExpression_Eval_TRANSPOSE(AlgebraicExpressionNode *e
 
 static GrB_Matrix _AlgebraicExpression_Eval(AlgebraicExpressionNode *exp, GrB_Matrix res) {
     if(exp == NULL) return NULL;
-    if(exp->type == AL_OPERAND) return exp->operand;
+    if(exp->type == AL_OPERAND) return exp->operand.mat;
 
     // Perform operation.
     switch(exp->operation.op) {
