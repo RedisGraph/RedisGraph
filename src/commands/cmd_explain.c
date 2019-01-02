@@ -45,12 +45,13 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     pthread_setspecific(_tlsASTKey, ast);
 
     // Retrieve the GraphContext and acquire a read lock.
+    // RedisModule_ThreadSafeContextLock(ctx);
     gc = GraphContext_Retrieve(ctx, argv[1]);
+    // RedisModule_ThreadSafeContextUnlock(ctx);
     if(!gc) {
         RedisModule_ReplyWithError(ctx, "key doesn't contains a graph object.");
         goto cleanup;
     }
-    Graph_AcquireReadLock(gc->g);
 
     // Perform query validations before and after ModifyAST
     if (AST_PerformValidations(ctx, ast) != AST_VALID) return REDISMODULE_OK;
@@ -64,14 +65,16 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
         goto cleanup;
     }
 
+    Graph_AcquireReadLock(gc->g);
     plan = NewExecutionPlan(ctx, gc, ast, true);
     char* strPlan = ExecutionPlanPrint(plan);
     RedisModule_ReplyWithStringBuffer(ctx, strPlan, strlen(strPlan));
 
 cleanup:
-    if(gc) Graph_ReleaseLock(gc->g);
-    if(plan) ExecutionPlanFree(plan);
+    if(plan) {
+        Graph_ReleaseLock(gc->g);
+        ExecutionPlanFree(plan);
+    }
     if(ast) AST_Free(ast);
     return REDISMODULE_OK;
 }
-

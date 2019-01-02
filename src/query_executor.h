@@ -8,9 +8,7 @@
 #ifndef __QUERY_EXECUTOR_H
 #define __QUERY_EXECUTOR_H
 
-#define REDISMODULE_EXPERIMENTAL_API    // Required for block client.
 #include "redismodule.h"
-
 #include "parser/ast.h"
 #include "graph/query_graph.h"
 #include "arithmetic/arithmetic_expression.h"

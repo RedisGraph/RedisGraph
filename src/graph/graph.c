@@ -42,6 +42,16 @@ void Graph_ReleaseLock(Graph *g) {
     pthread_rwlock_unlock(&g->_rwlock);
 }
 
+/* Writer request access to graph. */
+void Graph_WriterEnter(Graph *g) {
+    pthread_mutex_lock(&g->_writers_mutex);
+}
+
+/* Writer release access to graph. */
+void Graph_WriterLeave(Graph *g) {
+    pthread_mutex_unlock(&g->_writers_mutex);
+}
+
 /* Force execution of all pending operations on a matrix. */
 static inline void _Graph_ApplyPending(GrB_Matrix m) {
     GrB_Index nvals;
@@ -222,6 +232,7 @@ Graph *Graph_New(size_t node_cap, size_t edge_cap) {
      * such that when a thread is resizing matrix A
      * another thread could be resizing matrix B. */
     assert(pthread_mutex_init(&g->_mutex, NULL) == 0);
+    assert(pthread_mutex_init(&g->_writers_mutex, NULL) == 0);
 
     return g;
 }
@@ -622,6 +633,7 @@ void Graph_Free(Graph *g) {
 
     // Destroy graph-scoped locks.
     pthread_mutex_destroy(&g->_mutex);
+    pthread_mutex_destroy(&g->_writers_mutex);
     pthread_rwlock_destroy(&g->_rwlock);
 
     rm_free(g);

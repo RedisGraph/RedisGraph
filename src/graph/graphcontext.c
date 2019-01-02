@@ -3,6 +3,7 @@
 #include "serializers/graphcontext_type.h"
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
+#include "../redismodule.h"
 
 extern pthread_key_t _tlsGCKey;    // Thread local storage graph context key.
 
@@ -12,15 +13,15 @@ extern pthread_key_t _tlsGCKey;    // Thread local storage graph context key.
 
 GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rs_name,
                                size_t node_cap, size_t edge_cap) {
+  GraphContext *gc = NULL;
+
   // Create key for GraphContext from the unmodified string provided by the user
   RedisModuleKey *key = RedisModule_OpenKey(ctx, rs_name, REDISMODULE_WRITE);
   if (RedisModule_KeyType(key) != REDISMODULE_KEYTYPE_EMPTY) {
-    // Return NULL if key already exists
-    RedisModule_CloseKey(key);
-    return NULL;
+    goto cleanup;
   }
 
-  GraphContext *gc = rm_malloc(sizeof(GraphContext));
+  gc = rm_malloc(sizeof(GraphContext));
 
   // Initialize the graph's matrices and datablock storage
   gc->g = Graph_New(node_cap, edge_cap);
@@ -35,27 +36,31 @@ GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rs_name,
   gc->node_allstore = LabelStore_New("ALL", GRAPH_NO_LABEL);
   gc->relation_allstore = LabelStore_New("ALL", GRAPH_NO_RELATION);
 
+  pthread_setspecific(_tlsGCKey, gc);
+
   // Set and close GraphContext key in Redis keyspace
   RedisModule_ModuleTypeSetValue(key, GraphContextRedisModuleType, gc);
-  RedisModule_CloseKey(key);
 
-  pthread_setspecific(_tlsGCKey, gc);
+cleanup:
+  RedisModule_CloseKey(key);
   return gc;
 }
 
 GraphContext* GraphContext_Retrieve(RedisModuleCtx *ctx, RedisModuleString *rs_name) {
+  GraphContext *gc = NULL;
   RedisModuleKey *key = RedisModule_OpenKey(ctx, rs_name, REDISMODULE_READ);
   if (RedisModule_ModuleTypeGetType(key) != GraphContextRedisModuleType) {
-    RedisModule_CloseKey(key);
-    return NULL;
+    goto cleanup;
   }
-  GraphContext *gc = RedisModule_ModuleTypeGetValue(key);
-  RedisModule_CloseKey(key);
+  gc = RedisModule_ModuleTypeGetValue(key);
 
   // Force GraphBLAS updates and resize matrices to node count by default
   Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
 
   pthread_setspecific(_tlsGCKey, gc);
+
+cleanup:
+  RedisModule_CloseKey(key);
   return gc;
 }
 

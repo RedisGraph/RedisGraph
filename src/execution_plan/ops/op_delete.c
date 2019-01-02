@@ -29,6 +29,9 @@ void _LocateEntities(OpDelete *op, QueryGraph *qg, AST_DeleteNode *ast_delete_no
 }
 
 void _DeleteEntities(OpDelete *op) {
+    /* Lock everything. */
+    Graph_AcquireWriteLock(op->gc->g);
+
     /* We must start with edge deletion as node deletion moves nodes around. */
     size_t deletedEdgeCount = array_len(op->deleted_edges);
     for(int i = 0; i < deletedEdgeCount; i++) {
@@ -44,6 +47,9 @@ void _DeleteEntities(OpDelete *op) {
         Graph_DeleteNode(op->gc->g, n);
         if(op->result_set) op->result_set->stats.nodes_deleted++;
     }
+
+    /* Release lock. */
+    Graph_ReleaseLock(op->gc->g);
 }
 
 OpBase* NewDeleteOp(AST_DeleteNode *ast_delete_node, QueryGraph *qg, GraphContext *gc, ResultSet *result_set) {

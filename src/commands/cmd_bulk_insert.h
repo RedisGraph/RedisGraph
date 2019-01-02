@@ -8,7 +8,6 @@
 #ifndef GRAPH_BULK_INSERT_H
 #define GRAPH_BULK_INSERT_H
 
-#define REDISMODULE_EXPERIMENTAL_API    // Required for block client.
 #include "../redismodule.h"
 #include "../util/thpool/thpool.h"
 
