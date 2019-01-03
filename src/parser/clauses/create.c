@@ -49,7 +49,8 @@ void CreateClause_NameAnonymousNodes(AST_CreateNode *createNode, int *entityID) 
         AST_GraphEntity *entity;
         Vector_Get(createNode->graphEntities, i, &entity);
 		if (entity->alias == NULL) {
-            asprintf(&entity->alias, "anon_%d", *entityID);
+            // TODO: Memory leak!
+			asprintf(&entity->alias, "anon_%d", *entityID);
             (*entityID)++;
         }
     }

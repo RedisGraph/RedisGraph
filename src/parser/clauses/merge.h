@@ -12,11 +12,12 @@
 #include "../../util/triemap/triemap.h"
 
 typedef struct {
-	Vector *graphEntities; /* Vector of AST_NodeEntity pointers. */
+	Vector *graphEntities; /* Vector of AST_GraphEntity pointers. */
 } AST_MergeNode;
 
 AST_MergeNode* New_AST_MergeNode(Vector *graphEntities);
-void MergeClause_ReferredEntities(const AST_MergeNode *merge_node, TrieMap *referred_entities);
+void MergeClause_NameAnonymousNodes(const AST_MergeNode *mergeNode, int *entityID);
+void MergeClause_DefinedEntities(const AST_MergeNode *merge_node, TrieMap *defined_entities);
 void Free_AST_MergeNode(AST_MergeNode *mergeNode);
 
 #endif

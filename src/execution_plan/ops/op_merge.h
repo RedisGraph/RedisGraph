@@ -27,6 +27,7 @@ typedef struct {
     AST *ast;         // Query abstract syntax tree.
     ResultSet *result_set;  // Required for statistics updates.
     bool matched;           // Has the entire pattern been matched.
+    bool created;           // Has the entire pattern been created.
 } OpMerge;
 
 OpBase* NewMergeOp(GraphContext *gc, AST *ast, QueryGraph *qg, ResultSet *result_set);

@@ -105,5 +105,110 @@ class GraphMergeFlowTest(FlowTestsBase):
         assert(result.properties_set == 0)
         assert(result.relationships_created == 0)
 
+    # Update existing entity
+    def test09_update_existing_node(self):
+        global redis_graph
+        query = """MERGE (charlie { name: 'Charlie Sheen', age: 10 }) SET charlie.age = 11, charlie.lastname='Sheen' """
+        result = redis_graph.query(query)
+        assert(result.labels_added == 0)
+        assert(result.nodes_created == 0)
+        assert(result.properties_set == 2)
+        assert(result.relationships_created == 0)
+
+        query = """MATCH (charlie { name: 'Charlie Sheen' }) RETURN charlie"""
+        actual_result = redis_graph.query(query)
+        expected_result = [['charlie.age', 'charlie.name', 'charlie.lastname'],
+                           ['11.000000', 'Charlie Sheen', 'Sheen']]
+        assert(actual_result.result_set == expected_result)
+
+    # Update new entity
+    def test10_update_new_node(self):
+        global redis_graph
+        query = """MERGE (tamara:ACTOR { name: 'tamara tunie' }) SET tamara.age = 59, tamara.name = 'Tamara Tunie' """
+        result = redis_graph.query(query)
+        assert(result.labels_added == 0)
+        assert(result.nodes_created == 1)
+        assert(result.properties_set == 3)
+        assert(result.relationships_created == 0)
+
+        query = """MATCH (tamara:ACTOR { name: 'Tamara Tunie' }) RETURN tamara"""
+        actual_result = redis_graph.query(query)
+        expected_result = [['tamara.name', 'tamara.age'],
+                           ['Tamara Tunie', '59.000000']]
+        assert(actual_result.result_set == expected_result)
+
+    # Create a single edge and additional two nodes.
+    def test11_update_new_relationship(self):
+        global redis_graph
+        query = """MERGE (franklin:ACTOR { name: 'Franklin Cover' })-[r:ACTED_IN {rate:5.7}]->(almostHeroes:MOVIE) SET r.date=1998, r.rate=5.8"""
+        result = redis_graph.query(query)
+        assert(result.labels_added == 0)
+        assert(result.nodes_created == 2)
+        assert(result.properties_set == 4)
+        assert(result.relationships_created == 1)
+    
+    # Update existing relation
+    def test12_update_existing_edge(self):
+        global redis_graph
+        query = """MERGE (franklin:ACTOR { name: 'Franklin Cover' })-[r:ACTED_IN {rate:5.8, date:1998}]->(almostHeroes:MOVIE) SET r.date=1998, r.rate=5.9"""
+        result = redis_graph.query(query)
+        assert(result.labels_added == 0)
+        assert(result.nodes_created == 0)
+        assert(result.properties_set == 2)
+        assert(result.relationships_created == 0)
+
+        query = """MATCH (franklin:ACTOR { name: 'Franklin Cover' })-[r:ACTED_IN {rate:5.9, date:1998}]->(almostHeroes:MOVIE) RETURN franklin, r"""
+        actual_result = redis_graph.query(query)
+        expected_result = [['franklin.name', 'franklin.age', 'r.rate', 'r.date'],
+                           ['Franklin Cover', 'NULL', '5.900000', '1998.000000']]
+        assert(actual_result.result_set == expected_result)
+    
+
+    # Update multiple nodes
+    def test13_update_multiple_nodes(self):
+        global redis_graph
+        query = """CREATE (:person {age:31}), (:person {age:31}),(:person {age:31}),(:person {age:31})"""
+        result = redis_graph.query(query)
+        assert(result.labels_added == 1)
+        assert(result.nodes_created == 4)
+        assert(result.properties_set == 4)
+
+        query = """MERGE (p:person {age:31}) SET p.newprop=100"""
+        result = redis_graph.query(query)
+        assert(result.labels_added == 0)
+        assert(result.nodes_created == 0)
+        assert(result.properties_set == 4)
+
+        query = """MATCH (p:person) RETURN p"""
+        actual_result = redis_graph.query(query)
+        expected_result = [['p.age', 'p.newprop'],
+                           ['31.000000', '100.000000'],
+                           ['31.000000', '100.000000'],
+                           ['31.000000', '100.000000'],
+                           ['31.000000', '100.000000']]
+        assert(actual_result.result_set == expected_result)
+
+    # Update multiple nodes
+    def test14_merge_unbounded_pattern(self):
+        global redis_graph
+        query = """MERGE (p:person {age:31})-[:owns]->(d:dog {name:'max'})"""
+        result = redis_graph.query(query)
+        assert(result.labels_added == 1)
+        assert(result.nodes_created == 2)
+        assert(result.properties_set == 2)
+        assert(result.relationships_created == 1)
+
+        # Although person with age 31 and dog with the name max exists,
+        # specified pattern doesn't exists, as a result the entire pattern
+        # will be created, if we were to support MATCH MERGE 'p' and 'd'
+        # would probably be defined in the MATCH clause, as a result they're
+        # bounded and won't be duplicated.
+        query = """MERGE (p:person {age:31})-[:owns]->(d:dog {name:'max'})-[:eats]->(f:food {name:'Royal Canin'})"""
+        result = redis_graph.query(query)
+        assert(result.labels_added == 1)
+        assert(result.nodes_created == 3)
+        assert(result.properties_set == 3)
+        assert(result.relationships_created == 2)
+
 if __name__ == '__main__':
     unittest.main()

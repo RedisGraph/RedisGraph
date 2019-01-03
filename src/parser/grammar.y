@@ -80,6 +80,10 @@ expr(A) ::= mergeClause(B). {
 	A = AST_New(NULL, NULL, NULL, B, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 }
 
+expr(A) ::= mergeClause(B) setClause(C). {
+	A = AST_New(NULL, NULL, NULL, B, C, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+}
+
 expr(A) ::= returnClause(B). {
 	A = AST_New(NULL, NULL, NULL, NULL, NULL, NULL, B, NULL, NULL, NULL, NULL, NULL);
 }
