@@ -14,6 +14,22 @@ AST_MergeNode* New_AST_MergeNode(Vector *graphEntities) {
 	return mergeNode;
 }
 
+void MergeClause_NameAnonymousNodes(const AST_MergeNode *mergeNode, int *entityID) {
+	if(!mergeNode) return;
+
+	int entities_count = Vector_Size(mergeNode->graphEntities);
+
+    for(int i = 0; i < entities_count; i++) {
+        AST_GraphEntity *entity;
+        Vector_Get(mergeNode->graphEntities, i, &entity);
+		if (entity->alias == NULL) {
+			// TODO: Memory leak!
+            asprintf(&entity->alias, "anon_%d", *entityID);
+            (*entityID)++;
+        }
+    }
+}
+
 void MergeClause_DefinedEntities(const AST_MergeNode *mergeNode, TrieMap *defined_entities) {
     if(!mergeNode) return;
 

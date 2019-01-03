@@ -16,6 +16,7 @@ typedef struct {
 } AST_MergeNode;
 
 AST_MergeNode* New_AST_MergeNode(Vector *graphEntities);
+void MergeClause_NameAnonymousNodes(const AST_MergeNode *mergeNode, int *entityID);
 void MergeClause_DefinedEntities(const AST_MergeNode *merge_node, TrieMap *defined_entities);
 void Free_AST_MergeNode(AST_MergeNode *mergeNode);
 

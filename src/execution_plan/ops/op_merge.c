@@ -95,18 +95,11 @@ static void _CommitEdges(OpMerge *op, Record r) {
     size_t edge_count = 0;
     size_t entity_count = Vector_Size(ast_merge_node->graphEntities);
 
-    // Determine how many edges are specified in MERGE clause.
-    for(int i = 0; i < entity_count; i++) {
-        Vector_Get(ast_merge_node->graphEntities, i, &ge);
-        if(ge->t == N_ENTITY) edge_count++;
-    }
-
-    if(!edge_count) return;
-
     LabelStore *allStore = GraphContext_AllStore(op->gc, STORE_EDGE);
     for(int i = 0; i < entity_count; i++) {
         Vector_Get(ast_merge_node->graphEntities, i, &ge);
         if(ge->t != N_LINK) continue;
+        edge_count++;
 
         AST_LinkEntity *blueprint = (AST_LinkEntity*)ge;
 

@@ -60,6 +60,7 @@ void MatchClause_NameAnonymousNodes(AST_MatchNode *matchNode, int *entityID) {
 		AST_GraphEntity *entity;
 		Vector_Get(matchNode->_mergedPatterns, i, &entity);
         if (entity->alias == NULL) {
+			// TODO: Memory leak!
             asprintf(&entity->alias, "anon_%d", *entityID);
             (*entityID)++;
         }
