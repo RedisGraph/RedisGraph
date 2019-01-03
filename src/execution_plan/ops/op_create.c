@@ -254,7 +254,7 @@ static void _CommitEdges(OpCreate *op) {
     }
 
     TrieMap_Free(createEntities, TrieMap_NOP_CB);
-    op->result_set->stats.relationships_created = relationships_created;
+    op->result_set->stats.relationships_created += relationships_created;
 }
 
 static void _CommitNewEntities(OpCreate *op) {
@@ -264,7 +264,7 @@ static void _CommitNewEntities(OpCreate *op) {
     
     if(node_count > 0) {
         _CommitNodes(op);
-        op->result_set->stats.nodes_created = node_count;
+        op->result_set->stats.nodes_created += node_count;
     }
 
     if(edge_count > 0) _CommitEdges(op);

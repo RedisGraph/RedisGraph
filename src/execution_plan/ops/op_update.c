@@ -97,7 +97,7 @@ void _UpdateEntities(OpUpdate *op) {
         property->value = new_value;
     }
     if(op->result_set)
-        op->result_set->stats.properties_set = op->entities_to_update_count;
+        op->result_set->stats.properties_set += op->entities_to_update_count;
 }
 
 OpBase* NewUpdateOp(GraphContext *gc, AST *ast, ResultSet *result_set) {

@@ -128,7 +128,7 @@ class GraphMergeFlowTest(FlowTestsBase):
         result = redis_graph.query(query)
         assert(result.labels_added == 0)
         assert(result.nodes_created == 1)
-        assert(result.properties_set == 2)
+        assert(result.properties_set == 3)
         assert(result.relationships_created == 0)
 
         query = """MATCH (tamara:ACTOR { name: 'Tamara Tunie' }) RETURN tamara"""
@@ -144,7 +144,7 @@ class GraphMergeFlowTest(FlowTestsBase):
         result = redis_graph.query(query)
         assert(result.labels_added == 0)
         assert(result.nodes_created == 2)
-        assert(result.properties_set == 2)
+        assert(result.properties_set == 4)
         assert(result.relationships_created == 1)
     
     # Update existing relation

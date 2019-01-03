@@ -84,7 +84,7 @@ static void _CommitNodes(OpMerge *op, Record r) {
         }
     }
 
-    op->result_set->stats.nodes_created = node_count;
+    op->result_set->stats.nodes_created += node_count;
 }
 
 static void _CommitEdges(OpMerge *op, Record r) {
@@ -154,7 +154,7 @@ static void _CommitEdges(OpMerge *op, Record r) {
         }
     }
 
-    op->result_set->stats.relationships_created = edge_count;
+    op->result_set->stats.relationships_created += edge_count;
 }
 
 static void _CreateEntities(OpMerge *op, Record r) {
