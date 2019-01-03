@@ -374,6 +374,9 @@ void AST_NameAnonymousNodes(AST *ast) {
   if(ast->createNode)
     CreateClause_NameAnonymousNodes(ast->createNode, &entity_id);
   
+  if(ast->mergeNode)
+    CreateClause_NameAnonymousNodes(ast->mergeNode, &entity_id);
+  
   // Mark each alias with a unique ID.
   _AST_MapAliasToID(ast);
 }

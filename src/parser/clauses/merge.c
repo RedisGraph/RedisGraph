@@ -22,7 +22,8 @@ void MergeClause_DefinedEntities(const AST_MergeNode *mergeNode, TrieMap *define
     for(int i = 0; i < merge_element_count; i++) {
         AST_GraphEntity *entity;
         Vector_Get(mergeNode->graphEntities, i, &entity);
-        TrieMap_Add(defined_entities, entity->alias, strlen(entity->alias), entity, TrieMap_DONT_CARE_REPLACE);
+        if(!entity->alias) continue;
+		TrieMap_Add(defined_entities, entity->alias, strlen(entity->alias), entity, TrieMap_DONT_CARE_REPLACE);
     }
 }
 

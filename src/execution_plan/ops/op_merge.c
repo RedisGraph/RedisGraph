@@ -40,8 +40,7 @@ static void _CommitNodes(OpMerge *op, Record r) {
         LabelStore *store = NULL;
 
         // Newly created node will be placed within given record.
-        int nodeRecIdx = i;
-        Node *n = Record_GetNode(r, nodeRecIdx);
+        Node *n = Record_GetNode(r, i);
 
         // Set, create label.
         if(blueprint->label == NULL) {
@@ -60,25 +59,27 @@ static void _CommitNodes(OpMerge *op, Record r) {
 
         if(blueprint->properties) {
             int propCount = Vector_Size(blueprint->properties);
+            propCount /= 2; // Key value pairs.
+
             if(propCount > 0) {
                 char *keys[propCount];
                 SIValue values[propCount];
 
-                for(int prop_idx = 0; prop_idx < propCount; prop_idx+=2) {
+                for(int prop_idx = 0; prop_idx < propCount; prop_idx++) {
                     SIValue *key;
                     SIValue *value;
-                    Vector_Get(blueprint->properties, prop_idx, &key);
-                    Vector_Get(blueprint->properties, prop_idx+1, &value);
+                    Vector_Get(blueprint->properties, prop_idx*2, &key);
+                    Vector_Get(blueprint->properties, prop_idx*2+1, &value);
 
-                    values[prop_idx/2] = *value;
-                    keys[prop_idx/2] = key->stringval;
+                    keys[prop_idx] = key->stringval;
+                    values[prop_idx] = *value;
                 }
 
-                GraphEntity_Add_Properties((GraphEntity*)n, propCount/2, keys, values);
+                GraphEntity_Add_Properties((GraphEntity*)n, propCount, keys, values);
                 // Update tracked schema.
-                if(store) LabelStore_UpdateSchema(store, propCount/2, keys);
-                LabelStore_UpdateSchema(allStore, propCount/2, keys);
-                op->result_set->stats.properties_set += propCount/2;
+                if(store) LabelStore_UpdateSchema(store, propCount, keys);
+                LabelStore_UpdateSchema(allStore, propCount, keys);
+                op->result_set->stats.properties_set += propCount;
             }
         }
     }
@@ -91,7 +92,6 @@ static void _CommitEdges(OpMerge *op, Record r) {
     Graph *g = op->gc->g;
     AST_GraphEntity *ge;
     AST_MergeNode *ast_merge_node = op->ast->mergeNode;
-    int relationships_created = 0;
     size_t edge_count = 0;
     size_t entity_count = Vector_Size(ast_merge_node->graphEntities);
 
@@ -111,10 +111,9 @@ static void _CommitEdges(OpMerge *op, Record r) {
         AST_LinkEntity *blueprint = (AST_LinkEntity*)ge;
 
         // Newly created edge will be placed within given record.
-        int edgeRecIdx = i;
-        Edge *e = Record_GetEdge(r, edgeRecIdx);
+        Edge *e = Record_GetEdge(r, i);
 
-        // For the timebeing if edge has multiple relationship types, use the first one.
+        // TODO: For the timebeing if edge has multiple relationship types, use the first one.
         // ()-[:A|B]->()
         LabelStore *store = GraphContext_GetStore(op->gc, blueprint->labels[0], STORE_EDGE);
         if(store == NULL) {
@@ -125,11 +124,11 @@ static void _CommitEdges(OpMerge *op, Record r) {
         NodeID destId;
         // Node are already created, get them from record.
         if(blueprint->direction == N_LEFT_TO_RIGHT) {
-            srcId = ENTITY_GET_ID(Record_GetNode(r, edgeRecIdx-1));
-            destId = ENTITY_GET_ID(Record_GetNode(r, edgeRecIdx+1));
+            srcId = ENTITY_GET_ID(Record_GetNode(r, i-1));
+            destId = ENTITY_GET_ID(Record_GetNode(r, i+1));
         } else {
-            srcId = ENTITY_GET_ID(Record_GetNode(r, edgeRecIdx+1));
-            destId = ENTITY_GET_ID(Record_GetNode(r, edgeRecIdx-1));
+            srcId = ENTITY_GET_ID(Record_GetNode(r, i+1));
+            destId = ENTITY_GET_ID(Record_GetNode(r, i-1));
         }
 
         assert(Graph_ConnectNodes(g, srcId, destId, store->id, e));
@@ -137,31 +136,32 @@ static void _CommitEdges(OpMerge *op, Record r) {
         // Set edge properties.
         if(blueprint->ge.properties) {
             int propCount = Vector_Size(blueprint->ge.properties);
+            propCount /= 2; // Key value pairs.
+
             if(propCount > 0) {
                 char *keys[propCount];
                 SIValue values[propCount];
 
-                for(int prop_idx = 0; prop_idx < propCount; prop_idx+=2) {
+                for(int prop_idx = 0; prop_idx < propCount; prop_idx++) {
                     SIValue *key;
                     SIValue *value;
-                    Vector_Get(blueprint->ge.properties, prop_idx, &key);
-                    Vector_Get(blueprint->ge.properties, prop_idx+1, &value);
+                    Vector_Get(blueprint->ge.properties, prop_idx*2, &key);
+                    Vector_Get(blueprint->ge.properties, prop_idx*2+1, &value);
 
-                    values[prop_idx/2] = *value;
-                    keys[prop_idx/2] = key->stringval;
+                    keys[prop_idx] = key->stringval;
+                    values[prop_idx] = *value;
                 }
 
-                GraphEntity_Add_Properties((GraphEntity*)e, propCount/2, keys, values);
+                GraphEntity_Add_Properties((GraphEntity*)e, propCount, keys, values);
                 // Update tracked schema.
-                if(store) LabelStore_UpdateSchema(store, propCount/2, keys);
-                LabelStore_UpdateSchema(allStore, propCount/2, keys);
-                op->result_set->stats.properties_set += propCount/2;
+                LabelStore_UpdateSchema(store, propCount, keys);
+                LabelStore_UpdateSchema(allStore, propCount, keys);
+                op->result_set->stats.properties_set += propCount;
             }
         }
-        relationships_created++;
     }
 
-    op->result_set->stats.relationships_created = relationships_created;    
+    op->result_set->stats.relationships_created = edge_count;
 }
 
 static void _CreateEntities(OpMerge *op, Record r) {
@@ -193,7 +193,9 @@ OpBase* NewMergeOp(GraphContext *gc, AST *ast, QueryGraph *qg, ResultSet *result
 Record OpMergeConsume(OpBase *opBase) {
     OpMerge *op = (OpMerge*)opBase;
 
-    if(op->matched || op->created) return NULL;
+    /* Pattern was created in the previous call
+     * Execution plan is already depleted. */
+    if(op->created) return NULL;
 
     OpBase *child = op->op.children[0];
     Record r = child->consume(child);
@@ -203,12 +205,16 @@ Record OpMergeConsume(OpBase *opBase) {
         * we can simply return. */
         op->matched = true;
     } else {
+        /* In case there a previous match, execution plan
+         * is simply depleted, no need to create the pattern. */
+        if(op->matched) return r;
+
+        // No previous match, create MERGE pattern.
         r = Record_New(AST_AliasCount(op->ast));
-        /* Pattern was not matched, 
-         * create every single entity within the pattern. */
         _CreateEntities(op, r);
         op->created = true;
     }
+
     return r;
 }
 
