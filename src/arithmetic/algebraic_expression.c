@@ -352,6 +352,37 @@ int _ExpressionContainsEdge(TrieMap *t, Edge *e) {
   return !TrieMap_Add(t, e->alias, strlen(e->alias), NULL, TrieMap_DONT_CARE_REPLACE);
 }
 
+int AlgebraicExpression_OperandCount(AlgebraicExpressionNode *root) {
+  if (root == NULL) {
+    return 0;
+  } else if (root->type == AL_OPERAND) {
+    return 1;
+  }
+  int increase = AlgebraicExpression_OperandCount(root->operation.l);
+  increase += AlgebraicExpression_OperandCount(root->operation.r);
+  return increase;
+}
+
+AlgebraicExpressionNode* AlgebraicExpression_Pop(AlgebraicExpressionNode *root) {
+  if (root == NULL) {
+    return NULL;
+  } else if (root->type == AL_OPERAND) {
+    return root;
+  }
+
+  AlgebraicExpressionNode *ret = AlgebraicExpression_Pop(root->operation.l);
+  if (ret) {
+    root->operation.l = NULL;
+    return ret;
+  }
+  ret = AlgebraicExpression_Pop(root->operation.r);
+  assert(ret);
+  root->operation.r = NULL;
+  return ret;
+
+
+}
+
 AlgebraicExpressionNode* _append(AlgebraicExpressionNode *root, AlgebraicExpressionNode *child) {
     assert(root && root->type == AL_OPERATION);
     assert(root->operation.r == NULL);

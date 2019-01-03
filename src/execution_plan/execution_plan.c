@@ -250,123 +250,62 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx,
 
         AlgebraicExpressionNode **ae_trees = AlgebraicExpression_BuildExps(ast, ast->matchNode->_mergedPatterns, q, starting_points, component_count);
 
-        // TODO everything below here should change
+        // For every connected component
+        for (int i = 0; i < array_len(ae_trees); i ++) {
+            AlgebraicExpressionNode *tree = ae_trees[i];
 
-
-        // For every pattern in match clause.
-        size_t patternCount = Vector_Size(ast->matchNode->patterns);
-        
-        /* If the QueryGraph contains multiple disjoint patterns, the stream from each 
-         * will be joined by a Cartesian product root operation. */
-        bool multiPattern = patternCount > 1;
-        OpBase *cartesianProduct = NULL;
-        if(multiPattern) {
-            cartesianProduct = NewCartesianProductOp();
-            Vector_Push(ops, cartesianProduct);
-        }
-        
-        // Keep track after all traversal operations along a pattern.
-        Vector *traversals = NewVector(OpBase*, 1);
-
-        for(int i = 0; i < patternCount; i++) {
-            Vector *pattern;
-            Vector_Get(ast->matchNode->patterns, i, &pattern);
-
-            if(Vector_Size(pattern) > 1) {
-                size_t expCount = 0;
-                AlgebraicExpression **exps = AlgebraicExpression_From_Query(ast, pattern, q, &expCount);
-
-                TRAVERSE_ORDER order = determineTraverseOrder(filter_tree, exps, expCount);
-                if(order == TRAVERSE_ORDER_FIRST) {
-                    AlgebraicExpression *exp = exps[0];
-                    selectEntryPoint(exp, filter_tree);
-
-                    // Create SCAN operation.
-                    if(exp->src_node->label) {
-                        /* There's no longer need for the last matrix operand
-                         * as it's been replaced by label scan. */
-                        AlgebraicExpression_RemoveTerm(exp, exp->operand_count-1, NULL);
-                        op = NewNodeByLabelScanOp(gc, exp->src_node);
-                        Vector_Push(traversals, op);
-                    } else {
-                        op = NewAllNodeScanOp(g, exp->src_node);
-                        Vector_Push(traversals, op);
-                    }
-                    for(int i = 0; i < expCount; i++) {
-                        if(exps[i]->operand_count == 0) continue;
-                        if(exps[i]->edgeLength) {
-                            op = NewCondVarLenTraverseOp(exps[i],
-                                                         exps[i]->edgeLength->minHops,
-                                                         exps[i]->edgeLength->maxHops,
-                                                         g);
-                        }
-                        else {
-                            op = NewCondTraverseOp(g, exps[i]);
-                        }
-                        Vector_Push(traversals, op);
-                    }
-                } else {
-                    AlgebraicExpression *exp = exps[expCount-1];
-                    selectEntryPoint(exp, filter_tree);
-                    // Create SCAN operation.
-                    if(exp->dest_node->label) {
-                        /* There's no longer need for the last matrix operand
-                         * as it's been replaced by label scan. */
-                        AlgebraicExpression_RemoveTerm(exp, exp->operand_count-1, NULL);
-                        op = NewNodeByLabelScanOp(gc, exp->dest_node);
-                        Vector_Push(traversals, op);
-                    } else {
-                        op = NewAllNodeScanOp(g, exp->dest_node);
-                        Vector_Push(traversals, op);
-                    }
-
-                    for(int i = expCount-1; i >= 0; i--) {
-                        if(exps[i]->operand_count == 0) continue;
-                        AlgebraicExpression_Transpose(exps[i]);
-                        if(exps[i]->edgeLength) {
-                            op = NewCondVarLenTraverseOp(exps[i],
-                                                         exps[i]->edgeLength->minHops,
-                                                         exps[i]->edgeLength->maxHops,
-                                                         g);
-                        }
-                        else {
-                            op = NewCondTraverseOp(g, exps[i]);
-                        }
-                        Vector_Push(traversals, op);
-                    }
-                }
+            if (AlgebraicExpression_OperandCount(tree) == 1) {
+              // Expression has only one operand, perform a scan
+              Node *n = (Node*)tree->operation.l->operand.entity; // TODO improve assumption
+              if (n->mat) { // Node is labeled
+                op = NewNodeByLabelScanOp(gc, (Node*)tree->operation.l->operand.entity);
+              } else {
+                op = NewAllNodeScanOp(g, n);
+              }
+              Vector_Push(ops, op);
             } else {
-                /* Node scan. */
-                AST_GraphEntity *ge;
-                Vector_Get(pattern, 0, &ge);
-                Node **n = QueryGraph_GetNodeRef(q, QueryGraph_GetNodeByAlias(q, ge->alias));
-                if(ge->label)
-                    op = NewNodeByLabelScanOp(gc, *n);
-                else
-                    op = NewAllNodeScanOp(g, *n);
-                Vector_Push(traversals, op);
+              // Expression requires a traversal
+
+              // TODO choose an ideal starting place
+              // TODO Replace the first operand matrix with a node/label scan
+              // (optimize later for filters, nodes over labels, etc)
+              Node *n = (Node*)tree->operation.l->operand.entity; // TODO improve assumption
+              if (n->mat) { // Node is labeled
+                op = NewNodeByLabelScanOp(gc, (Node*)tree->operation.l->operand.entity);
+              } else {
+                op = NewAllNodeScanOp(g, n);
+              }
+              Vector_Push(ops, op);
             }
-            
-            if(multiPattern) {
-                // Connect traversal operations.
-                OpBase *childOp;
-                OpBase *parentOp;
-                Vector_Pop(traversals, &parentOp);
-                // Connect cartesian product to the root of traversal.
-                _OpBase_AddChild(cartesianProduct, parentOp);
-                while(Vector_Pop(traversals, &childOp)) {
-                    _OpBase_AddChild(parentOp, childOp);
-                    parentOp = childOp;
-                }
-            } else {
-                for(int traversalIdx = 0; traversalIdx < Vector_Size(traversals); traversalIdx++) {
-                    Vector_Get(traversals, traversalIdx, &op);
-                    Vector_Push(ops, op);
-                }
-            }
-            Vector_Clear(traversals);
+        
         }
-        Vector_Free(traversals);
+
+
+        /*
+           for every component:
+             - choose a starting point 
+             - remove matrix operand of starting point
+             - replace with scan of appropriate type
+             
+             have we already divided each component into multiple trees if necessary?
+             if not:
+             - traverse tree and divide into multiple trees when:
+               - an intermediate entity is referenced
+               - a variable length path is found
+               (this requires reference to AST, should probably access by making triemap with AST entities as values?)
+             - add one traversal for each tree
+             - add var length traversals when appropriate
+             - when a tree consists of just one operand, it's a scan. if it has no matrix, it's an AllNodeScan
+               (might be better ways to do this)
+
+             TODO multiple edge types?
+             if there are more than one AlgebraicExpressionNode trees in component
+             OR we break down th
+             for every set of AlgebraicExpressionNode trees in component:
+               - place a 
+               
+
+         */
     }
 
     if(ast->unwindNode) {
