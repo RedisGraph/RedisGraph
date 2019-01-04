@@ -363,24 +363,23 @@ int AlgebraicExpression_OperandCount(AlgebraicExpressionNode *root) {
   return increase;
 }
 
-AlgebraicExpressionNode* AlgebraicExpression_Pop(AlgebraicExpressionNode *root) {
-  if (root == NULL) {
-    return NULL;
-  } else if (root->type == AL_OPERAND) {
-    return root;
+AlgebraicExpressionNode* AlgebraicExpression_Pop(AlgebraicExpressionNode **root) {
+  assert(root);
+
+  AlgebraicExpressionNode *cur = *root;
+  if (cur == NULL) return NULL;
+
+  if (cur->type == AL_OPERAND) {
+    *root = NULL;
+    return cur;
   }
 
-  AlgebraicExpressionNode *ret = AlgebraicExpression_Pop(root->operation.l);
-  if (ret) {
-    root->operation.l = NULL;
-    return ret;
-  }
-  ret = AlgebraicExpression_Pop(root->operation.r);
+  AlgebraicExpressionNode *ret = AlgebraicExpression_Pop(&cur->operation.l);
+  if (ret) return ret;
+
+  ret = AlgebraicExpression_Pop(&cur->operation.r);
   assert(ret);
-  root->operation.r = NULL;
   return ret;
-
-
 }
 
 AlgebraicExpressionNode* _append(AlgebraicExpressionNode *root, AlgebraicExpressionNode *child) {

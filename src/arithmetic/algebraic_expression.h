@@ -47,6 +47,7 @@ struct AlgebraicExpressionNode {
 };
 
 int AlgebraicExpression_OperandCount(AlgebraicExpressionNode *root);
+AlgebraicExpressionNode* AlgebraicExpression_Pop(AlgebraicExpressionNode **root);
 
 AlgebraicExpressionNode *AlgebraicExpressionNode_NewOperationNode(AL_EXP_OP op);
 AlgebraicExpressionNode *AlgebraicExpressionNode_NewOperandNode(void *operand, bool is_node);

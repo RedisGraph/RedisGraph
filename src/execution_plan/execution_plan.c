@@ -10,6 +10,7 @@
 #include "execution_plan.h"
 #include "./ops/ops.h"
 #include "../util/vector.h"
+#include "../util/arr.h"
 #include "../graph/entities/edge.h"
 #include "../query_executor.h"
 #include "../arithmetic/algebraic_expression.h"
@@ -256,9 +257,10 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx,
 
             if (AlgebraicExpression_OperandCount(tree) == 1) {
               // Expression has only one operand, perform a scan
-              Node *n = (Node*)tree->operation.l->operand.entity; // TODO improve assumption
+              AlgebraicExpressionNode *en = AlgebraicExpression_Pop(&tree);
+              Node *n = en->operand.entity;
               if (n->mat) { // Node is labeled
-                op = NewNodeByLabelScanOp(gc, (Node*)tree->operation.l->operand.entity);
+                op = NewNodeByLabelScanOp(gc, n);
               } else {
                 op = NewAllNodeScanOp(g, n);
               }
@@ -269,9 +271,10 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx,
               // TODO choose an ideal starting place
               // TODO Replace the first operand matrix with a node/label scan
               // (optimize later for filters, nodes over labels, etc)
-              Node *n = (Node*)tree->operation.l->operand.entity; // TODO improve assumption
+              AlgebraicExpressionNode *en = AlgebraicExpression_Pop(&tree);
+              Node *n = en->operand.entity;
               if (n->mat) { // Node is labeled
-                op = NewNodeByLabelScanOp(gc, (Node*)tree->operation.l->operand.entity);
+                op = NewNodeByLabelScanOp(gc, n);
               } else {
                 op = NewAllNodeScanOp(g, n);
               }
