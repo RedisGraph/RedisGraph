@@ -226,7 +226,16 @@ void _RdbSaveEdges(RedisModuleIO *rdb, const Graph *g) {
     QSORT(NodeID, g->nodes->deletedIdx, array_len(g->nodes->deletedIdx), ENTITY_ID_ISLT);    
 
     // #edges (N)
-    RedisModule_SaveUnsigned(rdb, Graph_EdgeCount(g));
+    // This value is calculated by counting the number of edges in each relation matrix,
+    // as the Graph's edge count can be invalidated when an existing edge is overwritten.
+    uint64_t edge_count = 0;
+    for (int i = 0; i < array_len(g->relations); i ++) {
+        GrB_Index edges_in_mat;
+        GrB_Matrix M = g->relations[i];
+        GrB_Matrix_nvals(&edges_in_mat, M);
+        edge_count += edges_in_mat;
+    }
+    RedisModule_SaveUnsigned(rdb, edge_count);
 
     for(int r = 0; r < array_len(g->_relations_map); r++) {
         Edge e;
