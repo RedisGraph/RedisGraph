@@ -404,7 +404,7 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx,
             Vector_Push(ops, op);
         }
 
-        op = NewProduceResultsOp(ast, execution_plan->result_set, q);
+        op = NewProduceResultsOp(execution_plan->result_set, q);
         Vector_Push(ops, op);
     }
 

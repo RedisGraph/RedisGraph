@@ -19,13 +19,12 @@
 
 typedef struct {
     OpBase op;
-    const AST *ast;
     ResultSet *result_set;
 } ProduceResults;
 
 
 /* Creates a new NodeByLabelScan operation */
-OpBase* NewProduceResultsOp(const AST *ast, ResultSet *result_set, QueryGraph *graph);
+OpBase* NewProduceResultsOp(ResultSet *result_set, QueryGraph *graph);
 
 /* ProduceResults next operation
  * called each time a new result record is required */

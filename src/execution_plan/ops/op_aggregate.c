@@ -36,7 +36,7 @@ static void _build_expressions(Aggregate *op) {
     // ORDER-BY expressions.
     AST_OrderNode *order_node = op->ast->orderNode;
     if(order_node) {
-        uint expCount = array_len(order_node->expressions);
+        expCount = array_len(order_node->expressions);
         op->order_expressions = rm_malloc(sizeof(AR_ExpNode*) * expCount);
         for(uint i = 0; i < expCount; i++) {
             op->order_expressions[i] = AR_EXP_BuildFromAST(op->ast, order_node->expressions[i]);
@@ -77,8 +77,8 @@ static Group* _CreateGroup(Aggregate *op, Record r) {
     return op->group;
 }
 
-/* Construct group key based on none aggregated terms. 
- * Returns group name which must be freed by caller. */
+/* Retrieves group under which given record belongs to,
+ * creates group if one doesn't exists. */
 static Group* _GetGroup(Aggregate *op, Record r) {
     // GroupBy without none-aggregated fields.
     if(!op->group_keys) {

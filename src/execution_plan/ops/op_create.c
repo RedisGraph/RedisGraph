@@ -261,13 +261,19 @@ static void _CommitNewEntities(OpCreate *op) {
     size_t node_count = array_len(op->created_nodes);
     size_t edge_count = array_len(op->created_edges);
     LabelStore *allStore;
-    
+
+    // Lock everything.
+    Graph_AcquireWriteLock(op->gc->g);
+
     if(node_count > 0) {
         _CommitNodes(op);
         op->result_set->stats.nodes_created += node_count;
     }
 
     if(edge_count > 0) _CommitEdges(op);
+
+    // Release lock.
+    Graph_ReleaseLock(op->gc->g);
 }
 
 Record OpCreateConsume(OpBase *opBase) {

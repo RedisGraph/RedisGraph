@@ -30,8 +30,12 @@ void GraphContextType_RdbSave(RedisModuleIO *rdb, void *value) {
    * (index label, index property) X #indices
    */
 
-  // Graph name.
   GraphContext *gc = value;
+
+  // Lock.
+  Graph_AcquireReadLock(gc->g);
+
+  // Graph name.
   RedisModule_SaveStringBuffer(rdb, gc->graph_name, strlen(gc->graph_name) + 1);
 
   // #Label stores.
@@ -74,6 +78,9 @@ void GraphContextType_RdbSave(RedisModuleIO *rdb, void *value) {
     RedisModule_SaveStringBuffer(rdb, idx->label, strlen(idx->label) + 1);
     RedisModule_SaveStringBuffer(rdb, idx->property, strlen(idx->property) + 1);
   }
+
+  // Unlock.
+  Graph_ReleaseLock(gc->g);
 }
 
 void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
