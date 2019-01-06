@@ -14,9 +14,11 @@
         const bool *y
     )
     {
+        (void)(x);
+        (void)(y);
         (*z) = true ;
     }
-    
+
     static inline void rg_bmul
     (
         bool *z,
@@ -24,6 +26,8 @@
         const bool *y
     )
     {
+        (void)(x);
+        (void)(y);
         (*z) = true ;
     }
 
