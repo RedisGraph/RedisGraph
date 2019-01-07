@@ -10,10 +10,9 @@
 #include "../../query_executor.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
-OpBase* NewProduceResultsOp(const AST *ast, ResultSet *result_set, QueryGraph* graph) {
+OpBase* NewProduceResultsOp(ResultSet *result_set, QueryGraph* graph) {
     ProduceResults *produceResults = malloc(sizeof(ProduceResults));
     produceResults->result_set = result_set;
-    produceResults->ast = ast;
 
     // Set our Op operations
     OpBase_Init(&produceResults->op);

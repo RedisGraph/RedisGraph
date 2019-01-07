@@ -165,8 +165,13 @@ OpResult OpUpdateReset(OpBase *ctx) {
 
 void OpUpdateFree(OpBase *ctx) {
     OpUpdate *op = (OpUpdate*)ctx;
+
+    /* Lock everything. */
+    Graph_AcquireWriteLock(op->gc->g);
     _UpdateEntities(op);
     _UpdateSchemas(op);
+    // Release lock.
+    Graph_ReleaseLock(op->gc->g);
     
     /* Free each update context. */
     for(int i = 0; i < op->update_expressions_count; i++) {

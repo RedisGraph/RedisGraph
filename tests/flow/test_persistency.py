@@ -180,5 +180,47 @@ class GraphPersistency(FlowTestsBase):
                            ['true', 'NULL', '5.500000', 'str']]
         assert(actual_result.result_set == expected_result)
 
+    # Verify that the database can be reloaded correctly after creating multiple
+    # relations of the same type connecting the same two entities.
+    # TODO Cypher allows multiple relations like this to coexist; we currently overwrite the original.
+    # This test should be updated as our handling changes.
+    def test04_repeated_edges(self):
+        graphname = "repeated_edges"
+        graph = Graph(graphname, redis_con)
+        # Build two nodes
+        create_query = """CREATE (:p {name: 'src'}), (:p {name: 'dest'})"""
+        actual_result = graph.query(create_query)
+        assert(actual_result.nodes_created == 2)
+
+        # Connect nodes
+        create_query = """MATCH(a:p {name: 'src'}), (b:p {name: 'dest'}) CREATE (a)-[:e {val: 1}]->(b)"""
+        actual_result = graph.query(create_query)
+        assert(actual_result.relationships_created == 1)
+
+        # Verify the new edge
+        read_query = """MATCH (a)-[e]->(b) RETURN e, a, b"""
+        actual_result = graph.query(read_query)
+        expected_result = [['e.val', 'a.name', 'b.name'],
+                           ['1.000000', 'src', 'dest']]
+        assert(actual_result.result_set == expected_result)
+
+        # Overwrite the existing edge
+        create_query = """MATCH(a:p {name: 'src'}), (b:p {name: 'dest'}) CREATE (a)-[:e {val: 2}]->(b)"""
+        actual_result = graph.query(create_query)
+        assert(actual_result.relationships_created == 1)
+
+        actual_result = graph.query(read_query)
+        # TODO This is the expected current behavior, subject to later change.
+        expected_result = [['e.val', 'a.name', 'b.name'],
+                           ['2.000000', 'src', 'dest']]
+        assert(actual_result.result_set == expected_result)
+
+        # Save RDB & Load from RDB
+        redis_con.execute_command("DEBUG", "RELOAD")
+
+        # Verify that the latest edge was properly saved and loaded
+        actual_result = graph.query(read_query)
+        assert(actual_result.result_set == expected_result)
+
 if __name__ == '__main__':
     unittest.main()

@@ -7,7 +7,6 @@
 
 #include <unistd.h>
 #include <assert.h>
-#define REDISMODULE_EXPERIMENTAL_API    // Required for block client.
 #include "redismodule.h"
 #include "config.h"
 #include "version.h"

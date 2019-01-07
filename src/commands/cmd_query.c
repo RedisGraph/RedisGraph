@@ -62,39 +62,47 @@ void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST_IndexNode *inde
 void _MGraph_Query(void *args) {
     QueryContext *qctx = (QueryContext*)args;
     RedisModuleCtx *ctx = RedisModule_GetThreadSafeContext(qctx->bc);
+    ResultSet* resultSet = NULL;
     AST* ast = qctx->ast;
+    bool readonly = AST_ReadOnly(ast);
+    bool lockAcquired = false;
+
     // Add AST to thread local storage.
     pthread_setspecific(_tlsASTKey, ast);
 
-    ResultSet* resultSet = NULL;
-
-    bool readonly = AST_ReadOnly(ast);
-    // If the query modifies the keyspace, acquire the Redis global lock
-    if (!readonly) RedisModule_ThreadSafeContextLock(ctx);
-
     // Try to access the GraphContext
+    RedisModule_ThreadSafeContextLock(ctx);
     GraphContext *gc = GraphContext_Retrieve(ctx, qctx->graphName);
+    RedisModule_ThreadSafeContextUnlock(ctx);
+    
     if(!gc) {
         if (!ast->createNode && !ast->mergeNode) {
             RedisModule_ReplyWithError(ctx, "key doesn't contains a graph object.");
             goto cleanup;
         }
         assert(!readonly);
+
+        RedisModule_ThreadSafeContextLock(ctx);
         gc = GraphContext_New(ctx, qctx->graphName, GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
+        RedisModule_ThreadSafeContextUnlock(ctx);
+        
         if (!gc) {
             RedisModule_ReplyWithError(ctx, "Graph name already in use as a Redis key.");
             goto cleanup;
         }
         /* TODO: free graph if no entities were created. */
-    }
-    // Acquire the appropriate lock.
-    (readonly) ? Graph_AcquireReadLock(gc->g) : Graph_AcquireWriteLock(gc->g);
+    }    
 
     // Perform query validations before and after ModifyAST
     if (AST_PerformValidations(ctx, ast) != AST_VALID) goto cleanup;
 
     ModifyAST(gc, ast);
     if (AST_PerformValidations(ctx, ast) != AST_VALID) goto cleanup;
+
+    // Acquire the appropriate lock.
+    if(readonly) Graph_AcquireReadLock(gc->g);
+    else Graph_WriterEnter(gc->g);  // Single writer.
+    lockAcquired = true;
 
     if (ast->indexNode) { // index operation
         _index_operation(ctx, gc, ast->indexNode);
@@ -115,9 +123,11 @@ void _MGraph_Query(void *args) {
     // Clean up.
 cleanup:
     // Release the read-write lock
-    if (gc) Graph_ReleaseLock(gc->g);
-    // Release Redis global lock if it was acquired
-    if (!readonly) RedisModule_ThreadSafeContextUnlock(ctx);
+    if(lockAcquired) {
+        if(readonly)Graph_ReleaseLock(gc->g);
+        else Graph_WriterLeave(gc->g);
+    }
+
     ResultSet_Free(resultSet);
     AST_Free(ast);
     RedisModule_UnblockClient(qctx->bc, NULL);
@@ -157,8 +167,7 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     bool readonly = AST_ReadOnly(ast);
 
     // Construct concurent query context.
-    RedisModuleBlockedClient *bc =
-        RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
+    RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
 
     QueryContext *context = _queryContext_New(bc, ast, argv[1]);
 

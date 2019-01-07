@@ -43,6 +43,7 @@ void *DataBlockIterator_Next(DataBlockIterator *iter) {
     
     if(iter->_current_pos >= iter->_end_pos || iter->_current_block == NULL) return NULL;
     
+    size_t itemSize = iter->_current_block->itemSize;
     unsigned char *item = NULL;
     // Have we reached the end of our iterator?
     while(iter->_current_pos < iter->_end_pos && iter->_current_block != NULL) {
@@ -60,7 +61,7 @@ void *DataBlockIterator_Next(DataBlockIterator *iter) {
             iter->_current_block = iter->_current_block->next;
         }
 
-        if(_IsItemDeleted(iter->_current_block->itemSize, item)) {
+        if(_IsItemDeleted(itemSize, item)) {
             item = NULL;
             continue;
         }

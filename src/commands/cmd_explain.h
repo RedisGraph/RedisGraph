@@ -8,7 +8,6 @@
 #ifndef GRAPH_EXPLAIN_H
 #define GRAPH_EXPLAIN_H
 
-#define REDISMODULE_EXPERIMENTAL_API    // Required for block client.
 #include "../redismodule.h"
 #include "../parser/ast.h"
 #include "../util/thpool/thpool.h"

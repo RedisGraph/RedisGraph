@@ -49,11 +49,13 @@ struct Graph {
     GrB_Matrix *labels;                 // Label matrices.
     GrB_Matrix *relations;              // Relation matrices.
     GrB_Matrix *_relations_map;         // Maps from (relation, row, col) to edge id.
+    pthread_mutex_t _writers_mutex;     // Mutex restrict single writer.
     pthread_mutex_t _mutex;             // Mutex for accessing critical sections.
     pthread_rwlock_t _rwlock;           // Read-write lock scoped to this specific graph
     bool _writelocked;                  // true if the read-write lock was acquired by a writer
     SyncMatrixFunc SynchronizeMatrix;   // Function pointer to matrix synchronization routine.
 };
+
 /* Graph synchronization functions
  * The graph is initialized with a read-write lock allowing
  * concurrent access from one writer or N readers. */
@@ -62,6 +64,12 @@ void Graph_AcquireReadLock(Graph *g);
 
 /* Acquire a lock for exclusive access to this graph's data */
 void Graph_AcquireWriteLock(Graph *g);
+
+/* Writer request access to graph. */
+void Graph_WriterEnter(Graph *g);
+
+/* Writer release access to graph. */
+void Graph_WriterLeave(Graph *g);
 
 /* Release the held lock */
 void Graph_ReleaseLock(Graph *g);

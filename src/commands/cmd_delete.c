@@ -98,4 +98,3 @@ int MGraph_Delete(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
     return REDISMODULE_OK;
 }
-
