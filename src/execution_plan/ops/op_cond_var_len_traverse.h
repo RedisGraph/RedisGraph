@@ -10,7 +10,7 @@
 
 #include "op.h"
 #include "../../graph/graph.h"
-#include "../../algorithms/algorithms.h"
+#include "../../algorithms/all_paths.h"
 #include "../../arithmetic/algebraic_expression.h"
 
 /* OP Traverse */
