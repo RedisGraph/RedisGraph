@@ -47,6 +47,7 @@ void _extractColumn(CondTraverse *op, const Record r) {
 
     GrB_Matrix_setElement_BOOL(op->F, true, srcId, 0);
 
+    /*
     // Append matrix to algebraic expression, as the right most operand.
     AlgebraicExpression_AppendTerm(op->algebraic_expression, op->F, false, false);
 
@@ -55,6 +56,7 @@ void _extractColumn(CondTraverse *op, const Record r) {
     
     // Remove operand.
     AlgebraicExpression_RemoveTerm(op->algebraic_expression, op->algebraic_expression->operand_count-1, NULL);
+    */
 
     if(op->iter == NULL) GxB_MatrixTupleIter_new(&op->iter, op->M);
     else GxB_MatrixTupleIter_reuse(op->iter, op->M);
@@ -63,7 +65,7 @@ void _extractColumn(CondTraverse *op, const Record r) {
     GxB_Matrix_Delete(op->F, srcId, 0);
 }
 
-OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *algebraic_expression) {
+OpBase* NewCondTraverseOp(Graph *g, AE_Unit *algebraic_expression) {
     CondTraverse *traverse = calloc(1, sizeof(CondTraverse));
     traverse->graph = g;
     traverse->algebraic_expression = algebraic_expression;
@@ -75,8 +77,9 @@ OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *algebraic_expression) {
     GrB_Matrix_new(&traverse->M, GrB_BOOL, Graph_RequiredMatrixDim(g), 1);
 
     AST *ast = AST_GetFromLTS();
-    traverse->srcNodeRecIdx = AST_GetAliasID(ast, algebraic_expression->src_node->alias);
-    traverse->destNodeRecIdx = AST_GetAliasID(ast, algebraic_expression->dest_node->alias);
+    // TODO src and dest not guaranteed to exist
+    traverse->srcNodeRecIdx = AST_GetAliasID(ast, algebraic_expression->src->alias);
+    traverse->destNodeRecIdx = AST_GetAliasID(ast, algebraic_expression->dest->alias);
     
     // Set our Op operations
     OpBase_Init(&traverse->op);
@@ -88,12 +91,12 @@ OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *algebraic_expression) {
     traverse->op.modifies = NewVector(char*, 1);
 
     char *modified = NULL;    
-    modified = traverse->algebraic_expression->dest_node->alias;
+    modified = algebraic_expression->dest->alias;
     Vector_Push(traverse->op.modifies, modified);
 
     if(algebraic_expression->edge) {
         _setupTraversedRelations(traverse);
-        modified = traverse->algebraic_expression->edge->alias;
+        modified = algebraic_expression->edge->alias;
         Vector_Push(traverse->op.modifies, modified);
         traverse->edges = array_new(Edge, 32);
         traverse->edgeRecIdx = AST_GetAliasID(ast, algebraic_expression->edge->alias);
@@ -155,15 +158,15 @@ Record CondTraverseConsume(OpBase *opBase) {
         // We're guarantee to have at least one edge.
         Node *srcNode;
         Node *destNode;
-        size_t operandCount = op->algebraic_expression->operand_count - 1;
+        // size_t operandCount = op->algebraic_expression->operand_count - 1;
 
-        if(op->algebraic_expression->operands[operandCount].transpose) {
-            srcNode = Record_GetNode(op->r, op->destNodeRecIdx);
-            destNode = Record_GetNode(op->r, op->srcNodeRecIdx);
-        } else {
+        // if(op->algebraic_expression->operands[operandCount].transpose) {
+            // srcNode = Record_GetNode(op->r, op->destNodeRecIdx);
+            // destNode = Record_GetNode(op->r, op->srcNodeRecIdx);
+        // } else {
             srcNode = Record_GetNode(op->r, op->srcNodeRecIdx);
             destNode = Record_GetNode(op->r, op->destNodeRecIdx);
-        }
+        // }
 
         for(int i = 0; i < op->edgeRelationCount; i++) {
             Graph_GetEdgesConnectingNodes(op->graph,
@@ -202,6 +205,6 @@ void CondTraverseFree(OpBase *ctx) {
     if(op->F) GrB_Matrix_free(&op->F);
     if(op->M) GrB_Matrix_free(&op->M);
     if(op->edges) array_free(op->edges);
-    if(op->algebraic_expression) AlgebraicExpression_Free(op->algebraic_expression);
+    // if(op->algebraic_expression) AlgebraicExpression_Free(op->algebraic_expression);
     if(op->edgeRelationTypes) array_free(op->edgeRelationTypes);
 }

@@ -430,15 +430,15 @@ AlgebraicExpressionNode* _AddNode(AlgebraicExpressionNode *root, Node *cur, Trie
   */
 }
 
-TrieMap* _referred_entities(const AST *ast) {
+TrieMap* _referred_entities(const AST *ast, const QueryGraph *qg) {
   TrieMap *ref_entities = NewTrieMap();
   ReturnClause_ReferredEntities(ast->returnNode, ref_entities);
   CreateClause_ReferredEntities(ast->createNode, ref_entities);
   WhereClause_ReferredEntities(ast->whereNode, ref_entities);
   DeleteClause_ReferredEntities(ast->deleteNode, ref_entities);    
   SetClause_ReferredEntities(ast->setNode, ref_entities);
-  // _referred_edge_ends(ref_entities, q);
-  // _referred_variable_length_edges(ref_entities, matchPattern, q);
+  _referred_edge_ends(ref_entities, qg);
+  _referred_variable_length_edges(ref_entities, ast->matchNode->_mergedPatterns, qg);
 
   return ref_entities;
 }
@@ -460,16 +460,6 @@ AE_Unit** e_AddNode(TrieMap *referred_entities, const AST *ast, int *visited, AE
       unit->dest = cur;
     }
   }
-
-  // Mapped full unit, start the next
-  if (unit->dest) {
-    AE_Unit *new_unit = rm_calloc(1, sizeof(AE_Unit));
-    units = array_append(units, new_unit);
-    unit = new_unit;
-    unit->exp_root = AlgebraicExpressionNode_NewOperationNode(AL_EXP_MUL);
-    unit->exp_leaf = unit->exp_root;
-    unit->src = cur;
-  }
   Edge *e;
   // Outgoing edges
   for (int i = 0; i < Vector_Size(cur->outgoing_edges); i ++) {
@@ -477,18 +467,28 @@ AE_Unit** e_AddNode(TrieMap *referred_entities, const AST *ast, int *visited, AE
     int edge_id = AST_GetAliasID(ast, e->alias);
     if (visited[edge_id] != -1) continue; // already used edge
     visited[edge_id] = 1;
+
+    // Mapped full unit, start the next
+    if (unit->dest) {
+      AE_Unit *new_unit = rm_calloc(1, sizeof(AE_Unit));
+      units = array_append(units, new_unit);
+      unit = new_unit;
+      unit->exp_root = AlgebraicExpressionNode_NewOperationNode(AL_EXP_MUL);
+      unit->exp_leaf = unit->exp_root;
+      unit->src = cur;
+    }
     // Referenced edge
-    referred = TrieMap_Find(referred_entities, e->alias, strlen(cur->alias));
+    referred = TrieMap_Find(referred_entities, e->alias, strlen(e->alias));
     if (referred != TRIEMAP_NOTFOUND) {
       // TODO deal with multiple referenced edges without referenced intermediate nodes
-      assert(unit->e == NULL);
-      unit->e = e;
+      assert(unit->edge == NULL);
+      unit->edge = e;
     }
     // TODO If edge is variable length or covers multiple relation types,
     // might want to handle that here
     AlgebraicExpressionNode *edge_matrix = AlgebraicExpressionNode_NewOperandNode(e, false);
     unit->exp_leaf = AlgebraicExpression_Append(unit->exp_leaf, edge_matrix);
-    e_AddNode(referred_entities, ast, visited, units, unit, e->dest);
+    units = e_AddNode(referred_entities, ast, visited, units, unit, e->dest);
   }
   return units;
 }
@@ -508,19 +508,10 @@ AE_Unit** _build_units(TrieMap *referred_entities, const AST *ast, int *visited,
   return units;
 }
 
-AE_Unit** AlgebraicExpression_FromComponent(const AST *ast, Node *src) {
-  // Handle single disconnected entity
-  if (Vector_Size(src->incoming_edges) == 0 && Vector_Size(src->outgoing_edges) == 0) {
-    // TODO src->mat is NULL if label is not provided, which does not break this call
-    // but has to be interpreted as an all node scan elsewhere (or improve logic)
-    // return AlgebraicExpressionNode_NewOperandNode(src, true);
-    // TODO bring back scans
-    return NULL;
-  }
+AE_Unit** AlgebraicExpression_FromComponent(const AST *ast, TrieMap *referred_entities, Node *src) {
   // TrieMap *unique_edges = NewTrieMap();
   // AlgebraicExpressionNode *exp = AlgebraicExpressionNode_NewOperationNode(AL_EXP_MUL);
   
-  TrieMap *referred_entities = _referred_entities(ast);
   // Move to ExecutionPlan to reuse visited array for all components
   int cardinality = ast->_aliasIDMapping->cardinality;
   int visited[cardinality];
@@ -533,16 +524,34 @@ AE_Unit** AlgebraicExpression_FromComponent(const AST *ast, Node *src) {
   return units;
 }
 
-AE_Unit*** AlgebraicExpression_BuildExps(const AST *ast, Vector *match_entities, const QueryGraph *qg, Node **starting_points, int component_count) {
+AE_Unit** _AE_ScanOp(Node *n) {
+  // TODO this is rather dumb, think of alternatives
+  AE_Unit **scan_container = array_new(AE_Unit*, 1);
+  AE_Unit *unit = rm_calloc(1, sizeof(AE_Unit));
+  unit->src = n;
+  scan_container = array_append(scan_container, unit);
+  return scan_container;
+}
+
+AE_Unit*** AlgebraicExpression_BuildExps(const AST *ast, const QueryGraph *qg, Node **starting_points, int component_count) {
     AE_Unit ***components  = array_new(AE_Unit**, component_count);
+    // Build triemap of entities that must be populated in the record
+    TrieMap *referred_entities = _referred_entities(ast, qg);
+
     for (int i = 0; i < component_count; i ++) {
-      // Each component is disjoint, and will be converted into 1 or more expressions.
-      // TODO can we make just one array, or does it have to be a nested array to separate disjoint components from
-      // interlinked expressions?
-      // Should that all be handled by this call?
-      AE_Unit **mapped_component = AlgebraicExpression_FromComponent(ast, starting_points[i]);
+      AE_Unit **mapped_component;
+      Node *src = starting_points[i];
+      if (Vector_Size(src->incoming_edges) == 0 && Vector_Size(src->outgoing_edges) == 0) {
+        // Handle single disconnected entity by creating a scan
+        mapped_component = _AE_ScanOp(src);
+      } else {
+        // Build 1 or more units to contain all necessary expressions
+        mapped_component = AlgebraicExpression_FromComponent(ast, referred_entities, src);
+      }
       components = array_append(components, mapped_component);
     }
+
+    // Debug print
     for (int i = 0; i < array_len(components); i ++) {
       printf("component %d\n", i);
       AE_Unit **component = components[i];

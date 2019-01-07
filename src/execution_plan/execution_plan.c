@@ -249,12 +249,40 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx,
         Node **starting_points = QueryGraph_ConnectedComponents(q, &component_count);
 
 
-        AE_Unit ***components = AlgebraicExpression_BuildExps(ast, ast->matchNode->_mergedPatterns, q, starting_points, component_count);
+        AE_Unit ***components = AlgebraicExpression_BuildExps(ast, q, starting_points, component_count);
 
         // For every connected component
         for (int i = 0; i < array_len(components); i ++) {
             AE_Unit **component_exps = components[i];
 
+            for (int j = 0; j < array_len(component_exps); j ++) {
+              AE_Unit *expression = component_exps[j];
+              if (expression->src && !expression->dest && !expression->edge) {
+                // Scan operation
+                if (expression->src->mat) { // Node is labeled
+                  op = NewNodeByLabelScanOp(gc, expression->src);
+                } else {
+                  op = NewAllNodeScanOp(g, expression->src);
+                }
+                Vector_Push(ops, op);
+              } else {
+                // Expression requires a traversal
+
+                // TODO choose an ideal starting place
+                // TODO Replace the first operand matrix with a node/label scan
+                // (optimize later for filters, nodes over labels, etc)
+                if (expression->src->mat) { // Node is labeled
+                  op = NewNodeByLabelScanOp(gc, expression->src);
+                } else {
+                  op = NewAllNodeScanOp(g, expression->src);
+                }
+                Vector_Push(ops, op);
+
+                // Push expression
+                OpBase *cond_traverse = NewCondTraverseOp(g, expression);
+                Vector_Push(ops, cond_traverse);
+              }
+            }
             /*
             if (AlgebraicExpression_OperandCount(tree) == 1) {
               // Expression has only one operand, perform a scan

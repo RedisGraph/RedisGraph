@@ -51,7 +51,7 @@ typedef struct {
   AlgebraicExpressionNode *exp_leaf;
   Node *src;
   Node *dest;
-  Edge *e;
+  Edge *edge;
 } AE_Unit;
 
 AlgebraicExpressionNode* AlgebraicExpression_Append(AlgebraicExpressionNode *root, AlgebraicExpressionNode *child);
@@ -86,7 +86,7 @@ typedef struct {
     AST_LinkLength *edgeLength;             // Repeatable edge length.
 } AlgebraicExpression;
 
-AE_Unit*** AlgebraicExpression_BuildExps(const AST *ast, Vector *match_entities, const QueryGraph *q, Node **starting_points, int component_count);
+AE_Unit*** AlgebraicExpression_BuildExps(const AST *ast, const QueryGraph *q, Node **starting_points, int component_count);
 
 /* Construct an algebraic expression from a query. */
 AlgebraicExpression **AlgebraicExpression_From_Query(const AST *ast, Vector *matchPattern, const QueryGraph *q, size_t *exp_count);
