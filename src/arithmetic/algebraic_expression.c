@@ -382,7 +382,7 @@ AlgebraicExpressionNode* AlgebraicExpression_Pop(AlgebraicExpressionNode **root)
   return ret;
 }
 
-AlgebraicExpressionNode* _append(AlgebraicExpressionNode *root, AlgebraicExpressionNode *child) {
+AlgebraicExpressionNode* AlgebraicExpression_Append(AlgebraicExpressionNode *root, AlgebraicExpressionNode *child) {
     assert(root && root->type == AL_OPERATION);
     assert(root->operation.r == NULL);
     if (root->operation.l == NULL) {
@@ -399,7 +399,7 @@ AlgebraicExpressionNode* _append(AlgebraicExpressionNode *root, AlgebraicExpress
 AlgebraicExpressionNode* _AddNode(AlgebraicExpressionNode *root, Node *cur, TrieMap *unique_edges) {
   // TODO only need to add node matrix on start and end of expression
   AlgebraicExpressionNode *node_matrix = AlgebraicExpressionNode_NewOperandNode(cur, true);
-  root = _append(root, node_matrix);
+  root = AlgebraicExpression_Append(root, node_matrix);
 
   Edge *e;
   // Outgoing edges
@@ -409,7 +409,7 @@ AlgebraicExpressionNode* _AddNode(AlgebraicExpressionNode *root, Node *cur, Trie
     // TODO If edge is variable length or covers multiple relation types,
     // might want to handle that here
     AlgebraicExpressionNode *edge_matrix = AlgebraicExpressionNode_NewOperandNode(e, false);
-    root = _append(root, edge_matrix);
+    root = AlgebraicExpression_Append(root, edge_matrix);
     root = _AddNode(root, e->dest, unique_edges);
   }
 
@@ -423,7 +423,7 @@ AlgebraicExpressionNode* _AddNode(AlgebraicExpressionNode *root, Node *cur, Trie
     AlgebraicExpressionNode *trans = AlgebraicExpressionNode_NewOperationNode(AL_EXP_TRANSPOSE);
     AlgebraicExpressionNode *edge_matrix = AlgebraicExpressionNode_NewOperandNode(e, false);
     AlgebraicExpressionNode_AppendLeftChild(trans, edge_matrix);
-    root = _append(root, trans);
+    root = AlgebraicExpression_Append(root, trans);
 
     _AddNode(root, e->src, unique_edges);
   }

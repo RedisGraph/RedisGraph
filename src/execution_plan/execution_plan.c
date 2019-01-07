@@ -279,6 +279,9 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx,
                 op = NewAllNodeScanOp(g, n);
               }
               Vector_Push(ops, op);
+
+              // Push expression
+              OpBase *cond_traverse = NewCondTraverseOp(g, tree, n->alias);
             }
         
         }

@@ -18,7 +18,7 @@
 typedef struct {
     OpBase op;
     Graph *graph;
-    AlgebraicExpression *algebraic_expression;
+    AlgebraicExpressionNode *algebraic_expression;
     GrB_Matrix F;
     GrB_Matrix M;
     int *edgeRelationTypes; // One or more relation types.
@@ -32,7 +32,7 @@ typedef struct {
 } CondTraverse;
 
 /* Creates a new Traverse operation */
-OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *algebraic_expression);
+OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpressionNode *algebraic_expression);
 
 /* TraverseConsume next operation 
  * each call will update the graph

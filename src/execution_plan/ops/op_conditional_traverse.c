@@ -41,6 +41,8 @@ static int _CondTraverse_SetEdge(CondTraverse *op, Record r) {
     return 1;
 }
 
+extern void _AlgebraicExpression_Execute_MUL(GrB_Matrix C, GrB_Matrix A, GrB_Matrix B, GrB_Descriptor desc);
+
 void _extractColumn(CondTraverse *op, const Record r) {
     Node *n = Record_GetNode(r, op->srcNodeRecIdx);
     NodeID srcId = ENTITY_GET_ID(n);
@@ -48,14 +50,17 @@ void _extractColumn(CondTraverse *op, const Record r) {
     GrB_Matrix_setElement_BOOL(op->F, true, srcId, 0);
 
     // Append matrix to algebraic expression, as the right most operand.
-    AlgebraicExpression_AppendTerm(op->algebraic_expression, op->F, false, false);
+    // AlgebraicExpression_Append(op->algebraic_expression, op->F, false, false);
 
     // Evaluate expression.
-    AlgebraicExpression_Execute(op->algebraic_expression, op->M);
-    
-    // Remove operand.
-    AlgebraicExpression_RemoveTerm(op->algebraic_expression, op->algebraic_expression->operand_count-1, NULL);
+    GrB_Matrix res;
+    // TODO bad approach, should start with op->F matrix
+    AlgebraicExpression_Eval(op->algebraic_expression, res);
 
+    // TODO dunno if this works?
+    GrB_Descriptor desc;
+    GrB_Descriptor_new(&desc);
+    _AlgebraicExpression_Execute_MUL(res, res, op->F, desc);
     if(op->iter == NULL) GxB_MatrixTupleIter_new(&op->iter, op->M);
     else GxB_MatrixTupleIter_reuse(op->iter, op->M);
 
@@ -63,7 +68,7 @@ void _extractColumn(CondTraverse *op, const Record r) {
     GxB_Matrix_Delete(op->F, srcId, 0);
 }
 
-OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *algebraic_expression) {
+OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpressionNode *algebraic_expression) {
     CondTraverse *traverse = calloc(1, sizeof(CondTraverse));
     traverse->graph = g;
     traverse->algebraic_expression = algebraic_expression;
@@ -87,8 +92,7 @@ OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *algebraic_expression) {
     traverse->op.free = CondTraverseFree;
     traverse->op.modifies = NewVector(char*, 1);
 
-    char *modified = NULL;    
-    modified = traverse->algebraic_expression->dest_node->alias;
+    char *modified = traverse->algebraic_expression->dest_node->alias;
     Vector_Push(traverse->op.modifies, modified);
 
     if(algebraic_expression->edge) {
@@ -202,6 +206,6 @@ void CondTraverseFree(OpBase *ctx) {
     if(op->F) GrB_Matrix_free(&op->F);
     if(op->M) GrB_Matrix_free(&op->M);
     if(op->edges) array_free(op->edges);
-    if(op->algebraic_expression) AlgebraicExpression_Free(op->algebraic_expression);
+    if(op->algebraic_expression) AlgebraicExpressionNode_Free(op->algebraic_expression);
     if(op->edgeRelationTypes) array_free(op->edgeRelationTypes);
 }
