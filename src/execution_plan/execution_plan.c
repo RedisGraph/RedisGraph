@@ -249,12 +249,13 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx,
         Node **starting_points = QueryGraph_ConnectedComponents(q, &component_count);
 
 
-        AlgebraicExpressionNode **ae_trees = AlgebraicExpression_BuildExps(ast, ast->matchNode->_mergedPatterns, q, starting_points, component_count);
+        AE_Unit ***components = AlgebraicExpression_BuildExps(ast, ast->matchNode->_mergedPatterns, q, starting_points, component_count);
 
         // For every connected component
-        for (int i = 0; i < array_len(ae_trees); i ++) {
-            AlgebraicExpressionNode *tree = ae_trees[i];
+        for (int i = 0; i < array_len(components); i ++) {
+            AE_Unit **component_exps = components[i];
 
+            /*
             if (AlgebraicExpression_OperandCount(tree) == 1) {
               // Expression has only one operand, perform a scan
               AlgebraicExpressionNode *en = AlgebraicExpression_Pop(&tree);
@@ -281,8 +282,9 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx,
               Vector_Push(ops, op);
 
               // Push expression
-              OpBase *cond_traverse = NewCondTraverseOp(g, tree, n->alias);
+              // OpBase *cond_traverse = NewCondTraverseOp(g, tree, n->alias);
             }
+            */
         
         }
 
