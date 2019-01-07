@@ -5576,9 +5576,11 @@ GrB_Info GxB_Vector_fprint          // print and check a GrB_Vector
         const bool *y
     )
     {
+        (void)(x);
+        (void)(y);
         (*z) = true ;
     }
-    
+
     static inline void rg_bmul
     (
         bool *z,
@@ -5586,6 +5588,8 @@ GrB_Info GxB_Vector_fprint          // print and check a GrB_Vector
         const bool *y
     )
     {
+        (void)(x);
+        (void)(y);
         (*z) = true ;
     }
 

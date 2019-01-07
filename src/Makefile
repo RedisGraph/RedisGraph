@@ -19,8 +19,8 @@ CFLAGS += $(DEBUGFLAGS)
 ifeq ($(uname_S),Linux)
 	SHOBJ_LDFLAGS ?= -shared -Bsymbolic -Bsymbolic-functions -fopenmp -ldl -lpthread
 else
-	CFLAGS += -mmacosx-version-min=10.12 -Xpreprocessor -fopenmp
-	SHOBJ_LDFLAGS ?= -mmacosx-version-min=10.12 -bundle -undefined dynamic_lookup -lomp -ldl -lpthread
+	CFLAGS += -mmacosx-version-min=10.14 -Xpreprocessor -fopenmp
+	SHOBJ_LDFLAGS ?= -mmacosx-version-min=10.14 -bundle -undefined dynamic_lookup -lomp -ldl -lpthread
 
 	# If we are using the Apple toolchain compiler, some extra work is required to validate dependencies.
 	compiler := $(findstring Apple LLVM,$(shell sh -c '$(CC) --version'))
@@ -82,12 +82,22 @@ GRAPHBLAS=../deps/GraphBLAS/build/libgraphblas.a
 LIBS=$(LIBTRIEMAP) $(GRAPHBLAS)
 MODULE=$(CC_OBJECTS) $(LIBS)
 
+REDISGRAPH_CC=$(QUIET_CC)$(CC)
+
+CCCOLOR="\033[34m"
+SRCCOLOR="\033[33m"
+ENDCOLOR="\033[0m"
+
+ifndef V
+QUIET_CC = @printf '    %b %b\n' $(CCCOLOR)CC$(ENDCOLOR) $(SRCCOLOR)$@$(ENDCOLOR) 1>&2;
+endif
+
 %.c: %.y
 
 # Compile C file while generating a .d file for it
 %.o: %.c
 %.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@ -MMD -MF $(@:.o=.d)
+	$(REDISGRAPH_CC) $(CFLAGS) -c $< -o $@ -MMD -MF $(@:.o=.d)
 
 all: redisgraph.so
 
@@ -99,9 +109,12 @@ $(LIBTRIEMAP):
 .PHONY: $(LIBTRIEMAP)
 
 BLAS_CFLAGS = -fPIC -I $(abs_path)/util -include rmalloc.h -DREDIS_MODULE_TARGET -DGB_MALLOC=rm_malloc -DGB_CALLOC=rm_calloc -DGB_REALLOC=rm_realloc -DGB_FREE=rm_free -DGBCOMPACT
-$(GRAPHBLAS):
-	$(MAKE) CMAKE_OPTIONS="-DJOBS=32 -DUSER_POSIX=1 -DCMAKE_CXX_FLAGS=-std=c++11 -DCMAKE_C_FLAGS='$(BLAS_CFLAGS)'" static_only -C ../deps/GraphBLAS
 
+# Build GraphBLAS only if library does not already exists.
+$(GRAPHBLAS):
+ifeq (,$(wildcard $(GRAPHBLAS)))
+	$(MAKE) CMAKE_OPTIONS="-DUSER_POSIX=1 -DCMAKE_CXX_FLAGS=-std=c++11 -DCMAKE_C_FLAGS='$(BLAS_CFLAGS)'" static_only -C ../deps/GraphBLAS
+endif
 .PHONY: $(GRAPHBLAS)
 
 # Compile query parse. 
@@ -112,7 +125,7 @@ parser:
 
 # Build the module...
 redisgraph.so: $(MODULE)
-	$(CC) -o $@ $(MODULE) $(SHOBJ_LDFLAGS) -lc -lm
+	$(REDISGRAPH_CC) -o $@ $(MODULE) $(SHOBJ_LDFLAGS) -lc -lm
 
 clean:
 	find . -name '*.[oad]' -type f -delete
@@ -122,10 +135,10 @@ package: redisgraph.so
 	mkdir -p ../build
 	ramp pack -m "`pwd`/../ramp_manifest.yml" -v -o "../build/redisgraph.{os}-{architecture}.latest.zip" "`pwd`/redisgraph.so"
 
-test: $(MODULE) redisgraph.so
+test: redisgraph.so
 	# unit tests
 	$(MAKE) -C ../tests test
 
-test_valgrind: $(MODULE) redisgraph.so
+test_valgrind: redisgraph.so
 	# Run unit tests under Valgrind
 	$(MAKE) -C ../tests test_valgrind
