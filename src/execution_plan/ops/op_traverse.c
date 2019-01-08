@@ -24,7 +24,7 @@ OpResult _Traverse_SetEdge(Traverse *op, Record *r) {
     return OP_OK;
 }
 
-OpBase* NewTraverseOp(Graph *g, AlgebraicExpression *ae) {
+OpBase* NewTraverseOp(Graph *g, AE_Unit *ae) {
     printf("Op traverse is currently disabled!\n");
     assert(false);
     Traverse *traverse = calloc(1, sizeof(Traverse));

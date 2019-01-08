@@ -251,97 +251,39 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx,
 
         AE_Unit ***components = AlgebraicExpression_BuildExps(ast, q, starting_points, component_count);
 
+        if (array_len(components) > 1) {
+            // Insert a Cartesian Product root if we're traversing multiple independent patterns
+            OpBase *cartesianProduct = NewCartesianProductOp();
+            Vector_Push(ops, cartesianProduct);
+        }
+
         // For every connected component
         for (int i = 0; i < array_len(components); i ++) {
             AE_Unit **component_exps = components[i];
 
+            // Add a scan operation
+            if (component_exps[0]->src->mat) { // Node is labeled
+              op = NewNodeByLabelScanOp(gc, component_exps[0]->src);
+            } else {
+              op = NewAllNodeScanOp(g, component_exps[0]->src);
+            }
+            Vector_Push(ops, op);
+
             for (int j = 0; j < array_len(component_exps); j ++) {
               AE_Unit *expression = component_exps[j];
-              if (expression->src && !expression->dest && !expression->edge) {
-                // Scan operation
-                if (expression->src->mat) { // Node is labeled
-                  op = NewNodeByLabelScanOp(gc, expression->src);
-                } else {
-                  op = NewAllNodeScanOp(g, expression->src);
-                }
-                Vector_Push(ops, op);
-              } else {
-                // Expression requires a traversal
-
-                // TODO choose an ideal starting place
-                // TODO Replace the first operand matrix with a node/label scan
-                // (optimize later for filters, nodes over labels, etc)
-                if (expression->src->mat) { // Node is labeled
-                  op = NewNodeByLabelScanOp(gc, expression->src);
-                } else {
-                  op = NewAllNodeScanOp(g, expression->src);
-                }
-                Vector_Push(ops, op);
-
-                // Push expression
-                OpBase *cond_traverse = NewCondTraverseOp(g, expression);
-                Vector_Push(ops, cond_traverse);
+              if (j == 0 && !expression->dest && !expression->edge) {
+                // This was just a scan, no traversal required
+                continue;
               }
-            }
-            /*
-            if (AlgebraicExpression_OperandCount(tree) == 1) {
-              // Expression has only one operand, perform a scan
-              AlgebraicExpressionNode *en = AlgebraicExpression_Pop(&tree);
-              Node *n = en->operand.entity;
-              if (n->mat) { // Node is labeled
-                op = NewNodeByLabelScanOp(gc, n);
-              } else {
-                op = NewAllNodeScanOp(g, n);
-              }
-              Vector_Push(ops, op);
-            } else {
-              // Expression requires a traversal
-
               // TODO choose an ideal starting place
               // TODO Replace the first operand matrix with a node/label scan
               // (optimize later for filters, nodes over labels, etc)
-              AlgebraicExpressionNode *en = AlgebraicExpression_Pop(&tree);
-              Node *n = en->operand.entity;
-              if (n->mat) { // Node is labeled
-                op = NewNodeByLabelScanOp(gc, n);
-              } else {
-                op = NewAllNodeScanOp(g, n);
-              }
-              Vector_Push(ops, op);
 
-              // Push expression
-              // OpBase *cond_traverse = NewCondTraverseOp(g, tree, n->alias);
+              // Push traversal operation onto stack
+              OpBase *cond_traverse = NewCondTraverseOp(g, expression);
+              Vector_Push(ops, cond_traverse);
             }
-            */
-        
         }
-
-
-        /*
-           for every component:
-             - choose a starting point 
-             - remove matrix operand of starting point
-             - replace with scan of appropriate type
-             
-             have we already divided each component into multiple trees if necessary?
-             if not:
-             - traverse tree and divide into multiple trees when:
-               - an intermediate entity is referenced
-               - a variable length path is found
-               (this requires reference to AST, should probably access by making triemap with AST entities as values?)
-             - add one traversal for each tree
-             - add var length traversals when appropriate
-             - when a tree consists of just one operand, it's a scan. if it has no matrix, it's an AllNodeScan
-               (might be better ways to do this)
-
-             TODO multiple edge types?
-             if there are more than one AlgebraicExpressionNode trees in component
-             OR we break down th
-             for every set of AlgebraicExpressionNode trees in component:
-               - place a 
-               
-
-         */
     }
 
     if(ast->unwindNode) {

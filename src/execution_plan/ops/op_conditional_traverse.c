@@ -47,6 +47,11 @@ void _extractColumn(CondTraverse *op, const Record r) {
 
     GrB_Matrix_setElement_BOOL(op->F, true, srcId, 0);
 
+    GrB_Matrix res;
+    // TODO appropriate method?
+    GrB_Index dim = Graph_RequiredMatrixDim(op->graph);
+    GrB_Matrix_new(&res, GrB_BOOL, dim, dim);
+    AlgebraicExpression_Eval(op->algebraic_expression->exp_root, op->F, res);
     /*
     // Append matrix to algebraic expression, as the right most operand.
     AlgebraicExpression_AppendTerm(op->algebraic_expression, op->F, false, false);
@@ -77,9 +82,11 @@ OpBase* NewCondTraverseOp(Graph *g, AE_Unit *algebraic_expression) {
     GrB_Matrix_new(&traverse->M, GrB_BOOL, Graph_RequiredMatrixDim(g), 1);
 
     AST *ast = AST_GetFromLTS();
-    // TODO src and dest not guaranteed to exist
-    traverse->srcNodeRecIdx = AST_GetAliasID(ast, algebraic_expression->src->alias);
-    traverse->destNodeRecIdx = AST_GetAliasID(ast, algebraic_expression->dest->alias);
+    // TODO src and dest not guaranteed to exist, figure out how to handle this
+    // assert(traverse->srcNodeRecIdx);
+    // assert(traverse->destNodeRecIdx);
+    if (algebraic_expression->src) traverse->srcNodeRecIdx = AST_GetAliasID(ast, algebraic_expression->src->alias);
+    if (algebraic_expression->dest) traverse->destNodeRecIdx = AST_GetAliasID(ast, algebraic_expression->dest->alias);
     
     // Set our Op operations
     OpBase_Init(&traverse->op);
@@ -91,7 +98,7 @@ OpBase* NewCondTraverseOp(Graph *g, AE_Unit *algebraic_expression) {
     traverse->op.modifies = NewVector(char*, 1);
 
     char *modified = NULL;    
-    modified = algebraic_expression->dest->alias;
+    if (algebraic_expression->dest) modified = algebraic_expression->dest->alias;
     Vector_Push(traverse->op.modifies, modified);
 
     if(algebraic_expression->edge) {
