@@ -18,7 +18,7 @@
 typedef struct {
     OpBase op;
     Graph *graph;
-    AlgebraicExpression *algebraic_expression;
+    // AlgebraicExpression *algebraic_expression;
     int edgeRelationType;
     Edge *edges;    
     GxB_MatrixTupleIter *it;

@@ -33,20 +33,21 @@ static void _setupTraversedRelations(CondVarLenTraverse *op) {
     }
 }
 
-OpBase* NewCondVarLenTraverseOp(AlgebraicExpression *ae, unsigned int minHops, unsigned int maxHops, Graph *g) {
-    assert(ae && minHops <= maxHops && g && ae->operand_count == 1);
+OpBase* NewCondVarLenTraverseOp(AE_Unit *ae, unsigned int minHops, unsigned int maxHops, Graph *g) {
+    assert(ae && minHops <= maxHops && g);
     AST *ast = AST_GetFromLTS();
 
     CondVarLenTraverse *condVarLenTraverse = malloc(sizeof(CondVarLenTraverse));
     condVarLenTraverse->g = g;
     condVarLenTraverse->ae = ae;
     condVarLenTraverse->relationIDs = NULL;
-    condVarLenTraverse->srcNodeIdx = AST_GetAliasID(ast, ae->src_node->alias);
-    condVarLenTraverse->destNodeIdx = AST_GetAliasID(ast, ae->dest_node->alias);
+    condVarLenTraverse->srcNodeIdx = AST_GetAliasID(ast, ae->src->alias);
+    condVarLenTraverse->destNodeIdx = AST_GetAliasID(ast, ae->dest->alias);
     condVarLenTraverse->minHops = minHops;
     condVarLenTraverse->maxHops = maxHops;
     condVarLenTraverse->allPathsCtx = NULL;
-    condVarLenTraverse->traverseDir = (ae->operands[0].transpose) ? GRAPH_EDGE_DIR_INCOMING : GRAPH_EDGE_DIR_OUTGOING;
+    // TODO ?
+    // condVarLenTraverse->traverseDir = (ae->operands[0].transpose) ? GRAPH_EDGE_DIR_INCOMING : GRAPH_EDGE_DIR_OUTGOING;
     condVarLenTraverse->r = NULL;
 
     _setupTraversedRelations(condVarLenTraverse);
@@ -61,7 +62,7 @@ OpBase* NewCondVarLenTraverseOp(AlgebraicExpression *ae, unsigned int minHops, u
     condVarLenTraverse->op.modifies = NewVector(char*, 1);
 
     const char *modified = NULL;
-    modified = ae->dest_node->alias;
+    modified = ae->dest->alias;
     Vector_Push(condVarLenTraverse->op.modifies, modified);
 
     return (OpBase*)condVarLenTraverse;
@@ -110,7 +111,8 @@ OpResult CondVarLenTraverseReset(OpBase *ctx) {
 void CondVarLenTraverseFree(OpBase *ctx) {
     CondVarLenTraverse *op = (CondVarLenTraverse*)ctx;
     array_free(op->relationIDs);
-    AlgebraicExpression_Free(op->ae);
+    // TODO
+    // AlgebraicExpression_Free(op->ae);
     if(op->r) Record_Free(op->r);
     if(op->allPathsCtx) AllPathsCtx_Free(op->allPathsCtx);
 }
