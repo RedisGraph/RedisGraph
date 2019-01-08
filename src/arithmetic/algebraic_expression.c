@@ -456,11 +456,17 @@ static GrB_Matrix _AlgebraicExpression_Eval_MUL(AlgebraicExpressionNode *exp, Gr
     GrB_Matrix r = _AlgebraicExpression_Eval(exp->operation.r, res);
     GrB_Matrix l = _AlgebraicExpression_Eval(exp->operation.l, res);
 
+    if (l == NULL && r == NULL) assert(0);
     if (r == NULL) {
-      GrB_Matrix_dup(&res, l);
+      GrB_Matrix_dup(&res, l); // TODO dup possibly unnecessary, might want to shrink tree so this doesn't happen regardless
       return res;
     }
     // Perform multiplication.
+    GrB_Index ncols;
+    GrB_Matrix_ncols(&ncols, l);
+    printf("left: %lu\n", ncols);
+    GrB_Matrix_ncols(&ncols, r);
+    printf("right: %lu\n", ncols);
     assert(GrB_mxm(res, NULL, NULL, Rg_structured_bool, l, r, desc) == GrB_SUCCESS);
 
     // Store intermidate if expression is marked for reuse.
@@ -504,9 +510,39 @@ static GrB_Matrix _AlgebraicExpression_Eval(AlgebraicExpressionNode *exp, GrB_Ma
     return res;
 }
 
+AlgebraicExpressionNode** _append_nofail(AlgebraicExpressionNode *root, AlgebraicExpressionNode *child) {
+    assert(root && root->type == AL_OPERATION);
+    if (root->operation.l == NULL) {
+      AlgebraicExpressionNode_AppendLeftChild(root, child);
+      return &root->operation.l;
+    }
+
+    if (root->operation.r == NULL) {
+      AlgebraicExpressionNode_AppendRightChild(root, child);
+      return &root->operation.r;
+    }
+
+    if (root->operation.r->type == AL_OPERATION) {
+      return _append_nofail(root->operation.r, child);
+    } else {
+      AlgebraicExpressionNode *inner = AlgebraicExpressionNode_NewOperationNode(AL_EXP_MUL);
+      AlgebraicExpressionNode_AppendLeftChild(inner, root->operation.r);
+      AlgebraicExpressionNode_AppendRightChild(inner, child);
+      root->operation.r = inner;
+      return &inner->operation.r;
+    }
+}
+
 void AlgebraicExpression_Eval(AlgebraicExpressionNode *exp, GrB_Matrix filter, GrB_Matrix res) {
     // If filter matrix is provided, it will be used as the first operand.
+    // TODO it would be nice to use filter without append/remove logic
+    AlgebraicExpressionNode *f = rm_malloc(sizeof(AlgebraicExpressionNode));
+    f->type = AL_OPERAND;
+    f->operand.mat = filter;
+    AlgebraicExpressionNode **to_remove = _append_nofail(exp, f);
     _AlgebraicExpression_Eval(exp, res);
+    rm_free(f);
+    *to_remove = NULL;
 }
 
 static void _AlgebraicExpressionNode_UniqueNodes(AlgebraicExpressionNode *root, AlgebraicExpressionNode ***uniqueNodes) {

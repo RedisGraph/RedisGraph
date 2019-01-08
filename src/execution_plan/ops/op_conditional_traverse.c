@@ -50,7 +50,7 @@ void _extractColumn(CondTraverse *op, const Record r) {
     GrB_Matrix res;
     // TODO appropriate method?
     GrB_Index dim = Graph_RequiredMatrixDim(op->graph);
-    GrB_Matrix_new(&res, GrB_BOOL, dim, dim);
+    GrB_Matrix_new(&res, GrB_BOOL, dim, 1);
     AlgebraicExpression_Eval(op->algebraic_expression->exp_root, op->F, res);
     /*
     // Append matrix to algebraic expression, as the right most operand.
