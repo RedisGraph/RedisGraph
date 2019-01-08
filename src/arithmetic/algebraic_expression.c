@@ -247,7 +247,7 @@ AE_Unit** _AE_ScanOp(Node *n) {
 }
 
 AE_Unit*** AlgebraicExpression_BuildExps(const AST *ast, const QueryGraph *qg, Node **starting_points, int component_count) {
-    AE_Unit ***components  = array_new(AE_Unit**, component_count);
+    AE_Unit ***components  = rm_malloc(component_count * sizeof(AE_Unit**));
     // Build triemap of entities that must be populated in the record
     TrieMap *referred_entities = _referred_entities(ast, qg);
 
@@ -261,11 +261,11 @@ AE_Unit*** AlgebraicExpression_BuildExps(const AST *ast, const QueryGraph *qg, N
         // Build 1 or more units to contain all necessary expressions
         mapped_component = AlgebraicExpression_FromComponent(ast, referred_entities, src);
       }
-      components = array_append(components, mapped_component);
+      components[i] = mapped_component;
     }
 
     // Debug print
-    for (int i = 0; i < array_len(components); i ++) {
+    for (int i = 0; i < component_count; i ++) {
       printf("component %d\n", i);
       AE_Unit **component = components[i];
       for (int j = 0; j < array_len(component); j ++) {
@@ -456,6 +456,10 @@ static GrB_Matrix _AlgebraicExpression_Eval_MUL(AlgebraicExpressionNode *exp, Gr
     GrB_Matrix r = _AlgebraicExpression_Eval(exp->operation.r, res);
     GrB_Matrix l = _AlgebraicExpression_Eval(exp->operation.l, res);
 
+    if (r == NULL) {
+      GrB_Matrix_dup(&res, l);
+      return res;
+    }
     // Perform multiplication.
     assert(GrB_mxm(res, NULL, NULL, Rg_structured_bool, l, r, desc) == GrB_SUCCESS);
 

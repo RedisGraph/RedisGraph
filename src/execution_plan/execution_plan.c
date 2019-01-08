@@ -248,17 +248,20 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx,
         int component_count;
         Node **starting_points = QueryGraph_ConnectedComponents(q, &component_count);
 
-
         AE_Unit ***components = AlgebraicExpression_BuildExps(ast, q, starting_points, component_count);
 
-        if (array_len(components) > 1) {
+        OpBase *cartesianProduct = NULL;
+        if (component_count > 1) {
             // Insert a Cartesian Product root if we're traversing multiple independent patterns
-            OpBase *cartesianProduct = NewCartesianProductOp();
+            cartesianProduct = NewCartesianProductOp();
             Vector_Push(ops, cartesianProduct);
         }
 
+        // Keep track after all traversal operations along a pattern.
+        Vector *traversals = NewVector(OpBase*, component_count);
+
         // For every connected component
-        for (int i = 0; i < array_len(components); i ++) {
+        for (int i = 0; i < component_count; i ++) {
             AE_Unit **component_exps = components[i];
 
             // Add a scan operation
@@ -267,7 +270,7 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx,
             } else {
               op = NewAllNodeScanOp(g, component_exps[0]->src);
             }
-            Vector_Push(ops, op);
+            Vector_Push(traversals, op);
 
             for (int j = 0; j < array_len(component_exps); j ++) {
               AE_Unit *expression = component_exps[j];
@@ -281,9 +284,29 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx,
 
               // Push traversal operation onto stack
               OpBase *cond_traverse = NewCondTraverseOp(g, expression);
-              Vector_Push(ops, cond_traverse);
+              Vector_Push(traversals, cond_traverse);
             }
+
+            if(component_count > 1) {
+                // Connect traversal operations.
+                OpBase *childOp;
+                OpBase *parentOp;
+                Vector_Pop(traversals, &parentOp);
+                // Connect cartesian product to the root of traversal.
+                _OpBase_AddChild(cartesianProduct, parentOp);
+                while(Vector_Pop(traversals, &childOp)) {
+                    _OpBase_AddChild(parentOp, childOp);
+                    parentOp = childOp;
+                }
+            } else {
+                for(int traversalIdx = 0; traversalIdx < Vector_Size(traversals); traversalIdx++) {
+                    Vector_Get(traversals, traversalIdx, &op);
+                    Vector_Push(ops, op);
+                }
+            }
+            Vector_Clear(traversals);
         }
+        Vector_Free(traversals);
     }
 
     if(ast->unwindNode) {
