@@ -18,10 +18,12 @@ QueryContext* _queryContext_New(RedisModuleBlockedClient *bc, AST* ast, RedisMod
     context->bc = bc;
     context->ast = ast;
     context->graphName = graphName;
+    RedisModule_RetainString(NULL, context->graphName);
     return context;
 }
 
 void _queryContext_Free(QueryContext* ctx) {
+    RedisModule_FreeString(NULL, ctx->graphName);
     free(ctx);
 }
 
