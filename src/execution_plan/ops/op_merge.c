@@ -76,8 +76,11 @@ static void _CommitNodes(OpMerge *op, Record r) {
                 }
 
                 GraphEntity_Add_Properties((GraphEntity*)n, propCount, keys, values);
-                // Update tracked schema.
-                if(store) LabelStore_UpdateSchema(store, propCount, keys);
+                // Update tracked schema and add node to any matching indices.
+                if(store) {
+                    LabelStore_UpdateSchema(store, propCount, keys);
+                    GraphContext_AddNodeToIndices(op->gc, store, n);
+                }
                 LabelStore_UpdateSchema(allStore, propCount, keys);
                 op->result_set->stats.properties_set += propCount;
             }

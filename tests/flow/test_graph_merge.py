@@ -210,5 +210,36 @@ class GraphMergeFlowTest(FlowTestsBase):
         assert(result.properties_set == 3)
         assert(result.relationships_created == 2)
 
+    # Add node that matches pre-existing index
+    def test15_merge_indexed_entity(self):
+        global redis_graph
+        # Create index
+        query = """CREATE INDEX ON :person(age)"""
+        redis_graph.query(query)
+
+        count_query = """MATCH (p:person) WHERE p.age > 0 RETURN COUNT(p)"""
+        result = redis_graph.query(count_query)
+        original_count  = float(result.result_set[1][0])
+
+        # Add onne new person
+        merge_query = """MERGE (p:person {age:40})"""
+        result = redis_graph.query(merge_query)
+        assert(result.nodes_created == 1)
+        assert(result.properties_set == 1)
+
+        # Verify that one indexed node has been added
+        result = redis_graph.query(count_query)
+        updated_count = float(result.result_set[1][0])
+        assert(updated_count == original_count + 1)
+
+        # Perform another merge that does not create an entity
+        result = redis_graph.query(merge_query)
+        assert(result.nodes_created == 0)
+
+        # Verify that indexed node count is unchanged
+        result = redis_graph.query(count_query)
+        updated_count = float(result.result_set[1][0])
+        assert(updated_count == original_count + 1)
+
 if __name__ == '__main__':
     unittest.main()
