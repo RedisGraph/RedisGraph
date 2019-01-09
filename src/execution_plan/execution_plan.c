@@ -258,7 +258,7 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx,
         }
 
         // Keep track after all traversal operations along a pattern.
-        Vector *traversals = NewVector(OpBase*, component_count);
+        Vector *traversals = NewVector(OpBase*, 1);
 
         // For every connected component
         for (int i = 0; i < component_count; i ++) {
@@ -274,10 +274,9 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx,
 
             for (int j = 0; j < array_len(component_exps); j ++) {
               AE_Unit *expression = component_exps[j];
-              if (j == 0 && !expression->dest && !expression->edge) {
-                // This was just a scan, no traversal required
-                continue;
-              }
+              // This was just a scan, no traversal required
+              if (expression->exp_root == NULL) continue;
+
               // TODO choose an ideal starting place
               // TODO Replace the first operand matrix with a node/label scan
               // (optimize later for filters, nodes over labels, etc)

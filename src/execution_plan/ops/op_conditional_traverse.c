@@ -48,20 +48,9 @@ void _extractColumn(CondTraverse *op, const Record r) {
     GrB_Matrix_setElement_BOOL(op->F, true, srcId, 0);
 
     GrB_Matrix res;
-    // TODO appropriate method?
     GrB_Index dim = Graph_RequiredMatrixDim(op->graph);
     GrB_Matrix_new(&res, GrB_BOOL, dim, 1);
-    AlgebraicExpression_Eval(op->algebraic_expression->exp_root, op->F, res);
-    /*
-    // Append matrix to algebraic expression, as the right most operand.
-    AlgebraicExpression_AppendTerm(op->algebraic_expression, op->F, false, false);
-
-    // Evaluate expression.
-    AlgebraicExpression_Execute(op->algebraic_expression, op->M);
-    
-    // Remove operand.
-    AlgebraicExpression_RemoveTerm(op->algebraic_expression, op->algebraic_expression->operand_count-1, NULL);
-    */
+    AlgebraicExpression_EvalWithFilter(op->algebraic_expression->exp_root, op->F, res);
 
     if(op->iter == NULL) GxB_MatrixTupleIter_new(&op->iter, op->M);
     else GxB_MatrixTupleIter_reuse(op->iter, op->M);

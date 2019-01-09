@@ -137,7 +137,7 @@ AlgebraicExpressionNode* AlgebraicExpression_Append(AlgebraicExpressionNode *roo
       return root;
     }
 
-    AlgebraicExpressionNode *inner = AlgebraicExpressionNode_NewOperationNode(AL_EXP_MUL);
+    AlgebraicExpressionNode *inner = AlgebraicExpression_NewOperationNode(AL_EXP_MUL);
     AlgebraicExpressionNode_AppendLeftChild(inner, child);
     AlgebraicExpressionNode_AppendRightChild(root, inner);
     return inner;
@@ -159,7 +159,7 @@ TrieMap* _referred_entities(const AST *ast, const QueryGraph *qg) {
 AE_Unit** _AddNode(TrieMap *referred_entities, const AST *ast, int *visited, AE_Unit **units, AE_Unit *unit, Node *cur) {
   // Node is labeled, inject operand
   if (cur->mat != NULL) {
-    AlgebraicExpressionNode *node_operand = AlgebraicExpressionNode_NewOperandNode(cur, true);
+    AlgebraicExpressionNode *node_operand = AlgebraicExpression_NewNodeOperand(cur);
     unit->exp_leaf = AlgebraicExpression_Append(unit->exp_leaf, node_operand);
   }
 
@@ -186,7 +186,7 @@ AE_Unit** _AddNode(TrieMap *referred_entities, const AST *ast, int *visited, AE_
       AE_Unit *new_unit = rm_calloc(1, sizeof(AE_Unit));
       units = array_append(units, new_unit);
       unit = new_unit;
-      unit->exp_root = AlgebraicExpressionNode_NewOperationNode(AL_EXP_MUL);
+      unit->exp_root = AlgebraicExpression_NewOperationNode(AL_EXP_MUL);
       unit->exp_leaf = unit->exp_root;
       unit->src = cur;
     }
@@ -199,7 +199,7 @@ AE_Unit** _AddNode(TrieMap *referred_entities, const AST *ast, int *visited, AE_
     }
     // TODO If edge is variable length or covers multiple relation types,
     // might want to handle that here
-    AlgebraicExpressionNode *edge_matrix = AlgebraicExpressionNode_NewOperandNode(e, false);
+    AlgebraicExpressionNode *edge_matrix = AlgebraicExpression_NewEdgeOperand(e);
     unit->exp_leaf = AlgebraicExpression_Append(unit->exp_leaf, edge_matrix);
     units = _AddNode(referred_entities, ast, visited, units, unit, e->dest);
   }
@@ -212,7 +212,7 @@ AE_Unit** _build_units(TrieMap *referred_entities, const AST *ast, int *visited,
   AE_Unit *unit = rm_calloc(1, sizeof(AE_Unit));
   units = array_append(units, unit);
 
-  unit->exp_root = AlgebraicExpressionNode_NewOperationNode(AL_EXP_MUL);
+  unit->exp_root = AlgebraicExpression_NewOperationNode(AL_EXP_MUL);
   unit->exp_leaf = unit->exp_root;
   
   // Traverse connected component
@@ -222,17 +222,11 @@ AE_Unit** _build_units(TrieMap *referred_entities, const AST *ast, int *visited,
 }
 
 AE_Unit** AlgebraicExpression_FromComponent(const AST *ast, TrieMap *referred_entities, Node *src) {
-  // TrieMap *unique_edges = NewTrieMap();
-  // AlgebraicExpressionNode *exp = AlgebraicExpressionNode_NewOperationNode(AL_EXP_MUL);
-  
   // Move to ExecutionPlan to reuse visited array for all components
   int cardinality = ast->_aliasIDMapping->cardinality;
   int visited[cardinality];
   memset(visited, -1, cardinality * sizeof(int));
   AE_Unit **units = _build_units(referred_entities, ast, visited, src);
-  // _AddNode(referred_entities, exp, src);
-
-  TrieMap_Free(referred_entities, TrieMap_NOP_CB);
 
   return units;
 }
@@ -263,6 +257,7 @@ AE_Unit*** AlgebraicExpression_BuildExps(const AST *ast, const QueryGraph *qg, N
       }
       components[i] = mapped_component;
     }
+    TrieMap_Free(referred_entities, TrieMap_NOP_CB);
 
     // Debug print
     for (int i = 0; i < component_count; i ++) {
@@ -278,7 +273,7 @@ AE_Unit*** AlgebraicExpression_BuildExps(const AST *ast, const QueryGraph *qg, N
     return components;
 }
 
-AlgebraicExpressionNode *AlgebraicExpressionNode_NewOperationNode(AL_EXP_OP op) {
+AlgebraicExpressionNode *AlgebraicExpression_NewOperationNode(AL_EXP_OP op) {
     AlgebraicExpressionNode *node = rm_calloc(1, sizeof(AlgebraicExpressionNode));
     node->type = AL_OPERATION;
     node->operation.op = op;
@@ -289,17 +284,24 @@ AlgebraicExpressionNode *AlgebraicExpressionNode_NewOperationNode(AL_EXP_OP op) 
     return node;
 }
 
-AlgebraicExpressionNode *AlgebraicExpressionNode_NewOperandNode(void *operand, bool is_node) {
+AlgebraicExpressionNode* AlgebraicExpression_NewOperand(GrB_Matrix mat) {
     AlgebraicExpressionNode *node = rm_calloc(1, sizeof(AlgebraicExpressionNode));
     node->type = AL_OPERAND;
+    node->operand.mat = mat;
+    return node;
+}
+
+AlgebraicExpressionNode *AlgebraicExpression_NewNodeOperand(Node *operand) {
+    AlgebraicExpressionNode *node = AlgebraicExpression_NewOperand(operand->mat);
     node->operand.entity = operand;
-    if (is_node) {
-      node->operand.entity_is_node = true;
-      node->operand.mat = ((Node*)operand)->mat;
-    } else {
-      node->operand.entity_is_node = false;
-      node->operand.mat = ((Edge*)operand)->mat;
-    }
+    node->operand.entity_is_node = true;
+    return node;
+}
+
+AlgebraicExpressionNode *AlgebraicExpression_NewEdgeOperand(Edge *operand) {
+    AlgebraicExpressionNode *node = AlgebraicExpression_NewOperand(operand->mat);
+    node->operand.entity = operand;
+    node->operand.entity_is_node = false;
     return node;
 }
 
@@ -329,6 +331,7 @@ void AlgebraicExpressionNode_AppendRightChild(AlgebraicExpressionNode *root, Alg
 // operation with an addition operation with two multiplication operations
 // one for each child of the original addition operation, as can be seen above.
 // we'll want to reuse the left handside of the multiplication.
+// TODO Needs to be updated
 void AlgebraicExpression_SumOfMul(AlgebraicExpressionNode **root) {
     if((*root)->type == AL_OPERATION && (*root)->operation.op == AL_EXP_MUL) {
         AlgebraicExpressionNode *l = (*root)->operation.l;
@@ -339,9 +342,9 @@ void AlgebraicExpression_SumOfMul(AlgebraicExpressionNode **root) {
             (r->type == AL_OPERATION && r->operation.op == AL_EXP_ADD &&
             !(l->type == AL_OPERATION && l->operation.op == AL_EXP_ADD))) {
             
-            AlgebraicExpressionNode *add = AlgebraicExpressionNode_NewOperationNode(AL_EXP_ADD);
-            AlgebraicExpressionNode *lMul = AlgebraicExpressionNode_NewOperationNode(AL_EXP_MUL);
-            AlgebraicExpressionNode *rMul = AlgebraicExpressionNode_NewOperationNode(AL_EXP_MUL);
+            AlgebraicExpressionNode *add = AlgebraicExpression_NewOperationNode(AL_EXP_ADD);
+            AlgebraicExpressionNode *lMul = AlgebraicExpression_NewOperationNode(AL_EXP_MUL);
+            AlgebraicExpressionNode *rMul = AlgebraicExpression_NewOperationNode(AL_EXP_MUL);
 
             AlgebraicExpressionNode_AppendLeftChild(add, lMul);
             AlgebraicExpressionNode_AppendRightChild(add, rMul);
@@ -510,6 +513,7 @@ static GrB_Matrix _AlgebraicExpression_Eval(AlgebraicExpressionNode *exp, GrB_Ma
     return res;
 }
 
+// TODO Temporary method of adding filter matrix
 AlgebraicExpressionNode** _append_nofail(AlgebraicExpressionNode *root, AlgebraicExpressionNode *child) {
     assert(root && root->type == AL_OPERATION);
     if (root->operation.l == NULL) {
@@ -525,7 +529,7 @@ AlgebraicExpressionNode** _append_nofail(AlgebraicExpressionNode *root, Algebrai
     if (root->operation.r->type == AL_OPERATION) {
       return _append_nofail(root->operation.r, child);
     } else {
-      AlgebraicExpressionNode *inner = AlgebraicExpressionNode_NewOperationNode(AL_EXP_MUL);
+      AlgebraicExpressionNode *inner = AlgebraicExpression_NewOperationNode(AL_EXP_MUL);
       AlgebraicExpressionNode_AppendLeftChild(inner, root->operation.r);
       AlgebraicExpressionNode_AppendRightChild(inner, child);
       root->operation.r = inner;
@@ -533,7 +537,8 @@ AlgebraicExpressionNode** _append_nofail(AlgebraicExpressionNode *root, Algebrai
     }
 }
 
-void AlgebraicExpression_Eval(AlgebraicExpressionNode *exp, GrB_Matrix filter, GrB_Matrix res) {
+// TODO Later, only have one AlgebraicExpression_Eval function
+void AlgebraicExpression_EvalWithFilter(AlgebraicExpressionNode *exp, GrB_Matrix filter, GrB_Matrix res) {
     // If filter matrix is provided, it will be used as the first operand.
     // TODO it would be nice to use filter without append/remove logic
     AlgebraicExpressionNode *f = rm_malloc(sizeof(AlgebraicExpressionNode));
@@ -543,6 +548,10 @@ void AlgebraicExpression_Eval(AlgebraicExpressionNode *exp, GrB_Matrix filter, G
     _AlgebraicExpression_Eval(exp, res);
     rm_free(f);
     *to_remove = NULL;
+}
+
+void AlgebraicExpression_Eval(AlgebraicExpressionNode *exp, GrB_Matrix res) {
+    _AlgebraicExpression_Eval(exp, res);
 }
 
 static void _AlgebraicExpressionNode_UniqueNodes(AlgebraicExpressionNode *root, AlgebraicExpressionNode ***uniqueNodes) {

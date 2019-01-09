@@ -59,12 +59,15 @@ int AlgebraicExpression_OperandCount(AlgebraicExpressionNode *root);
 AlgebraicExpressionNode* AlgebraicExpression_Pop(AlgebraicExpressionNode **root);
 AE_Unit*** AlgebraicExpression_BuildExps(const AST *ast, const QueryGraph *q, Node **starting_points, int component_count);
 
-AlgebraicExpressionNode *AlgebraicExpressionNode_NewOperationNode(AL_EXP_OP op);
-AlgebraicExpressionNode *AlgebraicExpressionNode_NewOperandNode(void *operand, bool is_node);
+AlgebraicExpressionNode* AlgebraicExpression_NewOperationNode(AL_EXP_OP op);
+AlgebraicExpressionNode* AlgebraicExpression_NewOperand(GrB_Matrix mat);
+AlgebraicExpressionNode* AlgebraicExpression_NewNodeOperand(Node *operand);
+AlgebraicExpressionNode* AlgebraicExpression_NewEdgeOperand(Edge *operand);
 void AlgebraicExpressionNode_AppendLeftChild(AlgebraicExpressionNode *root, AlgebraicExpressionNode *child);
 void AlgebraicExpressionNode_AppendRightChild(AlgebraicExpressionNode *root, AlgebraicExpressionNode *child);
 void AlgebraicExpression_SumOfMul(AlgebraicExpressionNode **root);
-void AlgebraicExpression_Eval(AlgebraicExpressionNode *exp, GrB_Matrix filter, GrB_Matrix res);
+void AlgebraicExpression_EvalWithFilter(AlgebraicExpressionNode *exp, GrB_Matrix filter, GrB_Matrix res);
+void AlgebraicExpression_Eval(AlgebraicExpressionNode *exp, GrB_Matrix res);
 void AlgebraicExpressionNode_Free(AlgebraicExpressionNode *root);
 
 #endif
