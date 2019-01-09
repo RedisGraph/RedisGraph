@@ -47,10 +47,7 @@ void _extractColumn(CondTraverse *op, const Record r) {
 
     GrB_Matrix_setElement_BOOL(op->F, true, srcId, 0);
 
-    GrB_Matrix res;
-    GrB_Index dim = Graph_RequiredMatrixDim(op->graph);
-    GrB_Matrix_new(&res, GrB_BOOL, dim, 1);
-    AlgebraicExpression_EvalWithFilter(op->algebraic_expression->exp_root, op->F, res);
+    AlgebraicExpression_EvalWithFilter(op->algebraic_expression->exp_root, op->F, op->M);
 
     if(op->iter == NULL) GxB_MatrixTupleIter_new(&op->iter, op->M);
     else GxB_MatrixTupleIter_reuse(op->iter, op->M);

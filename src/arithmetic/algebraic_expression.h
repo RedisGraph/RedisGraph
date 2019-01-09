@@ -54,9 +54,11 @@ typedef struct {
   Edge *edge;
 } AE_Unit;
 
+AlgebraicExpressionNode* AlgebraicExpression_InvertTree(AlgebraicExpressionNode *root);
 AlgebraicExpressionNode* AlgebraicExpression_Append(AlgebraicExpressionNode *root, AlgebraicExpressionNode *child);
 int AlgebraicExpression_OperandCount(AlgebraicExpressionNode *root);
-AlgebraicExpressionNode* AlgebraicExpression_Pop(AlgebraicExpressionNode **root);
+AlgebraicExpressionNode* AlgebraicExpression_PopFirst(AlgebraicExpressionNode **root);
+AlgebraicExpressionNode* AlgebraicExpression_PopLast(AlgebraicExpressionNode **root);
 AE_Unit*** AlgebraicExpression_BuildExps(const AST *ast, const QueryGraph *q, Node **starting_points, int component_count);
 
 AlgebraicExpressionNode* AlgebraicExpression_NewOperationNode(AL_EXP_OP op);

@@ -267,6 +267,7 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx,
             // Add a scan operation
             if (component_exps[0]->src->mat) { // Node is labeled
               op = NewNodeByLabelScanOp(gc, component_exps[0]->src);
+              // component_exps[0]->exp_root = AlgebraicExpression_PopFirst(&component_exps[0]->exp_root);
             } else {
               op = NewAllNodeScanOp(g, component_exps[0]->src);
             }
@@ -281,6 +282,8 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx,
               // TODO Replace the first operand matrix with a node/label scan
               // (optimize later for filters, nodes over labels, etc)
 
+              // Invert expression tree
+              // expression->exp_root = AlgebraicExpression_InvertTree(expression->exp_root);
               // Push traversal operation onto stack
               OpBase *cond_traverse = NewCondTraverseOp(g, expression);
               Vector_Push(traversals, cond_traverse);

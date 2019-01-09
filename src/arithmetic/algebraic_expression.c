@@ -10,6 +10,30 @@
 #include "../util/rmalloc.h"
 #include <assert.h>
 
+// TODO Temporary method of adding filter matrix
+AlgebraicExpressionNode** _append_nofail(AlgebraicExpressionNode *root, AlgebraicExpressionNode *child) {
+    assert(root && root->type == AL_OPERATION);
+    if (root->operation.l == NULL) {
+      AlgebraicExpressionNode_AppendLeftChild(root, child);
+      return &root->operation.l;
+    }
+
+    if (root->operation.r == NULL) {
+      AlgebraicExpressionNode_AppendRightChild(root, child);
+      return &root->operation.r;
+    }
+
+    if (root->operation.r->type == AL_OPERATION) {
+      return _append_nofail(root->operation.r, child);
+    } else {
+      AlgebraicExpressionNode *inner = AlgebraicExpression_NewOperationNode(AL_EXP_MUL);
+      AlgebraicExpressionNode_AppendLeftChild(inner, root->operation.r);
+      AlgebraicExpressionNode_AppendRightChild(inner, child);
+      root->operation.r = inner;
+      return &inner->operation.r;
+    }
+}
+
 static void _AlgebraicExpression_PrintNode(AlgebraicExpressionNode *root, int indent) {
   if (root == NULL) return;
 
@@ -97,7 +121,7 @@ void _referred_variable_length_edges(TrieMap *ref_entities, Vector *matchPattern
     }
 }
 
-// TODO might be unused
+// TODO unused, delete if never used
 int AlgebraicExpression_OperandCount(AlgebraicExpressionNode *root) {
   if (root == NULL) {
     return 0;
@@ -109,8 +133,8 @@ int AlgebraicExpression_OperandCount(AlgebraicExpressionNode *root) {
   return increase;
 }
 
-// TODO might be unused
-AlgebraicExpressionNode* AlgebraicExpression_Pop(AlgebraicExpressionNode **root) {
+// TODO unused, delete if never used
+AlgebraicExpressionNode* AlgebraicExpression_PopFirst(AlgebraicExpressionNode **root) {
   assert(root);
 
   AlgebraicExpressionNode *cur = *root;
@@ -121,12 +145,44 @@ AlgebraicExpressionNode* AlgebraicExpression_Pop(AlgebraicExpressionNode **root)
     return cur;
   }
 
-  AlgebraicExpressionNode *ret = AlgebraicExpression_Pop(&cur->operation.l);
+  AlgebraicExpressionNode *ret = AlgebraicExpression_PopFirst(&cur->operation.l);
   if (ret) return ret;
 
-  ret = AlgebraicExpression_Pop(&cur->operation.r);
-  assert(ret);
+  ret = AlgebraicExpression_PopFirst(&cur->operation.r);
   return ret;
+}
+
+AlgebraicExpressionNode* AlgebraicExpression_PopLast(AlgebraicExpressionNode **root) {
+  assert(root);
+
+  AlgebraicExpressionNode *cur = *root;
+  if (cur == NULL) return NULL;
+
+  if (cur->type == AL_OPERAND) {
+    *root = NULL;
+    return cur;
+  }
+
+  AlgebraicExpressionNode *ret = AlgebraicExpression_PopLast(&cur->operation.r);
+  if (ret) return ret;
+
+  ret = AlgebraicExpression_PopLast(&cur->operation.l);
+  return ret;
+
+}
+
+AlgebraicExpressionNode* AlgebraicExpression_InvertTree(AlgebraicExpressionNode *root) {
+  AlgebraicExpressionNode *new_tree = AlgebraicExpression_NewOperationNode(AL_EXP_MUL);
+
+  while (true) {
+    AlgebraicExpressionNode *cur = AlgebraicExpression_PopLast(&root);
+    if (cur == NULL) {
+      rm_free(root);
+      return new_tree;
+    }
+    _append_nofail(new_tree, cur);
+    // AlgebraicExpression_Append(new_tree, cur);
+  }
 }
 
 AlgebraicExpressionNode* AlgebraicExpression_Append(AlgebraicExpressionNode *root, AlgebraicExpressionNode *child) {
@@ -461,15 +517,10 @@ static GrB_Matrix _AlgebraicExpression_Eval_MUL(AlgebraicExpressionNode *exp, Gr
 
     if (l == NULL && r == NULL) assert(0);
     if (r == NULL) {
-      GrB_Matrix_dup(&res, l); // TODO dup possibly unnecessary, might want to shrink tree so this doesn't happen regardless
+      GrB_Matrix_dup(&res, l); // TODO dup possibly unnecessary
       return res;
     }
     // Perform multiplication.
-    GrB_Index ncols;
-    GrB_Matrix_ncols(&ncols, l);
-    printf("left: %lu\n", ncols);
-    GrB_Matrix_ncols(&ncols, r);
-    printf("right: %lu\n", ncols);
     assert(GrB_mxm(res, NULL, NULL, Rg_structured_bool, l, r, desc) == GrB_SUCCESS);
 
     // Store intermidate if expression is marked for reuse.
@@ -478,6 +529,14 @@ static GrB_Matrix _AlgebraicExpression_Eval_MUL(AlgebraicExpressionNode *exp, Gr
         GrB_Matrix_dup(&exp->operation.v, res);
     }
 
+    // Debug printing
+    /*
+    GrB_wait(); // printing doesn't flush ops
+    GxB_Matrix_fprint(l, "left", GxB_COMPLETE, stderr);
+    GxB_Matrix_fprint(r, "right", GxB_COMPLETE, stderr);
+
+    GxB_Matrix_fprint(res, "result", GxB_COMPLETE, stderr);
+    */
     if(desc) GrB_Descriptor_free(&desc);
     return res;
 }
@@ -511,30 +570,6 @@ static GrB_Matrix _AlgebraicExpression_Eval(AlgebraicExpressionNode *exp, GrB_Ma
             assert(false);
     }    
     return res;
-}
-
-// TODO Temporary method of adding filter matrix
-AlgebraicExpressionNode** _append_nofail(AlgebraicExpressionNode *root, AlgebraicExpressionNode *child) {
-    assert(root && root->type == AL_OPERATION);
-    if (root->operation.l == NULL) {
-      AlgebraicExpressionNode_AppendLeftChild(root, child);
-      return &root->operation.l;
-    }
-
-    if (root->operation.r == NULL) {
-      AlgebraicExpressionNode_AppendRightChild(root, child);
-      return &root->operation.r;
-    }
-
-    if (root->operation.r->type == AL_OPERATION) {
-      return _append_nofail(root->operation.r, child);
-    } else {
-      AlgebraicExpressionNode *inner = AlgebraicExpression_NewOperationNode(AL_EXP_MUL);
-      AlgebraicExpressionNode_AppendLeftChild(inner, root->operation.r);
-      AlgebraicExpressionNode_AppendRightChild(inner, child);
-      root->operation.r = inner;
-      return &inner->operation.r;
-    }
 }
 
 // TODO Later, only have one AlgebraicExpression_Eval function
