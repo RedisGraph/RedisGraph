@@ -9,7 +9,7 @@ jobs:
           name: Install prerequisite
           command: >-
             pip install redisgraph behave backports.csv &&
-            apt-get update; apt-get install -y cmake
+            apt-get update; apt-get install -y automake peg libtool autoconf cmake
       - run:
           name: Build
           command: make -j 8
