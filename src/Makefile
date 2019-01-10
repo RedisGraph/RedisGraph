@@ -72,7 +72,7 @@ GRAPHBLAS=../deps/GraphBLAS/build/libgraphblas.a
 LIBXXHASH=../deps/xxhash/libxxhash.a
 
 # Compilation deps for the module
-LIBS=$(LIBTRIEMAP) $(GRAPHBLAS) $(LIBXXHASH)
+LIBS=$(LIBTRIEMAP) $(GRAPHBLAS) $(LIBXXHASH) $(LIBCYPHER-PARSER)
 MODULE=$(CC_OBJECTS) $(LIBS)
 
 REDISGRAPH_CC=$(QUIET_CC)$(CC)
@@ -112,6 +112,13 @@ ifeq (,$(wildcard $(GRAPHBLAS)))
 else
 
 endif
+
+# Build libcypher-parser only if library does not already exists.
+$(LIBCYPHER-PARSER):
+ifeq (,$(wildcard $(LIBCYPHER-PARSER)))
+	$(MAKE) clean check -C ../deps/libcypher-parser
+endif
+.PHONY: $(LIBCYPHER-PARSER)
 
 # Compile query parse. 
 # This is not included in the usual make target!
