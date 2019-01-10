@@ -19,6 +19,7 @@ typedef struct {
     RedisModuleBlockedClient *bc;   // Blocked client.
     AST *ast;                       // Parsed AST.
     char *graphName;                // Graph ID.
+    RedisModuleString *query;       // Query.
     double tic[2];                  // timings.
 } QueryContext;
 

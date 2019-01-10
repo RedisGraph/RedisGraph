@@ -7,17 +7,24 @@
 
 #include "cmd_query.h"
 #include "../graph/graph.h"
+#include "../parser/newast.h"
 #include "../query_executor.h"
 #include "../util/simple_timer.h"
 #include "../execution_plan/execution_plan.h"
 #include "../util/rmalloc.h"
+#include "../../deps/libcypher-parser/lib/src/cypher-parser.h"
+
 
 extern pthread_key_t _tlsASTKey;  // Thread local storage AST key.
 
-QueryContext* _queryContext_New(RedisModuleBlockedClient *bc, AST* ast, RedisModuleString *graphName) {
+QueryContext* _queryContext_New(RedisModuleBlockedClient *bc,
+                                AST* ast,
+                                RedisModuleString *graphName,
+                                RedisModuleString *query) {
     QueryContext* context = malloc(sizeof(QueryContext));
     context->bc = bc;
     context->ast = ast;
+    context->query = query;
     context->graphName = rm_strdup(RedisModule_StringPtrLen(graphName, NULL));
     return context;
 }
@@ -66,8 +73,21 @@ void _MGraph_Query(void *args) {
     RedisModuleCtx *ctx = RedisModule_GetThreadSafeContext(qctx->bc);
     ResultSet* resultSet = NULL;
     AST* ast = qctx->ast;
-    bool readonly = AST_ReadOnly(ast);
+    bool readonly;
     bool lockAcquired = false;
+
+    /* New parser */
+    const char* query = RedisModule_StringPtrLen(qctx->query, NULL);
+    cypher_parse_result_t *new_ast = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
+    if (new_ast == NULL) {
+        perror("cypher_parse");
+        return;
+    }
+
+    readonly = NEWAST_ReadOnly(new_ast);
+    cypher_parse_result_free(new_ast);
+    
+    /* END OF New parser */
 
     // Add AST to thread local storage.
     pthread_setspecific(_tlsASTKey, ast);
@@ -155,7 +175,6 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     simple_tic(tic);
 
     // Parse AST.
-    // TODO: support concurrent parsing.
     char *errMsg = NULL;
     const char *query = RedisModule_StringPtrLen(argv[2], NULL);
     AST* ast = ParseQuery(query, strlen(query), &errMsg);
@@ -166,12 +185,18 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
         return REDISMODULE_OK;
     }
 
-    bool readonly = AST_ReadOnly(ast);
+    cypher_parse_result_t *new_ast = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
+    if (new_ast == NULL) {
+        perror("cypher_parse");
+        return REDISMODULE_OK;
+    }
+    bool readonly = NEWAST_ReadOnly(new_ast);
+    cypher_parse_result_free(new_ast);
 
     // Construct concurent query context.
     RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
 
-    QueryContext *context = _queryContext_New(bc, ast, argv[1]);
+    QueryContext *context = _queryContext_New(bc, ast, argv[1], argv[2]);
 
     context->tic[0] = tic[0];
     context->tic[1] = tic[1];    
