@@ -45,8 +45,9 @@ gtest_main.a : gtest-all.o gtest_main.o
 CC_OBJECTS:=$(CC_OBJECTS)
 LIBTRIEMAP=../../src/util/triemap/libtriemap.a
 LIBGRAPHBLAS=../../deps/GraphBLAS/build/libgraphblas.a
+LIBCYPHER-PARSER=../../deps/libcypher-parser/lib/src/.libs/libcypher-parser.a
 
-LIBS=$(LIBTRIEMAP) $(LIBGRAPHBLAS)
+LIBS=$(LIBTRIEMAP) $(LIBGRAPHBLAS) $(LIBCYPHER-PARSER)
 DEPS=$(CC_OBJECTS) $(LIBS)
 
 # Build and run a test for each cpp file in directory
