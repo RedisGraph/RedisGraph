@@ -72,7 +72,7 @@ LIBCYPHER-PARSER=../deps/libcypher-parser/lib/src/.libs/libcypher-parser.a
 
 # Compilation deps for the module
 LIBS=$(LIBTRIEMAP) $(GRAPHBLAS) $(LIBCYPHER-PARSER)
-MODULE=$(CC_OBJECTS) $(LIBS)
+MODULE=$(LIBS) $(CC_OBJECTS)
 
 REDISGRAPH_CC=$(QUIET_CC)$(CC)
 
