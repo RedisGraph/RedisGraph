@@ -67,9 +67,10 @@ CC_DEPS = $(patsubst %.c, %.d, $(CC_SOURCES) )
 # Library dependencies
 LIBTRIEMAP=util/triemap/libtriemap.a
 GRAPHBLAS=../deps/GraphBLAS/build/libgraphblas.a
+LIBCYPHER-PARSER=../deps/libcypher-parser/lib/src/.libs/libcypher-parser.a
 
 # Compilation deps for the module
-LIBS=$(LIBTRIEMAP) $(GRAPHBLAS)
+LIBS=$(LIBTRIEMAP) $(GRAPHBLAS) $(LIBCYPHER-PARSER)
 MODULE=$(CC_OBJECTS) $(LIBS)
 
 REDISGRAPH_CC=$(QUIET_CC)$(CC)
@@ -106,6 +107,13 @@ ifeq (,$(wildcard $(GRAPHBLAS)))
 	$(MAKE) CMAKE_OPTIONS="-DUSER_POSIX=1 -DCMAKE_CXX_FLAGS=-std=c++11 -DCMAKE_C_FLAGS='$(BLAS_CFLAGS)'" static_only -C ../deps/GraphBLAS
 endif
 .PHONY: $(GRAPHBLAS)
+
+# Build libcypher-parser only if library does not already exists.
+$(LIBCYPHER-PARSER):
+ifeq (,$(wildcard $(LIBCYPHER-PARSER)))
+	$(MAKE) clean check -C ../deps/libcypher-parser
+endif
+.PHONY: $(LIBCYPHER-PARSER)
 
 # Compile query parse. 
 # This is not included in the usual make target!
