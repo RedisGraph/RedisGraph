@@ -116,7 +116,7 @@ ifeq (,$(wildcard $(LIBCYPHER-PARSER)))
 	cd ../deps/libcypher-parser; \
 	./autogen.sh; \
 	./configure;
-	$(MAKE) clean check -C ../deps/libcypher-parser CFLAGS=
+	$(MAKE) CFLAGS="-fPIC" clean check -C ../deps/libcypher-parser
 endif
 .PHONY: $(LIBCYPHER-PARSER)
 
@@ -128,7 +128,7 @@ parser:
 
 # Build the module...
 redisgraph.so: $(MODULE)
-	$(REDISGRAPH_CC) -o $@ $(MODULE) $(SHOBJ_LDFLAGS) -lc -lm
+	$(REDISGRAPH_CC) -o $@ $(CC_OBJECTS) $(LIBS) $(SHOBJ_LDFLAGS) -lc -lm
 
 clean:
 	find . -name '*.[oad]' -type f -delete
