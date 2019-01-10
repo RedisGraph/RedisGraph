@@ -74,7 +74,7 @@ LIBXXHASH=../deps/xxhash/libxxhash.a
 
 # Compilation deps for the module
 LIBS=$(LIBTRIEMAP) $(GRAPHBLAS) $(LIBXXHASH) $(LIBCYPHER-PARSER)
-MODULE=$(CC_OBJECTS) $(LIBS)
+MODULE=$(LIBS) $(CC_OBJECTS)
 
 REDISGRAPH_CC=$(QUIET_CC)$(CC)
 
