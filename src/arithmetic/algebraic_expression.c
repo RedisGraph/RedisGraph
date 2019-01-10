@@ -262,7 +262,7 @@ AE_Unit** _AddNode(TrieMap *referred_entities, const AST *ast, int *visited, AE_
   return units;
 }
 
-AE_Unit** _build_units(TrieMap *referred_entities, const AST *ast, int *visited, Node *root) {
+AE_Unit** _build_units(TrieMap *referred_entities, const AST *ast, int *visited, QueryGraph *component) {
   // Set up units array
   AE_Unit **units = array_new(AE_Unit *, 1);
   AE_Unit *unit = rm_calloc(1, sizeof(AE_Unit));
@@ -271,18 +271,19 @@ AE_Unit** _build_units(TrieMap *referred_entities, const AST *ast, int *visited,
   unit->exp_root = AlgebraicExpression_NewOperationNode(AL_EXP_MUL);
   unit->exp_leaf = unit->exp_root;
   
+  Node *root = component->nodes[0];
   // Traverse connected component
   units = _AddNode(referred_entities, ast, visited, units, unit, root);
 
   return units;
 }
 
-AE_Unit** AlgebraicExpression_FromComponent(const AST *ast, TrieMap *referred_entities, Node *src) {
+AE_Unit** AlgebraicExpression_FromComponent(const AST *ast, TrieMap *referred_entities, QueryGraph *component) {
   // Move to ExecutionPlan to reuse visited array for all components
   int cardinality = ast->_aliasIDMapping->cardinality;
   int visited[cardinality];
   memset(visited, -1, cardinality * sizeof(int));
-  AE_Unit **units = _build_units(referred_entities, ast, visited, src);
+  AE_Unit **units = _build_units(referred_entities, ast, visited, component);
 
   return units;
 }
@@ -296,27 +297,31 @@ AE_Unit** _AE_ScanOp(Node *n) {
   return scan_container;
 }
 
-AE_Unit*** AlgebraicExpression_BuildExps(const AST *ast, const QueryGraph *qg, Node **starting_points, int component_count) {
-    AE_Unit ***components  = rm_malloc(component_count * sizeof(AE_Unit**));
+AE_Unit*** AlgebraicExpression_BuildExps(const AST *ast, const QueryGraph *qg, int *component_count) {
+    int count;
+    QueryGraph **subgraphs = QueryGraph_ConnectedComponents(qg, &count);
+
+    AE_Unit ***components  = rm_malloc(count * sizeof(AE_Unit**));
     // Build triemap of entities that must be populated in the record
     TrieMap *referred_entities = _referred_entities(ast, qg);
 
-    for (int i = 0; i < component_count; i ++) {
+    for (int i = 0; i < count; i ++) {
       AE_Unit **mapped_component;
-      Node *src = starting_points[i];
-      if (Vector_Size(src->incoming_edges) == 0 && Vector_Size(src->outgoing_edges) == 0) {
+      QueryGraph *component = subgraphs[i];
+      if (component->node_count == 1 && component->edge_count == 0) {
         // Handle single disconnected entity by creating a scan
-        mapped_component = _AE_ScanOp(src);
+        mapped_component = _AE_ScanOp(component->nodes[0]);
       } else {
         // Build 1 or more units to contain all necessary expressions
-        mapped_component = AlgebraicExpression_FromComponent(ast, referred_entities, src);
+        mapped_component = AlgebraicExpression_FromComponent(ast, referred_entities, component);
       }
       components[i] = mapped_component;
     }
     TrieMap_Free(referred_entities, TrieMap_NOP_CB);
+    // TODO free subgraphs
 
     // Debug print
-    for (int i = 0; i < component_count; i ++) {
+    for (int i = 0; i < count; i ++) {
       printf("component %d\n", i);
       AE_Unit **component = components[i];
       for (int j = 0; j < array_len(component); j ++) {
@@ -325,6 +330,7 @@ AE_Unit*** AlgebraicExpression_BuildExps(const AST *ast, const QueryGraph *qg, N
         AlgebraicExpression_PrintTree(component[j]->exp_root);
       }
     }
+    *component_count = count;
 
     return components;
 }

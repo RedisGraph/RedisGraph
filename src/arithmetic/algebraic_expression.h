@@ -59,7 +59,7 @@ AlgebraicExpressionNode* AlgebraicExpression_Append(AlgebraicExpressionNode *roo
 int AlgebraicExpression_OperandCount(AlgebraicExpressionNode *root);
 AlgebraicExpressionNode* AlgebraicExpression_PopFirst(AlgebraicExpressionNode **root);
 AlgebraicExpressionNode* AlgebraicExpression_PopLast(AlgebraicExpressionNode **root);
-AE_Unit*** AlgebraicExpression_BuildExps(const AST *ast, const QueryGraph *q, Node **starting_points, int component_count);
+AE_Unit*** AlgebraicExpression_BuildExps(const AST *ast, const QueryGraph *q, int *component_count);
 
 AlgebraicExpressionNode* AlgebraicExpression_NewOperationNode(AL_EXP_OP op);
 AlgebraicExpressionNode* AlgebraicExpression_NewOperand(GrB_Matrix mat);

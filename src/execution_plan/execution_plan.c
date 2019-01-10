@@ -246,9 +246,7 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx,
         BuildQueryGraph(gc, q, ast->matchNode->_mergedPatterns);
 
         int component_count;
-        Node **starting_points = QueryGraph_ConnectedComponents(q, &component_count);
-
-        AE_Unit ***components = AlgebraicExpression_BuildExps(ast, q, starting_points, component_count);
+        AE_Unit ***components = AlgebraicExpression_BuildExps(ast, q, &component_count);
 
         OpBase *cartesianProduct = NULL;
         if (component_count > 1) {
