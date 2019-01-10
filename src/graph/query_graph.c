@@ -10,35 +10,6 @@
 #include "../stores/store.h"
 #include <assert.h>
 
-// Perform DFT on a node to map the connected component it is a part of.
-int _BuildConnectedComponent(TrieMap *visited, QueryGraph *component, Node *n) {
-  // Add the node alias to the triemap if it is not already present.
-  int is_new = TrieMap_Add(visited, n->alias, strlen(n->alias), NULL, TrieMap_DONT_CARE_REPLACE);
-  // Nothing needs to be done on previously-visited nodes
-  if (!is_new) return 0;
-
-  // Add node to graph
-  QueryGraph_AddNode(component, n, n->alias);
-  // Recursively visit every node connected to the current in either direction
-  Edge *e;
-  for (int i = 0; i < Vector_Size(n->outgoing_edges); i ++) {
-    Vector_Get(n->outgoing_edges, i, &e);
-    if (_BuildConnectedComponent(visited, component, e->dest)) {
-      // If an outgoing edge was newly visited, connect src and dest
-      QueryGraph_ConnectNodes(component, n, e->dest, e, e->alias);
-    }
-  }
-  for (int i = 0; i < Vector_Size(n->incoming_edges); i ++) {
-    Vector_Get(n->incoming_edges, i, &e);
-    if (_BuildConnectedComponent(visited, component, e->src)) {
-      // If an incoming edge was newly visited, connect dest and src
-      QueryGraph_ConnectNodes(component, e->dest, n, e, e->alias);
-    }
-  }
-
-  return 1;
-}
-
 GraphEntity* _QueryGraph_GetEntityById(GraphEntity **entity_list, int entity_count, long int id) {
     int i;
 
@@ -104,6 +75,35 @@ int _QueryGraph_ContainsEntity(GraphEntity *entity, GraphEntity **entities, int 
         }
     }
     return 0;
+}
+
+// Perform DFT on a node to map the connected component it is a part of.
+int _BuildConnectedComponent(TrieMap *visited, QueryGraph *component, Node *n) {
+  // Add the node alias to the triemap if it is not already present.
+  int is_new = TrieMap_Add(visited, n->alias, strlen(n->alias), NULL, TrieMap_DONT_CARE_REPLACE);
+  // Nothing needs to be done on previously-visited nodes
+  if (!is_new) return 0;
+
+  // Add node to graph
+  QueryGraph_AddNode(component, n, n->alias);
+  // Recursively visit every node connected to the current in either direction
+  Edge *e;
+  for (int i = 0; i < Vector_Size(n->outgoing_edges); i ++) {
+    Vector_Get(n->outgoing_edges, i, &e);
+    if (_BuildConnectedComponent(visited, component, e->dest)) {
+      // If an outgoing edge was newly visited, connect src and dest
+      _QueryGraph_AddEdge(component, e, e->alias);
+    }
+  }
+  for (int i = 0; i < Vector_Size(n->incoming_edges); i ++) {
+    Vector_Get(n->incoming_edges, i, &e);
+    if (_BuildConnectedComponent(visited, component, e->src)) {
+      // If an incoming edge was newly visited, connect dest and src
+      _QueryGraph_AddEdge(component, e, e->alias);
+    }
+  }
+
+  return 1;
 }
 
 // Extend node with label and attributes from graph entity.
