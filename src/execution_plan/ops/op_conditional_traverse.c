@@ -41,12 +41,13 @@ static int _CondTraverse_SetEdge(CondTraverse *op, Record r) {
     return 1;
 }
 
-void _extractColumn(CondTraverse *op, const Record r) {
-    Node *n = Record_GetNode(r, op->srcNodeRecIdx);
-    NodeID srcId = ENTITY_GET_ID(n);
-
-    GrB_Matrix_setElement_BOOL(op->F, true, srcId, 0);
-
+/* Evaluate algebraic expression:
+ * appends filter matrix as the right most operand 
+ * perform multiplications 
+ * set iterator over result matrix
+ * removed filter matrix from original expression
+ * clears filter matrix. */
+void _traverse(CondTraverse *op) {
     // Append matrix to algebraic expression, as the right most operand.
     AlgebraicExpression_AppendTerm(op->algebraic_expression, op->F, false, false);
 
@@ -60,7 +61,19 @@ void _extractColumn(CondTraverse *op, const Record r) {
     else GxB_MatrixTupleIter_reuse(op->iter, op->M);
 
     // Clear filter matrix.
-    GxB_Matrix_Delete(op->F, srcId, 0);
+    for(int i = 0; i < op->recordsLen; i++) {
+        Node *n = Record_GetNode(op->records[i], op->srcNodeRecIdx);
+        NodeID srcId = ENTITY_GET_ID(n);
+        GxB_Matrix_Delete(op->F, srcId, i);
+    }
+}
+
+// Determin the maximum number of records
+// which will be considered when evaluating an algebraic expression.
+static int _determinRecordCap(const AST *ast) {
+    int recordsCap = 16;    // Default.
+    if(ast->limitNode) recordsCap = MIN(recordsCap, ast->limitNode->limit);
+    return recordsCap;
 }
 
 OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *algebraic_expression) {
@@ -71,13 +84,18 @@ OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *algebraic_expression) {
     traverse->F = NULL;    
     traverse->iter = NULL;
     traverse->edges = NULL;
-    
-    GrB_Matrix_new(&traverse->M, GrB_BOOL, Graph_RequiredMatrixDim(g), 1);
+    traverse->r = NULL;    
 
     AST *ast = AST_GetFromLTS();
     traverse->srcNodeRecIdx = AST_GetAliasID(ast, algebraic_expression->src_node->alias);
     traverse->destNodeRecIdx = AST_GetAliasID(ast, algebraic_expression->dest_node->alias);
     
+    traverse->recordsLen = 0;
+    traverse->recordsCap = _determinRecordCap(ast);
+    traverse->records = rm_calloc(traverse->recordsCap, sizeof(Record));
+    GrB_Matrix_new(&traverse->M, GrB_BOOL, Graph_RequiredMatrixDim(g), traverse->recordsCap);
+    GrB_Matrix_new(&traverse->F, GrB_BOOL, Graph_RequiredMatrixDim(g), traverse->recordsCap);
+
     // Set our Op operations
     OpBase_Init(&traverse->op);
     traverse->op.name = "Conditional Traverse";
@@ -108,17 +126,6 @@ OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *algebraic_expression) {
 Record CondTraverseConsume(OpBase *opBase) {
     CondTraverse *op = (CondTraverse*)opBase;
     OpBase *child = op->op.children[0];
-    
-    /* Not initialized. */
-    if(op->iter == NULL) {
-        op->r = child->consume(child);
-        if(!op->r) return NULL;
-
-        GrB_Matrix_new(&op->F, GrB_BOOL, Graph_RequiredMatrixDim(op->graph), 1);
-
-        /* Pick a column. */
-        _extractColumn(op, op->r);
-    }
 
     /* If we're required to update edge,
      * try to get an edge, if successful we can return quickly,
@@ -129,25 +136,43 @@ Record CondTraverseConsume(OpBase *opBase) {
         }
     }
 
-    bool depleted = false;
+    bool depleted = true;
+    NodeID src_id = INVALID_ENTITY_ID;
     NodeID dest_id = INVALID_ENTITY_ID;
 
     while(true) {
-        GxB_MatrixTupleIter_next(op->iter, &dest_id, NULL, &depleted);
+        if(op->iter) GxB_MatrixTupleIter_next(op->iter, &dest_id, &src_id, &depleted);
 
         // Managed to get a tuple, break.
         if(!depleted) break;
 
-        Record childRecord = child->consume(child);
-        if(!childRecord) return NULL;
+        /* Run out of tuples, try to get new data.        
+         * Free old records. */
+        op->r = NULL;
+        for(int i = 0; i < op->recordsLen; i++) Record_Free(op->records[i]);
 
-        Record_Free(op->r);
-        op->r = childRecord;
+        // Ask child operations for data.
+        for(op->recordsLen = 0; op->recordsLen < op->recordsCap; op->recordsLen++) {
+            Record childRecord = child->consume(child);
+            if(!childRecord) break;
 
-        _extractColumn(op, op->r);
+            // Store received record.
+            op->records[op->recordsLen] = childRecord;
+            /* Update filter matrix F, set column i at position srcId
+             * F[srcId, i] = true. */
+            Node *n = Record_GetNode(childRecord, op->srcNodeRecIdx);
+            NodeID srcId = ENTITY_GET_ID(n);
+            GrB_Matrix_setElement_BOOL(op->F, true, srcId, op->recordsLen);
+        }
+
+        // No data.
+        if(op->recordsLen == 0) return NULL;
+
+        _traverse(op);
     }
 
     /* Get node from current column. */
+    op->r = op->records[src_id];
     Node *destNode = Record_GetNode(op->r, op->destNodeRecIdx);
     Graph_GetNode(op->graph, dest_id, destNode);
 
@@ -197,11 +222,14 @@ OpResult CondTraverseReset(OpBase *ctx) {
 /* Frees CondTraverse */
 void CondTraverseFree(OpBase *ctx) {
     CondTraverse *op = (CondTraverse*)ctx;
-    if(op->r) Record_Free(op->r);
     if(op->iter) GxB_MatrixTupleIter_free(op->iter);
     if(op->F) GrB_Matrix_free(&op->F);
     if(op->M) GrB_Matrix_free(&op->M);
     if(op->edges) array_free(op->edges);
     if(op->algebraic_expression) AlgebraicExpression_Free(op->algebraic_expression);
     if(op->edgeRelationTypes) array_free(op->edgeRelationTypes);
+    if(op->records) {
+        for(int i = 0; i < op->recordsLen; i++) Record_Free(op->records[i]);
+        rm_free(op->records);
+    }
 }
