@@ -18,12 +18,10 @@ QueryContext* _queryContext_New(RedisModuleBlockedClient *bc, AST* ast, RedisMod
     context->bc = bc;
     context->ast = ast;
     context->graphName = graphName;
-    RedisModule_RetainString(NULL, context->graphName);
     return context;
 }
 
 void _queryContext_Free(QueryContext* ctx) {
-    RedisModule_FreeString(NULL, ctx->graphName);
     free(ctx);
 }
 
@@ -64,6 +62,8 @@ void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST_IndexNode *inde
 void _MGraph_Query(void *args) {
     QueryContext *qctx = (QueryContext*)args;
     RedisModuleCtx *ctx = RedisModule_GetThreadSafeContext(qctx->bc);
+    // Preserve name string in the current context's memory manager
+    RedisModule_RetainString(ctx, qctx->graphName);
     ResultSet* resultSet = NULL;
     AST* ast = qctx->ast;
     bool readonly = AST_ReadOnly(ast);
@@ -132,6 +132,7 @@ cleanup:
 
     ResultSet_Free(resultSet);
     AST_Free(ast);
+    RedisModule_FreeString(ctx, qctx->graphName);
     RedisModule_UnblockClient(qctx->bc, NULL);
     RedisModule_FreeThreadSafeContext(ctx);
     _queryContext_Free(qctx);
