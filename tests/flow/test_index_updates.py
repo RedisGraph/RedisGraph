@@ -5,21 +5,31 @@ import random
 import string
 from redisgraph import Graph, Node, Edge
 
-# import redis
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from disposableredis import DisposableRedis
-
+import redis
 from base import FlowTestsBase
 
 GRAPH_ID = "index_test"
 redis_graph = None
+dis_redis = None
+redis_con = None
 labels = ["label_a", "label_b"]
 fields = ['unique', 'group', 'doubleval', 'intval', 'stringval']
 groups = ["Group A", "Group B", "Group C","Group D", "Group E"]
 node_ctr = 0
 
-def redis():
-    return DisposableRedis(loadmodule=os.path.dirname(os.path.abspath(__file__)) + '/../../src/redisgraph.so')
+def get_redis():
+    global dis_redis
+    conn = redis.Redis()
+    try:
+        conn.ping()
+        # Assuming RedisGraph is loaded.
+    except redis.exceptions.ConnectionError:
+        from .disposableredis import DisposableRedis
+        # Bring up our own redis-server instance.
+        dis_redis = DisposableRedis(loadmodule=os.path.dirname(os.path.abspath(__file__)) + '/../../src/redisgraph.so')
+        dis_redis.start()
+        conn = dis_redis.client()
+    return conn
 
 class IndexUpdatesFlowTest(FlowTestsBase):
 
@@ -27,23 +37,17 @@ class IndexUpdatesFlowTest(FlowTestsBase):
     def setUpClass(cls):
         print "IndexUpdatesFlowTest"
         global redis_graph
-        
-        cls.r = redis()
-        cls.r.start()
-
-        redis_con = cls.r.client()
+        global redis_con
+        redis_con = get_redis()
         redis_graph = Graph(GRAPH_ID, redis_con)
-
-        # cls.r = redis.Redis()
-        # redis_graph = Graph(GRAPH_ID, cls.r)
-
+        
         cls.populate_graph()
         cls.build_indices()
 
     @classmethod
     def tearDownClass(cls):
-        cls.r.stop()
-        # pass
+        if dis_redis is not None:
+            dis_redis.stop()
 
     @classmethod
     def new_node(self):

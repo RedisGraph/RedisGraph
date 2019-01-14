@@ -6,9 +6,7 @@ import unittest
 import click
 from click.testing import CliRunner
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from disposableredis import DisposableRedis
-
+import redis
 from redisgraph import Graph, Node, Edge
 from base import FlowTestsBase
 
@@ -18,25 +16,36 @@ from bulk_insert import bulk_insert
 redis_con = None
 port = None
 redis_graph = None
+dis_redis = None
 
-def redis():
-    return DisposableRedis(loadmodule=os.path.dirname(os.path.abspath(__file__)) + '/../../src/redisgraph.so')
+def get_redis():
+    global dis_redis
+    global port
+    conn = redis.Redis()
+    try:
+        conn.ping()
+        port = 6379
+        # Assuming RedisGraph is loaded.
+    except redis.exceptions.ConnectionError:
+        from .disposableredis import DisposableRedis
+        # Bring up our own redis-server instance.
+        dis_redis = DisposableRedis(loadmodule=os.path.dirname(os.path.abspath(__file__)) + '/../../src/redisgraph.so')
+        dis_redis.start()
+        port = dis_redis.port
+        conn = dis_redis.client()
+    return conn
 
 class GraphBulkInsertFlowTest(FlowTestsBase):
     @classmethod
     def setUpClass(cls):
         print "BulkInsertFlowTest"
         global redis_con
-        global port
-
-        cls.r = redis()
-        cls.r.start()
-        redis_con = cls.r.client()
-        port = cls.r.port
+        redis_con = get_redis()
 
     @classmethod
     def tearDownClass(cls):
-        cls.r.stop()
+        if dis_redis is not None:
+            dis_redis.stop()
 
     # Run bulk loader script and validate terminal output
     def test01_run_script(self):

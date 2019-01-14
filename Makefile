@@ -6,6 +6,12 @@ all:
 clean:
 	@$(MAKE) -C ./src $@
 
+clean-parser:
+	$(MAKE) -C ./deps/libcypher-parser distclean
+
+clean-graphblas:
+	$(MAKE) -C ./deps/GraphBLAS clean
+
 package: all
 	@$(MAKE) -C ./src package
 

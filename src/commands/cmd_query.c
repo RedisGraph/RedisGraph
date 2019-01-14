@@ -61,12 +61,11 @@ void _MGraph_Query(void *args) {
     const char* query = RedisModule_StringPtrLen(qctx->argv[1], NULL);
     cypher_parse_result_t *new_ast = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
     if (new_ast == NULL) {
-        perror("cypher_parse");
+        NEWAST_ReportErrors(new_ast);
         return;
     }
 
     readonly = NEWAST_ReadOnly(new_ast);
-    cypher_parse_result_free(new_ast);
     
     /* END OF New parser */
 
@@ -74,7 +73,8 @@ void _MGraph_Query(void *args) {
     CommandCtx_ThreadSafeContextLock(qctx);
     GraphContext *gc = GraphContext_Retrieve(ctx, qctx->graphName);
     if(!gc) {
-        if(!ast[0]->createNode && !ast[0]->mergeNode) {
+        if (!NEWAST_ContainsClause(new_ast, "create") &&
+            !NEWAST_ContainsClause(new_ast, "merge")) {
             CommandCtx_ThreadSafeContextUnlock(qctx);
             RedisModule_ReplyWithError(ctx, "key doesn't contains a graph object.");
             goto cleanup;
@@ -94,7 +94,7 @@ void _MGraph_Query(void *args) {
     // Perform query validations before and after ModifyAST
     if (AST_PerformValidations(ctx, ast) != AST_VALID) goto cleanup;
 
-    ModifyAST(gc, ast);
+    ModifyAST(gc, ast, new_ast);
     if (AST_PerformValidations(ctx, ast) != AST_VALID) goto cleanup;
 
     // Acquire the appropriate lock.
@@ -140,22 +140,32 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
     simple_tic(tic);
 
-    // Parse AST.
     char *errMsg = NULL;
     const char *query = RedisModule_StringPtrLen(argv[2], NULL);
-    AST **ast = ParseQuery(query, strlen(query), &errMsg);
-    if (!ast) {
+
+    // Parse AST.
+    cypher_parse_result_t *new_ast = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
+    if (new_ast == NULL) return REDISMODULE_OK;
+
+    if(NEWAST_ContainsErrors(new_ast)) {
+        errMsg = NEWAST_ReportErrors(new_ast);
+        cypher_parse_result_free(new_ast);
         RedisModule_Log(ctx, "debug", "Error parsing query: %s", errMsg);
         RedisModule_ReplyWithError(ctx, errMsg);
         free(errMsg);
         return REDISMODULE_OK;
     }
 
-    cypher_parse_result_t *new_ast = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
-    if (new_ast == NULL) {
-        perror("cypher_parse");
-        return REDISMODULE_OK;
-    }
+    // cypher_parse_result_fprint_ast(new_ast, stdout, 0, NULL, 0);
+
+    AST* ast = ParseQuery(query, strlen(query), &errMsg);
+    // if (!ast) {
+    //     RedisModule_Log(ctx, "debug", "Error parsing query: %s", errMsg);
+    //     RedisModule_ReplyWithError(ctx, errMsg);
+    //     free(errMsg);
+    //     return REDISMODULE_OK;
+    // }
+
     bool readonly = NEWAST_ReadOnly(new_ast);
     cypher_parse_result_free(new_ast);
 

@@ -19,15 +19,8 @@
 threadpool _thpool = NULL;
 pthread_key_t _tlsGCKey;    // Thread local storage graph context key.
 
-/* Set up thread pool,
- * number of threads within pool should be
- * the number of available hyperthreads.
- * Returns 1 if thread pool initialized, 0 otherwise. */
-int _Setup_ThreadPOOL(int threadCount) {
-    // Create thread pool.
-    _thpool = thpool_init(threadCount);
-    if(_thpool == NULL) return 0;
-
+/* Create thread local storage keys. */
+int _Setup_ThreadLocalStorage() {
     int error = pthread_key_create(&_tlsGCKey, NULL);
     if(error) {
         printf("Failed to create thread local storage key.\n");
@@ -58,11 +51,13 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
     AR_RegisterFuncs();     // Register arithmetic functions.
     Agg_RegisterFuncs();    // Register aggregation functions.
 
+    if(!_Setup_ThreadLocalStorage()) return REDISMODULE_ERR;
+    
     long long threadCount = Config_GetThreadCount(ctx, argv, argc);
-    if (!_Setup_ThreadPOOL(threadCount)) return REDISMODULE_ERR;
+    if(!_Setup_ThreadPOOL(threadCount)) return REDISMODULE_ERR;
     RedisModule_Log(ctx, "notice", "Thread pool created, using %d threads.", threadCount);
 
-    if (_RegisterDataTypes(ctx) != REDISMODULE_OK) return REDISMODULE_ERR;
+    if(_RegisterDataTypes(ctx) != REDISMODULE_OK) return REDISMODULE_ERR;
 
     if(RedisModule_CreateCommand(ctx, "graph.QUERY", MGraph_Query, "write deny-oom", 1, 1, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;

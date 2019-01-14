@@ -120,7 +120,7 @@ ifeq (,$(wildcard $(LIBCYPHER-PARSER)))
 	# Note we're passing empty CFLAGS to libcypher-parser.
 	cd ../deps/libcypher-parser; \
 	./autogen.sh; \
-	./configure;
+	./configure --disable-shared;
 	$(MAKE) CFLAGS="-fPIC" clean check -C ../deps/libcypher-parser
 endif
 .PHONY: $(LIBCYPHER-PARSER)

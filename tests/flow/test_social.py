@@ -1,33 +1,40 @@
 import os
 import sys
+import redis
 import unittest
 from redisgraph import Graph
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../demo/social/')
 
-# import redis
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from disposableredis import DisposableRedis
-
-from .reversepattern import ReversePattern
 from base import FlowTestsBase
 import social_queries as queries
 import social_utils
 
 redis_graph = None
+redis_con = None
+dis_redis = None
 
-def redis():
-    return DisposableRedis(loadmodule=os.path.dirname(os.path.abspath(__file__)) + '/../../src/redisgraph.so')
+def get_redis():
+    global dis_redis
+    conn = redis.Redis()
+    try:
+        conn.ping()
+        # Assuming RedisGraph is loaded.
+    except redis.exceptions.ConnectionError:
+        from .disposableredis import DisposableRedis
+        # Bring up our own redis-server instance.
+        dis_redis = DisposableRedis(loadmodule=os.path.dirname(os.path.abspath(__file__)) + '/../../src/redisgraph.so')
+        dis_redis.start()
+        conn = dis_redis.client()
+    return conn
 
 class SocialFlowTest(FlowTestsBase):
     @classmethod
     def setUpClass(cls):
         print "SocialFlowTest"
         global redis_graph
-
-        cls.r = redis()
-        cls.r.start()
-        redis_con = cls.r.client()
+        global redis_con
+        redis_con = get_redis()
         redis_graph = Graph(social_utils.graph_name, redis_con)
         social_utils.populate_graph(redis_con, redis_graph)
 
@@ -37,21 +44,9 @@ class SocialFlowTest(FlowTestsBase):
 
     @classmethod
     def tearDownClass(cls):
-        cls.r.stop()
-        # pass
-
-    def assert_reversed_pattern(self, query, resultset):
-        # Test reversed pattern query.
-        reversed_query = ReversePattern().reverse_query_pattern(query)
-        # print "reversed_query: %s" % reversed_query
-        actual_result = redis_graph.query(reversed_query)
-
-        # assert result set
-        self.assertEqual(resultset.result_set, actual_result.result_set)
-
-        # assert query run time
-        self._assert_equalish(resultset.run_time_ms, actual_result.run_time_ms)
-        
+        if dis_redis is not None:
+            dis_redis.stop()
+    
     def test00_graph_entities(self):
         global redis_graph
         q = queries.graph_entities.query

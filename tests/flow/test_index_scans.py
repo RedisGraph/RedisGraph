@@ -1,21 +1,30 @@
 import os
 import sys
+import redis
 import unittest
 from redisgraph import Graph, Node, Edge
-
-# import redis
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from disposableredis import DisposableRedis
-
 from base import FlowTestsBase
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../demo/social/')
 import social_utils
 
 redis_graph = None
+dis_redis = None
+redis_con = None
 
-def redis():
-    return DisposableRedis(loadmodule=os.path.dirname(os.path.abspath(__file__)) + '/../../src/redisgraph.so')
+def get_redis():
+    global dis_redis
+    conn = redis.Redis()
+    try:
+        conn.ping()
+        # Assuming RedisGraph is loaded.
+    except redis.exceptions.ConnectionError:
+        from .disposableredis import DisposableRedis
+        # Bring up our own redis-server instance.
+        dis_redis = DisposableRedis(loadmodule=os.path.dirname(os.path.abspath(__file__)) + '/../../src/redisgraph.so')
+        dis_redis.start()
+        conn = dis_redis.client()
+    return conn
 
 class IndexScanFlowTest(FlowTestsBase):
 
@@ -23,22 +32,16 @@ class IndexScanFlowTest(FlowTestsBase):
     def setUpClass(cls):
         print "IndexScanFlowTest"
         global redis_graph
-        cls.r = redis()
-        cls.r.start()
-        redis_con = cls.r.client()
+        global redis_con
+        redis_con = get_redis()
         redis_graph = Graph(social_utils.graph_name, redis_con)
-
-        # cls.r = redis.Redis()
-        # redis_con = cls.r
-        # redis_graph = Graph(social_utils.graph_name, cls.r)  
-
         social_utils.populate_graph(redis_con, redis_graph)
         cls.build_indices()
 
     @classmethod
     def tearDownClass(cls):
-        cls.r.stop()
-        # pass
+        if dis_redis is not None:
+            dis_redis.stop()
 
     @classmethod
     def build_indices(self):

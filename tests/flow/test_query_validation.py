@@ -1,38 +1,52 @@
 import os
 import sys
+import redis
+import string
+import random
 import unittest
+from base import FlowTestsBase
 from redisgraph import Graph, Node, Edge
 
-import redis
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from disposableredis import DisposableRedis
-
-from base import FlowTestsBase
-
 redis_graph = None
+dis_redis = None
+redis_con = None
 
-def disposable_redis():
-    return DisposableRedis(loadmodule=os.path.dirname(os.path.abspath(__file__)) + '/../../src/redisgraph.so')
+def random_string(size=6, chars=string.ascii_letters):
+    return ''.join(random.choice(chars) for _ in range(size))
+
+def get_redis():
+    global dis_redis
+    conn = redis.Redis()
+    try:
+        conn.ping()
+        # Assuming RedisGraph is loaded.
+    except redis.exceptions.ConnectionError:
+        from .disposableredis import DisposableRedis
+        # Bring up our own redis-server instance.
+        dis_redis = DisposableRedis(loadmodule=os.path.dirname(os.path.abspath(__file__)) + '/../../src/redisgraph.so')
+        dis_redis.start()
+        conn = dis_redis.client()
+    return conn
 
 class QueryValidationFlowTest(FlowTestsBase):
     @classmethod
     def setUpClass(cls):
         print "QueryValidationFlowTest"
         global redis_graph
-        cls.r = disposable_redis()
-        cls.r.start()
-        redis_con = cls.r.client()
+        global redis_con
+        redis_con = get_redis()
         
         # Create a single graph.
-        redis_graph = Graph("G", redis_con)
+        GRAPH_ID = random_string()
+        redis_graph = Graph(GRAPH_ID, redis_con)
         node = Node(properties={"age": 34})
         redis_graph.add_node(node)
         redis_graph.commit()
 
     @classmethod
     def tearDownClass(cls):
-        cls.r.stop()
-        # pass
+        if dis_redis is not None:
+            dis_redis.stop()
 
     # Expect an error when trying to use a function which does not exists.
     def test01_none_existing_function(self):

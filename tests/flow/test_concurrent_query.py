@@ -2,21 +2,34 @@ import os
 import sys
 import unittest
 import threading
+import redis
+import random
+import string
 from redisgraph import Graph, Node, Edge
-
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from disposableredis import DisposableRedis
-
 from base import FlowTestsBase
 
-GRAPH_ID = "G"                      # Graph identifier.
+dis_redis = None
 CLIENT_COUNT = 16                   # Number of concurrent connections.
 graphs = None                       # One graph object per client.
 assertions = [True] * CLIENT_COUNT  # Each thread places its verdict at position threadID.
 people = ["Roi", "Alon", "Ailon", "Boaz", "Tal", "Omri", "Ori"]
 
-def redis():
-    return DisposableRedis(loadmodule=os.path.dirname(os.path.abspath(__file__)) + '/../../src/redisgraph.so')
+def random_string(size=6, chars=string.ascii_letters):
+    return ''.join(random.choice(chars) for _ in range(size))
+
+def get_redis():
+    global dis_redis
+    conn = redis.Redis()
+    try:
+        conn.ping()
+        # Assuming RedisGraph is loaded.
+    except redis.exceptions.ConnectionError:
+        from .disposableredis import DisposableRedis
+        # Bring up our own redis-server instance.
+        dis_redis = DisposableRedis(loadmodule=os.path.dirname(os.path.abspath(__file__)) + '/../../src/redisgraph.so')
+        dis_redis.start()
+        conn = dis_redis.client()
+    return conn
 
 def query_aggregate(graph, query, threadID):
     global assertions
@@ -70,17 +83,21 @@ class ConcurrentQueryFlowTest(FlowTestsBase):
         graphs = []
 
         print "ConcurrentQueryFlowTest"
-        cls.r = redis()
-        cls.r.start()
+        cls.r = get_redis()
+        GRAPH_ID = random_string()
 
         for i in range(0, CLIENT_COUNT):
-            conn = cls.r.client()
+            if dis_redis is not None:
+                conn = dis_redis.client()
+            else:
+                conn = get_redis()
             graphs.append(Graph(GRAPH_ID, conn))
         cls.populate_graph()
 
     @classmethod
     def tearDownClass(cls):
-        cls.r.stop()
+        if dis_redis is not None:
+            dis_redis.stop()
 
     @classmethod
     def populate_graph(cls):
