@@ -16,6 +16,7 @@
 
 
 extern pthread_key_t _tlsASTKey;  // Thread local storage AST key.
+extern pthread_key_t _tlsNEWASTKey;  // Thread local storage NEWAST key.
 
 QueryContext* _queryContext_New(RedisModuleBlockedClient *bc,
                                 AST* ast,
@@ -80,17 +81,17 @@ void _MGraph_Query(void *args) {
     const char* query = RedisModule_StringPtrLen(qctx->query, NULL);
     cypher_parse_result_t *new_ast = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
     if (new_ast == NULL) {
-        perror("cypher_parse");
+        NEWAST_ReportErrors(new_ast);
         return;
     }
 
     readonly = NEWAST_ReadOnly(new_ast);
-    cypher_parse_result_free(new_ast);
     
     /* END OF New parser */
 
     // Add AST to thread local storage.
     pthread_setspecific(_tlsASTKey, ast);
+    pthread_setspecific(_tlsNEWASTKey, new_ast);
 
     // Try to access the GraphContext
     RedisModule_ThreadSafeContextLock(ctx);
@@ -98,7 +99,8 @@ void _MGraph_Query(void *args) {
     RedisModule_ThreadSafeContextUnlock(ctx);
     
     if(!gc) {
-        if (!ast->createNode && !ast->mergeNode) {
+        if (!NEWAST_ContainsClause(new_ast, "create") &&
+            !NEWAST_ContainsClause(new_ast, "merge")) {
             RedisModule_ReplyWithError(ctx, "key doesn't contains a graph object.");
             goto cleanup;
         }
@@ -113,12 +115,12 @@ void _MGraph_Query(void *args) {
             goto cleanup;
         }
         /* TODO: free graph if no entities were created. */
-    }    
+    }
 
     // Perform query validations before and after ModifyAST
     if (AST_PerformValidations(ctx, ast) != AST_VALID) goto cleanup;
 
-    ModifyAST(gc, ast);
+    ModifyAST(gc, ast, new_ast);
     if (AST_PerformValidations(ctx, ast) != AST_VALID) goto cleanup;
 
     // Acquire the appropriate lock.
@@ -152,6 +154,7 @@ cleanup:
 
     ResultSet_Free(resultSet);
     AST_Free(ast);
+    cypher_parse_result_free(new_ast);
     RedisModule_UnblockClient(qctx->bc, NULL);
     RedisModule_FreeThreadSafeContext(ctx);
     _queryContext_Free(qctx);
@@ -174,22 +177,32 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
     simple_tic(tic);
 
-    // Parse AST.
     char *errMsg = NULL;
     const char *query = RedisModule_StringPtrLen(argv[2], NULL);
-    AST* ast = ParseQuery(query, strlen(query), &errMsg);
-    if (!ast) {
+
+    // Parse AST.
+    cypher_parse_result_t *new_ast = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
+    if (new_ast == NULL) return REDISMODULE_OK;
+
+    if(NEWAST_ContainsErrors(new_ast)) {
+        errMsg = NEWAST_ReportErrors(new_ast);
+        cypher_parse_result_free(new_ast);
         RedisModule_Log(ctx, "debug", "Error parsing query: %s", errMsg);
         RedisModule_ReplyWithError(ctx, errMsg);
         free(errMsg);
         return REDISMODULE_OK;
     }
 
-    cypher_parse_result_t *new_ast = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
-    if (new_ast == NULL) {
-        perror("cypher_parse");
-        return REDISMODULE_OK;
-    }
+    // cypher_parse_result_fprint_ast(new_ast, stdout, 0, NULL, 0);
+
+    AST* ast = ParseQuery(query, strlen(query), &errMsg);
+    // if (!ast) {
+    //     RedisModule_Log(ctx, "debug", "Error parsing query: %s", errMsg);
+    //     RedisModule_ReplyWithError(ctx, errMsg);
+    //     free(errMsg);
+    //     return REDISMODULE_OK;
+    // }
+
     bool readonly = NEWAST_ReadOnly(new_ast);
     cypher_parse_result_free(new_ast);
 

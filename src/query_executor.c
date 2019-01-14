@@ -16,6 +16,7 @@
 #include "arithmetic/agg_ctx.h"
 #include "arithmetic/repository.h"
 #include "parser/parser_common.h"
+#include "../deps/libcypher-parser/lib/src/cypher-parser.h"
 
 static void _returnClause_ExpandCollapsedNodes(GraphContext *gc, AST *ast) {
     assert(gc);
@@ -242,14 +243,15 @@ AST_Validation AST_PerformValidations(RedisModuleCtx *ctx, AST *ast) {
     return AST_VALID;
 }
 
-void ModifyAST(GraphContext *gc, AST *ast) {
+void ModifyAST(GraphContext *gc, AST *ast, const cypher_parse_result_t *new_ast) {
     if(ast->mergeNode) {
         /* Create match clause which will try to match 
          * against pattern specified within merge clause. */
         _replicateMergeClauseToMatchClause(ast);
     }
 
-    if(ReturnClause_ContainsCollapsedNodes(ast->returnNode) == 1) {
+    // if(ReturnClause_ContainsCollapsedNodes(ast->returnNode) == 1) {
+    if(NEWAST_ReturnClause_ContainsCollapsedNodes(new_ast) == 1) {
         /* Expand collapsed nodes. */
         _returnClause_ExpandCollapsedNodes(gc, ast);
     }

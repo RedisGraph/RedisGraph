@@ -33,6 +33,7 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     /* Parse query, get AST. */
     char *errMsg = NULL;
     AST* ast = NULL;
+    cypher_parse_result_t *new_ast = NULL;
     GraphContext *gc = NULL;
     ExecutionPlan *plan = NULL;
 
@@ -44,6 +45,9 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
         return REDISMODULE_OK;
     }
     pthread_setspecific(_tlsASTKey, ast);
+
+    new_ast = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
+
 
     // Retrieve the GraphContext and acquire a read lock.
     // RedisModule_ThreadSafeContextLock(ctx);
@@ -57,7 +61,7 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     // Perform query validations before and after ModifyAST
     if (AST_PerformValidations(ctx, ast) != AST_VALID) return REDISMODULE_OK;
 
-    ModifyAST(gc, ast);
+    ModifyAST(gc, ast, new_ast);
     if (AST_PerformValidations(ctx, ast) != AST_VALID) return REDISMODULE_OK;
 
     if (ast->indexNode != NULL) { // index operation
@@ -77,5 +81,6 @@ cleanup:
         ExecutionPlanFree(plan);
     }
     if(ast) AST_Free(ast);
+    if(new_ast) cypher_parse_result_free(new_ast);
     return REDISMODULE_OK;
 }

@@ -1,38 +1,49 @@
 import os
 import sys
+import redis
+import string
+import random
 import unittest
+from base import FlowTestsBase
 from redisgraph import Graph, Node, Edge
 
-# import redis
-from .disposableredis import DisposableRedis
-
-from base import FlowTestsBase
-
+dis_redis = None
 redis_graph = None
+redis_con = None
 people = ["Roi", "Alon", "Ailon", "Boaz", "Tal", "Omri", "Ori"]
 
-def redis():
-    return DisposableRedis(loadmodule=os.path.dirname(os.path.abspath(__file__)) + '/../../src/redisgraph.so')
+def random_string(size=6, chars=string.ascii_letters):
+    return ''.join(random.choice(chars) for _ in range(size))
+
+def get_redis():
+    global dis_redis
+    conn = redis.Redis()
+    try:
+        conn.ping()
+        # Assuming RedisGraph is loaded.
+    except redis.exceptions.ConnectionError:
+        from .disposableredis import DisposableRedis
+        # Bring up our own redis-server instance.
+        dis_redis = DisposableRedis(loadmodule=os.path.dirname(os.path.abspath(__file__)) + '/../../src/redisgraph.so')
+        dis_redis.start()
+        conn = dis_redis.client()
+    return conn
 
 class GraphMultiPatternQueryFlowTest(FlowTestsBase):
     @classmethod
     def setUpClass(cls):
         print "GraphMultiPatternQueryFlowTest"
         global redis_graph
-        cls.r = redis()
-        cls.r.start()
-        redis_con = cls.r.client()
-        redis_graph = Graph("G", redis_con)
-
-        # cls.r = redis.Redis()
-        # redis_graph = Graph("G", cls.r)
-
+        global redis_con
+        redis_con = get_redis()
+        GRAPH_ID = random_string()
+        redis_graph = Graph(GRAPH_ID, redis_con)
         cls.populate_graph()
 
     @classmethod
     def tearDownClass(cls):
-        cls.r.stop()
-        # pass
+        if dis_redis is not None:
+            dis_redis.stop()
 
     @classmethod
     def populate_graph(cls):
@@ -49,7 +60,7 @@ class GraphMultiPatternQueryFlowTest(FlowTestsBase):
 
     # Connect a single node to all other nodes.
     def test01_connect_node_to_rest(self):
-        query = """MATCH(r:person {name:"Roi"}), (f:person) WHERE f.name != r.name CREATE (r)-[:friend]->(f)"""
+        query = """MATCH(r:person {name:"Roi"}), (f:person) WHERE f.name <> r.name CREATE (r)-[:friend]->(f)"""
         actual_result = redis_graph.query(query)
         assert (actual_result.relationships_created == 6)
     
@@ -74,7 +85,7 @@ class GraphMultiPatternQueryFlowTest(FlowTestsBase):
 
     # Connect every node to every node.
     def test04_create_fully_connected_graph(self):
-        query = """MATCH(r:person), (f:person) WHERE f.name != r.name CREATE (r)-[:friend]->(f)"""
+        query = """MATCH(r:person), (f:person) WHERE f.name <> r.name CREATE (r)-[:friend]->(f)"""
         actual_result = redis_graph.query(query)
         assert (actual_result.relationships_created == 42)
     

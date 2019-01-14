@@ -10,6 +10,7 @@
 
 #include "redismodule.h"
 #include "parser/ast.h"
+#include "parser/newast.h"
 #include "graph/query_graph.h"
 #include "arithmetic/arithmetic_expression.h"
 
@@ -26,6 +27,7 @@ void Build_None_Aggregated_Arithmetic_Expressions(AST *ast,
                                                   int *expressions_count);
 
 /* Performs a number of adjustments to given AST. */
-void ModifyAST(GraphContext *gc, AST *ast);
+// void ModifyAST(GraphContext *gc, AST *ast);
+void ModifyAST(GraphContext *gc, AST *ast, const cypher_parse_result_t *new_ast);
 
 #endif

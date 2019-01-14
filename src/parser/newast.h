@@ -13,4 +13,19 @@
 // Checks if AST represent a read only query.
 bool NEWAST_ReadOnly(const cypher_parse_result_t *ast);
 
+// Checks to see if AST contains specified clause. 
+bool NEWAST_ContainsClause(const cypher_parse_result_t *ast, const char* clause);
+
+// Checks to see if query contains any errors.
+bool NEWAST_ContainsErrors(const cypher_parse_result_t *ast);
+
+// Returns specified clause of NULL.
+const cypher_astnode_t *NEWAST_GetClause(const cypher_parse_result_t *ast, const char* clause);
+
+// Report encountered errors.
+char* NEWAST_ReportErrors(const cypher_parse_result_t *ast);
+
+// Checks if RETURN clause contains collapsed entities.
+int NEWAST_ReturnClause_ContainsCollapsedNodes(const cypher_parse_result_t *ast);
+
 #endif
