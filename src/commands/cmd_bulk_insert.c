@@ -33,6 +33,7 @@ void _MGraph_BulkInsert(void *args) {
 
     RedisModuleString **argv = context->argv + 1; // skip "GRAPH.BULK"
     RedisModuleString *rs_graph_name = *argv++;
+    const char *graphname = RedisModule_StringPtrLen(rs_graph_name, NULL);
     int argc = context->argc - 2; // skip "GRAPH.BULK [GRAPHNAME]"
     RedisModuleKey *key;
 
@@ -58,7 +59,6 @@ void _MGraph_BulkInsert(void *args) {
         // Verify that graph does not already exist.
         key = RedisModule_OpenKey(ctx, rs_graph_name, REDISMODULE_READ);
         if (key) {
-            const char *graphname = RedisModule_StringPtrLen(rs_graph_name, NULL);
             char *err;
             asprintf(&err, "Graph with name '%s' cannot be created, as Redis key '%s' already exists.", graphname, graphname); 
             RedisModule_ReplyWithError(ctx, err);
@@ -81,11 +81,11 @@ void _MGraph_BulkInsert(void *args) {
 
     if (initial_query) {
         // Create graph and initialize its data stores.
-        gc = GraphContext_New(ctx, rs_graph_name, nodes_in_query, relations_in_query);
+        gc = GraphContext_New(ctx, graphname, nodes_in_query, relations_in_query);
         assert(gc);
     } else {
         // Query did not start with a "BEGIN" token
-        gc = GraphContext_Retrieve(ctx, rs_graph_name);
+        gc = GraphContext_Retrieve(ctx, graphname);
         if (gc == NULL) {
             RedisModule_ReplyWithError(ctx, "Bulk insert query did not include a BEGIN token and graph was not found.");
             goto cleanup;
