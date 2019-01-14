@@ -6,7 +6,7 @@ ENV DEPS "python python-setuptools python-pip wget build-essential cmake m4"
 RUN set -ex;\
     deps="$DEPS";\
     apt-get update;\
-	apt-get install -y --no-install-recommends $deps;\
+    apt-get install -y --no-install-recommends $deps;\
     pip install rmtest;\
     pip install redisgraph;
 

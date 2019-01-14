@@ -17,20 +17,10 @@ CFLAGS += $(DEBUGFLAGS)
 
 # Compile flags for linux / osx
 ifeq ($(uname_S),Linux)
-	SHOBJ_LDFLAGS ?= -shared -Bsymbolic -Bsymbolic-functions -fopenmp -ldl -lpthread
+	SHOBJ_LDFLAGS ?= -shared -Bsymbolic -Bsymbolic-functions -ldl -lpthread
 else
-	CFLAGS += -mmacosx-version-min=10.14 -Xpreprocessor -fopenmp
-	SHOBJ_LDFLAGS ?= -mmacosx-version-min=10.14 -bundle -undefined dynamic_lookup -lomp -ldl -lpthread
-
-	# If we are using the Apple toolchain compiler, some extra work is required to validate dependencies.
-	compiler := $(findstring Apple LLVM,$(shell sh -c '$(CC) --version'))
-	ifneq (,$(compiler))
-	# Verify that the user has separately installed the OpenMP dependency.
-		openmp_support := $(shell sh -c 'brew ls --versions libomp || echo no_openmp')
-		ifeq ($(openmp_support), no_openmp)
-      $(error "Error: OpenMP is required for compilation. Install by running 'brew install libomp'.")
-		endif
-	endif
+	CFLAGS += -mmacosx-version-min=10.14 -Xpreprocessor
+	SHOBJ_LDFLAGS ?= -mmacosx-version-min=10.14 -bundle -undefined dynamic_lookup -ldl -lpthread
 endif
 SHOBJ_LDFLAGS += $(LDFLAGS)
 
