@@ -27,6 +27,7 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
         return REDISMODULE_OK;
     }
 
+    const char *graphname = RedisModule_StringPtrLen(argv[1], NULL);
     const char *query = RedisModule_StringPtrLen(argv[2], NULL);
 
     /* Parse query, get AST. */
@@ -46,7 +47,7 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
     // Retrieve the GraphContext and acquire a read lock.
     // RedisModule_ThreadSafeContextLock(ctx);
-    gc = GraphContext_Retrieve(ctx, argv[1]);
+    gc = GraphContext_Retrieve(ctx, graphname);
     // RedisModule_ThreadSafeContextUnlock(ctx);
     if(!gc) {
         RedisModule_ReplyWithError(ctx, "key doesn't contains a graph object.");

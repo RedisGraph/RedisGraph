@@ -11,11 +11,12 @@ extern pthread_key_t _tlsGCKey;    // Thread local storage graph context key.
 // GraphContext API
 //------------------------------------------------------------------------------
 
-GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rs_name,
+GraphContext* GraphContext_New(RedisModuleCtx *ctx, const char *graphname,
                                size_t node_cap, size_t edge_cap) {
   GraphContext *gc = NULL;
 
   // Create key for GraphContext from the unmodified string provided by the user
+  RedisModuleString *rs_name = RedisModule_CreateString(ctx, graphname, strlen(graphname));
   RedisModuleKey *key = RedisModule_OpenKey(ctx, rs_name, REDISMODULE_WRITE);
   if (RedisModule_KeyType(key) != REDISMODULE_KEYTYPE_EMPTY) {
     goto cleanup;
@@ -26,7 +27,7 @@ GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rs_name,
   // Initialize the graph's matrices and datablock storage
   gc->g = Graph_New(node_cap, edge_cap);
 
-  gc->graph_name = rm_strdup(RedisModule_StringPtrLen(rs_name, NULL));
+  gc->graph_name = rm_strdup(graphname);
   // Allocate the default space for stores and indices
   gc->node_stores = array_new(LabelStore*, GRAPH_DEFAULT_LABEL_CAP);
   gc->relation_stores = array_new(LabelStore*, GRAPH_DEFAULT_RELATION_TYPE_CAP);
@@ -43,11 +44,13 @@ GraphContext* GraphContext_New(RedisModuleCtx *ctx, RedisModuleString *rs_name,
 
 cleanup:
   RedisModule_CloseKey(key);
+  RedisModule_FreeString(ctx, rs_name);
   return gc;
 }
 
-GraphContext* GraphContext_Retrieve(RedisModuleCtx *ctx, RedisModuleString *rs_name) {
+GraphContext* GraphContext_Retrieve(RedisModuleCtx *ctx, const char *graphname) {
   GraphContext *gc = NULL;
+  RedisModuleString *rs_name = RedisModule_CreateString(ctx, graphname, strlen(graphname));
   RedisModuleKey *key = RedisModule_OpenKey(ctx, rs_name, REDISMODULE_READ);
   if (RedisModule_ModuleTypeGetType(key) != GraphContextRedisModuleType) {
     goto cleanup;
@@ -60,6 +63,7 @@ GraphContext* GraphContext_Retrieve(RedisModuleCtx *ctx, RedisModuleString *rs_n
   pthread_setspecific(_tlsGCKey, gc);
 
 cleanup:
+  RedisModule_FreeString(ctx, rs_name);
   RedisModule_CloseKey(key);
   return gc;
 }
