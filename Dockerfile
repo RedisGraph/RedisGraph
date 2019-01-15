@@ -24,8 +24,6 @@ FROM redis:latest
 ENV LIBDIR /usr/lib/redis/modules
 WORKDIR /data
 RUN set -ex;\
-    apt-get update;\
-    apt-get install -y --no-install-recommends libgomp1;\
     mkdir -p "$LIBDIR";
 
 COPY --from=builder /redisgraph/src/redisgraph.so "$LIBDIR"

@@ -10,16 +10,6 @@ CPPFLAGS += -isystem $(GTEST_DIR)/include
 CXXFLAGS += -g -Wall -Wextra -pthread -std=c++11
 CXX_SUPPRESS = -Wno-sign-compare -Wno-format -Wno-write-strings
 
-uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
-# Platform-specific compilation flags
-ifeq ($(uname_S),Linux)
-	CXXFLAGS += -fopenmp
-	LDFLAGS += -fopenmp
-else
-	CXXFLAGS += -Xpreprocessor -fopenmp
-	LDFLAGS += -lomp
-endif
-
 REDISGRAPH_CXX=$(QUIET_CXX)$(CXX)
 
 CCCOLOR="\033[34m"

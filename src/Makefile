@@ -19,7 +19,7 @@ CFLAGS += $(DEBUGFLAGS)
 ifeq ($(uname_S),Linux)
 	SHOBJ_LDFLAGS ?= -shared -Bsymbolic -Bsymbolic-functions -ldl -lpthread
 else
-	CFLAGS += -mmacosx-version-min=10.14 -Xpreprocessor
+	CFLAGS += -mmacosx-version-min=10.14
 	SHOBJ_LDFLAGS ?= -mmacosx-version-min=10.14 -bundle -undefined dynamic_lookup -ldl -lpthread
 endif
 SHOBJ_LDFLAGS += $(LDFLAGS)
