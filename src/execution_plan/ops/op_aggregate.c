@@ -14,13 +14,16 @@
 
 /* Construct an expression trees for both aggregated and none aggregated expressions. */
 static void _build_expressions(Aggregate *op) {
-    // RETURN expressions.
+    ExpandCollapsedNodes(op->ast);
+    ResultSet_CreateHeader(op->resultset);
+
     AST_ReturnNode *return_node = op->ast->returnNode;
     uint expCount = array_len(return_node->returnElements);
     
     op->none_aggregated_expressions = array_new(AR_ExpNode*, 1);
     op->expression_classification = rm_malloc(sizeof(int) * expCount);
 
+    // Compose RETURN clause expressions.
     for(uint i = 0; i < expCount; i++) {
         AST_ReturnElementNode *returnElement = return_node->returnElements[i];
         
@@ -195,10 +198,11 @@ static Record _handoff(Aggregate *op) {
     return r;
 }
 
-OpBase* NewAggregateOp(AST *ast) {
+OpBase* NewAggregateOp(ResultSet *resultset) {
     Aggregate *aggregate = malloc(sizeof(Aggregate));
-    aggregate->ast = ast;
     aggregate->init = 0;
+    aggregate->ast = AST_GetFromLTS();
+    aggregate->resultset = resultset;
     aggregate->none_aggregated_expressions = NULL;
     aggregate->expression_classification = NULL;
     aggregate->order_expressions = NULL;

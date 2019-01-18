@@ -62,10 +62,6 @@ static void _ResultSet_SetupReply(ResultSet *set) {
 
     // We don't know at this point the number of records, we're about to return.
     RedisModule_ReplyWithArray(set->ctx, REDISMODULE_POSTPONED_ARRAY_LEN);
-    if(set->header) {
-        /* Replay with table header. */
-        _ResultSet_ReplayHeader(set, set->header);
-    }
 }
 
 static void _ResultSet_ReplayStats(RedisModuleCtx* ctx, ResultSet* set) {
@@ -127,9 +123,10 @@ void static _Column_Free(Column* column) {
     rm_free(column);
 }
 
-static ResultSetHeader* _NewResultSetHeader(const AST *ast) {
-    if(!ast->returnNode) return NULL;
+void ResultSet_CreateHeader(ResultSet *resultset) {
+    assert(resultset->header == NULL && resultset->recordCount == 0);
 
+    const AST *ast = AST_GetFromLTS();
     ResultSetHeader* header = rm_malloc(sizeof(ResultSetHeader));
     header->columns_len = 0;
     header->columns = NULL;
@@ -152,7 +149,9 @@ static ResultSetHeader* _NewResultSetHeader(const AST *ast) {
         header->columns[i] = column;
     }
 
-    return header;
+    resultset->header = header;
+    /* Replay with table header. */
+    _ResultSet_ReplayHeader(resultset, header);
 }
 
 static void _ResultSetHeader_Free(ResultSetHeader* header) {
@@ -172,6 +171,10 @@ bool ResultSet_Full(const ResultSet* set) {
     return (set->limit != RESULTSET_UNLIMITED && set->recordCount >= set->limit);
 }
 
+bool ResultSet_Limited(const ResultSet* set) {
+    return (set && set->limit != RESULTSET_UNLIMITED);
+}
+
 ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx) {
     ResultSet* set = (ResultSet*)malloc(sizeof(ResultSet));
     set->ctx = ctx;
@@ -181,7 +184,7 @@ ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx) {
     set->skipped = 0;
     set->distinct = (ast->returnNode && ast->returnNode->distinct);
     set->recordCount = 0;    
-    set->header = _NewResultSetHeader(ast);
+    set->header = NULL;
     set->bufferLen = 2048;
     set->buffer = malloc(set->bufferLen);
 
@@ -199,10 +202,6 @@ ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx) {
     _ResultSet_SetupReply(set);
 
     return set;
-}
-
-bool ResultSet_Limited(const ResultSet* set) {
-    return (set && set->limit != RESULTSET_UNLIMITED);
 }
 
 int ResultSet_AddRecord(ResultSet* set, Record r) {
@@ -234,9 +233,8 @@ void ResultSet_Replay(ResultSet* set) {
 void ResultSet_Free(ResultSet *set) {
     if(!set) return;
 
-    _ResultSetHeader_Free(set->header);
-
+    free(set->buffer);
+    if(set->header) _ResultSetHeader_Free(set->header);
     if(set->trie != NULL) TrieMap_Free(set->trie, TrieMap_NOP_CB);
-    free(set->buffer);    
     free(set);
 }
