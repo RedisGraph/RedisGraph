@@ -259,6 +259,21 @@ AE_Unit** _AddNode(TrieMap *referred_entities, AE_Unit **units, AE_Unit *unit, N
   Edge *e = NULL;
   // Outgoing edges
   while (Vector_Pop(cur->outgoing_edges, &e)) {
+    // Remove edge from incoming Vector of destination
+    Node *dest = e->dest;
+    for (int i = 0; i < Vector_Size(dest->incoming_edges); i ++) {
+      Edge *to_delete;
+      Vector_Get(dest->incoming_edges, i, &to_delete);
+      if (to_delete == e) {
+        // Place last element at position of element to delete
+        // TODO add interface for this
+        Vector_Pop(dest->incoming_edges, &to_delete);
+        if (Vector_Size(dest->incoming_edges) == 0) break;
+        Vector_Put(dest->incoming_edges, i, to_delete);
+        break;
+      }
+    }
+
     if (unit->dest) {
       // Mapped full unit, start the next
       AE_Unit *new_unit = rm_calloc(1, sizeof(AE_Unit));
@@ -281,6 +296,33 @@ AE_Unit** _AddNode(TrieMap *referred_entities, AE_Unit **units, AE_Unit *unit, N
     unit->exp_leaf = AlgebraicExpression_Append(unit->exp_leaf, edge_matrix);
     units = _AddNode(referred_entities, units, unit, e->dest);
   }
+
+  // Incoming edges
+  while (Vector_Pop(cur->incoming_edges, &e)) {
+    // TODO check if e has been added to units
+    if (unit->dest) {
+      // Mapped full unit, start the next
+      AE_Unit *new_unit = rm_calloc(1, sizeof(AE_Unit));
+      units = array_append(units, new_unit);
+      unit = new_unit;
+      unit->exp_root = AlgebraicExpression_NewOperationNode(AL_EXP_TRANSPOSE);
+      unit->exp_leaf = unit->exp_root;
+      unit->src = cur;
+    }
+    // Referenced edge
+    referred = TrieMap_Find(referred_entities, e->alias, strlen(e->alias));
+    if (referred != TRIEMAP_NOTFOUND) {
+      // TODO deal with multiple referenced edges without referenced intermediate nodes
+      assert(unit->edge == NULL);
+      unit->edge = e;
+    }
+    // TODO If edge is variable length or covers multiple relation types,
+    // might want to handle that here
+    AlgebraicExpressionNode *edge_matrix = AlgebraicExpression_NewEdgeOperand(e);
+    unit->exp_leaf = AlgebraicExpression_Append(unit->exp_leaf, edge_matrix);
+    units = _AddNode(referred_entities, units, unit, e->src);
+  }
+
   return units;
 }
 
