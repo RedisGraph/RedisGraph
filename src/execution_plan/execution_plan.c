@@ -279,9 +279,9 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx,
               // TODO choose an ideal starting place
               // TODO Replace the first operand matrix with a node/label scan
               // (optimize later for filters, nodes over labels, etc)
+              // Reverse order of operands in expression tree
+              expression->exp_root = AlgebraicExpression_InvertTree(expression->exp_root);
 
-              // Invert expression tree
-              // expression->exp_root = AlgebraicExpression_InvertTree(expression->exp_root);
               // Push traversal operation onto stack
               OpBase *cond_traverse = NewCondTraverseOp(g, expression);
               Vector_Push(traversals, cond_traverse);

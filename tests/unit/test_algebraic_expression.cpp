@@ -456,8 +456,6 @@ TEST_F(AlgebraicExpressionTest, Exp_OP_MUL_Transpose) {
     AlgebraicExpressionNode_Free(exp);
 }
 
-// TODO Fix SumOfMul optimization to work with new operand format
-/*
 TEST_F(AlgebraicExpressionTest, Exp_OP_A_MUL_B_Plus_C) {
     // Exp = A*(B+C)
     GrB_Matrix A;
@@ -512,6 +510,14 @@ TEST_F(AlgebraicExpressionTest, Exp_OP_A_MUL_B_Plus_C) {
     AlgebraicExpressionNode_Free(exp);
 }
 
+/*
+TODO investigate, but this tree is:
+    *
+  a     +
+      b   c
+Should that be modified?
+*/
+/*
 TEST_F(AlgebraicExpressionTest, ExpTransform_A_Times_B_Plus_C) {
     // Test Mul / Add transformation:
     // A*(B+C) -> A*B + A*C
@@ -564,6 +570,7 @@ TEST_F(AlgebraicExpressionTest, ExpTransform_A_Times_B_Plus_C) {
     GrB_Matrix_free(&C);
     AlgebraicExpressionNode_Free(root);
 }
+*/
 
 TEST_F(AlgebraicExpressionTest, ExpTransform_AB_Times_C_Plus_D) {
     // Test Mul / Add transformation:
@@ -639,7 +646,6 @@ TEST_F(AlgebraicExpressionTest, ExpTransform_AB_Times_C_Plus_D) {
     GrB_Matrix_free(&D);
     AlgebraicExpressionNode_Free(root);
 }
-*/
 
 // TODO Below tests all use old format of AlgebraicExpression
 /*

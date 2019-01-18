@@ -38,13 +38,14 @@ static void _AlgebraicExpression_PrintNode(AlgebraicExpressionNode *root, int in
   if (root == NULL) return;
 
   if (root->type == AL_OPERAND) {
-      if (root->operand.entity_is_node) {
-        Node *operand = (Node*)root->operand.entity;
+      if (root->operand.n) {
+        Node *operand = (Node*)root->operand.n;
         printf("%*s(%s:%s)\n", indent, "", operand->alias, operand->label);
-      } else {
-        Edge *operand = (Edge*)root->operand.entity;
+      } else if (root->operand.e) {
+        Edge *operand = (Edge*)root->operand.e;
         printf("%*s[%s:%s]\n", indent, "", operand->alias, operand->relationship);
-      
+      } else {
+        printf("matrix only\n");
       }
   } else {
       char *op;
@@ -131,6 +132,32 @@ int AlgebraicExpression_OperandCount(AlgebraicExpressionNode *root) {
   int increase = AlgebraicExpression_OperandCount(root->operation.l);
   increase += AlgebraicExpression_OperandCount(root->operation.r);
   return increase;
+}
+
+bool AlgebraicExpression_RemoveNodeOperand(AlgebraicExpressionNode **root, Node *del) {
+  assert(root);
+
+  AlgebraicExpressionNode *cur = *root;
+  if (cur == NULL) return NULL;
+
+  if (cur->type == AL_OPERAND) {
+    if (cur->operand.n == del) {
+      *root = NULL;
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  if (AlgebraicExpression_RemoveNodeOperand(&cur->operation.l, del)) {
+    return true;
+  }
+
+  if (AlgebraicExpression_RemoveNodeOperand(&cur->operation.r, del)) {
+    return true;
+  }
+
+  return false;
 }
 
 // TODO unused, delete if never used
@@ -306,6 +333,7 @@ AE_Unit*** AlgebraicExpression_BuildExps(const AST *ast, const QueryGraph *qg, i
     // TODO free subgraphs
 
     // Debug print
+    printf("printing:\n");
     for (int i = 0; i < count; i ++) {
       printf("component %d\n", i);
       AE_Unit **component = components[i];
@@ -340,15 +368,13 @@ AlgebraicExpressionNode* AlgebraicExpression_NewOperand(GrB_Matrix mat) {
 
 AlgebraicExpressionNode *AlgebraicExpression_NewNodeOperand(Node *operand) {
     AlgebraicExpressionNode *node = AlgebraicExpression_NewOperand(operand->mat);
-    node->operand.entity = operand;
-    node->operand.entity_is_node = true;
+    node->operand.n = operand;
     return node;
 }
 
 AlgebraicExpressionNode *AlgebraicExpression_NewEdgeOperand(Edge *operand) {
     AlgebraicExpressionNode *node = AlgebraicExpression_NewOperand(operand->mat);
-    node->operand.entity = operand;
-    node->operand.entity_is_node = false;
+    node->operand.e = operand;
     return node;
 }
 
@@ -378,16 +404,15 @@ void AlgebraicExpressionNode_AppendRightChild(AlgebraicExpressionNode *root, Alg
 // operation with an addition operation with two multiplication operations
 // one for each child of the original addition operation, as can be seen above.
 // we'll want to reuse the left handside of the multiplication.
-// TODO Needs to be updated
 void AlgebraicExpression_SumOfMul(AlgebraicExpressionNode **root) {
     if((*root)->type == AL_OPERATION && (*root)->operation.op == AL_EXP_MUL) {
         AlgebraicExpressionNode *l = (*root)->operation.l;
         AlgebraicExpressionNode *r = (*root)->operation.r;
 
-        if((l->type == AL_OPERATION && l->operation.op == AL_EXP_ADD &&
-            !(r->type == AL_OPERATION && r->operation.op == AL_EXP_ADD)) ||
-            (r->type == AL_OPERATION && r->operation.op == AL_EXP_ADD &&
-            !(l->type == AL_OPERATION && l->operation.op == AL_EXP_ADD))) {
+        if (!(l->type == AL_OPERATION && r->type == AL_OPERATION)) return;
+
+        if((l->operation.op == AL_EXP_ADD && r->operation.op != AL_EXP_ADD) ||
+            (r->operation.op == AL_EXP_ADD && l->operation.op != AL_EXP_ADD)) {
             
             AlgebraicExpressionNode *add = AlgebraicExpression_NewOperationNode(AL_EXP_ADD);
             AlgebraicExpressionNode *lMul = AlgebraicExpression_NewOperationNode(AL_EXP_MUL);
@@ -396,7 +421,7 @@ void AlgebraicExpression_SumOfMul(AlgebraicExpressionNode **root) {
             AlgebraicExpressionNode_AppendLeftChild(add, lMul);
             AlgebraicExpressionNode_AppendRightChild(add, rMul);
             
-            if(l->operation.op == AL_EXP_ADD) {
+            if(l->type == AL_OPERATION && l->operation.op == AL_EXP_ADD) {
                 // Lefthand side is addition, righthand side is multiplication.
                 AlgebraicExpressionNode_AppendLeftChild(lMul, r);
                 AlgebraicExpressionNode_AppendRightChild(lMul, l->operation.l);
@@ -438,20 +463,9 @@ static GrB_Matrix _AlgebraicExpression_Eval_ADD(AlgebraicExpressionNode *exp, Gr
     GrB_Matrix r = NULL;
     GrB_Matrix l = NULL;
     GrB_Matrix inter = NULL;
-    GrB_Descriptor desc = NULL; // Descriptor used for transposing.
-    AlgebraicExpressionNode *rightHand = exp->operation.r;
+    GrB_Descriptor desc = NULL; // Default descriptor
     AlgebraicExpressionNode *leftHand = exp->operation.l;
 
-    // Determine if left or right expression needs to be transposed.
-    if(leftHand && leftHand->type == AL_OPERATION && leftHand->operation.op == AL_EXP_TRANSPOSE) {
-        if(!desc) GrB_Descriptor_new(&desc);
-        GrB_Descriptor_set(desc, GrB_INP0, GrB_TRAN);
-    }
-    
-    if(rightHand && rightHand->type == AL_OPERATION && rightHand->operation.op == AL_EXP_TRANSPOSE) {
-        if(!desc) GrB_Descriptor_new(&desc);
-        GrB_Descriptor_set(desc, GrB_INP1, GrB_TRAN);
-    }
 
     // Evaluate right expressions.
     r = _AlgebraicExpression_Eval(exp->operation.r, res);
@@ -487,20 +501,7 @@ static GrB_Matrix _AlgebraicExpression_Eval_MUL(AlgebraicExpressionNode *exp, Gr
     // Expression already evaluated.
     if(exp->operation.v != NULL) return exp->operation.v;
 
-    GrB_Descriptor desc = NULL; // Descriptor used for transposing.
-    AlgebraicExpressionNode *rightHand = exp->operation.r;
-    AlgebraicExpressionNode *leftHand = exp->operation.l;
-
-    // Determine if left or right expression needs to be transposed.
-    if(leftHand && leftHand->type == AL_OPERATION && leftHand->operation.op == AL_EXP_TRANSPOSE) {
-        if(!desc) GrB_Descriptor_new(&desc);
-        GrB_Descriptor_set(desc, GrB_INP0, GrB_TRAN);
-    }
-    
-    if(rightHand && rightHand->type == AL_OPERATION && rightHand->operation.op == AL_EXP_TRANSPOSE) {
-        if(!desc) GrB_Descriptor_new(&desc);
-        GrB_Descriptor_set(desc, GrB_INP1, GrB_TRAN);
-    }
+    GrB_Descriptor desc = NULL; // Default descriptor
 
     // Evaluate right left expressions.
     GrB_Matrix r = _AlgebraicExpression_Eval(exp->operation.r, res);
@@ -533,13 +534,23 @@ static GrB_Matrix _AlgebraicExpression_Eval_MUL(AlgebraicExpressionNode *exp, Gr
 }
 
 static GrB_Matrix _AlgebraicExpression_Eval_TRANSPOSE(AlgebraicExpressionNode *exp, GrB_Matrix res) {
-    // Transpose is an unary operation which gets delayed.
     AlgebraicExpressionNode *rightHand = exp->operation.r;
     AlgebraicExpressionNode *leftHand = exp->operation.l;
 
+    // Transpose is an unary operation; verify that exactly one child is populated.
     assert( !(leftHand && rightHand) && (leftHand || rightHand) ); // Verify unary.
-    if(leftHand) return _AlgebraicExpression_Eval(leftHand, res);
-    else return _AlgebraicExpression_Eval(rightHand, res);
+
+    GrB_Descriptor desc;
+    GrB_Descriptor_new(&desc);
+
+    GrB_Matrix M;
+    if(leftHand) {
+        M = _AlgebraicExpression_Eval(leftHand, res);
+    } else {
+        M = _AlgebraicExpression_Eval(rightHand, res);
+    }
+    assert(GrB_transpose(res, NULL, NULL, M, desc) == GrB_SUCCESS);
+    return res;
 }
 
 static GrB_Matrix _AlgebraicExpression_Eval(AlgebraicExpressionNode *exp, GrB_Matrix res) {

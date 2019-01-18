@@ -31,8 +31,8 @@ typedef struct AlgebraicExpressionNode AlgebraicExpressionNode;
 struct AlgebraicExpressionNode {
     union {
         struct {
-            bool entity_is_node;
-            void *entity;
+            Node *n;
+            Edge *e;
             GrB_Matrix mat;
         } operand;
         struct {
@@ -57,6 +57,7 @@ typedef struct {
 AlgebraicExpressionNode* AlgebraicExpression_InvertTree(AlgebraicExpressionNode *root);
 AlgebraicExpressionNode* AlgebraicExpression_Append(AlgebraicExpressionNode *root, AlgebraicExpressionNode *child);
 int AlgebraicExpression_OperandCount(AlgebraicExpressionNode *root);
+bool AlgebraicExpression_RemoveNodeOperand(AlgebraicExpressionNode **root, Node *del);
 AlgebraicExpressionNode* AlgebraicExpression_PopFirst(AlgebraicExpressionNode **root);
 AlgebraicExpressionNode* AlgebraicExpression_PopLast(AlgebraicExpressionNode **root);
 AE_Unit*** AlgebraicExpression_BuildExps(const AST *ast, const QueryGraph *q, int *component_count);
