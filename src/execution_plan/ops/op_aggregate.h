@@ -11,6 +11,7 @@
 #include "op.h"
 #include "../../parser/ast.h"
 #include "../../redismodule.h"
+#include "../../resultset/resultset.h"
 #include "../../graph/query_graph.h"
 #include "../../grouping/group_cache.h"
 #include "../../arithmetic/arithmetic_expression.h"
@@ -21,6 +22,7 @@
  typedef struct {
     OpBase op;
     AST *ast;
+    ResultSet *resultset;
     AR_ExpNode **none_aggregated_expressions;   /* Array of arithmetic expression. */
     AR_ExpNode **order_expressions;             /* Array of arithmetic expression. */
     int *expression_classification;             /* 1 if RETURN_CLAUSE[i] is aggregated, 0 otherwise.  */
@@ -31,7 +33,7 @@
     int init;
  } Aggregate;
 
-OpBase* NewAggregateOp(AST *ast);
+OpBase* NewAggregateOp(ResultSet *resultset);
 Record AggregateConsume(OpBase *opBase);
 OpResult AggregateReset(OpBase *opBase);
 void AggregateFree(OpBase *opBase);

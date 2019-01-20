@@ -32,6 +32,7 @@ typedef struct {
     GraphContext *gc;
     AST *ast;
     QueryGraph *qg;
+    Record *records;
 
     NodeCreateCtx *nodes_to_create;
     size_t node_count;

@@ -106,6 +106,7 @@ static AST_Validation _Aliases_Defined(const AST *ast, char **undefined_alias) {
   MatchClause_DefinedEntities(ast->matchNode, definedAliases);
   UnwindClause_DefinedEntities(ast->unwindNode, definedAliases);
   MergeClause_DefinedEntities(ast->mergeNode, definedAliases);
+  CreateClause_DefinedEntities(ast->createNode, definedAliases);
 
   TrieMapIterator *it = TrieMap_Iterate(aliasesToCheck, "", 0);
   char *alias;

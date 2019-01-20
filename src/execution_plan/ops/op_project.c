@@ -7,10 +7,14 @@
 
 #include "op_project.h"
 #include "../../util/arr.h"
+#include "../../query_executor.h"
 
 static void _buildExpressions(Project *op) {
     // Compute projected record length:
     // Number of returned expressions + number of order-by expressions.
+    ExpandCollapsedNodes(op->ast);
+    ResultSet_CreateHeader(op->resultset);
+
     const AST *ast = op->ast;
     uint orderByExpCount = 0;
     uint returnExpCount = array_len(ast->returnNode->returnElements);
@@ -33,12 +37,12 @@ static void _buildExpressions(Project *op) {
     }
 }
 
-OpBase* NewProjectOp(AST *ast) {
+OpBase* NewProjectOp(ResultSet *resultset) {
     Project *project = malloc(sizeof(Project));
-    project->ast = ast;
+    project->ast = AST_GetFromLTS();
     project->singleResponse = false;    
-
-    _buildExpressions(project);
+    project->expressions = NULL;
+    project->resultset = resultset;
 
     // Set our Op operations
     OpBase_Init(&project->op);
@@ -68,6 +72,8 @@ Record ProjectConsume(OpBase *opBase) {
         op->singleResponse = true;
         r = Record_New(0);  // Fake empty record.
     }
+
+    if(!op->expressions) _buildExpressions(op);
 
     Record projectedRec = Record_New(op->projectedRecordLen);
 
@@ -103,7 +109,9 @@ OpResult ProjectReset(OpBase *ctx) {
 
 void ProjectFree(OpBase *opBase) {
     Project *op = (Project*)opBase;
-    uint expCount = array_len(op->expressions);
-    for(uint i = 0; i < expCount; i++) AR_EXP_Free(op->expressions[i]);
-    array_free(op->expressions);
+    if(op->expressions) {
+        uint expCount = array_len(op->expressions);
+        for(uint i = 0; i < expCount; i++) AR_EXP_Free(op->expressions[i]);
+        array_free(op->expressions);
+    }
 }

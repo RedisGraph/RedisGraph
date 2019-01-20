@@ -27,6 +27,7 @@ typedef struct {
 	char *label;			// Label of entity.
 	Vector *properties;		// Array of attributes.
 	AST_GraphEntityType t;	// Type of entity.
+	bool anonymous;			// Entity isn't referenced.
 } AST_GraphEntity;
 
 typedef AST_GraphEntity AST_NodeEntity;

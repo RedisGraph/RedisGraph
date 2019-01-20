@@ -167,7 +167,7 @@ class GraphMergeFlowTest(FlowTestsBase):
     # Update multiple nodes
     def test13_update_multiple_nodes(self):
         global redis_graph
-        query = """CREATE (:person {age:31}), (:person {age:31}),(:person {age:31}),(:person {age:31})"""
+        query = """CREATE (:person {age:31}),(:person {age:31}),(:person {age:31}),(:person {age:31})"""
         result = redis_graph.query(query)
         assert(result.labels_added == 1)
         assert(result.nodes_created == 4)

@@ -13,17 +13,15 @@
 #include "graph/query_graph.h"
 #include "arithmetic/arithmetic_expression.h"
 
+/* Modifies AST by expanding RETURN * or RETURN
+ * a into a list of individual properties. */
+void ExpandCollapsedNodes(AST *ast);
+
 /* Create an AST from raw query. */
 AST* ParseQuery(const char *query, size_t qLen, char **errMsg);
 
 /* Make sure AST is valid. */
 AST_Validation AST_PerformValidations(RedisModuleCtx *ctx, AST *ast);
-
-/* Construct an expression tree foreach none aggregated term.
- * Returns a vector of none aggregated expression trees. */
-void Build_None_Aggregated_Arithmetic_Expressions(AST *ast,
-                                                  AR_ExpNode ***expressions,
-                                                  int *expressions_count);
 
 /* Performs a number of adjustments to given AST. */
 void ModifyAST(GraphContext *gc, AST *ast);

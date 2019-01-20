@@ -23,6 +23,7 @@ void MergeClause_NameAnonymousNodes(const AST_MergeNode *mergeNode, int *entityI
         AST_GraphEntity *entity;
         Vector_Get(mergeNode->graphEntities, i, &entity);
 		if (entity->alias == NULL) {
+            entity->anonymous = true;
 			// TODO: Memory leak!
             asprintf(&entity->alias, "anon_%d", *entityID);
             (*entityID)++;

@@ -392,10 +392,10 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx,
         // Projection before sort and produce result-set
         // Both Aggregate and Projection perform projection.
         if(ReturnClause_ContainsAggregation(ast->returnNode)) {
-            op = NewAggregateOp(ast);
+            op = NewAggregateOp(execution_plan->result_set);
             Vector_Push(ops, op);
         } else {            
-            op = NewProjectOp(ast);
+            op = NewProjectOp(execution_plan->result_set);
             Vector_Push(ops, op);
         }
 
