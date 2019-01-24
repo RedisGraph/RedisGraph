@@ -130,7 +130,7 @@ void utilizeIndices(GraphContext *gc, ExecutionPlan *plan) {
       if (!idx) {
         idx = GraphContext_GetIndex(gc, label, filterProp);
         if (!idx) continue;
-        iter = IndexIter_Create(idx, constVal.type);
+        iter = IndexIter_Create(idx, SI_TYPE(constVal));
       }
 
       // Tighten the iterator range if possible

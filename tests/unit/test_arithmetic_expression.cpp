@@ -102,6 +102,27 @@ TEST_F(ArithmeticTest, ExpressionTest) {
   result = AR_EXP_Evaluate(arExp, r);
   AR_EXP_Free(arExp);
   ASSERT_EQ(result.doubleval, 3);
+
+  /* 'a' + 'b' */
+  query = "RETURN 'a' + 'b'";
+  arExp = _exp_from_query(query);
+  result = AR_EXP_Evaluate(arExp, r);
+  AR_EXP_Free(arExp);
+  ASSERT_TRUE(strcmp(result.stringval, "ab") == 0);
+
+  /* 1 + 2 + 'a' + 2 + 1 */
+  query = "RETURN 1 + 2 + 'a' + 2 + 1";
+  arExp = _exp_from_query(query);
+  result = AR_EXP_Evaluate(arExp, r);
+  AR_EXP_Free(arExp);
+  ASSERT_TRUE(strcmp(result.stringval, "3.000000a2.0000001.000000") == 0);
+
+  /* 2 * 2 + 'a' + 3 * 3 */
+  query = "RETURN 2 * 2 + 'a' + 3 * 3";
+  arExp = _exp_from_query(query);
+  result = AR_EXP_Evaluate(arExp, r);
+  AR_EXP_Free(arExp);
+  ASSERT_TRUE(strcmp(result.stringval, "4.000000a9.000000") == 0);
 }
 
 TEST_F(ArithmeticTest, AggregateTest) {

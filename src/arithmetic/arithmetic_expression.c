@@ -317,10 +317,50 @@ void AR_EXP_Free(AR_ExpNode *root) {
 SIValue AR_ADD(SIValue *argv, int argc) {
     SIValue result;
     result = argv[0];
+    char buffer[512];
+    char *string_arg = NULL;
+
     for(int i = 1; i < argc; i++) {
         if(SIValue_IsNull(argv[i])) return SI_NullVal();
-        result.doubleval += argv[i].doubleval;
+
+        /* Perform numeric addition only if both result and current argument
+         * are numeric. */
+        if(SI_TYPE(result) & SI_NUMERIC && SI_TYPE(argv[i]) & SI_NUMERIC) {
+            /* Numeric addition. */
+            result.doubleval += argv[i].doubleval;
+        } else {
+            /* String concatenation.
+             * Make sure result is a String. */
+            if(SI_TYPE(result) & SI_NUMERIC) {
+                /* Result is numeric, convert to string. */
+                SIValue_ToString(result, buffer, 512);
+                result = SI_DuplicateStringVal(buffer);
+            } else {
+                /* Result is already a string,
+                 * Make sure result owns the string. */
+                if(SI_TYPE(result) & T_CONSTSTRING) {
+                    result = SI_DuplicateStringVal(result.stringval);
+                }
+            }
+
+            /* Get a string representation of argument. */
+            unsigned int argument_len = 0;
+            if(!(SI_TYPE(argv[i]) & SI_STRING)) {
+                /* Argument is not a string, get a string representation. */
+                argument_len = SIValue_ToString(argv[i], buffer, 512);
+                string_arg = buffer;
+            } else {
+                string_arg = argv[i].stringval;
+                argument_len = strlen(string_arg);
+            }
+
+            /* Concat, make sure result has enough space to hold new string. */
+            unsigned int required_size = strlen(result.stringval) + argument_len + 1;
+            result.stringval = rm_realloc(result.stringval, required_size);
+            strcat(result.stringval, string_arg);
+        }
     }
+
     return result;
 }
 
@@ -407,8 +447,8 @@ SIValue AR_LEFT(SIValue *argv, int argc) {
     assert(argc == 2);
     if(SIValue_IsNull(argv[0])) return SI_NullVal();
 
-    assert(argv[0].type & SI_STRING);
-    assert(argv[1].type == T_DOUBLE);
+    assert(SI_TYPE(argv[0]) & SI_STRING);
+    assert(SI_TYPE(argv[1]) == T_DOUBLE);
 
     size_t newlen = (size_t)argv[1].doubleval;
     if (strlen(argv[0].stringval) <= newlen) {
@@ -424,7 +464,7 @@ SIValue AR_LEFT(SIValue *argv, int argc) {
 SIValue AR_LTRIM(SIValue *argv, int argc) {
     if(SIValue_IsNull(argv[0])) return SI_NullVal();
 
-    assert(argc == 1 && argv[0].type & SI_STRING);
+    assert(argc == 1 && SI_TYPE(argv[0]) & SI_STRING);
     
     char *trimmed = argv[0].stringval;
 
@@ -438,8 +478,8 @@ SIValue AR_LTRIM(SIValue *argv, int argc) {
 SIValue AR_RIGHT(SIValue *argv, int argc) {
     assert(argc == 2);
     if(SIValue_IsNull(argv[0])) return SI_NullVal();
-    assert(argv[0].type & SI_STRING);
-    assert(argv[1].type == T_DOUBLE);
+    assert(SI_TYPE(argv[0]) & SI_STRING);
+    assert(SI_TYPE(argv[1]) == T_DOUBLE);
 
     int newlen = (int)argv[1].doubleval;
     int start = strlen(argv[0].stringval) - newlen;
@@ -453,7 +493,7 @@ SIValue AR_RIGHT(SIValue *argv, int argc) {
 
 SIValue AR_RTRIM(SIValue *argv, int argc) {
     if(SIValue_IsNull(argv[0])) return SI_NullVal();
-    assert(argc == 1 && argv[0].type & SI_STRING);
+    assert(argc == 1 && SI_TYPE(argv[0]) & SI_STRING);
     
     char *str = argv[0].stringval;
 
@@ -472,7 +512,7 @@ SIValue AR_RTRIM(SIValue *argv, int argc) {
 
 SIValue AR_REVERSE(SIValue *argv, int argc) {
     if(SIValue_IsNull(argv[0])) return SI_NullVal();
-    assert(argv[0].type & SI_STRING);
+    assert(SI_TYPE(argv[0]) & SI_STRING);
     char *str = argv[0].stringval;
     size_t str_len = strlen(str);
     char reverse[str_len + 1];
@@ -590,14 +630,14 @@ SIValue AR_TRIM(SIValue *argv, int argc) {
 
 SIValue AR_ID(SIValue *argv, int argc) {
     assert(argc == 1);
-    assert(argv[0].type == T_PTR);
+    assert(SI_TYPE(argv[0]) == T_PTR);
     GraphEntity *graph_entity = (GraphEntity*)argv[0].ptrval;
     return SI_LongVal(ENTITY_GET_ID(graph_entity));
 }
 
 SIValue AR_LABELS(SIValue *argv, int argc) {    
     assert(argc == 1);
-    assert(argv[0].type == T_PTR);
+    assert(SI_TYPE(argv[0]) == T_PTR);
 
     char *label = "";
     Node *node = argv[0].ptrval;
@@ -610,7 +650,7 @@ SIValue AR_LABELS(SIValue *argv, int argc) {
 
 SIValue AR_TYPE(SIValue *argv, int argc) {
     assert(argc == 1);
-    assert(argv[0].type == T_PTR);
+    assert(SI_TYPE(argv[0]) == T_PTR);
 
     char *type = "";
     Edge *e = argv[0].ptrval;
