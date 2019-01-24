@@ -37,6 +37,7 @@ typedef enum {
 
 #define SI_STRING (T_STRING | T_CONSTSTRING)
 #define SI_NUMERIC (T_INT32 | T_INT64 | T_UINT | T_FLOAT | T_DOUBLE)
+#define SI_TYPE(value) (value).type
 
 /* Returns true if aVal and bVal are of the same type, are both string types, or are both numeric types. */
 #define SI_COMPARABLE(aVal, bVal) ((aVal).type == (bVal).type || \
