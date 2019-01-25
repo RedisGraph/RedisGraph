@@ -108,6 +108,7 @@ void Record_AddEdge(Record r, int idx, Edge edge) {
 size_t Record_ToString(const Record r, char **buf, size_t *buf_cap) {
     uint rLen = Record_length(r);
     SIValue values[rLen];
+    // TODO inadequate for node/edge entries
     for(int i = 0; i < rLen; i++) values[i] = r[i].value.s;
 
     size_t required_len = SIValue_StringConcatLen(values, rLen);

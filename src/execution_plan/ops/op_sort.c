@@ -29,6 +29,7 @@ static bool _record_islt(Record a, Record b, const OpSort *op) {
     uint comparables = array_len(op->expressions);
 
     for(uint i = 0; i < comparables; i++) {
+        // TODO node and edge types
         SIValue aVal = Record_GetScalar(a, offset+i);
         SIValue bVal = Record_GetScalar(b, offset+i);
         int rel = SIValue_Order(aVal, bVal);
@@ -58,6 +59,7 @@ static int _record_compare(Record a, Record b, const OpSort *op) {
     uint comparables = array_len(op->expressions);
 
     for(uint i = 0; i < comparables; i++) {
+        // TODO node and edge types
         SIValue aVal = Record_GetScalar(a, offset+i);
         SIValue bVal = Record_GetScalar(b, offset+i);
         int rel = SIValue_Order(aVal, bVal);

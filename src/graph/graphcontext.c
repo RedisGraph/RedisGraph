@@ -129,6 +129,18 @@ Schema* GraphContext_AddSchema(GraphContext *gc, const char *label, SchemaType t
   return schema;
 }
 
+const char* GraphContext_GetNodeLabel(const GraphContext *gc, Node *n) {
+    int label_id = Graph_GetNodeLabel(gc->g, ENTITY_GET_ID(n));
+    if (label_id == GRAPH_NO_LABEL) return NULL;
+    return gc->node_schemas[label_id]->name;
+}
+
+const char* GraphContext_GetEdgeRelationType(const GraphContext *gc, Edge *e) {
+    int reltype_id = Graph_GetEdgeRelation(gc->g, e);
+    if (reltype_id == GRAPH_NO_RELATION) return NULL;
+    return gc->relation_schemas[reltype_id]->name;
+}
+
 //------------------------------------------------------------------------------
 // Index API
 //------------------------------------------------------------------------------

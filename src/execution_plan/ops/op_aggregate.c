@@ -63,7 +63,12 @@ static Group* _CreateGroup(OpAggregate *op, Record r) {
     /* Clone group keys. */
     uint key_count = array_len(op->none_aggregated_expressions);
     SIValue *group_keys = rm_malloc(sizeof(SIValue) * key_count);
-    for(uint i = 0; i < key_count; i++) group_keys[i] = op->group_keys[i];
+
+    for(uint i = 0; i < key_count; i++) {
+      SIValue key = op->group_keys[i];
+      SIValue_Persist(&key);
+      group_keys[i] = key;
+    }
 
     /* There's no need to keep a reference to record if we're not sorting groups. */
     if(!op->order_expressions) op->group = NewGroup(key_count, group_keys, agg_exps, NULL);
@@ -180,6 +185,8 @@ static Record _handoff(OpAggregate *op) {
         } else {
             // None aggregated expression.
             res = group->keys[keyIdx++];
+            /* Note that even nodes and edges are added as scalars here
+             * (though the memory accesses are safe) */
             Record_AddScalar(r, i, res);
         }
 

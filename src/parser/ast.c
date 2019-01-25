@@ -208,9 +208,7 @@ static AST_Validation _Validate_MATCH_Clause(const AST *ast, char **reason) {
 static AST_Validation _Validate_RETURN_Clause(const AST *ast, char **reason) {
   char *undefined_alias;
 
-  if (!ast->returnNode) {
-    return AST_VALID;
-  }
+  if (!ast->returnNode) return AST_VALID;
 
   // Retrieve all user-specified functions in RETURN clause.
   TrieMap *ref_functions = NewTrieMap();
@@ -218,7 +216,44 @@ static AST_Validation _Validate_RETURN_Clause(const AST *ast, char **reason) {
 
   // Verify that referred functions exist.
   AST_Validation res = _AST_ValidateReferredFunctions(ref_functions, reason, true);
+  int function_count = ref_functions->cardinality;
+
   TrieMap_Free(ref_functions, TrieMap_NOP_CB);
+  if (res != AST_VALID || function_count == 0) return res;
+
+  // Verify that we are not attempting to invalidly aggregate graph entities.
+  AST_ArithmeticExpressionOP *funcs[function_count];
+  int aggregate_count = ReturnClause_AggregateFunctions(ast->returnNode, funcs);
+
+  if (aggregate_count == 0) return AST_VALID;
+
+  // We are only interested in MATCH entities; as variadics introduced through
+  // clauses like UNWIND can be validly aggregated.
+  TrieMap *entities = NewTrieMap();
+  MatchClause_DefinedEntities(ast->matchNode, entities);
+
+  for (int i = 0; i < aggregate_count; i ++) {
+    AST_ArithmeticExpressionOP *func = funcs[i];
+
+    for(int j = 0; j < Vector_Size(func->args); j ++) {
+      AST_ArithmeticExpressionNode *child;
+      Vector_Get(func->args, j, &child);
+      // Check if the child is a variadic with no property specified, which may
+      // refer to a graph entity
+      if (EXPRESSION_IS_ALIAS(child)) {
+        char *alias = child->operand.variadic.alias;
+        // Look up alias in the entities defined by the MATCH clause
+        if(TrieMap_Find(entities, alias, strlen(alias)) != TRIEMAP_NOTFOUND) {
+          asprintf(reason, "Nodes and edges cannot be aggregated by functions other than COUNT.");
+          res = AST_INVALID;
+          break;
+        }
+      }
+    }
+    if (res == AST_INVALID) break;
+  }
+
+  TrieMap_Free(entities, TrieMap_NOP_CB);
 
   return res;
 }

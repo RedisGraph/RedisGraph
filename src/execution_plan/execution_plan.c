@@ -573,8 +573,6 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST **ast
     ExecutionPlan *plan = NULL;
     ExecutionPlan *curr_plan;
     
-    // Use the last AST, as it is supposed to be the only AST with a RETURN node.
-    ExpandCollapsedNodes(ast[array_len(ast)-1]);
     ResultSet *result_set = NULL;
     if(!explain) {
         result_set = NewResultSet(ast[array_len(ast)-1], ctx);

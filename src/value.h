@@ -26,12 +26,17 @@ typedef enum {
   // T_FLOAT = 0x020, // unused
   T_DOUBLE = 0x040,
   T_PTR = 0x080,
-  T_CONSTSTRING = 0x100,
   T_NODE = 0x200,
   T_EDGE = 0x400,
 } SIType;
 
-#define SI_STRING (T_STRING | T_CONSTSTRING)
+typedef enum {
+  M_NONE = 0,
+  M_SELF = 0x1,
+  M_VOLATILE = 0x2,
+  M_CONST = 0x4
+} SIAllocation;
+
 #define SI_NUMERIC (T_INT64 | T_DOUBLE)
 #define SI_TYPE(value) (value).type
 
@@ -58,6 +63,7 @@ typedef struct {
     void *ptrval;
   };
   SIType type;
+  SIAllocation allocation;
 } SIValue;
 
 /* Functions to construct an SIValue from a specific input type. */
@@ -114,8 +120,12 @@ int SIValue_Compare(const SIValue a, const SIValue b);
  * Under Cypher's orderability, where string < boolean < numeric < NULL. */
 int SIValue_Order(const SIValue a, const SIValue b);
 
+/* If an SIValue holds a pointer to a volatile memory region, copy that memory
+ * so that it is held by the SIValue. */
+void SIValue_Persist(SIValue *v);
+
 /* Free an SIValue's internal property if that property is a heap allocation owned
- * by this object. This is only the case when the type is T_STRING. */
+ * by this object. */
 void SIValue_Free(SIValue *v);
 
 #endif // __SECONDARY_VALUE_H__

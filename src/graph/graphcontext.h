@@ -41,6 +41,14 @@ Schema* GraphContext_GetSchemaByID(const GraphContext *gc, int id, SchemaType t)
 // Add a new schema and matrix for the given label
 Schema* GraphContext_AddSchema(GraphContext *gc, const char *label, SchemaType t);
 
+// TODO needed?
+// Add a new store and matrix for the given relation type
+Schema* GraphContext_AddRelationType(GraphContext *gc, const char *label);
+// Retrieve the label string for a given Node object
+const char* GraphContext_GetNodeLabel(const GraphContext *gc, Node *n);
+// Retrieve the relation type string for a given Edge object
+const char* GraphContext_GetEdgeRelationType(const GraphContext *gc, Edge *e);
+
 /* Index API */
 bool GraphContext_HasIndices(GraphContext *gc);
 // Attempt to retrieve an index on the given label and attribute
