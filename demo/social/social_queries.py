@@ -94,7 +94,7 @@ friends_of_friends_single_and_over_30_query = QueryInfo(
 
 friends_of_friends_visited_amsterdam_and_single_query = QueryInfo(
     query="""MATCH (ME:person {name:"Roi Lipman"})-[:friend]->(:person)-[:friend]->
-                (fof:person {status:"single"})-[:visited]->(:country {name:"Amsterdam"})
+             (fof:person {status:"single"})-[:visited]->(:country {name:"Amsterdam"})
              RETURN fof.name""",
     description='Friends of friends who visited Amsterdam and are single?',
     max_run_time_ms=0.3,
@@ -104,7 +104,7 @@ friends_of_friends_visited_amsterdam_and_single_query = QueryInfo(
 
 friends_visited_same_places_as_me_query = QueryInfo(
     query="""MATCH (:person {name:"Roi Lipman"})-[:visited]->(c:country)<-[:visited]-(f:person)<-
-                [:friend]-(:person {name:"Roi Lipman"}) 
+             [:friend]-(:person {name:"Roi Lipman"}) 
              RETURN f.name, c""",
     description='Friends who have been to places I have visited?',
     max_run_time_ms=0.45,
@@ -380,9 +380,7 @@ queries_info = [
     friends_visited_same_places_as_me_query,
     friends_older_than_me_query,
     friends_age_difference_query,
-    how_many_countries_each_friend_visited_query,
-    happy_birthday_query,
-    friends_age_statistics_query,
+    how_many_countries_each_friend_visited_query,    
     visit_purpose_of_each_country_i_visited_query,
     who_was_on_business_trip_query,
     number_of_vacations_per_person_query,
@@ -391,6 +389,8 @@ queries_info = [
     reachable_countries_or_people_query,
     all_reachable_countries_or_people_query,
     all_reachable_entities_query,
+    happy_birthday_query,
+    friends_age_statistics_query,
     delete_friendships_query,
     delete_person_query,
     post_delete_label_query

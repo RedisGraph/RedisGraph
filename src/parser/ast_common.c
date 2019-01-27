@@ -22,6 +22,64 @@ AST_Variable* New_AST_Variable(const char *alias, const char *property) {
 	return v;
 }
 
+static void _AST_Clone_BaseEntity(AST_GraphEntity* clone, const AST_GraphEntity *src) {
+	clone->alias = src->alias;
+	clone->label = src->label;
+	clone->properties = NULL;
+
+	if(src->properties) {
+		int prop_count = Vector_Size(src->properties);
+		clone->properties = NewVector(SIValue*, prop_count);
+
+		for(int i = 0; i < prop_count; i++) {
+			SIValue *prop;
+			Vector_Get(src->properties, i, &prop);
+			Vector_Push(clone->properties, prop);
+		}
+	}
+}
+
+static AST_LinkEntity* _AST_Clone_LinkEntity(const AST_LinkEntity *src) {
+	AST_LinkEntity* clone = (AST_LinkEntity*)calloc(1, sizeof(AST_LinkEntity));
+	_AST_Clone_BaseEntity((AST_GraphEntity*)clone, (const AST_GraphEntity*)src);
+
+	clone->ge.t = N_LINK;	
+	clone->direction = src->direction;
+	
+	clone->length = NULL;
+	if(src->length) {
+		clone->length = New_AST_LinkLength(src->length->minHops, src->length->maxHops);
+	}
+
+	clone->labels = NULL;
+	if(src->labels) {
+		uint32_t label_count = array_len(src->labels);
+		clone->labels = array_new(char*, label_count);
+
+		for(int i = 0; i < label_count; i++) {
+			clone->labels = array_append(clone->labels, src->labels[i]);			
+		}
+		clone->ge.label = clone->labels[0];
+	}
+
+	return clone;
+}
+
+static AST_NodeEntity* _AST_Clone_NodeEntity(const AST_NodeEntity *src) {
+	AST_NodeEntity* clone = (AST_NodeEntity*)calloc(1, sizeof(AST_NodeEntity));
+	_AST_Clone_BaseEntity((AST_GraphEntity*)clone, (const AST_GraphEntity*)src);
+	return clone;
+}
+
+AST_GraphEntity* Clone_AST_GraphEntity(const AST_GraphEntity *src) {
+	if(src->t == N_LINK) {
+		return (AST_GraphEntity*)_AST_Clone_LinkEntity((AST_LinkEntity*)src);
+	}
+	else {
+		return (AST_GraphEntity*)_AST_Clone_NodeEntity((AST_NodeEntity*)src);
+	}
+}
+
 AST_LinkEntity* New_AST_LinkEntity(char *alias, char **labels, Vector *properties, AST_LinkDirection dir, AST_LinkLength *length) {
 	AST_LinkEntity* le = (AST_LinkEntity*)calloc(1, sizeof(AST_LinkEntity));
 	le->direction = dir;
@@ -40,13 +98,6 @@ AST_LinkEntity* New_AST_LinkEntity(char *alias, char **labels, Vector *propertie
 	return le;
 }
 
-AST_LinkLength* New_AST_LinkLength(unsigned int minHops, unsigned int maxHops) {
-	AST_LinkLength *linkLength = malloc(sizeof(AST_LinkLength));
-	linkLength->minHops = minHops;
-	linkLength->maxHops = maxHops;
-	return linkLength;
-}
-
 AST_NodeEntity* New_AST_NodeEntity(char *alias, char *label, Vector *properties) {
 	AST_NodeEntity* ne = (AST_NodeEntity*)calloc(1, sizeof(AST_NodeEntity));
 	ne->t = N_ENTITY;
@@ -56,6 +107,13 @@ AST_NodeEntity* New_AST_NodeEntity(char *alias, char *label, Vector *properties)
 	ne->label = label;
 
 	return ne;
+}
+
+AST_LinkLength* New_AST_LinkLength(unsigned int minHops, unsigned int maxHops) {
+	AST_LinkLength *linkLength = malloc(sizeof(AST_LinkLength));
+	linkLength->minHops = minHops;
+	linkLength->maxHops = maxHops;
+	return linkLength;
 }
 
 bool AST_LinkEntity_FixedLengthEdge(const AST_LinkEntity* edge) {
