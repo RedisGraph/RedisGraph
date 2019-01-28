@@ -5,6 +5,7 @@ from redisgraph import Graph
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../demo/imdb/')
 from .disposableredis import DisposableRedis
+from .reversepattern import ReversePattern
 from base import FlowTestsBase
 import imdb_queries as queries
 import imdb_utils
@@ -29,9 +30,22 @@ class ImdbFlowTest(FlowTestsBase):
     def tearDownClass(cls):
         cls.r.stop()
 
+    def assert_reversed_pattern(self, query, resultset):
+        # Test reversed pattern query.
+        reversed_query = ReversePattern().reverse_query_pattern(query)
+        # print "reversed_query: %s" % reversed_query
+        actual_result = redis_graph.query(reversed_query)
+
+        # assert result set
+        self.assertEqual(resultset.result_set, actual_result.result_set)
+
+        # assert query run time
+        self._assert_equalish(resultset.run_time_ms, actual_result.run_time_ms)
+
     def test_actors_played_with_nicolas_cage(self):
         global redis_graph
-        actual_result = redis_graph.query(queries.actors_played_with_nicolas_cage_query.query)
+        q = queries.actors_played_with_nicolas_cage_query.query
+        actual_result = redis_graph.query(q)
 
         # assert result set
         self._assert_only_expected_results_are_in_actual_results(
@@ -41,11 +55,15 @@ class ImdbFlowTest(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.actors_played_with_nicolas_cage_query)
 
+        # assert reversed pattern.
+        self.assert_reversed_pattern(q, actual_result)
+
     def test_find_three_actors_played_with_nicolas_cage(self):
         global redis_graph
         NUM_EXPECTED_RESULTS = 3
 
-        actual_result = redis_graph.query(queries.find_three_actors_played_with_nicolas_cage_query.query)
+        q = queries.find_three_actors_played_with_nicolas_cage_query.query
+        actual_result = redis_graph.query(q)
 
         # assert result set
         self._assert_actual_results_contained_in_expected_results(
@@ -55,10 +73,14 @@ class ImdbFlowTest(FlowTestsBase):
 
         # assert query run time
         self._assert_run_time(actual_result, queries.find_three_actors_played_with_nicolas_cage_query)
+        
+        # assert reversed pattern.
+        self.assert_reversed_pattern(q, actual_result)
 
     def test_actors_played_in_movie_straight_outta_compton(self):
         global redis_graph
-        actual_result = redis_graph.query(queries.actors_played_in_movie_straight_outta_compton_query.query)
+        q = queries.actors_played_in_movie_straight_outta_compton_query.query
+        actual_result = redis_graph.query(q)
 
         # assert result set
         self._assert_only_expected_results_are_in_actual_results(
@@ -68,9 +90,13 @@ class ImdbFlowTest(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.actors_played_in_movie_straight_outta_compton_query)
 
+        # assert reversed pattern.
+        self.assert_reversed_pattern(q, actual_result)
+
     def test_actors_over_50_that_played_in_blockbusters(self):
         global redis_graph
-        actual_result = redis_graph.query(queries.actors_over_50_that_played_in_blockbusters_query.query)
+        q = queries.actors_over_50_that_played_in_blockbusters_query.query
+        actual_result = redis_graph.query(q)
 
         # assert result set
         self._assert_only_expected_results_are_in_actual_results(
@@ -80,9 +106,13 @@ class ImdbFlowTest(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.actors_over_50_that_played_in_blockbusters_query)
 
+        # assert reversed pattern.
+        self.assert_reversed_pattern(q, actual_result)
+
     def test_actors_played_in_bad_drama_or_comedy(self):
         global redis_graph
-        actual_result = redis_graph.query(queries.actors_played_in_bad_drama_or_comedy_query.query)
+        q = queries.actors_played_in_bad_drama_or_comedy_query.query
+        actual_result = redis_graph.query(q)
 
         # assert result set
         self._assert_only_expected_results_are_in_actual_results(
@@ -92,9 +122,13 @@ class ImdbFlowTest(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.actors_played_in_bad_drama_or_comedy_query)
 
+        # assert reversed pattern.
+        self.assert_reversed_pattern(q, actual_result)
+
     def test_young_actors_played_with_cameron_diaz(self):
         global redis_graph
-        actual_result = redis_graph.query(queries.young_actors_played_with_cameron_diaz_query.query)
+        q = queries.young_actors_played_with_cameron_diaz_query.query
+        actual_result = redis_graph.query(q)
 
         # assert result set
         self._assert_only_expected_results_are_in_actual_results(
@@ -104,9 +138,13 @@ class ImdbFlowTest(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.young_actors_played_with_cameron_diaz_query)
 
+        # assert reversed pattern.
+        self.assert_reversed_pattern(q, actual_result)
+
     def test_actors_played_with_cameron_diaz_and_younger_than_her(self):
         global redis_graph
-        actual_result = redis_graph.query(queries.actors_played_with_cameron_diaz_and_younger_than_her_query.query)
+        q = queries.actors_played_with_cameron_diaz_and_younger_than_her_query.query
+        actual_result = redis_graph.query(q)
 
         # assert result set
         self._assert_only_expected_results_are_in_actual_results(
@@ -116,9 +154,13 @@ class ImdbFlowTest(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.actors_played_with_cameron_diaz_and_younger_than_her_query)
 
+        # assert reversed pattern.
+        self.assert_reversed_pattern(q, actual_result)
+
     def test_sum_and_average_age_of_straight_outta_compton_cast(self):
         global redis_graph
-        actual_result = redis_graph.query(queries.sum_and_average_age_of_straight_outta_compton_cast_query.query)
+        q = queries.sum_and_average_age_of_straight_outta_compton_cast_query.query
+        actual_result = redis_graph.query(q)
 
         # assert result set
         self._assert_only_expected_results_are_in_actual_results(
@@ -128,9 +170,13 @@ class ImdbFlowTest(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.sum_and_average_age_of_straight_outta_compton_cast_query)
 
+        # assert reversed pattern.
+        self.assert_reversed_pattern(q, actual_result)
+
     def test_how_many_movies_cameron_diaz_played(self):
         global redis_graph
-        actual_result = redis_graph.query(queries.how_many_movies_cameron_diaz_played_query.query)
+        q = queries.how_many_movies_cameron_diaz_played_query.query
+        actual_result = redis_graph.query(q)
 
         # assert result set
         self._assert_only_expected_results_are_in_actual_results(
@@ -140,9 +186,13 @@ class ImdbFlowTest(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.how_many_movies_cameron_diaz_played_query)
 
+        # assert reversed pattern.
+        self.assert_reversed_pattern(q, actual_result)
+
     def test_find_ten_oldest_actors(self):
         global redis_graph
-        actual_result = redis_graph.query(queries.find_ten_oldest_actors_query.query)
+        q = queries.find_ten_oldest_actors_query.query
+        actual_result = redis_graph.query(q)
 
         # assert result set
         self._assert_only_expected_results_are_in_actual_results(
@@ -152,16 +202,20 @@ class ImdbFlowTest(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.find_ten_oldest_actors_query)
 
+        # assert reversed pattern.
+        self.assert_reversed_pattern(q, actual_result)
+
     def test_index_scan_actors_over_85(self):
         global redis_graph
 
         # Execute this command directly, as its response does not contain the result set that
         # 'redis_graph.query()' expects
         redis_graph.redis_con.execute_command("GRAPH.QUERY", redis_graph.name, "CREATE INDEX ON :actor(age)")
-        execution_plan = redis_graph.execution_plan(queries.actors_over_85_index_scan.query)
+        q = queries.actors_over_85_index_scan.query
+        execution_plan = redis_graph.execution_plan(q)
         self.assertIn('Index Scan', execution_plan)
 
-        actual_result = redis_graph.query(queries.actors_over_85_index_scan.query)
+        actual_result = redis_graph.query(q)
 
         redis_graph.redis_con.execute_command("GRAPH.QUERY", redis_graph.name, "DROP INDEX ON :actor(age)")
 
@@ -173,16 +227,20 @@ class ImdbFlowTest(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.actors_over_85_index_scan)
 
+        # assert reversed pattern.
+        self.assert_reversed_pattern(q, actual_result)
+
     def test_index_scan_eighties_movies(self):
         global redis_graph
 
         # Execute this command directly, as its response does not contain the result set that
         # 'redis_graph.query()' expects
         redis_graph.redis_con.execute_command("GRAPH.QUERY", redis_graph.name, "CREATE INDEX ON :movie(year)")
-        execution_plan = redis_graph.execution_plan(queries.eighties_movies_index_scan.query)
+        q = queries.eighties_movies_index_scan.query
+        execution_plan = redis_graph.execution_plan(q)
         self.assertIn('Index Scan', execution_plan)
 
-        actual_result = redis_graph.query(queries.eighties_movies_index_scan.query)
+        actual_result = redis_graph.query(q)
 
         redis_graph.redis_con.execute_command("GRAPH.QUERY", redis_graph.name, "DROP INDEX ON :movie(year)")
 
@@ -194,9 +252,13 @@ class ImdbFlowTest(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.eighties_movies_index_scan)
 
+        # assert reversed pattern.
+        self.assert_reversed_pattern(q, actual_result)
+
     def test_find_titles_starting_with_american(self):
         global redis_graph
-        actual_result = redis_graph.query(queries.find_titles_starting_with_american_query.query)
+        q = queries.find_titles_starting_with_american_query.query
+        actual_result = redis_graph.query(q)
 
         # assert result set
         self._assert_only_expected_results_are_in_actual_results(
@@ -205,6 +267,9 @@ class ImdbFlowTest(FlowTestsBase):
 
         # assert query run time
         self._assert_run_time(actual_result, queries.find_titles_starting_with_american_query)
+
+        # assert reversed pattern.
+        self.assert_reversed_pattern(q, actual_result)
 
 if __name__ == '__main__':
     unittest.main()
