@@ -74,19 +74,21 @@ void _MGraph_Query(void *args) {
     RedisModuleCtx *ctx = RedisModule_GetThreadSafeContext(qctx->bc);
     ResultSet* resultSet = NULL;
     AST* ast = qctx->ast;
-    bool readonly;
     bool lockAcquired = false;
 
     /* New parser */
-    const char* query = RedisModule_StringPtrLen(qctx->query, NULL);
+    const char *query = RedisModule_StringPtrLen(qctx->query, NULL);
+    printf("query: %s\n", query);
     cypher_parse_result_t *new_ast = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
-    if (new_ast == NULL) {
-        NEWAST_ReportErrors(new_ast);
-        return;
-    }
 
-    readonly = NEWAST_ReadOnly(new_ast);
-    
+    char *parse_error_reason = NULL;
+    // Perform query validations
+    if (AST_PerformValidations(ctx, new_ast) != AST_VALID) goto cleanup;
+
+    // cypher_parse_result_fprint_ast(new_ast, stdout, 0, NULL, 0);
+
+    bool readonly = NEWAST_ReadOnly(new_ast);
+
     /* END OF New parser */
 
     // Add AST to thread local storage.
@@ -116,12 +118,8 @@ void _MGraph_Query(void *args) {
         }
         /* TODO: free graph if no entities were created. */
     }
-
-    // Perform query validations before and after ModifyAST
-    if (AST_PerformValidations(ctx, ast) != AST_VALID) goto cleanup;
-
+    
     ModifyAST(gc, ast, new_ast);
-    if (AST_PerformValidations(ctx, ast) != AST_VALID) goto cleanup;
 
     // Acquire the appropriate lock.
     if(readonly) Graph_AcquireReadLock(gc->g);
@@ -153,8 +151,8 @@ cleanup:
     }
 
     ResultSet_Free(resultSet);
-    AST_Free(ast);
-    cypher_parse_result_free(new_ast);
+    if(ast)AST_Free(ast);
+    // cypher_parse_result_free(new_ast);
     RedisModule_UnblockClient(qctx->bc, NULL);
     RedisModule_FreeThreadSafeContext(ctx);
     _queryContext_Free(qctx);

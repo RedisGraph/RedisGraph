@@ -48,7 +48,6 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
     new_ast = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
 
-
     // Retrieve the GraphContext and acquire a read lock.
     // RedisModule_ThreadSafeContextLock(ctx);
     gc = GraphContext_Retrieve(ctx, graphname);
@@ -59,10 +58,9 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     }
 
     // Perform query validations before and after ModifyAST
-    if (AST_PerformValidations(ctx, ast) != AST_VALID) return REDISMODULE_OK;
+    if(AST_PerformValidations(ctx, new_ast) != AST_VALID) return REDISMODULE_OK;
 
     ModifyAST(gc, ast, new_ast);
-    if (AST_PerformValidations(ctx, ast) != AST_VALID) return REDISMODULE_OK;
 
     if (ast->indexNode != NULL) { // index operation
         char *reply = (ast->indexNode->operation == CREATE_INDEX) ? "Create Index" : "Drop Index";

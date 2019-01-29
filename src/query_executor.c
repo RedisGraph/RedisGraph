@@ -233,9 +233,10 @@ AST* ParseQuery(const char *query, size_t qLen, char **errMsg) {
     return Query_Parse(query, qLen, errMsg);
 }
 
-AST_Validation AST_PerformValidations(RedisModuleCtx *ctx, AST *ast) {
+AST_Validation AST_PerformValidations(RedisModuleCtx *ctx, const cypher_parse_result_t *ast) {
     char *reason;
-    if (AST_Validate(ast, &reason) != AST_VALID) {
+    AST_Validation res = NEWAST_Validate(ast, &reason);
+    if (res != AST_VALID) {
         RedisModule_ReplyWithError(ctx, reason);
         free(reason);
         return AST_INVALID;
