@@ -315,10 +315,14 @@ void AR_EXP_Free(AR_ExpNode *root) {
 /* Mathematical functions - numeric */
 
 SIValue AR_ADD(SIValue *argv, int argc) {
-    SIValue result;
-    result = argv[0];
+    SIValue result = argv[0];
+    if(SI_TYPE(result) & SI_NUMERIC) {
+        /* If the result is numeric, ensure that it is represented as a double. */
+        SIValue_ConvertToDouble(&result);
+    }
     char buffer[512];
     char *string_arg = NULL;
+    double numeric_arg;
 
     for(int i = 1; i < argc; i++) {
         if(SIValue_IsNull(argv[i])) return SI_NullVal();
@@ -326,8 +330,9 @@ SIValue AR_ADD(SIValue *argv, int argc) {
         /* Perform numeric addition only if both result and current argument
          * are numeric. */
         if(SI_TYPE(result) & SI_NUMERIC && SI_TYPE(argv[i]) & SI_NUMERIC) {
+            SIValue_ToDouble(&argv[i], &numeric_arg);
             /* Numeric addition. */
-            result.doubleval += argv[i].doubleval;
+            result.doubleval += numeric_arg;
         } else {
             /* String concatenation.
              * Make sure result is a String. */

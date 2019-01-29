@@ -225,12 +225,12 @@ int SIValue_ToString(SIValue v, char *buf, size_t len) {
   return bytes_written;
 }
 
-int SIValue_ToDouble(SIValue *v, double *d) {
+int SIValue_ToDouble(const SIValue *v, double *d) {
   switch (v->type) {
   case T_DOUBLE:
     *d = v->doubleval;
     return 1;
-  case T_INT64: // do nothing!
+  case T_INT64:
     *d = (double)v->longval;
     return 1;
   case T_INT32:
@@ -250,6 +250,35 @@ int SIValue_ToDouble(SIValue *v, double *d) {
     // cannot convert!
     return 0;
   }
+}
+
+int SIValue_ConvertToDouble(SIValue *v) {
+  switch (v->type) {
+    case T_DOUBLE:
+      return 1;
+    case T_INT64:
+      v->doubleval = (double)v->longval;
+      break;
+    case T_INT32:
+      v->doubleval = (double)v->intval;
+      break;
+    case T_UINT:
+      v->doubleval = (double)v->uintval;
+      break;
+    case T_FLOAT:
+      v->doubleval = (double)v->floatval;
+      break;
+    case T_BOOL:
+      v->doubleval = (double)v->boolval;
+      break;
+
+    default:
+      // cannot convert!
+      return 0;
+  }
+
+  v->type = T_DOUBLE;
+  return 1;
 }
 
 SIValue SIValue_FromString(const char *s) {

@@ -92,7 +92,11 @@ int SI_ParseValue(SIValue *v, char *str);
 
 int SIValue_ToString(SIValue v, char *buf, size_t len);
 
-int SIValue_ToDouble(SIValue *v, double *d);
+/* Try to read a value as a double. */
+int SIValue_ToDouble(const SIValue *v, double *d);
+
+/* Try to internally convert a value to a double. */
+int SIValue_ConvertToDouble(SIValue *v);
 
 /* Try to parse a value by string. */
 SIValue SIValue_FromString(const char *s);
