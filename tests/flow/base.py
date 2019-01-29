@@ -1,9 +1,16 @@
 import os
 import warnings
+import unittest
 from rmtest import ModuleTestCase
 
-
-class FlowTestsBase(ModuleTestCase(os.path.dirname(os.path.abspath(__file__)) + '/../../src/redisgraph.so')):
+class FlowTestsBase(unittest.TestCase):
+    def _assert_equalish(self, a, b, e=0.05):
+        try:
+            delta = a * e
+            diff = abs(a-b)
+            self.assertLessEqual(diff, delta, 'runtimes differ by more than %f percent' % e)
+        except AssertionError as e:
+            warnings.warn(e.message)
 
     def _assert_only_expected_results_are_in_actual_results(self,
                                                            actual_result,

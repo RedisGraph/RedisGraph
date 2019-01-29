@@ -111,7 +111,7 @@ young_actors_played_with_cameron_diaz_query = QueryInfo(
 actors_played_with_cameron_diaz_and_younger_than_her_query = QueryInfo(
     query="""MATCH (Cameron:actor {name:"Cameron Diaz"})-[:act]->(m:movie)<-[:act]-(a:actor)
              WHERE a.age < Cameron.age
-             RETURN a, m.title""",
+             RETURN a, m.title order by a.name""",
     description='Which actors played along side Cameron Diaz and are younger then her?',
     max_run_time_ms=7,
     expected_result=[['Jason Segel', '39.000000', 'Sex Tape'],
@@ -165,7 +165,7 @@ actors_over_85_index_scan = QueryInfo(
     query="""MATCH (a:actor)
              WHERE a.age > 85
              RETURN *
-             ORDER BY a.age""",
+             ORDER BY a.age, a.name""",
     description='Actors over 85 on indexed property?',
     max_run_time_ms=1.5,
     expected_result=[['Michael Caine', '86.000000'],
