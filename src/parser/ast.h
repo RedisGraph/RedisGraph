@@ -14,11 +14,6 @@
 #include "../util/vector.h"
 #include "./clauses/clauses.h"
 
-typedef enum {
-	AST_VALID,
-	AST_INVALID
-} AST_Validation;
-
 typedef struct {
 	AST_MatchNode *matchNode;
 	AST_CreateNode *createNode;
@@ -43,8 +38,8 @@ AST* AST_New(AST_MatchNode *matchNode, AST_WhereNode *whereNode,
 						 AST_SkipNode *skipNode, AST_LimitNode *limitNode,
 						 AST_IndexNode *indexNode, AST_UnwindNode *unwindNode);
 
-// AST clause validations.
-AST_Validation AST_Validate(const AST* ast, char **reason);
+// Retrieve AST from thread local storage.
+AST *AST_GetFromLTS();
 
 // Returns number of aliases defined in AST.
 int AST_AliasCount(const AST *ast);

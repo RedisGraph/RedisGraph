@@ -117,7 +117,6 @@ endif
 # Build libcypher-parser only if library does not already exists.
 $(LIBCYPHER-PARSER):
 ifeq (,$(wildcard $(LIBCYPHER-PARSER)))
-	# Note we're passing empty CFLAGS to libcypher-parser.
 	cd ../deps/libcypher-parser; \
 	./autogen.sh; \
 	./configure --disable-shared;

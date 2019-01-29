@@ -316,51 +316,13 @@ static bool _AST_should_reverse_pattern(Vector *pattern) {
     return (transposed > edge_count/2);
 }
 
-/* Construct a new MATCH clause by cloning the current one
- * and reversing traversal patterns to reduce matrix transpose
- * operation. */
-static void _AST_reverse_match_patterns(AST *ast) {
-    size_t pattern_count = Vector_Size(ast->matchNode->patterns);
-    Vector *patterns = NewVector(Vector*, pattern_count);
-
-    for(int i = 0; i < pattern_count; i++) {
-        Vector *pattern;
-        Vector_Get(ast->matchNode->patterns, i, &pattern);
-
-        size_t pattern_length = Vector_Size(pattern);
-        Vector *v = NewVector(AST_GraphEntity*, pattern_length);
-
-        if(!_AST_should_reverse_pattern(pattern)) {
-            // No need to reverse, simply clone pattern.
-            for(int j = 0; j < pattern_length; j++) {
-                AST_GraphEntity *e;
-                Vector_Get(pattern, j, &e);
-                e = Clone_AST_GraphEntity(e);
-                Vector_Push(v, e);
-            }
-        }
-        else {
-            /* Reverse pattern:
-             * Create a new pattern where edges been reversed.
-             * Nodes should be introduced in reverse order:
-             * (C)<-[B]-(A)
-             * (A)-[B]->(C) */
-            for(int j = pattern_length-1; j >= 0; j--) {
-                AST_GraphEntity *e;
-                Vector_Get(pattern, j, &e);
-                e = Clone_AST_GraphEntity(e);
-
-                if(e->t == N_LINK) {
-                    AST_LinkEntity *l = (AST_LinkEntity*)e;
-                    // Reverse pattern.
-                    if(l->direction == N_RIGHT_TO_LEFT) l->direction = N_LEFT_TO_RIGHT;
-                    else l->direction = N_RIGHT_TO_LEFT;
-                }
-                Vector_Push(v, e);
-            }
-        }
-        Vector_Push(patterns, v);
-        Vector_Clear(pattern); // We're reusing the original entities, so don't free them.
+AST_Validation AST_PerformValidations(RedisModuleCtx *ctx, const cypher_parse_result_t *ast) {
+    char *reason;
+    AST_Validation res = NEWAST_Validate(ast, &reason);
+    if (res != AST_VALID) {
+        RedisModule_ReplyWithError(ctx, reason);
+        free(reason);
+        return AST_INVALID;
     }
 
 	Vector_Free(ast->matchNode->_mergedPatterns);

@@ -21,7 +21,13 @@ void ExpandCollapsedNodes(AST *ast);
 AST **ParseQuery(const char *query, size_t qLen, char **errMsg);
 
 /* Make sure AST is valid. */
-AST_Validation AST_PerformValidations(RedisModuleCtx *ctx, AST **ast);
+AST_Validation AST_PerformValidations(RedisModuleCtx *ctx, const cypher_parse_result_t *ast);
+
+/* Construct an expression tree foreach none aggregated term.
+ * Returns a vector of none aggregated expression trees. */
+void Build_None_Aggregated_Arithmetic_Expressions(AST *ast,
+                                                  AR_ExpNode ***expressions,
+                                                  int *expressions_count);
 
 /* Performs a number of adjustments to given AST. */
 void ModifyAST(GraphContext *gc, AST *ast, const cypher_parse_result_t *new_ast);
