@@ -316,8 +316,10 @@ void AR_EXP_Free(AR_ExpNode *root) {
 
 SIValue AR_ADD(SIValue *argv, int argc) {
     SIValue result = argv[0];
-    /* If the result is numeric, ensure that it is represented as a double. */
-    bool numeric_result = SIValue_ConvertToDouble(&result);
+    if(SI_TYPE(result) & SI_NUMERIC) {
+        /* If the result is numeric, ensure that it is represented as a double. */
+        SIValue_ConvertToDouble(&result);
+    }
     char buffer[512];
     char *string_arg = NULL;
     double numeric_arg;
@@ -327,13 +329,14 @@ SIValue AR_ADD(SIValue *argv, int argc) {
 
         /* Perform numeric addition only if both result and current argument
          * are numeric. */
-        if(numeric_result && SIValue_ToDouble(&argv[i], &numeric_arg)) {
+        if(SI_TYPE(result) & SI_NUMERIC && SI_TYPE(argv[i]) & SI_NUMERIC) {
+            SIValue_ToDouble(&argv[i], &numeric_arg);
             /* Numeric addition. */
             result.doubleval += numeric_arg;
         } else {
             /* String concatenation.
              * Make sure result is a String. */
-            if(numeric_result) {
+            if(SI_TYPE(result) & SI_NUMERIC) {
                 /* Result is numeric, convert to string. */
                 SIValue_ToString(result, buffer, 512);
                 result = SI_DuplicateStringVal(buffer);
