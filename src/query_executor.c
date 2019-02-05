@@ -9,7 +9,7 @@
 #include "query_executor.h"
 #include "graph/graph.h"
 #include "graph/entities/node.h"
-#include "stores/store.h"
+#include "schema/schema.h"
 #include "util/arr.h"
 #include "util/vector.h"
 #include "parser/grammar.h"
@@ -169,24 +169,24 @@ void ExpandCollapsedNodes(AST *ast) {
             }
 
             /* Find label's properties. */
-            LabelStoreType store_type = (collapsed_entity->t == N_ENTITY) ? STORE_NODE : STORE_EDGE;
-            LabelStore *store;
-                        
+            SchemaType schema_type = (collapsed_entity->t == N_ENTITY) ? SCHEMA_NODE : SCHEMA_EDGE;
+            Schema *schema;
+
             if(collapsed_entity->label) {
                 /* Collapsed entity has a label. */
-                store = GraphContext_GetStore(gc, collapsed_entity->label, store_type);
+                schema = GraphContext_GetSchema(gc, collapsed_entity->label, schema_type);
             } else {
-                /* Entity does have a label, Consult with "ALL" store. */
-                store = GraphContext_AllStore(gc, store_type);
+                /* Entity does have a label, Consult with unified schema. */
+                schema = GraphContext_GetUnifiedSchema(gc, schema_type);
             }
 
-            void *ptr = NULL;       /* Label store property value, (not in use). */
+            void *ptr = NULL;       /* schema property value, (not in use). */
             char *prop = NULL;      /* Entity property. */
             tm_len_t prop_len = 0;  /* Length of entity's property. */
             AST_ArithmeticExpressionNode *expanded_exp;
             AST_ReturnElementNode *retElem;
-            if(!store || store->properties->cardinality == 0) {
-                /* Label store was not found or
+            if(!schema || Schema_AttributeCount(schema) == 0) {
+                /* Schema missing or
                  * label doesn't have any properties.
                  * Create a fake return element. */
                 expanded_exp = New_AST_AR_EXP_ConstOperandNode(SI_ConstStringVal(""));
@@ -195,7 +195,7 @@ void ExpandCollapsedNodes(AST *ast) {
                 else retElem = New_AST_ReturnElementNode(expanded_exp, exp->operand.variadic.alias);
                 expandReturnElements = array_append(expandReturnElements, retElem);
             } else {
-                TrieMapIterator *it = TrieMap_Iterate(store->properties, "", 0);
+                TrieMapIterator *it = TrieMap_Iterate(schema->attributes, "", 0);
                 while(TrieMapIterator_Next(it, &prop, &prop_len, &ptr)) {
                     prop_len = MIN(255, prop_len);
                     memcpy(buffer, prop, prop_len);
@@ -208,7 +208,6 @@ void ExpandCollapsedNodes(AST *ast) {
                 }
                 TrieMapIterator_Free(it);
             }
-
             /* Discard collapsed return element. */
             Free_AST_ReturnElementNode(ret_elem);
         } else {

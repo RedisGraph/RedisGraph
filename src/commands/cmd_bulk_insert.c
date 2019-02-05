@@ -80,7 +80,7 @@ void _MGraph_BulkInsert(void *args) {
     argc -= 2; // already read node count and edge count
 
     if (initial_query) {
-        // Create graph and initialize its data stores.
+        // Create graph and initialize its schemas.
         gc = GraphContext_New(ctx, graphname, nodes_in_query, relations_in_query);
         assert(gc);
     } else {

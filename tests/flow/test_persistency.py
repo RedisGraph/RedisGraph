@@ -31,11 +31,11 @@ class GraphPersistency(FlowTestsBase):
         cls.r.start()
         redis_con = cls.r.client()
         redis_graph = Graph(GRAPH_NAME, redis_con)
-
         dense_graph = Graph(DENSE_GRAPH_NAME, redis_con)
 
         # redis_con = redis.Redis()
-        # redis_graph = Graph("G", redis_con)
+        # redis_graph = Graph(GRAPH_NAME, redis_con)
+        # dense_graph = Graph(DENSE_GRAPH_NAME, redis_con)
 
         cls.populate_graph()
         cls.populate_dense_graph()
@@ -137,10 +137,10 @@ class GraphPersistency(FlowTestsBase):
             assert(edgeCount == 2)
 
             # Verify indices exists.
-            actual_result = redis_con.execute_command("GRAPH.EXPLAIN", "G", "match (n:person) where n.name = 'Roi' RETURN n")
+            actual_result = redis_con.execute_command("GRAPH.EXPLAIN", "G", "MATCH (n:person) WHERE n.name = 'Roi' RETURN n")
             assert("Index Scan" in actual_result)
 
-            actual_result = redis_con.execute_command("GRAPH.EXPLAIN", "G", "match (n:country) where n.name = 'Israel' RETURN n")
+            actual_result = redis_con.execute_command("GRAPH.EXPLAIN", "G", "MATCH (n:country) WHERE n.name = 'Israel' RETURN n")
             assert("Index Scan" in actual_result)
 
     # Verify that edges are not modified after entity deletion
@@ -174,7 +174,7 @@ class GraphPersistency(FlowTestsBase):
         actual_result = graph.query(query)
 
         # Verify that the properties are loaded correctly.
-        # Note that the order of results is not guaranteed (currently managed by the LabelStore schema),
+        # Note that the order of results is not guaranteed (currently managed by the Schema),
         # so this may need to be updated in the future.
         expected_result = [['p.boolval', 'p.nullval', 'p.numval', 'p.strval'],
                            ['true', 'NULL', '5.500000', 'str']]

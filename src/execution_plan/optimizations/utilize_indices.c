@@ -124,7 +124,7 @@ void utilizeIndices(GraphContext *gc, ExecutionPlan *plan) {
       }
 
       // If we've already selected an index on a different property, continue
-      if (idx && strcmp(idx->property, filterProp)) continue;
+      if (idx && strcmp(idx->attribute, filterProp)) continue;
 
       // Try to retrieve an index if one has not been selected yet
       if (!idx) {

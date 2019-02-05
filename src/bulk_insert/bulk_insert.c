@@ -6,7 +6,7 @@
 */
 
 #include "bulk_insert.h"
-#include "../stores/store.h"
+#include "../schema/schema.h"
 #include "../util/rmalloc.h"
 #include <errno.h>
 #include <assert.h>
@@ -21,7 +21,7 @@ typedef enum {
 } TYPE;
 
 // Read the header of a data stream to parse its property keys and update schemas.
-static char** _BulkInsert_ReadHeader(GraphContext *gc, LabelStoreType t,
+static Attribute_ID* _BulkInsert_ReadHeader(GraphContext *gc, SchemaType t,
                                                   const char *data, size_t *data_idx,
                                                   int *label_id, unsigned int *prop_count) {
     /* Binary header format:
@@ -32,36 +32,28 @@ static char** _BulkInsert_ReadHeader(GraphContext *gc, LabelStoreType t,
     // First sequence is entity name 
     const char *name = data + *data_idx;
     *data_idx += strlen(name) + 1;
-    LabelStore *store = NULL;
-    if (t == STORE_NODE) {
-      store = GraphContext_GetStore(gc, name, STORE_NODE);
-      if (store == NULL) store = GraphContext_AddLabel(gc, name);
-    } else {
-      store = GraphContext_GetStore(gc, name, STORE_EDGE);
-      if (store == NULL) store = GraphContext_AddRelationType(gc, name);
-    }
-
-    *label_id = store->id;
+    Schema *schema = GraphContext_GetSchema(gc, name, t);
+    if (schema == NULL) schema = GraphContext_AddSchema(gc, name, t);
+    *label_id = schema->id;
 
     // Next 4 bytes are property count
     *prop_count = *(unsigned int*)&data[*data_idx];
     *data_idx += sizeof(unsigned int);
 
     if (*prop_count == 0) return NULL;
-    char **prop_keys = malloc(*prop_count * sizeof(char*));
+    Attribute_ID *prop_indicies = malloc(*prop_count * sizeof(Attribute_ID));
 
     // The rest of the line is [char *prop_key] * prop_count
     for (unsigned int j = 0; j < *prop_count; j ++) {
-        // TODO update LabelStore and GraphEntity function signatures to expect const char * arguments
-        prop_keys[j] = (char*)data + *data_idx;
-        *data_idx += strlen(prop_keys[j]) + 1;
+        // TODO update Schema and GraphEntity function signatures to expect const char * arguments
+        char *prop_key = (char*)data + *data_idx;
+        *data_idx += strlen(prop_key) + 1;
+
+        // Add properties to schemas
+        prop_indicies[j] = Schema_AddAttribute(schema, t, prop_key);
     }
 
-    // Add properties to schemas
-    LabelStore_UpdateSchema(GraphContext_AllStore(gc, t), *prop_count, prop_keys);
-    LabelStore_UpdateSchema(store, *prop_count, prop_keys);
-
-    return prop_keys;
+    return prop_indicies;
 }
 
 // Read an SIValue from the data stream and update the index appropriately
@@ -104,22 +96,18 @@ int _BulkInsert_ProcessNodeFile(RedisModuleCtx *ctx, GraphContext *gc, const cha
 
     int label_id;
     unsigned int prop_count;
-    char **prop_keys = _BulkInsert_ReadHeader(gc, STORE_NODE, data, &data_idx, &label_id, &prop_count);
-
-    // Reusable buffer for storing properties of each node
-    SIValue values[prop_count];
-    unsigned int prop_num = 0;
+    Attribute_ID *prop_indicies = _BulkInsert_ReadHeader(gc, SCHEMA_NODE, data, &data_idx, &label_id, &prop_count);
 
     while (data_idx < data_len) {
         Node n;
         Graph_CreateNode(gc->g, label_id, &n);
-        for (unsigned int i = 0; i < prop_count; i ++) {
-            values[i] = _BulkInsert_ReadProperty(data, &data_idx);
+        for (unsigned int i = 0; i < prop_count; i++) {
+            SIValue value = _BulkInsert_ReadProperty(data, &data_idx);
+            GraphEntity_Add_Property((GraphEntity*)&n, prop_indicies[i], value);
         }
-        GraphEntity_Add_Properties((GraphEntity*)&n, prop_count, prop_keys, values);
     }
 
-    free(prop_keys);
+    free(prop_indicies);
     return BULK_OK;
 }
 
@@ -128,12 +116,8 @@ int _BulkInsert_ProcessRelationFile(RedisModuleCtx *ctx, GraphContext *gc, const
 
     int reltype_id;
     unsigned int prop_count;
-    // Read property keys from header and update schema
-    char **prop_keys = _BulkInsert_ReadHeader(gc, STORE_EDGE, data, &data_idx, &reltype_id, &prop_count);
-
-    // Reusable buffer for storing properties of each relation 
-    SIValue values[prop_count];
-    unsigned int prop_num = 0;
+    // Read property keys from header and update schema    
+    Attribute_ID *prop_indicies = _BulkInsert_ReadHeader(gc, SCHEMA_EDGE, data, &data_idx, &reltype_id, &prop_count);
     NodeID src;
     NodeID dest;
 
@@ -152,12 +136,12 @@ int _BulkInsert_ProcessRelationFile(RedisModuleCtx *ctx, GraphContext *gc, const
 
         // Process and add relation properties
         for (unsigned int i = 0; i < prop_count; i ++) {
-            values[i] = _BulkInsert_ReadProperty(data, &data_idx);
+            SIValue value = _BulkInsert_ReadProperty(data, &data_idx);
+            GraphEntity_Add_Property((GraphEntity*)&e, prop_indicies[i], value);
         }
-        GraphEntity_Add_Properties((GraphEntity*)&e, prop_count, prop_keys, values);
     }
 
-    free(prop_keys);
+    free(prop_indicies);
     return BULK_OK;
 }
 

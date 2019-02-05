@@ -13,7 +13,7 @@
 #include "../../graph/query_graph.h"
 #include "../../graph/entities/node.h"
 #include "../../graph/entities/edge.h"
-#include "../../stores/store.h"
+#include "../../schema/schema.h"
 #include "../../util/vector.h"
 
 #define OP_REQUIRE_NEW_DATA(opRes) (opRes & (OP_DEPLETED | OP_REFRESH)) > 0

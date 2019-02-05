@@ -34,7 +34,14 @@ static AR_ExpNode* _AR_EXP_NewVariableOperandNode(const AST *ast, char *entity_p
     node->operand.type = AR_EXP_VARIADIC;
     node->operand.variadic.entity_alias = strdup(entity_alias);
     node->operand.variadic.entity_alias_idx = AST_GetAliasID(ast, entity_alias);
-    node->operand.variadic.entity_prop = entity_prop != NULL ? strdup(entity_prop) : NULL;
+    node->operand.variadic.entity_prop = NULL;
+    
+    if(entity_prop) {
+        node->operand.variadic.entity_prop = strdup(entity_prop);
+        AST_GraphEntity *ge = MatchClause_GetEntity(ast->matchNode, entity_alias);
+        SchemaType st = (ge->t == N_ENTITY) ? SCHEMA_NODE : SCHEMA_EDGE;
+        node->operand.variadic.entity_prop_idx = Attribute_GetID(st, entity_prop);
+    }
     return node;
 }
 
@@ -120,7 +127,7 @@ SIValue AR_EXP_Evaluate(const AR_ExpNode *root, const Record r) {
             // Fetch entity property value.
             if (root->operand.variadic.entity_prop != NULL) {
                 GraphEntity *ge = Record_GetGraphEntity(r, root->operand.variadic.entity_alias_idx);
-                SIValue *property = GraphEntity_Get_Property(ge, root->operand.variadic.entity_prop);
+                SIValue *property = GraphEntity_Get_Property(ge, root->operand.variadic.entity_prop_idx);
                 /* TODO: Handle PROPERTY_NOTFOUND. */
                 result = SI_ShallowCopy(*property);
             } else {
@@ -595,7 +602,7 @@ SIValue AR_ID(SIValue *argv, int argc) {
     return SI_LongVal(ENTITY_GET_ID(graph_entity));
 }
 
-SIValue AR_LABELS(SIValue *argv, int argc) {    
+SIValue AR_LABELS(SIValue *argv, int argc) {
     assert(argc == 1);
     assert(argv[0].type == T_PTR);
 
@@ -604,7 +611,7 @@ SIValue AR_LABELS(SIValue *argv, int argc) {
     GraphContext *gc = GraphContext_GetFromLTS();
     Graph *g = gc->g;
     int labelID = Graph_GetNodeLabel(g, ENTITY_GET_ID(node));
-    if(labelID != GRAPH_NO_LABEL) label = gc->node_stores[labelID]->label;
+    if(labelID != GRAPH_NO_LABEL) label = gc->node_schemas[labelID]->name;
     return SI_ConstStringVal(label);
 }
 
@@ -617,7 +624,7 @@ SIValue AR_TYPE(SIValue *argv, int argc) {
     GraphContext *gc = GraphContext_GetFromLTS();
     Graph *g = gc->g;
     int id = Graph_GetEdgeRelation(gc->g, e);
-    if(id != GRAPH_NO_RELATION) type = gc->relation_stores[id]->label;
+    if(id != GRAPH_NO_RELATION) type = gc->relation_schemas[id]->name;
     return SI_ConstStringVal(type);
 }
 

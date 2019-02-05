@@ -18,6 +18,7 @@ extern "C" {
 #include "../../src/parser/grammar.h"
 #include "../../src/parser/ast_arithmetic_expression.h"
 #include "../../src/filter_tree/filter_tree.h"
+#include "../../src/util/arr.h"
 #include "../../src/util/rmalloc.h"
 #include "../../src/query_executor.h"
 
@@ -25,12 +26,43 @@ extern "C" {
 }
 #endif
 
+extern pthread_key_t _tlsGCKey;    // Thread local storage graph context key.
+
 class FilterTreeTest: public ::testing::Test {
     protected:
 
     static void SetUpTestCase() {
       // Use the malloc family for allocations
       Alloc_Reset();
+      _fake_graph_context();
+    }
+
+    static void TearDownTestCase()
+    {
+        // Free fake graph context.
+        GraphContext *gc = GraphContext_GetFromLTS();
+        Schema_Free(gc->node_unified_schema);
+        Schema_Free(gc->relation_unified_schema);
+        free(gc);
+    }
+
+    static void _fake_graph_context() {
+        /* Filter tree construction requires access to schemas, 
+         * those inturn resides within graph context 
+         * accessible via thread local storage, as such we're creating a 
+         * fake graph context and placing it within thread local storage. */
+        GraphContext *gc = (GraphContext*)malloc(sizeof(GraphContext));
+
+        // No indicies.
+        gc->index_count = 0;
+
+        // Initialize the generic label and relation stores
+        gc->node_unified_schema = Schema_New("ALL", GRAPH_NO_LABEL);
+        gc->relation_unified_schema = Schema_New("ALL", GRAPH_NO_RELATION);
+        
+        int error = pthread_key_create(&_tlsGCKey, NULL);
+        ASSERT_EQ(error, 0);
+        pthread_setspecific(_tlsGCKey, gc);
     }
 
     AST* _build_ast(const char *query) {

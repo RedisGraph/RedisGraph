@@ -19,7 +19,7 @@ static void _setupTraversedRelations(CondTraverse *op) {
     if(op->edgeRelationCount > 0) {
         op->edgeRelationTypes = array_new(int , op->edgeRelationCount);
         for(int i = 0; i < op->edgeRelationCount; i++) {
-            LabelStore *s = GraphContext_GetStore(gc, e->labels[i], STORE_EDGE);
+            Schema *s = GraphContext_GetSchema(gc, e->labels[i], SCHEMA_EDGE);
             if(!s) continue;
             op->edgeRelationTypes = array_append(op->edgeRelationTypes, s->id);
         }
