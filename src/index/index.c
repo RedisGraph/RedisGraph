@@ -57,7 +57,7 @@ void initializeSkiplists(Index *index) {
 
 /* Index_Create allocates an Index object and populates it with all unique IDs and values
  * that possess the provided label and property. */
-Index* Index_Create(Graph *g, int label_id, const char *label, const char *prop_str) {
+Index* Index_Create(Graph *g, const char *label, int label_id, const char *attr_str, Attribute_ID attr_id) {
   const GrB_Matrix label_matrix = Graph_GetLabel(g, label_id);
   GxB_MatrixTupleIter *it;
   GxB_MatrixTupleIter_new(&it, label_matrix);
@@ -65,7 +65,8 @@ Index* Index_Create(Graph *g, int label_id, const char *label, const char *prop_
   Index *index = rm_malloc(sizeof(Index));
 
   index->label = rm_strdup(label);
-  index->property = rm_strdup(prop_str);
+  index->attribute = rm_strdup(attr_str);
+  index->attr_id = attr_id;
 
   initializeSkiplists(index);
 
@@ -86,11 +87,11 @@ Index* Index_Create(Graph *g, int label_id, const char *label, const char *prop_
     Graph_GetNode(g, node_id, &node);
     // If the sought property is at a different offset than it occupied in the previous node,
     // then seek and update
-    if (strcmp(prop_str, ENTITY_PROPS(&node)[prop_index].name)) {
+    if (attr_id != ENTITY_PROPS(&node)[prop_index].id) {
       found = 0;
       for (int i = 0; i < ENTITY_PROP_COUNT(&node); i ++) {
         prop = ENTITY_PROPS(&node) + i;
-        if (!strcmp(prop_str, prop->name)) {
+        if (attr_id == prop->id) {
           prop_index = i;
           found = 1;
           break;
@@ -165,6 +166,6 @@ void Index_Free(Index *idx) {
   skiplistFree(idx->string_sl);
   skiplistFree(idx->numeric_sl);
   rm_free(idx->label);
-  rm_free(idx->property);
+  rm_free(idx->attribute);
   rm_free(idx);
 }

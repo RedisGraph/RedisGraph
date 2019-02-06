@@ -8,7 +8,7 @@
 #include "op_create.h"
 #include "../../util/arr.h"
 #include "../../parser/ast.h"
-#include "../../stores/store.h"
+#include "../../schema/schema.h"
 
 #include <assert.h>
 
@@ -135,24 +135,26 @@ static void _CommitNodes(OpCreate *op) {
     Graph *g = op->gc->g;
     uint node_count = array_len(op->created_nodes);
     TrieMap *createEntities = NewTrieMap();
-    LabelStore *allStore = GraphContext_AllStore(op->gc, STORE_NODE);
+    Schema *unified_schema = GraphContext_GetUnifiedSchema(op->gc, SCHEMA_NODE);
     
     Graph_AllocateNodes(op->gc->g, node_count);
     CreateClause_ReferredEntities(op->ast->createNode, createEntities);
+
     for(uint i = 0; i < node_count; i++) {
         n = op->created_nodes[i];
-        LabelStore *store = NULL;
+        Schema *schema = NULL;
 
         // Get label ID.
         if(n->label == NULL) {
             labelID = GRAPH_NO_LABEL;
+            schema = unified_schema;
         } else {
-            store = GraphContext_GetStore(op->gc, n->label, STORE_NODE);
-            if(store == NULL) {
-                store = GraphContext_AddLabel(op->gc, n->label);
+            schema = GraphContext_GetSchema(op->gc, n->label, SCHEMA_NODE);
+            if(schema == NULL) {
+                schema = GraphContext_AddSchema(op->gc, n->label, SCHEMA_NODE);
                 op->result_set->stats.labels_added++;
             }
-            labelID = store->id;
+            labelID = schema->id;
         }
 
         // Introduce node into graph.
@@ -164,26 +166,18 @@ static void _CommitNodes(OpCreate *op) {
 
         if(entity->properties) {
             int propCount = Vector_Size(entity->properties);
-            if(propCount > 0) {    
-                char *keys[propCount];
-                SIValue values[propCount];
-
+            if(propCount > 0) {
                 for(int prop_idx = 0; prop_idx < propCount; prop_idx+=2) {
                     SIValue *key;
                     SIValue *value;
                     Vector_Get(entity->properties, prop_idx, &key);
                     Vector_Get(entity->properties, prop_idx+1, &value);
 
-                    values[prop_idx/2] = *value;
-                    keys[prop_idx/2] = key->stringval;
+                    Attribute_ID prop_id = Schema_AddAttribute(schema, SCHEMA_NODE, key->stringval);
+                    GraphEntity_AddProperty((GraphEntity*)n, prop_id, *value);
                 }
-
-                GraphEntity_Add_Properties((GraphEntity*)n, propCount/2, keys, values);
-                if(store) {
-                    LabelStore_UpdateSchema(store, propCount/2, keys);
-                    GraphContext_AddNodeToIndices(op->gc, store, n);
-                }
-                LabelStore_UpdateSchema(allStore, propCount/2, keys);
+                // Introduce node to schema indices.
+                if(n->label) GraphContext_AddNodeToIndices(op->gc, schema, n);
                 op->result_set->stats.properties_set += propCount/2;
             }
         }
@@ -198,7 +192,6 @@ static void _CommitEdges(OpCreate *op) {
     Graph *g = op->gc->g;
     int relationships_created = 0;
     TrieMap *createEntities = NewTrieMap();
-    LabelStore *allStore = GraphContext_AllStore(op->gc, STORE_EDGE);
     CreateClause_ReferredEntities(op->ast->createNode, createEntities);
 
     uint createdEdgeCount = array_len(op->created_edges);
@@ -218,9 +211,9 @@ static void _CommitEdges(OpCreate *op) {
         if(e->destNodeID != INVALID_ENTITY_ID) destNodeID = e->destNodeID;
         else destNodeID = ENTITY_GET_ID(Edge_GetDestNode(e));
 
-        LabelStore *store = GraphContext_GetStore(op->gc, e->relationship, STORE_EDGE);
-        if(!store) store = GraphContext_AddRelationType(op->gc, e->relationship);
-        relation_id = store->id;
+        Schema *schema = GraphContext_GetSchema(op->gc, e->relationship, SCHEMA_EDGE);
+        if(!schema) schema = GraphContext_AddSchema(op->gc, e->relationship, SCHEMA_EDGE);
+        relation_id = schema->id;
 
         if(!Graph_ConnectNodes(g, srcNodeID, destNodeID, relation_id, e)) continue;
 
@@ -231,22 +224,15 @@ static void _CommitEdges(OpCreate *op) {
         if(entity->properties) {
             int propCount = Vector_Size(entity->properties);
             if(propCount > 0) {
-                char *keys[propCount];
-                SIValue values[propCount];
-
                 for(int prop_idx = 0; prop_idx < propCount; prop_idx+=2) {
                     SIValue *key;
                     SIValue *value;
                     Vector_Get(entity->properties, prop_idx, &key);
                     Vector_Get(entity->properties, prop_idx+1, &value);
 
-                    values[prop_idx/2] = *value;
-                    keys[prop_idx/2] = key->stringval;
+                    Attribute_ID prop_id = Schema_AddAttribute(schema, SCHEMA_EDGE, key->stringval);
+                    GraphEntity_AddProperty((GraphEntity*)e, prop_id, *value);
                 }
-
-                GraphEntity_Add_Properties((GraphEntity*)e, propCount/2, keys, values);
-                LabelStore_UpdateSchema(store, propCount/2, keys);
-                LabelStore_UpdateSchema(allStore, propCount/2, keys);
                 op->result_set->stats.properties_set += propCount/2;
             }
         }
@@ -260,7 +246,6 @@ static void _CommitEdges(OpCreate *op) {
 static void _CommitNewEntities(OpCreate *op) {
     size_t node_count = array_len(op->created_nodes);
     size_t edge_count = array_len(op->created_edges);
-    LabelStore *allStore;
 
     // Lock everything.
     Graph_AcquireWriteLock(op->gc->g);

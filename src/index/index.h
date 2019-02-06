@@ -27,14 +27,15 @@ typedef skiplistIterator IndexIter;
  * specify which skiplist should be traversed. */
 typedef struct {
   char *label;
-  char *property;
+  char *attribute;
+  Attribute_ID attr_id;
   skiplist *string_sl;
   skiplist *numeric_sl;
 } Index;
 
 /* Index_Create builds an index for a label-property pair so that queries reliant
  * on these entities can use expedited scan logic. */
-Index* Index_Create(Graph *g, int label_id, const char *label, const char *prop_str);
+Index* Index_Create(Graph *g, const char *label, int label_id, const char *attr_str, Attribute_ID attr_id);
 
 /* Delete a single entity from an index if it is present. */
 void Index_DeleteNode(Index *idx, NodeID node, SIValue *val);

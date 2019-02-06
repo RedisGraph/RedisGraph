@@ -157,7 +157,7 @@ class GraphMergeFlowTest(FlowTestsBase):
         assert(result.properties_set == 2)
         assert(result.relationships_created == 0)
 
-        query = """MATCH (franklin:ACTOR { name: 'Franklin Cover' })-[r:ACTED_IN {rate:5.9, date:1998}]->(almostHeroes:MOVIE) RETURN franklin, r"""
+        query = """MATCH (franklin:ACTOR { name: 'Franklin Cover' })-[r:ACTED_IN {rate:5.9, date:1998}]->(almostHeroes:MOVIE) RETURN franklin.name, franklin.age, r.rate, r.date"""
         actual_result = redis_graph.query(query)
         expected_result = [['franklin.name', 'franklin.age', 'r.rate', 'r.date'],
                            ['Franklin Cover', 'NULL', '5.900000', '1998.000000']]

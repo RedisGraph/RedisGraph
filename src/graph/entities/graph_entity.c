@@ -5,44 +5,53 @@
 * modified with the Commons Clause restriction.
 */
 
-#include "graph_entity.h"
 #include <stdio.h>
+#include <assert.h>
+#include "graph_entity.h"
 #include "../../util/rmalloc.h"
 
 SIValue *PROPERTY_NOTFOUND = &(SIValue){.intval = 0, .type = T_NULL};
 
-/* Expecting e to be either *Node or *Edge */
-void GraphEntity_Add_Properties(GraphEntity *e, int prop_count, char **keys, SIValue *values) {
+/* Add a new property to entity */
+SIValue* GraphEntity_AddProperty(GraphEntity *e, Attribute_ID attr_id, SIValue value) {
 	if(e->entity->properties == NULL) {
-		e->entity->properties = rm_malloc(sizeof(EntityProperty) * prop_count);
+		e->entity->properties = rm_malloc(sizeof(EntityProperty));
 	} else {
-		e->entity->properties = rm_realloc(e->entity->properties, sizeof(EntityProperty) * (e->entity->prop_count + prop_count));
-	}
-	
-	for(int i = 0; i < prop_count; i++) {
-		e->entity->properties[e->entity->prop_count + i].name = rm_strdup(keys[i]);
-		e->entity->properties[e->entity->prop_count + i].value = values[i];
+		e->entity->properties = rm_realloc(e->entity->properties, sizeof(EntityProperty) * (e->entity->prop_count + 1));
 	}
 
-	e->entity->prop_count += prop_count;
+	int prop_idx = e->entity->prop_count;
+	e->entity->properties[prop_idx].id = attr_id;
+	e->entity->properties[prop_idx].value = value;
+	e->entity->prop_count++;
+	
+	return &(e->entity->properties[prop_idx].value);
 }
 
-SIValue* GraphEntity_Get_Property(const GraphEntity *e, const char* key) {
+SIValue* GraphEntity_GetProperty(const GraphEntity *e, Attribute_ID attr_id) {
+	if(attr_id == ATTRIBUTE_NOTFOUND) return PROPERTY_NOTFOUND;
+
 	for(int i = 0; i < e->entity->prop_count; i++) {
-		if(strcmp(key, e->entity->properties[i].name) == 0) {
-			// Note, this is a bit unsafe as entity properties can get reallocated.
+		if(attr_id == e->entity->properties[i].id) {
+			// Note, unsafe as entity properties can get reallocated.
 			return &(e->entity->properties[i].value);
 		}
 	}
+
 	return PROPERTY_NOTFOUND;
 }
 
+// Updates existing property value.
+void GraphEntity_SetProperty(const GraphEntity *e, Attribute_ID attr_id, SIValue value) {
+	SIValue *prop = GraphEntity_GetProperty(e, attr_id);
+	assert(prop != PROPERTY_NOTFOUND);
+	*prop = value;
+}
+
 void FreeEntity(Entity *e) {
+	assert(e);
 	if(e->properties != NULL) {
-		for(int i = 0; i < e->prop_count; i++) {
-			rm_free(e->properties[i].name);
-			SIValue_Free(&e->properties[i].value);
-		}
+		for(int i = 0; i < e->prop_count; i++) SIValue_Free(&e->properties[i].value);
 		rm_free(e->properties);
 		e->properties = NULL;
 	}

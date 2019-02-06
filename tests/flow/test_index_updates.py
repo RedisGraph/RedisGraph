@@ -63,8 +63,8 @@ class IndexUpdatesFlowTest(FlowTestsBase):
     @classmethod
     def build_indices(self):
         for field in fields:
-            redis_graph.redis_con.execute_command("GRAPH.QUERY", "index_test", "CREATE INDEX ON :label_a(%s)" % (field))
-            redis_graph.redis_con.execute_command("GRAPH.QUERY", "index_test", "CREATE INDEX ON :label_b(%s)" % (field))
+            redis_graph.redis_con.execute_command("GRAPH.QUERY", GRAPH_ID, "CREATE INDEX ON :label_a(%s)" % (field))
+            redis_graph.redis_con.execute_command("GRAPH.QUERY", GRAPH_ID, "CREATE INDEX ON :label_b(%s)" % (field))
 
     # Validate that all properties are indexed
     def validate_indexed(self):
@@ -88,7 +88,7 @@ class IndexUpdatesFlowTest(FlowTestsBase):
 
     # The index scan ought to return identical results to a label scan over the same range of values.
     def validate_doubleval(self):
-        for label in ["label_a", "label_b"]:
+        for label in labels:
             resp = redis_graph.execution_plan("""MATCH (a:%s) WHERE a.doubleval < 100 RETURN a.doubleval ORDER BY a.doubleval""" % (label))
             self.assertIn('Index Scan', resp)
             indexed_result = redis_graph.query("""MATCH (a:%s) WHERE a.doubleval < 100 RETURN a.doubleval ORDER BY a.doubleval""" % (label))
@@ -103,14 +103,13 @@ class IndexUpdatesFlowTest(FlowTestsBase):
 
     # The intval property can be assessed similar to doubleval, but the result sets should be identical
     def validate_intval(self):
-        for label in ["label_a", "label_b"]:
+        for label in labels:
             resp = redis_graph.execution_plan("""MATCH (a:%s) WHERE a.intval > 0 RETURN a.intval ORDER BY a.intval""" % (label))
             self.assertIn('Index Scan', resp)
             indexed_result = redis_graph.query("""MATCH (a:%s) WHERE a.intval > 0 RETURN a.intval ORDER BY a.intval""" % (label))
             scan_result = redis_graph.query("""MATCH (a:%s) RETURN a.intval ORDER BY a.intval""" % (label))
 
             self.assertEqual(indexed_result.result_set, scan_result.result_set)
-
 
     # Validate a series of premises to ensure that the graph has not been modified unexpectedly
     def validate_state(self):

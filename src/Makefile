@@ -29,8 +29,10 @@ export CFLAGS
 # Sources
 SOURCEDIR=$(shell pwd -P)
 CC_SOURCES = $(wildcard $(SOURCEDIR)/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/algorithms/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/bulk_insert/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/commands/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/execution_plan/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/execution_plan/ops/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/execution_plan/optimizations/*.c)
@@ -38,8 +40,9 @@ CC_SOURCES += $(wildcard $(SOURCEDIR)/filter_tree/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/graph/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/graph/entities/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/graph/serializers/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/GraphBLASExt/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/grouping/*.c)
-CC_SOURCES += $(wildcard $(SOURCEDIR)/hexastore/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/index/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/parser/clauses/*.c)
 CC_SOURCES += $(SOURCEDIR)/parser/ast.c
 CC_SOURCES += $(SOURCEDIR)/parser/ast_common.c
@@ -47,14 +50,10 @@ CC_SOURCES += $(SOURCEDIR)/parser/ast_arithmetic_expression.c
 CC_SOURCES += $(SOURCEDIR)/parser/lex.yy.c
 CC_SOURCES += $(SOURCEDIR)/parser/grammar.c
 CC_SOURCES += $(wildcard $(SOURCEDIR)/resultset/*.c)
-CC_SOURCES += $(wildcard $(SOURCEDIR)/stores/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/schema/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/util/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/util/datablock/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/util/thpool/*.c)
-CC_SOURCES += $(wildcard $(SOURCEDIR)/index/*.c)
-CC_SOURCES += $(wildcard $(SOURCEDIR)/algorithms/*.c)
-CC_SOURCES += $(wildcard $(SOURCEDIR)/commands/*.c)
-CC_SOURCES += $(wildcard $(SOURCEDIR)/GraphBLASExt/*.c)
 
 # Convert all sources to .o files
 CC_OBJECTS = $(patsubst %.c, %.o, $(CC_SOURCES) )

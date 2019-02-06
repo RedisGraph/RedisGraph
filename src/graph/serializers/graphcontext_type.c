@@ -8,23 +8,42 @@
 #include "../graphcontext.h"
 #include "graphcontext_type.h"
 #include "serialize_graph.h"
-#include "serialize_store.h"
+#include "serialize_schema.h"
+#include "serialize_index.h"
 #include "../../util/arr.h"
 #include "../../util/rmalloc.h"
 #include "../../version.h"
 
+/* Thread local storage graph context key. */
+extern pthread_key_t _tlsGCKey;
+
 /* Declaration of the type for redis registration. */
 RedisModuleType *GraphContextRedisModuleType;
+
+void static _GraphContextType_SerializeIndicies(RedisModuleIO *rdb, GraphContext *gc) {
+  // Currently indicies are only defined on nodes.
+  unsigned short schema_count = GraphContext_SchemaCount(gc, SCHEMA_NODE);
+
+  for (unsigned short i = 0; i < schema_count; i ++) {
+    Schema *s = gc->node_schemas[i];
+    unsigned short index_count = Schema_IndexCount(s);
+
+    for(unsigned short j = 0; j < index_count; j++) {
+      Index *idx = s->indices[j];
+      RdbSaveIndex(rdb, idx);
+    }
+  }
+}
 
 void GraphContextType_RdbSave(RedisModuleIO *rdb, void *value) {
   /* Format:
    * graph name
-   * #label stores
-   * label allstore
-   * label store X #label stores
-   * #relation stores
-   * relation allstore
-   * relation store X #relation
+   * #node schemas
+   * unified node schema
+   * node schema X #node schemas
+   * #relation schemas
+   * unified relation schema
+   * relation schema X #relation schemas
    * graph object
    * #indices
    * (index label, index property) X #indices
@@ -38,46 +57,41 @@ void GraphContextType_RdbSave(RedisModuleIO *rdb, void *value) {
   // Graph name.
   RedisModule_SaveStringBuffer(rdb, gc->graph_name, strlen(gc->graph_name) + 1);
 
-  // #Label stores.
-  uint32_t label_count = array_len(gc->node_stores);
-  RedisModule_SaveUnsigned(rdb, label_count);
+  // #Node schemas.
+  unsigned short schema_count = GraphContext_SchemaCount(gc, SCHEMA_NODE);
+  RedisModule_SaveUnsigned(rdb, schema_count);
 
-  // Serialize label all store.
-  RdbSaveStore(rdb, gc->node_allstore);
+  // Serialize unified node schema.
+  RdbSaveSchema(rdb, gc->node_unified_schema);
 
-  // Name of label X #label stores.
-  for(int i = 0; i < label_count; i++) {
-    LabelStore *s = gc->node_stores[i];
-    RdbSaveStore(rdb, s);
+  // Name of label X #node schemas.
+  for(int i = 0; i < schema_count; i++) {
+    Schema *s = gc->node_schemas[i];
+    RdbSaveSchema(rdb, s);
   }
 
-  // #Relation stores.
-  uint32_t relation_count = array_len(gc->relation_stores);
+  // #Relation schemas.
+  unsigned short relation_count = GraphContext_SchemaCount(gc, SCHEMA_EDGE);
   RedisModule_SaveUnsigned(rdb, relation_count);
 
-  // Serialize relation all store.
-  RdbSaveStore(rdb, gc->relation_allstore);
+  // Serialize unified edge schema.
+  RdbSaveSchema(rdb, gc->relation_unified_schema);
 
-  // Name of relation X #relation.
-  for(uint32_t i = 0; i < relation_count; i++) {
-    LabelStore *s = gc->relation_stores[i];
-    RdbSaveStore(rdb, s);
+  // Name of label X #relation schemas.
+  for(unsigned short i = 0; i < relation_count; i++) {
+    Schema *s = gc->relation_schemas[i];
+    RdbSaveSchema(rdb, s);
   }
 
   // Serialize graph object
-  RdbSaveGraph(rdb, gc->g);
+  RdbSaveGraph(rdb, gc->g, gc->node_unified_schema, gc->relation_unified_schema);
 
   // #Indices.
-  uint32_t index_count = array_len(gc->indices);
+  uint32_t index_count = gc->index_count;
   RedisModule_SaveUnsigned(rdb, index_count);
 
   // Serialize each index
-  Index *idx;
-  for (uint32_t i = 0; i < index_count; i ++) {
-    idx = gc->indices[i];
-    RedisModule_SaveStringBuffer(rdb, idx->label, strlen(idx->label) + 1);
-    RedisModule_SaveStringBuffer(rdb, idx->property, strlen(idx->property) + 1);
-  }
+  _GraphContextType_SerializeIndicies(rdb, gc);
 
   // Unlock.
   Graph_ReleaseLock(gc->g);
@@ -86,12 +100,12 @@ void GraphContextType_RdbSave(RedisModuleIO *rdb, void *value) {
 void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
   /* Format:
    * graph name
-   * #label stores
-   * label allstore
-   * name of label X #label stores
-   * #relation stores
-   * relation allstore
-   * name of relation X #relation
+   * #node schemas
+   * unified node schema
+   * node schema X #node schemas
+   * #relation schemas
+   * unified relation schema
+   * relation schema X #relation schemas
    * graph object
    * #indices
    * (index label, index property) X #indices
@@ -104,52 +118,52 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
   }
 
   GraphContext *gc = rm_malloc(sizeof(GraphContext));
+  
+  // No indicies.
+  gc->index_count = 0;
+  
+  // _tlsGCKey was created as part of module load.
+  pthread_setspecific(_tlsGCKey, gc);
 
   // Graph name
   gc->graph_name = RedisModule_LoadStringBuffer(rdb, NULL);
 
   gc->g = Graph_New(GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
 
-  // #Label stores
-  uint32_t label_count = RedisModule_LoadUnsigned(rdb);
+  // #Node schemas
+  uint32_t schema_count = RedisModule_LoadUnsigned(rdb);
 
-  // label all store.
-  gc->node_allstore = RdbLoadStore(rdb);
+  // unified node schema.
+  gc->node_unified_schema = RdbLoadUnifiedSchema(rdb);
 
-  // Retrieve each label store
-  gc->node_stores = array_new(LabelStore*, label_count);
-  for (uint32_t i = 0; i < label_count; i ++) {
-    array_append(gc->node_stores, RdbLoadStore(rdb));
+  // Load each node schema
+  gc->node_schemas = array_new(Schema*, schema_count);
+  for (uint32_t i = 0; i < schema_count; i ++) {
+    array_append(gc->node_schemas, RdbLoadSchema(rdb, SCHEMA_NODE));
     Graph_AddLabel(gc->g);
   }
 
-  // #Relation stores
-  uint32_t relation_count = RedisModule_LoadUnsigned(rdb);
+  // #Edge schemas
+  schema_count = RedisModule_LoadUnsigned(rdb);
 
-  // Relation all store.
-  gc->relation_allstore = RdbLoadStore(rdb);
+  // unified edge schema.
+  gc->relation_unified_schema = RdbLoadUnifiedSchema(rdb);
 
-  // Retrieve each relation store
-  gc->relation_stores = array_new(LabelStore*, relation_count);
-
-  for (uint32_t i = 0; i < relation_count; i ++) {
-    array_append(gc->relation_stores, RdbLoadStore(rdb));
+  // Load each edge schema
+  gc->relation_schemas = array_new(Schema*, schema_count);
+  for (uint32_t i = 0; i < schema_count; i ++) {
+    array_append(gc->relation_schemas, RdbLoadSchema(rdb, SCHEMA_EDGE));
     Graph_AddRelationType(gc->g);
   }
 
   // Graph object.
-  RdbLoadGraph(rdb, gc->g);
+  RdbLoadGraph(rdb, gc->g, gc->node_unified_schema, gc->relation_unified_schema);
 
   // #Indices
   // (index label, index property) X #indices
   uint32_t index_count = RedisModule_LoadUnsigned(rdb);
-  gc->indices = array_new(Index*, index_count);
   for (uint32_t i = 0; i < index_count; i ++) {
-    char *label = RedisModule_LoadStringBuffer(rdb, NULL);
-    char *property = RedisModule_LoadStringBuffer(rdb, NULL);
-    GraphContext_AddIndex(gc, label, property);
-    RedisModule_Free(label);
-    RedisModule_Free(property);
+    RdbLoadIndex(rdb, gc);
   }
 
   return gc;
