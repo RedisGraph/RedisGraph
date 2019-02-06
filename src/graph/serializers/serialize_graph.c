@@ -59,7 +59,8 @@ static char** _Schema_AttributeMapping(Schema *s, unsigned short *attr_count) {
     TrieMapIterator *it = TrieMap_Iterate(s->attributes, "", 0);
 
     while(TrieMapIterator_Next(it, &ptr, &len, (void**)&attr_id)) {
-        attribute_map[*attr_id] = strdup(ptr);
+        attribute_map[*attr_id] = malloc(sizeof(char) * len+1);
+        memcpy(attribute_map[*attr_id], ptr, len);
         attribute_map[*attr_id][len] = '\0';
     }
 
@@ -106,7 +107,7 @@ void _RdbLoadEntity(RedisModuleIO *rdb, GraphEntity *e, Schema *s) {
         SIValue attr_value = _RdbLoadSIValue(rdb);
         Attribute_ID attr_id = Schema_GetAttributeID(s, attr_name);
         assert(attr_id != ATTRIBUTE_NOTFOUND);
-        GraphEntity_Add_Property(e, attr_id, attr_value);
+        GraphEntity_AddProperty(e, attr_id, attr_value);
         RedisModule_Free(attr_name);
     }
 }

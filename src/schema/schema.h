@@ -12,7 +12,6 @@
 #include "../index/index.h"
 #include "../util/triemap/triemap.h"
 #include "../graph/entities/graph_entity.h"
-#include "../graph/entities/graph_entity_attribute.h"
 
 typedef enum {
   SCHEMA_NODE,
@@ -44,11 +43,11 @@ unsigned short Schema_AttributeCount(const Schema *s);
 Attribute_ID Schema_GetAttributeID(Schema *s, const char *attribute);
 
 /* Checks to see if schema contains attribute. */
-bool Schema_ContainsAttribute(const Schema *s, char *attribute);
+bool Schema_ContainsAttribute(const Schema *s, const char *attribute);
 
 /* Adds a attribute to schema, attribute is added to both
  * unified schema and given schema. */
-Attribute_ID Schema_AddAttribute(Schema *s, SchemaType t, char *attribute);
+Attribute_ID Schema_AddAttribute(Schema *s, SchemaType t, const char *attribute);
 
 /* Returns number of indices in schema. */
 unsigned short Schema_IndexCount(const Schema *s);

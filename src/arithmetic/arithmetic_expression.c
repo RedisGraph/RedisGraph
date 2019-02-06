@@ -127,7 +127,7 @@ SIValue AR_EXP_Evaluate(const AR_ExpNode *root, const Record r) {
             // Fetch entity property value.
             if (root->operand.variadic.entity_prop != NULL) {
                 GraphEntity *ge = Record_GetGraphEntity(r, root->operand.variadic.entity_alias_idx);
-                SIValue *property = GraphEntity_Get_Property(ge, root->operand.variadic.entity_prop_idx);
+                SIValue *property = GraphEntity_GetProperty(ge, root->operand.variadic.entity_prop_idx);
                 /* TODO: Handle PROPERTY_NOTFOUND. */
                 result = SI_ShallowCopy(*property);
             } else {

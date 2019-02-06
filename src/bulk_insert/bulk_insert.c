@@ -45,7 +45,6 @@ static Attribute_ID* _BulkInsert_ReadHeader(GraphContext *gc, SchemaType t,
 
     // The rest of the line is [char *prop_key] * prop_count
     for (unsigned int j = 0; j < *prop_count; j ++) {
-        // TODO update Schema and GraphEntity function signatures to expect const char * arguments
         char *prop_key = (char*)data + *data_idx;
         *data_idx += strlen(prop_key) + 1;
 
@@ -103,7 +102,7 @@ int _BulkInsert_ProcessNodeFile(RedisModuleCtx *ctx, GraphContext *gc, const cha
         Graph_CreateNode(gc->g, label_id, &n);
         for (unsigned int i = 0; i < prop_count; i++) {
             SIValue value = _BulkInsert_ReadProperty(data, &data_idx);
-            GraphEntity_Add_Property((GraphEntity*)&n, prop_indicies[i], value);
+            GraphEntity_AddProperty((GraphEntity*)&n, prop_indicies[i], value);
         }
     }
 
@@ -137,7 +136,7 @@ int _BulkInsert_ProcessRelationFile(RedisModuleCtx *ctx, GraphContext *gc, const
         // Process and add relation properties
         for (unsigned int i = 0; i < prop_count; i ++) {
             SIValue value = _BulkInsert_ReadProperty(data, &data_idx);
-            GraphEntity_Add_Property((GraphEntity*)&e, prop_indicies[i], value);
+            GraphEntity_AddProperty((GraphEntity*)&e, prop_indicies[i], value);
         }
     }
 

@@ -71,7 +71,7 @@ static void _CommitNodes(OpMerge *op, Record r) {
                     Attribute_ID prop_id = ATTRIBUTE_NOTFOUND;
                     if(schema) prop_id = Schema_AddAttribute(schema, SCHEMA_NODE, key->stringval);
                     else prop_id = Schema_AddAttribute(unified_schema, SCHEMA_NODE, key->stringval);
-                    GraphEntity_Add_Property((GraphEntity*)n, prop_id, *value);
+                    GraphEntity_AddProperty((GraphEntity*)n, prop_id, *value);
                 }
                 // Update tracked schema and add node to any matching indices.
                 if(schema) GraphContext_AddNodeToIndices(op->gc, schema, n);
@@ -100,9 +100,6 @@ static void _CommitEdges(OpMerge *op, Record r) {
 
         // Newly created edge will be placed within given record.
         Edge *e = Record_GetEdge(r, i);
-
-        // TODO: For the timebeing if edge has multiple relationship types, use the first one.
-        // ()-[:A|B]->()
         Schema *schema = GraphContext_GetSchema(op->gc, blueprint->labels[0], SCHEMA_EDGE);
         if(!schema) schema = GraphContext_AddSchema(op->gc, blueprint->labels[0], SCHEMA_EDGE);
 
@@ -125,9 +122,6 @@ static void _CommitEdges(OpMerge *op, Record r) {
             propCount /= 2; // Key value pairs.
 
             if(propCount > 0) {
-                char *keys[propCount];
-                SIValue values[propCount];
-
                 for(int prop_idx = 0; prop_idx < propCount; prop_idx++) {
                     SIValue *key;
                     SIValue *value;
@@ -135,7 +129,7 @@ static void _CommitEdges(OpMerge *op, Record r) {
                     Vector_Get(blueprint->ge.properties, prop_idx*2+1, &value);
 
                     Attribute_ID prop_id = Schema_AddAttribute(schema, SCHEMA_EDGE, key->stringval);
-                    GraphEntity_Add_Property((GraphEntity*)e, prop_id, *value);
+                    GraphEntity_AddProperty((GraphEntity*)e, prop_id, *value);
                 }
                 op->result_set->stats.properties_set += propCount;
             }

@@ -25,9 +25,9 @@ unsigned short Schema_AttributeCount(const Schema *s) {
     return (unsigned short)s->attributes->cardinality;
 }
 
-bool Schema_ContainsAttribute(const Schema *s, char *attribute) {
+bool Schema_ContainsAttribute(const Schema *s, const char *attribute) {
     assert(s && attribute);
-    Attribute_ID *pId = TrieMap_Find(s->attributes, attribute, strlen(attribute));
+    Attribute_ID *pId = TrieMap_Find(s->attributes, (char*)attribute, strlen(attribute));
     return (pId != TRIEMAP_NOTFOUND);
 }
 
@@ -50,7 +50,7 @@ Attribute_ID Schema_GetAttributeID(Schema *s, const char *attribute) {
     return *id;
 }
 
-Attribute_ID Schema_AddAttribute(Schema *s, SchemaType t, char *attribute) {
+Attribute_ID Schema_AddAttribute(Schema *s, SchemaType t, const char *attribute) {
     assert(s && attribute);
 
     // See if attribute already exists.
@@ -65,11 +65,20 @@ Attribute_ID Schema_AddAttribute(Schema *s, SchemaType t, char *attribute) {
         pAttribute_id = malloc(sizeof(Attribute_ID));
         *pAttribute_id = attribute_id;
 
-        TrieMap_Add(unified_schema->attributes, attribute, strlen(attribute), pAttribute_id, TrieMap_NOP_REPLACE);
+        TrieMap_Add(unified_schema->attributes,
+                    (char*)attribute,
+                    strlen(attribute),
+                    pAttribute_id,
+                    TrieMap_NOP_REPLACE);
+
         if(s != unified_schema) {
             pAttribute_id = malloc(sizeof(Attribute_ID));
             *pAttribute_id = attribute_id;
-            TrieMap_Add(s->attributes, attribute, strlen(attribute), pAttribute_id, TrieMap_NOP_REPLACE);
+            TrieMap_Add(s->attributes,
+                        (char*)attribute,
+                        strlen(attribute),
+                        pAttribute_id,
+                        TrieMap_NOP_REPLACE);
         }
     } else {
         /* We've encounter this attribute before,
@@ -80,7 +89,11 @@ Attribute_ID Schema_AddAttribute(Schema *s, SchemaType t, char *attribute) {
              * use attribute reference from unified schema. */
             pAttribute_id = malloc(sizeof(Attribute_ID));
             *pAttribute_id = attribute_id;
-            TrieMap_Add(s->attributes, attribute, strlen(attribute), pAttribute_id, TrieMap_NOP_REPLACE);
+            TrieMap_Add(s->attributes,
+                        (char*)attribute,
+                        strlen(attribute),
+                        pAttribute_id,
+                        TrieMap_NOP_REPLACE);
         }
     }
 

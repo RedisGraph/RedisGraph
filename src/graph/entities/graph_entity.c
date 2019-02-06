@@ -13,7 +13,7 @@
 SIValue *PROPERTY_NOTFOUND = &(SIValue){.intval = 0, .type = T_NULL};
 
 /* Add a new property to entity */
-SIValue* GraphEntity_Add_Property(GraphEntity *e, Attribute_ID attr_id, SIValue value) {
+SIValue* GraphEntity_AddProperty(GraphEntity *e, Attribute_ID attr_id, SIValue value) {
 	if(e->entity->properties == NULL) {
 		e->entity->properties = rm_malloc(sizeof(EntityProperty));
 	} else {
@@ -28,7 +28,7 @@ SIValue* GraphEntity_Add_Property(GraphEntity *e, Attribute_ID attr_id, SIValue 
 	return &(e->entity->properties[prop_idx].value);
 }
 
-SIValue* GraphEntity_Get_Property(const GraphEntity *e, Attribute_ID attr_id) {
+SIValue* GraphEntity_GetProperty(const GraphEntity *e, Attribute_ID attr_id) {
 	if(attr_id == ATTRIBUTE_NOTFOUND) return PROPERTY_NOTFOUND;
 
 	for(int i = 0; i < e->entity->prop_count; i++) {
@@ -42,8 +42,8 @@ SIValue* GraphEntity_Get_Property(const GraphEntity *e, Attribute_ID attr_id) {
 }
 
 // Updates existing property value.
-void GraphEntity_Set_Property(const GraphEntity *e, Attribute_ID attr_id, SIValue value) {
-	SIValue *prop = GraphEntity_Get_Property(e, attr_id);
+void GraphEntity_SetProperty(const GraphEntity *e, Attribute_ID attr_id, SIValue value) {
+	SIValue *prop = GraphEntity_GetProperty(e, attr_id);
 	assert(prop != PROPERTY_NOTFOUND);
 	*prop = value;
 }

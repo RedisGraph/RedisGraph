@@ -112,8 +112,6 @@ Schema* GraphContext_GetSchema(const GraphContext *gc, const char *label, Schema
   return GraphContext_GetSchemaByID(gc, id, t);
 }
 
-// The next two functions are identical save for whether their target is a label or relation type,
-// but modify enough variables to make consolidating them unwieldy.
 Schema* GraphContext_AddSchema(GraphContext *gc, const char *label, SchemaType t) {
   int label_id;
   Schema *schema;
@@ -194,7 +192,7 @@ void GraphContext_AddNodeToIndices(GraphContext *gc, Schema *s, Node *n) {
     Index *idx = s->indices[i];
     Attribute_ID attr_id = Schema_GetAttributeID(s, idx->attribute);
     // See if node contains current property.
-    SIValue *v = GraphEntity_Get_Property((GraphEntity*)n, attr_id);
+    SIValue *v = GraphEntity_GetProperty((GraphEntity*)n, attr_id);
     if(v == PROPERTY_NOTFOUND) continue;
 
     Index_InsertNode(idx, n->entity->id, v);
@@ -223,7 +221,7 @@ void GraphContext_DeleteNodeFromIndices(GraphContext *gc, Node *n) {
   for(unsigned short i = 0; i < idx_count; i++) {
     Index *idx = s->indices[i];
     // See if node contains current property.
-    SIValue *v = GraphEntity_Get_Property((GraphEntity*)n, idx->attr_id);
+    SIValue *v = GraphEntity_GetProperty((GraphEntity*)n, idx->attr_id);
     if(v == PROPERTY_NOTFOUND) continue;
     Index_DeleteNode(idx, node_id, v);
   }

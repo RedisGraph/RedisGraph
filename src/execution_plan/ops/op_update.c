@@ -111,10 +111,7 @@ static void _UpdateSchema(EntityUpdateCtx *ctx) {
 
 /* Introduce updated entity to index. */
 static void _UpdateIndex(EntityUpdateCtx *ctx, SIValue *old_value, SIValue *new_value) {
-    AST_GraphEntity *ge = ctx->ge;
-    Entity *n = ctx->entity_reference;
     EntityID node_id = ctx->entity_reference->id;
-    GraphContext *gc = GraphContext_GetFromLTS();
     Schema *s = _GetSchema(ctx);
     assert(s);
 
@@ -134,7 +131,6 @@ static void _UpdateIndex(EntityUpdateCtx *ctx, SIValue *old_value, SIValue *new_
 /* Executes delayed updates. */
 static void _CommitUpdates(OpUpdate *op) {
     EntityUpdateCtx *ctx;
-    GraphContext *gc = op->gc;
 
     for(int i = 0; i < op->pending_updates_count; i++) {
         ctx = &op->pending_updates[i];
@@ -148,18 +144,18 @@ static void _CommitUpdates(OpUpdate *op) {
         graph_entity.entity = ctx->entity_reference;
 
         // Try to get current property value.
-        SIValue *old_value = GraphEntity_Get_Property(&graph_entity, ctx->attribute_idx);
+        SIValue *old_value = GraphEntity_GetProperty(&graph_entity, ctx->attribute_idx);
         
         // Update index for node entities, edges are not indexed.
         if(ctx->ge->t == N_ENTITY) _UpdateIndex(ctx, old_value, &ctx->new_value);
 
         if(old_value == PROPERTY_NOTFOUND) {
             // Add new property.
-            GraphEntity_Add_Property(&graph_entity, ctx->attribute_idx, ctx->new_value);
+            GraphEntity_AddProperty(&graph_entity, ctx->attribute_idx, ctx->new_value);
             _UpdateSchema(ctx);
         } else {
             // Update property.
-            GraphEntity_Set_Property(&graph_entity, ctx->attribute_idx, ctx->new_value);
+            GraphEntity_SetProperty(&graph_entity, ctx->attribute_idx, ctx->new_value);
         }
     }
 
@@ -221,10 +217,10 @@ Record OpUpdateConsume(OpBase *opBase) {
 OpResult OpUpdateReset(OpBase *ctx) {
     OpUpdate *op = (OpUpdate*)ctx;
     // Reset all pending updates.
-    rm_free(op->pending_updates);
     op->pending_updates_count = 0;
     op->pending_updates_cap = 16; /* 16 seems reasonable number to start with. */
-    op->pending_updates = rm_malloc(sizeof(EntityUpdateCtx) * op->pending_updates_cap);
+    op->pending_updates = rm_realloc(op->pending_updates,
+                                     op->pending_updates_cap * sizeof(EntityUpdateCtx));
     return OP_OK;
 }
 

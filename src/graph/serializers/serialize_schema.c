@@ -6,7 +6,6 @@
  */
 
 #include "serialize_schema.h"
-#include "../../util/rmalloc.h"
 
 /* Deserialize schema */
 Schema* RdbLoadUnifiedSchema(RedisModuleIO *rdb) {
@@ -61,7 +60,7 @@ Schema* RdbLoadSchema(RedisModuleIO *rdb, SchemaType type) {
 
   for(int i = 0; i < attrCount; i++) {
     // Load attribute string from RDB file.
-    char *attr = RedisModule_LoadStringBuffer(rdb, &len);    
+    char *attr = RedisModule_LoadStringBuffer(rdb, &len);
     
     // TODO: make sure we do not overflow.
     memcpy(attribute, attr, len);

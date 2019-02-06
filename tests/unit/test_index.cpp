@@ -65,27 +65,23 @@ class IndexTest: public ::testing::Test {
       Graph_AllocateNodes(g, n);
 
       // Populate graph with nodes
-      // Variables to store data for node properties
-      
       Node node;
-      char *prop_keys[2];
-      prop_keys[0] = str_key;
-      prop_keys[1] = num_key;
-      SIValue prop_vals[2];
-
       for(int i = 0; i < n; i++) {
         Graph_CreateNode(g, label_id, &node);
         // Limiter for random values
         int denom = RAND_MAX / 20 + 1;
+
         // Properties will have a random value between 1 and 20
         int prop_val = rand() / denom + 1;
         char str_prop[10];
+
         // Build a string and numeric property for each node out of the random value
         sprintf(str_prop, "%d", prop_val);
-        prop_vals[0] = SI_DuplicateStringVal(str_prop);
-        prop_vals[1] = SI_DoubleVal(prop_val);
-        GraphEntity_Add_Property((GraphEntity*)&node, str_key_id, prop_vals[0]);
-        GraphEntity_Add_Property((GraphEntity*)&node, num_key_id, prop_vals[1]);
+        SIValue val = SI_DuplicateStringVal(str_prop);
+        GraphEntity_AddProperty((GraphEntity*)&node, str_key_id, val);
+
+        val = SI_DoubleVal(prop_val);
+        GraphEntity_AddProperty((GraphEntity*)&node, num_key_id, val);
       }
 
       Graph_ReleaseLock(g);
@@ -121,7 +117,7 @@ TEST_F(IndexTest, StringIndex) {
     // Retrieve the node from the graph
     Graph_GetNode(g, *node_id, &cur);
     // Retrieve the indexed property from the node
-    cur_prop = GraphEntity_Get_Property((GraphEntity*)&cur, str_key_id);
+    cur_prop = GraphEntity_GetProperty((GraphEntity*)&cur, str_key_id);
     // Values should be sorted in increasing value - duplicates are allowed
     ASSERT_LE(SIValue_Compare(last_prop, *cur_prop), 0);
     num_vals ++;
@@ -160,7 +156,7 @@ TEST_F(IndexTest, NumericIndex) {
     // Retrieve the node from the graph
     Graph_GetNode(g, *node_id, &cur);
     // Retrieve the indexed property from the node
-    cur_prop = GraphEntity_Get_Property((GraphEntity*)&cur, num_key_id);
+    cur_prop = GraphEntity_GetProperty((GraphEntity*)&cur, num_key_id);
     // Values should be sorted in increasing value - duplicates are allowed
     ASSERT_LE(SIValue_Compare(last_prop, *cur_prop), 0);
     num_vals ++;
@@ -201,7 +197,7 @@ TEST_F(IndexTest, IteratorBounds) {
     ctr ++;
     if (ctr == 10) {
       Graph_GetNode(g, *node_id, &cur);
-      lb = GraphEntity_Get_Property((GraphEntity*)&cur, num_key_id);
+      lb = GraphEntity_GetProperty((GraphEntity*)&cur, num_key_id);
     }
   }
 
@@ -224,7 +220,7 @@ TEST_F(IndexTest, IteratorBounds) {
   SIValue *ub;
   while ((node_id = IndexIter_Next(iter)) != NULL) {
     Graph_GetNode(g, *node_id, &cur);
-    ub = GraphEntity_Get_Property((GraphEntity*)&cur, num_key_id);
+    ub = GraphEntity_GetProperty((GraphEntity*)&cur, num_key_id);
     if (ub->doubleval > lb->doubleval) break;
   }
   IndexIter_ApplyBound(iter, ub, LE);
