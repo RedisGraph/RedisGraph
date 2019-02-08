@@ -156,6 +156,9 @@ int GraphContext_AddIndex(GraphContext *gc, const char *label, const char *attri
 
   // Populate an index for the label-attribute pair using the Graph interfaces.
   Attribute_ID attr_id = Schema_GetAttributeID(s, attribute);
+  // Return if attribute does not exist.
+  if (attr_id == ATTRIBUTE_NOTFOUND) return INDEX_FAIL;
+
   idx = Index_Create(gc->g, label, s->id, attribute, attr_id);
 
   // Associate the new index with the attribute in the schema.
