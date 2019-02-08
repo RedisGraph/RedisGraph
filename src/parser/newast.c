@@ -13,8 +13,8 @@
 
 static bool _NEWAST_ReadOnly(const cypher_astnode_t *root) {
     cypher_astnode_type_t root_type = cypher_astnode_type(root);
-    
-    if(root_type == CYPHER_AST_CREATE || 
+
+    if(root_type == CYPHER_AST_CREATE ||
         root_type == CYPHER_AST_MERGE ||
         root_type == CYPHER_AST_DELETE ||
         root_type == CYPHER_AST_SET ||
@@ -56,6 +56,27 @@ static void _NEWAST_GetIdentifiers(const cypher_astnode_t *node, TrieMap *identi
     for(int i = 0; i < child_count; i++) {
         const cypher_astnode_t *child = cypher_astnode_get_child(node, i);
         _NEWAST_GetIdentifiers(child, identifiers);
+    }
+}
+
+// UNWIND and WITH also form aliases, but don't need special handling for us yet
+static void _NEWAST_GetReturnAliases(const cypher_astnode_t *node, TrieMap *aliases) {
+    if (!node) return;
+    if(cypher_astnode_type(node) != CYPHER_AST_RETURN) return;
+    assert(aliases);
+
+    unsigned int child_count = cypher_astnode_nchildren(node);
+    int num_return_projections = cypher_ast_return_nprojections(node);
+    if (num_return_projections == 0) return;
+
+    for (unsigned int i = 0; i < child_count; i ++) {
+        const cypher_astnode_t *child = cypher_ast_return_get_projection(node, i);
+        if (child) {
+            const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(child);
+            if (alias_node == NULL) continue;
+            const char *alias = cypher_ast_identifier_get_name(alias_node);
+            TrieMap_Add(aliases, (char*)alias, strlen(alias), NULL, TrieMap_NOP_REPLACE);
+        }
     }
 }
 
@@ -138,7 +159,7 @@ static void _consume_function_call_expression(const cypher_astnode_t *expression
 static AST_Validation _MATCH_Clause_Validate_Range(const cypher_astnode_t *node, char **reason) {
     // Defaults
     int start = 1;
-    int end = INT_MAX-2; 
+    int end = INT_MAX-2;
 
     const cypher_astnode_t *range_start = cypher_ast_range_get_start(node);
     if(range_start) {
@@ -175,7 +196,7 @@ static AST_Validation _Validate_MATCH_Clause_ReusedEdges(const cypher_astnode_t 
             }
         }
     }
-    
+
     return AST_VALID;
 }
 
@@ -210,7 +231,7 @@ static AST_Validation _Validate_MATCH_Clause(const cypher_astnode_t *ast, char *
     if (!match_clause) return AST_VALID;
 
     TrieMap *referred_funcs = NewTrieMap();
-    NEWAST_ReferredFunctions(match_clause, referred_funcs);  
+    NEWAST_ReferredFunctions(match_clause, referred_funcs);
 
     // Verify that referred functions exist.
     bool include_aggregates = false;
@@ -256,14 +277,14 @@ static AST_Validation _Validate_CREATE_Clause(const cypher_astnode_t *ast, char 
         asprintf(reason, "Exactly one relationship type must be specified for CREATE");
         return AST_INVALID;
     }
-    
+
     return AST_VALID;
 }
 
 static AST_Validation _Validate_DELETE_Clause(const cypher_astnode_t *ast, char **reason) {
     const cypher_astnode_t *delete_clause = _NEWAST_GetClause(ast, CYPHER_AST_DELETE);
     if (!delete_clause) return AST_VALID;
-    
+
     const cypher_astnode_t *match_clause = _NEWAST_GetClause(ast, CYPHER_AST_MATCH);
     if (!match_clause) return AST_INVALID;
 
@@ -276,7 +297,7 @@ static AST_Validation _Validate_RETURN_Clause(const cypher_astnode_t *ast, char 
 
     // Retrieve all user-specified functions in RETURN clause.
     TrieMap *referred_funcs = NewTrieMap();
-    NEWAST_ReferredFunctions(return_clause, referred_funcs);  
+    NEWAST_ReferredFunctions(return_clause, referred_funcs);
 
     // Verify that referred functions exist.
     bool include_aggregates = true;
@@ -286,37 +307,56 @@ static AST_Validation _Validate_RETURN_Clause(const cypher_astnode_t *ast, char 
     return res;
 }
 
-/* Check that all refereed identifiers been defined. */
+static void _NEWAST_GetDefinedIdentifiers(const cypher_astnode_t *node, TrieMap *identifiers) {
+    if (!node) return;
+    cypher_astnode_type_t type = cypher_astnode_type(node);
+    if (type == CYPHER_AST_RETURN) {
+        // Only collect aliases (which may be referenced in an ORDER BY)
+        // from the RETURN clause, rather than all identifiers
+        _NEWAST_GetReturnAliases(node, identifiers);
+    } else if (type == CYPHER_AST_MERGE || type == CYPHER_AST_UNWIND || type == CYPHER_AST_MATCH) {
+        _NEWAST_GetIdentifiers(node, identifiers);
+    } else {
+        unsigned int child_count = cypher_astnode_nchildren(node);
+        for(int c = 0; c < child_count; c ++) {
+            const cypher_astnode_t *child = cypher_astnode_get_child(node, c);
+            _NEWAST_GetDefinedIdentifiers(child, identifiers);
+        }
+    }
+}
+
+static void _NEWAST_GetReferredIdentifiers(const cypher_astnode_t *node, TrieMap *identifiers) {
+    if (!node) return;
+    cypher_astnode_type_t type = cypher_astnode_type(node);
+    if (type == CYPHER_AST_SET || type == CYPHER_AST_RETURN || type == CYPHER_AST_DELETE || type == CYPHER_AST_UNWIND) {
+        _NEWAST_GetIdentifiers(node, identifiers);
+    } else {
+        unsigned int child_count = cypher_astnode_nchildren(node);
+        for(int c = 0; c < child_count; c ++) {
+            const cypher_astnode_t *child = cypher_astnode_get_child(node, c);
+            _NEWAST_GetReferredIdentifiers(child, identifiers);
+        }
+    }
+}
+
+/* Check that all referred identifiers been defined. */
 static AST_Validation _NEWAST_Aliases_Defined(const cypher_astnode_t *ast, char **undefined_alias) {
     AST_Validation res = AST_VALID;
-    const cypher_astnode_t *node;
-    TrieMap *defined_aliases = NewTrieMap();
-    TrieMap *refereed_identifiers = NewTrieMap();
-
-    const cypher_astnode_t *set_clause = _NEWAST_GetClause(ast, CYPHER_AST_SET);
-    const cypher_astnode_t *match_clause = _NEWAST_GetClause(ast, CYPHER_AST_MATCH);
-    const cypher_astnode_t *merge_clause = _NEWAST_GetClause(ast, CYPHER_AST_MERGE);
-    const cypher_astnode_t *unwind_clause = _NEWAST_GetClause(ast, CYPHER_AST_UNWIND);
-    const cypher_astnode_t *return_clause = _NEWAST_GetClause(ast, CYPHER_AST_RETURN);
-    const cypher_astnode_t *delete_clause = _NEWAST_GetClause(ast, CYPHER_AST_DELETE);
 
     // Get defined identifiers.
-    _NEWAST_GetIdentifiers(merge_clause, defined_aliases);
-    _NEWAST_GetIdentifiers(match_clause, defined_aliases);
-    _NEWAST_GetIdentifiers(unwind_clause, defined_aliases);
+    TrieMap *defined_aliases = NewTrieMap();
+    _NEWAST_GetDefinedIdentifiers(ast, defined_aliases);
 
-    // Get refereed identifiers.
-    _NEWAST_GetIdentifiers(set_clause, refereed_identifiers);
-    _NEWAST_GetIdentifiers(return_clause, refereed_identifiers);
-    _NEWAST_GetIdentifiers(delete_clause, refereed_identifiers);
-    _NEWAST_GetIdentifiers(unwind_clause, refereed_identifiers);
+    // Get referred identifiers.
+    TrieMap *referred_identifiers = NewTrieMap();
+    _NEWAST_GetReferredIdentifiers(ast, referred_identifiers);
 
     char *alias;
     tm_len_t len;
     void *value;
-    TrieMapIterator *it = TrieMap_Iterate(refereed_identifiers, "", 0);
+    TrieMapIterator *it = TrieMap_Iterate(referred_identifiers, "", 0);
 
-    // See that each refereed identifier is defined.
+    // See that each referred identifier is defined.
     while(TrieMapIterator_Next(it, &alias, &len, &value)) {
         if(TrieMap_Find(defined_aliases, alias, len) == TRIEMAP_NOTFOUND) {
             asprintf(undefined_alias, "%s not defined", alias);
@@ -328,13 +368,13 @@ static AST_Validation _NEWAST_Aliases_Defined(const cypher_astnode_t *ast, char 
     // Clean up:
     TrieMapIterator_Free(it);
     TrieMap_Free(defined_aliases, TrieMap_NOP_CB);
-    TrieMap_Free(refereed_identifiers, TrieMap_NOP_CB);
+    TrieMap_Free(referred_identifiers, TrieMap_NOP_CB);
     return res;
 }
 
 AST_Validation NEWAST_Validate(const cypher_parse_result_t *ast, char **reason) {
     const cypher_astnode_t *root = cypher_parse_result_get_root(ast, 0);
-    
+
     if (_Validate_MATCH_Clause(root, reason) == AST_INVALID) {
         printf("_Validate_MATCH_Clause, AST_INVALID\n");
         return AST_INVALID;
@@ -407,13 +447,13 @@ char* NEWAST_ReportErrors(const cypher_parse_result_t *ast) {
     unsigned int nerrors = cypher_parse_result_nerrors(ast);
     for(unsigned int i = 0; i < nerrors; i++) {
         const cypher_parse_error_t *error = cypher_parse_result_get_error(ast, i);
-        
+
         // Get the position of an error.
         struct cypher_input_position errPos = cypher_parse_error_position(error);
-        
+
         // Get the error message of an error.
         const char *errMsg = cypher_parse_error_message(error);
-        
+
         // Get the error context of an error.
         // This returns a pointer to a null-terminated string, which contains a
         // section of the input around where the error occurred, that is limited
