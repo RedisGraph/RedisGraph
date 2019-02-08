@@ -59,7 +59,7 @@ static void _NEWAST_GetIdentifiers(const cypher_astnode_t *node, TrieMap *identi
     }
 }
 
-// UNWIND and WITH also form aliases, but don't need special handling for us yet
+// UNWIND and WITH also form aliases, but don't need special handling for us yet.
 static void _NEWAST_GetReturnAliases(const cypher_astnode_t *node, TrieMap *aliases) {
     if (!node) return;
     if(cypher_astnode_type(node) != CYPHER_AST_RETURN) return;
@@ -90,6 +90,39 @@ static const cypher_astnode_t *_NEWAST_GetClause(const cypher_astnode_t *node, c
         if(required_clause) return required_clause;
     }
 
+    return NULL;
+}
+
+/* Collect references to all MATCH clauses in the query. Since clauses cannot be nested, we only need to
+ * check the immediate children of the query node.
+ * TODO Migrate other validations to this collection logic to improve performance
+ * (keeping in mind that most clauses can only appear once, simplifying this further). */
+static unsigned int _NEWAST_GetMatchClauses(const cypher_astnode_t *query, unsigned int clause_count, const cypher_astnode_t **matches) {
+  unsigned int match_count = 0;
+    for (unsigned int i = 0; i < clause_count; i ++) {
+        const cypher_astnode_t *child = cypher_astnode_get_child(query, i);
+        if (cypher_astnode_type(child) == CYPHER_AST_MATCH) {
+            matches[match_count] = child;
+            match_count ++;
+        }
+    }
+    return match_count;
+}
+
+/* Given the AST root, return the query node, if one exists.
+ * TODO The recursion here may be unnecessary - validate this assumption
+ * and refactor if correct. */
+static const cypher_astnode_t* _NEWAST_GetQuery(const cypher_astnode_t *node) {
+    if (!node) return NULL;
+
+    if (cypher_astnode_type(node) == CYPHER_AST_QUERY) return node;
+
+    unsigned int child_count = cypher_astnode_nchildren(node);
+    for(unsigned int i = 0; i < child_count; i ++) {
+        const cypher_astnode_t *child = cypher_astnode_get_child(node, i);
+        const cypher_astnode_t *ret = _NEWAST_GetQuery(child);
+        if (ret) return ret;
+    }
     return NULL;
 }
 
@@ -221,28 +254,92 @@ static AST_Validation _Validate_MATCH_Clause_Relations(const cypher_astnode_t *n
     return AST_VALID;
 }
 
-static AST_Validation _Validate_MATCH_Clause(const cypher_astnode_t *ast, char **reason) {
+static AST_Validation _Validate_MATCH_Clause_ReusedIdentifiers(const cypher_astnode_t *node,
+                                                const cypher_astnode_t *current_path,
+                                                TrieMap *identifiers, char **reason) {
+    if (!node) return AST_VALID;
+
+    if (cypher_astnode_type(node) == CYPHER_AST_IDENTIFIER) {
+        const char *alias = cypher_ast_identifier_get_name(node);
+        void *val = TrieMap_Find(identifiers, (char*)alias, strlen(alias));
+        // If this alias has been used in a previous path, emit an error.
+        if (val != TRIEMAP_NOTFOUND && val != current_path) {
+            asprintf(reason, "Alias '%s' reused. Entities with the same alias may not be referenced in multiple patterns.", alias);
+            return AST_INVALID;
+        }
+        // Use the path pointer to differentiate aliases reused within a path from aliases used in separate paths.
+        TrieMap_Add(identifiers, (char*)alias, strlen(alias), (void*)current_path, TrieMap_DONT_CARE_REPLACE);
+    }
+
+    unsigned int child_count = cypher_astnode_nchildren(node);
+    for (unsigned int i = 0; i < child_count; i++) {
+        const cypher_astnode_t *child = cypher_astnode_get_child(node, i);
+        if (_Validate_MATCH_Clause_ReusedIdentifiers(child, current_path, identifiers, reason) != AST_VALID) {
+            return AST_INVALID;
+        }
+    }
+    return AST_VALID;
+}
+
+static AST_Validation _Validate_MATCH_Clause_IndependentPaths(const cypher_astnode_t *match, TrieMap *reused_entities, char **reason) {
+  /* Verify that no alias appears in multiple independent patterns.
+   * TODO We should introduce support for this when possible. */
+    AST_Validation res = AST_VALID;
+
+    const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(match);
+    // A pattern is composed of 1 or more paths that currently must be independent for us.
+    unsigned int child_count = cypher_astnode_nchildren(pattern);
+    for (unsigned int i = 0; i < child_count; i ++) {
+        const cypher_astnode_t *child= cypher_astnode_get_child(pattern, i);
+        if (cypher_astnode_type(child) == CYPHER_AST_PATTERN_PATH) {
+            res = _Validate_MATCH_Clause_ReusedIdentifiers(child, child, reused_entities, reason);
+            if (res != AST_VALID) break;
+        }
+    }
+
+    return res;
+}
+
+static AST_Validation _Validate_MATCH_Clause(const cypher_astnode_t *query, char **reason) {
     // Check to see if all mentioned inlined, outlined functions exists.
     // Inlined functions appear within entity definition ({a:v})
     // Outlined functions appear within the WHERE clause.
     // libcypher_parser doesn't have a WHERE node, all of the filters
     // are specified within the MATCH node sub-tree.
-    const cypher_astnode_t *match_clause = _NEWAST_GetClause(ast, CYPHER_AST_MATCH);
-    if (!match_clause) return AST_VALID;
+    // Iterate over all top-level query children (clauses)
+    unsigned int clause_count = cypher_astnode_nchildren(query);
+    const cypher_astnode_t *match_clauses[clause_count];
+    unsigned int match_count = _NEWAST_GetMatchClauses(query, clause_count, match_clauses);
+    if (match_count == 0) return AST_VALID;
 
     TrieMap *referred_funcs = NewTrieMap();
-    NEWAST_ReferredFunctions(match_clause, referred_funcs);
+    TrieMap *identifiers = NewTrieMap();
+    TrieMap *reused_entities = NewTrieMap();
+    AST_Validation res;
+
+    for (unsigned int i = 0; i < match_count; i ++) {
+        const cypher_astnode_t *match_clause = match_clauses[i];
+        // Collect function references
+        NEWAST_ReferredFunctions(match_clause, referred_funcs);
+
+        // Validate relations contained in clause
+        res = _Validate_MATCH_Clause_Relations(match_clause, identifiers, reason);
+        if (res == AST_INVALID) goto cleanup;
+
+        res = _Validate_MATCH_Clause_IndependentPaths(match_clause, reused_entities, reason);
+        if (res == AST_INVALID) goto cleanup;
+    }
 
     // Verify that referred functions exist.
     bool include_aggregates = false;
-    AST_Validation res = _NEWAST_ValidateReferredFunctions(referred_funcs, reason, include_aggregates);
+    res = _NEWAST_ValidateReferredFunctions(referred_funcs, reason, include_aggregates);
+
+    if(res == AST_INVALID) goto cleanup;
+
+cleanup:
     TrieMap_Free(referred_funcs, TrieMap_NOP_CB);
-
-    if(res == AST_INVALID) return res;
-
-    TrieMap *identifiers = NewTrieMap();
-    res = _Validate_MATCH_Clause_Relations(match_clause, identifiers, reason);
     TrieMap_Free(identifiers, TrieMap_NOP_CB);
+    TrieMap_Free(reused_entities, TrieMap_NOP_CB);
     return res;
 }
 
@@ -374,28 +471,30 @@ static AST_Validation _NEWAST_Aliases_Defined(const cypher_astnode_t *ast, char 
 
 AST_Validation NEWAST_Validate(const cypher_parse_result_t *ast, char **reason) {
     const cypher_astnode_t *root = cypher_parse_result_get_root(ast, 0);
+    const cypher_astnode_t *query = _NEWAST_GetQuery(root);
+    if(!query) return AST_VALID; // Occurs on statements like CREATE INDEX
 
-    if (_Validate_MATCH_Clause(root, reason) == AST_INVALID) {
+    if (_Validate_MATCH_Clause(query, reason) == AST_INVALID) {
         printf("_Validate_MATCH_Clause, AST_INVALID\n");
         return AST_INVALID;
     }
 
-    if (_Validate_CREATE_Clause(root, reason) == AST_INVALID) {
+    if (_Validate_CREATE_Clause(query, reason) == AST_INVALID) {
         printf("_Validate_CREATE_Clause, AST_INVALID\n");
         return AST_INVALID;
     }
 
-    if (_Validate_DELETE_Clause(root, reason) == AST_INVALID) {
+    if (_Validate_DELETE_Clause(query, reason) == AST_INVALID) {
         printf("_Validate_DELETE_Clause, AST_INVALID\n");
         return AST_INVALID;
     }
 
-    if (_Validate_RETURN_Clause(root, reason) == AST_INVALID) {
+    if (_Validate_RETURN_Clause(query, reason) == AST_INVALID) {
         printf("_Validate_RETURN_Clause, AST_INVALID\n");
         return AST_INVALID;
     }
 
-    if(_NEWAST_Aliases_Defined(root, reason) == AST_INVALID) {
+    if(_NEWAST_Aliases_Defined(query, reason) == AST_INVALID) {
         printf("_NEWAST_Aliases_Defined, AST_INVALID\n");
         return AST_INVALID;
     }
