@@ -17,7 +17,8 @@ CommandCtx* CommandCtx_New
     context->ast = ast;    
     context->argv = argv;
     context->argc = argc;
-    
+    context->graphName = NULL;
+
     // Make a copy of graph name.
     if(graphName) context->graphName = rm_strdup(RedisModule_StringPtrLen(graphName, NULL));
     return context;
@@ -28,8 +29,7 @@ RedisModuleCtx* CommandCtx_GetRedisCtx(CommandCtx *qctx) {
     // Either we already have a context or block client is set.
     if(qctx->ctx) return qctx->ctx;
 
-    assert(!qctx->ctx && qctx->bc);
-
+    assert(qctx->bc);
     qctx->ctx = RedisModule_GetThreadSafeContext(qctx->bc);
     return qctx->ctx;
 }
@@ -57,6 +57,6 @@ void CommandCtx_Free(CommandCtx* qctx) {
     }
 
     if(qctx->ast) AST_Free(qctx->ast);
-    rm_free(qctx->graphName);
+    if(qctx->graphName) rm_free(qctx->graphName);
     rm_free(qctx);
 }
