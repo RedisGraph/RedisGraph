@@ -58,7 +58,8 @@ void _MGraph_Query(void *args) {
 
     /* New parser */
     const char *query = RedisModule_StringPtrLen(qctx->query, NULL);
-    printf("query: %s\n", query);
+    // Debug print
+    // printf("query: %s\n", query);
     cypher_parse_result_t *new_ast = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
 
     char *parse_error_reason = NULL;
