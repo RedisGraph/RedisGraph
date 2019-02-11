@@ -26,11 +26,21 @@ static int _encounteredRecord(ResultSet *set, const Record r) {
     return !newRecord;
 }
 
-/* This function has handling for all SIValue types, though not all are used in
- * RedisGraph currently.
- * The current RESP protocol only has unique support for strings, 8-byte integers,
- * and NULL values (doubles are converted to strings in the Redis layer),
- * but we may as well be forward-thinking. */
+/* Redis prints doubles with up to 17 digits of precision, which captures
+ * the inaccuracy of many floating-point numbers (such as 7.3).
+ * By using the %g format and its default precision of 6, we avoid awkward
+ * representations like RETURN 7.3 emitting "7.2999999999999998". */
+static inline void _ResultSet_ReplyWithRoundedDouble(RedisModuleCtx *ctx, double d) {
+    // Get length required to print number
+    int len = snprintf(NULL, 0, "%g", d);
+    char str[len + 1]; // TODO a reusable buffer would be far preferable
+    sprintf(str, "%g", d);
+    // Output string-formatted number
+    RedisModule_ReplyWithStringBuffer(ctx, str, len);
+}
+
+/* This function handles emitting SIValue types through the Redis RESP protocol.
+ * This protocol has unique support for strings, 8-byte integers, and NULL values. */
 static void _ResultSet_ReplyWithScalar(RedisModuleCtx *ctx, const SIValue v) {
     // Emit the actual value, then the value type (to facilitate client-side parsing)
     switch (SI_TYPE(v)) {
@@ -48,10 +58,10 @@ static void _ResultSet_ReplyWithScalar(RedisModuleCtx *ctx, const SIValue v) {
             RedisModule_ReplyWithLongLong(ctx, v.uintval);
             return;
         case T_FLOAT:
-            RedisModule_ReplyWithDouble(ctx, (double)v.floatval);
+            _ResultSet_ReplyWithRoundedDouble(ctx, (double)v.floatval);
             return;
         case T_DOUBLE:
-            RedisModule_ReplyWithDouble(ctx, v.doubleval);
+            _ResultSet_ReplyWithRoundedDouble(ctx, v.doubleval);
             return;
         case T_BOOL:
             if (v.boolval == true) RedisModule_ReplyWithStringBuffer(ctx, "true", 4);
