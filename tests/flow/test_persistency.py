@@ -177,7 +177,7 @@ class GraphPersistency(FlowTestsBase):
         # Note that the order of results is not guaranteed (currently managed by the Schema),
         # so this may need to be updated in the future.
         expected_result = [['p.boolval', 'p.nullval', 'p.numval', 'p.strval'],
-                           ['true', 'NULL', '5.500000', 'str']]
+                           ['true', None, '5.5', 'str']]
         assert(actual_result.result_set == expected_result)
 
     # Verify that the database can be reloaded correctly after creating multiple
@@ -201,7 +201,7 @@ class GraphPersistency(FlowTestsBase):
         read_query = """MATCH (a)-[e]->(b) RETURN e, a, b"""
         actual_result = graph.query(read_query)
         expected_result = [['e.val', 'a.name', 'b.name'],
-                           ['1.000000', 'src', 'dest']]
+                           ['1', 'src', 'dest']]
         assert(actual_result.result_set == expected_result)
 
         # Overwrite the existing edge
@@ -212,7 +212,7 @@ class GraphPersistency(FlowTestsBase):
         actual_result = graph.query(read_query)
         # TODO This is the expected current behavior, subject to later change.
         expected_result = [['e.val', 'a.name', 'b.name'],
-                           ['2.000000', 'src', 'dest']]
+                           ['2', 'src', 'dest']]
         assert(actual_result.result_set == expected_result)
 
         # Save RDB & Load from RDB

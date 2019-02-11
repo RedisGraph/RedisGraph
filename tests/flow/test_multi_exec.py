@@ -80,7 +80,7 @@ class MultiExecFlowTest(FlowTestsBase):
         # [
         #   [
         #       ['al.name', 'count(b)'],
-        #       ['Al', '2.000000']
+        #       ['Al', '2']
         #   ],
         #       ['Query internal execution time: 0.143000 milliseconds']
         # ]

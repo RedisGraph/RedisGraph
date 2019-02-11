@@ -26,6 +26,45 @@ static int _encounteredRecord(ResultSet *set, const Record r) {
     return !newRecord;
 }
 
+/* This function has handling for all SIValue types, though not all are used in
+ * RedisGraph currently.
+ * The current RESP protocol only has unique support for strings, 8-byte integers,
+ * and NULL values (doubles are converted to strings in the Redis layer),
+ * but we may as well be forward-thinking. */
+static void _ResultSet_ReplyWithScalar(RedisModuleCtx *ctx, const SIValue v) {
+    // Emit the actual value, then the value type (to facilitate client-side parsing)
+    switch (SI_TYPE(v)) {
+        case T_STRING:
+        case T_CONSTSTRING:
+            RedisModule_ReplyWithStringBuffer(ctx, v.stringval, strlen(v.stringval));
+            return;
+        case T_INT32:
+            RedisModule_ReplyWithLongLong(ctx, v.intval);
+            return;
+        case T_INT64:
+            RedisModule_ReplyWithLongLong(ctx, v.longval);
+            return;
+        case T_UINT:
+            RedisModule_ReplyWithLongLong(ctx, v.uintval);
+            return;
+        case T_FLOAT:
+            RedisModule_ReplyWithDouble(ctx, (double)v.floatval);
+            return;
+        case T_DOUBLE:
+            RedisModule_ReplyWithDouble(ctx, v.doubleval);
+            return;
+        case T_BOOL:
+            if (v.boolval == true) RedisModule_ReplyWithStringBuffer(ctx, "true", 4);
+            else RedisModule_ReplyWithStringBuffer(ctx, "false", 5);
+            return;
+        case T_NULL:
+            RedisModule_ReplyWithNull(ctx);
+            return;
+        default:
+            assert("Unhandled value type" && false);
+      }
+}
+
 static void _ResultSet_ReplayHeader(const ResultSet *set, const ResultSetHeader *header) {    
     RedisModule_ReplyWithArray(set->ctx, header->columns_len);
     for(int i = 0; i < header->columns_len; i++) {
@@ -45,13 +84,11 @@ static void _ResultSet_ReplayRecord(ResultSet *s, const Record r) {
         return;
     }
 
-    char value[2048] = {0};
     uint column_count = s->header->columns_len;
     RedisModule_ReplyWithArray(s->ctx, column_count);
 
-    for(int i = 0; i < column_count; i++) {
-        int written = SIValue_ToString(Record_GetScalar(r, i), value, 2048);
-        RedisModule_ReplyWithStringBuffer(s->ctx, value, written);
+    for(uint i = 0; i < column_count; i++) {
+        _ResultSet_ReplyWithScalar(s->ctx, Record_GetScalar(r, i));
     }
 }
 

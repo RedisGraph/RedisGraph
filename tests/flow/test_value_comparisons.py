@@ -53,9 +53,9 @@ class ValueComparisonTest(FlowTestsBase):
                     ['str2'],
                     ['false'],
                     ['true'],
-                    ['5.000000'],
-                    ['10.500000'],
-                    ['NULL']]
+                    ['5'],
+                    ['10.5'],
+                    [None]]
         assert(actual_result.result_set[1:] == expected)
 
         # Expect the results to appear in reverse when using descending order
@@ -73,7 +73,7 @@ class ValueComparisonTest(FlowTestsBase):
     def test_mixed_type_max(self):
         query = """MATCH (v:value) RETURN MAX(v.val)"""
         actual_result = redis_graph.query(query)
-        assert(actual_result.result_set[1][0] == '10.500000')
+        assert(actual_result.result_set[1][0] == '10.5')
 
 if __name__ == '__main__':
     unittest.main()
