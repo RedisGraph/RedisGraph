@@ -45,10 +45,8 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     }
     pthread_setspecific(_tlsASTKey, ast);
 
-    // Retrieve the GraphContext and acquire a read lock.
-    // RedisModule_ThreadSafeContextLock(ctx);
+    // Retrieve the GraphContext and acquire a read lock.    
     gc = GraphContext_Retrieve(ctx, graphname);
-    // RedisModule_ThreadSafeContextUnlock(ctx);
     if(!gc) {
         RedisModule_ReplyWithError(ctx, "key doesn't contains a graph object.");
         goto cleanup;
