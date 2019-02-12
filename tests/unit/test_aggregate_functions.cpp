@@ -60,7 +60,7 @@ TEST_F(AggregateTest, CountTest) {
   for (int i = 0; i < num_values; i ++) AR_EXP_Aggregate(arExp, r);
   AR_EXP_Reduce(arExp);
   result = AR_EXP_Evaluate(arExp, r);
-  ASSERT_EQ(result.doubleval, num_values);
+  ASSERT_EQ(result.longval, num_values);
   AR_EXP_Free(arExp);
 }
 
@@ -95,7 +95,7 @@ TEST_F(AggregateTest, PartialCountTest) {
 
   // The counted result should be half the number of inserted entities,
   // as the null values are ignored.
-  ASSERT_EQ(res.doubleval, num_values / 2);
+  ASSERT_EQ(res.longval, num_values / 2);
   AR_EXP_Free(arExp);
 }
 

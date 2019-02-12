@@ -56,17 +56,17 @@ actors_over_50_that_played_in_blockbusters_query = QueryInfo(
              RETURN *""",
     description='Which actors who are over 50 played in blockbuster movies?',
     max_run_time_ms=4.0,
-    expected_result=[['Bill Irwin', '69', 'Interstellar', '2014', '961763', '8.6', 'Adventure'],
-                     ['Vincent Price', '108', 'Vincent', '1982', '18284', '8.4', 'Short'],
-                     ['Ellen Burstyn', '87', 'Interstellar', '2014', '961763', '8.6', 'Adventure'],
-                     ['Paul Reiser', '62', 'Whiplash', '2014', '420586', '8.5', 'Drama'],
-                     ['Francis X. McCarthy', '77', 'Interstellar', '2014', '961763', '8.6', 'Adventure'],
-                     ['John Lithgow', '74', 'Interstellar', '2014', '961763', '8.6', 'Adventure'],
-                     ['J.K. Simmons', '64', 'Whiplash', '2014', '420586', '8.5', 'Drama',],
-                     ['Chris Mulkey', '71', 'Whiplash', '2014', '420586', '8.5', 'Drama'],
-                     ['Rachael Harris', '51', 'Lucifer', '2015', '58703', '8.3', 'Crime'],
-                     ['Matthew McConaughey', '50', 'Interstellar', '2014', '961763', '8.6', 'Adventure'],
-                     ['D.B. Woodside', '50', 'Lucifer', '2015', '58703', '8.3', 'Crime']]
+    expected_result=[['Bill Irwin', 69, 'Interstellar', 2014, 961763, '8.6', 'Adventure'],
+                     ['Vincent Price', 108, 'Vincent', 1982, 18284, '8.4', 'Short'],
+                     ['Ellen Burstyn', 87, 'Interstellar', 2014, 961763, '8.6', 'Adventure'],
+                     ['Paul Reiser', 62, 'Whiplash', 2014, 420586, '8.5', 'Drama'],
+                     ['Francis X. McCarthy', 77, 'Interstellar', 2014, 961763, '8.6', 'Adventure'],
+                     ['John Lithgow', 74, 'Interstellar', 2014, 961763, '8.6', 'Adventure'],
+                     ['J.K. Simmons', 64, 'Whiplash', 2014, 420586, '8.5', 'Drama',],
+                     ['Chris Mulkey', 71, 'Whiplash', 2014, 420586, '8.5', 'Drama'],
+                     ['Rachael Harris', 51, 'Lucifer', 2015, 58703, '8.3', 'Crime'],
+                     ['Matthew McConaughey', 50, 'Interstellar', 2014, 961763, '8.6', 'Adventure'],
+                     ['D.B. Woodside', 50, 'Lucifer', 2015, 58703, '8.3', 'Crime']]
 
 )
 
@@ -79,21 +79,21 @@ actors_played_in_bad_drama_or_comedy_query = QueryInfo(
              ORDER BY m.rating""",
     description='Which actors played in bad drama or comedy?',
     max_run_time_ms=4,
-    expected_result=[['Rita Ora', 'Fifty Shades of Grey', '2015', '224710', '4.1', 'Drama'],
-                     ['Dakota Johnson', 'Fifty Shades of Grey', '2015', '224710', '4.1', 'Drama'],
-                     ['Marcia Gay Harden', 'Fifty Shades of Grey', '2015', '224710', '4.1', 'Drama'],
-                     ['Jamie Dornan', 'Fifty Shades of Grey', '2015', '224710', '4.1', 'Drama'],
-                     ['Eloise Mumford', 'Fifty Shades of Grey', '2015', '224710', '4.1', 'Drama'],
-                     ['Max Martini', 'Fifty Shades of Grey', '2015', '224710', '4.1', 'Drama'],
-                     ['Luke Grimes', 'Fifty Shades of Grey', '2015', '224710', '4.1', 'Drama'],
-                     ['Jennifer Ehle', 'Fifty Shades of Grey', '2015', '224710', '4.1', 'Drama'],
-                     ['Victor Rasuk', 'Fifty Shades of Grey', '2015','224710', '4.1', 'Drama'],
-                     ['Nancy Lenehan', 'Sex Tape', '2014', '86018', '5.1', 'Comedy'],
-                     ['Rob Lowe', 'Sex Tape', '2014', '86018', '5.1', 'Comedy'],
-                     ['Cameron Diaz', 'Sex Tape', '2014', '86018', '5.1', 'Comedy'],
-                     ['Rob Corddry', 'Sex Tape', '2014', '86018', '5.1', 'Comedy'],
-                     ['Jason Segel', 'Sex Tape', '2014', '86018', '5.1', 'Comedy'],
-                     ['Ellie Kemper', 'Sex Tape', '2014', '86018', '5.1', 'Comedy']]
+    expected_result=[['Rita Ora', 'Fifty Shades of Grey', 2015, 224710, '4.1', 'Drama'],
+                     ['Dakota Johnson', 'Fifty Shades of Grey', 2015, 224710, '4.1', 'Drama'],
+                     ['Marcia Gay Harden', 'Fifty Shades of Grey', 2015, 224710, '4.1', 'Drama'],
+                     ['Jamie Dornan', 'Fifty Shades of Grey', 2015, 224710, '4.1', 'Drama'],
+                     ['Eloise Mumford', 'Fifty Shades of Grey', 2015, 224710, '4.1', 'Drama'],
+                     ['Max Martini', 'Fifty Shades of Grey', 2015, 224710, '4.1', 'Drama'],
+                     ['Luke Grimes', 'Fifty Shades of Grey', 2015, 224710, '4.1', 'Drama'],
+                     ['Jennifer Ehle', 'Fifty Shades of Grey', 2015, 224710, '4.1', 'Drama'],
+                     ['Victor Rasuk', 'Fifty Shades of Grey', 2015,224710, '4.1', 'Drama'],
+                     ['Nancy Lenehan', 'Sex Tape', 2014, 86018, '5.1', 'Comedy'],
+                     ['Rob Lowe', 'Sex Tape', 2014, 86018, '5.1', 'Comedy'],
+                     ['Cameron Diaz', 'Sex Tape', 2014, 86018, '5.1', 'Comedy'],
+                     ['Rob Corddry', 'Sex Tape', 2014, 86018, '5.1', 'Comedy'],
+                     ['Jason Segel', 'Sex Tape', 2014, 86018, '5.1', 'Comedy'],
+                     ['Ellie Kemper', 'Sex Tape', 2014, 86018, '5.1', 'Comedy']]
 )
 
 
@@ -103,8 +103,8 @@ young_actors_played_with_cameron_diaz_query = QueryInfo(
              RETURN a, m.title""",
     description='Which young actors played along side Cameron Diaz?',
     max_run_time_ms=5,
-    expected_result=[['Nicolette Pierini', '16', 'Annie'],
-                     ['Kate Upton', '27', 'The Other Woman']]
+    expected_result=[['Nicolette Pierini', 16, 'Annie'],
+                     ['Kate Upton', 27, 'The Other Woman']]
 )
 
 
@@ -114,13 +114,13 @@ actors_played_with_cameron_diaz_and_younger_than_her_query = QueryInfo(
              RETURN a, m.title order by a.name""",
     description='Which actors played along side Cameron Diaz and are younger then her?',
     max_run_time_ms=7,
-    expected_result=[['Jason Segel', '39', 'Sex Tape'],
-                     ['Ellie Kemper', '39', 'Sex Tape'],
-                     ['Nicolette Pierini', '16', 'Annie'],
-                     ['Rose Byrne', '40', 'Annie'],
-                     ['Kate Upton', '27', 'The Other Woman'],
-                     ['Nicki Minaj', '37', 'The Other Woman'],
-                     ['Taylor Kinney', '38', 'The Other Woman']]
+    expected_result=[['Jason Segel', 39, 'Sex Tape'],
+                     ['Ellie Kemper', 39, 'Sex Tape'],
+                     ['Nicolette Pierini', 16, 'Annie'],
+                     ['Rose Byrne', 40, 'Annie'],
+                     ['Kate Upton', 27, 'The Other Woman'],
+                     ['Nicki Minaj', 37, 'The Other Woman'],
+                     ['Taylor Kinney', 38, 'The Other Woman']]
 )
 
 
@@ -138,7 +138,7 @@ how_many_movies_cameron_diaz_played_query = QueryInfo(
              RETURN Cameron.name, COUNT(m.title)""",
     description='In how many movies did Cameron Diaz played?',
     max_run_time_ms=1.2,
-    expected_result=[['Cameron Diaz', '3']]
+    expected_result=[['Cameron Diaz', 3]]
 )
 
 
@@ -149,16 +149,16 @@ find_ten_oldest_actors_query = QueryInfo(
              LIMIT 10""",
     description='10 Oldest actors?',
     max_run_time_ms=4.5,
-    expected_result=[['Vincent Price', '108'],
-                     ['George Kennedy', '94'],
-                     ['Cloris Leachman', '93'],
-                     ['John Cullum', '89'],
-                     ['Lois Smith', '89'],
-                     ['Robert Duvall', '88'],
-                     ['Olympia Dukakis', '88'],
-                     ['Ellen Burstyn', '87'],
-                     ['Michael Caine', '86'],
-                     ['Judi Dench', '85']]
+    expected_result=[['Vincent Price', 108],
+                     ['George Kennedy', 94],
+                     ['Cloris Leachman', 93],
+                     ['John Cullum', 89],
+                     ['Lois Smith', 89],
+                     ['Robert Duvall', 88],
+                     ['Olympia Dukakis', 88],
+                     ['Ellen Burstyn', 87],
+                     ['Michael Caine', 86],
+                     ['Judi Dench', 85]]
 )
 
 actors_over_85_index_scan = QueryInfo(
@@ -168,15 +168,15 @@ actors_over_85_index_scan = QueryInfo(
              ORDER BY a.age, a.name""",
     description='Actors over 85 on indexed property?',
     max_run_time_ms=1.5,
-    expected_result=[['Michael Caine', '86'],
-                     ['Ellen Burstyn', '87'],
-                     ['Robert Duvall', '88'],
-                     ['Olympia Dukakis', '88'],
-                     ['Lois Smith', '89'],
-                     ['John Cullum', '89'],
-                     ['Cloris Leachman', '93'],
-                     ['George Kennedy', '94'],
-                     ['Vincent Price', '108']]
+    expected_result=[['Michael Caine', 86],
+                     ['Ellen Burstyn', 87],
+                     ['Robert Duvall', 88],
+                     ['Olympia Dukakis', 88],
+                     ['Lois Smith', 89],
+                     ['John Cullum', 89],
+                     ['Cloris Leachman', 93],
+                     ['George Kennedy', 94],
+                     ['Vincent Price', 108]]
 )
 
 eighties_movies_index_scan = QueryInfo(
@@ -187,8 +187,8 @@ eighties_movies_index_scan = QueryInfo(
              ORDER BY m.year""",
     description='Multiple filters on indexed property?',
     max_run_time_ms=1.5,
-    expected_result=[['The Evil Dead', '1981'],
-                     ['Vincent', '1982']]
+    expected_result=[['The Evil Dead', 1981],
+                     ['Vincent', 1982]]
 )
 
 find_titles_starting_with_american_query = QueryInfo(

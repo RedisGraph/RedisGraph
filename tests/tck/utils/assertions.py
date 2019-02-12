@@ -45,10 +45,12 @@ def assert_resultset_content(resultset, expected):
             # Strip value from single quotes.
             actualCell = actualRow[cellIdx]
             expectedCell = expectedRow[cellIdx]
-            actualCell = actualCell.replace("'", "")
-            actualCell = actualCell.replace('"', "")
-            expectedCell = expectedCell.replace("'", "")
-            expectedCell = expectedCell.replace('"', "")
+            if isinstance(actualCell, basestring):
+                actualCell = actualCell.replace("'", "")
+                actualCell = actualCell.replace('"', "")
+            if isinstance(expectedCell, basestring):
+                expectedCell = expectedCell.replace("'", "")
+                expectedCell = expectedCell.replace('"', "")
 
             # Cast to integer if possible.
             if is_number_tryexcept(actualCell):

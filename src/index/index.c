@@ -30,7 +30,7 @@ int compareStrings(SIValue *a, SIValue *b) {
 }
 
 int compareNumerics(SIValue *a, SIValue *b) {
-  double diff = a->doubleval - b->doubleval;
+  double diff = SIValue_Compare(*a, *b);
   return COMPARE_RETVAL(diff);
 }
 

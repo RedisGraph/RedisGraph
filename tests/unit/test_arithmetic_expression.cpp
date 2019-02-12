@@ -46,7 +46,37 @@ void _test_string(const AR_ExpNode *exp, const char *expected) {
 
 void _test_ar_func(AR_ExpNode *root, SIValue expected, const Record r) {
   SIValue res = AR_EXP_Evaluate(root, r);
-  ASSERT_EQ(res.doubleval, expected.doubleval);
+  // Compare values directly if their types are equal
+  if (SI_TYPE(res) == SI_TYPE(expected)) {
+    switch (SI_TYPE(res)) {
+      case T_FLOAT:
+        ASSERT_EQ(res.floatval, expected.floatval);
+        return;
+      case T_DOUBLE:
+        ASSERT_EQ(res.doubleval, expected.doubleval);
+        return;
+      case T_INT32:
+        ASSERT_EQ(res.intval, expected.intval);
+        return;
+      case T_INT64:
+        ASSERT_EQ(res.longval, expected.longval);
+        return;
+      case T_UINT:
+        ASSERT_EQ(res.uintval, expected.uintval);
+        return;
+      case T_NULL:
+        return; // Type check was sufficient
+      default:
+        FAIL() << "Tried to compare disjoint types";
+    }
+  }
+
+  // Compare double representations if types don't match
+  double expected_double;
+  double res_double;
+  ASSERT_TRUE(SIValue_ToDouble(&expected, &expected_double));
+  ASSERT_TRUE(SIValue_ToDouble(&res, &res_double));
+  ASSERT_EQ(res_double, expected_double);
 }
 
 AR_ExpNode* _exp_from_query(const char *query) {
@@ -80,28 +110,28 @@ TEST_F(ArithmeticTest, ExpressionTest) {
   arExp = _exp_from_query(query);
   result = AR_EXP_Evaluate(arExp, r);
   AR_EXP_Free(arExp);
-  ASSERT_EQ(result.doubleval, 1);
+  ASSERT_EQ(result.longval , 1);
 
   /* 1+2*3 */
   query = "RETURN 1+2*3";
   arExp = _exp_from_query(query);
   result = AR_EXP_Evaluate(arExp, r);
   AR_EXP_Free(arExp);
-  ASSERT_EQ(result.doubleval, 7);
+  ASSERT_EQ(result.longval, 7);
 
   /* 1 + 1 + 1 + 1 + 1 + 1 */
   query = "RETURN 1 + 1 + 1 + 1 + 1 + 1";
   arExp = _exp_from_query(query);
   result = AR_EXP_Evaluate(arExp, r);
   AR_EXP_Free(arExp);
-  ASSERT_EQ(result.doubleval, 6);
+  ASSERT_EQ(result.longval, 6);
 
   /* ABS(-5 + 2 * 1) */
   query = "RETURN ABS(-5 + 2 * 1)";
   arExp = _exp_from_query(query);
   result = AR_EXP_Evaluate(arExp, r);
   AR_EXP_Free(arExp);
-  ASSERT_EQ(result.doubleval, 3);
+  ASSERT_EQ(result.longval, 3);
 
   /* 'a' + 'b' */
   query = "RETURN 'a' + 'b'";
@@ -115,14 +145,14 @@ TEST_F(ArithmeticTest, ExpressionTest) {
   arExp = _exp_from_query(query);
   result = AR_EXP_Evaluate(arExp, r);
   AR_EXP_Free(arExp);
-  ASSERT_TRUE(strcmp(result.stringval, "3.000000a2.0000001.000000") == 0);
+  ASSERT_TRUE(strcmp(result.stringval, "3a21") == 0);
 
   /* 2 * 2 + 'a' + 3 * 3 */
   query = "RETURN 2 * 2 + 'a' + 3 * 3";
   arExp = _exp_from_query(query);
   result = AR_EXP_Evaluate(arExp, r);
   AR_EXP_Free(arExp);
-  ASSERT_TRUE(strcmp(result.stringval, "4.000000a9.000000") == 0);
+  ASSERT_TRUE(strcmp(result.stringval, "4a9") == 0);
 }
 
 TEST_F(ArithmeticTest, AggregateTest) {
@@ -167,21 +197,21 @@ TEST_F(ArithmeticTest, AbsTest) {
   /* ABS(1) */
   query = "RETURN ABS(1)";
   arExp = _exp_from_query(query);
-  SIValue expected = SI_DoubleVal(1);
+  SIValue expected = SI_LongVal(1);
   _test_ar_func(arExp, expected, r);
   AR_EXP_Free(arExp);
 
   /* ABS(-1) */
   query = "RETURN ABS(-1)";
   arExp = _exp_from_query(query);
-  expected = SI_DoubleVal(1);
+  expected = SI_LongVal(1);
   _test_ar_func(arExp, expected, r);
   AR_EXP_Free(arExp);
 
   /* ABS(0) */
   query = "RETURN ABS(0)";
   arExp = _exp_from_query(query);
-  expected = SI_DoubleVal(0);
+  expected = SI_LongVal(0);
   _test_ar_func(arExp, expected, r);
   AR_EXP_Free(arExp);
   
@@ -314,21 +344,21 @@ TEST_F(ArithmeticTest, SignTest) {
   /* SIGN(0) */
   query = "RETURN SIGN(0)";
   arExp = _exp_from_query(query);
-  expected = SI_DoubleVal(0);
+  expected = SI_LongVal(0);
   _test_ar_func(arExp, expected, r);
   AR_EXP_Free(arExp);
 
   /* SIGN(-1) */
   query = "RETURN SIGN(-1)";
   arExp = _exp_from_query(query);
-  expected = SI_DoubleVal(-1);
+  expected = SI_LongVal(-1);
   _test_ar_func(arExp, expected, r);
   AR_EXP_Free(arExp);
 
   /* SIGN(1) */
   query = "RETURN SIGN(1)";
   arExp = _exp_from_query(query);
-  expected = SI_DoubleVal(1);
+  expected = SI_LongVal(1);
   _test_ar_func(arExp, expected, r);
   AR_EXP_Free(arExp);
 

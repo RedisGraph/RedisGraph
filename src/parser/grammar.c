@@ -2042,13 +2042,13 @@ static void yy_reduce(
         break;
       case 102: /* value ::= INTEGER */
 #line 572 "grammar.y"
-{  yylhsminor.yy189 = SI_DoubleVal(yymsp[0].minor.yy0.intval); }
+{  yylhsminor.yy189 = SI_LongVal(yymsp[0].minor.yy0.intval); }
 #line 2047 "grammar.c"
   yymsp[0].minor.yy189 = yylhsminor.yy189;
         break;
       case 103: /* value ::= DASH INTEGER */
 #line 573 "grammar.y"
-{  yymsp[-1].minor.yy189 = SI_DoubleVal(-yymsp[0].minor.yy0.intval); }
+{  yymsp[-1].minor.yy189 = SI_LongVal(-yymsp[0].minor.yy0.intval); }
 #line 2053 "grammar.c"
         break;
       case 104: /* value ::= STRING */

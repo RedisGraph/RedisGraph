@@ -207,7 +207,7 @@ int __agg_countStep(AggCtx *ctx, SIValue *argv, int argc) {
 
 int __agg_countReduceNext(AggCtx *ctx) {
     __agg_countCtx *ac = Agg_FuncCtx(ctx);
-    Agg_SetResult(ctx, SI_DoubleVal(ac->count));
+    Agg_SetResult(ctx, SI_LongVal(ac->count));
     return AGG_OK;
 }
 

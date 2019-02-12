@@ -48,7 +48,8 @@ typedef enum {
  * and 0 if argument is zero (matching the return style of the strcmp family).
  * This is necessary to construct safe integer returns when the delta between
  * two double values is < 1.0 (and would thus be rounded to 0). */
-#define COMPARE_RETVAL(a) ((a) > 0) - ((a) < 0)
+#define COMPARE_RETVAL(a) VAL_SIGN(a)
+#define VAL_SIGN(a) ((a) > 0) - ((a) < 0)
 
 #define DISJOINT INT_MAX
 
@@ -95,8 +96,14 @@ int SIValue_ToString(SIValue v, char *buf, size_t len);
 /* Try to read a value as a double. */
 int SIValue_ToDouble(const SIValue *v, double *d);
 
+/* Try to read a value as an int64. */
+int SIValue_ToLong(const SIValue *v, int64_t *l);
+
 /* Try to internally convert a value to a double. */
 int SIValue_ConvertToDouble(SIValue *v);
+
+/* Try to internally convert a value to an int64. */
+int SIValue_ConvertToLong(SIValue *v);
 
 /* Try to parse a value by string. */
 SIValue SIValue_FromString(const char *s);
@@ -115,6 +122,8 @@ int SIValue_Compare(SIValue a, SIValue b);
  * to Cypher's comparability property if applicable, and its orderability property if not.
  * Under Cypher's orderability, where string < boolean < numeric < NULL. */
 int SIValue_Order(const SIValue a, const SIValue b);
+
+int SIValue_Add(SIValue *lhs, const SIValue *rhs);
 
 void SIValue_Print(FILE *outstream, SIValue *v);
 

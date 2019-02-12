@@ -201,7 +201,7 @@ class GraphPersistency(FlowTestsBase):
         read_query = """MATCH (a)-[e]->(b) RETURN e, a, b"""
         actual_result = graph.query(read_query)
         expected_result = [['e.val', 'a.name', 'b.name'],
-                           ['1', 'src', 'dest']]
+                           [1, 'src', 'dest']]
         assert(actual_result.result_set == expected_result)
 
         # Overwrite the existing edge
@@ -212,7 +212,7 @@ class GraphPersistency(FlowTestsBase):
         actual_result = graph.query(read_query)
         # TODO This is the expected current behavior, subject to later change.
         expected_result = [['e.val', 'a.name', 'b.name'],
-                           ['2', 'src', 'dest']]
+                           [2, 'src', 'dest']]
         assert(actual_result.result_set == expected_result)
 
         # Save RDB & Load from RDB

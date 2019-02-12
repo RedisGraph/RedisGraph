@@ -14,7 +14,9 @@
 #include <assert.h>
 #include "util/rmalloc.h"
 
-SIValue SI_IntVal(int i) { return (SIValue){.intval = i, .type = T_INT32}; }
+SIValue SI_IntVal(int i) {
+  return (SIValue){.intval = i, .type = T_INT32};
+}
 
 SIValue SI_LongVal(int64_t i) {
   return (SIValue){.longval = i, .type = T_INT64};
@@ -252,6 +254,33 @@ int SIValue_ToDouble(const SIValue *v, double *d) {
   }
 }
 
+int SIValue_ToLong(const SIValue *v, int64_t *l) {
+  switch (v->type) {
+      case T_INT64:
+          *l = v->longval;
+          return 1;
+      case T_DOUBLE:
+          *l = (long)v->doubleval;
+          return 1;
+      case T_INT32:
+          *l = (long)v->intval;
+          return 1;
+      case T_UINT:
+          *l = (long)v->uintval;
+          return 1;
+      case T_FLOAT:
+          *l = (long)v->floatval;
+          return 1;
+      case T_BOOL:
+          *l = (long)v->boolval;
+          return 1;
+
+      default:
+          // cannot convert!
+          return 0;
+  }
+}
+
 int SIValue_ConvertToDouble(SIValue *v) {
   switch (v->type) {
     case T_DOUBLE:
@@ -278,6 +307,35 @@ int SIValue_ConvertToDouble(SIValue *v) {
   }
 
   v->type = T_DOUBLE;
+  return 1;
+}
+
+int SIValue_ConvertToLong(SIValue *v) {
+  switch (v->type) {
+    case T_INT64:
+      return 1;
+    case T_DOUBLE:
+      v->longval = (long)v->doubleval;
+      break;
+    case T_INT32:
+      v->longval = (long)v->intval;
+      break;
+    case T_UINT:
+      v->longval = (long)v->uintval;
+      break;
+    case T_FLOAT:
+      v->longval = (long)v->floatval;
+      break;
+    case T_BOOL:
+      v->longval = (long)v->boolval;
+      break;
+
+    default:
+      // cannot convert!
+      return 0;
+  }
+
+  v->type = T_INT64;
   return 1;
 }
 
@@ -337,6 +395,7 @@ int SIValue_Compare(SIValue a, SIValue b) {
   // Use strcmp if values are string types
   if (a.type & SI_STRING) return strcmp(a.stringval, b.stringval);
 
+  // TODO improve logic for numeric comparisons
   // Attempt to cast both values to doubles
   double tmp_a, tmp_b;
   if (SIValue_ToDouble(&a, &tmp_a) && SIValue_ToDouble(&b, &tmp_b)) {

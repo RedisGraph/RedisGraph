@@ -569,8 +569,8 @@ relation(A) ::= NE. { A = NE; }
 %type value {SIValue}
 
 // raw value tokens - int / string / float
-value(A) ::= INTEGER(B). {  A = SI_DoubleVal(B.intval); }
-value(A) ::= DASH INTEGER(B). {  A = SI_DoubleVal(-B.intval); }
+value(A) ::= INTEGER(B). {  A = SI_LongVal(B.intval); }
+value(A) ::= DASH INTEGER(B). {  A = SI_LongVal(-B.intval); }
 value(A) ::= STRING(B). {  A = SI_ConstStringVal(B.strval); }
 value(A) ::= FLOAT(B). {  A = SI_DoubleVal(B.dval); }
 value(A) ::= DASH FLOAT(B). {  A = SI_DoubleVal(-B.dval); }
