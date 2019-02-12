@@ -76,5 +76,22 @@ class QueryValidationFlowTest(FlowTestsBase):
             # Expecting an error.
             pass
 
+    def test04_invalid_entity_references(self):
+        try:
+            query = """MATCH (a) RETURN e"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError:
+            # Expecting an error.
+            pass
+
+        try:
+            query = """MATCH (a) RETURN a ORDER BY e"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError:
+            # Expecting an error.
+            pass
+
 if __name__ == '__main__':
     unittest.main()
