@@ -25,7 +25,7 @@
     ResultSet *resultset;
     AR_ExpNode **none_aggregated_expressions;   /* Array of arithmetic expression. */
     AR_ExpNode **order_expressions;             /* Array of arithmetic expression. */
-    int *expression_classification;             /* 1 if RETURN_CLAUSE[i] is aggregated, 0 otherwise.  */
+    uint8_t *expression_classification;         /* 1 if RETURN_CLAUSE[i] is aggregated, 0 otherwise.  */
     SIValue *group_keys;                        /* Array of values composing an aggregated group. */
     TrieMap *groups;
     CacheGroupIterator *groupIter;

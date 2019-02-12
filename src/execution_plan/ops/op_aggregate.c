@@ -21,7 +21,7 @@ static void _build_expressions(Aggregate *op) {
     uint expCount = array_len(return_node->returnElements);
     
     op->none_aggregated_expressions = array_new(AR_ExpNode*, 1);
-    op->expression_classification = rm_malloc(sizeof(int) * expCount);
+    op->expression_classification = rm_malloc(sizeof(uint8_t) * expCount);
 
     // Compose RETURN clause expressions.
     for(uint i = 0; i < expCount; i++) {
@@ -33,6 +33,7 @@ static void _build_expressions(Aggregate *op) {
             op->none_aggregated_expressions = array_append(op->none_aggregated_expressions, exp);
         } else {
             op->expression_classification[i] = 1;
+            AR_EXP_Free(exp);
         }
     }
 
@@ -68,9 +69,9 @@ static Group* _CreateGroup(Aggregate *op, Record r) {
     AR_ExpNode **agg_exps = _build_aggregated_expressions(op);
 
     /* Clone group keys. */
-    size_t key_count = array_len(op->none_aggregated_expressions);
+    uint32_t key_count = array_len(op->none_aggregated_expressions);
     SIValue *group_keys = rm_malloc(sizeof(SIValue) * key_count);
-    for(int i = 0; i < key_count; i++) group_keys[i] = op->group_keys[i];
+    for(uint32_t i = 0; i < key_count; i++) group_keys[i] = op->group_keys[i];
 
     // There's no need to keep a reference to record
     // if we're not performing aggregations.

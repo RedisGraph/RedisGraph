@@ -29,8 +29,7 @@ void FreeGroupCache(CacheGroup *groups) {
 
 // Returns an iterator to scan entire group cache
 CacheGroupIterator* CacheGroupIter(CacheGroup *groups) {
-    char *prefix = "";
-	return TrieMap_Iterate(groups, prefix, strlen(prefix));
+    return TrieMap_Iterate(groups, "", 0);
 }
 
 // Advance iterator and returns key & value in current position.

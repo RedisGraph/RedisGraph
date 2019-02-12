@@ -26,6 +26,55 @@ static int _encounteredRecord(ResultSet *set, const Record r) {
     return !newRecord;
 }
 
+/* Redis prints doubles with up to 17 digits of precision, which captures
+ * the inaccuracy of many floating-point numbers (such as 7.3).
+ * By using the %g format and its default precision of 6, we avoid awkward
+ * representations like RETURN 7.3 emitting "7.2999999999999998". */
+static inline void _ResultSet_ReplyWithRoundedDouble(RedisModuleCtx *ctx, double d) {
+    // Get length required to print number
+    int len = snprintf(NULL, 0, "%g", d);
+    char str[len + 1]; // TODO a reusable buffer would be far preferable
+    sprintf(str, "%g", d);
+    // Output string-formatted number
+    RedisModule_ReplyWithStringBuffer(ctx, str, len);
+}
+
+/* This function handles emitting SIValue types through the Redis RESP protocol.
+ * This protocol has unique support for strings, 8-byte integers, and NULL values. */
+static void _ResultSet_ReplyWithScalar(RedisModuleCtx *ctx, const SIValue v) {
+    // Emit the actual value, then the value type (to facilitate client-side parsing)
+    switch (SI_TYPE(v)) {
+        case T_STRING:
+        case T_CONSTSTRING:
+            RedisModule_ReplyWithStringBuffer(ctx, v.stringval, strlen(v.stringval));
+            return;
+        case T_INT32:
+            RedisModule_ReplyWithLongLong(ctx, v.intval);
+            return;
+        case T_INT64:
+            RedisModule_ReplyWithLongLong(ctx, v.longval);
+            return;
+        case T_UINT:
+            RedisModule_ReplyWithLongLong(ctx, v.uintval);
+            return;
+        case T_FLOAT:
+            _ResultSet_ReplyWithRoundedDouble(ctx, (double)v.floatval);
+            return;
+        case T_DOUBLE:
+            _ResultSet_ReplyWithRoundedDouble(ctx, v.doubleval);
+            return;
+        case T_BOOL:
+            if (v.boolval == true) RedisModule_ReplyWithStringBuffer(ctx, "true", 4);
+            else RedisModule_ReplyWithStringBuffer(ctx, "false", 5);
+            return;
+        case T_NULL:
+            RedisModule_ReplyWithNull(ctx);
+            return;
+        default:
+            assert("Unhandled value type" && false);
+      }
+}
+
 static void _ResultSet_ReplayHeader(const ResultSet *set, const ResultSetHeader *header) {    
     RedisModule_ReplyWithArray(set->ctx, header->columns_len);
     for(int i = 0; i < header->columns_len; i++) {
@@ -45,13 +94,11 @@ static void _ResultSet_ReplayRecord(ResultSet *s, const Record r) {
         return;
     }
 
-    char value[2048] = {0};
     uint column_count = s->header->columns_len;
     RedisModule_ReplyWithArray(s->ctx, column_count);
 
-    for(int i = 0; i < column_count; i++) {
-        int written = SIValue_ToString(Record_GetScalar(r, i), value, 2048);
-        RedisModule_ReplyWithStringBuffer(s->ctx, value, written);
+    for(uint i = 0; i < column_count; i++) {
+        _ResultSet_ReplyWithScalar(s->ctx, Record_GetScalar(r, i));
     }
 }
 

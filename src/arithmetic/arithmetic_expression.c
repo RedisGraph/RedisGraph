@@ -302,12 +302,14 @@ void AR_EXP_ToString(const AR_ExpNode *root, char **str) {
 }
 
 void AR_EXP_Free(AR_ExpNode *root) {
-    // TODO: I believe we don't handle freeing aggregated functions correctly
     if(root->type == AR_EXP_OP) {
         for(int child_idx = 0; child_idx < root->op.child_count; child_idx++) {
             AR_EXP_Free(root->op.children[child_idx]);
         }
         free(root->op.children);
+        if (root->op.type == AR_OP_AGGREGATE) {
+            AggCtx_Free(root->op.agg_func);
+        }
     } else {
         if (root->operand.type == AR_EXP_CONSTANT) {
             SIValue_Free(&root->operand.constant);
