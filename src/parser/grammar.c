@@ -1668,28 +1668,28 @@ static void yy_reduce(
       case 53: /* edgeLength ::= MUL INTEGER DOTDOT INTEGER */
 #line 322 "grammar.y"
 {
-	yymsp[-3].minor.yy140 = New_AST_LinkLength(yymsp[-2].minor.yy0.intval, yymsp[0].minor.yy0.intval);
+	yymsp[-3].minor.yy140 = New_AST_LinkLength(yymsp[-2].minor.yy0.longval, yymsp[0].minor.yy0.longval);
 }
 #line 1674 "grammar.c"
         break;
       case 54: /* edgeLength ::= MUL INTEGER DOTDOT */
 #line 327 "grammar.y"
 {
-	yymsp[-2].minor.yy140 = New_AST_LinkLength(yymsp[-1].minor.yy0.intval, UINT_MAX-2);
+	yymsp[-2].minor.yy140 = New_AST_LinkLength(yymsp[-1].minor.yy0.longval, UINT_MAX-2);
 }
 #line 1681 "grammar.c"
         break;
       case 55: /* edgeLength ::= MUL DOTDOT INTEGER */
 #line 332 "grammar.y"
 {
-	yymsp[-2].minor.yy140 = New_AST_LinkLength(1, yymsp[0].minor.yy0.intval);
+	yymsp[-2].minor.yy140 = New_AST_LinkLength(1, yymsp[0].minor.yy0.longval);
 }
 #line 1688 "grammar.c"
         break;
       case 56: /* edgeLength ::= MUL INTEGER */
 #line 337 "grammar.y"
 {
-	yymsp[-1].minor.yy140 = New_AST_LinkLength(yymsp[0].minor.yy0.intval, yymsp[0].minor.yy0.intval);
+	yymsp[-1].minor.yy140 = New_AST_LinkLength(yymsp[0].minor.yy0.longval, yymsp[0].minor.yy0.longval);
 }
 #line 1695 "grammar.c"
         break;
@@ -1985,7 +1985,7 @@ static void yy_reduce(
       case 92: /* skipClause ::= SKIP INTEGER */
 #line 536 "grammar.y"
 {
-	yymsp[-1].minor.yy173 = New_AST_SkipNode(yymsp[0].minor.yy0.intval);
+	yymsp[-1].minor.yy173 = New_AST_SkipNode(yymsp[0].minor.yy0.longval);
 }
 #line 1991 "grammar.c"
         break;
@@ -1999,7 +1999,7 @@ static void yy_reduce(
       case 94: /* limitClause ::= LIMIT INTEGER */
 #line 545 "grammar.y"
 {
-	yymsp[-1].minor.yy77 = New_AST_LimitNode(yymsp[0].minor.yy0.intval);
+	yymsp[-1].minor.yy77 = New_AST_LimitNode(yymsp[0].minor.yy0.longval);
 }
 #line 2005 "grammar.c"
         break;
@@ -2042,13 +2042,13 @@ static void yy_reduce(
         break;
       case 102: /* value ::= INTEGER */
 #line 572 "grammar.y"
-{  yylhsminor.yy189 = SI_LongVal(yymsp[0].minor.yy0.intval); }
+{  yylhsminor.yy189 = SI_LongVal(yymsp[0].minor.yy0.longval); }
 #line 2047 "grammar.c"
   yymsp[0].minor.yy189 = yylhsminor.yy189;
         break;
       case 103: /* value ::= DASH INTEGER */
 #line 573 "grammar.y"
-{  yymsp[-1].minor.yy189 = SI_LongVal(-yymsp[0].minor.yy0.intval); }
+{  yymsp[-1].minor.yy189 = SI_LongVal(-yymsp[0].minor.yy0.longval); }
 #line 2053 "grammar.c"
         break;
       case 104: /* value ::= STRING */

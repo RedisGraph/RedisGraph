@@ -49,20 +49,11 @@ void _test_ar_func(AR_ExpNode *root, SIValue expected, const Record r) {
   // Compare values directly if their types are equal
   if (SI_TYPE(res) == SI_TYPE(expected)) {
     switch (SI_TYPE(res)) {
-      case T_FLOAT:
-        ASSERT_EQ(res.floatval, expected.floatval);
-        return;
       case T_DOUBLE:
         ASSERT_EQ(res.doubleval, expected.doubleval);
         return;
-      case T_INT32:
-        ASSERT_EQ(res.intval, expected.intval);
-        return;
       case T_INT64:
         ASSERT_EQ(res.longval, expected.longval);
-        return;
-      case T_UINT:
-        ASSERT_EQ(res.uintval, expected.uintval);
         return;
       case T_NULL:
         return; // Type check was sufficient

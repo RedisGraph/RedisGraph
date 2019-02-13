@@ -10,7 +10,7 @@
 #include "graph_entity.h"
 #include "../../util/rmalloc.h"
 
-SIValue *PROPERTY_NOTFOUND = &(SIValue){.intval = 0, .type = T_NULL};
+SIValue *PROPERTY_NOTFOUND = &(SIValue){.longval = 0, .type = T_NULL};
 
 /* Add a new property to entity */
 SIValue* GraphEntity_AddProperty(GraphEntity *e, Attribute_ID attr_id, SIValue value) {

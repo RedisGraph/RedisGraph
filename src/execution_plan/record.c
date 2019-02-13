@@ -17,7 +17,7 @@ Record Record_New(int entries) {
 
     // First entry holds records length.
     r[0].type = REC_TYPE_HEADER;
-    r[0].value.s = SI_UintVal(entries);
+    r[0].value.s = SI_LongVal(entries);
 
     // Skip header entry.
     return r+1;
@@ -25,7 +25,7 @@ Record Record_New(int entries) {
 
 unsigned int Record_length(const Record r) {
     Entry header = RECORD_HEADER_ENTRY(r);
-    int recordLength = header.value.s.uintval;
+    int recordLength = header.value.s.longval;
     return recordLength;
 }
 

@@ -51,7 +51,7 @@ int yycolumn = 1;
 }
 
 [0-9]+    {
-  tok.intval = atol(yytext);
+  tok.longval = atol(yytext);
   return INTEGER;
 }
 

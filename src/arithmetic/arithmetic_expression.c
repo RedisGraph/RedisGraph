@@ -20,49 +20,10 @@
 /* Arithmetic function repository. */
 static TrieMap *__aeRegisteredFuncs = NULL;
 
-// TODO Find a more efficient routine for this
-static void _AR_TypeSafeArithmetic(SIValue *result, const SIValue *arg, char op) {
-    /* The caller is responsible for ensuring that operands are numeric. */
-    /* Division is always a floating-point operation. */
-    if (result->type == T_DOUBLE || arg->type== T_DOUBLE || op == '/') {
-        double double_arg;
-        SIValue_ToDouble(arg, &double_arg);
-        SIValue_ConvertToDouble(result);
-        /* Floating point operation. */
-        switch (op) {
-            case '+':
-                result->doubleval += double_arg;
-                return;
-            case '-':
-                result->doubleval -= double_arg;
-                return;
-            case '*':
-                result->doubleval *= double_arg;
-                return;
-            case '/':
-                result->doubleval /= double_arg;
-                return;
-        }
-    }
-
-    int64_t long_arg;
-    SIValue_ToLong(arg, &long_arg);
-    SIValue_ConvertToLong(result);
-    /* Integer operation. */
-    switch (op) {
-        case '+':
-            result->longval += long_arg;
-            return;
-        case '-':
-            result->longval -= long_arg;
-            return;
-        case '*':
-            result->longval *= long_arg;
-            return;
-        case '/':
-            result->longval /= long_arg;
-            return;
-    }
+/* Returns 1 if the operand is a numeric type, and 0 otherwise.
+ * This also rejects NULL values. */
+static inline int _validate_numeric(const SIValue v) {
+    return SI_TYPE(v) & SI_NUMERIC;
 }
 
 static AR_ExpNode* _AR_EXP_NewConstOperandNode(SIValue constant) {
@@ -381,8 +342,8 @@ SIValue AR_ADD(SIValue *argv, int argc) {
 
         /* Perform numeric addition only if both result and current argument
          * are numeric. */
-        if(SI_TYPE(result) & SI_NUMERIC && SI_TYPE(argv[i]) & SI_NUMERIC) {
-            _AR_TypeSafeArithmetic(&result, &argv[i], '+');
+        if(_validate_numeric(result) && _validate_numeric(argv[i])) {
+            result = SIValue_Add(result, argv[i]);
         } else {
             /* String concatenation.
              * Make sure result is a String. */
@@ -420,38 +381,34 @@ SIValue AR_ADD(SIValue *argv, int argc) {
 }
 
 SIValue AR_SUB(SIValue *argv, int argc) {
-    SIValue result;
-    result = argv[0];
-    if (!(SI_TYPE(result) & SI_NUMERIC)) return SI_NullVal();
+    SIValue result = argv[0];
+    if (!_validate_numeric(result)) return SI_NullVal();
 
     for(int i = 1; i < argc; i++) {
-        if (!(SI_TYPE(argv[i]) & SI_NUMERIC)) return SI_NullVal();
-        _AR_TypeSafeArithmetic(&result, &argv[i], '-');
+        if (!_validate_numeric(argv[i])) return SI_NullVal();
+        result = SIValue_Subtract(result, argv[i]);
     }
     return result;
 }
 
 SIValue AR_MUL(SIValue *argv, int argc) {
-    SIValue result;
-    result = argv[0];
-    if (!(SI_TYPE(result) & SI_NUMERIC)) return SI_NullVal();
+    SIValue result = argv[0];
+    if (!_validate_numeric(result)) return SI_NullVal();
 
     for(int i = 1; i < argc; i++) {
-        if(!(SI_TYPE(argv[i]) & SI_NUMERIC)) return SI_NullVal();
-
-        _AR_TypeSafeArithmetic(&result, &argv[i], '*');
+        if (!_validate_numeric(argv[i])) return SI_NullVal();
+        result = SIValue_Multiply(result, argv[i]);
     }
     return result;
 }
 
 SIValue AR_DIV(SIValue *argv, int argc) {
-    SIValue result;
-    result = argv[0];
-    if (!(SI_TYPE(result) & SI_NUMERIC)) return SI_NullVal();
+    SIValue result = argv[0];
+    if (!_validate_numeric(result)) return SI_NullVal();
 
     for(int i = 1; i < argc; i++) {
-        if(!(SI_TYPE(argv[i]) & SI_NUMERIC)) return SI_NullVal();
-        _AR_TypeSafeArithmetic(&result, &argv[i], '/');
+        if (!_validate_numeric(argv[i])) return SI_NullVal();
+        result = SIValue_Divide(result, argv[i]);
     }
     return result;
 }
@@ -461,29 +418,17 @@ SIValue AR_DIV(SIValue *argv, int argc) {
 
 SIValue AR_ABS(SIValue *argv, int argc) {
     SIValue result = argv[0];
+    if (!_validate_numeric(result)) return SI_NullVal();
     switch (SI_TYPE(result)) {
-        case T_FLOAT:
-            if (result.floatval < 0) {
-                result.floatval = -result.floatval;
-            }
-            return result;
-
         case T_DOUBLE:
             if (result.doubleval < 0) {
                 result.doubleval = -result.doubleval;
-            }
-            return result;
-        case T_INT32:
-            if (result.intval < 0) {
-                result.intval = -result.intval;
             }
             return result;
         case T_INT64:
             if (result.longval < 0) {
                 result.longval = -result.longval;
             }
-            return result;
-        case T_UINT:
             return result;
         default:
             return SI_NullVal();
@@ -492,32 +437,20 @@ SIValue AR_ABS(SIValue *argv, int argc) {
 
 SIValue AR_CEIL(SIValue *argv, int argc) {
     SIValue result = argv[0];
-    switch (SI_TYPE(result)) {
-        case T_DOUBLE:
-            result.doubleval = ceil(result.doubleval);
-            return result;
-        case T_INT32:
-        case T_INT64:
-        case T_UINT:
-            return result;
-        default:
-            return SI_NullVal();
-    }
+    if (!_validate_numeric(result)) return SI_NullVal();
+    // No modification is required for non-decimal values
+    if (SI_TYPE(result) == T_DOUBLE) result.doubleval = ceil(result.doubleval);
+
+    return result;
 }
 
 SIValue AR_FLOOR(SIValue *argv, int argc) {
     SIValue result = argv[0];
-    switch (SI_TYPE(result)) {
-        case T_DOUBLE:
-            result.doubleval = floor(result.doubleval);
-            return result;
-        case T_INT32:
-        case T_INT64:
-        case T_UINT:
-            return result;
-        default:
-            return SI_NullVal();
-    }
+    if (!_validate_numeric(result)) return SI_NullVal();
+    // No modification is required for non-decimal values
+    if (SI_TYPE(result) == T_DOUBLE) result.doubleval = floor(result.doubleval);
+
+    return result;
 }
 
 SIValue AR_RAND(SIValue *argv, int argc) {
@@ -526,42 +459,16 @@ SIValue AR_RAND(SIValue *argv, int argc) {
 
 SIValue AR_ROUND(SIValue *argv, int argc) {
     SIValue result = argv[0];
-    switch (SI_TYPE(result)) {
-        case T_DOUBLE:
-            result.doubleval = round(result.doubleval);
-            return result;
-        case T_INT32:
-        case T_INT64:
-        case T_UINT:
-            return result;
-        default:
-            return SI_NullVal();
-    }
+    if (!_validate_numeric(result)) return SI_NullVal();
+    // No modification is required for non-decimal values
+    if (SI_TYPE(result) == T_DOUBLE) result.doubleval = round(result.doubleval);
+
+    return result;
 }
 
 SIValue AR_SIGN(SIValue *argv, int argc) {
-    int sign;
-    SIValue result = argv[0];
-    switch (SI_TYPE(result)) {
-        case T_FLOAT:
-            sign = VAL_SIGN(result.floatval);
-            break;
-        case T_DOUBLE:
-            sign = VAL_SIGN(result.doubleval);
-            break;
-        case T_INT32:
-            sign = VAL_SIGN(result.intval);
-            break;
-        case T_INT64:
-            sign = VAL_SIGN(result.longval);
-            break;
-        case T_UINT:
-            sign = VAL_SIGN(result.uintval);
-            break;
-        default:
-            return SI_NullVal();
-    }
-
+    if (!_validate_numeric(argv[0])) return SI_NullVal();
+    int64_t sign = VAL_SIGN(SI_GET_NUMERIC(argv[0]));
     return SI_LongVal(sign);
 }
 

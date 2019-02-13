@@ -993,7 +993,7 @@ case 26:
 YY_RULE_SETUP
 #line 53 "lexer.l"
 {
-  tok.intval = atol(yytext);
+  tok.longval = atol(yytext);
   return INTEGER;
 }
 	YY_BREAK
