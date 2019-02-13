@@ -105,7 +105,7 @@ OpBase *NewSortOp(const AST *ast) {
     sort->heap = NULL;
     sort->buffer = NULL;
 
-    if(ast->limitNode) {
+    if(ast->limitNode && !(ast->returnNode && ast->returnNode->distinct)) {
         sort->limit = ast->limitNode->limit;
         if(ast->skipNode) {
             sort->limit += ast->skipNode->skip;
