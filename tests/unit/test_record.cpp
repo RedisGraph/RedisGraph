@@ -30,16 +30,16 @@ class RecordTest: public ::testing::Test {
 TEST_F(RecordTest, RecordToString) {
     Record r = Record_New(6);
     SIValue v_string = SI_ConstStringVal("Hello");
-    SIValue v_int = SI_IntVal(-24);
-    SIValue v_uint = SI_UintVal(24);
-    SIValue v_float = SI_FloatVal(0.314);
+    SIValue v_int = SI_LongVal(-24);
+    SIValue v_uint = SI_LongVal(24);
+    SIValue v_double = SI_DoubleVal(0.314);
     SIValue v_null = SI_NullVal();
     SIValue v_bool = SI_BoolVal(1);
 
     Record_AddScalar(r, 0, v_string);
     Record_AddScalar(r, 1, v_int);
     Record_AddScalar(r, 2, v_uint);
-    Record_AddScalar(r, 3, v_float);
+    Record_AddScalar(r, 3, v_double);
     Record_AddScalar(r, 4, v_null);
     Record_AddScalar(r, 5, v_bool);
 

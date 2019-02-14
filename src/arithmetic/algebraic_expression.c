@@ -355,7 +355,7 @@ AlgebraicExpression **AlgebraicExpression_From_Query(const AST *ast, Vector *mat
 
             for(int i = 0; i < labelCount; i++) {
                 char *label = astEdge->labels[i];
-                LabelStore *s = GraphContext_GetStore(gc, label, STORE_EDGE);
+                Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_EDGE);
                 if(!s) continue;
                 GrB_Matrix l = Graph_GetRelationMatrix(g, s->id);
                 GrB_Info info = GrB_eWiseAdd_Matrix_Semiring(m, NULL, NULL, Rg_structured_bool, m, l, NULL);                

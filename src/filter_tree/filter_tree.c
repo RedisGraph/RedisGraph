@@ -98,8 +98,11 @@ FT_FilterNode* BuildFiltersTree(const AST *ast, const AST_FilterNode *root) {
  * Compares given values, tests if values maintain desired relation (op) */
 int _applyFilter(SIValue* aVal, SIValue* bVal, int op) {
     int rel = SIValue_Compare(*aVal, *bVal);
-    /* Always return false if values are not of comparable types. */
-    if (rel == DISJOINT) return 0;
+    /* Values are of disjoint types */
+    if (rel == DISJOINT) {
+        /* The filter passes if we're testing for inequality, and fails otherwise. */
+        return (op == NE);
+    }
 
     switch(op) {
         case EQ:

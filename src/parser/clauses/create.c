@@ -40,6 +40,14 @@ void CreateClause_ReferredEntities(const AST_CreateNode *createNode, TrieMap *re
     }
 }
 
+/* We could do a better job here and isolate create clause defined 
+* identifiers from the once declared at earlier clauses, but for 
+ * the timebeing setting the defined entities to referred entities 
+ * is good enough. */
+void CreateClause_DefinedEntities(const AST_CreateNode *createNode, TrieMap *identifiers) {
+	return CreateClause_ReferredEntities(createNode, identifiers);
+}
+
 void CreateClause_NameAnonymousNodes(AST_CreateNode *createNode, int *entityID) {
 	if(!createNode) return;
 
@@ -49,6 +57,7 @@ void CreateClause_NameAnonymousNodes(AST_CreateNode *createNode, int *entityID) 
         AST_GraphEntity *entity;
         Vector_Get(createNode->graphEntities, i, &entity);
 		if (entity->alias == NULL) {
+			entity->anonymous = true;
             // TODO: Memory leak!
 			asprintf(&entity->alias, "anon_%d", *entityID);
             (*entityID)++;

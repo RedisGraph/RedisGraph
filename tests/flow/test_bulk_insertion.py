@@ -75,38 +75,38 @@ class GraphBulkInsertFlowTest(FlowTestsBase):
         query_result = redis_graph.query('MATCH (p:Person) RETURN p, ID(p) ORDER BY p.name')
         # Verify that the Person label exists, has the correct attributes, and is properly populated
         expected_result = [['p.name', 'p.age', 'p.gender', 'p.status', 'ID(p)'],
-                           ['Ailon Velger', '32.000000', 'male', 'married', '2'],
-                           ['Alon Fital', '32.000000', 'male', 'married', '1'],
-                           ['Boaz Arad', '31.000000', 'male', 'married', '4'],
-                           ['Gal Derriere', '26.000000', 'male', 'single', '11'],
-                           ['Jane Chernomorin', '31.000000', 'female', 'married', '8'],
-                           ['Lucy Yanfital', '30.000000', 'female', 'married', '7'],
-                           ['Mor Yesharim', '31.000000', 'female', 'married', '12'],
-                           ['Noam Nativ', '34.000000', 'male', 'single', '13'],
-                           ['Omri Traub', '33.000000', 'male', 'single', '5'],
-                           ['Ori Laslo', '32.000000', 'male', 'married', '3'],
-                           ['Roi Lipman', '32.000000', 'male', 'married', '0'],
-                           ['Shelly Laslo Rooz', '31.000000', 'female', 'married', '9'],
-                           ['Tal Doron', '32.000000', 'male', 'single', '6'],
-                           ['Valerie Abigail Arad', '31.000000', 'female', 'married', '10']]
+                           ['Ailon Velger', '32', 'male', 'married', 2],
+                           ['Alon Fital', '32', 'male', 'married', 1],
+                           ['Boaz Arad', '31', 'male', 'married', 4],
+                           ['Gal Derriere', '26', 'male', 'single', 11],
+                           ['Jane Chernomorin', '31', 'female', 'married', 8],
+                           ['Lucy Yanfital', '30', 'female', 'married', 7],
+                           ['Mor Yesharim', '31', 'female', 'married', 12],
+                           ['Noam Nativ', '34', 'male', 'single', 13],
+                           ['Omri Traub', '33', 'male', 'single', 5],
+                           ['Ori Laslo', '32', 'male', 'married', 3],
+                           ['Roi Lipman', '32', 'male', 'married', 0],
+                           ['Shelly Laslo Rooz', '31', 'female', 'married', 9],
+                           ['Tal Doron', '32', 'male', 'single', 6],
+                           ['Valerie Abigail Arad', '31', 'female', 'married', 10]]
         assert query_result.result_set == expected_result
 
         # Verify that the Country label exists, has the correct attributes, and is properly populated
         query_result = redis_graph.query('MATCH (c:Country) RETURN c, ID(c) ORDER BY c.name')
         expected_result = [['c.name', 'ID(c)'],
-                           ['Amsterdam', '20'],
-                           ['Andora', '21'],
-                           ['Canada', '18'],
-                           ['China', '19'],
-                           ['Germany', '24'],
-                           ['Greece', '17'],
-                           ['Italy', '25'],
-                           ['Japan', '16'],
-                           ['Kazakhstan', '22'],
-                           ['Prague', '15'],
-                           ['Russia', '23'],
-                           ['Thailand', '26'],
-                           ['USA', '14']]
+                           ['Amsterdam', 20],
+                           ['Andora', 21],
+                           ['Canada', 18],
+                           ['China', 19],
+                           ['Germany', 24],
+                           ['Greece', 17],
+                           ['Italy', 25],
+                           ['Japan', 16],
+                           ['Kazakhstan', 22],
+                           ['Prague', 15],
+                           ['Russia', 23],
+                           ['Thailand', 26],
+                           ['USA', 14]]
         assert query_result.result_set == expected_result
 
     # Validate that the expected relations and properties have been constructed
@@ -359,9 +359,9 @@ class GraphBulkInsertFlowTest(FlowTestsBase):
         graph = Graph(graphname, redis_con)
         query_result = graph.query('MATCH (a)-[e]->() RETURN a, e ORDER BY a.numeric, e.prop')
         expected_result = [['a.numeric', 'a.mixed', 'a.bool', 'e.prop'],
-                           ['0.000000', 'NULL', 'true', 'true'],
-                           ['5.000000', 'notnull', 'false', '3.500000'],
-                           ['7.000000', 'NULL', 'false', 'NULL']]
+                           ['0', None, 'true', 'true'],
+                           ['5', 'notnull', 'false', '3.5'],
+                           ['7', None, 'false', None]]
 
         # The graph should have the correct types for all properties
         assert query_result.result_set == expected_result

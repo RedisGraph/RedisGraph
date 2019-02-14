@@ -22,7 +22,7 @@ static void _setupTraversedRelations(CondVarLenTraverse *op) {
     if(op->relationIDsCount > 0) {
         op->relationIDs = array_new(int, op->relationIDsCount);
         for(int i = 0; i < op->relationIDsCount; i++) {
-            LabelStore *s = GraphContext_GetStore(gc, e->labels[i], STORE_EDGE);
+            Schema *s = GraphContext_GetSchema(gc, e->labels[i], SCHEMA_EDGE);
             if(!s) continue;
             op->relationIDs = array_append(op->relationIDs, s->id);
         }

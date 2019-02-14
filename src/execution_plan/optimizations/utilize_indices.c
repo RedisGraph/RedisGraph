@@ -124,13 +124,13 @@ void utilizeIndices(GraphContext *gc, ExecutionPlan *plan) {
       }
 
       // If we've already selected an index on a different property, continue
-      if (idx && strcmp(idx->property, filterProp)) continue;
+      if (idx && strcmp(idx->attribute, filterProp)) continue;
 
       // Try to retrieve an index if one has not been selected yet
       if (!idx) {
         idx = GraphContext_GetIndex(gc, label, filterProp);
         if (!idx) continue;
-        iter = IndexIter_Create(idx, constVal.type);
+        iter = IndexIter_Create(idx, SI_TYPE(constVal));
       }
 
       // Tighten the iterator range if possible

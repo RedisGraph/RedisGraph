@@ -5,13 +5,15 @@
  * modified with the Commons Clause restriction.
  */
 
-#ifndef SERIALIZE_GRAPH_H
-#define SERIALIZE_GRAPH_H
+
+#ifndef SERIALIZE_SCHEMA_H
+#define SERIALIZE_SCHEMA_H
 
 #include "../../redismodule.h"
 #include "../../schema/schema.h"
 
-void RdbLoadGraph(RedisModuleIO *rdb, Graph *g, Schema *ns, Schema *es);
-void RdbSaveGraph(RedisModuleIO *rdb, void *value, Schema *ns, Schema *es);
+Schema* RdbLoadUnifiedSchema(RedisModuleIO *rdb);
+Schema* RdbLoadSchema(RedisModuleIO *rdb, SchemaType type);
+void RdbSaveSchema(RedisModuleIO *rdb, void *value);
 
 #endif

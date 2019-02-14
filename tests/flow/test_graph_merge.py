@@ -130,7 +130,7 @@ class GraphMergeFlowTest(FlowTestsBase):
         query = """MATCH (charlie { name: 'Charlie Sheen' }) RETURN charlie"""
         actual_result = redis_graph.query(query)
         expected_result = [['charlie.age', 'charlie.name', 'charlie.lastname'],
-                           ['11.000000', 'Charlie Sheen', 'Sheen']]
+                           [11, 'Charlie Sheen', 'Sheen']]
         assert(actual_result.result_set == expected_result)
 
     # Update new entity
@@ -146,7 +146,7 @@ class GraphMergeFlowTest(FlowTestsBase):
         query = """MATCH (tamara:ACTOR { name: 'Tamara Tunie' }) RETURN tamara"""
         actual_result = redis_graph.query(query)
         expected_result = [['tamara.name', 'tamara.age'],
-                           ['Tamara Tunie', '59.000000']]
+                           ['Tamara Tunie', 59]]
         assert(actual_result.result_set == expected_result)
 
     # Create a single edge and additional two nodes.
@@ -169,17 +169,17 @@ class GraphMergeFlowTest(FlowTestsBase):
         assert(result.properties_set == 2)
         assert(result.relationships_created == 0)
 
-        query = """MATCH (franklin:ACTOR { name: 'Franklin Cover' })-[r:ACTED_IN {rate:5.9, date:1998}]->(almostHeroes:MOVIE) RETURN franklin, r"""
+        query = """MATCH (franklin:ACTOR { name: 'Franklin Cover' })-[r:ACTED_IN {rate:5.9, date:1998}]->(almostHeroes:MOVIE) RETURN franklin.name, franklin.age, r.rate, r.date"""
         actual_result = redis_graph.query(query)
         expected_result = [['franklin.name', 'franklin.age', 'r.rate', 'r.date'],
-                           ['Franklin Cover', 'NULL', '5.900000', '1998.000000']]
+                           ['Franklin Cover', None, '5.9', 1998]]
         assert(actual_result.result_set == expected_result)
     
 
     # Update multiple nodes
     def test13_update_multiple_nodes(self):
         global redis_graph
-        query = """CREATE (:person {age:31}), (:person {age:31}),(:person {age:31}),(:person {age:31})"""
+        query = """CREATE (:person {age:31}),(:person {age:31}),(:person {age:31}),(:person {age:31})"""
         result = redis_graph.query(query)
         assert(result.labels_added == 1)
         assert(result.nodes_created == 4)
@@ -194,10 +194,10 @@ class GraphMergeFlowTest(FlowTestsBase):
         query = """MATCH (p:person) RETURN p"""
         actual_result = redis_graph.query(query)
         expected_result = [['p.age', 'p.newprop'],
-                           ['31.000000', '100.000000'],
-                           ['31.000000', '100.000000'],
-                           ['31.000000', '100.000000'],
-                           ['31.000000', '100.000000']]
+                           [31, 100],
+                           [31, 100],
+                           [31, 100],
+                           [31, 100]]
         assert(actual_result.result_set == expected_result)
 
     # Update multiple nodes

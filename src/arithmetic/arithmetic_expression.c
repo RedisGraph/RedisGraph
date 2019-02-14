@@ -20,6 +20,12 @@
 /* Arithmetic function repository. */
 static TrieMap *__aeRegisteredFuncs = NULL;
 
+/* Returns 1 if the operand is a numeric type, and 0 otherwise.
+ * This also rejects NULL values. */
+static inline int _validate_numeric(const SIValue v) {
+    return SI_TYPE(v) & SI_NUMERIC;
+}
+
 static AR_ExpNode* _AR_EXP_NewConstOperandNode(SIValue constant) {
     AR_ExpNode *node = calloc(1, sizeof(AR_ExpNode));
     node->type = AR_EXP_OPERAND;
@@ -34,7 +40,14 @@ static AR_ExpNode* _AR_EXP_NewVariableOperandNode(const AST *ast, char *entity_p
     node->operand.type = AR_EXP_VARIADIC;
     node->operand.variadic.entity_alias = strdup(entity_alias);
     node->operand.variadic.entity_alias_idx = AST_GetAliasID(ast, entity_alias);
-    node->operand.variadic.entity_prop = entity_prop != NULL ? strdup(entity_prop) : NULL;
+    node->operand.variadic.entity_prop = NULL;
+    
+    if(entity_prop) {
+        node->operand.variadic.entity_prop = strdup(entity_prop);
+        AST_GraphEntity *ge = MatchClause_GetEntity(ast->matchNode, entity_alias);
+        SchemaType st = (ge->t == N_ENTITY) ? SCHEMA_NODE : SCHEMA_EDGE;
+        node->operand.variadic.entity_prop_idx = Attribute_GetID(st, entity_prop);
+    }
     return node;
 }
 
@@ -120,7 +133,7 @@ SIValue AR_EXP_Evaluate(const AR_ExpNode *root, const Record r) {
             // Fetch entity property value.
             if (root->operand.variadic.entity_prop != NULL) {
                 GraphEntity *ge = Record_GetGraphEntity(r, root->operand.variadic.entity_alias_idx);
-                SIValue *property = GraphEntity_Get_Property(ge, root->operand.variadic.entity_prop);
+                SIValue *property = GraphEntity_GetProperty(ge, root->operand.variadic.entity_prop_idx);
                 /* TODO: Handle PROPERTY_NOTFOUND. */
                 result = SI_ShallowCopy(*property);
             } else {
@@ -295,12 +308,14 @@ void AR_EXP_ToString(const AR_ExpNode *root, char **str) {
 }
 
 void AR_EXP_Free(AR_ExpNode *root) {
-    // TODO: I believe we don't handle freeing aggregated functions correctly
     if(root->type == AR_EXP_OP) {
         for(int child_idx = 0; child_idx < root->op.child_count; child_idx++) {
             AR_EXP_Free(root->op.children[child_idx]);
         }
         free(root->op.children);
+        if (root->op.type == AR_OP_AGGREGATE) {
+            AggCtx_Free(root->op.agg_func);
+        }
     } else {
         if (root->operand.type == AR_EXP_CONSTANT) {
             SIValue_Free(&root->operand.constant);
@@ -314,91 +329,135 @@ void AR_EXP_Free(AR_ExpNode *root) {
 
 /* Mathematical functions - numeric */
 
+/* The '+' operator is overloaded to perform string concatenation
+ * as well as arithmetic addition. */
 SIValue AR_ADD(SIValue *argv, int argc) {
-    SIValue result;
-    result = argv[0];
+    SIValue result = argv[0];
+    char buffer[512];
+    char *string_arg = NULL;
+    double numeric_arg;
+
     for(int i = 1; i < argc; i++) {
         if(SIValue_IsNull(argv[i])) return SI_NullVal();
-        result.doubleval += argv[i].doubleval;
+
+        /* Perform numeric addition only if both result and current argument
+         * are numeric. */
+        if(_validate_numeric(result) && _validate_numeric(argv[i])) {
+            result = SIValue_Add(result, argv[i]);
+        } else {
+            /* String concatenation.
+             * Make sure result is a String. */
+            if(SI_TYPE(result) & SI_NUMERIC) {
+                /* Result is numeric, convert to string. */
+                SIValue_ToString(result, buffer, 512);
+                result = SI_DuplicateStringVal(buffer);
+            } else {
+                /* Result is already a string,
+                 * Make sure result owns the string. */
+                if(SI_TYPE(result) & T_CONSTSTRING) {
+                    result = SI_DuplicateStringVal(result.stringval);
+                }
+            }
+
+            /* Get a string representation of argument. */
+            unsigned int argument_len = 0;
+            if(!(SI_TYPE(argv[i]) & SI_STRING)) {
+                /* Argument is not a string, get a string representation. */
+                argument_len = SIValue_ToString(argv[i], buffer, 512);
+                string_arg = buffer;
+            } else {
+                string_arg = argv[i].stringval;
+                argument_len = strlen(string_arg);
+            }
+
+            /* Concat, make sure result has enough space to hold new string. */
+            unsigned int required_size = strlen(result.stringval) + argument_len + 1;
+            result.stringval = rm_realloc(result.stringval, required_size);
+            strcat(result.stringval, string_arg);
+        }
     }
+
     return result;
 }
 
 SIValue AR_SUB(SIValue *argv, int argc) {
-    SIValue result;
-    result = argv[0];
+    SIValue result = argv[0];
+    if (!_validate_numeric(result)) return SI_NullVal();
+
     for(int i = 1; i < argc; i++) {
-        if(SIValue_IsNull(argv[i])) return SI_NullVal();
-        result.doubleval -= argv[i].doubleval;
+        if (!_validate_numeric(argv[i])) return SI_NullVal();
+        result = SIValue_Subtract(result, argv[i]);
     }
     return result;
 }
 
 SIValue AR_MUL(SIValue *argv, int argc) {
-    SIValue result;
-    result = argv[0];
+    SIValue result = argv[0];
+    if (!_validate_numeric(result)) return SI_NullVal();
+
     for(int i = 1; i < argc; i++) {
-        if(SIValue_IsNull(argv[i])) return SI_NullVal();
-        /* Assuming every argv is of type double. */
-        result.doubleval *= argv[i].doubleval;
+        if (!_validate_numeric(argv[i])) return SI_NullVal();
+        result = SIValue_Multiply(result, argv[i]);
     }
     return result;
 }
 
 SIValue AR_DIV(SIValue *argv, int argc) {
-    SIValue result;
-    result = argv[0];
+    SIValue result = argv[0];
+    if (!_validate_numeric(result)) return SI_NullVal();
+
     for(int i = 1; i < argc; i++) {
-        if(SIValue_IsNull(argv[i])) return SI_NullVal();
-        /* Assuming every argv is of type double. */
-        /* TODO: division by zero. */
-        result.doubleval /= argv[i].doubleval;
+        if (!_validate_numeric(argv[i])) return SI_NullVal();
+        result = SIValue_Divide(result, argv[i]);
     }
     return result;
 }
 
+/* TODO All AR_* functions need to emit appropriate failures when provided
+ * with arguments of invalid types and handle multiple arguments. */
+
 SIValue AR_ABS(SIValue *argv, int argc) {
     SIValue result = argv[0];
-    if(result.doubleval < 0) {
-        result.doubleval *= -1;
-    }
-    return result;
+    if (!_validate_numeric(result)) return SI_NullVal();
+    if(SI_GET_NUMERIC(argv[0]) < 0) return SIValue_Multiply(argv[0], SI_LongVal(-1));
+    return argv[0];
 }
 
 SIValue AR_CEIL(SIValue *argv, int argc) {
     SIValue result = argv[0];
-    result.doubleval = ceil(result.doubleval);
+    if (!_validate_numeric(result)) return SI_NullVal();
+    // No modification is required for non-decimal values
+    if (SI_TYPE(result) == T_DOUBLE) result.doubleval = ceil(result.doubleval);
+
     return result;
 }
 
 SIValue AR_FLOOR(SIValue *argv, int argc) {
     SIValue result = argv[0];
-    result.doubleval = floor(result.doubleval);
+    if (!_validate_numeric(result)) return SI_NullVal();
+    // No modification is required for non-decimal values
+    if (SI_TYPE(result) == T_DOUBLE) result.doubleval = floor(result.doubleval);
+
     return result;
 }
 
 SIValue AR_RAND(SIValue *argv, int argc) {
-    SIValue result = SI_DoubleVal((double)rand() / (double)RAND_MAX);
-    return result;
+    return SI_DoubleVal((double)rand() / (double)RAND_MAX);
 }
 
 SIValue AR_ROUND(SIValue *argv, int argc) {
     SIValue result = argv[0];
-    result.doubleval = round(result.doubleval);
+    if (!_validate_numeric(result)) return SI_NullVal();
+    // No modification is required for non-decimal values
+    if (SI_TYPE(result) == T_DOUBLE) result.doubleval = round(result.doubleval);
+
     return result;
 }
 
 SIValue AR_SIGN(SIValue *argv, int argc) {
-    assert(argc == 1);
-    if(SIValue_IsNull(argv[0])) return SI_NullVal();
-
-    if(argv[0].doubleval == 0) {
-        return SI_DoubleVal(0);
-    } else if(argv[0].doubleval < 0) {
-        return SI_DoubleVal(-1);
-    } else {
-        return SI_DoubleVal(1);
-    }
+    if (!_validate_numeric(argv[0])) return SI_NullVal();
+    int64_t sign = SIGN(SI_GET_NUMERIC(argv[0]));
+    return SI_LongVal(sign);
 }
 
 /* String functions */
@@ -407,24 +466,24 @@ SIValue AR_LEFT(SIValue *argv, int argc) {
     assert(argc == 2);
     if(SIValue_IsNull(argv[0])) return SI_NullVal();
 
-    assert(argv[0].type & SI_STRING);
-    assert(argv[1].type == T_DOUBLE);
+    assert(SI_TYPE(argv[0]) & SI_STRING);
+    assert(SI_TYPE(argv[1]) == T_INT64);
 
-    size_t newlen = (size_t)argv[1].doubleval;
+    int64_t newlen = argv[1].longval;
     if (strlen(argv[0].stringval) <= newlen) {
       // No need to truncate this string based on the requested length
       return SI_DuplicateStringVal(argv[0].stringval);
     }
-    char left_str[newlen + 1];
+    char *left_str = rm_malloc((newlen + 1) * sizeof(char));
     strncpy(left_str, argv[0].stringval, newlen * sizeof(char));
     left_str[newlen] = '\0';
-    return SI_DuplicateStringVal(left_str);
+    return SI_TransferStringVal(left_str);
 }
 
 SIValue AR_LTRIM(SIValue *argv, int argc) {
     if(SIValue_IsNull(argv[0])) return SI_NullVal();
 
-    assert(argc == 1 && argv[0].type & SI_STRING);
+    assert(argc == 1 && SI_TYPE(argv[0]) & SI_STRING);
     
     char *trimmed = argv[0].stringval;
 
@@ -438,11 +497,11 @@ SIValue AR_LTRIM(SIValue *argv, int argc) {
 SIValue AR_RIGHT(SIValue *argv, int argc) {
     assert(argc == 2);
     if(SIValue_IsNull(argv[0])) return SI_NullVal();
-    assert(argv[0].type & SI_STRING);
-    assert(argv[1].type == T_DOUBLE);
+    assert(SI_TYPE(argv[0]) & SI_STRING);
+    assert(SI_TYPE(argv[1]) == T_INT64);
 
-    int newlen = (int)argv[1].doubleval;
-    int start = strlen(argv[0].stringval) - newlen;
+    int64_t newlen = argv[1].longval;
+    int64_t start = strlen(argv[0].stringval) - newlen;
 
     if (start <= 0) {
       // No need to truncate this string based on the requested length
@@ -453,35 +512,34 @@ SIValue AR_RIGHT(SIValue *argv, int argc) {
 
 SIValue AR_RTRIM(SIValue *argv, int argc) {
     if(SIValue_IsNull(argv[0])) return SI_NullVal();
-    assert(argc == 1 && argv[0].type & SI_STRING);
+    assert(argc == 1 && SI_TYPE(argv[0]) & SI_STRING);
     
     char *str = argv[0].stringval;
 
-    int i = strlen(str);
+    size_t i = strlen(str);
     while(i > 0 && str[i - 1] == ' ') {
       i --;
     }
 
-    char trimmed[i + 1];
-
+    char *trimmed = rm_malloc((i + 1) * sizeof(char));
     strncpy(trimmed, str, i);
     trimmed[i] = '\0';
 
-    return SI_DuplicateStringVal(trimmed);
+    return SI_TransferStringVal(trimmed);
 }
 
 SIValue AR_REVERSE(SIValue *argv, int argc) {
     if(SIValue_IsNull(argv[0])) return SI_NullVal();
-    assert(argv[0].type & SI_STRING);
+    assert(SI_TYPE(argv[0]) & SI_STRING);
     char *str = argv[0].stringval;
     size_t str_len = strlen(str);
-    char reverse[str_len + 1];
+    char *reverse = rm_malloc((str_len + 1) * sizeof(char));
     
     int i = str_len-1;
     int j = 0;
     while(i >= 0) { reverse[j++] = str[i--]; }
     reverse[j] = '\0';
-    return SI_DuplicateStringVal(reverse);
+    return SI_TransferStringVal(reverse);
 }
 
 SIValue AR_SUBSTRING(SIValue *argv, int argc) {
@@ -496,10 +554,12 @@ SIValue AR_SUBSTRING(SIValue *argv, int argc) {
     */
     assert(argc > 1);
     if(SIValue_IsNull(argv[0])) return SI_NullVal();
+    assert(SI_TYPE(argv[1]) == T_INT64);
+
     char *original = argv[0].stringval;
-    size_t original_len = strlen(original);
-    int start = (int)argv[1].doubleval;
-    size_t length;
+    int64_t original_len = strlen(original);
+    int64_t start = argv[1].longval;
+    int64_t length;
 
     /* Make sure start doesn't overreach. */
     assert(start < original_len && start >= 0);
@@ -507,8 +567,9 @@ SIValue AR_SUBSTRING(SIValue *argv, int argc) {
     if(argc == 2) {
         length = original_len - start;
     } else {
-        assert(argv[2].doubleval >= 0);
-        length = (size_t)argv[2].doubleval;
+        assert(SI_TYPE(argv[2]) == T_INT64);
+        length = argv[2].longval;
+        assert(length >= 0);
         
         /* Make sure length does not overreach. */
         if(start + length > original_len) {
@@ -516,11 +577,11 @@ SIValue AR_SUBSTRING(SIValue *argv, int argc) {
         }
     }
     
-    char substring[length + 1];
+    char *substring = rm_malloc((length + 1) * sizeof(char));
     strncpy(substring, original + start, length);
     substring[length] = '\0';
 
-    return SI_DuplicateStringVal(substring);
+    return SI_TransferStringVal(substring);
 }
 
 void _toLower(const char *str, char *lower, size_t *lower_len) {
@@ -542,9 +603,9 @@ SIValue AR_TOLOWER(SIValue *argv, int argc) {
     if(SIValue_IsNull(argv[0])) return SI_NullVal();
     char *original = argv[0].stringval;
     size_t lower_len = strlen(original) + 1;
-    char lower[lower_len];
+    char *lower = rm_malloc((lower_len + 1) * sizeof(char));
     _toLower(original, lower, &lower_len);
-    return SI_DuplicateStringVal(lower);
+    return SI_TransferStringVal(lower);
 }
 
 void _toUpper(const char *str, char *upper, size_t *upper_len) {
@@ -566,19 +627,19 @@ SIValue AR_TOUPPER(SIValue *argv, int argc) {
     if(SIValue_IsNull(argv[0])) return SI_NullVal();
     char *original = argv[0].stringval;
     size_t upper_len = strlen(original) + 1;
-    char upper[upper_len];
+    char *upper = rm_malloc((upper_len + 1) * sizeof(char));
     _toUpper(original, upper, &upper_len);
-    return SI_DuplicateStringVal(upper);
+    return SI_TransferStringVal(upper);
 }
 
 SIValue AR_TOSTRING(SIValue *argv, int argc) {
     assert(argc == 1);
 
     if(SIValue_IsNull(argv[0])) return SI_NullVal();
-    size_t len = 128;
-    char str[128] = {0};
+    size_t len = SIValue_StringConcatLen(argv, 1);
+    char *str = rm_malloc(len * sizeof(char));
     SIValue_ToString(argv[0], str, len);
-    return SI_DuplicateStringVal(str);
+    return SI_TransferStringVal(str);
 }
 
 SIValue AR_TRIM(SIValue *argv, int argc) {
@@ -590,34 +651,34 @@ SIValue AR_TRIM(SIValue *argv, int argc) {
 
 SIValue AR_ID(SIValue *argv, int argc) {
     assert(argc == 1);
-    assert(argv[0].type == T_PTR);
+    assert(SI_TYPE(argv[0]) == T_PTR);
     GraphEntity *graph_entity = (GraphEntity*)argv[0].ptrval;
     return SI_LongVal(ENTITY_GET_ID(graph_entity));
 }
 
-SIValue AR_LABELS(SIValue *argv, int argc) {    
+SIValue AR_LABELS(SIValue *argv, int argc) {
     assert(argc == 1);
-    assert(argv[0].type == T_PTR);
+    assert(SI_TYPE(argv[0]) == T_PTR);
 
     char *label = "";
     Node *node = argv[0].ptrval;
     GraphContext *gc = GraphContext_GetFromLTS();
     Graph *g = gc->g;
     int labelID = Graph_GetNodeLabel(g, ENTITY_GET_ID(node));
-    if(labelID != GRAPH_NO_LABEL) label = gc->node_stores[labelID]->label;
+    if(labelID != GRAPH_NO_LABEL) label = gc->node_schemas[labelID]->name;
     return SI_ConstStringVal(label);
 }
 
 SIValue AR_TYPE(SIValue *argv, int argc) {
     assert(argc == 1);
-    assert(argv[0].type == T_PTR);
+    assert(SI_TYPE(argv[0]) == T_PTR);
 
     char *type = "";
     Edge *e = argv[0].ptrval;
     GraphContext *gc = GraphContext_GetFromLTS();
     Graph *g = gc->g;
     int id = Graph_GetEdgeRelation(gc->g, e);
-    if(id != GRAPH_NO_RELATION) type = gc->relation_stores[id]->label;
+    if(id != GRAPH_NO_RELATION) type = gc->relation_schemas[id]->name;
     return SI_ConstStringVal(type);
 }
 

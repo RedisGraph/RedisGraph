@@ -11,6 +11,8 @@
 #include "../../value.h"
 #include "../../../deps/GraphBLAS/Include/GraphBLAS.h"
 
+#define ATTRIBUTE_NOTFOUND USHRT_MAX
+
 #define ENTITY_ID_ISLT(a,b) ((*a)<(*b))
 #define INVALID_ENTITY_ID -1l
 
@@ -20,12 +22,14 @@
 
 // Defined in graph_entity.c
 extern SIValue *PROPERTY_NOTFOUND;
+
+typedef unsigned short Attribute_ID;
 typedef GrB_Index EntityID;
 typedef GrB_Index NodeID;
 typedef GrB_Index EdgeID;
 
 typedef struct {
-    char *name;
+    Attribute_ID id;
     SIValue value;
 } EntityProperty;
 
@@ -42,16 +46,17 @@ typedef struct {
     Entity *entity;
 } GraphEntity;
 
-/* Adds a properties to entity
- * prop_count - number of new properties to add 
- * keys - array of properties keys 
- * values - array of properties values */
-void GraphEntity_Add_Properties(GraphEntity *ge, int prop_count, char **keys, SIValue *values);
+/* Adds property to entity
+ * returns - reference to newly added property. */
+SIValue* GraphEntity_AddProperty(GraphEntity *e, Attribute_ID attr_id, SIValue value);
 
 /* Retrieves entity's property
  * NOTE: If the key does not exist, we return the special
  * constant value PROPERTY_NOTFOUND. */
-SIValue* GraphEntity_Get_Property(const GraphEntity *e, const char* key);
+SIValue* GraphEntity_GetProperty(const GraphEntity *e, Attribute_ID attr_id);
+
+/* Updates existing attribute value. */
+void GraphEntity_SetProperty(const GraphEntity *e, Attribute_ID attr_id, SIValue value);
 
 /* Release all memory allocated by entity */
 void FreeEntity(Entity *e);

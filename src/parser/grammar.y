@@ -320,22 +320,22 @@ edgeLength(A) ::= . {
 
 // *minHops..maxHops
 edgeLength(A) ::= MUL INTEGER(B) DOTDOT INTEGER(C). {
-	A = New_AST_LinkLength(B.intval, C.intval);
+	A = New_AST_LinkLength(B.longval, C.longval);
 }
 
 // *minHops..
 edgeLength(A) ::= MUL INTEGER(B) DOTDOT. {
-	A = New_AST_LinkLength(B.intval, UINT_MAX-2);
+	A = New_AST_LinkLength(B.longval, UINT_MAX-2);
 }
 
 // *..maxHops
 edgeLength(A) ::= MUL DOTDOT INTEGER(B). {
-	A = New_AST_LinkLength(1, B.intval);
+	A = New_AST_LinkLength(1, B.longval);
 }
 
 // *hops
 edgeLength(A) ::= MUL INTEGER(B). {
-	A = New_AST_LinkLength(B.intval, B.intval);
+	A = New_AST_LinkLength(B.longval, B.longval);
 }
 
 // *
@@ -534,7 +534,7 @@ skipClause(A) ::= . {
 	A = NULL;
 }
 skipClause(A) ::= SKIP INTEGER(B). {
-	A = New_AST_SkipNode(B.intval);
+	A = New_AST_SkipNode(B.longval);
 }
 
 %type limitClause {AST_LimitNode*}
@@ -543,7 +543,7 @@ limitClause(A) ::= . {
 	A = NULL;
 }
 limitClause(A) ::= LIMIT INTEGER(B). {
-	A = New_AST_LimitNode(B.intval);
+	A = New_AST_LimitNode(B.longval);
 }
 
 %type unwindClause {AST_UnwindNode*}
@@ -569,8 +569,8 @@ relation(A) ::= NE. { A = NE; }
 %type value {SIValue}
 
 // raw value tokens - int / string / float
-value(A) ::= INTEGER(B). {  A = SI_DoubleVal(B.intval); }
-value(A) ::= DASH INTEGER(B). {  A = SI_DoubleVal(-B.intval); }
+value(A) ::= INTEGER(B). {  A = SI_LongVal(B.longval); }
+value(A) ::= DASH INTEGER(B). {  A = SI_LongVal(-B.longval); }
 value(A) ::= STRING(B). {  A = SI_ConstStringVal(B.strval); }
 value(A) ::= FLOAT(B). {  A = SI_DoubleVal(B.dval); }
 value(A) ::= DASH FLOAT(B). {  A = SI_DoubleVal(-B.dval); }

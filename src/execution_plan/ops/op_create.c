@@ -8,7 +8,7 @@
 #include "op_create.h"
 #include "../../util/arr.h"
 #include "../../parser/ast.h"
-#include "../../stores/store.h"
+#include "../../schema/schema.h"
 
 #include <assert.h>
 
@@ -69,7 +69,7 @@ OpBase* NewCreateOp(RedisModuleCtx *ctx, GraphContext *gc, AST *ast, QueryGraph 
     op_create->gc = gc;
     op_create->ast = ast;
     op_create->qg = qg;
-    
+    op_create->records = NULL;
     op_create->nodes_to_create = NULL;
     op_create->node_count = 0;
     op_create->edges_to_create = NULL;
@@ -123,8 +123,8 @@ void _CreateEdges(OpCreate *op, Record r) {
         /* Save edge for later insertion. */
         op->created_edges = array_append(op->created_edges, newEdge);
 
-        /* Update query graph with new edge. */
-        Record_AddEdge(r, op->edges_to_create[i].edge_rec_idx, *newEdge);
+        /* Update record with new edge. */
+        Record_AddScalar(r, op->edges_to_create[i].edge_rec_idx, SI_PtrVal(newEdge));
     }
 }
 
@@ -135,24 +135,26 @@ static void _CommitNodes(OpCreate *op) {
     Graph *g = op->gc->g;
     uint node_count = array_len(op->created_nodes);
     TrieMap *createEntities = NewTrieMap();
-    LabelStore *allStore = GraphContext_AllStore(op->gc, STORE_NODE);
+    Schema *unified_schema = GraphContext_GetUnifiedSchema(op->gc, SCHEMA_NODE);
     
     Graph_AllocateNodes(op->gc->g, node_count);
     CreateClause_ReferredEntities(op->ast->createNode, createEntities);
+
     for(uint i = 0; i < node_count; i++) {
         n = op->created_nodes[i];
-        LabelStore *store = NULL;
+        Schema *schema = NULL;
 
         // Get label ID.
         if(n->label == NULL) {
             labelID = GRAPH_NO_LABEL;
+            schema = unified_schema;
         } else {
-            store = GraphContext_GetStore(op->gc, n->label, STORE_NODE);
-            if(store == NULL) {
-                store = GraphContext_AddLabel(op->gc, n->label);
+            schema = GraphContext_GetSchema(op->gc, n->label, SCHEMA_NODE);
+            if(schema == NULL) {
+                schema = GraphContext_AddSchema(op->gc, n->label, SCHEMA_NODE);
                 op->result_set->stats.labels_added++;
             }
-            labelID = store->id;
+            labelID = schema->id;
         }
 
         // Introduce node into graph.
@@ -164,26 +166,18 @@ static void _CommitNodes(OpCreate *op) {
 
         if(entity->properties) {
             int propCount = Vector_Size(entity->properties);
-            if(propCount > 0) {    
-                char *keys[propCount];
-                SIValue values[propCount];
-
+            if(propCount > 0) {
                 for(int prop_idx = 0; prop_idx < propCount; prop_idx+=2) {
                     SIValue *key;
                     SIValue *value;
                     Vector_Get(entity->properties, prop_idx, &key);
                     Vector_Get(entity->properties, prop_idx+1, &value);
 
-                    values[prop_idx/2] = *value;
-                    keys[prop_idx/2] = key->stringval;
+                    Attribute_ID prop_id = Schema_AddAttribute(schema, SCHEMA_NODE, key->stringval);
+                    GraphEntity_AddProperty((GraphEntity*)n, prop_id, *value);
                 }
-
-                GraphEntity_Add_Properties((GraphEntity*)n, propCount/2, keys, values);
-                if(store) {
-                    LabelStore_UpdateSchema(store, propCount/2, keys);
-                    GraphContext_AddNodeToIndices(op->gc, store, n);
-                }
-                LabelStore_UpdateSchema(allStore, propCount/2, keys);
+                // Introduce node to schema indices.
+                if(n->label) GraphContext_AddNodeToIndices(op->gc, schema, n);
                 op->result_set->stats.properties_set += propCount/2;
             }
         }
@@ -198,7 +192,6 @@ static void _CommitEdges(OpCreate *op) {
     Graph *g = op->gc->g;
     int relationships_created = 0;
     TrieMap *createEntities = NewTrieMap();
-    LabelStore *allStore = GraphContext_AllStore(op->gc, STORE_EDGE);
     CreateClause_ReferredEntities(op->ast->createNode, createEntities);
 
     uint createdEdgeCount = array_len(op->created_edges);
@@ -218,9 +211,9 @@ static void _CommitEdges(OpCreate *op) {
         if(e->destNodeID != INVALID_ENTITY_ID) destNodeID = e->destNodeID;
         else destNodeID = ENTITY_GET_ID(Edge_GetDestNode(e));
 
-        LabelStore *store = GraphContext_GetStore(op->gc, e->relationship, STORE_EDGE);
-        if(!store) store = GraphContext_AddRelationType(op->gc, e->relationship);
-        relation_id = store->id;
+        Schema *schema = GraphContext_GetSchema(op->gc, e->relationship, SCHEMA_EDGE);
+        if(!schema) schema = GraphContext_AddSchema(op->gc, e->relationship, SCHEMA_EDGE);
+        relation_id = schema->id;
 
         if(!Graph_ConnectNodes(g, srcNodeID, destNodeID, relation_id, e)) continue;
 
@@ -231,22 +224,15 @@ static void _CommitEdges(OpCreate *op) {
         if(entity->properties) {
             int propCount = Vector_Size(entity->properties);
             if(propCount > 0) {
-                char *keys[propCount];
-                SIValue values[propCount];
-
                 for(int prop_idx = 0; prop_idx < propCount; prop_idx+=2) {
                     SIValue *key;
                     SIValue *value;
                     Vector_Get(entity->properties, prop_idx, &key);
                     Vector_Get(entity->properties, prop_idx+1, &value);
 
-                    values[prop_idx/2] = *value;
-                    keys[prop_idx/2] = key->stringval;
+                    Attribute_ID prop_id = Schema_AddAttribute(schema, SCHEMA_EDGE, key->stringval);
+                    GraphEntity_AddProperty((GraphEntity*)e, prop_id, *value);
                 }
-
-                GraphEntity_Add_Properties((GraphEntity*)e, propCount/2, keys, values);
-                LabelStore_UpdateSchema(store, propCount/2, keys);
-                LabelStore_UpdateSchema(allStore, propCount/2, keys);
                 op->result_set->stats.properties_set += propCount/2;
             }
         }
@@ -260,7 +246,6 @@ static void _CommitEdges(OpCreate *op) {
 static void _CommitNewEntities(OpCreate *op) {
     size_t node_count = array_len(op->created_nodes);
     size_t edge_count = array_len(op->created_edges);
-    LabelStore *allStore;
 
     // Lock everything.
     Graph_AcquireWriteLock(op->gc->g);
@@ -276,26 +261,50 @@ static void _CommitNewEntities(OpCreate *op) {
     Graph_ReleaseLock(op->gc->g);
 }
 
+static Record _handoff(OpCreate *op) {
+    Record r = NULL;
+    if(array_len(op->records)) r = array_pop(op->records);
+    return r;
+}
+
 Record OpCreateConsume(OpBase *opBase) {
     OpCreate *op = (OpCreate*)opBase;
     Record r;
 
+    // Return mode, all data was consumed.
+    if(op->records) return _handoff(op);
+
+    // Consume mode.
+    op->records = array_new(Record, 32);
+
+    // No child operation to call.
     if(!op->op.childCount) {
         AST *ast = AST_GetFromLTS();
         r = Record_New(AST_AliasCount(ast));
-    } else {
-        OpBase *child = op->op.children[0];
-        Record childRecord = child->consume(child);
-        if(!childRecord) return NULL;
-        r = childRecord;
-    }
-    
-    /* Create entities. */
-    _CreateNodes(op, r);
-    _CreateEdges(op, r);    
+        /* Create entities. */
+        _CreateNodes(op, r);
+        _CreateEdges(op, r);
 
-    if(op->op.childCount == 0) return NULL;
-    return r;
+        // Save record for later use.
+        op->records = array_append(op->records, r);
+    } else {
+        // Pull data until child is depleted.
+        OpBase *child = op->op.children[0];
+        while((r = child->consume(child))) {
+            /* Create entities. */
+            _CreateNodes(op, r);
+            _CreateEdges(op, r);
+
+            // Save record for later use.
+            op->records = array_append(op->records, r);
+        }
+    }
+
+    // Create entities.
+    _CommitNewEntities(op);
+
+    // Return record.
+    return _handoff(op);
 }
 
 OpResult OpCreateReset(OpBase *ctx) {
@@ -305,8 +314,10 @@ OpResult OpCreateReset(OpBase *ctx) {
 
 void OpCreateFree(OpBase *ctx) {
     OpCreate *op = (OpCreate*)ctx;
-    _CommitNewEntities(op);
-
+    if(op->records) {
+        assert(array_len(op->records) == 0);
+        array_free(op->records);
+    }
     if(op->nodes_to_create) free(op->nodes_to_create);
     if(op->edges_to_create) free(op->edges_to_create);
     

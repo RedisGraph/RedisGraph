@@ -7,7 +7,7 @@
 
 #include "query_graph.h"
 #include "../parser/ast.h"
-#include "../stores/store.h"
+#include "../schema/schema.h"
 #include <assert.h>
 
 GraphEntity* _QueryGraph_GetEntityById(GraphEntity **entity_list, int entity_count, long int id) {
@@ -109,7 +109,7 @@ void _BuildQueryGraphAddNode(const GraphContext *gc,
     /* Set node matrix.
      * TODO: revisit when supporting multiple labels. */
     if(n->label && !n->mat) {
-        LabelStore *s = GraphContext_GetStore(gc, entity->label, STORE_NODE);
+        Schema *s = GraphContext_GetSchema(gc, entity->label, SCHEMA_NODE);
         if(s) {
             n->mat = Graph_GetLabel(g, s->id);
         } else {
@@ -152,7 +152,7 @@ void _BuildQueryGraphAddEdge(const GraphContext *gc,
         Edge_SetRelationID(e, GRAPH_NO_RELATION);
         e->mat = Graph_GetAdjacencyMatrix(g);
     } else {
-        LabelStore *s = GraphContext_GetStore(gc, edge->ge.label, STORE_EDGE);
+        Schema *s = GraphContext_GetSchema(gc, edge->ge.label, SCHEMA_EDGE);
         if(s) {
             Edge_SetRelationID(e, s->id);
             e->mat = Graph_GetRelationMatrix(g, s->id);

@@ -26,6 +26,46 @@ static int _encounteredRecord(ResultSet *set, const Record r) {
     return !newRecord;
 }
 
+/* Redis prints doubles with up to 17 digits of precision, which captures
+ * the inaccuracy of many floating-point numbers (such as 7.3).
+ * By using the %g format and its default precision of 6, we avoid awkward
+ * representations like RETURN 7.3 emitting "7.2999999999999998". */
+static inline void _ResultSet_ReplyWithRoundedDouble(RedisModuleCtx *ctx, double d) {
+    // Get length required to print number
+    int len = snprintf(NULL, 0, "%g", d);
+    char str[len + 1]; // TODO a reusable buffer would be far preferable
+    sprintf(str, "%g", d);
+    // Output string-formatted number
+    RedisModule_ReplyWithStringBuffer(ctx, str, len);
+}
+
+/* This function handles emitting SIValue types through the Redis RESP protocol.
+ * This protocol has unique support for strings, 8-byte integers, and NULL values. */
+static void _ResultSet_ReplyWithScalar(RedisModuleCtx *ctx, const SIValue v) {
+    // Emit the actual value, then the value type (to facilitate client-side parsing)
+    switch (SI_TYPE(v)) {
+        case T_STRING:
+        case T_CONSTSTRING:
+            RedisModule_ReplyWithStringBuffer(ctx, v.stringval, strlen(v.stringval));
+            return;
+        case T_INT64:
+            RedisModule_ReplyWithLongLong(ctx, v.longval);
+            return;
+        case T_DOUBLE:
+            _ResultSet_ReplyWithRoundedDouble(ctx, v.doubleval);
+            return;
+        case T_BOOL:
+            if (v.longval != 0) RedisModule_ReplyWithStringBuffer(ctx, "true", 4);
+            else RedisModule_ReplyWithStringBuffer(ctx, "false", 5);
+            return;
+        case T_NULL:
+            RedisModule_ReplyWithNull(ctx);
+            return;
+        default:
+            assert("Unhandled value type" && false);
+      }
+}
+
 static void _ResultSet_ReplayHeader(const ResultSet *set, const ResultSetHeader *header) {    
     RedisModule_ReplyWithArray(set->ctx, header->columns_len);
     for(int i = 0; i < header->columns_len; i++) {
@@ -45,13 +85,11 @@ static void _ResultSet_ReplayRecord(ResultSet *s, const Record r) {
         return;
     }
 
-    char value[2048] = {0};
     uint column_count = s->header->columns_len;
     RedisModule_ReplyWithArray(s->ctx, column_count);
 
-    for(int i = 0; i < column_count; i++) {
-        int written = SIValue_ToString(Record_GetScalar(r, i), value, 2048);
-        RedisModule_ReplyWithStringBuffer(s->ctx, value, written);
+    for(uint i = 0; i < column_count; i++) {
+        _ResultSet_ReplyWithScalar(s->ctx, Record_GetScalar(r, i));
     }
 }
 
@@ -62,10 +100,6 @@ static void _ResultSet_SetupReply(ResultSet *set) {
 
     // We don't know at this point the number of records, we're about to return.
     RedisModule_ReplyWithArray(set->ctx, REDISMODULE_POSTPONED_ARRAY_LEN);
-    if(set->header) {
-        /* Replay with table header. */
-        _ResultSet_ReplayHeader(set, set->header);
-    }
 }
 
 static void _ResultSet_ReplayStats(RedisModuleCtx* ctx, ResultSet* set) {
@@ -127,9 +161,10 @@ void static _Column_Free(Column* column) {
     rm_free(column);
 }
 
-static ResultSetHeader* _NewResultSetHeader(const AST *ast) {
-    if(!ast->returnNode) return NULL;
+void ResultSet_CreateHeader(ResultSet *resultset) {
+    assert(resultset->header == NULL && resultset->recordCount == 0);
 
+    const AST *ast = AST_GetFromLTS();
     ResultSetHeader* header = rm_malloc(sizeof(ResultSetHeader));
     header->columns_len = 0;
     header->columns = NULL;
@@ -152,7 +187,9 @@ static ResultSetHeader* _NewResultSetHeader(const AST *ast) {
         header->columns[i] = column;
     }
 
-    return header;
+    resultset->header = header;
+    /* Replay with table header. */
+    _ResultSet_ReplayHeader(resultset, header);
 }
 
 static void _ResultSetHeader_Free(ResultSetHeader* header) {
@@ -172,6 +209,10 @@ bool ResultSet_Full(const ResultSet* set) {
     return (set->limit != RESULTSET_UNLIMITED && set->recordCount >= set->limit);
 }
 
+bool ResultSet_Limited(const ResultSet* set) {
+    return (set && set->limit != RESULTSET_UNLIMITED);
+}
+
 ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx) {
     ResultSet* set = (ResultSet*)malloc(sizeof(ResultSet));
     set->ctx = ctx;
@@ -181,7 +222,7 @@ ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx) {
     set->skipped = 0;
     set->distinct = (ast->returnNode && ast->returnNode->distinct);
     set->recordCount = 0;    
-    set->header = _NewResultSetHeader(ast);
+    set->header = NULL;
     set->bufferLen = 2048;
     set->buffer = malloc(set->bufferLen);
 
@@ -199,10 +240,6 @@ ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx) {
     _ResultSet_SetupReply(set);
 
     return set;
-}
-
-bool ResultSet_Limited(const ResultSet* set) {
-    return (set && set->limit != RESULTSET_UNLIMITED);
 }
 
 int ResultSet_AddRecord(ResultSet* set, Record r) {
@@ -234,9 +271,8 @@ void ResultSet_Replay(ResultSet* set) {
 void ResultSet_Free(ResultSet *set) {
     if(!set) return;
 
-    _ResultSetHeader_Free(set->header);
-
+    free(set->buffer);
+    if(set->header) _ResultSetHeader_Free(set->header);
     if(set->trie != NULL) TrieMap_Free(set->trie, TrieMap_NOP_CB);
-    free(set->buffer);    
     free(set);
 }

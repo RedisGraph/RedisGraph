@@ -19,7 +19,7 @@ static void _setupTraversedRelations(CondTraverse *op) {
     if(op->edgeRelationCount > 0) {
         op->edgeRelationTypes = array_new(int , op->edgeRelationCount);
         for(int i = 0; i < op->edgeRelationCount; i++) {
-            LabelStore *s = GraphContext_GetStore(gc, e->labels[i], STORE_EDGE);
+            Schema *s = GraphContext_GetSchema(gc, e->labels[i], SCHEMA_EDGE);
             if(!s) continue;
             op->edgeRelationTypes = array_append(op->edgeRelationTypes, s->id);
         }
@@ -61,11 +61,7 @@ void _traverse(CondTraverse *op) {
     else GxB_MatrixTupleIter_reuse(op->iter, op->M);
 
     // Clear filter matrix.
-    for(int i = 0; i < op->recordsLen; i++) {
-        Node *n = Record_GetNode(op->records[i], op->srcNodeRecIdx);
-        NodeID srcId = ENTITY_GET_ID(n);
-        GxB_Matrix_Delete(op->F, srcId, i);
-    }
+    GrB_Matrix_clear(op->F);
 }
 
 // Determin the maximum number of records

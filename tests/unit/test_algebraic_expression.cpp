@@ -140,29 +140,22 @@ class AlgebraicExpressionTest: public ::testing::Test {
         Graph *g = Graph_New(16, 16);
         Graph_AcquireWriteLock(g);
         size_t person_count = 6;
-        char *persons[6] = {"Brian", "Stipe", "Max", "Robert", "Francis", "Daniel"};
         size_t country_count = 5;
-        char *countries[5] = {"Israel", "USA", "Japan", "China", "Germany"};
         size_t node_count = person_count + country_count;
 
         /* Introduce person and country labels. */
         int person_label = Graph_AddLabel(g);
         int country_label = Graph_AddLabel(g);
-        char *default_property_name = (char *)"name";        
         Graph_AllocateNodes(g, node_count);
 
         for(int i = 0; i < person_count; i++) {
             Node n;
             Graph_CreateNode(g, person_label, &n);
-            SIValue name = SI_ConstStringVal(persons[i]);
-            GraphEntity_Add_Properties((GraphEntity*)&n, 1, &default_property_name, &name);
         }
 
         for(int i = 0; i < country_count; i++) {
             Node n;
             Graph_CreateNode(g, country_label, &n);
-            SIValue name = SI_ConstStringVal(countries[i]);
-            GraphEntity_Add_Properties((GraphEntity*)&n, 1, &default_property_name, &name);
         }
 
         // Creates a relation matrices.

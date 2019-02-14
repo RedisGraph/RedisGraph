@@ -34,36 +34,19 @@ class SkiplistTest: public ::testing::Test {
         Alloc_Reset();
     }
 
-    char *words[8] = {"foo", "bar", "zap", "pomo",
-                     "pera", "arancio", "limone", NULL};
-    const char *node_label = "default_label";
-    char *prop_key = "default_prop_key";
+    char *words[8] = {"foo", "bar", "zap", "pomo", "pera", "arancio", "limone", NULL};
 
     skiplist* build_skiplist(void) {
       skiplist *sl = skiplistCreate(compareStrings, compareNodes, cloneKey, freeKey);
-      Node *node_a, *node_b;
 
       for (long i = 0; words[i] != NULL; i ++) {
-        node_a = Node_New(node_label, NULL);
-        node_a->entity = (Entity*)malloc(sizeof(Entity));
-        node_a->entity->id = 10 + i;
-        node_a->entity->prop_count = 0;
-        node_a->entity->properties = NULL;
-
         SIValue *node_a_prop = (SIValue*)malloc(sizeof(SIValue));
         *node_a_prop = SIValue_FromString(words[i]);
-        GraphEntity_Add_Properties((GraphEntity*)node_a, 1, &prop_key, node_a_prop);
-        skiplistInsert(sl, node_a_prop, ENTITY_GET_ID(node_a));
+        skiplistInsert(sl, node_a_prop, 10 + i);
 
-        node_b = Node_New(node_label, NULL);
-        node_b->entity = (Entity*)malloc(sizeof(Entity));
-        node_b->entity->id = i;
-        node_b->entity->prop_count = 0;
-        node_b->entity->properties = NULL;
         SIValue *node_b_prop = (SIValue*)malloc(sizeof(SIValue));
         *node_b_prop = SIValue_FromString(words[6 - i]);
-        GraphEntity_Add_Properties((GraphEntity*)node_b, 1, &prop_key, node_b_prop);
-        skiplistInsert(sl, node_b_prop, ENTITY_GET_ID(node_b));
+        skiplistInsert(sl, node_b_prop, i);
       }
 
       return sl;
@@ -77,30 +60,21 @@ class SkiplistTest: public ::testing::Test {
 };
 
 TEST_F(SkiplistTest, SkiplistRange) {
-  skiplist *sl = skiplistCreate(compareNumerics, compareNodes, cloneKey, freeKey);
-  Node *cur_node;
   SIValue cur_prop;
-
-  char *keys[] = {"5.5", "0", "-30.2", "7", "1", "2", "-1.5", NULL};
+  skiplist *sl = skiplistCreate(compareNumerics, compareNodes, cloneKey, freeKey);
 
   // The IDs we will assign to the Node values in the skiplist
   // (defined as the order the keys should be in after sorting)
-  long ids[] = {5, 2, 0, 6, 3, 4, 1};
+  EntityID ids[] = {5, 2, 0, 6, 3, 4, 1};
+  char *keys[] = {"5.5", "0", "-30.2", "7", "1", "2", "-1.5", NULL};
 
   for (long i = 0; keys[i] != NULL; i ++) {
-    cur_node = Node_New(node_label, NULL);
-    cur_node->entity = (Entity*)malloc(sizeof(Entity));
-    cur_node->entity->id = ids[i];
-    cur_node->entity->prop_count = 0;
-    cur_node->entity->properties = NULL;
-
     cur_prop = SIValue_FromString(keys[i]);
-    GraphEntity_Add_Properties((GraphEntity*)cur_node, 1, &prop_key, &cur_prop);
-    skiplistInsert(sl, &cur_prop, ENTITY_GET_ID(cur_node));
+    skiplistInsert(sl, &cur_prop, ids[i]);
   }
 
-  GrB_Index *ret_node;
-  long last_id = 3;
+  EntityID *ret_node;
+  EntityID last_id = 3;
   // Iterate over a range of keys [1, INF)
   SIValue *min = (SIValue*)malloc(sizeof(SIValue));
   *min = SI_DoubleVal(1);

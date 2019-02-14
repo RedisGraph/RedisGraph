@@ -49,9 +49,7 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     new_ast = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
 
     // Retrieve the GraphContext and acquire a read lock.
-    // RedisModule_ThreadSafeContextLock(ctx);
     gc = GraphContext_Retrieve(ctx, graphname);
-    // RedisModule_ThreadSafeContextUnlock(ctx);
     if(!gc) {
         RedisModule_ReplyWithError(ctx, "key doesn't contains a graph object.");
         goto cleanup;

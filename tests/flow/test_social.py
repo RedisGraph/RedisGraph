@@ -6,6 +6,7 @@ from redisgraph import Graph
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../demo/social/')
 
+from .reversepattern import ReversePattern
 from base import FlowTestsBase
 import social_queries as queries
 import social_utils
@@ -38,14 +39,31 @@ class SocialFlowTest(FlowTestsBase):
         redis_graph = Graph(social_utils.graph_name, redis_con)
         social_utils.populate_graph(redis_con, redis_graph)
 
+        # cls.r = redis.Redis()
+        # redis_graph = Graph(social_utils.graph_name, cls.r)
+        # social_utils.populate_graph(cls.r, redis_graph)
+
     @classmethod
     def tearDownClass(cls):
         if dis_redis is not None:
             dis_redis.stop()
     
+    def assert_reversed_pattern(self, query, resultset):
+        # Test reversed pattern query.
+        reversed_query = ReversePattern().reverse_query_pattern(query)
+        # print "reversed_query: %s" % reversed_query
+        actual_result = redis_graph.query(reversed_query)
+
+        # assert result set
+        self.assertEqual(resultset.result_set, actual_result.result_set)
+
+        # assert query run time
+        self._assert_equalish(resultset.run_time_ms, actual_result.run_time_ms)
+        
     def test00_graph_entities(self):
         global redis_graph
-        actual_result = redis_graph.query(queries.graph_entities.query)
+        q = queries.graph_entities.query
+        actual_result = redis_graph.query(q)
 
         # assert result set
         self._assert_only_expected_results_are_in_actual_results(
@@ -53,22 +71,31 @@ class SocialFlowTest(FlowTestsBase):
             queries.graph_entities)
 
         # assert query run time
-        self._assert_run_time(actual_result, queries.subset_of_people)
+        self._assert_run_time(actual_result, queries.graph_entities)
         
+        # assert reversed pattern.
+        self.assert_reversed_pattern(q, actual_result)
+
     def test01_relation_type_strings(self):
         global redis_graph
-        actual_result = redis_graph.query(queries.relation_type_counts.query)
+        q = queries.relation_type_counts.query
+        actual_result = redis_graph.query(q)
 
-         # assert result set
+        # assert result set
         self._assert_only_expected_results_are_in_actual_results(
             actual_result,
             queries.relation_type_counts)
+
         # assert query run time
         self._assert_run_time(actual_result, queries.relation_type_counts)
 
+        # assert reversed pattern.
+        self.assert_reversed_pattern(q, actual_result)
+
     def test02_subset_of_people(self):
         global redis_graph
-        actual_result = redis_graph.query(queries.subset_of_people.query)
+        q = queries.subset_of_people.query
+        actual_result = redis_graph.query(q)
 
         # assert result set
         self._assert_only_expected_results_are_in_actual_results(
@@ -78,9 +105,13 @@ class SocialFlowTest(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.subset_of_people)
 
-    def test02_my_friends(self):
+        # assert reversed pattern.
+        self.assert_reversed_pattern(q, actual_result)
+
+    def test03_my_friends(self):
         global redis_graph
-        actual_result = redis_graph.query(queries.my_friends_query.query)
+        q = queries.my_friends_query.query
+        actual_result = redis_graph.query(q)
 
         # assert result set
         self._assert_only_expected_results_are_in_actual_results(
@@ -90,9 +121,13 @@ class SocialFlowTest(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.my_friends_query)
 
+        # assert reversed pattern.
+        self.assert_reversed_pattern(q, actual_result)
+
     def test04_friends_of_friends(self):
         global redis_graph
-        actual_result = redis_graph.query(queries.friends_of_friends_query.query)
+        q = queries.friends_of_friends_query.query
+        actual_result = redis_graph.query(q)
 
         # assert result set
         self._assert_only_expected_results_are_in_actual_results(
@@ -101,10 +136,15 @@ class SocialFlowTest(FlowTestsBase):
 
         # assert query run time
         self._assert_run_time(actual_result, queries.friends_of_friends_query)
+        runtime = actual_result.run_time_ms
+
+        # assert reversed pattern.
+        self.assert_reversed_pattern(q, actual_result)
 
     def test05_friends_of_friends_single_and_over_30(self):
         global redis_graph
-        actual_result = redis_graph.query(queries.friends_of_friends_single_and_over_30_query.query)
+        q = queries.friends_of_friends_single_and_over_30_query.query
+        actual_result = redis_graph.query(q)
 
         # assert result set
         self._assert_only_expected_results_are_in_actual_results(
@@ -114,9 +154,13 @@ class SocialFlowTest(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.friends_of_friends_single_and_over_30_query)
 
+        # assert reversed pattern.
+        self.assert_reversed_pattern(q, actual_result)
+
     def test06_friends_of_friends_visited_amsterdam_and_single(self):
         global redis_graph
-        actual_result = redis_graph.query(queries.friends_of_friends_visited_amsterdam_and_single_query.query)
+        q = queries.friends_of_friends_visited_amsterdam_and_single_query.query
+        actual_result = redis_graph.query(q)
 
         # assert result set
         self._assert_only_expected_results_are_in_actual_results(
@@ -126,9 +170,13 @@ class SocialFlowTest(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.friends_of_friends_visited_amsterdam_and_single_query)
 
+        # assert reversed pattern.
+        self.assert_reversed_pattern(q, actual_result)
+
     def test07_friends_visited_same_places_as_me(self):
         global redis_graph
-        actual_result = redis_graph.query(queries.friends_visited_same_places_as_me_query.query)
+        q = queries.friends_visited_same_places_as_me_query.query
+        actual_result = redis_graph.query(q)
 
         # assert result set
         self._assert_only_expected_results_are_in_actual_results(
@@ -138,9 +186,13 @@ class SocialFlowTest(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.friends_visited_same_places_as_me_query)
 
+        # assert reversed pattern.
+        self.assert_reversed_pattern(q, actual_result)
+
     def test08_friends_older_than_me(self):
         global redis_graph
-        actual_result = redis_graph.query(queries.friends_older_than_me_query.query)
+        q = queries.friends_older_than_me_query.query
+        actual_result = redis_graph.query(q)
 
         # assert result set
         self._assert_only_expected_results_are_in_actual_results(
@@ -150,9 +202,13 @@ class SocialFlowTest(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.friends_older_than_me_query)
 
+        # assert reversed pattern.
+        self.assert_reversed_pattern(q, actual_result)
+
     def test09_how_many_countries_each_friend_visited(self):
         global redis_graph
-        actual_result = redis_graph.query(queries.how_many_countries_each_friend_visited_query.query)
+        q = queries.how_many_countries_each_friend_visited_query.query
+        actual_result = redis_graph.query(q)
 
         # assert result set
         self._assert_only_expected_results_are_in_actual_results(
@@ -162,28 +218,13 @@ class SocialFlowTest(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.how_many_countries_each_friend_visited_query)
 
-    def test10_happy_birthday(self):
+        # assert reversed pattern.
+        self.assert_reversed_pattern(q, actual_result)
+
+    def test10_visit_purpose_of_each_country_i_visited(self):
         global redis_graph
-        actual_result = redis_graph.query(queries.happy_birthday_query.query)
-
-        # assert query run time
-        self._assert_run_time(actual_result, queries.happy_birthday_query)
-
-    def test11_friends_age_statistics(self):
-        global redis_graph
-        actual_result = redis_graph.query(queries.friends_age_statistics_query.query)
-
-        # assert result set
-        self._assert_only_expected_results_are_in_actual_results(
-            actual_result,
-            queries.friends_age_statistics_query)
-
-        # assert query run time
-        self._assert_run_time(actual_result, queries.friends_age_statistics_query)
-
-    def test12_visit_purpose_of_each_country_i_visited(self):
-        global redis_graph
-        actual_result = redis_graph.query(queries.visit_purpose_of_each_country_i_visited_query.query)
+        q = queries.visit_purpose_of_each_country_i_visited_query.query
+        actual_result = redis_graph.query(q)
 
         # assert result set
         self._assert_only_expected_results_are_in_actual_results(
@@ -192,10 +233,14 @@ class SocialFlowTest(FlowTestsBase):
 
         # assert query run time
         self._assert_run_time(actual_result, queries.visit_purpose_of_each_country_i_visited_query)
+        
+        # assert reversed pattern.
+        self.assert_reversed_pattern(q, actual_result)
 
-    def test13_who_was_on_business_trip(self):
+    def test11_who_was_on_business_trip(self):
         global redis_graph
-        actual_result = redis_graph.query(queries.who_was_on_business_trip_query.query)
+        q = queries.who_was_on_business_trip_query.query
+        actual_result = redis_graph.query(q)
 
         # assert result set
         self._assert_only_expected_results_are_in_actual_results(
@@ -205,11 +250,15 @@ class SocialFlowTest(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.who_was_on_business_trip_query)
 
-    def test14_number_of_vacations_per_person(self):
+        # assert reversed pattern.
+        self.assert_reversed_pattern(q, actual_result)
+
+    def test12_number_of_vacations_per_person(self):
         global redis_graph
         NUM_EXPECTED_RESULTS = 6
 
-        actual_result = redis_graph.query(queries.number_of_vacations_per_person_query.query)
+        q = queries.number_of_vacations_per_person_query.query
+        actual_result = redis_graph.query(q)
 
         # assert result set
         self._assert_actual_results_contained_in_expected_results(
@@ -220,10 +269,14 @@ class SocialFlowTest(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.number_of_vacations_per_person_query)
 
-    def test15_all_reachable_friends_query(self):
+        # assert reversed pattern.
+        self.assert_reversed_pattern(q, actual_result)
+
+    def test13_all_reachable_friends_query(self):
         global redis_graph
 
-        actual_result = redis_graph.query(queries.all_reachable_friends_query.query)
+        q = queries.all_reachable_friends_query.query
+        actual_result = redis_graph.query(q)
 
         # assert result set
         self._assert_only_expected_results_are_in_actual_results(
@@ -232,11 +285,15 @@ class SocialFlowTest(FlowTestsBase):
 
         # assert query run time
         self._assert_run_time(actual_result, queries.all_reachable_friends_query)
+
+        # assert reversed pattern.
+        self.assert_reversed_pattern(q, actual_result)
     
-    def test16_all_reachable_countries_query(self):
+    def test14_all_reachable_countries_query(self):
         global redis_graph
 
-        actual_result = redis_graph.query(queries.all_reachable_countries_query.query)
+        q = queries.all_reachable_countries_query.query
+        actual_result = redis_graph.query(q)
 
         # assert result set
         self._assert_only_expected_results_are_in_actual_results(
@@ -245,11 +302,15 @@ class SocialFlowTest(FlowTestsBase):
 
         # assert query run time
         self._assert_run_time(actual_result, queries.all_reachable_countries_query)
-    
-    def test17_reachable_countries_or_people_query(self):
+
+        # assert reversed pattern.
+        self.assert_reversed_pattern(q, actual_result)
+
+    def test15_reachable_countries_or_people_query(self):
         global redis_graph
 
-        actual_result = redis_graph.query(queries.reachable_countries_or_people_query.query)
+        q = queries.reachable_countries_or_people_query.query
+        actual_result = redis_graph.query(q)
 
         # assert result set
         self._assert_only_expected_results_are_in_actual_results(
@@ -259,10 +320,14 @@ class SocialFlowTest(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.reachable_countries_or_people_query)
 
-    def test18_all_reachable_countries_or_people_query(self):
+        # assert reversed pattern.
+        self.assert_reversed_pattern(q, actual_result)
+
+    def test16_all_reachable_countries_or_people_query(self):
         global redis_graph
 
-        actual_result = redis_graph.query(queries.all_reachable_countries_or_people_query.query)
+        q = queries.all_reachable_countries_or_people_query.query
+        actual_result = redis_graph.query(q)
 
         # assert result set
         self._assert_only_expected_results_are_in_actual_results(
@@ -272,10 +337,14 @@ class SocialFlowTest(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.all_reachable_countries_or_people_query)
 
-    def test19_all_reachable_entities_query(self):
+        # assert reversed pattern.
+        self.assert_reversed_pattern(q, actual_result)
+
+    def test17_all_reachable_entities_query(self):
         global redis_graph
 
-        actual_result = redis_graph.query(queries.all_reachable_entities_query.query)
+        q = queries.all_reachable_entities_query.query
+        actual_result = redis_graph.query(q)
 
         # assert result set
         self._assert_only_expected_results_are_in_actual_results(
@@ -285,23 +354,53 @@ class SocialFlowTest(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.all_reachable_entities_query)
 
+        # assert reversed pattern.
+        self.assert_reversed_pattern(q, actual_result)
+
+    def test18_happy_birthday(self):
+        global redis_graph
+        q = queries.happy_birthday_query.query
+        actual_result = redis_graph.query(q)
+
+        # assert query run time
+        self._assert_run_time(actual_result, queries.happy_birthday_query)
+
+    def test19_friends_age_statistics(self):
+        global redis_graph
+        q = queries.friends_age_statistics_query.query
+        actual_result = redis_graph.query(q)
+
+        # assert result set
+        self._assert_only_expected_results_are_in_actual_results(
+            actual_result,
+            queries.friends_age_statistics_query)
+
+        # assert query run time
+        self._assert_run_time(actual_result, queries.friends_age_statistics_query)
+        
+        # assert reversed pattern.
+        self.assert_reversed_pattern(q, actual_result)
+
     def test20_delete_friendships(self):
         global redis_graph
-        actual_result = redis_graph.query(queries.delete_friendships_query.query)
+        q = queries.delete_friendships_query.query
+        actual_result = redis_graph.query(q)
 
         # assert query run time
         self._assert_run_time(actual_result, queries.delete_friendships_query)
 
     def test21_delete_person(self):
         global redis_graph
-        actual_result = redis_graph.query(queries.delete_person_query.query)
+        q = queries.delete_person_query.query
+        actual_result = redis_graph.query(q)
 
         # assert query run time
         self._assert_run_time(actual_result, queries.delete_person_query)
 
     def test22_post_delete_label(self):
         global redis_graph
-        actual_result = redis_graph.query(queries.post_delete_label_query.query)
+        q = queries.post_delete_label_query.query
+        actual_result = redis_graph.query(q)
 
          # assert result set
         self._assert_only_expected_results_are_in_actual_results(
