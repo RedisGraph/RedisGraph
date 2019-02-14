@@ -194,15 +194,13 @@ SIValue SIValue_Divide(const SIValue a, const SIValue b) {
 int SIValue_Compare(const SIValue a, const SIValue b) {
   /* In order to be comparable, both SIValues must be strings,
    * booleans, or numerics. */
-  SIType t = a.type ^ b.type;
-  if (!t) {
-    // Both inputs have the same type
+  if (a.type == b.type) {
     switch (a.type) {
       case T_INT64:
       case T_BOOL:
         return a.longval - b.longval;
       case T_DOUBLE:
-        return COMPARE_RETVAL(a.doubleval - b.doubleval);
+        return SAFE_COMPARISON_RESULT(a.doubleval - b.doubleval);
       case T_STRING:
       case T_CONSTSTRING:
         // Both inputs are strings of the same SIType
@@ -211,12 +209,14 @@ int SIValue_Compare(const SIValue a, const SIValue b) {
         // Both pointers were of an incomparable type, like a pointer
         return DISJOINT;
     }
-  } else if (t == SI_NUMERIC) {
-    // Both inputs are of different numeric types
+  }
+
+  // The inputs have different SITypes - compare them if they
+  // are both numerics or both strings of differing types
+  if (SI_TYPE(a) & SI_NUMERIC && SI_TYPE(b) & SI_NUMERIC) {
     double diff = SI_GET_NUMERIC(a) - SI_GET_NUMERIC(b);
-    return COMPARE_RETVAL(diff);
-  } else if (t == SI_STRING) {
-    // Both inputs are strings of differing SITypes
+    return SAFE_COMPARISON_RESULT(diff);
+  } else if (SI_TYPE(a) & SI_STRING && SI_TYPE(b) & SI_STRING) {
     return strcmp(a.stringval, b.stringval);
   }
 

@@ -46,28 +46,15 @@ void _test_string(const AR_ExpNode *exp, const char *expected) {
 
 void _test_ar_func(AR_ExpNode *root, SIValue expected, const Record r) {
   SIValue res = AR_EXP_Evaluate(root, r);
-  // Compare values directly if their types are equal
-  if (SI_TYPE(res) == SI_TYPE(expected)) {
-    switch (SI_TYPE(res)) {
-      case T_DOUBLE:
-        ASSERT_EQ(res.doubleval, expected.doubleval);
-        return;
-      case T_INT64:
-        ASSERT_EQ(res.longval, expected.longval);
-        return;
-      case T_NULL:
-        return; // Type check was sufficient
-      default:
-        FAIL() << "Tried to compare disjoint types";
-    }
+  if (SI_TYPE(res) == T_NULL && SI_TYPE(expected) == T_NULL) {
+    // NULLs implicitly match
+    return;
+  } else if (SI_TYPE(res) & SI_NUMERIC && SI_TYPE(expected) & SI_NUMERIC) {
+    // Compare numerics by internal value
+    ASSERT_EQ(SI_GET_NUMERIC(res), SI_GET_NUMERIC(expected));
+  } else {
+    FAIL() << "Tried to compare disjoint types";
   }
-
-  // Compare double representations if types don't match
-  double expected_double;
-  double res_double;
-  ASSERT_TRUE(SIValue_ToDouble(&expected, &expected_double));
-  ASSERT_TRUE(SIValue_ToDouble(&res, &res_double));
-  ASSERT_EQ(res_double, expected_double);
 }
 
 AR_ExpNode* _exp_from_query(const char *query) {

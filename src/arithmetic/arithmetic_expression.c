@@ -419,20 +419,8 @@ SIValue AR_DIV(SIValue *argv, int argc) {
 SIValue AR_ABS(SIValue *argv, int argc) {
     SIValue result = argv[0];
     if (!_validate_numeric(result)) return SI_NullVal();
-    switch (SI_TYPE(result)) {
-        case T_DOUBLE:
-            if (result.doubleval < 0) {
-                result.doubleval = -result.doubleval;
-            }
-            return result;
-        case T_INT64:
-            if (result.longval < 0) {
-                result.longval = -result.longval;
-            }
-            return result;
-        default:
-            return SI_NullVal();
-    }
+    if(SI_GET_NUMERIC(argv[0]) < 0) return SIValue_Multiply(argv[0], SI_LongVal(-1));
+    return argv[0];
 }
 
 SIValue AR_CEIL(SIValue *argv, int argc) {
@@ -468,7 +456,7 @@ SIValue AR_ROUND(SIValue *argv, int argc) {
 
 SIValue AR_SIGN(SIValue *argv, int argc) {
     if (!_validate_numeric(argv[0])) return SI_NullVal();
-    int64_t sign = VAL_SIGN(SI_GET_NUMERIC(argv[0]));
+    int64_t sign = SIGN(SI_GET_NUMERIC(argv[0]));
     return SI_LongVal(sign);
 }
 

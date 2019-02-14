@@ -23,7 +23,7 @@ typedef enum {
   // T_INT32 = 0x002, // unused
   T_INT64 = 0x004,
   // T_UINT = 0x008, // unused
-  T_BOOL = 0x010, // Instance of T_INT64
+  T_BOOL = 0x010, // shares 'longval' representation in SIValue union
   // T_FLOAT = 0x020, // unused
   T_DOUBLE = 0x040,
   T_PTR = 0x080,
@@ -38,12 +38,14 @@ typedef enum {
  * assigning it a type. */
 #define SI_GET_NUMERIC(v) ((v).type == T_DOUBLE ? (v).doubleval : (v).longval)
 
+/* Build an integer return value for a comparison routine in the style of strcmp.
+ * This is necessary to construct safe returns when the delta between
+ * two values is < 1.0 (and would thus be rounded to 0). */
+#define SAFE_COMPARISON_RESULT(a) SIGN(a)
+
 /* Returns 1 if argument is positive, -1 if argument is negative,
- * and 0 if argument is zero (matching the return style of the strcmp family).
- * This is necessary to construct safe integer returns when the delta between
- * two double values is < 1.0 (and would thus be rounded to 0). */
-#define COMPARE_RETVAL(a) VAL_SIGN(a)
-#define VAL_SIGN(a) ((a) > 0) - ((a) < 0)
+ * and 0 if argument is zero.*/
+#define SIGN(a) ((a) > 0) - ((a) < 0)
 
 #define DISJOINT INT_MAX
 

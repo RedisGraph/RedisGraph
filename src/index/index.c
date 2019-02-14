@@ -34,7 +34,7 @@ int compareNumerics(SIValue *a, SIValue *b) {
     return a->longval - b->longval;
   }
   double diff = SI_GET_NUMERIC(*a) - SI_GET_NUMERIC(*b);
-  return COMPARE_RETVAL(diff);
+  return SAFE_COMPARISON_RESULT(diff);
 }
 
 /* The index must maintain its own copy of the indexed SIValue
