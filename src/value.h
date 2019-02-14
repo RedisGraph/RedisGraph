@@ -20,46 +20,39 @@
 typedef enum {
   T_NULL = 0,
   T_STRING = 0x001,
-  T_INT32 = 0x002,
+  // T_INT32 = 0x002, // unused
   T_INT64 = 0x004,
-  T_UINT = 0x008,
-  T_BOOL = 0x010,
-  T_FLOAT = 0x020,
+  // T_UINT = 0x008, // unused
+  T_BOOL = 0x010, // shares 'longval' representation in SIValue union
+  // T_FLOAT = 0x020, // unused
   T_DOUBLE = 0x040,
   T_PTR = 0x080,
   T_CONSTSTRING = 0x100,
-
-  // special types for +inf and -inf on all types:
-  T_INF = 0x200,
-  T_NEGINF = 0x400,
-
 } SIType;
 
 #define SI_STRING (T_STRING | T_CONSTSTRING)
-#define SI_NUMERIC (T_INT32 | T_INT64 | T_UINT | T_FLOAT | T_DOUBLE)
+#define SI_NUMERIC (T_INT64 | T_DOUBLE)
 #define SI_TYPE(value) (value).type
 
-/* Returns true if aVal and bVal are of the same type, are both string types, or are both numeric types. */
-#define SI_COMPARABLE(aVal, bVal) ((aVal).type == (bVal).type || \
-		(((aVal).type & SI_NUMERIC) && (bVal).type & SI_NUMERIC) || \
-		(((aVal).type & SI_STRING) && (bVal).type & SI_STRING))
+/* Retrieve the numeric associated with an SIValue without explicitly
+ * assigning it a type. */
+#define SI_GET_NUMERIC(v) ((v).type == T_DOUBLE ? (v).doubleval : (v).longval)
+
+/* Build an integer return value for a comparison routine in the style of strcmp.
+ * This is necessary to construct safe returns when the delta between
+ * two values is < 1.0 (and would thus be rounded to 0). */
+#define SAFE_COMPARISON_RESULT(a) SIGN(a)
 
 /* Returns 1 if argument is positive, -1 if argument is negative,
- * and 0 if argument is zero (matching the return style of the strcmp family).
- * This is necessary to construct safe integer returns when the delta between
- * two double values is < 1.0 (and would thus be rounded to 0). */
-#define COMPARE_RETVAL(a) ((a) > 0) - ((a) < 0)
+ * and 0 if argument is zero.*/
+#define SIGN(a) ((a) > 0) - ((a) < 0)
 
 #define DISJOINT INT_MAX
 
 typedef struct {
   union {
-    int32_t intval;
     int64_t longval;
-    u_int64_t uintval;
-    float floatval;
     double doubleval;
-    int boolval;
     char *stringval;
     void* ptrval;
   };
@@ -67,10 +60,7 @@ typedef struct {
 } SIValue;
 
 /* Functions to construct an SIValue from a specific input type. */
-SIValue SI_IntVal(int i);
 SIValue SI_LongVal(int64_t i);
-SIValue SI_UintVal(u_int64_t i);
-SIValue SI_FloatVal(float f);
 SIValue SI_DoubleVal(double d);
 SIValue SI_NullVal(void);
 SIValue SI_BoolVal(int b);
@@ -86,17 +76,11 @@ SIValue SI_ShallowCopy(SIValue v);         // Don't duplicate any inputs
 int SIValue_IsNull(SIValue v);
 int SIValue_IsNullPtr(SIValue *v);
 
-/* Try to parse a value by string. The value's type should be set to
-* anything other than T_NULL, to force strict parsing. */
-int SI_ParseValue(SIValue *v, char *str);
-
 int SIValue_ToString(SIValue v, char *buf, size_t len);
 
-/* Try to read a value as a double. */
+/* Try to read a value as a double.
+ * TODO Only used by agg_funcs, consider refactoring. */
 int SIValue_ToDouble(const SIValue *v, double *d);
-
-/* Try to internally convert a value to a double. */
-int SIValue_ConvertToDouble(SIValue *v);
 
 /* Try to parse a value by string. */
 SIValue SIValue_FromString(const char *s);
@@ -107,16 +91,25 @@ size_t SIValue_StringConcatLen(SIValue* strings, unsigned int string_count);
 /* Concats strings as a comma separated string. */
 size_t SIValue_StringConcat(SIValue* strings, unsigned int string_count, char *buf, size_t buf_len);
 
+/* Arithmetic operators for numeric SIValues.
+ * The caller is responsible for ensuring that the arguments
+ * are numeric types.
+ * If both arguments are integer types, the result is as well,
+ * otherwise a double is returned. */
+SIValue SIValue_Add(const SIValue a, const SIValue b);
+SIValue SIValue_Subtract(const SIValue a, const SIValue b);
+SIValue SIValue_Multiply(const SIValue a, const SIValue b);
+/* SIValue_Divide always returns a double value. */
+SIValue SIValue_Divide(const SIValue a, const SIValue b);
+
 /* Compares two SIValues and returns a value similar to strcmp, or
  * the macro DISJOINT if the values were not of comparable types. */
-int SIValue_Compare(SIValue a, SIValue b);
+int SIValue_Compare(const SIValue a, const SIValue b);
 
 /* Return a strcmp-style integer value indicating which value is greater according
  * to Cypher's comparability property if applicable, and its orderability property if not.
  * Under Cypher's orderability, where string < boolean < numeric < NULL. */
 int SIValue_Order(const SIValue a, const SIValue b);
-
-void SIValue_Print(FILE *outstream, SIValue *v);
 
 /* Free an SIValue's internal property if that property is a heap allocation owned
  * by this object. This is only the case when the type is T_STRING. */

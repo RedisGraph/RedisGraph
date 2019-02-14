@@ -48,23 +48,14 @@ static void _ResultSet_ReplyWithScalar(RedisModuleCtx *ctx, const SIValue v) {
         case T_CONSTSTRING:
             RedisModule_ReplyWithStringBuffer(ctx, v.stringval, strlen(v.stringval));
             return;
-        case T_INT32:
-            RedisModule_ReplyWithLongLong(ctx, v.intval);
-            return;
         case T_INT64:
             RedisModule_ReplyWithLongLong(ctx, v.longval);
-            return;
-        case T_UINT:
-            RedisModule_ReplyWithLongLong(ctx, v.uintval);
-            return;
-        case T_FLOAT:
-            _ResultSet_ReplyWithRoundedDouble(ctx, (double)v.floatval);
             return;
         case T_DOUBLE:
             _ResultSet_ReplyWithRoundedDouble(ctx, v.doubleval);
             return;
         case T_BOOL:
-            if (v.boolval == true) RedisModule_ReplyWithStringBuffer(ctx, "true", 4);
+            if (v.longval != 0) RedisModule_ReplyWithStringBuffer(ctx, "true", 4);
             else RedisModule_ReplyWithStringBuffer(ctx, "false", 5);
             return;
         case T_NULL:

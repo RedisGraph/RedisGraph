@@ -118,7 +118,7 @@ class GraphMergeFlowTest(FlowTestsBase):
         query = """MATCH (charlie { name: 'Charlie Sheen' }) RETURN charlie"""
         actual_result = redis_graph.query(query)
         expected_result = [['charlie.age', 'charlie.name', 'charlie.lastname'],
-                           ['11', 'Charlie Sheen', 'Sheen']]
+                           [11, 'Charlie Sheen', 'Sheen']]
         assert(actual_result.result_set == expected_result)
 
     # Update new entity
@@ -134,7 +134,7 @@ class GraphMergeFlowTest(FlowTestsBase):
         query = """MATCH (tamara:ACTOR { name: 'Tamara Tunie' }) RETURN tamara"""
         actual_result = redis_graph.query(query)
         expected_result = [['tamara.name', 'tamara.age'],
-                           ['Tamara Tunie', '59']]
+                           ['Tamara Tunie', 59]]
         assert(actual_result.result_set == expected_result)
 
     # Create a single edge and additional two nodes.
@@ -160,7 +160,7 @@ class GraphMergeFlowTest(FlowTestsBase):
         query = """MATCH (franklin:ACTOR { name: 'Franklin Cover' })-[r:ACTED_IN {rate:5.9, date:1998}]->(almostHeroes:MOVIE) RETURN franklin.name, franklin.age, r.rate, r.date"""
         actual_result = redis_graph.query(query)
         expected_result = [['franklin.name', 'franklin.age', 'r.rate', 'r.date'],
-                           ['Franklin Cover', None, '5.9', '1998']]
+                           ['Franklin Cover', None, '5.9', 1998]]
         assert(actual_result.result_set == expected_result)
     
 
@@ -182,10 +182,10 @@ class GraphMergeFlowTest(FlowTestsBase):
         query = """MATCH (p:person) RETURN p"""
         actual_result = redis_graph.query(query)
         expected_result = [['p.age', 'p.newprop'],
-                           ['31', '100'],
-                           ['31', '100'],
-                           ['31', '100'],
-                           ['31', '100']]
+                           [31, 100],
+                           [31, 100],
+                           [31, 100],
+                           [31, 100]]
         assert(actual_result.result_set == expected_result)
 
     # Update multiple nodes

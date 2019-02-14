@@ -80,17 +80,21 @@ SIValue _RdbLoadSIValue(RedisModuleIO *rdb) {
      * SIType
      * Value */
     SIType t = RedisModule_LoadUnsigned(rdb);
-    if(t & SI_NUMERIC) {
-        return SI_DoubleVal(RedisModule_LoadDouble(rdb));
-    } else if (t == T_BOOL) {
-        return SI_BoolVal(RedisModule_LoadUnsigned(rdb));
-    } else if (t == T_NULL) {
-        return SI_NullVal();
-    } else {
-        char *strVal = RedisModule_LoadStringBuffer(rdb, NULL);
-        // Transfer ownership of the heap-allocated strVal to the
-        // newly-created SIValue
-        return SI_TransferStringVal(strVal);
+    switch (t) {
+        case T_INT64:
+            return SI_LongVal(RedisModule_LoadSigned(rdb));
+        case T_DOUBLE:
+            return SI_DoubleVal(RedisModule_LoadDouble(rdb));
+        case T_STRING:
+        case T_CONSTSTRING: // currently impossible
+            // Transfer ownership of the heap-allocated string to the
+            // newly-created SIValue
+            return SI_TransferStringVal(RedisModule_LoadStringBuffer(rdb, NULL));
+        case T_BOOL:
+            return SI_BoolVal(RedisModule_LoadSigned(rdb));
+        case T_NULL:
+        default: // currently impossible
+            return SI_NullVal();
     }
 }
 
@@ -175,16 +179,22 @@ void _RdbSaveSIValue(RedisModuleIO *rdb, const SIValue *v) {
      * SIType
      * Value */
     RedisModule_SaveUnsigned(rdb, v->type);
-    if(v->type & SI_NUMERIC) {
-        RedisModule_SaveDouble(rdb, v->doubleval);
-    } else if (v->type == T_BOOL) {
-        RedisModule_SaveUnsigned(rdb, v->boolval);
-    } else if (v->type == T_NULL) {
-        return; // No data beyond the type needs to be encoded for a NULL value.
-    } else if (v->type & SI_STRING) {
-        RedisModule_SaveStringBuffer(rdb, v->stringval, strlen(v->stringval) + 1);
-    } else {
-        assert(0 && "Attempted to serialize value of invalid type.");
+    switch (v->type) {
+        case T_BOOL:
+        case T_INT64:
+            RedisModule_SaveSigned(rdb, v->longval);
+            return;
+        case T_DOUBLE:
+            RedisModule_SaveDouble(rdb, v->doubleval);
+            return;
+        case T_STRING:
+        case T_CONSTSTRING:
+            RedisModule_SaveStringBuffer(rdb, v->stringval, strlen(v->stringval) + 1);
+            return;
+        case T_NULL:
+            return; // No data beyond the type needs to be encoded for a NULL value.
+        default:
+            assert(0 && "Attempted to serialize value of invalid type.");
     }
 }
 

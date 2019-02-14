@@ -53,7 +53,7 @@ class ValueComparisonTest(FlowTestsBase):
                     ['str2'],
                     ['false'],
                     ['true'],
-                    ['5'],
+                    [5],
                     ['10.5'],
                     [None]]
         assert(actual_result.result_set[1:] == expected)

@@ -14,18 +14,8 @@
 #include <assert.h>
 #include "util/rmalloc.h"
 
-SIValue SI_IntVal(int i) { return (SIValue){.intval = i, .type = T_INT32}; }
-
 SIValue SI_LongVal(int64_t i) {
   return (SIValue){.longval = i, .type = T_INT64};
-}
-
-SIValue SI_UintVal(u_int64_t i) {
-  return (SIValue){.uintval = i, .type = T_UINT};
-}
-
-SIValue SI_FloatVal(float f) {
-  return (SIValue){.floatval = f, .type = T_FLOAT};
 }
 
 SIValue SI_DoubleVal(double d) {
@@ -33,11 +23,11 @@ SIValue SI_DoubleVal(double d) {
 }
 
 SIValue SI_NullVal(void) {
-  return (SIValue){.intval = 0, .type = T_NULL};
+  return (SIValue){.longval = 0, .type = T_NULL};
 }
 
 SIValue SI_BoolVal(int b) {
-  return (SIValue) {.boolval = b, .type = T_BOOL};
+  return (SIValue) {.longval = b, .type = T_BOOL};
 }
 
 SIValue SI_PtrVal(void* v) {
@@ -81,108 +71,6 @@ inline int SIValue_IsNullPtr(SIValue *v) {
   return v == NULL || v->type == T_NULL;
 }
 
-int _parseInt(SIValue *v, char *str) {
-
-  errno = 0; /* To distinguish success/failure after call */
-  char *endptr = NULL;
-  long long int val = strtoll(str, &endptr, 10);
-
-  if (errno == ERANGE || (errno != 0 && val == 0)) {
-    perror("strtoll");
-    return 0;
-  }
-
-  if (endptr == str) {
-    fprintf(stderr, "No digits were found\n");
-    return 0;
-  }
-
-  switch (v->type) {
-  case T_INT32:
-    v->intval = val;
-    break;
-  case T_INT64:
-    v->longval = val;
-    break;
-  case T_UINT:
-    v->uintval = (u_int64_t)val;
-    break;
-  default:
-    return 0;
-  }
-  return 1;
-}
-
-int _parseBool(SIValue *v, char *str) {
-  int len = strlen(str);
-  if ((len == 1 && !strcmp("1", str)) ||
-      (len == 4 && !strcasecmp("true", str))) {
-    v->boolval = 1;
-    return 1;
-  }
-
-  if ((len == 1 && !strcmp("0", str)) ||
-      (len == 5 && !strcasecmp("false", str))) {
-    v->boolval = 0;
-    return 1;
-  }
-  return 0;
-}
-
-int _parseFloat(SIValue *v, char *str) {
-  errno = 0; /* To distinguish success/failure after call */
-  char *endptr = NULL;
-  double val = strtod(str, &endptr);
-
-  /* Check for various possible errors */
-  if (errno != 0 || (endptr == str && val == 0)) {
-    return 0;
-  }
-
-  switch (v->type) {
-  case T_FLOAT:
-    v->floatval = (float)val;
-    break;
-  case T_DOUBLE:
-    v->doubleval = val;
-    break;
-  default:
-    return 0;
-    break;
-  }
-
-  return 1;
-}
-
-int SI_ParseValue(SIValue *v, char *str) {
-  switch (v->type) {
-
-  case T_STRING:
-    v->stringval = rm_strdup(str);
-    break;
-  case T_CONSTSTRING:
-    v->stringval = str;
-    break;
-  case T_INT32:
-  case T_INT64:
-  case T_UINT:
-    return _parseInt(v, str);
-
-  case T_BOOL:
-    return _parseBool(v, str);
-
-  case T_FLOAT:
-  case T_DOUBLE:
-    return _parseFloat(v, str);
-
-  case T_NULL:
-  default:
-    return 0;
-  }
-
-  return 1;
-}
-
 int SIValue_ToString(SIValue v, char *buf, size_t len) {
   int bytes_written = 0;
 
@@ -192,30 +80,14 @@ int SIValue_ToString(SIValue v, char *buf, size_t len) {
     strncpy(buf, v.stringval, len);
     bytes_written = strlen(buf);
     break;
-  case T_INT32:
-    bytes_written = snprintf(buf, len, "%d", v.intval);
-    break;
   case T_INT64:
     bytes_written = snprintf(buf, len, "%lld", (long long)v.longval);
     break;
-  case T_UINT:
-    bytes_written = snprintf(buf, len, "%llu", (long long)v.uintval);
-    break;
   case T_BOOL:
-    bytes_written = snprintf(buf, len, "%s", v.boolval ? "true" : "false");
-    break;
-
-  case T_FLOAT:
-    bytes_written = snprintf(buf, len, "%f", v.floatval);
+    bytes_written = snprintf(buf, len, "%s", v.longval ? "true" : "false");
     break;
   case T_DOUBLE:
     bytes_written = snprintf(buf, len, "%f", v.doubleval);
-    break;
-  case T_INF:
-    bytes_written = snprintf(buf, len, "+inf");
-    break;
-  case T_NEGINF:
-    bytes_written = snprintf(buf, len, "-inf");
     break;
   case T_NULL:
   default:
@@ -231,54 +103,14 @@ int SIValue_ToDouble(const SIValue *v, double *d) {
     *d = v->doubleval;
     return 1;
   case T_INT64:
-    *d = (double)v->longval;
-    return 1;
-  case T_INT32:
-    *d = (double)v->intval;
-    return 1;
-  case T_UINT:
-    *d = (double)v->uintval;
-    return 1;
-  case T_FLOAT:
-    *d = (double)v->floatval;
-    return 1;
   case T_BOOL:
-    *d = (double)v->boolval;
+    *d = (double)v->longval;
     return 1;
 
   default:
     // cannot convert!
     return 0;
   }
-}
-
-int SIValue_ConvertToDouble(SIValue *v) {
-  switch (v->type) {
-    case T_DOUBLE:
-      return 1;
-    case T_INT64:
-      v->doubleval = (double)v->longval;
-      break;
-    case T_INT32:
-      v->doubleval = (double)v->intval;
-      break;
-    case T_UINT:
-      v->doubleval = (double)v->uintval;
-      break;
-    case T_FLOAT:
-      v->doubleval = (double)v->floatval;
-      break;
-    case T_BOOL:
-      v->doubleval = (double)v->boolval;
-      break;
-
-    default:
-      // cannot convert!
-      return 0;
-  }
-
-  v->type = T_DOUBLE;
-  return 1;
 }
 
 SIValue SIValue_FromString(const char *s) {
@@ -327,29 +159,68 @@ size_t SIValue_StringConcat(SIValue* strings, unsigned int string_count, char *b
   return offset;
 }
 
-int SIValue_Compare(SIValue a, SIValue b) {
-  // In order to be comparable, both SIValues must be strings,
-  // booleans, or numerics
-  if (!SI_COMPARABLE(a, b)) {
-    return DISJOINT;
+SIValue SIValue_Add(const SIValue a, const SIValue b) {
+  /* Only construct an integer return if both operands are integers. */
+  if (a.type & b.type & T_INT64) {
+    return SI_LongVal(a.longval + b.longval);
+  }
+  /* Return a double representation. */
+  return SI_DoubleVal(SI_GET_NUMERIC(a) + SI_GET_NUMERIC(b));
+}
+
+SIValue SIValue_Subtract(const SIValue a, const SIValue b) {
+  /* Only construct an integer return if both operands are integers. */
+  if (a.type & b.type & T_INT64) {
+    return SI_LongVal(a.longval - b.longval);
+  }
+  /* Return a double representation. */
+  return SI_DoubleVal(SI_GET_NUMERIC(a) - SI_GET_NUMERIC(b));
+}
+
+SIValue SIValue_Multiply(const SIValue a, const SIValue b) {
+  /* Only construct an integer return if both operands are integers. */
+  if (a.type & b.type & T_INT64) {
+    return SI_LongVal(a.longval * b.longval);
+  }
+  /* Return a double representation. */
+  return SI_DoubleVal(SI_GET_NUMERIC(a) * SI_GET_NUMERIC(b));
+}
+
+SIValue SIValue_Divide(const SIValue a, const SIValue b) {
+  /* Always perform floating-point division. */
+  return SI_DoubleVal(SI_GET_NUMERIC(a) / (double)SI_GET_NUMERIC(b));
+}
+
+int SIValue_Compare(const SIValue a, const SIValue b) {
+  /* In order to be comparable, both SIValues must be strings,
+   * booleans, or numerics. */
+  if (a.type == b.type) {
+    switch (a.type) {
+      case T_INT64:
+      case T_BOOL:
+        return a.longval - b.longval;
+      case T_DOUBLE:
+        return SAFE_COMPARISON_RESULT(a.doubleval - b.doubleval);
+      case T_STRING:
+      case T_CONSTSTRING:
+        // Both inputs are strings of the same SIType
+        return strcmp(a.stringval, b.stringval);
+      default:
+        // Both pointers were of an incomparable type, like a pointer
+        return DISJOINT;
+    }
   }
 
-  // Use strcmp if values are string types
-  if (a.type & SI_STRING) return strcmp(a.stringval, b.stringval);
-
-  // Attempt to cast both values to doubles
-  double tmp_a, tmp_b;
-  if (SIValue_ToDouble(&a, &tmp_a) && SIValue_ToDouble(&b, &tmp_b)) {
-    /* Both values are numeric, and both now have double representations.
-     * TODO worry about precision and overflows. This approach will
-     * not be adequate if we have high-value longs, especially.
-     * TODO Special values like inf, -inf, and NaN will compare properly
-     * here, but may not satisfy the prescribed openCypher sort order. */
-    double diff = tmp_a - tmp_b;
-    return COMPARE_RETVAL(diff);
+  // The inputs have different SITypes - compare them if they
+  // are both numerics or both strings of differing types
+  if (SI_TYPE(a) & SI_NUMERIC && SI_TYPE(b) & SI_NUMERIC) {
+    double diff = SI_GET_NUMERIC(a) - SI_GET_NUMERIC(b);
+    return SAFE_COMPARISON_RESULT(diff);
+  } else if (SI_TYPE(a) & SI_STRING && SI_TYPE(b) & SI_STRING) {
+    return strcmp(a.stringval, b.stringval);
   }
 
-  // Reachable if values are of the same incomparable type, such as NULL
+  // Inputs are not comparable
   return DISJOINT;
 }
 
@@ -377,32 +248,6 @@ int SIValue_Order(const SIValue a, const SIValue b) {
 
   // We can reach here if both values are NULL, in which case no order is imposed.
   return 0;
-}
-
-void SIValue_Print(FILE *outstream, SIValue *v) {
-  switch (v->type) {
-    case T_STRING:
-    case T_CONSTSTRING:
-      fprintf(outstream, "%s", v->stringval);
-      break;
-    case T_INT32:
-      fprintf(outstream, "%d", v->intval);
-      break;
-    case T_INT64:
-      fprintf(outstream, "%lld", (long long)v->longval);
-      break;
-    case T_UINT:
-      fprintf(outstream, "%u", v->intval);
-      break;
-    case T_FLOAT:
-      fprintf(outstream, "%lf", v->floatval);
-      break;
-    case T_DOUBLE:
-      fprintf(outstream, "%lf", v->doubleval);
-      break;
-    default:
-      break;
-  }
 }
 
 void SIValue_Free(SIValue *v) {

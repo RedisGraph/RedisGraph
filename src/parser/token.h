@@ -10,7 +10,7 @@
 #include <stdlib.h>
 
 typedef struct {
-  int64_t intval;
+  int64_t longval;
   double dval;
   char *strval;
   char *s;  // token string

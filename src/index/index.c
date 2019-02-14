@@ -30,8 +30,11 @@ int compareStrings(SIValue *a, SIValue *b) {
 }
 
 int compareNumerics(SIValue *a, SIValue *b) {
-  double diff = a->doubleval - b->doubleval;
-  return COMPARE_RETVAL(diff);
+  if (a->type & b->type & T_INT64) {
+    return a->longval - b->longval;
+  }
+  double diff = SI_GET_NUMERIC(*a) - SI_GET_NUMERIC(*b);
+  return SAFE_COMPARISON_RESULT(diff);
 }
 
 /* The index must maintain its own copy of the indexed SIValue
