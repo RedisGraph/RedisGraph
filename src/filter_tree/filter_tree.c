@@ -100,9 +100,8 @@ int _applyFilter(SIValue* aVal, SIValue* bVal, int op) {
     int rel = SIValue_Compare(*aVal, *bVal);
     /* Values are of disjoint types */
     if (rel == DISJOINT) {
-        /* The filter passes if we're testing for inequality, and fails otherwise.*/
-        if (op == NE) return 1;
-        return 0;
+        /* The filter passes if we're testing for inequality, and fails otherwise. */
+        return (op == NE);
     }
 
     switch(op) {
