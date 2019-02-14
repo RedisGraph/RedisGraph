@@ -75,6 +75,23 @@ class ValueComparisonTest(FlowTestsBase):
         actual_result = redis_graph.query(query)
         assert(actual_result.result_set[1][0] == '10.5')
 
+    # Verify that disjoint types pass != filters
+    def test_disjoint_comparisons(self):
+        # Compare all node pairs under a Cartesian product
+        query = """MATCH (v:value), (w:value) WHERE ID(v) != ID(w) AND v.val = w.val RETURN v"""
+        actual_result = redis_graph.query(query)
+        # No nodes have the same property, so there should be 0 equal results
+        expected_result_count = 0
+        assert(len(actual_result.result_set[1:]) == expected_result_count)
+
+        query = """MATCH (v:value), (w:value) WHERE ID(v) != ID(w) AND v.val != w.val RETURN v"""
+        actual_result = redis_graph.query(query)
+        # Every comparison should produce an inequal result
+        node_count = len(redis_graph.nodes)
+        expected_result_count = node_count * (node_count - 1)
+        assert(len(actual_result.result_set[1:]) == expected_result_count)
+
+
 if __name__ == '__main__':
     unittest.main()
 
