@@ -28,18 +28,18 @@ GTEST_HEADERS = $(GTEST_DIR)/include/gtest/*.h \
 GTEST_SRCS_ = $(GTEST_DIR)/src/*.cc $(GTEST_DIR)/src/*.h $(GTEST_HEADERS)
 
 gtest-all.o : $(GTEST_SRCS_)
-	$(REDISGRAPH_CXX) $(CPPFLAGS) -I$(GTEST_DIR) $(CXXFLAGS) -c \
+	@$(REDISGRAPH_CXX) $(CPPFLAGS) -I$(GTEST_DIR) $(CXXFLAGS) -c \
             $(GTEST_DIR)/src/gtest-all.cc
 
 gtest_main.o : $(GTEST_SRCS_)
-	$(REDISGRAPH_CXX) $(CPPFLAGS) -I$(GTEST_DIR) $(CXXFLAGS) -c \
+	@$(REDISGRAPH_CXX) $(CPPFLAGS) -I$(GTEST_DIR) $(CXXFLAGS) -c \
             $(GTEST_DIR)/src/gtest_main.cc
 
 gtest.a : gtest-all.o
-	$(AR) $(ARFLAGS) $@ $^
+	@$(AR) $(ARFLAGS) $@ $^
 
 gtest_main.a : gtest-all.o gtest_main.o
-	$(AR) $(ARFLAGS) $@ $^
+	@$(AR) $(ARFLAGS) $@ $^
 
 # RedisGraph flags and libraries
 CC_OBJECTS:=$(CC_OBJECTS)
@@ -56,11 +56,11 @@ TEST_EXECUTABLES = $(patsubst %.cpp, %.run, $(TEST_SOURCES))
 
 # Compile object files from unit test sources
 %.o: %.cpp
-	$(REDISGRAPH_CXX) $(CPPFLAGS) $(CXXFLAGS) $(CXX_SUPPRESS) -c -o $@ $<
+	@$(REDISGRAPH_CXX) $(CPPFLAGS) $(CXXFLAGS) $(CXX_SUPPRESS) -c -o $@ $<
 
 # Build '*.run' binaries for each source
 %.run: %.o gtest_main.a $(DEPS)
-	$(REDISGRAPH_CXX) $(CPPFLAGS) $(CXXFLAGS) $(CXX_SUPPRESS) $(LDFLAGS) $^ -o $@
+	@$(REDISGRAPH_CXX) $(CPPFLAGS) $(CXXFLAGS) $(CXX_SUPPRESS) $(LDFLAGS) $^ -o $@
 
 
 all: build test
@@ -68,18 +68,27 @@ all: build test
 build: $(TEST_OBJECTS) $(TEST_EXECUTABLES) $(DEPS)
 
 test: build
-	for t in $(TEST_EXECUTABLES); do \
+ifeq ($(V),)
+	@for t in $(TEST_EXECUTABLES); do \
+		echo Running $$t ...; \
+		o1=$$(mktemp) ;\
+		./$$t 2>&1 >$$o1 || (cat $$o1; exit 1); \
+	done
+else
+	@for t in $(TEST_EXECUTABLES); do \
+		echo Running $$t ...; \
 		./$$t || exit 1; \
 	done
+endif
 
 test_valgrind: build
-	for t in $(TEST_EXECUTABLES); do \
+	@for t in $(TEST_EXECUTABLES); do \
 		valgrind --leak-resolution=low --quiet \
 		--leak-check=full --show-leak-kinds=all --show-possibly-lost=no \
 		--suppressions=unittests.supp ./$$t; \
 	done
 
 clean:
-	rm -f gtest.a gtest_main.a *.o *.run
+	@rm -f gtest.a gtest_main.a *.o *.run
 .PHONY: clean
 

@@ -1,0 +1,3 @@
+#!/usr/bin/bash
+
+pip -r requirements.txt

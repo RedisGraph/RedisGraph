@@ -1,0 +1,17 @@
+#!/usr/bin/env python
+
+import os
+import platform
+
+dist = platform.dist()[0]
+common = "cmake"
+if dist == 'Ubuntu':
+	os.system('apt-get install -y build-essential {}'.format(common))
+elif dist == 'fedora' or dist == 'centos':
+	os.system('dnf groupinstall -y "Development Tools"')
+	os.system('dnf install -y {}'.format(common))
+else:
+	print("please install gcc, automake, and cmake\n")
+	exit(1)
+
+exit(0)
