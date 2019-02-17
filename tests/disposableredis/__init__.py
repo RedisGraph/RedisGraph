@@ -8,9 +8,9 @@ import sys
 import warnings
 import random
 
+REDIS_SERVER = os.environ.get('REDIS_SERVER', 'redis-server')
 REDIS_DEBUGGER = os.environ.get('REDIS_DEBUGGER', None)
 REDIS_SHOW_OUTPUT = int(os.environ.get('REDIS_VERBOSE', 1 if REDIS_DEBUGGER else 0))
-
 
 def get_random_port():
     while True:
@@ -38,7 +38,7 @@ class Client(redis.StrictRedis):
 
 class DisposableRedis(object):
 
-    def __init__(self, port=None, path='redis-server', **extra_args):
+    def __init__(self, port=None, path=None, **extra_args):
         """
         :param port: port number to start the redis server on.
             Specify none to automatically generate
@@ -46,6 +46,9 @@ class DisposableRedis(object):
         :param extra_args: any extra arguments kwargs will
             be passed to redis server as --key val
         """
+        if path is None:
+            path = REDIS_SERVER
+
         self._port = port
 
         # this will hold the actual port the redis is listening on.
@@ -90,7 +93,9 @@ class DisposableRedis(object):
             sys.stderr.write("Executing: {}".format(repr(args)))
         self.process = subprocess.Popen(
             args,
-            stdout=stdout
+            stdin=sys.stdin,
+            stdout=stdout,
+            stderr=sys.stderr,
         )
 
         begin = time.time()

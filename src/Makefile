@@ -95,7 +95,6 @@ all: redisgraph.so
 
 $(LIBTRIEMAP):
 	$(MAKE) -C util/triemap
-.PHONY: $(LIBTRIEMAP)
 
 BLAS_CFLAGS = -fPIC -I $(abs_path)/util -include rmalloc.h -DREDIS_MODULE_TARGET -DGB_MALLOC=rm_malloc -DGB_CALLOC=rm_calloc -DGB_REALLOC=rm_realloc -DGB_FREE=rm_free -DGBCOMPACT
 
@@ -103,8 +102,9 @@ BLAS_CFLAGS = -fPIC -I $(abs_path)/util -include rmalloc.h -DREDIS_MODULE_TARGET
 $(GRAPHBLAS):
 ifeq (,$(wildcard $(GRAPHBLAS)))
 	$(MAKE) CMAKE_OPTIONS="-DUSER_POSIX=1 -DCMAKE_CXX_FLAGS=-std=c++11 -DCMAKE_C_FLAGS='$(BLAS_CFLAGS)'" static_only -C ../deps/GraphBLAS
+else
+
 endif
-.PHONY: $(GRAPHBLAS)
 
 # Compile query parse. 
 # This is not included in the usual make target!
@@ -117,8 +117,14 @@ redisgraph.so: $(MODULE)
 	$(REDISGRAPH_CC) -o $@ $(MODULE) $(SHOBJ_LDFLAGS) -lc -lm
 
 clean:
-	find . -name '*.[oad]' -type f -delete
-	$(MAKE) -C ../tests clean
+	@find . -name '*.[oad]' -type f -delete
+	@-rm -f redisgraph.so
+	@if [ "$(ALL)" = "1" ]; then \
+		cd ../deps/GraphBLAS/build ; \
+		find . \( ! -iname .gitignore \) -delete ; \
+		rm -f ../Config/GraphBLAS.h.tmp ; \
+	fi
+	@$(MAKE) -C ../tests clean
 
 package: redisgraph.so
 	mkdir -p ../build

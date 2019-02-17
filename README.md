@@ -75,16 +75,23 @@ How many riders represent team Ducati?
 
 ## Building
 
-### Linux Ubuntu 16.04
+### Compiling
 
 Requirements:
 
 * The RedisGraph repository: `git clone https://github.com/RedisLabsModules/RedisGraph.git`
-* The build-essential and cmake packages: `apt-get install build-essential cmake`
+* Python 2.7
 
-To build, run `make` in the project's directory
+To build, run ```./setup-build.py``` followed by `make` in the project's directory
 
 Congratulations! You can find the compiled binary at `src/redisgraph.so`.
+
+### Running tests
+
+* Run ```./setup-tests.py``` from the project's directory. This will install ***pipenv*** along with packages specified in ***Pipfile***.
+* Invoke ```pipenv shell```.
+* If you've got ```redis-server``` in PATH, just invoke ```make test```.
+* Otherwise, invoke ```REDIS_SERVER=<redis-server-location> make test```.
 
 ## Loading RedisGraph into Redis
 

@@ -2,8 +2,11 @@ import os
 import sys
 import unittest
 from redisgraph import Graph, Node, Edge
+
 # import redis
-from .disposableredis import DisposableRedis
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from disposableredis import DisposableRedis
+
 from base import FlowTestsBase
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../demo/social/')

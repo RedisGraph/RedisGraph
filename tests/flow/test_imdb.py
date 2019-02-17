@@ -4,7 +4,8 @@ import unittest
 from redisgraph import Graph
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../demo/imdb/')
-from .disposableredis import DisposableRedis
+from disposableredis import DisposableRedis
+
 from .reversepattern import ReversePattern
 from base import FlowTestsBase
 import imdb_queries as queries

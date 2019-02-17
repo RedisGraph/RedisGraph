@@ -3,7 +3,10 @@ import sys
 import unittest
 import threading
 from redisgraph import Graph, Node, Edge
-from .disposableredis import DisposableRedis
+
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from disposableredis import DisposableRedis
+
 from base import FlowTestsBase
 
 GRAPH_ID = "G"                      # Graph identifier.
