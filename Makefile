@@ -1,3 +1,5 @@
+.PHONY: all clean package docker docker_push builddocs localdocs deploydocs test test_valgrind
+
 all:
 	@$(MAKE) -C ./src all
 
@@ -6,7 +8,6 @@ clean:
 
 package: all
 	@$(MAKE) -C ./src package
-.PHONY: package
 
 docker:
 	@docker build . -t redislabs/redisgraph

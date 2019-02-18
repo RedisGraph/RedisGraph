@@ -63,6 +63,8 @@ TEST_EXECUTABLES = $(patsubst %.cpp, %.run, $(TEST_SOURCES))
 	@$(REDISGRAPH_CXX) $(CPPFLAGS) $(CXXFLAGS) $(CXX_SUPPRESS) $(LDFLAGS) $^ -o $@
 
 
+.PHONY: all build test test_valgrind clean
+
 all: build test
 
 build: $(TEST_OBJECTS) $(TEST_EXECUTABLES) $(DEPS)
@@ -72,7 +74,8 @@ ifeq ($(V),)
 	@for t in $(TEST_EXECUTABLES); do \
 		echo Running $$t ...; \
 		o1=$$(mktemp) ;\
-		./$$t 2>&1 >$$o1 || (cat $$o1; exit 1); \
+		./$$t 2>&1 >$$o1 || { cat $$o1; rm $$o1; exit 1; }; \
+		rm $$o1 ; \
 	done
 else
 	@for t in $(TEST_EXECUTABLES); do \
@@ -90,5 +93,4 @@ test_valgrind: build
 
 clean:
 	@rm -f gtest.a gtest_main.a *.o *.run
-.PHONY: clean
 

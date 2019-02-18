@@ -96,13 +96,13 @@ Congratulations! You can find the compiled binary at `src/redisgraph.so`.
 
 ### Running tests
 
-First, install required Python packages by running ```./setup``` from the ```tests``` directory.
+First, install required Python packages by running ```pip -r requirements.txt``` from the ```tests``` directory.
 
 If you've got ```redis-server``` in PATH, just invoke ```make test```.
 
 Otherwise, invoke ```REDIS_SERVER=<redis-server-location> make test```.
 
-For more verbose output, replace ```make test``` with ```make test V=1```.
+For more verbose output, run ```make test V=1```.
 
 ## Loading RedisGraph into Redis
 
