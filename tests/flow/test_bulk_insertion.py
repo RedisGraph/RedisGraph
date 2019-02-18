@@ -6,7 +6,9 @@ import unittest
 import click
 from click.testing import CliRunner
 
-from .disposableredis import DisposableRedis
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from disposableredis import DisposableRedis
+
 from redisgraph import Graph, Node, Edge
 from base import FlowTestsBase
 

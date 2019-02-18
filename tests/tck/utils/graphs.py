@@ -2,7 +2,9 @@ import redis
 import os
 import sys
 
+sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 from disposableredis import DisposableRedis
+
 from redisgraph import Graph, Node, Edge
 
 r = None
@@ -10,8 +12,9 @@ graph_name = "G"
 redis_graph = None
 
 def redis():
-    print os.path.dirname(os.path.abspath(__file__)) + '/../../../src/redisgraph.so'
-    return DisposableRedis(path='/usr/local/bin/redis-server', loadmodule=os.path.dirname(os.path.abspath(__file__)) + '/../../../src/redisgraph.so')
+    graph_so = os.path.dirname(os.path.abspath(__file__)) + '/../../../src/redisgraph.so'
+    print graph_so
+    return DisposableRedis(loadmodule=graph_so)
 
 def _brand_new_redis():
     global r
@@ -42,3 +45,8 @@ def any_graph():
 
 def query(q):
     return redis_graph.query(q)
+
+def teardown():
+    global r
+    if r is not None:
+        r.stop()
