@@ -81,7 +81,16 @@ Requirements:
 
 * The RedisGraph repository: `git clone https://github.com/RedisLabsModules/RedisGraph.git`
 
-To build, run ```./setup``` followed by `make` in the project's directory.
+* On Ubuntu Linux, run: `apt-get install build-essential cmake`
+
+* On Fedora/CentOS/RHEL, run:
+
+  ```
+  dnf groupinstall "Development Tools"
+  dnf install cmake
+  ```
+
+To build, run `make` in the project's directory.
 
 Congratulations! You can find the compiled binary at `src/redisgraph.so`.
 
