@@ -27,3 +27,4 @@ test_valgrind:
 clean:
 	@find . -name '*.[oad]' -type f -delete
 	@find . -name '*.run' -type f -delete
+	@find . -name '*.pyc' -type f -delete
