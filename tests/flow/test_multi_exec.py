@@ -3,7 +3,9 @@ import sys
 import unittest
 
 # import redis
-from .disposableredis import DisposableRedis
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from disposableredis import DisposableRedis
+
 from base import FlowTestsBase
 
 def redis():
