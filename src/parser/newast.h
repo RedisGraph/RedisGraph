@@ -8,6 +8,7 @@
 #ifndef NEW_AST_H
 #define NEW_AST_H
 
+#include "ast_common.h"
 #include "../util/triemap/triemap.h"
 #include "../../deps/libcypher-parser/lib/src/cypher-parser.h"
 
@@ -15,6 +16,33 @@ typedef enum {
 	AST_VALID,
 	AST_INVALID
 } AST_Validation;
+
+// Pared-down duplicate of ast_common AST_GraphEntity
+typedef struct {
+    char *alias;
+    char *label;
+    // const cypher_astnode_t *ast_ref;
+    AST_GraphEntityType t;
+} NEWAST_GraphEntity;
+
+// TODO forward declaration, find better solution
+typedef struct AR_ExpNode AR_ExpNode;
+
+typedef struct {
+	const char *alias; 		// Alias given to this return element (using the AS keyword)
+	AR_ExpNode *exp;
+} ReturnElementNode;
+
+typedef struct {
+    const cypher_astnode_t *root;
+    // Extensible array of entities described in MATCH, CREATE (and unwind?) clauses
+    // TODO ensure this is correct
+    NEWAST_GraphEntity **defined_entities;
+    TrieMap *identifier_map;
+    unsigned int order_expression_count;
+    ReturnElementNode **return_expressions;
+    AR_ExpNode **order_expressions;
+} NEWAST;
 
 // AST clause validations.
 AST_Validation NEWAST_Validate(const cypher_astnode_t *ast, char **reason);

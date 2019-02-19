@@ -618,9 +618,9 @@ const cypher_astnode_t* NEWAST_GetBody(const cypher_parse_result_t *result) {
 
 NEWAST_GraphEntity* New_GraphEntity(const cypher_astnode_t *entity, const cypher_astnode_type_t type) {
     NEWAST_GraphEntity *ge = calloc(1, sizeof(NEWAST_GraphEntity));
-    ge->ast_ref = entity;
+    // ge->ast_ref = entity;
     if (type == CYPHER_AST_NODE_PATTERN) {
-        ge->t = N_NODE;
+        ge->t = N_ENTITY;
         const cypher_astnode_t *alias_node = cypher_ast_node_pattern_get_identifier(entity);
         if (alias_node) ge->alias = strdup(cypher_ast_identifier_get_name(alias_node));
         if (cypher_ast_node_pattern_nlabels(entity) > 0) {
@@ -628,7 +628,7 @@ NEWAST_GraphEntity* New_GraphEntity(const cypher_astnode_t *entity, const cypher
             ge->label = strdup(cypher_ast_label_get_name(label_node));
         }
     } else if (type == CYPHER_AST_REL_PATTERN) {
-        ge->t = N_RELATION;
+        ge->t = N_LINK;
         const cypher_astnode_t *alias_node = cypher_ast_rel_pattern_get_identifier(entity);
         if (alias_node) ge->alias = strdup(cypher_ast_identifier_get_name(alias_node));
         if (cypher_ast_rel_pattern_nreltypes(entity) > 0) {

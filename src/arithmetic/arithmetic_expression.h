@@ -12,6 +12,7 @@
 #include "../graph/entities/graph_entity.h"
 #include "../graph/query_graph.h"
 #include "../parser/ast.h"
+#include "../parser/newast.h"
 #include "./agg_ctx.h"
 
 /* Forward declarations. */
@@ -141,6 +142,8 @@ int AR_EXP_ContainsAggregation(AR_ExpNode *root, AR_ExpNode **agg_node);
 
 /* Constructs string representation of arithmetic expression tree. */
 void AR_EXP_ToString(const AR_ExpNode *root, char **str);
+
+AR_ExpNode* AR_EXP_FromExpression(const NEWAST *ast, const cypher_astnode_t *expr);
 
 /* Construct an arithmetic expression tree from ast arithmetic expression node. */
 AR_ExpNode* AR_EXP_BuildFromAST(const AST *ast, const AST_ArithmeticExpressionNode *exp);

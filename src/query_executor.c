@@ -92,8 +92,7 @@ ReturnElementNode* _NewReturnElementNode(const char *alias, AR_ExpNode *exp) {
     return elem;
 }
 
-void _oldExpandCollapsedNodes(void) {
-    AST *ast = AST_GetFromLTS();
+void ExpandCollapsedNodes(AST *ast) {
     char buffer[256];
     GraphContext *gc = GraphContext_GetFromLTS();
 
@@ -338,27 +337,23 @@ static void _AST_optimize_traversal_direction(AST *ast) {
 
         if(_AST_should_reverse_pattern(pattern)) {
             should_reverse = true;
-            break;            
+            break;
         }
     }
 
     if(should_reverse) _AST_reverse_match_patterns(ast);
 }
 
-void ModifyAST(GraphContext *gc, AST *ast, const cypher_parse_result_t *new_ast) {
+void ModifyAST(GraphContext *gc, AST *ast, NEWAST *new_ast) {
     if(ast->matchNode) _AST_optimize_traversal_direction(ast);
 
     if(ast->mergeNode) {
-        /* Create match clause which will try to match 
+        /* Create match clause which will try to match
          * against pattern specified within merge clause. */
         _replicateMergeClauseToMatchClause(ast);
     }
 
     // if(ReturnClause_ContainsCollapsedNodes(ast->returnNode) == 1) {
-    if(NEWAST_ReturnClause_ContainsCollapsedNodes(new_ast) == 1) {
-        /* Expand collapsed nodes. */
-        ExpandCollapsedNodes(ast);
-    }
 
     AST_NameAnonymousNodes(ast);
     _inlineProperties(ast);
