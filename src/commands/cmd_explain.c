@@ -11,6 +11,7 @@
 #include "../execution_plan/execution_plan.h"
 
 extern pthread_key_t _tlsASTKey;  // Thread local storage AST key.
+extern pthread_key_t _tlsNEWASTKey;  // Thread local storage NEWAST key.
 
 /* Builds an execution plan but does not execute it
  * reports plan back to the client
@@ -33,7 +34,6 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     /* Parse query, get AST. */
     char *errMsg = NULL;
     AST* ast = NULL;
-    cypher_parse_result_t *new_ast = NULL;
     GraphContext *gc = NULL;
     ExecutionPlan *plan = NULL;
 
@@ -44,9 +44,11 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
         free(errMsg);
         return REDISMODULE_OK;
     }
-    pthread_setspecific(_tlsASTKey, ast);
+    cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
+    NEWAST *new_ast = NEWAST_Build(parse_result);
 
-    new_ast = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
+    pthread_setspecific(_tlsASTKey, ast);
+    pthread_setspecific(_tlsNEWASTKey, new_ast);
 
     // Retrieve the GraphContext and acquire a read lock.
     gc = GraphContext_Retrieve(ctx, graphname);
@@ -56,7 +58,7 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     }
 
     // Perform query validations before and after ModifyAST
-    if(AST_PerformValidations(ctx, new_ast) != AST_VALID) return REDISMODULE_OK;
+    if(AST_PerformValidations(ctx, new_ast->root) != AST_VALID) return REDISMODULE_OK;
 
     ModifyAST(gc, ast, new_ast);
 
@@ -77,6 +79,6 @@ cleanup:
         ExecutionPlanFree(plan);
     }
     if(ast) AST_Free(ast);
-    if(new_ast) cypher_parse_result_free(new_ast);
+    if(parse_result) cypher_parse_result_free(parse_result);
     return REDISMODULE_OK;
 }

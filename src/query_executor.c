@@ -58,7 +58,7 @@ static void _inlineProperties(AST *ast) {
             rhs = New_AST_AR_EXP_ConstOperandNode(*val);
 
             AST_FilterNode *filterNode = New_AST_PredicateNode(lhs, EQ, rhs);
-            
+
             /* Create WHERE clause if missing. */
             if(ast->whereNode == NULL) {
                 ast->whereNode = New_AST_WhereNode(filterNode);
@@ -73,7 +73,7 @@ static void _inlineProperties(AST *ast) {
 }
 
 /* Shares merge pattern with match clause. */
-static void _replicateMergeClauseToMatchClause(AST *ast) {    
+static void _replicateMergeClauseToMatchClause(AST *ast) {
     assert(ast->mergeNode && !ast->matchNode);
 
     /* Match node is expecting a vector of vectors,
@@ -85,16 +85,24 @@ static void _replicateMergeClauseToMatchClause(AST *ast) {
     ast->matchNode = New_AST_MatchNode(wrappedEntities);
 }
 
-void ExpandCollapsedNodes(AST *ast) {    
+ReturnElementNode* _NewReturnElementNode(const char *alias, AR_ExpNode *exp) {
+    ReturnElementNode *elem = rm_malloc(sizeof(ReturnElementNode));
+    elem->alias = alias;
+    elem->exp = exp;
+    return elem;
+}
+
+void _oldExpandCollapsedNodes(void) {
+    AST *ast = AST_GetFromLTS();
     char buffer[256];
     GraphContext *gc = GraphContext_GetFromLTS();
-    
+
     /* Expanding the RETURN clause is a two phase operation:
      * 1. Scan through every arithmetic expression within the original
      * RETURN clause and add it to a temporary vector,
      * if we bump into an asterisks marker indicating we should expand
      * all nodes, relations and paths, add thoese to the temporary vector.
-     * 
+     *
      * 2. Scanning though the temporary vector we expand each collapsed entity
      * this will form the final RETURN clause. */
 
@@ -108,7 +116,7 @@ void ExpandCollapsedNodes(AST *ast) {
 
     // Scan through return elements, see if we can find '*' marker.
     for(int i = 0; i < returnElementCount; i++) {
-        AST_ReturnElementNode *retElement = returnClause->returnElements[i];        
+        AST_ReturnElementNode *retElement = returnClause->returnElements[i];
         if(retElement->asterisks) {
             // TODO: '*' can not be mixed with any other expression!
             array_clear(elementsToExpand);
@@ -132,7 +140,7 @@ void ExpandCollapsedNodes(AST *ast) {
                 elementsToExpand = array_append(elementsToExpand, returnEntity);
             }
 
-            TrieMapIterator_Free(it);            
+            TrieMapIterator_Free(it);
             Free_AST_ReturnElementNode(retElement);
             break;
         }
@@ -147,17 +155,17 @@ void ExpandCollapsedNodes(AST *ast) {
     for(int i = 0; i < array_len(elementsToExpand); i++) {
         AST_ReturnElementNode *ret_elem = elementsToExpand[i];
         AST_ArithmeticExpressionNode *exp = ret_elem->exp;
-        
+
         /* Detect collapsed entity,
          * A collapsed entity is represented by an arithmetic expression
-         * of AST_AR_EXP_OPERAND type, 
+         * of AST_AR_EXP_OPERAND type,
          * The operand type should be AST_AR_EXP_VARIADIC,
          * lastly property should be missing. */
 
         if(exp->type == AST_AR_EXP_OPERAND &&
             exp->operand.type == AST_AR_EXP_VARIADIC &&
             exp->operand.variadic.property == NULL) {
-            
+
             /* Return clause doesn't contains entity's label,
              * Find collapsed entity's label. */
             char *alias = exp->operand.variadic.alias;
@@ -227,7 +235,7 @@ AST* ParseQuery(const char *query, size_t qLen, char **errMsg) {
     return Query_Parse(query, qLen, errMsg);
 }
 
-AST_Validation AST_PerformValidations(RedisModuleCtx *ctx, const cypher_parse_result_t *ast) {
+AST_Validation AST_PerformValidations(RedisModuleCtx *ctx, const cypher_astnode_t *ast) {
     char *reason;
     AST_Validation res = NEWAST_Validate(ast, &reason);
     if (res != AST_VALID) {
@@ -239,7 +247,7 @@ AST_Validation AST_PerformValidations(RedisModuleCtx *ctx, const cypher_parse_re
 }
 
 /* Counts the number of right to left edges,
- * if it's greater than half the number of edges in pattern 
+ * if it's greater than half the number of edges in pattern
  * return true.*/
 static bool _AST_should_reverse_pattern(Vector *pattern) {
     int transposed = 0; // Number of transposed edges
@@ -319,7 +327,7 @@ static void _AST_optimize_traversal_direction(AST *ast) {
     /* Inspect each MATCH pattern,
      * see if the number of edges going from right to left ()<-[]-()
      * is greater than the number of edges going from left to right ()-[]->()
-     * in which case it's worth reversing the pattern to reduce 
+     * in which case it's worth reversing the pattern to reduce
      * matrix transpose operations. */
 
     bool should_reverse = false;

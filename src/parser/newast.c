@@ -8,30 +8,11 @@
 #include "newast.h"
 #include <assert.h>
 
+#include "../util/arr.h"
 #include "../arithmetic/repository.h"
 #include "../arithmetic/arithmetic_expression.h"
 
-static bool _NEWAST_ReadOnly(const cypher_astnode_t *root) {
-    cypher_astnode_type_t root_type = cypher_astnode_type(root);
-
-    if(root_type == CYPHER_AST_CREATE ||
-        root_type == CYPHER_AST_MERGE ||
-        root_type == CYPHER_AST_DELETE ||
-        root_type == CYPHER_AST_SET ||
-        root_type == CYPHER_AST_CREATE_NODE_PROP_INDEX ||
-        root_type == CYPHER_AST_DROP_NODE_PROP_INDEX) {
-        return false;
-    }
-
-    unsigned int child_count = cypher_astnode_nchildren(root);
-    for(int i = 0; i < child_count; i++) {
-        const cypher_astnode_t *child = cypher_astnode_get_child(root, i);
-        bool readonly = _NEWAST_ReadOnly(child);
-        if(!readonly) return false;
-    }
-
-    return true;
-}
+extern pthread_key_t _tlsNEWASTKey;  // Thread local storage AST key.
 
 static void _NEWAST_GetIdentifiers(const cypher_astnode_t *node, TrieMap *identifiers) {
     if(!node) return;
@@ -78,52 +59,6 @@ static void _NEWAST_GetReturnAliases(const cypher_astnode_t *node, TrieMap *alia
             TrieMap_Add(aliases, (char*)alias, strlen(alias), NULL, TrieMap_NOP_REPLACE);
         }
     }
-}
-
-static const cypher_astnode_t *_NEWAST_GetClause(const cypher_astnode_t *node, cypher_astnode_type_t clause) {
-    if(cypher_astnode_type(node) == clause) return node;
-
-    unsigned int child_count = cypher_astnode_nchildren(node);
-    for(int i = 0; i < child_count; i++) {
-        const cypher_astnode_t *child = cypher_astnode_get_child(node, i);
-        const cypher_astnode_t *required_clause = _NEWAST_GetClause(child, clause);
-        if(required_clause) return required_clause;
-    }
-
-    return NULL;
-}
-
-/* Collect references to all MATCH clauses in the query. Since clauses cannot be nested, we only need to
- * check the immediate children of the query node.
- * TODO Migrate other validations to this collection logic to improve performance
- * (keeping in mind that most clauses can only appear once, simplifying this further). */
-static unsigned int _NEWAST_GetMatchClauses(const cypher_astnode_t *query, unsigned int clause_count, const cypher_astnode_t **matches) {
-  unsigned int match_count = 0;
-    for (unsigned int i = 0; i < clause_count; i ++) {
-        const cypher_astnode_t *child = cypher_astnode_get_child(query, i);
-        if (cypher_astnode_type(child) == CYPHER_AST_MATCH) {
-            matches[match_count] = child;
-            match_count ++;
-        }
-    }
-    return match_count;
-}
-
-/* Given the AST root, return the query node, if one exists.
- * TODO The recursion here may be unnecessary - validate this assumption
- * and refactor if correct. */
-static const cypher_astnode_t* _NEWAST_GetQuery(const cypher_astnode_t *node) {
-    if (!node) return NULL;
-
-    if (cypher_astnode_type(node) == CYPHER_AST_QUERY) return node;
-
-    unsigned int child_count = cypher_astnode_nchildren(node);
-    for(unsigned int i = 0; i < child_count; i ++) {
-        const cypher_astnode_t *child = cypher_astnode_get_child(node, i);
-        const cypher_astnode_t *ret = _NEWAST_GetQuery(child);
-        if (ret) return ret;
-    }
-    return NULL;
 }
 
 /* Compares a triemap of user-specified functions with the registered functions we provide. */
@@ -290,7 +225,7 @@ static AST_Validation _Validate_MATCH_Clause_IndependentPaths(const cypher_astno
     // A pattern is composed of 1 or more paths that currently must be independent for us.
     unsigned int child_count = cypher_astnode_nchildren(pattern);
     for (unsigned int i = 0; i < child_count; i ++) {
-        const cypher_astnode_t *child= cypher_astnode_get_child(pattern, i);
+        const cypher_astnode_t *child = cypher_astnode_get_child(pattern, i);
         if (cypher_astnode_type(child) == CYPHER_AST_PATTERN_PATH) {
             res = _Validate_MATCH_Clause_ReusedIdentifiers(child, child, reused_entities, reason);
             if (res != AST_VALID) break;
@@ -309,7 +244,7 @@ static AST_Validation _Validate_MATCH_Clause(const cypher_astnode_t *query, char
     // Iterate over all top-level query children (clauses)
     unsigned int clause_count = cypher_astnode_nchildren(query);
     const cypher_astnode_t *match_clauses[clause_count];
-    unsigned int match_count = _NEWAST_GetMatchClauses(query, clause_count, match_clauses);
+    unsigned int match_count = NewAST_GetTopLevelClauses(query, CYPHER_AST_MATCH, match_clauses);
     if (match_count == 0) return AST_VALID;
 
     TrieMap *referred_funcs = NewTrieMap();
@@ -367,7 +302,7 @@ static AST_Validation _Validate_CREATE_Clause_TypedRelations(const cypher_astnod
 }
 
 static AST_Validation _Validate_CREATE_Clause(const cypher_astnode_t *ast, char **reason) {
-    const cypher_astnode_t *create_clause = _NEWAST_GetClause(ast, CYPHER_AST_CREATE);
+    const cypher_astnode_t *create_clause = NEWAST_GetClause(ast, CYPHER_AST_CREATE);
     if (!create_clause) return AST_VALID;
 
     if (_Validate_CREATE_Clause_TypedRelations(create_clause) == AST_INVALID) {
@@ -379,17 +314,17 @@ static AST_Validation _Validate_CREATE_Clause(const cypher_astnode_t *ast, char 
 }
 
 static AST_Validation _Validate_DELETE_Clause(const cypher_astnode_t *ast, char **reason) {
-    const cypher_astnode_t *delete_clause = _NEWAST_GetClause(ast, CYPHER_AST_DELETE);
+    const cypher_astnode_t *delete_clause = NEWAST_GetClause(ast, CYPHER_AST_DELETE);
     if (!delete_clause) return AST_VALID;
 
-    const cypher_astnode_t *match_clause = _NEWAST_GetClause(ast, CYPHER_AST_MATCH);
+    const cypher_astnode_t *match_clause = NEWAST_GetClause(ast, CYPHER_AST_MATCH);
     if (!match_clause) return AST_INVALID;
 
     return AST_VALID;
 }
 
 static AST_Validation _Validate_RETURN_Clause(const cypher_astnode_t *ast, char **reason) {
-    const cypher_astnode_t *return_clause = _NEWAST_GetClause(ast, CYPHER_AST_RETURN);
+    const cypher_astnode_t *return_clause = NEWAST_GetClause(ast, CYPHER_AST_RETURN);
     if (!return_clause) return AST_VALID;
 
     // Retrieve all user-specified functions in RETURN clause.
@@ -436,6 +371,7 @@ static void _NEWAST_GetReferredIdentifiers(const cypher_astnode_t *node, TrieMap
     }
 }
 
+// TODO No need to do this separately from ID mapping
 /* Check that all referred identifiers been defined. */
 static AST_Validation _NEWAST_Aliases_Defined(const cypher_astnode_t *ast, char **undefined_alias) {
     AST_Validation res = AST_VALID;
@@ -469,10 +405,9 @@ static AST_Validation _NEWAST_Aliases_Defined(const cypher_astnode_t *ast, char 
     return res;
 }
 
-AST_Validation NEWAST_Validate(const cypher_parse_result_t *ast, char **reason) {
-    const cypher_astnode_t *root = cypher_parse_result_get_root(ast, 0);
-    const cypher_astnode_t *query = _NEWAST_GetQuery(root);
-    if(!query) return AST_VALID; // Occurs on statements like CREATE INDEX
+AST_Validation NEWAST_Validate(const cypher_astnode_t *query, char **reason) {
+    // Occurs on statements like CREATE INDEX
+    if (cypher_astnode_type(query) != CYPHER_AST_QUERY) return AST_VALID;
 
     if (_Validate_MATCH_Clause(query, reason) == AST_INVALID) {
         printf("_Validate_MATCH_Clause, AST_INVALID\n");
@@ -502,39 +437,27 @@ AST_Validation NEWAST_Validate(const cypher_parse_result_t *ast, char **reason) 
     return AST_VALID;
 }
 
-bool NEWAST_ReadOnly(const cypher_parse_result_t *ast) {
-    const cypher_astnode_t *root = cypher_parse_result_get_root(ast, 0);
-    return _NEWAST_ReadOnly(root);
-}
-
-const cypher_astnode_t *NEWAST_GetClause(const cypher_parse_result_t *ast, const char* clause) {
-    const cypher_astnode_t *root = cypher_parse_result_get_root(ast, 0);
-    if(strcasecmp(clause, "create") == 0) {
-        return _NEWAST_GetClause(root, CYPHER_AST_CREATE);
-    } else if (strcasecmp(clause, "merge") == 0) {
-        return _NEWAST_GetClause(root, CYPHER_AST_MERGE);
-    } else if (strcasecmp(clause, "return") == 0) {
-        return _NEWAST_GetClause(root, CYPHER_AST_RETURN);
-    } else {
-        // TODO: Log, unknown clause.
-        assert(false);
+bool NEWAST_ReadOnly(const cypher_astnode_t *query) {
+    unsigned int num_clauses = cypher_astnode_nchildren(query);
+    for (unsigned int i = 0; i < num_clauses; i ++) {
+        const cypher_astnode_t *child = cypher_astnode_get_child(query, i);
+        cypher_astnode_type_t type = cypher_astnode_type(child);
+        if(type == CYPHER_AST_CREATE ||
+           type == CYPHER_AST_MERGE ||
+           type == CYPHER_AST_DELETE ||
+           type == CYPHER_AST_SET ||
+           type == CYPHER_AST_CREATE_NODE_PROP_INDEX ||
+           type == CYPHER_AST_DROP_NODE_PROP_INDEX) {
+            return false;
+        }
     }
 
-    return NULL;
+    return true;
 }
 
-bool NEWAST_ContainsClause(const cypher_parse_result_t *ast, const char* clause) {
-    const cypher_astnode_t *root = cypher_parse_result_get_root(ast, 0);
-    if(strcasecmp(clause, "create") == 0) {
-        return _NEWAST_GetClause(root, CYPHER_AST_CREATE) != NULL;
-    } else if (strcasecmp(clause, "merge") == 0) {
-        return _NEWAST_GetClause(root, CYPHER_AST_MERGE) != NULL;
-    } else {
-        // TODO: Log, unknown clause.
-        assert(false);
-    }
 
-    return false;
+bool NEWAST_ContainsClause(const cypher_astnode_t *root, cypher_astnode_type_t clause) {
+    return NEWAST_GetClause(root, clause) != NULL;
 }
 
 bool NEWAST_ContainsErrors(const cypher_parse_result_t *ast) {
@@ -588,19 +511,17 @@ void NEWAST_ReferredFunctions(const cypher_astnode_t *root, TrieMap *referred_fu
 //==============================================================================
 //=== MATCH CLAUSE =============================================================
 //==============================================================================
-void NEWAST_MatchClause_DefinedEntities(const cypher_parse_result_t *ast, TrieMap *definedEntities) {
-    const cypher_astnode_t *root = cypher_parse_result_get_root(ast, 0);
-    const cypher_astnode_t *match_clause = _NEWAST_GetClause(root, CYPHER_AST_MATCH);
-    
+void NEWAST_MatchClause_DefinedEntities(const cypher_astnode_t *ast, TrieMap *definedEntities) {
+    const cypher_astnode_t *match_clause = NEWAST_GetClause(ast, CYPHER_AST_MATCH);
+
     _NEWAST_GetIdentifiers(match_clause, definedEntities);
 }
 
 //==============================================================================
 //=== RETURN CLAUSE ============================================================
 //==============================================================================
-int NEWAST_ReturnClause_ContainsCollapsedNodes(const cypher_parse_result_t *ast) {
-    const cypher_astnode_t *root = cypher_parse_result_get_root(ast, 0);
-    const cypher_astnode_t *return_clause = _NEWAST_GetClause(root, CYPHER_AST_RETURN);
+int NEWAST_ReturnClause_ContainsCollapsedNodes(const cypher_astnode_t *ast) {
+    const cypher_astnode_t *return_clause = NEWAST_GetClause(ast, CYPHER_AST_RETURN);
 
     if(!return_clause) return 0;
 
@@ -608,7 +529,7 @@ int NEWAST_ReturnClause_ContainsCollapsedNodes(const cypher_parse_result_t *ast)
     if(nprojections == 0) return 1;
 
     for (unsigned int i = 0; i < nprojections; i++) {
-		const cypher_astnode_t *projection = cypher_ast_return_get_projection(return_clause, i);
+        const cypher_astnode_t *projection = cypher_ast_return_get_projection(return_clause, i);
         const cypher_astnode_t *expression = cypher_ast_projection_get_expression(projection);
 
         // RETURN A
@@ -628,7 +549,7 @@ void NEWAST_WhereClause_ReferredFunctions(const cypher_astnode_t *match_clause, 
 
 // void NEWAST_WhereClause_ReferredFunctions(const cypher_parse_result_t *ast, TrieMap *referred_funcs) {
 //     const cypher_astnode_t *root = cypher_parse_result_get_root(ast, 0);
-//     const cypher_astnode_t *match = _NEWAST_GetClause(root, CYPHER_AST_MATCH);
+//     const cypher_astnode_t *match = NEWAST_GetClause(root, CYPHER_AST_MATCH);
 //     if (!match) return;
 
 //     // Inspect inlined filters ({a:v}).
@@ -661,3 +582,170 @@ void NEWAST_WhereClause_ReferredFunctions(const cypher_astnode_t *match_clause, 
 //         }
 //     }
 // }
+
+/* Collect references to all clauses of the specified type in the query. Since clauses
+ * cannot be nested, we only need to check the immediate children of the query node. */
+unsigned int NewAST_GetTopLevelClauses(const cypher_astnode_t *query, cypher_astnode_type_t clause_type, const cypher_astnode_t **matches) {
+    unsigned int num_found = 0;
+    unsigned int num_clauses = cypher_astnode_nchildren(query);
+    for (unsigned int i = 0; i < num_clauses; i ++) {
+        const cypher_astnode_t *child = cypher_astnode_get_child(query, i);
+        if (cypher_astnode_type(child) != clause_type) continue;
+
+        matches[num_found] = child;
+        num_found ++;
+    }
+    return num_found;
+}
+
+// Retrieve the first instance of the specified clause, if any.
+const cypher_astnode_t* NEWAST_GetClause(const cypher_astnode_t *query, cypher_astnode_type_t clause_type) {
+    unsigned int num_clauses = cypher_astnode_nchildren(query);
+    for (unsigned int i = 0; i < num_clauses; i ++) {
+        const cypher_astnode_t *child = cypher_astnode_get_child(query, i);
+        if (cypher_astnode_type(child) == clause_type) return child;
+    }
+
+    return NULL;
+}
+
+const cypher_astnode_t* NEWAST_GetBody(const cypher_parse_result_t *result) {
+    const cypher_astnode_t *statement = cypher_parse_result_get_root(result, 0);
+    assert(statement && cypher_astnode_type(statement) == CYPHER_AST_STATEMENT);
+
+    return cypher_ast_statement_get_body(statement);
+}
+
+NEWAST_GraphEntity* New_GraphEntity(const cypher_astnode_t *entity, const cypher_astnode_type_t type) {
+    NEWAST_GraphEntity *ge = calloc(1, sizeof(NEWAST_GraphEntity));
+    ge->ast_ref = entity;
+    if (type == CYPHER_AST_NODE_PATTERN) {
+        ge->t = N_NODE;
+        const cypher_astnode_t *alias_node = cypher_ast_node_pattern_get_identifier(entity);
+        if (alias_node) ge->alias = strdup(cypher_ast_identifier_get_name(alias_node));
+        if (cypher_ast_node_pattern_nlabels(entity) > 0) {
+            const cypher_astnode_t *label_node = cypher_ast_node_pattern_get_label(entity, 0);
+            ge->label = strdup(cypher_ast_label_get_name(label_node));
+        }
+    } else if (type == CYPHER_AST_REL_PATTERN) {
+        ge->t = N_RELATION;
+        const cypher_astnode_t *alias_node = cypher_ast_rel_pattern_get_identifier(entity);
+        if (alias_node) ge->alias = strdup(cypher_ast_identifier_get_name(alias_node));
+        if (cypher_ast_rel_pattern_nreltypes(entity) > 0) {
+            // TODO collect all reltypes or update logic elesewhere
+            const cypher_astnode_t *reltype_node = cypher_ast_rel_pattern_get_reltype(entity, 0);
+            ge->label = strdup(cypher_ast_reltype_get_name(reltype_node));
+        }
+    // } else { // type == CYPHER_AST_PROJECTION
+        // ge->t = N_PROJECTION;
+        // const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(entity);
+        // assert(alias_node);
+        // ge->alias = strdup(cypher_ast_identifier_get_name(alias_node));
+    }
+
+    return ge;
+}
+
+void _mapIdentifiers(NEWAST *ast, const cypher_astnode_t *node, unsigned int *id) {
+    if (!node) return;
+
+    cypher_astnode_type_t type = cypher_astnode_type(node);
+
+    // TODO improve logic
+    NEWAST_GraphEntity *ge = NULL;
+    if (type == CYPHER_AST_NODE_PATTERN ||
+        type == CYPHER_AST_REL_PATTERN) { // ||
+        // type == CYPHER_AST_PROJECTION) {
+        ge = New_GraphEntity(node, type);
+    /*
+    } else if (type == CYPHER_AST_PROJECTION) {
+        // UNWIND, RETURN AS
+        // ge = New_GraphEntity(node, type);
+        const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(node);
+        if (alias_node) {
+            // If this projection constructs an alias, add it to the triemap with the
+            // ID of the referenced entity
+            const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(node);
+            const cypher_astnode_t *expr = cypher_ast_projection_get_expression(node);
+
+            // TODO still untrue for things like RETURN 5 AS e
+            const char *alias = cypher_ast_identifier_get_name(alias_node);
+            unsigned int *entityID = NULL;
+            if(cypher_astnode_type(expr) == CYPHER_AST_IDENTIFIER) {
+                const char *identifier = cypher_ast_identifier_get_name(expr);
+                void *v = TrieMap_Find(ast->identifier_map, (char*)identifier, strlen(identifier));
+                assert(v != TRIEMAP_NOTFOUND);
+                entityID = v;
+            } else {
+                entityID = malloc(sizeof(unsigned int));
+                *entityID = (*id)++;
+            }
+            TrieMap_Add(ast->identifier_map, (char*)alias, strlen(alias), entityID, TrieMap_NOP_REPLACE);
+        }
+        */
+
+    }
+    // Add identifier if we have found one.
+    if (ge && ge->alias) {
+        void *val = TrieMap_Find(ast->identifier_map, ge->alias, strlen(ge->alias));
+        // Do nothing if entry already exists
+        if (val != TRIEMAP_NOTFOUND) return;
+        unsigned int *entityID = malloc(sizeof(unsigned int));
+        *entityID = (*id)++;
+        ast->defined_entities = array_append(ast->defined_entities, ge);
+        TrieMap_Add(ast->identifier_map, ge->alias, strlen(ge->alias), entityID, TrieMap_NOP_REPLACE);
+        return;
+    }
+
+    unsigned int child_count = cypher_astnode_nchildren(node);
+    for(unsigned int i = 0; i < child_count; i++) {
+        const cypher_astnode_t *child = cypher_astnode_get_child(node, i);
+        _mapIdentifiers(ast, child, id);
+    }
+}
+
+NEWAST* NEWAST_Build(cypher_parse_result_t *parse_result) {
+    NEWAST *new_ast = malloc(sizeof(NEWAST));
+    new_ast->root = NEWAST_GetBody(parse_result);
+    assert(new_ast->root);
+    new_ast->identifier_map = NULL;
+    new_ast->order_expression_count = 0;
+    new_ast->return_expressions = NULL;
+    new_ast->order_expressions = NULL;
+    return new_ast;
+}
+
+void NEWAST_BuildAliasMap(NEWAST *ast) {
+  unsigned int id = 0;
+  ast->identifier_map = NewTrieMap(); // Holds mapping between referred entities and IDs.
+  ast->defined_entities = array_new(cypher_astnode_t*, 1);
+  // Get unique aliases, from clauses which can introduce entities.
+  _mapIdentifiers(ast, ast->root, &id);
+  /*
+    unsigned int clause_count = cypher_astnode_nchildren(ast->root);
+    const cypher_astnode_t *match_clauses[clause_count];
+    unsigned int match_count = NewAST_GetTopLevelClauses(ast->root, CYPHER_AST_MATCH, match_clauses);
+    for (unsigned int i = 0; i < match_count; i ++) {
+        const cypher_astnode_t *match = match_clauses[i];
+    }
+    */
+}
+
+unsigned int NEWAST_GetAliasID(const NEWAST *ast, char *alias) {
+  assert(ast->identifier_map);
+  void *v = TrieMap_Find(ast->identifier_map, alias, strlen(alias));
+  assert(v != TRIEMAP_NOTFOUND);
+  unsigned int *id = v;
+  return *id;
+}
+
+NEWAST_GraphEntity* NEWAST_GetEntity(const NEWAST *ast, unsigned int id) {
+    return ast->defined_entities[id];
+}
+
+NEWAST* NEWAST_GetFromLTS(void) {
+  NEWAST *ast = pthread_getspecific(_tlsNEWASTKey);
+  assert(ast);
+  return ast;
+}
+

@@ -41,7 +41,7 @@ static AR_ExpNode* _AR_EXP_NewVariableOperandNode(const AST *ast, char *entity_p
     node->operand.variadic.entity_alias = strdup(entity_alias);
     node->operand.variadic.entity_alias_idx = AST_GetAliasID(ast, entity_alias);
     node->operand.variadic.entity_prop = NULL;
-    
+
     if(entity_prop) {
         node->operand.variadic.entity_prop = strdup(entity_prop);
         AST_GraphEntity *ge = MatchClause_GetEntity(ast->matchNode, entity_alias);
@@ -53,7 +53,7 @@ static AR_ExpNode* _AR_EXP_NewVariableOperandNode(const AST *ast, char *entity_p
 
 static AR_ExpNode* _AR_EXP_NewOpNode(char *func_name, int child_count) {
     AR_ExpNode *node = calloc(1, sizeof(AR_ExpNode));
-    node->type = AR_EXP_OP;    
+    node->type = AR_EXP_OP;
     node->op.func_name = func_name;
     node->op.child_count = child_count;
     node->op.children = (AR_ExpNode **)malloc(child_count * sizeof(AR_ExpNode*));
@@ -111,7 +111,7 @@ SIValue AR_EXP_Evaluate(const AR_ExpNode *root, const Record r) {
     SIValue result;
     /* Deal with Operation node. */
     if(root->type == AR_EXP_OP) {
-        /* Aggregation function should be reduced by now. 
+        /* Aggregation function should be reduced by now.
          * TODO: verify above statement. */
         if(root->op.type == AR_OP_AGGREGATE) {
             AggCtx *agg = root->op.agg_func;
@@ -255,7 +255,7 @@ void _AR_EXP_ToString(const AR_ExpNode *root, char **str, size_t *str_size, size
 
         if(binary_op) {
             _AR_EXP_ToString(root->op.children[0], str, str_size, bytes_written);
-            
+
             /* Make sure there are at least 64 bytes in str. */
             if((*str_size - strlen(*str)) < 64) {
                 *str_size += 128;
@@ -268,7 +268,7 @@ void _AR_EXP_ToString(const AR_ExpNode *root, char **str, size_t *str_size, size
         } else {
             /* Operation isn't necessarily a binary operation, use function call representation. */
             *bytes_written += sprintf((*str + *bytes_written), "%s(", root->op.func_name);
-            
+
             for(int i = 0; i < root->op.child_count ; i++) {
                 _AR_EXP_ToString(root->op.children[i], str, str_size, bytes_written);
 
@@ -484,7 +484,7 @@ SIValue AR_LTRIM(SIValue *argv, int argc) {
     if(SIValue_IsNull(argv[0])) return SI_NullVal();
 
     assert(argc == 1 && SI_TYPE(argv[0]) & SI_STRING);
-    
+
     char *trimmed = argv[0].stringval;
 
     while(*trimmed == ' ') {
@@ -513,7 +513,7 @@ SIValue AR_RIGHT(SIValue *argv, int argc) {
 SIValue AR_RTRIM(SIValue *argv, int argc) {
     if(SIValue_IsNull(argv[0])) return SI_NullVal();
     assert(argc == 1 && SI_TYPE(argv[0]) & SI_STRING);
-    
+
     char *str = argv[0].stringval;
 
     size_t i = strlen(str);
@@ -534,7 +534,7 @@ SIValue AR_REVERSE(SIValue *argv, int argc) {
     char *str = argv[0].stringval;
     size_t str_len = strlen(str);
     char *reverse = rm_malloc((str_len + 1) * sizeof(char));
-    
+
     int i = str_len-1;
     int j = 0;
     while(i >= 0) { reverse[j++] = str[i--]; }
@@ -544,10 +544,10 @@ SIValue AR_REVERSE(SIValue *argv, int argc) {
 
 SIValue AR_SUBSTRING(SIValue *argv, int argc) {
     /*
-        argv[0] - original string 
+        argv[0] - original string
         argv[1] - start position
-        argv[2] - length    
-        If length is omitted, the function returns the substring starting at the position given by start and extending to the end of original.        
+        argv[2] - length
+        If length is omitted, the function returns the substring starting at the position given by start and extending to the end of original.
         If either start or length is null or a negative integer, an error is raised.
         If start is 0, the substring will start at the beginning of original.
         If length is 0, the empty string will be returned.
@@ -570,13 +570,13 @@ SIValue AR_SUBSTRING(SIValue *argv, int argc) {
         assert(SI_TYPE(argv[2]) == T_INT64);
         length = argv[2].longval;
         assert(length >= 0);
-        
+
         /* Make sure length does not overreach. */
         if(start + length > original_len) {
             length = original_len - start;
         }
     }
-    
+
     char *substring = rm_malloc((length + 1) * sizeof(char));
     strncpy(substring, original + start, length);
     substring[length] = '\0';
@@ -686,7 +686,7 @@ void AR_RegFunc(char *func_name, size_t func_name_len, AR_Func func) {
     if (__aeRegisteredFuncs == NULL) {
         __aeRegisteredFuncs = NewTrieMap();
     }
-    
+
     TrieMap_Add(__aeRegisteredFuncs, func_name, func_name_len, func, NULL);
 }
 
