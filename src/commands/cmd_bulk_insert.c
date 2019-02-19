@@ -119,13 +119,13 @@ int MGraph_BulkInsert(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     int flags = RedisModule_GetContextFlags(ctx);
     if (flags & (REDISMODULE_CTX_FLAGS_MULTI | REDISMODULE_CTX_FLAGS_LUA)) {
         // Construct concurent query context.
-        context = CommandCtx_New(ctx, NULL, NULL, NULL, argv, argc);
+        context = CommandCtx_New(ctx, NULL, NULL, NULL, NULL, argv, argc);
         // Execute bulk on redis main thread.
         _MGraph_BulkInsert(context);
     } else {
         RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
         // Construct concurent query context.
-        context = CommandCtx_New(NULL, bc, NULL, NULL, argv, argc);
+        context = CommandCtx_New(NULL, bc, NULL, NULL, NULL, argv, argc);
         // Execute bulk insert on a dedicated thread.
         thpool_add_work(_thpool, _MGraph_BulkInsert, context);
     }

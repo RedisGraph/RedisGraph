@@ -53,31 +53,23 @@ void _MGraph_Query(void *args) {
     CommandCtx *qctx = (CommandCtx*)args;
     RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(qctx);
     ResultSet* resultSet = NULL;
-    AST* ast = qctx->ast;
+    AST **ast = qctx->ast;
+    NEWAST *new_ast = qctx->new_ast;
     bool lockAcquired = false;
 
     /* New parser */
-    const char *query = RedisModule_StringPtrLen(qctx->query, NULL);
-    // Debug print
-    // printf("query: %s\n", query);
-    cypher_parse_result_t *new_ast = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
 
-    char *parse_error_reason = NULL;
     // Perform query validations
-    if (AST_PerformValidations(ctx, new_ast) != AST_VALID) goto cleanup;
+    if (AST_PerformValidations(ctx, new_ast->root) != AST_VALID) goto cleanup;
 
-    // cypher_parse_result_fprint_ast(new_ast, stdout, 0, NULL, 0);
-
-    bool readonly = NEWAST_ReadOnly(new_ast);
-
-    /* END OF New parser */
+    bool readonly = NEWAST_ReadOnly(new_ast->root);
 
     // Try to access the GraphContext
     CommandCtx_ThreadSafeContextLock(qctx);
     GraphContext *gc = GraphContext_Retrieve(ctx, qctx->graphName);
     if(!gc) {
-        if (!NEWAST_ContainsClause(new_ast, "create") &&
-            !NEWAST_ContainsClause(new_ast, "merge")) {
+        if (!NEWAST_ContainsClause(new_ast->root, CYPHER_AST_CREATE) &&
+            !NEWAST_ContainsClause(new_ast->root, CYPHER_AST_MERGE)) {
             CommandCtx_ThreadSafeContextUnlock(qctx);
             RedisModule_ReplyWithError(ctx, "key doesn't contains a graph object.");
             goto cleanup;
@@ -143,19 +135,17 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     const char *query = RedisModule_StringPtrLen(argv[2], NULL);
 
     // Parse AST.
-    cypher_parse_result_t *new_ast = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
-    if (new_ast == NULL) return REDISMODULE_OK;
+    cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
+    assert(parse_result);
 
-    if(NEWAST_ContainsErrors(new_ast)) {
-        errMsg = NEWAST_ReportErrors(new_ast);
-        cypher_parse_result_free(new_ast);
+    if(NEWAST_ContainsErrors(parse_result)) {
+        errMsg = NEWAST_ReportErrors(parse_result);
+        cypher_parse_result_free(parse_result);
         RedisModule_Log(ctx, "debug", "Error parsing query: %s", errMsg);
         RedisModule_ReplyWithError(ctx, errMsg);
         free(errMsg);
         return REDISMODULE_OK;
     }
-
-    // cypher_parse_result_fprint_ast(new_ast, stdout, 0, NULL, 0);
 
     AST* ast = ParseQuery(query, strlen(query), &errMsg);
     // if (!ast) {
@@ -165,8 +155,8 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     //     return REDISMODULE_OK;
     // }
 
-    bool readonly = NEWAST_ReadOnly(new_ast);
-    cypher_parse_result_free(new_ast);
+    NEWAST *new_ast = NEWAST_Build(parse_result);
+    bool readonly = NEWAST_ReadOnly(new_ast->root);
 
     /* Determin query execution context
      * queries issued within a LUA script or multi exec block must
@@ -175,14 +165,14 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     int flags = RedisModule_GetContextFlags(ctx);
     if (flags & (REDISMODULE_CTX_FLAGS_MULTI | REDISMODULE_CTX_FLAGS_LUA)) {
       // Run query on Redis main thread.
-      context = CommandCtx_New(ctx, NULL, ast, argv[1], argv, argc);
+      context = CommandCtx_New(ctx, NULL, ast, new_ast, argv[1], argv, argc);
       context->tic[0] = tic[0];
       context->tic[1] = tic[1];
       _MGraph_Query(context);
     } else {
       // Run query on a dedicated thread.
       RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
-      context = CommandCtx_New(NULL, bc, ast, argv[1], argv, argc);
+      context = CommandCtx_New(NULL, bc, ast, new_ast, argv[1], argv, argc);
       context->tic[0] = tic[0];
       context->tic[1] = tic[1];
       thpool_add_work(_thpool, _MGraph_Query, context);

@@ -7,6 +7,7 @@ CommandCtx* CommandCtx_New
     RedisModuleCtx *ctx,
     RedisModuleBlockedClient *bc,
     AST **ast,
+    NEWAST* new_ast,
     RedisModuleString *graphName,
     RedisModuleString **argv,
     int argc
@@ -15,6 +16,7 @@ CommandCtx* CommandCtx_New
     context->bc = bc;
     context->ctx = ctx;
     context->ast = ast;    
+    context->new_ast = new_ast;
     context->argv = argv;
     context->argc = argc;
     context->graphName = NULL;

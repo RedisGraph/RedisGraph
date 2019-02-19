@@ -72,11 +72,11 @@ int MGraph_Delete(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
      * run on Redis main thread, others can run on different threads. */
     int flags = RedisModule_GetContextFlags(ctx);
     if (flags & (REDISMODULE_CTX_FLAGS_MULTI | REDISMODULE_CTX_FLAGS_LUA)) {
-        context = CommandCtx_New(ctx, NULL, NULL, graph_name, argv, argc);
+        context = CommandCtx_New(ctx, NULL, NULL, NULL, graph_name, argv, argc);
         _MGraph_Delete(context);
     } else {
         RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
-        context = CommandCtx_New(NULL, bc, NULL, graph_name, argv, argc);
+        context = CommandCtx_New(NULL, bc, NULL, NULL, graph_name, argv, argc);
         thpool_add_work(_thpool, _MGraph_Delete, context);
     }
 
