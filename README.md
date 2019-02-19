@@ -96,7 +96,7 @@ Congratulations! You can find the compiled binary at `src/redisgraph.so`.
 
 ### Running tests
 
-First, install required Python packages by running ```pip -r requirements.txt``` from the ```tests``` directory.
+First, install required Python packages by running ```pip install -r requirements.txt``` from the ```tests``` directory.
 
 If you've got ```redis-server``` in PATH, just invoke ```make test```.
 
