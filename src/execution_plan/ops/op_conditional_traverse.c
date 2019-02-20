@@ -7,18 +7,21 @@
 #include "op_conditional_traverse.h"
 #include "../../util/arr.h"
 #include "../../GraphBLASExt/GxB_Delete.h"
+#include "../../parser/newast.h"
 
 static void _setupTraversedRelations(CondTraverse *op) {
-    AST *ast = op->ast;
+    NEWAST *ast = NEWAST_GetFromTLS();
     GraphContext *gc = GraphContext_GetFromTLS();
-    const char *alias = op->algebraic_expression->edge->alias;
-    AST_LinkEntity *e = (AST_LinkEntity*)MatchClause_GetEntity(ast->matchNode, alias);
-    op->edgeRelationCount = AST_LinkEntity_LabelCount(e);
+    char *alias = op->algebraic_expression->edge->alias;
     
+    unsigned int id = NEWAST_GetAliasID(ast, alias);
+    NEWAST_GraphEntity *e = NEWAST_GetEntity(ast, id);
+    op->edgeRelationCount = cypher_ast_rel_pattern_nreltypes(e->ast_ref);
     if(op->edgeRelationCount > 0) {
         op->edgeRelationTypes = array_new(int , op->edgeRelationCount);
         for(int i = 0; i < op->edgeRelationCount; i++) {
-            Schema *s = GraphContext_GetSchema(gc, e->labels[i], SCHEMA_EDGE);
+            const char *label = cypher_ast_reltype_get_name(cypher_ast_rel_pattern_get_reltype(e->ast_ref, i));
+            Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_EDGE);
             if(!s) continue;
             op->edgeRelationTypes = array_append(op->edgeRelationTypes, s->id);
         }
@@ -65,13 +68,14 @@ void _traverse(CondTraverse *op) {
 
 // Determin the maximum number of records
 // which will be considered when evaluating an algebraic expression.
-static int _determinRecordCap(const AST *ast) {
+static int _determinRecordCap(const NEWAST *ast) {
     int recordsCap = 16;    // Default.
-    if(ast->limitNode) recordsCap = MIN(recordsCap, ast->limitNode->limit);
+    // TODO
+    // if(ast->limitNode) recordsCap = MIN(recordsCap, ast->limitNode->limit);
     return recordsCap;
 }
 
-OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *algebraic_expression, AST *ast) {
+OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *algebraic_expression, NEWAST *ast) {
     CondTraverse *traverse = calloc(1, sizeof(CondTraverse));
     traverse->ast = ast;
     traverse->graph = g;
@@ -80,9 +84,10 @@ OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *algebraic_expression, A
     traverse->F = NULL;    
     traverse->iter = NULL;
     traverse->edges = NULL;
-    traverse->r = NULL;        
-    traverse->srcNodeRecIdx = AST_GetAliasID(ast, algebraic_expression->src_node->alias);
-    traverse->destNodeRecIdx = AST_GetAliasID(ast, algebraic_expression->dest_node->alias);
+    traverse->r = NULL;    
+
+    traverse->srcNodeRecIdx = NEWAST_GetAliasID(ast, algebraic_expression->src_node->alias);
+    traverse->destNodeRecIdx = NEWAST_GetAliasID(ast, algebraic_expression->dest_node->alias);
     
     traverse->recordsLen = 0;
     traverse->transposed_edge = false;
@@ -110,7 +115,7 @@ OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *algebraic_expression, A
         modified = traverse->algebraic_expression->edge->alias;
         Vector_Push(traverse->op.modifies, modified);
         traverse->edges = array_new(Edge, 32);
-        traverse->edgeRecIdx = AST_GetAliasID(ast, algebraic_expression->edge->alias);
+        traverse->edgeRecIdx = NEWAST_GetAliasID(ast, algebraic_expression->edge->alias);
     }
 
     return (OpBase*)traverse;

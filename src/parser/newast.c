@@ -46,18 +46,15 @@ static void _NEWAST_GetReturnAliases(const cypher_astnode_t *node, TrieMap *alia
     if(cypher_astnode_type(node) != CYPHER_AST_RETURN) return;
     assert(aliases);
 
-    unsigned int child_count = cypher_astnode_nchildren(node);
     int num_return_projections = cypher_ast_return_nprojections(node);
     if (num_return_projections == 0) return;
 
-    for (unsigned int i = 0; i < child_count; i ++) {
+    for (unsigned int i = 0; i < num_return_projections; i ++) {
         const cypher_astnode_t *child = cypher_ast_return_get_projection(node, i);
-        if (child) {
-            const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(child);
-            if (alias_node == NULL) continue;
-            const char *alias = cypher_ast_identifier_get_name(alias_node);
-            TrieMap_Add(aliases, (char*)alias, strlen(alias), NULL, TrieMap_NOP_REPLACE);
-        }
+        const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(child);
+        if (alias_node == NULL) continue;
+        const char *alias = cypher_ast_identifier_get_name(alias_node);
+        TrieMap_Add(aliases, (char*)alias, strlen(alias), NULL, TrieMap_NOP_REPLACE);
     }
 }
 
@@ -618,7 +615,7 @@ const cypher_astnode_t* NEWAST_GetBody(const cypher_parse_result_t *result) {
 
 NEWAST_GraphEntity* New_GraphEntity(const cypher_astnode_t *entity, const cypher_astnode_type_t type) {
     NEWAST_GraphEntity *ge = calloc(1, sizeof(NEWAST_GraphEntity));
-    // ge->ast_ref = entity;
+    ge->ast_ref = entity;
     if (type == CYPHER_AST_NODE_PATTERN) {
         ge->t = N_ENTITY;
         const cypher_astnode_t *alias_node = cypher_ast_node_pattern_get_identifier(entity);
@@ -641,12 +638,62 @@ NEWAST_GraphEntity* New_GraphEntity(const cypher_astnode_t *entity, const cypher
         // const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(entity);
         // assert(alias_node);
         // ge->alias = strdup(cypher_ast_identifier_get_name(alias_node));
-    }
+    // }
 
+    // // TODO tmp
+    // AST_Entity *ret = New_AST_Entity(ge->alias, A_ENTITY, ge);
+    // return ret;
+    }
     return ge;
 }
 
-void _mapIdentifiers(NEWAST *ast, const cypher_astnode_t *node, unsigned int *id) {
+// AST_Entity* New_AST_Entity(const char *alias, AST_EntityType t, void *ptr) {
+    // AST_Entity *ret = malloc(sizeof(AST_Entity));
+    // ret->alias = alias;
+    // ret->t = t;
+    // if (t == A_ENTITY) {
+        // ret->ge = ptr;
+    // } else {
+        // ret->exp = ptr;
+    // }
+    // return ret;
+// }
+
+void _mapReturnAliases(NEWAST *ast, unsigned int *id) {
+    const cypher_astnode_t *return_clause = NEWAST_GetClause(ast->root, CYPHER_AST_RETURN);
+    if (!return_clause) return;
+
+    int num_return_projections = cypher_ast_return_nprojections(return_clause);
+    if (num_return_projections == 0) return;
+
+    for (unsigned int i = 0; i < num_return_projections; i ++) {
+        const cypher_astnode_t *projection = cypher_ast_return_get_projection(return_clause, i);
+        const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(projection);
+        if (alias_node == NULL) continue;
+        const char *alias = cypher_ast_identifier_get_name(alias_node);
+        unsigned int *entityID = NULL;
+        const cypher_astnode_t *expr = cypher_ast_projection_get_expression(projection);
+        AR_ExpNode *ar_exp = AR_EXP_FromExpression(ast, expr);
+        if (ar_exp->type == AR_EXP_OPERAND && ar_exp->operand.type == AR_EXP_VARIADIC) {
+            // TODO lookup and point to same entity if it exists?
+        } else {
+            unsigned int *entityID = malloc(sizeof(unsigned int));
+            *entityID = (*id)++;
+            // ast->defined_entities = array_append(ast->defined_entities, alias);
+            TrieMap_Add(ast->identifier_map, (char*)alias, strlen(alias), entityID, TrieMap_NOP_REPLACE);
+        }
+        // if(cypher_astnode_type(expr) != CYPHER_AST_PROPERTY_OPERATOR) {
+            // const char *identifier = cypher_ast_identifier_get_name(expr);
+            // void *v = TrieMap_Find(ast->identifier_map, (char*)identifier, strlen(identifier));
+            // assert(v != TRIEMAP_NOTFOUND);
+            // entityID = v;
+            // TrieMap_Add(ast->identifier_map, (char*)alias, strlen(alias), entityID, TrieMap_NOP_REPLACE);
+        // }
+    }
+}
+
+// Capture node and relation identifiers from MATCH, MERGE, and CREATE clauses
+void _mapPatternIdentifiers(NEWAST *ast, const cypher_astnode_t *node, unsigned int *id) {
     if (!node) return;
 
     cypher_astnode_type_t type = cypher_astnode_type(node);
@@ -700,7 +747,7 @@ void _mapIdentifiers(NEWAST *ast, const cypher_astnode_t *node, unsigned int *id
     unsigned int child_count = cypher_astnode_nchildren(node);
     for(unsigned int i = 0; i < child_count; i++) {
         const cypher_astnode_t *child = cypher_astnode_get_child(node, i);
-        _mapIdentifiers(ast, child, id);
+        _mapPatternIdentifiers(ast, child, id);
     }
 }
 
@@ -715,12 +762,28 @@ NEWAST* NEWAST_Build(cypher_parse_result_t *parse_result) {
     return new_ast;
 }
 
+// Debug print
+void _walkTriemap(TrieMap *tm) {
+    TrieMapIterator *it = TrieMap_Iterate(tm, "", 0);
+    char *ptr;
+    tm_len_t len;
+    void *value;
+    while(TrieMapIterator_Next(it, &ptr, &len, &value)) {
+        printf("%*s\n", len, ptr);
+    }
+    TrieMapIterator_Free(it);
+}
+
 void NEWAST_BuildAliasMap(NEWAST *ast) {
   unsigned int id = 0;
   ast->identifier_map = NewTrieMap(); // Holds mapping between referred entities and IDs.
   ast->defined_entities = array_new(cypher_astnode_t*, 1);
-  // Get unique aliases, from clauses which can introduce entities.
-  _mapIdentifiers(ast, ast->root, &id);
+  // Get graph entity identifiers from MATCH, MERGE, and CREATE clauses.
+  _mapPatternIdentifiers(ast, ast->root, &id);
+  // Get aliases defined by UNWIND and RETURN...AS clauses
+
+  _mapReturnAliases(ast, &id);
+  // _walkTriemap(ast->identifier_map);
   /*
     unsigned int clause_count = cypher_astnode_nchildren(ast->root);
     const cypher_astnode_t *match_clauses[clause_count];

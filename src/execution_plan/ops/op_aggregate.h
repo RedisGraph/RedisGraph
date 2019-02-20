@@ -26,7 +26,7 @@ typedef enum {
  * return clause */
  typedef struct {
     OpBase op;
-    AST *ast;
+    NEWAST *ast;
     char **aliases;
     AR_ExpNode **expressions;
     AR_ExpNode **order_exps;
@@ -40,7 +40,7 @@ typedef enum {
     CacheGroupIterator *groupIter;
  } OpAggregate;
 
-OpBase* NewAggregateOp(AST *ast, AR_ExpNode **expressions, char **aliases);
+OpBase* NewAggregateOp(NEWAST *ast, AR_ExpNode **expressions, char **aliases);
 OpResult AggregateInit(OpBase *opBase);
 Record AggregateConsume(OpBase *opBase);
 OpResult AggregateReset(OpBase *opBase);

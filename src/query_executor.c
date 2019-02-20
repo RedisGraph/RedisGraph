@@ -85,13 +85,15 @@ static void _replicateMergeClauseToMatchClause(AST *ast) {
 }
 
 ReturnElementNode* _NewReturnElementNode(const char *alias, AR_ExpNode *exp) {
-    ReturnElementNode *elem = rm_malloc(sizeof(ReturnElementNode));
-    elem->alias = alias;
-    elem->exp = exp;
-    return elem;
+    ReturnElementNode *ret = malloc(sizeof(ReturnElementNode));
+    ret->alias = alias;
+    ret->exp = exp;
+
+    return ret;
 }
 
-void ExpandCollapsedNodes(AST *ast) {
+void _oldExpandCollapsedNodes(void) {
+    AST *ast = AST_GetFromLTS();
     char buffer[256];
     GraphContext *gc = GraphContext_GetFromLTS();
 
@@ -231,20 +233,96 @@ void ExpandCollapsedNodes(AST *ast) {
     returnClause->returnElements = expandReturnElements;
 }
 
-AST** ParseQuery(const char *query, size_t qLen, char **errMsg) {
-    AST **asts = Query_Parse(query, qLen, errMsg);
-    if(asts) {
-        for(int i = 0; i < array_len(asts); i++) {
-            /* Create match clause which will try to match against pattern specified within merge clause. */
-            if(asts[i]->mergeNode) _replicateMergeClauseToMatchClause(asts[i]);
+void ExpandCollapsedNodes(NEWAST *ast) {
 
-            AST_NameAnonymousNodes(asts[i]);
-            // Mark each alias with a unique ID.
-            AST_WithNode *withClause = (i > 0) ? asts[i-1]->withNode : NULL;
-            AST_MapAliasToID(asts[i], withClause);
+    _oldExpandCollapsedNodes();
+    char buffer[256];
+    GraphContext *gc = GraphContext_GetFromLTS();
+
+    // TODO asterisks handling
+    unsigned int return_expression_count = array_len(ast->return_expressions);
+    ReturnElementNode **expandReturnElements = array_new(ReturnElementNode*, return_expression_count);
+
+    /* Scan return clause, search for collapsed nodes. */
+    for (unsigned int i = 0; i < return_expression_count; i++) {
+        ReturnElementNode *elem = ast->return_expressions[i];
+        // assert (elem->t == A_EXPRESSION);
+
+        AR_ExpNode *exp = elem->exp;
+
+        /* Detect collapsed entity,
+         * A collapsed entity is represented by an arithmetic expression
+         * of AR_EXP_OPERAND type,
+         * The operand type should be AST_AR_EXP_VARIADIC,
+         * lastly property should be missing. */
+
+        if(exp->type == AR_EXP_OPERAND &&
+            exp->operand.type == AR_EXP_VARIADIC &&
+            exp->operand.variadic.entity_prop == NULL) {
+
+            /* Return clause doesn't contains entity's label,
+             * Find collapsed entity's label. */
+            char *alias = (char*)elem->alias;
+            // char *alias = exp->operand.variadic.entity_alias;
+            unsigned int id = NEWAST_GetAliasID(ast, alias);
+            NEWAST_GraphEntity *collapsed_entity = NEWAST_GetEntity(ast, id);
+            // Entity was an expression rather than a node or edge
+            // if (collapsed_entity->t != A_ENTITY) continue;
+
+            /* Find label's properties. */
+            SchemaType schema_type = (collapsed_entity->t == N_ENTITY) ? SCHEMA_NODE : SCHEMA_EDGE;
+            Schema *schema;
+
+            if(collapsed_entity->label) {
+                /* Collapsed entity has a label. */
+                schema = GraphContext_GetSchema(gc, collapsed_entity->label, schema_type);
+            } else {
+                /* Entity does have a label, Consult with unified schema. */
+                schema = GraphContext_GetUnifiedSchema(gc, schema_type);
+            }
+
+            void *ptr = NULL;       /* schema property value, (not in use). */
+            char *prop = NULL;      /* Entity property. */
+            tm_len_t prop_len = 0;  /* Length of entity's property. */
+
+            AR_ExpNode *expanded_exp;
+            ReturnElementNode *retElem;
+            if(Schema_AttributeCount(schema) == 0) {
+                /* Schema missing or
+                 * label doesn't have any properties.
+                 * Create a fake return element. */
+                expanded_exp = AR_EXP_NewConstOperandNode(SI_ConstStringVal(""));
+                // TODO capture alias
+                // Incase an alias is given use it, otherwise use the variable name.
+                // retElem = New_AST_Entity(elem->alias, A_EXPRESSION, expanded_exp);
+                retElem = _NewReturnElementNode(elem->alias, expanded_exp);
+                expandReturnElements = array_append(expandReturnElements, retElem);
+            } else {
+                TrieMapIterator *it = TrieMap_Iterate(schema->attributes, "", 0);
+                while(TrieMapIterator_Next(it, &prop, &prop_len, &ptr)) {
+                    prop_len = MIN(255, prop_len);
+                    memcpy(buffer, prop, prop_len);
+                    buffer[prop_len] = '\0';
+
+                    /* Create a new return element foreach property. */
+                    expanded_exp = AR_EXP_NewVariableOperandNode(ast, collapsed_entity->alias, buffer);
+                    retElem = _NewReturnElementNode(elem->alias, expanded_exp);
+                    expandReturnElements = array_append(expandReturnElements, retElem);
+                }
+                TrieMapIterator_Free(it);
+            }
+        } else {
+            expandReturnElements = array_append(expandReturnElements, elem);
         }
     }
-    return asts;
+
+    /* Override previous return clause. */
+    array_free(ast->return_expressions);
+    ast->return_expressions = expandReturnElements;
+}
+
+AST* ParseQuery(const char *query, size_t qLen, char **errMsg) {
+    return Query_Parse(query, qLen, errMsg);
 }
 
 AST_Validation AST_PerformValidations(RedisModuleCtx *ctx, const cypher_astnode_t *ast) {
@@ -361,6 +439,103 @@ static void _AST_optimize_traversal_direction(AST *ast) {
     if(should_reverse) _AST_reverse_match_patterns(ast);
 }
 
+void _ReturnExpandAll(NEWAST *ast) {
+    unsigned int identifier_count = ast->identifier_map->cardinality;
+    ast->return_expressions = array_new(AR_ExpNode*, identifier_count);
+
+    // TrieMapIterator *it = TrieMap_Iterate(ast->identifier_map, "", 0);
+    // char *ptr;
+    // tm_len_t len;
+    // unsigned int *id;
+
+    // while (TrieMapIterator_Next(it, &ptr, &len, (void**)&id)) {
+        // NEWAST_GraphEntity *entity = NEWAST_GetEntity(ast, *id);
+    for (unsigned int i = 0; i < identifier_count; i ++) {
+        NEWAST_GraphEntity *entity = ast->defined_entities[i];
+        AR_ExpNode *exp = AR_EXP_NewVariableOperandNode(ast, entity->alias, NULL);
+
+        ReturnElementNode *ret = _NewReturnElementNode(entity->alias, exp);
+        ast->return_expressions = array_append(ast->return_expressions, ret);
+    }
+}
+
+void _BuildReturnExpressions(NEWAST *ast) {
+    // Handle RETURN entities
+    const cypher_astnode_t *ret_clause = NEWAST_GetClause(ast->root, CYPHER_AST_RETURN);
+    if (!ret_clause) return;
+
+    // Query is of type "RETURN *",
+    // collect all defined identifiers and create return elements for them
+    if (cypher_ast_return_has_include_existing(ret_clause)) return _ReturnExpandAll(ast);
+
+    unsigned int count = cypher_ast_return_nprojections(ret_clause);
+    ast->return_expressions = array_new(AR_ExpNode*, count);
+    for (unsigned int i = 0; i < count; i++) {
+        const cypher_astnode_t *projection = cypher_ast_return_get_projection(ret_clause, i);
+        const cypher_astnode_t *expr = cypher_ast_projection_get_expression(projection);
+        AR_ExpNode *exp = AR_EXP_FromExpression(ast, expr);
+        // If projection is aliased, use the aliased name in the arithmetic expression
+        const char *alias = NULL;
+        const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(projection);
+        // Note - doesn't just capture AS aliases, but things like 'e.name'
+        // from RETURN e.name
+        if (alias_node) {
+            alias = cypher_ast_identifier_get_name(alias_node);
+        } else if (cypher_astnode_type(expr) == CYPHER_AST_IDENTIFIER) {
+            alias = cypher_ast_identifier_get_name(expr);
+        } else {
+            assert(false);
+        }
+        ast->return_expressions = array_append(ast->return_expressions, _NewReturnElementNode(alias, exp));
+        // ast->return_expressions = array_append(ast->return_expressions, New_AST_Entity(alias, A_EXPRESSION, exp));
+    }
+
+    // Handle ORDER entities
+    const cypher_astnode_t *order_clause = cypher_ast_return_get_order_by(ret_clause);
+    if (!order_clause) return;
+
+    count = cypher_ast_order_by_nitems(order_clause);
+    ast->order_expressions = rm_malloc(count * sizeof(AR_ExpNode*));
+    ast->order_expression_count = count;
+    for (unsigned int i = 0; i < count; i++) {
+        // Returns CYPHER_AST_SORT_ITEM types
+        // TODO write a libcypher PR to correct the documentation on this.
+        const cypher_astnode_t *order_item = cypher_ast_order_by_get_item(order_clause, i);
+        const cypher_astnode_t *expr = cypher_ast_sort_item_get_expression(order_item);
+        ast->order_expressions[i] = AR_EXP_FromExpression(ast, expr);
+    }
+}
+
+// TODO maybe put in resultset.c? _buildExpressions repetition from project and aggregate
+/*
+void _prepareResultset(NEWAST *ast) {
+    // Compute projected record length:
+    // Number of returned expressions + number of order-by expressions.
+    ExpandCollapsedNodes(ast);
+    ResultSet_CreateHeader(op->resultset);
+
+    // const NEWAST *ast = NEWAST_GetFromLTS();
+
+    op->orderByExpCount = ast->order_expression_count;
+    op->returnExpCount = ast->return_expression_count;
+
+    op->expressions = rm_malloc((op->orderByExpCount + op->returnExpCount) * sizeof(AR_ExpNode*));
+
+    // TODO redundancy; already performed by ResultSet header creation
+    // Compose RETURN clause expressions.
+    for(uint i = 0; i < op->returnExpCount; i++) {
+        // TODO weird?
+        op->expressions[i] = ast->return_expressions[i];
+    }
+
+    // Compose ORDER BY expressions.
+    for(uint i = 0; i < op->orderByExpCount; i++) {
+        op->expressions[i + op->orderByExpCount] = ast->order_expressions[i];
+    }
+
+}
+*/
+
 void ModifyAST(GraphContext *gc, AST *ast, NEWAST *new_ast) {
     if(ast->matchNode) _AST_optimize_traversal_direction(ast);
 
@@ -372,4 +547,12 @@ void ModifyAST(GraphContext *gc, AST *ast, NEWAST *new_ast) {
 
     AST_NameAnonymousNodes(ast);
     _inlineProperties(ast);
+
+    NEWAST_BuildAliasMap(new_ast);
+
+    _BuildReturnExpressions(new_ast);
+    if(NEWAST_ReturnClause_ContainsCollapsedNodes(new_ast->root) == 1) {
+        /* Expand collapsed nodes. */
+        ExpandCollapsedNodes(new_ast);
+    }
 }

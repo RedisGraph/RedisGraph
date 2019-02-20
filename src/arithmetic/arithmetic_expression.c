@@ -25,32 +25,6 @@ static inline int _validate_numeric(const SIValue v) {
     return SI_TYPE(v) & SI_NUMERIC;
 }
 
-static AR_ExpNode* _AR_EXP_NewConstOperandNode(SIValue constant) {
-    AR_ExpNode *node = malloc(sizeof(AR_ExpNode));
-    node->type = AR_EXP_OPERAND;
-    node->operand.type = AR_EXP_CONSTANT;
-    node->operand.constant = constant;
-    return node;
-}
-
-static AR_ExpNode* _AR_EXP_NewVariableOperandNode(const NEWAST *ast, const char *entity_prop, const char *entity_alias) {
-    AR_ExpNode *node = malloc(sizeof(AR_ExpNode));
-    node->type = AR_EXP_OPERAND;
-    node->operand.type = AR_EXP_VARIADIC;
-    node->operand.variadic.entity_alias = strdup(entity_alias);
-    unsigned int id = NEWAST_GetAliasID(ast, (char*)entity_alias);
-    node->operand.variadic.entity_alias_idx = id;
-    node->operand.variadic.entity_prop = NULL;
-
-    if(entity_prop) {
-        node->operand.variadic.entity_prop = strdup(entity_prop);
-        NEWAST_GraphEntity *ge = NEWAST_GetEntity(ast, id);
-        SchemaType st = (ge->t == N_ENTITY) ? SCHEMA_NODE : SCHEMA_EDGE;
-        node->operand.variadic.entity_prop_idx = Attribute_GetID(st, entity_prop);
-    }
-    return node;
-}
-
 // Still used by AR_EXP_BuildFromAST
 static AR_ExpNode* old_AR_EXP_NewVariableOperandNode(const AST *ast, const char *entity_prop, char *entity_alias) {
     AR_ExpNode *node = calloc(1, sizeof(AR_ExpNode));
@@ -93,6 +67,34 @@ static AR_ExpNode* _AR_EXP_NewOpNode(char *func_name, int child_count) {
     return node;
 }
 
+AR_ExpNode* AR_EXP_NewVariableOperandNode(const NEWAST *ast, const char *entity_alias, const char *entity_prop) {
+    AR_ExpNode *node = malloc(sizeof(AR_ExpNode));
+    node->type = AR_EXP_OPERAND;
+    node->operand.type = AR_EXP_VARIADIC;
+    node->operand.variadic.entity_alias = strdup(entity_alias);
+    unsigned int id = NEWAST_GetAliasID(ast, (char*)entity_alias);
+    node->operand.variadic.entity_alias_idx = id;
+    node->operand.variadic.entity_prop = NULL;
+
+    if(entity_prop) {
+        node->operand.variadic.entity_prop = strdup(entity_prop);
+        // AST_Entity *e = NEWAST_GetEntity(ast, id);
+        NEWAST_GraphEntity *ge = NEWAST_GetEntity(ast, id);
+
+        SchemaType st = (ge->t == N_ENTITY) ? SCHEMA_NODE : SCHEMA_EDGE;
+        node->operand.variadic.entity_prop_idx = Attribute_GetID(st, entity_prop);
+    }
+    return node;
+}
+
+AR_ExpNode* AR_EXP_NewConstOperandNode(SIValue constant) {
+    AR_ExpNode *node = malloc(sizeof(AR_ExpNode));
+    node->type = AR_EXP_OPERAND;
+    node->operand.type = AR_EXP_CONSTANT;
+    node->operand.constant = constant;
+    return node;
+}
+
 AR_ExpNode* AR_EXP_FromExpression(const NEWAST *ast, const cypher_astnode_t *expr) {
     const cypher_astnode_type_t type = cypher_astnode_type(expr);
 
@@ -114,7 +116,7 @@ AR_ExpNode* AR_EXP_FromExpression(const NEWAST *ast, const cypher_astnode_t *exp
     } else if (type == CYPHER_AST_IDENTIFIER) {
         // Identifier referencing another AST entity
         const char *alias = cypher_ast_identifier_get_name(expr);
-        return _AR_EXP_NewVariableOperandNode(ast, alias, NULL);
+        return AR_EXP_NewVariableOperandNode(ast, alias, NULL);
 
     /* Entity-property pair */
     } else if (type == CYPHER_AST_PROPERTY_OPERATOR) {
@@ -127,7 +129,7 @@ AR_ExpNode* AR_EXP_FromExpression(const NEWAST *ast, const cypher_astnode_t *exp
         // Extract the property name
         const cypher_astnode_t *prop_name_node = cypher_ast_property_operator_get_prop_name(expr);
         const char *prop_name = cypher_ast_prop_name_get_value(prop_name_node);
-        return _AR_EXP_NewVariableOperandNode(ast, alias, prop_name);
+        return AR_EXP_NewVariableOperandNode(ast, alias, prop_name);
 
     /* SIValue constant types */
     } else if (type == CYPHER_AST_INTEGER) {
@@ -136,27 +138,27 @@ AR_ExpNode* AR_EXP_FromExpression(const NEWAST *ast, const cypher_astnode_t *exp
         int64_t l = strtol(value_str, &endptr, 0);
         assert(endptr[0] == 0);
         SIValue converted = SI_LongVal(l);
-        return _AR_EXP_NewConstOperandNode(converted);
+        return AR_EXP_NewConstOperandNode(converted);
     } else if (type == CYPHER_AST_FLOAT) {
         const char *value_str = cypher_ast_float_get_valuestr(expr);
         char *endptr = NULL;
         double d = strtod(value_str, &endptr);
         assert(endptr[0] == 0);
         SIValue converted = SI_DoubleVal(d);
-        return _AR_EXP_NewConstOperandNode(converted);
+        return AR_EXP_NewConstOperandNode(converted);
     } else if (type == CYPHER_AST_STRING) {
         const char *value_str = cypher_ast_string_get_value(expr);
         SIValue converted = SI_DuplicateStringVal(value_str); // TODO use const strings instead?
-        return _AR_EXP_NewConstOperandNode(converted);
+        return AR_EXP_NewConstOperandNode(converted);
     } else if (type == CYPHER_AST_TRUE) {
         SIValue converted = SI_BoolVal(true);
-        return _AR_EXP_NewConstOperandNode(converted);
+        return AR_EXP_NewConstOperandNode(converted);
     } else if (type == CYPHER_AST_FALSE) {
         SIValue converted = SI_BoolVal(false);
-        return _AR_EXP_NewConstOperandNode(converted);
+        return AR_EXP_NewConstOperandNode(converted);
     } else if (type == CYPHER_AST_NULL) {
         SIValue converted = SI_NullVal();
-        return _AR_EXP_NewConstOperandNode(converted);
+        return AR_EXP_NewConstOperandNode(converted);
 
     /* Comparison/filter types */
     // TODO Possibly implement these, replacing AST_Filter types
@@ -203,7 +205,7 @@ AR_ExpNode* AR_EXP_BuildFromAST(const AST *ast, const AST_ArithmeticExpressionNo
         }
     } else {
         if(exp->operand.type == AST_AR_EXP_CONSTANT) {
-            root = _AR_EXP_NewConstOperandNode(exp->operand.constant);
+            root = AR_EXP_NewConstOperandNode(exp->operand.constant);
         } else {
             root = old_AR_EXP_NewVariableOperandNode(ast,
                                                   exp->operand.variadic.property,

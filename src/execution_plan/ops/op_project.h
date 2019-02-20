@@ -13,7 +13,7 @@
 
 typedef struct {
     OpBase op;
-    const AST *ast;
+    const NEWAST *ast;
     char **aliases;                 // Aliases attached to projected expressions.
     AR_ExpNode **exps;              // Projected expressions.
     AR_ExpNode **order_exps;        // Order by expressions.
@@ -22,7 +22,7 @@ typedef struct {
     unsigned short order_exp_count; // Number of order by expressions.
 } OpProject;
 
-OpBase* NewProjectOp(const AST *ast, AR_ExpNode **exps, char **aliases);
+OpBase* NewProjectOp(const NEWAST *ast, AR_ExpNode **exps, char **aliases);
 
 OpResult ProjectInit(OpBase *opBase);
 

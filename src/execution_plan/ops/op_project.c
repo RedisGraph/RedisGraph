@@ -22,7 +22,7 @@ static AR_ExpNode** _getOrderExpressions(OpBase *op) {
     return _getOrderExpressions(op->parent);
 }
 
-OpBase* NewProjectOp(const AST *ast, AR_ExpNode **exps, char **aliases) {
+OpBase* NewProjectOp(const NEWAST *ast, AR_ExpNode **exps, char **aliases) {
     OpProject *project = malloc(sizeof(OpProject));
     project->ast = ast;
     project->exps = exps;

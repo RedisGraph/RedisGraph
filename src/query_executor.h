@@ -15,7 +15,7 @@
 
 /* Modifies AST by expanding RETURN * or RETURN
  * a into a list of individual properties. */
-void ExpandCollapsedNodes(AST *ast);
+void ExpandCollapsedNodes(NEWAST *ast);
 
 /* Create an AST from raw query. */
 AST **ParseQuery(const char *query, size_t qLen, char **errMsg);

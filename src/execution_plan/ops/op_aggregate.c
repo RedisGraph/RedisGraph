@@ -194,9 +194,15 @@ static Record _handoff(OpAggregate *op) {
             // for later evaluation by ORDER-BY expressions.
             char *alias = op->aliases[i];
             if(alias) {
-                int recIdx = AST_GetAliasID(op->ast, alias);
+                int recIdx = NEWAST_GetAliasID(op->ast, alias);
                 Record_AddScalar(group->r, recIdx, res);
             }
+            // TODO aliases
+            // char *alias = op->ast->returnNode->returnElements[i]->alias;
+            // if(alias) {
+                // int recIdx = AST_GetAliasID(op->ast, alias);
+                // Record_AddScalar(group->r, recIdx, res);
+            // }
         }
     }
 
@@ -209,7 +215,7 @@ static Record _handoff(OpAggregate *op) {
     return r;
 }
 
-OpBase* NewAggregateOp(AST *ast, AR_ExpNode **expressions, char **aliases) {
+OpBase* NewAggregateOp(NEWAST *ast, AR_ExpNode **expressions, char **aliases) {
     OpAggregate *aggregate = malloc(sizeof(OpAggregate));
     aggregate->ast = ast;
     aggregate->aliases = aliases;
