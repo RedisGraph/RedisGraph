@@ -32,7 +32,7 @@ Schema* RdbLoadUnifiedSchema(RedisModuleIO *rdb) {
     pAttribute_id = malloc(sizeof(Attribute_ID));
     *pAttribute_id = i;
 
-    TrieMap_Add(s->attributes, attr, len, pAttribute_id, TrieMap_NOP_REPLACE);
+    TrieMap_Add(s->attributes, attr, len, pAttribute_id, TrieMap_DONT_CARE_REPLACE);
 
     // Immediately free the string, as the schema does not reference it.
     RedisModule_Free(attr);
