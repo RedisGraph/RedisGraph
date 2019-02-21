@@ -50,7 +50,7 @@ void AR_EXP_GetAliases(const AST_ArithmeticExpressionNode *exp, TrieMap *aliases
 		/* Check specific operand */
 		if (exp->operand.type == AST_AR_EXP_VARIADIC) {
 			char *alias = exp->operand.variadic.alias;
-			if (alias) TrieMap_Add(aliases, alias, strlen(alias), NULL, TrieMap_NOP_REPLACE);
+			if (alias) TrieMap_Add(aliases, alias, strlen(alias), NULL, TrieMap_DONT_CARE_REPLACE);
     }
   }
 }
@@ -58,7 +58,7 @@ void AR_EXP_GetAliases(const AST_ArithmeticExpressionNode *exp, TrieMap *aliases
 void AR_EXP_GetFunctions(const AST_ArithmeticExpressionNode *exp, TrieMap *functions) {
 	if(exp->type == AST_AR_EXP_OP) {
 		AST_ArithmeticExpressionOP op = exp->op;
-		TrieMap_Add(functions, op.function, strlen(op.function), NULL, TrieMap_NOP_REPLACE);
+		TrieMap_Add(functions, op.function, strlen(op.function), NULL, TrieMap_DONT_CARE_REPLACE);
 		for(int i = 0; i < Vector_Size(op.args); i++) {
 			AST_ArithmeticExpressionNode *arg;
 			Vector_Get(op.args, i, &arg);

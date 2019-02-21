@@ -69,7 +69,7 @@ Attribute_ID Schema_AddAttribute(Schema *s, SchemaType t, const char *attribute)
                     (char*)attribute,
                     strlen(attribute),
                     pAttribute_id,
-                    TrieMap_NOP_REPLACE);
+                    TrieMap_DONT_CARE_REPLACE);
 
         if(s != unified_schema) {
             pAttribute_id = malloc(sizeof(Attribute_ID));
@@ -78,7 +78,7 @@ Attribute_ID Schema_AddAttribute(Schema *s, SchemaType t, const char *attribute)
                         (char*)attribute,
                         strlen(attribute),
                         pAttribute_id,
-                        TrieMap_NOP_REPLACE);
+                        TrieMap_DONT_CARE_REPLACE);
         }
     } else {
         /* We've encounter this attribute before,
@@ -93,7 +93,7 @@ Attribute_ID Schema_AddAttribute(Schema *s, SchemaType t, const char *attribute)
                         (char*)attribute,
                         strlen(attribute),
                         pAttribute_id,
-                        TrieMap_NOP_REPLACE);
+                        TrieMap_DONT_CARE_REPLACE);
         }
     }
 

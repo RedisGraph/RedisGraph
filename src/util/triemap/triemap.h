@@ -83,9 +83,6 @@ void TrieMap_NOP_CB(void *p);
 /* Replace callback that replaces the oldval with the new one. */
 void* TrieMap_DONT_CARE_REPLACE(void *oldval, void *newval);
 
-/* Fake replace callback that does not overwrite old value. */
-void* TrieMap_NOP_REPLACE(void *oldval, void *newval);
-
 /* Free the trie's root and all its children recursively. If freeCB is given, we
  * call it to free individual payload values. If not, free() is used instead. */
 void TrieMap_Free(TrieMap *t, void (*freeCB)(void *));

@@ -33,7 +33,7 @@ void UnwindClause_DefinedEntities(const AST_UnwindNode *unwindNode, TrieMap *def
                 unwindNode->alias,
                 strlen(unwindNode->alias),
                 NULL,
-                TrieMap_NOP_REPLACE);
+                TrieMap_DONT_CARE_REPLACE);
 }
 
 void Free_AST_UnwindNode(AST_UnwindNode *unwindNode) {
