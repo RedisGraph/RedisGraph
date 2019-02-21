@@ -170,4 +170,4 @@ Got questions? Feel free to ask at the [RediGraph mailing list](https://groups.g
 
 ## License
 
-Apache 2.0 with Commons Clause - see [LICENSE](https://raw.githubusercontent.com/RedisLabsModules/RedisGraph/master/LICENSE)
+Redis Source Available License Agreement - see [LICENSE](https://raw.githubusercontent.com/RedisLabsModules/RedisGraph/master/LICENSE)
