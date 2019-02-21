@@ -11,6 +11,7 @@
 #include "../query_executor.h"
 #include "../grouping/group_cache.h"
 #include "../arithmetic/aggregate.h"
+#include "../parser/newast.h"
 
 /* Redis prints doubles with up to 17 digits of precision, which captures
  * the inaccuracy of many floating-point numbers (such as 0.1).
@@ -53,7 +54,7 @@ static void _ResultSet_ReplyWithScalar(RedisModuleCtx *ctx, const SIValue v) {
       }
 }
 
-static void _ResultSet_ReplayHeader(const ResultSet *set, const ResultSetHeader *header) {    
+static void _ResultSet_ReplayHeader(const ResultSet *set, const ResultSetHeader *header) {
     RedisModule_ReplyWithArray(set->ctx, header->columns_len);
     for(int i = 0; i < header->columns_len; i++) {
         Column *c = header->columns[i];
@@ -138,8 +139,9 @@ static Column* _NewColumn(char *name, char *alias) {
 void static _Column_Free(Column* column) {
     /* No need to free alias,
      * it will be freed as part of AST_Free. */
-    rm_free(column->name);
-    rm_free(column);
+    // TODO
+    // rm_free(column->name);
+    // rm_free(column);
 }
 
 void ResultSet_CreateHeader(ResultSet *resultset, const AST *ast) {    
@@ -158,19 +160,16 @@ void ResultSet_CreateHeader(ResultSet *resultset, const AST *ast) {
     }
 
     for(int i = 0; i < header->columns_len; i++) {
-        // AST_Entity *elem = ast->return_expressions[i];
         ReturnElementNode *elem = ast->return_expressions[i];
 
-        // TODO this seems really pointless
+        // TODO ?? this seems really pointless
         char *column_name;
-        AR_EXP_ToString(elem->exp, &column_name);
-        char *alias;
         if (elem->alias) {
-            alias = (char*)elem->alias;
+            column_name = (char*)elem->alias;
         } else {
-            alias = column_name;
+            AR_EXP_ToString(elem->exp, &column_name);
         }
-        Column* column = _NewColumn(column_name, alias);
+        Column* column = _NewColumn(column_name, column_name);
 
         header->columns[i] = column;
     }
@@ -200,6 +199,9 @@ ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx) {
     set->header = NULL;
     set->bufferLen = 2048;
     set->buffer = malloc(set->bufferLen);
+    // Add skip, limit, and distinct values if specified by user
+    ResultSet_GetReturnModifiers(ast, set);
+    if(set->distinct) set->trie = NewTrieMap();
 
     set->stats.labels_added = 0;
     set->stats.nodes_created = 0;

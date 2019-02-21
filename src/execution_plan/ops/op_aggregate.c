@@ -53,6 +53,7 @@ static AR_ExpNode** _build_aggregated_expressions(OpAggregate *op) {
     for(uint i = 0; i < array_len(op->expressions); i++) {
         if(op->expression_classification[i] == NONE_AGGREGATED) continue;
         AR_ExpNode *exp = AR_EXP_Clone(op->expressions[i]);
+        AR_ExpNode *exp = AR_EXP_DuplicateAggFunc(op->ast->return_expressions[i]->exp);
         agg_exps = array_append(agg_exps, exp);
     }
 
@@ -192,17 +193,8 @@ static Record _handoff(OpAggregate *op) {
         if(op->order_exps) {
             // If expression is aliased, introduce it to group record
             // for later evaluation by ORDER-BY expressions.
-            char *alias = op->aliases[i];
-            if(alias) {
-                int recIdx = NEWAST_GetAliasID(op->ast, alias);
-                Record_AddScalar(group->r, recIdx, res);
-            }
-            // TODO aliases
-            // char *alias = op->ast->returnNode->returnElements[i]->alias;
-            // if(alias) {
-                // int recIdx = AST_GetAliasID(op->ast, alias);
-                // Record_AddScalar(group->r, recIdx, res);
-            // }
+            const char *alias = op->ast->return_expressions[i]->alias;
+            if(alias) Record_AddScalar(group->r, NEWAST_GetAliasID(op->ast, (char*)alias), res);
         }
     }
 

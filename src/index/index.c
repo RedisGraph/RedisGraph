@@ -148,7 +148,7 @@ IndexIter* IndexIter_Create(Index *idx, SIType type) {
  * it narrows the iterator range.
  * Returns 1 if the filter was a comparison type that can be translated into a bound
  * (effectively, any type but '!='), which indicates that it is now redundant. */
-bool IndexIter_ApplyBound(IndexIter *iter, SIValue *bound, int op) {
+bool IndexIter_ApplyBound(IndexIter *iter, SIValue *bound, int op) { // TODO ops
   return skiplistIter_UpdateBound(iter, bound, op);
 }
 

@@ -85,20 +85,20 @@ Record ProjectConsume(OpBase *opBase) {
          * as it might be referenced by other expressions:
          * e.g. RETURN n.v AS X ORDER BY X * X
          * WITH 1 as one, one+one as two */
-        char *alias = op->aliases[i];
+        char *alias = op->ast->return_expressions[i]->alias;
 
         switch(SI_TYPE(v)) {
             case T_NODE:
                 Record_AddNode(projection, rec_idx, *((Node*)v.ptrval));
-                if(alias) Record_AddNode(r, AST_GetAliasID(op->ast, alias), *((Node*)v.ptrval));
+                if(alias) Record_AddNode(r, NEWAST_GetAliasID(op->ast, alias), *((Node*)v.ptrval));
                 break;
             case T_EDGE:
                 Record_AddEdge(projection, rec_idx, *((Edge*)v.ptrval));
-                if(alias) Record_AddEdge(r, AST_GetAliasID(op->ast, alias), *((Edge*)v.ptrval));
+                if(alias) Record_AddEdge(r, NEWAST_GetAliasID(op->ast, alias), *((Edge*)v.ptrval));
                 break;
             default:
                 Record_AddScalar(projection, rec_idx, v);
-                if(alias) Record_AddScalar(r, AST_GetAliasID(op->ast, alias), v);
+                if(alias) Record_AddScalar(r, NEWAST_GetAliasID(op->ast, alias), v);
                 break;
         }
         rec_idx++;

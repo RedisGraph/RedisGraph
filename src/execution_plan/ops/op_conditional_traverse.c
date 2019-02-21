@@ -8,6 +8,7 @@
 #include "../../util/arr.h"
 #include "../../GraphBLASExt/GxB_Delete.h"
 #include "../../parser/newast.h"
+#include "../../arithmetic/arithmetic_expression.h"
 
 static void _setupTraversedRelations(CondTraverse *op) {
     NEWAST *ast = NEWAST_GetFromTLS();
@@ -15,12 +16,13 @@ static void _setupTraversedRelations(CondTraverse *op) {
     char *alias = op->algebraic_expression->edge->alias;
     
     unsigned int id = NEWAST_GetAliasID(ast, alias);
-    NEWAST_GraphEntity *e = NEWAST_GetEntity(ast, id);
-    op->edgeRelationCount = cypher_ast_rel_pattern_nreltypes(e->ast_ref);
+    AR_ExpNode *e = NEWAST_GetEntity(ast, id);
+    const cypher_astnode_t *ast_entity = e->operand.variadic.ast_ref;
+    op->edgeRelationCount = cypher_ast_rel_pattern_nreltypes(ast_entity);
     if(op->edgeRelationCount > 0) {
         op->edgeRelationTypes = array_new(int , op->edgeRelationCount);
         for(int i = 0; i < op->edgeRelationCount; i++) {
-            const char *label = cypher_ast_reltype_get_name(cypher_ast_rel_pattern_get_reltype(e->ast_ref, i));
+            const char *label = cypher_ast_reltype_get_name(cypher_ast_rel_pattern_get_reltype(ast_entity, i));
             Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_EDGE);
             if(!s) continue;
             op->edgeRelationTypes = array_append(op->edgeRelationTypes, s->id);
@@ -66,12 +68,18 @@ void _traverse(CondTraverse *op) {
     GrB_Matrix_clear(op->F);
 }
 
-// Determin the maximum number of records
+// Determine the maximum number of records
 // which will be considered when evaluating an algebraic expression.
 static int _determinRecordCap(const NEWAST *ast) {
     int recordsCap = 16;    // Default.
-    // TODO
-    // if(ast->limitNode) recordsCap = MIN(recordsCap, ast->limitNode->limit);
+    const cypher_astnode_t *ret_clause = NEWAST_GetClause(ast->root, CYPHER_AST_RETURN);
+    if (ret_clause == NULL) return recordsCap;
+    // TODO should just store this number somewhere, as this logic is also in resultset
+    const cypher_astnode_t *limit_clause = cypher_ast_return_get_limit(ret_clause);
+    if (limit_clause) {
+        int limit = NEWAST_ParseIntegerNode(limit_clause);
+        recordsCap = MIN(recordsCap, limit);
+    }
     return recordsCap;
 }
 

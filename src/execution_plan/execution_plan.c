@@ -319,17 +319,15 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST *ast
     _Determine_Graph_Size(ast, &node_count, &edge_count);
     QueryGraph *q = QueryGraph_New(node_count, edge_count);
     execution_plan->query_graph = q;
-    FT_FilterNode *filter_tree = NULL;
-    if(ast->whereNode != NULL) {
-        filter_tree = BuildFiltersTree(ast, ast->whereNode->filters);
-        execution_plan->filter_tree = filter_tree;
-    }
+
+    FT_FilterNode *filter_tree = BuildFiltersTree(new_ast);
+    execution_plan->filter_tree = filter_tree;
 
     if(ast->matchNode) {
         BuildQueryGraph(gc, q, ast->matchNode->_mergedPatterns);
 
         // For every pattern in match clause.
-        size_t patternCount = Vector_Size(ast->matchNode->patterns);
+        size_t patternCount = Vector_Size(ast->matchNode->patterns); // TODO
         
         /* Incase we're dealing with multiple patterns
          * we'll simply join them all together with a join operation. */
@@ -345,11 +343,11 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST *ast
 
         for(int i = 0; i < patternCount; i++) {
             Vector *pattern;
-            Vector_Get(ast->matchNode->patterns, i, &pattern);
+            Vector_Get(ast->matchNode->patterns, i, &pattern); // TODO replace
 
             if(Vector_Size(pattern) > 1) {
                 size_t expCount = 0;
-                AlgebraicExpression **exps = AlgebraicExpression_From_Query(ast, pattern, q, &expCount);
+                AlgebraicExpression **exps = AlgebraicExpression_FromQuery(new_ast, q, &expCount);
 
                 TRAVERSE_ORDER order = determineTraverseOrder(filter_tree, exps, expCount);
                 if(order == TRAVERSE_ORDER_FIRST) {
@@ -369,12 +367,11 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST *ast
                     }
                     for(int i = 0; i < expCount; i++) {
                         if(exps[i]->operand_count == 0) continue;
-                        if(exps[i]->edgeLength) {
+                        if(exps[i]->minHops != 1 || exps[i]->maxHops != 1) {
                             op = NewCondVarLenTraverseOp(exps[i],
-                                                         exps[i]->edgeLength->minHops,
-                                                         exps[i]->edgeLength->maxHops,
-                                                         g,
-                                                         ast);
+                                                         exps[i]->minHops,
+                                                         exps[i]->maxHops,
+                                                         g);
                         }
                         else {
                             op = NewCondTraverseOp(g, exps[i], ast);
@@ -399,12 +396,11 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST *ast
                     for(int i = expCount-1; i >= 0; i--) {
                         if(exps[i]->operand_count == 0) continue;
                         AlgebraicExpression_Transpose(exps[i]);
-                        if(exps[i]->edgeLength) {
+                        if(exps[i]->minHops != 1 || exps[i]->maxHops != 1) {
                             op = NewCondVarLenTraverseOp(exps[i],
-                                                         exps[i]->edgeLength->minHops,
-                                                         exps[i]->edgeLength->maxHops,
-                                                         g,
-                                                         ast);
+                                                         exps[i]->minHops,
+                                                         exps[i]->maxHops,
+                                                         g);
                         }
                         else {
                             op = NewCondTraverseOp(g, exps[i], ast);

@@ -13,7 +13,7 @@ extern "C" {
 #include <stdio.h>
 #include <string.h>
 #include "../../src/util/vector.h"
-#include "../../src/parser/ast.h"
+#include "../../src/parser/newast.h"
 #include "../../src/parser/grammar.h"
 #include "../../src/parser/ast_arithmetic_expression.h"
 #include "../../src/filter_tree/filter_tree.h"
@@ -64,26 +64,24 @@ class FilterTreeTest: public ::testing::Test {
         pthread_setspecific(_tlsGCKey, gc);
     }
 
-    AST* _build_ast(const char *query) {
-        char *errMsg;
-        AST **ast = ParseQuery(query, strlen(query), &errMsg);
-        AST_NameAnonymousNodes(ast[0]);
-        return ast[0];
+    NEWAST* _build_ast(const char *query) {
+        cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
+        NEWAST *ast = NEWAST_Build(parse_result);
+        NEWAST_BuildAliasMap(ast);
+        return ast;
     }
 
     FT_FilterNode* _build_simple_const_tree() {
         const char *query = "MATCH (me) WHERE me.age = 34 RETURN me";
-        AST *ast = _build_ast(query);
-        AST_FilterNode *root = ast->whereNode->filters;
-        FT_FilterNode *tree = BuildFiltersTree(ast, root);
+        NEWAST *ast = _build_ast(query);
+        FT_FilterNode *tree = BuildFiltersTree(ast);
         return tree;
     }
 
     FT_FilterNode* _build_simple_varying_tree() {
         const char *query = "MATCH (me),(him) WHERE me.age > him.age RETURN me, him";
-        AST *ast = _build_ast(query);
-        AST_FilterNode *root = ast->whereNode->filters;
-        FT_FilterNode *tree = BuildFiltersTree(ast, root);
+        NEWAST *ast = _build_ast(query);
+        FT_FilterNode *tree = BuildFiltersTree(ast);
         return tree;
     }
 
@@ -92,9 +90,8 @@ class FilterTreeTest: public ::testing::Test {
         if(cond == AND) query = "MATCH (me) WHERE me.age > 34 AND me.height <= 188 RETURN me";
         else  query = "MATCH (me) WHERE me.age > 34 OR me.height <= 188 RETURN me";
 
-        AST *ast = _build_ast(query);
-        AST_FilterNode *root = ast->whereNode->filters;
-        FT_FilterNode *tree = BuildFiltersTree(ast, root);
+        NEWAST *ast = _build_ast(query);
+        FT_FilterNode *tree = BuildFiltersTree(ast);
         return tree;
     }
 
@@ -111,9 +108,8 @@ class FilterTreeTest: public ::testing::Test {
         * AND as a left child
         * OR as a right child */
         const char *query = "MATCH (me),(he),(she),(theirs) WHERE (me.age > 34 AND he.height <= 188) AND (she.age > 34 OR theirs.height <= 188) RETURN me, he, she, theirs";
-        AST *ast = _build_ast(query);
-        AST_FilterNode *root = ast->whereNode->filters;
-        FT_FilterNode *tree = BuildFiltersTree(ast, root);
+        NEWAST *ast = _build_ast(query);
+        FT_FilterNode *tree = BuildFiltersTree(ast);
         return tree;
     }
 

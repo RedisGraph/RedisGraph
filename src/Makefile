@@ -49,6 +49,7 @@ CC_SOURCES += $(wildcard $(SOURCEDIR)/index/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/parser/clauses/*.c)
 CC_SOURCES += $(SOURCEDIR)/parser/ast.c
 CC_SOURCES += $(SOURCEDIR)/parser/newast.c
+CC_SOURCES += $(SOURCEDIR)/parser/newast_validations.c
 CC_SOURCES += $(SOURCEDIR)/parser/ast_common.c
 CC_SOURCES += $(SOURCEDIR)/parser/ast_arithmetic_expression.c
 CC_SOURCES += $(SOURCEDIR)/parser/lex.yy.c

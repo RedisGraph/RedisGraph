@@ -429,7 +429,7 @@ bool skiplistIter_UpdateBound(skiplistIterator *iter, skiplistKey bound, int op)
   if (iter->current == NULL) return 1;
 
   switch(op) {
-    case EQ:
+    case EQ: // TODO all these
       /* EQ should set an inclusive lower and upper bound on the same key, unless
        * that key is outside the range already specified by the interator
        * (like a < 10 AND a = 20). */

@@ -4,16 +4,16 @@
 
 /* Reverse an inequality symbol so that indices can support
  * inequalities with right-hand variables. */
-int _reverseOp(int op) {
+int _reverseOp(FT_Op op) {
     switch(op) {
-        case LT:
-            return GT;
-        case LE:
-            return GE;
-        case GT:
-            return LT;
-        case GE:
-            return LE;
+        case FT_LT:
+            return FT_GT;
+        case FT_LE:
+            return FT_GE;
+        case FT_GT:
+            return FT_LT;
+        case FT_GE:
+            return FT_LE;
         default:
             return op;
     }
@@ -72,7 +72,7 @@ void utilizeIndices(GraphContext *gc, ExecutionPlan *plan, AST *ast) {
   char *filterProp = NULL;
   SIValue constVal;
   int lhsType, rhsType;
-  int op = 0;
+  FT_Op op = FT_NULL;
 
   int scanOpCount = array_len(scanOps);
   for(int i = 0; i < scanOpCount; i++) {

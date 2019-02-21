@@ -10,8 +10,9 @@
 #include "op.h"
 #include "../../graph/entities/node.h"
 #include "../../resultset/resultset.h"
+#include "../../parser/ast.h"
 #include "../../util/triemap/triemap.h"
-/* Delets entities specified within the DELETE clause. */
+/* Deletes entities specified within the DELETE clause. */
 
 
 typedef struct {

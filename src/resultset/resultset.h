@@ -9,7 +9,7 @@
 
 #include "resultset_header.h"
 #include "resultset_statistics.h"
-#include "../parser/ast.h"
+#include "../parser/newast.h"
 #include "../redismodule.h"
 #include "../util/vector.h"
 #include "../execution_plan/record.h"
@@ -29,7 +29,7 @@ typedef struct {
     ResultSetStatistics stats;  /* ResultSet statistics. */
 } ResultSet;
 
-ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx);
+ResultSet* NewResultSet(NEWAST* ast, RedisModuleCtx *ctx);
 
 void ResultSet_CreateHeader(ResultSet* set, const AST *ast);
 

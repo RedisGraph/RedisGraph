@@ -12,6 +12,7 @@
 /* A column within the result-set
  * a column can be referred to either by its name or alias */
 typedef struct {
+    // TODO necessary?
     char* name;
     char* alias;
 } Column;

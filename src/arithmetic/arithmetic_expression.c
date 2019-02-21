@@ -40,6 +40,57 @@ static AR_ExpNode* old_AR_EXP_NewVariableOperandNode(const AST *ast, const char 
     return node;
 }
 
+AR_Func _AR_GetFuncByOperator(AST_Operator op) {
+    switch(op) {
+        case OP_PLUS:
+            return AR_ADD;
+        case OP_MINUS:
+            return AR_SUB;
+        case OP_MULT:
+            return AR_MUL;
+        case OP_DIV:
+            return AR_DIV;
+        case OP_MOD: // TODO implement
+        case OP_POW: // TODO implement
+        // Includes operators like <, AND, etc
+        default:
+            assert(false);
+            return NULL;
+    }
+}
+
+static AR_ExpNode* _AR_EXP_NewOpNodeFromAST(AST_Operator op, int child_count) {
+    AR_ExpNode *node = calloc(1, sizeof(AR_ExpNode));
+    node->type = AR_EXP_OP;
+    node->op.func_name = NULL; // TODO needed?
+    node->op.child_count = child_count;
+    node->op.children = (AR_ExpNode **)malloc(child_count * sizeof(AR_ExpNode*));
+
+    /* Determine function type. */
+    AR_Func func = _AR_GetFuncByOperator(op);
+    if(func != NULL) {
+        node->op.f = func;
+        node->op.type = AR_OP_FUNC;
+    } else {
+        /* Either this is an aggregation function
+         * or the requested function does not exists. */
+        // TODO handle
+        assert(false);
+        AggCtx* agg_func;
+        // Agg_GetFunc(func_name, &agg_func);
+
+        /* TODO: handle Unknown function. */
+        assert(agg_func != NULL);
+        node->op.agg_func = agg_func;
+        node->op.type = AR_OP_AGGREGATE;
+    }
+
+    return node;
+
+}
+
+// TODO we don't really have as many func_name strings as before (they were generated in grammar.y)
+// maybe replace with above
 static AR_ExpNode* _AR_EXP_NewOpNode(char *func_name, int child_count) {
     AR_ExpNode *node = calloc(1, sizeof(AR_ExpNode));
     node->type = AR_EXP_OP;
@@ -67,22 +118,26 @@ static AR_ExpNode* _AR_EXP_NewOpNode(char *func_name, int child_count) {
     return node;
 }
 
-AR_ExpNode* AR_EXP_NewVariableOperandNode(const NEWAST *ast, const char *entity_alias, const char *entity_prop) {
+AR_ExpNode* AR_EXP_NewVariableOperandNode(const NEWAST *ast, const cypher_astnode_t *entity, const char *alias, const char *prop) {
     AR_ExpNode *node = malloc(sizeof(AR_ExpNode));
     node->type = AR_EXP_OPERAND;
     node->operand.type = AR_EXP_VARIADIC;
-    node->operand.variadic.entity_alias = strdup(entity_alias);
-    unsigned int id = NEWAST_GetAliasID(ast, (char*)entity_alias);
+    node->operand.variadic.entity_alias = strdup(alias);
+    unsigned int id = NEWAST_GetAliasID(ast, (char*)alias);
     node->operand.variadic.entity_alias_idx = id;
-    node->operand.variadic.entity_prop = NULL;
+    node->operand.variadic.entity_prop = (prop) ? strdup(prop) : NULL;
+    node->operand.variadic.ast_ref = entity;
 
-    if(entity_prop) {
-        node->operand.variadic.entity_prop = strdup(entity_prop);
-        // AST_Entity *e = NEWAST_GetEntity(ast, id);
-        NEWAST_GraphEntity *ge = NEWAST_GetEntity(ast, id);
-
-        SchemaType st = (ge->t == N_ENTITY) ? SCHEMA_NODE : SCHEMA_EDGE;
-        node->operand.variadic.entity_prop_idx = Attribute_GetID(st, entity_prop);
+    if(prop) {
+        // Retrieve the property from the schema of the base entity (not this entity,
+        // which is just a PROPERTY_OPERATOR)
+        AR_ExpNode *base_entity = NEWAST_GetEntity(ast, id);
+        cypher_astnode_type_t type = cypher_astnode_type(base_entity->operand.variadic.ast_ref);
+        if (type == CYPHER_AST_NODE_PATTERN) {
+            node->operand.variadic.entity_prop_idx = Attribute_GetID(SCHEMA_NODE, prop);
+        } else { // (type == CYPHER_AST_REL_PATTERN)
+            node->operand.variadic.entity_prop_idx = Attribute_GetID(SCHEMA_EDGE, prop);
+        }
     }
     return node;
 }
@@ -93,6 +148,24 @@ AR_ExpNode* AR_EXP_NewConstOperandNode(SIValue constant) {
     node->operand.type = AR_EXP_CONSTANT;
     node->operand.constant = constant;
     return node;
+}
+
+AR_ExpNode* AR_EXP_DuplicateAggFunc(const AR_ExpNode *expr) {
+    assert(expr->type == AR_EXP_OP && expr->op.type == AR_OP_AGGREGATE);
+    AR_ExpNode *clone = malloc(sizeof(AR_ExpNode));
+    clone->type = AR_EXP_OP;
+    clone->op.type = AR_OP_AGGREGATE;
+    char *func_name = expr->op.func_name;
+    clone->op.func_name = func_name;
+
+    AR_Func func = AR_GetFunc(func_name);
+    AggCtx* agg_func;
+    Agg_GetFunc(func_name, &agg_func);
+    clone->op.agg_func = agg_func;
+    clone->op.child_count = expr->op.child_count;
+    clone->op.children = expr->op.children; //  TODO sufficient?
+
+    return clone;
 }
 
 AR_ExpNode* AR_EXP_FromExpression(const NEWAST *ast, const cypher_astnode_t *expr) {
@@ -108,6 +181,7 @@ AR_ExpNode* AR_EXP_FromExpression(const NEWAST *ast, const cypher_astnode_t *exp
         AR_ExpNode *op = _AR_EXP_NewOpNode((char*)func_name, arg_count);
         for (unsigned int i = 0; i < arg_count; i ++) {
             const cypher_astnode_t *arg = cypher_ast_apply_operator_get_argument(expr, i);
+            // Recursively convert arguments
             op->op.children[i] = AR_EXP_FromExpression(ast, arg);
         }
         return op;
@@ -116,7 +190,7 @@ AR_ExpNode* AR_EXP_FromExpression(const NEWAST *ast, const cypher_astnode_t *exp
     } else if (type == CYPHER_AST_IDENTIFIER) {
         // Identifier referencing another AST entity
         const char *alias = cypher_ast_identifier_get_name(expr);
-        return AR_EXP_NewVariableOperandNode(ast, alias, NULL);
+        return AR_EXP_NewVariableOperandNode(ast, expr, alias, NULL);
 
     /* Entity-property pair */
     } else if (type == CYPHER_AST_PROPERTY_OPERATOR) {
@@ -129,7 +203,7 @@ AR_ExpNode* AR_EXP_FromExpression(const NEWAST *ast, const cypher_astnode_t *exp
         // Extract the property name
         const cypher_astnode_t *prop_name_node = cypher_ast_property_operator_get_prop_name(expr);
         const char *prop_name = cypher_ast_prop_name_get_value(prop_name_node);
-        return AR_EXP_NewVariableOperandNode(ast, alias, prop_name);
+        return AR_EXP_NewVariableOperandNode(ast, expr, alias, prop_name);
 
     /* SIValue constant types */
     } else if (type == CYPHER_AST_INTEGER) {
@@ -164,11 +238,41 @@ AR_ExpNode* AR_EXP_FromExpression(const NEWAST *ast, const cypher_astnode_t *exp
     // TODO Possibly implement these, replacing AST_Filter types
     } else if (type == CYPHER_AST_UNARY_OPERATOR) {
         // unary
+        printf("\ngot unary\n");
+        assert(false);
     } else if (type == CYPHER_AST_BINARY_OPERATOR) {
+        const cypher_operator_t *operator = cypher_ast_binary_operator_get_operator(expr);
+        AST_Operator operator_enum = NEWAST_ConvertOperatorNode(operator);
+        // Arguments are of type CYPHER_AST_EXPRESSION
+        AR_ExpNode *op = _AR_EXP_NewOpNodeFromAST(operator_enum, 2);
+        const cypher_astnode_t *lhs_node = cypher_ast_binary_operator_get_argument1(expr);
+        op->op.children[0] = AR_EXP_FromExpression(ast, lhs_node);
+        const cypher_astnode_t *rhs_node = cypher_ast_binary_operator_get_argument2(expr);
+        op->op.children[1] = AR_EXP_FromExpression(ast, rhs_node);
+        return op;
+
         // binary comparison
+        // TODO handle here?
+        // CYPHER_OP_OR;
+        // CYPHER_OP_XOR;
+        // CYPHER_OP_AND;
+        // CYPHER_OP_EQUAL;
+        // CYPHER_OP_NEQUAL;
+        // CYPHER_OP_LT;
+        // CYPHER_OP_GT;
+        // CYPHER_OP_LTE;
+        // CYPHER_OP_GTE;
+        // CYPHER_OP_PLUS;
+        // CYPHER_OP_MINUS;
+        // CYPHER_OP_MULT;
+        // CYPHER_OP_DIV;
+        // CYPHER_OP_MOD;
+        // CYPHER_OP_POW;
+        // More, STARTS_WITH and stuff?
     } else if (type == CYPHER_AST_COMPARISON) {
         // generic comparison
 
+        printf("\ngot binary\n");
 
     } else {
     /*

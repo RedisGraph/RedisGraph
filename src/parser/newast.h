@@ -10,53 +10,48 @@
 
 #include "ast_common.h"
 #include "../util/triemap/triemap.h"
-// #include "../arithmetic/arithmetic_expression.h"
 #include "../../deps/libcypher-parser/lib/src/cypher-parser.h"
+
+// #define IDENTIFIER_NOT_FOUND UINT_MAX
 
 typedef enum {
 	AST_VALID,
 	AST_INVALID
 } AST_Validation;
 
-// Pared-down duplicate of ast_common AST_GraphEntity
-typedef struct {
-    char *alias;
-    char *label;
-    const cypher_astnode_t *ast_ref;
-    AST_GraphEntityType t;
-} NEWAST_GraphEntity;
+typedef enum {
+    OP_NULL,
+    OP_OR,
+    OP_AND,
+    OP_NOT,
+    OP_EQUAL,
+    OP_NEQUAL,
+    OP_LT,
+    OP_GT,
+    OP_LE,
+    OP_GE,
+    OP_PLUS,
+    OP_MINUS,
+    OP_MULT,
+    OP_DIV,
+    OP_MOD,
+    OP_POW
+} AST_Operator;
 
-// TODO forward declaration, find better solution
 typedef struct AR_ExpNode AR_ExpNode;
 
 typedef struct {
-       const char *alias;              // Alias given to this return element (using the AS keyword)
-       AR_ExpNode *exp;
+    const char *alias;    // Alias given to this return element (using the AS keyword)
+    AR_ExpNode *exp;
 } ReturnElementNode;
-
-// typedef enum {
-	// A_INVALID,
-  // A_ENTITY,
-  // A_EXPRESSION
-// } AST_EntityType;
-
-// typedef struct {
-    // union {
-        // NEWAST_GraphEntity *ge;
-        // AR_ExpNode *exp;
-    // };
-    // const char *alias;
-    // AST_EntityType t;
-// } AST_Entity;
 
 typedef struct {
     const cypher_astnode_t *root;
     // Extensible array of entities described in MATCH, MERGE, and CREATE clauses
-    // AST_Entity **defined_entities;
-    NEWAST_GraphEntity **defined_entities;
+    AR_ExpNode **defined_entities;
     TrieMap *identifier_map;
-    unsigned int order_expression_count;
     ReturnElementNode **return_expressions;
+    unsigned int order_expression_count; // TODO maybe use arr.h instead
     AR_ExpNode **order_expressions;
 } NEWAST;
 
@@ -72,46 +67,37 @@ bool NEWAST_ContainsClause(const cypher_astnode_t *ast, cypher_astnode_type_t cl
 // Checks to see if query contains any errors.
 bool NEWAST_ContainsErrors(const cypher_parse_result_t *ast);
 
-// Returns specified clause of NULL.
-const cypher_astnode_t* NEWAST_GetClause(const cypher_astnode_t *query, cypher_astnode_type_t clause_type);
-
 // Report encountered errors.
 char* NEWAST_ReportErrors(const cypher_parse_result_t *ast);
 
 // Returns all function (aggregated & none aggregated) mentioned in query.
 void NEWAST_ReferredFunctions(const cypher_astnode_t *root, TrieMap *referred_funcs);
 
-//==============================================================================
-//=== RETURN CLAUSE ============================================================
-//==============================================================================
-
 // Checks if RETURN clause contains collapsed entities.
 int NEWAST_ReturnClause_ContainsCollapsedNodes(const cypher_astnode_t *ast);
 
-// Returns all function (aggregated & none aggregated) mentioned in query.
-void NEWAST_ReturnClause_ReferredFunctions(const cypher_astnode_t *return_clause, TrieMap *referred_funcs);
-
-//==============================================================================
-//=== WHERE CLAUSE =============================================================
-//==============================================================================
-
-// Returns all function (aggregated & none aggregated) mentioned in query.
-void NEWAST_WhereClause_ReferredFunctions(const cypher_astnode_t *match_clause, TrieMap *referred_funcs);
+// Returns specified clause or NULL.
+const cypher_astnode_t* NEWAST_GetClause(const cypher_astnode_t *query, cypher_astnode_type_t clause_type);
 
 unsigned int NewAST_GetTopLevelClauses(const cypher_astnode_t *query, cypher_astnode_type_t clause_type, const cypher_astnode_t **matches);
 
 const cypher_astnode_t* NEWAST_GetBody(const cypher_parse_result_t *result);
 
-// AST_Entity* New_AST_Entity(const char *alias, AST_EntityType t, void *ptr);
-
 NEWAST* NEWAST_Build(cypher_parse_result_t *parse_result);
+
+long NEWAST_ParseIntegerNode(const cypher_astnode_t *int_node);
+
+AST_Operator NEWAST_ConvertOperatorNode(const cypher_operator_t *op);
 
 void NEWAST_BuildAliasMap(NEWAST *ast);
 
 unsigned int NEWAST_GetAliasID(const NEWAST *ast, char *alias);
 
-// AST_Entity* NEWAST_GetEntity(const NEWAST *ast, unsigned int id);
-NEWAST_GraphEntity* NEWAST_GetEntity(const NEWAST *ast, unsigned int id);
+AR_ExpNode* NEWAST_GetEntity(const NEWAST *ast, unsigned int id);
+
+AR_ExpNode* NEWAST_SeekEntity(const NEWAST *ast, const cypher_astnode_t *entity);
+
+size_t NEWAST_AliasCount(const NEWAST *ast);
 
 NEWAST* NEWAST_GetFromLTS(void);
 

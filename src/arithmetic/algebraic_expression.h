@@ -9,7 +9,7 @@
 
 #include "../graph/query_graph.h"
 #include "../graph/graph.h"
-#include "../parser/ast.h"
+#include "../parser/newast.h"
 
 // Matrix, vector operations.
 typedef enum {
@@ -66,11 +66,13 @@ typedef struct {
     Node *src_node;                         // Nodes represented by the first operand columns.
     Node *dest_node;                        // Nodes represented by the last operand rows.
     Edge *edge;                             // Edge represented by sole operand.
-    AST_LinkLength *edgeLength;             // Repeatable edge length.
+    unsigned int minHops;
+    unsigned int maxHops;
+    // AST_LinkLength *edgeLength;             // Repeatable edge length.
 } AlgebraicExpression;
 
 /* Construct an algebraic expression from a query. */
-AlgebraicExpression **AlgebraicExpression_From_Query(const AST *ast, Vector *matchPattern, const QueryGraph *q, size_t *exp_count);
+AlgebraicExpression **AlgebraicExpression_FromQuery(const NEWAST *ast, const QueryGraph *q, size_t *exp_count);
 
 /* Executes given expression. */
 void AlgebraicExpression_Execute(AlgebraicExpression *ae, GrB_Matrix res);

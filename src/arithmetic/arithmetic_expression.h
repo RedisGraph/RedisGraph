@@ -106,9 +106,10 @@ typedef struct {
             int entity_alias_idx;
             char *entity_prop;
             Attribute_ID entity_prop_idx;
-		} variadic;
-	};
-	AR_OperandNodeType type;
+            const cypher_astnode_t *ast_ref;
+        } variadic;
+    };
+    AR_OperandNodeType type;
 } AR_OperandNode;
 
 /* AR_ExpNode a node within an arithmetic expression tree, 
@@ -147,8 +148,12 @@ int AR_EXP_ContainsAggregation(AR_ExpNode *root, AR_ExpNode **agg_node);
 void AR_EXP_ToString(const AR_ExpNode *root, char **str);
 
 AR_ExpNode* AR_EXP_NewConstOperandNode(SIValue constant);
-AR_ExpNode* AR_EXP_NewVariableOperandNode(const NEWAST *ast, const char *entity_alias, const char *entity_prop);
+AR_ExpNode* AR_EXP_NewVariableOperandNode(const NEWAST *ast, const cypher_astnode_t *entity, const char *alias, const char *prop);
 
+/* Clone an aggregate expression node. */
+AR_ExpNode* AR_EXP_DuplicateAggFunc(const AR_ExpNode *expr);
+
+/* Construct an arithmetic expression tree from an AST CYPHER_AST_EXPRESSION node. */
 AR_ExpNode* AR_EXP_FromExpression(const NEWAST *ast, const cypher_astnode_t *expr);
 
 /* Construct an arithmetic expression tree from ast arithmetic expression node. */

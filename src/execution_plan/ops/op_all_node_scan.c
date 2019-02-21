@@ -5,14 +5,16 @@
 */
 
 #include "op_all_node_scan.h"
-#include "../../parser/ast.h"
+#include "../../parser/newast.h"
 
 OpBase* NewAllNodeScanOp(const Graph *g, Node *n, AST *ast) {
     AllNodeScan *allNodeScan = malloc(sizeof(AllNodeScan));
     allNodeScan->iter = Graph_ScanNodes(g);
 
-    allNodeScan->nodeRecIdx = AST_GetAliasID(ast, n->alias);
-    allNodeScan->recLength = AST_AliasCount(ast);
+    NEWAST *ast = NEWAST_GetFromLTS();
+    // TODO queries like MATCH (a)-[e]->(b) RETURN a.name, e, b.name create larger records now than they did prior
+    allNodeScan->nodeRecIdx = NEWAST_GetAliasID(ast, n->alias);
+    allNodeScan->recLength = NEWAST_AliasCount(ast);
 
     // Set our Op operations
     OpBase_Init(&allNodeScan->op);
