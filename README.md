@@ -1,6 +1,6 @@
 [![GitHub issues](https://img.shields.io/github/release/RedisLabsModules/RedisGraph.svg)](https://github.com/RedisLabsModules/RedisGraph/releases/latest)
 [![CircleCI](https://circleci.com/gh/RedisLabsModules/RedisGraph/tree/master.svg?style=svg)](https://circleci.com/gh/RedisLabsModules/RedisGraph/tree/master)
-[![DockerHub](https://dockerbuildbadges.quelltext.eu/status.svg?organization=redislabs&repository=redisgraph)](https://hub.docker.com/r/redislabs/redisgraph/builds/) 
+[![DockerHub](https://dockerbuildbadges.quelltext.eu/status.svg?organization=redislabs&repository=redisgraph)](https://hub.docker.com/r/redislabs/redisgraph/builds/)
 
 # RedisGraph - A graph database module for Redis
 
@@ -115,6 +115,8 @@ loadmodule /path/to/module/src/redisgraph.so
 ```
 
 In the line above, replace `/path/to/module/src/redisgraph.so` with the actual path to RedisGraph's library.
+If Redis is running as a service, you must ensure that the `redis` user (default) has the necessary file/folder permissions
+to access `redisgraph.so`.
 
 Alternatively, you can have Redis load RedisGraph using the following command line argument syntax:
 
