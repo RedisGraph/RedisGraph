@@ -26,14 +26,15 @@ static int _encounteredRecord(ResultSet *set, const Record r) {
 }
 
 /* Redis prints doubles with up to 17 digits of precision, which captures
- * the inaccuracy of many floating-point numbers (such as 7.3).
- * By using the %g format and its default precision of 6, we avoid awkward
- * representations like RETURN 7.3 emitting "7.2999999999999998". */
+ * the inaccuracy of many floating-point numbers (such as 0.1).
+ * By using the %g format and a precision of 15 significant digits, we avoid many
+ * awkward representations like RETURN 0.1 emitting "0.10000000000000001",
+ * though we're still subject to many of the typical issues with floating-point error. */
 static inline void _ResultSet_ReplyWithRoundedDouble(RedisModuleCtx *ctx, double d) {
     // Get length required to print number
-    int len = snprintf(NULL, 0, "%g", d);
+    int len = snprintf(NULL, 0, "%.15g", d);
     char str[len + 1]; // TODO a reusable buffer would be far preferable
-    sprintf(str, "%g", d);
+    sprintf(str, "%.15g", d);
     // Output string-formatted number
     RedisModule_ReplyWithStringBuffer(ctx, str, len);
 }
