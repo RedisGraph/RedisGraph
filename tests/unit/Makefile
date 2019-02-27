@@ -1,10 +1,13 @@
+
+ROOT=../..
+
 # Path to Google Test source
-GTEST_DIR = ../../deps/googletest
+GTEST_DIR = $(ROOT)/deps/googletest
 
 # Flags passed to the preprocessor.
 # Set Google Test's header directory as a system directory, such that
 # the compiler doesn't generate warnings in Google Test headers.
-CPPFLAGS += -isystem $(GTEST_DIR)/include
+CPPFLAGS += -isystem $(GTEST_DIR)/include -I$(ROOT)/src -I$(ROOT)/deps
 
 # Flags passed to the C++ compiler.
 CXXFLAGS += -g -Wall -Wextra -pthread -std=c++11
@@ -28,12 +31,12 @@ GTEST_HEADERS = $(GTEST_DIR)/include/gtest/*.h \
 GTEST_SRCS_ = $(GTEST_DIR)/src/*.cc $(GTEST_DIR)/src/*.h $(GTEST_HEADERS)
 
 gtest-all.o : $(GTEST_SRCS_)
-	@$(REDISGRAPH_CXX) $(CPPFLAGS) -I$(GTEST_DIR) $(CXXFLAGS) -c \
-            $(GTEST_DIR)/src/gtest-all.cc
+	$(REDISGRAPH_CXX) $(CPPFLAGS) -I$(GTEST_DIR) $(CXXFLAGS) -c \
+		$(GTEST_DIR)/src/gtest-all.cc
 
 gtest_main.o : $(GTEST_SRCS_)
-	@$(REDISGRAPH_CXX) $(CPPFLAGS) -I$(GTEST_DIR) $(CXXFLAGS) -c \
-            $(GTEST_DIR)/src/gtest_main.cc
+	$(REDISGRAPH_CXX) $(CPPFLAGS) -I$(GTEST_DIR) $(CXXFLAGS) -c \
+		$(GTEST_DIR)/src/gtest_main.cc
 
 gtest.a : gtest-all.o
 	@$(AR) $(ARFLAGS) $@ $^
@@ -42,11 +45,15 @@ gtest_main.a : gtest-all.o gtest_main.o
 	@$(AR) $(ARFLAGS) $@ $^
 
 # RedisGraph flags and libraries
-CC_OBJECTS:=$(CC_OBJECTS)
-LIBTRIEMAP=../../src/util/triemap/libtriemap.a
-LIBGRAPHBLAS=../../deps/GraphBLAS/build/libgraphblas.a
+# CC_OBJECTS:=$(CC_OBJECTS)
 
-LIBS=$(LIBTRIEMAP) $(LIBGRAPHBLAS)
+LIBGTEST=libgtest.a
+LIBTRIEMAP=$(ROOT)/src/util/triemap/libtriemap.a
+LIBGRAPHBLAS=$(ROOT)/deps/GraphBLAS/build/libgraphblas.a
+LIBREDISGRAPH=$(ROOT)/src/libredisgraph.a
+LIBXXHASH=$(ROOT)/deps/xxhash/libxxhash.a
+
+LIBS=$(LIBREDISGRAPH) $(LIBTRIEMAP) $(LIBGRAPHBLAS) $(LIBXXHASH)
 DEPS=$(CC_OBJECTS) $(LIBS)
 
 # Build and run a test for each cpp file in directory
@@ -56,12 +63,11 @@ TEST_EXECUTABLES = $(patsubst %.cpp, %.run, $(TEST_SOURCES))
 
 # Compile object files from unit test sources
 %.o: %.cpp
-	@$(REDISGRAPH_CXX) $(CPPFLAGS) $(CXXFLAGS) $(CXX_SUPPRESS) -c -o $@ $<
+	$(REDISGRAPH_CXX) $(CPPFLAGS) $(CXXFLAGS) $(CXX_SUPPRESS) -c -o $@ $<
 
 # Build '*.run' binaries for each source
 %.run: %.o gtest_main.a $(DEPS)
-	@$(REDISGRAPH_CXX) $(CPPFLAGS) $(CXXFLAGS) $(CXX_SUPPRESS) $(LDFLAGS) $^ -o $@
-
+	$(REDISGRAPH_CXX) $(CPPFLAGS) $(CXXFLAGS) $(CXX_SUPPRESS) $(LDFLAGS) $^ -o $@
 
 .PHONY: all build test test_valgrind clean
 

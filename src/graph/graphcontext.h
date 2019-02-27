@@ -1,11 +1,17 @@
-#ifndef GRAPHCONTEXT_H
-#define GRAPHCONTEXT_H
+/*
+* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+*
+* This file is available under the Redis Labs Source Available License Agreement
+*/
+
+#pragma once
 
 #include <assert.h>
-#include "../redismodule.h"
-#include "../index/index.h"
-#include "../schema/schema.h"
-#include "graph.h"
+
+#include "redismodule.h"
+#include "index/index.h"
+#include "schema/schema.h"
+#include "graph/graph.h"
 
 #define DEFAULT_INDEX_CAP 4
 
@@ -57,5 +63,3 @@ void GraphContext_DeleteNodeFromIndices(GraphContext *gc, Node *n);
 
 // Free the GraphContext and all associated graph data
 void GraphContext_Free(GraphContext *gc);
-
-#endif

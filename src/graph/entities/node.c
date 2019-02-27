@@ -5,11 +5,11 @@
 */
 
 #include <stdlib.h>
+#include <assert.h>
 
+#include "graph_entity.h"
 #include "node.h"
 #include "edge.h"
-#include "assert.h"
-#include "graph_entity.h"
 
 Node* Node_New(const char *label, const char *alias) {
 	Node* n = calloc(1, sizeof(Node));
@@ -46,3 +46,14 @@ void Node_Free(Node* node) {
 	free(node);
 	node = NULL;
 }
+
+#ifndef FEATURE_2
+
+void Node_Print(const Node *node, FILE *out) {
+    if(!out) out = stdout;
+    GraphEntity_Print((GraphEntity*) node, GETYPE_NODE, 0);
+    if (node->label || node->alias)
+        fprintf(out, "\tlabel: %s alias: %s\n", node->label, node->alias);
+}
+
+#endif // FEATURE_2

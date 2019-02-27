@@ -5,11 +5,13 @@
 */
 
 #include <assert.h>
-#include "../graph.h"
+
 #include "serialize_graph.h"
-#include "../../util/arr.h"
-#include "../../util/qsort.h"
-#include "../../../deps/GraphBLAS/Include/GraphBLAS.h"
+
+#include "graph/graph.h"
+#include "util/arr.h"
+#include "util/qsort.h"
+#include "GraphBLAS/Include/GraphBLAS.h"
 
 // Use a modified binary search to find the number of elements in
 // the array less than the input ID.
@@ -45,33 +47,6 @@ static NodeID _updatedID(uint64_t *array, NodeID id) {
         // Shift ID left by number of deleted IDs lower than it
         return id - shiftCount(array, id);
     }
-}
-
-/* Create a mapping from attribute ID to attribute name. */
-static char** _Schema_AttributeMapping(Schema *s, unsigned short *attr_count) {
-    *attr_count = Schema_AttributeCount(s);
-    char **attribute_map = malloc(sizeof(char*) * (*attr_count));
-    
-    char *ptr;
-    tm_len_t len;
-    Attribute_ID *attr_id;
-    TrieMapIterator *it = TrieMap_Iterate(s->attributes, "", 0);
-
-    while(TrieMapIterator_Next(it, &ptr, &len, (void**)&attr_id)) {
-        attribute_map[*attr_id] = malloc(sizeof(char) * len+1);
-        memcpy(attribute_map[*attr_id], ptr, len);
-        attribute_map[*attr_id][len] = '\0';
-    }
-
-    TrieMapIterator_Free(it);
-
-    return attribute_map;
-}
-
-/* Free attribute mapping created by _Schema_AttributeMapping. */
-static void _Schema_FreeAttributeMapping(char **mapping, unsigned short mapping_len) {
-    for(unsigned short i = 0; i < mapping_len; i++) free(mapping[i]);
-    free(mapping);
 }
 
 SIValue _RdbLoadSIValue(RedisModuleIO *rdb) {
@@ -223,7 +198,7 @@ void _RdbSaveNodes(RedisModuleIO *rdb, const Graph *g, Schema *s) {
 
     /* Get a mapping between node attribute ID to attribute name. */
     unsigned short node_attribute_mapping_len = 0;
-    char** node_attribute_mapping = _Schema_AttributeMapping(s, &node_attribute_mapping_len);
+    char** node_attribute_mapping = Schema_AttributeMap(s, &node_attribute_mapping_len);
 
     // #Nodes
     RedisModule_SaveUnsigned(rdb, Graph_NodeCount(g));
@@ -248,7 +223,7 @@ void _RdbSaveNodes(RedisModuleIO *rdb, const Graph *g, Schema *s) {
 
     DataBlockIterator_Free(iter);
 
-    _Schema_FreeAttributeMapping(node_attribute_mapping, node_attribute_mapping_len);
+    Schema_FreeAttributeMap(node_attribute_mapping, node_attribute_mapping_len);
 }
 
 void _RdbSaveEdges(RedisModuleIO *rdb, const Graph *g, Schema *s) {
@@ -264,7 +239,7 @@ void _RdbSaveEdges(RedisModuleIO *rdb, const Graph *g, Schema *s) {
 
     /* Get a mapping between edge attribute ID to attribute name. */
     unsigned short edge_attribute_mapping_len = 0;
-    char** edge_attribute_mapping = _Schema_AttributeMapping(s, &edge_attribute_mapping_len);
+    char** edge_attribute_mapping = Schema_AttributeMap(s, &edge_attribute_mapping_len);
     
     // Sort deleted indices.
     QSORT(NodeID, g->nodes->deletedIdx, array_len(g->nodes->deletedIdx), ENTITY_ID_ISLT);    
@@ -314,7 +289,7 @@ void _RdbSaveEdges(RedisModuleIO *rdb, const Graph *g, Schema *s) {
         GxB_MatrixTupleIter_free(it);
     }
 
-    _Schema_FreeAttributeMapping(edge_attribute_mapping, edge_attribute_mapping_len);
+    Schema_FreeAttributeMap(edge_attribute_mapping, edge_attribute_mapping_len);
 }
 
 void RdbSaveGraph(RedisModuleIO *rdb, void *value, Schema *ns, Schema *es) {

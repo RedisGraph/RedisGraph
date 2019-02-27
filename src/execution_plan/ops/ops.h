@@ -4,26 +4,24 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef __OPS_H_
-#define __OPS_H_
+#pragma once
 
-/* Include all available execution plan operations. */
-#include "op_aggregate.h"
-#include "op_all_node_scan.h"
-#include "op_create.h"
-#include "op_delete.h"
-#include "op_filter.h"
-#include "op_node_by_label_scan.h"
-#include "op_index_scan.h"
-#include "op_produce_results.h"
-#include "op_update.h"
-#include "op_traverse.h"
-#include "op_conditional_traverse.h"
-#include "op_cartesian_product.h"
-#include "op_merge.h"
-#include "op_cond_var_len_traverse.h"
-#include "op_unwind.h"
-#include "op_sort.h"
-#include "op_project.h"
-
-#endif
+// Include all available execution plan operations
+#include "execution_plan/ops/op_aggregate.h"
+#include "execution_plan/ops/op_all_node_scan.h"
+#include "execution_plan/ops/op_create.h"
+#include "execution_plan/ops/op_delete.h"
+#include "execution_plan/ops/op_filter.h"
+#include "execution_plan/ops/op_node_by_label_scan.h"
+#include "execution_plan/ops/op_index_scan.h"
+#include "execution_plan/ops/op_produce_results.h"
+#include "execution_plan/ops/op_update.h"
+#include "execution_plan/ops/op_traverse.h"
+#include "execution_plan/ops/op_conditional_traverse.h"
+#include "execution_plan/ops/op_cartesian_product.h"
+#include "execution_plan/ops/op_merge.h"
+#include "execution_plan/ops/op_cond_var_len_traverse.h"
+#include "execution_plan/ops/op_unwind.h"
+#include "execution_plan/ops/op_sort.h"
+#include "execution_plan/ops/op_project.h"
+#include "execution_plan/ops/op_distinct.h"

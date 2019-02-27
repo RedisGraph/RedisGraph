@@ -4,15 +4,13 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef __EXECUTION_PLAN_H__
-#define __EXECUTION_PLAN_H__
+#pragma once
 
-#include "./ops/op.h"
-#include "../parser/ast.h"
-#include "../graph/graph.h"
-#include "../resultset/resultset.h"
-#include "../filter_tree/filter_tree.h"
-
+#include "execution_plan/ops/op.h"
+#include "parser/ast.h"
+#include "graph/graph.h"
+#include "resultset/resultset.h"
+#include "filter_tree/filter_tree.h"
 
 /* StreamState
  * Different states in which stream can be at. */
@@ -54,5 +52,3 @@ ResultSet* ExecutionPlan_Execute(ExecutionPlan *plan);
 
 /* Free execution plan */
 void ExecutionPlanFree(ExecutionPlan *plan);
-
-#endif

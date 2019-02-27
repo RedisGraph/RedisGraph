@@ -6,8 +6,12 @@
 
 #include <stdio.h>
 #include <assert.h>
+
+#include "util/rmalloc.h"
+
 #include "graph_entity.h"
-#include "../../util/rmalloc.h"
+#include "graph/graphcontext.h"
+#include "schema/schema.h"
 
 SIValue *PROPERTY_NOTFOUND = &(SIValue){.longval = 0, .type = T_NULL};
 
@@ -55,3 +59,32 @@ void FreeEntity(Entity *e) {
 		e->properties = NULL;
 	}
 }
+
+#ifndef FEATURE_2
+
+void GraphEntity_Print(const GraphEntity *e, GraphEntityType t, FILE *out) {
+    if (!out) out = stdout;
+    SchemaType st;
+    switch (t) {
+    case GETYPE_NODE:
+        st = SCHEMA_NODE; break;
+    case GETYPE_EDGE:
+        st = SCHEMA_EDGE; break;
+    default: abort();
+    }
+    Schema *s = GraphContext_GetUnifiedSchema(GraphContext_GetFromLTS(), st);
+    unsigned short map_len;
+    char **map = Schema_AttributeMap(s, &map_len);
+    
+    static const char *tnames[] = { "Node", "Edge" };
+    fprintf(out, "%s id=%lu\n", tnames[t], e->entity->id);
+    for (int i = 0; i < e->entity->prop_count; ++i) {
+        EntityProperty *p = &e->entity->properties[i];
+        char str[512];
+        SIValue_ToString(p->value, str, sizeof(str));
+        fprintf(out, "\t%s=%s\n", map[p->id], str);
+    }
+    Schema_FreeAttributeMap(map, map_len);
+}
+
+#endif // FEATURE_2

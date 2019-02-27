@@ -4,16 +4,15 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef __GRAPH_RESULTSET_H__
-#define __GRAPH_RESULTSET_H__
+#pragma once
 
+#include "redismodule.h"
 #include "resultset_header.h"
 #include "resultset_statistics.h"
-#include "../parser/ast.h"
-#include "../redismodule.h"
-#include "../util/vector.h"
-#include "../execution_plan/record.h"
-#include "../util/triemap/triemap.h"
+#include "parser/ast.h"
+#include "execution_plan/record.h"
+#include "util/vector.h"
+#include "util/triemap/triemap.h"
 
 #define RESULTSET_UNLIMITED 0
 #define RESULTSET_OK 1
@@ -21,16 +20,19 @@
 
 typedef struct {
     RedisModuleCtx *ctx;
-    TrieMap *trie;              /* When using distinct, used to identify unique records. */
-    ResultSetHeader *header;    /* Describes how records should look like. */
-    int limit;                  /* Max number of records in result-set. */
-    bool distinct;              /* Rather or not each record is unique. */
-    size_t recordCount;         /* Number of records introduced. */
-    char *buffer;               /* Reusable buffer for record streaming. */
-    size_t bufferLen;           /* Size of buffer in bytes. */
-    ResultSetStatistics stats;  /* ResultSet statistics. */
-    size_t skip;                /* Number of records to skip . */
-    size_t skipped;             /* Number of records been skipped. */
+#ifndef FEATURE_1
+#else
+    TrieMap *trie;              // When using distinct, used to identify unique records
+#endif
+    ResultSetHeader *header;    // Describes how records should look like
+    int limit;                  // Max number of records in result-set
+    bool distinct;              // Rather or not each record is unique
+    size_t recordCount;         // Number of records introduced
+    char *buffer;               // Reusable buffer for record streaming
+    size_t bufferLen;           // Size of buffer in bytes
+    ResultSetStatistics stats;  // ResultSet statistics
+    size_t skip;                // Number of records to skip
+    size_t skipped;             // Number of records been skipped
 } ResultSet;
 
 ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx);
@@ -46,5 +48,3 @@ int ResultSet_AddRecord(ResultSet* set, Record r);
 void ResultSet_Replay(ResultSet* set);
 
 void ResultSet_Free(ResultSet* set);
-
-#endif

@@ -4,18 +4,17 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef GRAPH_H
-#define GRAPH_H
+#pragma once
 
 #include <pthread.h>
 
 #include "entities/node.h"
 #include "entities/edge.h"
-#include "../redismodule.h"
-#include "../util/triemap/triemap.h"
-#include "../util/datablock/datablock.h"
-#include "../util/datablock/datablock_iterator.h"
-#include "../../deps/GraphBLAS/Include/GraphBLAS.h"
+#include "redismodule.h"
+#include "util/triemap/triemap.h"
+#include "util/datablock/datablock.h"
+#include "util/datablock/datablock_iterator.h"
+#include "GraphBLAS/Include/GraphBLAS.h"
 
 #define GRAPH_DEFAULT_NODE_CAP 16384         // Default number of nodes a graph can hold before resizing.
 #define GRAPH_DEFAULT_EDGE_CAP 16384         // Default number of edges a graph can hold before resizing.
@@ -55,28 +54,28 @@ struct Graph {
     SyncMatrixFunc SynchronizeMatrix;   // Function pointer to matrix synchronization routine.
 };
 
-/* Graph synchronization functions
- * The graph is initialized with a read-write lock allowing
- * concurrent access from one writer or N readers. */
-/* Acquire a lock that does not restrict access from additional reader threads */
+// Graph synchronization functions
+// The graph is initialized with a read-write lock allowing
+// concurrent access from one writer or N readers.
+// Acquire a lock that does not restrict access from additional reader threads
 void Graph_AcquireReadLock(Graph *g);
 
-/* Acquire a lock for exclusive access to this graph's data */
+// Acquire a lock for exclusive access to this graph's data
 void Graph_AcquireWriteLock(Graph *g);
 
-/* Writer request access to graph. */
+// Writer request access to graph
 void Graph_WriterEnter(Graph *g);
 
-/* Writer release access to graph. */
+// Writer release access to graph
 void Graph_WriterLeave(Graph *g);
 
-/* Release the held lock */
+// Release the held lock
 void Graph_ReleaseLock(Graph *g);
 
-/* Choose the current matrix synchronization policy. */
+// Choose the current matrix synchronization policy
 void Graph_SetMatrixPolicy(Graph *g, MATRIX_POLICY policy);
 
-/* Synchronize and resize all matrices in graph. */
+// Synchronize and resize all matrices in graph
 void Graph_ApplyAllPending(Graph *g);
 
 // Create a new graph.
@@ -248,5 +247,3 @@ GrB_Matrix Graph_GetRelationMatrix (
 void Graph_Free (
     Graph *g
 );
-
-#endif

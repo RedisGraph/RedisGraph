@@ -7,12 +7,14 @@ abs_path = $(shell pwd)
 # if DEBUG env var is set, we compile with "debug" cflags
 DEBUGFLAGS = -g -ggdb -O3 
 ifeq ($(DEBUG), 1)
-	DEBUGFLAGS = -g -ggdb -O0
+	DEBUGFLAGS = -g -ggdb -O0 -DDEBUG
 endif
 
 # Default CFLAGS
-CFLAGS = -Wall -Wno-unused-function -Wno-unused-variable -Wno-unused-result -fPIC \
- 	-D_GNU_SOURCE -std=gnu99 -I"$(abs_path)" -DREDIS_MODULE_TARGET -DREDISMODULE_EXPERIMENTAL_API
+CFLAGS = -Wall -Wno-unused-function -Wno-unused-variable -Wno-unused-result \
+	-fPIC -std=gnu99 \
+ 	-I"$(abs_path)" -I"$(abs_path)/../deps" -I"$(abs_path)/.." -include common.h \
+	-D_GNU_SOURCE -DREDIS_MODULE_TARGET -DREDISMODULE_EXPERIMENTAL_API
 CFLAGS += $(DEBUGFLAGS)
 
 # Compile flags for linux / osx
@@ -65,11 +67,11 @@ CC_DEPS = $(patsubst %.c, %.d, $(CC_SOURCES) )
 
 # Library dependencies
 LIBTRIEMAP=util/triemap/libtriemap.a
-GRAPHBLAS=../deps/GraphBLAS/build/libgraphblas.a
+LIBGRAPHBLAS=../deps/GraphBLAS/build/libgraphblas.a
+LIBXXHASH=../deps/xxhash/libxxhash.a
 
 # Compilation deps for the module
-LIBS=$(LIBTRIEMAP) $(GRAPHBLAS)
-MODULE=$(CC_OBJECTS) $(LIBS)
+LIBS=$(LIBTRIEMAP) $(LIBGRAPHBLAS) $(LIBXXHASH)
 
 REDISGRAPH_CC=$(QUIET_CC)$(CC)
 
@@ -93,14 +95,20 @@ all: redisgraph.so
 # Include all dependency files for C files
 -include $(CC_DEPS)
 
+$(LIBXXHASH):
+	@$(MAKE) -C ../deps/xxhash lib
+
 $(LIBTRIEMAP):
 	@$(MAKE) -C util/triemap
 
-BLAS_CFLAGS = -fPIC -I $(abs_path)/util -include rmalloc.h -DREDIS_MODULE_TARGET -DGB_MALLOC=rm_malloc -DGB_CALLOC=rm_calloc -DGB_REALLOC=rm_realloc -DGB_FREE=rm_free -DGBCOMPACT
+BLAS_CFLAGS=\
+	-fPIC \
+	-I $(abs_path)/util -include rmalloc.h -DGB_MALLOC=rm_malloc -DGB_CALLOC=rm_calloc -DGB_REALLOC=rm_realloc -DGB_FREE=rm_free \
+	-DREDIS_MODULE_TARGET -DGBCOMPACT
 
 # Build GraphBLAS only if library does not already exists.
-$(GRAPHBLAS):
-ifeq (,$(wildcard $(GRAPHBLAS)))
+$(LIBGRAPHBLAS):
+ifeq (,$(wildcard $(LIBGRAPHBLAS)))
 	@$(MAKE) -C ../deps/GraphBLAS CMAKE_OPTIONS="-DUSER_POSIX=1 -DCMAKE_CXX_FLAGS=-std=c++11 -DCMAKE_C_FLAGS='$(BLAS_CFLAGS)'" static_only
 else
 
@@ -110,17 +118,22 @@ endif
 # This is not included in the usual make target!
 parser:
 	@$(MAKE) -C $@
+
 .PHONY: parser
 
 # Build the module...
-redisgraph.so: $(MODULE)
-	$(REDISGRAPH_CC) -o $@ $(MODULE) $(SHOBJ_LDFLAGS) -lc -lm
+libredisgraph.a : $(CC_OBJECTS)
+	@$(AR) rs $@ $^
+
+redisgraph.so: libredisgraph.a $(LIBS)
+	$(REDISGRAPH_CC) -o $@  -Wl,--whole-archive libredisgraph.a -Wl,--no-whole-archive $(LIBS) $(SHOBJ_LDFLAGS) -lc -lm
 
 clean:
 	@find . -name '*.[oad]' -type f -delete
 	@-rm -f redisgraph.so
 ifeq ($(ALL),1)
 	@$(MAKE) -C ../deps/GraphBLAS clean
+	@$(MAKE) -C ../deps/xxhash clean
 endif
 	@$(MAKE) -C ../tests clean
 

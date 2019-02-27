@@ -8,8 +8,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "edge.h"
 #include "graph_entity.h"
+#include "edge.h"
 
 Edge* Edge_New(Node *src, Node *dest, const char *relationship, const char *alias) {
 	assert(src && dest);
@@ -73,3 +73,12 @@ void Edge_Free(Edge* edge) {
 	if(edge->relationship != NULL) free(edge->relationship);
 	free(edge);
 }
+
+#ifndef FEATURE_2
+void Edge_Print(const Edge* edge, FILE *out) {
+    if(!out) out = stdout;
+    GraphEntity_Print((GraphEntity*) edge, GETYPE_EDGE, 0);
+    if (edge->relationship || edge->alias)
+        fprintf(out, "\tlabel: %s alias: %s\n", edge->relationship, edge->alias);
+}
+#endif // FEATURE_2

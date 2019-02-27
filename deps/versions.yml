@@ -1,0 +1,16 @@
+googletest:
+    source: github
+    version: ?
+    commit: ?
+GraphBLAS:
+    source: http://faculty.cse.tamu.edu/davis/suitesparse.html
+    version: 2.2
+    notes: part of SuiteSparse-5.4.0
+xxhash:
+    source: github
+    version: 0.65
+    commit: https://github.com/Cyan4973/xxHash/commit/7cc9639699f64b750c0b82333dced9ea77e8436e
+readies:
+    source: ?
+    version: ?
+    commit: ?

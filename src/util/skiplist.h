@@ -28,15 +28,14 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __DISQUE_SKIPLIST_H
-#define __DISQUE_SKIPLIST_H
+#pragma once
 
 // Required to interpret tokens like EQ and LT for updating bounds
-#include "../parser/grammar.h"
+#include "parser/grammar.h"
 
 // TODO these are being included just for the typedefs here
-#include "../value.h"
-#include "../../deps/GraphBLAS/Include/GraphBLAS.h"
+#include "value.h"
+#include "GraphBLAS/Include/GraphBLAS.h"
 
 typedef SIValue* skiplistKey;
 typedef GrB_Index skiplistVal;
@@ -103,5 +102,3 @@ void skiplistIterate_Reset(skiplistIterator *iter);
 void skiplistIterate_Free(skiplistIterator *iter);
 
 skiplistVal* skiplistIterator_Next(skiplistIterator *it);
-
-#endif

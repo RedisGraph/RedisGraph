@@ -4,9 +4,11 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "./record.h"
-#include "../util/rmalloc.h"
 #include <assert.h>
+
+#include "record.h"
+#include "util/rmalloc.h"
+#include "xxhash/xxhash.h"
 
 #define RECORD_HEADER(r) (r-1)
 #define RECORD_HEADER_ENTRY(r) *(RECORD_HEADER((r)))
@@ -14,11 +16,11 @@
 Record Record_New(int entries) {
     Record r = rm_calloc((entries + 1), sizeof(Entry));
 
-    // First entry holds records length.
+    // First entry holds records length
     r[0].type = REC_TYPE_HEADER;
     r[0].value.s = SI_LongVal(entries);
 
-    // Skip header entry.
+    // Skip header entry
     return r+1;
 }
 
@@ -111,6 +113,101 @@ size_t Record_ToString(const Record r, char **buf, size_t *buf_cap) {
     return SIValue_StringConcat(values, rLen, *buf, *buf_cap);
 }
 
+#ifndef FEATURE_1
+
+unsigned long long Record_Hash64(const Record r) {
+    uint rec_len = Record_length(r);
+    void *data;
+    size_t len;
+    static long long _null = 0;
+    GraphEntity *gent;
+    struct {
+        GraphEntityType type;
+        EntityID id;
+    } entity;
+    SIValue si;
+    
+	XXH_errorcode res;
+    XXH64_state_t* const state = XXH64_createState();
+    if (!state) abort();
+
+    res = XXH64_reset(state, 0);
+    if (res == XXH_ERROR) abort();
+    
+    bool finish = false;
+    for(int i = 0; i < rec_len; ++i) {
+        Entry e = r[i];
+        switch(e.type) {
+        case REC_TYPE_NODE:
+            gent = (GraphEntity*) Record_GetNode(r, i);
+            entity.type = GETYPE_NODE;
+            entity.id = ENTITY_GET_ID(gent);
+#ifdef DEBUG
+            Node_Print((Node*) gent, 0);
+#endif
+            data = &entity;
+            len = sizeof(entity);
+            break;
+            
+        case REC_TYPE_EDGE:
+            gent = (GraphEntity*)Record_GetEdge(r, i);
+            entity.type = GETYPE_EDGE;
+            entity.id = ENTITY_GET_ID(gent);
+#ifdef DEBUG
+            Edge_Print((Edge*) gent, 0);
+#endif
+            data = &entity;
+            len = sizeof(entity);
+            break;
+            
+        case REC_TYPE_SCALAR:
+            si = Record_GetScalar(r, i);
+            switch (si.type) {
+            case T_NULL:
+                data = &_null;
+                len = sizeof(_null);
+                break;
+                
+            case T_STRING:
+            case T_CONSTSTRING:
+                data = si.stringval;
+                len = si.stringval ? strlen(si.stringval) : 0;
+                break;
+                
+            case T_INT64:
+            case T_BOOL:
+            case T_PTR:
+                data = &si;
+                len = sizeof(si.longval);
+                break;
+                
+            default:
+                abort();
+            }
+            break;
+
+        case REC_TYPE_UNKNOWN:
+            abort();
+            break;
+
+        default:
+            abort();
+        }
+
+        if (finish)
+            break;
+
+        res = XXH64_update(state, data, len);
+        if (res == XXH_ERROR) abort();
+    }
+
+    unsigned long long const hash = XXH64_digest(state);
+    XXH64_freeState(state);
+    return hash;
+}
+
+#endif // FEATURE_1
+
 void Record_Free(Record r) {
     int length = Record_length(r);
     for(int i = 0; i < length; i++) {
@@ -120,3 +217,19 @@ void Record_Free(Record r) {
     }
     rm_free((r-1));
 }
+
+#ifndef FEATURE_2
+
+void Record_Print(const Record r, const char *title, FILE *out) {
+    if (!out) out = stdout;
+    char *str = NULL;
+    size_t len = 0;
+    len = Record_ToString(r, &str, &len);
+	if (title)
+		fprintf(out, "%s: %s\n", title, str);
+	else
+		fprintf(out, "%s\n", str);
+    rm_free(str);
+}
+
+#endif // FEATURE_2

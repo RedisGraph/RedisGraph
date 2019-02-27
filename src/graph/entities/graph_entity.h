@@ -4,16 +4,15 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef GRAPH_ENTITY_H_
-#define GRAPH_ENTITY_H_
+#pragma once
 
-#include "../../value.h"
-#include "../../../deps/GraphBLAS/Include/GraphBLAS.h"
+#include "GraphBLAS/Include/GraphBLAS.h"
+#include "value.h"
 
 #define ATTRIBUTE_NOTFOUND USHRT_MAX
 
 #define ENTITY_ID_ISLT(a,b) ((*a)<(*b))
-#define INVALID_ENTITY_ID -1l
+#define INVALID_ENTITY_ID ((EntityID) -1l)
 
 #define ENTITY_GET_ID(graphEntity) ((graphEntity)->entity ? (graphEntity)->entity->id : INVALID_ENTITY_ID)
 #define ENTITY_PROP_COUNT(graphEntity) ((graphEntity)->entity->prop_count)
@@ -26,6 +25,11 @@ typedef unsigned short Attribute_ID;
 typedef GrB_Index EntityID;
 typedef GrB_Index NodeID;
 typedef GrB_Index EdgeID;
+
+typedef enum GraphEntityType {
+    GETYPE_NODE,
+    GETYPE_EDGE
+} GraphEntityType;
 
 typedef struct {
     Attribute_ID id;
@@ -45,19 +49,23 @@ typedef struct {
     Entity *entity;
 } GraphEntity;
 
-/* Adds property to entity
- * returns - reference to newly added property. */
+// Adds property to entity
+// returns - reference to newly added property
 SIValue* GraphEntity_AddProperty(GraphEntity *e, Attribute_ID attr_id, SIValue value);
 
-/* Retrieves entity's property
- * NOTE: If the key does not exist, we return the special
- * constant value PROPERTY_NOTFOUND. */
+// Retrieves entity's property
+// NOTE: If the key does not exist, we return the special
+// constant value PROPERTY_NOTFOUND
 SIValue* GraphEntity_GetProperty(const GraphEntity *e, Attribute_ID attr_id);
 
-/* Updates existing attribute value. */
+// Updates existing attribute value
 void GraphEntity_SetProperty(const GraphEntity *e, Attribute_ID attr_id, SIValue value);
 
-/* Release all memory allocated by entity */
+// Release all memory allocated by entity
 void FreeEntity(Entity *e);
 
-#endif
+#ifndef FEATURE_2
+
+void GraphEntity_Print(const GraphEntity *e, GraphEntityType t, FILE *out);
+
+#endif // FEATURE_2

@@ -4,8 +4,9 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "./path.h"
-#include "../util/arr.h"
+#include "path.h"
+#include "util/arr.h"
+#include "graph/entities/graph_entity.h"
 
 Path Path_new(size_t len) {
     return array_new(Node, len);
@@ -53,7 +54,7 @@ void Path_print(Path p) {
 
     for(int i = 0; i < pathLen; i++) {
         n = p+i;
-        printf("%llu", ENTITY_GET_ID(n));
+        printf("%lu", ENTITY_GET_ID(n));
     }
 }
 

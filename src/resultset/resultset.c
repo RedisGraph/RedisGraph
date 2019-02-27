@@ -5,15 +5,17 @@
 */
 
 #include "resultset.h"
-#include "../value.h"
-#include "../util/arr.h"
-#include "../util/rmalloc.h"
-#include "../query_executor.h"
-#include "../grouping/group_cache.h"
-#include "../arithmetic/aggregate.h"
+#include "value.h"
+#include "query_executor.h"
+#include "grouping/group_cache.h"
+#include "arithmetic/aggregate.h"
+#include "util/arr.h"
+#include "util/rmalloc.h"
 
-/* Checks if we've already seen given records
- * Returns 1 if the string did not exist otherwise 0. */
+#ifndef FEATURE_1
+#else
+// Checks if we've already seen given records
+// Returns 1 if the string did not exist otherwise 0
 static int _encounteredRecord(ResultSet *set, const Record r) {
     char *str = NULL;
     size_t len = 0;
@@ -24,12 +26,13 @@ static int _encounteredRecord(ResultSet *set, const Record r) {
     rm_free(str);
     return !newRecord;
 }
+#endif // FEATURE_1
 
-/* Redis prints doubles with up to 17 digits of precision, which captures
- * the inaccuracy of many floating-point numbers (such as 0.1).
- * By using the %g format and a precision of 15 significant digits, we avoid many
- * awkward representations like RETURN 0.1 emitting "0.10000000000000001",
- * though we're still subject to many of the typical issues with floating-point error. */
+// Redis prints doubles with up to 17 digits of precision, which captures
+// the inaccuracy of many floating-point numbers (such as 0.1).
+// By using the %g format and a precision of 15 significant digits, we avoid many
+// awkward representations like RETURN 0.1 emitting "0.10000000000000001",
+// though we're still subject to many of the typical issues with floating-point error.
 static inline void _ResultSet_ReplyWithRoundedDouble(RedisModuleCtx *ctx, double d) {
     // Get length required to print number
     int len = snprintf(NULL, 0, "%.15g", d);
@@ -39,8 +42,8 @@ static inline void _ResultSet_ReplyWithRoundedDouble(RedisModuleCtx *ctx, double
     RedisModule_ReplyWithStringBuffer(ctx, str, len);
 }
 
-/* This function handles emitting SIValue types through the Redis RESP protocol.
- * This protocol has unique support for strings, 8-byte integers, and NULL values. */
+// This function handles emitting SIValue types through the Redis RESP protocol.
+// This protocol has unique support for strings, 8-byte integers, and NULL values.
 static void _ResultSet_ReplyWithScalar(RedisModuleCtx *ctx, const SIValue v) {
     // Emit the actual value, then the value type (to facilitate client-side parsing)
     switch (SI_TYPE(v)) {
@@ -79,7 +82,7 @@ static void _ResultSet_ReplayHeader(const ResultSet *set, const ResultSetHeader 
 }
 
 static void _ResultSet_ReplayRecord(ResultSet *s, const Record r) {
-    // Skip record.
+    // Skip record
     if(s->skipped < s->skip) {
         s->skipped++;
         return;
@@ -93,18 +96,18 @@ static void _ResultSet_ReplayRecord(ResultSet *s, const Record r) {
     }
 }
 
-// Prepare replay.
+// Prepare replay
 static void _ResultSet_SetupReply(ResultSet *set) {
-    // resultset + statistics, in that order.
+    // resultset + statistics, in that order
     RedisModule_ReplyWithArray(set->ctx, 2);
 
-    // We don't know at this point the number of records, we're about to return.
+    // We don't know at this point the number of records, we're about to return
     RedisModule_ReplyWithArray(set->ctx, REDISMODULE_POSTPONED_ARRAY_LEN);
 }
 
 static void _ResultSet_ReplayStats(RedisModuleCtx* ctx, ResultSet* set) {
     char buff[512] = {0};
-    size_t resultset_size = 1; /* query execution time. */
+    size_t resultset_size = 1; // query execution time
     int buflen;
 
     if(set->stats.labels_added > 0) resultset_size++;
@@ -155,8 +158,7 @@ static Column* _NewColumn(char *name, char *alias) {
 }
 
 void static _Column_Free(Column* column) {
-    /* No need to free alias,
-     * it will be freed as part of AST_Free. */
+    // No need to free alias, it will be freed as part of AST_Free
     rm_free(column->name);
     rm_free(column);
 }
@@ -188,7 +190,7 @@ void ResultSet_CreateHeader(ResultSet *resultset) {
     }
 
     resultset->header = header;
-    /* Replay with table header. */
+    // Replay with table header
     _ResultSet_ReplayHeader(resultset, header);
 }
 
@@ -204,7 +206,7 @@ static void _ResultSetHeader_Free(ResultSetHeader* header) {
     rm_free(header);
 }
 
-// Checks to see if resultset can acecpt additional records.
+// Checks to see if resultset can acecpt additional records
 bool ResultSet_Full(const ResultSet* set) {
     return (set->limit != RESULTSET_UNLIMITED && set->recordCount >= set->limit);
 }
@@ -216,7 +218,10 @@ bool ResultSet_Limited(const ResultSet* set) {
 ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx) {
     ResultSet* set = (ResultSet*)malloc(sizeof(ResultSet));
     set->ctx = ctx;
+#ifndef FEATURE_1
+#else
     set->trie = NULL;
+#endif
     set->limit = RESULTSET_UNLIMITED;
     set->skip = (ast->skipNode) ? ast->skipNode->skip : 0;
     set->skipped = 0;
@@ -235,7 +240,10 @@ ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx) {
 
     // Account for skipped records.
     if(ast->limitNode != NULL) set->limit = set->skip + ast->limitNode->limit;
+#ifndef FEATURE_1
+#else
     if(set->distinct) set->trie = NewTrieMap();
+#endif
 
     _ResultSet_SetupReply(set);
 
@@ -244,11 +252,14 @@ ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx) {
 
 int ResultSet_AddRecord(ResultSet* set, Record r) {
     if(ResultSet_Full(set)) return RESULTSET_FULL;
-    
-    /* TODO: Incase of an aggregated query, there's no need to distinct check
-     * groups are already distinct by key.
-     * TODO: indicate we've skipped record. */
+
+#ifndef FEATURE_1
+#else    
+    // TODO: Incase of an aggregated query, there's no need to distinct check
+    // groups are already distinct by key.
+    // TODO: indicate we've skipped record.
     if(set->distinct && _encounteredRecord(set, r)) return RESULTSET_OK;
+#endif // FEATURE_1
 
     set->recordCount++;
     _ResultSet_ReplayRecord(set, r);
@@ -256,7 +267,7 @@ int ResultSet_AddRecord(ResultSet* set, Record r) {
 }
 
 void ResultSet_Replay(ResultSet* set) {
-    // Ensure that we're returning a valid number of records.
+    // Ensure that we're returning a valid number of records
     size_t resultset_size = 0;
     if (set->skip < set->recordCount) {
       resultset_size = set->recordCount - set->skip;
@@ -273,6 +284,9 @@ void ResultSet_Free(ResultSet *set) {
 
     free(set->buffer);
     if(set->header) _ResultSetHeader_Free(set->header);
+#ifndef FEATURE_1
+#else
     if(set->trie != NULL) TrieMap_Free(set->trie, TrieMap_NOP_CB);
+#endif
     free(set);
 }

@@ -4,31 +4,30 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef _CLAUSE_RETURN_H
-#define _CLAUSE_RETURN_H
+#pragma once
 
-#include "../ast_arithmetic_expression.h"
-#include "../../util/vector.h"
+#include "parser/ast_arithmetic_expression.h"
+#include "util/vector.h"
 
 typedef struct {
 	char *alias; 		// Alias given to this return element (using the AS keyword)
 	AST_ArithmeticExpressionNode *exp;
-	int asterisks;		// Identifies if return element is '*'.
+	int asterisks;		// Identifies if return element is '*'
 } AST_ReturnElementNode;
 
 typedef struct {
-	AST_ReturnElementNode **returnElements; // Array of ReturnElementNode pointers.
+	AST_ReturnElementNode **returnElements; // Array of ReturnElementNode pointers
 	int distinct;
 } AST_ReturnNode;
 
 AST_ReturnElementNode* New_AST_ReturnElementNode(AST_ArithmeticExpressionNode *exp, const char* alias);
 
-// Dedicated return element which represents RETURN '*'.
+// Dedicated return element which represents RETURN '*'
 AST_ReturnElementNode* New_AST_ReturnElementExpandALL();
 
 AST_ReturnNode* New_AST_ReturnNode(AST_ReturnElementNode **returnElements, int distinct);
 
-/* Checks to see if return clause contains a collapsed node. */
+// Checks to see if return clause contains a collapsed node
 int ReturnClause_ContainsCollapsedNodes(const AST_ReturnNode *return_node);
 
 int ReturnClause_ContainsAggregation(const AST_ReturnNode *return_node);
@@ -45,5 +44,3 @@ void ReturnClause_DefinedEntities(const AST_ReturnNode *return_node, TrieMap *de
 void Free_AST_ReturnElementNode(AST_ReturnElementNode *returnElementNode);
 
 void Free_AST_ReturnNode(AST_ReturnNode *returnNode);
-
-#endif

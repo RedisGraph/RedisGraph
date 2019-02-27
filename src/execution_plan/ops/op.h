@@ -4,37 +4,39 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef __OP_H__
-#define __OP_H__
+#pragma once
 
-#include "../record.h"
-#include "../../redismodule.h"
-#include "../../graph/query_graph.h"
-#include "../../graph/entities/node.h"
-#include "../../graph/entities/edge.h"
-#include "../../schema/schema.h"
-#include "../../util/vector.h"
+#include "redismodule.h"
+#include "util/vector.h"
+#include "execution_plan/record.h"
+#include "graph/query_graph.h"
+#include "graph/entities/node.h"
+#include "graph/entities/edge.h"
+#include "schema/schema.h"
 
 #define OP_REQUIRE_NEW_DATA(opRes) (opRes & (OP_DEPLETED | OP_REFRESH)) > 0
 
 typedef enum {
-OPType_AGGREGATE,
-OPType_ALL_NODE_SCAN,
-OPType_TRAVERSE,
-OPType_CONDITIONAL_TRAVERSE,
-OPType_CONDITIONAL_VAR_LEN_TRAVERSE,
-OPType_FILTER,
-OPType_NODE_BY_LABEL_SCAN,
-OPType_INDEX_SCAN,
-OPType_PRODUCE_RESULTS,
-OPType_CREATE,
-OPType_UPDATE,
-OPType_DELETE,
-OPType_CARTESIAN_PRODUCT,
-OPType_MERGE,
-OPType_UNWIND,
-OPType_SORT,
-OPType_PROJECT,
+	OPType_AGGREGATE,
+	OPType_ALL_NODE_SCAN,
+	OPType_TRAVERSE,
+	OPType_CONDITIONAL_TRAVERSE,
+	OPType_CONDITIONAL_VAR_LEN_TRAVERSE,
+	OPType_FILTER,
+	OPType_NODE_BY_LABEL_SCAN,
+	OPType_INDEX_SCAN,
+	OPType_PRODUCE_RESULTS,
+	OPType_CREATE,
+	OPType_UPDATE,
+	OPType_DELETE,
+	OPType_CARTESIAN_PRODUCT,
+	OPType_MERGE,
+	OPType_UNWIND,
+	OPType_SORT,
+	OPType_PROJECT
+#ifndef FEATURE_1
+	, OPType_DISTINCT
+#endif
 } OPType;
 
 typedef enum {
@@ -67,5 +69,3 @@ typedef struct OpBase OpBase;
 void OpBase_Init(OpBase *op);
 void OpBase_Reset(OpBase *op);
 void OpBase_Free(OpBase *op);
-
-#endif

@@ -4,11 +4,14 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "schema.h"
-#include "../util/arr.h"
-#include "../util/rmalloc.h"
-#include "../graph/graphcontext.h"
 #include <assert.h>
+
+#include "util/arr.h"
+#include "util/rmalloc.h"
+
+#include "schema.h"
+#include "graph/graphcontext.h"
+#include "graph/entities/graph_entity.h"
 
 Schema* Schema_New(const char *name, int id) {
     Schema *schema = rm_malloc(sizeof(Schema));
@@ -163,3 +166,34 @@ void Schema_Free(Schema *schema) {
 
     rm_free(schema);
 }
+
+#ifndef FEATURE_2
+
+// Create a map from attribute ID to attribute name
+char** Schema_AttributeMap(Schema *s, unsigned short *attr_count) {
+    *attr_count = Schema_AttributeCount(s);
+    char **map = malloc(sizeof(char*) * (*attr_count));
+    
+    char *ptr;
+    tm_len_t len;
+    Attribute_ID *attr_id;
+    TrieMapIterator *it = TrieMap_Iterate(s->attributes, "", 0);
+
+    while(TrieMapIterator_Next(it, &ptr, &len, (void**)&attr_id)) {
+        map[*attr_id] = malloc(sizeof(char) * len+1);
+        memcpy(map[*attr_id], ptr, len);
+        map[*attr_id][len] = '\0';
+    }
+
+    TrieMapIterator_Free(it);
+
+    return map;
+}
+
+// Free attribute map created by Schema_AttributeMapping
+void Schema_FreeAttributeMap(char **map, unsigned short map_len) {
+    for(unsigned short i = 0; i < map_len; i++) free(map[i]);
+    free(map);
+}
+
+#endif // FEATURE_2

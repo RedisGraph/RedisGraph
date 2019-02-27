@@ -4,12 +4,11 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef __RECORD_H_
-#define __RECORD_H_
+#pragma once
 
-#include "../value.h"
-#include "../graph/entities/node.h"
-#include "../graph/entities/edge.h"
+#include "value.h"
+#include "graph/entities/node.h"
+#include "graph/entities/edge.h"
 
 typedef enum  {
     REC_TYPE_UNKNOWN = 0,
@@ -69,7 +68,14 @@ void Record_AddEdge(Record r, int idx, Edge edge);
 // String representation of record.
 size_t Record_ToString(const Record r, char **buf, size_t *buf_cap);
 
+#ifndef FEATURE_1
+// 64-bit hash of record
+unsigned long long Record_Hash64(const Record r);
+#endif // FEATURE_1
+
 // Free record.
 void Record_Free(Record r);
 
-#endif
+#ifndef FEATURE_2
+void Record_Print(const Record r, const char *title, FILE *out);
+#endif // FEATURE_2

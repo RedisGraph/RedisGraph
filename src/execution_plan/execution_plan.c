@@ -7,13 +7,13 @@
 #include <assert.h>
 
 #include "execution_plan.h"
-#include "./ops/ops.h"
-#include "../util/vector.h"
-#include "../graph/entities/edge.h"
-#include "../query_executor.h"
-#include "../arithmetic/algebraic_expression.h"
-#include "./optimizations/optimizer.h"
-#include "./optimizations/optimizations.h"
+#include "ops/ops.h"
+#include "graph/entities/edge.h"
+#include "query_executor.h"
+#include "arithmetic/algebraic_expression.h"
+#include "optimizations/optimizer.h"
+#include "optimizations/optimizations.h"
+#include "util/vector.h"
 
 /* Checks if parent has given child, if so returns 1
  * otherwise returns 0 */
@@ -393,11 +393,18 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx,
         if(ReturnClause_ContainsAggregation(ast->returnNode)) {
             op = NewAggregateOp(execution_plan->result_set);
             Vector_Push(ops, op);
-        } else {            
+        } else {
             op = NewProjectOp(execution_plan->result_set);
             Vector_Push(ops, op);
         }
 
+#ifndef FEATURE_1
+        if (ast->returnNode->distinct) {
+            op = NewDistinctOp();
+            Vector_Push(ops, op);
+        }
+#endif // FEATURE_1
+        
         if(ast->orderNode) {
             op = NewSortOp(ast);
             Vector_Push(ops, op);

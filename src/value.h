@@ -4,8 +4,8 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef __SECONDARY_VALUE_H__
-#define __SECONDARY_VALUE_H__
+#pragma once
+
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -113,6 +113,3 @@ int SIValue_Order(const SIValue a, const SIValue b);
 /* Free an SIValue's internal property if that property is a heap allocation owned
  * by this object. This is only the case when the type is T_STRING. */
 void SIValue_Free(SIValue *v);
-
-#endif // __SECONDARY_VALUE_H__
-

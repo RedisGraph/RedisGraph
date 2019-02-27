@@ -8,8 +8,8 @@
 #define __OP_SORT_H
 
 #include "op.h"
-#include "../../util/heap.h"
-#include "../../arithmetic/arithmetic_expression.h"
+#include "util/heap.h"
+#include "arithmetic/arithmetic_expression.h"
 
 #define DIR_DESC -1
 #define DIR_ASC 1
@@ -23,15 +23,15 @@ typedef struct {
     uint limit;             // Total number of records to produce, 0 no limit.
 } Sort;
 
-/* Creates a new Sort operation */
+// Creates a new Sort operation
 OpBase *NewSortOp(const AST *ast);
 
 Record SortConsume(OpBase *opBase);
 
-/* Restart iterator */
+// Restart iterator
 OpResult SortReset(OpBase *ctx);
 
-/* Frees Sort */
+// Frees Sort
 void SortFree(OpBase *ctx);
 
 #endif

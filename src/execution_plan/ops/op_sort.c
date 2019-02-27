@@ -6,9 +6,9 @@
 
 #include "op_sort.h"
 
-#include "../../util/arr.h"
-#include "../../util/qsort.h"
-#include "../../util/rmalloc.h"
+#include "util/arr.h"
+#include "util/qsort.h"
+#include "util/rmalloc.h"
 
 static bool _record_islt(Record a, Record b, const Sort *op) {    
     // First N values in record correspond to RETURN expressions
@@ -132,7 +132,7 @@ OpBase *NewSortOp(const AST *ast) {
 
 Record SortConsume(OpBase *opBase) {
     Sort *op = (Sort*) opBase;
-    
+
     Record r = _handoff(op);
     if(r) return r;
 
