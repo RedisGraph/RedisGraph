@@ -36,15 +36,15 @@ typedef struct {
     SIValue value;
 } EntityProperty;
 
-// Essence of a graph entity.
-// TODO: see if pragma pack 0 will cause memory access violation on ARM.
+// Essence of a graph entity
+// TODO: see if pragma pack 0 will cause memory access violation on ARM
 typedef struct {
     EntityID id;                    // Unique id
     int prop_count;                 // Number of properties.
     EntityProperty *properties;     // Key value pair of attributes.
 } Entity;
 
-// Common denominator between nodes and edges.
+// Common denominator between nodes and edges
 typedef struct {
     Entity *entity;
 } GraphEntity;
@@ -64,8 +64,4 @@ void GraphEntity_SetProperty(const GraphEntity *e, Attribute_ID attr_id, SIValue
 // Release all memory allocated by entity
 void FreeEntity(Entity *e);
 
-#ifndef FEATURE_2
-
 void GraphEntity_Print(const GraphEntity *e, GraphEntityType t, FILE *out);
-
-#endif // FEATURE_2

@@ -113,8 +113,6 @@ size_t Record_ToString(const Record r, char **buf, size_t *buf_cap) {
     return SIValue_StringConcat(values, rLen, *buf, *buf_cap);
 }
 
-#ifndef FEATURE_1
-
 unsigned long long Record_Hash64(const Record r) {
     uint rec_len = Record_length(r);
     void *data;
@@ -142,9 +140,6 @@ unsigned long long Record_Hash64(const Record r) {
             gent = (GraphEntity*) Record_GetNode(r, i);
             entity.type = GETYPE_NODE;
             entity.id = ENTITY_GET_ID(gent);
-#ifdef DEBUG
-            Node_Print((Node*) gent, 0);
-#endif
             data = &entity;
             len = sizeof(entity);
             break;
@@ -153,9 +148,6 @@ unsigned long long Record_Hash64(const Record r) {
             gent = (GraphEntity*)Record_GetEdge(r, i);
             entity.type = GETYPE_EDGE;
             entity.id = ENTITY_GET_ID(gent);
-#ifdef DEBUG
-            Edge_Print((Edge*) gent, 0);
-#endif
             data = &entity;
             len = sizeof(entity);
             break;
@@ -206,8 +198,6 @@ unsigned long long Record_Hash64(const Record r) {
     return hash;
 }
 
-#endif // FEATURE_1
-
 void Record_Free(Record r) {
     int length = Record_length(r);
     for(int i = 0; i < length; i++) {
@@ -217,8 +207,6 @@ void Record_Free(Record r) {
     }
     rm_free((r-1));
 }
-
-#ifndef FEATURE_2
 
 void Record_Print(const Record r, const char *title, FILE *out) {
     if (!out) out = stdout;
@@ -231,5 +219,3 @@ void Record_Print(const Record r, const char *title, FILE *out) {
 		fprintf(out, "%s\n", str);
     rm_free(str);
 }
-
-#endif // FEATURE_2

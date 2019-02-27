@@ -74,11 +74,9 @@ void Edge_Free(Edge* edge) {
 	free(edge);
 }
 
-#ifndef FEATURE_2
 void Edge_Print(const Edge* edge, FILE *out) {
     if(!out) out = stdout;
     GraphEntity_Print((GraphEntity*) edge, GETYPE_EDGE, 0);
     if (edge->relationship || edge->alias)
         fprintf(out, "\tlabel: %s alias: %s\n", edge->relationship, edge->alias);
 }
-#endif // FEATURE_2

@@ -47,13 +47,9 @@ void Node_Free(Node* node) {
 	node = NULL;
 }
 
-#ifndef FEATURE_2
-
 void Node_Print(const Node *node, FILE *out) {
     if(!out) out = stdout;
     GraphEntity_Print((GraphEntity*) node, GETYPE_NODE, 0);
     if (node->label || node->alias)
         fprintf(out, "\tlabel: %s alias: %s\n", node->label, node->alias);
 }
-
-#endif // FEATURE_2

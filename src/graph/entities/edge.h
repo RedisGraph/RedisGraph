@@ -55,6 +55,4 @@ void Edge_SetRelationID(Edge *e, int relationId);
 // Frees allocated space by given edge
 void Edge_Free(Edge *edge);
 
-#ifndef FEATURE_2
 void Edge_Print(const Edge *edge, FILE *out);
-#endif // FEATURE_2

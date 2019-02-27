@@ -20,10 +20,6 @@
 
 typedef struct {
     RedisModuleCtx *ctx;
-#ifndef FEATURE_1
-#else
-    TrieMap *trie;              // When using distinct, used to identify unique records
-#endif
     ResultSetHeader *header;    // Describes how records should look like
     int limit;                  // Max number of records in result-set
     bool distinct;              // Rather or not each record is unique

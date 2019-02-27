@@ -10,8 +10,6 @@
 #include "util/arr.h" 
 #include "util/triemap/triemap.h" 
 
-#ifndef FEATURE_1
-
 OpBase* NewDistinctOp(ResultSet *resultset) {
     Distinct *self = malloc(sizeof(Distinct));
     self->trie = NewTrieMap();
@@ -50,5 +48,3 @@ void DistinctFree(OpBase *ctx) {
     Distinct *self = (Distinct*)ctx;
     TrieMap_Free(self->trie, TrieMap_NOP_CB);
 }
-
-#endif // FEATURE_1

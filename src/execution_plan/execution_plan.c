@@ -398,12 +398,10 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx,
             Vector_Push(ops, op);
         }
 
-#ifndef FEATURE_1
         if (ast->returnNode->distinct) {
             op = NewDistinctOp();
             Vector_Push(ops, op);
         }
-#endif // FEATURE_1
         
         if(ast->orderNode) {
             op = NewSortOp(ast);

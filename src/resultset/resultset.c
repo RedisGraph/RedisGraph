@@ -12,22 +12,6 @@
 #include "util/arr.h"
 #include "util/rmalloc.h"
 
-#ifndef FEATURE_1
-#else
-// Checks if we've already seen given records
-// Returns 1 if the string did not exist otherwise 0
-static int _encounteredRecord(ResultSet *set, const Record r) {
-    char *str = NULL;
-    size_t len = 0;
-    len = Record_ToString(r, &str, &len);
-
-    // Returns 1 if the string did NOT exist otherwise 0
-    int newRecord = TrieMap_Add(set->trie, str, len, NULL, NULL);
-    rm_free(str);
-    return !newRecord;
-}
-#endif // FEATURE_1
-
 // Redis prints doubles with up to 17 digits of precision, which captures
 // the inaccuracy of many floating-point numbers (such as 0.1).
 // By using the %g format and a precision of 15 significant digits, we avoid many
@@ -218,10 +202,6 @@ bool ResultSet_Limited(const ResultSet* set) {
 ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx) {
     ResultSet* set = (ResultSet*)malloc(sizeof(ResultSet));
     set->ctx = ctx;
-#ifndef FEATURE_1
-#else
-    set->trie = NULL;
-#endif
     set->limit = RESULTSET_UNLIMITED;
     set->skip = (ast->skipNode) ? ast->skipNode->skip : 0;
     set->skipped = 0;
@@ -240,10 +220,6 @@ ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx) {
 
     // Account for skipped records.
     if(ast->limitNode != NULL) set->limit = set->skip + ast->limitNode->limit;
-#ifndef FEATURE_1
-#else
-    if(set->distinct) set->trie = NewTrieMap();
-#endif
 
     _ResultSet_SetupReply(set);
 
@@ -252,14 +228,6 @@ ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx) {
 
 int ResultSet_AddRecord(ResultSet* set, Record r) {
     if(ResultSet_Full(set)) return RESULTSET_FULL;
-
-#ifndef FEATURE_1
-#else    
-    // TODO: Incase of an aggregated query, there's no need to distinct check
-    // groups are already distinct by key.
-    // TODO: indicate we've skipped record.
-    if(set->distinct && _encounteredRecord(set, r)) return RESULTSET_OK;
-#endif // FEATURE_1
 
     set->recordCount++;
     _ResultSet_ReplayRecord(set, r);
@@ -284,9 +252,5 @@ void ResultSet_Free(ResultSet *set) {
 
     free(set->buffer);
     if(set->header) _ResultSetHeader_Free(set->header);
-#ifndef FEATURE_1
-#else
-    if(set->trie != NULL) TrieMap_Free(set->trie, TrieMap_NOP_CB);
-#endif
     free(set);
 }

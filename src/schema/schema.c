@@ -167,8 +167,6 @@ void Schema_Free(Schema *schema) {
     rm_free(schema);
 }
 
-#ifndef FEATURE_2
-
 // Create a map from attribute ID to attribute name
 char** Schema_AttributeMap(Schema *s, unsigned short *attr_count) {
     *attr_count = Schema_AttributeCount(s);
@@ -195,5 +193,3 @@ void Schema_FreeAttributeMap(char **map, unsigned short map_len) {
     for(unsigned short i = 0; i < map_len; i++) free(map[i]);
     free(map);
 }
-
-#endif // FEATURE_2

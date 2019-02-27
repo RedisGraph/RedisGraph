@@ -60,8 +60,6 @@ void FreeEntity(Entity *e) {
 	}
 }
 
-#ifndef FEATURE_2
-
 void GraphEntity_Print(const GraphEntity *e, GraphEntityType t, FILE *out) {
     if (!out) out = stdout;
     SchemaType st;
@@ -86,5 +84,3 @@ void GraphEntity_Print(const GraphEntity *e, GraphEntityType t, FILE *out) {
     }
     Schema_FreeAttributeMap(map, map_len);
 }
-
-#endif // FEATURE_2
