@@ -35,7 +35,6 @@ typedef enum {
     OPType_SORT,
     OPType_PROJECT,
     OPType_DISTINCT
-#endif
 } OPType;
 
 typedef enum {
