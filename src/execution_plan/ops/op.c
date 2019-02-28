@@ -12,6 +12,12 @@ void OpBase_Init(OpBase *op) {
     op->childCount = 0;
     op->children = NULL;
     op->parent = NULL;
+    
+    // Function pointers.
+    op->init = NULL;
+    op->consume = NULL;
+    op->reset = NULL;
+    op->free = NULL;
 }
 
 void OpBase_Reset(OpBase *op) {

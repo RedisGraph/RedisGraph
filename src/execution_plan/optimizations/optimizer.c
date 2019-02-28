@@ -7,14 +7,17 @@
 #include "./optimizer.h"
 #include "./optimizations.h"
 
-void optimizePlan(GraphContext *gc, ExecutionPlan *plan) {
+void optimizePlan(GraphContext *gc, ExecutionPlan *plan, AST *ast) {
     /* When possible, replace label scan and filter ops
      * with index scans. */
-    utilizeIndices(gc, plan);
+    utilizeIndices(gc, plan, ast);
 
     /* Try to reduce a number of filters into a single filter op. */
     reduceFilters(plan);
 
     /* Remove redundant SCAN operations. */
     // reduceScans(plan);
+
+    // Relocate sort, skip, limit operations.
+    relocateOperations(plan);
 }

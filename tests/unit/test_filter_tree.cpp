@@ -39,7 +39,7 @@ class FilterTreeTest: public ::testing::Test {
     static void TearDownTestCase()
     {
         // Free fake graph context.
-        GraphContext *gc = GraphContext_GetFromLTS();
+        GraphContext *gc = GraphContext_GetFromTLS();
         Schema_Free(gc->node_unified_schema);
         Schema_Free(gc->relation_unified_schema);
         free(gc);
@@ -66,9 +66,9 @@ class FilterTreeTest: public ::testing::Test {
 
     AST* _build_ast(const char *query) {
         char *errMsg;
-        AST *ast = ParseQuery(query, strlen(query), &errMsg);
-        AST_NameAnonymousNodes(ast);
-        return ast;
+        AST **ast = ParseQuery(query, strlen(query), &errMsg);
+        AST_NameAnonymousNodes(ast[0]);
+        return ast[0];
     }
 
     FT_FilterNode* _build_simple_const_tree() {

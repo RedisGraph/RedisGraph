@@ -7,11 +7,10 @@
 #include "op_all_node_scan.h"
 #include "../../parser/ast.h"
 
-OpBase* NewAllNodeScanOp(const Graph *g, Node *n) {
+OpBase* NewAllNodeScanOp(const Graph *g, Node *n, AST *ast) {
     AllNodeScan *allNodeScan = malloc(sizeof(AllNodeScan));
     allNodeScan->iter = Graph_ScanNodes(g);
 
-    AST *ast = AST_GetFromLTS();
     allNodeScan->nodeRecIdx = AST_GetAliasID(ast, n->alias);
     allNodeScan->recLength = AST_AliasCount(ast);
 

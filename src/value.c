@@ -33,6 +33,14 @@ SIValue SI_PtrVal(void* v) {
   return (SIValue) {.ptrval = v, .type = T_PTR};
 }
 
+SIValue SI_Node(void *n) {
+  return (SIValue) {.ptrval = n, .type = T_NODE};
+}
+
+SIValue SI_Edge(void *e) {
+  return (SIValue) {.ptrval = e, .type = T_EDGE};
+}
+
 SIValue SI_DuplicateStringVal(const char *s) {
   return (SIValue){.stringval = rm_strdup(s), .type = T_STRING};
 }

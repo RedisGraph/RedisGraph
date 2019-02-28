@@ -66,12 +66,6 @@ static void _ResultSet_ReplayHeader(const ResultSet *set, const ResultSetHeader 
 }
 
 static void _ResultSet_ReplayRecord(ResultSet *s, const Record r) {
-    // Skip record.
-    if(s->skipped < s->skip) {
-        s->skipped++;
-        return;
-    }
-
     uint column_count = s->header->columns_len;
     RedisModule_ReplyWithArray(s->ctx, column_count);
 
@@ -148,10 +142,10 @@ void static _Column_Free(Column* column) {
     rm_free(column);
 }
 
-void ResultSet_CreateHeader(ResultSet *resultset) {
+void ResultSet_CreateHeader(ResultSet *resultset, const AST *ast) {    
+    if(!ast->returnNode) return;
     assert(resultset->header == NULL && resultset->recordCount == 0);
 
-    const AST *ast = AST_GetFromLTS();
     ResultSetHeader* header = rm_malloc(sizeof(ResultSetHeader));
     header->columns_len = 0;
     header->columns = NULL;
@@ -191,21 +185,9 @@ static void _ResultSetHeader_Free(ResultSetHeader* header) {
     rm_free(header);
 }
 
-// Checks to see if resultset can acecpt additional records.
-bool ResultSet_Full(const ResultSet* set) {
-    return (set->limit != RESULTSET_UNLIMITED && set->recordCount >= set->limit);
-}
-
-bool ResultSet_Limited(const ResultSet* set) {
-    return (set && set->limit != RESULTSET_UNLIMITED);
-}
-
 ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx) {
     ResultSet* set = (ResultSet*)malloc(sizeof(ResultSet));
     set->ctx = ctx;
-    set->limit = RESULTSET_UNLIMITED;
-    set->skip = (ast->skipNode) ? ast->skipNode->skip : 0;
-    set->skipped = 0;
     set->distinct = (ast->returnNode && ast->returnNode->distinct);
     set->recordCount = 0;    
     set->header = NULL;
@@ -219,17 +201,12 @@ ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx) {
     set->stats.nodes_deleted = 0;
     set->stats.relationships_deleted = 0;
 
-    // Account for skipped records.
-    if(ast->limitNode != NULL) set->limit = set->skip + ast->limitNode->limit;
-
     _ResultSet_SetupReply(set);
 
     return set;
 }
 
 int ResultSet_AddRecord(ResultSet* set, Record r) {
-    if(ResultSet_Full(set)) return RESULTSET_FULL;
-
     set->recordCount++;
     _ResultSet_ReplayRecord(set, r);
     return RESULTSET_OK;
@@ -237,11 +214,7 @@ int ResultSet_AddRecord(ResultSet* set, Record r) {
 
 void ResultSet_Replay(ResultSet* set) {
     // Ensure that we're returning a valid number of records.
-    size_t resultset_size = 0;
-    if (set->skip < set->recordCount) {
-      resultset_size = set->recordCount - set->skip;
-    }
-
+    size_t resultset_size = set->recordCount;
     if(set->header) resultset_size++;
 
     RedisModule_ReplySetArrayLength(set->ctx, resultset_size);

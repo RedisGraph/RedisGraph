@@ -8,6 +8,7 @@
 #define __OP_CARTESIANPRODUCT_H__
 
 #include "op.h"
+#include "../../parser/ast.h"
 
 /* Cartesian product AKA Join. 
  * Currently this operation is a NOP 
@@ -19,7 +20,7 @@
      Record r;
  } CartesianProduct;
 
-OpBase* NewCartesianProductOp();
+OpBase* NewCartesianProductOp(int record_len);
 Record CartesianProductConsume(OpBase *opBase);
 OpResult CartesianProductReset(OpBase *opBase);
 void CartesianProductFree(OpBase *opBase);

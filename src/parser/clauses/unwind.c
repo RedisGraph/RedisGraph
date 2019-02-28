@@ -22,7 +22,7 @@ void UnwindClause_ReferredEntities(const AST_UnwindNode *unwindNode, TrieMap *re
     for(int i = 0; i < expression_count; i++) {
         AST_ArithmeticExpressionNode *exp;
         Vector_Get(unwindNode->expressions, i, &exp);
-        AR_EXP_GetAliases(exp, referredEntities);
+        AST_AR_EXP_GetAliases(exp, referredEntities);
     }
 }
 

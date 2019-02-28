@@ -15,7 +15,6 @@
 #include "op_filter.h"
 #include "op_node_by_label_scan.h"
 #include "op_index_scan.h"
-#include "op_produce_results.h"
 #include "op_update.h"
 #include "op_traverse.h"
 #include "op_conditional_traverse.h"
@@ -24,7 +23,10 @@
 #include "op_cond_var_len_traverse.h"
 #include "op_unwind.h"
 #include "op_sort.h"
+#include "op_results.h"
 #include "op_project.h"
 #include "op_distinct.h"
+#include "op_skip.h"
+#include "op_limit.h"
 
 #endif

@@ -1,64 +1,62 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright 2018-2019 Redis Labs Ltd. and Contributors
+ *
+ * This file is available under the Redis Labs Source Available License Agreement
+ */
 
 #include "op_project.h"
+#include "op_sort.h"
 #include "../../util/arr.h"
-#include "../../query_executor.h"
+#include "../../util/rmalloc.h"
 
-static void _buildExpressions(Project *op) {
-    // Compute projected record length:
-    // Number of returned expressions + number of order-by expressions.
-    ExpandCollapsedNodes(op->ast);
-    ResultSet_CreateHeader(op->resultset);
-
-    const AST *ast = op->ast;
-    uint orderByExpCount = 0;
-    uint returnExpCount = array_len(ast->returnNode->returnElements);
-    if(ast->orderNode) orderByExpCount = array_len(ast->orderNode->expressions);
-    uint expressionCount = returnExpCount + orderByExpCount;
+void _getOrderExpressions(OpProject *op) {
+    if(op->op.parent == NULL) return;
     
-    op->projectedRecordLen = expressionCount;
-    op->expressions = array_new(AR_ExpNode*, expressionCount);
-
-    // Compose RETURN clause expressions.
-    for(uint i = 0; i < returnExpCount; i++) {
-        AST_ArithmeticExpressionNode *exp = ast->returnNode->returnElements[i]->exp;
-        op->expressions = array_append(op->expressions, AR_EXP_BuildFromAST(ast, exp));
-    }
-
-    // Compose ORDER BY expressions.
-    for(uint i = 0; i < orderByExpCount; i++) {
-        AST_ArithmeticExpressionNode *exp = ast->orderNode->expressions[i];
-        op->expressions = array_append(op->expressions, AR_EXP_BuildFromAST(ast, exp));
+    OpBase *parent = op->op.parent;
+    if(parent->type == OPType_SORT) {
+        OpSort *sort = (OpSort*)parent;
+        op->order_exps = sort->expressions;
+        op->order_exp_count = array_len(sort->expressions);
     }
 }
 
-OpBase* NewProjectOp(ResultSet *resultset) {
-    Project *project = malloc(sizeof(Project));
-    project->ast = AST_GetFromLTS();
-    project->singleResponse = false;    
-    project->expressions = NULL;
-    project->resultset = resultset;
+OpBase* NewProjectOp(const AST *ast, AR_ExpNode **exps, char **aliases) {
+    OpProject *project = malloc(sizeof(OpProject));
+    project->ast = ast;
+    project->exps = exps;    
+    project->order_exps = NULL;
+    project->order_exp_count = 0;
+    project->singleResponse = false;
+    project->exp_count = array_len(exps);
+    project->aliases = aliases;
 
     // Set our Op operations
     OpBase_Init(&project->op);
     project->op.name = "Project";
     project->op.type = OPType_PROJECT;
     project->op.consume = ProjectConsume;
+    project->op.init = ProjectInit;
     project->op.reset = ProjectReset;
     project->op.free = ProjectFree;
 
+    project->op.modifies = NewVector(char*, 0);
+    for(uint i = 0; i < array_len(aliases); i++) {
+        if(aliases[i]) Vector_Push(project->op.modifies, aliases[i]);
+    }
+
     return (OpBase*)project;
-    return NULL;
+}
+
+OpResult ProjectInit(OpBase *opBase) {
+    OpProject *op = (OpProject*)opBase;
+    _getOrderExpressions(op);
+    return OP_OK;
 }
 
 Record ProjectConsume(OpBase *opBase) {
-    Project *op = (Project*)opBase;
+    OpProject *op = (OpProject*)opBase;
     Record r = NULL;
-
+    
     if(op->op.childCount) {
         OpBase *child = op->op.children[0];
         r = child->consume(child);
@@ -72,45 +70,62 @@ Record ProjectConsume(OpBase *opBase) {
         r = Record_New(0);  // Fake empty record.
     }
 
-    if(!op->expressions) _buildExpressions(op);
+    Record projection = Record_New(op->exp_count + op->order_exp_count);
+    int rec_idx = 0;
+    for(int i = 0; i < op->exp_count; i++) {
+        SIValue v = AR_EXP_Evaluate(op->exps[i], r);
+        /* Incase expression is aliased, add it to record
+         * as it might be referenced by other expressions:
+         * e.g. RETURN n.v AS X ORDER BY X * X 
+         * WITH 1 as one, one+one as two */
+        char *alias = op->aliases[i];
 
-    Record projectedRec = Record_New(op->projectedRecordLen);
-
-    uint expIdx = 0;
-    uint expCount = array_len(op->expressions);
-    uint returnExpCount = array_len(op->ast->returnNode->returnElements);
-
-    // Evaluate RETURN clause expressions.
-    for(; expIdx < returnExpCount; expIdx++) {
-        SIValue v = AR_EXP_Evaluate(op->expressions[expIdx], r);
-        Record_AddScalar(projectedRec, expIdx, v);
-
-        // Incase expression is aliased, add it to record
-        // as it might be referenced by other expressions:
-        // e.g. RETURN n.v AS X ORDER BY X * X
-        char *alias = op->ast->returnNode->returnElements[expIdx]->alias;
-        if(alias) Record_AddScalar(r, AST_GetAliasID(op->ast, alias), v);
+        switch(SI_TYPE(v)) {
+            case T_NODE:
+                Record_AddNode(projection, rec_idx, *((Node*)v.ptrval));
+                if(alias) Record_AddNode(r, AST_GetAliasID(op->ast, alias), *((Node*)v.ptrval));
+                break;
+            case T_EDGE:
+                Record_AddEdge(projection, rec_idx, *((Edge*)v.ptrval));
+                if(alias) Record_AddEdge(r, AST_GetAliasID(op->ast, alias), *((Edge*)v.ptrval));
+                break;
+            default:
+                Record_AddScalar(projection, rec_idx, v);
+                if(alias) Record_AddScalar(r, AST_GetAliasID(op->ast, alias), v);
+                break;
+        }
+        rec_idx++;
     }
 
-    // Evaluate ORDER BY clause expressions.
-    for(; expIdx < expCount; expIdx++) {
-        SIValue v = AR_EXP_Evaluate(op->expressions[expIdx], r);
-        Record_AddScalar(projectedRec, expIdx, v);
+    // Project Order expressions.
+    for(int i = 0; i < op->order_exp_count; i++) {
+        SIValue v = AR_EXP_Evaluate(op->order_exps[i], r);
+        switch(SI_TYPE(v)) {
+            case T_NODE:
+                Record_AddNode(projection, rec_idx, *((Node*)v.ptrval));
+                break;
+            case T_EDGE:
+                Record_AddEdge(projection, rec_idx, *((Edge*)v.ptrval));
+                break;
+            default:
+                Record_AddScalar(projection, rec_idx, v);
+                break;
+        }
+        rec_idx++;
     }
 
     Record_Free(r);
-    return projectedRec;
+    return projection;
 }
 
 OpResult ProjectReset(OpBase *ctx) {
     return OP_OK;
 }
 
-void ProjectFree(OpBase *opBase) {
-    Project *op = (Project*)opBase;
-    if(op->expressions) {
-        uint expCount = array_len(op->expressions);
-        for(uint i = 0; i < expCount; i++) AR_EXP_Free(op->expressions[i]);
-        array_free(op->expressions);
-    }
+void ProjectFree(OpBase *ctx) {    
+    OpProject *op = (OpProject*)ctx;
+ 
+    for(int i = 0; i < op->exp_count; i++) AR_EXP_Free(op->exps[i]);
+    array_free(op->exps);
+    array_free(op->aliases);
 }
