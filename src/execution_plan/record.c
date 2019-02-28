@@ -15,6 +15,7 @@ static void _Record_Extend(Record *r, int len) {
     if(Record_length(*r) >= len) return;
 
     Entry header = RECORD_HEADER_ENTRY(*r);
+    (void)header; // Suppress "set but not used" compiler complaint
     header.value.s.longval = len;
     *r = rm_realloc(*r, sizeof(Entry) * (len+1));
 }
