@@ -1,17 +1,21 @@
+
 # find the OS
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 
 # store absolute path to RedisGraph Makefile location
-abs_path = $(shell pwd)
+abs_path := $(shell pwd)
 
 # if DEBUG env var is set, we compile with "debug" cflags
-DEBUGFLAGS = -g -ggdb -O3 
+DEBUGFLAGS = -g -ggdb 
 ifeq ($(DEBUG), 1)
-	DEBUGFLAGS = -g -ggdb -O0 -DDEBUG
+	DEBUGFLAGS += -O3 
+else
+	DEBUGFLAGS += -O0 -DDEBUG
 endif
 
 # Default CFLAGS
-CFLAGS = -Wall -Wno-unused-function -Wno-unused-variable -Wno-unused-result \
+CFLAGS = \
+	-Wall -Wno-unused-function -Wno-unused-variable -Wno-unused-result \
 	-fPIC -std=gnu99 \
  	-I"$(abs_path)" -I"$(abs_path)/../deps" \
 	-D_GNU_SOURCE -DREDIS_MODULE_TARGET -DREDISMODULE_EXPERIMENTAL_API -DXXH_STATIC_LINKING_ONLY
@@ -26,7 +30,7 @@ else
 endif
 SHOBJ_LDFLAGS += $(LDFLAGS)
 
-export CFLAGS
+# export CFLAGS
 
 # Sources
 SOURCEDIR=$(shell pwd -P)
@@ -63,7 +67,7 @@ export CC_OBJECTS
 
 # .d files for each c file. These make sure that changing a header file
 # will also change the dependent .c files of it
-CC_DEPS = $(patsubst %.c, %.d, $(CC_SOURCES) )
+CC_DEPS = $(patsubst %.c, %.d, $(CC_SOURCES))
 
 # Library dependencies
 LIBTRIEMAP=util/triemap/libtriemap.a
@@ -87,8 +91,9 @@ endif
 
 # Compile C file while generating a .d file for it
 %.o: %.c
-%.o: %.c
 	$(REDISGRAPH_CC) $(CFLAGS) -c $< -o $@ -MMD -MF $(@:.o=.d)
+
+.PHONY: parser clean package test test_valgrind
 
 all: redisgraph.so libredisgraph.a
 
@@ -118,8 +123,6 @@ endif
 # This is not included in the usual make target!
 parser:
 	@$(MAKE) -C $@
-
-.PHONY: parser
 
 # Build the module...
 libredisgraph.a : $(CC_OBJECTS)
