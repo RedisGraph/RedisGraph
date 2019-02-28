@@ -60,11 +60,11 @@ void Schema_AddIndex(Schema *s, char *attribute, Index *idx);
 // Removes index
 void Schema_RemoveIndex(Schema *s, const char *attribute);
 
-// Free schema
-void Schema_Free(Schema *s);
-
 // Create a map from attribute ID to attribute name
 char** Schema_AttributeMap(Schema *s, unsigned short *attr_count);
 
 // Free attribute mapping created by Schema_AttributeMap
 void Schema_FreeAttributeMap(char **map, unsigned short map_len);
+
+// Free schema
+void Schema_Free(Schema *s);

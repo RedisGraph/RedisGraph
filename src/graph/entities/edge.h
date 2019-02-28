@@ -52,7 +52,7 @@ void Edge_SetDestNode(Edge *e, Node *dest);
 // Sets edge relation type
 void Edge_SetRelationID(Edge *e, int relationId);
 
+void Edge_Print(const Edge *edge, FILE *out);
+
 // Frees allocated space by given edge
 void Edge_Free(Edge *edge);
-
-void Edge_Print(const Edge *edge, FILE *out);

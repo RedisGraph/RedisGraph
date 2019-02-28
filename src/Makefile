@@ -13,8 +13,8 @@ endif
 # Default CFLAGS
 CFLAGS = -Wall -Wno-unused-function -Wno-unused-variable -Wno-unused-result \
 	-fPIC -std=gnu99 \
- 	-I"$(abs_path)" -I"$(abs_path)/../deps" -I"$(abs_path)/.." -include common.h \
-	-D_GNU_SOURCE -DREDIS_MODULE_TARGET -DREDISMODULE_EXPERIMENTAL_API
+ 	-I"$(abs_path)" -I"$(abs_path)/../deps" \
+	-D_GNU_SOURCE -DREDIS_MODULE_TARGET -DREDISMODULE_EXPERIMENTAL_API -DXXH_STATIC_LINKING_ONLY
 CFLAGS += $(DEBUGFLAGS)
 
 # Compile flags for linux / osx
@@ -90,7 +90,7 @@ endif
 %.o: %.c
 	$(REDISGRAPH_CC) $(CFLAGS) -c $< -o $@ -MMD -MF $(@:.o=.d)
 
-all: redisgraph.so
+all: redisgraph.so libredisgraph.a
 
 # Include all dependency files for C files
 -include $(CC_DEPS)
@@ -125,8 +125,8 @@ parser:
 libredisgraph.a : $(CC_OBJECTS)
 	@$(AR) rs $@ $^
 
-redisgraph.so: libredisgraph.a $(LIBS)
-	$(REDISGRAPH_CC) -o $@  -Wl,--whole-archive libredisgraph.a -Wl,--no-whole-archive $(LIBS) $(SHOBJ_LDFLAGS) -lc -lm
+redisgraph.so: $(CC_OBJECTS) $(LIBS)
+	$(REDISGRAPH_CC) -o $@ $^ $(SHOBJ_LDFLAGS) -lc -lm
 
 clean:
 	@find . -name '*.[oad]' -type f -delete

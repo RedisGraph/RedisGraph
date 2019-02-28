@@ -35,7 +35,7 @@ int Node_IncomeDegree(const Node *n);
 // Connects source node to destination node by edge
 void Node_ConnectNode(Node* src, Node* dest, struct Edge* e);
 
+void Node_Print(const Node *node, FILE *out);
+
 // Frees allocated space by given node
 void Node_Free(Node* node);
-
-void Node_Print(const Node *node, FILE *out);

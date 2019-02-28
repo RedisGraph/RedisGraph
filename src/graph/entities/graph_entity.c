@@ -15,7 +15,7 @@
 
 SIValue *PROPERTY_NOTFOUND = &(SIValue){.longval = 0, .type = T_NULL};
 
-/* Add a new property to entity */
+// Add a new property to entity
 SIValue* GraphEntity_AddProperty(GraphEntity *e, Attribute_ID attr_id, SIValue value) {
 	if(e->entity->properties == NULL) {
 		e->entity->properties = rm_malloc(sizeof(EntityProperty));
@@ -36,7 +36,7 @@ SIValue* GraphEntity_GetProperty(const GraphEntity *e, Attribute_ID attr_id) {
 
 	for(int i = 0; i < e->entity->prop_count; i++) {
 		if(attr_id == e->entity->properties[i].id) {
-			// Note, unsafe as entity properties can get reallocated.
+			// Note, unsafe as entity properties can get reallocated
 			return &(e->entity->properties[i].value);
 		}
 	}
@@ -44,11 +44,29 @@ SIValue* GraphEntity_GetProperty(const GraphEntity *e, Attribute_ID attr_id) {
 	return PROPERTY_NOTFOUND;
 }
 
-// Updates existing property value.
+// Updates existing property value
 void GraphEntity_SetProperty(const GraphEntity *e, Attribute_ID attr_id, SIValue value) {
 	SIValue *prop = GraphEntity_GetProperty(e, attr_id);
 	assert(prop != PROPERTY_NOTFOUND);
 	*prop = value;
+}
+
+void GraphEntity_Print(const GraphEntity *e, GraphEntityType t, FILE *out) {
+    if (!out) out = stdout;
+    SchemaType st = t == GraphEntityType_NODE ? SCHEMA_NODE : SCHEMA_EDGE;
+    Schema *s = GraphContext_GetUnifiedSchema(GraphContext_GetFromLTS(), st);
+    unsigned short map_len;
+    char **map = Schema_AttributeMap(s, &map_len);
+    
+    static const char *type_names[] = { "Node", "Edge" };
+    fprintf(out, "%s id=%lu\n", type_names[t], e->entity->id);
+    for (int i = 0; i < e->entity->prop_count; ++i) {
+        EntityProperty *p = &e->entity->properties[i];
+        char str[512];
+        SIValue_ToString(p->value, str, sizeof(str));
+        fprintf(out, "\t%s=%s\n", map[p->id], str);
+    }
+    Schema_FreeAttributeMap(map, map_len);
 }
 
 void FreeEntity(Entity *e) {
@@ -58,29 +76,4 @@ void FreeEntity(Entity *e) {
 		rm_free(e->properties);
 		e->properties = NULL;
 	}
-}
-
-void GraphEntity_Print(const GraphEntity *e, GraphEntityType t, FILE *out) {
-    if (!out) out = stdout;
-    SchemaType st;
-    switch (t) {
-    case GETYPE_NODE:
-        st = SCHEMA_NODE; break;
-    case GETYPE_EDGE:
-        st = SCHEMA_EDGE; break;
-    default: abort();
-    }
-    Schema *s = GraphContext_GetUnifiedSchema(GraphContext_GetFromLTS(), st);
-    unsigned short map_len;
-    char **map = Schema_AttributeMap(s, &map_len);
-    
-    static const char *tnames[] = { "Node", "Edge" };
-    fprintf(out, "%s id=%lu\n", tnames[t], e->entity->id);
-    for (int i = 0; i < e->entity->prop_count; ++i) {
-        EntityProperty *p = &e->entity->properties[i];
-        char str[512];
-        SIValue_ToString(p->value, str, sizeof(str));
-        fprintf(out, "\t%s=%s\n", map[p->id], str);
-    }
-    Schema_FreeAttributeMap(map, map_len);
 }

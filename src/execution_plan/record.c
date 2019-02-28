@@ -118,7 +118,6 @@ unsigned long long Record_Hash64(const Record r) {
     void *data;
     size_t len;
     static long long _null = 0;
-    GraphEntity *gent;
     struct {
         GraphEntityType type;
         EntityID id;
@@ -126,28 +125,24 @@ unsigned long long Record_Hash64(const Record r) {
     SIValue si;
     
 	XXH_errorcode res;
-    XXH64_state_t* const state = XXH64_createState();
-    if (!state) abort();
+    XXH64_state_t state;
 
-    res = XXH64_reset(state, 0);
-    if (res == XXH_ERROR) abort();
+    res = XXH64_reset(&state, 0);
+    assert(res != XXH_ERROR);
     
-    bool finish = false;
     for(int i = 0; i < rec_len; ++i) {
         Entry e = r[i];
         switch(e.type) {
         case REC_TYPE_NODE:
-            gent = (GraphEntity*) Record_GetNode(r, i);
-            entity.type = GETYPE_NODE;
-            entity.id = ENTITY_GET_ID(gent);
+            entity.type = GraphEntityType_NODE;
+            entity.id = ENTITY_GET_ID(Record_GetGraphEntity(r, i));
             data = &entity;
             len = sizeof(entity);
             break;
             
         case REC_TYPE_EDGE:
-            gent = (GraphEntity*)Record_GetEdge(r, i);
-            entity.type = GETYPE_EDGE;
-            entity.id = ENTITY_GET_ID(gent);
+            entity.type = GraphEntityType_EDGE;
+            entity.id = ENTITY_GET_ID(Record_GetGraphEntity(r, i));
             data = &entity;
             len = sizeof(entity);
             break;
@@ -169,6 +164,7 @@ unsigned long long Record_Hash64(const Record r) {
             case T_INT64:
             case T_BOOL:
             case T_PTR:
+            case T_DOUBLE:
                 data = &si;
                 len = sizeof(si.longval);
                 break;
@@ -186,15 +182,11 @@ unsigned long long Record_Hash64(const Record r) {
             abort();
         }
 
-        if (finish)
-            break;
-
-        res = XXH64_update(state, data, len);
-        if (res == XXH_ERROR) abort();
+        res = XXH64_update(&state, data, len);
+        assert(res != XXH_ERROR);
     }
 
-    unsigned long long const hash = XXH64_digest(state);
-    XXH64_freeState(state);
+    unsigned long long const hash = XXH64_digest(&state);
     return hash;
 }
 

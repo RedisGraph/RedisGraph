@@ -13,7 +13,7 @@
 
 typedef struct {
     OpBase op;
-	TrieMap *trie;
+    TrieMap *trie;
 } Distinct;
 
 OpBase* NewDistinctOp();

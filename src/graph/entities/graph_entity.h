@@ -27,8 +27,8 @@ typedef GrB_Index NodeID;
 typedef GrB_Index EdgeID;
 
 typedef enum GraphEntityType {
-    GETYPE_NODE,
-    GETYPE_EDGE
+    GraphEntityType_NODE,
+    GraphEntityType_EDGE
 } GraphEntityType;
 
 typedef struct {

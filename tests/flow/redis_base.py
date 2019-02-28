@@ -19,19 +19,36 @@ graph = None
 class RedisGraphTestBase(FlowTestsBase):
     @classmethod
     def graphId(cls):
-        return "g"
+        return cls.__name__
 
+    # a single command specified as multiline string
+    @classmethod
+    def createCommand(cls):
+        return ""
+
+    # several commands specified as multiine string, one command per line
     @classmethod
     def createCommands(cls):
         return ""
 
     @classmethod
-    def create_graph(cls, cmd):
+    def create_graph(cls):
         global redis_cli
+        global graph
+        
         redis_cli.execute_command("DEL", cls.graphId())  # delete previous graph if exists
-        for cmd in cmd.strip().split("\n"):
+        
+        graph = Graph(cls.graphId(), redis_cli)
+
+        cmd = " ".join(map(lambda x: x.strip(), cls.createCommand().split("\n")))
+        if cmd != "":
             graph.query(cmd)
-    
+
+        for cmd in cls.createCommands().split("\n"):
+            cmd = cmd.strip()
+            if cmd != "":
+                graph.query(cmd)
+
     @classmethod
     def setUpClass(cls):
         global redis_server
@@ -42,9 +59,7 @@ class RedisGraphTestBase(FlowTestsBase):
         redis_server = redis()
         redis_server.start()
         redis_cli = redis_server.client()
-        
-        graph = Graph(cls.graphId(), redis_cli)
-        cls.create_graph(cls.createCommands())
+        cls.create_graph()
 
     @classmethod
     def tearDownClass(cls):
@@ -55,16 +70,16 @@ class RedisGraphTestBase(FlowTestsBase):
         return redis_cli.execute_command(cmd, self.graphId())
 
     def query(self, cmd):
-        global redis_cli
-        q = redis_cli.execute_command("GRAPH.QUERY", self.graphId(), cmd)
+        global graph
+        q = graph.query(cmd)
         try:
-            return q[0][1:]
+            return q.result_set[1:]
         except:
             return []
 
-    def begin(self):
+    def multi(self):
         global redis_cli
         redis_cli.execute_command("MULTI")
     
-    def commit(self):
+    def exec_(self):
         return redis_cli.execute_command("EXEC")

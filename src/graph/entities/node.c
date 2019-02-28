@@ -35,6 +35,14 @@ int Node_IncomeDegree(const Node *n) {
 	return Vector_Size(n->incoming_edges);
 }
 
+void Node_Print(const Node *node, FILE *out) {
+    const char *fix(const char *p) { return p ? p : "''"; }
+    if(!out) out = stdout;
+    GraphEntity_Print((GraphEntity*) node, GraphEntityType_NODE, 0);
+    if (node->label || node->alias)
+        fprintf(out, "\tlabel: %s alias: %s\n", fix(node->label), fix(node->alias));
+}
+
 void Node_Free(Node* node) {
 	if(!node) return;
 
@@ -45,11 +53,4 @@ void Node_Free(Node* node) {
 
 	free(node);
 	node = NULL;
-}
-
-void Node_Print(const Node *node, FILE *out) {
-    if(!out) out = stdout;
-    GraphEntity_Print((GraphEntity*) node, GETYPE_NODE, 0);
-    if (node->label || node->alias)
-        fprintf(out, "\tlabel: %s alias: %s\n", node->label, node->alias);
 }

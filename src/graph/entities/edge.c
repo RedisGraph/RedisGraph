@@ -66,17 +66,18 @@ void Edge_SetRelationID(Edge *e, int relationId) {
 	e->relationId = relationId;
 }
 
+void Edge_Print(const Edge* edge, FILE *out) {
+    const char *fix(const char *p) { return p ? p : "''"; }
+    if(!out) out = stdout;
+    GraphEntity_Print((GraphEntity*) edge, GraphEntityType_EDGE, 0);
+    if (edge->relationship || edge->alias)
+        fprintf(out, "\tlabel: %s alias: %s\n", fix(edge->relationship), fix(edge->alias));
+}
+
 void Edge_Free(Edge* edge) {
 	if(!edge) return;
 
 	if(edge->alias != NULL) free(edge->alias);
 	if(edge->relationship != NULL) free(edge->relationship);
 	free(edge);
-}
-
-void Edge_Print(const Edge* edge, FILE *out) {
-    if(!out) out = stdout;
-    GraphEntity_Print((GraphEntity*) edge, GETYPE_EDGE, 0);
-    if (edge->relationship || edge->alias)
-        fprintf(out, "\tlabel: %s alias: %s\n", edge->relationship, edge->alias);
 }

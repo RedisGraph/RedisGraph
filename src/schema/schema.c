@@ -155,18 +155,6 @@ void Schema_RemoveIndex(Schema *s, const char *attribute) {
     }
 }
 
-void Schema_Free(Schema *schema) {
-    if(schema->name) rm_free(schema->name);
-    TrieMap_Free(schema->attributes, NULL);
-
-    // Free indicies.
-    uint32_t index_count = array_len(schema->indices);
-    for(int i = 0; i < index_count; i++) Index_Free(schema->indices[i]);
-    array_free(schema->indices);
-
-    rm_free(schema);
-}
-
 // Create a map from attribute ID to attribute name
 char** Schema_AttributeMap(Schema *s, unsigned short *attr_count) {
     *attr_count = Schema_AttributeCount(s);
@@ -192,4 +180,16 @@ char** Schema_AttributeMap(Schema *s, unsigned short *attr_count) {
 void Schema_FreeAttributeMap(char **map, unsigned short map_len) {
     for(unsigned short i = 0; i < map_len; i++) free(map[i]);
     free(map);
+}
+
+void Schema_Free(Schema *schema) {
+    if(schema->name) rm_free(schema->name);
+    TrieMap_Free(schema->attributes, NULL);
+
+    // Free indicies.
+    uint32_t index_count = array_len(schema->indices);
+    for(int i = 0; i < index_count; i++) Index_Free(schema->indices[i]);
+    array_free(schema->indices);
+
+    rm_free(schema);
 }

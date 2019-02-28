@@ -30,13 +30,13 @@ Record DistinctConsume(OpBase *opBase) {
 
     while(true) {
         Record r = child->consume(child);
-        if(!r) 
-            return NULL;
+        if(!r) return NULL;
 
         unsigned long long const hash = Record_Hash64(r);
-        int is_new = TrieMap_Add(self->trie, (char *) &hash, sizeof(hash), r, TrieMap_DONT_CARE_REPLACE);
+        int is_new = TrieMap_Add(self->trie, (char *) &hash, sizeof(hash), NULL, TrieMap_DONT_CARE_REPLACE);
         if(is_new)
             return r;
+        Record_Free(r);
     }
 }
 
