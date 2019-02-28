@@ -110,7 +110,7 @@ int AR_EXP_GetOperandType(AR_ExpNode *exp) {
  * entity aliasing where we lose track over which entity is aliased, consider
  * MATCH (n:User) WITH n AS x RETURN x.name 
  * When constructing the arithmetic expression x.name, we don't know
- * who X is reffering to. */
+ * who X is referring to. */
 void _AR_EXP_UpdatePropIdx(AR_ExpNode *root, const Record r) {
     GraphContext *gc = GraphContext_GetFromTLS();
     RecordEntryType t = Record_GetType(r, root->operand.variadic.entity_alias_idx);
@@ -716,7 +716,7 @@ SIValue AR_TRIM(SIValue *argv, int argc) {
 
 SIValue AR_ID(SIValue *argv, int argc) {
     assert(argc == 1);
-    assert(SI_TYPE(argv[0]) && (T_NODE || T_EDGE));
+    assert(SI_TYPE(argv[0]) & (T_NODE | T_EDGE));
     GraphEntity *graph_entity = (GraphEntity*)argv[0].ptrval;
     return SI_LongVal(ENTITY_GET_ID(graph_entity));
 }

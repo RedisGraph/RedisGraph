@@ -150,10 +150,10 @@ friends_who_are_older_than_average = QueryInfo(
              LIMIT 4""",
     description='Friends who are older then the average age.',
     max_run_time_ms=0.35,
-    expected_result=[['Noam Nativ', 34, 3],
-                     ['Omri Traub', 33, 2],                    
-                     ['Tal Doron', 32, 1],
-                     ['Ori Laslo', 32, 1]]
+    expected_result=[['Noam Nativ', 34, '3'],
+                     ['Omri Traub', 33, '2'],
+                     ['Tal Doron', 32, '1'],
+                     ['Ori Laslo', 32, '1']]
 )
 
 how_many_countries_each_friend_visited_query = QueryInfo(
