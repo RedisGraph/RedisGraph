@@ -83,7 +83,10 @@ static void _ComputeGroupKey(OpAggregate *op, Record r) {
 
 static void _ComputeGroupKeyStr(OpAggregate *op, char **key) {
     uint none_agg_exp_count = array_len(op->none_aggregated_expressions);
-    if(none_agg_exp_count == 0) asprintf(key, "SINGLE_GROUP");
+    if(none_agg_exp_count == 0) {
+        *key = rm_strdup("SINGLE_GROUP");
+        return;
+    }
 
     // Determine required size for group key string representation.
     size_t key_len = SIValue_StringConcatLen(op->group_keys, none_agg_exp_count);
@@ -284,6 +287,7 @@ void AggregateFree(OpBase *opBase) {
         for(int i = 0; i < expCount; i++) AR_EXP_Free(op->expressions[i]);
         array_free(op->expressions);
     }
+    array_free(op->aliases);
 
     FreeGroupCache(op->groups);
 }
