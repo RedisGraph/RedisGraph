@@ -169,6 +169,7 @@ AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(AlgebraicExpr
 
     TrieMap *ref_entities = NewTrieMap();
     ReturnClause_ReferredEntities(ast->returnNode, ref_entities);
+    WithClause_ReferredEntities(ast->withNode, ref_entities);
     CreateClause_ReferredEntities(ast->createNode, ref_entities);
     WhereClause_ReferredEntities(ast->whereNode, ref_entities);
     DeleteClause_ReferredEntities(ast->deleteNode, ref_entities);    
@@ -346,7 +347,7 @@ AlgebraicExpression **AlgebraicExpression_From_Query(const AST *ast, Vector *mat
         // Create matrix M, where M = A+B+...
         int labelCount = AST_LinkEntity_LabelCount(astEdge);
         if(labelCount > 1) {
-            GraphContext *gc = GraphContext_GetFromLTS();
+            GraphContext *gc = GraphContext_GetFromTLS();
             Graph *g = gc->g;
 
             GrB_Matrix m;

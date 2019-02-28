@@ -140,6 +140,22 @@ friends_age_difference_query = QueryInfo(
                      ['Alon Fital', 0]]
 )
 
+friends_who_are_older_than_average = QueryInfo(
+    query="""MATCH (p:person)
+             WITH avg(p.age) AS average_age 
+             MATCH(:person)-[:friend]->(f:person) 
+             WHERE f.age > average_age 
+             RETURN f.name, f.age, round(f.age - average_age) AS age_diff 
+             ORDER BY age_diff, f.name DESC
+             LIMIT 4""",
+    description='Friends who are older then the average age.',
+    max_run_time_ms=0.35,
+    expected_result=[['Noam Nativ', 34, 3],
+                     ['Omri Traub', 33, 2],                    
+                     ['Tal Doron', 32, 1],
+                     ['Ori Laslo', 32, 1]]
+)
+
 how_many_countries_each_friend_visited_query = QueryInfo(
     query="""MATCH (ME:person {name:"Roi Lipman"})-[:friend]->(friend:person)-[:visited]->(c:country)
              RETURN friend.name, count(c.name) AS countriesVisited
@@ -380,6 +396,7 @@ queries_info = [
     friends_visited_same_places_as_me_query,
     friends_older_than_me_query,
     friends_age_difference_query,
+    friends_who_are_older_than_average,
     how_many_countries_each_friend_visited_query,    
     visit_purpose_of_each_country_i_visited_query,
     who_was_on_business_trip_query,

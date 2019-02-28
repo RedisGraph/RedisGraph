@@ -8,8 +8,9 @@
 #define __OP_NODE_BY_LABEL_SCAN_H
 
 #include "op.h"
-#include "../../graph/entities/node.h"
+#include "../../parser/ast.h"
 #include "../../graph/graph.h"
+#include "../../graph/entities/node.h"
 #include "../../../deps/GraphBLAS/Include/GraphBLAS.h"
 
 /* NodeByLabelScan, scans entire label. */
@@ -25,7 +26,7 @@ typedef struct {
 } NodeByLabelScan;
 
 /* Creates a new NodeByLabelScan operation */
-OpBase *NewNodeByLabelScanOp(GraphContext *gc, Node *node);
+OpBase *NewNodeByLabelScanOp(GraphContext *gc, Node *node, AST *ast);
 
 /* NodeByLabelScan next operation
  * called each time a new ID is required */

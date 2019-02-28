@@ -69,7 +69,7 @@ cleanup:
   return gc;
 }
 
-GraphContext* GraphContext_GetFromLTS() {
+GraphContext* GraphContext_GetFromTLS() {
   GraphContext* gc = pthread_getspecific(_tlsGCKey);
   assert(gc);
   return gc;

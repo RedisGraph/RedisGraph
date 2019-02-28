@@ -11,6 +11,14 @@
 #define RECORD_HEADER(r) (r-1)
 #define RECORD_HEADER_ENTRY(r) *(RECORD_HEADER((r)))
 
+static void _Record_Extend(Record *r, int len) {
+    if(Record_length(*r) >= len) return;
+
+    Entry header = RECORD_HEADER_ENTRY(*r);
+    header.value.s.longval = len;
+    *r = rm_realloc(*r, sizeof(Entry) * (len+1));
+}
+
 Record Record_New(int entries) {
     Record r = rm_calloc((entries + 1), sizeof(Entry));
 
@@ -35,14 +43,14 @@ Record Record_Clone(const Record r) {
     return clone;
 }
 
-void Record_Merge(Record a, const Record b) {
-    int aLength = Record_length(a);
+void Record_Merge(Record *a, const Record b) {
+    int aLength = Record_length(*a);
     int bLength = Record_length(b);
-    assert(aLength == bLength);
+    if(aLength < bLength) _Record_Extend(a, bLength);
 
     for(int i = 0; i < bLength; i++) {
         if(b[i].type != REC_TYPE_UNKNOWN) {
-            a[i] = b[i];
+            (*a)[i] = b[i];
         }
     }
 }

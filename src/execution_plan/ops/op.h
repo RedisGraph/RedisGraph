@@ -18,24 +18,29 @@
 #define OP_REQUIRE_NEW_DATA(opRes) (opRes & (OP_DEPLETED | OP_REFRESH)) > 0
 
 typedef enum {
-OPType_AGGREGATE,
-OPType_ALL_NODE_SCAN,
-OPType_TRAVERSE,
-OPType_CONDITIONAL_TRAVERSE,
-OPType_CONDITIONAL_VAR_LEN_TRAVERSE,
-OPType_FILTER,
-OPType_NODE_BY_LABEL_SCAN,
-OPType_INDEX_SCAN,
-OPType_PRODUCE_RESULTS,
-OPType_CREATE,
-OPType_UPDATE,
-OPType_DELETE,
-OPType_CARTESIAN_PRODUCT,
-OPType_MERGE,
-OPType_UNWIND,
-OPType_SORT,
-OPType_PROJECT,
+OPType_AGGREGATE = 0x00,
+OPType_ALL_NODE_SCAN = 0x01,
+OPType_TRAVERSE = 0x02,
+OPType_CONDITIONAL_TRAVERSE = 0x04,
+OPType_CONDITIONAL_VAR_LEN_TRAVERSE = 0x08,
+OPType_FILTER = 0x10,
+OPType_NODE_BY_LABEL_SCAN = 0x20,
+OPType_INDEX_SCAN = 0x40,
+OPType_ProduceResults = 0x80,
+OPType_RESULTS = 0x100,
+OPType_CREATE = 0x200,
+OPType_UPDATE = 0x400,
+OPType_DELETE = 0x800,
+OPType_CARTESIAN_PRODUCT = 0x1000,
+OPType_MERGE = 0x2000,
+OPType_UNWIND = 0x4000,
+OPType_SORT = 0x8000,
+OPType_PROJECT = 0x10000,
+OPType_SKIP = 0x20000,
+OPType_LIMIT = 0x40000,
 } OPType;
+
+#define OP_SCAN (OPType_ALL_NODE_SCAN | OPType_NODE_BY_LABEL_SCAN | OPType_INDEX_SCAN)
 
 typedef enum {
     OP_DEPLETED = 1,
@@ -46,13 +51,14 @@ typedef enum {
 
 struct OpBase;
 
-// typedef OpResult (*fpConsume)(struct OpBase*, Record r);
+typedef OpResult (*fpInit)(struct OpBase*);
 typedef Record (*fpConsume)(struct OpBase*);
 typedef OpResult (*fpReset)(struct OpBase*);
 typedef void (*fpFree)(struct OpBase*);
 
 struct OpBase {
     OPType type;                // Type of operation
+    fpInit init;                // Called once before execution.
     fpConsume consume;          // Produce next record.
     fpReset reset;              // Reset operation state.
     fpFree free;                // Free operation.

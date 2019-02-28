@@ -22,7 +22,7 @@ void _reduceScans(ExecutionPlan *plan, OpBase *op) {
             // Consecutive traverse scan operations, no filters.
             // Replace Conditional Traverse operation with Traverse.
             OpBase *traverse = NewTraverseOp(condTraversal->graph, condTraversal->algebraic_expression);
-            ExecutionPlan_ReplaceOp((OpBase*)condTraversal, (OpBase*)traverse);
+            ExecutionPlan_ReplaceOp(plan, (OpBase*)condTraversal, (OpBase*)traverse);
             OpBase_Free((OpBase*)condTraversal);
             return;
         }
@@ -38,8 +38,12 @@ void reduceScans(ExecutionPlan *plan) {
      * if query is limited, in such cases keeping scan operations
      * will speed up query processing times, as we'll be able to 
      * return as early as possible. */
-    if(ResultSet_Limited(plan->result_set))
-        return;
+    
+    // TODO: whenever we decide to re-enable this optimization
+    // get limit from AST.
+    
+    // if(ResultSet_Limited(plan->result_set))
+    //     return;
 
-    _reduceScans(plan, plan->root);
+    // _reduceScans(plan, plan->root);
 }

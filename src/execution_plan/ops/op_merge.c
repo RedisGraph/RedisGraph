@@ -150,11 +150,10 @@ static void _CreateEntities(OpMerge *op, Record r) {
     Graph_ReleaseLock(op->gc->g);
 }
 
-OpBase* NewMergeOp(GraphContext *gc, AST *ast, QueryGraph *qg, ResultSet *result_set) {
+OpBase* NewMergeOp(GraphContext *gc, AST *ast, ResultSet *result_set) {
     OpMerge *op_merge = malloc(sizeof(OpMerge));
     op_merge->gc = gc;
     op_merge->ast = ast;
-    op_merge->qg = qg;
     op_merge->result_set = result_set;
     op_merge->matched = false;
     op_merge->created = false;

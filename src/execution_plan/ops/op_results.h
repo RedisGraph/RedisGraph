@@ -4,8 +4,8 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef __OP_PRODUCE_RESULTS_H
-#define __OP_PRODUCE_RESULTS_H
+#ifndef __OP_RESULTS_H
+#define __OP_RESULTS_H
 
 #include "op.h"
 #include "../../parser/ast.h"
@@ -13,26 +13,25 @@
 #include "../../graph/query_graph.h"
 #include "../../resultset/resultset.h"
 
-/* ProduceResults
- * generates result set */
+/* Results generates result set */
 
 typedef struct {
     OpBase op;
     ResultSet *result_set;
-} ProduceResults;
+} Results;
 
 
 /* Creates a new NodeByLabelScan operation */
-OpBase* NewProduceResultsOp(ResultSet *result_set, QueryGraph *graph);
+OpBase* NewResultsOp(ResultSet *result_set, QueryGraph *graph);
 
-/* ProduceResults next operation
+/* Results next operation
  * called each time a new result record is required */
-Record ProduceResultsConsume(OpBase *op);
+Record ResultsConsume(OpBase *op);
 
 /* Restart iterator */
-OpResult ProduceResultsReset(OpBase *ctx);
+OpResult ResultsReset(OpBase *ctx);
 
-/* Frees ProduceResults */
-void ProduceResultsFree(OpBase *ctx);
+/* Frees Results */
+void ResultsFree(OpBase *ctx);
 
 #endif

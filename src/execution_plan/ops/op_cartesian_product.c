@@ -7,12 +7,10 @@
 #include "op_cartesian_product.h"
 #include "../../parser/ast.h"
 
-OpBase* NewCartesianProductOp() {
+OpBase* NewCartesianProductOp(int record_len) {
     CartesianProduct *cp = malloc(sizeof(CartesianProduct));
-    cp->init = true;
-
-    AST *ast = AST_GetFromLTS();
-    cp->r = Record_New(AST_AliasCount(ast));
+    cp->init = true;    
+    cp->r = Record_New(record_len);
 
     // Set our Op operations
     OpBase_Init(&cp->op);
@@ -36,7 +34,7 @@ static int _PullFromStreams(CartesianProduct *op) {
         Record childRecord = child->consume(child);
 
         if(childRecord) {
-            Record_Merge(op->r, childRecord);
+            Record_Merge(&op->r, childRecord);
             Record_Free(childRecord);
             /* Managed to get new data
              * Reset streams [0-i] */
@@ -47,7 +45,7 @@ static int _PullFromStreams(CartesianProduct *op) {
                 child = op->op.children[j];
                 childRecord = child->consume(child);
                 if(childRecord) {
-                    Record_Merge(op->r, childRecord);
+                    Record_Merge(&op->r, childRecord);
                     Record_Free(childRecord);                    
                 } else {
                     return 0;
@@ -75,8 +73,11 @@ Record CartesianProductConsume(OpBase *opBase) {
         for(int i = 0; i < op->op.childCount; i++) {
             child = op->op.children[i];
             childRecord = child->consume(child);
-            if(!childRecord) return NULL;
-            Record_Merge(op->r, childRecord);
+            if(!childRecord) {
+                // TODO: leak childRecord.
+                return NULL;
+            }
+            Record_Merge(&op->r, childRecord);
             Record_Free(childRecord);
         }
         return Record_Clone(op->r);
@@ -88,7 +89,7 @@ Record CartesianProductConsume(OpBase *opBase) {
         
     if(childRecord) {
         // Managed to get data from first stream.
-        Record_Merge(op->r, childRecord);
+        Record_Merge(&op->r, childRecord);
         Record_Free(childRecord);
     } else {
         // Failed to get data from first stream,

@@ -197,7 +197,39 @@ class SocialFlowTest(FlowTestsBase):
         # assert reversed pattern.
         self.assert_reversed_pattern(q, actual_result)
 
-    def test09_how_many_countries_each_friend_visited(self):
+    def test09_friends_age_difference_query(self):
+        global redis_graph
+        q = queries.friends_age_difference_query.query
+        actual_result = redis_graph.query(q)
+
+        # assert result set
+        self._assert_only_expected_results_are_in_actual_results(
+            actual_result,
+            queries.friends_age_difference_query)
+
+        # assert query run time
+        self._assert_run_time(actual_result, queries.friends_age_difference_query)
+
+        # assert reversed pattern.
+        self.assert_reversed_pattern(q, actual_result)
+
+    def test10_friends_who_are_older_than_average(self):
+        global redis_graph
+        q = queries.friends_who_are_older_than_average.query
+        actual_result = redis_graph.query(q)
+
+        # assert result set
+        self._assert_only_expected_results_are_in_actual_results(
+            actual_result,
+            queries.friends_who_are_older_than_average)
+
+        # assert query run time
+        self._assert_run_time(actual_result, queries.friends_who_are_older_than_average)
+
+        # assert reversed pattern.
+        self.assert_reversed_pattern(q, actual_result)
+
+    def test11_how_many_countries_each_friend_visited(self):
         global redis_graph
         q = queries.how_many_countries_each_friend_visited_query.query
         actual_result = redis_graph.query(q)
@@ -213,7 +245,7 @@ class SocialFlowTest(FlowTestsBase):
         # assert reversed pattern.
         self.assert_reversed_pattern(q, actual_result)
 
-    def test10_visit_purpose_of_each_country_i_visited(self):
+    def test12_visit_purpose_of_each_country_i_visited(self):
         global redis_graph
         q = queries.visit_purpose_of_each_country_i_visited_query.query
         actual_result = redis_graph.query(q)
@@ -229,7 +261,7 @@ class SocialFlowTest(FlowTestsBase):
         # assert reversed pattern.
         self.assert_reversed_pattern(q, actual_result)
 
-    def test11_who_was_on_business_trip(self):
+    def test13_who_was_on_business_trip(self):
         global redis_graph
         q = queries.who_was_on_business_trip_query.query
         actual_result = redis_graph.query(q)
@@ -245,7 +277,7 @@ class SocialFlowTest(FlowTestsBase):
         # assert reversed pattern.
         self.assert_reversed_pattern(q, actual_result)
 
-    def test12_number_of_vacations_per_person(self):
+    def test14_number_of_vacations_per_person(self):
         global redis_graph
         NUM_EXPECTED_RESULTS = 6
 
@@ -264,7 +296,7 @@ class SocialFlowTest(FlowTestsBase):
         # assert reversed pattern.
         self.assert_reversed_pattern(q, actual_result)
 
-    def test13_all_reachable_friends_query(self):
+    def test15_all_reachable_friends_query(self):
         global redis_graph
 
         q = queries.all_reachable_friends_query.query
@@ -281,7 +313,7 @@ class SocialFlowTest(FlowTestsBase):
         # assert reversed pattern.
         self.assert_reversed_pattern(q, actual_result)
     
-    def test14_all_reachable_countries_query(self):
+    def test16_all_reachable_countries_query(self):
         global redis_graph
 
         q = queries.all_reachable_countries_query.query
@@ -298,7 +330,7 @@ class SocialFlowTest(FlowTestsBase):
         # assert reversed pattern.
         self.assert_reversed_pattern(q, actual_result)
 
-    def test15_reachable_countries_or_people_query(self):
+    def test17_reachable_countries_or_people_query(self):
         global redis_graph
 
         q = queries.reachable_countries_or_people_query.query
@@ -315,7 +347,7 @@ class SocialFlowTest(FlowTestsBase):
         # assert reversed pattern.
         self.assert_reversed_pattern(q, actual_result)
 
-    def test16_all_reachable_countries_or_people_query(self):
+    def test18_all_reachable_countries_or_people_query(self):
         global redis_graph
 
         q = queries.all_reachable_countries_or_people_query.query
@@ -332,7 +364,7 @@ class SocialFlowTest(FlowTestsBase):
         # assert reversed pattern.
         self.assert_reversed_pattern(q, actual_result)
 
-    def test17_all_reachable_entities_query(self):
+    def test19_all_reachable_entities_query(self):
         global redis_graph
 
         q = queries.all_reachable_entities_query.query
@@ -349,7 +381,7 @@ class SocialFlowTest(FlowTestsBase):
         # assert reversed pattern.
         self.assert_reversed_pattern(q, actual_result)
 
-    def test18_happy_birthday(self):
+    def test20_happy_birthday(self):
         global redis_graph
         q = queries.happy_birthday_query.query
         actual_result = redis_graph.query(q)
@@ -357,7 +389,7 @@ class SocialFlowTest(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.happy_birthday_query)
 
-    def test19_friends_age_statistics(self):
+    def test21_friends_age_statistics(self):
         global redis_graph
         q = queries.friends_age_statistics_query.query
         actual_result = redis_graph.query(q)
@@ -373,7 +405,7 @@ class SocialFlowTest(FlowTestsBase):
         # assert reversed pattern.
         self.assert_reversed_pattern(q, actual_result)
 
-    def test20_delete_friendships(self):
+    def test22_delete_friendships(self):
         global redis_graph
         q = queries.delete_friendships_query.query
         actual_result = redis_graph.query(q)
@@ -381,7 +413,7 @@ class SocialFlowTest(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.delete_friendships_query)
 
-    def test21_delete_person(self):
+    def test23_delete_person(self):
         global redis_graph
         q = queries.delete_person_query.query
         actual_result = redis_graph.query(q)
@@ -389,7 +421,7 @@ class SocialFlowTest(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.delete_person_query)
 
-    def test22_post_delete_label(self):
+    def test24_post_delete_label(self):
         global redis_graph
         q = queries.post_delete_label_query.query
         actual_result = redis_graph.query(q)

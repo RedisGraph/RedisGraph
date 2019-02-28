@@ -19,5 +19,6 @@
 #include "./index.h"
 #include "./skip.h"
 #include "./unwind.h"
+#include "./with.h"
 
 #endif

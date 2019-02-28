@@ -40,7 +40,7 @@ void CreateClause_ReferredEntities(const AST_CreateNode *createNode, TrieMap *re
 }
 
 /* We could do a better job here and isolate create clause defined 
-* identifiers from the once declared at earlier clauses, but for 
+ * identifiers from the once declared at earlier clauses, but for 
  * the timebeing setting the defined entities to referred entities 
  * is good enough. */
 void CreateClause_DefinedEntities(const AST_CreateNode *createNode, TrieMap *identifiers) {

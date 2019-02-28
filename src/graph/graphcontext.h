@@ -27,7 +27,7 @@ GraphContext* GraphContext_New(RedisModuleCtx *ctx, const char *graphname,
 GraphContext* GraphContext_Retrieve(RedisModuleCtx *ctx, const char *graphname);
 
 // Retrives graph context from thread local storage.
-GraphContext* GraphContext_GetFromLTS();
+GraphContext* GraphContext_GetFromTLS();
 
 /* Schema API */
 // Retrieve the generic schema for node labels or relation types

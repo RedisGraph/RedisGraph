@@ -15,6 +15,7 @@
 
 typedef struct {
     OpBase op;
+    AST *ast;
     AST_UnwindNode *unwindClause;
     AR_ExpNode **expressions;   // Array of expressions
     uint expIdx;                // Current expression index to evaluate.
@@ -22,7 +23,9 @@ typedef struct {
  } OpUnwind;
 
 /* Creates a new Unwind operation */
-OpBase* NewUnwindOp(AST_UnwindNode *unwindClause);
+OpBase* NewUnwindOp(AST *ast);
+
+OpResult UnwindInit(OpBase *opBase);
 
 /* UnwindConsume next operation */
 Record UnwindConsume(OpBase *opBase);

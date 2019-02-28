@@ -37,7 +37,7 @@ Record Record_New(int entries);
 Record Record_Clone(const Record r);
 
 // Merge record b into a.
-void Record_Merge(Record a, const Record b);
+void Record_Merge(Record *a, const Record b);
 
 // Returns number of entries record can hold.
 unsigned int Record_length(const Record r);

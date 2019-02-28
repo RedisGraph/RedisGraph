@@ -12,5 +12,6 @@
 #include "./utilize_indices.h"
 #include "./select_entry_point.h"
 #include "./reduce_scans.h"
+#include "./relocate_op.h"
 
 #endif
