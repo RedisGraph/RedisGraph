@@ -225,10 +225,10 @@ static AR_ExpNode** _ReturnClause_GetExpressions(const AST *ast) {
     assert(ast->returnNode);
 
     AST_ReturnNode *return_node = ast->returnNode;
-    int elem_count = array_len(return_node->returnElements);
+    unsigned int elem_count = array_len(return_node->returnElements);
     AR_ExpNode **exps = array_new(AR_ExpNode*, elem_count);
 
-    for(int i = 0; i < elem_count; i++) {
+    for(unsigned int i = 0; i < elem_count; i++) {
         AST_ReturnElementNode *elem = return_node->returnElements[i];
         AR_ExpNode *exp = AR_EXP_BuildFromAST(ast, elem->exp);
         exps = array_append(exps, exp);
@@ -244,10 +244,10 @@ static AR_ExpNode** _WithClause_GetExpressions(const AST *ast) {
     assert(ast->withNode);
 
     AST_WithNode *with_node = ast->withNode;
-    int elem_count = array_len(with_node->exps);
+    unsigned int elem_count = array_len(with_node->exps);
     AR_ExpNode **exps = array_new(AR_ExpNode*, elem_count);
 
-    for(int i = 0; i < elem_count; i++) {
+    for(unsigned int i = 0; i < elem_count; i++) {
         AST_WithElementNode *elem = with_node->exps[i];
         AR_ExpNode *exp = AR_EXP_BuildFromAST(ast, elem->exp);
         exps = array_append(exps, exp);
@@ -263,12 +263,12 @@ static AR_ExpNode** _OrderClause_GetExpressions(const AST *ast) {
     assert(ast && ast->orderNode);
 	AST_OrderNode *order_node = ast->orderNode;
 
-	int exp_count = array_len(order_node->expressions);
+	unsigned int exp_count = array_len(order_node->expressions);
 	AR_ExpNode** exps = array_new(AR_ExpNode*, exp_count);
-	
-	for(int i = 0; i < exp_count; i++) {
+
+	for(unsigned int i = 0; i < exp_count; i++) {
 		AR_ExpNode *exp = AR_EXP_BuildFromAST(ast, order_node->expressions[i]);
-        exps = array_append(exps, exp);
+		exps = array_append(exps, exp);
 	}
 
 	return exps;
@@ -561,7 +561,7 @@ static ExecutionPlan *_ExecutionPlan_Connect(ExecutionPlan *a, ExecutionPlan *b,
 }
 
 ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST **ast, bool explain) {
-    ExecutionPlan *plan;
+    ExecutionPlan *plan = NULL;
     ExecutionPlan *curr_plan;
     
     // Use the last AST, as it is supposed to be the only AST with a RETURN node.

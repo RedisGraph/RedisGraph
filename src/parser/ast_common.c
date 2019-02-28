@@ -24,6 +24,8 @@ AST_Variable* New_AST_Variable(const char *alias, const char *property) {
 static void _AST_Clone_BaseEntity(AST_GraphEntity* clone, const AST_GraphEntity *src) {
 	clone->alias = src->alias;
 	clone->label = src->label;
+	clone->t = src->t;
+	clone->anonymous = src->anonymous;
 	clone->properties = NULL;
 
 	if(src->properties) {
@@ -42,7 +44,6 @@ static AST_LinkEntity* _AST_Clone_LinkEntity(const AST_LinkEntity *src) {
 	AST_LinkEntity* clone = (AST_LinkEntity*)calloc(1, sizeof(AST_LinkEntity));
 	_AST_Clone_BaseEntity((AST_GraphEntity*)clone, (const AST_GraphEntity*)src);
 
-	clone->ge.t = N_LINK;	
 	clone->direction = src->direction;
 	
 	clone->length = NULL;

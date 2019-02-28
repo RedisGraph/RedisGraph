@@ -19,7 +19,7 @@ typedef struct {
     const AST* ast;
     AR_ExpNode **expressions;   // Expression to sort by.
     unsigned int offset;        // Offset into projected order expressions within a record.
-	int direction;              // Ascending / desending.
+    int direction;              // Ascending / desending.
     heap_t *heap;               // Holds top n records.
     Record *buffer;             // Holds all records.
     uint limit;                 // Total number of records to produce, 0 no limit.

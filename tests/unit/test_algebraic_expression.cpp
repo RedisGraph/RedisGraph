@@ -848,7 +848,7 @@ TEST_F(AlgebraicExpressionTest, OneIntermidateReturnEdge) {
 TEST_F(AlgebraicExpressionTest, ExpressionExecute) {
     size_t exp_count = 0;
     const char *query = query_no_intermidate_return_nodes;
-    AlgebraicExpression **ae = ae = _build_arithmetic_expression(query, &exp_count);
+    AlgebraicExpression **ae = _build_arithmetic_expression(query, &exp_count);
 
     double tic [2];
     simple_tic(tic);

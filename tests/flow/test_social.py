@@ -226,9 +226,6 @@ class SocialFlowTest(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.friends_who_are_older_than_average)
 
-        # assert reversed pattern.
-        self.assert_reversed_pattern(q, actual_result)
-
     def test11_how_many_countries_each_friend_visited(self):
         global redis_graph
         q = queries.how_many_countries_each_friend_visited_query.query
