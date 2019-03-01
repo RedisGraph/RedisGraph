@@ -16,10 +16,6 @@ static void __relocateSort(ExecutionPlan *plan, OpBase *sort, OpBase *current) {
         /* Move sort right beneth projection.
          * Remove sort from its current position.  */
         ExecutionPlan_RemoveOp(plan, sort);
-        // TODO: move this into ExecutionPlan_RemoveOp.
-        sort->parent = NULL;
-        sort->children = NULL;
-        sort->childCount = 0;
 
         // Push sort right below projection.
         ExecutionPlan_PushBelow(current, sort);
@@ -41,10 +37,6 @@ static void _relocateOp(ExecutionPlan *plan, OpBase *op, OpBase *current) {
 
         // Remove op from its current position.
         ExecutionPlan_RemoveOp(plan, op);
-        // TODO: move this into ExecutionPlan_RemoveOp.
-        op->parent = NULL;
-        op->children = NULL;
-        op->childCount = 0;
 
         // Projection should have a single child.
         assert(projection->childCount == 1);
@@ -64,10 +56,6 @@ static void _relocateOp(ExecutionPlan *plan, OpBase *op, OpBase *current) {
         /* Move op right beneth aggregate.
          * Remove op from its current position.  */
         ExecutionPlan_RemoveOp(plan, op);
-        // TODO: move this into ExecutionPlan_RemoveOp.
-        op->parent = NULL;
-        op->children = NULL;
-        op->childCount = 0;
 
         // Push op right below aggregate.
         ExecutionPlan_PushBelow(aggregate, op);
@@ -84,10 +72,6 @@ static void _relocateOp(ExecutionPlan *plan, OpBase *op, OpBase *current) {
         /* Move op right beneth sort.
          * Remove op from its current position.  */
         ExecutionPlan_RemoveOp(plan, op);
-        // TODO: move this into ExecutionPlan_RemoveOp.
-        op->parent = NULL;
-        op->children = NULL;
-        op->childCount = 0;
 
         // Push op right below sort.
         ExecutionPlan_PushBelow(sort, op);
