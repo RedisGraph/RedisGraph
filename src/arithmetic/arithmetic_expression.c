@@ -681,6 +681,16 @@ SIValue AR_TYPE(SIValue *argv, int argc) {
     return SI_ConstStringVal(type);
 }
 
+SIValue AR_EXISTS(SIValue *argv, int argc) {
+    assert(argc == 1);
+    /* MATCH (n) WHERE EXISTS(n.name) RETURN n
+     * In case n.name does not exists
+     * SIValue representing NULL is returned.
+     * if n.name exists its value can not be NULL. */
+    if(SIValue_IsNull(argv[0])) return SI_BoolVal(0);
+    return SI_BoolVal(1);
+}
+
 void AR_RegFunc(char *func_name, size_t func_name_len, AR_Func func) {
     if (__aeRegisteredFuncs == NULL) {
         __aeRegisteredFuncs = NewTrieMap();
@@ -805,4 +815,8 @@ void AR_RegisterFuncs() {
     _toLower("type", &lower_func_name[0], &lower_func_name_len);
     AR_RegFunc(lower_func_name, lower_func_name_len, AR_TYPE);
     lower_func_name_len = 32;
+
+    _toLower("exists", &lower_func_name[0], &lower_func_name_len);
+    AR_RegFunc(lower_func_name, lower_func_name_len, AR_EXISTS);
+    lower_func_name_len = 32;    
 }
