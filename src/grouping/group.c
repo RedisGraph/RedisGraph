@@ -23,7 +23,10 @@ Group* NewGroup(int key_count, SIValue* keys, AR_ExpNode** funcs, Record r) {
 }
 
 void Group_KeyStr(const Group *g, char **group_key) {
-    if(g->key_count == 0) asprintf(group_key, "SINGLE_GROUP");
+    if(g->key_count == 0) {
+        *group_key = rm_strdup("SINGLE_GROUP");
+        return;
+    }
 
     // Determine required size for group key string representation.
     size_t group_len_key = SIValue_StringConcatLen(g->keys, g->key_count);
