@@ -576,7 +576,7 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST **ast
         ResultSet_CreateHeader(result_set, ast[array_len(ast)-1]);
     }
 
-    for(int i = 0; i < array_len(ast); i++) {
+    for(unsigned int i = 0; i < array_len(ast); i++) {
         curr_plan = _NewExecutionPlan(ctx, gc, ast[i], result_set);
         if(i == 0) plan = curr_plan;
         else plan = _ExecutionPlan_Connect(plan, curr_plan, ast[i]);

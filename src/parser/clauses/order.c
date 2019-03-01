@@ -25,13 +25,13 @@ AST_OrderNode* New_AST_OrderNode(Vector *expressions, AST_OrderByDirection direc
 }
 
 void OrderClause_ReferredEntities(const AST_OrderNode *order_node, TrieMap *referred_entities) {
-  if(!order_node) return;
+    if(!order_node) return;
 
-  int order_element_count = array_len(order_node->expressions);
-  for(int i = 0; i < order_element_count; i++) {
-    AST_ArithmeticExpressionNode *order_element = order_node->expressions[i];
-    AST_AR_EXP_GetAliases(order_element, referred_entities);
-  }
+    int order_element_count = array_len(order_node->expressions);
+    for(int i = 0; i < order_element_count; i++) {
+        AST_ArithmeticExpressionNode *order_element = order_node->expressions[i];
+        AST_AR_EXP_GetAliases(order_element, referred_entities);
+    }
 }
 
 void Free_AST_OrderNode(AST_OrderNode *orderNode) {

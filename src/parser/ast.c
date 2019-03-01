@@ -105,7 +105,7 @@ static AST_Validation _Validate_CREATE_Clause(const AST *ast, char **reason) {
   if(!ast->createNode) return AST_VALID;
   AST_CreateNode *createNode = ast->createNode;
   
-  size_t entityCount = Vector_Size(createNode->graphEntities);
+  int entityCount = Vector_Size(createNode->graphEntities);
   for(int i = 0; i < entityCount; i++) {
     AST_GraphEntity *entity;
     Vector_Get(createNode->graphEntities, i, &entity);
@@ -354,7 +354,7 @@ void AST_MapAliasToID(AST *ast, AST_WithNode *prevWithClause) {
   ast->_aliasIDMapping = NewTrieMap(); // Holds mapping between referred entities and IDs.
   
   if(prevWithClause) {
-    for(int i = 0; i < array_len(prevWithClause->exps); i++) {
+    for(uint i = 0; i < array_len(prevWithClause->exps); i++) {
       entityID = malloc(sizeof(uint));
       *entityID = id++;
       AST_WithElementNode *exp = prevWithClause->exps[i];
@@ -401,7 +401,7 @@ TrieMap* AST_Identifiers(const AST *ast) {
 }
 
 bool AST_ReadOnly(AST **ast) {
-  for (int i = 0; i < array_len(ast); i++) {
+  for (uint i = 0; i < array_len(ast); i++) {
     bool write = (ast[i]->createNode ||
                   ast[i]->mergeNode ||
                   ast[i]->deleteNode ||
@@ -413,7 +413,7 @@ bool AST_ReadOnly(AST **ast) {
 }
 
 void AST_Free(AST **ast) {
-  for (int i = 0; i < array_len(ast); i++) {
+  for (uint i = 0; i < array_len(ast); i++) {
     Free_AST_MatchNode(ast[i]->matchNode);
     Free_AST_CreateNode(ast[i]->createNode);
     Free_AST_MergeNode(ast[i]->mergeNode);

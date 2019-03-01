@@ -61,9 +61,9 @@ static Group* _CreateGroup(OpAggregate *op, Record r) {
     AR_ExpNode **agg_exps = _build_aggregated_expressions(op);
 
     /* Clone group keys. */
-    uint32_t key_count = array_len(op->none_aggregated_expressions);
+    uint key_count = array_len(op->none_aggregated_expressions);
     SIValue *group_keys = rm_malloc(sizeof(SIValue) * key_count);
-    for(uint32_t i = 0; i < key_count; i++) group_keys[i] = op->group_keys[i];
+    for(uint i = 0; i < key_count; i++) group_keys[i] = op->group_keys[i];
 
     /* There's no need to keep a reference to record if we're not sorting groups. */
     if(!op->order_expressions) op->group = NewGroup(key_count, group_keys, agg_exps, NULL);
@@ -73,9 +73,9 @@ static Group* _CreateGroup(OpAggregate *op, Record r) {
 }
 
 static void _ComputeGroupKey(OpAggregate *op, Record r) {
-    uint32_t expCount = array_len(op->none_aggregated_expressions);
+    uint expCount = array_len(op->none_aggregated_expressions);
 
-    for(int i = 0; i < expCount; i++) {
+    for(uint i = 0; i < expCount; i++) {
         AR_ExpNode *exp = op->none_aggregated_expressions[i];
         op->group_keys[i] = AR_EXP_Evaluate(exp, r);
     }
@@ -114,7 +114,7 @@ static Group* _GetGroup(OpAggregate *op, Record r) {
     // the last accessed group.
     bool reuseLastAccessedGroup = true;
     uint expCount = array_len(op->none_aggregated_expressions);
-    for(int i = 0; i < expCount; i++) {
+    for(uint i = 0; i < expCount; i++) {
         if( reuseLastAccessedGroup &&
             SIValue_Compare(op->group->keys[i], op->group_keys[i]) == 0 ) {
             reuseLastAccessedGroup = true;
@@ -144,8 +144,8 @@ static void _aggregateRecord(OpAggregate *op, Record r) {
     assert(group);
 
     // Aggregate group expressions.
-    uint32_t aggFuncCount = array_len(group->aggregationFunctions);
-    for(int i = 0; i < aggFuncCount; i++) {
+    uint aggFuncCount = array_len(group->aggregationFunctions);
+    for(uint i = 0; i < aggFuncCount; i++) {
         AR_ExpNode *exp = group->aggregationFunctions[i];
         AR_EXP_Aggregate(exp, r);
     }
@@ -162,14 +162,14 @@ static Record _handoff(OpAggregate *op) {
     if(!op->groupIter) return NULL;
     if(!CacheGroupIterNext(op->groupIter, &key, &group)) return NULL;
 
-    int exp_count = array_len(op->expressions);
+    uint exp_count = array_len(op->expressions);
     Record r = Record_New(exp_count + op->order_exp_count);
 
     // Populate record.
-    int aggIdx = 0; // Index into group aggregated expressions.
-    int keyIdx = 0; // Index into group keys.
+    uint aggIdx = 0; // Index into group aggregated expressions.
+    uint keyIdx = 0; // Index into group keys.
     
-    for(int i = 0; i < exp_count; i++) {
+    for(uint i = 0; i < exp_count; i++) {
         SIValue res;
         if(op->expression_classification[i] == AGGREGATED) {
             // Aggregated expression, get aggregated value.
@@ -198,7 +198,7 @@ static Record _handoff(OpAggregate *op) {
     }
 
     // Tack order by expressions for SORT operation to process.
-    for(int i = 0; i < op->order_exp_count; i++) {
+    for(unsigned short i = 0; i < op->order_exp_count; i++) {
         SIValue res = AR_EXP_Evaluate(op->order_expressions[i], group->r);
         Record_AddScalar(r, exp_count+i, res);
     }
@@ -241,7 +241,7 @@ OpResult AggregateInit(OpBase *opBase) {
     _classify_expressions(op);
     _getOrderExpressions(op);
     /* Allocate memory for group keys. */
-    uint32_t noneAggExpCount = array_len(op->none_aggregated_expressions);
+    uint noneAggExpCount = array_len(op->none_aggregated_expressions);
     if(noneAggExpCount) op->group_keys = rm_malloc(sizeof(SIValue) * noneAggExpCount);
     return OP_OK;
 }
@@ -283,8 +283,8 @@ void AggregateFree(OpBase *opBase) {
     if(op->none_aggregated_expressions) array_free(op->none_aggregated_expressions);
 
     if(op->expressions) {
-        uint32_t expCount = array_len(op->expressions);
-        for(int i = 0; i < expCount; i++) AR_EXP_Free(op->expressions[i]);
+        uint expCount = array_len(op->expressions);
+        for(uint i = 0; i < expCount; i++) AR_EXP_Free(op->expressions[i]);
         array_free(op->expressions);
     }
     array_free(op->aliases);

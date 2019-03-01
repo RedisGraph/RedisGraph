@@ -53,7 +53,7 @@ static AR_ExpNode* _AR_EXP_NewOpNode(char *func_name, int child_count) {
     node->type = AR_EXP_OP;    
     node->op.func_name = func_name;
     node->op.child_count = child_count;
-    node->op.children = (AR_ExpNode **)rm_malloc(child_count * sizeof(AR_ExpNode*));
+    node->op.children = rm_malloc(child_count * sizeof(AR_ExpNode*));
 
     /* Determine function type. */
     AR_Func func = AR_GetFunc(func_name);
@@ -723,7 +723,9 @@ SIValue AR_ID(SIValue *argv, int argc) {
 
 SIValue AR_LABELS(SIValue *argv, int argc) {
     assert(argc == 1);
-    assert(SI_TYPE(argv[0]) == T_NODE);
+    // TODO Introduce AST validations to prevent non-nodes
+    // from reaching here
+    if (SI_TYPE(argv[0]) != T_NODE) return SI_NullVal();
 
     char *label = "";
     Node *node = argv[0].ptrval;
@@ -736,7 +738,9 @@ SIValue AR_LABELS(SIValue *argv, int argc) {
 
 SIValue AR_TYPE(SIValue *argv, int argc) {
     assert(argc == 1);
-    assert(SI_TYPE(argv[0]) == T_EDGE);
+    // TODO Introduce AST validations to prevent non-edges
+    // from reaching here
+    if (SI_TYPE(argv[0]) != T_EDGE) return SI_NullVal();
 
     char *type = "";
     Edge *e = argv[0].ptrval;

@@ -37,11 +37,11 @@ typedef struct {
     GraphContext *gc;
     ResultSet *result_set;
 
-    size_t update_expressions_count;
+    uint update_expressions_count;
     EntityUpdateEvalCtx *update_expressions;    /* List of entities to update and their arithmetic expressions. */
 
-    size_t pending_updates_cap;
-    size_t pending_updates_count;
+    uint pending_updates_cap;
+    uint pending_updates_count;
     EntityUpdateCtx *pending_updates;           /* List of entities to update and their actual new value. */
 } OpUpdate;
 
