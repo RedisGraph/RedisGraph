@@ -37,7 +37,7 @@ OpResult UnwindInit(OpBase *opBase) {
     uint expCount = Vector_Size(op->unwindClause->expressions);
     op->expressions = array_new(AR_ExpNode*, expCount);
 
-    for(int i = 0; i < expCount; i++) {
+    for(uint i = 0; i < expCount; i++) {
         AST_ArithmeticExpressionNode *exp;
         Vector_Get(op->unwindClause->expressions, i, &exp);
         op->expressions = array_append(op->expressions, AR_EXP_BuildFromAST(ast, exp));
@@ -74,7 +74,7 @@ void UnwindFree(OpBase *ctx) {
     AR_ExpNode *exp;
     if(unwind->expressions) {
         uint expCount = array_len(unwind->expressions);
-        for(int i = 0; i < expCount; i++) AR_EXP_Free(unwind->expressions[i]);
+        for(uint i = 0; i < expCount; i++) AR_EXP_Free(unwind->expressions[i]);
         array_free(unwind->expressions);
     }
 }

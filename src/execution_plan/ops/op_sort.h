@@ -16,13 +16,13 @@
 
 typedef struct {
     OpBase op;
-    const AST* ast;
+    const AST *ast;
     AR_ExpNode **expressions;   // Expression to sort by.
-    unsigned int offset;        // Offset into projected order expressions within a record.
-    int direction;              // Ascending / desending.
     heap_t *heap;               // Holds top n records.
     Record *buffer;             // Holds all records.
-    uint limit;                 // Total number of records to produce, 0 no limit.
+    unsigned int offset;        // Offset into projected order expressions within a record.
+    unsigned int limit;         // Total number of records to produce, 0 no limit.
+    int direction;              // Ascending / desending.
 } OpSort;
 
 /* Creates a new Sort operation */

@@ -11,7 +11,7 @@
 
 void _getOrderExpressions(OpProject *op) {
     if(op->op.parent == NULL) return;
-    
+
     OpBase *parent = op->op.parent;
     if(parent->type == OPType_SORT) {
         OpSort *sort = (OpSort*)parent;
@@ -23,7 +23,7 @@ void _getOrderExpressions(OpProject *op) {
 OpBase* NewProjectOp(const AST *ast, AR_ExpNode **exps, char **aliases) {
     OpProject *project = malloc(sizeof(OpProject));
     project->ast = ast;
-    project->exps = exps;    
+    project->exps = exps;
     project->order_exps = NULL;
     project->order_exp_count = 0;
     project->singleResponse = false;
@@ -56,7 +56,7 @@ OpResult ProjectInit(OpBase *opBase) {
 Record ProjectConsume(OpBase *opBase) {
     OpProject *op = (OpProject*)opBase;
     Record r = NULL;
-    
+
     if(op->op.childCount) {
         OpBase *child = op->op.children[0];
         r = child->consume(child);
@@ -72,11 +72,11 @@ Record ProjectConsume(OpBase *opBase) {
 
     Record projection = Record_New(op->exp_count + op->order_exp_count);
     int rec_idx = 0;
-    for(int i = 0; i < op->exp_count; i++) {
+    for(unsigned short i = 0; i < op->exp_count; i++) {
         SIValue v = AR_EXP_Evaluate(op->exps[i], r);
         /* Incase expression is aliased, add it to record
          * as it might be referenced by other expressions:
-         * e.g. RETURN n.v AS X ORDER BY X * X 
+         * e.g. RETURN n.v AS X ORDER BY X * X
          * WITH 1 as one, one+one as two */
         char *alias = op->aliases[i];
 
@@ -98,7 +98,7 @@ Record ProjectConsume(OpBase *opBase) {
     }
 
     // Project Order expressions.
-    for(int i = 0; i < op->order_exp_count; i++) {
+    for(unsigned short i = 0; i < op->order_exp_count; i++) {
         SIValue v = AR_EXP_Evaluate(op->order_exps[i], r);
         switch(SI_TYPE(v)) {
             case T_NODE:
@@ -122,10 +122,10 @@ OpResult ProjectReset(OpBase *ctx) {
     return OP_OK;
 }
 
-void ProjectFree(OpBase *ctx) {    
+void ProjectFree(OpBase *ctx) {
     OpProject *op = (OpProject*)ctx;
- 
-    for(int i = 0; i < op->exp_count; i++) AR_EXP_Free(op->exps[i]);
+
+    for(unsigned short i = 0; i < op->exp_count; i++) AR_EXP_Free(op->exps[i]);
     array_free(op->exps);
     array_free(op->aliases);
 }

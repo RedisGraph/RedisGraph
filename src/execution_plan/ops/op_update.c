@@ -15,7 +15,7 @@ static void _BuildUpdateEvalCtx(OpUpdate* op, AST *ast) {
     op->update_expressions_count = Vector_Size(setNode->set_elements);
     op->update_expressions = rm_malloc(sizeof(EntityUpdateEvalCtx) * op->update_expressions_count);
 
-    for(int i = 0; i < op->update_expressions_count; i++) {
+    for(uint i = 0; i < op->update_expressions_count; i++) {
         /* Get a reference to the entity in the SET clause. */
         Vector_Get(setNode->set_elements, i, &element);
         /* Track all required informantion to perform an update. */
@@ -35,7 +35,7 @@ static void _QueueUpdate(OpUpdate *op, GraphEntity *entity, GraphEntityType type
                                          op->pending_updates_cap * sizeof(EntityUpdateCtx));
     }
 
-    int i = op->pending_updates_count;
+    uint i = op->pending_updates_count;
     op->pending_updates[i].new_value = new_value;
     op->pending_updates[i].attribute = attribute;    
     op->pending_updates[i].entity_type = type;
@@ -133,7 +133,7 @@ static void _UpdateEdge(OpUpdate *op, EntityUpdateCtx *ctx) {
 
 /* Executes delayed updates. */
 static void _CommitUpdates(OpUpdate *op) {
-    for(int i = 0; i < op->pending_updates_count; i++) {
+    for(uint i = 0; i < op->pending_updates_count; i++) {
         EntityUpdateCtx *ctx = &op->pending_updates[i];
         if(ctx->entity_type == GETYPE_NODE) {
             _UpdateNode(op, ctx);
@@ -182,7 +182,7 @@ Record OpUpdateConsume(OpBase *opBase) {
     /* Evaluate each update expression and store result 
      * for later execution. */
     EntityUpdateEvalCtx *update_expression = op->update_expressions;
-    for(int i = 0; i < op->update_expressions_count; i++, update_expression++) {
+    for(uint i = 0; i < op->update_expressions_count; i++, update_expression++) {
         SIValue new_value = AR_EXP_Evaluate(update_expression->exp, r);
 
         // Make sure we're updating either a node or an edge.
@@ -217,7 +217,7 @@ void OpUpdateFree(OpBase *ctx) {
     Graph_ReleaseLock(op->gc->g);
     
     /* Free each update context. */
-    for(int i = 0; i < op->update_expressions_count; i++) {
+    for(uint i = 0; i < op->update_expressions_count; i++) {
         AR_EXP_Free(op->update_expressions[i].exp);
     }
 

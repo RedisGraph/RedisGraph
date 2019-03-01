@@ -288,7 +288,7 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST *ast
     size_t edge_count;
     _Determine_Graph_Size(ast, &node_count, &edge_count);
     QueryGraph *q = QueryGraph_New(node_count, edge_count);
-
+    execution_plan->query_graph = q;
     FT_FilterNode *filter_tree = NULL;
     if(ast->whereNode != NULL) {
         filter_tree = BuildFiltersTree(ast, ast->whereNode->filters);
@@ -554,8 +554,12 @@ static ExecutionPlan *_ExecutionPlan_Connect(ExecutionPlan *a, ExecutionPlan *b,
     }
 
     array_free(taps);
-    // Free execution plan, null root to avoid freeing connected operations.
+    // null root to avoid freeing connected operations.
     a->root = NULL;
+    // null query graph to avoid freeing entities referenced in both graphs
+    // TODO memory leak on entities that exclusively appear in this graph
+    free(a->query_graph);
+    a->query_graph = NULL;
     ExecutionPlanFree(a);
     return b;
 }
@@ -572,7 +576,7 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST **ast
         ResultSet_CreateHeader(result_set, ast[array_len(ast)-1]);
     }
 
-    for(int i = 0; i < array_len(ast); i++) {
+    for(unsigned int i = 0; i < array_len(ast); i++) {
         curr_plan = _NewExecutionPlan(ctx, gc, ast[i], result_set);
         if(i == 0) plan = curr_plan;
         else plan = _ExecutionPlan_Connect(plan, curr_plan, ast[i]);
@@ -666,7 +670,6 @@ void ExecutionPlanFree(ExecutionPlan *plan) {
     if(plan == NULL) return;
     if(plan->root) _ExecutionPlanFreeRecursive(plan->root);
 
-    // TODO: free query graph.
-    // QueryGraph_Free(plan->query_graph);
+    QueryGraph_Free(plan->query_graph);
     free(plan);
 }

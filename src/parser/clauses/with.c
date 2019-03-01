@@ -1,9 +1,8 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Apache License, Version 2.0,
-* modified with the Commons Clause restriction.
-*/
+ * Copyright 2018-2019 Redis Labs Ltd. and Contributors
+ *
+ * This file is available under the Redis Labs Source Available License Agreement
+ */
 
 #include "with.h"
 #include "../../util/arr.h"
@@ -30,11 +29,11 @@ AST_WithElementNode* New_AST_WithElementNode(AST_ArithmeticExpressionNode *exp, 
 
 void WithClause_ReferredEntities(const AST_WithNode *withNode, TrieMap *referred_nodes) {
     if(!withNode) return;
-    
+
     uint elemCount = array_len(withNode->exps);
     for (uint i = 0; i < elemCount; i++) {
-		AST_WithElementNode *elem = withNode->exps[i];
-        
+        AST_WithElementNode *elem = withNode->exps[i];
+
         AST_ArithmeticExpressionNode *exp = elem->exp;
         if(exp) AST_AR_EXP_GetAliases(exp, referred_nodes);
     }
@@ -45,7 +44,7 @@ void WithClause_DefinedEntities(const AST_WithNode *withNode, TrieMap *definedEn
 
     uint elemCount = array_len(withNode->exps);
     for (uint i = 0; i < elemCount; i++) {
-		AST_WithElementNode *elem = withNode->exps[i];
+        AST_WithElementNode *elem = withNode->exps[i];
         TrieMap_Add(definedEntities, elem->alias, strlen(elem->alias), NULL, TrieMap_DONT_CARE_REPLACE);
     }
 }
@@ -57,7 +56,7 @@ char** WithClause_GetAliases(const AST_WithNode *withNode) {
     char **aliases = array_new(char*, elemCount);
 
     for (uint i = 0; i < elemCount; i++) {
-		AST_WithElementNode *elem = withNode->exps[i];
+        AST_WithElementNode *elem = withNode->exps[i];
         aliases = array_append(aliases, elem->alias);
     }
 
@@ -69,8 +68,8 @@ int WithClause_ContainsAggregation(const AST_WithNode *withNode) {
     if(!withNode) return 0;
 
     uint elemCount = array_len(withNode->exps);
-	for (uint i = 0; i < elemCount; i++) {
-		AST_WithElementNode *elem = withNode->exps[i];
+    for (uint i = 0; i < elemCount; i++) {
+        AST_WithElementNode *elem = withNode->exps[i];
         AST_ArithmeticExpressionNode *exp = elem->exp;
         if(AST_AR_EXP_ContainsAggregation(exp)) return 1;
     }
@@ -81,11 +80,12 @@ int WithClause_ContainsAggregation(const AST_WithNode *withNode) {
 void Free_AST_WithNode(AST_WithNode *withNode) {
     if(!withNode) return;
 
-    int exp_count = array_len(withNode->exps);
-    for(int i = 0; i < exp_count; i++) {
+    uint exp_count = array_len(withNode->exps);
+    for(uint i = 0; i < exp_count; i++) {
         AST_WithElementNode *exp = withNode->exps[i];
         _free_AST_WithElementNode(exp);
     }
     array_free(withNode->exps);
     rm_free(withNode);
 }
+
