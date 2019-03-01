@@ -208,6 +208,11 @@ void ExecutionPlan_RemoveOp(ExecutionPlan *plan, OpBase *op) {
             _OpBase_AddChild(parent, op->children[i]);
         }
     }
+
+    // Clear op.
+    op->parent = NULL;
+    op->children = NULL;
+    op->childCount = 0;
 }
 
 OpBase* ExecutionPlan_Locate_References(OpBase *root, Vector *references) {
