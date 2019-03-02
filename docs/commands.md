@@ -377,6 +377,7 @@ This section contains information on all supported functions from the Cypher que
 * [Mathematical functions](#mathematical-functions)
 * [String functions](#string-functions)
 * [Scalar functions](#scalar-functions)
+* [Predicate functions](#predicate-functions)
 
 ## Aggregating functions
 
@@ -424,6 +425,12 @@ This section contains information on all supported functions from the Cypher que
 |id() | Returns the ID of a relationship or node |
 |labels() | Returns a string representation of the label of a node. |
 |type() | Returns a string representation of the type of a relation. |
+
+## Predicate functions
+
+|Function | Description|
+| ------- |:-----------|
+|exists() | Returns true if the specified property exists in the node or relationship. |
 
 ## Indexing
 RedisGraph supports single-property indexes for node labels.

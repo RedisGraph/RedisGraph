@@ -20,6 +20,7 @@ static void _GraphEntity_RemoveProperty(const GraphEntity *e, Attribute_ID attr_
 	int prop_count = e->entity->prop_count;
 	for(int i = 0; i < prop_count; i++) {
 		if(attr_id == e->entity->properties[i].id) {
+			SIValue_Free(&(e->entity->properties[i].value));
 			e->entity->prop_count--;
 
 			if(e->entity->prop_count == 0) {
