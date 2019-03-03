@@ -11,8 +11,11 @@ ifeq ($(DEBUG), 1)
 endif
 
 # Default CFLAGS
-CFLAGS = -Wall -Wno-unused-function -Wno-unused-variable -Wno-unused-result -fPIC \
- 	-D_GNU_SOURCE -std=gnu99 -I"$(abs_path)" -DREDIS_MODULE_TARGET -DREDISMODULE_EXPERIMENTAL_API
+CFLAGS = \
+	-Wall -Wno-unused-function -Wno-unused-variable -Wno-unused-result \
+	-fPIC -std=gnu99 \
+ 	-I"$(abs_path)" -I"$(abs_path)/../deps" \
+	-D_GNU_SOURCE -DREDIS_MODULE_TARGET -DREDISMODULE_EXPERIMENTAL_API -DXXH_STATIC_LINKING_ONLY
 CFLAGS += $(DEBUGFLAGS)
 
 # Compile flags for linux / osx
@@ -66,9 +69,10 @@ CC_DEPS = $(patsubst %.c, %.d, $(CC_SOURCES) )
 # Library dependencies
 LIBTRIEMAP=util/triemap/libtriemap.a
 GRAPHBLAS=../deps/GraphBLAS/build/libgraphblas.a
+LIBXXHASH=../deps/xxhash/libxxhash.a
 
 # Compilation deps for the module
-LIBS=$(LIBTRIEMAP) $(GRAPHBLAS)
+LIBS=$(LIBTRIEMAP) $(GRAPHBLAS) $(LIBXXHASH)
 MODULE=$(CC_OBJECTS) $(LIBS)
 
 REDISGRAPH_CC=$(QUIET_CC)$(CC)
@@ -92,6 +96,9 @@ all: redisgraph.so
 
 # Include all dependency files for C files
 -include $(CC_DEPS)
+
+$(LIBXXHASH):
+	@$(MAKE) -C ../deps/xxhash lib
 
 $(LIBTRIEMAP):
 	@$(MAKE) -C util/triemap
@@ -121,6 +128,7 @@ clean:
 	@-rm -f redisgraph.so
 ifeq ($(ALL),1)
 	@$(MAKE) -C ../deps/GraphBLAS clean
+	@$(MAKE) -C ../deps/xxhash clean
 endif
 	@$(MAKE) -C ../tests clean
 

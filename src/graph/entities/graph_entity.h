@@ -27,6 +27,11 @@ typedef GrB_Index EntityID;
 typedef GrB_Index NodeID;
 typedef GrB_Index EdgeID;
 
+typedef enum GraphEntityType {
+    GraphEntityType_NODE,
+    GraphEntityType_EDGE
+} GraphEntityType;
+
 typedef struct {
     Attribute_ID id;
     SIValue value;

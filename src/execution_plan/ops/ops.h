@@ -25,5 +25,6 @@
 #include "op_unwind.h"
 #include "op_sort.h"
 #include "op_project.h"
+#include "op_distinct.h"
 
 #endif

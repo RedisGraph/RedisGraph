@@ -8,6 +8,8 @@
 #include "../util/rmalloc.h"
 #include <assert.h>
 
+#include "xxhash/xxhash.h"
+
 #define RECORD_HEADER(r) (r-1)
 #define RECORD_HEADER_ENTRY(r) *(RECORD_HEADER((r)))
 
@@ -109,6 +111,83 @@ size_t Record_ToString(const Record r, char **buf, size_t *buf_cap) {
     }
 
     return SIValue_StringConcat(values, rLen, *buf, *buf_cap);
+}
+
+unsigned long long Record_Hash64(const Record r) {
+    uint rec_len = Record_length(r);
+    void *data;
+    size_t len;
+    static long long _null = 0;
+    struct {
+        GraphEntityType type;
+        EntityID id;
+    } entity;
+    SIValue si;
+    
+	XXH_errorcode res;
+    XXH64_state_t state;
+
+    res = XXH64_reset(&state, 0);
+    assert(res != XXH_ERROR);
+    
+    for(int i = 0; i < rec_len; ++i) {
+        Entry e = r[i];
+        switch(e.type) {
+        case REC_TYPE_NODE:
+            entity.type = GraphEntityType_NODE;
+            entity.id = ENTITY_GET_ID(Record_GetGraphEntity(r, i));
+            data = &entity;
+            len = sizeof(entity);
+            break;
+            
+        case REC_TYPE_EDGE:
+            entity.type = GraphEntityType_EDGE;
+            entity.id = ENTITY_GET_ID(Record_GetGraphEntity(r, i));
+            data = &entity;
+            len = sizeof(entity);
+            break;
+            
+        case REC_TYPE_SCALAR:
+            si = Record_GetScalar(r, i);
+            switch (si.type) {
+            case T_NULL:
+                data = &_null;
+                len = sizeof(_null);
+                break;
+                
+            case T_STRING:
+            case T_CONSTSTRING:
+                data = si.stringval;
+                len = si.stringval ? strlen(si.stringval) : 0;
+                break;
+                
+            case T_INT64:
+            case T_BOOL:
+            case T_PTR:
+            case T_DOUBLE:
+                data = &si;
+                len = sizeof(si.longval);
+                break;
+                
+            default:
+                abort();
+            }
+            break;
+
+        case REC_TYPE_UNKNOWN:
+            abort();
+            break;
+
+        default:
+            abort();
+        }
+
+        res = XXH64_update(&state, data, len);
+        assert(res != XXH_ERROR);
+    }
+
+    unsigned long long const hash = XXH64_digest(&state);
+    return hash;
 }
 
 void Record_Free(Record r) {
