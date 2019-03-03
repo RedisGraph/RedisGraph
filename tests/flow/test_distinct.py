@@ -50,7 +50,6 @@ class ReturnDistinctFlowTest_1(RedisGraphTestBase):
         self.assertEqual(q, [['James'], ['Mike']])
 
 class ReturnDistinctFlowTest_2(RedisGraphTestBase):
-
     @classmethod
     def createCommand(cls):
         return """

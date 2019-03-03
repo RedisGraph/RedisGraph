@@ -11,7 +11,7 @@
 #include "util/triemap/triemap.h" 
 
 OpBase* NewDistinctOp(ResultSet *resultset) {
-    Distinct *self = malloc(sizeof(Distinct));
+    OpDistinct *self = malloc(sizeof(OpDistinct));
     self->trie = NewTrieMap();
 
     OpBase_Init(&self->op);
@@ -25,7 +25,7 @@ OpBase* NewDistinctOp(ResultSet *resultset) {
 }
 
 Record DistinctConsume(OpBase *opBase) {
-    Distinct *self = (Distinct*)opBase;
+    OpDistinct *self = (OpDistinct*)opBase;
     OpBase *child = self->op.children[0];
 
     while(true) {
@@ -45,6 +45,6 @@ OpResult DistinctReset(OpBase *ctx) {
 }
 
 void DistinctFree(OpBase *ctx) {
-    Distinct *self = (Distinct*)ctx;
+    OpDistinct *self = (OpDistinct*)ctx;
     TrieMap_Free(self->trie, TrieMap_NOP_CB);
 }

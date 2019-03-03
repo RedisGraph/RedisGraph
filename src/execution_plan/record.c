@@ -163,23 +163,30 @@ unsigned long long Record_Hash64(const Record r) {
                 
             case T_INT64:
             case T_BOOL:
-            case T_PTR:
-            case T_DOUBLE:
-                data = &si;
+                data = &si.longval;
                 len = sizeof(si.longval);
+                break;
+
+            case T_PTR:
+                data = &si.ptrval;
+                len = sizeof(si.ptrval);
+                break;
+
+            case T_DOUBLE:
+                data = &si.doubleval;
+                len = sizeof(si.doubleval);
                 break;
                 
             default:
-                abort();
+                assert(false);
             }
             break;
 
         case REC_TYPE_UNKNOWN:
-            abort();
-            break;
+            assert(false);
 
         default:
-            abort();
+            assert(false);
         }
 
         res = XXH64_update(&state, data, len);

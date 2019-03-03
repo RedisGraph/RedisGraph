@@ -14,7 +14,7 @@
 typedef struct {
     OpBase op;
     TrieMap *trie;
-} Distinct;
+} OpDistinct;
 
 OpBase* NewDistinctOp();
 Record DistinctConsume(OpBase *opBase);
