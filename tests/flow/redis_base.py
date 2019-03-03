@@ -67,7 +67,7 @@ class RedisGraphTestBase(FlowTestsBase):
 
     def execute(self, cmd):
         global redis_cli
-        return redis_cli.execute_command(cmd, self.graphId())
+        return redis_cli.execute_command(cmd)
 
     def query(self, cmd):
         global graph
