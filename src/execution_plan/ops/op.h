@@ -35,6 +35,7 @@ OPType_MERGE,
 OPType_UNWIND,
 OPType_SORT,
 OPType_PROJECT,
+OPType_DISTINCT
 } OPType;
 
 typedef enum {
