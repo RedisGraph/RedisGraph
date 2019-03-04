@@ -158,7 +158,7 @@ unsigned long long Record_Hash64(const Record r) {
             case T_STRING:
             case T_CONSTSTRING:
                 data = si.stringval;
-                len = si.stringval ? strlen(si.stringval) : 0;
+                len = strlen(si.stringval);
                 break;
                 
             case T_INT64:
