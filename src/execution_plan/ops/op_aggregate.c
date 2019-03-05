@@ -12,15 +12,19 @@
 #include "../../query_executor.h"
 #include "../../arithmetic/aggregate.h"
 
-static void _getOrderExpressions(OpAggregate *op) {
-    if(op->op.parent == NULL) return;
-    
-    OpBase *parent = op->op.parent;
-    if(parent->type == OPType_SORT) {
-        OpSort *sort = (OpSort*)parent;
-        op->order_expressions = sort->expressions;
-        op->order_exp_count = array_len(sort->expressions);
+static AR_ExpNode** _getOrderExpressions(OpBase *op) {
+    if(op == NULL) return NULL;
+    // No need to look further if we haven't encountered a sort operation
+    // before a project/aggregate op
+    if (op->type == OPType_PROJECT || op->type == OPType_AGGREGATE) return NULL;
+
+    if(op->type == OPType_SORT) {
+        OpSort *sort = (OpSort*)op;
+        return sort->expressions;
     }
+
+    // We are only interested in a SORT operation if it is a direct parent of the aggregate op
+    return NULL;
 }
 
 /* Initialize expression_classification[i] = AGGREGATED if expressions[i] 
@@ -66,7 +70,7 @@ static Group* _CreateGroup(OpAggregate *op, Record r) {
     for(uint i = 0; i < key_count; i++) group_keys[i] = op->group_keys[i];
 
     /* There's no need to keep a reference to record if we're not sorting groups. */
-    if(!op->order_expressions) op->group = NewGroup(key_count, group_keys, agg_exps, NULL);
+    if(!op->order_exps) op->group = NewGroup(key_count, group_keys, agg_exps, NULL);
     else op->group = NewGroup(key_count, group_keys, agg_exps, r);
 
     return op->group;
@@ -162,14 +166,13 @@ static Record _handoff(OpAggregate *op) {
     if(!op->groupIter) return NULL;
     if(!CacheGroupIterNext(op->groupIter, &key, &group)) return NULL;
 
-    uint exp_count = array_len(op->expressions);
-    Record r = Record_New(exp_count + op->order_exp_count);
+    Record r = Record_New(op->exp_count + op->order_exp_count);
 
     // Populate record.
     uint aggIdx = 0; // Index into group aggregated expressions.
     uint keyIdx = 0; // Index into group keys.
     
-    for(uint i = 0; i < exp_count; i++) {
+    for(uint i = 0; i < op->exp_count; i++) {
         SIValue res;
         if(op->expression_classification[i] == AGGREGATED) {
             // Aggregated expression, get aggregated value.
@@ -186,7 +189,7 @@ static Record _handoff(OpAggregate *op) {
         /* TODO: this entire block can be improved, performancewise.
          * assuming the number of groups is relative small, 
          * this might be negligible. */
-        if(op->order_expressions) {
+        if(op->order_exps) {
             // If expression is aliased, introduce it to group record
             // for later evaluation by ORDER-BY expressions.
             char *alias = op->aliases[i];
@@ -199,8 +202,8 @@ static Record _handoff(OpAggregate *op) {
 
     // Tack order by expressions for SORT operation to process.
     for(unsigned short i = 0; i < op->order_exp_count; i++) {
-        SIValue res = AR_EXP_Evaluate(op->order_expressions[i], group->r);
-        Record_AddScalar(r, exp_count+i, res);
+        SIValue res = AR_EXP_Evaluate(op->order_exps[i], group->r);
+        Record_AddScalar(r, op->exp_count+i, res);
     }
 
     return r;
@@ -211,9 +214,10 @@ OpBase* NewAggregateOp(AST *ast, AR_ExpNode **expressions, char **aliases) {
     aggregate->ast = ast;
     aggregate->aliases = aliases;
     aggregate->expressions = expressions;
+    aggregate->exp_count = array_len(expressions);
     aggregate->expression_classification = NULL;
     aggregate->none_aggregated_expressions = NULL;
-    aggregate->order_expressions = NULL;
+    aggregate->order_exps = NULL;
     aggregate->order_exp_count = 0;
     aggregate->group = NULL;
     aggregate->groupIter = NULL;
@@ -239,7 +243,12 @@ OpBase* NewAggregateOp(AST *ast, AR_ExpNode **expressions, char **aliases) {
 OpResult AggregateInit(OpBase *opBase) {
     OpAggregate *op = (OpAggregate*)opBase;
     _classify_expressions(op);
-    _getOrderExpressions(op);
+    AR_ExpNode **order_exps = _getOrderExpressions(opBase->parent);
+    if (order_exps) {
+        op->order_exps = order_exps;
+        op->order_exp_count = array_len(order_exps);
+    }
+
     /* Allocate memory for group keys. */
     uint noneAggExpCount = array_len(op->none_aggregated_expressions);
     if(noneAggExpCount) op->group_keys = rm_malloc(sizeof(SIValue) * noneAggExpCount);

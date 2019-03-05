@@ -215,6 +215,21 @@ void ExecutionPlan_RemoveOp(ExecutionPlan *plan, OpBase *op) {
     op->childCount = 0;
 }
 
+OpBase* ExecutionPlan_LocateOp(OpBase *root, OPType type) {
+    if(!root) return NULL;
+
+    if(root->type == type) {
+        return root;
+    }
+
+    for(int i = 0; i < root->childCount; i++) {
+        OpBase *op = ExecutionPlan_LocateOp(root->children[i], type);
+        if(op) return op;
+    }
+
+    return NULL;
+}
+
 OpBase* ExecutionPlan_Locate_References(OpBase *root, Vector *references) {
     OpBase *op = NULL;    
     Vector *temp = _ExecutionPlan_Locate_References(root, &op, references);
@@ -449,16 +464,6 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST *ast
         Vector_Push(ops, op_update);
     }
 
-    if(ast->skipNode && !ast->orderNode) {
-        OpBase *op_skip = NewSkipOp(ast->skipNode->skip);
-        Vector_Push(ops, op_skip);
-    }
-
-    if(ast->limitNode && !ast->orderNode) {
-        OpBase *op_limit = NewLimitOp(ast->limitNode->limit);
-        Vector_Push(ops, op_limit);
-    }
-
     char **aliases = NULL;  // Array of aliases RETURN n.v as V
     AR_ExpNode **exps = NULL;
     bool aggregate = false;
@@ -475,14 +480,14 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST *ast
         aggregate = ReturnClause_ContainsAggregation(ast->returnNode);
     }
 
-    if(ast->returnNode && ast->returnNode->distinct) {
-        op = NewDistinctOp();
-        Vector_Push(ops, op);
-    }
-
     if(ast->returnNode || ast->withNode) {
         if(aggregate) op = NewAggregateOp(ast, exps, aliases);
         else op = NewProjectOp(ast, exps, aliases);
+        Vector_Push(ops, op);
+    }
+
+    if(ast->returnNode && ast->returnNode->distinct) {
+        op = NewDistinctOp();
         Vector_Push(ops, op);
     }
 
@@ -491,12 +496,12 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST *ast
         Vector_Push(ops, op);
     }
 
-    if(ast->skipNode && ast->orderNode) {
+    if(ast->skipNode) {
         OpBase *op_skip = NewSkipOp(ast->skipNode->skip);
         Vector_Push(ops, op_skip);
     }
 
-    if(ast->limitNode && ast->orderNode) {
+    if(ast->limitNode) {
         OpBase *op_limit = NewLimitOp(ast->limitNode->limit);
         Vector_Push(ops, op_limit);
     }

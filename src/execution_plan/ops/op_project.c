@@ -9,25 +9,27 @@
 #include "../../util/arr.h"
 #include "../../util/rmalloc.h"
 
-void _getOrderExpressions(OpProject *op) {
-    if(op->op.parent == NULL) return;
+static AR_ExpNode** _getOrderExpressions(OpBase *op) {
+    if(op == NULL) return NULL;
+    // No need to look further if we haven't encountered a sort operation
+    // before a project/aggregate op
+    if (op->type == OPType_PROJECT || op->type == OPType_AGGREGATE) return NULL;
 
-    OpBase *parent = op->op.parent;
-    if(parent->type == OPType_SORT) {
-        OpSort *sort = (OpSort*)parent;
-        op->order_exps = sort->expressions;
-        op->order_exp_count = array_len(sort->expressions);
+    if(op->type == OPType_SORT) {
+        OpSort *sort = (OpSort*)op;
+        return sort->expressions;
     }
+    return _getOrderExpressions(op->parent);
 }
 
 OpBase* NewProjectOp(const AST *ast, AR_ExpNode **exps, char **aliases) {
     OpProject *project = malloc(sizeof(OpProject));
     project->ast = ast;
     project->exps = exps;
+    project->exp_count = array_len(exps);
     project->order_exps = NULL;
     project->order_exp_count = 0;
     project->singleResponse = false;
-    project->exp_count = array_len(exps);
     project->aliases = aliases;
 
     // Set our Op operations
@@ -49,7 +51,12 @@ OpBase* NewProjectOp(const AST *ast, AR_ExpNode **exps, char **aliases) {
 
 OpResult ProjectInit(OpBase *opBase) {
     OpProject *op = (OpProject*)opBase;
-    _getOrderExpressions(op);
+    AR_ExpNode **order_exps = _getOrderExpressions(opBase->parent);
+    if (order_exps) {
+        op->order_exps = order_exps;
+        op->order_exp_count = array_len(order_exps);
+    }
+
     return OP_OK;
 }
 
