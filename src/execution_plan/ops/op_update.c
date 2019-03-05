@@ -62,6 +62,10 @@ static void _UpdateIndex(EntityUpdateCtx *ctx, Schema *s, SIValue *old_value, SI
          * remove entity from index using old value. */
         Index_DeleteNode(idx, node_id, old_value);
     }
+    
+    // Setting an attribute value to NULL remove that attribute.
+    if(SIValue_IsNull(*new_value)) return;
+
     // Add node to index.
     Index_InsertNode(idx, node_id, new_value);
 }
