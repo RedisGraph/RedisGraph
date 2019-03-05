@@ -9,8 +9,8 @@
 #include "../../GraphBLASExt/GxB_Delete.h"
 
 static void _setupTraversedRelations(CondTraverse *op) {
-    AST *ast = AST_GetFromLTS();
-    GraphContext *gc = GraphContext_GetFromLTS();
+    AST *ast = op->ast;
+    GraphContext *gc = GraphContext_GetFromTLS();
     const char *alias = op->algebraic_expression->edge->alias;
     AST_LinkEntity *e = (AST_LinkEntity*)MatchClause_GetEntity(ast->matchNode, alias);
     op->edgeRelationCount = AST_LinkEntity_LabelCount(e);
@@ -71,17 +71,16 @@ static int _determinRecordCap(const AST *ast) {
     return recordsCap;
 }
 
-OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *algebraic_expression) {
+OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *algebraic_expression, AST *ast) {
     CondTraverse *traverse = calloc(1, sizeof(CondTraverse));
+    traverse->ast = ast;
     traverse->graph = g;
     traverse->algebraic_expression = algebraic_expression;
     traverse->edgeRelationTypes = NULL;
     traverse->F = NULL;    
     traverse->iter = NULL;
     traverse->edges = NULL;
-    traverse->r = NULL;    
-
-    AST *ast = AST_GetFromLTS();
+    traverse->r = NULL;        
     traverse->srcNodeRecIdx = AST_GetAliasID(ast, algebraic_expression->src_node->alias);
     traverse->destNodeRecIdx = AST_GetAliasID(ast, algebraic_expression->dest_node->alias);
     

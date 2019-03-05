@@ -46,8 +46,8 @@ void _WhereClause_ReferredEntities(AST_FilterNode *root, TrieMap *referred_entit
 			_WhereClause_ReferredEntities(root->cn.right, referred_entities);
 			break;
 		case N_PRED:
-			AR_EXP_GetAliases(root->pn.lhs, referred_entities);
-			AR_EXP_GetAliases(root->pn.rhs, referred_entities);
+			AST_AR_EXP_GetAliases(root->pn.lhs, referred_entities);
+			AST_AR_EXP_GetAliases(root->pn.rhs, referred_entities);
 			break;
 		default:
 			assert(0);
@@ -65,9 +65,9 @@ void WhereClause_ReferredFunctions(const AST_FilterNode *root, TrieMap *referred
 	if (root->t == N_PRED) {
 		// Check expressions on each side of predicate filters
 		AST_ArithmeticExpressionNode *exp = root->pn.lhs;
-		AR_EXP_GetFunctions(exp, referred_funcs);
+		AST_AR_EXP_GetFunctions(exp, referred_funcs);
 		exp = root->pn.rhs;
-		AR_EXP_GetFunctions(exp, referred_funcs);
+		AST_AR_EXP_GetFunctions(exp, referred_funcs);
 	} else {
 		// Visit both children of conditional nodes
 		WhereClause_ReferredFunctions(root->cn.left, referred_funcs);

@@ -12,8 +12,6 @@
 #include "../execution_plan/execution_plan.h"
 #include "../util/rmalloc.h"
 
-extern pthread_key_t _tlsASTKey;  // Thread local storage AST key.
-
 void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST_IndexNode *indexNode) {
     /* Set up nested array response for index creation and deletion,
      * Following the response struture of other queries:
@@ -52,18 +50,15 @@ void _MGraph_Query(void *args) {
     CommandCtx *qctx = (CommandCtx*)args;
     RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(qctx);
     ResultSet* resultSet = NULL;
-    AST* ast = qctx->ast;
+    AST **ast = qctx->ast;
     bool readonly = AST_ReadOnly(ast);
     bool lockAcquired = false;
-
-    // Add AST to thread local storage.
-    pthread_setspecific(_tlsASTKey, ast);
 
     // Try to access the GraphContext
     CommandCtx_ThreadSafeContextLock(qctx);
     GraphContext *gc = GraphContext_Retrieve(ctx, qctx->graphName);
     if(!gc) {
-        if(!ast->createNode && !ast->mergeNode) {
+        if(!ast[0]->createNode && !ast[0]->mergeNode) {
             CommandCtx_ThreadSafeContextUnlock(qctx);
             RedisModule_ReplyWithError(ctx, "key doesn't contains a graph object.");
             goto cleanup;
@@ -91,8 +86,8 @@ void _MGraph_Query(void *args) {
     else Graph_WriterEnter(gc->g);  // Single writer.
     lockAcquired = true;
 
-    if (ast->indexNode) { // index operation
-        _index_operation(ctx, gc, ast->indexNode);
+    if (ast[0]->indexNode) { // index operation
+        _index_operation(ctx, gc, ast[0]->indexNode);
     } else {
         ExecutionPlan *plan = NewExecutionPlan(ctx, gc, ast, false);
         resultSet = ExecutionPlan_Execute(plan);
@@ -132,7 +127,7 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     // Parse AST.
     char *errMsg = NULL;
     const char *query = RedisModule_StringPtrLen(argv[2], NULL);
-    AST* ast = ParseQuery(query, strlen(query), &errMsg);
+    AST **ast = ParseQuery(query, strlen(query), &errMsg);
     if (!ast) {
         RedisModule_Log(ctx, "debug", "Error parsing query: %s", errMsg);
         RedisModule_ReplyWithError(ctx, errMsg);

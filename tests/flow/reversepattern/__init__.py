@@ -44,6 +44,7 @@ class ReversePattern(object):
             return None
         return q[0:1]
 
+    # TODO update to handle WITH clauses
     def reverse_query_pattern(self, q):
         q = q.replace('\r', '')
         q = q.replace('\n', '')

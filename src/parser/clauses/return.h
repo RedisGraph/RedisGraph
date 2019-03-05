@@ -7,8 +7,8 @@
 #ifndef _CLAUSE_RETURN_H
 #define _CLAUSE_RETURN_H
 
-#include "../ast_arithmetic_expression.h"
 #include "../../util/vector.h"
+#include "../ast_arithmetic_expression.h"
 
 typedef struct {
 	char *alias; 		// Alias given to this return element (using the AS keyword)
@@ -41,6 +41,12 @@ void ReturnClause_ReferredFunctions(const AST_ReturnNode *return_node, TrieMap *
 // Z hold an expression value which can be referred to at a later stage, similar to
 // MATCH (N), in which N can be referred by other clauses.
 void ReturnClause_DefinedEntities(const AST_ReturnNode *return_node, TrieMap *definedEntities);
+
+/* Returns an array of aliases one per return element, in case return element 
+ * does not have an alias, NULL is returned for that particular element.
+ * it is the callers responsibility to free the array,
+ * no need to free individual elements. */
+char** ReturnClause_GetAliases(const AST_ReturnNode *return_node);
 
 void Free_AST_ReturnElementNode(AST_ReturnElementNode *returnElementNode);
 

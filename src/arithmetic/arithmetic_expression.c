@@ -26,7 +26,7 @@ static inline int _validate_numeric(const SIValue v) {
 }
 
 static AR_ExpNode* _AR_EXP_NewConstOperandNode(SIValue constant) {
-    AR_ExpNode *node = calloc(1, sizeof(AR_ExpNode));
+    AR_ExpNode *node = rm_calloc(1, sizeof(AR_ExpNode));
     node->type = AR_EXP_OPERAND;
     node->operand.type = AR_EXP_CONSTANT;
     node->operand.constant = constant;
@@ -34,28 +34,26 @@ static AR_ExpNode* _AR_EXP_NewConstOperandNode(SIValue constant) {
 }
 
 static AR_ExpNode* _AR_EXP_NewVariableOperandNode(const AST *ast, char *entity_prop, char *entity_alias) {
-    AR_ExpNode *node = calloc(1, sizeof(AR_ExpNode));
+    AR_ExpNode *node = rm_calloc(1, sizeof(AR_ExpNode));
     node->type = AR_EXP_OPERAND;
     node->operand.type = AR_EXP_VARIADIC;
-    node->operand.variadic.entity_alias = strdup(entity_alias);
+    node->operand.variadic.entity_alias = rm_strdup(entity_alias);
     node->operand.variadic.entity_alias_idx = AST_GetAliasID(ast, entity_alias);
     node->operand.variadic.entity_prop = NULL;
     
     if(entity_prop) {
-        node->operand.variadic.entity_prop = strdup(entity_prop);
-        AST_GraphEntity *ge = MatchClause_GetEntity(ast->matchNode, entity_alias);
-        SchemaType st = (ge->t == N_ENTITY) ? SCHEMA_NODE : SCHEMA_EDGE;
-        node->operand.variadic.entity_prop_idx = Attribute_GetID(st, entity_prop);
+        node->operand.variadic.entity_prop = rm_strdup(entity_prop);
+        node->operand.variadic.entity_prop_idx = ATTRIBUTE_NOTFOUND;
     }
     return node;
 }
 
 static AR_ExpNode* _AR_EXP_NewOpNode(char *func_name, int child_count) {
-    AR_ExpNode *node = calloc(1, sizeof(AR_ExpNode));
+    AR_ExpNode *node = rm_calloc(1, sizeof(AR_ExpNode));
     node->type = AR_EXP_OP;    
     node->op.func_name = func_name;
     node->op.child_count = child_count;
-    node->op.children = (AR_ExpNode **)malloc(child_count * sizeof(AR_ExpNode*));
+    node->op.children = rm_malloc(child_count * sizeof(AR_ExpNode*));
 
     /* Determine function type. */
     AR_Func func = AR_GetFunc(func_name);
@@ -106,7 +104,21 @@ int AR_EXP_GetOperandType(AR_ExpNode *exp) {
     return -1;
 }
 
-SIValue AR_EXP_Evaluate(const AR_ExpNode *root, const Record r) {
+/* Update arithmetic expression variable node by setting node's property index.
+ * when constructing an arithmetic expression we'll delay setting graph entity 
+ * attribute index to the first execution of the expression, this is due to 
+ * entity aliasing where we lose track over which entity is aliased, consider
+ * MATCH (n:User) WITH n AS x RETURN x.name 
+ * When constructing the arithmetic expression x.name, we don't know
+ * who X is referring to. */
+void _AR_EXP_UpdatePropIdx(AR_ExpNode *root, const Record r) {
+    GraphContext *gc = GraphContext_GetFromTLS();
+    RecordEntryType t = Record_GetType(r, root->operand.variadic.entity_alias_idx);
+    SchemaType st = (t == REC_TYPE_NODE) ? SCHEMA_NODE : SCHEMA_EDGE;
+    root->operand.variadic.entity_prop_idx = Attribute_GetID(st, root->operand.variadic.entity_prop);
+}
+
+SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
     SIValue result;
     /* Deal with Operation node. */
     if(root->type == AR_EXP_OP) {
@@ -132,6 +144,9 @@ SIValue AR_EXP_Evaluate(const AR_ExpNode *root, const Record r) {
             // Fetch entity property value.
             if (root->operand.variadic.entity_prop != NULL) {
                 GraphEntity *ge = Record_GetGraphEntity(r, root->operand.variadic.entity_alias_idx);
+                if(root->operand.variadic.entity_prop_idx == ATTRIBUTE_NOTFOUND) {
+                    _AR_EXP_UpdatePropIdx(root, r);
+                }
                 SIValue *property = GraphEntity_GetProperty(ge, root->operand.variadic.entity_prop_idx);
                 /* TODO: Handle PROPERTY_NOTFOUND. */
                 result = SI_ShallowCopy(*property);
@@ -146,8 +161,10 @@ SIValue AR_EXP_Evaluate(const AR_ExpNode *root, const Record r) {
                         result = Record_GetScalar(r, aliasIdx);
                         break;
                     case REC_TYPE_NODE:
+                        result = SI_Node(Record_GetGraphEntity(r, aliasIdx));
+                        break;
                     case REC_TYPE_EDGE:
-                        result = SI_PtrVal(Record_GetGraphEntity(r, aliasIdx));
+                        result = SI_Edge(Record_GetGraphEntity(r, aliasIdx));
                         break;
                     default:
                         assert(false);
@@ -306,12 +323,61 @@ void AR_EXP_ToString(const AR_ExpNode *root, char **str) {
     _AR_EXP_ToString(root, str, &str_size, &bytes_written);
 }
 
+static AR_ExpNode* _AR_EXP_CloneOperand(AR_ExpNode* exp) {
+    AR_ExpNode *clone = rm_calloc(1, sizeof(AR_ExpNode));
+    clone->type = AR_EXP_OPERAND;
+    switch(exp->operand.type) {
+        case AR_EXP_CONSTANT:
+            clone->operand.type = AR_EXP_CONSTANT;
+            clone->operand.constant = exp->operand.constant;
+            break;
+        case AR_EXP_VARIADIC:
+            clone->operand.type = AR_EXP_VARIADIC;
+            clone->operand.variadic.entity_alias = rm_strdup(exp->operand.variadic.entity_alias);
+            clone->operand.variadic.entity_alias_idx = exp->operand.variadic.entity_alias_idx;
+            if(exp->operand.variadic.entity_prop) {
+                clone->operand.variadic.entity_prop = rm_strdup(exp->operand.variadic.entity_prop);
+            }
+            clone->operand.variadic.entity_prop_idx = exp->operand.variadic.entity_prop_idx;
+            break;
+        default:
+            assert(false);
+            break;
+    }
+    return clone;
+}
+
+static AR_ExpNode* _AR_EXP_CloneOp(AR_ExpNode* exp) {
+    AR_ExpNode *clone = _AR_EXP_NewOpNode(exp->op.func_name, exp->op.child_count);
+    for(uint i = 0; i < exp->op.child_count; i++) {
+        AR_ExpNode *child = AR_EXP_Clone(exp->op.children[i]);
+        clone->op.children[i] = child;
+    }
+    return clone;
+}
+
+AR_ExpNode* AR_EXP_Clone(AR_ExpNode* exp) {
+    AR_ExpNode *clone;
+    switch(exp->type) {
+        case AR_EXP_OPERAND:
+            clone = _AR_EXP_CloneOperand(exp);
+            break;
+        case AR_EXP_OP:
+            clone = _AR_EXP_CloneOp(exp);
+            break;
+        default:
+            assert(false);
+            break;
+    }
+    return clone;
+}
+
 void AR_EXP_Free(AR_ExpNode *root) {
     if(root->type == AR_EXP_OP) {
         for(int child_idx = 0; child_idx < root->op.child_count; child_idx++) {
             AR_EXP_Free(root->op.children[child_idx]);
         }
-        free(root->op.children);
+        rm_free(root->op.children);
         if (root->op.type == AR_OP_AGGREGATE) {
             AggCtx_Free(root->op.agg_func);
         }
@@ -319,11 +385,11 @@ void AR_EXP_Free(AR_ExpNode *root) {
         if (root->operand.type == AR_EXP_CONSTANT) {
             SIValue_Free(&root->operand.constant);
         } else {
-            if (root->operand.variadic.entity_alias) free(root->operand.variadic.entity_alias);
-            if (root->operand.variadic.entity_prop) free(root->operand.variadic.entity_prop);
+            if (root->operand.variadic.entity_alias) rm_free(root->operand.variadic.entity_alias);
+            if (root->operand.variadic.entity_prop) rm_free(root->operand.variadic.entity_prop);
         }
     }
-    free(root);
+    rm_free(root);
 }
 
 /* Mathematical functions - numeric */
@@ -650,18 +716,20 @@ SIValue AR_TRIM(SIValue *argv, int argc) {
 
 SIValue AR_ID(SIValue *argv, int argc) {
     assert(argc == 1);
-    assert(SI_TYPE(argv[0]) == T_PTR);
+    assert(SI_TYPE(argv[0]) & (T_NODE | T_EDGE));
     GraphEntity *graph_entity = (GraphEntity*)argv[0].ptrval;
     return SI_LongVal(ENTITY_GET_ID(graph_entity));
 }
 
 SIValue AR_LABELS(SIValue *argv, int argc) {
     assert(argc == 1);
-    assert(SI_TYPE(argv[0]) == T_PTR);
+    // TODO Introduce AST validations to prevent non-nodes
+    // from reaching here
+    if (SI_TYPE(argv[0]) != T_NODE) return SI_NullVal();
 
     char *label = "";
     Node *node = argv[0].ptrval;
-    GraphContext *gc = GraphContext_GetFromLTS();
+    GraphContext *gc = GraphContext_GetFromTLS();
     Graph *g = gc->g;
     int labelID = Graph_GetNodeLabel(g, ENTITY_GET_ID(node));
     if(labelID != GRAPH_NO_LABEL) label = gc->node_schemas[labelID]->name;
@@ -670,11 +738,13 @@ SIValue AR_LABELS(SIValue *argv, int argc) {
 
 SIValue AR_TYPE(SIValue *argv, int argc) {
     assert(argc == 1);
-    assert(SI_TYPE(argv[0]) == T_PTR);
+    // TODO Introduce AST validations to prevent non-edges
+    // from reaching here
+    if (SI_TYPE(argv[0]) != T_EDGE) return SI_NullVal();
 
     char *type = "";
     Edge *e = argv[0].ptrval;
-    GraphContext *gc = GraphContext_GetFromLTS();
+    GraphContext *gc = GraphContext_GetFromTLS();
     Graph *g = gc->g;
     int id = Graph_GetEdgeRelation(gc->g, e);
     if(id != GRAPH_NO_RELATION) type = gc->relation_schemas[id]->name;

@@ -33,12 +33,12 @@ class AggregateTest: public ::testing::Test {
 
 AR_ExpNode* _exp_from_query(const char *query) {
   char *errMsg;
-  AST *ast = ParseQuery(query, strlen(query), &errMsg);  
+  AST **ast = ParseQuery(query, strlen(query), &errMsg);
 
-  AST_ReturnElementNode *elm = ast->returnNode->returnElements[0];
+  AST_ReturnElementNode *elm = ast[0]->returnNode->returnElements[0];
 
   AST_ArithmeticExpressionNode *exp = elm->exp;
-  AR_ExpNode *arExp = AR_EXP_BuildFromAST(ast, exp);
+  AR_ExpNode *arExp = AR_EXP_BuildFromAST(ast[0], exp);
 
   AST_Free(ast);
   return arExp;

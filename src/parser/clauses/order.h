@@ -7,8 +7,8 @@
 #ifndef _CLAUSE_ORDER_H
 #define _CLAUSE_ORDER_H
 
-#include "../../util/vector.h"
 #include "../ast_common.h"
+#include "../../util/vector.h"
 #include "../ast_arithmetic_expression.h"
 
 typedef enum {
@@ -22,6 +22,9 @@ typedef struct {
 } AST_OrderNode;
 
 AST_OrderNode* New_AST_OrderNode(Vector* expressions, AST_OrderByDirection direction);
+
+void OrderClause_ReferredEntities(const AST_OrderNode *order_node, TrieMap *referred_entities);
+
 void Free_AST_OrderNode(AST_OrderNode *orderNode);
 
 #endif

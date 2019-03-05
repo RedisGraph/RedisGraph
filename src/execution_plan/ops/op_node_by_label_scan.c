@@ -7,13 +7,11 @@
 #include "op_node_by_label_scan.h"
 #include "../../parser/ast.h"
 
-OpBase *NewNodeByLabelScanOp(GraphContext *gc, Node *node) {
+OpBase *NewNodeByLabelScanOp(GraphContext *gc, Node *node, AST *ast) {
     NodeByLabelScan *nodeByLabelScan = malloc(sizeof(NodeByLabelScan));
     nodeByLabelScan->g = gc->g;
     nodeByLabelScan->node = node;
     nodeByLabelScan->_zero_matrix = NULL;
-
-    AST *ast = AST_GetFromLTS();
     nodeByLabelScan->nodeRecIdx = AST_GetAliasID(ast, node->alias);
     nodeByLabelScan->recLength = AST_AliasCount(ast);
 

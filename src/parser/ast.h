@@ -32,6 +32,7 @@ typedef struct {
 	AST_SkipNode *skipNode;
 	AST_IndexNode *indexNode;
 	AST_UnwindNode *unwindNode;
+	AST_WithNode *withNode;
 	TrieMap *_aliasIDMapping;	// Mapping between aliases and IDs.
 } AST;
 
@@ -41,9 +42,6 @@ AST* AST_New(AST_MatchNode *matchNode, AST_WhereNode *whereNode,
 						 AST_ReturnNode *returnNode, AST_OrderNode *orderNode,
 						 AST_SkipNode *skipNode, AST_LimitNode *limitNode,
 						 AST_IndexNode *indexNode, AST_UnwindNode *unwindNode);
-
-// Retrieve AST from thread local storage.
-AST *AST_GetFromLTS();
 
 // AST clause validations.
 AST_Validation AST_Validate(const AST* ast, char **reason);
@@ -56,9 +54,14 @@ int AST_GetAliasID(const AST *ast, char *alias);
 
 void AST_NameAnonymousNodes(AST *ast);
 
-// Checks if AST represent a read only query.
-bool AST_ReadOnly(const AST *ast);
+void AST_MapAliasToID(AST *ast, AST_WithNode *prevWithClause);
 
-void AST_Free(AST *queryExpressionNode);
+// Returns a triemap of all identifiers defined by ast.
+TrieMap* AST_Identifiers(const AST *ast);
+
+// Checks if AST represent a read only query.
+bool AST_ReadOnly(AST **ast);
+
+void AST_Free(AST **ast);
 
 #endif

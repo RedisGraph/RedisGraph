@@ -9,20 +9,22 @@
 
 #include "op.h"
 #include "../../parser/ast.h"
-#include "../../resultset/resultset.h"
-#include "../../util/triemap/triemap.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
 typedef struct {
     OpBase op;
-    AST *ast;
-    ResultSet *resultset;
-    uint projectedRecordLen;    // Length of projected record.
-    AR_ExpNode **expressions;   // Array of expressions to evaluate.
-    bool singleResponse;        // When no child operations, return NULL after a first response.
-} Project;
+    const AST *ast;
+    char **aliases;                 // Aliases attached to projected expressions.
+    AR_ExpNode **exps;              // Projected expressions.
+    AR_ExpNode **order_exps;        // Order by expressions.
+    bool singleResponse;            // When no child operations, return NULL after a first response.
+    unsigned short exp_count;       // Number of projected expressions.
+    unsigned short order_exp_count; // Number of order by expressions.
+} OpProject;
 
-OpBase* NewProjectOp(ResultSet *resultset);
+OpBase* NewProjectOp(const AST *ast, AR_ExpNode **exps, char **aliases);
+
+OpResult ProjectInit(OpBase *opBase);
 
 Record ProjectConsume(OpBase *op);
 

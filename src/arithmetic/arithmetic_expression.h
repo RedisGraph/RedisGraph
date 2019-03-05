@@ -7,14 +7,11 @@
 #ifndef __ARITHMETIC_EXPRESSION_H
 #define __ARITHMETIC_EXPRESSION_H
 
+#include "./agg_ctx.h"
+#include "../parser/ast.h"
+#include "../graph/query_graph.h"
 #include "../execution_plan/record.h"
 #include "../graph/entities/graph_entity.h"
-#include "../graph/query_graph.h"
-#include "../parser/ast.h"
-#include "./agg_ctx.h"
-
-/* Forward declarations. */
-struct AR_ExpNode;
 
 /* AR_ExpNodeType lists the type of nodes within
  * an arithmetic expression tree. */
@@ -124,7 +121,7 @@ typedef struct AR_ExpNode AR_ExpNode;
 int AR_EXP_GetOperandType(AR_ExpNode *exp);
 
 /* Evaluate arithmetic expression tree. */
-SIValue AR_EXP_Evaluate(const AR_ExpNode *root, const Record r);
+SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r);
 void AR_EXP_Aggregate(const AR_ExpNode *root, const Record r);
 void AR_EXP_Reduce(const AR_ExpNode *root);
 
@@ -143,6 +140,9 @@ void AR_EXP_ToString(const AR_ExpNode *root, char **str);
 
 /* Construct an arithmetic expression tree from ast arithmetic expression node. */
 AR_ExpNode* AR_EXP_BuildFromAST(const AST *ast, const AST_ArithmeticExpressionNode *exp);
+
+/* Clones given expression. */
+AR_ExpNode* AR_EXP_Clone(AR_ExpNode* exp);
 
 /* Free arithmetic expression tree. */
 void AR_EXP_Free(AR_ExpNode *root);

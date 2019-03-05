@@ -9,8 +9,6 @@
 #include "../query_executor.h"
 #include "../execution_plan/execution_plan.h"
 
-extern pthread_key_t _tlsASTKey;  // Thread local storage AST key.
-
 /* Builds an execution plan but does not execute it
  * reports plan back to the client
  * Args:
@@ -31,7 +29,7 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
     /* Parse query, get AST. */
     char *errMsg = NULL;
-    AST* ast = NULL;
+    AST** ast = NULL;
     GraphContext *gc = NULL;
     ExecutionPlan *plan = NULL;
 
@@ -42,7 +40,6 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
         free(errMsg);
         return REDISMODULE_OK;
     }
-    pthread_setspecific(_tlsASTKey, ast);
 
     // Retrieve the GraphContext and acquire a read lock.    
     gc = GraphContext_Retrieve(ctx, graphname);
@@ -57,8 +54,8 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     ModifyAST(gc, ast);
     if (AST_PerformValidations(ctx, ast) != AST_VALID) return REDISMODULE_OK;
 
-    if (ast->indexNode != NULL) { // index operation
-        char *reply = (ast->indexNode->operation == CREATE_INDEX) ? "Create Index" : "Drop Index";
+    if (ast[0]->indexNode != NULL) { // index operation
+        char *reply = (ast[0]->indexNode->operation == CREATE_INDEX) ? "Create Index" : "Drop Index";
         RedisModule_ReplyWithSimpleString(ctx, reply);
         goto cleanup;
     }

@@ -8,6 +8,7 @@
 #define __OP_ALL_NODE_SCAN_H__
 
 #include "op.h"
+#include "../../parser/ast.h"
 #include "../../graph/graph.h"
 #include "../../graph/query_graph.h"
 #include "../../graph/entities/node.h"
@@ -22,7 +23,7 @@
     uint recLength;  // Number of entries in a record.
  } AllNodeScan;
 
-OpBase* NewAllNodeScanOp(const Graph *g, Node *n);
+OpBase* NewAllNodeScanOp(const Graph *g, Node *n, AST *ast);
 Record AllNodeScanConsume(OpBase *opBase);
 OpResult AllNodeScanReset(OpBase *op);
 void AllNodeScanFree(OpBase *ctx);
