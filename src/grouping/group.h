@@ -20,6 +20,10 @@ typedef struct {
 /* Creates a new group */
 Group* NewGroup(int key_count, SIValue* keys, AR_ExpNode** funcs, Record r);
 
+/* Compute group key string representation, it is the callers 
+ * responsibility to free returned string. */
+void Group_KeyStr(const Group *g, char **group_key);
+
 void FreeGroup(Group* group);
 
 #endif

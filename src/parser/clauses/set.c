@@ -33,7 +33,7 @@ void SetClause_ReferredEntities(const AST_SetNode *set_node, TrieMap *referred_e
                     NULL,
                     NULL);
 
-        AR_EXP_GetAliases(set_element->exp, referred_entities);
+        AST_AR_EXP_GetAliases(set_element->exp, referred_entities);
     }
 }
 

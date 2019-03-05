@@ -37,13 +37,58 @@
 	ctx->errorMsg = strdup(buf);
 }
 
-
 %extra_argument { parseCtx *ctx }
 
+query ::= expressions(A). { ctx->root = A; }
+
+%type expressions {AST**}
+
+expressions(A) ::= expr(B). {
+	A = array_new(AST*, 1);
+	A = array_append(A, B);
+}
+
+expressions(A) ::= expressions(B) withClause(C) singlePartQuery(D). {
+	AST *ast = B[array_len(B)-1];
+	ast->withNode = C;
+	A = array_append(B, D);
+	A=B;
+}
+
+%type singlePartQuery {AST*}
+singlePartQuery(A) ::= expr(B). {
+	A = B;
+}
+
+singlePartQuery(A) ::= skipClause(B) limitClause(C) returnClause(D) orderClause(E). {
+	A = AST_New(NULL, NULL, NULL, NULL, NULL, NULL, D, E, B, C, NULL, NULL);
+}
+
+singlePartQuery(A) ::= limitClause(B) returnClause(C) orderClause(D). {
+	A = AST_New(NULL, NULL, NULL, NULL, NULL, NULL, C, D, NULL, B, NULL, NULL);
+}
+
+singlePartQuery(A) ::= skipClause(B) returnClause(C) orderClause(D). {
+	A = AST_New(NULL, NULL, NULL, NULL, NULL, NULL, C, D, B, NULL, NULL, NULL);
+}
+
+singlePartQuery(A) ::= returnClause(B) orderClause(C) skipClause(D) limitClause(E). {
+	A = AST_New(NULL, NULL, NULL, NULL, NULL, NULL, B, C, D, E, NULL, NULL);
+}
+
+singlePartQuery(A) ::= orderClause(B) skipClause(C) limitClause(D) returnClause(E). {
+	A = AST_New(NULL, NULL, NULL, NULL, NULL, NULL, E, B, C, D, NULL, NULL);
+}
+
+singlePartQuery(A) ::= orderClause(B) skipClause(C) limitClause(D) setClause(E). {
+	A = AST_New(NULL, NULL, NULL, NULL, E, NULL, NULL, B, C, D, NULL, NULL);
+}
+
+singlePartQuery(A) ::= orderClause(B) skipClause(C) limitClause(D) deleteClause(E). {
+	A = AST_New(NULL, NULL, NULL, NULL, NULL, E, NULL, B, C, D, NULL, NULL);
+}
+
 %type expr {AST*}
-
-query ::= expr(A). { ctx->root = A; }
-
 expr(A) ::= multipleMatchClause(B) whereClause(C) multipleCreateClause(D) returnClause(E) orderClause(F) skipClause(G) limitClause(H). {
 	A = AST_New(B, C, D, NULL, NULL, NULL, E, F, G, H, NULL, NULL);
 }
@@ -433,6 +478,25 @@ returnElement(A) ::= arithmetic_expression(B) AS UQSTRING(C). {
 	A = New_AST_ReturnElementNode(B, C.strval);
 }
 
+%type withClause {AST_WithNode*}
+withClause(A) ::= WITH withElements(B). {
+	A = New_AST_WithNode(B);
+}
+
+%type withElements {AST_WithElementNode**}
+withElements(A) ::= withElement(B). {
+	A = array_new(AST_WithElementNode*, 1);
+	array_append(A, B);
+}
+withElements(A) ::= withElements(B) COMMA withElement(C). {
+	A = array_append(B, C);
+}
+
+%type withElement {AST_WithElementNode*}
+withElement(A) ::= arithmetic_expression(B) AS UQSTRING(C). {
+	A = New_AST_WithElementNode(B, C.strval);
+}
+
 %type arithmetic_expression {AST_ArithmeticExpressionNode*}
 
 // Highest precedence, (1+2)
@@ -441,12 +505,6 @@ arithmetic_expression(A) ::= LEFT_PARENTHESIS arithmetic_expression(B) RIGHT_PAR
 }
 
 // Binary op (+,-,/,*)
-//arithmetic_expression(A) ::= arithmetic_expression(B) arithmetic_operator(C) arithmetic_expression(D). {
-//	Vector *args = NewVector(AST_ArithmeticExpressionNode*, 2);
-//	Vector_Push(args, B);
-//	Vector_Push(args, D);
-//	A = New_AST_AR_EXP_OpNode("ADD", args);
-//}
 
 arithmetic_expression(A) ::= arithmetic_expression(B) ADD arithmetic_expression(D). {
 	Vector *args = NewVector(AST_ArithmeticExpressionNode*, 2);
@@ -590,7 +648,7 @@ value(A) ::= NULLVAL. { A = SI_NullVal(); }
   	extern char *yytext;
 	extern int yycolumn;
 
-	AST *Query_Parse(const char *q, size_t len, char **err) {
+	AST **Query_Parse(const char *q, size_t len, char **err) {
 		yycolumn = 1;	// Reset lexer's token tracking position
 		yy_scan_bytes(q, len);
   		void* pParser = ParseAlloc(malloc);

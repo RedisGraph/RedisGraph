@@ -8,12 +8,13 @@
 
 #include "execution_plan.h"
 #include "./ops/ops.h"
+#include "../util/arr.h"
 #include "../util/vector.h"
-#include "../graph/entities/edge.h"
 #include "../query_executor.h"
-#include "../arithmetic/algebraic_expression.h"
+#include "../graph/entities/edge.h"
 #include "./optimizations/optimizer.h"
 #include "./optimizations/optimizations.h"
+#include "../arithmetic/algebraic_expression.h"
 
 /* Checks if parent has given child, if so returns 1
  * otherwise returns 0 */
@@ -69,25 +70,6 @@ void _OpBase_RemoveNode(OpBase *parent, OpBase *child) {
 
 void _OpBase_RemoveChild(OpBase *parent, OpBase *child) {
     _OpBase_RemoveNode(parent, child);
-}
-
-/* Push b right below a. */
-void _OpBase_PushBelow(OpBase *a, OpBase *b) {
-    /* B is a new operation. */
-    assert(!(b->parent || b->children));
-    assert(a->parent);
-
-    /* Replace A's former parent. */
-    OpBase *a_former_parent = a->parent;
-
-    /* Disconnect A from its former parent. */
-    _OpBase_RemoveChild(a_former_parent, a);
-
-    /* Add A's former parent as parent of B. */
-    _OpBase_AddChild(a_former_parent, b);
-
-    /* Add A as a child of B. */
-    _OpBase_AddChild(b, a);
 }
 
 Vector* _ExecutionPlan_Locate_References(OpBase *root, OpBase **op, Vector *references) {
@@ -186,24 +168,66 @@ void ExecutionPlan_AddOp(OpBase *parent, OpBase *newOp) {
     _OpBase_AddChild(parent, newOp);
 }
 
-void ExecutionPlan_ReplaceOp(OpBase *a, OpBase *b) {
-    // Insert the new operation between the original and its parent.
-    _OpBase_PushBelow(a, b);
-    // Delete the original operation.
-    ExecutionPlan_RemoveOp(a);
+void ExecutionPlan_PushBelow(OpBase *a, OpBase *b) {
+    /* B is a new operation. */
+    assert(!(b->parent || b->children));
+    assert(a->parent);
+
+    /* Replace A's former parent. */
+    OpBase *a_former_parent = a->parent;
+
+    /* Disconnect A from its former parent. */
+    _OpBase_RemoveChild(a_former_parent, a);
+
+    /* Add A's former parent as parent of B. */
+    _OpBase_AddChild(a_former_parent, b);
+
+    /* Add A as a child of B. */
+    _OpBase_AddChild(b, a);
 }
 
-void ExecutionPlan_RemoveOp(OpBase *op) {
-    assert(op->parent != NULL);
-    
-    // Remove op from its parent.
-    OpBase* parent = op->parent;
-    _OpBase_RemoveChild(op->parent, op);
+void ExecutionPlan_ReplaceOp(ExecutionPlan *plan, OpBase *a, OpBase *b) {
+    // Insert the new operation between the original and its parent.
+    ExecutionPlan_PushBelow(a, b);
+    // Delete the original operation.
+    ExecutionPlan_RemoveOp(plan, a);
+}
 
-    // Add each of op's children as a child of op's parent.
-    for(int i = 0; i < op->childCount; i++) {
-        _OpBase_AddChild(parent, op->children[i]);
+void ExecutionPlan_RemoveOp(ExecutionPlan *plan, OpBase *op) {
+    if(op->parent == NULL) {
+        // Removing execution plan root.
+        assert(op->childCount == 1);
+        plan->root = op->children[0];
+    } else {
+        // Remove op from its parent.
+        OpBase* parent = op->parent;
+        _OpBase_RemoveChild(op->parent, op);
+
+        // Add each of op's children as a child of op's parent.
+        for(int i = 0; i < op->childCount; i++) {
+            _OpBase_AddChild(parent, op->children[i]);
+        }
     }
+
+    // Clear op.
+    op->parent = NULL;
+    op->children = NULL;
+    op->childCount = 0;
+}
+
+OpBase* ExecutionPlan_LocateOp(OpBase *root, OPType type) {
+    if(!root) return NULL;
+
+    if(root->type == type) {
+        return root;
+    }
+
+    for(int i = 0; i < root->childCount; i++) {
+        OpBase *op = ExecutionPlan_LocateOp(root->children[i], type);
+        if(op) return op;
+    }
+
+    return NULL;
 }
 
 OpBase* ExecutionPlan_Locate_References(OpBase *root, Vector *references) {
@@ -213,15 +237,67 @@ OpBase* ExecutionPlan_Locate_References(OpBase *root, Vector *references) {
     return op;
 }
 
-ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx,
-                                GraphContext *gc,
-                                AST *ast,
-                                bool explain) {
+// TODO: get rid of _ReturnClause_GetExpressions, _WithClause_GetExpressions and _OrderClause_GetExpressions.
+/* Returns an array of arithmetic expression, one for every return element.
+ * caller is responsible for freeing each arithmetic expression in addition
+ * to the array itself. */
+static AR_ExpNode** _ReturnClause_GetExpressions(const AST *ast) {
+    assert(ast->returnNode);
 
+    AST_ReturnNode *return_node = ast->returnNode;
+    unsigned int elem_count = array_len(return_node->returnElements);
+    AR_ExpNode **exps = array_new(AR_ExpNode*, elem_count);
+
+    for(unsigned int i = 0; i < elem_count; i++) {
+        AST_ReturnElementNode *elem = return_node->returnElements[i];
+        AR_ExpNode *exp = AR_EXP_BuildFromAST(ast, elem->exp);
+        exps = array_append(exps, exp);
+    }
+
+    return exps;
+}
+
+/* Returns an array of arithmetic expression, one for every wiht element.
+ * caller is responsible for freeing each arithmetic expression in addition
+ * to the array itself. */
+static AR_ExpNode** _WithClause_GetExpressions(const AST *ast) {
+    assert(ast->withNode);
+
+    AST_WithNode *with_node = ast->withNode;
+    unsigned int elem_count = array_len(with_node->exps);
+    AR_ExpNode **exps = array_new(AR_ExpNode*, elem_count);
+
+    for(unsigned int i = 0; i < elem_count; i++) {
+        AST_WithElementNode *elem = with_node->exps[i];
+        AR_ExpNode *exp = AR_EXP_BuildFromAST(ast, elem->exp);
+        exps = array_append(exps, exp);
+    }
+
+    return exps;
+}
+
+/* Returns an array of arithmetic expression, one for every order element.
+ * caller is responsible for freeing each arithmetic expression in addition
+ * to the array itself. */
+static AR_ExpNode** _OrderClause_GetExpressions(const AST *ast) {
+    assert(ast && ast->orderNode);
+	AST_OrderNode *order_node = ast->orderNode;
+
+	unsigned int exp_count = array_len(order_node->expressions);
+	AR_ExpNode** exps = array_new(AR_ExpNode*, exp_count);
+
+	for(unsigned int i = 0; i < exp_count; i++) {
+		AR_ExpNode *exp = AR_EXP_BuildFromAST(ast, order_node->expressions[i]);
+		exps = array_append(exps, exp);
+	}
+
+	return exps;
+}
+
+ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST *ast, ResultSet *result_set) {
     Graph *g = gc->g;
     ExecutionPlan *execution_plan = (ExecutionPlan*)calloc(1, sizeof(ExecutionPlan));    
-    execution_plan->result_set = (explain) ? NULL: NewResultSet(ast, ctx);
-    execution_plan->filter_tree = NULL;
+    execution_plan->result_set = result_set;
     Vector *ops = NewVector(OpBase*, 1);
     OpBase *op;
 
@@ -233,7 +309,6 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx,
     _Determine_Graph_Size(ast, &node_count, &edge_count);
     QueryGraph *q = QueryGraph_New(node_count, edge_count);
     execution_plan->query_graph = q;
-
     FT_FilterNode *filter_tree = NULL;
     if(ast->whereNode != NULL) {
         filter_tree = BuildFiltersTree(ast, ast->whereNode->filters);
@@ -251,7 +326,7 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx,
         bool multiPattern = patternCount > 1;
         OpBase *cartesianProduct = NULL;
         if(multiPattern) {
-            cartesianProduct = NewCartesianProductOp();
+            cartesianProduct = NewCartesianProductOp(AST_AliasCount(ast));
             Vector_Push(ops, cartesianProduct);
         }
         
@@ -276,10 +351,10 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx,
                         /* There's no longer need for the last matrix operand
                          * as it's been replaced by label scan. */
                         AlgebraicExpression_RemoveTerm(exp, exp->operand_count-1, NULL);
-                        op = NewNodeByLabelScanOp(gc, exp->src_node);
+                        op = NewNodeByLabelScanOp(gc, exp->src_node, ast);
                         Vector_Push(traversals, op);
                     } else {
-                        op = NewAllNodeScanOp(g, exp->src_node);
+                        op = NewAllNodeScanOp(g, exp->src_node, ast);
                         Vector_Push(traversals, op);
                     }
                     for(int i = 0; i < expCount; i++) {
@@ -288,10 +363,11 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx,
                             op = NewCondVarLenTraverseOp(exps[i],
                                                          exps[i]->edgeLength->minHops,
                                                          exps[i]->edgeLength->maxHops,
-                                                         g);
+                                                         g,
+                                                         ast);
                         }
                         else {
-                            op = NewCondTraverseOp(g, exps[i]);
+                            op = NewCondTraverseOp(g, exps[i], ast);
                         }
                         Vector_Push(traversals, op);
                     }
@@ -303,10 +379,10 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx,
                         /* There's no longer need for the last matrix operand
                          * as it's been replaced by label scan. */
                         AlgebraicExpression_RemoveTerm(exp, exp->operand_count-1, NULL);
-                        op = NewNodeByLabelScanOp(gc, exp->dest_node);
+                        op = NewNodeByLabelScanOp(gc, exp->dest_node, ast);
                         Vector_Push(traversals, op);
                     } else {
-                        op = NewAllNodeScanOp(g, exp->dest_node);
+                        op = NewAllNodeScanOp(g, exp->dest_node, ast);
                         Vector_Push(traversals, op);
                     }
 
@@ -317,10 +393,11 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx,
                             op = NewCondVarLenTraverseOp(exps[i],
                                                          exps[i]->edgeLength->minHops,
                                                          exps[i]->edgeLength->maxHops,
-                                                         g);
+                                                         g,
+                                                         ast);
                         }
                         else {
-                            op = NewCondTraverseOp(g, exps[i]);
+                            op = NewCondTraverseOp(g, exps[i], ast);
                         }
                         Vector_Push(traversals, op);
                     }
@@ -331,9 +408,9 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx,
                 Vector_Get(pattern, 0, &ge);
                 Node **n = QueryGraph_GetNodeRef(q, QueryGraph_GetNodeByAlias(q, ge->alias));
                 if(ge->label)
-                    op = NewNodeByLabelScanOp(gc, *n);
+                    op = NewNodeByLabelScanOp(gc, *n, ast);
                 else
-                    op = NewAllNodeScanOp(g, *n);
+                    op = NewAllNodeScanOp(g, *n, ast);
                 Vector_Push(traversals, op);
             }
             
@@ -360,7 +437,7 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx,
     }
 
     if(ast->unwindNode) {
-        OpBase *opUnwind = NewUnwindOp(ast->unwindNode);
+        OpBase *opUnwind = NewUnwindOp(ast);
         Vector_Push(ops, opUnwind);
     }
 
@@ -373,12 +450,12 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx,
     }
 
     if(ast->mergeNode) {
-        OpBase *opMerge = NewMergeOp(gc, ast, q, execution_plan->result_set);
+        OpBase *opMerge = NewMergeOp(gc, ast, execution_plan->result_set);
         Vector_Push(ops, opMerge);
     }
 
     if(ast->deleteNode) {
-        OpBase *opDelete = NewDeleteOp(ast->deleteNode, q, gc, execution_plan->result_set);
+        OpBase *opDelete = NewDeleteOp(ast->deleteNode, q, gc, execution_plan->result_set, ast);
         Vector_Push(ops, opDelete);
     }
 
@@ -387,28 +464,50 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx,
         Vector_Push(ops, op_update);
     }
 
+    char **aliases = NULL;  // Array of aliases RETURN n.v as V
+    AR_ExpNode **exps = NULL;
+    bool aggregate = false;
+
+    if(ast->withNode) {
+        exps = _WithClause_GetExpressions(ast);
+        aliases = WithClause_GetAliases(ast->withNode);
+        aggregate = WithClause_ContainsAggregation(ast->withNode);
+    }
+
     if(ast->returnNode) {
-        // Projection before sort and produce result-set
-        // Both Aggregate and Projection perform projection.
-        if(ReturnClause_ContainsAggregation(ast->returnNode)) {
-            op = NewAggregateOp(execution_plan->result_set);
-            Vector_Push(ops, op);
-        } else {            
-            op = NewProjectOp(execution_plan->result_set);
-            Vector_Push(ops, op);
-        }
+        exps = _ReturnClause_GetExpressions(ast);
+        aliases = ReturnClause_GetAliases(ast->returnNode);
+        aggregate = ReturnClause_ContainsAggregation(ast->returnNode);
+    }
 
-        if (ast->returnNode->distinct) {
-            op = NewDistinctOp();
-            Vector_Push(ops, op);
-        }
-        
-        if(ast->orderNode) {
-            op = NewSortOp(ast);
-            Vector_Push(ops, op);
-        }
+    if(ast->returnNode || ast->withNode) {
+        if(aggregate) op = NewAggregateOp(ast, exps, aliases);
+        else op = NewProjectOp(ast, exps, aliases);
+        Vector_Push(ops, op);
+    }
 
-        op = NewProduceResultsOp(execution_plan->result_set, q);
+    if(ast->returnNode && ast->returnNode->distinct) {
+        op = NewDistinctOp();
+        Vector_Push(ops, op);
+    }
+
+    if(ast->orderNode) {
+        op = NewSortOp(ast, _OrderClause_GetExpressions(ast));
+        Vector_Push(ops, op);
+    }
+
+    if(ast->skipNode) {
+        OpBase *op_skip = NewSkipOp(ast->skipNode->skip);
+        Vector_Push(ops, op_skip);
+    }
+
+    if(ast->limitNode) {
+        OpBase *op_limit = NewLimitOp(ast->limitNode->limit);
+        Vector_Push(ops, op_limit);
+    }
+
+    if(ast->returnNode) {
+        op = NewResultsOp(execution_plan->result_set, q);
         Vector_Push(ops, op);
     }
 
@@ -422,40 +521,114 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx,
         parent_op = child_op;
     }
 
-    if(ast->whereNode != NULL) {
-        Vector *sub_trees = FilterTree_SubTrees(execution_plan->filter_tree);
-
-        /* For each filter tree find the earliest position along the execution 
-         * after which the filter tree can be applied. */
-        for(int i = 0; i < Vector_Size(sub_trees); i++) {
-            FT_FilterNode *tree;
-            Vector_Get(sub_trees, i, &tree);
-
-            Vector *references = FilterTree_CollectAliases(tree);
-
-            /* Scan execution plan, locate the earliest position where all 
-             * references been resolved. */
-            OpBase *op = ExecutionPlan_Locate_References(execution_plan->root, references);
-            assert(op);
-
-            /* Create filter node.
-             * Introduce filter op right below located op. */
-            OpBase *filter_op = NewFilterOp(tree);
-            _OpBase_PushBelow(op, filter_op);
-            for(int j = 0; j < Vector_Size(references); j++) {
-                char *ref;
-                Vector_Get(references, j, &ref);
-                free(ref);
-            }
-            Vector_Free(references);
-        }
-        Vector_Free(sub_trees);
-    }
-    
     Vector_Free(ops);
-    optimizePlan(gc, execution_plan);
-
     return execution_plan;
+}
+
+// Locates all "taps" (entry points) of root.
+static void _ExecutionPlan_StreamTaps(OpBase *root, OpBase ***taps) {    
+    if(root->childCount) {
+        for(int i = 0; i < root->childCount; i++) {
+            OpBase *child = root->children[i];
+            _ExecutionPlan_StreamTaps(child, taps);
+        }
+    } else {
+        *taps = array_append(*taps, root);
+    }
+}
+
+static ExecutionPlan *_ExecutionPlan_Connect(ExecutionPlan *a, ExecutionPlan *b, AST *ast) {
+    assert(a &&
+           b &&
+           (a->root->type == OPType_PROJECT || a->root->type == OPType_AGGREGATE));
+    
+    OpBase *tap;
+    OpBase **taps = array_new(sizeof(OpBase*), 1);
+    _ExecutionPlan_StreamTaps(b->root, &taps);
+
+    unsigned short tap_count = array_len(taps);
+    if(tap_count == 1 && !(taps[0]->type & OP_SCAN)) {
+        /* Single tap, entry point isn't a SCAN operation, e.g.
+         * MATCH (b) WITH b.v AS V RETURN V
+         * MATCH (b) WITH b.v+1 AS V CREATE (n {v:V}) */
+        _OpBase_AddChild(taps[0], a->root);
+    } else {
+        /* Multiple taps or a single SCAN tap, e.g. 
+         * MATCH (b) WITH b.v AS V MATCH (c) return V,c
+         * MATCH (b) WITH b.v AS V MATCH (c),(d) return c, V, d */
+        for(int i = 0; i < tap_count; i++) {
+            tap = taps[i];
+            if(tap->type & OP_SCAN) {
+                // Connect via cartesian product
+                OpBase *cartesianProduct = NewCartesianProductOp(AST_AliasCount(ast));
+                ExecutionPlan_PushBelow(tap, cartesianProduct);
+                _OpBase_AddChild(cartesianProduct, a->root);
+                break;
+            }
+        }
+    }
+
+    array_free(taps);
+    // null root to avoid freeing connected operations.
+    a->root = NULL;
+    // null query graph to avoid freeing entities referenced in both graphs
+    // TODO memory leak on entities that exclusively appear in this graph
+    free(a->query_graph);
+    a->query_graph = NULL;
+    ExecutionPlanFree(a);
+    return b;
+}
+
+ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST **ast, bool explain) {
+    ExecutionPlan *plan = NULL;
+    ExecutionPlan *curr_plan;
+    
+    // Use the last AST, as it is supposed to be the only AST with a RETURN node.
+    ExpandCollapsedNodes(ast[array_len(ast)-1]);
+    ResultSet *result_set = NULL;
+    if(!explain) {
+        result_set = NewResultSet(ast[array_len(ast)-1], ctx);
+        ResultSet_CreateHeader(result_set, ast[array_len(ast)-1]);
+    }
+
+    for(unsigned int i = 0; i < array_len(ast); i++) {
+        curr_plan = _NewExecutionPlan(ctx, gc, ast[i], result_set);
+        if(i == 0) plan = curr_plan;
+        else plan = _ExecutionPlan_Connect(plan, curr_plan, ast[i]);
+
+        if(ast[i]->whereNode != NULL) {
+            Vector *sub_trees = FilterTree_SubTrees(curr_plan->filter_tree);
+
+            /* For each filter tree find the earliest position along the execution 
+            * after which the filter tree can be applied. */
+            for(int i = 0; i < Vector_Size(sub_trees); i++) {
+                FT_FilterNode *tree;
+                Vector_Get(sub_trees, i, &tree);
+
+                Vector *references = FilterTree_CollectAliases(tree);
+
+                /* Scan execution plan, locate the earliest position where all 
+                 * references been resolved. */
+                OpBase *op = ExecutionPlan_Locate_References(plan->root, references);
+                assert(op);
+
+                /* Create filter node.
+                 * Introduce filter op right below located op. */
+                OpBase *filter_op = NewFilterOp(tree);
+                ExecutionPlan_PushBelow(op, filter_op);
+                for(int j = 0; j < Vector_Size(references); j++) {
+                    char *ref;
+                    Vector_Get(references, j, &ref);
+                    free(ref);
+                }
+                Vector_Free(references);
+            }
+            Vector_Free(sub_trees);
+        }
+        optimizePlan(gc, plan, ast[i]);
+    }
+
+    return plan;
 }
 
 void _ExecutionPlanPrint(const OpBase *op, char **strPlan, int ident) {
@@ -480,9 +653,23 @@ char* ExecutionPlanPrint(const ExecutionPlan *plan) {
     return strPlan;
 }
 
+void _ExecutionPlanInit(OpBase *root) {
+    if(root->init) root->init(root);
+    for(int i = 0; i < root->childCount; i++) {
+        _ExecutionPlanInit(root->children[i]);
+    }
+}
+
+void ExecutionPlanInit(ExecutionPlan *plan) {
+    if(!plan) return;
+    _ExecutionPlanInit(plan->root);
+}
+
 ResultSet* ExecutionPlan_Execute(ExecutionPlan *plan) {
-    OpBase *op = plan->root;
     Record r;
+    OpBase *op = plan->root;
+    
+    ExecutionPlanInit(plan);
     while((r = op->consume(op)) != NULL) Record_Free(r);
     return plan->result_set;
 }
@@ -495,10 +682,9 @@ void _ExecutionPlanFreeRecursive(OpBase* op) {
 }
 
 void ExecutionPlanFree(ExecutionPlan *plan) {
-    if (plan == NULL) return;
+    if(plan == NULL) return;
+    if(plan->root) _ExecutionPlanFreeRecursive(plan->root);
 
-    _ExecutionPlanFreeRecursive(plan->root);
-    if(plan->filter_tree) FilterTree_Free(plan->filter_tree);
-    if(plan->query_graph) QueryGraph_Free(plan->query_graph);
+    QueryGraph_Free(plan->query_graph);
     free(plan);
 }

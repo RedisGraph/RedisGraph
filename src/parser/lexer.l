@@ -34,6 +34,7 @@ int yycolumn = 1;
 "SKIP"      { return SKIP; }
 "ORDER"     { return ORDER; }
 "MERGE"     { return MERGE; }
+"WITH"      { return WITH; }
 "BY"        { return BY; }
 "ASC"       { return ASC; }
 "DESC"      { return DESC; }

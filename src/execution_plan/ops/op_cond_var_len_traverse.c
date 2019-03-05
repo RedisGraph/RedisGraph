@@ -13,8 +13,8 @@
 #include "./op_cond_var_len_traverse.h"
 
 static void _setupTraversedRelations(CondVarLenTraverse *op) {
-    AST *ast = AST_GetFromLTS();
-    GraphContext *gc = GraphContext_GetFromLTS();    
+    AST *ast = op->ast;
+    GraphContext *gc = GraphContext_GetFromTLS();    
     AST_LinkEntity *e = (AST_LinkEntity*)MatchClause_GetEntity(ast->matchNode, op->ae->edge->alias);
     op->relationIDsCount = AST_LinkEntity_LabelCount(e);
 
@@ -32,13 +32,13 @@ static void _setupTraversedRelations(CondVarLenTraverse *op) {
     }
 }
 
-OpBase* NewCondVarLenTraverseOp(AlgebraicExpression *ae, unsigned int minHops, unsigned int maxHops, Graph *g) {
+OpBase* NewCondVarLenTraverseOp(AlgebraicExpression *ae, unsigned int minHops, unsigned int maxHops, Graph *g, AST *ast) {
     assert(ae && minHops <= maxHops && g && ae->operand_count == 1);
-    AST *ast = AST_GetFromLTS();
 
     CondVarLenTraverse *condVarLenTraverse = malloc(sizeof(CondVarLenTraverse));
     condVarLenTraverse->g = g;
     condVarLenTraverse->ae = ae;
+    condVarLenTraverse->ast = ast;
     condVarLenTraverse->relationIDs = NULL;
     condVarLenTraverse->srcNodeIdx = AST_GetAliasID(ast, ae->src_node->alias);
     condVarLenTraverse->destNodeIdx = AST_GetAliasID(ast, ae->dest_node->alias);

@@ -10,7 +10,7 @@
 #include "ast.h"
 
 typedef struct {
-    AST *root;
+    AST **root;
     int ok;
     char *errorMsg;
 } parseCtx;

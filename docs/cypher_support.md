@@ -52,11 +52,8 @@ We do not support any of these properties at the type level, meaning nodes and r
 ### Projecting Clauses
 + RETURN
 + AS
-
-  **Unsupported:**
-
-- WITH
-- UNWIND
++ WITH
++ UNWIND
 
 ### Reading sub-clauses
 + WHERE
@@ -122,11 +119,11 @@ We do not support any of these properties at the type level, meaning nodes and r
 + ceil
 + floor
 + sign
++ round
 
   **Unsupported:**
 
 - rand
-- round
 
 ### String functions
 + left

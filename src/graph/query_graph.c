@@ -318,6 +318,8 @@ Edge** QueryGraph_GetEdgeRef(const QueryGraph *g, const Edge *e) {
 
 /* Frees entire graph. */
 void QueryGraph_Free(QueryGraph* g) {
+    if (!g) return;
+
     /* Free graph's nodes. */
     int i;
     int nodeCount = g->node_count;
