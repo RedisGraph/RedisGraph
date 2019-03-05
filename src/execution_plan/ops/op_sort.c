@@ -100,20 +100,18 @@ static Record _handoff(OpSort *op) {
     return NULL;
 }
 
-void _determineOffset(OpSort *op) {
-    assert(op->op.childCount == 1);
-    OpBase *child = op->op.children[0];
-    assert(child->type == OPType_AGGREGATE || child->type == OPType_PROJECT);
+uint _determineOffset(OpBase *op) {
+    assert(op);
     
-    if(child->type == OPType_AGGREGATE) {
-        OpAggregate *aggregate = (OpAggregate*)child;
-        op->offset = array_len(aggregate->expressions);        
+    if(op->type == OPType_AGGREGATE) {
+        OpAggregate *aggregate = (OpAggregate*)op;
+        return aggregate->exp_count;
+    } else if(op->type == OPType_PROJECT) {
+        OpProject *project = (OpProject*)op;
+        return project->exp_count;
     }
 
-    if(child->type == OPType_PROJECT) {
-        OpProject *project = (OpProject*)child;
-        op->offset = project->exp_count;
-    }
+    return _determineOffset(op->children[0]);
 }
 
 OpBase *NewSortOp(const AST *ast, AR_ExpNode **expressions) {
@@ -156,7 +154,7 @@ OpBase *NewSortOp(const AST *ast, AR_ExpNode **expressions) {
 
 OpResult SortInit(OpBase *opBase) {
     OpSort *op = (OpSort*) opBase;
-    _determineOffset(op);
+    op->offset = _determineOffset(opBase->children[0]);
     return OP_OK;
 }
 

@@ -52,6 +52,10 @@ void ExecutionPlan_PushBelow(OpBase *a, OpBase *b);
 /* Replace a with b. */
 void ExecutionPlan_ReplaceOp(ExecutionPlan *plan, OpBase *a, OpBase *b);
 
+/* Locate the first operation of a given type within execution plan.
+ * Returns NULL if operation wasn't found. */
+OpBase* ExecutionPlan_LocateOp(OpBase *root, OPType type);
+
 /* Executes plan */
 ResultSet* ExecutionPlan_Execute(ExecutionPlan *plan);
 

@@ -71,6 +71,9 @@ void Record_AddEdge(Record r, int idx, Edge edge);
 // String representation of record.
 size_t Record_ToString(const Record r, char **buf, size_t *buf_cap);
 
+// 64-bit hash of record
+unsigned long long Record_Hash64(const Record r);
+
 // Free record.
 void Record_Free(Record r);
 

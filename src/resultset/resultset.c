@@ -13,17 +13,44 @@
 #include "../grouping/group_cache.h"
 #include "../arithmetic/aggregate.h"
 
-/* Checks if we've already seen given records
- * Returns 1 if the string did not exist otherwise 0. */
-static int _encounteredRecord(ResultSet *set, const Record r) {
-    char *str = NULL;
-    size_t len = 0;
-    len = Record_ToString(r, &str, &len);
+/* Redis prints doubles with up to 17 digits of precision, which captures
+ * the inaccuracy of many floating-point numbers (such as 0.1).
+ * By using the %g format and a precision of 15 significant digits, we avoid many
+ * awkward representations like RETURN 0.1 emitting "0.10000000000000001",
+ * though we're still subject to many of the typical issues with floating-point error. */
+static inline void _ResultSet_ReplyWithRoundedDouble(RedisModuleCtx *ctx, double d) {
+    // Get length required to print number
+    int len = snprintf(NULL, 0, "%.15g", d);
+    char str[len + 1]; // TODO a reusable buffer would be far preferable
+    sprintf(str, "%.15g", d);
+    // Output string-formatted number
+    RedisModule_ReplyWithStringBuffer(ctx, str, len);
+}
 
-    // Returns 1 if the string did NOT exist otherwise 0
-    int newRecord = TrieMap_Add(set->trie, str, len, NULL, NULL);
-    rm_free(str);
-    return !newRecord;
+/* This function handles emitting SIValue types through the Redis RESP protocol.
+ * This protocol has unique support for strings, 8-byte integers, and NULL values. */
+static void _ResultSet_ReplyWithScalar(RedisModuleCtx *ctx, const SIValue v) {
+    // Emit the actual value, then the value type (to facilitate client-side parsing)
+    switch (SI_TYPE(v)) {
+        case T_STRING:
+            RedisModule_ReplyWithStringBuffer(ctx, v.stringval, strlen(v.stringval));
+            return;
+        case T_INT64:
+            RedisModule_ReplyWithLongLong(ctx, v.longval);
+            return;
+        case T_DOUBLE:
+            _ResultSet_ReplyWithRoundedDouble(ctx, v.doubleval);
+            return;
+        case T_BOOL:
+            if (v.longval != 0) RedisModule_ReplyWithStringBuffer(ctx, "true", 4);
+            else RedisModule_ReplyWithStringBuffer(ctx, "false", 5);
+            return;
+        case T_NULL:
+            RedisModule_ReplyWithNull(ctx);
+            return;
+        default:
+            assert("Unhandled value type" && false);
+      }
 }
 
 static void _ResultSet_ReplayHeader(const ResultSet *set, const ResultSetHeader *header) {    
@@ -152,7 +179,6 @@ static void _ResultSetHeader_Free(ResultSetHeader* header) {
 ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx) {
     ResultSet* set = (ResultSet*)malloc(sizeof(ResultSet));
     set->ctx = ctx;
-    set->trie = NULL;
     set->distinct = (ast->returnNode && ast->returnNode->distinct);
     set->recordCount = 0;    
     set->header = NULL;
@@ -165,7 +191,6 @@ ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx) {
     set->stats.relationships_created = 0;
     set->stats.nodes_deleted = 0;
     set->stats.relationships_deleted = 0;
-    if(set->distinct) set->trie = NewTrieMap();
 
     _ResultSet_SetupReply(set);
 
@@ -173,10 +198,6 @@ ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx) {
 }
 
 int ResultSet_AddRecord(ResultSet* set, Record r) {
-    /* TODO: Incase of an aggregated query, there's no need to distinct check
-     * groups are already distinct by key. */
-    if(set->distinct && _encounteredRecord(set, r)) return RESULTSET_OK;
-
     set->recordCount++;
 
     // Output the current record
@@ -199,6 +220,5 @@ void ResultSet_Free(ResultSet *set) {
 
     free(set->buffer);
     if(set->header) _ResultSetHeader_Free(set->header);
-    if(set->trie != NULL) TrieMap_Free(set->trie, TrieMap_NOP_CB);
     free(set);
 }

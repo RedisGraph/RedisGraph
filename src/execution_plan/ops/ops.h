@@ -25,6 +25,7 @@
 #include "op_sort.h"
 #include "op_results.h"
 #include "op_project.h"
+#include "op_distinct.h"
 #include "op_skip.h"
 #include "op_limit.h"
 

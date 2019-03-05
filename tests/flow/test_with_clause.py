@@ -14,7 +14,6 @@ redis_graph = None
 values = ["str1", "str2", False, True, 5, 10.5]
 
 def redis():
-    #  return DisposableRedis(loadmodule=os.path.dirname(os.path.abspath(__file__)) + '/../../src/redisgraph.so', port=6379)
     return DisposableRedis(loadmodule=os.path.dirname(os.path.abspath(__file__)) + '/../../src/redisgraph.so')
 
 class WithClauseTest(FlowTestsBase):

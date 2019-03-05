@@ -38,6 +38,7 @@ typedef enum {
     OPType_PROJECT = 0x10000,
     OPType_SKIP = 0x20000,
     OPType_LIMIT = 0x40000,
+    OPType_DISTINCT = 0x80000,
 } OPType;
 
 #define OP_SCAN (OPType_ALL_NODE_SCAN | OPType_NODE_BY_LABEL_SCAN | OPType_INDEX_SCAN)

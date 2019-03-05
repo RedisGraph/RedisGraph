@@ -1,3 +1,6 @@
+
+ROOT=../..
+
 # Path to Google Test source
 GTEST_DIR = ../../deps/googletest
 
@@ -45,8 +48,9 @@ gtest_main.a : gtest-all.o gtest_main.o
 CC_OBJECTS:=$(CC_OBJECTS)
 LIBTRIEMAP=../../src/util/triemap/libtriemap.a
 LIBGRAPHBLAS=../../deps/GraphBLAS/build/libgraphblas.a
+LIBXXHASH=$(ROOT)/deps/xxhash/libxxhash.a
 
-LIBS=$(LIBTRIEMAP) $(LIBGRAPHBLAS)
+LIBS=$(LIBTRIEMAP) $(LIBGRAPHBLAS) $(LIBXXHASH)
 DEPS=$(CC_OBJECTS) $(LIBS)
 
 # Build and run a test for each cpp file in directory

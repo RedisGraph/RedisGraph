@@ -21,7 +21,6 @@
 
 typedef struct {
     RedisModuleCtx *ctx;
-    TrieMap *trie;              /* When using distinct, used to identify unique records. */
     ResultSetHeader *header;    /* Describes how records should look like. */
     bool distinct;              /* Rather or not each record is unique. */
     size_t recordCount;         /* Number of records introduced. */

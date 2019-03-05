@@ -29,7 +29,8 @@ typedef enum {
     AST *ast;
     char **aliases;
     AR_ExpNode **expressions;
-    AR_ExpNode **order_expressions;
+    AR_ExpNode **order_exps;
+    unsigned short exp_count;
     unsigned short order_exp_count;
     AR_ExpNode **none_aggregated_expressions;      /* Array of arithmetic expression. */
     ExpClassification *expression_classification;  /* classifies expression as aggregated/none aggregated.  */
