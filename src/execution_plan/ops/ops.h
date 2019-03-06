@@ -28,5 +28,6 @@
 #include "op_distinct.h"
 #include "op_skip.h"
 #include "op_limit.h"
+#include "op_expand_into.h"
 
 #endif
