@@ -11,6 +11,10 @@
 #include "../redismodule.h"
 #include "../execution_plan/record.h"
 
+// TODO remove
+char **node_string_mapping;
+char **edge_string_mapping;
+
 // Must be explicitly declared
 void ResultSet_ReplyWithSIValue(RedisModuleCtx *ctx, const SIValue v, bool print_type);
 

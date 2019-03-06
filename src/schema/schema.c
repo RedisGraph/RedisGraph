@@ -152,6 +152,32 @@ void Schema_RemoveIndex(Schema *s, const char *attribute) {
     }
 }
 
+// Create a map from attribute ID to attribute name
+char** Schema_AttributeMap(Schema *s, unsigned short *attr_count) {
+    *attr_count = Schema_AttributeCount(s);
+    char **map = malloc(sizeof(char*) * (*attr_count));
+
+    char *ptr;
+    tm_len_t len;
+    Attribute_ID *attr_id;
+    TrieMapIterator *it = TrieMap_Iterate(s->attributes, "", 0);
+
+    while(TrieMapIterator_Next(it, &ptr, &len, (void**)&attr_id)) {
+        map[*attr_id] = malloc(sizeof(char) * len+1);
+        memcpy(map[*attr_id], ptr, len);
+        map[*attr_id][len] = '\0';
+    }
+
+    TrieMapIterator_Free(it);
+
+    return map;
+}
+
+// Free attribute map created by Schema_AttributeMapping
+void Schema_FreeAttributeMap(char **map, unsigned short map_len) {
+    for(unsigned short i = 0; i < map_len; i++) free(map[i]);
+    free(map);
+}
 void Schema_Free(Schema *schema) {
     if(schema->name) rm_free(schema->name);
     TrieMap_Free(schema->attributes, NULL);

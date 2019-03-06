@@ -62,6 +62,10 @@ void Schema_AddIndex(Schema *s, char *attribute, Index *idx);
 /* Removes index. */
 void Schema_RemoveIndex(Schema *s, const char *attribute);
 
+char** Schema_AttributeMap(Schema *s, unsigned short *attr_count);
+
+void Schema_FreeAttributeMap(char **map, unsigned short map_len);
+
 /* Free schema. */
 void Schema_Free(Schema *s);
 

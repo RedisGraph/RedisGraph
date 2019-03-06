@@ -26,7 +26,7 @@ static inline void _ResultSet_ReplyWithRoundedDouble(RedisModuleCtx *ctx, double
     RedisModule_ReplyWithStringBuffer(ctx, str, len);
 }
 
-static void _ResultSet_ReplyWithProperties(RedisModuleCtx *ctx, const GraphEntity *e) {
+static void _ResultSet_ReplyWithProperties(RedisModuleCtx *ctx, const GraphEntityType t, const GraphEntity *e) {
     int prop_count = ENTITY_PROP_COUNT(e);
     RedisModule_ReplyWithArray(ctx, prop_count);
     // Iterate over all properties stored on entity
@@ -34,9 +34,8 @@ static void _ResultSet_ReplyWithProperties(RedisModuleCtx *ctx, const GraphEntit
         RedisModule_ReplyWithArray(ctx, 2);
         EntityProperty prop = ENTITY_PROPS(e)[i];
         // Emit the string key
-        // TODO get property names
-        // RedisModule_ReplyWithStringBuffer(ctx, prop.name, strlen(prop.name));
-        RedisModule_ReplyWithStringBuffer(ctx, "", 1);
+        const char *prop_str = (t == GETYPE_NODE) ? node_string_mapping[prop.id] : edge_string_mapping[prop.id];
+        RedisModule_ReplyWithStringBuffer(ctx, prop_str, strlen(prop_str));
         // Emit the value
         ResultSet_ReplyWithSIValue(ctx, prop.value, false);
     }
@@ -45,19 +44,13 @@ static void _ResultSet_ReplyWithProperties(RedisModuleCtx *ctx, const GraphEntit
 static void _ResultSet_ReplyWithNode(RedisModuleCtx *ctx, Node *n) {
     /*  Node reply format:
      *  [
-     *      ["type", "node"]
      *      ["id", Node ID (integer)]
      *      ["label", [label (string or NULL)]]
      *      ["properties", [[name, value, value type] X N]
      *  ]
      */
-    // 4 top-level entities in node reply
-    RedisModule_ReplyWithArray(ctx, 4);
-
-    // ["type", "node"]
-    RedisModule_ReplyWithArray(ctx, 2);
-    RedisModule_ReplyWithStringBuffer(ctx, "type", 4);
-    RedisModule_ReplyWithStringBuffer(ctx, "node", 4);
+    // 3 top-level entities in node reply
+    RedisModule_ReplyWithArray(ctx, 3);
 
     // ["id", id (integer)]
     int id = ENTITY_GET_ID(n);
@@ -83,36 +76,30 @@ static void _ResultSet_ReplyWithNode(RedisModuleCtx *ctx, Node *n) {
     // [properties, [properties]]
     RedisModule_ReplyWithArray(ctx, 2);
     RedisModule_ReplyWithStringBuffer(ctx, "properties", 10);
-    _ResultSet_ReplyWithProperties(ctx, (GraphEntity*)n);
+    _ResultSet_ReplyWithProperties(ctx, GETYPE_EDGE, (GraphEntity*)n);
 }
 
 static void _ResultSet_ReplyWithEdge(RedisModuleCtx *ctx, Edge *e) {
     /*  Edge reply format:
      *  [
-     *      ["type", "relation"]
      *      ["id", Edge ID (integer)]
-     *      ["relation_type", relation type (string)]
+     *      ["type", relation type (string)]
      *      ["src_node", source node ID (integer)]
      *      ["dest_node", destination node ID (integer)]
      *      ["properties", [[name, value, value type] X N]
      *  ]
      */
-    // 6 top-level entities in node reply
-    RedisModule_ReplyWithArray(ctx, 6);
-
-    // ["type", "relation"]
-    RedisModule_ReplyWithArray(ctx, 2);
-    RedisModule_ReplyWithStringBuffer(ctx, "type", 4);
-    RedisModule_ReplyWithStringBuffer(ctx, "relation", 8);
+    // 5 top-level entities in node reply
+    RedisModule_ReplyWithArray(ctx, 5);
 
     // ["id", id (integer)]
     RedisModule_ReplyWithArray(ctx, 2);
     RedisModule_ReplyWithStringBuffer(ctx, "id", 2);
     RedisModule_ReplyWithLongLong(ctx, ENTITY_GET_ID(e));
 
-    // ["relation_type", type (string)]
+    // ["type", type (string)]
     RedisModule_ReplyWithArray(ctx, 2);
-    RedisModule_ReplyWithStringBuffer(ctx, "relation_type", 13);
+    RedisModule_ReplyWithStringBuffer(ctx, "type", 4);
     // Retrieve relation type
     // TODO Make a more efficient lookup for this string
     GraphContext *gc = GraphContext_GetFromTLS();
@@ -132,7 +119,7 @@ static void _ResultSet_ReplyWithEdge(RedisModuleCtx *ctx, Edge *e) {
     // [properties, [properties]]
     RedisModule_ReplyWithArray(ctx, 2);
     RedisModule_ReplyWithStringBuffer(ctx, "properties", 10);
-    _ResultSet_ReplyWithProperties(ctx, (GraphEntity*)e);
+    _ResultSet_ReplyWithProperties(ctx, GETYPE_EDGE, (GraphEntity*)e);
 }
 
 /* This function has handling for all SIValue scalar types.

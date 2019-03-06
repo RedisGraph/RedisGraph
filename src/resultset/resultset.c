@@ -192,6 +192,22 @@ ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx) {
     set->stats.nodes_deleted = 0;
     set->stats.relationships_deleted = 0;
 
+    node_string_mapping = NULL;
+    edge_string_mapping = NULL;
+    // if (header_contains_full_entities) {
+    if (1) {
+        /* Having separate mappings for nodes and edges makes
+         * sense (so we can convert from AttributeIDs properly).
+         * Should only populate specified labels when possible;
+         * but the map size is always equal to triemap cardinality.
+         * Do similar for node/edge labels, or unnecessary?
+         * Never mind, bad assumptions - can't return partial mapping to user */
+        GraphContext *gc = GraphContext_GetFromTLS();
+        unsigned short attr_count;
+        node_string_mapping = Schema_AttributeMap(GraphContext_GetUnifiedSchema(gc, SCHEMA_NODE), &attr_count);
+        edge_string_mapping = Schema_AttributeMap(GraphContext_GetUnifiedSchema(gc, SCHEMA_EDGE), &attr_count);
+    }
+
     _ResultSet_SetupReply(set);
 
     return set;
