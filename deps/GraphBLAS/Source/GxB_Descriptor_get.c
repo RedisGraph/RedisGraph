@@ -2,12 +2,14 @@
 // GxB_Descriptor_get: get a field in a descriptor
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
 // Use GxB_Desc_get instead; this is kept for backward compatibility.
+
+// not parallel: this function does O(1) work and is already thread-safe.
 
 #include "GB.h"
 
@@ -47,6 +49,9 @@ GrB_Info GxB_Descriptor_get     // get a parameter from a descriptor
         case GrB_INP1 : 
 
             (*val) = (desc == NULL) ? GxB_DEFAULT : desc->in1  ; break ;
+
+        // case GxB_NTHREADS: use GxB_Desc_get instead, since nthreads is
+        //      an int, but (*val) is just a GrB_Desc_Value.
 
         case GxB_AxB_METHOD : 
 

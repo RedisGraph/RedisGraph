@@ -2,7 +2,7 @@
 // GB_ix_alloc: allocate a matrix to hold a given number of entries
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -13,6 +13,12 @@
 // A->x is freed but not reallocated.
 
 // If this method fails, all content of A is freed (including A->p and A->h).
+
+// GB_ix_alloc is only called by GB_create, so the matrix is not in the queue.
+// The function never accessed the global matrix queue, and thus it
+// cannot return GrB_PANIC.
+
+// not parallel: this function does O(1) work and is already thread-safe.
 
 #include "GB.h"
 
@@ -35,13 +41,10 @@ GrB_Info GB_ix_alloc        // allocate A->i and A->x space in a matrix
     ASSERT (A != NULL && A->p != NULL) ;
     ASSERT ((!(A->is_hyper) || A->h != NULL)) ;
 
-    double memory = GBYTES (nzmax,
-        sizeof (int64_t) + (numeric ? A->type->size : 0)) ;
-
     if (nzmax > GB_INDEX_MAX)
     { 
         // problem too large
-        return (GB_OUT_OF_MEMORY (memory)) ;
+        return (GB_OUT_OF_MEMORY) ;
     }
 
     //--------------------------------------------------------------------------
@@ -50,7 +53,8 @@ GrB_Info GB_ix_alloc        // allocate A->i and A->x space in a matrix
 
     // Free the existing A->x and A->i content, if any.
     // Leave A->p and A->h unchanged.
-    GB_IX_FREE (A) ;
+    GrB_Info info = GB_ix_free (A) ;
+    ASSERT (info == GrB_SUCCESS) ;
 
     // allocate the new A->x and A->i content
     A->nzmax = GB_IMAX (nzmax, 1) ;
@@ -63,8 +67,8 @@ GrB_Info GB_ix_alloc        // allocate A->i and A->x space in a matrix
     if (A->i == NULL || (numeric && A->x == NULL))
     { 
         // out of memory
-        GB_CONTENT_FREE (A) ;
-        return (GB_OUT_OF_MEMORY (memory)) ;
+        GB_PHIX_FREE (A) ;
+        return (GB_OUT_OF_MEMORY) ;
     }
 
     return (GrB_SUCCESS) ;

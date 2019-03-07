@@ -2,14 +2,16 @@
 // GB_cast_factory: return a pointer to a typecasting function
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
-// return a pointer to a function f(z,x,s) that copies its input x into its
+// Returns a pointer to a function f(z,x,s) that copies its input x into its
 // output z, casting as needed.  That is, it computes z = (type of z) x.
 // s is the size for user-defined types, which can only be copied.
+
+// not parallel: this function does O(1) work and is already thread-safe.
 
 #include "GB.h"
 

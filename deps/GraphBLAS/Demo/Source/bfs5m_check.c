@@ -20,6 +20,13 @@
 // frees workspace, and returns to the caller.  It uses the FREE_ALL macro
 // to free the workspace
 
+// NOTE: this method can be *slow*, in special cases (v very sparse on output,
+// A in CSC format instead of the default CSR, or if A has any explicit values
+// equal to zero in its pattern).  See LAGraph_bfs_pushpull for a faster method
+// that handles these cases.  Do not benchmark this code!  It is just for
+// simple illustration.  Use the LAGraph_bfs_pushpull for benchmarking and
+// production use.
+
 #define FREE_ALL            \
     GrB_free (&v) ;         \
     GrB_free (&q) ;         \
@@ -57,9 +64,9 @@ GrB_Info bfs5m_check        // BFS of a graph (using vector assign & reduce)
 
     OK (GrB_Matrix_nrows (&n, A)) ;             // n = # of rows of A
     OK (GrB_Vector_new (&v, GrB_INT32, n)) ;    // Vector<int32_t> v(n) = 0
-    // This is a little faster if the whole graph is expected to be searched:
-    // but slower if only a small part of the graph is reached:
-    // for (int32_t i = 0 ; i < n ; i++) OK (GrB_Vector_setElement (v, 0, i)) ;
+    OK (GrB_assign (v, NULL, NULL, 0, GrB_ALL, n, NULL)) ;   // make v dense
+    OK (GrB_Vector_nvals (&n, v)) ;              // finish pending work on v
+
     OK (GrB_Vector_new (&q, GrB_BOOL, n)) ;     // Vector<bool> q(n) = false
     OK (GrB_Vector_setElement (q, true, s)) ;   // q[s] = true, false elsewhere
 
@@ -85,6 +92,10 @@ GrB_Info bfs5m_check        // BFS of a graph (using vector assign & reduce)
         // successor = ||(q)
         OK (GrB_reduce (&successor, NULL, GxB_LOR_BOOL_MONOID, q, NULL)) ;
     }
+
+    // make v sparse
+    OK (GrB_Descriptor_set (desc, GrB_MASK, GxB_DEFAULT)) ;// mask not inverted
+    OK (GrB_assign (v, v, NULL, v, GrB_ALL, n, desc)) ;
 
     *v_output = v ;         // return result
     v = NULL ;              // set to NULL so FREE_ALL doesn't free it

@@ -9,7 +9,7 @@ construct the appropriate compile-time definitions.  The declarations for all
 such user-defined objects are appended to GraphBLAS/Include/GraphBLAS.h.
 
 Example *.m4 files in the User/Example folder are listed below.  These are not
-activated by default.  Move them form User/Example to User/ to use them.
+activated by default.  Move them from User/Example to User/ to use them.
 
 my_complex.m4           double complex type, and standard plus-times-complex
                         semiring.  See also Demo/Source/usercomplex.c for a
@@ -25,3 +25,6 @@ my_band.m4              a select operator for C=tril(triu(A,hi),lo)
 
 my_pagerank.m4          pagerank type, operators, and semiring for
                         Demo/Source/dpagerank2.c
+
+my_max.m4               user-defined monoid, with terminal value
+

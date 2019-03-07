@@ -2,7 +2,7 @@
 // GrB_Matrix_extractElement: extract a single entry from a matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -12,6 +12,8 @@
 
 // Returns GrB_SUCCESS if A(row,col) is present, and sets x to its value.
 // Returns GrB_NO_VALUE if A(row,col) is not present, and x is unmodified.
+
+// not parallel: this function does O(log(..)) work and is already thread-safe.
 
 #include "GB.h"
 

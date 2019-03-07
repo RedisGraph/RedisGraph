@@ -5,6 +5,8 @@
 ../build/pthread_demo                          > pthread_demo.out
 ../build/openmp_demo                           > openmp_demo.out
 
+../build/import_demo   < Matrix/west0067            > import_demo.out
+
 ../build/pagerank_demo < Matrix/eye3                > pagerank_demo.out
 ../build/pagerank_demo < Matrix/2blocks            >> pagerank_demo.out
 ../build/pagerank_demo < Matrix/t1                 >> pagerank_demo.out

@@ -2,13 +2,16 @@
 // GB_apply: apply a unary operator; optionally transpose a matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
 // C<M> = accum (C, op(A)) or accum (C, op(A)')
+
 // GB_apply does the work for GrB_*_apply.  Compare this with GrB_transpose.
+
+// parallel: not here, but in GB_transpose and GB_shallow_op
 
 #include "GB.h"
 
@@ -77,7 +80,7 @@ GrB_Info GB_apply                   // C<M> = accum (C, op(A)) or op(A')
     GB_RETURN_IF_QUICK_MASK (C, C_replace, M, Mask_comp) ;
 
     // delete any lingering zombies and assemble any pending tuples
-    GB_WAIT (C) ;
+    // GB_WAIT (C) ;
     GB_WAIT (M) ;
     GB_WAIT (A) ;
 

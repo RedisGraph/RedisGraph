@@ -2,7 +2,7 @@
 // GB_transpose:  C=A' or C=op(A'), with typecasting
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -25,6 +25,13 @@
 
 // If A_in is not NULL and Chandle is NULL, then A is modified in place, and
 // the A_in matrix is not freed when done.
+
+// PARALLEL: two methods are used: a bucket sort, and a qsort.  For the
+// parallel case, it might be hard to parallelize the bucket sort.  The qsort
+// is likely better, and the bucket sort could remain mostly sequential.  Most
+// of the work is done in other functions (GB_transpose_bucket, GB_builder,
+// etc), not here.  There are a few large loops here, and a large memcpy, that
+// should be done in parallel.
 
 #include "GB.h"
 
@@ -116,13 +123,10 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
     ASSERT (!GB_ZOMBIES (A)) ;
 
     //--------------------------------------------------------------------------
-    // free the Sauna, if transposing in place
+    // determine the number of threads to use
     //--------------------------------------------------------------------------
 
-    if (in_place && A != NULL)
-    {
-        GB_Sauna_free (&(A->Sauna)) ;
-    }
+    GB_GET_NTHREADS (nthreads, Context) ;
 
     //--------------------------------------------------------------------------
     // get A
@@ -253,7 +257,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
         // dimensions.  C is hypersparse for now but may convert when
         // returned.
         GB_CREATE (Chandle, ctype, avdim, avlen, GB_Ap_calloc,
-            C_is_csc, GB_FORCE_HYPER, A_hyper_ratio, 1, 1, true) ;
+            C_is_csc, GB_FORCE_HYPER, A_hyper_ratio, 1, 1, true, Context) ;
 
         if (info != GrB_SUCCESS)
         { 
@@ -287,7 +291,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
 
         // if *Chandle == NULL, allocate a new header; otherwise reuse existing
         GB_NEW (Chandle, ctype, 1, avlen, GB_Ap_null, C_is_csc,
-            GB_FORCE_HYPER, A_hyper_ratio, 0) ;
+            GB_FORCE_HYPER, A_hyper_ratio, 0, Context) ;
         if (info != GrB_SUCCESS)
         { 
             // out of memory
@@ -309,13 +313,11 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
         GB_void *restrict Cx = NULL ;
         int64_t *restrict Cp ;
         int64_t *restrict Ci ;
-        double memory = GBYTES (2*anz+1, sizeof (int64_t)) ;
         GB_MALLOC_MEMORY (Cp, anz+1, sizeof (int64_t)) ;
-        GB_CALLOC_MEMORY (Ci, anz  , sizeof (int64_t)) ;
+        GB_CALLOC_MEMORY (Ci, anz  , sizeof (int64_t), Context) ;
         if (allocate_new_Cx)
         { 
             // allocate new space for the new typecasted numerical values of C
-            memory += GBYTES (anz, ctype->size) ;
             GB_MALLOC_MEMORY (Cx, anz, ctype->size) ;
         }
         if (Cp == NULL || Ci == NULL || (allocate_new_Cx && (Cx == NULL)))
@@ -325,7 +327,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
             GB_FREE_MEMORY (Ci, anz  , sizeof (int64_t)) ;
             GB_FREE_MEMORY (Cx, anz  , csize) ;
             GB_FREE_A_AND_C ;
-            return (GB_OUT_OF_MEMORY (memory)) ;
+            return (GB_OUT_OF_MEMORY) ;
         }
 
         //----------------------------------------------------------------------
@@ -337,14 +339,14 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
         { 
             // Cx = op ((op->xtype) Ax)
             C->x = Cx ; C->x_shallow = false ;
-            GB_apply_op (Cx, op, Ax, atype, anz) ;
+            GB_apply_op (Cx, op, Ax, atype, anz, Context) ;
             // prior Ax will be freed
         }
         else if (ctype != atype)
         { 
             // copy the values from A into C and cast from atype to ctype
             C->x = Cx ; C->x_shallow = false ;
-            GB_cast_array (Cx, ccode, Ax, acode, anz) ;
+            GB_cast_array (Cx, ccode, Ax, acode, anz, Context) ;
             // prior Ax will be freed
         }
         else // ctype == atype
@@ -405,7 +407,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
 
         // if *Chandle == NULL, allocate a new header; otherwise reuse existing
         GB_NEW (Chandle, ctype, avdim, 1, GB_Ap_null, C_is_csc,
-            GB_FORCE_NONHYPER, A_hyper_ratio, 0) ;
+            GB_FORCE_NONHYPER, A_hyper_ratio, 0, Context) ;
         if (info != GrB_SUCCESS)
         { 
             // out of memory
@@ -427,22 +429,19 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
         GB_void *restrict Cx = NULL ;
         int64_t *restrict Cp ;
         int64_t *restrict Ci = NULL ;
-        double memory = GBYTES (3, sizeof (int64_t)) ;
-        GB_CALLOC_MEMORY (Cp, 2, sizeof (int64_t)) ;
+        GB_CALLOC_MEMORY (Cp, 2, sizeof (int64_t), NULL) ;
 
         bool allocate_new_Ci = (!A_is_hyper) ;
 
         if (allocate_new_Ci)
         { 
             // A is not hypersparse, so new space is needed for Ci
-            memory += GBYTES (anz, sizeof (int64_t)) ;
             GB_MALLOC_MEMORY (Ci, anz, sizeof (int64_t)) ;
         }
 
         if (allocate_new_Cx)
         { 
             // allocate new space for the new typecasted numerical values of C
-            memory += GBYTES (anz, ctype->size) ;
             GB_MALLOC_MEMORY (Cx, anz, ctype->size) ;
         }
 
@@ -454,7 +453,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
             GB_FREE_MEMORY (Ci, anz  , sizeof (int64_t)) ;
             GB_FREE_MEMORY (Cx, anz  , csize) ;
             GB_FREE_A_AND_C ;
-            return (GB_OUT_OF_MEMORY (memory)) ;
+            return (GB_OUT_OF_MEMORY) ;
         }
 
         //----------------------------------------------------------------------
@@ -466,14 +465,14 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
         { 
             // Cx = op ((op->xtype) Ax)
             C->x = Cx ; C->x_shallow = false ;
-            GB_apply_op (Cx, op, Ax, atype, anz) ;
+            GB_apply_op (Cx, op, Ax, atype, anz, Context) ;
             // prior Ax will be freed
         }
         else if (ctype != atype)
         { 
             // copy the values from A into C and cast from atype to ctype
             C->x = Cx ; C->x_shallow = false ;
-            GB_cast_array (Cx, ccode, Ax, acode, anz) ;
+            GB_cast_array (Cx, ccode, Ax, acode, anz, Context) ;
             // prior Ax will be freed
         }
         else // ctype == atype
@@ -715,23 +714,22 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
 
             // allocate Ti of size anz
             int64_t *Ti ;
-            double memory = GBYTES (anz, sizeof (int64_t)) ;
             GB_MALLOC_MEMORY (Ti, anz, sizeof (int64_t)) ;
 
             if (Ti == NULL)
             { 
                 // out of memory
                 GB_FREE_C ;
-                return (GB_OUT_OF_MEMORY (memory)) ;
+                return (GB_OUT_OF_MEMORY) ;
             }
 
             // Construct the "row" indices of C, which are "column" indices of
             // A.  This array becomes the permanent T->i on output.  This phase
             // must be done before Chandle is created below, since that step
             // destroys A.  See also GB_extractTuples, where J is extracted.
-            GB_for_each_vector (A)
+            GBI_for_each_vector (A)
             {
-                GB_for_each_entry (j, p, pend)
+                GBI_for_each_entry (j, p, pend)
                 { 
                     Ti [p] = j ;
                 }
@@ -749,7 +747,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
 
             // if *Chandle == NULL, allocate a new header; otherwise reuse
             GB_NEW (Chandle, ctype, avdim, avlen, GB_Ap_null, C_is_csc,
-                GB_FORCE_HYPER, A_hyper_ratio, 0) ;
+                GB_FORCE_HYPER, A_hyper_ratio, 0, Context) ;
             if (info != GrB_SUCCESS)
             { 
                 // out of memory
@@ -782,14 +780,12 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
             if (!recycle_Ai)
             { 
                 // allocate Tj of size anz
-                memory += GBYTES (anz, sizeof (int64_t)) ;
                 GB_MALLOC_MEMORY (Tj, anz, sizeof (int64_t)) ;
             }
 
             if (op != NULL)
             { 
                 // allocate Tx of size anz * csize
-                memory += GBYTES (anz, csize) ;
                 GB_MALLOC_MEMORY (Tx, anz, csize) ;
             }
 
@@ -800,7 +796,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
                 GB_FREE_MEMORY (Tj, anz, sizeof (int64_t)) ;
                 GB_FREE_MEMORY (Tx, anz, csize) ;
                 GB_FREE_A_AND_C ;
-                return (GB_OUT_OF_MEMORY (memory)) ;
+                return (GB_OUT_OF_MEMORY) ;
             }
 
             //------------------------------------------------------------------
@@ -822,14 +818,14 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
                 // Tj = Ai, making a deep copy.  Tj is freed by GB_builder.
                 // A->i will not be modified, even if out of memory.
                 // See also GB_extractTuples, where I is extracted.
-                memcpy (Tj, Ai, anz * sizeof (int64_t)) ;
+                memcpy (Tj, Ai, anz * sizeof (int64_t)) ;   // do parallel
             }
 
             // numerical values: apply the op, typecast, or make shallow copy
             if (op != NULL)
             {
                 // Tx = op ((op->xtype) Ax)
-                GB_apply_op (Tx, op, Ax, atype, anz) ;
+                GB_apply_op (Tx, op, Ax, atype, anz, Context) ;
                 // GB_builder will not need to typecast Tx to T->x
                 tcode = ccode ;
                 #if 0
@@ -929,9 +925,8 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
             // free prior content, if C=A' is being done in place
             if (in_place_A)
             { 
-                // free all content of A (including the Sauna), but not the
-                // header, if done in place of A
-                GB_CONTENT_FREE (A) ;   // transpose in-place: free the Sauna
+                // free all content of A, but not the header, if in place of A
+                GB_PHIX_FREE (A) ;   // transpose in-place
             }
             else if (in_place_C)
             { 

@@ -26,6 +26,7 @@ bool GB_mx_Monoid               // true if successful, false otherwise
     const bool malloc_debug     // true if malloc debug should be done
 )
 {
+    GB_WHERE ("GB_mx_Monoid") ;
 
     GrB_Monoid M = NULL ;
     (*handle) = NULL ;

@@ -7,17 +7,17 @@
 
 //------------------------------------------------------------------------------
 
-// C<Mask> = accum (C,A') or accum (C,A)
+// C<M> = accum (C,A') or accum (C,A)
 
 #include "GB_mex.h"
 
-#define USAGE "C = GB_mex_transpose (C, Mask, accum, A, desc)"
+#define USAGE "C = GB_mex_transpose (C, M, accum, A, desc, test)"
 
 #define FREE_ALL                        \
 {                                       \
     GB_MATRIX_FREE (&A) ;               \
     GB_MATRIX_FREE (&C) ;               \
-    GB_MATRIX_FREE (&Mask) ;            \
+    GB_MATRIX_FREE (&M) ;               \
     GrB_free (&desc) ;                  \
     GB_mx_put_global (true, 0) ;        \
 }
@@ -30,25 +30,48 @@ void mexFunction
     const mxArray *pargin [ ]
 )
 {
-    // double tic2 [2] ;
-    // simple_tic (tic2) ;
 
     bool malloc_debug = GB_mx_get_global (true) ;
     GrB_Matrix A = NULL ;
     GrB_Matrix C = NULL ;
-    GrB_Matrix Mask = NULL ;
+    GrB_Matrix M = NULL ;
     GrB_Descriptor desc = NULL ;
 
     // check inputs
     GB_WHERE (USAGE) ;
-    if (nargout > 1 || nargin < 4 || nargin > 5)
+    if (nargout > 1 || nargin < 4 || nargin > 6)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;
     }
 
-    // get C (make a deep copy)
+    // get M (shallow copy)
+    if (!mxIsChar (pargin [1]))
+    {
+        M = GB_mx_mxArray_to_Matrix (pargin [1], "M", false, false) ;
+        if (M == NULL && !mxIsEmpty (pargin [1]))
+        {
+            FREE_ALL ;
+            mexErrMsgTxt ("M failed") ;
+        }
+    }
+
+    // get A (shallow copy)
+    if (!mxIsChar (pargin [3]))
+    {
+        A = GB_mx_mxArray_to_Matrix (pargin [3], "A input", false, true) ;
+        if (A == NULL)
+        {
+            FREE_ALL ;
+            mexErrMsgTxt ("A failed") ;
+        }
+    }
+
+    // get C (make a deep copy) and get any aliases for M and A
     #define GET_DEEP_COPY \
-    C = GB_mx_mxArray_to_Matrix (pargin [0], "C input", true, true) ;
+    C = GB_mx_mxArray_to_Matrix (pargin [0], "C input", true, true) ;          \
+    if (nargin > 5 && C != NULL) C->nvec_nonempty = -1 ;  /* for testing */    \
+    if (mxIsChar (pargin [1])) M = GB_mx_alias ("M", pargin [1], "C",C, "A",A);\
+    if (mxIsChar (pargin [3])) A = GB_mx_alias ("A", pargin [3], "C",C, "M",M);
     #define FREE_DEEP_COPY GB_MATRIX_FREE (&C) ;
     GET_DEEP_COPY ;
     if (C == NULL)
@@ -57,22 +80,6 @@ void mexFunction
         mexErrMsgTxt ("C failed") ;
     }
     mxClassID cclass = GB_mx_Type_to_classID (C->type) ;
-
-    // get Mask (shallow copy)
-    Mask = GB_mx_mxArray_to_Matrix (pargin [1], "Mask", false, false) ;
-    if (Mask == NULL && !mxIsEmpty (pargin [1]))
-    {
-        FREE_ALL ;
-        mexErrMsgTxt ("Mask failed") ;
-    }
-
-    // get A (shallow copy)
-    A = GB_mx_mxArray_to_Matrix (pargin [3], "A input", false, true) ;
-    if (A == NULL)
-    {
-        FREE_ALL ;
-        mexErrMsgTxt ("A failed") ;
-    }
 
     // get accum; default: NOP, default class is class(C)
     GrB_BinaryOp accum ;
@@ -90,19 +97,20 @@ void mexFunction
         mexErrMsgTxt ("desc failed") ;
     }
 
-    // printf ("time so far: %g\n", simple_toc (tic2)) ;
-    // simple_tic (tic2) ;
+    // just for testing
+    if (nargin > 5)
+    {
+        if (M != NULL) M->nvec_nonempty = -1 ;
+        A->nvec_nonempty = -1 ;
+        C->nvec_nonempty = -1 ;
+    }
 
-    // C<Mask> = op(C,A') or op(C,A)
-    METHOD (GrB_transpose (C, Mask, accum, A, desc)) ;
-
-    // printf ("time method: %g\n", simple_toc (tic2)) ;
-    // simple_tic (tic2) ;
+    // C<M> = op(C,A') or op(C,A)
+    METHOD (GrB_transpose (C, M, accum, A, desc)) ;
 
     // return C to MATLAB as a struct and free the GraphBLAS C
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C output", true) ;
 
     FREE_ALL ;
-    // printf ("time wrapup: %g\n", simple_toc (tic2)) ;
 }
 

@@ -22,7 +22,6 @@
     GB_MATRIX_FREE (&Bconj) ;           \
     GB_MATRIX_FREE (&C) ;               \
     GB_MATRIX_FREE (&Mask) ;            \
-    GB_Sauna_free (&Sauna) ;            \
     GrB_free (&add) ;                   \
     GrB_free (&semiring) ;              \
     GB_mx_put_global (true, AxB_method_used) ; \
@@ -43,7 +42,6 @@ int64_t anrows = 0 ;
 int64_t ancols = 0 ;
 int64_t bnrows = 0 ;
 int64_t bncols = 0 ;
-GB_Sauna Sauna = NULL ;
 
 GrB_Desc_Value AxB_method = GxB_DEFAULT ;
 GrB_Desc_Value AxB_method_used = GxB_DEFAULT ;
@@ -65,12 +63,18 @@ GrB_Info axb (GB_Context Context)
     }
 
     // C = A*B, A'*B, A*B', or A'*B'
-    info = GB_AxB_meta (&C, true /* CSC */,
-        NULL /* no MT returned */,
-        NULL /* no Mask */,
-        A, B, semiring, /* GrB_PLUS_TIMES_FP64 */
-        atranspose, btranspose, false, &ignore, AxB_method,
-        &AxB_method_used, &Sauna, Context) ;
+    info = GB_AxB_meta (&C,
+        true,       // CSC
+        NULL,       // no MT returned
+        NULL,       // no Mask
+        false,      // mask not complemented
+        A, B,
+        semiring,   // GrB_PLUS_TIMES_FP64
+        atranspose,
+        btranspose,
+        false,      // flipxy
+        &ignore,    // mask_applied
+        AxB_method, &AxB_method_used, Context) ;
 
     GrB_free (&add) ;
     GrB_free (&semiring) ;
@@ -121,6 +125,15 @@ GrB_Info axb_complex (GB_Context Context)
 
     }
 
+    // force completion, since GB_AxB_meta expects its inputs to be finished
+    info = GrB_wait ( ) ;
+    if (info != GrB_SUCCESS)
+    {
+        GrB_free (&Aconj) ;
+        GrB_free (&Bconj) ;
+        return (info) ;
+    }
+
     #ifdef MY_COMPLEX
     // use the precompiled complex type
     if (Aconj != NULL) Aconj->type = My_Complex ;
@@ -129,9 +142,11 @@ GrB_Info axb_complex (GB_Context Context)
     if (B     != NULL) B->type     = My_Complex ;
     #endif
 
-    info = GB_AxB_meta (&C, true /*CSC*/,
-        NULL /* no MT returned */,
-        NULL /* no Mask */,
+    info = GB_AxB_meta (&C,
+        true,       //CSC
+        NULL,       // no MT returned
+        NULL,       // no Mask
+        false,      // mask not complemented
         (atranspose) ? Aconj : A,
         (btranspose) ? Bconj : B,
         #ifdef MY_COMPLEX
@@ -139,8 +154,11 @@ GrB_Info axb_complex (GB_Context Context)
         #else
             Complex_plus_times,
         #endif
-        atranspose, btranspose, false, &ignore, AxB_method,
-        &AxB_method_used, &Sauna, Context) ;
+        atranspose,
+        btranspose,
+        false,      // flipxy
+        &ignore,    // mask_applied
+        AxB_method, &AxB_method_used, Context) ;
 
     #ifdef MY_COMPLEX
     // convert back to run-time complex type
@@ -257,6 +275,5 @@ void mexFunction
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C AxB result", false) ;
 
     FREE_ALL ;
-    GrB_finalize ( ) ;
 }
 

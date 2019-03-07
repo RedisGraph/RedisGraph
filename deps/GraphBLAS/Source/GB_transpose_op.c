@@ -2,7 +2,7 @@
 // GB_transpose_op: transpose and apply an operator to a matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -22,6 +22,10 @@
 
 // Compare with GB_transpose_ix.c and GB_apply_op.c
 
+// PARALLEL: the bucket transpose will not be simple to parallelize.  The qsort
+// method of transpose would be more parallel.  This method might remain mostly
+// sequential.
+
 #include "GB.h"
 
 void GB_transpose_op        // transpose and apply an operator to a matrix
@@ -30,7 +34,8 @@ void GB_transpose_op        // transpose and apply an operator to a matrix
     int64_t *Ri,            // size cnz, output column indices
     GB_void *Rx,            // size cnz, output values, type op->ztype
     const GrB_UnaryOp op,   // operator to apply, NULL if no operator
-    const GrB_Matrix A      // input matrix
+    const GrB_Matrix A,     // input matrix
+    GB_Context Context
 )
 {
 
@@ -38,13 +43,19 @@ void GB_transpose_op        // transpose and apply an operator to a matrix
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT_OK_OR_JUMBLED (GB_check (A, "A for transpose_op", GB0)) ;
-    ASSERT_OK (GB_check (op, "op for transpose_op", GB0)) ;
+    ASSERT (A != NULL) ;
+    ASSERT (op != NULL) ;
     ASSERT (Rp != NULL && Ri != NULL && Rx != NULL) ;
     ASSERT (op != NULL) ;
     ASSERT (GB_Type_compatible (A->type, op->xtype)) ;
     ASSERT (GB_IMPLIES (op->opcode < GB_USER_C_opcode, op->xtype == op->ztype));
     ASSERT (!GB_ZOMBIES (A)) ;
+
+    //--------------------------------------------------------------------------
+    // determine the number of threads to use
+    //--------------------------------------------------------------------------
+
+    GB_GET_NTHREADS (nthreads, Context) ;
 
     //--------------------------------------------------------------------------
     // get the input matrix
@@ -66,9 +77,9 @@ void GB_transpose_op        // transpose and apply an operator to a matrix
     {                                                           \
         ztype *rx = (ztype *) Rx ;                              \
         atype *ax = (atype *) Ax ;                              \
-        GB_for_each_vector (A)                                  \
+        GBI_for_each_vector (A)                                 \
         {                                                       \
-            GB_for_each_entry (j, p, pend)                      \
+            GBI_for_each_entry (j, p, pend)                     \
             {                                                   \
                 int64_t q = Rp [Ai [p]]++ ;                     \
                 Ri [q] = j ;                                    \
@@ -107,6 +118,7 @@ void GB_transpose_op        // transpose and apply an operator to a matrix
                 #define GB_BOP(x) true
                 #define GB_IOP(x) 1
                 #define GB_FOP(x) 1
+                #define GB_DOP(x) 1
                 #include "GB_2type_template.c"
                 break ;
 
@@ -115,6 +127,7 @@ void GB_transpose_op        // transpose and apply an operator to a matrix
                 #define GB_BOP(x) x
                 #define GB_IOP(x) x
                 #define GB_FOP(x) x
+                #define GB_DOP(x) x
                 #include "GB_2type_template.c"
                 break ;
 
@@ -123,14 +136,16 @@ void GB_transpose_op        // transpose and apply an operator to a matrix
                 #define GB_BOP(x)  x
                 #define GB_IOP(x) -x
                 #define GB_FOP(x) -x
+                #define GB_DOP(x) -x
                 #include "GB_2type_template.c"
                 break ;
 
             case GB_ABS_opcode :       // z = abs(x)
 
-                #define GB_BOP(x)  x
-                #define GB_IOP(x)  GB_IABS(x)
-                #define GB_FOP(x)  GB_FABS(x)
+                #define GB_BOP(x) x
+                #define GB_IOP(x) GB_IABS(x)
+                #define GB_FOP(x) fabsf(x)
+                #define GB_DOP(x) fabs(x)
                 #include "GB_2type_template.c"
                 break ;
 
@@ -140,6 +155,7 @@ void GB_transpose_op        // transpose and apply an operator to a matrix
                 #define GB_BOP(x) true
                 #define GB_IOP(x) GB_IMINV(x)
                 #define GB_FOP(x) 1./x
+                #define GB_DOP(x) 1./x
                 #include "GB_2type_template.c"
                 break ;
 
@@ -148,6 +164,7 @@ void GB_transpose_op        // transpose and apply an operator to a matrix
                 #define GB_BOP(x) !x
                 #define GB_IOP(x) (!(x != 0))
                 #define GB_FOP(x) (!(x != 0))
+                #define GB_DOP(x) (!(x != 0))
                 #include "GB_2type_template.c"
                 break ;
 
@@ -176,9 +193,9 @@ void GB_transpose_op        // transpose and apply an operator to a matrix
     // scalar workspace
     char xwork [op->xtype->size] ;
 
-    GB_for_each_vector (A)
+    GBI_for_each_vector (A)
     {
-        GB_for_each_entry (j, p, pend)
+        GBI_for_each_entry (j, p, pend)
         { 
             int64_t q = Rp [Ai [p]]++ ;
             Ri [q] = j ;

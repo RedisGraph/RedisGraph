@@ -1,33 +1,36 @@
 //------------------------------------------------------------------------------
-// GB_cij_dot_product: compute C(i,j) = A(:,i)'*B(:,j)
+// GB_AxB_dot_cij: compute C(i,j) = A(:,i)'*B(:,j)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
-// computes C(i,j) = A (:,i)'*B(:,j) via sparse dot product, optionally
-// scattering B(:,j) into size-bvlen workspace.
+// computes C(i,j) = A (:,i)'*B(:,j) via sparse dot product.
 
-// FUTURE: some add operators can terminate their outer loop early.  For
-// example, if the add monoid is the logical OR, then the outer loop can
-// terminate as soon as cij is true.  If the add operator is FIRST, of any
-// type, then it can terminate immediately after the first cij = assignment.
-// If the add operator is SECOND, of any type, then the loop to accumuate cij
-// could be down backwards, and the loop would terminate after the first
-// assignment.
+// parallel: the parallelism will be handled outside this code, in
+// GB_AxB_parallel.  This work is done by a single thread.
+
+#undef GB_DOT_MULTADD
+#undef GB_DOT_MERGE
 
 // cij += A(k,i) * B(k,j)
 #define GB_DOT_MULTADD(pA,pB)                                   \
+{                                                               \
     GB_DOT_GETA (pA) ;         /* aki = A(k,i) */               \
     GB_DOT_GETB (pB) ;         /* bkj = B(k,j) */               \
     GB_DOT_MULT (bkj) ;        /* t = aki * bkj */              \
-    GB_DOT_ADD ;               /* cij += t */
+    GB_DOT_ADD ;               /* cij += t */                   \
+    GB_DOT_TERMINAL (cij) ;    /* break if cij == terminal */   \
+}
 
-// cij = t (and flag cij as existing) or cij += t
-#define GB_DOT_ACCUM \
+// cij += A(k,i) * B(k,j), for merge operation
+#define GB_DOT_MERGE                                            \
 {                                                               \
+    GB_DOT_GETA (pA++) ;       /* aki = A(k,i) */               \
+    GB_DOT_GETB (pB++) ;       /* bkj = B(k,j) */               \
+    GB_DOT_MULT (bkj) ;        /* t = aki * bkj */              \
     if (cij_exists)                                             \
     {                                                           \
         GB_DOT_ADD ;           /* cij += t */                   \
@@ -38,15 +41,7 @@
         cij_exists = true ;                                     \
         GB_DOT_COPY ;          /* cij = t */                    \
     }                                                           \
-}
-
-// cij += A(k,i) * B(k,j), for merge operation
-#define GB_DOT_MERGE                                            \
-{                                                               \
-    GB_DOT_GETA (pA++) ;       /* aki = A(k,i) */               \
-    GB_DOT_GETB (pB++) ;       /* bkj = B(k,j) */               \
-    GB_DOT_MULT (bkj) ;        /* t = aki * bkj */              \
-    GB_DOT_ACCUM ;             /* cij = t or += t */            \
+    GB_DOT_TERMINAL (cij) ;    /* break if cij == terminal */   \
 }
 
 {
@@ -56,9 +51,8 @@
     //--------------------------------------------------------------------------
 
     bool cij_exists = false ;   // C(i,j) not yet in the pattern
-    int64_t pA = pA_start ;
     int64_t pB = pB_start ;
-    int64_t ainz = pA_end - pA_start ;
+    int64_t ainz = pA_end - pA ;
     ASSERT (ainz >= 0) ;
 
     //--------------------------------------------------------------------------
@@ -67,17 +61,17 @@
 
     if (cnz == C->nzmax)
     {
-        GrB_Info info = GB_ix_realloc (C, 2*(C->nzmax), true, Context) ;
+        GrB_Info info = GB_ix_realloc (C, 2*(C->nzmax), true, NULL) ;
         if (info != GrB_SUCCESS)
         { 
             // out of memory
-            GB_MATRIX_FREE (Chandle) ;
-            GB_DOT_FREE_WORK ;
+            ASSERT (!(C->enqueued)) ;
+            GB_free (Chandle) ;
             return (info) ;
         }
         Ci = C->i ;
         Cx = C->x ;
-        // reacquire cij since C->x has moved
+        // reacquire the pointer cij C->x has moved
         GB_DOT_REACQUIRE ;
     }
 
@@ -95,7 +89,7 @@
         ;
 
     }
-    else if (Ai [pA_end-1] < ib_first || ib_last < Ai [pA_start])
+    else if (Ai [pA_end-1] < ib_first || ib_last < Ai [pA])
     { 
 
         //----------------------------------------------------------------------
@@ -186,55 +180,6 @@
         }
 
     }
-    else if (B_can_scatter)
-    { 
-
-        //----------------------------------------------------------------------
-        // scatter B(:,j) into size-bvlen workspace
-        //----------------------------------------------------------------------
-
-        if (Flag == NULL)
-        {
-            // allocate Flag and Work space of size bvlen
-            GB_CALLOC_MEMORY (Flag, bvlen, sizeof (int8_t)) ;
-            GB_MALLOC_MEMORY (Work, bvlen, bkj_size) ;
-            if (Flag == NULL || Work == NULL)
-            { 
-                // out of memory
-                double memory = GBYTES (bvlen, sizeof (int8_t)) +
-                                GBYTES (bvlen, bkj_size) ;
-                GB_MATRIX_FREE (Chandle) ;
-                GB_DOT_FREE_WORK ;
-                return (GB_OUT_OF_MEMORY (memory)) ;
-            }
-        }
-
-        if (!B_scattered)
-        {
-            // scatter B into the workspace
-            for ( ; pB < pB_end ; pB++)
-            { 
-                int64_t k = Bi [pB] ;
-                // Work [k] = Bx [pB] ;
-                GB_DOT_SCATTER ;
-                Flag [k] = 1 ;
-            }
-            B_scattered = true ;
-        }
-
-        for ( ; pA < pA_end ; pA++)
-        {
-            int64_t k = Ai [pA] ;
-            if (Flag [k])
-            { 
-                // cij += A(k,i) * Work [k], where Work [k] == B(k,j)
-                GB_DOT_GETA (pA) ;              // aki = A (k,i)
-                GB_DOT_MULT (GB_DOT_WORK(k)) ;  // t = aki * Work [k]
-                GB_DOT_ACCUM ;                  // cij = t or += t
-            }
-        }
-
-    }
     else if (bjnz > 8 * ainz)
     {
 
@@ -309,8 +254,4 @@
         Ci [cnz++] = i ;
     }
 }
-
-#undef GB_DOT_MULTADD
-#undef GB_DOT_MERGE
-#undef GB_DOT_ACCUM
 

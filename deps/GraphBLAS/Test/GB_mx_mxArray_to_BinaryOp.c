@@ -30,6 +30,7 @@ bool GB_mx_mxArray_to_BinaryOp         // true if successful, false otherwise
     const bool YisComplex
 )
 {
+    GB_WHERE ("GB_mx_mxArray_to_BinaryOp") ;
 
     (*handle) = NULL ;
 

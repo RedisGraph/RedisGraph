@@ -2,7 +2,7 @@
 // Source/Template/GB_critical_section: execute code in a critical section
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -17,6 +17,8 @@
 // Critical sections for Windows threads and ANSI C11 threads are listed below
 // as drafts, but these threading models are not yet supported.
 
+// not parallel: this function does O(1) work and is already thread-safe.
+
 {
 
     //--------------------------------------------------------------------------
@@ -25,11 +27,17 @@
 
     #if defined (USER_POSIX_THREADS)
     {
-        ok = (pthread_mutex_lock (&(GB_Global.sync)) == 0) ;
+        if (GB_Global.user_multithreaded)
         {
-            GB_CRITICAL_SECTION ;
+            ok = (pthread_mutex_lock (&GB_sync) == 0) ;
         }
-        ok = ok && (pthread_mutex_unlock (&(GB_Global.sync)) == 0) ;
+
+        GB_CRITICAL_SECTION ;
+
+        if (GB_Global.user_multithreaded)
+        {
+            ok = ok && (pthread_mutex_unlock (&GB_sync) == 0) ;
+        }
     }
 
     //--------------------------------------------------------------------------
@@ -39,11 +47,17 @@
     #elif defined (USER_WINDOWS_THREADS)
     {
         // This is not yet supported.
-        EnterCriticalSection (&(GB_Global.sync)) ;
+        if (GB_Global.user_multithreaded)
         {
-            GB_CRITICAL_SECTION ;
+            EnterCriticalSection (&GB_sync) ;
         }
-        LeaveCriticalSection (&(GB_Global.sync)) ;
+
+        GB_CRITICAL_SECTION ;
+
+        if (GB_Global.user_multithreaded)
+        {
+            LeaveCriticalSection (&GB_sync) ;
+        }
     }
 
     //--------------------------------------------------------------------------
@@ -53,11 +67,17 @@
     #elif defined (USER_ANSI_THREADS)
     {
         // This should work per the ANSI C11 Spec, but is not yet supported.
-        ok = (mtx_lock (&(GB_Global.sync)) == thrd_success) ;
+        if (GB_Global.user_multithreaded)
         {
-            GB_CRITICAL_SECTION ;
+            ok = (mtx_lock (&GB_sync) == thrd_success) ;
         }
-        ok = ok && (mtx_unlock (&(GB_Global.sync)) == thrd_success) ;
+
+        GB_CRITICAL_SECTION ;
+
+        if (GB_Global.user_multithreaded)
+        {
+            ok = ok && (mtx_unlock (&GB_sync) == thrd_success) ;
+        }
     }
 
     //--------------------------------------------------------------------------
@@ -70,9 +90,7 @@
         // available, then the #pragma is ignored and this becomes vanilla,
         // single-threaded code.
         #pragma omp critical (GB_critical_section)
-        {
-            GB_CRITICAL_SECTION ;
-        }
+        GB_CRITICAL_SECTION ;
     }
     #endif
 }

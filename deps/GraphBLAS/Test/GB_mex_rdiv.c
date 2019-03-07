@@ -20,7 +20,6 @@
     GB_MATRIX_FREE (&A) ;               \
     GB_MATRIX_FREE (&B) ;               \
     GB_MATRIX_FREE (&C) ;               \
-    GB_Sauna_free (&Sauna) ;            \
     GrB_free (&My_rdiv) ;               \
     GrB_free (&My_plus_rdiv) ;          \
     GB_mx_put_global (true, 0) ;        \
@@ -38,7 +37,6 @@ int64_t ancols = 0 ;
 int64_t bnrows = 0 ;
 int64_t bncols = 0 ;
 GrB_Desc_Value AxB_method = GxB_DEFAULT, AxB_method_used ;
-GB_Sauna Sauna = NULL ;
 
 #ifndef MY_RDIV
 GrB_Semiring My_plus_rdiv = NULL ;
@@ -76,11 +74,18 @@ GrB_Info axb (GB_Context Context, bool cprint)
     // GB_check (My_plus_rdiv, "My_plus_rdiv", 3) ;
 
     // C = A*B
-    info = GB_AxB_meta (&C, true /* CSC */,
-        NULL /* no MT returned */,
-        NULL /* no Mask */,
-        A, B, My_plus_rdiv, false, false, false, &ignore,
-        AxB_method, &AxB_method_used, &Sauna, Context) ;
+    info = GB_AxB_meta (&C,
+        true,       // CSC
+        NULL,       // no MT returned
+        NULL,       // no Mask
+        false,      // mask not complemented
+        A, B,
+        My_plus_rdiv,
+        false,      // no A transpose
+        false,      // no B transpose
+        false,      // no flipxy
+        &ignore,    // mask_applied
+        AxB_method, &AxB_method_used, Context) ;
 
     if (C != NULL)
     {
@@ -178,6 +183,5 @@ void mexFunction
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C AxB result", false) ;
 
     FREE_ALL ;
-    GrB_finalize ( ) ;
 }
 

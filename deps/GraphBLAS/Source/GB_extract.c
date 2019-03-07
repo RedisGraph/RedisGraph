@@ -2,20 +2,24 @@
 // GB_extract: C<M> = accum(C,A(I,J))
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
 // Not user-callable.  Implements the user-callable GrB_*_extract functions.
-//
+
 // C<M> = accum (C, A (Rows,Cols)) or
+
 // C<M> = accum (C, AT(Rows,Cols)) where AT = A'
-//
+
 // equivalently:
-//
+
 // C<M> = accum (C, A(Rows,Cols) )
+
 // C<M> = accum (C, A(Cols,Rows)')
+
+// parallel: not here, but in GB_subref_numeric.
 
 #include "GB.h"
 
@@ -91,7 +95,7 @@ GrB_Info GB_extract                 // C<M> = accum (C, A(I,J))
     GB_RETURN_IF_QUICK_MASK (C, C_replace, M, Mask_comp) ;
 
     // delete any lingering zombies and assemble any pending tuples
-    GB_WAIT (C) ;
+    // GB_WAIT (C) ;
     GB_WAIT (M) ;
     GB_WAIT (A) ;
 

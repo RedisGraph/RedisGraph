@@ -214,7 +214,7 @@ GrB_Matrix GB_mx_mxArray_to_Matrix     // returns GraphBLAS version of A
 
         // create the GraphBLAS matrix
         GB_NEW (&A, atype_out, (GrB_Index) nrows, (GrB_Index) ncols,
-            GB_Ap_calloc, is_csc, is_hyper, GB_HYPER_DEFAULT, 0) ;
+            GB_Ap_calloc, is_csc, is_hyper, GB_HYPER_DEFAULT, 0, Context) ;
         if (info != GrB_SUCCESS)
         {
             FREE_ALL ;
@@ -244,7 +244,7 @@ GrB_Matrix GB_mx_mxArray_to_Matrix     // returns GraphBLAS version of A
 
         // [ create the GraphBLAS matrix, do not allocate A->p
         GB_NEW (&A, atype_out, (GrB_Index) nrows, (GrB_Index) ncols,
-            GB_Ap_null, is_csc, is_hyper, GB_HYPER_DEFAULT, 0) ;
+            GB_Ap_null, is_csc, is_hyper, GB_HYPER_DEFAULT, 0, Context) ;
         if (info != GrB_SUCCESS)
         {
             FREE_ALL ;
@@ -298,7 +298,8 @@ GrB_Matrix GB_mx_mxArray_to_Matrix     // returns GraphBLAS version of A
         }
         else
         {
-            GB_cast_array (A->x, atype_out->code, Mx, atype_in->code, anz) ;
+            GB_cast_array (A->x, atype_out->code, Mx, atype_in->code, anz,
+                Context) ;
         }
     }
 
@@ -338,10 +339,10 @@ GrB_Matrix GB_mx_mxArray_to_Matrix     // returns GraphBLAS version of A
     }
 
     //--------------------------------------------------------------------------
-    // count the # of non-empty vectors in A
+    // compute the # of non-empty vectors in A only when needed
     //--------------------------------------------------------------------------
 
-    A->nvec_nonempty = GB_nvec_nonempty (A) ;
+    A->nvec_nonempty = -1 ; // compute when needed; see also GxB_Matrix_import
 
     ASSERT_OK (GB_check (A, "got natural A from MATLAB", GB0)) ;
     ASSERT (!A->is_hyper) ;

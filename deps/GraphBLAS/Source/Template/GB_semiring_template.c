@@ -2,7 +2,7 @@
 // GB_semiring_template.c: built-in unary and binary functions and operators
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -48,6 +48,8 @@
 
 //      a single instance of this file creates all 4*10 = 40 purely Boolean
 //      semirings, when T is BOOL and GB_BOOLEAN is defined
+
+// parallel: not here; no executable code
 
 //------------------------------------------------------------------------------
 

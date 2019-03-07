@@ -31,7 +31,7 @@ void mexFunction
 
     bool malloc_debug = GB_mx_get_global (true) ;
     GrB_Matrix A = NULL, Iset = NULL ;
-    GrB_Vector iset ;
+    GrB_Vector iset = NULL ;
 
     // check inputs
     GB_WHERE (USAGE) ;
@@ -60,6 +60,5 @@ void mexFunction
     pargout [0] = GB_mx_Matrix_to_mxArray (&Iset, "iset result", false) ;
 
     FREE_ALL ;
-    GrB_finalize ( ) ;
 }
 

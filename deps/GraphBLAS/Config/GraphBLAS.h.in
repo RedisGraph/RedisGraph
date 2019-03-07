@@ -2,7 +2,7 @@
 // GraphBLAS.h: definitions for the GraphBLAS package
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -86,13 +86,13 @@
 
 // The 'about' string the describes this particular implementation of GraphBLAS:
 #define GxB_ABOUT \
-"SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, "                   \
+"SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, "                   \
 "All Rights Reserved.\n"                                                     \
 "http://suitesparse.com  Dept of Computer Sci. & Eng, Texas A&M University\n"
 
 // The GraphBLAS license for this particular implementation of GraphBLAS:
 #define GxB_LICENSE \
-"SuiteSparse:GraphBLAS, Copyright 2017-2018, Timothy A. Davis\n"             \
+"SuiteSparse:GraphBLAS, Copyright 2017-2019, Timothy A. Davis\n"             \
 "\n"                                                                         \
 "Licensed under the Apache License, Version 2.0 (the \"License\");\n"        \
 "you may not use SuiteSparse:GraphBLAS except in compliance with the\n"      \
@@ -199,10 +199,16 @@ typedef uint64_t GrB_Index ;
 // called, which returns a string that provides more information on the last
 // return value from GraphBLAS.
 
+// SPEC: all enum values in the spec should be defined.  They are not, so as a
+// result, a user code cannot be linked against an arbitrary GraphBLAS library
+// after it is compiled.  It must be linked with the same GraphBLAS library it
+// is compiled with.  SuiteSparse:GraphBLAS defines all user-visible enum
+// values explicitly.
+
 typedef enum
 {
 
-    GrB_SUCCESS,                // all is well
+    GrB_SUCCESS = 0,            // all is well
 
     //--------------------------------------------------------------------------
     // informational codes, not an error:
@@ -225,7 +231,7 @@ typedef enum
     // ask for values that are not there, which is why this return condition is
     // not really an 'error' code but an informational code.
 
-    GrB_NO_VALUE,               // A(i,j) requested but not there
+    GrB_NO_VALUE = 1,           // A(i,j) requested but not there
 
     //--------------------------------------------------------------------------
     // API errors:
@@ -233,16 +239,16 @@ typedef enum
 
     // In non-blocking mode, these errors are caught right away.
 
-    GrB_UNINITIALIZED_OBJECT,   // object has not been initialized
-    GrB_INVALID_OBJECT,         // object is corrupted
-    GrB_NULL_POINTER,           // input pointer is NULL
-    GrB_INVALID_VALUE,          // generic error code; some value is bad
-    GrB_INVALID_INDEX,          // a row or column index is out of bounds;
-                                // used for indices passed as scalars, not
-                                // in a list.
-    GrB_DOMAIN_MISMATCH,        // object domains are not compatible
-    GrB_DIMENSION_MISMATCH,     // matrix dimensions do not match
-    GrB_OUTPUT_NOT_EMPTY,       // output matrix already has values in it
+    GrB_UNINITIALIZED_OBJECT = 2,   // object has not been initialized
+    GrB_INVALID_OBJECT = 3,         // object is corrupted
+    GrB_NULL_POINTER = 4,           // input pointer is NULL
+    GrB_INVALID_VALUE = 5,          // generic error code; some value is bad
+    GrB_INVALID_INDEX = 6,          // a row or column index is out of bounds;
+                                    // used for indices passed as scalars, not
+                                    // in a list.
+    GrB_DOMAIN_MISMATCH = 7,        // object domains are not compatible
+    GrB_DIMENSION_MISMATCH = 8,     // matrix dimensions do not match
+    GrB_OUTPUT_NOT_EMPTY = 9,       // output matrix already has values in it
 
     //--------------------------------------------------------------------------
     // execution errors:
@@ -250,11 +256,12 @@ typedef enum
 
     // In non-blocking mode, these errors can be deferred.
 
-    GrB_OUT_OF_MEMORY,          // out of memory
-    GrB_INSUFFICIENT_SPACE,     // output array not large enough
-    GrB_INDEX_OUT_OF_BOUNDS,    // a row or column index is out of bounds;
-                                // used for indices in a list of indices.
-    GrB_PANIC                   // SuiteSparse:GraphBLAS never panics
+    GrB_OUT_OF_MEMORY = 10,         // out of memory
+    GrB_INSUFFICIENT_SPACE = 11,    // output array not large enough
+    GrB_INDEX_OUT_OF_BOUNDS = 12,   // a row or column index is out of bounds;
+                                    // used for indices in a list of indices.
+    GrB_PANIC = 13                  // SuiteSparse:GraphBLAS only panics if
+                                    // a critical section fails
 
 }
 GrB_Info ;
@@ -270,6 +277,9 @@ GrB_Info ;
 // non-blocking.  With blocking mode, all operations finish before returning to
 // the user application.  With non-blocking mode, operations can be left
 // pending, and are computed only when needed.
+
+// The extension GxB_init does the work of GrB_init, but it also defines the
+// memory management functions that SuiteSparse:GraphBLAS will use internally.
 
 // The GrB_wait ( ) function forces all pending operations to complete.
 // Blocking mode is as if GrB_wait is called whenever a GraphBLAS method or
@@ -299,14 +309,34 @@ GrB_Info ;
 
 typedef enum
 {
-    GrB_NONBLOCKING,    // methods may return with pending computations
-    GrB_BLOCKING        // no computations are ever left pending
+    GrB_NONBLOCKING = 0,    // methods may return with pending computations
+    GrB_BLOCKING = 1        // no computations are ever left pending
 }
 GrB_Mode ;
 
 GrB_Info GrB_init           // start up GraphBLAS
 (
     const GrB_Mode mode     // blocking or non-blocking mode
+) ;
+
+// SPEC: GxB_init is an extension to the spec.  It does the same thing as
+// GrB_init, but it also defines the memory management functions that GraphBLAS
+// will use internally.  The functions can only be defined once, in GxB_init.
+// The GxB_*import* and GxB_*export* functions require that the user
+// application and the GraphBLAS library agree on the same
+// malloc/calloc/realloc/free functions to use, thus GxB_init is a required
+// so the user application can define them for SuiteSparse:GraphBLAS.
+
+GrB_Info GxB_init           // start up GraphBLAS and also define malloc, etc
+(
+    const GrB_Mode mode,    // blocking or non-blocking mode
+
+    // pointers to memory management functions.  If any are NULL, use the
+    // built-in ANSI C11 functions.
+    void * (* user_malloc_function  ) (size_t),
+    void * (* user_calloc_function  ) (size_t, size_t),
+    void * (* user_realloc_function ) (void *, size_t),
+    void   (* user_free_function    ) (void *)
 ) ;
 
 // In non-blocking mode, GraphBLAS operations need not complete until their
@@ -1089,8 +1119,155 @@ GrB_Info GrB_Monoid_new             // create a monoid
     )                                               \
     (monoid, op, identity) ;
 
-// SPEC: GxB_Monoid_operator is an extension to the spec
+// GxB_Monoid_terminal_new is identical to GrB_Monoid_new, except that a
+// terminal value can be specified.  The terminal may be NULL, which indicates
+// no terminal value (and in this case, it is identical to GrB_Monoid_new).
+// The terminal value, if not NULL, must have the same type as the identity.
 
+GrB_Info GxB_Monoid_terminal_new_BOOL        // create a new boolean monoid
+(
+    GrB_Monoid *monoid,             // handle of monoid to create
+    const GrB_BinaryOp op,          // binary operator of the monoid
+    const bool identity,            // identity value of the monoid
+    const bool terminal             // terminal value of the monoid
+) ;
+
+GrB_Info GxB_Monoid_terminal_new_INT8        // create a new int8 monoid
+(
+    GrB_Monoid *monoid,             // handle of monoid to create
+    const GrB_BinaryOp op,          // binary operator of the monoid
+    const int8_t identity,          // identity value of the monoid
+    const int8_t terminal           // terminal value of the monoid
+) ;
+
+GrB_Info GxB_Monoid_terminal_new_UINT8       // create a new uint8 monoid
+(
+    GrB_Monoid *monoid,             // handle of monoid to create
+    const GrB_BinaryOp op,          // binary operator of the monoid
+    const uint8_t identity,         // identity value of the monoid
+    const uint8_t terminal          // terminal value of the monoid
+) ;
+
+GrB_Info GxB_Monoid_terminal_new_INT16       // create a new int16 monoid
+(
+    GrB_Monoid *monoid,             // handle of monoid to create
+    const GrB_BinaryOp op,          // binary operator of the monoid
+    const int16_t identity,         // identity value of the monoid
+    const int16_t terminal          // terminal value of the monoid
+) ;
+
+GrB_Info GxB_Monoid_terminal_new_UINT16      // create a new uint16 monoid
+(
+    GrB_Monoid *monoid,             // handle of monoid to create
+    const GrB_BinaryOp op,          // binary operator of the monoid
+    const uint16_t identity,        // identity value of the monoid
+    const uint16_t terminal         // terminal value of the monoid
+) ;
+
+GrB_Info GxB_Monoid_terminal_new_INT32       // create a new int32 monoid
+(
+    GrB_Monoid *monoid,             // handle of monoid to create
+    const GrB_BinaryOp op,          // binary operator of the monoid
+    const int32_t identity,         // identity value of the monoid
+    const int32_t terminal          // terminal value of the monoid
+) ;
+
+GrB_Info GxB_Monoid_terminal_new_UINT32      // create a new uint32 monoid
+(
+    GrB_Monoid *monoid,             // handle of monoid to create
+    const GrB_BinaryOp op,          // binary operator of the monoid
+    const uint32_t identity,        // identity value of the monoid
+    const uint32_t terminal         // terminal value of the monoid
+) ;
+
+GrB_Info GxB_Monoid_terminal_new_INT64       // create a new int64 monoid
+(
+    GrB_Monoid *monoid,             // handle of monoid to create
+    const GrB_BinaryOp op,          // binary operator of the monoid
+    const int64_t identity,         // identity value of the monoid
+    const int64_t terminal          // terminal value of the monoid
+) ;
+
+GrB_Info GxB_Monoid_terminal_new_UINT64      // create a new uint64 monoid
+(
+    GrB_Monoid *monoid,             // handle of monoid to create
+    const GrB_BinaryOp op,          // binary operator of the monoid
+    const uint64_t identity,        // identity value of the monoid
+    const uint64_t terminal         // terminal value of the monoid
+) ;
+
+GrB_Info GxB_Monoid_terminal_new_FP32        // create a new float monoid
+(
+    GrB_Monoid *monoid,             // handle of monoid to create
+    const GrB_BinaryOp op,          // binary operator of the monoid
+    const float identity,           // identity value of the monoid
+    const float terminal            // terminal value of the monoid
+) ;
+
+GrB_Info GxB_Monoid_terminal_new_FP64        // create a new double monoid
+(
+    GrB_Monoid *monoid,             // handle of monoid to create
+    const GrB_BinaryOp op,          // binary operator of the monoid
+    const double identity,          // identity value of the monoid
+    const double terminal           // terminal value of the monoid
+) ;
+
+GrB_Info GxB_Monoid_terminal_new_UDT    // create a monoid with a user type
+(
+    GrB_Monoid *monoid,             // handle of monoid to create
+    const GrB_BinaryOp op,          // binary operator of the monoid
+    const void *identity,           // identity value of the monoid
+    const void *terminal            // terminal value of the monoid
+) ;
+
+// Type-generic method for creating a new monoid with a terminal value:
+
+/*
+
+GrB_Info GxB_Monoid_terminal_new             // create a monoid
+(
+    GrB_Monoid *monoid,             // handle of monoid to create
+    const GrB_BinaryOp op,          // binary operator of the monoid
+    const <type> identity,          // identity value of the monoid
+    const <type> terminal           // terminal value of the monoid
+) ;
+
+*/
+
+#define GxB_Monoid_terminal_new(monoid,op,identity,terminal)    \
+    _Generic                                                    \
+    (                                                           \
+        (identity),                                             \
+        const bool     : GxB_Monoid_terminal_new_BOOL   ,       \
+              bool     : GxB_Monoid_terminal_new_BOOL   ,       \
+        const int8_t   : GxB_Monoid_terminal_new_INT8   ,       \
+              int8_t   : GxB_Monoid_terminal_new_INT8   ,       \
+        const uint8_t  : GxB_Monoid_terminal_new_UINT8  ,       \
+              uint8_t  : GxB_Monoid_terminal_new_UINT8  ,       \
+        const int16_t  : GxB_Monoid_terminal_new_INT16  ,       \
+              int16_t  : GxB_Monoid_terminal_new_INT16  ,       \
+        const uint16_t : GxB_Monoid_terminal_new_UINT16 ,       \
+              uint16_t : GxB_Monoid_terminal_new_UINT16 ,       \
+        const int32_t  : GxB_Monoid_terminal_new_INT32  ,       \
+              int32_t  : GxB_Monoid_terminal_new_INT32  ,       \
+        const uint32_t : GxB_Monoid_terminal_new_UINT32 ,       \
+              uint32_t : GxB_Monoid_terminal_new_UINT32 ,       \
+        const int64_t  : GxB_Monoid_terminal_new_INT64  ,       \
+              int64_t  : GxB_Monoid_terminal_new_INT64  ,       \
+        const uint64_t : GxB_Monoid_terminal_new_UINT64 ,       \
+              uint64_t : GxB_Monoid_terminal_new_UINT64 ,       \
+        const float    : GxB_Monoid_terminal_new_FP32   ,       \
+              float    : GxB_Monoid_terminal_new_FP32   ,       \
+        const double   : GxB_Monoid_terminal_new_FP64   ,       \
+              double   : GxB_Monoid_terminal_new_FP64   ,       \
+        const void *   : GxB_Monoid_terminal_new_UDT    ,       \
+              void *   : GxB_Monoid_terminal_new_UDT            \
+    )                                                           \
+    (monoid, op, identity, terminal) ;
+
+// SPEC: GxB_Monoid_terminal_new is an extension to the spec
+
+// SPEC: GxB_Monoid_operator is an extension to the spec
 GrB_Info GxB_Monoid_operator        // return the monoid operator
 (
     GrB_BinaryOp *op,               // returns the binary op of the monoid
@@ -1098,10 +1275,18 @@ GrB_Info GxB_Monoid_operator        // return the monoid operator
 ) ;
 
 // SPEC: GxB_Monoid_identity is an extension to the spec
-
 GrB_Info GxB_Monoid_identity        // return the monoid identity
 (
     void *identity,                 // returns the identity of the monoid
+    const GrB_Monoid monoid         // monoid to query
+) ;
+
+// SPEC: GxB_Monoid_terminal is an extension to the spec
+GrB_Info GxB_Monoid_terminal        // return the monoid terminal
+(
+    bool *has_terminal,             // true if the monoid has a terminal value
+    void *terminal,                 // returns the terminal of the monoid,
+                                    // unmodified if has_terminal is false
     const GrB_Monoid monoid         // monoid to query
 ) ;
 
@@ -1675,14 +1860,15 @@ GrB_Info GrB_Vector_extractElement  // x = v(i)
 //------------------------------------------------------------------------------
 
 // Extracts all tuples from a vector, like [I,~,X] = find (v) in MATLAB.  If
-// any parameter I and/or X is NULL, then that component is not extracted.  The
-// size of the I and X arrays (those that are not NULL) is given by nvals,
-// which must be at least as large as GrB_nvals (&nvals, v).  The values in the
-// vector are typecasted to the type of X, as needed.
+// any parameter I and/or X is NULL, then that component is not extracted.  For
+// example, to extract just the row indices, pass I as non-NULL, and X as NULL.
+// This is like [I,~,~] = find (v) in MATLAB.
 
-// If any parameter I and/or X is NULL, that component is not extracted.  So to
-// extract just the row indices, pass I as non-NULL, and X as NULL.  This is
-// like [I,~,~] = find (v) in MATLAB.
+// The size of the I and X arrays (those that are not NULL) is given by nvals,
+// which must be at least as large as GrB_Vector_nvals (&nvals, v).  The values
+// in the vector are typecasted to the type of X, as needed.
+
+// SPEC: allowing I and/or X to be NULL is an extension to the spec.
 
 GrB_Info GrB_Vector_extractTuples_BOOL      // [I,~,X] = find (v)
 (
@@ -2363,13 +2549,14 @@ GrB_Info GrB_Matrix_extractElement      // x = A(i,j)
 
 // Extracts all tuples from a matrix, like [I,J,X] = find (A) in MATLAB.  If
 // any parameter I, J and/or X is NULL, then that component is not extracted.
-// The size of the I, J, and X arrays (those that are not NULL) is given by
-// nvals, which must be at least as large as GrB_nvals (&nvals, A).  The values
-// in the matrix are typecasted to the type of X, as needed.
+// For example, to extract just the row and col indices, pass I and J as
+// non-NULL, and X as NULL.  This is like [I,J,~] = find (A).
 
-// If any parameter I, J, and/or X is NULL, that component is not extracted.
-// So to extract just the row and col indices, pass I and J as non-NULL,
-// and X as NULL.  This is like [I,J,~] = find (A).
+// The size of the I, J, and X arrays (those that are not NULL) is given by
+// nvals, which must be at least as large as GrB_Matrix_nvals (&nvals, A).  The
+// values in the matrix are typecasted to the type of X, as needed.
+
+// SPEC: allowing I, J and/or X to be NULL is an extension to the spec.
 
 GrB_Info GrB_Matrix_extractTuples_BOOL      // [I,J,X] = find (A)
 (
@@ -2547,6 +2734,10 @@ GrB_Info GrB_Matrix_free    // free a matrix
 //
 // GrB_INP1: the same as GrB_INP0 but for the second input
 //
+// GxB_NTHREADS: the number of threads to use in the current method.
+//      If <= GxB_DEFAULT (which is zero), then the number of threads is
+//      determined automatically.  This is the default value.
+//
 // GxB_AxB_METHOD: this is a hint to SuiteSparse:GraphBLAS on which algorithm
 //      it should use to compute C=A*B, in GrB_mxm, GrB_mxv, and GrB_vxm.
 //      SuiteSparse:GraphBLAS has three different methods, and the default
@@ -2572,12 +2763,34 @@ GrB_Info GrB_Matrix_free    // free a matrix
 //          It is impossibly slow if C is large and the mask is not present,
 //          since it takes Omega(m*n) time if C is m-by-n.
 
+// GxB_NTHREADS is an enumerated value in both the GrB_Desc_Field and the
+// GxB_Option_Field.  It is defined with the same integer value for
+// both enums, so the user can use GxB_NTHREADS for both.
+
+#define GxB_NTHREADS 5
+
+// GxB_NTHREADS_MAX is a compile-time constant that gives the upper bound on
+// the number of threads that GraphBLAS can use.  This thread count is the sum
+// of the maximum number of user threads and the number of internal OpenMP
+// threads created inside GraphBLAS by each user thread (nthreads_max, which
+// can be set by GxB_set (GxB_NTHREADS, nthreads_max)).  It is the maximum
+// permitted value of the run-time value nthreads_max.  This constant can be
+// changed at compile-time by using -DGxB_NTHREADS_MAX=4096, for example.  The
+// upper limit below should be large enough...
+#ifndef GxB_NTHREADS_MAX
+#define GxB_NTHREADS_MAX 2048
+#endif
+
 typedef enum
 {
-    GrB_OUTP,       // descriptor for output of a method
-    GrB_MASK,       // descriptor for the mask input of a method
-    GrB_INP0,       // descriptor for the first input of a method
-    GrB_INP1,       // descriptor for the second input of a method
+    GrB_OUTP = 0,   // descriptor for output of a method
+    GrB_MASK = 1,   // descriptor for the mask input of a method
+    GrB_INP0 = 2,   // descriptor for the first input of a method
+    GrB_INP1 = 3,   // descriptor for the second input of a method
+
+    GxB_DESCRIPTOR_NTHREADS = GxB_NTHREADS,   // number of threads to use.
+                        // If <= GxB_DEFAULT, then GraphBLAS selects the number
+                        // of threads automatically.
 
     // SuiteSparse:GraphBLAS extensions are given large values so they do not
     // conflict with future enum values added to the spec:
@@ -2590,21 +2803,22 @@ GrB_Desc_Field ;
 typedef enum
 {
     // for all GrB_Descriptor fields:
-    GxB_DEFAULT,    // default behavior of the method
+    GxB_DEFAULT = 0,    // default behavior of the method
 
     // for GrB_OUTP only:
-    GrB_REPLACE,    // clear the output before assigning new values to it
+    GrB_REPLACE = 1,    // clear the output before assigning new values to it
 
     // for GrB_MASK only:
-    GrB_SCMP,       // use the structural complement of the input
+    GrB_SCMP = 2,       // use the structural complement of the input
 
     // for GrB_INP0 and GrB_INP1 only:
-    GrB_TRAN,       // use the transpose of the input
+    GrB_TRAN = 3,       // use the transpose of the input
 
     // for GxB_AxB_METHOD only:
-    GxB_AxB_GUSTAVSON = 1001,  // gather-scatter saxpy method
-    GxB_AxB_HEAP      = 1002,  // heap-based saxpy method
-    GxB_AxB_DOT       = 1003   // dot product
+    GxB_AxB_GUSTAVSON = 1001,   // gather-scatter saxpy method
+    GxB_AxB_HEAP      = 1002,   // heap-based saxpy method
+    GxB_AxB_DOT       = 1003    // dot product
+
 }
 GrB_Desc_Value ;
 
@@ -2700,26 +2914,33 @@ GrB_Info GrB_Descriptor_free    // free a descriptor
 typedef enum            // for global options or matrix options
 {
     // these are either global or matrix options:
-    GxB_HYPER,          // defines switch to hypersparse format (a double value)
-    GxB_FORMAT,         // defines CSR/CSC format: GxB_BY_ROW or GxB_BY_COL
+    GxB_HYPER = 0,      // defines switch to hypersparse format (a double value)
+    GxB_FORMAT = 1,     // defines CSR/CSC format: GxB_BY_ROW or GxB_BY_COL
 
     // these are global options only:
-    GxB_MODE,           // mode passed to GrB_init (blocking or non-blocking)
+    GxB_MODE = 2,       // mode passed to GrB_init (blocking or non-blocking)
 
-    GxB_THREAD_SAFETY,  // thread library that allows GraphBLAS to
+    GxB_THREAD_SAFETY = 3,  // thread library that allows GraphBLAS to
                         // be thread-safe for user threads: this provides a
                         // critical section for user threads for GrB_wait
                         // and thread-local storage for GrB_error.
 
-    GxB_THREADING       // thread library used for internal GraphBLAS threads
+    GxB_THREADING = 4,  // thread library used for internal GraphBLAS threads
+
+    GxB_GLOBAL_NTHREADS = GxB_NTHREADS,  // max number of threads to use
+                        // If <= GxB_DEFAULT, then GraphBLAS selects the number
+                        // of threads automatically.
+
+    GxB_IS_HYPER = 6    // query a matrix to see if it hypersparse or not
+                        // (GxB_Matrix_Option_get only)
 
 } GxB_Option_Field ;
 
 // GxB_FORMAT can be by row or by column:
 typedef enum
 {
-    GxB_BY_ROW,         // CSR: compressed sparse row format
-    GxB_BY_COL          // CSC: compressed sparse column format
+    GxB_BY_ROW = 0,     // CSR: compressed sparse row format
+    GxB_BY_COL = 1      // CSC: compressed sparse column format
 }
 GxB_Format_Value ;
 
@@ -2727,10 +2948,10 @@ GxB_Format_Value ;
 typedef enum
 {
     GxB_THREAD_NONE = 0,    // no threading
-    GxB_THREAD_OPENMP,      // OpenMP
-    GxB_THREAD_POSIX,       // POSIX pthreads
-    GxB_THREAD_WINDOWS,     // Windows threads
-    GxB_THREAD_ANSI         // ANSI C11 threads
+    GxB_THREAD_OPENMP = 1,  // OpenMP
+    GxB_THREAD_POSIX = 2,   // POSIX pthreads
+    GxB_THREAD_WINDOWS = 3, // Windows threads
+    GxB_THREAD_ANSI = 4     // ANSI C11 threads
 }
 GxB_Thread_Model ;
 
@@ -2805,7 +3026,8 @@ GrB_Info GxB_Global_Option_get      // gets the current global default option
 
 // GxB_set and GxB_get are generic methods that and set or query the options in
 // a GrB_Matrix, a GrB_Descriptor, or in the global options.  They can be used
-// with the following syntax:
+// with the following syntax.  Note that GxB_NTHREADS can be used for both the
+// global nthreads_max, and for the # of threads in the descriptor.
 
 // To set/get the global options:
 //
@@ -2817,6 +3039,10 @@ GrB_Info GxB_Global_Option_get      // gets the current global default option
 //      GxB_set (GxB_FORMAT, GxB_BY_ROW) ;
 //      GxB_set (GxB_FORMAT, GxB_BY_COL) ;
 //      GxB_get (GxB_FORMAT, GxB_Format_Value *s) ;
+//
+//      // see the GxB_NTHREADS_MAX discussion above
+//      GxB_set (GxB_NTHREADS, nthreads_max) ;
+//      GxB_get (GxB_NTHREADS, int *nthreads_max) ;
 
 // To get global options that can be queried but not modified:
 //
@@ -2835,6 +3061,10 @@ GrB_Info GxB_Global_Option_get      // gets the current global default option
 //      GxB_set (GrB_Matrix A, GxB_FORMAT, GxB_BY_COL) ;
 //      GxB_get (GrB_Matrix A, GxB_FORMAT, GxB_Format_Value *s) ;
 
+// To get a matrix status (modified with GxB_HYPER, double h parameter):
+//
+//      GxB_get (GrB_Matrix A, GxB_IS_HYPER, bool *is_hyper) ;
+
 // To set/get a descriptor field:
 //
 //      GxB_set (GrB_Descriptor d, GrB_OUTP, GxB_DEFAULT) ;
@@ -2849,8 +3079,9 @@ GrB_Info GxB_Global_Option_get      // gets the current global default option
 //      GxB_set (GrB_Descriptor d, GrB_INP1, GxB_DEFAULT) ;
 //      GxB_set (GrB_Descriptor d, GrB_INP1, GrB_TRAN ;
 //
+//      GxB_set (GrB_Descriptor d, GxB_NTHREADS, nthreads) ;
+//
 //      GxB_get (GrB_Descriptor d, GrB_Desc_Field f, GrB_Desc_Value *v) ;
-
 
 #define GxB_set(arg1,...)                               \
     _Generic                                            \
@@ -4876,56 +5107,56 @@ GrB_Info GrB_transpose              // C<Mask> = accum (C, A')
 extern GrB_Monoid
 
     // MIN monoids:
-    GxB_MIN_INT8_MONOID,          // identity: INT8_MAX
-    GxB_MIN_UINT8_MONOID,         // identity: UINT8_MAX
-    GxB_MIN_INT16_MONOID,         // identity: INT16_MAX
-    GxB_MIN_UINT16_MONOID,        // identity: UINT16_MAX
-    GxB_MIN_INT32_MONOID,         // identity: INT32_MAX
-    GxB_MIN_UINT32_MONOID,        // identity: UINT32_MAX
-    GxB_MIN_INT64_MONOID,         // identity: INT64_MAX
-    GxB_MIN_UINT64_MONOID,        // identity: UINT64_MAX
-    GxB_MIN_FP32_MONOID,          // identity: INFINITY
-    GxB_MIN_FP64_MONOID,          // identity: INFINITY
+    GxB_MIN_INT8_MONOID,          // identity: INT8_MAX     terminal: INT8_MIN
+    GxB_MIN_INT16_MONOID,         // identity: INT16_MAX    terminal: INT16_MIN
+    GxB_MIN_INT32_MONOID,         // identity: INT32_MAX    terminal: INT32_MIN
+    GxB_MIN_INT64_MONOID,         // identity: INT64_MAX    terminal: INT32_MIN
+    GxB_MIN_UINT8_MONOID,         // identity: UINT8_MAX    terminal: 0
+    GxB_MIN_UINT16_MONOID,        // identity: UINT16_MAX   terminal: 0
+    GxB_MIN_UINT32_MONOID,        // identity: UINT32_MAX   terminal: 0
+    GxB_MIN_UINT64_MONOID,        // identity: UINT64_MAX   terminal: 0
+    GxB_MIN_FP32_MONOID,          // identity: INFINITY     terminal: -INFINITY
+    GxB_MIN_FP64_MONOID,          // identity: INFINITY     terminal: -INFINITY
 
     // MAX monoids:
-    GxB_MAX_INT8_MONOID,          // identity: INT8_MIN
-    GxB_MAX_UINT8_MONOID,         // identity: 0
-    GxB_MAX_INT16_MONOID,         // identity: INT16_MIN
-    GxB_MAX_UINT16_MONOID,        // identity: 0
-    GxB_MAX_INT32_MONOID,         // identity: INT32_MIN
-    GxB_MAX_UINT32_MONOID,        // identity: 0
-    GxB_MAX_INT64_MONOID,         // identity: INT64_MIN
-    GxB_MAX_UINT64_MONOID,        // identity: 0
-    GxB_MAX_FP32_MONOID,          // identity: -INFINITY
-    GxB_MAX_FP64_MONOID,          // identity: -INFINITY
+    GxB_MAX_INT8_MONOID,          // identity: INT8_MIN     terminal: INT8_MAX
+    GxB_MAX_INT16_MONOID,         // identity: INT16_MIN    terminal: INT16_MAX
+    GxB_MAX_INT32_MONOID,         // identity: INT32_MIN    terminal: INT32_MAX
+    GxB_MAX_INT64_MONOID,         // identity: INT64_MIN    terminal: INT64_MAX
+    GxB_MAX_UINT8_MONOID,         // identity: 0            terminal: UINT8_MAX
+    GxB_MAX_UINT16_MONOID,        // identity: 0            terminal: UINT16_MAX
+    GxB_MAX_UINT32_MONOID,        // identity: 0            terminal: UINT32_MAX
+    GxB_MAX_UINT64_MONOID,        // identity: 0            terminal: UINT64_MAX
+    GxB_MAX_FP32_MONOID,          // identity: -INFINITY    terminal: INFINITY
+    GxB_MAX_FP64_MONOID,          // identity: -INFINITY    terminal: INFINITY
 
     // PLUS monoids:
-    GxB_PLUS_INT8_MONOID,         // identity: 0
-    GxB_PLUS_UINT8_MONOID,        // identity: 0
-    GxB_PLUS_INT16_MONOID,        // identity: 0
-    GxB_PLUS_UINT16_MONOID,       // identity: 0
-    GxB_PLUS_INT32_MONOID,        // identity: 0
-    GxB_PLUS_UINT32_MONOID,       // identity: 0
-    GxB_PLUS_INT64_MONOID,        // identity: 0
-    GxB_PLUS_UINT64_MONOID,       // identity: 0
-    GxB_PLUS_FP32_MONOID,         // identity: 0
-    GxB_PLUS_FP64_MONOID,         // identity: 0
+    GxB_PLUS_INT8_MONOID,         // identity: 0            terminal: none
+    GxB_PLUS_INT16_MONOID,        // identity: 0            terminal: none
+    GxB_PLUS_INT32_MONOID,        // identity: 0            terminal: none
+    GxB_PLUS_INT64_MONOID,        // identity: 0            terminal: none
+    GxB_PLUS_UINT8_MONOID,        // identity: 0            terminal: none
+    GxB_PLUS_UINT16_MONOID,       // identity: 0            terminal: none
+    GxB_PLUS_UINT32_MONOID,       // identity: 0            terminal: none
+    GxB_PLUS_UINT64_MONOID,       // identity: 0            terminal: none
+    GxB_PLUS_FP32_MONOID,         // identity: 0            terminal: none
+    GxB_PLUS_FP64_MONOID,         // identity: 0            terminal: none
 
     // TIMES monoids:
-    GxB_TIMES_INT8_MONOID,        // identity: 1
-    GxB_TIMES_UINT8_MONOID,       // identity: 1
-    GxB_TIMES_INT16_MONOID,       // identity: 1
-    GxB_TIMES_UINT16_MONOID,      // identity: 1
-    GxB_TIMES_INT32_MONOID,       // identity: 1
-    GxB_TIMES_UINT32_MONOID,      // identity: 1
-    GxB_TIMES_INT64_MONOID,       // identity: 1
-    GxB_TIMES_UINT64_MONOID,      // identity: 1
-    GxB_TIMES_FP32_MONOID,        // identity: 1
-    GxB_TIMES_FP64_MONOID,        // identity: 1
+    GxB_TIMES_INT8_MONOID,        // identity: 1            terminal: 0
+    GxB_TIMES_INT16_MONOID,       // identity: 1            terminal: 0
+    GxB_TIMES_INT32_MONOID,       // identity: 1            terminal: 0
+    GxB_TIMES_INT64_MONOID,       // identity: 1            terminal: 0
+    GxB_TIMES_UINT8_MONOID,       // identity: 1            terminal: 0
+    GxB_TIMES_UINT16_MONOID,      // identity: 1            terminal: 0
+    GxB_TIMES_UINT32_MONOID,      // identity: 1            terminal: 0
+    GxB_TIMES_UINT64_MONOID,      // identity: 1            terminal: 0
+    GxB_TIMES_FP32_MONOID,        // identity: 1            terminal: none
+    GxB_TIMES_FP64_MONOID,        // identity: 1            terminal: none
 
     // Boolean monoids:
-    GxB_LOR_BOOL_MONOID,          // identity: false
-    GxB_LAND_BOOL_MONOID,         // identity: true
+    GxB_LOR_BOOL_MONOID,          // identity: false        terminal: true
+    GxB_LAND_BOOL_MONOID,         // identity: true         terminal: false
     GxB_LXOR_BOOL_MONOID,         // identity: false
     GxB_EQ_BOOL_MONOID ;          // identity: true
 
@@ -5539,6 +5770,387 @@ GrB_Info GxB_Vector_fprint          // print and check a GrB_Vector
     (object, GB_STR(object), pr, f)
 
 #define GxB_print(object,pr) GxB_fprint(object,pr,stdout)
+
+//==============================================================================
+// Matrix and vector import/export
+//==============================================================================
+
+// The import/export functions allow the user application to create a
+// GrB_Matrix or GrB_Vector object, and to extract its contents, faster and
+// with less memory overhead than the GrB_*_build and GrB_*_extractTuples
+// functions.
+
+// The semantics of import/export are the same as the "move constructor" in
+// C++.  On import, the user provides a set of arrays that have been previously
+// allocated via the ANSI C malloc function.  The arrays define the content of
+// the matrix or vector.  Unlike GrB_*_build, the GraphBLAS library then takes
+// ownership of the user's input arrays and may either (a) incorporate them
+// into its internal data structure for the new GrB_Matrix or GrB_Vector,
+// potentially creating the GrB_Matrix or GrB_Vector in constant time with no
+// memory copying performed, or (b) if the library does not support the import
+// format directly, then it may convert the input to its internal format, and
+// then free the user's input arrays.  GraphBLAS may also choose to use a mix
+// of the two strategies.  In either case, the input arrays are no longer
+// "owned" by the user application.  If A is a GrB_Matrix created by an import,
+// the user input arrays are freed no later than GrB_free (&A), and may be
+// freed earlier, at the discretion of the GraphBLAS library.  The data
+// structure of the GrB_Matrix and GrB_Vector remain opaque.
+
+// The export of a GrB_Matrix or GrB_Vector is symmetric with the import
+// operation.  It is a destructive export, where the GrB_Matrix or GrB_Vector
+// no longer exists when the export completes, and instead the user is returned
+// several arrays that contain the matrix or vector in the requested format.
+// Ownership of these arrays is given to the user application, which is then
+// responsible for freeing them via the ANSI C free function.  If the output
+// format is supported by the GraphBLAS library, then these arrays may be
+// returned to the user application in O(1) time and with no memory copying
+// performed.  Otherwise, the GraphBLAS library will create the output arrays
+// for the user (via the ANSI C malloc function), fill them with the GrB_Matrix
+// or GrB_Vector data, and then return the newly allocated arrays to the user.
+
+// Four different formats are provided for import/export.  For each format, the
+// Ax array has a C-type <type> corresponding to one of the 11 built-in types
+// in GraphBLAS (bool, int*_t, uint*_t, float, and double), or a user-defined
+// type.
+
+//------------------------------------------------------------------------------
+
+GrB_Info GxB_Matrix_import_CSR      // import a CSR matrix
+(
+    GrB_Matrix *A,          // handle of matrix to create
+    const GrB_Type type,    // type of matrix to create
+    GrB_Index nrows,        // matrix dimension is nrows-by-ncols
+    GrB_Index ncols,
+    GrB_Index nvals,        // number of entries in the matrix
+    // CSR format:
+    int64_t nonempty,       // number of rows with at least one entry:
+                            // either < 0 if not known, or >= 0 if exact
+    GrB_Index **Ap,         // row "pointers", size nrows+1
+    GrB_Index **Aj,         // column indices, size nvals
+    void      **Ax,         // values, size nvals
+    const GrB_Descriptor desc       // descriptor for # of threads to use
+) ;
+
+    // CSR:  an nrows-by-ncols matrix with nvals entries in CSR format consists
+    // of 3 arrays:
+    //
+    //          GrB_Index Ap [nrows+1], Aj [nvals] ; <type> Ax [nvals] ;
+    //
+    //      The column indices of entries in the ith row of the matrix are held
+    //      in Aj [Ap [i] ... Ap[i+1]], and the corresponding values are held
+    //      in the same positions in Ax.  Column indices must be in the range 0
+    //      to ncols-1, and must appear in sorted order within each row.  No
+    //      duplicate column indices may appear in any row.  Ap [0] must equal
+    //      zero, and Ap [nrows] must equal nvals.  The Ap array must be of
+    //      size nrows+1 (or larger), and the Aj and Ax arrays must have size
+    //      at least nvals.  If nvals is zero, then the Aj and Ax arrays need
+    //      not be present and can be NULL.
+
+    //      The nonempty parameter is optional.  It states the number of rows
+    //      that have at least one entry: if not known, use -1;
+    //      if nonempty >= 0 the value must be exact.
+
+//------------------------------------------------------------------------------
+
+GrB_Info GxB_Matrix_import_CSC      // import a CSC matrix
+(
+    GrB_Matrix *A,          // handle of matrix to create
+    const GrB_Type type,    // type of matrix to create
+    GrB_Index nrows,        // matrix dimension is nrows-by-ncols
+    GrB_Index ncols,
+    GrB_Index nvals,        // number of entries in the matrix
+    // CSC format:
+    int64_t nonempty,       // number of columns with at least one entry:
+                            // either < 0 if not known, or >= 0 if exact
+    GrB_Index **Ap,         // column "pointers", size ncols+1
+    GrB_Index **Ai,         // row indices, size nvals
+    void      **Ax,         // values, size nvals
+    const GrB_Descriptor desc       // descriptor for # of threads to use
+) ;
+
+    // CSC:  an nrows-by-ncols matrix with nvals entries in CSC format consists
+    // of 3 arrays:
+    //
+    //          GrB_Index Ap [ncols+1], Ai [nvals] ; <type> Ax [nvals] ;
+    //
+    //      The row indices of entries in the jth column of the matrix are held
+    //      in Ai [Ap [j] ... Ap[j+1]], and the corresponding values are held
+    //      in the same positions in Ax.  Row indices must be in the range 0 to
+    //      nrows-1, and must appear in sorted order within each column.  No
+    //      duplicate row indices may appear in any column.  Ap [0] must equal
+    //      zero, and Ap [ncols] must equal nvals.  The Ap array must be of
+    //      size ncols+1 (or larger), and the Ai and Ax arrays must have size
+    //      at least nvals.  If nvals is zero, then the Ai and Ax arrays need
+    //      not be present and can be NULL.
+
+    //      The nonempty parameter is optional.  It states the number of
+    //      columns that have at least one entry: if not known, use -1;
+    //      if nonempty >= 0 the value must be exact.
+
+//------------------------------------------------------------------------------
+
+GrB_Info GxB_Matrix_import_HyperCSR     // import a hypersparse CSR matrix
+(
+    GrB_Matrix *A,          // handle of matrix to create
+    const GrB_Type type,    // type of matrix to create
+    GrB_Index nrows,        // matrix dimension is nrows-by-ncols
+    GrB_Index ncols,
+    GrB_Index nvals,        // number of entries in the matrix
+    // hypersparse CSR format:
+    int64_t nonempty,       // number of rows in Ah with at least one entry,
+                            // either < 0 if not known, or >= 0 if exact
+    GrB_Index nvec,         // number of rows in Ah list
+    GrB_Index **Ah,         // list of size nvec of rows that appear in A
+    GrB_Index **Ap,         // row "pointers", size nvec+1
+    GrB_Index **Aj,         // column indices, size nvals
+    void      **Ax,         // values, size nvals
+    const GrB_Descriptor desc       // descriptor for # of threads to use
+) ;
+
+    // HYPER_CSR: an nrows-by-ncols matrix with nvals entries and nvec
+    // rows that may have entries in HYPER_CSR format consists of 4 arrays:
+    //
+    //          GrB_Index Ah [nvec], Ap [nvec+1], Aj [nvals] ;
+    //          <type> Ax [nvals] ;
+    //
+    //      The Aj and Ax arrays are the same for a matrix in CSR or HYPER_CSR
+    //      format.  Only Ap and Ah differ.
+    //
+    //      The Ah array is a list of the row indices of rows that appear in
+    //      the matrix.  It
+    //      must appear in sorted order, and no duplicates may appear.  If i =
+    //      Ah [k] is the kth row, then the column indices of the ith
+    //      row appear in Aj [Ap [k] ... Ap [k+1]], and the corresponding
+    //      values appear in the same locations in Ax.  Column indices must be
+    //      in the range 0 to ncols-1, and must appear in sorted order within
+    //      each row.  No duplicate column indices may appear in any row.  nvec
+    //      may be zero, to denote an array with no entries.  The Ah array must
+    //      be of size at least nvec, Ap must be of size at least nvec+1, and
+    //      Aj and Ax must be at least of size nvals.  If nvals is zero, then
+    //      the Aj and Ax arrays need not be present and can be NULL.
+
+    //      The nonempty parameter is optional.  Row indices that do not appear
+    //      in the Ah list have no entries.  Row indices that do appear in Ah
+    //      have >= 0 entries.  The nonempty parameter states the number of
+    //      rows in the Ah list that have at least one entry: if not known, use
+    //      -1.  If nonempty >= 0 the value must be exact.
+
+//------------------------------------------------------------------------------
+
+GrB_Info GxB_Matrix_import_HyperCSC     // import a hypersparse CSC matrix
+(
+    GrB_Matrix *A,          // handle of matrix to create
+    const GrB_Type type,    // type of matrix to create
+    GrB_Index nrows,        // matrix dimension is nrows-by-ncols
+    GrB_Index ncols,
+    GrB_Index nvals,        // number of entries in the matrix
+    // hypersparse CSC format:
+    int64_t nonempty,       // number of columns in Ah with at least one entry,
+                            // either < 0 if not known, or >= 0 if exact
+    GrB_Index nvec,         // number of columns in Ah list
+    GrB_Index **Ah,         // list of size nvec of columns that appear in A
+    GrB_Index **Ap,         // column "pointers", size nvec+1
+    GrB_Index **Ai,         // row indices, size nvals
+    void      **Ax,         // values, size nvals
+    const GrB_Descriptor desc       // descriptor for # of threads to use
+) ;
+
+    // HYPER_CSC: an nrows-by-ncols matrix with nvals entries and nvec
+    // columns that may have entries in HYPER_CSC format consists of 4 arrays:
+    //
+    //
+    //          GrB_Index Ah [nvec], Ap [nvec+1], Ai [nvals] ;
+    //          <type> Ax [nvals] ;
+    //
+    //      The Ai and Ax arrays are the same for a matrix in CSC or HYPER_CSC
+    //      format.  Only Ap and Ah differ.
+    //
+    //      The Ah array is a list of the column indices of non-empty columns.
+    //      It must appear in sorted order, and no duplicates may appear.  If j
+    //      = Ah [k] is the kth non-empty column, then the row indices of the
+    //      jth column appear in Ai [Ap [k] ... Ap [k+1]], and the
+    //      corresponding values appear in the same locations in Ax.  Row
+    //      indices must be in the range 0 to nrows-1, and must appear in
+    //      sorted order within each column.  No duplicate row indices may
+    //      appear in any column.  nvec may be zero, to denote an array with no
+    //      entries.  The Ah array must be of size at least nvec, Ap must be of
+    //      size at least nvec+1, and Ai and Ax must be at least of size nvals.
+    //      If nvals is zero, then the Ai and Ax arrays need not be present and
+    //      can be NULL.
+
+    //      The nonempty parameter is optional.  Column indices that do not
+    //      appear in the Ah list have no entries.  Column indices that do
+    //      appear in Ah have >= 0 entries.  The nonempty parameter states the
+    //      number of columns in the Ah list that have at least one entry: if
+    //      not known, use -1.  If nonempty >= 0 the value must be exact.
+
+//------------------------------------------------------------------------------
+
+// On import, the required user arrays Ah, Ap, Ai, Aj, and/or Ax must be
+// non-NULL pointers to memory space allocted by the ANSI C malloc (or calloc,
+// or realloc).  Just like GrB_*_new, the GrB_Matrix A (or GrB_Vector v) is
+// undefined on input.  If the import is successful, the GrB_Matrix A or
+// GrB_Vector v is created, and the pointers to the user input arrays have been
+// set to NULL.  These user arrays have either been incorporated directly into
+// the GrB_Matrix A or GrB_Vector v, in which case the user input arrays will
+// eventually be freed by GrB_free (&A), or their contents have been copied and
+// the arrays freed.  This decision is made by the GraphBLAS library itself,
+// and the user application has no control over this decision.
+
+// If any of the above arrays Ap, Ah, Aj, Ai, or Ax have zero size, they must
+// still be non-NULL pointers to malloc'd space on input (effectively of size
+// at least 1 byte).  No error checking is performed on the user input arrays.
+// If the user input arrays do not conform to the precise specifications above,
+// results are undefined.  No typecasting of the values of the matrix or vector
+// entries is performed on import or export.
+
+// SuiteSparse:GraphBLAS supports the first four formats natively (CSR, CSC,
+// HYPER_CSR, and HYPER_CSC).  On import, the first four formats take O(1) time
+// and memory to import.  On export, if the GrB_Matrix or GrB_Vector is already
+// in this particular format, then the export takes O(1) time and no memory
+// copying is performed.
+
+// GxB_Vector_import:
+//
+//      For the import of a GrB_Vector, the four formats are all identical to
+//      one another (CSR, CSC, HYPER_CSR, HYPER_CSC).  The Ap and Ah arrays do
+//      not appear, and implicitly refer to a single sparse vector.  The
+//      GrB_Vector is treated as if it were a single row of an 1-by-n matrix in
+//      CSR format, or equivalently as a single column of an n-by-1 matrix in
+//      CSC format.  If nvals is zero, then the vi and vx arrays need not be
+//      present and can be NULL.
+
+GrB_Info GxB_Vector_import  // import a vector in CSC format
+(
+    GrB_Vector *vhandle,    // handle of vector to create
+    const GrB_Type type,    // type of vector to create
+    GrB_Index n,            // vector length
+    GrB_Index nvals,        // number of entries in the vector
+    // CSR/CSC format:
+    GrB_Index **vi,         // indices, size nvals (in sorted order)
+    void      **vx,         // values, size nvals
+    const GrB_Descriptor desc       // currently unused
+) ;
+
+// If the import is not successful, the GxB_Matrix_import_* functions return A
+// as NULL, GxB_Vector_import returns v as NULL, and the user input arrays are
+// neither modified nor freed.  They are still owned by the user application.
+
+// Note that the first 4 arguments of GxB_Matrix_import_*, and the first 3
+// of GxB_Vector_import, are identical to GrB_Matrix_new and GrB_Vector_new,
+// respectively.
+
+//------------------------------------------------------------------------------
+
+// The GrB_*_export functions are symmetric with the GrB_*_import functions.
+//
+// GxB_Matrix_export and GxB_Vector_export force completion of any pending
+// operations, prior to the export.
+//
+// If there are no entries in the matrix or vector, then the index arrays
+// (Ai, Aj, or vi) and value arrays (Ax or vx) are returned as NULL.  This is
+// not an error condition.
+//
+// GxB_Matrix_export:
+//
+//      A GrB_Matrix may be exported in any one of four different formats.  On
+//      successful export, the input GrB_Matrix A is freed, and the output
+//      arrays Ah, Ap, Ai, Aj, and/or Ax are returned to the user application
+//      as arrays allocated by the ANSI C malloc function.  The four formats
+//      are the same as the import formats for GrB_Matrix_import_*.
+
+GrB_Info GxB_Matrix_export_CSR  // export and free a CSR matrix
+(
+    GrB_Matrix *A,          // handle of matrix to export and free
+    GrB_Type *type,         // type of matrix exported
+    GrB_Index *nrows,       // matrix dimension is nrows-by-ncols
+    GrB_Index *ncols,
+    GrB_Index *nvals,       // number of entries in the matrix
+    // CSR format:
+    int64_t *nonempty,      // number of rows with at least one entry
+    GrB_Index **Ap,         // row "pointers", size nrows+1
+    GrB_Index **Aj,         // column indices, size nvals
+    void      **Ax,         // values, size nvals
+    const GrB_Descriptor desc       // descriptor for # of threads to use
+) ;
+
+GrB_Info GxB_Matrix_export_CSC  // export and free a CSC matrix
+(
+    GrB_Matrix *A,          // handle of matrix to export and free
+    GrB_Type *type,         // type of matrix exported
+    GrB_Index *nrows,       // matrix dimension is nrows-by-ncols
+    GrB_Index *ncols,
+    GrB_Index *nvals,       // number of entries in the matrix
+    // CSC format:
+    int64_t *nonempty,      // number of columns with at least one entry
+    GrB_Index **Ap,         // column "pointers", size ncols+1
+    GrB_Index **Ai,         // row indices, size nvals
+    void      **Ax,         // values, size nvals
+    const GrB_Descriptor desc       // descriptor for # of threads to use
+) ;
+
+GrB_Info GxB_Matrix_export_HyperCSR  // export and free a hypersparse CSR matrix
+(
+    GrB_Matrix *A,          // handle of matrix to export and free
+    GrB_Type *type,         // type of matrix exported
+    GrB_Index *nrows,       // matrix dimension is nrows-by-ncols
+    GrB_Index *ncols,
+    GrB_Index *nvals,       // number of entries in the matrix
+    // hypersparse CSR format:
+    int64_t *nonempty,      // number of rows in Ah with at least one entry
+    GrB_Index *nvec,        // number of rows in Ah list
+    GrB_Index **Ah,         // list of size nvec of rows that appear in A
+    GrB_Index **Ap,         // row "pointers", size nvec+1
+    GrB_Index **Aj,         // column indices, size nvals
+    void      **Ax,         // values, size nvals
+    const GrB_Descriptor desc       // descriptor for # of threads to use
+) ;
+
+GrB_Info GxB_Matrix_export_HyperCSC  // export and free a hypersparse CSC matrix
+(
+    GrB_Matrix *A,          // handle of matrix to export and free
+    GrB_Type *type,         // type of matrix exported
+    GrB_Index *nrows,       // matrix dimension is nrows-by-ncols
+    GrB_Index *ncols,
+    GrB_Index *nvals,       // number of entries in the matrix
+    // hypersparse CSC format:
+    int64_t *nonempty,      // number of columns in Ah with at least one entry
+    GrB_Index *nvec,        // number of columns in Ah list
+    GrB_Index **Ah,         // list of size nvec of columns that appear in A
+    GrB_Index **Ap,         // columns "pointers", size nvec+1
+    GrB_Index **Ai,         // row indices, size nvals
+    void      **Ax,         // values, size nvals
+    const GrB_Descriptor desc       // descriptor for # of threads to use
+) ;
+
+// GxB_Vector_export:
+//
+//      GxB_Vector_export exports a vector in CSC format for GxB_Vector_import,
+//      in which the indices are returned in sorted order.
+
+GrB_Info GxB_Vector_export  // export and free a vector
+(
+    GrB_Vector *vhandle,    // handle of vector to export and free
+    GrB_Type *type,         // type of matrix exported
+    GrB_Index *n,           // length of the vector
+    GrB_Index *nvals,       // number of entries in the vector
+    // CSR/CSC format:
+    GrB_Index **vi,         // indices, size nvals
+    void      **vx,         // values, size nvals
+    const GrB_Descriptor desc       // currently unused
+) ;
+
+// If the export is not successful, the GxB_Matrix_export_* functions do not
+// modify A, the GxB_Vector_export does not modify v, and the user arrays are
+// returned as NULL.
+
+// SuiteSparse:GraphBLAS supports all four formats natively (CSR, CSC,
+// HYPER_CSR, and HYPER_CSC).  On export, they take O(1) time if the internal
+// format matches the requested output format.  The internal format can be
+// queried via GxB_Matrix_Option_get, to determine if the format is by row or
+// by column, if desired.  If the formats do not match, SuiteSparse:GraphBLAS
+// first reformats the GrB_Matrix A into the desired format, and then exports
+// the result.
 
 #endif
 

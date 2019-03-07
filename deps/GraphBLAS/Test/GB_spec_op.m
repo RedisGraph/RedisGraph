@@ -72,12 +72,12 @@ switch opname
     case 'second'
         z = y ;
     case 'min'
-        % min(x,y) in SuiteSparse:GraphBLAS is min(x,y,'includenan') in MATLAB.
+        % min(x,y) in SuiteSparse:GraphBLAS is min(x,y,'omitnan') in MATLAB.
         % see discussion in SuiteSparse/GraphBLAS/Source/GB.h
-        % z = min (x,y,'includenan') ;
+        % z = min (x,y,'omitnan') ;
         z = GB_mex_op (op, x, y) ;
     case 'max'
-        % z = max (x,y,'includenan') ;
+        % z = max (x,y,'omitnan') ;
         z = GB_mex_op (op, x, y) ;
     case 'plus'
         if (use_matlab)

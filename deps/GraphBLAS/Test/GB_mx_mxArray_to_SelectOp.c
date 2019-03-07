@@ -18,6 +18,7 @@ bool GB_mx_mxArray_to_SelectOp          // true if successful
     const char *name                    // name of the argument
 )
 {
+    GB_WHERE ("GB_mx_mxArray_to_SelectOp") ;
 
     (*handle) = NULL ;
     const mxArray *opname_mx = NULL ;

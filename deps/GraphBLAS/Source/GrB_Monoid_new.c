@@ -2,7 +2,7 @@
 // GrB_Monoid_new:  create a new monoid
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -11,10 +11,12 @@
 // y, and z must all be the same, and the identity value must also have the
 // same type.  No typecasting is done for the identity value.
 
+// not parallel: this function does O(1) work and is already thread-safe.
+
 #include "GB.h"
 
 #define GB_MONOID_NEW(type,T)                                               \
-GrB_Info GrB_Monoid_new_ ## T       /* create a new boolean monoid   */     \
+GrB_Info GrB_Monoid_new_ ## T       /* create a new monoid */               \
 (                                                                           \
     GrB_Monoid *monoid,             /* handle of monoid to create    */     \
     const GrB_BinaryOp op,          /* binary operator of the monoid */     \
@@ -23,7 +25,7 @@ GrB_Info GrB_Monoid_new_ ## T       /* create a new boolean monoid   */     \
 {                                                                           \
     GB_WHERE ("GrB_Monoid_new_" GB_STR(T) " (&monoid, op, identity)") ;     \
     type id = identity ;                                                    \
-    return (GB_Monoid_new (monoid, op, &id, GB_ ## T ## _code, Context)) ;  \
+    return (GB_Monoid_new (monoid, op, &id, NULL, GB_ ## T ## _code, Context));\
 }
 
 GB_MONOID_NEW (bool     , BOOL   )
@@ -46,6 +48,7 @@ GrB_Info GrB_Monoid_new_UDT         // create a monoid with a user-defined type
 )
 { 
     GB_WHERE ("GrB_Monoid_new_UDT (&monoid, op, identity)") ;
-    return (GB_Monoid_new (monoid, op, identity, GB_UDT_code, Context)) ;
+    GB_RETURN_IF_NULL (identity) ;
+    return (GB_Monoid_new (monoid, op, identity, NULL, GB_UDT_code, Context)) ;
 }
 

@@ -1,8 +1,8 @@
 //------------------------------------------------------------------------------
-// GB_AxB_factory
+// GB_AxB_factory: switch factory for built-in methods for C=A*B
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -11,6 +11,8 @@
 // to create built-in versions of sparse matrix-matrix multiplication.  The
 // #include'ing file defines the GB_AxB_WORKER macro, and mult_opcode,
 // add_opcode, xycode, and zcode
+
+// parallel: not here
 
 {
     //--------------------------------------------------------------------------

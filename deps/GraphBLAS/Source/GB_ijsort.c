@@ -2,8 +2,14 @@
 // GB_ijsort:  sort an index array I and remove duplicates
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
+//------------------------------------------------------------------------------
+
+// PARALLEL: deletes duplicates, see also GB_builder.  This is only used in
+// GB_assign, for scalar expansion and for the C_replace_phase, and only when I
+// and/or J are lists (not GrB_ALL, nor lo:inc:hi).
 
 #include "GB.h"
 
@@ -17,6 +23,24 @@ GrB_Info GB_ijsort
 )
 {
 
+    //--------------------------------------------------------------------------
+    // check inputs
+    //--------------------------------------------------------------------------
+
+    ASSERT (I != NULL) ;
+    ASSERT (p_ni != NULL) ;
+    ASSERT (p_I2 != NULL) ;
+
+    //--------------------------------------------------------------------------
+    // determine the number of threads to use
+    //--------------------------------------------------------------------------
+
+    GB_GET_NTHREADS (nthreads, Context) ;
+
+    //--------------------------------------------------------------------------
+    // get inputs
+    //--------------------------------------------------------------------------
+
     GrB_Index *I2 = NULL ;
     int64_t ni = *p_ni ;
 
@@ -27,7 +51,8 @@ GrB_Info GB_ijsort
     GB_MALLOC_MEMORY (I2, ni, sizeof (GrB_Index)) ;
     if (I2 == NULL)
     { 
-        return (GB_OUT_OF_MEMORY (GBYTES (ni, sizeof (GrB_Index)))) ;
+        // out of memory
+        return (GB_OUT_OF_MEMORY) ;
     }
 
     //--------------------------------------------------------------------------
@@ -39,7 +64,7 @@ GrB_Info GB_ijsort
         I2 [k] = I [k] ;
     }
 
-    GB_qsort_1 ((int64_t *) I2, ni) ;
+    GB_qsort_1 ((int64_t *) I2, ni, Context) ;
 
     //--------------------------------------------------------------------------
     // remove duplicates from I2

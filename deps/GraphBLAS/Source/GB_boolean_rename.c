@@ -2,7 +2,7 @@
 // GB_boolean_rename: rename a boolean opcode
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -15,13 +15,15 @@
 // Another 3 boolean operators are not considered here since they share
 // the same opcode:
 
-// GrB_LOR  == GxB_LOR_BOOL
-// GrB_LAND == GxB_LAND_BOOL
+// GrB_LOR  == GxB_LOR_BOOL,
+// GrB_LAND == GxB_LAND_BOOL,
 // GrB_LXOR == GxB_LXOR_BOOL
 
-// Those 6 names are in GraphBLAS but they are equivalent.
+// Those 6 names are in GraphBLAS but the pairs of names are equivalent.
 
 // See discussion on Source/GB.h on boolean and integer division
+
+// not parallel: this function does O(1) work and is already thread-safe.
 
 #include "GB.h"
 
