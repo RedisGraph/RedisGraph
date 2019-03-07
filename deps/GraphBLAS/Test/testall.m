@@ -34,9 +34,19 @@ logstat ;             % start the log.txt
 %-------------------------------------------------------------------------------
 % quick tests for statement coverage
 
+logstat ('test101') ; % GrB_*_import and export
+logstat ('test103') ; % GrB_transpose aliases
+logstat ('test104') ; % export/import
+logstat ('test105') ; % eWiseAdd for hypersparse
+logstat ('test106') ; % GxB_subassign with alias
+logstat ('test107') ; % monoids with terminal values
+logstat ('test108') ; % boolean monoids
+logstat ('test109') ; % terminal monoid with user-defined type
+logstat ('test110') ; % binary search of M(:,j) in accum/mask
 logstat ('test98') ;  % GB_mex_mxm, typecast on the fly
 logstat ('test92') ;  % GB_subref_symbolic
 logstat ('test97') ;  % GB_mex_assign, scalar expansion and zombies
+logstat ('test100') ; % GB_mex_isequal
 logstat ('test01') ;  % error handling
 logstat ('test02') ;  % matrix copy and dup tests
 logstat ('test03') ;  % random matrix tests
@@ -70,6 +80,7 @@ logstat ('test93') ;  % pagerank
 logstat ('test94') ;  % pagerank
 logstat ('test77') ;  % quick tests of GxB_kron
 logstat ('test76') ;  % GxB_resize
+logstat ('test102');  % GB_AxB_flopcount
 logstat ('test27') ;  % quick test of GxB_select (band)
 logstat ('test74') ;  % test GrB_mxm on all semirings, just dot product method
 logstat ('test99') ;  % GB_mex_transpose with explicit zeros in the Mask

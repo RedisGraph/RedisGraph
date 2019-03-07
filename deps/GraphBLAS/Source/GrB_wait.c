@@ -2,7 +2,7 @@
 // GrB_wait: finish all pending computations
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -24,6 +24,16 @@
 // any global variables relied upon by user-defined operators, or before
 // freeing any user-defined types, operators, monoids, or semirings.
 
+// parallel: not here; see GB_wait.  Or can also do all matrices in
+// the queue in parallel.
+
+// No other user threads should call any GraphBLAS function while GrB_wait is
+// executing, except for parallel calls to GrB_wait.  Results are undefined
+// otherwise, since GrB_wait could modify a matrix that another user thread is
+// attempting to access.  However, it is safe for multiple user threads to call
+// GrB_wait at the same time.  The user threads will then safely cooperate to
+// complete all the matrices in the queue, in parallel.
+
 #include "GB.h"
 
 GrB_Info GrB_wait ( )       // finish all pending computations
@@ -34,6 +44,11 @@ GrB_Info GrB_wait ( )       // finish all pending computations
     //--------------------------------------------------------------------------
 
     GB_WHERE ("GrB_wait ( )") ;
+
+    // GrB_wait takes no input arguments, so there is no mechanism for telling
+    // it how many threads to use.  Thus, the default rule is used (get #
+    // of threads from the global nthreads_max).
+    Context->nthreads = GxB_DEFAULT ;
 
     //--------------------------------------------------------------------------
     // assemble all matrices with lingering zombies and/or pending tuples
@@ -47,6 +62,8 @@ GrB_Info GrB_wait ( )       // finish all pending computations
         // A has been removed from the head of the queue but it still has
         // pending operations.  GB_check expects it to be in the queue.
         // ASSERT_OK (GB_check (A, "to assemble in GrB_wait", GB0)) ;
+        // FUTURE:: allow matrices with no pending operations to be in the
+        // queue.  See FUTURE:: in GB_setElement and GB_subassign_kernel.
         ASSERT (GB_PENDING (A) || GB_ZOMBIES (A)) ;
         // delete any lingering zombies and assemble any pending tuples.
         GB_WAIT (A) ;

@@ -2,13 +2,15 @@
 // GrB_Vector_setElement: set an entry in a vector, w (row) = x
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
 // Set a single scalar, w(row) = x, typecasting from the type of x to
 // the type of w as needed.
+
+// not parallel: this function does O(log(..)) work and is already thread-safe.
 
 #include "GB.h"
 

@@ -2,12 +2,14 @@
 // GB_size_t_multiply:  multiply two size_t and guard against overflow
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
 // c = a*b but check for overflow
+
+// not parallel: this function does O(1) work and is already thread-safe.
 
 #include "GB.h"
 

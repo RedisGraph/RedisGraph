@@ -41,6 +41,8 @@ bool GB_mx_string_to_BinaryOp          // true if successful, false otherwise
     const bool YisComplex               // true Y is complex
 )
 {
+    
+    GB_WHERE ("GB_mx_string_to_BinaryOp") ;
 
     (*handle) = NULL ;
     GrB_BinaryOp op = NULL ;

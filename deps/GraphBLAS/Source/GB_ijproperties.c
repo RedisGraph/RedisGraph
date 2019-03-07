@@ -2,15 +2,20 @@
 // GB_ijproperties: check I and determine its properties
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
 // check a list of indices I and determine its properties
 
+// PARALLEL: checks the entire set of indices in the array I, if it is a list,
+// to see if any entry is out of bounds, and to determine if it is sorted
+// order.  Similar to the the check of I and J in GB_build.
+
 #include "GB.h"
 
+// FUTURE:: if limit=0, print a different message.  see also setEl, extractEl.
 #define GB_ICHECK(i,limit)                                              \
 {                                                                       \
     if ((i) < 0 || (i) >= (limit))                                      \
@@ -159,6 +164,9 @@ GrB_Info GB_ijproperties        // check I and determine its properties
         //----------------------------------------------------------------------
         // I is an array of indices
         //----------------------------------------------------------------------
+
+        // determine the number of threads to use
+        GB_GET_NTHREADS (nthreads, Context) ;
 
         // scan I to find imin and imax, and validate the list. Also determine
         // if it is sorted or not.

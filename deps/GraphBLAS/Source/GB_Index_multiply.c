@@ -2,13 +2,15 @@
 // GB_Index_multiply:  multiply two integers and guard against overflow
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
 // c = a*b where c is GrB_Index (uint64_t), and a and b are int64_t.
 // Check for overflow.  Requires a >= 0 and b >= 0.
+
+// not parallel: this function does O(1) work and is already thread-safe.
 
 #include "GB.h"
 

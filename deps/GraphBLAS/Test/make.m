@@ -1,47 +1,37 @@
-function gbmake (what, flags, mexfunctions, cfiles, hfiles, inc)
-%GBMAKE compiles the MATLAB interface to GraphBLAS (for testing only).
-% Also compiles the functions in the Demo folder for use in testing.
+function make (what)
+%MAKE compiles the MATLAB interface to GraphBLAS (for testing only)
+% and dynamically links it with the libraries in ../build/libgraphblas.
 %
 % This MATLAB interface to GraphBLAS is meant for testing and development,
 % not for general use.
 %
 % Usage:
 %
-%   gbmake (what, flags, mexfunctions, cfiles, hfiles, inc)
-% 
-% All arguments are optional, so that gbmake with no arguments compiles
-% the GraphBLAS MATLAB interface with defaults.
-%
-% what: if empty, compile the code; 'clean' removes object files, 'distclean'
-%       removes object files and compiled mexFunctions
-%
-% flags: defaults to '-O'
-% mexfunctions: list of source files of mexFunctions
-% cfiles: list of C source files
-% hfiles: list of include files
-% inc: -I arguments
+%   make            % just make what has changed (does not check any changes
+%                   % in -lgraphblas, use 'make all' if recompilation is needed
+%   make all        % make everything from scratch
 %
 % GraphBLAS requires an ANSI C11 compliant compiler.  On the Mac, clang 8.0
 % suffices.  gcc should be version 4.9.3 or later
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
-if (~isempty (strfind (pwd, 'Tcov')) && nargin ~= 6)
-    % if the directory is Tcov, and if so assert nargin == 6
-    error ('gbmake should not be used in Tcov directory; use testcov instead') ;
+if (isempty (strfind (pwd, 'GraphBLAS/Test')))
+    % make with no arguments should only be done in GraphBLAS/Test
+    error ('make should be used in Test directory only') ;
 end
 
-if (isempty (strfind (pwd, 'Test')) && nargin == 0)
-    % gbmake with no arguments should only be done in GraphBLAS/Test
-    error ('gbmake (with no arguments) should be used in Test directory only') ;
+fprintf ('\nCompiling GraphBLAS tests:\n') ;
+
+if (nargin < 1)
+    what = '' ;
 end
 
-fprintf ('\nCompiling GraphBLAS tests\nplease wait [') ;
+make_all = (isequal (what, 'all')) ;
 
-if (nargin < 2)
-    flags = '-O' ;
-end
+% flags = '-g' ;
+  flags = '-O' ;
 
 flags = [flags ' -largeArrayDims'] ;
 
@@ -66,63 +56,44 @@ try
     end
 end
 
-if (nargin < 3)
-    mexfunctions = dir ('GB_mex_*.c') ;
-end
+mexfunctions = dir ('GB_mex_*.c') ;
+cfiles = [ dir('GB_mx_*.c') ; ...
+           dir('../Demo/Source/bfs5m.c') ; ...
+           dir('../Demo/Source/drowscale.c') ; ...
+           dir('../Demo/Source/dpagerank.c') ; ...
+           dir('../Demo/Source/dpagerank2.c') ; ...
+           dir('../Demo/Source/ipagerank.c') ; ...
+           dir('../Demo/Source/irowscale.c') ; ...
+           dir('../Demo/Source/isequal.c') ; ...
+           dir('../Demo/Source/mis_check.c') ; ...
+           dir('../Demo/Source/mis_score.c') ; ...
+           dir('../Demo/Source/wathen.c') ; ...
+           dir('../Demo/Source/random_matrix.c') ; ...
+           dir('../Demo/Source/simple_rand.c') ; ...
+           dir('../Demo/Source/simple_timer.c') ; ...
+           dir('../Demo/Source/tricount.c') ; ...
+           dir('../Demo/Source/usercomplex.c') ] ;
 
-if (nargin < 4)
-    cfiles = [ dir('../Source/*.c') ; dir('../Source/Generated/*.c') ; ...
-               dir('GB_mx_*.c') ; dir('../Demo/Source/*.c') ] ;
-end
+hfiles = [ dir('*.h') ; dir('Template/*.c') ; dir('../Demo/Include/*.h') ] ;
+inc = '-ITemplate -I../Include -I../Source -I../Source/Template -I../Demo/Include' ;
 
-if (nargin < 5)
-    hfiles = [ dir('../Include/*.h') ; ...
-               dir('*.h') ; ...
-               dir('Template/*.c') ; ...
-               dir('Template/*.h') ; ...
-               dir('../Source/*.h') ; ...
-               dir('../Source/Generated/*.h') ; ...
-               dir('../Source/Generator/*.c') ; ...
-               dir('../Demo/Include/*.h') ; ...
-               dir('../Source/Template/*.h') ; ...
-               dir('../Source/Template/*.c') ] ;
-end
-
-if (nargin < 6)
-    inc = '-ITemplate -I../Include -I../Source -I../Source/Generated -I../Source/Template -I../Demo/Include -I../Source/Generator' ;
+if (ismac)
+    % Mac (do 'make install' for GraphBLAS first)
+    libraries = '-L/usr/local/lib -lgraphblas' ; % -lomp' ;
+%   flags = [ flags   ' CFLAGS="$CXXFLAGS -Xpreprocessor -fopenmp" ' ] ;
+%   flags = [ flags ' CXXFLAGS="$CXXFLAGS -Xpreprocessor -fopenmp" ' ] ;
+%   flags = [ flags  ' LDFLAGS="$LDFLAGS  -fopenmp"' ] ;
+else
+    % Linux
+    libraries = '-L../build -lgraphblas' ;
+    flags = [ flags   ' CFLAGS="$CXXFLAGS -fopenmp -fPIC" '] ;
+    flags = [ flags ' CXXFLAGS="$CXXFLAGS -fopenmp -fPIC" '] ;
+    flags = [ flags  ' LDFLAGS="$LDFLAGS  -fopenmp -fPIC" '] ;
 end
 
 %-------------------------------------------------------------------------------
 
 dryrun = false ;
-if (nargin == 1 && ~isempty (what))
-    if (isequal (what, 'clean'))
-        d = dir ('*.o') ;
-        for k = 1:length(d)
-            delete (d (k).name) ;
-        end
-        d = dir ('*.obj') ;
-        for k = 1:length(d)
-            delete (d (k).name) ;
-        end
-        return
-    elseif (isequal (what, 'purge') || isequal (what, 'distclean'))
-        gbmake ('clean') ;
-        d = dir ('*.mex*') ;
-        for k = 1:length(d)
-            delete (d (k).name) ;
-        end
-        d = dir ('cover_*.c') ;
-        for k = 1:length(d)
-            delete (d (k).name) ;
-        end
-        return
-    elseif (isequal (what, 'dryrun'))
-        dryrun = true ;
-    end
-end
-
-%-------------------------------------------------------------------------------
 
 % Find the last modification time of any hfile.
 % These are #include'd into source files.
@@ -157,10 +128,10 @@ for k = 1:length (cfiles)
     end
 
     % compile the cfile if it is newer than its object file, or any hfile
-    if (tc > tobj || htime > tobj)
+    if (make_all || tc > tobj || htime > tobj)
         % compile the cfile
-        fprintf ('.', cfile) ;
-        % fprintf ('%s\n', cfile) ;
+        % fprintf ('.', cfile) ;
+        fprintf ('%s\n', cfile) ;
         mexcmd = sprintf ('mex -c %s -silent %s %s', flags, inc, cfile) ;
         if (dryrun)
             fprintf ('%s\n', mexcmd) ;
@@ -190,12 +161,12 @@ for k = 1:length (mexfunctions)
     end
 
     % compile if it is newer than its object file, or if any cfile was compiled
-    if (tc > tobj || any_c_compiled)
+    if (make_all || tc > tobj || any_c_compiled)
         % compile the mexFunction
-        mexcmd = sprintf ('mex %s -silent %s %s %s', ...
-            flags, inc, mexfunction, objlist) ;
-        fprintf (':') ;
-        % fprintf ('%s\n', mexfunction) ;
+        mexcmd = sprintf ('mex -silent %s %s %s %s %s', ...
+            flags, inc, mexfunction, objlist, libraries) ;
+        % fprintf (':') ;
+        fprintf ('%s\n', mexfunction) ;
         if (dryrun)
             fprintf ('%s\n', mexcmd) ;
         else
@@ -204,5 +175,4 @@ for k = 1:length (mexfunctions)
     end
 end
 
-fprintf (']\n') ;
 

@@ -2,7 +2,7 @@
 // GrB_Vector_extractTuples: extract all tuples from a vector
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -16,6 +16,8 @@
 // If any parameter I and/or X is NULL, that component is not extracted.  So to
 // extract just the row indices, pass I as non-NULL, and X as NULL.  This is
 // like [I,~,~] = find (v) in MATLAB.
+
+// parallel: not here, but in see GB_extractTuples.
 
 #include "GB.h"
 
@@ -31,6 +33,7 @@ GrB_Info GrB_Vector_extractTuples_ ## T     /* [I,~,X] = find (A) */          \
     GB_WHERE ("GrB_Vector_extractTuples_" GB_STR(T) " (I, X, nvals, v)") ;    \
     GB_RETURN_IF_NULL_OR_FAULTY (v) ;                                         \
     GB_RETURN_IF_NULL (p_nvals) ;                                             \
+    Context->nthreads = GxB_DEFAULT ;   /* no descriptor, so use default rule*/\
     ASSERT (GB_VECTOR_OK (v)) ;                                               \
     return (GB_extractTuples (I, NULL, X, p_nvals, GB_ ## T ## _code,         \
         (GrB_Matrix) v, Context)) ;                                           \

@@ -2,7 +2,7 @@
 // GB_builder: build a matrix from tuples
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -15,6 +15,13 @@
 // This function is called by GB_build to build a matrix T for GrB_Matrix_build
 // or GrB_Vector_build, and by GB_wait to build a matrix T from the list of
 // pending tuples.
+
+// PARALLEL: first does qsort, so need to parallelize GB_qsort_*.  Then passes
+// over the tuples to find duplicates, which has some dependencies but could be
+// done in bulk parallel.  After sorting, a thread owns a chunk of tuples.  It
+// can mark all its own duplicates, fully in parallel, but not across to tuples
+// owned by another thread.  When done with this first phase, a 2nd pass could
+// find any duplicates across the thread boundaries.
 
 #include "GB.h"
 
@@ -70,6 +77,12 @@ GrB_Info GB_builder
     // one or zero vectors (jwork_handle is always non-NULL however).
 
     //--------------------------------------------------------------------------
+    // determine the number of threads to use
+    //--------------------------------------------------------------------------
+
+    GB_GET_NTHREADS (nthreads, Context) ;
+
+    //--------------------------------------------------------------------------
     // sort the tuples in ascending order (just the pattern, not the values)
     //--------------------------------------------------------------------------
 
@@ -85,7 +98,7 @@ GrB_Info GB_builder
             // out of memory
             GB_FREE_MEMORY (*iwork_handle, ijlen, sizeof (int64_t)) ;
             GB_FREE_MEMORY (*jwork_handle, ijlen, sizeof (int64_t)) ;
-            return (GB_OUT_OF_MEMORY (GBYTES (len, sizeof (int64_t)))) ;
+            return (GB_OUT_OF_MEMORY) ;
         }
 
         // The k part of each tuple (i,k) or (j,i,k) records the original
@@ -104,12 +117,12 @@ GrB_Info GB_builder
         if (jwork != NULL)
         { 
             // sort a set of (j,i,k) tuples
-            GB_qsort_3 (jwork, iwork, kwork, len) ;
+            GB_qsort_3 (jwork, iwork, kwork, len, Context) ;
         }
         else
         { 
             // sort a set of (i,k) tuples
-            GB_qsort_2b (iwork, kwork, len) ;
+            GB_qsort_2b (iwork, kwork, len, Context) ;
         }
 
     }
@@ -173,12 +186,12 @@ GrB_Info GB_builder
     // allocate T; always hypersparse
     //--------------------------------------------------------------------------
 
-    // [ allocate T; malloc T->p and T->h but do not initialize them
+    // [ allocate T; allocate T->p and T->h but do not initialize them
     // T is always hypersparse.
     GrB_Info info ;
     GrB_Matrix T = NULL ;           // allocate a new header for T
     GB_NEW (&T, ttype, vlen, vdim, GB_Ap_malloc, is_csc, GB_FORCE_HYPER,
-        GB_ALWAYS_HYPER, tnvec) ;
+        GB_ALWAYS_HYPER, tnvec, Context) ;
     if (info != GrB_SUCCESS)
     { 
         // out of memory
@@ -285,14 +298,14 @@ GrB_Info GB_builder
     // step because for all built-in types, jwork is at least as big as T->x,
     // which has not yet been allocated.  jwork is as big as the number of
     // tuples (len, or nvals), whereas T->x will have size tnz.  Thus, if the
-    // matrix is really big the malloc/free memory manager should be able to
-    // allocate T->x in place of the freed jwork array as a cheap malloc.  This
-    // is design, and it helps to speed up the build process.
+    // matrix is really big the memory manager should be able to allocate T->x
+    // in place of the freed jwork array as a cheap allocation.  This is
+    // design, and it helps to speed up the build process.
 
     // During testing on a Macbook Pro and clang 8.0.0 it was observed that the
     // jwork and T->x pointers were typically identical for large problems (for
     // T->x double precision, where sizeof (double) == sizeof (int64_t) = 8).
-    // Thus, malloc is detecting this condition and exploiting it.
+    // Thus, the memory manager is detecting this condition and exploiting it.
 
     // jwork may already be NULL.  It is only required when T has more than
     // one vector.  But the jwork_handle itself is always non-NULL.

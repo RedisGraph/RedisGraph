@@ -2,11 +2,15 @@
 // GB_create: create a matrix and allocate space
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
+//------------------------------------------------------------------------------
 
 // Creates a matrix (with GB_new), then allocates a given space for indices and
 // values.
+
+// This function is called via the GB_CREATE(...) macro.
 
 // Ahandle must be non-NULL on input.
 
@@ -29,6 +33,8 @@
 // grep "allocate a new header"
 // which shows all uses of GB_new and GB_create
 
+// parallel: not here but perhaps in GB_new
+
 #include "GB.h"
 
 GrB_Info GB_create              // create a new matrix, including A->i and A->x
@@ -37,7 +43,7 @@ GrB_Info GB_create              // create a new matrix, including A->i and A->x
     const GrB_Type type,        // type of output matrix
     const int64_t vlen,         // length of each vector
     const int64_t vdim,         // number of vectors
-    const GB_Ap_code Ap_option, // calloc/malloc A->p and A->h, or leave NULL
+    const GB_Ap_code Ap_option, // allocate A->p and A->h, or leave NULL
     const bool is_csc,          // true if CSC, false if CSR
     const int hyper_option,     // 1:hyper, 0:nonhyper, -1:auto
     const double hyper_ratio,   // A->hyper_ratio, unless auto

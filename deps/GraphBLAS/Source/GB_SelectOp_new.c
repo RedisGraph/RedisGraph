@@ -2,7 +2,7 @@
 // GB_SelectOp_new: create a new select operator
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -13,6 +13,8 @@
 //              const void *x, const void *k) ;
 
 // This function is not directly user-callable.  Use GxB_SelectOp_new instead.
+
+// not parallel: this function does O(1) work and is already thread-safe.
 
 #include "GB.h"
 
@@ -40,10 +42,11 @@ GrB_Info GB_SelectOp_new        // create a new user-defined select operator
     //--------------------------------------------------------------------------
 
     // allocate the select operator
-    GB_CALLOC_MEMORY (*selectop, 1, sizeof (struct GB_SelectOp_opaque)) ;
+    GB_CALLOC_MEMORY (*selectop, 1, sizeof (struct GB_SelectOp_opaque), NULL) ;
     if (*selectop == NULL)
     { 
-        return (GB_NO_MEMORY) ;
+        // out of memory
+        return (GB_OUT_OF_MEMORY) ;
     }
 
     // initialize the select operator

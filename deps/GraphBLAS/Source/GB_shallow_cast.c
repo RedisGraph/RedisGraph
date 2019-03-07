@@ -2,7 +2,7 @@
 // GB_shallow_cast: create a shallow copy of a matrix, optionally typecasted
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -23,6 +23,7 @@
 
 // Compare this function with GB_shallow_op.c
 
+// parallel: not here, but in GB_cast_array
 
 #include "GB.h"
 
@@ -34,7 +35,7 @@ GrB_Info GB_shallow_cast    // create a shallow typecasted matrix
     const GrB_Matrix A,     // input matrix to typecast
     GB_Context Context
 )
-{
+{ 
 
     //--------------------------------------------------------------------------
     // check inputs
@@ -58,7 +59,7 @@ GrB_Info GB_shallow_cast    // create a shallow typecasted matrix
     GrB_Info info ;
     GrB_Matrix C = NULL ;           // allocate a new header for C
     GB_NEW (&C, ctype, A->vlen, A->vdim, GB_Ap_null, C_is_csc,
-        GB_SAME_HYPER_AS (A->is_hyper), A->hyper_ratio, 0) ;
+        GB_SAME_HYPER_AS (A->is_hyper), A->hyper_ratio, 0, Context) ;
     if (info != GrB_SUCCESS)
     { 
         // out of memory
@@ -76,6 +77,8 @@ GrB_Info GB_shallow_cast    // create a shallow typecasted matrix
     C->h = A->h ;                   // C->h is of size A->plen
     C->plen = A->plen ;             // C and A have the same hyperlist sizes
     C->nvec = A->nvec ;
+    ASSERT (A->nvec_nonempty == -1 ||   // can be postponed
+            A->nvec_nonempty == GB_nvec_nonempty (A, Context)) ;
     C->nvec_nonempty = A->nvec_nonempty ;
     C->magic = GB_MAGIC ;           // C is now initialized ]
 
@@ -121,23 +124,34 @@ GrB_Info GB_shallow_cast    // create a shallow typecasted matrix
         return (GrB_SUCCESS) ;
     }
 
+    //--------------------------------------------------------------------------
+    // allocate new space for the typecasted numerical values of C
+    //--------------------------------------------------------------------------
+
+    // NOTE: in prior versions, the following case was used by matrix-multiply,
+    // to typecast the input matrices to the types required by the
+    // multiplicative operator.  That typecasting has been removed in the
+    // current version.  However, this code is kept in case it is required for
+    // a future version.
+
+    ASSERT (GB_DEAD_CODE) ;    // the following is no longer used
+
     // allocate new space for the numerical values of C
     C->nzmax = GB_IMAX (anz,1) ;
     GB_MALLOC_MEMORY (C->x, C->nzmax, C->type->size) ;
     C->x_shallow = false ;          // free C->x when freeing C
     if (C->x == NULL)
-    { 
+    {
         // out of memory
-        double memory = GBYTES (C->nzmax, C->type->size) ;
         GB_MATRIX_FREE (&C) ;
-        return (GB_OUT_OF_MEMORY (memory)) ;
+        return (GB_OUT_OF_MEMORY) ;
     }
 
     //--------------------------------------------------------------------------
     // copy the values from A into C and cast from A->type to C->type
     //--------------------------------------------------------------------------
 
-    GB_cast_array (C->x, C->type->code, A->x, A->type->code, anz) ;
+    GB_cast_array (C->x, C->type->code, A->x, A->type->code, anz, Context) ;
 
     // C->i always shallow, and is of size at least A->nzmax.  The array C->x
     // is either of size A->nzmax if C->x is and not typecasted, or

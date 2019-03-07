@@ -2,10 +2,12 @@
 // GxB_Global_Option_get: get a global default option for all future matrices
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
+
+// not parallel: this function does O(1) work and is already thread-safe.
 
 #include "GB.h"
 
@@ -115,6 +117,19 @@ GrB_Info GxB_Global_Option_get      // gets the current global option
             break ;
 
         //----------------------------------------------------------------------
+        // default number of threads
+        //----------------------------------------------------------------------
+
+        case GxB_GLOBAL_NTHREADS :      // same as GxB_NTHREADS
+
+            va_start (ap, field) ;
+            int *nthreads_max = va_arg (ap, int *) ;
+            va_end (ap) ;
+            GB_RETURN_IF_NULL (nthreads_max) ;
+            (*nthreads_max) = GB_Global.nthreads_max ;
+            break ;
+
+        //----------------------------------------------------------------------
         // invalid option
         //----------------------------------------------------------------------
 
@@ -122,11 +137,12 @@ GrB_Info GxB_Global_Option_get      // gets the current global option
 
             return (GB_ERROR (GrB_INVALID_VALUE, (GB_LOG,
                     "invalid option field [%d], must be one of:\n"
-                    "GxB_HYPER [%d], GxB_FORMAT [%d], GxB_MODE [%d],"
-                    "GxB_THREAD_SAFETY [%d], or GxB_THREADING [%d]",
+                    "GxB_HYPER [%d], GxB_FORMAT [%d], GxB_MODE [%d],\n"
+                    "GxB_THREAD_SAFETY [%d], GxB_THREADING [%d]"
+                    "or GxB_NTHREADS [%d]",
                     (int) field, (int) GxB_HYPER, (int) GxB_FORMAT,
                     (int) GxB_MODE, (int) GxB_THREAD_SAFETY,
-                    (int) GxB_THREADING))) ;
+                    (int) GxB_THREADING, (int) GxB_NTHREADS))) ;
 
     }
 

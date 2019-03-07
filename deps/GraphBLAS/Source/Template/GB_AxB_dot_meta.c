@@ -2,24 +2,17 @@
 // GB_AxB_dot_meta: C=A'*B or C<M>=A'*B via dot productes
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
+//------------------------------------------------------------------------------
 
 // This file is #include'd into GB_AxB_dot.c for the generic case, and in the
 // hard-coded semirings, Generated/GB_AxB__*_*_.c.  It constructs the
 // dot-product variant of sparse matrix multiplication, C=A'*B, without
 // transposing A.
 
-// This method can optionally allocate size(B->vlen) workspace to scatter each
-// vector B(:,j), one at a time.  In the default method, this is only done if
-// the size of the workspace does not dominate the computation, in case A and B
-// are hypersparse.
-
-#define GB_DOT_FREE_WORK                                    \
-{                                                           \
-    GB_FREE_MEMORY (Flag, bvlen, sizeof (int8_t)) ;         \
-    GB_FREE_MEMORY (Work, bvlen, bkj_size) ;                \
-}
+// parallel: not here.
 
 {
 
@@ -42,24 +35,11 @@
     const int64_t *restrict Ah = A->h ;
     const int64_t *restrict Ap = A->p ;
     const int64_t *restrict Ai = A->i ;
-    bool A_is_hyper = A->is_hyper ;
     int64_t anvec = A->nvec ;
+    bool A_is_hyper = GB_IS_HYPER (A) ;
 
     const int64_t *restrict Bi = B->i ;
     int64_t bvlen = B->vlen ;
-
-    //--------------------------------------------------------------------------
-    // determine if B can be scattered
-    //--------------------------------------------------------------------------
-
-    // FUTURE: give user control over the decision to use O(bvlen) workspace
-
-    // allow B to be scattered into workspace of size bvlen if bvlen is not too
-    // large
-
-    bool B_can_scatter = (bvlen < GB_NNZ (A) + GB_NNZ (B)) ;
-    int8_t *restrict Flag = NULL ;
-    GB_DOT_WORK_TYPE *restrict Work = NULL ;
 
     //--------------------------------------------------------------------------
     // start the construction of C
@@ -71,21 +51,46 @@
     GB_jstartup (C, &jlast, &cnz, &cnz_last) ;
 
     //--------------------------------------------------------------------------
-    // C=A'*B or C<M>=A'*B via dot products
+    // C=A'*B, C<M>=A'*B, or C<!M>=A'*B via dot products
     //--------------------------------------------------------------------------
 
-    if (M != NULL)
+    if (M == NULL)
     { 
-        // C<M> = A'*B via dot products
-        #include "GB_AxB_dot_mask.c"
-    }
-    else
-    { 
+
         // C = A'*B via dot products
         #include "GB_AxB_dot_nomask.c"
+
     }
+    else
+    {
 
-    GB_DOT_FREE_WORK ;
+        //----------------------------------------------------------------------
+        // get M
+        //----------------------------------------------------------------------
+
+        ASSERT (C->vdim == M->vdim) ;
+        ASSERT (C->vlen == M->vlen) ;
+
+        const int64_t *restrict Mp = M->p ;
+        const int64_t *restrict Mh = M->h ;
+        const int64_t *restrict Mi = M->i ;
+        const GB_void *restrict Mx = M->x ;
+        GB_cast_function cast_M = GB_cast_factory (GB_BOOL_code, M->type->code);
+        size_t msize = M->type->size ;
+        const int64_t mnvec = M->nvec ;
+        int64_t mpleft = 0 ;
+        int64_t mpright = mnvec - 1 ;
+        bool M_is_hyper = GB_IS_HYPER (M) ;
+
+        if (Mask_comp)
+        {
+            // C<!M> = A'*B via dot products
+            #include "GB_AxB_dot_compmask.c"
+        }
+        else
+        { 
+            // C<M> = A'*B via dot products
+            #include "GB_AxB_dot_mask.c"
+        }
+    }
 }
-
-#undef GB_DOT_FREE_WORK

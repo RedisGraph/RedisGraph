@@ -2,7 +2,7 @@
 // GB_kron_kernel: Kronecker product, C = kron (A,B)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -11,6 +11,9 @@
 // A and B are compatible with the x and y inputs of z=op(x,y), but can be
 // different.  The type of C is the type of z.  C is hypersparse if either A
 // or B are hypersparse.
+
+// PARALLEL: simple parallelism, but need to handle combinations of
+// hyper/non-hyper cases in doubly-nested loops.
 
 #include "GB.h"
 
@@ -35,6 +38,12 @@ GrB_Info GB_kron_kernel             // C = kron (A,B)
     ASSERT_OK (GB_check (op, "op for kron (A,B)", GB0)) ;
     ASSERT (!GB_PENDING (A)) ; ASSERT (!GB_ZOMBIES (A)) ;
     ASSERT (!GB_PENDING (B)) ; ASSERT (!GB_ZOMBIES (B)) ;
+
+    //--------------------------------------------------------------------------
+    // determine the number of threads to use
+    //--------------------------------------------------------------------------
+
+    GB_GET_NTHREADS (nthreads, Context) ;
 
     //--------------------------------------------------------------------------
     // get inputs
@@ -69,11 +78,25 @@ GrB_Info GB_kron_kernel             // C = kron (A,B)
 
     // C is hypersparse if either A or B are hypersparse
     bool C_is_hyper = (cvdim > 1) && (A->is_hyper || B->is_hyper) ;
+    int64_t cplen = -1 ;
+
+    if (C_is_hyper)
+    {
+        if (A->nvec_nonempty < 0)
+        { 
+            A->nvec_nonempty = GB_nvec_nonempty (A, Context) ;
+        }
+        if (B->nvec_nonempty < 0)
+        { 
+            B->nvec_nonempty = GB_nvec_nonempty (B, Context) ;
+        }
+        cplen = A->nvec_nonempty * B->nvec_nonempty ;
+    }
 
     GrB_Matrix C = NULL ;           // allocate a new header for C
     GB_CREATE (&C, op->ztype, (int64_t) cvlen, (int64_t) cvdim, GB_Ap_calloc,
-        C_is_csc, GB_SAME_HYPER_AS (C_is_hyper), B->hyper_ratio,
-        A->nvec_nonempty * B->nvec_nonempty, cnzmax, true) ;
+        C_is_csc, GB_SAME_HYPER_AS (C_is_hyper), B->hyper_ratio, cplen,
+        cnzmax, true, Context) ;
     if (info != GrB_SUCCESS)
     { 
         // out of memory
@@ -106,18 +129,26 @@ GrB_Info GB_kron_kernel             // C = kron (A,B)
     int64_t cnz, cnz_last, cj_last ;
     GB_jstartup (C, &cj_last, &cnz, &cnz_last) ;
 
-    GBI_iterator A_iter ;
-    for (GB_each_vector (A_iter, A))
+    GBI_for_each_vector_with_iter (A_iter, A)
     {
 
-        int64_t GBI1_initj (A_iter, aj, pA_start, pA_end) ;
+        //----------------------------------------------------------------------
+        // get A(:,aj)
+        //----------------------------------------------------------------------
+
+        GBI_jth_iteration_with_iter (A_iter, aj, pA_start, pA_end) ;
+
         int64_t ajblock = aj * bvdim ;
 
-        GBI_iterator B_iter ;
-        for (GB_each_vector (B_iter, B))
+        GBI_for_each_vector_with_iter (B_iter, B)
         {
 
-            int64_t GBI1_initj (B_iter, bj, pB_start, pB_end) ;
+            //------------------------------------------------------------------
+            // get B(:,bj)
+            //------------------------------------------------------------------
+
+            GBI_jth_iteration_with_iter (B_iter, bj, pB_start, pB_end) ;
+
             int64_t cj = ajblock + bj ;
 
             for (int64_t pa = pA_start ; pa < pA_end ; pa++)

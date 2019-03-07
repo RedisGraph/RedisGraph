@@ -2,13 +2,15 @@
 // GB_Type_new: create a new user-defined type
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
 // This is not used for built-in types.  Those are created statically.
 // Users should not call this function directly; use GrB_Type_new instead.
+
+// not parallel: this function does O(1) work and is already thread-safe.
 
 #include "GB.h"
 
@@ -33,10 +35,11 @@ GrB_Info GB_Type_new
     //--------------------------------------------------------------------------
 
     // allocate the type
-    GB_CALLOC_MEMORY (*type, 1, sizeof (struct GB_Type_opaque)) ;
+    GB_CALLOC_MEMORY (*type, 1, sizeof (struct GB_Type_opaque), NULL) ;
     if (*type == NULL)
     { 
-        return (GB_NO_MEMORY) ;
+        // out of memory
+        return (GB_OUT_OF_MEMORY) ;
     }
 
     // initialize the type

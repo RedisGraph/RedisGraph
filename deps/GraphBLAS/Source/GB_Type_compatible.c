@@ -2,13 +2,15 @@
 // GB_Type_compatible: return true if domains are compatible
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
 // Two domains are compatible for typecasting between them if both are built-in
 // types (of any kind) or if both are the same user-defined type.
+
+// not parallel: this function does O(1) work and is already thread-safe.
 
 #include "GB.h"
 

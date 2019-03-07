@@ -5,4 +5,4 @@
 %   gbcover_edit - create a version of GraphBLAS for statement coverage tests
 %   testcov      - run all GraphBLAS tests, with statement coverage
 %   gbshow       - create a test coverage report in tmp_cover/
-
+%   gbmake       - compiles the MATLAB interface to GraphBLAS (for testing only).

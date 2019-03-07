@@ -2,13 +2,15 @@
 // GB_ijlength: get the length and kind of an index list I
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
 // Determine the length of I, and process the colon notation I = begin:inc:end.
 // No error checking is done.
+
+// not parallel: this function does O(1) work and is already thread-safe.
 
 #include "GB.h"
 

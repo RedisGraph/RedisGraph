@@ -54,7 +54,7 @@ void mexFunction
 
     TIC ;
 
-    GB_qsort_2a (Iout, Jout, n) ;
+    GB_qsort_2a (Iout, Jout, n, Context) ;
 
     TOC ;
     GB_mx_put_time (0) ;

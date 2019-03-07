@@ -2,7 +2,7 @@
 // GB_qsort_template: sort an n-by-GB_K list of integers
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -15,6 +15,8 @@
 // All of these functions are static; there will be versions of them in each
 // variant of GB_qsort*, with the same names.  They are called only by the
 // GB_qsort* function in the #include'ing file.
+ 
+// PARALLEL: need a task-based parallel quicksort
 
 //------------------------------------------------------------------------------
 // GB_partition: use a pivot to partition an array
@@ -86,7 +88,7 @@ static inline int64_t GB_partition
 }
 
 //------------------------------------------------------------------------------
-// GB_quicksort
+// GB_quicksort: recursive quicksort
 //------------------------------------------------------------------------------
 
 static void GB_quicksort    // sort A [0:n-1]
@@ -117,6 +119,46 @@ static void GB_quicksort    // sort A [0:n-1]
         // sort each partition
         GB_quicksort (GB_arg (A), k, seed) ;                // sort A [0:k-1]
         GB_quicksort (GB_arg_offset (A, k), n-k, seed) ;    // sort A [k+1:n-1]
+    }
+}
+
+//------------------------------------------------------------------------------
+// GB_quicksort_main
+//------------------------------------------------------------------------------
+
+// non-recursive gateway function to GB_quicksort.
+
+static void GB_quicksort_main   // sort A [0:n-1]
+(
+    GB_args (int64_t, A),       // array(s) to sort
+    const int64_t n,            // size of A
+    uint64_t *seed,             // random number seed
+    GB_Context Context          // for # of threads; use one thread if NULL
+)
+{
+
+    //--------------------------------------------------------------------------
+    // determine the number of threads to use
+    //--------------------------------------------------------------------------
+
+    GB_GET_NTHREADS (nthreads, Context) ;
+
+    nthreads = 1 ;  // FUTURE:: do this in parallel
+
+    //--------------------------------------------------------------------------
+    // do the quicksort in parallel
+    //--------------------------------------------------------------------------
+
+    if (nthreads == 1)
+    {
+        // sort A [0:n-1] with a single thread
+        GB_quicksort (GB_arg (A), n, seed) ;
+    }
+    else
+    {
+        // sort A [0:n-1] with multiple threads
+        // FUTURE:: quicksort in parallel
+        ;
     }
 }
 

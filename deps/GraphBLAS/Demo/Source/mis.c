@@ -57,8 +57,8 @@ GrB_Info mis                    // compute a maximal independent set
 
     GrB_Matrix_nrows (&n, A) ;                 // n = # of nodes in graph
 
-    GrB_Vector_new (&prob, GrB_FP32, n) ;
-    GrB_Vector_new (&neighbor_max, GrB_FP32, n) ;
+    GrB_Vector_new (&prob, GrB_FP64, n) ;
+    GrB_Vector_new (&neighbor_max, GrB_FP64, n) ;
     GrB_Vector_new (&new_members, GrB_BOOL, n) ;
     GrB_Vector_new (&new_neighbors, GrB_BOOL, n) ;
     GrB_Vector_new (&candidates, GrB_BOOL, n) ;
@@ -67,8 +67,8 @@ GrB_Info mis                    // compute a maximal independent set
     GrB_Vector_new (&iset, GrB_BOOL, n) ;
 
     // create the maxSelect1st semiring
-    GrB_Monoid_new (&Max, GrB_MAX_FP32, (float) 0.0) ;
-    GrB_Semiring_new (&maxSelect1st, Max, GrB_FIRST_FP32) ;
+    GrB_Monoid_new (&Max, GrB_MAX_FP64, (double) 0.0) ;
+    GrB_Semiring_new (&maxSelect1st, Max, GrB_FIRST_FP64) ;
 
     // create the OR-AND-BOOL semiring
     GrB_Monoid_new (&Lor, GrB_LOR, (bool) false) ;
@@ -84,7 +84,7 @@ GrB_Info mis                    // compute a maximal independent set
     GrB_Descriptor_set (sr_desc, GrB_OUTP, GrB_REPLACE) ;
 
     // create the mis_score unary operator
-    GrB_UnaryOp_new (&set_random, mis_score, GrB_FP32, GrB_UINT32) ;
+    GrB_UnaryOp_new (&set_random, mis_score, GrB_FP64, GrB_UINT32) ;
 
     // compute the degree of each nodes
     GrB_Vector_new (&degrees, GrB_FP64, n) ;

@@ -2,7 +2,7 @@
 // GxB_Desc_get: get a field in a descriptor
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -10,6 +10,8 @@
 // This is identical to GxB_Descriptor_get, just with a different order of the
 // parameters.  The last argument is a pointer whose type depends on the
 // field.
+
+// not parallel: this function does O(1) work and is already thread-safe.
 
 #include "GB.h"
 
@@ -73,6 +75,15 @@ GrB_Info GxB_Desc_get           // get a parameter from a descriptor
             (*value) = (desc == NULL) ? GxB_DEFAULT : desc->in1 ;
             break ;
 
+        case GxB_DESCRIPTOR_NTHREADS :  // same as GxB_NTHREADS
+
+            va_start (ap, field) ;
+            int *nthreads = va_arg (ap, int *) ;
+            va_end (ap) ;
+            GB_RETURN_IF_NULL (nthreads) ;
+            (*nthreads) = (desc == NULL) ? GxB_DEFAULT : desc->nthreads ;
+            break ;
+
         case GxB_AxB_METHOD : 
 
             va_start (ap, field) ;
@@ -87,9 +98,9 @@ GrB_Info GxB_Desc_get           // get a parameter from a descriptor
             return (GB_ERROR (GrB_INVALID_VALUE, (GB_LOG,
                 "invalid descriptor field [%d], must be one of:\n"
                 "GrB_OUTP [%d], GrB_MASK [%d], GrB_INP0 [%d], GrB_INP1 [%d]"
-                "or GxB_AxB_METHOD [%d]\n", (int) field,
-                (int) GrB_OUTP, (int) GrB_MASK, (int) GrB_INP0,
-                (int) GrB_INP1, (int) GxB_AxB_METHOD))) ;
+                "GxB_NTHREADS [%d], or GxB_AxB_METHOD [%d]", (int) field,
+                (int) GrB_OUTP, (int) GrB_MASK, (int) GrB_INP0, (int) GrB_INP1,
+                (int) GxB_NTHREADS, (int) GxB_AxB_METHOD))) ;
     }
 
     return (GrB_SUCCESS) ;

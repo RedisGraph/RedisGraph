@@ -37,6 +37,7 @@ bool GB_mx_mxArray_to_Semiring         // true if successful
     const mxClassID default_class       // default operator class
 )
 {
+    GB_WHERE ("GB_mx_mxArray_to_Semiring") ;
 
     (*handle) = NULL ;
     const mxArray *multiply_mx = NULL, *class_mx = NULL, *add_mx = NULL ;

@@ -2,7 +2,7 @@
 // GB_prune_inplace: prune a matrix in place
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -15,9 +15,10 @@
 // This code is used by GB_wait to delete zombies, and by GB_resize to delete
 // entries outside the resized dimensions, if A->vlen decreases.
 
+// PARALLEL: requires a reduction-style parallelism
+
 {
 
-    // GB_for_each_* cannot be used since A->p is changing
     int64_t *restrict Ah = A->h ;
     int64_t *restrict Ap = A->p ;
     int64_t *restrict Ai = A->i ;
@@ -46,10 +47,10 @@
         int64_t nvec = A->nvec ;    // current nvec
         A->nvec = 0 ;               // nvec after pruning empty vectors
 
-        // GB_for_each_vector (A): but where A->p and A->h are changing:
+        // GBI_for_each_vector (A): but where A->p and A->h are changing:
         for (int64_t k = 0 ; k < nvec ; k++)
         {
-            // GB_for_each_entry (j, p, pend)) but A->p is changing:
+            // GBI_for_each_entry (j, p, pend) but A->p is changing:
             int64_t j = Ah [k] ;
             int64_t pend = Ap [k+1] ;
             for ( ; p < pend ; p++)
@@ -96,10 +97,10 @@
         // prune entries from a standard matrix
         //----------------------------------------------------------------------
 
-        // GB_for_each_vector (A): but where A->p is changing:
+        // GBI_for_each_vector (A): but where A->p is changing:
         for (int64_t j = 0 ; j < vdim ; j++)
         {
-            // GB_for_each_entry (j, p, pend)) but A->p is changing:
+            // GBI_for_each_entry (j, p, pend)) but A->p is changing:
             int64_t pend = Ap [j+1] ;
             for ( ; p < pend ; p++)
             {
@@ -132,6 +133,6 @@
 
     // entries have now been removed; update count of non-empty vectors
     A->nvec_nonempty = anvec_new ;
-    ASSERT (A->nvec_nonempty == GB_nvec_nonempty (A)) ;
+    ASSERT (A->nvec_nonempty == GB_nvec_nonempty (A, NULL)) ;
 }
 

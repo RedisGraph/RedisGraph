@@ -2,10 +2,12 @@
 // GxB_Matrix_option_set: set an option in a matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
+
+// parallel: not here, but in GB_transpose.
 
 #include "GB.h"
 
@@ -24,6 +26,7 @@ GrB_Info GxB_Matrix_Option_set      // set an option in a matrix
     GB_WHERE ("GxB_Matrix_Option_set (A, field, value)") ;
     GB_RETURN_IF_NULL_OR_FAULTY (A) ;
     ASSERT_OK (GB_check (A, "A to set option", GB0)) ;
+    GB_check (A, "A to set option", GB0) ;
 
     GB_WAIT (A) ;
 
@@ -58,6 +61,14 @@ GrB_Info GxB_Matrix_Option_set      // set an option in a matrix
             format = va_arg (ap, GxB_Format_Value) ;
             va_end (ap) ;
 
+            if (! (format == GxB_BY_ROW || format == GxB_BY_COL))
+            { 
+                return (GB_ERROR (GrB_INVALID_VALUE, (GB_LOG,
+                        "unsupported format [%d], must be one of:\n"
+                        "GxB_BY_ROW [%d] or GxB_BY_COL [%d]",
+                        (int) format, (int) GxB_BY_ROW, (int) GxB_BY_COL))) ;
+            }
+
             // the value is normally GxB_BY_ROW (0) or GxB_BY_COL (1), but
             // any nonzero value results in GxB_BY_COL.
             new_csc = (format != GxB_BY_ROW) ;
@@ -78,7 +89,7 @@ GrB_Info GxB_Matrix_Option_set      // set an option in a matrix
 
             return (GB_ERROR (GrB_INVALID_VALUE, (GB_LOG,
                     "invalid option field [%d], must be one of:\n"
-                    "GxB_HYPER [%d] or GxB_FORMAT [%d]",
+                    "GxB_HYPER [%d], GxB_FORMAT [%d]",
                     (int) field, (int) GxB_HYPER, (int) GxB_FORMAT))) ;
 
     }

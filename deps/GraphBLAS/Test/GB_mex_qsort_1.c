@@ -41,7 +41,7 @@ void mexFunction
 
     TIC ;
 
-    GB_qsort_1 (J, n) ;
+    GB_qsort_1 (J, n, Context) ;
 
     TOC ;
     GB_mx_put_time (0) ;

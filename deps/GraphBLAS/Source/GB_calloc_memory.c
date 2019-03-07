@@ -1,29 +1,30 @@
 //------------------------------------------------------------------------------
-// GB_calloc_memory: wrapper for calloc
+// GB_calloc_memory: wrapper for calloc (used via the GB_CALLOC_MEMORY macro)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
 // A wrapper for calloc.  Space is set to zero.
 
+// This function is called via the GB_CALLOC_MEMORY(p,n,s,Context) macro.
+
 // Parameters are the same as the POSIX calloc, except that asking to allocate
 // a block of zero size causes a block of size 1 to be allocated instead.  This
 // allows the return pointer p to be checked for the out-of-memory condition,
 // even when allocating an object of size zero.
 
-// By default, GB_CALLOC is defined in GB.h as calloc.  For a MATLAB
-// mexFunction, it is mxCalloc.  It can also be defined at compile time with
-// -DGB_CALLOC=mycallocfunc.
+// PARALLEL: clear the array in parallel?
 
 #include "GB.h"
 
 void *GB_calloc_memory      // pointer to allocated block of memory
 (
     size_t nitems,          // number of items to allocate
-    size_t size_of_item     // sizeof each item
+    size_t size_of_item,    // sizeof each item
+    GB_Context Context      // for # of threads.  Use one thread if NULL
 )
 {
 
@@ -45,13 +46,16 @@ void *GB_calloc_memory      // pointer to allocated block of memory
     else
     { 
 
-        #ifdef GB_MALLOC_TRACKING
+        // determine the number of threads to use
+        GB_GET_NTHREADS (nthreads, Context) ;
+
+        if (GB_Global_malloc_tracking_get ( ))
         {
-            // for malloc testing only
+            // for memory usage testing only
             bool pretend_to_fail = false ;
             if (GB_Global.malloc_debug)
             {
-                // brutal malloc debug; pretend to fail if the count <= 0
+                // brutal memory usage debug; pretend to fail if the count <= 0
                 pretend_to_fail = (GB_Global.malloc_debug_count-- <= 0) ;
             }
             if (pretend_to_fail)
@@ -63,27 +67,24 @@ void *GB_calloc_memory      // pointer to allocated block of memory
             }
             else
             {
-                p = (void *) GB_CALLOC (nitems, size_of_item) ;
+                p = (void *) GB_Global.calloc_function (nitems, size_of_item) ;
             }
             if (p != NULL)
             {
-                int nmalloc = ++GB_Global.nmalloc ;
-                GB_Global.inuse += nitems * size_of_item ;
-                GB_Global.maxused =
-                    GB_IMAX (GB_Global.maxused, GB_Global.inuse) ;
+                int nmalloc = GB_Global_nmalloc_increment ( ) ;
+                GB_Global_inuse_increment (nitems * size_of_item) ;
                 #ifdef GB_PRINT_MALLOC
-                printf ("calloc:  %14p %3d %1d n "GBd" size "GBd"\n",
+                printf ("Calloc:  %14p %3d %1d n "GBd" size "GBd"\n",
                     p, nmalloc, GB_Global.malloc_debug,
                     (int64_t) nitems, (int64_t) size_of_item) ;
                 #endif
             }
         }
-        #else
+        else
         {
             // normal use, in production
-            p = (void *) GB_CALLOC (nitems, size_of_item) ;
+            p = (void *) GB_Global.calloc_function (nitems, size_of_item) ;
         }
-        #endif
 
     }
     return (p) ;

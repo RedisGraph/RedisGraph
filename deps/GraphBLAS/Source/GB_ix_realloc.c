@@ -2,7 +2,7 @@
 // GB_ix_realloc: reallocate a matrix to hold a given number of entries
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -10,6 +10,9 @@
 // Does not modify A->p.  Reallocates A->x and A->i to the requested size,
 // preserving the existing content of A->x and A->i.  Preserves pending tuples
 // and zombies, if any.  If numeric is false, then A->x is freed instead.
+
+// parallel: not here; see GB_realloc_memory instead, which might be done in
+// parallel to copy from the old to new space.
 
 #include "GB.h"
 
@@ -37,13 +40,10 @@ GrB_Info GB_ix_realloc      // reallocate space in a matrix
     ASSERT (GB_PENDING_OK (A)) ;
     ASSERT (GB_ZOMBIES_OK (A)) ;
 
-    double memory = GBYTES (nzmax,
-        sizeof (int64_t) + (numeric ? A->type->size : 0)) ;
-
     if (nzmax > GB_INDEX_MAX)
     { 
         // problem too large
-        return (GB_OUT_OF_MEMORY (memory)) ;
+        return (GB_OUT_OF_MEMORY) ;
     }
 
     //--------------------------------------------------------------------------
@@ -52,10 +52,12 @@ GrB_Info GB_ix_realloc      // reallocate space in a matrix
 
     size_t nzmax1 = GB_IMAX (nzmax, 1) ;
     bool ok1 = true, ok2 = true ;
-    GB_REALLOC_MEMORY (A->i, nzmax1, A->nzmax, sizeof (int64_t), &ok1) ;
+    GB_REALLOC_MEMORY (A->i, nzmax1, A->nzmax, sizeof (int64_t), &ok1,
+        Context) ;
     if (numeric)
     { 
-        GB_REALLOC_MEMORY (A->x, nzmax1, A->nzmax, A->type->size, &ok2) ;
+        GB_REALLOC_MEMORY (A->x, nzmax1, A->nzmax, A->type->size, &ok2,
+            Context) ;
     }
     else
     { 
@@ -71,12 +73,11 @@ GrB_Info GB_ix_realloc      // reallocate space in a matrix
         A->nzmax = nzmax1 ;
     }
 
-    // The matrix is always left in a valid state.  If realloc fails it just
-    // won't have the requested size (and ok is false in this case).
-
+    // The matrix is always left in a valid state.  If the reallocation fails
+    // it just won't have the requested size (and ok is false in this case).
     if (!ok)
     { 
-        return (GB_OUT_OF_MEMORY (memory)) ;
+        return (GB_OUT_OF_MEMORY) ;
     }
 
     return (GrB_SUCCESS) ;
