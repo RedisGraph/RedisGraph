@@ -7,6 +7,7 @@
 #pragma once
 
 #include "execution_plan/ops/op.h"
+#include "parser/ast.h"
 #include "graph/entities/node.h"
 #include "graph/graph.h"
 #include "GraphBLAS/Include/GraphBLAS.h"

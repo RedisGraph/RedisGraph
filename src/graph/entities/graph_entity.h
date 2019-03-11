@@ -27,13 +27,8 @@ typedef GrB_Index NodeID;
 typedef GrB_Index EdgeID;
 
 typedef enum GraphEntityType {
-<<<<<<< HEAD
-    GraphEntityType_NODE,
-    GraphEntityType_EDGE
-=======
    GETYPE_NODE,
    GETYPE_EDGE
->>>>>>> origin/master
 } GraphEntityType;
 
 typedef struct {
@@ -66,7 +61,8 @@ SIValue* GraphEntity_GetProperty(const GraphEntity *e, Attribute_ID attr_id);
 // Updates existing attribute value
 void GraphEntity_SetProperty(const GraphEntity *e, Attribute_ID attr_id, SIValue value);
 
+void GraphEntity_Print(const GraphEntity *e, GraphEntityType t, FILE *out);
+
 // Release all memory allocated by entity
 void FreeEntity(Entity *e);
 
-void GraphEntity_Print(const GraphEntity *e, GraphEntityType t, FILE *out);

@@ -6,11 +6,9 @@
 
 #include <assert.h>
 
-<<<<<<< HEAD
 #include "record.h"
 #include "util/rmalloc.h"
-=======
->>>>>>> origin/master
+
 #include "xxhash/xxhash.h"
 
 #define RECORD_HEADER(r) (r-1)
@@ -146,22 +144,14 @@ unsigned long long Record_Hash64(const Record r) {
         Entry e = r[i];
         switch(e.type) {
         case REC_TYPE_NODE:
-<<<<<<< HEAD
-            entity.type = GraphEntityType_NODE;
-=======
             entity.type = GETYPE_NODE;
->>>>>>> origin/master
             entity.id = ENTITY_GET_ID(Record_GetGraphEntity(r, i));
             data = &entity;
             len = sizeof(entity);
             break;
             
         case REC_TYPE_EDGE:
-<<<<<<< HEAD
-            entity.type = GraphEntityType_EDGE;
-=======
             entity.type = GETYPE_EDGE;
->>>>>>> origin/master
             entity.id = ENTITY_GET_ID(Record_GetGraphEntity(r, i));
             data = &entity;
             len = sizeof(entity);
@@ -178,11 +168,7 @@ unsigned long long Record_Hash64(const Record r) {
             case T_STRING:
             case T_CONSTSTRING:
                 data = si.stringval;
-<<<<<<< HEAD
-                len = si.stringval ? strlen(si.stringval) : 0;
-=======
                 len = strlen(si.stringval);
->>>>>>> origin/master
                 break;
                 
             case T_INT64:

@@ -15,9 +15,6 @@
 
 SIValue *PROPERTY_NOTFOUND = &(SIValue){.longval = 0, .type = T_NULL};
 
-<<<<<<< HEAD
-// Add a new property to entity
-=======
 /* Removes entity's property. */
 static void _GraphEntity_RemoveProperty(const GraphEntity *e, Attribute_ID attr_id) {
 	// Quick return if attribute is missing.
@@ -47,7 +44,6 @@ static void _GraphEntity_RemoveProperty(const GraphEntity *e, Attribute_ID attr_
 }
 
 /* Add a new property to entity */
->>>>>>> origin/master
 SIValue* GraphEntity_AddProperty(GraphEntity *e, Attribute_ID attr_id, SIValue value) {
 	if(e->entity->properties == NULL) {
 		e->entity->properties = rm_malloc(sizeof(EntityProperty));
@@ -92,8 +88,8 @@ void GraphEntity_SetProperty(const GraphEntity *e, Attribute_ID attr_id, SIValue
 
 void GraphEntity_Print(const GraphEntity *e, GraphEntityType t, FILE *out) {
     if (!out) out = stdout;
-    SchemaType st = t == GraphEntityType_NODE ? SCHEMA_NODE : SCHEMA_EDGE;
-    Schema *s = GraphContext_GetUnifiedSchema(GraphContext_GetFromLTS(), st);
+    SchemaType st = t == GETYPE_NODE ? SCHEMA_NODE : SCHEMA_EDGE;
+    Schema *s = GraphContext_GetUnifiedSchema(GraphContext_GetFromTLS(), st);
     unsigned short map_len;
     char **map = Schema_AttributeMap(s, &map_len);
     

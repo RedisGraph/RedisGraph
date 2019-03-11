@@ -14,7 +14,6 @@
 #include "execution_plan/ops/op_filter.h"
 #include "execution_plan/ops/op_node_by_label_scan.h"
 #include "execution_plan/ops/op_index_scan.h"
-#include "execution_plan/ops/op_produce_results.h"
 #include "execution_plan/ops/op_update.h"
 #include "execution_plan/ops/op_traverse.h"
 #include "execution_plan/ops/op_conditional_traverse.h"

@@ -13,6 +13,7 @@
 #include "arithmetic/algebraic_expression.h"
 #include "optimizations/optimizer.h"
 #include "optimizations/optimizations.h"
+#include "util/arr.h"
 #include "util/vector.h"
 
 /* Checks if parent has given child, if so returns 1

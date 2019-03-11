@@ -4,12 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-<<<<<<< HEAD
 #pragma once
-=======
-#ifndef GRAPHCONTEXT_H
-#define GRAPHCONTEXT_H
->>>>>>> origin/master
 
 #include <assert.h>
 

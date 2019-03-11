@@ -70,12 +70,6 @@ size_t Record_ToString(const Record r, char **buf, size_t *buf_cap);
 
 // 64-bit hash of record
 unsigned long long Record_Hash64(const Record r);
-<<<<<<< HEAD
-=======
-
-// Free record.
-void Record_Free(Record r);
->>>>>>> origin/master
 
 void Record_Print(const Record r, const char *title, FILE *out);
 

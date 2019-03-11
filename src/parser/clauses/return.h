@@ -6,13 +6,8 @@
 
 #pragma once
 
-<<<<<<< HEAD
 #include "parser/ast_arithmetic_expression.h"
 #include "util/vector.h"
-=======
-#include "../../util/vector.h"
-#include "../ast_arithmetic_expression.h"
->>>>>>> origin/master
 
 typedef struct {
 	char *alias; 		// Alias given to this return element (using the AS keyword)

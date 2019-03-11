@@ -69,7 +69,7 @@ void Edge_SetRelationID(Edge *e, int relationId) {
 void Edge_Print(const Edge* edge, FILE *out) {
     const char *fix(const char *p) { return p ? p : "''"; }
     if(!out) out = stdout;
-    GraphEntity_Print((GraphEntity*) edge, GraphEntityType_EDGE, 0);
+    GraphEntity_Print((GraphEntity*) edge, GETYPE_EDGE, 0);
     if (edge->relationship || edge->alias)
         fprintf(out, "\tlabel: %s alias: %s\n", fix(edge->relationship), fix(edge->alias));
 }

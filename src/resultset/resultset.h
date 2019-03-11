@@ -20,24 +20,12 @@
 
 typedef struct {
     RedisModuleCtx *ctx;
-<<<<<<< HEAD
     ResultSetHeader *header;    // Describes how records should look like
-    int limit;                  // Max number of records in result-set
     bool distinct;              // Rather or not each record is unique
     size_t recordCount;         // Number of records introduced
     char *buffer;               // Reusable buffer for record streaming
     size_t bufferLen;           // Size of buffer in bytes
     ResultSetStatistics stats;  // ResultSet statistics
-    size_t skip;                // Number of records to skip
-    size_t skipped;             // Number of records been skipped
-=======
-    ResultSetHeader *header;    /* Describes how records should look like. */
-    bool distinct;              /* Rather or not each record is unique. */
-    size_t recordCount;         /* Number of records introduced. */
-    char *buffer;               /* Reusable buffer for record streaming. */
-    size_t bufferLen;           /* Size of buffer in bytes. */
-    ResultSetStatistics stats;  /* ResultSet statistics. */
->>>>>>> origin/master
 } ResultSet;
 
 ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx);

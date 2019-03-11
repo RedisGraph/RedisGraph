@@ -5,7 +5,6 @@
 */
 
 #include "resultset.h"
-<<<<<<< HEAD
 #include "value.h"
 #include "query_executor.h"
 #include "grouping/group_cache.h"
@@ -18,20 +17,7 @@
 // By using the %g format and a precision of 15 significant digits, we avoid many
 // awkward representations like RETURN 0.1 emitting "0.10000000000000001",
 // though we're still subject to many of the typical issues with floating-point error.
-=======
-#include "../value.h"
-#include "../util/arr.h"
-#include "../util/rmalloc.h"
-#include "../query_executor.h"
-#include "../grouping/group_cache.h"
-#include "../arithmetic/aggregate.h"
 
-/* Redis prints doubles with up to 17 digits of precision, which captures
- * the inaccuracy of many floating-point numbers (such as 0.1).
- * By using the %g format and a precision of 15 significant digits, we avoid many
- * awkward representations like RETURN 0.1 emitting "0.10000000000000001",
- * though we're still subject to many of the typical issues with floating-point error. */
->>>>>>> origin/master
 static inline void _ResultSet_ReplyWithRoundedDouble(RedisModuleCtx *ctx, double d) {
     // Get length required to print number
     int len = snprintf(NULL, 0, "%.15g", d);
@@ -81,15 +67,6 @@ static void _ResultSet_ReplayHeader(const ResultSet *set, const ResultSetHeader 
 }
 
 static void _ResultSet_ReplayRecord(ResultSet *s, const Record r) {
-<<<<<<< HEAD
-    // Skip record
-    if(s->skipped < s->skip) {
-        s->skipped++;
-        return;
-    }
-
-=======
->>>>>>> origin/master
     uint column_count = s->header->columns_len;
     RedisModule_ReplyWithArray(s->ctx, column_count);
 
@@ -208,27 +185,9 @@ static void _ResultSetHeader_Free(ResultSetHeader* header) {
     rm_free(header);
 }
 
-<<<<<<< HEAD
-// Checks to see if resultset can acecpt additional records
-bool ResultSet_Full(const ResultSet* set) {
-    return (set->limit != RESULTSET_UNLIMITED && set->recordCount >= set->limit);
-}
-
-bool ResultSet_Limited(const ResultSet* set) {
-    return (set && set->limit != RESULTSET_UNLIMITED);
-}
-
 ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx) {
     ResultSet* set = (ResultSet*)malloc(sizeof(ResultSet));
     set->ctx = ctx;
-    set->limit = RESULTSET_UNLIMITED;
-    set->skip = (ast->skipNode) ? ast->skipNode->skip : 0;
-    set->skipped = 0;
-=======
-ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx) {
-    ResultSet* set = (ResultSet*)malloc(sizeof(ResultSet));
-    set->ctx = ctx;
->>>>>>> origin/master
     set->distinct = (ast->returnNode && ast->returnNode->distinct);
     set->recordCount = 0;    
     set->header = NULL;
@@ -242,40 +201,20 @@ ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx) {
     set->stats.nodes_deleted = 0;
     set->stats.relationships_deleted = 0;
 
-<<<<<<< HEAD
-    // Account for skipped records.
-    if(ast->limitNode != NULL) set->limit = set->skip + ast->limitNode->limit;
-
-=======
->>>>>>> origin/master
     _ResultSet_SetupReply(set);
 
     return set;
 }
 
 int ResultSet_AddRecord(ResultSet* set, Record r) {
-<<<<<<< HEAD
-    if(ResultSet_Full(set)) return RESULTSET_FULL;
-
-=======
->>>>>>> origin/master
     set->recordCount++;
     _ResultSet_ReplayRecord(set, r);
     return RESULTSET_OK;
 }
 
 void ResultSet_Replay(ResultSet* set) {
-<<<<<<< HEAD
-    // Ensure that we're returning a valid number of records
-    size_t resultset_size = 0;
-    if (set->skip < set->recordCount) {
-      resultset_size = set->recordCount - set->skip;
-    }
-
-=======
     // Ensure that we're returning a valid number of records.
     size_t resultset_size = set->recordCount;
->>>>>>> origin/master
     if(set->header) resultset_size++;
 
     RedisModule_ReplySetArrayLength(set->ctx, resultset_size);
