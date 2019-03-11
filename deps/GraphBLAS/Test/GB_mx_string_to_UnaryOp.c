@@ -38,6 +38,8 @@ bool GB_mx_string_to_UnaryOp           // true if successful, false otherwise
     const bool XisComplex               // true if X is complex
 )
 {
+    GB_WHERE ("GB_mx_string_to_UnaryOp") ;
+
     (*handle) = NULL ;
     GrB_UnaryOp op = NULL ;
 

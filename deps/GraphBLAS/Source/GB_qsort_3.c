@@ -2,7 +2,7 @@
 // GB_qsort_3: sort a 3-by-n list of integers, using A[0:2][] as the key
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -11,6 +11,8 @@
 // unique tuples (j,i,k).  So it does not need to be stable.  All entries j, i
 // and k in the tuples (j,i,k) are used as the sort key.  The values i and j
 // may appear in multiple tuples, but the value k is unique across all tuples.
+
+// parallel: not here, see Template/GB_qsort_template.c
 
 #include "GB.h"
 
@@ -82,13 +84,14 @@
 
 void GB_qsort_3         // sort array A of size 3-by-n, using 3 keys (A [0:2][])
 (
-    int64_t A_0 [ ],      // size n array
-    int64_t A_1 [ ],      // size n array
-    int64_t A_2 [ ],      // size n array
-    const int64_t n
+    int64_t A_0 [ ],    // size n array
+    int64_t A_1 [ ],    // size n array
+    int64_t A_2 [ ],    // size n array
+    const int64_t n,
+    GB_Context Context  // for # of threads; use one thread if NULL
 )
 { 
     uint64_t seed = n ;
-    GB_quicksort (GB_arg (A), n, &seed) ;
+    GB_quicksort_main (GB_arg (A), n, &seed, Context) ;
 }
 

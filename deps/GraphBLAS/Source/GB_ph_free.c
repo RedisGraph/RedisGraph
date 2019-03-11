@@ -2,7 +2,7 @@
 // GB_ph_free: free the A->p and A->h content of a matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -11,6 +11,8 @@
 // the header of A is just like GB_new with GB_Ap_null.  No content is left
 // except the header.  The matrix becomes invalid, and would generate a
 // GrB_INVALID_OBJECT error if passed to a user-callable GraphBLAS function.
+
+// not parallel: this function does O(1) work and is already thread-safe.
 
 #include "GB.h"
 

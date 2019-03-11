@@ -65,6 +65,7 @@ int kind = 0 ;
 
 GrB_Info assign ( )
 {
+    GB_WHERE ("assign") ;
     bool at = (desc != NULL && desc->in0 == GrB_TRAN) ;
     GrB_Info info ;
 
@@ -282,6 +283,7 @@ GrB_Info many_assign
     const mxArray *pargin [ ]
 )
 {
+    GB_WHERE ("many_assign") ;
     GrB_Info info = GrB_SUCCESS ;
 
     for (int64_t k = 0 ; k < nwork ; k++)
@@ -296,8 +298,8 @@ GrB_Info many_assign
         mxArray *p ;
 
         // [ turn off malloc debugging
-        bool save = GB_Global.malloc_debug ;
-        GB_Global.malloc_debug = false ;
+        bool save = GB_Global_malloc_debug_get ( ) ;
+        GB_Global_malloc_debug_set (false) ;
 
         // get Mask (shallow copy)
         Mask = NULL ;
@@ -377,7 +379,7 @@ GrB_Info many_assign
         }
 
         // restore malloc debugging to test the method
-        GB_Global.malloc_debug = save ;   // ]
+        GB_Global_malloc_debug_set (save) ; // ]
 
         //----------------------------------------------------------------------
         // C<Mask>(I,J) = A

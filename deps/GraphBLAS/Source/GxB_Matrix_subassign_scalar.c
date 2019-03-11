@@ -2,40 +2,46 @@
 // GxB_Matrix_subassign_[SCALAR]: assign to submatrix, via scalar expansion
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
 // Assigns a single scalar to a submatrix:
-// C(Rows,Cols)<Mask> = accum(C(Rows,Cols),x)
+
+// C(Rows,Cols)<M> = accum(C(Rows,Cols),x)
+
 // The scalar x is implicitly expanded into a matrix A of size nRows-by-nCols,
 // with each entry in A equal to x.
 
 // Compare with GrB_Matrix_assign_scalar,
-// which uses Mask and C_Replace differently
+// which uses M and C_Replace differently.
+
+// The actual work is done in GB_subassign_scalar.c.
+
+// parallel: not here; see GB_subassign_kernel
 
 #include "GB.h"
 
 #define GB_ASSIGN(type,T,ampersand)                                            \
-GrB_Info GxB_Matrix_subassign_ ## T /* C(Rows,Cols)<Mask> += x              */ \
+GrB_Info GxB_Matrix_subassign_ ## T /* C(Rows,Cols)<M> += x                 */ \
 (                                                                              \
     GrB_Matrix C,                   /* input/output matrix for results      */ \
-    const GrB_Matrix Mask,          /* optional mask for C(Rows,Cols)       */ \
+    const GrB_Matrix M,             /* optional mask for C(Rows,Cols)       */ \
     const GrB_BinaryOp accum,       /* accum for Z=accum(C(Rows,Cols),x)    */ \
     const type x,                   /* scalar to assign to C(Rows,Cols)     */ \
     const GrB_Index *Rows,          /* row indices                          */ \
     GrB_Index nRows,                /* number of row indices                */ \
     const GrB_Index *Cols,          /* column indices                       */ \
     GrB_Index nCols,                /* number of column indices             */ \
-    const GrB_Descriptor desc       /* descriptor for C(Rows,Cols) and Mask */ \
+    const GrB_Descriptor desc       /* descriptor for C(Rows,Cols) and M */    \
 )                                                                              \
 {                                                                              \
     GB_WHERE ("GxB_Matrix_subassign_" GB_STR(T)                                \
-        " (C, Mask, accum, x, Rows, nRows, Cols, nCols, desc)") ;              \
+        " (C, M, accum, x, Rows, nRows, Cols, nCols, desc)") ;                 \
     GB_RETURN_IF_NULL_OR_FAULTY (C) ;                                          \
-    GB_RETURN_IF_FAULTY (Mask) ;                                               \
-    return (GB_subassign_scalar (C, Mask, accum, ampersand x,                  \
+    GB_RETURN_IF_FAULTY (M) ;                                                  \
+    return (GB_subassign_scalar (C, M, accum, ampersand x,                     \
         GB_## T ## _code, Rows, nRows, Cols, nCols, desc, Context)) ;          \
 }
 

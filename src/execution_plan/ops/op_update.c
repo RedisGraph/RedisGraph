@@ -10,48 +10,16 @@
 
 /* Build an evaluation context foreach update expression. */
 static void _BuildUpdateEvalCtx(OpUpdate* op, AST *ast) {
+    AST_SetElement *element;
     AST_SetNode *setNode = ast->setNode;
     op->update_expressions_count = Vector_Size(setNode->set_elements);
     op->update_expressions = rm_malloc(sizeof(EntityUpdateEvalCtx) * op->update_expressions_count);
 
-    for(int i = 0; i < op->update_expressions_count; i++) {
-        Attribute_ID prop_id;
-        AST_GraphEntity *ge;
-        AST_SetElement *element;
-
+    for(uint i = 0; i < op->update_expressions_count; i++) {
         /* Get a reference to the entity in the SET clause. */
         Vector_Get(setNode->set_elements, i, &element);
-        /* Get a reference to the entity in the MATCH clause. */
-        ge = MatchClause_GetEntity(ast->matchNode, element->entity->alias);
-
-        char *property = element->entity->property;
-        SchemaType schema_type = (ge->t == N_ENTITY) ? SCHEMA_NODE : SCHEMA_EDGE;
-
-        /* Update operation may create a new attributes if one
-         * does not exists, in which case introduce attribute to schema. */
-        prop_id = Attribute_GetID(schema_type, property);
-        if(prop_id == ATTRIBUTE_NOTFOUND) {
-            /* This is a new attribute, add it to schema. */
-            Schema *s;
-            GraphContext *gc = op->gc;
-            if(ge->label) {
-                /* Label is specified, add attribute to label schema. */
-                 s = GraphContext_GetSchema(gc, ge->label, schema_type);
-            }
-            else {
-                /* Label is not specified add attribute to unified schema. */
-                s = GraphContext_GetUnifiedSchema(gc, schema_type);
-            }
-            /* It might be that query is trying to update 
-             * an attribute of a none existing label
-             * in which case consume will never be called. */
-            if(s) prop_id = Schema_AddAttribute(s, schema_type, property);
-        }
-
         /* Track all required informantion to perform an update. */
-        op->update_expressions[i].ge = ge;
-        op->update_expressions[i].attribute = property;
-        op->update_expressions[i].attribute_idx = prop_id;
+        op->update_expressions[i].attribute = element->entity->property;
         op->update_expressions[i].exp = AR_EXP_BuildFromAST(ast, element->exp);
         op->update_expressions[i].entityRecIdx = AST_GetAliasID(op->ast, element->entity->alias);
     }
@@ -59,7 +27,7 @@ static void _BuildUpdateEvalCtx(OpUpdate* op, AST *ast) {
 
 /* Delay updates until all entities are processed, 
  * _QueueUpdate will queue up all information necessary to perform an update. */
-static void _QueueUpdate(OpUpdate *op, Entity *entity, AST_GraphEntity *ge, char *attribute, Attribute_ID prop_idx, SIValue new_value) {
+static void _QueueUpdate(OpUpdate *op, GraphEntity *entity, GraphEntityType type, char *attribute, SIValue new_value) {
     /* Make sure we've got enough room in queue. */
     if(op->pending_updates_count == op->pending_updates_cap) {
         op->pending_updates_cap *= 2;
@@ -67,52 +35,23 @@ static void _QueueUpdate(OpUpdate *op, Entity *entity, AST_GraphEntity *ge, char
                                          op->pending_updates_cap * sizeof(EntityUpdateCtx));
     }
 
-    int i = op->pending_updates_count;
-    op->pending_updates[i].ge = ge;
+    uint i = op->pending_updates_count;
     op->pending_updates[i].new_value = new_value;
-    op->pending_updates[i].attribute = attribute;
-    op->pending_updates[i].attribute_idx = prop_idx;
-    op->pending_updates[i].entity_reference = entity;
+    op->pending_updates[i].attribute = attribute;    
+    op->pending_updates[i].entity_type = type;
+    // Copy updated entity.
+    if(type == GETYPE_NODE) {
+        op->pending_updates[i].n = *((Node*)entity);
+    } else {
+        op->pending_updates[i].e = *((Edge*)entity);
+    }
     op->pending_updates_count++;
 }
 
-/* Retrieves schema describing updated entity. */
-static Schema* _GetSchema(EntityUpdateCtx *ctx) {
-    AST_GraphEntity *ge = ctx->ge;
-    Entity *e = ctx->entity_reference;
-    GraphContext *gc = GraphContext_GetFromLTS();
-    SchemaType t = (ge->t == N_ENTITY) ? SCHEMA_NODE : SCHEMA_EDGE;
-
-    // Try to get schema.
-    if(ge->label) return GraphContext_GetSchema(gc, ge->label, t);
-    
-    /* Label isn't specified, try to get it.
-     * In the case of unlabeled edges, for the timebeing we'll work with
-     * the unified schema. */
-    if(t == SCHEMA_EDGE) return GraphContext_GetUnifiedSchema(gc, t);
-
-    // Unlabeled node.
-    int label_id = Graph_GetNodeLabel(gc->g, e->id);
-
-    // Node isn't labeled, use unified schema.
-    if(label_id == GRAPH_NO_LABEL) return GraphContext_GetUnifiedSchema(gc, t);
-
-    // Node is labeled, get specified schema.
-    return GraphContext_GetSchemaByID(gc, label_id, SCHEMA_NODE);
-}
-
-/* Make sure schema is aware of updated attribute. */
-static void _UpdateSchema(EntityUpdateCtx *ctx) {
-    Schema *s = _GetSchema(ctx);
-    assert(s);
-    Schema_AddAttribute(s, SCHEMA_NODE, ctx->attribute);
-}
-
 /* Introduce updated entity to index. */
-static void _UpdateIndex(EntityUpdateCtx *ctx, SIValue *old_value, SIValue *new_value) {
-    EntityID node_id = ctx->entity_reference->id;
-    Schema *s = _GetSchema(ctx);
-    assert(s);
+static void _UpdateIndex(EntityUpdateCtx *ctx, Schema *s, SIValue *old_value, SIValue *new_value) {
+    Node *n = &ctx->n;
+    EntityID node_id = ENTITY_GET_ID(n);
 
     // See if there's an index on label/property pair.
     Index *idx = Schema_GetIndex(s, ctx->attribute);
@@ -123,43 +62,91 @@ static void _UpdateIndex(EntityUpdateCtx *ctx, SIValue *old_value, SIValue *new_
          * remove entity from index using old value. */
         Index_DeleteNode(idx, node_id, old_value);
     }
+    
+    // Setting an attribute value to NULL remove that attribute.
+    if(SIValue_IsNull(*new_value)) return;
+
     // Add node to index.
     Index_InsertNode(idx, node_id, new_value);
 }
 
+static void _UpdateNode(OpUpdate *op, EntityUpdateCtx *ctx) {
+    /* Retrieve GraphEntity:
+    * Due to Record freeing we can't maintain the original pointer to GraphEntity object,
+    * but only a pointer to an Entity object,
+    * to use the GraphEntity_Get, GraphEntity_Add functions we'll use a place holder
+    * to hold our entity. */
+    Schema *s;
+    Node *node = &ctx->n;
+    
+    int label_id = Graph_GetNodeLabel(op->gc->g, ENTITY_GET_ID(node));
+    if(label_id == GRAPH_NO_LABEL) {
+        s = GraphContext_GetUnifiedSchema(op->gc, SCHEMA_NODE);
+    } else {
+        s = GraphContext_GetSchemaByID(op->gc, label_id, SCHEMA_NODE);
+    }
+
+    SIValue *old_value = PROPERTY_NOTFOUND;
+    Attribute_ID attr_id = Schema_GetAttributeID(s, ctx->attribute);
+    if(attr_id == ATTRIBUTE_NOTFOUND) {
+        attr_id = Schema_AddAttribute(s, SCHEMA_NODE, ctx->attribute);
+    } else {
+        // Try to get current property value.
+        old_value = GraphEntity_GetProperty((GraphEntity*)node, attr_id);
+    }
+
+    // Update index for node entities.
+    _UpdateIndex(ctx, s, old_value, &ctx->new_value);
+
+    if(old_value == PROPERTY_NOTFOUND) {
+        // Add new property.
+        GraphEntity_AddProperty((GraphEntity*)node, attr_id, ctx->new_value);
+    } else {
+        // Update property.
+        GraphEntity_SetProperty((GraphEntity*)node, attr_id, ctx->new_value);
+    }
+}
+
+static void _UpdateEdge(OpUpdate *op, EntityUpdateCtx *ctx) {
+    /* Retrieve GraphEntity:
+    * Due to Record freeing we can't maintain the original pointer to GraphEntity object,
+    * but only a pointer to an Entity object,
+    * to use the GraphEntity_Get, GraphEntity_Add functions we'll use a place holder
+    * to hold our entity. */
+    Edge *edge = &ctx->e;
+
+    int label_id = Graph_GetEdgeRelation(op->gc->g, edge);
+    Schema *s = GraphContext_GetSchemaByID(op->gc, label_id, SCHEMA_EDGE);
+
+    Attribute_ID attr_id = Schema_GetAttributeID(s, ctx->attribute);
+    if(attr_id == ATTRIBUTE_NOTFOUND) {
+        attr_id = Schema_AddAttribute(s, SCHEMA_EDGE, ctx->attribute);
+    }
+
+    // Try to get current property value.
+    SIValue *old_value = GraphEntity_GetProperty((GraphEntity*)edge, attr_id);
+
+    if(old_value == PROPERTY_NOTFOUND) {
+        // Add new property.
+        GraphEntity_AddProperty((GraphEntity*)edge, attr_id, ctx->new_value);
+    } else {
+        // Update property.
+        GraphEntity_SetProperty((GraphEntity*)edge, attr_id, ctx->new_value);
+    }
+}
+
 /* Executes delayed updates. */
 static void _CommitUpdates(OpUpdate *op) {
-    EntityUpdateCtx *ctx;
-
-    for(int i = 0; i < op->pending_updates_count; i++) {
-        ctx = &op->pending_updates[i];
-        
-        /* Retrieve GraphEntity:
-         * Due to Record freeing we can't maintain the original pointer to GraphEntity object,
-         * but only a pointer to an Entity object,
-         * to use the GraphEntity_Get, GraphEntity_Add functions we'll use a place holder
-         * to hold our entity. */
-        GraphEntity graph_entity;
-        graph_entity.entity = ctx->entity_reference;
-
-        // Try to get current property value.
-        SIValue *old_value = GraphEntity_GetProperty(&graph_entity, ctx->attribute_idx);
-        
-        // Update index for node entities, edges are not indexed.
-        if(ctx->ge->t == N_ENTITY) _UpdateIndex(ctx, old_value, &ctx->new_value);
-
-        if(old_value == PROPERTY_NOTFOUND) {
-            // Add new property.
-            GraphEntity_AddProperty(&graph_entity, ctx->attribute_idx, ctx->new_value);
-            _UpdateSchema(ctx);
+    for(uint i = 0; i < op->pending_updates_count; i++) {
+        EntityUpdateCtx *ctx = &op->pending_updates[i];
+        if(ctx->entity_type == GETYPE_NODE) {
+            _UpdateNode(op, ctx);
         } else {
-            // Update property.
-            GraphEntity_SetProperty(&graph_entity, ctx->attribute_idx, ctx->new_value);
+            _UpdateEdge(op, ctx);
         }
     }
 
-    if(op->result_set)
-        op->result_set->stats.properties_set += op->pending_updates_count;
+    if(op->result_set) op->result_set->stats.properties_set += op->pending_updates_count;
 }
 
 OpBase* NewUpdateOp(GraphContext *gc, AST *ast, ResultSet *result_set) {
@@ -181,7 +168,7 @@ OpBase* NewUpdateOp(GraphContext *gc, AST *ast, ResultSet *result_set) {
     // Set our Op operations
     OpBase_Init(&op_update->op);
     op_update->op.name = "Update";
-    op_update->op.type = OPType_CREATE;
+    op_update->op.type = OPType_UPDATE;
     op_update->op.consume = OpUpdateConsume;
     op_update->op.reset = OpUpdateReset;
     op_update->op.free = OpUpdateFree;
@@ -199,15 +186,16 @@ Record OpUpdateConsume(OpBase *opBase) {
     /* Evaluate each update expression and store result 
      * for later execution. */
     EntityUpdateEvalCtx *update_expression = op->update_expressions;
-    for(int i = 0; i < op->update_expressions_count; i++, update_expression++) {
+    for(uint i = 0; i < op->update_expressions_count; i++, update_expression++) {
         SIValue new_value = AR_EXP_Evaluate(update_expression->exp, r);
+
+        // Make sure we're updating either a node or an edge.
+        RecordEntryType t = Record_GetType(r, update_expression->entityRecIdx);
+        assert(t == REC_TYPE_NODE || t == REC_TYPE_EDGE);
+        GraphEntityType type = (t == REC_TYPE_NODE) ? GETYPE_NODE : GETYPE_EDGE;
+
         GraphEntity *entity = Record_GetGraphEntity(r, update_expression->entityRecIdx);
-        _QueueUpdate(op,
-                     entity->entity,
-                     update_expression->ge,
-                     update_expression->attribute,
-                     update_expression->attribute_idx,
-                     new_value);
+        _QueueUpdate(op, entity, type, update_expression->attribute, new_value);
     }
 
     return r;
@@ -233,7 +221,7 @@ void OpUpdateFree(OpBase *ctx) {
     Graph_ReleaseLock(op->gc->g);
     
     /* Free each update context. */
-    for(int i = 0; i < op->update_expressions_count; i++) {
+    for(uint i = 0; i < op->update_expressions_count; i++) {
         AR_EXP_Free(op->update_expressions[i].exp);
     }
 

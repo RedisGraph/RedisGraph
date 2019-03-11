@@ -144,6 +144,6 @@ GrB_Info GxB_MatrixTupleIter_free
 {
     GB_WHERE ("GxB_MatrixTupleIter_free (iter)") ;
     GB_RETURN_IF_NULL (iter) ;
-    GB_FREE_MEMORY (iter, 1, sizeof (struct GxB_MatrixTupleIter)) ;
+    GB_FREE_MEMORY (iter, 1, sizeof (GxB_MatrixTupleIter)) ;
     return (GrB_SUCCESS) ;
 }

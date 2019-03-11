@@ -2,7 +2,7 @@
 // GB_qsort_2a: sort a 2-by-n list of integers, using A [0][ ] as the sort key
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -12,6 +12,8 @@
 // entry i in each tuple (i,k) is used as the sort key.  The second item k in
 // each tuple happens to be unique in itself, but this is not part of the
 // sort key.
+
+// parallel: not here, see Template/GB_qsort_template.c
 
 #include "GB.h"
 
@@ -47,12 +49,13 @@
 
 void GB_qsort_2a        // sort array A of size 2-by-n, using 1 key (A [0][])
 (
-    int64_t A_0 [ ],      // size n array
-    int64_t A_1 [ ],      // size n array
-    int64_t n
+    int64_t A_0 [ ],    // size n array
+    int64_t A_1 [ ],    // size n array
+    int64_t n,
+    GB_Context Context  // for # of threads; use one thread if NULL
 )
 { 
     uint64_t seed = n ;
-    GB_quicksort (GB_arg (A), n, &seed) ;
+    GB_quicksort_main (GB_arg (A), n, &seed, Context) ;
 }
 

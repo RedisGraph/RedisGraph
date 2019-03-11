@@ -1,32 +1,32 @@
 //------------------------------------------------------------------------------
-// GB_mex_subassign: C(I,J)<Mask> = accum (C (I,J), A)
+// GB_mex_subassign: C(I,J)<M> = accum (C (I,J), A)
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 // This function is a wrapper for all GxB_*_subassign functions.
-// For these uses, the Mask must always be the same size as C(I,J) and A.
+// For these uses, the mask M must always be the same size as C(I,J) and A.
 
-// GxB_Matrix_subassign: Mask has the same size as C(I,J) and A
-// GxB_Matrix_subassign_TYPE: Mask has the same size as C(I,J).  A is scalar.
+// GxB_Matrix_subassign: M has the same size as C(I,J) and A
+// GxB_Matrix_subassign_TYPE: M has the same size as C(I,J).  A is scalar.
 
-// GxB_Vector_subassign: Mask has the same size as C(I,J) and A
-// GxB_Vector_subassign_TYPE: Mask has the same size as C(I,J).  A is scalar.
+// GxB_Vector_subassign: M has the same size as C(I,J) and A
+// GxB_Vector_subassign_TYPE: M has the same size as C(I,J).  A is scalar.
 
-// GxB_Col_subassign: on input to GB_mex_subassign, Mask and A are a single
+// GxB_Col_subassign: on input to GB_mex_subassign, M and A are a single
 // columns, the same size as the single subcolumn C(I,j).  They are not column
 // vectors.
 
-// GxB_Row_subassign: on input to GB_mex_subassign, Mask and A are single ROWS,
+// GxB_Row_subassign: on input to GB_mex_subassign, M and A are single ROWS,
 // the same size as the single subrow C(i,J).  They are not column vectors.
-// Before GxB_Row_subassign is called, the A and the Mask (if present) are
+// Before GxB_Row_subassign is called, the A and the mask M (if present) are
 // transposed.
 
-// Thus, in all cases, A and the Mask (if present) have the same size as C(I,J),
-// except in the case where A is a scalar.  In that case, A is implicitly
-// expanded into a matrix the same size as C(I,J), but this occurs inside
-// GxB_*subassign, not here.
+// Thus, in all cases, A and the mask M (if present) have the same size as
+// C(I,J), except in the case where A is a scalar.  In that case, A is
+// implicitly expanded into a matrix the same size as C(I,J), but this occurs
+// inside GxB_*subassign, not here.
 
 // This function does the same thing as the MATLAB mimic GB_spec_subassign.m.
 
@@ -35,12 +35,12 @@
 #include "GB_mex.h"
 
 #define USAGE "[C,s,t] = GB_mex_subassign " \
-              "(C, Mask, accum, A, I, J, desc, reduce) or (C, Work)"
+              "(C, M, accum, A, I, J, desc, reduce) or (C, Work)"
 
 #define FREE_ALL                        \
 {                                       \
     GB_MATRIX_FREE (&A) ;               \
-    GB_MATRIX_FREE (&Mask) ;            \
+    GB_MATRIX_FREE (&M) ;               \
     GB_MATRIX_FREE (&C) ;               \
     GrB_free (&desc) ;                  \
     if (!reduce_is_complex) GrB_free (&reduce) ;                \
@@ -48,12 +48,20 @@
 }
 
 #define GET_DEEP_COPY \
-    C = GB_mx_mxArray_to_Matrix (pargin [0], "C input", true, true) ;
+    C = GB_mx_mxArray_to_Matrix (pargin [0], "C input", true, true) ;   \
+    if (nargin > 2 && mxIsChar (pargin [1]))                            \
+    {                                                                   \
+        M = GB_mx_alias ("M", pargin [1], "C",C, "A",A) ;               \
+    }                                                                   \
+    if (nargin > 3 && mxIsChar (pargin [3]))                            \
+    {                                                                   \
+        A = GB_mx_alias ("A", pargin [3], "C",C, "M",M) ;               \
+    }
 
 #define FREE_DEEP_COPY GB_MATRIX_FREE (&C) ;
 
 GrB_Matrix C = NULL ;
-GrB_Matrix Mask = NULL ;
+GrB_Matrix M = NULL ;
 GrB_Matrix A = NULL ;
 GrB_Matrix mask = NULL, u = NULL ;
 GrB_Descriptor desc = NULL ;
@@ -99,7 +107,7 @@ GrB_Info assign (GB_Context Context)
         // scalar expansion to matrix or vector
         void *Ax = A->x ;
 
-        if (ni == 1 && nj == 1 && Mask == NULL && I != GrB_ALL && J != GrB_ALL
+        if (ni == 1 && nj == 1 && M == NULL && I != GrB_ALL && J != GrB_ALL
             && GB_op_is_second (accum, C->type) && A->type->code <= GB_FP64_code
             && desc == NULL)
         {
@@ -133,7 +141,7 @@ GrB_Info assign (GB_Context Context)
             #undef ASSIGN
 
         }
-        if (GB_VECTOR_OK (C) && GB_VECTOR_OK (Mask))
+        if (GB_VECTOR_OK (C) && GB_VECTOR_OK (M))
         {
 
             // test GxB_Vector_subassign_scalar functions
@@ -141,7 +149,7 @@ GrB_Info assign (GB_Context Context)
             #define ASSIGN(type)                                        \
             {                                                           \
                 type x = ((type *) Ax) [0] ;                            \
-                OK (GxB_subassign ((GrB_Vector) C, (GrB_Vector) Mask,   \
+                OK (GxB_subassign ((GrB_Vector) C, (GrB_Vector) M,      \
                     accum, x, I, ni, desc)) ;      \
             } break ;
 
@@ -161,7 +169,7 @@ GrB_Info assign (GB_Context Context)
                 case GB_UCT_code    :
                 case GB_UDT_code    :
                 {
-                    OK (GxB_subassign ((GrB_Vector) C, (GrB_Vector) Mask,
+                    OK (GxB_subassign ((GrB_Vector) C, (GrB_Vector) M,
                         accum, Ax, I, ni, desc)) ;
                 }
                 break ;
@@ -180,7 +188,7 @@ GrB_Info assign (GB_Context Context)
             #define ASSIGN(type)                                            \
             {                                                               \
                 type x = ((type *) Ax) [0] ;                                \
-                OK (GxB_subassign (C, Mask, accum, x, I, ni, J, nj,desc)) ; \
+                OK (GxB_subassign (C, M, accum, x, I, ni, J, nj,desc)) ;    \
             } break ;
 
             switch (A->type->code)
@@ -199,7 +207,7 @@ GrB_Info assign (GB_Context Context)
                 case GB_UCT_code    :
                 case GB_UDT_code    :
                 {
-                    OK (GxB_subassign (C, Mask, accum, Ax, I, ni, J, nj, desc));
+                    OK (GxB_subassign (C, M, accum, Ax, I, ni, J, nj, desc)) ;
                 }
                 break ;
 
@@ -212,30 +220,30 @@ GrB_Info assign (GB_Context Context)
         }
     }
     else if (GB_VECTOR_OK (C) && GB_VECTOR_OK (A) &&
-        (Mask == NULL || GB_VECTOR_OK (Mask)) && !at)
+        (M == NULL || GB_VECTOR_OK (M)) && !at)
     {
         // test GxB_Vector_subassign
         if (ph) printf ("vector assign\n") ;
-        OK (GxB_subassign ((GrB_Vector) C, (GrB_Vector) Mask, accum,
+        OK (GxB_subassign ((GrB_Vector) C, (GrB_Vector) M, accum,
             (GrB_Vector) A, I, ni, desc)) ;
     }
     else if (GB_VECTOR_OK (A) && nj == 1 &&
-        (Mask == NULL || GB_VECTOR_OK (Mask)) && !at)
+        (M == NULL || GB_VECTOR_OK (M)) && !at)
     {
         // test GxB_Col_subassign
         if (ph) printf ("col assign\n") ;
-        OK (GxB_subassign (C, (GrB_Vector) Mask, accum, (GrB_Vector) A,
+        OK (GxB_subassign (C, (GrB_Vector) M, accum, (GrB_Vector) A,
             I, ni, J [0], desc)) ;
     }
     else if (A->vlen == 1 && ni == 1 &&
-        (Mask == NULL || Mask->vlen == 1) && !at)
+        (M == NULL || M->vlen == 1) && !at)
     {
         // test GxB_Row_subassign; this is not meant to be efficient,
         // just for testing
         if (ph) printf ("row assign\n") ;
-        if (Mask != NULL)
+        if (M != NULL)
         {
-            OK (GB_transpose_bucket (&mask, GrB_BOOL, true, Mask, NULL,
+            OK (GB_transpose_bucket (&mask, GrB_BOOL, true, M, NULL,
                 Context)) ;
             ASSERT (GB_VECTOR_OK (mask)) ;
         }
@@ -250,7 +258,7 @@ GrB_Info assign (GB_Context Context)
     {
         // standard submatrix assignment
         if (ph) printf ("submatrix assign\n") ;
-        OK (GxB_subassign (C, Mask, accum, A, I, ni, J, nj, desc)) ;
+        OK (GxB_subassign (C, M, accum, A, I, ni, J, nj, desc)) ;
     }
 
     ASSERT_OK (GB_check (C, "C after assign", pr)) ;
@@ -270,7 +278,7 @@ GrB_Info many_subassign
     int fI,
     int fJ,
     int faccum,
-    int fMask,
+    int fM,
     int fdesc,
     mxClassID cclass,
     const mxArray *pargin [ ],
@@ -292,19 +300,19 @@ GrB_Info many_subassign
         mxArray *p ;
 
         // [ turn off malloc debugging
-        bool save = GB_Global.malloc_debug ;
-        GB_Global.malloc_debug = false ;
+        bool save = GB_Global_malloc_debug_get ( ) ;
+        GB_Global_malloc_debug_set (false) ;
 
-        // get Mask (shallow copy)
-        Mask = NULL ;
-        if (fMask >= 0)
+        // get M (shallow copy)
+        M = NULL ;
+        if (fM >= 0)
         {
-            p = mxGetFieldByNumber (pargin [1], k, fMask) ;
-            Mask = GB_mx_mxArray_to_Matrix (p, "Mask", false, false) ;
-            if (Mask == NULL && !mxIsEmpty (p))
+            p = mxGetFieldByNumber (pargin [1], k, fM) ;
+            M = GB_mx_mxArray_to_Matrix (p, "Mask", false, false) ;
+            if (M == NULL && !mxIsEmpty (p))
             {
                 FREE_ALL ;
-                mexErrMsgTxt ("Mask failed") ;
+                mexErrMsgTxt ("M failed") ;
             }
         }
 
@@ -358,17 +366,18 @@ GrB_Info many_subassign
                 mexErrMsgTxt ("desc failed") ;
             }
         }
+
         // restore malloc debugging to test the method
-        GB_Global.malloc_debug = save ;   // ]
+        GB_Global_malloc_debug_set (save) ; // ]
 
         //----------------------------------------------------------------------
-        // C(I,J)<Mask> = A
+        // C(I,J)<M> = A
         //----------------------------------------------------------------------
 
         info = assign (Context) ;
 
         GB_MATRIX_FREE (&A) ;
-        GB_MATRIX_FREE (&Mask) ;
+        GB_MATRIX_FREE (&M) ;
         GrB_free (&desc) ;
 
         if (info != GrB_SUCCESS)
@@ -401,7 +410,7 @@ void mexFunction
     malloc_debug = GB_mx_get_global (true) ;
     A = NULL ;
     C = NULL ;
-    Mask = NULL ;
+    M = NULL ;
     desc = NULL ;
     reduce_is_complex = false ;
     op = NULL ;
@@ -414,20 +423,17 @@ void mexFunction
         mexErrMsgTxt ("Usage: " USAGE) ;
     }
 
-    //--------------------------------------------------------------------------
-    // get C (make a deep copy)
-    //--------------------------------------------------------------------------
-
-    GET_DEEP_COPY ;
-    if (C == NULL)
-    {
-        FREE_ALL ;
-        mexErrMsgTxt ("C failed") ;
-    }
-    mxClassID cclass = GB_mx_Type_to_classID (C->type) ;
-
     if (nargin == 2)
     {
+
+        // get C (deep copy)
+        GET_DEEP_COPY ;
+        if (C == NULL)
+        {
+            FREE_ALL ;
+            mexErrMsgTxt ("C failed") ;
+        }
+        mxClassID cclass = GB_mx_Type_to_classID (C->type) ;
 
         //----------------------------------------------------------------------
         // get a list of work to do: a struct array of length nwork
@@ -457,12 +463,12 @@ void mexFunction
         int fI = mxGetFieldNumber (pargin [1], "I") ;
         int fJ = mxGetFieldNumber (pargin [1], "J") ;
         int faccum = mxGetFieldNumber (pargin [1], "accum") ;
-        int fMask = mxGetFieldNumber (pargin [1], "Mask") ;
+        int fM = mxGetFieldNumber (pargin [1], "Mask") ;
         int fdesc = mxGetFieldNumber (pargin [1], "desc") ;
 
         if (fA < 0 || fI < 0 || fJ < 0) mexErrMsgTxt ("A,I,J required") ;
 
-        METHOD (many_subassign (nwork, fA, fI, fJ, faccum, fMask, fdesc, cclass,
+        METHOD (many_subassign (nwork, fA, fI, fJ, faccum, fM, fdesc, cclass,
             pargin, Context)) ;
 
     }
@@ -470,24 +476,39 @@ void mexFunction
     {
 
         //----------------------------------------------------------------------
-        // C(I,J)<Mask> = A, with a single assignment
+        // C(I,J)<M> = A, with a single assignment
         //----------------------------------------------------------------------
 
-        // get Mask (shallow copy)
-        Mask = GB_mx_mxArray_to_Matrix (pargin [1], "Mask", false, false) ;
-        if (Mask == NULL && !mxIsEmpty (pargin [1]))
+        // get M (shallow copy)
+        if (!mxIsChar (pargin [1]))
         {
-            FREE_ALL ;
-            mexErrMsgTxt ("Mask failed") ;
+            M = GB_mx_mxArray_to_Matrix (pargin [1], "M", false, false) ;
+            if (M == NULL && !mxIsEmpty (pargin [1]))
+            {
+                FREE_ALL ;
+                mexErrMsgTxt ("M failed") ;
+            }
         }
 
         // get A (shallow copy)
-        A = GB_mx_mxArray_to_Matrix (pargin [3], "A", false, true) ;
-        if (A == NULL)
+        if (!mxIsChar (pargin [3]))
+        {
+            A = GB_mx_mxArray_to_Matrix (pargin [3], "A", false, true) ;
+            if (A == NULL)
+            {
+                FREE_ALL ;
+                mexErrMsgTxt ("A failed") ;
+            }
+        }
+
+        // get C (deep copy)
+        GET_DEEP_COPY ;
+        if (C == NULL)
         {
             FREE_ALL ;
-            mexErrMsgTxt ("A failed") ;
+            mexErrMsgTxt ("C failed") ;
         }
+        mxClassID cclass = GB_mx_Type_to_classID (C->type) ;
 
         // get accum; default: NOP, default class is class(C)
         accum = NULL ;
@@ -551,7 +572,7 @@ void mexFunction
             }
         }
 
-        // C(I,J)<Mask> = A
+        // C(I,J)<M> = A
 
         METHOD (assign (Context)) ;
 

@@ -2,7 +2,7 @@
 // GB_setElement: C(row,col) = scalar
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -19,11 +19,13 @@
 
 // GrB_setElement is the same as GrB_*assign with an implied SECOND accum
 // operator whose ztype, xtype, and ytype are the same as C, with I=i, J=1, a
-// 1-by-1 dense matrix A (where nnz (A) == 1), no Mask, Mask not complemented,
+// 1-by-1 dense matrix A (where nnz (A) == 1), no mask, mask not complemented,
 // C_replace effectively false (its value is ignored), and A transpose
 // effectively false (since transposing a scalar has no effect).
 
 // Compare this function with GB_extractElement.
+
+// not parallel: this function does O(log(..)) work and is already thread-safe.
 
 #include "GB.h"
 
@@ -145,17 +147,20 @@ GrB_Info GB_setElement              // set a single entry, C(row,col) = scalar
         else
         { 
             // typecast scalar into C
-            GB_cast_array (Cx +(pleft*csize), ccode, scalar, scalar_code, 1) ;
+            GB_cast_array (Cx +(pleft*csize), ccode, scalar, scalar_code, 1,
+                Context) ;
         }
 
         if (is_zombie)
         {
             // bring the zombie back to life
+            ASSERT (C->enqueued) ;
             C->i [pleft] = i ;
             C->nzombies-- ;
             if (C->nzombies == 0 && C->n_pending == 0)
             { 
                 // remove from queue if zombies goes to 0 and n_pending is zero
+                // FUTURE:: may thrash.  See FUTURE: in GB_subassign_kernel.
                 GB_CRITICAL (GB_queue_remove (C)) ;
             }
         }

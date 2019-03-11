@@ -11,6 +11,13 @@
 // instead of GrB_mxv.  It now more closely matches the BFS example in the
 // GraphBLAS C API Specification.
 
+// NOTE: this method can be *slow*, in special cases (v very sparse on output,
+// A in CSC format instead of the default CSR, or if A has any explicit values
+// equal to zero in its pattern).  See LAGraph_bfs_pushpull for a faster method
+// that handles these cases.  Do not benchmark this code!  It is just for
+// simple illustration.  Use the LAGraph_bfs_pushpull for benchmarking and
+// production use.
+
 #include "demos.h"
 
 //------------------------------------------------------------------------------
@@ -44,9 +51,9 @@ GrB_Info bfs5m              // BFS of a graph (using vector assign & reduce)
 
     GrB_Matrix_nrows (&n, A) ;             // n = # of rows of A
     GrB_Vector_new (&v, GrB_INT32, n) ;    // Vector<int32_t> v(n) = 0
-    // This is a little faster if the whole graph is expected to be searched,
-    // but slower if only a small part of the graph is reached:
-    // for (int32_t i = 0 ; i < n ; i++) GrB_Vector_setElement (v, 0, i) ;
+    GrB_assign (v, NULL, NULL, 0, GrB_ALL, n, NULL) ;   // make v dense
+    GrB_Vector_nvals (&n, v) ;              // finish pending work on v
+
     GrB_Vector_new (&q, GrB_BOOL, n) ;     // Vector<bool> q(n) = false
     GrB_Vector_setElement (q, true, s) ;   // q[s] = true, false elsewhere
 
@@ -73,6 +80,10 @@ GrB_Info bfs5m              // BFS of a graph (using vector assign & reduce)
         // successor = ||(q)
         GrB_reduce (&successor, NULL, Lor, q, NULL) ;
     }
+
+    // make v sparse
+    GrB_Descriptor_set (desc, GrB_MASK, GxB_DEFAULT) ;  // mask not inverted
+    GrB_assign (v, v, NULL, v, GrB_ALL, n, desc) ;
 
     *v_output = v ;         // return result
 

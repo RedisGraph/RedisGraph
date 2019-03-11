@@ -5,23 +5,23 @@ function test60
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 fprintf ('min\n') ;
-for x = [3 nan]
-    for y = [3 nan]
+for x = [3 nan inf]
+    for y = [3 nan inf -inf]
         a = min (x, y);
         c = min (x, y, 'includenan');
         b = GB_mex_op ('min', x, y) ;
-        fprintf ('x: %3g y: %3g  matlab: %3g %3g GrB %3g match: %d\n', ...
+        fprintf ('x: %4g y: %4g  matlab(omit): %4g matlab(incl): %4g GrB %4g match: %d\n', ...
             x, y, a, c, b, isequalwithequalnans (a,b)) ;
     end
 end
 
 fprintf ('\nmax\n') ;
-for x = [3 nan]
-    for y = [3 nan]
+for x = [3 nan inf]
+    for y = [3 nan inf -inf]
         a = max (x, y);
         c = max (x, y, 'includenan');
         b = GB_mex_op ('max', x, y) ;
-        fprintf ('x: %3g y: %3g  matlab: %3g %3g GrB %3g match: %d\n', ...
+        fprintf ('x: %4g y: %4g  matlab(omit): %4g matlab(incl): %4g GrB %4g match: %d\n', ...
             x, y, a, c, b, isequalwithequalnans (a,b)) ;
     end
 end

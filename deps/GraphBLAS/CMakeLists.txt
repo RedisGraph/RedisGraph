@@ -2,7 +2,7 @@
 # GraphBLAS/CMakeLists.txt:  cmake script for GraphBLAS
 #-------------------------------------------------------------------------------
 
-# SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+# SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 # http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 # CMakeLists.txt: instructions for cmake to build GraphBLAS.
@@ -55,9 +55,9 @@ if ( CMAKE_VERSION VERSION_GREATER "3.0" )
 endif ( )
 
 # version of SuiteSparse:GraphBLAS
-set ( GraphBLAS_DATE "Nov 28, 2018 (BETA4)" )
+set ( GraphBLAS_DATE "Feb 25, 2019" )
 set ( GraphBLAS_VERSION_MAJOR 2 )
-set ( GraphBLAS_VERSION_MINOR 2 )
+set ( GraphBLAS_VERSION_MINOR 3 )
 set ( GraphBLAS_VERSION_SUB   0 )
 
 # GraphBLAS C API Specification version, at graphblas.org
@@ -79,7 +79,7 @@ endif ( )
 
 include ( GNUInstallDirs )
 
-# For development only, not for end-users:
+# Uncomment this line for for development only, not for end-users:
 # set ( CMAKE_BUILD_TYPE Debug )
 
 if ( NOT CMAKE_BUILD_TYPE )
@@ -131,8 +131,8 @@ configure_file (
     "${PROJECT_SOURCE_DIR}/Doc/GraphBLAS_API_version.tex"
 )
 configure_file (
-    "Config/README.txt.in"
-    "${PROJECT_SOURCE_DIR}/README.txt"
+    "Config/README.md.in"
+    "${PROJECT_SOURCE_DIR}/README.md"
 )
 
 #-------------------------------------------------------------------------------
@@ -177,7 +177,7 @@ include_directories ( Source/Template Source Source/Generated Source/Generator I
 if ( "${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
     # cmake 2.8 workaround: gcc needs to be told to do ANSI C11.
     # cmake 3.0 doesn't have this problem.
-    set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -std=c11 -lm -Wno-pragmas " )
+    set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -std=c11 -lm -Wno-pragmas -fPIC " )
     # check all warnings:
 #   set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -Wall -Wextra -Wpedantic -Werror " )
     if ( CMAKE_C_COMPILER_VERSION VERSION_LESS 4.9 )
@@ -279,7 +279,10 @@ else ( )
     endif ( )
 endif ( )
 
+#-------------------------------------------------------------------------------
 # add the threading library
+#-------------------------------------------------------------------------------
+
 if ( USE_OPENMP )
     # use OpenMP
     message ( STATUS "Using OpenMP to synchronize user threads" )
@@ -329,15 +332,6 @@ endif ( )
 message ( STATUS "CMAKE C flags: " ${CMAKE_C_FLAGS} )
 
 #-------------------------------------------------------------------------------
-# graphblas installation location
-#-------------------------------------------------------------------------------
-
-install ( TARGETS graphblas graphblas_static
-    LIBRARY       DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-    ARCHIVE       DESTINATION ${CMAKE_INSTALL_LIBDIR} )
-
-#-------------------------------------------------------------------------------
 # Demo library
 #-------------------------------------------------------------------------------
 
@@ -369,6 +363,7 @@ add_executable ( complex_demo  "Demo/Program/complex_demo.c" )
 add_executable ( kron_demo     "Demo/Program/kron_demo.c" )
 add_executable ( simple_demo   "Demo/Program/simple_demo.c" )
 add_executable ( wildtype_demo "Demo/Program/wildtype_demo.c" )
+add_executable ( import_demo   "Demo/Program/import_demo.c" )
 
 # Libraries required for Demo programs
 target_link_libraries ( pagerank_demo graphblas graphblasdemo )
@@ -381,4 +376,13 @@ target_link_libraries ( complex_demo  graphblas graphblasdemo )
 target_link_libraries ( kron_demo     graphblas graphblasdemo )
 target_link_libraries ( simple_demo   graphblasdemo )
 target_link_libraries ( wildtype_demo graphblas )
+target_link_libraries ( import_demo   graphblas graphblasdemo )
 
+#-------------------------------------------------------------------------------
+# graphblas installation location
+#-------------------------------------------------------------------------------
+
+install ( TARGETS graphblas graphblas_static
+    LIBRARY       DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    ARCHIVE       DESTINATION ${CMAKE_INSTALL_LIBDIR} )

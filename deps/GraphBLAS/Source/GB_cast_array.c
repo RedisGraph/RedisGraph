@@ -2,13 +2,16 @@
 // GB_cast_array: typecast an array
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
 // Casts an input array A to an output array C with a different built-in type.
 // Does not handle user-defined types.
+
+// PARALLEL: easy.  May want to put the workers in functions, like
+// Generated/GB_AxB*, instead of in a macro.
 
 #include "GB.h"
 
@@ -18,7 +21,8 @@ void GB_cast_array              // typecast an array
     const GB_Type_code code1,   // type code for C
     const void *A,              // input array
     const GB_Type_code code2,   // type code for A
-    const int64_t n             // number of entries in C and A
+    const int64_t n,            // number of entries in C and A
+    GB_Context Context
 )
 {
 
@@ -38,6 +42,12 @@ void GB_cast_array              // typecast an array
     ASSERT (code1 <= GB_FP64_code) ;
     ASSERT (code2 <= GB_FP64_code) ;
     ASSERT (GB_code_compatible (code1, code2)) ;
+
+    //--------------------------------------------------------------------------
+    // determine the number of threads to use
+    //--------------------------------------------------------------------------
+
+    GB_GET_NTHREADS (nthreads, Context) ;
 
     //--------------------------------------------------------------------------
     // define the worker for the switch factory

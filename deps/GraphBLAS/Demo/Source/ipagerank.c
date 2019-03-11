@@ -2,6 +2,9 @@
 // SuiteSparse/GraphBLAS/Demo/Source/ipagerank: pagerank using uint64 semiring
 //------------------------------------------------------------------------------
 
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
 // A is a square unsymmetric binary matrix of size n-by-n, where A(i,j) is the
 // edge (i,j).  Self-edges are OK.  A can be of any built-in type.
 

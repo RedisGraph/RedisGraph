@@ -2,7 +2,7 @@
 // GrB_Matrix_new: create a new matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -11,6 +11,8 @@
 // an empty matrix is hypersparse CSC: A->p is size 2 and all zero, A->h is
 // size 1, A->plen is 1, and contents A->x and A->i are NULL.  If this method
 // fails, *A is set to NULL.
+
+// parallel: not here; see GB_new.
 
 #include "GB.h"
 
@@ -73,7 +75,7 @@ GrB_Info GrB_Matrix_new     // create a new matrix with no entries
 
     // *A == NULL ;                 // allocate a new header for A
     GB_NEW (A, type, vlen, vdim, GB_Ap_calloc, A_is_csc,
-        GB_AUTO_HYPER, GB_HYPER_DEFAULT, 1) ;
+        GB_AUTO_HYPER, GB_HYPER_DEFAULT, 1, Context) ;
     return (info) ;
 }
 

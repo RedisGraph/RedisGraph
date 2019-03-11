@@ -2,10 +2,12 @@
 // GrB_Descriptor_set: set a field in a descriptor
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
+
+// not parallel: this function does O(1) work and is already thread-safe.
 
 #include "GB.h"
 
@@ -79,6 +81,8 @@ GrB_Info GrB_Descriptor_set     // set a parameter in a descriptor
             }
             desc->in1  = value ;
             break ;
+
+        // case GxB_NTHREADS:  use GxB_Desc_set instead
 
         case GxB_AxB_METHOD : 
 

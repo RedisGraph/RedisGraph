@@ -15,24 +15,33 @@
 #include "../../grouping/group_cache.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
+// Matrix, vector operations.
+typedef enum {
+    AGGREGATED,
+    NONE_AGGREGATED,
+} ExpClassification;
+
 /* Aggregate
  * aggregates graph according to  
  * return clause */
  typedef struct {
     OpBase op;
     AST *ast;
-    ResultSet *resultset;
-    AR_ExpNode **none_aggregated_expressions;   /* Array of arithmetic expression. */
-    AR_ExpNode **order_expressions;             /* Array of arithmetic expression. */
-    uint8_t *expression_classification;         /* 1 if RETURN_CLAUSE[i] is aggregated, 0 otherwise.  */
-    SIValue *group_keys;                        /* Array of values composing an aggregated group. */
+    char **aliases;
+    AR_ExpNode **expressions;
+    AR_ExpNode **order_exps;
+    unsigned short exp_count;
+    unsigned short order_exp_count;
+    AR_ExpNode **none_aggregated_expressions;      /* Array of arithmetic expression. */
+    ExpClassification *expression_classification;  /* classifies expression as aggregated/none aggregated.  */
+    Group *group;                                  /* Last accessed group. */
     TrieMap *groups;
+    SIValue *group_keys;                           /* Array of values composing an aggregated group. */
     CacheGroupIterator *groupIter;
-    Group *group;                               /* Last accessed group. */
-    int init;
- } Aggregate;
+ } OpAggregate;
 
-OpBase* NewAggregateOp(ResultSet *resultset);
+OpBase* NewAggregateOp(AST *ast, AR_ExpNode **expressions, char **aliases);
+OpResult AggregateInit(OpBase *opBase);
 Record AggregateConsume(OpBase *opBase);
 OpResult AggregateReset(OpBase *opBase);
 void AggregateFree(OpBase *opBase);

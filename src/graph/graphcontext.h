@@ -4,7 +4,12 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
+<<<<<<< HEAD
 #pragma once
+=======
+#ifndef GRAPHCONTEXT_H
+#define GRAPHCONTEXT_H
+>>>>>>> origin/master
 
 #include <assert.h>
 
@@ -33,7 +38,7 @@ GraphContext* GraphContext_New(RedisModuleCtx *ctx, const char *graphname,
 GraphContext* GraphContext_Retrieve(RedisModuleCtx *ctx, const char *graphname);
 
 // Retrives graph context from thread local storage.
-GraphContext* GraphContext_GetFromLTS();
+GraphContext* GraphContext_GetFromTLS();
 
 /* Schema API */
 // Retrieve the generic schema for node labels or relation types

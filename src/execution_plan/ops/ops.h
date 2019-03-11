@@ -23,5 +23,10 @@
 #include "execution_plan/ops/op_cond_var_len_traverse.h"
 #include "execution_plan/ops/op_unwind.h"
 #include "execution_plan/ops/op_sort.h"
+#include "execution_plan/ops/op_results.h"
 #include "execution_plan/ops/op_project.h"
 #include "execution_plan/ops/op_distinct.h"
+#include "execution_plan/ops/op_skip.h"
+#include "execution_plan/ops/op_limit.h"
+#include "execution_plan/ops/op_expand_into.h"
+

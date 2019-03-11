@@ -2,10 +2,15 @@
 // GB_AxB_alloc: estimate nnz(C) and allocate C for C=A*B or C=A'*B
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
+
+// parallel: this function will remain sequential.
+// parallelism will be done in GB_AxB_parallel.
+
+// Does not log an error; returns GrB_SUCCESS, GrB_OUT_OF_MEMORY, or GrB_PANIC.
 
 #include "GB.h"
 
@@ -19,8 +24,7 @@ GrB_Info GB_AxB_alloc           // estimate nnz(C) and allocate C for C=A*B
     const GrB_Matrix A,         // input matrix A (transposed for dot product)
     const GrB_Matrix B,         // input matrix B
     const bool numeric,         // if true, allocate A->x, else A->x is NULL
-    const int64_t rough_guess,  // rough estimate of nnz(C)
-    GB_Context Context
+    const int64_t rough_guess   // rough estimate of nnz(C)
 )
 {
 
@@ -28,6 +32,7 @@ GrB_Info GB_AxB_alloc           // estimate nnz(C) and allocate C for C=A*B
     // check inputs
     //--------------------------------------------------------------------------
 
+    GB_Context Context = NULL ;
     ASSERT (Chandle != NULL) ;
     ASSERT (*Chandle == NULL) ;
     ASSERT_OK_OR_NULL (GB_check (M, "M for alloc C=A*B", GB0)) ;
@@ -79,13 +84,29 @@ GrB_Info GB_AxB_alloc           // estimate nnz(C) and allocate C for C=A*B
     // allocate C
     //--------------------------------------------------------------------------
 
-    // Use CSC format but this is ignored for now.  If hypersparse, assume C
-    // has as many non-empty columns as B.  C->p and C->h are allocated but not
-    // initialized.
+    // Use CSC format but this is ignored for now.  If hypersparse, assume C or
+    // as many non-empty columns of B (compute it if it has not already been
+    // computed).  This is an upper bound.  If nnz(B(:,j)) is zero, this
+    // implies nnz(C(:,j)) will be zero, but not the other way around.  That
+    // is, nnz(B(:,j)) can be > 0, but if nnz(A(k,j)) == 0 for all k for
+    // entries B(k,j), then nnz(C(:,j)) will be zero.
+
+    // C->p and C->h are allocated but not initialized.
+
+    int64_t cplen = -1 ;
+
+    if (C_is_hyper)
+    {
+        if (B->nvec_nonempty < 0)
+        { 
+            B->nvec_nonempty = GB_nvec_nonempty (B, NULL) ;
+        }
+        cplen = B->nvec_nonempty ;
+    }
 
     GB_CREATE (Chandle, ctype, cvlen, cvdim, GB_Ap_malloc, true,
-        GB_SAME_HYPER_AS (C_is_hyper), B->hyper_ratio, B->nvec_nonempty,
-        cnz_guess, numeric) ;
+        GB_SAME_HYPER_AS (C_is_hyper), B->hyper_ratio, cplen,
+        cnz_guess, numeric, NULL) ;
 
     return (info) ;
 }

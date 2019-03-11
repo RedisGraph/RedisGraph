@@ -2,7 +2,7 @@
 // GB_ops_template.c: built-in unary and binary functions and operators
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -11,6 +11,8 @@
 // and binary operators.  In that file, GB_TYPE is a built-in C type (bool,
 // int8_t, uint64_t, double, etc), and GB(x) is the corresponding macro that
 // creates the function name (GB_*_BOOL, GB_*_INT8, etc).
+
+// parallel: not here; no executable code
 
 #define GB_Z_X_ARGS       GB_TYPE *z, const GB_TYPE *x
 #define GB_Z_X_Y_ARGS     GB_TYPE *z, const GB_TYPE *x, const GB_TYPE *y
@@ -108,17 +110,17 @@ GB_BINARY_BOOL_OP_DEFINE (GrB_, LE, "le")
 // unary typecast operators, used in GB_cast_factory.c
 //------------------------------------------------------------------------------
 
-extern void GB_CAST_NAME (bool    ) (void *z, const void *x, size_t s) ;
-extern void GB_CAST_NAME (int8_t  ) (void *z, const void *x, size_t s) ;
-extern void GB_CAST_NAME (uint8_t ) (void *z, const void *x, size_t s) ;
-extern void GB_CAST_NAME (int16_t ) (void *z, const void *x, size_t s) ;
-extern void GB_CAST_NAME (uint16_t) (void *z, const void *x, size_t s) ;
-extern void GB_CAST_NAME (int32_t ) (void *z, const void *x, size_t s) ;
-extern void GB_CAST_NAME (uint32_t) (void *z, const void *x, size_t s) ;
-extern void GB_CAST_NAME (int64_t ) (void *z, const void *x, size_t s) ;
-extern void GB_CAST_NAME (uint64_t) (void *z, const void *x, size_t s) ;
-extern void GB_CAST_NAME (float   ) (void *z, const void *x, size_t s) ;
-extern void GB_CAST_NAME (double  ) (void *z, const void *x, size_t s) ;
+extern void GB_CAST_NAME (bool    ) (void *z, void *x, size_t s) ;
+extern void GB_CAST_NAME (int8_t  ) (void *z, void *x, size_t s) ;
+extern void GB_CAST_NAME (uint8_t ) (void *z, void *x, size_t s) ;
+extern void GB_CAST_NAME (int16_t ) (void *z, void *x, size_t s) ;
+extern void GB_CAST_NAME (uint16_t) (void *z, void *x, size_t s) ;
+extern void GB_CAST_NAME (int32_t ) (void *z, void *x, size_t s) ;
+extern void GB_CAST_NAME (uint32_t) (void *z, void *x, size_t s) ;
+extern void GB_CAST_NAME (int64_t ) (void *z, void *x, size_t s) ;
+extern void GB_CAST_NAME (uint64_t) (void *z, void *x, size_t s) ;
+extern void GB_CAST_NAME (float   ) (void *z, void *x, size_t s) ;
+extern void GB_CAST_NAME (double  ) (void *z, void *x, size_t s) ;
 
 //------------------------------------------------------------------------------
 // clear macros for next use of this file

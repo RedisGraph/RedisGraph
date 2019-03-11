@@ -1,8 +1,7 @@
 /*
 * Copyright 2018-2019 Redis Labs Ltd. and Contributors
 *
-* This file is available under the Apache License, Version 2.0,
-* modified with the Commons Clause restriction.
+* This file is available under the Redis Labs Source Available License Agreement
 */
 
 #include "op_distinct.h"
@@ -34,8 +33,7 @@ Record DistinctConsume(OpBase *opBase) {
 
         unsigned long long const hash = Record_Hash64(r);
         int is_new = TrieMap_Add(self->trie, (char *) &hash, sizeof(hash), NULL, TrieMap_DONT_CARE_REPLACE);
-        if(is_new)
-            return r;
+        if(is_new) return r;
         Record_Free(r);
     }
 }

@@ -1,6 +1,11 @@
 % GraphBLAS Test/ folder: test GraphBLAS in MATLAB
 % See the README.txt file for more details.
-%
+
+% Primary functiuns
+
+%   make    - compiles the MATLAB interface to GraphBLAS (for testing only)
+%   testall - run all GraphBLAS tests
+
 % MATLAB mimics of GraphBLAS operations:
 %
 %   GB_spec_Col_assign            - a MATLAB mimic of GrB_Col_assign
@@ -47,10 +52,9 @@
 %   accum_mask2                   - a simpler version of GB_spec_accum_mask
 %   GB_random_mask                - Mask = GB_random_mask (m, n, d, M_is_csc, M_is_hyper)
 %   GB_spec_getmask               - return the mask, typecasted to logical
-%
+
 % Test scripts:
-%
-%   testall  - run all GraphBLAS tests
+
 %   test00   - test GB_mex_mis
 %   test01   - test GraphBLAS error handling
 %   test02   - test GrB_*_dup
@@ -154,9 +158,20 @@
 %   test92   - test GB_subref_symbolic
 %   test93   - test dpagerank and ipagerank
 %   test94   - test pagerank
+%   test95   - performance test for GrB_transpose
+%   test96   - test dot product
 %   test97   - test GB_assign, scalar expansion and zombies
 %   test98   - test GrB_mxm, typecasting on the fly
 %   test99   - test GB_mex_transpose with explicit zeros in the Mask
+%   test100  - test GB_mex_isequal
+%   test101  - test import/export
+%   test102  - test GB_AxB_flopcount
+%   test103  - test aliases in GrB_transpose
+%   test104  - export/import
+%   test105  - eWiseAdd with hypersparse matrices
+%   test106  - GxB_subassign with alias
+%   test107  - user-defined terminal monoid
+
 %   testc1   - test complex operators
 %   testc2   - test complex A*B, A'*B, A*B', A'*B', A+B
 %   testc3   - test complex GrB_extract
@@ -169,13 +184,14 @@
 %   testca   - test complex mxm, mxv, and vxm
 %   testcb   - test complex reduce
 %   testcc   - test complex transpose
+
 %   testperf - run all performance tests
-%
+
 % Helper functions
-%
+
 %   debug_off  - turn off malloc debugging
 %   debug_on   - turn on malloc debugging
-%   gbmake     - compiles the MATLAB interface to GraphBLAS (for testing only).
+
 %   irand      - construct a random integer matrix 
 %   logstat    - run a GraphBLAS test and log the results to log.txt 
 %   runtest    - run a single GraphBLAS test
@@ -186,9 +202,15 @@
 %   isequal_roundoff - compare two matrices, allowing for roundoff errors
 %   startup    - setup the path for tests in GraphBLAS/Test
 %   test_other - installs all packages needed for extensive tests
-%
+
+%   bfs_book   - graph on the cover of the book, 'Graph Algorithms in the language
+%   bfs_matlab - a simple breadth-first-search in MATLAB
+%   bfs_test   - compares bfs_matlab and GB_mex_bfs
+%   flopcount  - returns cumulative sum of flop counts for A*B or C<M>=A*B
+%   floptest   - compare flopcount with GB_mex_mxm_flops
+
 % Triangle counting:
-%
+
 %   ../Demo/MATLAB/tricount       - count the number of triangles in an undirected unweighted graph
 %   ../Demo/MATLAB/adj_to_edges   - create an edge incidence matrix from an adjacency matrix
 %   ../Demo/MATLAB/check_adj      - ensure A is a valid adjacency matrix
@@ -199,8 +221,9 @@
 %   test71       - performance comparison of triangle counting methods
 %   test71_plot  - plot the results from test71
 %   test71_table - print the table for triangle counting results
-%
+
 % Other demos
-%
+
 %   ../Demo/MATLAB/kron_demo      - test Program/kron_demo.c and compare with MATLAB kron
 %   ../Demo/MATLAB/kron_test      - test kron_demo.m
+

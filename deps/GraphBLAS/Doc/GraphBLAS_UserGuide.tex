@@ -50,16 +50,6 @@ framework for creating graph algorithms based on the elegant mathematics of
 sparse matrix operations on a semiring.
 \end{abstract}
 
-\begin{verbatim}
-This is a BETA release.  The version has passed all tests, and is
-ready to use, but it has significant new extensions to the API.
-Sections 8 and 9 are new.  The default matrix format is now CSR.
-This version also adds support for user threading in POSIX pthreads
-and OpenMP.  I would like to get feedback on the API design for
-compile-time objects and GxB_print before posting this as the
-definitive Version 2.2.0.
-\end{verbatim}
-
 \newpage
 {\small
 \tableofcontents
@@ -113,23 +103,29 @@ macros with a name of the form \verb'GxB_*' are extensions to the spec.
 \subsection{Release Notes:}
 
 \begin{itemize}
+
+\item Version 2.3 (Feb 2019) improves the performance of many GraphBLAS
+operations, including an early-exit for monoids.  These changes have a
+significant impact on breadth-first-search (a performance bug was also fixed in
+the two BFS \verb'Demo' codes).  The matrix and vector import/export functions
+were added (Section~\ref{import_export}), in support of the new LAGraph project
+(\url{https://github.com/GraphBLAS/LAGraph}, see also Section~\ref{lagraph}).
+LAGraph includes a push-pull BFS in GraphBLAS that is faster than two versions
+in the \verb'Demo' folder.  \verb'GxB_init' was added to allow the memory
+manager functions (\verb'malloc', etc) to be specified.
+
 \item
 Version 2.2 (Nov 2018)
 adds user-defined objects at compile-time, via user \verb'*.m4' files placed in
 \verb'GraphBLAS/User', which use the \verb'GxB_*_define' macros described in
 Section~\ref{precompile}.  The default matrix format is now \verb'GxB_BY_ROW'.
-If you want the default format to be by column (the default in Version 2.1 and
-earlier), just compile with \verb'-DBYCOL', or add the following after calling
-\verb'GrB_init':
-
-    {\footnotesize
-    \begin{verbatim}
-    GxB_set (GxB_FORMAT, GxB_BY_COL) ; \end{verbatim}}
-
+% If you want the default format to be by column (the default in Version 2.1 and
+% earlier), just compile with \verb'-DBYCOL', or add \newline
+% \verb'GxB_set (GxB_FORMAT, GxB_BY_COL) ;'
+% after calling \verb'GrB_init'.
 Also added are the \verb'GxB_*print' methods for printing the contents of each
 GraphBLAS object (Section~\ref{fprint}).   PageRank demos have been added to
 the \verb'Demos' folder.
-
 Prior versions required GraphBLAS to be compiled with OpenMP, for it to be
 thread-safe.  It can now be compiled with POSIX pthreads.  The \verb'cmake'
 script automatically detects if OpenMP and/or POSIX pthreads are available.
@@ -144,7 +140,6 @@ a major update with support for new matrix formats
 naturally expressed with matrices stored by row, and this version includes the
 new \verb'GxB_BY_ROW' format.  The default format in Version 2.1 and
 prior versions is by column.
-
 New extensions to GraphBLAS in this version include \verb'GxB_get',
 \verb'GxB_set', and \verb'GxB_AxB_METHOD', \verb'GxB_RANGE', \verb'GxB_STRIDE',
 and \verb'GxB_BACKWARDS', and their related definitions, described in
@@ -343,7 +338,7 @@ Consider element-wise multiplication, \verb'C=A.*B' in MATLAB.  The operator
 (multiply in this case) is applied to entries in the set intersection, and the
 pattern of \verb'C' just this set intersection.  Entries in \verb'A' but not
 \verb'B', or visa-versa, do not appear in \verb'C'.  In GraphBLAS, any binary
-operator can be used in this manner, not must scalar multiplication.  The
+operator can be used in this manner, not just scalar multiplication.  The
 difference between element-wise ``add'' and ``multiply'' is not the operators,
 but whether or not the pattern of the result is the set union or the set
 intersection.  In both cases, the operator is only applied to the set
@@ -352,7 +347,7 @@ intersection.
 Finally, GraphBLAS includes a {\em non-blocking} mode where operations can be
 left pending, and saved for later.  This is very useful for submatrix
 assignment (\verb'C(I,J)=A' where \verb'I' and \verb'J' are integer vectors),
-or or scalar assignment (\verb'C(i,j)=x' where \verb'i' and \verb'j' are scalar
+or scalar assignment (\verb'C(i,j)=x' where \verb'i' and \verb'j' are scalar
 integers).  Because of how MATLAB stores its matrices, adding and deleting
 individual entries is very costly.  For example, this is very slow in MATLAB,
 taking $O(nz^2)$ time:
@@ -865,6 +860,8 @@ dealing with errors:
 GraphBLAS function   & purpose                                      & Section \\
 \hline
 \verb'GrB_init'      & start up GraphBLAS                           & \ref{init} \\
+\verb'GxB_init'      & start up GraphBLAS with different \verb'malloc'
+                                                                & \ref{xinit} \\
 \verb'GrB_wait'      & force completion of pending operations       & \ref{wait}\\
 \verb'GrB_Info'      & status code returned by GraphBLAS functions  & \ref{info} \\
 \verb'GrB_error'     & get more details on the last error           & \ref{error} \\
@@ -884,8 +881,8 @@ GraphBLAS function   & purpose                                      & Section \\
 \begin{verbatim}
 typedef enum
 {
-    GrB_NONBLOCKING,    // methods may return with pending computations
-    GrB_BLOCKING        // no computations are ever left pending
+    GrB_NONBLOCKING = 0,    // methods may return with pending computations
+    GrB_BLOCKING = 1        // no computations are ever left pending
 }
 GrB_Mode ;
 \end{verbatim}
@@ -954,6 +951,71 @@ You can query the mode of a GraphBLAS session with the following
 \begin{verbatim}
     GrB_mode mode ;
     GxB_get (GxB_MODE, &mode) ; \end{verbatim} }
+
+%===============================================================================
+\subsection{{\sf GxB\_init:} initialize GraphBLAS with alternate malloc} %======
+%===============================================================================
+\label{xinit}
+
+\begin{mdframed}[userdefinedwidth=6in]
+{\footnotesize
+\begin{verbatim}
+GrB_Info GxB_init           // start up GraphBLAS and also define malloc, etc
+(
+    const GrB_Mode mode,    // blocking or non-blocking mode
+
+    // pointers to memory management functions.
+    void * (* user_malloc_function  ) (size_t),
+    void * (* user_calloc_function  ) (size_t, size_t),
+    void * (* user_realloc_function ) (void *, size_t),
+    void   (* user_free_function    ) (void *)
+)
+\end{verbatim}
+}\end{mdframed}
+
+\verb'GxB_init' is identical to \verb'GrB_init', except that it also redefines
+the memory management functions that SuiteSparse:GraphBLAS will use.  Giving
+the user application control over this is particularly important when using the
+\verb'GxB_*import' and \verb'GxB_*export' functions described in
+Section~\ref{import_export}, since they require the user application and
+GraphBLAS to use the same memory manager.
+
+These
+functions can only be set once, when GraphBLAS starts.   Either \verb'GrB_init'
+or \verb'GxB_init' must be called before any other GraphBLAS operation, but
+not both.
+
+The following usage is identical to \verb'GrB_init(mode)':
+
+    {\footnotesize
+    \begin{verbatim}
+    GxB_init (mode, malloc, calloc, realloc, free) ; \end{verbatim}}
+
+SuiteSparse:GraphBLAS can be compiled as normal (outside of MATLAB) and then
+linked into a MATLAB \verb'mexFunction'.  However, a \verb'mexFunction' should
+use the MATLAB memory managers.  To do this, use the following instead of
+\verb'GrB_init(mode)' in a MATLAB \verb'mexFunction'.
+
+    {\footnotesize
+    \begin{verbatim}
+    #include "mex.h"
+    #include "GraphBLAS.h"
+    ...
+    GxB_init (mode, mxMalloc, mxCalloc, mxRealloc, mxFree) ; \end{verbatim}}
+
+As another example, the scalable TBB memory manager can be used:
+
+    {\footnotesize
+    \begin{verbatim}
+    #include "tbb/scalable_allocator.h"
+    #include "GraphBLAS.h"
+    ...
+    GxB_init (mode, scalable_malloc, scalable_calloc, scalable_realloc,
+        scalable_free) ; \end{verbatim}}
+
+\begin{spec}
+{\bf SPEC:} \verb'GxB_init' is an extension to the spec.
+\end{spec}
 
 \newpage
 %===============================================================================
@@ -1061,43 +1123,41 @@ are error codes.
 \vspace{0.2in}
 \noindent
 {\small
-\begin{tabular}{lp{3in}}
+\begin{tabular}{llp{2.8in}}
 \hline
-\verb'GrB_SUCCESS'              & the method or operation was successful \\
-\verb'GrB_NO_VALUE'             & \verb'A(i,j)' requested but not there.
+\verb'GrB_SUCCESS'              & 0 & the method or operation was successful \\
+\verb'GrB_NO_VALUE'             & 1 & \verb'A(i,j)' requested but not there.
                                   Its value is implicit. \\
 \hline
-\verb'GrB_UNINITIALIZED_OBJECT' & object has not been initialized \\
-\verb'GrB_INVALID_OBJECT'       & object is corrupted \\
-\verb'GrB_NULL_POINTER'         & input pointer is \verb'NULL' \\
-\verb'GrB_INVALID_VALUE'        & generic error code; some value is bad \\
-\verb'GrB_INVALID_INDEX'        & a row or column index is out of bounds; for
-                                  indices passed as scalars, not in a list. \\
-\verb'GrB_DOMAIN_MISMATCH'      & object domains are not compatible \\
-\verb'GrB_DIMENSION_MISMATCH'   & matrix dimensions do not match \\
-\verb'GrB_OUTPUT_NOT_EMPTY'     & output matrix already has values in it \\
+\verb'GrB_UNINITIALIZED_OBJECT' & 2 & object has not been initialized \\
+\verb'GrB_INVALID_OBJECT'       & 3 & object is corrupted \\
+\verb'GrB_NULL_POINTER'         & 4 & input pointer is \verb'NULL' \\
+\verb'GrB_INVALID_VALUE'        & 5 & generic error code; some value is bad \\
+\verb'GrB_INVALID_INDEX'        & 6 & a row or column index is out of bounds;
+                                for indices passed as scalars, not in a list. \\
+\verb'GrB_DOMAIN_MISMATCH'      & 7 & object domains are not compatible \\
+\verb'GrB_DIMENSION_MISMATCH'   & 8 & matrix dimensions do not match \\
+\verb'GrB_OUTPUT_NOT_EMPTY'     & 9 & output matrix already has values in it \\
 \hline
-\verb'GrB_OUT_OF_MEMORY'        & out of memory \\
-\verb'GrB_INSUFFICIENT_SPACE'   & output array not large enough \\
-\verb'GrB_INDEX_OUT_OF_BOUNDS'  & a row or column index is out of bounds;
+\verb'GrB_OUT_OF_MEMORY'        & 10 & out of memory \\
+\verb'GrB_INSUFFICIENT_SPACE'   & 11 & output array not large enough \\
+\verb'GrB_INDEX_OUT_OF_BOUNDS'  & 12 & a row or column index is out of bounds;
                                   for indices in a list of indices. \\
 \hline
-\verb'GrB_PANIC'                & unrecoverable error.
+\verb'GrB_PANIC'                & 13 & unrecoverable error.
 \\
 \hline
 \end{tabular}
 \vspace{0.2in}
 }
 
-Not all GraphBLAS methods or operations can return all status codes.
-% According to the GraphBLAS specification, 
-Any GraphBLAS method or operation can return an
-out-of-memory condition, \verb'GrB_OUT_OF_MEMORY', or a panic,
-\verb'GrB_PANIC'.  These two errors, and the \verb'GrB_INDEX_OUT_OF_BOUNDS'
-error, are called {\em execution errors}.  The other errors are called {\em
-API} errors.  An API error is detecting immediately, regardless of the blocking
-mode.  The detection of an execution error may be deferred until the pending
-operations complete.
+Not all GraphBLAS methods or operations can return all status codes.  Any
+GraphBLAS method or operation can return an out-of-memory condition,
+\verb'GrB_OUT_OF_MEMORY', or a panic, \verb'GrB_PANIC'.  These two errors, and
+the \verb'GrB_INDEX_OUT_OF_BOUNDS' error, are called {\em execution errors}.
+The other errors are called {\em API} errors.  An API error is detecting
+immediately, regardless of the blocking mode.  The detection of an execution
+error may be deferred until the pending operations complete.
 
 In the discussions of each method and operation in this User Guide, most of the
 obvious error code returns are not discussed.  For example, if a required input
@@ -1129,24 +1189,33 @@ The simplest way to use it is just to print it out, such as:
     {\footnotesize
     \begin{verbatim}
     info = GrB_some_method_here (...) ;
-    if (info != GrB_SUCCESS)
+    if (! (info == GrB_SUCCESS || info == GrB_NO_VALUE))
     {
-        printf ("%s\n", GrB_error ( )) ;
+        printf ("info: %d error: %s\n", info, GrB_error ( )) ;
     } \end{verbatim}}
 
-SuiteSparse:GraphBLAS reports many helpful details.  For example, if a row or
-column index is out of bounds, the report will state what those bounds are.  If
-a matrix dimension is incorrect, the mismatching dimensions will be provided.
-\verb'GrB_BinaryOp_new', \verb'GrB_UnaryOp_new', and \verb'GxB_SelectOp_new'
-record the name the function passed to them, and \verb'GrB_Type_new' records
-the name of its type parameter, and these are printed if the user-defined types
-and operators are used incorrectly.  Refer to the output of the example
-programs in the \verb'Demo' folder, which intentionally generate errors to
-illustrate the use of \verb'GrB_error'.  Successful GraphBLAS methods do not
-modify this error message.  If a GraphBLAS method fails and then
-subsequent GraphBLAS method succeeds, the error message is not modified from
-the last failure.  Only a subsequent failure will cause \verb'GrB_error' to
-return a different error message.
+SuiteSparse:GraphBLAS reports many helpful details via \verb'GrB_error'.  For
+example, if a row or column index is out of bounds, the report will state what
+those bounds are.  If a matrix dimension is incorrect, the mismatching
+dimensions will be provided.  \verb'GrB_BinaryOp_new', \verb'GrB_UnaryOp_new',
+and \verb'GxB_SelectOp_new' record the name the function passed to them, and
+\verb'GrB_Type_new' records the name of its type parameter, and these are
+printed if the user-defined types and operators are used incorrectly.  Refer to
+the output of the example programs in the \verb'Demo' folder, which
+intentionally generate errors to illustrate the use of \verb'GrB_error'.
+
+Successful GraphBLAS methods do not modify the last error message recorded.  If
+a GraphBLAS method fails and then subsequent GraphBLAS method succeeds, the
+error message is not modified from the last failure.  Only a subsequent failure
+will cause \verb'GrB_error' to return a different error message.
+
+Note that \verb'GrB_NO_VALUE' is an not error, but an informational status.
+\verb'GrB_*_extractElment(&x,A,i,j)', which does \verb'x=A(i,j)', returns this
+value to indicate that \verb'A(i,j)' is not present in the matrix.
+
+In SuiteSparse:GraphBLAS, some failures cannot be safely recorded for
+\verb'GrB_error' to print.  These include \verb'GrB_PANIC' and errors in
+\verb'GrB_init' and \verb'GxB_init'.
 
 \newpage
 %===============================================================================
@@ -1218,7 +1287,8 @@ examine the content of the object directly; instead, they can pass the handle
 back to GraphBLAS which will do the work.  Assigning one handle to another
 is valid but it does not make a copy of the underlying object.
 
-GraphBLAS provides 11 built-in types and 256 built-in operators.  With these,
+GraphBLAS provides 11 built-in types and 157 built-in operators;
+SuiteSparse:GraphBLAS adds 99 additional built-in operators.  With these,
 44 unique monoids and 960 unique semirings can be constructed.
 
 \begin{spec}
@@ -1405,7 +1475,7 @@ example \verb'GxB_Type_size (&s, GrB_INT32)' sets \verb's' to 4, the same as
 \verb'sizeof(int32_t)'. 
 
 \begin{spec}
-{\bf SPEC:} The \verb'GxB_Type_size' function is an extension to the spec.
+{\bf SPEC:} \verb'GxB_Type_size' is an extension to the spec.
 \end{spec}
 
 \newpage
@@ -1603,7 +1673,7 @@ GrB_Info GxB_UnaryOp_ztype          // return the type of z
 is the type of $z$ in the function $z=f(x)$.
 
 \begin{spec}
-{\bf SPEC:} The \verb'GxB_UnaryOp_ztype' function is an extension to the spec.
+{\bf SPEC:} \verb'GxB_UnaryOp_ztype' is an extension to the spec.
 \end{spec}
 
 %-------------------------------------------------------------------------------
@@ -1626,7 +1696,7 @@ GrB_Info GxB_UnaryOp_xtype          // return the type of x
 is the type of $x$ in the function $z=f(x)$.
 
 \begin{spec}
-{\bf SPEC:} The \verb'GxB_UnaryOp_xtype' function is an extension to the spec.
+{\bf SPEC:} \verb'GxB_UnaryOp_xtype' is an extension to the spec.
 \end{spec}
 
 % \newpage
@@ -1903,7 +1973,7 @@ returns the \verb'ztype' of the binary operator, which is the
 type of $z$ in the function $z=f(x,y)$.
 
 \begin{spec}
-{\bf SPEC:} The \verb'GxB_BinaryOp_ztype' function is an extension to the spec.
+{\bf SPEC:} \verb'GxB_BinaryOp_ztype' is an extension to the spec.
 \end{spec}
 
 %-------------------------------------------------------------------------------
@@ -1927,7 +1997,7 @@ returns the \verb'xtype' of the binary operator, which is the
 type of $x$ in the function $z=f(x,y)$.
 
 \begin{spec}
-{\bf SPEC:} The \verb'GxB_BinaryOp_xtype' function is an extension to the spec.
+{\bf SPEC:} \verb'GxB_BinaryOp_xtype' is an extension to the spec.
 \end{spec}
 
 %-------------------------------------------------------------------------------
@@ -1951,7 +2021,7 @@ returns the \verb'ytype' of the binary operator, which is the
 type of $y$ in the function $z=f(x,y)$.
 
 \begin{spec}
-{\bf SPEC:} The \verb'GxB_BinaryOp_ytype' function is an extension to the spec.
+{\bf SPEC:} \verb'GxB_BinaryOp_ytype' is an extension to the spec.
 \end{spec}
 
 % \newpage
@@ -2193,28 +2263,55 @@ monoid.
 
 \vspace{0.2in}
 {\footnotesize
-\begin{tabular}{llll}
+\begin{tabular}{lllll}
 \hline
-GraphBLAS             & types (domains)            & expression      & identity \\
-name                  &                            & $z=f(x,y)$      & \\
+GraphBLAS             & types (domains)            & expression      & identity  & terminal \\
+operator              &                            & $z=f(x,y)$      &           & \\
 \hline
 % 8 numeric TxT->T
-\verb'GrB_MIN_'$T$    & $T \times T \rightarrow T$ & $z = \min(x,y)$ & $+\infty$ \\
-\verb'GrB_MAX_'$T$    & $T \times T \rightarrow T$ & $z = \max(x,y)$ & $-\infty$ \\
-\verb'GrB_PLUS_'$T$   & $T \times T \rightarrow T$ & $z = x+y$       & 0 \\
-\verb'GrB_TIMES_'$T$  & $T \times T \rightarrow T$ & $z = xy$        & 1 \\
+\verb'GrB_MIN_'$T$    & $T \times T \rightarrow T$ & $z = \min(x,y)$ & $+\infty$ & $-\infty$ \\
+\verb'GrB_MAX_'$T$    & $T \times T \rightarrow T$ & $z = \max(x,y)$ & $-\infty$ & $+\infty$ \\
+\verb'GrB_PLUS_'$T$   & $T \times T \rightarrow T$ & $z = x+y$       & 0         & none \\
+\verb'GrB_TIMES_'$T$  & $T \times T \rightarrow T$ & $z = xy$        & 1         & 0 (not fp) \\
 \hline
 % 4 bool x bool -> bool
-\verb'GrB_LOR', \verb'GxB_LOR_BOOL'      & \verb'bool' $\times$ \verb'bool' $\rightarrow$ \verb'bool' & $z = x \vee    y $ & false \\
-\verb'GrB_LAND', \verb'GxB_LAND_BOOL'    & \verb'bool' $\times$ \verb'bool' $\rightarrow$ \verb'bool' & $z = x \wedge  y $ & true \\
-\verb'GrB_LXOR', \verb'GxB_LXOR_BOOL'    & \verb'bool' $\times$ \verb'bool' $\rightarrow$ \verb'bool' & $z = x \veebar y $ & false \\
-\verb'GrB_EQ_BOOL', \verb'GxB_ISEQ_BOOL' & \verb'bool' $\times$ \verb'bool' $\rightarrow$ \verb'bool' & $z =(x ==      y)$ & true  \\
+\verb'GrB_LOR'        & \verb'bool' $\times$ \verb'bool' $\rightarrow$ \verb'bool' & $z = x \vee    y $ & false & true  \\
+\verb'GrB_LAND'       & \verb'bool' $\times$ \verb'bool' $\rightarrow$ \verb'bool' & $z = x \wedge  y $ & true  & false \\
+\verb'GrB_LXOR'       & \verb'bool' $\times$ \verb'bool' $\rightarrow$ \verb'bool' & $z = x \veebar y $ & false & none \\
+\verb'GrB_EQ_BOOL'    & \verb'bool' $\times$ \verb'bool' $\rightarrow$ \verb'bool' & $z =(x ==      y)$ & true  & none \\
 \hline
 \end{tabular}
 }
 \vspace{0.2in}
 
-\noindent
+The above table lists the GraphBLAS operator, its type, expression, identity
+value, and {\em terminal} value (if any).  For these built-in operators, the
+terminal values are the {\em annihilators} of the function, which is the value
+$z$ so that $z=f(z,y)$ regardless of the value of $y$.  For example
+$\min(-\infty,y) = -\infty$ for any $y$.  For integer domains, $+\infty$ and
+$-\infty$ are the largest and smallest integer in their range.  With unsigned
+integers, the smallest value is zero, and thus \verb'GrB_MIN_UINT8' has an
+identity of 255 and a terminal value of 0.
+
+When computing with a monoid, the computation can terminate early if the
+terminal value arises.  No further work is needed since the result will not
+change.  This value is called the terminal value instead of the annihilator,
+since a user-defined operator can be created with a terminal value that is not
+an annihilator.  See Section~\ref{monoid_terminal_new} for an example.
+
+The \verb'GrB_TIMES_FP*' operators do not have a terminal value of zero, since
+they comply with the IEEE 754 standard, and \verb'0*NaN' is not zero, but
+\verb'NaN'.  Technically, their terminal value is \verb'NaN', but this value is
+rare in practice and thus the terminal condition is not worth checking.
+
+SuiteSparse:GraphBLAS predefines each of the 44 unique monoids that can be
+constructed with built-in types and operators, with the naming convention
+\verb'GxB_op_type_MONOID'.  For the first 40, \verb'op' is \verb'MIN',
+\verb'MAX', \verb'PLUS', or \verb'TIMES', and \verb'type' is all but
+\verb'BOOL'.  The four Booolean monoids are \verb'GxB_LOR_BOOL_MONOID',
+\verb'GxB_LAND_BOOL_MONOID', \verb'GxB_LXOR_BOOL_MONOID', and
+\verb'GxB_EQ_BOOL_MONOID'.
+
 The next sections define the following methods for the \verb'GrB_Monoid'
 object:
 
@@ -2223,8 +2320,10 @@ object:
 \begin{tabular}{ll}
 \hline
 \verb'GrB_Monoid_new'       & create a monoid \\
+\verb'GxB_Monoid_terminal_new'  & create a monoid that has a terminal value\\
 \verb'GxB_Monoid_operator'  & return the monoid operator \\
 \verb'GxB_Monoid_identity'  & return the monoid identity value \\
+\verb'GxB_Monoid_terminal'  & return the monoid terminal value (if any) \\
 \verb'GrB_Monoid_free'      & free a monoid \\
 \hline
 \end{tabular}
@@ -2265,6 +2364,79 @@ user-defined types, \verb'<type>' is \verb'void *', and thus \verb'identity' is
 a not a scalar itself but a \verb'void *' pointer to a memory location
 containing the identity value of the user-defined operator, \verb'op'.
 
+If \verb'op' is a built-in operator with a known identity value, then the
+\verb'identity' parameter is ignored, and its known identity value is used
+instead.
+
+% \newpage
+%-------------------------------------------------------------------------------
+\subsubsection{{\sf GxB\_Monoid\_terminal\_new:} create a monoid with terminal}
+%-------------------------------------------------------------------------------
+\label{monoid_terminal_new}
+
+\begin{mdframed}[userdefinedwidth=6in]
+{\footnotesize
+\begin{verbatim}
+GrB_Info GxB_Monoid_terminal_new    // create a monoid that has a terminal value
+(
+    GrB_Monoid *monoid,             // handle of monoid to create
+    const GrB_BinaryOp op,          // binary operator of the monoid
+    const <type> identity,          // identity value of the monoid
+    const <type> terminal           // terminal value of the monoid
+) ;
+\end{verbatim}
+} \end{mdframed}
+
+\verb'GxB_Monoid_terminal_new' is identical to \verb'GrB_Monoid_new', except
+that it allows for the specification of a {\em terminal value}.  The
+\verb'<type>' of the terminal value is the same as the \verb'identity'
+parameter; see Section~\ref{monoid_new} for details.
+
+The terminal value of a monoid is the value $z$ for which $z=f(z,y)$ for any
+$y$, where $z=f(x,y)$ is the binary operator of the monoid.  This is also
+called the {\em annihilator}, but the term {\em terminal value} is used here.
+This is because all annihilators are terminal values, but a terminal value need
+not be an annihilator, as described in the \verb'MIN' example below.
+
+If the terminal value is encountered during computation, the rest of the
+computations can be skipped.  This can greatly improve the performance of
+\verb'GrB_reduce', and matrix multiply in specific cases (when a dot product
+method is used).  For example, using \verb'GrB_reduce' to compute the sum of
+all entries in a \verb'GrB_FP32' matrix with $e$ entries takes $O(e)$ time,
+since a monoid based on \verb'GrB_PLUS_FP32' has no terminal value.  By
+contrast, a reduction using \verb'GrB_LOR' on a \verb'GrB_BOOL' matrix can take
+as little as $O(1)$ time, if a \verb'true' value is found in the matrix very
+early.
+
+Monoids based on the built-in \verb'GrB_MIN_*' and \verb'GrB_MAX_*' operators
+(for any type), the boolean \verb'GrB_LOR', and the boolean \verb'GrB_LAND'
+operators all have terminal values.  For example, the identity value of
+\verb'GrB_LOR' is \verb'false', and its terminal value is \verb'true'.  When
+computing a reduction of a set of boolean values to a single value, once a
+\verb'true' is seen, the computation can exit early since the result is now
+known.
+
+If \verb'op' is a built-in operator with known identity and terminal values,
+then the \verb'identity' and \verb'terminal' parameters are ignored, and its
+known identity and terminal values are used instead.
+
+There may be cases in which the user application needs to use a non-standard
+terminal value for a built-in operator.  For example, suppose the matrix has
+type \verb'GrB_FP32', but all values in the matrix are known to be
+non-negative.  The annihilator value of \verb'MIN' is \verb'-INFINITY', but
+this will never be seen.  However, the computation could could terminate when
+finding the value zero.  This is an example of using a terminal value that is
+not actually an annihilator, but it functions like one since the monoid will
+operate stricly on non-negative values.  In this case, a monoid created with
+\verb'GrB_MIN_FP32' will not terminate early.  To create a monoid that can
+terminate early, create a user-defined operator that computes the same thing as
+\verb'GrB_MIN_FP32', and then create a monoid based on this user-defined
+operator with a terminal value of zero and an identity of \verb'+INFINITY'.
+
+\begin{spec}
+{\bf SPEC:} \verb'GxB_Monoid_terminal_new' is an extension to the spec.
+\end{spec}
+
 % \newpage
 %-------------------------------------------------------------------------------
 \subsubsection{{\sf GxB\_Monoid\_operator:} return the monoid operator}
@@ -2285,10 +2457,10 @@ GrB_Info GxB_Monoid_operator        // return the monoid operator
 \verb'GxB_Monoid_operator' returns the binary operator of the monoid.
 
 \begin{spec}
-{\bf SPEC:} The \verb'GxB_Monoid_operator' function is an extension to the spec.
+{\bf SPEC:} \verb'GxB_Monoid_operator' is an extension to the spec.
 \end{spec}
 
-\newpage
+% \newpage
 %-------------------------------------------------------------------------------
 \subsubsection{{\sf GxB\_Monoid\_identity:} return the monoid identity}
 %-------------------------------------------------------------------------------
@@ -2312,7 +2484,40 @@ return the monoid additive operator, then \verb'GxB_BinaryOp_ztype' to obtain
 the \verb'ztype', followed by \verb'GxB_Type_size' to get its size.
 
 \begin{spec}
-{\bf SPEC:} The \verb'GxB_Monoid_identity' function is an extension to the spec.
+{\bf SPEC:} \verb'GxB_Monoid_identity' is an extension to the spec.
+\end{spec}
+
+% \newpage
+%-------------------------------------------------------------------------------
+\subsubsection{{\sf GxB\_Monoid\_terminal:} return the monoid terminal value}
+%-------------------------------------------------------------------------------
+
+\begin{mdframed}[userdefinedwidth=6in]
+{\footnotesize
+\begin{verbatim}
+GrB_Info GxB_Monoid_terminal        // return the monoid terminal
+(
+    bool *has_terminal,             // true if the monoid has a terminal value
+    void *terminal,                 // returns the terminal of the monoid
+    const GrB_Monoid monoid         // monoid to query
+) ;
+\end{verbatim}
+} \end{mdframed}
+
+\verb'GxB_Monoid_terminal' returns the terminal value of the monoid (if any).
+The \verb'void *' pointer, \verb'terminal', must be non-\verb'NULL' and must
+point to a memory space of size at least equal to the size of the type of the
+\verb'monoid'.  The type size can be obtained via \verb'GxB_Monoid_operator' to
+return the monoid additive operator, then \verb'GxB_BinaryOp_ztype' to obtain
+the \verb'ztype', followed by \verb'GxB_Type_size' to get its size.
+
+If the monoid has a terminal value, then \verb'has_terminal' is \verb'true',
+and its value is returned in the \verb'terminal' parameter.  If it has no
+terminal value, then \verb'has_terminal' is \verb'false', and the
+\verb'terminal' parameter is not modified.
+
+\begin{spec}
+{\bf SPEC:} \verb'GxB_Monoid_terminal' is an extension to the spec.
 \end{spec}
 
 % \newpage
@@ -2364,12 +2569,11 @@ methods for the \verb'GrB_Semiring' object:
 \hline
 \verb'GrB_Semiring_new'       & create a semiring \\
 \verb'GxB_Semiring_add'       & return the additive monoid of a semiring \\
-\verb'GxB_Semiring_multipliy' & return the binary operator of a semiring \\
+\verb'GxB_Semiring_multiply'  & return the binary operator of a semiring \\
 \verb'GrB_Semiring_free'      & free a semiring \\
 \hline
 \end{tabular}
 }
-\vspace{0.2in}
 
 % \newpage
 %-------------------------------------------------------------------------------
@@ -2393,17 +2597,18 @@ GrB_Info GrB_Semiring_new           // create a semiring
 additive monoid and \verb'multiply' being the binary ``multiply'' operator.  In
 addition to the standard error cases, the function returns
 \verb'GrB_DOMAIN_MISMATCH' if the output (\verb'ztype') domain of
-\verb'multiply' does not match the domain of the \verb'add' monoid.
+\verb'multiply' does not match the domain of the \verb'add' monoid.  Using
+built-in types and operators, 960 unique semirings can be built.  This count
+excludes redundant Boolean operators (for example \verb'GrB_TIMES_BOOL' and
+\verb'GrB_LAND' are different operators but they are redundant since they
+always return the same result).
 
-Using built-in types and operators, 960 unique semirings can be built.  This
-count excludes redundant Boolean operators (for example \verb'GrB_TIMES_BOOL'
-and \verb'GxB_LAND_BOOL' are different operators but they are redundant since
-they always return the same result).
-
+\vspace{-0.05in}
 \begin{itemize}
 \item 680 semirings with a multiplier $T \times T \rightarrow T$ where $T$ is
     non-Boolean, from the complete cross product of:
 
+    \vspace{-0.05in}
     \begin{itemize}
     \item 4 add monoids (\verb'MIN', \verb'MAX', \verb'PLUS', \verb'TIMES')
     \item 17 multiply operators
@@ -2411,13 +2616,14 @@ they always return the same result).
     \verb'PLUS', \verb'MINUS', \verb'TIMES', \verb'DIV',
     \verb'ISEQ', \verb'ISNE', \verb'ISGT',
     \verb'ISLT', \verb'ISGE', \verb'ISLE',
-    \verb'LOR', \verb'LAND', \verb'LXOR')
+    \verb'LOR', \verb'LAND', \verb'LXOR').
     \item 10 non-Boolean types, $T$
     \end{itemize}
 
 \item 240 semirings with a comparison operator $T \times T \rightarrow$
     \verb'bool', where $T$ is non-Boolean, from the complete cross product of:
 
+    \vspace{-0.05in}
     \begin{itemize}
     \item 4 Boolean add monoids
     (\verb'LAND', \verb'LOR', \verb'LXOR', \verb'EQ')
@@ -2429,6 +2635,7 @@ they always return the same result).
 \item 40 semirings with purely Boolean types, \verb'bool' $\times$ \verb'bool'
     $\rightarrow$ \verb'bool', from the complete cross product of:
 
+    \vspace{-0.05in}
     \begin{itemize}
     \item 4 Boolean add monoids
     (\verb'LAND', \verb'LOR', \verb'LXOR', \verb'EQ')
@@ -2439,11 +2646,22 @@ they always return the same result).
 
 \end{itemize}
 
+\vspace{-0.05in}
+SuiteSparse:GraphBLAS pre-defines all 960 unique semirings that can be
+constructed from built-in types and operators, as an extension to the spec.
+The naming convention is \verb'GxB_add_mult_type', where \verb'add' is the
+operator of the addititive monoid, \verb'mult' is the multiply operator, and
+\verb'type' is the type of inputs to the multiply operator.  The name of the
+domain for the addititve monoid does not appear, since it always matches the
+type of the output of the \verb'mult' operator.  For example
+\verb'GxB_LAND_EQ_FP32' uses the \verb'GxB_LAND_BOOL_MONOID' as its additive
+monoid, and the \verb'GrB_EQ_FP32' as the binary multiplicative operator.
+
 \begin{spec}
-{\bf SPEC:} SuiteSparse:GraphBLAS pre-defines all 960 semirings that can be constructed from built-in types and operators, as an extension to the spec.
+{\bf SPEC:} Predefined semirings are an extension to the spec.
 \end{spec}
 
-% \newpage
+\newpage
 %-------------------------------------------------------------------------------
 \subsubsection{{\sf GxB\_Semiring\_add:} return the additive monoid of a semiring}
 %-------------------------------------------------------------------------------
@@ -2463,10 +2681,10 @@ GrB_Info GxB_Semiring_add           // return the add monoid of a semiring
 \verb'GxB_Semiring_add' returns the additive monoid of a semiring.
 
 \begin{spec}
-{\bf SPEC:} The \verb'GxB_Semiring_add' function is an extension to the spec.
+{\bf SPEC:} \verb'GxB_Semiring_add' is an extension to the spec.
 \end{spec}
 
-\newpage
+% \newpage
 %-------------------------------------------------------------------------------
 \subsubsection{{\sf GxB\_Semiring\_multiply:} return multiply operator of a semiring}
 %-------------------------------------------------------------------------------
@@ -2487,7 +2705,7 @@ GrB_Info GxB_Semiring_multiply      // return multiply operator of a semiring
 semiring.
 
 \begin{spec}
-{\bf SPEC:} The \verb'GxB_Semiring_multiply' function is an extension to the spec.
+{\bf SPEC:} \verb'GxB_Semiring_multiply' is an extension to the spec.
 \end{spec}
 
 
@@ -2547,9 +2765,6 @@ SuiteSparse:GraphBLAS can represent ${\bf A}$ in hypersparse form (see
 Section~\ref{hypersparse}).  The largest \verb'GrB_Vector' that can be
 constructed is $2^{60}$-by-1.
 
-If compiled for use in MATLAB, this maximum size is reduced to match the
-MATLAB maximum index size, which is $2^{48}-1$.
-
 This section describes a set of methods that create, modify, query,
 and destroy a GraphBLAS sparse vector, \verb'GrB_Vector':
 
@@ -2569,6 +2784,11 @@ and destroy a GraphBLAS sparse vector, \verb'GrB_Vector':
 \verb'GrB_Vector_extractTuples'  & get all entries from a vector \\
 \verb'GxB_Vector_resize'         & resize a vector \\
 \verb'GrB_Vector_free'           & free a vector \\
+\hline
+\verb'GxB_Vector_import'         & import a vector
+                                    (see Section~\ref{import_export})\\
+\verb'GxB_Vector_export'         & export a vector
+                                    (see Section~\ref{import_export})\\
 \hline
 \end{tabular}
 }
@@ -2702,7 +2922,7 @@ GrB_Info GrB_Vector_nvals   // get the number of entries in a vector
 \verb'GrB_Vector_nvals' returns the number of entries in a vector.  Roughly
 analogous to \verb'nvals = nnz(v)' in MATLAB, except that the implicit value in
 GraphBLAS need not be zero and \verb'nnz' (short for ``number of nonzeros'') in
-MATLAB is better described as ``number of explicit entries'' in GraphBLAS.
+MATLAB is better described as ``number of entries'' in GraphBLAS.
 
 \paragraph{Forced completion:}
 All computations for the vector \verb'v' are guaranteed to be finished when
@@ -2742,7 +2962,7 @@ GrB_Info GxB_Vector_type    // get the type of a vector
 \verb'type = class (v)' in MATLAB.
 
 \begin{spec}
-{\bf SPEC:} The \verb'GxB_Vector_type' function is an extension to the spec.
+{\bf SPEC:} \verb'GxB_Vector_type' is an extension to the spec.
 \end{spec}
 
 \newpage
@@ -2883,18 +3103,6 @@ GrB_Info GxB_Vector_resize      // change the size of a vector
 \verb'GxB_Vector_resize' changes the size of a vector.  If the dimension
 decreases, entries that fall outside the resized vector are deleted.
 
-\verb'GxB_Vector_resize' also frees the workspace kept in the vector \verb'u'
-if Gustavson's method is used in \verb'GrB_mxv' or \verb'GrB_vxm' to compute
-the vector \verb'u'.  It frees this space, even if the size does not change:
-
-{\footnotesize
-\begin{verbatim}
-    GrB_Index nrows ;
-    GrB_Vector_size (&nrows, v) ;
-    GxB_Vector_resize (v, nrows) ; \end{verbatim} }
-
-See Section~\ref{guswork} for more details.
-
 % \newpage
 %-------------------------------------------------------------------------------
 \subsubsection{{\sf GrB\_Vector\_free:}          free a vector}
@@ -2923,6 +3131,7 @@ frees the vector \verb'v' and sets \verb'v' to \verb'NULL'.  It safely does
 nothing if passed a \verb'NULL' handle, or if \verb'v == NULL' on input.
 In SuiteSparse:GraphBLAS, any pending updates to the vector are abandoned.
 
+
 \newpage
 %===============================================================================
 \subsection{GraphBLAS matrices: {\sf GrB\_Matrix}} %============================
@@ -2949,6 +3158,23 @@ and destroy a GraphBLAS sparse matrix, \verb'GrB_Matrix':
 \verb'GrB_Matrix_extractTuples' & get all entries from a matrix \\
 \verb'GxB_Matrix_resize'        & resize a matrix \\
 \verb'GrB_Matrix_free'          & free a matrix \\
+\hline
+\verb'GxB_Matrix_import_CSR'            & import a matrix in CSR form
+                                          (see Section~\ref{import_export})\\
+\verb'GxB_Matrix_import_CSC'            & import a matrix in CSC form
+                                          (see Section~\ref{import_export})\\
+\verb'GxB_Matrix_import_HyperCSR'       & import a matrix in HyperCSR form
+                                          (see Section~\ref{import_export})\\
+\verb'GxB_Matrix_import_HyperCSC'       & import a matrix in HyperCSC form
+                                          (see Section~\ref{import_export})\\
+\verb'GxB_Matrix_export_CSR'            & export a matrix in CSR form
+                                          (see Section~\ref{import_export})\\
+\verb'GxB_Matrix_export_CSC'            & export a matrix in CSC form
+                                          (see Section~\ref{import_export})\\
+\verb'GxB_Matrix_export_HyperCSR'       & export a matrix in HyperCSR form
+                                          (see Section~\ref{import_export})\\
+\verb'GxB_Matrix_export_HyperCSC'       & export a matrix in HyperCSC form
+                                          (see Section~\ref{import_export})\\
 \hline
 \end{tabular}
 }
@@ -3095,17 +3321,20 @@ GrB_Info GrB_Matrix_nvals   // get the number of entries in a matrix
 ) ;
 \end{verbatim} } \end{mdframed}
 
-\verb'GrB_Matrix_nvals' returns the number of entries in a matrix, like
-\verb'nnz(A)' in MATLAB.
+\verb'GrB_Matrix_nvals' returns the number of entries in a matrix.  Roughly
+analogous to \verb'nvals = nnz(A)' in MATLAB, except that the implicit value in
+GraphBLAS need not be zero and \verb'nnz' (short for ``number of nonzeros'') in
+MATLAB is better described as ``number of entries'' in GraphBLAS.
 
 \paragraph{Forced completion:}
-All computations for the matrix \verb'A' are guaranteed to be finished when the
-method returns.  That is, it acts like an object-specific \verb'GrB_wait' for
-just this particular matrix \verb'A'.  Other pending computations for other
-objects may remain.  To ensure that all pending computations are complete for
-all GraphBLAS objects, used \verb'GrB_wait' instead.
+All computations for the matrix \verb'A' are guaranteed to be finished when
+\verb'GrB_Matrix_nvals' returns.  That is, it acts like an object-specific
+\verb'GrB_wait' for just this particular matrix \verb'A'.  Other pending
+computations for other objects may remain.  To ensure that all pending
+computations are complete for all GraphBLAS objects, used \verb'GrB_wait'
+instead.
 
-% \newpage
+\newpage
 %-------------------------------------------------------------------------------
 \subsubsection{{\sf GxB\_Matrix\_type:}         return the type of a matrix}
 %-------------------------------------------------------------------------------
@@ -3125,7 +3354,7 @@ GrB_Info GxB_Matrix_type    // get the type of a matrix
 in MATLAB.
 
 \begin{spec}
-{\bf SPEC:} The \verb'GxB_Matrix_type' function is an extension to the spec.
+{\bf SPEC:} \verb'GxB_Matrix_type' is an extension to the spec.
 \end{spec}
 
 \newpage
@@ -3165,7 +3394,7 @@ Any duplicate entries with identical indices are assembled using the binary
 \verb'dup' operator provided on input.  All three types (\verb'x', \verb'y',
 \verb'z' for \verb'z=dup(x,y)') must be identical.  The types of \verb'dup',
 \verb'C' and \verb'X' must all be compatible.  See Section~\ref{typecasting}
-regarding typecasting and compatibility).  The values in \verb'X' are
+regarding typecasting and compatibility.  The values in \verb'X' are
 typecasted, if needed, into the type of \verb'dup'.  Duplicates are then
 assembled into a matrix \verb'T' of the same type as \verb'dup', using
 \verb'T(i,j) = dup (T (i,j), X (k))'.  After \verb'T' is constructed, it is
@@ -3426,20 +3655,6 @@ GrB_Info GxB_Matrix_resize      // change the size of a matrix
 If the dimensions decrease, entries that fall outside the resized 
 matrix are deleted.
 
-\verb'GxB_Matrix_resize' also frees the workspace kept in the matrix \verb'C'
-if Gustavson's method is used in \verb'GrB_mxm' to compute the matrix \verb'C'.
-It frees this space, even if the size does not change:
-
-{\footnotesize
-\begin{verbatim}
-    GrB_Index nrows, ncols ;
-    GrB_Matrix_nrows (&nrows, C) ;
-    GrB_Matrix_ncols (&ncols, C) ;
-    GxB_Matrix_resize (C, nrows, nrows) ; \end{verbatim} }
-
-See Section~\ref{guswork} for more details.
-
-\newpage
 %-------------------------------------------------------------------------------
 \subsubsection{{\sf GrB\_Matrix\_free:} free a matrix}
 %-------------------------------------------------------------------------------
@@ -3466,6 +3681,923 @@ frees the matrix \verb'A' and sets \verb'A' to \verb'NULL'.  It safely does
 nothing if passed a \verb'NULL' handle, or if \verb'A == NULL' on input.
 In SuiteSparse:GraphBLAS, any pending updates to the matrix are abandoned.
 
+
+
+
+\newpage
+%===============================================================================
+\subsection{GraphBLAS matrix and vector import/export} %========================
+%===============================================================================
+\label{import_export}
+
+The import/export functions allow the user application to create a
+\verb'GrB_Matrix' or \verb'GrB_Vector' object, and to extract its contents,
+faster and with less memory overhead than the \verb'GrB_*_build' and
+\verb'GrB_*_extractTuples' functions.
+
+The semantics of import/export are the same as the {\em move constructor} in
+C++.  On import, the user provides a set of arrays that have been previously
+allocated via the ANSI C \verb'malloc', \verb'calloc', or \verb'realloc'
+functions (by default), or by the corresponding functions passed to
+\verb'GxB_init'.  The arrays define the content of the matrix or vector.
+Unlike \verb'GrB_*_build', the GraphBLAS library then takes ownership of the
+user's input arrays and may either:
+
+\begin{enumerate}
+\item incorporate them
+into its internal data structure for the new \verb'GrB_Matrix' or
+\verb'GrB_Vector', potentially creating the \verb'GrB_Matrix' or
+\verb'GrB_Vector' in constant time with no memory copying performed, or
+\item if
+the library does not support the import format directly, then it may convert
+the input to its internal format, and then free the user's input arrays.
+\item A
+GraphBLAS implementation may also choose to use a mix of the two strategies.
+\end{enumerate}
+
+SuiteSparse:GraphBLAS takes the first approach, and so the import functions
+always take $O(1)$ time, and require $O(1)$ memory space to be allocated.
+
+Regardless of the method chosen, as listed above, the input arrays are no
+longer owned by the user application.  If \verb'A' is a \verb'GrB_Matrix'
+created by an import, the user input arrays are freed no later than
+\verb'GrB_free(&A)', and may be freed earlier, at the discretion of the
+GraphBLAS library.  The data structure of the \verb'GrB_Matrix' and
+\verb'GrB_Vector' remain opaque.
+
+The export of a \verb'GrB_Matrix' or \verb'GrB_Vector' is symmetric with the
+import operation.  The export changes the ownership of the arrays, where the
+\verb'GrB_Matrix' or \verb'GrB_Vector' no longer exists when the export
+completes, and instead the user is returned several arrays that contain the
+matrix or vector in the requested format.  Ownership of these arrays is given
+to the user application, which is then responsible for freeing them via the
+ANSI C \verb'free' function (by default), or by the \verb'free_function' that
+was passed in to \verb'GxB_init'.  Alternatively, these arrays can be
+re-imported into a \verb'GrB_Matrix' or \verb'GrB_Vector', at which point they
+again become the responsibility of GraphBLAS.
+
+For a matrix export, if the output format matches the current internal format
+of the matrix then these arrays are returned to the user application in $O(1)$
+time and with no memory copying performed.  Otherwise, the \verb'GrB_Matrix' is
+first converted into the requested format, and then exported.
+
+The vector import/export methods use a single format for a \verb'GrB_Vector'.
+Four different formats are provided for the import/export of a
+\verb'GrB_Matrix'.  For each format, the \verb'Ax' array has a C type
+corresponding to one of the 11 built-in types in GraphBLAS (\verb'bool',
+\verb'int*_t', \verb'uint*_t', \verb'float', and \verb'double'), or that
+corresponds with the user-defined type.  No typecasting is done on import or
+export.
+
+The table below lists the methods presented in this section.
+
+\vspace{0.2in}
+{\footnotesize
+\begin{tabular}{lll}
+\hline
+method & purpose & Section \\
+\hline
+\verb'GxB_Vector_import'         & import a vector &
+                                    \ref{vector_import} \\
+\verb'GxB_Vector_export'         & export a vector &
+                                    \ref{vector_export} \\
+\hline
+\verb'GxB_Matrix_import_CSR'            & import a matrix in CSR form &
+                                          \ref{matrix_import_csr} \\
+\verb'GxB_Matrix_import_CSC'            & import a matrix in CSC form &
+                                          \ref{matrix_import_csc} \\
+\verb'GxB_Matrix_import_HyperCSR'       & import a matrix in HyperCSR form &
+                                          \ref{matrix_import_hypercsr} \\
+\verb'GxB_Matrix_import_HyperCSC'       & import a matrix in HyperCSC form &
+                                          \ref{matrix_import_hypercsc} \\
+\verb'GxB_Matrix_export_CSR'            & export a matrix in CSR form &
+                                          \ref{matrix_export_csr} \\
+\verb'GxB_Matrix_export_CSC'            & export a matrix in CSC form &
+                                          \ref{matrix_export_csc} \\
+\verb'GxB_Matrix_export_HyperCSR'       & export a matrix in HyperCSR form &
+                                          \ref{matrix_export_hypercsr} \\
+\verb'GxB_Matrix_export_HyperCSC'       & export a matrix in HyperCSC form &
+                                          \ref{matrix_export_hypercsc} \\
+\hline
+\end{tabular}
+}
+\vspace{0.2in}
+
+\begin{spec}
+{\bf SPEC:} The import/export methods are extensions to the spec.  However,
+they have been implemented in SuiteSparse:GraphBLAS at the request of the
+GraphBLAS C API Committee, as a prototype for future consideration for
+inclusion in a future specification.  Their calling sequence may change if
+these functions are added to the specification as \verb'GrB_*' functions.  A
+GraphBLAS library need not implement these methods in constant time and memory.
+On import, a library may choose to copy the content of the user arrays into its
+internal data structure and then \verb'free' the user arrays.  On export, it
+may chose to \verb'malloc' the output arrays, fill them with the requested
+data, and then \verb'GrB_free' the GraphBLAS object being exported.  The
+semantics of these options are the same as a move constructor; they just take
+more time and memory.  The choice is up to the GraphBLAS implementation since
+the internal data structure is opaque to the user application.
+\end{spec}
+
+\newpage
+%-------------------------------------------------------------------------------
+\subsubsection{{\sf GxB\_Vector\_import:}        import a vector}
+%-------------------------------------------------------------------------------
+\label{vector_import}
+
+\begin{mdframed}[userdefinedwidth=6in]
+{\footnotesize
+\begin{verbatim}
+GrB_Info GxB_Vector_import  // import a vector in CSC format
+(
+    GrB_Vector *v,          // vector to create
+    const GrB_Type type,    // type of vector to create
+    GrB_Index n,            // vector length
+    GrB_Index nvals,        // number of entries in the vector
+    GrB_Index **vi,         // indices, size nvals (in sorted order)
+    void      **vx,         // values, size nvals
+    const GrB_Descriptor desc       // currently unused
+) ;
+\end{verbatim}
+} \end{mdframed}
+
+The \verb'GxB_Vector_import' function is a fast way to construct a
+\verb'GrB_Vector', always taking just $O(1)$ time.  Calling
+\verb'GxB_Vector_import' with:
+
+{\footnotesize
+\begin{verbatim}
+    GxB_Vector_import (&v, type, n, nvals, &vi, &vx, desc) ;
+\end{verbatim}}
+
+is identical to the following:
+
+{\footnotesize
+\begin{verbatim}
+    int64_t *Ap = calloc (2, sizeof (int64_t)) ;
+    Ap [1] = nvals ;
+    GxB_Matrix_import_CSC (&A, type, n, 1, nvals, -1, &Ap, &vi, &vx, desc) ;
+\end{verbatim}}
+
+\noindent
+except that the latter creates an \verb'n'-by-1 matrix instead.  For the vector
+import, described here, the first argument is a \verb'GrB_Vector'.  The
+arguments \verb'vi' and \verb'vx' take the place of \verb'Ai' and \verb'Ax',
+and the \verb'Ap' array for the CSC matrix import is not provided for a vector
+import.  Refer to the description of \verb'GxB_Matrix_import_CSC' for details
+(Section~\ref{matrix_import_csc}).
+
+If successful, \verb'v' is created as a \verb'n'-by-1 vector.  Its entries are
+the row indices given by \verb'vi', with the corresponding values in \verb'vx'.
+The two pointers \verb'vi' and \verb'vx' are returned as \verb'NULL', which
+denotes that they are no longer owned by the user application.  They have
+instead been moved into the new vector \verb'v'.  The row indices in \verb'vi'
+must appear in sorted order, and no duplicates can appear.  These conditions
+are not checked, so results are undefined if they are not met exactly.  The
+user application can check the resulting vector \verb'v' with \verb'GxB_print',
+if desired, which will determine if these conditions hold.
+
+If not successful, \verb'v' is returned as \verb'NULL' and \verb'vi' and
+\verb'vx' are not modified.
+
+\begin{spec}
+{\bf SPEC:} \verb'GxB_Vector_import' is an extension to the spec.
+\end{spec}
+
+\newpage
+%-------------------------------------------------------------------------------
+\subsubsection{{\sf GxB\_Vector\_export:}        export a vector}
+%-------------------------------------------------------------------------------
+\label{vector_export}
+
+\begin{mdframed}[userdefinedwidth=6in]
+{\footnotesize
+\begin{verbatim}
+GrB_Info GxB_Vector_export  // export and free a vector
+(
+    GrB_Vector *v,          // vector to export and free
+    GrB_Type *type,         // type of matrix exported
+    GrB_Index *n,           // length of the vector
+    GrB_Index *nvals,       // number of entries in the vector
+    GrB_Index **vi,         // indices, size nvals
+    void      **vx,         // values, size nvals
+    const GrB_Descriptor desc       // currently unused
+) ;
+\end{verbatim}
+} \end{mdframed}
+
+The \verb'GxB_Vector_export' function is a fast way to extract the contents of
+a \verb'GrB_Vector', always taking just $O(1)$ time.  Using
+\verb'GxB_Vector_export' with:
+
+{\footnotesize
+\begin{verbatim}
+    GxB_Vector_export (&v, &type, &n, &nvals, &vi, &vx, desc) ;
+\end{verbatim}}
+
+is analogous to:
+
+{\footnotesize
+\begin{verbatim}
+    GxB_Matrix_export_CSC (&A, &type, &n, &one, &nvals, &nonempty,
+        &Ap, &Ai, &Ax, desc)
+\end{verbatim}}
+
+\noindent
+if \verb'A' were an \verb'n'-by-1 matrix.  For the vector export, described
+here, the first argument is a \verb'GrB_Vector'.  The arguments \verb'vi' and
+\verb'vx' take the place of \verb'Ai' and \verb'Ax', and the \verb'Ap' array
+for the CSC matrix export is not returned from a vector export.  Refer to the
+description of \verb'GxB_Matrix_export_CSC' for details.
+(Section~\ref{matrix_import_csr}).
+
+Exporting a vector forces completion of any pending operations on the vector.
+
+If successful, \verb'v' is returned as \verb'NULL', and its contents are
+returned to the user, with its \verb'type', dimension \verb'n', and number of
+entries \verb'nvals'.  A sorted list of row indices of entries that were in
+\verb'v' is returned in \verb'vi', and the corresponding numerical values are
+returned in \verb'vx'.  If \verb'nvals' is zero, the \verb'vi' and \verb'vx'
+arrays are returned as \verb'NULL'; this is not an error condition.
+
+If not successful, \verb'v' is unmodified and \verb'vi' and \verb'vx' are
+not modified.  
+
+\begin{spec}
+{\bf SPEC:} \verb'GxB_Vector_export' is an extension to the spec.
+\end{spec}
+
+\newpage
+%-------------------------------------------------------------------------------
+\subsubsection{{\sf GxB\_Matrix\_import\_CSR:} import a CSR matrix}
+%-------------------------------------------------------------------------------
+\label{matrix_import_csr}
+
+\begin{mdframed}[userdefinedwidth=6in]
+{\footnotesize
+\begin{verbatim}
+GrB_Info GxB_Matrix_import_CSR      // import a CSR matrix
+(
+    GrB_Matrix *A,          // handle of matrix to create
+    const GrB_Type type,    // type of matrix to create
+    GrB_Index nrows,        // matrix dimension is nrows-by-ncols
+    GrB_Index ncols,
+    GrB_Index nvals,        // number of entries in the matrix
+    // CSR format:
+    int64_t nonempty,       // number of rows with at least one entry:
+                            // either < 0 if not known, or >= 0 if exact
+    GrB_Index **Ap,         // row "pointers", size nrows+1
+    GrB_Index **Aj,         // column indices, size nvals
+    void      **Ax,         // values, size nvals
+    const GrB_Descriptor desc       // currently unused
+) ;
+\end{verbatim}
+} \end{mdframed}
+
+\verb'GxB_Matrix_import_CSR' imports a matrix from 3 user arrays in CSR format.
+In the resulting \verb'GrB_Matrix A', the \verb'CSR' format is a matrix with a
+format (\verb'GxB_FORMAT') of \verb'GxB_BY_ROW', in standard for instead of
+hypersparse form (See Section~\ref{hypersparse}).
+
+The first four arguments of \verb'GxB_Matrix_import_CSR' are the same as
+all four arguments of \verb'GrB_Matrix_new', because this function is similar.
+It creates a new \verb'GrB_Matrix A', with the given type and dimensions.
+The \verb'GrB_Matrix A' does not exist on input.
+
+Unlike \verb'GrB_Matrix_new', this function also populates the new matrix
+\verb'A' with the three arrays \verb'Ap', \verb'Aj' and \verb'Ax', provided by
+the user, all of which must have been created with the ANSI C \verb'malloc',
+\verb'calloc', or \verb'realloc' functions (by default), or by the
+corresponding \verb'malloc_function', \verb'calloc_function', or
+\verb'realloc_function' provided to \verb'GxB_init'.  These arrays define the
+pattern and values of the new matrix \verb'A':
+
+\begin{itemize}
+\item \verb'GrB_Index Ap [nrows+1] ;'  The \verb'Ap' array is the row
+``pointer'' array.  It does not actual contain pointers.  More precisely, it is
+an integer array that defines where the column indices and values appear in
+\verb'Aj' and \verb'Ax', for each row.  The number of entries in row \verb'i'
+is given by the expression \verb'Ap [i+1] - Ap [i]'.
+
+\item \verb'GrB_Index Aj [nvals] ;'  The \verb'Aj' array defines the
+column indices of entries in each row.
+
+\item \verb'ctype Aj [nvals] ;'  The \verb'Ax' array defines the values of
+entries in each row.  It is passed in as a \verb'(void *)' pointer, but it must
+point to an array of size \verb'nvals' values, each of size
+\verb'sizeof(ctype)', where \verb'ctype' is the exact type in C that corresponds
+to the \verb'GrB_Type type' parameter.  That is, if \verb'type' is
+\verb'GrB_INT32', then \verb'ctype' is \verb'int32_t'.  User types
+may be used, just the same as built-in types.
+\end{itemize}
+
+The content of the three arrays \verb'Ap' \verb'Aj', and \verb'Ax' is very
+specific.  This content is not checked, since this function takes only
+$O(1)$ time.  Results are undefined if the following specification is not
+followed exactly.
+
+The column indices of entries in the ith row of the matrix are held in
+\verb'Aj [Ap [i] ... Ap[i+1]]', and the corresponding values are held in the
+same positions in \verb'Ax'.  Column indices must be in the range 0 to
+\verb'ncols'-1, and must appear in sorted order within each row.  No duplicate
+column indices may appear in any row.  \verb'Ap [0]' must equal zero, and
+\verb'Ap [nrows]' must equal nvals.  The \verb'Ap' array must be of size
+\verb'nrows'+1 (or larger), and the \verb'Aj' and \verb'Ax' arrays must have
+size at least \verb'nvals'.
+
+If \verb'nvals' is zero, then the content of the \verb'Aj' and \verb'Ax' arrays
+is not accessed and they may be \verb'NULL' on input (if not \verb'NULL', they
+are still freed and returned as \verb'NULL', if the method is successful).
+
+The \verb'nonempty' parameter is optional.  It states the number of rows
+that have at least one entry: if not known, use -1;
+if $\ge 0$, it must be exact.
+
+An example of the CSR format is shown below.  Consider the following
+matrix with 10 nonzero entries, and suppose the zeros are not stored.
+
+    \begin{equation}
+    \label{eqn:Aexample}
+    A = \left[
+    \begin{array}{cccc}
+    4.5 &   0 & 3.2 &   0 \\
+    3.1 & 2.9 &  0  & 0.9 \\
+     0  & 1.7 & 3.0 &   0 \\
+    3.5 & 0.4 &  0  & 1.0 \\
+    \end{array}
+    \right]
+    \end{equation}
+
+The \verb'Ap' array has length 5, since the matrix is 4-by-4.  The first entry
+must always zero, and \verb'Ap [5] = 10' is the number of entries.
+The content of the arrays is shown below:
+
+{\footnotesize
+\begin{verbatim}
+    int64_t Ap [ ] = { 0,        2,             5,        7,            10 } ;
+    int64_t Aj [ ] = { 0,   2,   0,   1,   3,   1,   2,   0,   1,   3   } ;
+    double  Ax [ ] = { 4.5, 3.2, 3.1, 2.9, 0.9, 1.7, 3.0, 3.5, 0.4, 1.0 } ; \end{verbatim} }
+
+Spaces have been added to the \verb'Ap' array, just for illustration.  Row zero
+is in \verb'Aj [0..1]' (column indices) and \verb'Ax [0..1]' (values), starting
+at \verb'Ap [0] = 0' and ending at \verb'Ap [0+1]-1 = 1'.  The list of column
+indices of row one is at \verb'Aj [2..4]' and row two is in \verb'Aj [5..6]'.
+The last row (three) appears \verb'Aj [7..9]', because \verb'Ap [3] = 7' and
+\verb'Ap [4]-1 = 10-1 = 9'.  The corresponding numerical values appear in the
+same positions in \verb'Ax'.
+
+To iterate over the rows and entries of this matrix, the following code can be
+used:
+
+    {\footnotesize
+    \begin{verbatim}
+    int64_t nvals = Ap [nrows] ;
+    for (int64_t i = 0 ; i < nrows ; i++)
+    {
+        // get A(i,:)
+        for (int64_t p = Ap [i] ; p < Ap [i+1] ; p++)
+        {
+            // get A(i,j)
+            int64_t  j = Aj [p] ;           // column index
+            double aij = Ax [p] ;           // numerical value
+        }
+    } \end{verbatim}}
+
+On successful creation of \verb'A', the three pointers \verb'Ap', \verb'Aj',
+and \verb'Ax' are set to \verb'NULL' on output.  This denotes to the user
+application that it is no longer responsible for freeing these arrays.
+Internally, GraphBLAS has moved these arrays into its internal data structure.
+They will eventually be freed no later than when the user does
+\verb'GrB_free(&A)', but they may be freed or resized later, if the matrix
+changes.
+
+If the matrix \verb'A' is later exported in CSR form, and GraphBLAS has not yet
+reallocated these arrays, then these same three arrays are returned to the user
+by \verb'GxB_Matrix_export_CSR' (see Section~\ref{matrix_export_csr}).  If an
+export is performed, the freeing of these three arrays again becomes the
+responsibility of the user application.
+
+The \verb'GxB_Matrix_import_CSR' function will rarely fail, since it allocates
+just $O(1)$ space.  If it does fail, it returns \verb'GrB_OUT_OF_MEMORY',
+and it leaves the three user arrays unmodified.  They are still owned by
+the user application, which is eventually responsible for freeing them with
+\verb'free(Ap)', etc.
+
+\begin{spec}
+{\bf SPEC:} \verb'GxB_Matrix_import_CSR' is an extension to the spec.
+\end{spec}
+
+\newpage
+%-------------------------------------------------------------------------------
+\subsubsection{{\sf GxB\_Matrix\_import\_CSC:} import a CSC matrix}
+%-------------------------------------------------------------------------------
+\label{matrix_import_csc}
+
+\begin{mdframed}[userdefinedwidth=6in]
+{\footnotesize
+\begin{verbatim}
+GrB_Info GxB_Matrix_import_CSC      // import a CSC matrix
+(
+    GrB_Matrix *A,          // handle of matrix to create
+    const GrB_Type type,    // type of matrix to create
+    GrB_Index nrows,        // matrix dimension is nrows-by-ncols
+    GrB_Index ncols,
+    GrB_Index nvals,        // number of entries in the matrix
+    // CSC format:
+    int64_t nonempty,       // number of columns with at least one entry:
+                            // either < 0 if not known, or >= 0 if exact
+    GrB_Index **Ap,         // column "pointers", size ncols+1
+    GrB_Index **Ai,         // row indices, size nvals
+    void      **Ax,         // values, size nvals
+    const GrB_Descriptor desc       // currently unused
+) ;
+\end{verbatim}
+} \end{mdframed}
+
+\verb'GxB_Matrix_import_CSC' imports a matrix from 3 user arrays in CSC format.
+The \verb'GrB_Matrix A' is created in the \verb'CSC' format, which is a
+\verb'GxB_FORMAT' of \verb'GxB_BY_COL'.  The arguments are identical to
+\verb'GxB_Matrix_import_CSR', except for how the 3 user arrays are
+interpreted.  The column ``pointer'' array has size \verb'ncols+1'.  The row
+indices of the columns are in \verb'Ai', and must appear in ascending order in
+each column.  The corresponding numerical values are held in \verb'Ax'.  The
+row indices of column \verb'j' are held in \verb'Ai [Ap [j]...Ap [j+1]-1',
+and the corresponding numerical values are in the same locations in \verb'Ax'.
+
+The \verb'nonempty' parameter is optional.  It states the number of columns
+that have at least one entry: if not known, use -1;
+if $\ge 0$, it must be exact.
+
+The same matrix from Equation~\ref{eqn:Aexample}in
+the last section (repeated here):
+
+    \begin{equation}
+    A = \left[
+    \begin{array}{cccc}
+    4.5 &   0 & 3.2 &   0 \\
+    3.1 & 2.9 &  0  & 0.9 \\
+     0  & 1.7 & 3.0 &   0 \\
+    3.5 & 0.4 &  0  & 1.0 \\
+    \end{array}
+    \right]
+    \end{equation}
+
+is held in CSC form as follows:
+
+{\footnotesize
+\begin{verbatim}
+    int64_t Ap [ ] = { 0,             3,             6,        8,       10 } ;
+    int64_t Ai [ ] = { 0,   1,   3,   1,   2,   3,   0,   2,   1,   3   } ;
+    double  Ax [ ] = { 4.5, 3.1, 3.5, 2.9, 1.7, 0.4, 3.2, 3.0, 0.9, 1.0 } ; \end{verbatim} }
+
+That is, the row indices of column 1 (the second column) are in
+\verb'Ai [3..5]', and the values in the same place in \verb'Ax',
+since \verb'Ap [1] = 3' and \verb'Ap [2]-1 = 5'.
+
+To iterate over the columns and entries of this matrix, the following code can
+be used:
+
+    {\footnotesize
+    \begin{verbatim}
+    int64_t nvals = Ap [ncols] ;
+    for (int64_t j = 0 ; j < ncols ; j++)
+    {
+        // get A(:,j)
+        for (int64_t p = Ap [j] ; p < Ap [j+1] ; p++)
+        {
+            // get A(i,j)
+            int64_t  i = Ai [p] ;           // row index
+            double aij = Ax [p] ;           // numerical value
+        }
+    } \end{verbatim}}
+
+The method is identical to \verb'GxB_Matrix_import_CSR'; just the format is
+different.  That is, if the method is successful, the 3 user arrays are
+imported into the new \verb'GrB_Matrix A', with the given type and dimensions,
+and returned as \verb'NULL' pointers to the user application.
+
+If \verb'nvals' is zero, then the content of the \verb'Ai' and \verb'Ax' arrays
+is not accessed and they may be \verb'NULL' on input (if not \verb'NULL', they
+are still freed and returned as \verb'NULL', if the method is successful).
+
+\begin{spec}
+{\bf SPEC:} \verb'GxB_Matrix_import_CSC' is an extension to the spec.
+\end{spec}
+
+\newpage
+%-------------------------------------------------------------------------------
+\subsubsection{{\sf GxB\_Matrix\_import\_HyperCSR:} import a HyperCSR matrix}
+%-------------------------------------------------------------------------------
+\label{matrix_import_hypercsr}
+
+\begin{mdframed}[userdefinedwidth=6in]
+{\footnotesize
+\begin{verbatim}
+GrB_Info GxB_Matrix_import_HyperCSR     // import a hypersparse CSR matrix
+(
+    GrB_Matrix *A,          // handle of matrix to create
+    const GrB_Type type,    // type of matrix to create
+    GrB_Index nrows,        // matrix dimension is nrows-by-ncols
+    GrB_Index ncols,
+    GrB_Index nvals,        // number of entries in the matrix
+    // hypersparse CSR format:
+    int64_t nonempty,       // number of rows in Ah with at least one entry,
+                            // either < 0 if not known, or >= 0 if exact
+    GrB_Index nvec,         // number of rows in Ah list
+    GrB_Index **Ah,         // list of size nvec of rows that appear in A
+    GrB_Index **Ap,         // row "pointers", size nvec+1
+    GrB_Index **Aj,         // column indices, size nvals
+    void      **Ax,         // values, size nvals
+    const GrB_Descriptor desc       // currently unused
+) ;
+\end{verbatim}
+} \end{mdframed}
+
+\verb'GxB_Matrix_import_HyperCSR' imports a matrix in hypersparse CSR format in
+$O(1)$ time.  In the hypersparse format, the \verb'Ap' array itself becomes
+sparse, if the matrix has rows that are completely empty.  An array \verb'Ah'
+of size \verb'nvec' provides a list of rows that appear in the data structure.
+For example, consider Equation~\ref{eqn:Ahyper}, which is a sparser version of
+the matrix in Equation~\ref{eqn:Aexample}.  Row 2 and column 1 of this matrix
+are all zero.
+
+    \begin{equation}
+    \label{eqn:Ahyper}
+    A = \left[
+    \begin{array}{cccc}
+    4.5 &   0 & 3.2 &   0 \\
+    3.1 &   0 &  0  & 0.9 \\
+     0  &   0 &  0  &   0 \\
+    3.5 &   0 &  0  & 1.0 \\
+    \end{array}
+    \right]
+    \end{equation}
+
+The conventional CSR format would appear as follows.  Since the third row (row
+2) is all zero, accessing \verb'Ai [Ap [2] ... Ap [3]-1]' gives an empty set
+(\verb'[2..1]'), and the number of entries in this row is
+\verb'Ap [i+1] - Ap [i]' \verb'= Ap [3] - Ap [2] = 0'.
+
+{\footnotesize
+\begin{verbatim}
+    int64_t Ap [ ] = { 0,        2,2,      4,       5 } ;
+    int64_t Aj [ ] = { 0,   2,   0,   3,   0    3   }
+    double  Ax [ ] = { 4.5, 3.2, 3.1, 0.9, 3.5, 1.0 } ; \end{verbatim} }
+
+A hypersparse CSR format for this same matrix would discard
+these duplicate integers in \verb'Ap'.  Doing so requires
+another array, \verb'Ah', that keeps track of the rows that appear
+in the data structure.
+
+\newpage
+{\footnotesize
+\begin{verbatim}
+    int64_t nvec = 3 ;
+    int64_t Ah [ ] = { 0,        1,        3        } ;
+    int64_t Ap [ ] = { 0,        2,        4,       5 } ;
+    int64_t Aj [ ] = { 0,   2,   0,   3,   0    3   }
+    double  Ax [ ] = { 4.5, 3.2, 3.1, 0.9, 3.5, 1.0 } ; \end{verbatim} }
+
+Note that the \verb'Aj' and \verb'Ax' arrays are the same in the standard and
+hypersparse CSR formats.  The row indices in \verb'Ah' must appear in ascending
+order, and no duplicates can appear.  To iterate over this data structure:
+
+    {\footnotesize
+    \begin{verbatim}
+    int64_t nvals = Ap [nvec] ;
+    for (int64_t k = 0 ; k < nvec ; k++)
+    {
+        int64_t i = Ah [k] ;                // row index
+        // get A(i,:)
+        for (int64_t p = Ap [k] ; p < Ap [k+1] ; p++)
+        {
+            // get A(i,j)
+            int64_t  j = Aj [p] ;           // column index
+            double aij = Ax [p] ;           // numerical value
+        }
+    } \end{verbatim}}
+
+\vspace{-0.05in}
+This is more complex than the standard CSR format, but it requires at most
+$O(e)$ space, where $A$ is $m$-by-$n$ with $e$ = \verb'nvals' entries.  The
+standard CSR format requires $O(m+e)$ space.  If $e << m$, then the size $m+1$
+of \verb'Ap' can dominate the memory required.  In the hypersparse form,
+\verb'Ap' takes on size \verb'nvec+1', and \verb'Ah' has size \verb'nvec',
+where \verb'nvec' is the number of rows that appear in the data structure.
+The standard CSR format can be viewed as a dense array (of size \verb'nrows')
+of sparse row vectors.   By contrast, the hypersparse CSR format is a sparse
+array (of size \verb'nvec') of sparse row vectors.
+
+The import takes $O(1)$ time.  If successful, the four arrays \verb'Ah',
+\verb'Ap', \verb'Aj', and \verb'Ax' are returned as \verb'NULL', and the
+hypersparse \verb'GrB_Matrix A' is created.
+
+If \verb'nvals' is zero, then the content of the \verb'Aj' and \verb'Ax' arrays
+is not accessed and they may be \verb'NULL' on input (if not \verb'NULL', they
+are still freed and returned as \verb'NULL', if the method is successful).
+The \verb'nonempty' parameter is optional.  It states the number of rows
+that have at least one entry: if not known, use -1;
+if $\ge 0$, it must be exact.
+
+\begin{spec}
+{\bf SPEC:} \verb'GxB_Matrix_import_HyperCSR' is an extension to the spec.
+\end{spec}
+
+\newpage
+%-------------------------------------------------------------------------------
+\subsubsection{{\sf GxB\_Matrix\_import\_HyperCSC:} import a HyperCSC matrix}
+%-------------------------------------------------------------------------------
+\label{matrix_import_hypercsc}
+
+\begin{mdframed}[userdefinedwidth=6in]
+{\footnotesize
+\begin{verbatim}
+GrB_Info GxB_Matrix_import_HyperCSC     // import a hypersparse CSC matrix
+(
+    GrB_Matrix *A,          // handle of matrix to create
+    const GrB_Type type,    // type of matrix to create
+    GrB_Index nrows,        // matrix dimension is nrows-by-ncols
+    GrB_Index ncols,
+    GrB_Index nvals,        // number of entries in the matrix
+    // hypersparse CSC format:
+    int64_t nonempty,       // number of columns in Ah with at least one entry,
+                            // either < 0 if not known, or >= 0 if exact
+    GrB_Index nvec,         // number of columns in Ah list
+    GrB_Index **Ah,         // list of size nvec of columns that appear in A
+    GrB_Index **Ap,         // column "pointers", size nvec+1
+    GrB_Index **Ai,         // row indices, size nvals
+    void      **Ax,         // values, size nvals
+    const GrB_Descriptor desc       // currently unused
+) ;
+\end{verbatim}
+} \end{mdframed}
+
+\verb'GxB_Matrix_import_HyperCSC' imports a matrix in hypersparse CSC format in
+$O(1)$ time.  It is identical to \verb'GxB_Matrix_import_HyperCSR', except for
+the data structure defined by the four arrays \verb'Ah', \verb'Ap', \verb'Ai',
+and \verb'Ax'.  It is a sparse array of size \verb'nvec' of sparse column
+vectors.  The following code iterates over the matrix:
+
+    \vspace{-0.10in}
+    {\footnotesize
+    \begin{verbatim}
+    int64_t nvals = Ap [nvec] ;
+    for (int64_t k = 0 ; k < nvec ; k++)
+    {
+        int64_t j = Ah [k] ;                // column index
+        // get A(:,j)
+        for (int64_t p = Ap [k] ; p < Ap [k+1] ; p++)
+        {
+            // get A(i,j)
+            int64_t  i = Ai [p] ;           // row index
+            double aij = Ax [p] ;           // numerical value
+        }
+    } \end{verbatim}}
+
+\vspace{-0.12in}
+The \verb'nonempty' parameter is optional.  It states the number of columns
+that have at least one entry: if not known, use -1;
+if $\ge 0$, it must be exact.
+
+\begin{spec}
+{\bf SPEC:} \verb'GxB_Matrix_import_HyperCSC' is an extension to the spec.
+\end{spec}
+
+\newpage
+%-------------------------------------------------------------------------------
+\subsubsection{{\sf GxB\_Matrix\_export\_CSR:} export a CSR matrix}
+%-------------------------------------------------------------------------------
+\label{matrix_export_csr}
+
+\begin{mdframed}[userdefinedwidth=6in]
+{\footnotesize
+\begin{verbatim}
+GrB_Info GxB_Matrix_export_CSR  // export and free a CSR matrix
+(
+    GrB_Matrix *A,          // handle of matrix to export and free
+    GrB_Type *type,         // type of matrix exported
+    GrB_Index *nrows,       // matrix dimension is nrows-by-ncols
+    GrB_Index *ncols,
+    GrB_Index *nvals,       // number of entries in the matrix
+    // CSR format:
+    int64_t *nonempty,      // number of rows with at least one entry
+    GrB_Index **Ap,         // row "pointers", size nrows+1
+    GrB_Index **Aj,         // column indices, size nvals
+    void      **Ax,         // values, size nvals
+    const GrB_Descriptor desc       // currently unused
+) ;
+\end{verbatim}
+} \end{mdframed}
+
+\verb'GxB_Matrix_export_CSR' exports a matrix in CSR form:
+
+{\footnotesize
+\begin{verbatim}
+GxB_Matrix_export_CSR (&A, &type, &nrows, &ncols, &nvals, &nonempty,
+                       &Ap, &Aj, &Ax, desc) ;
+\end{verbatim}}
+
+On successful output, the \verb'GrB_Matrix A' is freed, and \verb'A' is
+returned as \verb'NULL'.  Its type is returned in the \verb'type' parameter,
+its dimensions in \verb'nrows' and \verb'ncols', its number of entries in
+\verb'nvals', and the CSR format is in the three arrays \verb'Ap', \verb'Aj',
+and \verb'Ax'.  If \verb'nvals' is zero, the \verb'Aj' and \verb'Ax' arrays are
+returned as \verb'NULL'; this is not an error, and \verb'GxB_Matrix_import_CSR'
+also allows these two arrays to be \verb'NULL' on input when \verb'nvals' is
+zero.  After a successful export, the user application is responsible for
+freeing these three arrays via \verb'free' (or the \verb'free' function passed to \verb'GxB_init').  The CSR format is
+described in Section~\ref{matrix_import_csr}.
+
+This method takes $O(1)$ time if the matrix is already in standard
+(non-hypersparse) CSR format internally.  If it is in hypersparse CSR form, the
+export must first convert the matrix to standard CSR form, taking $O(m)$ time
+and memory, where $m$ = \verb'nrows'.  If the matrix is in CSC format, it is
+first transposed to convert it to CSR format, and then exported.  This takes
+$O(m+n+e)$ or $O(m+e \log e)$ time and memory, whichever is less, where $n=$
+\verb'ncols' and $e=$ \verb'nvals'.
+
+\begin{spec}
+{\bf SPEC:} \verb'GxB_Matrix_export_CSR' is an extension to the spec.
+\end{spec}
+
+\newpage
+%-------------------------------------------------------------------------------
+\subsubsection{{\sf GxB\_Matrix\_export\_CSC:} export a CSC matrix}
+%-------------------------------------------------------------------------------
+\label{matrix_export_csc}
+
+\begin{mdframed}[userdefinedwidth=6in]
+{\footnotesize
+\begin{verbatim}
+GrB_Info GxB_Matrix_export_CSC  // export and free a CSC matrix
+(
+    GrB_Matrix *A,          // handle of matrix to export and free
+    GrB_Type *type,         // type of matrix exported
+    GrB_Index *nrows,       // matrix dimension is nrows-by-ncols
+    GrB_Index *ncols,
+    GrB_Index *nvals,       // number of entries in the matrix
+    // CSC format:
+    int64_t *nonempty,      // number of columns with at least one entry
+    GrB_Index **Ap,         // column "pointers", size ncols+1
+    GrB_Index **Ai,         // row indices, size nvals
+    void      **Ax,         // values, size nvals
+    const GrB_Descriptor desc       // currently unused
+) ;
+\end{verbatim}
+} \end{mdframed}
+
+\verb'GxB_Matrix_export_CSC' exports a matrix in CSC form:
+
+{\footnotesize
+\begin{verbatim}
+GxB_Matrix_export_CSC (&A, &type, &nrows, &ncols, &nvals, &nonempty,
+                       &Ap, &Ai, &Ax, desc) ;
+\end{verbatim}}
+
+On successful output, the \verb'GrB_Matrix A' is freed, and \verb'A' is
+returned as \verb'NULL'.  Its type is returned in the \verb'type' parameter,
+its dimensions in \verb'nrows' and \verb'ncols', its number of entries in
+\verb'nvals', and the CSC format is in the three arrays \verb'Ap', \verb'Ai',
+and \verb'Ax'.  If \verb'nvals' is zero, the \verb'Ai' and \verb'Ax' arrays are
+returned as \verb'NULL'; this is not an error, and \verb'GxB_Matrix_import_CSC'
+also allows these two arrays to be \verb'NULL' on input when \verb'nvals' is
+zero.  After a successful export, the user application is responsible for
+freeing these three arrays via \verb'free' (or the \verb'free' function passed to \verb'GxB_init').  The CSC format is
+described in Section~\ref{matrix_import_csc}.
+
+This method takes $O(1)$ time if the matrix is already in standard
+(non-hypersparse) CSC format internally.  If it is in hypersparse CSC form, the
+export must first convert the matrix to standard CSC form, taking $O(n)$ time
+and memory, where $n$ = \verb'ncols'.  If the matrix is in CSR
+format, it is first transposed to convert it to CSC format, and then exported.
+This takes $O(m+n+e)$ or $O(n+e \log e)$ time and memory, whichever is less,
+where $m=$ \verb'nrows' and $e=$ \verb'nvals'.
+
+\begin{spec}
+{\bf SPEC:} \verb'GxB_Matrix_export_CSC' is an extension to the spec.
+\end{spec}
+
+\newpage
+%-------------------------------------------------------------------------------
+\subsubsection{{\sf GxB\_Matrix\_export\_HyperCSR:} export a HyperCSR matrix}
+%-------------------------------------------------------------------------------
+\label{matrix_export_hypercsr}
+
+\begin{mdframed}[userdefinedwidth=6in]
+{\footnotesize
+\begin{verbatim}
+GrB_Info GxB_Matrix_export_HyperCSR  // export and free a hypersparse CSR matrix
+(
+    GrB_Matrix *A,          // handle of matrix to export and free
+    GrB_Type *type,         // type of matrix exported
+    GrB_Index *nrows,       // matrix dimension is nrows-by-ncols
+    GrB_Index *ncols,
+    GrB_Index *nvals,       // number of entries in the matrix
+    // hypersparse CSR format:
+    int64_t *nonempty,      // number of rows in Ah with at least one entry
+    GrB_Index *nvec,        // number of rows in Ah list
+    GrB_Index **Ah,         // list of size nvec of rows that appear in A
+    GrB_Index **Ap,         // row "pointers", size nvec+1
+    GrB_Index **Aj,         // column indices, size nvals
+    void      **Ax,         // values, size nvals
+    const GrB_Descriptor desc       // currently unused
+) ;
+\end{verbatim}
+} \end{mdframed}
+
+\verb'GxB_Matrix_export_HyperCSR' exports a matrix in CSR form:
+
+\vspace{-0.05in}
+{\footnotesize
+\begin{verbatim}
+GxB_Matrix_export_HyperCSR (&A, &type, &nrows, &ncols, &nvals, &nonempty,
+                            &nvec, &Ah, &Ap, &Aj, &Ax, desc) ; \end{verbatim}}
+
+\vspace{-0.10in}
+On successful output, the \verb'GrB_Matrix A' is freed, and \verb'A' is
+returned as \verb'NULL'.  Its type is returned in the \verb'type' parameter,
+its dimensions in \verb'nrows' and \verb'ncols', its number of entries in
+\verb'nvals', and the number of non-empty rows in \verb'nvec'.  The hypersparse
+CSR format is in the four arrays \verb'Ah', \verb'Ap', \verb'Aj', and
+\verb'Ax'.  If \verb'nvals' is zero, the \verb'Aj' and \verb'Ax' arrays are
+returned as \verb'NULL'; this is not an error.  After a successful export, the
+user application is responsible for freeing these three arrays via
+\verb'free' (or the \verb'free' function passed to \verb'GxB_init').  The hypersparse CSR format is described in
+Section~\ref{matrix_import_hypercsr}.
+
+This method takes $O(1)$ time if the matrix is already in hypersparse CSR
+format internally.  If it is in standard CSR form, the export must first
+convert the matrix to hypersparse CSR form, taking $O(m)$ time and memory,
+where $m$ = \verb'nrows'.  If the matrix is in CSC format, it is first
+transposed to convert it to hypersparse CSR format, and then exported.  If in
+standard CSC form, the transpose takes $O(m+n+e)$ or $O(n + e \log e)$ time and
+memory, whichever is less.  If in hypersparse CSC format, it takes $O(e \log
+e)$ time.
+
+\begin{spec}
+{\bf SPEC:} \verb'GxB_Matrix_export_HyperCSR' is an extension to the spec.
+\end{spec}
+
+\newpage
+%-------------------------------------------------------------------------------
+\subsubsection{{\sf GxB\_Matrix\_export\_HyperCSC:} export a HyperCSC matrix}
+%-------------------------------------------------------------------------------
+\label{matrix_export_hypercsc}
+
+\begin{mdframed}[userdefinedwidth=6in]
+{\footnotesize
+\begin{verbatim}
+GrB_Info GxB_Matrix_export_HyperCSC  // export and free a hypersparse CSC matrix
+(
+    GrB_Matrix *A,          // handle of matrix to export and free
+    GrB_Type *type,         // type of matrix exported
+    GrB_Index *nrows,       // matrix dimension is nrows-by-ncols
+    GrB_Index *ncols,
+    GrB_Index *nvals,       // number of entries in the matrix
+    // hypersparse CSC format:
+    int64_t *nonempty,      // number of columns in Ah with at least one entry
+    GrB_Index *nvec,        // number of columns in Ah list
+    GrB_Index **Ah,         // list of size nvec of columns that appear in A
+    GrB_Index **Ap,         // columns "pointers", size nvec+1
+    GrB_Index **Ai,         // row indices, size nvals
+    void      **Ax,         // values, size nvals
+    const GrB_Descriptor desc       // currently unused
+) ;
+\end{verbatim}
+} \end{mdframed}
+
+\verb'GxB_Matrix_export_HyperCSC' exports a matrix in CSC form:
+
+{\footnotesize
+\begin{verbatim}
+GxB_Matrix_export_HyperCSC (&A, &type, &nrows, &ncols, &nvals, &nonempty,
+                            &nvec, &Ah, &Ap, &Ai, &Ax, desc) ; \end{verbatim}}
+
+\vspace{-0.05in}
+On successful output, the \verb'GrB_Matrix A' is freed, and \verb'A' is
+returned as \verb'NULL'.  Its type is returned in the \verb'type' parameter,
+its dimensions in \verb'nrows' and \verb'ncols', its number of entries in
+\verb'nvals', and the number of non-empty rows in \verb'nvec'.  The hypersparse
+CSC format is in the four arrays \verb'Ah', \verb'Ap', \verb'Ai', and
+\verb'Ax'.  If \verb'nvals' is zero, the \verb'Ai' and \verb'Ax' arrays are
+returned as \verb'NULL'; this is not an error.  After a successful export, the
+user application is responsible for freeing these three arrays via
+\verb'free' (or the \verb'free' function passed to \verb'GxB_init').  The hypersparse CSC format is described in
+Section~\ref{matrix_import_hypercsc}.
+
+This method takes $O(1)$ time if the matrix is already in hypersparse CSR
+format internally.  If it is in standard CSR form, the export must first
+convert the matrix to hypersparse CSR form, taking $O(m)$ time and memory,
+where $m$ = \verb'nrows'.  If the matrix is in CSC format, it is first
+transposed to convert it to hypersparse CSR format, and then exported.  If in
+standard CSC form, the transpose takes $O(m+n+e)$ or $O(n + e \log e)$ time and
+memory, whichever is less.  If in hypersparse CSC format, it takes $O(e \log
+e)$ time.
+
+\begin{spec}
+{\bf SPEC:} \verb'GxB_Matrix_export_HyperCSC' is an extension to the spec.
+\end{spec}
+
 \newpage
 %===============================================================================
 \subsection{GraphBLAS descriptors: {\sf GrB\_Descriptor}} %=====================
@@ -3482,7 +4614,7 @@ If the descriptor is \verb'GrB_NULL', defaults are used.
 % neither are any unary or binary operators.
 
 \begin{spec}
-{\bf SPEC:} \verb'GxB_DEFAULT', \verb'GxB_AxB_METHOD', and \verb'GxB_AxB_*'
+{\bf SPEC:} \verb'GxB_DEFAULT', \verb'GxB_NTHRADS', \verb'GxB_AxB_METHOD', and \verb'GxB_AxB_*'
 are extensions to the spec.
 \end{spec}
 
@@ -3492,13 +4624,15 @@ by two \verb'enum' types, \verb'GrB_Desc_Field' and \verb'GrB_Desc_Value':
 \begin{mdframed}[userdefinedwidth=6in]
 {\footnotesize
 \begin{verbatim}
+#define GxB_NTHREADS 5  // for both GrB_Desc_field and GxB_Option_field
 typedef enum
 {
-    GrB_OUTP,       // descriptor for output of a method
-    GrB_MASK,       // descriptor for the mask input of a method
-    GrB_INP0,       // descriptor for the first input of a method
-    GrB_INP1,       // descriptor for the second input of a method
-    GxB_AxB_METHOD  // descriptor for selecting C=A*B algorithm
+    GrB_OUTP = 0,   // descriptor for output of a method
+    GrB_MASK = 1,   // descriptor for the mask input of a method
+    GrB_INP0 = 2,   // descriptor for the first input of a method
+    GrB_INP1 = 3,   // descriptor for the second input of a method
+    GxB_DESCRIPTOR_NTHREADS = GxB_NTHREADS,   // number of threads to use
+    GxB_AxB_METHOD = 1000, // descriptor for selecting C=A*B algorithm
 }
 GrB_Desc_Field ;
 \end{verbatim} } \end{mdframed}
@@ -3509,21 +4643,18 @@ GrB_Desc_Field ;
 typedef enum
 {
     // for all GrB_Descriptor fields:
-    GxB_DEFAULT,        // default behavior of the method
-
+    GxB_DEFAULT = 0,    // default behavior of the method
     // for GrB_OUTP only:
-    GrB_REPLACE,        // clear the output before assigning new values to it
-
+    GrB_REPLACE = 1,    // clear the output before assigning new values to it
     // for GrB_MASK only:
-    GrB_SCMP,           // use the structural complement of the input
-
+    GrB_SCMP = 2,       // use the structural complement of the input
     // for GrB_INP0 and GrB_INP1 only:
-    GrB_TRAN,           // use the transpose of the input
+    GrB_TRAN = 3,       // use the transpose of the input
 
     // for GxB_AxB_METHOD only:
-    GxB_AxB_GUSTAVSON,  // gather-scatter saxpy method
-    GxB_AxB_HEAP,       // heap-based saxpy method
-    GxB_AxB_DOT         // dot product
+    GxB_AxB_GUSTAVSON = 1001,   // gather-scatter saxpy method
+    GxB_AxB_HEAP      = 1002,   // heap-based saxpy method
+    GxB_AxB_DOT       = 1003    // dot product
 }
 GrB_Desc_Value ;
 \end{verbatim} } \end{mdframed}
@@ -3781,7 +4912,7 @@ the third parameter, depending on the field.  For a simpler-to-use alternative,
 see \verb'GxB_set' described in Section~\ref{options}.
 
 \begin{spec}
-{\bf SPEC:} The \verb'GxB_Desc_set' function is an extension to the spec.
+{\bf SPEC:} \verb'GxB_Desc_set' is an extension to the spec.
 \end{spec}
 
 %-------------------------------------------------------------------------------
@@ -3808,7 +4939,7 @@ type \verb'GrB_Desc_Value'.  For a simpler-to-use alternative, see
 \verb'GxB_get' described in Section~\ref{options}.
 
 \begin{spec}
-{\bf SPEC:} The \verb'GxB_Desc_get' function is an extension to the spec.
+{\bf SPEC:} \verb'GxB_Desc_get' is an extension to the spec.
 \end{spec}
 
 \newpage
@@ -4109,11 +5240,14 @@ for setting global options or matrix options.
 \begin{verbatim}
 typedef enum
 {
-    GxB_HYPER,      // defines switch to hypersparse format (a double value)
-    GxB_FORMAT      // defines CSR/CSC format: GxB_BY_ROW or GxB_BY_COL
-    GxB_MODE,           // mode passed to GrB_init (blocking or non-blocking)
-    GxB_THREAD_SAFETY,  // thread library for thread safety
-    GxB_THREADING       // current none
+    GxB_HYPER = 0,      // defines switch to hypersparse format (double value)
+    GxB_FORMAT = 1,     // defines CSR/CSC format: GxB_BY_ROW or GxB_BY_COL
+    GxB_MODE = 2,       // mode passed to GrB_init (blocking or non-blocking)
+    GxB_THREAD_SAFETY = 3,  // thread library for thread safety
+    GxB_THREADING = 4,      // currently none (in progress)
+    GxB_GLOBAL_NTHREADS = GxB_NTHREADS, // max number of threads to use
+    GxB_IS_HYPER = 6     // query a matrix to see if it hypersparse or not
+                         // (GxB_Matrix_Option_get only)
 }
 GxB_Option_Field ;
 \end{verbatim} }
@@ -4125,8 +5259,8 @@ with the type \verb'GxB_Format_Value':
 \begin{verbatim}
 typedef enum
 {
-    GxB_BY_ROW,         // CSR: compressed sparse row format
-    GxB_BY_COL          // CSC: compressed sparse column format
+    GxB_BY_ROW = 0,     // CSR: compressed sparse row format
+    GxB_BY_COL = 1      // CSC: compressed sparse column format
 }
 GxB_Format_Value ;
 \end{verbatim} }
@@ -4201,6 +5335,14 @@ future.  Any prior options no longer needed in future versions of
 SuiteSparse:GraphBLAS will be silently ignored, so the use these options is
 safe for future updates.
 
+The hypersparse status of a matrix can be queried with the following usage:
+
+{\footnotesize
+\begin{verbatim}
+    bool is_hyper ;
+    GxB_get (A, GxB_IS_HYPER, &is_hyper) ;
+    printf (is_hyper ? "A is hypersparse" : "A is standard sparse") ; \end{verbatim}}
+
 %-------------------------------------------------------------------------------
 \subsection{Other global options}
 %-------------------------------------------------------------------------------
@@ -4216,13 +5358,12 @@ following options:
     typedef enum
     {
         GxB_THREAD_NONE = 0,    // no threading
-        GxB_THREAD_OPENMP,      // OpenMP
-        GxB_THREAD_POSIX,       // POSIX pthreads
-        GxB_THREAD_WINDOWS,     // Windows threads
-        GxB_THREAD_ANSI         // ANSI C11 threads
+        GxB_THREAD_OPENMP = 1,  // OpenMP
+        GxB_THREAD_POSIX = 2,   // POSIX pthreads
+        GxB_THREAD_WINDOWS = 3, // Windows threads
+        GxB_THREAD_ANSI = 4     // ANSI C11 threads
     }
-    GxB_Thread_Model ;
-\end{verbatim} }
+    GxB_Thread_Model ; \end{verbatim} }
 
 SuiteSparse:GraphBLAS is not yet multi-threaded, but it is thread-safe if it is
 compiled with OpenMP or POSIX pthreads, and if the user application threads do
@@ -4266,6 +5407,7 @@ blocking mode determined by \verb'GrB_init', and the threading options.
 Specific format and hypersparsity parameters of each matrix are specific to
 that matrix and can be independently changed.
 
+\newpage
 %===============================================================================
 \subsection{{\sf GxB\_Global\_Option\_set:} set a global option}
 %===============================================================================
@@ -4293,7 +5435,6 @@ No existing matrices are changed.
     GxB_set (GxB_FORMAT, GxB_BY_COL) ;
 \end{verbatim} }
 
-\newpage
 %===============================================================================
 \subsection{{\sf GxB\_Matrix\_Option\_set:} set a matrix option}
 %===============================================================================
@@ -4328,6 +5469,7 @@ For performance, the matrix option should be set as soon as it is created with
     GxB_set (A, GxB_FORMAT, GxB_BY_COL) ;
 \end{verbatim} }
 
+\newpage
 %===============================================================================
 \subsection{{\sf GxB\_Desc\_set:} set a {\sf GrB\_Descriptor} value}
 %===============================================================================
@@ -4350,7 +5492,6 @@ consistent with the other usages of this generic function.  Unlike
 for different types for the third parameter.  Refer to
 Sections~\ref{descriptor_set}~and~\ref{desc_set} for details.
 
-\newpage
 %===============================================================================
 \subsection{{\sf GxB\_Global\_Option\_get:} retrieve a global option}
 %===============================================================================
@@ -4390,8 +5531,7 @@ example:
     // see Demo/Program/pthread_demo.c and openmp_demo.c for examples:
     GxB_Threading_Model thread_safety, threading ;
     GxB_get (GxB_THREAD_SAFETY, &thread_safey) ;
-    GxB_get (GxB_THREADING, &threading) ;
-    \end{verbatim} }
+    GxB_get (GxB_THREADING, &threading) ; \end{verbatim} }
 
 \newpage
 %===============================================================================
@@ -4488,6 +5628,13 @@ To set/get a matrix option:
     GxB_get (GrB_Matrix A, GxB_FORMAT, GxB_Format_Value *s) ; \end{verbatim} }
 
 \noindent
+To get the hypersparse status of a matrix:
+
+    {\footnotesize
+    \begin{verbatim}
+    GxB_get (GrB_Matrix A, GxB_IS_HYPER, bool *is_hyper) ; \end{verbatim} }
+
+\noindent
 To set/get a descriptor field:
 
     {\footnotesize
@@ -4499,7 +5646,7 @@ To set/get a descriptor field:
     GxB_set (GrB_Descriptor d, GrB_MASK, GrB_SCMP) ;
 
     GxB_set (GrB_Descriptor d, GrB_INP0, GxB_DEFAULT) ;
-    GxB_set (GrB_Descriptor d, GrB_INP0, GrB_TRAN ;
+    GxB_set (GrB_Descriptor d, GrB_INP0, GrB_TRAN) ;
 
     GxB_set (GrB_Descriptor d, GrB_INP1, GxB_DEFAULT) ;
     GxB_set (GrB_Descriptor d, GrB_INP1, GrB_TRAN);
@@ -5301,8 +6448,6 @@ The breadth-first search presented in Section~\ref{bfs} of this User Guide uses
 SuiteSparse:GraphBLAS is \verb'GxB_BY_ROW'.  If the matrix is stored by column,
 then use \verb'GrB_mxv' instead.
 
-See Section~\ref{guswork} on the workspace kept in the output vector \verb'w'.
-
 \newpage
 %===============================================================================
 \subsection{{\sf GrB\_mxv:} matrix-vector multiply} %===========================
@@ -5349,58 +6494,6 @@ default descriptor is used, and when the matrix is \verb'GxB_BY_COL'.  When
 \verb'GxB_BY_COL' format.  If an application needs to perform \verb"A'*u"
 repeatedly where \verb'u' is very sparse, then use the \verb'GxB_BY_ROW' format
 for \verb'A' instead.
-
-See Section~\ref{guswork} on the workspace kept in the output vector \verb'w'.
-
-\newpage
-%===============================================================================
-\subsection{Workspace for Gustavson's method for
-{\sf GrB\_mxm}, {\sf GrB\_vxm}, and {\sf GrB\_mxv} }
-%===============================================================================
-\label{guswork}
-
-Gustavon's method for multiplying two sparse matrices or a sparse matrix and a
-sparse vector invovles a tradeoff between workspace and time.  If a
-pre-initialized workspace is kept for repeated multiplications, the time can be
-significantly reduced.  This is very important for methods such as
-\verb'GrB_vxm' when used in a very sparse computation such as breadth-first
-search.
-
-The workspace required by Gustavson's method is size $O(n)$ for the CSR format,
-or $O(m)$ for CSC, if the output matrix \verb'C' is $m$-by-$n$, or $O(n)$ for a
-vector \verb'w' of length $n$.  This space is reused for repeated used by
-\verb'GrB_mxm', \verb'GrB_mxv', and \verb'GrB_vxm'.  To free this space, use
-\verb'GxB_Matrix_resize' or \verb'GxB_Vector_resize', and simply keep the size
-the same:
-
-{\footnotesize
-\begin{verbatim}
-    GrB_Index nrows, ncols ;
-    GrB_Matrix_nrows (&nrows, C) ;
-    GrB_Matrix_ncols (&ncols, C) ;
-    GxB_Matrix_resize (C, nrows, nrows) ;
-
-    GrB_Vector_size (&nrows, w) ;
-    GxB_Vector_resize (w, nrows) ; \end{verbatim} }
-
-This has no effect on the matrix \verb'C' or vector \verb'w', other than to
-free the workspace kept for Gustavson's method.  If the workspace is not
-allocated inside the output matrix \verb'C' or vector \verb'w', or for the the
-first call to \verb'GrB_mxm(C,...)' (or \verb'GrB_vxm(w,...)'), the time taken
-is $O(m+n+f)$, where $f$ is the number of numerical operations that must be
-performed.
-
-Assuming the workspace held internally in \verb'C' or \verb'w' is not freed,
-subsequent uses of Gustavson's method in \verb'GrB_mxm' to compute \verb'C'
-takes only $O(n+f)$ time for a CSC matrix, or $O(m+f)$ for a CSR matrix, and
-subsequent uses of \verb'GrB_mxv' and \verb'GrB_vxm' with the same output
-vector \verb'w' takes only $O(f)$ time.
-
-The \verb'GxB_print' function will report if the workspace for Gustavson's
-method is present, called the \verb'Sauna' (short-hand for the SParse
-Accumulator, or SPA, as this workspace is called in the sparse matrix
-library used internally in MATLAB \cite{GilbertMolerSchreiber92}).  See
-Section~\ref{fprint}.
 
 \newpage
 %===============================================================================
@@ -7894,12 +8987,6 @@ inserted into the primary data structure.  It can also print out entries that
 remain in the data structure but are awaiting deletion; these are called {\em
 zombies} in the output report.
 
-The \verb'GxB_print' function will report if the workspace for Gustavson's
-method is present, called the \verb'Sauna' (short-hand for the SParse
-Accumulator, or SPA, as this workspace is called in the sparse matrix
-library used internally in MATLAB \cite{GilbertMolerSchreiber92}).  See
-Section~\ref{guswork}.
-
 Most of the rest of the report is self-explanatory. 
 
 \newpage
@@ -8194,6 +9281,9 @@ The next sections describe the following 6 macros:
 \verb'GxB_BinaryOp_define'  & define a \verb'GrB_BinaryOp' at compile-time \\
 \verb'GxB_SelectOp_define'  & define a \verb'GxB_SelectOp' at compile-time \\
 \verb'GxB_Monoid_define'    & define a \verb'GrB_Monoid' at compile-time \\
+\verb'GxB_Monoid_terminal_define'
+    & define a \verb'GrB_Monoid' at compile-time \\
+    & (with a terminal value) \\
 \verb'GxB_Semiring_define'  & define a \verb'GrB_Semiring' at compile-time \\
 \hline
 \end{tabular}
@@ -8350,6 +9440,23 @@ GxB_Monoid_define(PageRank_monoid, PageRank_add, {0,0}) ;
 \end{verbatim} }
 
 %-------------------------------------------------------------------------------
+\subsection{{\sf GxB\_Monoid\_terminal\_define:}
+define a {\sf GrB\_Monoid} at compile time, with a terminal value}
+%-------------------------------------------------------------------------------
+\label{monoid_terminal_define}
+
+\begin{mdframed}[userdefinedwidth=6in]
+{\footnotesize
+\begin{verbatim}
+GxB_Monoid_terminal_define(GrB_Monoid monoid, GrB_BinaryOp op, identity, terminal) ;
+\end{verbatim} } \end{mdframed}
+
+\verb'GxB_Monoid_terminal_define' is identical to \verb'GxB_Monoid_define',
+except that it allows the specification of a terminal value.  See
+Section~\ref{monoid_terminal_new} for a description of the terminal value of
+a monoid.
+
+%-------------------------------------------------------------------------------
 \subsection{{\sf GxB\_Semiring\_define:}
 define a {\sf GrB\_Semiring} at compile time}
 %-------------------------------------------------------------------------------
@@ -8375,17 +9482,89 @@ GxB_Semiring_define(GrB_Semiring semiring, GrB_Monoid add, GrB_BinaryOp mult) ;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \label{examples}
 
-Six examples of how to use GraphBLAS are described below:
-(1) performing a breadth-first search,
-(2) finding a maximal independent set,
-(3) creating a random matrix,
-(4) creating a finite-element matrix,
-(5) reading a matrix from a file,
-and
-(6) complex numbers as a user-defined type.
-The complete set of programs appears in the
-\verb'Demo' directory in SuiteSparse:GraphBLAS.
+Six examples of how to use GraphBLAS are described below.  They all
+appear in the \verb'Demo' folder of SuiteSparse:GraphBLAS.
 
+\begin{enumerate}
+\item performing a breadth-first search,
+\item finding a maximal independent set,
+\item creating a random matrix,
+\item creating a finite-element matrix,
+\item reading a matrix from a file, and
+\item complex numbers as a user-defined type.
+\end{enumerate}
+
+Additional examples appear in the newly created LAGraph project, currently in
+progress.  Finally, the \verb'Extras' folder includes triangle counting and
+k-truss algorithms in GraphBLAS, and methods that do not GraphBLAS (both simple
+sequential methods, and methods that use OpenMP).
+
+%-------------------------------------------------------------------------------
+\subsection{LAGraph}
+%-------------------------------------------------------------------------------
+\label{lagraph}
+
+The LAGraph project is a community-wide effort to create graph algorithms based
+on GraphBLAS (any implementation of the API, not just SuiteSparse: GraphBLAS).
+As of Feb.~2019, the library includes the algorithms and utilities listed in
+the table below.  Many additional algorithms are planned, such as betweenness
+centrality, PageRank, single-source shortest path (via delta stepping), minimum
+spanning trees, connected components, and many more.  Refer to
+\url{https://github.com/GraphBLAS/LAGraph} for a current list of algorithms
+(the one below will soon be out of date).  Most of the functions in the
+\verb'Demo/' and the \verb'Extras' folder in SuiteSparse:GraphBLAS will
+eventually be translated into algorithms or utilities for LAGraph.
+
+To use LAGraph with SuiteSparse:GraphBLAS, place the two folders \verb'LAGraph'
+and \verb'GraphBLAS' in the same parent directory.  This allows the
+\verb'cmake' script in LAGraph to find the copy of GraphBLAS.  Alternatively,
+the GraphBLAS source could be placed anywhere, as long as
+\verb'sudo make install' is performed.
+
+Build \verb'GraphBLAS' first, then the \verb'LAGraph' library, and then the
+tests in \verb'LAGraph/Test'.
+
+\vspace{0.1in}
+{\small
+\begin{tabular}{ll}
+\hline
+\hline
+Algorithms & description \\
+\hline
+\hline
+\verb'LAGraph_bfs_pushpull' & a direction-optimized BFS
+                                \cite{Beamer:2012:DOB,Yang:2018:IPE}, \\
+                            & typically 2x faster than \verb'bfs5m' \\
+\verb'LAGraph_bfs_simple'   & a simple BFS (about the same as \verb'bfs5m') \\ 
+\hline
+\hline
+Utilities & description \\
+\hline
+\hline
+\verb'LAGraph_Vector_isall'     & tests 2 vectors with a binary operator \\
+\verb'LAGraph_Vector_isequal'   & tests if 2 vectors are equal \\
+\verb'LAGraph_Vector_to_dense'  & converts a vector to dense \\
+\verb'LAGraph_alloc_global'     & types, operators, monoids, and semirings \\
+\verb'LAGraph_finalize'         & ends LAGraph \\
+\verb'LAGraph_free'             & wrapper for \verb'free' \\
+\verb'LAGraph_free_global'      & frees objects created by \verb'_alloc_global'\\
+\verb'LAGraph_init'             & starts LAGraph \\
+\verb'LAGraph_isall'            & tests 2 matrices with a binary operator \\
+\verb'LAGraph_isequal'          & tests if 2 matrices are equal \\
+\verb'LAGraph_ispattern'        & tests if all entries in a matrix are 1 \\
+\verb'LAGraph_malloc'           & wrapper for \verb'malloc' \\
+\verb'LAGraph_mmread'           & read a Matrix Market file \\
+\verb'LAGraph_mmwrite'          & write a Matrix Market file \\
+\verb'LAGraph_pattern'          & extracts the pattern of a matrix \\
+\verb'LAGraph_rand'             & simple random number generator \\
+\verb'LAGraph_rand64'           & \verb'int64_t' random number generator \\
+\verb'LAGraph_random'           & random matrix generator \\
+\verb'LAGraph_randx'            & \verb'double' random number generator \\
+\verb'LAGraph_tic'              & start a timer \\
+\verb'LAGraph_toc'              & end a timer \\
+\end{tabular}}
+
+\newpage
 %-------------------------------------------------------------------------------
 \subsection{Breadth-first search}
 %-------------------------------------------------------------------------------
@@ -8489,7 +9668,6 @@ GrB_Info bfs5m              // BFS of a graph (using vector assign & reduce)
     GrB_Index s             // starting node of the BFS
 )
 {
-    GrB_Info info ;
     GrB_Index n ;                          // # of nodes in the graph
     GrB_Vector q = NULL ;                  // nodes visited at each level
     GrB_Vector v = NULL ;                  // result vector
@@ -8498,6 +9676,7 @@ GrB_Info bfs5m              // BFS of a graph (using vector assign & reduce)
     GrB_Descriptor desc = NULL ;           // Descriptor for vxm
     GrB_Matrix_nrows (&n, A) ;             // n = # of rows of A
     GrB_Vector_new (&v, GrB_INT32, n) ;    // Vector<int32_t> v(n) = 0
+    GrB_assign (v, NULL, NULL, 0, GrB_ALL, n, NULL) ;   // make v dense
     GrB_Vector_new (&q, GrB_BOOL, n) ;     // Vector<bool> q(n) = false
     GrB_Vector_setElement (q, true, s) ;   // q[s] = true, false elsewhere
     GrB_Monoid_new (&Lor, GrB_LOR, (bool) false) ;
@@ -8511,17 +9690,18 @@ GrB_Info bfs5m              // BFS of a graph (using vector assign & reduce)
     {
         // v<q> = level, using vector assign with q as the mask
         GrB_assign (v, q, NULL, level, GrB_ALL, n, NULL) ;
-
         // q<!v> = q ||.&& A ; finds all the unvisited successors from current
         // q, using !v as the mask
         GrB_vxm (q, v, NULL, Boolean, q, A, desc) ;
-
         // successor = ||(q)
         GrB_reduce (&successor, NULL, Lor, q, NULL) ;
     }
+
+    GrB_Descriptor_set (desc, GrB_MASK, GxB_DEFAULT) ;  // mask not inverted
+    GrB_assign (v, v, NULL, v, GrB_ALL, n, desc) ;      // make v sparse
     *v_output = v ;         // return result
-    GrB_free (&q) ;         // free workspace
-    GrB_free (&Lor) ; GrB_free (&Boolean) ; GrB_free (&desc) ;
+    // free workspace
+    GrB_free (&q) ; GrB_free (&Lor) ; GrB_free (&Boolean) ; GrB_free (&desc) ;
     return (GrB_SUCCESS) ;
 } \end{verbatim}} 
 \end{mdframed}
@@ -8941,6 +10121,9 @@ uses GraphBLAS to implement the two methods above, and two additional ones.
 %-------------------------------------------------------------------------------
 \label{read}
 
+{\bf NOTE:} see also \verb'LAGraph_mmread' and \verb'LAGraph_mmwrite', which
+can read and write any matrix in Matrix Market format.
+
 The \verb'read_matrix' function in the \verb'Demo' reads in a triplet matrix
 from a file, one line per entry, and then uses \verb'GrB_Matrix_build' to
 create the matrix.  It creates a second copy with \verb'GrB_Matrix_setElement',
@@ -8953,12 +10136,12 @@ unsymmetric.  If an input parameter is set to make the matrix symmetric,
 \verb'read_matrix' computes \verb"A=(A+A')/2" if \verb'A' is square (turning
 all directed edges into undirected ones.  If \verb'A' is rectangular, it
 creates a bipartite graph, which is the same as the augmented matrix,
-\verb"A = [0 A ; A' 0]" in pseudo-MATLAB notation.
-
+\verb"A = [0 A ; A' 0]".
 If \verb'C' is an \verb'n'-by-\verb'n' matrix, then \verb"C=(C+C')/2" can be
 computed as follows in GraphBLAS, (the \verb'scale2' function divides an entry
 by 2):
 
+    \vspace{-0.05in}
     {\footnotesize
     \begin{verbatim}
     GrB_Descriptor_new (&dt2) ;
@@ -8988,7 +10171,7 @@ indices first, \verb'I=[10, 11' \verb'...' \verb'20]'.
 Thus, to compute the MATLAB equivalent of \verb"A = [0 A ; A' 0]", index lists
 \verb'I' and \verb'J' must first be constructed:
 
-    \newpage
+    \vspace{-0.05in}
     {\footnotesize
     \begin{verbatim}
     int64_t n = nrows + ncols ;
@@ -9008,6 +10191,7 @@ Thus, to compute the MATLAB equivalent of \verb"A = [0 A ; A' 0]", index lists
 Once the index lists are generated, however, the resulting GraphBLAS operations
 are fairly straightforward, computing \verb"A=[0 C ; C' 0]".
 
+    \vspace{-0.05in}
     {\footnotesize
     \begin{verbatim}
     GrB_Descriptor_new (&dt1) ;
@@ -9034,6 +10218,7 @@ SuiteSparse:GraphBLAS also adds a \verb'GxB_RANGE' mechanism that mimics
 the MATLAB colon notation.  This speeds up the method and simplifies the
 code the user needs to write to compute \verb"A=[0 C ; C' 0]":
 
+    \vspace{-0.05in}
     {\footnotesize
     \begin{verbatim}
     int64_t n = nrows + ncols ;
@@ -9073,14 +10258,18 @@ compute a fixed number of iterations.  The third example is more extensive
 (\verb'dpagerank2.c'), and serves as an example of the power and flexibility of
 user-defined types, operators, monoids, and semirings.  It creates a semiring
 for the entire PageRank computation.  It terminates if the 2-norm of the change
-in the rank vector \verb'r' is below a threshold.  This is computed in one of
-two ways.  If \verb'PAGERANK_UNSAFE' is defined at compile-time, the change in
-\verb'r' is computed during the accumulator step of \verb'GrB_vxm', as a
-side-effect of a user-defined operator.  This works in the current version of
-SuiteSparse:GraphBLAS, but is unsafe since it assumes the accumulator operator
-is computed sequentially.  If computed in parallel, a race condition would
-occur.  If \verb'PAGERANK_UNSAFE' is not defined, then a safe method is used
-instead.  If \verb'my_pagerank.m4' is placed in \verb'GraphBLAS/User/', then
+in the rank vector \verb'r' is below a threshold.
+
+% This is computed in one of
+% two ways.  If \verb'PAGERANK_UNSAFE' is defined at compile-time, the change in
+% \verb'r' is computed during the accumulator step of \verb'GrB_vxm', as a
+% side-effect of a user-defined operator.  This works in the current version of
+% SuiteSparse:GraphBLAS, but is unsafe since it assumes the accumulator operator
+% is computed sequentially.  If computed in parallel, a race condition would
+% occur.  If \verb'PAGERANK_UNSAFE' is not defined, then a safe method is used
+% instead.
+
+If \verb'my_pagerank.m4' is placed in \verb'GraphBLAS/User/', then
 the user objects are created at compile-time instead of at run-time, which
 leads to faster execution.
 
@@ -9147,9 +10336,9 @@ Sandia2  & \verb"sum(sum((L*L).*L))"
 In general, the Sandia methods are the fastest of the 6 methods when
 implemented in GraphBLAS.  For full details on the triangle counting and
 $k$-truss algorithms, and performance results, see \cite{Davis18b}, a copy of
-which appears in the \verb'SuiteSparse/GraphBLAS/Doc' folder.  That paper uses
-an earlier version of SuiteSparse:GraphBLAS in which all matrices are stored by
-column.
+which appears in the \verb'SuiteSparse/GraphBLAS/Doc' folder.  The code appears
+in \verb'Extras'.  That paper uses an earlier version of SuiteSparse:GraphBLAS
+in which all matrices are stored by column.
 
 \newpage
 %-------------------------------------------------------------------------------
@@ -9307,6 +10496,47 @@ these options.  Go into the \verb'build' directory and type one of these:
     CC=xlc cmake ..
     CC=icc cmake ..  \end{verbatim} }
 
+You can also do the following in the top-level GraphBLAS folder instead:
+
+    {\small
+    \begin{verbatim}
+    CC=gcc make
+    CC=gcc-6 cmake
+    CC=xlc cmake
+    CC=icc cmake \end{verbatim} }
+
+For faster compilation, you can specify a parallel make.  For example,
+to use 32 parallel jobs and the \verb'gcc' compiler, do the following:
+
+    {\small
+    \begin{verbatim}
+    JOBS=32 CC=gcc make \end{verbatim} }
+
+%----------------------------------------
+\subsection{Creating the Doxygen documentation}
+\label{sec:doxygen}
+%----------------------------------------
+
+SuiteSparse:GraphBLAS is equipped with a \verb'Doxyfile' that specifies how
+\verb'doxygen' can be used to create detailed documentation of each file,
+including call-graphs.  The \verb'doxygen' documentation is not meant for
+end-users of GraphBLAS, but for GraphBLAS developers instead.
+
+If you edit GraphBLAS, you must first run the MATLAB script
+\verb'dox_headers.m' in \verb'Doc/', in MATLAB.  This script parses all of the
+source code for structured comments, to create header files suitable for
+parsing by \verb'doxygen'.  Next, do the following in the top-level
+\verb'GraphBLAS' folder:
+
+    {\small
+    \begin{verbatim}
+    make dox\end{verbatim} }
+
+This creates the \verb'Doc/html/' folder, which is initially empty in
+the default distribution.  Open the file \verb'Doc/html/index.html' in
+any web browser.  Alternatively, a copy of the \verb'doxygen' documentation can
+be found at \url{http://faculty.cse.tamu.edu/davis/GraphBLAS/html}.
+
 %----------------------------------------
 \subsection{Thread-safety in multithreaded user applications}
 \label{sec:threads}
@@ -9405,7 +10635,8 @@ query the global option (see also Sections~\ref{gxbset} and \ref{gxbget}):
 The above options can also be combined.  For example, to use the \verb'gcc'
 compiler, to change the default format \verb'GxB_FORMAT_DEFAULT' to
 \verb'GxB_BY_COL', and to use a POSIX mutex inside GraphBLAS to synchronize
-user threads, use the following \verb'cmake' command:
+user threads, use the following \verb'cmake' command while in the
+\verb'GraphBLAS/build' directory:
 
     {\small
     \begin{verbatim}
@@ -9501,6 +10732,9 @@ National Laboratory), Timothy G. Mattson (Intel Corporation) Scott McMillan
 specification and for patiently answering my many questions while I was
 implementing it.
 
+I would like to thank Tim Mattson and Henry Gabb, Intel, Inc., for their
+collaboration and for the support of Intel.
+
 I would like to thank John Gilbert (UC Santa Barbara) for our many discussions
 on GraphBLAS, and for our decades-long conversation and collaboration on sparse
 matrix computations, and sparse matrices in MATLAB in particular.
@@ -9523,7 +10757,7 @@ database module for Redis.  Based on SuiteSparse:GraphBLAS, RedisGraph is up
 \url{https://redislabs.com/blog/new-redisgraph-1-0-achieves-600x-faster-performance-graph-databases/}}).
 
 SuiteSparse:GraphBLAS was developed with support from
-MIT Lincoln Lab and NSF grant 1514406.
+MIT Lincoln Lab, Intel, and NSF grant 1514406.
 
 \newpage
 %-------------------------------------------------------------------------------
@@ -9535,4 +10769,3 @@ MIT Lincoln Lab and NSF grant 1514406.
 \bibliography{GraphBLAS_UserGuide.bib}
 }
 \end{document}
-

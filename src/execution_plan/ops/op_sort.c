@@ -5,12 +5,14 @@
 */
 
 #include "op_sort.h"
+#include "op_project.h"
+#include "op_aggregate.h"
 
 #include "util/arr.h"
 #include "util/qsort.h"
 #include "util/rmalloc.h"
 
-static bool _record_islt(Record a, Record b, const Sort *op) {    
+static bool _record_islt(Record a, Record b, const OpSort *op) {    
     // First N values in record correspond to RETURN expressions
     // N .. M values correspond to ORDER-BY expressions
     // Query: RETURN A.V, B.V, C.V ORDER BY B.W, C.V*A.V
@@ -23,8 +25,8 @@ static bool _record_islt(Record a, Record b, const Sort *op) {
     // V2 - C.V
     // V3 - B.W
     // V4 - C.V*A.
-    uint offset = array_len(op->ast->returnNode->returnElements);
-    uint comparables = array_len(op->ast->orderNode->expressions);
+    uint offset = op->offset;
+    uint comparables = array_len(op->expressions);
 
     for(uint i = 0; i < comparables; i++) {
         SIValue aVal = Record_GetScalar(a, offset+i);
@@ -39,7 +41,7 @@ static bool _record_islt(Record a, Record b, const Sort *op) {
 
 // Compares two records on a subset of fields
 // Return value similar to strcmp
-static int _record_compare(Record a, Record b, const Sort *op) {
+static int _record_compare(Record a, Record b, const OpSort *op) {
     // First N values in record correspond to RETURN expressions
     // N .. M values correspond to ORDER-BY expressions
     // Query: RETURN A.V, B.V, C.V ORDER BY B.W, C.V*A.V
@@ -51,9 +53,9 @@ static int _record_compare(Record a, Record b, const Sort *op) {
     // V1 - B.V
     // V2 - C.V
     // V3 - B.W
-    // V4 - C.V*A.
-    uint offset = array_len(op->ast->returnNode->returnElements);
-    uint comparables = array_len(op->ast->orderNode->expressions);
+    // V4 - C.V*A.    
+    uint offset = op->offset;
+    uint comparables = array_len(op->expressions);
 
     for(uint i = 0; i < comparables; i++) {
         SIValue aVal = Record_GetScalar(a, offset+i);
@@ -66,13 +68,13 @@ static int _record_compare(Record a, Record b, const Sort *op) {
 
 // Compares two heap record nodes.
 static int _heap_elem_compare(const void *A, const void *B, const void *udata) {
-    Sort* op = (Sort*)udata;
+    OpSort* op = (OpSort*)udata;
     Record aRec = (Record)A;
     Record bRec = (Record)B;
     return _record_compare(aRec, bRec, op) * op->direction;
 }
 
-static void _accumulate(Sort *op, Record r) {
+static void _accumulate(OpSort *op, Record r) {
     if(!op->limit) {
         /* Not using a heap and there's room for record. */
         op->buffer = array_append(op->buffer, r);
@@ -91,16 +93,33 @@ static void _accumulate(Sort *op, Record r) {
     }
 }
 
-static Record _handoff(Sort *op) {
+static Record _handoff(OpSort *op) {
     if(array_len(op->buffer) > 0) return array_pop(op->buffer);
     return NULL;
 }
 
-OpBase *NewSortOp(const AST *ast) {
-    Sort *sort = malloc(sizeof(Sort));
+uint _determineOffset(OpBase *op) {
+    assert(op);
+    
+    if(op->type == OPType_AGGREGATE) {
+        OpAggregate *aggregate = (OpAggregate*)op;
+        return aggregate->exp_count;
+    } else if(op->type == OPType_PROJECT) {
+        OpProject *project = (OpProject*)op;
+        return project->exp_count;
+    }
+
+    return _determineOffset(op->children[0]);
+}
+
+OpBase *NewSortOp(const AST *ast, AR_ExpNode **expressions) {
+    assert(expressions && array_len(expressions) > 0);
+    OpSort *sort = malloc(sizeof(OpSort));
     sort->ast = ast;
     sort->direction = (ast->orderNode->direction == ORDER_DIR_DESC) ? DIR_DESC : DIR_ASC;
     sort->limit = 0;
+    sort->offset = 0;
+    sort->expressions = expressions;
     sort->heap = NULL;
     sort->buffer = NULL;
 
@@ -120,6 +139,7 @@ OpBase *NewSortOp(const AST *ast) {
     sort->op.type = OPType_SORT;
     sort->op.consume = SortConsume;
     sort->op.reset = SortReset;
+    sort->op.init = SortInit;
     sort->op.free = SortFree;
 
     return (OpBase*)sort;
@@ -130,8 +150,14 @@ OpBase *NewSortOp(const AST *ast) {
  * accept only 2 arguments. */
 #define RECORD_SORT(a, b) (_record_islt((*a), (*b), op))
 
+OpResult SortInit(OpBase *opBase) {
+    OpSort *op = (OpSort*) opBase;
+    op->offset = _determineOffset(opBase->children[0]);
+    return OP_OK;
+}
+
 Record SortConsume(OpBase *opBase) {
-    Sort *op = (Sort*) opBase;
+    OpSort *op = (OpSort*) opBase;
 
     Record r = _handoff(op);
     if(r) return r;
@@ -168,7 +194,7 @@ Record SortConsume(OpBase *opBase) {
 
 /* Restart iterator */
 OpResult SortReset(OpBase *ctx) {
-    Sort *op = (Sort*)ctx;
+    OpSort *op = (OpSort*)ctx;
     uint recordCount;
 
     if(op->heap) {
@@ -192,7 +218,7 @@ OpResult SortReset(OpBase *ctx) {
 
 /* Frees Sort */
 void SortFree(OpBase *ctx) {
-    Sort *op = (Sort*)ctx;
+    OpSort *op = (OpSort*)ctx;
 
     if(op->heap) {
         uint recordCount = heap_count(op->heap);
@@ -211,4 +237,7 @@ void SortFree(OpBase *ctx) {
         }
         array_free(op->buffer);
     }
+
+    for(int i = 0; i < array_len(op->expressions); i++) AR_EXP_Free(op->expressions[i]);
+    array_free(op->expressions);
 }

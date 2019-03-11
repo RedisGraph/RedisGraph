@@ -199,7 +199,9 @@ GrB_UnaryOp Complex_complex_real = NULL, Complex_complex_imag = NULL ;
 // Complex type, scalars, monoids, and semiring
 //------------------------------------------------------------------------------
 
+#ifndef MY_COMPLEX
 GrB_Type Complex = NULL ;
+#endif
 GrB_Monoid   Complex_plus_monoid = NULL, Complex_times_monoid = NULL ;
 GrB_Semiring Complex_plus_times = NULL ;
 C Complex_1  = ONE ;
@@ -226,7 +228,9 @@ GrB_Info Complex_init ( )
     // create the Complex type
     //--------------------------------------------------------------------------
 
+    #ifndef MY_COMPLEX
     OK (GrB_Type_new (&Complex, sizeof (C))) ;    
+    #endif
 
     #undef C
     #undef D

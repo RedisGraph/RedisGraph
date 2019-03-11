@@ -2,7 +2,7 @@
 // GB_BinaryOp_compatible: check binary operator for type compatibility
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -10,6 +10,8 @@
 // check type compatibilty for C = op (A,B).  With typecasting: A is cast to
 // op->xtype, B is cast to op->ytype, the operator is computed, and then the
 // result of op->ztype is cast to C->type.
+
+// not parallel: this function does O(1) work and is already thread-safe.
 
 #include "GB.h"
 

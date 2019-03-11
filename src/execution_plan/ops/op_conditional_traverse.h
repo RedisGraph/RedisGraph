@@ -15,6 +15,7 @@
 // OP Traverse
 typedef struct {
     OpBase op;
+    AST *ast;
     Graph *graph;
     AlgebraicExpression *algebraic_expression;
     GrB_Matrix F;               // Filter matrix.
@@ -33,7 +34,7 @@ typedef struct {
 } CondTraverse;
 
 // Creates a new Traverse operation
-OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *algebraic_expression);
+OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *algebraic_expression, AST *ast);
 
 // TraverseConsume next operation 
 // each call will update the graph

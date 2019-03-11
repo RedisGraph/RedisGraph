@@ -29,6 +29,7 @@ bool GB_mx_mxArray_to_UnaryOp          // true if successful
     const bool XisComplex               // true if X is complex
 )
 {
+    GB_WHERE ("GB_mx_mxArray_to_UnaryOp") ;
 
     (*handle) = NULL ;
     const mxArray *opname_mx = NULL, *opclass_mx = NULL ;

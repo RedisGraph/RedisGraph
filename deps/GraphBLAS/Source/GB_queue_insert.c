@@ -2,7 +2,7 @@
 // GB_queue_insert:  insert a matrix at the head of the matrix queue
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -10,6 +10,8 @@
 // check if the matrix has pending computations (either pending tuples or
 // zombies, or both).  If it has any, and if it is not already in the queue,
 // then insert it into the queue.
+
+// not parallel: this function does O(1) work and is already thread-safe.
 
 #include "GB.h"
 

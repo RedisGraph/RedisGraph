@@ -76,7 +76,7 @@ void mexFunction
         void *C = mxGetData (pargout [0]) ;
 
         // cast the data from X to C
-        GB_cast_array (C, ctype->code, X, xtype->code, nrows*ncols) ;
+        GB_cast_array (C, ctype->code, X, xtype->code, nrows*ncols, Context) ;
 
         // X is a shallow copy that must not be freed
     }

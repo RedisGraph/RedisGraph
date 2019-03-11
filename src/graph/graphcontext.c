@@ -1,3 +1,9 @@
+/*
+* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+*
+* This file is available under the Redis Labs Source Available License Agreement
+*/
+
 #include <sys/param.h>
 #include "graphcontext.h"
 #include "serializers/graphcontext_type.h"
@@ -69,7 +75,7 @@ cleanup:
   return gc;
 }
 
-GraphContext* GraphContext_GetFromLTS() {
+GraphContext* GraphContext_GetFromTLS() {
   GraphContext* gc = pthread_getspecific(_tlsGCKey);
   assert(gc);
   return gc;

@@ -73,6 +73,5 @@ void mexFunction
     }
 
     FREE_ALL ;
-    GrB_finalize ( ) ;
 }
 

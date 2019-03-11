@@ -5,18 +5,17 @@ GrB_Info GB_AgusB
     const GrB_Matrix A,
     const GrB_Matrix B,
     bool flipxy,
-    GB_Sauna Sauna,
-    GB_Context Context
+    GB_Sauna Sauna
 ) ;
 
 GrB_Info GB_AdotB
 (
     GrB_Matrix *Chandle,
     const GrB_Matrix M,
+    const bool Mask_comp,
     const GrB_Matrix A,
     const GrB_Matrix B,
-    bool flipxy,
-    GB_Context Context
+    bool flipxy
 ) ;
 
 GrB_Info GB_AheapB
@@ -29,8 +28,6 @@ GrB_Info GB_AheapB
     int64_t *restrict List,
     GB_pointer_pair *restrict pA_pair,
     GB_Element *restrict Heap,
-    const int64_t bjnz_max,
-    GB_Context Context
+    const int64_t bjnz_max
 ) ;
-
 

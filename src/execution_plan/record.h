@@ -36,7 +36,7 @@ Record Record_New(int entries);
 Record Record_Clone(const Record r);
 
 // Merge record b into a.
-void Record_Merge(Record a, const Record b);
+void Record_Merge(Record *a, const Record b);
 
 // Returns number of entries record can hold.
 unsigned int Record_length(const Record r);
@@ -70,6 +70,12 @@ size_t Record_ToString(const Record r, char **buf, size_t *buf_cap);
 
 // 64-bit hash of record
 unsigned long long Record_Hash64(const Record r);
+<<<<<<< HEAD
+=======
+
+// Free record.
+void Record_Free(Record r);
+>>>>>>> origin/master
 
 void Record_Print(const Record r, const char *title, FILE *out);
 

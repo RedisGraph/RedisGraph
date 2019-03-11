@@ -23,11 +23,11 @@ typedef struct {
 } EntityUpdateEvalCtx;
 
 // Context describing a pending update to perform.
-typedef struct {
-    AST_GraphEntity *ge;                /* Referred entity in MATCH clause. */
+typedef struct {    
     char *attribute;                    /* Attribute name to update. */
-    Attribute_ID attribute_idx;         /* Attribute internal ID. */
-    Entity *entity_reference;           /* Graph entity to update. */
+    Node n;
+    Edge e;
+    GraphEntityType entity_type;        /* Graph entity type. */
     SIValue new_value;                  /* Constant value to set. */
 } EntityUpdateCtx;
 
@@ -37,11 +37,11 @@ typedef struct {
     GraphContext *gc;
     ResultSet *result_set;
 
-    size_t update_expressions_count;
+    uint update_expressions_count;
     EntityUpdateEvalCtx *update_expressions;    /* List of entities to update and their arithmetic expressions. */
 
-    size_t pending_updates_cap;
-    size_t pending_updates_count;
+    uint pending_updates_cap;
+    uint pending_updates_count;
     EntityUpdateCtx *pending_updates;           /* List of entities to update and their actual new value. */
 } OpUpdate;
 

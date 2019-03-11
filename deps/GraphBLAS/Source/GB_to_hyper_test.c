@@ -2,13 +2,15 @@
 // GB_to_hyper_test: test if a matrix should convert to hyperspasre
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
 // Returns true if a non-hypersparse matrix should be converted to hypersparse.
 // Returns false if the matrix is already hypersparse.
+
+// not parallel: this function does O(1) work and is already thread-safe.
 
 #include "GB.h"
 

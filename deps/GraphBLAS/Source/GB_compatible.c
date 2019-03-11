@@ -2,13 +2,15 @@
 // GB_compatible: check input and operators for type compatibility
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
-// Check if the types for C<Mask> = accum (C,T) are all compatible,
-// and (if present) make sure the size of C and Mask match.
+// Check if the types for C<M> = accum (C,T) are all compatible,
+// and (if present) make sure the size of C and M match.
+
+// not parallel: this function does O(1) work and is already thread-safe.
 
 #include "GB.h"
 
@@ -16,20 +18,28 @@ GrB_Info GB_compatible          // SUCCESS if all is OK, *_MISMATCH otherwise
 (
     const GrB_Type ctype,       // the type of C (matrix or scalar)
     const GrB_Matrix C,         // the output matrix C; NULL if C is a scalar
-    const GrB_Matrix Mask,      // optional Mask, NULL if no mask
-    const GrB_BinaryOp accum,   // C<Mask> = accum(C,T) is computed
+    const GrB_Matrix M,         // optional mask, NULL if no mask
+    const GrB_BinaryOp accum,   // C<M> = accum(C,T) is computed
     const GrB_Type ttype,       // type of T
     GB_Context Context
 )
 {
 
-    ASSERT (GB_ALIAS_OK (C, Mask)) ;
+    //--------------------------------------------------------------------------
+    // check inputs
+    //--------------------------------------------------------------------------
+
+    ASSERT (GB_ALIAS_OK (C, M)) ;
 
     GrB_Info info ;
 
+    //--------------------------------------------------------------------------
+    // check accum compatibility
+    //--------------------------------------------------------------------------
+
     if (accum != NULL)
     {
-        // Results T are accumlated via C<Mask>=accum(C,T)
+        // Results T are accumlated via C<M>=accum(C,T)
 
         // For entries in C and T, c=z=accum(c,t) is computed, so C must
         // be compatible with both the ztype and xtype of accum, and T
@@ -46,8 +56,12 @@ GrB_Info GB_compatible          // SUCCESS if all is OK, *_MISMATCH otherwise
         }
     }
 
-    // C<Mask> = T, so C and T must be compatible.
-    // also C<Mask> = accum(C,T) for entries in T but not C
+    //--------------------------------------------------------------------------
+    // check the types of C and T
+    //--------------------------------------------------------------------------
+
+    // C<M> = T, so C and T must be compatible.
+    // also C<M> = accum(C,T) for entries in T but not C
     if (!GB_Type_compatible (ctype, ttype))
     { 
         return (GB_ERROR (GrB_DOMAIN_MISMATCH, (GB_LOG,
@@ -56,7 +70,10 @@ GrB_Info GB_compatible          // SUCCESS if all is OK, *_MISMATCH otherwise
             ttype->name, ctype->name))) ;
     }
 
+    //--------------------------------------------------------------------------
     // check the mask
-    return (GB_Mask_compatible (Mask, C, 1, 1, Context)) ;
+    //--------------------------------------------------------------------------
+
+    return (GB_Mask_compatible (M, C, 1, 1, Context)) ;
 }
 

@@ -23,15 +23,15 @@ typedef enum {
 typedef struct {
     OpBase *root;
     QueryGraph *query_graph;
-    FT_FilterNode *filter_tree;
     ResultSet *result_set;
+    FT_FilterNode *filter_tree;
 } ExecutionPlan;
 
 /* Creates a new execution plan from AST */
 ExecutionPlan* NewExecutionPlan (
     RedisModuleCtx *ctx,    // Module-level context
     GraphContext *gc,       // Graph access and schemas
-    AST *ast,               // Query parsed AST
+    AST **ast,              // Query parsed AST
     bool explain            // Construct execution plan, do not execute
 );
 
@@ -39,13 +39,20 @@ ExecutionPlan* NewExecutionPlan (
 char* ExecutionPlanPrint(const ExecutionPlan *plan);
 
 /* Removes operation from execution plan. */
-void ExecutionPlan_RemoveOp(OpBase *op);
+void ExecutionPlan_RemoveOp(ExecutionPlan *plan, OpBase *op);
 
 /* Adds operation to execution plan as a child of parent. */
 void ExecutionPlan_AddOp(OpBase *parent, OpBase *newOp);
 
+/* Push b right below a. */
+void ExecutionPlan_PushBelow(OpBase *a, OpBase *b);
+
 /* Replace a with b. */
-void ExecutionPlan_ReplaceOp(OpBase *a, OpBase *b);
+void ExecutionPlan_ReplaceOp(ExecutionPlan *plan, OpBase *a, OpBase *b);
+
+/* Locate the first operation of a given type within execution plan.
+ * Returns NULL if operation wasn't found. */
+OpBase* ExecutionPlan_LocateOp(OpBase *root, OPType type);
 
 /* Executes plan */
 ResultSet* ExecutionPlan_Execute(ExecutionPlan *plan);

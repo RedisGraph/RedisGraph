@@ -251,6 +251,21 @@ class AlgebraicExpressionTest: public ::testing::Test {
 
         return q;
     }
+
+    AlgebraicExpression **_build_arithmetic_expression(const char *query, size_t *exp_count) {
+        *exp_count = 0;
+        AlgebraicExpression **ae = NULL;
+
+        AST **ast = ParseQuery(query, strlen(query), NULL);
+        ae = AlgebraicExpression_From_Query(
+            ast[0],
+            ast[0]->matchNode->_mergedPatterns,
+            query_graph,
+            exp_count);
+        return ae;
+
+        AST_Free(ast);
+    }
 };
 
 TEST_F(AlgebraicExpressionTest, Exp_OP_ADD) {
@@ -631,12 +646,9 @@ TEST_F(AlgebraicExpressionTest, ExpTransform_AB_Times_C_Plus_D) {
 }
 
 TEST_F(AlgebraicExpressionTest, MultipleIntermidateReturnNodes) {
-    const char *query = query_multiple_intermidate_return_nodes;
-
-    AST *ast = ParseQuery(query, strlen(query), NULL);
-    
     size_t exp_count = 0;
-    AlgebraicExpression **ae = AlgebraicExpression_From_Query(ast, ast->matchNode->_mergedPatterns, query_graph, &exp_count);
+    const char *query = query_multiple_intermidate_return_nodes;
+    AlgebraicExpression **ae = _build_arithmetic_expression(query, &exp_count);
     ASSERT_EQ(exp_count, 3);
     
     // Validate first expression.
@@ -663,17 +675,14 @@ TEST_F(AlgebraicExpressionTest, MultipleIntermidateReturnNodes) {
     ASSERT_EQ(exp->operands[0].operand, e->mat);
 
     // Clean up.
-    AST_Free(ast);
     for(int i = 0; i < exp_count; i++) AlgebraicExpression_Free(ae[i]);
     free(ae);
 }
 
 TEST_F(AlgebraicExpressionTest, OneIntermidateReturnNode) {
-    const char *query = query_one_intermidate_return_nodes;
-    AST *ast = ParseQuery(query, strlen(query), NULL);
-
     size_t exp_count = 0;
-    AlgebraicExpression **ae = AlgebraicExpression_From_Query(ast, ast->matchNode->_mergedPatterns, query_graph, &exp_count);
+    const char *query = query_one_intermidate_return_nodes;
+    AlgebraicExpression **ae = _build_arithmetic_expression(query, &exp_count);
     ASSERT_EQ(exp_count, 2);
 
     // Validate first expression.
@@ -701,17 +710,14 @@ TEST_F(AlgebraicExpressionTest, OneIntermidateReturnNode) {
     ASSERT_EQ(exp->operands[0].operand, e->mat);
 
     // Clean up.
-    AST_Free(ast);
     for(int i = 0; i < exp_count; i++) AlgebraicExpression_Free(ae[i]);
     free(ae);
 }
 
 TEST_F(AlgebraicExpressionTest, NoIntermidateReturnNodes) {
-    const char *query = query_no_intermidate_return_nodes;
-    AST *ast = ParseQuery(query, strlen(query), NULL);
-
     size_t exp_count = 0;
-    AlgebraicExpression **ae = AlgebraicExpression_From_Query(ast, ast->matchNode->_mergedPatterns, query_graph, &exp_count);
+    const char *query = query_no_intermidate_return_nodes;
+    AlgebraicExpression **ae = _build_arithmetic_expression(query, &exp_count);
     ASSERT_EQ(exp_count, 1);
 
     AlgebraicExpression *exp = ae[0];
@@ -731,14 +737,12 @@ TEST_F(AlgebraicExpressionTest, NoIntermidateReturnNodes) {
     ASSERT_EQ(exp->operands[0].operand, e->mat);
 
     // Clean up.
-    AST_Free(ast);
     AlgebraicExpression_Free(exp);
     free(ae);
 }
 
 TEST_F(AlgebraicExpressionTest, OneIntermidateReturnEdge) {
     Edge *e;
-    AST *ast;
     size_t exp_count;
     const char *query;
     AlgebraicExpression **ae;
@@ -747,11 +751,9 @@ TEST_F(AlgebraicExpressionTest, OneIntermidateReturnEdge) {
     //==============================================================================
     //=== MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN ef
     //==============================================================================
-    query = query_return_first_edge;
-    ast = ParseQuery(query, strlen(query), NULL);
-
     exp_count = 0;
-    ae = AlgebraicExpression_From_Query(ast, ast->matchNode->_mergedPatterns, query_graph, &exp_count);
+    query = query_return_first_edge;
+    ae = _build_arithmetic_expression(query, &exp_count);
     ASSERT_EQ(exp_count, 2);
 
     // Validate first expression.
@@ -773,18 +775,15 @@ TEST_F(AlgebraicExpressionTest, OneIntermidateReturnEdge) {
     ASSERT_TRUE(exp->edge == NULL);
 
     // Clean up.
-    AST_Free(ast);
     for(int i = 0; i < exp_count; i++) AlgebraicExpression_Free(ae[i]);
     free(ae);
 
     //==============================================================================
     //=== MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN ev
     //==============================================================================
-    query = query_return_intermidate_edge;
-    ast = ParseQuery(query, strlen(query), NULL);
-
     exp_count = 0;
-    ae = AlgebraicExpression_From_Query(ast, ast->matchNode->_mergedPatterns, query_graph, &exp_count);
+    query = query_return_intermidate_edge;
+    ae = _build_arithmetic_expression(query, &exp_count);
     ASSERT_EQ(exp_count, 3);
 
     // Validate first expression.
@@ -812,18 +811,15 @@ TEST_F(AlgebraicExpressionTest, OneIntermidateReturnEdge) {
     ASSERT_TRUE(exp->edge == NULL);
 
     // Clean up.
-    AST_Free(ast);
     for(int i = 0; i < exp_count; i++) AlgebraicExpression_Free(ae[i]);
     free(ae);
 
     //==============================================================================
     //=== MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN ew
     //==============================================================================
-    query = query_return_last_edge;
-    ast = ParseQuery(query, strlen(query), NULL);
-
     exp_count = 0;
-    ae = AlgebraicExpression_From_Query(ast, ast->matchNode->_mergedPatterns, query_graph, &exp_count);
+    query = query_return_last_edge;
+    ae = _build_arithmetic_expression(query, &exp_count);
     ASSERT_EQ(exp_count, 2);
 
     // Validate first expression.
@@ -845,16 +841,14 @@ TEST_F(AlgebraicExpressionTest, OneIntermidateReturnEdge) {
     ASSERT_TRUE(exp->edge != NULL);
 
     // Clean up.
-    AST_Free(ast);
     for(int i = 0; i < exp_count; i++) AlgebraicExpression_Free(ae[i]);
     free(ae);
 }
 
 TEST_F(AlgebraicExpressionTest, ExpressionExecute) {
-    const char *query = query_no_intermidate_return_nodes;
-    AST *ast = ParseQuery(query, strlen(query), NULL);
     size_t exp_count = 0;
-    AlgebraicExpression **ae = AlgebraicExpression_From_Query(ast, ast->matchNode->_mergedPatterns, query_graph, &exp_count);
+    const char *query = query_no_intermidate_return_nodes;
+    AlgebraicExpression **ae = _build_arithmetic_expression(query, &exp_count);
 
     double tic [2];
     simple_tic(tic);
@@ -898,7 +892,6 @@ TEST_F(AlgebraicExpressionTest, ExpressionExecute) {
     assert(_compare_matrices(res, expected));
 
     // Clean up
-    AST_Free(ast);
     AlgebraicExpression_Free(ae[0]);
     free(ae);
     GrB_Matrix_free(&expected);

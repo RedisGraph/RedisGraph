@@ -2,7 +2,7 @@
 // GB_subassign: C(Rows,Cols)<M> = accum (C(Rows,Cols),A) or A'
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -19,6 +19,8 @@
 // instead.
 
 // Compare with GB_assign, which uses M and C_replace differently
+
+// parallel: not here, but in GB_subassign_kernel
 
 #include "GB.h"
 
@@ -140,7 +142,7 @@ GrB_Info GB_subassign               // C(Rows,Cols)<M> += A or A'
         if (!GB_Type_compatible (M->type, GrB_BOOL))
         { 
             return (GB_ERROR (GrB_DOMAIN_MISMATCH, (GB_LOG,
-                "Mask of type [%s] cannot be typecast to boolean",
+                "M of type [%s] cannot be typecast to boolean",
                 M->type->name))) ;
         }
         // M is a matrix the same size as C(Rows,Cols)
@@ -149,7 +151,7 @@ GrB_Info GB_subassign               // C(Rows,Cols)<M> += A or A'
         if (mnrows != nRows || mncols != nCols)
         { 
             return (GB_ERROR (GrB_DIMENSION_MISMATCH, (GB_LOG,
-                "mask M is "GBd"-by-"GBd"%s"
+                "M is "GBd"-by-"GBd"%s"
                 "must match size of result C(I,J): "GBd"-by-"GBd"",
                 mnrows, mncols, M_transpose ? " (transposed)" : "",
                 nRows, nCols))) ;
@@ -270,18 +272,38 @@ GrB_Info GB_subassign               // C(Rows,Cols)<M> += A or A'
     // Z = C
     //--------------------------------------------------------------------------
 
-    // GB_subassign_kernel modifies C efficiently in place, but it can only do
-    // so if C is not aliased with A or the mask M.  If C is aliased a copy
-    // must be made.  GB_subassign_kernel operates on the copy, Z, which is
-    // then transplanted back into C when done.  This is costly, and can have
-    // performance implications, but it is the only reasonable method.  If C is
-    // aliased to A, then the assignment is a large one and copying the whole
-    // matrix will not add much time.
+    // GB_subassign_kernel modifies C efficiently in place, but there are cases
+    // when C is aliased with M or A that require the work to not be done in
+    // place.
+
+    // If both I == GrB_ALL and J == GrB_ALL, then C can be safely aliased with
+    // M or A, or both.  In addition, M and/or A may also have shallow
+    // components that refer back to components of C.
+
+    // Otherwise, if I is not GrB_ALL or J is not GrB_ALL, then C cannot be
+    // aliased with M or A.  Nor can any shallow component of M or A refer to
+    // any component of C.  This is an unsafe alias.
+
+    // If C is unsafely aliased a copy must be made.  GB_subassign_kernel
+    // operates on the copy, Z, which is then transplanted back into C when
+    // done.  This is costly, and can have performance implications, but it is
+    // the only reasonable method.  If a copy of C must be made, then it is as
+    // large as M or A, so copying the whole matrix will not add much time.
 
     GrB_Matrix Z ;
-    bool aliased = GB_ALIASED (C, A) || GB_ALIASED (C, M) ;
-    if (aliased)
-    {
+    bool unsafely_aliased ;
+    if (I == GrB_ALL && J == GrB_ALL)
+    { 
+        // any alias is OK
+        unsafely_aliased = false ; 
+    }
+    else
+    { 
+        unsafely_aliased = GB_aliased (C, A) || GB_aliased (C, M) ;
+    }
+
+    if (unsafely_aliased)
+    { 
         // Z = duplicate of C
         ASSERT (!GB_ZOMBIES (C)) ;
         ASSERT (!GB_PENDING (C)) ;
@@ -319,7 +341,7 @@ GrB_Info GB_subassign               // C(Rows,Cols)<M> += A or A'
     if (info != GrB_SUCCESS)
     { 
         // out of memory
-        if (aliased) GB_MATRIX_FREE (&Z) ;
+        if (unsafely_aliased) GB_MATRIX_FREE (&Z) ;
         return (info) ;
     }
 
@@ -327,7 +349,7 @@ GrB_Info GB_subassign               // C(Rows,Cols)<M> += A or A'
     // C = Z
     //--------------------------------------------------------------------------
 
-    if (aliased)
+    if (unsafely_aliased)
     {
         // zombies can be transplanted into C but pending tuples cannot
         if (GB_PENDING (Z))
@@ -352,7 +374,7 @@ GrB_Info GB_subassign               // C(Rows,Cols)<M> += A or A'
 
     // Z will have already been freed if the GB_transplant was done;
     // this won't free it twice since Z will be NULL if already freed.
-    if (aliased) GB_MATRIX_FREE (&Z) ;
+    if (unsafely_aliased) GB_MATRIX_FREE (&Z) ;
     return (info) ;
 }
 

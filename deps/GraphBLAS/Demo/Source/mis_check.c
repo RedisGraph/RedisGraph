@@ -17,8 +17,8 @@
 #ifdef GxB_SUITESPARSE_GRAPHBLAS
     // use predefined semirings.  They are safe to free,
     // so the FREE_ALL macro can be used as-is in either case.
-    #define Max             GxB_MAX_FP32_MONOID
-    #define maxSelect1st    GxB_MAX_FIRST_FP32
+    #define Max             GxB_MAX_FP64_MONOID
+    #define maxSelect1st    GxB_MAX_FIRST_FP64
     #define Lor             GxB_LOR_BOOL_MONOID
     #define Boolean         GxB_LOR_LAND_BOOL
 #endif
@@ -95,8 +95,8 @@ GrB_Info mis_check              // compute a maximal independent set
 
     OK (GrB_Matrix_nrows (&n, A)) ;                 // n = # of nodes in graph
 
-    OK (GrB_Vector_new (&prob, GrB_FP32, n)) ;
-    OK (GrB_Vector_new (&neighbor_max, GrB_FP32, n)) ;
+    OK (GrB_Vector_new (&prob, GrB_FP64, n)) ;
+    OK (GrB_Vector_new (&neighbor_max, GrB_FP64, n)) ;
     OK (GrB_Vector_new (&new_members, GrB_BOOL, n)) ;
     OK (GrB_Vector_new (&new_neighbors, GrB_BOOL, n)) ;
     OK (GrB_Vector_new (&candidates, GrB_BOOL, n)) ;
@@ -106,8 +106,8 @@ GrB_Info mis_check              // compute a maximal independent set
 
 #ifndef GxB_SUITESPARSE_GRAPHBLAS
     // create the maxSelect1st semiring
-    OK (GrB_Monoid_new (&Max, GrB_MAX_FP32, (float) 0.0)) ;
-    OK (GrB_Semiring_new (&maxSelect1st, Max, GrB_FIRST_FP32)) ;
+    OK (GrB_Monoid_new (&Max, GrB_MAX_FP64, (double) 0.0)) ;
+    OK (GrB_Semiring_new (&maxSelect1st, Max, GrB_FIRST_FP64)) ;
 
     // create the OR-AND-BOOL semiring
     OK (GrB_Monoid_new (&Lor, GrB_LOR, (bool) false)) ;
@@ -124,7 +124,7 @@ GrB_Info mis_check              // compute a maximal independent set
     OK (GrB_Descriptor_set (sr_desc, GrB_OUTP, GrB_REPLACE)) ;
 
     // create the mis_score unary operator
-    OK (GrB_UnaryOp_new (&set_random, mis_score, GrB_FP32, GrB_UINT32)) ;
+    OK (GrB_UnaryOp_new (&set_random, mis_score, GrB_FP64, GrB_UINT32)) ;
 
     // compute the degree of each node
     OK (GrB_Vector_new (&degrees, GrB_FP64, n)) ;
@@ -176,7 +176,8 @@ GrB_Info mis_check              // compute a maximal independent set
 
         OK (GrB_Vector_nvals (&nvals, candidates)) ;
 
-        // this will not occur, unless the input is corrupted somehow
+        // this will not occur, unless the input is corrupted somehow,
+        // or if two candidates have exactly the same score
         if (last_nvals == nvals) { printf ("stall!\n") ; OK (GrB_INVALID_VALUE) ; }
         last_nvals = nvals ;
     }

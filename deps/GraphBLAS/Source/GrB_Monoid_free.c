@@ -2,10 +2,12 @@
 // GrB_Monoid_free:  free a monoid
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
+
+// not parallel: this function does O(1) work and is already thread-safe.
 
 #include "GB.h"
 
@@ -27,7 +29,9 @@ GrB_Info GrB_Monoid_free            // free a user-created monoid
                 mon->magic = GB_FREED ; // to help detect dangling pointers
                 // mon->op->ztype->size might not be safe if op or ztype are
                 // user-defined and have already been freed; use op_ztype_size.
-                GB_FREE_MEMORY (mon->identity, 1, mon->op_ztype_size) ;
+                size_t zsize = mon->op_ztype_size ;
+                GB_FREE_MEMORY (mon->identity, 1, zsize) ;
+                GB_FREE_MEMORY (mon->terminal, 1, zsize) ;
                 GB_FREE_MEMORY (*monoid, 1, sizeof (struct GB_Monoid_opaque)) ;
             }
             (*monoid) = NULL ;

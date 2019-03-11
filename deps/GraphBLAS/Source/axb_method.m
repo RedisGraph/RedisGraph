@@ -1,12 +1,9 @@
 function axb_method (addop, multop, add, mult, ztype, xytype, identity, ...
-    handle_flipxy)
+    terminal, handle_flipxy)
 %AXB_METHOD create a function to compute C=A*B over a semiring
 %
-% axb_method (addop, multop, add, mult, ztype, xytype, identity, handle_flipxy)
-
-if (nargin < 8)
-    handle_flipxy = 0 ;
-end
+% axb_method (addop, multop, add, mult, ztype, xytype, identity, terminal,
+% handle_flipxy)
 
 f = fopen ('control.m4', 'w') ;
 
@@ -45,6 +42,13 @@ fprintf (f, 'define(`GB_xtype'', `%s'')\n', xytype) ;
 fprintf (f, 'define(`GB_ytype'', `%s'')\n', xytype) ;
 fprintf (f, 'define(`GB_identity'', `%s'')\n', identity) ;
 
+if (~isempty (terminal))
+    fprintf (f, 'define(`GB_terminal'', `if (cij == %s) break ;'')\n', ...
+        terminal) ;
+else
+    fprintf (f, 'define(`GB_terminal'', `;'')\n') ;
+end
+
 % if handle_flipxy is true, then mult(x,y) is not commutative,
 % and the types of x and y may also differ
 fprintf (f, 'define(`GB_handle_flipxy'', %d)\n', handle_flipxy) ;
@@ -61,13 +65,13 @@ fclose (f) ;
 % type control.m4
 
 cmd = sprintf (...
-'cat control.m4 Generator/GB_AxB.c | m4 | tail +8 > Generated/GB_AxB__%s.c', ...
+'cat control.m4 Generator/GB_AxB.c | m4 | tail -n +12 > Generated/GB_AxB__%s.c', ...
 name) ;
 fprintf ('%s\n', cmd) ;
 system (cmd) ;
 
 cmd = sprintf (...
-'cat control.m4 Generator/GB_AxB.h | m4 | tail +8 >> Generated/GB_AxB__semirings.h') ;
+'cat control.m4 Generator/GB_AxB.h | m4 | tail -n +12 >> Generated/GB_AxB__semirings.h') ;
 % fprintf ('%s\n', cmd) ;
 system (cmd) ;
 

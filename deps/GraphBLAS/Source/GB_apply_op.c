@@ -2,7 +2,7 @@
 // GB_apply_op:  apply a unary operator to an array
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -10,6 +10,9 @@
 // Cx = op ((xtype) Ax)
 
 // Compare with GB_transpose_op.c
+
+// PARALLEL: do it here, but it is easy.  Might want to split into separate
+// files like Generated/GB_AxB*, so worker is not in a macro but in a function.
 
 #include "GB.h"
 
@@ -19,7 +22,8 @@ void GB_apply_op            // apply a unary operator, Cx = op ((xtype) Ax)
     const GrB_UnaryOp op,   // operator to apply
     const GB_void *Ax,      // input array, of type atype
     const GrB_Type atype,   // type of Ax
-    const int64_t anz       // size of Ax and Cx
+    const int64_t anz,      // size of Ax and Cx
+    GB_Context Context
 )
 {
 
@@ -30,8 +34,14 @@ void GB_apply_op            // apply a unary operator, Cx = op ((xtype) Ax)
     ASSERT (Cx != NULL) ;
     ASSERT (Ax != NULL) ;
     ASSERT (anz >= 0) ;
-    ASSERT_OK (GB_check (atype, "atype for GB_apply_op", GB0)) ;
-    ASSERT_OK (GB_check (op, "op for GB_apply_op", GB0)) ;
+    ASSERT (atype != NULL) ;
+    ASSERT (op != NULL) ;
+
+    //--------------------------------------------------------------------------
+    // determine the number of threads to use
+    //--------------------------------------------------------------------------
+
+    GB_GET_NTHREADS (nthreads, Context) ;
 
     //--------------------------------------------------------------------------
     // define the worker for the switch factory
@@ -75,7 +85,7 @@ void GB_apply_op            // apply a unary operator, Cx = op ((xtype) Ax)
         ASSERT (code2 <= GB_UDT_code) ;
 
         // GB_BOP(x) is for boolean x, GB_IOP(x) for integer (int* and uint*),
-        // and GB_FOP(x) is for floating-point
+        // and GB_FOP(x) is for float, and GB_DOP(x) is for double.
 
         // NOTE: some of these operators z=f(x) do not depend on x, like z=1.
         // x is read anyway, but the compiler can remove that as dead code if
@@ -91,18 +101,16 @@ void GB_apply_op            // apply a unary operator, Cx = op ((xtype) Ax)
                 #define GB_BOP(x) true
                 #define GB_IOP(x) 1
                 #define GB_FOP(x) 1
+                #define GB_DOP(x) 1
                 #include "GB_2type_template.c"
                 break ;
 
             case GB_IDENTITY_opcode :  // z = x
 
-                // Do not create workers when the two codes are the same,
-                // C is a pure shallow copy of A, and the function has already
-                // returned the result C.
-                #define GB_NOT_SAME
                 #define GB_BOP(x) x
                 #define GB_IOP(x) x
                 #define GB_FOP(x) x
+                #define GB_DOP(x) x
                 #include "GB_2type_template.c"
                 break ;
 
@@ -111,14 +119,16 @@ void GB_apply_op            // apply a unary operator, Cx = op ((xtype) Ax)
                 #define GB_BOP(x)  x
                 #define GB_IOP(x) -x
                 #define GB_FOP(x) -x
+                #define GB_DOP(x) -x
                 #include "GB_2type_template.c"
                 break ;
 
             case GB_ABS_opcode :       // z = abs(x)
 
-                #define GB_BOP(x)  x
-                #define GB_IOP(x)  GB_IABS(x)
-                #define GB_FOP(x)  GB_FABS(x)
+                #define GB_BOP(x) x
+                #define GB_IOP(x) GB_IABS(x)
+                #define GB_FOP(x) fabsf(x)
+                #define GB_DOP(x) fabs(x)
                 #include "GB_2type_template.c"
                 break ;
 
@@ -128,6 +138,7 @@ void GB_apply_op            // apply a unary operator, Cx = op ((xtype) Ax)
                 #define GB_BOP(x) true
                 #define GB_IOP(x) GB_IMINV(x)
                 #define GB_FOP(x) 1./x
+                #define GB_DOP(x) 1./x
                 #include "GB_2type_template.c"
                 break ;
 
@@ -136,6 +147,7 @@ void GB_apply_op            // apply a unary operator, Cx = op ((xtype) Ax)
                 #define GB_BOP(x) !x
                 #define GB_IOP(x) (!(x != 0))
                 #define GB_FOP(x) (!(x != 0))
+                #define GB_DOP(x) (!(x != 0))
                 #include "GB_2type_template.c"
                 break ;
 

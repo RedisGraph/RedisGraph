@@ -2,7 +2,7 @@
 // GB_AxB_Gustavson_builtin:  hard-coded C=A*B for built-in types
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -13,11 +13,13 @@
 // equivalent ones; if these are included, this function computes C=A*B for all
 // 1712 valid semirings that can be constructed from built-in operators.
 
+// parallel: this work is done by a single thread; parallelism will be done in
+// GB_AxB_parallel.
+
 #include "GB.h"
 
 #ifndef GBCOMPACT
 
-#include "GB_heap.h"
 #include "GB_AxB__semirings.h"
 
 // A semiring is defined by a binary "multiply" operator, and an associative
@@ -208,8 +210,7 @@ GrB_Info GB_AxB_Gustavson_builtin
     const GrB_Semiring semiring,    // semiring that defines C=A*B
     const bool flipxy,              // if true, do z=fmult(b,a) vs fmult(a,b)
     bool *done,                     // true if C=A*B has been computed
-    GB_Sauna Sauna,                 // sparse accumulator
-    GB_Context Context
+    GB_Sauna Sauna                  // sparse accumulator
 )
 { 
 
@@ -217,6 +218,7 @@ GrB_Info GB_AxB_Gustavson_builtin
     // check inputs
     //--------------------------------------------------------------------------
 
+    GB_Context Context = NULL ;
     ASSERT (GB_NOT_ALIASED_3 (C, M, A, B)) ;
     if (M == NULL)
     {
@@ -254,7 +256,7 @@ GrB_Info GB_AxB_Gustavson_builtin
 
     #define GB_AxB_WORKER(add,mult,xyname)                                     \
     {                                                                          \
-        info = GB_AXB (add,mult,xyname) (C, M, A, B, flipxy, Sauna, Context) ; \
+        info = GB_AXB (add,mult,xyname) (C, M, A, B, flipxy, Sauna) ;          \
         (*done) = true ;                                                       \
     }                                                                          \
     break ;

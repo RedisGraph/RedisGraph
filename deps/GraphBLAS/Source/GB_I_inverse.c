@@ -2,7 +2,7 @@
 // GB_I_inverse: invert an index list
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -10,6 +10,11 @@
 // I is a large list relative to the vector length, avlen, and it is not
 // contiguous.  Scatter I into the I inverse buckets (Mark and Inext) for quick
 // lookup.
+
+// PARALLEL: constructing the I inverse buckets in parallel would require
+// synchronization (a critical section for each bucket).  A more parallel
+// approach would use qsort first, to find duplicates in I, and then construct
+// the buckets in parallel after the qsort.
 
 #include "GB.h"
 
@@ -28,6 +33,12 @@ GrB_Info GB_I_inverse           // invert the I list for GB_subref_template
     GB_Context Context
 )
 {
+
+    //--------------------------------------------------------------------------
+    // determine the number of threads to use
+    //--------------------------------------------------------------------------
+
+    GB_GET_NTHREADS (nthreads, Context) ;
 
     //--------------------------------------------------------------------------
     // get inputs
@@ -49,17 +60,14 @@ GrB_Info GB_I_inverse           // invert the I list for GB_subref_template
     // allocate workspace
     //--------------------------------------------------------------------------
 
-    double memory = GBYTES (nI, sizeof (int64_t)) ;
     GB_MALLOC_MEMORY (Inext, nI, sizeof (int64_t)) ;
 
     if (need_Iwork1)
     { 
-        memory += GBYTES (nI, sizeof (int64_t)) ;
         GB_MALLOC_MEMORY (Iwork1, nI, sizeof (int64_t)) ;
     }
 
-    memory += GBYTES (avlen, sizeof (int64_t)) ;
-    GB_CALLOC_MEMORY (Mark, avlen, sizeof (int64_t)) ;
+    GB_CALLOC_MEMORY (Mark, avlen, sizeof (int64_t), Context) ;
 
     if (Inext == NULL || (need_Iwork1 && Iwork1 == NULL) || Mark == NULL)
     {
@@ -67,7 +75,7 @@ GrB_Info GB_I_inverse           // invert the I list for GB_subref_template
         GB_FREE_MEMORY (Inext,  nI,    sizeof (int64_t)) ;
         GB_FREE_MEMORY (Iwork1, nI,    sizeof (int64_t)) ;
         GB_FREE_MEMORY (Mark,   avlen, sizeof (int64_t)) ;
-        return (GB_OUT_OF_MEMORY (memory)) ;
+        return (GB_OUT_OF_MEMORY) ;
     }
 
     //--------------------------------------------------------------------------
@@ -104,20 +112,18 @@ GrB_Info GB_I_inverse           // invert the I list for GB_subref_template
     // in I.  inew = Inext [inew] traverses this list, until inew is -1.
 
     // to traverse all entries in bucket i, do:
-    // GB_for_each_entry_in_bucket (inew,i)) { ... }
+    // GB_for_each_index_in_bucket (inew,i)) { ... }
 
-    #define GB_for_each_entry_in_bucket(inew,i) \
+    #define GB_for_each_index_in_bucket(inew,i) \
         for (int64_t inew = Mark[i]-flag ; inew >= 0 ; inew = Inext [inew])
 
     // If Mark [i] < flag, then the ith bucket is empty and i is not in I.
     // Otherise, the first index in bucket i is (Mark [i] - flag).
 
     #ifndef NDEBUG
-    // no part of this code takes O(avlen) time, except for the
-    // calloc of Inext and this debug test
     for (int64_t i = 0 ; i < avlen ; i++)
     {
-        GB_for_each_entry_in_bucket (inew, i)
+        GB_for_each_index_in_bucket (inew, i)
         {
             ASSERT (inew >= 0 && inew < nI) ;
             ASSERT (i == I [inew]) ;

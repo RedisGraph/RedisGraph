@@ -68,7 +68,7 @@ void mexFunction
 
     TIC ;
 
-    GB_qsort_3 (Iout, Jout, Kout, n) ;
+    GB_qsort_3 (Iout, Jout, Kout, n, Context) ;
 
     TOC ;
     GB_mx_put_time (0) ;

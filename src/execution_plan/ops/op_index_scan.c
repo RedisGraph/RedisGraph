@@ -7,12 +7,10 @@
 #include "op_index_scan.h"
 #include "../../parser/ast.h"
 
-OpBase *NewIndexScanOp(Graph *g, Node *node, IndexIter *iter) {
+OpBase *NewIndexScanOp(Graph *g, Node *node, IndexIter *iter, AST *ast) {
   IndexScan *indexScan = malloc(sizeof(IndexScan));
   indexScan->g = g;
   indexScan->iter = iter;
-
-  AST *ast = AST_GetFromLTS();
   indexScan->nodeRecIdx = AST_GetAliasID(ast, node->alias);
   indexScan->recLength = AST_AliasCount(ast);
 

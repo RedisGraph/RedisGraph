@@ -27,6 +27,8 @@ typedef enum {
   T_DOUBLE = 0x040,
   T_PTR = 0x080,
   T_CONSTSTRING = 0x100,
+  T_NODE = 0x200,
+  T_EDGE = 0x400,
 } SIType;
 
 #define SI_STRING (T_STRING | T_CONSTSTRING)
@@ -53,7 +55,7 @@ typedef struct {
     int64_t longval;
     double doubleval;
     char *stringval;
-    void* ptrval;
+    void *ptrval;
   };
   SIType type;
 } SIValue;
@@ -64,6 +66,8 @@ SIValue SI_DoubleVal(double d);
 SIValue SI_NullVal(void);
 SIValue SI_BoolVal(int b);
 SIValue SI_PtrVal(void* v);
+SIValue SI_Node(void *n);
+SIValue SI_Edge(void *e);
 SIValue SI_DuplicateStringVal(const char *s); // Duplicate and ultimately free the input string
 SIValue SI_ConstStringVal(char *s);           // Neither duplicate nor assume ownership of input string
 SIValue SI_TransferStringVal(char *s);        // Don't duplicate input string, but assume ownership

@@ -2,7 +2,7 @@
 // GB_user_build: check inputs and build a matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -10,6 +10,8 @@
 // This function implements GrB_Matrix_build_* and GrB_Vector_build_*.  It is
 // not used by GrB_wait or GB_wait (see GB_builder instead).  For details on
 // the algorithm, see GB_build.
+
+// parallel: not here, but in GB_build.
 
 #include "GB.h"
 

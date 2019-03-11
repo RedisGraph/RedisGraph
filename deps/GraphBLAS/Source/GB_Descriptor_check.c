@@ -2,18 +2,20 @@
 // GB_Descriptor_check: check and print a Descriptor
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
+// not parallel: this function does O(1) work and is already thread-safe.
+
 #include "GB.h"
 
 //------------------------------------------------------------------------------
-// dcheck: check a single descriptor field
+// GB_dc: check a single descriptor field
 //------------------------------------------------------------------------------
 
-static GrB_Info dcheck
+static GrB_Info GB_dc
 (
     bool spec,
     const char *field,
@@ -114,11 +116,11 @@ GrB_Info GB_Descriptor_check    // check a GraphBLAS descriptor
     if (pr > 0) GBPR ("\n") ;
 
     GrB_Info info [5] ;
-    info [0] = dcheck (true,  "output    ", D->out,  GrB_REPLACE, pr,f,Context);
-    info [1] = dcheck (true,  "mask      ", D->mask, GrB_SCMP,    pr,f,Context);
-    info [2] = dcheck (true,  "input0    ", D->in0,  GrB_TRAN,    pr,f,Context);
-    info [3] = dcheck (true,  "input1    ", D->in1,  GrB_TRAN,    pr,f,Context);
-    info [4] = dcheck (false, "AxB_method", D->axb,  0,           pr,f,Context);
+    info [0] = GB_dc (true,  "output    ", D->out,  GrB_REPLACE, pr,f,Context) ;
+    info [1] = GB_dc (true,  "mask      ", D->mask, GrB_SCMP,    pr,f,Context) ;
+    info [2] = GB_dc (true,  "input0    ", D->in0,  GrB_TRAN,    pr,f,Context) ;
+    info [3] = GB_dc (true,  "input1    ", D->in1,  GrB_TRAN,    pr,f,Context) ;
+    info [4] = GB_dc (false, "AxB_method", D->axb,  0,           pr,f,Context) ;
 
     for (int i = 0 ; i < 5 ; i++)
     { 

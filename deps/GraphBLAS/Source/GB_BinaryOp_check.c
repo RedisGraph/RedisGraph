@@ -2,10 +2,12 @@
 // GB_BinaryOp_check: check and print a binary operator
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
+
+// not parallel: this function does O(1) work and is already thread-safe.
 
 #include "GB.h"
 
@@ -39,9 +41,20 @@ GrB_Info GB_BinaryOp_check  // check a GraphBLAS binary operator
 
     GB_CHECK_MAGIC (op, "BinaryOp") ;
 
-    if (pr > 0 && op->opcode >= GB_USER_C_opcode)
+    if (pr > 0)
     { 
-        GBPR ("(user-defined) ") ;
+        if (op->opcode == GB_USER_C_opcode)
+        {
+            GBPR ("(compile-time user-defined) ") ;
+        }
+        else if (op->opcode == GB_USER_R_opcode)
+        {
+            GBPR ("(run-time user-defined) ") ;
+        }
+        else
+        {
+            GBPR ("(built-in) ") ;
+        }
     }
 
     if (pr > 0) GBPR ("z=%s(x,y)\n", op->name) ;

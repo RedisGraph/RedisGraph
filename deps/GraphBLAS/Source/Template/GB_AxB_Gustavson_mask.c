@@ -2,8 +2,10 @@
 // GB_AxB_Gustavson_mask:  compute C<M>=A*B using the Gustavson method, with M
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
+//------------------------------------------------------------------------------
 
 // This file is #include'd in GB_AxB_Gustavson.c, and Template/GB_AxB.c, the
 // latter of which expands into Generated/GB_AxB__* for all built-in semirings.
@@ -12,6 +14,16 @@
 // on nnz(C) so this method will not run out of memory.  This is Gustavson's
 // method, extended to handle hypersparse matrices, arbitrary semirings, and a
 // mask matrix M.
+
+// The mask is present in this case (see GB_AxB_Gustavson_nomask otherwise).
+// This method takes Omega(nnz(M)) time when exploiting the mask, so a very
+// dense mask can be costly to exploit.  Thus, this method is not used, and
+// GB_AxB_Gustavson_nomask is used instead, if the total flop count is less
+// than nnz(M).
+
+// parallel: this could be done in parallel, but the parallelism will be
+// handled outside this code, in GB_AxB_parallel.  This work is done by a
+// single thread.
 
 {
 
@@ -36,13 +48,20 @@
     int64_t hiwater = GB_Sauna_reset (Sauna, 1, 1) ;
 
     //--------------------------------------------------------------------------
-    // get the mask
+    // get M
     //--------------------------------------------------------------------------
 
+    const int64_t *restrict Mp = M->p ;
+    const int64_t *restrict Mh = M->h ;
     const int64_t *restrict Mi = M->i ;
     const GB_void *restrict Mx = M->x ;
     GB_cast_function cast_M = GB_cast_factory (GB_BOOL_code, M->type->code) ;
     size_t msize = M->type->size ;
+    const int64_t mnvec = M->nvec ;
+    #ifdef GB_HYPER_CASE
+    int64_t mpleft = 0 ;
+    int64_t mpright = mnvec - 1 ;
+    #endif
 
     //--------------------------------------------------------------------------
     // get A and B
@@ -63,6 +82,7 @@
     //--------------------------------------------------------------------------
 
     int64_t *restrict Ci = C->i ;
+    int64_t *restrict Cp = C->p ;
 
     int64_t jlast, cnz, cnz_last ;
     GB_jstartup (C, &jlast, &cnz, &cnz_last) ;
@@ -71,34 +91,34 @@
     // C<M>=A*B using the Gustavson method, pattern of C is a subset of M
     //--------------------------------------------------------------------------
 
-    #ifdef GB_HYPER_CASE
-    GB_for_each_vector2 (B, M)
-    #else
-    int64_t *restrict Bp = B->p ;
-    int64_t *restrict Mp = M->p ;
-    int64_t *restrict Cp = C->p ;
-    int64_t n = C->vdim ;
-    for (int64_t j = 0 ; j < n ; j++)
-    #endif
+    GBI_for_each_vector (B)
     {
 
         //----------------------------------------------------------------------
-        // get B(:,j) and M(:,j)
+        // get B(:,j)
         //----------------------------------------------------------------------
 
+        GBI_jth_iteration (j, pB, pB_end) ;
+
+        //----------------------------------------------------------------------
+        // get M(:,j)
+        //----------------------------------------------------------------------
+
+        // find vector j in M
+        int64_t pM_start, pM_end ;
         #ifdef GB_HYPER_CASE
-        int64_t GBI2_initj (Iter, j, pB_start, pB_end, pM_start, pM_end) ;
+        GB_lookup (M_is_hyper, Mh, Mp, &mpleft, mpright, j, &pM_start, &pM_end);
         #else
-        int64_t pB_start = Bp [j] ;
-        int64_t pB_end   = Bp [j+1] ;
-        int64_t pM_start = Mp [j] ;
-        int64_t pM_end   = Mp [j+1] ;
+        pM_start = Mp [j] ;
+        pM_end   = Mp [j+1] ;
         #endif
+        ASSERT (pM_start <= pM_end) ;
+        ASSERT (pM_end >= -1) ;
 
         // C(:,j) is empty if either M(:,j) or B(:,j) are empty
-        int64_t bjnz = pB_end - pB_start ;
+        int64_t bjnz = pB_end - pB ;
         if (pM_start == pM_end || bjnz == 0)
-        {
+        { 
             #ifndef GB_HYPER_CASE
             Cp [j+1] = cnz ;
             #endif
@@ -112,11 +132,11 @@
         #ifdef GB_HYPER_CASE
         // trim Ah on right
         if (A_is_hyper)
-        { 
+        {
             pleft = 0 ;
             pright = anvec-1 ;
             if (bjnz > 2)
-            {
+            { 
                 // trim Ah [0..pright] to remove any entries past last B(:,j)
                 int64_t klast = Bi [pB_end-1] ;
                 GB_bracket_right (klast, Ah, 0, &pright) ;
@@ -131,7 +151,7 @@
         // C(:,j)<M(:,j)> = A * B(:,j), both values and pattern
         //----------------------------------------------------------------------
 
-        for (int64_t pB = pB_start ; pB < pB_end ; pB++)
+        for ( ; pB < pB_end ; pB++)
         {
 
             //------------------------------------------------------------------
@@ -145,20 +165,19 @@
             //------------------------------------------------------------------
 
             // find A(:,k), reusing pleft since Bi [...] is sorted
-            int64_t pA_start, pA_end ;
+            int64_t pA, pA_end ;
             #ifdef GB_HYPER_CASE
-            GB_lookup (A_is_hyper, Ah, Ap, &pleft, pright, k,
-                &pA_start, &pA_end) ;
+            GB_lookup (A_is_hyper, Ah, Ap, &pleft, pright, k, &pA, &pA_end) ;
             #else
-            pA_start = Ap [k] ;
-            pA_end   = Ap [k+1] ;
+            pA     = Ap [k] ;
+            pA_end = Ap [k+1] ;
             #endif
 
             // skip if A(:,k) is empty
-            if (pA_start == pA_end) continue ;
+            if (pA == pA_end) continue ;
 
             // skip if the intersection of A(:,k) and M(:,j) is empty
-            if (Ai [pA_end-1] < im_first || Ai [pA_start] > im_last) continue ;
+            if (Ai [pA_end-1] < im_first || Ai [pA] > im_last) continue ;
 
             //------------------------------------------------------------------
             // scatter M(:,j) into Sauna_Mark if not yet done
@@ -195,7 +214,7 @@
             // Sauna += (A(:,k) * B(k,j)) .* M(:,j)
             //------------------------------------------------------------------
 
-            for (int64_t pA = pA_start ; pA < pA_end ; pA++)
+            for ( ; pA < pA_end ; pA++)
             { 
                 // Sauna_Work [i] += (A(i,k) * B(k,j)) .* M(i,j)
                 int64_t i = Ai [pA] ;
@@ -258,7 +277,7 @@
         #ifdef GB_HYPER_CASE
         // cannot fail since C->plen is the upper bound: number of non-empty
         // columns of B
-        info = GB_jappend (C, j, &jlast, cnz, &cnz_last, Context) ;
+        info = GB_jappend (C, j, &jlast, cnz, &cnz_last, NULL) ;
         ASSERT (info == GrB_SUCCESS) ;
         #else
         Cp [j+1] = cnz ;

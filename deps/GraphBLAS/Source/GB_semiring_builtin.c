@@ -2,13 +2,15 @@
 // GB_semiring_builtin:  determine if semiring is built-in
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
 // Determine if A*B uses a built-in semiring, and if so, determine the
 // opcodes and type codes of the semiring.
+
+// not parallel: this function does O(1) work and is already thread-safe.
 
 #include "GB.h"
 

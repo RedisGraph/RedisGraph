@@ -9,5 +9,5 @@
 #include <stdlib.h>
 #include "ast.h"
 
-AST *Query_Parse(const char *q, size_t len, char **err);
+AST **Query_Parse(const char *q, size_t len, char **err);
 #endif

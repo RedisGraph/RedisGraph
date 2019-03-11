@@ -1,8 +1,8 @@
 //------------------------------------------------------------------------------
-// GB_AxB_compare_template.c
+// GB_AxB_compare_template.c: switch factory for C=A*B with comparator ops
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -22,6 +22,8 @@
 // operator NE has already been renamed XOR by GB_AxB_semiring_builtin, and
 // thus NE will never use the boolean case, below.  Thus it is removed with the
 // #ifndef GB_NO_BOOLEAN.
+
+// parallel: not here
 
 ASSERT (zcode == GB_BOOL_code) ;
 {

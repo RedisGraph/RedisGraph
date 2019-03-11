@@ -34,7 +34,7 @@ bool Schema_ContainsAttribute(const Schema *s, const char *attribute) {
 }
 
 Attribute_ID Attribute_GetID(SchemaType t, const char *attribute) {
-    GraphContext *gc = GraphContext_GetFromLTS();
+    GraphContext *gc = GraphContext_GetFromTLS();
     if(!gc) return ATTRIBUTE_NOTFOUND;
 
     Schema *s = GraphContext_GetUnifiedSchema(gc, t);
@@ -62,7 +62,7 @@ Attribute_ID Schema_AddAttribute(Schema *s, SchemaType t, const char *attribute)
     if(attribute_id == ATTRIBUTE_NOTFOUND) {
         /* First time we encounter attribute
          * add it to both current schema and unified schema. */
-        Schema *unified_schema = GraphContext_GetUnifiedSchema(GraphContext_GetFromLTS(), t);
+        Schema *unified_schema = GraphContext_GetUnifiedSchema(GraphContext_GetFromTLS(), t);
         attribute_id = Schema_AttributeCount(unified_schema);
         pAttribute_id = malloc(sizeof(Attribute_ID));
         *pAttribute_id = attribute_id;
