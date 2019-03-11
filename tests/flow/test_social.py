@@ -383,6 +383,11 @@ class SocialFlowTest(FlowTestsBase):
         q = queries.happy_birthday_query.query
         actual_result = redis_graph.query(q)
 
+        # assert result set
+        self._assert_only_expected_results_are_in_actual_results(
+            actual_result,
+            queries.happy_birthday_query)
+
         # assert query run time
         self._assert_run_time(actual_result, queries.happy_birthday_query)
 
