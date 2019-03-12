@@ -62,5 +62,19 @@ class QueryValidationFlowTest(FlowTestsBase):
             # Expecting an error.
             pass
 
+    def test04_escaped_quotes(self):
+        query = """CREATE (:escaped{prop1:'single \\' char', prop2: 'double " char', prop3: 'mixed \\' and \\" chars'})"""
+        actual_result = redis_graph.query(query)
+        assert(actual_result.nodes_created == 1)
+        assert(actual_result.properties_set == 3)
+
+        query = """MATCH (a:escaped) RETURN a"""
+        actual_result = redis_graph.query(query)
+        expected_result = [['a.prop3', 'a.prop2', 'a.prop1'],
+                           ['mixed \' and " chars', 'double " char', "single ' char"]]
+
+        assert(actual_result.result_set == expected_result)
+
+
 if __name__ == '__main__':
     unittest.main()

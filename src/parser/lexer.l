@@ -63,8 +63,15 @@ int yycolumn = 1;
 
 (\"(\\.|[^\"])*\")|('(\\.|[^'])*')    {
   /* String literals, with escape sequences - enclosed by "" or '' */
-  *(yytext+strlen(yytext)-1) = '\0';
-  tok.strval = strdup(yytext+1);
+  int len = strlen(yytext) - 1; // ignore ending quote character
+  tok.strval = malloc(len * sizeof(char));
+  int new_idx = 0;
+  for (int idx = 1; idx < len; idx ++) { // start at 1 to ignore opening quote
+    if (yytext[idx] == '\\') idx ++;  // Jump over a single escape character in the input
+    tok.strval[new_idx++] = yytext[idx]; // Copy the character and increment the output index
+  }
+
+  tok.strval[new_idx] = '\0';
   return STRING;
 }
 
