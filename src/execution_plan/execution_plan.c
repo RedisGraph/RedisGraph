@@ -579,12 +579,12 @@ static ExecutionPlan *_ExecutionPlan_Connect(ExecutionPlan *a, ExecutionPlan *b,
     return b;
 }
 
-ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST **ast, bool explain) {
+ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST **ast, bool reply_compact, bool explain) {
     ExecutionPlan *plan = NULL;
     ExecutionPlan *curr_plan;
     ResultSet *result_set = NULL;
     if(!explain) {
-        result_set = NewResultSet(ast[array_len(ast)-1], ctx);
+        result_set = NewResultSet(ast[array_len(ast)-1], ctx, reply_compact);
         ResultSet_CreateHeader(result_set, ast[array_len(ast)-1]);
     }
 

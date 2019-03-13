@@ -75,6 +75,12 @@ void _MGraph_Query(void *args) {
     }
     CommandCtx_ThreadSafeContextUnlock(qctx);
 
+    bool reply_compact = false;
+    // TODO race condition?
+    if (qctx->argc > 3 && !strcasecmp(RedisModule_StringPtrLen(qctx->argv[3], NULL), "--compact")) {
+        reply_compact = true;
+    }
+
     // Perform query validations before and after ModifyAST
     if (AST_PerformValidations(ctx, ast) != AST_VALID) goto cleanup;
 
@@ -89,7 +95,7 @@ void _MGraph_Query(void *args) {
     if (ast[0]->indexNode) { // index operation
         _index_operation(ctx, gc, ast[0]->indexNode);
     } else {
-        ExecutionPlan *plan = NewExecutionPlan(ctx, gc, ast, false);
+        ExecutionPlan *plan = NewExecutionPlan(ctx, gc, ast, reply_compact, false);
         resultSet = ExecutionPlan_Execute(plan);
         ExecutionPlanFree(plan);
         ResultSet_Replay(resultSet);    // Send result-set back to client.

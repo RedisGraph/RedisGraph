@@ -17,16 +17,12 @@ typedef enum {
   SCHEMA_EDGE,
 } SchemaType;
 
-char **string_mapping; /* From attribute IDs to strings */
-TrieMap *attributes; /* From strings to attribute IDs */
-
 /* Schema represents the structure of a typed graph entity (Node/Edge).
  * similar to a relational table structure, our schemas are a collection
  * of attributes we've encountered overtime as entities were created or updated. */
 typedef struct {
   int id;                 /* Internal ID to a matrix within the graph. */
   char *name;             /* Schema name. */
-  // TrieMap *attributes;    [> Attributes encountered for schema. <] // TODO hm
   Index **indices;        /* Indices applicable to schema. */
 } Schema;
 

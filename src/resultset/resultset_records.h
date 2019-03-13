@@ -11,9 +11,21 @@
 #include "../redismodule.h"
 #include "../execution_plan/record.h"
 
+typedef enum {
+    PROPERTY_UNKNOWN,
+    PROPERTY_NULL,
+    // PROPERTY_STRING,
+    PROPERTY_STRING_OFFSET,
+    PROPERTY_INTEGER,
+    PROPERTY_BOOLEAN,
+    PROPERTY_DOUBLE,
+} PropertyTypeUser;
+
+typedef void (*EmitRecordFunc)(RedisModuleCtx *ctx, const Record r, unsigned int numcols);
+
 // Must be explicitly declared
 void ResultSet_ReplyWithSIValue(RedisModuleCtx *ctx, const SIValue v, bool print_type);
 
-void ResultSet_EmitRecord(RedisModuleCtx *ctx, const Record r, unsigned int numcols);
+EmitRecordFunc ResultSet_SetReplyFormatter(bool compact);
 
 #endif
