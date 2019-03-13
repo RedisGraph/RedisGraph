@@ -13,5 +13,6 @@
 #include "./select_entry_point.h"
 #include "./reduce_scans.h"
 #include "./relocate_op.h"
+#include "./reduce_distinct.h"
 
 #endif

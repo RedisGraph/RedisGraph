@@ -77,6 +77,9 @@ class RedisGraphTestBase(FlowTestsBase):
         except:
             return []
 
+    def explain(cls, query):
+        return graph.execution_plan(query)
+
     def multi(self):
         global redis_cli
         redis_cli.execute_command("MULTI")
