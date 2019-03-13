@@ -58,11 +58,11 @@ int yycolumn = 1;
 
 [_A-Za-z][A-Za-z0-9_-]* {
   	tok.strval = strdup(yytext);
-  	return UQSTRING; // Unqueoted string, used for entity alias, prop name and labels.
+  	return UQSTRING; // Unquoted string, used for entity alias, prop name and labels.
 }
 
-(\"(\\.|[^\"])*\")|('(\\.|[^'])*')    {
-  /* String literals, with escape sequences - enclosed by "" or '' */
+(\"[^\"\\]*(?:\\.[^\"\\]*)+\")|('[^'\\]*(?:\\.[^'\\]*)+') {
+  /* String literal containing at least one escaped character - enclosed by "" or '' */
   int len = strlen(yytext) - 1; // ignore ending quote character
   tok.strval = malloc(len * sizeof(char));
   int new_idx = 0;
@@ -72,6 +72,13 @@ int yycolumn = 1;
   }
 
   tok.strval[new_idx] = '\0';
+  return STRING;
+}
+
+(\"([^\\\"])*\")|('([^\\'])*') {
+  /* String literal containing no escape characters - enclosed by "" or '' */
+  *(yytext+strlen(yytext)-1) = '\0';
+  tok.strval = strdup(yytext+1);
   return STRING;
 }
 
