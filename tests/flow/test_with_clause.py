@@ -199,10 +199,8 @@ class WithClauseTest(FlowTestsBase):
     def test06_update_expressions(self):
         query = """MATCH (c:c_label) SET c.c_val = 50 WITH c.c_val AS val RETURN val"""
         actual_result = redis_graph.query(query)
-
-        # TODO Returns old value, not updated value
         expected = [['val'],
-                    [25]]
+                    [50]]
         assert actual_result.result_set == expected
         assert actual_result.properties_set == 1
 
