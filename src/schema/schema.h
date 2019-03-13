@@ -17,14 +17,17 @@ typedef enum {
   SCHEMA_EDGE,
 } SchemaType;
 
+char **string_mapping; /* From attribute IDs to strings */
+TrieMap *attributes; /* From strings to attribute IDs */
+
 /* Schema represents the structure of a typed graph entity (Node/Edge).
  * similar to a relational table structure, our schemas are a collection
  * of attributes we've encountered overtime as entities were created or updated. */
 typedef struct {
   int id;                 /* Internal ID to a matrix within the graph. */
   char *name;             /* Schema name. */
-  TrieMap *attributes;    /* Attributes encountered for schema. */
-  Index** indices;        /* Indices applicable to schema. */
+  // TrieMap *attributes;    [> Attributes encountered for schema. <] // TODO hm
+  Index **indices;        /* Indices applicable to schema. */
 } Schema;
 
 /* Creates a new schema. */
@@ -32,21 +35,10 @@ Schema* Schema_New(const char *label, int id);
 
 /* Given attribute name retrieves its unique ID
  * Return attribute_NOTFOUND if attribute doesn't exists. */
-Attribute_ID Attribute_GetID(SchemaType t, const char *attribute);
-
-/* Returns number of attributes in schema. */
-unsigned short Schema_AttributeCount(const Schema *s);
-
-/* Given attribute name retrieves its unique ID from given schema
- * Return attribute_NOTFOUND if attribute doesn't exists. */
-Attribute_ID Schema_GetAttributeID(Schema *s, const char *attribute);
+Attribute_ID Attribute_GetID(const char *attribute);
 
 /* Checks to see if schema contains attribute. */
 bool Schema_ContainsAttribute(const Schema *s, const char *attribute);
-
-/* Adds a attribute to schema, attribute is added to both
- * unified schema and given schema. */
-Attribute_ID Schema_AddAttribute(Schema *s, SchemaType t, const char *attribute);
 
 /* Returns number of indices in schema. */
 unsigned short Schema_IndexCount(const Schema *s);
@@ -61,10 +53,6 @@ void Schema_AddIndex(Schema *s, char *attribute, Index *idx);
 
 /* Removes index. */
 void Schema_RemoveIndex(Schema *s, const char *attribute);
-
-char** Schema_AttributeMap(Schema *s, unsigned short *attr_count);
-
-void Schema_FreeAttributeMap(char **map, unsigned short map_len);
 
 /* Free schema. */
 void Schema_Free(Schema *s);

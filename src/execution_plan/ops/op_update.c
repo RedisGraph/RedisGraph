@@ -83,9 +83,9 @@ static void _UpdateNode(OpUpdate *op, EntityUpdateCtx *ctx) {
     }
 
     SIValue *old_value = PROPERTY_NOTFOUND;
-    Attribute_ID attr_id = Schema_GetAttributeID(s, ctx->attribute);
+    Attribute_ID attr_id = Attribute_GetID(ctx->attribute);
     if(attr_id == ATTRIBUTE_NOTFOUND) {
-        attr_id = Schema_AddAttribute(s, SCHEMA_NODE, ctx->attribute);
+        attr_id = GraphContext_AddAttribute(op->gc, ctx->attribute);
     } else {
         // Try to get current property value.
         old_value = GraphEntity_GetProperty((GraphEntity*)node, attr_id);
@@ -114,9 +114,9 @@ static void _UpdateEdge(OpUpdate *op, EntityUpdateCtx *ctx) {
     int label_id = Graph_GetEdgeRelation(op->gc->g, edge);
     Schema *s = GraphContext_GetSchemaByID(op->gc, label_id, SCHEMA_EDGE);
 
-    Attribute_ID attr_id = Schema_GetAttributeID(s, ctx->attribute);
+    Attribute_ID attr_id = Attribute_GetID(ctx->attribute);
     if(attr_id == ATTRIBUTE_NOTFOUND) {
-        attr_id = Schema_AddAttribute(s, SCHEMA_EDGE, ctx->attribute);
+        attr_id = GraphContext_AddAttribute(op->gc, ctx->attribute);
     }
 
     // Try to get current property value.

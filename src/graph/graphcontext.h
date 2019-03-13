@@ -7,11 +7,12 @@
 #include "../schema/schema.h"
 #include "graph.h"
 
-#define DEFAULT_INDEX_CAP 4
-
 typedef struct {
   char *graph_name;                 // String associated with graph
   Graph *g;                         // Container for all matrices and entity properties
+
+  TrieMap *attributes;              // From strings to attribute IDs
+  char **string_mapping;            // From attribute IDs to strings
 
   Schema *relation_unified_schema;  // Schema for all relation types
   Schema *node_unified_schema;      // Schema for all/unspecified node labels
@@ -48,6 +49,10 @@ Schema* GraphContext_AddRelationType(GraphContext *gc, const char *label);
 const char* GraphContext_GetNodeLabel(const GraphContext *gc, Node *n);
 // Retrieve the relation type string for a given Edge object
 const char* GraphContext_GetEdgeRelationType(const GraphContext *gc, Edge *e);
+// Adds an attribute string to GraphContext ID mappings
+Attribute_ID GraphContext_AddAttribute(GraphContext *gc, const char *attribute);
+// Attribute_ID GraphContext_GetAttributeID(GraphContext *gc, const char *attribute);
+const char* GraphContext_GetAttributeString(const GraphContext *gc, Attribute_ID id);
 
 /* Index API */
 bool GraphContext_HasIndices(GraphContext *gc);

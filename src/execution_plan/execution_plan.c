@@ -660,6 +660,7 @@ void _ExecutionPlanInit(OpBase *root) {
 void ExecutionPlanInit(ExecutionPlan *plan) {
     if(!plan) return;
     _ExecutionPlanInit(plan->root);
+    // maybe here
 }
 
 ResultSet* ExecutionPlan_Execute(ExecutionPlan *plan) {

@@ -172,7 +172,7 @@ static void _CommitNodes(OpCreate *op) {
                     Vector_Get(entity->properties, prop_idx, &key);
                     Vector_Get(entity->properties, prop_idx+1, &value);
 
-                    Attribute_ID prop_id = Schema_AddAttribute(schema, SCHEMA_NODE, key->stringval);
+                    Attribute_ID prop_id = GraphContext_AddAttribute(op->gc, key->stringval);
                     GraphEntity_AddProperty((GraphEntity*)n, prop_id, *value);
                 }
                 // Introduce node to schema indices.
@@ -229,7 +229,7 @@ static void _CommitEdges(OpCreate *op) {
                     Vector_Get(entity->properties, prop_idx, &key);
                     Vector_Get(entity->properties, prop_idx+1, &value);
 
-                    Attribute_ID prop_id = Schema_AddAttribute(schema, SCHEMA_EDGE, key->stringval);
+                    Attribute_ID prop_id = GraphContext_AddAttribute(op->gc, key->stringval);
                     GraphEntity_AddProperty((GraphEntity*)e, prop_id, *value);
                 }
                 op->result_set->stats.properties_set += propCount/2;

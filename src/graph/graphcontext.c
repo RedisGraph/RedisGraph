@@ -35,8 +35,12 @@ GraphContext* GraphContext_New(RedisModuleCtx *ctx, const char *graphname,
   gc->relation_schemas = array_new(Schema*, GRAPH_DEFAULT_RELATION_TYPE_CAP);
 
   // Initialize the generic schemas
+  // TODO needed?
   gc->node_unified_schema = Schema_New("ALL", GRAPH_NO_LABEL);
   gc->relation_unified_schema = Schema_New("ALL", GRAPH_NO_RELATION);
+
+  gc->string_mapping = array_new(char*, 64);
+  gc->attributes = NewTrieMap();
 
   pthread_setspecific(_tlsGCKey, gc);
 
@@ -141,6 +145,32 @@ const char* GraphContext_GetEdgeRelationType(const GraphContext *gc, Edge *e) {
     return gc->relation_schemas[reltype_id]->name;
 }
 
+Attribute_ID GraphContext_AddAttribute(GraphContext *gc, const char *attribute) {
+    // See if attribute already exists.
+    Attribute_ID *pAttribute_id = NULL;
+    Attribute_ID attribute_id = Attribute_GetID(attribute);
+
+    if(attribute_id == ATTRIBUTE_NOTFOUND) {
+        attribute_id = gc->attributes->cardinality;
+        pAttribute_id = malloc(sizeof(Attribute_ID));
+        *pAttribute_id = attribute_id;
+
+        TrieMap_Add(gc->attributes,
+                    (char*)attribute,
+                    strlen(attribute),
+                    pAttribute_id,
+                    TrieMap_DONT_CARE_REPLACE);
+        gc->string_mapping = array_append(gc->string_mapping, (char*)attribute);
+    }
+
+    return attribute_id;
+}
+
+const char* GraphContext_GetAttributeString(const GraphContext *gc, Attribute_ID id) {
+    assert(id < array_len(gc->string_mapping));
+    return gc->string_mapping[id];
+}
+
 //------------------------------------------------------------------------------
 // Index API
 //------------------------------------------------------------------------------
@@ -167,7 +197,7 @@ int GraphContext_AddIndex(GraphContext *gc, const char *label, const char *attri
   if(idx) return INDEX_FAIL;
 
   // Populate an index for the label-attribute pair using the Graph interfaces.
-  Attribute_ID attr_id = Schema_GetAttributeID(s, attribute);
+  Attribute_ID attr_id = Attribute_GetID(attribute); // TODO silly
   // Return if attribute does not exist.
   if (attr_id == ATTRIBUTE_NOTFOUND) return INDEX_FAIL;
 
@@ -205,7 +235,7 @@ void GraphContext_AddNodeToIndices(GraphContext *gc, Schema *s, Node *n) {
   unsigned int index_count = Schema_IndexCount(s);
   for(unsigned int i = 0; i < index_count; i++) {
     Index *idx = s->indices[i];
-    Attribute_ID attr_id = Schema_GetAttributeID(s, idx->attribute);
+    Attribute_ID attr_id = Attribute_GetID(idx->attribute); // TODO silly
     // See if node contains current property.
     SIValue *v = GraphEntity_GetProperty((GraphEntity*)n, attr_id);
     if(v == PROPERTY_NOTFOUND) continue;

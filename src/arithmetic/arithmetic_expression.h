@@ -98,8 +98,8 @@ typedef struct {
             int entity_alias_idx;
             char *entity_prop;
             Attribute_ID entity_prop_idx;
-		} variadic;
-	};
+        } variadic;
+    };
 	AR_OperandNodeType type;
 } AR_OperandNode;
 

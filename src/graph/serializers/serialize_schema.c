@@ -5,9 +5,10 @@
 */
 
 #include "serialize_schema.h"
+#include "../../util/arr.h"
 
 /* Deserialize schema */
-Schema* RdbLoadUnifiedSchema(RedisModuleIO *rdb) {
+Schema* RdbLoadUnifiedSchema(RedisModuleIO *rdb, TrieMap *attributes, char **string_mapping) {
   /* Format:
    * id
    * name
@@ -22,7 +23,8 @@ Schema* RdbLoadUnifiedSchema(RedisModuleIO *rdb) {
   size_t len = 0;
   uint64_t attrCount = RedisModule_LoadUnsigned(rdb);
 
-  for(int i = 0; i < attrCount; i++) {
+
+  for(uint i = 0; i < attrCount; i++) {
     // Load attribute string from RDB file.
     char *attr = RedisModule_LoadStringBuffer(rdb, &len);
 
@@ -31,10 +33,8 @@ Schema* RdbLoadUnifiedSchema(RedisModuleIO *rdb) {
     pAttribute_id = malloc(sizeof(Attribute_ID));
     *pAttribute_id = i;
 
-    TrieMap_Add(s->attributes, attr, len, pAttribute_id, TrieMap_DONT_CARE_REPLACE);
-
-    // Immediately free the string, as the schema does not reference it.
-    RedisModule_Free(attr);
+    TrieMap_Add(attributes, attr, len, pAttribute_id, TrieMap_DONT_CARE_REPLACE);
+    string_mapping[i] = attr; // TODO strings need to be freed elsewhere 
   }
 
   return s;
@@ -57,17 +57,10 @@ Schema* RdbLoadSchema(RedisModuleIO *rdb, SchemaType type) {
 
   char attribute[1024];
 
-  for(int i = 0; i < attrCount; i++) {
+  // Only doing this for backwards compatibility; we're not keeping these strings
+  for(uint i = 0; i < attrCount; i++) {
     // Load attribute string from RDB file.
     char *attr = RedisModule_LoadStringBuffer(rdb, &len);
-    
-    // TODO: make sure we do not overflow.
-    memcpy(attribute, attr, len);
-    attribute[len] = 0;
-
-    // Attribute ID will be retrieved from unified schema.
-    Schema_AddAttribute(s, type, attribute);
-
     // Immediately free the string, as the schema does not reference it.
     RedisModule_Free(attr);
   }
@@ -75,7 +68,6 @@ Schema* RdbLoadSchema(RedisModuleIO *rdb, SchemaType type) {
   return s;
 }
 
-/* Serialize schema */
 void RdbSaveSchema(RedisModuleIO *rdb, void *value) {
   /* Format:
    * id
@@ -86,19 +78,29 @@ void RdbSaveSchema(RedisModuleIO *rdb, void *value) {
 
   Schema *s = value;
 
-  unsigned short schema_attr_count = Schema_AttributeCount(s);
   RedisModule_SaveUnsigned(rdb, s->id);
   RedisModule_SaveStringBuffer(rdb, s->name, strlen(s->name) + 1);
-  RedisModule_SaveUnsigned(rdb, schema_attr_count);
+  // Don't save any strings
+  RedisModule_SaveUnsigned(rdb, 0);
+}
 
-  if(schema_attr_count) {
-    char *ptr;
-    tm_len_t len;
-    void *v;
-    TrieMapIterator *it = TrieMap_Iterate(s->attributes, "", 0);
-    while(TrieMapIterator_Next(it, &ptr, &len, &v)) {
-      RedisModule_SaveStringBuffer(rdb, ptr, len);
-    }
-    TrieMapIterator_Free(it);
+/* Serialize schema */
+void RdbSaveUnifiedSchema(RedisModuleIO *rdb, void *value, const char **string_mapping) {
+  /* Format:
+   * id
+   * name
+   * #attributes
+   * attributes
+   */
+
+  Schema *s = value;
+
+  RedisModule_SaveUnsigned(rdb, s->id);
+  RedisModule_SaveStringBuffer(rdb, s->name, strlen(s->name) + 1);
+  uint len = array_len(string_mapping);
+  RedisModule_SaveUnsigned(rdb, len);
+  // TODO edges overwrite nodes, etc. Might need to be breaking?
+  for (uint i = 0; i < len; i ++) {
+    RedisModule_SaveStringBuffer(rdb, string_mapping[i], len);
   }
 }

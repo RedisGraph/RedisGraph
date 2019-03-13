@@ -67,9 +67,7 @@ static void _CommitNodes(OpMerge *op, Record r) {
                     Vector_Get(blueprint->properties, prop_idx*2, &key);
                     Vector_Get(blueprint->properties, prop_idx*2+1, &value);
 
-                    Attribute_ID prop_id = ATTRIBUTE_NOTFOUND;
-                    if(schema) prop_id = Schema_AddAttribute(schema, SCHEMA_NODE, key->stringval);
-                    else prop_id = Schema_AddAttribute(unified_schema, SCHEMA_NODE, key->stringval);
+                    Attribute_ID prop_id = GraphContext_AddAttribute(op->gc, key->stringval);
                     GraphEntity_AddProperty((GraphEntity*)n, prop_id, *value);
                 }
                 // Update tracked schema and add node to any matching indices.
@@ -127,7 +125,7 @@ static void _CommitEdges(OpMerge *op, Record r) {
                     Vector_Get(blueprint->ge.properties, prop_idx*2, &key);
                     Vector_Get(blueprint->ge.properties, prop_idx*2+1, &value);
 
-                    Attribute_ID prop_id = Schema_AddAttribute(schema, SCHEMA_EDGE, key->stringval);
+                    Attribute_ID prop_id = GraphContext_AddAttribute(op->gc, key->stringval);
                     GraphEntity_AddProperty((GraphEntity*)e, prop_id, *value);
                 }
                 op->result_set->stats.properties_set += propCount;

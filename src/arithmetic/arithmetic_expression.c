@@ -115,7 +115,7 @@ void _AR_EXP_UpdatePropIdx(AR_ExpNode *root, const Record r) {
     GraphContext *gc = GraphContext_GetFromTLS();
     RecordEntryType t = Record_GetType(r, root->operand.variadic.entity_alias_idx);
     SchemaType st = (t == REC_TYPE_NODE) ? SCHEMA_NODE : SCHEMA_EDGE;
-    root->operand.variadic.entity_prop_idx = Attribute_GetID(st, root->operand.variadic.entity_prop);
+    root->operand.variadic.entity_prop_idx = Attribute_GetID(root->operand.variadic.entity_prop);
 }
 
 SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {

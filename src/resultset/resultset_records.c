@@ -27,6 +27,7 @@ static inline void _ResultSet_ReplyWithRoundedDouble(RedisModuleCtx *ctx, double
 }
 
 static void _ResultSet_ReplyWithProperties(RedisModuleCtx *ctx, const GraphEntityType t, const GraphEntity *e) {
+    GraphContext *gc = GraphContext_GetFromTLS();
     int prop_count = ENTITY_PROP_COUNT(e);
     RedisModule_ReplyWithArray(ctx, prop_count);
     // Iterate over all properties stored on entity
@@ -34,7 +35,7 @@ static void _ResultSet_ReplyWithProperties(RedisModuleCtx *ctx, const GraphEntit
         RedisModule_ReplyWithArray(ctx, 2);
         EntityProperty prop = ENTITY_PROPS(e)[i];
         // Emit the string key
-        const char *prop_str = (t == GETYPE_NODE) ? node_string_mapping[prop.id] : edge_string_mapping[prop.id];
+        const char *prop_str = GraphContext_GetAttributeString(gc, prop.id);
         RedisModule_ReplyWithStringBuffer(ctx, prop_str, strlen(prop_str));
         // Emit the value
         ResultSet_ReplyWithSIValue(ctx, prop.value, false);

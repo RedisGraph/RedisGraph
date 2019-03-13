@@ -47,33 +47,6 @@ static NodeID _updatedID(uint64_t *array, NodeID id) {
     }
 }
 
-/* Create a mapping from attribute ID to attribute name. */
-static char** _Schema_AttributeMapping(Schema *s, unsigned short *attr_count) {
-    *attr_count = Schema_AttributeCount(s);
-    char **attribute_map = malloc(sizeof(char*) * (*attr_count));
-    
-    char *ptr;
-    tm_len_t len;
-    Attribute_ID *attr_id;
-    TrieMapIterator *it = TrieMap_Iterate(s->attributes, "", 0);
-
-    while(TrieMapIterator_Next(it, &ptr, &len, (void**)&attr_id)) {
-        attribute_map[*attr_id] = malloc(sizeof(char) * len+1);
-        memcpy(attribute_map[*attr_id], ptr, len);
-        attribute_map[*attr_id][len] = '\0';
-    }
-
-    TrieMapIterator_Free(it);
-
-    return attribute_map;
-}
-
-/* Free attribute mapping created by _Schema_AttributeMapping. */
-static void _Schema_FreeAttributeMapping(char **mapping, unsigned short mapping_len) {
-    for(unsigned short i = 0; i < mapping_len; i++) free(mapping[i]);
-    free(mapping);
-}
-
 SIValue _RdbLoadSIValue(RedisModuleIO *rdb) {
     /* Format:
      * SIType
@@ -96,7 +69,7 @@ SIValue _RdbLoadSIValue(RedisModuleIO *rdb) {
     }
 }
 
-void _RdbLoadEntity(RedisModuleIO *rdb, GraphEntity *e, Schema *s) {
+void _RdbLoadEntity(RedisModuleIO *rdb, GraphEntity *e) {
     /* Format:
      * #properties N
      * (name, value type, value) X N
@@ -107,14 +80,14 @@ void _RdbLoadEntity(RedisModuleIO *rdb, GraphEntity *e, Schema *s) {
     for(int i = 0; i < propCount; i++) {
         char *attr_name = RedisModule_LoadStringBuffer(rdb, NULL);
         SIValue attr_value = _RdbLoadSIValue(rdb);
-        Attribute_ID attr_id = Schema_GetAttributeID(s, attr_name);
+        Attribute_ID attr_id = Attribute_GetID(attr_name);
         assert(attr_id != ATTRIBUTE_NOTFOUND);
         GraphEntity_AddProperty(e, attr_id, attr_value);
         RedisModule_Free(attr_name);
     }
 }
 
-void _RdbLoadNodes(RedisModuleIO *rdb, Graph *g, Schema *s) {
+void _RdbLoadNodes(RedisModuleIO *rdb, Graph *g, const char **string_mapping) {
     /* Format:
      * #nodes
      *      ID
@@ -141,11 +114,11 @@ void _RdbLoadNodes(RedisModuleIO *rdb, Graph *g, Schema *s) {
         uint64_t l = RedisModule_LoadUnsigned(rdb);
         Graph_CreateNode(g, l, &n);
 
-        _RdbLoadEntity(rdb, (GraphEntity*)&n, s);
+        _RdbLoadEntity(rdb, (GraphEntity*)&n);
     }
 }
 
-void _RdbLoadEdges(RedisModuleIO *rdb, Graph *g, Schema *s) {
+void _RdbLoadEdges(RedisModuleIO *rdb, Graph *g, const char **string_mapping) { 
     /* Format:
      * #edges (N)
      * {
@@ -168,7 +141,7 @@ void _RdbLoadEdges(RedisModuleIO *rdb, Graph *g, Schema *s) {
         NodeID destId = RedisModule_LoadUnsigned(rdb);
         uint64_t relation = RedisModule_LoadUnsigned(rdb);
         assert(Graph_ConnectNodes(g, srcId, destId, relation, &e));
-        _RdbLoadEntity(rdb, (GraphEntity*)&e, s);
+        _RdbLoadEntity(rdb, (GraphEntity*)&e);
     }
 }
 
@@ -195,7 +168,7 @@ void _RdbSaveSIValue(RedisModuleIO *rdb, const SIValue *v) {
     }
 }
 
-void _RdbSaveEntity(RedisModuleIO *rdb, const Entity *e, char **attr_map) {
+void _RdbSaveEntity(RedisModuleIO *rdb, const Entity *e, const char **attr_map) {
     /* Format:
      * #attributes N
      * (name, value type, value) X N  */
@@ -204,13 +177,13 @@ void _RdbSaveEntity(RedisModuleIO *rdb, const Entity *e, char **attr_map) {
 
     for(int i = 0; i < e->prop_count; i++) {
         EntityProperty attr = e->properties[i];
-        char *attr_name = attr_map[attr.id];
+        const char *attr_name = attr_map[attr.id];
         RedisModule_SaveStringBuffer(rdb, attr_name, strlen(attr_name) + 1);
         _RdbSaveSIValue(rdb, &attr.value);
     }
 }
 
-void _RdbSaveNodes(RedisModuleIO *rdb, const Graph *g, Schema *s) {
+void _RdbSaveNodes(RedisModuleIO *rdb, const Graph *g, const char **string_mapping) {
     /* Format:
      * #nodes
      *      ID
@@ -221,7 +194,6 @@ void _RdbSaveNodes(RedisModuleIO *rdb, const Graph *g, Schema *s) {
 
     /* Get a mapping between node attribute ID to attribute name. */
     unsigned short node_attribute_mapping_len = 0;
-    char** node_attribute_mapping = _Schema_AttributeMapping(s, &node_attribute_mapping_len);
 
     // #Nodes
     RedisModule_SaveUnsigned(rdb, Graph_NodeCount(g));
@@ -241,15 +213,13 @@ void _RdbSaveNodes(RedisModuleIO *rdb, const Graph *g, Schema *s) {
         
         // properties N
         // (name, value type, value) X N
-        _RdbSaveEntity(rdb, e, node_attribute_mapping);
+        _RdbSaveEntity(rdb, e, string_mapping);
     }
 
     DataBlockIterator_Free(iter);
-
-    _Schema_FreeAttributeMapping(node_attribute_mapping, node_attribute_mapping_len);
 }
 
-void _RdbSaveEdges(RedisModuleIO *rdb, const Graph *g, Schema *s) {
+void _RdbSaveEdges(RedisModuleIO *rdb, const Graph *g, const char **string_mapping) {
     /* Format:
      * #edges (N)
      * {
@@ -262,7 +232,6 @@ void _RdbSaveEdges(RedisModuleIO *rdb, const Graph *g, Schema *s) {
 
     /* Get a mapping between edge attribute ID to attribute name. */
     unsigned short edge_attribute_mapping_len = 0;
-    char** edge_attribute_mapping = _Schema_AttributeMapping(s, &edge_attribute_mapping_len);
     
     // Sort deleted indices.
     QSORT(NodeID, g->nodes->deletedIdx, array_len(g->nodes->deletedIdx), ENTITY_ID_ISLT);    
@@ -306,16 +275,14 @@ void _RdbSaveEdges(RedisModuleIO *rdb, const Graph *g, Schema *s) {
             RedisModule_SaveUnsigned(rdb, r);
             // Edge properties.
             Graph_GetEdge(g, edgeID, &e);
-            _RdbSaveEntity(rdb, e.entity, edge_attribute_mapping);
+            _RdbSaveEntity(rdb, e.entity, string_mapping);
         }
 
         GxB_MatrixTupleIter_free(it);
     }
-
-    _Schema_FreeAttributeMapping(edge_attribute_mapping, edge_attribute_mapping_len);
 }
 
-void RdbSaveGraph(RedisModuleIO *rdb, void *value, Schema *ns, Schema *es) {
+void RdbSaveGraph(RedisModuleIO *rdb, void *value, const char **string_mapping) {
     /* Format:
      * #nodes
      *      ID
@@ -336,13 +303,13 @@ void RdbSaveGraph(RedisModuleIO *rdb, void *value, Schema *ns, Schema *es) {
     Graph *g = (Graph *)value;
 
     // Dump nodes.
-    _RdbSaveNodes(rdb, g, ns);
+    _RdbSaveNodes(rdb, g, string_mapping);
 
     // Dump edges.
-    _RdbSaveEdges(rdb, g, es);
+    _RdbSaveEdges(rdb, g, string_mapping);
 }
 
-void RdbLoadGraph(RedisModuleIO *rdb, Graph *g, Schema *ns, Schema *es) {
+void RdbLoadGraph(RedisModuleIO *rdb, Graph *g, const char **string_mapping) {
      /* Format:
      * #nodes
      *      #labels M
@@ -362,10 +329,10 @@ void RdbLoadGraph(RedisModuleIO *rdb, Graph *g, Schema *ns, Schema *es) {
     Graph_SetMatrixPolicy(g, RESIZE_TO_CAPACITY);
 
     // Load nodes.
-    _RdbLoadNodes(rdb, g, ns);
+    _RdbLoadNodes(rdb, g, string_mapping);
 
     // Load edges.
-    _RdbLoadEdges(rdb, g, es);
+    _RdbLoadEdges(rdb, g, string_mapping);
 
     // Revert to default synchronization behavior
     Graph_SetMatrixPolicy(g, SYNC_AND_MINIMIZE_SPACE);

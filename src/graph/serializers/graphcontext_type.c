@@ -61,8 +61,9 @@ void GraphContextType_RdbSave(RedisModuleIO *rdb, void *value) {
   RedisModule_SaveUnsigned(rdb, schema_count);
 
   // Serialize unified node schema.
-  RdbSaveSchema(rdb, gc->node_unified_schema);
+  RdbSaveUnifiedSchema(rdb, gc->node_unified_schema, (const char**)gc->string_mapping);
 
+  // TODO going to be broken!
   // Name of label X #node schemas.
   for(int i = 0; i < schema_count; i++) {
     Schema *s = gc->node_schemas[i];
@@ -74,7 +75,7 @@ void GraphContextType_RdbSave(RedisModuleIO *rdb, void *value) {
   RedisModule_SaveUnsigned(rdb, relation_count);
 
   // Serialize unified edge schema.
-  RdbSaveSchema(rdb, gc->relation_unified_schema);
+  RdbSaveUnifiedSchema(rdb, gc->relation_unified_schema, (const char**)gc->string_mapping);
 
   // Name of label X #relation schemas.
   for(unsigned short i = 0; i < relation_count; i++) {
@@ -83,7 +84,7 @@ void GraphContextType_RdbSave(RedisModuleIO *rdb, void *value) {
   }
 
   // Serialize graph object
-  RdbSaveGraph(rdb, gc->g, gc->node_unified_schema, gc->relation_unified_schema);
+  RdbSaveGraph(rdb, gc->g, (const char**)gc->string_mapping);
 
   // #Indices.
   uint32_t index_count = gc->index_count;
@@ -132,8 +133,12 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
   // #Node schemas
   uint32_t schema_count = RedisModule_LoadUnsigned(rdb);
 
+  // Initialize property mappings
+  gc->attributes = NewTrieMap();
+  gc->string_mapping = array_new(char*, 64);
+
   // unified node schema.
-  gc->node_unified_schema = RdbLoadUnifiedSchema(rdb);
+  gc->node_unified_schema = RdbLoadUnifiedSchema(rdb, gc->attributes, gc->string_mapping);
 
   // Load each node schema
   gc->node_schemas = array_new(Schema*, schema_count);
@@ -146,7 +151,7 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
   schema_count = RedisModule_LoadUnsigned(rdb);
 
   // unified edge schema.
-  gc->relation_unified_schema = RdbLoadUnifiedSchema(rdb);
+  gc->relation_unified_schema = RdbLoadUnifiedSchema(rdb, gc->attributes, gc->string_mapping);
 
   // Load each edge schema
   gc->relation_schemas = array_new(Schema*, schema_count);
@@ -156,7 +161,7 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
   }
 
   // Graph object.
-  RdbLoadGraph(rdb, gc->g, gc->node_unified_schema, gc->relation_unified_schema);
+  RdbLoadGraph(rdb, gc->g, (const char**)gc->string_mapping);
 
   // #Indices
   // (index label, index property) X #indices
