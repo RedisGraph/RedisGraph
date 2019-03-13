@@ -172,10 +172,16 @@ how_many_countries_each_friend_visited_query = QueryInfo(
 
 happy_birthday_query = QueryInfo(
     query = """MATCH (:person {name:"Roi Lipman"})-[:friend]->(f:person)
-               SET f.age = f.age + 1""",
+               SET f.age = f.age + 1
+               RETURN f.name, f.age order by f.name, f.age""",
     description='Update friends age.',
-    max_run_time_ms=0.15,
-    expected_result=[]
+    max_run_time_ms=0.25,
+    expected_result=[['Ailon Velger', 33],
+                     ['Alon Fital',   33],
+                     ['Boaz Arad',    32],
+                     ['Omri Traub',   34],
+                     ['Ori Laslo',    33],
+                     ['Tal Doron',    33]]
 )
 
 friends_age_statistics_query = QueryInfo(

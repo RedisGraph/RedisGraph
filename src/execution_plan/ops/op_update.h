@@ -43,9 +43,12 @@ typedef struct {
     uint pending_updates_cap;
     uint pending_updates_count;
     EntityUpdateCtx *pending_updates;           /* List of entities to update and their actual new value. */
+    Record *records;                            /* Updated records, used only when query inspects updated entities. */
+    bool updates_commited;                      /* Updates performed? */
 } OpUpdate;
 
 OpBase* NewUpdateOp(GraphContext *gc, AST *ast, ResultSet *result_set);
+OpResult OpUpdateInit(OpBase *opBase);
 Record OpUpdateConsume(OpBase *opBase);
 OpResult OpUpdateReset(OpBase *ctx);
 void OpUpdateFree(OpBase *ctx);
