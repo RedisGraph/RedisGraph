@@ -8,8 +8,8 @@
 #define __SECONDARY_VALUE_H__
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
-#include <sys/types.h>
 
 /* Type defines the supported types by the indexing system. The types are powers
  * of 2 so they can be used in bitmasks of matching types.

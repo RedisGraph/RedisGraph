@@ -148,7 +148,7 @@ void *DataBlock_GetItem(const DataBlock *dataBlock, size_t idx) {
     return item;
 }
 
-void* DataBlock_AllocateItem(DataBlock *dataBlock, u_int64_t *idx) {
+void* DataBlock_AllocateItem(DataBlock *dataBlock, uint64_t *idx) {
     // Make sure we've got room for items.
     if(dataBlock->itemCount >= dataBlock->itemCap) {
         // Allocate twice as much items then we currently hold.
@@ -159,7 +159,7 @@ void* DataBlock_AllocateItem(DataBlock *dataBlock, u_int64_t *idx) {
 
     // Get index into which to store item,
     // prefer reusing free indicies.
-    u_int64_t pos = dataBlock->itemCount;
+    uint64_t pos = dataBlock->itemCount;
     if(array_len(dataBlock->deletedIdx) > 0) {
         pos = array_pop(dataBlock->deletedIdx);
     }
@@ -176,7 +176,7 @@ void* DataBlock_AllocateItem(DataBlock *dataBlock, u_int64_t *idx) {
     return (void*)item;
 }
 
-void DataBlock_DeleteItem(DataBlock *dataBlock, u_int64_t idx) {
+void DataBlock_DeleteItem(DataBlock *dataBlock, uint64_t idx) {
     assert(dataBlock);
     if(_DataBlock_IndexOutOfBounds(dataBlock, idx)) return;
 
