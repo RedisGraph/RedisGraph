@@ -11,6 +11,7 @@
 	#include <stdio.h>
 	#include <assert.h>
 	#include <limits.h>
+	#include <sys/types.h>
 	#include "token.h"	
 	#include "grammar.h"
 	#include "ast.h"

@@ -1,10 +1,10 @@
 #ifndef __TRIEMAP_H__
 #define __TRIEMAP_H__
 
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
 
 typedef u_int16_t tm_len_t;
 
