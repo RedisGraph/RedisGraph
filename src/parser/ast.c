@@ -258,7 +258,8 @@ AST *AST_New(AST_MatchNode *matchNode, AST_WhereNode *whereNode,
                          AST_SetNode *setNode, AST_DeleteNode *deleteNode,
                          AST_ReturnNode *returnNode, AST_OrderNode *orderNode,
                          AST_SkipNode *skipNode, AST_LimitNode *limitNode,
-                         AST_IndexNode *indexNode, AST_UnwindNode *unwindNode) {
+                         AST_IndexNode *indexNode, AST_UnwindNode *unwindNode,
+                         AST_ProcedureCallNode *callNode) {
   AST *ast = rm_malloc(sizeof(AST));
 
   ast->matchNode = matchNode;
@@ -273,6 +274,7 @@ AST *AST_New(AST_MatchNode *matchNode, AST_WhereNode *whereNode,
   ast->limitNode = limitNode;
   ast->indexNode = indexNode;
   ast->unwindNode = unwindNode;
+  ast->callNode = callNode;
   ast->withNode = NULL;
   ast->_aliasIDMapping = NULL;
   return ast;
@@ -397,6 +399,7 @@ TrieMap* AST_Identifiers(const AST *ast) {
   WithClause_DefinedEntities(ast->withNode, identifiers);
   CreateClause_DefinedEntities(ast->createNode, identifiers);
   UnwindClause_DefinedEntities(ast->unwindNode, identifiers);
+  ProcedureCallClause_DefinedEntities(ast->callNode, identifiers);
   return identifiers;
 }
 
@@ -424,8 +427,8 @@ void AST_Free(AST **ast) {
     Free_AST_SkipNode(ast[i]->skipNode);
     Free_AST_OrderNode(ast[i]->orderNode);
     Free_AST_UnwindNode(ast[i]->unwindNode);
-    
-    if(ast[i]->withNode) Free_AST_WithNode(ast[i]->withNode);
+    Free_AST_ProcedureCallNode(ast[i]->callNode);
+    Free_AST_WithNode(ast[i]->withNode);
     if(ast[i]->_aliasIDMapping) TrieMap_Free(ast[i]->_aliasIDMapping, NULL);
     rm_free(ast[i]);
   }

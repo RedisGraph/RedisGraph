@@ -33,6 +33,7 @@ typedef struct {
 	AST_IndexNode *indexNode;
 	AST_UnwindNode *unwindNode;
 	AST_WithNode *withNode;
+	AST_ProcedureCallNode *callNode;
 	TrieMap *_aliasIDMapping;	// Mapping between aliases and IDs.
 } AST;
 
@@ -41,7 +42,8 @@ AST* AST_New(AST_MatchNode *matchNode, AST_WhereNode *whereNode,
 						 AST_SetNode *setNode, AST_DeleteNode *deleteNode,
 						 AST_ReturnNode *returnNode, AST_OrderNode *orderNode,
 						 AST_SkipNode *skipNode, AST_LimitNode *limitNode,
-						 AST_IndexNode *indexNode, AST_UnwindNode *unwindNode);
+						 AST_IndexNode *indexNode, AST_UnwindNode *unwindNode,
+						 AST_ProcedureCallNode *callNode);
 
 // AST clause validations.
 AST_Validation AST_Validate(const AST* ast, char **reason);

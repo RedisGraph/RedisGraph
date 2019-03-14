@@ -61,81 +61,143 @@ singlePartQuery(A) ::= expr(B). {
 }
 
 singlePartQuery(A) ::= skipClause(B) limitClause(C) returnClause(D) orderClause(E). {
-	A = AST_New(NULL, NULL, NULL, NULL, NULL, NULL, D, E, B, C, NULL, NULL);
+	A = AST_New(NULL, NULL, NULL, NULL, NULL, NULL, D, E, B, C, NULL, NULL, NULL);
 }
 
 singlePartQuery(A) ::= limitClause(B) returnClause(C) orderClause(D). {
-	A = AST_New(NULL, NULL, NULL, NULL, NULL, NULL, C, D, NULL, B, NULL, NULL);
+	A = AST_New(NULL, NULL, NULL, NULL, NULL, NULL, C, D, NULL, B, NULL, NULL, NULL);
 }
 
 singlePartQuery(A) ::= skipClause(B) returnClause(C) orderClause(D). {
-	A = AST_New(NULL, NULL, NULL, NULL, NULL, NULL, C, D, B, NULL, NULL, NULL);
+	A = AST_New(NULL, NULL, NULL, NULL, NULL, NULL, C, D, B, NULL, NULL, NULL, NULL);
 }
 
 singlePartQuery(A) ::= returnClause(B) orderClause(C) skipClause(D) limitClause(E). {
-	A = AST_New(NULL, NULL, NULL, NULL, NULL, NULL, B, C, D, E, NULL, NULL);
+	A = AST_New(NULL, NULL, NULL, NULL, NULL, NULL, B, C, D, E, NULL, NULL, NULL);
 }
 
 singlePartQuery(A) ::= orderClause(B) skipClause(C) limitClause(D) returnClause(E). {
-	A = AST_New(NULL, NULL, NULL, NULL, NULL, NULL, E, B, C, D, NULL, NULL);
+	A = AST_New(NULL, NULL, NULL, NULL, NULL, NULL, E, B, C, D, NULL, NULL, NULL);
 }
 
 singlePartQuery(A) ::= orderClause(B) skipClause(C) limitClause(D) setClause(E). {
-	A = AST_New(NULL, NULL, NULL, NULL, E, NULL, NULL, B, C, D, NULL, NULL);
+	A = AST_New(NULL, NULL, NULL, NULL, E, NULL, NULL, B, C, D, NULL, NULL, NULL);
 }
 
 singlePartQuery(A) ::= orderClause(B) skipClause(C) limitClause(D) deleteClause(E). {
-	A = AST_New(NULL, NULL, NULL, NULL, NULL, E, NULL, B, C, D, NULL, NULL);
+	A = AST_New(NULL, NULL, NULL, NULL, NULL, E, NULL, B, C, D, NULL, NULL, NULL);
 }
 
 %type expr {AST*}
 expr(A) ::= multipleMatchClause(B) whereClause(C) multipleCreateClause(D) returnClause(E) orderClause(F) skipClause(G) limitClause(H). {
-	A = AST_New(B, C, D, NULL, NULL, NULL, E, F, G, H, NULL, NULL);
+	A = AST_New(B, C, D, NULL, NULL, NULL, E, F, G, H, NULL, NULL, NULL);
 }
 
 expr(A) ::= multipleMatchClause(B) whereClause(C) multipleCreateClause(D). {
-	A = AST_New(B, C, D, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	A = AST_New(B, C, D, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 }
 
 expr(A) ::= multipleMatchClause(B) whereClause(C) deleteClause(D). {
-	A = AST_New(B, C, NULL, NULL, NULL, D, NULL, NULL, NULL, NULL, NULL, NULL);
+	A = AST_New(B, C, NULL, NULL, NULL, D, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 }
 
 expr(A) ::= multipleMatchClause(B) whereClause(C) setClause(D). {
-	A = AST_New(B, C, NULL, NULL, D, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	A = AST_New(B, C, NULL, NULL, D, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 }
 
 expr(A) ::= multipleMatchClause(B) whereClause(C) setClause(D) returnClause(E) orderClause(F) skipClause(G) limitClause(H). {
-	A = AST_New(B, C, NULL, NULL, D, NULL, E, F, G, H, NULL, NULL);
+	A = AST_New(B, C, NULL, NULL, D, NULL, E, F, G, H, NULL, NULL, NULL);
 }
 
 expr(A) ::= multipleCreateClause(B). {
-	A = AST_New(NULL, NULL, B, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	A = AST_New(NULL, NULL, B, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 }
 
 expr(A) ::= unwindClause(B) multipleCreateClause(C). {
-	A = AST_New(NULL, NULL, C, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, B);
+	A = AST_New(NULL, NULL, C, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, B, NULL);
 }
 
 expr(A) ::= indexClause(B). {
-	A = AST_New(NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, B, NULL);
+	A = AST_New(NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, B, NULL, NULL);
 }
 
 expr(A) ::= mergeClause(B). {
-	A = AST_New(NULL, NULL, NULL, B, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	A = AST_New(NULL, NULL, NULL, B, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 }
 
 expr(A) ::= mergeClause(B) setClause(C). {
-	A = AST_New(NULL, NULL, NULL, B, C, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	A = AST_New(NULL, NULL, NULL, B, C, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 }
 
 expr(A) ::= returnClause(B). {
-	A = AST_New(NULL, NULL, NULL, NULL, NULL, NULL, B, NULL, NULL, NULL, NULL, NULL);
+	A = AST_New(NULL, NULL, NULL, NULL, NULL, NULL, B, NULL, NULL, NULL, NULL, NULL, NULL);
 }
 
 expr(A) ::= unwindClause(B) returnClause(C) skipClause(D) limitClause(E). {
-	A = AST_New(NULL, NULL, NULL, NULL, NULL, NULL, C, NULL, D, E, NULL, B);
+	A = AST_New(NULL, NULL, NULL, NULL, NULL, NULL, C, NULL, D, E, NULL, B, NULL);
 }
+
+expr(A) ::= procedureCallClause(B). {
+	A = AST_New(NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, B);
+}
+
+%type procedureCallClause { AST_ProcedureCallNode* }
+procedureCallClause(A) ::= CALL procedureName(B) LEFT_PARENTHESIS stringList(C) RIGHT_PARENTHESIS YIELD unquotedStringList(D). {
+	A = New_AST_ProcedureCallNode(B, C, D);
+}
+
+%type procedureName { char* }
+procedureName(A) ::= unquotedStringList(B). {
+	// Concatenate strings with dots.
+	// Determine required string length.
+	int buffLen = 0;
+	for(int i = 0; i < array_len(B); i++) {
+		buffLen += strlen(B[i]) + 1;
+	}
+
+	int offset = 0;
+	char *procedure_name = malloc(buffLen);
+	for(int i = 0; i < array_len(B); i++) {
+		int n = strlen(B[i]);
+		memcpy(procedure_name + offset, B[i], n);
+		offset += n;
+		procedure_name[offset] = '.';
+		offset++;
+	}
+
+	// Discard last dot and trerminate string.
+	offset--;
+	procedure_name[offset] = '\0';
+	A = procedure_name;
+}
+
+%type stringList {char**}
+stringList(A) ::= STRING(B) . {
+	A = array_new(char*, 1);
+	A = array_append(A, B.strval);
+}
+
+// Multiple strings.
+stringList(A) ::= stringList(B) delimiter STRING(C) . {
+	B = array_append(B, C.strval);
+	A = B;
+}
+
+%type unquotedStringList {char**}
+unquotedStringList(A) ::= UQSTRING(B) . {
+	A = array_new(char*, 1);
+	A = array_append(A, B.strval);
+}
+
+// Multiple unquoted strings.
+unquotedStringList(A) ::= unquotedStringList(B) delimiter UQSTRING(C) . {
+	B = array_append(B, C.strval);
+	A = B;
+}
+
+%type delimiter {int}
+delimiter(A) ::= COMMA. { A = COMMA; }
+delimiter(A) ::= DOT. { A = DOT; }
 
 %type multipleMatchClause { AST_MatchNode* }
 multipleMatchClause(A) ::= matchClauses(B). {
@@ -617,12 +679,6 @@ relation(A) ::= LT. { A = LT; }
 relation(A) ::= LE. { A = LE; }
 relation(A) ::= GE. { A = GE; }
 relation(A) ::= NE. { A = NE; }
-
-//%type arithmetic_operator {int}
-//arithmetic_operator(A) ::= MUL. { A = MUL; }
-//arithmetic_operator(A) ::= DIV. { A = DIV; }
-//arithmetic_operator(A) ::= ADD. { A = ADD; }
-//arithmetic_operator(A) ::= DASH. { A = DASH; }
 
 %type value {SIValue}
 
