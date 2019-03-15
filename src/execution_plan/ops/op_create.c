@@ -134,7 +134,6 @@ static void _CommitNodes(OpCreate *op) {
     Graph *g = op->gc->g;
     uint node_count = array_len(op->created_nodes);
     TrieMap *createEntities = NewTrieMap();
-    Schema *unified_schema = GraphContext_GetUnifiedSchema(op->gc, SCHEMA_NODE);
     
     Graph_AllocateNodes(op->gc->g, node_count);
     CreateClause_ReferredEntities(op->ast->createNode, createEntities);
@@ -146,7 +145,6 @@ static void _CommitNodes(OpCreate *op) {
         // Get label ID.
         if(n->label == NULL) {
             labelID = GRAPH_NO_LABEL;
-            schema = unified_schema;
         } else {
             schema = GraphContext_GetSchema(op->gc, n->label, SCHEMA_NODE);
             if(schema == NULL) {

@@ -40,11 +40,6 @@ GraphContext* GraphContext_New(RedisModuleCtx *ctx, const char *graphname,
   gc->node_schemas = array_new(Schema*, GRAPH_DEFAULT_LABEL_CAP);
   gc->relation_schemas = array_new(Schema*, GRAPH_DEFAULT_RELATION_TYPE_CAP);
 
-  // Initialize the generic schemas
-  // TODO needed?
-  gc->node_unified_schema = Schema_New("ALL", GRAPH_NO_LABEL);
-  gc->relation_unified_schema = Schema_New("ALL", GRAPH_NO_RELATION);
-
   gc->string_mapping = array_new(char*, 64);
   gc->attributes = NewTrieMap();
 
@@ -106,11 +101,6 @@ unsigned short GraphContext_SchemaCount(const GraphContext *gc, SchemaType t) {
   else return array_len(gc->relation_schemas);
 }
 
-Schema* GraphContext_GetUnifiedSchema(const GraphContext *gc, SchemaType t) {
-  if (t == SCHEMA_NODE) return gc->node_unified_schema;
-  return gc->relation_unified_schema;
-}
-
 Schema* GraphContext_GetSchemaByID(const GraphContext *gc, int id, SchemaType t) {
   Schema **schemas = (t == SCHEMA_NODE) ? gc->node_schemas : gc->relation_schemas;
   if (id == GRAPH_NO_LABEL) return NULL;
@@ -149,6 +139,10 @@ const char* GraphContext_GetEdgeRelationType(const GraphContext *gc, Edge *e) {
     int reltype_id = Graph_GetEdgeRelation(gc->g, e);
     if (reltype_id == GRAPH_NO_RELATION) return NULL;
     return gc->relation_schemas[reltype_id]->name;
+}
+
+uint GraphContext_AttributeCount(GraphContext *gc) {
+    return gc->attributes->cardinality;
 }
 
 Attribute_ID GraphContext_AddAttribute(GraphContext *gc, const char *attribute) {
@@ -287,10 +281,6 @@ void GraphContext_Free(GraphContext *gc) {
   Graph_Free(gc->g);
   rm_free(gc->graph_name);
 
-  // Free generic schemas
-  Schema_Free(gc->node_unified_schema);
-  Schema_Free(gc->relation_unified_schema);
-
   // Free all node schemas
   if(gc->node_schemas) {
     for (uint32_t i = 0; i < array_len(gc->node_schemas); i ++) {
@@ -306,6 +296,13 @@ void GraphContext_Free(GraphContext *gc) {
     }
     array_free(gc->relation_schemas);
   }
+
+  // Free attribute mappings
+  TrieMap_Free(gc->attributes, rm_free);
+  for (uint32_t i = 0; i < array_len(gc->string_mapping); i ++) {
+    rm_free(gc->string_mapping[i]);
+  }
+  array_free(gc->string_mapping);
 
   rm_free(gc);
 }

@@ -9,10 +9,13 @@
 
 #include "../../redismodule.h"
 #include "../../schema/schema.h"
+#include "../graphcontext.h"
 
-Schema* RdbLoadUnifiedSchema(RedisModuleIO *rdb, TrieMap *attributes, char **string_mapping);
+void RdbLoadAttributeKeys(RedisModuleIO *rdb, GraphContext *gc);
 Schema* RdbLoadSchema(RedisModuleIO *rdb, SchemaType type);
-void RdbSaveSchema(RedisModuleIO *rdb, void *value);
-void RdbSaveUnifiedSchema(RedisModuleIO *rdb, void *value, const char **string_mapping);
+
+void RdbSaveSchema(RedisModuleIO *rdb, Schema *s);
+void RdbSaveDummySchema(RedisModuleIO *rdb);
+void RdbSaveAttributeKeys(RedisModuleIO *rdb, GraphContext *gc);
 
 #endif

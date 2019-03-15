@@ -51,6 +51,7 @@ static void _QueueUpdate(OpUpdate *op, GraphEntity *entity, GraphEntityType type
 
 /* Introduce updated entity to index. */
 static void _UpdateIndex(EntityUpdateCtx *ctx, Schema *s, SIValue *old_value, SIValue *new_value) {
+    if (s == NULL) return;
     Node *n = &ctx->n;
     EntityID node_id = ENTITY_GET_ID(n);
 
@@ -77,13 +78,11 @@ static void _UpdateNode(OpUpdate *op, EntityUpdateCtx *ctx) {
      * but only a pointer to an Entity object,
      * to use the GraphEntity_Get, GraphEntity_Add functions we'll use a place holder
      * to hold our entity. */
-    Schema *s;
+    Schema *s = NULL;
     Node *node = &ctx->n;
     
     int label_id = Graph_GetNodeLabel(op->gc->g, ENTITY_GET_ID(node));
-    if(label_id == GRAPH_NO_LABEL) {
-        s = GraphContext_GetUnifiedSchema(op->gc, SCHEMA_NODE);
-    } else {
+    if (label_id != GRAPH_NO_LABEL) {
         s = GraphContext_GetSchemaByID(op->gc, label_id, SCHEMA_NODE);
     }
 

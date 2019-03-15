@@ -20,8 +20,6 @@ typedef struct {
   TrieMap *attributes;              // From strings to attribute IDs
   char **string_mapping;            // From attribute IDs to strings
 
-  Schema *relation_unified_schema;  // Schema for all relation types
-  Schema *node_unified_schema;      // Schema for all/unspecified node labels
   Schema **relation_schemas;        // Array of schemas for each relation type
   Schema **node_schemas;            // Array of schemas for each node label 
 
@@ -37,8 +35,6 @@ GraphContext* GraphContext_Retrieve(RedisModuleCtx *ctx, const char *graphname);
 GraphContext* GraphContext_GetFromTLS();
 
 /* Schema API */
-// Retrieve the generic schema for node labels or relation types
-Schema* GraphContext_GetUnifiedSchema(const GraphContext *gc, SchemaType t);
 // Retrieve number of schemas created for given type.
 unsigned short GraphContext_SchemaCount(const GraphContext *gc, SchemaType t);
 // Retrieve the specific schema for the provided node label or relation type string
@@ -55,6 +51,10 @@ Schema* GraphContext_AddRelationType(GraphContext *gc, const char *label);
 const char* GraphContext_GetNodeLabel(const GraphContext *gc, Node *n);
 // Retrieve the relation type string for a given Edge object
 const char* GraphContext_GetEdgeRelationType(const GraphContext *gc, Edge *e);
+
+// Retrieve number of unique attribute keys
+uint GraphContext_AttributeCount(GraphContext *gc);
+
 // Adds an attribute string to GraphContext ID mappings
 Attribute_ID GraphContext_AddAttribute(GraphContext *gc, const char *attribute);
 // Attribute_ID GraphContext_GetAttributeID(GraphContext *gc, const char *attribute);

@@ -17,7 +17,6 @@ static void _CommitNodes(OpMerge *op, Record r) {
     AST_GraphEntity *ge;
     Graph *g = op->gc->g;
     AST_MergeNode *ast_merge_node = op->ast->mergeNode;
-    Schema *unified_schema = GraphContext_GetUnifiedSchema(op->gc, SCHEMA_NODE);
     
     size_t node_count = 0;
     size_t entity_count = Vector_Size(ast_merge_node->graphEntities);

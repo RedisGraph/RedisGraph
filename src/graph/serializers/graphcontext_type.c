@@ -60,10 +60,9 @@ void GraphContextType_RdbSave(RedisModuleIO *rdb, void *value) {
   unsigned short schema_count = GraphContext_SchemaCount(gc, SCHEMA_NODE);
   RedisModule_SaveUnsigned(rdb, schema_count);
 
-  // Serialize unified node schema.
-  RdbSaveUnifiedSchema(rdb, gc->node_unified_schema, (const char**)gc->string_mapping);
+  // Serialize all attribute keys
+  RdbSaveAttributeKeys(rdb, gc);
 
-  // TODO going to be broken!
   // Name of label X #node schemas.
   for(int i = 0; i < schema_count; i++) {
     Schema *s = gc->node_schemas[i];
@@ -75,7 +74,7 @@ void GraphContextType_RdbSave(RedisModuleIO *rdb, void *value) {
   RedisModule_SaveUnsigned(rdb, relation_count);
 
   // Serialize unified edge schema.
-  RdbSaveUnifiedSchema(rdb, gc->relation_unified_schema, (const char**)gc->string_mapping);
+  RdbSaveDummySchema(rdb);
 
   // Name of label X #relation schemas.
   for(unsigned short i = 0; i < relation_count; i++) {
@@ -117,6 +116,8 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
     return NULL;
   }
 
+  // TODO can have different functions for different versions here if desired
+
   GraphContext *gc = rm_malloc(sizeof(GraphContext));
   
   // No indicies.
@@ -138,7 +139,7 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
   gc->string_mapping = array_new(char*, 64);
 
   // unified node schema.
-  gc->node_unified_schema = RdbLoadUnifiedSchema(rdb, gc->attributes, gc->string_mapping);
+  RdbLoadAttributeKeys(rdb, gc);
 
   // Load each node schema
   gc->node_schemas = array_new(Schema*, schema_count);
@@ -151,7 +152,7 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
   schema_count = RedisModule_LoadUnsigned(rdb);
 
   // unified edge schema.
-  gc->relation_unified_schema = RdbLoadUnifiedSchema(rdb, gc->attributes, gc->string_mapping);
+  RdbLoadAttributeKeys(rdb, gc);
 
   // Load each edge schema
   gc->relation_schemas = array_new(Schema*, schema_count);

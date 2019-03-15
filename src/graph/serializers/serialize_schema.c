@@ -7,37 +7,44 @@
 #include "serialize_schema.h"
 #include "../../util/arr.h"
 
-/* Deserialize schema */
-Schema* RdbLoadUnifiedSchema(RedisModuleIO *rdb, TrieMap *attributes, char **string_mapping) {
+/* Deserialize unified schema */
+void RdbLoadAttributeKeys(RedisModuleIO *rdb, GraphContext *gc) {
   /* Format:
-   * id
-   * name
-   * #attributes
-   * attributes
+   * id // (fake)
+   * name // (fake)
+   * #attribute keys
+   * attribute keys
    */
 
-  int id = RedisModule_LoadUnsigned(rdb);
+  RedisModule_LoadUnsigned(rdb);
   char *name = RedisModule_LoadStringBuffer(rdb, NULL);
-  Schema *s = Schema_New(name, id);
+  RedisModule_Free(name);
 
   size_t len = 0;
   uint64_t attrCount = RedisModule_LoadUnsigned(rdb);
 
-
-  for(uint i = 0; i < attrCount; i++) {
+  for (uint64_t i = 0; i < attrCount; i++) {
     // Load attribute string from RDB file.
     char *attr = RedisModule_LoadStringBuffer(rdb, &len);
 
-    // Add the string directly to the schema triemap using the RDB-given length.
+    // Free and skip the RDB string if it's already been mapped
+    // (this logic is only necessary if the node and edge schemas are separate)
+    if (TrieMap_Find(gc->attributes, attr, len) != TRIEMAP_NOTFOUND) {
+      // Free the RDB string
+      RedisModule_Free(attr);
+      continue;
+    }
+
+    // Add attribute string if it hasn't been encountered before.
     Attribute_ID *pAttribute_id = NULL;
-    pAttribute_id = malloc(sizeof(Attribute_ID));
-    *pAttribute_id = i;
+    pAttribute_id = malloc(sizeof(Attribute_ID)); // TODO rm_?
+    *pAttribute_id = GraphContext_AttributeCount(gc);
 
-    TrieMap_Add(attributes, attr, len, pAttribute_id, TrieMap_DONT_CARE_REPLACE);
-    string_mapping[i] = attr; // TODO strings need to be freed elsewhere 
+    // Update the string->ID triemap
+    TrieMap_Add(gc->attributes, attr, len, pAttribute_id, TrieMap_DONT_CARE_REPLACE);
+    // Update the ID->string array
+    gc->string_mapping = array_append(gc->string_mapping, attr);
   }
-
-  return s;
 }
 
 Schema* RdbLoadSchema(RedisModuleIO *rdb, SchemaType type) {
@@ -52,31 +59,25 @@ Schema* RdbLoadSchema(RedisModuleIO *rdb, SchemaType type) {
   char *name = RedisModule_LoadStringBuffer(rdb, NULL);
   Schema *s = Schema_New(name, id);
 
-  size_t len = 0;
   uint64_t attrCount = RedisModule_LoadUnsigned(rdb);
 
-  char attribute[1024];
-
   // Only doing this for backwards compatibility; we're not keeping these strings
-  for(uint i = 0; i < attrCount; i++) {
+  for (uint64_t i = 0; i < attrCount; i++) {
     // Load attribute string from RDB file.
-    char *attr = RedisModule_LoadStringBuffer(rdb, &len);
-    // Immediately free the string, as the schema does not reference it.
+    char *attr = RedisModule_LoadStringBuffer(rdb, NULL);
     RedisModule_Free(attr);
   }
 
   return s;
 }
 
-void RdbSaveSchema(RedisModuleIO *rdb, void *value) {
+void RdbSaveSchema(RedisModuleIO *rdb, Schema *s) {
   /* Format:
    * id
    * name
-   * #attributes
-   * attributes
+   * #attributes // TODO unnecessary
+   * attributes  // TODO unnecessary
    */
-
-  Schema *s = value;
 
   RedisModule_SaveUnsigned(rdb, s->id);
   RedisModule_SaveStringBuffer(rdb, s->name, strlen(s->name) + 1);
@@ -84,23 +85,38 @@ void RdbSaveSchema(RedisModuleIO *rdb, void *value) {
   RedisModule_SaveUnsigned(rdb, 0);
 }
 
-/* Serialize schema */
-void RdbSaveUnifiedSchema(RedisModuleIO *rdb, void *value, const char **string_mapping) {
+/* Serialize dummy values to fill expected space in RDB file.
+ * This is primarily required for the second unified schema (edges),
+ * as the space for the first is used to encode all attribute keys
+ */
+void RdbSaveDummySchema(RedisModuleIO *rdb) {
   /* Format:
    * id
    * name
    * #attributes
-   * attributes
+   * attributes (nothing, as # is 0)
    */
 
-  Schema *s = value;
+  RedisModule_SaveUnsigned(rdb, 0);
+  RedisModule_SaveStringBuffer(rdb, "", 1);
+  RedisModule_SaveUnsigned(rdb, 0);
+}
 
-  RedisModule_SaveUnsigned(rdb, s->id);
-  RedisModule_SaveStringBuffer(rdb, s->name, strlen(s->name) + 1);
-  uint len = array_len(string_mapping);
-  RedisModule_SaveUnsigned(rdb, len);
-  // TODO edges overwrite nodes, etc. Might need to be breaking?
-  for (uint i = 0; i < len; i ++) {
-    RedisModule_SaveStringBuffer(rdb, string_mapping[i], len);
+void RdbSaveAttributeKeys(RedisModuleIO *rdb, GraphContext *gc) {
+  /* Format:
+   * id // (fake)
+   * name // (fake)
+   * #attribute keys
+   * attribute keys
+   */
+
+  RedisModule_SaveUnsigned(rdb, 0);
+  RedisModule_SaveStringBuffer(rdb, "", 1);
+  uint count = GraphContext_AttributeCount(gc);
+  RedisModule_SaveUnsigned(rdb, count);
+  for (uint i = 0; i < count; i ++) {
+    char *key = gc->string_mapping[i];
+    RedisModule_SaveStringBuffer(rdb, key, strlen(key));
   }
 }
+
