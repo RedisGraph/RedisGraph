@@ -10,6 +10,8 @@
 #include "../graph/graphcontext.h"
 #include "../graph/entities/node.h"
 #include "../graph/entities/edge.h"
+#include "../util/rmalloc.h"
+#include "../util/arr.h"
 #include <assert.h>
 
 /* Redis prints doubles with up to 17 digits of precision, which captures
@@ -26,20 +28,60 @@ static inline void _ResultSet_ReplyWithRoundedDouble(RedisModuleCtx *ctx, double
     RedisModule_ReplyWithStringBuffer(ctx, str, len);
 }
 
-static void _ResultSet_ReplyWithProperties(RedisModuleCtx *ctx, const GraphEntityType t, const GraphEntity *e, bool print_type) {
+static int *ids_to_string_offsets = NULL;
+static int offset_count = 0;
+
+static void _setupStringMapping(int string_count) {
+    ids_to_string_offsets = array_new(int, string_count);
+    memset(ids_to_string_offsets, -1, string_count * sizeof(int));
+    offset_count = 0;
+}
+
+static int _ResultSet_GetStringOffset(Attribute_ID id) {
+    if (ids_to_string_offsets[id] == -1) {
+        ids_to_string_offsets[id] = offset_count ++;
+    }
+    return ids_to_string_offsets[id];
+}
+
+static void _ResultSet_ReplyWithStringMapping(RedisModuleCtx *ctx, GraphContext *gc) {
+    char* user_strings[offset_count];
+
+    int string_count = gc->attributes->cardinality;
+    for (int i = 0; i < string_count; i ++) {
+        int offset = ids_to_string_offsets[i];
+        if (offset == -1) continue;
+        user_strings[offset] = gc->string_mapping[i];
+    }
+
+    RedisModule_ReplyWithArray(ctx, offset_count);
+    for (int i = 0; i < offset_count; i ++) {
+        RedisModule_ReplyWithStringBuffer(ctx, user_strings[i], strlen(user_strings[i]));
+    }
+
+    // TODO labels
+}
+
+static void _ResultSet_ReplyWithProperties(RedisModuleCtx *ctx, const GraphEntityType t, const GraphEntity *e, bool compact) {
     GraphContext *gc = GraphContext_GetFromTLS();
     int prop_count = ENTITY_PROP_COUNT(e);
     RedisModule_ReplyWithArray(ctx, prop_count);
     // Iterate over all properties stored on entity
     for (int i = 0; i < prop_count; i ++) {
-        int reply_len = (print_type) ? 3 : 2;
+        // Compact replies include the value's type; verbose replies do not
+        int reply_len = (compact) ? 3 : 2;
         RedisModule_ReplyWithArray(ctx, reply_len);
         EntityProperty prop = ENTITY_PROPS(e)[i];
-        // Emit the string key
-        const char *prop_str = GraphContext_GetAttributeString(gc, prop.id);
-        RedisModule_ReplyWithStringBuffer(ctx, prop_str, strlen(prop_str));
+        if (compact) {
+            // Emit the string offset
+            RedisModule_ReplyWithLongLong(ctx, _ResultSet_GetStringOffset(prop.id));
+        } else {
+            // Emit the actual string
+            const char *prop_str = GraphContext_GetAttributeString(gc, prop.id);
+            RedisModule_ReplyWithStringBuffer(ctx, prop_str, strlen(prop_str));
+        }
         // Emit the value
-        ResultSet_ReplyWithSIValue(ctx, prop.value, print_type);
+        ResultSet_ReplyWithSIValue(ctx, prop.value, compact);
     }
 }
 
@@ -271,7 +313,7 @@ void _ResultSet_EmitCompactRecord(RedisModuleCtx *ctx, const Record r, unsigned 
     // Prepare return array sized to the number of RETURN entities
     RedisModule_ReplyWithArray(ctx, numcols);
 
-    for(int i = 0; i < numcols; i++) {
+    for (uint i = 0; i < numcols; i++) {
         switch (Record_GetType(r, i)) {
             case REC_TYPE_NODE:
                 _ResultSet_CompactReplyWithNode(ctx, Record_GetNode(r, i));
@@ -287,7 +329,10 @@ void _ResultSet_EmitCompactRecord(RedisModuleCtx *ctx, const Record r, unsigned 
 }
 
 EmitRecordFunc ResultSet_SetReplyFormatter(bool compact) {
-    if (compact) return _ResultSet_EmitCompactRecord;
+    if (compact) {
+        _setupStringMapping(64); // TODO tmp
+        return _ResultSet_EmitCompactRecord;
+    }
     return _ResultSet_EmitVerboseRecord;
 }
 
