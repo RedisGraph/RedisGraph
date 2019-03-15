@@ -146,6 +146,10 @@ procedureCallClause(A) ::= CALL procedureName(B) LEFT_PARENTHESIS stringList(C) 
 	A = New_AST_ProcedureCallNode(B, C, D);
 }
 
+procedureCallClause(A) ::= CALL procedureName(B) LEFT_PARENTHESIS stringList(C) RIGHT_PARENTHESIS. {	
+	A = New_AST_ProcedureCallNode(B, C, NULL);
+}
+
 %type procedureName { char* }
 procedureName(A) ::= unquotedStringList(B). {
 	// Concatenate strings with dots.

@@ -7,28 +7,29 @@
 #include "./procedure.h"
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
+#include "../graph/graphcontext.h"
 #include "../util/triemap/triemap.h"
 
 static TrieMap *__procedures = NULL;
 
 // Procedure accepts a variable number of arguments.
-#define PROCEDURE_VARIABLE_ARG_COUNT USHRT_MAX
+#define PROCEDURE_VARIABLE_ARG_COUNT UINT_MAX
 
 // Procedure instance generator.
 typedef ProcedureCtx* (*ProcGenerator)();
 // Procedure step function.
-typedef ProcedureResult (*ProcStep)(ProcedureCtx *ctx, Record r);
+typedef SIValue* (*ProcStep)(ProcedureCtx *ctx);
 // Procedure function pointer.
-typedef ProcedureResult (*ProcInvoke)(ProcedureCtx *ctx, const char **args);
-// Procedure finalize function.
-typedef ProcedureResult (*ProcFinalize)(ProcedureCtx *ctx);
+typedef ProcedureResult (*ProcInvoke)(ProcedureCtx *ctx, char **args);
+// Procedure free resources.
+typedef ProcedureResult (*ProcFree)(ProcedureCtx *ctx);
 
 static ProcedureCtx* _procCtxNew(const char *name,
-                              uint argc,
+                              unsigned int argc,
                               char **output,
                               ProcStep fStep,
                               ProcInvoke fInvoke,
-                              ProcFinalize fFinalize,
+                              ProcFree fFree,
                               void *privateData) {
 
     ProcedureCtx *ctx = rm_malloc(sizeof(ProcedureCtx));
@@ -37,7 +38,7 @@ static ProcedureCtx* _procCtxNew(const char *name,
     ctx->Step = fStep;
     ctx->output = output;
     ctx->Invoke = fInvoke;
-    ctx->Finalize = fFinalize;
+    ctx->Free = fFree;
     ctx->privateData = privateData;
     return ctx;
 }
@@ -46,33 +47,66 @@ static ProcedureCtx* _procCtxNew(const char *name,
 // fulltext queryNodes
 //------------------------------------------------------------------------------
 
-// CALL db.index.fulltext.queryNodes(label, query)
-ProcedureResult fulltextQueryNodeInvoke(ProcedureCtx *ctx, const char **args) {
+typedef struct {
+    Node n;
+    Graph *g;
+    bool stop;
+    SIValue *output;
+} QueryNodeContext;
+
+// CALL db.idx.fulltext.queryNodes(label, query)
+ProcedureResult fulltextQueryNodeInvoke(ProcedureCtx *ctx, char **args) {
+    QueryNodeContext *pdata = rm_malloc(sizeof(QueryNodeContext));
+    pdata->output = array_new(SIValue, 4);
+    pdata->stop = false;
+    pdata->g = GraphContext_GetFromTLS()->g;
+    pdata->output = array_append(pdata->output, SI_ConstStringVal("node"));
+    pdata->output = array_append(pdata->output, SI_Node(&pdata->n));
+    pdata->output = array_append(pdata->output, SI_ConstStringVal("score"));
+    pdata->output = array_append(pdata->output, SI_DoubleVal(0.0));
+    ctx->privateData = pdata;
     return PROCEDURE_OK;
 }
 
-ProcedureResult fulltextQueryNodeStep(ProcedureCtx *ctx, Record r) {
-    return PROCEDURE_OK;
+SIValue* fulltextQueryNodeStep(ProcedureCtx *ctx) {
+    assert(ctx->privateData);
+
+    QueryNodeContext *pdata = (QueryNodeContext*)ctx->privateData;
+
+    // Temporary!
+    if(pdata->stop) return NULL;
+    pdata->stop = true;
+
+    Node *n = &pdata->n;
+    Graph_GetNode(pdata->g, 0, n);
+
+    pdata->output[1] = SI_Node(n);
+    pdata->output[3] = SI_DoubleVal(12.34);
+    return pdata->output;
 }
 
-ProcedureResult fulltextQueryNodeFinalize(ProcedureCtx *ctx) {
+ProcedureResult fulltextQueryNodeFree(ProcedureCtx *ctx) {
     // Clean up.
+    if(ctx->privateData) {
+        QueryNodeContext *pdata = ctx->privateData;
+        array_free(pdata->output);
+        rm_free(ctx->privateData);
+    }
     return PROCEDURE_OK;
 }
 
 ProcedureCtx* fulltextQueryNodeGen() {
     void *privateData = NULL;
     char **output = array_new(char*, 2);
-    output[0] = "node";
-    output[1] = "score";
-    ProcedureCtx *ctx = _procCtxNew("db.index.fulltext.queryNodes",
-                                        2,
-                                        output,
-                                        fulltextQueryNodeStep,
-                                        fulltextQueryNodeInvoke,
-                                        fulltextQueryNodeFinalize,
-                                        privateData);
-
+    output = array_append(output, "node");
+    output = array_append(output, "score");
+    ProcedureCtx *ctx = _procCtxNew("db.idx.fulltext.queryNodes",
+                                    2,
+                                    output,
+                                    fulltextQueryNodeStep,
+                                    fulltextQueryNodeInvoke,
+                                    fulltextQueryNodeFree,
+                                    privateData);
     return ctx;
 }
 
@@ -80,18 +114,24 @@ ProcedureCtx* fulltextQueryNodeGen() {
 // fulltext createNodeIndex
 //------------------------------------------------------------------------------
 
-// CALL db.index.fulltext.createNodeIndex(index_name, label, attributes)
-// CALL db.index.fulltext.createNodeIndex('books', ['Book'], ['title', 'authors'])
+// CALL db.idx.fulltext.createNodeIndex(index_name, label, attributes)
+// CALL db.idx.fulltext.createNodeIndex('books', ['Book'], ['title', 'authors'])
 
-ProcedureResult fulltextCreateNodeIdxInvoke(ProcedureCtx *ctx, const char **args) {
+ProcedureResult fulltextCreateNodeIdxInvoke(ProcedureCtx *ctx, char **args) {
+    if(array_len(args) < 2) return PROCEDURE_ERR;
+    
+    char *label = args[0];
+    for(int i = 0; i < array_len(args); i++) {
+        // Create full-text index.
+    }
     return PROCEDURE_OK;
 }
 
-ProcedureResult fulltextCreateNodeIdxStep(ProcedureCtx *ctx, Record r) {
-    return PROCEDURE_OK;
+SIValue* fulltextCreateNodeIdxStep(ProcedureCtx *ctx) {
+    return NULL;
 }
 
-ProcedureResult fulltextCreateNodeIdxFinalize(ProcedureCtx *ctx) {
+ProcedureResult fulltextCreateNodeIdxFree(ProcedureCtx *ctx) {
     // Clean up.
     return PROCEDURE_OK;
 }
@@ -99,25 +139,57 @@ ProcedureResult fulltextCreateNodeIdxFinalize(ProcedureCtx *ctx) {
 ProcedureCtx* fulltextCreateNodeIdxGen() {
     void *privateData = NULL;
     char **output = array_new(char*, 0);
-    ProcedureCtx *ctx = _procCtxNew("db.index.fulltext.createNodeIndex",
-                                        PROCEDURE_VARIABLE_ARG_COUNT,
-                                        output,
-                                        fulltextCreateNodeIdxStep,
-                                        fulltextCreateNodeIdxInvoke,
-                                        fulltextCreateNodeIdxFinalize,
-                                        privateData);
+    ProcedureCtx *ctx = _procCtxNew("db.idx.fulltext.createNodeIndex",
+                                    PROCEDURE_VARIABLE_ARG_COUNT,
+                                    output,
+                                    fulltextCreateNodeIdxStep,
+                                    fulltextCreateNodeIdxInvoke,
+                                    fulltextCreateNodeIdxFree,
+                                    privateData);
 
     return ctx;
 }
 
 static void _procRegister(const char *procedure, ProcGenerator gen) {
-    TrieMap_Add(__procedures, procedure, strlen(procedure), gen, NULL);
+    TrieMap_Add(__procedures, (char*)procedure, strlen(procedure), gen, NULL);
 }
 
 // Register procedures.
 void Proc_Register() {
     __procedures = NewTrieMap();
     // Register FullText Search generator.
-    _procRegister("db.index.fulltext.createNodeIndex", fulltextQueryNodeGen);
-    _procRegister("db.index.fulltext.queryNodes", fulltextCreateNodeIdxGen);
+    _procRegister("db.idx.fulltext.createNodeIndex", fulltextCreateNodeIdxGen);
+    _procRegister("db.idx.fulltext.queryNodes", fulltextQueryNodeGen);
+}
+
+ProcedureCtx* Proc_Get(const char *proc_name) {
+    if(!__procedures) return NULL;
+    ProcGenerator gen = TrieMap_Find(__procedures, (char*)proc_name, strlen(proc_name));
+    if(gen == TRIEMAP_NOTFOUND) return NULL;
+    ProcedureCtx *ctx = gen();
+    return ctx;
+}
+
+ProcedureResult Proc_Invoke(ProcedureCtx *proc, char **args) {
+    assert(proc);
+    if(proc->argc != PROCEDURE_VARIABLE_ARG_COUNT) assert(proc->argc == array_len(args));
+    // TODO: procedure can only be invoke once.
+    return proc->Invoke(proc, args);
+}
+
+SIValue* Proc_Step(ProcedureCtx *proc) {
+    assert(proc);
+    return proc->Step(proc);
+}
+
+ProcedureResult ProcedureReset(ProcedureCtx *proc) {
+    // return proc->restart(proc);
+    return PROCEDURE_OK;
+}
+
+void Proc_Free(ProcedureCtx *proc) {
+    if(!proc) return;
+    proc->Free(proc);
+    if(proc->output) array_free(proc->output);
+    rm_free(proc);
 }

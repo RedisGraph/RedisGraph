@@ -35,15 +35,15 @@ void ProcedureCallClause_DefinedEntities(const AST_ProcedureCallNode *node, Trie
 void Free_AST_ProcedureCallNode(AST_ProcedureCallNode *node) {
     if(!node) return;
 
-    rm_free(node->procedure);
+    free(node->procedure);
 
     if(node->arguments) {
-        for(int i = 0; i < array_len(node->arguments); i++) rm_free(node->arguments[i]);        
+        for(int i = 0; i < array_len(node->arguments); i++) free(node->arguments[i]);        
         array_free(node->arguments);
     }
 
     if(node->yield) {
-        for(int i = 0; i < array_len(node->yield); i++) rm_free(node->yield[i]);
+        for(int i = 0; i < array_len(node->yield); i++) free(node->yield[i]);
         array_free(node->yield);
     }
 

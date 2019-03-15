@@ -10,9 +10,10 @@
 #include <string.h>
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
-#include "../graph/entities/graph_entity.h"
-#include "./ast_arithmetic_expression.h"
+#include "../procedures/procedure.h"
 #include "../arithmetic/repository.h"
+#include "./ast_arithmetic_expression.h"
+#include "../graph/entities/graph_entity.h"
 #include "../arithmetic/arithmetic_expression.h"
 
 /* Compares a triemap of user-specified functions with the registered functions we provide. */
@@ -253,6 +254,46 @@ static AST_Validation _Validate_WHERE_Clause(const AST *ast, char **reason) {
   return res;
 }
 
+static AST_Validation _Validate_CALL_Clause(const AST *ast, char **reason) {
+  if (!ast->callNode) return AST_VALID;
+  // Make sure refereed procedure exists.
+  ProcedureCtx *proc = Proc_Get(ast->callNode->procedure);
+  if(!proc) {
+    asprintf(reason, "There is no procedure with the name `%s` registered for this database instance. Please ensure you've spelled the procedure name correctly.",
+             ast->callNode->procedure);
+    return AST_INVALID;
+  }
+
+  // Make sure yield doesn't refers to unknown output.
+  if(ast->callNode->yield) {
+    uint i = 0;
+    uint j = 0;
+    char *yield;
+    uint call_yield_len = array_len(ast->callNode->yield);
+    uint proc_output_len = array_len(proc->output);
+
+    for(i = 0; i < call_yield_len; i++) {
+      yield = ast->callNode->yield[i];
+      for(j = 0; j < proc_output_len; j++) {
+        if(strcmp(yield, proc->output[j]) == 0) break;
+      }
+      if(j == proc_output_len) {
+        // Didn't managed to match current yield against procedure output.
+        break;
+      }
+    }
+
+    if(i < call_yield_len) {
+      Proc_Free(proc);
+      asprintf(reason, "Unknown procedure output: `%s`", yield);
+      return AST_INVALID;
+    }
+  }
+
+  Proc_Free(proc);
+  return AST_VALID;
+}
+
 AST *AST_New(AST_MatchNode *matchNode, AST_WhereNode *whereNode,
                          AST_CreateNode *createNode, AST_MergeNode *mergeNode,
                          AST_SetNode *setNode, AST_DeleteNode *deleteNode,
@@ -321,6 +362,10 @@ AST_Validation AST_Validate(const AST *ast, char **reason) {
     return AST_INVALID;
   }
 
+  if(_Validate_CALL_Clause(ast, reason) != AST_VALID) {
+    return AST_INVALID;
+  }
+
   return AST_VALID;
 }
 
@@ -369,13 +414,7 @@ void AST_MapAliasToID(AST *ast, AST_WithNode *prevWithClause) {
   }
 
   // Get unique aliases, from clauses which can introduce entities.
-  TrieMap *definedEntities = NewTrieMap();
-  MatchClause_DefinedEntities(ast->matchNode, definedEntities);
-  CreateClause_DefinedEntities(ast->createNode, definedEntities);
-  UnwindClause_DefinedEntities(ast->unwindNode, definedEntities);
-  ReturnClause_DefinedEntities(ast->returnNode, definedEntities);
-  WithClause_DefinedEntities(ast->withNode, definedEntities);
-
+  TrieMap *definedEntities = AST_Identifiers(ast);
   void *val;
   char *ptr;
   tm_len_t len;
