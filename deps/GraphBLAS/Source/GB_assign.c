@@ -2,7 +2,7 @@
 // GB_assign: submatrix assignment: C<M>(Rows,Cols) = accum (C(Rows,Cols),A)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -23,6 +23,9 @@
 // If row_assign is true, this function does the work for GrB_Row_assign.
 
 // Compare with GB_subassign, which uses M and C_replace differently
+
+// PARALLEL: some C_replace_phase here, mainly in GB_subassign_kernel and
+// GB_subref_numeric.
 
 #include "GB.h"
 
@@ -161,7 +164,7 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
         if (!GB_Type_compatible (M->type, GrB_BOOL))
         { 
             return (GB_ERROR (GrB_DOMAIN_MISMATCH, (GB_LOG,
-                "Mask of type [%s] cannot be typecast to boolean",
+                "M of type [%s] cannot be typecast to boolean",
                 M->type->name))) ;
         }
         // check the mask: size depends on the method
@@ -225,6 +228,12 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
     }
 
     //--------------------------------------------------------------------------
+    // determine the number of threads to use
+    //--------------------------------------------------------------------------
+
+    GB_GET_NTHREADS (nthreads, Context) ;
+
+    //--------------------------------------------------------------------------
     // quick return if an empty mask is complemented
     //--------------------------------------------------------------------------
 
@@ -271,10 +280,11 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
                 {
                     // delete all entries in each vector with index i
                     int64_t i = (row_assign) ? Rows [0] : Cols [0] ;
-                    GB_for_each_vector (C)
+                    GBI_for_each_vector (C)
                     {
+                        // get C(:,j)
+                        GBI_jth_iteration (j, p, pend) ;
                         // find C(i,j) if it exists
-                        int64_t GBI1_initj (Iter, j, p, pend) ;
                         int64_t pright = pend-1 ;
                         bool found, is_zombie ;
                         GB_BINARY_ZOMBIE (i, Ci, p, pright, found, C->nzombies,
@@ -338,7 +348,8 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
 
     // C_replace_phase is true if a final pass over all of C is required
     // to delete entries outside the C(I,J) submatrix.
-    bool C_replace_phase = (C_replace && M != NULL && !whole_matrix) ;
+    bool C_replace_phase = (C_replace && !Mask_is_same) ;
+    ASSERT (!Mask_is_same == (M != NULL && !whole_matrix)) ;
 
     //--------------------------------------------------------------------------
     // apply pending updates to A and M
@@ -396,14 +407,20 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
     if (C_is_csc)
     { 
         // C is in CSC format
-        I = Rows ; ni = nRows_in ; Ikind = RowsKind ; nI = nRows ; Icolon = RowColon ;
-        J = Cols ; nj = nCols_in ; Jkind = ColsKind ; nJ = nCols ; Jcolon = ColColon ;
+        I      = Rows     ;     J      = Cols     ;
+        ni     = nRows_in ;     nj     = nCols_in ;
+        Ikind  = RowsKind ;     Jkind  = ColsKind ;
+        nI     = nRows    ;     nJ     = nCols    ;
+        Icolon = RowColon ;     Jcolon = ColColon ;
     }
     else
     { 
         // C is in CSR format
-        I = Cols ; ni = nCols_in ; Ikind = ColsKind ; nI = nCols ; Icolon = ColColon ;
-        J = Rows ; nj = nRows_in ; Jkind = RowsKind ; nJ = nRows ; Jcolon = RowColon ;
+        I       = Cols     ;    J       = Rows     ;
+        ni      = nCols_in ;    nj      = nRows_in ;
+        Ikind   = ColsKind ;    Jkind   = RowsKind ;
+        nI      = nCols    ;    nJ      = nRows    ;
+        Icolon  = ColColon ;    Jcolon  = RowColon ;
     }
 
     // C has C->vdim vectors, each of length C->nvec.
@@ -414,8 +431,8 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
     // scalar expansion: sort I and J and remove duplicates
     //--------------------------------------------------------------------------
 
-    // NOTE: gcc with -Wunused-but-set-variable may complain about I2_size
-    // and J2_size, but this is spurious.  The values are used when malloc
+    // NOTE: gcc with -Wunused-but-set-variable may complain about I2_size and
+    // J2_size, but this is spurious.  The values are used when memory usage
     // tracking is enabled (see GB_FREE_ALL defined above).  Ignore the
     // spurious gcc warnings.
     #pragma GCC diagnostic ignored "-Wunused-but-set-variable"
@@ -603,22 +620,46 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
     // Z = C
     //--------------------------------------------------------------------------
 
-    // GB_subassign_kernel modifies C efficiently in place, but it can only do
-    // so if C is not aliased with A or the mask M.  If C is aliased a copy
-    // must be made.  GB_subassign_kernel operates on the copy, Z, which is
-    // then transplanted back into C when done.  This is costly, and can have
-    // performance implications, but it is the only reasonable method.  If C is
-    // aliased to A, then the assignment is a large one and copying the whole
-    // matrix will not add much time.
+    // GB_subassign_kernel modifies C efficiently in place, but there are cases
+    // when C is aliased with M or A that require the work to not be done in
+    // place.
+
+    // If both I == GrB_ALL and J == GrB_ALL, then C can be safely aliased with
+    // M or A, or both.  In addition, M and/or A may also have shallow
+    // components that refer back to components of C.
+
+    // Otherwise, if I is not GrB_ALL or J is not GrB_ALL, then C cannot be
+    // aliased with M or A.  Nor can any shallow component of M or A refer to
+    // any component of C.  This is an unsafe alias.
+
+    // If C is unsafely aliased a copy must be made.  GB_subassign_kernel
+    // operates on the copy, Z, which is then transplanted back into C when
+    // done.  This is costly, and can have performance implications, but it is
+    // the only reasonable method.  If a copy of C must be made, then it is as
+    // large as M or A, so copying the whole matrix will not add much time.
 
     GrB_Matrix Z ;
-    bool aliased = GB_ALIASED (C, A) || GB_ALIASED (C, M) ;
+
+    bool unsafely_aliased ;
+    if (I == GrB_ALL && J == GrB_ALL)
+    { 
+        // any alias is OK (unless C_replace_phase is true, below)
+        unsafely_aliased = false ; 
+    }
+    else
+    { 
+        unsafely_aliased = GB_aliased (C, A) || GB_aliased (C, M) ;
+    }
+
+    // GB_assign cannot tolerate any alias with the input mask,
+    // if the C_replace phase will be performed.
     if (C_replace_phase)
     { 
         // the C_replace_phase requires C and M_in not to be aliased
-        aliased = aliased || GB_ALIASED (C, M_in) ;
+        unsafely_aliased = unsafely_aliased || GB_aliased (C, M_in) ;
     }
-    if (aliased)
+
+    if (unsafely_aliased)
     {
         // Z = duplicate of C
         ASSERT (!GB_ZOMBIES (C)) ;
@@ -658,7 +699,7 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
     if (info != GrB_SUCCESS)
     { 
         // out of memory
-        if (aliased) GB_MATRIX_FREE (&Z) ;
+        if (unsafely_aliased) GB_MATRIX_FREE (&Z) ;
         GB_FREE_ALL ;
         return (info) ;
     }
@@ -695,7 +736,7 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
 
         M = M_in ;
         ASSERT (M != NULL) ;
-        ASSERT (GB_NOT_ALIASED (Z, M)) ;
+        ASSERT (!GB_aliased (Z, M)) ;
 
         ASSERT_OK (GB_check (Z, "Z for C-replace-phase", GB0)) ;
         ASSERT_OK (GB_check (M, "M for C-replace-phase", GB0)) ;
@@ -710,7 +751,7 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
             if (info != GrB_SUCCESS)
             { 
                 // out of memory
-                if (aliased) GB_MATRIX_FREE (&Z) ;
+                if (unsafely_aliased) GB_MATRIX_FREE (&Z) ;
                 GB_FREE_ALL ;
                 return (info) ;
             }
@@ -733,7 +774,7 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
             if (info != GrB_SUCCESS)
             { 
                 // out of memory
-                if (aliased) GB_MATRIX_FREE (&Z) ;
+                if (unsafely_aliased) GB_MATRIX_FREE (&Z) ;
                 GB_FREE_ALL ;
                 return (info) ;
             }
@@ -888,9 +929,9 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
             int64_t i = I [0] ;
             ASSERT (i == GB_ijlist (I, 0, Ikind, Icolon)) ;
 
-            GB_for_each_vector2 (Z, M)
+            GBI2_for_each_vector (Z, M)
             {
-                int64_t GBI2_initj (Iter, j, pZ, pZ_end, pM, pM_end) ;
+                GBI2_jth_iteration (Iter, j, pZ, pZ_end, pM, pM_end) ;
 
                 // j_outside is true if column j is outside the Z(I,J) submatrix
                 bool j_outside = !GB_ij_is_in_list (J, nJ, j, Jkind, Jcolon) ;
@@ -940,9 +981,9 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
             // M has the same size as Z
             ASSERT (M->vlen == Z->vlen && M->vdim == Z->vdim) ;
 
-            GB_for_each_vector2 (Z, M)
+            GBI2_for_each_vector (Z, M)
             {
-                int64_t GBI2_initj (Iter, j, pZ, pZ_end, pM, pM_end) ;
+                GBI2_jth_iteration (Iter, j, pZ, pZ_end, pM, pM_end) ;
 
                 // j_outside is true if column j is outside the Z(I,J) submatrix
                 bool j_outside = !GB_ij_is_in_list (J, nJ, j, Jkind, Jcolon) ;
@@ -1010,7 +1051,7 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
 
     // Z and C have the same dimensions, CSR/CSC format, and hypersparsity
 
-    if (aliased)
+    if (unsafely_aliased)
     {
         // zombies can be transplanted into C but pending tuples cannot
         if (GB_PENDING (Z))

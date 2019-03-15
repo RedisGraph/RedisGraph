@@ -2,10 +2,18 @@
 // GB_AxB_heap: compute C<M> = A*B using a heap-based method
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
+
+// parallel: this function will remain sequential.
+// parallelism will be done in GB_AxB_parallel.
+
+// FUTURE: reduce compiled code size by changing GB_heap.h to GB_heap.c;
+// check any performance impact
+
+// Does not log an error; returns GrB_SUCCESS, GrB_OUT_OF_MEMORY, or GrB_PANIC.
 
 #include "GB.h"
 #include "GB_heap.h"
@@ -16,13 +24,14 @@
 GrB_Info GB_AxB_heap                // C<M>=A*B or C=A*B using a heap
 (
     GrB_Matrix *Chandle,            // output matrix
-    const GrB_Matrix M,             // mask matrix for C<M>=A*B
+    const GrB_Matrix M_in,          // mask matrix for C<M>=A*B
+    const bool Mask_comp,           // if true, use ~M
     const GrB_Matrix A,             // input matrix
     const GrB_Matrix B,             // input matrix
     const GrB_Semiring semiring,    // semiring that defines C=A*B
     const bool flipxy,              // if true, do z=fmult(b,a) vs fmult(a,b)
-    const int64_t bjnz_max,         // max # entries in any vector of B
-    GB_Context Context
+    bool *mask_applied,             // if true, mask was applied
+    const int64_t bjnz_max          // max # entries in any vector of B
 )
 {
 
@@ -30,14 +39,17 @@ GrB_Info GB_AxB_heap                // C<M>=A*B or C=A*B using a heap
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT_OK_OR_NULL (GB_check (M, "M for heap A*B", GB0)) ;
+    GB_Context Context = NULL ;
+    ASSERT (Chandle != NULL) ;
+    ASSERT_OK_OR_NULL (GB_check (M_in, "M_in for heap A*B", GB0)) ;
     ASSERT_OK (GB_check (A, "A for heap A*B", GB0)) ;
     ASSERT_OK (GB_check (B, "B for heap A*B", GB0)) ;
-    ASSERT (!GB_PENDING (M)) ; ASSERT (!GB_ZOMBIES (M)) ;
+    ASSERT (!GB_PENDING (M_in)) ; ASSERT (!GB_ZOMBIES (M_in)) ;
     ASSERT (!GB_PENDING (A)) ; ASSERT (!GB_ZOMBIES (A)) ;
     ASSERT (!GB_PENDING (B)) ; ASSERT (!GB_ZOMBIES (B)) ;
     ASSERT_OK (GB_check (semiring, "semiring for heap A*B", GB0)) ;
     ASSERT (A->vdim == B->vlen) ;
+    ASSERT (mask_applied != NULL) ;
 
     if (flipxy)
     { 
@@ -54,6 +66,9 @@ GrB_Info GB_AxB_heap                // C<M>=A*B or C=A*B using a heap
     ASSERT (semiring->multiply->ztype == semiring->add->op->ztype) ;
 
     (*Chandle) = NULL ;
+
+    // the heap method does not handle a complemented mask
+    GrB_Matrix M = (Mask_comp ? NULL : M_in) ;
 
     //--------------------------------------------------------------------------
     // allocate workspace
@@ -82,11 +97,8 @@ GrB_Info GB_AxB_heap                // C<M>=A*B or C=A*B using a heap
     if (List == NULL || pA_pair == NULL || Heap == NULL)
     { 
         // out of memory
-        double memory = GBYTES (bjnz_max, sizeof (int64_t)) +
-                        GBYTES (bjnz_max, sizeof (GB_pointer_pair)) +
-                        GBYTES (bjnz_max + 1, sizeof (GB_Element)) ;
         GB_HEAP_FREE_WORK ;
-        return (GB_OUT_OF_MEMORY (memory)) ;
+        return (GrB_OUT_OF_MEMORY) ;
     }
 
     //--------------------------------------------------------------------------
@@ -98,7 +110,7 @@ GrB_Info GB_AxB_heap                // C<M>=A*B or C=A*B using a heap
     GrB_Type ctype = semiring->add->op->ztype ;
 
     GrB_Info info = GB_AxB_alloc (Chandle, ctype, cvlen, cvdim, M, A, B, true,
-        15 + GB_NNZ (A) + GB_NNZ (B), Context) ;
+        15 + GB_NNZ (A) + GB_NNZ (B)) ;
 
     if (info != GrB_SUCCESS)
     { 
@@ -126,7 +138,7 @@ GrB_Info GB_AxB_heap                // C<M>=A*B or C=A*B using a heap
     #define GB_AxB_WORKER(add,mult,xyname)                          \
     {                                                               \
         info = GB_AheapB (add,mult,xyname) (Chandle, M, A, B,       \
-            flipxy, List, pA_pair, Heap, bjnz_max, Context) ;       \
+            flipxy, List, pA_pair, Heap, bjnz_max) ;                \
         done = true ;                                               \
     }                                                               \
     break ;
@@ -179,7 +191,7 @@ GrB_Info GB_AxB_heap                // C<M>=A*B or C=A*B using a heap
         if (A->type == atype_required && B->type == btype_required)
         {
             info = GB_AxB_user (GxB_AxB_HEAP, semiring, Chandle, M, A, B,
-                flipxy, List, pA_pair, Heap, bjnz_max, NULL, Context) ;
+                flipxy, false, List, pA_pair, Heap, bjnz_max, NULL) ;
             done = true ;
             if (info != GrB_SUCCESS)
             { 
@@ -300,10 +312,11 @@ GrB_Info GB_AxB_heap                // C<M>=A*B or C=A*B using a heap
     //--------------------------------------------------------------------------
 
     GB_HEAP_FREE_WORK ;
-    info = GB_ix_realloc (C, GB_NNZ (C), true, Context) ;
+    info = GB_ix_realloc (C, GB_NNZ (C), true, NULL) ;
     ASSERT (info == GrB_SUCCESS) ;
     ASSERT_OK (GB_check (C, "heap: C = A*B output", GB0)) ;
     ASSERT (*Chandle == C) ;
+    (*mask_applied) = (M != NULL) ;
     return (GrB_SUCCESS) ;
 }
 

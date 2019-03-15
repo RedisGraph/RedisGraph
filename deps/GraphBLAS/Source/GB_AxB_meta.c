@@ -2,7 +2,7 @@
 // GB_AxB_meta: C<M>=A*B meta algorithm
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -11,24 +11,25 @@
 // optional mask matrix.  This function is called by GB_mxm only.  If the mask
 // matrix is present, it is not complemented, since this function can only
 // handle a non-complemented mask matrix.  A complemented mask is handled in
-// GB_accum_mask, after this matrix C is computed.
+// GB_accum_mask, after this matrix C is computed, in GB_mxm.  The result of
+// this matrix is the T matrix in GB_mxm.
 
 // The method is chosen automatically:  a gather/scatter saxpy method
 // (Gustavson), a heap-based saxpy method, or a dot product method.
 
 // FUTURE: an outer-product method for C=A*B'
+// FUTURE: a hash-based method for C=A*B
 
-#undef GB_OK
-#define GB_OK(method)               \
-    info = method ;                 \
-    if (info != GrB_SUCCESS)        \
-    {                               \
-        GB_MATRIX_FREE (Chandle) ;  \
-        GB_MATRIX_FREE (&AT) ;      \
-        GB_MATRIX_FREE (&BT) ;      \
-        GB_MATRIX_FREE (&MT) ;      \
-        return (info) ;             \
-    }
+// parallel: this function will remain sequential.
+// parallelism will be done in GB_AxB_parallel and GB_transpose.
+
+#define GB_FREE_ALL             \
+{                               \
+    GB_MATRIX_FREE (Chandle) ;  \
+    GB_MATRIX_FREE (&AT) ;      \
+    GB_MATRIX_FREE (&BT) ;      \
+    GB_MATRIX_FREE (&MT) ;      \
+}
 
 #include "GB.h"
 
@@ -38,6 +39,7 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
     const bool C_is_csc,            // desired CSR/CSC format of C
     GrB_Matrix *MT_handle,          // return MT = M' to caller, if computed
     const GrB_Matrix M_in,          // mask for C<M> (not complemented)
+    const bool Mask_comp,           // if true, use ~M
     const GrB_Matrix A_in,          // input matrix
     const GrB_Matrix B_in,          // input matrix
     const GrB_Semiring semiring,    // semiring that defines C=A*B
@@ -47,7 +49,6 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
     bool *mask_applied,             // if true, mask was applied
     const GrB_Desc_Value AxB_method,// for auto vs user selection of methods
     GrB_Desc_Value *AxB_method_used,// method selected
-    GB_Sauna *Sauna_Handle,         // handle to sparse accumulator
     GB_Context Context
 )
 {
@@ -65,7 +66,7 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
     ASSERT_OK (GB_check (semiring, "semiring for numeric A*B", GB0)) ;
     ASSERT (mask_applied != NULL) ;
     ASSERT (AxB_method_used != NULL) ;
-    ASSERT (Sauna_Handle != NULL) ;
+    ASSERT (Chandle != NULL) ;
 
     (*Chandle) = NULL ;
     if (MT_handle != NULL)
@@ -145,7 +146,7 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
         //      C'<M'> = A' * B'
 
     //--------------------------------------------------------------------------
-    // swap_rule: remove the tranpose of C
+    // swap_rule: remove the transpose of C
     //--------------------------------------------------------------------------
 
     // It is also possible to compute and return C' from this function, and to
@@ -252,7 +253,7 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
         //----------------------------------------------------------------------
 
         // A'*B is being computed: use the dot product without computing A'
-        // or use the saxpy (heap or gather/scatter) method
+        // or use the saxpy (heap or Gustavson) method
 
         // If the mask is present, only entries for which M(i,j)=1 are
         // computed, which makes this method very efficient when the mask is
@@ -260,9 +261,9 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
         // which M(i,j)=1 is computed via a dot product, C(i,j) =
         // A(:,i)'*B(:,j).  If the mask is not present, the dot-product method
         // is very slow in general, and thus the saxpy method is usually used
-        // instead (via gather/scatter or heap).
+        // instead (via Gustavson or heap).
 
-        bool use_adotb ;
+        bool do_adotb ;
 
         if (AxB_method == GxB_DEFAULT)
         {
@@ -270,12 +271,12 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
             if (M != NULL)
             { 
                 // C<M> = A'*B always uses the dot product method
-                use_adotb = true ;
+                do_adotb = true ;
             }
             else if (A->vdim == 1 || B->vdim == 1)
             { 
                 // C=A'*B uses dot product method if C is a 1-by-n or n-by-1
-                use_adotb = true ;
+                do_adotb = true ;
             }
             else
             { 
@@ -288,27 +289,29 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
                                   && (anzmax == GB_NNZ (A)) ;
                 bool B_is_dense = GB_Index_multiply (&bnzmax, B->vlen, B->vdim)
                                   && (bnzmax == GB_NNZ (B)) ;
-                use_adotb = A_is_dense || B_is_dense ;
+                do_adotb = A_is_dense || B_is_dense ;
             }
         }
         else
         { 
             // user selection for A'*B
-            use_adotb = (AxB_method == GxB_AxB_DOT) ;
+            do_adotb = (AxB_method == GxB_AxB_DOT) ;
         }
 
-        if (use_adotb)
+        if (do_adotb)
         { 
             // C<M> = A'*B via dot product method
-            (*AxB_method_used) = GxB_AxB_DOT ;
-            GB_OK (GB_AxB_dot (Chandle, M, A, B, semiring, flipxy, Context)) ;
+            GB_OK (GB_AxB_parallel (Chandle, M, Mask_comp, A, B, semiring,
+                flipxy, true, AxB_method, AxB_method_used, mask_applied,
+                Context)) ;
         }
         else
         { 
-            // C<M> = A'*B via saxpy: gather/scatter or heap method
+            // C<M> = A'*B via saxpy: Gustavson or heap method
             GB_OK (GB_transpose (&AT, atype_required, true, A, NULL, Context)) ;
-            GB_OK (GB_AxB_saxpy (Chandle, M, AT, B, semiring, flipxy,
-                AxB_method, AxB_method_used, Sauna_Handle, Context)) ;
+            GB_OK (GB_AxB_parallel (Chandle, M, Mask_comp, AT, B, semiring,
+                flipxy, false, AxB_method, AxB_method_used, mask_applied,
+                Context)) ;
         }
 
     }
@@ -322,17 +325,20 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
         if (AxB_method == GxB_AxB_DOT)
         { 
             // C<M> = A*B' via dot product
-            (*AxB_method_used) = GxB_AxB_DOT ;
             GB_OK (GB_transpose (&AT, atype_required, true, A, NULL, Context)) ;
             GB_OK (GB_transpose (&BT, btype_required, true, B, NULL, Context)) ;
-            GB_OK (GB_AxB_dot (Chandle, M, AT, BT, semiring, flipxy, Context)) ;
+            GB_OK (GB_AxB_parallel (Chandle, M, Mask_comp, AT, BT, semiring,
+                flipxy, true, AxB_method, AxB_method_used, mask_applied,
+                Context)) ;
         }
         else
         { 
-            // C<M> = A*B' via saxpy: gather/scatter or heap method
+            // C<M> = A*B' via saxpy: Gustavson or heap method
             GB_OK (GB_transpose (&BT, btype_required, true, B, NULL, Context)) ;
-            GB_OK (GB_AxB_saxpy (Chandle, M, A, BT, semiring, flipxy,
-                AxB_method, AxB_method_used, Sauna_Handle, Context)) ;
+            GB_OK (GB_AxB_parallel (Chandle, M, Mask_comp, A, BT, semiring,
+                flipxy, false, AxB_method, AxB_method_used, mask_applied,
+                Context)) ;
+
         }
 
     }
@@ -346,15 +352,17 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
         if (AxB_method == GxB_AxB_DOT)
         { 
             // C<M> = A*B via dot product
-            (*AxB_method_used) = GxB_AxB_DOT ;
             GB_OK (GB_transpose (&AT, atype_required, true, A, NULL, Context)) ;
-            GB_OK (GB_AxB_dot (Chandle, M, AT, B, semiring, flipxy, Context)) ;
+            GB_OK (GB_AxB_parallel (Chandle, M, Mask_comp, AT, B, semiring,
+                flipxy, true, AxB_method, AxB_method_used, mask_applied,
+                Context)) ;
         }
         else
         { 
-            // C<M> = A*B via saxpy: gather/scatter or heap method
-            GB_OK (GB_AxB_saxpy (Chandle, M, A, B, semiring, flipxy,
-                AxB_method, AxB_method_used, Sauna_Handle, Context)) ;
+            // C<M> = A*B via saxpy: Gustavson or heap method
+            GB_OK (GB_AxB_parallel (Chandle, M, Mask_comp, A, B, semiring,
+                flipxy, false, AxB_method, AxB_method_used, mask_applied,
+                Context)) ;
         }
     }
 
@@ -382,7 +390,6 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
     ASSERT_OK (GB_check (C, "C output for all C=A*B", GB0)) ;
     ASSERT_OK_OR_NULL (GB_check (MT, "MT if computed", GB0)) ;
 
-    (*mask_applied) = (M != NULL) ;
     if (MT_handle != NULL)
     { 
         // return MT to the caller, if computed and the caller wants it

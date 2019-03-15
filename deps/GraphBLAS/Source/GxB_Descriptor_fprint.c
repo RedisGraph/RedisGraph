@@ -2,10 +2,12 @@
 // GxB_Descriptor_fprint: print and check a GrB_Descriptor object
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
+
+// not parallel: this function does O(1) work and is already thread-safe.
 
 #include "GB.h"
 

@@ -1,8 +1,8 @@
 //------------------------------------------------------------------------------
-// GB_AxB_Gustavson: C=A*B or C<M>=A*B, gather/scatter-based saxpy method
+// GB_AxB_Gustavson: C=A*B or C<M>=A*B, gather/scatter-based saxpy method.
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -10,49 +10,34 @@
 // This method is agnostic to the CSR/CSC format.  The format of C is set
 // to CSC but this is a placeholder that will be changed in GB_AxB_meta.
 
-// This function is called only by GB_AxB_meta.
+// parallel: this work is done by a single thread.  parallelism will be done in
+// GB_AxB_parallel.
+
+// Does not log an error; returns GrB_SUCCESS, GrB_OUT_OF_MEMORY, or GrB_PANIC.
 
 #include "GB.h"
 #ifndef GBCOMPACT
-#include "GB_heap.h"
 #include "GB_AxB__semirings.h"
 #endif
 
-// C=A*B is successful, just free temporary matrices
-#define GB_GUS_FREE_WORK                    \
-{                                           \
-    GB_MATRIX_FREE (&A2) ;                  \
-    GB_MATRIX_FREE (&B2) ;                  \
-}
-
-// C=A*B failed, free everything, including C, and the Sauna
+// C=A*B failed, free everything, even the Sauna
 #define GB_FREE_ALL                         \
 {                                           \
-    GB_GUS_FREE_WORK ;                      \
     GB_MATRIX_FREE (Chandle) ;              \
-    GB_Sauna_free (Sauna_Handle) ;          \
-}
-
-#define GB_OK(method)                       \
-{                                           \
-    info = method ;                         \
-    if (info != GrB_SUCCESS)                \
-    {                                       \
-        GB_FREE_ALL ;                       \
-        return (info) ;                     \
-    }                                       \
+    GB_Sauna_free (Sauna_id) ;              \
 }
 
 GrB_Info GB_AxB_Gustavson           // C=A*B or C<M>=A*B, Gustavson's method
 (
     GrB_Matrix *Chandle,            // output matrix
-    const GrB_Matrix M,             // optional matrix
-    const GrB_Matrix A_in,          // input matrix A
-    const GrB_Matrix B_in,          // input matrix B
+    const GrB_Matrix M_in,          // optional matrix
+    const bool Mask_comp,           // if true, use ~M
+    const GrB_Matrix A,             // input matrix A
+    const GrB_Matrix B,             // input matrix B
     const GrB_Semiring semiring,    // semiring that defines C=A*B
     const bool flipxy,              // if true, do z=fmult(b,a) vs fmult(a,b)
-    GB_Sauna *Sauna_Handle,         // handle to sparse accumulator
-    GB_Context Context
+    bool *mask_applied,             // if true, mask was applied
+    const int Sauna_id              // Sauna to use
 )
 {
 
@@ -60,15 +45,18 @@ GrB_Info GB_AxB_Gustavson           // C=A*B or C<M>=A*B, Gustavson's method
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT_OK_OR_NULL (GB_check (M, "M for numeric C<M>=A*B", GB0)) ;
-    ASSERT_OK (GB_check (A_in, "A for Gustavson C=A*B", GB0)) ;
-    ASSERT_OK (GB_check (B_in, "B for Gustavson C=A*B", GB0)) ;
-    ASSERT (!GB_PENDING (M))    ; ASSERT (!GB_ZOMBIES (M)) ;
-    ASSERT (!GB_PENDING (A_in)) ; ASSERT (!GB_ZOMBIES (A_in)) ;
-    ASSERT (!GB_PENDING (B_in)) ; ASSERT (!GB_ZOMBIES (B_in)) ;
-    ASSERT (A_in->vdim == B_in->vlen) ;
-    ASSERT_OK (GB_check (semiring, "semiring for numeric A*B", GB0)) ;
-    ASSERT (Sauna_Handle != NULL) ;
+    GB_Context Context = NULL ;
+    ASSERT (Chandle != NULL) ;
+    ASSERT_OK_OR_NULL (GB_check (M_in, "M for Gustavson C<M>=A*B", GB0)) ;
+    ASSERT_OK (GB_check (A, "A for Gustavson C=A*B", GB0)) ;
+    ASSERT_OK (GB_check (B, "B for Gustavson C=A*B", GB0)) ;
+    ASSERT (!GB_PENDING (M_in)) ; ASSERT (!GB_ZOMBIES (M_in)) ;
+    ASSERT (!GB_PENDING (A)) ; ASSERT (!GB_ZOMBIES (A)) ;
+    ASSERT (!GB_PENDING (B)) ; ASSERT (!GB_ZOMBIES (B)) ;
+    ASSERT (A->vdim == B->vlen) ;
+    ASSERT_OK (GB_check (semiring, "semiring for Gustavson A*B", GB0)) ;
+    ASSERT (Sauna_id >= 0 && Sauna_id < GxB_NTHREADS_MAX) ;
+    ASSERT (mask_applied != NULL) ;
 
     //--------------------------------------------------------------------------
     // determine size and hypersparsity of C
@@ -78,10 +66,8 @@ GrB_Info GB_AxB_Gustavson           // C=A*B or C<M>=A*B, Gustavson's method
 
     (*Chandle) = NULL ;
 
-    GrB_Matrix A2 = NULL ;
-    GrB_Matrix B2 = NULL ;
-    GrB_Matrix A = A_in ;
-    GrB_Matrix B = B_in ;
+    // Gustavson's method does not handle a complemented mask
+    GrB_Matrix M = (Mask_comp ? NULL : M_in) ;
 
     int64_t cvlen = A->vlen ;
     int64_t cvdim = B->vdim ;
@@ -122,16 +108,15 @@ GrB_Info GB_AxB_Gustavson           // C=A*B or C<M>=A*B, Gustavson's method
     // allocate the Sauna
     //--------------------------------------------------------------------------
 
-    GB_Sauna Sauna = (*Sauna_Handle) ;
+    GB_Sauna Sauna = GB_Global.Saunas [Sauna_id] ;
 
     if (Sauna == NULL || Sauna->Sauna_n < cvlen || Sauna->Sauna_size < zsize)
     { 
-        // the Sauna either does not exist, or is too small
-        GB_Sauna_free (Sauna_Handle) ;
-        GB_OK (GB_Sauna_alloc (Sauna_Handle, cvlen, zsize, Context)) ;
+        // get a new Sauna: the Sauna either does not exist, or is too small
+        GB_Sauna_free (Sauna_id) ;
+        GB_OK (GB_Sauna_alloc (Sauna_id, cvlen, zsize)) ;
+        Sauna = GB_Global.Saunas [Sauna_id] ;
     }
-
-    Sauna = (*Sauna_Handle) ;
 
     int64_t *restrict Sauna_Mark = Sauna->Sauna_Mark ;
 
@@ -143,7 +128,7 @@ GrB_Info GB_AxB_Gustavson           // C=A*B or C<M>=A*B, Gustavson's method
     //--------------------------------------------------------------------------
 
     GB_OK (GB_AxB_alloc (Chandle, GrB_BOOL, cvlen, cvdim, M, A, B, false,
-        cvlen + GB_NNZ (A) + GB_NNZ (B), Context)) ;
+        cvlen + GB_NNZ (A) + GB_NNZ (B))) ;
 
     GrB_Matrix C = (*Chandle) ;
     ASSERT (C != NULL) ;
@@ -168,6 +153,10 @@ GrB_Info GB_AxB_Gustavson           // C=A*B or C<M>=A*B, Gustavson's method
             // symbolic analysis when no matrix is hypersparse
             #include "GB_AxB_Gustavson_symbolic.c"
         }
+
+        // FUTURE: if A and B are pattern-only and the semiring is AND_OR
+        // or OR_AND (perhaps others) the C is pattern-only, and the values
+        // of C do not need to be computed.  The work is done here.
     }
 
     //==========================================================================
@@ -178,8 +167,10 @@ GrB_Info GB_AxB_Gustavson           // C=A*B or C<M>=A*B, Gustavson's method
     // allocate C->x
     //--------------------------------------------------------------------------
 
-    // C has the same type as z for z=fmult(x,y).  The type is also the
-    // same as the monoid of the semiring.
+    // C has the same type as z for z=fmult(x,y).  The type is also the same as
+    // the monoid of the semiring.  The types of A and/or B, and their
+    // typecasting, has no effect on the size of the type of C or the Sauna
+    // workspace.
 
     C->type = mult->ztype ;
     C->type_size = zsize ;
@@ -190,9 +181,8 @@ GrB_Info GB_AxB_Gustavson           // C=A*B or C<M>=A*B, Gustavson's method
     if (C->x == NULL)
     { 
         // out of memory
-        double memory = GBYTES (C->nzmax, zsize) ;
         GB_FREE_ALL ;
-        return (GB_OUT_OF_MEMORY (memory)) ;
+        return (GrB_OUT_OF_MEMORY) ;
     }
 
     C->x_shallow = false ;
@@ -206,7 +196,7 @@ GrB_Info GB_AxB_Gustavson           // C=A*B or C<M>=A*B, Gustavson's method
     }
 
     //--------------------------------------------------------------------------
-    // determine the type of A2 and B2, for typecasting
+    // determine the required types of A and B, for typecasting
     //--------------------------------------------------------------------------
 
     GrB_Type atype_required, btype_required ;
@@ -224,151 +214,210 @@ GrB_Info GB_AxB_Gustavson           // C=A*B or C<M>=A*B, Gustavson's method
         btype_required = mult->ytype ;
     }
 
-    //--------------------------------------------------------------------------
-    // cast A and B to x and y for z=mult(x,y), if needed
-    //--------------------------------------------------------------------------
-
-    // Shallow casting creates a new matrix that has shallow pointers to the
-    // prior A_in->p and A_in->i, but it constructs a new array A2->x for the
-    // numerical values.  The types A_in->type and A2->type can differ, as can
-    // A_in->x and A2->x, but all other content is the same.  If the types of
-    // A_in and A2 are the same, then A2->x is a shallow copy of A->x and no
-    // data is moved.  The CSR/CSC format of A2 and B2 is not relevant, so
-    // they are kept the same as A_in and B_in.
-
-    GB_OK (GB_shallow_cast (&A2, atype_required, A_in->is_csc, A_in, Context)) ;
-    GB_OK (GB_shallow_cast (&B2, btype_required, B_in->is_csc, B_in, Context)) ;
-
-    A = A2 ;
-    B = B2 ;
-
-    // A and B are now the right types for the multiply operator.
-    // no further typecasting is needed.
-    ASSERT (A->type == atype_required) ;
-    ASSERT (B->type == btype_required) ;
+    bool no_typecasting = (A->type == atype_required)
+                       && (B->type == btype_required) ;
 
     //--------------------------------------------------------------------------
     // compute C = A*B for built-in types and operators
     //--------------------------------------------------------------------------
 
-    ASSERT_OK (GB_check (A->type, "A type for builtin", GB0)) ;
-    ASSERT_OK (GB_check (B->type, "B type for builtin", GB0)) ;
-    ASSERT_OK (GB_check (C->type, "C type for builtin", GB0)) ;
-    ASSERT_OK (GB_check (semiring, "semiring for builtin", GB0)) ;
+    if (no_typecasting)
+    { 
+
+        ASSERT_OK (GB_check (A->type, "A type for Gustavson builtin", GB0)) ;
+        ASSERT_OK (GB_check (B->type, "B type for Gustavson builtin", GB0)) ;
+        ASSERT_OK (GB_check (C->type, "C type for Gustavson builtin", GB0)) ;
 
 #ifndef GBCOMPACT
 
-    // If the GB_AxB_Gustavson_builtin function has a worker for the particular
-    // semiring, then it does the computation and returns done = true.
-    // Otherwise, it returns done as false, and the generic worker below does
-    // the work.
+        // If the GB_AxB_Gustavson_builtin function has a worker for the
+        // particular semiring, then it does the computation and returns done =
+        // true.  Otherwise, it returns done as false, and the generic worker
+        // below does the work.
 
-    // If GBCOMPACT is enabled at compile-time, then no built-in workers are
-    // created, and this function is not used.  All C=A*B computations are done
-    // with the generic worker below.
+        // If GBCOMPACT is enabled at compile-time, then no built-in workers
+        // are created, and this function is not used.  All C=A*B computations
+        // are done with the generic worker below.
 
-    bool done = false ;
-    info = GB_AxB_Gustavson_builtin (C, M, A, B, semiring, flipxy, &done,
-        Sauna, Context) ;
-    ASSERT (info == GrB_SUCCESS) ;
-    if (done)
-    { 
-        // C = A*B has been done via a hard-coded case
-        ASSERT_OK (GB_check (C, "C hard-coded for numeric C=A*B", GB0)) ;
-        ASSERT (*Chandle == C) ;
-        GB_GUS_FREE_WORK ;
-        ASSERT_SAUNA_IS_RESET ;
-        return (GrB_SUCCESS) ;
-    }
+        bool done = false ;
+        info = GB_AxB_Gustavson_builtin (C, M, A, B, semiring, flipxy, &done,
+            Sauna) ;
+        ASSERT (info == GrB_SUCCESS) ;
+        if (done)
+        { 
+            // C = A*B has been done via a hard-coded case
+            ASSERT_OK (GB_check (C, "C hard-coded for Gustavson C=A*B", GB0)) ;
+            ASSERT (*Chandle == C) ;
+            ASSERT_SAUNA_IS_RESET ;
+            (*mask_applied) = (M != NULL) ;
+            return (GrB_SUCCESS) ;
+        }
 
 #endif
 
-    //--------------------------------------------------------------------------
-    // user semirings created at compile time
-    //--------------------------------------------------------------------------
+        //----------------------------------------------------------------------
+        // user semirings created at compile time
+        //----------------------------------------------------------------------
 
-    if (semiring->object_kind == GB_USER_COMPILED)
-    { 
-        info = GB_AxB_user (GxB_AxB_GUSTAVSON, semiring, Chandle, M, A, B,
-            flipxy, NULL, NULL, NULL, 0, Sauna, Context) ;
-        GB_GUS_FREE_WORK ;
-        return (info) ;
+        // A precompiled function for C=A*B with user-defined semiring is
+        // called only if no typecasting is needed.
+
+        if (semiring->object_kind == GB_USER_COMPILED)
+        { 
+            info = GB_AxB_user (GxB_AxB_GUSTAVSON, semiring, Chandle, M, A, B,
+                flipxy, false, NULL, NULL, NULL, 0, Sauna) ;
+            (*mask_applied) = (M != NULL) && (info == GrB_SUCCESS) ;
+            return (info) ;
+        }
     }
 
     //--------------------------------------------------------------------------
-    // generic Gustavson C=A*B for any valid semiring, built-in or user-defined
+    // generic Gustavson, any semiring, with or without typecasting
     //--------------------------------------------------------------------------
 
-    // Define operations for GB_AxB_Gustavson_mask and GB_AxB_Gustavson_nomask
+    // Define operations for GB_AxB_Gustavson_mask and GB_AxB_Gustavson_nomask,
+    // whether or not typecasting is needed.
 
     #define GB_IDENTITY \
         identity
 
-    // x [i] = y
+    // x [i] = y        // to scatter C(i,j) to Work(i), of size zsize
     #define GB_COPY_SCALAR_TO_ARRAY(x,i,y,s)        \
         memcpy (x +((i)*s), y, s) ;
 
-    // x = y [i]
-    #define GB_COPY_ARRAY_TO_SCALAR(x,y,i,s)        \
-        memcpy (x, y +((i)*s), s) ;
-
-    // x [i] = y [j]
+    // x [i] = y [j]    // to gather C(i,j) from Work(i), of size zsize
     #define GB_COPY_ARRAY_TO_ARRAY(x,i,y,j,s)       \
         memcpy (x +((i)*s), y +((j)*s), s) ;
 
+    // z = x*y
     #define GB_MULTOP(z,x,y) fmult (z, x, y) ;
 
-    // generic multiply-add operation (with no mask).  fadd: (z x alias)
-    #define GB_MULTADD_NOMASK                                           \
-    {                                                                   \
-        /* Sauna_Work [i] += A(i,k) * B(k,j) */                         \
-        GB_MULTIPLY (zwork, Ax +(pA*asize), bkj) ;                      \
-        fadd (Sauna_Work +(i*zsize), Sauna_Work +(i*zsize), zwork) ;    \
-    }
+    size_t asize = A->type->size ;
+    size_t bsize = B->type->size ;
 
-    // generic multiply-add operation (with mask)
-    #define GB_MULTADD_WITH_MASK                                        \
-    {                                                                   \
-        /* Sauna_Work [i] += A(i,k) * B(k,j) */                         \
-        if (mark == hiwater)                                            \
-        {                                                               \
-            /* first time C(i,j) seen */                                \
-            /* Sauna_Work [i] = A(i,k) * bkj */                         \
-            GB_MULTIPLY (Sauna_Work +(i*zsize), Ax +(pA*asize), bkj) ;  \
-            Sauna_Mark [i] = hiwater + 1 ;                              \
-        }                                                               \
-        else                                                            \
-        {                                                               \
-            /* C(i,j) seen before, update it */                         \
-            /* Sauna_Work [i] += A(i,k) * B(k,j) */                     \
-            GB_MULTADD_NOMASK ;                                         \
-        }                                                               \
-    }
+    size_t xsize = mult->xtype->size ;
+    size_t ysize = mult->ytype->size ;
 
-    // asize is the size of x, or y if flipxy is true, for z=mult(x,y)
-    // bsize is the size of y, or x if flipxy is true, for z=mult(x,y)
-    size_t asize = atype_required->size ;
-    size_t bsize = btype_required->size ;
-
-    char bkj [bsize] ;
+    // scalar workspace (after typecasting, if needed)
+    // flipxy false: aik = (xtype) A(i,k) and bkj = (ytype) B(k,j)
+    // flipxy true:  aik = (ytype) A(i,k) and bkj = (xtype) B(k,j)
+    char aik [flipxy ? ysize : xsize] ;
+    char bkj [flipxy ? xsize : ysize] ;
 
     GxB_binary_function fmult = mult->function ;
     GxB_binary_function fadd  = add->op->function ;
-
     GB_void *restrict identity = add->identity ;
-
     GB_void *restrict Cx = C->x ;
-
     #define GB_HANDLE_FLIPXY true
     #define GB_XTYPE GB_void
     #define GB_YTYPE GB_void
-    #include "GB_AxB_Gustavson_flipxy.c"
+
+    if (no_typecasting)
+    { 
+
+        //----------------------------------------------------------------------
+        // generic C=A*B or C<M>=A*B with any semiring, but no typecasting
+        //----------------------------------------------------------------------
+
+        // x = y [i]        // for bkj = B(k,j), of size bsize
+        #define GB_COPY_ARRAY_TO_SCALAR(x,y,i,s)                            \
+            memcpy (x, y +((i)*s), s) ;
+
+        // generic multiply-add operation (with no mask).  fadd: (z x alias)
+        #define GB_MULTADD_NOMASK                                           \
+        {                                                                   \
+            /* Sauna_Work [i] += A(i,k) * B(k,j) */                         \
+            GB_MULTIPLY (zwork, Ax +(pA*asize), bkj) ;                      \
+            fadd (Sauna_Work +(i*zsize), Sauna_Work +(i*zsize), zwork) ;    \
+        }
+
+        // generic multiply-add operation (with mask)
+        #define GB_MULTADD_WITH_MASK                                        \
+        {                                                                   \
+            /* Sauna_Work [i] += A(i,k) * B(k,j) */                         \
+            if (mark == hiwater)                                            \
+            {                                                               \
+                /* first time C(i,j) seen */                                \
+                /* Sauna_Work [i] = A(i,k) * B(k,j) */                      \
+                GB_MULTIPLY (Sauna_Work +(i*zsize), Ax +(pA*asize), bkj) ;  \
+                Sauna_Mark [i] = hiwater + 1 ;                              \
+            }                                                               \
+            else                                                            \
+            {                                                               \
+                /* C(i,j) seen before, update it */                         \
+                /* Sauna_Work [i] += A(i,k) * B(k,j) */                     \
+                GB_MULTADD_NOMASK ;                                         \
+            }                                                               \
+        }
+
+        #include "GB_AxB_Gustavson_flipxy.c"
+
+    }
+    else
+    { 
+
+        //----------------------------------------------------------------------
+        // generic C=A*B or C<M>=A*B with any semiring, with any typecasting
+        //----------------------------------------------------------------------
+
+        GB_cast_function cast_A, cast_B ;
+        if (flipxy)
+        { 
+            // A is typecasted to y, and B is typecasted to x
+            cast_A = GB_cast_factory (mult->ytype->code, A->type->code) ;
+            cast_B = GB_cast_factory (mult->xtype->code, B->type->code) ;
+        }
+        else
+        { 
+            // A is typecasted to x, and B is typecasted to y
+            cast_A = GB_cast_factory (mult->xtype->code, A->type->code) ;
+            cast_B = GB_cast_factory (mult->ytype->code, B->type->code) ;
+        }
+
+        // x = y [i]        // for bkj = B(k,j), of size bsize
+        #undef  GB_COPY_ARRAY_TO_SCALAR
+        #define GB_COPY_ARRAY_TO_SCALAR(x,y,i,s)                            \
+            cast_B (x, y +((i)*s), s) ;
+
+        // generic multiply-add operation (with no mask).  fadd: (z x alias)
+        #undef  GB_MULTADD_NOMASK
+        #define GB_MULTADD_NOMASK                                           \
+        {                                                                   \
+            /* Sauna_Work [i] += A(i,k) * B(k,j) */                         \
+            cast_A (aik, Ax +(pA*asize), asize) ;                           \
+            GB_MULTIPLY (zwork, aik, bkj) ;                                 \
+            fadd (Sauna_Work +(i*zsize), Sauna_Work +(i*zsize), zwork) ;    \
+        }
+
+        // generic multiply-add operation (with mask)
+        #undef  GB_MULTADD_WITH_MASK
+        #define GB_MULTADD_WITH_MASK                                        \
+        {                                                                   \
+            /* Sauna_Work [i] += A(i,k) * B(k,j) */                         \
+            if (mark == hiwater)                                            \
+            {                                                               \
+                /* first time C(i,j) seen */                                \
+                /* Sauna_Work [i] = A(i,k) * B(k,j) */                      \
+                cast_A (aik, Ax +(pA*asize), asize) ;                       \
+                GB_MULTIPLY (Sauna_Work +(i*zsize), aik, bkj) ;             \
+                Sauna_Mark [i] = hiwater + 1 ;                              \
+            }                                                               \
+            else                                                            \
+            {                                                               \
+                /* C(i,j) seen before, update it */                         \
+                /* Sauna_Work [i] += A(i,k) * B(k,j) */                     \
+                GB_MULTADD_NOMASK ;                                         \
+            }                                                               \
+        }
+
+        #include "GB_AxB_Gustavson_flipxy.c"
+
+    }
 
     //--------------------------------------------------------------------------
-    // free workspace and return result
+    // return result
     //--------------------------------------------------------------------------
 
-    GB_GUS_FREE_WORK ;     // free A2 and B2
     ASSERT_SAUNA_IS_RESET ;
 
     // cannot fail since C->plen is the upper bound: # non-empty columns of B
@@ -376,8 +425,9 @@ GrB_Info GB_AxB_Gustavson           // C=A*B or C<M>=A*B, Gustavson's method
     // if it could fail, do this:
     // GB_OK (info) ;     // check result and return if an error occurred
 
-    ASSERT_OK (GB_check (C, "C output for numeric C=A*B", GB0)) ;
+    ASSERT_OK (GB_check (C, "C output for Gustavson C=A*B", GB0)) ;
     ASSERT (*Chandle == C) ;
+    (*mask_applied) = (M != NULL) ;
     return (GrB_SUCCESS) ;
 }
 

@@ -2,10 +2,13 @@
 // GB_resize: change the size of a matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
+
+// PARALLEL: simple parallelism; not a lot of work to unless the vector
+// length is decreasing.  See Template/GB_prune_inplace.c
 
 #include "GB.h"
 
@@ -25,20 +28,10 @@ GrB_Info GB_resize              // change the size of a matrix
     ASSERT_OK (GB_check (A, "A to resize", GB0)) ;
 
     //--------------------------------------------------------------------------
-    // free the Sauna
+    // determine the number of threads to use
     //--------------------------------------------------------------------------
 
-    // It would be possible to keep the Sauna if the vector length is not
-    // changing (# of rows of a CSC matrix, or # of columns of a CSR matrix).
-    // However, resizing a matrix is a user-accessible way to free the Sauna.
-    // The user can free the Sauna and force completion of a matrix A by
-    // "resizing" it to its same size:
-    //
-    //      GrB_Matrix_nrows (&nrows, A) ;
-    //      GrB_Matrix_ncols (&ncols, A) ;
-    //      GxB_Matrix_resize (A, nrows, ncols) ;
-
-    GB_Sauna_free (&(A->Sauna)) ;
+    GB_GET_NTHREADS (nthreads, Context) ;
 
     //--------------------------------------------------------------------------
     // delete any lingering zombies and assemble any pending tuples
@@ -74,6 +67,11 @@ GrB_Info GB_resize              // change the size of a matrix
     int64_t vdim_old = A->vdim ;
 
     GrB_Info info = GrB_SUCCESS ;
+
+    if (A->nvec_nonempty < 0)
+    { 
+        A->nvec_nonempty = GB_nvec_nonempty (A, Context) ;
+    }
 
     if (GB_to_hyper_test (A, A->nvec_nonempty, vdim_new))
     { 
@@ -119,7 +117,6 @@ GrB_Info GB_resize              // change the size of a matrix
         bool found ;
         GB_BINARY_SPLIT_SEARCH (vdim_new, Ah, pleft, pright, found) ;
         A->nvec = pleft ;
-        A->nvec_nonempty = A->nvec ;
 
     }
     else
@@ -133,13 +130,12 @@ GrB_Info GB_resize              // change the size of a matrix
         {
             // change the size of A->p
             GB_REALLOC_MEMORY (A->p, vdim_new+1, vdim_old+1, sizeof (int64_t),
-                &ok) ;
+                &ok, Context) ;
             if (!ok)
             { 
                 // out of memory
-                GB_CONTENT_FREE (A) ;
-                double memory = GBYTES (vdim_new+1, sizeof (int64_t)) ;
-                return (GB_OUT_OF_MEMORY (memory)) ;
+                GB_PHIX_FREE (A) ;
+                return (GB_OUT_OF_MEMORY) ;
             }
             Ap = A->p ;
             A->plen = vdim_new ;
@@ -155,13 +151,14 @@ GrB_Info GB_resize              // change the size of a matrix
             }
             // A->nvec_nonempty does not change
         }
-        else
-        { 
-            // number of vectors is decreasing, need to count the new number of
-            // non-empty vectors, unless it is done during pruning, just below.
-            recount = true ;
-        }
         A->nvec = vdim_new ;
+    }
+
+    if (vdim_new < vdim_old)
+    { 
+        // number of vectors is decreasing, need to count the new number of
+        // non-empty vectors, unless it is done during pruning, just below.
+        A->nvec_nonempty = -1 ;         // compute when needed
     }
 
     //--------------------------------------------------------------------------
@@ -177,19 +174,12 @@ GrB_Info GB_resize              // change the size of a matrix
         int64_t anz ;
         #define GB_PRUNE if (i >= vlen_new) break ;
         #include "GB_prune_inplace.c"
-        recount = false ;
     }
 
     //--------------------------------------------------------------------------
-    // explicit count of non-empty vectors may be required
-    //--------------------------------------------------------------------------
-
-    if (recount)
-    { 
-        A->nvec_nonempty = GB_nvec_nonempty (A) ;
-    }
-
     // vlen has been resized
+    //--------------------------------------------------------------------------
+
     A->vlen = vlen_new ;
     ASSERT_OK (GB_check (A, "A vlen resized", GB0)) ;
 

@@ -73,7 +73,7 @@ void mexFunction
         xtype = Complex ;
         xclass = mxDOUBLE_CLASS ;
         // create X
-        GB_CALLOC_MEMORY (Xtemp, ni, sizeof (double complex)) ;
+        GB_CALLOC_MEMORY (Xtemp, ni, sizeof (double complex), Context) ;
     }
     else
     {

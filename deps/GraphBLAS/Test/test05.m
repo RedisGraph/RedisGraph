@@ -17,14 +17,14 @@ X = [4 5 6 3]' ;
 
 A1 = GB_mex_setElement (A, I0, J0, int8(X))  ;
 
-%% A1_matrix = A1.matrix
+% A1_matrix = A1.matrix
 
 B = A ;
 for k = 1:length(I)
     B (I (k), J (k)) = X (k) ;
 end
 
-%% B
+% B
 
 assert (isequal (A1.matrix, B)) 
 

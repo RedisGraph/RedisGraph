@@ -158,7 +158,7 @@ GrB_Monoid GB_mx_builtin_monoid     // built-in monoid, or NULL if error
             break ;
 
 
-        // both GrB_EQ_BOOL and GxB_ISEQ_BOOL (same opcode)
+        // both GrB_EQ_BOOL and GxB_ISEQ_BOOL (different opcode)
         case GB_ISEQ_opcode     :
         case GB_EQ_opcode     :
 

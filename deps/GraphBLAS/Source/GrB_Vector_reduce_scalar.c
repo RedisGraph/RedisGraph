@@ -2,7 +2,7 @@
 // GrB_Vector_reduce_scalar: reduce a vector to a scalar
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -15,6 +15,10 @@
 // it accumulated in the result c via c = accum(c,t).  If the u has no entries,
 // the result t is the identity value of the monoid.  Unlike most other
 // GraphBLAS operations, this operation uses an accum operator but no mask.
+
+// The actual work is done in GB_reduce_to_scalar.c.
+
+// parallel: not here but in GB_reduce_to_scalar
 
 #include "GB.h"
 

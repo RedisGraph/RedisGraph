@@ -2,7 +2,7 @@
 // GxB_Desc_set: set a field in a descriptor
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -11,6 +11,8 @@
 // pointer whose type depends on the field.  For the four descriptor fields
 // in the spec, the type is the same as GrB_Descriptor_set (a scalar of
 // type GrB_Desc_Value).
+
+// not parallel: this function does O(1) work and is already thread-safe.
 
 #include "GB.h"
 
@@ -105,6 +107,13 @@ GrB_Info GxB_Desc_set           // set a parameter in a descriptor
             desc->in1  = value ;
             break ;
 
+        case GxB_DESCRIPTOR_NTHREADS :      // same as GxB_NTHREADS
+
+            va_start (ap, field) ;
+            desc->nthreads = va_arg (ap, int) ;
+            va_end (ap) ;
+            break ;
+
         case GxB_AxB_METHOD : 
 
             va_start (ap, field) ;
@@ -129,9 +138,9 @@ GrB_Info GxB_Desc_set           // set a parameter in a descriptor
             return (GB_ERROR (GrB_INVALID_VALUE, (GB_LOG,
                 "invalid descriptor field [%d], must be one of:\n"
                 "GrB_OUTP [%d], GrB_MASK [%d], GrB_INP0 [%d], GrB_INP1 [%d]"
-                "or GxB_AxB_METHOD [%d]", (int) field, (int) GrB_OUTP,
-                (int) GrB_MASK, (int) GrB_INP0, (int) GrB_INP1,
-                (int) GxB_AxB_METHOD))) ;
+                "GxB_NTHREADS [%d], or GxB_AxB_METHOD [%d]", (int) field,
+                (int) GrB_OUTP, (int) GrB_MASK, (int) GrB_INP0, (int) GrB_INP1,
+                (int) GxB_NTHREADS, (int) GxB_AxB_METHOD))) ;
     }
 
     return (GrB_SUCCESS) ;

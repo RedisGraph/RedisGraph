@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_mex_eWiseAdd_Matrix: C<Mask> = accum(C,A+B)
+// GB_mex_eWiseAdd_Matrix: C<M> = accum(C,A+B)
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
@@ -9,7 +9,8 @@
 
 #include "GB_mex.h"
 
-#define USAGE "C = GB_mex_eWiseAdd_Matrix C, Mask, accum, add, A, B, desc)"
+#define USAGE \
+    "C = GB_mex_eWiseAdd_Matrix (C, M, accum, add, A, B, desc, test)"
 
 #define FREE_ALL                        \
 {                                       \
@@ -17,7 +18,7 @@
     GB_MATRIX_FREE (&B) ;               \
     GB_MATRIX_FREE (&C) ;               \
     GrB_free (&desc) ;                  \
-    GB_MATRIX_FREE (&Mask) ;            \
+    GB_MATRIX_FREE (&M) ;               \
     GB_mx_put_global (true, 0) ;        \
 }
 
@@ -34,19 +35,20 @@ void mexFunction
     GrB_Matrix A = NULL ;
     GrB_Matrix B = NULL ;
     GrB_Matrix C = NULL ;
-    GrB_Matrix Mask = NULL ;
+    GrB_Matrix M = NULL ;
     GrB_Descriptor desc = NULL ;
 
     // check inputs
     GB_WHERE (USAGE) ;
-    if (nargout > 1 || nargin < 6 || nargin > 7)
+    if (nargout > 1 || nargin < 6 || nargin > 8)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;
     }
 
     // get C (make a deep copy)
     #define GET_DEEP_COPY \
-    C = GB_mx_mxArray_to_Matrix (pargin [0], "C input", true, true) ;
+    C = GB_mx_mxArray_to_Matrix (pargin [0], "C input", true, true) ;   \
+    if (nargin > 7 && C != NULL) C->nvec_nonempty = -1 ;
     #define FREE_DEEP_COPY GB_MATRIX_FREE (&C) ;
     GET_DEEP_COPY ;
     if (C == NULL)
@@ -56,12 +58,12 @@ void mexFunction
     }
     mxClassID cclass = GB_mx_Type_to_classID (C->type) ;
 
-    // get Mask (shallow copy)
-    Mask = GB_mx_mxArray_to_Matrix (pargin [1], "Mask", false, false) ;
-    if (Mask == NULL && !mxIsEmpty (pargin [1]))
+    // get M (shallow copy)
+    M = GB_mx_mxArray_to_Matrix (pargin [1], "M", false, false) ;
+    if (M == NULL && !mxIsEmpty (pargin [1]))
     {
         FREE_ALL ;
-        mexErrMsgTxt ("Mask failed") ;
+        mexErrMsgTxt ("M failed") ;
     }
 
     // get A (shallow copy)
@@ -105,8 +107,28 @@ void mexFunction
         mexErrMsgTxt ("desc failed") ;
     }
 
-    // C<Mask> = accum(C,A+B)
-    METHOD (GrB_eWiseAdd (C, Mask, accum, add, A, B, desc)) ;
+    // just for testing
+    if (nargin > 7)
+    {
+        if (M != NULL) M->nvec_nonempty = -1 ;
+        A->nvec_nonempty = -1 ;
+        B->nvec_nonempty = -1 ;
+        C->nvec_nonempty = -1 ;
+    }
+
+//      GB_check (A, "A for ewiseAdd", GB0) ;
+//      GB_check (B, "B for ewiseAdd", GB0) ;
+//      printf ("nvec_nonempty: %g %g\n",
+//          (double) A->nvec_nonempty,
+//          (double) B->nvec_nonempty) ;
+//      if (M != NULL)
+//      {
+//          GB_check (B, "B for ewiseAdd", GB0) ;
+//          printf ("M->nvec_nonempty: %g \n", (double) M->nvec_nonempty) ;
+//      }
+
+    // C<M> = accum(C,A+B)
+    METHOD (GrB_eWiseAdd (C, M, accum, add, A, B, desc)) ;
 
     GrB_wait ( ) ;
     TOC ;

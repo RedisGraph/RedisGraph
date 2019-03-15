@@ -2,13 +2,15 @@
 // GrB_Matrix_setElement: set an entry in a matrix, C(row,col) = x
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
 // Set a single entry in a matrix, C(row,col) = x in MATLAB notation,
 // typecasting from the type of x to the type of C, as needed.
+
+// not parallel: this function does O(log(..)) work and is already thread-safe.
 
 #include "GB.h"
 

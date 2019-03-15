@@ -44,10 +44,10 @@ void *DataBlock_GetItem(const DataBlock *dataBlock, size_t idx);
 // Allocate a new item within given dataBlock,
 // if idx is not NULL, idx will contain item position
 // return a pointer to the newly allocated item.
-void* DataBlock_AllocateItem(DataBlock *dataBlock, u_int64_t *idx);
+void* DataBlock_AllocateItem(DataBlock *dataBlock, uint64_t *idx);
 
 // Removes item at position idx.
-void DataBlock_DeleteItem(DataBlock *dataBlock, u_int64_t idx);
+void DataBlock_DeleteItem(DataBlock *dataBlock, uint64_t idx);
 
 // Free block.
 void DataBlock_Free(DataBlock *block);

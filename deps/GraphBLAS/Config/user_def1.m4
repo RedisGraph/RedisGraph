@@ -65,7 +65,23 @@ m4_define(`GxB_Monoid_define', `
         & GB_opaque_$2,     // binary operator
         & GB_DEF_$1_identity,   // identity value
         sizeof (GB_DEF_$2_ztype),   // identity size
-        GB_USER_COMPILED    // user-defined at compile-time
+        GB_USER_COMPILED,   // user-defined at compile-time
+        NULL                // no terminal value
+    } ;
+    GrB_Monoid $1 = & GB_opaque_$1')
+
+m4_define(`GxB_Monoid_terminal_define', `
+    #define GB_DEF_$1_add GB_DEF_$2_function
+    GB_DEF_$2_ztype GB_DEF_$1_identity = $3 ;
+    GB_DEF_$2_ztype GB_DEF_$1_terminal = $4 ;
+    struct GB_Monoid_opaque GB_opaque_$1 =
+    {
+        GB_MAGIC,           // object is defined
+        & GB_opaque_$2,     // binary operator
+        & GB_DEF_$1_identity,   // identity value
+        sizeof (GB_DEF_$2_ztype),   // identity and terminal size
+        GB_USER_COMPILED,   // user-defined at compile-time
+        & GB_DEF_$1_terminal        // terminal value
     } ;
     GrB_Monoid $1 = & GB_opaque_$1')
 
@@ -80,19 +96,18 @@ m4_define(`GB_semiring', `m4_define(`GB_semirings', GB_semirings()
         if (GB_AxB_method == GxB_AxB_GUSTAVSON)
         { 
             GB_info = GB_AxB_user_gus_$1
-                (*GB_Chandle, GB_M, GB_A, GB_B, GB_flipxy, GB_C_Sauna,
-                Context) ;
+                (*GB_Chandle, GB_M, GB_A, GB_B, GB_flipxy, GB_C_Sauna) ;
         }
         else if (GB_AxB_method == GxB_AxB_DOT)
         { 
             GB_info = GB_AxB_user_dot_$1
-                (GB_Chandle, GB_M, GB_A, GB_B, GB_flipxy, Context) ;
+                (GB_Chandle, GB_M, GB_mask_comp, GB_A, GB_B, GB_flipxy) ;
         }
         else // (GB_AxB_method == GxB_AxB_HEAP)
         { 
             GB_info = GB_AxB_user_heap_$1
                 (GB_Chandle, GB_M, GB_A, GB_B, GB_flipxy,
-                GB_List, GB_pA_pair, GB_Heap, GB_bjnz_max, Context) ;
+                GB_List, GB_pA_pair, GB_Heap, GB_bjnz_max) ;
         }
     } ) $2')
 
@@ -102,6 +117,11 @@ m4_define(`GxB_Semiring_define', `GB_semiring($1,`
     #define GB_AheapB   GB_AxB_user_heap_$1
     #define GB_identity    GB_DEF_$2_identity
     #define GB_ADD(z,y)    GB_DEF_$2_add (&(z), &(z), &(y))
+    #ifdef  GB_DEF_$2_terminal
+    #define GB_terminal if ((z) == GB_DEF_$2_terminal) break ;
+    #else
+    #define GB_terminal ;
+    #endif
     #define GB_MULT(z,x,y) GB_DEF_$3_function (&(z), &(x), &(y))
     #define GB_ztype       GB_DEF_$3_ztype
     #define GB_xtype       GB_DEF_$3_xtype
@@ -110,6 +130,7 @@ m4_define(`GxB_Semiring_define', `GB_semiring($1,`
     #undef GBCOMPACT
     #include "GB_AxB.c"
     #undef GB_identity
+    #undef GB_terminal
     #undef GB_ADD
     #undef GB_xtype
     #undef GB_ytype

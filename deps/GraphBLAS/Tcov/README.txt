@@ -54,3 +54,7 @@ Files in GraphBLAS/Tcov:
     tmp_include     for include files augmented with coverate tests
     tmp_source      for source files augmented with coverate tests
 
+
+    gbmake.m        compiles the MATLAB interface to GraphBLAS (all of
+                    GraphBLAS compiled with mex command)
+

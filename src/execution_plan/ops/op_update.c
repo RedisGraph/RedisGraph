@@ -5,6 +5,7 @@
 */
 
 #include "op_update.h"
+#include "../../util/arr.h"
 #include "../../util/rmalloc.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
@@ -62,16 +63,20 @@ static void _UpdateIndex(EntityUpdateCtx *ctx, Schema *s, SIValue *old_value, SI
          * remove entity from index using old value. */
         Index_DeleteNode(idx, node_id, old_value);
     }
+    
+    // Setting an attribute value to NULL remove that attribute.
+    if(SIValue_IsNull(*new_value)) return;
+
     // Add node to index.
     Index_InsertNode(idx, node_id, new_value);
 }
 
 static void _UpdateNode(OpUpdate *op, EntityUpdateCtx *ctx) {
     /* Retrieve GraphEntity:
-    * Due to Record freeing we can't maintain the original pointer to GraphEntity object,
-    * but only a pointer to an Entity object,
-    * to use the GraphEntity_Get, GraphEntity_Add functions we'll use a place holder
-    * to hold our entity. */
+     * Due to Record freeing we can't maintain the original pointer to GraphEntity object,
+     * but only a pointer to an Entity object,
+     * to use the GraphEntity_Get, GraphEntity_Add functions we'll use a place holder
+     * to hold our entity. */
     Schema *s;
     Node *node = &ctx->n;
     
@@ -145,6 +150,22 @@ static void _CommitUpdates(OpUpdate *op) {
     if(op->result_set) op->result_set->stats.properties_set += op->pending_updates_count;
 }
 
+/* We only cache records if op_update is not the last
+ * operation within the execution-plan, which means
+ * others operations might inspect thoese records.
+ * Example: MATCH (n) SET n.v=n.v+1 RETURN n */
+static inline bool _ShouldCacheRecord(OpUpdate *op) {
+    return (op->op.parent != NULL);
+}
+
+static Record _handoff(OpUpdate* op) {
+    /* TODO: poping a record out of op->records
+     * will reverse the order in which records
+     * are passed down the execution plan. */
+    if(op->records && array_len(op->records) > 0) return array_pop(op->records);
+    return NULL;
+}
+
 OpBase* NewUpdateOp(GraphContext *gc, AST *ast, ResultSet *result_set) {
     OpUpdate* op_update = calloc(1, sizeof(OpUpdate));
     op_update->gc = gc;
@@ -153,10 +174,11 @@ OpBase* NewUpdateOp(GraphContext *gc, AST *ast, ResultSet *result_set) {
 
     op_update->update_expressions = NULL;
     op_update->update_expressions_count = 0;
-
     op_update->pending_updates_count = 0;
     op_update->pending_updates_cap = 16; /* 16 seems reasonable number to start with. */
     op_update->pending_updates = rm_malloc(sizeof(EntityUpdateCtx) * op_update->pending_updates_cap);
+    op_update->records = NULL;
+    op_update->updates_commited = false;
 
     // Create a context for each update expression.
     _BuildUpdateEvalCtx(op_update, ast);
@@ -168,33 +190,57 @@ OpBase* NewUpdateOp(GraphContext *gc, AST *ast, ResultSet *result_set) {
     op_update->op.consume = OpUpdateConsume;
     op_update->op.reset = OpUpdateReset;
     op_update->op.free = OpUpdateFree;
+    op_update->op.init = OpUpdateInit;
 
     return (OpBase*)op_update;
+}
+
+OpResult OpUpdateInit(OpBase *opBase) {
+    OpUpdate* op = (OpUpdate*)opBase;
+    if(_ShouldCacheRecord(op)) op->records = array_new(Record, 64);    
+    return OP_OK;
 }
 
 Record OpUpdateConsume(OpBase *opBase) {
     OpUpdate *op = (OpUpdate*)opBase;
     OpBase *child = op->op.children[0];
-    Record r = child->consume(child);
-    // No data, return.
-    if(!r) return NULL;
+    Record r;
 
-    /* Evaluate each update expression and store result 
-     * for later execution. */
-    EntityUpdateEvalCtx *update_expression = op->update_expressions;
-    for(uint i = 0; i < op->update_expressions_count; i++, update_expression++) {
-        SIValue new_value = AR_EXP_Evaluate(update_expression->exp, r);
+    // Updates already performed.
+    if(op->updates_commited) return _handoff(op);
 
-        // Make sure we're updating either a node or an edge.
-        RecordEntryType t = Record_GetType(r, update_expression->entityRecIdx);
-        assert(t == REC_TYPE_NODE || t == REC_TYPE_EDGE);
-        GraphEntityType type = (t == REC_TYPE_NODE) ? GETYPE_NODE : GETYPE_EDGE;
+    while((r = child->consume(child))) {
+        /* Evaluate each update expression and store result 
+         * for later execution. */
+        EntityUpdateEvalCtx *update_expression = op->update_expressions;
+        for(uint i = 0; i < op->update_expressions_count; i++, update_expression++) {
+            SIValue new_value = AR_EXP_Evaluate(update_expression->exp, r);
 
-        GraphEntity *entity = Record_GetGraphEntity(r, update_expression->entityRecIdx);
-        _QueueUpdate(op, entity, type, update_expression->attribute, new_value);
+            // Make sure we're updating either a node or an edge.
+            RecordEntryType t = Record_GetType(r, update_expression->entityRecIdx);
+            assert(t == REC_TYPE_NODE || t == REC_TYPE_EDGE);
+            GraphEntityType type = (t == REC_TYPE_NODE) ? GETYPE_NODE : GETYPE_EDGE;
+
+            GraphEntity *entity = Record_GetGraphEntity(r, update_expression->entityRecIdx);
+            _QueueUpdate(op, entity, type, update_expression->attribute, new_value);
+        }
+
+        if(_ShouldCacheRecord(op)) {
+            op->records = array_append(op->records, r);
+        } else {
+            // Record not going to be used, discard.
+            Record_Free(r);
+        }
     }
 
-    return r;
+    /* Lock everything. */
+    Graph_AcquireWriteLock(op->gc->g);
+    _CommitUpdates(op);
+    // Release lock.
+    Graph_ReleaseLock(op->gc->g);
+
+    op->updates_commited = true;
+    return _handoff(op);
 }
 
 OpResult OpUpdateReset(OpBase *ctx) {
@@ -209,16 +255,15 @@ OpResult OpUpdateReset(OpBase *ctx) {
 
 void OpUpdateFree(OpBase *ctx) {
     OpUpdate *op = (OpUpdate*)ctx;
-
-    /* Lock everything. */
-    Graph_AcquireWriteLock(op->gc->g);
-    _CommitUpdates(op);
-    // Release lock.
-    Graph_ReleaseLock(op->gc->g);
-    
     /* Free each update context. */
     for(uint i = 0; i < op->update_expressions_count; i++) {
         AR_EXP_Free(op->update_expressions[i].exp);
+    }
+
+    if(op->records) {
+        uint records_count = array_len(op->records);
+        for(uint i = 0; i < records_count; i++) Record_Free(op->records[i]);
+        array_free(op->records);
     }
 
     rm_free(op->update_expressions);

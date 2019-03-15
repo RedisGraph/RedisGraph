@@ -2,19 +2,20 @@
 // GB_Sauna_alloc: create a new Sauna
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
+
+// Does not use error reporting; returns GrB_SUCCESS or GrB_OUT_OF_MEMORY.
 
 #include "GB.h"
 
 GrB_Info GB_Sauna_alloc             // create a Sauna
 (
-    GB_Sauna *Sauna_Handle,         // handle of Sauna to create
+    int Sauna_id,                   // id of Sauna to create
     int64_t Sauna_n,                // size of the Sauna
-    size_t Sauna_size,              // size of each entry in the Sauna
-    GB_Context Context
+    size_t Sauna_size               // size of each entry in the Sauna
 )
 {
 
@@ -22,38 +23,39 @@ GrB_Info GB_Sauna_alloc             // create a Sauna
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT (Sauna_Handle != NULL) ;
-    (*Sauna_Handle) = NULL ;
+    ASSERT (Sauna_id >= 0 && Sauna_id < GxB_NTHREADS_MAX) ;
 
     //--------------------------------------------------------------------------
     // allocate the Sauna header
     //--------------------------------------------------------------------------
 
-    GB_CALLOC_MEMORY (*Sauna_Handle, 1, sizeof (struct GB_Sauna_opaque)) ;
-    if (*Sauna_Handle == NULL)
+    GB_Sauna Sauna ;
+    GB_CALLOC_MEMORY (Sauna, 1, sizeof (struct GB_Sauna_struct), NULL) ;
+    if (Sauna == NULL)
     { 
-        return (GB_NO_MEMORY) ;
+        // out of memory
+        return (GrB_OUT_OF_MEMORY) ;
     }
 
-    GB_Sauna Sauna = *Sauna_Handle ;
+    // save it in the global table
+    GB_Global.Saunas [Sauna_id] = Sauna ;
 
     //--------------------------------------------------------------------------
     // allocate the contents of the Sauna
     //--------------------------------------------------------------------------
 
-    Sauna_n = GB_IMAX (Sauna_n, 1) ;    // must have at least one entry
-    Sauna->Sauna_hiwater = 1 ;          // Sauna_Mark [0..n-1] < hiwater
+    Sauna_n    = GB_IMAX (Sauna_n, 1) ;     // must have at least one entry
+    Sauna_size = GB_IMAX (Sauna_size, 1) ;  // each entry must have size >= 1
+    Sauna->Sauna_hiwater = 1 ;              // Sauna_Mark [0..n-1] < hiwater
     Sauna->Sauna_n = Sauna_n ;
     Sauna->Sauna_size = Sauna_size ;
 
-    double memory = GBYTES (Sauna_n, sizeof (int64_t)) ;
-    GB_CALLOC_MEMORY (Sauna->Sauna_Mark, Sauna_n+1, sizeof (int64_t)) ;
+    GB_CALLOC_MEMORY (Sauna->Sauna_Mark, Sauna_n+1, sizeof (int64_t), NULL) ;
     bool ok = (Sauna->Sauna_Mark != NULL) ;
 
     if (ok && Sauna_size > 0)
     { 
         // Sauna_Work is not allocated if Sauna_size is zero
-        memory += GBYTES (Sauna_n, sizeof (int64_t)) ;
         GB_MALLOC_MEMORY (Sauna->Sauna_Work, Sauna_n+1, Sauna_size) ;
         ok = ok && (Sauna->Sauna_Work != NULL) ;
     }
@@ -61,8 +63,8 @@ GrB_Info GB_Sauna_alloc             // create a Sauna
     if (!ok)
     {
         // out of memory
-        GB_Sauna_free (Sauna_Handle) ;
-        return (GB_OUT_OF_MEMORY (memory)) ;
+        GB_Sauna_free (Sauna_id) ;
+        return (GrB_OUT_OF_MEMORY) ;
     }
 
     //--------------------------------------------------------------------------

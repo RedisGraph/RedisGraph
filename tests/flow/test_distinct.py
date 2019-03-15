@@ -16,6 +16,15 @@ class ReturnDistinctFlowTest_1(RedisGraphTestBase):
             MATCH (p:PARENT {name: 'James'}) CREATE (p)-[:HAS]->(c:CHILD {name: 'child6'})
         """
 
+    def test_distinct_optimization(self):
+        # Make sure we do not omit distinct when performain none aggregated projection.
+        execution_plan = self.explain("MATCH (n) RETURN DISTINCT n.name, n.age")        
+        self.assertIn("Distinct", execution_plan)
+
+        # Distinct should be omitted when performain aggregation.
+        execution_plan = self.explain("MATCH (n) RETURN DISTINCT n.name, max(n.age)")
+        self.assertNotIn("Distinct", execution_plan)
+
     def test_issue_395_scenario(self):
         # all
         q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p")

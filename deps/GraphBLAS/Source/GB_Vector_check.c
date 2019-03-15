@@ -2,12 +2,14 @@
 // GB_Vector_check: print a GraphBLAS GrB_Vector and check if it is valid
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
 // GrB_Vector: same as GrB_Matrix, except it has exactly one column
+
+// parallel: this function does O(nnz(A)) work in GB_matvec_check, not here.
 
 #include "GB.h"
 

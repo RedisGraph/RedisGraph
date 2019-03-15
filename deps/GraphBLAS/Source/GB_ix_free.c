@@ -2,13 +2,15 @@
 // GB_ix_free: free A->i, A->x, pending tuples, zombies; A->p, A->h unchanged
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
 // Since A->p and A->h are unchanged, the matrix is still valid (unless it was
 // invalid on input).  nnz(A) would report zero, and so would GrB_Matrix_nvals.
+
+// not parallel: this function does O(1) work and is already thread-safe.
 
 #include "GB.h"
 
@@ -62,7 +64,7 @@ GrB_Info GB_ix_free             // free A->i and A->x of a matrix
     GB_pending_free (A) ;
 
     // remove from the queue, if present; panic if critical section fails
-    GB_CRITICAL (GB_queue_remove (A)) ;
+    if (!GB_queue_remove (A)) return (GrB_PANIC) ;
 
     return (GrB_SUCCESS) ;
 }

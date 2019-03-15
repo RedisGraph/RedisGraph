@@ -2,10 +2,13 @@
 // GB_wait:  finish all pending computations on a single matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
+
+// This function is typically called via the GB_WAIT(A) macro, except for
+// GB_assign and GB_subassign.
 
 // The matrix A has zombies and/or pending tuples placed there by
 // GrB_setElement and GrB_*assign.  Zombies must now be deleted, and pending
@@ -30,6 +33,11 @@
 // If A is non-hypersparse, then O(n) is added in the worst case, to prune
 // zombies and to update the vector pointers for A.
 
+// PARALLEL: this moves lots of data inside the matrix, but it is like a single
+// merge of a mergesort.  Hard to do in parallel as currently written.  A
+// better approach in parallel would be to do it like a matrix add (see
+// GB_add).  Some work is done in GB_builder, which can be done in parallel.
+
 #include "GB.h"
 
 GrB_Info GB_wait                // finish all pending computations
@@ -50,6 +58,12 @@ GrB_Info GB_wait                // finish all pending computations
     // can report an inconsistency, and thus this assert must be made
     // with a negative pr.
     ASSERT_OK (GB_check (A, "A to wait", GB_FLIP (GB0))) ;
+
+    //--------------------------------------------------------------------------
+    // determine the number of threads to use
+    //--------------------------------------------------------------------------
+
+    GB_GET_NTHREADS (nthreads, Context) ;
 
     //--------------------------------------------------------------------------
     // delete zombies
@@ -103,7 +117,7 @@ GrB_Info GB_wait                // finish all pending computations
         ASSERT (GB_PENDING_OK (A)) ;
 
         // A->nvec_nonempty has been updated
-        ASSERT (A->nvec_nonempty == GB_nvec_nonempty (A)) ;
+        ASSERT (A->nvec_nonempty == GB_nvec_nonempty (A, NULL)) ;
     }
 
     ASSERT (anz == GB_NNZ (A)) ;
@@ -197,7 +211,7 @@ GrB_Info GB_wait                // finish all pending computations
     if (info != GrB_SUCCESS)
     { 
         // out of memory
-        GB_CONTENT_FREE (A) ;
+        GB_PHIX_FREE (A) ;
         ASSERT (T == NULL) ;
         return (info) ;
     }
@@ -375,6 +389,10 @@ GrB_Info GB_wait                // finish all pending computations
 
     // count the number of non-empty vectors (again, if hypersparse, but for
     // the first time if non-hypersparse)
+    if (A->nvec_nonempty < 0)
+    { 
+        A->nvec_nonempty = GB_nvec_nonempty (A, Context) ;
+    }
     anvec_new = A->nvec_nonempty ;
 
     // while T has non-empty vectors

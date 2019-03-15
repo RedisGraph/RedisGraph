@@ -704,3 +704,32 @@ TEST_F(ArithmeticTest, ToStringTest) {
   AR_EXP_Free(arExp);
   ASSERT_EQ(result.type, T_NULL);
 }
+
+TEST_F(ArithmeticTest, ExistsTest) {
+  /* Although EXISTS is supposed to be called 
+   * using entity alias and property, to make things easy 
+   * within a unit-test context we simply pass an evaluation
+   * of an expression such as n.v, `null` when property `v`
+   * isn't in `n` and `1` when n.v evaluates to 1. */
+
+  SIValue result;
+  const char *query;
+  AR_ExpNode *arExp;
+  Record r = Record_New(0);
+
+  /* Pass NULL indicating n.v doesn't exists. */
+  query = "RETURN EXISTS(null)";
+  arExp = _exp_from_query(query);
+  result = AR_EXP_Evaluate(arExp, r);
+  ASSERT_EQ(result.type, T_BOOL);
+  ASSERT_EQ(result.longval, 0);
+  AR_EXP_Free(arExp);
+
+  /* Pass 1, in case n.v exists and evaluates to 1. */
+  query = "RETURN EXISTS(1)";
+  arExp = _exp_from_query(query);
+  result = AR_EXP_Evaluate(arExp, r);
+  ASSERT_EQ(result.type, T_BOOL);
+  ASSERT_EQ(result.longval, 1);
+  AR_EXP_Free(arExp);
+}

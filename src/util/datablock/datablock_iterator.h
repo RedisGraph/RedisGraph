@@ -8,6 +8,7 @@
 #define _DATABLOCK_ITERATOR_H_
 
 #include "./block.h"
+#include "stdint.h"
 
 /* Datablock iterator iterates over items within a datablock. */
 

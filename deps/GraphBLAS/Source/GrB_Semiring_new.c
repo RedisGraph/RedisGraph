@@ -2,7 +2,7 @@
 // GrB_Semiring_new: create a new semiring
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -26,6 +26,8 @@
 // multiply operator is always applied as z = multiply (A(i,j),B(i,j)).  The
 // two input operands always appear in that order.  That is, the multiply
 // operator is not assumed to be commutative.
+
+// not parallel: this function does O(1) work and is already thread-safe.
 
 #include "GB.h"
 
@@ -62,10 +64,11 @@ GrB_Info GrB_Semiring_new           // create a semiring
     //--------------------------------------------------------------------------
 
     // allocate the semiring
-    GB_CALLOC_MEMORY (*semiring, 1, sizeof (struct GB_Semiring_opaque)) ;
+    GB_CALLOC_MEMORY (*semiring, 1, sizeof (struct GB_Semiring_opaque), NULL) ;
     if (*semiring == NULL)
     { 
-        return (GB_NO_MEMORY) ;
+        // out of memory
+        return (GB_OUT_OF_MEMORY) ;
     }
 
     // initialize the semiring

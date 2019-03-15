@@ -2,7 +2,7 @@
 // GrB_Type_new: create a new user-defined type
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -15,8 +15,10 @@
 // #undef GrB_Type_new before using the function.  This approach also places
 // the function GrB_Type_new in the linkable SuiteSparse:GraphBLAS library so
 // that it is visible for linking with applications in languages other than
-// ANSI C99.  The function version does not allow the name of the ctype to be
+// ANSI C.  The function version does not allow the name of the ctype to be
 // saved in the new GraphBLAS type, however.  It is given the generic name.
+
+// not parallel: this function does O(1) work and is already thread-safe.
 
 #include "GB.h"
 

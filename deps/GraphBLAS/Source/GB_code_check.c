@@ -2,12 +2,14 @@
 // GB_code_check: print an entry using a type code
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
 // Only prints entries of built-in types; user-defined types can't be printed.
+
+// not parallel: this function does O(1) work and is already thread-safe.
 
 #include "GB.h"
 

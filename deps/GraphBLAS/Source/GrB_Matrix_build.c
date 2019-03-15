@@ -2,10 +2,12 @@
 // GrB_Matrix_build: build a sparse GraphBLAS matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
+
+// parallel: not here, but in GB_build.
 
 #include "GB.h"
 
@@ -22,6 +24,7 @@ GrB_Info GrB_Matrix_build_ ## T     /* build a matrix from (I,J,X) tuples */  \
 {                                                                             \
     GB_WHERE ("GrB_Matrix_build_" GB_STR(T) " (C, I, J, X, nvals, dup)") ;    \
     GB_RETURN_IF_NULL_OR_FAULTY (C) ;                                         \
+    Context->nthreads = GxB_DEFAULT ;   /* no descriptor, so use default rule*/\
     return (GB_user_build (C, I, J, X, nvals, dup, GB_ ## T ## _code, true,   \
         Context)) ;                                                           \
 }

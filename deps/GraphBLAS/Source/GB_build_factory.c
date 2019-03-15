@@ -2,7 +2,7 @@
 // GB_build_factory: build a matrix from sorted tuples
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -44,6 +44,11 @@
 
 // The time and memory taken by this function is O(t) if t=len is the number
 // of tuples.
+
+// PARALLEL: the tuples have already been sorted, and duplicates tagged.  need
+// to parallelize the summation of duplicate tuples.  Each unique tuple could
+// be done only by the thread the owns it.  It is unlikely that there will be
+// many duplicates, but possible.  So consider a parallel reduction.
 
 #include "GB.h"
 
@@ -137,6 +142,12 @@ GrB_Info GB_build_factory           // build a matrix
     }
 
     //--------------------------------------------------------------------------
+    // determine the number of threads to use
+    //--------------------------------------------------------------------------
+
+    GB_GET_NTHREADS (nthreads, Context) ;
+
+    //--------------------------------------------------------------------------
     // allocate the result
     //--------------------------------------------------------------------------
 
@@ -157,7 +168,7 @@ GrB_Info GB_build_factory           // build a matrix
     size_t ssize = GB_code_size (scode, tsize) ;
 
     // T->x is allocated fresh but iwork is transplanted in T->i, when done.
-    // This malloc is typically free since jwork has just been freed in the
+    // This allocation is typically free since jwork has just been freed in the
     // caller, GB_builder.  T->x has size tnz*tsize and jwork is size
     // ijlen*sizeof(int64_t).  tnz <= ijlen always holds, and tsize <=
     // size(int64_t) holds for all built-in types.
@@ -170,11 +181,10 @@ GrB_Info GB_build_factory           // build a matrix
     if (T->x == NULL)
     { 
         // out of memory
-        double memory = GBYTES (T->nzmax, tsize) ;
         GB_MATRIX_FREE (Thandle) ;
         GB_FREE_MEMORY (*kwork_handle, len, sizeof (int64_t)) ;
         GB_FREE_MEMORY (*iwork_handle, ijlen, sizeof (int64_t)) ;
-        return (GB_OUT_OF_MEMORY (memory)) ;
+        return (GB_OUT_OF_MEMORY) ;
     }
 
     GB_void *restrict Tx = T->x ;
@@ -185,8 +195,12 @@ GrB_Info GB_build_factory           // build a matrix
 
     int64_t tnz = 0 ;
 
+    // so that tcode can match scode
+    GB_Type_code tcode2 = (tcode == GB_UCT_code) ? GB_UDT_code : tcode ;
+    GB_Type_code scode2 = (scode == GB_UCT_code) ? GB_UDT_code : scode ;
+
     // no typecasting if all 5 types are the same
-    bool nocasting = (tcode == scode) &&
+    bool nocasting = (tcode2 == scode2) &&
         (ttype == xtype) && (ttype == ytype) && (ttype == ztype) ;
 
     if (nocasting)
@@ -206,12 +220,14 @@ GrB_Info GB_build_factory           // build a matrix
         // GB_INCLUDE_SECOND_OPERATOR definition, so they do not appear in
         // GB_reduce_to_* where the FIRST and SECOND operators are not needed.
 
+        // Early exit cannot be exploited, so the terminal value is ignored.
+
         #define GB_INCLUDE_SECOND_OPERATOR
 
         bool done = false ;
 
         // define the worker for the switch factory
-        #define GB_WORKER(type)                                             \
+        #define GB_ASSOC_WORKER(type,ignore)                                \
         {                                                                   \
             const type *restrict sx = (type *) S ;                          \
             type *restrict tx = (type *) Tx ;                               \
@@ -235,7 +251,8 @@ GrB_Info GB_build_factory           // build a matrix
                 }                                                           \
             }                                                               \
             done = true ;                                                   \
-        }
+        }                                                                   \
+        break ;
 
         //----------------------------------------------------------------------
         // launch the switch factory
@@ -432,7 +449,8 @@ GrB_Info GB_build_factory           // build a matrix
     { 
         // this cannot fail since the size is shrinking.
         bool ok ;
-        GB_REALLOC_MEMORY (iwork, T->nzmax, ijlen, sizeof (int64_t), &ok) ;
+        GB_REALLOC_MEMORY (iwork, T->nzmax, ijlen, sizeof (int64_t), &ok,
+            Context) ;
         ASSERT (ok) ;
     }
     T->i = iwork ;

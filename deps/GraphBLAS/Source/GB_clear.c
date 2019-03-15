@@ -2,7 +2,7 @@
 // GB_clear: clears the content of a matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -19,6 +19,8 @@
 // cannot be recreated, then all content of the matrix is freed or removed, and
 // the matrix A is left in an invalid state (A->magic == GB_MAGIC2).  Only the
 // header is left.
+
+// parallel: not here, but perhaps in GB_calloc_memory.
 
 #include "GB.h"
 
@@ -44,7 +46,7 @@ GrB_Info GB_clear           // clear a matrix, type and dimensions unchanged
     // clear the content of A
     //--------------------------------------------------------------------------
 
-    // free all content, but not the Sauna
+    // free all content
     GB_PHIX_FREE (A) ;
 
     // no more zombies or pending tuples
@@ -81,13 +83,13 @@ GrB_Info GB_clear           // clear a matrix, type and dimensions unchanged
         int64_t plen = GB_IMIN (1, A->vdim) ;
         A->nvec = 0 ;
         A->plen = plen ;
-        GB_CALLOC_MEMORY (A->p, plen+1, sizeof (int64_t)) ;
-        GB_CALLOC_MEMORY (A->h, plen  , sizeof (int64_t)) ;
+        GB_CALLOC_MEMORY (A->p, plen+1, sizeof (int64_t), Context) ;
+        GB_CALLOC_MEMORY (A->h, plen  , sizeof (int64_t), Context) ;
         if (A->p == NULL || A->h == NULL)
         { 
             // out of memory
-            GB_CONTENT_FREE (A) ;
-            return (GB_NO_MEMORY) ;
+            GB_PHIX_FREE (A) ;
+            return (GB_OUT_OF_MEMORY) ;
         }
 
     }
@@ -101,13 +103,13 @@ GrB_Info GB_clear           // clear a matrix, type and dimensions unchanged
         int64_t plen = A->vdim ;
         A->nvec = plen ;
         A->plen = plen ;
-        GB_CALLOC_MEMORY (A->p, plen+1, sizeof (int64_t)) ;
+        GB_CALLOC_MEMORY (A->p, plen+1, sizeof (int64_t), Context) ;
         ASSERT (A->h == NULL) ;
         if (A->p == NULL)
         { 
             // out of memory
-            GB_CONTENT_FREE (A) ;
-            return (GB_OUT_OF_MEMORY (GBYTES (plen+1, sizeof (int64_t)))) ;
+            GB_PHIX_FREE (A) ;
+            return (GB_OUT_OF_MEMORY) ;
         }
     }
 

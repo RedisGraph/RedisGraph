@@ -37,11 +37,11 @@ SIValue SI_PtrVal(void* v) {
 }
 
 SIValue SI_Node(void *n) {
-  return (SIValue){.ptrval = n, .type = T_NODE, .allocation = M_VOLATILE};
+  return (SIValue) {.ptrval = n, .type = T_NODE};
 }
 
 SIValue SI_Edge(void *e) {
-  return (SIValue){.ptrval = e, .type = T_EDGE, .allocation = M_VOLATILE};
+  return (SIValue) {.ptrval = e, .type = T_EDGE};
 }
 
 SIValue SI_DuplicateStringVal(const char *s) {

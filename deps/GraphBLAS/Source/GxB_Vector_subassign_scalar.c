@@ -2,36 +2,40 @@
 // GxB_Vector_subassign_[SCALAR]: assign scalar to vector, via scalar expansion
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
-// Assigns a single scalar to a subvector, w(Rows)<mask> = accum(w(Rows),x)
+// Assigns a single scalar to a subvector, w(Rows)<M> = accum(w(Rows),x)
 // The scalar x is implicitly expanded into a vector u of size nRows-by-1,
 // with each entry in u equal to x.
+
+// The actual work is done in GB_subassign_scalar.c.
+
+// parallel: not here; see GB_subassign_kernel
 
 #include "GB.h"
 
 #define GB_ASSIGN(type,T,ampersand)                                            \
-GrB_Info GxB_Vector_subassign_ ## T /* w(Rows)<mask> = accum (w(Rows),x)    */ \
+GrB_Info GxB_Vector_subassign_ ## T /* w(Rows)<M> = accum (w(Rows),x)       */ \
 (                                                                              \
     GrB_Vector w,                   /* input/output vector for results      */ \
-    const GrB_Vector mask,          /* optional mask for w(Rows)            */ \
+    const GrB_Vector M,             /* optional mask for w(Rows)            */ \
     const GrB_BinaryOp accum,       /* optional accum for Z=accum(w(Rows),x)*/ \
     const type x,                   /* scalar to assign to w(Rows)          */ \
     const GrB_Index *Rows,          /* row indices                          */ \
     GrB_Index nRows,                /* number of row indices                */ \
-    const GrB_Descriptor desc       /* descriptor for w(Rows) and mask      */ \
+    const GrB_Descriptor desc       /* descriptor for w(Rows) and M         */ \
 )                                                                              \
 {                                                                              \
     GB_WHERE ("GxB_Vector_subassign_" GB_STR(T)                                \
-        " (w, mask, accum, x, Rows, nRows, desc)") ;                           \
+        " (w, M, accum, x, Rows, nRows, desc)") ;                              \
     GB_RETURN_IF_NULL_OR_FAULTY (w) ;                                          \
-    GB_RETURN_IF_FAULTY (mask) ;                                               \
+    GB_RETURN_IF_FAULTY (M) ;                                                  \
     ASSERT (GB_VECTOR_OK (w)) ;                                                \
-    ASSERT (GB_IMPLIES (mask != NULL, GB_VECTOR_OK (mask))) ;                  \
-    return (GB_subassign_scalar ((GrB_Matrix) w, (GrB_Matrix) mask, accum,     \
+    ASSERT (GB_IMPLIES (M != NULL, GB_VECTOR_OK (M))) ;                        \
+    return (GB_subassign_scalar ((GrB_Matrix) w, (GrB_Matrix) M, accum,        \
         ampersand x, GB_## T ## _code, Rows, nRows, GrB_ALL, 1, desc,          \
         Context)) ;                                                            \
 }

@@ -18,6 +18,9 @@ void optimizePlan(GraphContext *gc, ExecutionPlan *plan, AST *ast) {
     /* Remove redundant SCAN operations. */
     // reduceScans(plan);
 
-    // Relocate sort, skip, limit operations.
+    /* Relocate sort, skip, limit operations. */
     relocateOperations(plan);
+    
+    /* Try to reduce distinct if it follows aggregation. */
+    reduceDistinct(plan);
 }

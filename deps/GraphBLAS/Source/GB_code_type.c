@@ -2,7 +2,7 @@
 // GB_code_type: convert a type code to a GrB_Type
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -13,6 +13,8 @@
 // as the matrix being operated on.  This cannot be checked; results are
 // undefined if the user passes in a void * pointer to a different user-defined
 // type.
+
+// not parallel: this function does O(1) work and is already thread-safe.
 
 #include "GB.h"
 

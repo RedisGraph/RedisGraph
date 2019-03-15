@@ -2,7 +2,7 @@
 // GB_mxm: matrix-matrix multiply for GrB_mxm, GrB_mxv, and GrB_vxm
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -11,6 +11,8 @@
 
 // This function is not user-callable.  It does the work for user-callable
 // functions GrB_mxm, GrB_mxv, and GrB_vxm.
+
+// parallel: not here; see GB_AxB_parallel instead.
 
 #include "GB.h"
 
@@ -95,7 +97,7 @@ GrB_Info GB_mxm                     // C<M> = A*B
     GB_RETURN_IF_QUICK_MASK (C, C_replace, M, Mask_comp) ;
 
     // delete any lingering zombies and assemble any pending tuples
-    GB_WAIT (C) ;
+    // GB_WAIT (C) ;
     GB_WAIT (M) ;
     GB_WAIT (A) ;
     GB_WAIT (B) ;
@@ -109,11 +111,11 @@ GrB_Info GB_mxm                     // C<M> = A*B
     bool mask_applied = false ;
     bool C_is_csc = C->is_csc ;
     GrB_Matrix T, MT = NULL ;
-    info = GB_AxB_meta (&T, C_is_csc, &MT, ((Mask_comp) ? NULL : M), A, B,
-        semiring, A_transpose, B_transpose, flipxy, &mask_applied, AxB_method,
-        &(C->AxB_method_used), &(C->Sauna), Context) ;
+    info = GB_AxB_meta (&T, C_is_csc, &MT, M, Mask_comp, A, B, semiring,
+        A_transpose, B_transpose, flipxy, &mask_applied, AxB_method,
+        &(C->AxB_method_used), Context) ;
 
-    ASSERT_OK (GB_check (C, "C with Sauna", GB0)) ;
+    ASSERT_OK (GB_check (C, "C from AxB_meta", GB0)) ;
 
     if (info != GrB_SUCCESS)
     { 
@@ -131,6 +133,10 @@ GrB_Info GB_mxm                     // C<M> = A*B
     //--------------------------------------------------------------------------
     // C<M> = accum (C,T): accumulate the results into C via the mask
     //--------------------------------------------------------------------------
+
+    // GB_NNZ(C) requires GB_WAIT (C) first.  so subtract zombies
+    // and add pending tuples to get an upper bound on NNZ(C)
+    int64_t cnz_upper_bound = (GB_NNZ (C) - C->nzombies) + C->n_pending ;
 
     if ((accum == NULL) && (C->is_csc == T->is_csc)
         && (M == NULL || (M != NULL && mask_applied))

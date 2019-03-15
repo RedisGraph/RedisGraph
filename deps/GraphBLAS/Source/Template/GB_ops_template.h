@@ -2,7 +2,7 @@
 // GB_ops_template.h: define the unary and binary functions and operators
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -19,39 +19,46 @@
 // 6 unary functions z=f(x), where z and x have the same type
 //------------------------------------------------------------------------------
 
+// one, identity
 inline void GB (ONE_f)      (GB_Z_X_ARGS) { (*z) = 1 ; }
 inline void GB (IDENTITY_f) (GB_Z_X_ARGS) { (*z) = (*x) ; }
 
+// ainv, abs, minv
 #ifdef GB_FLOATING_POINT
-// floating-point
-inline void GB (AINV_f)     (GB_Z_X_ARGS) { (*z) = -(*x) ; }
-inline void GB (ABS_f)      (GB_Z_X_ARGS) { (*z) = GB_FABS ((*x)) ; }
-inline void GB (MINV_f)     (GB_Z_X_ARGS) { (*z) = 1 / ((*x)) ; }
+    // floating-point
+    inline void GB (AINV_f) (GB_Z_X_ARGS) { (*z) = -(*x) ; }
+    #ifdef GB_FLOATING_POINT_DOUBLE
+    inline void GB (ABS_f)  (GB_Z_X_ARGS) { (*z) = fabs ((*x)) ; }
+    #else
+    inline void GB (ABS_f)  (GB_Z_X_ARGS) { (*z) = fabsf ((*x)) ; }
+    #endif
+    inline void GB (MINV_f) (GB_Z_X_ARGS) { (*z) = 1 / ((*x)) ; }
 #else
-#ifdef GB_BOOLEAN
-// boolean
-inline void GB (AINV_f)     (GB_Z_X_ARGS) { (*z) = (*x) ; }
-inline void GB (ABS_f)      (GB_Z_X_ARGS) { (*z) = (*x) ; }
-inline void GB (MINV_f)     (GB_Z_X_ARGS) { (*z) = true ; }
-#else
-#ifdef GB_UNSIGNED
-// unsigned integer
-inline void GB (AINV_f)     (GB_Z_X_ARGS) { (*z) = -(*x) ; }
-inline void GB (ABS_f)      (GB_Z_X_ARGS) { (*z) = (*x) ; }
-inline void GB (MINV_f)     (GB_Z_X_ARGS) { (*z) = GB_IMINV ((*x)) ; }
-#else
-// signed integer
-inline void GB (AINV_f)     (GB_Z_X_ARGS) { (*z) = -(*x) ; }
-inline void GB (ABS_f)      (GB_Z_X_ARGS) { (*z) = GB_IABS ((*x)) ; }
-inline void GB (MINV_f)     (GB_Z_X_ARGS) { (*z) = GB_IMINV ((*x)) ; }
-#endif
-#endif
+    #ifdef GB_BOOLEAN
+        // boolean
+        inline void GB (AINV_f) (GB_Z_X_ARGS) { (*z) = (*x) ; }
+        inline void GB (ABS_f)  (GB_Z_X_ARGS) { (*z) = (*x) ; }
+        inline void GB (MINV_f) (GB_Z_X_ARGS) { (*z) = true ; }
+    #else
+        #ifdef GB_UNSIGNED
+            // unsigned integer
+            inline void GB (AINV_f) (GB_Z_X_ARGS) { (*z) = -(*x) ; }
+            inline void GB (ABS_f)  (GB_Z_X_ARGS) { (*z) = (*x) ; }
+            inline void GB (MINV_f) (GB_Z_X_ARGS) { (*z) = GB_IMINV ((*x)) ; }
+        #else
+            // signed integer
+            inline void GB (AINV_f) (GB_Z_X_ARGS) { (*z) = -(*x) ; }
+            inline void GB (ABS_f)  (GB_Z_X_ARGS) { (*z) = GB_IABS ((*x)) ; }
+            inline void GB (MINV_f) (GB_Z_X_ARGS) { (*z) = GB_IMINV ((*x)) ; }
+        #endif
+    #endif
 #endif
 
+// logical not
 #ifdef GB_BOOLEAN
-inline void GB (LNOT_f)     (GB_Z_X_ARGS) { (*z) = ! (*x) ; }
+    inline void GB (LNOT_f)     (GB_Z_X_ARGS) { (*z) = ! (*x) ; }
 #else
-inline void GB (LNOT_f)     (GB_Z_X_ARGS) { (*z) = ! ((*x) != 0) ; }
+    inline void GB (LNOT_f)     (GB_Z_X_ARGS) { (*z) = ! ((*x) != 0) ; }
 #endif
 
 extern struct GB_UnaryOp_opaque
@@ -66,26 +73,42 @@ extern struct GB_UnaryOp_opaque
 // 8 binary functions z=f(x,y) where x,y,z have the same type
 //------------------------------------------------------------------------------
 
+// first, second, plus, minus, times
 inline void GB (FIRST_f)  (GB_Z_X_Y_ARGS) { (*z) = (*x) ; }
 inline void GB (SECOND_f) (GB_Z_X_Y_ARGS) { (*z) = (*y) ; }
-#ifdef GB_FLOATING_POINT
-inline void GB (MIN_f)    (GB_Z_X_Y_ARGS) { (*z) = GB_FMIN ((*x),(*y)) ; }
-inline void GB (MAX_f)    (GB_Z_X_Y_ARGS) { (*z) = GB_FMAX ((*x),(*y)) ; }
-#else
-inline void GB (MIN_f)    (GB_Z_X_Y_ARGS) { (*z) = GB_IMIN ((*x),(*y)) ; }
-inline void GB (MAX_f)    (GB_Z_X_Y_ARGS) { (*z) = GB_IMAX ((*x),(*y)) ; }
-#endif
 inline void GB (PLUS_f)   (GB_Z_X_Y_ARGS) { (*z) = (*x) + (*y) ; }
 inline void GB (MINUS_f)  (GB_Z_X_Y_ARGS) { (*z) = (*x) - (*y) ; }
 inline void GB (TIMES_f)  (GB_Z_X_Y_ARGS) { (*z) = (*x) * (*y) ; }
+
+// min, max
 #ifdef GB_FLOATING_POINT
-inline void GB (DIV_f)    (GB_Z_X_Y_ARGS) { (*z) = (*x) / (*y) ; }
+    #ifdef GB_FLOATING_POINT_DOUBLE
+        // double min, max
+        inline void GB (MIN_f) (GB_Z_X_Y_ARGS) { (*z) = fmin ((*x),(*y)) ; }
+        inline void GB (MAX_f) (GB_Z_X_Y_ARGS) { (*z) = fmax ((*x),(*y)) ; }
+    #else
+        // float min, max
+        inline void GB (MIN_f) (GB_Z_X_Y_ARGS) { (*z) = fminf ((*x),(*y)) ; }
+        inline void GB (MAX_f) (GB_Z_X_Y_ARGS) { (*z) = fmaxf ((*x),(*y)) ; }
+    #endif
 #else
-#ifdef GB_BOOLEAN
-inline void GB (DIV_f)    (GB_Z_X_Y_ARGS) { (*z) = (*x) ; }
-#else
-inline void GB (DIV_f)    (GB_Z_X_Y_ARGS) { (*z) = GB_IDIV ((*x),(*y)) ; }
+    // integer min, max
+    inline void GB (MIN_f) (GB_Z_X_Y_ARGS) { (*z) = GB_IMIN ((*x),(*y)) ; }
+    inline void GB (MAX_f) (GB_Z_X_Y_ARGS) { (*z) = GB_IMAX ((*x),(*y)) ; }
 #endif
+
+// div
+#ifdef GB_FLOATING_POINT
+    // float and double div
+    inline void GB (DIV_f) (GB_Z_X_Y_ARGS) { (*z) = (*x) / (*y) ; }
+#else
+    #ifdef GB_BOOLEAN
+        // boolean div (== first)
+        inline void GB (DIV_f) (GB_Z_X_Y_ARGS) { (*z) = (*x) ; }
+    #else
+        // integer div
+        inline void GB (DIV_f) (GB_Z_X_Y_ARGS) { (*z) = GB_IDIV ((*x),(*y)) ; }
+    #endif
 #endif
 
 extern struct GB_BinaryOp_opaque
@@ -177,12 +200,15 @@ extern struct GB_BinaryOp_opaque
 #define GB_CAST_FUNCTION(xtype)                                             \
     (                                                                       \
         void *z,            /* typecasted output, of type ztype */          \
-        const void *x,      /* input value to typecast, of type xtype */    \
+        void *x,            /* input value to typecast, of type xtype */    \
         size_t s            /* size of type, for GB_copy_user_user only */  \
     )                                                                       \
     {                                                                       \
         /* the types of z and x are known at compile time */                \
-        GB_CAST ((*((GB_TYPE *) z)) , (*((const xtype *) x))) ;             \
+        GB_TYPE zz ;                                                        \
+        xtype xx = (*((xtype *) x)) ;                                       \
+        GB_CAST (zz, xx) ;                                                  \
+        (*((GB_TYPE *) z)) = zz ;                                           \
     }
 
 inline void GB_CAST_NAME (bool    ) GB_CAST_FUNCTION (bool    )
@@ -213,5 +239,6 @@ inline void GB_CAST_NAME (double  ) GB_CAST_FUNCTION (double  )
 #undef GB_CAST_FUNCTION
 #undef GB_BOOLEAN
 #undef GB_FLOATING_POINT
+#undef GB_FLOATING_POINT_DOUBLE
 #undef GB_UNSIGNED
 

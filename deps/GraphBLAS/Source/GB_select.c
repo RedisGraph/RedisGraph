@@ -2,7 +2,7 @@
 // GB_select: apply a select operator; optionally transpose a matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -11,9 +11,11 @@
 // user-callable.  It does the work for GxB_*_select.
 // Compare this function with GrB_apply.
 
+// PARALLEL: do in parallel, but using an extra move of the data.
+
 #include "GB.h"
 
-static inline bool is_nonzero (const GB_void *value, int64_t size)
+static inline bool GB_is_nonzero (const GB_void *value, int64_t size)
 {
     for (int64_t i = 0 ; i < size ; i++)
     {
@@ -94,8 +96,17 @@ GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
     // quick return if an empty mask is complemented
     GB_RETURN_IF_QUICK_MASK (C, C_replace, M, Mask_comp) ;
 
+    //--------------------------------------------------------------------------
+    // determine the number of threads to use
+    //--------------------------------------------------------------------------
+
+    GB_GET_NTHREADS (nthreads, Context) ;
+
+    //--------------------------------------------------------------------------
     // delete any lingering zombies and assemble any pending tuples
-    GB_WAIT (C) ;
+    //--------------------------------------------------------------------------
+
+    // GB_WAIT (C) ;
     GB_WAIT (M) ;
     GB_WAIT (A) ;
 
@@ -161,12 +172,23 @@ GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
     int64_t tnzmax = (opcode == GB_DIAG_opcode) ?
         GB_IMIN (vlen,vdim) : GB_NNZ (A) ;
 
+    bool T_is_hyper = A->is_hyper ;
+    int64_t tplen = -1 ;
+    if (T_is_hyper)
+    { 
+        if (A->nvec_nonempty < 0)
+        { 
+            A->nvec_nonempty = GB_nvec_nonempty (A, Context) ;
+        }
+        tplen = A->nvec_nonempty ;
+    }
+
     // [ create T in same format as A_csc, with just as many non-empty vectors,
     // and same hypersparsity as A
     GrB_Matrix T = NULL ;           // allocate a new header for T
     GB_CREATE (&T, A->type, A->vlen, A->vdim, GB_Ap_malloc, A_csc,
-        GB_SAME_HYPER_AS (A->is_hyper), A->hyper_ratio, A->nvec_nonempty,
-        tnzmax, true) ;
+        GB_SAME_HYPER_AS (T_is_hyper), A->hyper_ratio, tplen,
+        tnzmax, true, Context) ;
     if (info != GrB_SUCCESS)
     { 
         // out of memory
@@ -203,9 +225,9 @@ GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
 
         case GB_TRIL_opcode:
         {
-            GB_for_each_vector (A)
+            GBI_for_each_vector (A)
             {
-                int64_t GBI1_initj (Iter, j, p, pend) ;
+                GBI_jth_iteration (j, p, pend) ;
                 // an entry is kept if (j-i) <= kk, so smallest i is j-kk.
                 int64_t ifirst = j - kk ;
                 if (ifirst < vlen)
@@ -231,9 +253,9 @@ GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
 
         case GB_TRIU_opcode:
         {
-            GB_for_each_vector (A)
+            GBI_for_each_vector (A)
             {
-                GB_for_each_entry (j, p, pend)
+                GBI_for_each_entry (j, p, pend)
                 { 
                     int64_t i = Ai [p] ;
                     GB_KEEP_IF ((j-i) >= kk) else break ;
@@ -250,11 +272,11 @@ GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
 
         case GB_DIAG_opcode:
         {
-            GB_for_each_vector (A)
+            GBI_for_each_vector (A)
             {
                 // use binary search to find the entry on the kk-th diagonal:
                 // look for entry A(i,j) with index i = j-kk
-                int64_t GBI1_initj (Iter, j, p, pend) ;
+                GBI_jth_iteration (j, p, pend) ;
                 int64_t i = j-kk ;
                 if (i < 0 || i >= vlen) continue ;
                 bool found ;
@@ -282,9 +304,9 @@ GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
 
         case GB_OFFDIAG_opcode:
         {
-            GB_for_each_vector (A)
+            GBI_for_each_vector (A)
             {
-                GB_for_each_entry (j, p, pend)
+                GBI_for_each_entry (j, p, pend)
                 { 
                     int64_t i = Ai [p] ;
                     GB_KEEP_IF ((j-i) != kk) ;
@@ -301,12 +323,12 @@ GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
 
         case GB_NONZERO_opcode:
         {
-            GB_for_each_vector (A)
+            GBI_for_each_vector (A)
             {
-                GB_for_each_entry (j, p, pend)
+                GBI_for_each_entry (j, p, pend)
                 { 
                     int64_t i = Ai [p] ;
-                    GB_KEEP_IF (is_nonzero (Ax +(p*asize), asize)) ;
+                    GB_KEEP_IF (GB_is_nonzero (Ax +(p*asize), asize)) ;
                 }
                 info = GB_jappend (T, j, &jlast, tnz, &tnz_last, Context) ;
                 ASSERT (info == GrB_SUCCESS) ;
@@ -322,9 +344,9 @@ GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
         case GB_USER_SELECT_R_opcode:
         {
             GxB_select_function select = (GxB_select_function) (op->function) ;
-            GB_for_each_vector (A)
+            GBI_for_each_vector (A)
             {
-                GB_for_each_entry (j, p, pend)
+                GBI_for_each_entry (j, p, pend)
                 {
                     int64_t i = Ai [p] ;
                     bool keep ;

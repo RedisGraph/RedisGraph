@@ -16,7 +16,7 @@
 
 #define FREE_ALL                        \
 {                                       \
-    if (P != NULL) free (P) ;           \
+    if (P != NULL) mxFree (P) ;         \
     GB_MATRIX_FREE (&A) ;               \
     GB_mx_put_global (true, 0) ;        \
 }
@@ -33,6 +33,7 @@ void mexFunction
     GrB_Info info = GrB_SUCCESS ;
     GrB_Matrix A = NULL ;
     PageRank *P = NULL ;
+    GrB_Index n = 0 ;
     bool malloc_debug = GB_mx_get_global (true) ;
 
     GB_WHERE (USAGE) ;
@@ -54,7 +55,6 @@ void mexFunction
         mexErrMsgTxt ("failed") ;
     }
 
-    GrB_Index n ;
     GrB_Matrix_nrows (&n, A) ;
 
     // compute the PageRank P
@@ -67,7 +67,7 @@ void mexFunction
     }
     else // default method
     {
-        info= dpagerank (&P, A) ;
+        info = dpagerank (&P, A) ;
     }
     TOC ;
 
@@ -94,6 +94,5 @@ void mexFunction
     }
 
     FREE_ALL ;
-    GrB_finalize ( ) ;
 }
 

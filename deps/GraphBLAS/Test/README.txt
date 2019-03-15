@@ -20,9 +20,10 @@ To run the tests you must first compile "spok":
     cd spok
     spok_install
 
-Next, in this directory, to compile and run all the tests (about 10 minutes):
+Next, compile and install GraphBLAS.  Then, in this directory, to compile and
+run all the tests (about 10 minutes):
 
-    gbmake ; testall
+    make ; testall
 
 Longer tests can be done as well (this can take a whole day):
 
@@ -31,15 +32,15 @@ Longer tests can be done as well (this can take a whole day):
 To run with malloc debugging (this will be slower):
 
     debug_on
-    gbmake ; testall
+    make ; testall
 
 To turn off malloc debugging:
 
     debug_off
 
 Malloc debugging is very extensive.  When enabled, the GraphBLAS wrapper
-functions for malloc/calloc/realloc/free (mxMalloc/etc in this MATLAB
-interface) decrement a counter when they are been successful.  When this
+functions for malloc/calloc/realloc/free, which are mxMalloc/etc in this MATLAB
+interface, decrement a counter when they are been successful.  When this
 reaches zero, they pretend to fail, and thus allow the out-of-memory error
 handling in GraphBLAS to be tested.  If the function fails, the counter is
 reset, and the test is done again.  The initial state of this counter is
@@ -73,7 +74,8 @@ GB_mex.h        include file for the mexFunctions
 Template/*.c    a template file for building two mexFunctions:
                 GB_mex_Matrix_build and GB_mex_Vector_build.
 
-gbmake.m        compiles the MATLAB interface to GraphBLAS
+make.m          compiles the MATLAB interface to GraphBLAS (links with
+                dynamic -lgraphblas)
 
 debug_off.m     turns off malloc debugging
 debug_on.m      turns on malloc debugging; the interface will be *very* slow,

@@ -82,20 +82,20 @@ mxArray *GB_mx_object_to_mxArray   // returns the MATLAB mxArray
     if (C->x == NULL)
     {
         ASSERT (C->nzmax == 0 && cnz == 0) ;
-        GB_CALLOC_MEMORY (C->x, 1, sizeof (double)) ;
+        GB_CALLOC_MEMORY (C->x, 1, sizeof (double), NULL) ;
         C->x_shallow = false ;
     }
     if (C->i == NULL)
     {
         ASSERT (C->nzmax == 0 && cnz == 0) ;
-        GB_CALLOC_MEMORY (C->i, 1, sizeof (int64_t)) ;
+        GB_CALLOC_MEMORY (C->i, 1, sizeof (int64_t), NULL) ;
         C->i_shallow = false ;
     }
     if (C->p == NULL)
     {
         ASSERT (C->nzmax == 0 && cnz == 0) ;
-        GB_CALLOC_MEMORY (C->p, C->vdim + 1, sizeof (int64_t)) ;
-        C->i_shallow = false ;
+        GB_CALLOC_MEMORY (C->p, C->vdim + 1, sizeof (int64_t), NULL) ;
+        C->p_shallow = false ;
     }
 
     /*
@@ -152,7 +152,7 @@ mxArray *GB_mx_object_to_mxArray   // returns the MATLAB mxArray
         // otherwise C is cast into a MATLAB double sparse matrix
         A = mxCreateSparse (0, 0, 0, mxREAL) ;
         GB_MALLOC_MEMORY (double *Sx, cnz+1, sizeof (double)) ;
-        GB_cast_array (Sx, GB_FP64_code, C->x, C->type->code, cnz) ;
+        GB_cast_array (Sx, GB_FP64_code, C->x, C->type->code, cnz, Context) ;
         mexMakeMemoryPersistent (Sx) ;
         mxSetPr (A, Sx) ;
 

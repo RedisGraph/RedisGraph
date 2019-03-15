@@ -11,7 +11,10 @@ GrB_Info GB_AxB_user
     const GrB_Matrix GB_M,
     const GrB_Matrix GB_A,
     const GrB_Matrix GB_B,
-    bool GB_flipxy,                // if true, A and B have been swapped
+    bool GB_flipxy,
+
+    // for dot method only:
+    const bool GB_mask_comp,
 
     // for heap method only:
     int64_t *restrict GB_List,
@@ -20,19 +23,11 @@ GrB_Info GB_AxB_user
     const int64_t GB_bjnz_max,
 
     // for Gustavson method only:
-    GB_Sauna GB_C_Sauna,
-
-    GB_Context Context
+    GB_Sauna GB_C_Sauna
 )
 {
-    GrB_Info GB_info = GrB_INVALID_OBJECT ;
-
+    GrB_Info GB_info = GrB_SUCCESS ;
     GB_semirings()
-
-    if (GB_info == GrB_INVALID_OBJECT)
-    {
-        return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG, "undefined semiring"))) ;
-    }
     return (GB_info) ;
 }
 

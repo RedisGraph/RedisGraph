@@ -2,13 +2,15 @@
 // GB_qsort_1: sort an n-by-1 list of integers
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
 // This sort is not stable, but it is used in GraphBLAS only on lists with
 // unique integers.  So it does not need to be stable.
+
+// parallel: not here, see Template/GB_qsort_template.c
 
 #include "GB.h"
 
@@ -44,10 +46,11 @@
 void GB_qsort_1         // sort array A of size 1-by-n
 (
     int64_t A_0 [ ],    // size-n array
-    const int64_t n
+    const int64_t n,
+    GB_Context Context  // for # of threads; use one thread if NULL
 )
 { 
     uint64_t seed = n ;
-    GB_quicksort (GB_arg (A), n, &seed) ;
+    GB_quicksort_main (GB_arg (A), n, &seed, Context) ;
 }
 

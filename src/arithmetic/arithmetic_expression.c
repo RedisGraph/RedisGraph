@@ -114,7 +114,6 @@ int AR_EXP_GetOperandType(AR_ExpNode *exp) {
 void _AR_EXP_UpdatePropIdx(AR_ExpNode *root, const Record r) {
     GraphContext *gc = GraphContext_GetFromTLS();
     RecordEntryType t = Record_GetType(r, root->operand.variadic.entity_alias_idx);
-    SchemaType st = (t == REC_TYPE_NODE) ? SCHEMA_NODE : SCHEMA_EDGE;
     root->operand.variadic.entity_prop_idx = Attribute_GetID(root->operand.variadic.entity_prop);
 }
 
@@ -750,6 +749,16 @@ SIValue AR_TYPE(SIValue *argv, int argc) {
     return SI_ConstStringVal(type);
 }
 
+SIValue AR_EXISTS(SIValue *argv, int argc) {
+    assert(argc == 1);
+    /* MATCH (n) WHERE EXISTS(n.name) RETURN n
+     * In case n.name does not exists
+     * SIValue representing NULL is returned.
+     * if n.name exists its value can not be NULL. */
+    if(SIValue_IsNull(argv[0])) return SI_BoolVal(0);
+    return SI_BoolVal(1);
+}
+
 void AR_RegFunc(char *func_name, size_t func_name_len, AR_Func func) {
     if (__aeRegisteredFuncs == NULL) {
         __aeRegisteredFuncs = NewTrieMap();
@@ -874,4 +883,8 @@ void AR_RegisterFuncs() {
     _toLower("type", &lower_func_name[0], &lower_func_name_len);
     AR_RegFunc(lower_func_name, lower_func_name_len, AR_TYPE);
     lower_func_name_len = 32;
+
+    _toLower("exists", &lower_func_name[0], &lower_func_name_len);
+    AR_RegFunc(lower_func_name, lower_func_name_len, AR_EXISTS);
+    lower_func_name_len = 32;    
 }

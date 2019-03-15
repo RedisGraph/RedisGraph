@@ -2,7 +2,7 @@
 // GB_shallow_op:  create a shallow copy and apply a unary operator to a matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -23,6 +23,8 @@
 // matrices are never passed back to the user.
 
 // Compare this function with GB_shallow_cast.c
+
+// parallel: not here, but in GB_apply_op.
 
 #include "GB.h"
 
@@ -58,7 +60,7 @@ GrB_Info GB_shallow_op      // create shallow matrix and apply operator
     GrB_Info info ;
     GrB_Matrix C = NULL ;           // allocate a new header for C
     GB_NEW (&C, op->ztype, A->vlen, A->vdim, GB_Ap_null, C_is_csc,
-        GB_SAME_HYPER_AS (A->is_hyper), A->hyper_ratio, 0) ;
+        GB_SAME_HYPER_AS (A->is_hyper), A->hyper_ratio, 0, Context) ;
     if (info != GrB_SUCCESS)
     { 
         // out of memory
@@ -76,6 +78,8 @@ GrB_Info GB_shallow_op      // create shallow matrix and apply operator
     C->h = A->h ;                   // C->h is of size A->plen
     C->plen = A->plen ;             // C and A have the same hyperlist sizes
     C->nvec = A->nvec ;
+    ASSERT (A->nvec_nonempty == -1 ||   // can be postponed
+            A->nvec_nonempty == GB_nvec_nonempty (A, Context)) ;
     C->nvec_nonempty = A->nvec_nonempty ;
     C->magic = GB_MAGIC ;           // C is now initialized ]
 
@@ -129,9 +133,8 @@ GrB_Info GB_shallow_op      // create shallow matrix and apply operator
     if (C->x == NULL)
     { 
         // out of memory
-        double memory = GBYTES (C->nzmax, C->type->size) ;
         GB_MATRIX_FREE (&C) ;
-        return (GB_OUT_OF_MEMORY (memory)) ;
+        return (GB_OUT_OF_MEMORY) ;
     }
 
     //--------------------------------------------------------------------------
@@ -139,7 +142,7 @@ GrB_Info GB_shallow_op      // create shallow matrix and apply operator
     //--------------------------------------------------------------------------
 
     // C->x = op ((op->xtype) Ax)
-    GB_apply_op (C->x, op, A->x, A->type, anz) ;
+    GB_apply_op (C->x, op, A->x, A->type, anz, Context) ;
 
     //--------------------------------------------------------------------------
     // return the result

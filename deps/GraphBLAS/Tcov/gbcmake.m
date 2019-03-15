@@ -4,10 +4,11 @@ function gbcmake
 % get a list of the GraphBLAS mexFunctions
 mexfunctions = dir ('../Test/GB_mex_*.c') ;
 
-% remove GB_mex_tricount from the list of mexFunctions
+% remove GB_mex_tricount and GB_mex_bfs from the list of mexFunctions
 nmex = length (mexfunctions) ;
 for k = nmex:-1:1
-    if (isequal (mexfunctions (k).name, 'GB_mex_tricount.c'))
+    if (isequal (mexfunctions (k).name, 'GB_mex_tricount.c')) || ...
+       (isequal (mexfunctions (k).name, 'GB_mex_bfs.c'))
         mexfunctions (k) = [ ] ;
     end
 end
@@ -29,7 +30,6 @@ hfiles = [ dir('tmp_include/*.c') ; ...
 inc = ...
 '-Itmp_include -I../Include -I../Test -I../Test/Template -I../Demo/Include' ;
 
-% gbmake is in ../Test
 addpath ../Test
 addpath ../Test/spok
 

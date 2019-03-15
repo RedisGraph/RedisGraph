@@ -222,6 +222,7 @@ for k1 = k1_list % 1:length(mult_ops)
                                             clear Mask1 Mask2 Mask3
                                             % the Mask matrix will not pass spok(Mask) test since
                                             % it will have explicit zeros
+
                                             C0 = GB_spec_mxm (C, Mask, accum, semiring, A, B, dnn);
                                             C1 = GB_mex_mxm  (C, Mask, accum, semiring, A, B, dnn);
                                             GB_spec_compare (C0, C1, identity) ;

@@ -42,19 +42,32 @@ GrB_Info adotb_complex (GB_Context Context)
         return (info) ;
     }
 
+    // force completion, since GB_AxB_meta expects its inputs to be finished
+    info = GrB_wait ( ) ;
+    if (info != GrB_SUCCESS)
+    {
+        GrB_free (&Aconj) ;
+        return (info) ;
+    }
+
     #ifdef MY_COMPLEX
     // use the precompiled complex type
     if (Aconj != NULL) Aconj->type = My_Complex ;
     if (B     != NULL) B->type     = My_Complex ;
     #endif
 
-    info = GB_AxB_dot (&C, Mask, Aconj, B,
+    bool mask_applied = false ;
+
+    info = GB_AxB_dot (&C, Mask,
+        false,      // mask not complemented
+        Aconj, B,
         #ifdef MY_COMPLEX
             My_Complex_plus_times,
         #else
             Complex_plus_times,
         #endif
-        false, Context) ;
+        false,
+        &mask_applied) ;
 
     #ifdef MY_COMPLEX
     // convert back to run-time complex type
@@ -81,8 +94,13 @@ GrB_Info adotb (GB_Context Context)
         return (info) ;
     }
     // C = A'*B
-    info = GB_AxB_dot (&C, Mask, A, B,
-        semiring /* GxB_PLUS_TIMES_FP64 */, false, Context) ;
+    bool mask_applied = false ;
+    info = GB_AxB_dot (&C, Mask,
+        false,      // mask not complemented
+        A, B,
+        semiring /* GxB_PLUS_TIMES_FP64 */,
+        false,
+        &mask_applied) ;
     GrB_free (&add) ;
     GrB_free (&semiring) ;
     return (info) ;

@@ -16,10 +16,10 @@
 // degree.  This will increase the probability that low degree nodes are
 // selected and larger sets are selected.
 
-void mis_score (float *result, uint32_t *degree)
+void mis_score (double *result, uint32_t *degree)
 {
     // add 1 to prevent divide by zero
-    float x = simple_rand_x ( ) ;
-    (*result) = (0.0001f + x / (1. + 2.* (*degree))) ;
+    double x = simple_rand_x ( ) ;
+    (*result) = (0.0001 + x / (1. + 2.* (*degree))) ;
 }
 

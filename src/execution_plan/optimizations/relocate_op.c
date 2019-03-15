@@ -41,7 +41,7 @@ void _relocateOp(ExecutionPlan *plan, OPType type) {
 
 void relocateOperations(ExecutionPlan *plan) {
     assert(plan && plan->root);
-   _relocateOp(plan, OPType_LIMIT);
+    _relocateOp(plan, OPType_LIMIT);
     _relocateOp(plan, OPType_SKIP);
     _relocateOp(plan, OPType_SORT);
     _relocateOp(plan, OPType_DISTINCT);

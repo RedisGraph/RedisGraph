@@ -1,8 +1,8 @@
 //------------------------------------------------------------------------------
-// GB_AxB_template.c
+// GB_AxB_template.c: switch factory for each built-in monoid for C=A*B
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -23,6 +23,8 @@
 // #include'ing file (min, max, plus, minus, times, div, is*) since those 12
 // multiply operators are redundant and have been renamed.  For these 12, the
 // boolean monoids are not needed.
+
+// parallel: not here
 
 ASSERT (zcode == xycode) ;
 

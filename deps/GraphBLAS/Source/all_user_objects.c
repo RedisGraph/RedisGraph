@@ -3,7 +3,7 @@
 //------------------------------------------------------------------------------
 
 // This file is constructed automatically by cmake and m4 when GraphBLAS is
-// compiled, from the Config/user_def*.m4 and User/*.m4 files.  Do not edit
+// compiled, from the Config/user_def*.m4 and *.m4 files in User/.  Do not edit
 // this file directly.  It contains references to internally-defined functions
 // and objects inside GraphBLAS, which are not user-callable.
 
@@ -12,6 +12,8 @@
 //------------------------------------------------------------------------------
 // SuiteSparse/GraphBLAS/Config/user_def1.m4: define user-defined objects
 //------------------------------------------------------------------------------
+
+
 
 
 
@@ -122,7 +124,8 @@
         & GB_opaque_Rg_bplus,     // binary operator
         & GB_DEF_Rg_Bool_plus_monoid_identity,   // identity value
         sizeof (GB_DEF_Rg_bplus_ztype),   // identity size
-        GB_USER_COMPILED    // user-defined at compile-time
+        GB_USER_COMPILED,   // user-defined at compile-time
+        NULL                // no terminal value
     } ;
     GrB_Monoid Rg_Bool_plus_monoid = & GB_opaque_Rg_Bool_plus_monoid ;
 
@@ -133,6 +136,11 @@
     #define GB_AheapB   GB_AxB_user_heap_Rg_structured_bool
     #define GB_identity    GB_DEF_Rg_Bool_plus_monoid_identity
     #define GB_ADD(z,y)    GB_DEF_Rg_Bool_plus_monoid_add (&(z), &(z), &(y))
+    #ifdef  GB_DEF_Rg_Bool_plus_monoid_terminal
+    #define GB_terminal if ((z) == GB_DEF_Rg_Bool_plus_monoid_terminal) break ;
+    #else
+    #define GB_terminal ;
+    #endif
     #define GB_MULT(z,x,y) GB_DEF_Rg_bmul_function (&(z), &(x), &(y))
     #define GB_ztype       GB_DEF_Rg_bmul_ztype
     #define GB_xtype       GB_DEF_Rg_bmul_xtype
@@ -141,6 +149,7 @@
     #undef GBCOMPACT
     #include "GB_AxB.c"
     #undef GB_identity
+    #undef GB_terminal
     #undef GB_ADD
     #undef GB_xtype
     #undef GB_ytype
@@ -171,7 +180,10 @@ GrB_Info GB_AxB_user
     const GrB_Matrix GB_M,
     const GrB_Matrix GB_A,
     const GrB_Matrix GB_B,
-    bool GB_flipxy,                // if true, A and B have been swapped
+    bool GB_flipxy,
+
+    // for dot method only:
+    const bool GB_mask_comp,
 
     // for heap method only:
     int64_t *restrict GB_List,
@@ -180,13 +192,10 @@ GrB_Info GB_AxB_user
     const int64_t GB_bjnz_max,
 
     // for Gustavson method only:
-    GB_Sauna GB_C_Sauna,
-
-    GB_Context Context
+    GB_Sauna GB_C_Sauna
 )
 {
-    GrB_Info GB_info = GrB_INVALID_OBJECT ;
-
+    GrB_Info GB_info = GrB_SUCCESS ;
     if (0)
     {
         ;
@@ -196,26 +205,20 @@ GrB_Info GB_AxB_user
         if (GB_AxB_method == GxB_AxB_GUSTAVSON)
         { 
             GB_info = GB_AxB_user_gus_Rg_structured_bool
-                (*GB_Chandle, GB_M, GB_A, GB_B, GB_flipxy, GB_C_Sauna,
-                Context) ;
+                (*GB_Chandle, GB_M, GB_A, GB_B, GB_flipxy, GB_C_Sauna) ;
         }
         else if (GB_AxB_method == GxB_AxB_DOT)
         { 
             GB_info = GB_AxB_user_dot_Rg_structured_bool
-                (GB_Chandle, GB_M, GB_A, GB_B, GB_flipxy, Context) ;
+                (GB_Chandle, GB_M, GB_mask_comp, GB_A, GB_B, GB_flipxy) ;
         }
         else // (GB_AxB_method == GxB_AxB_HEAP)
         { 
             GB_info = GB_AxB_user_heap_Rg_structured_bool
                 (GB_Chandle, GB_M, GB_A, GB_B, GB_flipxy,
-                GB_List, GB_pA_pair, GB_Heap, GB_bjnz_max, Context) ;
+                GB_List, GB_pA_pair, GB_Heap, GB_bjnz_max) ;
         }
     } 
-
-    if (GB_info == GrB_INVALID_OBJECT)
-    {
-        return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG, "undefined semiring"))) ;
-    }
     return (GB_info) ;
 }
 

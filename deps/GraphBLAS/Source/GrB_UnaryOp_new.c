@@ -2,7 +2,7 @@
 // GrB_UnaryOp_new: create a new user-defined unary operator
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -10,6 +10,8 @@
 // GrB_UnaryOp_new is implemented both as a macro and a function.  Both are
 // user-callable.  The macro is used by default since it can capture the name
 // of the unary function.
+
+// not parallel: this function does O(1) work and is already thread-safe.
 
 #include "GB.h"
 

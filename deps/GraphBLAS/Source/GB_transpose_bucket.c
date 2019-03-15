@@ -2,7 +2,7 @@
 // GB_transpose_bucket: transpose and optionally typecast and/or apply operator
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -38,6 +38,10 @@
 // hypersparse matrices, or for very sparse matrices, the qsort method should
 // be used instead (see GB_transpose).
 
+// PARALLEL: the bucket transpose will not be simple to parallelize.  The qsort
+// method of transpose would be more parallel.  This method might remain mostly
+// sequential.  There
+
 #include "GB.h"
 
 GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
@@ -70,6 +74,12 @@ GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
     }
 
     //--------------------------------------------------------------------------
+    // determine the number of threads to use
+    //--------------------------------------------------------------------------
+
+    GB_GET_NTHREADS (nthreads, Context) ;
+
+    //--------------------------------------------------------------------------
     // allocate C: always non-hypersparse
     //--------------------------------------------------------------------------
 
@@ -78,11 +88,11 @@ GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
 
     int64_t anz = GB_NNZ (A) ;
 
-    // [ C->p is malloc'd but not initialized.  It is NON-hypersparse.
+    // [ C->p is allocated but not initialized.  It is NON-hypersparse.
     GrB_Info info ;
     GrB_Matrix C = NULL ;           // allocate a new header for C
     GB_CREATE (&C, ctype, A->vdim, A->vlen, GB_Ap_malloc, C_is_csc,
-        GB_FORCE_NONHYPER, A->hyper_ratio, A->vlen, anz, true) ;
+        GB_FORCE_NONHYPER, A->hyper_ratio, A->vlen, anz, true, Context) ;
     if (info != GrB_SUCCESS)
     { 
         return (info) ;
@@ -93,13 +103,12 @@ GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
     //--------------------------------------------------------------------------
 
     int64_t *rowcount = NULL ;
-    GB_CALLOC_MEMORY (rowcount, A->vlen + 1, sizeof (int64_t)) ;
+    GB_CALLOC_MEMORY (rowcount, A->vlen + 1, sizeof (int64_t), Context) ;
     if (rowcount == NULL)
     { 
         // out of memory
-        double memory = GBYTES (A->vlen + 1, sizeof (int64_t)) ;
         GB_MATRIX_FREE (&C) ;
-        return (GB_OUT_OF_MEMORY (memory)) ;
+        return (GB_OUT_OF_MEMORY) ;
     }
 
     //--------------------------------------------------------------------------
@@ -113,8 +122,12 @@ GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
         rowcount [Ai [p]]++ ;
     }
 
-    // compute the vector pointers for C
-    C->nvec_nonempty = GB_cumsum (C->p, rowcount, A->vlen) ;
+    // compute the vector pointers for C; also compute C->nvec_nonempty
+    GB_cumsum (rowcount, A->vlen, &(C->nvec_nonempty), Context) ;
+
+    // copy the result into C->p
+    memcpy (C->p, rowcount, (A->vlen + 1) * sizeof (int64_t)) ;
+
     C->magic = GB_MAGIC ;      // C is now initialized ]
 
     //--------------------------------------------------------------------------
@@ -125,12 +138,12 @@ GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
     if (op == NULL)
     { 
         // do not apply an operator; optional typecast to ctype
-        GB_transpose_ix (rowcount, C->i, C->x, ctype, A) ;
+        GB_transpose_ix (rowcount, C->i, C->x, ctype, A, Context) ;
     }
     else
     { 
         // apply an operator, C has type op->ztype
-        GB_transpose_op (rowcount, C->i, C->x, op, A) ;
+        GB_transpose_op (rowcount, C->i, C->x, op, A, Context) ;
     }
 
     //--------------------------------------------------------------------------

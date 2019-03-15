@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_mex_select: C<Mask> = accum(C,select(A,k)) or select(A',k)
+// GB_mex_select: C<M> = accum(C,select(A,k)) or select(A',k)
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
@@ -11,12 +11,12 @@
 
 #include "GB_mex.h"
 
-#define USAGE "C = GB_mex_select (C, Mask, accum, op, A, k, desc)"
+#define USAGE "C = GB_mex_select (C, M, accum, op, A, k, desc, test)"
 
 #define FREE_ALL                        \
 {                                       \
     GB_MATRIX_FREE (&C) ;               \
-    GB_MATRIX_FREE (&Mask) ;            \
+    GB_MATRIX_FREE (&M) ;               \
     GB_MATRIX_FREE (&A) ;               \
     GrB_free (&desc) ;                  \
     GB_mx_put_global (true, 0) ;        \
@@ -33,21 +33,22 @@ void mexFunction
 
     bool malloc_debug = GB_mx_get_global (true) ;
     GrB_Matrix C = NULL ;
-    GrB_Matrix Mask = NULL ;
+    GrB_Matrix M = NULL ;
     GrB_Matrix A = NULL ;
     GrB_Descriptor desc = NULL ;
     int64_t k = 0 ;
 
     // check inputs
     GB_WHERE (USAGE) ;
-    if (nargout > 1 || nargin < 6 || nargin > 7)
+    if (nargout > 1 || nargin < 6 || nargin > 8)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;
     }
 
     // get C (make a deep copy)
     #define GET_DEEP_COPY \
-    C = GB_mx_mxArray_to_Matrix (pargin [0], "C input", true, true) ;
+    C = GB_mx_mxArray_to_Matrix (pargin [0], "C input", true, true) ;   \
+    if (nargin > 7 && C != NULL) C->nvec_nonempty = -1 ;
     #define FREE_DEEP_COPY GB_MATRIX_FREE (&C) ;
     GET_DEEP_COPY ;
     if (C == NULL)
@@ -58,12 +59,12 @@ void mexFunction
 
     mxClassID cclass = GB_mx_Type_to_classID (C->type) ;
 
-    // get Mask (shallow copy)
-    Mask = GB_mx_mxArray_to_Matrix (pargin [1], "Mask", false, false) ;
-    if (Mask == NULL && !mxIsEmpty (pargin [1]))
+    // get M (shallow copy)
+    M = GB_mx_mxArray_to_Matrix (pargin [1], "M", false, false) ;
+    if (M == NULL && !mxIsEmpty (pargin [1]))
     {
         FREE_ALL ;
-        mexErrMsgTxt ("Mask failed") ;
+        mexErrMsgTxt ("M failed") ;
     }
 
     // get A (shallow copy)
@@ -101,16 +102,24 @@ void mexFunction
         mexErrMsgTxt ("desc failed") ;
     }
 
-    // C<Mask> = accum(C,op(A))
+    // just for testing
+    if (nargin > 7)
+    {
+        if (M != NULL) M->nvec_nonempty = -1 ;
+        A->nvec_nonempty = -1 ;
+        C->nvec_nonempty = -1 ;
+    }
+
+    // C<M> = accum(C,op(A))
     if (C->vdim == 1 && (desc == NULL || desc->in0 == GxB_DEFAULT))
     {
         // this is just to test the Vector version
-        METHOD (GxB_select ((GrB_Vector) C, (GrB_Vector) Mask, accum, op,
+        METHOD (GxB_select ((GrB_Vector) C, (GrB_Vector) M, accum, op,
             (GrB_Vector) A, &k, desc)) ;
     }
     else
     {
-        METHOD (GxB_select (C, Mask, accum, op, A, &k, desc)) ;
+        METHOD (GxB_select (C, M, accum, op, A, &k, desc)) ;
     }
 
     // return C to MATLAB as a struct and free the GraphBLAS C
