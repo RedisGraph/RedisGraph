@@ -85,6 +85,7 @@ OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *algebraic_expression, A
     traverse->destNodeRecIdx = AST_GetAliasID(ast, algebraic_expression->dest_node->alias);
     
     traverse->recordsLen = 0;
+    traverse->transposed_edge = false;
     traverse->recordsCap = _determinRecordCap(ast);
     traverse->records = rm_calloc(traverse->recordsCap, sizeof(Record));
     GrB_Matrix_new(&traverse->M, GrB_BOOL, Graph_RequiredMatrixDim(g), traverse->recordsCap);
@@ -95,6 +96,7 @@ OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *algebraic_expression, A
     traverse->op.name = "Conditional Traverse";
     traverse->op.type = OPType_CONDITIONAL_TRAVERSE;
     traverse->op.consume = CondTraverseConsume;
+    traverse->op.init = CondTraverseInit;
     traverse->op.reset = CondTraverseReset;
     traverse->op.free = CondTraverseFree;
     traverse->op.modifies = NewVector(char*, 1);
@@ -112,6 +114,17 @@ OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *algebraic_expression, A
     }
 
     return (OpBase*)traverse;
+}
+
+OpResult CondTraverseInit(OpBase *opBase) {
+    CondTraverse *op = (CondTraverse*)opBase;
+    size_t op_idx = op->algebraic_expression->operand_count - 1;
+    AlgebraicExpression *exp = op->algebraic_expression;
+    // If the input is set to be transposed on the first expression evaluation,
+    // the source and destination nodes will be swapped in the record.
+    op->transposed_edge = exp->edge && exp->operands[op_idx].transpose;
+
+    return OP_OK;
 }
 
 /* CondTraverseConsume next operation 
@@ -174,9 +187,8 @@ Record CondTraverseConsume(OpBase *opBase) {
         // We're guarantee to have at least one edge.
         Node *srcNode;
         Node *destNode;
-        size_t operandCount = op->algebraic_expression->operand_count - 1;
 
-        if(op->algebraic_expression->operands[operandCount].transpose) {
+        if(op->transposed_edge) {
             srcNode = Record_GetNode(op->r, op->destNodeRecIdx);
             destNode = Record_GetNode(op->r, op->srcNodeRecIdx);
         } else {
@@ -206,10 +218,7 @@ OpResult CondTraverseReset(OpBase *ctx) {
         GxB_MatrixTupleIter_free(op->iter);
         op->iter = NULL;
     }
-    if(op->F) {
-        GrB_Matrix_free(&op->F);
-        op->F = NULL;
-    }
+    if(op->F) GrB_Matrix_clear(op->F);
     return OP_OK;
 }
 
