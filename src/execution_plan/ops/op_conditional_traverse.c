@@ -206,10 +206,7 @@ OpResult CondTraverseReset(OpBase *ctx) {
         GxB_MatrixTupleIter_free(op->iter);
         op->iter = NULL;
     }
-    if(op->F) {
-        GrB_Matrix_free(&op->F);
-        op->F = NULL;
-    }
+    if(op->F) GrB_Matrix_clear(op->F);
     return OP_OK;
 }
 
