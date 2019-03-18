@@ -25,9 +25,11 @@ static void _ResultSet_ReplayHeader(const ResultSet *set, const ResultSetHeader 
 }
 
 // Prepare replay.
-static void _ResultSet_SetupReply(ResultSet *set) {
-    // resultset + statistics, in that order.
-    RedisModule_ReplyWithArray(set->ctx, 2);
+static void _ResultSet_SetupReply(ResultSet *set, bool compact) {
+    // Reply will contain string mapping if we're issuing a compact reply,
+    // then resultset + statistics (in that order) in either case.
+    int top_level_replies = compact ? 3 : 2;
+    RedisModule_ReplyWithArray(set->ctx, top_level_replies);
 
     // We don't know at this point the number of records, we're about to return.
     RedisModule_ReplyWithArray(set->ctx, REDISMODULE_POSTPONED_ARRAY_LEN);
@@ -135,6 +137,38 @@ static void _ResultSetHeader_Free(ResultSetHeader* header) {
     rm_free(header);
 }
 
+static void _ResultSet_ReplyWithStringMapping(RedisModuleCtx *ctx) {
+    GraphContext *gc = GraphContext_GetFromTLS();
+    int prop_string_count = array_len(gc->string_mapping);
+
+    // TODO the user query may provide explicit labels or not be interested
+    // in nodes or relations, in which cases we should return only relevant strings.
+    uint label_count = array_len(gc->node_schemas);
+    uint reltype_count = array_len(gc->relation_schemas);
+
+    // TODO if the query introduces new strings, we will be incapable of returning them
+    RedisModule_ReplyWithArray(ctx, prop_string_count + label_count + reltype_count);
+    for (int i = 0; i < prop_string_count; i ++) {
+        const char *prop = gc->string_mapping[i];
+        RedisModule_ReplyWithStringBuffer(ctx, prop, strlen(prop));
+    }
+
+    for (uint i = 0; i < label_count; i ++) {
+        const char *label = gc->node_schemas[i]->name;
+        // Reply with string
+        RedisModule_ReplyWithStringBuffer(ctx, label, strlen(label));
+        // make offset for string?
+    }
+
+    for (uint i = 0; i < reltype_count; i ++) {
+        const char *reltype = gc->relation_schemas[i]->name;
+        // Reply with string
+        RedisModule_ReplyWithStringBuffer(ctx, reltype, strlen(reltype));
+        // make offset for string?
+    }
+}
+
+
 ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx, bool reply_compact) {
     ResultSet* set = (ResultSet*)malloc(sizeof(ResultSet));
     set->ctx = ctx;
@@ -153,7 +187,9 @@ ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx, bool reply_compact) {
 
     set->EmitRecord = ResultSet_SetReplyFormatter(reply_compact);
 
-    _ResultSet_SetupReply(set);
+    _ResultSet_SetupReply(set, reply_compact);
+
+    if (reply_compact) _ResultSet_ReplyWithStringMapping(ctx);
 
     return set;
 }

@@ -27,40 +27,6 @@ static inline void _ResultSet_ReplyWithRoundedDouble(RedisModuleCtx *ctx, double
     RedisModule_ReplyWithStringBuffer(ctx, str, len);
 }
 
-static int *ids_to_string_offsets = NULL;
-static int offset_count = 0;
-
-static void _setupStringMapping(int string_count) {
-    ids_to_string_offsets = array_new(int, string_count);
-    memset(ids_to_string_offsets, -1, string_count * sizeof(int));
-    offset_count = 0;
-}
-
-static int _ResultSet_GetStringOffset(Attribute_ID id) {
-    if (ids_to_string_offsets[id] == -1) {
-        ids_to_string_offsets[id] = offset_count ++;
-    }
-    return ids_to_string_offsets[id];
-}
-
-static void _ResultSet_ReplyWithStringMapping(RedisModuleCtx *ctx, GraphContext *gc) {
-    char* user_strings[offset_count];
-
-    int string_count = gc->attributes->cardinality;
-    for (int i = 0; i < string_count; i ++) {
-        int offset = ids_to_string_offsets[i];
-        if (offset == -1) continue;
-        user_strings[offset] = gc->string_mapping[i];
-    }
-
-    RedisModule_ReplyWithArray(ctx, offset_count);
-    for (int i = 0; i < offset_count; i ++) {
-        RedisModule_ReplyWithStringBuffer(ctx, user_strings[i], strlen(user_strings[i]));
-    }
-
-    // TODO labels
-}
-
 static void _ResultSet_ReplyWithProperties(RedisModuleCtx *ctx, GraphContext *gc, const GraphEntityType t, const GraphEntity *e, bool compact) {
     int prop_count = ENTITY_PROP_COUNT(e);
     RedisModule_ReplyWithArray(ctx, prop_count);
@@ -72,7 +38,7 @@ static void _ResultSet_ReplyWithProperties(RedisModuleCtx *ctx, GraphContext *gc
         EntityProperty prop = ENTITY_PROPS(e)[i];
         if (compact) {
             // Emit the string offset
-            RedisModule_ReplyWithLongLong(ctx, _ResultSet_GetStringOffset(prop.id));
+            RedisModule_ReplyWithLongLong(ctx, prop.id);
         } else {
             // Emit the actual string
             const char *prop_str = GraphContext_GetAttributeString(gc, prop.id);
@@ -120,6 +86,8 @@ static void _ResultSet_VerboseReplyWithNode(RedisModuleCtx *ctx, GraphContext *g
     _ResultSet_ReplyWithProperties(ctx, gc, GETYPE_NODE, (GraphEntity*)n, false);
 }
 
+// static void _ResultSet_ReplyWithLabelOffset(RedisModuleCtx *ctx, GraphContext *gc)
+
 static void _ResultSet_CompactReplyWithNode(RedisModuleCtx *ctx, GraphContext *gc, Node *n) {
     /*  Compact node reply format:
      *  [
@@ -139,14 +107,13 @@ static void _ResultSet_CompactReplyWithNode(RedisModuleCtx *ctx, GraphContext *g
     // Print label in nested array for multi-label support
     RedisModule_ReplyWithArray(ctx, 1);
     // Retrieve label
-    // TODO Make a more efficient lookup for this string
-    // int label_id = Graph_GetNodeLabel(gc->g,  ENTITY_GET_ID(n));
-    // TODO offset, not string
-    const char *label = GraphContext_GetNodeLabel(gc, n);
-    if (label == NULL) {
+    int label_id = Graph_GetNodeLabel(gc->g, id);
+    if (label_id == GRAPH_NO_LABEL) {
         RedisModule_ReplyWithNull(ctx);
     } else {
-        RedisModule_ReplyWithStringBuffer(ctx, label, strlen(label));
+        // TODO probably unsafe
+        int offset = array_len(gc->string_mapping) + label_id;
+        RedisModule_ReplyWithLongLong(ctx, offset);
     }
 
     // [properties]
@@ -213,12 +180,15 @@ static void _ResultSet_CompactReplyWithEdge(RedisModuleCtx *ctx, GraphContext *g
     RedisModule_ReplyWithLongLong(ctx, id);
 
     // reltype string offset
-    // Retrieve label
-    // TODO Make a more efficient lookup for this string
-    // int label_id = Graph_GetNodeLabel(gc->g,  ENTITY_GET_ID(n));
-    // TODO offset, not string
-    const char *label = GraphContext_GetEdgeRelationType(gc, e);
-    RedisModule_ReplyWithStringBuffer(ctx, label, strlen(label));
+    // Retrieve reltype
+    int reltype_id = Graph_GetEdgeRelation(gc->g, e);
+    if (reltype_id == GRAPH_NO_LABEL) {
+        RedisModule_ReplyWithNull(ctx);
+    } else {
+        // TODO probably unsafe
+        int offset = array_len(gc->string_mapping) + array_len(gc->node_schemas) + reltype_id;
+        RedisModule_ReplyWithLongLong(ctx, offset);
+    }
 
     // [properties]
     _ResultSet_ReplyWithProperties(ctx, gc, GETYPE_NODE, (GraphEntity*)e, true);
@@ -323,10 +293,7 @@ void _ResultSet_EmitCompactRecord(RedisModuleCtx *ctx, GraphContext *gc, const R
 }
 
 EmitRecordFunc ResultSet_SetReplyFormatter(bool compact) {
-    if (compact) {
-        _setupStringMapping(64); // TODO tmp
-        return _ResultSet_EmitCompactRecord;
-    }
+    if (compact) return _ResultSet_EmitCompactRecord;
     return _ResultSet_EmitVerboseRecord;
 }
 
