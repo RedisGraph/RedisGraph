@@ -8,9 +8,8 @@
 #include "../../util/arr.h"
 #include "../../GraphBLASExt/GxB_Delete.h"
 
-static void _setupTraversedRelations(CondTraverse *op) {
+static void _setupTraversedRelations(CondTraverse *op, GraphContext *gc) {
     AST *ast = op->ast;
-    GraphContext *gc = GraphContext_GetFromTLS();
     const char *alias = op->algebraic_expression->edge->alias;
     AST_LinkEntity *e = (AST_LinkEntity*)MatchClause_GetEntity(ast->matchNode, alias);
     op->edgeRelationCount = AST_LinkEntity_LabelCount(e);
@@ -71,10 +70,10 @@ static int _determinRecordCap(const AST *ast) {
     return recordsCap;
 }
 
-OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *algebraic_expression, AST *ast) {
+OpBase* NewCondTraverseOp(GraphContext *gc, AlgebraicExpression *algebraic_expression, AST *ast) {
     CondTraverse *traverse = calloc(1, sizeof(CondTraverse));
     traverse->ast = ast;
-    traverse->graph = g;
+    traverse->graph = gc->g;
     traverse->algebraic_expression = algebraic_expression;
     traverse->edgeRelationTypes = NULL;
     traverse->F = NULL;    
@@ -87,8 +86,9 @@ OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *algebraic_expression, A
     traverse->recordsLen = 0;
     traverse->recordsCap = _determinRecordCap(ast);
     traverse->records = rm_calloc(traverse->recordsCap, sizeof(Record));
-    GrB_Matrix_new(&traverse->M, GrB_BOOL, Graph_RequiredMatrixDim(g), traverse->recordsCap);
-    GrB_Matrix_new(&traverse->F, GrB_BOOL, Graph_RequiredMatrixDim(g), traverse->recordsCap);
+    size_t required_dim = Graph_RequiredMatrixDim(gc->g);
+    GrB_Matrix_new(&traverse->M, GrB_BOOL, required_dim, traverse->recordsCap);
+    GrB_Matrix_new(&traverse->F, GrB_BOOL, required_dim, traverse->recordsCap);
 
     // Set our Op operations
     OpBase_Init(&traverse->op);
@@ -104,7 +104,7 @@ OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *algebraic_expression, A
     Vector_Push(traverse->op.modifies, modified);
 
     if(algebraic_expression->edge) {
-        _setupTraversedRelations(traverse);
+        _setupTraversedRelations(traverse, gc);
         modified = traverse->algebraic_expression->edge->alias;
         Vector_Push(traverse->op.modifies, modified);
         traverse->edges = array_new(Edge, 32);

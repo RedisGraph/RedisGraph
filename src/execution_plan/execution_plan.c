@@ -367,7 +367,7 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST *ast
                                                          ast);
                         }
                         else {
-                            op = NewCondTraverseOp(g, exps[i], ast);
+                            op = NewCondTraverseOp(gc, exps[i], ast);
                         }
                         Vector_Push(traversals, op);
                     }
@@ -397,7 +397,7 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST *ast
                                                          ast);
                         }
                         else {
-                            op = NewCondTraverseOp(g, exps[i], ast);
+                            op = NewCondTraverseOp(gc, exps[i], ast);
                         }
                         Vector_Push(traversals, op);
                     }
@@ -507,7 +507,7 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST *ast
     }
 
     if(ast->returnNode) {
-        op = NewResultsOp(execution_plan->result_set, q);
+        op = NewResultsOp(execution_plan->result_set, q, gc);
         Vector_Push(ops, op);
     }
 

@@ -35,7 +35,7 @@ typedef struct {
 } CondTraverse;
 
 /* Creates a new Traverse operation */
-OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *algebraic_expression, AST *ast);
+OpBase* NewCondTraverseOp(GraphContext *gc, AlgebraicExpression *algebraic_expression, AST *ast);
 
 /* TraverseConsume next operation 
  * each call will update the graph

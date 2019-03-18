@@ -87,7 +87,7 @@ void _RdbLoadEntity(RedisModuleIO *rdb, GraphEntity *e) {
     }
 }
 
-void _RdbLoadNodes(RedisModuleIO *rdb, Graph *g, const char **string_mapping) {
+void _RdbLoadNodes(RedisModuleIO *rdb, Graph *g, char **string_mapping) {
     /* Format:
      * #nodes
      *      ID
@@ -118,7 +118,7 @@ void _RdbLoadNodes(RedisModuleIO *rdb, Graph *g, const char **string_mapping) {
     }
 }
 
-void _RdbLoadEdges(RedisModuleIO *rdb, Graph *g, const char **string_mapping) { 
+void _RdbLoadEdges(RedisModuleIO *rdb, Graph *g, char **string_mapping) {
     /* Format:
      * #edges (N)
      * {
@@ -168,7 +168,7 @@ void _RdbSaveSIValue(RedisModuleIO *rdb, const SIValue *v) {
     }
 }
 
-void _RdbSaveEntity(RedisModuleIO *rdb, const Entity *e, const char **attr_map) {
+void _RdbSaveEntity(RedisModuleIO *rdb, const Entity *e,  char **attr_map) {
     /* Format:
      * #attributes N
      * (name, value type, value) X N  */
@@ -183,7 +183,7 @@ void _RdbSaveEntity(RedisModuleIO *rdb, const Entity *e, const char **attr_map) 
     }
 }
 
-void _RdbSaveNodes(RedisModuleIO *rdb, const Graph *g, const char **string_mapping) {
+void _RdbSaveNodes(RedisModuleIO *rdb, const Graph *g,  char **string_mapping) {
     /* Format:
      * #nodes
      *      ID
@@ -219,7 +219,7 @@ void _RdbSaveNodes(RedisModuleIO *rdb, const Graph *g, const char **string_mappi
     DataBlockIterator_Free(iter);
 }
 
-void _RdbSaveEdges(RedisModuleIO *rdb, const Graph *g, const char **string_mapping) {
+void _RdbSaveEdges(RedisModuleIO *rdb, const Graph *g, char **string_mapping) {
     /* Format:
      * #edges (N)
      * {
@@ -282,7 +282,7 @@ void _RdbSaveEdges(RedisModuleIO *rdb, const Graph *g, const char **string_mappi
     }
 }
 
-void RdbSaveGraph(RedisModuleIO *rdb, void *value, const char **string_mapping) {
+void RdbSaveGraph(RedisModuleIO *rdb, void *value, char **string_mapping) {
     /* Format:
      * #nodes
      *      ID
@@ -309,7 +309,7 @@ void RdbSaveGraph(RedisModuleIO *rdb, void *value, const char **string_mapping) 
     _RdbSaveEdges(rdb, g, string_mapping);
 }
 
-void RdbLoadGraph(RedisModuleIO *rdb, Graph *g, const char **string_mapping) {
+void RdbLoadGraph(RedisModuleIO *rdb, Graph *g, char **string_mapping) {
      /* Format:
      * #nodes
      *      #labels M

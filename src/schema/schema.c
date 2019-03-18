@@ -32,15 +32,6 @@ unsigned short Schema_IndexCount(const Schema *s) {
     return (unsigned short)array_len(s->indices);
 }
 
-Attribute_ID _GraphContext_GetAttributeID(const char *attribute) {
-    GraphContext *gc = GraphContext_GetFromTLS();
-    if(!gc) return ATTRIBUTE_NOTFOUND;
-
-    Attribute_ID *id = TrieMap_Find(gc->attributes, (char*)attribute, strlen(attribute));
-    if (id == TRIEMAP_NOTFOUND) return ATTRIBUTE_NOTFOUND;
-    return *id;
-}
-
 Index* Schema_GetIndex(Schema *s, const char *attribute) {
     assert(s && attribute);
 
@@ -68,7 +59,7 @@ void Schema_AddIndex(Schema *s, char *attribute, Index *idx) {
     assert(Schema_GetIndex(s, attribute) == NULL);
 
     // Add index to schema.
-    array_append(s->indices, idx);
+    s->indices = array_append(s->indices, idx);
 }
 
 void Schema_RemoveIndex(Schema *s, const char *attribute) {
@@ -96,7 +87,6 @@ void Schema_RemoveIndex(Schema *s, const char *attribute) {
 
 void Schema_Free(Schema *schema) {
     if(schema->name) rm_free(schema->name);
-    // TrieMap_Free(schema->attributes, NULL);
 
     // Free indicies.
     uint32_t index_count = array_len(schema->indices);

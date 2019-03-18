@@ -158,11 +158,11 @@ ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx, bool reply_compact) {
     return set;
 }
 
-int ResultSet_AddRecord(ResultSet* set, Record r) {
+int ResultSet_AddRecord(ResultSet *set, GraphContext *gc, Record r) {
     set->recordCount++;
 
     // Output the current record using the defined formatter
-    set->EmitRecord(set->ctx, r, set->header->columns_len);
+    set->EmitRecord(set->ctx, gc, r, set->header->columns_len);
 
     return RESULTSET_OK;
 }

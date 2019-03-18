@@ -137,7 +137,7 @@ const char* GraphContext_GetNodeLabel(const GraphContext *gc, Node *n) {
 
 const char* GraphContext_GetEdgeRelationType(const GraphContext *gc, Edge *e) {
     int reltype_id = Graph_GetEdgeRelation(gc->g, e);
-    if (reltype_id == GRAPH_NO_RELATION) return NULL;
+    assert(reltype_id != GRAPH_NO_RELATION);
     return gc->relation_schemas[reltype_id]->name;
 }
 

@@ -69,9 +69,9 @@ static Group* _CreateGroup(OpAggregate *op, Record r) {
     SIValue *group_keys = rm_malloc(sizeof(SIValue) * key_count);
 
     for(uint i = 0; i < key_count; i++) {
-      SIValue key = op->group_keys[i];
-      SIValue_Persist(&key);
-      group_keys[i] = key;
+        SIValue key = op->group_keys[i];
+        SIValue_Persist(&key);
+        group_keys[i] = key;
     }
 
     /* There's no need to keep a reference to record if we're not sorting groups. */

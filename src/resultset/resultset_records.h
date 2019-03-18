@@ -10,6 +10,7 @@
 
 #include "../redismodule.h"
 #include "../execution_plan/record.h"
+#include "../graph/graphcontext.h"
 
 typedef enum {
     PROPERTY_UNKNOWN,
@@ -21,10 +22,10 @@ typedef enum {
     PROPERTY_DOUBLE,
 } PropertyTypeUser;
 
-typedef void (*EmitRecordFunc)(RedisModuleCtx *ctx, const Record r, unsigned int numcols);
+typedef void (*EmitRecordFunc)(RedisModuleCtx *ctx, GraphContext *gc, const Record r, unsigned int numcols);
 
 // Must be explicitly declared
-void ResultSet_ReplyWithSIValue(RedisModuleCtx *ctx, const SIValue v, bool print_type);
+void ResultSet_ReplyWithSIValue(RedisModuleCtx *ctx, GraphContext *gc, const SIValue v, bool print_type);
 
 EmitRecordFunc ResultSet_SetReplyFormatter(bool compact);
 

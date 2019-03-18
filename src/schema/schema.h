@@ -33,9 +33,6 @@ Schema* Schema_New(const char *label, int id);
  * Return attribute_NOTFOUND if attribute doesn't exists. */
 Attribute_ID Attribute_GetID(const char *attribute);
 
-/* Checks to see if schema contains attribute. */
-bool Schema_ContainsAttribute(const Schema *s, const char *attribute);
-
 /* Returns number of indices in schema. */
 unsigned short Schema_IndexCount(const Schema *s);
 

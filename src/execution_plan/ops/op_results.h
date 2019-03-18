@@ -11,6 +11,7 @@
 #include "../../parser/ast.h"
 #include "../../redismodule.h"
 #include "../../graph/query_graph.h"
+#include "../../graph/graphcontext.h"
 #include "../../resultset/resultset.h"
 
 /* Results generates result set */
@@ -18,11 +19,12 @@
 typedef struct {
     OpBase op;
     ResultSet *result_set;
+    GraphContext *gc;
 } Results;
 
 
 /* Creates a new NodeByLabelScan operation */
-OpBase* NewResultsOp(ResultSet *result_set, QueryGraph *graph);
+OpBase* NewResultsOp(ResultSet *result_set, QueryGraph *graph, GraphContext *gc);
 
 /* Results next operation
  * called each time a new result record is required */

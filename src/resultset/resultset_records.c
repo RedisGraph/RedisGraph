@@ -7,7 +7,6 @@
 
 #include "resultset_records.h"
 #include "../value.h"
-#include "../graph/graphcontext.h"
 #include "../graph/entities/node.h"
 #include "../graph/entities/edge.h"
 #include "../util/rmalloc.h"
@@ -62,8 +61,7 @@ static void _ResultSet_ReplyWithStringMapping(RedisModuleCtx *ctx, GraphContext 
     // TODO labels
 }
 
-static void _ResultSet_ReplyWithProperties(RedisModuleCtx *ctx, const GraphEntityType t, const GraphEntity *e, bool compact) {
-    GraphContext *gc = GraphContext_GetFromTLS();
+static void _ResultSet_ReplyWithProperties(RedisModuleCtx *ctx, GraphContext *gc, const GraphEntityType t, const GraphEntity *e, bool compact) {
     int prop_count = ENTITY_PROP_COUNT(e);
     RedisModule_ReplyWithArray(ctx, prop_count);
     // Iterate over all properties stored on entity
@@ -81,11 +79,11 @@ static void _ResultSet_ReplyWithProperties(RedisModuleCtx *ctx, const GraphEntit
             RedisModule_ReplyWithStringBuffer(ctx, prop_str, strlen(prop_str));
         }
         // Emit the value
-        ResultSet_ReplyWithSIValue(ctx, prop.value, compact);
+        ResultSet_ReplyWithSIValue(ctx, gc, prop.value, compact);
     }
 }
 
-static void _ResultSet_VerboseReplyWithNode(RedisModuleCtx *ctx, Node *n) {
+static void _ResultSet_VerboseReplyWithNode(RedisModuleCtx *ctx, GraphContext *gc, Node *n) {
     /*  Verbose node reply format:
      *  [
      *      ["id", Node ID (integer)]
@@ -109,7 +107,6 @@ static void _ResultSet_VerboseReplyWithNode(RedisModuleCtx *ctx, Node *n) {
     RedisModule_ReplyWithArray(ctx, 1);
     // Retrieve label
     // TODO Make a more efficient lookup for this string
-    GraphContext *gc = GraphContext_GetFromTLS();
     const char *label = GraphContext_GetNodeLabel(gc, n);
     if (label == NULL) {
         RedisModule_ReplyWithNull(ctx);
@@ -120,10 +117,10 @@ static void _ResultSet_VerboseReplyWithNode(RedisModuleCtx *ctx, Node *n) {
     // [properties, [properties]]
     RedisModule_ReplyWithArray(ctx, 2);
     RedisModule_ReplyWithStringBuffer(ctx, "properties", 10);
-    _ResultSet_ReplyWithProperties(ctx, GETYPE_NODE, (GraphEntity*)n, false);
+    _ResultSet_ReplyWithProperties(ctx, gc, GETYPE_NODE, (GraphEntity*)n, false);
 }
 
-static void _ResultSet_CompactReplyWithNode(RedisModuleCtx *ctx, Node *n) {
+static void _ResultSet_CompactReplyWithNode(RedisModuleCtx *ctx, GraphContext *gc, Node *n) {
     /*  Compact node reply format:
      *  [
      *      Node ID (integer),
@@ -143,7 +140,6 @@ static void _ResultSet_CompactReplyWithNode(RedisModuleCtx *ctx, Node *n) {
     RedisModule_ReplyWithArray(ctx, 1);
     // Retrieve label
     // TODO Make a more efficient lookup for this string
-    GraphContext *gc = GraphContext_GetFromTLS();
     // int label_id = Graph_GetNodeLabel(gc->g,  ENTITY_GET_ID(n));
     // TODO offset, not string
     const char *label = GraphContext_GetNodeLabel(gc, n);
@@ -154,10 +150,10 @@ static void _ResultSet_CompactReplyWithNode(RedisModuleCtx *ctx, Node *n) {
     }
 
     // [properties]
-    _ResultSet_ReplyWithProperties(ctx, GETYPE_NODE, (GraphEntity*)n, true);
+    _ResultSet_ReplyWithProperties(ctx, gc, GETYPE_NODE, (GraphEntity*)n, true);
 }
 
-static void _ResultSet_VerboseReplyWithEdge(RedisModuleCtx *ctx, Edge *e) {
+static void _ResultSet_VerboseReplyWithEdge(RedisModuleCtx *ctx, GraphContext *gc, Edge *e) {
     /*  Edge reply format:
      *  [
      *      ["id", Edge ID (integer)]
@@ -180,7 +176,6 @@ static void _ResultSet_VerboseReplyWithEdge(RedisModuleCtx *ctx, Edge *e) {
     RedisModule_ReplyWithStringBuffer(ctx, "type", 4);
     // Retrieve relation type
     // TODO Make a more efficient lookup for this string
-    GraphContext *gc = GraphContext_GetFromTLS();
     const char *label = GraphContext_GetEdgeRelationType(gc, e);
     RedisModule_ReplyWithStringBuffer(ctx, label, strlen(label));
 
@@ -197,10 +192,10 @@ static void _ResultSet_VerboseReplyWithEdge(RedisModuleCtx *ctx, Edge *e) {
     // [properties, [properties]]
     RedisModule_ReplyWithArray(ctx, 2);
     RedisModule_ReplyWithStringBuffer(ctx, "properties", 10);
-    _ResultSet_ReplyWithProperties(ctx, GETYPE_EDGE, (GraphEntity*)e, false);
+    _ResultSet_ReplyWithProperties(ctx, gc, GETYPE_EDGE, (GraphEntity*)e, false);
 }
 
-static void _ResultSet_CompactReplyWithEdge(RedisModuleCtx *ctx, Edge *e) {
+static void _ResultSet_CompactReplyWithEdge(RedisModuleCtx *ctx, GraphContext *gc, Edge *e) {
     /*  Compact edge reply format:
      *  [
      *      Edge ID (integer),
@@ -220,14 +215,13 @@ static void _ResultSet_CompactReplyWithEdge(RedisModuleCtx *ctx, Edge *e) {
     // reltype string offset
     // Retrieve label
     // TODO Make a more efficient lookup for this string
-    GraphContext *gc = GraphContext_GetFromTLS();
     // int label_id = Graph_GetNodeLabel(gc->g,  ENTITY_GET_ID(n));
     // TODO offset, not string
     const char *label = GraphContext_GetEdgeRelationType(gc, e);
     RedisModule_ReplyWithStringBuffer(ctx, label, strlen(label));
 
     // [properties]
-    _ResultSet_ReplyWithProperties(ctx, GETYPE_NODE, (GraphEntity*)e, true);
+    _ResultSet_ReplyWithProperties(ctx, gc, GETYPE_NODE, (GraphEntity*)e, true);
 }
 
 static inline PropertyTypeUser _mapValueType(const SIValue v) {
@@ -256,19 +250,19 @@ static inline void _ResultSet_ReplyWithValueType(RedisModuleCtx *ctx, const SIVa
 /* This function has handling for all SIValue scalar types.
  * The current RESP protocol only has unique support for strings, 8-byte integers,
  * and NULL values. */
-void ResultSet_ReplyWithSIValue(RedisModuleCtx *ctx, const SIValue v, bool print_type) {
+void ResultSet_ReplyWithSIValue(RedisModuleCtx *ctx, GraphContext *gc, const SIValue v, bool print_type) {
     if (print_type) _ResultSet_ReplyWithValueType(ctx, v);
     // Emit the actual value, then the value type (to facilitate client-side parsing)
     switch (SI_TYPE(v)) {
         case T_NODE:
             // TODO no longer adequate, but used for aggregate returns
             printf("fix this! preferably in Aggregate op\n");
-           _ResultSet_VerboseReplyWithNode(ctx, (Node*)v.ptrval);
+           _ResultSet_VerboseReplyWithNode(ctx, gc, (Node*)v.ptrval);
            return;
         case T_EDGE:
             // TODO no longer adequate, but used for aggregate returns
             printf("fix this!\n");
-           _ResultSet_VerboseReplyWithEdge(ctx, (Edge*)v.ptrval);
+           _ResultSet_VerboseReplyWithEdge(ctx, gc, (Edge*)v.ptrval);
            return;
         case T_STRING:
             RedisModule_ReplyWithStringBuffer(ctx, v.stringval, strlen(v.stringval));
@@ -291,39 +285,39 @@ void ResultSet_ReplyWithSIValue(RedisModuleCtx *ctx, const SIValue v, bool print
       }
 }
 
-void _ResultSet_EmitVerboseRecord(RedisModuleCtx *ctx, const Record r, unsigned int numcols) {
+void _ResultSet_EmitVerboseRecord(RedisModuleCtx *ctx, GraphContext *gc, const Record r, unsigned int numcols) {
     // Prepare return array sized to the number of RETURN entities
     RedisModule_ReplyWithArray(ctx, numcols);
 
     for(int i = 0; i < numcols; i++) {
         switch (Record_GetType(r, i)) {
             case REC_TYPE_NODE:
-                _ResultSet_VerboseReplyWithNode(ctx, Record_GetNode(r, i));
+                _ResultSet_VerboseReplyWithNode(ctx, gc, Record_GetNode(r, i));
                 break;
             case REC_TYPE_EDGE:
-                _ResultSet_VerboseReplyWithEdge(ctx, Record_GetEdge(r, i));
+                _ResultSet_VerboseReplyWithEdge(ctx, gc, Record_GetEdge(r, i));
                 break;
             default:
-                ResultSet_ReplyWithSIValue(ctx, Record_GetScalar(r, i), false);
+                ResultSet_ReplyWithSIValue(ctx, gc, Record_GetScalar(r, i), false);
         }
     }
 }
 
-void _ResultSet_EmitCompactRecord(RedisModuleCtx *ctx, const Record r, unsigned int numcols) {
+void _ResultSet_EmitCompactRecord(RedisModuleCtx *ctx, GraphContext *gc, const Record r, unsigned int numcols) {
     // Prepare return array sized to the number of RETURN entities
     RedisModule_ReplyWithArray(ctx, numcols);
 
     for (uint i = 0; i < numcols; i++) {
         switch (Record_GetType(r, i)) {
             case REC_TYPE_NODE:
-                _ResultSet_CompactReplyWithNode(ctx, Record_GetNode(r, i));
+                _ResultSet_CompactReplyWithNode(ctx, gc, Record_GetNode(r, i));
                 break;
             case REC_TYPE_EDGE:
-                _ResultSet_CompactReplyWithEdge(ctx, Record_GetEdge(r, i));
+                _ResultSet_CompactReplyWithEdge(ctx, gc, Record_GetEdge(r, i));
                 break;
             default:
                 RedisModule_ReplyWithArray(ctx, 2); // Reply with array with space for type and value
-                ResultSet_ReplyWithSIValue(ctx, Record_GetScalar(r, i), true);
+                ResultSet_ReplyWithSIValue(ctx, gc, Record_GetScalar(r, i), true);
         }
     }
 }

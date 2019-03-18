@@ -35,7 +35,7 @@ ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx, bool compact);
 
 void ResultSet_CreateHeader(ResultSet* set, const AST *ast);
 
-int ResultSet_AddRecord(ResultSet* set, Record r);
+int ResultSet_AddRecord(ResultSet* set, GraphContext *gc, Record r);
 
 void ResultSet_Replay(ResultSet* set);
 
