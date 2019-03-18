@@ -54,6 +54,7 @@ CC_SOURCES += $(SOURCEDIR)/parser/lex.yy.c
 CC_SOURCES += $(SOURCEDIR)/parser/grammar.c
 CC_SOURCES += $(wildcard $(SOURCEDIR)/resultset/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/schema/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/procedures/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/util/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/util/datablock/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/util/thpool/*.c)
