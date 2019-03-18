@@ -25,10 +25,10 @@ static void _ResultSet_ReplayHeader(const ResultSet *set, const ResultSetHeader 
 }
 
 // Prepare replay.
-static void _ResultSet_SetupReply(ResultSet *set, bool compact) {
+static void _ResultSet_SetupReply(ResultSet *set) {
     // Reply will contain string mapping if we're issuing a compact reply,
     // then resultset + statistics (in that order) in either case.
-    int top_level_replies = compact ? 3 : 2;
+    int top_level_replies = set->compact ? 3 : 2;
     RedisModule_ReplyWithArray(set->ctx, top_level_replies);
 
     // We don't know at this point the number of records, we're about to return.
@@ -169,10 +169,11 @@ static void _ResultSet_ReplyWithStringMapping(RedisModuleCtx *ctx) {
 }
 
 
-ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx, bool reply_compact) {
+ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx, bool compact) {
     ResultSet* set = (ResultSet*)malloc(sizeof(ResultSet));
     set->ctx = ctx;
     set->distinct = (ast->returnNode && ast->returnNode->distinct);
+    set->compact = compact;
     set->recordCount = 0;    
     set->header = NULL;
     set->bufferLen = 2048;
@@ -185,11 +186,11 @@ ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx, bool reply_compact) {
     set->stats.nodes_deleted = 0;
     set->stats.relationships_deleted = 0;
 
-    set->EmitRecord = ResultSet_SetReplyFormatter(reply_compact);
+    set->EmitRecord = ResultSet_SetReplyFormatter(set->compact);
 
-    _ResultSet_SetupReply(set, reply_compact);
+    _ResultSet_SetupReply(set);
 
-    if (reply_compact) _ResultSet_ReplyWithStringMapping(ctx);
+    if (set->compact) _ResultSet_ReplyWithStringMapping(ctx);
 
     return set;
 }

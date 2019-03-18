@@ -37,16 +37,13 @@ GraphContext* GraphContext_GetFromTLS();
 /* Schema API */
 // Retrieve number of schemas created for given type.
 unsigned short GraphContext_SchemaCount(const GraphContext *gc, SchemaType t);
+// Retrieve the specific schema for the provided ID
+Schema* GraphContext_GetSchemaByID(const GraphContext *gc, int id, SchemaType t);
 // Retrieve the specific schema for the provided node label or relation type string
 Schema* GraphContext_GetSchema(const GraphContext *gc, const char *label, SchemaType t);
-// Retrieve the specific schema for the provided id.
-Schema* GraphContext_GetSchemaByID(const GraphContext *gc, int id, SchemaType t);
 // Add a new schema and matrix for the given label
 Schema* GraphContext_AddSchema(GraphContext *gc, const char *label, SchemaType t);
 
-// TODO needed?
-// Add a new store and matrix for the given relation type
-Schema* GraphContext_AddRelationType(GraphContext *gc, const char *label);
 // Retrieve the label string for a given Node object
 const char* GraphContext_GetNodeLabel(const GraphContext *gc, Node *n);
 // Retrieve the relation type string for a given Edge object
@@ -55,8 +52,8 @@ const char* GraphContext_GetEdgeRelationType(const GraphContext *gc, Edge *e);
 // Retrieve number of unique attribute keys
 uint GraphContext_AttributeCount(GraphContext *gc);
 
-// Adds an attribute string to GraphContext ID mappings
-Attribute_ID GraphContext_AddAttribute(GraphContext *gc, const char *attribute);
+// Retrieve an attribute ID given a string, creating one if not found
+Attribute_ID GraphContext_FindOrAddAttribute(GraphContext *gc, const char *attribute);
 
 // Retrieve an attribute string given an ID
 const char* GraphContext_GetAttributeString(const GraphContext *gc, Attribute_ID id);

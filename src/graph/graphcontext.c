@@ -145,7 +145,7 @@ uint GraphContext_AttributeCount(GraphContext *gc) {
     return gc->attributes->cardinality;
 }
 
-Attribute_ID GraphContext_AddAttribute(GraphContext *gc, const char *attribute) {
+Attribute_ID GraphContext_FindOrAddAttribute(GraphContext *gc, const char *attribute) {
     // See if attribute already exists.
     Attribute_ID *pAttribute_id = NULL;
     Attribute_ID attribute_id = GraphContext_GetAttributeID(gc, attribute);

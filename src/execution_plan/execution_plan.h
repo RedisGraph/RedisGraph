@@ -34,7 +34,7 @@ ExecutionPlan* NewExecutionPlan (
     RedisModuleCtx *ctx,    // Module-level context
     GraphContext *gc,       // Graph access and schemas
     AST **ast,              // Query parsed AST
-    bool reply_compact,     // Reply with a compact result set (for client use)
+    ResultSet *result_set,  // Result set to be populated if the query returns data
     bool explain            // Construct execution plan, do not execute
 );
 

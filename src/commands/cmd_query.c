@@ -10,6 +10,7 @@
 #include "../query_executor.h"
 #include "../util/simple_timer.h"
 #include "../execution_plan/execution_plan.h"
+#include "../util/arr.h"
 #include "../util/rmalloc.h"
 
 void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST_IndexNode *indexNode) {
@@ -46,6 +47,13 @@ void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST_IndexNode *inde
   }
 }
 
+bool _parse_args(CommandCtx *qctx) {
+    // The only additional argument to check currently is whether the query results
+    // should be returned in compact form
+    return (qctx->argc > 3 &&
+            !strcasecmp(RedisModule_StringPtrLen(qctx->argv[3], NULL), "--compact"));
+}
+
 void _MGraph_Query(void *args) {
     CommandCtx *qctx = (CommandCtx*)args;
     RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(qctx);
@@ -73,13 +81,10 @@ void _MGraph_Query(void *args) {
         }
         /* TODO: free graph if no entities were created. */
     }
-    CommandCtx_ThreadSafeContextUnlock(qctx);
 
-    bool reply_compact = false;
-    // TODO race condition?
-    if (qctx->argc > 3 && !strcasecmp(RedisModule_StringPtrLen(qctx->argv[3], NULL), "--compact")) {
-        reply_compact = true;
-    }
+    bool compact = _parse_args(qctx);
+
+    CommandCtx_ThreadSafeContextUnlock(qctx);
 
     // Perform query validations before and after ModifyAST
     if (AST_PerformValidations(ctx, ast) != AST_VALID) goto cleanup;
@@ -95,8 +100,12 @@ void _MGraph_Query(void *args) {
     if (ast[0]->indexNode) { // index operation
         _index_operation(ctx, gc, ast[0]->indexNode);
     } else {
-        ExecutionPlan *plan = NewExecutionPlan(ctx, gc, ast, reply_compact, false);
-        resultSet = ExecutionPlan_Execute(plan);
+         // The last AST will contain the return clause, if one is specified
+        AST *final_ast = ast[array_len(ast)-1];
+        ResultSet *resultSet = NewResultSet(final_ast, ctx, compact);
+        ResultSet_CreateHeader(resultSet, final_ast);
+        ExecutionPlan *plan = NewExecutionPlan(ctx, gc, ast, resultSet, false);
+        ExecutionPlan_Execute(plan);
         ExecutionPlanFree(plan);
         ResultSet_Replay(resultSet);    // Send result-set back to client.
     }

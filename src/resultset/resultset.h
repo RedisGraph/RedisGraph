@@ -24,6 +24,7 @@ typedef struct {
     RedisModuleCtx *ctx;
     ResultSetHeader *header;    /* Describes how records should look like. */
     bool distinct;              /* Whether or not each record is unique. */
+    bool compact;               /* Whether records should be returned in compact form. */
     size_t recordCount;         /* Number of records introduced. */
     char *buffer;               /* Reusable buffer for record streaming. */
     size_t bufferLen;           /* Size of buffer in bytes. */
