@@ -57,6 +57,9 @@ Edge *Record_GetEdge(const Record r, int idx);
 // Get a graph entity from record at position idx.
 GraphEntity *Record_GetGraphEntity(const Record r, int idx);
 
+// Add a scalar, node, or edge to the record, depending on the SIValue type.
+void Record_Add(Record r, int idx, SIValue v);
+
 // Add a scalar to record at position idx.
 void Record_AddScalar(Record r, int idx, SIValue v);
 

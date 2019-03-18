@@ -37,11 +37,11 @@ SIValue SI_PtrVal(void* v) {
 }
 
 SIValue SI_Node(void *n) {
-  return (SIValue) {.ptrval = n, .type = T_NODE};
+  return (SIValue) {.ptrval = n, .type = T_NODE, .allocation = M_VOLATILE};
 }
 
 SIValue SI_Edge(void *e) {
-  return (SIValue) {.ptrval = e, .type = T_EDGE};
+  return (SIValue) {.ptrval = e, .type = T_EDGE, .allocation = M_VOLATILE};
 }
 
 SIValue SI_DuplicateStringVal(const char *s) {
@@ -94,6 +94,10 @@ int SIValue_ToString(SIValue v, char *buf, size_t len) {
     break;
   case T_DOUBLE:
     bytes_written = snprintf(buf, len, "%f", v.doubleval);
+    break;
+  case T_NODE:
+  case T_EDGE:
+    bytes_written = snprintf(buf, len, "%lu", ENTITY_GET_ID((GraphEntity*)v.ptrval));
     break;
   case T_NULL:
   default:
@@ -208,34 +212,23 @@ int SIValue_Compare(const SIValue a, const SIValue b) {
       case T_DOUBLE:
         return SAFE_COMPARISON_RESULT(a.doubleval - b.doubleval);
       case T_STRING:
-        // Both inputs are strings of the same SIType
         return strcmp(a.stringval, b.stringval);
+      case T_NODE:
+      case T_EDGE:
+        return ENTITY_GET_ID((GraphEntity*)a.ptrval) - ENTITY_GET_ID((GraphEntity*)b.ptrval);
       default:
-        // Both pointers were of an incomparable type, like a pointer
+        // Both inputs were of an incomparable type, like a pointer or NULL
         return DISJOINT;
     }
   }
 
   // The inputs have different SITypes - compare them if they
-  // are both numerics or both strings of differing types
+  // are both numerics of differing types
   if (SI_TYPE(a) & SI_NUMERIC && SI_TYPE(b) & SI_NUMERIC) {
     double diff = SI_GET_NUMERIC(a) - SI_GET_NUMERIC(b);
     return SAFE_COMPARISON_RESULT(diff);
-  } else if (SI_TYPE(a) == T_STRING && SI_TYPE(b) == T_STRING) {
-    return strcmp(a.stringval, b.stringval);
   }
 
-  // TODO validate
-  // Inputs are not comparable
-  // Compare nodes and edges by ID
-  if ((SI_TYPE(a) == T_NODE && SI_TYPE(b) == T_NODE) ||
-      (SI_TYPE(a) == T_EDGE && SI_TYPE(b) == T_EDGE)) {
-    EntityID a_id = ENTITY_GET_ID((GraphEntity*)a.ptrval);
-    EntityID b_id = ENTITY_GET_ID((GraphEntity*)b.ptrval);
-    return a_id - b_id;
-  }
-
-  // Reachable if values are of the same incomparable type, such as NULL
   return DISJOINT;
 }
 
@@ -267,17 +260,17 @@ int SIValue_Order(const SIValue a, const SIValue b) {
 
 void SIValue_Persist(SIValue *v) {
   if (v->allocation == M_VOLATILE) {
+    size_t size;
     if (v->type == T_NODE) {
-      Node *clone = rm_malloc(sizeof(Node));
-      *clone = *(Node*)v->ptrval;
-      // clone = memcpy(clone, v->ptrval, sizeof(Node));
-      v->ptrval = clone;
+      size = sizeof(Node);
     } else if (v->type == T_EDGE) {
-      Edge *clone = rm_malloc(sizeof(Edge));
-      // clone = memcpy(clone, v->ptrval, sizeof(Edge));
-      *clone = *(Edge*)v->ptrval;
-      v->ptrval = clone;
+      size = sizeof(Edge);
+    } else {
+        return;
     }
+    void *clone = rm_malloc(size);
+    clone = memcpy(clone, v->ptrval, size);
+    v->ptrval = clone;
     v->allocation = M_SELF;
   }
 }
@@ -290,10 +283,10 @@ void SIValue_Free(SIValue *v) {
         rm_free(v->stringval);
         v->stringval = NULL;
         return;
-      // case T_NODE:
-      // case T_EDGE:
-        // rm_free(v->ptrval);
-        // return;
+      case T_NODE:
+      case T_EDGE:
+        rm_free(v->ptrval);
+        return;
       default:
         return;
     }

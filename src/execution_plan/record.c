@@ -92,6 +92,20 @@ GraphEntity *Record_GetGraphEntity(const Record r, int idx) {
     return NULL;
 }
 
+void Record_Add(Record r, int idx, SIValue v) {
+    switch (SI_TYPE(v)) {
+        case T_NODE:
+            Record_AddNode(r, idx, *(Node*)v.ptrval);
+            break;
+        case T_EDGE:
+            Record_AddEdge(r, idx, *(Edge*)v.ptrval);
+            break;
+        default:
+            Record_AddScalar(r, idx, v);
+            break;
+    }
+}
+
 void Record_AddScalar(Record r, int idx, SIValue v) {
     r[idx].value.s = v;
     r[idx].type = REC_TYPE_SCALAR;

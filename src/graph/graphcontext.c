@@ -152,7 +152,7 @@ Attribute_ID GraphContext_AddAttribute(GraphContext *gc, const char *attribute) 
 
     if(attribute_id == ATTRIBUTE_NOTFOUND) {
         attribute_id = gc->attributes->cardinality;
-        pAttribute_id = malloc(sizeof(Attribute_ID));
+        pAttribute_id = rm_malloc(sizeof(Attribute_ID));
         *pAttribute_id = attribute_id;
 
         TrieMap_Add(gc->attributes,
@@ -160,7 +160,7 @@ Attribute_ID GraphContext_AddAttribute(GraphContext *gc, const char *attribute) 
                     strlen(attribute),
                     pAttribute_id,
                     TrieMap_DONT_CARE_REPLACE);
-        gc->string_mapping = array_append(gc->string_mapping, (char*)attribute);
+        gc->string_mapping = array_append(gc->string_mapping, rm_strdup(attribute));
     }
 
     return attribute_id;

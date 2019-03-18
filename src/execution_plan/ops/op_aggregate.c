@@ -188,9 +188,7 @@ static Record _handoff(OpAggregate *op) {
         } else {
             // None aggregated expression.
             res = group->keys[keyIdx++];
-            /* Note that even nodes and edges are added as scalars here
-             * (though the memory accesses are safe) */
-            Record_AddScalar(r, i, res);
+            Record_Add(r, i, res);
         }
 
         /* TODO: this entire block can be improved, performancewise.
