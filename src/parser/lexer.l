@@ -44,6 +44,8 @@ int yycolumn = 1;
 "DROP"      { return DROP; }
 "UNWIND"    { return UNWIND; }
 "NULL"      { return NULLVAL; }
+"CALL"      { return CALL; }
+"YIELD"     { return YIELD; }
 
 
 [0-9]*\.[0-9]+    {
@@ -58,7 +60,7 @@ int yycolumn = 1;
 
 [_A-Za-z][A-Za-z0-9_-]* {
   	tok.strval = strdup(yytext);
-  	return UQSTRING; // Unqueoted string, used for entity alias, prop name and labels.
+  	return UQSTRING; // Unquoted string, used for entity alias, prop name and labels.
 }
 
 (\"(\\.|[^\"])*\")|('(\\.|[^'])*')    {
