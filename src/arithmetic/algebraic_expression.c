@@ -251,15 +251,16 @@ AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(AlgebraicExpr
 static inline void _AlgebraicExpression_Execute_MUL(GrB_Matrix C, GrB_Matrix A, GrB_Matrix B, GrB_Descriptor desc) {
     // Using our own compile-time, user defined semiring see rg_structured_bool.m4
     // A,B,C must be boolean matrices.
-    GrB_mxm(
+    GrB_Info res = GrB_mxm(
         C,                  // Output
-        NULL,               // Mask
-        NULL,               // Accumulator
+        GrB_NULL,           // Mask
+        GrB_NULL,           // Accumulator
         Rg_structured_bool, // Semiring
         A,                  // First matrix
         B,                  // Second matrix
         desc                // Descriptor        
-    );    
+    );
+    assert(res == GrB_SUCCESS);
 }
 
 // Reverse order of operand within expression,
@@ -389,51 +390,66 @@ AlgebraicExpression **AlgebraicExpression_From_Query(const AST *ast, Vector *mat
     return expressions;
 }
 
+/* Evaluates an algebraic expression,
+ * evaluation is done right to left due to matrix CSC representation 
+ * the right most operand in the expression is a tiny extremely sparse matrix
+ * this allows us to avoid computing multiplications of large matrices.
+ * In the case an operand is marked for transpose, we will perform
+ * the transpose once and update the expression. */
 void AlgebraicExpression_Execute(AlgebraicExpression *ae, GrB_Matrix res) {
     assert(ae && res);
-
     size_t operand_count = ae->operand_count;
     assert(operand_count > 1);
 
+    AlgebraicExpressionOperand leftTerm;
+    AlgebraicExpressionOperand rightTerm;
+    // Operate on a clone of the expression.
     AlgebraicExpressionOperand operands[operand_count];
     memcpy(operands, ae->operands, sizeof(AlgebraicExpressionOperand) * operand_count);
 
-    GrB_Descriptor desc;
-    GrB_Descriptor_new(&desc);
-    AlgebraicExpressionOperand leftTerm;
-    AlgebraicExpressionOperand rightTerm;
-
-    /* Multiply right to left,
-     * A*B*C*D,
+    /* Multiply right to left
+     * A*B*C*D
      * X = C*D
      * Y = B*X
      * Z = A*Y */
     while(operand_count > 1) {
+        // Multiply and reduce.
         rightTerm = operands[operand_count-1];
         leftTerm = operands[operand_count-2];
 
-        // Multiply and reduce.
-        if(leftTerm.transpose) GrB_Descriptor_set(desc, GrB_INP0, GrB_TRAN);
-        if(rightTerm.transpose) GrB_Descriptor_set(desc, GrB_INP1, GrB_TRAN);
+        /* Incase we're required to transpose left hand side operand 
+         * perform transpose once and update original expression. */
+        if(leftTerm.transpose) {
+            GrB_Matrix t = leftTerm.operand;
+            /* Graph matrices are immutable, create a new matrix. 
+             * and transpose. */
+            if(!leftTerm.free) {
+                GrB_Index cols;
+                GrB_Matrix_ncols(&cols, leftTerm.operand);
+                GrB_Matrix_new(&t, GrB_BOOL, cols, cols);
+            }
+            GrB_transpose(t, GrB_NULL, GrB_NULL, leftTerm.operand, GrB_NULL);
 
-        _AlgebraicExpression_Execute_MUL(res, leftTerm.operand, rightTerm.operand, desc);
+            // Update local and original expressions.
+            leftTerm.free = true;
+            leftTerm.operand = t;
+            leftTerm.transpose = false;
+            ae->operands[operand_count-2].free = leftTerm.free;
+            ae->operands[operand_count-2].operand = leftTerm.operand;
+            ae->operands[operand_count-2].transpose = leftTerm.transpose;
+        }
+
+        _AlgebraicExpression_Execute_MUL(res, leftTerm.operand, rightTerm.operand, GrB_NULL);
 
         // Quick return if C is ZERO, there's no way to make progress.
         GrB_Index nvals = 0;
         GrB_Matrix_nvals(&nvals, res);
         if(nvals == 0) break;
 
-        // Restore descriptor to default.
-        GrB_Descriptor_set(desc, GrB_INP0, GxB_DEFAULT);
-        GrB_Descriptor_set(desc, GrB_INP1, GxB_DEFAULT);
-
         // Assign result and update operands count.
         operands[operand_count-2].operand = res;
-        operands[operand_count-2].transpose = false;
-        operand_count--;        
+        operand_count--;
     }
-
-    GrB_Descriptor_free(&desc);
 }
 
 void AlgebraicExpression_RemoveTerm(AlgebraicExpression *ae, int idx, AlgebraicExpressionOperand *operand) {
@@ -446,6 +462,17 @@ void AlgebraicExpression_RemoveTerm(AlgebraicExpression *ae, int idx, AlgebraicE
     }
 
     ae->operand_count--;
+}
+
+void AlgebraicExpression_Free(AlgebraicExpression* ae) {
+    for(int i = 0; i < ae->operand_count; i++) {
+        if(ae->operands[i].free) {
+            GrB_Matrix_free(&ae->operands[i].operand);
+        }
+    }
+
+    free(ae->operands);
+    free(ae);
 }
 
 void AlgebraicExpression_Transpose(AlgebraicExpression *ae) {
@@ -464,17 +491,6 @@ void AlgebraicExpression_Transpose(AlgebraicExpression *ae) {
 
     for(int i = 0; i < ae->operand_count; i++)
         ae->operands[i].transpose = !ae->operands[i].transpose;
-}
-
-void AlgebraicExpression_Free(AlgebraicExpression* ae) {
-    for(int i = 0; i < ae->operand_count; i++) {
-        if(ae->operands[i].free) {
-            GrB_Matrix_free(&ae->operands[i].operand);
-        }
-    }
-
-    free(ae->operands);
-    free(ae);
 }
 
 AlgebraicExpressionNode *AlgebraicExpressionNode_NewOperationNode(AL_EXP_OP op) {

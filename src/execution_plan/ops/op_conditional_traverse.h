@@ -30,12 +30,16 @@ typedef struct {
     int edgeRecIdx;             // Index into record.
     int recordsCap;             // Max number of records to process.
     int recordsLen;             // Number of records to process.
+    bool transposed_edge;       // Track whether the expression references a transposed edge.
     Record *records;            // Array of records.
     Record r;                   // Current selected record.
 } CondTraverse;
 
 /* Creates a new Traverse operation */
 OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *algebraic_expression, AST *ast);
+
+/* One-time setup of Traverse operation. */
+OpResult CondTraverseInit(OpBase *opBase);
 
 /* TraverseConsume next operation 
  * each call will update the graph
