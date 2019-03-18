@@ -37,13 +37,18 @@ void RdbLoadAttributeKeys(RedisModuleIO *rdb, GraphContext *gc) {
 
     // Add attribute string if it hasn't been encountered before.
     Attribute_ID *pAttribute_id = NULL;
-    pAttribute_id = malloc(sizeof(Attribute_ID)); // TODO rm_?
+    pAttribute_id = rm_malloc(sizeof(Attribute_ID));
     *pAttribute_id = GraphContext_AttributeCount(gc);
 
     // Update the string->ID triemap
     TrieMap_Add(gc->attributes, attr, len, pAttribute_id, TrieMap_DONT_CARE_REPLACE);
     // Update the ID->string array
-    gc->string_mapping = array_append(gc->string_mapping, attr);
+    // The RDB string was not null-terminated, so we need to make an updated copy
+    char *rm_attr = rm_malloc((len + 1) * sizeof(char));
+    memcpy(rm_attr, attr, len);
+    rm_attr[len] = '\0';
+    gc->string_mapping = array_append(gc->string_mapping, rm_attr);
+    RedisModule_Free(attr);
   }
 }
 

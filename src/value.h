@@ -27,6 +27,7 @@ typedef enum {
   // T_FLOAT = 0x020, // unused
   T_DOUBLE = 0x040,
   T_PTR = 0x080,
+  T_CONSTSTRING = 0x100, // only used in deserialization routine
   T_NODE = 0x200,
   T_EDGE = 0x400,
 } SIType;
