@@ -18,30 +18,15 @@ Schema* Schema_New(const char *name, int id) {
     return schema;
 }
 
-Attribute_ID Attribute_GetID(const char *attribute) {
-    GraphContext *gc = GraphContext_GetFromTLS();
-    if(!gc) return ATTRIBUTE_NOTFOUND;
-
-    Attribute_ID *id = TrieMap_Find(gc->attributes, (char*)attribute, strlen(attribute));
-    if (id == TRIEMAP_NOTFOUND) return ATTRIBUTE_NOTFOUND;
-    return *id;
-}
-
 unsigned short Schema_IndexCount(const Schema *s) {
     assert(s);
     return (unsigned short)array_len(s->indices);
 }
 
-Index* Schema_GetIndex(Schema *s, const char *attribute) {
-    assert(s && attribute);
-
-    // See if attribute exists
-    Attribute_ID id = Attribute_GetID(attribute);
-    if(id == ATTRIBUTE_NOTFOUND) return NULL;
-    
+Index* Schema_GetIndex(Schema *s, Attribute_ID id) {
     // Search for index.
     unsigned short index_count = (unsigned short)array_len(s->indices);
-    for(int i = 0; i < index_count; i++) {
+    for(unsigned short i = 0; i < index_count; i++) {
         Index *idx = s->indices[i];
         if(idx->attr_id == id) return idx;
     }
@@ -50,28 +35,26 @@ Index* Schema_GetIndex(Schema *s, const char *attribute) {
     return NULL;
 }
 
-void Schema_AddIndex(Schema *s, char *attribute, Index *idx) {    
-    // See if attribute exists
-    Attribute_ID id = Attribute_GetID(attribute);
-    if(id == ATTRIBUTE_NOTFOUND) return;
-
+int Schema_AddIndex(Schema *s, char *attribute, Attribute_ID attr_id) {
     // Make sure attribute isn't already indexed.
-    assert(Schema_GetIndex(s, attribute) == NULL);
+    if (Schema_GetIndex(s, attr_id) != NULL) return INDEX_FAIL;
+
+    // Populate an index for the label-attribute pair using the Graph interfaces.
+    GraphContext *gc = GraphContext_GetFromTLS();
+    Index *idx = Index_Create(gc->g, s->name, s->id, attribute, attr_id);
 
     // Add index to schema.
     s->indices = array_append(s->indices, idx);
+
+    return INDEX_OK;
 }
 
-void Schema_RemoveIndex(Schema *s, const char *attribute) {
-    // See if attribute exists
-    Attribute_ID id = Attribute_GetID(attribute);
-    if(id == ATTRIBUTE_NOTFOUND) return;
-
+int Schema_RemoveIndex(Schema *s, Attribute_ID attr_id) {
     // Search for index.
     unsigned short index_count = (unsigned short)array_len(s->indices);
     for(int i = 0; i < index_count; i++) {
         Index *idx = s->indices[i];
-        if(idx->attr_id == id) {
+        if(idx->attr_id == attr_id) {
             // Pop the last stored index
             Index *last_idx = array_pop(s->indices);
             if (idx != last_idx) {
@@ -80,9 +63,10 @@ void Schema_RemoveIndex(Schema *s, const char *attribute) {
             }
             // Remove index.
             Index_Free(idx);
-            break;
+            return INDEX_OK;
         }
     }
+    return INDEX_FAIL;
 }
 
 void Schema_Free(Schema *schema) {

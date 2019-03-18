@@ -58,7 +58,11 @@ uint GraphContext_AttributeCount(GraphContext *gc);
 // Adds an attribute string to GraphContext ID mappings
 Attribute_ID GraphContext_AddAttribute(GraphContext *gc, const char *attribute);
 
+// Retrieve an attribute string given an ID
 const char* GraphContext_GetAttributeString(const GraphContext *gc, Attribute_ID id);
+
+// Retrieve an attribute ID given a string, or ATTRIBUTE_NOTFOUND if attribute doesn't exist.
+Attribute_ID GraphContext_GetAttributeID(const GraphContext *gc, const char *str);
 
 /* Index API */
 bool GraphContext_HasIndices(GraphContext *gc);

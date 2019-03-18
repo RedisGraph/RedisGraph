@@ -114,7 +114,7 @@ int AR_EXP_GetOperandType(AR_ExpNode *exp) {
 void _AR_EXP_UpdatePropIdx(AR_ExpNode *root, const Record r) {
     GraphContext *gc = GraphContext_GetFromTLS();
     RecordEntryType t = Record_GetType(r, root->operand.variadic.entity_alias_idx);
-    root->operand.variadic.entity_prop_idx = Attribute_GetID(root->operand.variadic.entity_prop);
+    root->operand.variadic.entity_prop_idx = GraphContext_GetAttributeID(gc, root->operand.variadic.entity_prop);
 }
 
 SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {

@@ -148,7 +148,7 @@ uint GraphContext_AttributeCount(GraphContext *gc) {
 Attribute_ID GraphContext_AddAttribute(GraphContext *gc, const char *attribute) {
     // See if attribute already exists.
     Attribute_ID *pAttribute_id = NULL;
-    Attribute_ID attribute_id = Attribute_GetID(attribute);
+    Attribute_ID attribute_id = GraphContext_GetAttributeID(gc, attribute);
 
     if(attribute_id == ATTRIBUTE_NOTFOUND) {
         attribute_id = gc->attributes->cardinality;
@@ -171,6 +171,12 @@ const char* GraphContext_GetAttributeString(const GraphContext *gc, Attribute_ID
     return gc->string_mapping[id];
 }
 
+Attribute_ID GraphContext_GetAttributeID(const GraphContext *gc, const char *attribute) {
+    Attribute_ID *id = TrieMap_Find(gc->attributes, (char*)attribute, strlen(attribute));
+    if (id == TRIEMAP_NOTFOUND) return ATTRIBUTE_NOTFOUND;
+    return *id;
+}
+
 //------------------------------------------------------------------------------
 // Index API
 //------------------------------------------------------------------------------
@@ -183,8 +189,10 @@ Index* GraphContext_GetIndex(const GraphContext *gc, const char *label, const ch
   Schema *schema = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
   if (schema == NULL) return NULL;
 
-  Index *idx = Schema_GetIndex(schema, attribute);
-  return idx;
+  Attribute_ID attr_id = GraphContext_GetAttributeID(gc, attribute);
+  if (attr_id == ATTRIBUTE_NOTFOUND) return NULL;
+
+  return Schema_GetIndex(schema, attr_id);
 }
 
 int GraphContext_AddIndex(GraphContext *gc, const char *label, const char *attribute) {
@@ -192,22 +200,16 @@ int GraphContext_AddIndex(GraphContext *gc, const char *label, const char *attri
   Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
   if (s == NULL) return INDEX_FAIL;
 
-  // Verify that attribute exists and is not already indexed.
-  Index *idx = Schema_GetIndex(s, attribute);
-  if(idx) return INDEX_FAIL;
-
-  // Populate an index for the label-attribute pair using the Graph interfaces.
-  Attribute_ID attr_id = Attribute_GetID(attribute); // TODO silly
-  // Return if attribute does not exist.
+  Attribute_ID attr_id = GraphContext_GetAttributeID(gc, attribute);
   if (attr_id == ATTRIBUTE_NOTFOUND) return INDEX_FAIL;
 
-  idx = Index_Create(gc->g, label, s->id, attribute, attr_id);
-
   // Associate the new index with the attribute in the schema.
-  Schema_AddIndex(s, (char*)attribute, idx);
+  if (Schema_AddIndex(s, (char*)attribute, attr_id) == INDEX_OK) {
+      gc->index_count++;
+      return INDEX_OK;
+  }
 
-  gc->index_count++;
-  return INDEX_OK;
+  return INDEX_FAIL;
 }
 
 int GraphContext_DeleteIndex(GraphContext *gc, const char *label, const char *attribute) {
@@ -215,15 +217,15 @@ int GraphContext_DeleteIndex(GraphContext *gc, const char *label, const char *at
   Schema *schema = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
   if (schema == NULL) return INDEX_FAIL;
 
-  Index *idx = Schema_GetIndex(schema, attribute);
-  // Property does not exist or was not indexed.
-  if(!idx) return INDEX_FAIL;
-
+  Attribute_ID attr_id = GraphContext_GetAttributeID(gc, attribute);
+  if (attr_id == ATTRIBUTE_NOTFOUND) return INDEX_FAIL;
   // Remove the index association from the label schema
-  Schema_RemoveIndex(schema, (char*)attribute);
+  if (Schema_RemoveIndex(schema, attr_id) == INDEX_OK) {
+      gc->index_count--;
+      return INDEX_OK;
+  }
 
-  gc->index_count--;
-  return INDEX_OK;
+  return INDEX_FAIL;
 }
 
 // Add references to a node to all indices built upon its properties
@@ -235,7 +237,7 @@ void GraphContext_AddNodeToIndices(GraphContext *gc, Schema *s, Node *n) {
   unsigned int index_count = Schema_IndexCount(s);
   for(unsigned int i = 0; i < index_count; i++) {
     Index *idx = s->indices[i];
-    Attribute_ID attr_id = Attribute_GetID(idx->attribute); // TODO silly
+    Attribute_ID attr_id = GraphContext_GetAttributeID(gc, idx->attribute);
     // See if node contains current property.
     SIValue *v = GraphEntity_GetProperty((GraphEntity*)n, attr_id);
     if(v == PROPERTY_NOTFOUND) continue;

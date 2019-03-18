@@ -70,7 +70,7 @@ SIValue _RdbLoadSIValue(RedisModuleIO *rdb) {
     }
 }
 
-void _RdbLoadEntity(RedisModuleIO *rdb, GraphEntity *e) {
+void _RdbLoadEntity(RedisModuleIO *rdb, GraphContext *gc, GraphEntity *e) {
     /* Format:
      * #properties N
      * (name, value type, value) X N
@@ -81,14 +81,14 @@ void _RdbLoadEntity(RedisModuleIO *rdb, GraphEntity *e) {
     for(int i = 0; i < propCount; i++) {
         char *attr_name = RedisModule_LoadStringBuffer(rdb, NULL);
         SIValue attr_value = _RdbLoadSIValue(rdb);
-        Attribute_ID attr_id = Attribute_GetID(attr_name);
+        Attribute_ID attr_id = GraphContext_GetAttributeID(gc, attr_name);
         assert(attr_id != ATTRIBUTE_NOTFOUND);
         GraphEntity_AddProperty(e, attr_id, attr_value);
         RedisModule_Free(attr_name);
     }
 }
 
-void _RdbLoadNodes(RedisModuleIO *rdb, Graph *g, char **string_mapping) {
+void _RdbLoadNodes(RedisModuleIO *rdb, GraphContext *gc) {
     /* Format:
      * #nodes
      *      ID
@@ -100,7 +100,7 @@ void _RdbLoadNodes(RedisModuleIO *rdb, Graph *g, char **string_mapping) {
     uint64_t nodeCount = RedisModule_LoadUnsigned(rdb);
     if(nodeCount == 0) return;
 
-    Graph_AllocateNodes(g, nodeCount);
+    Graph_AllocateNodes(gc->g, nodeCount);
     for(uint64_t i = 0; i < nodeCount; i++) {
         Node n;
         // * ID
@@ -113,13 +113,13 @@ void _RdbLoadNodes(RedisModuleIO *rdb, Graph *g, char **string_mapping) {
 
         // Ignore nodeLabelCount.
         uint64_t l = RedisModule_LoadUnsigned(rdb);
-        Graph_CreateNode(g, l, &n);
+        Graph_CreateNode(gc->g, l, &n);
 
-        _RdbLoadEntity(rdb, (GraphEntity*)&n);
+        _RdbLoadEntity(rdb, gc, (GraphEntity*)&n);
     }
 }
 
-void _RdbLoadEdges(RedisModuleIO *rdb, Graph *g, char **string_mapping) {
+void _RdbLoadEdges(RedisModuleIO *rdb, GraphContext *gc) {
     /* Format:
      * #edges (N)
      * {
@@ -133,7 +133,7 @@ void _RdbLoadEdges(RedisModuleIO *rdb, Graph *g, char **string_mapping) {
     uint64_t edgeCount = RedisModule_LoadUnsigned(rdb);
     if(edgeCount == 0) return;
 
-    Graph_AllocateEdges(g, edgeCount);
+    Graph_AllocateEdges(gc->g, edgeCount);
     // Construct connections.
     for(int i = 0; i < edgeCount; i++) {
         Edge e;
@@ -141,8 +141,8 @@ void _RdbLoadEdges(RedisModuleIO *rdb, Graph *g, char **string_mapping) {
         NodeID srcId = RedisModule_LoadUnsigned(rdb);
         NodeID destId = RedisModule_LoadUnsigned(rdb);
         uint64_t relation = RedisModule_LoadUnsigned(rdb);
-        assert(Graph_ConnectNodes(g, srcId, destId, relation, &e));
-        _RdbLoadEntity(rdb, (GraphEntity*)&e);
+        assert(Graph_ConnectNodes(gc->g, srcId, destId, relation, &e));
+        _RdbLoadEntity(rdb, gc, (GraphEntity*)&e);
     }
 }
 
@@ -283,7 +283,7 @@ void _RdbSaveEdges(RedisModuleIO *rdb, const Graph *g, char **string_mapping) {
     }
 }
 
-void RdbSaveGraph(RedisModuleIO *rdb, void *value, char **string_mapping) {
+void RdbSaveGraph(RedisModuleIO *rdb, GraphContext *gc) {
     /* Format:
      * #nodes
      *      ID
@@ -301,16 +301,14 @@ void RdbSaveGraph(RedisModuleIO *rdb, void *value, char **string_mapping) {
      *      (name, value type, value) X N
      */
 
-    Graph *g = (Graph *)value;
-
     // Dump nodes.
-    _RdbSaveNodes(rdb, g, string_mapping);
+    _RdbSaveNodes(rdb, gc->g, gc->string_mapping);
 
     // Dump edges.
-    _RdbSaveEdges(rdb, g, string_mapping);
+    _RdbSaveEdges(rdb, gc->g, gc->string_mapping);
 }
 
-void RdbLoadGraph(RedisModuleIO *rdb, Graph *g, char **string_mapping) {
+void RdbLoadGraph(RedisModuleIO *rdb, GraphContext *gc) {
      /* Format:
      * #nodes
      *      #labels M
@@ -327,17 +325,17 @@ void RdbLoadGraph(RedisModuleIO *rdb, Graph *g, char **string_mapping) {
      */
 
     // While loading the graph, minimize matrix realloc and synchronization calls.
-    Graph_SetMatrixPolicy(g, RESIZE_TO_CAPACITY);
+    Graph_SetMatrixPolicy(gc->g, RESIZE_TO_CAPACITY);
 
     // Load nodes.
-    _RdbLoadNodes(rdb, g, string_mapping);
+    _RdbLoadNodes(rdb, gc);
 
     // Load edges.
-    _RdbLoadEdges(rdb, g, string_mapping);
+    _RdbLoadEdges(rdb, gc);
 
     // Revert to default synchronization behavior
-    Graph_SetMatrixPolicy(g, SYNC_AND_MINIMIZE_SPACE);
+    Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
 
     // Resize and flush all pending changes to matrices.
-    Graph_ApplyAllPending(g);
+    Graph_ApplyAllPending(gc->g);
 }

@@ -29,23 +29,19 @@ typedef struct {
 /* Creates a new schema. */
 Schema* Schema_New(const char *label, int id);
 
-/* Given attribute name retrieves its unique ID
- * Return attribute_NOTFOUND if attribute doesn't exists. */
-Attribute_ID Attribute_GetID(const char *attribute);
-
 /* Returns number of indices in schema. */
 unsigned short Schema_IndexCount(const Schema *s);
 
 /* Retrieves index from attribute. 
  * Returns NULL if index wasn't found. */
-Index* Schema_GetIndex(Schema *s, const char* attribute);
+Index* Schema_GetIndex(Schema *s, Attribute_ID attr_id);
 
 /* Assign a new index to attribute
  * attribute must already exists and not associated with an index. */
-void Schema_AddIndex(Schema *s, char *attribute, Index *idx);
+int Schema_AddIndex(Schema *s, char *attribute, Attribute_ID attr_id);
 
 /* Removes index. */
-void Schema_RemoveIndex(Schema *s, const char *attribute);
+int Schema_RemoveIndex(Schema *s, Attribute_ID attr_id);
 
 /* Free schema. */
 void Schema_Free(Schema *s);

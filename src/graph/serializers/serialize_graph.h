@@ -9,8 +9,9 @@
 
 #include "../../redismodule.h"
 #include "../../schema/schema.h"
+#include "../graphcontext.h"
 
-void RdbLoadGraph(RedisModuleIO *rdb, Graph *g, char **string_mapping);
-void RdbSaveGraph(RedisModuleIO *rdb, void *value, char **string_mapping);
+void RdbLoadGraph(RedisModuleIO *rdb, GraphContext *gc);
+void RdbSaveGraph(RedisModuleIO *rdb, GraphContext *gc);
 
 #endif

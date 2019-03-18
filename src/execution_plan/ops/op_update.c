@@ -50,13 +50,15 @@ static void _QueueUpdate(OpUpdate *op, GraphEntity *entity, GraphEntityType type
 }
 
 /* Introduce updated entity to index. */
-static void _UpdateIndex(EntityUpdateCtx *ctx, Schema *s, SIValue *old_value, SIValue *new_value) {
+static void _UpdateIndex(GraphContext *gc, EntityUpdateCtx *ctx, Schema *s, SIValue *old_value, SIValue *new_value) {
     if (s == NULL) return;
     Node *n = &ctx->n;
     EntityID node_id = ENTITY_GET_ID(n);
 
+    Attribute_ID attr_id = GraphContext_GetAttributeID(gc, ctx->attribute);
+
     // See if there's an index on label/property pair.
-    Index *idx = Schema_GetIndex(s, ctx->attribute);
+    Index *idx = Schema_GetIndex(s, attr_id);
     if(!idx) return;
 
     if(old_value != PROPERTY_NOTFOUND) {
@@ -87,7 +89,7 @@ static void _UpdateNode(OpUpdate *op, EntityUpdateCtx *ctx) {
     }
 
     SIValue *old_value = PROPERTY_NOTFOUND;
-    Attribute_ID attr_id = Attribute_GetID(ctx->attribute);
+    Attribute_ID attr_id = GraphContext_GetAttributeID(op->gc, ctx->attribute);
     if(attr_id == ATTRIBUTE_NOTFOUND) {
         attr_id = GraphContext_AddAttribute(op->gc, ctx->attribute);
     } else {
@@ -96,7 +98,7 @@ static void _UpdateNode(OpUpdate *op, EntityUpdateCtx *ctx) {
     }
 
     // Update index for node entities.
-    _UpdateIndex(ctx, s, old_value, &ctx->new_value);
+    _UpdateIndex(op->gc, ctx, s, old_value, &ctx->new_value);
 
     if(old_value == PROPERTY_NOTFOUND) {
         // Add new property.
@@ -118,7 +120,7 @@ static void _UpdateEdge(OpUpdate *op, EntityUpdateCtx *ctx) {
     int label_id = Graph_GetEdgeRelation(op->gc->g, edge);
     Schema *s = GraphContext_GetSchemaByID(op->gc, label_id, SCHEMA_EDGE);
 
-    Attribute_ID attr_id = Attribute_GetID(ctx->attribute);
+    Attribute_ID attr_id = GraphContext_GetAttributeID(op->gc, ctx->attribute);
     if(attr_id == ATTRIBUTE_NOTFOUND) {
         attr_id = GraphContext_AddAttribute(op->gc, ctx->attribute);
     }

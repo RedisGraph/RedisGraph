@@ -83,7 +83,7 @@ void GraphContextType_RdbSave(RedisModuleIO *rdb, void *value) {
   }
 
   // Serialize graph object
-  RdbSaveGraph(rdb, gc->g, gc->string_mapping);
+  RdbSaveGraph(rdb, gc);
 
   // #Indices.
   uint32_t index_count = gc->index_count;
@@ -162,7 +162,7 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
   }
 
   // Graph object.
-  RdbLoadGraph(rdb, gc->g, gc->string_mapping);
+  RdbLoadGraph(rdb, gc);
 
   // #Indices
   // (index label, index property) X #indices
