@@ -59,7 +59,7 @@ class ProceduresTest(FlowTestsBase):
         assert(header[1] == 'score')
         assert(data[0] is None)
         assert(float(data[1]) == 12.34)
-    
+
     # Call procedure specify different outputs.
     def test_yield(self):
         query = """CALL db.idx.fulltext.queryNodes('person', 'query') YIELD node"""
@@ -113,6 +113,37 @@ class ProceduresTest(FlowTestsBase):
         # Yield an unknown output.
         query = """CALL db.idx.fulltext.queryNodes('person', 'query') YIELD unknown"""
         # Expect an error when trying to use an unknown procedure output.
+        try:
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError:
+            # Expecting an error.
+            pass
+    
+    def test_arguments(self):
+        # Omit arguments.
+        query = """CALL db.idx.fulltext.queryNodes() YIELD score"""
+        # Expect an error when trying to omit arguments.
+        try:
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError:
+            # Expecting an error.
+            pass
+        
+        # Omit arguments.
+        query = """CALL db.idx.fulltext.queryNodes('arg1')"""
+        # Expect an error when trying to omit arguments.
+        try:
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError:
+            # Expecting an error.
+            pass
+
+        # Overload arguments.
+        query = """CALL db.idx.fulltext.queryNodes('person', 'query', 'person', 'query') YIELD node"""
+        # Expect an error when trying to send too many arguments.
         try:
             redis_graph.query(query)
             assert(False)

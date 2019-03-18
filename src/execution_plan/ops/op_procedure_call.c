@@ -16,7 +16,7 @@ static void _yield(OpProcCall *op, SIValue *proc_output, Record r) {
             char *yield = op->output[i];
             for(uint j = 0; j < array_len(proc_output); j+=2) {
                 char *key = (proc_output + j)->stringval;
-                SIValue *val = proc_output + (j+1);
+                SIValue *val = &proc_output[j+1];
                 if(strcmp(yield, key) == 0) {
                     int idx = AST_GetAliasID(op->ast, key);
                     op->yield_map[i].proc_out_idx = j+1;
