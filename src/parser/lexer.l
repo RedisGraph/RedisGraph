@@ -44,6 +44,8 @@ int yycolumn = 1;
 "DROP"      { return DROP; }
 "UNWIND"    { return UNWIND; }
 "NULL"      { return NULLVAL; }
+"CALL"      { return CALL; }
+"YIELD"     { return YIELD; }
 
 
 [0-9]*\.[0-9]+    {

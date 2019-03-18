@@ -325,6 +325,11 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST *ast
         execution_plan->filter_tree = filter_tree;
     }
 
+    if(ast->callNode) {        
+        OpBase *opProcCall = NewProcCallOp(ast->callNode->procedure, ast->callNode->arguments, ast->callNode->yield, ast);
+        Vector_Push(ops, opProcCall);
+    }
+
     if(ast->matchNode) {
         BuildQueryGraph(gc, q, ast->matchNode->_mergedPatterns);
 

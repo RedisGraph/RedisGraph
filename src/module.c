@@ -10,10 +10,11 @@
 #include "config.h"
 #include "version.h"
 #include "commands/commands.h"
-#include "graph/serializers/graphcontext_type.h"
 #include "util/thpool/thpool.h"
 #include "arithmetic/agg_funcs.h"
+#include "procedures/procedure.h"
 #include "arithmetic/arithmetic_expression.h"
+#include "graph/serializers/graphcontext_type.h"
 
 /* Thread pool. */
 threadpool _thpool = NULL;
@@ -57,6 +58,7 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 
     AR_RegisterFuncs();     // Register arithmetic functions.
     Agg_RegisterFuncs();    // Register aggregation functions.
+    Proc_Register();        // Register procedures.
 
     long long threadCount = Config_GetThreadCount(ctx, argv, argc);
     if (!_Setup_ThreadPOOL(threadCount)) return REDISMODULE_ERR;

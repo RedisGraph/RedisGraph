@@ -4,8 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef __OP_H__
-#define __OP_H__
+#pragma once
 
 #include "../record.h"
 #include "../../redismodule.h"
@@ -41,6 +40,7 @@ typedef enum {
     OPType_DISTINCT = (1<<19),
     OPType_EXPAND_INTO = (1<<20),
     OPType_NODE_BY_ID_SEEK = (1<<21),
+    OPType_PROC_CALL = (1<<22),
 } OPType;
 
 #define OP_SCAN (OPType_ALL_NODE_SCAN | OPType_NODE_BY_LABEL_SCAN | OPType_INDEX_SCAN | OPType_NODE_BY_ID_SEEK)
@@ -76,5 +76,3 @@ typedef struct OpBase OpBase;
 void OpBase_Init(OpBase *op);
 void OpBase_Reset(OpBase *op);
 void OpBase_Free(OpBase *op);
-
-#endif
