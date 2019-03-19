@@ -6,15 +6,16 @@
 
 #include <assert.h>
 #include "query_executor.h"
-#include "graph/graph.h"
-#include "graph/entities/node.h"
-#include "schema/schema.h"
 #include "util/arr.h"
+#include "graph/graph.h"
 #include "util/vector.h"
+#include "schema/schema.h"
 #include "parser/grammar.h"
 #include "arithmetic/agg_ctx.h"
-#include "arithmetic/repository.h"
+#include "graph/entities/node.h"
 #include "parser/parser_common.h"
+#include "procedures/procedure.h"
+#include "arithmetic/repository.h"
 
 static void _inlineProperties(AST *ast) {
     /* Migrate inline filters to WHERE clause. */
@@ -70,6 +71,20 @@ static void _inlineProperties(AST *ast) {
     }
 }
 
+/* Incase procedure call is missing its yield part
+ * include procedure outputs. */
+static void _inlineProcedureYield(AST_ProcedureCallNode *node) {
+    if(node->yield) return;
+
+    ProcedureCtx *proc = Proc_Get(node->procedure);
+    unsigned int output_count = array_len(proc->output);
+
+    node->yield = array_new(char*, output_count);
+    for(int i = 0; i < output_count; i++) {
+        node->yield = array_append(node->yield, strdup(proc->output[i]));
+    }
+}
+
 /* Shares merge pattern with match clause. */
 static void _replicateMergeClauseToMatchClause(AST *ast) {    
     assert(ast->mergeNode && !ast->matchNode);
@@ -82,11 +97,32 @@ static void _replicateMergeClauseToMatchClause(AST *ast) {
     Vector_Push(wrappedEntities, ast->mergeNode->graphEntities);
     ast->matchNode = New_AST_MatchNode(wrappedEntities);
 }
+
+/* Create a RETURN clause from CALL clause. */
+static void _replicateCallClauseToReturnClause(AST *ast) {
+    assert(ast->callNode && !ast->returnNode);
+
+    AST_ProcedureCallNode *call = ast->callNode;
+    unsigned int output_len = array_len(call->yield);
+    AST_ReturnElementNode **returnElements = array_new(AST_ReturnElementNode*, output_len);
+
+    for(unsigned int i = 0; i < output_len; i++) {
+        char *alias = NULL;
+        char *property = NULL;
+        char *output = call->yield[i];
+        AST_ArithmeticExpressionNode *exp = New_AST_AR_EXP_VariableOperandNode(output, property);
+        AST_ReturnElementNode *returnElement = New_AST_ReturnElementNode(exp, alias);
+        returnElements = array_append(returnElements, returnElement);
+    }
+
+    int distinct = 0;
+    ast->returnNode = New_AST_ReturnNode(returnElements, distinct);
+}
+
 /* If we have a "RETURN *" clause, populate it with all aliased entities. */
 static void _populateReturnAll(AST *ast) {
     // Do nothing if there is no RETURN or an array of return elements already exists.
     if (ast->returnNode == NULL || ast->returnNode->returnElements != NULL) return;
-
     // Collect all entities from clauses that can introduce entities.
     TrieMap *identifiers = NewTrieMap();
     MatchClause_DefinedEntities(ast->matchNode, identifiers);
@@ -128,6 +164,10 @@ AST** ParseQuery(const char *query, size_t qLen, char **errMsg) {
         for(int i = 0; i < array_len(asts); i++) {
             /* Create match clause which will try to match against pattern specified within merge clause. */
             if(asts[i]->mergeNode) _replicateMergeClauseToMatchClause(asts[i]);
+            if(asts[i]->callNode) {
+                _inlineProcedureYield(asts[i]->callNode);
+                _replicateCallClauseToReturnClause(asts[i]);
+            }
 
             AST_NameAnonymousNodes(asts[i]);
             // Mark each alias with a unique ID.

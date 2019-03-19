@@ -40,6 +40,7 @@ typedef enum {
     OPType_LIMIT = (1<<18),
     OPType_DISTINCT = (1<<19),
     OPType_EXPAND_INTO = (1<<20),
+    OPType_PROC_CALL = (1<<21),
 } OPType;
 
 #define OP_SCAN (OPType_ALL_NODE_SCAN | OPType_NODE_BY_LABEL_SCAN | OPType_INDEX_SCAN)
