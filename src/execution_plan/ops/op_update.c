@@ -38,7 +38,8 @@ static void _QueueUpdate(OpUpdate *op, GraphEntity *entity, GraphEntityType type
 
     uint i = op->pending_updates_count;
     op->pending_updates[i].new_value = new_value;
-    op->pending_updates[i].attribute = attribute;    
+    op->pending_updates[i].attribute = attribute;
+    op->pending_updates[i].attr_id = GraphContext_GetAttributeID(op->gc, attribute);
     op->pending_updates[i].entity_type = type;
     // Copy updated entity.
     if(type == GETYPE_NODE) {
@@ -55,10 +56,8 @@ static void _UpdateIndex(EntityUpdateCtx *ctx, GraphContext *gc, Schema *s, SIVa
     Node *n = &ctx->n;
     EntityID node_id = ENTITY_GET_ID(n);
 
-    Attribute_ID attr_id = GraphContext_GetAttributeID(gc, ctx->attribute);
-
     // See if there's an index on label/property pair.
-    Index *idx = Schema_GetIndex(s, attr_id);
+    Index *idx = Schema_GetIndex(s, ctx->attr_id);
     if(!idx) return;
 
     if(old_value != PROPERTY_NOTFOUND) {
@@ -88,24 +87,18 @@ static void _UpdateNode(OpUpdate *op, EntityUpdateCtx *ctx) {
         s = GraphContext_GetSchemaByID(op->gc, label_id, SCHEMA_NODE);
     }
 
-    SIValue *old_value = PROPERTY_NOTFOUND;
-    Attribute_ID attr_id = GraphContext_GetAttributeID(op->gc, ctx->attribute);
-    if(attr_id == ATTRIBUTE_NOTFOUND) {
-        attr_id = GraphContext_FindOrAddAttribute(op->gc, ctx->attribute);
-    } else {
-        // Try to get current property value.
-        old_value = GraphEntity_GetProperty((GraphEntity*)node, attr_id);
-    }
+    // Try to get current property value.
+    SIValue *old_value  = GraphEntity_GetProperty((GraphEntity*)node, ctx->attr_id);
 
     // Update index for node entities.
     _UpdateIndex(ctx, op->gc, s, old_value, &ctx->new_value);
 
     if(old_value == PROPERTY_NOTFOUND) {
         // Add new property.
-        GraphEntity_AddProperty((GraphEntity*)node, attr_id, ctx->new_value);
+        GraphEntity_AddProperty((GraphEntity*)node, ctx->attr_id, ctx->new_value);
     } else {
         // Update property.
-        GraphEntity_SetProperty((GraphEntity*)node, attr_id, ctx->new_value);
+        GraphEntity_SetProperty((GraphEntity*)node, ctx->attr_id, ctx->new_value);
     }
 }
 
@@ -120,20 +113,15 @@ static void _UpdateEdge(OpUpdate *op, EntityUpdateCtx *ctx) {
     int label_id = Graph_GetEdgeRelation(op->gc->g, edge);
     Schema *s = GraphContext_GetSchemaByID(op->gc, label_id, SCHEMA_EDGE);
 
-    Attribute_ID attr_id = GraphContext_GetAttributeID(op->gc, ctx->attribute);
-    if(attr_id == ATTRIBUTE_NOTFOUND) {
-        attr_id = GraphContext_FindOrAddAttribute(op->gc, ctx->attribute);
-    }
-
     // Try to get current property value.
-    SIValue *old_value = GraphEntity_GetProperty((GraphEntity*)edge, attr_id);
+    SIValue *old_value = GraphEntity_GetProperty((GraphEntity*)edge, ctx->attr_id);
 
     if(old_value == PROPERTY_NOTFOUND) {
         // Add new property.
-        GraphEntity_AddProperty((GraphEntity*)edge, attr_id, ctx->new_value);
+        GraphEntity_AddProperty((GraphEntity*)edge, ctx->attr_id, ctx->new_value);
     } else {
         // Update property.
-        GraphEntity_SetProperty((GraphEntity*)edge, attr_id, ctx->new_value);
+        GraphEntity_SetProperty((GraphEntity*)edge, ctx->attr_id, ctx->new_value);
     }
 }
 
@@ -141,6 +129,10 @@ static void _UpdateEdge(OpUpdate *op, EntityUpdateCtx *ctx) {
 static void _CommitUpdates(OpUpdate *op) {
     for(uint i = 0; i < op->pending_updates_count; i++) {
         EntityUpdateCtx *ctx = &op->pending_updates[i];
+        // Map the attribute key if if it has not been encountered before
+        if (ctx->attr_id == ATTRIBUTE_NOTFOUND) {
+            ctx->attr_id = GraphContext_FindOrAddAttribute(op->gc, ctx->attribute);
+        }
         if(ctx->entity_type == GETYPE_NODE) {
             _UpdateNode(op, ctx);
         } else {
