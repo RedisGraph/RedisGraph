@@ -601,9 +601,9 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST **ast
 
             /* For each filter tree find the earliest position along the execution 
             * after which the filter tree can be applied. */
-            for(int i = 0; i < Vector_Size(sub_trees); i++) {
+            for(int j = 0; j < Vector_Size(sub_trees); j++) {
                 FT_FilterNode *tree;
-                Vector_Get(sub_trees, i, &tree);
+                Vector_Get(sub_trees, j, &tree);
 
                 Vector *references = FilterTree_CollectAliases(tree);
 
@@ -616,9 +616,9 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST **ast
                  * Introduce filter op right below located op. */
                 OpBase *filter_op = NewFilterOp(tree);
                 ExecutionPlan_PushBelow(op, filter_op);
-                for(int j = 0; j < Vector_Size(references); j++) {
+                for(int k = 0; k < Vector_Size(references); k++) {
                     char *ref;
-                    Vector_Get(references, j, &ref);
+                    Vector_Get(references, k, &ref);
                     free(ref);
                 }
                 Vector_Free(references);
