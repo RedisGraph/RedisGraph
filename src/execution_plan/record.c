@@ -62,21 +62,6 @@ RecordEntryType Record_GetType(const Record r, int idx) {
     return r[idx].type;
 }
 
-SIValue Record_Get(Record r, int idx) {
-    Entry e = r[idx];
-    SIValue ret;
-    switch (e.type) {
-        case REC_TYPE_NODE:
-            return SI_Node(&e.value.n);
-        case REC_TYPE_EDGE:
-            return SI_Edge(&e.value.e);
-        case REC_TYPE_SCALAR:
-            return e.value.s;
-        default:
-            assert(false);
-    }
-}
-
 SIValue Record_GetScalar(Record r,  int idx) {
     r[idx].type = REC_TYPE_SCALAR;
     return r[idx].value.s;
@@ -90,6 +75,20 @@ Node *Record_GetNode(const Record r,  int idx) {
 Edge *Record_GetEdge(const Record r,  int idx) {
     r[idx].type = REC_TYPE_EDGE;
     return &(r[idx].value.e);
+}
+
+SIValue Record_Get(Record r, int idx) {
+    Entry e = r[idx];
+    switch (e.type) {
+        case REC_TYPE_NODE:
+            return SI_Node(Record_GetNode(r, idx));
+        case REC_TYPE_EDGE:
+            return SI_Edge(Record_GetEdge(r, idx));
+        case REC_TYPE_SCALAR:
+            return Record_GetScalar(r, idx);
+        default:
+            assert(false);
+    }
 }
 
 GraphEntity *Record_GetGraphEntity(const Record r, int idx) {
@@ -158,10 +157,7 @@ unsigned long long Record_Hash64(const Record r) {
     void *data;
     size_t len;
     static long long _null = 0;
-    struct {
-        GraphEntityType type;
-        EntityID id;
-    } entity;
+    EntityID id;
     SIValue si;
     
 	XXH_errorcode res;
@@ -174,19 +170,13 @@ unsigned long long Record_Hash64(const Record r) {
         Entry e = r[i];
         switch(e.type) {
         case REC_TYPE_NODE:
-            entity.type = GETYPE_NODE;
-            entity.id = ENTITY_GET_ID(Record_GetGraphEntity(r, i));
-            data = &entity;
-            len = sizeof(entity);
-            break;
-            
         case REC_TYPE_EDGE:
-            entity.type = GETYPE_EDGE;
-            entity.id = ENTITY_GET_ID(Record_GetGraphEntity(r, i));
-            data = &entity;
-            len = sizeof(entity);
+            // Since nodes and edges cannot occupy the same index within
+            // a record, we do not need to differentiate on type
+            id = ENTITY_GET_ID(Record_GetGraphEntity(r, i));
+            data = &id;
+            len = sizeof(id);
             break;
-            
         case REC_TYPE_SCALAR:
             si = Record_GetScalar(r, i);
             switch (si.type) {

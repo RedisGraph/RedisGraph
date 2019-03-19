@@ -87,11 +87,14 @@ static void _ResultSet_ReplayStats(RedisModuleCtx* ctx, ResultSet* set) {
 }
 
 static void _ResultSet_ReplyWithStringMapping(RedisModuleCtx *ctx) {
+    /* TODO The string mapping in its entirety is only required if the user has
+     * requested any full entities.
+     * Similarly, no or few label/reltype strings may be necessary depending on
+     * what entity types the query requests and whether it provides labels.
+     * This whole area should be refactored as soon as possible. */
     GraphContext *gc = GraphContext_GetFromTLS();
     int prop_string_count = array_len(gc->string_mapping);
 
-    // TODO the user query may provide explicit labels or not be interested
-    // in nodes or relations, in which cases we should return only relevant strings.
     uint label_count = array_len(gc->node_schemas);
     uint reltype_count = array_len(gc->relation_schemas);
 
@@ -104,16 +107,12 @@ static void _ResultSet_ReplyWithStringMapping(RedisModuleCtx *ctx) {
 
     for (uint i = 0; i < label_count; i ++) {
         const char *label = gc->node_schemas[i]->name;
-        // Reply with string
         RedisModule_ReplyWithStringBuffer(ctx, label, strlen(label));
-        // make offset for string?
     }
 
     for (uint i = 0; i < reltype_count; i ++) {
         const char *reltype = gc->relation_schemas[i]->name;
-        // Reply with string
         RedisModule_ReplyWithStringBuffer(ctx, reltype, strlen(reltype));
-        // make offset for string?
     }
 }
 

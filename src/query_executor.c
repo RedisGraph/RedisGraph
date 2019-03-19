@@ -87,11 +87,12 @@ static void _populateReturnAll(AST *ast) {
     // Do nothing if there is no RETURN or an array of return elements already exists.
     if (ast->returnNode == NULL || ast->returnNode->returnElements != NULL) return;
 
-    // Collect all entities from MATCH and CREATE clauses
-    // TODO Add entities from UNWIND
+    // Collect all entities from clauses that can introduce entities.
     TrieMap *identifiers = NewTrieMap();
     MatchClause_DefinedEntities(ast->matchNode, identifiers);
     CreateClause_DefinedEntities(ast->createNode, identifiers);
+    UnwindClause_DefinedEntities(ast->unwindNode, identifiers);
+    WithClause_DefinedEntities(ast->withNode, identifiers);
 
     char buffer[256];
     // Allocate a new return element array to contain all user-provided aliases

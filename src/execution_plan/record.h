@@ -45,9 +45,6 @@ unsigned int Record_length(const Record r);
 // Get entry type.
 RecordEntryType Record_GetType(const Record r, int idx);
 
-// Get an SIValue containing the entity at position idx.
-SIValue Record_Get(Record r, int idx);
-
 // Get a scalar from record at position idx.
 SIValue Record_GetScalar(const Record r, int idx);
 
@@ -56,6 +53,9 @@ Node *Record_GetNode(const Record r, int idx);
 
 // Get an edge from record at position idx.
 Edge *Record_GetEdge(const Record r, int idx);
+
+// Get an SIValue containing the entity at position idx.
+SIValue Record_Get(Record r, int idx);
 
 // Get a graph entity from record at position idx.
 GraphEntity *Record_GetGraphEntity(const Record r, int idx);

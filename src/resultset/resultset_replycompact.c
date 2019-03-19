@@ -8,8 +8,6 @@
 #include "../util/arr.h"
 
 static inline PropertyTypeUser _mapValueType(const SIValue v) {
-    // TODO does this abstraction make sense? Is it overkill,
-    // should we include not-yet-supported types like arrays and paths?
     switch (SI_TYPE(v)) {
         case T_NULL:
             return PROPERTY_NULL;
@@ -98,7 +96,7 @@ static void _ResultSet_CompactReplyWithNode(RedisModuleCtx *ctx, GraphContext *g
         RedisModule_ReplyWithArray(ctx, 0);
     } else {
         RedisModule_ReplyWithArray(ctx, 1);
-        // TODO probably unsafe
+        // TODO Unsafe if the query has extended the string mapping
         int offset = array_len(gc->string_mapping) + label_id;
         RedisModule_ReplyWithLongLong(ctx, offset);
     }
@@ -128,7 +126,14 @@ static void _ResultSet_CompactReplyWithEdge(RedisModuleCtx *ctx, GraphContext *g
     // Retrieve reltype
     int reltype_id = Graph_GetEdgeRelation(gc->g, e);
     assert(reltype_id != GRAPH_NO_RELATION);
-    // TODO probably unsafe
+
+    // src node ID
+    RedisModule_ReplyWithLongLong(ctx, Edge_GetSrcNodeID(e));
+
+    // dest node ID
+    RedisModule_ReplyWithLongLong(ctx, Edge_GetDestNodeID(e));
+
+    // TODO Unsafe if the query has extended the string mapping
     int offset = array_len(gc->string_mapping) + array_len(gc->node_schemas) + reltype_id;
     RedisModule_ReplyWithLongLong(ctx, offset);
 
