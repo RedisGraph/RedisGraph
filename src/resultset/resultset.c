@@ -24,6 +24,12 @@ static void _ResultSet_ReplayHeader(const ResultSet *set, const ResultSetHeader 
     }
 }
 
+// Choose the appropriate reply formatter
+EmitRecordFunc _ResultSet_SetReplyFormatter(bool compact) {
+    if (compact) return ResultSet_EmitCompactRecord;
+    return ResultSet_EmitVerboseRecord;
+}
+
 // Prepare replay.
 static void _ResultSet_SetupReply(ResultSet *set) {
     // Reply will contain string mapping if we're issuing a compact reply,
@@ -190,7 +196,7 @@ ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx, bool compact) {
     set->stats.nodes_deleted = 0;
     set->stats.relationships_deleted = 0;
 
-    set->EmitRecord = ResultSet_SetReplyFormatter(set->compact);
+    set->EmitRecord = _ResultSet_SetReplyFormatter(set->compact);
 
     _ResultSet_SetupReply(set);
 
