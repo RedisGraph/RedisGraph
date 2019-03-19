@@ -147,8 +147,9 @@ static void _CreateEntities(OpMerge *op, Record r) {
     Graph_ReleaseLock(op->gc->g);
 }
 
-OpBase* NewMergeOp(GraphContext *gc, AST *ast, ResultSet *result_set) {
+OpBase* NewMergeOp(AST *ast, ResultSet *result_set) {
     OpMerge *op_merge = malloc(sizeof(OpMerge));
+    GraphContext *gc = GraphContext_GetFromTLS();
     op_merge->gc = gc;
     op_merge->ast = ast;
     op_merge->result_set = result_set;

@@ -9,10 +9,9 @@
 #include "../../query_executor.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
-OpBase* NewResultsOp(ResultSet *result_set, QueryGraph* graph, GraphContext *gc) {
+OpBase* NewResultsOp(ResultSet *result_set, QueryGraph* graph) {
     Results *results = malloc(sizeof(Results));
     results->result_set = result_set;
-    results->gc = gc;
 
     // Set our Op operations
     OpBase_Init(&results->op);
@@ -38,7 +37,7 @@ Record ResultsConsume(OpBase *opBase) {
     }
 
     /* Append to final result set. */
-    ResultSet_AddRecord(op->result_set, op->gc, r);
+    ResultSet_AddRecord(op->result_set, r);
     return r;
 }
 
@@ -50,4 +49,3 @@ OpResult ResultsReset(OpBase *op) {
 /* Frees Results */
 void ResultsFree(OpBase *opBase) {
 }
-

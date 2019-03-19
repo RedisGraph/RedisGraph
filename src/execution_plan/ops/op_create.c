@@ -63,9 +63,9 @@ void _SetModifiedEntities(OpCreate *op) {
     assert((op->node_count + op->edge_count) > 0);
 }
 
-OpBase* NewCreateOp(RedisModuleCtx *ctx, GraphContext *gc, AST *ast, QueryGraph *qg, ResultSet *result_set) {
+OpBase* NewCreateOp(RedisModuleCtx *ctx, AST *ast, QueryGraph *qg, ResultSet *result_set) {
     OpCreate *op_create = calloc(1, sizeof(OpCreate));
-    op_create->gc = gc;
+    op_create->gc = GraphContext_GetFromTLS();
     op_create->ast = ast;
     op_create->qg = qg;
     op_create->records = NULL;

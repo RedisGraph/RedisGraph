@@ -286,7 +286,7 @@ static void _AST_optimize_traversal_direction(AST *ast) {
     if(should_reverse) _AST_reverse_match_patterns(ast);
 }
 
-void ModifyAST(GraphContext *gc, AST **ast) {
+void ModifyAST(AST **ast) {
     for(int i = 0; i < array_len(ast); i++) {
         if(ast[i]->matchNode) _AST_optimize_traversal_direction(ast[i]);
         _inlineProperties(ast[i]);

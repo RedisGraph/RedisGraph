@@ -19,12 +19,11 @@
 typedef struct {
     OpBase op;
     ResultSet *result_set;
-    GraphContext *gc;
 } Results;
 
 
 /* Creates a new NodeByLabelScan operation */
-OpBase* NewResultsOp(ResultSet *result_set, QueryGraph *graph, GraphContext *gc);
+OpBase* NewResultsOp(ResultSet *result_set, QueryGraph *graph);
 
 /* Results next operation
  * called each time a new result record is required */

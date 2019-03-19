@@ -97,7 +97,7 @@ void _MGraph_Query(void *args) {
     // Perform query validations before and after ModifyAST
     if (AST_PerformValidations(ctx, ast) != AST_VALID) goto cleanup;
 
-    ModifyAST(gc, ast);
+    ModifyAST(ast);
     if (AST_PerformValidations(ctx, ast) != AST_VALID) goto cleanup;
 
     // Acquire the appropriate lock.
@@ -109,7 +109,7 @@ void _MGraph_Query(void *args) {
         _index_operation(ctx, gc, ast[0]->indexNode);
     } else {
         resultSet = _prepare_resultset(ctx, ast, compact);
-        ExecutionPlan *plan = NewExecutionPlan(ctx, gc, ast, resultSet, false);
+        ExecutionPlan *plan = NewExecutionPlan(ctx, ast, resultSet, false);
         ExecutionPlan_Execute(plan);
         ExecutionPlanFree(plan);
         ResultSet_Replay(resultSet);    // Send result-set back to client.

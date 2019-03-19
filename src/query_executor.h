@@ -19,6 +19,6 @@ AST **ParseQuery(const char *query, size_t qLen, char **errMsg);
 AST_Validation AST_PerformValidations(RedisModuleCtx *ctx, AST **ast);
 
 /* Performs a number of adjustments to given AST. */
-void ModifyAST(GraphContext *gc, AST **ast);
+void ModifyAST(AST **ast);
 
 #endif

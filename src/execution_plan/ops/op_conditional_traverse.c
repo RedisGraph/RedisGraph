@@ -70,9 +70,10 @@ static int _determinRecordCap(const AST *ast) {
     return recordsCap;
 }
 
-OpBase* NewCondTraverseOp(GraphContext *gc, AlgebraicExpression *algebraic_expression, AST *ast) {
+OpBase* NewCondTraverseOp(AlgebraicExpression *algebraic_expression, AST *ast) {
     CondTraverse *traverse = calloc(1, sizeof(CondTraverse));
     traverse->ast = ast;
+    GraphContext *gc = GraphContext_GetFromTLS();
     traverse->graph = gc->g;
     traverse->algebraic_expression = algebraic_expression;
     traverse->edgeRelationTypes = NULL;
