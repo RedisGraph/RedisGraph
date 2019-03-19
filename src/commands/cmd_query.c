@@ -13,7 +13,7 @@
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
 
-void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST_IndexNode *indexNode) {
+static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST_IndexNode *indexNode) {
     /* Set up nested array response for index creation and deletion,
      * Following the response struture of other queries:
      * First element is an empty result-set followed by statistics.
@@ -47,11 +47,19 @@ void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST_IndexNode *inde
   }
 }
 
-bool _parse_args(CommandCtx *qctx) {
+static inline bool _check_compact_flag(CommandCtx *qctx) {
     // The only additional argument to check currently is whether the query results
     // should be returned in compact form
     return (qctx->argc > 3 &&
             !strcasecmp(RedisModule_StringPtrLen(qctx->argv[3], NULL), "--compact"));
+}
+
+static ResultSet* _prepare_resultset(RedisModuleCtx *ctx, AST **ast, bool compact) {
+    // The last AST will contain the return clause, if one is specified
+    AST *final_ast = ast[array_len(ast)-1];
+    ResultSet *set = NewResultSet(final_ast, ctx, compact);
+    ResultSet_CreateHeader(set, final_ast);
+    return set;
 }
 
 void _MGraph_Query(void *args) {
@@ -82,7 +90,7 @@ void _MGraph_Query(void *args) {
         /* TODO: free graph if no entities were created. */
     }
 
-    bool compact = _parse_args(qctx);
+    bool compact = _check_compact_flag(qctx);
 
     CommandCtx_ThreadSafeContextUnlock(qctx);
 
@@ -100,10 +108,7 @@ void _MGraph_Query(void *args) {
     if (ast[0]->indexNode) { // index operation
         _index_operation(ctx, gc, ast[0]->indexNode);
     } else {
-         // The last AST will contain the return clause, if one is specified
-        AST *final_ast = ast[array_len(ast)-1];
-        ResultSet *resultSet = NewResultSet(final_ast, ctx, compact);
-        ResultSet_CreateHeader(resultSet, final_ast);
+        resultSet = _prepare_resultset(ctx, ast, compact);
         ExecutionPlan *plan = NewExecutionPlan(ctx, gc, ast, resultSet, false);
         ExecutionPlan_Execute(plan);
         ExecutionPlanFree(plan);

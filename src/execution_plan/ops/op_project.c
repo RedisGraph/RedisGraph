@@ -87,37 +87,16 @@ Record ProjectConsume(OpBase *opBase) {
          * WITH 1 as one, one+one as two */
         char *alias = op->aliases[i];
 
-        switch(SI_TYPE(v)) {
-            case T_NODE:
-                Record_AddNode(projection, rec_idx, *((Node*)v.ptrval));
-                if(alias) Record_AddNode(r, AST_GetAliasID(op->ast, alias), *((Node*)v.ptrval));
-                break;
-            case T_EDGE:
-                Record_AddEdge(projection, rec_idx, *((Edge*)v.ptrval));
-                if(alias) Record_AddEdge(r, AST_GetAliasID(op->ast, alias), *((Edge*)v.ptrval));
-                break;
-            default:
-                Record_AddScalar(projection, rec_idx, v);
-                if(alias) Record_AddScalar(r, AST_GetAliasID(op->ast, alias), v);
-                break;
-        }
+        Record_Add(projection, rec_idx, v);
+        if (alias) Record_Add(r, AST_GetAliasID(op->ast, alias), v);
+
         rec_idx++;
     }
 
     // Project Order expressions.
     for(unsigned short i = 0; i < op->order_exp_count; i++) {
         SIValue v = AR_EXP_Evaluate(op->order_exps[i], r);
-        switch(SI_TYPE(v)) {
-            case T_NODE:
-                Record_AddNode(projection, rec_idx, *((Node*)v.ptrval));
-                break;
-            case T_EDGE:
-                Record_AddEdge(projection, rec_idx, *((Edge*)v.ptrval));
-                break;
-            default:
-                Record_AddScalar(projection, rec_idx, v);
-                break;
-        }
+        Record_Add(projection, rec_idx, v);
         rec_idx++;
     }
 

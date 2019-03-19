@@ -62,6 +62,21 @@ RecordEntryType Record_GetType(const Record r, int idx) {
     return r[idx].type;
 }
 
+SIValue Record_Get(Record r, int idx) {
+    Entry e = r[idx];
+    SIValue ret;
+    switch (e.type) {
+        case REC_TYPE_NODE:
+            return SI_Node(&e.value.n);
+        case REC_TYPE_EDGE:
+            return SI_Edge(&e.value.e);
+        case REC_TYPE_SCALAR:
+            return e.value.s;
+        default:
+            assert(false);
+    }
+}
+
 SIValue Record_GetScalar(Record r,  int idx) {
     r[idx].type = REC_TYPE_SCALAR;
     return r[idx].value.s;
@@ -124,8 +139,9 @@ void Record_AddEdge(Record r, int idx, Edge edge) {
 size_t Record_ToString(const Record r, char **buf, size_t *buf_cap) {
     uint rLen = Record_length(r);
     SIValue values[rLen];
-    // TODO inadequate for node/edge entries
-    for(int i = 0; i < rLen; i++) values[i] = r[i].value.s;
+    for(int i = 0; i < rLen; i++) {
+        values[i] = Record_Get(r, i);
+    }
 
     size_t required_len = SIValue_StringConcatLen(values, rLen);
 

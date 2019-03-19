@@ -234,6 +234,8 @@ static AST_Validation _Validate_RETURN_Clause(const AST *ast, char **reason) {
 
   for (int i = 0; i < aggregate_count; i ++) {
     AST_ArithmeticExpressionOP *func = funcs[i];
+    // COUNT calls may validly aggregate nodes and edges
+    if (!strcasecmp(func->function, "count")) continue;
 
     for(int j = 0; j < Vector_Size(func->args); j ++) {
       AST_ArithmeticExpressionNode *child;

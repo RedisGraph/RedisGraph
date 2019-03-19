@@ -35,12 +35,13 @@ Index* Schema_GetIndex(Schema *s, Attribute_ID id) {
     return NULL;
 }
 
-int Schema_AddIndex(Schema *s, char *attribute, Attribute_ID attr_id) {
+int Schema_AddIndex(Schema *s, Attribute_ID attr_id) {
     // Make sure attribute isn't already indexed.
     if (Schema_GetIndex(s, attr_id) != NULL) return INDEX_FAIL;
 
     // Populate an index for the label-attribute pair using the Graph interfaces.
     GraphContext *gc = GraphContext_GetFromTLS();
+    const char *attribute = GraphContext_GetAttributeString(gc, attr_id);
     Index *idx = Index_Create(gc->g, s->name, s->id, attribute, attr_id);
 
     // Add index to schema.

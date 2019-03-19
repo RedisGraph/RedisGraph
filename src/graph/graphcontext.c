@@ -204,7 +204,7 @@ int GraphContext_AddIndex(GraphContext *gc, const char *label, const char *attri
   if (attr_id == ATTRIBUTE_NOTFOUND) return INDEX_FAIL;
 
   // Associate the new index with the attribute in the schema.
-  if (Schema_AddIndex(s, (char*)attribute, attr_id) == INDEX_OK) {
+  if (Schema_AddIndex(s, attr_id) == INDEX_OK) {
       gc->index_count++;
       return INDEX_OK;
   }

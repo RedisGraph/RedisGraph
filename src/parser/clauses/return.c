@@ -58,10 +58,7 @@ int ReturnClause_AggregateFunctions(const AST_ReturnNode *returnNode, AST_Arithm
   for (uint i = 0; i < elemCount; i++) {
     AST_ReturnElementNode *retElem = returnNode->returnElements[i];
     AST_ArithmeticExpressionNode *exp = retElem->exp;
-    // Collect all aggregate functions except count, which may validly be invoked for graph entities.
-    if(exp && exp->type == AST_AR_EXP_OP &&
-        Agg_FuncExists(exp->op.function) &&
-        strcasecmp(exp->op.function, "count") != 0) {
+    if (exp && exp->type == AST_AR_EXP_OP && Agg_FuncExists(exp->op.function)) {
       funcs[aggregate_count] = &exp->op;
       aggregate_count ++;
     }
@@ -128,6 +125,6 @@ void Free_AST_ReturnNode(AST_ReturnNode *returnNode) {
         Free_AST_ReturnElementNode(node);
     }
 
-    array_free(returnNode->returnElements);
+    if (returnNode->returnElements) array_free(returnNode->returnElements);
     rm_free(returnNode);
 }

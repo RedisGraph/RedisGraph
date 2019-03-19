@@ -80,6 +80,37 @@ static void _ResultSet_ReplayStats(RedisModuleCtx* ctx, ResultSet* set) {
     }
 }
 
+static void _ResultSet_ReplyWithStringMapping(RedisModuleCtx *ctx) {
+    GraphContext *gc = GraphContext_GetFromTLS();
+    int prop_string_count = array_len(gc->string_mapping);
+
+    // TODO the user query may provide explicit labels or not be interested
+    // in nodes or relations, in which cases we should return only relevant strings.
+    uint label_count = array_len(gc->node_schemas);
+    uint reltype_count = array_len(gc->relation_schemas);
+
+    // TODO if the query introduces new strings, we will be incapable of returning them
+    RedisModule_ReplyWithArray(ctx, prop_string_count + label_count + reltype_count);
+    for (int i = 0; i < prop_string_count; i ++) {
+        const char *prop = gc->string_mapping[i];
+        RedisModule_ReplyWithStringBuffer(ctx, prop, strlen(prop));
+    }
+
+    for (uint i = 0; i < label_count; i ++) {
+        const char *label = gc->node_schemas[i]->name;
+        // Reply with string
+        RedisModule_ReplyWithStringBuffer(ctx, label, strlen(label));
+        // make offset for string?
+    }
+
+    for (uint i = 0; i < reltype_count; i ++) {
+        const char *reltype = gc->relation_schemas[i]->name;
+        // Reply with string
+        RedisModule_ReplyWithStringBuffer(ctx, reltype, strlen(reltype));
+        // make offset for string?
+    }
+}
+
 static Column* _NewColumn(char *name, char *alias) {
     Column* column = rm_malloc(sizeof(Column));
     column->name = name;
@@ -95,8 +126,12 @@ void static _Column_Free(Column* column) {
 }
 
 void ResultSet_CreateHeader(ResultSet *resultset, const AST *ast) {    
+
     if(!ast->returnNode) return;
     assert(resultset->header == NULL && resultset->recordCount == 0);
+
+    // Send the string mapping, if required, as the first response
+    if (resultset->compact) _ResultSet_ReplyWithStringMapping(resultset->ctx);
 
     ResultSetHeader* header = rm_malloc(sizeof(ResultSetHeader));
     header->columns_len = 0;
@@ -137,41 +172,10 @@ static void _ResultSetHeader_Free(ResultSetHeader* header) {
     rm_free(header);
 }
 
-static void _ResultSet_ReplyWithStringMapping(RedisModuleCtx *ctx) {
-    GraphContext *gc = GraphContext_GetFromTLS();
-    int prop_string_count = array_len(gc->string_mapping);
-
-    // TODO the user query may provide explicit labels or not be interested
-    // in nodes or relations, in which cases we should return only relevant strings.
-    uint label_count = array_len(gc->node_schemas);
-    uint reltype_count = array_len(gc->relation_schemas);
-
-    // TODO if the query introduces new strings, we will be incapable of returning them
-    RedisModule_ReplyWithArray(ctx, prop_string_count + label_count + reltype_count);
-    for (int i = 0; i < prop_string_count; i ++) {
-        const char *prop = gc->string_mapping[i];
-        RedisModule_ReplyWithStringBuffer(ctx, prop, strlen(prop));
-    }
-
-    for (uint i = 0; i < label_count; i ++) {
-        const char *label = gc->node_schemas[i]->name;
-        // Reply with string
-        RedisModule_ReplyWithStringBuffer(ctx, label, strlen(label));
-        // make offset for string?
-    }
-
-    for (uint i = 0; i < reltype_count; i ++) {
-        const char *reltype = gc->relation_schemas[i]->name;
-        // Reply with string
-        RedisModule_ReplyWithStringBuffer(ctx, reltype, strlen(reltype));
-        // make offset for string?
-    }
-}
-
-
 ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx, bool compact) {
     ResultSet* set = (ResultSet*)malloc(sizeof(ResultSet));
     set->ctx = ctx;
+    set->gc = GraphContext_GetFromTLS();
     set->distinct = (ast->returnNode && ast->returnNode->distinct);
     set->compact = compact;
     set->recordCount = 0;    
@@ -190,16 +194,14 @@ ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx, bool compact) {
 
     _ResultSet_SetupReply(set);
 
-    if (set->compact) _ResultSet_ReplyWithStringMapping(ctx);
-
     return set;
 }
 
-int ResultSet_AddRecord(ResultSet *set, GraphContext *gc, Record r) {
+int ResultSet_AddRecord(ResultSet *set, Record r) {
     set->recordCount++;
 
     // Output the current record using the defined formatter
-    set->EmitRecord(set->ctx, gc, r, set->header->columns_len);
+    set->EmitRecord(set->ctx, set->gc, r, set->header->columns_len);
 
     return RESULTSET_OK;
 }

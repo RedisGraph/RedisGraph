@@ -38,7 +38,7 @@ Index* Schema_GetIndex(Schema *s, Attribute_ID attr_id);
 
 /* Assign a new index to attribute
  * attribute must already exists and not associated with an index. */
-int Schema_AddIndex(Schema *s, char *attribute, Attribute_ID attr_id);
+int Schema_AddIndex(Schema *s, Attribute_ID attr_id);
 
 /* Removes index. */
 int Schema_RemoveIndex(Schema *s, Attribute_ID attr_id);
