@@ -33,10 +33,10 @@ typedef enum {
 } SIType;
 
 typedef enum {
-  M_NONE = 0,
-  M_SELF = 0x1,
-  M_VOLATILE = 0x2,
-  M_CONST = 0x4
+  M_NONE = 0,        // SIValue is not heap-allocated
+  M_SELF = 0x1,      // SIValue is responsible for freeing its reference
+  M_VOLATILE = 0x2,  // SIValue does not own its reference and may go out of scope
+  M_CONST = 0x4      // SIValue does not own its allocation, but its access is safe
 } SIAllocation;
 
 #define SI_NUMERIC (T_INT64 | T_DOUBLE)

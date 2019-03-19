@@ -113,7 +113,6 @@ int AR_EXP_GetOperandType(AR_ExpNode *exp) {
  * who X is referring to. */
 void _AR_EXP_UpdatePropIdx(AR_ExpNode *root, const Record r) {
     GraphContext *gc = GraphContext_GetFromTLS();
-    RecordEntryType t = Record_GetType(r, root->operand.variadic.entity_alias_idx);
     root->operand.variadic.entity_prop_idx = GraphContext_GetAttributeID(gc, root->operand.variadic.entity_prop);
 }
 
@@ -153,20 +152,7 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
                 // Alias doesn't necessarily refers to a graph entity,
                 // it could also be a constant.
                 int aliasIdx = root->operand.variadic.entity_alias_idx;
-                RecordEntryType t = Record_GetType(r, aliasIdx);
-                switch(t) {
-                    case REC_TYPE_SCALAR:
-                        result = Record_GetScalar(r, aliasIdx);
-                        break;
-                    case REC_TYPE_NODE:
-                        result = SI_Node(Record_GetGraphEntity(r, aliasIdx));
-                        break;
-                    case REC_TYPE_EDGE:
-                        result = SI_Edge(Record_GetGraphEntity(r, aliasIdx));
-                        break;
-                    default:
-                        assert(false);
-                }
+                result = Record_Get(r, aliasIdx);
             }
         }
     }

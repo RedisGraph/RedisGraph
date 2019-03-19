@@ -1,8 +1,7 @@
 /*
  * Copyright 2018-2019 Redis Labs Ltd. and Contributors
  *
- * This file is available under the Apache License, Version 2.0,
- * modified with the Commons Clause restriction.
+ * This file is available under the Redis Labs Source Available License Agreement
  */
 
 #include "resultset_records.h"
@@ -70,13 +69,14 @@ static void _ResultSet_VerboseReplyWithNode(RedisModuleCtx *ctx, GraphContext *g
     RedisModule_ReplyWithArray(ctx, 2);
     RedisModule_ReplyWithStringBuffer(ctx, "labels", 6);
     // Print label in nested array for multi-label support
-    RedisModule_ReplyWithArray(ctx, 1);
     // Retrieve label
     // TODO Make a more efficient lookup for this string
     const char *label = GraphContext_GetNodeLabel(gc, n);
     if (label == NULL) {
-        RedisModule_ReplyWithNull(ctx);
+        // Emit an empty array for unlabeled nodes
+        RedisModule_ReplyWithArray(ctx, 0);
     } else {
+        RedisModule_ReplyWithArray(ctx, 1);
         RedisModule_ReplyWithStringBuffer(ctx, label, strlen(label));
     }
 
@@ -105,12 +105,14 @@ static void _ResultSet_CompactReplyWithNode(RedisModuleCtx *ctx, GraphContext *g
 
     // [label string offset]
     // Print label in nested array for multi-label support
-    RedisModule_ReplyWithArray(ctx, 1);
     // Retrieve label
+    const char *label = GraphContext_GetNodeLabel(gc, n);
     int label_id = Graph_GetNodeLabel(gc->g, id);
-    if (label_id == GRAPH_NO_LABEL) {
-        RedisModule_ReplyWithNull(ctx);
+    if (label == NULL) {
+        // Emit an empty array for unlabeled nodes
+        RedisModule_ReplyWithArray(ctx, 0);
     } else {
+        RedisModule_ReplyWithArray(ctx, 1);
         // TODO probably unsafe
         int offset = array_len(gc->string_mapping) + label_id;
         RedisModule_ReplyWithLongLong(ctx, offset);
@@ -143,8 +145,8 @@ static void _ResultSet_VerboseReplyWithEdge(RedisModuleCtx *ctx, GraphContext *g
     RedisModule_ReplyWithStringBuffer(ctx, "type", 4);
     // Retrieve relation type
     // TODO Make a more efficient lookup for this string
-    const char *label = GraphContext_GetEdgeRelationType(gc, e);
-    RedisModule_ReplyWithStringBuffer(ctx, label, strlen(label));
+    const char *reltype = GraphContext_GetEdgeRelationType(gc, e);
+    RedisModule_ReplyWithStringBuffer(ctx, reltype, strlen(reltype));
 
     // ["src_node", srcNodeID (integer)]
     RedisModule_ReplyWithArray(ctx, 2);
@@ -182,13 +184,10 @@ static void _ResultSet_CompactReplyWithEdge(RedisModuleCtx *ctx, GraphContext *g
     // reltype string offset
     // Retrieve reltype
     int reltype_id = Graph_GetEdgeRelation(gc->g, e);
-    if (reltype_id == GRAPH_NO_LABEL) {
-        RedisModule_ReplyWithNull(ctx);
-    } else {
-        // TODO probably unsafe
-        int offset = array_len(gc->string_mapping) + array_len(gc->node_schemas) + reltype_id;
-        RedisModule_ReplyWithLongLong(ctx, offset);
-    }
+    assert(reltype_id != GRAPH_NO_RELATION);
+    // TODO probably unsafe
+    int offset = array_len(gc->string_mapping) + array_len(gc->node_schemas) + reltype_id;
+    RedisModule_ReplyWithLongLong(ctx, offset);
 
     // [properties]
     _ResultSet_ReplyWithProperties(ctx, gc, GETYPE_NODE, (GraphEntity*)e, true);
@@ -224,16 +223,6 @@ void ResultSet_ReplyWithSIValue(RedisModuleCtx *ctx, GraphContext *gc, const SIV
     if (print_type) _ResultSet_ReplyWithValueType(ctx, v);
     // Emit the actual value, then the value type (to facilitate client-side parsing)
     switch (SI_TYPE(v)) {
-        case T_NODE:
-            // TODO no longer adequate, but used for aggregate returns
-            printf("fix this! preferably in Aggregate op\n");
-           _ResultSet_VerboseReplyWithNode(ctx, gc, (Node*)v.ptrval);
-           return;
-        case T_EDGE:
-            // TODO no longer adequate, but used for aggregate returns
-            printf("fix this!\n");
-           _ResultSet_VerboseReplyWithEdge(ctx, gc, (Edge*)v.ptrval);
-           return;
         case T_STRING:
             RedisModule_ReplyWithStringBuffer(ctx, v.stringval, strlen(v.stringval));
             return;
@@ -250,6 +239,8 @@ void ResultSet_ReplyWithSIValue(RedisModuleCtx *ctx, GraphContext *gc, const SIV
         case T_NULL:
             RedisModule_ReplyWithNull(ctx);
             return;
+        case T_NODE: // Nodes and edges should always be Record entries at this point
+        case T_EDGE:
         default:
             assert("Unhandled value type" && false);
       }

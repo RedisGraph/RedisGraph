@@ -283,9 +283,12 @@ void GraphContext_Free(GraphContext *gc) {
   Graph_Free(gc->g);
   rm_free(gc->graph_name);
 
+  uint len;
+
   // Free all node schemas
   if(gc->node_schemas) {
-    for (uint32_t i = 0; i < array_len(gc->node_schemas); i ++) {
+    len = array_len(gc->node_schemas);
+    for (uint32_t i = 0; i < len; i ++) {
       Schema_Free(gc->node_schemas[i]);
     }
     array_free(gc->node_schemas);
@@ -293,7 +296,8 @@ void GraphContext_Free(GraphContext *gc) {
 
   // Free all relation schemas
   if(gc->relation_schemas) {
-    for (uint32_t i = 0; i < array_len(gc->relation_schemas); i ++) {
+    len = array_len(gc->relation_schemas);
+    for (uint32_t i = 0; i < len; i ++) {
       Schema_Free(gc->relation_schemas[i]);
     }
     array_free(gc->relation_schemas);
@@ -301,7 +305,8 @@ void GraphContext_Free(GraphContext *gc) {
 
   // Free attribute mappings
   TrieMap_Free(gc->attributes, rm_free);
-  for (uint32_t i = 0; i < array_len(gc->string_mapping); i ++) {
+  len = array_len(gc->string_mapping);
+  for (uint32_t i = 0; i < len; i ++) {
     rm_free(gc->string_mapping[i]);
   }
   array_free(gc->string_mapping);

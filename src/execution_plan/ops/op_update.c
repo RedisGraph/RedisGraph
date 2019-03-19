@@ -50,7 +50,7 @@ static void _QueueUpdate(OpUpdate *op, GraphEntity *entity, GraphEntityType type
 }
 
 /* Introduce updated entity to index. */
-static void _UpdateIndex(GraphContext *gc, EntityUpdateCtx *ctx, Schema *s, SIValue *old_value, SIValue *new_value) {
+static void _UpdateIndex(EntityUpdateCtx *ctx, GraphContext *gc, Schema *s, SIValue *old_value, SIValue *new_value) {
     if (s == NULL) return;
     Node *n = &ctx->n;
     EntityID node_id = ENTITY_GET_ID(n);
@@ -98,7 +98,7 @@ static void _UpdateNode(OpUpdate *op, EntityUpdateCtx *ctx) {
     }
 
     // Update index for node entities.
-    _UpdateIndex(op->gc, ctx, s, old_value, &ctx->new_value);
+    _UpdateIndex(ctx, op->gc, s, old_value, &ctx->new_value);
 
     if(old_value == PROPERTY_NOTFOUND) {
         // Add new property.
