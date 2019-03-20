@@ -289,6 +289,25 @@ class ImdbFlowTest(FlowTestsBase):
 
         # assert reversed pattern.
         self.assert_reversed_pattern(q, actual_result)
+    
+    def test_(self):
+        global redis_graph
+
+        # Create full-text index over actor's name.
+        redis_graph.redis_con.execute_command("GRAPH.QUERY", redis_graph.name, "CALL db.idx.fulltext.createNodeIndex('actor', 'name')")
+        q = queries.all_actors_named_tim
+        execution_plan = redis_graph.execution_plan(q)
+        self.assertIn('ProcedureCall', execution_plan)
+
+        actual_result = redis_graph.query(q)
+
+        # assert result set
+        self._assert_only_expected_results_are_in_actual_results(
+            actual_result,
+            queries.all_actors_named_tim)
+
+        # assert query run time
+        self._assert_run_time(actual_result, queries.all_actors_named_tim)
 
 if __name__ == '__main__':
     unittest.main()
