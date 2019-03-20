@@ -63,9 +63,9 @@ void _SetModifiedEntities(OpCreate *op) {
     assert((op->node_count + op->edge_count) > 0);
 }
 
-OpBase* NewCreateOp(RedisModuleCtx *ctx, GraphContext *gc, AST *ast, QueryGraph *qg, ResultSet *result_set) {
+OpBase* NewCreateOp(RedisModuleCtx *ctx, AST *ast, QueryGraph *qg, ResultSet *result_set) {
     OpCreate *op_create = calloc(1, sizeof(OpCreate));
-    op_create->gc = gc;
+    op_create->gc = GraphContext_GetFromTLS();
     op_create->ast = ast;
     op_create->qg = qg;
     op_create->records = NULL;
@@ -134,7 +134,6 @@ static void _CommitNodes(OpCreate *op) {
     Graph *g = op->gc->g;
     uint node_count = array_len(op->created_nodes);
     TrieMap *createEntities = NewTrieMap();
-    Schema *unified_schema = GraphContext_GetUnifiedSchema(op->gc, SCHEMA_NODE);
     
     Graph_AllocateNodes(op->gc->g, node_count);
     CreateClause_ReferredEntities(op->ast->createNode, createEntities);
@@ -146,7 +145,6 @@ static void _CommitNodes(OpCreate *op) {
         // Get label ID.
         if(n->label == NULL) {
             labelID = GRAPH_NO_LABEL;
-            schema = unified_schema;
         } else {
             schema = GraphContext_GetSchema(op->gc, n->label, SCHEMA_NODE);
             if(schema == NULL) {
@@ -172,7 +170,7 @@ static void _CommitNodes(OpCreate *op) {
                     Vector_Get(entity->properties, prop_idx, &key);
                     Vector_Get(entity->properties, prop_idx+1, &value);
 
-                    Attribute_ID prop_id = Schema_AddAttribute(schema, SCHEMA_NODE, key->stringval);
+                    Attribute_ID prop_id = GraphContext_FindOrAddAttribute(op->gc, key->stringval);
                     GraphEntity_AddProperty((GraphEntity*)n, prop_id, *value);
                 }
                 // Introduce node to schema indices.
@@ -229,7 +227,7 @@ static void _CommitEdges(OpCreate *op) {
                     Vector_Get(entity->properties, prop_idx, &key);
                     Vector_Get(entity->properties, prop_idx+1, &value);
 
-                    Attribute_ID prop_id = Schema_AddAttribute(schema, SCHEMA_EDGE, key->stringval);
+                    Attribute_ID prop_id = GraphContext_FindOrAddAttribute(op->gc, key->stringval);
                     GraphEntity_AddProperty((GraphEntity*)e, prop_id, *value);
                 }
                 op->result_set->stats.properties_set += propCount/2;

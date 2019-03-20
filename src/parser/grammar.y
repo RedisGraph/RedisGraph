@@ -519,6 +519,13 @@ returnClause(A) ::= RETURN returnElements(B). {
 returnClause(A) ::= RETURN DISTINCT returnElements(B). {
 	A = New_AST_ReturnNode(B, 1);
 }
+// RETURN *
+returnClause(A) ::= RETURN MUL. {
+	A = New_AST_ReturnNode(NULL, 0);
+}
+returnClause(A) ::= RETURN DISTINCT MUL. {
+	A = New_AST_ReturnNode(NULL, 1);
+}
 
 %type returnElements {AST_ReturnElementNode**}
 
@@ -533,10 +540,6 @@ returnElements(A) ::= returnElement(B). {
 
 %type returnElement {AST_ReturnElementNode*}
 
-// RETURN *
-returnElement(A) ::= MUL. {
-	A = New_AST_ReturnElementExpandALL();
-}
 returnElement(A) ::= arithmetic_expression(B). {
 	A = New_AST_ReturnElementNode(B, NULL);
 }
