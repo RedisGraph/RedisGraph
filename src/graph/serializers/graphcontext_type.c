@@ -100,10 +100,10 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
   /* Format:
    * graph name
    * #node schemas
-   * unified node schema
+   * attribute mapping (in encver 4), or unified node schema
    * node schema X #node schemas
    * #relation schemas
-   * unified relation schema
+   * filler bytes (in encver 4), or unified relation schema
    * relation schema X #relation schemas
    * graph object
    * #indices
@@ -118,10 +118,7 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
 
   // TODO can have different functions for different versions here if desired
 
-  GraphContext *gc = rm_malloc(sizeof(GraphContext));
-  
-  // No indicies.
-  gc->index_count = 0;
+  GraphContext *gc = rm_calloc(1, sizeof(GraphContext));
   
   // _tlsGCKey was created as part of module load.
   pthread_setspecific(_tlsGCKey, gc);
@@ -138,7 +135,8 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
   gc->attributes = NewTrieMap();
   gc->string_mapping = array_new(char*, 64);
 
-  // unified node schema.
+  // Load the full attribute mapping (or the attributes from
+  // the unified node schema, if encoding version is < 4)
   RdbLoadAttributeKeys(rdb, gc);
 
   // Load each node schema
@@ -151,7 +149,8 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
   // #Edge schemas
   schema_count = RedisModule_LoadUnsigned(rdb);
 
-  // unified edge schema.
+  // If encoding version is < 4, load the attributes from the
+  // unified edge schema, otherwise skip filler bytes.
   RdbLoadAttributeKeys(rdb, gc);
 
   // Load each edge schema

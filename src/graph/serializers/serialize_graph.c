@@ -106,13 +106,13 @@ void _RdbLoadNodes(RedisModuleIO *rdb, GraphContext *gc) {
         // * ID
         NodeID id = RedisModule_LoadUnsigned(rdb);
 
+        // Extend this logic when multi-label support is added.
         // * #labels M
-        // * (labels) X M
         uint64_t nodeLabelCount = RedisModule_LoadUnsigned(rdb);
-        assert(nodeLabelCount == 1);
 
-        // Ignore nodeLabelCount.
-        uint64_t l = RedisModule_LoadUnsigned(rdb);
+        // * (labels) x M
+        // M will currently always be 0 or 1
+        uint64_t l = (nodeLabelCount) ? RedisModule_LoadUnsigned(rdb) : GRAPH_NO_LABEL;
         Graph_CreateNode(gc->g, l, &n);
 
         _RdbLoadEntity(rdb, gc, (GraphEntity*)&n);
@@ -193,9 +193,6 @@ void _RdbSaveNodes(RedisModuleIO *rdb, const Graph *g,  char **string_mapping) {
      *      #properties N
      *      (name, value type, value) X N */
 
-    /* Get a mapping between node attribute ID to attribute name. */
-    unsigned short node_attribute_mapping_len = 0;
-
     // #Nodes
     RedisModule_SaveUnsigned(rdb, Graph_NodeCount(g));
 
@@ -205,12 +202,16 @@ void _RdbSaveNodes(RedisModuleIO *rdb, const Graph *g,  char **string_mapping) {
         // ID, currently ignored.
         RedisModule_SaveUnsigned(rdb, e->id);
 
+        int l = Graph_GetNodeLabel(g, e->id);
+
         // #labels, currently only one label per node.
-        RedisModule_SaveUnsigned(rdb, 1);
+        int label_count = (l == GRAPH_NO_LABEL) ? 0 : 1;
+        RedisModule_SaveUnsigned(rdb, label_count);
 
         // (labels) X M
-        int l = Graph_GetNodeLabel(g, e->id);
-        RedisModule_SaveUnsigned(rdb, l);
+        for (int i = 0; i < label_count; i ++) {
+            RedisModule_SaveUnsigned(rdb, l);
+        }
         
         // properties N
         // (name, value type, value) X N
@@ -230,9 +231,6 @@ void _RdbSaveEdges(RedisModuleIO *rdb, const Graph *g, char **string_mapping) {
      *  relation type
      * } X N
      * edge properties X N */
-
-    /* Get a mapping between edge attribute ID to attribute name. */
-    unsigned short edge_attribute_mapping_len = 0;
     
     // Sort deleted indices.
     QSORT(NodeID, g->nodes->deletedIdx, array_len(g->nodes->deletedIdx), ENTITY_ID_ISLT);    
