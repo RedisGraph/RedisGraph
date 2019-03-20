@@ -9,6 +9,7 @@
 #include "redismodule.h"
 #include "config.h"
 #include "version.h"
+#include "redisearch_api.h"
 #include "commands/commands.h"
 #include "util/thpool/thpool.h"
 #include "arithmetic/agg_funcs.h"
@@ -19,6 +20,9 @@
 /* Thread pool. */
 threadpool _thpool = NULL;
 pthread_key_t _tlsGCKey;    // Thread local storage graph context key.
+
+// Define the C symbols for RediSearch.
+REDISEARCH_API_INIT_SYMBOLS();
 
 /* Set up thread pool,
  * number of threads within pool should be
@@ -53,6 +57,12 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
     GxB_set(GxB_HYPER, GxB_NEVER_HYPER); // matrices are never hypersparse
 
     if (RedisModule_Init(ctx, "graph", REDISGRAPH_MODULE_VERSION, REDISMODULE_APIVER_1) == REDISMODULE_ERR) {
+        return REDISMODULE_ERR;
+    }
+
+    // Make sure RediSearch is loaded.
+    if(RediSearch_Initialize() != REDISMODULE_OK) {
+        RedisModule_Log(ctx, "debug", "RediSearch is missing, aborting load.");
         return REDISMODULE_ERR;
     }
 
