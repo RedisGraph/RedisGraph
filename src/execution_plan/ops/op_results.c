@@ -49,4 +49,3 @@ OpResult ResultsReset(OpBase *op) {
 /* Frees Results */
 void ResultsFree(OpBase *opBase) {
 }
-

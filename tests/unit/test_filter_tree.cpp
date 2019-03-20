@@ -40,8 +40,6 @@ class FilterTreeTest: public ::testing::Test {
     {
         // Free fake graph context.
         GraphContext *gc = GraphContext_GetFromTLS();
-        Schema_Free(gc->node_unified_schema);
-        Schema_Free(gc->relation_unified_schema);
         free(gc);
     }
 
@@ -54,10 +52,6 @@ class FilterTreeTest: public ::testing::Test {
 
         // No indicies.
         gc->index_count = 0;
-
-        // Initialize the generic label and relation stores
-        gc->node_unified_schema = Schema_New("ALL", GRAPH_NO_LABEL);
-        gc->relation_unified_schema = Schema_New("ALL", GRAPH_NO_RELATION);
         
         int error = pthread_key_create(&_tlsGCKey, NULL);
         ASSERT_EQ(error, 0);
