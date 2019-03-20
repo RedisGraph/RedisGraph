@@ -202,6 +202,18 @@ find_titles_starting_with_american_query = QueryInfo(
                      ['American Pastoral'],
                      ['American Sniper']]
 )
+
+all_actors_named_tim = QueryInfo(
+    query="""CALL db.idx.fulltext.queryNodes('actor', 'tim')""",
+    description='All actors named Tim',
+    max_run_time_ms=4,
+    expected_result=[['Tim Roth', 0],
+                     ['Tim Reid', 0],
+                     ['Tim McGraw', 0],
+                     ['Tim Griffin', 0],
+                     ['Tim Blake Nelson', 0]]
+)
+
 queries_info = [
     actors_played_with_nicolas_cage_query,
     find_three_actors_played_with_nicolas_cage_query,
@@ -215,5 +227,6 @@ queries_info = [
     find_ten_oldest_actors_query,
     actors_over_85_index_scan,
     eighties_movies_index_scan,
-    find_titles_starting_with_american_query
+    find_titles_starting_with_american_query,
+    all_actors_named_tim
 ]

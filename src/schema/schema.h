@@ -11,6 +11,7 @@
 #include "../index/index.h"
 #include "../util/triemap/triemap.h"
 #include "../graph/entities/graph_entity.h"
+#include "../../deps/RediSearch/redisearch_api.h"
 
 typedef enum {
   SCHEMA_NODE,
@@ -23,7 +24,8 @@ typedef enum {
 typedef struct {
   int id;                 /* Internal ID to a matrix within the graph. */
   char *name;             /* Schema name. */
-  Index **indices;        /* Indices applicable to schema. */
+  Index** indices;        /* Indices applicable to schema. */
+  RSIndex* fulltextIdx;   /* Full-text index. */
 } Schema;
 
 /* Creates a new schema. */
@@ -35,6 +37,12 @@ unsigned short Schema_IndexCount(const Schema *s);
 /* Retrieves index from attribute. 
  * Returns NULL if index wasn't found. */
 Index* Schema_GetIndex(Schema *s, Attribute_ID attr_id);
+
+/* Sets schema fulltext index. */
+void Schema_SetFullTextIndex(Schema *s, RSIndex *idx);
+
+/* Retrieves schema full-text index, returns NULL if index doesn't exists. */
+RSIndex *Schema_GetFullTextIndex(const Schema *s);
 
 /* Assign a new index to attribute
  * attribute must already exists and not associated with an index. */
