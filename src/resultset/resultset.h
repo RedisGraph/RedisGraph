@@ -35,7 +35,7 @@ typedef struct {
 
 ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx, bool compact);
 
-void ResultSet_CreateHeader(ResultSet* set, const AST *ast);
+void ResultSet_CreateHeader(ResultSet* set, AST **ast);
 
 int ResultSet_AddRecord(ResultSet* set, Record r);
 

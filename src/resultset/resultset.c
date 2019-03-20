@@ -12,18 +12,6 @@
 #include "../grouping/group_cache.h"
 #include "../arithmetic/aggregate.h"
 
-static void _ResultSet_ReplayHeader(const ResultSet *set, const ResultSetHeader *header) {    
-    RedisModule_ReplyWithArray(set->ctx, header->columns_len);
-    for(int i = 0; i < header->columns_len; i++) {
-        Column *c = header->columns[i];
-        if(c->alias) {
-            RedisModule_ReplyWithStringBuffer(set->ctx, c->alias, strlen(c->alias));
-        } else {
-            RedisModule_ReplyWithStringBuffer(set->ctx, c->name, strlen(c->name));
-        }
-    }
-}
-
 // Choose the appropriate reply formatter
 EmitRecordFunc _ResultSet_SetReplyFormatter(bool compact) {
     if (compact) return ResultSet_EmitCompactRecord;
@@ -60,7 +48,7 @@ static void _ResultSet_ReplyWithStringMapping(RedisModuleCtx *ctx) {
     }
 }
 
-// Prepare replay.
+// Prepare replay and emit the string mapping if required.
 static void _ResultSet_SetupReply(ResultSet *set) {
     // Send the string mapping, if required, as the first response
     if (set->compact) {
@@ -136,24 +124,26 @@ void static _Column_Free(Column* column) {
     rm_free(column);
 }
 
-void ResultSet_CreateHeader(ResultSet *resultset, const AST *ast) {
+void ResultSet_CreateHeader(ResultSet *set, AST **ast) {
+    // The last AST will contain the return clause, if one is specified
+    AST *final_ast = ast[array_len(ast)-1];
 
-    if(!ast->returnNode) return;
-    assert(resultset->header == NULL && resultset->recordCount == 0);
+    if(!final_ast->returnNode) return;
+    assert(set->header == NULL && set->recordCount == 0);
 
     ResultSetHeader* header = rm_malloc(sizeof(ResultSetHeader));
     header->columns_len = 0;
     header->columns = NULL;
 
-    if(ast->returnNode != NULL) {
-        header->columns_len = array_len(ast->returnNode->returnElements);
+    if(final_ast->returnNode != NULL) {
+        header->columns_len = array_len(final_ast->returnNode->returnElements);
         header->columns = rm_malloc(sizeof(Column*) * header->columns_len);
     }
 
     for(int i = 0; i < header->columns_len; i++) {
-        AST_ReturnElementNode *returnElementNode = ast->returnNode->returnElements[i];
+        AST_ReturnElementNode *returnElementNode = final_ast->returnNode->returnElements[i];
 
-        AR_ExpNode *ar_exp = AR_EXP_BuildFromAST(ast, returnElementNode->exp);
+        AR_ExpNode *ar_exp = AR_EXP_BuildFromAST(final_ast, returnElementNode->exp);
 
         char *column_name;
         AR_EXP_ToString(ar_exp, &column_name);
@@ -163,9 +153,15 @@ void ResultSet_CreateHeader(ResultSet *resultset, const AST *ast) {
         header->columns[i] = column;
     }
 
-    resultset->header = header;
+    set->header = header;
     /* Replay with table header. */
-    _ResultSet_ReplayHeader(resultset, header);
+    if (set->compact) {
+        TrieMap *entities = AST_CollectEntityReferences(ast);
+        ResultSet_ReplyWithCompactHeader(set->ctx, set->header, entities);
+        TrieMap_Free(entities, TrieMap_NOP_CB);
+    } else {
+        ResultSet_ReplyWithVerboseHeader(set->ctx, set->header);
+    }
 }
 
 static void _ResultSetHeader_Free(ResultSetHeader* header) {
