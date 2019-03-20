@@ -12,47 +12,6 @@
 #include "../grouping/group_cache.h"
 #include "../arithmetic/aggregate.h"
 
-/* Redis prints doubles with up to 17 digits of precision, which captures
- * the inaccuracy of many floating-point numbers (such as 0.1).
- * By using the %g format and a precision of 15 significant digits, we avoid many
- * awkward representations like RETURN 0.1 emitting "0.10000000000000001",
- * though we're still subject to many of the typical issues with floating-point error. */
-static inline void _ResultSet_ReplyWithRoundedDouble(RedisModuleCtx *ctx, double d) {
-    // Get length required to print number
-    int len = snprintf(NULL, 0, "%.15g", d);
-    char str[len + 1]; // TODO a reusable buffer would be far preferable
-    sprintf(str, "%.15g", d);
-    // Output string-formatted number
-    RedisModule_ReplyWithStringBuffer(ctx, str, len);
-}
-
-/* This function handles emitting SIValue types through the Redis RESP protocol.
- * This protocol has unique support for strings, 8-byte integers, and NULL values. */
-static void _ResultSet_ReplyWithScalar(RedisModuleCtx *ctx, const SIValue v) {
-    // Emit the actual value, then the value type (to facilitate client-side parsing)
-    switch (SI_TYPE(v)) {
-        case T_STRING:
-        case T_CONSTSTRING:
-            RedisModule_ReplyWithStringBuffer(ctx, v.stringval, strlen(v.stringval));
-            return;
-        case T_INT64:
-            RedisModule_ReplyWithLongLong(ctx, v.longval);
-            return;
-        case T_DOUBLE:
-            _ResultSet_ReplyWithRoundedDouble(ctx, v.doubleval);
-            return;
-        case T_BOOL:
-            if (v.longval != 0) RedisModule_ReplyWithStringBuffer(ctx, "true", 4);
-            else RedisModule_ReplyWithStringBuffer(ctx, "false", 5);
-            return;
-        case T_NULL:
-            RedisModule_ReplyWithNull(ctx);
-            return;
-        default:
-            assert("Unhandled value type" && false);
-      }
-}
-
 static void _ResultSet_ReplayHeader(const ResultSet *set, const ResultSetHeader *header) {    
     RedisModule_ReplyWithArray(set->ctx, header->columns_len);
     for(int i = 0; i < header->columns_len; i++) {
@@ -65,19 +24,18 @@ static void _ResultSet_ReplayHeader(const ResultSet *set, const ResultSetHeader 
     }
 }
 
-static void _ResultSet_ReplayRecord(ResultSet *s, const Record r) {
-    uint column_count = s->header->columns_len;
-    RedisModule_ReplyWithArray(s->ctx, column_count);
-
-    for(uint i = 0; i < column_count; i++) {
-        _ResultSet_ReplyWithScalar(s->ctx, Record_GetScalar(r, i));
-    }
+// Choose the appropriate reply formatter
+EmitRecordFunc _ResultSet_SetReplyFormatter(bool compact) {
+    if (compact) return ResultSet_EmitCompactRecord;
+    return ResultSet_EmitVerboseRecord;
 }
 
 // Prepare replay.
 static void _ResultSet_SetupReply(ResultSet *set) {
-    // resultset + statistics, in that order.
-    RedisModule_ReplyWithArray(set->ctx, 2);
+    // Reply will contain string mapping if we're issuing a compact reply,
+    // then resultset + statistics (in that order) in either case.
+    int top_level_replies = set->compact ? 3 : 2;
+    RedisModule_ReplyWithArray(set->ctx, top_level_replies);
 
     // We don't know at this point the number of records, we're about to return.
     RedisModule_ReplyWithArray(set->ctx, REDISMODULE_POSTPONED_ARRAY_LEN);
@@ -128,6 +86,36 @@ static void _ResultSet_ReplayStats(RedisModuleCtx* ctx, ResultSet* set) {
     }
 }
 
+static void _ResultSet_ReplyWithStringMapping(RedisModuleCtx *ctx) {
+    /* TODO The string mapping in its entirety is only required if the user has
+     * requested any full entities.
+     * Similarly, no or few label/reltype strings may be necessary depending on
+     * what entity types the query requests and whether it provides labels.
+     * This whole area should be refactored as soon as possible. */
+    GraphContext *gc = GraphContext_GetFromTLS();
+    int prop_string_count = array_len(gc->string_mapping);
+
+    uint label_count = array_len(gc->node_schemas);
+    uint reltype_count = array_len(gc->relation_schemas);
+
+    // TODO if the query introduces new strings, we will be incapable of returning them
+    RedisModule_ReplyWithArray(ctx, prop_string_count + label_count + reltype_count);
+    for (int i = 0; i < prop_string_count; i ++) {
+        const char *prop = gc->string_mapping[i];
+        RedisModule_ReplyWithStringBuffer(ctx, prop, strlen(prop));
+    }
+
+    for (uint i = 0; i < label_count; i ++) {
+        const char *label = gc->node_schemas[i]->name;
+        RedisModule_ReplyWithStringBuffer(ctx, label, strlen(label));
+    }
+
+    for (uint i = 0; i < reltype_count; i ++) {
+        const char *reltype = gc->relation_schemas[i]->name;
+        RedisModule_ReplyWithStringBuffer(ctx, reltype, strlen(reltype));
+    }
+}
+
 static Column* _NewColumn(char *name, char *alias) {
     Column* column = rm_malloc(sizeof(Column));
     column->name = name;
@@ -143,8 +131,12 @@ void static _Column_Free(Column* column) {
 }
 
 void ResultSet_CreateHeader(ResultSet *resultset, const AST *ast) {    
+
     if(!ast->returnNode) return;
     assert(resultset->header == NULL && resultset->recordCount == 0);
+
+    // Send the string mapping, if required, as the first response
+    if (resultset->compact) _ResultSet_ReplyWithStringMapping(resultset->ctx);
 
     ResultSetHeader* header = rm_malloc(sizeof(ResultSetHeader));
     header->columns_len = 0;
@@ -156,13 +148,13 @@ void ResultSet_CreateHeader(ResultSet *resultset, const AST *ast) {
     }
 
     for(int i = 0; i < header->columns_len; i++) {
-        AST_ReturnElementNode* returnElementNode = ast->returnNode->returnElements[i];
+        AST_ReturnElementNode *returnElementNode = ast->returnNode->returnElements[i];
 
-        AR_ExpNode* ar_exp = AR_EXP_BuildFromAST(ast, returnElementNode->exp);
+        AR_ExpNode *ar_exp = AR_EXP_BuildFromAST(ast, returnElementNode->exp);
 
-        char* column_name;
+        char *column_name;
         AR_EXP_ToString(ar_exp, &column_name);
-        Column* column = _NewColumn(column_name, returnElementNode->alias);
+        Column *column = _NewColumn(column_name, returnElementNode->alias);
         AR_EXP_Free(ar_exp);
 
         header->columns[i] = column;
@@ -185,10 +177,12 @@ static void _ResultSetHeader_Free(ResultSetHeader* header) {
     rm_free(header);
 }
 
-ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx) {
+ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx, bool compact) {
     ResultSet* set = (ResultSet*)malloc(sizeof(ResultSet));
     set->ctx = ctx;
+    set->gc = GraphContext_GetFromTLS();
     set->distinct = (ast->returnNode && ast->returnNode->distinct);
+    set->compact = compact;
     set->recordCount = 0;    
     set->header = NULL;
     set->bufferLen = 2048;
@@ -201,14 +195,19 @@ ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx) {
     set->stats.nodes_deleted = 0;
     set->stats.relationships_deleted = 0;
 
+    set->EmitRecord = _ResultSet_SetReplyFormatter(set->compact);
+
     _ResultSet_SetupReply(set);
 
     return set;
 }
 
-int ResultSet_AddRecord(ResultSet* set, Record r) {
+int ResultSet_AddRecord(ResultSet *set, Record r) {
     set->recordCount++;
-    _ResultSet_ReplayRecord(set, r);
+
+    // Output the current record using the defined formatter
+    set->EmitRecord(set->ctx, set->gc, r, set->header->columns_len);
+
     return RESULTSET_OK;
 }
 

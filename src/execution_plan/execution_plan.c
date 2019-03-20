@@ -304,7 +304,8 @@ static AR_ExpNode** _OrderClause_GetExpressions(const AST *ast) {
 	return exps;
 }
 
-ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST *ast, ResultSet *result_set) {
+ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, AST *ast, ResultSet *result_set) {
+    GraphContext *gc = GraphContext_GetFromTLS();
     Graph *g = gc->g;
     ExecutionPlan *execution_plan = (ExecutionPlan*)calloc(1, sizeof(ExecutionPlan));    
     execution_plan->result_set = result_set;
@@ -366,7 +367,7 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST *ast
                         /* There's no longer need for the last matrix operand
                          * as it's been replaced by label scan. */
                         AlgebraicExpression_RemoveTerm(exp, exp->operand_count-1, NULL);
-                        op = NewNodeByLabelScanOp(gc, exp->src_node, ast);
+                        op = NewNodeByLabelScanOp(exp->src_node, ast);
                         Vector_Push(traversals, op);
                     } else {
                         op = NewAllNodeScanOp(g, exp->src_node, ast);
@@ -382,7 +383,7 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST *ast
                                                          ast);
                         }
                         else {
-                            op = NewCondTraverseOp(g, exps[i], ast);
+                            op = NewCondTraverseOp(exps[i], ast);
                         }
                         Vector_Push(traversals, op);
                     }
@@ -394,7 +395,7 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST *ast
                         /* There's no longer need for the last matrix operand
                          * as it's been replaced by label scan. */
                         AlgebraicExpression_RemoveTerm(exp, exp->operand_count-1, NULL);
-                        op = NewNodeByLabelScanOp(gc, exp->dest_node, ast);
+                        op = NewNodeByLabelScanOp(exp->dest_node, ast);
                         Vector_Push(traversals, op);
                     } else {
                         op = NewAllNodeScanOp(g, exp->dest_node, ast);
@@ -412,7 +413,7 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST *ast
                                                          ast);
                         }
                         else {
-                            op = NewCondTraverseOp(g, exps[i], ast);
+                            op = NewCondTraverseOp(exps[i], ast);
                         }
                         Vector_Push(traversals, op);
                     }
@@ -425,7 +426,7 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST *ast
                 Vector_Get(pattern, 0, &ge);
                 Node **n = QueryGraph_GetNodeRef(q, QueryGraph_GetNodeByAlias(q, ge->alias));
                 if(ge->label)
-                    op = NewNodeByLabelScanOp(gc, *n, ast);
+                    op = NewNodeByLabelScanOp(*n, ast);
                 else
                     op = NewAllNodeScanOp(g, *n, ast);
                 Vector_Push(traversals, op);
@@ -461,23 +462,23 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST *ast
     /* Set root operation */
     if(ast->createNode) {
         BuildQueryGraph(gc, q, ast->createNode->graphEntities);
-        OpBase *opCreate = NewCreateOp(ctx, gc, ast, q, execution_plan->result_set);
+        OpBase *opCreate = NewCreateOp(ctx, ast, q, execution_plan->result_set);
 
         Vector_Push(ops, opCreate);
     }
 
     if(ast->mergeNode) {
-        OpBase *opMerge = NewMergeOp(gc, ast, execution_plan->result_set);
+        OpBase *opMerge = NewMergeOp(ast, execution_plan->result_set);
         Vector_Push(ops, opMerge);
     }
 
     if(ast->deleteNode) {
-        OpBase *opDelete = NewDeleteOp(ast->deleteNode, q, gc, execution_plan->result_set, ast);
+        OpBase *opDelete = NewDeleteOp(ast->deleteNode, q, execution_plan->result_set, ast);
         Vector_Push(ops, opDelete);
     }
 
     if(ast->setNode) {
-        OpBase *op_update = NewUpdateOp(gc, ast, execution_plan->result_set);
+        OpBase *op_update = NewUpdateOp(ast, execution_plan->result_set);
         Vector_Push(ops, op_update);
     }
 
@@ -596,20 +597,12 @@ static ExecutionPlan *_ExecutionPlan_Connect(ExecutionPlan *a, ExecutionPlan *b,
     return b;
 }
 
-ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST **ast, bool explain) {
+ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, AST **ast, ResultSet *result_set, bool explain) {
     ExecutionPlan *plan = NULL;
     ExecutionPlan *curr_plan;
-    
-    // Use the last AST, as it is supposed to be the only AST with a RETURN node.
-    ExpandCollapsedNodes(ast[array_len(ast)-1]);
-    ResultSet *result_set = NULL;
-    if(!explain) {
-        result_set = NewResultSet(ast[array_len(ast)-1], ctx);
-        ResultSet_CreateHeader(result_set, ast[array_len(ast)-1]);
-    }
 
     for(unsigned int i = 0; i < array_len(ast); i++) {
-        curr_plan = _NewExecutionPlan(ctx, gc, ast[i], result_set);
+        curr_plan = _NewExecutionPlan(ctx, ast[i], result_set);
         if(i == 0) plan = curr_plan;
         else plan = _ExecutionPlan_Connect(plan, curr_plan, ast[i]);
 
@@ -642,7 +635,7 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST **ast
             }
             Vector_Free(sub_trees);
         }
-        optimizePlan(gc, plan, ast[i]);
+        optimizePlan(plan, ast[i]);
     }
 
     return plan;

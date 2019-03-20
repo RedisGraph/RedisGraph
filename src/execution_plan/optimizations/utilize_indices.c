@@ -54,7 +54,9 @@ void _locateScanOp(OpBase *root, NodeByLabelScan ***scanOps) {
   }
 }
 
-void utilizeIndices(GraphContext *gc, ExecutionPlan *plan, AST *ast) {
+void utilizeIndices(ExecutionPlan *plan, AST *ast) {
+  GraphContext *gc = GraphContext_GetFromTLS();
+
   // Return immediately if the graph has no indices
   if (!GraphContext_HasIndices(gc)) return;
 

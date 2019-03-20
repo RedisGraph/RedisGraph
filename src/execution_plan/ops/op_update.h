@@ -17,14 +17,14 @@
 typedef struct {
     AST_GraphEntity *ge;            /* Referred entity in MATCH clause. */
     char *attribute;                /* Attribute name to update. */
-    Attribute_ID attribute_idx;     /* Attribute internal ID. */
     int entityRecIdx;               /* Position of entity within record. */
     AR_ExpNode *exp;                /* Expression to evaluate. */
 } EntityUpdateEvalCtx;
 
 // Context describing a pending update to perform.
-typedef struct {    
+typedef struct {
     char *attribute;                    /* Attribute name to update. */
+    Attribute_ID attr_id;               /* ID of attribute to update. */
     Node n;
     Edge e;
     GraphEntityType entity_type;        /* Graph entity type. */
@@ -47,7 +47,7 @@ typedef struct {
     bool updates_commited;                      /* Updates performed? */
 } OpUpdate;
 
-OpBase* NewUpdateOp(GraphContext *gc, AST *ast, ResultSet *result_set);
+OpBase* NewUpdateOp(AST *ast, ResultSet *result_set);
 OpResult OpUpdateInit(OpBase *opBase);
 Record OpUpdateConsume(OpBase *opBase);
 OpResult OpUpdateReset(OpBase *ctx);

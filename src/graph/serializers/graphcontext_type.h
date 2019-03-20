@@ -13,7 +13,7 @@ extern RedisModuleType *GraphContextRedisModuleType;
 
 #define GRAPHCONTEXT_TYPE_ENCODING_VERSION 4
 
-/* Commands related to the redis Graph registration */
+/* Commands related to the RedisGraph module registration */
 int GraphContextType_Register(RedisModuleCtx *ctx);
 void* GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver);
 void GraphContextType_RdbSave(RedisModuleIO *rdb, void *value);

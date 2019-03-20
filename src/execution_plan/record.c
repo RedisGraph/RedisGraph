@@ -77,6 +77,20 @@ Edge *Record_GetEdge(const Record r,  int idx) {
     return &(r[idx].value.e);
 }
 
+SIValue Record_Get(Record r, int idx) {
+    Entry e = r[idx];
+    switch (e.type) {
+        case REC_TYPE_NODE:
+            return SI_Node(Record_GetNode(r, idx));
+        case REC_TYPE_EDGE:
+            return SI_Edge(Record_GetEdge(r, idx));
+        case REC_TYPE_SCALAR:
+            return Record_GetScalar(r, idx);
+        default:
+            assert(false);
+    }
+}
+
 GraphEntity *Record_GetGraphEntity(const Record r, int idx) {
     Entry e = r[idx];
     switch(e.type) {
@@ -90,6 +104,20 @@ GraphEntity *Record_GetGraphEntity(const Record r, int idx) {
             assert(false);
     }
     return NULL;
+}
+
+void Record_Add(Record r, int idx, SIValue v) {
+    switch (SI_TYPE(v)) {
+        case T_NODE:
+            Record_AddNode(r, idx, *(Node*)v.ptrval);
+            break;
+        case T_EDGE:
+            Record_AddEdge(r, idx, *(Edge*)v.ptrval);
+            break;
+        default:
+            Record_AddScalar(r, idx, v);
+            break;
+    }
 }
 
 void Record_AddScalar(Record r, int idx, SIValue v) {
@@ -110,7 +138,9 @@ void Record_AddEdge(Record r, int idx, Edge edge) {
 size_t Record_ToString(const Record r, char **buf, size_t *buf_cap) {
     uint rLen = Record_length(r);
     SIValue values[rLen];
-    for(int i = 0; i < rLen; i++) values[i] = r[i].value.s;
+    for(int i = 0; i < rLen; i++) {
+        values[i] = Record_Get(r, i);
+    }
 
     size_t required_len = SIValue_StringConcatLen(values, rLen);
 
@@ -127,10 +157,7 @@ unsigned long long Record_Hash64(const Record r) {
     void *data;
     size_t len;
     static long long _null = 0;
-    struct {
-        GraphEntityType type;
-        EntityID id;
-    } entity;
+    EntityID id;
     SIValue si;
     
 	XXH_errorcode res;
@@ -143,19 +170,13 @@ unsigned long long Record_Hash64(const Record r) {
         Entry e = r[i];
         switch(e.type) {
         case REC_TYPE_NODE:
-            entity.type = GETYPE_NODE;
-            entity.id = ENTITY_GET_ID(Record_GetGraphEntity(r, i));
-            data = &entity;
-            len = sizeof(entity);
-            break;
-            
         case REC_TYPE_EDGE:
-            entity.type = GETYPE_EDGE;
-            entity.id = ENTITY_GET_ID(Record_GetGraphEntity(r, i));
-            data = &entity;
-            len = sizeof(entity);
+            // Since nodes and edges cannot occupy the same index within
+            // a record, we do not need to differentiate on type
+            id = ENTITY_GET_ID(Record_GetGraphEntity(r, i));
+            data = &id;
+            len = sizeof(id);
             break;
-            
         case REC_TYPE_SCALAR:
             si = Record_GetScalar(r, i);
             switch (si.type) {
@@ -165,7 +186,6 @@ unsigned long long Record_Hash64(const Record r) {
                 break;
                 
             case T_STRING:
-            case T_CONSTSTRING:
                 data = si.stringval;
                 len = strlen(si.stringval);
                 break;
