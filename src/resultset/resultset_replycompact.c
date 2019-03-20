@@ -89,9 +89,8 @@ static void _ResultSet_CompactReplyWithNode(RedisModuleCtx *ctx, GraphContext *g
     // [label string offset]
     // Print label in nested array for multi-label support
     // Retrieve label
-    const char *label = GraphContext_GetNodeLabel(gc, n);
     int label_id = Graph_GetNodeLabel(gc->g, id);
-    if (label == NULL) {
+    if (label_id == GRAPH_NO_LABEL) {
         // Emit an empty array for unlabeled nodes
         RedisModule_ReplyWithArray(ctx, 0);
     } else {

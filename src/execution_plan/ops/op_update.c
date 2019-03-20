@@ -129,7 +129,7 @@ static void _UpdateEdge(OpUpdate *op, EntityUpdateCtx *ctx) {
 static void _CommitUpdates(OpUpdate *op) {
     for(uint i = 0; i < op->pending_updates_count; i++) {
         EntityUpdateCtx *ctx = &op->pending_updates[i];
-        // Map the attribute key if if it has not been encountered before
+        // Map the attribute key if it has not been encountered before
         if (ctx->attr_id == ATTRIBUTE_NOTFOUND) {
             ctx->attr_id = GraphContext_FindOrAddAttribute(op->gc, ctx->attribute);
         }
