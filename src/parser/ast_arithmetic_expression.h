@@ -11,6 +11,13 @@
 #include "../util/triemap/triemap.h"
 #include "../value.h"
 
+/* If an AST_ArithmeticExpression_Node is a variadic with an entity alias and no
+ * property, it may refer to a full graph entity (or an aliased constant,
+ * such as an UNWIND list). */
+#define EXPRESSION_IS_ALIAS(a) (a)->type == AST_AR_EXP_OPERAND && \
+                               (a)->operand.type == AST_AR_EXP_VARIADIC && \
+                               (a)->operand.variadic.property == NULL
+
 /* ArExpNodeType lists the type of nodes within
  * an arithmetic expression tree. */
 typedef enum {

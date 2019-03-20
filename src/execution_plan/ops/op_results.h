@@ -11,6 +11,7 @@
 #include "../../parser/ast.h"
 #include "../../redismodule.h"
 #include "../../graph/query_graph.h"
+#include "../../graph/graphcontext.h"
 #include "../../resultset/resultset.h"
 
 /* Results generates result set */

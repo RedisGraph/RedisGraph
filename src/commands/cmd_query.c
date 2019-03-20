@@ -10,9 +10,10 @@
 #include "../query_executor.h"
 #include "../util/simple_timer.h"
 #include "../execution_plan/execution_plan.h"
+#include "../util/arr.h"
 #include "../util/rmalloc.h"
 
-void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST_IndexNode *indexNode) {
+static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST_IndexNode *indexNode) {
     /* Set up nested array response for index creation and deletion,
      * Following the response struture of other queries:
      * First element is an empty result-set followed by statistics.
@@ -46,6 +47,21 @@ void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST_IndexNode *inde
   }
 }
 
+static inline bool _check_compact_flag(CommandCtx *qctx) {
+    // The only additional argument to check currently is whether the query results
+    // should be returned in compact form
+    return (qctx->argc > 3 &&
+            !strcasecmp(RedisModule_StringPtrLen(qctx->argv[3], NULL), "--compact"));
+}
+
+static ResultSet* _prepare_resultset(RedisModuleCtx *ctx, AST **ast, bool compact) {
+    // The last AST will contain the return clause, if one is specified
+    AST *final_ast = ast[array_len(ast)-1];
+    ResultSet *set = NewResultSet(final_ast, ctx, compact);
+    ResultSet_CreateHeader(set, final_ast);
+    return set;
+}
+
 void _MGraph_Query(void *args) {
     CommandCtx *qctx = (CommandCtx*)args;
     RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(qctx);
@@ -73,12 +89,15 @@ void _MGraph_Query(void *args) {
         }
         /* TODO: free graph if no entities were created. */
     }
+
+    bool compact = _check_compact_flag(qctx);
+
     CommandCtx_ThreadSafeContextUnlock(qctx);
 
     // Perform query validations before and after ModifyAST
     if (AST_PerformValidations(ctx, ast) != AST_VALID) goto cleanup;
 
-    ModifyAST(gc, ast);
+    ModifyAST(ast);
     if (AST_PerformValidations(ctx, ast) != AST_VALID) goto cleanup;
 
     // Acquire the appropriate lock.
@@ -89,8 +108,9 @@ void _MGraph_Query(void *args) {
     if (ast[0]->indexNode) { // index operation
         _index_operation(ctx, gc, ast[0]->indexNode);
     } else {
-        ExecutionPlan *plan = NewExecutionPlan(ctx, gc, ast, false);
-        resultSet = ExecutionPlan_Execute(plan);
+        resultSet = _prepare_resultset(ctx, ast, compact);
+        ExecutionPlan *plan = NewExecutionPlan(ctx, ast, resultSet, false);
+        ExecutionPlan_Execute(plan);
         ExecutionPlanFree(plan);
         ResultSet_Replay(resultSet);    // Send result-set back to client.
     }

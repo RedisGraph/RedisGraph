@@ -23,44 +23,25 @@ typedef enum {
 typedef struct {
   int id;                 /* Internal ID to a matrix within the graph. */
   char *name;             /* Schema name. */
-  TrieMap *attributes;    /* Attributes encountered for schema. */
-  Index** indices;        /* Indices applicable to schema. */
+  Index **indices;        /* Indices applicable to schema. */
 } Schema;
 
 /* Creates a new schema. */
 Schema* Schema_New(const char *label, int id);
-
-/* Given attribute name retrieves its unique ID
- * Return attribute_NOTFOUND if attribute doesn't exists. */
-Attribute_ID Attribute_GetID(SchemaType t, const char *attribute);
-
-/* Returns number of attributes in schema. */
-unsigned short Schema_AttributeCount(const Schema *s);
-
-/* Given attribute name retrieves its unique ID from given schema
- * Return attribute_NOTFOUND if attribute doesn't exists. */
-Attribute_ID Schema_GetAttributeID(Schema *s, const char *attribute);
-
-/* Checks to see if schema contains attribute. */
-bool Schema_ContainsAttribute(const Schema *s, const char *attribute);
-
-/* Adds a attribute to schema, attribute is added to both
- * unified schema and given schema. */
-Attribute_ID Schema_AddAttribute(Schema *s, SchemaType t, const char *attribute);
 
 /* Returns number of indices in schema. */
 unsigned short Schema_IndexCount(const Schema *s);
 
 /* Retrieves index from attribute. 
  * Returns NULL if index wasn't found. */
-Index* Schema_GetIndex(Schema *s, const char* attribute);
+Index* Schema_GetIndex(Schema *s, Attribute_ID attr_id);
 
 /* Assign a new index to attribute
  * attribute must already exists and not associated with an index. */
-void Schema_AddIndex(Schema *s, char *attribute, Index *idx);
+int Schema_AddIndex(Schema *s, Attribute_ID attr_id);
 
 /* Removes index. */
-void Schema_RemoveIndex(Schema *s, const char *attribute);
+int Schema_RemoveIndex(Schema *s, Attribute_ID attr_id);
 
 /* Free schema. */
 void Schema_Free(Schema *s);

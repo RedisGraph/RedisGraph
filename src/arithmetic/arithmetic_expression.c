@@ -113,9 +113,7 @@ int AR_EXP_GetOperandType(AR_ExpNode *exp) {
  * who X is referring to. */
 void _AR_EXP_UpdatePropIdx(AR_ExpNode *root, const Record r) {
     GraphContext *gc = GraphContext_GetFromTLS();
-    RecordEntryType t = Record_GetType(r, root->operand.variadic.entity_alias_idx);
-    SchemaType st = (t == REC_TYPE_NODE) ? SCHEMA_NODE : SCHEMA_EDGE;
-    root->operand.variadic.entity_prop_idx = Attribute_GetID(st, root->operand.variadic.entity_prop);
+    root->operand.variadic.entity_prop_idx = GraphContext_GetAttributeID(gc, root->operand.variadic.entity_prop);
 }
 
 SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
@@ -153,22 +151,8 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
             } else {
                 // Alias doesn't necessarily refers to a graph entity,
                 // it could also be a constant.
-                // TODO: consider moving this logic to a generic method of Record.
                 int aliasIdx = root->operand.variadic.entity_alias_idx;
-                RecordEntryType t = Record_GetType(r, aliasIdx);
-                switch(t) {
-                    case REC_TYPE_SCALAR:
-                        result = Record_GetScalar(r, aliasIdx);
-                        break;
-                    case REC_TYPE_NODE:
-                        result = SI_Node(Record_GetGraphEntity(r, aliasIdx));
-                        break;
-                    case REC_TYPE_EDGE:
-                        result = SI_Edge(Record_GetGraphEntity(r, aliasIdx));
-                        break;
-                    default:
-                        assert(false);
-                }
+                result = Record_Get(r, aliasIdx);
             }
         }
     }
@@ -419,14 +403,14 @@ SIValue AR_ADD(SIValue *argv, int argc) {
             } else {
                 /* Result is already a string,
                  * Make sure result owns the string. */
-                if(SI_TYPE(result) & T_CONSTSTRING) {
+                if(result.allocation != M_SELF) {
                     result = SI_DuplicateStringVal(result.stringval);
                 }
             }
 
             /* Get a string representation of argument. */
             unsigned int argument_len = 0;
-            if(!(SI_TYPE(argv[i]) & SI_STRING)) {
+            if(SI_TYPE(argv[i]) != T_STRING) {
                 /* Argument is not a string, get a string representation. */
                 argument_len = SIValue_ToString(argv[i], buffer, 512);
                 string_arg = buffer;
@@ -531,7 +515,7 @@ SIValue AR_LEFT(SIValue *argv, int argc) {
     assert(argc == 2);
     if(SIValue_IsNull(argv[0])) return SI_NullVal();
 
-    assert(SI_TYPE(argv[0]) & SI_STRING);
+    assert(SI_TYPE(argv[0]) == T_STRING);
     assert(SI_TYPE(argv[1]) == T_INT64);
 
     int64_t newlen = argv[1].longval;
@@ -548,7 +532,7 @@ SIValue AR_LEFT(SIValue *argv, int argc) {
 SIValue AR_LTRIM(SIValue *argv, int argc) {
     if(SIValue_IsNull(argv[0])) return SI_NullVal();
 
-    assert(argc == 1 && SI_TYPE(argv[0]) & SI_STRING);
+    assert(argc == 1 && SI_TYPE(argv[0]) == T_STRING);
     
     char *trimmed = argv[0].stringval;
 
@@ -562,7 +546,7 @@ SIValue AR_LTRIM(SIValue *argv, int argc) {
 SIValue AR_RIGHT(SIValue *argv, int argc) {
     assert(argc == 2);
     if(SIValue_IsNull(argv[0])) return SI_NullVal();
-    assert(SI_TYPE(argv[0]) & SI_STRING);
+    assert(SI_TYPE(argv[0]) == T_STRING);
     assert(SI_TYPE(argv[1]) == T_INT64);
 
     int64_t newlen = argv[1].longval;
@@ -577,7 +561,7 @@ SIValue AR_RIGHT(SIValue *argv, int argc) {
 
 SIValue AR_RTRIM(SIValue *argv, int argc) {
     if(SIValue_IsNull(argv[0])) return SI_NullVal();
-    assert(argc == 1 && SI_TYPE(argv[0]) & SI_STRING);
+    assert(argc == 1 && SI_TYPE(argv[0]) == T_STRING);
     
     char *str = argv[0].stringval;
 
@@ -595,7 +579,7 @@ SIValue AR_RTRIM(SIValue *argv, int argc) {
 
 SIValue AR_REVERSE(SIValue *argv, int argc) {
     if(SIValue_IsNull(argv[0])) return SI_NullVal();
-    assert(SI_TYPE(argv[0]) & SI_STRING);
+    assert(SI_TYPE(argv[0]) == T_STRING);
     char *str = argv[0].stringval;
     size_t str_len = strlen(str);
     char *reverse = rm_malloc((str_len + 1) * sizeof(char));
