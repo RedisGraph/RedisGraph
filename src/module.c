@@ -9,12 +9,12 @@
 #include "redismodule.h"
 #include "config.h"
 #include "version.h"
+#include "redisearch_api.h"
 #include "commands/commands.h"
 #include "util/thpool/thpool.h"
 #include "arithmetic/agg_funcs.h"
 #include "procedures/procedure.h"
 #include "arithmetic/arithmetic_expression.h"
-#include "../deps/RediSearch/redisearch_api.h"
 #include "graph/serializers/graphcontext_type.h"
 
 /* Thread pool. */
