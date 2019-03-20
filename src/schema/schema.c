@@ -15,6 +15,7 @@ Schema* Schema_New(const char *name, int id) {
     schema->id = id;
     schema->name = rm_strdup(name);
     schema->indices = array_new(Index*, 4);
+    schema->fulltextIdx = NULL;
     return schema;
 }
 
@@ -35,9 +36,23 @@ Index* Schema_GetIndex(Schema *s, Attribute_ID id) {
     return NULL;
 }
 
+void Schema_SetFullTextIndex(Schema *s, RSIndex *idx) {
+    assert(s && idx);
+    // Overriding previouse index.
+    if(s->fulltextIdx && idx != s->fulltextIdx) {
+        RediSearch_DropIndex(s->fulltextIdx);
+    }
+    s->fulltextIdx = idx;
+}
+
+RSIndex *Schema_GetFullTextIndex(const Schema *s) {
+    assert(s);
+    return s->fulltextIdx;
+}
+
 int Schema_AddIndex(Schema *s, Attribute_ID attr_id) {
     // Make sure attribute isn't already indexed.
-    if (Schema_GetIndex(s, attr_id) != NULL) return INDEX_FAIL;
+    if(Schema_GetIndex(s, attr_id) != NULL) return INDEX_FAIL;
 
     // Populate an index for the label-attribute pair using the Graph interfaces.
     GraphContext *gc = GraphContext_GetFromTLS();
@@ -77,6 +92,6 @@ void Schema_Free(Schema *schema) {
     uint32_t index_count = array_len(schema->indices);
     for(int i = 0; i < index_count; i++) Index_Free(schema->indices[i]);
     array_free(schema->indices);
-
+    if(schema->fulltextIdx) RediSearch_DropIndex(schema->fulltextIdx);
     rm_free(schema);
 }
