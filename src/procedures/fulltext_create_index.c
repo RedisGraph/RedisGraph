@@ -19,7 +19,7 @@
 // CALL db.idx.fulltext.createNodeIndex('books', ['Book'], ['title', 'authors'])
 
 typedef struct {
-    Graph *g;
+    GraphContext *gc;
     Schema *s;
 } _fulltextIndexCtx;
 
@@ -67,16 +67,17 @@ static int _getNodeAttribute(void* ctx, const char* fieldName, const void* id, c
     Node n;
     NodeID nId = *(NodeID*)id;
     _fulltextIndexCtx *indexCtx = ctx;
-    Graph *g = indexCtx->g;
+    GraphContext *gc = indexCtx->gc;
+    Graph *g = gc->g;
     Schema *s = indexCtx->s;
     
     Graph_GetNode(g, nId, &n);
-    Attribute_ID attrId = Schema_GetAttributeID(s, fieldName);
+    Attribute_ID attrId = GraphContext_GetAttributeID(gc, fieldName);
     SIValue *v = GraphEntity_GetProperty((GraphEntity*)&n, attrId);
     int ret;
     if(v == PROPERTY_NOTFOUND) {
         ret = RSVALTYPE_NOTFOUND;
-    } else if(v->type & SI_STRING) {
+    } else if(v->type & T_STRING) {
         *strVal = v->stringval;
         ret = RSVALTYPE_STRING;
     } else if(v->type & SI_NUMERIC) {
@@ -101,7 +102,7 @@ ProcedureResult fulltextCreateNodeIdxInvoke(ProcedureCtx *ctx, char **args) {
     // Schema doesn't exists, TODO: report error.
     if(!s) return PROCEDURE_ERR;
 
-    indexCtx->g = g;
+    indexCtx->gc = gc;
     indexCtx->s = s;
     int label_id = s->id;
     uint fields_count = array_len(args) - 1;
@@ -111,7 +112,7 @@ ProcedureResult fulltextCreateNodeIdxInvoke(ProcedureCtx *ctx, char **args) {
     // Validate that all specified fields exists.
     for(int i = 0; i < fields_count; i++) {
         char *field = fields[i];
-        if(Schema_GetAttributeID(s, field) == ATTRIBUTE_NOTFOUND) {
+        if(GraphContext_GetAttributeID(gc, field) == ATTRIBUTE_NOTFOUND) {
             // TODO: report error.
             return PROCEDURE_ERR;
         }
@@ -121,7 +122,7 @@ ProcedureResult fulltextCreateNodeIdxInvoke(ProcedureCtx *ctx, char **args) {
     Schema_SetFullTextIndex(s, idx);
     for(int i = 0; i < fields_count; i++) {
         char *field = fields[i];
-        fields_ids[i] = Schema_GetAttributeID(s, field);
+        fields_ids[i] = GraphContext_GetAttributeID(gc, field);
         // Introduce text fields.
         RediSearch_CreateTextField(idx, field);
     }

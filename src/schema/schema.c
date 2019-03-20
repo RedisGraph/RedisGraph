@@ -52,7 +52,7 @@ RSIndex *Schema_GetFullTextIndex(const Schema *s) {
 
 int Schema_AddIndex(Schema *s, Attribute_ID attr_id) {
     // Make sure attribute isn't already indexed.
-    if (Schema_GetIndex(s, attr_id) != NULL) return INDEX_FAIL;
+    if(Schema_GetIndex(s, attr_id) != NULL) return INDEX_FAIL;
 
     // Populate an index for the label-attribute pair using the Graph interfaces.
     GraphContext *gc = GraphContext_GetFromTLS();
