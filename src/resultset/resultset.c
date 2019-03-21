@@ -52,17 +52,16 @@ static void _ResultSet_ReplyWithStringMapping(RedisModuleCtx *ctx) {
 static void _ResultSet_SetupReply(ResultSet *set) {
     // Send the string mapping, if required, as the first response
     if (set->compact) {
-        // Compact replies will contain 3 top-level replies
-        RedisModule_ReplyWithArray(set->ctx, 3);
-        // The first element is the the string mapping
+        // Compact replies will contain 4 top-level replies:
+        // string mapping, header, records, statistics
+        RedisModule_ReplyWithArray(set->ctx, 4);
+        // Emit the string mapping
         _ResultSet_ReplyWithStringMapping(set->ctx);
     } else {
-        // Verbose replies will only contain the result set and statistics
-        RedisModule_ReplyWithArray(set->ctx, 2);
+        // Verbose replies will contain 3 top-level replies:
+        // header, records, statistics
+        RedisModule_ReplyWithArray(set->ctx, 3);
     }
-
-    // We don't know at this point the number of records we're about to return.
-    RedisModule_ReplyWithArray(set->ctx, REDISMODULE_POSTPONED_ARRAY_LEN);
 }
 
 static void _ResultSet_ReplayStats(RedisModuleCtx* ctx, ResultSet* set) {
@@ -117,14 +116,14 @@ static Column* _NewColumn(char *name, char *alias) {
     return column;
 }
 
-void static _Column_Free(Column* column) {
+static void _Column_Free(Column* column) {
     /* No need to free alias,
      * it will be freed as part of AST_Free. */
     rm_free(column->name);
     rm_free(column);
 }
 
-void ResultSet_CreateHeader(ResultSet *set, AST **ast) {
+static void _ResultSet_CreateHeader(ResultSet *set, AST **ast) {
     // The last AST will contain the return clause, if one is specified
     AST *final_ast = ast[array_len(ast)-1];
 
@@ -182,6 +181,7 @@ ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx, bool compact) {
     set->gc = GraphContext_GetFromTLS();
     set->distinct = (ast->returnNode && ast->returnNode->distinct);
     set->compact = compact;
+    set->EmitRecord = _ResultSet_SetReplyFormatter(set->compact);
     set->recordCount = 0;    
     set->header = NULL;
     set->bufferLen = 2048;
@@ -194,11 +194,18 @@ ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx, bool compact) {
     set->stats.nodes_deleted = 0;
     set->stats.relationships_deleted = 0;
 
-    set->EmitRecord = _ResultSet_SetReplyFormatter(set->compact);
+    return set;
+}
 
+// Initialize the user-facing reply arrays,
+// emit the string mapping if necessary and the header.
+void ResultSet_ReplyWithPreamble(ResultSet *set, AST **ast) {
     _ResultSet_SetupReply(set);
 
-    return set;
+    _ResultSet_CreateHeader(set, ast);
+
+    // We don't know at this point the number of records we're about to return.
+    RedisModule_ReplyWithArray(set->ctx, REDISMODULE_POSTPONED_ARRAY_LEN);
 }
 
 int ResultSet_AddRecord(ResultSet *set, Record r) {
@@ -213,8 +220,6 @@ int ResultSet_AddRecord(ResultSet *set, Record r) {
 void ResultSet_Replay(ResultSet* set) {
     // Ensure that we're returning a valid number of records.
     size_t resultset_size = set->recordCount;
-    if(set->header) resultset_size++;
-
     RedisModule_ReplySetArrayLength(set->ctx, resultset_size);
     _ResultSet_ReplayStats(set->ctx, set);
 }
