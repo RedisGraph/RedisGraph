@@ -6,9 +6,18 @@
 
 #pragma once
 
+#include "resultset_header.h"
 #include "../redismodule.h"
 #include "../execution_plan/record.h"
 #include "../graph/graphcontext.h"
+#include "../graph/query_graph.h"
+
+typedef enum {
+    COLUMN_UNKNOWN,
+    COLUMN_SCALAR,
+    COLUMN_NODE,
+    COLUMN_RELATION,
+} ColumnTypeUser;
 
 typedef enum {
     PROPERTY_UNKNOWN,
@@ -42,3 +51,8 @@ void ResultSet_EmitVerboseRecord(RedisModuleCtx *ctx, GraphContext *gc, const Re
 // Formatter for compact (client-parsed) replies
 void ResultSet_EmitCompactRecord(RedisModuleCtx *ctx, GraphContext *gc, const Record r, unsigned int numcols);
 
+// Formatter for verbose header reply
+void ResultSet_ReplyWithVerboseHeader(RedisModuleCtx *ctx, const ResultSetHeader *header);
+
+// Formatter for compact header reply
+void ResultSet_ReplyWithCompactHeader(RedisModuleCtx *ctx, const ResultSetHeader *header, TrieMap *entities);

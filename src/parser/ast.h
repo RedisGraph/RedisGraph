@@ -61,6 +61,9 @@ void AST_MapAliasToID(AST *ast, AST_WithNode *prevWithClause);
 // Returns a triemap of all identifiers defined by ast.
 TrieMap* AST_Identifiers(const AST *ast);
 
+// Returns a triemap of AST_GraphEntity references from clauses that can specify nodes or edges.
+TrieMap* AST_CollectEntityReferences(AST **ast);
+
 // Checks if AST represent a read only query.
 bool AST_ReadOnly(AST **ast);
 

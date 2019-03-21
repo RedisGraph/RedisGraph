@@ -476,6 +476,20 @@ void AST_MapAliasToID(AST *ast, AST_WithNode *prevWithClause) {
   TrieMap_Free(definedEntities, TrieMap_NOP_CB);
 }
 
+TrieMap* AST_CollectEntityReferences(AST **ast_arr) {
+  TrieMap *alias_references = NewTrieMap();
+
+  uint ast_count = array_len(ast_arr);
+  for (uint i = 0; i < ast_count; i ++) {
+      const AST *ast = ast_arr[i];
+      // Get unique aliases from clauses that can introduce nodes and edges.
+      MatchClause_DefinedEntities(ast->matchNode, alias_references);
+      CreateClause_DefinedEntities(ast->createNode, alias_references);
+      // TODO May need to collect alias redefinitions from WITH clauses
+  }
+  return alias_references;
+}
+
 // Returns a triemap of all identifiers defined by ast.
 TrieMap* AST_Identifiers(const AST *ast) {
   TrieMap *identifiers = NewTrieMap();
