@@ -146,3 +146,16 @@ void ResultSet_EmitVerboseRecord(RedisModuleCtx *ctx, GraphContext *gc, const Re
         }
     }
 }
+
+// Emit the alias or descriptor for each column in the header.
+void ResultSet_ReplyWithVerboseHeader(RedisModuleCtx *ctx, const ResultSetHeader *header) {
+    RedisModule_ReplyWithArray(ctx, header->columns_len);
+    for(int i = 0; i < header->columns_len; i++) {
+        Column *c = header->columns[i];
+        if(c->alias) {
+            RedisModule_ReplyWithStringBuffer(ctx, c->alias, strlen(c->alias));
+        } else {
+            RedisModule_ReplyWithStringBuffer(ctx, c->name, strlen(c->name));
+        }
+    }
+}
