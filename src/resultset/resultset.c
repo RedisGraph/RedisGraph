@@ -12,32 +12,56 @@
 #include "../grouping/group_cache.h"
 #include "../arithmetic/aggregate.h"
 
-static void _ResultSet_ReplayHeader(const ResultSet *set, const ResultSetHeader *header) {    
-    RedisModule_ReplyWithArray(set->ctx, header->columns_len);
-    for(int i = 0; i < header->columns_len; i++) {
-        Column *c = header->columns[i];
-        if(c->alias) {
-            RedisModule_ReplyWithStringBuffer(set->ctx, c->alias, strlen(c->alias));
-        } else {
-            RedisModule_ReplyWithStringBuffer(set->ctx, c->name, strlen(c->name));
-        }
-    }
-}
-
 // Choose the appropriate reply formatter
 EmitRecordFunc _ResultSet_SetReplyFormatter(bool compact) {
     if (compact) return ResultSet_EmitCompactRecord;
     return ResultSet_EmitVerboseRecord;
 }
 
-// Prepare replay.
-static void _ResultSet_SetupReply(ResultSet *set) {
-    // Reply will contain string mapping if we're issuing a compact reply,
-    // then resultset + statistics (in that order) in either case.
-    int top_level_replies = set->compact ? 3 : 2;
-    RedisModule_ReplyWithArray(set->ctx, top_level_replies);
+static void _ResultSet_ReplyWithStringMapping(RedisModuleCtx *ctx) {
+    /* TODO The string mapping in its entirety is only required if the user has
+     * requested any full entities.
+     * Similarly, no or few label/reltype strings may be necessary depending on
+     * what entity types the query requests and whether it provides labels.
+     * This whole area should be refactored as soon as possible. */
+    GraphContext *gc = GraphContext_GetFromTLS();
 
-    // We don't know at this point the number of records, we're about to return.
+    int prop_string_count = array_len(gc->string_mapping);
+    uint label_count = array_len(gc->node_schemas);
+    uint reltype_count = array_len(gc->relation_schemas);
+
+    // TODO if the query introduces new strings, we will be incapable of returning them
+    RedisModule_ReplyWithArray(ctx, prop_string_count + label_count + reltype_count);
+    for (int i = 0; i < prop_string_count; i ++) {
+        const char *prop = gc->string_mapping[i];
+        RedisModule_ReplyWithStringBuffer(ctx, prop, strlen(prop));
+    }
+
+    for (uint i = 0; i < label_count; i ++) {
+        const char *label = gc->node_schemas[i]->name;
+        RedisModule_ReplyWithStringBuffer(ctx, label, strlen(label));
+    }
+
+    for (uint i = 0; i < reltype_count; i ++) {
+        const char *reltype = gc->relation_schemas[i]->name;
+        RedisModule_ReplyWithStringBuffer(ctx, reltype, strlen(reltype));
+    }
+}
+
+// Prepare replay and emit the string mapping if required.
+static void _ResultSet_SetupReply(ResultSet *set) {
+    // Send the string mapping, if required, as the first response
+    if (set->compact) {
+        // Compact replies will contain 3 top-level replies
+        RedisModule_ReplyWithArray(set->ctx, 3);
+        // The first element is the the string mapping
+        _ResultSet_ReplyWithStringMapping(set->ctx);
+    } else {
+        // Verbose replies will only contain the result set and statistics
+        RedisModule_ReplyWithArray(set->ctx, 2);
+    }
+
+    // We don't know at this point the number of records we're about to return.
     RedisModule_ReplyWithArray(set->ctx, REDISMODULE_POSTPONED_ARRAY_LEN);
 }
 
@@ -86,36 +110,6 @@ static void _ResultSet_ReplayStats(RedisModuleCtx* ctx, ResultSet* set) {
     }
 }
 
-static void _ResultSet_ReplyWithStringMapping(RedisModuleCtx *ctx) {
-    /* TODO The string mapping in its entirety is only required if the user has
-     * requested any full entities.
-     * Similarly, no or few label/reltype strings may be necessary depending on
-     * what entity types the query requests and whether it provides labels.
-     * This whole area should be refactored as soon as possible. */
-    GraphContext *gc = GraphContext_GetFromTLS();
-    int prop_string_count = array_len(gc->string_mapping);
-
-    uint label_count = array_len(gc->node_schemas);
-    uint reltype_count = array_len(gc->relation_schemas);
-
-    // TODO if the query introduces new strings, we will be incapable of returning them
-    RedisModule_ReplyWithArray(ctx, prop_string_count + label_count + reltype_count);
-    for (int i = 0; i < prop_string_count; i ++) {
-        const char *prop = gc->string_mapping[i];
-        RedisModule_ReplyWithStringBuffer(ctx, prop, strlen(prop));
-    }
-
-    for (uint i = 0; i < label_count; i ++) {
-        const char *label = gc->node_schemas[i]->name;
-        RedisModule_ReplyWithStringBuffer(ctx, label, strlen(label));
-    }
-
-    for (uint i = 0; i < reltype_count; i ++) {
-        const char *reltype = gc->relation_schemas[i]->name;
-        RedisModule_ReplyWithStringBuffer(ctx, reltype, strlen(reltype));
-    }
-}
-
 static Column* _NewColumn(char *name, char *alias) {
     Column* column = rm_malloc(sizeof(Column));
     column->name = name;
@@ -130,27 +124,26 @@ void static _Column_Free(Column* column) {
     rm_free(column);
 }
 
-void ResultSet_CreateHeader(ResultSet *resultset, const AST *ast) {    
+void ResultSet_CreateHeader(ResultSet *set, AST **ast) {
+    // The last AST will contain the return clause, if one is specified
+    AST *final_ast = ast[array_len(ast)-1];
 
-    if(!ast->returnNode) return;
-    assert(resultset->header == NULL && resultset->recordCount == 0);
-
-    // Send the string mapping, if required, as the first response
-    if (resultset->compact) _ResultSet_ReplyWithStringMapping(resultset->ctx);
+    if(!final_ast->returnNode) return;
+    assert(set->header == NULL && set->recordCount == 0);
 
     ResultSetHeader* header = rm_malloc(sizeof(ResultSetHeader));
     header->columns_len = 0;
     header->columns = NULL;
 
-    if(ast->returnNode != NULL) {
-        header->columns_len = array_len(ast->returnNode->returnElements);
+    if(final_ast->returnNode != NULL) {
+        header->columns_len = array_len(final_ast->returnNode->returnElements);
         header->columns = rm_malloc(sizeof(Column*) * header->columns_len);
     }
 
     for(int i = 0; i < header->columns_len; i++) {
-        AST_ReturnElementNode *returnElementNode = ast->returnNode->returnElements[i];
+        AST_ReturnElementNode *returnElementNode = final_ast->returnNode->returnElements[i];
 
-        AR_ExpNode *ar_exp = AR_EXP_BuildFromAST(ast, returnElementNode->exp);
+        AR_ExpNode *ar_exp = AR_EXP_BuildFromAST(final_ast, returnElementNode->exp);
 
         char *column_name;
         AR_EXP_ToString(ar_exp, &column_name);
@@ -160,9 +153,15 @@ void ResultSet_CreateHeader(ResultSet *resultset, const AST *ast) {
         header->columns[i] = column;
     }
 
-    resultset->header = header;
+    set->header = header;
     /* Replay with table header. */
-    _ResultSet_ReplayHeader(resultset, header);
+    if (set->compact) {
+        TrieMap *entities = AST_CollectEntityReferences(ast);
+        ResultSet_ReplyWithCompactHeader(set->ctx, set->header, entities);
+        TrieMap_Free(entities, TrieMap_NOP_CB);
+    } else {
+        ResultSet_ReplyWithVerboseHeader(set->ctx, set->header);
+    }
 }
 
 static void _ResultSetHeader_Free(ResultSetHeader* header) {
