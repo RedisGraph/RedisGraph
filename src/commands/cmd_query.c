@@ -58,7 +58,7 @@ static ResultSet* _prepare_resultset(RedisModuleCtx *ctx, AST **ast, bool compac
     // The last AST will contain the return clause, if one is specified
     AST *final_ast = ast[array_len(ast)-1];
     ResultSet *set = NewResultSet(final_ast, ctx, compact);
-    ResultSet_CreateHeader(set, ast);
+    ResultSet_ReplyWithPreamble(set, ast);
     return set;
 }
 

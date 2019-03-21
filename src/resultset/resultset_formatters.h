@@ -13,19 +13,19 @@
 #include "../graph/query_graph.h"
 
 typedef enum {
-    COLUMN_UNKNOWN,
-    COLUMN_SCALAR,
-    COLUMN_NODE,
-    COLUMN_RELATION,
+    COLUMN_UNKNOWN = 0,
+    COLUMN_SCALAR = 1,
+    COLUMN_NODE = 2,
+    COLUMN_RELATION = 3,
 } ColumnTypeUser;
 
 typedef enum {
-    PROPERTY_UNKNOWN,
-    PROPERTY_NULL,
-    PROPERTY_STRING,
-    PROPERTY_INTEGER,
-    PROPERTY_BOOLEAN,
-    PROPERTY_DOUBLE,
+    PROPERTY_UNKNOWN = 0,
+    PROPERTY_NULL = 1,
+    PROPERTY_STRING = 2,
+    PROPERTY_INTEGER = 3,
+    PROPERTY_BOOLEAN = 4,
+    PROPERTY_DOUBLE = 5,
 } PropertyTypeUser;
 
 /* Redis prints doubles with up to 17 digits of precision, which captures
