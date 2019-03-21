@@ -126,16 +126,16 @@ static void _ResultSet_CompactReplyWithEdge(RedisModuleCtx *ctx, GraphContext *g
     // Retrieve reltype
     int reltype_id = Graph_GetEdgeRelation(gc->g, e);
     assert(reltype_id != GRAPH_NO_RELATION);
+    // Translate reltype into string mapping offset
+    // TODO Unsafe if the query has extended the string mapping
+    int offset = array_len(gc->string_mapping) + array_len(gc->node_schemas) + reltype_id;
+    RedisModule_ReplyWithLongLong(ctx, offset);
 
     // src node ID
     RedisModule_ReplyWithLongLong(ctx, Edge_GetSrcNodeID(e));
 
     // dest node ID
     RedisModule_ReplyWithLongLong(ctx, Edge_GetDestNodeID(e));
-
-    // TODO Unsafe if the query has extended the string mapping
-    int offset = array_len(gc->string_mapping) + array_len(gc->node_schemas) + reltype_id;
-    RedisModule_ReplyWithLongLong(ctx, offset);
 
     // [properties]
     _ResultSet_CompactReplyWithProperties(ctx, gc, (GraphEntity*)e);
@@ -170,9 +170,9 @@ void ResultSet_ReplyWithCompactHeader(RedisModuleCtx *ctx, const ResultSetHeader
         Column *c = header->columns[i];
         ColumnTypeUser t;
         char *identifier = c->alias? c->alias: c->name;
-        RedisModule_ReplyWithStringBuffer(ctx, identifier, strlen(identifier));
-
         AST_GraphEntity *entity = TrieMap_Find(entities, identifier, strlen(identifier));
+
+        // First, emit the column type enum
         if (entity == TRIEMAP_NOTFOUND) {
             t = COLUMN_SCALAR;
         } else if (entity->t == N_ENTITY) {
@@ -181,5 +181,8 @@ void ResultSet_ReplyWithCompactHeader(RedisModuleCtx *ctx, const ResultSetHeader
             t = COLUMN_RELATION;
         }
         RedisModule_ReplyWithLongLong(ctx, t);
+
+        // Second, emit the identifier string associated with the column
+        RedisModule_ReplyWithStringBuffer(ctx, identifier, strlen(identifier));
     }
 }
