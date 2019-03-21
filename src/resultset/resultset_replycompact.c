@@ -5,6 +5,7 @@
  */
 
 #include "resultset_formatters.h"
+#include "../parser/ast_common.h"
 #include "../util/arr.h"
 
 static inline PropertyTypeUser _mapValueType(const SIValue v) {
@@ -156,5 +157,29 @@ void ResultSet_EmitCompactRecord(RedisModuleCtx *ctx, GraphContext *gc, const Re
                 RedisModule_ReplyWithArray(ctx, 2); // Reply with array with space for type and value
                 ResultSet_CompactReplyWithSIValue(ctx, gc, Record_GetScalar(r, i));
         }
+    }
+}
+
+// For every column in the header, emit a 2-array that specifies
+// the column alias followed by an enum denoting what type
+// (scalar, node, or relation) it holds.
+void ResultSet_ReplyWithCompactHeader(RedisModuleCtx *ctx, const ResultSetHeader *header, TrieMap *entities) {
+    RedisModule_ReplyWithArray(ctx, header->columns_len);
+    for(int i = 0; i < header->columns_len; i++) {
+        RedisModule_ReplyWithArray(ctx, 2);
+        Column *c = header->columns[i];
+        ColumnTypeUser t;
+        char *identifier = c->alias? c->alias: c->name;
+        RedisModule_ReplyWithStringBuffer(ctx, identifier, strlen(identifier));
+
+        AST_GraphEntity *entity = TrieMap_Find(entities, identifier, strlen(identifier));
+        if (entity == TRIEMAP_NOTFOUND) {
+            t = COLUMN_SCALAR;
+        } else if (entity->t == N_ENTITY) {
+            t = COLUMN_NODE;
+        } else {
+            t = COLUMN_RELATION;
+        }
+        RedisModule_ReplyWithLongLong(ctx, t);
     }
 }
