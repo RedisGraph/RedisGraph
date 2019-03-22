@@ -124,20 +124,13 @@ static void _Column_Free(Column* column) {
 }
 
 static void _ResultSet_CreateHeader(ResultSet *set, AST **ast) {
-    // The last AST will contain the return clause, if one is specified
     AST *final_ast = ast[array_len(ast)-1];
 
-    if(!final_ast->returnNode) return;
-    assert(set->header == NULL && set->recordCount == 0);
-
+    assert(final_ast->returnNode && set->header == NULL && set->recordCount == 0);
     ResultSetHeader* header = rm_malloc(sizeof(ResultSetHeader));
-    header->columns_len = 0;
-    header->columns = NULL;
 
-    if(final_ast->returnNode != NULL) {
-        header->columns_len = array_len(final_ast->returnNode->returnElements);
-        header->columns = rm_malloc(sizeof(Column*) * header->columns_len);
-    }
+    header->columns_len = array_len(final_ast->returnNode->returnElements);
+    header->columns = rm_malloc(sizeof(Column*) * header->columns_len);
 
     for(int i = 0; i < header->columns_len; i++) {
         AST_ReturnElementNode *returnElementNode = final_ast->returnNode->returnElements[i];
@@ -200,6 +193,14 @@ ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx, bool compact) {
 // Initialize the user-facing reply arrays,
 // emit the string mapping if necessary and the header.
 void ResultSet_ReplyWithPreamble(ResultSet *set, AST **ast) {
+    // The last AST will contain the return clause, if one is specified
+    AST *final_ast = ast[array_len(ast)-1];
+    if (final_ast->returnNode == NULL) {
+        // Queries that don't form result sets will only emit statistics
+        RedisModule_ReplyWithArray(set->ctx, 1);
+        return;
+    }
+
     _ResultSet_SetupReply(set);
 
     _ResultSet_CreateHeader(set, ast);
@@ -218,9 +219,12 @@ int ResultSet_AddRecord(ResultSet *set, Record r) {
 }
 
 void ResultSet_Replay(ResultSet* set) {
-    // Ensure that we're returning a valid number of records.
-    size_t resultset_size = set->recordCount;
-    RedisModule_ReplySetArrayLength(set->ctx, resultset_size);
+    // If we have emitted records, set the number of elements in the
+    // preceding array
+    if (set->header) {
+        size_t resultset_size = set->recordCount;
+        RedisModule_ReplySetArrayLength(set->ctx, resultset_size);
+    }
     _ResultSet_ReplayStats(set->ctx, set);
 }
 
