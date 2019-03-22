@@ -112,29 +112,29 @@ class GraphPersistency(FlowTestsBase):
             # Expecting 5 person entities.
             query = """MATCH (p:person) RETURN COUNT(p)"""
             actual_result = redis_graph.query(query)
-            nodeCount = int(float(actual_result.result_set[1][0]))
+            nodeCount = actual_result.result_set[0][0]
             assert(nodeCount == 5)
 
             query = """MATCH (p:person) WHERE p.name='Alon' RETURN COUNT(p)"""
             actual_result = redis_graph.query(query)
-            nodeCount = int(float(actual_result.result_set[1][0]))
+            nodeCount = actual_result.result_set[0][0]
             assert(nodeCount == 1)
 
             # Expecting 3 country entities.
             query = """MATCH (c:country) RETURN COUNT(c)"""
             actual_result = redis_graph.query(query)
-            nodeCount = int(float(actual_result.result_set[1][0]))
+            nodeCount = actual_result.result_set[0][0]
             assert(nodeCount == 3)
 
             query = """MATCH (c:country) WHERE c.name = 'Israel' RETURN COUNT(c)"""
             actual_result = redis_graph.query(query)
-            nodeCount = int(float(actual_result.result_set[1][0]))
+            nodeCount = actual_result.result_set[0][0]
             assert(nodeCount == 1)
 
             # Expecting 2 visit edges.
             query = """MATCH (n:person)-[e:visit]->(c:country) WHERE e.purpose='pleasure' RETURN COUNT(e)"""
             actual_result = redis_graph.query(query)
-            edgeCount = int(float(actual_result.result_set[1][0]))
+            edgeCount = actual_result.result_set[0][0]
             assert(edgeCount == 2)
 
             # Verify indices exists.
@@ -149,7 +149,7 @@ class GraphPersistency(FlowTestsBase):
         query = """MATCH (p) WHERE ID(p) = 0 OR ID(p) = 3 OR ID(p) = 7 OR ID(p) = 9 DELETE p"""
         actual_result = dense_graph.query(query)
         assert(actual_result.nodes_deleted == 4)
-        query = """MATCH (p)-[]->(q) RETURN p, q ORDER BY p.val, q.val"""
+        query = """MATCH (p)-[]->(q) RETURN p.val, q.val ORDER BY p.val, q.val"""
         first_result = dense_graph.query(query)
 
         # Save RDB & Load from RDB
@@ -171,14 +171,13 @@ class GraphPersistency(FlowTestsBase):
         # Save RDB & Load from RDB
         redis_con.execute_command("DEBUG", "RELOAD")
 
-        query = """MATCH (p) RETURN p"""
+        query = """MATCH (p) RETURN p.boolval, p.nullval, p.numval, p.strval"""
         actual_result = graph.query(query)
 
         # Verify that the properties are loaded correctly.
         # Note that the order of results is not guaranteed (currently managed by the Schema),
         # so this may need to be updated in the future.
-        expected_result = [['p.boolval', 'p.nullval', 'p.numval', 'p.strval'],
-                           ['true', None, '5.5', 'str']]
+        expected_result = [[True, None, 5.5, 'str']]
         assert(actual_result.result_set == expected_result)
 
     # Verify that the database can be reloaded correctly after creating multiple
@@ -199,10 +198,9 @@ class GraphPersistency(FlowTestsBase):
         assert(actual_result.relationships_created == 1)
 
         # Verify the new edge
-        read_query = """MATCH (a)-[e]->(b) RETURN e, a, b"""
+        read_query = """MATCH (a)-[e]->(b) RETURN e.val, a.name, b.name"""
         actual_result = graph.query(read_query)
-        expected_result = [['e.val', 'a.name', 'b.name'],
-                           [1, 'src', 'dest']]
+        expected_result = [[1, 'src', 'dest']]
         assert(actual_result.result_set == expected_result)
 
         # Overwrite the existing edge
@@ -212,8 +210,7 @@ class GraphPersistency(FlowTestsBase):
 
         actual_result = graph.query(read_query)
         # TODO This is the expected current behavior, subject to later change.
-        expected_result = [['e.val', 'a.name', 'b.name'],
-                           [2, 'src', 'dest']]
+        expected_result = [[2, 'src', 'dest']]
         assert(actual_result.result_set == expected_result)
 
         # Save RDB & Load from RDB

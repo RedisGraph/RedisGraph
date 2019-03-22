@@ -65,7 +65,7 @@ class GraphDeletionFlowTest(FlowTestsBase):
         # How many nodes contains the 'name' attribute
         query = """MATCH (n) WHERE EXISTS(n.name)=true RETURN count(n)"""
         actual_result = redis_graph.query(query)
-        nodeCount = int(actual_result.result_set[1][0])
+        nodeCount = actual_result.result_set[0][0]
         assert(nodeCount == 7)
 
         # Remove Tal's name attribute.
@@ -76,7 +76,7 @@ class GraphDeletionFlowTest(FlowTestsBase):
         # should reduce by 1 from previous count.
         query = """MATCH (n) WHERE EXISTS(n.name)=true RETURN count(n)"""
         actual_result = redis_graph.query(query)
-        nodeCount = int(actual_result.result_set[1][0])
+        nodeCount = actual_result.result_set[0][0]
         assert(nodeCount == 6)
 
         # Reintroduce Tal's name attribute.
@@ -86,7 +86,7 @@ class GraphDeletionFlowTest(FlowTestsBase):
         # How many nodes contains the 'name' attribute
         query = """MATCH (n) WHERE EXISTS(n.name)=true RETURN count(n)"""
         actual_result = redis_graph.query(query)
-        nodeCount = int(actual_result.result_set[1][0])
+        nodeCount = actual_result.result_set[0][0]
         assert(nodeCount == 7)
 
     # Delete edges pointing into either Boaz or Ori.
@@ -102,7 +102,7 @@ class GraphDeletionFlowTest(FlowTestsBase):
                     WHERE d.name = "Boaz" AND d.name = "Ori"
                     RETURN COUNT(s)"""
         actual_result = redis_graph.query(query)
-        assert(len(actual_result.result_set) is 1)
+        assert(len(actual_result.result_set) is 0)
 
     # Remove 'know' edge connecting Roi to Alon
     # Leaving a single edge of type SameBirthday
@@ -120,12 +120,12 @@ class GraphDeletionFlowTest(FlowTestsBase):
         query = """MATCH (s:person {name: "Roi"})-[e:SameBirthday]->(d:person {name: "Alon"})
                    RETURN COUNT(s)"""
         actual_result = redis_graph.query(query)
-        assert(len(actual_result.result_set) is 2) # header row + record.
+        assert(len(actual_result.result_set) is 1)
 
         query = """MATCH (s:person {name: "Roi"})-[e:know]->(d:person {name: "Alon"})
                    RETURN COUNT(s)"""
         actual_result = redis_graph.query(query)
-        assert(len(actual_result.result_set) is 1) # Only header row.
+        assert(len(actual_result.result_set) is 0)
 
     # Remove both Alon and Boaz from the graph. 
     def test06_delete_nodes(self):
@@ -142,21 +142,21 @@ class GraphDeletionFlowTest(FlowTestsBase):
                     WHERE s.name = "Boaz" OR s.name = "Alon"
                     RETURN s"""
         actual_result = redis_graph.query(query)
-        assert(len(actual_result.result_set) is 1) # Only header row.
+        assert(len(actual_result.result_set) is 0)
 
     # Make sure Alon and Boaz are the only removed nodes.
     def test08_verify_node_deletion(self):
         query = """MATCH (s:person)
                    RETURN COUNT(s)"""
         actual_result = redis_graph.query(query)
-        nodeCount = int(actual_result.result_set[1][0])
+        nodeCount = actual_result.result_set[0][0]
         assert(nodeCount == 5)
 
     def test09_delete_entire_graph(self):
         # Make sure graph exists.
         query = """MATCH (n) RETURN COUNT(n)"""
         result = redis_graph.query(query)
-        nodeCount = int(result.result_set[1][0])
+        nodeCount = result.result_set[0][0]
         assert(nodeCount > 0)
         
         # Delete graph.

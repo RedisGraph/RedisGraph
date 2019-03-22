@@ -73,7 +73,7 @@ class RedisGraphTestBase(FlowTestsBase):
         global graph
         q = graph.query(cmd)
         try:
-            return q.result_set[1:]
+            return q.result_set
         except:
             return []
 

@@ -48,33 +48,33 @@ class ValueComparisonTest(FlowTestsBase):
 
     # Verify the ordering of values that can and cannot be directly compared
     def test_orderability(self):
-        query = """MATCH (v:value) RETURN v ORDER BY v.val"""
+        query = """MATCH (v:value) RETURN v.val ORDER BY v.val"""
         actual_result = redis_graph.query(query)
         expected = [['str1'],
                     ['str2'],
-                    ['false'],
-                    ['true'],
+                    [False],
+                    [True],
                     [5],
-                    ['10.5'],
+                    [10.5],
                     [None]]
-        assert(actual_result.result_set[1:] == expected)
+        assert(actual_result.result_set == expected)
 
         # Expect the results to appear in reverse when using descending order
-        query = """MATCH (v:value) RETURN v ORDER BY v.val DESC"""
+        query = """MATCH (v:value) RETURN v.val ORDER BY v.val DESC"""
         actual_result = redis_graph.query(query)
-        assert(actual_result.result_set[1:] == expected[::-1])
+        assert(actual_result.result_set == expected[::-1])
 
     # From the Cypher specification:
     # "In a mixed set, any numeric value is always considered to be higher than any string value"
     def test_mixed_type_min(self):
         query = """MATCH (v:value) RETURN MIN(v.val)"""
         actual_result = redis_graph.query(query)
-        assert(actual_result.result_set[1][0] == 'str1')
+        assert(actual_result.result_set[0][0] == 'str1')
 
     def test_mixed_type_max(self):
         query = """MATCH (v:value) RETURN MAX(v.val)"""
         actual_result = redis_graph.query(query)
-        assert(actual_result.result_set[1][0] == '10.5')
+        assert(actual_result.result_set[0][0] == 10.5)
 
     # Verify that disjoint types pass != filters
     def test_disjoint_comparisons(self):
@@ -83,15 +83,14 @@ class ValueComparisonTest(FlowTestsBase):
         actual_result = redis_graph.query(query)
         # No nodes have the same property, so there should be 0 equal results
         expected_result_count = 0
-        assert(len(actual_result.result_set[1:]) == expected_result_count)
+        assert(len(actual_result.result_set) == expected_result_count)
 
         query = """MATCH (v:value), (w:value) WHERE ID(v) != ID(w) AND v.val != w.val RETURN v"""
         actual_result = redis_graph.query(query)
         # Every comparison should produce an inequal result
         node_count = len(redis_graph.nodes)
         expected_result_count = node_count * (node_count - 1)
-        assert(len(actual_result.result_set[1:]) == expected_result_count)
-
+        assert(len(actual_result.result_set) == expected_result_count)
 
 if __name__ == '__main__':
     unittest.main()
