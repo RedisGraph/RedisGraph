@@ -17,7 +17,7 @@ class FlowTestsBase(unittest.TestCase):
                                                            query_info):
         actual_result_set = []
         if actual_result.result_set is not None:
-            actual_result_set = actual_result.result_set[1:]
+            actual_result_set = actual_result.result_set
 
         # Assert number of results.
         self.assertEqual(len(actual_result_set), len(query_info.expected_result))
@@ -33,7 +33,7 @@ class FlowTestsBase(unittest.TestCase):
                                                              actual_result,
                                                              query_info,
                                                              num_contained_results):
-        actual_result_set = actual_result.result_set[1:]
+        actual_result_set = actual_result.result_set
 
         # Assert num results.
         self.assertEqual(len(actual_result_set), num_contained_results)

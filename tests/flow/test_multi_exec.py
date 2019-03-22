@@ -22,7 +22,7 @@ CREATE_QUERY = """CREATE (al:person {name:'Al'}), (betty:person {name:'Betty'}),
 CREATE_QUERY = CREATE_QUERY.replace("\n", "")
 
 # Count outgoing connections from Al.
-MATCH_QUERY = """MATCH (al:person {name:'Al'})-[]->(b:person) RETURN al, count(b)"""
+MATCH_QUERY = """MATCH (al:person {name:'Al'})-[]->(b:person) RETURN al.name, count(b)"""
 
 # Disconnect edge connecting Al to Betty.
 DEL_QUERY = """MATCH (al:person {name:'Al'})-[e:knows]->(b:person {name:'Betty'}) DELETE e"""
@@ -87,20 +87,17 @@ class MultiExecFlowTest(FlowTestsBase):
         #       ['Query internal execution time: 0.143000 milliseconds']
         # ]
 
-        # Get MATCH results from queued execution.
         two_edges = results[1]
-        two_edges = two_edges[0][1][1]
-        two_edges = int(float(two_edges))
+        two_edges = two_edges[1][0][1]        
         assert(two_edges == 2)
 
         one_edge = results[3]
-        one_edge = one_edge[0][1][1]
-        one_edge = int(float(one_edge))
+        one_edge = one_edge[1][0][1]
         assert(one_edge == 1)
 
         no_edges = results[5]
-        no_edges = no_edges[0]
-        assert(len(no_edges) == 1)
+        no_edges = no_edges[1]
+        assert(len(no_edges) == 0)
 
 if __name__ == '__main__':
     unittest.main()
