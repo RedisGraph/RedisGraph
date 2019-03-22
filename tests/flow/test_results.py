@@ -58,14 +58,13 @@ class ResultSetFlowTest(FlowTestsBase):
         query = """MATCH (a) RETURN a.name, a.val ORDER BY a.val"""
         result = graph.query(query)
 
-        expected_result = [['a.name', 'a.val'],
-                           ['Roi', 0],
+        expected_result = [['Roi', 0],
                            ['Alon', 1],
                            ['Ailon', 2],
                            ['Boaz', 3]]
 
-        assert(len(result.result_set) == 5) # Header row + 4 nodes
-        assert(len(result.result_set[0]) == 2) # 2 columns in result set
+        assert(len(result.result_set) == 4)
+        assert(len(result.header) == 2) # 2 columns in result set
         assert(result.result_set == expected_result)
 
     # Verify that full node returns function properly
@@ -74,8 +73,8 @@ class ResultSetFlowTest(FlowTestsBase):
         result = graph.query(query)
 
         # TODO add more assertions after updated client format is defined
-        assert(len(result.result_set) == 5) # Header row + 4 nodes
-        assert(len(result.result_set[0]) == 1) # 1 column in result set
+        assert(len(result.result_set) == 4)
+        assert(len(result.header) == 1) # 1 column in result set
 
     # Verify that full edge returns function properly
     def test03_return_edges(self):
@@ -83,16 +82,16 @@ class ResultSetFlowTest(FlowTestsBase):
         result = graph.query(query)
 
         # TODO add more assertions after updated client format is defined
-        assert(len(result.result_set) == 13) # Header row + 12 relations (fully connected graph)
-        assert(len(result.result_set[0]) == 1) # 1 column in result set
+        assert(len(result.result_set) == 12) # 12 relations (fully connected graph)
+        assert(len(result.header) == 1) # 1 column in result set
 
     def test04_mixed_returns(self):
         query = """MATCH (a)-[e]->() RETURN a.name, a, e ORDER BY a.val"""
         result = graph.query(query)
 
         # TODO add more assertions after updated client format is defined
-        assert(len(result.result_set) == 13) # Header row + 12 relations (fully connected graph)
-        assert(len(result.result_set[0]) == 3) # 3 columns in result set
+        assert(len(result.result_set) == 12) # 12 relations (fully connected graph)
+        assert(len(result.header) == 3) # 3 columns in result set
 
 
     # Verify that the DISTINCT operator works with full entity returns
@@ -108,5 +107,5 @@ class ResultSetFlowTest(FlowTestsBase):
         query = """MATCH (a)-[]->() RETURN DISTINCT a"""
         distinct = graph2.query(query)
 
-        assert(len(non_distinct.result_set) == 3)
-        assert(len(distinct.result_set) == 2)
+        assert(len(non_distinct.result_set) == 2)
+        assert(len(distinct.result_set) == 1)

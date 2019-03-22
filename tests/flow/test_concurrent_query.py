@@ -24,7 +24,7 @@ def query_aggregate(graph, query, threadID):
 
     for i in range(10):
         actual_result = graph.query(query)
-        person_count = int(float(actual_result.result_set[1][0]))
+        person_count = actual_result.result_set[0][0]
         if person_count != len(people):
             assertions[threadID] = False
             break
@@ -34,7 +34,7 @@ def query_neighbors(graph, query, threadID):
     assertions[threadID] = True
 
     # Fully connected graph + header row.
-    expected_resultset_size = len(people) * (len(people)-1) + 1
+    expected_resultset_size = len(people) * (len(people)-1)
 
     for i in range(10):
         actual_result = graph.query(query)
@@ -121,7 +121,7 @@ class ConcurrentQueryFlowTest(FlowTestsBase):
     
     # Concurrently get neighbors of every node.
     def test02_retrieve_neighbors(self):
-        q = """MATCH (p:person)-[know]->(n:person) RETURN n"""
+        q = """MATCH (p:person)-[know]->(n:person) RETURN n.name"""
         threads = []
         for i in range(CLIENT_COUNT):
             graph = graphs[i]
