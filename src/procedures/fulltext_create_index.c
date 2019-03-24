@@ -143,7 +143,7 @@ ProcedureResult fulltextCreateNodeIdxFree(ProcedureCtx *ctx) {
 
 ProcedureCtx* fulltextCreateNodeIdxGen() {
     void *privateData = NULL;
-    char **output = array_new(char*, 0);
+    ProcedureOutput **output = array_new(ProcedureOutput*, 0);
     ProcedureCtx *ctx = ProcCtxNew("db.idx.fulltext.createNodeIndex",
                                     PROCEDURE_VARIABLE_ARG_COUNT,
                                     output,
