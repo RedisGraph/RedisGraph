@@ -321,7 +321,7 @@ static AST_Validation _Validate_CALL_Clause(const AST *ast, char **reason) {
     for(i = 0; i < call_yield_len; i++) {
       yield = ast->callNode->yield[i];
       for(j = 0; j < proc_output_len; j++) {
-        if(strcmp(yield, proc->output[j]) == 0) break;
+        if(strcmp(yield, proc->output[j]->name) == 0) break;
       }
       if(j == proc_output_len) {
         // Didn't managed to match current yield against procedure output.
@@ -485,6 +485,8 @@ TrieMap* AST_CollectEntityReferences(AST **ast_arr) {
       // Get unique aliases from clauses that can introduce nodes and edges.
       MatchClause_DefinedEntities(ast->matchNode, alias_references);
       CreateClause_DefinedEntities(ast->createNode, alias_references);
+      ProcedureCallClause_DefinedEntities(ast->callNode, alias_references);
+
       // TODO May need to collect alias redefinitions from WITH clauses
   }
   return alias_references;

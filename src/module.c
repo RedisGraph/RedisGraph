@@ -62,7 +62,7 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 
     // Make sure RediSearch is loaded.
     if(RediSearch_Initialize() != REDISMODULE_OK) {
-        RedisModule_Log(ctx, "debug", "RediSearch is missing, aborting load.");
+        RedisModule_Log(ctx, "warning", "RediSearch is missing, aborting load.");
         return REDISMODULE_ERR;
     }
 

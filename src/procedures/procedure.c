@@ -27,7 +27,7 @@ void Proc_Register() {
 
 ProcedureCtx* ProcCtxNew(const char *name,
                          unsigned int argc,
-                         char **output,
+                         ProcedureOutput **output,
                          ProcStep fStep,
                          ProcInvoke fInvoke,
                          ProcFree fFree,
@@ -72,6 +72,9 @@ ProcedureResult ProcedureReset(ProcedureCtx *proc) {
 void Proc_Free(ProcedureCtx *proc) {
     if(!proc) return;
     proc->Free(proc);
+    for(uint i = 0; i < array_len(proc->output); i++) {
+        rm_free(proc->output[i]);
+    }
     if(proc->output) array_free(proc->output);
     rm_free(proc);
 }

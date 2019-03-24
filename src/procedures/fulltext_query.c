@@ -29,12 +29,13 @@ ProcedureResult fulltextQueryNodeInvoke(ProcedureCtx *ctx, char **args) {
     if(array_len(args) < 2) return PROCEDURE_ERR;
 
     QueryNodeContext *pdata = rm_malloc(sizeof(QueryNodeContext));
-    pdata->output = array_new(SIValue, 4);
+    // pdata->output = array_new(SIValue, 4);
+    pdata->output = array_new(SIValue, 2);
     pdata->g = GraphContext_GetFromTLS()->g;
     pdata->output = array_append(pdata->output, SI_ConstStringVal("node"));
     pdata->output = array_append(pdata->output, SI_Node(&pdata->n));
-    pdata->output = array_append(pdata->output, SI_ConstStringVal("score"));
-    pdata->output = array_append(pdata->output, SI_DoubleVal(0.0));
+    // pdata->output = array_append(pdata->output, SI_ConstStringVal("score"));
+    // pdata->output = array_append(pdata->output, SI_DoubleVal(0.0));
     pdata->idx = NULL;
     pdata->iter = NULL;
     ctx->privateData = pdata;
@@ -77,7 +78,7 @@ SIValue* fulltextQueryNodeStep(ProcedureCtx *ctx) {
     Graph_GetNode(pdata->g, *id, n);
 
     pdata->output[1] = SI_Node(n);
-    pdata->output[3] = SI_DoubleVal(0); // Currently RediSearch does not returns score.
+    // pdata->output[3] = SI_DoubleVal(0); // Currently RediSearch does not returns score.
     return pdata->output;
 }
 
@@ -93,9 +94,17 @@ ProcedureResult fulltextQueryNodeFree(ProcedureCtx *ctx) {
 
 ProcedureCtx* fulltextQueryNodeGen() {
     void *privateData = NULL;
-    char **output = array_new(char*, 2);
-    output = array_append(output, "node");
-    output = array_append(output, "score");
+    ProcedureOutput **output = array_new(ProcedureOutput*, 1);
+    ProcedureOutput *out_node = rm_malloc(sizeof(ProcedureOutput));
+    out_node->name = "node";
+    out_node->type = T_NODE;
+
+    // ProcedureOutput *out_score = rm_malloc(sizeof(ProcedureOutput));
+    // out_score->name = "score";
+    // out_score->type = T_DOUBLE;
+
+    output = array_append(output, out_node);
+    // output = array_append(output, out_score);
     ProcedureCtx *ctx = ProcCtxNew("db.idx.fulltext.queryNodes",
                                     2,
                                     output,

@@ -81,7 +81,7 @@ static void _inlineProcedureYield(AST_ProcedureCallNode *node) {
 
     node->yield = array_new(char*, output_count);
     for(int i = 0; i < output_count; i++) {
-        node->yield = array_append(node->yield, strdup(proc->output[i]));
+        node->yield = array_append(node->yield, strdup(proc->output[i]->name));
     }
 }
 
