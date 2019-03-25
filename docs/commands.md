@@ -89,7 +89,7 @@ Here we're interested in knowing which of my friends have visited at least one c
 Nodes that are a variable number of relationship→node hops away can be found using the following syntax:
 
 ```sh
--[:type*minHops..maxHops]→
+-[:type*minHops..maxHops]->
 ```
 
 `type`, `minHops` and `maxHops` are all optional and default to type agnostic, 1 and infinity, respectively.
@@ -100,7 +100,7 @@ Example:
 
 ```sh
 GRAPH.QUERY DEMO_GRAPH
-"MATCH (martin:actor { name: 'Charlie Sheen' })-[:PLAYED_WITH*1..3]-(colleague:actor)
+"MATCH (martin:actor { name: 'Charlie Sheen' })-[:PLAYED_WITH*1..3]->(colleague:actor)
 RETURN colleague"
 ```
 
