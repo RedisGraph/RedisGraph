@@ -166,7 +166,8 @@ AST** ParseQuery(const char *query, size_t qLen, char **errMsg) {
             if(asts[i]->mergeNode) _replicateMergeClauseToMatchClause(asts[i]);
             if(asts[i]->callNode) {
                 _inlineProcedureYield(asts[i]->callNode);
-                if(!asts[i]->returnNode) _replicateCallClauseToReturnClause(asts[i]);
+                // If there's no projection within current AST.
+                if(!AST_Projects(asts[i])) _replicateCallClauseToReturnClause(asts[i]);
             }
 
             AST_NameAnonymousNodes(asts[i]);
@@ -193,37 +194,37 @@ AST_Validation AST_PerformValidations(RedisModuleCtx *ctx, AST **ast) {
      * for example:
      * MATCH (p) WITH max(p.v) AS maximum MATCH (p) RETURN p 
      * TODO: lift this restriction. */
-    char *redefined_identifier = NULL;
-    if(ast_count > 1) {
-        TrieMap *global_identifiers = AST_Identifiers(ast[0]);
-        for(int i = 1; i < ast_count; i++) {
-            TrieMap *local_identifiers = AST_Identifiers(ast[i]);
-            TrieMapIterator *it = TrieMap_Iterate(local_identifiers, "", 0);
-            void *v;
-            tm_len_t len;
-            char *identifier;
-            while(TrieMapIterator_Next(it, &identifier, &len, &v)) {
-                if(!TrieMap_Add(global_identifiers, identifier, len, NULL, TrieMap_DONT_CARE_REPLACE)) {
-                    redefined_identifier = rm_malloc(sizeof(char) * (len+1));
-                    memcpy(redefined_identifier, identifier, len);
-                    redefined_identifier[len] = '\0';
-                    break;
-                }
-            }
-            TrieMapIterator_Free(it);
-            TrieMap_Free(local_identifiers, TrieMap_NOP_CB);
-            if(redefined_identifier) break;
-        }
-        TrieMap_Free(global_identifiers, TrieMap_NOP_CB);
+    // char *redefined_identifier = NULL;
+    // if(ast_count > 1) {
+    //     TrieMap *global_identifiers = AST_Identifiers(ast[0]);
+    //     for(int i = 1; i < ast_count; i++) {
+    //         TrieMap *local_identifiers = AST_Identifiers(ast[i]);
+    //         TrieMapIterator *it = TrieMap_Iterate(local_identifiers, "", 0);
+    //         void *v;
+    //         tm_len_t len;
+    //         char *identifier;
+    //         while(TrieMapIterator_Next(it, &identifier, &len, &v)) {
+    //             if(!TrieMap_Add(global_identifiers, identifier, len, NULL, TrieMap_DONT_CARE_REPLACE)) {
+    //                 redefined_identifier = rm_malloc(sizeof(char) * (len+1));
+    //                 memcpy(redefined_identifier, identifier, len);
+    //                 redefined_identifier[len] = '\0';
+    //                 break;
+    //             }
+    //         }
+    //         TrieMapIterator_Free(it);
+    //         TrieMap_Free(local_identifiers, TrieMap_NOP_CB);
+    //         if(redefined_identifier) break;
+    //     }
+    //     TrieMap_Free(global_identifiers, TrieMap_NOP_CB);
 
-        if(redefined_identifier) {
-            asprintf(&reason, "Identifier '%s' defined more than once", redefined_identifier);
-            RedisModule_ReplyWithError(ctx, reason);
-            rm_free(redefined_identifier);
-            free(reason);
-            return AST_INVALID;
-        }
-    }
+    //     if(redefined_identifier) {
+    //         asprintf(&reason, "Identifier '%s' defined more than once", redefined_identifier);
+    //         RedisModule_ReplyWithError(ctx, reason);
+    //         rm_free(redefined_identifier);
+    //         free(reason);
+    //         return AST_INVALID;
+    //     }
+    // }
 
     return AST_VALID;
 }

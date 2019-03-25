@@ -148,6 +148,10 @@ expr(A) ::= procedureCallClause(B) whereClause(C) returnClause(D) orderClause(E)
 	A = AST_New(NULL, C, NULL, NULL, NULL, NULL, D, E, F, G, NULL, NULL, B);
 }
 
+expr(A) ::= procedureCallClause(B) multipleMatchClause(C) whereClause(D) returnClause(E) orderClause(F) skipClause(G) limitClause(H). {
+	A = AST_New(C, D, NULL, NULL, NULL, NULL, E, F, G, H, NULL, NULL, B);
+}
+
 %type procedureCallClause { AST_ProcedureCallNode* }
 procedureCallClause(A) ::= CALL procedureName(B) LEFT_PARENTHESIS stringList(C) RIGHT_PARENTHESIS YIELD unquotedStringList(D). {
 	A = New_AST_ProcedureCallNode(B, C, D);

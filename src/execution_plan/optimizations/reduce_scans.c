@@ -5,45 +5,78 @@
 */
 
 #include "./reduce_scans.h"
+#include "../../util/arr.h"
 #include "../ops/op_traverse.h"
 #include "../ops/op_conditional_traverse.h"
 #include <assert.h>
 
-void _reduceScans(ExecutionPlan *plan, OpBase *op) {
-    if(op == NULL) return;
+// Locates all SCAN operations within execution plan.
+void _collectScanOpes(OpBase *root, OpBase ***scans) {
+    if(root == NULL) return;
     
-    // Search for consecutive traverse and scan operations.
-    if(op->type == OPType_CONDITIONAL_TRAVERSE) {
-        assert(op->childCount == 1);        
-        OpBase *child = op->children[0];
-        if(child->type == OPType_ALL_NODE_SCAN || child->type == OPType_NODE_BY_LABEL_SCAN) {
-            CondTraverse *condTraversal = (CondTraverse *)op;
-            
-            // Consecutive traverse scan operations, no filters.
-            // Replace Conditional Traverse operation with Traverse.
-            OpBase *traverse = NewTraverseOp(condTraversal->graph, condTraversal->algebraic_expression);
-            ExecutionPlan_ReplaceOp(plan, (OpBase*)condTraversal, (OpBase*)traverse);
-            OpBase_Free((OpBase*)condTraversal);
-            return;
-        }
+    if(root->type == OPType_ALL_NODE_SCAN ||
+       root->type == OPType_NODE_BY_LABEL_SCAN ||
+       root->type == OPType_INDEX_SCAN) {
+           *scans = array_append(*scans, root);
     }
-
-    for(int i = 0; i < op->childCount; i++) {
-        _reduceScans(plan, op->children[i]);
+    
+    for(int i = 0; i < root->childCount; i++) {
+        _collectScanOpes(root->children[i], scans);
     }
 }
 
-void reduceScans(ExecutionPlan *plan) {
-    /* Do not try to remove scan operations 
-     * if query is limited, in such cases keeping scan operations
-     * will speed up query processing times, as we'll be able to 
-     * return as early as possible. */
+void _reduceScans(ExecutionPlan *plan, OpBase *scan) {
+    if(!scan->children || scan->childCount == 0) return;
     
-    // TODO: whenever we decide to re-enable this optimization
-    // get limit from AST.
+    /* Find taps above scan.
+     * a tap is an operation which is a source of data
+     * for example SCAN, UNWIND, PROCEDURE_CALL operation. */
+    OpBase **taps = array_new(OpBase*, 0);
+    ExecutionPlan_LocateTaps(scan->children[0], &taps);
     
-    // if(ResultSet_Limited(plan->result_set))
-    //     return;
+    // No taps.
+    int taps_count = array_len(taps);
+    if(taps_count == 0) {
+        array_free(taps);
+        return;
+    }
 
-    // _reduceScans(plan, plan->root);
+    /* See if one of the taps modifies the same entity as
+     * current scan operation. */
+    char *scanned_entity;
+    assert(Vector_Size(scan->modifies) == 1);
+    Vector_Get(scan->modifies, 0, &scanned_entity);
+
+    for(int i = 0; i < taps_count; i++) {
+        int j = 0;
+        OpBase *tap = taps[i];
+        for(; j < Vector_Size(tap->modifies); j++) {
+            char *set_entity;
+            Vector_Get(tap->modifies, j, &set_entity);
+            if(strcmp(set_entity, scanned_entity) == 0) {
+                // Entity already set remove SCAN.
+                ExecutionPlan_RemoveOp(plan, scan);
+                break;
+            }
+        }
+        if(j < Vector_Size(tap->modifies)) break;
+    }
+
+    array_free(taps);
+}
+
+void reduceScans(ExecutionPlan *plan) {
+    OpBase **scans = array_new(OpBase*, 0);
+    _collectScanOpes(plan->root, &scans);
+
+    int scan_ops_count = array_len(scans);
+
+    if(scan_ops_count) {
+        for(int i = 0; i < scan_ops_count; i++) {
+            OpBase *scan = scans[i];
+            _reduceScans(plan, scan);
+        }        
+    }
+
+    array_free(scans);
 }
