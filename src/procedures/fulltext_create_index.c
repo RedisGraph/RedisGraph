@@ -36,7 +36,7 @@ static void _populateIndex (
     GraphEntity *entity;
     EntityProperty *prop;
     GxB_MatrixTupleIter *it;
-    const GrB_Matrix label_matrix = Graph_GetLabel(g, label_id);
+    const GrB_Matrix label_matrix = Graph_GetLabelMatrix(g, label_id);
     GxB_MatrixTupleIter_new(&it, label_matrix);
 
     while(true) {

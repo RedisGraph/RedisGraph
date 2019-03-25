@@ -277,7 +277,8 @@ static AST_Validation _Validate_SET_Clause(const AST *ast, char **reason) {
 
 static AST_Validation _Validate_WHERE_Clause(const AST *ast, char **reason) {
   if (!ast->whereNode) return AST_VALID;
-  if (!ast->matchNode) return AST_INVALID;
+  // MATCH, CALL, UNWIND can introduce data.
+  if (!(ast->matchNode || ast->callNode || ast->unwindNode)) return AST_INVALID;
 
   // Retrieve all user-specified functions in WHERE clause.
   TrieMap *ref_functions = NewTrieMap();

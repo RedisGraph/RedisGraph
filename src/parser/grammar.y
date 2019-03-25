@@ -138,8 +138,14 @@ expr(A) ::= unwindClause(B) returnClause(C) skipClause(D) limitClause(E). {
 	A = AST_New(NULL, NULL, NULL, NULL, NULL, NULL, C, NULL, D, E, NULL, B, NULL);
 }
 
+// Procedure call
+
 expr(A) ::= procedureCallClause(B). {
 	A = AST_New(NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, B);
+}
+
+expr(A) ::= procedureCallClause(B) whereClause(C) returnClause(D) orderClause(E) skipClause(F) limitClause(G). {
+	A = AST_New(NULL, C, NULL, NULL, NULL, NULL, D, E, F, G, NULL, NULL, B);
 }
 
 %type procedureCallClause { AST_ProcedureCallNode* }

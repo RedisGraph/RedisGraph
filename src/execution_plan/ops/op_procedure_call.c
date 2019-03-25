@@ -71,6 +71,12 @@ OpBase* NewProcCallOp(char *procedure, char **args, char **output, AST *ast) {
     op->op.reset = OpProcCallReset;
     op->op.free = OpProcCallFree;
 
+    int outputs_count = array_len(output);
+    if(outputs_count) {
+        op->op.modifies = NewVector(char*, outputs_count);
+        for(int i = 0; i < outputs_count; i++) Vector_Push(op->op.modifies, output[i]);
+    }
+
     return (OpBase*)op;
 }
 
