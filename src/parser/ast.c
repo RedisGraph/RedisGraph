@@ -505,6 +505,10 @@ TrieMap* AST_Identifiers(const AST *ast) {
   return identifiers;
 }
 
+bool AST_Projects(const AST *ast) {
+  return (ast->returnNode || ast->withNode);
+}
+
 bool AST_ReadOnly(AST **ast) {
   for (uint i = 0; i < array_len(ast); i++) {
     bool write = (ast[i]->createNode ||

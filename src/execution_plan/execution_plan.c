@@ -215,6 +215,23 @@ void ExecutionPlan_RemoveOp(ExecutionPlan *plan, OpBase *op) {
     op->childCount = 0;
 }
 
+static bool inline _TapOperation(const OpBase *op) {
+    return (op->type == OPType_ALL_NODE_SCAN ||
+       op->type == OPType_NODE_BY_LABEL_SCAN ||
+       op->type == OPType_INDEX_SCAN ||
+       op->type == OPType_CREATE ||
+       op->type == OPType_UNWIND ||
+       op->type == OPType_PROC_CALL);
+}
+
+void ExecutionPlan_LocateTaps(OpBase *root, OpBase ***taps) {
+    if(root == NULL) return;
+    if(_TapOperation(root)) *taps = array_append(*taps, root);
+    for(int i = 0; i < root->childCount; i++) {
+        ExecutionPlan_LocateTaps(root->children[i], taps);
+    }
+}
+
 OpBase* ExecutionPlan_LocateOp(OpBase *root, OPType type) {
     if(!root) return NULL;
 
@@ -547,7 +564,7 @@ static ExecutionPlan *_ExecutionPlan_Connect(ExecutionPlan *a, ExecutionPlan *b,
     assert(a &&
            b &&
            (a->root->type == OPType_PROJECT || a->root->type == OPType_AGGREGATE));
-    
+
     OpBase *tap;
     OpBase **taps = array_new(sizeof(OpBase*), 1);
     _ExecutionPlan_StreamTaps(b->root, &taps);

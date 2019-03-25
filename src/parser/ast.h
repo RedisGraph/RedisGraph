@@ -64,6 +64,10 @@ TrieMap* AST_Identifiers(const AST *ast);
 // Returns a triemap of AST_GraphEntity references from clauses that can specify nodes or edges.
 TrieMap* AST_CollectEntityReferences(AST **ast);
 
+/* Returns true if given ast describes projection 
+ * i.e. contains RETURN, WITH clauses. */
+bool AST_Projects(const AST *ast);
+
 // Checks if AST represent a read only query.
 bool AST_ReadOnly(AST **ast);
 
