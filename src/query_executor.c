@@ -166,7 +166,7 @@ AST** ParseQuery(const char *query, size_t qLen, char **errMsg) {
             if(asts[i]->mergeNode) _replicateMergeClauseToMatchClause(asts[i]);
             if(asts[i]->callNode) {
                 _inlineProcedureYield(asts[i]->callNode);
-                _replicateCallClauseToReturnClause(asts[i]);
+                if(!asts[i]->returnNode) _replicateCallClauseToReturnClause(asts[i]);
             }
 
             AST_NameAnonymousNodes(asts[i]);

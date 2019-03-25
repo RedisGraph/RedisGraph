@@ -598,7 +598,7 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, AST **ast, ResultSet *resul
             Vector *sub_trees = FilterTree_SubTrees(curr_plan->filter_tree);
 
             /* For each filter tree find the earliest position along the execution 
-            * after which the filter tree can be applied. */
+             * after which the filter tree can be applied. */
             for(int j = 0; j < Vector_Size(sub_trees); j++) {
                 FT_FilterNode *tree;
                 Vector_Get(sub_trees, j, &tree);
