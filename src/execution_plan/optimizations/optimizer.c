@@ -15,11 +15,11 @@ void optimizePlan(ExecutionPlan *plan, AST *ast) {
      * with index scans. */
     utilizeIndices(plan, ast);
 
+    /* Remove redundant SCAN operations. */
+    reduceScans(plan);
+
     /* Try to reduce a number of filters into a single filter op. */
     reduceFilters(plan);
-
-    /* Remove redundant SCAN operations. */
-    // reduceScans(plan);
 
     /* Relocate sort, skip, limit operations. */
     relocateOperations(plan);

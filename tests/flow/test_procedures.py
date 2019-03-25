@@ -12,10 +12,11 @@ from base import FlowTestsBase
 GRAPH_ID = "procedures"
 redis_graph = None
 
-node1 = Node(label="person", properties={"name": "Orange1", "value": 1})
-node2 = Node(label="person", properties={"name": "Orange2", "value": 2})
-node3 = Node(label="person", properties={"name": "Orange3", "value": 3})
-node4 = Node(label="person", properties={"name": "Orange4", "value": 4})
+node1 = Node(label="fruit", properties={"name": "Orange1", "value": 1})
+node2 = Node(label="fruit", properties={"name": "Orange2", "value": 2})
+node3 = Node(label="fruit", properties={"name": "Orange3", "value": 3})
+node4 = Node(label="fruit", properties={"name": "Orange4", "value": 4})
+node5 = Node(label="fruit", properties={"name": "Banana", "value": 5})
 
 def _redis():
     return DisposableRedis(loadmodule=os.path.dirname(os.path.abspath(__file__)) + '/../../src/redisgraph.so')
@@ -44,9 +45,14 @@ class ProceduresTest(FlowTestsBase):
         # pass
 
     @classmethod
-    def populate_graph(cls):
-        node = Node(label="person", properties={"name": "Orange"})
-        redis_graph.add_node(node)
+    def populate_graph(cls):     
+        edge = Edge(node1, 'goWellWith', node5)
+        redis_graph.add_node(node1)
+        redis_graph.add_node(node2)
+        redis_graph.add_node(node3)
+        redis_graph.add_node(node4)
+        redis_graph.add_node(node5)
+        redis_graph.add_edge(edge)
         redis_graph.commit()
 
     # Compares two nodes based on their properties.
@@ -71,7 +77,7 @@ class ProceduresTest(FlowTestsBase):
     # Call procedure, omit yield, expecting all procedure outputs to
     # be included in result-set.
     def test_no_yield(self):
-        query = """CALL db.idx.fulltext.queryNodes('person', 'query')"""
+        query = """CALL db.idx.fulltext.queryNodes('fruit', 'query')"""
         actual_result = redis_graph.query(query)        
         assert(len(actual_result.result_set) is 2)
         assert(len(actual_result.result_set[0]) is 2)
@@ -86,7 +92,7 @@ class ProceduresTest(FlowTestsBase):
 
     # Call procedure specify different outputs.
     def test_yield(self):
-        query = """CALL db.idx.fulltext.queryNodes('person', 'query') YIELD node"""
+        query = """CALL db.idx.fulltext.queryNodes('fruit', 'query') YIELD node"""
         actual_result = redis_graph.query(query)        
         assert(len(actual_result.result_set) is 2)
         assert(len(actual_result.result_set[0]) is 1)
@@ -97,7 +103,7 @@ class ProceduresTest(FlowTestsBase):
         assert(header[0] == 'node')        
         assert(data[0] is None)
 
-        # query = """CALL db.idx.fulltext.queryNodes('person', 'query') YIELD score"""
+        # query = """CALL db.idx.fulltext.queryNodes('fruit', 'query') YIELD score"""
         # actual_result = redis_graph.query(query)
         # assert(len(actual_result.result_set) is 2)
         # assert(len(actual_result.result_set[0]) is 1)
@@ -108,7 +114,7 @@ class ProceduresTest(FlowTestsBase):
         # assert(header[0] == 'score')
         # assert(float(data[0]) == 12.34)
 
-        # query = """CALL db.idx.fulltext.queryNodes('person', 'query') YIELD node, score"""
+        # query = """CALL db.idx.fulltext.queryNodes('fruit', 'query') YIELD node, score"""
         # actual_result = redis_graph.query(query)
         # assert(len(actual_result.result_set) is 2)
         # assert(len(actual_result.result_set[0]) is 2)
@@ -121,7 +127,7 @@ class ProceduresTest(FlowTestsBase):
         # assert(data[0] is None)
         # assert(float(data[1]) == 12.34)
 
-        # query = """CALL db.idx.fulltext.queryNodes('person', 'query') YIELD score, node"""
+        # query = """CALL db.idx.fulltext.queryNodes('fruit', 'query') YIELD score, node"""
         # actual_result = redis_graph.query(query)
         # assert(len(actual_result.result_set) is 2)
         # assert(len(actual_result.result_set[0]) is 2)
@@ -135,7 +141,7 @@ class ProceduresTest(FlowTestsBase):
         # assert(data[1] is None)
         
         # Yield an unknown output.
-        query = """CALL db.idx.fulltext.queryNodes('person', 'query') YIELD unknown"""
+        query = """CALL db.idx.fulltext.queryNodes('fruit', 'query') YIELD unknown"""
         # Expect an error when trying to use an unknown procedure output.
         try:
             redis_graph.query(query)
@@ -166,7 +172,7 @@ class ProceduresTest(FlowTestsBase):
             pass
 
         # Overload arguments.
-        query = """CALL db.idx.fulltext.queryNodes('person', 'query', 'person', 'query') YIELD node"""
+        query = """CALL db.idx.fulltext.queryNodes('fruit', 'query', 'fruit', 'query') YIELD node"""
         # Expect an error when trying to send too many arguments.
         try:
             redis_graph.query(query)
@@ -178,18 +184,18 @@ class ProceduresTest(FlowTestsBase):
     # Test procedure call while mixing a number of addition clauses.
     def test_mix_clauses(self):        
         # Create full-text index.
-        query = """CALL db.idx.fulltext.createNodeIndex('person', 'name')"""           
+        query = """CALL db.idx.fulltext.createNodeIndex('fruit', 'name')"""           
         graph.query(query)
 
         # CALL + RETURN.
-        query = """CALL db.idx.fulltext.queryNodes('person', 'Orange*') YIELD node
+        query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node
                     RETURN node"""
         expected_results = [node4, node2, node3, node1]
         self.queryAndValidate(query, expected_results)
 
 
         # CALL + WHERE + RETURN.
-        query = """CALL db.idx.fulltext.queryNodes('person', 'Orange*') YIELD node
+        query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node
                     WHERE node.value > 2
                     RETURN node
                     """
@@ -198,7 +204,7 @@ class ProceduresTest(FlowTestsBase):
 
 
         # CALL + WHERE + RETURN + SKIP.        
-        query = """CALL db.idx.fulltext.queryNodes('person', 'Orange*') YIELD node
+        query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node
                     WHERE node.value > 2
                     RETURN node
                     SKIP 1"""
@@ -208,7 +214,7 @@ class ProceduresTest(FlowTestsBase):
 
 
         # CALL + WHERE + RETURN + LIMIT.
-        query = """CALL db.idx.fulltext.queryNodes('person', 'Orange*') YIELD node
+        query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node
                     WHERE node.value > 2
                     RETURN node
                     LIMIT 2"""
@@ -217,7 +223,7 @@ class ProceduresTest(FlowTestsBase):
 
 
         # CALL + WHERE + RETURN + SKIP + LIMIT.
-        query = """CALL db.idx.fulltext.queryNodes('person', 'Orange*') YIELD node
+        query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node
                     WHERE node.value > 2
                     RETURN node
                     SKIP 1
@@ -227,7 +233,7 @@ class ProceduresTest(FlowTestsBase):
 
 
         # CALL + RETURN + ORDER.
-        query = """CALL db.idx.fulltext.queryNodes('person', 'Orange*') YIELD node
+        query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node
                     RETURN node
                     ORDER BY node.value
                     """
@@ -236,7 +242,7 @@ class ProceduresTest(FlowTestsBase):
 
 
         # CALL + RETURN + ORDER + SKIP.
-        query = """CALL db.idx.fulltext.queryNodes('person', 'Orange*') YIELD node
+        query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node
                     RETURN node
                     ORDER BY node.value
                     SKIP 1
@@ -246,7 +252,7 @@ class ProceduresTest(FlowTestsBase):
 
 
         # CALL + RETURN + ORDER + LIMIT.
-        query = """CALL db.idx.fulltext.queryNodes('person', 'Orange*') YIELD node
+        query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node
                     RETURN node
                     ORDER BY node.value
                     LIMIT 2
@@ -256,7 +262,7 @@ class ProceduresTest(FlowTestsBase):
 
 
         # CALL + RETURN + ORDER + SKIP + LIMIT.
-        query = """CALL db.idx.fulltext.queryNodes('person', 'Orange*') YIELD node
+        query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node
                     RETURN node
                     ORDER BY node.value
                     SKIP 1
@@ -267,7 +273,7 @@ class ProceduresTest(FlowTestsBase):
 
 
         # CALL + WHERE + RETURN + ORDER.
-        query = """CALL db.idx.fulltext.queryNodes('person', 'Orange*') YIELD node
+        query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node
                     WHERE node.value > 2
                     RETURN node
                     ORDER BY node.value"""
@@ -276,7 +282,7 @@ class ProceduresTest(FlowTestsBase):
 
 
         # CALL + WHERE + RETURN + ORDER + SKIP.
-        query = """CALL db.idx.fulltext.queryNodes('person', 'Orange*') YIELD node
+        query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node
                     WHERE node.value > 2
                     RETURN node
                     ORDER BY node.value
@@ -286,7 +292,7 @@ class ProceduresTest(FlowTestsBase):
 
 
         # CALL + WHERE + RETURN + ORDER + LIMIT.
-        query = """CALL db.idx.fulltext.queryNodes('person', 'Orange*') YIELD node
+        query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node
                     WHERE node.value > 2
                     RETURN node
                     ORDER BY node.value
@@ -296,7 +302,7 @@ class ProceduresTest(FlowTestsBase):
 
 
         # CALL + WHERE + RETURN + ORDER + SKIP + LIMIT.
-        query = """CALL db.idx.fulltext.queryNodes('person', 'Orange*') YIELD node
+        query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node
                     WHERE node.value > 2
                     RETURN node
                     ORDER BY node.value
@@ -304,6 +310,13 @@ class ProceduresTest(FlowTestsBase):
                     LIMIT 1"""
         expected_results = [node4]
         self.queryAndValidate(query, expected_results)
+
+        # CALL + MATCH + RETURN.
+        query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node
+            MATCH (node)-[]->(z)
+            RETURN z"""
+        expected_results = [node5]
+        queryAndValidate(query, expected_results)
 
 if __name__ == '__main__':
     unittest.main()

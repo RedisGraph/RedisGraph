@@ -8,7 +8,6 @@
 #include "../../util/arr.h"
 
 static void _yield(OpProcCall *op, SIValue *proc_output, Record r) {
-    // TODO: map AST_GetAliasID values.
     if (!op->yield_map) {
         op->yield_map = rm_malloc(sizeof(OutputMap) * array_len(op->output));
 
@@ -91,7 +90,8 @@ Record OpProcCallConsume(OpBase *opBase) {
     Record r = NULL;
 
     if(op->op.childCount == 0) {
-        r = Record_New(array_len(op->output));
+        /* Make record large enough to accommodate all alias entities. */
+        r = Record_New(op->ast->_aliasIDMapping->cardinality);
     } else {
         OpBase *child = op->op.children[0];
         r = child->consume(child);
