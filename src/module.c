@@ -64,19 +64,19 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 
     if (_RegisterDataTypes(ctx) != REDISMODULE_OK) return REDISMODULE_ERR;
 
-    if(RedisModule_CreateCommand(ctx, "graph.QUERY", MGraph_Query, "write deny-oom deny-script", 1, 1, 1) == REDISMODULE_ERR) {
+    if(RedisModule_CreateCommand(ctx, "graph.QUERY", MGraph_Query, "write deny-oom", 1, 1, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
     }
 
-    if(RedisModule_CreateCommand(ctx, "graph.DELETE", MGraph_Delete, "write deny-script", 1, 1, 1) == REDISMODULE_ERR) {
+    if(RedisModule_CreateCommand(ctx, "graph.DELETE", MGraph_Delete, "write", 1, 1, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
     }
 
-    if(RedisModule_CreateCommand(ctx, "graph.EXPLAIN", MGraph_Explain, "write deny-script", 1, 1, 1) == REDISMODULE_ERR) {
+    if(RedisModule_CreateCommand(ctx, "graph.EXPLAIN", MGraph_Explain, "write", 1, 1, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
     }
 
-    if(RedisModule_CreateCommand(ctx, "graph.BULK", MGraph_BulkInsert, "write deny-oom deny-script", 1, 1, 1) == REDISMODULE_ERR) {
+    if(RedisModule_CreateCommand(ctx, "graph.BULK", MGraph_BulkInsert, "write deny-oom", 1, 1, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
     }
 
