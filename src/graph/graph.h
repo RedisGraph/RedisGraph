@@ -160,6 +160,12 @@ size_t Graph_NodeCount (
     const Graph *g
 );
 
+// Returns number of nodes with given label.
+size_t Graph_LabeledNodeCount (
+    const Graph *g,
+    int label
+);
+
 // Returns number of edges in the graph.
 size_t Graph_EdgeCount (
     const Graph *g
