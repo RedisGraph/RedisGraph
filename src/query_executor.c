@@ -77,6 +77,8 @@ static void _inlineProcedureYield(AST_ProcedureCallNode *node) {
     if(node->yield) return;
 
     ProcedureCtx *proc = Proc_Get(node->procedure);
+    if(!proc) return;
+
     unsigned int output_count = array_len(proc->output);
 
     node->yield = array_new(char*, output_count);
