@@ -46,6 +46,9 @@ Node* Edge_GetSrcNode(Edge *e);
 // Retrieve edge destination node.
 Node* Edge_GetDestNode(Edge *e);
 
+// Retrieves edge matrix.
+GrB_Matrix Edge_GetMatrix(Edge *e);
+
 // Sets edge source node.
 void Edge_SetSrcNode(Edge *e, Node *src);
 

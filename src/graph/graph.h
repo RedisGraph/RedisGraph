@@ -23,6 +23,7 @@
 #define GRAPH_DEFAULT_LABEL_CAP 16           // Default number of different labels a graph can hold before resizing.
 #define GRAPH_NO_LABEL -1                    // Labels are numbered [0-N], -1 represents no label.
 #define GRAPH_NO_RELATION -1                 // Relations are numbered [0-N], -1 represents no relation.
+#define GRAPH_UNKNOWN_RELATION -2            // Relations are numbered [0-N], -2 represents an unknown relation.
 
 typedef enum {
     GRAPH_EDGE_DIR_INCOMING,

@@ -10,6 +10,7 @@
 
 #include "edge.h"
 #include "graph_entity.h"
+#include "../graphcontext.h"
 
 Edge* Edge_New(Node *src, Node *dest, const char *relationship, const char *alias) {
 	assert(src && dest);
@@ -47,6 +48,26 @@ Node* Edge_GetSrcNode(Edge *e) {
 Node* Edge_GetDestNode(Edge *e) {
 	assert(e);
 	return e->dest;
+}
+
+GrB_Matrix Edge_GetMatrix(Edge *e) {
+    assert(e);
+
+    // Retrieve matrix from graph if edge matrix isn't set.
+    if(!e->mat) {
+        GraphContext *gc = GraphContext_GetFromTLS();
+        Graph *g = gc->g;
+
+        // Get relation matrix.
+        if(e->relationId == GRAPH_UNKNOWN_RELATION) {
+			// Use a zeroed matrix.
+			GrB_Matrix_new(&e->mat, GrB_BOOL, Graph_NodeCount(g), Graph_NodeCount(g));
+		} else {
+			e->mat = Graph_GetRelationMatrix(g, e->relationId);
+        }
+    }
+
+    return e->mat;
 }
 
 void Edge_SetSrcNode(Edge *e, Node *src) {
