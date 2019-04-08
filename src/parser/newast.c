@@ -45,7 +45,7 @@ void _mapReturnAliases(NEWAST *ast) {
         ast->defined_entities = array_append(ast->defined_entities, ar_exp);
         unsigned int *entityID = malloc(sizeof(unsigned int));
         *entityID = ast->identifier_map->cardinality;
-        TrieMap_Add(ast->identifier_map, (char*)alias, strlen(alias), entityID, TrieMap_NOP_REPLACE);
+        TrieMap_Add(ast->identifier_map, (char*)alias, strlen(alias), entityID, TrieMap_DONT_CARE_REPLACE);
     }
 }
 
@@ -95,7 +95,7 @@ void _mapPatternIdentifiers(NEWAST *ast, const cypher_astnode_t *entity, unsigne
     // Store the expression node in an ID-indexed array and
     // store the ID in a triemap.
     ast->defined_entities = array_append(ast->defined_entities, exp);
-    TrieMap_Add(ast->identifier_map, alias, strlen(alias), entityID, TrieMap_NOP_REPLACE);
+    TrieMap_Add(ast->identifier_map, alias, strlen(alias), entityID, TrieMap_DONT_CARE_REPLACE);
 }
 
 bool NEWAST_ReadOnly(const cypher_astnode_t *query) {

@@ -36,7 +36,7 @@ static void _AST_MapAliasToID(AST *ast) {
   while(TrieMapIterator_Next(it, &ptr, &len, &val)) {
     uint *entityID = malloc(sizeof(uint));
     *entityID = id++;
-    TrieMap_Add(ast->_aliasIDMapping, ptr, len, entityID, TrieMap_NOP_REPLACE);
+    TrieMap_Add(ast->_aliasIDMapping, ptr, len, entityID, TrieMap_DONT_CARE_REPLACE);
   }
 
   TrieMapIterator_Free(it);

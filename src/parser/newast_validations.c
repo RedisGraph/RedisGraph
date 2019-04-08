@@ -17,7 +17,7 @@ static void _NEWAST_GetIdentifiers(const cypher_astnode_t *node, TrieMap *identi
 
     if(cypher_astnode_type(node) == CYPHER_AST_IDENTIFIER) {
         const char *identifier = cypher_ast_identifier_get_name(node);
-        TrieMap_Add(identifiers, (char*)identifier, strlen(identifier), NULL, TrieMap_NOP_REPLACE);
+        TrieMap_Add(identifiers, (char*)identifier, strlen(identifier), NULL, TrieMap_DONT_CARE_REPLACE);
     }
 
     unsigned int child_count = cypher_astnode_nchildren(node);
@@ -51,7 +51,7 @@ static void _NEWAST_GetReturnAliases(const cypher_astnode_t *node, TrieMap *alia
         const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(child);
         if (alias_node == NULL) continue;
         const char *alias = cypher_ast_identifier_get_name(alias_node);
-        TrieMap_Add(aliases, (char*)alias, strlen(alias), NULL, TrieMap_NOP_REPLACE);
+        TrieMap_Add(aliases, (char*)alias, strlen(alias), NULL, TrieMap_DONT_CARE_REPLACE);
     }
 }
 
@@ -107,7 +107,7 @@ static void _consume_function_call_expression(const cypher_astnode_t *expression
     // Value is an apply operator
     const cypher_astnode_t *func = cypher_ast_apply_operator_get_func_name(expression);
     const char *func_name = cypher_ast_function_name_get_value(func);
-    TrieMap_Add(referred_funcs, (char*)func_name, strlen(func_name), NULL, TrieMap_NOP_REPLACE);
+    TrieMap_Add(referred_funcs, (char*)func_name, strlen(func_name), NULL, TrieMap_DONT_CARE_REPLACE);
 
     unsigned int narguments = cypher_ast_apply_operator_narguments(expression);
     for(int i = 0; i < narguments; i++) {
