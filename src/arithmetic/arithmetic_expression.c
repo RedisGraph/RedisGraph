@@ -402,6 +402,7 @@ SIValue AR_ADD(SIValue *argv, int argc) {
     char *string_arg = NULL;
     double numeric_arg;
 
+    if(SIValue_IsNull(argv[0])) return SI_NullVal();
     for(int i = 1; i < argc; i++) {
         if(SIValue_IsNull(argv[i])) return SI_NullVal();
 

@@ -132,6 +132,69 @@ TEST_F(ArithmeticTest, ExpressionTest) {
   ASSERT_TRUE(strcmp(result.stringval, "4a9") == 0);
 }
 
+TEST_F(ArithmeticTest, NullArithmetic) {
+  SIValue result;
+  const char *query;
+  AR_ExpNode *arExp;
+  Record r = Record_New(0);
+  
+  /* null + 1 */
+  query = "RETURN null + 1";
+  arExp = _exp_from_query(query);
+  result = AR_EXP_Evaluate(arExp, r);
+  ASSERT_TRUE(SIValue_IsNull(result));
+  AR_EXP_Free(arExp);
+
+  /* 1 + null */
+  query = "RETURN 1 + null";
+  arExp = _exp_from_query(query);
+  result = AR_EXP_Evaluate(arExp, r);
+  ASSERT_TRUE(SIValue_IsNull(result));
+  AR_EXP_Free(arExp);
+
+  /* null - 1 */
+  query = "RETURN null - 1";
+  arExp = _exp_from_query(query);
+  result = AR_EXP_Evaluate(arExp, r);
+  ASSERT_TRUE(SIValue_IsNull(result));
+  AR_EXP_Free(arExp);
+
+  /* 1 - null */
+  query = "RETURN 1 - null";
+  arExp = _exp_from_query(query);
+  result = AR_EXP_Evaluate(arExp, r);
+  ASSERT_TRUE(SIValue_IsNull(result));
+  AR_EXP_Free(arExp);
+
+  /* null * 1 */
+  query = "RETURN null * 1";
+  arExp = _exp_from_query(query);
+  result = AR_EXP_Evaluate(arExp, r);
+  ASSERT_TRUE(SIValue_IsNull(result));
+  AR_EXP_Free(arExp);
+
+  /* 1 * null */
+  query = "RETURN 1 * null";
+  arExp = _exp_from_query(query);
+  result = AR_EXP_Evaluate(arExp, r);
+  ASSERT_TRUE(SIValue_IsNull(result));
+  AR_EXP_Free(arExp);
+
+  /* null / 1 */
+  query = "RETURN null / 1";
+  arExp = _exp_from_query(query);
+  result = AR_EXP_Evaluate(arExp, r);
+  ASSERT_TRUE(SIValue_IsNull(result));
+  AR_EXP_Free(arExp);
+
+  /* 1 / null */
+  query = "RETURN 1 / null";
+  arExp = _exp_from_query(query);
+  result = AR_EXP_Evaluate(arExp, r);
+  ASSERT_TRUE(SIValue_IsNull(result));
+  AR_EXP_Free(arExp);
+}
+
 TEST_F(ArithmeticTest, AggregateTest) {
   SIValue result;
   const char *query;

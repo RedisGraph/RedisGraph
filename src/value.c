@@ -68,9 +68,7 @@ SIValue SI_ShallowCopy(SIValue v) {
     // Re-use the pointer of the input's string value
     return SI_ConstStringVal(v.stringval);
   }
-  SIValue dup;
-  memcpy(&dup, &v, sizeof(SIValue));
-  return dup;
+  return v; // Copies value.
 }
 
 inline int SIValue_IsNull(SIValue v) { return v.type == T_NULL; }
