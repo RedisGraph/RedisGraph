@@ -249,6 +249,13 @@ size_t Graph_NodeCount(const Graph *g) {
     return g->nodes->itemCount;
 }
 
+size_t Graph_LabeledNodeCount(const Graph *g, int label) {
+    GrB_Index nvals = 0;
+    GrB_Matrix m = Graph_GetLabel(g, label);
+    if(m) GrB_Matrix_nvals(&nvals, m);
+    return nvals;
+}
+
 size_t Graph_EdgeCount(const Graph *g) {
     assert(g);
     return g->edges->itemCount;

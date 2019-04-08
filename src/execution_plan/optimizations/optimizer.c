@@ -23,4 +23,7 @@ void optimizePlan(GraphContext *gc, ExecutionPlan *plan, AST *ast) {
     
     /* Try to reduce distinct if it follows aggregation. */
     reduceDistinct(plan);
+
+    /* Try to reduce execution plan incase it perform node counting. */
+    reduceCount(plan, ast);
 }

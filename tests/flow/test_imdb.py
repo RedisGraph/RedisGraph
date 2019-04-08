@@ -43,6 +43,24 @@ class ImdbFlowTest(FlowTestsBase):
         # assert query run time
         self._assert_equalish(resultset.run_time_ms, actual_result.run_time_ms)
 
+    def test_number_of_actors(self):
+        global redis_graph
+        q = queries.number_of_actors_query.query
+        actual_result = redis_graph.query(q)
+
+        # assert result set
+        self._assert_only_expected_results_are_in_actual_results(
+            actual_result,
+            queries.number_of_actors_query)
+
+        # assert query run time
+        self._assert_run_time(actual_result, queries.number_of_actors_query)
+
+        # assert execution plan
+        execution_plan = redis_graph.execution_plan(q)
+        self.assertNotIn("Aggregate", execution_plan)
+        self.assertNotIn("Node By Label Scan", execution_plan)
+    
     def test_actors_played_with_nicolas_cage(self):
         global redis_graph
         q = queries.actors_played_with_nicolas_cage_query.query

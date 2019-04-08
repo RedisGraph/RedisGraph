@@ -4,6 +4,12 @@ import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../')
 from demo import QueryInfo
 
+number_of_actors_query = QueryInfo(
+    query="""MATCH (n:actor) RETURN count(n) as actors_count""",
+    description='How many actors are in the graph?',
+    max_run_time_ms=0.2,
+    expected_result=[[1317]]
+)
 
 actors_played_with_nicolas_cage_query = QueryInfo(
     query="""MATCH (n:actor{name:"Nicolas Cage"})-[:act]->(m:movie)<-[:act]-(a:actor)
@@ -203,6 +209,7 @@ find_titles_starting_with_american_query = QueryInfo(
                      ['American Sniper']]
 )
 queries_info = [
+    number_of_actors_query,
     actors_played_with_nicolas_cage_query,
     find_three_actors_played_with_nicolas_cage_query,
     actors_played_in_movie_straight_outta_compton_query,

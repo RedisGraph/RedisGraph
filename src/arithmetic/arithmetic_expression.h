@@ -139,6 +139,15 @@ int AR_EXP_ContainsAggregation(AR_ExpNode *root, AR_ExpNode **agg_node);
 /* Constructs string representation of arithmetic expression tree. */
 void AR_EXP_ToString(const AR_ExpNode *root, char **str);
 
+/* Construct a constant expression: 2 */
+AR_ExpNode* AR_EXP_NewConstOperandNode(SIValue constant);
+
+/* Construct a variable expression: n.v*/
+AR_ExpNode* AR_EXP_NewVariableOperandNode(const AST *ast, char *entity_prop, char *entity_alias);
+
+/* Construct an operation expression: toUpper(n.v) */
+AR_ExpNode* AR_EXP_NewOpNode(char *func_name, int child_count);
+
 /* Construct an arithmetic expression tree from ast arithmetic expression node. */
 AR_ExpNode* AR_EXP_BuildFromAST(const AST *ast, const AST_ArithmeticExpressionNode *exp);
 

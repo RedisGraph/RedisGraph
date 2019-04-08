@@ -25,7 +25,7 @@ static inline int _validate_numeric(const SIValue v) {
     return SI_TYPE(v) & SI_NUMERIC;
 }
 
-static AR_ExpNode* _AR_EXP_NewConstOperandNode(SIValue constant) {
+AR_ExpNode* AR_EXP_NewConstOperandNode(SIValue constant) {
     AR_ExpNode *node = rm_calloc(1, sizeof(AR_ExpNode));
     node->type = AR_EXP_OPERAND;
     node->operand.type = AR_EXP_CONSTANT;
@@ -33,7 +33,7 @@ static AR_ExpNode* _AR_EXP_NewConstOperandNode(SIValue constant) {
     return node;
 }
 
-static AR_ExpNode* _AR_EXP_NewVariableOperandNode(const AST *ast, char *entity_prop, char *entity_alias) {
+AR_ExpNode* AR_EXP_NewVariableOperandNode(const AST *ast, char *entity_prop, char *entity_alias) {
     AR_ExpNode *node = rm_calloc(1, sizeof(AR_ExpNode));
     node->type = AR_EXP_OPERAND;
     node->operand.type = AR_EXP_VARIADIC;
@@ -48,7 +48,7 @@ static AR_ExpNode* _AR_EXP_NewVariableOperandNode(const AST *ast, char *entity_p
     return node;
 }
 
-static AR_ExpNode* _AR_EXP_NewOpNode(char *func_name, int child_count) {
+AR_ExpNode* AR_EXP_NewOpNode(char *func_name, int child_count) {
     AR_ExpNode *node = rm_calloc(1, sizeof(AR_ExpNode));
     node->type = AR_EXP_OP;    
     node->op.func_name = func_name;
@@ -79,7 +79,7 @@ AR_ExpNode* AR_EXP_BuildFromAST(const AST *ast, const AST_ArithmeticExpressionNo
     AR_ExpNode *root;
 
     if(exp->type == AST_AR_EXP_OP) {
-        root = _AR_EXP_NewOpNode(exp->op.function, Vector_Size(exp->op.args));
+        root = AR_EXP_NewOpNode(exp->op.function, Vector_Size(exp->op.args));
         /* Process operands. */
         for(int i = 0; i < root->op.child_count; i++) {
             AST_ArithmeticExpressionNode *child;
@@ -88,9 +88,9 @@ AR_ExpNode* AR_EXP_BuildFromAST(const AST *ast, const AST_ArithmeticExpressionNo
         }
     } else {
         if(exp->operand.type == AST_AR_EXP_CONSTANT) {
-            root = _AR_EXP_NewConstOperandNode(exp->operand.constant);
+            root = AR_EXP_NewConstOperandNode(exp->operand.constant);
         } else {
-            root = _AR_EXP_NewVariableOperandNode(ast,
+            root = AR_EXP_NewVariableOperandNode(ast,
                                                   exp->operand.variadic.property,
                                                   exp->operand.variadic.alias);
         }
@@ -348,7 +348,7 @@ static AR_ExpNode* _AR_EXP_CloneOperand(AR_ExpNode* exp) {
 }
 
 static AR_ExpNode* _AR_EXP_CloneOp(AR_ExpNode* exp) {
-    AR_ExpNode *clone = _AR_EXP_NewOpNode(exp->op.func_name, exp->op.child_count);
+    AR_ExpNode *clone = AR_EXP_NewOpNode(exp->op.func_name, exp->op.child_count);
     for(uint i = 0; i < exp->op.child_count; i++) {
         AR_ExpNode *child = AR_EXP_Clone(exp->op.children[i]);
         clone->op.children[i] = child;
