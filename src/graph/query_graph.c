@@ -145,21 +145,17 @@ void _BuildQueryGraphAddEdge(const GraphContext *gc,
     Node *src = QueryGraph_GetNodeByAlias(qg, src_node->alias);
     Node *dest = QueryGraph_GetNodeByAlias(qg, dest_node->alias);
     Edge *e = Edge_New(src, dest, edge->ge.label, edge->ge.alias);
-
-    // Get relation matrix.
+    
+    //Set edge relation ID.
     if(edge->ge.label == NULL) {
         Edge_SetRelationID(e, GRAPH_NO_RELATION);
-        e->mat = Graph_GetAdjacencyMatrix(g);
     } else {
         Schema *s = GraphContext_GetSchema(gc, edge->ge.label, SCHEMA_EDGE);
         if(s) {
             Edge_SetRelationID(e, s->id);
-            e->mat = Graph_GetRelationMatrix(g, s->id);
-        }
-        else {
-            /* Use a zeroed matrix.
-             * TODO: either use a static zero matrix, or free this one. */
-            GrB_Matrix_new(&e->mat, GrB_BOOL, Graph_NodeCount(g), Graph_NodeCount(g));
+        } else {
+            // Query refers to a none existing label.
+            Edge_SetRelationID(e, GRAPH_UNKNOWN_RELATION);
         }
     }
 
@@ -326,7 +322,14 @@ void QueryGraph_Free(QueryGraph* g) {
     int edgeCount = g->edge_count;
 
     for(i = 0; i < nodeCount; i++) Node_Free(g->nodes[i]);
-    for(i = 0; i < edgeCount; i++) Edge_Free(g->edges[i]);
+    for(i = 0; i < edgeCount; i++) {
+        Edge *e = g->edges[i];
+        if(Edge_GetRelationID(e) == GRAPH_UNKNOWN_RELATION) {
+            // Free zero matrix.
+            GrB_Matrix_free(&e->mat);
+        }
+        Edge_Free(e);
+    }
 
     free(g->nodes);
     free(g->edges);

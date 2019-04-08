@@ -330,7 +330,8 @@ AlgebraicExpression **AlgebraicExpression_From_Query(const AST *ast, Vector *mat
         e = QueryGraph_GetEdgeByAlias(q, astEdge->ge.alias);
         assert(e);
 
-        GrB_Matrix mat = e->mat;
+        // TODO: we might want to delay matrix retrieval even further.
+        GrB_Matrix mat = Edge_GetMatrix(e);
         dest = e->dest;
         src = e->src;
 
