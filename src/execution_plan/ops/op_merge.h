@@ -28,7 +28,7 @@ typedef struct {
     bool created;           // Has the entire pattern been created.
 } OpMerge;
 
-OpBase* NewMergeOp(GraphContext *gc, AST *ast, ResultSet *result_set);
+OpBase* NewMergeOp(GraphContext *gc, ResultSet *result_set);
 Record OpMergeConsume(OpBase *opBase);
 OpResult OpMergeReset(OpBase *ctx);
 void OpMergeFree(OpBase *ctx);

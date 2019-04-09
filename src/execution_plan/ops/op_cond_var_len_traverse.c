@@ -33,16 +33,18 @@ static void _setupTraversedRelations(CondVarLenTraverse *op) {
     op->relationIDsCount = array_len(op->relationIDs);
 }
 
-OpBase* NewCondVarLenTraverseOp(AlgebraicExpression *ae, unsigned int minHops, unsigned int maxHops, Graph *g, AST *ast) {
+OpBase* NewCondVarLenTraverseOp(AlgebraicExpression *ae, unsigned int minHops, unsigned int maxHops, Graph *g) {
     assert(ae && minHops <= maxHops && g && ae->operand_count == 1);
 
     CondVarLenTraverse *condVarLenTraverse = malloc(sizeof(CondVarLenTraverse));
     condVarLenTraverse->g = g;
     condVarLenTraverse->ae = ae;
-    condVarLenTraverse->ast = ast;
+    // AST *ast = AST_GetFromTLS();
+    // condVarLenTraverse->ast = ast;
+    NEWAST *ast = NEWAST_GetFromTLS();
     condVarLenTraverse->relationIDs = NULL;
-    condVarLenTraverse->srcNodeIdx = AST_GetAliasID(ast, ae->src_node->alias);
-    condVarLenTraverse->destNodeIdx = AST_GetAliasID(ast, ae->dest_node->alias);
+    condVarLenTraverse->srcNodeIdx = NEWAST_GetAliasID(ast, ae->src_node->alias);
+    condVarLenTraverse->destNodeIdx = NEWAST_GetAliasID(ast, ae->dest_node->alias);
     condVarLenTraverse->minHops = minHops;
     condVarLenTraverse->maxHops = maxHops;
     condVarLenTraverse->allPathsCtx = NULL;

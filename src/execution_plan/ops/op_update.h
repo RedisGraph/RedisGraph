@@ -47,7 +47,7 @@ typedef struct {
     bool updates_commited;                      /* Updates performed? */
 } OpUpdate;
 
-OpBase* NewUpdateOp(GraphContext *gc, AST *ast, ResultSet *result_set);
+OpBase* NewUpdateOp(GraphContext *gc, ResultSet *result_set);
 OpResult OpUpdateInit(OpBase *opBase);
 Record OpUpdateConsume(OpBase *opBase);
 OpResult OpUpdateReset(OpBase *ctx);

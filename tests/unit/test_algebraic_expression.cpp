@@ -223,7 +223,7 @@ class AlgebraicExpressionTest: public ::testing::Test {
         AlgebraicExpression **ae = NULL;
 
         AST **ast = ParseQuery(query, strlen(query), NULL);
-        ae = AlgebraicExpression_From_Query(
+        ae = AlgebraicExpression_FromQuery(
             ast[0],
             ast[0]->matchNode->_mergedPatterns,
             query_graph,

@@ -99,6 +99,6 @@ AR_ExpNode* NEWAST_SeekEntity(const NEWAST *ast, const cypher_astnode_t *entity)
 
 size_t NEWAST_AliasCount(const NEWAST *ast);
 
-NEWAST* NEWAST_GetFromLTS(void);
+NEWAST* NEWAST_GetFromTLS(void);
 
 #endif

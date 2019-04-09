@@ -52,7 +52,6 @@ static AR_ExpNode** _build_aggregated_expressions(OpAggregate *op) {
     
     for(uint i = 0; i < array_len(op->expressions); i++) {
         if(op->expression_classification[i] == NONE_AGGREGATED) continue;
-        AR_ExpNode *exp = AR_EXP_Clone(op->expressions[i]);
         AR_ExpNode *exp = AR_EXP_DuplicateAggFunc(op->ast->return_expressions[i]->exp);
         agg_exps = array_append(agg_exps, exp);
     }
@@ -207,8 +206,9 @@ static Record _handoff(OpAggregate *op) {
     return r;
 }
 
-OpBase* NewAggregateOp(NEWAST *ast, AR_ExpNode **expressions, char **aliases) {
+OpBase* NewAggregateOp(AR_ExpNode **expressions, char **aliases) {
     OpAggregate *aggregate = malloc(sizeof(OpAggregate));
+    NEWAST *ast = NEWAST_GetFromTLS();
     aggregate->ast = ast;
     aggregate->aliases = aliases;
     aggregate->expressions = expressions;

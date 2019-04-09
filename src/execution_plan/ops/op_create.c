@@ -13,7 +13,7 @@
 
 void _SetModifiedEntities(OpCreate *op) {
     // TODO
-    AST *ast = AST_GetFromLTS();
+    AST *ast = op->ast;
     /* Determin which entities are modified by create op. */
     size_t create_entity_count = Vector_Size(op->ast->createNode->graphEntities);
     op->nodes_to_create = malloc(sizeof(NodeCreateCtx) * create_entity_count);

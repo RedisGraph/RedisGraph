@@ -11,7 +11,7 @@ OpBase* NewCartesianProductOp(int record_len) {
     CartesianProduct *cp = malloc(sizeof(CartesianProduct));
     cp->init = true;
 
-    NEWAST *ast = NEWAST_GetFromLTS();
+    NEWAST *ast = NEWAST_GetFromTLS();
     cp->r = Record_New(NEWAST_AliasCount(ast));
 
     // Set our Op operations

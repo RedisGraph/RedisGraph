@@ -14,6 +14,8 @@
 #include "../util/rmalloc.h"
 #include "../../deps/libcypher-parser/lib/src/cypher-parser.h"
 
+extern pthread_key_t _tlsASTKey;  // Thread local storage AST key.
+extern pthread_key_t _tlsNEWASTKey;  // Thread local storage NEWAST key.
 
 void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST_IndexNode *indexNode) {
     /* Set up nested array response for index creation and deletion,
@@ -55,14 +57,12 @@ void _MGraph_Query(void *args) {
     ResultSet* resultSet = NULL;
     AST **ast = qctx->ast;
     NEWAST *new_ast = qctx->new_ast;
+    bool readonly = NEWAST_ReadOnly(new_ast->root);
     bool lockAcquired = false;
 
-    /* New parser */
-
-    // Perform query validations
-    if (AST_PerformValidations(ctx, new_ast->root) != AST_VALID) goto cleanup;
-
-    bool readonly = NEWAST_ReadOnly(new_ast->root);
+    // Set thread-local ASTs (TODO tmp)
+    pthread_setspecific(_tlsASTKey, ast);
+    pthread_setspecific(_tlsNEWASTKey, new_ast);
 
     // Try to access the GraphContext
     CommandCtx_ThreadSafeContextLock(qctx);
@@ -84,6 +84,10 @@ void _MGraph_Query(void *args) {
         }
         /* TODO: free graph if no entities were created. */
     }
+    CommandCtx_ThreadSafeContextUnlock(qctx);
+
+    // Perform query validations
+    if (AST_PerformValidations(ctx, new_ast->root) != AST_VALID) goto cleanup;
 
     ModifyAST(gc, ast, new_ast);
 
@@ -147,7 +151,7 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
         return REDISMODULE_OK;
     }
 
-    AST* ast = ParseQuery(query, strlen(query), &errMsg);
+    AST **ast = ParseQuery(query, strlen(query), &errMsg);
     // if (!ast) {
     //     RedisModule_Log(ctx, "debug", "Error parsing query: %s", errMsg);
     //     RedisModule_ReplyWithError(ctx, errMsg);
@@ -179,6 +183,6 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     }
 
     // Replicate only if query has potential to modify key space.    
-    if(!readonly) RedisModule_ReplicateVerbatim(ctx);
+    // if(!readonly) RedisModule_ReplicateVerbatim(ctx);
     return REDISMODULE_OK;
 }

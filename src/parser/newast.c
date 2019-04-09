@@ -316,7 +316,7 @@ size_t NEWAST_AliasCount(const NEWAST *ast) {
     return ast->identifier_map->cardinality;
 }
 
-NEWAST* NEWAST_GetFromLTS(void) {
+NEWAST* NEWAST_GetFromTLS(void) {
     NEWAST *ast = pthread_getspecific(_tlsNEWASTKey);
     assert(ast);
     return ast;

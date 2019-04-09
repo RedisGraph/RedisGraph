@@ -40,7 +40,7 @@ typedef enum {
     CacheGroupIterator *groupIter;
  } OpAggregate;
 
-OpBase* NewAggregateOp(NEWAST *ast, AR_ExpNode **expressions, char **aliases);
+OpBase* NewAggregateOp(AR_ExpNode **expressions, char **aliases);
 OpResult AggregateInit(OpBase *opBase);
 Record AggregateConsume(OpBase *opBase);
 OpResult AggregateReset(OpBase *opBase);

@@ -300,7 +300,7 @@ AR_ExpNode* AR_EXP_FromExpression(const NEWAST *ast, const cypher_astnode_t *exp
 AR_ExpNode* AR_EXP_BuildFromAST(const AST *ast, const AST_ArithmeticExpressionNode *exp) {
     AR_ExpNode *root;
     if(exp->type == AST_AR_EXP_OP) {
-        root = AR_EXP_NewOpNode(exp->op.function, Vector_Size(exp->op.args));
+        root = _AR_EXP_NewOpNode(exp->op.function, Vector_Size(exp->op.args));
         /* Process operands. */
         for(int i = 0; i < root->op.child_count; i++) {
             AST_ArithmeticExpressionNode *child;
@@ -569,7 +569,7 @@ static AR_ExpNode* _AR_EXP_CloneOperand(AR_ExpNode* exp) {
 }
 
 static AR_ExpNode* _AR_EXP_CloneOp(AR_ExpNode* exp) {
-    AR_ExpNode *clone = AR_EXP_NewOpNode(exp->op.func_name, exp->op.child_count);
+    AR_ExpNode *clone = _AR_EXP_NewOpNode(exp->op.func_name, exp->op.child_count);
     for(uint i = 0; i < exp->op.child_count; i++) {
         AR_ExpNode *child = AR_EXP_Clone(exp->op.children[i]);
         clone->op.children[i] = child;

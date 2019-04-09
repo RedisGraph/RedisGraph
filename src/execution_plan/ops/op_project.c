@@ -22,7 +22,8 @@ static AR_ExpNode** _getOrderExpressions(OpBase *op) {
     return _getOrderExpressions(op->parent);
 }
 
-OpBase* NewProjectOp(const NEWAST *ast, AR_ExpNode **exps, char **aliases) {
+OpBase* NewProjectOp(AR_ExpNode **exps, char **aliases) {
+    NEWAST *ast = NEWAST_GetFromTLS();
     OpProject *project = malloc(sizeof(OpProject));
     project->ast = ast;
     project->exps = exps;
@@ -85,7 +86,7 @@ Record ProjectConsume(OpBase *opBase) {
          * as it might be referenced by other expressions:
          * e.g. RETURN n.v AS X ORDER BY X * X
          * WITH 1 as one, one+one as two */
-        char *alias = op->ast->return_expressions[i]->alias;
+        char *alias = (char*)op->ast->return_expressions[i]->alias;
 
         switch(SI_TYPE(v)) {
             case T_NODE:

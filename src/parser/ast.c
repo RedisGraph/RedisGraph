@@ -68,8 +68,8 @@ AST *AST_New(AST_MatchNode *matchNode, AST_WhereNode *whereNode,
   return ast;
 }
 
-AST *AST_GetFromLTS() {
-  AST* ast = pthread_getspecific(_tlsASTKey);
+AST** AST_GetFromTLS() {
+  AST **ast = pthread_getspecific(_tlsASTKey);
   assert(ast);
   return ast;
 }

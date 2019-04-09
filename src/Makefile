@@ -72,6 +72,7 @@ CC_DEPS = $(patsubst %.c, %.d, $(CC_SOURCES) )
 LIBTRIEMAP=util/triemap/libtriemap.a
 GRAPHBLAS=../deps/GraphBLAS/build/libgraphblas.a
 LIBXXHASH=../deps/xxhash/libxxhash.a
+LIBCYPHER-PARSER=../deps/libcypher-parser/lib/src/.libs/libcypher-parser.a
 
 # Compilation deps for the module
 LIBS=$(LIBTRIEMAP) $(GRAPHBLAS) $(LIBXXHASH) $(LIBCYPHER-PARSER)

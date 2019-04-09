@@ -23,7 +23,7 @@
     uint recLength;  // Number of entries in a record.
  } AllNodeScan;
 
-OpBase* NewAllNodeScanOp(const Graph *g, Node *n, AST *ast);
+OpBase* NewAllNodeScanOp(const Graph *g, Node *n);
 Record AllNodeScanConsume(OpBase *opBase);
 OpResult AllNodeScanReset(OpBase *op);
 void AllNodeScanFree(OpBase *ctx);

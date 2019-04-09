@@ -9,12 +9,9 @@
 #include "../query_executor.h"
 #include "../execution_plan/execution_plan.h"
 
-<<<<<<< HEAD
-=======
 extern pthread_key_t _tlsASTKey;  // Thread local storage AST key.
 extern pthread_key_t _tlsNEWASTKey;  // Thread local storage NEWAST key.
 
->>>>>>> Minor changes
 /* Builds an execution plan but does not execute it
  * reports plan back to the client
  * Args:
@@ -35,12 +32,7 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
     /* Parse query, get AST. */
     char *errMsg = NULL;
-<<<<<<< HEAD
-    AST** ast = NULL;
-    cypher_parse_result_t *new_ast = NULL;
-=======
-    AST* ast = NULL;
->>>>>>> Minor changes
+    AST **ast = NULL;
     GraphContext *gc = NULL;
     ExecutionPlan *plan = NULL;
 
@@ -51,11 +43,8 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
         free(errMsg);
         return REDISMODULE_OK;
     }
-<<<<<<< HEAD
-=======
     cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
     NEWAST *new_ast = NEWAST_Build(parse_result);
->>>>>>> Minor changes
 
     pthread_setspecific(_tlsASTKey, ast);
     pthread_setspecific(_tlsNEWASTKey, new_ast);

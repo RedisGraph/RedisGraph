@@ -7,11 +7,11 @@
 #include "op_all_node_scan.h"
 #include "../../parser/newast.h"
 
-OpBase* NewAllNodeScanOp(const Graph *g, Node *n, AST *ast) {
+OpBase* NewAllNodeScanOp(const Graph *g, Node *n) {
     AllNodeScan *allNodeScan = malloc(sizeof(AllNodeScan));
     allNodeScan->iter = Graph_ScanNodes(g);
 
-    NEWAST *ast = NEWAST_GetFromLTS();
+    NEWAST *ast = NEWAST_GetFromTLS();
     // TODO queries like MATCH (a)-[e]->(b) RETURN a.name, e, b.name create larger records now than they did prior
     allNodeScan->nodeRecIdx = NEWAST_GetAliasID(ast, n->alias);
     allNodeScan->recLength = NEWAST_AliasCount(ast);

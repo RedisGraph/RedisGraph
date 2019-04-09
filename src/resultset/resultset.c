@@ -144,11 +144,13 @@ void static _Column_Free(Column* column) {
     // rm_free(column);
 }
 
-void ResultSet_CreateHeader(ResultSet *resultset, const AST *ast) {    
-    if(!ast->returnNode) return;
+void ResultSet_CreateHeader(ResultSet *resultset) {
     assert(resultset->header == NULL && resultset->recordCount == 0);
 
-    const NEWAST *ast = NEWAST_GetFromLTS();
+    const NEWAST *ast = NEWAST_GetFromTLS();
+    const cypher_astnode_t *ret_clause = NEWAST_GetClause(ast->root, CYPHER_AST_RETURN);
+    if (ret_clause == NULL) return;
+
     ResultSetHeader* header = rm_malloc(sizeof(ResultSetHeader));
     header->columns_len = 0;
     header->columns = NULL;
@@ -191,17 +193,35 @@ static void _ResultSetHeader_Free(ResultSetHeader* header) {
     rm_free(header);
 }
 
-ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx) {
+// Set the DISTINCT, SKIP, and LIMIT values specified in the query
+void ResultSet_GetReturnModifiers(NEWAST *ast, ResultSet *set) {
+    const cypher_astnode_t *ret_clause = NEWAST_GetClause(ast->root, CYPHER_AST_RETURN);
+    if (!ret_clause) return;
+
+    set->distinct = (ret_clause && cypher_ast_return_is_distinct(ret_clause));
+
+    /*
+    // Get user-specified number of rows to skip
+    const cypher_astnode_t *skip_clause = cypher_ast_return_get_skip(ret_clause);
+    if (skip_clause) set->skip = NEWAST_ParseIntegerNode(skip_clause);
+
+    // Get user-specified limit on number of returned rows
+    const cypher_astnode_t *limit_clause = cypher_ast_return_get_limit(ret_clause);
+    if(limit_clause) set->limit = set->skip + NEWAST_ParseIntegerNode(limit_clause);
+    */
+}
+
+
+ResultSet* NewResultSet(NEWAST* ast, RedisModuleCtx *ctx) {
     ResultSet* set = (ResultSet*)malloc(sizeof(ResultSet));
     set->ctx = ctx;
-    set->distinct = (ast->returnNode && ast->returnNode->distinct);
+    set->distinct = false;
     set->recordCount = 0;    
     set->header = NULL;
     set->bufferLen = 2048;
     set->buffer = malloc(set->bufferLen);
     // Add skip, limit, and distinct values if specified by user
     ResultSet_GetReturnModifiers(ast, set);
-    if(set->distinct) set->trie = NewTrieMap();
 
     set->stats.labels_added = 0;
     set->stats.nodes_created = 0;

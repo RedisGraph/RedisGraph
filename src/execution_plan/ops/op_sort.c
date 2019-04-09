@@ -112,9 +112,11 @@ uint _determineOffset(OpBase *op) {
     return _determineOffset(op->children[0]);
 }
 
-OpBase *NewSortOp(const AST *ast, AR_ExpNode **expressions) {
+OpBase *NewSortOp(AR_ExpNode **expressions) {
     assert(expressions && array_len(expressions) > 0);
     OpSort *sort = malloc(sizeof(OpSort));
+    assert(false);
+    AST *ast = AST_GetFromTLS()[0];
     sort->ast = ast;
     sort->direction = (ast->orderNode->direction == ORDER_DIR_DESC) ? DIR_DESC : DIR_ASC;
     sort->limit = 0;

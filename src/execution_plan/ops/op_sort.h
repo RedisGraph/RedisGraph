@@ -26,7 +26,7 @@ typedef struct {
 } OpSort;
 
 /* Creates a new Sort operation */
-OpBase *NewSortOp(const AST *ast, AR_ExpNode **expressions);
+OpBase *NewSortOp(AR_ExpNode **expressions);
 
 Record SortConsume(OpBase *opBase);
 
