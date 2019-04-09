@@ -112,25 +112,23 @@ uint _determineOffset(OpBase *op) {
     return _determineOffset(op->children[0]);
 }
 
-OpBase *NewSortOp(AR_ExpNode **expressions) {
-    assert(expressions && array_len(expressions) > 0);
+int _get_order(const cypher_astnode_t *order_clause) {
+    unsigned int nitems = cypher_ast_order_by_nitems(order_clause);
+    const cypher_astnode_t *item = cypher_ast_order_by_get_item(order_clause, nitems - 1);
+    bool ascending = cypher_ast_sort_item_is_ascending(item);
+    return (ascending) ? DIR_ASC : DIR_DESC;
+}
+
+OpBase* NewSortOp(const cypher_astnode_t *order_clause, unsigned int limit) {
     OpSort *sort = malloc(sizeof(OpSort));
-    assert(false);
-    AST *ast = AST_GetFromTLS()[0];
-    sort->ast = ast;
-    sort->direction = (ast->orderNode->direction == ORDER_DIR_DESC) ? DIR_DESC : DIR_ASC;
-    sort->limit = 0;
     sort->offset = 0;
-    sort->expressions = expressions;
+    sort->expressions = NEWAST_GetOrderExpressions(order_clause);
+    // TODO direction should be specifiable per order entity; combine with GetOrderExpressions
+    sort->direction = _get_order(order_clause);
     sort->heap = NULL;
     sort->buffer = NULL;
 
-    if(ast->limitNode) {
-        sort->limit = ast->limitNode->limit;
-        if(ast->skipNode) {
-            sort->limit += ast->skipNode->skip;
-        }
-    }
+    sort->limit = limit;
 
     if(sort->limit) sort->heap = heap_new(_heap_elem_compare, sort);
     else sort->buffer = array_new(Record, 32);
@@ -240,6 +238,6 @@ void SortFree(OpBase *ctx) {
         array_free(op->buffer);
     }
 
-    for(int i = 0; i < array_len(op->expressions); i++) AR_EXP_Free(op->expressions[i]);
+    // for(int i = 0; i < array_len(op->expressions); i++) AR_EXP_Free(op->expressions[i]); // TODO
     array_free(op->expressions);
 }

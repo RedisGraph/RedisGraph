@@ -520,28 +520,32 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST *old
 
     
     if (ret_clause) {
-        if(cypher_ast_return_is_distinct(ret_clause)) {
+        if (cypher_ast_return_is_distinct(ret_clause)) {
             op = NewDistinctOp();
             Vector_Push(ops, op);
         }
 
         const cypher_astnode_t *order_clause = cypher_ast_return_get_order_by(ret_clause);
-        if(order_clause) {
-            op = NewSortOp(_OrderClause_GetExpressions(old_ast));
+        const cypher_astnode_t *skip_clause = cypher_ast_return_get_skip(ret_clause);
+        const cypher_astnode_t *limit_clause = cypher_ast_return_get_limit(ret_clause);
+
+        uint skip = 0;
+        uint limit = 0;
+        if (skip_clause) skip = NEWAST_ParseIntegerNode(skip_clause);
+        if (limit_clause) limit = skip + NEWAST_ParseIntegerNode(limit_clause);
+
+        if (order_clause) {
+            // op = NewSortOp(_OrderClause_GetExpressions(old_ast), order_clause, limit);
+            op = NewSortOp(order_clause, limit);
             Vector_Push(ops, op);
         }
 
-        uint skip = 0;
-        const cypher_astnode_t *skip_clause = cypher_ast_return_get_skip(ret_clause);
         if (skip_clause) {
-            skip = NEWAST_ParseIntegerNode(skip_clause);
             OpBase *op_skip = NewSkipOp(skip);
             Vector_Push(ops, op_skip);
         }
 
-        const cypher_astnode_t *limit_clause = cypher_ast_return_get_limit(ret_clause);
-        if(limit_clause) {
-            uint limit = skip + NEWAST_ParseIntegerNode(limit_clause);
+        if (limit_clause) {
             OpBase *op_limit = NewLimitOp(limit);
             Vector_Push(ops, op_limit);
         }

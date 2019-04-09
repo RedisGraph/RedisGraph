@@ -16,7 +16,6 @@
 
 typedef struct {
     OpBase op;
-    const AST *ast;
     AR_ExpNode **expressions;   // Expression to sort by.
     heap_t *heap;               // Holds top n records.
     Record *buffer;             // Holds all records.
@@ -26,7 +25,7 @@ typedef struct {
 } OpSort;
 
 /* Creates a new Sort operation */
-OpBase *NewSortOp(AR_ExpNode **expressions);
+OpBase* NewSortOp(const cypher_astnode_t *order_clause, unsigned int limit);
 
 Record SortConsume(OpBase *opBase);
 

@@ -277,6 +277,25 @@ AST_Operator NEWAST_ConvertOperatorNode(const cypher_operator_t *op) {
     return -1;
 }
 
+AR_ExpNode** NEWAST_GetOrderExpressions(const cypher_astnode_t *order_clause) {
+    assert(order_clause);
+    NEWAST *ast = NEWAST_GetFromTLS();
+
+    unsigned int nitems = cypher_ast_order_by_nitems(order_clause);
+    AR_ExpNode **order_exps = array_new(sizeof(AR_ExpNode), nitems);
+
+    for (unsigned int i = 0; i < nitems; i ++) {
+        const cypher_astnode_t *item = cypher_ast_order_by_get_item(order_clause, i);
+        const cypher_astnode_t *cypher_exp = cypher_ast_sort_item_get_expression(item);
+        AR_ExpNode *ar_exp = AR_EXP_FromExpression(ast, cypher_exp);
+        order_exps = array_append(order_exps, ar_exp);
+        // TODO use
+        // bool ascending = cypher_ast_sort_item_is_ascending(item);
+    }
+
+    return order_exps;
+}
+
 void NEWAST_BuildAliasMap(NEWAST *ast) {
     ast->identifier_map = NewTrieMap(); // Holds mapping between referred entities and IDs.
     ast->defined_entities = array_new(cypher_astnode_t*, 1);
