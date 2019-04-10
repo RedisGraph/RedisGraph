@@ -232,12 +232,7 @@ OpBase* ExecutionPlan_LocateOp(OpBase *root, OPType type) {
 
 void ExecutionPlan_Taps(OpBase *root, OpBase ***taps) {
     if(root == NULL) return;
-    int t = OPType_ALL_NODE_SCAN |
-            OPType_NODE_BY_LABEL_SCAN |
-            OPType_INDEX_SCAN |
-            OPType_NODE_BY_ID_SEEK;
-
-    if(root->type & t) *taps = array_append(*taps, root);
+    if(root->type & OP_SCAN) *taps = array_append(*taps, root);
 
     for(int i = 0; i < root->childCount; i++) {
         ExecutionPlan_Taps(root->children[i], taps);

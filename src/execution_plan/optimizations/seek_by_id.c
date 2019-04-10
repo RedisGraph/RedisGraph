@@ -12,7 +12,7 @@
 #include "../ops/op_node_by_id_seek.h"
 #include "../ops/op_node_by_label_scan.h"
 
-static bool _idFilter(FT_FilterNode *f, int *rel, EntityID *id) {
+static bool _idFilter(FT_FilterNode *f, int *rel, EntityID *id, bool *reverse) {
     if(f->t == FT_N_COND) return false;
     if(f->pred.op == NE) return false;
     
@@ -28,9 +28,11 @@ static bool _idFilter(FT_FilterNode *f, int *rel, EntityID *id) {
     if(lhs->type == AR_EXP_OPERAND && rhs->type == AR_EXP_OP) {
         op = &rhs->op;
         operand = &lhs->operand;
+        *reverse = true;
     } else if(lhs->type == AR_EXP_OP && rhs->type == AR_EXP_OPERAND) {
         op = &lhs->op;
         operand = &rhs->operand;
+        *reverse = false;
     } else {
         return false;
     }
@@ -46,38 +48,52 @@ static bool _idFilter(FT_FilterNode *f, int *rel, EntityID *id) {
     return true;
 }
 
-static void _setupIdRange(int rel, EntityID id, NodeID *minId, NodeID *maxId, bool *includeMin, bool *includeMax) {
+static void _setupIdRange(int rel, EntityID id, bool reverse, NodeID *minId, NodeID *maxId, bool *inclusiveMin, bool *inclusiveMax) {
     switch(rel) {
         case GT:
             *minId = id;
             break;
         case GE:
             *minId = id;
-            *includeMin = true;
+            *inclusiveMin = true;
             break;
         case LT:
             *maxId = id;
             break;
         case LE:
             *maxId = id;
-            *includeMax = true;
+            *inclusiveMax = true;
             break;
         case EQ:
             *minId = id;
             *maxId = id;
-            *includeMin = true;
-            *includeMax = true;
+            *inclusiveMin = true;
+            *inclusiveMax = true;
             break;
         default:
             assert(false);
             break;
     }
+    
+    /* WHERE ID(n) >= 5
+     * Reverse
+     * WHERE 5 <= ID(n) */
+    if(reverse) {
+        NodeID tmpNodeId;
+        bool tmpInclusive;
+
+        tmpNodeId = *minId;
+        *minId = *maxId;
+        *maxId = tmpNodeId;
+
+        tmpInclusive = *inclusiveMin;
+        *inclusiveMin = *inclusiveMax;
+        *inclusiveMax = tmpInclusive;
+    }
 }
 
 void _reduceTap(ExecutionPlan *plan, const AST *ast, OpBase *tap) {
-    if(tap->type == OPType_ALL_NODE_SCAN ||
-       tap->type == OPType_NODE_BY_LABEL_SCAN ||
-       tap->type == OPType_INDEX_SCAN) {
+    if(tap->type & OP_SCAN) {
         /* See if there's a filter of the form
          * ID(n) = X
          * where X is a constant. */
@@ -88,24 +104,32 @@ void _reduceTap(ExecutionPlan *plan, const AST *ast, OpBase *tap) {
 
             int rel;
             EntityID id;
-            if(_idFilter(f, &rel, &id)) {
+            bool reverse;
+            if(_idFilter(f, &rel, &id, &reverse)) {
                 int nodeRecIdx = -1;
                 NodeID minId = ID_RANGE_UNBOUND;
                 NodeID maxId = ID_RANGE_UNBOUND;
-                bool includeMin = false;
-                bool includeMax = false;
+                bool inclusiveMin = false;
+                bool inclusiveMax = false;
                 OpBase *opNodeByIdSeek;
 
-                if(tap->type == OPType_ALL_NODE_SCAN)
-                    nodeRecIdx = ((AllNodeScan*)tap)->nodeRecIdx;
-                else if(tap->type == OPType_NODE_BY_LABEL_SCAN)
-                    nodeRecIdx = ((NodeByLabelScan*)tap)->nodeRecIdx;
-                else if(tap->type == OPType_INDEX_SCAN)
-                    nodeRecIdx = ((IndexScan*)tap)->nodeRecIdx;
-                
-                _setupIdRange(rel, id, &minId, &maxId, &includeMin, &includeMax);
+                switch(tap->type) {
+                    case OPType_ALL_NODE_SCAN:
+                        nodeRecIdx = ((AllNodeScan*)tap)->nodeRecIdx;
+                        break;
+                    case OPType_NODE_BY_LABEL_SCAN:                
+                        nodeRecIdx = ((NodeByLabelScan*)tap)->nodeRecIdx;
+                        break;
+                    case OPType_INDEX_SCAN:
+                        nodeRecIdx = ((IndexScan*)tap)->nodeRecIdx;
+                        break;
+                    default:
+                        assert(false);
+                }
+
+                _setupIdRange(rel, id, reverse, &minId, &maxId, &inclusiveMin, &inclusiveMax);
                 opNodeByIdSeek = NewOpNodeByIdSeekOp(ast, nodeRecIdx, minId, maxId,
-                    includeMin, includeMax);
+                    inclusiveMin, inclusiveMax);
 
                 // Managed to reduce!
                 ExecutionPlan_ReplaceOp(plan, tap, opNodeByIdSeek);

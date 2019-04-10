@@ -19,9 +19,9 @@ typedef struct {
     int nodeRecIdx;         // Position of entity within record.
     int recLength;          // Size of record.
     NodeID minId;           // Min ID to fetch.
-    bool minExclusive;      // Include min ID.
+    bool minInclusive;      // Include min ID.
     NodeID maxId;           // Max ID to fetch.
-    bool maxExclusive;      // Include max ID.
+    bool maxInclusive;      // Include max ID.
     NodeID currentId;       // Current ID fetched.
 } OpNodeByIdSeek;
 

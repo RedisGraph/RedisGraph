@@ -7,14 +7,13 @@
 #include "op_node_by_id_seek.h"
 
 #define MIN(a,b) (((a) < (b)) ? (a) : (b))
-#define MAX(a,b) (((a) < (b)) ? (b) : (a))
 
 // Checks to see if operation index is within its bounds.
 static inline bool _outOfBounds(OpNodeByIdSeek *op) {
     /* Because currentId starts at minimum and only increases
      * we only care about top bound. */
     if(op->currentId > op->maxId) return true;
-    if(op->currentId == op->maxId && !op->maxExclusive) return true;
+    if(op->currentId == op->maxId && !op->maxInclusive) return true;
     return false;
 }
 
@@ -24,27 +23,32 @@ OpBase* NewOpNodeByIdSeekOp
     unsigned int nodeRecIdx,
     NodeID minId,
     NodeID maxId,
-    bool minExclusive,
-    bool maxExclusive
+    bool minInclusive,
+    bool maxInclusive
 )
 {
     // Can't include unspecified bound.
-    assert(!(minId == ID_RANGE_UNBOUND && minExclusive));
-    assert(!(maxId == ID_RANGE_UNBOUND && maxExclusive));
+    assert(!(minId == ID_RANGE_UNBOUND && minInclusive));
+    assert(!(maxId == ID_RANGE_UNBOUND && maxInclusive));
 
     OpNodeByIdSeek *op_nodeByIdSeek = malloc(sizeof(OpNodeByIdSeek));
     op_nodeByIdSeek->g = GraphContext_GetFromTLS()->g;
     
-    op_nodeByIdSeek->minExclusive = minExclusive;
-    op_nodeByIdSeek->maxExclusive = maxExclusive;
+    op_nodeByIdSeek->minInclusive = minInclusive;
+    op_nodeByIdSeek->maxInclusive = maxInclusive;
 
     // The smallest possible entity ID is 0.
-    op_nodeByIdSeek->minId = MAX(0, minId);
+    op_nodeByIdSeek->minId = minId;
+    if(minId == ID_RANGE_UNBOUND) op_nodeByIdSeek->minId = 0;
+
     // The largest possible entity ID is the same as Graph_RequiredMatrixDim.
+    if(maxId == ID_RANGE_UNBOUND) maxId = Graph_RequiredMatrixDim(op_nodeByIdSeek->g);
     op_nodeByIdSeek->maxId = MIN(Graph_RequiredMatrixDim(op_nodeByIdSeek->g), maxId);
 
     op_nodeByIdSeek->currentId = op_nodeByIdSeek->minId;
-    if(!minExclusive) op_nodeByIdSeek->currentId++;
+    /* Advance current ID when min is not inclusive and 
+     * minimum range is specified. */
+    if(!minInclusive && minId != ID_RANGE_UNBOUND) op_nodeByIdSeek->currentId++;
 
     op_nodeByIdSeek->nodeRecIdx = nodeRecIdx;
     op_nodeByIdSeek->recLength = AST_AliasCount(ast);
@@ -88,7 +92,7 @@ Record OpNodeByIdSeekConsume(OpBase *opBase) {
 OpResult OpNodeByIdSeekReset(OpBase *ctx) {
     OpNodeByIdSeek *op = (OpNodeByIdSeek*)ctx;
     op->currentId = op->minId;
-    if(!op->minExclusive) op->currentId++;
+    if(!op->minInclusive) op->currentId++;
     return OP_OK;
 }
 
