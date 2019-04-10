@@ -6,13 +6,48 @@
 
 #include "op_node_by_id_seek.h"
 
-OpBase* NewOpNodeByIdSeekOp(const AST *ast, Node *n, NodeID nodeId) {
-    OpNodeByIdSeek *op_nodeByIdSeek = malloc(sizeof(OpNodeByIdSeek));    
-    op_nodeByIdSeek->id = nodeId;
+#define MIN(a,b) (((a) < (b)) ? (a) : (b))
+#define MAX(a,b) (((a) < (b)) ? (b) : (a))
+
+// Checks to see if operation index is within its bounds.
+static inline bool _outOfBounds(OpNodeByIdSeek *op) {
+    /* Because currentId starts at minimum and only increases
+     * we only care about top bound. */
+    if(op->currentId > op->maxId) return true;
+    if(op->currentId == op->maxId && !op->maxExclusive) return true;
+    return false;
+}
+
+OpBase* NewOpNodeByIdSeekOp
+(
+    const AST *ast,
+    unsigned int nodeRecIdx,
+    NodeID minId,
+    NodeID maxId,
+    bool minExclusive,
+    bool maxExclusive
+)
+{
+    // Can't include unspecified bound.
+    assert(!(minId == ID_RANGE_UNBOUND && minExclusive));
+    assert(!(maxId == ID_RANGE_UNBOUND && maxExclusive));
+
+    OpNodeByIdSeek *op_nodeByIdSeek = malloc(sizeof(OpNodeByIdSeek));
     op_nodeByIdSeek->g = GraphContext_GetFromTLS()->g;
-    op_nodeByIdSeek->nodeRecIdx = AST_GetAliasID(ast, n->alias);
+    
+    op_nodeByIdSeek->minExclusive = minExclusive;
+    op_nodeByIdSeek->maxExclusive = maxExclusive;
+
+    // The smallest possible entity ID is 0.
+    op_nodeByIdSeek->minId = MAX(0, minId);
+    // The largest possible entity ID is the same as Graph_RequiredMatrixDim.
+    op_nodeByIdSeek->maxId = MIN(Graph_RequiredMatrixDim(op_nodeByIdSeek->g), maxId);
+
+    op_nodeByIdSeek->currentId = op_nodeByIdSeek->minId;
+    if(!minExclusive) op_nodeByIdSeek->currentId++;
+
+    op_nodeByIdSeek->nodeRecIdx = nodeRecIdx;
     op_nodeByIdSeek->recLength = AST_AliasCount(ast);
-    op_nodeByIdSeek->entityRetrieved = false;
 
     OpBase_Init(&op_nodeByIdSeek->op);
     op_nodeByIdSeek->op.name = "NodeByIdSeek";
@@ -25,22 +60,23 @@ OpBase* NewOpNodeByIdSeekOp(const AST *ast, Node *n, NodeID nodeId) {
 }
 
 Record OpNodeByIdSeekConsume(OpBase *opBase) {
-    Node n;
     OpNodeByIdSeek *op = (OpNodeByIdSeek*)opBase;
-    
-    /* Try to get entity by ID 
-     * Incase entity doesn't exists return depleted 
-     * otherwise place entity within recoed and
-     * mark that entity was retrieved. */
+    Node n;
+    n.entity = NULL;
 
-    // Can only retrieve entity once.
-    if(op->entityRetrieved) return NULL;
+    /* As long as we're within range bounds
+     * and we've yet to get a node. */
+    while(!_outOfBounds(op)) {
+        if(Graph_GetNode(op->g, op->currentId, &n)) break;
+        op->currentId++;
+    }
 
-    // See if entity with ID exists in the graph.
-    if(!Graph_GetNode(op->g, op->id, &n)) return NULL;
-    
-    // Managed to get entity, mark and set record.
-    op->entityRetrieved = true;
+    // Advance id for next consume call.
+    op->currentId++;
+
+    // Did we managed to get an entity?
+    if(!n.entity) return NULL;
+
     Record r = Record_New(op->recLength);
     Record_AddNode(r, op->nodeRecIdx, n);
     return r;
@@ -48,7 +84,8 @@ Record OpNodeByIdSeekConsume(OpBase *opBase) {
 
 OpResult OpNodeByIdSeekReset(OpBase *ctx) {
     OpNodeByIdSeek *op = (OpNodeByIdSeek*)ctx;
-    op->entityRetrieved = false;
+    op->currentId = op->minId;
+    if(!op->minExclusive) op->currentId++;
     return OP_OK;
 }
 

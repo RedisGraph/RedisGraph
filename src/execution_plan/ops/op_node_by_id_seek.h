@@ -10,17 +10,43 @@
 #include "../../parser/ast.h"
 #include "../../graph/graph.h"
 
+#define ID_RANGE_UNBOUND -1
+
 /* Node by ID seek locates an entity by its ID */
 typedef struct {
     OpBase op;
-    NodeID id;              // Entity ID to seek.
     Graph *g;               // Graph object.
     int nodeRecIdx;         // Position of entity within record.
     int recLength;          // Size of record.
-    bool entityRetrieved;   // Did we retrived required entity.
+    NodeID minId;           // Min ID to fetch.
+    bool minExclusive;      // Include min ID.
+    NodeID maxId;           // Max ID to fetch.
+    bool maxExclusive;      // Include max ID.
+    NodeID currentId;       // Current ID fetched.
 } OpNodeByIdSeek;
 
-OpBase* NewOpNodeByIdSeekOp(const AST *ast, Node *n, NodeID nodeId);
-Record OpNodeByIdSeekConsume(OpBase *opBase);
-OpResult OpNodeByIdSeekReset(OpBase *ctx);
-void OpNodeByIdSeekFree(OpBase *ctx);
+OpBase* NewOpNodeByIdSeekOp
+(
+    const AST *ast,
+    unsigned int nodeRecIdx,
+    NodeID minId,
+    NodeID maxId,
+    bool includeMin,
+    bool includeMax
+);
+
+Record OpNodeByIdSeekConsume
+(
+    OpBase *opBase
+);
+
+OpResult OpNodeByIdSeekReset
+(
+    OpBase *ctx
+);
+
+void OpNodeByIdSeekFree
+(
+    OpBase *ctx
+);
+

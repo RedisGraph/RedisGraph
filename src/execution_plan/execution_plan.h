@@ -56,6 +56,10 @@ void ExecutionPlan_ReplaceOp(ExecutionPlan *plan, OpBase *a, OpBase *b);
  * Returns NULL if operation wasn't found. */
 OpBase* ExecutionPlan_LocateOp(OpBase *root, OPType type);
 
+/* Returns an array of taps; operations which generate data 
+ * e.g. SCAN operations */
+void ExecutionPlan_Taps(OpBase *root, OpBase ***taps);
+
 /* Executes plan */
 ResultSet* ExecutionPlan_Execute(ExecutionPlan *plan);
 

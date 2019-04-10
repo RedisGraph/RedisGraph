@@ -15,5 +15,6 @@
 #include "./relocate_op.h"
 #include "./reduce_count.h"
 #include "./reduce_distinct.h"
+#include "./seek_by_id.h"
 
 #endif
