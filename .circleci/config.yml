@@ -111,6 +111,7 @@ jobs:
       - run:
           name: Run QA Automation
           command: >-
+            apt-get update &&
             apt-get install curl &&
             curl -k -u $QA_AUTOMATION_USERNAME:$QA_AUTOMATION_PASS -X POST
             -H "Content-Type: application/json"
