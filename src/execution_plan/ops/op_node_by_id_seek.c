@@ -76,6 +76,9 @@ Record OpNodeByIdSeekConsume(OpBase *opBase) {
 
     // Did we managed to get an entity?
     if(!n.entity) return NULL;
+    // Null-set the label in case an operation (like op_delete) accesses it.
+    // TODO If we're replacing a label scan, the correct label can be populated now.
+    n.label = NULL;
 
     Record r = Record_New(op->recLength);
     Record_AddNode(r, op->nodeRecIdx, n);
