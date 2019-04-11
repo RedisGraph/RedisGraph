@@ -56,7 +56,7 @@ static void _inlineProperties(AST *ast) {
             Vector_Get(properties, j+1, &val);
             rhs = New_AST_AR_EXP_ConstOperandNode(*val);
 
-            AST_FilterNode *filterNode = New_AST_PredicateNode(lhs, EQ, rhs);
+            AST_FilterNode *filterNode = New_AST_PredicateNode(lhs, OP_EQUAL, rhs);
 
             /* Create WHERE clause if missing. */
             if(ast->whereNode == NULL) {
@@ -65,7 +65,7 @@ static void _inlineProperties(AST *ast) {
                 /* Introduce filter with AND operation. */
                 AST_FilterNode *left = ast->whereNode->filters;
                 AST_FilterNode *right = filterNode;
-                ast->whereNode->filters = New_AST_ConditionNode(left, AND, right);
+                ast->whereNode->filters = New_AST_ConditionNode(left, OP_AND, right);
             }
         }
     }

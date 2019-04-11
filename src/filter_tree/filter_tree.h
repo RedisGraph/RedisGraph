@@ -15,21 +15,6 @@
 #define FILTER_FAIL 0
 #define FILTER_PASS 1
 
-typedef enum {
-    FT_NULL,
-    /* Condition node operations */
-    FT_AND,
-    FT_OR,
-    FT_NOT, // TODO not yet implemented 
-    /* Predicate node operations */
-    FT_EQ,
-    FT_NEQ,
-    FT_LT,
-    FT_LE,
-    FT_GT,
-    FT_GE
-} FT_Op;
-
 /* Nodes within the filter tree are one of two types
  * Either a predicate node or a condition node. */
 typedef enum {
@@ -42,13 +27,13 @@ struct FT_FilterNode;
 typedef struct {
 	AR_ExpNode *lhs;
 	AR_ExpNode *rhs;
-	FT_Op op;					/* Operation (<, <=, =, =>, >, !). */
+	AST_Operator op;	/* Can validly be an operation (<, <=, =, =>, >, <>, maybe NOT). */
 } FT_PredicateNode;
 
 typedef struct {
 	struct FT_FilterNode *left;
 	struct FT_FilterNode *right;
-	FT_Op op;	/* OR, AND */
+	AST_Operator op;	/* Can validly be OR, AND (and later, XOR and maybe NOT) */
 } FT_ConditionNode;
 
 /* All nodes within the filter tree are of type FT_FilterNode. */
@@ -70,7 +55,7 @@ FT_FilterNode* BuildFiltersTree(const NEWAST *ast);
 
 int IsNodePredicate(const FT_FilterNode *node);
 
-FT_FilterNode* CreateCondFilterNode(FT_Op op);
+FT_FilterNode* CreateCondFilterNode(AST_Operator op);
 
 FT_FilterNode *AppendLeftChild(FT_FilterNode *root, FT_FilterNode *child);
 FT_FilterNode *AppendRightChild(FT_FilterNode *root, FT_FilterNode *child);

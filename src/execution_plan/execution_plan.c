@@ -426,7 +426,7 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST *old
                     op = NewAllNodeScanOp(g, *n);
                 Vector_Push(traversals, op);
             }
-            
+
             if(multiPattern) {
                 // Connect traversal operations.
                 OpBase *childOp;
@@ -647,17 +647,18 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST **ast
         if(ast[i]->whereNode != NULL) {
             Vector *sub_trees = FilterTree_SubTrees(curr_plan->filter_tree);
 
-            /* For each filter tree find the earliest position along the execution 
-            * after which the filter tree can be applied. */
+            // TODO Re-introduce this functionality (or similar)
+            /* For each filter tree find the earliest position along the execution
+             * after which the filter tree can be applied. */
             for(int i = 0; i < Vector_Size(sub_trees); i++) {
                 FT_FilterNode *tree;
                 Vector_Get(sub_trees, i, &tree);
 
                 Vector *references = FilterTree_CollectAliases(tree);
 
-                /* Scan execution plan, locate the earliest position where all 
+                /* Scan execution plan, locate the earliest position where all
                  * references been resolved. */
-                OpBase *op = ExecutionPlan_Locate_References(plan->root, references);
+                OpBase *op = ExecutionPlan_Locate_References(curr_plan->root, references);
                 assert(op);
 
                 /* Create filter node.

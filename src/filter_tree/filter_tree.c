@@ -19,20 +19,51 @@ int IsNodePredicate(const FT_FilterNode *node) {
     return node->t == FT_N_PRED;
 }
 
-FT_FilterNode* CreateCondFilterNode(FT_Op op) {
+FT_FilterNode* CreateCondFilterNode(AST_Operator op) {
     FT_FilterNode* filterNode = (FT_FilterNode*)malloc(sizeof(FT_FilterNode));
     filterNode->t = FT_N_COND;
     filterNode->cond.op = op;
     return filterNode;
 }
 
-FT_FilterNode* _CreatePredicateFilterNode(FT_Op op, AR_ExpNode *lhs, AR_ExpNode *rhs) {
+FT_FilterNode* _CreatePredicateFilterNode(const NEWAST *ast, AST_Operator op, const cypher_astnode_t *lhs, const cypher_astnode_t *rhs) {
     FT_FilterNode *filterNode = malloc(sizeof(FT_FilterNode));
-    filterNode->t= FT_N_PRED;
+    filterNode->t = FT_N_PRED;
+    filterNode->pred.op = op;
+    filterNode->pred.lhs = AR_EXP_FromExpression(ast, lhs);
+    filterNode->pred.rhs = AR_EXP_FromExpression(ast, rhs);
+    return filterNode;
+}
+
+// Only used for inlined property filters
+FT_FilterNode* _CreatePredicateFilterNodeFromExps(AST_Operator op, AR_ExpNode *lhs, AR_ExpNode *rhs) {
+    FT_FilterNode *filterNode = malloc(sizeof(FT_FilterNode));
+    filterNode->t = FT_N_PRED;
     filterNode->pred.op = op;
     filterNode->pred.lhs = lhs;
     filterNode->pred.rhs = rhs;
     return filterNode;
+}
+
+FT_FilterNode* _CreateFilterNode(const NEWAST *ast, AST_Operator op, const cypher_astnode_t *lhs, const cypher_astnode_t *rhs) {
+    FT_FilterNode *filter = NULL;
+    switch (op) {
+        case OP_OR:
+        case OP_AND:
+            filter = CreateCondFilterNode(op);
+            AppendLeftChild(filter, FilterNode_FromAST(ast, lhs));
+            AppendRightChild(filter, FilterNode_FromAST(ast, rhs));
+            return filter;
+        case OP_EQUAL:
+        case OP_NEQUAL:
+        case OP_LT:
+        case OP_LE:
+        case OP_GT:
+        case OP_GE:
+            return _CreatePredicateFilterNode(ast, op, lhs, rhs);
+        default:
+            assert("attempted to convert unhandled type into filter" && false);
+    }
 }
 
 FT_FilterNode *AppendLeftChild(FT_FilterNode *root, FT_FilterNode *child) {
@@ -97,7 +128,7 @@ void FT_Append(FT_FilterNode **root_ptr, FT_FilterNode *child) {
 
     // Promote predicate node to AND condition filter
     if (root->t == FT_N_PRED) {
-        FT_FilterNode *new_root = CreateCondFilterNode(AND);
+        FT_FilterNode *new_root = CreateCondFilterNode(OP_AND);
         AppendLeftChild(new_root, root);
         AppendRightChild(new_root, child);
         *root_ptr = new_root;
@@ -109,75 +140,22 @@ void FT_Append(FT_FilterNode **root_ptr, FT_FilterNode *child) {
     } else if (root->cond.right == NULL) {
         AppendRightChild(root, child);
     } else {
-        FT_FilterNode *new_cond = CreateCondFilterNode(AND);
+        FT_FilterNode *new_cond = CreateCondFilterNode(OP_AND);
         AppendLeftChild(new_cond, root->cond.right);
         AppendRightChild(new_cond, child);
     }
 }
 
-// TODO unary operators (especially NOT)
-
-FT_Op _FT_ConvertASTOperation(const cypher_operator_t *op) {
-    AST_Operator ast_op = NEWAST_ConvertOperatorNode(op);
-    switch (ast_op) {
-        /* Condition operators */
-        case OP_OR:
-            return FT_OR;
-        case OP_AND:
-            return FT_AND;
-        /* Predicate operators */
-        case OP_EQUAL:
-            return FT_EQ;
-        case OP_NEQUAL:
-            return FT_NEQ;
-        case OP_LT:
-            return FT_LT;
-        case OP_LE:
-            return FT_LE;
-        case OP_GT:
-            return FT_GT;
-        case OP_GE:
-            return FT_GE;
-        default:
-            assert(false);
-            return FT_NULL;
-    }
-}
-
-// AND, OR, XOR,
+// AND, OR, XOR (others?)
 FT_FilterNode* _convertBinaryOperator(const NEWAST *ast, const cypher_astnode_t *op_node) {
     const cypher_operator_t *operator = cypher_ast_binary_operator_get_operator(op_node);
     // Arguments are of type CYPHER_AST_EXPRESSION
-    const cypher_astnode_t *lhs_node = cypher_ast_binary_operator_get_argument1(op_node);
-    const cypher_astnode_t *rhs_node = cypher_ast_binary_operator_get_argument2(op_node);
+    const cypher_astnode_t *lhs = cypher_ast_binary_operator_get_argument1(op_node);
+    const cypher_astnode_t *rhs = cypher_ast_binary_operator_get_argument2(op_node);
 
+    AST_Operator op = NEWAST_ConvertOperatorNode(operator);
 
-    FT_Op op = _FT_ConvertASTOperation(operator);
-    FT_FilterNode *filter = NULL;
-    switch (op) {
-        case OP_OR:
-            filter = CreateCondFilterNode(FT_OR);
-            break;
-        case OP_AND:
-            filter = CreateCondFilterNode(FT_AND);
-            break;
-        default:
-            break;
-    }
-
-    if (filter) { // Conditional filter prepared 
-        FT_FilterNode *lhs_filter = FilterNode_FromAST(ast, lhs_node);
-        FT_FilterNode *rhs_filter = FilterNode_FromAST(ast, rhs_node);
-        AppendLeftChild(filter, lhs_filter);
-        AppendRightChild(filter, rhs_filter);
-        return filter;
-    }
-
-    AR_ExpNode *lhs = AR_EXP_FromExpression(ast, lhs_node);
-    AR_ExpNode *rhs = AR_EXP_FromExpression(ast, rhs_node);
-
-    // Create predicate filter
-    return _CreatePredicateFilterNode(op, lhs, rhs);
+    return _CreateFilterNode(ast, op, lhs, rhs);
 }
 
 /* A comparison node contains two arrays - one of operators, and one of expressions.
@@ -188,15 +166,13 @@ FT_FilterNode* _convertComparison(const NEWAST *ast, const cypher_astnode_t *com
     assert(nelems == 1); // TODO tmp, but may require modifying tree formation.
 
     const cypher_operator_t *operator = cypher_ast_comparison_get_operator(comparison_node, 0);
-    FT_Op op = NEWAST_ConvertOperatorNode(operator);
+    AST_Operator op = NEWAST_ConvertOperatorNode(operator);
 
     // All arguments are of type CYPHER_AST_EXPRESSION
-    const cypher_astnode_t *lhs_node = cypher_ast_comparison_get_argument(comparison_node, 0);
-    const cypher_astnode_t *rhs_node = cypher_ast_comparison_get_argument(comparison_node, 1);
-    AR_ExpNode *lhs = AR_EXP_FromExpression(ast, lhs_node);
-    AR_ExpNode *rhs = AR_EXP_FromExpression(ast, rhs_node);
+    const cypher_astnode_t *lhs = cypher_ast_comparison_get_argument(comparison_node, 0);
+    const cypher_astnode_t *rhs = cypher_ast_comparison_get_argument(comparison_node, 1);
 
-    return _CreatePredicateFilterNode(op, lhs, rhs);
+    return _CreatePredicateFilterNode(ast, op, lhs, rhs);
 }
 
 FT_FilterNode* _convertInlinedProperties(const NEWAST *ast, const cypher_astnode_t *entity, int type) {
@@ -235,7 +211,8 @@ FT_FilterNode* _convertInlinedProperties(const NEWAST *ast, const cypher_astnode
         // val is of type CYPHER_AST_EXPRESSION
         const cypher_astnode_t *val = cypher_ast_map_get_value(props, i);
         AR_ExpNode *rhs = AR_EXP_FromExpression(ast, val);
-        FT_FilterNode *t = _CreatePredicateFilterNode(EQ, lhs, rhs);
+        // FT_FilterNode *t = _CreatePredicateFilterNode(ast, OP_EQUAL, lhs, rhs);
+        FT_FilterNode *t = _CreatePredicateFilterNodeFromExps(OP_EQUAL, lhs, rhs);
         FT_Append(&root, t);
     }
     return root;
@@ -299,31 +276,31 @@ FT_FilterNode* BuildFiltersTree(const NEWAST *ast) {
 
 /* Applies a single filter to a single result.
  * Compares given values, tests if values maintain desired relation (op) */
-int _applyFilter(SIValue* aVal, SIValue* bVal, FT_Op op) {
+int _applyFilter(SIValue* aVal, SIValue* bVal, AST_Operator op) {
     int rel = SIValue_Compare(*aVal, *bVal);
     /* Values are of disjoint types */
     if (rel == DISJOINT) {
         /* The filter passes if we're testing for inequality, and fails otherwise. */
-        return (op == FT_NEQ);
+        return (op == OP_NEQUAL);
     }
 
     switch(op) {
-        case FT_EQ:
+        case OP_EQUAL:
             return rel == 0;
 
-        case FT_GT:
+        case OP_GT:
             return rel > 0;
 
-        case FT_GE:
+        case OP_GE:
             return rel >= 0;
 
-        case FT_LT:
+        case OP_LT:
             return rel < 0;
 
-        case FT_LE:
+        case OP_LE:
             return rel <= 0;
 
-        case FT_NEQ:
+        case OP_NEQUAL:
             return rel != 0;
 
         default:
@@ -353,12 +330,12 @@ int FilterTree_applyFilters(const FT_FilterNode* root, const Record r) {
     /* root->t == FT_N_COND, visit left subtree. */
     int pass = FilterTree_applyFilters(LeftChild(root), r);
     
-    if(root->cond.op == FT_AND && pass == 1) {
+    if(root->cond.op == OP_AND && pass == 1) {
         /* Visit right subtree. */
         pass *= FilterTree_applyFilters(RightChild(root), r);
     }
 
-    if(root->cond.op == FT_OR && pass == 0) {
+    if(root->cond.op == OP_OR && pass == 0) {
         /* Visit right subtree. */
         pass = FilterTree_applyFilters(RightChild(root), r);
     }
