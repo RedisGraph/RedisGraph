@@ -502,13 +502,17 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST *old
     if(ret_clause) {
         // exps = _ReturnClause_GetExpressions(old_ast);
         uint exp_count = array_len(ast->return_expressions);
-        // TODO silly
+        // TODO exps and aliases just separate the elements of ast->return_expressions,
+        // which is dumb - change signatures to take ReturnElementNodes
         exps = array_new(sizeof(AR_ExpNode), exp_count);
+        aliases = array_new(sizeof(AR_ExpNode), exp_count);
         for (uint i = 0; i < exp_count; i ++) {
             exps = array_append(exps, ast->return_expressions[i]->exp);
+            aliases = array_append(aliases, (char*)ast->return_expressions[i]->alias);
         }
-        aliases = ReturnClause_GetAliases(old_ast->returnNode);
-        aggregate = ReturnClause_ContainsAggregation(old_ast->returnNode);
+        // TODO We've already determined this during AST validations, could refactor to make
+        // this call unnecessary.
+        aggregate = NEWAST_ClauseContainsAggregation(ret_clause);
     }
 
 

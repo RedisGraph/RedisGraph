@@ -359,9 +359,15 @@ void _BuildReturnExpressions(NEWAST *ast) {
         if (alias_node) {
             alias = cypher_ast_identifier_get_name(alias_node);
             // TODO standardize logic (make a separate routine for this, can drop ID pointer elsewhere
-            unsigned int *entityID = malloc(sizeof(unsigned int));
-            *entityID = ast->identifier_map->cardinality;
-            TrieMap_Add(ast->identifier_map, (char*)alias, strlen(alias), entityID, TrieMap_DONT_CARE_REPLACE);
+
+            // TODO expressions like TYPE(e) have aliases, so can get in this block?
+            // Kludge for testing; improve when possible
+            void *v = TrieMap_Find(ast->identifier_map, (char*)alias, strlen(alias));
+            if (v == TRIEMAP_NOTFOUND) {
+                unsigned int *entityID = malloc(sizeof(unsigned int));
+                *entityID = ast->identifier_map->cardinality;
+                TrieMap_Add(ast->identifier_map, (char*)alias, strlen(alias), entityID, TrieMap_DONT_CARE_REPLACE);
+            }
         } else if (cypher_astnode_type(expr) == CYPHER_AST_IDENTIFIER) {
             // TODO don't need to do anything, delete this section once validated
             // alias = cypher_ast_identifier_get_name(expr);

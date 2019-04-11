@@ -89,6 +89,8 @@ long NEWAST_ParseIntegerNode(const cypher_astnode_t *int_node);
 
 AST_Operator NEWAST_ConvertOperatorNode(const cypher_operator_t *op);
 
+bool NEWAST_ClauseContainsAggregation(const cypher_astnode_t *clause);
+
 AR_ExpNode** NEWAST_GetOrderExpressions(const cypher_astnode_t *order_clause);
 
 void NEWAST_BuildAliasMap(NEWAST *ast);

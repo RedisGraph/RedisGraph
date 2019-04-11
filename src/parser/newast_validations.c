@@ -100,39 +100,6 @@ static AST_Validation _NEWAST_ValidateReferredFunctions(TrieMap *referred_functi
     return res;
 }
 
-// Note each function call within given expression
-// Example: given the expression: "abs(max(min(a), abs(k)))"
-// referred_funcs will include: "abs", "max" and "min".
-static void _consume_function_call_expression(const cypher_astnode_t *expression, TrieMap *referred_funcs) {
-    // Value is an apply operator
-    const cypher_astnode_t *func = cypher_ast_apply_operator_get_func_name(expression);
-    const char *func_name = cypher_ast_function_name_get_value(func);
-    TrieMap_Add(referred_funcs, (char*)func_name, strlen(func_name), NULL, TrieMap_DONT_CARE_REPLACE);
-
-    unsigned int narguments = cypher_ast_apply_operator_narguments(expression);
-    for(int i = 0; i < narguments; i++) {
-        const cypher_astnode_t *child_exp = cypher_ast_apply_operator_get_argument(expression, i);
-        cypher_astnode_type_t child_exp_type = cypher_astnode_type(child_exp);
-        if(child_exp_type != CYPHER_AST_APPLY_OPERATOR) continue;
-        _consume_function_call_expression(child_exp, referred_funcs);
-    }
-}
-
-// Scan through the entire AST collect each function call
-// we encounter.
-static void _NEWAST_ReferredFunctions(const cypher_astnode_t *root, TrieMap *referred_funcs) {
-    cypher_astnode_type_t root_type = cypher_astnode_type(root);
-    if(root_type == CYPHER_AST_APPLY_OPERATOR) {
-        _consume_function_call_expression(root, referred_funcs);
-    } else {
-        unsigned int child_count = cypher_astnode_nchildren(root);
-        for(int i = 0; i < child_count; i++) {
-            const cypher_astnode_t *child = cypher_astnode_get_child(root, i);
-            _NEWAST_ReferredFunctions(child, referred_funcs);
-        }
-    }
-}
-
 static AST_Validation _MATCH_Clause_Validate_Range(const cypher_astnode_t *node, char **reason) {
     // Defaults
     int start = 1;
@@ -264,7 +231,7 @@ static AST_Validation _Validate_MATCH_Clause(const cypher_astnode_t *query, char
     for (unsigned int i = 0; i < match_count; i ++) {
         const cypher_astnode_t *match_clause = match_clauses[i];
         // Collect function references
-        _NEWAST_ReferredFunctions(match_clause, referred_funcs);
+        NEWAST_ReferredFunctions(match_clause, referred_funcs);
 
         // Validate relations contained in clause
         res = _Validate_MATCH_Clause_Relations(match_clause, identifiers, reason);
@@ -338,7 +305,7 @@ static AST_Validation _Validate_RETURN_Clause(const cypher_astnode_t *ast, char 
 
     // Retrieve all user-specified functions in RETURN clause.
     TrieMap *referred_funcs = NewTrieMap();
-    _NEWAST_ReferredFunctions(return_clause, referred_funcs);
+    NEWAST_ReferredFunctions(return_clause, referred_funcs);
 
     // Verify that referred functions exist.
     bool include_aggregates = true;
@@ -459,7 +426,7 @@ void NEWAST_MatchClause_DefinedEntities(const cypher_astnode_t *ast, TrieMap *de
 //==============================================================================
 void _NEWAST_WhereClause_ReferredFunctions(const cypher_astnode_t *match_clause, TrieMap *referred_funcs) {
     if (!match_clause) return;
-    _NEWAST_ReferredFunctions(match_clause, referred_funcs);
+    NEWAST_ReferredFunctions(match_clause, referred_funcs);
 }
 
 // void NEWAST_WhereClause_ReferredFunctions(const cypher_parse_result_t *ast, TrieMap *referred_funcs) {

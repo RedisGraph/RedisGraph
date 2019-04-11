@@ -217,21 +217,6 @@ class AlgebraicExpressionTest: public ::testing::Test {
 
         return q;
     }
-
-    AlgebraicExpression **_build_algebraic_expression(const char *query, size_t *exp_count) {
-        *exp_count = 0;
-        AlgebraicExpression **ae = NULL;
-
-        AST **ast = ParseQuery(query, strlen(query), NULL);
-        ae = AlgebraicExpression_FromQuery(
-            ast[0],
-            ast[0]->matchNode->_mergedPatterns,
-            query_graph,
-            exp_count);
-        return ae;
-
-        AST_Free(ast);
-    }
 };
 
 TEST_F(AlgebraicExpressionTest, Exp_OP_ADD) {

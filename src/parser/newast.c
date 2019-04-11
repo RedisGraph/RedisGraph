@@ -14,6 +14,25 @@
 
 extern pthread_key_t _tlsNEWASTKey;  // Thread local storage AST key.
 
+// Note each function call within given expression
+// Example: given the expression: "abs(max(min(a), abs(k)))"
+// referred_funcs will include: "abs", "max" and "min".
+static void _consume_function_call_expression(const cypher_astnode_t *expression, TrieMap *referred_funcs) {
+    // Value is an apply operator
+    const cypher_astnode_t *func = cypher_ast_apply_operator_get_func_name(expression);
+    const char *func_name = cypher_ast_function_name_get_value(func);
+    TrieMap_Add(referred_funcs, (char*)func_name, strlen(func_name), NULL, TrieMap_DONT_CARE_REPLACE);
+
+    unsigned int narguments = cypher_ast_apply_operator_narguments(expression);
+    for(int i = 0; i < narguments; i++) {
+        const cypher_astnode_t *child_exp = cypher_ast_apply_operator_get_argument(expression, i);
+        cypher_astnode_type_t child_exp_type = cypher_astnode_type(child_exp);
+        if(child_exp_type != CYPHER_AST_APPLY_OPERATOR) continue;
+        _consume_function_call_expression(child_exp, referred_funcs);
+    }
+}
+
+
 // TODO maybe consolidate with AR_EXP_NewVariableOperandNode
 AR_ExpNode* _AR_Exp_NewIdentifier(const char *entity_alias, const cypher_astnode_t *entity, unsigned int id) {
     AR_ExpNode *node = malloc(sizeof(AR_ExpNode));
@@ -154,6 +173,21 @@ char* NEWAST_ReportErrors(const cypher_parse_result_t *ast) {
     return errorMsg;
 }
 
+// Recursively collect the names of all function calls beneath a node
+void NEWAST_ReferredFunctions(const cypher_astnode_t *root, TrieMap *referred_funcs) {
+    cypher_astnode_type_t root_type = cypher_astnode_type(root);
+    if(root_type == CYPHER_AST_APPLY_OPERATOR) {
+        _consume_function_call_expression(root, referred_funcs);
+    } else {
+        unsigned int child_count = cypher_astnode_nchildren(root);
+        for(int i = 0; i < child_count; i++) {
+            const cypher_astnode_t *child = cypher_astnode_get_child(root, i);
+            NEWAST_ReferredFunctions(child, referred_funcs);
+        }
+    }
+}
+
+
 int NEWAST_ReturnClause_ContainsCollapsedNodes(const cypher_astnode_t *ast) {
     const cypher_astnode_t *return_clause = NEWAST_GetClause(ast, CYPHER_AST_RETURN);
 
@@ -275,6 +309,31 @@ AST_Operator NEWAST_ConvertOperatorNode(const cypher_operator_t *op) {
     }
 
     return -1;
+}
+
+bool NEWAST_ClauseContainsAggregation(const cypher_astnode_t *clause) {
+    assert(clause);
+
+    bool aggregated = false;
+
+    // Retrieve all user-specified functions in clause.
+    TrieMap *referred_funcs = NewTrieMap();
+    NEWAST_ReferredFunctions(clause, referred_funcs);
+
+    void *value;
+    tm_len_t len;
+    char *funcName;
+    TrieMapIterator *it = TrieMap_Iterate(referred_funcs, "", 0);
+    while(TrieMapIterator_Next(it, &funcName, &len, &value)) {
+        if(Agg_FuncExists(funcName)) {
+            aggregated = true;
+            break;
+        }
+    }
+    TrieMapIterator_Free(it);
+    TrieMap_Free(referred_funcs, TrieMap_NOP_CB);
+
+    return aggregated;
 }
 
 AR_ExpNode** NEWAST_GetOrderExpressions(const cypher_astnode_t *order_clause) {
