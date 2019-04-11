@@ -1,11 +1,13 @@
 import os
 import sys
-import redis
 import unittest
+import redis
 from redisgraph import Graph
 
+from .base import FlowTestsBase
+from .reversepattern import ReversePattern
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../demo/imdb/')
-from base import FlowTestsBase
 import imdb_queries as queries
 import imdb_utils
 
@@ -20,8 +22,8 @@ def get_redis():
         conn.ping()
         # Assuming RedisGraph is loaded.
     except redis.exceptions.ConnectionError:
-        from .disposableredis import DisposableRedis
         # Bring up our own redis-server instance.
+        from .redis_base import DisposableRedis
         dis_redis = DisposableRedis(loadmodule=os.path.dirname(os.path.abspath(__file__)) + '/../../src/redisgraph.so')
         dis_redis.start()
         conn = dis_redis.client()

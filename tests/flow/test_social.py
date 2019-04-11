@@ -1,12 +1,14 @@
 import os
 import sys
-import redis
 import unittest
+import redis
 from redisgraph import Graph
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../demo/social/')
 
-from base import FlowTestsBase
+from .base import FlowTestsBase
+from .reversepattern import ReversePattern
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../demo/social/')
 import social_queries as queries
 import social_utils
 
@@ -21,7 +23,7 @@ def get_redis():
         conn.ping()
         # Assuming RedisGraph is loaded.
     except redis.exceptions.ConnectionError:
-        from .disposableredis import DisposableRedis
+        from .redis_base import DisposableRedis
         # Bring up our own redis-server instance.
         dis_redis = DisposableRedis(loadmodule=os.path.dirname(os.path.abspath(__file__)) + '/../../src/redisgraph.so')
         dis_redis.start()
@@ -46,7 +48,19 @@ class SocialFlowTest(FlowTestsBase):
     def tearDownClass(cls):
         if dis_redis is not None:
             dis_redis.stop()
-    
+
+    def assert_reversed_pattern(self, query, resultset):
+        # Test reversed pattern query.
+        reversed_query = ReversePattern().reverse_query_pattern(query)
+        # print "reversed_query: %s" % reversed_query
+        actual_result = redis_graph.query(reversed_query)
+
+        # assert result set
+        self.assertEqual(resultset.result_set, actual_result.result_set)
+
+        # assert query run time
+        self._assert_equalish(resultset.run_time_ms, actual_result.run_time_ms)
+
     def test00_graph_entities(self):
         global redis_graph
         q = queries.graph_entities.query
@@ -59,7 +73,7 @@ class SocialFlowTest(FlowTestsBase):
 
         # assert query run time
         self._assert_run_time(actual_result, queries.graph_entities)
-        
+
         # assert reversed pattern.
         self.assert_reversed_pattern(q, actual_result)
 
@@ -249,7 +263,7 @@ class SocialFlowTest(FlowTestsBase):
 
         # assert query run time
         self._assert_run_time(actual_result, queries.visit_purpose_of_each_country_i_visited_query)
-        
+
         # assert reversed pattern.
         self.assert_reversed_pattern(q, actual_result)
 
@@ -304,7 +318,7 @@ class SocialFlowTest(FlowTestsBase):
 
         # assert reversed pattern.
         self.assert_reversed_pattern(q, actual_result)
-    
+
     def test16_all_reachable_countries_query(self):
         global redis_graph
 
@@ -398,7 +412,7 @@ class SocialFlowTest(FlowTestsBase):
 
         # assert query run time
         self._assert_run_time(actual_result, queries.friends_age_statistics_query)
-        
+
         # assert reversed pattern.
         self.assert_reversed_pattern(q, actual_result)
 

@@ -6,7 +6,7 @@ import redis
 import random
 import string
 from redisgraph import Graph, Node, Edge
-from base import FlowTestsBase
+from .base import FlowTestsBase
 
 dis_redis = None
 CLIENT_COUNT = 16                   # Number of concurrent connections.
@@ -24,7 +24,7 @@ def get_redis():
         conn.ping()
         # Assuming RedisGraph is loaded.
     except redis.exceptions.ConnectionError:
-        from .disposableredis import DisposableRedis
+        from .redis_base import DisposableRedis
         # Bring up our own redis-server instance.
         dis_redis = DisposableRedis(loadmodule=os.path.dirname(os.path.abspath(__file__)) + '/../../src/redisgraph.so')
         dis_redis.start()

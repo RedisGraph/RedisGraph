@@ -1,11 +1,11 @@
 import os
 import sys
-import redis
 import string
 import random
 import unittest
-from base import FlowTestsBase
+import redis
 from redisgraph import Graph, Node, Edge
+from .base import FlowTestsBase
 
 redis_graph = None
 dis_redis = None
@@ -22,7 +22,7 @@ def get_redis():
         conn.ping()
         # Assuming RedisGraph is loaded.
     except redis.exceptions.ConnectionError:
-        from .disposableredis import DisposableRedis
+        from .redis_base import DisposableRedis
         # Bring up our own redis-server instance.
         dis_redis = DisposableRedis(loadmodule=os.path.dirname(os.path.abspath(__file__)) + '/../../src/redisgraph.so')
         dis_redis.start()
@@ -89,16 +89,16 @@ class ValueComparisonTest(FlowTestsBase):
         actual_result = redis_graph.query(query)
         assert(actual_result.result_set[1][0] == '10.5')
 
-    # Verify that disjoint types pass != filters
+    # Verify that disjoint types pass <> filters
     def test_disjoint_comparisons(self):
         # Compare all node pairs under a Cartesian product
-        query = """MATCH (v:value), (w:value) WHERE ID(v) != ID(w) AND v.val = w.val RETURN v"""
+        query = """MATCH (v:value), (w:value) WHERE ID(v) <> ID(w) AND v.val = w.val RETURN v"""
         actual_result = redis_graph.query(query)
         # No nodes have the same property, so there should be 0 equal results
         expected_result_count = 0
         assert(len(actual_result.result_set[1:]) == expected_result_count)
 
-        query = """MATCH (v:value), (w:value) WHERE ID(v) != ID(w) AND v.val != w.val RETURN v"""
+        query = """MATCH (v:value), (w:value) WHERE ID(v) <> ID(w) AND v.val <> w.val RETURN v"""
         actual_result = redis_graph.query(query)
         # Every comparison should produce an inequal result
         node_count = len(redis_graph.nodes)
@@ -108,4 +108,3 @@ class ValueComparisonTest(FlowTestsBase):
 
 if __name__ == '__main__':
     unittest.main()
-

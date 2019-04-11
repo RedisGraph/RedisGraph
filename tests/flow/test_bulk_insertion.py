@@ -8,7 +8,7 @@ from click.testing import CliRunner
 
 import redis
 from redisgraph import Graph, Node, Edge
-from base import FlowTestsBase
+from .base import FlowTestsBase
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../demo/bulk_insert/')
 from bulk_insert import bulk_insert
@@ -27,7 +27,7 @@ def get_redis():
         port = 6379
         # Assuming RedisGraph is loaded.
     except redis.exceptions.ConnectionError:
-        from .disposableredis import DisposableRedis
+        from .redis_base import DisposableRedis
         # Bring up our own redis-server instance.
         dis_redis = DisposableRedis(loadmodule=os.path.dirname(os.path.abspath(__file__)) + '/../../src/redisgraph.so')
         dis_redis.start()

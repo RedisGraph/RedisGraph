@@ -1,18 +1,12 @@
 import os
 import sys
 import unittest
-
-# import redis
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from disposableredis import DisposableRedis
-
-from base import FlowTestsBase
-
-def redis():
-    return DisposableRedis(loadmodule=os.path.dirname(os.path.abspath(__file__)) + '/../../src/redisgraph.so')
+import redis
+from .base import FlowTestsBase
 
 GRAPH_ID = "multiexec-graph"
 redis_con = None
+dis_redis = None
 
 # Fully connected 3 nodes graph,
 CREATE_QUERY = """CREATE (al:person {name:'Al'}), (betty:person {name:'Betty'}), (michael:person {name:'Michael'}),
@@ -30,21 +24,31 @@ DEL_QUERY = """MATCH (al:person {name:'Al'})-[e:knows]->(b:person {name:'Betty'}
 # Change Al name from Al to Steve.
 UPDATE_QUERY = "MATCH (al:person {name:'Al'}) SET al.name = 'Steve'"
 
+def get_redis():
+    global dis_redis
+    conn = redis.Redis()
+    try:
+        conn.ping()
+        # Assuming RedisGraph is loaded.
+    except redis.exceptions.ConnectionError:
+        # Bring up our own redis-server instance.
+        from .redis_base import DisposableRedis
+        dis_redis = DisposableRedis(loadmodule=os.path.dirname(os.path.abspath(__file__)) + '/../../src/redisgraph.so')
+        dis_redis.start()
+        conn = dis_redis.client()
+    return conn
+
 class MultiExecFlowTest(FlowTestsBase):
     @classmethod
     def setUpClass(cls):
         print "Multi Exec"
         global redis_con
-        cls.r = redis()
-        cls.r.start()
-        redis_con = cls.r.client()
-
-        # redis_con = redis.Redis()
+        redis_con = get_redis()
 
     @classmethod
     def tearDownClass(cls):
-        cls.r.stop()
-        # pass
+        if dis_redis is not None:
+            dis_redis.stop()
 
     def test_graph_entities(self):
         # Delete previous graph if exists.
