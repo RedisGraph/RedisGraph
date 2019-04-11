@@ -16,7 +16,7 @@
 // Context describing an update expression.
 typedef struct {
     AST_GraphEntity *ge;            /* Referred entity in MATCH clause. */
-    char *attribute;                /* Attribute name to update. */
+    const char *attribute;          /* Attribute name to update. */
     Attribute_ID attribute_idx;     /* Attribute internal ID. */
     int entityRecIdx;               /* Position of entity within record. */
     AR_ExpNode *exp;                /* Expression to evaluate. */
@@ -24,7 +24,7 @@ typedef struct {
 
 // Context describing a pending update to perform.
 typedef struct {    
-    char *attribute;                    /* Attribute name to update. */
+    const char *attribute;              /* Attribute name to update. */
     Node n;
     Edge e;
     GraphEntityType entity_type;        /* Graph entity type. */
@@ -33,7 +33,7 @@ typedef struct {
 
 typedef struct {
     OpBase op;
-    AST *ast;
+    NEWAST *ast;
     GraphContext *gc;
     ResultSet *result_set;
 

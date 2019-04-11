@@ -10,13 +10,13 @@
 #include <assert.h>
 
 void _LocateEntities(OpDelete *op, QueryGraph *qg, AST_DeleteNode *ast_delete_node) {
-    AST *ast = op->ast;
+    NEWAST *ast = op->ast;
     for(int i = 0; i < Vector_Size(ast_delete_node->graphEntities); i++) {
         char *entity_alias;
         Vector_Get(ast_delete_node->graphEntities, i, &entity_alias);
 
         // Current entity is a node.
-        int entityRecIdx = AST_GetAliasID(ast, entity_alias);
+        int entityRecIdx = NEWAST_GetAliasID(ast, entity_alias);
         Node *n = QueryGraph_GetNodeByAlias(qg, entity_alias);
         if (n != NULL) {
             op->nodes_to_delete[op->node_count++] = entityRecIdx;
@@ -55,7 +55,7 @@ OpBase* NewDeleteOp(AST_DeleteNode *ast_delete_node, QueryGraph *qg, GraphContex
     OpDelete *op_delete = malloc(sizeof(OpDelete));
 
     op_delete->gc = gc;
-    // op_delete->ast = ast;
+    op_delete->ast = NEWAST_GetFromTLS();
     op_delete->node_count = 0;
     op_delete->edge_count = 0;
     op_delete->nodes_to_delete = malloc(sizeof(int) * Vector_Size(ast_delete_node->graphEntities));

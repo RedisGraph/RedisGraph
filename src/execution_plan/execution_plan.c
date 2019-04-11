@@ -466,21 +466,19 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST *old
 
     const cypher_astnode_t *merge_clause = NEWAST_GetClause(ast->root, CYPHER_AST_MERGE);
     if(merge_clause) {
-        assert(false);
+        assert(false); // TODO fix merges
         OpBase *opMerge = NewMergeOp(gc, execution_plan->result_set);
         Vector_Push(ops, opMerge);
     }
 
     const cypher_astnode_t *delete_clause = NEWAST_GetClause(ast->root, CYPHER_AST_DELETE);
     if(delete_clause) {
-        assert(false);
         OpBase *opDelete = NewDeleteOp(old_ast->deleteNode, q, gc, execution_plan->result_set);
         Vector_Push(ops, opDelete);
     }
 
     const cypher_astnode_t *set_clause = NEWAST_GetClause(ast->root, CYPHER_AST_SET);
     if(set_clause) {
-        assert(false);
         OpBase *op_update = NewUpdateOp(gc, execution_plan->result_set);
         Vector_Push(ops, op_update);
     }

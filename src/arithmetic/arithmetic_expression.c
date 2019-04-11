@@ -238,6 +238,9 @@ AR_ExpNode* AR_EXP_FromExpression(const NEWAST *ast, const cypher_astnode_t *exp
     // TODO Possibly implement these, replacing AST_Filter types
     } else if (type == CYPHER_AST_UNARY_OPERATOR) {
         // unary
+        const cypher_astnode_t *arg = cypher_ast_unary_operator_get_argument(expr); // CYPHER_AST_EXPRESSION
+        const cypher_operator_t *operator = cypher_ast_unary_operator_get_operator(expr);
+        AST_Operator operator_enum = NEWAST_ConvertOperatorNode(operator);
         printf("\ngot unary\n");
         assert(false);
     } else if (type == CYPHER_AST_BINARY_OPERATOR) {
@@ -594,23 +597,23 @@ AR_ExpNode* AR_EXP_Clone(AR_ExpNode* exp) {
 }
 
 void AR_EXP_Free(AR_ExpNode *root) {
-    if(root->type == AR_EXP_OP) {
-        for(int child_idx = 0; child_idx < root->op.child_count; child_idx++) {
-            AR_EXP_Free(root->op.children[child_idx]);
-        }
-        rm_free(root->op.children);
-        if (root->op.type == AR_OP_AGGREGATE) {
-            AggCtx_Free(root->op.agg_func);
-        }
-    } else {
-        if (root->operand.type == AR_EXP_CONSTANT) {
-            SIValue_Free(&root->operand.constant);
-        } else {
-            if (root->operand.variadic.entity_alias) rm_free(root->operand.variadic.entity_alias);
-            if (root->operand.variadic.entity_prop) rm_free(root->operand.variadic.entity_prop);
-        }
-    }
-    rm_free(root);
+    // if(root->type == AR_EXP_OP) {
+        // for(int child_idx = 0; child_idx < root->op.child_count; child_idx++) {
+            // AR_EXP_Free(root->op.children[child_idx]);
+        // }
+        // rm_free(root->op.children);
+        // if (root->op.type == AR_OP_AGGREGATE) {
+            // AggCtx_Free(root->op.agg_func);
+        // }
+    // } else {
+        // if (root->operand.type == AR_EXP_CONSTANT) {
+            // SIValue_Free(&root->operand.constant);
+        // } else {
+            // if (root->operand.variadic.entity_alias) rm_free(root->operand.variadic.entity_alias);
+            // if (root->operand.variadic.entity_prop) rm_free(root->operand.variadic.entity_prop);
+        // }
+    // }
+    // rm_free(root);
 }
 
 /* Mathematical functions - numeric */

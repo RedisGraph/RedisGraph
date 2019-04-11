@@ -18,7 +18,7 @@
 typedef struct {
     OpBase op;
     GraphContext *gc;
-    AST *ast;
+    NEWAST *ast;
     size_t node_count;
     size_t edge_count;
     int *nodes_to_delete;

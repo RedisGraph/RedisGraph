@@ -10,25 +10,43 @@
 #include "../../arithmetic/arithmetic_expression.h"
 
 /* Build an evaluation context foreach update expression. */
-static void _BuildUpdateEvalCtx(OpUpdate* op, AST *ast) {
-    AST_SetElement *element;
-    AST_SetNode *setNode = ast->setNode;
-    op->update_expressions_count = Vector_Size(setNode->set_elements);
+static void _BuildUpdateEvalCtx(OpUpdate* op, NEWAST *ast) {
+    const cypher_astnode_t *set_clause = NEWAST_GetClause(ast->root, CYPHER_AST_SET);
+    assert(set_clause);
+    unsigned int nitems = cypher_ast_set_nitems(set_clause);
+    op->update_expressions_count = nitems;
     op->update_expressions = rm_malloc(sizeof(EntityUpdateEvalCtx) * op->update_expressions_count);
 
     for(uint i = 0; i < op->update_expressions_count; i++) {
-        /* Get a reference to the entity in the SET clause. */
-        Vector_Get(setNode->set_elements, i, &element);
-        /* Track all required informantion to perform an update. */
-        op->update_expressions[i].attribute = element->entity->property;
-        op->update_expressions[i].exp = AR_EXP_BuildFromAST(ast, element->exp);
-        op->update_expressions[i].entityRecIdx = AST_GetAliasID(op->ast, element->entity->alias);
+        const cypher_astnode_t *set_item = cypher_ast_set_get_item(set_clause, i);
+        const cypher_astnode_type_t type = cypher_astnode_type(set_item);
+        // TODO Add handling for when we're setting labels (CYPHER_AST_SET_LABELS)
+        // or all properties (CYPHER_AST_SET_ALL_PROPERTIES)
+        assert(type == CYPHER_AST_SET_PROPERTY);
+
+        // The SET_ITEM contains the entity alias and property key being set
+        const cypher_astnode_t *key_to_set = cypher_ast_set_property_get_property(set_item); // type == CYPHER_AST_PROPERTY_OPERATOR
+        // Property name
+        const cypher_astnode_t *prop = cypher_ast_property_operator_get_prop_name(key_to_set); // type == CYPHER_AST_PROP_NAME
+        // Entity alias
+        const cypher_astnode_t *prop_expr = cypher_ast_property_operator_get_expression(key_to_set);
+        AR_ExpNode *entity = AR_EXP_FromExpression(ast, prop_expr);
+        // Can this ever be anything strange? Assuming it's always just an alias wrapper right now.
+        assert(entity->type == AR_EXP_OPERAND && entity->operand.type == AR_EXP_VARIADIC && entity->operand.variadic.entity_alias);
+
+        // Updated value
+        const cypher_astnode_t *val_to_set = cypher_ast_set_property_get_expression(set_item); // type == CYPHER_AST_SET_PROPERTY
+
+        /* Track all required information to perform an update. */
+        op->update_expressions[i].attribute = cypher_ast_prop_name_get_value(prop);
+        op->update_expressions[i].exp = AR_EXP_FromExpression(ast, val_to_set);
+        op->update_expressions[i].entityRecIdx = NEWAST_GetAliasID(ast, entity->operand.variadic.entity_alias);
     }
 }
 
 /* Delay updates until all entities are processed, 
  * _QueueUpdate will queue up all information necessary to perform an update. */
-static void _QueueUpdate(OpUpdate *op, GraphEntity *entity, GraphEntityType type, char *attribute, SIValue new_value) {
+static void _QueueUpdate(OpUpdate *op, GraphEntity *entity, GraphEntityType type, const char *attribute, SIValue new_value) {
     /* Make sure we've got enough room in queue. */
     if(op->pending_updates_count == op->pending_updates_cap) {
         op->pending_updates_cap *= 2;
@@ -38,7 +56,7 @@ static void _QueueUpdate(OpUpdate *op, GraphEntity *entity, GraphEntityType type
 
     uint i = op->pending_updates_count;
     op->pending_updates[i].new_value = new_value;
-    op->pending_updates[i].attribute = attribute;    
+    op->pending_updates[i].attribute = attribute;
     op->pending_updates[i].entity_type = type;
     // Copy updated entity.
     if(type == GETYPE_NODE) {
@@ -169,8 +187,7 @@ static Record _handoff(OpUpdate* op) {
 OpBase* NewUpdateOp(GraphContext *gc, ResultSet *result_set) {
     OpUpdate* op_update = calloc(1, sizeof(OpUpdate));
     op_update->gc = gc;
-    assert(false);
-    AST *ast = AST_GetFromTLS()[0]; // TODO replace
+    NEWAST *ast = NEWAST_GetFromTLS();
     op_update->ast = ast;
     op_update->result_set = result_set;
 
