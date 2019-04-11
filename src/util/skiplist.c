@@ -41,6 +41,7 @@
  * in different ways. */
 
 #include "skiplist.h"
+#include "../parser/newast.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -429,23 +430,23 @@ bool skiplistIter_UpdateBound(skiplistIterator *iter, skiplistKey bound, int op)
   if (iter->current == NULL) return 1;
 
   switch(op) {
-    case EQ: // TODO all these
+    case OP_EQUAL:
       /* EQ should set an inclusive lower and upper bound on the same key, unless
        * that key is outside the range already specified by the interator
        * (like a < 10 AND a = 20). */
       _update_lower_bound(iter, bound, 0);
       _update_upper_bound(iter, bound, 0);
       return 1;
-    case LT:
+    case OP_LT:
       _update_upper_bound(iter, bound, 1);
       return 1;
-    case LE:
+    case OP_LE:
       _update_upper_bound(iter, bound, 0);
       return 1;
-    case GT:
+    case OP_GT:
       _update_lower_bound(iter, bound, 1);
       return 1;
-    case GE:
+    case OP_GE:
       _update_lower_bound(iter, bound, 0);
       return 1;
   }
