@@ -55,7 +55,7 @@ jobs:
           name: Package
           command: >-
             ramp pack -m /workspace/ramp.yml -o
-            /workspace/build/$PACKAGE_NAME.{os}-{architecture}.{semantic_version}.zip
+            /workspace/build/$PACKAGE_NAME.{os}-{architecture}.{semantic_version}-$CIRCLE_BUILD_NUM.zip
             /workspace/$MODULE_ARTIFACT
       - run:
           name: Package
