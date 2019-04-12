@@ -235,6 +235,7 @@ void _collectFilters(const NEWAST *ast, FT_FilterNode **root, const cypher_astno
         node = _convertBinaryOperator(ast, entity);
     } else if (type == CYPHER_AST_UNARY_OPERATOR) {
         // TODO, also n-ary maybe
+        assert(false);
     } else {
         unsigned int child_count = cypher_astnode_nchildren(entity);
         for(unsigned int i = 0; i < child_count; i++) {

@@ -271,6 +271,15 @@ long NEWAST_ParseIntegerNode(const cypher_astnode_t *int_node) {
     return strtol(value_str, NULL, 0);
 }
 
+/* TODO CYPHER_OP_IS_NULL and CYPHER_OP_IS_NOT_NULL are also unaries (though postfix).
+ * Investigate this, also check CIPs because I think null handling may be different in
+ * Cypher now than it is in the parser. */
+/*
+AST_Operator NEWAST_ConvertUnaryOperatorNode(const cypher_astnode_t *expr) {
+    // TODO All in AR_EXP_FromExpression right now
+}
+*/
+
 AST_Operator NEWAST_ConvertOperatorNode(const cypher_operator_t *op) {
     // TODO ordered by precedence, which I don't know if we're managing properly right now
     if (op == CYPHER_OP_OR) {
@@ -280,7 +289,7 @@ AST_Operator NEWAST_ConvertOperatorNode(const cypher_operator_t *op) {
         assert(false);
     } else if (op == CYPHER_OP_AND) {
         return OP_AND;
-    } else if (op == CYPHER_OP_NOT) {
+    } else if (op == CYPHER_OP_NOT) { // TODO unary, maybe doesn't belong here
         return OP_NOT;
     } else if (op == CYPHER_OP_EQUAL) {
         return OP_EQUAL;

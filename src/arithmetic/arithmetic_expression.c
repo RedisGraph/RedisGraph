@@ -240,9 +240,19 @@ AR_ExpNode* AR_EXP_FromExpression(const NEWAST *ast, const cypher_astnode_t *exp
         // unary
         const cypher_astnode_t *arg = cypher_ast_unary_operator_get_argument(expr); // CYPHER_AST_EXPRESSION
         const cypher_operator_t *operator = cypher_ast_unary_operator_get_operator(expr);
-        AST_Operator operator_enum = NEWAST_ConvertOperatorNode(operator);
-        printf("\ngot unary\n");
-        assert(false);
+        if (operator == CYPHER_OP_UNARY_MINUS) {
+            // -3 is a unary minus operation on the integer 3
+            // TODO I feel like this is really over-elaborate - handle it in parser?
+            // TODO this can obviously be improved greatly
+            AR_ExpNode *ar_exp = AR_EXP_FromExpression(ast, arg);
+            SIValue exp = AR_EXP_Evaluate(ar_exp, NULL);
+            exp = SIValue_Subtract(SI_LongVal(0), exp);
+            return AR_EXP_NewConstOperandNode(exp);
+        } else if (operator == CYPHER_OP_UNARY_PLUS) {
+            assert(false); // TODO
+        } else if (operator == CYPHER_OP_NOT) {
+            assert(false); // TODO
+        }
     } else if (type == CYPHER_AST_BINARY_OPERATOR) {
         const cypher_operator_t *operator = cypher_ast_binary_operator_get_operator(expr);
         AST_Operator operator_enum = NEWAST_ConvertOperatorNode(operator);
