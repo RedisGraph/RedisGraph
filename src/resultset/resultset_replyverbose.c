@@ -6,6 +6,25 @@
 
 #include "resultset_formatters.h"
 
+/* This function has handling for SIValue array type. */
+static void _ResultSet_VerboseReplyWithArray(RedisModuleCtx *ctx, GraphContext *gc, SIValue *arr) {
+    int item_count = array_len(arr);
+    RedisModule_ReplyWithArray(ctx, item_count);
+    for(int i = 0; i < item_count; i++) {
+        switch(SI_TYPE(arr[i])) {
+            case T_NODE:
+                _ResultSet_VerboseReplyWithSIValue(ctx, gc, arr[i]);
+                break;
+            case T_EDGE:
+                _ResultSet_VerboseReplyWithNode(ctx, gc, (Node*)(arr+i));
+                break;
+            default:
+                _ResultSet_VerboseReplyWithEdge(ctx, gc, (Edge*)(arr+i));
+                break;
+        }
+    }
+}
+
 /* This function has handling for all SIValue scalar types.
  * The current RESP protocol only has unique support for strings, 8-byte integers,
  * and NULL values. */
@@ -27,6 +46,10 @@ static void _ResultSet_VerboseReplyWithSIValue(RedisModuleCtx *ctx, GraphContext
             return;
         case T_NULL:
             RedisModule_ReplyWithNull(ctx);
+            return;
+        case T_ARRAY:
+            SIValue *arr = v.ptrval;
+            _ResultSet_VerboseReplyWithArray(ctx, gc, arr);
             return;
         case T_NODE: // Nodes and edges should always be Record entries at this point
         case T_EDGE:

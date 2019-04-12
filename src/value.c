@@ -14,6 +14,7 @@
 #include <ctype.h>
 #include <sys/param.h>
 #include <assert.h>
+#include "util/arr.h"
 #include "util/rmalloc.h"
 
 SIValue SI_LongVal(int64_t i) {
@@ -44,6 +45,10 @@ SIValue SI_Edge(void *e) {
   return (SIValue) {.ptrval = e, .type = T_EDGE, .allocation = M_VOLATILE};
 }
 
+SIValue SI_Array(SIValue *a) {
+  return (SIValue) {.ptrval = a, .type = T_ARRAY};
+}
+
 SIValue SI_DuplicateStringVal(const char *s) {
   return (SIValue){.stringval = rm_strdup(s), .type = T_STRING, .allocation = M_SELF};
 }
@@ -61,9 +66,7 @@ SIValue SI_Clone(SIValue v) {
     // Allocate a new copy of the input's string value
     return SI_DuplicateStringVal(v.stringval);
   }
-  SIValue dup;
-  memcpy(&dup, &v, sizeof(SIValue));
-  return dup;
+  return v; // Performs cloning.
 }
 
 SIValue SI_ShallowCopy(SIValue v) {
@@ -76,6 +79,27 @@ SIValue SI_ShallowCopy(SIValue v) {
 inline int SIValue_IsNull(SIValue v) { return v.type == T_NULL; }
 inline int SIValue_IsNullPtr(SIValue *v) {
   return v == NULL || v->type == T_NULL;
+}
+
+static int _SIValue_PrintArray(SIValue v, char *buf, size_t len) {
+  int bytes_written = 0;
+  SIValue *items = v.ptrval;
+  int item_count = array_len(items);
+
+  bytes_written = snprintf(buf, len, "[");
+
+  int i = 0;
+  for(; i < item_count-1; i++) {
+    bytes_written = SIValue_ToString(items[i], buf, len-bytes_written);
+    bytes_written = snprintf(buf, len, ",");
+  }
+
+  if(i < item_count) {
+    bytes_written = SIValue_ToString(items[i], buf, len-bytes_written);
+  }
+
+  bytes_written = snprintf(buf, len-bytes_written, "]");
+  return bytes_written;
 }
 
 int SIValue_ToString(SIValue v, char *buf, size_t len) {
@@ -99,6 +123,8 @@ int SIValue_ToString(SIValue v, char *buf, size_t len) {
   case T_EDGE:
     bytes_written = snprintf(buf, len, "%llu", ENTITY_GET_ID((GraphEntity*)v.ptrval));
     break;
+  case T_ARRAY:
+    bytes_written = _SIValue_PrintArray(v, buf, len);
   case T_NULL:
   default:
     bytes_written = snprintf(buf, len, "NULL");
@@ -287,9 +313,14 @@ void SIValue_Free(SIValue *v) {
       case T_EDGE:
         rm_free(v->ptrval);
         return;
+      case T_ARRAY:
+        SIValue *items = v->ptrval;
+        int item_count = array_len(items);
+        for(int i = 0; i < item_count; i++) SIValue_Free(items+i);
+        array_free(items);
+        return;
       default:
         return;
     }
   }
 }
-

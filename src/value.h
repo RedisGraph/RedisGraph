@@ -30,6 +30,7 @@ typedef enum {
   T_CONSTSTRING = 0x100, // only used in deserialization routine
   T_NODE = 0x200,
   T_EDGE = 0x400,
+  T_ARRAY = 0x800,
 } SIType;
 
 typedef enum {
@@ -76,6 +77,8 @@ SIValue SI_BoolVal(int b);
 SIValue SI_PtrVal(void* v);
 SIValue SI_Node(void *n);
 SIValue SI_Edge(void *e);
+SIValue SI_Array(SIValue* a);   // Array of SIValues.
+
 SIValue SI_DuplicateStringVal(const char *s); // Duplicate and ultimately free the input string
 SIValue SI_ConstStringVal(char *s);           // Neither duplicate nor assume ownership of input string
 SIValue SI_TransferStringVal(char *s);        // Don't duplicate input string, but assume ownership

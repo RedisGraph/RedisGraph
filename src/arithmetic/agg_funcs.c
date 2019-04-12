@@ -9,6 +9,7 @@
 #include "aggregate.h"
 #include "repository.h"
 #include "../value.h"
+#include "../util/arr.h"
 #include "../util/qsort.h"
 #include <assert.h>
 #include <math.h>
@@ -142,9 +143,8 @@ int __agg_maxReduceNext(AggCtx *ctx) {
 
 AggCtx* Agg_MaxFunc() {
     __agg_maxCtx *ac = malloc(sizeof(__agg_maxCtx));
-    // ac->max = SI_DoubleVal(DBL_MIN);
     ac->init = false;
-    
+
     return Agg_Reduce(ac, __agg_maxStep, __agg_maxReduceNext);
 }
 
@@ -417,6 +417,38 @@ AggCtx* Agg_StdevPFunc() {
 
 //------------------------------------------------------------------------
 
+typedef struct {
+    SIValue *items;
+} __agg_collectCtx;
+
+int __agg_collectStep(AggCtx *ctx, SIValue *argv, int argc) {
+    assert(argc == 1 && argv != NULL);
+    __agg_collectCtx *ac = Agg_FuncCtx(ctx);
+
+    SIValue arg = argv[0];
+    if(SIValue_IsNull(arg)) return AGG_OK;
+
+    SIValue clone = SI_Clone(arg);
+    ac->items = array_append(ac->items, clone);
+
+    return AGG_OK;
+}
+
+int __agg_collectReduceNext(AggCtx *ctx) {
+    __agg_collectCtx *ac =  Agg_FuncCtx(ctx);
+    Agg_SetResult(ctx, SI_Array(ac->items));
+    return AGG_OK;
+}
+
+AggCtx* Agg_Collect() {
+    __agg_collectCtx *ac = malloc(sizeof(__agg_collectCtx));
+    ac->items = array_new(SIValue, 1);
+    
+    return Agg_Reduce(ac, __agg_collectStep, __agg_collectReduceNext);
+}
+
+//------------------------------------------------------------------------
+
 void Agg_RegisterFuncs() {
     Agg_RegisterFunc("sum", Agg_SumFunc);
     Agg_RegisterFunc("avg", Agg_AvgFunc);
@@ -427,4 +459,5 @@ void Agg_RegisterFuncs() {
     Agg_RegisterFunc("percentileCont", Agg_PercContFunc);
     Agg_RegisterFunc("stDev", Agg_StdevFunc);
     Agg_RegisterFunc("stDevP", Agg_StdevPFunc);
+    Agg_RegisterFunc("collect", Agg_Collect);
 }
