@@ -84,6 +84,11 @@ void _mapPatternIdentifiers(NEWAST *ast, const cypher_astnode_t *entity, unsigne
     } else if (type == CYPHER_AST_REL_PATTERN) {
         const cypher_astnode_t *alias_node = cypher_ast_rel_pattern_get_identifier(entity);
         if (alias_node) alias = (char*)cypher_ast_identifier_get_name(alias_node);
+    } else if (type == CYPHER_AST_UNWIND) {
+        // The UNWIND clause aliases an expression
+        const cypher_astnode_t *alias_node = cypher_ast_unwind_get_alias(entity);
+        assert(alias_node);
+        alias = (char*)cypher_ast_identifier_get_name(alias_node);
     } else {
         unsigned int child_count = cypher_astnode_nchildren(entity);
         for(unsigned int i = 0; i < child_count; i++) {

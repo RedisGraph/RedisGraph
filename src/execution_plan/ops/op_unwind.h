@@ -15,15 +15,15 @@
 
 typedef struct {
     OpBase op;
-    AST *ast;
-    AST_UnwindNode *unwindClause;
+    NEWAST *ast;
+    const cypher_astnode_t *unwindClause; // TODO necessary? For separation of New and Init, yes...
     AR_ExpNode **expressions;   // Array of expressions
     uint expIdx;                // Current expression index to evaluate.
     int unwindRecIdx;           // Update record at this index.
  } OpUnwind;
 
 /* Creates a new Unwind operation */
-OpBase* NewUnwindOp(AST *ast);
+OpBase* NewUnwindOp(NEWAST *ast, const cypher_astnode_t *clause);
 
 OpResult UnwindInit(OpBase *opBase);
 

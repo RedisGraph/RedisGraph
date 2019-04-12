@@ -451,7 +451,7 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST *old
 
     const cypher_astnode_t *unwind_clause = NEWAST_GetClause(ast->root, CYPHER_AST_UNWIND);
     if(unwind_clause) {
-        OpBase *opUnwind = NewUnwindOp(old_ast);
+        OpBase *opUnwind = NewUnwindOp(ast, unwind_clause);
         Vector_Push(ops, opUnwind);
     }
 
