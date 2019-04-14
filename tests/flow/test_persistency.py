@@ -181,10 +181,8 @@ class GraphPersistency(FlowTestsBase):
                            ['true', None, '5.5', 'str']]
         assert(actual_result.result_set == expected_result)
 
-    # Verify that the database can be reloaded correctly after creating multiple
-    # relations of the same type connecting the same two entities.
-    # TODO Cypher allows multiple relations like this to coexist; we currently overwrite the original.
-    # This test should be updated as our handling changes.
+    # Verify multiple edges of the same relation between nodes A and B
+    # are saved and restored correctly.
     def test04_repeated_edges(self):
         graphname = "repeated_edges"
         graph = Graph(graphname, redis_con)
@@ -199,20 +197,20 @@ class GraphPersistency(FlowTestsBase):
         assert(actual_result.relationships_created == 1)
 
         # Verify the new edge
-        read_query = """MATCH (a)-[e]->(b) RETURN e, a, b"""
+        read_query = """MATCH (a)-[e]->(b) RETURN e, a, b ORDER BY e.val"""
         actual_result = graph.query(read_query)
         expected_result = [['e.val', 'a.name', 'b.name'],
                            [1, 'src', 'dest']]
         assert(actual_result.result_set == expected_result)
 
-        # Overwrite the existing edge
+        # Connect nodes with additional edge of the same relation.
         create_query = """MATCH(a:p {name: 'src'}), (b:p {name: 'dest'}) CREATE (a)-[:e {val: 2}]->(b)"""
         actual_result = graph.query(create_query)
         assert(actual_result.relationships_created == 1)
 
         actual_result = graph.query(read_query)
-        # TODO This is the expected current behavior, subject to later change.
         expected_result = [['e.val', 'a.name', 'b.name'],
+                           [1, 'src', 'dest'],
                            [2, 'src', 'dest']]
         assert(actual_result.result_set == expected_result)
 
