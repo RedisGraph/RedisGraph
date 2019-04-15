@@ -5,6 +5,7 @@
 */
 
 #include "op_expand_into.h"
+#include "../../parser/newast.h"
 #include "../../util/arr.h"
 
 /* Expand into checks to see if two resolved nodes are connected
@@ -15,10 +16,11 @@
  * as a and b are already resolved to just need to see if they are 
  * connected via an e edge. */
 
-OpBase* NewExpandIntoOp(Node *a, Node *b, Edge *e, AST *ast) {
+OpBase* NewExpandIntoOp(Node *a, Node *b, Edge *e) {
     OpExpandInto *expandInto = malloc(sizeof(OpExpandInto));
-    expandInto->srcRecIdx = AST_GetAliasID(ast, a->alias);
-    expandInto->destRecIdx = AST_GetAliasID(ast, b->alias);
+    NEWAST *ast = NEWAST_GetFromTLS();
+    expandInto->srcRecIdx = NEWAST_GetAliasID(ast, a->alias);
+    expandInto->destRecIdx = NEWAST_GetAliasID(ast, b->alias);
     expandInto->gc = GraphContext_GetFromTLS();
     expandInto->e = e;
     expandInto->edges = array_new(Edge*, 0);

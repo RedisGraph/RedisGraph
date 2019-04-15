@@ -8,7 +8,6 @@
 #define __OP_INDEX_SCAN_H
 
 #include "op.h"
-#include "../../parser/ast.h"
 #include "../../graph/graph.h"
 #include "../../index/index.h"
 #include "../../graph/entities/node.h"
@@ -23,7 +22,7 @@ typedef struct {
 } IndexScan;
 
 /* Creates a new IndexScan operation */
-OpBase *NewIndexScanOp(Graph *g, Node *node, IndexIter *iter, AST *ast);
+OpBase *NewIndexScanOp(Graph *g, Node *node, IndexIter *iter);
 
 /* IndexScan next operation
  * called each time a new node is required */

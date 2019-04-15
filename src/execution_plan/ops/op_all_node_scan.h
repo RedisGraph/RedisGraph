@@ -8,7 +8,6 @@
 #define __OP_ALL_NODE_SCAN_H__
 
 #include "op.h"
-#include "../../parser/ast.h"
 #include "../../graph/graph.h"
 #include "../../graph/query_graph.h"
 #include "../../graph/entities/node.h"

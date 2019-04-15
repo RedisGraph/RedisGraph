@@ -5,14 +5,15 @@
 */
 
 #include "op_index_scan.h"
-#include "../../parser/ast.h"
+#include "../../parser/newast.h"
 
-OpBase *NewIndexScanOp(Graph *g, Node *node, IndexIter *iter, AST *ast) {
+OpBase* NewIndexScanOp(Graph *g, Node *node, IndexIter *iter) {
   IndexScan *indexScan = malloc(sizeof(IndexScan));
   indexScan->g = g;
   indexScan->iter = iter;
-  indexScan->nodeRecIdx = AST_GetAliasID(ast, node->alias);
-  indexScan->recLength = AST_AliasCount(ast);
+  NEWAST *ast = NEWAST_GetFromTLS();
+  indexScan->nodeRecIdx = NEWAST_GetAliasID(ast, node->alias);
+  indexScan->recLength = NEWAST_AliasCount(ast);
 
   // Set our Op operations
   OpBase_Init(&indexScan->op);

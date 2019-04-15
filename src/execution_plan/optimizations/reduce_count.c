@@ -63,7 +63,7 @@ static int _identifyPattern(OpBase *root, OpResult **opResult, OpAggregate **opA
     return 1;
 }
 
-void reduceCount(ExecutionPlan *plan, AST *ast) {
+void reduceCount(ExecutionPlan *plan) {
     /* We'll only modify execution plan if it is structured as follows:
      * "Scan -> Aggregate -> Results" */
     char *label;

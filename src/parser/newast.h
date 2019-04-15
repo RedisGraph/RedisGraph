@@ -15,8 +15,8 @@
 // #define IDENTIFIER_NOT_FOUND UINT_MAX
 
 typedef enum {
-	AST_VALID,
-	AST_INVALID
+    AST_VALID,
+    AST_INVALID
 } AST_Validation;
 
 typedef enum {

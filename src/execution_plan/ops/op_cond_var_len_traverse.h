@@ -16,7 +16,6 @@
 typedef struct {
     OpBase op;
     Graph *g;
-    AST *ast;
     AlgebraicExpression *ae;
     int srcNodeIdx;                 /* Node set by operation. */
     int destNodeIdx;                /* Node set by operation. */

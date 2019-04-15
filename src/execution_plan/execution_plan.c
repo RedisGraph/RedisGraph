@@ -671,7 +671,7 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST **ast
             }
             Vector_Free(sub_trees);
         }
-        optimizePlan(gc, plan, ast[i]);
+        optimizePlan(gc, plan);
     }
 
     return plan;

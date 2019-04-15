@@ -10,7 +10,6 @@
 #include "op.h"
 #include "../../graph/graphcontext.h"
 #include "../../graph/entities/edge.h"
-#include "../../parser/ast.h"
 
 typedef struct {
     OpBase op;
@@ -21,7 +20,7 @@ typedef struct {
     Edge **edges;       // Edges connecting source to destination.
 } OpExpandInto;
 
-OpBase* NewExpandIntoOp(Node *a, Node *b, Edge *e, AST *ast);
+OpBase* NewExpandIntoOp(Node *a, Node *b, Edge *e);
 Record OpExpandIntoConsume(OpBase *opBase);
 OpResult OpExpandIntoReset(OpBase *ctx);
 void OpExpandIntoFree(OpBase *ctx);

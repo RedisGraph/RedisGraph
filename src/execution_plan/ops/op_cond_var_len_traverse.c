@@ -7,22 +7,29 @@
 #include <assert.h>
 
 #include "../../util/arr.h"
-#include "../../parser/ast.h"
+#include "../../parser/newast.h"
+#include "../../arithmetic/arithmetic_expression.h"
 #include "../../graph/graphcontext.h"
 #include "../../algorithms/all_paths.h"
 #include "./op_cond_var_len_traverse.h"
 
 static void _setupTraversedRelations(CondVarLenTraverse *op) {
-    AST *ast = op->ast;
-    op->relationIDsCount = 0;
-    GraphContext *gc = GraphContext_GetFromTLS();    
-    AST_LinkEntity *e = (AST_LinkEntity*)MatchClause_GetEntity(ast->matchNode, op->ae->edge->alias);
-    int relationIDsCount = AST_LinkEntity_LabelCount(e);
+    NEWAST *ast = NEWAST_GetFromTLS();
+    GraphContext *gc = GraphContext_GetFromTLS();
 
-    if(relationIDsCount > 0) {
-        op->relationIDs = array_new(int, relationIDsCount);
-        for(int i = 0; i < relationIDsCount; i++) {
-            Schema *s = GraphContext_GetSchema(gc, e->labels[i], SCHEMA_EDGE);
+    uint id = NEWAST_GetAliasID(ast, op->ae->edge->alias);
+    AR_ExpNode *exp = NEWAST_GetEntity(ast, id);
+    // TODO validate this access
+    const cypher_astnode_t *ast_relation = exp->operand.variadic.ast_ref;
+    op->relationIDsCount = cypher_ast_rel_pattern_nreltypes(ast_relation);
+
+    if(op->relationIDsCount > 0) {
+        op->relationIDs = array_new(int, op->relationIDsCount);
+        for(int i = 0; i < op->relationIDsCount; i++) {
+            // TODO documentation error in libcypher-parser
+            const cypher_astnode_t *ast_reltype = cypher_ast_rel_pattern_get_reltype(ast_relation, i);  
+            const char *reltype = cypher_ast_reltype_get_name(ast_reltype);
+            Schema *s = GraphContext_GetSchema(gc, reltype, SCHEMA_EDGE);
             if(!s) continue;
             op->relationIDs = array_append(op->relationIDs, s->id);
         }        
@@ -39,8 +46,6 @@ OpBase* NewCondVarLenTraverseOp(AlgebraicExpression *ae, unsigned int minHops, u
     CondVarLenTraverse *condVarLenTraverse = malloc(sizeof(CondVarLenTraverse));
     condVarLenTraverse->g = g;
     condVarLenTraverse->ae = ae;
-    // AST *ast = AST_GetFromTLS();
-    // condVarLenTraverse->ast = ast;
     NEWAST *ast = NEWAST_GetFromTLS();
     condVarLenTraverse->relationIDs = NULL;
     condVarLenTraverse->srcNodeIdx = NEWAST_GetAliasID(ast, ae->src_node->alias);

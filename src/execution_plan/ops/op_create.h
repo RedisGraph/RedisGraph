@@ -10,7 +10,6 @@
 #include "op.h"
 #include "../../graph/entities/node.h"
 #include "../../graph/entities/edge.h"
-#include "../../parser/ast.h"
 #include "../../resultset/resultset.h"
 /* Creates new entities according to the CREATE clause. */
 

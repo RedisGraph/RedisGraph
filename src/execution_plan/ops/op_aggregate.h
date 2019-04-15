@@ -8,7 +8,6 @@
 #define __OP_AGGREGATE_H__
 
 #include "op.h"
-#include "../../parser/ast.h"
 #include "../../redismodule.h"
 #include "../../resultset/resultset.h"
 #include "../../graph/query_graph.h"
