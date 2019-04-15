@@ -466,8 +466,7 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST *old
 
     const cypher_astnode_t *merge_clause = NEWAST_GetClause(ast->root, CYPHER_AST_MERGE);
     if(merge_clause) {
-        assert(false); // TODO fix merges
-        OpBase *opMerge = NewMergeOp(gc, execution_plan->result_set);
+        OpBase *opMerge = NewMergeOp(gc, merge_clause, execution_plan->result_set);
         Vector_Push(ops, opMerge);
     }
 

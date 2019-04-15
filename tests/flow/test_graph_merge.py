@@ -127,7 +127,7 @@ class GraphMergeFlowTest(FlowTestsBase):
         assert(result.properties_set == 2)
         assert(result.relationships_created == 0)
 
-        query = """MATCH (charlie { name: 'Charlie Sheen' }) RETURN charlie"""
+        query = """MATCH (charlie { name: 'Charlie Sheen' }) RETURN charlie.age, charlie.name, charlie.lastname"""
         actual_result = redis_graph.query(query)
         expected_result = [['charlie.age', 'charlie.name', 'charlie.lastname'],
                            [11, 'Charlie Sheen', 'Sheen']]

@@ -272,6 +272,11 @@ FT_FilterNode* BuildFiltersTree(const NEWAST *ast) {
         _collectFilters(ast, &filter_tree, match_clauses[i]);
     }
 
+    const cypher_astnode_t *merge_clauses[clause_count];
+    unsigned int merge_count = NewAST_GetTopLevelClauses(ast->root, CYPHER_AST_MERGE, merge_clauses);
+    for (unsigned int i = 0; i < merge_count; i ++) {
+        _collectFilters(ast, &filter_tree, merge_clauses[i]);
+    }
     return filter_tree;
 }
 

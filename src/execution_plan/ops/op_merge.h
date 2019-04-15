@@ -10,7 +10,7 @@
 #include "op.h"
 #include "../../graph/entities/node.h"
 #include "../../graph/entities/edge.h"
-#include "../../parser/ast.h"
+#include "../../parser/newast.h"
 #include "../../resultset/resultset.h"
 
 /* Merge execution plan operation,
@@ -20,15 +20,16 @@
  * is created. */
 
 typedef struct {
-    OpBase op;              // Base op.
-    GraphContext *gc;       // Graph data.
-    AST *ast;         // Query abstract syntax tree.
-    ResultSet *result_set;  // Required for statistics updates.
-    bool matched;           // Has the entire pattern been matched.
-    bool created;           // Has the entire pattern been created.
+    OpBase op;                        // Base op.
+    GraphContext *gc;                 // Graph data.
+    NEWAST *ast;                      // Query abstract syntax tree.
+    const cypher_astnode_t *clause;   // MERGE clause
+    ResultSet *result_set;            // Required for statistics updates.
+    bool matched;                     // Has the entire pattern been matched.
+    bool created;                     // Has the entire pattern been created.
 } OpMerge;
 
-OpBase* NewMergeOp(GraphContext *gc, ResultSet *result_set);
+OpBase* NewMergeOp(GraphContext *gc, const cypher_astnode_t *clause, ResultSet *result_set);
 Record OpMergeConsume(OpBase *opBase);
 OpResult OpMergeReset(OpBase *ctx);
 void OpMergeFree(OpBase *ctx);
