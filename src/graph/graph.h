@@ -26,14 +26,13 @@
 #define GRAPH_UNKNOWN_RELATION -2            // Relations are numbered [0-N], -2 represents an unknown relation.
 
 // Mask with most significat bit on 10000...
-#define MSB_MASK 1UL << ((sizeof(EntityID) * 8) - 1)
+#define MSB_MASK (1UL << (sizeof(EntityID) * 8 - 1))
 // Mask complement 01111...
 #define MSB_MASK_CMP ~MSB_MASK
 // Set X's most significat bit on.
 #define SET_MSB(x) (x) | MSB_MASK
 // Clear X's most significat bit on.
-#define CLEAR_MSB(x) x ^ MSB_MASK
-// #define CLEAR_MSB(x) (x) & MSB_MASK_CMP
+#define CLEAR_MSB(x) (x) & MSB_MASK_CMP
 // Checks if X represents edge ID.
 #define SINGLE_EDGE(x) (x) & MSB_MASK
 // Returns edge ID.
