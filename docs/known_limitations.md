@@ -62,3 +62,40 @@ MATCH (a) WITH DISTINCT a.val AS distinct_val RETURN distinct_val
 ```
 
 Will return a syntax error.
+
+## CREATE clause limitations
+
+### CREATE ... RETURN
+
+```sh
+CREATE (a {val: 1}) RETURN a
+```
+
+Will return a syntax error, as entities that are constructed from a CREATE clause cannot currently be returned in the same query.
+
+This limitation does not apply to queries of the form MATCH ... CREATE ... RETURN.
+
+### Relation uniqueness in MATCH ... CREATE
+
+CREATE executes for each pair of connected nodes, rather than once for each unique relation connecting two nodes.
+
+If we have built a graph with the command:
+
+```sh
+CREATE (a)-[:e {val: '1'}]->(b), (a)-[:e {val: '2'}]->(b)
+```
+
+We have 2 nodes and 2 relations between them.
+
+```sh
+MATCH (a)-[]->(b) CREATE (a)-[:relclone]->(b)
+```
+
+Will only create 1 relationship.
+
+If CREATE should be triggered once for each relation, the relation should be referenced. Both of the following commands would create 2 relations:
+
+```sh
+MATCH (a)-[e]->(b) CREATE (a)-[:relclone]->(b) RETURN e
+MATCH (a)-[e]->(b) WHERE ID(e) >= 0  CREATE (a)-[:relclone]->(b)
+```
