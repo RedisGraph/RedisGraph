@@ -47,4 +47,6 @@ OpResult FilterReset(OpBase *ctx) {
 
 /* Frees Filter*/
 void FilterFree(OpBase *ctx) {
+    Filter *filter = (Filter*)ctx;
+    FilterTree_Free(filter->filterTree);
 }

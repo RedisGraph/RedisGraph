@@ -34,8 +34,8 @@ AST_FilterNode *New_AST_ConditionNode(AST_FilterNode *left, int op, AST_FilterNo
 }
 
 void FreePredicateNode(AST_PredicateNode* predicateNode) {
-	// Don't free arithmetic expression nodes, as they have already
-	// been freed with the filter tree
+	Free_AST_ArithmeticExpressionNode(predicateNode->lhs);
+	Free_AST_ArithmeticExpressionNode(predicateNode->rhs);
 	free(predicateNode);
 }
 
