@@ -25,11 +25,11 @@ Patterns are fully supported with the exception of the OR (`[:rel_a|:rel_b]`) op
 ### Literal types
 + Numeric types (though in most cases, we convert integers to 64-bit double representations)
 + String literals
++ Booleans
 
   **Unsupported:**
 
 - Hexadecimal and octal numerics
-- Booleans
 
 ### Other
 NULL is supported as a representation of a missing or undefined value.
@@ -120,10 +120,7 @@ We do not support any of these properties at the type level, meaning nodes and r
 + floor
 + sign
 + round
-
-  **Unsupported:**
-
-- rand
++ rand
 
 ### String functions
 + left
