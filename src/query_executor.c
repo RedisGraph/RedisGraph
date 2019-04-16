@@ -357,10 +357,24 @@ static void _AST_reverse_match_patterns(AST *ast) {
             }
         }
         Vector_Push(patterns, v);
+        Vector_Clear(pattern); // We're reusing the original entities, so don't free them.
     }
 
     // Free old MATCH clause.
-    Free_AST_MatchNode(ast->matchNode);
+    // Free_AST_MatchNode(ast->matchNode);
+	// Vector *pattern;
+	// while(Vector_Pop(ast->matchNode->patterns, &pattern)) {
+        // for(int i = 0; i < Vector_Size(pattern); i++) {
+            // AST_GraphEntity *ge;
+            // Vector_Get(pattern, i, &ge);
+            // Free_AST_GraphEntity(ge);
+        // }
+		// Vector_Free(pattern);
+	// }
+	Vector_Free(ast->matchNode->_mergedPatterns);
+	Vector_Free(ast->matchNode->patterns);
+	free(ast->matchNode);
+
     // Update AST MATCH clause.
     ast->matchNode = New_AST_MatchNode(patterns);
 }

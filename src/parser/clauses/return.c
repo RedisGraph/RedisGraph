@@ -8,13 +8,11 @@
 #include "../../util/arr.h"
 #include "../../util/rmalloc.h"
 
-AST_ReturnElementNode* New_AST_ReturnElementNode(AST_ArithmeticExpressionNode *exp, const char* alias) {
+AST_ReturnElementNode* New_AST_ReturnElementNode(AST_ArithmeticExpressionNode *exp, char* alias) {
 	AST_ReturnElementNode *returnElementNode = (AST_ReturnElementNode*)malloc(sizeof(AST_ReturnElementNode));
 	returnElementNode->exp = exp;
-	returnElementNode->alias = NULL;
+	returnElementNode->alias = alias ? strdup(alias) : NULL;
     returnElementNode->asterisks = 0;
-
-	if(alias != NULL) returnElementNode->alias = strdup(alias);
 	
 	return returnElementNode;
 }
@@ -119,17 +117,16 @@ char** ReturnClause_GetAliases(const AST_ReturnNode *return_node) {
     char **aliases = array_new(char*, return_elem_count);
 
     for(int i = 0; i < return_elem_count; i++) {
-        AST_ReturnElementNode *ret_elem = return_node->returnElements[i];        
+        AST_ReturnElementNode *ret_elem = return_node->returnElements[i];
         aliases = array_append(aliases, ret_elem->alias);
     }
-
     return aliases;
 }
 
 void Free_AST_ReturnElementNode(AST_ReturnElementNode *returnElementNode) {
 	if(!returnElementNode) return;
     if(returnElementNode->exp) Free_AST_ArithmeticExpressionNode(returnElementNode->exp);
-    if(returnElementNode->alias != NULL) free(returnElementNode->alias);
+    if(returnElementNode->alias) free(returnElementNode->alias);
     free(returnElementNode);
 }
 

@@ -58,6 +58,7 @@ void _FilterTree_SubTrees(const FT_FilterNode *root, Vector *sub_trees) {
                     /* Break AND down to its components. */
                     _FilterTree_SubTrees(root->cond.left, sub_trees);
                     _FilterTree_SubTrees(root->cond.right, sub_trees);
+                    free((FT_FilterNode *)root);
                     break;
                 case OR:
                     /* OR tree must be return as is. */
