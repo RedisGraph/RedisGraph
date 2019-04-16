@@ -12,7 +12,36 @@
 #include "../GraphBLASExt/GxB_Delete.h"
 #include "../util/rmalloc.h"
 
-/*========================= Synchronization functions ========================= */
+static GrB_BinaryOp _graph_edge_accum = NULL;
+
+/* ========================= Forward declarations  ========================= */
+void _MatrixResizeToCapacity(const Graph *g, GrB_Matrix m);
+
+
+/* ========================= GraphBLAS functions ========================= */
+void _edge_accum(void *_z, const void *_x, const void *_y) {
+    EdgeID *z = (EdgeID*)_z;
+    const EdgeID *x = (const EdgeID*)_x;
+    const EdgeID *y = (const EdgeID*)_y;
+
+    EdgeID *ids;
+    /* Single edge ID,
+     * switching from single edge ID to multiple IDs. */
+    if(SINGLE_EDGE(*x)) {
+        ids = array_new(EdgeID, 2);
+        ids = array_append(ids, SINGLE_EDGE_ID(*x));
+        ids = array_append(ids, SINGLE_EDGE_ID(*y));
+        // TODO: Make sure MSB of ids isn't on.
+        *z = (EdgeID)ids;
+    } else {
+        // Multiple edges, adding another edge.
+        ids = (EdgeID*)(*x);
+        ids = array_append(ids, SINGLE_EDGE_ID(*y));
+        *z = (EdgeID)ids;
+    }
+}
+
+/* ========================= Synchronization functions ========================= */
 
 /* Acquire mutex when a reader thread may modify shared data. */
 static inline void _Graph_EnterCriticalSection(Graph *g) {
@@ -57,7 +86,7 @@ static inline void _Graph_ApplyPending(GrB_Matrix m) {
     GrB_Matrix_nvals(&nvals, m);
 }
 
-/*========================= Graph utility functions ========================= */
+/* ========================= Graph utility functions ========================= */
 
 // Return number of nodes graph can contain.
 size_t _Graph_NodeCap(const Graph *g) {
@@ -77,8 +106,9 @@ size_t _Graph_EdgeCap(const Graph *g) {
 GrB_Matrix _Graph_GetRelationMap(const Graph *g, int relation_idx) {
     assert(g && relation_idx >= 0 && relation_idx < array_len(g->_relations_map));
 
+    // Only sync size.
     GrB_Matrix m = g->_relations_map[relation_idx];
-    g->SynchronizeMatrix(g, m);
+    _MatrixResizeToCapacity(g, m);
     return m;
 }
 
@@ -92,28 +122,49 @@ void _Graph_AddRelationMap(Graph *g) {
     g->_relations_map = array_append(g->_relations_map, mapper);
 }
 
-// Locates edge connecting src to destination.
-Entity* _Graph_GetEdgeConnectingNodes(const Graph *g, NodeID src, NodeID dest, int r) {
+// Locates edges connecting src to destination.
+void _Graph_GetEdgesConnectingNodes(const Graph *g, NodeID src, NodeID dest, int r, Edge **edges) {
     assert(g && src < Graph_RequiredMatrixDim(g) && dest < Graph_RequiredMatrixDim(g) && r < Graph_RelationTypeCount(g));
 
-    // relation map, maps (src, dest, r) to edge id.
+    Edge e;
+    EdgeID edgeId;
+    e.relationId = r;
+    e.srcNodeID = src;
+    e.destNodeID = dest;
+
+    // relation map, maps (src, dest, r) to edge IDs.
     GrB_Matrix relationMap = _Graph_GetRelationMap(g, r);
-
-    EdgeID edgeId = 0;
     GrB_Info res = GrB_Matrix_extractElement_UINT64(&edgeId, relationMap, dest, src);
-    // No entry at [dest, src], src is not connected to dest with relation R.
-    if(res == GrB_NO_VALUE) return NULL;
 
-    Entity *en = DataBlock_GetItem(g->edges, edgeId);
-    assert(en);
-    return en;
+    // No entry at [dest, src], src is not connected to dest with relation R.
+    if(res == GrB_NO_VALUE) return;
+
+    if(SINGLE_EDGE(edgeId)) {
+        // Discard most significate bit.
+        edgeId = SINGLE_EDGE_ID(edgeId);
+        e.entity = DataBlock_GetItem(g->edges, edgeId);
+        assert(e.entity);
+        *edges = array_append(*edges, e);
+    } else {
+        /* Multiple edges connecting src to dest,
+         * entry is a pointer to an array of edge IDs. */
+        EdgeID *edgeIds = (EdgeID*)edgeId;
+        int edgeCount = array_len(edgeIds);
+
+        for(int i = 0; i < edgeCount; i++) {
+            edgeId = edgeIds[i];
+            e.entity = DataBlock_GetItem(g->edges, edgeId);
+            assert(e.entity);
+            *edges = array_append(*edges, e);
+        }
+    }
 }
 
 static inline Entity *_Graph_GetEntity(const DataBlock *entities, EntityID id) {
     return DataBlock_GetItem(entities, id);
 }
 
-/*============= Matrix synchronization and resizing functions =============== */
+/* ============= Matrix synchronization and resizing functions =============== */
 
 /* Resize given matrix, such that its number of row and columns
  * matches the number of nodes in the graph. Also, synchronize
@@ -207,7 +258,7 @@ void Graph_ApplyAllPending(Graph *g) {
     }
 }
 
-/*================================ Graph API ================================ */
+/* ================================ Graph API ================================ */
 Graph *Graph_New(size_t node_cap, size_t edge_cap) {
     node_cap = MAX(node_cap, GRAPH_DEFAULT_NODE_CAP);
     edge_cap = MAX(node_cap, GRAPH_DEFAULT_EDGE_CAP);
@@ -232,6 +283,13 @@ Graph *Graph_New(size_t node_cap, size_t edge_cap) {
      * another thread could be resizing matrix B. */
     assert(pthread_mutex_init(&g->_mutex, NULL) == 0);
     assert(pthread_mutex_init(&g->_writers_mutex, NULL) == 0);
+
+    // Create edge accumulator binary function
+    if(!_graph_edge_accum) {
+        GrB_Info info;
+        info = GrB_BinaryOp_new(&_graph_edge_accum, _edge_accum, GrB_UINT64, GrB_UINT64, GrB_UINT64);
+        assert(info == GrB_SUCCESS);
+    }
 
     return g;
 }
@@ -310,7 +368,8 @@ int Graph_GetNodeLabel(const Graph *g, NodeID nodeID) {
 int Graph_GetEdgeRelation(const Graph *g, Edge *e) {
     assert(g && e);
     NodeID srcNodeID = Edge_GetSrcNodeID(e);
-    NodeID destNodeID = Edge_GetDestNodeID(e);
+    NodeID destNodeID = Edge_GetDestNodeID(e);    
+    EdgeID id = ENTITY_GET_ID(e);
 
     // Search for relation mapping matrix M, where
     // M[dest,src] == edge ID.
@@ -318,9 +377,25 @@ int Graph_GetEdgeRelation(const Graph *g, Edge *e) {
         EdgeID edgeId = 0;
         GrB_Matrix M = _Graph_GetRelationMap(g, i);
         GrB_Info res = GrB_Matrix_extractElement_UINT64(&edgeId, M, destNodeID, srcNodeID);
-        if(res == GrB_SUCCESS && edgeId == ENTITY_GET_ID(e)) {
-            Edge_SetRelationID(e, i);
-            return i;
+        if(res != GrB_SUCCESS) continue;
+
+        if(SINGLE_EDGE(edgeId)) {
+			EdgeID curEdgeID = SINGLE_EDGE_ID(edgeId);
+			if(curEdgeID == id) {
+				Edge_SetRelationID(e, i);
+				return i;
+			}
+        } else {
+            /* Multiple edges exists between src and dest
+             * see if given edge is one of them. */
+            EdgeID *edges = (EdgeID*)edgeId;
+            int edge_count = array_len(edges);
+            for(int j = 0; j < edge_count; j++) {
+                if(edges[j] == id) {
+                    Edge_SetRelationID(e, i);
+                    return i;
+                }
+            }
         }
     }
 
@@ -332,32 +407,18 @@ int Graph_GetEdgeRelation(const Graph *g, Edge *e) {
 void Graph_GetEdgesConnectingNodes(const Graph *g, NodeID srcID, NodeID destID, int r, Edge **edges) {
     assert(g && r < Graph_RelationTypeCount(g) && edges);
 
-    Edge e;
-    Entity *en;
     Node srcNode;
     Node destNode;
     assert(Graph_GetNode(g, srcID, &srcNode));
     assert(Graph_GetNode(g, destID, &destNode));
-    e.srcNodeID = srcID;
-    e.destNodeID = destID;
-    e.src = NULL;
-    e.dest = NULL;
 
     if(r != GRAPH_NO_RELATION) {
-        en = _Graph_GetEdgeConnectingNodes(g, srcID, destID, r);
-        if(!en) return;
-        e.entity = en;
-        e.relationId = r;
-        *edges = array_append(*edges, e);
+        _Graph_GetEdgesConnectingNodes(g, srcID, destID, r, edges);
     } else {
         // Relation type missing, scan through each edge type.
         int relationCount = Graph_RelationTypeCount(g);
         for(int i = 0; i < relationCount; i++) {
-            en = _Graph_GetEdgeConnectingNodes(g, srcID, destID, i);
-            if(!en) continue;
-            e.entity = en;
-            e.relationId = i;
-            *edges = array_append(*edges, e);
+            _Graph_GetEdgesConnectingNodes(g, srcID, destID, i, edges);           
         }
     }
 }
@@ -385,6 +446,7 @@ void Graph_CreateNode(Graph* g, int label, Node *n) {
 }
 
 int Graph_ConnectNodes(Graph *g, NodeID src, NodeID dest, int r, Edge *e) {
+    GrB_Info info;
     Node srcNode;
     Node destNode;
 
@@ -392,24 +454,40 @@ int Graph_ConnectNodes(Graph *g, NodeID src, NodeID dest, int r, Edge *e) {
     assert(Graph_GetNode(g, dest, &destNode));
     assert(g && r < Graph_RelationTypeCount(g));
 
-    GrB_Matrix relationMat = Graph_GetRelationMatrix(g, r);
-    e->srcNodeID = src;
-    e->destNodeID = dest;
-
     EdgeID id;
     Entity *en = DataBlock_AllocateItem(g->edges, &id);
     en->id = id;
     en->prop_count = 0;
     en->properties = NULL;
     e->entity = en;
+    e->srcNodeID = src;
+    e->destNodeID = dest;
 
     GrB_Matrix adj = Graph_GetAdjacencyMatrix(g);
+    GrB_Matrix relationMat = Graph_GetRelationMatrix(g, r);
     GrB_Matrix relationMapMat = _Graph_GetRelationMap(g, r);
 
     // Columns represent source nodes, rows represent destination nodes.
     GrB_Matrix_setElement_BOOL(adj, true, dest, src);
     GrB_Matrix_setElement_BOOL(relationMat, true, dest, src);
-    GrB_Matrix_setElement_UINT64(relationMapMat, id, dest, src);
+
+    GrB_Index I = dest;
+    GrB_Index J = src;
+    id = SET_MSB(id);
+    info = GxB_Matrix_subassign_UINT64   // C(I,J)<Mask> = accum (C(I,J),x)
+    (
+        relationMapMat,     // input/output matrix for results
+        GrB_NULL,           // optional mask for C(I,J), unused if NULL
+        _graph_edge_accum,  // optional accum for Z=accum(C(I,J),x)
+        id,                 // scalar to assign to C(I,J)
+        &I,                 // row indices
+        1,                  // number of row indices
+        &J,                 // column indices
+        1,                  // number of column indices
+        GrB_NULL            // descriptor for C(I,J) and Mask
+    );
+    assert(info == GrB_SUCCESS);
+
     return 1;
 }
 
@@ -469,7 +547,7 @@ void Graph_GetNodeEdges(const Graph *g, const Node *n, GRAPH_EDGE_DIR dir, int e
 /* Removes an edge from Graph and updates graph relevent matrices. */
 int Graph_DeleteEdge(Graph *g, Edge *e) {
     GrB_Matrix M;
-    GrB_Info res;
+    GrB_Info info;
     int r = Edge_GetRelationID(e);
     NodeID src_id = Edge_GetSrcNodeID(e);
     NodeID dest_id = Edge_GetDestNodeID(e);
@@ -480,27 +558,62 @@ int Graph_DeleteEdge(Graph *g, Edge *e) {
     GrB_Matrix_extractElement_BOOL(&x, M, dest_id, src_id);
     if(!x) return 0;
 
-    res = GxB_Matrix_Delete(M, dest_id, src_id);
-    assert(res == GrB_SUCCESS);
+    EdgeID edge_id;
+    GrB_Matrix R = _Graph_GetRelationMap(g, r);
+    GrB_Matrix_extractElement_UINT64(&edge_id, R, dest_id, src_id);
 
-    M = _Graph_GetRelationMap(g, r);
-    res = GxB_Matrix_Delete(M, dest_id, src_id);
-    assert(res == GrB_SUCCESS);
+    if(SINGLE_EDGE(edge_id)) {
+        /* Single edge of type R connecting src to dest.
+         * delete entry from both M and R. */
+        assert(GxB_Matrix_Delete(M, dest_id, src_id) == GrB_SUCCESS);        
+        assert(GxB_Matrix_Delete(R, dest_id, src_id )== GrB_SUCCESS);
+    
+        // See if source is connected to destination with additional edges.
+        bool connected = false;
+        int relationCount = Graph_RelationTypeCount(g);
+        for(int i = 0; i < relationCount; i++) {
+            if(i == r) continue;
+            M = Graph_GetRelationMatrix(g, i);
+            info = GrB_Matrix_extractElement_BOOL(&connected, M, dest_id, src_id);
+            if(info == GrB_SUCCESS) break;
+        }
 
-    // See if source is connected to destination with additional edges.
-    bool connected = false;
-    int relationCount = Graph_RelationTypeCount(g);
-    for(int i = 0; i < relationCount; i++) {
-        M = Graph_GetRelationMatrix(g, i);
-        GrB_Matrix_extractElement_BOOL(&connected, M, dest_id, src_id);
-        if(connected) break;
-    }
+        /* There are no additional edges connecting source to destination
+         * Remove edge from THE adjacency matrix. */
+        if(!connected) {
+            M = Graph_GetAdjacencyMatrix(g);
+            assert(GxB_Matrix_Delete(M, dest_id, src_id) == GrB_SUCCESS);
+        }
+    } else {
+        /* Multiple edges connecting src to dest
+         * locate specific edge and remove it
+         * revert back from array representation to edge ID
+         * incase we're left with a single edge connecting src to dest. */
 
-    /* There are no additional edges connecting source to destination
-     * Remove edge from THE adjacency matrix. */
-    if(!connected) {
-        M = Graph_GetAdjacencyMatrix(g);
-        res = GxB_Matrix_Delete(M, dest_id, src_id);
+        int i = 0;
+        EdgeID id = ENTITY_GET_ID(e);
+        EdgeID *edges = (EdgeID*)edge_id;
+        int edge_count = array_len(edges);
+
+        // Locate edge within edge array.
+        for(; i < edge_count; i++) {
+            if(edges[i] == id) break;
+        }
+        assert(i < edge_count);
+
+        /* Remove edge from edge array
+         * migrate last edge ID and reduce array size.
+         * TODO: reallocate array of size / capacity ratio is high. */
+        edges[i] = edges[edge_count-1];
+        array_pop(edges);
+
+        /* Incase we're left with a single edge connecting src to dest
+         * revert back from array to scalar. */
+        if(array_len(edges) == 1) {
+            edge_id = edges[0];
+            array_free(edges);
+            GrB_Matrix_setElement_UINT64(R, SET_MSB(edge_id), dest_id, src_id);
+        }
     }
 
     // Free and remove edges from datablock.

@@ -62,7 +62,7 @@ Path AllPathsCtx_NextPath(AllPathsCtx *ctx) {
             if(depth < ctx->maxLen) {
                 // Get frontier neighbors.
                 Edge *neighbors = array_new(Edge, 32);
-                for( int i = 0; i < ctx->relationCount; i++) {
+                for(int i = 0; i < ctx->relationCount; i++) {
                     Graph_GetNodeEdges(ctx->g, &frontier, ctx->dir, ctx->relationIDs[i], &neighbors);
                 }
 
