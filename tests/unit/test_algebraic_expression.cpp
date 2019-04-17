@@ -138,8 +138,8 @@ class AlgebraicExpressionTest: public ::testing::Test {
     Graph *_build_graph() {
         Graph *g = Graph_New(16, 16);
         Graph_AcquireWriteLock(g);
-        size_t person_count = 6;
-        size_t country_count = 5;
+        size_t person_count = 2;
+        size_t country_count = 2;
         size_t node_count = person_count + country_count;
 
         /* Introduce person and country labels. */
@@ -163,58 +163,16 @@ class AlgebraicExpressionTest: public ::testing::Test {
         GrB_Index war_relation_id = Graph_AddRelationType(g);
 
         // Introduce relations, connect nodes.
-        /* friendship matrix 
-            0 1 0 1 0 1
-            0 0 1 0 1 0
-            0 0 0 1 1 1
-            1 0 0 0 0 1
-            0 0 1 1 0 0
-            1 0 0 0 1 0
-
-            visit matrix
-            1 1 0 0 0 0
-            0 0 1 0 1 0
-            1 1 0 1 0 0
-            0 0 0 0 1 0
-            0 0 0 1 0 0
-            0 0 0 0 1 0
-
-            war matrix
-            0 0 0 1 0 0
-            0 0 0 1 0 0
-            0 0 0 0 0 0
-            0 0 0 0 0 0
-            0 0 1 0 0 0
-            0 0 0 0 0 0
-        */
         Edge e;
         Graph_ConnectNodes(g, 0, 1, friend_relation_id, &e);
-        Graph_ConnectNodes(g, 0, 3, friend_relation_id, &e);
-        Graph_ConnectNodes(g, 0, 5, friend_relation_id, &e);
-        Graph_ConnectNodes(g, 1, 2, friend_relation_id, &e);
-        Graph_ConnectNodes(g, 1, 4, friend_relation_id, &e);
-        Graph_ConnectNodes(g, 2, 3, friend_relation_id, &e);
-        Graph_ConnectNodes(g, 2, 4, friend_relation_id, &e);
-        Graph_ConnectNodes(g, 2, 5, friend_relation_id, &e);
-        Graph_ConnectNodes(g, 3, 0, friend_relation_id, &e);
-        Graph_ConnectNodes(g, 3, 5, friend_relation_id, &e);
-        Graph_ConnectNodes(g, 4, 2, friend_relation_id, &e);
-        Graph_ConnectNodes(g, 4, 3, friend_relation_id, &e);
-        Graph_ConnectNodes(g, 5, 0, friend_relation_id, &e);
-        Graph_ConnectNodes(g, 5, 4, friend_relation_id, &e);
-        Graph_ConnectNodes(g, 0, 0, visit_relation_id, &e);
-        Graph_ConnectNodes(g, 0, 1, visit_relation_id, &e);
-        Graph_ConnectNodes(g, 1, 2, visit_relation_id, &e);
-        Graph_ConnectNodes(g, 1, 4, visit_relation_id, &e);
-        Graph_ConnectNodes(g, 2, 0, visit_relation_id, &e);
-        Graph_ConnectNodes(g, 2, 1, visit_relation_id, &e);
-        Graph_ConnectNodes(g, 2, 3, visit_relation_id, &e);
-        Graph_ConnectNodes(g, 3, 4, visit_relation_id, &e);
-        Graph_ConnectNodes(g, 4, 3, visit_relation_id, &e);
-        Graph_ConnectNodes(g, 5, 4, visit_relation_id, &e);
-        Graph_ConnectNodes(g, 0, 3, war_relation_id, &e);
-        Graph_ConnectNodes(g, 1, 3, war_relation_id, &e);
-        Graph_ConnectNodes(g, 4, 2, war_relation_id, &e);
+        Graph_ConnectNodes(g, 1, 0, friend_relation_id, &e);
+
+        Graph_ConnectNodes(g, 0, 2, visit_relation_id, &e);
+        Graph_ConnectNodes(g, 0, 3, visit_relation_id, &e);
+        Graph_ConnectNodes(g, 1, 2, visit_relation_id, &e);        
+
+        Graph_ConnectNodes(g, 2, 3, war_relation_id, &e);
+        Graph_ConnectNodes(g, 3, 2, war_relation_id, &e);
         return g;
     }
 
@@ -228,6 +186,13 @@ class AlgebraicExpressionTest: public ::testing::Test {
         Node *f = Node_New("Person", "f");
         Node *c = Node_New("City", "c");
         Node *e = Node_New("City", "e");
+
+        // Set node matrices according to the order they've been presented
+        // during graph construction.
+        p->mat = Graph_GetLabelMatrix(g, 0);
+        f->mat = Graph_GetLabelMatrix(g, 0);
+        c->mat = Graph_GetLabelMatrix(g, 1);
+        e->mat = Graph_GetLabelMatrix(g, 1);
 
         // Create edges
         Edge *pff = Edge_New(p, f, "friend", "pff");
@@ -252,7 +217,7 @@ class AlgebraicExpressionTest: public ::testing::Test {
         return q;
     }
 
-    AlgebraicExpression **_build_arithmetic_expression(const char *query, size_t *exp_count) {
+    AlgebraicExpression **_build_algebraic_expression(const char *query, size_t *exp_count) {
         *exp_count = 0;
         AlgebraicExpression **ae = NULL;
 
@@ -646,33 +611,42 @@ TEST_F(AlgebraicExpressionTest, ExpTransform_AB_Times_C_Plus_D) {
 }
 
 TEST_F(AlgebraicExpressionTest, MultipleIntermidateReturnNodes) {
+    Node *n;
+    Edge *e;
     size_t exp_count = 0;
-    const char *query = query_multiple_intermidate_return_nodes;
-    AlgebraicExpression **ae = _build_arithmetic_expression(query, &exp_count);
+    const char *query = query_multiple_intermidate_return_nodes;    
+    AlgebraicExpression **ae = _build_algebraic_expression(query, &exp_count);
     ASSERT_EQ(exp_count, 3);
     
     // Validate first expression.
     AlgebraicExpression *exp = ae[0];
     ASSERT_EQ(exp->op, AL_EXP_MUL);
-    ASSERT_EQ(exp->operand_count, 1);
+    ASSERT_EQ(exp->operand_count, 3);
 
-    Edge *e;
+    n = QueryGraph_GetNodeByAlias(query_graph, "p");
+    ASSERT_EQ(exp->operands[0].operand, n->mat);
     e = QueryGraph_GetEdgeByAlias(query_graph, "ef");
-    ASSERT_EQ(exp->operands[0].operand, e->mat);
+    ASSERT_EQ(exp->operands[1].operand, e->mat);
+    n = QueryGraph_GetNodeByAlias(query_graph, "f");
+    ASSERT_EQ(exp->operands[2].operand, n->mat);
 
     // Validate second expression.
     exp = ae[1];
     ASSERT_EQ(exp->op, AL_EXP_MUL);
-    ASSERT_EQ(exp->operand_count, 1);
+    ASSERT_EQ(exp->operand_count, 2);
+    n = QueryGraph_GetNodeByAlias(query_graph, "c");
+    ASSERT_EQ(exp->operands[0].operand, n->mat);
     e = QueryGraph_GetEdgeByAlias(query_graph, "ev");
-    ASSERT_EQ(exp->operands[0].operand, e->mat);
+    ASSERT_EQ(exp->operands[1].operand, e->mat);
 
     // Validate third expression.
     exp = ae[2];
     ASSERT_EQ(exp->op, AL_EXP_MUL);
-    ASSERT_EQ(exp->operand_count, 1);
+    ASSERT_EQ(exp->operand_count, 2);
+    n = QueryGraph_GetNodeByAlias(query_graph, "e");
+    ASSERT_EQ(exp->operands[0].operand, n->mat);
     e = QueryGraph_GetEdgeByAlias(query_graph, "ew");
-    ASSERT_EQ(exp->operands[0].operand, e->mat);
+    ASSERT_EQ(exp->operands[1].operand, e->mat);
 
     // Clean up.
     for(int i = 0; i < exp_count; i++) AlgebraicExpression_Free(ae[i]);
@@ -680,9 +654,11 @@ TEST_F(AlgebraicExpressionTest, MultipleIntermidateReturnNodes) {
 }
 
 TEST_F(AlgebraicExpressionTest, OneIntermidateReturnNode) {
+    Edge *e;
+    Node *n;
     size_t exp_count = 0;
     const char *query = query_one_intermidate_return_nodes;
-    AlgebraicExpression **ae = _build_arithmetic_expression(query, &exp_count);
+    AlgebraicExpression **ae = _build_algebraic_expression(query, &exp_count);
     ASSERT_EQ(exp_count, 2);
 
     // Validate first expression.
@@ -690,24 +666,35 @@ TEST_F(AlgebraicExpressionTest, OneIntermidateReturnNode) {
 
     // Validate AlgebraicExpression structure.
     ASSERT_EQ(exp->op, AL_EXP_MUL);
-    ASSERT_EQ(exp->operand_count, 2);
+    ASSERT_EQ(exp->operand_count, 5);
+
+    n = QueryGraph_GetNodeByAlias(query_graph, "p");
+    ASSERT_EQ(exp->operands[4].operand, n->mat);
     
-    Edge *e;
     e = QueryGraph_GetEdgeByAlias(query_graph, "ef");
-    ASSERT_EQ(exp->operands[1].operand, e->mat);
+    ASSERT_EQ(exp->operands[3].operand, e->mat);
+
+    n = QueryGraph_GetNodeByAlias(query_graph, "f");
+    ASSERT_EQ(exp->operands[2].operand, n->mat);
 
     e = QueryGraph_GetEdgeByAlias(query_graph, "ev");
-    ASSERT_EQ(exp->operands[0].operand, e->mat);
+    ASSERT_EQ(exp->operands[1].operand, e->mat);
+
+    n = QueryGraph_GetNodeByAlias(query_graph, "c");
+    ASSERT_EQ(exp->operands[0].operand, n->mat);
 
     // Validate second expression.
     exp = ae[1];
 
     // Validate AlgebraicExpression structure.
     ASSERT_EQ(exp->op, AL_EXP_MUL);
-    ASSERT_EQ(exp->operand_count, 1);
+    ASSERT_EQ(exp->operand_count, 2);
+
+    n = QueryGraph_GetNodeByAlias(query_graph, "e");
+    ASSERT_EQ(exp->operands[0].operand, n->mat);
 
     e = QueryGraph_GetEdgeByAlias(query_graph, "ew");
-    ASSERT_EQ(exp->operands[0].operand, e->mat);
+    ASSERT_EQ(exp->operands[1].operand, e->mat);
 
     // Clean up.
     for(int i = 0; i < exp_count; i++) AlgebraicExpression_Free(ae[i]);
@@ -715,26 +702,39 @@ TEST_F(AlgebraicExpressionTest, OneIntermidateReturnNode) {
 }
 
 TEST_F(AlgebraicExpressionTest, NoIntermidateReturnNodes) {
+    Node *n;
+    Edge *e;
     size_t exp_count = 0;
     const char *query = query_no_intermidate_return_nodes;
-    AlgebraicExpression **ae = _build_arithmetic_expression(query, &exp_count);
+    AlgebraicExpression **ae = _build_algebraic_expression(query, &exp_count);
     ASSERT_EQ(exp_count, 1);
 
     AlgebraicExpression *exp = ae[0];
 
     // Validate AlgebraicExpression structure.
     ASSERT_EQ(exp->op, AL_EXP_MUL);
-    ASSERT_EQ(exp->operand_count, 3);
+    ASSERT_EQ(exp->operand_count, 7);
 
-    Edge *e;
+    n = QueryGraph_GetNodeByAlias(query_graph, "p");
+    ASSERT_EQ(exp->operands[6].operand, n->mat);
+
     e = QueryGraph_GetEdgeByAlias(query_graph, "ef");
-    ASSERT_EQ(exp->operands[2].operand, e->mat);
+    ASSERT_EQ(exp->operands[5].operand, e->mat);
+
+    n = QueryGraph_GetNodeByAlias(query_graph, "f");
+    ASSERT_EQ(exp->operands[4].operand, n->mat);
 
     e = QueryGraph_GetEdgeByAlias(query_graph, "ev");
-    ASSERT_EQ(exp->operands[1].operand, e->mat);
+    ASSERT_EQ(exp->operands[3].operand, e->mat);
+
+    n = QueryGraph_GetNodeByAlias(query_graph, "c");
+    ASSERT_EQ(exp->operands[2].operand, n->mat);
 
     e = QueryGraph_GetEdgeByAlias(query_graph, "ew");
-    ASSERT_EQ(exp->operands[0].operand, e->mat);
+    ASSERT_EQ(exp->operands[1].operand, e->mat);
+
+    n = QueryGraph_GetNodeByAlias(query_graph, "e");
+    ASSERT_EQ(exp->operands[0].operand, n->mat);
 
     // Clean up.
     AlgebraicExpression_Free(exp);
@@ -742,7 +742,8 @@ TEST_F(AlgebraicExpressionTest, NoIntermidateReturnNodes) {
 }
 
 TEST_F(AlgebraicExpressionTest, OneIntermidateReturnEdge) {
-    Edge *e;
+    Node *n;
+    Edge *e;    
     size_t exp_count;
     const char *query;
     AlgebraicExpression **ae;
@@ -753,26 +754,35 @@ TEST_F(AlgebraicExpressionTest, OneIntermidateReturnEdge) {
     //==============================================================================
     exp_count = 0;
     query = query_return_first_edge;
-    ae = _build_arithmetic_expression(query, &exp_count);
+    ae = _build_algebraic_expression(query, &exp_count);
     ASSERT_EQ(exp_count, 2);
 
     // Validate first expression.
     exp = ae[0];
     ASSERT_EQ(exp->op, AL_EXP_MUL);
-    ASSERT_EQ(exp->operand_count, 1);
-    e = QueryGraph_GetEdgeByAlias(query_graph, "ef");
-    ASSERT_EQ(exp->operands[0].operand, e->mat);
+    ASSERT_EQ(exp->operand_count, 3);
     ASSERT_TRUE(exp->edge != NULL);
-    
+
+    n = QueryGraph_GetNodeByAlias(query_graph, "p");
+    ASSERT_EQ(exp->operands[2].operand, n->mat);
+    e = QueryGraph_GetEdgeByAlias(query_graph, "ef");
+    ASSERT_EQ(exp->operands[1].operand, e->mat);
+    n = QueryGraph_GetNodeByAlias(query_graph, "f");
+    ASSERT_EQ(exp->operands[0].operand, n->mat);    
+
     // Validate second expression.
     exp = ae[1];
     ASSERT_EQ(exp->op, AL_EXP_MUL);
-    ASSERT_EQ(exp->operand_count, 2);
-    e = QueryGraph_GetEdgeByAlias(query_graph, "ew");
-    ASSERT_EQ(exp->operands[0].operand, e->mat);
-    e = QueryGraph_GetEdgeByAlias(query_graph, "ev");
-    ASSERT_EQ(exp->operands[1].operand, e->mat);
+    ASSERT_EQ(exp->operand_count, 4);
     ASSERT_TRUE(exp->edge == NULL);
+    e = QueryGraph_GetEdgeByAlias(query_graph, "ev");
+    ASSERT_EQ(exp->operands[3].operand, e->mat);
+    n = QueryGraph_GetNodeByAlias(query_graph, "c");
+    ASSERT_EQ(exp->operands[2].operand, n->mat);
+    e = QueryGraph_GetEdgeByAlias(query_graph, "ew");
+    ASSERT_EQ(exp->operands[1].operand, e->mat);
+    n = QueryGraph_GetNodeByAlias(query_graph, "e");
+    ASSERT_EQ(exp->operands[0].operand, n->mat);
 
     // Clean up.
     for(int i = 0; i < exp_count; i++) AlgebraicExpression_Free(ae[i]);
@@ -783,32 +793,40 @@ TEST_F(AlgebraicExpressionTest, OneIntermidateReturnEdge) {
     //==============================================================================
     exp_count = 0;
     query = query_return_intermidate_edge;
-    ae = _build_arithmetic_expression(query, &exp_count);
+    ae = _build_algebraic_expression(query, &exp_count);
     ASSERT_EQ(exp_count, 3);
 
     // Validate first expression.
     exp = ae[0];
     ASSERT_EQ(exp->op, AL_EXP_MUL);
-    ASSERT_EQ(exp->operand_count, 1);
-    e = QueryGraph_GetEdgeByAlias(query_graph, "ef");
-    ASSERT_EQ(exp->operands[0].operand, e->mat);
+    ASSERT_EQ(exp->operand_count, 3);
     ASSERT_TRUE(exp->edge == NULL);
+    n = QueryGraph_GetNodeByAlias(query_graph, "p");
+    ASSERT_EQ(exp->operands[2].operand, n->mat);
+    e = QueryGraph_GetEdgeByAlias(query_graph, "ef");
+    ASSERT_EQ(exp->operands[1].operand, e->mat);
+    n = QueryGraph_GetNodeByAlias(query_graph, "f");
+    ASSERT_EQ(exp->operands[0].operand, n->mat);
 
     // Validate second expression.
     exp = ae[1];
     ASSERT_EQ(exp->op, AL_EXP_MUL);
-    ASSERT_EQ(exp->operand_count, 1);
-    e = QueryGraph_GetEdgeByAlias(query_graph, "ev");
-    ASSERT_EQ(exp->operands[0].operand, e->mat);
+    ASSERT_EQ(exp->operand_count, 2);    
     ASSERT_TRUE(exp->edge != NULL);
+    n = QueryGraph_GetNodeByAlias(query_graph, "c");
+    ASSERT_EQ(exp->operands[0].operand, n->mat);
+    e = QueryGraph_GetEdgeByAlias(query_graph, "ev");
+    ASSERT_EQ(exp->operands[1].operand, e->mat);
 
     // Validate third expression.
     exp = ae[2];
     ASSERT_EQ(exp->op, AL_EXP_MUL);
-    ASSERT_EQ(exp->operand_count, 1);
-    e = QueryGraph_GetEdgeByAlias(query_graph, "ew");
-    ASSERT_EQ(exp->operands[0].operand, e->mat);
+    ASSERT_EQ(exp->operand_count, 2);
     ASSERT_TRUE(exp->edge == NULL);
+    n = QueryGraph_GetNodeByAlias(query_graph, "e");
+    ASSERT_EQ(exp->operands[0].operand, n->mat);
+    e = QueryGraph_GetEdgeByAlias(query_graph, "ew");
+    ASSERT_EQ(exp->operands[1].operand, e->mat);
 
     // Clean up.
     for(int i = 0; i < exp_count; i++) AlgebraicExpression_Free(ae[i]);
@@ -819,26 +837,34 @@ TEST_F(AlgebraicExpressionTest, OneIntermidateReturnEdge) {
     //==============================================================================
     exp_count = 0;
     query = query_return_last_edge;
-    ae = _build_arithmetic_expression(query, &exp_count);
+    ae = _build_algebraic_expression(query, &exp_count);
     ASSERT_EQ(exp_count, 2);
 
     // Validate first expression.
     exp = ae[0];
     ASSERT_EQ(exp->op, AL_EXP_MUL);
-    ASSERT_EQ(exp->operand_count, 2);
-    e = QueryGraph_GetEdgeByAlias(query_graph, "ev");
-    ASSERT_EQ(exp->operands[0].operand, e->mat);
-    e = QueryGraph_GetEdgeByAlias(query_graph, "ef");
-    ASSERT_EQ(exp->operands[1].operand, e->mat);
+    ASSERT_EQ(exp->operand_count, 5);
     ASSERT_TRUE(exp->edge == NULL);
+    n = QueryGraph_GetNodeByAlias(query_graph, "p");
+    ASSERT_EQ(exp->operands[4].operand, n->mat);
+    e = QueryGraph_GetEdgeByAlias(query_graph, "ef");
+    ASSERT_EQ(exp->operands[3].operand, e->mat);
+    n = QueryGraph_GetNodeByAlias(query_graph, "f");
+    ASSERT_EQ(exp->operands[2].operand, n->mat);
+    e = QueryGraph_GetEdgeByAlias(query_graph, "ev");
+    ASSERT_EQ(exp->operands[1].operand, e->mat);
+    n = QueryGraph_GetNodeByAlias(query_graph, "c");
+    ASSERT_EQ(exp->operands[0].operand, n->mat);
 
     // Validate second expression.
     exp = ae[1];
     ASSERT_EQ(exp->op, AL_EXP_MUL);
-    ASSERT_EQ(exp->operand_count, 1);
-    e = QueryGraph_GetEdgeByAlias(query_graph, "ew");
-    ASSERT_EQ(exp->operands[0].operand, e->mat);
+    ASSERT_EQ(exp->operand_count, 2);
     ASSERT_TRUE(exp->edge != NULL);
+    n = QueryGraph_GetNodeByAlias(query_graph, "e");
+    ASSERT_EQ(exp->operands[0].operand, n->mat);
+    e = QueryGraph_GetEdgeByAlias(query_graph, "ew");
+    ASSERT_EQ(exp->operands[1].operand, e->mat);
 
     // Clean up.
     for(int i = 0; i < exp_count; i++) AlgebraicExpression_Free(ae[i]);
@@ -848,12 +874,11 @@ TEST_F(AlgebraicExpressionTest, OneIntermidateReturnEdge) {
 TEST_F(AlgebraicExpressionTest, ExpressionExecute) {
     size_t exp_count = 0;
     const char *query = query_no_intermidate_return_nodes;
-    AlgebraicExpression **ae = _build_arithmetic_expression(query, &exp_count);
+    AlgebraicExpression **ae = _build_algebraic_expression(query, &exp_count);
 
-    double tic [2];
-    simple_tic(tic);
     GrB_Matrix res;
-    GrB_Matrix_new(&res, GrB_BOOL, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g));
+    GrB_Matrix_new(&res, GrB_BOOL, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g));    
+
     AlgebraicExpression *exp = ae[0];
     AlgebraicExpression_Execute(exp, res);
 
@@ -862,9 +887,6 @@ TEST_F(AlgebraicExpressionTest, ExpressionExecute) {
     assert(exp->src_node == src);
     assert(exp->dest_node == dest);
     
-    // double timing = simple_toc(tic);
-    // printf("AlgebraicExpression_Execute, time: %.6f sec\n", timing);
-    
     // Validate result matrix.
     GrB_Index ncols, nrows;
     GrB_Matrix_ncols(&ncols, res);
@@ -872,20 +894,12 @@ TEST_F(AlgebraicExpressionTest, ExpressionExecute) {
     assert(ncols == Graph_RequiredMatrixDim(g));
     assert(nrows == Graph_RequiredMatrixDim(g));
 
-    // Expected result.
-    // 0   0   0   0   0   0
-    // 0   0   0   0   0   0
-    // 1   0   1   1   1   0
-    // 0   1   0   1   1   1
-    // 0   0   0   0   0   0
-    // 0   0   0   0   0   0
-
-    GrB_Index expected_entries[16] = {2,0, 3,1, 2,2, 2,3, 3,3, 2,4, 3,4, 3,5};
+    GrB_Index expected_entries[6] = {2,1, 3,0, 3,1};
     GrB_Matrix expected = NULL;
 
     GrB_Matrix_dup(&expected, res);
     GrB_Matrix_clear(expected);
-    for(int i = 0; i < 16; i+=2) {
+    for(int i = 0; i < 6; i+=2) {
         GrB_Matrix_setElement_BOOL(expected, true, expected_entries[i], expected_entries[i+1]);
     }
 
