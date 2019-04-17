@@ -6,7 +6,6 @@
 
 #include "op_create.h"
 #include "../../util/arr.h"
-#include "../../parser/ast.h"
 #include "../../schema/schema.h"
 #include "../../arithmetic/arithmetic_expression.h"
 

@@ -8,7 +8,6 @@
 #define __OP_PROJECT_H
 
 #include "op.h"
-#include "../../parser/ast.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
 typedef struct {

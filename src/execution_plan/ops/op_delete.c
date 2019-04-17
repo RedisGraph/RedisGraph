@@ -5,27 +5,10 @@
 */
 
 #include "./op_delete.h"
+#include "../../arithmetic/arithmetic_expression.h"
 #include "../../util/arr.h"
 #include "../../util/qsort.h"
 #include <assert.h>
-
-void _LocateEntities(OpDelete *op, QueryGraph *qg, AST_DeleteNode *ast_delete_node) {
-    NEWAST *ast = op->ast;
-    for(int i = 0; i < Vector_Size(ast_delete_node->graphEntities); i++) {
-        char *entity_alias;
-        Vector_Get(ast_delete_node->graphEntities, i, &entity_alias);
-
-        // Current entity is a node.
-        int entityRecIdx = NEWAST_GetAliasID(ast, entity_alias);
-        Node *n = QueryGraph_GetNodeByAlias(qg, entity_alias);
-        if (n != NULL) {
-            op->nodes_to_delete[op->node_count++] = entityRecIdx;
-        } else {
-            // Current entity is an edge.
-            op->edges_to_delete[op->edge_count++] = entityRecIdx;
-        }
-    }
-}
 
 void _DeleteEntities(OpDelete *op) {
     /* Lock everything. */
@@ -51,20 +34,39 @@ void _DeleteEntities(OpDelete *op) {
     Graph_ReleaseLock(op->gc->g);
 }
 
-OpBase* NewDeleteOp(AST_DeleteNode *ast_delete_node, QueryGraph *qg, GraphContext *gc, ResultSet *result_set) {
+OpBase* NewDeleteOp(const cypher_astnode_t *delete_clause, ResultSet *result_set) {
     OpDelete *op_delete = malloc(sizeof(OpDelete));
 
-    op_delete->gc = gc;
-    op_delete->ast = NEWAST_GetFromTLS();
-    op_delete->node_count = 0;
-    op_delete->edge_count = 0;
-    op_delete->nodes_to_delete = malloc(sizeof(int) * Vector_Size(ast_delete_node->graphEntities));
-    op_delete->edges_to_delete = malloc(sizeof(int) * Vector_Size(ast_delete_node->graphEntities));
+    op_delete->gc = GraphContext_GetFromTLS();
+    NEWAST *ast = NEWAST_GetFromTLS();
+
+    uint delete_count = cypher_ast_delete_nexpressions(delete_clause);
+    uint *nodes_to_delete = array_new(sizeof(uint), delete_count);
+    uint *edges_to_delete = array_new(sizeof(uint), delete_count);
+
+    for (uint i = 0; i < delete_count; i ++) {
+        const cypher_astnode_t *ast_expr = cypher_ast_delete_get_expression(delete_clause, i);
+        assert(cypher_astnode_type(ast_expr) == CYPHER_AST_IDENTIFIER);
+        const char *alias = cypher_ast_identifier_get_name(ast_expr);
+        uint id = NEWAST_GetAliasID(ast, (char*)alias);
+        AR_ExpNode *entity = NEWAST_GetEntity(ast, id);
+        cypher_astnode_type_t type = cypher_astnode_type(entity->operand.variadic.ast_ref);
+        if (type == CYPHER_AST_NODE_PATTERN) {
+            nodes_to_delete = array_append(nodes_to_delete, id);
+        } else if (type == CYPHER_AST_REL_PATTERN) {
+            edges_to_delete = array_append(edges_to_delete, id);
+        } else {
+            assert(false);
+        }
+    }
+
+    op_delete->node_count = array_len(nodes_to_delete);
+    op_delete->edge_count = array_len(edges_to_delete);
+    op_delete->nodes_to_delete = nodes_to_delete;
+    op_delete->edges_to_delete = edges_to_delete;
     op_delete->deleted_nodes = array_new(Node, 32);
     op_delete->deleted_edges = array_new(Edge, 32);
     op_delete->result_set = result_set;
-    
-    _LocateEntities(op_delete, qg, ast_delete_node);
 
     // Set our Op operations
     OpBase_Init(&op_delete->op);

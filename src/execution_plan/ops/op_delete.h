@@ -10,7 +10,6 @@
 #include "op.h"
 #include "../../graph/entities/node.h"
 #include "../../resultset/resultset.h"
-#include "../../parser/ast.h"
 #include "../../util/triemap/triemap.h"
 /* Deletes entities specified within the DELETE clause. */
 
@@ -18,18 +17,17 @@
 typedef struct {
     OpBase op;
     GraphContext *gc;
-    NEWAST *ast;
-    size_t node_count;
-    size_t edge_count;
-    int *nodes_to_delete;
-    int *edges_to_delete;
+    uint node_count;
+    uint edge_count;
+    uint *nodes_to_delete;
+    uint *edges_to_delete;
     Node *deleted_nodes;    // Array of nodes to be removed.    
     Edge *deleted_edges;    // Array of edges to be removed.
 
     ResultSet *result_set;
 } OpDelete;
 
-OpBase* NewDeleteOp(AST_DeleteNode *ast_delete_node, QueryGraph *qg, GraphContext *gc, ResultSet *result_set);
+OpBase* NewDeleteOp(const cypher_astnode_t *delete_clause, ResultSet *result_set);
 Record OpDeleteConsume(OpBase *opBase);
 OpResult OpDeleteReset(OpBase *ctx);
 void OpDeleteFree(OpBase *ctx);

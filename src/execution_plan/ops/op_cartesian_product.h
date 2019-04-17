@@ -8,7 +8,6 @@
 #define __OP_CARTESIANPRODUCT_H__
 
 #include "op.h"
-#include "../../parser/ast.h"
 
 /* Cartesian product AKA Join. 
  * Currently this operation is a NOP 

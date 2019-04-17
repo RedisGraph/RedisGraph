@@ -472,7 +472,7 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST *old
 
     const cypher_astnode_t *delete_clause = NEWAST_GetClause(ast->root, CYPHER_AST_DELETE);
     if(delete_clause) {
-        OpBase *opDelete = NewDeleteOp(old_ast->deleteNode, q, gc, execution_plan->result_set);
+        OpBase *opDelete = NewDeleteOp(delete_clause, execution_plan->result_set);
         Vector_Push(ops, opDelete);
     }
 
