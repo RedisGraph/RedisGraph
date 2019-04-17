@@ -251,6 +251,41 @@ void _RdbSaveNodes(RedisModuleIO *rdb, const Graph *g, Schema *s) {
     _Schema_FreeAttributeMapping(node_attribute_mapping, node_attribute_mapping_len);
 }
 
+void _RdbSaveEdge(RedisModuleIO *rdb, const Graph *g, const Edge *e,
+                  int r, char** attr_map) {
+    
+     /* Format:
+     * edge
+     * {
+     *  edge ID, currently not in use.
+     *  source node ID
+     *  destination node ID
+     *  relation type
+     * }
+     * edge properties */
+
+    EdgeID edgeID = ENTITY_GET_ID(e);
+    NodeID src = Edge_GetSrcNodeID(e);
+    NodeID dest = Edge_GetDestNodeID(e);
+
+    // Edge ID.
+    RedisModule_SaveUnsigned(rdb, edgeID);
+
+    // Source node ID.
+    src = _updatedID(g->nodes->deletedIdx, src);
+    RedisModule_SaveUnsigned(rdb, src);
+    
+    // Destination node ID.
+    dest = _updatedID(g->nodes->deletedIdx, dest);
+    RedisModule_SaveUnsigned(rdb, dest);
+    
+    // Relation type.
+    RedisModule_SaveUnsigned(rdb, r);
+    
+    // Edge properties.
+    _RdbSaveEntity(rdb, e->entity, attr_map);
+}
+
 void _RdbSaveEdges(RedisModuleIO *rdb, const Graph *g, Schema *s) {
     /* Format:
      * #edges (N)
@@ -270,16 +305,7 @@ void _RdbSaveEdges(RedisModuleIO *rdb, const Graph *g, Schema *s) {
     QSORT(NodeID, g->nodes->deletedIdx, array_len(g->nodes->deletedIdx), ENTITY_ID_ISLT);    
 
     // #edges (N)
-    // This value is calculated by counting the number of edges in each relation matrix,
-    // as the Graph's edge count can be invalidated when an existing edge is overwritten.
-    uint64_t edge_count = 0;
-    for (int i = 0; i < array_len(g->relations); i ++) {
-        GrB_Index edges_in_mat;
-        GrB_Matrix M = g->relations[i];
-        GrB_Matrix_nvals(&edges_in_mat, M);
-        edge_count += edges_in_mat;
-    }
-    RedisModule_SaveUnsigned(rdb, edge_count);
+    RedisModule_SaveUnsigned(rdb, Graph_EdgeCount(g));
 
     for(int r = 0; r < array_len(g->_relations_map); r++) {
         Edge e;
@@ -293,22 +319,25 @@ void _RdbSaveEdges(RedisModuleIO *rdb, const Graph *g, Schema *s) {
         while(true) {
             bool depleted = false;
             GxB_MatrixTupleIter_next(it, &dest, &src, &depleted);
+            e.srcNodeID = src;
+            e.destNodeID = dest;
+
             if(depleted) break;
 
             GrB_Matrix_extractElement_UINT64(&edgeID, M, dest, src);
-            // Edge ID.
-            RedisModule_SaveUnsigned(rdb, edgeID);
-            // Source node ID.
-            src = _updatedID(g->nodes->deletedIdx, src);
-            RedisModule_SaveUnsigned(rdb, src);
-            // Destination node ID.
-            dest = _updatedID(g->nodes->deletedIdx, dest);
-            RedisModule_SaveUnsigned(rdb, dest);
-            // Relation type.
-            RedisModule_SaveUnsigned(rdb, r);
-            // Edge properties.
-            Graph_GetEdge(g, edgeID, &e);
-            _RdbSaveEntity(rdb, e.entity, edge_attribute_mapping);
+            if(SINGLE_EDGE(edgeID)) {
+                edgeID = SINGLE_EDGE_ID(edgeID);
+                Graph_GetEdge(g, edgeID, &e);
+                _RdbSaveEdge(rdb, g, &e, r, edge_attribute_mapping);
+            } else {
+                EdgeID *edgeIDs = (EdgeID*)edgeID;
+                int edgeCount = array_len(edgeIDs);
+                for(int i = 0; i < edgeCount; i++) {
+                    edgeID = edgeIDs[i];
+                    Graph_GetEdge(g, edgeID, &e);
+                    _RdbSaveEdge(rdb, g, &e, r, edge_attribute_mapping);
+                }
+            }
         }
 
         GxB_MatrixTupleIter_free(it);

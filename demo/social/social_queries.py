@@ -8,7 +8,7 @@ graph_entities = QueryInfo(
     query="""MATCH (e) RETURN e.name, LABELS(e) as label ORDER BY label, e.name""",
     description='Returns each node in the graph, specifing node label.',
     max_run_time_ms=0.2,
-    expected_result=[['Amsterdam','country'],
+    expected_result=[['Netherlands','country'],
                      ['Andora','country'],
                      ['Canada','country'],
                      ['China','country'],
@@ -42,7 +42,7 @@ relation_type_counts = QueryInfo(
     description='Returns each relation type in the graph and its count.',
     max_run_time_ms=0.4,
     expected_result=[['friend', 13],
-                     ['visited', 35]]
+                     ['visited', 43]]
 )
 
 subset_of_people = QueryInfo(
@@ -92,11 +92,11 @@ friends_of_friends_single_and_over_30_query = QueryInfo(
     expected_result=[['Noam Nativ', 34, 'male', 'single']]
 )
 
-friends_of_friends_visited_amsterdam_and_single_query = QueryInfo(
+friends_of_friends_visited_netherlands_and_single_query = QueryInfo(
     query="""MATCH (ME:person {name:"Roi Lipman"})-[:friend]->(:person)-[:friend]->
-             (fof:person {status:"single"})-[:visited]->(:country {name:"Amsterdam"})
+             (fof:person {status:"single"})-[:visited]->(:country {name:"Netherlands"})
              RETURN fof.name""",
-    description='Friends of friends who visited Amsterdam and are single?',
+    description='Friends of friends who visited Netherlands and are single?',
     max_run_time_ms=0.3,
     expected_result=[['Noam Nativ'],
                      ['Gal Derriere']]
@@ -198,7 +198,8 @@ visit_purpose_of_each_country_i_visited_query = QueryInfo(
     description='For each country i have been to, what was the visit purpose?',
     max_run_time_ms=0.2,
     expected_result=[['Japan', 'pleasure'],
-                     ['Prague', 'both'],
+                     ['Prague', 'pleasure'],
+                     ['Prague', 'business'],
                      ['USA', 'business']]
 )
 
@@ -207,12 +208,20 @@ who_was_on_business_trip_query = QueryInfo(
              RETURN p.name, v.purpose, toUpper(c.name)""",
     description='Find out who went on a business trip?',
     max_run_time_ms=0.3,
-    expected_result=[['Ori Laslo', 'business', 'CHINA'],
+    expected_result=[['Boaz Arad', 'business','NETHERLANDS'],
+                     ['Boaz Arad', 'business','USA'],
+                     ['Ori Laslo', 'business', 'CHINA'],
                      ['Ori Laslo', 'business', 'USA'],
-                     ['Roi Lipman', 'business', 'USA'],
+                     ['Jane Chernomorin', 'business', 'USA'],
+                     ['Alon Fital', 'business', 'USA'],
+                     ['Alon Fital', 'business', 'PRAGUE'],
                      ['Mor Yesharim', 'business', 'GERMANY'],
-                     ['Tal Doron', 'business', 'JAPAN'],
-                     ['Gal Derriere', 'business', 'AMSTERDAM']]
+                     ['Gal Derriere', 'business', 'NETHERLANDS'],
+                     ['Lucy Yanfital', 'business', 'USA'],
+                     ['Roi Lipman', 'business', 'USA'],
+                     ['Roi Lipman', 'business', 'PRAGUE'],
+                     ['Tal Doron', 'business', 'USA'],
+                     ['Tal Doron', 'business', 'JAPAN']]
 )
 
 number_of_vacations_per_person_query = QueryInfo(
@@ -225,10 +234,9 @@ number_of_vacations_per_person_query = QueryInfo(
     expected_result=[['Noam Nativ', 3],
                      ['Shelly Laslo Rooz', 3],
                      ['Omri Traub', 3],
-                     ['Lucy Yanfital', 2],
-                     ['Jane Chernomorin', 2],
-                     ['Mor Yesharim', 2],
-                     ['Valerie Abigail Arad', 2]]
+                     ['Lucy Yanfital', 3],
+                     ['Jane Chernomorin', 3],
+                     ['Alon Fital', 3]]
 )
 
 all_reachable_friends_query = QueryInfo(
@@ -258,19 +266,19 @@ all_reachable_countries_query = QueryInfo(
              ORDER BY NumPathsToCountry DESC""",
     description='Find all reachable countries',
     max_run_time_ms=0.6,
-    expected_result=[['USA', 9],
-                     ['Amsterdam', 5],
+    expected_result=[['USA', 14],
+                     ['Netherlands', 6],
+                     ['Prague', 5],
                      ['Greece', 4],
-                     ['Prague', 3],
-                     ['Germany', 2],
-                     ['Andora', 2],
-                     ['Japan', 2],
                      ['Canada', 2],
                      ['China', 2],
-                     ['Kazakhstan', 1],
-                     ['Thailand', 1],
+                     ['Andora', 2],
+                     ['Germany', 2],
+                     ['Japan', 2],
+                     ['Russia', 1],
                      ['Italy', 1],
-                     ['Russia', 1]]
+                     ['Thailand', 1],
+                     ['Kazakhstan', 1]]
 )
 
 reachable_countries_or_people_query = QueryInfo(
@@ -286,6 +294,7 @@ reachable_countries_or_people_query = QueryInfo(
                      ["Roi Lipman", "friend", "Omri Traub"],
                      ["Roi Lipman", "friend", "Ori Laslo"],
                      ["Roi Lipman", "visited", "Prague"],
+                     ["Roi Lipman", "visited", "Prague"],
                      ["Roi Lipman", "friend", "Tal Doron"],
                      ["Roi Lipman", "visited", "USA"]]
 )
@@ -296,13 +305,13 @@ all_reachable_countries_or_people_query = QueryInfo(
              ORDER BY NumPathsToEntity DESC""",
     description='Every reachable person or country from source node',
     max_run_time_ms=0.4,
-    expected_result=[['USA', 9],
-                     ['Amsterdam', 5],
+    expected_result=[['USA', 14],
+                     ['Netherlands', 6],
+                     ['Prague', 5],
                      ['Greece', 4],
-                     ['Prague', 3],
-                     ['Germany', 2],
-                     ['Japan', 2],
                      ['Andora', 2],
+                     ['Japan', 2],
+                     ['Germany', 2],
                      ['Canada', 2],
                      ['China', 2],
                      ['Ailon Velger', 1],
@@ -330,13 +339,13 @@ all_reachable_entities_query = QueryInfo(
              ORDER BY NumPathsToEntity DESC""",
     description='Find all reachable entities',
     max_run_time_ms=0.4,
-    expected_result=[['USA', 9],
-                     ['Amsterdam', 5],
+    expected_result=[['USA', 14],
+                     ['Netherlands', 6],
+                     ['Prague', 5],
                      ['Greece', 4],
-                     ['Prague', 3],
-                     ['Germany', 2],
-                     ['Japan', 2],
                      ['Andora', 2],
+                     ['Japan', 2],
+                     ['Germany', 2],
                      ['Canada', 2],
                      ['China', 2],
                      ['Ailon Velger', 1],
@@ -398,7 +407,7 @@ queries_info = [
     my_friends_query,
     friends_of_friends_query,
     friends_of_friends_single_and_over_30_query,
-    friends_of_friends_visited_amsterdam_and_single_query,
+    friends_of_friends_visited_netherlands_and_single_query,
     friends_visited_same_places_as_me_query,
     friends_older_than_me_query,
     friends_age_difference_query,

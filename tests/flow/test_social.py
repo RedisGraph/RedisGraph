@@ -149,18 +149,18 @@ class SocialFlowTest(FlowTestsBase):
         # assert reversed pattern.
         self.assert_reversed_pattern(q, actual_result)
 
-    def test06_friends_of_friends_visited_amsterdam_and_single(self):
+    def test06_friends_of_friends_visited_netherlands_and_single(self):
         global redis_graph
-        q = queries.friends_of_friends_visited_amsterdam_and_single_query.query
+        q = queries.friends_of_friends_visited_netherlands_and_single_query.query
         actual_result = redis_graph.query(q)
 
         # assert result set
         self._assert_only_expected_results_are_in_actual_results(
             actual_result,
-            queries.friends_of_friends_visited_amsterdam_and_single_query)
+            queries.friends_of_friends_visited_netherlands_and_single_query)
 
         # assert query run time
-        self._assert_run_time(actual_result, queries.friends_of_friends_visited_amsterdam_and_single_query)
+        self._assert_run_time(actual_result, queries.friends_of_friends_visited_netherlands_and_single_query)
 
         # assert reversed pattern.
         self.assert_reversed_pattern(q, actual_result)
