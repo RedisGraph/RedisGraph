@@ -211,6 +211,7 @@ void ExecutionPlan_RemoveOp(ExecutionPlan *plan, OpBase *op) {
 
     // Clear op.
     op->parent = NULL;
+    free(op->children);
     op->children = NULL;
     op->childCount = 0;
 }

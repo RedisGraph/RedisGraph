@@ -119,7 +119,14 @@ int AST_LinkEntity_LabelCount(const AST_LinkEntity* edge) {
 }
 
 void Free_AST_GraphEntity(AST_GraphEntity *graphEntity) {
-	if(graphEntity->properties != NULL) Vector_Free(graphEntity->properties);
+	if(graphEntity->properties != NULL) {
+		SIValue *val;
+		while(Vector_Pop(graphEntity->properties, &val)) {
+			SIValue_Free(val);
+			free(val); // SIValues in property map literals are heap-allocated
+		}
+		Vector_Free(graphEntity->properties);
+	}
 	if(graphEntity->alias) free(graphEntity->alias);
 	if(graphEntity->label) free(graphEntity->label);
 
