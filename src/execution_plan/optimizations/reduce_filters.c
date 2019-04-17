@@ -39,6 +39,8 @@ void _reduceFilter(OpBase *op) {
         OpBase *intermidateChild = child->parent;
         while(intermidateChild != op) {
             parent = intermidateChild->parent;
+            // Remove the filter tree pointer from the intermediate op, as it should not be freed
+            ((Filter*)intermidateChild)->filterTree = NULL;
             OpBase_Free(intermidateChild);
             intermidateChild = parent;
         }

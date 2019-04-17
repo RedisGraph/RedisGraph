@@ -113,7 +113,7 @@ void _BuildQueryGraphAddNode(const GraphContext *gc,
             n->mat = Graph_GetLabel(g, s->id);
         } else {
             /* Use a zeroed matrix.
-             * TODO: either use a static zero matrix, or free this one. */
+             * TODO: memory leak - either use a static zero matrix, or free this one. */
             GrB_Matrix_new(&n->mat, GrB_BOOL, Graph_NodeCount(g), Graph_NodeCount(g));
         }
     }

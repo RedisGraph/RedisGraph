@@ -548,6 +548,8 @@ arithmetic_expression(A) ::= value(B). {
 // a.name
 arithmetic_expression(A) ::= variable(B). {
 	A = New_AST_AR_EXP_VariableOperandNode(B->alias, B->property);
+	free(B->alias);
+	free(B->property);
 	free(B);
 }
 
@@ -633,7 +635,7 @@ relation(A) ::= NE. { A = NE; }
 // raw value tokens - int / string / float
 value(A) ::= INTEGER(B). {  A = SI_LongVal(B.longval); }
 value(A) ::= DASH INTEGER(B). {  A = SI_LongVal(-B.longval); }
-value(A) ::= STRING(B). {  A = SI_ConstStringVal(B.strval); }
+value(A) ::= STRING(B). {  A = SI_ConstStringVal(B.strval); } // TODO this is probably a leak
 value(A) ::= FLOAT(B). {  A = SI_DoubleVal(B.dval); }
 value(A) ::= DASH FLOAT(B). {  A = SI_DoubleVal(-B.dval); }
 value(A) ::= TRUE. { A = SI_BoolVal(1); }

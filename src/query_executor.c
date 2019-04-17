@@ -190,9 +190,10 @@ void ExpandCollapsedNodes(AST *ast) {
                  * label doesn't have any properties.
                  * Create a fake return element. */
                 expanded_exp = New_AST_AR_EXP_ConstOperandNode(SI_ConstStringVal(""));
-                // Incase an alias is given use it, otherwise use the variable name.
-                if(ret_elem->alias) retElem = New_AST_ReturnElementNode(expanded_exp, ret_elem->alias);
-                else retElem = New_AST_ReturnElementNode(expanded_exp, exp->operand.variadic.alias);
+                // Use the return entity's alias if provided, otherwise use the variable's
+                // name (which is never null).
+                char *ret_alias = (ret_elem->alias) ? strdup(ret_elem->alias) : strdup(alias);
+                retElem = New_AST_ReturnElementNode(expanded_exp, ret_alias);
                 expandReturnElements = array_append(expandReturnElements, retElem);
             } else {
                 TrieMapIterator *it = TrieMap_Iterate(schema->attributes, "", 0);
@@ -203,7 +204,8 @@ void ExpandCollapsedNodes(AST *ast) {
 
                     /* Create a new return element foreach property. */
                     expanded_exp = New_AST_AR_EXP_VariableOperandNode(collapsed_entity->alias, buffer);
-                    retElem = New_AST_ReturnElementNode(expanded_exp, ret_elem->alias);
+                    char *ret_alias = (ret_elem->alias) ? strdup(ret_elem->alias) : NULL;
+                    retElem = New_AST_ReturnElementNode(expanded_exp, ret_alias);
                     expandReturnElements = array_append(expandReturnElements, retElem);
                 }
                 TrieMapIterator_Free(it);
@@ -357,10 +359,13 @@ static void _AST_reverse_match_patterns(AST *ast) {
             }
         }
         Vector_Push(patterns, v);
+        Vector_Clear(pattern); // We're reusing the original entities, so don't free them.
     }
 
-    // Free old MATCH clause.
-    Free_AST_MatchNode(ast->matchNode);
+	Vector_Free(ast->matchNode->_mergedPatterns);
+	Vector_Free(ast->matchNode->patterns);
+	free(ast->matchNode);
+
     // Update AST MATCH clause.
     ast->matchNode = New_AST_MatchNode(patterns);
 }
