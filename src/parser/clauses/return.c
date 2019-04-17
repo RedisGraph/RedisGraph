@@ -11,8 +11,8 @@
 AST_ReturnElementNode* New_AST_ReturnElementNode(AST_ArithmeticExpressionNode *exp, char* alias) {
 	AST_ReturnElementNode *returnElementNode = (AST_ReturnElementNode*)malloc(sizeof(AST_ReturnElementNode));
 	returnElementNode->exp = exp;
-	returnElementNode->alias = alias ? strdup(alias) : NULL;
-    returnElementNode->asterisks = 0;
+	returnElementNode->alias = alias;
+	returnElementNode->asterisks = 0;
 	
 	return returnElementNode;
 }
