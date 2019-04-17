@@ -7,7 +7,6 @@
 #include <assert.h>
 #include "../value.h"
 #include "filter_tree.h"
-#include "../parser/grammar.h"
 #include "../parser/newast.h"
 #include "../query_executor.h"
 #include "../util/vector.h"
@@ -86,13 +85,13 @@ void _FilterTree_SubTrees(const FT_FilterNode *root, Vector *sub_trees) {
             break;
         case FT_N_COND:
             switch(root->cond.op) {
-                case AND:
+                case OP_AND:
                     /* Break AND down to its components. */
                     _FilterTree_SubTrees(root->cond.left, sub_trees);
                     _FilterTree_SubTrees(root->cond.right, sub_trees);
                     free((FT_FilterNode *)root);
                     break;
-                case OR:
+                case OP_OR:
                     /* OR tree must be return as is. */
                     Vector_Push(sub_trees, root);
                     break;
@@ -143,6 +142,7 @@ void FT_Append(FT_FilterNode **root_ptr, FT_FilterNode *child) {
         FT_FilterNode *new_cond = CreateCondFilterNode(OP_AND);
         AppendLeftChild(new_cond, root->cond.right);
         AppendRightChild(new_cond, child);
+        *root_ptr = new_cond;
     }
 }
 

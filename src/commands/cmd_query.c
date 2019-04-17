@@ -14,62 +14,59 @@
 #include "../util/rmalloc.h"
 #include "../../deps/libcypher-parser/lib/src/cypher-parser.h"
 
-extern pthread_key_t _tlsASTKey;  // Thread local storage AST key.
 extern pthread_key_t _tlsNEWASTKey;  // Thread local storage NEWAST key.
 
-void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST_IndexNode *indexNode) {
+// void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST_IndexNode *indexNode) {
     /* Set up nested array response for index creation and deletion,
      * Following the response struture of other queries:
      * First element is an empty result-set followed by statistics.
      * We'll enqueue one string response to indicate the operation's success,
      * and the query runtime will be appended after this call returns. */
-    RedisModule_ReplyWithArray(ctx, 2); // Two Array
-    RedisModule_ReplyWithArray(ctx, 0); // Empty result-set
-    RedisModule_ReplyWithArray(ctx, 2); // Statistics.
+    // RedisModule_ReplyWithArray(ctx, 2); // Two Array
+    // RedisModule_ReplyWithArray(ctx, 0); // Empty result-set
+    // RedisModule_ReplyWithArray(ctx, 2); // Statistics.
 
-  switch(indexNode->operation) {
-    case CREATE_INDEX:
-      if (GraphContext_AddIndex(gc, indexNode->label, indexNode->property) != INDEX_OK) {
-        // Index creation may have failed if the label or property was invalid, or the index already exists.
-        RedisModule_ReplyWithSimpleString(ctx, "(no changes, no records)");
-        break;
-      }
-      RedisModule_ReplyWithSimpleString(ctx, "Indices added: 1");
-      break;
-    case DROP_INDEX:
-      if (GraphContext_DeleteIndex(gc, indexNode->label, indexNode->property) == INDEX_OK) {
-        RedisModule_ReplyWithSimpleString(ctx, "Indices removed: 1");
-      } else {
-        char *reply;
-        asprintf(&reply, "ERR Unable to drop index on :%s(%s): no such index.", indexNode->label, indexNode->property);
-        RedisModule_ReplyWithError(ctx, reply);
-        free(reply);
-      }
-      break;
-    default:
-      assert(0);
-  }
-}
+  // switch(indexNode->operation) {
+    // case CREATE_INDEX:
+      // if (GraphContext_AddIndex(gc, indexNode->label, indexNode->property) != INDEX_OK) {
+        // // Index creation may have failed if the label or property was invalid, or the index already exists.
+        // RedisModule_ReplyWithSimpleString(ctx, "(no changes, no records)");
+        // break;
+      // }
+      // RedisModule_ReplyWithSimpleString(ctx, "Indices added: 1");
+      // break;
+    // case DROP_INDEX:
+      // if (GraphContext_DeleteIndex(gc, indexNode->label, indexNode->property) == INDEX_OK) {
+        // RedisModule_ReplyWithSimpleString(ctx, "Indices removed: 1");
+      // } else {
+        // char *reply;
+        // asprintf(&reply, "ERR Unable to drop index on :%s(%s): no such index.", indexNode->label, indexNode->property);
+        // RedisModule_ReplyWithError(ctx, reply);
+        // free(reply);
+      // }
+      // break;
+    // default:
+      // assert(0);
+  // }
+// }
 
 void _MGraph_Query(void *args) {
     CommandCtx *qctx = (CommandCtx*)args;
     RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(qctx);
     ResultSet* resultSet = NULL;
-    AST **ast = qctx->ast;
-    NEWAST *new_ast = qctx->new_ast;
-    bool readonly = NEWAST_ReadOnly(new_ast->root);
+    NEWAST *ast = qctx->ast;
+    bool readonly = NEWAST_ReadOnly(ast->root);
     bool lockAcquired = false;
 
-    // Set thread-local ASTs (TODO tmp)
-    pthread_setspecific(_tlsASTKey, ast);
-    pthread_setspecific(_tlsNEWASTKey, new_ast);
+    // Set thread-local AST
+    pthread_setspecific(_tlsNEWASTKey, ast);
 
     // Try to access the GraphContext
     CommandCtx_ThreadSafeContextLock(qctx);
     GraphContext *gc = GraphContext_Retrieve(ctx, qctx->graphName);
     if(!gc) {
-        if (!NEWAST_ContainsClause(new_ast->root, CYPHER_AST_CREATE) &&
-            !NEWAST_ContainsClause(new_ast->root, CYPHER_AST_MERGE)) {
+        if (!NEWAST_ContainsClause(ast->root, CYPHER_AST_CREATE) &&
+            !NEWAST_ContainsClause(ast->root, CYPHER_AST_MERGE)) {
             CommandCtx_ThreadSafeContextUnlock(qctx);
             RedisModule_ReplyWithError(ctx, "key doesn't contains a graph object.");
             goto cleanup;
@@ -87,23 +84,24 @@ void _MGraph_Query(void *args) {
     CommandCtx_ThreadSafeContextUnlock(qctx);
 
     // Perform query validations
-    if (AST_PerformValidations(ctx, new_ast->root) != AST_VALID) goto cleanup;
+    if (AST_PerformValidations(ctx, ast) != AST_VALID) goto cleanup;
 
-    ModifyAST(gc, ast, new_ast);
+    ModifyAST(gc, ast);
 
     // Acquire the appropriate lock.
     if(readonly) Graph_AcquireReadLock(gc->g);
     else Graph_WriterEnter(gc->g);  // Single writer.
     lockAcquired = true;
 
-    if (ast[0]->indexNode) { // index operation
-        _index_operation(ctx, gc, ast[0]->indexNode);
-    } else {
-        ExecutionPlan *plan = NewExecutionPlan(ctx, gc, ast, false);
+    // TODO index ops
+    // if (ast[0]->indexNode) { // index operation
+        // _index_operation(ctx, gc, ast[0]->indexNode);
+    // } else {
+        ExecutionPlan *plan = NewExecutionPlan(ctx, gc, false);
         resultSet = ExecutionPlan_Execute(plan);
         ExecutionPlanFree(plan);
         ResultSet_Replay(resultSet);    // Send result-set back to client.
-    }
+    // }
 
     /* Report execution timing. */
     char* strElapsed;
@@ -122,7 +120,7 @@ cleanup:
 
     ResultSet_Free(resultSet);
     CommandCtx_Free(qctx);
-    // cypher_parse_result_free(new_ast);
+    // cypher_parse_result_free(ast);
 }
 
 /* Queries graph
@@ -151,16 +149,8 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
         return REDISMODULE_OK;
     }
 
-    AST **ast = ParseQuery(query, strlen(query), &errMsg);
-    // if (!ast) {
-    //     RedisModule_Log(ctx, "debug", "Error parsing query: %s", errMsg);
-    //     RedisModule_ReplyWithError(ctx, errMsg);
-    //     free(errMsg);
-    //     return REDISMODULE_OK;
-    // }
-
-    NEWAST *new_ast = NEWAST_Build(parse_result);
-    bool readonly = NEWAST_ReadOnly(new_ast->root);
+    NEWAST *ast = NEWAST_Build(parse_result);
+    bool readonly = NEWAST_ReadOnly(ast->root);
 
     /* Determin query execution context
      * queries issued within a LUA script or multi exec block must
@@ -169,14 +159,14 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     int flags = RedisModule_GetContextFlags(ctx);
     if (flags & (REDISMODULE_CTX_FLAGS_MULTI | REDISMODULE_CTX_FLAGS_LUA)) {
       // Run query on Redis main thread.
-      context = CommandCtx_New(ctx, NULL, ast, new_ast, argv[1], argv, argc);
+      context = CommandCtx_New(ctx, NULL, ast, argv[1], argv, argc);
       context->tic[0] = tic[0];
       context->tic[1] = tic[1];
       _MGraph_Query(context);
     } else {
       // Run query on a dedicated thread.
       RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
-      context = CommandCtx_New(NULL, bc, ast, new_ast, argv[1], argv, argc);
+      context = CommandCtx_New(NULL, bc, ast, argv[1], argv, argc);
       context->tic[0] = tic[0];
       context->tic[1] = tic[1];
       thpool_add_work(_thpool, _MGraph_Query, context);

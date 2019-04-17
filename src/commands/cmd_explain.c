@@ -9,7 +9,6 @@
 #include "../query_executor.h"
 #include "../execution_plan/execution_plan.h"
 
-extern pthread_key_t _tlsASTKey;  // Thread local storage AST key.
 extern pthread_key_t _tlsNEWASTKey;  // Thread local storage NEWAST key.
 
 /* Builds an execution plan but does not execute it
@@ -32,21 +31,12 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
     /* Parse query, get AST. */
     char *errMsg = NULL;
-    AST **ast = NULL;
     GraphContext *gc = NULL;
     ExecutionPlan *plan = NULL;
 
-    ast = ParseQuery(query, strlen(query), &errMsg);
-    if (!ast) {
-        RedisModule_Log(ctx, "debug", "Error parsing query: %s", errMsg);
-        RedisModule_ReplyWithError(ctx, errMsg);
-        free(errMsg);
-        return REDISMODULE_OK;
-    }
     cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
     NEWAST *new_ast = NEWAST_Build(parse_result);
 
-    pthread_setspecific(_tlsASTKey, ast);
     pthread_setspecific(_tlsNEWASTKey, new_ast);
 
     // Retrieve the GraphContext and acquire a read lock.
@@ -57,18 +47,19 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     }
 
     // Perform query validations before and after ModifyAST
-    if(AST_PerformValidations(ctx, new_ast->root) != AST_VALID) return REDISMODULE_OK;
+    if(AST_PerformValidations(ctx, new_ast) != AST_VALID) return REDISMODULE_OK;
 
-    ModifyAST(gc, ast, new_ast);
+    ModifyAST(gc, new_ast);
 
-    if (ast[0]->indexNode != NULL) { // index operation
-        char *reply = (ast[0]->indexNode->operation == CREATE_INDEX) ? "Create Index" : "Drop Index";
-        RedisModule_ReplyWithSimpleString(ctx, reply);
-        goto cleanup;
-    }
+    // TODO index ops
+    // if (ast[0]->indexNode != NULL) { // index operation
+        // char *reply = (ast[0]->indexNode->operation == CREATE_INDEX) ? "Create Index" : "Drop Index";
+        // RedisModule_ReplyWithSimpleString(ctx, reply);
+        // goto cleanup;
+    // }
 
     Graph_AcquireReadLock(gc->g);
-    plan = NewExecutionPlan(ctx, gc, ast, true);
+    plan = NewExecutionPlan(ctx, gc, true);
     char* strPlan = ExecutionPlanPrint(plan);
     RedisModule_ReplyWithStringBuffer(ctx, strPlan, strlen(strPlan));
 
@@ -77,7 +68,6 @@ cleanup:
         Graph_ReleaseLock(gc->g);
         ExecutionPlanFree(plan);
     }
-    if(ast) AST_Free(ast);
     if(parse_result) cypher_parse_result_free(parse_result);
     return REDISMODULE_OK;
 }

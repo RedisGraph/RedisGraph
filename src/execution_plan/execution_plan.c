@@ -135,18 +135,19 @@ Vector* _ExecutionPlan_Locate_References(OpBase *root, OpBase **op, Vector *refe
     return seen;
 }
 
-void _Count_Graph_Entities(const Vector *entities, size_t *node_count, size_t *edge_count) {
-    for(int i = 0; i < Vector_Size(entities); i++) {
-        AST_GraphEntity *entity;
-        Vector_Get(entities, i, &entity);
+// TODO
+// void _Count_Graph_Entities(const Vector *entities, size_t *node_count, size_t *edge_count) {
+    // for(int i = 0; i < Vector_Size(entities); i++) {
+        // AST_GraphEntity *entity;
+        // Vector_Get(entities, i, &entity);
 
-        if(entity->t == N_ENTITY) {
-            (*node_count)++;
-        } else if(entity->t == N_LINK) {
-            (*edge_count)++;
-        }
-    }
-}
+        // if(entity->t == N_ENTITY) {
+            // (*node_count)++;
+        // } else if(entity->t == N_LINK) {
+            // (*edge_count)++;
+        // }
+    // }
+// }
 
 // TODO is this necessary?
 // void _Determine_Graph_Size(const AST *ast, size_t *node_count, size_t *edge_count) {
@@ -248,7 +249,8 @@ OpBase* ExecutionPlan_Locate_References(OpBase *root, Vector *references) {
     return op;
 }
 
-ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST *old_ast, ResultSet *result_set) {
+ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, ResultSet *result_set) {
+    GraphContext *gc = GraphContext_GetFromTLS();
     Graph *g = gc->g;
     ExecutionPlan *execution_plan = (ExecutionPlan*)calloc(1, sizeof(ExecutionPlan));    
     execution_plan->result_set = result_set;
@@ -445,7 +447,7 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST *old
     bool aggregate = false;
 
     // TODO with clauses, separate handling for their distinct/limit/etc
-    const cypher_astnode_t *with_clause = NULL;
+    const cypher_astnode_t *with_clause = NEWAST_GetClause(ast->root, CYPHER_AST_WITH);
 
     if(with_clause) {
         assert(false);
@@ -540,7 +542,9 @@ static void _ExecutionPlan_StreamTaps(OpBase *root, OpBase ***taps) {
     }
 }
 
-static ExecutionPlan *_ExecutionPlan_Connect(ExecutionPlan *a, ExecutionPlan *b, AST *ast) {
+static ExecutionPlan *_ExecutionPlan_Connect(ExecutionPlan *a, ExecutionPlan *b) {
+    assert(false);
+    NEWAST *ast = NEWAST_GetFromTLS();
     assert(a &&
            b &&
            (a->root->type == OPType_PROJECT || a->root->type == OPType_AGGREGATE));
@@ -563,7 +567,7 @@ static ExecutionPlan *_ExecutionPlan_Connect(ExecutionPlan *a, ExecutionPlan *b,
             tap = taps[i];
             if(tap->type & OP_SCAN) {
                 // Connect via cartesian product
-                OpBase *cartesianProduct = NewCartesianProductOp(AST_AliasCount(ast));
+                OpBase *cartesianProduct = NewCartesianProductOp(NEWAST_AliasCount(ast));
                 ExecutionPlan_PushBelow(tap, cartesianProduct);
                 _OpBase_AddChild(cartesianProduct, a->root);
                 break;
@@ -582,8 +586,8 @@ static ExecutionPlan *_ExecutionPlan_Connect(ExecutionPlan *a, ExecutionPlan *b,
     return b;
 }
 
-ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST **ast, bool explain) {
-    NEWAST *new_ast = NEWAST_GetFromTLS();
+ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, bool explain) {
+    NEWAST *ast = NEWAST_GetFromTLS();
 
     ExecutionPlan *plan = NULL;
     ExecutionPlan *curr_plan;
@@ -591,16 +595,18 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST **ast
     // Use the last AST, as it is supposed to be the only AST with a RETURN node.
     ResultSet *result_set = NULL;
     if(!explain) {
-        result_set = NewResultSet(new_ast, ctx);
+        result_set = NewResultSet(ast, ctx);
         ResultSet_CreateHeader(result_set);
     }
 
-    for(unsigned int i = 0; i < array_len(ast); i++) {
-        curr_plan = _NewExecutionPlan(ctx, gc, ast[i], result_set);
+    // for(unsigned int i = 0; i < array_len(ast); i++) {
+    for(unsigned int i = 0; i < 1; i++) { // TODO WITH
+        curr_plan = _NewExecutionPlan(ctx, result_set);
         if(i == 0) plan = curr_plan;
-        else plan = _ExecutionPlan_Connect(plan, curr_plan, ast[i]);
+        else plan = _ExecutionPlan_Connect(plan, curr_plan);
+        // else plan = _ExecutionPlan_Connect(plan, curr_plan, ast[i]);
 
-        if(ast[i]->whereNode != NULL) {
+        if(curr_plan->filter_tree) {
             Vector *sub_trees = FilterTree_SubTrees(curr_plan->filter_tree);
 
             // TODO Re-introduce this functionality (or similar)

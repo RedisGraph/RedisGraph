@@ -7,7 +7,6 @@
 #include <assert.h>
 #include "op_unwind.h"
 #include "../../util/arr.h"
-#include "../../parser/ast.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
 OpBase* NewUnwindOp(NEWAST *ast, const cypher_astnode_t *clause) {

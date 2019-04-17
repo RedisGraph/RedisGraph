@@ -159,7 +159,7 @@ void _BuildQueryGraphAddEdge(const GraphContext *gc,
         exp = NEWAST_GetEntity(ast, id);
     } else {
         exp = NEWAST_SeekEntity(ast, entity); // TODO bad
-        char *alias = exp->operand.variadic.entity_alias;
+        alias = exp->operand.variadic.entity_alias;
     }
     assert(exp);
 

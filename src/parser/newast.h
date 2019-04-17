@@ -7,7 +7,6 @@
 #ifndef NEW_AST_H
 #define NEW_AST_H
 
-#include "ast_common.h"
 #include "../util/triemap/triemap.h"
 #include "../../deps/libcypher-parser/lib/src/cypher-parser.h"
 

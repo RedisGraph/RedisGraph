@@ -8,7 +8,6 @@
 #define __OP_UNWIND_H
 
 #include "op.h"
-#include "../../parser/clauses/unwind.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
 /* OP Unwind */

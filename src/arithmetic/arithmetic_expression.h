@@ -8,12 +8,10 @@
 #define __ARITHMETIC_EXPRESSION_H
 
 #include "./agg_ctx.h"
-#include "../parser/ast.h"
 #include "../graph/query_graph.h"
 #include "../execution_plan/record.h"
 #include "../graph/entities/graph_entity.h"
 #include "../graph/query_graph.h"
-#include "../parser/ast.h"
 #include "../parser/newast.h"
 #include "./agg_ctx.h"
 

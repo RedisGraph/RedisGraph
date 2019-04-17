@@ -8,7 +8,6 @@
 #define GRAPH_EXPLAIN_H
 
 #include "../redismodule.h"
-#include "../parser/ast.h"
 #include "../util/thpool/thpool.h"
 
 extern threadpool _thpool;

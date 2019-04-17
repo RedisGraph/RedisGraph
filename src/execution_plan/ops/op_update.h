@@ -15,7 +15,6 @@
 
 // Context describing an update expression.
 typedef struct {
-    AST_GraphEntity *ge;            /* Referred entity in MATCH clause. */
     const char *attribute;          /* Attribute name to update. */
     Attribute_ID attribute_idx;     /* Attribute internal ID. */
     int entityRecIdx;               /* Position of entity within record. */

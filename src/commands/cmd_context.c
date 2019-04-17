@@ -6,8 +6,7 @@ CommandCtx* CommandCtx_New
 (
     RedisModuleCtx *ctx,
     RedisModuleBlockedClient *bc,
-    AST **ast,
-    NEWAST* new_ast,
+    NEWAST* ast,
     RedisModuleString *graphName,
     RedisModuleString **argv,
     int argc
@@ -15,8 +14,7 @@ CommandCtx* CommandCtx_New
     CommandCtx* context = rm_malloc(sizeof(CommandCtx)); 
     context->bc = bc;
     context->ctx = ctx;
-    context->ast = ast;    
-    context->new_ast = new_ast;
+    context->ast = ast;
     context->argv = argv;
     context->argc = argc;
     context->graphName = NULL;
@@ -58,7 +56,6 @@ void CommandCtx_Free(CommandCtx* qctx) {
         RedisModule_FreeThreadSafeContext(qctx->ctx);
     }
 
-    if(qctx->ast) AST_Free(qctx->ast);
     if(qctx->graphName) rm_free(qctx->graphName);
     rm_free(qctx);
 }
