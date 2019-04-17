@@ -18,6 +18,7 @@ struct Edge;
 typedef struct {
     Entity *entity;             /* MUST be the first property of Edge. */
     char *label;                /* label attached to node */
+    int labelID;                /* Label ID. */
     char *alias;                /* alias attached to node */
     GrB_Matrix mat;             /* Label matrix, associated with node. */
     Vector* outgoing_edges;     /* list of incoming edges (ME)<-(SRC) */
@@ -35,6 +36,12 @@ int Node_IncomeDegree(const Node *n);
 
 /* Connects source node to destination node by edge */
 void Node_ConnectNode(Node* src, Node* dest, struct Edge* e);
+
+/* Sets node relation type */
+void Node_SetLabelID(Node *n, int labelID);
+
+/* Retrieves node matrix */
+GrB_Matrix Node_GetMatrix(Node *n);
 
 /* Frees allocated space by given node. */
 void Node_Free(Node* node);

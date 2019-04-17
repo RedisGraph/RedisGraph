@@ -18,7 +18,7 @@ struct Edge {
     Entity *entity;          /* MUST be the first property of Edge. */
     char *alias;             /* Alias attached to edge. */
     char* relationship;      /* Label attached to edge. */
-    int relationId;          /* Label ID. */
+    int relationID;          /* Relation ID. */
     Node* src;               /* Pointer to source node. */
     Node* dest;              /* Pointer to destination node. */
     NodeID srcNodeID;        /* Source node ID. */
@@ -56,7 +56,7 @@ void Edge_SetSrcNode(Edge *e, Node *src);
 void Edge_SetDestNode(Edge *e, Node *dest);
 
 // Sets edge relation type.
-void Edge_SetRelationID(Edge *e, int relationId);
+void Edge_SetRelationID(Edge *e, int relationID);
 
 // Frees allocated space by given edge
 void Edge_Free(Edge *edge);

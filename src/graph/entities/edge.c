@@ -18,6 +18,7 @@ Edge* Edge_New(Node *src, Node *dest, const char *relationship, const char *alia
 	Edge* e = calloc(1, sizeof(Edge));
 	Edge_SetSrcNode(e, src);
 	Edge_SetDestNode(e, dest);
+	e->relationID = GRAPH_UNKNOWN_RELATION;
 
 	if(relationship != NULL) e->relationship = strdup(relationship);
 	if(alias != NULL) e->alias = strdup(alias);
@@ -37,7 +38,7 @@ NodeID Edge_GetDestNodeID(const Edge* edge) {
 
 int Edge_GetRelationID(const Edge *edge) {
 	assert(edge);
-	return edge->relationId;
+	return edge->relationID;
 }
 
 Node* Edge_GetSrcNode(Edge *e) {
@@ -59,11 +60,11 @@ GrB_Matrix Edge_GetMatrix(Edge *e) {
         Graph *g = gc->g;
 
         // Get relation matrix.
-        if(e->relationId == GRAPH_UNKNOWN_RELATION) {
-			// Use a zeroed matrix.
+        if(e->relationID == GRAPH_UNKNOWN_RELATION) {
+			// Use a zeroed matrix, LEAK!
 			GrB_Matrix_new(&e->mat, GrB_BOOL, Graph_NodeCount(g), Graph_NodeCount(g));
 		} else {
-			e->mat = Graph_GetRelationMatrix(g, e->relationId);
+			e->mat = Graph_GetRelationMatrix(g, e->relationID);
         }
     }
 
@@ -82,9 +83,9 @@ void Edge_SetDestNode(Edge *e, Node *dest) {
 	e->destNodeID = ENTITY_GET_ID(dest);
 }
 
-void Edge_SetRelationID(Edge *e, int relationId) {
+void Edge_SetRelationID(Edge *e, int relationID) {
 	assert(e);
-	e->relationId = relationId;
+	e->relationID = relationID;
 }
 
 void Edge_Free(Edge* edge) {

@@ -60,7 +60,7 @@ void initializeSkiplists(Index *index) {
 /* Index_Create allocates an Index object and populates it with all unique IDs and values
  * that possess the provided label and property. */
 Index* Index_Create(Graph *g, const char *label, int label_id, const char *attr_str, Attribute_ID attr_id) {
-  const GrB_Matrix label_matrix = Graph_GetLabel(g, label_id);
+  const GrB_Matrix label_matrix = Graph_GetLabelMatrix(g, label_id);
   GxB_MatrixTupleIter *it;
   GxB_MatrixTupleIter_new(&it, label_matrix);
 

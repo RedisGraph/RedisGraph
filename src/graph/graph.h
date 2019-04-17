@@ -17,13 +17,14 @@
 #include "../util/datablock/datablock_iterator.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 
-#define GRAPH_DEFAULT_NODE_CAP 16384         // Default number of nodes a graph can hold before resizing.
-#define GRAPH_DEFAULT_EDGE_CAP 16384         // Default number of edges a graph can hold before resizing.
-#define GRAPH_DEFAULT_RELATION_TYPE_CAP 16   // Default number of different relationship types a graph can hold before resizing.
-#define GRAPH_DEFAULT_LABEL_CAP 16           // Default number of different labels a graph can hold before resizing.
-#define GRAPH_NO_LABEL -1                    // Labels are numbered [0-N], -1 represents no label.
-#define GRAPH_NO_RELATION -1                 // Relations are numbered [0-N], -1 represents no relation.
-#define GRAPH_UNKNOWN_RELATION -2            // Relations are numbered [0-N], -2 represents an unknown relation.
+#define GRAPH_DEFAULT_NODE_CAP 16384            // Default number of nodes a graph can hold before resizing.
+#define GRAPH_DEFAULT_EDGE_CAP 16384            // Default number of edges a graph can hold before resizing.
+#define GRAPH_DEFAULT_RELATION_TYPE_CAP 16      // Default number of different relationship types a graph can hold before resizing.
+#define GRAPH_DEFAULT_LABEL_CAP 16              // Default number of different labels a graph can hold before resizing.
+#define GRAPH_NO_LABEL -1                       // Labels are numbered [0-N], -1 represents no label.
+#define GRAPH_UNKNOWN_LABEL -2                  // Labels are numbered [0-N], -2 represents an unknown relation.
+#define GRAPH_NO_RELATION -1                    // Relations are numbered [0-N], -1 represents no relation.
+#define GRAPH_UNKNOWN_RELATION -2               // Relations are numbered [0-N], -2 represents an unknown relation.
 
 typedef enum {
     GRAPH_EDGE_DIR_INCOMING,
@@ -191,7 +192,7 @@ int Graph_GetNode (
 );
 
 // Retrieves node label
-// returns GRAPH_NO_LABEL if node has no label.
+// Returns GRAPH_NO_LABEL if node has no label.
 int Graph_GetNodeLabel (
     const Graph *g,
     NodeID nodeID
@@ -205,7 +206,8 @@ int Graph_GetEdge (
     Edge *e
 );
 
-// Retrieves edge relation.
+// Retrieves edge relation type
+// Returns GRAPH_NO_RELATION if edge has no relation type.
 int Graph_GetEdgeRelation (
     const Graph *g,
     Edge *e
@@ -239,7 +241,7 @@ GrB_Matrix Graph_GetAdjacencyMatrix (
 
 // Retrieves a label matrix.
 // Matrix is resized if its size doesn't match graph's node count.
-GrB_Matrix Graph_GetLabel (
+GrB_Matrix Graph_GetLabelMatrix (
     const Graph *g,     // Graph from which to get adjacency matrix.
     int label           // Label described by matrix.
 );
