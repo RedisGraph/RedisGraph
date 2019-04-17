@@ -27,7 +27,6 @@ typedef struct {
 	Vector *properties;		// Array of attributes.
 	AST_GraphEntityType t;	// Type of entity.
 	bool anonymous;			// Entity isn't referenced.
-	bool free;              // Entity should be freed.
 } AST_GraphEntity;
 
 typedef AST_GraphEntity AST_NodeEntity;

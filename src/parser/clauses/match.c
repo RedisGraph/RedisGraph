@@ -71,11 +71,6 @@ void Free_AST_MatchNode(AST_MatchNode *matchNode) {
 	if(!matchNode) return;
 	Vector *pattern;
 	while(Vector_Pop(matchNode->patterns, &pattern)) {
-		// for(int i = 0; i < Vector_Size(pattern); i++) {
-			// AST_GraphEntity *ge;
-			// Vector_Get(pattern, i, &ge);
-			// Free_AST_GraphEntity(ge);
-		// }
 		Vector_Free(pattern);
 	}
 

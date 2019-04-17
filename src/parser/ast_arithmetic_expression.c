@@ -103,7 +103,7 @@ void Free_AST_ArithmeticExpressionNode(AST_ArithmeticExpressionNode *arExpNode) 
 		if(arExpNode->operand.type == AST_AR_EXP_VARIADIC) {
 			rm_free(arExpNode->operand.variadic.alias);
 			rm_free(arExpNode->operand.variadic.property);
-        }
+		}
 	}
 	/* Finally we can free the node. */
 	rm_free(arExpNode);
