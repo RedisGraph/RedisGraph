@@ -153,11 +153,8 @@ AR_ExpNode* AR_EXP_NewVariableOperandNode(const NEWAST *ast, const cypher_astnod
 /* Clone an aggregate expression node. */
 AR_ExpNode* AR_EXP_DuplicateAggFunc(const AR_ExpNode *expr);
 
-/* Construct an arithmetic expression tree from an AST CYPHER_AST_EXPRESSION node. */
+/* Construct an arithmetic expression tree from a CYPHER_AST_EXPRESSION node. */
 AR_ExpNode* AR_EXP_FromExpression(const NEWAST *ast, const cypher_astnode_t *expr);
-
-/* Construct an arithmetic expression tree from ast arithmetic expression node. */
-AR_ExpNode* AR_EXP_BuildFromAST(const AST *ast, const AST_ArithmeticExpressionNode *exp);
 
 /* Clones given expression. */
 AR_ExpNode* AR_EXP_Clone(AR_ExpNode* exp);

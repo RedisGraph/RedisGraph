@@ -25,21 +25,6 @@ static inline int _validate_numeric(const SIValue v) {
     return SI_TYPE(v) & SI_NUMERIC;
 }
 
-// Still used by AR_EXP_BuildFromAST
-static AR_ExpNode* old_AR_EXP_NewVariableOperandNode(const AST *ast, const char *entity_prop, char *entity_alias) {
-    AR_ExpNode *node = calloc(1, sizeof(AR_ExpNode));
-    node->type = AR_EXP_OPERAND;
-    node->operand.type = AR_EXP_VARIADIC;
-    node->operand.variadic.entity_alias = rm_strdup(entity_alias);
-    node->operand.variadic.entity_alias_idx = AST_GetAliasID(ast, entity_alias);
-    node->operand.variadic.entity_prop = NULL;
-    if(entity_prop) {
-        node->operand.variadic.entity_prop = rm_strdup(entity_prop);
-        node->operand.variadic.entity_prop_idx = ATTRIBUTE_NOTFOUND;
-    }
-    return node;
-}
-
 AR_Func _AR_GetFuncByOperator(AST_Operator op) {
     switch(op) {
         case OP_PLUS:
@@ -308,29 +293,6 @@ AR_ExpNode* AR_EXP_FromExpression(const NEWAST *ast, const cypher_astnode_t *exp
 
     assert(false);
     return NULL;
-}
-
-AR_ExpNode* AR_EXP_BuildFromAST(const AST *ast, const AST_ArithmeticExpressionNode *exp) {
-    AR_ExpNode *root;
-    if(exp->type == AST_AR_EXP_OP) {
-        root = _AR_EXP_NewOpNode(exp->op.function, Vector_Size(exp->op.args));
-        /* Process operands. */
-        for(int i = 0; i < root->op.child_count; i++) {
-            AST_ArithmeticExpressionNode *child;
-            Vector_Get(exp->op.args, i, &child);
-            root->op.children[i] = AR_EXP_BuildFromAST(ast, child);
-        }
-    } else {
-        if(exp->operand.type == AST_AR_EXP_CONSTANT) {
-            root = AR_EXP_NewConstOperandNode(exp->operand.constant);
-        } else {
-            root = old_AR_EXP_NewVariableOperandNode(ast,
-                                                  exp->operand.variadic.property,
-                                                  exp->operand.variadic.alias);
-        }
-    }
-
-    return root;
 }
 
 int AR_EXP_GetOperandType(AR_ExpNode *exp) {

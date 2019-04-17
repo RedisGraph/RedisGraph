@@ -11,8 +11,7 @@
 #include "entities/edge.h"
 #include "graph.h"
 #include "graphcontext.h"
-#include "../util/vector.h"
-#include "../resultset/resultset_statistics.h"
+#include "../parser/newast.h"
 
 #define DEFAULT_GRAPH_CAP 32 /* Number of edges/nodes within the graph. */
 
@@ -34,7 +33,7 @@ QueryGraph* QueryGraph_New(size_t node_cap, size_t edge_cap);
 /* Given AST's MATCH node constructs a graph
  * representing queried entities and the relationships
  * between them. */
-void BuildQueryGraph(const GraphContext *gc, QueryGraph *query_graph, Vector *entities);
+void BuildQueryGraph(const GraphContext *gc, QueryGraph *query_graph, const cypher_astnode_t *pattern);
 
 /* Checks if graph contains given node
  * Returns 1 if so, 0 otherwise */ 

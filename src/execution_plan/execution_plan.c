@@ -148,21 +148,22 @@ void _Count_Graph_Entities(const Vector *entities, size_t *node_count, size_t *e
     }
 }
 
-void _Determine_Graph_Size(const AST *ast, size_t *node_count, size_t *edge_count) {
-    *edge_count = 0;
-    *node_count = 0;
-    Vector *entities;
+// TODO is this necessary?
+// void _Determine_Graph_Size(const AST *ast, size_t *node_count, size_t *edge_count) {
+    // *edge_count = 0;
+    // *node_count = 0;
+    // Vector *entities;
     
-    if(ast->matchNode) {
-        entities = ast->matchNode->_mergedPatterns;
-        _Count_Graph_Entities(entities, node_count, edge_count);
-    }
+    // if(ast->matchNode) {
+        // entities = ast->matchNode->_mergedPatterns;
+        // _Count_Graph_Entities(entities, node_count, edge_count);
+    // }
 
-    if(ast->createNode) {
-        entities = ast->createNode->graphEntities;
-        _Count_Graph_Entities(entities, node_count, edge_count);
-    }
-}
+    // if(ast->createNode) {
+        // entities = ast->createNode->graphEntities;
+        // _Count_Graph_Entities(entities, node_count, edge_count);
+    // }
+// }
 
 void ExecutionPlan_AddOp(OpBase *parent, OpBase *newOp) {
     _OpBase_AddChild(parent, newOp);
@@ -247,62 +248,6 @@ OpBase* ExecutionPlan_Locate_References(OpBase *root, Vector *references) {
     return op;
 }
 
-// TODO: get rid of _ReturnClause_GetExpressions, _WithClause_GetExpressions and _OrderClause_GetExpressions.
-/* Returns an array of arithmetic expression, one for every return element.
- * caller is responsible for freeing each arithmetic expression in addition
- * to the array itself. */
-static AR_ExpNode** _ReturnClause_GetExpressions(const AST *ast) {
-    assert(ast->returnNode);
-
-    AST_ReturnNode *return_node = ast->returnNode;
-    unsigned int elem_count = array_len(return_node->returnElements);
-    AR_ExpNode **exps = array_new(AR_ExpNode*, elem_count);
-
-    for(unsigned int i = 0; i < elem_count; i++) {
-        AST_ReturnElementNode *elem = return_node->returnElements[i];
-        AR_ExpNode *exp = AR_EXP_BuildFromAST(ast, elem->exp);
-        exps = array_append(exps, exp);
-    }
-
-    return exps;
-}
-
-/* Returns an array of arithmetic expression, one for every wiht element.
- * caller is responsible for freeing each arithmetic expression in addition
- * to the array itself. */
-static AR_ExpNode** _WithClause_GetExpressions(const AST *ast) {
-    assert(ast->withNode);
-
-    AST_WithNode *with_node = ast->withNode;
-    unsigned int elem_count = array_len(with_node->exps);
-    AR_ExpNode **exps = array_new(AR_ExpNode*, elem_count);
-
-    for(unsigned int i = 0; i < elem_count; i++) {
-        AST_WithElementNode *elem = with_node->exps[i];
-        AR_ExpNode *exp = AR_EXP_BuildFromAST(ast, elem->exp);
-        exps = array_append(exps, exp);
-    }
-
-    return exps;
-}
-
-/* Returns an array of arithmetic expression, one for every order element.
- * caller is responsible for freeing each arithmetic expression in addition
- * to the array itself. */
-static AR_ExpNode** _OrderClause_GetExpressions(const AST *ast) {
-	AST_OrderNode *order_node = ast->orderNode;
-
-	unsigned int exp_count = array_len(order_node->expressions);
-	AR_ExpNode** exps = array_new(AR_ExpNode*, exp_count);
-
-	for(unsigned int i = 0; i < exp_count; i++) {
-		AR_ExpNode *exp = AR_EXP_BuildFromAST(ast, order_node->expressions[i]);
-		exps = array_append(exps, exp);
-	}
-
-	return exps;
-}
-
 ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST *old_ast, ResultSet *result_set) {
     Graph *g = gc->g;
     ExecutionPlan *execution_plan = (ExecutionPlan*)calloc(1, sizeof(ExecutionPlan));    
@@ -328,15 +273,24 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST *old
     // const cypher_astnode_t *match_clauses[clause_count];
     // unsigned int match_count = NewAST_GetTopLevelClauses(query, CYPHER_AST_MATCH, match_clauses);
 
-    if(old_ast->matchNode) {
-        BuildQueryGraph(gc, q, old_ast->matchNode->_mergedPatterns);
+    unsigned int clause_count = cypher_astnode_nchildren(ast->root);
+    const cypher_astnode_t *match_clauses[clause_count];
+    unsigned int match_count = NewAST_GetTopLevelClauses(ast->root, CYPHER_AST_MATCH, match_clauses);
+    uint pattern_count = 0;
+    for (uint i = 0; i < match_count; i ++) {
+        const cypher_astnode_t *ast_pattern = cypher_ast_match_get_pattern(match_clauses[i]);
+        pattern_count += cypher_ast_pattern_npaths(ast_pattern);
+    }
 
+    for (uint i = 0; i < match_count; i ++) {
+        const cypher_astnode_t *ast_pattern = cypher_ast_match_get_pattern(match_clauses[i]);
+        BuildQueryGraph(gc, q, ast_pattern);
+
+        uint npaths = cypher_ast_pattern_npaths(ast_pattern);
         // For every pattern in match clause.
-        size_t patternCount = Vector_Size(old_ast->matchNode->patterns); // TODO
-        
         /* Incase we're dealing with multiple patterns
          * we'll simply join them all together with a join operation. */
-        bool multiPattern = patternCount > 1;
+        bool multiPattern = cypher_ast_pattern_npaths(ast_pattern) > 1;
         OpBase *cartesianProduct = NULL;
         if(multiPattern) {
             cartesianProduct = NewCartesianProductOp(NEWAST_AliasCount(ast));
@@ -346,11 +300,11 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST *old
         // Keep track after all traversal operations along a pattern.
         Vector *traversals = NewVector(OpBase*, 1);
 
-        for(int i = 0; i < patternCount; i++) {
-            Vector *pattern;
-            Vector_Get(old_ast->matchNode->patterns, i, &pattern); // TODO replace
 
-            if(Vector_Size(pattern) > 1) {
+        for (uint j = 0; j < npaths; j ++) {
+            const cypher_astnode_t *path = cypher_ast_pattern_get_path(ast_pattern, j);
+            uint nelems = cypher_ast_pattern_path_nelements(path);
+            if (nelems > 1) {
                 size_t expCount = 0;
                 AlgebraicExpression **exps = AlgebraicExpression_FromQuery(ast, q, &expCount);
 
@@ -417,13 +371,16 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST *old
                 free(exps);
             } else {
                 /* Node scan. */
-                AST_GraphEntity *ge;
-                Vector_Get(pattern, 0, &ge);
-                Node **n = QueryGraph_GetNodeRef(q, QueryGraph_GetNodeByAlias(q, ge->alias));
-                if(ge->label)
+                const cypher_astnode_t *ast_node = cypher_ast_pattern_path_get_element(path, 0);
+                const cypher_astnode_t *ast_alias = cypher_ast_node_pattern_get_identifier(ast_node);
+                const char *alias;
+                if (ast_alias) alias = cypher_ast_identifier_get_name(ast_alias); // TODO get anon aliases
+                Node **n = QueryGraph_GetNodeRef(q, QueryGraph_GetNodeByAlias(q, alias));
+                if(cypher_ast_node_pattern_nlabels(ast_node) > 0) {
                     op = NewNodeByLabelScanOp(gc, *n);
-                else
+                } else {
                     op = NewAllNodeScanOp(g, *n);
+                }
                 Vector_Push(traversals, op);
             }
 
@@ -458,7 +415,8 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST *old
     // Set root operation
     const cypher_astnode_t *create_clause = NEWAST_GetClause(ast->root, CYPHER_AST_CREATE);
     if(create_clause) {
-        BuildQueryGraph(gc, q, old_ast->createNode->graphEntities); // TODO
+        const cypher_astnode_t *pattern = cypher_ast_create_get_pattern(create_clause);
+        BuildQueryGraph(gc, q, pattern);
         OpBase *opCreate = NewCreateOp(ctx, q, execution_plan->result_set);
 
         Vector_Push(ops, opCreate);
@@ -490,7 +448,8 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST *old
     const cypher_astnode_t *with_clause = NULL;
 
     if(with_clause) {
-        exps = _WithClause_GetExpressions(old_ast);
+        assert(false);
+        // exps = _WithClause_GetExpressions(old_ast);
         // aliases = WithClause_GetAliases(ast->withNode);
         // aggregate = WithClause_ContainsAggregation(ast->withNode);
     }
