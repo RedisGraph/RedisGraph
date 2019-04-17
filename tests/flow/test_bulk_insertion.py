@@ -54,7 +54,7 @@ class GraphBulkInsertFlowTest(FlowTestsBase):
         # The script should report 27 node creations and 48 edge creations
         assert res.exit_code == 0
         assert '27 nodes created' in res.output
-        assert '48 relations created' in res.output
+        assert '56 relations created' in res.output
 
     # Validate that the expected nodes and properties have been constructed
     def test02_validate_nodes(self):
@@ -85,7 +85,6 @@ class GraphBulkInsertFlowTest(FlowTestsBase):
         # Verify that the Country label exists, has the correct attributes, and is properly populated
         query_result = redis_graph.query('MATCH (c:Country) RETURN c, ID(c) ORDER BY c.name')
         expected_result = [['c.name', 'ID(c)'],
-                           ['Amsterdam', 20],
                            ['Andora', 21],
                            ['Canada', 18],
                            ['China', 19],
@@ -94,10 +93,11 @@ class GraphBulkInsertFlowTest(FlowTestsBase):
                            ['Italy', 25],
                            ['Japan', 16],
                            ['Kazakhstan', 22],
+                           ['Netherlands', 20],
                            ['Prague', 15],
                            ['Russia', 23],
                            ['Thailand', 26],
-                           ['USA', 14]]
+                           ['USA', 14]]        
         assert query_result.result_set == expected_result
 
     # Validate that the expected relations and properties have been constructed
@@ -124,40 +124,48 @@ class GraphBulkInsertFlowTest(FlowTestsBase):
         query_result = redis_graph.query('MATCH (a)-[e:VISITED]->(b) RETURN a.name, e, b.name ORDER BY e.purpose, a.name, b.name')
 
         expected_result = [['a.name', 'e.purpose', 'b.name'],
-                           ['Alon Fital', 'both', 'Prague'],
-                           ['Alon Fital', 'both', 'USA'],
-                           ['Boaz Arad', 'both', 'Amsterdam'],
-                           ['Boaz Arad', 'both', 'USA'],
-                           ['Jane Chernomorin', 'both', 'USA'],
-                           ['Lucy Yanfital', 'both', 'USA'],
-                           ['Roi Lipman', 'both', 'Prague'],
-                           ['Tal Doron', 'both', 'USA'],
-                           ['Gal Derriere', 'business', 'Amsterdam'],
+                           ['Alon Fital', 'business', 'Prague'],
+                           ['Alon Fital', 'business', 'USA'],
+                           ['Boaz Arad', 'business', 'Netherlands'],
+                           ['Boaz Arad', 'business', 'USA'],
+                           ['Gal Derriere', 'business', 'Netherlands'],
+                           ['Jane Chernomorin', 'business', 'USA'],
+                           ['Lucy Yanfital', 'business', 'USA'],
                            ['Mor Yesharim', 'business', 'Germany'],
                            ['Ori Laslo', 'business', 'China'],
                            ['Ori Laslo', 'business', 'USA'],
+                           ['Roi Lipman', 'business', 'Prague'],
                            ['Roi Lipman', 'business', 'USA'],
                            ['Tal Doron', 'business', 'Japan'],
+                           ['Tal Doron', 'business', 'USA'],
                            ['Alon Fital', 'pleasure', 'Greece'],
-                           ['Jane Chernomorin', 'pleasure', 'Amsterdam'],
+                           ['Alon Fital', 'pleasure', 'Prague'],
+                           ['Alon Fital', 'pleasure', 'USA'],
+                           ['Boaz Arad', 'pleasure', 'Netherlands'],
+                           ['Boaz Arad', 'pleasure', 'USA'],
                            ['Jane Chernomorin', 'pleasure', 'Greece'],
+                           ['Jane Chernomorin', 'pleasure', 'Netherlands'],
+                           ['Jane Chernomorin', 'pleasure', 'USA'],
                            ['Lucy Yanfital', 'pleasure', 'Kazakhstan'],
                            ['Lucy Yanfital', 'pleasure', 'Prague'],
+                           ['Lucy Yanfital', 'pleasure', 'USA'],
                            ['Mor Yesharim', 'pleasure', 'Greece'],
                            ['Mor Yesharim', 'pleasure', 'Italy'],
-                           ['Noam Nativ', 'pleasure', 'Amsterdam'],
                            ['Noam Nativ', 'pleasure', 'Germany'],
+                           ['Noam Nativ', 'pleasure', 'Netherlands'],
                            ['Noam Nativ', 'pleasure', 'Thailand'],
                            ['Omri Traub', 'pleasure', 'Andora'],
                            ['Omri Traub', 'pleasure', 'Greece'],
                            ['Omri Traub', 'pleasure', 'USA'],
                            ['Ori Laslo', 'pleasure', 'Canada'],
                            ['Roi Lipman', 'pleasure', 'Japan'],
+                           ['Roi Lipman', 'pleasure', 'Prague'],
                            ['Shelly Laslo Rooz', 'pleasure', 'Canada'],
                            ['Shelly Laslo Rooz', 'pleasure', 'China'],
                            ['Shelly Laslo Rooz', 'pleasure', 'USA'],
                            ['Tal Doron', 'pleasure', 'Andora'],
-                           ['Valerie Abigail Arad', 'pleasure', 'Amsterdam'],
+                           ['Tal Doron', 'pleasure', 'USA'],
+                           ['Valerie Abigail Arad', 'pleasure', 'Netherlands'],
                            ['Valerie Abigail Arad', 'pleasure', 'Russia']]
         assert query_result.result_set == expected_result
 

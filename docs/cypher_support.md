@@ -3,7 +3,7 @@ RedisGraph implements a subset of the Cypher language, which is growing as devel
 This document is based on the Cypher Query Language Reference (version 9), available at [OpenCypher Resources](https://www.opencypher.org/resources).
 
 ## Patterns
-Patterns are fully supported with the exception of the OR (`[:rel_a|:rel_b]`) operator to explicitly specify multiple relationship types.
+Patterns are fully supported.
 
 ## Types
 ### Structural types
@@ -71,6 +71,7 @@ We do not support any of these properties at the type level, meaning nodes and r
   **Unsupported:**
 
 - REMOVE (to modify properties)
+    + Properties can be deleted with SET [prop] = NULL.
 
 ### Reading/Writing Clauses
 + MERGE

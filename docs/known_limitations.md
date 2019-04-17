@@ -1,5 +1,34 @@
 # Known limitations
 
+## Relationship uniqueness in patterns
+
+When a relation in a match pattern is not referenced elsewhere in the query, RedisGraph will only verify that at least one matching relation exists (rather than operating on every matching relation).
+
+In some queries, this will cause unexpected behaviors. Consider a graph with 2 nodes and 2 relations between them:
+
+```sh
+CREATE (a)-[:e {val: '1'}]->(b), (a)-[:e {val: '2'}]->(b)
+```
+
+Counting the number of explicit edges returns 2, as expected.
+
+```sh
+MATCH (a)-[e]->(b) RETURN COUNT(e)
+```
+
+However, if we count the nodes in this pattern without explicitly referencing the relation, we receive a value of 1.
+
+```sh
+MATCH (a)-[e]->(b) RETURN COUNT(b)
+```
+
+We are researching designs that resolve this problem without negatively impacting performance. As a temporary workaround, queries that must operate on every relation matching a pattern should explicitly refer to that relation's alias elsewhere in the query. Two options for this are:
+
+```sh
+MATCH (a)-[e]->(b) WHERE ID(e) >= 0 RETURN COUNT(b)
+MATCH (a)-[e]->(b) RETURN COUNT(b), e.dummyval
+```
+
 ## WITH clause limitations
 
 ### Unaliased WITH entities
@@ -62,3 +91,15 @@ MATCH (a) WITH DISTINCT a.val AS distinct_val RETURN distinct_val
 ```
 
 Will return a syntax error.
+
+## CREATE clause limitations
+
+### CREATE ... RETURN
+
+```sh
+CREATE (a {val: 1}) RETURN a
+```
+
+Will return a syntax error, as entities that are constructed from a CREATE clause cannot currently be returned in the same query.
+
+This limitation does not apply to queries of the form MATCH ... CREATE ... RETURN.
