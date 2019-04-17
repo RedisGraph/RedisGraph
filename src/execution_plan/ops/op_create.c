@@ -8,55 +8,146 @@
 #include "../../util/arr.h"
 #include "../../parser/ast.h"
 #include "../../schema/schema.h"
+#include "../../arithmetic/arithmetic_expression.h"
 
 #include <assert.h>
 
+void _buildAliasTrieMap(TrieMap *map, const cypher_astnode_t *entity) {
+    if (!entity) return;
+
+    cypher_astnode_type_t type = cypher_astnode_type(entity);
+
+    char *alias = NULL;
+    if (type == CYPHER_AST_NODE_PATTERN) {
+        const cypher_astnode_t *alias_node = cypher_ast_node_pattern_get_identifier(entity);
+        if (alias_node) alias = (char*)cypher_ast_identifier_get_name(alias_node);
+    } else if (type == CYPHER_AST_REL_PATTERN) {
+        const cypher_astnode_t *alias_node = cypher_ast_rel_pattern_get_identifier(entity);
+        if (alias_node) alias = (char*)cypher_ast_identifier_get_name(alias_node);
+    } else if (type == CYPHER_AST_UNWIND) {
+        // The UNWIND clause aliases an expression
+        const cypher_astnode_t *alias_node = cypher_ast_unwind_get_alias(entity);
+        assert(alias_node);
+        alias = (char*)cypher_ast_identifier_get_name(alias_node);
+    } else {
+        unsigned int child_count = cypher_astnode_nchildren(entity);
+        for(unsigned int i = 0; i < child_count; i++) {
+            const cypher_astnode_t *child = cypher_astnode_get_child(entity, i);
+            // Recursively continue searching
+            _buildAliasTrieMap(map, child);
+        }
+        return;
+    }
+
+    if (alias) TrieMap_Add(map, alias, strlen(alias), NULL, TrieMap_DONT_CARE_REPLACE);
+}
+
+TrieMap* _MatchClause_DefinedEntities(NEWAST *ast) {
+    uint clause_count = cypher_astnode_nchildren(ast->root);
+
+    const cypher_astnode_t *match_clauses[clause_count];
+    uint match_count = NewAST_GetTopLevelClauses(ast->root, CYPHER_AST_MATCH, match_clauses);
+    const cypher_astnode_t *merge_clauses[clause_count];
+    uint merge_count = NewAST_GetTopLevelClauses(ast->root, CYPHER_AST_MERGE, merge_clauses);
+
+    TrieMap *map = NewTrieMap();
+
+    for (uint i = 0; i < match_count; i ++) {
+        _buildAliasTrieMap(map, match_clauses[i]);
+    }
+    for (uint i = 0; i < merge_count; i ++) {
+        _buildAliasTrieMap(map, merge_clauses[i]);
+    }
+
+    return map;
+}
+
 void _SetModifiedEntities(OpCreate *op) {
-    // TODO
-    AST *ast = op->ast;
-    /* Determin which entities are modified by create op. */
-    size_t create_entity_count = Vector_Size(op->ast->createNode->graphEntities);
-    op->nodes_to_create = malloc(sizeof(NodeCreateCtx) * create_entity_count);
-    op->edges_to_create = malloc(sizeof(EdgeCreateCtx) * create_entity_count);
+    NEWAST *ast = op->ast;
+    // TODO bit redundant
+    const cypher_astnode_t *create_clause = NEWAST_GetClause(ast->root, CYPHER_AST_CREATE);
+
+
+    /* For every entity within the CREATE clause see if it's also mentioned
+     * within the MATCH clause. */
+    TrieMap *match_entities = _MatchClause_DefinedEntities(ast);
+
+    /* Determine which entities are modified by create op. */
+    const cypher_astnode_t *pattern = cypher_ast_create_get_pattern(create_clause);
+    uint npaths = cypher_ast_pattern_npaths(pattern);
+    uint node_count = 0;
+    uint rel_count = 0;
+    for (uint i = 0; i < npaths; i ++) {
+        const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, i);
+        uint path_elem_count = cypher_ast_pattern_path_nelements(path);
+        uint path_rel_count = path_elem_count / 2;
+        rel_count += path_rel_count;
+        node_count += path_rel_count + 1;
+    }
+
+    op->nodes_to_create = malloc(sizeof(NodeCreateCtx) * node_count);
+    op->edges_to_create = malloc(sizeof(EdgeCreateCtx) * rel_count);
 
     int node_idx = 0;
     int edge_idx = 0;
 
-    /* For every entity within the CREATE clause see if it's also mentioned 
-     * within the MATCH clause. */
-    TrieMap *matchEntities = NewTrieMap();
-    MatchClause_DefinedEntities(op->ast->matchNode, matchEntities);
+    for (uint i = 0; i < npaths; i ++) {
+        const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, i);
+        uint path_elem_count = cypher_ast_pattern_path_nelements(path);
+        for (uint j = 0; j < path_elem_count; j ++) {
+            /* See if current entity needs to be created:
+             * 1. current entity is NOT in MATCH clause.
+             * 2. We've yet to accounted for this entity. */
+            const cypher_astnode_t *elem = cypher_ast_pattern_path_get_element(path, j);
+            const cypher_astnode_t *ast_alias = NULL;
+            const char *alias = NULL;
+            // if (j % 2) {
+                // ast_alias = cypher_ast_rel_pattern_get_identifier(elem);
+                // if (!ast_alias) edge_idx ++; // Unaliased entity; must be created
+                // continue;
+            // } else {
+                // ast_alias = cypher_ast__pattern_get_identifier(elem);
+                // if (!ast_alias) node_idx ++; // Unaliased entity; must be created
+                // continue;
 
-    for(int i = 0; i < create_entity_count; i++) {
-        AST_GraphEntity *create_ge;
-        Vector_Get(op->ast->createNode->graphEntities, i, &create_ge);
-        char *alias = create_ge->alias;
+            // }
+            ast_alias = (j % 2) ? cypher_ast_rel_pattern_get_identifier(elem) :
+                                  cypher_ast_node_pattern_get_identifier(elem);
+            if (!ast_alias) {
+                // Unaliased entity; find anonymous identifier
+                // TODO seek is a slow call; improve this solution
+                AR_ExpNode *exp = NEWAST_SeekEntity(ast, elem);
+                assert(exp);
+                alias = exp->operand.variadic.entity_alias;
+            } else {
+                alias = cypher_ast_identifier_get_name(ast_alias);
+                assert(alias); // TODO possible? Seek again if necessary
+            }
+            // Skip entities defined in MATCH clauses or previously appearing in CREATE patterns
+            int rc = TrieMap_Add(match_entities, (char*)alias, strlen(alias), NULL, TrieMap_DONT_CARE_REPLACE);
+            if (rc == 0) continue;
 
-        /* See if current entity needs to be created:
-         * 1. current entity is NOT in MATCH clause.
-         * 2. We've yet to accounted for this entity. */
-        if(TrieMap_Add(matchEntities, alias, strlen(alias), NULL, TrieMap_DONT_CARE_REPLACE) == 0) continue;
-        if(create_ge->t == N_ENTITY) {
-            // Node.
-            Node *n = QueryGraph_GetNodeByAlias(op->qg, create_ge->alias);
-            Node **ppn = QueryGraph_GetNodeRef(op->qg, n);
-            op->nodes_to_create[node_idx].node = n;
-            op->nodes_to_create[node_idx].node_rec_idx = AST_GetAliasID(ast, n->alias);
-            node_idx++;
-        } else {
-            // Edge.
-            Edge *e = QueryGraph_GetEdgeByAlias(op->qg, create_ge->alias);            
-            op->edges_to_create[edge_idx].edge = e;
-            op->edges_to_create[edge_idx].edge_rec_idx = AST_GetAliasID(ast, e->alias);
-            assert(QueryGraph_ContainsNode(op->qg, e->src));
-            assert(QueryGraph_ContainsNode(op->qg, e->dest));
-            op->edges_to_create[edge_idx].src_node_rec_idx = AST_GetAliasID(ast, e->src->alias);
-            op->edges_to_create[edge_idx].dest_node_rec_idx = AST_GetAliasID(ast, e->dest->alias);
-            edge_idx++;
-        }        
+            if (j % 2) { // Relation
+                Edge *e = QueryGraph_GetEdgeByAlias(op->qg, alias);
+                op->edges_to_create[edge_idx].edge = e;
+                op->edges_to_create[edge_idx].ast_entity = elem;
+                op->edges_to_create[edge_idx].edge_rec_idx = NEWAST_GetAliasID(ast, e->alias);
+                assert(QueryGraph_ContainsNode(op->qg, e->src));
+                assert(QueryGraph_ContainsNode(op->qg, e->dest));
+                op->edges_to_create[edge_idx].src_node_rec_idx = NEWAST_GetAliasID(ast, e->src->alias);
+                op->edges_to_create[edge_idx].dest_node_rec_idx = NEWAST_GetAliasID(ast, e->dest->alias);
+                edge_idx ++;
+            } else { // Node
+                Node *n = QueryGraph_GetNodeByAlias(op->qg, alias);
+                op->nodes_to_create[node_idx].ast_entity = elem;
+                op->nodes_to_create[node_idx].node = n;
+                op->nodes_to_create[node_idx].node_rec_idx = NEWAST_GetAliasID(ast, n->alias);
+                node_idx ++;
+            }
+        }
     }
 
-    TrieMap_Free(matchEntities, TrieMap_NOP_CB);
+    TrieMap_Free(match_entities, TrieMap_NOP_CB);
 
     op->node_count = node_idx;
     op->edge_count = edge_idx;
@@ -64,10 +155,10 @@ void _SetModifiedEntities(OpCreate *op) {
     assert((op->node_count + op->edge_count) > 0);
 }
 
-OpBase* NewCreateOp(RedisModuleCtx *ctx, GraphContext *gc, AST *ast, QueryGraph *qg, ResultSet *result_set) {
+OpBase* NewCreateOp(RedisModuleCtx *ctx, QueryGraph *qg, ResultSet *result_set) {
     OpCreate *op_create = calloc(1, sizeof(OpCreate));
-    op_create->gc = gc;
-    op_create->ast = ast;
+    op_create->gc = GraphContext_GetFromTLS();
+    op_create->ast = NEWAST_GetFromTLS();
     op_create->qg = qg;
     op_create->records = NULL;
     op_create->nodes_to_create = NULL;
@@ -76,7 +167,7 @@ OpBase* NewCreateOp(RedisModuleCtx *ctx, GraphContext *gc, AST *ast, QueryGraph 
     op_create->edge_count = 0;
     op_create->created_nodes = array_new(Node*, 0);
     op_create->created_edges = array_new(Edge*, 0);
-    op_create->result_set = result_set;    
+    op_create->result_set = result_set;
 
     _SetModifiedEntities(op_create);
 
@@ -133,12 +224,12 @@ static void _CommitNodes(OpCreate *op) {
     Node *n;
     int labelID;
     Graph *g = op->gc->g;
-    uint node_count = array_len(op->created_nodes);
-    TrieMap *createEntities = NewTrieMap();
     Schema *unified_schema = GraphContext_GetUnifiedSchema(op->gc, SCHEMA_NODE);
-    
+    NEWAST *ast = NEWAST_GetFromTLS();
+
+    uint node_count = array_len(op->created_nodes);
     Graph_AllocateNodes(op->gc->g, node_count);
-    CreateClause_ReferredEntities(op->ast->createNode, createEntities);
+
 
     for(uint i = 0; i < node_count; i++) {
         n = op->created_nodes[i];
@@ -159,31 +250,41 @@ static void _CommitNodes(OpCreate *op) {
 
         // Introduce node into graph.
         Graph_CreateNode(g, labelID, n);
-        
-        // Set node properties.
-        AST_GraphEntity *entity = TrieMap_Find(createEntities, n->alias, strlen(n->alias));
-        assert(entity != NULL && entity != TRIEMAP_NOTFOUND);
 
-        if(entity->properties) {
-            int propCount = Vector_Size(entity->properties);
-            if(propCount > 0) {
-                for(int prop_idx = 0; prop_idx < propCount; prop_idx+=2) {
-                    SIValue *key;
-                    SIValue *value;
-                    Vector_Get(entity->properties, prop_idx, &key);
-                    Vector_Get(entity->properties, prop_idx+1, &value);
+        // Retrieve AST reference for node
+        uint id = NEWAST_GetAliasID(ast, n->alias);
+        AR_ExpNode *exp = NEWAST_GetEntity(ast, id);
+        const cypher_astnode_t *ast_entity = exp->operand.variadic.ast_ref;
+        const cypher_astnode_t *props = cypher_ast_node_pattern_get_properties(ast_entity);
+        if (!props) continue; // No properties specified
 
-                    Attribute_ID prop_id = Schema_AddAttribute(schema, SCHEMA_NODE, key->stringval);
-                    GraphEntity_AddProperty((GraphEntity*)n, prop_id, *value);
+        // TODO duplicated logic from op_merge and elsewhere; consolidate
+        if(props) {
+            cypher_astnode_type_t prop_type = cypher_astnode_type(props);
+            assert(prop_type == CYPHER_AST_MAP); // TODO add parameter support
+            uint prop_count = cypher_ast_map_nentries(props);
+            for(uint prop_idx = 0; prop_idx < prop_count; prop_idx++) {
+                const cypher_astnode_t *ast_key = cypher_ast_map_get_key(props, prop_idx);
+                const char *key = cypher_ast_prop_name_get_value(ast_key);
+
+                const cypher_astnode_t *ast_value = cypher_ast_map_get_value(props, prop_idx);
+                // TODO optimize
+                AR_ExpNode *value_exp = AR_EXP_FromExpression(op->ast, ast_value);
+                SIValue value = AR_EXP_Evaluate(value_exp, NULL);
+
+                Attribute_ID prop_id = ATTRIBUTE_NOTFOUND;
+                if(schema) {
+                    prop_id = Schema_AddAttribute(schema, SCHEMA_NODE, key);
+                } else {
+                    prop_id = Schema_AddAttribute(unified_schema, SCHEMA_NODE, key);
                 }
-                // Introduce node to schema indices.
-                if(n->label) GraphContext_AddNodeToIndices(op->gc, schema, n);
-                op->result_set->stats.properties_set += propCount/2;
+                GraphEntity_AddProperty((GraphEntity*)n, prop_id, value);
             }
+            if(n->label) GraphContext_AddNodeToIndices(op->gc, schema, n);
+            op->result_set->stats.properties_set += prop_count;
         }
     }
 
-    TrieMap_Free(createEntities, TrieMap_NOP_CB);
 }
 
 static void _CommitEdges(OpCreate *op) {
@@ -191,13 +292,11 @@ static void _CommitEdges(OpCreate *op) {
     int labelID;
     Graph *g = op->gc->g;
     int relationships_created = 0;
-    TrieMap *createEntities = NewTrieMap();
-    CreateClause_ReferredEntities(op->ast->createNode, createEntities);
 
-    uint createdEdgeCount = array_len(op->created_edges);
-    for(uint i = 0; i < createdEdgeCount; i++) {
+    NEWAST *ast = NEWAST_GetFromTLS();
+    uint edge_count = array_len(op->created_edges);
+    for(uint i = 0; i < edge_count; i++) {
         e = op->created_edges[i];
-        int relation_id;
         NodeID srcNodeID;
 
         // Nodes which already existed prior to this query would
@@ -206,40 +305,51 @@ static void _CommitEdges(OpCreate *op) {
         // saved under edge src/dest pointer.
         if(e->srcNodeID != INVALID_ENTITY_ID) srcNodeID = e->srcNodeID;
         else srcNodeID = ENTITY_GET_ID(Edge_GetSrcNode(e));
-        
+
         NodeID destNodeID;
         if(e->destNodeID != INVALID_ENTITY_ID) destNodeID = e->destNodeID;
         else destNodeID = ENTITY_GET_ID(Edge_GetDestNode(e));
 
         Schema *schema = GraphContext_GetSchema(op->gc, e->relationship, SCHEMA_EDGE);
         if(!schema) schema = GraphContext_AddSchema(op->gc, e->relationship, SCHEMA_EDGE);
-        relation_id = schema->id;
+        int relation_id = schema->id;
 
         if(!Graph_ConnectNodes(g, srcNodeID, destNodeID, relation_id, e)) continue;
-
-        // Set edge properties.
-        AST_GraphEntity *entity = TrieMap_Find(createEntities, e->alias, strlen(e->alias));
-        assert(entity != NULL && entity != TRIEMAP_NOTFOUND);
-
-        if(entity->properties) {
-            int propCount = Vector_Size(entity->properties);
-            if(propCount > 0) {
-                for(int prop_idx = 0; prop_idx < propCount; prop_idx+=2) {
-                    SIValue *key;
-                    SIValue *value;
-                    Vector_Get(entity->properties, prop_idx, &key);
-                    Vector_Get(entity->properties, prop_idx+1, &value);
-
-                    Attribute_ID prop_id = Schema_AddAttribute(schema, SCHEMA_EDGE, key->stringval);
-                    GraphEntity_AddProperty((GraphEntity*)e, prop_id, *value);
-                }
-                op->result_set->stats.properties_set += propCount/2;
-            }
-        }
         relationships_created++;
+
+        // Retrieve AST reference for edge
+        uint id = NEWAST_GetAliasID(ast, e->alias);
+        AR_ExpNode *exp = NEWAST_GetEntity(ast, id);
+        const cypher_astnode_t *ast_entity = exp->operand.variadic.ast_ref;
+        const cypher_astnode_t *props = cypher_ast_rel_pattern_get_properties(ast_entity);
+        if (!props) continue; // No properties specified
+
+        // TODO duplicated logic from op_merge and elsewhere; consolidate
+        cypher_astnode_type_t prop_type = cypher_astnode_type(props);
+        assert(prop_type == CYPHER_AST_MAP); // TODO add parameter support
+        uint prop_count = cypher_ast_map_nentries(props);
+        // Set edge properties.
+        for(uint prop_idx = 0; prop_idx < prop_count; prop_idx++) {
+            // Set edge properties.
+            cypher_astnode_type_t prop_type = cypher_astnode_type(props);
+            assert(prop_type == CYPHER_AST_MAP); // TODO add parameter support
+            uint prop_count = cypher_ast_map_nentries(props);
+            for(uint prop_idx = 0; prop_idx < prop_count; prop_idx++) {
+                const cypher_astnode_t *ast_key = cypher_ast_map_get_key(props, prop_idx);
+                const char *key = cypher_ast_prop_name_get_value(ast_key);
+
+                const cypher_astnode_t *ast_value = cypher_ast_map_get_value(props, prop_idx);
+                // TODO optimize
+                AR_ExpNode *value_exp = AR_EXP_FromExpression(op->ast, ast_value);
+                SIValue value = AR_EXP_Evaluate(value_exp, NULL);
+
+                Attribute_ID prop_id = prop_id = Schema_AddAttribute(schema, SCHEMA_EDGE, key);
+                GraphEntity_AddProperty((GraphEntity*)e, prop_id, value);
+            }
+            op->result_set->stats.properties_set += prop_count;
+        }
     }
 
-    TrieMap_Free(createEntities, TrieMap_NOP_CB);
     op->result_set->stats.relationships_created += relationships_created;
 }
 
@@ -279,8 +389,8 @@ Record OpCreateConsume(OpBase *opBase) {
 
     // No child operation to call.
     if(!op->op.childCount) {
-        AST *ast = op->ast;
-        r = Record_New(AST_AliasCount(ast));
+        NEWAST *ast = op->ast;
+        r = Record_New(NEWAST_AliasCount(ast));
         /* Create entities. */
         _CreateNodes(op, r);
         _CreateEdges(op, r);
@@ -320,7 +430,7 @@ void OpCreateFree(OpBase *ctx) {
     }
     if(op->nodes_to_create) free(op->nodes_to_create);
     if(op->edges_to_create) free(op->edges_to_create);
-    
+
     if (op->created_nodes) {
         size_t nodeCount = array_len(op->created_nodes);
         for(uint i = 0; i < nodeCount; i++) {

@@ -15,6 +15,7 @@
 
 typedef struct {
     Edge *edge;
+    const cypher_astnode_t *ast_entity;
     int src_node_rec_idx;
     int dest_node_rec_idx;
     int edge_rec_idx;
@@ -22,13 +23,14 @@ typedef struct {
 
 typedef struct {
     Node *node;
+    const cypher_astnode_t *ast_entity;
     int node_rec_idx;
 } NodeCreateCtx;
 
 typedef struct {
     OpBase op;
     GraphContext *gc;
-    AST *ast;
+    NEWAST *ast;
     QueryGraph *qg;
     Record *records;
 
@@ -43,7 +45,7 @@ typedef struct {
     ResultSet *result_set;
 } OpCreate;
 
-OpBase* NewCreateOp(RedisModuleCtx *ctx, GraphContext *gc, AST *ast, QueryGraph *qg, ResultSet *result_set);
+OpBase* NewCreateOp(RedisModuleCtx *ctx, QueryGraph *qg, ResultSet *result_set);
 
 Record OpCreateConsume(OpBase *opBase);
 OpResult OpCreateReset(OpBase *ctx);

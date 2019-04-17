@@ -458,8 +458,8 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST *old
     // Set root operation
     const cypher_astnode_t *create_clause = NEWAST_GetClause(ast->root, CYPHER_AST_CREATE);
     if(create_clause) {
-        BuildQueryGraph(gc, q, old_ast->createNode->graphEntities);
-        OpBase *opCreate = NewCreateOp(ctx, gc, old_ast, q, execution_plan->result_set);
+        BuildQueryGraph(gc, q, old_ast->createNode->graphEntities); // TODO
+        OpBase *opCreate = NewCreateOp(ctx, q, execution_plan->result_set);
 
         Vector_Push(ops, opCreate);
     }
