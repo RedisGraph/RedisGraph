@@ -10,11 +10,13 @@
 #include "edge.h"
 #include "assert.h"
 #include "graph_entity.h"
+#include "../graphcontext.h"
 
 Node* Node_New(const char *label, const char *alias) {
 	Node* n = calloc(1, sizeof(Node));
 	n->outgoing_edges = NewVector(Edge*, 0);
 	n->incoming_edges = NewVector(Edge*, 0);
+	n->labelID = GRAPH_UNKNOWN_LABEL;
 
 	if(label != NULL) n->label = strdup(label);
 	if(alias != NULL) n->alias = strdup(alias);
@@ -33,6 +35,36 @@ void Node_ConnectNode(Node* src, Node* dest, struct Edge* e) {
 
 int Node_IncomeDegree(const Node *n) {
 	return Vector_Size(n->incoming_edges);
+}
+
+void Node_SetLabelID(Node *n, int labelID) {
+	assert(n);
+	n->labelID = labelID;
+}
+
+GrB_Matrix Node_GetMatrix(Node *n) {
+	/* Node's label must be set, 
+	 * otherwise it doesn't make sense to refer to a matrix. */
+	assert(n && n->label);
+
+	// Retrieve matrix from graph if edge matrix isn't set.
+    if(!n->mat) {
+        GraphContext *gc = GraphContext_GetFromTLS();
+        Graph *g = gc->g;
+
+        /* Get label matrix:
+		 * There's no sense in calling Node_GetMatrix
+		 * if node isn't labeled. */
+		assert(n->labelID != GRAPH_NO_LABEL);
+        if(n->labelID == GRAPH_UNKNOWN_LABEL) {
+			// Label specified (n:Label), but doesn't exists.
+			n->mat = Graph_GetZeroMatrix(g);
+		} else {
+			n->mat = Graph_GetLabelMatrix(g, n->labelID);
+        }
+    }
+
+    return n->mat;
 }
 
 void Node_Free(Node* node) {

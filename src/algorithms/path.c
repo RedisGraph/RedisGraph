@@ -53,7 +53,7 @@ void Path_print(Path p) {
 
     for(int i = 0; i < pathLen; i++) {
         n = p+i;
-        printf("%llu", ENTITY_GET_ID(n));
+        printf("%llu ", ENTITY_GET_ID(n));
     }
 }
 

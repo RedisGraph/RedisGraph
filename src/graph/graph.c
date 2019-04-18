@@ -128,7 +128,7 @@ void _Graph_GetEdgesConnectingNodes(const Graph *g, NodeID src, NodeID dest, int
 
     Edge e;
     EdgeID edgeId;
-    e.relationId = r;
+    e.relationID = r;
     e.srcNodeID = src;
     e.destNodeID = dest;
 
@@ -270,6 +270,7 @@ Graph *Graph_New(size_t node_cap, size_t edge_cap) {
     g->relations = array_new(GrB_Matrix, GRAPH_DEFAULT_RELATION_TYPE_CAP);
     g->_relations_map = array_new(GrB_Matrix, GRAPH_DEFAULT_RELATION_TYPE_CAP);
     GrB_Matrix_new(&g->adjacency_matrix, GrB_BOOL, node_cap, node_cap);
+    GrB_Matrix_new(&g->_zero_matrix, GrB_BOOL, node_cap, node_cap);
 
     // Initialize a read-write lock scoped to the individual graph
     assert(pthread_rwlock_init(&g->_rwlock, NULL) == 0);
@@ -309,7 +310,7 @@ size_t Graph_NodeCount(const Graph *g) {
 
 size_t Graph_LabeledNodeCount(const Graph *g, int label) {
     GrB_Index nvals = 0;
-    GrB_Matrix m = Graph_GetLabel(g, label);
+    GrB_Matrix m = Graph_GetLabelMatrix(g, label);
     if(m) GrB_Matrix_nvals(&nvals, m);
     return nvals;
 }
@@ -354,7 +355,7 @@ int Graph_GetNodeLabel(const Graph *g, NodeID nodeID) {
     int label = GRAPH_NO_LABEL;
     for(int i = 0; i < array_len(g->labels); i++) {
         bool x = false;
-        GrB_Matrix M = Graph_GetLabel(g, i);
+        GrB_Matrix M = Graph_GetLabelMatrix(g, i);
         GrB_Info res = GrB_Matrix_extractElement_BOOL(&x, M, nodeID, nodeID);
         if(res == GrB_SUCCESS && x == true) {
             label = i;
@@ -413,12 +414,12 @@ void Graph_GetEdgesConnectingNodes(const Graph *g, NodeID srcID, NodeID destID, 
     assert(Graph_GetNode(g, destID, &destNode));
 
     if(r != GRAPH_NO_RELATION) {
-        _Graph_GetEdgesConnectingNodes(g, srcID, destID, r, edges);
+      _Graph_GetEdgesConnectingNodes(g, srcID, destID, r, edges);
     } else {
         // Relation type missing, scan through each edge type.
         int relationCount = Graph_RelationTypeCount(g);
         for(int i = 0; i < relationCount; i++) {
-            _Graph_GetEdgesConnectingNodes(g, srcID, destID, i, edges);           
+            _Graph_GetEdgesConnectingNodes(g, srcID, destID, i, edges);
         }
     }
 }
@@ -439,7 +440,7 @@ void Graph_CreateNode(Graph* g, int label, Node *n) {
         GrB_Matrix m = g->labels[label];
         GrB_Info res = GrB_Matrix_setElement_BOOL(m, true, id, id);
         if(res != GrB_SUCCESS) {
-            g->SynchronizeMatrix(g, m);
+            _MatrixResizeToCapacity(g, m);
             assert(GrB_Matrix_setElement_BOOL(m, true, id, id) == GrB_SUCCESS);
         }
     }
@@ -636,7 +637,7 @@ void Graph_DeleteNode(Graph *g, Node *n) {
     // Clear label matrix at position node ID.
     uint32_t label_count = array_len(g->labels);
     for(int i = 0; i < label_count; i++) {
-        GrB_Matrix M = Graph_GetLabel(g, i);
+        GrB_Matrix M = Graph_GetLabelMatrix(g, i);
         GxB_Matrix_Delete(M, ENTITY_GET_ID(n), ENTITY_GET_ID(n));
     }
 
@@ -688,7 +689,7 @@ GrB_Matrix Graph_GetAdjacencyMatrix(const Graph *g) {
     return m;
 }
 
-GrB_Matrix Graph_GetLabel(const Graph *g, int label_idx) {
+GrB_Matrix Graph_GetLabelMatrix(const Graph *g, int label_idx) {
     assert(g && label_idx < array_len(g->labels));
     GrB_Matrix m = g->labels[label_idx];
     g->SynchronizeMatrix(g, m);
@@ -708,14 +709,26 @@ GrB_Matrix Graph_GetRelationMatrix(const Graph *g, int relation_idx) {
     return m;
 }
 
+GrB_Matrix Graph_GetZeroMatrix(const Graph *g) {
+    GrB_Index nvals;
+    GrB_Matrix z = g->_zero_matrix;
+    g->SynchronizeMatrix(g, z);
+
+    // Make sure zero matrix is indeed empty.
+    GrB_Matrix_nvals(&nvals, z);
+    assert(nvals == 0);
+    return z;
+}
+
 void Graph_Free(Graph *g) {
     assert(g);
     // Free matrices.
     Entity *en;
     DataBlockIterator *it;
     GrB_Matrix m = Graph_GetAdjacencyMatrix(g);
-
+    GrB_Matrix z = Graph_GetZeroMatrix(g);
     GrB_Matrix_free(&m);
+    GrB_Matrix_free(&z);
 
     uint32_t relationCount = Graph_RelationTypeCount(g);
     for(int i = 0; i < relationCount; i++) {

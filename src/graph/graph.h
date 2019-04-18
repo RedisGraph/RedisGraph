@@ -17,13 +17,14 @@
 #include "../util/datablock/datablock_iterator.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 
-#define GRAPH_DEFAULT_NODE_CAP 16384         // Default number of nodes a graph can hold before resizing.
-#define GRAPH_DEFAULT_EDGE_CAP 16384         // Default number of edges a graph can hold before resizing.
-#define GRAPH_DEFAULT_RELATION_TYPE_CAP 16   // Default number of different relationship types a graph can hold before resizing.
-#define GRAPH_DEFAULT_LABEL_CAP 16           // Default number of different labels a graph can hold before resizing.
-#define GRAPH_NO_LABEL -1                    // Labels are numbered [0-N], -1 represents no label.
-#define GRAPH_NO_RELATION -1                 // Relations are numbered [0-N], -1 represents no relation.
-#define GRAPH_UNKNOWN_RELATION -2            // Relations are numbered [0-N], -2 represents an unknown relation.
+#define GRAPH_DEFAULT_NODE_CAP 16384            // Default number of nodes a graph can hold before resizing.
+#define GRAPH_DEFAULT_EDGE_CAP 16384            // Default number of edges a graph can hold before resizing.
+#define GRAPH_DEFAULT_RELATION_TYPE_CAP 16      // Default number of different relationship types a graph can hold before resizing.
+#define GRAPH_DEFAULT_LABEL_CAP 16              // Default number of different labels a graph can hold before resizing.
+#define GRAPH_NO_LABEL -1                       // Labels are numbered [0-N], -1 represents no label.
+#define GRAPH_UNKNOWN_LABEL -2                  // Labels are numbered [0-N], -2 represents an unknown relation.
+#define GRAPH_NO_RELATION -1                    // Relations are numbered [0-N], -1 represents no relation.
+#define GRAPH_UNKNOWN_RELATION -2               // Relations are numbered [0-N], -2 represents an unknown relation.
 
 // Mask with most significat bit on 10000...
 #define MSB_MASK (1UL << (sizeof(EntityID) * 8 - 1))
@@ -62,6 +63,7 @@ struct Graph {
     GrB_Matrix *labels;                 // Label matrices.
     GrB_Matrix *relations;              // Relation matrices.
     GrB_Matrix *_relations_map;         // Maps from (relation, row, col) to edge id.
+    GrB_Matrix _zero_matrix;            // Zero matrix.
     pthread_mutex_t _writers_mutex;     // Mutex restrict single writer.
     pthread_mutex_t _mutex;             // Mutex for accessing critical sections.
     pthread_rwlock_t _rwlock;           // Read-write lock scoped to this specific graph
@@ -204,7 +206,7 @@ int Graph_GetNode (
 );
 
 // Retrieves node label
-// returns GRAPH_NO_LABEL if node has no label.
+// Returns GRAPH_NO_LABEL if node has no label.
 int Graph_GetNodeLabel (
     const Graph *g,
     NodeID nodeID
@@ -218,7 +220,8 @@ int Graph_GetEdge (
     Edge *e
 );
 
-// Retrieves edge relation.
+// Retrieves edge relation type
+// Returns GRAPH_NO_RELATION if edge has no relation type.
 int Graph_GetEdgeRelation (
     const Graph *g,
     Edge *e
@@ -252,7 +255,7 @@ GrB_Matrix Graph_GetAdjacencyMatrix (
 
 // Retrieves a label matrix.
 // Matrix is resized if its size doesn't match graph's node count.
-GrB_Matrix Graph_GetLabel (
+GrB_Matrix Graph_GetLabelMatrix (
     const Graph *g,     // Graph from which to get adjacency matrix.
     int label           // Label described by matrix.
 );
@@ -263,6 +266,11 @@ GrB_Matrix Graph_GetRelationMatrix (
     const Graph *g,     // Graph from which to get adjacency matrix.
     int relation        // Relation described by matrix.
 );
+
+// Retrieves the zero matrix.
+// The function will resize it to match all other
+// internal matrices, caller mustn't modify it in any way.
+GrB_Matrix Graph_GetZeroMatrix(const Graph *g);
 
 // Free graph.
 void Graph_Free (

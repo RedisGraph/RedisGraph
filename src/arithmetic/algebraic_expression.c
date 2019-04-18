@@ -342,7 +342,10 @@ AlgebraicExpression **AlgebraicExpression_From_Query(const AST *ast, Vector *mat
 
         if(exp->operand_count == 0) {
             exp->src_node = src;
-            if(src->mat) AlgebraicExpression_AppendTerm(exp, src->mat, false, false);
+            if(src->label) {
+                GrB_Matrix srcMat = Node_GetMatrix(src);
+                AlgebraicExpression_AppendTerm(exp, srcMat, false, false);
+            }
         }
 
         // ()-[:A|:B.]->()
@@ -376,7 +379,10 @@ AlgebraicExpression **AlgebraicExpression_From_Query(const AST *ast, Vector *mat
             AlgebraicExpression_AppendTerm(exp, mat, transpose, freeMatrix);
         }
 
-        if(dest->mat) AlgebraicExpression_AppendTerm(exp, dest->mat, false, false);
+        if(dest->label) {
+            GrB_Matrix destMat = Node_GetMatrix(dest);
+            AlgebraicExpression_AppendTerm(exp, destMat, false, false);
+        }
     }
 
     exp->dest_node = dest;
