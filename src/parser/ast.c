@@ -424,8 +424,9 @@ void AST_Free(AST **ast) {
     Free_AST_SkipNode(ast[i]->skipNode);
     Free_AST_OrderNode(ast[i]->orderNode);
     Free_AST_UnwindNode(ast[i]->unwindNode);
-    
-    if(ast[i]->withNode) Free_AST_WithNode(ast[i]->withNode);
+    Free_AST_LimitNode(ast[i]->limitNode);
+    Free_AST_WithNode(ast[i]->withNode);
+
     if(ast[i]->_aliasIDMapping) TrieMap_Free(ast[i]->_aliasIDMapping, NULL);
     rm_free(ast[i]);
   }

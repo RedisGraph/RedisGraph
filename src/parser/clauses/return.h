@@ -21,7 +21,7 @@ typedef struct {
 	int distinct;
 } AST_ReturnNode;
 
-AST_ReturnElementNode* New_AST_ReturnElementNode(AST_ArithmeticExpressionNode *exp, const char* alias);
+AST_ReturnElementNode* New_AST_ReturnElementNode(AST_ArithmeticExpressionNode *exp, char* alias);
 
 // Dedicated return element which represents RETURN '*'.
 AST_ReturnElementNode* New_AST_ReturnElementExpandALL();

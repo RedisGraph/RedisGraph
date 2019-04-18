@@ -8,15 +8,10 @@
 #include "../util/arr.h"
 #include "../value.h"
 
-AST_Variable* New_AST_Variable(const char *alias, const char *property) {
-	AST_Variable *v = (AST_Variable*)calloc(1, sizeof(AST_Variable));
-
-	if(alias != NULL) {
-		v->alias = strdup(alias);
-	}
-	if(property != NULL) {
-		v->property = strdup(property);
-	}
+AST_Variable* New_AST_Variable(char *alias, char *property) {
+	AST_Variable *v = malloc(sizeof(AST_Variable));
+	v->alias = alias;
+	v->property = property;
 
 	return v;
 }
@@ -57,9 +52,8 @@ static AST_LinkEntity* _AST_Clone_LinkEntity(const AST_LinkEntity *src) {
 		clone->labels = array_new(char*, label_count);
 
 		for(int i = 0; i < label_count; i++) {
-			clone->labels = array_append(clone->labels, src->labels[i]);			
+			clone->labels = array_append(clone->labels, src->labels[i]);
 		}
-		clone->ge.label = clone->labels[0];
 	}
 
 	return clone;
@@ -93,7 +87,7 @@ AST_LinkEntity* New_AST_LinkEntity(char *alias, char **labels, Vector *propertie
 		le->labels = labels;
 	}
 
-	if(alias != NULL) le->ge.alias = strdup(alias);
+	if(alias != NULL) le->ge.alias = alias;
 
 	return le;
 }
@@ -125,24 +119,30 @@ int AST_LinkEntity_LabelCount(const AST_LinkEntity* edge) {
 }
 
 void Free_AST_GraphEntity(AST_GraphEntity *graphEntity) {
-	if(graphEntity->properties != NULL) Vector_Free(graphEntity->properties);
+	if(graphEntity->properties != NULL) {
+		SIValue *val;
+		while(Vector_Pop(graphEntity->properties, &val)) {
+			SIValue_Free(val);
+			free(val); // SIValues in property map literals are heap-allocated
+		}
+		Vector_Free(graphEntity->properties);
+	}
+	if(graphEntity->alias) free(graphEntity->alias);
+	if(graphEntity->label) free(graphEntity->label);
 
 	if(graphEntity->t == N_LINK) {
 		AST_LinkEntity *link = (AST_LinkEntity*)graphEntity;
 		if(link->length) free(link->length);
 		if(link->labels) array_free(link->labels);
 	}
+
 	free(graphEntity);
 }
 
 void Free_AST_Variable(AST_Variable *v) {
 	if(v != NULL) {
-		if(v->alias != NULL) {
-			free(v->alias);
-		}
-		if(v->property != NULL) {
-			free(v->property);
-		}
+		if(v->alias != NULL) free(v->alias);
+		if(v->property != NULL) free(v->property);
 		free(v);
 	}
 }

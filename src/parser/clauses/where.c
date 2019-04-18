@@ -34,9 +34,8 @@ AST_FilterNode *New_AST_ConditionNode(AST_FilterNode *left, int op, AST_FilterNo
 }
 
 void FreePredicateNode(AST_PredicateNode* predicateNode) {
-	// Don't free arithmetic expression nodes, as they have already
-	// been freed with the filter tree
-	free(predicateNode);
+	Free_AST_ArithmeticExpressionNode(predicateNode->lhs);
+	Free_AST_ArithmeticExpressionNode(predicateNode->rhs);
 }
 
 void _WhereClause_ReferredEntities(AST_FilterNode *root, TrieMap *referred_entities) {
@@ -88,6 +87,7 @@ void Free_AST_FilterNode(AST_FilterNode* filterNode) {
 			Free_AST_FilterNode(filterNode->cn.right);
 			break;
 	}
+    free(filterNode);
 }
 
 void Free_AST_WhereNode(AST_WhereNode *whereNode) {

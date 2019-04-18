@@ -388,7 +388,9 @@ AlgebraicExpression **AlgebraicExpression_From_Query(const AST *ast, Vector *mat
     exp->dest_node = dest;
     AlgebraicExpression **expressions = _AlgebraicExpression_Intermidate_Expressions(exp, ast, matchPattern, q, exp_count);
     expressions = _AlgebraicExpression_IsolateVariableLenExps(expressions, exp_count);
+    // TODO memory leak (fails on [a|b] relations?)
     // AlgebraicExpression_Free(exp);
+    free(exp->operands);
     free(exp);
 
     /* Because matrices are column ordered, when multiplying A*B

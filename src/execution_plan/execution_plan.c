@@ -211,6 +211,7 @@ void ExecutionPlan_RemoveOp(ExecutionPlan *plan, OpBase *op) {
 
     // Clear op.
     op->parent = NULL;
+    free(op->children);
     op->children = NULL;
     op->childCount = 0;
 }
@@ -411,6 +412,8 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST *ast
                         Vector_Push(traversals, op);
                     }
                 }
+                // Free the expressions array, as its parts have been converted into operations
+                free(exps);
             } else {
                 /* Node scan. */
                 AST_GraphEntity *ge;
