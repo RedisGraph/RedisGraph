@@ -19,7 +19,6 @@ static inline bool _outOfBounds(OpNodeByIdSeek *op) {
 
 OpBase* NewOpNodeByIdSeekOp
 (
-    const AST *ast,
     unsigned int nodeRecIdx,
     NodeID minId,
     NodeID maxId,
@@ -27,6 +26,8 @@ OpBase* NewOpNodeByIdSeekOp
     bool maxInclusive
 )
 {
+    NEWAST *ast = NEWAST_GetFromTLS();
+
     // Can't include unspecified bound.
     assert(!(minId == ID_RANGE_UNBOUND && minInclusive));
     assert(!(maxId == ID_RANGE_UNBOUND && maxInclusive));
@@ -51,7 +52,7 @@ OpBase* NewOpNodeByIdSeekOp
     if(!minInclusive && minId != ID_RANGE_UNBOUND) op_nodeByIdSeek->currentId++;
 
     op_nodeByIdSeek->nodeRecIdx = nodeRecIdx;
-    op_nodeByIdSeek->recLength = AST_AliasCount(ast);
+    op_nodeByIdSeek->recLength = NEWAST_AliasCount(ast);
 
     OpBase_Init(&op_nodeByIdSeek->op);
     op_nodeByIdSeek->op.name = "NodeByIdSeek";

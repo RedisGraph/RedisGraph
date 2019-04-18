@@ -7,7 +7,6 @@
 #pragma once
 
 #include "op.h"
-#include "../../parser/ast.h"
 #include "../../graph/graph.h"
 
 #define ID_RANGE_UNBOUND -1
@@ -27,7 +26,6 @@ typedef struct {
 
 OpBase* NewOpNodeByIdSeekOp
 (
-    const AST *ast,
     unsigned int nodeRecIdx,
     NodeID minId,
     NodeID maxId,

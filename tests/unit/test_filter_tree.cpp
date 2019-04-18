@@ -14,8 +14,6 @@ extern "C" {
 #include <string.h>
 #include "../../src/util/vector.h"
 #include "../../src/parser/newast.h"
-#include "../../src/parser/grammar.h"
-#include "../../src/parser/ast_arithmetic_expression.h"
 #include "../../src/filter_tree/filter_tree.h"
 #include "../../src/util/arr.h"
 #include "../../src/util/rmalloc.h"
@@ -87,7 +85,7 @@ class FilterTreeTest: public ::testing::Test {
 
     FT_FilterNode* _build_cond_tree(int cond) {
         const char *query;
-        if(cond == AND) query = "MATCH (me) WHERE me.age > 34 AND me.height <= 188 RETURN me";
+        if(cond == OP_AND) query = "MATCH (me) WHERE me.age > 34 AND me.height <= 188 RETURN me";
         else  query = "MATCH (me) WHERE me.age > 34 OR me.height <= 188 RETURN me";
 
         NEWAST *ast = _build_ast(query);
@@ -96,11 +94,11 @@ class FilterTreeTest: public ::testing::Test {
     }
 
     FT_FilterNode* _build_AND_cond_tree() {
-        return _build_cond_tree(AND);
+        return _build_cond_tree(OP_AND);
     }
 
     FT_FilterNode* _build_OR_cond_tree() {
-        return _build_cond_tree(OR);
+        return _build_cond_tree(OP_OR);
     }
 
     FT_FilterNode* _build_deep_tree() {
