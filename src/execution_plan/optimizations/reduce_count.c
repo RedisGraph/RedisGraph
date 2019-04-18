@@ -37,6 +37,13 @@ static int _identifyPattern(OpBase *root, OpResult **opResult, OpAggregate **opA
         exp->op.type != AR_OP_AGGREGATE ||
         strcasecmp(exp->op.func_name, "count")) return 0;
 
+    // Make sure Count acts on an alias.
+    if(exp->op.child_count != 1) return 0;
+    AR_ExpNode *arg = exp->op.children[0];
+    if( arg->type != AR_EXP_OPERAND ||
+        arg->operand.type != AR_EXP_VARIADIC ||
+        arg->operand.variadic.entity_prop != NULL) return 0;
+
     op = op->children[0];
 
     // Scan, either a full node or label scan.

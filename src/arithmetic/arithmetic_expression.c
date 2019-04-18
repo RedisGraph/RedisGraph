@@ -148,8 +148,8 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
                     _AR_EXP_UpdatePropIdx(root, r);
                 }
                 SIValue *property = GraphEntity_GetProperty(ge, root->operand.variadic.entity_prop_idx);
-                /* TODO: Handle PROPERTY_NOTFOUND. */
-                result = SI_ShallowCopy(*property);
+                if(property == PROPERTY_NOTFOUND) result = SI_NullVal();
+                else result = SI_ShallowCopy(*property);
             } else {
                 // Alias doesn't necessarily refers to a graph entity,
                 // it could also be a constant.
