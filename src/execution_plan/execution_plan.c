@@ -249,183 +249,243 @@ OpBase* ExecutionPlan_Locate_References(OpBase *root, Vector *references) {
     return op;
 }
 
-ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, ResultSet *result_set) {
-    GraphContext *gc = GraphContext_GetFromTLS();
-    Graph *g = gc->g;
-    ExecutionPlan *execution_plan = (ExecutionPlan*)calloc(1, sizeof(ExecutionPlan));    
-    execution_plan->result_set = result_set;
-    Vector *ops = NewVector(OpBase*, 1);
-    OpBase *op;
-
-    NEWAST *ast = NEWAST_GetFromTLS();
-    /* Predetermin graph size: (entities in both MATCH and CREATE clauses)
+/* Build a complete query graph from the clauses that can introduce entities
+ * (MATCH, MERGE, and CREATE) */
+// TODO Depending on how path uniqueness is specified, this may be too inclusive?
+QueryGraph* _BuildFullQueryGraph(GraphContext *gc, NEWAST *ast) {
+    /* Predetermine graph size: (entities in both MATCH and CREATE clauses)
      * have graph object maintain an entity capacity, to avoid reallocs,
      * problem was reallocs done by CREATE clause, which invalidated old references in ExpandAll. */
+    // TODO We previously counted all graph entities prior to building the QueryGraph (apparently
+    // to avoid the realloc bug described here. Does this problem still exist?
+    // If so, re-introduce similar logic.
     size_t node_count;
     size_t edge_count;
     node_count = edge_count = NEWAST_AliasCount(ast);
     // _Determine_Graph_Size(old_ast, &node_count, &edge_count);
-    QueryGraph *q = QueryGraph_New(node_count, edge_count);
-    execution_plan->query_graph = q;
+    QueryGraph *qg = QueryGraph_New(node_count, edge_count);
 
+    unsigned int clause_count = cypher_astnode_nchildren(ast->root);
+    // We are interested in every path held in a MATCH or CREATE pattern,
+    // and the (single) path described by a MERGE clause.
+    const cypher_astnode_t *clauses[clause_count];
+
+    // MATCH clauses
+    uint match_count = NewAST_GetTopLevelClauses(ast->root, CYPHER_AST_MATCH, clauses);
+    for (uint i = 0; i < match_count; i ++) {
+        const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(clauses[i]);
+        uint npaths = cypher_ast_pattern_npaths(pattern);
+        for (uint j = 0; j < npaths; j ++) {
+            const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, j);
+            QueryGraph_AddPath(gc, ast, qg, path);
+        }
+    }
+
+    // CREATE clauses
+    uint create_count = NewAST_GetTopLevelClauses(ast->root, CYPHER_AST_CREATE, clauses);
+    for (uint i = 0; i < create_count; i ++) {
+        const cypher_astnode_t *pattern = cypher_ast_create_get_pattern(clauses[i]);
+        uint npaths = cypher_ast_pattern_npaths(pattern);
+        for (uint j = 0; j < npaths; j ++) {
+            const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, j);
+            QueryGraph_AddPath(gc, ast, qg, path);
+        }
+    }
+
+    // MERGE clauses
+    uint merge_count = NewAST_GetTopLevelClauses(ast->root, CYPHER_AST_MERGE, clauses);
+    for (uint i = 0; i < merge_count; i ++) {
+        const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(clauses[i]);
+        QueryGraph_AddPath(gc, ast, qg, path);
+    }
+
+    return qg;
+}
+
+/* Given an AST path, construct a series of scans and traversals to model it. */
+void _ExecutionPlan_BuildTraversalOps(QueryGraph *qg, FT_FilterNode *ft, const cypher_astnode_t *path, Vector *traversals) {
+    GraphContext *gc = GraphContext_GetFromTLS();
+    OpBase *op;
+
+    uint nelems = cypher_ast_pattern_path_nelements(path);
+    if (nelems == 1) {
+        // Only one entity is specified - build a node scan.
+        const cypher_astnode_t *ast_node = cypher_ast_pattern_path_get_element(path, 0);
+        const cypher_astnode_t *ast_alias = cypher_ast_node_pattern_get_identifier(ast_node);
+        const char *alias;
+        if (ast_alias) alias = cypher_ast_identifier_get_name(ast_alias); // TODO get anon aliases
+        Node **n = QueryGraph_GetNodeRef(qg, QueryGraph_GetNodeByAlias(qg, alias));
+        if(cypher_ast_node_pattern_nlabels(ast_node) > 0) {
+            op = NewNodeByLabelScanOp(gc, *n);
+        } else {
+            op = NewAllNodeScanOp(gc->g, *n);
+        }
+        Vector_Push(traversals, op);
+        return;
+    }
+
+    // This path must be expressed with one or more traversals.
+    NEWAST *ast = NEWAST_GetFromTLS();
+    size_t expCount = 0;
+    AlgebraicExpression **exps = AlgebraicExpression_FromQuery(ast, qg, &expCount);
+
+    TRAVERSE_ORDER order = determineTraverseOrder(ft, exps, expCount);
+    if(order == TRAVERSE_ORDER_FIRST) {
+        AlgebraicExpression *exp = exps[0];
+        selectEntryPoint(exp, ft);
+
+        // Create SCAN operation.
+        if(exp->src_node->label) {
+            /* There's no longer need for the last matrix operand
+             * as it's been replaced by label scan. */
+            AlgebraicExpression_RemoveTerm(exp, exp->operand_count-1, NULL);
+            op = NewNodeByLabelScanOp(gc, exp->src_node);
+            Vector_Push(traversals, op);
+        } else {
+            op = NewAllNodeScanOp(gc->g, exp->src_node);
+            Vector_Push(traversals, op);
+        }
+        for(int i = 0; i < expCount; i++) {
+            if(exps[i]->operand_count == 0) continue;
+            if(exps[i]->minHops != 1 || exps[i]->maxHops != 1) {
+                op = NewCondVarLenTraverseOp(exps[i],
+                                             exps[i]->minHops,
+                                             exps[i]->maxHops,
+                                             gc->g);
+            } else {
+                op = NewCondTraverseOp(gc->g, exps[i]);
+            }
+            Vector_Push(traversals, op);
+        }
+    } else {
+        AlgebraicExpression *exp = exps[expCount-1];
+        selectEntryPoint(exp, ft);
+        // Create SCAN operation.
+        if(exp->dest_node->label) {
+            /* There's no longer need for the last matrix operand
+             * as it's been replaced by label scan. */
+            AlgebraicExpression_RemoveTerm(exp, exp->operand_count-1, NULL);
+            op = NewNodeByLabelScanOp(gc, exp->dest_node);
+            Vector_Push(traversals, op);
+        } else {
+            op = NewAllNodeScanOp(gc->g, exp->dest_node);
+            Vector_Push(traversals, op);
+        }
+
+        for(int i = expCount-1; i >= 0; i--) {
+            if(exps[i]->operand_count == 0) continue;
+            AlgebraicExpression_Transpose(exps[i]);
+            if(exps[i]->minHops != 1 || exps[i]->maxHops != 1) {
+                op = NewCondVarLenTraverseOp(exps[i],
+                                             exps[i]->minHops,
+                                             exps[i]->maxHops,
+                                             gc->g);
+            }
+            else {
+                op = NewCondTraverseOp(gc->g, exps[i]);
+            }
+            Vector_Push(traversals, op);
+        }
+    }
+    // Free the expressions array, as its parts have been converted into operations
+    free(exps);
+}
+
+void _ExecutionPlan_AddTraversalOps(Vector *ops, OpBase *cartesian_root, Vector *traversals) {
+    if(cartesian_root) {
+        // If we're traversing multiple disjoint paths, the new traversal
+        // should be connected uner a Cartesian product.
+        OpBase *childOp;
+        OpBase *parentOp;
+        Vector_Pop(traversals, &parentOp);
+        // Connect cartesian product to the root of traversal.
+        _OpBase_AddChild(cartesian_root, parentOp);
+        while(Vector_Pop(traversals, &childOp)) {
+            _OpBase_AddChild(parentOp, childOp);
+            parentOp = childOp;
+        }
+    } else {
+        // Otherwise, the traversals can be added sequentially to the overall ops chain
+        OpBase *op;
+        for(int traversalIdx = 0; traversalIdx < Vector_Size(traversals); traversalIdx++) {
+            Vector_Get(traversals, traversalIdx, &op);
+            Vector_Push(ops, op);
+        }
+    }
+}
+
+// TODO I don't like the way this function is separate from its caller right now
+// (this had been the setup to handle multiple ASTs). Depending on how the WITH clause
+// implementation works, consider folding back into caller.
+ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, ResultSet *result_set) {
+    ExecutionPlan *execution_plan = (ExecutionPlan*)calloc(1, sizeof(ExecutionPlan));    
+    execution_plan->result_set = result_set;
+    Vector *ops = NewVector(OpBase*, 1);
+
+    GraphContext *gc = GraphContext_GetFromTLS();
+    NEWAST *ast = NEWAST_GetFromTLS();
+
+    // Build query graph
+    QueryGraph *qg = _BuildFullQueryGraph(gc, ast);
+    execution_plan->query_graph = qg;
+
+    // Build filter tree
     FT_FilterNode *filter_tree = BuildFiltersTree(ast);
     execution_plan->filter_tree = filter_tree;
-
-    // unsigned int clause_count = cypher_astnode_nchildren(query);
-    // const cypher_astnode_t *match_clauses[clause_count];
-    // unsigned int match_count = NewAST_GetTopLevelClauses(query, CYPHER_AST_MATCH, match_clauses);
 
     unsigned int clause_count = cypher_astnode_nchildren(ast->root);
     const cypher_astnode_t *match_clauses[clause_count];
     unsigned int match_count = NewAST_GetTopLevelClauses(ast->root, CYPHER_AST_MATCH, match_clauses);
-    uint pattern_count = 0;
+    // Build traversal operations for every MATCH clause
     for (uint i = 0; i < match_count; i ++) {
+        // Each MATCH clause has a pattern that consists of 1 or more paths
         const cypher_astnode_t *ast_pattern = cypher_ast_match_get_pattern(match_clauses[i]);
-        pattern_count += cypher_ast_pattern_npaths(ast_pattern);
-    }
-
-    for (uint i = 0; i < match_count; i ++) {
-        const cypher_astnode_t *ast_pattern = cypher_ast_match_get_pattern(match_clauses[i]);
-        BuildQueryGraph(gc, q, ast_pattern);
-
         uint npaths = cypher_ast_pattern_npaths(ast_pattern);
-        // For every pattern in match clause.
-        /* Incase we're dealing with multiple patterns
-         * we'll simply join them all together with a join operation. */
-        bool multiPattern = cypher_ast_pattern_npaths(ast_pattern) > 1;
+
+        /* If we're dealing with multiple paths (which our validations have guaranteed
+         * are disjoint), we'll join them all together with a Cartesian product (full join). */
         OpBase *cartesianProduct = NULL;
-        if(multiPattern) {
+        if (cypher_ast_pattern_npaths(ast_pattern) > 1) {
             cartesianProduct = NewCartesianProductOp(NEWAST_AliasCount(ast));
             Vector_Push(ops, cartesianProduct);
         }
         
-        // Keep track after all traversal operations along a pattern.
-        Vector *traversals = NewVector(OpBase*, 1);
-
-
+        Vector *path_traversal = NewVector(OpBase*, 1);
         for (uint j = 0; j < npaths; j ++) {
+            // Convert each path into the appropriate traversal operation(s).
             const cypher_astnode_t *path = cypher_ast_pattern_get_path(ast_pattern, j);
-            uint nelems = cypher_ast_pattern_path_nelements(path);
-            if (nelems > 1) {
-                size_t expCount = 0;
-                AlgebraicExpression **exps = AlgebraicExpression_FromQuery(ast, q, &expCount);
-
-                TRAVERSE_ORDER order = determineTraverseOrder(filter_tree, exps, expCount);
-                if(order == TRAVERSE_ORDER_FIRST) {
-                    AlgebraicExpression *exp = exps[0];
-                    selectEntryPoint(exp, filter_tree);
-
-                    // Create SCAN operation.
-                    if(exp->src_node->label) {
-                        /* There's no longer need for the last matrix operand
-                         * as it's been replaced by label scan. */
-                        AlgebraicExpression_RemoveTerm(exp, exp->operand_count-1, NULL);
-                        op = NewNodeByLabelScanOp(gc, exp->src_node);
-                        Vector_Push(traversals, op);
-                    } else {
-                        op = NewAllNodeScanOp(g, exp->src_node);
-                        Vector_Push(traversals, op);
-                    }
-                    for(int i = 0; i < expCount; i++) {
-                        if(exps[i]->operand_count == 0) continue;
-                        if(exps[i]->minHops != 1 || exps[i]->maxHops != 1) {
-                            op = NewCondVarLenTraverseOp(exps[i],
-                                                         exps[i]->minHops,
-                                                         exps[i]->maxHops,
-                                                         g);
-                        }
-                        else {
-                            op = NewCondTraverseOp(g, exps[i]);
-                        }
-                        Vector_Push(traversals, op);
-                    }
-                } else {
-                    AlgebraicExpression *exp = exps[expCount-1];
-                    selectEntryPoint(exp, filter_tree);
-                    // Create SCAN operation.
-                    if(exp->dest_node->label) {
-                        /* There's no longer need for the last matrix operand
-                         * as it's been replaced by label scan. */
-                        AlgebraicExpression_RemoveTerm(exp, exp->operand_count-1, NULL);
-                        op = NewNodeByLabelScanOp(gc, exp->dest_node);
-                        Vector_Push(traversals, op);
-                    } else {
-                        op = NewAllNodeScanOp(g, exp->dest_node);
-                        Vector_Push(traversals, op);
-                    }
-
-                    for(int i = expCount-1; i >= 0; i--) {
-                        if(exps[i]->operand_count == 0) continue;
-                        AlgebraicExpression_Transpose(exps[i]);
-                        if(exps[i]->minHops != 1 || exps[i]->maxHops != 1) {
-                            op = NewCondVarLenTraverseOp(exps[i],
-                                                         exps[i]->minHops,
-                                                         exps[i]->maxHops,
-                                                         g);
-                        }
-                        else {
-                            op = NewCondTraverseOp(g, exps[i]);
-                        }
-                        Vector_Push(traversals, op);
-                    }
-                }
-                // Free the expressions array, as its parts have been converted into operations
-                free(exps);
-            } else {
-                /* Node scan. */
-                const cypher_astnode_t *ast_node = cypher_ast_pattern_path_get_element(path, 0);
-                const cypher_astnode_t *ast_alias = cypher_ast_node_pattern_get_identifier(ast_node);
-                const char *alias;
-                if (ast_alias) alias = cypher_ast_identifier_get_name(ast_alias); // TODO get anon aliases
-                Node **n = QueryGraph_GetNodeRef(q, QueryGraph_GetNodeByAlias(q, alias));
-                if(cypher_ast_node_pattern_nlabels(ast_node) > 0) {
-                    op = NewNodeByLabelScanOp(gc, *n);
-                } else {
-                    op = NewAllNodeScanOp(g, *n);
-                }
-                Vector_Push(traversals, op);
-            }
-
-            if(multiPattern) {
-                // Connect traversal operations.
-                OpBase *childOp;
-                OpBase *parentOp;
-                Vector_Pop(traversals, &parentOp);
-                // Connect cartesian product to the root of traversal.
-                _OpBase_AddChild(cartesianProduct, parentOp);
-                while(Vector_Pop(traversals, &childOp)) {
-                    _OpBase_AddChild(parentOp, childOp);
-                    parentOp = childOp;
-                }
-            } else {
-                for(int traversalIdx = 0; traversalIdx < Vector_Size(traversals); traversalIdx++) {
-                    Vector_Get(traversals, traversalIdx, &op);
-                    Vector_Push(ops, op);
-                }
-            }
-            Vector_Clear(traversals);
+            _ExecutionPlan_BuildTraversalOps(qg, filter_tree, path, path_traversal);
+            _ExecutionPlan_AddTraversalOps(ops, cartesianProduct, path_traversal);
+            Vector_Clear(path_traversal);
         }
-        Vector_Free(traversals);
+        Vector_Free(path_traversal);
     }
 
+    // Set root operation
     const cypher_astnode_t *unwind_clause = NEWAST_GetClause(ast->root, CYPHER_AST_UNWIND);
     if(unwind_clause) {
         OpBase *opUnwind = NewUnwindOp(ast, unwind_clause);
         Vector_Push(ops, opUnwind);
     }
 
-    // Set root operation
     const cypher_astnode_t *create_clause = NEWAST_GetClause(ast->root, CYPHER_AST_CREATE);
     if(create_clause) {
-        const cypher_astnode_t *pattern = cypher_ast_create_get_pattern(create_clause);
-        BuildQueryGraph(gc, q, pattern);
-        OpBase *opCreate = NewCreateOp(ctx, q, execution_plan->result_set);
-
+        OpBase *opCreate = NewCreateOp(ctx, qg, execution_plan->result_set);
         Vector_Push(ops, opCreate);
     }
 
     const cypher_astnode_t *merge_clause = NEWAST_GetClause(ast->root, CYPHER_AST_MERGE);
     if(merge_clause) {
+        // A merge clause provides a single path that must exist or be created.
+        // As with paths in a MATCH query, build the appropriate traversal operations
+        // and append them to the set of ops.
+        const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(merge_clause);
+        Vector *path_traversal = NewVector(OpBase*, 1);
+        _ExecutionPlan_BuildTraversalOps(qg, filter_tree, path, path_traversal);
+        _ExecutionPlan_AddTraversalOps(ops, NULL, path_traversal);
+        Vector_Free(path_traversal);
+
+        // Append a merge operation
         OpBase *opMerge = NewMergeOp(gc, merge_clause, execution_plan->result_set);
         Vector_Push(ops, opMerge);
     }
@@ -448,17 +508,12 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, ResultSet *result_set) {
 
     // TODO with clauses, separate handling for their distinct/limit/etc
     const cypher_astnode_t *with_clause = NEWAST_GetClause(ast->root, CYPHER_AST_WITH);
-
     if(with_clause) {
         assert(false);
-        // exps = _WithClause_GetExpressions(old_ast);
-        // aliases = WithClause_GetAliases(ast->withNode);
-        // aggregate = WithClause_ContainsAggregation(ast->withNode);
     }
 
     const cypher_astnode_t *ret_clause = NEWAST_GetClause(ast->root, CYPHER_AST_RETURN);
     if(ret_clause) {
-        // exps = _ReturnClause_GetExpressions(old_ast);
         uint exp_count = array_len(ast->return_expressions);
         // TODO exps and aliases just separate the elements of ast->return_expressions,
         // which is dumb - change signatures to take ReturnElementNodes
@@ -474,6 +529,7 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, ResultSet *result_set) {
     }
 
 
+    OpBase *op;
     if(ret_clause || with_clause) {
         if(aggregate) op = NewAggregateOp(exps, aliases);
         else op = NewProjectOp(exps, aliases);
@@ -497,7 +553,6 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, ResultSet *result_set) {
         if (limit_clause) limit = skip + NEWAST_ParseIntegerNode(limit_clause);
 
         if (order_clause) {
-            // op = NewSortOp(_OrderClause_GetExpressions(old_ast), order_clause, limit);
             op = NewSortOp(order_clause, limit);
             Vector_Push(ops, op);
         }
@@ -512,7 +567,7 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, ResultSet *result_set) {
             Vector_Push(ops, op_limit);
         }
 
-        op = NewResultsOp(execution_plan->result_set, q);
+        op = NewResultsOp(execution_plan->result_set, qg);
         Vector_Push(ops, op);
     }
 
@@ -592,7 +647,6 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, bool expl
     ExecutionPlan *plan = NULL;
     ExecutionPlan *curr_plan;
 
-    // Use the last AST, as it is supposed to be the only AST with a RETURN node.
     ResultSet *result_set = NULL;
     if(!explain) {
         result_set = NewResultSet(ast, ctx);

@@ -225,24 +225,30 @@ QueryGraph* QueryGraph_New(size_t node_cap, size_t edge_cap) {
     return g;
 }
 
+void QueryGraph_AddPath(const GraphContext *gc, const NEWAST *ast, QueryGraph *qg, const cypher_astnode_t *path) {
+    uint nelems = cypher_ast_pattern_path_nelements(path);
+    /* Introduce nodes first. */
+    for (uint i = 0; i < nelems; i += 2) {
+        const cypher_astnode_t *ast_node = cypher_ast_pattern_path_get_element(path, i);
+        _BuildQueryGraphAddNode(gc, ast, ast_node, qg);
+    }
+    for (uint i = 1; i < nelems; i += 2) {
+        const cypher_astnode_t *l_entity = cypher_ast_pattern_path_get_element(path, i - 1);
+        const cypher_astnode_t *r_entity = cypher_ast_pattern_path_get_element(path, i + 1);
+        const cypher_astnode_t *entity = cypher_ast_pattern_path_get_element(path, i);
+
+        _BuildQueryGraphAddEdge(gc, ast, entity, l_entity, r_entity, qg);
+    }
+
+}
+
+// TODO currently unused
 void BuildQueryGraph(const GraphContext *gc, QueryGraph *qg, const cypher_astnode_t *pattern) {
     NEWAST *ast = NEWAST_GetFromTLS();
     uint npaths = cypher_ast_pattern_npaths(pattern);
     for (uint i = 0; i < npaths; i ++) {
         const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, i);
-        uint nelems = cypher_ast_pattern_path_nelements(path);
-        /* Introduce nodes first. */
-        for (uint j = 0; j < nelems; j += 2) {
-            const cypher_astnode_t *ast_node = cypher_ast_pattern_path_get_element(path, j);
-            _BuildQueryGraphAddNode(gc, ast, ast_node, qg);
-        }
-        for (uint j = 1; j < nelems; j += 2) {
-            const cypher_astnode_t *l_entity = cypher_ast_pattern_path_get_element(path, j - 1);
-            const cypher_astnode_t *r_entity = cypher_ast_pattern_path_get_element(path, j + 1);
-            const cypher_astnode_t *entity = cypher_ast_pattern_path_get_element(path, j);
-
-            _BuildQueryGraphAddEdge(gc, ast, entity, l_entity, r_entity, qg);
-        }
+        QueryGraph_AddPath(gc, ast, qg, path);
     }
 }
 

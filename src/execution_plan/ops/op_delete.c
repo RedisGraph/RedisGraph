@@ -109,8 +109,8 @@ void OpDeleteFree(OpBase *ctx) {
 
     _DeleteEntities(op);
 
-    free(op->nodes_to_delete);
-    free(op->edges_to_delete);
+    array_free(op->nodes_to_delete);
+    array_free(op->edges_to_delete);
     array_free(op->deleted_nodes);
     array_free(op->deleted_edges);
 }

@@ -41,6 +41,7 @@ void _buildAliasTrieMap(TrieMap *map, const cypher_astnode_t *entity) {
     if (alias) TrieMap_Add(map, alias, strlen(alias), NULL, TrieMap_DONT_CARE_REPLACE);
 }
 
+// TODO This logic doesn't belong here, but might be entirely replaceable - investigate.
 TrieMap* _MatchClause_DefinedEntities(NEWAST *ast) {
     uint clause_count = cypher_astnode_nchildren(ast->root);
 

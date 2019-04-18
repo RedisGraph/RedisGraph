@@ -30,9 +30,14 @@ typedef struct {
  * the provided node and edge counts. */
 QueryGraph* QueryGraph_New(size_t node_cap, size_t edge_cap);
 
-/* Given AST's MATCH node constructs a graph
- * representing queried entities and the relationships
- * between them. */
+/* Add all nodes and relationships from a single path
+ * (from part of a MATCH or CREATE pattern, or a MERGE clause)
+ * to the QueryGraph. */
+void QueryGraph_AddPath(const GraphContext *gc, const NEWAST *ast, QueryGraph *qg, const cypher_astnode_t *path);
+
+/* Adds all paths described in an AST pattern node (from a
+ * MATCH or CREATE clause) to a meta-graph that describes all
+ * nodes and relationships in a query. */
 void BuildQueryGraph(const GraphContext *gc, QueryGraph *query_graph, const cypher_astnode_t *pattern);
 
 /* Checks if graph contains given node
