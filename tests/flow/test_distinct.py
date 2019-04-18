@@ -78,7 +78,7 @@ class ReturnDistinctFlowTest_2(RedisGraphTestBase):
     def test_issue_395_scenario_2(self):
         # all
         q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p")
-        self.assertEqual(q, [['James'], ['James'], ['Mike'], ['Stevie'], ['Stevie'], ['Stevie']])
+        self.assertEqual(q, [['Stevie'], ['Stevie'], ['Stevie'], ['Mike'], ['James'], ['James']])
         
         # order
         q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p ORDER BY p.name")
@@ -86,7 +86,7 @@ class ReturnDistinctFlowTest_2(RedisGraphTestBase):
 
         # limit
         q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p LIMIT 2")
-        self.assertEqual(q, [['James'], ['James']])
+        self.assertEqual(q, [['Stevie'], ['Stevie']])
         
         # order+limit
         q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p ORDER BY p.name DESC LIMIT 2")
@@ -94,7 +94,7 @@ class ReturnDistinctFlowTest_2(RedisGraphTestBase):
         
         # all+distinct
         q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p")
-        self.assertEqual(q, [['James'], ['Mike'], ['Stevie']])
+        self.assertEqual(q, [['Stevie'], ['Mike'], ['James']])
         
         # order+distinct
         q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p ORDER BY p.name DESC")
@@ -102,7 +102,7 @@ class ReturnDistinctFlowTest_2(RedisGraphTestBase):
 
         # limit+distinct
         q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p LIMIT 2")
-        self.assertEqual(q, [['James'], ['Mike']])
+        self.assertEqual(q, [['Stevie'], ['Mike']])
         
         # order+limit+distinct
         q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p ORDER BY p.name DESC LIMIT 2")

@@ -86,7 +86,7 @@ friends_of_friends_query = QueryInfo(
 friends_of_friends_single_and_over_30_query = QueryInfo(
     query="""MATCH (ME:person {name:"Roi Lipman"})-[:friend]->(:person)-[:friend]->(fof:person {status:"single"})
              WHERE fof.age > 30
-             RETURN fof""",
+             RETURN fof.name, fof.age, fof.gender, fof.status""",
     description='Friends of friends who are single and over 30?',
     max_run_time_ms=0.25,
     expected_result=[['Noam Nativ', 34, 'male', 'single']]
@@ -105,7 +105,7 @@ friends_of_friends_visited_netherlands_and_single_query = QueryInfo(
 friends_visited_same_places_as_me_query = QueryInfo(
     query="""MATCH (:person {name:"Roi Lipman"})-[:visited]->(c:country)<-[:visited]-(f:person)<-
              [:friend]-(:person {name:"Roi Lipman"}) 
-             RETURN f.name, c""",
+             RETURN f.name, c ORDER BY f.name, c.name""",
     description='Friends who have been to places I have visited?',
     max_run_time_ms=0.45,
     expected_result=[['Tal Doron', 'Japan'],
@@ -412,7 +412,7 @@ queries_info = [
     friends_older_than_me_query,
     friends_age_difference_query,
     friends_who_are_older_than_average,
-    how_many_countries_each_friend_visited_query,    
+    how_many_countries_each_friend_visited_query,
     visit_purpose_of_each_country_i_visited_query,
     who_was_on_business_trip_query,
     number_of_vacations_per_person_query,

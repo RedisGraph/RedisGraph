@@ -59,7 +59,7 @@ actors_played_in_movie_straight_outta_compton_query = QueryInfo(
 actors_over_50_that_played_in_blockbusters_query = QueryInfo(
     query="""MATCH (a:actor)-[:act]->(m:movie)
              WHERE a.age >= 50 AND m.votes > 10000 AND m.rating > 8.2
-             RETURN *""",
+             RETURN a.name, a.age, m.title, m.year, m.votes, m.rating, m.genre ORDER BY ID(a)""",
     description='Which actors who are over 50 played in blockbuster movies?',
     max_run_time_ms=4.0,
     expected_result=[['Bill Irwin', 69, 'Interstellar', 2014, 961763, '8.6', 'Adventure'],
@@ -81,7 +81,7 @@ actors_played_in_bad_drama_or_comedy_query = QueryInfo(
     query="""MATCH (a:actor)-[:act]->(m:movie)
              WHERE (m.genre = "Drama" OR m.genre = "Comedy")
              AND m.rating < 5.5 AND m.votes > 50000
-             RETURN a.name, m
+             RETURN a.name, m.title, m.year, m.votes, m.rating, m.genre
              ORDER BY m.rating""",
     description='Which actors played in bad drama or comedy?',
     max_run_time_ms=4,
@@ -106,7 +106,7 @@ actors_played_in_bad_drama_or_comedy_query = QueryInfo(
 young_actors_played_with_cameron_diaz_query = QueryInfo(
     query="""MATCH (Cameron:actor {name:"Cameron Diaz"})-[:act]->(m:movie)<-[:act]-(a:actor)
              WHERE a.age < 35
-             RETURN a, m.title""",
+             RETURN a.name, a.age, m.title ORDER BY ID(a)""",
     description='Which young actors played along side Cameron Diaz?',
     max_run_time_ms=5,
     expected_result=[['Nicolette Pierini', 16, 'Annie'],
@@ -117,7 +117,7 @@ young_actors_played_with_cameron_diaz_query = QueryInfo(
 actors_played_with_cameron_diaz_and_younger_than_her_query = QueryInfo(
     query="""MATCH (Cameron:actor {name:"Cameron Diaz"})-[:act]->(m:movie)<-[:act]-(a:actor)
              WHERE a.age < Cameron.age
-             RETURN a, m.title order by a.name""",
+             RETURN a.name, a.age, m.title order by a.name""",
     description='Which actors played along side Cameron Diaz and are younger then her?',
     max_run_time_ms=7,
     expected_result=[['Jason Segel', 39, 'Sex Tape'],
@@ -150,7 +150,7 @@ how_many_movies_cameron_diaz_played_query = QueryInfo(
 
 find_ten_oldest_actors_query = QueryInfo(
     query="""MATCH (a:actor)
-             RETURN DISTINCT *
+             RETURN DISTINCT a.name, a.age
              ORDER BY a.age DESC
              LIMIT 10""",
     description='10 Oldest actors?',
@@ -170,7 +170,7 @@ find_ten_oldest_actors_query = QueryInfo(
 actors_over_85_index_scan = QueryInfo(
     query="""MATCH (a:actor)
              WHERE a.age > 85
-             RETURN *
+             RETURN a.name, a.age
              ORDER BY a.age, a.name""",
     description='Actors over 85 on indexed property?',
     max_run_time_ms=1.5,
