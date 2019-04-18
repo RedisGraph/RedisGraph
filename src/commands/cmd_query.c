@@ -16,39 +16,41 @@
 
 extern pthread_key_t _tlsNEWASTKey;  // Thread local storage NEWAST key.
 
-// void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST_IndexNode *indexNode) {
+void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, const cypher_astnode_t *index_op) {
+
     /* Set up nested array response for index creation and deletion,
      * Following the response struture of other queries:
      * First element is an empty result-set followed by statistics.
      * We'll enqueue one string response to indicate the operation's success,
      * and the query runtime will be appended after this call returns. */
-    // RedisModule_ReplyWithArray(ctx, 2); // Two Array
-    // RedisModule_ReplyWithArray(ctx, 0); // Empty result-set
-    // RedisModule_ReplyWithArray(ctx, 2); // Statistics.
+    RedisModule_ReplyWithArray(ctx, 2); // Two Array
+    RedisModule_ReplyWithArray(ctx, 0); // Empty result-set
+    RedisModule_ReplyWithArray(ctx, 2); // Statistics.
 
-  // switch(indexNode->operation) {
-    // case CREATE_INDEX:
-      // if (GraphContext_AddIndex(gc, indexNode->label, indexNode->property) != INDEX_OK) {
-        // // Index creation may have failed if the label or property was invalid, or the index already exists.
-        // RedisModule_ReplyWithSimpleString(ctx, "(no changes, no records)");
-        // break;
-      // }
-      // RedisModule_ReplyWithSimpleString(ctx, "Indices added: 1");
-      // break;
-    // case DROP_INDEX:
-      // if (GraphContext_DeleteIndex(gc, indexNode->label, indexNode->property) == INDEX_OK) {
-        // RedisModule_ReplyWithSimpleString(ctx, "Indices removed: 1");
-      // } else {
-        // char *reply;
-        // asprintf(&reply, "ERR Unable to drop index on :%s(%s): no such index.", indexNode->label, indexNode->property);
-        // RedisModule_ReplyWithError(ctx, reply);
-        // free(reply);
-      // }
-      // break;
-    // default:
-      // assert(0);
-  // }
-// }
+    if (cypher_astnode_type(index_op) == CYPHER_AST_CREATE_NODE_PROP_INDEX) {
+        // Retrieve strings from AST node
+        const char *label = cypher_ast_label_get_name(cypher_ast_create_node_prop_index_get_label(index_op));
+        const char *prop = cypher_ast_prop_name_get_value(cypher_ast_create_node_prop_index_get_prop_name(index_op));
+        if (GraphContext_AddIndex(gc, label, prop) != INDEX_OK) {
+            // Index creation may have failed if the label or property was invalid, or the index already exists.
+            RedisModule_ReplyWithSimpleString(ctx, "(no changes, no records)");
+            return;
+        }
+        RedisModule_ReplyWithSimpleString(ctx, "Indices added: 1");
+    } else {
+        // Retrieve strings from AST node
+        const char *label = cypher_ast_label_get_name(cypher_ast_drop_node_prop_index_get_label(index_op));
+        const char *prop = cypher_ast_prop_name_get_value(cypher_ast_drop_node_prop_index_get_prop_name(index_op));
+        if (GraphContext_DeleteIndex(gc, label, prop) == INDEX_OK) {
+            RedisModule_ReplyWithSimpleString(ctx, "Indices removed: 1");
+        } else {
+            char *reply;
+            asprintf(&reply, "ERR Unable to drop index on :%s(%s): no such index.", label, prop);
+            RedisModule_ReplyWithError(ctx, reply);
+            free(reply);
+        }
+    }
+}
 
 void _MGraph_Query(void *args) {
     CommandCtx *qctx = (CommandCtx*)args;
@@ -93,15 +95,18 @@ void _MGraph_Query(void *args) {
     else Graph_WriterEnter(gc->g);  // Single writer.
     lockAcquired = true;
 
+    const cypher_astnode_type_t root_type = cypher_astnode_type(ast->root);
     // TODO index ops
-    // if (ast[0]->indexNode) { // index operation
-        // _index_operation(ctx, gc, ast[0]->indexNode);
-    // } else {
+    if (root_type == CYPHER_AST_QUERY) { // query operation
         ExecutionPlan *plan = NewExecutionPlan(ctx, gc, false);
         resultSet = ExecutionPlan_Execute(plan);
         ExecutionPlanFree(plan);
         ResultSet_Replay(resultSet);    // Send result-set back to client.
-    // }
+    } else if (root_type == CYPHER_AST_CREATE_NODE_PROP_INDEX || root_type == CYPHER_AST_DROP_NODE_PROP_INDEX) {
+        _index_operation(ctx, gc, ast->root);
+    } else {
+        assert("Unhandled query type" && false);
+    }
 
     /* Report execution timing. */
     char* strElapsed;
