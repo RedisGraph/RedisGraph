@@ -205,7 +205,7 @@ visit_purpose_of_each_country_i_visited_query = QueryInfo(
 
 who_was_on_business_trip_query = QueryInfo(
     query="""MATCH (p:person)-[v:visited {purpose:"business"}]->(c:country)
-             RETURN p.name, v.purpose, toUpper(c.name)""",
+             RETURN p.name, v.purpose, toUpper(c.name) ORDER BY p.name, c.name""",
     description='Find out who went on a business trip?',
     max_run_time_ms=0.3,
     expected_result=[['Boaz Arad', 'business','NETHERLANDS'],
@@ -227,13 +227,13 @@ who_was_on_business_trip_query = QueryInfo(
 number_of_vacations_per_person_query = QueryInfo(
     query="""MATCH (p:person)-[v:visited {purpose:"pleasure"}]->(c:country)
              RETURN p.name, count(v.purpose) AS vacations
-             ORDER BY vacations DESC
+             ORDER BY vacations, p.name DESC
              LIMIT 6""",
     description='Count number of vacations per person?',
     max_run_time_ms=0.5,
-    expected_result=[['Noam Nativ', 3],
-                     ['Shelly Laslo Rooz', 3],
+    expected_result=[['Shelly Laslo Rooz', 3],
                      ['Omri Traub', 3],
+                     ['Noam Nativ', 3],
                      ['Lucy Yanfital', 3],
                      ['Jane Chernomorin', 3],
                      ['Alon Fital', 3]]
@@ -300,37 +300,35 @@ reachable_countries_or_people_query = QueryInfo(
 )
 
 all_reachable_countries_or_people_query = QueryInfo(
-    query="""MATCH (a:person {name:'Roi Lipman'})-[:friend|:visited*]->(e)
-             RETURN e.name, count(e.name) AS NumPathsToEntity
-             ORDER BY NumPathsToEntity DESC""",
+    query="""MATCH (a:person {name:'Roi Lipman'})-[:friend|:visited*]->(e) RETURN e.name, count(e.name) AS NumPathsToEntity ORDER BY NumPathsToEntity, e.name DESC""",
     description='Every reachable person or country from source node',
     max_run_time_ms=0.4,
     expected_result=[['USA', 14],
                      ['Netherlands', 6],
                      ['Prague', 5],
                      ['Greece', 4],
-                     ['Andora', 2],
                      ['Japan', 2],
                      ['Germany', 2],
-                     ['Canada', 2],
                      ['China', 2],
-                     ['Ailon Velger', 1],
-                     ['Alon Fital', 1],
-                     ['Gal Derriere', 1],
-                     ['Jane Chernomorin', 1],
-                     ['Omri Traub', 1],
-                     ['Boaz Arad', 1],
-                     ['Noam Nativ', 1],
+                     ['Canada', 2],
+                     ['Andora', 2],
+                     ['Valerie Abigail Arad', 1],
+                     ['Thailand', 1],
+                     ['Tal Doron', 1],
                      ['Shelly Laslo Rooz', 1],
                      ['Russia', 1],
-                     ['Valerie Abigail Arad', 1],
+                     ['Ori Laslo', 1],
+                     ['Omri Traub', 1],
+                     ['Noam Nativ', 1],
                      ['Mor Yesharim', 1],
-                     ['Italy', 1],
-                     ['Tal Doron', 1],
-                     ['Thailand', 1],
-                     ['Kazakhstan', 1],
                      ['Lucy Yanfital', 1],
-                     ['Ori Laslo', 1]]
+                     ['Kazakhstan', 1],
+                     ['Jane Chernomorin', 1],
+                     ['Italy', 1],
+                     ['Gal Derriere', 1],
+                     ['Boaz Arad', 1],
+                     ['Alon Fital', 1],
+                     ['Ailon Velger', 1]]
 )
 
 all_reachable_entities_query = QueryInfo(

@@ -30,7 +30,6 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     const char *query = RedisModule_StringPtrLen(argv[2], NULL);
 
     /* Parse query, get AST. */
-    char *errMsg = NULL;
     GraphContext *gc = NULL;
     ExecutionPlan *plan = NULL;
 

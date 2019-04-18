@@ -65,7 +65,6 @@ static int _PullFromStreams(CartesianProduct *op) {
 
 Record CartesianProductConsume(OpBase *opBase) {
     CartesianProduct *op = (CartesianProduct*)opBase;
-    OpResult res;
     OpBase *child;
     Record childRecord;
 

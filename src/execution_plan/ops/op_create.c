@@ -183,7 +183,6 @@ OpBase* NewCreateOp(RedisModuleCtx *ctx, QueryGraph *qg, ResultSet *result_set) 
 }
 
 void _CreateNodes(OpCreate *op, Record r) {
-    Graph *g = op->gc->g;
     for(int i = 0; i < op->node_count; i++) {
         /* Get specified node to create. */
         Node *n = op->nodes_to_create[i].node;
@@ -289,7 +288,6 @@ static void _CommitNodes(OpCreate *op) {
 
 static void _CommitEdges(OpCreate *op) {
     Edge *e;
-    int labelID;
     Graph *g = op->gc->g;
     int relationships_created = 0;
 

@@ -354,7 +354,7 @@ AR_ExpNode** NEWAST_GetOrderExpressions(const cypher_astnode_t *order_clause) {
     NEWAST *ast = NEWAST_GetFromTLS();
 
     unsigned int nitems = cypher_ast_order_by_nitems(order_clause);
-    AR_ExpNode **order_exps = array_new(sizeof(AR_ExpNode), nitems);
+    AR_ExpNode **order_exps = array_new(AR_ExpNode*, nitems);
 
     for (unsigned int i = 0; i < nitems; i ++) {
         const cypher_astnode_t *item = cypher_ast_order_by_get_item(order_clause, i);

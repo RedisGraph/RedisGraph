@@ -178,6 +178,6 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     }
 
     // Replicate only if query has potential to modify key space.    
-    // if(!readonly) RedisModule_ReplicateVerbatim(ctx);
+    if(!readonly) RedisModule_ReplicateVerbatim(ctx);
     return REDISMODULE_OK;
 }

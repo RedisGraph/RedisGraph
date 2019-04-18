@@ -113,7 +113,6 @@ DataBlockIterator *DataBlock_Scan(const DataBlock *dataBlock) {
     assert(dataBlock);
     Block *startBlock = dataBlock->blocks[0];
 
-    int64_t startPos = 0;
     // Deleted items are skipped, we're about to perform 
     // array_len(dataBlock->deletedIdx) skips during out scan.
     int64_t endPos = dataBlock->itemCount + array_len(dataBlock->deletedIdx);

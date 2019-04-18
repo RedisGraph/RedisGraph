@@ -140,7 +140,7 @@ void FT_Append(FT_FilterNode **root_ptr, FT_FilterNode *child) {
         AppendRightChild(root, child);
     } else {
         FT_FilterNode *new_cond = CreateCondFilterNode(OP_AND);
-        AppendLeftChild(new_cond, root->cond.right);
+        AppendLeftChild(new_cond, root);
         AppendRightChild(new_cond, child);
         *root_ptr = new_cond;
     }

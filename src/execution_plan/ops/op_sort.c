@@ -87,7 +87,7 @@ static void _accumulate(OpSort *op, Record r) {
         // No room in the heap, see if we need to replace
         // a heap stored record with the current record.
         if(_heap_elem_compare(heap_peek(op->heap), r, op) > 0) {
-            Record *replaced = heap_poll(op->heap);
+            Record *replaced = heap_poll(op->heap); // TODO memory leak?
             heap_offer(&op->heap, r);
         }
     }
@@ -176,7 +176,6 @@ Record SortConsume(OpBase *opBase) {
         QSORT(Record, op->buffer, array_len(op->buffer), RECORD_SORT);
     } else {
         // Heap, responses need to be reversed.
-        int record_idx = 0;
         int records_count = heap_count(op->heap);
         op->buffer = array_new(Record, records_count);
 

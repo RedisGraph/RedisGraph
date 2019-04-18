@@ -76,7 +76,6 @@ OpResult UnwindReset(OpBase *ctx) {
 void UnwindFree(OpBase *ctx) {
     OpUnwind *unwind = (OpUnwind*)ctx;
     
-    AR_ExpNode *exp;
     if(unwind->expressions) {
         uint expCount = array_len(unwind->expressions);
         for(uint i = 0; i < expCount; i++) AR_EXP_Free(unwind->expressions[i]);

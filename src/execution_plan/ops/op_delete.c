@@ -41,8 +41,8 @@ OpBase* NewDeleteOp(const cypher_astnode_t *delete_clause, ResultSet *result_set
     NEWAST *ast = NEWAST_GetFromTLS();
 
     uint delete_count = cypher_ast_delete_nexpressions(delete_clause);
-    uint *nodes_to_delete = array_new(sizeof(uint), delete_count);
-    uint *edges_to_delete = array_new(sizeof(uint), delete_count);
+    uint *nodes_to_delete = array_new(uint, delete_count);
+    uint *edges_to_delete = array_new(uint, delete_count);
 
     for (uint i = 0; i < delete_count; i ++) {
         const cypher_astnode_t *ast_expr = cypher_ast_delete_get_expression(delete_clause, i);

@@ -58,7 +58,7 @@ AlgebraicExpression** _AlgebraicExpression_IsolateVariableLenExps(AlgebraicExpre
      * have a variable length edge in them. */
     for(size_t expIdx = 0; expIdx < *expCount; expIdx++) {
         AlgebraicExpression *exp = expressions[expIdx];
-        if(exp->minHops != exp->maxHops) {
+        if(exp->minHops == exp->maxHops) {
             res[newExpCount++] = exp;
             continue;
         }
@@ -268,9 +268,11 @@ void AlgebraicExpression_PrependTerm(AlgebraicExpression *ae, GrB_Matrix m, bool
 }
 
 AlgebraicExpression **AlgebraicExpression_FromQuery(const NEWAST *ast, const QueryGraph *q, size_t *exp_count) {
-    assert(q->edge_count != 0);
+    uint edge_count = array_len(q->edges);
+    uint node_count = array_len(q->nodes);
+    assert(edge_count != 0);
 
-    AlgebraicExpression *exp = _AE_MUL(q->edge_count + q->node_count);
+    AlgebraicExpression *exp = _AE_MUL(edge_count + node_count);
     bool transpose; // Indicate if matrix operand needs to be transposed.
     Node *dest = NULL;
     Node *src = NULL;
@@ -325,7 +327,7 @@ AlgebraicExpression **AlgebraicExpression_FromQuery(const NEWAST *ast, const Que
             for(unsigned int i = 0; i < labelCount; i++) {
                 const cypher_astnode_t *reltype = cypher_ast_rel_pattern_get_reltype(ast_entity, i);
                 assert(reltype);
-                const char *reltype_str = cypher_ast_label_get_name(reltype);
+                const char *reltype_str = cypher_ast_reltype_get_name(reltype);
                 Schema *s = GraphContext_GetSchema(gc, reltype_str, SCHEMA_EDGE);
                 if(!s) continue;
                 GrB_Matrix l = Graph_GetRelationMatrix(g, s->id);

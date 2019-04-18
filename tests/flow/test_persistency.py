@@ -187,8 +187,8 @@ class GraphPersistency(FlowTestsBase):
         # Verify that the properties are loaded correctly.
         # Note that the order of results is not guaranteed (currently managed by the Schema),
         # so this may need to be updated in the future.
-        expected_result = [['p.boolval', 'p.nullval', 'p.numval', 'p.strval'],
-                           ['true', None, '5.5', 'str']]
+        expected_result = [['p.strval', 'p.numval', 'p.nullval', 'p.boolval',],
+                           ['str', '5.5', None, 'true']]
         assert(actual_result.result_set == expected_result)
 
     # Verify multiple edges of the same relation between nodes A and B

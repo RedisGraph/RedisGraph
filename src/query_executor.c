@@ -81,7 +81,13 @@ void ExpandCollapsedNodes(NEWAST *ast) {
                 const char *alias = cypher_ast_identifier_get_name(alias_node);
                 AR_ExpNode *exp = AR_EXP_NewConstOperandNode(SI_ConstStringVal((char*)alias));
                 ReturnElementNode *unwindElem = _NewReturnElementNode(elem->alias, exp);
-                expandReturnElements = array_append(expandReturnElements, elem);
+                expandReturnElements = array_append(expandReturnElements, unwindElem);
+                continue;
+            } else if (type == CYPHER_AST_IDENTIFIER) {
+                // Observed in query "UNWIND [1,2,3] AS a RETURN a AS e"
+                const char *alias = cypher_ast_identifier_get_name(ast_entity);
+                ReturnElementNode *unwindElem = _NewReturnElementNode(alias, exp);
+                expandReturnElements = array_append(expandReturnElements, unwindElem);
                 continue;
             } else {
                 assert(false);

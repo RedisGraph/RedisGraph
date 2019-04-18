@@ -6,91 +6,34 @@
 
 #include "query_graph.h"
 #include "../arithmetic/arithmetic_expression.h"
-#include "../schema/schema.h"
+#include "../util/arr.h"
 #include <assert.h>
 
-GraphEntity* _QueryGraph_GetEntityById(GraphEntity **entity_list, int entity_count, long int id) {
-    int i;
-
-    for(i = 0; i < entity_count; i++) {
-        GraphEntity *entity = entity_list[i];
-        if(ENTITY_GET_ID(entity) == id) {
-            return entity;
-        }
-    }
-    return NULL;
+static void _QueryGraph_AddEdge(QueryGraph *qg, Edge *e, char *alias) {
+    qg->edges = array_append(qg->edges, e);
+    qg->edge_aliases = array_append(qg->edge_aliases, alias);
 }
 
-void _QueryGraph_AddEntity(GraphEntity *entity, char *alias, GraphEntity ***entity_list,
-                     char ***alias_list, size_t *entity_count, size_t *entity_cap) {
-    
-    if(*entity_cap <= *entity_count) {
-        *entity_cap *= 2; 
-        *entity_list = realloc(*entity_list, sizeof(GraphEntity*) * (*entity_cap));
-        *alias_list = realloc(*alias_list, sizeof(char*) * (*entity_cap));
-    }
-
-    (*entity_list)[*entity_count] = entity;
-    (*alias_list)[*entity_count] = alias;
-    (*entity_count)++;
-}
-
-void _QueryGraph_AddEdge(QueryGraph *g, Edge *e, char *alias) {
-    _QueryGraph_AddEntity((GraphEntity*)e,
-                     alias,
-                     (GraphEntity ***)(&g->edges),
-                     &g->edge_aliases,
-                     &g->edge_count,
-                     &g->edge_cap);
-}
-
-GraphEntity* _QueryGraph_GetEntityByAlias(GraphEntity **entity_list, char **alias_list, int entity_count, const char* alias) {
-    for(int i = 0; i < entity_count; i++) {
+static GraphEntity* _QueryGraph_GetEntityByAlias(GraphEntity **entity_list, char **alias_list, const char* alias) {
+    uint entity_count = array_len(entity_list);
+    for(uint i = 0; i < entity_count; i ++) {
         char *entity_alias = alias_list[i];
-        if(strcmp(entity_alias, alias) == 0) {
+        if(!strcmp(entity_alias, alias)) {
             return entity_list[i];
         }
     }
     return NULL;
 }
 
-char* _QueryGraph_GetEntityAlias(GraphEntity *entity, GraphEntity **entities, char **aliases, int entity_count) {
-    int i;
-    for(i = 0; i < entity_count; i++) {
-        if(ENTITY_GET_ID(entities[i]) == ENTITY_GET_ID(entity)) {
-            return aliases[i];
-        }
+static bool _QueryGraph_ContainsEntity(GraphEntity *entity, GraphEntity **entities) {
+    uint entity_count = array_len(entities);
+    for (uint i = 0; i < entity_count; i ++) {
+        if(entities[i] == entity) return true;
     }
-    
-    return NULL;
+    return false;
 }
 
-int _QueryGraph_ContainsEntity(GraphEntity *entity, GraphEntity **entities, int entity_count) {
-    int i;
-    for(i = 0; i < entity_count; i++) {
-        GraphEntity *e = entities[i];
-        if(e == entity) {
-            return 1;
-        }
-    }
-    return 0;
-}
-
-void QueryGraph_AddNode(QueryGraph *g, Node *n, char *alias) {
-    _QueryGraph_AddEntity((GraphEntity*)n,
-    alias,
-    (GraphEntity ***)&g->nodes,
-    &g->node_aliases,
-    &g->node_count,
-    &g->node_cap);
-}
-
-// Extend node with label and attributes from graph entity.
-void _MergeNodeWithGraphEntity(Node *n, const char *label) {
-    if(n->label == NULL && label != NULL) n->label = strdup(label);
-}
-
-AR_ExpNode* _AST_GetNodeExpression(const NEWAST *ast, const cypher_astnode_t *node) {
+static AR_ExpNode* _AST_GetNodeExpression(const NEWAST *ast, const cypher_astnode_t *node) {
     AR_ExpNode *exp = NULL;
     char *alias = NULL;
 
@@ -107,11 +50,10 @@ AR_ExpNode* _AST_GetNodeExpression(const NEWAST *ast, const cypher_astnode_t *no
     return exp;
 }
 
-void _BuildQueryGraphAddNode(const GraphContext *gc,
+static void _BuildQueryGraphAddNode(const GraphContext *gc,
                              const NEWAST *ast,
                              const cypher_astnode_t *ast_entity,
                              QueryGraph *qg) {
-    const Graph *g = gc->g;
 
     AR_ExpNode *exp = _AST_GetNodeExpression(ast, ast_entity);
     char *alias = exp->operand.variadic.entity_alias;
@@ -126,9 +68,9 @@ void _BuildQueryGraphAddNode(const GraphContext *gc,
         QueryGraph_AddNode(qg, n, alias);
     } else {
         /* Merge nodes. */
-        _MergeNodeWithGraphEntity(n, label);
+        if (!n->label && label) n->label = strdup(label);
     }
-    
+
     // Set node label ID.
     if(n->label == NULL) {
         Node_SetLabelID(n, GRAPH_NO_RELATION);
@@ -143,7 +85,7 @@ void _BuildQueryGraphAddNode(const GraphContext *gc,
     }
 }
 
-void _BuildQueryGraphAddEdge(const GraphContext *gc,
+static void _BuildQueryGraphAddEdge(const GraphContext *gc,
                         const NEWAST *ast,
                         const cypher_astnode_t *entity,
                         const cypher_astnode_t *l_entity,
@@ -166,7 +108,6 @@ void _BuildQueryGraphAddEdge(const GraphContext *gc,
     /* Check for duplications. */
     if(QueryGraph_GetEdgeByAlias(qg, alias) != NULL) return;
 
-    const Graph *g = gc->g;
     const cypher_astnode_t *src_node;
     const cypher_astnode_t *dest_node;
 
@@ -193,7 +134,7 @@ void _BuildQueryGraphAddEdge(const GraphContext *gc,
         reltype = cypher_ast_reltype_get_name(cypher_ast_rel_pattern_get_reltype(entity, 0));
     }
     Edge *e = Edge_New(src, dest, reltype, alias);
-    
+
     //Set edge relation ID.
     if(reltype == NULL) {
         Edge_SetRelationID(e, GRAPH_NO_RELATION);
@@ -211,18 +152,14 @@ void _BuildQueryGraphAddEdge(const GraphContext *gc,
 }
 
 QueryGraph* QueryGraph_New(size_t node_cap, size_t edge_cap) {
-    QueryGraph* g = malloc(sizeof(QueryGraph));
-    g->node_count = 0;
-    g->edge_count = 0;
-    g->node_cap = node_cap;
-    g->edge_cap = edge_cap;
+    QueryGraph *qg = rm_malloc(sizeof(QueryGraph));
 
-    g->nodes = malloc(sizeof(Node*) * node_cap);
-    g->edges = malloc(sizeof(Edge*) * edge_cap);
-    g->node_aliases = malloc(sizeof(char*) * node_cap);
-    g->edge_aliases = malloc(sizeof(char*) * edge_cap);
+    qg->nodes = array_new(Node*, node_cap);
+    qg->edges = array_new(Edge*, edge_cap);
+    qg->node_aliases = array_new(char*, node_cap);
+    qg->edge_aliases = array_new(char*, edge_cap);
 
-    return g;
+    return qg;
 }
 
 void QueryGraph_AddPath(const GraphContext *gc, const NEWAST *ast, QueryGraph *qg, const cypher_astnode_t *path) {
@@ -242,146 +179,131 @@ void QueryGraph_AddPath(const GraphContext *gc, const NEWAST *ast, QueryGraph *q
 
 }
 
-// TODO currently unused
-void BuildQueryGraph(const GraphContext *gc, QueryGraph *qg, const cypher_astnode_t *pattern) {
-    NEWAST *ast = NEWAST_GetFromTLS();
-    uint npaths = cypher_ast_pattern_npaths(pattern);
-    for (uint i = 0; i < npaths; i ++) {
-        const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, i);
+/* Build a complete query graph from the clauses that can introduce entities
+ * (MATCH, MERGE, and CREATE) */
+// TODO Depending on how path uniqueness is specified, this may be too inclusive?
+QueryGraph* BuildQueryGraph(const GraphContext *gc, const NEWAST *ast) {
+    /* Predetermine graph size: (entities in both MATCH and CREATE clauses)
+     * have graph object maintain an entity capacity, to avoid reallocs,
+     * problem was reallocs done by CREATE clause, which invalidated old references in ExpandAll. */
+    // TODO We previously counted all graph entities prior to building the QueryGraph (apparently
+    // to avoid the realloc bug described here. Does this problem still exist?
+    // If so, re-introduce similar logic.
+    size_t node_count;
+    size_t edge_count;
+    node_count = edge_count = NEWAST_AliasCount(ast);
+    // _Determine_Graph_Size(old_ast, &node_count, &edge_count);
+    QueryGraph *qg = QueryGraph_New(node_count, edge_count);
+
+    unsigned int clause_count = cypher_astnode_nchildren(ast->root);
+    // We are interested in every path held in a MATCH or CREATE pattern,
+    // and the (single) path described by a MERGE clause.
+    const cypher_astnode_t *clauses[clause_count];
+
+    // MATCH clauses
+    uint match_count = NewAST_GetTopLevelClauses(ast->root, CYPHER_AST_MATCH, clauses);
+    for (uint i = 0; i < match_count; i ++) {
+        const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(clauses[i]);
+        uint npaths = cypher_ast_pattern_npaths(pattern);
+        for (uint j = 0; j < npaths; j ++) {
+            const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, j);
+            QueryGraph_AddPath(gc, ast, qg, path);
+        }
+    }
+
+    // CREATE clauses
+    uint create_count = NewAST_GetTopLevelClauses(ast->root, CYPHER_AST_CREATE, clauses);
+    for (uint i = 0; i < create_count; i ++) {
+        const cypher_astnode_t *pattern = cypher_ast_create_get_pattern(clauses[i]);
+        uint npaths = cypher_ast_pattern_npaths(pattern);
+        for (uint j = 0; j < npaths; j ++) {
+            const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, j);
+            QueryGraph_AddPath(gc, ast, qg, path);
+        }
+    }
+
+    // MERGE clauses
+    uint merge_count = NewAST_GetTopLevelClauses(ast->root, CYPHER_AST_MERGE, clauses);
+    for (uint i = 0; i < merge_count; i ++) {
+        const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(clauses[i]);
         QueryGraph_AddPath(gc, ast, qg, path);
     }
+
+    return qg;
 }
 
-Node* QueryGraph_GetNodeById(const QueryGraph *g, long int id) {
-    if(id == INVALID_ENTITY_ID) return NULL;
-    return (Node*)_QueryGraph_GetEntityById((GraphEntity **)g->nodes, g->node_count, id);
+bool QueryGraph_ContainsNode(const QueryGraph *qg, const Node *node) {
+    if (array_len(qg->nodes) == 0) return false;
+    return _QueryGraph_ContainsEntity((GraphEntity *)node, (GraphEntity **)qg->nodes);
 }
 
-Edge* QueryGraph_GetEdgeById(const QueryGraph *g, long int id) {
-    if(id == INVALID_ENTITY_ID) return NULL;
-    return (Edge*)_QueryGraph_GetEntityById((GraphEntity **)g->edges, g->edge_count, id);
+bool QueryGraph_ContainsEdge(const QueryGraph *qg, const Edge *edge) {
+    if (array_len(qg->edges) == 0) return false;
+    return _QueryGraph_ContainsEntity((GraphEntity *)edge, (GraphEntity **)qg->edges);
 }
 
-int QueryGraph_ContainsNode(const QueryGraph *graph, const Node *node) {
-    if(!graph->node_count) return 0;
-    return _QueryGraph_ContainsEntity((GraphEntity *)node,
-                                 (GraphEntity **)graph->nodes,
-                                 graph->node_count);
+void QueryGraph_AddNode(QueryGraph *qg, Node *n, char *alias) {
+    qg->nodes = array_append(qg->nodes, n);
+    qg->node_aliases = array_append(qg->node_aliases, alias);
 }
 
-int QueryGraph_ContainsEdge(const QueryGraph *graph, const Edge *edge) {
-    if(!graph->edge_count) return 0;
-    return _QueryGraph_ContainsEntity((GraphEntity *)edge,
-                                 (GraphEntity **)graph->edges,
-                                 graph->edge_count);
-}
-
-void QueryGraph_ConnectNodes(QueryGraph *g, Node *src, Node *dest, Edge *e, char *edge_alias) {
-    assert(QueryGraph_ContainsNode(g, src) && QueryGraph_ContainsNode(g, dest) && !QueryGraph_ContainsEdge(g, e));
+void QueryGraph_ConnectNodes(QueryGraph *qg, Node *src, Node *dest, Edge *e, char *edge_alias) {
+    assert(QueryGraph_ContainsNode(qg, src) && QueryGraph_ContainsNode(qg, dest) && !QueryGraph_ContainsEdge(qg, e));
     Node_ConnectNode(src, dest, e);
-    _QueryGraph_AddEdge(g, e, edge_alias);
+    _QueryGraph_AddEdge(qg, e, edge_alias);
 }
 
-Node* QueryGraph_GetNodeByAlias(const QueryGraph* g, const char* alias) {
+Node* QueryGraph_GetNodeByAlias(const QueryGraph* qg, const char* alias) {
     if(alias == NULL) return NULL;
-    return (Node*)_QueryGraph_GetEntityByAlias((GraphEntity **)g->nodes, g->node_aliases, g->node_count, alias);
+    return (Node*)_QueryGraph_GetEntityByAlias((GraphEntity **)qg->nodes, qg->node_aliases, alias);
 }
 
-Edge* QueryGraph_GetEdgeByAlias(const QueryGraph *g, const char *alias) {
+Edge* QueryGraph_GetEdgeByAlias(const QueryGraph *qg, const char *alias) {
     if(alias == NULL) return NULL;
-    return (Edge*)_QueryGraph_GetEntityByAlias((GraphEntity **)g->edges, g->edge_aliases, g->edge_count, alias);
+    return (Edge*)_QueryGraph_GetEntityByAlias((GraphEntity **)qg->edges, qg->edge_aliases, alias);
 }
 
-/* Returns either a node or an edge with the given alias
- * we start by searching for a node with given alias,
- * in-case we did not find a node ansering to alias
- * we'll continue our search with edges.
- * TODO: return also entity type. */
-GraphEntity* QueryGraph_GetEntityByAlias(const QueryGraph *g, const char *alias) {
-    if(g == NULL) return NULL;
+Node** QueryGraph_GetNodeRef(const QueryGraph *qg, const Node *n) {
+    assert(qg && n);
 
-    GraphEntity *entity = (GraphEntity *)QueryGraph_GetNodeByAlias(g, alias);
-    if(entity) {
-        return entity;
-    }
-    
-    return (GraphEntity*)QueryGraph_GetEdgeByAlias(g, alias);
-}
-
-GraphEntity** QueryGraph_GetEntityRef(const QueryGraph *g, const char *alias) {
-    int i;
-    char *entity_alias;
-
-    if(g == NULL) return NULL;
-
-    /* Search graph nodes. */
-    for(i = 0; i < g->node_count; i++) {
-        entity_alias = g->node_aliases[i];
-        if(strcmp(entity_alias, alias) == 0) {
-            return (GraphEntity**)&g->nodes[i];
-        }
-    }
-
-    /* Search graph edges. */
-    for(i = 0; i < g->edge_count; i++) {
-        entity_alias = g->edge_aliases[i];
-        if(strcmp(entity_alias, alias) == 0) {
-            return (GraphEntity**)&g->edges[i];
-        }
-    }
-
-    /* Entity doesn't exists in graph. */
-    return NULL;
-}
-
-Node** QueryGraph_GetNodeRef(const QueryGraph *g, const Node *n) {
-    assert(g && n);
-    
-    int i;
-    int node_count = g->node_count;
-
-    for(i = 0; i < node_count; i++) {
-        if(n == g->nodes[i]) {
-            return &(g->nodes[i]);
-        }
+    uint node_count = array_len(qg->nodes);
+    for (uint i = 0; i < node_count; i ++) {
+        if(n == qg->nodes[i]) return &(qg->nodes[i]);
     }
 
     return NULL;
 }
 
-Edge** QueryGraph_GetEdgeRef(const QueryGraph *g, const Edge *e) {
-    assert(g && e);
-    
-    int i;
-    int edge_count = g->edge_count;
+Edge** QueryGraph_GetEdgeRef(const QueryGraph *qg, const Edge *e) {
+    assert(qg && e);
 
-    for(i = 0; i < edge_count; i++) {
-        if(e == g->edges[i]) {
-            return &(g->edges[i]);
-        }
+    uint edge_count = array_len(qg->edges);
+    for (uint i = 0; i < edge_count; i ++) {
+        if(e == qg->edges[i]) return &(qg->edges[i]);
     }
-    
+
     return NULL;
 }
 
 /* Frees entire graph. */
-void QueryGraph_Free(QueryGraph* g) {
-    if (!g) return;
+void QueryGraph_Free(QueryGraph* qg) {
+    if (!qg) return;
 
-    /* Free graph's nodes. */
-    int i;
-    int nodeCount = g->node_count;
-    int edgeCount = g->edge_count;
-
-    for(i = 0; i < nodeCount; i++) Node_Free(g->nodes[i]);
-    for(i = 0; i < edgeCount; i++) {
-        Edge *e = g->edges[i];
-        Edge_Free(e);
+    /* Free QueryGraph nodes. */
+    uint nodeCount = array_len(qg->nodes);
+    for (uint i = 0; i < nodeCount; i ++) {
+        Node_Free(qg->nodes[i]);
     }
 
-    free(g->nodes);
-    free(g->edges);
-    free(g->node_aliases);
-    free(g->edge_aliases);
-    free(g);
+    /* Free QueryGraph edges. */
+    uint edgeCount = array_len(qg->edges);
+    for(uint i = 0; i < edgeCount; i ++) {
+        Edge_Free(qg->edges[i]);
+    }
+
+    array_free(qg->nodes);
+    array_free(qg->edges);
+    array_free(qg->node_aliases);
+    array_free(qg->edge_aliases);
+    rm_free(qg);
 }
