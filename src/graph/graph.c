@@ -270,6 +270,7 @@ Graph *Graph_New(size_t node_cap, size_t edge_cap) {
     g->relations = array_new(GrB_Matrix, GRAPH_DEFAULT_RELATION_TYPE_CAP);
     g->_relations_map = array_new(GrB_Matrix, GRAPH_DEFAULT_RELATION_TYPE_CAP);
     GrB_Matrix_new(&g->adjacency_matrix, GrB_BOOL, node_cap, node_cap);
+    GrB_Matrix_new(&g->_zero_matrix, GrB_BOOL, node_cap, node_cap);
 
     // Initialize a read-write lock scoped to the individual graph
     assert(pthread_rwlock_init(&g->_rwlock, NULL) == 0);
@@ -708,14 +709,26 @@ GrB_Matrix Graph_GetRelationMatrix(const Graph *g, int relation_idx) {
     return m;
 }
 
+GrB_Matrix Graph_GetZeroMatrix(const Graph *g) {
+    GrB_Index nvals;
+    GrB_Matrix z = g->_zero_matrix;
+    g->SynchronizeMatrix(g, z);
+
+    // Make sure zero matrix is indeed empty.
+    GrB_Matrix_nvals(&nvals, z);
+    assert(nvals == 0);
+    return z;
+}
+
 void Graph_Free(Graph *g) {
     assert(g);
     // Free matrices.
     Entity *en;
     DataBlockIterator *it;
     GrB_Matrix m = Graph_GetAdjacencyMatrix(g);
-
+    GrB_Matrix z = Graph_GetZeroMatrix(g);
     GrB_Matrix_free(&m);
+    GrB_Matrix_free(&z);
 
     uint32_t relationCount = Graph_RelationTypeCount(g);
     for(int i = 0; i < relationCount; i++) {

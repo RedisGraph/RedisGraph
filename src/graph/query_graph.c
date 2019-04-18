@@ -324,10 +324,6 @@ void QueryGraph_Free(QueryGraph* g) {
     for(i = 0; i < nodeCount; i++) Node_Free(g->nodes[i]);
     for(i = 0; i < edgeCount; i++) {
         Edge *e = g->edges[i];
-        if(Edge_GetRelationID(e) == GRAPH_UNKNOWN_RELATION) {
-            // Free zero matrix.
-            GrB_Matrix_free(&e->mat);
-        }
         Edge_Free(e);
     }
 

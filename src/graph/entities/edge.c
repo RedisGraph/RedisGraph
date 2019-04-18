@@ -61,8 +61,7 @@ GrB_Matrix Edge_GetMatrix(Edge *e) {
 
         // Get relation matrix.
         if(e->relationID == GRAPH_UNKNOWN_RELATION) {
-			// Use a zeroed matrix, LEAK!
-			GrB_Matrix_new(&e->mat, GrB_BOOL, Graph_NodeCount(g), Graph_NodeCount(g));
+			e->mat = Graph_GetZeroMatrix(g);
 		} else {
 			e->mat = Graph_GetRelationMatrix(g, e->relationID);
         }

@@ -63,6 +63,7 @@ struct Graph {
     GrB_Matrix *labels;                 // Label matrices.
     GrB_Matrix *relations;              // Relation matrices.
     GrB_Matrix *_relations_map;         // Maps from (relation, row, col) to edge id.
+    GrB_Matrix _zero_matrix;            // Zero matrix.
     pthread_mutex_t _writers_mutex;     // Mutex restrict single writer.
     pthread_mutex_t _mutex;             // Mutex for accessing critical sections.
     pthread_rwlock_t _rwlock;           // Read-write lock scoped to this specific graph
@@ -265,6 +266,11 @@ GrB_Matrix Graph_GetRelationMatrix (
     const Graph *g,     // Graph from which to get adjacency matrix.
     int relation        // Relation described by matrix.
 );
+
+// Retrieves the zero matrix.
+// The function will resize it to match all other
+// internal matrices, caller mustn't modify it in any way.
+GrB_Matrix Graph_GetZeroMatrix(const Graph *g);
 
 // Free graph.
 void Graph_Free (

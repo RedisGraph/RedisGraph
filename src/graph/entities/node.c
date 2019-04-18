@@ -52,10 +52,13 @@ GrB_Matrix Node_GetMatrix(Node *n) {
         GraphContext *gc = GraphContext_GetFromTLS();
         Graph *g = gc->g;
 
-        // Get label matrix.
+        /* Get label matrix:
+		 * There's no sense in calling Node_GetMatrix
+		 * if node isn't labeled. */
+		assert(n->labelID != GRAPH_NO_LABEL);
         if(n->labelID == GRAPH_UNKNOWN_LABEL) {
-			// Use a zeroed matrix, LEAK!
-			GrB_Matrix_new(&n->mat, GrB_BOOL, Graph_NodeCount(g), Graph_NodeCount(g));
+			// Label specified (n:Label), but doesn't exists.
+			n->mat = Graph_GetZeroMatrix(g);
 		} else {
 			n->mat = Graph_GetLabelMatrix(g, n->labelID);
         }
