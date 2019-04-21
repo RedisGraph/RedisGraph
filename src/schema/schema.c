@@ -19,6 +19,11 @@ Schema* Schema_New(const char *name, int id) {
     return schema;
 }
 
+const char *Schema_GetName(const Schema *s) {
+    assert(s);
+    return s->name;
+}
+
 unsigned short Schema_IndexCount(const Schema *s) {
     assert(s);
     return (unsigned short)array_len(s->indices);
