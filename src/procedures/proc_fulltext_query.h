@@ -8,4 +8,4 @@
 
 #include "proc_ctx.h"
 
-ProcedureCtx* fulltextQueryNodeGen();
+ProcedureCtx* Proc_FulltextQueryNodeGen();

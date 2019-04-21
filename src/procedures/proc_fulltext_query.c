@@ -25,7 +25,7 @@ typedef struct {
     RSResultsIterator *iter;
 } QueryNodeContext;
 
-ProcedureResult fulltextQueryNodeInvoke(ProcedureCtx *ctx, char **args) {
+ProcedureResult Proc_FulltextQueryNodeInvoke(ProcedureCtx *ctx, char **args) {
     if(array_len(args) < 2) return PROCEDURE_ERR;
 
     QueryNodeContext *pdata = rm_malloc(sizeof(QueryNodeContext));
@@ -58,7 +58,7 @@ ProcedureResult fulltextQueryNodeInvoke(ProcedureCtx *ctx, char **args) {
     return PROCEDURE_OK;
 }
 
-SIValue* fulltextQueryNodeStep(ProcedureCtx *ctx) {
+SIValue* Proc_FulltextQueryNodeStep(ProcedureCtx *ctx) {
     assert(ctx->privateData);
     
     QueryNodeContext *pdata = (QueryNodeContext*)ctx->privateData;
@@ -80,7 +80,7 @@ SIValue* fulltextQueryNodeStep(ProcedureCtx *ctx) {
     return pdata->output;
 }
 
-ProcedureResult fulltextQueryNodeFree(ProcedureCtx *ctx) {
+ProcedureResult Proc_FulltextQueryNodeFree(ProcedureCtx *ctx) {
     // Clean up.
     if(ctx->privateData) {
         QueryNodeContext *pdata = ctx->privateData;
@@ -90,7 +90,7 @@ ProcedureResult fulltextQueryNodeFree(ProcedureCtx *ctx) {
     return PROCEDURE_OK;
 }
 
-ProcedureCtx* fulltextQueryNodeGen() {
+ProcedureCtx* Proc_FulltextQueryNodeGen() {
     void *privateData = NULL;
     ProcedureOutput **output = array_new(ProcedureOutput*, 1);
     ProcedureOutput *out_node = rm_malloc(sizeof(ProcedureOutput));
@@ -101,9 +101,9 @@ ProcedureCtx* fulltextQueryNodeGen() {
     ProcedureCtx *ctx = ProcCtxNew("db.idx.fulltext.queryNodes",
                                     2,
                                     output,
-                                    fulltextQueryNodeStep,
-                                    fulltextQueryNodeInvoke,
-                                    fulltextQueryNodeFree,
+                                    Proc_FulltextQueryNodeStep,
+                                    Proc_FulltextQueryNodeInvoke,
+                                    Proc_FulltextQueryNodeFree,
                                     privateData);
     return ctx;
 }

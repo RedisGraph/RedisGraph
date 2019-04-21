@@ -4,54 +4,53 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "proc_labels.h"
+#include "proc_property_keys.h"
 #include "../value.h"
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
 #include "../graph/graphcontext.h"
 
-// CALL db.labels()
+// CALL db.propertyKeys()
 
 typedef struct {
-    uint schema_id;     // Current schema ID.
+    uint prop_id;       // Current property ID.
     GraphContext *gc;   // Graph context.
     SIValue *output;    // Output label.
-} LabelsContext;
+} RelationsContext;
 
-ProcedureResult Proc_LabelsInvoke(ProcedureCtx *ctx, char **args) {
+ProcedureResult Proc_PropKeysInvoke(ProcedureCtx *ctx, char **args) {
     if(array_len(args) != 0) return PROCEDURE_ERR;
 
-    LabelsContext *pdata = rm_malloc(sizeof(LabelsContext));
-    pdata->schema_id = 0;
+    RelationsContext *pdata = rm_malloc(sizeof(RelationsContext));
+    pdata->prop_id = 0;
     pdata->gc = GraphContext_GetFromTLS();
     pdata->output = array_new(sizeof(SIValue), 2);
-    pdata->output = array_append(pdata->output, SI_ConstStringVal("label"));
+    pdata->output = array_append(pdata->output, SI_ConstStringVal("propertyKey"));
     pdata->output = array_append(pdata->output, SI_ConstStringVal("")); // Place holder.
 
     ctx->privateData = pdata;
     return PROCEDURE_OK;
 }
 
-SIValue* Proc_LabelsStep(ProcedureCtx *ctx) {
+SIValue* Proc_PropKeysStep(ProcedureCtx *ctx) {
     assert(ctx->privateData);
 
-    LabelsContext *pdata = (LabelsContext*)ctx->privateData;
+    RelationsContext *pdata = (RelationsContext*)ctx->privateData;
 
     // Depleted?
-    if(pdata->schema_id >= GraphContext_SchemaCount(pdata->gc, SCHEMA_NODE))
+    if(pdata->prop_id >= GraphContext_AttributeCount(pdata->gc))
     return NULL;
 
-    // Get schema label.
-    Schema *s = GraphContext_GetSchemaByID(pdata->gc, pdata->schema_id++, SCHEMA_NODE);
-    char *label = (char*)Schema_GetName(s);
-    pdata->output[1] = SI_ConstStringVal(label);
+    // Get attribute name.
+    char *name = (char*)GraphContext_GetAttributeString(pdata->gc, pdata->prop_id++);
+    pdata->output[1] = SI_ConstStringVal(name);
     return pdata->output;
 }
 
-ProcedureResult Proc_LabelsFree(ProcedureCtx *ctx) {
+ProcedureResult Proc_PropKeysFree(ProcedureCtx *ctx) {
     // Clean up.
     if(ctx->privateData) {
-        LabelsContext *pdata = ctx->privateData;
+        RelationsContext *pdata = ctx->privateData;
         array_free(pdata->output);
         rm_free(ctx->privateData);
     }
@@ -59,20 +58,20 @@ ProcedureResult Proc_LabelsFree(ProcedureCtx *ctx) {
     return PROCEDURE_OK;
 }
 
-ProcedureCtx* Proc_LabelsCtx() {
+ProcedureCtx* Proc_PropKeysCtx() {
     void *privateData = NULL;
     ProcedureOutput **outputs = array_new(ProcedureOutput*, 1);
     ProcedureOutput *output = rm_malloc(sizeof(ProcedureOutput));
-    output->name = "label";
+    output->name = "propertyKey";
     output->type = T_CONSTSTRING;
 
     outputs = array_append(outputs, output);
-    ProcedureCtx *ctx = ProcCtxNew("db.labels",
+    ProcedureCtx *ctx = ProcCtxNew("db.propertyKeys",
                                     0,
                                     outputs,
-                                    Proc_LabelsStep,
-                                    Proc_LabelsInvoke,
-                                    Proc_LabelsFree,
+                                    Proc_PropKeysStep,
+                                    Proc_PropKeysInvoke,
+                                    Proc_PropKeysFree,
                                     privateData);
     return ctx;
 }
