@@ -97,7 +97,7 @@ int SIValue_ToString(SIValue v, char *buf, size_t len) {
     break;
   case T_NODE:
   case T_EDGE:
-    bytes_written = snprintf(buf, len, "%lu", ENTITY_GET_ID((GraphEntity*)v.ptrval));
+    bytes_written = snprintf(buf, len, "%llu", ENTITY_GET_ID((GraphEntity*)v.ptrval));
     break;
   case T_NULL:
   default:

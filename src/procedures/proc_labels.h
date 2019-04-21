@@ -4,6 +4,8 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "proc_fulltext_query.h"
-#include "proc_fulltext_create_index.h"
-#include "proc_labels.h"
+#pragma once
+
+#include "proc_ctx.h"
+
+ProcedureCtx* ProcLabelsCtx();

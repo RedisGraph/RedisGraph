@@ -4,7 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "fulltext_query.h"
+#include "proc_fulltext_query.h"
 #include "../value.h"
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
@@ -29,7 +29,6 @@ ProcedureResult fulltextQueryNodeInvoke(ProcedureCtx *ctx, char **args) {
     if(array_len(args) < 2) return PROCEDURE_ERR;
 
     QueryNodeContext *pdata = rm_malloc(sizeof(QueryNodeContext));
-    // pdata->output = array_new(SIValue, 4);
     pdata->output = array_new(SIValue, 2);
     pdata->g = GraphContext_GetFromTLS()->g;
     pdata->output = array_append(pdata->output, SI_ConstStringVal("node"));
@@ -78,7 +77,6 @@ SIValue* fulltextQueryNodeStep(ProcedureCtx *ctx) {
     Graph_GetNode(pdata->g, *id, n);
 
     pdata->output[1] = SI_Node(n);
-    // pdata->output[3] = SI_DoubleVal(0); // Currently RediSearch does not returns score.
     return pdata->output;
 }
 
@@ -99,12 +97,7 @@ ProcedureCtx* fulltextQueryNodeGen() {
     out_node->name = "node";
     out_node->type = T_NODE;
 
-    // ProcedureOutput *out_score = rm_malloc(sizeof(ProcedureOutput));
-    // out_score->name = "score";
-    // out_score->type = T_DOUBLE;
-
     output = array_append(output, out_node);
-    // output = array_append(output, out_score);
     ProcedureCtx *ctx = ProcCtxNew("db.idx.fulltext.queryNodes",
                                     2,
                                     output,

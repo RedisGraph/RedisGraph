@@ -23,6 +23,7 @@ void Proc_Register() {
     // Register FullText Search generator.
     _procRegister("db.idx.fulltext.createNodeIndex", fulltextCreateNodeIdxGen);
     _procRegister("db.idx.fulltext.queryNodes", fulltextQueryNodeGen);
+    _procRegister("db.labels", ProcLabelsCtx);
 }
 
 ProcedureCtx* ProcCtxNew(const char *name,
