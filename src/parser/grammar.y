@@ -187,6 +187,10 @@ procedureName(A) ::= unquotedStringList(B). {
 }
 
 %type stringList {char**}
+stringList(A) ::= . {
+	A = array_new(char*, 0);
+}
+
 stringList(A) ::= STRING(B) . {
 	A = array_new(char*, 1);
 	A = array_append(A, B.strval);

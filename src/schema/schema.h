@@ -31,6 +31,8 @@ typedef struct {
 /* Creates a new schema. */
 Schema* Schema_New(const char *label, int id);
 
+const char *Schema_GetName(const Schema *s);
+
 /* Returns number of indices in schema. */
 unsigned short Schema_IndexCount(const Schema *s);
 

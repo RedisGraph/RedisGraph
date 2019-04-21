@@ -4,7 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "fulltext_create_index.h"
+#include "proc_fulltext_create_index.h"
 #include "../value.h"
 #include "../util/arr.h"
 #include "../util/rmalloc.h"

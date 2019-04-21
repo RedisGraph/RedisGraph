@@ -45,8 +45,10 @@ void ProcedureCallClause_DefinedEntities(const AST_ProcedureCallNode *node, Trie
                         entity->alias = out->name;
                         break;
                     default:
-                        // Missing entities are interpreted as scalars.
-                        continue;
+                        // Lie for now.
+                        entity->t = N_ENTITY;
+                        entity->alias = out->name;
+                        break;
                 }
 
                 TrieMap_Add(definedEntities,
