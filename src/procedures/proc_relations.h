@@ -8,4 +8,4 @@
 
 #include "proc_ctx.h"
 
-ProcedureCtx* ProcRelationsCtx();
+ProcedureCtx* Proc_RelationsCtx();

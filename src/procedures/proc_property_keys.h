@@ -8,4 +8,4 @@
 
 #include "proc_ctx.h"
 
-ProcedureCtx* Proc_FulltextCreateNodeIdxGen();
+ProcedureCtx* Proc_PropKeysCtx();
