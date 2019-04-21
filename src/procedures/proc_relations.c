@@ -18,7 +18,7 @@ typedef struct {
     SIValue *output;    // Output label.
 } RelationsContext;
 
-ProcedureResult ProcRelationsInvoke(ProcedureCtx *ctx, char **args) {
+ProcedureResult Proc_RelationsInvoke(ProcedureCtx *ctx, char **args) {
     if(array_len(args) != 0) return PROCEDURE_ERR;
 
     RelationsContext *pdata = rm_malloc(sizeof(RelationsContext));
@@ -32,7 +32,7 @@ ProcedureResult ProcRelationsInvoke(ProcedureCtx *ctx, char **args) {
     return PROCEDURE_OK;
 }
 
-SIValue* ProcRelationsStep(ProcedureCtx *ctx) {
+SIValue* Proc_RelationsStep(ProcedureCtx *ctx) {
     assert(ctx->privateData);
 
     RelationsContext *pdata = (RelationsContext*)ctx->privateData;
@@ -48,7 +48,7 @@ SIValue* ProcRelationsStep(ProcedureCtx *ctx) {
     return pdata->output;
 }
 
-ProcedureResult ProcRelationsFree(ProcedureCtx *ctx) {
+ProcedureResult Proc_RelationsFree(ProcedureCtx *ctx) {
     // Clean up.
     if(ctx->privateData) {
         RelationsContext *pdata = ctx->privateData;
@@ -59,7 +59,7 @@ ProcedureResult ProcRelationsFree(ProcedureCtx *ctx) {
     return PROCEDURE_OK;
 }
 
-ProcedureCtx* ProcRelationsCtx() {
+ProcedureCtx* Proc_RelationsCtx() {
     void *privateData = NULL;
     ProcedureOutput **outputs = array_new(ProcedureOutput*, 1);
     ProcedureOutput *output = rm_malloc(sizeof(ProcedureOutput));
@@ -70,9 +70,9 @@ ProcedureCtx* ProcRelationsCtx() {
     ProcedureCtx *ctx = ProcCtxNew("db.relationshipTypes",
                                     0,
                                     outputs,
-                                    ProcRelationsStep,
-                                    ProcRelationsInvoke,
-                                    ProcRelationsFree,
+                                    Proc_RelationsStep,
+                                    Proc_RelationsInvoke,
+                                    Proc_RelationsFree,
                                     privateData);
     return ctx;
 }

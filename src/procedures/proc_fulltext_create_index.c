@@ -90,7 +90,7 @@ static int _getNodeAttribute(void* ctx, const char* fieldName, const void* id, c
     return ret;
 }
 
-ProcedureResult fulltextCreateNodeIdxInvoke(ProcedureCtx *ctx, char **args) {
+ProcedureResult Proc_FulltextCreateNodeIdxInvoke(ProcedureCtx *ctx, char **args) {
     if(array_len(args) < 2) return PROCEDURE_ERR;
     
     // Create full-text index.
@@ -132,24 +132,24 @@ ProcedureResult fulltextCreateNodeIdxInvoke(ProcedureCtx *ctx, char **args) {
     return PROCEDURE_OK;
 }
 
-SIValue* fulltextCreateNodeIdxStep(ProcedureCtx *ctx) {
+SIValue* Proc_FulltextCreateNodeIdxStep(ProcedureCtx *ctx) {
     return NULL;
 }
 
-ProcedureResult fulltextCreateNodeIdxFree(ProcedureCtx *ctx) {
+ProcedureResult Proc_FulltextCreateNodeIdxFree(ProcedureCtx *ctx) {
     // Clean up.
     return PROCEDURE_OK;
 }
 
-ProcedureCtx* fulltextCreateNodeIdxGen() {
+ProcedureCtx* Proc_FulltextCreateNodeIdxGen() {
     void *privateData = NULL;
     ProcedureOutput **output = array_new(ProcedureOutput*, 0);
     ProcedureCtx *ctx = ProcCtxNew("db.idx.fulltext.createNodeIndex",
                                     PROCEDURE_VARIABLE_ARG_COUNT,
                                     output,
-                                    fulltextCreateNodeIdxStep,
-                                    fulltextCreateNodeIdxInvoke,
-                                    fulltextCreateNodeIdxFree,
+                                    Proc_FulltextCreateNodeIdxStep,
+                                    Proc_FulltextCreateNodeIdxInvoke,
+                                    Proc_FulltextCreateNodeIdxFree,
                                     privateData);
 
     return ctx;
