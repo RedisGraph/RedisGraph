@@ -1,0 +1,78 @@
+/*
+* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+*
+* This file is available under the Redis Labs Source Available License Agreement
+*/
+
+#include "proc_labels.h"
+#include "../value.h"
+#include "../util/arr.h"
+#include "../util/rmalloc.h"
+#include "../graph/graphcontext.h"
+
+// CALL db.relationshipTypes()
+
+typedef struct {
+    uint schema_id;     // Current schema ID.
+    GraphContext *gc;   // Graph context.
+    SIValue *output;    // Output label.
+} RelationsContext;
+
+ProcedureResult ProcRelationsInvoke(ProcedureCtx *ctx, char **args) {
+    if(array_len(args) != 0) return PROCEDURE_ERR;
+
+    RelationsContext *pdata = rm_malloc(sizeof(RelationsContext));
+    pdata->schema_id = 0;
+    pdata->gc = GraphContext_GetFromTLS();
+    pdata->output = array_new(sizeof(SIValue), 2);
+    pdata->output = array_append(pdata->output, SI_ConstStringVal("relationshipType"));
+    pdata->output = array_append(pdata->output, SI_ConstStringVal("")); // Place holder.
+
+    ctx->privateData = pdata;
+    return PROCEDURE_OK;
+}
+
+SIValue* ProcRelationsStep(ProcedureCtx *ctx) {
+    assert(ctx->privateData);
+
+    RelationsContext *pdata = (RelationsContext*)ctx->privateData;
+
+    // Depleted?
+    if(pdata->schema_id >= GraphContext_SchemaCount(pdata->gc, SCHEMA_EDGE))
+    return NULL;
+
+    // Get schema name.
+    Schema *s = GraphContext_GetSchemaByID(pdata->gc, pdata->schema_id++, SCHEMA_EDGE);
+    char *name = (char*)Schema_GetName(s);
+    pdata->output[1] = SI_ConstStringVal(name);
+    return pdata->output;
+}
+
+ProcedureResult ProcRelationsFree(ProcedureCtx *ctx) {
+    // Clean up.
+    if(ctx->privateData) {
+        RelationsContext *pdata = ctx->privateData;
+        array_free(pdata->output);
+        rm_free(ctx->privateData);
+    }
+
+    return PROCEDURE_OK;
+}
+
+ProcedureCtx* ProcRelationsCtx() {
+    void *privateData = NULL;
+    ProcedureOutput **outputs = array_new(ProcedureOutput*, 1);
+    ProcedureOutput *output = rm_malloc(sizeof(ProcedureOutput));
+    output->name = "relationshipType";
+    output->type = T_CONSTSTRING;
+
+    outputs = array_append(outputs, output);
+    ProcedureCtx *ctx = ProcCtxNew("db.relationshipTypes",
+                                    0,
+                                    outputs,
+                                    ProcRelationsStep,
+                                    ProcRelationsInvoke,
+                                    ProcRelationsFree,
+                                    privateData);
+    return ctx;
+}
