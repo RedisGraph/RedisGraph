@@ -21,9 +21,10 @@ static void _procRegister(const char *procedure, ProcGenerator gen) {
 void Proc_Register() {
     __procedures = NewTrieMap();
     // Register FullText Search generator.
-    _procRegister("db.idx.fulltext.createNodeIndex", fulltextCreateNodeIdxGen);
-    _procRegister("db.idx.fulltext.queryNodes", fulltextQueryNodeGen);
     _procRegister("db.labels", ProcLabelsCtx);
+    _procRegister("db.relationshipTypes", ProcRelationsCtx);
+    _procRegister("db.idx.fulltext.queryNodes", fulltextQueryNodeGen);
+    _procRegister("db.idx.fulltext.createNodeIndex", fulltextCreateNodeIdxGen);
 }
 
 ProcedureCtx* ProcCtxNew(const char *name,
