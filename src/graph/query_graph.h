@@ -12,10 +12,12 @@
 #include "../parser/newast.h"
 
 typedef struct {
+    // TODO both arrays are only used for choosing the proper free routine
+    // right now - should refactor to remove.
+    // Could just have separate triemaps, since I don't think there's any
+    // real benefit to an integrated one.
     Node **nodes;
     Edge **edges;
-    char **node_aliases;
-    char **edge_aliases;
     TrieMap *ast_references;
 } QueryGraph;
 
@@ -33,20 +35,8 @@ void QueryGraph_AddPath(const GraphContext *gc, const NEWAST *ast, QueryGraph *q
  * nodes and relationships in a query. */
 QueryGraph* BuildQueryGraph(const GraphContext *gc, const NEWAST *ast);
 
-/* Returns true if QueryGraph contains given entity, false otherwise. */
-bool QueryGraph_ContainsNode(const QueryGraph *qg, const Node *node);
-bool QueryGraph_ContainsEdge(const QueryGraph *qg, const Edge *edge);
-
-/* Adds a new node to the graph */
-void QueryGraph_AddNode(QueryGraph *qg, Node *n, char *alias);
-
 /* Adds a new edge to the graph */
 void QueryGraph_ConnectNodes(QueryGraph *qg, Node *src, Node *dest, Edge *e, char *edge_alias);
-
-/* Search the graph for a node with given alias */
-Node* QueryGraph_GetNodeByAlias(const QueryGraph *qg, const char *alias);
-/* Search the graph for an edge with given alias */
-Edge* QueryGraph_GetEdgeByAlias(const QueryGraph *qg, const char *alias);
 
 /* Retrieve a graph entity from an AST pointer */
 void* QueryGraph_GetEntityByASTRef(const QueryGraph *qg, const cypher_astnode_t *ref);

@@ -133,8 +133,6 @@ void _SetModifiedEntities(OpCreate *op) {
                 op->edges_to_create[edge_idx].edge = e;
                 op->edges_to_create[edge_idx].ast_entity = elem;
                 op->edges_to_create[edge_idx].edge_rec_idx = NEWAST_GetAliasID(ast, e->alias);
-                assert(QueryGraph_ContainsNode(op->qg, e->src));
-                assert(QueryGraph_ContainsNode(op->qg, e->dest));
                 op->edges_to_create[edge_idx].src_node_rec_idx = NEWAST_GetAliasID(ast, e->src->alias);
                 op->edges_to_create[edge_idx].dest_node_rec_idx = NEWAST_GetAliasID(ast, e->dest->alias);
                 edge_idx ++;

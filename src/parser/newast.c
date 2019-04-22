@@ -14,6 +14,14 @@
 
 extern pthread_key_t _tlsNEWASTKey;  // Thread local storage AST key.
 
+static void _NEWAST_MapEntityHash(const NEWAST *ast, AST_IDENTIFIER identifier, AR_ExpNode *exp) {
+    TrieMap_Add(ast->entity_map, (char*)&identifier, sizeof(identifier), exp, TrieMap_DONT_CARE_REPLACE);
+}
+
+static void _NEWAST_MapAlias(const NEWAST *ast, char *alias, AR_ExpNode *exp) {
+    TrieMap_Add(ast->entity_map, alias, strlen(alias), exp, TrieMap_DONT_CARE_REPLACE);
+}
+
 // Note each function call within given expression
 // Example: given the expression: "abs(max(min(a), abs(k)))"
 // referred_funcs will include: "abs", "max" and "min".
@@ -68,7 +76,6 @@ void _mapReturnAliases(NEWAST *ast) {
     }
 }
 
-// Capture node and relation identifiers from
 /* Populate a triemap with node and relation identifiers from MATCH, MERGE, and CREATE clauses
  * (and build anonymous identifiers when necessary). */
 void _mapPatternIdentifiers(NEWAST *ast, const cypher_astnode_t *entity) {
@@ -99,27 +106,35 @@ void _mapPatternIdentifiers(NEWAST *ast, const cypher_astnode_t *entity) {
         return;
     }
 
-    // The identifier ID is bult from the number of identifiers in the map
-    unsigned int id = ast->identifier_map->cardinality;
+    // Hash the AST node into a unique identifier
+    AST_IDENTIFIER identifier = NEWAST_EntityHash(entity);
 
+    // Do nothing if entity is already mapped
+    if (NEWAST_GetEntityFromHash(ast, identifier) != NULL) return;
+
+    // If this entity is aliased, we may have encountered it from a different AST node previously.
     if (alias) {
-        // Do nothing if entry is already mapped
-        // TODO or maybe introduce a pointer to same entity? Could simplify QueryGraph construction
-        // if (TrieMap_Find(ast->identifier_map, alias, strlen(alias)) != TRIEMAP_NOTFOUND) return;
-        unsigned int found_id;
-        void *v = TrieMap_Find(ast->identifier_map, alias, strlen(alias));
+        // TODO overkill, as aliased but non-referenced entities don't need to be in record
+        unsigned int *v = TrieMap_Find(ast->identifier_map, alias, strlen(alias));
         if (v != TRIEMAP_NOTFOUND) {
-            AR_ExpNode *exp = ast->defined_entities[*(unsigned int *)v];
-            NEWAST_ConnectEntity(ast, entity, exp);
+            // Alias was previously encountered
+            AR_ExpNode *exp = ast->defined_entities[*v];
+            // Associate the current hash with the previously-built entity
+            _NEWAST_MapEntityHash(ast, identifier, exp);
+            // Map the alias to the entity as well
+            _NEWAST_MapAlias(ast, alias, exp);
+            // and exit
             return;
         }
-        if (TrieMap_Find(ast->identifier_map, alias, strlen(alias)) != TRIEMAP_NOTFOUND) {
-            AR_ExpNode *exp = ast->defined_entities[id];
-        }
     } else {
+        // alias = (char*)identifier;
         // Make identifier for unaliased entities
-        asprintf(&alias, "anon_%u", id); // TODO rethink this
+        asprintf(&alias, "anon_%u", ast->identifier_map->cardinality); // TODO rethink this
     }
+
+    // If the entity must be added to the Record, add it to the record map
+    // The identifier ID is bult from the number of identifiers in the map
+    unsigned int id = ast->identifier_map->cardinality;
     // Build an arithmetic expression node representing this identifier
     AR_ExpNode *exp = _AR_Exp_NewIdentifier(alias, entity, id);
 
@@ -128,9 +143,16 @@ void _mapPatternIdentifiers(NEWAST *ast, const cypher_astnode_t *entity) {
     // Store the expression node in an ID-indexed array and
     // store the ID in a triemap.
     ast->defined_entities = array_append(ast->defined_entities, exp);
-    TrieMap_Add(ast->identifier_map, alias, strlen(alias), entityID, TrieMap_DONT_CARE_REPLACE);
 
-    NEWAST_ConnectEntity(ast, entity, exp);
+    // TODO WIP maybe doesn't work, definitely adds entities we don't need
+    _NEWAST_MapEntityHash(ast, identifier, exp);
+    if (alias) {
+        TrieMap_Add(ast->identifier_map, alias, strlen(alias), entityID, TrieMap_DONT_CARE_REPLACE);
+        _NEWAST_MapAlias(ast, alias, exp);
+    } else {
+        TrieMap_Add(ast->identifier_map, (char*)&identifier, sizeof(identifier), entityID, TrieMap_DONT_CARE_REPLACE);
+    }
+
 }
 
 bool NEWAST_ReadOnly(const cypher_astnode_t *query) {
@@ -393,34 +415,38 @@ void NEWAST_BuildAliasMap(NEWAST *ast) {
 }
 
 unsigned int NEWAST_GetAliasID(const NEWAST *ast, char *alias) {
-    void *v = TrieMap_Find(ast->identifier_map, alias, strlen(alias));
-    assert(v != TRIEMAP_NOTFOUND);
-    unsigned int *id = v;
-    return *id;
+    // void *v = TrieMap_Find(ast->identifier_map, alias, strlen(alias));
+    // if (v == TRIEMAP_NOTFOUND) return IDENTIFIER_NOT_FOUND;
+    // unsigned int *id = v;
+    // return *id;
+    AST_IDENTIFIER hash = XXH64(alias, strlen(alias), 0);
+    AR_ExpNode *exp = NEWAST_GetEntityFromHash(ast, hash);
+    return exp->operand.variadic.entity_alias_idx;
 }
 
 AR_ExpNode* NEWAST_GetEntity(const NEWAST *ast, unsigned int id) {
     return ast->defined_entities[id];
 }
 
-AR_ExpNode* NEWAST_SeekEntity(const NEWAST *ast, const cypher_astnode_t *entity) {
+
+unsigned int NEWAST_GetEntityID(const NEWAST *ast, const cypher_astnode_t *entity) {
     AST_IDENTIFIER identifier = NEWAST_EntityHash(entity);
-    void *v = TrieMap_Find(ast->entity_map, (char*)&identifier, sizeof(identifier));
+    AR_ExpNode *v = TrieMap_Find(ast->entity_map, (char*)&identifier, sizeof(identifier));
     assert(v != TRIEMAP_NOTFOUND);
-    return (AR_ExpNode*)v;
+    return v->operand.variadic.entity_alias_idx;
 }
 
-void NEWAST_ConnectEntity(const NEWAST *ast, const cypher_astnode_t *entity, AR_ExpNode *exp) {
-    AST_IDENTIFIER identifier = NEWAST_EntityHash(entity);
-    // void *v = TrieMap_Find(ast->entity_map, (char*)&identifier, sizeof(identifier));
-    // if (v != TRIEMAP_NOTFOUND) return v;
 
-    TrieMap_Add(ast->entity_map, (char*)&identifier, sizeof(identifier), exp, TrieMap_DONT_CARE_REPLACE);
+AR_ExpNode* NEWAST_SeekEntity(const NEWAST *ast, const cypher_astnode_t *entity) {
+    AST_IDENTIFIER identifier = NEWAST_EntityHash(entity);
+    AR_ExpNode *v = TrieMap_Find(ast->entity_map, (char*)&identifier, sizeof(identifier));
+    assert(v != TRIEMAP_NOTFOUND);
+    return v;
 }
 
 AR_ExpNode* NEWAST_GetEntityFromHash(const NEWAST *ast, AST_IDENTIFIER id) {
     void *v = TrieMap_Find(ast->entity_map, (char*)&id, sizeof(id));
-    assert(v != TRIEMAP_NOTFOUND);
+    if (v == TRIEMAP_NOTFOUND) return NULL;
     return v;
 }
 
