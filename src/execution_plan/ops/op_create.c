@@ -128,7 +128,8 @@ void _SetModifiedEntities(OpCreate *op) {
             if (rc == 0) continue;
 
             if (j % 2) { // Relation
-                Edge *e = QueryGraph_GetEdgeByAlias(op->qg, alias);
+                Edge *e = QueryGraph_GetEntityByASTRef(op->qg, elem);
+                // TODO revisit all rest of this
                 op->edges_to_create[edge_idx].edge = e;
                 op->edges_to_create[edge_idx].ast_entity = elem;
                 op->edges_to_create[edge_idx].edge_rec_idx = NEWAST_GetAliasID(ast, e->alias);
@@ -138,7 +139,7 @@ void _SetModifiedEntities(OpCreate *op) {
                 op->edges_to_create[edge_idx].dest_node_rec_idx = NEWAST_GetAliasID(ast, e->dest->alias);
                 edge_idx ++;
             } else { // Node
-                Node *n = QueryGraph_GetNodeByAlias(op->qg, alias);
+                Node *n = QueryGraph_GetEntityByASTRef(op->qg, elem);
                 op->nodes_to_create[node_idx].ast_entity = elem;
                 op->nodes_to_create[node_idx].node = n;
                 op->nodes_to_create[node_idx].node_rec_idx = NEWAST_GetAliasID(ast, n->alias);

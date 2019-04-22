@@ -43,11 +43,17 @@ static AR_ExpNode* _AST_GetNodeExpression(const NEWAST *ast, const cypher_astnod
         uint id = NEWAST_GetAliasID(ast, alias);
         exp = NEWAST_GetEntity(ast, id);
     } else {
-        exp = NEWAST_SeekEntity(ast, node); // TODO bad
+        exp = NEWAST_SeekEntity(ast, node);
+        if (!exp) return NULL;
         char *alias = exp->operand.variadic.entity_alias;
     }
     assert(exp);
     return exp;
+}
+
+static void _QueryGraph_AddASTRef(QueryGraph *qg, const cypher_astnode_t *ast_entity, void *qg_entity) {
+    int rc = TrieMap_Add(qg->ast_references, (char*)&ast_entity, sizeof(ast_entity), qg_entity, TrieMap_DONT_CARE_REPLACE);
+    assert(rc == 1);
 }
 
 static void _BuildQueryGraphAddNode(const GraphContext *gc,
@@ -56,15 +62,17 @@ static void _BuildQueryGraphAddNode(const GraphContext *gc,
                              QueryGraph *qg) {
 
     AR_ExpNode *exp = _AST_GetNodeExpression(ast, ast_entity);
-    char *alias = exp->operand.variadic.entity_alias;
+    char *alias = (exp) ? exp->operand.variadic.entity_alias : NULL;
 
     /* Check for duplications. */
-    Node *n = QueryGraph_GetNodeByAlias(qg, alias);
+    Node *n = QueryGraph_GetNodeByAlias(qg, alias); // TODO replaceable?
+
     unsigned int nlabels = cypher_ast_node_pattern_nlabels(ast_entity);
     const char *label = (nlabels > 0) ? cypher_ast_label_get_name(cypher_ast_node_pattern_get_label(ast_entity, 0)) : NULL;
     if(n == NULL) {
         /* Create a new node, set its properties, and add it to the graph. */
         n = Node_New(label, alias);
+        _QueryGraph_AddASTRef(qg, ast_entity, (void*)n);
         QueryGraph_AddNode(qg, n, alias);
     } else {
         /* Merge nodes. */
@@ -100,7 +108,7 @@ static void _BuildQueryGraphAddEdge(const GraphContext *gc,
         uint id = NEWAST_GetAliasID(ast, alias);
         exp = NEWAST_GetEntity(ast, id);
     } else {
-        exp = NEWAST_SeekEntity(ast, entity); // TODO bad
+        exp = NEWAST_SeekEntity(ast, entity);
         alias = exp->operand.variadic.entity_alias;
     }
     assert(exp);
@@ -148,6 +156,7 @@ static void _BuildQueryGraphAddEdge(const GraphContext *gc,
         }
     }
 
+    _QueryGraph_AddASTRef(qg, entity, (void*)e);
     QueryGraph_ConnectNodes(qg, src, dest, e, alias);
 }
 
@@ -156,8 +165,11 @@ QueryGraph* QueryGraph_New(size_t node_cap, size_t edge_cap) {
 
     qg->nodes = array_new(Node*, node_cap);
     qg->edges = array_new(Edge*, edge_cap);
+    // TODO delete (and all references, lookups, etc)
     qg->node_aliases = array_new(char*, node_cap);
     qg->edge_aliases = array_new(char*, edge_cap);
+
+    qg->ast_references = NewTrieMap();
 
     return qg;
 }
@@ -170,6 +182,7 @@ void QueryGraph_AddPath(const GraphContext *gc, const NEWAST *ast, QueryGraph *q
         _BuildQueryGraphAddNode(gc, ast, ast_node, qg);
     }
     for (uint i = 1; i < nelems; i += 2) {
+        // TODO still need to introduce nodes first? not doing that would simplify this logic
         const cypher_astnode_t *l_entity = cypher_ast_pattern_path_get_element(path, i - 1);
         const cypher_astnode_t *r_entity = cypher_ast_pattern_path_get_element(path, i + 1);
         const cypher_astnode_t *entity = cypher_ast_pattern_path_get_element(path, i);
@@ -232,6 +245,10 @@ QueryGraph* BuildQueryGraph(const GraphContext *gc, const NEWAST *ast) {
     return qg;
 }
 
+// bool QueryGraph_ContainsNode(const QueryGraph *qg, const cypher_astnode_t *ast_entity) {
+
+// }
+
 bool QueryGraph_ContainsNode(const QueryGraph *qg, const Node *node) {
     if (array_len(qg->nodes) == 0) return false;
     return _QueryGraph_ContainsEntity((GraphEntity *)node, (GraphEntity **)qg->nodes);
@@ -253,6 +270,13 @@ void QueryGraph_ConnectNodes(QueryGraph *qg, Node *src, Node *dest, Edge *e, cha
     _QueryGraph_AddEdge(qg, e, edge_alias);
 }
 
+void* QueryGraph_GetEntityByASTRef(const QueryGraph *qg, const cypher_astnode_t *ref) {
+    // TODO can one-line if willing to drop assertion
+    void *ge = TrieMap_Find(qg->ast_references, (void*)&ref, sizeof(ref));
+    assert(ge != TRIEMAP_NOTFOUND);
+    return ge;
+}
+
 Node* QueryGraph_GetNodeByAlias(const QueryGraph* qg, const char* alias) {
     if(alias == NULL) return NULL;
     return (Node*)_QueryGraph_GetEntityByAlias((GraphEntity **)qg->nodes, qg->node_aliases, alias);
@@ -261,28 +285,6 @@ Node* QueryGraph_GetNodeByAlias(const QueryGraph* qg, const char* alias) {
 Edge* QueryGraph_GetEdgeByAlias(const QueryGraph *qg, const char *alias) {
     if(alias == NULL) return NULL;
     return (Edge*)_QueryGraph_GetEntityByAlias((GraphEntity **)qg->edges, qg->edge_aliases, alias);
-}
-
-Node** QueryGraph_GetNodeRef(const QueryGraph *qg, const Node *n) {
-    assert(qg && n);
-
-    uint node_count = array_len(qg->nodes);
-    for (uint i = 0; i < node_count; i ++) {
-        if(n == qg->nodes[i]) return &(qg->nodes[i]);
-    }
-
-    return NULL;
-}
-
-Edge** QueryGraph_GetEdgeRef(const QueryGraph *qg, const Edge *e) {
-    assert(qg && e);
-
-    uint edge_count = array_len(qg->edges);
-    for (uint i = 0; i < edge_count; i ++) {
-        if(e == qg->edges[i]) return &(qg->edges[i]);
-    }
-
-    return NULL;
 }
 
 /* Frees entire graph. */
@@ -301,6 +303,7 @@ void QueryGraph_Free(QueryGraph* qg) {
         Edge_Free(qg->edges[i]);
     }
 
+    TrieMap_Free(qg->ast_references, TrieMap_NOP_CB);
     array_free(qg->nodes);
     array_free(qg->edges);
     array_free(qg->node_aliases);

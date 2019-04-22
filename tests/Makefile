@@ -3,7 +3,7 @@ MAKEFLAGS += --no-builtin-rules
 
 .PHONY: test unit flow tck test_valgrind clean
 
-test: unit flow tck
+test: flow tck
 
 unit:
 	### unit tests
@@ -15,7 +15,7 @@ ifeq ($(V),)
 	@python -m unittest discover -b
 else
 	@python -m unittest discover --verbose
-	# @python -m unittest discover --verbose -p test_imdb.py
+	# @python -m unittest discover --verbose -p test_social.py
 endif
 
 tck:

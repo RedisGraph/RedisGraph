@@ -16,6 +16,7 @@ typedef struct {
     Edge **edges;
     char **node_aliases;
     char **edge_aliases;
+    TrieMap *ast_references;
 } QueryGraph;
 
 /* Prepare a new query graph with initial allocations for
@@ -44,13 +45,11 @@ void QueryGraph_ConnectNodes(QueryGraph *qg, Node *src, Node *dest, Edge *e, cha
 
 /* Search the graph for a node with given alias */
 Node* QueryGraph_GetNodeByAlias(const QueryGraph *qg, const char *alias);
-
 /* Search the graph for an edge with given alias */
 Edge* QueryGraph_GetEdgeByAlias(const QueryGraph *qg, const char *alias);
 
-/* Retrieve a mutable reference to a QueryGraph entity */
-Node** QueryGraph_GetNodeRef(const QueryGraph *qg, const Node *n);
-Edge** QueryGraph_GetEdgeRef(const QueryGraph *qg, const Edge *e);
+/* Retrieve a graph entity from an AST pointer */
+void* QueryGraph_GetEntityByASTRef(const QueryGraph *qg, const cypher_astnode_t *ref);
 
 /* Frees entire graph */
 void QueryGraph_Free(QueryGraph* qg);

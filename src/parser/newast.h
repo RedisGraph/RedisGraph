@@ -10,6 +10,8 @@
 #include "../util/triemap/triemap.h"
 #include "../../deps/libcypher-parser/lib/src/cypher-parser.h"
 
+typedef unsigned long long const AST_IDENTIFIER;
+
 // #define IDENTIFIER_NOT_FOUND UINT_MAX
 
 typedef enum {
@@ -48,6 +50,7 @@ typedef struct {
     // Extensible array of entities described in MATCH, MERGE, and CREATE clauses
     AR_ExpNode **defined_entities;
     TrieMap *identifier_map;
+    TrieMap *entity_map;
     ReturnElementNode **return_expressions;
     unsigned int order_expression_count; // TODO maybe use arr.h instead
     AR_ExpNode **order_expressions;
@@ -98,6 +101,12 @@ unsigned int NEWAST_GetAliasID(const NEWAST *ast, char *alias);
 AR_ExpNode* NEWAST_GetEntity(const NEWAST *ast, unsigned int id);
 
 AR_ExpNode* NEWAST_SeekEntity(const NEWAST *ast, const cypher_astnode_t *entity);
+
+void NEWAST_ConnectEntity(const NEWAST *ast, const cypher_astnode_t *entity, AR_ExpNode *exp);
+
+AR_ExpNode* NEWAST_GetEntityFromHash(const NEWAST *ast, AST_IDENTIFIER id);
+
+AST_IDENTIFIER NEWAST_EntityHash(const cypher_astnode_t *entity);
 
 size_t NEWAST_AliasCount(const NEWAST *ast);
 

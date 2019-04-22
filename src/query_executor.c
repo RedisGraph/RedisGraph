@@ -259,7 +259,7 @@ void _ReturnExpandAll(NEWAST *ast) {
 
     for (unsigned int i = 0; i < identifier_count; i ++) {
         AR_ExpNode *entity = ast->defined_entities[i];
-        // TODO Temporary, make better solution
+        // TODO Temporary - rethink anon entities
         if (!strncmp(entity->operand.variadic.entity_alias, "anon_", 5)) continue;
         ReturnElementNode *ret = _NewReturnElementNode(NULL, entity);
         ast->return_expressions = array_append(ast->return_expressions, ret);
@@ -287,7 +287,6 @@ void _BuildReturnExpressions(NEWAST *ast) {
         if (alias_node) {
             alias = cypher_ast_identifier_get_name(alias_node);
             // TODO standardize logic (make a separate routine for this, can drop ID pointer elsewhere
-
             // TODO expressions like TYPE(e) have aliases, so can get in this block?
             // Kludge for testing; improve when possible
             void *v = TrieMap_Find(ast->identifier_map, (char*)alias, strlen(alias));

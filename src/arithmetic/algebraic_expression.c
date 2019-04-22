@@ -145,7 +145,7 @@ AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(const NEWAST 
 
         transpose = (cypher_ast_rel_pattern_get_direction(ast_entity) == CYPHER_REL_INBOUND);
 
-        e = QueryGraph_GetEdgeByAlias(q, entity_expression->operand.variadic.entity_alias);
+        e = QueryGraph_GetEntityByASTRef(q, ast_entity);
         /* If edge is referenced, set expression edge pointer. */
         if (strncmp(entity_expression->operand.variadic.entity_alias, "anon_", 5)) {
             iexp->edge = e;
@@ -293,7 +293,7 @@ AlgebraicExpression **AlgebraicExpression_FromQuery(const NEWAST *ast, const Que
 
         transpose = (cypher_ast_rel_pattern_get_direction(ast_entity) == CYPHER_REL_INBOUND);
 
-        e = QueryGraph_GetEdgeByAlias(q, expr->operand.variadic.entity_alias);
+        e = QueryGraph_GetEntityByASTRef(q, ast_entity);
         assert(e);
 
         // TODO: we might want to delay matrix retrieval even further.
