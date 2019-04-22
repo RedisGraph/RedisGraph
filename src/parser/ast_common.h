@@ -13,6 +13,7 @@
 typedef enum {
 	N_ENTITY,
 	N_LINK,
+	N_SCALAR,
 } AST_GraphEntityType;
 
 typedef enum {

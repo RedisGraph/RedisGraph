@@ -3,7 +3,7 @@ import sys
 import unittest
 from redisgraph import Graph, Node, Edge
 
-import redis
+# import redis
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from disposableredis import DisposableRedis
 
@@ -11,6 +11,7 @@ from base import FlowTestsBase
 
 GRAPH_ID = "procedures"
 redis_graph = None
+redis_con = None
 
 node1 = Node(label="fruit", properties={"name": "Orange1", "value": 1})
 node2 = Node(label="fruit", properties={"name": "Orange2", "value": 2})
@@ -29,6 +30,7 @@ class ProceduresTest(FlowTestsBase):
     def setUpClass(cls):
         print "ProceduresTest"
         global redis_graph
+        global redis_con
         cls.r = _redis()
         cls.r.start()
         redis_con = cls.r.client()
@@ -36,6 +38,7 @@ class ProceduresTest(FlowTestsBase):
 
         # cls.r = redis.Redis()
         # redis_graph = Graph(GRAPH_ID, cls.r)
+        # redis_con = redis_graph.redis_con
 
         cls.populate_graph()
 
@@ -45,7 +48,10 @@ class ProceduresTest(FlowTestsBase):
         # pass
 
     @classmethod
-    def populate_graph(cls):     
+    def populate_graph(cls):
+        if redis_con.exists(GRAPH_ID):
+            return
+
         edge = Edge(node1, 'goWellWith', node5)
         redis_graph.add_node(node1)
         redis_graph.add_node(node2)
@@ -55,6 +61,9 @@ class ProceduresTest(FlowTestsBase):
         redis_graph.add_edge(edge)
         redis_graph.commit()
 
+        # Create full-text index.
+        redis_graph.call_procedure("db.idx.fulltext.createNodeIndex", 'fruit', 'name')
+
     # Compares two nodes based on their properties.
     def _compareNodes(self, a, b):
         return a.properties == b.properties
@@ -63,7 +72,7 @@ class ProceduresTest(FlowTestsBase):
     def _inResultSet(self, item, resultset):
         for i in range(len(resultset)):
             result = resultset[i][0]
-            if _compareNodes(item, result):
+            if self._compareNodes(item, result):
                 return True
         return False
 
@@ -72,79 +81,33 @@ class ProceduresTest(FlowTestsBase):
         actual_resultset = redis_graph.query(query).result_set
         assert(len(actual_resultset) == len(expected_results))
         for i in range(len(actual_resultset)):
-            assert(_inResultSet(expected_results[i], actual_resultset))
+            assert(self._inResultSet(expected_results[i], actual_resultset))
     
     # Call procedure, omit yield, expecting all procedure outputs to
     # be included in result-set.
     def test_no_yield(self):
-        query = """CALL db.idx.fulltext.queryNodes('fruit', 'query')"""
-        actual_result = redis_graph.query(query)        
-        assert(len(actual_result.result_set) is 2)
-        assert(len(actual_result.result_set[0]) is 2)
-        assert(len(actual_result.result_set[1]) is 2)
+        actual_result = redis_graph.call_procedure("db.idx.fulltext.queryNodes", "fruit", "Orange1")
+        assert(len(actual_result.result_set) is 1)
 
-        header = actual_result.result_set[0]
-        data = actual_result.result_set[1]
-        assert(header[0] == 'node')
-        # assert(header[1] == 'score')
-        assert(data[0] is None)
-        assert(float(data[1]) == 12.34)
+        header = actual_result.header
+        data = actual_result.result_set[0]
+        assert(header[0][1] == 'node')
+        assert(data[0] is not None)
 
     # Call procedure specify different outputs.
     def test_yield(self):
-        query = """CALL db.idx.fulltext.queryNodes('fruit', 'query') YIELD node"""
-        actual_result = redis_graph.query(query)        
-        assert(len(actual_result.result_set) is 2)
-        assert(len(actual_result.result_set[0]) is 1)
-        assert(len(actual_result.result_set[1]) is 1)
+        actual_result = redis_graph.call_procedure("db.idx.fulltext.queryNodes", "fruit", "Orange1", y=["node"])
+        assert(len(actual_result.result_set) is 1)
 
-        header = actual_result.result_set[0]
-        data = actual_result.result_set[1]
-        assert(header[0] == 'node')        
-        assert(data[0] is None)
+        header = actual_result.header
+        data = actual_result.result_set[0]
+        assert(header[0][1] == 'node')
+        assert(data[0] is not None)
 
-        # query = """CALL db.idx.fulltext.queryNodes('fruit', 'query') YIELD score"""
-        # actual_result = redis_graph.query(query)
-        # assert(len(actual_result.result_set) is 2)
-        # assert(len(actual_result.result_set[0]) is 1)
-        # assert(len(actual_result.result_set[1]) is 1)
-
-        # header = actual_result.result_set[0]
-        # data = actual_result.result_set[1]
-        # assert(header[0] == 'score')
-        # assert(float(data[0]) == 12.34)
-
-        # query = """CALL db.idx.fulltext.queryNodes('fruit', 'query') YIELD node, score"""
-        # actual_result = redis_graph.query(query)
-        # assert(len(actual_result.result_set) is 2)
-        # assert(len(actual_result.result_set[0]) is 2)
-        # assert(len(actual_result.result_set[1]) is 2)
-
-        # header = actual_result.result_set[0]
-        # data = actual_result.result_set[1]
-        # assert(header[0] == 'node')
-        # assert(header[1] == 'score')
-        # assert(data[0] is None)
-        # assert(float(data[1]) == 12.34)
-
-        # query = """CALL db.idx.fulltext.queryNodes('fruit', 'query') YIELD score, node"""
-        # actual_result = redis_graph.query(query)
-        # assert(len(actual_result.result_set) is 2)
-        # assert(len(actual_result.result_set[0]) is 2)
-        # assert(len(actual_result.result_set[1]) is 2)
-
-        # header = actual_result.result_set[0]
-        # data = actual_result.result_set[1]
-        # assert(header[0] == 'score')
-        # assert(header[1] == 'node')
-        # assert(float(data[0]) == 12.34)
-        # assert(data[1] is None)
-        
         # Yield an unknown output.
-        query = """CALL db.idx.fulltext.queryNodes('fruit', 'query') YIELD unknown"""
         # Expect an error when trying to use an unknown procedure output.
         try:
-            redis_graph.query(query)
+            redis_graph.call_procedure("db.idx.fulltext.queryNodes", "fruit", "Orange1", y=["unknown"])
             assert(False)
         except redis.exceptions.ResponseError:
             # Expecting an error.
@@ -152,41 +115,34 @@ class ProceduresTest(FlowTestsBase):
     
     def test_arguments(self):
         # Omit arguments.
-        query = """CALL db.idx.fulltext.queryNodes() YIELD score"""
         # Expect an error when trying to omit arguments.
         try:
-            redis_graph.query(query)
+            redis_graph.call_procedure("db.idx.fulltext.queryNodes")
             assert(False)
         except redis.exceptions.ResponseError:
             # Expecting an error.
             pass
         
-        # Omit arguments.
-        query = """CALL db.idx.fulltext.queryNodes('arg1')"""
+        # Omit arguments, queryNodes expecting 2 argument, provide 1.
         # Expect an error when trying to omit arguments.
         try:
-            redis_graph.query(query)
+            redis_graph.call_procedure("db.idx.fulltext.queryNodes", "arg1")
             assert(False)
         except redis.exceptions.ResponseError:
             # Expecting an error.
             pass
 
         # Overload arguments.
-        query = """CALL db.idx.fulltext.queryNodes('fruit', 'query', 'fruit', 'query') YIELD node"""
         # Expect an error when trying to send too many arguments.
         try:
-            redis_graph.query(query)
+            redis_graph.call_procedure("db.idx.fulltext.queryNodes", "fruit", "query", "fruit", "query", y=["node"])
             assert(False)
         except redis.exceptions.ResponseError:
             # Expecting an error.
             pass
 
     # Test procedure call while mixing a number of addition clauses.
-    def test_mix_clauses(self):        
-        # Create full-text index.
-        query = """CALL db.idx.fulltext.createNodeIndex('fruit', 'name')"""           
-        graph.query(query)
-
+    def test_mix_clauses(self):
         # CALL + RETURN.
         query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node
                     RETURN node"""
@@ -316,7 +272,22 @@ class ProceduresTest(FlowTestsBase):
             MATCH (node)-[]->(z)
             RETURN z"""
         expected_results = [node5]
-        queryAndValidate(query, expected_results)
+        self.queryAndValidate(query, expected_results)
+
+    def test_procedure_labels(self):
+        actual_resultset = redis_graph.call_procedure("db.labels").result_set
+        expected_results = [["fruit"]]        
+        assert(actual_resultset == expected_results)
+    
+    def test_procedure_relationshipTypes(self):
+        actual_resultset = redis_graph.call_procedure("db.relationshipTypes").result_set
+        expected_results = [["goWellWith"]]
+        assert(actual_resultset == expected_results)
+    
+    def test_procedure_propertyKeys(self):
+        actual_resultset = redis_graph.call_procedure("db.propertyKeys").result_set
+        expected_results = [["value"], ["name"]]
+        assert(actual_resultset == expected_results)
 
 if __name__ == '__main__':
     unittest.main()
