@@ -18,52 +18,6 @@ EmitRecordFunc _ResultSet_SetReplyFormatter(bool compact) {
     return ResultSet_EmitVerboseRecord;
 }
 
-static void _ResultSet_ReplyWithStringMapping(RedisModuleCtx *ctx) {
-    /* TODO The string mapping in its entirety is only required if the user has
-     * requested any full entities.
-     * Similarly, no or few label/reltype strings may be necessary depending on
-     * what entity types the query requests and whether it provides labels.
-     * This whole area should be refactored as soon as possible. */
-    GraphContext *gc = GraphContext_GetFromTLS();
-
-    int prop_string_count = array_len(gc->string_mapping);
-    uint label_count = array_len(gc->node_schemas);
-    uint reltype_count = array_len(gc->relation_schemas);
-
-    // TODO if the query introduces new strings, we will be incapable of returning them
-    RedisModule_ReplyWithArray(ctx, prop_string_count + label_count + reltype_count);
-    for (int i = 0; i < prop_string_count; i ++) {
-        const char *prop = gc->string_mapping[i];
-        RedisModule_ReplyWithStringBuffer(ctx, prop, strlen(prop));
-    }
-
-    for (uint i = 0; i < label_count; i ++) {
-        const char *label = gc->node_schemas[i]->name;
-        RedisModule_ReplyWithStringBuffer(ctx, label, strlen(label));
-    }
-
-    for (uint i = 0; i < reltype_count; i ++) {
-        const char *reltype = gc->relation_schemas[i]->name;
-        RedisModule_ReplyWithStringBuffer(ctx, reltype, strlen(reltype));
-    }
-}
-
-// Prepare replay and emit the string mapping if required.
-static void _ResultSet_SetupReply(ResultSet *set) {
-    // Send the string mapping, if required, as the first response
-    if (set->compact) {
-        // Compact replies will contain 4 top-level replies:
-        // string mapping, header, records, statistics
-        RedisModule_ReplyWithArray(set->ctx, 4);
-        // Emit the string mapping
-        _ResultSet_ReplyWithStringMapping(set->ctx);
-    } else {
-        // Verbose replies will contain 3 top-level replies:
-        // header, records, statistics
-        RedisModule_ReplyWithArray(set->ctx, 3);
-    }
-}
-
 static void _ResultSet_ReplayStats(RedisModuleCtx* ctx, ResultSet* set) {
     char buff[512] = {0};
     size_t resultset_size = 1; /* query execution time. */
@@ -190,8 +144,7 @@ ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx, bool compact) {
     return set;
 }
 
-// Initialize the user-facing reply arrays,
-// emit the string mapping if necessary and the header.
+// Initialize the user-facing reply arrays.
 void ResultSet_ReplyWithPreamble(ResultSet *set, AST **ast) {
     // The last AST will contain the return clause, if one is specified
     AST *final_ast = ast[array_len(ast)-1];
@@ -201,7 +154,8 @@ void ResultSet_ReplyWithPreamble(ResultSet *set, AST **ast) {
         return;
     }
 
-    _ResultSet_SetupReply(set);
+    // header, records, statistics
+    RedisModule_ReplyWithArray(set->ctx, 3);
 
     _ResultSet_CreateHeader(set, ast);
 

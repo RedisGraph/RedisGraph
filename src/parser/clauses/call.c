@@ -45,8 +45,7 @@ void ProcedureCallClause_DefinedEntities(const AST_ProcedureCallNode *node, Trie
                         entity->alias = out->name;
                         break;
                     default:
-                        // Lie for now.
-                        entity->t = N_ENTITY;
+                        entity->t = N_SCALAR;
                         entity->alias = out->name;
                         break;
                 }
