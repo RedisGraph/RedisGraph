@@ -3,9 +3,7 @@ import os
 from datetime import date
 from redisgraph import Node, Edge
 
-
 graph_name = "imdb"
-
 
 def populate_graph(redis_con, redis_graph):
 	# check if graph already exists
@@ -59,3 +57,5 @@ def populate_graph(redis_con, redis_graph):
 
 	print("Loaded %d actors" % len(actors))
 	redis_graph.commit()
+
+	return (actors, movies)
