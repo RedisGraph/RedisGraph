@@ -8,9 +8,10 @@ from disposableredis import DisposableRedis
 
 from .reversepattern import ReversePattern
 from base import FlowTestsBase
-import imdb_queries as queries
+import imdb_queries
 import imdb_utils
 
+queries = None
 redis_graph = None
 
 def redis():
@@ -21,11 +22,13 @@ class ImdbFlowTest(FlowTestsBase):
     def setUpClass(cls):
         print "ImdbFlowTest"
         global redis_graph
+        global queries
         cls.r = redis()
         cls.r.start()
         redis_con = cls.r.client()
         redis_graph = Graph(imdb_utils.graph_name, redis_con)
-        imdb_utils.populate_graph(redis_con, redis_graph)
+        actors, movies = imdb_utils.populate_graph(redis_con, redis_graph)
+        queries = imdb_queries.IMDBQueries(actors, movies)
 
     @classmethod
     def tearDownClass(cls):
@@ -272,24 +275,24 @@ class ImdbFlowTest(FlowTestsBase):
         # assert reversed pattern.
         self.assert_reversed_pattern(q, actual_result)
     
-    def test_(self):
-        global redis_graph
+    # def test_all_actors_named_tim(self):
+    #     global redis_graph
 
-        # Create full-text index over actor's name.
-        redis_graph.redis_con.execute_command("GRAPH.QUERY", redis_graph.name, "CALL db.idx.fulltext.createNodeIndex('actor', 'name')")
-        q = queries.all_actors_named_tim
-        execution_plan = redis_graph.execution_plan(q)
-        self.assertIn('ProcedureCall', execution_plan)
+    #     # Create full-text index over actor's name.
+    #     redis_graph.redis_con.execute_command("GRAPH.QUERY", redis_graph.name, "CALL db.idx.fulltext.createNodeIndex('actor', 'name')")
+    #     q = queries.all_actors_named_tim
+    #     execution_plan = redis_graph.execution_plan(q)
+    #     self.assertIn('ProcedureCall', execution_plan)
 
-        actual_result = redis_graph.query(q)
+    #     actual_result = redis_graph.query(q)
 
-        # assert result set
-        self._assert_only_expected_results_are_in_actual_results(
-            actual_result,
-            queries.all_actors_named_tim)
+    #     # assert result set
+    #     self._assert_only_expected_results_are_in_actual_results(
+    #         actual_result,
+    #         queries.all_actors_named_tim)
 
-        # assert query run time
-        self._assert_run_time(actual_result, queries.all_actors_named_tim)
+    #     # assert query run time
+    #     self._assert_run_time(actual_result, queries.all_actors_named_tim)
 
 if __name__ == '__main__':
     unittest.main()

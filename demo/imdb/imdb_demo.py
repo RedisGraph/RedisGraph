@@ -6,7 +6,7 @@ from redisgraph import Graph
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../')
-from imdb_queries import queries_info
+import imdb_queries
 import imdb_utils
 from utils import execute_query, _redis
 
@@ -15,11 +15,11 @@ redis_graph = None
 
 def run_queries():
     print("Querying...\n")
-
-    for query_info in queries_info:
+    queries = imdb_queries.IMDBQueries().queries()
+    for q in queries:
         execute_query(redis_graph,
-                      query_info.description,
-                      query_info.query)
+                      q.description,
+                      q.query)
 
 def debug(host, port):
     global redis_con
