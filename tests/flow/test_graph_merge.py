@@ -225,7 +225,7 @@ class GraphMergeFlowTest(FlowTestsBase):
         # Verify that one indexed node has been added
         result = redis_graph.query(count_query)
         updated_count = result.result_set[0][0]
-        assert(updated_count == original_count)
+        assert(updated_count == original_count+1)
 
         # Perform another merge that does not create an entity
         result = redis_graph.query(merge_query)
@@ -234,7 +234,7 @@ class GraphMergeFlowTest(FlowTestsBase):
         # Verify that indexed node count is unchanged
         result = redis_graph.query(count_query)
         updated_count = result.result_set[0][0]
-        assert(updated_count == original_count)
+        assert(updated_count == original_count+1)
 
 if __name__ == '__main__':
     unittest.main()
