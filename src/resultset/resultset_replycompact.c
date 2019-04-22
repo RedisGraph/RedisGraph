@@ -29,7 +29,6 @@ static inline void _ResultSet_ReplyWithValueType(RedisModuleCtx *ctx, const SIVa
     RedisModule_ReplyWithLongLong(ctx, _mapValueType(v));
 }
 
-
 void ResultSet_CompactReplyWithSIValue(RedisModuleCtx *ctx, GraphContext *gc, const SIValue v) {
     _ResultSet_ReplyWithValueType(ctx, v);
     // Emit the actual value, then the value type (to facilitate client-side parsing)
@@ -65,7 +64,7 @@ static void _ResultSet_CompactReplyWithProperties(RedisModuleCtx *ctx, GraphCont
         // Compact replies include the value's type; verbose replies do not
         RedisModule_ReplyWithArray(ctx, 3);
         EntityProperty prop = ENTITY_PROPS(e)[i];
-        // Emit the string offset
+        // Emit the string index
         RedisModule_ReplyWithLongLong(ctx, prop.id);
         // Emit the value
         ResultSet_CompactReplyWithSIValue(ctx, gc, prop.value);
@@ -76,7 +75,7 @@ static void _ResultSet_CompactReplyWithNode(RedisModuleCtx *ctx, GraphContext *g
     /*  Compact node reply format:
      *  [
      *      Node ID (integer),
-            [label string offset (integer)],
+            [label string index (integer)],
      *      [[name, value, value type] X N]
      *  ]
      */
@@ -87,7 +86,7 @@ static void _ResultSet_CompactReplyWithNode(RedisModuleCtx *ctx, GraphContext *g
     EntityID id = ENTITY_GET_ID(n);
     RedisModule_ReplyWithLongLong(ctx, id);
 
-    // [label string offset]
+    // [label string index]
     // Print label in nested array for multi-label support
     // Retrieve label
     int label_id = Graph_GetNodeLabel(gc->g, id);
@@ -96,9 +95,7 @@ static void _ResultSet_CompactReplyWithNode(RedisModuleCtx *ctx, GraphContext *g
         RedisModule_ReplyWithArray(ctx, 0);
     } else {
         RedisModule_ReplyWithArray(ctx, 1);
-        // TODO Unsafe if the query has extended the string mapping
-        int offset = array_len(gc->string_mapping) + label_id;
-        RedisModule_ReplyWithLongLong(ctx, offset);
+        RedisModule_ReplyWithLongLong(ctx, label_id);
     }
 
     // [properties]
@@ -109,9 +106,9 @@ static void _ResultSet_CompactReplyWithEdge(RedisModuleCtx *ctx, GraphContext *g
     /*  Compact edge reply format:
      *  [
      *      Edge ID (integer),
-            reltype string offset (integer),
-            src node ID offset (integer),
-            dest node ID offset (integer),
+            reltype string index (integer),
+            src node ID (integer),
+            dest node ID (integer),
      *      [[name, value, value type] X N]
      *  ]
      */
@@ -122,14 +119,10 @@ static void _ResultSet_CompactReplyWithEdge(RedisModuleCtx *ctx, GraphContext *g
     EntityID id = ENTITY_GET_ID(e);
     RedisModule_ReplyWithLongLong(ctx, id);
 
-    // reltype string offset
-    // Retrieve reltype
+    // reltype string index, retrieve reltype.
     int reltype_id = Graph_GetEdgeRelation(gc->g, e);
     assert(reltype_id != GRAPH_NO_RELATION);
-    // Translate reltype into string mapping offset
-    // TODO Unsafe if the query has extended the string mapping
-    int offset = array_len(gc->string_mapping) + array_len(gc->node_schemas) + reltype_id;
-    RedisModule_ReplyWithLongLong(ctx, offset);
+    RedisModule_ReplyWithLongLong(ctx, reltype_id);
 
     // src node ID
     RedisModule_ReplyWithLongLong(ctx, Edge_GetSrcNodeID(e));
@@ -173,13 +166,16 @@ void ResultSet_ReplyWithCompactHeader(RedisModuleCtx *ctx, const ResultSetHeader
         AST_GraphEntity *entity = TrieMap_Find(entities, identifier, strlen(identifier));
 
         // First, emit the column type enum
-        if (entity == TRIEMAP_NOTFOUND) {
+        if(entity == TRIEMAP_NOTFOUND) {
             t = COLUMN_SCALAR;
-        } else if (entity->t == N_ENTITY) {
+        } else if(entity->t == N_ENTITY) {
             t = COLUMN_NODE;
-        } else {
+        } else if(entity->t == N_LINK) {
             t = COLUMN_RELATION;
+        } else {
+            t = COLUMN_SCALAR;
         }
+
         RedisModule_ReplyWithLongLong(ctx, t);
 
         // Second, emit the identifier string associated with the column
