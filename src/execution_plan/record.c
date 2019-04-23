@@ -6,9 +6,8 @@
 
 #include "./record.h"
 #include "../util/rmalloc.h"
+#include "../../deps/xxhash/xxhash.h"
 #include <assert.h>
-
-#include "xxhash/xxhash.h"
 
 #define RECORD_HEADER(r) (r-1)
 #define RECORD_HEADER_ENTRY(r) *(RECORD_HEADER((r)))

@@ -194,8 +194,10 @@ FT_FilterNode* _convertInlinedProperties(const NEWAST *ast, const cypher_astnode
         alias = cypher_ast_identifier_get_name(alias_node);
     } else {
         // Retrieve alias of anonymous entity
-        AR_ExpNode *exp = NEWAST_SeekEntity(ast, entity);
+        AR_ExpNode *exp = NEWAST_GetEntity(ast, entity);
         if (exp) alias = exp->operand.variadic.entity_alias;
+        // Alias can still be NULL - can we move from aliases to record indexes?
+        // (Still need to add entity to record here)
     }
     assert(alias);
 

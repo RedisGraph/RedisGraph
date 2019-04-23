@@ -197,7 +197,7 @@ Record OpMergeConsume(OpBase *opBase) {
         if(op->matched) return r;
 
         // No previous match, create MERGE pattern.
-        r = Record_New(NEWAST_AliasCount(op->ast));
+        r = Record_New(NEWAST_RecordLength(op->ast));
         _CreateEntities(op, r);
         op->created = true;
     }

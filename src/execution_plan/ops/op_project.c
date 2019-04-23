@@ -103,6 +103,32 @@ Record ProjectConsume(OpBase *opBase) {
                 break;
         }
         rec_idx++;
+        // SIValue v = AR_EXP_Evaluate(op->exps[i], r);
+        // // Find index within record to populate
+        // int rec_idx = op->exps[i]->record_idx;
+
+        /* Incase expression is aliased, add it to record
+         * as it might be referenced by other expressions:
+         * e.g. RETURN n.v AS X ORDER BY X * X
+         * WITH 1 as one, one+one as two */
+        // int alias_idx = NOT_IN_RECORD;
+        // char *alias = (char*)op->ast->return_expressions[i]->alias;
+        // if (alias) alias_idx = NEWAST_GetAliasID(op->ast, alias);
+
+        // switch(SI_TYPE(v)) {
+            // case T_NODE:
+                // Record_AddNode(projection, rec_idx, *((Node*)v.ptrval));
+                // if(alias) Record_AddNode(r, alias_idx, *((Node*)v.ptrval));
+                // break;
+            // case T_EDGE:
+                // Record_AddEdge(projection, rec_idx, *((Edge*)v.ptrval));
+                // if(alias) Record_AddEdge(r, alias_idx, *((Edge*)v.ptrval));
+                // break;
+            // default:
+                // Record_AddScalar(projection, rec_idx, v);
+                // if(alias) Record_AddScalar(r, alias_idx, v);
+                // break;
+        // }
     }
 
     // Project Order expressions.

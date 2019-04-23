@@ -65,14 +65,16 @@ typedef struct {
     AlgebraicExpressionOperand *operands;   // Array of operands.
     Node *src_node;                         // Nodes represented by the first operand columns.
     Node *dest_node;                        // Nodes represented by the last operand rows.
+    unsigned int src_node_idx; // TODO don't love these, but need the values for building traverse/scan ops
+    unsigned int dest_node_idx;
+    unsigned int edge_idx;
     Edge *edge;                             // Edge represented by sole operand.
     unsigned int minHops;
     unsigned int maxHops;
-    // AST_LinkLength *edgeLength;             // Repeatable edge length.
 } AlgebraicExpression;
 
-/* Construct an algebraic expression from a query. */
-AlgebraicExpression **AlgebraicExpression_FromQuery(const NEWAST *ast, const QueryGraph *q, size_t *exp_count);
+/* Construct an algebraic expression from a path. */
+AlgebraicExpression **AlgebraicExpression_FromPath(const NEWAST *ast, const QueryGraph *q, const cypher_astnode_t *path, size_t *exp_count);
 
 /* Executes given expression. */
 void AlgebraicExpression_Execute(AlgebraicExpression *ae, GrB_Matrix res);

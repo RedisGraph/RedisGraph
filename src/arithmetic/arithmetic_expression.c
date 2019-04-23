@@ -111,7 +111,7 @@ AR_ExpNode* AR_EXP_NewVariableOperandNode(const NEWAST *ast, const cypher_astnod
     node->record_idx = NOT_IN_RECORD;
     node->operand.type = AR_EXP_VARIADIC;
     node->operand.variadic.entity_alias = strdup(alias);
-    unsigned int id = NEWAST_GetAliasID(ast, (char*)alias);
+    unsigned int id = NEWAST_GetAliasID(ast, (char*)alias); // TODO still sensible?
     node->operand.variadic.entity_alias_idx = id;
     node->operand.variadic.entity_prop = (prop) ? strdup(prop) : NULL;
     node->operand.variadic.ast_ref = entity;
@@ -119,7 +119,7 @@ AR_ExpNode* AR_EXP_NewVariableOperandNode(const NEWAST *ast, const cypher_astnod
     if(prop) {
         // Retrieve the property from the schema of the base entity (not this entity,
         // which is just a PROPERTY_OPERATOR)
-        AR_ExpNode *base_entity = NEWAST_GetEntity(ast, id);
+        AR_ExpNode *base_entity = ast->defined_entities[id];
         cypher_astnode_type_t type = cypher_astnode_type(base_entity->operand.variadic.ast_ref);
         if (type == CYPHER_AST_NODE_PATTERN) {
             node->operand.variadic.entity_prop_idx = Attribute_GetID(SCHEMA_NODE, prop);

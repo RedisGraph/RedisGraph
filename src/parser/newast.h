@@ -8,9 +8,12 @@
 #define NEW_AST_H
 
 #include "../util/triemap/triemap.h"
+#include "../value.h"
 #include "../../deps/libcypher-parser/lib/src/cypher-parser.h"
 
 typedef unsigned long long const AST_IDENTIFIER;
+
+#define NOT_IN_RECORD UINT_MAX
 
 // #define IDENTIFIER_NOT_FOUND UINT_MAX
 
@@ -43,21 +46,30 @@ typedef struct AR_ExpNode AR_ExpNode;
 typedef struct {
     const char *alias;    // Alias given to this return element (using the AS keyword)
     AR_ExpNode *exp;
-} ReturnElementNode;
+} ReturnElementNode; // TODO Should be able to remove this struct
+
+typedef struct {
+    const char **keys;
+    SIValue *values;
+    int property_count;
+} PropertyMap;
 
 typedef struct {
     const cypher_astnode_t *root;
     // Extensible array of entities described in MATCH, MERGE, and CREATE clauses
     AR_ExpNode **defined_entities;
-    TrieMap *identifier_map;
+    // TrieMap *identifier_map;
     TrieMap *entity_map;
     ReturnElementNode **return_expressions;
     unsigned int order_expression_count; // TODO maybe use arr.h instead
+    unsigned int record_length;
     AR_ExpNode **order_expressions;
 } NEWAST;
 
 // AST clause validations.
 AST_Validation NEWAST_Validate(const cypher_astnode_t *ast, char **reason);
+
+PropertyMap* NEWAST_ConvertPropertiesMap(const NEWAST *ast, const cypher_astnode_t *props);
 
 // Checks if AST represent a read only query.
 bool NEWAST_ReadOnly(const cypher_astnode_t *query);
@@ -98,9 +110,13 @@ void NEWAST_BuildAliasMap(NEWAST *ast);
 
 unsigned int NEWAST_GetAliasID(const NEWAST *ast, char *alias);
 
-AR_ExpNode* NEWAST_GetEntity(const NEWAST *ast, unsigned int id);
+void NEWAST_MapAlias(const NEWAST *ast, char *alias, AR_ExpNode *exp);
 
-AR_ExpNode* NEWAST_SeekEntity(const NEWAST *ast, const cypher_astnode_t *entity);
+void NEWAST_MapEntityHash(const NEWAST *ast, AST_IDENTIFIER identifier, AR_ExpNode *exp);
+
+AR_ExpNode* NEWAST_GetEntity(const NEWAST *ast, const cypher_astnode_t *entity);
+
+AR_ExpNode* NEWAST_GetEntityFromAlias(const NEWAST *ast, char *alias);
 
 void NEWAST_ConnectEntity(const NEWAST *ast, const cypher_astnode_t *entity, AR_ExpNode *exp);
 
@@ -109,6 +125,14 @@ AR_ExpNode* NEWAST_GetEntityFromHash(const NEWAST *ast, AST_IDENTIFIER id);
 AST_IDENTIFIER NEWAST_EntityHash(const cypher_astnode_t *entity);
 
 size_t NEWAST_AliasCount(const NEWAST *ast);
+
+unsigned int NEWAST_GetEntityRecordIdx(const NEWAST *ast, const cypher_astnode_t *entity);
+
+unsigned int NEWAST_RecordLength(const NEWAST *ast);
+
+unsigned int NEWAST_AddRecordEntry(NEWAST *ast);
+
+unsigned int NEWAST_AddAnonymousRecordEntry(NEWAST *ast);
 
 NEWAST* NEWAST_GetFromTLS(void);
 

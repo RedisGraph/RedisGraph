@@ -17,8 +17,7 @@ static void _setupTraversedRelations(CondVarLenTraverse *op) {
     NEWAST *ast = NEWAST_GetFromTLS();
     GraphContext *gc = GraphContext_GetFromTLS();
 
-    uint id = NEWAST_GetAliasID(ast, op->ae->edge->alias);
-    AR_ExpNode *exp = NEWAST_GetEntity(ast, id);
+    AR_ExpNode *exp = NEWAST_GetEntityFromAlias(ast, op->ae->edge->alias); // TODO guaranteed to exist?
     // TODO validate this access
     const cypher_astnode_t *ast_relation = exp->operand.variadic.ast_ref;
     op->relationIDsCount = cypher_ast_rel_pattern_nreltypes(ast_relation);
@@ -46,10 +45,21 @@ OpBase* NewCondVarLenTraverseOp(AlgebraicExpression *ae, unsigned int minHops, u
     CondVarLenTraverse *condVarLenTraverse = malloc(sizeof(CondVarLenTraverse));
     condVarLenTraverse->g = g;
     condVarLenTraverse->ae = ae;
-    NEWAST *ast = NEWAST_GetFromTLS();
     condVarLenTraverse->relationIDs = NULL;
-    condVarLenTraverse->srcNodeIdx = NEWAST_GetAliasID(ast, ae->src_node->alias);
-    condVarLenTraverse->destNodeIdx = NEWAST_GetAliasID(ast, ae->dest_node->alias);
+    unsigned int src_node_idx = ae->src_node_idx; 
+    NEWAST *ast = NEWAST_GetFromTLS();
+    if (ae->src_node_idx == NOT_IN_RECORD) {
+        // Anonymous node - make space for it in the Record
+        ae->src_node_idx = NEWAST_AddAnonymousRecordEntry(ast);
+    }
+    condVarLenTraverse->srcNodeIdx = ae->src_node_idx; 
+
+    if (ae->dest_node_idx == NOT_IN_RECORD) {
+        // Anonymous node - make space for it in the Record
+        ae->dest_node_idx = NEWAST_AddAnonymousRecordEntry(ast);
+    }
+    condVarLenTraverse->destNodeIdx = ae->dest_node_idx;
+    
     condVarLenTraverse->minHops = minHops;
     condVarLenTraverse->maxHops = maxHops;
     condVarLenTraverse->allPathsCtx = NULL;

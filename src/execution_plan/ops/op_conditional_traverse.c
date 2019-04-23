@@ -15,23 +15,35 @@ static void _setupTraversedRelations(CondTraverse *op) {
     GraphContext *gc = GraphContext_GetFromTLS();
     char *alias = op->algebraic_expression->edge->alias;
     
-    unsigned int id = NEWAST_GetAliasID(ast, alias);
-    AR_ExpNode *e = NEWAST_GetEntity(ast, id);
-    const cypher_astnode_t *ast_entity = e->operand.variadic.ast_ref;
-    op->edgeRelationCount = cypher_ast_rel_pattern_nreltypes(ast_entity);
-    if(op->edgeRelationCount > 0) {
-        op->edgeRelationTypes = array_new(int , op->edgeRelationCount);
-        for(int i = 0; i < op->edgeRelationCount; i++) {
-            const char *label = cypher_ast_reltype_get_name(cypher_ast_rel_pattern_get_reltype(ast_entity, i));
-            Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_EDGE);
-            if(!s) continue;
-            op->edgeRelationTypes = array_append(op->edgeRelationTypes, s->id);
+    if (alias != NULL) {
+        // TODO inadequate - need unaliased multi-reltype edges
+        AR_ExpNode *e = NEWAST_GetEntityFromAlias(ast, alias);
+        const cypher_astnode_t *ast_entity = e->operand.variadic.ast_ref; // TODO safe?
+        op->edgeRelationCount = cypher_ast_rel_pattern_nreltypes(ast_entity);
+        if(op->edgeRelationCount > 0) {
+            op->edgeRelationTypes = array_new(int , op->edgeRelationCount);
+            for(int i = 0; i < op->edgeRelationCount; i++) {
+                const char *label = cypher_ast_reltype_get_name(cypher_ast_rel_pattern_get_reltype(ast_entity, i));
+                Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_EDGE);
+                if(!s) continue;
+                op->edgeRelationTypes = array_append(op->edgeRelationTypes, s->id);
+            }
+            return;
         }
-    } else {
-        op->edgeRelationCount = 1;
-        op->edgeRelationTypes = array_new(int , 1);
-        op->edgeRelationTypes = array_append(op->edgeRelationTypes, GRAPH_NO_RELATION);
     }
+
+    op->edgeRelationCount = 1;
+    op->edgeRelationTypes = array_new(int , 1);
+    char *reltype = op->algebraic_expression->edge->relationship;
+    if (reltype) {
+        Schema *s = GraphContext_GetSchema(gc, reltype, SCHEMA_EDGE);
+        if (s) {
+            op->edgeRelationTypes = array_append(op->edgeRelationTypes, s->id);
+            return;
+        }
+    
+    }
+    op->edgeRelationTypes = array_append(op->edgeRelationTypes, GRAPH_NO_RELATION);
 }
 
 // Updates query graph edge.
@@ -95,8 +107,17 @@ OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *algebraic_expression) {
     traverse->edges = NULL;
     traverse->r = NULL;    
 
-    traverse->srcNodeRecIdx = NEWAST_GetAliasID(ast, algebraic_expression->src_node->alias);
-    traverse->destNodeRecIdx = NEWAST_GetAliasID(ast, algebraic_expression->dest_node->alias);
+    if (algebraic_expression->src_node_idx == NOT_IN_RECORD) {
+        // Anonymous node - make space for it in the Record
+        algebraic_expression->src_node_idx = NEWAST_AddAnonymousRecordEntry(ast);
+    }
+    traverse->srcNodeRecIdx = algebraic_expression->src_node_idx; 
+
+    if (algebraic_expression->dest_node_idx == NOT_IN_RECORD) {
+        // Anonymous node - make space for it in the Record
+        algebraic_expression->dest_node_idx = NEWAST_AddAnonymousRecordEntry(ast);
+    }
+    traverse->destNodeRecIdx = algebraic_expression->dest_node_idx;
     
     traverse->recordsLen = 0;
     traverse->transposed_edge = false;
@@ -115,16 +136,18 @@ OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *algebraic_expression) {
     traverse->op.free = CondTraverseFree;
     traverse->op.modifies = NewVector(char*, 1);
 
-    char *modified = NULL;    
-    modified = traverse->algebraic_expression->dest_node->alias;
-    Vector_Push(traverse->op.modifies, modified);
+    char *modified = traverse->algebraic_expression->dest_node->alias;
+    if (modified) Vector_Push(traverse->op.modifies, modified);
 
     if(algebraic_expression->edge) {
         _setupTraversedRelations(traverse);
         modified = traverse->algebraic_expression->edge->alias;
-        Vector_Push(traverse->op.modifies, modified);
+        if (modified) Vector_Push(traverse->op.modifies, modified);
         traverse->edges = array_new(Edge, 32);
-        traverse->edgeRecIdx = NEWAST_GetAliasID(ast, algebraic_expression->edge->alias);
+        if (algebraic_expression->edge_idx == NOT_IN_RECORD) {
+            algebraic_expression->edge_idx = NEWAST_AddAnonymousRecordEntry(ast);
+        }
+        traverse->edgeRecIdx = algebraic_expression->edge_idx;
     }
 
     return (OpBase*)traverse;

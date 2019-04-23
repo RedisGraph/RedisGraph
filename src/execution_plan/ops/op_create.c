@@ -111,36 +111,39 @@ void _SetModifiedEntities(OpCreate *op) {
                 // continue;
 
             // }
+            AR_ExpNode *exp = NEWAST_GetEntity(ast, elem);
+
             ast_alias = (j % 2) ? cypher_ast_rel_pattern_get_identifier(elem) :
                                   cypher_ast_node_pattern_get_identifier(elem);
-            if (!ast_alias) {
-                // Unaliased entity; find anonymous identifier
-                // TODO seek is a slow call; improve this solution
-                AR_ExpNode *exp = NEWAST_SeekEntity(ast, elem);
-                assert(exp);
-                alias = exp->operand.variadic.entity_alias;
-            } else {
+
+            if (ast_alias) {
+                // Encountered an aliased entity - verify that it is not defined
+                // in a MATCH clause or a previous CREATE pattern
                 alias = cypher_ast_identifier_get_name(ast_alias);
-                assert(alias); // TODO possible? Seek again if necessary
+
+                // Skip entities defined in MATCH clauses or previously appearing in CREATE patterns
+                int rc = TrieMap_Add(match_entities, (char*)alias, strlen(alias), NULL, TrieMap_DONT_CARE_REPLACE);
+                if (rc == 0) continue;
             }
-            // Skip entities defined in MATCH clauses or previously appearing in CREATE patterns
-            int rc = TrieMap_Add(match_entities, (char*)alias, strlen(alias), NULL, TrieMap_DONT_CARE_REPLACE);
-            if (rc == 0) continue;
 
             if (j % 2) { // Relation
                 Edge *e = QueryGraph_GetEntityByASTRef(op->qg, elem);
-                // TODO revisit all rest of this
                 op->edges_to_create[edge_idx].edge = e;
-                op->edges_to_create[edge_idx].ast_entity = elem;
-                op->edges_to_create[edge_idx].edge_rec_idx = NEWAST_GetAliasID(ast, e->alias);
-                op->edges_to_create[edge_idx].src_node_rec_idx = NEWAST_GetAliasID(ast, e->src->alias);
-                op->edges_to_create[edge_idx].dest_node_rec_idx = NEWAST_GetAliasID(ast, e->dest->alias);
+                const cypher_astnode_t *ast_props = cypher_ast_rel_pattern_get_properties(elem);
+                op->edges_to_create[edge_idx].properties = NEWAST_ConvertPropertiesMap(ast, ast_props);
+                op->edges_to_create[edge_idx].edge_rec_idx = exp->record_idx; 
+                // TODO are src and dest swapped based on edge direction before now?
+                AR_ExpNode *src = NEWAST_GetEntity(ast, cypher_ast_pattern_path_get_element(path, j - 1));
+                AR_ExpNode *dest = NEWAST_GetEntity(ast, cypher_ast_pattern_path_get_element(path, j + 1)); 
+                op->edges_to_create[edge_idx].src_node_rec_idx = src->record_idx;
+                op->edges_to_create[edge_idx].dest_node_rec_idx = dest->record_idx;
                 edge_idx ++;
             } else { // Node
                 Node *n = QueryGraph_GetEntityByASTRef(op->qg, elem);
-                op->nodes_to_create[node_idx].ast_entity = elem;
+                const cypher_astnode_t *ast_props = cypher_ast_node_pattern_get_properties(elem);
+                op->nodes_to_create[node_idx].properties = NEWAST_ConvertPropertiesMap(ast, ast_props);
                 op->nodes_to_create[node_idx].node = n;
-                op->nodes_to_create[node_idx].node_rec_idx = NEWAST_GetAliasID(ast, n->alias);
+                op->nodes_to_create[node_idx].node_rec_idx = exp->record_idx;
                 node_idx ++;
             }
         }
@@ -166,6 +169,8 @@ OpBase* NewCreateOp(RedisModuleCtx *ctx, QueryGraph *qg, ResultSet *result_set) 
     op_create->edge_count = 0;
     op_create->created_nodes = array_new(Node*, 0);
     op_create->created_edges = array_new(Edge*, 0);
+    op_create->node_properties = array_new(PropertyMap*, 0);
+    op_create->edge_properties = array_new(PropertyMap*, 0);
     op_create->result_set = result_set;
 
     _SetModifiedEntities(op_create);
@@ -181,6 +186,35 @@ OpBase* NewCreateOp(RedisModuleCtx *ctx, QueryGraph *qg, ResultSet *result_set) 
     return (OpBase*)op_create;
 }
 
+// TODO improve, consolidate, etc
+void _AddNodeProperties(OpCreate *op, Schema *schema, Node *n, PropertyMap *props) {
+    if (props == NULL) return;
+
+    GraphContext *gc = op->gc;
+    Attribute_ID prop_id = ATTRIBUTE_NOTFOUND;
+
+    for(int i = 0; i < props->property_count; i++) {
+        prop_id = Schema_AddAttribute(schema, SCHEMA_NODE, props->keys[i]);
+        GraphEntity_AddProperty((GraphEntity*)n, prop_id, props->values[i]);
+    }
+
+    op->result_set->stats.properties_set += props->property_count;
+}
+
+void _AddEdgeProperties(OpCreate *op, Schema *schema, Edge *e, PropertyMap *props) {
+    if (props == NULL) return;
+
+    GraphContext *gc = op->gc;
+    Attribute_ID prop_id = ATTRIBUTE_NOTFOUND;
+
+    for(int i = 0; i < props->property_count; i++) {
+        prop_id = Schema_AddAttribute(schema, SCHEMA_EDGE, props->keys[i]);
+        GraphEntity_AddProperty((GraphEntity*)e, prop_id, props->values[i]);
+    }
+
+    op->result_set->stats.properties_set += props->property_count;
+}
+
 void _CreateNodes(OpCreate *op, Record r) {
     for(int i = 0; i < op->node_count; i++) {
         /* Get specified node to create. */
@@ -191,6 +225,9 @@ void _CreateNodes(OpCreate *op, Record r) {
 
         /* Save node for later insertion. */
         op->created_nodes = array_append(op->created_nodes, newNode);
+
+        /* Save reference to property map */
+        op->node_properties = array_append(op->node_properties, op->nodes_to_create[i].properties);
 
         /* Update record with new node. */
         Record_AddScalar(r, op->nodes_to_create[i].node_rec_idx, SI_PtrVal(newNode));
@@ -211,6 +248,9 @@ void _CreateEdges(OpCreate *op, Record r) {
 
         /* Save edge for later insertion. */
         op->created_edges = array_append(op->created_edges, newEdge);
+
+        /* Save reference to property map */
+        op->edge_properties = array_append(op->edge_properties, op->edges_to_create[i].properties);
 
         /* Update record with new edge. */
         Record_AddScalar(r, op->edges_to_create[i].edge_rec_idx, SI_PtrVal(newEdge));
@@ -249,38 +289,9 @@ static void _CommitNodes(OpCreate *op) {
         // Introduce node into graph.
         Graph_CreateNode(g, labelID, n);
 
-        // Retrieve AST reference for node
-        uint id = NEWAST_GetAliasID(ast, n->alias);
-        AR_ExpNode *exp = NEWAST_GetEntity(ast, id);
-        const cypher_astnode_t *ast_entity = exp->operand.variadic.ast_ref;
-        const cypher_astnode_t *props = cypher_ast_node_pattern_get_properties(ast_entity);
-        if (!props) continue; // No properties specified
+        _AddNodeProperties(op, schema, n, op->node_properties[i]);
 
-        // TODO duplicated logic from op_merge and elsewhere; consolidate
-        if(props) {
-            cypher_astnode_type_t prop_type = cypher_astnode_type(props);
-            assert(prop_type == CYPHER_AST_MAP); // TODO add parameter support
-            uint prop_count = cypher_ast_map_nentries(props);
-            for(uint prop_idx = 0; prop_idx < prop_count; prop_idx++) {
-                const cypher_astnode_t *ast_key = cypher_ast_map_get_key(props, prop_idx);
-                const char *key = cypher_ast_prop_name_get_value(ast_key);
-
-                const cypher_astnode_t *ast_value = cypher_ast_map_get_value(props, prop_idx);
-                // TODO optimize
-                AR_ExpNode *value_exp = AR_EXP_FromExpression(op->ast, ast_value);
-                SIValue value = AR_EXP_Evaluate(value_exp, NULL);
-
-                Attribute_ID prop_id = ATTRIBUTE_NOTFOUND;
-                if(schema) {
-                    prop_id = Schema_AddAttribute(schema, SCHEMA_NODE, key);
-                } else {
-                    prop_id = Schema_AddAttribute(unified_schema, SCHEMA_NODE, key);
-                }
-                GraphEntity_AddProperty((GraphEntity*)n, prop_id, value);
-            }
-            if(n->label) GraphContext_AddNodeToIndices(op->gc, schema, n);
-            op->result_set->stats.properties_set += prop_count;
-        }
+        if(n->label) GraphContext_AddNodeToIndices(op->gc, schema, n);
     }
 
 }
@@ -314,37 +325,8 @@ static void _CommitEdges(OpCreate *op) {
         if(!Graph_ConnectNodes(g, srcNodeID, destNodeID, relation_id, e)) continue;
         relationships_created++;
 
-        // Retrieve AST reference for edge
-        uint id = NEWAST_GetAliasID(ast, e->alias);
-        AR_ExpNode *exp = NEWAST_GetEntity(ast, id);
-        const cypher_astnode_t *ast_entity = exp->operand.variadic.ast_ref;
-        const cypher_astnode_t *props = cypher_ast_rel_pattern_get_properties(ast_entity);
-        if (!props) continue; // No properties specified
-
-        // TODO duplicated logic from op_merge and elsewhere; consolidate
-        cypher_astnode_type_t prop_type = cypher_astnode_type(props);
-        assert(prop_type == CYPHER_AST_MAP); // TODO add parameter support
-        uint prop_count = cypher_ast_map_nentries(props);
         // Set edge properties.
-        for(uint prop_idx = 0; prop_idx < prop_count; prop_idx++) {
-            // Set edge properties.
-            cypher_astnode_type_t prop_type = cypher_astnode_type(props);
-            assert(prop_type == CYPHER_AST_MAP); // TODO add parameter support
-            uint prop_count = cypher_ast_map_nentries(props);
-            for(uint prop_idx = 0; prop_idx < prop_count; prop_idx++) {
-                const cypher_astnode_t *ast_key = cypher_ast_map_get_key(props, prop_idx);
-                const char *key = cypher_ast_prop_name_get_value(ast_key);
-
-                const cypher_astnode_t *ast_value = cypher_ast_map_get_value(props, prop_idx);
-                // TODO optimize
-                AR_ExpNode *value_exp = AR_EXP_FromExpression(op->ast, ast_value);
-                SIValue value = AR_EXP_Evaluate(value_exp, NULL);
-
-                Attribute_ID prop_id = prop_id = Schema_AddAttribute(schema, SCHEMA_EDGE, key);
-                GraphEntity_AddProperty((GraphEntity*)e, prop_id, value);
-            }
-            op->result_set->stats.properties_set += prop_count;
-        }
+        _AddEdgeProperties(op, schema, e, op->edge_properties[i]);
     }
 
     op->result_set->stats.relationships_created += relationships_created;
@@ -425,8 +407,19 @@ void OpCreateFree(OpBase *ctx) {
         assert(array_len(op->records) == 0);
         array_free(op->records);
     }
-    if(op->nodes_to_create) free(op->nodes_to_create);
-    if(op->edges_to_create) free(op->edges_to_create);
+    if(op->nodes_to_create) {
+        for (uint i = 0; i < op->node_count; i ++) {
+            // TODO free prop map
+        }
+        free(op->nodes_to_create);
+    }
+
+    if(op->edges_to_create) {
+        for (uint i = 0; i < op->edge_count; i ++) {
+            // TODO free prop map
+        }
+        free(op->edges_to_create);
+    }
 
     if (op->created_nodes) {
         size_t nodeCount = array_len(op->created_nodes);
@@ -435,6 +428,7 @@ void OpCreateFree(OpBase *ctx) {
             Node_Free(op->created_nodes[i]);
         }
         array_free(op->created_nodes);
+        array_free(op->node_properties);
     }
 
     if (op->created_edges) {
@@ -444,5 +438,6 @@ void OpCreateFree(OpBase *ctx) {
             Edge_Free(op->created_edges[i]);
         }
         array_free(op->created_edges);
+        array_free(op->edge_properties);
     }
 }

@@ -48,8 +48,10 @@ OpBase* NewDeleteOp(const cypher_astnode_t *delete_clause, ResultSet *result_set
         const cypher_astnode_t *ast_expr = cypher_ast_delete_get_expression(delete_clause, i);
         assert(cypher_astnode_type(ast_expr) == CYPHER_AST_IDENTIFIER);
         const char *alias = cypher_ast_identifier_get_name(ast_expr);
-        uint id = NEWAST_GetAliasID(ast, (char*)alias);
-        AR_ExpNode *entity = NEWAST_GetEntity(ast, id);
+        AR_ExpNode *entity = NEWAST_GetEntityFromAlias(ast, (char*)alias);
+        assert(entity);
+        uint id = entity->record_idx;
+        assert(id != NOT_IN_RECORD);
         cypher_astnode_type_t type = cypher_astnode_type(entity->operand.variadic.ast_ref);
         if (type == CYPHER_AST_NODE_PATTERN) {
             nodes_to_delete = array_append(nodes_to_delete, id);

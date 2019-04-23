@@ -252,41 +252,52 @@ OpBase* ExecutionPlan_Locate_References(OpBase *root, Vector *references) {
 /* Given an AST path, construct a series of scans and traversals to model it. */
 void _ExecutionPlan_BuildTraversalOps(QueryGraph *qg, FT_FilterNode *ft, const cypher_astnode_t *path, Vector *traversals) {
     GraphContext *gc = GraphContext_GetFromTLS();
+    NEWAST *ast = NEWAST_GetFromTLS();
     OpBase *op;
 
     uint nelems = cypher_ast_pattern_path_nelements(path);
     if (nelems == 1) {
         // Only one entity is specified - build a node scan.
         const cypher_astnode_t *ast_node = cypher_ast_pattern_path_get_element(path, 0);
+        AR_ExpNode *ar_exp = NEWAST_GetEntity(ast, ast_node);
+        if (ar_exp->record_idx == NOT_IN_RECORD) {
+            // Anonymous node - make space for it in the Record
+            ar_exp->record_idx = NEWAST_AddAnonymousRecordEntry(ast);
+        }
+        uint rec_idx = ar_exp->record_idx; 
         Node *n = QueryGraph_GetEntityByASTRef(qg, ast_node);
         if(cypher_ast_node_pattern_nlabels(ast_node) > 0) {
-            op = NewNodeByLabelScanOp(gc, n);
+            op = NewNodeByLabelScanOp(gc, n, rec_idx);
         } else {
-            op = NewAllNodeScanOp(gc->g, n);
+            op = NewAllNodeScanOp(gc->g, n, rec_idx);
         }
         Vector_Push(traversals, op);
         return;
     }
 
     // This path must be expressed with one or more traversals.
-    NEWAST *ast = NEWAST_GetFromTLS();
     size_t expCount = 0;
-    AlgebraicExpression **exps = AlgebraicExpression_FromQuery(ast, qg, &expCount);
+    AlgebraicExpression **exps = AlgebraicExpression_FromPath(ast, qg, path, &expCount);
 
     TRAVERSE_ORDER order = determineTraverseOrder(ft, exps, expCount);
     if(order == TRAVERSE_ORDER_FIRST) {
         AlgebraicExpression *exp = exps[0];
         selectEntryPoint(exp, ft);
 
+        if (exp->src_node_idx == NOT_IN_RECORD) {
+            // Anonymous node - make space for it in the Record
+            exp->src_node_idx = NEWAST_AddAnonymousRecordEntry(ast);
+        }
+
         // Create SCAN operation.
         if(exp->src_node->label) {
             /* There's no longer need for the last matrix operand
              * as it's been replaced by label scan. */
             AlgebraicExpression_RemoveTerm(exp, exp->operand_count-1, NULL);
-            op = NewNodeByLabelScanOp(gc, exp->src_node);
+            op = NewNodeByLabelScanOp(gc, exp->src_node, exp->src_node_idx);
             Vector_Push(traversals, op);
         } else {
-            op = NewAllNodeScanOp(gc->g, exp->src_node);
+            op = NewAllNodeScanOp(gc->g, exp->src_node, exp->src_node_idx);
             Vector_Push(traversals, op);
         }
         for(int i = 0; i < expCount; i++) {
@@ -304,15 +315,21 @@ void _ExecutionPlan_BuildTraversalOps(QueryGraph *qg, FT_FilterNode *ft, const c
     } else {
         AlgebraicExpression *exp = exps[expCount-1];
         selectEntryPoint(exp, ft);
+
+        if (exp->dest_node_idx == NOT_IN_RECORD) {
+            // Anonymous node - make space for it in the Record
+            exp->dest_node_idx = NEWAST_AddAnonymousRecordEntry(ast);
+        }
+
         // Create SCAN operation.
         if(exp->dest_node->label) {
             /* There's no longer need for the last matrix operand
              * as it's been replaced by label scan. */
             AlgebraicExpression_RemoveTerm(exp, exp->operand_count-1, NULL);
-            op = NewNodeByLabelScanOp(gc, exp->dest_node);
+            op = NewNodeByLabelScanOp(gc, exp->dest_node, exp->dest_node_idx);
             Vector_Push(traversals, op);
         } else {
-            op = NewAllNodeScanOp(gc->g, exp->dest_node);
+            op = NewAllNodeScanOp(gc->g, exp->dest_node, exp->dest_node_idx);
             Vector_Push(traversals, op);
         }
 

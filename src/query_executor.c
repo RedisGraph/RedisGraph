@@ -47,15 +47,11 @@ void ExpandCollapsedNodes(NEWAST *ast) {
 
             /* Return clause doesn't contains entity's label,
              * Find collapsed entity's label. */
-            // Use the user-provided alias if one is provided
-            char *alias = elem->alias ? (char*)elem->alias : exp->operand.variadic.entity_alias;
-            // char *alias = exp->operand.variadic.entity_alias;
-            unsigned int id = NEWAST_GetAliasID(ast, alias);
-            AR_ExpNode *collapsed_entity = NEWAST_GetEntity(ast, id);
+            const cypher_astnode_t *ast_entity = exp->operand.variadic.ast_ref;
+            AR_ExpNode *collapsed_entity = ast->defined_entities[exp->operand.variadic.entity_alias_idx];
             // Entity was an expression rather than a node or edge
             // if (collapsed_entity->t != A_ENTITY) continue;
 
-            const cypher_astnode_t *ast_entity = collapsed_entity->operand.variadic.ast_ref;
 
             cypher_astnode_type_t type = cypher_astnode_type(ast_entity);
 
@@ -128,6 +124,9 @@ void ExpandCollapsedNodes(NEWAST *ast) {
                     expanded_exp = AR_EXP_NewVariableOperandNode(ast, ast_entity, collapsed_entity->operand.variadic.entity_alias, buffer);
                     // expanded_exp = AR_EXP_NewVariableOperandNode(ast, alias, buffer);
                     retElem = _NewReturnElementNode(elem->alias, expanded_exp);
+                    unsigned int id = NEWAST_AddRecordEntry(ast);
+                    AR_EXP_AssignRecordIndex(expanded_exp, id);
+                    ast->defined_entities = array_append(ast->defined_entities, expanded_exp);
                     expandReturnElements = array_append(expandReturnElements, retElem);
                 }
                 TrieMapIterator_Free(it);
@@ -254,13 +253,13 @@ AST_Validation AST_PerformValidations(RedisModuleCtx *ctx, const NEWAST *ast) {
 // }
 
 void _ReturnExpandAll(NEWAST *ast) {
-    unsigned int identifier_count = ast->identifier_map->cardinality;
+    unsigned int identifier_count = array_len(ast->defined_entities);
     ast->return_expressions = array_new(AR_ExpNode*, identifier_count);
 
     for (unsigned int i = 0; i < identifier_count; i ++) {
         AR_ExpNode *entity = ast->defined_entities[i];
         // TODO Temporary - rethink anon entities
-        if (!strncmp(entity->operand.variadic.entity_alias, "anon_", 5)) continue;
+        if (!strncmp(entity->operand.variadic.entity_alias, "anon_", 5)) continue; // TODO safe?
         ReturnElementNode *ret = _NewReturnElementNode(NULL, entity);
         ast->return_expressions = array_append(ast->return_expressions, ret);
     }
@@ -280,29 +279,52 @@ void _BuildReturnExpressions(NEWAST *ast) {
     for (unsigned int i = 0; i < count; i++) {
         const cypher_astnode_t *projection = cypher_ast_return_get_projection(ret_clause, i);
         const cypher_astnode_t *expr = cypher_ast_projection_get_expression(projection);
-        AR_ExpNode *exp = AR_EXP_FromExpression(ast, expr);
-        // If projection is aliased, use the aliased name in the arithmetic expression
-        const char *alias = NULL;
+
+        AR_ExpNode *exp = NULL;
+        char *identifier = NULL;
+
+        if (cypher_astnode_type(expr) == CYPHER_AST_IDENTIFIER) {
+            // Retrieve "a" from "RETURN a" or "RETURN a AS e"
+            identifier = (char*)cypher_ast_identifier_get_name(expr);
+            exp = NEWAST_GetEntityFromAlias(ast, (char*)identifier);
+        }
+
+        if (exp == NULL) {
+            // Identifier did not appear in previous clauses.
+            // It may be a constant or a function call (or other?)
+            // Create a new entity to represent it.
+            exp = AR_EXP_FromExpression(ast, expr);
+
+            // Make space for entity in record
+            unsigned int id = NEWAST_AddRecordEntry(ast);
+            AR_EXP_AssignRecordIndex(exp, id);
+            // Add entity to the set of entities to be populated
+            ast->defined_entities = array_append(ast->defined_entities, exp);
+        }
+
+        // If the projection is aliased, add the alias to mappings and Record
+        char *alias = NULL;
         const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(projection);
         if (alias_node) {
-            alias = cypher_ast_identifier_get_name(alias_node);
-            // TODO standardize logic (make a separate routine for this, can drop ID pointer elsewhere
-            // TODO expressions like TYPE(e) have aliases, so can get in this block?
-            // Kludge for testing; improve when possible
-            void *v = TrieMap_Find(ast->identifier_map, (char*)alias, strlen(alias));
-            if (v == TRIEMAP_NOTFOUND) {
-                unsigned int *entityID = malloc(sizeof(unsigned int));
-                *entityID = ast->identifier_map->cardinality;
-                TrieMap_Add(ast->identifier_map, (char*)alias, strlen(alias), entityID, TrieMap_DONT_CARE_REPLACE);
-            }
-        } else if (cypher_astnode_type(expr) == CYPHER_AST_IDENTIFIER) {
-            // TODO don't need to do anything, delete this section once validated
-            // alias = cypher_ast_identifier_get_name(expr);
-        } else {
-            assert(false);
+            // The projection either has an alias (AS) or is a function call.
+            alias = (char*)cypher_ast_identifier_get_name(alias_node);
+            // TODO can the alias have appeared in an earlier clause?
+
+            // Associate alias with the expression
+
+            // TODO This seems like more work than should be necessary
+            // Make node for alias
+            AR_ExpNode *alias_exp = AR_EXP_FromExpression(ast, expr);
+
+            // Make space for alias entity in record
+            unsigned int id = NEWAST_AddRecordEntry(ast);
+            AR_EXP_AssignRecordIndex(alias_exp, id);
+            // Add entity to the set of entities to be populated
+            ast->defined_entities = array_append(ast->defined_entities, alias_exp);
+            NEWAST_MapAlias(ast, alias, alias_exp);
         }
+
         ast->return_expressions = array_append(ast->return_expressions, _NewReturnElementNode(alias, exp));
-        // ast->return_expressions = array_append(ast->return_expressions, New_AST_Entity(alias, A_EXPRESSION, exp));
     }
 
     // Handle ORDER entities
@@ -318,6 +340,10 @@ void _BuildReturnExpressions(NEWAST *ast) {
         const cypher_astnode_t *order_item = cypher_ast_order_by_get_item(order_clause, i);
         const cypher_astnode_t *expr = cypher_ast_sort_item_get_expression(order_item);
         ast->order_expressions[i] = AR_EXP_FromExpression(ast, expr);
+        // TODO possibly necessary
+        // unsigned int id = NEWAST_AddRecordEntry(ast);
+        // AR_EXP_AssignRecordIndex(exp, id);
+        // ast->return_expressions = array_append(ast->return_expressions, _NewReturnElementNode(alias, exp));
     }
 }
 

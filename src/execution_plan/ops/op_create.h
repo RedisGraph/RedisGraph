@@ -11,11 +11,13 @@
 #include "../../graph/entities/node.h"
 #include "../../graph/entities/edge.h"
 #include "../../resultset/resultset.h"
+#include "../../parser/newast.h"
+
 /* Creates new entities according to the CREATE clause. */
 
 typedef struct {
     Edge *edge;
-    const cypher_astnode_t *ast_entity;
+    PropertyMap *properties;
     int src_node_rec_idx;
     int dest_node_rec_idx;
     int edge_rec_idx;
@@ -23,7 +25,7 @@ typedef struct {
 
 typedef struct {
     Node *node;
-    const cypher_astnode_t *ast_entity;
+    PropertyMap *properties;
     int node_rec_idx;
 } NodeCreateCtx;
 
@@ -39,6 +41,10 @@ typedef struct {
 
     EdgeCreateCtx *edges_to_create;
     size_t edge_count;
+
+    // TODO tmp, improve
+    PropertyMap **node_properties;
+    PropertyMap **edge_properties;
 
     Node **created_nodes;
     Edge **created_edges;

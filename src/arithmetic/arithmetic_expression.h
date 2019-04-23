@@ -15,8 +15,6 @@
 #include "../parser/newast.h"
 #include "./agg_ctx.h"
 
-#define NOT_IN_RECORD UINT_MAX
-
 /* Forward declarations. */
 struct AR_ExpNode;
 

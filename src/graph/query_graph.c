@@ -28,7 +28,7 @@ static void _BuildQueryGraphAddNode(const GraphContext *gc,
     if (n) return;
 
     // Check if node has been mapped using a different AST entity
-    AR_ExpNode *exp = NEWAST_SeekEntity(ast, ast_entity);
+    AR_ExpNode *exp = NEWAST_GetEntity(ast, ast_entity);
     n = QueryGraph_GetEntityByASTRef(qg, exp->operand.variadic.ast_ref);
 
     unsigned int nlabels = cypher_ast_node_pattern_nlabels(ast_entity);
@@ -72,7 +72,7 @@ static void _BuildQueryGraphAddEdge(const GraphContext *gc,
     /* Check for duplications. */
     if (e) return;
 
-    AR_ExpNode *exp = NEWAST_SeekEntity(ast, ast_entity);
+    AR_ExpNode *exp = NEWAST_GetEntity(ast, ast_entity);
     char *alias = exp->operand.variadic.entity_alias;
 
     const cypher_astnode_t *src_node;
