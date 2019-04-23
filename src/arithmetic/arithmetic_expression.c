@@ -47,6 +47,7 @@ AR_Func _AR_GetFuncByOperator(AST_Operator op) {
 static AR_ExpNode* _AR_EXP_NewOpNodeFromAST(AST_Operator op, int child_count) {
     AR_ExpNode *node = calloc(1, sizeof(AR_ExpNode));
     node->type = AR_EXP_OP;
+    node->record_idx = NOT_IN_RECORD;
     node->op.func_name = NULL; // TODO needed?
     node->op.child_count = child_count;
     node->op.children = (AR_ExpNode **)malloc(child_count * sizeof(AR_ExpNode*));
@@ -79,6 +80,7 @@ static AR_ExpNode* _AR_EXP_NewOpNodeFromAST(AST_Operator op, int child_count) {
 static AR_ExpNode* _AR_EXP_NewOpNode(char *func_name, int child_count) {
     AR_ExpNode *node = calloc(1, sizeof(AR_ExpNode));
     node->type = AR_EXP_OP;
+    node->record_idx = NOT_IN_RECORD;
     node->op.func_name = func_name;
     node->op.child_count = child_count;
     node->op.children = rm_malloc(child_count * sizeof(AR_ExpNode*));
@@ -106,6 +108,7 @@ static AR_ExpNode* _AR_EXP_NewOpNode(char *func_name, int child_count) {
 AR_ExpNode* AR_EXP_NewVariableOperandNode(const NEWAST *ast, const cypher_astnode_t *entity, const char *alias, const char *prop) {
     AR_ExpNode *node = malloc(sizeof(AR_ExpNode));
     node->type = AR_EXP_OPERAND;
+    node->record_idx = NOT_IN_RECORD;
     node->operand.type = AR_EXP_VARIADIC;
     node->operand.variadic.entity_alias = strdup(alias);
     unsigned int id = NEWAST_GetAliasID(ast, (char*)alias);
@@ -130,6 +133,7 @@ AR_ExpNode* AR_EXP_NewVariableOperandNode(const NEWAST *ast, const cypher_astnod
 AR_ExpNode* AR_EXP_NewConstOperandNode(SIValue constant) {
     AR_ExpNode *node = malloc(sizeof(AR_ExpNode));
     node->type = AR_EXP_OPERAND;
+    node->record_idx = NOT_IN_RECORD;
     node->operand.type = AR_EXP_CONSTANT;
     node->operand.constant = constant;
     return node;
@@ -139,6 +143,7 @@ AR_ExpNode* AR_EXP_DuplicateAggFunc(const AR_ExpNode *expr) {
     assert(expr->type == AR_EXP_OP && expr->op.type == AR_OP_AGGREGATE);
     AR_ExpNode *clone = malloc(sizeof(AR_ExpNode));
     clone->type = AR_EXP_OP;
+    clone->record_idx = NOT_IN_RECORD;
     clone->op.type = AR_OP_AGGREGATE;
     char *func_name = expr->op.func_name;
     clone->op.func_name = func_name;
@@ -150,6 +155,10 @@ AR_ExpNode* AR_EXP_DuplicateAggFunc(const AR_ExpNode *expr) {
     clone->op.children = expr->op.children; //  TODO sufficient?
 
     return clone;
+}
+
+void AR_EXP_AssignRecordIndex(AR_ExpNode *exp, unsigned int idx) {
+    exp->record_idx = idx;
 }
 
 AR_ExpNode* AR_EXP_FromExpression(const NEWAST *ast, const cypher_astnode_t *expr) {
@@ -520,6 +529,7 @@ void AR_EXP_ToString(const AR_ExpNode *root, char **str) {
 static AR_ExpNode* _AR_EXP_CloneOperand(AR_ExpNode* exp) {
     AR_ExpNode *clone = rm_calloc(1, sizeof(AR_ExpNode));
     clone->type = AR_EXP_OPERAND;
+    clone->record_idx = NOT_IN_RECORD;
     switch(exp->operand.type) {
         case AR_EXP_CONSTANT:
             clone->operand.type = AR_EXP_CONSTANT;

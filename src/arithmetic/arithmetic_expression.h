@@ -15,6 +15,8 @@
 #include "../parser/newast.h"
 #include "./agg_ctx.h"
 
+#define NOT_IN_RECORD UINT_MAX
+
 /* Forward declarations. */
 struct AR_ExpNode;
 
@@ -120,6 +122,7 @@ struct AR_ExpNode {
         AR_OpNode op;
     };
     AR_ExpNodeType type;
+    uint record_idx;
 };
 
 typedef struct AR_ExpNode AR_ExpNode;
@@ -150,6 +153,8 @@ AR_ExpNode* AR_EXP_NewVariableOperandNode(const NEWAST *ast, const cypher_astnod
 
 /* Clone an aggregate expression node. */
 AR_ExpNode* AR_EXP_DuplicateAggFunc(const AR_ExpNode *expr);
+
+void AR_EXP_AssignRecordIndex(AR_ExpNode *exp, unsigned int idx);
 
 /* Construct an arithmetic expression tree from a CYPHER_AST_EXPRESSION node. */
 AR_ExpNode* AR_EXP_FromExpression(const NEWAST *ast, const cypher_astnode_t *expr);
