@@ -101,6 +101,7 @@ Record CondVarLenTraverseConsume(OpBase *opBase) {
 OpResult CondVarLenTraverseReset(OpBase *ctx) {
     CondVarLenTraverse *op = (CondVarLenTraverse*)ctx;
     if(op->r) Record_Free(op->r);
+    op->r = NULL;
     AllPathsCtx_Free(op->allPathsCtx);
     op->allPathsCtx = NULL;
     return OP_OK;
