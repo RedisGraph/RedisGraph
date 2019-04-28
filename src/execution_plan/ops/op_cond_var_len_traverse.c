@@ -14,22 +14,23 @@
 
 static void _setupTraversedRelations(CondVarLenTraverse *op) {
     AST *ast = op->ast;
+    op->relationIDsCount = 0;
     GraphContext *gc = GraphContext_GetFromTLS();    
     AST_LinkEntity *e = (AST_LinkEntity*)MatchClause_GetEntity(ast->matchNode, op->ae->edge->alias);
-    op->relationIDsCount = AST_LinkEntity_LabelCount(e);
+    int relationIDsCount = AST_LinkEntity_LabelCount(e);
 
-    if(op->relationIDsCount > 0) {
-        op->relationIDs = array_new(int, op->relationIDsCount);
-        for(int i = 0; i < op->relationIDsCount; i++) {
+    if(relationIDsCount > 0) {
+        op->relationIDs = array_new(int, relationIDsCount);
+        for(int i = 0; i < relationIDsCount; i++) {
             Schema *s = GraphContext_GetSchema(gc, e->labels[i], SCHEMA_EDGE);
             if(!s) continue;
             op->relationIDs = array_append(op->relationIDs, s->id);
-        }
+        }        
     } else {
-        op->relationIDsCount = 1;
-        op->relationIDs = array_new(int, op->relationIDsCount);
+        op->relationIDs = array_new(int, 1);
         op->relationIDs = array_append(op->relationIDs, GRAPH_NO_RELATION);
     }
+    op->relationIDsCount = array_len(op->relationIDs);
 }
 
 OpBase* NewCondVarLenTraverseOp(AlgebraicExpression *ae, unsigned int minHops, unsigned int maxHops, Graph *g, AST *ast) {
@@ -69,6 +70,13 @@ OpBase* NewCondVarLenTraverseOp(AlgebraicExpression *ae, unsigned int minHops, u
 Record CondVarLenTraverseConsume(OpBase *opBase) {
     CondVarLenTraverse *op = (CondVarLenTraverse*)opBase;
     OpBase *child = op->op.children[0];
+
+    /* Incase we don't have any relations to traverse we can return quickly
+     * Consider: MATCH (S)-[:L*]->(M) RETURN M
+     * where label L does not exists. */
+    if(op->relationIDsCount == 0) {
+        return NULL;
+    }
 
     Path p = NULL;
     while(!(p = AllPathsCtx_NextPath(op->allPathsCtx))) {
