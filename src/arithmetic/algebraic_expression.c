@@ -310,6 +310,25 @@ void AlgebraicExpression_PrependTerm(AlgebraicExpression *ae, GrB_Matrix m, bool
     ae->operands[0].operand = m;
 }
 
+AlgebraicExpressionNode* _AlgebraicExpression_ToTree(const AlgebraicExpression *exp) {
+    AlgebraicExpressionNode *root = NULL;
+
+    for(int i = exp->operand_count-1; i >= 0; i--) {
+        AlgebraicExpressionOperand *current = exp->operands + i;
+        AlgebraicExpressionNode *operand = AlgebraicExpressionNode_NewOperandNode(current->operand);
+        if(root == NULL) {
+            root = operand;
+        } else {
+            AlgebraicExpressionNode *new_root = AlgebraicExpressionNode_NewOperationNode(AL_EXP_MUL);
+            AlgebraicExpressionNode_AppendRightChild(new_root, root);
+            AlgebraicExpressionNode_AppendLeftChild(new_root, operand);
+            root = new_root;
+        }
+    }
+
+    return root;
+}
+
 AlgebraicExpression **AlgebraicExpression_From_Query(const AST *ast, Vector *matchPattern, const QueryGraph *q, size_t *exp_count) {
     assert(q->edge_count != 0);
 
@@ -396,6 +415,14 @@ AlgebraicExpression **AlgebraicExpression_From_Query(const AST *ast, Vector *mat
     /* Because matrices are column ordered, when multiplying A*B
      * we need to reverse the order: B*A. */
     for(int i = 0; i < *exp_count; i++) _AlgebraicExpression_ReverseOperandOrder(expressions[i]);
+
+    /* Convert from expression(s) to a tree structure */
+    for(int i = 0; i < *exp_count; i++) {
+        AlgebraicExpressionNode *exp = _AlgebraicExpression_ToTree(expressions[i]);
+        AlgebraicExpressionNode_Print(exp);
+        AlgebraicExpressionNode_Free(exp);
+    }
+    
     return expressions;
 }
 
@@ -506,7 +533,6 @@ AlgebraicExpressionNode *AlgebraicExpressionNode_NewOperationNode(AL_EXP_OP op) 
     AlgebraicExpressionNode *node = rm_calloc(1, sizeof(AlgebraicExpressionNode));
     node->type = AL_OPERATION;
     node->operation.op = op;
-    node->operation.reusable = false;
     node->operation.v = NULL;
     node->operation.l = NULL;
     node->operation.r = NULL;
@@ -596,104 +622,61 @@ void AlgebraicExpression_SumOfMul(AlgebraicExpressionNode **root) {
 // Forward declaration.
 static GrB_Matrix _AlgebraicExpression_Eval(AlgebraicExpressionNode *exp, GrB_Matrix res);
 
+static inline void _AlgebraicExpression_TestUnary(const AlgebraicExpressionNode *exp) {
+    assert(!(exp->operation.l && exp->operation.r) && (exp->operation.l || exp->operation.r));
+}
+static AlgebraicExpressionNode* _AlgebraicExpression_Only_Child(const AlgebraicExpressionNode *exp) {
+    assert(exp->type == AL_OPERATION);
+    _AlgebraicExpression_TestUnary(exp);
+
+    if(exp->operation.l) return exp->operation.l;
+    return exp->operation.r;
+}
+
 static GrB_Matrix _AlgebraicExpression_Eval_ADD(AlgebraicExpressionNode *exp, GrB_Matrix res) {
-    // Expression already evaluated.
-    if(exp->operation.v != NULL) return exp->operation.v;
-
-    GrB_Index nrows;
-    GrB_Index ncols;
-    GrB_Matrix r = NULL;
-    GrB_Matrix l = NULL;
-    GrB_Matrix inter = NULL;
-    GrB_Descriptor desc = NULL; // Descriptor used for transposing.
-    AlgebraicExpressionNode *rightHand = exp->operation.r;
-    AlgebraicExpressionNode *leftHand = exp->operation.l;
-
-    // Determine if left or right expression needs to be transposed.
-    if(leftHand && leftHand->type == AL_OPERATION && leftHand->operation.op == AL_EXP_TRANSPOSE) {
-        if(!desc) GrB_Descriptor_new(&desc);
-        GrB_Descriptor_set(desc, GrB_INP0, GrB_TRAN);
-    }
-    
-    if(rightHand && rightHand->type == AL_OPERATION && rightHand->operation.op == AL_EXP_TRANSPOSE) {
-        if(!desc) GrB_Descriptor_new(&desc);
-        GrB_Descriptor_set(desc, GrB_INP1, GrB_TRAN);
-    }
-
     // Evaluate right expressions.
-    r = _AlgebraicExpression_Eval(exp->operation.r, res);
+    GrB_Matrix r = _AlgebraicExpression_Eval(exp->operation.r, res);
 
-    // Evaluate left expressions,
-    // if lefthandside expression requires a matrix
-    // to hold its intermidate value allocate one here.
-    if(leftHand->type == AL_OPERATION) {
-        GrB_Matrix_nrows(&nrows, r);
-        GrB_Matrix_ncols(&ncols, r);
-        GrB_Matrix_new(&inter, GrB_BOOL, nrows, ncols);
-        l = _AlgebraicExpression_Eval(exp->operation.l, inter);
-    } else {
-        l = _AlgebraicExpression_Eval(exp->operation.l, NULL);
-    }
+    // Evaluate left expressions.
+    GrB_Matrix l = _AlgebraicExpression_Eval(exp->operation.l, res);
 
     // Perform addition.
-    assert(GrB_eWiseAdd_Matrix_Semiring(res, NULL, NULL, Rg_structured_bool, l, r, desc) == GrB_SUCCESS);
-    if(inter) GrB_Matrix_free(&inter);
+    assert(GrB_eWiseAdd_Matrix_Semiring(res, NULL, NULL, Rg_structured_bool, l, r, GrB_NULL) == GrB_SUCCESS);
 
-    // Store intermidate if expression is marked for reuse.
-    // TODO: might want to use inter if available.
-    if(exp->operation.reusable) {
-        assert(exp->operation.v == NULL);
-        GrB_Matrix_dup(&exp->operation.v, res);
-    }
-
-    if(desc) GrB_Descriptor_free(&desc);
     return res;
 }
 
 static GrB_Matrix _AlgebraicExpression_Eval_MUL(AlgebraicExpressionNode *exp, GrB_Matrix res) {
-    // Expression already evaluated.
-    if(exp->operation.v != NULL) return exp->operation.v;
-
     GrB_Descriptor desc = NULL; // Descriptor used for transposing.
     AlgebraicExpressionNode *rightHand = exp->operation.r;
     AlgebraicExpressionNode *leftHand = exp->operation.l;
 
-    // Determine if left or right expression needs to be transposed.
-    if(leftHand && leftHand->type == AL_OPERATION && leftHand->operation.op == AL_EXP_TRANSPOSE) {
-        if(!desc) GrB_Descriptor_new(&desc);
-        GrB_Descriptor_set(desc, GrB_INP0, GrB_TRAN);
-    }
-    
-    if(rightHand && rightHand->type == AL_OPERATION && rightHand->operation.op == AL_EXP_TRANSPOSE) {
-        if(!desc) GrB_Descriptor_new(&desc);
-        GrB_Descriptor_set(desc, GrB_INP1, GrB_TRAN);
-    }
-
     // Evaluate right left expressions.
     GrB_Matrix r = _AlgebraicExpression_Eval(exp->operation.r, res);
-    GrB_Matrix l = _AlgebraicExpression_Eval(exp->operation.l, res);
+    GrB_Matrix l =_AlgebraicExpression_Eval(exp->operation.l, res);
 
     // Perform multiplication.
-    assert(GrB_mxm(res, NULL, NULL, Rg_structured_bool, l, r, desc) == GrB_SUCCESS);
+    _AlgebraicExpression_Execute_MUL(res, l, r, GrB_NULL);
 
-    // Store intermidate if expression is marked for reuse.
-    if(exp->operation.reusable) {
-        assert(exp->operation.v == NULL);
-        GrB_Matrix_dup(&exp->operation.v, res);
-    }
-
-    if(desc) GrB_Descriptor_free(&desc);
     return res;
 }
 
 static GrB_Matrix _AlgebraicExpression_Eval_TRANSPOSE(AlgebraicExpressionNode *exp, GrB_Matrix res) {
-    // Transpose is an unary operation which gets delayed.
-    AlgebraicExpressionNode *rightHand = exp->operation.r;
-    AlgebraicExpressionNode *leftHand = exp->operation.l;
+    if(exp->operation.v) return exp->operation.v;
 
-    assert( !(leftHand && rightHand) && (leftHand || rightHand) ); // Verify unary.
-    if(leftHand) return _AlgebraicExpression_Eval(leftHand, res);
-    else return _AlgebraicExpression_Eval(rightHand, res);
+    AlgebraicExpressionNode *child = _AlgebraicExpression_Only_Child(exp);
+    res = _AlgebraicExpression_Eval(child, res);
+
+    GrB_Matrix m;
+    GrB_Index cols;
+    GrB_Index rows;
+    GrB_Matrix_nrows(&rows, res);
+    GrB_Matrix_ncols(&cols, res);
+    GrB_Matrix_new(&m, GrB_BOOL, rows, cols);
+    GrB_transpose(m, GrB_NULL, GrB_NULL, res, GrB_NULL);
+
+    exp->operation.v = m;
+    return m;
 }
 
 static GrB_Matrix _AlgebraicExpression_Eval(AlgebraicExpressionNode *exp, GrB_Matrix res) {
@@ -736,6 +719,48 @@ static void _AlgebraicExpressionNode_UniqueNodes(AlgebraicExpressionNode *root, 
     _AlgebraicExpressionNode_UniqueNodes(root->operation.l, uniqueNodes);
 }
 
+void _AlgebraicExpressionNode_PrintOperand(AlgebraicExpressionNode *root, uint level) {
+    printf("%*s%s\n", level, "", "operand");
+}
+
+void _AlgebraicExpressionNode_PrintOperation(AlgebraicExpressionNode *root, uint level) {
+    switch (root->operation.op) {
+        case AL_EXP_ADD:
+            printf("%*s%s\n", level, "", "+");
+            break;
+        case AL_EXP_MUL:
+            printf("%*s%s\n", level, "", "*");
+            break;
+        case AL_EXP_TRANSPOSE:
+            printf("%*s%s\n", level, "", "Transpose");
+            break;
+        case AL_EXP_EXTRACT:
+            printf("%*s%s\n", level, "", "Extract");
+            break;
+        default:
+            assert(false);
+    }
+}
+
+void _AlgebraicExpressionNode_Print(AlgebraicExpressionNode *root, uint level) {
+    switch(root->type) {
+        case AL_OPERAND:
+            _AlgebraicExpressionNode_PrintOperand(root, level);
+            break;
+        case AL_OPERATION:
+            _AlgebraicExpressionNode_PrintOperation(root, level);
+            _AlgebraicExpressionNode_Print(root->operation.l, level+1);
+            _AlgebraicExpressionNode_Print(root->operation.r, level+1);
+            break;
+        default:
+            assert(false);
+    }
+}
+
+void AlgebraicExpressionNode_Print(AlgebraicExpressionNode *root) {
+    _AlgebraicExpressionNode_Print(root, 1);
+}
+
 void AlgebraicExpressionNode_Free(AlgebraicExpressionNode *root) {
     if(!root) return;
 
@@ -748,7 +773,7 @@ void AlgebraicExpressionNode_Free(AlgebraicExpressionNode *root) {
     int nodesCount = array_len(uniqueNodes);
     for(int i = 0; i < nodesCount; i++) {
         node = array_pop(uniqueNodes);
-        if(node->operation.v) GrB_Matrix_free(&node->operation.v);
+        // if(node->operation.v) GrB_Matrix_free(&node->operation.v);
         rm_free(node);
     }
     array_free(uniqueNodes);

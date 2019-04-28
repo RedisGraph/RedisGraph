@@ -16,6 +16,7 @@ typedef enum {
     AL_EXP_ADD,
     AL_EXP_MUL,
     AL_EXP_TRANSPOSE,
+    AL_EXP_EXTRACT,
 } AL_EXP_OP;
 
 // Type of node within an algebraic expression
@@ -32,10 +33,10 @@ struct AlgebraicExpressionNode {
         GrB_Matrix operand;
         struct {
             AL_EXP_OP op;
-            bool reusable;
             GrB_Matrix v;
             AlgebraicExpressionNode *l;
             AlgebraicExpressionNode *r;
+            bool reusable;
         } operation;
     };
     AlgebraicExpressionNodeType type;
@@ -48,6 +49,7 @@ void AlgebraicExpressionNode_AppendRightChild(AlgebraicExpressionNode *root, Alg
 void AlgebraicExpression_SumOfMul(AlgebraicExpressionNode **root);
 void AlgebraicExpression_Eval(AlgebraicExpressionNode *exp, GrB_Matrix res);
 void AlgebraicExpressionNode_Free(AlgebraicExpressionNode *root);
+void AlgebraicExpressionNode_Print(AlgebraicExpressionNode *root);
 
 /* AlgebraicExpressionOperand a single operand within an
  * algebraic expression. */
