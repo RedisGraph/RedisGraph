@@ -169,3 +169,42 @@ TEST_F(QueryGraphTest, QueryGraphRemoveEntities) {
     // Clean up.
     QueryGraph_Free(g);
 }
+
+TEST_F(QueryGraphTest, QueryGraphConnectedComponents) {
+    // Create a triangle graph
+    // (A)->(B)->(C)->(A)
+    size_t node_cap = 3;
+    size_t edge_cap = 3;
+
+    // Create nodes.
+    const char *label = "L";
+    const char *relation = "R";
+
+    Node *A = Node_New(label, "A");
+    Node *B = Node_New(label, "B");
+    Node *C = Node_New(label, "C");
+
+    Edge *AB = Edge_New(A, B, relation, "AB");
+    Edge *BC = Edge_New(B, C, relation, "BC");
+    Edge *CA = Edge_New(C, A, relation, "CA");
+
+    QueryGraph *g = QueryGraph_New(node_cap, edge_cap);
+    QueryGraph_AddNode(g, A);
+    QueryGraph_AddNode(g, B);
+    QueryGraph_AddNode(g, C);
+
+    QueryGraph_ConnectNodes(g, A, B, AB);
+    QueryGraph_ConnectNodes(g, B, C, BC);
+    QueryGraph_ConnectNodes(g, C, A, CA);
+
+    QueryGraph **connected_components = QueryGraph_ConnectedComponents(g);
+
+    ASSERT_EQ(array_len(connected_components), 1);
+
+    // Clean up.
+    QueryGraph_Free(g);
+    for(int i = 0; i < array_len(connected_components); i++) {
+        QueryGraph_Free(connected_components[i]);
+    }
+    array_free(connected_components);
+}

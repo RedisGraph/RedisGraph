@@ -396,8 +396,79 @@ Edge* QueryGraph_RemoveEdge(QueryGraph *g, Edge *e) {
 }
 
 QueryGraph** QueryGraph_ConnectedComponents(const QueryGraph *g) {
-    QueryGraph *clone = QueryGraph_Clone(g);
-    return NULL;
+    /* Pick a node S 
+     * Add S to a new connected component CC
+     * Expand on S as much as possible.
+     * Add each reachable node N to CC */
+
+    Node *n;
+    Node **q;                               // Frontier.
+    QueryGraph *qg;                      // 
+    uint connected_components_count;        // 
+    QueryGraph **connected_components;      // 
+
+    q = array_new(Node*, 1);
+    qg = QueryGraph_Clone(g);
+    connected_components_count = 0;
+    connected_components = array_new(QueryGraph*, 1);
+    
+    // As long as there are entities in the original graph.
+    while(qg->node_count) {
+        // Create a new connected component.
+        QueryGraph *cc = QueryGraph_New(1, 1);
+        connected_components = array_append(connected_components, cc);
+
+        // Get a random node and add it to the frontier.
+        Node *s = qg->nodes[0];
+        q = array_append(q, s);
+
+        n = Node_Clone(s);
+        QueryGraph_AddNode(cc, n);
+
+        // As long as there are nodes in the frontier.
+        while(array_len(q)) {
+            /* Get a node out of the frontier
+             * and add it to the connected component. 
+             * TODO: handle the case where c is already in the graph. */
+            n = array_pop(q);
+
+            /* Expand node C by visiting all of its neighbors N
+             * adding each to both the frontier and the connected component. */
+            Node *src = QueryGraph_GetNodeByAlias(cc, n->alias);
+            for(int i = 0; i < array_len(n->outgoing_edges); i++) {
+                Edge *e = n->outgoing_edges[i];
+                Node *dest = QueryGraph_GetNodeByAlias(cc, e->dest->alias);
+                if(dest == NULL) {
+                    q = array_append(q, e->dest);
+                    dest = Node_Clone(e->dest);
+                    QueryGraph_AddNode(cc, dest);
+                }
+
+                e = Edge_New(src, dest, e->relationship, e->alias);
+                QueryGraph_ConnectNodes(cc, src, dest, e);
+            }
+
+            Node *dest = QueryGraph_GetNodeByAlias(cc, n->alias);
+            for(int i = 0; i < array_len(n->incoming_edges); i++) {
+                Edge *e = n->incoming_edges[i];
+                Node *src = QueryGraph_GetNodeByAlias(cc, e->src->alias);
+                if(src == NULL) {
+                    q = array_append(q, e->src);
+                    src = Node_Clone(e->src);
+                    QueryGraph_AddNode(cc, src);
+                }
+
+                e = Edge_New(src, dest, e->relationship, e->alias);
+                QueryGraph_ConnectNodes(cc, src, dest, e);
+            }
+
+            /* Remove expanded node from original graph.
+             * this will also remove all of N's edges. */
+            QueryGraph_RemoveNode(qg, n);
+        }
+    }
+
+    return connected_components;
 }
 
 /* Frees entire graph. */
