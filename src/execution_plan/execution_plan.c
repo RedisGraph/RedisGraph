@@ -407,7 +407,7 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, ResultSet *result_set) {
          * are disjoint), we'll join them all together with a Cartesian product (full join). */
         OpBase *cartesianProduct = NULL;
         if (cypher_ast_pattern_npaths(ast_pattern) > 1) {
-            cartesianProduct = NewCartesianProductOp(NEWAST_AliasCount(ast));
+            cartesianProduct = NewCartesianProductOp(NEWAST_RecordLength(ast));
             Vector_Push(ops, cartesianProduct);
         }
         
@@ -584,7 +584,7 @@ static ExecutionPlan *_ExecutionPlan_Connect(ExecutionPlan *a, ExecutionPlan *b)
             tap = taps[i];
             if(tap->type & OP_SCAN) {
                 // Connect via cartesian product
-                OpBase *cartesianProduct = NewCartesianProductOp(NEWAST_AliasCount(ast));
+                OpBase *cartesianProduct = NewCartesianProductOp(NEWAST_RecordLength(ast));
                 ExecutionPlan_PushBelow(tap, cartesianProduct);
                 _OpBase_AddChild(cartesianProduct, a->root);
                 break;
