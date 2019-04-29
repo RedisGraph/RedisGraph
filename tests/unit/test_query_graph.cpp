@@ -9,6 +9,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+#include "../../src/util/arr.h"
 #include "../../src/util/rmalloc.h"
 #include "../../src/graph/query_graph.h"
 #ifdef __cplusplus
@@ -26,8 +27,8 @@ class QueryGraphTest: public ::testing::Test {
         ASSERT_STREQ(a->alias, b->alias);
         ASSERT_STREQ(a->label, b->label);
         ASSERT_EQ(a->labelID, b->labelID);
-        ASSERT_EQ(Vector_Size(a->incoming_edges), Vector_Size(b->incoming_edges));
-        ASSERT_EQ(Vector_Size(a->outgoing_edges), Vector_Size(b->outgoing_edges));
+        ASSERT_EQ(array_len(a->incoming_edges), array_len(b->incoming_edges));
+        ASSERT_EQ(array_len(a->outgoing_edges), array_len(b->outgoing_edges));
     }
 
     void compare_edges(const Edge *a, const Edge *b) {
@@ -98,4 +99,73 @@ TEST_F(QueryGraphTest, QueryGraphClone) {
     // Clean up.
     QueryGraph_Free(g);
     QueryGraph_Free(clone);
+}
+
+
+TEST_F(QueryGraphTest, QueryGraphRemoveEntities) {
+    // Create a triangle graph
+    // (A)->(B)->(C)->(A)
+    size_t node_cap = 3;
+    size_t edge_cap = 3;
+
+    // Create nodes.
+    const char *label = "L";
+    const char *relation = "R";
+
+    Node *A = Node_New(label, "A");
+    Node *B = Node_New(label, "B");
+    Node *C = Node_New(label, "C");
+
+    Edge *AB = Edge_New(A, B, relation, "AB");
+    Edge *BC = Edge_New(B, C, relation, "BC");
+    Edge *CA = Edge_New(C, A, relation, "CA");
+
+    QueryGraph *g = QueryGraph_New(node_cap, edge_cap);
+    QueryGraph_AddNode(g, A);
+    QueryGraph_AddNode(g, B);
+    QueryGraph_AddNode(g, C);
+
+    QueryGraph_ConnectNodes(g, A, B, AB);
+    QueryGraph_ConnectNodes(g, B, C, BC);
+    QueryGraph_ConnectNodes(g, C, A, CA);
+
+    // Remove an edge.
+    ASSERT_TRUE(QueryGraph_ContainsEdge(g, AB));
+    ASSERT_TRUE(QueryGraph_GetEdgeByAlias(g, AB->alias) != NULL);
+    
+    QueryGraph_RemoveEdge(g, AB);
+
+    ASSERT_FALSE(QueryGraph_ContainsEdge(g, AB));
+    ASSERT_FALSE(QueryGraph_GetEdgeByAlias(g, AB->alias) != NULL);
+    
+    // Remove node.
+    ASSERT_TRUE(QueryGraph_ContainsNode(g, C));
+    ASSERT_TRUE(QueryGraph_GetNodeByAlias(g, C->alias) != NULL);
+
+    QueryGraph_RemoveNode(g, C);
+    
+    ASSERT_FALSE(QueryGraph_ContainsNode(g, C));
+    ASSERT_FALSE(QueryGraph_GetNodeByAlias(g, C->alias) != NULL);
+
+    // Both CA BC edges should be removed.
+    ASSERT_FALSE(QueryGraph_ContainsEdge(g, CA));
+    ASSERT_FALSE(QueryGraph_GetEdgeByAlias(g, CA->alias) != NULL);
+    
+    ASSERT_FALSE(QueryGraph_ContainsEdge(g, BC));
+    ASSERT_FALSE(QueryGraph_GetEdgeByAlias(g, BC->alias) != NULL);
+
+    /* Assert entity count:
+     * Nodes - A was removed.
+     * Edges - AB explicitly removed, BC and CA implicitly removed. */
+    ASSERT_EQ(g->node_count, 2);    
+    ASSERT_EQ(g->edge_count, 0);
+
+    // Assert remaining entities, 
+    ASSERT_TRUE(QueryGraph_ContainsNode(g, A));
+    ASSERT_TRUE(QueryGraph_GetNodeByAlias(g, A->alias) != NULL);
+    ASSERT_TRUE(QueryGraph_ContainsNode(g, B));
+    ASSERT_TRUE(QueryGraph_GetNodeByAlias(g, B->alias) != NULL);
+
+    // Clean up.
+    QueryGraph_Free(g);
 }

@@ -5,6 +5,7 @@
 */
 
 #include "query_graph.h"
+#include "../util/arr.h"
 #include "../parser/ast.h"
 #include "../schema/schema.h"
 #include <assert.h>
@@ -65,15 +66,15 @@ char* _QueryGraph_GetEntityAlias(GraphEntity *entity, GraphEntity **entities, ch
     return NULL;
 }
 
-int _QueryGraph_ContainsEntity(GraphEntity *entity, GraphEntity **entities, int entity_count) {
+bool _QueryGraph_ContainsEntity(GraphEntity *entity, GraphEntity **entities, int entity_count) {
     int i;
     for(i = 0; i < entity_count; i++) {
         GraphEntity *e = entities[i];
         if(e == entity) {
-            return 1;
+            return true;
         }
     }
-    return 0;
+    return false;
 }
 
 void QueryGraph_AddNode(QueryGraph *g, Node *n) {
@@ -210,15 +211,15 @@ Edge* QueryGraph_GetEdgeById(const QueryGraph *g, long int id) {
     return (Edge*)_QueryGraph_GetEntityById((GraphEntity **)g->edges, g->edge_count, id);
 }
 
-int QueryGraph_ContainsNode(const QueryGraph *graph, const Node *node) {
-    if(!graph->node_count) return 0;
+bool QueryGraph_ContainsNode(const QueryGraph *graph, const Node *node) {
+    if(!graph->node_count) return false;
     return _QueryGraph_ContainsEntity((GraphEntity *)node,
                                  (GraphEntity **)graph->nodes,
                                  graph->node_count);
 }
 
-int QueryGraph_ContainsEdge(const QueryGraph *graph, const Edge *edge) {
-    if(!graph->edge_count) return 0;
+bool QueryGraph_ContainsEdge(const QueryGraph *graph, const Edge *edge) {
+    if(!graph->edge_count) return false;
     return _QueryGraph_ContainsEntity((GraphEntity *)edge,
                                  (GraphEntity **)graph->edges,
                                  graph->edge_count);
@@ -333,6 +334,70 @@ QueryGraph* QueryGraph_Clone(const QueryGraph *g) {
     }
 
     return clone;
+}
+
+Node* QueryGraph_RemoveNode(QueryGraph *g, Node *n) {
+    assert(g && n && n->alias);
+
+    /* Remove node from query graph.
+     * Remove all edges associated with node. */
+    uint incoming_edge_count = array_len(n->incoming_edges);
+    uint outgoing_edge_count = array_len(n->outgoing_edges);
+
+    for(uint i = 0; i < incoming_edge_count; i++) {
+        Edge *e = n->incoming_edges[i];
+        QueryGraph_RemoveEdge(g, e);
+    }
+    for(uint i = 0; i < outgoing_edge_count; i++) {
+        Edge *e = n->outgoing_edges[i];
+        QueryGraph_RemoveEdge(g, e);
+    }
+
+    /* Remove node from graph nodes and alias arrays
+     * the two are in sync. */
+    for(int i = 0; i < g->node_count; i++) {
+        if(strcmp(n->alias, g->node_aliases[i]) == 0) {
+            /* Remove by migrating the last element
+             * to the removed position. */
+            g->nodes[i] = g->nodes[g->node_count-1];
+            g->node_aliases[i] = g->node_aliases[g->node_count-1];
+            break;
+        }
+    }
+
+    // Update node count.
+    g->node_count--;
+
+    return n;
+}
+
+Edge* QueryGraph_RemoveEdge(QueryGraph *g, Edge *e) {
+    assert(g && e && e->alias);
+
+    // Disconnect nodes connected by edge.
+    Node_RemoveOutgoingEdge(e->src, e);
+    Node_RemoveIncomingEdge(e->dest, e);
+
+    /* Remove edge from query graph.
+     * Both edges and edge_aliases arrays are in sync. */
+    for(int i = 0; i < g->edge_count; i++) {
+        if(strcmp(e->alias, g->edge_aliases[i]) == 0) {
+            /* Remove by migrating the last element
+             * to the removed position. */
+            g->edges[i] = g->edges[g->edge_count-1];
+            g->edge_aliases[i] = g->edge_aliases[g->edge_count-1];
+            break;
+        }
+    }
+
+    // Update edge count.
+    g->edge_count--;
+    return e;
+}
+
+QueryGraph** QueryGraph_ConnectedComponents(const QueryGraph *g) {
+    QueryGraph *clone = QueryGraph_Clone(g);
+    return NULL;
 }
 
 /* Frees entire graph. */

@@ -36,13 +36,11 @@ QueryGraph* QueryGraph_New(size_t node_cap, size_t edge_cap);
  * between them. */
 void BuildQueryGraph(const GraphContext *gc, QueryGraph *query_graph, Vector *entities);
 
-/* Checks if graph contains given node
- * Returns 1 if so, 0 otherwise */
-int QueryGraph_ContainsNode(const QueryGraph *graph, const Node *node);
+/* Checks if graph contains given node */
+bool QueryGraph_ContainsNode(const QueryGraph *graph, const Node *node);
 
-/* Checks if graph contains given edge
- * Returns 1 if so, 0 otherwise */
-int QueryGraph_ContainsEdge(const QueryGraph *graph, const Edge *edge);
+/* Checks if graph contains given edge */
+bool QueryGraph_ContainsEdge(const QueryGraph *graph, const Edge *edge);
 
 /* Retrieves node from graph */
 Node* QueryGraph_GetNodeById(const QueryGraph *g, long int id);
@@ -73,6 +71,15 @@ Edge** QueryGraph_GetEdgeRef(const QueryGraph *g, const Edge *e);
 
 /* Performs deep copy of input query graph. */
 QueryGraph* QueryGraph_Clone(const QueryGraph *g);
+
+/* Remove given node from query graph. */
+Node* QueryGraph_RemoveNode(QueryGraph *g, Node *n);
+
+/* Remove given edge from query graph. */
+Edge* QueryGraph_RemoveEdge(QueryGraph *g, Edge *e);
+
+/* Breaks up query graph into its connected components. */
+QueryGraph** QueryGraph_ConnectedComponents(const QueryGraph *g);
 
 /* Frees entire graph */
 void QueryGraph_Free(QueryGraph* g);

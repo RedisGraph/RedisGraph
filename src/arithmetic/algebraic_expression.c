@@ -25,9 +25,9 @@ int _intermidate_node(const Node *n) {
      * <-()->
      * ->()->
      * <-()<- */
-    return ((Vector_Size(n->incoming_edges) > 1) ||
-            (Vector_Size(n->outgoing_edges) > 1) ||
-            ((Vector_Size(n->incoming_edges) > 0) && (Vector_Size(n->outgoing_edges) > 0)));
+    return ((array_len(n->incoming_edges) > 1) ||
+            (array_len(n->outgoing_edges) > 1) ||
+            ((array_len(n->incoming_edges) > 0) && (array_len(n->outgoing_edges) > 0)));
 }
 
 int _referred_entity(char *alias, TrieMap *ref_entities) {

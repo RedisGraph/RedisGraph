@@ -10,12 +10,13 @@
 #include "edge.h"
 #include "assert.h"
 #include "graph_entity.h"
+#include "../../util/arr.h"
 #include "../graphcontext.h"
 
 Node* Node_New(const char *label, const char *alias) {
 	Node* n = calloc(1, sizeof(Node));
-	n->outgoing_edges = NewVector(Edge*, 0);
-	n->incoming_edges = NewVector(Edge*, 0);
+	n->outgoing_edges = array_new(Edge*, 0);
+	n->incoming_edges = array_new(Edge*, 0);
 	n->labelID = GRAPH_UNKNOWN_LABEL;
 
 	if(label != NULL) n->label = strdup(label);
@@ -29,12 +30,32 @@ int Node_Compare(const Node *a, const Node *b) {
 }
 
 void Node_ConnectNode(Node* src, Node* dest, struct Edge* e) {
-	Vector_Push(src->outgoing_edges, e);
-	Vector_Push(dest->incoming_edges, e);
+	src->outgoing_edges = array_append(src->outgoing_edges, e);
+	dest->incoming_edges = array_append(dest->incoming_edges, e);
+}
+
+void _Node_RemoveEdge(Edge **edges, Edge *e) {
+	size_t edge_count = array_len(edges);
+	for(uint i = 0; i < edge_count; i++) {
+		Edge *ie = edges[i];
+		if(e == ie) {
+			edges[i] = edges[edge_count-1];
+			array_pop(edges);
+			break;
+		}
+	}
+}
+
+void Node_RemoveIncomingEdge(Node *n, Edge *e) {
+	_Node_RemoveEdge(n->incoming_edges, e);
+}
+
+void Node_RemoveOutgoingEdge(Node *n, Edge *e) {
+	_Node_RemoveEdge(n->outgoing_edges, e);
 }
 
 int Node_IncomeDegree(const Node *n) {
-	return Vector_Size(n->incoming_edges);
+	return array_len(n->incoming_edges);
 }
 
 void Node_SetLabelID(Node *n, int labelID) {
@@ -79,8 +100,8 @@ void Node_Free(Node* node) {
 
 	if(node->label != NULL) free(node->label);
 	if(node->alias != NULL) free(node->alias);
-	if(node->outgoing_edges) Vector_Free(node->outgoing_edges);
-	if(node->incoming_edges) Vector_Free(node->incoming_edges);
+	if(node->outgoing_edges) array_free(node->outgoing_edges);
+	if(node->incoming_edges) array_free(node->incoming_edges);
 
 	free(node);
 	node = NULL;
