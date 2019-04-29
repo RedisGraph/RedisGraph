@@ -26,6 +26,16 @@ typedef struct {
     int property_count;
 } PropertyMap;
 
+// TODO adopt this style for other functions
+typedef struct {
+    AR_ExpNode **exps;
+    const char *alias;
+    uint record_len;
+    uint record_idx;
+} AST_UnwindContext;
+
+int TraverseRecordCap(const AST *ast);
+
 PropertyMap* AST_ConvertPropertiesMap(const AST *ast, const cypher_astnode_t *props);
 
 AR_ExpNode** AST_ConvertCollection(const cypher_astnode_t *collection);
@@ -36,4 +46,4 @@ void AST_PrepareDeleteOp(const cypher_astnode_t *delete_clause, uint **nodes_ref
 
 AR_ExpNode** AST_PrepareSortOp(const cypher_astnode_t *order_clause, int *direction);
 
-AR_ExpNode** AST_PrepareUnwindOp(const cypher_astnode_t *unwind_clause);
+AST_UnwindContext AST_PrepareUnwindOp(const AST *ast, const cypher_astnode_t *unwind_clause);

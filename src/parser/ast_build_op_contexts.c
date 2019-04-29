@@ -53,6 +53,21 @@ AR_ExpNode** _AST_ConvertCollection(const cypher_astnode_t *collection) {
     return expressions;
 }
 
+// Determine the maximum number of records
+// which will be considered when evaluating an algebraic expression.
+int TraverseRecordCap(const AST *ast) {
+    int recordsCap = 16;    // Default.
+    const cypher_astnode_t *ret_clause = AST_GetClause(ast->root, CYPHER_AST_RETURN);
+    if (ret_clause == NULL) return recordsCap;
+    // TODO should just store this number somewhere, as this logic is also in resultset
+    const cypher_astnode_t *limit_clause = cypher_ast_return_get_limit(ret_clause);
+    if (limit_clause) {
+        int limit = AST_ParseIntegerNode(limit_clause);
+        recordsCap = MIN(recordsCap, limit);
+    }
+    return recordsCap;
+}
+
 EntityUpdateEvalCtx* AST_PrepareUpdateOp(const cypher_astnode_t *set_clause, uint *nitems_ref) {
     AST *ast = AST_GetFromTLS();
     uint nitems = cypher_ast_set_nitems(set_clause);
@@ -140,10 +155,14 @@ AR_ExpNode** AST_PrepareSortOp(const cypher_astnode_t *order_clause, int *direct
     return order_exps;
 }
 
-AR_ExpNode** AST_PrepareUnwindOp(const cypher_astnode_t *unwind_clause) {
+AST_UnwindContext AST_PrepareUnwindOp(const AST *ast, const cypher_astnode_t *unwind_clause) {
     const cypher_astnode_t *collection = cypher_ast_unwind_get_expression(unwind_clause);
     AR_ExpNode **exps = _AST_ConvertCollection(collection);
+    const char *alias = cypher_ast_identifier_get_name(cypher_ast_unwind_get_alias(unwind_clause));
+    uint record_len = AST_RecordLength(ast);
+    uint record_idx = AST_GetAliasID(ast, (char*)alias);
 
-    return exps;
+    AST_UnwindContext ctx = { .exps = exps, .alias = alias, .record_len = record_len, .record_idx = record_idx };
+    return ctx;
 }
 

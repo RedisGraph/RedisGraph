@@ -5,7 +5,6 @@
 */
 
 #include "op_index_scan.h"
-#include "../../parser/ast.h"
 
 OpBase* NewIndexScanOp(Graph *g, Node *node, IndexIter *iter) {
   IndexScan *indexScan = malloc(sizeof(IndexScan));

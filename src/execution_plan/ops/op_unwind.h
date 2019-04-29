@@ -21,7 +21,7 @@ typedef struct {
  } OpUnwind;
 
 /* Creates a new Unwind operation */
-OpBase* NewUnwindOp(uint record_len, uint record_idx, AR_ExpNode **exprs, char *alias);
+OpBase* NewUnwindOp(uint record_len, uint record_idx, AR_ExpNode **exprs, const char *alias);
 
 OpResult UnwindInit(OpBase *opBase);
 

@@ -15,17 +15,16 @@
 /* OP Traverse */
 typedef struct {
     OpBase op;
-    AST *ast;
     Graph *graph;
-    AlgebraicExpression *algebraic_expression;
-    GrB_Matrix F;               // Filter matrix.
-    GrB_Matrix M;               // Algebraic expression result.
+    AlgebraicExpression *ae;
+    int srcNodeIdx;             // Index into record.
+    int destNodeIdx;            // Index into record.
     int *edgeRelationTypes;     // One or more relation types.
     int edgeRelationCount;      // length of edgeRelationTypes.
+    GrB_Matrix F;               // Filter matrix.
+    GrB_Matrix M;               // Algebraic expression result.
     Edge *edges;                // Discovered edges.
     GxB_MatrixTupleIter *iter;  // Iterator over M.
-    int srcNodeRecIdx;          // Index into record.
-    int destNodeRecIdx;         // Index into record.
     int edgeRecIdx;             // Index into record.
     int recordsCap;             // Max number of records to process.
     int recordsLen;             // Number of records to process.
@@ -35,7 +34,7 @@ typedef struct {
 } CondTraverse;
 
 /* Creates a new Traverse operation */
-OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *algebraic_expression);
+OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *ae, uint records_cap);
 
 /* One-time setup of Traverse operation. */
 OpResult CondTraverseInit(OpBase *opBase);

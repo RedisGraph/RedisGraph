@@ -213,7 +213,7 @@ AlgebraicExpression **_AlgebraicExpression_Intermediate_Expressions(const AST *a
         if (intermediate_node(dest_idx, nelems) == false) continue;
 
         // Don't build intermediate expression if destination node is not referenced
-        if (AST_GetEntity(ast, ast_dest) == NULL) continue;
+        if (AST_GetEntityRecordIdx(ast, ast_dest) == NOT_IN_RECORD) continue;
 
         // Finalize current expression.
         iexp->dest_node = dest;

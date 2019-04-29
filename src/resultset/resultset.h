@@ -22,16 +22,15 @@
 typedef struct {
     RedisModuleCtx *ctx;
     ResultSetHeader *header;    /* Describes how records should look like. */
-    bool distinct;              /* Rather or not each record is unique. */
     size_t recordCount;         /* Number of records introduced. */
     char *buffer;               /* Reusable buffer for record streaming. */
     size_t bufferLen;           /* Size of buffer in bytes. */
     ResultSetStatistics stats;  /* ResultSet statistics. */
 } ResultSet;
 
-ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx);
+ResultSet* NewResultSet(RedisModuleCtx *ctx);
 
-void ResultSet_CreateHeader(ResultSet *set);
+void ResultSet_CreateHeader(ResultSet *set, ReturnElementNode **return_expressions);
 
 int ResultSet_AddRecord(ResultSet* set, Record r);
 

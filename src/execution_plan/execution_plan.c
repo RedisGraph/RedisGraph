@@ -310,7 +310,7 @@ void _ExecutionPlan_BuildTraversalOps(QueryGraph *qg, FT_FilterNode *ft, const c
                                              exps[i]->maxHops,
                                              gc->g);
             } else {
-                op = NewCondTraverseOp(gc->g, exps[i]);
+                op = NewCondTraverseOp(gc->g, exps[i], TraverseRecordCap(ast));
             }
             Vector_Push(traversals, op);
         }
@@ -345,7 +345,7 @@ void _ExecutionPlan_BuildTraversalOps(QueryGraph *qg, FT_FilterNode *ft, const c
                                              exps[i]->maxHops,
                                              gc->g);
             } else {
-                op = NewCondTraverseOp(gc->g, exps[i]);
+                op = NewCondTraverseOp(gc->g, exps[i], TraverseRecordCap(ast));
             }
             Vector_Push(traversals, op);
         }
@@ -427,12 +427,9 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, ResultSet *result_set) {
     // Set root operation
     const cypher_astnode_t *unwind_clause = AST_GetClause(ast->root, CYPHER_AST_UNWIND);
     if(unwind_clause) {
-        AR_ExpNode **exps = AST_PrepareUnwindOp(unwind_clause);
-        // TODO rest doesn't belong here
-        uint record_len = AST_RecordLength(ast);
-        const char *alias = cypher_ast_identifier_get_name(cypher_ast_unwind_get_alias(unwind_clause));
-        uint record_idx = AST_GetAliasID(ast, (char*)alias);
-        OpBase *opUnwind = NewUnwindOp(record_len, record_idx, exps, (char*)alias);
+        AST_UnwindContext unwind_ast_ctx = AST_PrepareUnwindOp(ast, unwind_clause);
+
+        OpBase *opUnwind = NewUnwindOp(unwind_ast_ctx.record_len, unwind_ast_ctx.record_idx, unwind_ast_ctx.exps, unwind_ast_ctx.alias);
         Vector_Push(ops, opUnwind);
     }
 
@@ -626,11 +623,10 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, bool expl
 
     ResultSet *result_set = NULL;
     if(!explain) {
-        result_set = NewResultSet(ast, ctx);
-        ResultSet_CreateHeader(result_set);
+        result_set = NewResultSet(ctx);
+        ResultSet_CreateHeader(result_set, ast->return_expressions);
     }
 
-    // for(unsigned int i = 0; i < array_len(ast); i++) {
     for(unsigned int i = 0; i < 1; i++) { // TODO WITH
         curr_plan = _NewExecutionPlan(ctx, result_set);
         if(i == 0) plan = curr_plan;

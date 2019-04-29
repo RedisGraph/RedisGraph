@@ -9,7 +9,7 @@
 #include "../../util/arr.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
-OpBase* NewUnwindOp(uint record_len, uint record_idx, AR_ExpNode **exprs, char *alias) {
+OpBase* NewUnwindOp(uint record_len, uint record_idx, AR_ExpNode **exprs, const char *alias) {
     OpUnwind *unwind = malloc(sizeof(OpUnwind));
     unwind->expIdx = 0;
     unwind->expressions = NULL;

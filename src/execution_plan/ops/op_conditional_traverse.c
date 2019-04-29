@@ -7,7 +7,6 @@
 #include "op_conditional_traverse.h"
 #include "../../util/arr.h"
 #include "../../GraphBLASExt/GxB_Delete.h"
-#include "../../parser/ast.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
 // Updates query graph edge.
@@ -29,13 +28,13 @@ static int _CondTraverse_SetEdge(CondTraverse *op, Record r) {
  * clears filter matrix. */
 void _traverse(CondTraverse *op) {
     // Append matrix to algebraic expression, as the right most operand.
-    AlgebraicExpression_AppendTerm(op->algebraic_expression, op->F, false, false);
+    AlgebraicExpression_AppendTerm(op->ae, op->F, false, false);
 
     // Evaluate expression.
-    AlgebraicExpression_Execute(op->algebraic_expression, op->M);
+    AlgebraicExpression_Execute(op->ae, op->M);
 
     // Remove operand.
-    AlgebraicExpression_RemoveTerm(op->algebraic_expression, op->algebraic_expression->operand_count-1, NULL);
+    AlgebraicExpression_RemoveTerm(op->ae, op->ae->operand_count-1, NULL);
 
     if(op->iter == NULL) GxB_MatrixTupleIter_new(&op->iter, op->M);
     else GxB_MatrixTupleIter_reuse(op->iter, op->M);
@@ -44,39 +43,22 @@ void _traverse(CondTraverse *op) {
     GrB_Matrix_clear(op->F);
 }
 
-// Determine the maximum number of records
-// which will be considered when evaluating an algebraic expression.
-static int _determinRecordCap(const AST *ast) {
-    int recordsCap = 16;    // Default.
-    const cypher_astnode_t *ret_clause = AST_GetClause(ast->root, CYPHER_AST_RETURN);
-    if (ret_clause == NULL) return recordsCap;
-    // TODO should just store this number somewhere, as this logic is also in resultset
-    const cypher_astnode_t *limit_clause = cypher_ast_return_get_limit(ret_clause);
-    if (limit_clause) {
-        int limit = AST_ParseIntegerNode(limit_clause);
-        recordsCap = MIN(recordsCap, limit);
-    }
-    return recordsCap;
-}
-
-OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *algebraic_expression) {
+OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *ae, uint records_cap) {
     CondTraverse *traverse = calloc(1, sizeof(CondTraverse));
-    AST *ast = AST_GetFromTLS();
-    traverse->ast = ast;
     traverse->graph = g;
-    traverse->algebraic_expression = algebraic_expression;
+    traverse->ae = ae;
     traverse->edgeRelationTypes = NULL;
     traverse->F = NULL;
     traverse->iter = NULL;
     traverse->edges = NULL;
     traverse->r = NULL;
 
-    traverse->srcNodeRecIdx = algebraic_expression->src_node_idx;
-    traverse->destNodeRecIdx = algebraic_expression->dest_node_idx;
+    traverse->srcNodeIdx = ae->src_node_idx;
+    traverse->destNodeIdx = ae->dest_node_idx;
 
     traverse->recordsLen = 0;
     traverse->transposed_edge = false;
-    traverse->recordsCap = _determinRecordCap(ast);
+    traverse->recordsCap = records_cap;
     traverse->records = rm_calloc(traverse->recordsCap, sizeof(Record));
     GrB_Matrix_new(&traverse->M, GrB_BOOL, Graph_RequiredMatrixDim(g), traverse->recordsCap);
     GrB_Matrix_new(&traverse->F, GrB_BOOL, Graph_RequiredMatrixDim(g), traverse->recordsCap);
@@ -91,16 +73,16 @@ OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *algebraic_expression) {
     traverse->op.free = CondTraverseFree;
     traverse->op.modifies = NewVector(char*, 1);
 
-    char *modified = traverse->algebraic_expression->dest_node->alias;
+    char *modified = traverse->ae->dest_node->alias;
     if (modified) Vector_Push(traverse->op.modifies, modified);
 
-    if(algebraic_expression->edge) {
-        traverse->edgeRelationTypes = traverse->algebraic_expression->relation_ids;
+    if(ae->edge) {
+        traverse->edgeRelationTypes = traverse->ae->relation_ids;
         traverse->edgeRelationCount = array_len(traverse->edgeRelationTypes);
-        modified = traverse->algebraic_expression->edge->alias;
+        modified = traverse->ae->edge->alias;
         if (modified) Vector_Push(traverse->op.modifies, modified);
         traverse->edges = array_new(Edge, 32);
-        traverse->edgeRecIdx = algebraic_expression->edge_idx;
+        traverse->edgeRecIdx = ae->edge_idx;
     }
 
     return (OpBase*)traverse;
@@ -108,8 +90,8 @@ OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *algebraic_expression) {
 
 OpResult CondTraverseInit(OpBase *opBase) {
     CondTraverse *op = (CondTraverse*)opBase;
-    size_t op_idx = op->algebraic_expression->operand_count - 1;
-    AlgebraicExpression *exp = op->algebraic_expression;
+    size_t op_idx = op->ae->operand_count - 1;
+    AlgebraicExpression *exp = op->ae;
     // If the input is set to be transposed on the first expression evaluation,
     // the source and destination nodes will be swapped in the record.
     op->transposed_edge = exp->edge && exp->operands[op_idx].transpose;
@@ -127,7 +109,7 @@ Record CondTraverseConsume(OpBase *opBase) {
     /* If we're required to update edge,
      * try to get an edge, if successful we can return quickly,
      * otherwise try to get a new pair of source and destination nodes. */
-    if(op->algebraic_expression->edge) {
+    if(op->ae->edge) {
         if(_CondTraverse_SetEdge(op, op->r)) {
             return Record_Clone(op->r);
         }
@@ -157,7 +139,7 @@ Record CondTraverseConsume(OpBase *opBase) {
             op->records[op->recordsLen] = childRecord;
             /* Update filter matrix F, set column i at position srcId
              * F[srcId, i] = true. */
-            Node *n = Record_GetNode(childRecord, op->srcNodeRecIdx);
+            Node *n = Record_GetNode(childRecord, op->srcNodeIdx);
             NodeID srcId = ENTITY_GET_ID(n);
             GrB_Matrix_setElement_BOOL(op->F, true, srcId, op->recordsLen);
         }
@@ -170,20 +152,20 @@ Record CondTraverseConsume(OpBase *opBase) {
 
     /* Get node from current column. */
     op->r = op->records[src_id];
-    Node *destNode = Record_GetNode(op->r, op->destNodeRecIdx);
+    Node *destNode = Record_GetNode(op->r, op->destNodeIdx);
     Graph_GetNode(op->graph, dest_id, destNode);
 
-    if(op->algebraic_expression->edge != NULL) {
+    if(op->ae->edge != NULL) {
         // We're guarantee to have at least one edge.
         Node *srcNode;
         Node *destNode;
 
         if(op->transposed_edge) {
-            srcNode = Record_GetNode(op->r, op->destNodeRecIdx);
-            destNode = Record_GetNode(op->r, op->srcNodeRecIdx);
+            srcNode = Record_GetNode(op->r, op->destNodeIdx);
+            destNode = Record_GetNode(op->r, op->srcNodeIdx);
         } else {
-            srcNode = Record_GetNode(op->r, op->srcNodeRecIdx);
-            destNode = Record_GetNode(op->r, op->destNodeRecIdx);
+            srcNode = Record_GetNode(op->r, op->srcNodeIdx);
+            destNode = Record_GetNode(op->r, op->destNodeIdx);
         }
 
         for(int i = 0; i < op->edgeRelationCount; i++) {
@@ -219,7 +201,7 @@ void CondTraverseFree(OpBase *ctx) {
     if(op->F) GrB_Matrix_free(&op->F);
     if(op->M) GrB_Matrix_free(&op->M);
     if(op->edges) array_free(op->edges);
-    if(op->algebraic_expression) AlgebraicExpression_Free(op->algebraic_expression);
+    if(op->ae) AlgebraicExpression_Free(op->ae);
     if(op->edgeRelationTypes) array_free(op->edgeRelationTypes);
     if(op->records) {
         for(int i = 0; i < op->recordsLen; i++) Record_Free(op->records[i]);

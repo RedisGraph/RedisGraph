@@ -19,7 +19,7 @@ OpBase* NewCondVarLenTraverseOp(AlgebraicExpression *ae, unsigned int minHops, u
     CondVarLenTraverse *condVarLenTraverse = malloc(sizeof(CondVarLenTraverse));
     condVarLenTraverse->g = g;
     condVarLenTraverse->ae = ae;
-    condVarLenTraverse->relationIDs = NULL;
+    condVarLenTraverse->edgeRelationTypes = NULL;
 
     condVarLenTraverse->srcNodeIdx = ae->src_node_idx;
     condVarLenTraverse->destNodeIdx = ae->dest_node_idx;
@@ -30,8 +30,8 @@ OpBase* NewCondVarLenTraverseOp(AlgebraicExpression *ae, unsigned int minHops, u
     condVarLenTraverse->traverseDir = (ae->operands[0].transpose) ? GRAPH_EDGE_DIR_INCOMING : GRAPH_EDGE_DIR_OUTGOING;
     condVarLenTraverse->r = NULL;
 
-    condVarLenTraverse->relationIDs = ae->relation_ids;
-    condVarLenTraverse->relationIDsCount = array_len(ae->relation_ids);
+    condVarLenTraverse->edgeRelationTypes = ae->relation_ids;
+    condVarLenTraverse->edgeRelationCount = array_len(ae->relation_ids);
 
     // Set our Op operations
     OpBase_Init(&condVarLenTraverse->op);
@@ -56,7 +56,7 @@ Record CondVarLenTraverseConsume(OpBase *opBase) {
     /* Incase we don't have any relations to traverse we can return quickly
      * Consider: MATCH (S)-[:L*]->(M) RETURN M
      * where label L does not exists. */
-    if(op->relationIDsCount == 0) {
+    if(op->edgeRelationCount == 0) {
         return NULL;
     }
 
@@ -73,8 +73,8 @@ Record CondVarLenTraverseConsume(OpBase *opBase) {
         AllPathsCtx_Free(op->allPathsCtx);
         op->allPathsCtx = AllPathsCtx_New(srcNode,
                                           op->g,
-                                          op->relationIDs,
-                                          op->relationIDsCount,
+                                          op->edgeRelationTypes,
+                                          op->edgeRelationCount,
                                           op->traverseDir,
                                           op->minHops,
                                           op->maxHops);
@@ -99,7 +99,7 @@ OpResult CondVarLenTraverseReset(OpBase *ctx) {
 
 void CondVarLenTraverseFree(OpBase *ctx) {
     CondVarLenTraverse *op = (CondVarLenTraverse*)ctx;
-    array_free(op->relationIDs);
+    array_free(op->edgeRelationTypes);
     AlgebraicExpression_Free(op->ae);
     if(op->r) Record_Free(op->r);
     if(op->allPathsCtx) AllPathsCtx_Free(op->allPathsCtx);
