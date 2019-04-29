@@ -13,32 +13,6 @@
 #include "../../algorithms/all_paths.h"
 #include "./op_cond_var_len_traverse.h"
 
-static void _setupTraversedRelations(CondVarLenTraverse *op) {
-    AST *ast = AST_GetFromTLS();
-    GraphContext *gc = GraphContext_GetFromTLS();
-
-    AR_ExpNode *exp = AST_GetEntityFromAlias(ast, op->ae->edge->alias); // TODO guaranteed to exist?
-    // TODO validate this access
-    const cypher_astnode_t *ast_relation = exp->operand.variadic.ast_ref;
-    op->relationIDsCount = cypher_ast_rel_pattern_nreltypes(ast_relation);
-
-    if(op->relationIDsCount > 0) {
-        op->relationIDs = array_new(int, op->relationIDsCount);
-        for(int i = 0; i < op->relationIDsCount; i++) {
-            // TODO documentation error in libcypher-parser
-            const cypher_astnode_t *ast_reltype = cypher_ast_rel_pattern_get_reltype(ast_relation, i);  
-            const char *reltype = cypher_ast_reltype_get_name(ast_reltype);
-            Schema *s = GraphContext_GetSchema(gc, reltype, SCHEMA_EDGE);
-            if(!s) continue;
-            op->relationIDs = array_append(op->relationIDs, s->id);
-        }        
-    } else {
-        op->relationIDs = array_new(int, 1);
-        op->relationIDs = array_append(op->relationIDs, GRAPH_NO_RELATION);
-    }
-    op->relationIDsCount = array_len(op->relationIDs);
-}
-
 OpBase* NewCondVarLenTraverseOp(AlgebraicExpression *ae, unsigned int minHops, unsigned int maxHops, Graph *g) {
     assert(ae && minHops <= maxHops && g && ae->operand_count == 1);
 
@@ -46,27 +20,18 @@ OpBase* NewCondVarLenTraverseOp(AlgebraicExpression *ae, unsigned int minHops, u
     condVarLenTraverse->g = g;
     condVarLenTraverse->ae = ae;
     condVarLenTraverse->relationIDs = NULL;
-    unsigned int src_node_idx = ae->src_node_idx; 
-    AST *ast = AST_GetFromTLS();
-    if (ae->src_node_idx == NOT_IN_RECORD) {
-        // Anonymous node - make space for it in the Record
-        ae->src_node_idx = AST_AddAnonymousRecordEntry(ast);
-    }
-    condVarLenTraverse->srcNodeIdx = ae->src_node_idx; 
 
-    if (ae->dest_node_idx == NOT_IN_RECORD) {
-        // Anonymous node - make space for it in the Record
-        ae->dest_node_idx = AST_AddAnonymousRecordEntry(ast);
-    }
+    condVarLenTraverse->srcNodeIdx = ae->src_node_idx;
     condVarLenTraverse->destNodeIdx = ae->dest_node_idx;
-    
+
     condVarLenTraverse->minHops = minHops;
     condVarLenTraverse->maxHops = maxHops;
     condVarLenTraverse->allPathsCtx = NULL;
     condVarLenTraverse->traverseDir = (ae->operands[0].transpose) ? GRAPH_EDGE_DIR_INCOMING : GRAPH_EDGE_DIR_OUTGOING;
     condVarLenTraverse->r = NULL;
 
-    _setupTraversedRelations(condVarLenTraverse);
+    condVarLenTraverse->relationIDs = ae->relation_ids;
+    condVarLenTraverse->relationIDsCount = array_len(ae->relation_ids);
 
     // Set our Op operations
     OpBase_Init(&condVarLenTraverse->op);
@@ -99,7 +64,7 @@ Record CondVarLenTraverseConsume(OpBase *opBase) {
     while(!(p = AllPathsCtx_NextPath(op->allPathsCtx))) {
         Record childRecord = child->consume(child);
         if(!childRecord) return NULL;
-        
+
         if(op->r) Record_Free(op->r);
         op->r = childRecord;
 

@@ -14,6 +14,30 @@ static inline bool intermediate_node(uint node_idx, uint path_len) {
     return (node_idx > 0) && (node_idx < path_len - 1);
 }
 
+static int* _setup_traversed_relations(const cypher_astnode_t *ast_relation) {
+    GraphContext *gc = GraphContext_GetFromTLS();
+
+    uint relationIDsCount = cypher_ast_rel_pattern_nreltypes(ast_relation);
+
+    int *relationIDs;
+    if(relationIDsCount > 0) {
+        relationIDs = array_new(int, relationIDsCount);
+        for(int i = 0; i < relationIDsCount; i++) {
+            // TODO documentation error in libcypher-parser
+            const cypher_astnode_t *ast_reltype = cypher_ast_rel_pattern_get_reltype(ast_relation, i);
+            const char *reltype = cypher_ast_reltype_get_name(ast_reltype);
+            Schema *s = GraphContext_GetSchema(gc, reltype, SCHEMA_EDGE);
+            if(!s) continue;
+            relationIDs = array_append(relationIDs, s->id);
+        }
+    } else {
+        relationIDs = array_new(int, 1);
+        relationIDs = array_append(relationIDs, GRAPH_NO_RELATION);
+    }
+
+    return relationIDs;
+}
+
 AlgebraicExpression *_AE_MUL(size_t operand_cap) {
     AlgebraicExpression *ae = malloc(sizeof(AlgebraicExpression));
     ae->op = AL_EXP_MUL;
@@ -21,6 +45,7 @@ AlgebraicExpression *_AE_MUL(size_t operand_cap) {
     ae->operand_count = 0;
     ae->operands = malloc(sizeof(AlgebraicExpressionOperand) * ae->operand_cap);
     ae->edge = NULL;
+    ae->relation_ids = NULL;
     ae->minHops = 1;
     ae->maxHops = 1;
     return ae;
@@ -129,6 +154,7 @@ AlgebraicExpression **_AlgebraicExpression_Intermediate_Expressions(const AST *a
         /* If edge is referenced, set expression edge pointer. */
         if (expr != NULL && expr->record_idx != NOT_IN_RECORD && expr->operand.variadic.entity_alias) { // TODO what is actually necessary?
             iexp->edge = e;
+            iexp->relation_ids = _setup_traversed_relations(ast_rel);
             if (expr->record_idx == NOT_IN_RECORD) {
                 expr->record_idx = AST_AddAnonymousRecordEntry((AST*)ast);
             }
@@ -148,6 +174,8 @@ AlgebraicExpression **_AlgebraicExpression_Intermediate_Expressions(const AST *a
             iexp->minHops = start;
             iexp->maxHops = end;
             iexp->edge = e;
+            // TODO setup traversed relations?
+            if (iexp->relation_ids == NULL) iexp->relation_ids = _setup_traversed_relations(ast_rel);
             /* Expand fixed variable length edge */
             if (end == start) hops = start;
         }

@@ -10,42 +10,6 @@
 #include "../../parser/ast.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
-static void _setupTraversedRelations(CondTraverse *op) {
-    AST *ast = AST_GetFromTLS();
-    GraphContext *gc = GraphContext_GetFromTLS();
-    char *alias = op->algebraic_expression->edge->alias;
-    
-    if (alias != NULL) {
-        // TODO inadequate - need unaliased multi-reltype edges
-        AR_ExpNode *e = AST_GetEntityFromAlias(ast, alias);
-        const cypher_astnode_t *ast_entity = e->operand.variadic.ast_ref; // TODO safe?
-        op->edgeRelationCount = cypher_ast_rel_pattern_nreltypes(ast_entity);
-        if(op->edgeRelationCount > 0) {
-            op->edgeRelationTypes = array_new(int , op->edgeRelationCount);
-            for(int i = 0; i < op->edgeRelationCount; i++) {
-                const char *label = cypher_ast_reltype_get_name(cypher_ast_rel_pattern_get_reltype(ast_entity, i));
-                Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_EDGE);
-                if(!s) continue;
-                op->edgeRelationTypes = array_append(op->edgeRelationTypes, s->id);
-            }
-            return;
-        }
-    }
-
-    op->edgeRelationCount = 1;
-    op->edgeRelationTypes = array_new(int , 1);
-    char *reltype = op->algebraic_expression->edge->relationship;
-    if (reltype) {
-        Schema *s = GraphContext_GetSchema(gc, reltype, SCHEMA_EDGE);
-        if (s) {
-            op->edgeRelationTypes = array_append(op->edgeRelationTypes, s->id);
-            return;
-        }
-    
-    }
-    op->edgeRelationTypes = array_append(op->edgeRelationTypes, GRAPH_NO_RELATION);
-}
-
 // Updates query graph edge.
 static int _CondTraverse_SetEdge(CondTraverse *op, Record r) {
     // Consumed edges connecting current source and destination nodes.
@@ -58,8 +22,8 @@ static int _CondTraverse_SetEdge(CondTraverse *op, Record r) {
 }
 
 /* Evaluate algebraic expression:
- * appends filter matrix as the right most operand 
- * perform multiplications 
+ * appends filter matrix as the right most operand
+ * perform multiplications
  * set iterator over result matrix
  * removed filter matrix from original expression
  * clears filter matrix. */
@@ -69,7 +33,7 @@ void _traverse(CondTraverse *op) {
 
     // Evaluate expression.
     AlgebraicExpression_Execute(op->algebraic_expression, op->M);
-    
+
     // Remove operand.
     AlgebraicExpression_RemoveTerm(op->algebraic_expression, op->algebraic_expression->operand_count-1, NULL);
 
@@ -102,23 +66,14 @@ OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *algebraic_expression) {
     traverse->graph = g;
     traverse->algebraic_expression = algebraic_expression;
     traverse->edgeRelationTypes = NULL;
-    traverse->F = NULL;    
+    traverse->F = NULL;
     traverse->iter = NULL;
     traverse->edges = NULL;
-    traverse->r = NULL;    
+    traverse->r = NULL;
 
-    if (algebraic_expression->src_node_idx == NOT_IN_RECORD) {
-        // Anonymous node - make space for it in the Record
-        algebraic_expression->src_node_idx = AST_AddAnonymousRecordEntry(ast);
-    }
-    traverse->srcNodeRecIdx = algebraic_expression->src_node_idx; 
-
-    if (algebraic_expression->dest_node_idx == NOT_IN_RECORD) {
-        // Anonymous node - make space for it in the Record
-        algebraic_expression->dest_node_idx = AST_AddAnonymousRecordEntry(ast);
-    }
+    traverse->srcNodeRecIdx = algebraic_expression->src_node_idx;
     traverse->destNodeRecIdx = algebraic_expression->dest_node_idx;
-    
+
     traverse->recordsLen = 0;
     traverse->transposed_edge = false;
     traverse->recordsCap = _determinRecordCap(ast);
@@ -140,13 +95,11 @@ OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *algebraic_expression) {
     if (modified) Vector_Push(traverse->op.modifies, modified);
 
     if(algebraic_expression->edge) {
-        _setupTraversedRelations(traverse);
+        traverse->edgeRelationTypes = traverse->algebraic_expression->relation_ids;
+        traverse->edgeRelationCount = array_len(traverse->edgeRelationTypes);
         modified = traverse->algebraic_expression->edge->alias;
         if (modified) Vector_Push(traverse->op.modifies, modified);
         traverse->edges = array_new(Edge, 32);
-        if (algebraic_expression->edge_idx == NOT_IN_RECORD) {
-            algebraic_expression->edge_idx = AST_AddAnonymousRecordEntry(ast);
-        }
         traverse->edgeRecIdx = algebraic_expression->edge_idx;
     }
 
@@ -164,7 +117,7 @@ OpResult CondTraverseInit(OpBase *opBase) {
     return OP_OK;
 }
 
-/* CondTraverseConsume next operation 
+/* CondTraverseConsume next operation
  * each call will update the graph
  * returns OP_DEPLETED when no additional updates are available */
 Record CondTraverseConsume(OpBase *opBase) {
@@ -190,7 +143,7 @@ Record CondTraverseConsume(OpBase *opBase) {
         // Managed to get a tuple, break.
         if(!depleted) break;
 
-        /* Run out of tuples, try to get new data.        
+        /* Run out of tuples, try to get new data.
          * Free old records. */
         op->r = NULL;
         for(int i = 0; i < op->recordsLen; i++) Record_Free(op->records[i]);

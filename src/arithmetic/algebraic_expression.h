@@ -69,6 +69,7 @@ typedef struct {
     unsigned int dest_node_idx;
     unsigned int edge_idx;
     Edge *edge;                             // Edge represented by sole operand.
+    int *relation_ids;                      // IDs of relationship types associated with edge.
     unsigned int minHops;
     unsigned int maxHops;
 } AlgebraicExpression;
