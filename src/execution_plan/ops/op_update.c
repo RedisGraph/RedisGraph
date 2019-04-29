@@ -9,41 +9,6 @@
 #include "../../util/rmalloc.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
-/* Build an evaluation context foreach update expression. */
-static void _BuildUpdateEvalCtx(OpUpdate* op, NEWAST *ast) {
-    const cypher_astnode_t *set_clause = NEWAST_GetClause(ast->root, CYPHER_AST_SET);
-    assert(set_clause);
-    unsigned int nitems = cypher_ast_set_nitems(set_clause);
-    op->update_expressions_count = nitems;
-    op->update_expressions = rm_malloc(sizeof(EntityUpdateEvalCtx) * op->update_expressions_count);
-
-    for(uint i = 0; i < op->update_expressions_count; i++) {
-        const cypher_astnode_t *set_item = cypher_ast_set_get_item(set_clause, i);
-        const cypher_astnode_type_t type = cypher_astnode_type(set_item);
-        // TODO Add handling for when we're setting labels (CYPHER_AST_SET_LABELS)
-        // or all properties (CYPHER_AST_SET_ALL_PROPERTIES)
-        assert(type == CYPHER_AST_SET_PROPERTY);
-
-        // The SET_ITEM contains the entity alias and property key being set
-        const cypher_astnode_t *key_to_set = cypher_ast_set_property_get_property(set_item); // type == CYPHER_AST_PROPERTY_OPERATOR
-        // Property name
-        const cypher_astnode_t *prop = cypher_ast_property_operator_get_prop_name(key_to_set); // type == CYPHER_AST_PROP_NAME
-        // Entity alias
-        const cypher_astnode_t *prop_expr = cypher_ast_property_operator_get_expression(key_to_set);
-        AR_ExpNode *entity = AR_EXP_FromExpression(ast, prop_expr);
-        // Can this ever be anything strange? Assuming it's always just an alias wrapper right now.
-        assert(entity->type == AR_EXP_OPERAND && entity->operand.type == AR_EXP_VARIADIC && entity->operand.variadic.entity_alias);
-
-        // Updated value
-        const cypher_astnode_t *val_to_set = cypher_ast_set_property_get_expression(set_item); // type == CYPHER_AST_SET_PROPERTY
-
-        /* Track all required information to perform an update. */
-        op->update_expressions[i].attribute = cypher_ast_prop_name_get_value(prop);
-        op->update_expressions[i].exp = AR_EXP_FromExpression(ast, val_to_set);
-        op->update_expressions[i].entityRecIdx = NEWAST_GetAliasID(ast, entity->operand.variadic.entity_alias);
-    }
-}
-
 /* Delay updates until all entities are processed, 
  * _QueueUpdate will queue up all information necessary to perform an update. */
 static void _QueueUpdate(OpUpdate *op, GraphEntity *entity, GraphEntityType type, const char *attribute, SIValue new_value) {
@@ -184,23 +149,18 @@ static Record _handoff(OpUpdate* op) {
     return NULL;
 }
 
-OpBase* NewUpdateOp(GraphContext *gc, ResultSet *result_set) {
+OpBase* NewUpdateOp(GraphContext *gc, EntityUpdateEvalCtx *update_exps, uint update_exp_count, ResultSet *result_set) {
     OpUpdate* op_update = calloc(1, sizeof(OpUpdate));
     op_update->gc = gc;
-    NEWAST *ast = NEWAST_GetFromTLS();
-    op_update->ast = ast;
     op_update->result_set = result_set;
 
-    op_update->update_expressions = NULL;
-    op_update->update_expressions_count = 0;
+    op_update->update_expressions = update_exps;
+    op_update->update_expressions_count = update_exp_count;
     op_update->pending_updates_count = 0;
     op_update->pending_updates_cap = 16; /* 16 seems reasonable number to start with. */
     op_update->pending_updates = rm_malloc(sizeof(EntityUpdateCtx) * op_update->pending_updates_cap);
     op_update->records = NULL;
     op_update->updates_commited = false;
-
-    // Create a context for each update expression.
-    _BuildUpdateEvalCtx(op_update, ast);
 
     // Set our Op operations
     OpBase_Init(&op_update->op);
@@ -231,8 +191,8 @@ Record OpUpdateConsume(OpBase *opBase) {
     while((r = child->consume(child))) {
         /* Evaluate each update expression and store result 
          * for later execution. */
-        EntityUpdateEvalCtx *update_expression = op->update_expressions;
-        for(uint i = 0; i < op->update_expressions_count; i++, update_expression++) {
+        for(uint i = 0; i < op->update_expressions_count; i++) {
+            EntityUpdateEvalCtx *update_expression = op->update_expressions + i;
             SIValue new_value = AR_EXP_Evaluate(update_expression->exp, r);
 
             // Make sure we're updating either a node or an edge.

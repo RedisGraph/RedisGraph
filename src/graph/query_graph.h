@@ -9,7 +9,7 @@
 #include "entities/node.h"
 #include "entities/edge.h"
 #include "graphcontext.h"
-#include "../parser/newast.h"
+#include "../parser/ast.h"
 
 typedef struct {
     // TODO both arrays are only used for choosing the proper free routine
@@ -28,12 +28,12 @@ QueryGraph* QueryGraph_New(size_t node_cap, size_t edge_cap);
 /* Add all nodes and relationships from a single path
  * (from part of a MATCH or CREATE pattern, or a MERGE clause)
  * to the QueryGraph. */
-void QueryGraph_AddPath(const GraphContext *gc, const NEWAST *ast, QueryGraph *qg, const cypher_astnode_t *path);
+void QueryGraph_AddPath(const GraphContext *gc, const AST *ast, QueryGraph *qg, const cypher_astnode_t *path);
 
 /* Adds all paths described in an AST pattern node (from a
  * MATCH or CREATE clause) to a meta-graph that describes all
  * nodes and relationships in a query. */
-QueryGraph* BuildQueryGraph(const GraphContext *gc, const NEWAST *ast);
+QueryGraph* BuildQueryGraph(const GraphContext *gc, const AST *ast);
 
 /* Adds a new edge to the graph */
 void QueryGraph_ConnectNodes(QueryGraph *qg, Node *src, Node *dest, Edge *e, char *edge_alias);

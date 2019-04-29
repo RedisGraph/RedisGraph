@@ -12,7 +12,7 @@
 #include "../execution_plan/record.h"
 #include "../graph/entities/graph_entity.h"
 #include "../graph/query_graph.h"
-#include "../parser/newast.h"
+#include "../parser/ast.h"
 #include "./agg_ctx.h"
 
 /* Forward declarations. */
@@ -147,7 +147,7 @@ int AR_EXP_ContainsAggregation(AR_ExpNode *root, AR_ExpNode **agg_node);
 void AR_EXP_ToString(const AR_ExpNode *root, char **str);
 
 AR_ExpNode* AR_EXP_NewConstOperandNode(SIValue constant);
-AR_ExpNode* AR_EXP_NewVariableOperandNode(const NEWAST *ast, const cypher_astnode_t *entity, const char *alias, const char *prop);
+AR_ExpNode* AR_EXP_NewVariableOperandNode(const AST *ast, const cypher_astnode_t *entity, const char *alias, const char *prop);
 
 /* Clone an aggregate expression node. */
 AR_ExpNode* AR_EXP_DuplicateAggFunc(const AR_ExpNode *expr);
@@ -155,7 +155,7 @@ AR_ExpNode* AR_EXP_DuplicateAggFunc(const AR_ExpNode *expr);
 void AR_EXP_AssignRecordIndex(AR_ExpNode *exp, unsigned int idx);
 
 /* Construct an arithmetic expression tree from a CYPHER_AST_EXPRESSION node. */
-AR_ExpNode* AR_EXP_FromExpression(const NEWAST *ast, const cypher_astnode_t *expr);
+AR_ExpNode* AR_EXP_FromExpression(const AST *ast, const cypher_astnode_t *expr);
 
 /* Clones given expression. */
 AR_ExpNode* AR_EXP_Clone(AR_ExpNode* exp);

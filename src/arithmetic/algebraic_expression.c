@@ -97,7 +97,7 @@ AlgebraicExpression** _AlgebraicExpression_IsolateVariableLenExps(AlgebraicExpre
 
 /* Break down expression into sub expressions.
  * considering referenced intermediate nodes and edges. */
-AlgebraicExpression **_AlgebraicExpression_Intermediate_Expressions(const NEWAST *ast, AlgebraicExpression *exp, const cypher_astnode_t *path, const QueryGraph *q, size_t *exp_count) {
+AlgebraicExpression **_AlgebraicExpression_Intermediate_Expressions(const AST *ast, AlgebraicExpression *exp, const cypher_astnode_t *path, const QueryGraph *q, size_t *exp_count) {
     /* Allocating maximum number of expression possible. */
     AlgebraicExpression **expressions = malloc(sizeof(AlgebraicExpression *) * exp->operand_count);
     int expIdx = 0;     // Sub expression index.
@@ -125,12 +125,12 @@ AlgebraicExpression **_AlgebraicExpression_Intermediate_Expressions(const NEWAST
         e = QueryGraph_GetEntityByASTRef(q, ast_rel);
         transpose = (cypher_ast_rel_pattern_get_direction(ast_rel) == CYPHER_REL_INBOUND);
 
-        AR_ExpNode *expr = NEWAST_GetEntity(ast, ast_rel);
+        AR_ExpNode *expr = AST_GetEntity(ast, ast_rel);
         /* If edge is referenced, set expression edge pointer. */
         if (expr != NULL && expr->record_idx != NOT_IN_RECORD && expr->operand.variadic.entity_alias) { // TODO what is actually necessary?
             iexp->edge = e;
             if (expr->record_idx == NOT_IN_RECORD) {
-                expr->record_idx = NEWAST_AddAnonymousRecordEntry((NEWAST*)ast);
+                expr->record_idx = AST_AddAnonymousRecordEntry((AST*)ast);
             }
             iexp->edge_idx = expr->record_idx;
         }
@@ -142,9 +142,9 @@ AlgebraicExpression **_AlgebraicExpression_Intermediate_Expressions(const NEWAST
         if (varlength) {
             const cypher_astnode_t *start_node = cypher_ast_range_get_start(varlength);
             const cypher_astnode_t *end_node = cypher_ast_range_get_end(varlength);
-            unsigned int start = (start_node == NULL) ? 1 : NEWAST_ParseIntegerNode(start_node);
+            unsigned int start = (start_node == NULL) ? 1 : AST_ParseIntegerNode(start_node);
              // TODO make better unbounded identifier
-            unsigned int end = (end_node == NULL) ? 100 : NEWAST_ParseIntegerNode(end_node);
+            unsigned int end = (end_node == NULL) ? 100 : AST_ParseIntegerNode(end_node);
             iexp->minHops = start;
             iexp->maxHops = end;
             iexp->edge = e;
@@ -185,7 +185,7 @@ AlgebraicExpression **_AlgebraicExpression_Intermediate_Expressions(const NEWAST
         if (intermediate_node(dest_idx, nelems) == false) continue;
 
         // Don't build intermediate expression if destination node is not referenced
-        if (NEWAST_GetEntity(ast, ast_dest) == NULL) continue;
+        if (AST_GetEntity(ast, ast_dest) == NULL) continue;
 
         // Finalize current expression.
         iexp->dest_node = dest;
@@ -195,8 +195,8 @@ AlgebraicExpression **_AlgebraicExpression_Intermediate_Expressions(const NEWAST
         iexp->operand_count = 0;
         iexp->src_node = expressions[expIdx-1]->dest_node;
         iexp->dest_node = exp->dest_node;
-        iexp->src_node_idx = NEWAST_GetEntityRecordIdx(ast, ast_src);
-        iexp->dest_node_idx = NEWAST_GetEntityRecordIdx(ast, ast_dest);
+        iexp->src_node_idx = AST_GetEntityRecordIdx(ast, ast_src);
+        iexp->dest_node_idx = AST_GetEntityRecordIdx(ast, ast_dest);
         iexp->edge_idx = expr->record_idx;
         expressions[expIdx++] = iexp;
     }
@@ -215,7 +215,7 @@ static inline void _AlgebraicExpression_Execute_MUL(GrB_Matrix C, GrB_Matrix A, 
         Rg_structured_bool, // Semiring
         A,                  // First matrix
         B,                  // Second matrix
-        desc                // Descriptor        
+        desc                // Descriptor
     );
     assert(res == GrB_SUCCESS);
 }
@@ -267,7 +267,7 @@ void AlgebraicExpression_PrependTerm(AlgebraicExpression *ae, GrB_Matrix m, bool
     ae->operands[0].operand = m;
 }
 
-AlgebraicExpression **AlgebraicExpression_FromPath(const NEWAST *ast, const QueryGraph *q, const cypher_astnode_t *path, size_t *exp_count) {
+AlgebraicExpression **AlgebraicExpression_FromPath(const AST *ast, const QueryGraph *q, const cypher_astnode_t *path, size_t *exp_count) {
     uint edge_count = array_len(q->edges);
     uint node_count = array_len(q->nodes);
     assert(edge_count != 0);
@@ -304,7 +304,7 @@ AlgebraicExpression **AlgebraicExpression_FromPath(const NEWAST *ast, const Quer
         if(exp->operand_count == 0) {
             exp->src_node = src;
             // TODO transpose handling
-            exp->src_node_idx = NEWAST_GetEntityRecordIdx(ast, cypher_ast_pattern_path_get_element(path, i - 1));
+            exp->src_node_idx = AST_GetEntityRecordIdx(ast, cypher_ast_pattern_path_get_element(path, i - 1));
             if(src->label) {
                 GrB_Matrix srcMat = Node_GetMatrix(src);
                 AlgebraicExpression_AppendTerm(exp, srcMat, false, false);
@@ -340,9 +340,9 @@ AlgebraicExpression **AlgebraicExpression_FromPath(const NEWAST *ast, const Quer
         if (varlength) {
             const cypher_astnode_t *start_node = cypher_ast_range_get_start(varlength);
             const cypher_astnode_t *end_node = cypher_ast_range_get_end(varlength);
-            unsigned int start = (start_node == NULL) ? 1 : NEWAST_ParseIntegerNode(start_node);
+            unsigned int start = (start_node == NULL) ? 1 : AST_ParseIntegerNode(start_node);
              // TODO make better unbounded identifier
-            unsigned int end = (end_node == NULL) ? 100 : NEWAST_ParseIntegerNode(end_node);
+            unsigned int end = (end_node == NULL) ? 100 : AST_ParseIntegerNode(end_node);
             if (start == end) hops = start;
         }
 
@@ -359,7 +359,7 @@ AlgebraicExpression **AlgebraicExpression_FromPath(const NEWAST *ast, const Quer
 
     exp->dest_node = dest;
     const cypher_astnode_t *ast_dest_node = cypher_ast_pattern_path_get_element(path, nelems - 1);
-    exp->dest_node_idx = NEWAST_GetEntityRecordIdx(ast, ast_dest_node);
+    exp->dest_node_idx = AST_GetEntityRecordIdx(ast, ast_dest_node);
     AlgebraicExpression **expressions = _AlgebraicExpression_Intermediate_Expressions(ast, exp, path, q, exp_count);
     expressions = _AlgebraicExpression_IsolateVariableLenExps(expressions, exp_count);
     // TODO memory leak (fails on [a|b] relations?)
@@ -374,7 +374,7 @@ AlgebraicExpression **AlgebraicExpression_FromPath(const NEWAST *ast, const Quer
 }
 
 /* Evaluates an algebraic expression,
- * evaluation is done right to left due to matrix CSC representation 
+ * evaluation is done right to left due to matrix CSC representation
  * the right most operand in the expression is a tiny extremely sparse matrix
  * this allows us to avoid computing multiplications of large matrices.
  * In the case an operand is marked for transpose, we will perform
@@ -400,11 +400,11 @@ void AlgebraicExpression_Execute(AlgebraicExpression *ae, GrB_Matrix res) {
         rightTerm = operands[operand_count-1];
         leftTerm = operands[operand_count-2];
 
-        /* Incase we're required to transpose left hand side operand 
+        /* Incase we're required to transpose left hand side operand
          * perform transpose once and update original expression. */
         if(leftTerm.transpose) {
             GrB_Matrix t = leftTerm.operand;
-            /* Graph matrices are immutable, create a new matrix. 
+            /* Graph matrices are immutable, create a new matrix.
              * and transpose. */
             if(!leftTerm.free) {
                 GrB_Index cols;
@@ -696,6 +696,22 @@ static GrB_Matrix _AlgebraicExpression_Eval(AlgebraicExpressionNode *exp, GrB_Ma
 
 void AlgebraicExpression_Eval(AlgebraicExpressionNode *exp, GrB_Matrix res) {
     _AlgebraicExpression_Eval(exp, res);
+}
+
+void AlgebraicExpression_ExtendRecord(AlgebraicExpression *ae) {
+    AST *ast = AST_GetFromTLS();
+    if (ae->src_node_idx == NOT_IN_RECORD) {
+        // Anonymous node - make space for it in the Record
+        ae->src_node_idx = AST_AddAnonymousRecordEntry(ast);
+    }
+
+    if (ae->dest_node_idx == NOT_IN_RECORD) {
+        ae->dest_node_idx = AST_AddAnonymousRecordEntry(ast);
+    }
+
+    if (ae->edge && ae->edge_idx == NOT_IN_RECORD) {
+        ae->edge_idx = AST_AddAnonymousRecordEntry(ast);
+    }
 }
 
 static void _AlgebraicExpressionNode_UniqueNodes(AlgebraicExpressionNode *root, AlgebraicExpressionNode ***uniqueNodes) {

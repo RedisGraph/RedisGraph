@@ -193,7 +193,7 @@ static Record _handoff(OpAggregate *op) {
             // If expression is aliased, introduce it to group record
             // for later evaluation by ORDER-BY expressions.
             const char *alias = op->ast->return_expressions[i]->alias;
-            if(alias) Record_AddScalar(group->r, NEWAST_GetAliasID(op->ast, (char*)alias), res);
+            if(alias) Record_AddScalar(group->r, AST_GetAliasID(op->ast, (char*)alias), res);
         }
     }
 
@@ -208,7 +208,7 @@ static Record _handoff(OpAggregate *op) {
 
 OpBase* NewAggregateOp(AR_ExpNode **expressions, char **aliases) {
     OpAggregate *aggregate = malloc(sizeof(OpAggregate));
-    NEWAST *ast = NEWAST_GetFromTLS();
+    AST *ast = AST_GetFromTLS();
     aggregate->ast = ast;
     aggregate->aliases = aliases;
     aggregate->expressions = expressions;

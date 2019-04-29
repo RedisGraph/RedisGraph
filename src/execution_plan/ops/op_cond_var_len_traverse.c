@@ -7,17 +7,17 @@
 #include <assert.h>
 
 #include "../../util/arr.h"
-#include "../../parser/newast.h"
+#include "../../parser/ast.h"
 #include "../../arithmetic/arithmetic_expression.h"
 #include "../../graph/graphcontext.h"
 #include "../../algorithms/all_paths.h"
 #include "./op_cond_var_len_traverse.h"
 
 static void _setupTraversedRelations(CondVarLenTraverse *op) {
-    NEWAST *ast = NEWAST_GetFromTLS();
+    AST *ast = AST_GetFromTLS();
     GraphContext *gc = GraphContext_GetFromTLS();
 
-    AR_ExpNode *exp = NEWAST_GetEntityFromAlias(ast, op->ae->edge->alias); // TODO guaranteed to exist?
+    AR_ExpNode *exp = AST_GetEntityFromAlias(ast, op->ae->edge->alias); // TODO guaranteed to exist?
     // TODO validate this access
     const cypher_astnode_t *ast_relation = exp->operand.variadic.ast_ref;
     op->relationIDsCount = cypher_ast_rel_pattern_nreltypes(ast_relation);
@@ -47,16 +47,16 @@ OpBase* NewCondVarLenTraverseOp(AlgebraicExpression *ae, unsigned int minHops, u
     condVarLenTraverse->ae = ae;
     condVarLenTraverse->relationIDs = NULL;
     unsigned int src_node_idx = ae->src_node_idx; 
-    NEWAST *ast = NEWAST_GetFromTLS();
+    AST *ast = AST_GetFromTLS();
     if (ae->src_node_idx == NOT_IN_RECORD) {
         // Anonymous node - make space for it in the Record
-        ae->src_node_idx = NEWAST_AddAnonymousRecordEntry(ast);
+        ae->src_node_idx = AST_AddAnonymousRecordEntry(ast);
     }
     condVarLenTraverse->srcNodeIdx = ae->src_node_idx; 
 
     if (ae->dest_node_idx == NOT_IN_RECORD) {
         // Anonymous node - make space for it in the Record
-        ae->dest_node_idx = NEWAST_AddAnonymousRecordEntry(ast);
+        ae->dest_node_idx = AST_AddAnonymousRecordEntry(ast);
     }
     condVarLenTraverse->destNodeIdx = ae->dest_node_idx;
     

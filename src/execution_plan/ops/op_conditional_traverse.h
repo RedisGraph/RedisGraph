@@ -15,7 +15,7 @@
 /* OP Traverse */
 typedef struct {
     OpBase op;
-    NEWAST *ast;
+    AST *ast;
     Graph *graph;
     AlgebraicExpression *algebraic_expression;
     GrB_Matrix F;               // Filter matrix.

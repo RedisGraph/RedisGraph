@@ -12,14 +12,7 @@
 #include "../../graph/entities/edge.h"
 #include "../../resultset/resultset.h"
 #include "../../arithmetic/arithmetic_expression.h"
-
-// Context describing an update expression.
-typedef struct {
-    const char *attribute;          /* Attribute name to update. */
-    Attribute_ID attribute_idx;     /* Attribute internal ID. */
-    int entityRecIdx;               /* Position of entity within record. */
-    AR_ExpNode *exp;                /* Expression to evaluate. */
-} EntityUpdateEvalCtx;
+#include "../../parser/ast_build_op_contexts.h"
 
 // Context describing a pending update to perform.
 typedef struct {    
@@ -32,7 +25,6 @@ typedef struct {
 
 typedef struct {
     OpBase op;
-    NEWAST *ast;
     GraphContext *gc;
     ResultSet *result_set;
 
@@ -46,7 +38,7 @@ typedef struct {
     bool updates_commited;                      /* Updates performed? */
 } OpUpdate;
 
-OpBase* NewUpdateOp(GraphContext *gc, ResultSet *result_set);
+OpBase* NewUpdateOp(GraphContext *gc, EntityUpdateEvalCtx *update_exps, uint update_exp_count, ResultSet *result_set);
 OpResult OpUpdateInit(OpBase *opBase);
 Record OpUpdateConsume(OpBase *opBase);
 OpResult OpUpdateReset(OpBase *ctx);

@@ -7,7 +7,7 @@
 #include <assert.h>
 #include "../value.h"
 #include "filter_tree.h"
-#include "../parser/newast.h"
+#include "../parser/ast.h"
 #include "../query_executor.h"
 #include "../util/vector.h"
 
@@ -25,7 +25,7 @@ FT_FilterNode* CreateCondFilterNode(AST_Operator op) {
     return filterNode;
 }
 
-FT_FilterNode* _CreatePredicateFilterNode(const NEWAST *ast, AST_Operator op, const cypher_astnode_t *lhs, const cypher_astnode_t *rhs) {
+FT_FilterNode* _CreatePredicateFilterNode(const AST *ast, AST_Operator op, const cypher_astnode_t *lhs, const cypher_astnode_t *rhs) {
     FT_FilterNode *filterNode = malloc(sizeof(FT_FilterNode));
     filterNode->t = FT_N_PRED;
     filterNode->pred.op = op;
@@ -44,7 +44,7 @@ FT_FilterNode* _CreatePredicateFilterNodeFromExps(AST_Operator op, AR_ExpNode *l
     return filterNode;
 }
 
-FT_FilterNode* _CreateFilterNode(const NEWAST *ast, AST_Operator op, const cypher_astnode_t *lhs, const cypher_astnode_t *rhs) {
+FT_FilterNode* _CreateFilterNode(const AST *ast, AST_Operator op, const cypher_astnode_t *lhs, const cypher_astnode_t *rhs) {
     FT_FilterNode *filter = NULL;
     switch (op) {
         case OP_OR:
@@ -147,13 +147,13 @@ void FT_Append(FT_FilterNode **root_ptr, FT_FilterNode *child) {
 }
 
 // AND, OR, XOR (others?)
-FT_FilterNode* _convertBinaryOperator(const NEWAST *ast, const cypher_astnode_t *op_node) {
+FT_FilterNode* _convertBinaryOperator(const AST *ast, const cypher_astnode_t *op_node) {
     const cypher_operator_t *operator = cypher_ast_binary_operator_get_operator(op_node);
     // Arguments are of type CYPHER_AST_EXPRESSION
     const cypher_astnode_t *lhs = cypher_ast_binary_operator_get_argument1(op_node);
     const cypher_astnode_t *rhs = cypher_ast_binary_operator_get_argument2(op_node);
 
-    AST_Operator op = NEWAST_ConvertOperatorNode(operator);
+    AST_Operator op = AST_ConvertOperatorNode(operator);
 
     return _CreateFilterNode(ast, op, lhs, rhs);
 }
@@ -161,12 +161,12 @@ FT_FilterNode* _convertBinaryOperator(const NEWAST *ast, const cypher_astnode_t 
 /* A comparison node contains two arrays - one of operators, and one of expressions.
  * Most comparisons will only have one operator and two expressions, but Cypher
  * allows more complex formulations like "x < y <= z". */
-FT_FilterNode* _convertComparison(const NEWAST *ast, const cypher_astnode_t *comparison_node) {
+FT_FilterNode* _convertComparison(const AST *ast, const cypher_astnode_t *comparison_node) {
     unsigned int nelems = cypher_ast_comparison_get_length(comparison_node);
     assert(nelems == 1); // TODO tmp, but may require modifying tree formation.
 
     const cypher_operator_t *operator = cypher_ast_comparison_get_operator(comparison_node, 0);
-    AST_Operator op = NEWAST_ConvertOperatorNode(operator);
+    AST_Operator op = AST_ConvertOperatorNode(operator);
 
     // All arguments are of type CYPHER_AST_EXPRESSION
     const cypher_astnode_t *lhs = cypher_ast_comparison_get_argument(comparison_node, 0);
@@ -175,7 +175,7 @@ FT_FilterNode* _convertComparison(const NEWAST *ast, const cypher_astnode_t *com
     return _CreatePredicateFilterNode(ast, op, lhs, rhs);
 }
 
-FT_FilterNode* _convertInlinedProperties(const NEWAST *ast, const cypher_astnode_t *entity, int type) {
+FT_FilterNode* _convertInlinedProperties(const AST *ast, const cypher_astnode_t *entity, int type) {
     const cypher_astnode_t *props = NULL;
     const cypher_astnode_t *alias_node = NULL;
 
@@ -194,7 +194,7 @@ FT_FilterNode* _convertInlinedProperties(const NEWAST *ast, const cypher_astnode
         alias = cypher_ast_identifier_get_name(alias_node);
     } else {
         // Retrieve alias of anonymous entity
-        AR_ExpNode *exp = NEWAST_GetEntity(ast, entity);
+        AR_ExpNode *exp = AST_GetEntity(ast, entity);
         if (exp) alias = exp->operand.variadic.entity_alias;
         // Alias can still be NULL - can we move from aliases to record indexes?
         // (Still need to add entity to record here)
@@ -220,7 +220,7 @@ FT_FilterNode* _convertInlinedProperties(const NEWAST *ast, const cypher_astnode
     return root;
 }
 
-void _collectFilters(const NEWAST *ast, FT_FilterNode **root, const cypher_astnode_t *entity) {
+void _collectFilters(const AST *ast, FT_FilterNode **root, const cypher_astnode_t *entity) {
     if (!entity) return;
 
     cypher_astnode_type_t type = cypher_astnode_type(entity);
@@ -250,7 +250,7 @@ void _collectFilters(const NEWAST *ast, FT_FilterNode **root, const cypher_astno
 }
 
 // TODO use more widely or delete
-FT_FilterNode* FilterNode_FromAST(const NEWAST *ast, const cypher_astnode_t *expr) {
+FT_FilterNode* FilterNode_FromAST(const AST *ast, const cypher_astnode_t *expr) {
     assert(expr);
     cypher_astnode_type_t type = cypher_astnode_type(expr);
     if (type == CYPHER_AST_BINARY_OPERATOR) {
@@ -265,17 +265,17 @@ FT_FilterNode* FilterNode_FromAST(const NEWAST *ast, const cypher_astnode_t *exp
 }
 
 
-FT_FilterNode* BuildFiltersTree(const NEWAST *ast) {
+FT_FilterNode* BuildFiltersTree(const AST *ast) {
     FT_FilterNode *filter_tree = NULL; 
     unsigned int clause_count = cypher_astnode_nchildren(ast->root);
     const cypher_astnode_t *match_clauses[clause_count];
-    unsigned int match_count = NewAST_GetTopLevelClauses(ast->root, CYPHER_AST_MATCH, match_clauses);
+    unsigned int match_count = AST_GetTopLevelClauses(ast->root, CYPHER_AST_MATCH, match_clauses);
     for (unsigned int i = 0; i < match_count; i ++) {
         _collectFilters(ast, &filter_tree, match_clauses[i]);
     }
 
     const cypher_astnode_t *merge_clauses[clause_count];
-    unsigned int merge_count = NewAST_GetTopLevelClauses(ast->root, CYPHER_AST_MERGE, merge_clauses);
+    unsigned int merge_count = AST_GetTopLevelClauses(ast->root, CYPHER_AST_MERGE, merge_clauses);
     for (unsigned int i = 0; i < merge_count; i ++) {
         _collectFilters(ast, &filter_tree, merge_clauses[i]);
     }

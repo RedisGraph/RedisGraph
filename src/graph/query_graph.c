@@ -15,20 +15,20 @@ static void _QueryGraph_AddASTRef(QueryGraph *qg, const cypher_astnode_t *ast_en
 }
 
 static void _BuildQueryGraphAddNode(const GraphContext *gc,
-                             const NEWAST *ast,
+                             const AST *ast,
                              const cypher_astnode_t *ast_entity,
                              QueryGraph *qg) {
 
     // TODO would it be better to build the QG map of hashes? More consistent with AST,
     // but requires accesses from elsewhere to hash first.
-    // AST_IDENTIFIER identifier = NEWAST_EntityHash(ast_entity);
+    // AST_IDENTIFIER identifier = AST_EntityHash(ast_entity);
     Node *n = QueryGraph_GetEntityByASTRef(qg, ast_entity);
 
     // Node and AST entity already mapped, do nothing
     if (n) return;
 
     // Check if node has been mapped using a different AST entity
-    AR_ExpNode *exp = NEWAST_GetEntity(ast, ast_entity);
+    AR_ExpNode *exp = AST_GetEntity(ast, ast_entity);
     n = QueryGraph_GetEntityByASTRef(qg, exp->operand.variadic.ast_ref);
 
     unsigned int nlabels = cypher_ast_node_pattern_nlabels(ast_entity);
@@ -61,7 +61,7 @@ static void _BuildQueryGraphAddNode(const GraphContext *gc,
 }
 
 static void _BuildQueryGraphAddEdge(const GraphContext *gc,
-                        const NEWAST *ast,
+                        const AST *ast,
                         const cypher_astnode_t *ast_entity,
                         const cypher_astnode_t *l_entity,
                         const cypher_astnode_t *r_entity,
@@ -72,7 +72,7 @@ static void _BuildQueryGraphAddEdge(const GraphContext *gc,
     /* Check for duplications. */
     if (e) return;
 
-    AR_ExpNode *exp = NEWAST_GetEntity(ast, ast_entity);
+    AR_ExpNode *exp = AST_GetEntity(ast, ast_entity);
     char *alias = exp->operand.variadic.entity_alias;
 
     const cypher_astnode_t *src_node;
@@ -130,7 +130,7 @@ QueryGraph* QueryGraph_New(size_t node_cap, size_t edge_cap) {
     return qg;
 }
 
-void QueryGraph_AddPath(const GraphContext *gc, const NEWAST *ast, QueryGraph *qg, const cypher_astnode_t *path) {
+void QueryGraph_AddPath(const GraphContext *gc, const AST *ast, QueryGraph *qg, const cypher_astnode_t *path) {
     uint nelems = cypher_ast_pattern_path_nelements(path);
     /* Introduce nodes first. */
     for (uint i = 0; i < nelems; i += 2) {
@@ -151,7 +151,7 @@ void QueryGraph_AddPath(const GraphContext *gc, const NEWAST *ast, QueryGraph *q
 /* Build a complete query graph from the clauses that can introduce entities
  * (MATCH, MERGE, and CREATE) */
 // TODO Depending on how path uniqueness is specified, this may be too inclusive?
-QueryGraph* BuildQueryGraph(const GraphContext *gc, const NEWAST *ast) {
+QueryGraph* BuildQueryGraph(const GraphContext *gc, const AST *ast) {
     /* Predetermine graph size: (entities in both MATCH and CREATE clauses)
      * have graph object maintain an entity capacity, to avoid reallocs,
      * problem was reallocs done by CREATE clause, which invalidated old references in ExpandAll. */
@@ -160,7 +160,7 @@ QueryGraph* BuildQueryGraph(const GraphContext *gc, const NEWAST *ast) {
     // If so, re-introduce similar logic.
     size_t node_count;
     size_t edge_count;
-    node_count = edge_count = NEWAST_AliasCount(ast);
+    node_count = edge_count = AST_RecordLength(ast);
     // _Determine_Graph_Size(old_ast, &node_count, &edge_count);
     QueryGraph *qg = QueryGraph_New(node_count, edge_count);
 
@@ -170,7 +170,7 @@ QueryGraph* BuildQueryGraph(const GraphContext *gc, const NEWAST *ast) {
     const cypher_astnode_t *clauses[clause_count];
 
     // MATCH clauses
-    uint match_count = NewAST_GetTopLevelClauses(ast->root, CYPHER_AST_MATCH, clauses);
+    uint match_count = AST_GetTopLevelClauses(ast->root, CYPHER_AST_MATCH, clauses);
     for (uint i = 0; i < match_count; i ++) {
         const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(clauses[i]);
         uint npaths = cypher_ast_pattern_npaths(pattern);
@@ -181,7 +181,7 @@ QueryGraph* BuildQueryGraph(const GraphContext *gc, const NEWAST *ast) {
     }
 
     // CREATE clauses
-    uint create_count = NewAST_GetTopLevelClauses(ast->root, CYPHER_AST_CREATE, clauses);
+    uint create_count = AST_GetTopLevelClauses(ast->root, CYPHER_AST_CREATE, clauses);
     for (uint i = 0; i < create_count; i ++) {
         const cypher_astnode_t *pattern = cypher_ast_create_get_pattern(clauses[i]);
         uint npaths = cypher_ast_pattern_npaths(pattern);
@@ -192,7 +192,7 @@ QueryGraph* BuildQueryGraph(const GraphContext *gc, const NEWAST *ast) {
     }
 
     // MERGE clauses
-    uint merge_count = NewAST_GetTopLevelClauses(ast->root, CYPHER_AST_MERGE, clauses);
+    uint merge_count = AST_GetTopLevelClauses(ast->root, CYPHER_AST_MERGE, clauses);
     for (uint i = 0; i < merge_count; i ++) {
         const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(clauses[i]);
         QueryGraph_AddPath(gc, ast, qg, path);

@@ -105,13 +105,13 @@ static AR_ExpNode* _AR_EXP_NewOpNode(char *func_name, int child_count) {
     return node;
 }
 
-AR_ExpNode* AR_EXP_NewVariableOperandNode(const NEWAST *ast, const cypher_astnode_t *entity, const char *alias, const char *prop) {
+AR_ExpNode* AR_EXP_NewVariableOperandNode(const AST *ast, const cypher_astnode_t *entity, const char *alias, const char *prop) {
     AR_ExpNode *node = malloc(sizeof(AR_ExpNode));
     node->type = AR_EXP_OPERAND;
     node->record_idx = NOT_IN_RECORD;
     node->operand.type = AR_EXP_VARIADIC;
     node->operand.variadic.entity_alias = strdup(alias);
-    unsigned int id = NEWAST_GetAliasID(ast, (char*)alias); // TODO still sensible?
+    unsigned int id = AST_GetAliasID(ast, (char*)alias); // TODO still sensible?
     node->operand.variadic.entity_alias_idx = id;
     node->operand.variadic.entity_prop = (prop) ? strdup(prop) : NULL;
     node->operand.variadic.ast_ref = entity;
@@ -161,7 +161,7 @@ void AR_EXP_AssignRecordIndex(AR_ExpNode *exp, unsigned int idx) {
     exp->record_idx = idx;
 }
 
-AR_ExpNode* AR_EXP_FromExpression(const NEWAST *ast, const cypher_astnode_t *expr) {
+AR_ExpNode* AR_EXP_FromExpression(const AST *ast, const cypher_astnode_t *expr) {
     const cypher_astnode_type_t type = cypher_astnode_type(expr);
 
     /* Function invocations*/
@@ -248,7 +248,7 @@ AR_ExpNode* AR_EXP_FromExpression(const NEWAST *ast, const cypher_astnode_t *exp
         }
     } else if (type == CYPHER_AST_BINARY_OPERATOR) {
         const cypher_operator_t *operator = cypher_ast_binary_operator_get_operator(expr);
-        AST_Operator operator_enum = NEWAST_ConvertOperatorNode(operator);
+        AST_Operator operator_enum = AST_ConvertOperatorNode(operator);
         // Arguments are of type CYPHER_AST_EXPRESSION
         AR_ExpNode *op = _AR_EXP_NewOpNodeFromAST(operator_enum, 2);
         const cypher_astnode_t *lhs_node = cypher_ast_binary_operator_get_argument1(expr);

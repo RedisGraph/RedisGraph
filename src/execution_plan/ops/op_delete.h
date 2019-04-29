@@ -27,7 +27,7 @@ typedef struct {
     ResultSet *result_set;
 } OpDelete;
 
-OpBase* NewDeleteOp(const cypher_astnode_t *delete_clause, ResultSet *result_set);
+OpBase* NewDeleteOp(uint *nodes_ref, uint *edges_ref, ResultSet *result_set);
 Record OpDeleteConsume(OpBase *opBase);
 OpResult OpDeleteReset(OpBase *ctx);
 void OpDeleteFree(OpBase *ctx);

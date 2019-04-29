@@ -5,15 +5,15 @@
 */
 
 #include "op_all_node_scan.h"
-#include "../../parser/newast.h"
+#include "../../parser/ast.h"
 
 OpBase* NewAllNodeScanOp(const Graph *g, Node *n, uint node_idx) {
     AllNodeScan *allNodeScan = malloc(sizeof(AllNodeScan));
     allNodeScan->iter = Graph_ScanNodes(g);
 
-    NEWAST *ast = NEWAST_GetFromTLS();
+    AST *ast = AST_GetFromTLS();
     allNodeScan->nodeRecIdx = node_idx;
-    allNodeScan->recLength = NEWAST_RecordLength(ast);
+    allNodeScan->recLength = AST_RecordLength(ast);
 
     // Set our Op operations
     OpBase_Init(&allNodeScan->op);

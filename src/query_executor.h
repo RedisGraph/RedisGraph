@@ -8,19 +8,19 @@
 #define __QUERY_EXECUTOR_H
 
 #include "redismodule.h"
-#include "parser/newast.h"
+#include "parser/ast.h"
 #include "graph/query_graph.h"
 #include "arithmetic/arithmetic_expression.h"
 
 /* Modifies AST by expanding RETURN * or RETURN
  * a into a list of individual properties. */
-void ExpandCollapsedNodes(NEWAST *ast);
+void ExpandCollapsedNodes(AST *ast);
 
 /* Make sure AST is valid. */
-AST_Validation AST_PerformValidations(RedisModuleCtx *ctx, const NEWAST *ast);
+AST_Validation AST_PerformValidations(RedisModuleCtx *ctx, const AST *ast);
 
 /* Performs a number of adjustments to given AST. */
 // void ModifyAST(GraphContext *gc, AST *ast);
-void ModifyAST(GraphContext *gc, NEWAST *new_ast);
+void ModifyAST(GraphContext *gc, AST *new_ast);
 
 #endif

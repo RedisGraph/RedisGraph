@@ -17,7 +17,7 @@ extern "C" {
 #include "../../src/graph/query_graph.h"
 #include "../../src/util/simple_timer.h"
 #include "../../src/arithmetic/algebraic_expression.h"
-#include "../../src/parser/newast.h"
+#include "../../src/parser/ast.h"
 #include "../../src/util/rmalloc.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 
@@ -599,8 +599,8 @@ TEST_F(AlgebraicExpressionTest, ExpTransform_AB_Times_C_Plus_D) {
 TEST_F(AlgebraicExpressionTest, MultipleIntermidateReturnNodes) {
     const char *query = query_multiple_intermidate_return_nodes;
     cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
-    NEWAST *ast = NEWAST_Build(parse_result);
-    NEWAST_BuildAliasMap(ast);
+    AST *ast = AST_Build(parse_result);
+    AST_BuildAliasMap(ast);
     
     size_t exp_count = 0;
     AlgebraicExpression **ae = AlgebraicExpression_FromQuery(ast, query_graph, &exp_count);
@@ -637,7 +637,7 @@ TEST_F(AlgebraicExpressionTest, MultipleIntermidateReturnNodes) {
     ASSERT_EQ(exp->operands[1].operand, e->mat);
 
     // Clean up.
-    // NEWAST_Free(ast);
+    // AST_Free(ast);
     for(int i = 0; i < exp_count; i++) AlgebraicExpression_Free(ae[i]);
     free(ae);
 }
@@ -645,8 +645,8 @@ TEST_F(AlgebraicExpressionTest, MultipleIntermidateReturnNodes) {
 TEST_F(AlgebraicExpressionTest, OneIntermidateReturnNode) {
     const char *query = query_one_intermidate_return_nodes;
     cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
-    NEWAST *ast = NEWAST_Build(parse_result);
-    NEWAST_BuildAliasMap(ast);
+    AST *ast = AST_Build(parse_result);
+    AST_BuildAliasMap(ast);
 
     size_t exp_count = 0;
     AlgebraicExpression **ae = AlgebraicExpression_FromQuery(ast, query_graph, &exp_count);
@@ -688,7 +688,7 @@ TEST_F(AlgebraicExpressionTest, OneIntermidateReturnNode) {
     ASSERT_EQ(exp->operands[1].operand, e->mat);
 
     // Clean up.
-    // NEWAST_Free(ast);
+    // AST_Free(ast);
     for(int i = 0; i < exp_count; i++) AlgebraicExpression_Free(ae[i]);
     free(ae);
 }
@@ -696,8 +696,8 @@ TEST_F(AlgebraicExpressionTest, OneIntermidateReturnNode) {
 TEST_F(AlgebraicExpressionTest, NoIntermidateReturnNodes) {
     const char *query = query_no_intermidate_return_nodes;
     cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
-    NEWAST *ast = NEWAST_Build(parse_result);
-    NEWAST_BuildAliasMap(ast);
+    AST *ast = AST_Build(parse_result);
+    AST_BuildAliasMap(ast);
 
     size_t exp_count = 0;
     AlgebraicExpression **ae = AlgebraicExpression_FromQuery(ast, query_graph, &exp_count);
@@ -731,7 +731,7 @@ TEST_F(AlgebraicExpressionTest, NoIntermidateReturnNodes) {
     ASSERT_EQ(exp->operands[0].operand, n->mat);
 
     // Clean up.
-    // NEWAST_Free(ast);
+    // AST_Free(ast);
     AlgebraicExpression_Free(exp);
     free(ae);
 }
@@ -749,8 +749,8 @@ TEST_F(AlgebraicExpressionTest, OneIntermidateReturnEdge) {
     //==============================================================================
     query = query_return_first_edge;
     cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
-    NEWAST *ast = NEWAST_Build(parse_result);
-    NEWAST_BuildAliasMap(ast);
+    AST *ast = AST_Build(parse_result);
+    AST_BuildAliasMap(ast);
 
     exp_count = 0;
     ae = AlgebraicExpression_FromQuery(ast, query_graph, &exp_count);
@@ -784,7 +784,7 @@ TEST_F(AlgebraicExpressionTest, OneIntermidateReturnEdge) {
     ASSERT_EQ(exp->operands[0].operand, n->mat);
 
     // Clean up.
-    // NEWAST_Free(ast);
+    // AST_Free(ast);
     for(int i = 0; i < exp_count; i++) AlgebraicExpression_Free(ae[i]);
     free(ae);
 
@@ -793,8 +793,8 @@ TEST_F(AlgebraicExpressionTest, OneIntermidateReturnEdge) {
     //==============================================================================
     query = query_return_intermidate_edge;
     parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
-    ast = NEWAST_Build(parse_result);
-    NEWAST_BuildAliasMap(ast);
+    ast = AST_Build(parse_result);
+    AST_BuildAliasMap(ast);
 
     exp_count = 0;
     ae = AlgebraicExpression_FromQuery(ast, query_graph, &exp_count);
@@ -833,7 +833,7 @@ TEST_F(AlgebraicExpressionTest, OneIntermidateReturnEdge) {
     ASSERT_EQ(exp->operands[1].operand, e->mat);
 
     // Clean up.
-    // NEWAST_Free(ast);
+    // AST_Free(ast);
     for(int i = 0; i < exp_count; i++) AlgebraicExpression_Free(ae[i]);
     free(ae);
 
@@ -842,8 +842,8 @@ TEST_F(AlgebraicExpressionTest, OneIntermidateReturnEdge) {
     //==============================================================================
     query = query_return_last_edge;
     parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
-    ast = NEWAST_Build(parse_result);
-    NEWAST_BuildAliasMap(ast);
+    ast = AST_Build(parse_result);
+    AST_BuildAliasMap(ast);
 
     exp_count = 0;
     ae = AlgebraicExpression_FromQuery(ast, query_graph, &exp_count);
@@ -876,7 +876,7 @@ TEST_F(AlgebraicExpressionTest, OneIntermidateReturnEdge) {
     ASSERT_EQ(exp->operands[1].operand, e->mat);
 
     // Clean up.
-    // NEWAST_Free(ast);
+    // AST_Free(ast);
     for(int i = 0; i < exp_count; i++) AlgebraicExpression_Free(ae[i]);
     free(ae);
 }
@@ -884,8 +884,8 @@ TEST_F(AlgebraicExpressionTest, OneIntermidateReturnEdge) {
 TEST_F(AlgebraicExpressionTest, ExpressionExecute) {
     const char *query = query_no_intermidate_return_nodes;
     cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
-    NEWAST *ast = NEWAST_Build(parse_result);
-    NEWAST_BuildAliasMap(ast);
+    AST *ast = AST_Build(parse_result);
+    AST_BuildAliasMap(ast);
 
     size_t exp_count = 0;
     AlgebraicExpression **ae = AlgebraicExpression_FromQuery(ast, query_graph, &exp_count);
@@ -920,7 +920,7 @@ TEST_F(AlgebraicExpressionTest, ExpressionExecute) {
     assert(_compare_matrices(res, expected));
 
     // Clean up
-    // NEWAST_Free(ast);
+    // AST_Free(ast);
     AlgebraicExpression_Free(ae[0]);
     free(ae);
     GrB_Matrix_free(&expected);

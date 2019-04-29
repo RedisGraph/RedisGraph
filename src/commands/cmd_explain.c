@@ -9,7 +9,7 @@
 #include "../query_executor.h"
 #include "../execution_plan/execution_plan.h"
 
-extern pthread_key_t _tlsNEWASTKey;  // Thread local storage NEWAST key.
+extern pthread_key_t _tlsASTKey;  // Thread local storage AST key.
 
 /* Builds an execution plan but does not execute it
  * reports plan back to the client
@@ -34,9 +34,9 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     ExecutionPlan *plan = NULL;
 
     cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
-    NEWAST *new_ast = NEWAST_Build(parse_result);
+    AST *new_ast = AST_Build(parse_result);
 
-    pthread_setspecific(_tlsNEWASTKey, new_ast);
+    pthread_setspecific(_tlsASTKey, new_ast);
 
     // Retrieve the GraphContext and acquire a read lock.
     gc = GraphContext_Retrieve(ctx, graphname);

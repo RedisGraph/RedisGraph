@@ -23,7 +23,7 @@ static AR_ExpNode** _getOrderExpressions(OpBase *op) {
 }
 
 OpBase* NewProjectOp(AR_ExpNode **exps, char **aliases) {
-    NEWAST *ast = NEWAST_GetFromTLS();
+    AST *ast = AST_GetFromTLS();
     OpProject *project = malloc(sizeof(OpProject));
     project->ast = ast;
     project->exps = exps;
@@ -91,15 +91,15 @@ Record ProjectConsume(OpBase *opBase) {
         switch(SI_TYPE(v)) {
             case T_NODE:
                 Record_AddNode(projection, rec_idx, *((Node*)v.ptrval));
-                if(alias) Record_AddNode(r, NEWAST_GetAliasID(op->ast, alias), *((Node*)v.ptrval));
+                if(alias) Record_AddNode(r, AST_GetAliasID(op->ast, alias), *((Node*)v.ptrval));
                 break;
             case T_EDGE:
                 Record_AddEdge(projection, rec_idx, *((Edge*)v.ptrval));
-                if(alias) Record_AddEdge(r, NEWAST_GetAliasID(op->ast, alias), *((Edge*)v.ptrval));
+                if(alias) Record_AddEdge(r, AST_GetAliasID(op->ast, alias), *((Edge*)v.ptrval));
                 break;
             default:
                 Record_AddScalar(projection, rec_idx, v);
-                if(alias) Record_AddScalar(r, NEWAST_GetAliasID(op->ast, alias), v);
+                if(alias) Record_AddScalar(r, AST_GetAliasID(op->ast, alias), v);
                 break;
         }
         rec_idx++;
@@ -113,7 +113,7 @@ Record ProjectConsume(OpBase *opBase) {
          * WITH 1 as one, one+one as two */
         // int alias_idx = NOT_IN_RECORD;
         // char *alias = (char*)op->ast->return_expressions[i]->alias;
-        // if (alias) alias_idx = NEWAST_GetAliasID(op->ast, alias);
+        // if (alias) alias_idx = AST_GetAliasID(op->ast, alias);
 
         // switch(SI_TYPE(v)) {
             // case T_NODE:

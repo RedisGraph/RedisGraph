@@ -7,17 +7,17 @@
 #include "op_conditional_traverse.h"
 #include "../../util/arr.h"
 #include "../../GraphBLASExt/GxB_Delete.h"
-#include "../../parser/newast.h"
+#include "../../parser/ast.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
 static void _setupTraversedRelations(CondTraverse *op) {
-    NEWAST *ast = NEWAST_GetFromTLS();
+    AST *ast = AST_GetFromTLS();
     GraphContext *gc = GraphContext_GetFromTLS();
     char *alias = op->algebraic_expression->edge->alias;
     
     if (alias != NULL) {
         // TODO inadequate - need unaliased multi-reltype edges
-        AR_ExpNode *e = NEWAST_GetEntityFromAlias(ast, alias);
+        AR_ExpNode *e = AST_GetEntityFromAlias(ast, alias);
         const cypher_astnode_t *ast_entity = e->operand.variadic.ast_ref; // TODO safe?
         op->edgeRelationCount = cypher_ast_rel_pattern_nreltypes(ast_entity);
         if(op->edgeRelationCount > 0) {
@@ -82,14 +82,14 @@ void _traverse(CondTraverse *op) {
 
 // Determine the maximum number of records
 // which will be considered when evaluating an algebraic expression.
-static int _determinRecordCap(const NEWAST *ast) {
+static int _determinRecordCap(const AST *ast) {
     int recordsCap = 16;    // Default.
-    const cypher_astnode_t *ret_clause = NEWAST_GetClause(ast->root, CYPHER_AST_RETURN);
+    const cypher_astnode_t *ret_clause = AST_GetClause(ast->root, CYPHER_AST_RETURN);
     if (ret_clause == NULL) return recordsCap;
     // TODO should just store this number somewhere, as this logic is also in resultset
     const cypher_astnode_t *limit_clause = cypher_ast_return_get_limit(ret_clause);
     if (limit_clause) {
-        int limit = NEWAST_ParseIntegerNode(limit_clause);
+        int limit = AST_ParseIntegerNode(limit_clause);
         recordsCap = MIN(recordsCap, limit);
     }
     return recordsCap;
@@ -97,7 +97,7 @@ static int _determinRecordCap(const NEWAST *ast) {
 
 OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *algebraic_expression) {
     CondTraverse *traverse = calloc(1, sizeof(CondTraverse));
-    NEWAST *ast = NEWAST_GetFromTLS();
+    AST *ast = AST_GetFromTLS();
     traverse->ast = ast;
     traverse->graph = g;
     traverse->algebraic_expression = algebraic_expression;
@@ -109,13 +109,13 @@ OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *algebraic_expression) {
 
     if (algebraic_expression->src_node_idx == NOT_IN_RECORD) {
         // Anonymous node - make space for it in the Record
-        algebraic_expression->src_node_idx = NEWAST_AddAnonymousRecordEntry(ast);
+        algebraic_expression->src_node_idx = AST_AddAnonymousRecordEntry(ast);
     }
     traverse->srcNodeRecIdx = algebraic_expression->src_node_idx; 
 
     if (algebraic_expression->dest_node_idx == NOT_IN_RECORD) {
         // Anonymous node - make space for it in the Record
-        algebraic_expression->dest_node_idx = NEWAST_AddAnonymousRecordEntry(ast);
+        algebraic_expression->dest_node_idx = AST_AddAnonymousRecordEntry(ast);
     }
     traverse->destNodeRecIdx = algebraic_expression->dest_node_idx;
     
@@ -145,7 +145,7 @@ OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *algebraic_expression) {
         if (modified) Vector_Push(traverse->op.modifies, modified);
         traverse->edges = array_new(Edge, 32);
         if (algebraic_expression->edge_idx == NOT_IN_RECORD) {
-            algebraic_expression->edge_idx = NEWAST_AddAnonymousRecordEntry(ast);
+            algebraic_expression->edge_idx = AST_AddAnonymousRecordEntry(ast);
         }
         traverse->edgeRecIdx = algebraic_expression->edge_idx;
     }

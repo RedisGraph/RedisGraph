@@ -41,7 +41,7 @@
  * in different ways. */
 
 #include "skiplist.h"
-#include "../parser/newast.h"
+#include "../parser/ast.h"
 
 #include <math.h>
 #include <stdlib.h>

@@ -9,9 +9,8 @@
 #include "../../util/arr.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
-OpBase* NewUnwindOp(NEWAST *ast, const cypher_astnode_t *clause) {
+OpBase* NewUnwindOp(uint record_len, uint record_idx, AR_ExpNode **exprs, char *alias) {
     OpUnwind *unwind = malloc(sizeof(OpUnwind));
-    unwind->ast = ast;
     unwind->expIdx = 0;
     unwind->expressions = NULL;
 
@@ -24,31 +23,16 @@ OpBase* NewUnwindOp(NEWAST *ast, const cypher_astnode_t *clause) {
     unwind->op.reset = UnwindReset;
     unwind->op.free = UnwindFree;
 
-    unwind->unwindClause = clause;
-
     // Handle alias
-    const cypher_astnode_t *alias_node = cypher_ast_unwind_get_alias(clause);
-    const char *alias = cypher_ast_identifier_get_name(alias_node);
     unwind->op.modifies = NewVector(char*, 1);
-    Vector_Push(unwind->op.modifies, (char*)alias);
-    unwind->unwindRecIdx = NEWAST_GetAliasID(ast, (char*)alias); // TODO moved from Init, move back if necessary
+    Vector_Push(unwind->op.modifies, alias);
+    unwind->unwindRecIdx = record_idx;
 
     return (OpBase*)unwind;
 }
 
-// TODO some un
 OpResult UnwindInit(OpBase *opBase) {
     OpUnwind *op = (OpUnwind*)opBase;
-    const cypher_astnode_t *exprs = cypher_ast_unwind_get_expression(op->unwindClause);
-    assert(cypher_astnode_type(exprs) == CYPHER_AST_COLLECTION);
-    uint expCount = cypher_ast_collection_length(exprs);
-    op->expressions = array_new(AR_ExpNode*, expCount);
-
-    for(uint i = 0; i < expCount; i ++) {
-        const cypher_astnode_t *exp_node = cypher_ast_collection_get(exprs, i);
-        AR_ExpNode *exp = AR_EXP_FromExpression(op->ast, exp_node);
-        op->expressions = array_append(op->expressions, exp);
-    }
     return OP_OK;
 }
 
@@ -59,7 +43,7 @@ Record UnwindConsume(OpBase *opBase) {
     if(op->expIdx == array_len(op->expressions)) return NULL;
 
     AR_ExpNode *exp = op->expressions[op->expIdx];
-    Record r = Record_New(NEWAST_AliasCount(op->ast));
+    Record r = Record_New(op->record_len);
     SIValue v = AR_EXP_Evaluate(exp, r);
     Record_AddScalar(r, op->unwindRecIdx, v);
     op->expIdx++;

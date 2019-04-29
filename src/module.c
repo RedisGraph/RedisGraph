@@ -19,7 +19,7 @@
 threadpool _thpool = NULL;
 pthread_key_t _tlsGCKey;    // Thread local storage graph context key.
 pthread_key_t _tlsASTKey;   // Thread local storage AST key.
-pthread_key_t _tlsNEWASTKey;   // Thread local storage AST key.
+pthread_key_t _tlsASTKey;   // Thread local storage AST key.
 
 /* Set up thread pool,
  * number of threads within pool should be

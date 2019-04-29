@@ -11,7 +11,8 @@
 #include "../../graph/entities/node.h"
 #include "../../graph/entities/edge.h"
 #include "../../resultset/resultset.h"
-#include "../../parser/newast.h"
+#include "../../parser/ast.h"
+#include "../../parser/ast_build_op_contexts.h"
 
 /* Creates new entities according to the CREATE clause. */
 
@@ -32,7 +33,7 @@ typedef struct {
 typedef struct {
     OpBase op;
     GraphContext *gc;
-    NEWAST *ast;
+    AST *ast;
     QueryGraph *qg;
     Record *records;
 

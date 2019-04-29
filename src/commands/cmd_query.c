@@ -7,14 +7,14 @@
 #include "cmd_query.h"
 #include "cmd_context.h"
 #include "../graph/graph.h"
-#include "../parser/newast.h"
+#include "../parser/ast.h"
 #include "../query_executor.h"
 #include "../util/simple_timer.h"
 #include "../execution_plan/execution_plan.h"
 #include "../util/rmalloc.h"
 #include "../../deps/libcypher-parser/lib/src/cypher-parser.h"
 
-extern pthread_key_t _tlsNEWASTKey;  // Thread local storage NEWAST key.
+extern pthread_key_t _tlsASTKey;  // Thread local storage AST key.
 
 void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, const cypher_astnode_t *index_op) {
 
@@ -56,19 +56,19 @@ void _MGraph_Query(void *args) {
     CommandCtx *qctx = (CommandCtx*)args;
     RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(qctx);
     ResultSet* resultSet = NULL;
-    NEWAST *ast = qctx->ast;
-    bool readonly = NEWAST_ReadOnly(ast->root);
+    AST *ast = qctx->ast;
+    bool readonly = AST_ReadOnly(ast->root);
     bool lockAcquired = false;
 
     // Set thread-local AST
-    pthread_setspecific(_tlsNEWASTKey, ast);
+    pthread_setspecific(_tlsASTKey, ast);
 
     // Try to access the GraphContext
     CommandCtx_ThreadSafeContextLock(qctx);
     GraphContext *gc = GraphContext_Retrieve(ctx, qctx->graphName);
     if(!gc) {
-        if (!NEWAST_ContainsClause(ast->root, CYPHER_AST_CREATE) &&
-            !NEWAST_ContainsClause(ast->root, CYPHER_AST_MERGE)) {
+        if (!AST_ContainsClause(ast->root, CYPHER_AST_CREATE) &&
+            !AST_ContainsClause(ast->root, CYPHER_AST_MERGE)) {
             CommandCtx_ThreadSafeContextUnlock(qctx);
             RedisModule_ReplyWithError(ctx, "key doesn't contains a graph object.");
             goto cleanup;
@@ -145,8 +145,8 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
     assert(parse_result);
 
-    if(NEWAST_ContainsErrors(parse_result)) {
-        errMsg = NEWAST_ReportErrors(parse_result);
+    if(AST_ContainsErrors(parse_result)) {
+        errMsg = AST_ReportErrors(parse_result);
         cypher_parse_result_free(parse_result);
         RedisModule_Log(ctx, "debug", "Error parsing query: %s", errMsg);
         RedisModule_ReplyWithError(ctx, errMsg);
@@ -154,8 +154,8 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
         return REDISMODULE_OK;
     }
 
-    NEWAST *ast = NEWAST_Build(parse_result);
-    bool readonly = NEWAST_ReadOnly(ast->root);
+    AST *ast = AST_Build(parse_result);
+    bool readonly = AST_ReadOnly(ast->root);
 
     /* Determin query execution context
      * queries issued within a LUA script or multi exec block must

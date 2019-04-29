@@ -42,13 +42,13 @@ void _buildAliasTrieMap(TrieMap *map, const cypher_astnode_t *entity) {
 }
 
 // TODO This logic doesn't belong here, but might be entirely replaceable - investigate.
-TrieMap* _MatchClause_DefinedEntities(NEWAST *ast) {
+TrieMap* _MatchClause_DefinedEntities(AST *ast) {
     uint clause_count = cypher_astnode_nchildren(ast->root);
 
     const cypher_astnode_t *match_clauses[clause_count];
-    uint match_count = NewAST_GetTopLevelClauses(ast->root, CYPHER_AST_MATCH, match_clauses);
+    uint match_count = AST_GetTopLevelClauses(ast->root, CYPHER_AST_MATCH, match_clauses);
     const cypher_astnode_t *merge_clauses[clause_count];
-    uint merge_count = NewAST_GetTopLevelClauses(ast->root, CYPHER_AST_MERGE, merge_clauses);
+    uint merge_count = AST_GetTopLevelClauses(ast->root, CYPHER_AST_MERGE, merge_clauses);
 
     TrieMap *map = NewTrieMap();
 
@@ -63,9 +63,9 @@ TrieMap* _MatchClause_DefinedEntities(NEWAST *ast) {
 }
 
 void _SetModifiedEntities(OpCreate *op) {
-    NEWAST *ast = op->ast;
+    AST *ast = op->ast;
     // TODO bit redundant
-    const cypher_astnode_t *create_clause = NEWAST_GetClause(ast->root, CYPHER_AST_CREATE);
+    const cypher_astnode_t *create_clause = AST_GetClause(ast->root, CYPHER_AST_CREATE);
 
 
     /* For every entity within the CREATE clause see if it's also mentioned
@@ -111,7 +111,7 @@ void _SetModifiedEntities(OpCreate *op) {
                 // continue;
 
             // }
-            AR_ExpNode *exp = NEWAST_GetEntity(ast, elem);
+            AR_ExpNode *exp = AST_GetEntity(ast, elem);
 
             ast_alias = (j % 2) ? cypher_ast_rel_pattern_get_identifier(elem) :
                                   cypher_ast_node_pattern_get_identifier(elem);
@@ -130,18 +130,18 @@ void _SetModifiedEntities(OpCreate *op) {
                 Edge *e = QueryGraph_GetEntityByASTRef(op->qg, elem);
                 op->edges_to_create[edge_idx].edge = e;
                 const cypher_astnode_t *ast_props = cypher_ast_rel_pattern_get_properties(elem);
-                op->edges_to_create[edge_idx].properties = NEWAST_ConvertPropertiesMap(ast, ast_props);
+                op->edges_to_create[edge_idx].properties = AST_ConvertPropertiesMap(ast, ast_props);
                 op->edges_to_create[edge_idx].edge_rec_idx = exp->record_idx; 
                 // TODO are src and dest swapped based on edge direction before now?
-                AR_ExpNode *src = NEWAST_GetEntity(ast, cypher_ast_pattern_path_get_element(path, j - 1));
-                AR_ExpNode *dest = NEWAST_GetEntity(ast, cypher_ast_pattern_path_get_element(path, j + 1)); 
+                AR_ExpNode *src = AST_GetEntity(ast, cypher_ast_pattern_path_get_element(path, j - 1));
+                AR_ExpNode *dest = AST_GetEntity(ast, cypher_ast_pattern_path_get_element(path, j + 1)); 
                 op->edges_to_create[edge_idx].src_node_rec_idx = src->record_idx;
                 op->edges_to_create[edge_idx].dest_node_rec_idx = dest->record_idx;
                 edge_idx ++;
             } else { // Node
                 Node *n = QueryGraph_GetEntityByASTRef(op->qg, elem);
                 const cypher_astnode_t *ast_props = cypher_ast_node_pattern_get_properties(elem);
-                op->nodes_to_create[node_idx].properties = NEWAST_ConvertPropertiesMap(ast, ast_props);
+                op->nodes_to_create[node_idx].properties = AST_ConvertPropertiesMap(ast, ast_props);
                 op->nodes_to_create[node_idx].node = n;
                 op->nodes_to_create[node_idx].node_rec_idx = exp->record_idx;
                 node_idx ++;
@@ -160,7 +160,7 @@ void _SetModifiedEntities(OpCreate *op) {
 OpBase* NewCreateOp(RedisModuleCtx *ctx, QueryGraph *qg, ResultSet *result_set) {
     OpCreate *op_create = calloc(1, sizeof(OpCreate));
     op_create->gc = GraphContext_GetFromTLS();
-    op_create->ast = NEWAST_GetFromTLS();
+    op_create->ast = AST_GetFromTLS();
     op_create->qg = qg;
     op_create->records = NULL;
     op_create->nodes_to_create = NULL;
@@ -263,7 +263,7 @@ static void _CommitNodes(OpCreate *op) {
     int labelID;
     Graph *g = op->gc->g;
     Schema *unified_schema = GraphContext_GetUnifiedSchema(op->gc, SCHEMA_NODE);
-    NEWAST *ast = NEWAST_GetFromTLS();
+    AST *ast = AST_GetFromTLS();
 
     uint node_count = array_len(op->created_nodes);
     Graph_AllocateNodes(op->gc->g, node_count);
@@ -301,7 +301,7 @@ static void _CommitEdges(OpCreate *op) {
     Graph *g = op->gc->g;
     int relationships_created = 0;
 
-    NEWAST *ast = NEWAST_GetFromTLS();
+    AST *ast = AST_GetFromTLS();
     uint edge_count = array_len(op->created_edges);
     for(uint i = 0; i < edge_count; i++) {
         e = op->created_edges[i];
@@ -368,8 +368,8 @@ Record OpCreateConsume(OpBase *opBase) {
 
     // No child operation to call.
     if(!op->op.childCount) {
-        NEWAST *ast = op->ast;
-        r = Record_New(NEWAST_AliasCount(ast));
+        AST *ast = op->ast;
+        r = Record_New(AST_RecordLength(ast));
         /* Create entities. */
         _CreateNodes(op, r);
         _CreateEdges(op, r);

@@ -25,7 +25,7 @@ typedef enum {
  * return clause */
  typedef struct {
     OpBase op;
-    NEWAST *ast;
+    AST *ast;
     char **aliases;
     AR_ExpNode **expressions;
     AR_ExpNode **order_exps;

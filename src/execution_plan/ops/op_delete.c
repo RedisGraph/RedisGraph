@@ -34,38 +34,16 @@ void _DeleteEntities(OpDelete *op) {
     Graph_ReleaseLock(op->gc->g);
 }
 
-OpBase* NewDeleteOp(const cypher_astnode_t *delete_clause, ResultSet *result_set) {
+OpBase* NewDeleteOp(uint *nodes_ref, uint *edges_ref, ResultSet *result_set) {
     OpDelete *op_delete = malloc(sizeof(OpDelete));
 
     op_delete->gc = GraphContext_GetFromTLS();
-    NEWAST *ast = NEWAST_GetFromTLS();
 
-    uint delete_count = cypher_ast_delete_nexpressions(delete_clause);
-    uint *nodes_to_delete = array_new(uint, delete_count);
-    uint *edges_to_delete = array_new(uint, delete_count);
+    op_delete->nodes_to_delete = nodes_ref;
+    op_delete->edges_to_delete = edges_ref;
+    op_delete->node_count = array_len(op_delete->nodes_to_delete);
+    op_delete->edge_count = array_len(op_delete->edges_to_delete);
 
-    for (uint i = 0; i < delete_count; i ++) {
-        const cypher_astnode_t *ast_expr = cypher_ast_delete_get_expression(delete_clause, i);
-        assert(cypher_astnode_type(ast_expr) == CYPHER_AST_IDENTIFIER);
-        const char *alias = cypher_ast_identifier_get_name(ast_expr);
-        AR_ExpNode *entity = NEWAST_GetEntityFromAlias(ast, (char*)alias);
-        assert(entity);
-        uint id = entity->record_idx;
-        assert(id != NOT_IN_RECORD);
-        cypher_astnode_type_t type = cypher_astnode_type(entity->operand.variadic.ast_ref);
-        if (type == CYPHER_AST_NODE_PATTERN) {
-            nodes_to_delete = array_append(nodes_to_delete, id);
-        } else if (type == CYPHER_AST_REL_PATTERN) {
-            edges_to_delete = array_append(edges_to_delete, id);
-        } else {
-            assert(false);
-        }
-    }
-
-    op_delete->node_count = array_len(nodes_to_delete);
-    op_delete->edge_count = array_len(edges_to_delete);
-    op_delete->nodes_to_delete = nodes_to_delete;
-    op_delete->edges_to_delete = edges_to_delete;
     op_delete->deleted_nodes = array_new(Node, 32);
     op_delete->deleted_edges = array_new(Edge, 32);
     op_delete->result_set = result_set;

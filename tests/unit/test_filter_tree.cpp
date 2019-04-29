@@ -13,7 +13,7 @@ extern "C" {
 #include <stdio.h>
 #include <string.h>
 #include "../../src/util/vector.h"
-#include "../../src/parser/newast.h"
+#include "../../src/parser/ast.h"
 #include "../../src/filter_tree/filter_tree.h"
 #include "../../src/util/arr.h"
 #include "../../src/util/rmalloc.h"
@@ -62,23 +62,23 @@ class FilterTreeTest: public ::testing::Test {
         pthread_setspecific(_tlsGCKey, gc);
     }
 
-    NEWAST* _build_ast(const char *query) {
+    AST* _build_ast(const char *query) {
         cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
-        NEWAST *ast = NEWAST_Build(parse_result);
-        NEWAST_BuildAliasMap(ast);
+        AST *ast = AST_Build(parse_result);
+        AST_BuildAliasMap(ast);
         return ast;
     }
 
     FT_FilterNode* _build_simple_const_tree() {
         const char *query = "MATCH (me) WHERE me.age = 34 RETURN me";
-        NEWAST *ast = _build_ast(query);
+        AST *ast = _build_ast(query);
         FT_FilterNode *tree = BuildFiltersTree(ast);
         return tree;
     }
 
     FT_FilterNode* _build_simple_varying_tree() {
         const char *query = "MATCH (me),(him) WHERE me.age > him.age RETURN me, him";
-        NEWAST *ast = _build_ast(query);
+        AST *ast = _build_ast(query);
         FT_FilterNode *tree = BuildFiltersTree(ast);
         return tree;
     }
@@ -88,7 +88,7 @@ class FilterTreeTest: public ::testing::Test {
         if(cond == OP_AND) query = "MATCH (me) WHERE me.age > 34 AND me.height <= 188 RETURN me";
         else  query = "MATCH (me) WHERE me.age > 34 OR me.height <= 188 RETURN me";
 
-        NEWAST *ast = _build_ast(query);
+        AST *ast = _build_ast(query);
         FT_FilterNode *tree = BuildFiltersTree(ast);
         return tree;
     }
@@ -106,7 +106,7 @@ class FilterTreeTest: public ::testing::Test {
         * AND as a left child
         * OR as a right child */
         const char *query = "MATCH (me),(he),(she),(theirs) WHERE (me.age > 34 AND he.height <= 188) AND (she.age > 34 OR theirs.height <= 188) RETURN me, he, she, theirs";
-        NEWAST *ast = _build_ast(query);
+        AST *ast = _build_ast(query);
         FT_FilterNode *tree = BuildFiltersTree(ast);
         return tree;
     }

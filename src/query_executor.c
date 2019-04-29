@@ -23,7 +23,7 @@ ReturnElementNode* _NewReturnElementNode(const char *alias, AR_ExpNode *exp) {
     return ret;
 }
 
-void ExpandCollapsedNodes(NEWAST *ast) {
+void ExpandCollapsedNodes(AST *ast) {
 
     char buffer[256];
     GraphContext *gc = GraphContext_GetFromTLS();
@@ -124,7 +124,7 @@ void ExpandCollapsedNodes(NEWAST *ast) {
                     expanded_exp = AR_EXP_NewVariableOperandNode(ast, ast_entity, collapsed_entity->operand.variadic.entity_alias, buffer);
                     // expanded_exp = AR_EXP_NewVariableOperandNode(ast, alias, buffer);
                     retElem = _NewReturnElementNode(elem->alias, expanded_exp);
-                    unsigned int id = NEWAST_AddRecordEntry(ast);
+                    unsigned int id = AST_AddRecordEntry(ast);
                     AR_EXP_AssignRecordIndex(expanded_exp, id);
                     ast->defined_entities = array_append(ast->defined_entities, expanded_exp);
                     expandReturnElements = array_append(expandReturnElements, retElem);
@@ -141,9 +141,9 @@ void ExpandCollapsedNodes(NEWAST *ast) {
     ast->return_expressions = expandReturnElements;
 }
 
-AST_Validation AST_PerformValidations(RedisModuleCtx *ctx, const NEWAST *ast) {
+AST_Validation AST_PerformValidations(RedisModuleCtx *ctx, const AST *ast) {
     char *reason;
-    AST_Validation res = NEWAST_Validate(ast->root, &reason);
+    AST_Validation res = AST_Validate(ast->root, &reason);
     if (res != AST_VALID) {
         RedisModule_ReplyWithError(ctx, reason);
         free(reason);
@@ -252,7 +252,7 @@ AST_Validation AST_PerformValidations(RedisModuleCtx *ctx, const NEWAST *ast) {
     // if(should_reverse) _AST_reverse_match_patterns(ast);
 // }
 
-void _ReturnExpandAll(NEWAST *ast) {
+void _ReturnExpandAll(AST *ast) {
     unsigned int identifier_count = array_len(ast->defined_entities);
     ast->return_expressions = array_new(AR_ExpNode*, identifier_count);
 
@@ -265,9 +265,9 @@ void _ReturnExpandAll(NEWAST *ast) {
     }
 }
 
-void _BuildReturnExpressions(NEWAST *ast) {
+void _BuildReturnExpressions(AST *ast) {
     // Handle RETURN entities
-    const cypher_astnode_t *ret_clause = NEWAST_GetClause(ast->root, CYPHER_AST_RETURN);
+    const cypher_astnode_t *ret_clause = AST_GetClause(ast->root, CYPHER_AST_RETURN);
     if (!ret_clause) return;
 
     // Query is of type "RETURN *",
@@ -286,7 +286,7 @@ void _BuildReturnExpressions(NEWAST *ast) {
         if (cypher_astnode_type(expr) == CYPHER_AST_IDENTIFIER) {
             // Retrieve "a" from "RETURN a" or "RETURN a AS e"
             identifier = (char*)cypher_ast_identifier_get_name(expr);
-            exp = NEWAST_GetEntityFromAlias(ast, (char*)identifier);
+            exp = AST_GetEntityFromAlias(ast, (char*)identifier);
         }
 
         if (exp == NULL) {
@@ -296,7 +296,7 @@ void _BuildReturnExpressions(NEWAST *ast) {
             exp = AR_EXP_FromExpression(ast, expr);
 
             // Make space for entity in record
-            unsigned int id = NEWAST_AddRecordEntry(ast);
+            unsigned int id = AST_AddRecordEntry(ast);
             AR_EXP_AssignRecordIndex(exp, id);
             // Add entity to the set of entities to be populated
             ast->defined_entities = array_append(ast->defined_entities, exp);
@@ -317,11 +317,11 @@ void _BuildReturnExpressions(NEWAST *ast) {
             AR_ExpNode *alias_exp = AR_EXP_FromExpression(ast, expr);
 
             // Make space for alias entity in record
-            unsigned int id = NEWAST_AddRecordEntry(ast);
+            unsigned int id = AST_AddRecordEntry(ast);
             AR_EXP_AssignRecordIndex(alias_exp, id);
             // Add entity to the set of entities to be populated
             ast->defined_entities = array_append(ast->defined_entities, alias_exp);
-            NEWAST_MapAlias(ast, alias, alias_exp);
+            AST_MapAlias(ast, alias, alias_exp);
         }
 
         ast->return_expressions = array_append(ast->return_expressions, _NewReturnElementNode(alias, exp));
@@ -341,7 +341,7 @@ void _BuildReturnExpressions(NEWAST *ast) {
         const cypher_astnode_t *expr = cypher_ast_sort_item_get_expression(order_item);
         ast->order_expressions[i] = AR_EXP_FromExpression(ast, expr);
         // TODO possibly necessary
-        // unsigned int id = NEWAST_AddRecordEntry(ast);
+        // unsigned int id = AST_AddRecordEntry(ast);
         // AR_EXP_AssignRecordIndex(exp, id);
         // ast->return_expressions = array_append(ast->return_expressions, _NewReturnElementNode(alias, exp));
     }
@@ -350,13 +350,13 @@ void _BuildReturnExpressions(NEWAST *ast) {
 // TODO
 // TODO maybe put in resultset.c? _buildExpressions repetition from project and aggregate
 /*
-void _prepareResultset(NEWAST *ast) {
+void _prepareResultset(AST *ast) {
     // Compute projected record length:
     // Number of returned expressions + number of order-by expressions.
     ExpandCollapsedNodes(ast);
     ResultSet_CreateHeader(op->resultset);
 
-    // const NEWAST *ast = NEWAST_GetFromTLS();
+    // const AST *ast = AST_GetFromTLS();
 
     op->orderByExpCount = ast->order_expression_count;
     op->returnExpCount = ast->return_expression_count;
@@ -378,17 +378,17 @@ void _prepareResultset(NEWAST *ast) {
 }
 */
 
-void ModifyAST(GraphContext *gc, NEWAST *ast) {
+void ModifyAST(GraphContext *gc, AST *ast) {
     // for(int i = 0; i < array_len(ast); i++) {
         // if(ast[i]->matchNode) _AST_optimize_traversal_direction(ast[i]);
         // _inlineProperties(ast[i]);
     // }
 
-    assert(NEWAST_GetClause(ast->root, CYPHER_AST_WITH) == NULL);
-    NEWAST_BuildAliasMap(ast);
+    assert(AST_GetClause(ast->root, CYPHER_AST_WITH) == NULL);
+    AST_BuildAliasMap(ast);
 
     _BuildReturnExpressions(ast);
-    if(NEWAST_ReturnClause_ContainsCollapsedNodes(ast->root) == 1) {
+    if(AST_ReturnClause_ContainsCollapsedNodes(ast->root) == 1) {
         /* Expand collapsed nodes. */
         ExpandCollapsedNodes(ast);
     }

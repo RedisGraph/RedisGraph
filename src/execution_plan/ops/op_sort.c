@@ -112,19 +112,11 @@ uint _determineOffset(OpBase *op) {
     return _determineOffset(op->children[0]);
 }
 
-int _get_order(const cypher_astnode_t *order_clause) {
-    unsigned int nitems = cypher_ast_order_by_nitems(order_clause);
-    const cypher_astnode_t *item = cypher_ast_order_by_get_item(order_clause, nitems - 1);
-    bool ascending = cypher_ast_sort_item_is_ascending(item);
-    return (ascending) ? DIR_ASC : DIR_DESC;
-}
-
-OpBase* NewSortOp(const cypher_astnode_t *order_clause, unsigned int limit) {
+OpBase* NewSortOp(AR_ExpNode **expressions, int direction, unsigned int limit) {
     OpSort *sort = malloc(sizeof(OpSort));
     sort->offset = 0;
-    sort->expressions = NEWAST_GetOrderExpressions(order_clause);
-    // TODO direction should be specifiable per order entity; combine with GetOrderExpressions
-    sort->direction = _get_order(order_clause);
+    sort->expressions = expressions;
+    sort->direction = direction;
     sort->heap = NULL;
     sort->buffer = NULL;
 

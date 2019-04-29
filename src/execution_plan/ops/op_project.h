@@ -12,7 +12,7 @@
 
 typedef struct {
     OpBase op;
-    const NEWAST *ast;
+    const AST *ast;
     char **aliases;                 // Aliases attached to projected expressions.
     AR_ExpNode **exps;              // Projected expressions.
     AR_ExpNode **order_exps;        // Order by expressions.

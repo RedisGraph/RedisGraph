@@ -7,7 +7,7 @@
 #ifndef _FILTER_TREE_H
 #define _FILTER_TREE_H
 
-#include "../parser/newast.h"
+#include "../parser/ast.h"
 #include "../redismodule.h"
 #include "../arithmetic/arithmetic_expression.h"
 #include "../execution_plan/record.h"
@@ -47,11 +47,11 @@ struct FT_FilterNode {
 
 typedef struct FT_FilterNode FT_FilterNode;
 
-FT_FilterNode* FilterNode_FromAST(const NEWAST *ast, const cypher_astnode_t *expr);
+FT_FilterNode* FilterNode_FromAST(const AST *ast, const cypher_astnode_t *expr);
 
 /* Given AST's WHERE subtree constructs a filter tree
  * This is done to speed up the filtering process. */
-FT_FilterNode* BuildFiltersTree(const NEWAST *ast);
+FT_FilterNode* BuildFiltersTree(const AST *ast);
 
 int IsNodePredicate(const FT_FilterNode *node);
 

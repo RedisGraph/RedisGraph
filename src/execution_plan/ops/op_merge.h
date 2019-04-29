@@ -10,7 +10,7 @@
 #include "op.h"
 #include "../../graph/entities/node.h"
 #include "../../graph/entities/edge.h"
-#include "../../parser/newast.h"
+#include "../../parser/ast.h"
 #include "../../resultset/resultset.h"
 
 /* Merge execution plan operation,
@@ -22,7 +22,7 @@
 typedef struct {
     OpBase op;                        // Base op.
     GraphContext *gc;                 // Graph data.
-    NEWAST *ast;                      // Query abstract syntax tree.
+    AST *ast;                      // Query abstract syntax tree.
     const cypher_astnode_t *clause;   // MERGE clause
     ResultSet *result_set;            // Required for statistics updates.
     bool matched;                     // Has the entire pattern been matched.

@@ -15,6 +15,7 @@
 #include "./optimizations/optimizer.h"
 #include "./optimizations/optimizations.h"
 #include "../arithmetic/algebraic_expression.h"
+#include "../parser/ast_build_op_contexts.h"
 
 /* Checks if parent has given child, if so returns 1
  * otherwise returns 0 */
@@ -252,17 +253,17 @@ OpBase* ExecutionPlan_Locate_References(OpBase *root, Vector *references) {
 /* Given an AST path, construct a series of scans and traversals to model it. */
 void _ExecutionPlan_BuildTraversalOps(QueryGraph *qg, FT_FilterNode *ft, const cypher_astnode_t *path, Vector *traversals) {
     GraphContext *gc = GraphContext_GetFromTLS();
-    NEWAST *ast = NEWAST_GetFromTLS();
+    AST *ast = AST_GetFromTLS();
     OpBase *op;
 
     uint nelems = cypher_ast_pattern_path_nelements(path);
     if (nelems == 1) {
         // Only one entity is specified - build a node scan.
         const cypher_astnode_t *ast_node = cypher_ast_pattern_path_get_element(path, 0);
-        AR_ExpNode *ar_exp = NEWAST_GetEntity(ast, ast_node);
+        AR_ExpNode *ar_exp = AST_GetEntity(ast, ast_node);
         if (ar_exp->record_idx == NOT_IN_RECORD) {
             // Anonymous node - make space for it in the Record
-            ar_exp->record_idx = NEWAST_AddAnonymousRecordEntry(ast);
+            ar_exp->record_idx = AST_AddAnonymousRecordEntry(ast);
         }
         uint rec_idx = ar_exp->record_idx; 
         Node *n = QueryGraph_GetEntityByASTRef(qg, ast_node);
@@ -286,7 +287,7 @@ void _ExecutionPlan_BuildTraversalOps(QueryGraph *qg, FT_FilterNode *ft, const c
 
         if (exp->src_node_idx == NOT_IN_RECORD) {
             // Anonymous node - make space for it in the Record
-            exp->src_node_idx = NEWAST_AddAnonymousRecordEntry(ast);
+            exp->src_node_idx = AST_AddAnonymousRecordEntry(ast);
         }
 
         // Create SCAN operation.
@@ -302,6 +303,7 @@ void _ExecutionPlan_BuildTraversalOps(QueryGraph *qg, FT_FilterNode *ft, const c
         }
         for(int i = 0; i < expCount; i++) {
             if(exps[i]->operand_count == 0) continue;
+            AlgebraicExpression_ExtendRecord(exps[i]);
             if(exps[i]->minHops != 1 || exps[i]->maxHops != 1) {
                 op = NewCondVarLenTraverseOp(exps[i],
                                              exps[i]->minHops,
@@ -318,7 +320,7 @@ void _ExecutionPlan_BuildTraversalOps(QueryGraph *qg, FT_FilterNode *ft, const c
 
         if (exp->dest_node_idx == NOT_IN_RECORD) {
             // Anonymous node - make space for it in the Record
-            exp->dest_node_idx = NEWAST_AddAnonymousRecordEntry(ast);
+            exp->dest_node_idx = AST_AddAnonymousRecordEntry(ast);
         }
 
         // Create SCAN operation.
@@ -336,13 +338,13 @@ void _ExecutionPlan_BuildTraversalOps(QueryGraph *qg, FT_FilterNode *ft, const c
         for(int i = expCount-1; i >= 0; i--) {
             if(exps[i]->operand_count == 0) continue;
             AlgebraicExpression_Transpose(exps[i]);
+            AlgebraicExpression_ExtendRecord(exps[i]);
             if(exps[i]->minHops != 1 || exps[i]->maxHops != 1) {
                 op = NewCondVarLenTraverseOp(exps[i],
                                              exps[i]->minHops,
                                              exps[i]->maxHops,
                                              gc->g);
-            }
-            else {
+            } else {
                 op = NewCondTraverseOp(gc->g, exps[i]);
             }
             Vector_Push(traversals, op);
@@ -384,7 +386,7 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, ResultSet *result_set) {
     Vector *ops = NewVector(OpBase*, 1);
 
     GraphContext *gc = GraphContext_GetFromTLS();
-    NEWAST *ast = NEWAST_GetFromTLS();
+    AST *ast = AST_GetFromTLS();
 
     // Build query graph
     QueryGraph *qg = BuildQueryGraph(gc, ast);
@@ -396,7 +398,7 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, ResultSet *result_set) {
 
     unsigned int clause_count = cypher_astnode_nchildren(ast->root);
     const cypher_astnode_t *match_clauses[clause_count];
-    unsigned int match_count = NewAST_GetTopLevelClauses(ast->root, CYPHER_AST_MATCH, match_clauses);
+    unsigned int match_count = AST_GetTopLevelClauses(ast->root, CYPHER_AST_MATCH, match_clauses);
     // Build traversal operations for every MATCH clause
     for (uint i = 0; i < match_count; i ++) {
         // Each MATCH clause has a pattern that consists of 1 or more paths
@@ -407,7 +409,7 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, ResultSet *result_set) {
          * are disjoint), we'll join them all together with a Cartesian product (full join). */
         OpBase *cartesianProduct = NULL;
         if (cypher_ast_pattern_npaths(ast_pattern) > 1) {
-            cartesianProduct = NewCartesianProductOp(NEWAST_RecordLength(ast));
+            cartesianProduct = NewCartesianProductOp(AST_RecordLength(ast));
             Vector_Push(ops, cartesianProduct);
         }
         
@@ -423,19 +425,24 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, ResultSet *result_set) {
     }
 
     // Set root operation
-    const cypher_astnode_t *unwind_clause = NEWAST_GetClause(ast->root, CYPHER_AST_UNWIND);
+    const cypher_astnode_t *unwind_clause = AST_GetClause(ast->root, CYPHER_AST_UNWIND);
     if(unwind_clause) {
-        OpBase *opUnwind = NewUnwindOp(ast, unwind_clause);
+        AR_ExpNode **exps = AST_PrepareUnwindOp(unwind_clause);
+        // TODO rest doesn't belong here
+        uint record_len = AST_RecordLength(ast);
+        const char *alias = cypher_ast_identifier_get_name(cypher_ast_unwind_get_alias(unwind_clause));
+        uint record_idx = AST_GetAliasID(ast, (char*)alias);
+        OpBase *opUnwind = NewUnwindOp(record_len, record_idx, exps, (char*)alias);
         Vector_Push(ops, opUnwind);
     }
 
-    const cypher_astnode_t *create_clause = NEWAST_GetClause(ast->root, CYPHER_AST_CREATE);
+    const cypher_astnode_t *create_clause = AST_GetClause(ast->root, CYPHER_AST_CREATE);
     if(create_clause) {
         OpBase *opCreate = NewCreateOp(ctx, qg, execution_plan->result_set);
         Vector_Push(ops, opCreate);
     }
 
-    const cypher_astnode_t *merge_clause = NEWAST_GetClause(ast->root, CYPHER_AST_MERGE);
+    const cypher_astnode_t *merge_clause = AST_GetClause(ast->root, CYPHER_AST_MERGE);
     if(merge_clause) {
         // A merge clause provides a single path that must exist or be created.
         // As with paths in a MATCH query, build the appropriate traversal operations
@@ -451,15 +458,21 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, ResultSet *result_set) {
         Vector_Push(ops, opMerge);
     }
 
-    const cypher_astnode_t *delete_clause = NEWAST_GetClause(ast->root, CYPHER_AST_DELETE);
+    const cypher_astnode_t *delete_clause = AST_GetClause(ast->root, CYPHER_AST_DELETE);
     if(delete_clause) {
-        OpBase *opDelete = NewDeleteOp(delete_clause, execution_plan->result_set);
+        uint *nodes_ref;
+        uint *edges_ref;
+        AST_PrepareDeleteOp(delete_clause, &nodes_ref, &edges_ref);
+        OpBase *opDelete = NewDeleteOp(nodes_ref, edges_ref, execution_plan->result_set);
         Vector_Push(ops, opDelete);
     }
 
-    const cypher_astnode_t *set_clause = NEWAST_GetClause(ast->root, CYPHER_AST_SET);
+    const cypher_astnode_t *set_clause = AST_GetClause(ast->root, CYPHER_AST_SET);
     if(set_clause) {
-        OpBase *op_update = NewUpdateOp(gc, execution_plan->result_set);
+        // Create a context for each update expression.
+        uint nitems;
+        EntityUpdateEvalCtx *update_exps = AST_PrepareUpdateOp(set_clause, &nitems);
+        OpBase *op_update = NewUpdateOp(gc, update_exps, nitems, execution_plan->result_set);
         Vector_Push(ops, op_update);
     }
 
@@ -468,12 +481,12 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, ResultSet *result_set) {
     bool aggregate = false;
 
     // TODO with clauses, separate handling for their distinct/limit/etc
-    const cypher_astnode_t *with_clause = NEWAST_GetClause(ast->root, CYPHER_AST_WITH);
+    const cypher_astnode_t *with_clause = AST_GetClause(ast->root, CYPHER_AST_WITH);
     if(with_clause) {
         assert(false);
     }
 
-    const cypher_astnode_t *ret_clause = NEWAST_GetClause(ast->root, CYPHER_AST_RETURN);
+    const cypher_astnode_t *ret_clause = AST_GetClause(ast->root, CYPHER_AST_RETURN);
     if(ret_clause) {
         uint exp_count = array_len(ast->return_expressions);
         // TODO exps and aliases just separate the elements of ast->return_expressions,
@@ -487,7 +500,7 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, ResultSet *result_set) {
         }
         // TODO We've already determined this during AST validations, could refactor to make
         // this call unnecessary.
-        aggregate = NEWAST_ClauseContainsAggregation(ret_clause);
+        aggregate = AST_ClauseContainsAggregation(ret_clause);
     }
 
 
@@ -511,11 +524,13 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, ResultSet *result_set) {
 
         uint skip = 0;
         uint limit = 0;
-        if (skip_clause) skip = NEWAST_ParseIntegerNode(skip_clause);
-        if (limit_clause) limit = skip + NEWAST_ParseIntegerNode(limit_clause);
+        if (skip_clause) skip = AST_ParseIntegerNode(skip_clause);
+        if (limit_clause) limit = skip + AST_ParseIntegerNode(limit_clause);
 
         if (order_clause) {
-            op = NewSortOp(order_clause, limit);
+            int direction;
+            AR_ExpNode **expressions = AST_PrepareSortOp(order_clause, &direction);
+            op = NewSortOp(expressions, direction, limit);
             Vector_Push(ops, op);
         }
 
@@ -561,7 +576,7 @@ static void _ExecutionPlan_StreamTaps(OpBase *root, OpBase ***taps) {
 
 static ExecutionPlan *_ExecutionPlan_Connect(ExecutionPlan *a, ExecutionPlan *b) {
     assert(false);
-    NEWAST *ast = NEWAST_GetFromTLS();
+    AST *ast = AST_GetFromTLS();
     assert(a &&
            b &&
            (a->root->type == OPType_PROJECT || a->root->type == OPType_AGGREGATE));
@@ -584,7 +599,7 @@ static ExecutionPlan *_ExecutionPlan_Connect(ExecutionPlan *a, ExecutionPlan *b)
             tap = taps[i];
             if(tap->type & OP_SCAN) {
                 // Connect via cartesian product
-                OpBase *cartesianProduct = NewCartesianProductOp(NEWAST_RecordLength(ast));
+                OpBase *cartesianProduct = NewCartesianProductOp(AST_RecordLength(ast));
                 ExecutionPlan_PushBelow(tap, cartesianProduct);
                 _OpBase_AddChild(cartesianProduct, a->root);
                 break;
@@ -604,7 +619,7 @@ static ExecutionPlan *_ExecutionPlan_Connect(ExecutionPlan *a, ExecutionPlan *b)
 }
 
 ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, bool explain) {
-    NEWAST *ast = NEWAST_GetFromTLS();
+    AST *ast = AST_GetFromTLS();
 
     ExecutionPlan *plan = NULL;
     ExecutionPlan *curr_plan;
