@@ -392,6 +392,17 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, ResultSet *result_set) {
     unsigned int clause_count = cypher_astnode_nchildren(ast->root);
     const cypher_astnode_t *match_clauses[clause_count];
     unsigned int match_count = AST_GetTopLevelClauses(ast->root, CYPHER_AST_MATCH, match_clauses);
+
+    /* TODO Currently, we don't differentiate between:
+     * MATCH (a) MATCH (b)
+     * and
+     * MATCH (a), (b)
+     * Introduce this distinction. */
+    OpBase *cartesianProduct = NULL;
+    if (match_count > 1) {
+        cartesianProduct = NewCartesianProductOp(AST_RecordLength(ast));
+        Vector_Push(ops, cartesianProduct);
+    }
     // Build traversal operations for every MATCH clause
     for (uint i = 0; i < match_count; i ++) {
         // Each MATCH clause has a pattern that consists of 1 or more paths
@@ -400,7 +411,8 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, ResultSet *result_set) {
 
         /* If we're dealing with multiple paths (which our validations have guaranteed
          * are disjoint), we'll join them all together with a Cartesian product (full join). */
-        OpBase *cartesianProduct = NULL;
+        // TODO Unsafely overwrites the cartesian product of multiple MATCH, so we can't handle queries like:
+        // MATCH (a), (b) MATCH (c) RETURN count(a)
         if (cypher_ast_pattern_npaths(ast_pattern) > 1) {
             cartesianProduct = NewCartesianProductOp(AST_RecordLength(ast));
             Vector_Push(ops, cartesianProduct);
@@ -466,7 +478,6 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, ResultSet *result_set) {
         Vector_Push(ops, op_update);
     }
 
-    char **aliases = NULL;  // Array of aliases RETURN n.v as V
     AR_ExpNode **exps = NULL;
     uint *modifies = NULL; // TODO tmp
     bool aggregate = false;
@@ -484,12 +495,10 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, ResultSet *result_set) {
         // which is dumb - change signatures to take ReturnElementNodes
 
         exps = array_new(AR_ExpNode*, exp_count);
-        aliases = array_new(char*, exp_count); // TODO delete
         modifies = array_new(uint, exp_count);
         for (uint i = 0; i < exp_count; i ++) {
             AR_ExpNode *exp = ast->return_expressions[i]->exp;
             exps = array_append(exps, exp);
-            aliases = array_append(aliases, (char*)ast->return_expressions[i]->alias);
             if (exp->record_idx) modifies = array_append(modifies, exp->record_idx);
         }
         // TODO We've already determined this during AST validations, could refactor to make

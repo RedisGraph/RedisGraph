@@ -201,6 +201,12 @@ FT_FilterNode* _convertInlinedProperties(AST *ast, const cypher_astnode_t *entit
         // val is of type CYPHER_AST_EXPRESSION
         const cypher_astnode_t *val = cypher_ast_map_get_value(props, i);
         AR_ExpNode *rhs = AR_EXP_FromExpression(ast, val);
+        /* TODO In a query like:
+         * "MATCH (r:person {name:"Roi"}) RETURN r"
+         * (note the repeated double quotes) - this creates a variable rather than a scalar.
+         * Can we use this to handle escape characters or something? How does it work? */
+        // Inlined properties can only be scalars right now
+        assert(rhs->operand.type == AR_EXP_CONSTANT && "non-scalar inlined property - add handling for this?");
         // FT_FilterNode *t = _CreatePredicateFilterNode(ast, OP_EQUAL, lhs, rhs);
         FT_FilterNode *t = _CreatePredicateFilterNodeFromExps(OP_EQUAL, lhs, rhs);
         FT_Append(&root, t);
