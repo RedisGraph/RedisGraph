@@ -149,6 +149,9 @@ void AR_EXP_ToString(const AR_ExpNode *root, char **str);
 AR_ExpNode* AR_EXP_NewConstOperandNode(SIValue constant);
 AR_ExpNode* AR_EXP_NewVariableOperandNode(const AST *ast, const cypher_astnode_t *entity, const char *alias, const char *prop);
 
+// TODO tmp - consolidate these functions
+AR_ExpNode* AR_EXP_FromInlinedFilter(SchemaType base_type, unsigned int record_idx, const char *prop);
+
 /* Clone an aggregate expression node. */
 AR_ExpNode* AR_EXP_DuplicateAggFunc(const AR_ExpNode *expr);
 

@@ -130,6 +130,25 @@ AR_ExpNode* AR_EXP_NewVariableOperandNode(const AST *ast, const cypher_astnode_t
     return node;
 }
 
+AR_ExpNode* AR_EXP_FromInlinedFilter(SchemaType base_type, unsigned int record_idx, const char *prop) {
+    AR_ExpNode *node = malloc(sizeof(AR_ExpNode));
+    node->type = AR_EXP_OPERAND;
+    node->record_idx = NOT_IN_RECORD; // TODO right?
+    node->operand.type = AR_EXP_VARIADIC;
+    node->operand.variadic.entity_alias = NULL;
+    node->operand.variadic.entity_alias_idx = record_idx;
+    node->operand.variadic.entity_prop = (prop) ? strdup(prop) : NULL;
+    // node->operand.variadic.ast_ref = entity;
+
+    if(prop) { // TODO necessary?
+        // Retrieve the property from the schema of the base entity (not this entity,
+        // which is just a PROPERTY_OPERATOR)
+        node->operand.variadic.entity_prop_idx = Attribute_GetID(base_type, prop);
+    }
+    return node;
+
+}
+
 AR_ExpNode* AR_EXP_NewConstOperandNode(SIValue constant) {
     AR_ExpNode *node = malloc(sizeof(AR_ExpNode));
     node->type = AR_EXP_OPERAND;
@@ -358,6 +377,7 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
                 // it could also be a constant.
                 // TODO: consider moving this logic to a generic method of Record.
                 int aliasIdx = root->operand.variadic.entity_alias_idx;
+                // int aliasIdx = (root->record_idx == NOT_IN_RECORD) ? root->operand.variadic.entity_alias_idx : root->record_idx;
                 RecordEntryType t = Record_GetType(r, aliasIdx);
                 switch(t) {
                     case REC_TYPE_SCALAR:

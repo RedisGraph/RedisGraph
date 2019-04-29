@@ -51,7 +51,7 @@ FT_FilterNode* FilterNode_FromAST(const AST *ast, const cypher_astnode_t *expr);
 
 /* Given AST's WHERE subtree constructs a filter tree
  * This is done to speed up the filtering process. */
-FT_FilterNode* BuildFiltersTree(const AST *ast);
+FT_FilterNode* BuildFiltersTree(AST *ast);
 
 int IsNodePredicate(const FT_FilterNode *node);
 

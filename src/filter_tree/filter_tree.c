@@ -175,7 +175,7 @@ FT_FilterNode* _convertComparison(const AST *ast, const cypher_astnode_t *compar
     return _CreatePredicateFilterNode(ast, op, lhs, rhs);
 }
 
-FT_FilterNode* _convertInlinedProperties(const AST *ast, const cypher_astnode_t *entity, int type) {
+FT_FilterNode* _convertInlinedProperties(AST *ast, const cypher_astnode_t *entity, SchemaType type) {
     const cypher_astnode_t *props = NULL;
     const cypher_astnode_t *alias_node = NULL;
 
@@ -189,27 +189,29 @@ FT_FilterNode* _convertInlinedProperties(const AST *ast, const cypher_astnode_t 
 
     if (!props) return NULL;
 
-    const char *alias = NULL;
-    if (alias_node) {
-        alias = cypher_ast_identifier_get_name(alias_node);
-    } else {
-        // Retrieve alias of anonymous entity
-        AR_ExpNode *exp = AST_GetEntity(ast, entity);
-        if (exp) alias = exp->operand.variadic.entity_alias;
-        // Alias can still be NULL - can we move from aliases to record indexes?
-        // (Still need to add entity to record here)
+    AR_ExpNode *exp = AST_GetEntity(ast, entity);
+    if (exp->record_idx == NOT_IN_RECORD) {
+        exp->record_idx = AST_AddAnonymousRecordEntry(ast);
     }
-    assert(alias);
+    unsigned int record_idx = exp->record_idx;
+    // const char *alias = NULL;
+    // if (alias_node) {
+        // alias = cypher_ast_identifier_get_name(alias_node);
+    // } else {
+        // // Retrieve alias of anonymous entity
+        // AR_ExpNode *exp = AST_GetEntity(ast, entity);
+        // if (exp) alias = exp->operand.variadic.entity_alias;
+        // // Alias can still be NULL - can we move from aliases to record indexes?
+        // // (Still need to add entity to record here)
+        // assert(alias);
+    // }
 
     FT_FilterNode *root = NULL;
     unsigned int nelems = cypher_ast_map_nentries(props);
     for (unsigned int i = 0; i < nelems; i ++) {
         // key is of type CYPHER_AST_PROP_NAME
-        const cypher_astnode_t *key = cypher_ast_map_get_key(props, i);
-        const char *prop = cypher_ast_prop_name_get_value(key); // TODO can inline with above
-        // TODO passing NULL entity, maybe inappropriate?
-        // Might not even want a variable like this.
-        AR_ExpNode *lhs = AR_EXP_NewVariableOperandNode(ast, NULL, alias, prop);
+        const char *prop = cypher_ast_prop_name_get_value(cypher_ast_map_get_key(props, i));
+        AR_ExpNode *lhs = AR_EXP_FromInlinedFilter(type, record_idx, prop);
         // val is of type CYPHER_AST_EXPRESSION
         const cypher_astnode_t *val = cypher_ast_map_get_value(props, i);
         AR_ExpNode *rhs = AR_EXP_FromExpression(ast, val);
@@ -220,7 +222,7 @@ FT_FilterNode* _convertInlinedProperties(const AST *ast, const cypher_astnode_t 
     return root;
 }
 
-void _collectFilters(const AST *ast, FT_FilterNode **root, const cypher_astnode_t *entity) {
+void _collectFilters(AST *ast, FT_FilterNode **root, const cypher_astnode_t *entity) {
     if (!entity) return;
 
     cypher_astnode_type_t type = cypher_astnode_type(entity);
@@ -228,9 +230,9 @@ void _collectFilters(const AST *ast, FT_FilterNode **root, const cypher_astnode_
     FT_FilterNode *node = NULL;
     // If the current entity is a node or edge pattern, capture its properties map (if any)
     if (type == CYPHER_AST_NODE_PATTERN) {
-        node = _convertInlinedProperties(ast, entity, SCHEMA_NODE); // TODO choose better type argument
+        node = _convertInlinedProperties(ast, entity, SCHEMA_NODE);
     } else if (type == CYPHER_AST_REL_PATTERN) {
-        node = _convertInlinedProperties(ast, entity, SCHEMA_EDGE); // TODO choose better type argument
+        node = _convertInlinedProperties(ast, entity, SCHEMA_EDGE);
     } else if (type == CYPHER_AST_COMPARISON) {
         node = _convertComparison(ast, entity);
     } else if (type == CYPHER_AST_BINARY_OPERATOR) {
@@ -265,7 +267,7 @@ FT_FilterNode* FilterNode_FromAST(const AST *ast, const cypher_astnode_t *expr) 
 }
 
 
-FT_FilterNode* BuildFiltersTree(const AST *ast) {
+FT_FilterNode* BuildFiltersTree(AST *ast) {
     FT_FilterNode *filter_tree = NULL; 
     unsigned int clause_count = cypher_astnode_nchildren(ast->root);
     const cypher_astnode_t *match_clauses[clause_count];
