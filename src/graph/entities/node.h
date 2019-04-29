@@ -43,6 +43,9 @@ void Node_SetLabelID(Node *n, int labelID);
 /* Retrieves node matrix */
 GrB_Matrix Node_GetMatrix(Node *n);
 
+/* Clones given node. */
+Node* Node_Clone(const Node *n);
+
 /* Frees allocated space by given node. */
 void Node_Free(Node* node);
 

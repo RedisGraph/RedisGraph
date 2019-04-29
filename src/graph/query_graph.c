@@ -35,9 +35,9 @@ void _QueryGraph_AddEntity(GraphEntity *entity, char *alias, GraphEntity ***enti
     (*entity_count)++;
 }
 
-void _QueryGraph_AddEdge(QueryGraph *g, Edge *e, char *alias) {
+void _QueryGraph_AddEdge(QueryGraph *g, Edge *e) {
     _QueryGraph_AddEntity((GraphEntity*)e,
-                     alias,
+                     e->alias,
                      (GraphEntity ***)(&g->edges),
                      &g->edge_aliases,
                      &g->edge_count,
@@ -76,9 +76,9 @@ int _QueryGraph_ContainsEntity(GraphEntity *entity, GraphEntity **entities, int 
     return 0;
 }
 
-void QueryGraph_AddNode(QueryGraph *g, Node *n, char *alias) {
+void QueryGraph_AddNode(QueryGraph *g, Node *n) {
     _QueryGraph_AddEntity((GraphEntity*)n,
-    alias,
+    n->alias,
     (GraphEntity ***)&g->nodes,
     &g->node_aliases,
     &g->node_count,
@@ -99,7 +99,7 @@ void _BuildQueryGraphAddNode(const GraphContext *gc,
     if(n == NULL) {
         /* Create a new node, set its properties, and add it to the graph. */
         n = Node_New(entity->label, entity->alias);
-        QueryGraph_AddNode(qg, n, entity->alias);
+        QueryGraph_AddNode(qg, n);
     } else {
         /* Merge nodes. */
         _MergeNodeWithGraphEntity(n, entity);
@@ -159,7 +159,7 @@ void _BuildQueryGraphAddEdge(const GraphContext *gc,
         }
     }
 
-    QueryGraph_ConnectNodes(qg, src, dest, e, edge->ge.alias);
+    QueryGraph_ConnectNodes(qg, src, dest, e);
 }
 
 QueryGraph* QueryGraph_New(size_t node_cap, size_t edge_cap) {
@@ -224,10 +224,10 @@ int QueryGraph_ContainsEdge(const QueryGraph *graph, const Edge *edge) {
                                  graph->edge_count);
 }
 
-void QueryGraph_ConnectNodes(QueryGraph *g, Node *src, Node *dest, Edge *e, char *edge_alias) {
+void QueryGraph_ConnectNodes(QueryGraph *g, Node *src, Node *dest, Edge *e) {
     assert(QueryGraph_ContainsNode(g, src) && QueryGraph_ContainsNode(g, dest) && !QueryGraph_ContainsEdge(g, e));
     Node_ConnectNode(src, dest, e);
-    _QueryGraph_AddEdge(g, e, edge_alias);
+    _QueryGraph_AddEdge(g, e);
 }
 
 Node* QueryGraph_GetNodeByAlias(const QueryGraph* g, const char* alias) {
@@ -310,6 +310,29 @@ Edge** QueryGraph_GetEdgeRef(const QueryGraph *g, const Edge *e) {
     }
     
     return NULL;
+}
+
+QueryGraph* QueryGraph_Clone(const QueryGraph *g) {
+    QueryGraph *clone = QueryGraph_New(g->node_count, g->edge_count);
+    
+    // Clone nodes.
+    for(int i = 0; i < g->node_count; i++) {
+        // Clones node without its edges.
+        Node *n = Node_Clone(g->nodes[i]);
+        QueryGraph_AddNode(clone, n);
+    }
+
+    // Clone edges.
+    for(int i = 0; i < g->edge_count; i++) {
+        Edge *e = g->edges[i];
+        Node *src = QueryGraph_GetNodeByAlias(clone, e->src->alias);
+        Node *dest = QueryGraph_GetNodeByAlias(clone, e->dest->alias);
+        Edge *clone_edge = Edge_New(src, dest, e->relationship, e->alias);
+        clone_edge->relationID = e->relationID;
+        QueryGraph_ConnectNodes(clone, src, dest, clone_edge);
+    }
+
+    return clone;
 }
 
 /* Frees entire graph. */

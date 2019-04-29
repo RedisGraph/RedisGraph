@@ -67,6 +67,13 @@ GrB_Matrix Node_GetMatrix(Node *n) {
     return n->mat;
 }
 
+Node* Node_Clone(const Node *n) {
+	Node *clone = Node_New(n->label, n->alias);
+	// TODO: consider setting labelID in Node_New.
+	clone->labelID = n->labelID;
+	return clone;
+}
+
 void Node_Free(Node* node) {
 	if(!node) return;
 

@@ -37,9 +37,11 @@ QueryGraph* QueryGraph_New(size_t node_cap, size_t edge_cap);
 void BuildQueryGraph(const GraphContext *gc, QueryGraph *query_graph, Vector *entities);
 
 /* Checks if graph contains given node
- * Returns 1 if so, 0 otherwise */ 
+ * Returns 1 if so, 0 otherwise */
 int QueryGraph_ContainsNode(const QueryGraph *graph, const Node *node);
 
+/* Checks if graph contains given edge
+ * Returns 1 if so, 0 otherwise */
 int QueryGraph_ContainsEdge(const QueryGraph *graph, const Edge *edge);
 
 /* Retrieves node from graph */
@@ -58,14 +60,19 @@ Edge* QueryGraph_GetEdgeByAlias(const QueryGraph *g, const char *alias);
 GraphEntity* QueryGraph_GetEntityByAlias(const QueryGraph *g, const char *alias);
 
 /* Adds a new node to the graph */
-void QueryGraph_AddNode(QueryGraph* g, Node *n, char *alias);
+void QueryGraph_AddNode(QueryGraph* g, Node *n);
 
 /* Adds a new edge to the graph */
-void QueryGraph_ConnectNodes(QueryGraph *g, Node *src, Node *dest, Edge *e, char *edge_alias);
+void QueryGraph_ConnectNodes(QueryGraph *g, Node *src, Node *dest, Edge *e);
 
 GraphEntity** QueryGraph_GetEntityRef(const QueryGraph *g, const char *alias);
+
 Node** QueryGraph_GetNodeRef(const QueryGraph *g, const Node *n);
+
 Edge** QueryGraph_GetEdgeRef(const QueryGraph *g, const Edge *e);
+
+/* Performs deep copy of input query graph. */
+QueryGraph* QueryGraph_Clone(const QueryGraph *g);
 
 /* Frees entire graph */
 void QueryGraph_Free(QueryGraph* g);

@@ -206,13 +206,13 @@ class AlgebraicExpressionTest: public ::testing::Test {
         cwe->mat = Graph_GetRelationMatrix(g, 2);
 
         // Construct query graph
-        QueryGraph_AddNode(q, p, (char*)"p");
-        QueryGraph_AddNode(q, f, (char*)"f");
-        QueryGraph_AddNode(q, c, (char*)"c");
-        QueryGraph_AddNode(q, e, (char*)"e");
-        QueryGraph_ConnectNodes(q, p, f, pff, (char*)"ef");
-        QueryGraph_ConnectNodes(q, f, c, fvc, (char*)"ev");
-        QueryGraph_ConnectNodes(q, c, e, cwe, (char*)"ew");
+        QueryGraph_AddNode(q, p);
+        QueryGraph_AddNode(q, f);
+        QueryGraph_AddNode(q, c);
+        QueryGraph_AddNode(q, e);
+        QueryGraph_ConnectNodes(q, p, f, pff);
+        QueryGraph_ConnectNodes(q, f, c, fvc);
+        QueryGraph_ConnectNodes(q, c, e, cwe);
 
         return q;
     }
