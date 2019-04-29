@@ -60,12 +60,7 @@ class GraphMultiPatternQueryFlowTest(FlowTestsBase):
 
     # Connect a single node to all other nodes.
     def test01_connect_node_to_rest(self):
-        query = """MATCH(r:person {name:"Roi"}), (f:person) WHERE f.name <> r.name CREATE (r)-[:friend]->(f)"""
-        actual_result = redis_graph.query(query)
-        assert (actual_result.relationships_created == 6)
-    
-    def test02_verify_connect_node_to_rest(self):
-        query = """MATCH(r:person {name:"Roi"})-[]->(f) RETURN count(f)"""
+        query = """MATCH(r:person {name:"Roi"}), (f:person) WHERE f.name <> r.name CREATE (r)-[:friend]->(f) RETURN count(f)"""
         actual_result = redis_graph.query(query)
         friend_count = int(float(actual_result.result_set[1][0]))
         assert(friend_count == 6)
@@ -84,11 +79,12 @@ class GraphMultiPatternQueryFlowTest(FlowTestsBase):
             records_count = len(actual_result.result_set) -1 # Discard header row.
             assert(records_count == expected_resultset_size)
 
-    # TODO add support for
     # Connect every node to every node.
     def test03_create_fully_connected_graph(self):
-        query = """MATCH(r:person), (f:person) WHERE f.name <> r.name CREATE (r)-[:friend]->(f)"""
+        query = """MATCH(a:person), (b:person) WHERE a.name <> b.name CREATE (a)-[f:friend]->(b) RETURN count(f)"""
         actual_result = redis_graph.query(query)
+        friend_count = actual_result.result_set[1][0]
+        assert(friend_count == 42)
         assert (actual_result.relationships_created == 42)
     
     # Perform a cartesian product of 3 sets.
@@ -100,16 +96,9 @@ class GraphMultiPatternQueryFlowTest(FlowTestsBase):
 
         for q in queries:
             actual_result = redis_graph.query(q)
-            friend_count = int(float(actual_result.result_set[1][0]))
+            friend_count = actual_result.result_set[1][0]
             assert(friend_count == 343)
 
-    def test05_verify_fully_connected_graph(self):
-        query = """MATCH(r:person)-[]->(f:person) RETURN count(r)"""
-        actual_result = redis_graph.query(query)
-        friend_count = int(float(actual_result.result_set[1][0]))
-        assert(friend_count == 42)
-        assert (actual_result.relationships_created == 42)
-    
     # Ensure that an error is issued when an alias from one pattern is referenced by another.
     def test05_interdependent_patterns(self):
         queries = ["""MATCH (a)-[]->(b), (b)-[]->(c) RETURN count(b)""",
