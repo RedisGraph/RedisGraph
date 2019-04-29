@@ -9,6 +9,7 @@
 #include "../../util/arr.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
+// TODO alias unused, remove
 OpBase* NewUnwindOp(uint record_len, uint record_idx, AR_ExpNode **exprs, const char *alias) {
     OpUnwind *unwind = malloc(sizeof(OpUnwind));
     unwind->expIdx = 0;
@@ -23,9 +24,9 @@ OpBase* NewUnwindOp(uint record_len, uint record_idx, AR_ExpNode **exprs, const 
     unwind->op.reset = UnwindReset;
     unwind->op.free = UnwindFree;
 
-    // Handle alias
-    unwind->op.modifies = NewVector(char*, 1);
-    Vector_Push(unwind->op.modifies, alias);
+    // Handle introduced entity
+    unwind->op.modifies = array_new(uint, 1);
+    unwind->op.modifies = array_append(unwind->op.modifies, record_idx);
     unwind->unwindRecIdx = record_idx;
 
     return (OpBase*)unwind;

@@ -19,26 +19,23 @@ TRAVERSE_ORDER determineTraverseOrder(const FT_FilterNode *filterTree,
         return TRAVERSE_ORDER_FIRST;
     }
     
-    char *destAlias;
-    char *srcAlias;
     bool firstExpLabeled = false;
     bool lastExpLabeled = false;
     AlgebraicExpression *exp;
     TRAVERSE_ORDER order = TRAVERSE_ORDER_FIRST;
     
-    Vector *aliases = FilterTree_CollectAliases(filterTree);
-    size_t aliasesCount = Vector_Size(aliases);
+    uint *modifies = FilterTree_CollectModified(filterTree);
+    uint modifiesCount = array_len(modifies);
 
     // See if there's a filter applied to the first expression.
     exp = exps[0];
     firstExpLabeled = exp->src_node->label || exp->dest_node->label;
-    destAlias = exp->dest_node->alias;
-    srcAlias = exp->src_node->alias;
+    uint dest_idx = exp->dest_node_idx;
+    uint src_idx = exp->src_node_idx;
 
-    for(int i = 0; i < aliasesCount; i++) {
-        char *alias;
-        Vector_Get(aliases, i, &alias);
-        if(strcmp(alias, srcAlias) == 0 || strcmp(alias, destAlias) == 0) {
+    for(uint i = 0; i < modifiesCount; i++) {
+        uint id = modifies[i];
+        if (id == src_idx || id == dest_idx) {
             order = TRAVERSE_ORDER_FIRST;
             goto cleanup;
         }
@@ -47,13 +44,12 @@ TRAVERSE_ORDER determineTraverseOrder(const FT_FilterNode *filterTree,
     // See if there's a filter applied to the last expression.
     exp = exps[expCount-1];
     lastExpLabeled = exp->src_node->label || exp->dest_node->label;
-    destAlias = exp->dest_node->alias;
-    srcAlias = exp->src_node->alias;
+    dest_idx = exp->dest_node_idx;
+    src_idx = exp->src_node_idx;
 
-    for(int i = 0; i < aliasesCount; i++) {
-        char *alias;
-        Vector_Get(aliases, i, &alias);
-        if(strcmp(alias, srcAlias) == 0 || strcmp(alias, destAlias) == 0) {
+    for(uint i = 0; i < modifiesCount; i++) {
+        uint id = modifies[i];
+        if (id == src_idx || id == dest_idx) {
             order = TRAVERSE_ORDER_LAST;
             goto cleanup;
         }
@@ -68,11 +64,6 @@ TRAVERSE_ORDER determineTraverseOrder(const FT_FilterNode *filterTree,
     if(!firstExpLabeled && lastExpLabeled) order = TRAVERSE_ORDER_LAST;
 
 cleanup:
-    for(int i = 0; i < aliasesCount; i++) {
-        char *alias;
-        Vector_Get(aliases, i, &alias);
-        free(alias);
-    }
-    Vector_Free(aliases);
+    array_free(modifies);
     return order;
 }

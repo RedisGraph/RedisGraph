@@ -71,18 +71,16 @@ OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *ae, uint records_cap) {
     traverse->op.init = CondTraverseInit;
     traverse->op.reset = CondTraverseReset;
     traverse->op.free = CondTraverseFree;
-    traverse->op.modifies = NewVector(char*, 1);
-
-    char *modified = traverse->ae->dest_node->alias;
-    if (modified) Vector_Push(traverse->op.modifies, modified);
+    traverse->op.modifies = array_new(uint, 1);
+    traverse->op.modifies = array_append(traverse->op.modifies, ae->dest_node_idx);
 
     if(ae->edge) {
         traverse->edgeRelationTypes = traverse->ae->relation_ids;
         traverse->edgeRelationCount = array_len(traverse->edgeRelationTypes);
-        modified = traverse->ae->edge->alias;
-        if (modified) Vector_Push(traverse->op.modifies, modified);
+        uint id = traverse->ae->edge_idx;
+        if (id != NOT_IN_RECORD) traverse->op.modifies = array_append(traverse->op.modifies, id);
         traverse->edges = array_new(Edge, 32);
-        traverse->edgeRecIdx = ae->edge_idx;
+        traverse->edgeRecIdx = ae->edge_idx; // TODO I don't think this makes sense for unaliased
     }
 
     return (OpBase*)traverse;

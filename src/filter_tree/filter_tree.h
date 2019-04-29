@@ -65,7 +65,7 @@ int FilterTree_applyFilters(const FT_FilterNode* root, const Record r);
 
 /* Extract every alias mentioned in the tree
  * without duplications. */
-Vector *FilterTree_CollectAliases(const FT_FilterNode *root);
+uint* FilterTree_CollectModified(const FT_FilterNode *root);
 
 /* Prints tree. */
 void FilterTree_Print(const FT_FilterNode *root);

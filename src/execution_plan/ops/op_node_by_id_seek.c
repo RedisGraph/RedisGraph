@@ -6,8 +6,6 @@
 
 #include "op_node_by_id_seek.h"
 
-#define MIN(a,b) (((a) < (b)) ? (a) : (b))
-
 // Checks to see if operation index is within its bounds.
 static inline bool _outOfBounds(OpNodeByIdSeek *op) {
     /* Because currentId starts at minimum and only increases

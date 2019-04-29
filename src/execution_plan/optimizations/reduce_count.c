@@ -91,11 +91,11 @@ void reduceCount(ExecutionPlan *plan) {
     }
 
     // Incase alias is specified: RETURN count(n) as X
-    char **aliases = NULL;
-    if(opAggregate->aliases) {
-        assert(array_len(opAggregate->aliases) == 1);
-        aliases = array_new(char*, 1);
-        aliases = array_append(aliases, opAggregate->aliases[0]);
+    uint *modifies = NULL;
+    if(opAggregate->op.modifies) {
+        assert(array_len(opAggregate->op.modifies) == 1);
+        modifies = array_new(uint, 1);
+        modifies = array_append(modifies, opAggregate->op.modifies[0]);
     }
 
     /* Construct a constant expression, used by a new
@@ -104,7 +104,7 @@ void reduceCount(ExecutionPlan *plan) {
     AR_ExpNode **exps = array_new(AR_ExpNode*, 1);
     exps = array_append(exps, exp);
 
-    OpBase *opProject = NewProjectOp(exps, aliases);
+    OpBase *opProject = NewProjectOp(exps, modifies);
 
     // New execution plan: "Project -> Results"    
     ExecutionPlan_RemoveOp(plan, (OpBase*)opScan);    

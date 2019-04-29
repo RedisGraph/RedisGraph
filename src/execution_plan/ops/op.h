@@ -13,7 +13,7 @@
 #include "../../graph/entities/node.h"
 #include "../../graph/entities/edge.h"
 #include "../../schema/schema.h"
-#include "../../util/vector.h"
+#include "../../util/arr.h"
 
 #define OP_REQUIRE_NEW_DATA(opRes) (opRes & (OP_DEPLETED | OP_REFRESH)) > 0
 
@@ -66,7 +66,7 @@ struct OpBase {
     fpReset reset;              // Reset operation state.
     fpFree free;                // Free operation.
     char *name;                 // Operation name.
-    Vector *modifies;           // List of aliases, this op modifies.
+    uint *modifies;             // List of Record indices this op modifies.
     struct OpBase **children;   // Child operations.
     int childCount;             // Number of children.
     struct OpBase *parent;      // Parent operations.

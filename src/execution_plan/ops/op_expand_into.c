@@ -32,7 +32,8 @@ OpBase* NewExpandIntoOp(Node *a, Node *b, Edge *e) {
     expandInto->op.consume = OpExpandIntoConsume;
     expandInto->op.reset = OpExpandIntoReset;
     expandInto->op.free = OpExpandIntoFree;
-    expandInto->op.modifies = NewVector(char*, 0);
+    assert(false && "currently don't expand into");
+    // expandInto->op.modifies = NewVector(char*, 0);
     return (OpBase*)expandInto;
 }
 

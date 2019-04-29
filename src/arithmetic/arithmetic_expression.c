@@ -438,15 +438,16 @@ void AR_EXP_Reduce(const AR_ExpNode *root) {
     }
 }
 
-void AR_EXP_CollectAliases(AR_ExpNode *root, TrieMap *aliases) {
+void AR_EXP_CollectEntityIDs(AR_ExpNode *root, TrieMap *record_ids) {
     if (root->type == AR_EXP_OP) {
         for (int i = 0; i < root->op.child_count; i ++) {
-            AR_EXP_CollectAliases(root->op.children[i], aliases);
+            AR_EXP_CollectEntityIDs(root->op.children[i], record_ids);
         }
     } else { // type == AR_EXP_OPERAND
         if (root->operand.type == AR_EXP_VARIADIC) {
-            char *alias = root->operand.variadic.entity_alias;
-            if (alias) TrieMap_Add(aliases, alias, strlen(alias), NULL, NULL);
+            int record_idx = root->operand.variadic.entity_alias_idx;
+            assert(record_idx != NOT_IN_RECORD);
+            TrieMap_Add(record_ids, (char*)&record_idx, sizeof(record_idx), NULL, NULL);
         }
     }
 }

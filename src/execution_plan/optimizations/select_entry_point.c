@@ -5,11 +5,13 @@
 */
 
 #include "./select_entry_point.h"
+#include "../../util/arr.h"
 
 void selectEntryPoint(AlgebraicExpression *ae, const FT_FilterNode *tree) {
-    Vector *aliases = FilterTree_CollectAliases(tree);
-    char *srcAlias = ae->src_node->alias;
-    char *destAlias = ae->dest_node->alias;
+    uint *modifies = FilterTree_CollectModified(tree);
+    uint modifiesCount = array_len(modifies);
+    uint dest_idx = ae->dest_node_idx;
+    uint src_idx = ae->src_node_idx;
 
     bool srcFiltered = false;
     bool destFiltered = false;
@@ -17,15 +19,13 @@ void selectEntryPoint(AlgebraicExpression *ae, const FT_FilterNode *tree) {
     bool destLabeled = ae->dest_node->label != NULL;
 
     // See if either source or destination nodes are filtered.
-    for(int i = 0; i < Vector_Size(aliases); i++) {
-        char *alias;
-        Vector_Get(aliases, i, &alias);
-
-        srcFiltered = (strcmp(alias, srcAlias) == 0);
+    for(uint i = 0; i < modifiesCount; i++) {
+        uint id = modifies[i];
+        srcFiltered = (id == src_idx);
         if(srcFiltered) goto cleanup;
 
         // See if dest is filtered.
-        if(!destFiltered) destFiltered = (strcmp(alias, destAlias) == 0);
+        if(!destFiltered) destFiltered = (id == dest_idx);
     }
 
     /* Prefer filter over label 
@@ -44,10 +44,5 @@ void selectEntryPoint(AlgebraicExpression *ae, const FT_FilterNode *tree) {
     }
 
 cleanup:
-    for(int i = 0; i < Vector_Size(aliases); i++) {
-        char *alias;
-        Vector_Get(aliases, i, &alias);
-        free(alias);
-    }
-    Vector_Free(aliases);
+    array_free(modifies);
 }

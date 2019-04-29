@@ -22,8 +22,8 @@ OpBase* NewIndexScanOp(Graph *g, Node *node, IndexIter *iter) {
   indexScan->op.reset = IndexScanReset;
   indexScan->op.free = IndexScanFree;
 
-  indexScan->op.modifies = NewVector(char*, 1);
-  Vector_Push(indexScan->op.modifies, node->alias);
+  indexScan->op.modifies = array_new(uint, 1);
+  indexScan->op.modifies = array_append(indexScan->op.modifies, indexScan->nodeRecIdx);
 
   return (OpBase*)indexScan;
 }

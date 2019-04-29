@@ -73,55 +73,48 @@ void _OpBase_RemoveChild(OpBase *parent, OpBase *child) {
     _OpBase_RemoveNode(parent, child);
 }
 
-Vector* _ExecutionPlan_Locate_References(OpBase *root, OpBase **op, Vector *references) {
+uint* _ExecutionPlan_Locate_References(OpBase *root, OpBase **op, uint *references) {
     /* List of entities which had their ID resolved
      * at this point of execution, should include all
      * previously modified entities (up the execution plan). */
-    Vector *seen = NewVector(char*, 0);
-    char *modifiedEntity;
+    uint *seen = array_new(uint*, 0);
 
+    uint modifies_count = array_len(root->modifies);
     /* Append current op modified entities. */
-    if(root->modifies) {
-        for(int i = 0; i < Vector_Size(root->modifies); i++) {
-            Vector_Get(root->modifies, i, &modifiedEntity);
-            Vector_Push(seen, modifiedEntity);
-        }
+    for(uint i = 0; i < modifies_count; i++) {
+        seen = array_append(seen, root->modifies[i]);
     }
 
+    // TODO consider sorting 'seen' here
      /* Traverse execution plan, upwards. */
     for(int i = 0; i < root->childCount; i++) {
-        Vector *saw = _ExecutionPlan_Locate_References(root->children[i], op, references);
+        uint *saw = _ExecutionPlan_Locate_References(root->children[i], op, references);
 
         /* Quick return if op was located. */
         if(*op) {
-            Vector_Free(saw);
+            array_free(saw);
             return seen;
         }
 
-        /* Add modified entities from previous operation. */
-        for(int i = 0; i < Vector_Size(saw); i++) {
-            Vector_Get(saw, i, &modifiedEntity);
-            Vector_Push(seen, modifiedEntity);
+        uint saw_count = array_len(saw);
+        /* Append current op modified entities. */
+        for(uint i = 0; i < saw_count; i++) {
+            seen = array_append(seen, saw[i]);
         }
-        Vector_Free(saw);
+        array_free(saw);
     }
 
-    /* See if all references been resolved.
-     * TODO: create a vector compare function
-     * which checks if the content of one is in the other. */
-    int match = Vector_Size(references);
-    size_t ref_count = Vector_Size(references);
-    size_t seen_count = Vector_Size(seen);
+    /* See if all references have been resolved. */
+    uint ref_count = array_len(references);
+    uint match = ref_count;
+    uint seen_count = array_len(seen);
 
-    for(int i = 0; i < ref_count; i++) {
-        char *reference;        
-        Vector_Get(references, i, &reference);
+    for(uint i = 0; i < ref_count; i++) {
+        int seen_id = references[i];
 
         int j = 0;
         for(; j < seen_count; j++) {
-            char *resolved;
-            Vector_Get(seen, j, &resolved);
-            if(!strcmp(reference, resolved)) {
+            if (seen_id == seen[j]) {
                 /* Match! */
                 break;
             }
@@ -243,10 +236,10 @@ void ExecutionPlan_Taps(OpBase *root, OpBase ***taps) {
     }
 }
 
-OpBase* ExecutionPlan_Locate_References(OpBase *root, Vector *references) {
+OpBase* ExecutionPlan_Locate_References(OpBase *root, uint *references) {
     OpBase *op = NULL;    
-    Vector *temp = _ExecutionPlan_Locate_References(root, &op, references);
-    Vector_Free(temp);
+    uint *temp = _ExecutionPlan_Locate_References(root, &op, references);
+    array_free(temp);
     return op;
 }
 
@@ -475,6 +468,7 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, ResultSet *result_set) {
 
     char **aliases = NULL;  // Array of aliases RETURN n.v as V
     AR_ExpNode **exps = NULL;
+    uint *modifies = NULL; // TODO tmp
     bool aggregate = false;
 
     // TODO with clauses, separate handling for their distinct/limit/etc
@@ -490,10 +484,13 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, ResultSet *result_set) {
         // which is dumb - change signatures to take ReturnElementNodes
 
         exps = array_new(AR_ExpNode*, exp_count);
-        aliases = array_new(char*, exp_count);
+        aliases = array_new(char*, exp_count); // TODO delete
+        modifies = array_new(uint, exp_count);
         for (uint i = 0; i < exp_count; i ++) {
-            exps = array_append(exps, ast->return_expressions[i]->exp);
+            AR_ExpNode *exp = ast->return_expressions[i]->exp;
+            exps = array_append(exps, exp);
             aliases = array_append(aliases, (char*)ast->return_expressions[i]->alias);
+            if (exp->record_idx) modifies = array_append(modifies, exp->record_idx);
         }
         // TODO We've already determined this during AST validations, could refactor to make
         // this call unnecessary.
@@ -503,8 +500,8 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, ResultSet *result_set) {
 
     OpBase *op;
     if(ret_clause || with_clause) {
-        if(aggregate) op = NewAggregateOp(exps, aliases);
-        else op = NewProjectOp(exps, aliases);
+        if(aggregate) op = NewAggregateOp(exps, modifies);
+        else op = NewProjectOp(exps, modifies);
         Vector_Push(ops, op);
     }
 
@@ -642,7 +639,7 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, bool expl
                 FT_FilterNode *tree;
                 Vector_Get(sub_trees, i, &tree);
 
-                Vector *references = FilterTree_CollectAliases(tree);
+                uint *references = FilterTree_CollectModified(tree);
 
                 /* Scan execution plan, locate the earliest position where all
                  * references been resolved. */
@@ -653,12 +650,7 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, bool expl
                  * Introduce filter op right below located op. */
                 OpBase *filter_op = NewFilterOp(tree);
                 ExecutionPlan_PushBelow(op, filter_op);
-                for(int j = 0; j < Vector_Size(references); j++) {
-                    char *ref;
-                    Vector_Get(references, j, &ref);
-                    free(ref);
-                }
-                Vector_Free(references);
+                array_free(references);
             }
             Vector_Free(sub_trees);
         }

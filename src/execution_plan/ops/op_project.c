@@ -22,7 +22,7 @@ static AR_ExpNode** _getOrderExpressions(OpBase *op) {
     return _getOrderExpressions(op->parent);
 }
 
-OpBase* NewProjectOp(AR_ExpNode **exps, char **aliases) {
+OpBase* NewProjectOp(AR_ExpNode **exps, uint *modifies) {
     AST *ast = AST_GetFromTLS();
     OpProject *project = malloc(sizeof(OpProject));
     project->ast = ast;
@@ -31,7 +31,6 @@ OpBase* NewProjectOp(AR_ExpNode **exps, char **aliases) {
     project->order_exps = NULL;
     project->order_exp_count = 0;
     project->singleResponse = false;
-    project->aliases = aliases;
 
     // Set our Op operations
     OpBase_Init(&project->op);
@@ -42,10 +41,7 @@ OpBase* NewProjectOp(AR_ExpNode **exps, char **aliases) {
     project->op.reset = ProjectReset;
     project->op.free = ProjectFree;
 
-    project->op.modifies = NewVector(char*, 0);
-    for(uint i = 0; i < array_len(aliases); i++) {
-        if(aliases[i]) Vector_Push(project->op.modifies, aliases[i]);
-    }
+    project->op.modifies = modifies;
 
     return (OpBase*)project;
 }
@@ -161,5 +157,4 @@ void ProjectFree(OpBase *ctx) {
 
     // for(unsigned short i = 0; i < op->exp_count; i++) AR_EXP_Free(op->exps[i]); // TODO double free
     array_free(op->exps);
-    array_free(op->aliases);
 }

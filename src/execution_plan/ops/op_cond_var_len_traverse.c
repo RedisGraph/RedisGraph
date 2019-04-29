@@ -40,11 +40,9 @@ OpBase* NewCondVarLenTraverseOp(AlgebraicExpression *ae, unsigned int minHops, u
     condVarLenTraverse->op.consume = CondVarLenTraverseConsume;
     condVarLenTraverse->op.reset = CondVarLenTraverseReset;
     condVarLenTraverse->op.free = CondVarLenTraverseFree;
-    condVarLenTraverse->op.modifies = NewVector(char*, 1);
 
-    const char *modified = NULL;
-    modified = ae->dest_node->alias;
-    Vector_Push(condVarLenTraverse->op.modifies, modified);
+    condVarLenTraverse->op.modifies = array_new(uint, 1);
+    condVarLenTraverse->op.modifies = array_append(condVarLenTraverse->op.modifies, ae->dest_node_idx);
 
     return (OpBase*)condVarLenTraverse;
 }

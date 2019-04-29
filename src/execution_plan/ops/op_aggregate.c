@@ -206,11 +206,10 @@ static Record _handoff(OpAggregate *op) {
     return r;
 }
 
-OpBase* NewAggregateOp(AR_ExpNode **expressions, char **aliases) {
+OpBase* NewAggregateOp(AR_ExpNode **expressions, uint *modifies) {
     OpAggregate *aggregate = malloc(sizeof(OpAggregate));
     AST *ast = AST_GetFromTLS();
     aggregate->ast = ast;
-    aggregate->aliases = aliases;
     aggregate->expressions = expressions;
     aggregate->exp_count = array_len(expressions);
     aggregate->expression_classification = NULL;
@@ -230,10 +229,7 @@ OpBase* NewAggregateOp(AR_ExpNode **expressions, char **aliases) {
     aggregate->op.reset = AggregateReset;
     aggregate->op.free = AggregateFree;
     
-    aggregate->op.modifies = NewVector(char*, 0);
-    for(uint i = 0; i < array_len(aliases); i++) {
-        if(aliases[i]) Vector_Push(aggregate->op.modifies, aliases[i]);
-    }
+    aggregate->op.modifies = modifies;
 
     return (OpBase*)aggregate;
 }
@@ -294,7 +290,6 @@ void AggregateFree(OpBase *opBase) {
         for(uint i = 0; i < expCount; i++) AR_EXP_Free(op->expressions[i]);
         array_free(op->expressions);
     }
-    array_free(op->aliases);
 
     FreeGroupCache(op->groups);
 }

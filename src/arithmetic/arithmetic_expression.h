@@ -134,9 +134,9 @@ void AR_EXP_Aggregate(const AR_ExpNode *root, const Record r);
 void AR_EXP_Reduce(const AR_ExpNode *root);
 
 /* Utility functions */
-/* Traverse an expression tree and add all graph entity aliases
+/* Traverse an expression tree and add all graph entity record IDs
  * (from variadic) to a triemap. */
-void AR_EXP_CollectAliases(AR_ExpNode *root, TrieMap *aliases);
+void AR_EXP_CollectEntityIDs(AR_ExpNode *root, TrieMap *aliases);
 
 /* Search for an aggregation node within the expression tree.
  * Return 1 and sets agg_node to the aggregation node if exists,

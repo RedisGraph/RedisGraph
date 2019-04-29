@@ -13,7 +13,6 @@
 typedef struct {
     OpBase op;
     const AST *ast;
-    char **aliases;                 // Aliases attached to projected expressions.
     AR_ExpNode **exps;              // Projected expressions.
     AR_ExpNode **order_exps;        // Order by expressions.
     bool singleResponse;            // When no child operations, return NULL after a first response.
@@ -21,7 +20,7 @@ typedef struct {
     unsigned short order_exp_count; // Number of order by expressions.
 } OpProject;
 
-OpBase* NewProjectOp(AR_ExpNode **exps, char **aliases);
+OpBase* NewProjectOp(AR_ExpNode **exps, uint *modifies);
 
 OpResult ProjectInit(OpBase *opBase);
 

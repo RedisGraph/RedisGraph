@@ -22,9 +22,9 @@ OpBase* NewAllNodeScanOp(const Graph *g, Node *n, uint node_idx) {
     allNodeScan->op.consume = AllNodeScanConsume;
     allNodeScan->op.reset = AllNodeScanReset;
     allNodeScan->op.free = AllNodeScanFree;
-    allNodeScan->op.modifies = NewVector(char*, 1);
 
-    if (n->alias) Vector_Push(allNodeScan->op.modifies, n->alias);
+    allNodeScan->op.modifies = array_new(uint, 1);
+    allNodeScan->op.modifies = array_append(allNodeScan->op.modifies, node_idx);
 
     return (OpBase*)allNodeScan;
 }

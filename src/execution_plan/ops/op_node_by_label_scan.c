@@ -35,8 +35,8 @@ OpBase *NewNodeByLabelScanOp(GraphContext *gc, Node *node, unsigned int node_idx
     nodeByLabelScan->op.reset = NodeByLabelScanReset;
     nodeByLabelScan->op.free = NodeByLabelScanFree;
     
-    nodeByLabelScan->op.modifies = NewVector(char*, 1);
-    Vector_Push(nodeByLabelScan->op.modifies, node->alias);
+    nodeByLabelScan->op.modifies = array_new(uint, 1);
+    nodeByLabelScan->op.modifies = array_append(nodeByLabelScan->op.modifies, node_idx);
 
     return (OpBase*)nodeByLabelScan;
 }
