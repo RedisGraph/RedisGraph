@@ -158,6 +158,8 @@ AlgebraicExpression **_AlgebraicExpression_Intermediate_Expressions(const AST *a
                 expr->record_idx = AST_AddAnonymousRecordEntry((AST*)ast);
             }
             iexp->edge_idx = expr->record_idx;
+        } else {
+            iexp->edge_idx = NOT_IN_RECORD;
         }
 
         /* If this is a variable length edge, which is not fixed in length

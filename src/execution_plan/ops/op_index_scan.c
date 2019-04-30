@@ -6,12 +6,13 @@
 
 #include "op_index_scan.h"
 
-OpBase* NewIndexScanOp(Graph *g, Node *node, IndexIter *iter) {
+OpBase* NewIndexScanOp(Graph *g, Node *node, uint node_idx, IndexIter *iter) {
   IndexScan *indexScan = malloc(sizeof(IndexScan));
   indexScan->g = g;
   indexScan->iter = iter;
+
+  indexScan->nodeRecIdx = node_idx;
   AST *ast = AST_GetFromTLS();
-  indexScan->nodeRecIdx = AST_GetAliasID(ast, node->alias);
   indexScan->recLength = AST_RecordLength(ast);
 
   // Set our Op operations

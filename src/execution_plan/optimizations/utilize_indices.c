@@ -142,7 +142,7 @@ void utilizeIndices(GraphContext *gc, ExecutionPlan *plan) {
     }
 
     if (iter != NULL) {
-      OpBase *indexOp = NewIndexScanOp(scanOp->g, scanOp->node, iter);
+      OpBase *indexOp = NewIndexScanOp(scanOp->g, scanOp->node, scanOp->nodeRecIdx, iter);
       ExecutionPlan_ReplaceOp(plan, (OpBase*)scanOp, indexOp);
     }
   }

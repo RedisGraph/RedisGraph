@@ -13,8 +13,8 @@ OpBase *NewNodeByLabelScanOp(GraphContext *gc, Node *node, unsigned int node_idx
     nodeByLabelScan->node = node;
     nodeByLabelScan->_zero_matrix = NULL;
 
-    AST *ast = AST_GetFromTLS();
     nodeByLabelScan->nodeRecIdx = node_idx;
+    AST *ast = AST_GetFromTLS();
     nodeByLabelScan->recLength = AST_RecordLength(ast);
 
     /* Find out label matrix ID. */

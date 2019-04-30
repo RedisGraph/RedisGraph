@@ -22,7 +22,7 @@ typedef struct {
 } IndexScan;
 
 /* Creates a new IndexScan operation */
-OpBase *NewIndexScanOp(Graph *g, Node *node, IndexIter *iter);
+OpBase *NewIndexScanOp(Graph *g, Node *node, uint node_idx, IndexIter *iter);
 
 /* IndexScan next operation
  * called each time a new node is required */
