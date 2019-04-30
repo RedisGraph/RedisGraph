@@ -53,23 +53,18 @@ static void _ResultSet_ReplyWithScalar(RedisModuleCtx *ctx, const SIValue v) {
       }
 }
 
-static void _ResultSet_ReplayHeader(const ResultSet *set, const ResultSetHeader *header) {
-    RedisModule_ReplyWithArray(set->ctx, header->columns_len);
-    for(int i = 0; i < header->columns_len; i++) {
-        Column *c = header->columns[i];
-        if(c->alias) {
-            RedisModule_ReplyWithStringBuffer(set->ctx, c->alias, strlen(c->alias));
-        } else {
-            RedisModule_ReplyWithStringBuffer(set->ctx, c->name, strlen(c->name));
-        }
+static void _ResultSet_ReplayHeader(const ResultSet *set, const char **column_names) {
+    uint ncols = array_len(column_names);
+    RedisModule_ReplyWithArray(set->ctx, ncols);
+    for(uint i = 0; i < ncols; i++) {
+        RedisModule_ReplyWithStringBuffer(set->ctx, column_names[i], strlen(column_names[i]));
     }
 }
 
 static void _ResultSet_ReplayRecord(ResultSet *s, const Record r) {
-    uint column_count = s->header->columns_len;
-    RedisModule_ReplyWithArray(s->ctx, column_count);
+    RedisModule_ReplyWithArray(s->ctx, s->column_count);
 
-    for(uint i = 0; i < column_count; i++) {
+    for(uint i = 0; i < s->column_count; i++) {
         _ResultSet_ReplyWithScalar(s->ctx, Record_GetScalar(r, i));
     }
 }
@@ -128,71 +123,21 @@ static void _ResultSet_ReplayStats(RedisModuleCtx* ctx, ResultSet* set) {
     }
 }
 
-static Column* _NewColumn(char *name, char *alias) {
-    Column* column = rm_malloc(sizeof(Column));
-    column->name = name;
-    column->alias = alias;
-    return column;
-}
+void ResultSet_CreateHeader(ResultSet *resultset, const char **column_names) {
+    assert(resultset->recordCount == 0);
 
-void static _Column_Free(Column* column) {
-    /* No need to free alias,
-     * it will be freed as part of AST_Free. */
-    // TODO
-    // rm_free(column->name);
-    // rm_free(column);
-}
-
-void ResultSet_CreateHeader(ResultSet *resultset, ReturnElementNode **return_expressions) {
-    assert(resultset->header == NULL && resultset->recordCount == 0);
-
-    ResultSetHeader* header = rm_malloc(sizeof(ResultSetHeader));
-    header->columns_len = 0;
-    header->columns = NULL;
-
-    unsigned int return_expression_count = array_len(return_expressions);
-    if(return_expression_count > 0) {
-        header->columns_len = return_expression_count;
-        header->columns = rm_malloc(sizeof(Column*) * header->columns_len);
-    }
-
-    for(int i = 0; i < header->columns_len; i++) {
-        ReturnElementNode *elem = return_expressions[i];
-
-        // TODO ?? this seems really pointless
-        char *column_name;
-        if (elem->alias) {
-            column_name = (char*)elem->alias;
-        } else {
-            AR_EXP_ToString(elem->exp, &column_name);
-        }
-        Column* column = _NewColumn(column_name, column_name);
-
-        header->columns[i] = column;
-    }
-
-    resultset->header = header;
+    resultset->column_names = column_names;
+    resultset->column_count = array_len(column_names);
     /* Replay with table header. */
-    _ResultSet_ReplayHeader(resultset, header);
-}
-
-static void _ResultSetHeader_Free(ResultSetHeader* header) {
-    if(!header) return;
-
-    for(int i = 0; i < header->columns_len; i++) _Column_Free(header->columns[i]);
-
-    if(header->columns != NULL) {
-        rm_free(header->columns);
-    }
-
-    rm_free(header);
+    _ResultSet_ReplayHeader(resultset, column_names);
 }
 
 ResultSet* NewResultSet(RedisModuleCtx *ctx) {
     ResultSet* set = (ResultSet*)malloc(sizeof(ResultSet));
     set->ctx = ctx;
+    set->column_names = NULL;
+    set->column_count = 0;
     set->recordCount = 0;    
-    set->header = NULL;
     set->bufferLen = 2048;
     set->buffer = malloc(set->bufferLen);
 
@@ -215,9 +160,8 @@ int ResultSet_AddRecord(ResultSet* set, Record r) {
 }
 
 void ResultSet_Replay(ResultSet* set) {
-    // Ensure that we're returning a valid number of records.
-    size_t resultset_size = set->recordCount;
-    if(set->header) resultset_size++;
+    // The resultset size is 1 (for the header) + number of records
+    size_t resultset_size = set->recordCount + 1;
 
     RedisModule_ReplySetArrayLength(set->ctx, resultset_size);
     _ResultSet_ReplayStats(set->ctx, set);
@@ -227,6 +171,5 @@ void ResultSet_Free(ResultSet *set) {
     if(!set) return;
 
     free(set->buffer);
-    if(set->header) _ResultSetHeader_Free(set->header);
     free(set);
 }

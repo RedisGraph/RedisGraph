@@ -44,16 +44,11 @@ typedef enum {
 typedef struct AR_ExpNode AR_ExpNode;
 
 typedef struct {
-    const char *alias;    // Alias given to this return element (using the AS keyword)
-    AR_ExpNode *exp;
-} ReturnElementNode; // TODO Should be able to remove this struct
-
-typedef struct {
     const cypher_astnode_t *root;
     // Extensible array of entities described in MATCH, MERGE, and CREATE clauses
     AR_ExpNode **defined_entities;
     TrieMap *entity_map;
-    ReturnElementNode **return_expressions;
+    const char **return_expressions;
     unsigned int order_expression_count; // TODO maybe use arr.h instead
     unsigned int record_length;
     AR_ExpNode **order_expressions;

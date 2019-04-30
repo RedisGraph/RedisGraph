@@ -7,7 +7,6 @@
 #ifndef __GRAPH_RESULTSET_H__
 #define __GRAPH_RESULTSET_H__
 
-#include "resultset_header.h"
 #include "resultset_statistics.h"
 #include "../parser/ast.h"
 #include "../redismodule.h"
@@ -21,7 +20,8 @@
 
 typedef struct {
     RedisModuleCtx *ctx;
-    ResultSetHeader *header;    /* Describes how records should look like. */
+    const char **column_names;
+    uint column_count; // TODO optional
     size_t recordCount;         /* Number of records introduced. */
     char *buffer;               /* Reusable buffer for record streaming. */
     size_t bufferLen;           /* Size of buffer in bytes. */
@@ -30,7 +30,7 @@ typedef struct {
 
 ResultSet* NewResultSet(RedisModuleCtx *ctx);
 
-void ResultSet_CreateHeader(ResultSet *set, ReturnElementNode **return_expressions);
+void ResultSet_CreateHeader(ResultSet *set, const char **column_names);
 
 int ResultSet_AddRecord(ResultSet* set, Record r);
 

@@ -15,26 +15,18 @@
 #include "arithmetic/repository.h"
 #include "../deps/libcypher-parser/lib/src/cypher-parser.h"
 
-ReturnElementNode* _NewReturnElementNode(const char *alias, AR_ExpNode *exp) {
-    ReturnElementNode *ret = malloc(sizeof(ReturnElementNode));
-    ret->alias = alias;
-    ret->exp = exp;
-
-    return ret;
-}
-
 void ExpandCollapsedNodes(AST *ast) {
 
     char buffer[256];
     GraphContext *gc = GraphContext_GetFromTLS();
 
     unsigned int return_expression_count = array_len(ast->return_expressions);
-    ReturnElementNode **expandReturnElements = array_new(ReturnElementNode*, return_expression_count);
+    const char **expandReturnElements = array_new(const char*, return_expression_count);
 
     /* Scan return clause, search for collapsed nodes. */
     for (unsigned int i = 0; i < return_expression_count; i++) {
-        ReturnElementNode *elem = ast->return_expressions[i];
-        AR_ExpNode *exp = elem->exp;
+        const char *column_name = ast->return_expressions[i];
+        AR_ExpNode *exp = AST_GetEntityFromAlias(ast, (char*)column_name);
 
         /* Detect collapsed entity,
          * A collapsed entity is represented by an arithmetic expression
@@ -76,14 +68,12 @@ void ExpandCollapsedNodes(AST *ast) {
                 const cypher_astnode_t *alias_node = cypher_ast_unwind_get_alias(ast_entity);
                 const char *alias = cypher_ast_identifier_get_name(alias_node);
                 AR_ExpNode *exp = AR_EXP_NewConstOperandNode(SI_ConstStringVal((char*)alias));
-                ReturnElementNode *unwindElem = _NewReturnElementNode(elem->alias, exp);
-                expandReturnElements = array_append(expandReturnElements, unwindElem);
+                expandReturnElements = array_append(expandReturnElements, column_name);
                 continue;
             } else if (type == CYPHER_AST_IDENTIFIER) {
                 // Observed in query "UNWIND [1,2,3] AS a RETURN a AS e"
                 const char *alias = cypher_ast_identifier_get_name(ast_entity);
-                ReturnElementNode *unwindElem = _NewReturnElementNode(alias, exp);
-                expandReturnElements = array_append(expandReturnElements, unwindElem);
+                expandReturnElements = array_append(expandReturnElements, column_name);
                 continue;
             } else {
                 assert(false);
@@ -103,15 +93,13 @@ void ExpandCollapsedNodes(AST *ast) {
             tm_len_t prop_len = 0;  /* Length of entity's property. */
 
             AR_ExpNode *expanded_exp;
-            ReturnElementNode *retElem;
             if(!schema || Schema_AttributeCount(schema) == 0) {
                 /* Schema missing or
                  * label doesn't have any properties.
                  * Create a fake return element. */
                 expanded_exp = AR_EXP_NewConstOperandNode(SI_ConstStringVal(""));
                 // Incase an alias is given use it, otherwise use the variable name.
-                retElem = _NewReturnElementNode(elem->alias, expanded_exp);
-                expandReturnElements = array_append(expandReturnElements, retElem);
+                expandReturnElements = array_append(expandReturnElements, column_name);
             } else {
                 TrieMapIterator *it = TrieMap_Iterate(schema->attributes, "", 0);
                 while(TrieMapIterator_Next(it, &prop, &prop_len, &ptr)) {
@@ -123,16 +111,21 @@ void ExpandCollapsedNodes(AST *ast) {
                     /* Create a new return element foreach property. */
                     expanded_exp = AR_EXP_NewVariableOperandNode(ast, ast_entity, collapsed_entity->operand.variadic.entity_alias, buffer);
                     // expanded_exp = AR_EXP_NewVariableOperandNode(ast, alias, buffer);
-                    retElem = _NewReturnElementNode(elem->alias, expanded_exp);
                     unsigned int id = AST_AddRecordEntry(ast);
                     AR_EXP_AssignRecordIndex(expanded_exp, id);
                     ast->defined_entities = array_append(ast->defined_entities, expanded_exp);
-                    expandReturnElements = array_append(expandReturnElements, retElem);
+
+                    // TODO memory leak (and ugly), but only required until we don't expand collapsed entities
+                    char *expanded_name;
+                    AR_EXP_ToString(expanded_exp, &expanded_name);
+                    AST_MapAlias(ast, expanded_name, expanded_exp);
+                    // expandReturnElements = array_append(expandReturnElements, column_name);
+                    expandReturnElements = array_append(expandReturnElements, expanded_name);
                 }
                 TrieMapIterator_Free(it);
             }
         } else {
-            expandReturnElements = array_append(expandReturnElements, elem);
+            expandReturnElements = array_append(expandReturnElements, column_name);
         }
     }
 
@@ -258,10 +251,10 @@ void _ReturnExpandAll(AST *ast) {
 
     for (unsigned int i = 0; i < identifier_count; i ++) {
         AR_ExpNode *entity = ast->defined_entities[i];
-        // TODO Temporary - rethink anon entities
-        if (!strncmp(entity->operand.variadic.entity_alias, "anon_", 5)) continue; // TODO safe?
-        ReturnElementNode *ret = _NewReturnElementNode(NULL, entity);
-        ast->return_expressions = array_append(ast->return_expressions, ret);
+        char *alias = entity->operand.variadic.entity_alias;
+        if (alias) {
+            ast->return_expressions = array_append(ast->return_expressions, alias);
+        }
     }
 }
 
@@ -324,7 +317,8 @@ void _BuildReturnExpressions(AST *ast) {
             AST_MapAlias(ast, alias, alias_exp);
         }
 
-        ast->return_expressions = array_append(ast->return_expressions, _NewReturnElementNode(alias, exp));
+        const char *column_name = alias ? alias : exp->operand.variadic.entity_alias;
+        ast->return_expressions = array_append(ast->return_expressions, column_name);
     }
 
     // Handle ORDER entities

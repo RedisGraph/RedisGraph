@@ -493,13 +493,11 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, ResultSet *result_set) {
     const cypher_astnode_t *ret_clause = AST_GetClause(ast->root, CYPHER_AST_RETURN);
     if(ret_clause) {
         uint exp_count = array_len(ast->return_expressions);
-        // TODO exps and aliases just separate the elements of ast->return_expressions,
-        // which is dumb - change signatures to take ReturnElementNodes
-
         exps = array_new(AR_ExpNode*, exp_count);
         modifies = array_new(uint, exp_count);
         for (uint i = 0; i < exp_count; i ++) {
-            AR_ExpNode *exp = ast->return_expressions[i]->exp;
+            // TODO maybe store these exps in AST
+            AR_ExpNode *exp = AST_GetEntityFromAlias(ast, (char*)ast->return_expressions[i]);
             exps = array_append(exps, exp);
             if (exp->record_idx) modifies = array_append(modifies, exp->record_idx);
         }

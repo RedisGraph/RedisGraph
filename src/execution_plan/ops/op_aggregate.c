@@ -52,7 +52,7 @@ static AR_ExpNode** _build_aggregated_expressions(OpAggregate *op) {
     
     for(uint i = 0; i < array_len(op->expressions); i++) {
         if(op->expression_classification[i] == NONE_AGGREGATED) continue;
-        AR_ExpNode *exp = AR_EXP_DuplicateAggFunc(op->ast->return_expressions[i]->exp);
+        AR_ExpNode *exp = AR_EXP_DuplicateAggFunc(op->expressions[i]);
         agg_exps = array_append(agg_exps, exp);
     }
 
@@ -189,12 +189,12 @@ static Record _handoff(OpAggregate *op) {
         /* TODO: this entire block can be improved, performancewise.
          * assuming the number of groups is relative small, 
          * this might be negligible. */
-        if(op->order_exps) {
-            // If expression is aliased, introduce it to group record
-            // for later evaluation by ORDER-BY expressions.
-            const char *alias = op->ast->return_expressions[i]->alias;
-            if(alias) Record_AddScalar(group->r, AST_GetAliasID(op->ast, (char*)alias), res);
-        }
+        // if(op->order_exps) {
+            // // If expression is aliased, introduce it to group record
+            // // for later evaluation by ORDER-BY expressions.
+            // const char *alias = op->ast->return_expressions[i]->alias;
+            // if(alias) Record_AddScalar(group->r, AST_GetAliasID(op->ast, (char*)alias), res);
+        // }
     }
 
     // Tack order by expressions for SORT operation to process.
