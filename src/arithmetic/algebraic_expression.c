@@ -7,6 +7,8 @@
 #include "algebraic_expression.h"
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
+#include "../../deps/rax/rax.h"
+
 #include <assert.h>
 
 AlgebraicExpression *_AE_MUL(size_t operand_cap) {
@@ -20,7 +22,7 @@ AlgebraicExpression *_AE_MUL(size_t operand_cap) {
     return ae;
 }
 
-int _intermidate_node(const Node *n) {
+static int _intermidate_node(const Node *n) {
     /* ->()<- 
      * <-()->
      * ->()->
@@ -30,17 +32,17 @@ int _intermidate_node(const Node *n) {
             ((array_len(n->incoming_edges) > 0) && (array_len(n->outgoing_edges) > 0)));
 }
 
-int _referred_entity(char *alias, TrieMap *ref_entities) {
+static int _referred_entity(char *alias, TrieMap *ref_entities) {
     return TRIEMAP_NOTFOUND != TrieMap_Find(ref_entities, alias, strlen(alias));
 }
 
-int _referred_node(const Node *n, TrieMap *ref_entities) {
+static int _referred_node(const Node *n, TrieMap *ref_entities) {
     return _referred_entity(n->alias, ref_entities);
 }
 
 /* For every referenced edge, add edge source and destination nodes
  * as referenced entities. */
-void _referred_edge_ends(TrieMap *ref_entities, const QueryGraph *q) {
+static void _referred_edge_ends(TrieMap *ref_entities, const QueryGraph *q) {
     char *alias;
     tm_len_t len;
     void *value;
@@ -70,7 +72,7 @@ void _referred_edge_ends(TrieMap *ref_entities, const QueryGraph *q) {
 
 /* Variable length edges require their own algebraic expression,
  * therefor mark both variable length edge ends as referenced. */
-void _referred_variable_length_edges(TrieMap *ref_entities, Vector *matchPattern, const QueryGraph *q) {
+static void _referred_variable_length_edges(TrieMap *ref_entities, Vector *matchPattern, const QueryGraph *q) {
     Edge *e;
     AST_GraphEntity *match_element;
 
@@ -91,7 +93,7 @@ void _referred_variable_length_edges(TrieMap *ref_entities, Vector *matchPattern
  * traversed multiple times, in cases such as (:labelA)-[e*]->(:labelB) both label A and B
  * are applied via a label matrix operand, this function migrates A and B from a
  * variable length expression to other expressions. */
-AlgebraicExpression** _AlgebraicExpression_IsolateVariableLenExps(AlgebraicExpression **expressions, size_t *expCount) {
+static AlgebraicExpression** _AlgebraicExpression_IsolateVariableLenExps(AlgebraicExpression **expressions, size_t *expCount) {
     /* Return value is a new set of expressions, where each variable length expression
       * is guaranteed to have a single operand, as such in the worst case the number of
       * expressions doubles + 1. */
@@ -157,7 +159,7 @@ AlgebraicExpression** _AlgebraicExpression_IsolateVariableLenExps(AlgebraicExpre
 
 /* Break down expression into sub expressions.
  * considering referenced intermidate nodes and edges. */
-AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(AlgebraicExpression *exp, const AST *ast, Vector *matchPattern, const QueryGraph *q, size_t *exp_count) {
+static AlgebraicExpression** _AlgebraicExpression_Intermidate_Expressions(AlgebraicExpression *exp, const AST *ast, Vector *matchPattern, const QueryGraph *q, size_t *exp_count) {
     /* Allocating maximum number of expression possible. */
     AlgebraicExpression **expressions = malloc(sizeof(AlgebraicExpression *) * exp->operand_count);
     int expIdx = 0;     // Sub expression index.
@@ -265,7 +267,7 @@ static inline void _AlgebraicExpression_Execute_MUL(GrB_Matrix C, GrB_Matrix A, 
 
 // Reverse order of operand within expression,
 // A*B*C will become C*B*A. 
-void _AlgebraicExpression_ReverseOperandOrder(AlgebraicExpression *exp) {
+static void _AlgebraicExpression_ReverseOperandOrder(AlgebraicExpression *exp) {
     int right = exp->operand_count-1;
     int left = 0;
     while(right > left) {
@@ -308,6 +310,81 @@ void AlgebraicExpression_PrependTerm(AlgebraicExpression *ae, GrB_Matrix m, bool
     ae->operands[0].transpose = transposeOp;
     ae->operands[0].free = freeOp;
     ae->operands[0].operand = m;
+}
+
+// Returns a set of nodes reached at given level from S.
+static Node** _BFS(Node *s, uint level) {
+    void *seen;                             // Has node been visited?
+    uint current_level = 0;                 // Tracks BFS level.
+    rax *visited = raxNew();                // Dictionary of visited nodes.
+    Node **next = array_new(Node*, 0);      // Nodes to explore next.
+    Node **current = array_new(Node*, 1);   // Nodes currently explored.
+    
+    current = array_append(current, s);
+    
+    // As long as we've yet to reach required level.
+    while(current_level < level) {
+        // As long as there are nodes in the frontier.
+        while(array_len(current)) {
+            Node *n = array_pop(current);
+
+            // Mark n as visited.
+            if(!raxInsert(visited, (unsigned char*)n->alias, strlen(n->alias), NULL, NULL)) {
+                // We've already processed n.
+                continue;
+            }
+
+            // Expand node N by visiting all of its neighbors
+            for(int i = 0; i < array_len(n->outgoing_edges); i++) {
+                Edge *e = n->outgoing_edges[i];
+                char *dest = e->dest->alias;
+                seen = raxFind(visited, (unsigned char*)dest, strlen(dest));
+                if(seen == raxNotFound) next = array_append(next, e->dest);
+            }
+            for(int i = 0; i < array_len(n->incoming_edges); i++) {
+                Edge *e = n->incoming_edges[i];
+                char *src = e->src->alias;
+                seen = raxFind(visited, (unsigned char*)src, strlen(src));
+                if(seen == raxNotFound) next = array_append(next, e->src);
+            }
+        }
+
+        // Queue consumed, swap queues.
+        current_level++;
+        if(array_len(next) == 0) break;
+
+        Node **tmp = current;
+        current = next;
+        next = current;
+    }
+
+    array_free(current);
+    return next;
+}
+
+AlgebraicExpression **AlgebraicExpression_From_QueryGraph(const QueryGraph *g) {
+    /* Construct algebraic expression(s) from query graph 
+     * trying to take advantage of long multiplications with as few 
+     * transpose as possible we'll transform paths crossing the graph 
+     * diameter, these are guarantee to be the longest, although
+     * there might be situations in which these are not the most optimal paths
+     * to explore.
+     * 
+     * Once a path been transformed it's removed from the graph and the process
+     * repeat itself. */
+
+    assert(g);
+    AlgebraicExpression **exps;
+
+    // Pick a random node.
+    Node *s = g->nodes[0];
+
+    // Get leaf nodes at the deepest level from S.
+    Node **leafs = _BFS(s, UINT_MAX);
+
+    exps = array_new(AlgebraicExpression*, 1);
+
+    return exps;
 }
 
 AlgebraicExpression **AlgebraicExpression_From_Query(const AST *ast, Vector *matchPattern, const QueryGraph *q, size_t *exp_count) {
