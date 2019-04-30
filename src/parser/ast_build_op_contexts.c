@@ -166,3 +166,12 @@ AST_UnwindContext AST_PrepareUnwindOp(const AST *ast, const cypher_astnode_t *un
     return ctx;
 }
 
+AST_MergeContext AST_PrepareMergeOp(const AST *ast, const cypher_astnode_t *merge_clause) {
+    const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(merge_clause);
+    uint path_len = cypher_ast_pattern_path_nelements(path);
+    uint nactions = cypher_ast_merge_nactions(merge_clause);
+
+    AST_MergeContext ctx = { };
+    return ctx;
+}
+

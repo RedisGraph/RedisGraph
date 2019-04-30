@@ -86,7 +86,10 @@ AlgebraicExpression** _AlgebraicExpression_IsolateVariableLenExps(AlgebraicExpre
             /* Create a new expression. */
             AlgebraicExpression *newExp = _AE_MUL(1);
             newExp->src_node = exp->src_node;
-            newExp->dest_node = exp->src_node;
+            newExp->dest_node = exp->src_node; // ?
+            // newExp->dest_node = exp->dest_node;
+            // newExp->src_node_idx = exp->src_node_idx;
+            // newExp->dest_node_idx = exp->dest_node_idx;
             AlgebraicExpression_PrependTerm(newExp, op.operand, op.transpose, op.free);
             res[newExpCount++] = newExp;
         }
@@ -108,6 +111,7 @@ AlgebraicExpression** _AlgebraicExpression_IsolateVariableLenExps(AlgebraicExpre
                 newExp->src_node = exp->dest_node;
                 newExp->dest_node = exp->dest_node;
                 newExp->src_node_idx = exp->src_node_idx;
+                // newExp->dest_node_idx = exp->dest_node_idx;
                 newExp->edge_idx = exp->edge_idx;
                 AlgebraicExpression_PrependTerm(newExp, op.operand, op.transpose, op.free);
                 res[newExpCount++] = newExp;

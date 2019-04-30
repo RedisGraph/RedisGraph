@@ -34,6 +34,13 @@ typedef struct {
     uint record_idx;
 } AST_UnwindContext;
 
+typedef struct {
+    AR_ExpNode **exps;
+    const char *alias;
+    uint record_len;
+    uint record_idx;
+} AST_MergeContext;
+
 int TraverseRecordCap(const AST *ast);
 
 PropertyMap* AST_ConvertPropertiesMap(const AST *ast, const cypher_astnode_t *props);
@@ -47,3 +54,5 @@ void AST_PrepareDeleteOp(const cypher_astnode_t *delete_clause, uint **nodes_ref
 AR_ExpNode** AST_PrepareSortOp(const cypher_astnode_t *order_clause, int *direction);
 
 AST_UnwindContext AST_PrepareUnwindOp(const AST *ast, const cypher_astnode_t *unwind_clause);
+
+AST_MergeContext AST_PrepareMergeOp(const AST *ast, const cypher_astnode_t *merge_clause);

@@ -456,6 +456,8 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, ResultSet *result_set) {
         Vector_Free(path_traversal);
 
         // Append a merge operation
+        // TODO
+        // AST_MergeContext merge_ctx = AST_PrepareMergeOp(ast, merge_clause);
         OpBase *opMerge = NewMergeOp(gc, merge_clause, execution_plan->result_set);
         Vector_Push(ops, opMerge);
     }
