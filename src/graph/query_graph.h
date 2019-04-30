@@ -78,8 +78,9 @@ Node* QueryGraph_RemoveNode(QueryGraph *g, Node *n);
 /* Remove given edge from query graph. */
 Edge* QueryGraph_RemoveEdge(QueryGraph *g, Edge *e);
 
-/* Breaks up query graph into its connected components. */
-QueryGraph** QueryGraph_ConnectedComponents(const QueryGraph *g);
+/* Breaks up query graph into its connected components.
+ * Returns an array object */
+QueryGraph** QueryGraph_ConnectedComponents(const QueryGraph *qg);
 
 /* Frees entire graph */
 void QueryGraph_Free(QueryGraph* g);

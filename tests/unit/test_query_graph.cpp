@@ -39,6 +39,99 @@ class QueryGraphTest: public ::testing::Test {
         compare_nodes(a->src, b->src);
         compare_nodes(a->dest, b->dest);
     }
+
+    QueryGraph* SingleNodeGraph() {
+        // Create a single node graph
+        // (A)
+        size_t node_cap = 1;
+        size_t edge_cap = 0;
+
+        // Create nodes.
+        const char *label = "L";
+
+        Node *A = Node_New(label, "A");
+        QueryGraph *g = QueryGraph_New(node_cap, edge_cap);
+        QueryGraph_AddNode(g, A);
+        
+        return g;
+    }
+
+    QueryGraph* TriangleGraph() {
+        // Create a triangle graph
+        // (A)->(B)->(C)->(A)
+        size_t node_cap = 3;
+        size_t edge_cap = 3;
+
+        // Create nodes.
+        const char *label = "L";
+        const char *relation = "R";
+
+        Node *A = Node_New(label, "A");
+        Node *B = Node_New(label, "B");
+        Node *C = Node_New(label, "C");
+
+        Edge *AB = Edge_New(A, B, relation, "AB");
+        Edge *BC = Edge_New(B, C, relation, "BC");
+        Edge *CA = Edge_New(C, A, relation, "CA");
+
+        QueryGraph *g = QueryGraph_New(node_cap, edge_cap);
+        QueryGraph_AddNode(g, A);
+        QueryGraph_AddNode(g, B);
+        QueryGraph_AddNode(g, C);
+
+        QueryGraph_ConnectNodes(g, A, B, AB);
+        QueryGraph_ConnectNodes(g, B, C, BC);
+        QueryGraph_ConnectNodes(g, C, A, CA);
+        
+        return g;
+    }
+
+    QueryGraph* DisjointGraph() {
+        // Create a disjoint graph
+        // (A)->(B) (C)
+        size_t node_cap = 3;
+        size_t edge_cap = 1;
+
+        // Create nodes.
+        const char *label = "L";
+        const char *relation = "R";
+
+        Node *A = Node_New(label, "A");
+        Node *B = Node_New(label, "B");
+        Node *C = Node_New(label, "C");
+
+        Edge *AB = Edge_New(A, B, relation, "AB");
+
+        QueryGraph *g = QueryGraph_New(node_cap, edge_cap);
+        QueryGraph_AddNode(g, A);
+        QueryGraph_AddNode(g, B);
+        QueryGraph_AddNode(g, C);
+
+        QueryGraph_ConnectNodes(g, A, B, AB);
+
+        return g;
+    }
+
+    QueryGraph* SingleNodeCycleGraph() {
+        // Create a disjoint graph
+        // (A)->(A)
+        size_t node_cap = 1;
+        size_t edge_cap = 1;
+
+        // Create nodes.
+        const char *label = "L";
+        const char *relation = "R";
+
+        Node *A = Node_New(label, "A");
+        Edge *AA = Edge_New(A, A, relation, "AA");
+
+        QueryGraph *g = QueryGraph_New(node_cap, edge_cap);
+        QueryGraph_AddNode(g, A);
+        QueryGraph_ConnectNodes(g, A, A, AA);
+
+        return g;
+    }
+
 };
 
 TEST_F(QueryGraphTest, QueryGraphClone) {
@@ -171,33 +264,62 @@ TEST_F(QueryGraphTest, QueryGraphRemoveEntities) {
 }
 
 TEST_F(QueryGraphTest, QueryGraphConnectedComponents) {
-    // Create a triangle graph
-    // (A)->(B)->(C)->(A)
-    size_t node_cap = 3;
-    size_t edge_cap = 3;
+    QueryGraph *g;
+    QueryGraph **connected_components;
 
-    // Create nodes.
-    const char *label = "L";
-    const char *relation = "R";
+    //------------------------------------------------------------------------------
+    // Single node graph
+    //------------------------------------------------------------------------------
+    g = SingleNodeGraph();
+    connected_components = QueryGraph_ConnectedComponents(g);
 
-    Node *A = Node_New(label, "A");
-    Node *B = Node_New(label, "B");
-    Node *C = Node_New(label, "C");
+    ASSERT_EQ(array_len(connected_components), 1);
 
-    Edge *AB = Edge_New(A, B, relation, "AB");
-    Edge *BC = Edge_New(B, C, relation, "BC");
-    Edge *CA = Edge_New(C, A, relation, "CA");
+    // Clean up.
+    QueryGraph_Free(g);
+    for(int i = 0; i < array_len(connected_components); i++) {
+        QueryGraph_Free(connected_components[i]);
+    }
+    array_free(connected_components);
+    
+    //------------------------------------------------------------------------------
+    // Triangle graph
+    //------------------------------------------------------------------------------
 
-    QueryGraph *g = QueryGraph_New(node_cap, edge_cap);
-    QueryGraph_AddNode(g, A);
-    QueryGraph_AddNode(g, B);
-    QueryGraph_AddNode(g, C);
+    g = TriangleGraph();
+    connected_components = QueryGraph_ConnectedComponents(g);
 
-    QueryGraph_ConnectNodes(g, A, B, AB);
-    QueryGraph_ConnectNodes(g, B, C, BC);
-    QueryGraph_ConnectNodes(g, C, A, CA);
+    ASSERT_EQ(array_len(connected_components), 1);
 
-    QueryGraph **connected_components = QueryGraph_ConnectedComponents(g);
+    // Clean up.
+    QueryGraph_Free(g);
+    for(int i = 0; i < array_len(connected_components); i++) {
+        QueryGraph_Free(connected_components[i]);
+    }
+    array_free(connected_components);
+
+    //------------------------------------------------------------------------------
+    // Disjoint graph
+    //------------------------------------------------------------------------------
+    
+    g = DisjointGraph();
+    connected_components = QueryGraph_ConnectedComponents(g);
+
+    ASSERT_EQ(array_len(connected_components), 2);
+
+    // Clean up.
+    QueryGraph_Free(g);
+    for(int i = 0; i < array_len(connected_components); i++) {
+        QueryGraph_Free(connected_components[i]);
+    }
+    array_free(connected_components);
+
+    //------------------------------------------------------------------------------
+    // Single node cycle graph
+    //------------------------------------------------------------------------------
+    
+    g = SingleNodeCycleGraph();
+    connected_components = QueryGraph_ConnectedComponents(g);
 
     ASSERT_EQ(array_len(connected_components), 1);
 

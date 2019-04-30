@@ -8,6 +8,7 @@
 #include "../util/arr.h"
 #include "../parser/ast.h"
 #include "../schema/schema.h"
+#include "../../deps/rax/rax.h"
 #include <assert.h>
 
 GraphEntity* _QueryGraph_GetEntityById(GraphEntity **entity_list, int entity_count, long int id) {
@@ -395,79 +396,82 @@ Edge* QueryGraph_RemoveEdge(QueryGraph *g, Edge *e) {
     return e;
 }
 
-QueryGraph** QueryGraph_ConnectedComponents(const QueryGraph *g) {
-    /* Pick a node S 
-     * Add S to a new connected component CC
-     * Expand on S as much as possible.
-     * Add each reachable node N to CC */
+QueryGraph** QueryGraph_ConnectedComponents(const QueryGraph *qg) {
+    Node *n;                                // Current node.
+    Node **q = array_new(Node*, 1);         // Node frontier.
+    void *seen;                             // Has node been visited?
+    QueryGraph *g = QueryGraph_Clone(qg);   // Clone query graph.
+    rax *visited;                           // Dictionary of visited nodes.
+    QueryGraph **connected_components;      // List of connected components.
 
-    Node *n;
-    Node **q;                               // Frontier.
-    QueryGraph *qg;                      // 
-    uint connected_components_count;        // 
-    QueryGraph **connected_components;      // 
-
-    q = array_new(Node*, 1);
-    qg = QueryGraph_Clone(g);
-    connected_components_count = 0;
+    // At least one connected component (the original graph).
     connected_components = array_new(QueryGraph*, 1);
-    
-    // As long as there are entities in the original graph.
-    while(qg->node_count) {
-        // Create a new connected component.
-        QueryGraph *cc = QueryGraph_New(1, 1);
-        connected_components = array_append(connected_components, cc);
+
+    // As long as there are nodes to process.
+    while(true) {
+        visited = raxNew();
 
         // Get a random node and add it to the frontier.
-        Node *s = qg->nodes[0];
+        Node *s = g->nodes[0];
         q = array_append(q, s);
-
-        n = Node_Clone(s);
-        QueryGraph_AddNode(cc, n);
 
         // As long as there are nodes in the frontier.
         while(array_len(q)) {
-            /* Get a node out of the frontier
-             * and add it to the connected component. 
-             * TODO: handle the case where c is already in the graph. */
             n = array_pop(q);
 
-            /* Expand node C by visiting all of its neighbors N
-             * adding each to both the frontier and the connected component. */
-            Node *src = QueryGraph_GetNodeByAlias(cc, n->alias);
+            // Mark n as visited.
+            if(!raxInsert(visited, (unsigned char*)n->alias, strlen(n->alias), NULL, NULL)) {
+                // We've already processed n.
+                continue;
+            }
+
+            // Expand node N by visiting all of its neighbors
             for(int i = 0; i < array_len(n->outgoing_edges); i++) {
                 Edge *e = n->outgoing_edges[i];
-                Node *dest = QueryGraph_GetNodeByAlias(cc, e->dest->alias);
-                if(dest == NULL) {
-                    q = array_append(q, e->dest);
-                    dest = Node_Clone(e->dest);
-                    QueryGraph_AddNode(cc, dest);
-                }
-
-                e = Edge_New(src, dest, e->relationship, e->alias);
-                QueryGraph_ConnectNodes(cc, src, dest, e);
+                char *dest = e->dest->alias;
+                seen = raxFind(visited, (unsigned char*)dest, strlen(dest));
+                if(seen == raxNotFound) q = array_append(q, e->dest);
             }
-
-            Node *dest = QueryGraph_GetNodeByAlias(cc, n->alias);
             for(int i = 0; i < array_len(n->incoming_edges); i++) {
                 Edge *e = n->incoming_edges[i];
-                Node *src = QueryGraph_GetNodeByAlias(cc, e->src->alias);
-                if(src == NULL) {
-                    q = array_append(q, e->src);
-                    src = Node_Clone(e->src);
-                    QueryGraph_AddNode(cc, src);
-                }
-
-                e = Edge_New(src, dest, e->relationship, e->alias);
-                QueryGraph_ConnectNodes(cc, src, dest, e);
+                char *src = e->src->alias;
+                seen = raxFind(visited, (unsigned char*)src, strlen(src));
+                if(seen == raxNotFound) q = array_append(q, e->src);
             }
-
-            /* Remove expanded node from original graph.
-             * this will also remove all of N's edges. */
-            QueryGraph_RemoveNode(qg, n);
         }
+
+        /* Visited comprise the connected component defined by S.
+         * Remove all none reachable nodes from current connected component.
+         * Remove connected component from graph. */
+        QueryGraph *cc = QueryGraph_Clone(g);
+        uint node_count = g->node_count;
+        for(int i = 0; i < node_count; i++) {
+            void *reachable;
+            n = g->nodes[i];
+            reachable = raxFind(visited, (unsigned char*)n->alias, strlen(n->alias));
+
+            /* If node is reachable, which means it is part of the 
+             * connected component, then remove it from the graph,
+             * otherwise, node isn't reachable, not part of the 
+             * connected component. */
+            if(reachable != raxNotFound) {
+                QueryGraph_RemoveNode(g, n);
+            } else {
+                n = QueryGraph_GetNodeByAlias(cc, n->alias);
+                QueryGraph_RemoveNode(cc, n);
+            }
+        }
+    
+        connected_components = array_append(connected_components, cc);
+        
+        // Clear visited dict for next iteration.
+        raxFree(visited);
+
+        // Exit when graph is empty.
+        if(!g->node_count) break;
     }
 
+    QueryGraph_Free(g);
     return connected_components;
 }
 
