@@ -162,8 +162,8 @@ AR_ExpNode* AR_EXP_DuplicateAggFunc(const AR_ExpNode *expr) {
     assert(expr->type == AR_EXP_OP && expr->op.type == AR_OP_AGGREGATE);
     AR_ExpNode *clone = malloc(sizeof(AR_ExpNode));
     clone->type = AR_EXP_OP;
-    clone->record_idx = NOT_IN_RECORD;
     clone->op.type = AR_OP_AGGREGATE;
+    clone->record_idx = expr->record_idx;
     char *func_name = expr->op.func_name;
     clone->op.func_name = func_name;
 

@@ -13,6 +13,7 @@
 
 // Matrix, vector operations.
 typedef enum {
+    AL_EXP_UNARY,
     AL_EXP_ADD,
     AL_EXP_MUL,
     AL_EXP_TRANSPOSE,

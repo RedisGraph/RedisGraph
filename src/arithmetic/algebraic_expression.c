@@ -14,6 +14,10 @@ static inline bool intermediate_node(uint node_idx, uint path_len) {
     return (node_idx > 0) && (node_idx < path_len - 1);
 }
 
+static inline bool _ExpressionIsVariableLength(const AlgebraicExpression *exp) {
+    return exp->minHops != exp->maxHops;
+}
+
 static int* _setup_traversed_relations(const cypher_astnode_t *ast_relation) {
     GraphContext *gc = GraphContext_GetFromTLS();
 
@@ -95,53 +99,52 @@ AlgebraicExpression** _AlgebraicExpression_IsolateVariableLenExps(AlgebraicExpre
     AlgebraicExpression **res = malloc(sizeof(AlgebraicExpression*) * (*expCount * 2 + 1));
     size_t newExpCount = 0;
 
-    /* Scan through each expression, locate expression which
-     * have a variable length edge in them. */
+    AlgebraicExpression *exp = expressions[0];
+    /* If the first expression has a variable length and a labeled source,
+     * separate the source matrix into its own expression. */
+    if (_ExpressionIsVariableLength(exp) && exp->src_node->mat) {
+        // Remove src node matrix from expression.
+        AlgebraicExpressionOperand op;
+        AlgebraicExpression_RemoveTerm(exp, 0, &op);
+
+        /* Create a new expression. */
+        AlgebraicExpression *newExp = _NewAlgebraicExpression(1, exp->src_node, NULL, NULL, exp->src_node_idx, NOT_IN_RECORD, NOT_IN_RECORD);
+        newExp->op = AL_EXP_UNARY; // Mark that this expression should be replaced by a scan or reduce op
+        AlgebraicExpression_PrependTerm(newExp, op.operand, op.transpose, op.free);
+        res[newExpCount++] = newExp;
+    }
+
+    /* Scan through each expression, separating expressions
+     * that have a variable length edge. */
     for(size_t expIdx = 0; expIdx < *expCount; expIdx++) {
         AlgebraicExpression *exp = expressions[expIdx];
-        if(exp->minHops == exp->maxHops) {
+        if(_ExpressionIsVariableLength(exp) == false) {
+            // Add fixed-length expressions without modification
             res[newExpCount++] = exp;
             continue;
         }
 
-        Edge *e = exp->edge;
-        Node *src = exp->src_node;
-        Node *dest = exp->dest_node;
-
-        // A variable length expression with a labeled source node
-        // We only care about the source label matrix, when it comes to
-        // the first expression, as in the following expressions
-        // src is the destination of the previous expression.
-        if(src->mat && expIdx == 0) {
-            // Remove src node matrix from expression.
-            AlgebraicExpressionOperand op;
-            AlgebraicExpression_RemoveTerm(exp, 0, &op);
-
-            /* Create a new expression. */
-            AlgebraicExpression *newExp = _CloneAlgebraicExpression(exp);
-            AlgebraicExpression_PrependTerm(newExp, op.operand, op.transpose, op.free);
-            res[newExpCount++] = newExp;
-        }
-
+        // Add the variable-length expression
         res[newExpCount++] = exp;
 
-        // A variable length expression with a labeled destination node.
-        if(dest->mat) {
+        // If the expression has a labeled destination, separate it into its own expression.
+        if(exp->dest_node->mat) {
             // Remove dest node matrix from expression.
             AlgebraicExpressionOperand op;
             AlgebraicExpression_RemoveTerm(exp, exp->operand_count-1, &op);
 
             /* See if dest mat can be prepended to the following expression.
              * If not create a new expression. */
-            if(expIdx < *expCount-1 && expressions[expIdx+1]->minHops != expressions[expIdx+1]->maxHops) {
+            if(expIdx < *expCount-1 && (_ExpressionIsVariableLength(exp) == false)) {
                 AlgebraicExpression_PrependTerm(expressions[expIdx+1], op.operand, op.transpose, op.free);
             } else {
-                AlgebraicExpression *newExp = _CloneAlgebraicExpression(exp);
+                // The destination is being placed in the source field
+                // AlgebraicExpression *newExp = _NewAlgebraicExpression(1, NULL, exp->dest_node, NULL, NOT_IN_RECORD, exp->dest_node_idx, NOT_IN_RECORD);
+                AlgebraicExpression *newExp = _NewAlgebraicExpression(1, exp->dest_node, NULL, NULL, exp->dest_node_idx, NOT_IN_RECORD, NOT_IN_RECORD);
+                newExp->op = AL_EXP_UNARY;
                 AlgebraicExpression_PrependTerm(newExp, op.operand, op.transpose, op.free);
                 res[newExpCount++] = newExp;
             }
-        // } else {
-            // res[newExpCount++] = exp;
         }
     }
 
@@ -247,7 +250,7 @@ AlgebraicExpression **_AlgebraicExpression_Intermediate_Expressions(const AST *a
 
         /* Create a new algebraic expression. */
         AlgebraicExpression *prev_exp = expressions[expIdx-1];
-        iexp = _CloneAlgebraicExpression(exp);
+        iexp = _CloneAlgebraicExpression(exp); // TODO delete this function
         // New expression's source is the previous expression's destination
         iexp->src_node = prev_exp->dest_node;
         iexp->src_node_idx = prev_exp->dest_node_idx;
@@ -403,7 +406,7 @@ AlgebraicExpression **AlgebraicExpression_FromPath(const AST *ast, const QueryGr
         // Only append the matrix operand multiple times if the traversal is of
         // a fixed length - variable length traversals are handled separately.
         unsigned int hops = 1;
-        if (exp->minHops == exp->maxHops) hops = exp->minHops;
+        if (_ExpressionIsVariableLength(exp) == false) hops = exp->minHops;
 
         for(unsigned int i = 0; i < hops; i++) {
             AlgebraicExpression_AppendTerm(exp, mat, transpose, freeMatrix);
@@ -527,6 +530,7 @@ void AlgebraicExpression_Transpose(AlgebraicExpression *ae) {
     Node *n = ae->src_node;
     ae->src_node = ae->dest_node;
     ae->dest_node = n;
+    // TODO correct?
     uint tmp_idx = ae->src_node_idx;
     ae->src_node_idx = ae->dest_node_idx;
     ae->dest_node_idx = tmp_idx;

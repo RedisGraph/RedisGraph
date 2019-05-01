@@ -80,7 +80,7 @@ OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *ae, uint records_cap) {
         uint id = traverse->ae->edge_idx;
         if (id != NOT_IN_RECORD) traverse->op.modifies = array_append(traverse->op.modifies, id);
         traverse->edges = array_new(Edge, 32);
-        traverse->edgeRecIdx = ae->edge_idx; // TODO I don't think this makes sense for unaliased
+        traverse->edgeRecIdx = ae->edge_idx;
     }
 
     return (OpBase*)traverse;

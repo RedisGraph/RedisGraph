@@ -247,7 +247,7 @@ OpBase* ExecutionPlan_Locate_References(OpBase *root, uint *references) {
 void _ExecutionPlan_BuildTraversalOps(QueryGraph *qg, FT_FilterNode *ft, const cypher_astnode_t *path, Vector *traversals) {
     GraphContext *gc = GraphContext_GetFromTLS();
     AST *ast = AST_GetFromTLS();
-    OpBase *op;
+    OpBase *op = NULL;
 
     uint nelems = cypher_ast_pattern_path_nelements(path);
     if (nelems == 1) {
@@ -273,30 +273,69 @@ void _ExecutionPlan_BuildTraversalOps(QueryGraph *qg, FT_FilterNode *ft, const c
     size_t expCount = 0;
     AlgebraicExpression **exps = AlgebraicExpression_FromPath(ast, qg, path, &expCount);
 
-    TRAVERSE_ORDER order = determineTraverseOrder(ft, exps, expCount);
-    if(order == TRAVERSE_ORDER_FIRST) {
-        AlgebraicExpression *exp = exps[0];
-        selectEntryPoint(exp, ft);
-
-        if (exp->src_node_idx == NOT_IN_RECORD) {
+    TRAVERSE_ORDER order;
+    if (exps[0]->op == AL_EXP_UNARY) {
+        // If either the first or last expression simply specifies a node, it should
+        // be replaced by a label scan. (This can be the case after building a
+        // variable-length traversal like MATCH (a)-[*]->(b:labeled)
+        AlgebraicExpression *to_replace = exps[0];
+        if (to_replace->src_node_idx == NOT_IN_RECORD) {
             // Anonymous node - make space for it in the Record
-            exp->src_node_idx = AST_AddAnonymousRecordEntry(ast);
+            to_replace->src_node_idx = AST_AddAnonymousRecordEntry(ast);
         }
+        op = NewNodeByLabelScanOp(gc, to_replace->src_node, to_replace->src_node_idx);
+        Vector_Push(traversals, op);
+        AlgebraicExpression_Free(to_replace);
+        for (uint q = 1; q < expCount; q ++) {
+            exps[q-1] = exps[q];
+        }
+        expCount --;
+        order = TRAVERSE_ORDER_FIRST;
+    } else if (exps[expCount - 1]->op == AL_EXP_UNARY) {
+        AlgebraicExpression *to_replace = exps[expCount - 1];
+        if (to_replace->src_node_idx == NOT_IN_RECORD) {
+            // Anonymous node - make space for it in the Record
+            to_replace->src_node_idx = AST_AddAnonymousRecordEntry(ast);
+        }
+        op = NewNodeByLabelScanOp(gc, to_replace->src_node, to_replace->src_node_idx);
+        Vector_Push(traversals, op);
+        AlgebraicExpression_Free(to_replace);
+        expCount --;
+        order = TRAVERSE_ORDER_LAST;
+    } else {
+        order = determineTraverseOrder(ft, exps, expCount);
+    }
 
-        // Create SCAN operation.
-        if(exp->src_node->label) {
-            /* There's no longer need for the last matrix operand
-             * as it's been replaced by label scan. */
-            AlgebraicExpression_RemoveTerm(exp, exp->operand_count-1, NULL);
-            op = NewNodeByLabelScanOp(gc, exp->src_node, exp->src_node_idx);
-            Vector_Push(traversals, op);
-        } else {
-            op = NewAllNodeScanOp(gc->g, exp->src_node, exp->src_node_idx);
-            Vector_Push(traversals, op);
+    if(order == TRAVERSE_ORDER_FIRST) {
+        if (op == NULL) {
+            // We haven't already built the appropriate label scan
+            AlgebraicExpression *exp = exps[0];
+            selectEntryPoint(exp, ft);
+            if (exp->src_node_idx == NOT_IN_RECORD) {
+                // Anonymous node - make space for it in the Record
+                exp->src_node_idx = AST_AddAnonymousRecordEntry(ast);
+            }
+
+            // Create SCAN operation.
+            if(exp->src_node->label) {
+                /* There's no longer need for the last matrix operand
+                 * as it's been replaced by label scan. */
+                AlgebraicExpression_RemoveTerm(exp, exp->operand_count-1, NULL);
+                op = NewNodeByLabelScanOp(gc, exp->src_node, exp->src_node_idx);
+                Vector_Push(traversals, op);
+            } else {
+                op = NewAllNodeScanOp(gc->g, exp->src_node, exp->src_node_idx);
+                Vector_Push(traversals, op);
+            }
         }
         for(int i = 0; i < expCount; i++) {
             if(exps[i]->operand_count == 0) continue;
-            AlgebraicExpression_ExtendRecord(exps[i]);
+            // TODO tmp
+            if (exps[i]->op == AL_EXP_UNARY) {
+                 exps[i]->dest_node_idx = exps[i]->src_node_idx;
+            } else {
+                AlgebraicExpression_ExtendRecord(exps[i]);
+            }
             if(exps[i]->minHops != 1 || exps[i]->maxHops != 1) {
                 op = NewCondVarLenTraverseOp(exps[i],
                                              exps[i]->minHops,
@@ -308,30 +347,38 @@ void _ExecutionPlan_BuildTraversalOps(QueryGraph *qg, FT_FilterNode *ft, const c
             Vector_Push(traversals, op);
         }
     } else {
-        AlgebraicExpression *exp = exps[expCount-1];
-        selectEntryPoint(exp, ft);
+        if (op == NULL) {
+            // We haven't already built the appropriate label scan
+            AlgebraicExpression *exp = exps[expCount-1];
+            selectEntryPoint(exp, ft);
 
-        if (exp->dest_node_idx == NOT_IN_RECORD) {
-            // Anonymous node - make space for it in the Record
-            exp->dest_node_idx = AST_AddAnonymousRecordEntry(ast);
-        }
+            if (exp->dest_node_idx == NOT_IN_RECORD) {
+                // Anonymous node - make space for it in the Record
+                exp->dest_node_idx = AST_AddAnonymousRecordEntry(ast);
+            }
 
-        // Create SCAN operation.
-        if(exp->dest_node->label) {
-            /* There's no longer need for the last matrix operand
-             * as it's been replaced by label scan. */
-            AlgebraicExpression_RemoveTerm(exp, exp->operand_count-1, NULL);
-            op = NewNodeByLabelScanOp(gc, exp->dest_node, exp->dest_node_idx);
-            Vector_Push(traversals, op);
-        } else {
-            op = NewAllNodeScanOp(gc->g, exp->dest_node, exp->dest_node_idx);
-            Vector_Push(traversals, op);
+            // Create SCAN operation.
+            if(exp->dest_node->label) {
+                /* There's no longer need for the last matrix operand
+                 * as it's been replaced by label scan. */
+                AlgebraicExpression_RemoveTerm(exp, exp->operand_count-1, NULL);
+                op = NewNodeByLabelScanOp(gc, exp->dest_node, exp->dest_node_idx);
+                Vector_Push(traversals, op);
+            } else {
+                op = NewAllNodeScanOp(gc->g, exp->dest_node, exp->dest_node_idx);
+                Vector_Push(traversals, op);
+            }
         }
 
         for(int i = expCount-1; i >= 0; i--) {
             if(exps[i]->operand_count == 0) continue;
             AlgebraicExpression_Transpose(exps[i]);
-            AlgebraicExpression_ExtendRecord(exps[i]);
+            // TODO tmp
+            if (exps[i]->op == AL_EXP_UNARY) {
+                exps[i]->src_node_idx = exps[i]->dest_node_idx;
+            } else {
+                AlgebraicExpression_ExtendRecord(exps[i]);
+            }
             if(exps[i]->minHops != 1 || exps[i]->maxHops != 1) {
                 op = NewCondVarLenTraverseOp(exps[i],
                                              exps[i]->minHops,
