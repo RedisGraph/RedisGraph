@@ -403,6 +403,7 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, ResultSet *result_set) {
         cartesianProduct = NewCartesianProductOp(AST_RecordLength(ast));
         Vector_Push(ops, cartesianProduct);
     }
+
     // Build traversal operations for every MATCH clause
     for (uint i = 0; i < match_count; i ++) {
         // Each MATCH clause has a pattern that consists of 1 or more paths
@@ -411,9 +412,7 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, ResultSet *result_set) {
 
         /* If we're dealing with multiple paths (which our validations have guaranteed
          * are disjoint), we'll join them all together with a Cartesian product (full join). */
-        // TODO Unsafely overwrites the cartesian product of multiple MATCH, so we can't handle queries like:
-        // MATCH (a), (b) MATCH (c) RETURN count(a)
-        if (cypher_ast_pattern_npaths(ast_pattern) > 1) {
+        if ((cartesianProduct == NULL) && (cypher_ast_pattern_npaths(ast_pattern) > 1)) {
             cartesianProduct = NewCartesianProductOp(AST_RecordLength(ast));
             Vector_Push(ops, cartesianProduct);
         }

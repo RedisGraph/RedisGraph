@@ -384,27 +384,22 @@ AST_Validation AST_Validate(const cypher_astnode_t *query, char **reason) {
     if (cypher_astnode_type(query) != CYPHER_AST_QUERY) return AST_VALID;
 
     if (_Validate_MATCH_Clause(query, reason) == AST_INVALID) {
-        printf("_Validate_MATCH_Clause, AST_INVALID\n");
         return AST_INVALID;
     }
 
     if (_Validate_CREATE_Clause(query, reason) == AST_INVALID) {
-        printf("_Validate_CREATE_Clause, AST_INVALID\n");
         return AST_INVALID;
     }
 
     if (_Validate_DELETE_Clause(query, reason) == AST_INVALID) {
-        printf("_Validate_DELETE_Clause, AST_INVALID\n");
         return AST_INVALID;
     }
 
     if (_Validate_RETURN_Clause(query, reason) == AST_INVALID) {
-        printf("_Validate_RETURN_Clause, AST_INVALID\n");
         return AST_INVALID;
     }
 
     if(_AST_Aliases_Defined(query, reason) == AST_INVALID) {
-        printf("_AST_Aliases_Defined, AST_INVALID\n");
         return AST_INVALID;
     }
 
