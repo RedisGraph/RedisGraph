@@ -50,6 +50,40 @@ AlgebraicExpression *_AE_MUL(size_t operand_cap) {
     ae->maxHops = 1;
     return ae;
 }
+
+AlgebraicExpression* _NewAlgebraicExpression(uint operand_count, Node *src, Node *dest, Edge *e, uint src_idx, uint dest_idx, uint edge_idx) {
+    AlgebraicExpression *exp = _AE_MUL(operand_count);
+    exp->operand_count = 0;
+    exp->src_node = src;
+    exp->dest_node = dest;
+    exp->edge = e;
+    exp->src_node_idx = src_idx;
+    exp->dest_node_idx = dest_idx;
+    exp->edge_idx = edge_idx;
+
+    return exp;
+}
+AlgebraicExpression* _CloneAlgebraicExpression(const AlgebraicExpression *orig) {
+    AlgebraicExpression *clone = malloc(sizeof(AlgebraicExpression));
+    clone->op = orig->op;
+    clone->src_node = orig->src_node;
+    clone->dest_node = orig->dest_node;
+    clone->edge = orig->edge;
+    clone->src_node_idx = orig->src_node_idx;
+    clone->dest_node_idx = orig->dest_node_idx;
+    clone->edge_idx = orig->edge_idx;
+    clone->minHops = orig->minHops;
+    clone->maxHops = orig->maxHops;
+    clone->relation_ids = orig->relation_ids;
+
+    // The clone does not contain the original's operands
+    clone->operand_count = 0;
+    clone->operand_cap = 4;
+    clone->operands = malloc(sizeof(AlgebraicExpressionOperand) * clone->operand_cap);
+
+    return clone;
+}
+
 /* Variable length expression must contain only a single operand, the edge being
  * traversed multiple times, in cases such as (:labelA)-[e*]->(:labelB) both label A and B
  * are applied via a label matrix operand, this function migrates A and B from a
@@ -84,12 +118,7 @@ AlgebraicExpression** _AlgebraicExpression_IsolateVariableLenExps(AlgebraicExpre
             AlgebraicExpression_RemoveTerm(exp, 0, &op);
 
             /* Create a new expression. */
-            AlgebraicExpression *newExp = _AE_MUL(1);
-            newExp->src_node = exp->src_node;
-            newExp->dest_node = exp->src_node; // ?
-            // newExp->dest_node = exp->dest_node;
-            // newExp->src_node_idx = exp->src_node_idx;
-            // newExp->dest_node_idx = exp->dest_node_idx;
+            AlgebraicExpression *newExp = _CloneAlgebraicExpression(exp);
             AlgebraicExpression_PrependTerm(newExp, op.operand, op.transpose, op.free);
             res[newExpCount++] = newExp;
         }
@@ -107,15 +136,12 @@ AlgebraicExpression** _AlgebraicExpression_IsolateVariableLenExps(AlgebraicExpre
             if(expIdx < *expCount-1 && expressions[expIdx+1]->minHops != expressions[expIdx+1]->maxHops) {
                 AlgebraicExpression_PrependTerm(expressions[expIdx+1], op.operand, op.transpose, op.free);
             } else {
-                AlgebraicExpression *newExp = _AE_MUL(1);
-                newExp->src_node = exp->dest_node;
-                newExp->dest_node = exp->dest_node;
-                newExp->src_node_idx = exp->src_node_idx;
-                // newExp->dest_node_idx = exp->dest_node_idx;
-                newExp->edge_idx = exp->edge_idx;
+                AlgebraicExpression *newExp = _CloneAlgebraicExpression(exp);
                 AlgebraicExpression_PrependTerm(newExp, op.operand, op.transpose, op.free);
                 res[newExpCount++] = newExp;
             }
+        // } else {
+            // res[newExpCount++] = exp;
         }
     }
 
@@ -168,6 +194,8 @@ AlgebraicExpression **_AlgebraicExpression_Intermediate_Expressions(const AST *a
 
         /* If this is a variable length edge, which is not fixed in length
          * remember edge length. */
+
+        // TODO delete if possible
         unsigned int hops = 1;
         const cypher_astnode_t *varlength = cypher_ast_rel_pattern_get_varlength(ast_rel);
         if (varlength) {
@@ -218,13 +246,11 @@ AlgebraicExpression **_AlgebraicExpression_Intermediate_Expressions(const AST *a
 
 
         /* Create a new algebraic expression. */
-        iexp = _AE_MUL(exp->operand_count - operandIdx);
-        iexp->operand_count = 0;
-        iexp->src_node = expressions[expIdx-1]->dest_node;
-        iexp->src_node_idx = expressions[expIdx-1]->dest_node_idx;
-        iexp->dest_node = exp->dest_node;
-        iexp->dest_node_idx = exp->dest_node_idx;
-        iexp->edge_idx = expr->record_idx;
+        AlgebraicExpression *prev_exp = expressions[expIdx-1];
+        iexp = _CloneAlgebraicExpression(exp);
+        // New expression's source is the previous expression's destination
+        iexp->src_node = prev_exp->dest_node;
+        iexp->src_node_idx = prev_exp->dest_node_idx;
         expressions[expIdx++] = iexp;
     }
 
@@ -338,10 +364,14 @@ AlgebraicExpression **AlgebraicExpression_FromPath(const AST *ast, const QueryGr
             }
         }
 
+        bool freeMatrix = false;
+
         // ()-[:A|:B.]->()
         // Create matrix M, where M = A+B+...
         unsigned int labelCount = cypher_ast_rel_pattern_nreltypes(ast_rel);
         if(labelCount > 1) {
+            // Only need to free matrix if we're building it here
+            freeMatrix = true;
             GraphContext *gc = GraphContext_GetFromTLS();
             Graph *g = gc->g;
 
@@ -360,23 +390,26 @@ AlgebraicExpression **AlgebraicExpression_FromPath(const AST *ast, const QueryGr
             mat = m;
         }
 
-        /* Expand fixed variable length edge */
-        unsigned int hops = 1;
-        // TODO silly amount of work done here
+        /* Expand variable length edge */
         const cypher_astnode_t *varlength = cypher_ast_rel_pattern_get_varlength(ast_rel);
         if (varlength) {
             const cypher_astnode_t *start_node = cypher_ast_range_get_start(varlength);
             const cypher_astnode_t *end_node = cypher_ast_range_get_end(varlength);
-            unsigned int start = (start_node == NULL) ? 1 : AST_ParseIntegerNode(start_node);
+            exp->minHops = (start_node == NULL) ? 1 : AST_ParseIntegerNode(start_node);
              // TODO make better unbounded identifier
-            unsigned int end = (end_node == NULL) ? 100 : AST_ParseIntegerNode(end_node);
-            if (start == end) hops = start;
+            exp->maxHops = (end_node == NULL) ? 100 : AST_ParseIntegerNode(end_node);
         }
 
+        // Only append the matrix operand multiple times if the traversal is of
+        // a fixed length - variable length traversals are handled separately.
+        unsigned int hops = 1;
+        if (exp->minHops == exp->maxHops) hops = exp->minHops;
+
         for(unsigned int i = 0; i < hops; i++) {
-            bool freeMatrix = (labelCount > 1);
             AlgebraicExpression_AppendTerm(exp, mat, transpose, freeMatrix);
         }
+
+        if (exp->edge) exp->relation_ids = _setup_traversed_relations(ast_rel);
 
         if(dest->label) {
             GrB_Matrix destMat = Node_GetMatrix(dest);

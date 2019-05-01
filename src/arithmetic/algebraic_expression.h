@@ -65,13 +65,13 @@ typedef struct {
     AlgebraicExpressionOperand *operands;   // Array of operands.
     Node *src_node;                         // Nodes represented by the first operand columns.
     Node *dest_node;                        // Nodes represented by the last operand rows.
+    int *relation_ids;                      // IDs of relationship types associated with edge.
+    Edge *edge;                             // Edge represented by sole operand.
+    unsigned int minHops;
+    unsigned int maxHops;
     unsigned int src_node_idx; // TODO don't love these, but need the values for building traverse/scan ops
     unsigned int dest_node_idx;
     unsigned int edge_idx;
-    Edge *edge;                             // Edge represented by sole operand.
-    int *relation_ids;                      // IDs of relationship types associated with edge.
-    unsigned int minHops;
-    unsigned int maxHops;
 } AlgebraicExpression;
 
 /* Construct an algebraic expression from a path. */
