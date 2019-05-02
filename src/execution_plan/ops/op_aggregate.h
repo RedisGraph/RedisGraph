@@ -17,7 +17,7 @@
 // Matrix, vector operations.
 typedef enum {
     AGGREGATED,
-    NONE_AGGREGATED,
+    NON_AGGREGATED,
 } ExpClassification;
 
 /* Aggregate
@@ -26,12 +26,10 @@ typedef enum {
  typedef struct {
     OpBase op;
     AST *ast;
-    AR_ExpNode **expressions;
+    AR_ExpNode **exps;
     AR_ExpNode **order_exps;
-    unsigned short exp_count;
-    unsigned short order_exp_count;
-    AR_ExpNode **none_aggregated_expressions;      /* Array of arithmetic expression. */
-    ExpClassification *expression_classification;  /* classifies expression as aggregated/none aggregated.  */
+    AR_ExpNode **non_aggregated_expressions;       /* Array of arithmetic expression. */
+    ExpClassification *expression_classification;  /* classifies expression as aggregated/non-aggregated. */
     Group *group;                                  /* Last accessed group. */
     TrieMap *groups;
     SIValue *group_keys;                           /* Array of values composing an aggregated group. */

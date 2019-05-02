@@ -27,32 +27,52 @@ static AR_ExpNode** _getOrderExpressions(OpBase *op) {
     return NULL;
 }
 
-/* Initialize expression_classification[i] = AGGREGATED if expressions[i] 
- * is an aggregated expression, NONE_AGGREGATED otherwise,
- * In addition keeps track after none aggregated expression within
- * a seperated array.*/
+/* Initialize expression_classification, which denotes whether each
+ * expression in the RETURN or ORDER segment is an aggregate function.
+ * In addition keeps track of non-aggregated expressions in
+ * a separate array.*/
 static void _classify_expressions(OpAggregate *op) {
-    uint expCount = array_len(op->expressions);
-    op->none_aggregated_expressions = array_new(AR_ExpNode*, 0);
-    op->expression_classification = rm_malloc(sizeof(ExpClassification) * expCount);
+    uint exp_count = array_len(op->exps);
+    uint order_exp_count = array_len(op->order_exps);
+    op->non_aggregated_expressions = array_new(AR_ExpNode*, 0);
+    op->expression_classification = rm_malloc(sizeof(ExpClassification) * (exp_count + order_exp_count));
 
-    for(uint i = 0; i < expCount; i++) {
-        AR_ExpNode *exp = op->expressions[i];
+    for(uint i = 0; i < exp_count; i++) {
+        AR_ExpNode *exp = op->exps[i];
         if(!AR_EXP_ContainsAggregation(exp, NULL)) {
-            op->expression_classification[i] = NONE_AGGREGATED;
-            op->none_aggregated_expressions = array_append(op->none_aggregated_expressions, exp);
+            op->expression_classification[i] = NON_AGGREGATED;
+            op->non_aggregated_expressions = array_append(op->non_aggregated_expressions, exp);
         } else {
             op->expression_classification[i] = AGGREGATED;
+        }
+    }
+
+    for(uint i = 0; i < order_exp_count; i++) {
+        AR_ExpNode *exp = op->order_exps[i];
+        if(!AR_EXP_ContainsAggregation(exp, NULL)) {
+            op->expression_classification[exp_count + i] = NON_AGGREGATED;
+            op->non_aggregated_expressions = array_append(op->non_aggregated_expressions, exp);
+        } else {
+            op->expression_classification[exp_count + i] = AGGREGATED;
         }
     }
 }
 
 static AR_ExpNode** _build_aggregated_expressions(OpAggregate *op) {
     AR_ExpNode **agg_exps = array_new(AR_ExpNode*, 1);
-    
-    for(uint i = 0; i < array_len(op->expressions); i++) {
-        if(op->expression_classification[i] == NONE_AGGREGATED) continue;
-        AR_ExpNode *exp = AR_EXP_DuplicateAggFunc(op->expressions[i]);
+
+    uint exp_count = array_len(op->exps);
+    uint order_exp_count = array_len(op->order_exps);
+
+    for(uint i = 0; i < exp_count; i++) {
+        if(op->expression_classification[i] == NON_AGGREGATED) continue;
+        AR_ExpNode *exp = AR_EXP_DuplicateAggFunc(op->exps[i]);
+        agg_exps = array_append(agg_exps, exp);
+    }
+
+    for(uint i = 0; i < order_exp_count; i++) {
+        if(op->expression_classification[exp_count + i] == NON_AGGREGATED) continue;
+        AR_ExpNode *exp = AR_EXP_DuplicateAggFunc(op->order_exps[i]);
         agg_exps = array_append(agg_exps, exp);
     }
 
@@ -65,7 +85,7 @@ static Group* _CreateGroup(OpAggregate *op, Record r) {
     AR_ExpNode **agg_exps = _build_aggregated_expressions(op);
 
     /* Clone group keys. */
-    uint key_count = array_len(op->none_aggregated_expressions);
+    uint key_count = array_len(op->non_aggregated_expressions);
     SIValue *group_keys = rm_malloc(sizeof(SIValue) * key_count);
     for(uint i = 0; i < key_count; i++) group_keys[i] = op->group_keys[i];
 
@@ -77,25 +97,25 @@ static Group* _CreateGroup(OpAggregate *op, Record r) {
 }
 
 static void _ComputeGroupKey(OpAggregate *op, Record r) {
-    uint expCount = array_len(op->none_aggregated_expressions);
+    uint exp_count = array_len(op->non_aggregated_expressions);
 
-    for(uint i = 0; i < expCount; i++) {
-        AR_ExpNode *exp = op->none_aggregated_expressions[i];
+    for(uint i = 0; i < exp_count; i++) {
+        AR_ExpNode *exp = op->non_aggregated_expressions[i];
         op->group_keys[i] = AR_EXP_Evaluate(exp, r);
     }
 }
 
 static void _ComputeGroupKeyStr(OpAggregate *op, char **key) {
-    uint none_agg_exp_count = array_len(op->none_aggregated_expressions);
-    if(none_agg_exp_count == 0) {
+    uint non_agg_exp_count = array_len(op->non_aggregated_expressions);
+    if(non_agg_exp_count == 0) {
         *key = rm_strdup("SINGLE_GROUP");
         return;
     }
 
     // Determine required size for group key string representation.
-    size_t key_len = SIValue_StringConcatLen(op->group_keys, none_agg_exp_count);
+    size_t key_len = SIValue_StringConcatLen(op->group_keys, non_agg_exp_count);
     *key = rm_malloc(sizeof(char) * key_len);
-    SIValue_StringConcat(op->group_keys, none_agg_exp_count, *key, key_len);
+    SIValue_StringConcat(op->group_keys, non_agg_exp_count, *key, key_len);
 }
 
 /* Retrieves group under which given record belongs to,
@@ -114,11 +134,11 @@ static Group* _GetGroup(OpAggregate *op, Record r) {
         return op->group;
     }
 
-    // Evaluate none-aggregated fields, see if they match
+    // Evaluate non-aggregated fields, see if they match
     // the last accessed group.
     bool reuseLastAccessedGroup = true;
-    uint expCount = array_len(op->none_aggregated_expressions);
-    for(uint i = 0; i < expCount; i++) {
+    uint exp_count = array_len(op->non_aggregated_expressions);
+    for(uint i = 0; i < exp_count; i++) {
         if( reuseLastAccessedGroup &&
             SIValue_Compare(op->group->keys[i], op->group_keys[i]) == 0 ) {
             reuseLastAccessedGroup = true;
@@ -147,7 +167,7 @@ static void _aggregateRecord(OpAggregate *op, Record r) {
     Group* group = _GetGroup(op, r);
     assert(group);
 
-    // Aggregate group expressions.
+    // Aggregate group exps.
     uint aggFuncCount = array_len(group->aggregationFunctions);
     for(uint i = 0; i < aggFuncCount; i++) {
         AR_ExpNode *exp = group->aggregationFunctions[i];
@@ -166,14 +186,16 @@ static Record _handoff(OpAggregate *op) {
     if(!op->groupIter) return NULL;
     if(!CacheGroupIterNext(op->groupIter, &key, &group)) return NULL;
 
-    Record r = Record_New(op->exp_count + op->order_exp_count);
+    uint exp_count = array_len(op->exps);
+    uint order_exp_count = array_len(op->order_exps);
+    Record r = Record_New(exp_count + order_exp_count);
 
     // Populate record.
-    uint aggIdx = 0; // Index into group aggregated expressions.
+    uint aggIdx = 0; // Index into group aggregated exps.
     uint keyIdx = 0; // Index into group keys.
-    
-    for(uint i = 0; i < op->exp_count; i++) {
-        SIValue res;
+    SIValue res;
+
+    for(uint i = 0; i < exp_count; i++) {
         if(op->expression_classification[i] == AGGREGATED) {
             // Aggregated expression, get aggregated value.
             AR_ExpNode *exp = group->aggregationFunctions[aggIdx++];
@@ -181,41 +203,38 @@ static Record _handoff(OpAggregate *op) {
             res = AR_EXP_Evaluate(exp, NULL);
             Record_AddScalar(r, i, res);
         } else {
-            // None aggregated expression.
+            // Non-aggregated expression.
             res = group->keys[keyIdx++];
             Record_AddScalar(r, i, res);
         }
-
-        /* TODO: this entire block can be improved, performancewise.
-         * assuming the number of groups is relative small, 
-         * this might be negligible. */
-        // if(op->order_exps) {
-            // // If expression is aliased, introduce it to group record
-            // // for later evaluation by ORDER-BY expressions.
-            // const char *alias = op->ast->return_expressions[i]->alias;
-            // if(alias) Record_AddScalar(group->r, AST_GetAliasID(op->ast, (char*)alias), res);
-        // }
     }
 
-    // Tack order by expressions for SORT operation to process.
-    for(unsigned short i = 0; i < op->order_exp_count; i++) {
-        SIValue res = AR_EXP_Evaluate(op->order_exps[i], group->r);
-        Record_AddScalar(r, op->exp_count+i, res);
+    // Tack order by exps for SORT operation to process.
+    for(uint i = 0; i < order_exp_count; i++) {
+        if(op->expression_classification[exp_count + i] == AGGREGATED) {
+            // Aggregated expression, get aggregated value.
+            AR_ExpNode *exp = group->aggregationFunctions[aggIdx++];
+            AR_EXP_Reduce(exp);
+            res = AR_EXP_Evaluate(exp, NULL);
+            Record_AddScalar(r, exp_count + i, res);
+        } else {
+            // Non-aggregated expression.
+            res = group->keys[keyIdx++];
+            Record_AddScalar(r, exp_count + i, res);
+        }
     }
 
     return r;
 }
 
-OpBase* NewAggregateOp(AR_ExpNode **expressions, uint *modifies) {
+OpBase* NewAggregateOp(AR_ExpNode **exps, uint *modifies) {
     OpAggregate *aggregate = malloc(sizeof(OpAggregate));
     AST *ast = AST_GetFromTLS();
     aggregate->ast = ast;
-    aggregate->expressions = expressions;
-    aggregate->exp_count = array_len(expressions);
+    aggregate->exps = exps;
     aggregate->expression_classification = NULL;
-    aggregate->none_aggregated_expressions = NULL;
+    aggregate->non_aggregated_expressions = NULL;
     aggregate->order_exps = NULL;
-    aggregate->order_exp_count = 0;
     aggregate->group = NULL;
     aggregate->groupIter = NULL;
     aggregate->group_keys = NULL;
@@ -228,7 +247,7 @@ OpBase* NewAggregateOp(AR_ExpNode **expressions, uint *modifies) {
     aggregate->op.init = AggregateInit;
     aggregate->op.reset = AggregateReset;
     aggregate->op.free = AggregateFree;
-    
+
     aggregate->op.modifies = modifies;
 
     return (OpBase*)aggregate;
@@ -236,16 +255,16 @@ OpBase* NewAggregateOp(AR_ExpNode **expressions, uint *modifies) {
 
 OpResult AggregateInit(OpBase *opBase) {
     OpAggregate *op = (OpAggregate*)opBase;
-    _classify_expressions(op);
     AR_ExpNode **order_exps = _getOrderExpressions(opBase->parent);
     if (order_exps) {
         op->order_exps = order_exps;
-        op->order_exp_count = array_len(order_exps);
     }
 
+    _classify_expressions(op);
+
     /* Allocate memory for group keys. */
-    uint noneAggExpCount = array_len(op->none_aggregated_expressions);
-    if(noneAggExpCount) op->group_keys = rm_malloc(sizeof(SIValue) * noneAggExpCount);
+    uint nonAggExpCount = array_len(op->non_aggregated_expressions);
+    if(nonAggExpCount) op->group_keys = rm_malloc(sizeof(SIValue) * nonAggExpCount);
     return OP_OK;
 }
 
@@ -283,12 +302,12 @@ void AggregateFree(OpBase *opBase) {
     if(op->group_keys) rm_free(op->group_keys);
     if(op->groupIter) CacheGroupIterator_Free(op->groupIter);
     if(op->expression_classification) rm_free(op->expression_classification);
-    if(op->none_aggregated_expressions) array_free(op->none_aggregated_expressions);
+    if(op->non_aggregated_expressions) array_free(op->non_aggregated_expressions);
 
-    if(op->expressions) {
-        uint expCount = array_len(op->expressions);
-        for(uint i = 0; i < expCount; i++) AR_EXP_Free(op->expressions[i]);
-        array_free(op->expressions);
+    if(op->exps) {
+        uint exp_count = array_len(op->exps);
+        for(uint i = 0; i < exp_count; i++) AR_EXP_Free(op->exps[i]);
+        array_free(op->exps);
     }
 
     FreeGroupCache(op->groups);

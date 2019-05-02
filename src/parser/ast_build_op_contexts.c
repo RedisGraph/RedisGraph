@@ -136,7 +136,7 @@ AR_ExpNode** AST_PrepareSortOp(const cypher_astnode_t *order_clause, int *direct
     assert(order_clause);
     AST *ast = AST_GetFromTLS();
 
-    bool ascending;
+    bool ascending = true;
     unsigned int nitems = cypher_ast_order_by_nitems(order_clause);
     AR_ExpNode **order_exps = array_new(AR_ExpNode*, nitems);
 

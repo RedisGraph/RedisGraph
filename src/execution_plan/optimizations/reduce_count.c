@@ -28,9 +28,11 @@ static int _identifyPattern(OpBase *root, OpResult **opResult, OpAggregate **opA
 
     // Expecting a single aggregation, without ordering.
     *opAggregate = (OpAggregate*)op;
-    if((*opAggregate)->exp_count != 1 || (*opAggregate)->order_exp_count != 0) return 0;
+    uint exp_count = array_len((*opAggregate)->exps);
+    uint order_exp_count = array_len((*opAggregate)->order_exps);
+    if(exp_count != 1 || order_exp_count != 0) return 0;
 
-    AR_ExpNode *exp = (*opAggregate)->expressions[0];
+    AR_ExpNode *exp = (*opAggregate)->exps[0];
 
     // Make sure aggregation performs counting.    
     if( exp->type != AR_EXP_OP ||

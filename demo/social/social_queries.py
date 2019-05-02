@@ -227,7 +227,7 @@ who_was_on_business_trip_query = QueryInfo(
 number_of_vacations_per_person_query = QueryInfo(
     query="""MATCH (p:person)-[v:visited {purpose:"pleasure"}]->(c:country)
              RETURN p.name, count(v.purpose) AS vacations
-             ORDER BY vacations, p.name DESC
+             ORDER BY COUNT(v.purpose), p.name DESC
              LIMIT 6""",
     description='Count number of vacations per person?',
     max_run_time_ms=0.5,
@@ -263,22 +263,22 @@ all_reachable_friends_query = QueryInfo(
 all_reachable_countries_query = QueryInfo(
     query="""MATCH (a:person {name:'Roi Lipman'})-[*]->(c:country)
              RETURN c.name, count(c.name) AS NumPathsToCountry
-             ORDER BY NumPathsToCountry DESC""",
+             ORDER BY NumPathsToCountry, c.name DESC""",
     description='Find all reachable countries',
     max_run_time_ms=0.6,
     expected_result=[['USA', 14],
                      ['Netherlands', 6],
                      ['Prague', 5],
                      ['Greece', 4],
-                     ['Canada', 2],
-                     ['China', 2],
-                     ['Andora', 2],
-                     ['Germany', 2],
                      ['Japan', 2],
-                     ['Russia', 1],
-                     ['Italy', 1],
+                     ['Germany', 2],
+                     ['China', 2],
+                     ['Canada', 2],
+                     ['Andora', 2],
                      ['Thailand', 1],
-                     ['Kazakhstan', 1]]
+                     ['Russia', 1],
+                     ['Kazakhstan', 1],
+                     ['Italy', 1]]
 )
 
 reachable_countries_or_people_query = QueryInfo(

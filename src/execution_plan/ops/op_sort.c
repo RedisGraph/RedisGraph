@@ -103,7 +103,7 @@ uint _determineOffset(OpBase *op) {
     
     if(op->type == OPType_AGGREGATE) {
         OpAggregate *aggregate = (OpAggregate*)op;
-        return aggregate->exp_count;
+        return array_len(aggregate->exps);
     } else if(op->type == OPType_PROJECT) {
         OpProject *project = (OpProject*)op;
         return project->exp_count;
