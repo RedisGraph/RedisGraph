@@ -10,78 +10,75 @@
 #include "../../arithmetic/arithmetic_expression.h"
 #include <assert.h>
 
+// TODO These two functions are duplicates of op_create functions
+static void _AddNodeProperties(OpMerge *op, Schema *schema, Node *n, PropertyMap *props) {
+    if (props == NULL) return;
+
+    GraphContext *gc = op->gc;
+    Attribute_ID prop_id = ATTRIBUTE_NOTFOUND;
+
+    for(int i = 0; i < props->property_count; i++) {
+        prop_id = Schema_AddAttribute(schema, SCHEMA_NODE, props->keys[i]);
+        GraphEntity_AddProperty((GraphEntity*)n, prop_id, props->values[i]);
+    }
+
+    op->result_set->stats.properties_set += props->property_count;
+}
+
+static void _AddEdgeProperties(OpMerge *op, Schema *schema, Edge *e, PropertyMap *props) {
+    if (props == NULL) return;
+
+    GraphContext *gc = op->gc;
+    Attribute_ID prop_id = ATTRIBUTE_NOTFOUND;
+
+    for(int i = 0; i < props->property_count; i++) {
+        prop_id = Schema_AddAttribute(schema, SCHEMA_EDGE, props->keys[i]);
+        GraphEntity_AddProperty((GraphEntity*)e, prop_id, props->values[i]);
+    }
+
+    op->result_set->stats.properties_set += props->property_count;
+}
+
 /* Saves every entity within the query graph into the actual graph.
  * update statistics regarding the number of entities create and properties set. */
 static void _CommitNodes(OpMerge *op, Record r) {
     int labelID;
     Graph *g = op->gc->g;
-    Schema *unified_schema = GraphContext_GetUnifiedSchema(op->gc, SCHEMA_NODE);
 
-    const cypher_astnode_t *merge_path = cypher_ast_merge_get_pattern_path(op->clause);
-    uint entity_count = cypher_ast_pattern_path_nelements(merge_path);
-
-    // Determine how many nodes are specified in MERGE clause
-    // Since there are always an odd number of entities in the pattern, there are count/2 + 1 nodes
-    uint node_count = (entity_count / 2) + 1;
+    uint node_count = array_len(op->nodes_to_merge);
 
     // Start by creating nodes.
     Graph_AllocateNodes(g, node_count);
 
-    for(uint i = 0; i < entity_count; i += 2) { // even entities only
-        const cypher_astnode_t *ast_node = cypher_ast_pattern_path_get_element(merge_path, i);
-        const cypher_astnode_t *ast_label = cypher_ast_node_pattern_get_label(ast_node, 0);
-        const char *label = (ast_label) ? cypher_ast_label_get_name(ast_label) : NULL;
+    for(uint i = 0; i < node_count; i ++) {
+        NodeCreateCtx *node_ctx = &op->nodes_to_merge[i];
+        // Get blueprint of node to create
+        Node *node_blueprint = node_ctx->node;
+
+        // Newly created node will be placed within given record.
+        Node *created_node = Record_GetNode(r, node_ctx->node_idx);
 
         Schema *schema = NULL;
 
-        // Newly created node will be placed within given record.
-        Node *n = Record_GetNode(r, i);
-
         // Set, create label.
-        if(label == NULL) {
+        if(node_blueprint->label == NULL) {
             labelID = GRAPH_NO_LABEL;
+            schema = GraphContext_GetUnifiedSchema(op->gc, SCHEMA_NODE);
         } else {
-            schema = GraphContext_GetSchema(op->gc, label, SCHEMA_NODE);
-            /* This is the first time we encounter label, create its schema */
+            schema = GraphContext_GetSchema(op->gc, node_blueprint->label, SCHEMA_NODE);
+            /* This is the first time we've encountered this label; create its schema */
             if(schema == NULL) {
-                schema = GraphContext_AddSchema(op->gc, label, SCHEMA_NODE);
+                schema = GraphContext_AddSchema(op->gc, node_blueprint->label, SCHEMA_NODE);
                 op->result_set->stats.labels_added++;
             }
             labelID = schema->id;
         }
 
-        Graph_CreateNode(g, labelID, n);
+        Graph_CreateNode(g, labelID, created_node);
 
+        _AddNodeProperties(op, schema, created_node, node_ctx->properties);
 
-        // A CYPHER_AST_MAP node, a CYPHER_AST_PARAMETER node, or null
-        // _AddNodeProperties(op, schema, n, op->node_properties[i]);
-        // TODO Standardize this, but why is it so different from op create?
-        const cypher_astnode_t *props = cypher_ast_node_pattern_get_properties(ast_node);
-        if(props) {
-            cypher_astnode_type_t prop_type = cypher_astnode_type(props);
-            assert(prop_type == CYPHER_AST_MAP); // TODO add parameter support
-            uint prop_count = cypher_ast_map_nentries(props);
-            for(uint prop_idx = 0; prop_idx < prop_count; prop_idx++) {
-                const cypher_astnode_t *ast_key = cypher_ast_map_get_key(props, prop_idx);
-                const char *key = cypher_ast_prop_name_get_value(ast_key);
-
-                const cypher_astnode_t *ast_value = cypher_ast_map_get_value(props, prop_idx);
-                // TODO optimize
-                AR_ExpNode *value_exp = AR_EXP_FromExpression(op->ast, ast_value);
-                SIValue value = AR_EXP_Evaluate(value_exp, NULL);
-
-                Attribute_ID prop_id = ATTRIBUTE_NOTFOUND;
-                if(schema) {
-                    prop_id = Schema_AddAttribute(schema, SCHEMA_NODE, key);
-                } else {
-                    prop_id = Schema_AddAttribute(unified_schema, SCHEMA_NODE, key);
-                }
-                GraphEntity_AddProperty((GraphEntity*)n, prop_id, value);
-            }
-            // Update tracked schema and add node to any matching indices.
-            if(schema) GraphContext_AddNodeToIndices(op->gc, schema, n);
-            op->result_set->stats.properties_set += prop_count;
-        }
+        if(schema) GraphContext_AddNodeToIndices(op->gc, schema, created_node);
     }
 
     op->result_set->stats.nodes_created += node_count;
@@ -90,58 +87,27 @@ static void _CommitNodes(OpMerge *op, Record r) {
 static void _CommitEdges(OpMerge *op, Record r) {
     // Create edges.
     Graph *g = op->gc->g;
-    const cypher_astnode_t *merge_path = cypher_ast_merge_get_pattern_path(op->clause);
-    uint entity_count = cypher_ast_pattern_path_nelements(merge_path);
 
-    // Determine how many nodes are specified in MERGE clause
-    // Since there are always an odd number of entities in the pattern, there are count/2 nodes
-    uint edge_count = entity_count / 2;
-
-    for(uint i = 1; i < entity_count; i += 2) {
-        const cypher_astnode_t *ast_rel = cypher_ast_pattern_path_get_element(merge_path, i);
-        const cypher_astnode_t *ast_reltype = cypher_ast_rel_pattern_get_reltype(ast_rel, 0);
-        const char *reltype = (ast_reltype) ? cypher_ast_reltype_get_name(ast_reltype) : NULL;
+    uint edge_count = array_len(op->edges_to_merge);
+    // TODO allocate? nodes get allocated here
+    for(uint i = 0; i < edge_count; i ++) {
+        EdgeCreateCtx *edge_ctx = &op->edges_to_merge[i];
+        // Get blueprint of edge to create
+        Edge *edge_blueprint = edge_ctx->edge;
 
         // Newly created edge will be placed within given record.
-        Edge *e = Record_GetEdge(r, i);
-        Schema *schema = GraphContext_GetSchema(op->gc, reltype, SCHEMA_EDGE);
-        if (!schema) schema = GraphContext_AddSchema(op->gc, reltype, SCHEMA_EDGE);
+        Edge *created_edge = Record_GetEdge(r, edge_ctx->edge_idx);
 
-        enum cypher_rel_direction dir = cypher_ast_rel_pattern_get_direction(ast_rel);
-        NodeID srcId;
-        NodeID destId;
+        Schema *schema = GraphContext_GetSchema(op->gc, edge_blueprint->relationship, SCHEMA_EDGE);
+        if (!schema) schema = GraphContext_AddSchema(op->gc, edge_blueprint->relationship, SCHEMA_EDGE);
+
         // Node are already created, get them from record.
-        if(dir == CYPHER_REL_OUTBOUND) {
-            srcId = ENTITY_GET_ID(Record_GetNode(r, i-1));
-            destId = ENTITY_GET_ID(Record_GetNode(r, i+1));
-        } else {
-            srcId = ENTITY_GET_ID(Record_GetNode(r, i+1));
-            destId = ENTITY_GET_ID(Record_GetNode(r, i-1));
-        }
+        EntityID srcId = ENTITY_GET_ID(Record_GetNode(r, edge_ctx->src_idx));
+        EntityID destId = ENTITY_GET_ID(Record_GetNode(r, edge_ctx->dest_idx));
 
-        assert(Graph_ConnectNodes(g, srcId, destId, schema->id, e));
+        assert(Graph_ConnectNodes(g, srcId, destId, schema->id, created_edge));
 
-        // A CYPHER_AST_MAP node, a CYPHER_AST_PARAMETER node, or null
-        const cypher_astnode_t *props = cypher_ast_rel_pattern_get_properties(ast_rel);
-        if(props) {
-            // Set edge properties.
-            cypher_astnode_type_t prop_type = cypher_astnode_type(props);
-            assert(prop_type == CYPHER_AST_MAP); // TODO add parameter support
-            uint prop_count = cypher_ast_map_nentries(props);
-            for(uint prop_idx = 0; prop_idx < prop_count; prop_idx++) {
-                const cypher_astnode_t *ast_key = cypher_ast_map_get_key(props, prop_idx);
-                const char *key = cypher_ast_prop_name_get_value(ast_key);
-
-                const cypher_astnode_t *ast_value = cypher_ast_map_get_value(props, prop_idx);
-                // TODO optimize
-                AR_ExpNode *value_exp = AR_EXP_FromExpression(op->ast, ast_value);
-                SIValue value = AR_EXP_Evaluate(value_exp, NULL);
-
-                Attribute_ID prop_id = prop_id = Schema_AddAttribute(schema, SCHEMA_EDGE, key);
-                GraphEntity_AddProperty((GraphEntity*)e, prop_id, value);
-            }
-            op->result_set->stats.properties_set += prop_count;
-        }
+        _AddEdgeProperties(op, schema, created_edge, edge_ctx->properties);
     }
 
     op->result_set->stats.relationships_created += edge_count;
@@ -159,14 +125,16 @@ static void _CreateEntities(OpMerge *op, Record r) {
     Graph_ReleaseLock(op->gc->g);
 }
 
-OpBase* NewMergeOp(GraphContext *gc, const cypher_astnode_t *clause, ResultSet *result_set) {
+OpBase* NewMergeOp(ResultSet *result_set, NodeCreateCtx *nodes_to_merge, EdgeCreateCtx *edges_to_merge, uint record_len) {
     OpMerge *op_merge = malloc(sizeof(OpMerge));
-    op_merge->gc = gc;
-    op_merge->ast = AST_GetFromTLS();
-    op_merge->clause = clause;
     op_merge->result_set = result_set;
+    op_merge->gc = GraphContext_GetFromTLS();
     op_merge->matched = false;
     op_merge->created = false;
+
+    op_merge->record_len = record_len;
+    op_merge->nodes_to_merge = nodes_to_merge;
+    op_merge->edges_to_merge = edges_to_merge;
 
     // Set our Op operations
     OpBase_Init(&op_merge->op);
@@ -199,7 +167,7 @@ Record OpMergeConsume(OpBase *opBase) {
         if(op->matched) return r;
 
         // No previous match, create MERGE pattern.
-        r = Record_New(AST_RecordLength(op->ast));
+        r = Record_New(op->record_len);
         _CreateEntities(op, r);
         op->created = true;
     }

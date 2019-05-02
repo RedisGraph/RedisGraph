@@ -70,6 +70,17 @@ unsigned int AST_AddRecordEntry(AST *ast) {
     return ast->record_length ++;
 }
 
+void AST_RecordAccommodateExpression(AST *ast, AR_ExpNode *exp) {
+    // Do nothing if expression already has a Record index
+    if (exp->record_idx != NOT_IN_RECORD) return;
+
+    // Register a new Record index
+    exp->record_idx = ast->record_length ++;
+
+    // Add entity to the set of entities to be populated
+    ast->defined_entities = array_append(ast->defined_entities, exp);
+}
+
 unsigned int AST_AddAnonymousRecordEntry(AST *ast) {
     uint id = ast->record_length ++;
     

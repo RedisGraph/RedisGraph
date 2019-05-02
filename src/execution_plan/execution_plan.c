@@ -254,10 +254,9 @@ void _ExecutionPlan_BuildTraversalOps(QueryGraph *qg, FT_FilterNode *ft, const c
         // Only one entity is specified - build a node scan.
         const cypher_astnode_t *ast_node = cypher_ast_pattern_path_get_element(path, 0);
         AR_ExpNode *ar_exp = AST_GetEntity(ast, ast_node);
-        if (ar_exp->record_idx == NOT_IN_RECORD) {
-            // Anonymous node - make space for it in the Record
-            ar_exp->record_idx = AST_AddAnonymousRecordEntry(ast);
-        }
+        // Register entity for Record if necessary
+        AST_RecordAccommodateExpression(ast, ar_exp);
+
         uint rec_idx = ar_exp->record_idx; 
         Node *n = QueryGraph_GetEntityByASTRef(qg, ast_node);
         if(cypher_ast_node_pattern_nlabels(ast_node) > 0) {
@@ -506,9 +505,11 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, ResultSet *result_set) {
         Vector_Free(path_traversal);
 
         // Append a merge operation
-        // TODO
-        // AST_MergeContext merge_ctx = AST_PrepareMergeOp(ast, merge_clause);
-        OpBase *opMerge = NewMergeOp(gc, merge_clause, execution_plan->result_set);
+        AST_MergeContext merge_ast_ctx = AST_PrepareMergeOp(ast, merge_clause, qg);
+        OpBase *opMerge = NewMergeOp(execution_plan->result_set,
+                                     merge_ast_ctx.nodes_to_merge,
+                                     merge_ast_ctx.edges_to_merge,
+                                     merge_ast_ctx.record_len);
         Vector_Push(ops, opMerge);
     }
 

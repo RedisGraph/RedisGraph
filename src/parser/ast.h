@@ -116,6 +116,8 @@ unsigned int AST_RecordLength(const AST *ast);
 
 unsigned int AST_AddRecordEntry(AST *ast);
 
+void AST_RecordAccommodateExpression(AST *ast, AR_ExpNode *exp);
+
 unsigned int AST_AddAnonymousRecordEntry(AST *ast);
 
 AST* AST_GetFromTLS(void);

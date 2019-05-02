@@ -37,7 +37,7 @@ OpBase* NewCreateOp(ResultSet *result_set, NodeCreateCtx *nodes, EdgeCreateCtx *
 }
 
 // TODO improve, consolidate, etc
-void _AddNodeProperties(OpCreate *op, Schema *schema, Node *n, PropertyMap *props) {
+static void _AddNodeProperties(OpCreate *op, Schema *schema, Node *n, PropertyMap *props) {
     if (props == NULL) return;
 
     GraphContext *gc = op->gc;
@@ -51,7 +51,7 @@ void _AddNodeProperties(OpCreate *op, Schema *schema, Node *n, PropertyMap *prop
     op->result_set->stats.properties_set += props->property_count;
 }
 
-void _AddEdgeProperties(OpCreate *op, Schema *schema, Edge *e, PropertyMap *props) {
+static void _AddEdgeProperties(OpCreate *op, Schema *schema, Edge *e, PropertyMap *props) {
     if (props == NULL) return;
 
     GraphContext *gc = op->gc;

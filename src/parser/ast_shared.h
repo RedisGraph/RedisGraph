@@ -24,7 +24,7 @@ typedef struct {
     AR_ExpNode *exp;                /* Expression to evaluate. */
 } EntityUpdateEvalCtx;
 
-// Context describing a node in a CREATE clause
+// Context describing a node in a CREATE or MERGE clause
 typedef struct {
     Edge *edge;
     PropertyMap *properties;
@@ -33,7 +33,7 @@ typedef struct {
     uint edge_idx;
 } EdgeCreateCtx;
 
-// Context describing a relationship in a CREATE clause
+// Context describing a relationship in a CREATE or MERGE clause
 typedef struct {
     Node *node;
     PropertyMap *properties;

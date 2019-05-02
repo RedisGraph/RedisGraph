@@ -23,10 +23,9 @@ typedef struct {
 } AST_UnwindContext;
 
 typedef struct {
-    AR_ExpNode **exps;
-    const char *alias;
+    NodeCreateCtx *nodes_to_merge;
+    EdgeCreateCtx *edges_to_merge;
     uint record_len;
-    uint record_idx;
 } AST_MergeContext;
 
 typedef struct {
@@ -49,7 +48,7 @@ AR_ExpNode** AST_PrepareSortOp(const cypher_astnode_t *order_clause, int *direct
 
 AST_UnwindContext AST_PrepareUnwindOp(const AST *ast, const cypher_astnode_t *unwind_clause);
 
-AST_MergeContext AST_PrepareMergeOp(const AST *ast, const cypher_astnode_t *merge_clause);
+AST_MergeContext AST_PrepareMergeOp(AST *ast, const cypher_astnode_t *merge_clause, QueryGraph *qg);
 
-AST_CreateContext AST_PrepareCreateOp(const AST *ast, QueryGraph *qg);
+AST_CreateContext AST_PrepareCreateOp(AST *ast, QueryGraph *qg);
 
