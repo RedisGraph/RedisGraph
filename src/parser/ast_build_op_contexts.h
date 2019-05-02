@@ -7,24 +7,12 @@
 #pragma once
 
 #include "ast.h"
+#include "ast_shared.h"
+#include "../graph/query_graph.h"
 #include "../graph/entities/graph_entity.h"
 
 #define DIR_DESC -1
 #define DIR_ASC 1
-
-// Context describing an update expression.
-typedef struct {
-    const char *attribute;          /* Attribute name to update. */
-    Attribute_ID attribute_idx;     /* Attribute internal ID. */
-    int entityRecIdx;               /* Position of entity within record. */
-    AR_ExpNode *exp;                /* Expression to evaluate. */
-} EntityUpdateEvalCtx;
-
-typedef struct {
-    const char **keys;
-    SIValue *values;
-    int property_count;
-} PropertyMap;
 
 // TODO adopt this style for other functions
 typedef struct {
@@ -41,6 +29,12 @@ typedef struct {
     uint record_idx;
 } AST_MergeContext;
 
+typedef struct {
+    NodeCreateCtx *nodes_to_create;
+    EdgeCreateCtx *edges_to_create;
+    uint record_len;
+} AST_CreateContext;
+
 int TraverseRecordCap(const AST *ast);
 
 PropertyMap* AST_ConvertPropertiesMap(const AST *ast, const cypher_astnode_t *props);
@@ -56,3 +50,6 @@ AR_ExpNode** AST_PrepareSortOp(const cypher_astnode_t *order_clause, int *direct
 AST_UnwindContext AST_PrepareUnwindOp(const AST *ast, const cypher_astnode_t *unwind_clause);
 
 AST_MergeContext AST_PrepareMergeOp(const AST *ast, const cypher_astnode_t *merge_clause);
+
+AST_CreateContext AST_PrepareCreateOp(const AST *ast, QueryGraph *qg);
+

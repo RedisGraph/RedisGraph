@@ -484,9 +484,13 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, ResultSet *result_set) {
         Vector_Push(ops, opUnwind);
     }
 
-    const cypher_astnode_t *create_clause = AST_GetClause(ast->root, CYPHER_AST_CREATE);
+    bool create_clause = AST_ContainsClause(ast->root, CYPHER_AST_CREATE);
     if(create_clause) {
-        OpBase *opCreate = NewCreateOp(ctx, qg, execution_plan->result_set);
+        AST_CreateContext create_ast_ctx = AST_PrepareCreateOp(ast, qg);
+        OpBase *opCreate = NewCreateOp(execution_plan->result_set,
+                                       create_ast_ctx.nodes_to_create,
+                                       create_ast_ctx.edges_to_create,
+                                       create_ast_ctx.record_len);
         Vector_Push(ops, opCreate);
     }
 

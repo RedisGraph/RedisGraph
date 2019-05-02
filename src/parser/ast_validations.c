@@ -321,7 +321,7 @@ static void _AST_GetDefinedIdentifiers(const cypher_astnode_t *node, TrieMap *id
         // Only collect aliases (which may be referenced in an ORDER BY)
         // from the RETURN clause, rather than all identifiers
         _AST_GetReturnAliases(node, identifiers);
-    } else if (type == CYPHER_AST_MERGE || type == CYPHER_AST_UNWIND || type == CYPHER_AST_MATCH) {
+    } else if (type == CYPHER_AST_MERGE || type == CYPHER_AST_UNWIND || type == CYPHER_AST_MATCH || type == CYPHER_AST_CREATE) {
         _AST_GetIdentifiers(node, identifiers);
     } else {
         unsigned int child_count = cypher_astnode_nchildren(node);

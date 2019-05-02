@@ -185,3 +185,138 @@ AST_MergeContext AST_PrepareMergeOp(const AST *ast, const cypher_astnode_t *merg
     return ctx;
 }
 
+
+//------------------------------------------------------------------------------
+// CREATE operations
+//------------------------------------------------------------------------------
+
+// TODO how necessary are these functions? More generic options?
+void _buildAliasTrieMap(TrieMap *map, const cypher_astnode_t *entity) {
+    if (!entity) return;
+
+    cypher_astnode_type_t type = cypher_astnode_type(entity);
+
+    char *alias = NULL;
+    if (type == CYPHER_AST_NODE_PATTERN) {
+        const cypher_astnode_t *alias_node = cypher_ast_node_pattern_get_identifier(entity);
+        if (alias_node) alias = (char*)cypher_ast_identifier_get_name(alias_node);
+    } else if (type == CYPHER_AST_REL_PATTERN) {
+        const cypher_astnode_t *alias_node = cypher_ast_rel_pattern_get_identifier(entity);
+        if (alias_node) alias = (char*)cypher_ast_identifier_get_name(alias_node);
+    } else if (type == CYPHER_AST_UNWIND) {
+        // The UNWIND clause aliases an expression
+        const cypher_astnode_t *alias_node = cypher_ast_unwind_get_alias(entity);
+        assert(alias_node);
+        alias = (char*)cypher_ast_identifier_get_name(alias_node);
+    } else {
+        unsigned int child_count = cypher_astnode_nchildren(entity);
+        for(unsigned int i = 0; i < child_count; i++) {
+            const cypher_astnode_t *child = cypher_astnode_get_child(entity, i);
+            // Recursively continue searching
+            _buildAliasTrieMap(map, child);
+        }
+        return;
+    }
+
+    if (alias) TrieMap_Add(map, alias, strlen(alias), NULL, TrieMap_DONT_CARE_REPLACE);
+}
+
+// TODO This logic doesn't belong here, but might be entirely replaceable - investigate.
+TrieMap* _MatchClause_DefinedEntities(const AST *ast) {
+    uint clause_count = cypher_astnode_nchildren(ast->root);
+
+    const cypher_astnode_t *match_clauses[clause_count];
+    uint match_count = AST_GetTopLevelClauses(ast->root, CYPHER_AST_MATCH, match_clauses);
+    const cypher_astnode_t *merge_clauses[clause_count];
+    uint merge_count = AST_GetTopLevelClauses(ast->root, CYPHER_AST_MERGE, merge_clauses);
+
+    TrieMap *map = NewTrieMap();
+
+    for (uint i = 0; i < match_count; i ++) {
+        _buildAliasTrieMap(map, match_clauses[i]);
+    }
+    for (uint i = 0; i < merge_count; i ++) {
+        _buildAliasTrieMap(map, merge_clauses[i]);
+    }
+
+    return map;
+}
+
+AST_CreateContext AST_PrepareCreateOp(const AST *ast, QueryGraph *qg) {
+    unsigned int clause_count = cypher_astnode_nchildren(ast->root);
+    const cypher_astnode_t *create_clauses[clause_count];
+    uint create_clause_count = AST_GetTopLevelClauses(ast->root, CYPHER_AST_CREATE, create_clauses);
+
+    /* For every entity within the CREATE clause see if it's also mentioned
+     * within the MATCH clause. */
+    TrieMap *match_entities = _MatchClause_DefinedEntities(ast);
+
+    NodeCreateCtx *nodes_to_create = array_new(NodeCreateCtx, 1);
+    EdgeCreateCtx *edges_to_create = array_new(EdgeCreateCtx, 1);
+    uint node_count = 0;
+    uint rel_count = 0;
+
+    for (uint i = 0; i < create_clause_count; i ++) {
+        const cypher_astnode_t *clause = create_clauses[i];
+        /* Determine which entities are modified by create op. */
+        const cypher_astnode_t *pattern = cypher_ast_create_get_pattern(clause);
+        uint npaths = cypher_ast_pattern_npaths(pattern);
+
+        // op->nodes_to_create = malloc(sizeof(NodeCreateCtx) * node_count);
+        // edges_to_create = malloc(sizeof(EdgeCreateCtx) * rel_count);
+
+        for (uint j = 0; j < npaths; j ++) {
+            const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, j);
+            uint path_elem_count = cypher_ast_pattern_path_nelements(path);
+            for (uint j = 0; j < path_elem_count; j ++) {
+                /* See if current entity needs to be created:
+                 * 1. current entity is NOT in MATCH clause.
+                 * 2. We've yet to account for this entity. */
+                const cypher_astnode_t *elem = cypher_ast_pattern_path_get_element(path, j);
+                const cypher_astnode_t *ast_alias = NULL;
+                const char *alias = NULL;
+                AR_ExpNode *exp = AST_GetEntity(ast, elem);
+
+                ast_alias = (j % 2) ? cypher_ast_rel_pattern_get_identifier(elem) :
+                                      cypher_ast_node_pattern_get_identifier(elem);
+
+                if (ast_alias) {
+                    // Encountered an aliased entity - verify that it is not defined
+                    // in a MATCH clause or a previous CREATE pattern
+                    alias = cypher_ast_identifier_get_name(ast_alias);
+
+                    // Skip entities defined in MATCH clauses or previously appearing in CREATE patterns
+                    int rc = TrieMap_Add(match_entities, (char*)alias, strlen(alias), NULL, TrieMap_DONT_CARE_REPLACE);
+                    if (rc == 0) continue;
+                }
+
+                if (j % 2) { // Relation
+                    Edge *e = QueryGraph_GetEntityByASTRef(qg, elem);
+                    const cypher_astnode_t *ast_props = cypher_ast_rel_pattern_get_properties(elem);
+                    uint src_idx = AST_GetEntityRecordIdx(ast, cypher_ast_pattern_path_get_element(path, j - 1));
+                    uint dest_idx = AST_GetEntityRecordIdx(ast, cypher_ast_pattern_path_get_element(path, j + 1));
+                    EdgeCreateCtx new_edge = { .edge = e,
+                                               .properties = AST_ConvertPropertiesMap(ast, ast_props),
+                                               .src_idx = src_idx,
+                                               .dest_idx = dest_idx,
+                                               .edge_idx = exp->record_idx };
+                    edges_to_create = array_append(edges_to_create, new_edge);
+                } else { // Node
+                    Node *n = QueryGraph_GetEntityByASTRef(qg, elem);
+                    const cypher_astnode_t *ast_props = cypher_ast_node_pattern_get_properties(elem);
+                    PropertyMap *properties = AST_ConvertPropertiesMap(ast, ast_props);
+                    NodeCreateCtx new_node = { .node = n, .properties = properties, .node_idx = exp->record_idx };
+                    nodes_to_create = array_append(nodes_to_create, new_node);
+                }
+            }
+        }
+    }
+
+    TrieMap_Free(match_entities, TrieMap_NOP_CB);
+
+    uint record_len = AST_RecordLength(ast);
+    AST_CreateContext ctx = { .nodes_to_create = nodes_to_create, .edges_to_create = edges_to_create, .record_len = record_len };
+
+    return ctx;
+}
+
