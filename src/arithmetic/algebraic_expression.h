@@ -71,7 +71,8 @@ typedef struct {
 
 /* Construct algebraic expression(s) from query graph. */
 AlgebraicExpression **AlgebraicExpression_From_QueryGraph (
-    const QueryGraph *g // Graph to construct expression from.
+    const QueryGraph *g,    // Graph to construct expression from.
+    const AST *ast          // Abstract syntax tree.
 );
 
 /* Construct an algebraic expression from a query. */

@@ -7,7 +7,7 @@
 #include "algebraic_expression.h"
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
-#include "../../deps/rax/rax.h"
+#include "../algorithms/algorithms.h"
 
 #include <assert.h>
 
@@ -164,18 +164,18 @@ static AlgebraicExpression** _AlgebraicExpression_Intermidate_Expressions(Algebr
     AlgebraicExpression **expressions = malloc(sizeof(AlgebraicExpression *) * exp->operand_count);
     int expIdx = 0;     // Sub expression index.
     int operandIdx = 0; // Index to currently inspected operand.
-    int transpose;     // Indicate if matrix operand needs to be transposed.    
-    Node *dest = NULL;
-    Node *src = NULL;
+    int transpose;      // Indicate if matrix operand needs to be transposed.
     Edge *e = NULL;
+    Node *src = NULL;
+    Node *dest = NULL;
 
     TrieMap *ref_entities = NewTrieMap();
-    ReturnClause_ReferredEntities(ast->returnNode, ref_entities);
-    WithClause_ReferredEntities(ast->withNode, ref_entities);
-    CreateClause_ReferredEntities(ast->createNode, ref_entities);
-    WhereClause_ReferredEntities(ast->whereNode, ref_entities);
-    DeleteClause_ReferredEntities(ast->deleteNode, ref_entities);    
     SetClause_ReferredEntities(ast->setNode, ref_entities);
+    WithClause_ReferredEntities(ast->withNode, ref_entities);
+    WhereClause_ReferredEntities(ast->whereNode, ref_entities);
+    ReturnClause_ReferredEntities(ast->returnNode, ref_entities);
+    CreateClause_ReferredEntities(ast->createNode, ref_entities);
+    DeleteClause_ReferredEntities(ast->deleteNode, ref_entities);
     _referred_edge_ends(ref_entities, q);
     _referred_variable_length_edges(ref_entities, matchPattern, q);
 
@@ -312,78 +312,212 @@ void AlgebraicExpression_PrependTerm(AlgebraicExpression *ae, GrB_Matrix m, bool
     ae->operands[0].operand = m;
 }
 
-// Returns a set of nodes reached at given level from S.
-static Node** _BFS(Node *s, uint level) {
-    void *seen;                             // Has node been visited?
-    uint current_level = 0;                 // Tracks BFS level.
-    rax *visited = raxNew();                // Dictionary of visited nodes.
-    Node **next = array_new(Node*, 0);      // Nodes to explore next.
-    Node **current = array_new(Node*, 1);   // Nodes currently explored.
-    
-    current = array_append(current, s);
-    
-    // As long as we've yet to reach required level.
-    while(current_level < level) {
-        // As long as there are nodes in the frontier.
-        while(array_len(current)) {
-            Node *n = array_pop(current);
+static void _RemovePathFromGraph(QueryGraph *g, Edge **path) {
+    uint edge_count = array_len(path);
+    for(uint i = 0; i < edge_count; i++) {
+        Edge *e = path[i];
+        Node *src = e->src;
+        Node *dest = e->dest;
 
-            // Mark n as visited.
-            if(!raxInsert(visited, (unsigned char*)n->alias, strlen(n->alias), NULL, NULL)) {
-                // We've already processed n.
-                continue;
-            }
-
-            // Expand node N by visiting all of its neighbors
-            for(int i = 0; i < array_len(n->outgoing_edges); i++) {
-                Edge *e = n->outgoing_edges[i];
-                char *dest = e->dest->alias;
-                seen = raxFind(visited, (unsigned char*)dest, strlen(dest));
-                if(seen == raxNotFound) next = array_append(next, e->dest);
-            }
-            for(int i = 0; i < array_len(n->incoming_edges); i++) {
-                Edge *e = n->incoming_edges[i];
-                char *src = e->src->alias;
-                seen = raxFind(visited, (unsigned char*)src, strlen(src));
-                if(seen == raxNotFound) next = array_append(next, e->src);
-            }
-        }
-
-        // Queue consumed, swap queues.
-        current_level++;
-        if(array_len(next) == 0) break;
-
-        Node **tmp = current;
-        current = next;
-        next = current;
+        QueryGraph_RemoveEdge(g, e);
+        if(Node_EdgeCount(src) == 0) QueryGraph_RemoveNode(g, src);
+        if(Node_EdgeCount(dest) == 0) QueryGraph_RemoveNode(g, dest);
     }
-
-    array_free(current);
-    return next;
 }
 
-AlgebraicExpression **AlgebraicExpression_From_QueryGraph(const QueryGraph *g) {
+/* Determin the length of the longest path in the graph.
+ * Returns a list residing on the edge of the longest path. */
+static Node** _DeepestLevel(const QueryGraph *g, int *level) {
+    Node *s = g->nodes[0];
+    int l = BFS_LOWEST_LEVEL;
+    Node **leafs = BFS(g->nodes[0], &l);
+    Node *leaf = leafs[0];
+    array_free(leafs);
+
+    l = BFS_LOWEST_LEVEL;
+    leafs = BFS(leaf, &l);
+    array_free(leafs);
+
+    *level = l;
+    return leafs;
+}
+
+/* Break down expression into sub expressions.
+ * considering referenced intermidate nodes and edges. */
+static AlgebraicExpression** __AlgebraicExpression_Intermidate_Expressions__(
+    AlgebraicExpression *exp, Edge **path, const QueryGraph *g,
+    TrieMap *ref_entities) {
+
+    /* Allocating maximum number of expression possible. */
+    int expIdx = 0;         // Sub expression index.
+    int operandIdx = 0;     // Index to currently inspected operand.
+    bool transpose;         // Indicate if matrix operand needs to be transposed.
+    Edge *e = NULL;
+    Node *src = NULL;
+    Node *dest = NULL;
+    AlgebraicExpression **expressions;
+
+    expressions = array_new(AlgebraicExpression*, exp->operand_count);
+    AlgebraicExpression *iexp = _AE_MUL(exp->operand_count);
+    iexp->operand_count = 0;
+    iexp->src_node = exp->src_node;
+    iexp->dest_node = exp->dest_node;
+    expressions = array_append(expressions, iexp);
+    expIdx++;
+
+    for(int i = 0; i < array_len(path); i++) {
+        e = path[i];
+        src = e->src;
+        dest = e->dest;
+
+        transpose = false;
+        if(i > 0) transpose = (path[i-1]->dest != e->src);
+        if(transpose) {
+            dest = e->src;
+            src = e->dest;
+        }
+
+        /* If edge is referenced, set expression edge pointer. */
+        if(_referred_entity(e->alias, ref_entities)) iexp->edge = e;
+
+        /* If this is a variable length edge, which is not fixed in length
+         * remember edge length. */
+        // if(edge->length && !AST_LinkEntity_FixedLengthEdge(edge)) {
+        //     iexp->edgeLength = edge->length;
+        //     iexp->edge = e;
+        // }
+
+        if(i == 0 && src->mat) {
+            iexp->operands[iexp->operand_count++] = exp->operands[operandIdx++];
+        }
+
+        unsigned int hops = 1;
+        /* Expand fixed variable length edge */
+        // if(edge->length && AST_LinkEntity_FixedLengthEdge(edge)) {
+        //     hops = edge->length->minHops;
+        // }
+
+        for(int j = 0; j < hops; j++) {
+            iexp->operands[iexp->operand_count++] = exp->operands[operandIdx++];
+        }
+
+        if(dest->mat) {
+            iexp->operands[iexp->operand_count++] = exp->operands[operandIdx++];
+        }
+
+        /* If intermidate node is referenced, create a new algebraic expression. */
+        if(_intermidate_node(dest) && _referred_node(dest, ref_entities)) {
+            // Finalize current expression.
+            iexp->dest_node = dest;
+
+            /* Create a new algebraic expression. */
+            iexp = _AE_MUL(exp->operand_count - operandIdx);
+            iexp->operand_count = 0;
+            iexp->src_node = expressions[expIdx-1]->dest_node;
+            iexp->dest_node = exp->dest_node;
+            expressions = array_append(expressions, iexp);
+            expIdx++;
+        }
+    }
+
+    return expressions;
+}
+
+AlgebraicExpression **AlgebraicExpression_From_QueryGraph(const QueryGraph *qg, const AST *ast) {
     /* Construct algebraic expression(s) from query graph 
      * trying to take advantage of long multiplications with as few 
      * transpose as possible we'll transform paths crossing the graph 
-     * diameter, these are guarantee to be the longest, although
+     * "diameter", these are guarantee to be the longest, although
      * there might be situations in which these are not the most optimal paths
      * to explore.
      * 
      * Once a path been transformed it's removed from the graph and the process
      * repeat itself. */
 
-    assert(g);
-    AlgebraicExpression **exps;
+    assert(qg);
+    
+    Node *src;
+    Node *dest;
+    AlgebraicExpression *exp;
+    AlgebraicExpression **exps = array_new(AlgebraicExpression*, 1);
+    QueryGraph *g = QueryGraph_Clone(qg);
 
-    // Pick a random node.
-    Node *s = g->nodes[0];
+    // TODO: Have a single AST function which computes its referred entities.
+    TrieMap *ref_entities = NewTrieMap();
+    SetClause_ReferredEntities(ast->setNode, ref_entities);
+    WithClause_ReferredEntities(ast->withNode, ref_entities);
+    WhereClause_ReferredEntities(ast->whereNode, ref_entities);
+    ReturnClause_ReferredEntities(ast->returnNode, ref_entities);
+    CreateClause_ReferredEntities(ast->createNode, ref_entities);
+    DeleteClause_ReferredEntities(ast->deleteNode, ref_entities);
+    _referred_edge_ends(ref_entities, g);
+    // TODO: support variable length edges.
+    // _referred_variable_length_edges(ref_entities, matchPattern, q);
 
-    // Get leaf nodes at the deepest level from S.
-    Node **leafs = _BFS(s, UINT_MAX);
+    while(g->node_count) {
+        // Get leaf nodes at the deepest level.
+        int level;
+        Node **leafs = _DeepestLevel(g, &level);
+        assert(array_len(leafs) > 0 && level >= 0);
 
-    exps = array_new(AlgebraicExpression*, 1);
+        // Get a path of length level.
+        Edge **path = DFS(leafs[0], level);
+        assert(array_len(path) == level);
 
+        // Construct expression.
+        exp = _AE_MUL(level * 3 - 1);  // Node Edge Node.
+
+        for(int i = 0; i < level; i++) {
+            Edge *e = path[i];
+            src = e->src;
+            dest = e->dest;
+
+            if(src->label) {
+                GrB_Matrix srcMat = Node_GetMatrix(src);
+                AlgebraicExpression_AppendTerm(exp, srcMat, false, false);
+                printf("%s ", src->label);
+            }
+
+            // Determin if edge is transposed.
+            bool transpose = false;
+            if(i > 0) transpose = (path[i-1]->dest != e->src);
+            if(transpose) {
+                dest = e->src;
+                src = e->dest;
+            }
+
+            GrB_Matrix mat = Edge_GetMatrix(e);
+            AlgebraicExpression_AppendTerm(exp, mat, transpose, false);
+            printf("%s ", e->relationship);
+        }
+
+        if(dest->label) {
+            GrB_Matrix destMat = Node_GetMatrix(dest);
+            AlgebraicExpression_AppendTerm(exp, destMat, false, false);
+            printf("%s ", dest->label);
+        }
+
+        // Set expression source and destination nodes.
+        exp->src_node = path[0]->src;
+        exp->dest_node = dest;
+
+        AlgebraicExpression **sub_exps =
+            __AlgebraicExpression_Intermidate_Expressions__(exp, path, g, ref_entities);
+
+        _RemovePathFromGraph(g, path);
+
+        for(uint j = 0; j < array_len(sub_exps); j++) {
+            exps = array_append(exps, sub_exps[j]);
+        }
+        array_free(sub_exps);
+    }
+
+    /* Because matrices are column ordered, when multiplying A*B
+     * we need to reverse the order: B*A. */
+    uint exp_count = array_len(exps);
+    for(uint i = 0; i < exp_count; i++) _AlgebraicExpression_ReverseOperandOrder(exps[i]);
+
+    TrieMap_Free(ref_entities, TrieMap_NOP_CB);
     return exps;
 }
 

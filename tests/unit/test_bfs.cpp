@@ -66,6 +66,7 @@ TEST_F(BFSTest, BFSLevels) {
     Node *S;                    // BFS starts here.
     Node **nodes;               // Nodes reached by BFS.
     QueryGraph *g;              // Graph traversed.
+    int level = 0;              // BFS stops when reach level depth.
 
     g = BuildGraph();
     S = QueryGraph_GetNodeByAlias(g, "A");
@@ -91,9 +92,10 @@ TEST_F(BFSTest, BFSLevels) {
     //------------------------------------------------------------------------------
     // BFS depth 0 - 3
     //------------------------------------------------------------------------------
+    
 
-    for(int level = 0; level < 4; level++) {
-        nodes = BFS(S, level);
+    for(; level < 4; level++) {
+        nodes = BFS(S, &level);
         Node **expectation = expected[level];
 
         int node_count = array_len(nodes);
@@ -115,7 +117,8 @@ TEST_F(BFSTest, BFSLevels) {
     // BFS depth BFS_LOWEST_LEVEL
     //------------------------------------------------------------------------------
 
-    nodes = BFS(S, BFS_LOWEST_LEVEL);
+    level = BFS_LOWEST_LEVEL;
+    nodes = BFS(S, &level);
 
     // Determine number of expected nodes.
     int expected_node_count = sizeof(expected_level_deepest) / sizeof(expected_level_deepest[0]);

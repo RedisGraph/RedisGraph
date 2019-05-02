@@ -27,13 +27,19 @@ typedef struct {
 /* Creates a new node. */
 Node* Node_New(const char *label, const char *alias);
 
-/* Checks if nodes are "equal" */
+/* Checks if nodes are "equal". */
 int Node_Compare(const Node *a, const Node *b);
 
-/* Returns number of edges pointing into node */
+/* Returns number of edges pointing into node. */
 int Node_IncomeDegree(const Node *n);
 
-/* Connects source node to destination node by edge */
+/* Returns number of edges pointing out of node. */
+int Node_OutgoingDegree(const Node *n);
+
+/* Returns to total number of edges (Incoming&Outgoing). */
+int Node_EdgeCount(const Node *n);
+
+/* Connects source node to destination node by edge. */
 void Node_ConnectNode(Node* src, Node* dest, struct Edge* e);
 
 /* Removes given Incoming edge from node. */
@@ -42,10 +48,10 @@ void Node_RemoveIncomingEdge(Node *n, struct Edge *e);
 /* Removes given Outgoing edge from node. */
 void Node_RemoveOutgoingEdge(Node *n, struct Edge *e);
 
-/* Sets node relation type */
+/* Sets node relation type. */
 void Node_SetLabelID(Node *n, int labelID);
 
-/* Retrieves node matrix */
+/* Retrieves node matrix. */
 GrB_Matrix Node_GetMatrix(Node *n);
 
 /* Clones given node. */

@@ -330,6 +330,7 @@ QueryGraph* QueryGraph_Clone(const QueryGraph *g) {
         Node *src = QueryGraph_GetNodeByAlias(clone, e->src->alias);
         Node *dest = QueryGraph_GetNodeByAlias(clone, e->dest->alias);
         Edge *clone_edge = Edge_New(src, dest, e->relationship, e->alias);
+        clone_edge->mat = e->mat;
         clone_edge->relationID = e->relationID;
         QueryGraph_ConnectNodes(clone, src, dest, clone_edge);
     }

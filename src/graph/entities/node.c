@@ -58,6 +58,14 @@ int Node_IncomeDegree(const Node *n) {
 	return array_len(n->incoming_edges);
 }
 
+int Node_OutgoingDegree(const Node *n) {
+	return array_len(n->outgoing_edges);
+}
+
+int Node_EdgeCount(const Node *n) {
+	return Node_IncomeDegree(n) + Node_OutgoingDegree(n);
+}
+
 void Node_SetLabelID(Node *n, int labelID) {
 	assert(n);
 	n->labelID = labelID;
@@ -90,6 +98,7 @@ GrB_Matrix Node_GetMatrix(Node *n) {
 
 Node* Node_Clone(const Node *n) {
 	Node *clone = Node_New(n->label, n->alias);
+	clone->mat = n->mat;
 	// TODO: consider setting labelID in Node_New.
 	clone->labelID = n->labelID;
 	return clone;

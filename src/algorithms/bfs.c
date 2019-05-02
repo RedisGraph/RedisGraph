@@ -10,7 +10,7 @@
 #include "../graph/entities/edge.h"
 
 // Returns a set of nodes reached at given level from S.
-Node** BFS(Node *s, int level) {
+Node** BFS(Node *s, int *level) {
     void *seen;                             // Has node been visited?
     int current_level = 0;                  // Tracks BFS level.
     rax *visited = raxNew();                // Dictionary of visited nodes.
@@ -20,7 +20,7 @@ Node** BFS(Node *s, int level) {
     current = array_append(current, s);
 
     // As long as we've yet to reach required level and there are nodes to process.
-    while(current_level < level && array_len(current)) {
+    while(current_level < *level && array_len(current)) {
         // As long as there are nodes in the frontier.
         for(int i = 0; i < array_len(current); i++) {
             Node *n = current[i];
@@ -32,23 +32,30 @@ Node** BFS(Node *s, int level) {
             }
 
             // Expand node N by visiting all of its neighbors
-            for(int j = 0; i < array_len(n->outgoing_edges); i++) {
-                Edge *e = n->outgoing_edges[i];
+            for(int j = 0; j < array_len(n->outgoing_edges); j++) {
+                Edge *e = n->outgoing_edges[j];
                 char *dest = e->dest->alias;
                 seen = raxFind(visited, (unsigned char*)dest, strlen(dest));
-                if(seen == raxNotFound) next = array_append(next, e->dest);
+                if(seen == raxNotFound) {
+                    next = array_append(next, e->dest);
+                }
             }
-            for(int j = 0; i < array_len(n->incoming_edges); i++) {
-                Edge *e = n->incoming_edges[i];
+            for(int j = 0; j < array_len(n->incoming_edges); j++) {
+                Edge *e = n->incoming_edges[j];
                 char *src = e->src->alias;
                 seen = raxFind(visited, (unsigned char*)src, strlen(src));
-                if(seen == raxNotFound) next = array_append(next, e->src);
+                if(seen == raxNotFound) {
+                    next = array_append(next, e->src);
+                }
             }
         }
 
         /* No way to progress and we're interested in the lowest level leafs
          * do not clear current queue. */
-        if(array_len(next) == 0 && level == BFS_LOWEST_LEVEL) break;
+        if(array_len(next) == 0 && *level == BFS_LOWEST_LEVEL) {
+            *level = current_level;
+            break;
+        }
 
         // Queue consumed, swap queues.
         array_clear(current);
