@@ -195,24 +195,24 @@ class AlgebraicExpressionTest: public ::testing::Test {
         e->mat = Graph_GetLabelMatrix(g, 1);
 
         // Create edges
-        Edge *pff = Edge_New(p, f, "friend", "pff");
-        Edge *fvc = Edge_New(f, c, "visit", "fvc");
-        Edge *cwe = Edge_New(c, e, "war", "cwe");
+        Edge *ef = Edge_New(p, f, "friend", "ef");
+        Edge *ev = Edge_New(f, c, "visit", "ev");
+        Edge *ew = Edge_New(c, e, "war", "ew");
         
         // Set edges matrices according to the order they've been presented
         // during graph construction.
-        pff->mat = Graph_GetRelationMatrix(g, 0);
-        fvc->mat = Graph_GetRelationMatrix(g, 1);
-        cwe->mat = Graph_GetRelationMatrix(g, 2);
+        ef->mat = Graph_GetRelationMatrix(g, 0);
+        ev->mat = Graph_GetRelationMatrix(g, 1);
+        ew->mat = Graph_GetRelationMatrix(g, 2);
 
         // Construct query graph
         QueryGraph_AddNode(q, p);
         QueryGraph_AddNode(q, f);
         QueryGraph_AddNode(q, c);
         QueryGraph_AddNode(q, e);
-        QueryGraph_ConnectNodes(q, p, f, pff);
-        QueryGraph_ConnectNodes(q, f, c, fvc);
-        QueryGraph_ConnectNodes(q, c, e, cwe);
+        QueryGraph_ConnectNodes(q, p, f, ef);
+        QueryGraph_ConnectNodes(q, f, c, ev);
+        QueryGraph_ConnectNodes(q, c, e, ew);
 
         return q;
     }
@@ -614,7 +614,7 @@ TEST_F(AlgebraicExpressionTest, MultipleIntermidateReturnNodes) {
     Node *n;
     Edge *e;
     size_t exp_count = 0;
-    const char *query = query_multiple_intermidate_return_nodes;    
+    const char *query = query_multiple_intermidate_return_nodes;
     AlgebraicExpression **ae = _build_algebraic_expression(query, &exp_count);
     ASSERT_EQ(exp_count, 3);
     
