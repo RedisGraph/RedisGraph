@@ -288,6 +288,16 @@ unsigned int AST_GetTopLevelClauses(const cypher_astnode_t *query, cypher_astnod
     }
     return num_found;
 }
+uint* AST_GetClauseIndices(const cypher_astnode_t *query, cypher_astnode_type_t clause_type) {
+    uint *clause_indices = array_new(uint, 0);
+    unsigned int num_clauses = cypher_astnode_nchildren(query);
+    for (unsigned int i = 0; i < num_clauses; i ++) {
+        if (cypher_astnode_type(cypher_astnode_get_child(query, i)) != clause_type) {
+            clause_indices = array_append(clause_indices, i);
+        }
+    }
+    return clause_indices;
+}
 
 const cypher_astnode_t* AST_GetBody(const cypher_parse_result_t *result) {
     const cypher_astnode_t *statement = cypher_parse_result_get_root(result, 0);

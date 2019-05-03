@@ -80,6 +80,8 @@ const cypher_astnode_t* AST_GetClause(const cypher_astnode_t *query, cypher_astn
 
 unsigned int AST_GetTopLevelClauses(const cypher_astnode_t *query, cypher_astnode_type_t clause_type, const cypher_astnode_t **matches);
 
+uint* AST_GetClauseIndices(const cypher_astnode_t *query, cypher_astnode_type_t clause_type);
+
 const cypher_astnode_t* AST_GetBody(const cypher_parse_result_t *result);
 
 AST* AST_Build(cypher_parse_result_t *parse_result);
