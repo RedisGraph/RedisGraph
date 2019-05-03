@@ -7,8 +7,8 @@
 #pragma once
 
 #include "op.h"
-#include "resultset/resultset.h"
-#include "util/triemap/triemap.h"
+#include "../../resultset/resultset.h"
+#include "../../util/triemap/triemap.h"
 
 typedef struct {
     OpBase op;
