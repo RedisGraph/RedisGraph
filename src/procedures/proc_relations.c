@@ -24,7 +24,7 @@ ProcedureResult Proc_RelationsInvoke(ProcedureCtx *ctx, char **args) {
     RelationsContext *pdata = rm_malloc(sizeof(RelationsContext));
     pdata->schema_id = 0;
     pdata->gc = GraphContext_GetFromTLS();
-    pdata->output = array_new(sizeof(SIValue), 2);
+    pdata->output = array_new(SIValue, 2);
     pdata->output = array_append(pdata->output, SI_ConstStringVal("relationshipType"));
     pdata->output = array_append(pdata->output, SI_ConstStringVal("")); // Place holder.
 
