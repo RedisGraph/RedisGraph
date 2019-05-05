@@ -24,7 +24,7 @@ ProcedureResult Proc_LabelsInvoke(ProcedureCtx *ctx, char **args) {
     LabelsContext *pdata = rm_malloc(sizeof(LabelsContext));
     pdata->schema_id = 0;
     pdata->gc = GraphContext_GetFromTLS();
-    pdata->output = array_new(sizeof(SIValue), 2);
+    pdata->output = array_new(SIValue, 2);
     pdata->output = array_append(pdata->output, SI_ConstStringVal("label"));
     pdata->output = array_append(pdata->output, SI_ConstStringVal("")); // Place holder.
 
