@@ -24,7 +24,7 @@ ProcedureResult Proc_PropKeysInvoke(ProcedureCtx *ctx, char **args) {
     RelationsContext *pdata = rm_malloc(sizeof(RelationsContext));
     pdata->prop_id = 0;
     pdata->gc = GraphContext_GetFromTLS();
-    pdata->output = array_new(sizeof(SIValue), 2);
+    pdata->output = array_new(SIValue, 2);
     pdata->output = array_append(pdata->output, SI_ConstStringVal("propertyKey"));
     pdata->output = array_append(pdata->output, SI_ConstStringVal("")); // Place holder.
 
