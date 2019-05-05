@@ -148,6 +148,12 @@ void _BuildQueryGraphAddEdge(const GraphContext *gc,
     Node *dest = QueryGraph_GetNodeByAlias(qg, dest_node->alias);
     Edge *e = Edge_New(src, dest, edge->ge.label, edge->ge.alias);
     
+    // Incase of a variable length edge, set edge min/max hops.
+    if(edge->length) {
+        e->minHops = edge->length->minHops;
+        e->maxHops = edge->length->maxHops;
+    }
+
     // Set edge relation ID.
     if(edge->ge.label == NULL) {
         Edge_SetRelationID(e, GRAPH_NO_RELATION);

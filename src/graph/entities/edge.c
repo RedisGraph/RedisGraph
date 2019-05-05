@@ -18,6 +18,8 @@ Edge* Edge_New(Node *src, Node *dest, const char *relationship, const char *alia
 	Edge* e = calloc(1, sizeof(Edge));
 	Edge_SetSrcNode(e, src);
 	Edge_SetDestNode(e, dest);
+	e->minHops = 1;
+	e->maxHops = 1;
 	e->relationID = GRAPH_UNKNOWN_RELATION;
 
 	if(relationship != NULL) e->relationship = strdup(relationship);
@@ -68,6 +70,11 @@ GrB_Matrix Edge_GetMatrix(Edge *e) {
     }
 
     return e->mat;
+}
+
+bool Edge_VariableLength(const Edge *e) {
+	assert(e);
+	return (e->minHops != e->maxHops);
 }
 
 void Edge_SetSrcNode(Edge *e, Node *src) {
