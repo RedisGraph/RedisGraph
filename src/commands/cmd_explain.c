@@ -59,7 +59,7 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
     Graph_AcquireReadLock(gc->g);
     plan = NewExecutionPlan(ctx, gc, true);
-    char* strPlan = ExecutionPlanPrint(plan);
+    char* strPlan = ExecutionPlan_Print(plan);
     RedisModule_ReplyWithStringBuffer(ctx, strPlan, strlen(strPlan));
 
 cleanup:

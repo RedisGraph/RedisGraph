@@ -10,7 +10,7 @@
 #include "../../arithmetic/arithmetic_expression.h"
 #include <assert.h>
 
-OpBase* NewCreateOp(ResultSet *result_set, NodeCreateCtx *nodes, EdgeCreateCtx *edges, uint record_len) {
+OpBase* NewCreateOp(ResultSetStatistics *stats, NodeCreateCtx *nodes, EdgeCreateCtx *edges, uint record_len) {
     OpCreate *op_create = calloc(1, sizeof(OpCreate));
     op_create->gc = GraphContext_GetFromTLS();
     op_create->records = NULL;
@@ -21,7 +21,7 @@ OpBase* NewCreateOp(ResultSet *result_set, NodeCreateCtx *nodes, EdgeCreateCtx *
     op_create->created_edges = array_new(Edge*, 0);
     op_create->node_properties = array_new(PropertyMap*, 0);
     op_create->edge_properties = array_new(PropertyMap*, 0);
-    op_create->result_set = result_set;
+    op_create->stats = stats;
 
     // TODO modified?
 
@@ -48,7 +48,7 @@ static void _AddNodeProperties(OpCreate *op, Schema *schema, Node *n, PropertyMa
         GraphEntity_AddProperty((GraphEntity*)n, prop_id, props->values[i]);
     }
 
-    op->result_set->stats.properties_set += props->property_count;
+    op->stats->properties_set += props->property_count;
 }
 
 static void _AddEdgeProperties(OpCreate *op, Schema *schema, Edge *e, PropertyMap *props) {
@@ -62,7 +62,7 @@ static void _AddEdgeProperties(OpCreate *op, Schema *schema, Edge *e, PropertyMa
         GraphEntity_AddProperty((GraphEntity*)e, prop_id, props->values[i]);
     }
 
-    op->result_set->stats.properties_set += props->property_count;
+    op->stats->properties_set += props->property_count;
 }
 
 void _CreateNodes(OpCreate *op, Record r) {
@@ -132,7 +132,7 @@ static void _CommitNodes(OpCreate *op) {
             schema = GraphContext_GetSchema(op->gc, n->label, SCHEMA_NODE);
             if(schema == NULL) {
                 schema = GraphContext_AddSchema(op->gc, n->label, SCHEMA_NODE);
-                op->result_set->stats.labels_added++;
+                op->stats->labels_added++;
             }
             labelID = schema->id;
         }
@@ -179,7 +179,7 @@ static void _CommitEdges(OpCreate *op) {
         _AddEdgeProperties(op, schema, e, op->edge_properties[i]);
     }
 
-    op->result_set->stats.relationships_created += relationships_created;
+    op->stats->relationships_created += relationships_created;
 }
 
 static void _CommitNewEntities(OpCreate *op) {
@@ -191,7 +191,7 @@ static void _CommitNewEntities(OpCreate *op) {
 
     if(node_count > 0) {
         _CommitNodes(op);
-        op->result_set->stats.nodes_created += node_count;
+        op->stats->nodes_created += node_count;
     }
 
     if(edge_count > 0) _CommitEdges(op);

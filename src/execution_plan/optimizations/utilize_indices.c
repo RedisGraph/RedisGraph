@@ -54,7 +54,7 @@ void _locateScanOp(OpBase *root, NodeByLabelScan ***scanOps) {
   }
 }
 
-void utilizeIndices(GraphContext *gc, ExecutionPlan *plan) {
+void utilizeIndices(GraphContext *gc, ExecutionPlanSegment *plan) {
   // Return immediately if the graph has no indices
   if (!GraphContext_HasIndices(gc)) return;
 
@@ -136,14 +136,14 @@ void utilizeIndices(GraphContext *gc, ExecutionPlan *plan) {
       // Tighten the iterator range if possible
       if (IndexIter_ApplyBound(iter, &constVal, op)) {
         // Remove filter operations that have been folded into the index scan iterator
-        ExecutionPlan_RemoveOp(plan, opFilter);
+        ExecutionPlanSegment_RemoveOp(plan, opFilter);
         OpBase_Free(opFilter);
       }
     }
 
     if (iter != NULL) {
       OpBase *indexOp = NewIndexScanOp(scanOp->g, scanOp->node, scanOp->nodeRecIdx, iter);
-      ExecutionPlan_ReplaceOp(plan, (OpBase*)scanOp, indexOp);
+      ExecutionPlanSegment_ReplaceOp(plan, (OpBase*)scanOp, indexOp);
     }
   }
 

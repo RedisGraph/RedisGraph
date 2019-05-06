@@ -31,10 +31,10 @@ typedef struct {
 
     Node **created_nodes;
     Edge **created_edges;
-    ResultSet *result_set;
+    ResultSetStatistics *stats;
 } OpCreate;
 
-OpBase* NewCreateOp(ResultSet *result_set, NodeCreateCtx *nodes, EdgeCreateCtx *edges, uint record_len);
+OpBase* NewCreateOp(ResultSetStatistics *stats, NodeCreateCtx *nodes, EdgeCreateCtx *edges, uint record_len);
 
 Record OpCreateConsume(OpBase *opBase);
 OpResult OpCreateReset(OpBase *ctx);

@@ -12,4 +12,4 @@
  * a filter of the form ID(n) = X is applied in which case 
  * both the SCAN and FILTER operations can be reduced into a single 
  * NODE_BY_ID_SEEK operation. */
-void seekByID(ExecutionPlan *plan);
+void seekByID(ExecutionPlanSegment *plan);

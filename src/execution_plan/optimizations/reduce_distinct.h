@@ -13,4 +13,4 @@
  * this optimization will try to look for an aggregation operation
  * followed by a distinct operation, in which case we can omit distinct
  * from the execution plan. */
-void reduceDistinct(ExecutionPlan *plan);
+void reduceDistinct(ExecutionPlanSegment *plan);

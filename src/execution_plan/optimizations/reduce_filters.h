@@ -14,6 +14,6 @@
  * a single filter operation by ANDing their filter trees
  * Reducing the overall number of operations is expected to produce
  * faster execution time. */
-void reduceFilters(ExecutionPlan *plan);
+void reduceFilters(ExecutionPlanSegment *plan);
 
 #endif

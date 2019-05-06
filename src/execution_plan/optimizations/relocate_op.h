@@ -8,4 +8,4 @@
 
 #include "../execution_plan.h"
 
-void relocateOperations(ExecutionPlan *plan);
+void relocateOperations(ExecutionPlanSegment *plan);

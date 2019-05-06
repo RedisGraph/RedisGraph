@@ -15,6 +15,6 @@
  * any constant predicate filter matches a viable index, replaces the Label Scan and Filter
  * with an Index Scan. This allows for the consideration of fewer candidate nodes and
  * significantly increases the speed of the operation. */
-void utilizeIndices(GraphContext *gc, ExecutionPlan *plan);
+void utilizeIndices(GraphContext *gc, ExecutionPlanSegment *plan);
 
 #endif

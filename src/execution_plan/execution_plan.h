@@ -24,8 +24,13 @@ typedef enum {
 typedef struct {
     OpBase *root;
     QueryGraph *query_graph;
-    ResultSet *result_set;
     FT_FilterNode *filter_tree;
+} ExecutionPlanSegment;
+
+typedef struct {
+    ExecutionPlanSegment **segments;
+    ResultSet *result_set;
+    uint segment_count;
 } ExecutionPlan;
 
 /* Creates a new execution plan from AST */
@@ -35,30 +40,41 @@ ExecutionPlan* NewExecutionPlan (
     bool explain            // Construct execution plan, do not execute
 );
 
-/* Prints execution plan. */
-char* ExecutionPlanPrint(const ExecutionPlan *plan);
+/* execution_plan_modify.c
+ * Helper functions to move and analyze operations in an ExecutionPlan. */
 
 /* Removes operation from execution plan. */
-void ExecutionPlan_RemoveOp(ExecutionPlan *plan, OpBase *op);
+void ExecutionPlanSegment_RemoveOp(ExecutionPlanSegment *plan, OpBase *op);
 
 /* Adds operation to execution plan as a child of parent. */
-void ExecutionPlan_AddOp(OpBase *parent, OpBase *newOp);
+void ExecutionPlanSegment_AddOp(OpBase *parent, OpBase *newOp);
 
 /* Push b right below a. */
-void ExecutionPlan_PushBelow(OpBase *a, OpBase *b);
+void ExecutionPlanSegment_PushBelow(OpBase *a, OpBase *b);
 
 /* Replace a with b. */
-void ExecutionPlan_ReplaceOp(ExecutionPlan *plan, OpBase *a, OpBase *b);
+void ExecutionPlanSegment_ReplaceOp(ExecutionPlanSegment *plan, OpBase *a, OpBase *b);
 
 /* Locate the first operation of a given type within execution plan.
  * Returns NULL if operation wasn't found. */
-OpBase* ExecutionPlan_LocateOp(OpBase *root, OPType type);
+OpBase* ExecutionPlanSegment_LocateOp(OpBase *root, OPType type);
 
-/* Returns an array of taps; operations which generate data 
+/* Returns an array of taps; operations which generate data
  * e.g. SCAN operations */
-void ExecutionPlan_Taps(OpBase *root, OpBase ***taps);
+void ExecutionPlanSegment_Taps(OpBase *root, OpBase ***taps);
+
+/* Find the earliest operation on the ExecutionPlan at which all
+ * references are resolved. */
+OpBase* ExecutionPlanSegment_LocateReferences(OpBase *root, uint *references);
+
+/* execution_plan.c */
+
+/* Prints execution plan. */
+char* ExecutionPlan_Print(const ExecutionPlan *plan);
 
 /* Executes plan */
+Record ExecutionPlanSegment_Execute(ExecutionPlanSegment *plan);
+
 ResultSet* ExecutionPlan_Execute(ExecutionPlan *plan);
 
 /* Free execution plan */

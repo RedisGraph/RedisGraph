@@ -24,8 +24,8 @@ static OpBase* _locateProjection(OpBase *root) {
 }
 
 /* Migrate the given operation directly above the project/aggregate operation. */
-void _relocateOp(ExecutionPlan *plan, OPType type) {
-    OpBase *op = ExecutionPlan_LocateOp(plan->root, type);
+void _relocateOp(ExecutionPlanSegment *plan, OPType type) {
+    OpBase *op = ExecutionPlanSegment_LocateOp(plan->root, type);
     if(!op) return;
     assert(op->childCount == 1);
 
@@ -34,12 +34,12 @@ void _relocateOp(ExecutionPlan *plan, OPType type) {
     assert(projection_op);
 
     // Remove op from its current position.
-    ExecutionPlan_RemoveOp(plan, op);
+    ExecutionPlanSegment_RemoveOp(plan, op);
     // Push op right above projection/aggregation
-    ExecutionPlan_PushBelow(projection_op, op);
+    ExecutionPlanSegment_PushBelow(projection_op, op);
 }
 
-void relocateOperations(ExecutionPlan *plan) {
+void relocateOperations(ExecutionPlanSegment *plan) {
     assert(plan && plan->root);
     _relocateOp(plan, OPType_LIMIT);
     _relocateOp(plan, OPType_SKIP);

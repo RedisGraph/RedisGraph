@@ -34,7 +34,7 @@ static int _identifyPattern(OpBase *root, OpResult **opResult, OpAggregate **opA
 
     AR_ExpNode *exp = (*opAggregate)->exps[0];
 
-    // Make sure aggregation performs counting.    
+    // Make sure aggregation performs counting.
     if( exp->type != AR_EXP_OP ||
         exp->op.type != AR_OP_AGGREGATE ||
         strcasecmp(exp->op.func_name, "count")) return 0;
@@ -49,9 +49,9 @@ static int _identifyPattern(OpBase *root, OpResult **opResult, OpAggregate **opA
     op = op->children[0];
 
     // Scan, either a full node or label scan.
-    if((op->type != OPType_ALL_NODE_SCAN && 
+    if((op->type != OPType_ALL_NODE_SCAN &&
         op->type != OPType_NODE_BY_LABEL_SCAN) ||
-        op->childCount != 0) {           
+        op->childCount != 0) {
            return 0;
     }
 
@@ -65,7 +65,7 @@ static int _identifyPattern(OpBase *root, OpResult **opResult, OpAggregate **opA
     return 1;
 }
 
-void reduceCount(ExecutionPlan *plan) {
+void reduceCount(ExecutionPlanSegment *plan) {
     /* We'll only modify execution plan if it is structured as follows:
      * "Scan -> Aggregate -> Results" */
     char *label;
@@ -108,12 +108,12 @@ void reduceCount(ExecutionPlan *plan) {
 
     OpBase *opProject = NewProjectOp(exps, modifies);
 
-    // New execution plan: "Project -> Results"    
-    ExecutionPlan_RemoveOp(plan, (OpBase*)opScan);    
+    // New execution plan: "Project -> Results"
+    ExecutionPlanSegment_RemoveOp(plan, (OpBase*)opScan);
     OpBase_Free(opScan);
 
-    ExecutionPlan_RemoveOp(plan, (OpBase*)opAggregate);
+    ExecutionPlanSegment_RemoveOp(plan, (OpBase*)opAggregate);
     OpBase_Free((OpBase*)opAggregate);
 
-    ExecutionPlan_AddOp((OpBase*)opResult, opProject);
+    ExecutionPlanSegment_AddOp((OpBase*)opResult, opProject);
 }

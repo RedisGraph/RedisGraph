@@ -1,39 +1,55 @@
 import os
 import sys
+import string
+import random
 import unittest
 from redisgraph import Graph, Node, Edge
 
 import redis
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from disposableredis import DisposableRedis
+from .base import FlowTestsBase
 
-from base import FlowTestsBase
-
-GRAPH_ID = "g"
+dis_redis = None
 redis_graph = None
+redis_con = None
 
-def disposable_redis():
-    return DisposableRedis(loadmodule=os.path.dirname(os.path.abspath(__file__)) + '/../../src/redisgraph.so')
+def random_string(size=6, chars=string.ascii_letters):
+    return ''.join(random.choice(chars) for _ in range(size))
+
+def get_redis():
+    global dis_redis
+    conn = redis.Redis()
+    try:
+        conn.ping()
+        # Assuming RedisGraph is loaded.
+    except redis.exceptions.ConnectionError:
+        from .redis_base import DisposableRedis
+        # Bring up our own redis-server instance.
+        dis_redis = DisposableRedis(loadmodule=os.path.dirname(os.path.abspath(__file__)) + '/../../src/redisgraph.so')
+        dis_redis.start()
+        conn = dis_redis.client()
+    return conn
+
 
 class NodeByIDFlowTest(FlowTestsBase):
     @classmethod
     def setUpClass(cls):
         print "NodeByIDFlowTest"
         global redis_graph
-        cls.r = disposable_redis()
-        cls.r.start()
+        global redis_con
+        redis_con = get_redis()
+        GRAPH_ID = random_string()
+        redis_graph = Graph(GRAPH_ID, redis_con)
         cls.populate_graph()
 
     @classmethod
     def tearDownClass(cls):
-        cls.r.stop()
-        # pass
+        if dis_redis is not None:
+            dis_redis.stop()
 
     @classmethod
     def populate_graph(cls):
         global redis_graph
-        redis_con = cls.r.client()
-        redis_graph = Graph(GRAPH_ID, redis_con)
+
         # Create entities
         for i in range(10):            
             node = Node(label="person", properties={"id": i})

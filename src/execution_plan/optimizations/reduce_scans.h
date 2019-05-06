@@ -17,6 +17,6 @@
 /* TODO: Once we'll have statistics regarding the number of different types
  * using a relation we'll be able to drop SCAN and additional typed matrix 
  * multiplication. */
-void reduceScans(ExecutionPlan *plan);
+void reduceScans(ExecutionPlanSegment *plan);
 
 #endif
