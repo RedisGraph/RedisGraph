@@ -1,5 +1,6 @@
 #include "ast_build_filter_tree.h"
 #include "ast_shared.h"
+#include "../util/arr.h"
 
 FT_FilterNode* CreateCondFilterNode(AST_Operator op) {
     FT_FilterNode* filterNode = (FT_FilterNode*)malloc(sizeof(FT_FilterNode));
@@ -203,19 +204,20 @@ FT_FilterNode* FilterNode_FromAST(const AST *ast, const cypher_astnode_t *expr) 
 }
 
 FT_FilterNode* AST_BuildFilterTree(AST *ast) {
-
     FT_FilterNode *filter_tree = NULL; 
-    unsigned int clause_count = cypher_astnode_nchildren(ast->root);
-    const cypher_astnode_t *match_clauses[clause_count];
-    unsigned int match_count = AST_GetTopLevelClauses(ast, CYPHER_AST_MATCH, match_clauses);
+    const cypher_astnode_t **match_clauses = AST_CollectReferencesInRange(ast, CYPHER_AST_MATCH);
+    uint match_count = array_len(match_clauses);
     for (unsigned int i = 0; i < match_count; i ++) {
         _collectFilters(ast, &filter_tree, match_clauses[i]);
     }
+    array_free(match_clauses);
 
-    const cypher_astnode_t *merge_clauses[clause_count];
-    unsigned int merge_count = AST_GetTopLevelClauses(ast, CYPHER_AST_MERGE, merge_clauses);
+    const cypher_astnode_t **merge_clauses = AST_CollectReferencesInRange(ast, CYPHER_AST_MERGE);
+    uint merge_count = array_len(merge_clauses);
     for (unsigned int i = 0; i < merge_count; i ++) {
         _collectFilters(ast, &filter_tree, merge_clauses[i]);
     }
+    array_free(merge_clauses);
+
     return filter_tree;
 }

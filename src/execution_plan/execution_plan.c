@@ -191,11 +191,9 @@ void _ExecutionPlanSegment_AddTraversalOps(Vector *ops, OpBase *cartesian_root, 
     }
 }
 
-ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext *gc, ResultSet *result_set, uint start, uint end) {
+ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext *gc, AST *ast, ResultSet *result_set) {
     ExecutionPlanSegment *segment = malloc(sizeof(ExecutionPlanSegment));
     Vector *ops = NewVector(OpBase*, 1);
-
-    AST *ast = AST_GetFromTLS();
 
     // Build query graph
     QueryGraph *qg = BuildQueryGraph(gc, ast);
@@ -205,9 +203,8 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
     FT_FilterNode *filter_tree = AST_BuildFilterTree(ast);
     segment->filter_tree = filter_tree;
 
-    uint match_count = AST_GetClauseCount(ast, CYPHER_AST_MATCH);
-    const cypher_astnode_t *match_clauses[match_count];
-    AST_GetTopLevelClauses(ast, CYPHER_AST_MATCH, match_clauses);
+    const cypher_astnode_t **match_clauses = AST_CollectReferencesInRange(ast, CYPHER_AST_MATCH);
+    uint match_count = array_len(match_clauses);
 
     /* TODO Currently, we don't differentiate between:
      * MATCH (a) MATCH (b)
@@ -243,6 +240,8 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
         }
         Vector_Free(path_traversal);
     }
+
+    array_free(match_clauses);
 
     // Set root operation
     const cypher_astnode_t *unwind_clause = AST_GetClause(ast, CYPHER_AST_UNWIND);
@@ -302,10 +301,9 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
     }
 
     AR_ExpNode **exps = NULL;
-    uint *modifies = NULL; // TODO tmp
+    uint *modifies = NULL;
     bool aggregate = false;
 
-    // TODO with clauses, separate handling for their distinct/limit/etc
     const cypher_astnode_t *with_clause = AST_GetClause(ast, CYPHER_AST_WITH);
     if(with_clause) {
         assert(false);
@@ -430,19 +428,16 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, bool expl
     uint *segment_indices = NULL;
     if (segment_count > 1) segment_indices = AST_GetClauseIndices(ast, CYPHER_AST_WITH);
 
-    uint segment_start = 0;
-    uint segment_end;
-
     plan->segments = malloc(segment_count * sizeof(ExecutionPlanSegment));
     uint i;
     for (i = 0; i < segment_count - 1; i ++) {
-        segment_end = segment_indices[i];
-        plan->segments[i] = _NewExecutionPlanSegment(ctx, gc, plan->result_set, segment_start, segment_end);
-        segment_start = segment_end;
+        ast->end_offset = segment_indices[i] + 1; // Switching from index to bound, so add 1
+        plan->segments[i] = _NewExecutionPlanSegment(ctx, gc, ast, plan->result_set);
+        ast->start_offset = ast->end_offset;
     }
 
-    segment_end = AST_NumClauses(ast);
-    plan->segments[i] = _NewExecutionPlanSegment(ctx, gc, plan->result_set, segment_start, segment_end);
+    ast->end_offset = AST_NumClauses(ast);
+    plan->segments[i] = _NewExecutionPlanSegment(ctx, gc, ast, plan->result_set);
 
     return plan;
 }

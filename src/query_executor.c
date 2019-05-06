@@ -343,7 +343,6 @@ void ModifyAST(GraphContext *gc, AST *ast) {
         // _inlineProperties(ast[i]);
     // }
 
-    assert(AST_GetClause(ast, CYPHER_AST_WITH) == NULL);
     AST_BuildAliasMap(ast);
 
     _BuildReturnExpressions(ast);

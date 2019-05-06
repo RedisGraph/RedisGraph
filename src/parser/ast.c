@@ -237,10 +237,9 @@ int AST_ReturnClause_ContainsCollapsedNodes(const AST *ast) {
     return 0;
 }
 
-// Retrieve the first instance of the specified clause, if any.
+// Retrieve the first instance of the specified clause in range, if any.
 const cypher_astnode_t* AST_GetClause(const AST *ast, cypher_astnode_type_t clause_type) {
-    unsigned int num_clauses = cypher_astnode_nchildren(ast->root);
-    for (unsigned int i = 0; i < num_clauses; i ++) {
+    for (unsigned int i = ast->start_offset; i < ast->end_offset; i ++) {
         const cypher_astnode_t *child = cypher_astnode_get_child(ast->root, i);
         if (cypher_astnode_type(child) == clause_type) return child;
     }
@@ -267,7 +266,7 @@ uint* AST_GetClauseIndices(const AST *ast, cypher_astnode_type_t clause_type) {
     uint *clause_indices = array_new(uint, 0);
     unsigned int num_clauses = cypher_astnode_nchildren(ast->root);
     for (unsigned int i = 0; i < num_clauses; i ++) {
-        if (cypher_astnode_type(cypher_astnode_get_child(ast->root, i)) != clause_type) {
+        if (cypher_astnode_type(cypher_astnode_get_child(ast->root, i)) == clause_type) {
             clause_indices = array_append(clause_indices, i);
         }
     }
@@ -289,6 +288,20 @@ uint AST_NumClauses(const AST *ast) {
     return cypher_astnode_nchildren(ast->root);
 }
 
+// TODO should just use this format or the TopLevel format
+const cypher_astnode_t** AST_CollectReferencesInRange(const AST *ast, cypher_astnode_type_t type) {
+    const cypher_astnode_t **found = array_new(const cypher_astnode_t *, 0);
+
+    for (uint i = ast->start_offset; i < ast->end_offset; i ++) {
+        const cypher_astnode_t *child = cypher_astnode_get_child(ast->root, i);
+        if (cypher_astnode_type(child) != type) continue;
+
+        found = array_append(found, child);
+    }
+
+    return found;
+}
+
 const cypher_astnode_t* AST_GetBody(const cypher_parse_result_t *result) {
     const cypher_astnode_t *statement = cypher_parse_result_get_root(result, 0);
     assert(statement && cypher_astnode_type(statement) == CYPHER_AST_STATEMENT);
@@ -297,14 +310,17 @@ const cypher_astnode_t* AST_GetBody(const cypher_parse_result_t *result) {
 }
 
 AST* AST_Build(cypher_parse_result_t *parse_result) {
-    AST *new_ast = malloc(sizeof(AST));
-    new_ast->root = AST_GetBody(parse_result);
-    assert(new_ast->root);
-    new_ast->order_expression_count = 0;
-    new_ast->record_length = 0;
-    new_ast->return_expressions = NULL;
-    new_ast->order_expressions = NULL;
-    return new_ast;
+    AST *ast = malloc(sizeof(AST));
+    ast->root = AST_GetBody(parse_result);
+    assert(ast->root);
+    ast->order_expression_count = 0;
+    ast->record_length = 0;
+    ast->return_expressions = NULL;
+    ast->order_expressions = NULL;
+    ast->start_offset = 0;
+    ast->end_offset = cypher_astnode_nchildren(ast->root);
+
+    return ast;
 }
 
 // Debug print

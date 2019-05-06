@@ -278,6 +278,7 @@ void _buildAliasTrieMap(TrieMap *map, const cypher_astnode_t *entity) {
 
 // TODO This logic doesn't belong here, but might be entirely replaceable - investigate.
 TrieMap* _MatchClause_DefinedEntities(const AST *ast) {
+    // TODO needs start/end bounds
     uint match_count = AST_GetClauseCount(ast, CYPHER_AST_MATCH);
     const cypher_astnode_t *match_clauses[match_count];
     AST_GetTopLevelClauses(ast, CYPHER_AST_MATCH, match_clauses);

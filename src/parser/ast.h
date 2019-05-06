@@ -34,6 +34,8 @@ typedef struct {
     unsigned int order_expression_count; // TODO maybe use arr.h instead
     unsigned int record_length;
     AR_ExpNode **order_expressions;
+    unsigned int start_offset;    // Left-hand bound of AST clauses to consider
+    unsigned int end_offset;    // Right-hand bound of AST clauses to consider
 } AST;
 
 // AST clause validations.
@@ -67,6 +69,8 @@ uint* AST_GetClauseIndices(const AST *ast, cypher_astnode_type_t clause_type);
 uint AST_GetClauseCount(const AST *ast, cypher_astnode_type_t clause_type);
 
 uint AST_NumClauses(const AST *ast);
+
+const cypher_astnode_t** AST_CollectReferencesInRange(const AST *ast, cypher_astnode_type_t type);
 
 const cypher_astnode_t* AST_GetBody(const cypher_parse_result_t *result);
 
