@@ -191,9 +191,21 @@ void _ExecutionPlanSegment_AddTraversalOps(Vector *ops, OpBase *cartesian_root, 
     }
 }
 
-ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext *gc, AST *ast, ResultSet *result_set) {
+ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext *gc, AST *ast, ResultSet *result_set, OpBase *handoff) {
     ExecutionPlanSegment *segment = malloc(sizeof(ExecutionPlanSegment));
     Vector *ops = NewVector(OpBase*, 1);
+
+    if (handoff) {
+        // This is not the initial segment; we've been given a project/aggregate tap
+        // from the previous one.
+        // Disconnect handoff operation
+        handoff->children = NULL;
+        handoff->childCount = 0;
+        OpBase *tmp = malloc(sizeof(OpHandoff));
+        memcpy(tmp, handoff, sizeof(OpHandoff));
+        Vector_Push(ops, tmp);
+        // Add a WITH tap and populate QueryGraph as necessary?
+    }
 
     // Build query graph
     QueryGraph *qg = BuildQueryGraph(gc, ast);
@@ -300,17 +312,15 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
         Vector_Push(ops, op_update);
     }
 
+    const cypher_astnode_t *with_clause = AST_GetClause(ast, CYPHER_AST_WITH);
+    const cypher_astnode_t *ret_clause = AST_GetClause(ast, CYPHER_AST_RETURN);
+
+    assert(!(with_clause && ret_clause));
+
     AR_ExpNode **exps = NULL;
     uint *modifies = NULL;
-    bool aggregate = false;
 
-    const cypher_astnode_t *with_clause = AST_GetClause(ast, CYPHER_AST_WITH);
-    if(with_clause) {
-        assert(false);
-    }
-
-    const cypher_astnode_t *ret_clause = AST_GetClause(ast, CYPHER_AST_RETURN);
-    if(ret_clause) {
+    if (with_clause || ret_clause) {
         uint exp_count = array_len(ast->return_expressions);
         exps = array_new(AR_ExpNode*, exp_count);
         modifies = array_new(uint, exp_count);
@@ -320,21 +330,62 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
             exps = array_append(exps, exp);
             if (exp->record_idx) modifies = array_append(modifies, exp->record_idx);
         }
-        // TODO We've already determined this during AST validations, could refactor to make
-        // this call unnecessary.
-        aggregate = AST_ClauseContainsAggregation(ret_clause);
     }
-
 
     OpBase *op;
-    if(ret_clause || with_clause) {
-        if(aggregate) op = NewAggregateOp(exps, modifies);
-        else op = NewProjectOp(exps, modifies);
+
+    if(with_clause) {
+        if (AST_ClauseContainsAggregation(with_clause)) {
+            op = NewAggregateOp(exps, modifies);
+        } else {
+            op = NewProjectOp(exps, modifies);
+        }
         Vector_Push(ops, op);
-    }
+        
+        if (cypher_ast_with_is_distinct(with_clause)) {
+            op = NewDistinctOp();
+            Vector_Push(ops, op);
+        }
 
+        const cypher_astnode_t *order_clause = cypher_ast_with_get_order_by(with_clause);
+        const cypher_astnode_t *skip_clause = cypher_ast_with_get_skip(with_clause);
+        const cypher_astnode_t *limit_clause = cypher_ast_with_get_limit(with_clause);
 
-    if (ret_clause) {
+        uint skip = 0;
+        uint limit = 0;
+        if (skip_clause) skip = AST_ParseIntegerNode(skip_clause);
+        if (limit_clause) limit = skip + AST_ParseIntegerNode(limit_clause);
+
+        if (order_clause) {
+            int direction;
+            AR_ExpNode **sort_exps = AST_PrepareSortOp(order_clause, &direction);
+            op = NewSortOp(sort_exps, direction, limit);
+            Vector_Push(ops, op);
+        }
+
+        if (skip_clause) {
+            OpBase *op_skip = NewSkipOp(skip);
+            Vector_Push(ops, op_skip);
+        }
+
+        if (limit_clause) {
+            OpBase *op_limit = NewLimitOp(limit);
+            Vector_Push(ops, op_limit);
+        }
+
+        const char **with_projections = AST_PrepareWithOp(with_clause);
+        op = NewHandoffOp(with_projections);
+        Vector_Push(ops, op);
+
+    } else if (ret_clause) {
+
+        if (AST_ClauseContainsAggregation(ret_clause)) {
+            op = NewAggregateOp(exps, modifies);
+        } else {
+            op = NewProjectOp(exps, modifies);
+        }
+        Vector_Push(ops, op);
+
         if (cypher_ast_return_is_distinct(ret_clause)) {
             op = NewDistinctOp();
             Vector_Push(ops, op);
@@ -408,6 +459,7 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
     }
 
     optimizeSegment(gc, segment);
+
     return segment;
 }
 
@@ -430,14 +482,17 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, bool expl
 
     plan->segments = malloc(segment_count * sizeof(ExecutionPlanSegment));
     uint i;
+
+    OpBase *handoff = NULL;
     for (i = 0; i < segment_count - 1; i ++) {
         ast->end_offset = segment_indices[i] + 1; // Switching from index to bound, so add 1
-        plan->segments[i] = _NewExecutionPlanSegment(ctx, gc, ast, plan->result_set);
+        plan->segments[i] = _NewExecutionPlanSegment(ctx, gc, ast, plan->result_set, handoff);
+        handoff = plan->segments[i]->root;
         ast->start_offset = ast->end_offset;
     }
 
     ast->end_offset = AST_NumClauses(ast);
-    plan->segments[i] = _NewExecutionPlanSegment(ctx, gc, ast, plan->result_set);
+    plan->segments[i] = _NewExecutionPlanSegment(ctx, gc, ast, plan->result_set, handoff);
 
     return plan;
 }
@@ -461,6 +516,7 @@ void _ExecutionPlanSegmentPrint(const OpBase *op, char **strPlan, int ident) {
 char* ExecutionPlan_Print(const ExecutionPlan *plan) {
     char *strPlan = NULL;
     for (uint i = 0; i < plan->segment_count; i ++) {
+        // TODO incorrect print (might just need indent)
         _ExecutionPlanSegmentPrint(plan->segments[i]->root, &strPlan, 0);
     }
     return strPlan;
@@ -473,49 +529,52 @@ void _ExecutionPlanSegmentInit(OpBase *root) {
     }
 }
 
-void ExecutionPlanSegmentInit(ExecutionPlanSegment *plan) {
-    if(!plan) return;
-    _ExecutionPlanSegmentInit(plan->root);
+void ExecutionPlanSegmentInit(ExecutionPlanSegment *segment) {
+    if(!segment) return;
+    _ExecutionPlanSegmentInit(segment->root);
 }
 
-Record ExecutionPlanSegment_Execute(ExecutionPlanSegment *plan) {
-    OpBase *op = plan->root;
+Record ExecutionPlanSegment_Execute(ExecutionPlanSegment *segment) {
+    OpBase *op = segment->root;
 
-    ExecutionPlanSegmentInit(plan);
     Record r = op->consume(op);
 
     return r;
 }
 
 ResultSet* ExecutionPlan_Execute(ExecutionPlan *plan) {
-    Record r = Record_New(0); // TODO tmp
-    while (r) {
-        for (int i = 0; i < plan->segment_count; i ++) {
+    for (uint i = 0; i < plan->segment_count; i ++) {
+        ExecutionPlanSegmentInit(plan->segments[i]);
+    }
+
+    bool depleted = false;
+    Record r;
+
+    while (!depleted) {
+        for (uint i = 0; i < plan->segment_count; i ++) {
             r = ExecutionPlanSegment_Execute(plan->segments[i]);
+            if (r == NULL) depleted = true;
         }
     }
     return plan->result_set;
 }
 
-void _ExecutionPlanSegmentFreeRecursive(OpBase* op) {
+
+
+void _ExecutionPlanSegmentFreeOperations(OpBase* op) {
     for(int i = 0; i < op->childCount; i++) {
-        _ExecutionPlanSegmentFreeRecursive(op->children[i]);
+        _ExecutionPlanSegmentFreeOperations(op->children[i]);
     }
     OpBase_Free(op);
-}
-
-void _ExecutionPlanSegmentFree(ExecutionPlanSegment *plan) {
-    if(plan == NULL) return;
-    if(plan->root) _ExecutionPlanSegmentFreeRecursive(plan->root);
-
-    QueryGraph_Free(plan->query_graph);
-    free(plan);
 }
 
 void ExecutionPlanFree(ExecutionPlan *plan) {
     if(plan == NULL) return;
     for (uint i = 0; i < plan->segment_count; i ++) {
-        _ExecutionPlanSegmentFree(plan->segments[i]);
+        ExecutionPlanSegment *segment = plan->segments[i];
+        if(segment->root) _ExecutionPlanSegmentFreeOperations(segment->root);
+        QueryGraph_Free(segment->query_graph);
+        free(segment);
     }
 
     free(plan);

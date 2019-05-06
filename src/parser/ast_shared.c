@@ -40,6 +40,33 @@ AST_Operator AST_ConvertOperatorNode(const cypher_operator_t *op) {
     return -1;
 }
 
+// TODO tmp, memory leak
+char* AST_ExpressionToString(const cypher_astnode_t *expr) {
+    cypher_astnode_type_t type = cypher_astnode_type(expr);
+    // assert (type == CYPHER_AST_EXPRESSION);
+    if (type == CYPHER_AST_IDENTIFIER) {
+        // Identifier referencing another AST entity
+        const char *alias = cypher_ast_identifier_get_name(expr);
+        return strdup(alias);
+    /* Entity-property pair */
+    } else if (type == CYPHER_AST_PROPERTY_OPERATOR) {
+        const cypher_astnode_t *prop_expr = cypher_ast_property_operator_get_expression(expr);
+        assert(cypher_astnode_type(prop_expr) == CYPHER_AST_IDENTIFIER);
+        const char *alias = cypher_ast_identifier_get_name(prop_expr);
+        // Extract the property name
+        const cypher_astnode_t *prop_name_node = cypher_ast_property_operator_get_prop_name(expr);
+        const char *prop_name = cypher_ast_prop_name_get_value(prop_name_node);
+        char *str = strdup(alias);
+        str = strcat(str, ".");
+        str = strcat(str, prop_name);
+        return str;
+    } else {
+        assert(false);
+    }
+
+    return NULL;
+}
+
 void PropertyMap_Free(PropertyMap *map) {
     if (map == NULL) return;
 

@@ -5,6 +5,7 @@
  */
 
 #include "ast.h"
+#include "ast_shared.h"
 #include "../util/arr.h"
 #include "../arithmetic/repository.h"
 #include "../arithmetic/arithmetic_expression.h"
@@ -34,6 +35,26 @@ static void _AST_GetIdentifiers(const cypher_astnode_t *node, TrieMap *identifie
         const cypher_astnode_t *child = cypher_astnode_get_child(node, i);
         _AST_GetIdentifiers(child, identifiers);
     }
+}
+
+static void _AST_GetWithAliases(const cypher_astnode_t *node, TrieMap *aliases) {
+    if (!node) return;
+    if(cypher_astnode_type(node) != CYPHER_AST_WITH) return;
+    assert(aliases);
+
+    int num_with_projections = cypher_ast_with_nprojections(node);
+    for (unsigned int i = 0; i < num_with_projections; i ++) {
+        const cypher_astnode_t *child = cypher_ast_with_get_projection(node, i);
+        const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(child);
+        const char *alias;
+        if (alias_node) {
+            alias = cypher_ast_identifier_get_name(alias_node);
+        } else {
+            alias = AST_ExpressionToString(cypher_ast_projection_get_expression(child));
+        }
+        TrieMap_Add(aliases, (char*)alias, strlen(alias), NULL, TrieMap_DONT_CARE_REPLACE);
+    }
+
 }
 
 // UNWIND and WITH also form aliases, but don't need special handling for us yet.
@@ -322,6 +343,9 @@ static void _AST_GetDefinedIdentifiers(const cypher_astnode_t *node, TrieMap *id
         // Only collect aliases (which may be referenced in an ORDER BY)
         // from the RETURN clause, rather than all identifiers
         _AST_GetReturnAliases(node, identifiers);
+    } else if (type == CYPHER_AST_WITH) {
+        // Get alias if one is provided; otherwise use the expression identifier
+        _AST_GetWithAliases(node, identifiers);
     } else if (type == CYPHER_AST_MERGE || type == CYPHER_AST_UNWIND || type == CYPHER_AST_MATCH || type == CYPHER_AST_CREATE) {
         _AST_GetIdentifiers(node, identifiers);
     } else {
@@ -336,7 +360,7 @@ static void _AST_GetDefinedIdentifiers(const cypher_astnode_t *node, TrieMap *id
 static void _AST_GetReferredIdentifiers(const cypher_astnode_t *node, TrieMap *identifiers) {
     if (!node) return;
     cypher_astnode_type_t type = cypher_astnode_type(node);
-    if (type == CYPHER_AST_SET || type == CYPHER_AST_RETURN || type == CYPHER_AST_DELETE || type == CYPHER_AST_UNWIND) {
+    if (type == CYPHER_AST_SET || type == CYPHER_AST_RETURN || type == CYPHER_AST_DELETE || type == CYPHER_AST_UNWIND || type == CYPHER_AST_WITH) {
         _AST_GetIdentifiers(node, identifiers);
     } else {
         unsigned int child_count = cypher_astnode_nchildren(node);

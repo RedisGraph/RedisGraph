@@ -258,6 +258,86 @@ void _ReturnExpandAll(AST *ast) {
     }
 }
 
+// TODO dup of _buildReturnExpressions
+void _BuildWithExpressions(AST *ast) {
+    // Handle with entities
+    const cypher_astnode_t *with_clause = AST_GetClause(ast, CYPHER_AST_WITH);
+    if (!with_clause) return;
+
+    // Query is of type "with *",
+    // collect all defined identifiers and create with elements for them
+    if (cypher_ast_with_has_include_existing(with_clause)) return _ReturnExpandAll(ast);
+
+    unsigned int count = cypher_ast_with_nprojections(with_clause);
+    ast->return_expressions = array_new(AR_ExpNode*, count);
+    for (unsigned int i = 0; i < count; i++) {
+        const cypher_astnode_t *projection = cypher_ast_with_get_projection(with_clause, i);
+        const cypher_astnode_t *expr = cypher_ast_projection_get_expression(projection);
+
+        AR_ExpNode *exp = NULL;
+        char *identifier = NULL;
+
+        if (cypher_astnode_type(expr) == CYPHER_AST_IDENTIFIER) {
+            // Retrieve "a" from "with a" or "with a AS e"
+            identifier = (char*)cypher_ast_identifier_get_name(expr);
+            exp = AST_GetEntityFromAlias(ast, (char*)identifier);
+        }
+
+        if (exp == NULL) {
+            // Identifier did not appear in previous clauses.
+            // It may be a constant or a function call (or other?)
+            // Create a new entity to represent it.
+            exp = AR_EXP_FromExpression(ast, expr);
+
+            // Make space for entity in record
+            unsigned int id = AST_AddRecordEntry(ast);
+            AR_EXP_AssignRecordIndex(exp, id);
+            // Add entity to the set of entities to be populated
+            ast->defined_entities = array_append(ast->defined_entities, exp);
+        }
+
+        // If the projection is aliased, add the alias to mappings and Record
+        char *alias = NULL;
+        const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(projection);
+        if (alias_node) {
+            // The projection either has an alias (AS) or is a function call.
+            alias = (char*)cypher_ast_identifier_get_name(alias_node);
+            // TODO can the alias have appeared in an earlier clause?
+
+            // Associate alias with the expression
+
+            // TODO This seems like more work than should be necessary
+            // Make node for alias
+            AR_ExpNode *alias_exp = AR_EXP_FromExpression(ast, expr);
+
+            // Make space for alias entity in record
+            unsigned int id = AST_AddRecordEntry(ast);
+            AR_EXP_AssignRecordIndex(alias_exp, id);
+            // Add entity to the set of entities to be populated
+            ast->defined_entities = array_append(ast->defined_entities, alias_exp);
+            AST_MapAlias(ast, alias, alias_exp);
+        }
+
+        const char *column_name = alias ? alias : exp->operand.variadic.entity_alias;
+        ast->return_expressions = array_append(ast->return_expressions, column_name);
+    }
+
+    // Handle ORDER entities
+    const cypher_astnode_t *order_clause = cypher_ast_with_get_order_by(with_clause);
+    if (!order_clause) return;
+
+    count = cypher_ast_order_by_nitems(order_clause);
+    ast->order_expressions = rm_malloc(count * sizeof(AR_ExpNode*));
+    ast->order_expression_count = count;
+    for (unsigned int i = 0; i < count; i++) {
+        // Returns CYPHER_AST_SORT_ITEM types
+        // TODO write a libcypher PR to correct the documentation on this.
+        const cypher_astnode_t *order_item = cypher_ast_order_by_get_item(order_clause, i);
+        const cypher_astnode_t *expr = cypher_ast_sort_item_get_expression(order_item);
+        ast->order_expressions[i] = AR_EXP_FromExpression(ast, expr);
+    }
+}
+
 void _BuildReturnExpressions(AST *ast) {
     // Handle RETURN entities
     const cypher_astnode_t *ret_clause = AST_GetClause(ast, CYPHER_AST_RETURN);
@@ -346,6 +426,8 @@ void ModifyAST(GraphContext *gc, AST *ast) {
     AST_BuildAliasMap(ast);
 
     _BuildReturnExpressions(ast);
+    _BuildWithExpressions(ast);
+
     if(AST_ReturnClause_ContainsCollapsedNodes(ast)) {
         /* Expand collapsed nodes. */
         ExpandCollapsedNodes(ast);
