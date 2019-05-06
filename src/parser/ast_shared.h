@@ -10,6 +10,25 @@
 #include "../graph/entities/edge.h"
 #include "../arithmetic/arithmetic_expression.h"
 
+typedef enum {
+    OP_NULL,
+    OP_OR,
+    OP_AND,
+    OP_NOT,
+    OP_EQUAL,
+    OP_NEQUAL,
+    OP_LT,
+    OP_GT,
+    OP_LE,
+    OP_GE,
+    OP_PLUS,
+    OP_MINUS,
+    OP_MULT,
+    OP_DIV,
+    OP_MOD,
+    OP_POW
+} AST_Operator;
+
 typedef struct {
     const char **keys;
     SIValue *values;
@@ -39,5 +58,7 @@ typedef struct {
     PropertyMap *properties;
     uint node_idx;
 } NodeCreateCtx;
+
+AST_Operator AST_ConvertOperatorNode(const cypher_operator_t *op);
 
 void PropertyMap_Free(PropertyMap *map);

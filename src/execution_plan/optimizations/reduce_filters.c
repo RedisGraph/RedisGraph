@@ -7,6 +7,7 @@
 #include "reduce_filters.h"
 #include "../ops/op_filter.h"
 #include "../../filter_tree/filter_tree.h"
+#include "../../parser/ast_build_filter_tree.h"
 
 void _reduceFilter(OpBase *op) {
     OpBase *parent = op;

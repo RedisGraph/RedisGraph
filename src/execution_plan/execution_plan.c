@@ -16,6 +16,7 @@
 #include "./optimizations/optimizations.h"
 #include "../arithmetic/algebraic_expression.h"
 #include "../parser/ast_build_op_contexts.h"
+#include "../parser/ast_build_filter_tree.h"
 
 /* Given an AST path, construct a series of scans and traversals to model it. */
 void _ExecutionPlanSegment_BuildTraversalOps(QueryGraph *qg, FT_FilterNode *ft, const cypher_astnode_t *path, Vector *traversals) {
@@ -190,7 +191,7 @@ void _ExecutionPlanSegment_AddTraversalOps(Vector *ops, OpBase *cartesian_root, 
     }
 }
 
-ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext *gc, ResultSet *result_set) {
+ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext *gc, ResultSet *result_set, uint start, uint end) {
     ExecutionPlanSegment *segment = malloc(sizeof(ExecutionPlanSegment));
     Vector *ops = NewVector(OpBase*, 1);
 
@@ -201,7 +202,7 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
     segment->query_graph = qg;
 
     // Build filter tree
-    FT_FilterNode *filter_tree = BuildFiltersTree(ast);
+    FT_FilterNode *filter_tree = AST_BuildFilterTree(ast);
     segment->filter_tree = filter_tree;
 
     uint match_count = AST_GetClauseCount(ast, CYPHER_AST_MATCH);
@@ -423,13 +424,25 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, bool expl
         ResultSet_CreateHeader(plan->result_set, ast->return_expressions);
     }
 
-    uint segment_count = 1;
-    if (AST_ContainsClause(ast, CYPHER_AST_WITH)) {
-    
+    uint segment_count = AST_GetClauseCount(ast, CYPHER_AST_WITH) + 1;
+    plan->segment_count = segment_count;
+
+    uint *segment_indices = NULL;
+    if (segment_count > 1) segment_indices = AST_GetClauseIndices(ast, CYPHER_AST_WITH);
+
+    uint segment_start = 0;
+    uint segment_end;
+
+    plan->segments = malloc(segment_count * sizeof(ExecutionPlanSegment));
+    uint i;
+    for (i = 0; i < segment_count - 1; i ++) {
+        segment_end = segment_indices[i];
+        plan->segments[i] = _NewExecutionPlanSegment(ctx, gc, plan->result_set, segment_start, segment_end);
+        segment_start = segment_end;
     }
-    plan->segments = malloc(sizeof(ExecutionPlanSegment));
-    plan->segments[0] = _NewExecutionPlanSegment(ctx, gc, plan->result_set);
-    plan->segment_count = 1;
+
+    segment_end = AST_NumClauses(ast);
+    plan->segments[i] = _NewExecutionPlanSegment(ctx, gc, plan->result_set, segment_start, segment_end);
 
     return plan;
 }

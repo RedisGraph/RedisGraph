@@ -10,6 +10,7 @@
 #include "entities/edge.h"
 #include "graphcontext.h"
 #include "../parser/ast.h"
+#include "../parser/ast_shared.h"
 
 typedef struct {
     // TODO both arrays are only used for choosing the proper free routine

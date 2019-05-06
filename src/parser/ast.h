@@ -7,8 +7,9 @@
 #ifndef NEW_AST_H
 #define NEW_AST_H
 
-#include "../util/triemap/triemap.h"
+// #include "/ast_shared.h"
 #include "../value.h"
+#include "../util/triemap/triemap.h"
 #include "../../deps/libcypher-parser/lib/src/cypher-parser.h"
 
 typedef unsigned long long const AST_IDENTIFIER;
@@ -21,25 +22,6 @@ typedef enum {
     AST_VALID,
     AST_INVALID
 } AST_Validation;
-
-typedef enum {
-    OP_NULL,
-    OP_OR,
-    OP_AND,
-    OP_NOT,
-    OP_EQUAL,
-    OP_NEQUAL,
-    OP_LT,
-    OP_GT,
-    OP_LE,
-    OP_GE,
-    OP_PLUS,
-    OP_MINUS,
-    OP_MULT,
-    OP_DIV,
-    OP_MOD,
-    OP_POW
-} AST_Operator;
 
 typedef struct AR_ExpNode AR_ExpNode;
 
@@ -84,13 +66,13 @@ uint* AST_GetClauseIndices(const AST *ast, cypher_astnode_type_t clause_type);
 
 uint AST_GetClauseCount(const AST *ast, cypher_astnode_type_t clause_type);
 
+uint AST_NumClauses(const AST *ast);
+
 const cypher_astnode_t* AST_GetBody(const cypher_parse_result_t *result);
 
 AST* AST_Build(cypher_parse_result_t *parse_result);
 
 long AST_ParseIntegerNode(const cypher_astnode_t *int_node);
-
-AST_Operator AST_ConvertOperatorNode(const cypher_operator_t *op);
 
 bool AST_ClauseContainsAggregation(const cypher_astnode_t *clause);
 
