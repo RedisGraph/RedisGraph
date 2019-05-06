@@ -10,7 +10,7 @@
 #include "op.h"
 #include "../../graph/entities/node.h"
 #include "../../graph/entities/edge.h"
-#include "../../resultset/resultset.h"
+#include "../../resultset/resultset_statistics.h"
 #include "../../arithmetic/arithmetic_expression.h"
 #include "../../parser/ast_build_op_contexts.h"
 
@@ -26,7 +26,7 @@ typedef struct {
 typedef struct {
     OpBase op;
     GraphContext *gc;
-    ResultSet *result_set;
+    ResultSetStatistics *stats;
 
     uint update_expressions_count;
     EntityUpdateEvalCtx *update_expressions;    /* List of entities to update and their arithmetic expressions. */
@@ -38,7 +38,7 @@ typedef struct {
     bool updates_commited;                      /* Updates performed? */
 } OpUpdate;
 
-OpBase* NewUpdateOp(GraphContext *gc, EntityUpdateEvalCtx *update_exps, uint update_exp_count, ResultSet *result_set);
+OpBase* NewUpdateOp(GraphContext *gc, EntityUpdateEvalCtx *update_exps, uint update_exp_count, ResultSetStatistics *stats);
 OpResult OpUpdateInit(OpBase *opBase);
 Record OpUpdateConsume(OpBase *opBase);
 OpResult OpUpdateReset(OpBase *ctx);

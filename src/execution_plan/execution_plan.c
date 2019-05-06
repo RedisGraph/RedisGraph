@@ -275,7 +275,7 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
 
         // Append a merge operation
         AST_MergeContext merge_ast_ctx = AST_PrepareMergeOp(ast, merge_clause, qg);
-        OpBase *opMerge = NewMergeOp(result_set,
+        OpBase *opMerge = NewMergeOp(&result_set->stats,
                                      merge_ast_ctx.nodes_to_merge,
                                      merge_ast_ctx.edges_to_merge,
                                      merge_ast_ctx.record_len);
@@ -287,7 +287,7 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
         uint *nodes_ref;
         uint *edges_ref;
         AST_PrepareDeleteOp(delete_clause, &nodes_ref, &edges_ref);
-        OpBase *opDelete = NewDeleteOp(nodes_ref, edges_ref, result_set);
+        OpBase *opDelete = NewDeleteOp(nodes_ref, edges_ref, &result_set->stats);
         Vector_Push(ops, opDelete);
     }
 
@@ -296,7 +296,7 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
         // Create a context for each update expression.
         uint nitems;
         EntityUpdateEvalCtx *update_exps = AST_PrepareUpdateOp(set_clause, &nitems);
-        OpBase *op_update = NewUpdateOp(gc, update_exps, nitems, result_set);
+        OpBase *op_update = NewUpdateOp(gc, update_exps, nitems, &result_set->stats);
         Vector_Push(ops, op_update);
     }
 

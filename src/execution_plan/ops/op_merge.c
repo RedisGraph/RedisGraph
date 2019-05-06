@@ -22,7 +22,7 @@ static void _AddNodeProperties(OpMerge *op, Schema *schema, Node *n, PropertyMap
         GraphEntity_AddProperty((GraphEntity*)n, prop_id, props->values[i]);
     }
 
-    op->result_set->stats.properties_set += props->property_count;
+    if (op->stats) op->stats->properties_set += props->property_count;
 }
 
 static void _AddEdgeProperties(OpMerge *op, Schema *schema, Edge *e, PropertyMap *props) {
@@ -36,7 +36,7 @@ static void _AddEdgeProperties(OpMerge *op, Schema *schema, Edge *e, PropertyMap
         GraphEntity_AddProperty((GraphEntity*)e, prop_id, props->values[i]);
     }
 
-    op->result_set->stats.properties_set += props->property_count;
+    if (op->stats) op->stats->properties_set += props->property_count;
 }
 
 /* Saves every entity within the query graph into the actual graph.
@@ -69,7 +69,7 @@ static void _CommitNodes(OpMerge *op, Record r) {
             /* This is the first time we've encountered this label; create its schema */
             if(schema == NULL) {
                 schema = GraphContext_AddSchema(op->gc, node_blueprint->label, SCHEMA_NODE);
-                op->result_set->stats.labels_added++;
+                op->stats->labels_added++;
             }
             labelID = schema->id;
         }
@@ -81,7 +81,7 @@ static void _CommitNodes(OpMerge *op, Record r) {
         if(schema) GraphContext_AddNodeToIndices(op->gc, schema, created_node);
     }
 
-    op->result_set->stats.nodes_created += node_count;
+    op->stats->nodes_created += node_count;
 }
 
 static void _CommitEdges(OpMerge *op, Record r) {
@@ -110,7 +110,7 @@ static void _CommitEdges(OpMerge *op, Record r) {
         _AddEdgeProperties(op, schema, created_edge, edge_ctx->properties);
     }
 
-    op->result_set->stats.relationships_created += edge_count;
+    if (op->stats) op->stats->relationships_created += edge_count;
 }
 
 static void _CreateEntities(OpMerge *op, Record r) {
@@ -125,9 +125,10 @@ static void _CreateEntities(OpMerge *op, Record r) {
     Graph_ReleaseLock(op->gc->g);
 }
 
-OpBase* NewMergeOp(ResultSet *result_set, NodeCreateCtx *nodes_to_merge, EdgeCreateCtx *edges_to_merge, uint record_len) {
+OpBase* NewMergeOp(ResultSetStatistics *stats, NodeCreateCtx *nodes_to_merge, EdgeCreateCtx *edges_to_merge, uint record_len) {
     OpMerge *op_merge = malloc(sizeof(OpMerge));
-    op_merge->result_set = result_set;
+    // TODO Why is stats guaranteed to exist?
+    op_merge->stats = stats;
     op_merge->gc = GraphContext_GetFromTLS();
     op_merge->matched = false;
     op_merge->created = false;

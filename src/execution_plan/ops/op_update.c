@@ -130,7 +130,7 @@ static void _CommitUpdates(OpUpdate *op) {
         }
     }
 
-    if(op->result_set) op->result_set->stats.properties_set += op->pending_updates_count;
+    if(op->stats) op->stats->properties_set += op->pending_updates_count;
 }
 
 /* We only cache records if op_update is not the last
@@ -149,10 +149,10 @@ static Record _handoff(OpUpdate* op) {
     return NULL;
 }
 
-OpBase* NewUpdateOp(GraphContext *gc, EntityUpdateEvalCtx *update_exps, uint update_exp_count, ResultSet *result_set) {
+OpBase* NewUpdateOp(GraphContext *gc, EntityUpdateEvalCtx *update_exps, uint update_exp_count, ResultSetStatistics *stats) {
     OpUpdate* op_update = calloc(1, sizeof(OpUpdate));
     op_update->gc = gc;
-    op_update->result_set = result_set;
+    op_update->stats = stats;
 
     op_update->update_expressions = update_exps;
     op_update->update_expressions_count = update_exp_count;

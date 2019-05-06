@@ -8,7 +8,7 @@ from redisgraph import Graph, Node, Edge
 import redis
 from base import FlowTestsBase
 
-GRAPH_ID = "index_test"
+GRAPH_ID = None
 redis_graph = None
 dis_redis = None
 redis_con = None
@@ -16,6 +16,9 @@ labels = ["label_a", "label_b"]
 fields = ['unique', 'group', 'doubleval', 'intval', 'stringval']
 groups = ["Group A", "Group B", "Group C","Group D", "Group E"]
 node_ctr = 0
+
+def random_string(size=6, chars=string.ascii_letters):
+    return ''.join(random.choice(chars) for _ in range(size))
 
 def get_redis():
     global dis_redis
@@ -38,7 +41,9 @@ class IndexUpdatesFlowTest(FlowTestsBase):
         print "IndexUpdatesFlowTest"
         global redis_graph
         global redis_con
+        global GRAPH_ID
         redis_con = get_redis()
+        GRAPH_ID = random_string()
         redis_graph = Graph(GRAPH_ID, redis_con)
         
         cls.populate_graph()

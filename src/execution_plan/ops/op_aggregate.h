@@ -9,7 +9,6 @@
 
 #include "op.h"
 #include "../../redismodule.h"
-#include "../../resultset/resultset.h"
 #include "../../graph/query_graph.h"
 #include "../../grouping/group_cache.h"
 #include "../../arithmetic/arithmetic_expression.h"

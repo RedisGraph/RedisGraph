@@ -11,7 +11,7 @@
 #include "../../graph/entities/node.h"
 #include "../../graph/entities/edge.h"
 #include "../../parser/ast_shared.h"
-#include "../../resultset/resultset.h"
+#include "../../resultset/resultset_statistics.h"
 
 /* Merge execution plan operation,
  * this operation will create a pattern P if it doesn't not exists
@@ -24,13 +24,13 @@ typedef struct {
     GraphContext *gc;                 // Graph data.
     NodeCreateCtx *nodes_to_merge;
     EdgeCreateCtx *edges_to_merge;
-    ResultSet *result_set;            // Required for statistics updates.
+    ResultSetStatistics *stats;       // Required for statistics updates.
     uint record_len;
     bool matched;                     // Has the entire pattern been matched?
     bool created;                     // Has the entire pattern been created?
 } OpMerge;
 
-OpBase* NewMergeOp(ResultSet *result_set, NodeCreateCtx *nodes_to_merge, EdgeCreateCtx *edges_to_merge, uint record_len);
+OpBase* NewMergeOp(ResultSetStatistics *stats, NodeCreateCtx *nodes_to_merge, EdgeCreateCtx *edges_to_merge, uint record_len);
 Record OpMergeConsume(OpBase *opBase);
 OpResult OpMergeReset(OpBase *ctx);
 void OpMergeFree(OpBase *ctx);

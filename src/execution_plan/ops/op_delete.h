@@ -9,7 +9,7 @@
 
 #include "op.h"
 #include "../../graph/entities/node.h"
-#include "../../resultset/resultset.h"
+#include "../../resultset/resultset_statistics.h"
 #include "../../util/triemap/triemap.h"
 /* Deletes entities specified within the DELETE clause. */
 
@@ -24,10 +24,10 @@ typedef struct {
     Node *deleted_nodes;    // Array of nodes to be removed.    
     Edge *deleted_edges;    // Array of edges to be removed.
 
-    ResultSet *result_set;
+    ResultSetStatistics *stats;
 } OpDelete;
 
-OpBase* NewDeleteOp(uint *nodes_ref, uint *edges_ref, ResultSet *result_set);
+OpBase* NewDeleteOp(uint *nodes_ref, uint *edges_ref, ResultSetStatistics *stats);
 Record OpDeleteConsume(OpBase *opBase);
 OpResult OpDeleteReset(OpBase *ctx);
 void OpDeleteFree(OpBase *ctx);
