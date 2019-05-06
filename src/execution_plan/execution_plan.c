@@ -204,9 +204,9 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
     FT_FilterNode *filter_tree = BuildFiltersTree(ast);
     segment->filter_tree = filter_tree;
 
-    unsigned int clause_count = cypher_astnode_nchildren(ast->root);
-    const cypher_astnode_t *match_clauses[clause_count];
-    unsigned int match_count = AST_GetTopLevelClauses(ast->root, CYPHER_AST_MATCH, match_clauses);
+    uint match_count = AST_GetClauseCount(ast, CYPHER_AST_MATCH);
+    const cypher_astnode_t *match_clauses[match_count];
+    AST_GetTopLevelClauses(ast, CYPHER_AST_MATCH, match_clauses);
 
     /* TODO Currently, we don't differentiate between:
      * MATCH (a) MATCH (b)
@@ -244,7 +244,7 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
     }
 
     // Set root operation
-    const cypher_astnode_t *unwind_clause = AST_GetClause(ast->root, CYPHER_AST_UNWIND);
+    const cypher_astnode_t *unwind_clause = AST_GetClause(ast, CYPHER_AST_UNWIND);
     if(unwind_clause) {
         AST_UnwindContext unwind_ast_ctx = AST_PrepareUnwindOp(ast, unwind_clause);
 
@@ -252,7 +252,7 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
         Vector_Push(ops, opUnwind);
     }
 
-    bool create_clause = AST_ContainsClause(ast->root, CYPHER_AST_CREATE);
+    bool create_clause = AST_ContainsClause(ast, CYPHER_AST_CREATE);
     if(create_clause) {
         AST_CreateContext create_ast_ctx = AST_PrepareCreateOp(ast, qg);
         OpBase *opCreate = NewCreateOp(&result_set->stats,
@@ -262,7 +262,7 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
         Vector_Push(ops, opCreate);
     }
 
-    const cypher_astnode_t *merge_clause = AST_GetClause(ast->root, CYPHER_AST_MERGE);
+    const cypher_astnode_t *merge_clause = AST_GetClause(ast, CYPHER_AST_MERGE);
     if(merge_clause) {
         // A merge clause provides a single path that must exist or be created.
         // As with paths in a MATCH query, build the appropriate traversal operations
@@ -282,7 +282,7 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
         Vector_Push(ops, opMerge);
     }
 
-    const cypher_astnode_t *delete_clause = AST_GetClause(ast->root, CYPHER_AST_DELETE);
+    const cypher_astnode_t *delete_clause = AST_GetClause(ast, CYPHER_AST_DELETE);
     if(delete_clause) {
         uint *nodes_ref;
         uint *edges_ref;
@@ -291,7 +291,7 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
         Vector_Push(ops, opDelete);
     }
 
-    const cypher_astnode_t *set_clause = AST_GetClause(ast->root, CYPHER_AST_SET);
+    const cypher_astnode_t *set_clause = AST_GetClause(ast, CYPHER_AST_SET);
     if(set_clause) {
         // Create a context for each update expression.
         uint nitems;
@@ -305,12 +305,12 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
     bool aggregate = false;
 
     // TODO with clauses, separate handling for their distinct/limit/etc
-    const cypher_astnode_t *with_clause = AST_GetClause(ast->root, CYPHER_AST_WITH);
+    const cypher_astnode_t *with_clause = AST_GetClause(ast, CYPHER_AST_WITH);
     if(with_clause) {
         assert(false);
     }
 
-    const cypher_astnode_t *ret_clause = AST_GetClause(ast->root, CYPHER_AST_RETURN);
+    const cypher_astnode_t *ret_clause = AST_GetClause(ast, CYPHER_AST_RETURN);
     if(ret_clause) {
         uint exp_count = array_len(ast->return_expressions);
         exps = array_new(AR_ExpNode*, exp_count);
@@ -423,6 +423,10 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, bool expl
         ResultSet_CreateHeader(plan->result_set, ast->return_expressions);
     }
 
+    uint segment_count = 1;
+    if (AST_ContainsClause(ast, CYPHER_AST_WITH)) {
+    
+    }
     plan->segments = malloc(sizeof(ExecutionPlanSegment));
     plan->segments[0] = _NewExecutionPlanSegment(ctx, gc, plan->result_set);
     plan->segment_count = 1;

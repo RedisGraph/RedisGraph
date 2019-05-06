@@ -170,7 +170,7 @@ QueryGraph* BuildQueryGraph(const GraphContext *gc, const AST *ast) {
     const cypher_astnode_t *clauses[clause_count];
 
     // MATCH clauses
-    uint match_count = AST_GetTopLevelClauses(ast->root, CYPHER_AST_MATCH, clauses);
+    uint match_count = AST_GetTopLevelClauses(ast, CYPHER_AST_MATCH, clauses);
     for (uint i = 0; i < match_count; i ++) {
         const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(clauses[i]);
         uint npaths = cypher_ast_pattern_npaths(pattern);
@@ -181,7 +181,7 @@ QueryGraph* BuildQueryGraph(const GraphContext *gc, const AST *ast) {
     }
 
     // CREATE clauses
-    uint create_count = AST_GetTopLevelClauses(ast->root, CYPHER_AST_CREATE, clauses);
+    uint create_count = AST_GetTopLevelClauses(ast, CYPHER_AST_CREATE, clauses);
     for (uint i = 0; i < create_count; i ++) {
         const cypher_astnode_t *pattern = cypher_ast_create_get_pattern(clauses[i]);
         uint npaths = cypher_ast_pattern_npaths(pattern);
@@ -192,7 +192,7 @@ QueryGraph* BuildQueryGraph(const GraphContext *gc, const AST *ast) {
     }
 
     // MERGE clauses
-    uint merge_count = AST_GetTopLevelClauses(ast->root, CYPHER_AST_MERGE, clauses);
+    uint merge_count = AST_GetTopLevelClauses(ast, CYPHER_AST_MERGE, clauses);
     for (uint i = 0; i < merge_count; i ++) {
         const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(clauses[i]);
         QueryGraph_AddPath(gc, ast, qg, path);

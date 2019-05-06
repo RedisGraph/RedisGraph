@@ -55,32 +55,34 @@ typedef struct {
 } AST;
 
 // AST clause validations.
-AST_Validation AST_Validate(const cypher_astnode_t *ast, char **reason);
+AST_Validation AST_Validate(const AST *ast, char **reason);
 
 // Checks if AST represent a read only query.
-bool AST_ReadOnly(const cypher_astnode_t *query);
+bool AST_ReadOnly(const AST *query);
 
 // Checks to see if AST contains specified clause. 
-bool AST_ContainsClause(const cypher_astnode_t *ast, cypher_astnode_type_t clause);
+bool AST_ContainsClause(const AST *ast, cypher_astnode_type_t clause);
 
 // Checks to see if query contains any errors.
-bool AST_ContainsErrors(const cypher_parse_result_t *ast);
+bool AST_ContainsErrors(const cypher_parse_result_t *result);
 
 // Report encountered errors.
-char* AST_ReportErrors(const cypher_parse_result_t *ast);
+char* AST_ReportErrors(const cypher_parse_result_t *result);
 
 // Returns all function (aggregated & none aggregated) mentioned in query.
 void AST_ReferredFunctions(const cypher_astnode_t *root, TrieMap *referred_funcs);
 
 // Checks if RETURN clause contains collapsed entities.
-int AST_ReturnClause_ContainsCollapsedNodes(const cypher_astnode_t *ast);
+int AST_ReturnClause_ContainsCollapsedNodes(const AST *ast);
 
 // Returns specified clause or NULL.
-const cypher_astnode_t* AST_GetClause(const cypher_astnode_t *query, cypher_astnode_type_t clause_type);
+const cypher_astnode_t* AST_GetClause(const AST *ast, cypher_astnode_type_t clause_type);
 
-unsigned int AST_GetTopLevelClauses(const cypher_astnode_t *query, cypher_astnode_type_t clause_type, const cypher_astnode_t **matches);
+unsigned int AST_GetTopLevelClauses(const AST *ast, cypher_astnode_type_t clause_type, const cypher_astnode_t **matches);
 
-uint* AST_GetClauseIndices(const cypher_astnode_t *query, cypher_astnode_type_t clause_type);
+uint* AST_GetClauseIndices(const AST *ast, cypher_astnode_type_t clause_type);
+
+uint AST_GetClauseCount(const AST *ast, cypher_astnode_type_t clause_type);
 
 const cypher_astnode_t* AST_GetBody(const cypher_parse_result_t *result);
 

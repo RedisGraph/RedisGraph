@@ -210,17 +210,18 @@ static AST_Validation _Validate_MATCH_Clause_IndependentPaths(const cypher_astno
     return res;
 }
 
-static AST_Validation _Validate_MATCH_Clause(const cypher_astnode_t *query, char **reason) {
+static AST_Validation _Validate_MATCH_Clause(const AST *ast, char **reason) {
     // Check to see if all mentioned inlined, outlined functions exists.
     // Inlined functions appear within entity definition ({a:v})
     // Outlined functions appear within the WHERE clause.
     // libcypher_parser doesn't have a WHERE node, all of the filters
     // are specified within the MATCH node sub-tree.
     // Iterate over all top-level query children (clauses)
-    unsigned int clause_count = cypher_astnode_nchildren(query);
-    const cypher_astnode_t *match_clauses[clause_count];
-    unsigned int match_count = AST_GetTopLevelClauses(query, CYPHER_AST_MATCH, match_clauses);
+    uint match_count = AST_GetClauseCount(ast, CYPHER_AST_MATCH);
     if (match_count == 0) return AST_VALID;
+
+    const cypher_astnode_t *match_clauses[match_count];
+    AST_GetTopLevelClauses(ast, CYPHER_AST_MATCH, match_clauses);
 
     TrieMap *referred_funcs = NewTrieMap();
     TrieMap *identifiers = NewTrieMap();
@@ -276,7 +277,7 @@ static AST_Validation _Validate_CREATE_Clause_TypedRelations(const cypher_astnod
     return AST_VALID;
 }
 
-static AST_Validation _Validate_CREATE_Clause(const cypher_astnode_t *ast, char **reason) {
+static AST_Validation _Validate_CREATE_Clause(const AST *ast, char **reason) {
     const cypher_astnode_t *create_clause = AST_GetClause(ast, CYPHER_AST_CREATE);
     if (!create_clause) return AST_VALID;
 
@@ -288,7 +289,7 @@ static AST_Validation _Validate_CREATE_Clause(const cypher_astnode_t *ast, char 
     return AST_VALID;
 }
 
-static AST_Validation _Validate_DELETE_Clause(const cypher_astnode_t *ast, char **reason) {
+static AST_Validation _Validate_DELETE_Clause(const AST *ast, char **reason) {
     const cypher_astnode_t *delete_clause = AST_GetClause(ast, CYPHER_AST_DELETE);
     if (!delete_clause) return AST_VALID;
 
@@ -298,7 +299,7 @@ static AST_Validation _Validate_DELETE_Clause(const cypher_astnode_t *ast, char 
     return AST_VALID;
 }
 
-static AST_Validation _Validate_RETURN_Clause(const cypher_astnode_t *ast, char **reason) {
+static AST_Validation _Validate_RETURN_Clause(const AST *ast, char **reason) {
     const cypher_astnode_t *return_clause = AST_GetClause(ast, CYPHER_AST_RETURN);
     if (!return_clause) return AST_VALID;
 
@@ -347,16 +348,16 @@ static void _AST_GetReferredIdentifiers(const cypher_astnode_t *node, TrieMap *i
 }
 
 /* Check that all referred identifiers been defined. */
-static AST_Validation _AST_Aliases_Defined(const cypher_astnode_t *ast, char **undefined_alias) {
+static AST_Validation _AST_Aliases_Defined(const AST *ast, char **undefined_alias) {
     AST_Validation res = AST_VALID;
 
     // Get defined identifiers.
     TrieMap *defined_aliases = NewTrieMap();
-    _AST_GetDefinedIdentifiers(ast, defined_aliases);
+    _AST_GetDefinedIdentifiers(ast->root, defined_aliases);
 
     // Get referred identifiers.
     TrieMap *referred_identifiers = NewTrieMap();
-    _AST_GetReferredIdentifiers(ast, referred_identifiers);
+    _AST_GetReferredIdentifiers(ast->root, referred_identifiers);
 
     char *alias;
     tm_len_t len;
@@ -379,27 +380,27 @@ static AST_Validation _AST_Aliases_Defined(const cypher_astnode_t *ast, char **u
     return res;
 }
 
-AST_Validation AST_Validate(const cypher_astnode_t *query, char **reason) {
+AST_Validation AST_Validate(const AST *ast, char **reason) {
     // Occurs on statements like CREATE INDEX
-    if (cypher_astnode_type(query) != CYPHER_AST_QUERY) return AST_VALID;
+    if (cypher_astnode_type(ast->root) != CYPHER_AST_QUERY) return AST_VALID;
 
-    if (_Validate_MATCH_Clause(query, reason) == AST_INVALID) {
+    if (_Validate_MATCH_Clause(ast, reason) == AST_INVALID) {
         return AST_INVALID;
     }
 
-    if (_Validate_CREATE_Clause(query, reason) == AST_INVALID) {
+    if (_Validate_CREATE_Clause(ast, reason) == AST_INVALID) {
         return AST_INVALID;
     }
 
-    if (_Validate_DELETE_Clause(query, reason) == AST_INVALID) {
+    if (_Validate_DELETE_Clause(ast, reason) == AST_INVALID) {
         return AST_INVALID;
     }
 
-    if (_Validate_RETURN_Clause(query, reason) == AST_INVALID) {
+    if (_Validate_RETURN_Clause(ast, reason) == AST_INVALID) {
         return AST_INVALID;
     }
 
-    if(_AST_Aliases_Defined(query, reason) == AST_INVALID) {
+    if(_AST_Aliases_Defined(ast, reason) == AST_INVALID) {
         return AST_INVALID;
     }
 
@@ -409,7 +410,7 @@ AST_Validation AST_Validate(const cypher_astnode_t *query, char **reason) {
 //==============================================================================
 //=== MATCH CLAUSE =============================================================
 //==============================================================================
-void AST_MatchClause_DefinedEntities(const cypher_astnode_t *ast, TrieMap *definedEntities) {
+void AST_MatchClause_DefinedEntities(const AST *ast, TrieMap *definedEntities) {
     const cypher_astnode_t *match_clause = AST_GetClause(ast, CYPHER_AST_MATCH);
 
     _AST_GetIdentifiers(match_clause, definedEntities);

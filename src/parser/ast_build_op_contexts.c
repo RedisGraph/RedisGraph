@@ -5,12 +5,11 @@
  */
 
 #include "ast_build_op_contexts.h"
-#include <assert.h>
-
 #include "../../deps/xxhash/xxhash.h"
 #include "../util/arr.h"
 #include "../arithmetic/repository.h"
 #include "../arithmetic/arithmetic_expression.h"
+#include <assert.h>
 
 static inline EdgeCreateCtx _NewEdgeCreateCtx(AST *ast, const QueryGraph *qg, const cypher_astnode_t *path, uint edge_path_offset) {
     const cypher_astnode_t *ast_edge = cypher_ast_pattern_path_get_element(path, edge_path_offset);
@@ -92,7 +91,7 @@ AR_ExpNode** _AST_ConvertCollection(const cypher_astnode_t *collection) {
 // which will be considered when evaluating an algebraic expression.
 int TraverseRecordCap(const AST *ast) {
     int recordsCap = 16;    // Default.
-    const cypher_astnode_t *ret_clause = AST_GetClause(ast->root, CYPHER_AST_RETURN);
+    const cypher_astnode_t *ret_clause = AST_GetClause(ast, CYPHER_AST_RETURN);
     if (ret_clause == NULL) return recordsCap;
     // TODO should just store this number somewhere, as this logic is also in resultset
     const cypher_astnode_t *limit_clause = cypher_ast_return_get_limit(ret_clause);
@@ -279,18 +278,20 @@ void _buildAliasTrieMap(TrieMap *map, const cypher_astnode_t *entity) {
 
 // TODO This logic doesn't belong here, but might be entirely replaceable - investigate.
 TrieMap* _MatchClause_DefinedEntities(const AST *ast) {
-    uint clause_count = cypher_astnode_nchildren(ast->root);
+    uint match_count = AST_GetClauseCount(ast, CYPHER_AST_MATCH);
+    const cypher_astnode_t *match_clauses[match_count];
+    AST_GetTopLevelClauses(ast, CYPHER_AST_MATCH, match_clauses);
 
-    const cypher_astnode_t *match_clauses[clause_count];
-    uint match_count = AST_GetTopLevelClauses(ast->root, CYPHER_AST_MATCH, match_clauses);
-    const cypher_astnode_t *merge_clauses[clause_count];
-    uint merge_count = AST_GetTopLevelClauses(ast->root, CYPHER_AST_MERGE, merge_clauses);
+    uint merge_count = AST_GetClauseCount(ast, CYPHER_AST_MERGE);
+    const cypher_astnode_t *merge_clauses[merge_count];
+    AST_GetTopLevelClauses(ast, CYPHER_AST_MERGE, merge_clauses);
 
     TrieMap *map = NewTrieMap();
 
     for (uint i = 0; i < match_count; i ++) {
         _buildAliasTrieMap(map, match_clauses[i]);
     }
+
     for (uint i = 0; i < merge_count; i ++) {
         _buildAliasTrieMap(map, merge_clauses[i]);
     }
@@ -299,9 +300,9 @@ TrieMap* _MatchClause_DefinedEntities(const AST *ast) {
 }
 
 AST_CreateContext AST_PrepareCreateOp(AST *ast, QueryGraph *qg) {
-    unsigned int clause_count = cypher_astnode_nchildren(ast->root);
-    const cypher_astnode_t *create_clauses[clause_count];
-    uint create_clause_count = AST_GetTopLevelClauses(ast->root, CYPHER_AST_CREATE, create_clauses);
+    uint create_clause_count = AST_GetClauseCount(ast, CYPHER_AST_CREATE);
+    const cypher_astnode_t *create_clauses[create_clause_count];
+    AST_GetTopLevelClauses(ast, CYPHER_AST_CREATE, create_clauses);
 
     /* For every entity within the CREATE clause see if it's also mentioned
      * within the MATCH clause. */

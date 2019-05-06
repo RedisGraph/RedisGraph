@@ -136,7 +136,7 @@ void ExpandCollapsedNodes(AST *ast) {
 
 AST_Validation AST_PerformValidations(RedisModuleCtx *ctx, const AST *ast) {
     char *reason;
-    AST_Validation res = AST_Validate(ast->root, &reason);
+    AST_Validation res = AST_Validate(ast, &reason);
     if (res != AST_VALID) {
         RedisModule_ReplyWithError(ctx, reason);
         free(reason);
@@ -260,7 +260,7 @@ void _ReturnExpandAll(AST *ast) {
 
 void _BuildReturnExpressions(AST *ast) {
     // Handle RETURN entities
-    const cypher_astnode_t *ret_clause = AST_GetClause(ast->root, CYPHER_AST_RETURN);
+    const cypher_astnode_t *ret_clause = AST_GetClause(ast, CYPHER_AST_RETURN);
     if (!ret_clause) return;
 
     // Query is of type "RETURN *",
@@ -334,43 +334,8 @@ void _BuildReturnExpressions(AST *ast) {
         const cypher_astnode_t *order_item = cypher_ast_order_by_get_item(order_clause, i);
         const cypher_astnode_t *expr = cypher_ast_sort_item_get_expression(order_item);
         ast->order_expressions[i] = AR_EXP_FromExpression(ast, expr);
-        // TODO possibly necessary
-        // unsigned int id = AST_AddRecordEntry(ast);
-        // AR_EXP_AssignRecordIndex(exp, id);
-        // ast->return_expressions = array_append(ast->return_expressions, _NewReturnElementNode(alias, exp));
     }
 }
-
-// TODO
-// TODO maybe put in resultset.c? _buildExpressions repetition from project and aggregate
-/*
-void _prepareResultset(AST *ast) {
-    // Compute projected record length:
-    // Number of returned expressions + number of order-by expressions.
-    ExpandCollapsedNodes(ast);
-    ResultSet_CreateHeader(op->resultset);
-
-    // const AST *ast = AST_GetFromTLS();
-
-    op->orderByExpCount = ast->order_expression_count;
-    op->returnExpCount = ast->return_expression_count;
-
-    op->expressions = rm_malloc((op->orderByExpCount + op->returnExpCount) * sizeof(AR_ExpNode*));
-
-    // TODO redundancy; already performed by ResultSet header creation
-    // Compose RETURN clause expressions.
-    for(uint i = 0; i < op->returnExpCount; i++) {
-        // TODO weird?
-        op->expressions[i] = ast->return_expressions[i];
-    }
-
-    // Compose ORDER BY expressions.
-    for(uint i = 0; i < op->orderByExpCount; i++) {
-        op->expressions[i + op->orderByExpCount] = ast->order_expressions[i];
-    }
-
-}
-*/
 
 void ModifyAST(GraphContext *gc, AST *ast) {
     // for(int i = 0; i < array_len(ast); i++) {
@@ -378,11 +343,11 @@ void ModifyAST(GraphContext *gc, AST *ast) {
         // _inlineProperties(ast[i]);
     // }
 
-    assert(AST_GetClause(ast->root, CYPHER_AST_WITH) == NULL);
+    assert(AST_GetClause(ast, CYPHER_AST_WITH) == NULL);
     AST_BuildAliasMap(ast);
 
     _BuildReturnExpressions(ast);
-    if(AST_ReturnClause_ContainsCollapsedNodes(ast->root) == 1) {
+    if(AST_ReturnClause_ContainsCollapsedNodes(ast)) {
         /* Expand collapsed nodes. */
         ExpandCollapsedNodes(ast);
     }

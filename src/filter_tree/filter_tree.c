@@ -259,17 +259,18 @@ FT_FilterNode* FilterNode_FromAST(const AST *ast, const cypher_astnode_t *expr) 
 }
 
 
+// TODO move this logic elsewhere
 FT_FilterNode* BuildFiltersTree(AST *ast) {
     FT_FilterNode *filter_tree = NULL; 
     unsigned int clause_count = cypher_astnode_nchildren(ast->root);
     const cypher_astnode_t *match_clauses[clause_count];
-    unsigned int match_count = AST_GetTopLevelClauses(ast->root, CYPHER_AST_MATCH, match_clauses);
+    unsigned int match_count = AST_GetTopLevelClauses(ast, CYPHER_AST_MATCH, match_clauses);
     for (unsigned int i = 0; i < match_count; i ++) {
         _collectFilters(ast, &filter_tree, match_clauses[i]);
     }
 
     const cypher_astnode_t *merge_clauses[clause_count];
-    unsigned int merge_count = AST_GetTopLevelClauses(ast->root, CYPHER_AST_MERGE, merge_clauses);
+    unsigned int merge_count = AST_GetTopLevelClauses(ast, CYPHER_AST_MERGE, merge_clauses);
     for (unsigned int i = 0; i < merge_count; i ++) {
         _collectFilters(ast, &filter_tree, merge_clauses[i]);
     }

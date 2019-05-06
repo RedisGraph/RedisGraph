@@ -57,7 +57,7 @@ void _MGraph_Query(void *args) {
     RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(qctx);
     ResultSet* resultSet = NULL;
     AST *ast = qctx->ast;
-    bool readonly = AST_ReadOnly(ast->root);
+    bool readonly = AST_ReadOnly(ast);
     bool lockAcquired = false;
 
     // Set thread-local AST
@@ -67,8 +67,8 @@ void _MGraph_Query(void *args) {
     CommandCtx_ThreadSafeContextLock(qctx);
     GraphContext *gc = GraphContext_Retrieve(ctx, qctx->graphName);
     if(!gc) {
-        if (!AST_ContainsClause(ast->root, CYPHER_AST_CREATE) &&
-            !AST_ContainsClause(ast->root, CYPHER_AST_MERGE)) {
+        if (!AST_ContainsClause(ast, CYPHER_AST_CREATE) &&
+            !AST_ContainsClause(ast, CYPHER_AST_MERGE)) {
             CommandCtx_ThreadSafeContextUnlock(qctx);
             RedisModule_ReplyWithError(ctx, "key doesn't contains a graph object.");
             goto cleanup;
@@ -96,7 +96,6 @@ void _MGraph_Query(void *args) {
     lockAcquired = true;
 
     const cypher_astnode_type_t root_type = cypher_astnode_type(ast->root);
-    // TODO index ops
     if (root_type == CYPHER_AST_QUERY) { // query operation
         ExecutionPlan *plan = NewExecutionPlan(ctx, gc, false);
         resultSet = ExecutionPlan_Execute(plan);
@@ -155,7 +154,7 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     }
 
     AST *ast = AST_Build(parse_result);
-    bool readonly = AST_ReadOnly(ast->root);
+    bool readonly = AST_ReadOnly(ast);
 
     /* Determin query execution context
      * queries issued within a LUA script or multi exec block must
