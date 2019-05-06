@@ -95,7 +95,6 @@ void _MergeNodeWithGraphEntity(Node *n, const AST_GraphEntity *ge) {
 void _BuildQueryGraphAddNode(const GraphContext *gc,
                              AST_GraphEntity *entity,
                              QueryGraph *qg) {
-    const Graph *g = gc->g;
     /* Check for duplications. */
     Node *n = QueryGraph_GetNodeByAlias(qg, entity->alias);
     if(n == NULL) {
@@ -130,10 +129,9 @@ void _BuildQueryGraphAddEdge(const GraphContext *gc,
     /* Check for duplications. */
     if(QueryGraph_GetEdgeByAlias(qg, entity->alias) != NULL) return;
 
-    const Graph *g = gc->g;
-    AST_LinkEntity* edge = (AST_LinkEntity*)entity;
     AST_NodeEntity *src_node;
     AST_NodeEntity *dest_node;
+    AST_LinkEntity* edge = (AST_LinkEntity*)entity;
 
     // Determine relation between edge and its nodes.
     if(edge->direction == N_LEFT_TO_RIGHT) {
@@ -338,6 +336,8 @@ QueryGraph* QueryGraph_Clone(const QueryGraph *g) {
         Edge *clone_edge = Edge_New(src, dest, e->relationship, e->alias);
         clone_edge->mat = e->mat;
         clone_edge->relationID = e->relationID;
+        clone_edge->minHops = e->minHops;
+        clone_edge->maxHops = e->maxHops;
         QueryGraph_ConnectNodes(clone, src, dest, clone_edge);
     }
 

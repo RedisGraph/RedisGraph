@@ -75,6 +75,10 @@ AlgebraicExpression **AlgebraicExpression_From_QueryGraph (
     const AST *ast          // Abstract syntax tree.
 );
 
+
+/* Constructs an empty expression. */
+AlgebraicExpression *AlgebraicExpression_Empty();
+
 /* Construct an algebraic expression from a query. */
 AlgebraicExpression **AlgebraicExpression_From_Query(const AST *ast, Vector *matchPattern, const QueryGraph *q, size_t *exp_count);
 

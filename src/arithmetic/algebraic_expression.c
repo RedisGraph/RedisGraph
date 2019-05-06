@@ -463,10 +463,7 @@ static AlgebraicExpression** __AlgebraicExpression_Intermidate_Expressions__(
     /* Allocating maximum number of expression possible. */
     int expIdx = 0;         // Sub expression index.
     int operandIdx = 0;     // Index to currently inspected operand.
-    bool transpose;         // Indicate if matrix operand needs to be transposed.
     Edge *e = NULL;
-    Node *src = NULL;
-    Node *dest = NULL;
     AlgebraicExpression **expressions;
 
     expressions = array_new(AlgebraicExpression*, exp->operand_count);
@@ -479,16 +476,6 @@ static AlgebraicExpression** __AlgebraicExpression_Intermidate_Expressions__(
 
     for(int i = 0; i < array_len(path); i++) {
         e = path[i];
-        src = e->src;
-        dest = e->dest;
-
-        transpose = false;
-        if(i > 0) transpose = (path[i-1]->dest != e->src);
-        if(transpose) {
-            dest = e->src;
-            src = e->dest;
-        }
-
         /* If edge is referenced, set expression edge pointer. */
         if(_referred_entity(e->alias, ref_entities)) iexp->edge = e;
 
@@ -498,7 +485,7 @@ static AlgebraicExpression** __AlgebraicExpression_Intermidate_Expressions__(
             iexp->edge = e;
         }
 
-        if(i == 0 && src->mat) {
+        if(i == 0 && e->src->label) {
             iexp->operands[iexp->operand_count++] = exp->operands[operandIdx++];
         }
 
@@ -506,14 +493,14 @@ static AlgebraicExpression** __AlgebraicExpression_Intermidate_Expressions__(
             iexp->operands[iexp->operand_count++] = exp->operands[operandIdx++];
         }
 
-        if(dest->mat) {
+        if(e->dest->label) {
             iexp->operands[iexp->operand_count++] = exp->operands[operandIdx++];
         }
 
         /* If intermidate node is referenced, create a new algebraic expression. */
-        if(_intermidate_node(dest) && _referred_node(dest, ref_entities)) {
+        if(_intermidate_node(e->dest) && _referred_node(e->dest, ref_entities)) {
             // Finalize current expression.
-            iexp->dest_node = dest;
+            iexp->dest_node = e->dest;
 
             /* Create a new algebraic expression. */
             iexp = _AE_MUL(exp->operand_count - operandIdx);
@@ -575,6 +562,10 @@ static AlgebraicExpressionOperand _AlgebraicExpression_OperandFromEdge(
     return op;
 }
 
+AlgebraicExpression *AlgebraicExpression_Empty() {
+    return _AE_MUL(1);
+}
+
 AlgebraicExpression **AlgebraicExpression_From_QueryGraph(const QueryGraph *qg, const AST *ast) {
     /* Construct algebraic expression(s) from query graph 
      * trying to take advantage of long multiplications with as few 
@@ -588,6 +579,7 @@ AlgebraicExpression **AlgebraicExpression_From_QueryGraph(const QueryGraph *qg, 
 
     assert(qg);
     
+    Edge *e;
     Node *src;
     Node *dest;
     size_t exp_count;
@@ -623,23 +615,19 @@ AlgebraicExpression **AlgebraicExpression_From_QueryGraph(const QueryGraph *qg, 
 
         // Scan path.
         for(int i = 0; i < level; i++) {
-            Edge *e = path[i];
-            src = e->src;
-            dest = e->dest;
+            e = path[i];
 
             // Determin if edge is transposed.
             bool transpose = false;
+
             if(i > 0) transpose = (path[i-1]->dest != e->src);
-            if(transpose) {
-                dest = e->src;
-                src = e->dest;
-            }
+            if(transpose) Edge_Reverse(e);
 
             // If src node has a label, multiple by label matrix.
-            if(src->label) {
-                op = _AlgebraicExpression_OperandFromNode(src);
+            if(e->src->label) {
+                op = _AlgebraicExpression_OperandFromNode(e->src);
                 AlgebraicExpression_AppendOperand(exp, op);
-                printf("%s ", src->label);
+                // printf("%s ", e->src->label);
             }
 
             // Add Edge matrix.
@@ -647,19 +635,19 @@ AlgebraicExpression **AlgebraicExpression_From_QueryGraph(const QueryGraph *qg, 
             for(int i = 0; i < e->minHops; i++) {
                 AlgebraicExpression_AppendOperand(exp, op);
             }
-            printf("%s ", e->relationship);
+            // printf("%s ", e->relationship);
         }   // End of path traversal.
 
         // If last node on path has a label, multiply by label matrix.
-        if(dest->label) {
-            op = _AlgebraicExpression_OperandFromNode(dest);
+        if(e->dest->label) {
+            op = _AlgebraicExpression_OperandFromNode(e->dest);
             AlgebraicExpression_AppendOperand(exp, op);
-            printf("%s ", dest->label);
+            // printf("%s ", e->dest->label);
         }
 
         // Set expression source and destination nodes.
         exp->src_node = path[0]->src;
-        exp->dest_node = dest;
+        exp->dest_node = e->dest;
 
         // Split constructed expression into sub expressions.
         AlgebraicExpression **sub_exps = __AlgebraicExpression_Intermidate_Expressions__(exp, path, g, ref_entities);

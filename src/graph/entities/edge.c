@@ -77,6 +77,21 @@ bool Edge_VariableLength(const Edge *e) {
 	return (e->minHops != e->maxHops);
 }
 
+void Edge_Reverse(Edge *e) {
+	Node *t;
+	Node *src = e->src;
+	Node *dest = e->dest;
+
+	Node_RemoveOutgoingEdge(src, e);
+	Node_RemoveIncomingEdge(dest, e);
+
+	// Swap and reconnect.
+	t = e->src;
+	e->src = e->dest;
+	e->dest = t;
+	Node_ConnectNode(e->src, e->dest, e);
+}
+
 void Edge_SetSrcNode(Edge *e, Node *src) {
 	assert(e && src);
 	e->src = src;

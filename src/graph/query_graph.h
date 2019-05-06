@@ -57,26 +57,26 @@ Edge* QueryGraph_GetEdgeByAlias(const QueryGraph *g, const char *alias);
 /* Search for either node/edge with given alias. */
 GraphEntity* QueryGraph_GetEntityByAlias(const QueryGraph *g, const char *alias);
 
-/* Adds a new node to the graph */
-void QueryGraph_AddNode(QueryGraph* g, Node *n);
-
-/* Adds a new edge to the graph */
-void QueryGraph_ConnectNodes(QueryGraph *g, Node *src, Node *dest, Edge *e);
-
 GraphEntity** QueryGraph_GetEntityRef(const QueryGraph *g, const char *alias);
 
 Node** QueryGraph_GetNodeRef(const QueryGraph *g, const Node *n);
 
 Edge** QueryGraph_GetEdgeRef(const QueryGraph *g, const Edge *e);
 
-/* Performs deep copy of input query graph. */
-QueryGraph* QueryGraph_Clone(const QueryGraph *g);
+/* Adds a new node to the graph */
+void QueryGraph_AddNode(QueryGraph* g, Node *n);
 
 /* Remove given node from query graph. */
 Node* QueryGraph_RemoveNode(QueryGraph *g, Node *n);
 
+/* Adds a new edge to the graph */
+void QueryGraph_ConnectNodes(QueryGraph *g, Node *src, Node *dest, Edge *e);
+
 /* Remove given edge from query graph. */
 Edge* QueryGraph_RemoveEdge(QueryGraph *g, Edge *e);
+
+/* Performs deep copy of input query graph. */
+QueryGraph* QueryGraph_Clone(const QueryGraph *g);
 
 /* Breaks up query graph into its connected components.
  * Returns an array object */

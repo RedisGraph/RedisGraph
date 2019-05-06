@@ -54,6 +54,9 @@ GrB_Matrix Edge_GetMatrix(Edge *e);
 // Determins if this is a variable length edge.
 bool Edge_VariableLength(const Edge *e);
 
+// Reverse edge direction.
+void Edge_Reverse(Edge *e);
+
 // Sets edge source node.
 void Edge_SetSrcNode(Edge *e, Node *src);
 

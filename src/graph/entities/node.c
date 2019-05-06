@@ -41,7 +41,7 @@ void _Node_RemoveEdge(Edge **edges, Edge *e) {
 		if(e == ie) {
 			edges[i] = edges[edge_count-1];
 			array_pop(edges);
-			break;
+			return;
 		}
 	}
 }
