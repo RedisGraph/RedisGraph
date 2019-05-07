@@ -13,6 +13,7 @@ typedef struct {
     Record r;
     // AR_ExpNode **exps;
     const char **projections;
+    bool produce_record;
 } OpHandoff;
 
 OpBase* NewHandoffOp(const char **projections);

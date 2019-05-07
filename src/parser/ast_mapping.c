@@ -53,6 +53,7 @@ AR_ExpNode* AST_GetEntityFromHash(const AST *ast, AST_IDENTIFIER id) {
 }
 
 AST_IDENTIFIER AST_EntityHash(const cypher_astnode_t *entity) {
+    // TODO can we just use pointers instead of hashed pointers?
     return XXH64(&entity, sizeof(entity), 0);
 }
 

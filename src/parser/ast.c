@@ -317,6 +317,9 @@ AST* AST_Build(cypher_parse_result_t *parse_result) {
     ast->record_length = 0;
     ast->return_expressions = NULL;
     ast->order_expressions = NULL;
+    // ast->handoff_expressions = NULL;
+    ast->entity_map = NULL;
+    ast->defined_entities = NULL;
     ast->start_offset = 0;
     ast->end_offset = cypher_astnode_nchildren(ast->root);
 
@@ -377,15 +380,96 @@ bool AST_ClauseContainsAggregation(const cypher_astnode_t *clause) {
     return aggregated;
 }
 
+void _tmpWithAliasCollection(AST *ast, const cypher_astnode_t *with_clause) {
+    uint count = cypher_ast_with_nprojections(with_clause);
+    for (uint i = 0; i < count; i++) {
+        const cypher_astnode_t *projection = cypher_ast_with_get_projection(with_clause, i);
+        const cypher_astnode_t *expr = cypher_ast_projection_get_expression(projection);
+
+
+        const char *alias = NULL;
+        const char *identifier = NULL;
+        const cypher_astnode_t *ast_identifier = cypher_ast_projection_get_alias(projection);
+        AR_ExpNode *exp;
+        if (ast_identifier) {
+            alias = cypher_ast_identifier_get_name(ast_identifier);
+            exp = AST_GetEntityFromAlias(ast, (char*)alias);
+            // TODO This seems like more work than should be necessary
+            // Make node for alias
+            AR_ExpNode *alias_exp = AR_EXP_FromExpression(ast, expr);
+
+            // Make space for alias entity in record
+            unsigned int id = AST_AddRecordEntry(ast);
+            AR_EXP_AssignRecordIndex(alias_exp, id);
+            // Add entity to the set of entities to be populated
+            ast->defined_entities = array_append(ast->defined_entities, alias_exp);
+            AST_MapAlias(ast, (char*)alias, alias_exp);
+        // } else {
+            // assert(cypher_astnode_type(expr) == CYPHER_AST_IDENTIFIER);          
+            // identifier = cypher_ast_identifier_get_name(expr);
+            // exp = AST_GetEntityFromAlias(ast, (char*)identifier);
+        }
+
+        // assert(exp);
+    }
+
+    // Handle ORDER entities
+    const cypher_astnode_t *order_clause = cypher_ast_with_get_order_by(with_clause);
+    if (!order_clause) return;
+
+    count = cypher_ast_order_by_nitems(order_clause);
+    ast->order_expressions = rm_malloc(count * sizeof(AR_ExpNode*));
+    ast->order_expression_count = count;
+    for (unsigned int i = 0; i < count; i++) {
+        // Returns CYPHER_AST_SORT_ITEM types
+        // TODO write a libcypher PR to correct the documentation on this.
+        const cypher_astnode_t *order_item = cypher_ast_order_by_get_item(order_clause, i);
+        const cypher_astnode_t *expr = cypher_ast_sort_item_get_expression(order_item);
+        ast->order_expressions[i] = AR_EXP_FromExpression(ast, expr);
+    }
+}
+
 void AST_BuildAliasMap(AST *ast) {
-    ast->entity_map = NewTrieMap();
-    ast->defined_entities = array_new(cypher_astnode_t*, 1);
+    TrieMap *new_entity_map = NewTrieMap();
+    AR_ExpNode **new_defined_entities = array_new(AR_ExpNode*, 1);
 
-    // Get graph entity identifiers from MATCH, MERGE, and CREATE clauses.
-    _mapPatternIdentifiers(ast, ast->root, false);
+    if (ast->return_expressions) {
+        uint with_entity_count = array_len(ast->return_expressions);
+        for (uint i = 0; i < with_entity_count; i ++) {
+            char *with_entity = (char*)ast->return_expressions[i];
+            AR_ExpNode *exp = AST_GetEntityFromAlias(ast, with_entity);
+            // TODO tmp
+            exp->record_idx = i;
+            TrieMap_Add(new_entity_map, with_entity, strlen(with_entity), exp, TrieMap_DONT_CARE_REPLACE);
+            new_defined_entities = array_append(new_defined_entities, exp);
+        }
+        TrieMap_Free(ast->entity_map, TrieMap_NOP_CB);
+        array_free(ast->defined_entities);
+    }
+    ast->entity_map = new_entity_map;
+    ast->defined_entities = new_defined_entities;
+    // if (ast->entity_map == NULL) ast->entity_map = NewTrieMap();
+    // if (ast->defined_entities == NULL) ast->defined_entities = array_new(cypher_astnode_t*, 1);
 
-    // Get aliases defined by UNWIND and RETURN...AS clauses
-    // _mapReturnAliases(ast);
+    // Check every clause in the given range
+    for (uint i = ast->start_offset; i < ast->end_offset; i ++) {
+        const cypher_astnode_t *clause = cypher_astnode_get_child(ast->root, i);
+        cypher_astnode_type_t type = cypher_astnode_type(clause);
+        // MATCH, MERGE, and CREATE operations may define node and edge patterns
+        // as well as aliases, all of which should be mapped
+        if (type == CYPHER_AST_MATCH || type == CYPHER_AST_MERGE) {
+            // TODO improve this logic
+            _mapPatternIdentifiers(ast, ast->root, false);
+        } else if (type == CYPHER_AST_CREATE) {
+            _mapPatternIdentifiers(ast, ast->root, true);
+        } else if (type == CYPHER_AST_WITH) {
+            _tmpWithAliasCollection(ast, clause);
+        } else if (type == CYPHER_AST_UNWIND) {
+            // UNWIND and WITH create aliases separate from node/edge patterns
+            const char *alias = cypher_ast_identifier_get_name(cypher_ast_unwind_get_alias(clause));
+            _AddOrConnectEntity(ast, clause, (char*)alias, true);
+        }
+    }
 }
 
 AST* AST_GetFromTLS(void) {

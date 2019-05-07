@@ -52,4 +52,4 @@ AST_MergeContext AST_PrepareMergeOp(AST *ast, const cypher_astnode_t *merge_clau
 
 AST_CreateContext AST_PrepareCreateOp(AST *ast, QueryGraph *qg);
 
-const char** AST_PrepareWithOp(const cypher_astnode_t *with_clause);
+// uint* AST_WithClauseModifies(AST *ast, const cypher_astnode_t *with_clause);

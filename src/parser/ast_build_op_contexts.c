@@ -360,26 +360,27 @@ AST_CreateContext AST_PrepareCreateOp(AST *ast, QueryGraph *qg) {
     return ctx;
 }
 
-const char** AST_PrepareWithOp(const cypher_astnode_t *with_clause) {
-    uint projection_count = cypher_ast_with_nprojections(with_clause);
-    const char **projections = malloc(projection_count * sizeof(const char*));
-    for (uint i = 0; i < projection_count; i ++) {
-        const cypher_astnode_t *projection = cypher_ast_with_get_projection(with_clause, i);
-        const cypher_astnode_t *ast_alias = cypher_ast_projection_get_alias(projection);
-        const cypher_astnode_t *expr = cypher_ast_projection_get_expression(projection);
+// uint* AST_WithClauseModifies(AST *ast, const cypher_astnode_t *with_clause) {
+    // uint projection_count = cypher_ast_with_nprojections(with_clause);
+    // uint *projections = malloc(projection_count * sizeof(uint));
+    // for (uint i = 0; i < projection_count; i ++) {
+        // const cypher_astnode_t *projection = cypher_ast_with_get_projection(with_clause, i);
+        // const cypher_astnode_t *ast_alias = cypher_ast_projection_get_alias(projection);
 
-        // TODO validations should make sure that an alias is provided if one is necessary:
-        // WITH MAX(p), p.age both need aliases, WITH p does not
-        const char *identifier;
-        if (ast_alias) {
-            identifier = cypher_ast_identifier_get_name(ast_alias);
-        } else {
-            assert(cypher_astnode_type(expr) == CYPHER_AST_IDENTIFIER);
-            identifier = cypher_ast_identifier_get_name(expr);
-        }
+        // // TODO validations should make sure that an alias is provided if one is necessary:
+        // // WITH MAX(p), p.age both need aliases, WITH p does not
+        // const char *identifier;
+        // if (ast_alias) {
+            // identifier = cypher_ast_identifier_get_name(ast_alias);
+        // } else {
+            // const cypher_astnode_t *ast_exp = cypher_ast_projection_get_expression(projection);
+            // assert(cypher_astnode_type(ast_exp) == CYPHER_AST_IDENTIFIER);
+            // identifier = cypher_ast_identifier_get_name(ast_exp);
+        // }
 
-        projections[i] = identifier;
-    }
+        // AR_ExpNode *exp = AST_GetEntityFromAlias(ast, (char*)identifier);
+        // projections[i] = exp->record_idx;
+    // }
 
-    return projections;
-}
+    // return projections;
+// }

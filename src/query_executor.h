@@ -19,8 +19,7 @@ void ExpandCollapsedNodes(AST *ast);
 /* Make sure AST is valid. */
 AST_Validation AST_PerformValidations(RedisModuleCtx *ctx, const AST *ast);
 
-/* Performs a number of adjustments to given AST. */
-// void ModifyAST(GraphContext *gc, AST *ast);
-void ModifyAST(GraphContext *gc, AST *new_ast);
+void AST_BuildReturnExpressions(AST *ast);
+void AST_BuildWithExpressions(AST *ast);
 
 #endif

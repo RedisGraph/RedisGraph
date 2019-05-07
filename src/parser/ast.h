@@ -36,6 +36,7 @@ typedef struct {
     AR_ExpNode **order_expressions;
     unsigned int start_offset;    // Left-hand bound of AST clauses to consider
     unsigned int end_offset;    // Right-hand bound of AST clauses to consider
+    // AR_ExpNode *handoff_expressions;
 } AST;
 
 // AST clause validations.

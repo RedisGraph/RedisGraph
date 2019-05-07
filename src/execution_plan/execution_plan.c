@@ -195,17 +195,12 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
     ExecutionPlanSegment *segment = malloc(sizeof(ExecutionPlanSegment));
     Vector *ops = NewVector(OpBase*, 1);
 
-    if (handoff) {
-        // This is not the initial segment; we've been given a project/aggregate tap
-        // from the previous one.
-        // Disconnect handoff operation
-        handoff->children = NULL;
-        handoff->childCount = 0;
-        OpBase *tmp = malloc(sizeof(OpHandoff));
-        memcpy(tmp, handoff, sizeof(OpHandoff));
-        Vector_Push(ops, tmp);
-        // Add a WITH tap and populate QueryGraph as necessary?
-    }
+    // if (handoff) {
+        // // This is not the initial segment; we've been given a project/aggregate tap
+        // // from the previous one.
+        // Vector_Push(ops, handoff);
+        // // Add a WITH tap and populate QueryGraph as necessary?
+    // }
 
     // Build query graph
     QueryGraph *qg = BuildQueryGraph(gc, ast);
@@ -373,9 +368,8 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
             Vector_Push(ops, op_limit);
         }
 
-        const char **with_projections = AST_PrepareWithOp(with_clause);
-        op = NewHandoffOp(with_projections);
-        Vector_Push(ops, op);
+        // op = NewHandoffOp(with_projections);
+        // Vector_Push(ops, op);
 
     } else if (ret_clause) {
 
@@ -471,27 +465,31 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, bool expl
     plan->result_set = NULL;
     if(!explain) {
         plan->result_set = NewResultSet(ctx);
-        ResultSet_CreateHeader(plan->result_set, ast->return_expressions);
     }
 
-    uint segment_count = AST_GetClauseCount(ast, CYPHER_AST_WITH) + 1;
-    plan->segment_count = segment_count;
+    uint with_clause_count = AST_GetClauseCount(ast, CYPHER_AST_WITH);
+    plan->segment_count = with_clause_count + 1;
+
+    plan->segments = malloc(plan->segment_count * sizeof(ExecutionPlanSegment));
 
     uint *segment_indices = NULL;
-    if (segment_count > 1) segment_indices = AST_GetClauseIndices(ast, CYPHER_AST_WITH);
-
-    plan->segments = malloc(segment_count * sizeof(ExecutionPlanSegment));
-    uint i;
+    if (with_clause_count > 0) segment_indices = AST_GetClauseIndices(ast, CYPHER_AST_WITH);
 
     OpBase *handoff = NULL;
-    for (i = 0; i < segment_count - 1; i ++) {
+    uint i;
+    for (i = 0; i < with_clause_count; i ++) {
         ast->end_offset = segment_indices[i] + 1; // Switching from index to bound, so add 1
+        AST_BuildAliasMap(ast);
+        AST_BuildWithExpressions(ast);
         plan->segments[i] = _NewExecutionPlanSegment(ctx, gc, ast, plan->result_set, handoff);
         handoff = plan->segments[i]->root;
         ast->start_offset = ast->end_offset;
     }
 
     ast->end_offset = AST_NumClauses(ast);
+    AST_BuildAliasMap(ast);
+    AST_BuildReturnExpressions(ast);
+    if (plan->result_set) ResultSet_CreateHeader(plan->result_set, ast->return_expressions);
     plan->segments[i] = _NewExecutionPlanSegment(ctx, gc, ast, plan->result_set, handoff);
 
     return plan;
@@ -548,7 +546,7 @@ ResultSet* ExecutionPlan_Execute(ExecutionPlan *plan) {
     }
 
     bool depleted = false;
-    Record r;
+    Record r = NULL;
 
     while (!depleted) {
         for (uint i = 0; i < plan->segment_count; i ++) {

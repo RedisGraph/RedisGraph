@@ -31,6 +31,7 @@ OpBase* NewHandoffOp(const char **projections) {
 
     handoff->r = NULL;
     handoff->projections = projections;
+    handoff->produce_record = true;
 
     return (OpBase*)handoff;
 }
@@ -38,10 +39,13 @@ OpBase* NewHandoffOp(const char **projections) {
 Record HandoffConsume(OpBase *opBase) {
     OpHandoff *op = (OpHandoff*)opBase;
 
-    if (op->op.childCount > 0) {
+    if (op->produce_record) {
         // In a populate context
         OpBase *child = op->op.children[0];
         op->r = child->consume(child);
+        op->produce_record = false;
+    } else {
+        op->produce_record = true;
     }
 
     return op->r;

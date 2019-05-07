@@ -88,8 +88,6 @@ void _MGraph_Query(void *args) {
     // Perform query validations
     if (AST_PerformValidations(ctx, ast) != AST_VALID) goto cleanup;
 
-    ModifyAST(gc, ast);
-
     // Acquire the appropriate lock.
     if(readonly) Graph_AcquireReadLock(gc->g);
     else Graph_WriterEnter(gc->g);  // Single writer.
