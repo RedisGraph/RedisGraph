@@ -12,7 +12,7 @@
 #include "../util/triemap/triemap.h"
 #include "../../deps/libcypher-parser/lib/src/cypher-parser.h"
 
-typedef unsigned long long const AST_IDENTIFIER;
+typedef const cypher_astnode_t* AST_IDENTIFIER;
 
 #define NOT_IN_RECORD UINT_MAX
 
@@ -85,24 +85,21 @@ AR_ExpNode** AST_GetOrderExpressions(const cypher_astnode_t *order_clause);
 
 void AST_BuildAliasMap(AST *ast);
 
+// mapping functions
+
 unsigned int AST_GetAliasID(const AST *ast, char *alias);
+
+void AST_MapEntity(const AST *ast, AST_IDENTIFIER identifier, AR_ExpNode *exp);
 
 void AST_MapAlias(const AST *ast, char *alias, AR_ExpNode *exp);
 
-void AST_MapEntityHash(const AST *ast, AST_IDENTIFIER identifier, AR_ExpNode *exp);
-
-AR_ExpNode* AST_GetEntity(const AST *ast, const cypher_astnode_t *entity);
+AR_ExpNode* AST_GetEntity(const AST *ast, AST_IDENTIFIER entity);
 
 AR_ExpNode* AST_GetEntityFromAlias(const AST *ast, char *alias);
 
-void AST_ConnectEntity(const AST *ast, const cypher_astnode_t *entity, AR_ExpNode *exp);
-
-AR_ExpNode* AST_GetEntityFromHash(const AST *ast, AST_IDENTIFIER id);
-
-AST_IDENTIFIER AST_EntityHash(const cypher_astnode_t *entity);
-
 unsigned int AST_GetEntityRecordIdx(const AST *ast, const cypher_astnode_t *entity);
 
+// TODO find better place for record code
 unsigned int AST_RecordLength(const AST *ast);
 
 unsigned int AST_AddRecordEntry(AST *ast);

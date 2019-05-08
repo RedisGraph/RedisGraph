@@ -59,11 +59,8 @@ AR_ExpNode* _AR_Exp_NewIdentifier(const char *entity_alias, const cypher_astnode
  */
 void _AddOrConnectEntity(AST *ast, const cypher_astnode_t *entity, char *alias, bool update_record) {
 
-    // Hash the AST node into a unique identifier
-    AST_IDENTIFIER identifier = AST_EntityHash(entity);
-
     // Do nothing if entity is already mapped
-    if (AST_GetEntityFromHash(ast, identifier) != NULL) return;
+    if (AST_GetEntity(ast, entity) != NULL) return;
 
     AR_ExpNode *exp = NULL;
 
@@ -74,7 +71,7 @@ void _AddOrConnectEntity(AST *ast, const cypher_astnode_t *entity, char *alias, 
         if (exp) {
             // Alias was previously encountered
             // Associate the current hash and alias with the previously-built entity
-            AST_MapEntityHash(ast, identifier, exp);
+            AST_MapEntity(ast, entity, exp);
             AST_MapAlias(ast, alias, exp);
             return;
         }
@@ -97,7 +94,7 @@ void _AddOrConnectEntity(AST *ast, const cypher_astnode_t *entity, char *alias, 
     }
 
     // TODO Adds some entities we don't need (anonymous unfiltered nodes, etc)
-    AST_MapEntityHash(ast, identifier, exp);
+    AST_MapEntity(ast, entity, exp);
 
 }
 

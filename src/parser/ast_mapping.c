@@ -5,19 +5,16 @@
  */
 
 #include "ast.h"
-#include <assert.h>
-
-#include "../../deps/xxhash/xxhash.h"
 #include "../util/arr.h"
-#include "../arithmetic/repository.h"
 #include "../arithmetic/arithmetic_expression.h"
+#include <assert.h>
 
 unsigned int AST_GetAliasID(const AST *ast, char *alias) {
     AR_ExpNode *exp = TrieMap_Find(ast->entity_map, alias, strlen(alias));
     return exp->record_idx;
 }
 
-void AST_MapEntityHash(const AST *ast, AST_IDENTIFIER identifier, AR_ExpNode *exp) {
+void AST_MapEntity(const AST *ast, AST_IDENTIFIER identifier, AR_ExpNode *exp) {
     TrieMap_Add(ast->entity_map, (char*)&identifier, sizeof(identifier), exp, TrieMap_DONT_CARE_REPLACE);
 }
 
@@ -25,18 +22,9 @@ void AST_MapAlias(const AST *ast, char *alias, AR_ExpNode *exp) {
     TrieMap_Add(ast->entity_map, alias, strlen(alias), exp, TrieMap_DONT_CARE_REPLACE);
 }
 
-unsigned int AST_GetEntityID(const AST *ast, const cypher_astnode_t *entity) {
-    AST_IDENTIFIER identifier = AST_EntityHash(entity);
-    AR_ExpNode *v = TrieMap_Find(ast->entity_map, (char*)&identifier, sizeof(identifier));
-    assert(v != TRIEMAP_NOTFOUND);
-    return v->operand.variadic.entity_alias_idx;
-}
-
-
-AR_ExpNode* AST_GetEntity(const AST *ast, const cypher_astnode_t *entity) {
-    AST_IDENTIFIER identifier = AST_EntityHash(entity);
-    AR_ExpNode *v = TrieMap_Find(ast->entity_map, (char*)&identifier, sizeof(identifier));
-    assert(v != TRIEMAP_NOTFOUND);
+AR_ExpNode* AST_GetEntity(const AST *ast, AST_IDENTIFIER entity) {
+    AR_ExpNode *v = TrieMap_Find(ast->entity_map, (char*)&entity, sizeof(entity));
+    if (v == TRIEMAP_NOTFOUND) return NULL;
     return v;
 }
 
@@ -44,17 +32,6 @@ AR_ExpNode* AST_GetEntityFromAlias(const AST *ast, char *alias) {
     void *v = TrieMap_Find(ast->entity_map, alias, strlen(alias));
     if (v == TRIEMAP_NOTFOUND) return NULL;
     return v;
-}
-
-AR_ExpNode* AST_GetEntityFromHash(const AST *ast, AST_IDENTIFIER id) {
-    void *v = TrieMap_Find(ast->entity_map, (char*)&id, sizeof(id));
-    if (v == TRIEMAP_NOTFOUND) return NULL;
-    return v;
-}
-
-AST_IDENTIFIER AST_EntityHash(const cypher_astnode_t *entity) {
-    // TODO can we just use pointers instead of hashed pointers?
-    return XXH64(&entity, sizeof(entity), 0);
 }
 
 unsigned int AST_GetEntityRecordIdx(const AST *ast, const cypher_astnode_t *entity) {

@@ -123,7 +123,7 @@ char** _ExpandCollapsedNodes(AST *ast) {
 
                     char *expanded_name;
                     AR_EXP_ToString(expanded_exp, &expanded_name);
-                    AST_MapAlias(ast, expanded_name, expanded_exp); // TODO necessary?
+                    AST_MapAlias(ast, expanded_name, expanded_exp);
                     // expandReturnElements = array_append(expandReturnElements, column_name);
                     expandReturnElements = array_append(expandReturnElements, expanded_exp);
                     aliases = array_append(aliases, expanded_name); 
@@ -341,17 +341,13 @@ char** _BuildReturnExpressions(AST *ast) {
         char *alias = NULL;
         const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(projection);
         if (alias_node) {
-            // TODO ?
             // The projection either has an alias (AS) or is a function call.
             alias = (char*)cypher_ast_identifier_get_name(alias_node);
             // TODO can the alias have appeared in an earlier clause?
-
             // Associate alias with the expression
             AST_MapAlias(ast, alias, exp);
-            ast->return_expressions = array_append(ast->return_expressions, exp);
-        } else {
-            ast->return_expressions = array_append(ast->return_expressions, exp);
         }
+        ast->return_expressions = array_append(ast->return_expressions, exp);
 
     }
     char **column_names = _BuildColumnNames(ast);
