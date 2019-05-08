@@ -78,11 +78,6 @@ Record ProjectConsume(OpBase *opBase) {
     int rec_idx = 0;
     for(unsigned short i = 0; i < op->exp_count; i++) {
         SIValue v = AR_EXP_Evaluate(op->exps[i], r);
-        /* Incase expression is aliased, add it to record
-         * as it might be referenced by other expressions:
-         * e.g. RETURN n.v AS X ORDER BY X * X
-         * WITH 1 as one, one+one as two */
-
         switch(SI_TYPE(v)) {
             case T_NODE:
                 Record_AddNode(projection, rec_idx, *((Node*)v.ptrval));
@@ -126,5 +121,5 @@ void ProjectFree(OpBase *ctx) {
     OpProject *op = (OpProject*)ctx;
 
     // for(unsigned short i = 0; i < op->exp_count; i++) AR_EXP_Free(op->exps[i]); // TODO double free
-    array_free(op->exps);
+    // array_free(op->exps);
 }

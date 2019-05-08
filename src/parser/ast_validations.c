@@ -50,7 +50,8 @@ static void _AST_GetWithAliases(const cypher_astnode_t *node, TrieMap *aliases) 
         if (alias_node) {
             alias = cypher_ast_identifier_get_name(alias_node);
         } else {
-            alias = AST_ExpressionToString(cypher_ast_projection_get_expression(child));
+            // TODO
+            // alias = AST_ExpressionToString(cypher_ast_projection_get_expression(child));
         }
         TrieMap_Add(aliases, (char*)alias, strlen(alias), NULL, TrieMap_DONT_CARE_REPLACE);
     }

@@ -10,10 +10,10 @@
 #include "../../arithmetic/arithmetic_expression.h"
 
 // TODO alias unused, remove
-OpBase* NewUnwindOp(uint record_len, uint record_idx, AR_ExpNode **exprs, const char *alias) {
+OpBase* NewUnwindOp(uint record_len, uint record_idx, AR_ExpNode **exps, const char *alias) {
     OpUnwind *unwind = malloc(sizeof(OpUnwind));
     unwind->expIdx = 0;
-    unwind->expressions = NULL;
+    unwind->expressions = exps;
 
     // Set our Op operations
     OpBase_Init(&unwind->op);

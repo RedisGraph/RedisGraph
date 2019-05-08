@@ -30,7 +30,7 @@ typedef struct {
     // Extensible array of entities described in MATCH, MERGE, and CREATE clauses
     AR_ExpNode **defined_entities;
     TrieMap *entity_map;
-    const char **return_expressions;
+    AR_ExpNode **return_expressions;
     unsigned int order_expression_count; // TODO maybe use arr.h instead
     unsigned int record_length;
     AR_ExpNode **order_expressions;

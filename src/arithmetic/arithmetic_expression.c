@@ -25,16 +25,24 @@ static inline int _validate_numeric(const SIValue v) {
     return SI_TYPE(v) & SI_NUMERIC;
 }
 
-AR_Func _AR_GetFuncByOperator(AST_Operator op) {
+bool _AR_SetFunction(AR_ExpNode *exp, AST_Operator op) {
     switch(op) {
         case OP_PLUS:
-            return AR_ADD;
+            exp->op.f = AR_ADD;
+            exp->op.func_name = "ADD";
+            return true;
         case OP_MINUS:
-            return AR_SUB;
+            exp->op.f = AR_SUB;
+            exp->op.func_name = "SUB";
+            return true;
         case OP_MULT:
-            return AR_MUL;
+            exp->op.f = AR_MUL;
+            exp->op.func_name = "MUL";
+            return true;
         case OP_DIV:
-            return AR_DIV;
+            exp->op.f = AR_DIV;
+            exp->op.func_name = "DIV";
+            return true;
         case OP_MOD: // TODO implement
         case OP_POW: // TODO implement
         // Includes operators like <, AND, etc
@@ -53,23 +61,8 @@ static AR_ExpNode* _AR_EXP_NewOpNodeFromAST(AST_Operator op, int child_count) {
     node->op.children = (AR_ExpNode **)malloc(child_count * sizeof(AR_ExpNode*));
 
     /* Determine function type. */
-    AR_Func func = _AR_GetFuncByOperator(op);
-    if(func != NULL) {
-        node->op.f = func;
-        node->op.type = AR_OP_FUNC;
-    } else {
-        /* Either this is an aggregation function
-         * or the requested function does not exists. */
-        // TODO handle
-        assert(false);
-        AggCtx* agg_func;
-        // Agg_GetFunc(func_name, &agg_func);
-
-        /* TODO: handle Unknown function. */
-        assert(agg_func != NULL);
-        node->op.agg_func = agg_func;
-        node->op.type = AR_OP_AGGREGATE;
-    }
+    node->op.type = AR_OP_FUNC;
+    _AR_SetFunction(node, op);
 
     return node;
 

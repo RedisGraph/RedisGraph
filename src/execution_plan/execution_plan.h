@@ -25,7 +25,8 @@ typedef struct {
     OpBase *root;
     QueryGraph *query_graph;
     FT_FilterNode *filter_tree;
-    // Record input_record;
+    AR_ExpNode **record_blueprint;
+    // Record projected_record;
 } ExecutionPlanSegment;
 
 typedef struct {

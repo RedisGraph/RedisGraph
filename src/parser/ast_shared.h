@@ -61,6 +61,4 @@ typedef struct {
 
 AST_Operator AST_ConvertOperatorNode(const cypher_operator_t *op);
 
-char* AST_ExpressionToString(const cypher_astnode_t *expr);
-
 void PropertyMap_Free(PropertyMap *map);

@@ -12,14 +12,11 @@
 #include "graph/query_graph.h"
 #include "arithmetic/arithmetic_expression.h"
 
-/* Modifies AST by expanding RETURN * or RETURN
- * a into a list of individual properties. */
-void ExpandCollapsedNodes(AST *ast);
-
 /* Make sure AST is valid. */
 AST_Validation AST_PerformValidations(RedisModuleCtx *ctx, const AST *ast);
 
-void AST_BuildReturnExpressions(AST *ast);
+char** AST_BuildReturnExpressions(AST *ast);
 void AST_BuildWithExpressions(AST *ast);
+const char** AST_BuildWithIdentifiers(AST *ast);
 
 #endif

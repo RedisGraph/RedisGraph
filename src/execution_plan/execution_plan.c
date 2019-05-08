@@ -191,7 +191,7 @@ void _ExecutionPlanSegment_AddTraversalOps(Vector *ops, OpBase *cartesian_root, 
     }
 }
 
-ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext *gc, AST *ast, ResultSet *result_set, OpBase *handoff) {
+ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext *gc, AST *ast, ResultSet *result_set, const char **record_blueprint) {
     ExecutionPlanSegment *segment = malloc(sizeof(ExecutionPlanSegment));
     Vector *ops = NewVector(OpBase*, 1);
 
@@ -312,28 +312,25 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
 
     assert(!(with_clause && ret_clause));
 
-    AR_ExpNode **exps = NULL;
     uint *modifies = NULL;
 
     if (with_clause || ret_clause) {
         uint exp_count = array_len(ast->return_expressions);
-        exps = array_new(AR_ExpNode*, exp_count);
         modifies = array_new(uint, exp_count);
         for (uint i = 0; i < exp_count; i ++) {
-            // TODO maybe store these exps in AST
-            AR_ExpNode *exp = AST_GetEntityFromAlias(ast, (char*)ast->return_expressions[i]);
-            exps = array_append(exps, exp);
-            if (exp->record_idx) modifies = array_append(modifies, exp->record_idx);
+            AR_ExpNode *exp = ast->return_expressions[i];
+            modifies = array_append(modifies, exp->record_idx);
         }
     }
 
     OpBase *op;
 
     if(with_clause) {
+        // uint *with_projections = AST_WithClauseModifies(ast, with_clause);
         if (AST_ClauseContainsAggregation(with_clause)) {
-            op = NewAggregateOp(exps, modifies);
+            op = NewAggregateOp(ast->return_expressions, modifies);
         } else {
-            op = NewProjectOp(exps, modifies);
+            op = NewProjectOp(ast->return_expressions, modifies);
         }
         Vector_Push(ops, op);
         
@@ -374,9 +371,9 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
     } else if (ret_clause) {
 
         if (AST_ClauseContainsAggregation(ret_clause)) {
-            op = NewAggregateOp(exps, modifies);
+            op = NewAggregateOp(ast->return_expressions, modifies);
         } else {
-            op = NewProjectOp(exps, modifies);
+            op = NewProjectOp(ast->return_expressions, modifies);
         }
         Vector_Push(ops, op);
 
@@ -475,22 +472,22 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, bool expl
     uint *segment_indices = NULL;
     if (with_clause_count > 0) segment_indices = AST_GetClauseIndices(ast, CYPHER_AST_WITH);
 
-    OpBase *handoff = NULL;
+    const char **with_clause_outputs = NULL;
     uint i;
     for (i = 0; i < with_clause_count; i ++) {
         ast->end_offset = segment_indices[i] + 1; // Switching from index to bound, so add 1
         AST_BuildAliasMap(ast);
         AST_BuildWithExpressions(ast);
-        plan->segments[i] = _NewExecutionPlanSegment(ctx, gc, ast, plan->result_set, handoff);
-        handoff = plan->segments[i]->root;
+        plan->segments[i] = _NewExecutionPlanSegment(ctx, gc, ast, plan->result_set, with_clause_outputs);
+        with_clause_outputs = AST_BuildWithIdentifiers(ast);
         ast->start_offset = ast->end_offset;
     }
 
     ast->end_offset = AST_NumClauses(ast);
     AST_BuildAliasMap(ast);
-    AST_BuildReturnExpressions(ast);
-    if (plan->result_set) ResultSet_CreateHeader(plan->result_set, ast->return_expressions);
-    plan->segments[i] = _NewExecutionPlanSegment(ctx, gc, ast, plan->result_set, handoff);
+    char **column_names = AST_BuildReturnExpressions(ast);
+    if (plan->result_set) ResultSet_CreateHeader(plan->result_set, column_names);
+    plan->segments[i] = _NewExecutionPlanSegment(ctx, gc, ast, plan->result_set, with_clause_outputs);
 
     return plan;
 }

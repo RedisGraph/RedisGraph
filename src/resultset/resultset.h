@@ -20,7 +20,6 @@
 
 typedef struct {
     RedisModuleCtx *ctx;
-    const char **column_names;
     uint column_count; // TODO optional
     size_t recordCount;         /* Number of records introduced. */
     char *buffer;               /* Reusable buffer for record streaming. */
@@ -30,7 +29,7 @@ typedef struct {
 
 ResultSet* NewResultSet(RedisModuleCtx *ctx);
 
-void ResultSet_CreateHeader(ResultSet *set, const char **column_names);
+void ResultSet_CreateHeader(ResultSet *set, char **columns);
 
 int ResultSet_AddRecord(ResultSet* set, Record r);
 
