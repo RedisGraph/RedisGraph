@@ -69,14 +69,15 @@ char** _ExpandCollapsedNodes(AST *ast) {
                 // For UNWIND clauses, use the collection alias as the expression
                 const cypher_astnode_t *alias_node = cypher_ast_unwind_get_alias(ast_entity);
                 const char *alias = cypher_ast_identifier_get_name(alias_node);
-                AR_ExpNode *exp = AR_EXP_NewConstOperandNode(SI_ConstStringVal((char*)alias));
+                AR_ExpNode *exp = AR_EXP_NewVariableOperandNode(ast, ast_entity, alias, NULL);
                 expandReturnElements = array_append(expandReturnElements, exp);
                 aliases = array_append(aliases, rm_strdup(alias));
                 continue;
             } else if (type == CYPHER_AST_IDENTIFIER) {
                 // Observed in query "UNWIND [1,2,3] AS a RETURN a AS e"
-                const char *alias = cypher_ast_identifier_get_name(ast_entity);
-                AR_ExpNode *exp = AR_EXP_NewConstOperandNode(SI_ConstStringVal((char*)alias));
+                char *alias = (char*)cypher_ast_identifier_get_name(ast_entity);
+                AR_ExpNode *exp = AST_GetEntityFromAlias(ast, alias);
+                AST_MapAlias(ast, alias, exp);
                 expandReturnElements = array_append(expandReturnElements, exp);
                 aliases = array_append(aliases, rm_strdup(alias));
                 continue;
