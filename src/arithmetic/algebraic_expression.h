@@ -66,21 +66,17 @@ typedef struct {
     Node *src_node;                         // Nodes represented by the first operand columns.
     Node *dest_node;                        // Nodes represented by the last operand rows.
     Edge *edge;                             // Edge represented by sole operand.
-    AST_LinkLength *edgeLength;             // Repeatable edge length.
 } AlgebraicExpression;
-
-/* Construct algebraic expression(s) from query graph. */
-AlgebraicExpression **AlgebraicExpression_From_QueryGraph (
-    const QueryGraph *g,    // Graph to construct expression from.
-    const AST *ast          // Abstract syntax tree.
-);
-
 
 /* Constructs an empty expression. */
 AlgebraicExpression *AlgebraicExpression_Empty();
 
-/* Construct an algebraic expression from a query. */
-AlgebraicExpression **AlgebraicExpression_From_Query(const AST *ast, Vector *matchPattern, const QueryGraph *q, size_t *exp_count);
+/* Construct algebraic expression(s) from query graph. */
+AlgebraicExpression **AlgebraicExpression_From_QueryGraph (
+    const QueryGraph *g,    // Graph to construct expression from.
+    const AST *ast,         // Abstract syntax tree.
+    size_t *exp_count       // Number of expression created.
+);
 
 /* Executes given expression. */
 void AlgebraicExpression_Execute(AlgebraicExpression *ae, GrB_Matrix res);

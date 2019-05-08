@@ -78,6 +78,9 @@ Edge* QueryGraph_RemoveEdge(QueryGraph *g, Edge *e);
 /* Performs deep copy of input query graph. */
 QueryGraph* QueryGraph_Clone(const QueryGraph *g);
 
+/* Removes all nodes and edges from query graph. */
+void QueryGraph_Clear(QueryGraph *q);
+
 /* Breaks up query graph into its connected components.
  * Returns an array object */
 QueryGraph** QueryGraph_ConnectedComponents(const QueryGraph *qg);

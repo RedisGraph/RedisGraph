@@ -24,9 +24,10 @@ typedef enum {
 
 typedef struct {
     OpBase *root;
-    QueryGraph *query_graph;
     ResultSet *result_set;
+    QueryGraph *query_graph;
     FT_FilterNode *filter_tree;
+    QueryGraph **connected_components;
 } ExecutionPlan;
 
 /* Creates a new execution plan from AST */

@@ -351,14 +351,15 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, AST *ast, ResultSet *resul
     if(ast->matchNode) {
         BuildQueryGraph(gc, q, ast->matchNode->_mergedPatterns);
 
-        // For every pattern in match clause.
-        size_t patternCount = Vector_Size(ast->matchNode->patterns);
-        
-        /* Incase we're dealing with multiple patterns
+        QueryGraph **connectedComponents = QueryGraph_ConnectedComponents(q);
+        size_t connectedComponentsCount = array_len(connectedComponents);
+        execution_plan->connected_components = connectedComponents;
+
+        /* For every connected component.
+         * Incase we're dealing with components
          * we'll simply join them all together with a join operation. */
-        bool multiPattern = patternCount > 1;
         OpBase *cartesianProduct = NULL;
-        if(multiPattern) {
+        if(connectedComponentsCount > 1) {
             cartesianProduct = NewCartesianProductOp(AST_AliasCount(ast));
             Vector_Push(ops, cartesianProduct);
         }
@@ -366,13 +367,11 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, AST *ast, ResultSet *resul
         // Keep track after all traversal operations along a pattern.
         Vector *traversals = NewVector(OpBase*, 1);
 
-        for(int i = 0; i < patternCount; i++) {
-            Vector *pattern;
-            Vector_Get(ast->matchNode->patterns, i, &pattern);
-
-            if(Vector_Size(pattern) > 1) {
+        for(int i = 0; i < connectedComponentsCount; i++) {
+            QueryGraph *cc = connectedComponents[i];
+            if(cc->node_count > 1) {
                 size_t expCount = 0;
-                AlgebraicExpression **exps = AlgebraicExpression_From_Query(ast, pattern, q, &expCount);
+                AlgebraicExpression **exps = AlgebraicExpression_From_QueryGraph(cc, ast, &expCount);
 
                 TRAVERSE_ORDER order = determineTraverseOrder(filter_tree, exps, expCount);
                 if(order == TRAVERSE_ORDER_FIRST) {
@@ -392,10 +391,10 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, AST *ast, ResultSet *resul
                     }
                     for(int i = 0; i < expCount; i++) {
                         if(exps[i]->operand_count == 0) continue;
-                        if(exps[i]->edgeLength) {
+                        if(exps[i]->edge && Edge_VariableLength(exps[i]->edge)) {
                             op = NewCondVarLenTraverseOp(exps[i],
-                                                         exps[i]->edgeLength->minHops,
-                                                         exps[i]->edgeLength->maxHops,
+                                                         exps[i]->edge->minHops,
+                                                         exps[i]->edge->maxHops,
                                                          g,
                                                          ast);
                         }
@@ -422,10 +421,10 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, AST *ast, ResultSet *resul
                     for(int i = expCount-1; i >= 0; i--) {
                         if(exps[i]->operand_count == 0) continue;
                         AlgebraicExpression_Transpose(exps[i]);
-                        if(exps[i]->edgeLength) {
+                        if(exps[i]->edge && Edge_VariableLength(exps[i]->edge)) {
                             op = NewCondVarLenTraverseOp(exps[i],
-                                                         exps[i]->edgeLength->minHops,
-                                                         exps[i]->edgeLength->maxHops,
+                                                         exps[i]->edge->minHops,
+                                                         exps[i]->edge->maxHops,
                                                          g,
                                                          ast);
                         }
@@ -436,20 +435,16 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, AST *ast, ResultSet *resul
                     }
                 }
                 // Free the expressions array, as its parts have been converted into operations
-                free(exps);
+                rm_free(exps);
             } else {
                 /* Node scan. */
-                AST_GraphEntity *ge;
-                Vector_Get(pattern, 0, &ge);
-                Node **n = QueryGraph_GetNodeRef(q, QueryGraph_GetNodeByAlias(q, ge->alias));
-                if(ge->label)
-                    op = NewNodeByLabelScanOp(*n, ast);
-                else
-                    op = NewAllNodeScanOp(g, *n, ast);
+                Node *n = cc->nodes[0];
+                if(n->label) op = NewNodeByLabelScanOp(n, ast);
+                else op = NewAllNodeScanOp(g, n, ast);
                 Vector_Push(traversals, op);
             }
-            
-            if(multiPattern) {
+
+            if(connectedComponentsCount > 1) {
                 // Connect traversal operations.
                 OpBase *childOp;
                 OpBase *parentOp;
@@ -718,6 +713,12 @@ void _ExecutionPlanFreeRecursive(OpBase* op) {
 void ExecutionPlanFree(ExecutionPlan *plan) {
     if(plan == NULL) return;
     if(plan->root) _ExecutionPlanFreeRecursive(plan->root);
+    if(plan->connected_components) {
+        for(int i = 0; i < array_len(plan->connected_components); i++) {
+            QueryGraph_Free(plan->connected_components[i]);
+        }
+        array_free(plan->connected_components);
+    }
 
     QueryGraph_Free(plan->query_graph);
     free(plan);

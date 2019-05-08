@@ -482,6 +482,11 @@ QueryGraph** QueryGraph_ConnectedComponents(const QueryGraph *qg) {
     return connected_components;
 }
 
+void QueryGraph_Clear(QueryGraph *q) {
+    while(q->edge_count) QueryGraph_RemoveEdge(q, q->edges[0]);
+    while(q->node_count) QueryGraph_RemoveNode(q, q->nodes[0]);
+}
+
 /* Frees entire graph. */
 void QueryGraph_Free(QueryGraph* g) {
     if (!g) return;
