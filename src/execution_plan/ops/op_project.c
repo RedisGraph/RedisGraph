@@ -69,9 +69,13 @@ Record ProjectConsume(OpBase *opBase) {
         // QUERY: RETURN 1+2
         // Return a single record followed by NULL
         // on the second call.
-        if(op->singleResponse) return NULL;
-        op->singleResponse = true;
-        r = Record_New(0);  // Fake empty record.
+
+        // MATCH (n) WITH n RETURN n
+        r = *op->op.record_ptr;
+
+        // if(op->singleResponse) return NULL;
+        // op->singleResponse = true;
+        // r = Record_New(0);  // Fake empty record.
     }
 
     Record projection = Record_New(op->exp_count + op->order_exp_count);

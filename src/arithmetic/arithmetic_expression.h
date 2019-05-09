@@ -81,6 +81,7 @@ struct AR_ExpNode {
         AR_OperandNode operand;
         AR_OpNode op;
     };
+    char *alias;
     AR_ExpNodeType type;
     uint record_idx;
 };

@@ -201,6 +201,8 @@ QueryGraph* BuildQueryGraph(const GraphContext *gc, const AST *ast) {
     }
     array_free(merge_clauses);
 
+    // TODO WITH entities?
+
     return qg;
 }
 

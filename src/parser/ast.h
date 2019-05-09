@@ -30,13 +30,12 @@ typedef struct {
     // Extensible array of entities described in MATCH, MERGE, and CREATE clauses
     AR_ExpNode **defined_entities;
     TrieMap *entity_map;
-    AR_ExpNode **return_expressions;
+    AR_ExpNode **return_expressions; // TODO rename to projections
     unsigned int order_expression_count; // TODO maybe use arr.h instead
     unsigned int record_length;
     AR_ExpNode **order_expressions;
     unsigned int start_offset;    // Left-hand bound of AST clauses to consider
     unsigned int end_offset;    // Right-hand bound of AST clauses to consider
-    // AR_ExpNode *handoff_expressions;
 } AST;
 
 // AST clause validations.

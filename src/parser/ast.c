@@ -314,7 +314,6 @@ AST* AST_Build(cypher_parse_result_t *parse_result) {
     ast->record_length = 0;
     ast->return_expressions = NULL;
     ast->order_expressions = NULL;
-    // ast->handoff_expressions = NULL;
     ast->entity_map = NULL;
     ast->defined_entities = NULL;
     ast->start_offset = 0;
@@ -427,8 +426,8 @@ void _tmpWithAliasCollection(AST *ast, const cypher_astnode_t *with_clause) {
 }
 
 void AST_BuildAliasMap(AST *ast) {
-    TrieMap *new_entity_map = NewTrieMap();
-    AR_ExpNode **new_defined_entities = array_new(AR_ExpNode*, 1);
+    if (ast->entity_map == NULL) ast->entity_map = NewTrieMap();
+    if (ast->defined_entities == NULL) ast->defined_entities = array_new(AR_ExpNode*, 1);
 
     if (ast->return_expressions) {
         uint with_entity_count = array_len(ast->return_expressions);
@@ -437,16 +436,10 @@ void AST_BuildAliasMap(AST *ast) {
             AR_ExpNode *exp = AST_GetEntityFromAlias(ast, with_entity);
             // TODO tmp
             exp->record_idx = i;
-            TrieMap_Add(new_entity_map, with_entity, strlen(with_entity), exp, TrieMap_DONT_CARE_REPLACE);
-            new_defined_entities = array_append(new_defined_entities, exp);
+            TrieMap_Add(ast->entity_map, with_entity, strlen(with_entity), exp, TrieMap_DONT_CARE_REPLACE);
+            ast->defined_entities = array_append(ast->defined_entities, exp);
         }
-        TrieMap_Free(ast->entity_map, TrieMap_NOP_CB);
-        array_free(ast->defined_entities);
     }
-    ast->entity_map = new_entity_map;
-    ast->defined_entities = new_defined_entities;
-    // if (ast->entity_map == NULL) ast->entity_map = NewTrieMap();
-    // if (ast->defined_entities == NULL) ast->defined_entities = array_new(cypher_astnode_t*, 1);
 
     // Check every clause in the given range
     for (uint i = ast->start_offset; i < ast->end_offset; i ++) {

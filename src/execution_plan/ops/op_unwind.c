@@ -44,7 +44,7 @@ Record UnwindConsume(OpBase *opBase) {
     if(op->expIdx == array_len(op->expressions)) return NULL;
 
     AR_ExpNode *exp = op->expressions[op->expIdx];
-    Record r = Record_New(op->record_len);
+    Record r = *op->op.record_ptr;
     SIValue v = AR_EXP_Evaluate(exp, r);
     Record_AddScalar(r, op->unwindRecIdx, v);
     op->expIdx++;

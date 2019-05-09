@@ -41,7 +41,6 @@ typedef enum {
     OPType_DISTINCT = (1<<19),
     OPType_EXPAND_INTO = (1<<20),
     OPType_NODE_BY_ID_SEEK = (1<<21),
-    OPType_HANDOFF = (1<<22),
 } OPType;
 
 #define OP_SCAN (OPType_ALL_NODE_SCAN | OPType_NODE_BY_LABEL_SCAN | OPType_INDEX_SCAN | OPType_NODE_BY_ID_SEEK)
@@ -71,6 +70,7 @@ struct OpBase {
     struct OpBase **children;   // Child operations.
     int childCount;             // Number of children.
     struct OpBase *parent;      // Parent operations.
+    Record *record_ptr;
 };
 typedef struct OpBase OpBase;
 

@@ -108,7 +108,7 @@ void _ExecutionPlanSegment_BuildTraversalOps(QueryGraph *qg, FT_FilterNode *ft, 
             if (exps[i]->op == AL_EXP_UNARY) {
                  exps[i]->dest_node_idx = exps[i]->src_node_idx;
             } else {
-                AlgebraicExpression_ExtendRecord(exps[i]);
+                AlgebraicExpression_ExtendRecord(exps[i]); // TODO should come before scans are built
             }
             if(exps[i]->minHops != 1 || exps[i]->maxHops != 1) {
                 op = NewCondVarLenTraverseOp(exps[i],
@@ -191,16 +191,11 @@ void _ExecutionPlanSegment_AddTraversalOps(Vector *ops, OpBase *cartesian_root, 
     }
 }
 
-ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext *gc, AST *ast, ResultSet *result_set, const char **record_blueprint) {
+ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext *gc, AST *ast, ResultSet *result_set, AR_ExpNode **projections) {
     ExecutionPlanSegment *segment = malloc(sizeof(ExecutionPlanSegment));
+    segment->projected_record = NULL;
+    segment->record_being_built = NULL;
     Vector *ops = NewVector(OpBase*, 1);
-
-    // if (handoff) {
-        // // This is not the initial segment; we've been given a project/aggregate tap
-        // // from the previous one.
-        // Vector_Push(ops, handoff);
-        // // Add a WITH tap and populate QueryGraph as necessary?
-    // }
 
     // Build query graph
     QueryGraph *qg = BuildQueryGraph(gc, ast);
@@ -315,10 +310,10 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
     uint *modifies = NULL;
 
     if (with_clause || ret_clause) {
-        uint exp_count = array_len(ast->return_expressions);
+        uint exp_count = array_len(projections);
         modifies = array_new(uint, exp_count);
         for (uint i = 0; i < exp_count; i ++) {
-            AR_ExpNode *exp = ast->return_expressions[i];
+            AR_ExpNode *exp = projections[i];
             modifies = array_append(modifies, exp->record_idx);
         }
     }
@@ -328,9 +323,9 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
     if(with_clause) {
         // uint *with_projections = AST_WithClauseModifies(ast, with_clause);
         if (AST_ClauseContainsAggregation(with_clause)) {
-            op = NewAggregateOp(ast->return_expressions, modifies);
+            op = NewAggregateOp(projections, modifies);
         } else {
-            op = NewProjectOp(ast->return_expressions, modifies);
+            op = NewProjectOp(projections, modifies);
         }
         Vector_Push(ops, op);
         
@@ -371,9 +366,9 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
     } else if (ret_clause) {
 
         if (AST_ClauseContainsAggregation(ret_clause)) {
-            op = NewAggregateOp(ast->return_expressions, modifies);
+            op = NewAggregateOp(projections, modifies);
         } else {
-            op = NewProjectOp(ast->return_expressions, modifies);
+            op = NewProjectOp(projections, modifies);
         }
         Vector_Push(ops, op);
 
@@ -451,7 +446,59 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
 
     optimizeSegment(gc, segment);
 
+    segment->record_len = AST_RecordLength(ast);
+
     return segment;
+}
+
+void _AST_Update(AST *ast, AR_ExpNode **projections) {
+    if (projections) {
+        // We have an array of identifiers provided by a prior WITH clause -
+        // these will correspond to our first Record entities
+        uint projection_count = array_len(projections);
+        for (uint i = 0; i < projection_count; i ++) {
+            // TODO add interface
+            AR_ExpNode *projection = projections[i];
+            // AR_ExpNode *new_projection = AR_EXP_Clone(projection);
+            AR_ExpNode *new_projection = calloc(1, sizeof(AR_ExpNode));
+            new_projection->type = AR_EXP_OPERAND;
+            new_projection->alias = projection->alias;
+            // Although it can actually be collapsed
+            new_projection->collapsed = false;
+            new_projection->operand.type = AR_EXP_VARIADIC;
+            new_projection->operand.variadic.entity_alias = projection->alias;
+            new_projection->operand.variadic.ast_ref = projection->operand.variadic.ast_ref;
+            // NULL-set entity_prop so this entity will be looked up rather than
+            // having the entity evaluated
+            // TODO This whole logic should be rethought
+            new_projection->operand.variadic.entity_prop = NULL;
+            new_projection->record_idx = AST_AddRecordEntry(ast);
+            // TODO entity_alias_idx ?
+
+            AST_MapAlias(ast, projection->alias, new_projection);
+            ast->defined_entities = array_append(ast->defined_entities, new_projection);
+        }
+    }
+
+    AST_BuildAliasMap(ast);
+
+    // If the current AST slice contains a WITH clause, build necessary entities
+    // AST_BuildWithExpressions(ast);
+}
+
+void _AST_Reset(AST *ast) {
+     // TODO leaks everywhere here
+    if (ast->defined_entities) array_free(ast->defined_entities);
+    if (ast->entity_map) TrieMap_Free(ast->entity_map, TrieMap_NOP_CB);
+    if (ast->return_expressions) array_free(ast->return_expressions);
+    if (ast->order_expressions) array_free(ast->order_expressions);
+
+    ast->defined_entities = array_new(AR_ExpNode*, 1);
+    ast->entity_map = NewTrieMap();
+    ast->return_expressions = NULL;
+    ast->order_expressions = NULL;
+    ast->order_expression_count = 0;
+    ast->record_length = 0;
 }
 
 ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, bool explain) {
@@ -469,25 +516,30 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, bool expl
 
     plan->segments = malloc(plan->segment_count * sizeof(ExecutionPlanSegment));
 
-    uint *segment_indices = NULL;
+    uint *segment_indices;
     if (with_clause_count > 0) segment_indices = AST_GetClauseIndices(ast, CYPHER_AST_WITH);
 
-    const char **with_clause_outputs = NULL;
+    AR_ExpNode **input_projections = NULL;
+    AR_ExpNode **output_projections = NULL;
     uint i;
     for (i = 0; i < with_clause_count; i ++) {
         ast->end_offset = segment_indices[i] + 1; // Switching from index to bound, so add 1
-        AST_BuildAliasMap(ast);
-        AST_BuildWithExpressions(ast);
-        plan->segments[i] = _NewExecutionPlanSegment(ctx, gc, ast, plan->result_set, with_clause_outputs);
-        with_clause_outputs = AST_BuildWithIdentifiers(ast);
+        _AST_Update(ast, input_projections);
+        // Build WITH entities and store a local pointer to pass into the *next* segment
+        output_projections = AST_BuildWithExpressions(ast);
+        // Build new segment
+        plan->segments[i] = _NewExecutionPlanSegment(ctx, gc, ast, plan->result_set, output_projections);
+        _AST_Reset(ast); // Free and NULL-set all AST constructions scoped to this segment
+        input_projections = output_projections;
         ast->start_offset = ast->end_offset;
     }
 
     ast->end_offset = AST_NumClauses(ast);
-    AST_BuildAliasMap(ast);
-    char **column_names = AST_BuildReturnExpressions(ast);
-    if (plan->result_set) ResultSet_CreateHeader(plan->result_set, column_names);
-    plan->segments[i] = _NewExecutionPlanSegment(ctx, gc, ast, plan->result_set, with_clause_outputs);
+    _AST_Update(ast, input_projections);
+    // TODO Improve this and move into _AST_Update after improving aliasing logic
+    output_projections = AST_BuildReturnExpressions(ast);
+    if (plan->result_set) ResultSet_CreateHeader(plan->result_set, output_projections);
+    plan->segments[i] = _NewExecutionPlanSegment(ctx, gc, ast, plan->result_set, output_projections);
 
     return plan;
 }
@@ -529,9 +581,26 @@ void ExecutionPlanSegmentInit(ExecutionPlanSegment *segment) {
     _ExecutionPlanSegmentInit(segment->root);
 }
 
+void __segmentRecordInit(OpBase *root, Record *record_ptr) {
+    root->record_ptr = record_ptr;
+    for(int i = 0; i < root->childCount; i++) {
+        __segmentRecordInit(root->children[i], record_ptr);
+    }
+}
+
+void _segmentRecordInit(ExecutionPlanSegment *segment) {
+    if(!segment) return;
+    __segmentRecordInit(segment->root, &segment->record_being_built);
+}
+
 Record ExecutionPlanSegment_Execute(ExecutionPlanSegment *segment) {
     OpBase *op = segment->root;
 
+    if (segment->projected_record == NULL) {
+        segment->record_being_built = Record_New(segment->record_len);
+    } else {
+        segment->record_being_built = segment->projected_record;
+    }
     Record r = op->consume(op);
 
     return r;
@@ -540,6 +609,7 @@ Record ExecutionPlanSegment_Execute(ExecutionPlanSegment *segment) {
 ResultSet* ExecutionPlan_Execute(ExecutionPlan *plan) {
     for (uint i = 0; i < plan->segment_count; i ++) {
         ExecutionPlanSegmentInit(plan->segments[i]);
+        _segmentRecordInit(plan->segments[i]);
     }
 
     bool depleted = false;
@@ -548,7 +618,11 @@ ResultSet* ExecutionPlan_Execute(ExecutionPlan *plan) {
     while (!depleted) {
         for (uint i = 0; i < plan->segment_count; i ++) {
             r = ExecutionPlanSegment_Execute(plan->segments[i]);
-            if (r == NULL) depleted = true;
+            if (i + 1 < plan->segment_count) plan->segments[i + 1]->projected_record = r;
+            if (r == NULL) {
+                depleted = true;
+                break;
+            }
         }
     }
     return plan->result_set;

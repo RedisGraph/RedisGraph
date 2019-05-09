@@ -206,11 +206,11 @@ unsigned long long Record_Hash64(const Record r) {
 }
 
 void Record_Free(Record r) {
-    unsigned int length = Record_length(r);
-    for(unsigned int i = 0; i < length; i++) {
-        if(r[i].type == REC_TYPE_SCALAR) {
-            SIValue_Free(&r[i].value.s);
-        }
-    }
-    rm_free((r-1));
+    // unsigned int length = Record_length(r);
+    // for(unsigned int i = 0; i < length; i++) {
+        // if(r[i].type == REC_TYPE_SCALAR) {
+            // SIValue_Free(&r[i].value.s);
+        // }
+    // }
+    // rm_free((r-1));
 }

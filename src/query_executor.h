@@ -15,8 +15,11 @@
 /* Make sure AST is valid. */
 AST_Validation AST_PerformValidations(RedisModuleCtx *ctx, const AST *ast);
 
-char** AST_BuildReturnExpressions(AST *ast);
-void AST_BuildWithExpressions(AST *ast);
+// TODO hate these, remove
+AR_ExpNode** AST_BuildReturnExpressions(AST *ast);
+char** AST_BuildReturnIdentifiers(AST *ast);
+
+AR_ExpNode** AST_BuildWithExpressions(AST *ast);
 const char** AST_BuildWithIdentifiers(AST *ast);
 
 #endif
