@@ -33,6 +33,7 @@ typedef enum {
     TrieMap *groups;
     SIValue *group_keys;                           /* Array of values composing an aggregated group. */
     CacheGroupIterator *groupIter;
+    Record last_record;
  } OpAggregate;
 
 OpBase* NewAggregateOp(AR_ExpNode **expressions, uint *modifies);

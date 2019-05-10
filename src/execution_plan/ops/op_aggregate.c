@@ -234,6 +234,7 @@ OpBase* NewAggregateOp(AR_ExpNode **exps, uint *modifies) {
     aggregate->exps = exps;
     aggregate->expression_classification = NULL;
     aggregate->non_aggregated_expressions = NULL;
+    aggregate->last_record = (Record)1; // TODO improve - can't be NULL
     aggregate->order_exps = NULL;
     aggregate->group = NULL;
     aggregate->groupIter = NULL;
@@ -270,12 +271,18 @@ OpResult AggregateInit(OpBase *opBase) {
 
 Record AggregateConsume(OpBase *opBase) {
     OpAggregate *op = (OpAggregate*)opBase;
-    OpBase *child = op->op.children[0];
+    Record r = NULL;
 
-    if(op->groupIter) return _handoff(op);
+    if(op->op.childCount) {
+        OpBase *child = op->op.children[0];
 
-    Record r;
-    while((r = child->consume(child))) _aggregateRecord(op, r);
+        if(op->groupIter) return _handoff(op);
+
+        while((r = child->consume(child))) _aggregateRecord(op, r);
+    } else {
+        r = *op->op.record_ptr;
+        _aggregateRecord(op, r);
+    }
 
     op->groupIter = CacheGroupIter(op->groups);
     return _handoff(op);

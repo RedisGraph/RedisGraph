@@ -68,7 +68,8 @@ AR_ExpNode** _ExpandCollapsedNodes(AST *ast, AR_ExpNode **return_expressions) {
                 const cypher_astnode_t *alias_node = cypher_ast_unwind_get_alias(ast_entity);
                 const char *alias = cypher_ast_identifier_get_name(alias_node);
                 AR_ExpNode *exp = AR_EXP_NewVariableOperandNode(ast, ast_entity, alias, NULL);
-                exp->alias = rm_strdup(alias);
+                exp->collapsed = false;
+                exp->alias = rm_strdup(alias); // TODO sensible?
                 expandReturnElements = array_append(expandReturnElements, exp);
                 continue;
             } else if (type == CYPHER_AST_IDENTIFIER) {
@@ -108,7 +109,7 @@ AR_ExpNode** _ExpandCollapsedNodes(AST *ast, AR_ExpNode **return_expressions) {
                  * label doesn't have any properties.
                  * Create a fake return element. */
                 expanded_exp = AR_EXP_NewConstOperandNode(SI_ConstStringVal(""));
-                // Incase an alias is given use it, otherwise use the variable name.
+                expanded_exp->alias = exp->alias;
                 expandReturnElements = array_append(expandReturnElements, expanded_exp);
             } else {
                 TrieMapIterator *it = TrieMap_Iterate(schema->attributes, "", 0);

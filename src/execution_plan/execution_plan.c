@@ -192,7 +192,6 @@ void _ExecutionPlanSegment_AddTraversalOps(Vector *ops, OpBase *cartesian_root, 
 }
 
 ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext *gc, AST *ast, ResultSet *result_set, ExecutionPlanSegment *segment) {
-    segment->projected_record = NULL;
     segment->record_being_built = NULL;
     Vector *ops = NewVector(OpBase*, 1);
 
@@ -604,13 +603,13 @@ void _segmentRecordInit(ExecutionPlanSegment *segment) {
     __segmentRecordInit(segment->root, &segment->record_being_built);
 }
 
-Record ExecutionPlanSegment_Execute(ExecutionPlanSegment *segment) {
+Record _ExecutionPlanSegment_Execute(ExecutionPlanSegment *segment, Record projected_record) {
     OpBase *op = segment->root;
 
-    if (segment->projected_record == NULL) {
+    if (projected_record == NULL) {
         segment->record_being_built = Record_New(segment->record_len);
     } else {
-        segment->record_being_built = segment->projected_record;
+        segment->record_being_built = projected_record;
     }
     Record r = op->consume(op);
 
@@ -624,12 +623,12 @@ ResultSet* ExecutionPlan_Execute(ExecutionPlan *plan) {
     }
 
     bool depleted = false;
-    Record r = NULL;
 
     while (!depleted) {
+        // The same record will be passed through all segments for each loop execution
+        Record r = NULL;
         for (uint i = 0; i < plan->segment_count; i ++) {
-            r = ExecutionPlanSegment_Execute(plan->segments[i]);
-            if (i + 1 < plan->segment_count) plan->segments[i + 1]->projected_record = r;
+            r = _ExecutionPlanSegment_Execute(plan->segments[i], r);
             if (r == NULL) {
                 depleted = true;
                 break;

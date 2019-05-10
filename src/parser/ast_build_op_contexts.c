@@ -81,6 +81,7 @@ AR_ExpNode** _AST_ConvertCollection(const cypher_astnode_t *collection) {
     for(uint i = 0; i < expCount; i ++) {
         const cypher_astnode_t *exp_node = cypher_ast_collection_get(collection, i);
         AR_ExpNode *exp = AR_EXP_FromExpression(ast, exp_node);
+        exp->collapsed = false;
         expressions = array_append(expressions, exp);
     }
 

@@ -14,9 +14,9 @@ flow:
 ifeq ($(V),)
 	@python -m unittest discover -b
 else
-	# @python -m unittest discover --verbose
-	@python -m unittest discover --verbose -p test_social.py
-	@python -m unittest discover --verbose -p test_variable_length_traversals.py
+	@python -m unittest discover --verbose
+	# @python -m unittest discover --verbose -p test_social.py
+	# @python -m unittest discover --verbose -p test_variable_length_traversals.py
 endif
 
 tck:

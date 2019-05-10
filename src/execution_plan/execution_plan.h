@@ -28,7 +28,6 @@ typedef struct {
     AR_ExpNode **projections; // Expressions to be constructed for a WITH or RETURN clause
     AR_ExpNode **order_expressions; // Expressions to be constructed for an ORDER clause
     Record record_being_built;
-    Record projected_record;
     uint record_len;
 } ExecutionPlanSegment;
 
