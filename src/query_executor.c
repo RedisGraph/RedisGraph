@@ -136,10 +136,6 @@ AR_ExpNode** _ExpandCollapsedNodes(AST *ast, AR_ExpNode **return_expressions) {
             }
         } else {
             expandReturnElements = array_append(expandReturnElements, exp);
-            // TODO awful and tmp
-            char *name;
-            AR_EXP_ToString(exp, &name);
-            exp->alias = name;
         }
     }
 
@@ -276,11 +272,8 @@ AR_ExpNode** _ReturnExpandAll(AST *ast) {
     return return_expressions;
 }
 
-AR_ExpNode** _BuildReturnExpressions(AST *ast) {
-    // Handle RETURN entities
-    const cypher_astnode_t *ret_clause = AST_GetClause(ast, CYPHER_AST_RETURN);
-    if (!ret_clause) return NULL;
-
+// Handle RETURN entities
+AR_ExpNode** _BuildReturnExpressions(AST *ast, const cypher_astnode_t *ret_clause) {
     // Query is of type "RETURN *",
     // collect all defined identifiers and create return elements for them
     if (cypher_ast_return_has_include_existing(ret_clause)) _ReturnExpandAll(ast);
@@ -342,26 +335,25 @@ AR_ExpNode** _BuildReturnExpressions(AST *ast) {
         return_expressions = array_append(return_expressions, exp);
     }
 
-    // Handle ORDER entities
-    const cypher_astnode_t *order_clause = cypher_ast_return_get_order_by(ret_clause);
-    if (!order_clause) return return_expressions;
+    return return_expressions;
+}
 
-    count = cypher_ast_order_by_nitems(order_clause);
-    ast->order_expressions = rm_malloc(count * sizeof(AR_ExpNode*));
-    ast->order_expression_count = count;
+AR_ExpNode** AST_BuildOrderExpressions(AST *ast, const cypher_astnode_t *order_clause) {
+    // Handle ORDER entities
+    uint count = cypher_ast_order_by_nitems(order_clause);
+    AR_ExpNode **order_expressions = array_new(AR_ExpNode*, count);
     for (unsigned int i = 0; i < count; i++) {
         // Returns CYPHER_AST_SORT_ITEM types
         // TODO write a libcypher PR to correct the documentation on this.
         const cypher_astnode_t *order_item = cypher_ast_order_by_get_item(order_clause, i);
         const cypher_astnode_t *expr = cypher_ast_sort_item_get_expression(order_item);
-        ast->order_expressions[i] = AR_EXP_FromExpression(ast, expr);
+        order_expressions[i] = AR_EXP_FromExpression(ast, expr);
     }
-
-    return return_expressions;
+    return order_expressions;
 }
 
-AR_ExpNode** AST_BuildReturnExpressions(AST *ast) {
-    AR_ExpNode **exps = _BuildReturnExpressions(ast);
+AR_ExpNode** AST_BuildReturnExpressions(AST *ast, const cypher_astnode_t *ret_clause) {
+    AR_ExpNode **exps = _BuildReturnExpressions(ast, ret_clause);
 
     if(AST_ReturnClause_ContainsCollapsedNodes(ast)) {
         /* Expand collapsed nodes. */
@@ -373,38 +365,8 @@ AR_ExpNode** AST_BuildReturnExpressions(AST *ast) {
     return exps;
 }
 
-const char** AST_BuildWithIdentifiers(AST *ast) {
-    const cypher_astnode_t *with_clause = AST_GetClause(ast, CYPHER_AST_WITH);
-    if (!with_clause) return NULL;
-
-    unsigned int count = cypher_ast_with_nprojections(with_clause);
-    const char **identifiers = array_new(char*, count);
-    for (unsigned int i = 0; i < count; i++) {
-        const char *identifier = NULL;
-        const cypher_astnode_t *projection = cypher_ast_with_get_projection(with_clause, i);
-
-        // Use projection alias if provided
-        const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(projection);
-        if (alias_node) {
-            // The projection either has an alias (AS) or is a function call.
-            // WITH a AS e
-            identifier = cypher_ast_identifier_get_name(alias_node);
-        } else {
-            const cypher_astnode_t *expr = cypher_ast_projection_get_expression(projection);
-            assert(cypher_astnode_type(expr) == CYPHER_AST_IDENTIFIER);
-            // Retrieve "a" from "WITH a"
-            identifier = cypher_ast_identifier_get_name(expr);
-        }
-
-        identifiers = array_append(identifiers, identifier);
-    }
-    return identifiers; 
-}
-
-AR_ExpNode** AST_BuildWithExpressions(AST *ast) {
-    // Handle with entities
-    const cypher_astnode_t *with_clause = AST_GetClause(ast, CYPHER_AST_WITH);
-    if (!with_clause) return NULL;
+// Handle WITH entities
+AR_ExpNode** AST_BuildWithExpressions(AST *ast, const cypher_astnode_t *with_clause) {
 
     // TODO is this a thing?
     // Query is of type "with *",
@@ -456,21 +418,6 @@ AR_ExpNode** AST_BuildWithExpressions(AST *ast) {
             exp->alias = identifier;
             with_expressions = array_append(with_expressions, exp);
         }
-    }
-
-    // Handle ORDER entities
-    const cypher_astnode_t *order_clause = cypher_ast_with_get_order_by(with_clause);
-    if (!order_clause) return with_expressions;
-
-    count = cypher_ast_order_by_nitems(order_clause);
-    ast->order_expressions = rm_malloc(count * sizeof(AR_ExpNode*));
-    ast->order_expression_count = count;
-    for (unsigned int i = 0; i < count; i++) {
-        // Returns CYPHER_AST_SORT_ITEM types
-        // TODO write a libcypher PR to correct the documentation on this.
-        const cypher_astnode_t *order_item = cypher_ast_order_by_get_item(order_clause, i);
-        const cypher_astnode_t *expr = cypher_ast_sort_item_get_expression(order_item);
-        ast->order_expressions[i] = AR_EXP_FromExpression(ast, expr);
     }
 
     return with_expressions;

@@ -15,11 +15,8 @@
 /* Make sure AST is valid. */
 AST_Validation AST_PerformValidations(RedisModuleCtx *ctx, const AST *ast);
 
-// TODO hate these, remove
-AR_ExpNode** AST_BuildReturnExpressions(AST *ast);
-char** AST_BuildReturnIdentifiers(AST *ast);
-
-AR_ExpNode** AST_BuildWithExpressions(AST *ast);
-const char** AST_BuildWithIdentifiers(AST *ast);
+AR_ExpNode** AST_BuildReturnExpressions(AST *ast, const cypher_astnode_t *ret_clause);
+AR_ExpNode** AST_BuildWithExpressions(AST *ast, const cypher_astnode_t *with_clause);
+AR_ExpNode** AST_BuildOrderExpressions(AST *ast, const cypher_astnode_t *order_clause);
 
 #endif

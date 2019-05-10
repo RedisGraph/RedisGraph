@@ -191,8 +191,7 @@ void _ExecutionPlanSegment_AddTraversalOps(Vector *ops, OpBase *cartesian_root, 
     }
 }
 
-ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext *gc, AST *ast, ResultSet *result_set, AR_ExpNode **projections) {
-    ExecutionPlanSegment *segment = malloc(sizeof(ExecutionPlanSegment));
+ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext *gc, AST *ast, ResultSet *result_set, ExecutionPlanSegment *segment) {
     segment->projected_record = NULL;
     segment->record_being_built = NULL;
     Vector *ops = NewVector(OpBase*, 1);
@@ -309,6 +308,9 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
 
     uint *modifies = NULL;
 
+    // WITH/RETURN projections have already been constructed from the ATT
+    AR_ExpNode **projections = segment->projections;
+
     if (with_clause || ret_clause) {
         uint exp_count = array_len(projections);
         modifies = array_new(uint, exp_count);
@@ -328,7 +330,7 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
             op = NewProjectOp(projections, modifies);
         }
         Vector_Push(ops, op);
-        
+
         if (cypher_ast_with_is_distinct(with_clause)) {
             op = NewDistinctOp();
             Vector_Push(ops, op);
@@ -433,6 +435,11 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
             /* Scan execution segment, locate the earliest position where all
              * references been resolved. */
             OpBase *op = ExecutionPlanSegment_LocateReferences(segment->root, references);
+            if (op == NULL) {
+                /* TODO The references may have been resolved by a WITH clause:
+                   "MATCH (p:person) WITH avg(p.age) AS average_age MATCH(:person)-[:friend]->(f:person) WHERE f.age > average_age RETURN f.age"
+               */
+            }
             assert(op);
 
             /* Create filter node.
@@ -451,7 +458,12 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
     return segment;
 }
 
-void _AST_Update(AST *ast, AR_ExpNode **projections) {
+// Map the required AST entities and build expressions to match
+// the AST slice's WITH, RETURN, and ORDER clauses
+ExecutionPlanSegment* _PrepareSegment(AST *ast, AR_ExpNode **projections) {
+    // Allocate a new segment
+    ExecutionPlanSegment *segment = malloc(sizeof(ExecutionPlanSegment));
+
     if (projections) {
         // We have an array of identifiers provided by a prior WITH clause -
         // these will correspond to our first Record entities
@@ -459,21 +471,10 @@ void _AST_Update(AST *ast, AR_ExpNode **projections) {
         for (uint i = 0; i < projection_count; i ++) {
             // TODO add interface
             AR_ExpNode *projection = projections[i];
-            // AR_ExpNode *new_projection = AR_EXP_Clone(projection);
-            AR_ExpNode *new_projection = calloc(1, sizeof(AR_ExpNode));
-            new_projection->type = AR_EXP_OPERAND;
-            new_projection->alias = projection->alias;
-            // Although it can actually be collapsed
-            new_projection->collapsed = false;
-            new_projection->operand.type = AR_EXP_VARIADIC;
-            new_projection->operand.variadic.entity_alias = projection->alias;
-            new_projection->operand.variadic.ast_ref = projection->operand.variadic.ast_ref;
-            // NULL-set entity_prop so this entity will be looked up rather than
-            // having the entity evaluated
-            // TODO This whole logic should be rethought
-            new_projection->operand.variadic.entity_prop = NULL;
-            new_projection->record_idx = AST_AddRecordEntry(ast);
-            // TODO entity_alias_idx ?
+            uint record_idx = AST_AddRecordEntry(ast);
+            AR_ExpNode *new_projection = AR_EXP_NewReferenceNode(projection->alias, record_idx, projection->collapsed);
+            new_projection->operand.variadic.ast_ref = projection->operand.variadic.ast_ref; // TODO bad
+            // AR_ExpNode *new_projection = calloc(1, sizeof(AR_ExpNode));
 
             AST_MapAlias(ast, projection->alias, new_projection);
             ast->defined_entities = array_append(ast->defined_entities, new_projection);
@@ -481,23 +482,38 @@ void _AST_Update(AST *ast, AR_ExpNode **projections) {
     }
 
     AST_BuildAliasMap(ast);
+    // AST_BuildAliasMap(ast, projections);
 
-    // If the current AST slice contains a WITH clause, build necessary entities
-    // AST_BuildWithExpressions(ast);
+    // Retrieve a RETURN clause if one is specified in this AST's range
+    const cypher_astnode_t *ret_clause = AST_GetClause(ast, CYPHER_AST_RETURN);
+    // Retrieve a WITH clause if one is specified in this AST's range
+    const cypher_astnode_t *with_clause = AST_GetClause(ast, CYPHER_AST_WITH);
+
+    // We cannot have both a RETURN and WITH clause
+    assert(!(ret_clause && with_clause));
+    segment->projections = NULL;
+    segment->order_expressions = NULL;
+
+    if (ret_clause) {
+        segment->projections = AST_BuildReturnExpressions(ast, ret_clause);
+        const cypher_astnode_t *order_clause = cypher_ast_return_get_order_by(ret_clause);
+        if (order_clause) segment->order_expressions = AST_BuildOrderExpressions(ast, order_clause);
+    } else if (with_clause) {
+        segment->projections = AST_BuildWithExpressions(ast, with_clause);
+        const cypher_astnode_t *order_clause = cypher_ast_with_get_order_by(with_clause);
+        if (order_clause) segment->order_expressions = AST_BuildOrderExpressions(ast, order_clause);
+    }
+
+    return segment;
 }
 
 void _AST_Reset(AST *ast) {
      // TODO leaks everywhere here
     if (ast->defined_entities) array_free(ast->defined_entities);
     if (ast->entity_map) TrieMap_Free(ast->entity_map, TrieMap_NOP_CB);
-    if (ast->return_expressions) array_free(ast->return_expressions);
-    if (ast->order_expressions) array_free(ast->order_expressions);
 
     ast->defined_entities = array_new(AR_ExpNode*, 1);
     ast->entity_map = NewTrieMap();
-    ast->return_expressions = NULL;
-    ast->order_expressions = NULL;
-    ast->order_expression_count = 0;
     ast->record_length = 0;
 }
 
@@ -519,27 +535,23 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, bool expl
     uint *segment_indices;
     if (with_clause_count > 0) segment_indices = AST_GetClauseIndices(ast, CYPHER_AST_WITH);
 
+    ExecutionPlanSegment *segment;
     AR_ExpNode **input_projections = NULL;
-    AR_ExpNode **output_projections = NULL;
     uint i;
     for (i = 0; i < with_clause_count; i ++) {
         ast->end_offset = segment_indices[i] + 1; // Switching from index to bound, so add 1
-        _AST_Update(ast, input_projections);
-        // Build WITH entities and store a local pointer to pass into the *next* segment
-        output_projections = AST_BuildWithExpressions(ast);
-        // Build new segment
-        plan->segments[i] = _NewExecutionPlanSegment(ctx, gc, ast, plan->result_set, output_projections);
+        segment = _PrepareSegment(ast, input_projections);
+        plan->segments[i] = _NewExecutionPlanSegment(ctx, gc, ast, plan->result_set, segment);
         _AST_Reset(ast); // Free and NULL-set all AST constructions scoped to this segment
-        input_projections = output_projections;
+        // Store the expressions constructed by this segment's WITH projection to pass into the *next* segment
+        input_projections = plan->segments[i]->projections;
         ast->start_offset = ast->end_offset;
     }
 
     ast->end_offset = AST_NumClauses(ast);
-    _AST_Update(ast, input_projections);
-    // TODO Improve this and move into _AST_Update after improving aliasing logic
-    output_projections = AST_BuildReturnExpressions(ast);
-    if (plan->result_set) ResultSet_CreateHeader(plan->result_set, output_projections);
-    plan->segments[i] = _NewExecutionPlanSegment(ctx, gc, ast, plan->result_set, output_projections);
+    segment = _PrepareSegment(ast, input_projections);
+    if (plan->result_set) ResultSet_CreateHeader(plan->result_set, segment->projections);
+    plan->segments[i] = _NewExecutionPlanSegment(ctx, gc, ast, plan->result_set, segment);
 
     return plan;
 }

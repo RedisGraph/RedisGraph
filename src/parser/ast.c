@@ -37,6 +37,7 @@ static void _consume_function_call_expression(const cypher_astnode_t *expression
 AR_ExpNode* _AR_Exp_NewIdentifier(const char *entity_alias, const cypher_astnode_t *entity, unsigned int id) {
     AR_ExpNode *node = malloc(sizeof(AR_ExpNode));
     node->type = AR_EXP_OPERAND;
+    node->collapsed = true;
     node->record_idx = id;
     node->operand.type = AR_EXP_VARIADIC;
     node->operand.variadic.entity_alias = entity_alias ? strdup(entity_alias) : NULL;
@@ -310,10 +311,7 @@ AST* AST_Build(cypher_parse_result_t *parse_result) {
     AST *ast = malloc(sizeof(AST));
     ast->root = AST_GetBody(parse_result);
     assert(ast->root);
-    ast->order_expression_count = 0;
     ast->record_length = 0;
-    ast->return_expressions = NULL;
-    ast->order_expressions = NULL;
     ast->entity_map = NULL;
     ast->defined_entities = NULL;
     ast->start_offset = 0;
@@ -414,32 +412,33 @@ void _tmpWithAliasCollection(AST *ast, const cypher_astnode_t *with_clause) {
     if (!order_clause) return;
 
     count = cypher_ast_order_by_nitems(order_clause);
-    ast->order_expressions = rm_malloc(count * sizeof(AR_ExpNode*));
-    ast->order_expression_count = count;
-    for (unsigned int i = 0; i < count; i++) {
-        // Returns CYPHER_AST_SORT_ITEM types
-        // TODO write a libcypher PR to correct the documentation on this.
-        const cypher_astnode_t *order_item = cypher_ast_order_by_get_item(order_clause, i);
-        const cypher_astnode_t *expr = cypher_ast_sort_item_get_expression(order_item);
-        ast->order_expressions[i] = AR_EXP_FromExpression(ast, expr);
-    }
+    // ast->order_expressions = rm_malloc(count * sizeof(AR_ExpNode*));
+    // ast->order_expression_count = count;
+    // for (unsigned int i = 0; i < count; i++) {
+        // // Returns CYPHER_AST_SORT_ITEM types
+        // // TODO write a libcypher PR to correct the documentation on this.
+        // const cypher_astnode_t *order_item = cypher_ast_order_by_get_item(order_clause, i);
+        // const cypher_astnode_t *expr = cypher_ast_sort_item_get_expression(order_item);
+        // ast->order_expressions[i] = AR_EXP_FromExpression(ast, expr);
+    // }
 }
 
 void AST_BuildAliasMap(AST *ast) {
+// void AST_BuildAliasMap(AST *ast, AR_ExpNode **with_expressions) {
     if (ast->entity_map == NULL) ast->entity_map = NewTrieMap();
     if (ast->defined_entities == NULL) ast->defined_entities = array_new(AR_ExpNode*, 1);
 
-    if (ast->return_expressions) {
-        uint with_entity_count = array_len(ast->return_expressions);
-        for (uint i = 0; i < with_entity_count; i ++) {
-            char *with_entity = (char*)ast->return_expressions[i];
-            AR_ExpNode *exp = AST_GetEntityFromAlias(ast, with_entity);
-            // TODO tmp
-            exp->record_idx = i;
-            TrieMap_Add(ast->entity_map, with_entity, strlen(with_entity), exp, TrieMap_DONT_CARE_REPLACE);
-            ast->defined_entities = array_append(ast->defined_entities, exp);
-        }
-    }
+    // if (with_expressions) {
+        // uint with_entity_count = array_len(with_expressions);
+        // for (uint i = 0; i < with_entity_count; i ++) {
+            // char *with_entity = (char*)ast->return_expressions[i];
+            // AR_ExpNode *exp = AST_GetEntityFromAlias(ast, with_entity);
+            // // TODO tmp
+            // exp->record_idx = i;
+            // TrieMap_Add(ast->entity_map, with_entity, strlen(with_entity), exp, TrieMap_DONT_CARE_REPLACE);
+            // ast->defined_entities = array_append(ast->defined_entities, exp);
+        // }
+    // }
 
     // Check every clause in the given range
     for (uint i = ast->start_offset; i < ast->end_offset; i ++) {
