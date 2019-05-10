@@ -28,6 +28,7 @@ OpBase* NewProjectOp(AR_ExpNode **exps, uint *modifies) {
     project->ast = ast;
     project->exps = exps;
     project->exp_count = array_len(exps);
+    project->last_record = (Record)1; // TODO improve - can't be NULL
     project->order_exps = NULL;
     project->order_exp_count = 0;
     project->singleResponse = false;
@@ -70,6 +71,8 @@ Record ProjectConsume(OpBase *opBase) {
         // Return a single record followed by NULL
         // on the second call.
 
+        if (*op->op.record_ptr == op->last_record) return NULL;
+        op->last_record = *op->op.record_ptr;
         // MATCH (n) WITH n RETURN n
         r = *op->op.record_ptr;
 

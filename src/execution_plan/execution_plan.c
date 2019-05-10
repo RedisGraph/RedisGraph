@@ -336,7 +336,6 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
             Vector_Push(ops, op);
         }
 
-        const cypher_astnode_t *order_clause = cypher_ast_with_get_order_by(with_clause);
         const cypher_astnode_t *skip_clause = cypher_ast_with_get_skip(with_clause);
         const cypher_astnode_t *limit_clause = cypher_ast_with_get_limit(with_clause);
 
@@ -345,10 +344,11 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
         if (skip_clause) skip = AST_ParseIntegerNode(skip_clause);
         if (limit_clause) limit = skip + AST_ParseIntegerNode(limit_clause);
 
-        if (order_clause) {
-            int direction;
-            AR_ExpNode **sort_exps = AST_PrepareSortOp(order_clause, &direction);
-            op = NewSortOp(sort_exps, direction, limit);
+        if (segment->order_expressions) {
+            const cypher_astnode_t *order_clause = cypher_ast_with_get_order_by(with_clause);
+            int direction = AST_PrepareSortOp(order_clause);
+            // AR_ExpNode **sort_exps = AST_PrepareSortOp(order_clause, &direction);
+            op = NewSortOp(segment->order_expressions, direction, limit);
             Vector_Push(ops, op);
         }
 
@@ -388,10 +388,9 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
         if (skip_clause) skip = AST_ParseIntegerNode(skip_clause);
         if (limit_clause) limit = skip + AST_ParseIntegerNode(limit_clause);
 
-        if (order_clause) {
-            int direction;
-            AR_ExpNode **expressions = AST_PrepareSortOp(order_clause, &direction);
-            op = NewSortOp(expressions, direction, limit);
+        if (segment->order_expressions) {
+            int direction = AST_PrepareSortOp(order_clause);
+            op = NewSortOp(segment->order_expressions, direction, limit);
             Vector_Push(ops, op);
         }
 

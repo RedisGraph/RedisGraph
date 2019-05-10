@@ -21,14 +21,17 @@ struct AR_ExpNode;
 /* AR_ExpNodeType lists the type of nodes within
  * an arithmetic expression tree. */
 typedef enum {
+    AR_EXP_UNKNOWN,
     AR_EXP_OP,
     AR_EXP_OPERAND,
+    AR_EXP_REFERENCE,
 } AR_ExpNodeType;
 
 /* AR_OPType type of operation 
  * either an aggregation function which requires a context
  * or a stateless function. */
 typedef enum {
+    AR_OP_UNKNOWN,
     AR_OP_AGGREGATE,
     AR_OP_FUNC,
 } AR_OPType;
@@ -36,6 +39,7 @@ typedef enum {
 /* AR_OperandNodeType type of leaf node,
  * either a constant: 3, or a variable: node.property. */
 typedef enum {
+    AR_EXP_OP_UNKNOWN,
     AR_EXP_CONSTANT,
     AR_EXP_VARIADIC,
 } AR_OperandNodeType;
@@ -66,7 +70,7 @@ typedef struct {
             int entity_alias_idx;
             char *entity_prop;
             Attribute_ID entity_prop_idx;
-            const cypher_astnode_t *ast_ref; // TODO should be deleted
+            const cypher_astnode_t *ast_ref; // TODO should be deleted if possible, but needed to differentiate nodes/edges?
         } variadic;
     };
     AR_OperandNodeType type;
@@ -84,6 +88,7 @@ struct AR_ExpNode {
     char *alias;
     AR_ExpNodeType type;
     uint record_idx;
+    bool collapsed; // TODO refactor, add type for just looking up a record index / alias
 };
 
 /* Mathematical functions - numeric */
@@ -148,6 +153,7 @@ void AR_EXP_ToString(const AR_ExpNode *root, char **str);
 
 AR_ExpNode* AR_EXP_NewConstOperandNode(SIValue constant);
 AR_ExpNode* AR_EXP_NewVariableOperandNode(const AST *ast, const cypher_astnode_t *entity, const char *alias, const char *prop);
+AR_ExpNode* AR_EXP_NewReferenceNode(char *alias, unsigned int record_idx, bool collapsed);
 
 // TODO tmp - consolidate these functions
 AR_ExpNode* AR_EXP_FromInlinedFilter(SchemaType base_type, unsigned int record_idx, const char *prop);

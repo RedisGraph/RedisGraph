@@ -166,37 +166,56 @@ void AST_PrepareDeleteOp(const cypher_astnode_t *delete_clause, uint **nodes_ref
 
 }
 
-AR_ExpNode** AST_PrepareSortOp(const cypher_astnode_t *order_clause, int *direction) {
+// AR_ExpNode** AST_PrepareSortOp(const cypher_astnode_t *order_clause, int *direction) {
+    // assert(order_clause);
+    // AST *ast = AST_GetFromTLS();
+
+    // bool ascending = true;
+    // unsigned int nitems = cypher_ast_order_by_nitems(order_clause);
+    // AR_ExpNode **order_exps = array_new(AR_ExpNode*, nitems);
+
+    // for (unsigned int i = 0; i < nitems; i ++) {
+        // const cypher_astnode_t *item = cypher_ast_order_by_get_item(order_clause, i);
+        // const cypher_astnode_t *cypher_exp = cypher_ast_sort_item_get_expression(item);
+        // AR_ExpNode *exp;
+        // if (cypher_astnode_type(cypher_exp) == CYPHER_AST_IDENTIFIER) {
+            // // Reference to an alias in the query - associate with existing AR_ExpNode
+            // const char *alias = cypher_ast_identifier_get_name(cypher_exp);
+            // exp = AST_GetEntityFromAlias(ast, (char*)alias);
+        // } else {
+            // // Independent operator like:
+            // // ORDER BY COUNT(a)
+            // exp = AR_EXP_FromExpression(ast, cypher_exp);
+        // }
+
+        // // TODO rec_idx?
+        // order_exps = array_append(order_exps, exp);
+        // // TODO direction should be specifiable per order entity
+        // ascending = cypher_ast_sort_item_is_ascending(item);
+    // }
+
+    // *direction = ascending ? DIR_ASC : DIR_DESC;
+
+    // return order_exps;
+// }
+
+// TODO largely unnecessary
+int AST_PrepareSortOp(const cypher_astnode_t *order_clause) {
     assert(order_clause);
     AST *ast = AST_GetFromTLS();
 
     bool ascending = true;
     unsigned int nitems = cypher_ast_order_by_nitems(order_clause);
-    AR_ExpNode **order_exps = array_new(AR_ExpNode*, nitems);
 
     for (unsigned int i = 0; i < nitems; i ++) {
         const cypher_astnode_t *item = cypher_ast_order_by_get_item(order_clause, i);
-        const cypher_astnode_t *cypher_exp = cypher_ast_sort_item_get_expression(item);
-        AR_ExpNode *exp;
-        if (cypher_astnode_type(cypher_exp) == CYPHER_AST_IDENTIFIER) {
-            // Reference to an alias in the query - associate with existing AR_ExpNode
-            const char *alias = cypher_ast_identifier_get_name(cypher_exp);
-            exp = AST_GetEntityFromAlias(ast, (char*)alias);
-        } else {
-            // Independent operator like:
-            // ORDER BY COUNT(a)
-            exp = AR_EXP_FromExpression(ast, cypher_exp);
-        }
-
-        // TODO rec_idx?
-        order_exps = array_append(order_exps, exp);
         // TODO direction should be specifiable per order entity
         ascending = cypher_ast_sort_item_is_ascending(item);
     }
 
-    *direction = ascending ? DIR_ASC : DIR_DESC;
+    int direction = ascending ? DIR_ASC : DIR_DESC;
 
-    return order_exps;
+    return direction;
 }
 
 AST_UnwindContext AST_PrepareUnwindOp(const AST *ast, const cypher_astnode_t *unwind_clause) {

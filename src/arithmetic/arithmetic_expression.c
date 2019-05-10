@@ -73,6 +73,7 @@ static AR_ExpNode* _AR_EXP_NewOpNodeFromAST(AST_Operator op, int child_count) {
 static AR_ExpNode* _AR_EXP_NewOpNode(char *func_name, int child_count) {
     AR_ExpNode *node = calloc(1, sizeof(AR_ExpNode));
     node->type = AR_EXP_OP;
+    node->collapsed = false;
     node->record_idx = NOT_IN_RECORD;
     node->op.func_name = func_name;
     node->op.child_count = child_count;
@@ -101,6 +102,7 @@ static AR_ExpNode* _AR_EXP_NewOpNode(char *func_name, int child_count) {
 AR_ExpNode* AR_EXP_NewVariableOperandNode(const AST *ast, const cypher_astnode_t *entity, const char *alias, const char *prop) {
     AR_ExpNode *node = malloc(sizeof(AR_ExpNode));
     node->type = AR_EXP_OPERAND;
+    node->collapsed = false;
     node->record_idx = NOT_IN_RECORD;
     node->operand.type = AR_EXP_VARIADIC;
     node->operand.variadic.entity_alias = strdup(alias);
@@ -119,7 +121,19 @@ AR_ExpNode* AR_EXP_NewVariableOperandNode(const AST *ast, const cypher_astnode_t
         } else { // (type == CYPHER_AST_REL_PATTERN)
             node->operand.variadic.entity_prop_idx = Attribute_GetID(SCHEMA_EDGE, prop);
         }
+    } else{
+        node->collapsed = true;
     }
+    return node;
+}
+
+AR_ExpNode* AR_EXP_NewReferenceNode(char *alias, unsigned int record_idx, bool collapsed) {
+    AR_ExpNode *node = calloc(1, sizeof(AR_ExpNode));
+    node->type = AR_EXP_REFERENCE;
+    node->alias = alias;
+    node->record_idx = record_idx;
+    node->collapsed = collapsed;
+
     return node;
 }
 
@@ -335,8 +349,25 @@ void _AR_EXP_UpdatePropIdx(AR_ExpNode *root, const Record r) {
 
 SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
     SIValue result;
+    if (root->type == AR_EXP_REFERENCE) {
     /* Deal with Operation node. */
-    if(root->type == AR_EXP_OP) {
+        uint idx = root->record_idx;
+        RecordEntryType t = Record_GetType(r, idx);
+        switch(t) {
+            case REC_TYPE_SCALAR:
+                result = Record_GetScalar(r, idx);
+                break;
+            case REC_TYPE_NODE:
+                result = SI_Node(Record_GetGraphEntity(r, idx));
+                break;
+            case REC_TYPE_EDGE:
+                result = SI_Edge(Record_GetGraphEntity(r, idx));
+                break;
+            default:
+                assert(false);
+        }
+        return result;
+    } else if(root->type == AR_EXP_OP) {
         /* Aggregation function should be reduced by now.
          * TODO: verify above statement. */
         if(root->op.type == AR_OP_AGGREGATE) {
@@ -557,6 +588,7 @@ static AR_ExpNode* _AR_EXP_CloneOperand(AR_ExpNode* exp) {
                 clone->operand.variadic.entity_prop = rm_strdup(exp->operand.variadic.entity_prop);
             }
             clone->operand.variadic.entity_prop_idx = exp->operand.variadic.entity_prop_idx;
+            clone->operand.variadic.ast_ref = exp->operand.variadic.ast_ref;
             break;
         default:
             assert(false);

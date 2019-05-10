@@ -340,16 +340,35 @@ AR_ExpNode** _BuildReturnExpressions(AST *ast, const cypher_astnode_t *ret_claus
 
 AR_ExpNode** AST_BuildOrderExpressions(AST *ast, const cypher_astnode_t *order_clause) {
     // Handle ORDER entities
-    uint count = cypher_ast_order_by_nitems(order_clause);
-    AR_ExpNode **order_expressions = array_new(AR_ExpNode*, count);
-    for (unsigned int i = 0; i < count; i++) {
-        // Returns CYPHER_AST_SORT_ITEM types
-        // TODO write a libcypher PR to correct the documentation on this.
-        const cypher_astnode_t *order_item = cypher_ast_order_by_get_item(order_clause, i);
-        const cypher_astnode_t *expr = cypher_ast_sort_item_get_expression(order_item);
-        order_expressions[i] = AR_EXP_FromExpression(ast, expr);
+    assert(order_clause);
+
+    bool ascending = true;
+    unsigned int nitems = cypher_ast_order_by_nitems(order_clause);
+    AR_ExpNode **order_exps = array_new(AR_ExpNode*, nitems);
+
+    for (unsigned int i = 0; i < nitems; i ++) {
+        const cypher_astnode_t *item = cypher_ast_order_by_get_item(order_clause, i);
+        const cypher_astnode_t *cypher_exp = cypher_ast_sort_item_get_expression(item);
+        AR_ExpNode *exp;
+        if (cypher_astnode_type(cypher_exp) == CYPHER_AST_IDENTIFIER) {
+            // Reference to an alias in the query - associate with existing AR_ExpNode
+            const char *alias = cypher_ast_identifier_get_name(cypher_exp);
+            exp = AST_GetEntityFromAlias(ast, (char*)alias);
+        } else {
+            // Independent operator like:
+            // ORDER BY COUNT(a)
+            exp = AR_EXP_FromExpression(ast, cypher_exp);
+        }
+
+        // TODO rec_idx?
+        order_exps = array_append(order_exps, exp);
+        // TODO direction should be specifiable per order entity
+        ascending = cypher_ast_sort_item_is_ascending(item);
     }
-    return order_expressions;
+
+    // *direction = ascending ? DIR_ASC : DIR_DESC;
+
+    return order_exps;
 }
 
 AR_ExpNode** AST_BuildReturnExpressions(AST *ast, const cypher_astnode_t *ret_clause) {

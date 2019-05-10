@@ -44,7 +44,8 @@ EntityUpdateEvalCtx* AST_PrepareUpdateOp(const cypher_astnode_t *set_clause, uin
 
 void AST_PrepareDeleteOp(const cypher_astnode_t *delete_clause, uint **nodes_ref, uint **edges_ref);
 
-AR_ExpNode** AST_PrepareSortOp(const cypher_astnode_t *order_clause, int *direction);
+// AR_ExpNode** AST_PrepareSortOp(const cypher_astnode_t *order_clause, int *direction);
+int AST_PrepareSortOp(const cypher_astnode_t *order_clause);
 
 AST_UnwindContext AST_PrepareUnwindOp(const AST *ast, const cypher_astnode_t *unwind_clause);
 
