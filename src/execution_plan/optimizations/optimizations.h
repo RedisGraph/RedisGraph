@@ -16,5 +16,6 @@
 #include "./reduce_count.h"
 #include "./reduce_distinct.h"
 #include "./seek_by_id.h"
+#include "./reduce_traversal.h"
 
 #endif

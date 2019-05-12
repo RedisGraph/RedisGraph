@@ -241,13 +241,23 @@ int Graph_GetEdgeRelation (
 
 // Retrieves edges connecting source to destination,
 // relation is optional, pass GRAPH_NO_RELATION if you do not care
-// of edge type.
+// about edge type.
 void Graph_GetEdgesConnectingNodes (
     const Graph *g,     // Graph to get edges from.
     NodeID srcID,       // Source node of edge
     NodeID destID,      // Destination node of edge
     int r,              // Edge type.
     Edge **edges        // array_t of edges connecting src to dest of type r.
+);
+
+// Checks if src is connected to dest via edge of type r
+// set r to GRAPH_NO_RELATION if you do not care
+// about edge type.
+bool Graph_EdgeExists (
+    const Graph *g,     // Graph to get edges from.
+    NodeID srcID,       // Source node of edge
+    NodeID destID,      // Destination node of edge
+    int r               // Edge type.
 );
 
 // Get node edges.

@@ -248,6 +248,22 @@ OpBase* ExecutionPlan_LocateOp(OpBase *root, OPType type) {
     return NULL;
 }
 
+void _ExecutionPlan_LocateOps(OpBase *root, OPType type, OpBase ***ops) {
+    if(!root) return;
+
+    if(root->type == type) (*ops) = array_append((*ops), root);
+
+    for(int i = 0; i < root->childCount; i++) {
+        _ExecutionPlan_LocateOps(root->children[i], type, ops);
+    }
+}
+
+OpBase** ExecutionPlan_LocateOps(OpBase *root, OPType type) {
+    OpBase **ops = array_new(OpBase*, 0);
+    _ExecutionPlan_LocateOps(root, type, &ops);
+    return ops;
+}
+
 void ExecutionPlan_Taps(OpBase *root, OpBase ***taps) {
     if(root == NULL) return;
     if(root->type & OP_SCAN) *taps = array_append(*taps, root);

@@ -187,7 +187,7 @@ Record CondTraverseConsume(OpBase *opBase) {
     Node *destNode = Record_GetNode(op->r, op->destNodeRecIdx);
     Graph_GetNode(op->graph, dest_id, destNode);
 
-    if(op->algebraic_expression->edge != NULL) {
+    if(op->algebraic_expression->edge) {
         // We're guarantee to have at least one edge.
         Node *srcNode;
         Node *destNode;

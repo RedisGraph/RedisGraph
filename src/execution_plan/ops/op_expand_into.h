@@ -8,20 +8,24 @@
 #define __OP_EXPAND_INTO_H
 
 #include "op.h"
-#include "../../graph/graphcontext.h"
-#include "../../graph/entities/edge.h"
 #include "../../parser/ast.h"
+#include "../../graph/graph.h"
+#include "../../graph/entities/edge.h"
+#include "../../arithmetic/algebraic_expression.h"
 
 typedef struct {
     OpBase op;
-    GraphContext *gc;   // Graph context.
-    int srcRecIdx;      // Source node record position.
-    int destRecIdx;     // Destination node record position.
-    Edge *e;            // Edge connecting source to destination.
-    Edge **edges;       // Edges connecting source to destination.
+    Graph *g;                   // Graph context.
+    Record r;                   // Current selected record.
+    uint srcRecIdx;             // Source node record position.
+    uint destRecIdx;            // Destination node record position.
+    uint edgeRecIdx;            // Edge record position.
+    int relation;               // Edge relation.
+    Edge *edges;                // Edges connecting source to destination.
+    AlgebraicExpression *exp;   // Expression to evaluate.
 } OpExpandInto;
 
-OpBase* NewExpandIntoOp(Node *a, Node *b, Edge *e, AST *ast);
+OpBase* NewExpandIntoOp(AlgebraicExpression *exp, uint srcRecIdx, uint destRecIdx, uint edgeRecIdx);
 Record OpExpandIntoConsume(OpBase *opBase);
 OpResult OpExpandIntoReset(OpBase *ctx);
 void OpExpandIntoFree(OpBase *ctx);

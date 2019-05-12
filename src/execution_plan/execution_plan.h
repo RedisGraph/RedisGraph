@@ -61,6 +61,10 @@ void ExecutionPlan_LocateTaps(OpBase *root, OpBase ***taps);
  * Returns NULL if operation wasn't found. */
 OpBase* ExecutionPlan_LocateOp(OpBase *root, OPType type);
 
+/* Locate all operations of a given type within execution plan.
+ * Returns an array of operations. */
+OpBase** ExecutionPlan_LocateOps(OpBase *root, OPType type);
+
 /* Returns an array of taps; operations which generate data 
  * e.g. SCAN operations */
 void ExecutionPlan_Taps(OpBase *root, OpBase ***taps);
