@@ -25,8 +25,9 @@ typedef struct {
     OpBase *root;
     QueryGraph *query_graph;
     FT_FilterNode *filter_tree;
-    AR_ExpNode **projections; // Expressions to be constructed for a WITH or RETURN clause
-    AR_ExpNode **order_expressions; // Expressions to be constructed for an ORDER clause
+    AR_ExpNode **projections;        // Expressions to be constructed for a WITH or RETURN clause
+    AR_ExpNode **order_expressions;  // Expressions to be constructed for an ORDER clause
+    uint record_len;                 // Length of Record being modified by this segment
 } ExecutionPlanSegment;
 
 typedef struct {

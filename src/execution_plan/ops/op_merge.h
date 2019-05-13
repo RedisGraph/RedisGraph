@@ -25,7 +25,6 @@ typedef struct {
     NodeCreateCtx *nodes_to_merge;
     EdgeCreateCtx *edges_to_merge;
     ResultSetStatistics *stats;       // Required for statistics updates.
-    uint record_len;
     bool matched;                     // Has the entire pattern been matched?
     bool created;                     // Has the entire pattern been created?
 } OpMerge;

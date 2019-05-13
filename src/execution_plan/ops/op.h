@@ -69,6 +69,7 @@ struct OpBase {
     uint *modifies;             // List of Record indices this op modifies.
     struct OpBase **children;   // Child operations.
     int childCount;             // Number of children.
+    uint record_len;            // Length of Record this op modifies.
     struct OpBase *parent;      // Parent operations.
 };
 typedef struct OpBase OpBase;

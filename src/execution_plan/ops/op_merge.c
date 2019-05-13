@@ -149,9 +149,6 @@ OpBase* NewMergeOp(ResultSetStatistics *stats, NodeCreateCtx *nodes_to_merge, Ed
 }
 
 OpResult OpMergeInit(OpBase *opBase) {
-    OpMerge *op = (OpMerge*)opBase;
-    AST *ast = AST_GetFromTLS();
-    op->record_len = AST_RecordLength(ast);
     return OP_OK;
 }
 
@@ -175,7 +172,7 @@ Record OpMergeConsume(OpBase *opBase) {
         if(op->matched) return r;
 
         // No previous match, create MERGE pattern.
-        r = Record_New(op->record_len);
+        r = Record_New(opBase->record_len);
         _CreateEntities(op, r);
         op->created = true;
     }

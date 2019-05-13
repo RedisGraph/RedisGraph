@@ -30,9 +30,6 @@ OpBase* NewAllNodeScanOp(const Graph *g, Node *n, uint node_idx) {
 }
 
 OpResult AllNodeScanInit(OpBase *opBase) {
-    AllNodeScan *op = (AllNodeScan*)opBase;
-    AST *ast = AST_GetFromTLS();
-    op->recLength = AST_RecordLength(ast);
     return OP_OK;
 }
 
@@ -42,7 +39,7 @@ Record AllNodeScanConsume(OpBase *opBase) {
     Entity *en = (Entity*)DataBlockIterator_Next(op->iter);
     if(en == NULL) return NULL;
     
-    Record r = Record_New(op->recLength);
+    Record r = Record_New(opBase->record_len);
     Node *n = Record_GetNode(r, op->nodeRecIdx);
     n->entity = en;
 

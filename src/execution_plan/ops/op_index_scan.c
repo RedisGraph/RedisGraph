@@ -29,9 +29,6 @@ OpBase* NewIndexScanOp(Graph *g, Node *node, uint node_idx, IndexIter *iter) {
 }
 
 OpResult IndexScanInit(OpBase *opBase) {
-    IndexScan *op = (IndexScan*)opBase;
-    AST *ast = AST_GetFromTLS();
-    op->recLength = AST_RecordLength(ast);
     return OP_OK;
 }
 
@@ -41,7 +38,7 @@ Record IndexScanConsume(OpBase *opBase) {
   EntityID *nodeId = IndexIter_Next(op->iter);
   if (!nodeId) return NULL;
 
-  Record r = Record_New(op->recLength);
+  Record r = Record_New(opBase->record_len);
   // Get a pointer to a heap allocated node.
   Node *n = Record_GetNode(r, op->nodeRecIdx);
   // Update node's internal entity pointer.

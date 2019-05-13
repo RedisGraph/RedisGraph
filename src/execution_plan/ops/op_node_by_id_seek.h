@@ -16,7 +16,6 @@ typedef struct {
     OpBase op;
     Graph *g;               // Graph object.
     int nodeRecIdx;         // Position of entity within record.
-    int recLength;          // Size of record.
     NodeID minId;           // Min ID to fetch.
     bool minInclusive;      // Include min ID.
     NodeID maxId;           // Max ID to fetch.

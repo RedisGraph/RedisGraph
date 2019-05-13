@@ -41,9 +41,6 @@ OpBase *NewNodeByLabelScanOp(GraphContext *gc, Node *node, unsigned int node_idx
 }
 
 OpResult NodeByLabelScanInit(OpBase *opBase) {
-    NodeByLabelScan *op = (NodeByLabelScan*)opBase;
-    AST *ast = AST_GetFromTLS();
-    op->recLength = AST_RecordLength(ast);
     return OP_OK;
 }
 
@@ -55,7 +52,7 @@ Record NodeByLabelScanConsume(OpBase *opBase) {
     GxB_MatrixTupleIter_next(op->iter, NULL, &nodeId, &depleted);
     if(depleted) return NULL;
     
-    Record r = Record_New(op->recLength);
+    Record r = Record_New(opBase->record_len);
     // Get a pointer to a heap allocated node.
     Node *n = Record_GetNode(r, op->nodeRecIdx);
     // Update node's internal entity pointer.

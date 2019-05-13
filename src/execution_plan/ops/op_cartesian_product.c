@@ -62,8 +62,7 @@ static int _PullFromStreams(CartesianProduct *op) {
 
 OpResult CartesianProductInit(OpBase *opBase) {
     CartesianProduct *op = (CartesianProduct*)opBase;
-    AST *ast = AST_GetFromTLS();
-    op->r = Record_New(AST_RecordLength(ast));
+    op->r = Record_New(opBase->record_len);
     return OP_OK;
 }
 

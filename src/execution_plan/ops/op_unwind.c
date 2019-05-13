@@ -32,9 +32,6 @@ OpBase* NewUnwindOp(uint record_idx, AR_ExpNode **exps) {
 }
 
 OpResult UnwindInit(OpBase *opBase) {
-    OpUnwind *op = (OpUnwind*)opBase;
-    AST *ast = AST_GetFromTLS();
-    op->record_len = AST_RecordLength(ast);
     return OP_OK;
 }
 
@@ -45,7 +42,7 @@ Record UnwindConsume(OpBase *opBase) {
     if(op->expIdx == array_len(op->expressions)) return NULL;
 
     AR_ExpNode *exp = op->expressions[op->expIdx];
-    Record r = Record_New(op->record_len);
+    Record r = Record_New(opBase->record_len);
     SIValue v = AR_EXP_Evaluate(exp, r);
     Record_AddScalar(r, op->unwindRecIdx, v);
     op->expIdx++;

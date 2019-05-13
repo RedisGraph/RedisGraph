@@ -207,9 +207,6 @@ static Record _handoff(OpCreate *op) {
 }
 
 OpResult OpCreateInit(OpBase *opBase) {
-    OpCreate *op = (OpCreate*)opBase;
-    AST *ast = AST_GetFromTLS();
-    op->record_len = AST_RecordLength(ast);
     return OP_OK;
 }
 
@@ -225,7 +222,7 @@ Record OpCreateConsume(OpBase *opBase) {
 
     // No child operation to call.
     if(!op->op.childCount) {
-        r = Record_New(op->record_len);
+        r = Record_New(opBase->record_len);
         /* Create entities. */
         _CreateNodes(op, r);
         _CreateEdges(op, r);

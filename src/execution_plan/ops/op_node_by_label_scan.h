@@ -18,7 +18,6 @@ typedef struct {
     OpBase op;
     Node *node;                 /* Node being scanned. */
     unsigned int nodeRecIdx;    /* Node position within record. */
-    unsigned int recLength;     /* Number of entries in a record. */
     Graph *g;
     GxB_MatrixTupleIter *iter;
     GrB_Matrix _zero_matrix;    /* Fake matrix, in-case label does not exists. */

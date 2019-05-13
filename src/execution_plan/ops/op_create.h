@@ -20,7 +20,6 @@ typedef struct {
     GraphContext *gc;
     QueryGraph *qg;
     Record *records;
-    uint record_len;
 
     NodeCreateCtx *nodes_to_create;
     EdgeCreateCtx *edges_to_create;

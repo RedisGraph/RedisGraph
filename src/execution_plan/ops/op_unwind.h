@@ -15,7 +15,6 @@
 typedef struct {
     OpBase op;
     AR_ExpNode **expressions;   // Array of expressions
-    uint record_len;            // Length of record to create.
     uint expIdx;                // Current expression index to evaluate.
     int unwindRecIdx;           // Update record at this index.
  } OpUnwind;

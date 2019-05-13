@@ -16,7 +16,6 @@
 typedef struct {
     OpBase op;
     uint nodeRecIdx;
-    uint recLength;  // Number of entries in a record.
     Graph *g;
     IndexIter *iter;
 } IndexScan;

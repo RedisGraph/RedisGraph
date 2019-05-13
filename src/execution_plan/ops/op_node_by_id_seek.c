@@ -61,9 +61,6 @@ OpBase* NewOpNodeByIdSeekOp
 }
 
 OpResult OpNodeByIdSeekInit(OpBase *opBase) {
-    OpNodeByIdSeek *op = (OpNodeByIdSeek*)opBase;
-    AST *ast = AST_GetFromTLS();
-    op->recLength = AST_RecordLength(ast);
     return OP_OK;
 }
 
@@ -88,7 +85,7 @@ Record OpNodeByIdSeekConsume(OpBase *opBase) {
     // TODO If we're replacing a label scan, the correct label can be populated now.
     n.label = NULL;
 
-    Record r = Record_New(op->recLength);
+    Record r = Record_New(opBase->record_len);
     Record_AddNode(r, op->nodeRecIdx, n);
     return r;
 }

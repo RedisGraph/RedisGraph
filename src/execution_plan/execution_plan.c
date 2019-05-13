@@ -448,6 +448,8 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
         Vector_Free(sub_trees);
     }
 
+    segment->record_len = AST_RecordLength(ast);
+
     return segment;
 }
 
@@ -576,16 +578,20 @@ char* ExecutionPlan_Print(const ExecutionPlan *plan) {
     return strPlan;
 }
 
-void _ExecutionPlanSegmentInit(OpBase *root) {
+void _ExecutionPlanSegmentInit(OpBase *root, uint record_len) {
+    // If the operation's record length has already been set, it and all subsequent
+    // operations have been initialized by an earlier segment.
+    if (root->record_len > 0) return;
+
+    root->record_len = record_len;
     if(root->init) root->init(root);
     for(int i = 0; i < root->childCount; i++) {
-        _ExecutionPlanSegmentInit(root->children[i]);
+        _ExecutionPlanSegmentInit(root->children[i], record_len);
     }
 }
 
 void ExecutionPlanSegmentInit(ExecutionPlanSegment *segment) {
-    if(!segment) return;
-    _ExecutionPlanSegmentInit(segment->root);
+    _ExecutionPlanSegmentInit(segment->root, segment->record_len);
 }
 
 Record _ExecutionPlanSegment_Execute(ExecutionPlanSegment *segment) {
