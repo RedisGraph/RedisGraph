@@ -13,13 +13,13 @@ OpBase* NewAllNodeScanOp(const Graph *g, Node *n, uint node_idx) {
 
     AST *ast = AST_GetFromTLS();
     allNodeScan->nodeRecIdx = node_idx;
-    allNodeScan->recLength = AST_RecordLength(ast);
 
     // Set our Op operations
     OpBase_Init(&allNodeScan->op);
     allNodeScan->op.name = "All Node Scan";
     allNodeScan->op.type = OPType_ALL_NODE_SCAN;
     allNodeScan->op.consume = AllNodeScanConsume;
+    allNodeScan->op.init = AllNodeScanInit;
     allNodeScan->op.reset = AllNodeScanReset;
     allNodeScan->op.free = AllNodeScanFree;
 
@@ -27,6 +27,13 @@ OpBase* NewAllNodeScanOp(const Graph *g, Node *n, uint node_idx) {
     allNodeScan->op.modifies = array_append(allNodeScan->op.modifies, node_idx);
 
     return (OpBase*)allNodeScan;
+}
+
+OpResult AllNodeScanInit(OpBase *opBase) {
+    AllNodeScan *op = (AllNodeScan*)opBase;
+    AST *ast = AST_GetFromTLS();
+    op->recLength = AST_RecordLength(ast);
+    return OP_OK;
 }
 
 Record AllNodeScanConsume(OpBase *opBase) {

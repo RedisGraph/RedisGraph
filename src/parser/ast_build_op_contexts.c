@@ -223,10 +223,9 @@ AST_UnwindContext AST_PrepareUnwindOp(const AST *ast, const cypher_astnode_t *un
     const cypher_astnode_t *collection = cypher_ast_unwind_get_expression(unwind_clause);
     AR_ExpNode **exps = _AST_ConvertCollection(collection);
     const char *alias = cypher_ast_identifier_get_name(cypher_ast_unwind_get_alias(unwind_clause));
-    uint record_len = AST_RecordLength(ast);
     uint record_idx = AST_GetAliasID(ast, (char*)alias);
 
-    AST_UnwindContext ctx = { .exps = exps, .alias = alias, .record_len = record_len, .record_idx = record_idx };
+    AST_UnwindContext ctx = { .exps = exps, .record_idx = record_idx };
     return ctx;
 }
 
@@ -255,8 +254,7 @@ AST_MergeContext AST_PrepareMergeOp(AST *ast, const cypher_astnode_t *merge_clau
         }
     }
 
-    uint record_len = AST_RecordLength(ast);
-    AST_MergeContext ctx = { .nodes_to_merge = nodes_to_merge, .edges_to_merge = edges_to_merge, .record_len = record_len };
+    AST_MergeContext ctx = { .nodes_to_merge = nodes_to_merge, .edges_to_merge = edges_to_merge };
     return ctx;
 }
 
@@ -374,8 +372,7 @@ AST_CreateContext AST_PrepareCreateOp(AST *ast, QueryGraph *qg) {
 
     TrieMap_Free(match_entities, TrieMap_NOP_CB);
 
-    uint record_len = AST_RecordLength(ast);
-    AST_CreateContext ctx = { .nodes_to_create = nodes_to_create, .edges_to_create = edges_to_create, .record_len = record_len };
+    AST_CreateContext ctx = { .nodes_to_create = nodes_to_create, .edges_to_create = edges_to_create };
 
     return ctx;
 }

@@ -10,11 +10,10 @@
 #include "../../arithmetic/arithmetic_expression.h"
 #include <assert.h>
 
-OpBase* NewCreateOp(ResultSetStatistics *stats, NodeCreateCtx *nodes, EdgeCreateCtx *edges, uint record_len) {
+OpBase* NewCreateOp(ResultSetStatistics *stats, NodeCreateCtx *nodes, EdgeCreateCtx *edges) {
     OpCreate *op_create = calloc(1, sizeof(OpCreate));
     op_create->gc = GraphContext_GetFromTLS();
     op_create->records = NULL;
-    op_create->record_len = record_len;
     op_create->nodes_to_create = nodes;
     op_create->edges_to_create = edges;
     op_create->created_nodes = array_new(Node*, 0);
@@ -30,6 +29,7 @@ OpBase* NewCreateOp(ResultSetStatistics *stats, NodeCreateCtx *nodes, EdgeCreate
     op_create->op.name = "Create";
     op_create->op.type = OPType_CREATE;
     op_create->op.consume = OpCreateConsume;
+    op_create->op.init = OpCreateInit;
     op_create->op.reset = OpCreateReset;
     op_create->op.free = OpCreateFree;
 
@@ -204,6 +204,13 @@ static Record _handoff(OpCreate *op) {
     Record r = NULL;
     if(array_len(op->records)) r = array_pop(op->records);
     return r;
+}
+
+OpResult OpCreateInit(OpBase *opBase) {
+    OpCreate *op = (OpCreate*)opBase;
+    AST *ast = AST_GetFromTLS();
+    op->record_len = AST_RecordLength(ast);
+    return OP_OK;
 }
 
 Record OpCreateConsume(OpBase *opBase) {

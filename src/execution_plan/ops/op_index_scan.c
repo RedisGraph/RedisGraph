@@ -12,14 +12,13 @@ OpBase* NewIndexScanOp(Graph *g, Node *node, uint node_idx, IndexIter *iter) {
   indexScan->iter = iter;
 
   indexScan->nodeRecIdx = node_idx;
-  AST *ast = AST_GetFromTLS();
-  indexScan->recLength = AST_RecordLength(ast);
 
   // Set our Op operations
   OpBase_Init(&indexScan->op);
   indexScan->op.name = "Index Scan";
   indexScan->op.type = OPType_INDEX_SCAN;
   indexScan->op.consume = IndexScanConsume;
+  indexScan->op.init = IndexScanInit;
   indexScan->op.reset = IndexScanReset;
   indexScan->op.free = IndexScanFree;
 
@@ -27,6 +26,13 @@ OpBase* NewIndexScanOp(Graph *g, Node *node, uint node_idx, IndexIter *iter) {
   indexScan->op.modifies = array_append(indexScan->op.modifies, indexScan->nodeRecIdx);
 
   return (OpBase*)indexScan;
+}
+
+OpResult IndexScanInit(OpBase *opBase) {
+    IndexScan *op = (IndexScan*)opBase;
+    AST *ast = AST_GetFromTLS();
+    op->recLength = AST_RecordLength(ast);
+    return OP_OK;
 }
 
 Record IndexScanConsume(OpBase *opBase) {

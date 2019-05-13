@@ -17,21 +17,17 @@
 // TODO adopt this style for other functions
 typedef struct {
     AR_ExpNode **exps;
-    const char *alias;
-    uint record_len;
     uint record_idx;
 } AST_UnwindContext;
 
 typedef struct {
     NodeCreateCtx *nodes_to_merge;
     EdgeCreateCtx *edges_to_merge;
-    uint record_len;
 } AST_MergeContext;
 
 typedef struct {
     NodeCreateCtx *nodes_to_create;
     EdgeCreateCtx *edges_to_create;
-    uint record_len;
 } AST_CreateContext;
 
 int TraverseRecordCap(const AST *ast);

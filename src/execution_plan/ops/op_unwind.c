@@ -9,12 +9,10 @@
 #include "../../util/arr.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
-// TODO alias unused, remove
-OpBase* NewUnwindOp(uint record_len, uint record_idx, AR_ExpNode **exps, const char *alias) {
+OpBase* NewUnwindOp(uint record_idx, AR_ExpNode **exps) {
     OpUnwind *unwind = malloc(sizeof(OpUnwind));
     unwind->expIdx = 0;
     unwind->expressions = exps;
-    unwind->record_len = record_len;
 
     // Set our Op operations
     OpBase_Init(&unwind->op);
@@ -35,6 +33,8 @@ OpBase* NewUnwindOp(uint record_len, uint record_idx, AR_ExpNode **exps, const c
 
 OpResult UnwindInit(OpBase *opBase) {
     OpUnwind *op = (OpUnwind*)opBase;
+    AST *ast = AST_GetFromTLS();
+    op->record_len = AST_RecordLength(ast);
     return OP_OK;
 }
 

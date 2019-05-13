@@ -16,7 +16,8 @@
      Record r;
  } CartesianProduct;
 
-OpBase* NewCartesianProductOp(uint record_len);
+OpBase* NewCartesianProductOp(void);
+OpResult CartesianProductInit(OpBase *opBase);
 Record CartesianProductConsume(OpBase *opBase);
 OpResult CartesianProductReset(OpBase *opBase);
 void CartesianProductFree(OpBase *opBase);

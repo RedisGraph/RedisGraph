@@ -125,7 +125,7 @@ static void _CreateEntities(OpMerge *op, Record r) {
     Graph_ReleaseLock(op->gc->g);
 }
 
-OpBase* NewMergeOp(ResultSetStatistics *stats, NodeCreateCtx *nodes_to_merge, EdgeCreateCtx *edges_to_merge, uint record_len) {
+OpBase* NewMergeOp(ResultSetStatistics *stats, NodeCreateCtx *nodes_to_merge, EdgeCreateCtx *edges_to_merge) {
     OpMerge *op_merge = malloc(sizeof(OpMerge));
     // TODO Why is stats guaranteed to exist?
     op_merge->stats = stats;
@@ -133,7 +133,6 @@ OpBase* NewMergeOp(ResultSetStatistics *stats, NodeCreateCtx *nodes_to_merge, Ed
     op_merge->matched = false;
     op_merge->created = false;
 
-    op_merge->record_len = record_len;
     op_merge->nodes_to_merge = nodes_to_merge;
     op_merge->edges_to_merge = edges_to_merge;
 
@@ -142,10 +141,18 @@ OpBase* NewMergeOp(ResultSetStatistics *stats, NodeCreateCtx *nodes_to_merge, Ed
     op_merge->op.name = "Merge";
     op_merge->op.type = OPType_MERGE;
     op_merge->op.consume = OpMergeConsume;
+    op_merge->op.init = OpMergeInit;
     op_merge->op.reset = OpMergeReset;
     op_merge->op.free = OpMergeFree;
 
     return (OpBase*)op_merge;
+}
+
+OpResult OpMergeInit(OpBase *opBase) {
+    OpMerge *op = (OpMerge*)opBase;
+    AST *ast = AST_GetFromTLS();
+    op->record_len = AST_RecordLength(ast);
+    return OP_OK;
 }
 
 Record OpMergeConsume(OpBase *opBase) {

@@ -33,6 +33,11 @@ OpBase* NewOpNodeByIdSeekOp
     bool includeMax
 );
 
+OpResult OpNodeByIdSeekInit
+(
+    OpBase *opBase
+);
+
 Record OpNodeByIdSeekConsume
 (
     OpBase *opBase

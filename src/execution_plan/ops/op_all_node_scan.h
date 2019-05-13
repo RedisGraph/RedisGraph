@@ -24,6 +24,7 @@
 
 OpBase* NewAllNodeScanOp(const Graph *g, Node *n, uint rec_idx);
 Record AllNodeScanConsume(OpBase *opBase);
+OpResult AllNodeScanInit(OpBase *opBase);
 OpResult AllNodeScanReset(OpBase *op);
 void AllNodeScanFree(OpBase *ctx);
 

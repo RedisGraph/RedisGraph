@@ -24,6 +24,8 @@ typedef struct {
 /* Creates a new IndexScan operation */
 OpBase *NewIndexScanOp(Graph *g, Node *node, uint node_idx, IndexIter *iter);
 
+OpResult IndexScanInit(OpBase *opBase);
+
 /* IndexScan next operation
  * called each time a new node is required */
 Record IndexScanConsume(OpBase *opBase);

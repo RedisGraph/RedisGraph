@@ -14,8 +14,6 @@ OpBase *NewNodeByLabelScanOp(GraphContext *gc, Node *node, unsigned int node_idx
     nodeByLabelScan->_zero_matrix = NULL;
 
     nodeByLabelScan->nodeRecIdx = node_idx;
-    AST *ast = AST_GetFromTLS();
-    nodeByLabelScan->recLength = AST_RecordLength(ast);
 
     /* Find out label matrix ID. */
     Schema *schema = GraphContext_GetSchema(gc, node->label, SCHEMA_NODE);
@@ -32,6 +30,7 @@ OpBase *NewNodeByLabelScanOp(GraphContext *gc, Node *node, unsigned int node_idx
     nodeByLabelScan->op.name = "Node By Label Scan";
     nodeByLabelScan->op.type = OPType_NODE_BY_LABEL_SCAN;
     nodeByLabelScan->op.consume = NodeByLabelScanConsume;
+    nodeByLabelScan->op.init = NodeByLabelScanInit;
     nodeByLabelScan->op.reset = NodeByLabelScanReset;
     nodeByLabelScan->op.free = NodeByLabelScanFree;
     
@@ -39,6 +38,13 @@ OpBase *NewNodeByLabelScanOp(GraphContext *gc, Node *node, unsigned int node_idx
     nodeByLabelScan->op.modifies = array_append(nodeByLabelScan->op.modifies, node_idx);
 
     return (OpBase*)nodeByLabelScan;
+}
+
+OpResult NodeByLabelScanInit(OpBase *opBase) {
+    NodeByLabelScan *op = (NodeByLabelScan*)opBase;
+    AST *ast = AST_GetFromTLS();
+    op->recLength = AST_RecordLength(ast);
+    return OP_OK;
 }
 
 Record NodeByLabelScanConsume(OpBase *opBase) {

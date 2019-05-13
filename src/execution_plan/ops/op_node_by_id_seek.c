@@ -24,8 +24,6 @@ OpBase* NewOpNodeByIdSeekOp
     bool maxInclusive
 )
 {
-    AST *ast = AST_GetFromTLS();
-
     // Can't include unspecified bound.
     assert(!(minId == ID_RANGE_UNBOUND && minInclusive));
     assert(!(maxId == ID_RANGE_UNBOUND && maxInclusive));
@@ -50,16 +48,23 @@ OpBase* NewOpNodeByIdSeekOp
     if(!minInclusive && minId != ID_RANGE_UNBOUND) op_nodeByIdSeek->currentId++;
 
     op_nodeByIdSeek->nodeRecIdx = nodeRecIdx;
-    op_nodeByIdSeek->recLength = AST_RecordLength(ast);
 
     OpBase_Init(&op_nodeByIdSeek->op);
     op_nodeByIdSeek->op.name = "NodeByIdSeek";
     op_nodeByIdSeek->op.type = OPType_NODE_BY_ID_SEEK;
     op_nodeByIdSeek->op.consume = OpNodeByIdSeekConsume;
+    op_nodeByIdSeek->op.init = OpNodeByIdSeekInit;
     op_nodeByIdSeek->op.reset = OpNodeByIdSeekReset;
     op_nodeByIdSeek->op.free = OpNodeByIdSeekFree;
 
     return (OpBase*)op_nodeByIdSeek;
+}
+
+OpResult OpNodeByIdSeekInit(OpBase *opBase) {
+    OpNodeByIdSeek *op = (OpNodeByIdSeek*)opBase;
+    AST *ast = AST_GetFromTLS();
+    op->recLength = AST_RecordLength(ast);
+    return OP_OK;
 }
 
 Record OpNodeByIdSeekConsume(OpBase *opBase) {

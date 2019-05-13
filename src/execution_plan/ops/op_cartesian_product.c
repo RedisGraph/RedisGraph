@@ -6,17 +6,16 @@
 
 #include "op_cartesian_product.h"
 
-OpBase* NewCartesianProductOp(uint record_len) {
+OpBase* NewCartesianProductOp(void) {
     CartesianProduct *cp = malloc(sizeof(CartesianProduct));
     cp->init = true;
-
-    cp->r = Record_New(record_len);
 
     // Set our Op operations
     OpBase_Init(&cp->op);
     cp->op.name = "Cartesian Product";
     cp->op.type = OPType_CARTESIAN_PRODUCT;
     cp->op.consume = CartesianProductConsume;
+    cp->op.init = CartesianProductInit;
     cp->op.reset = CartesianProductReset;
     cp->op.free = CartesianProductFree;
 
@@ -59,6 +58,13 @@ static int _PullFromStreams(CartesianProduct *op) {
     /* If we're here, then we didn't manged to get new data.
      * Last stream depleted. */
     return 0;
+}
+
+OpResult CartesianProductInit(OpBase *opBase) {
+    CartesianProduct *op = (CartesianProduct*)opBase;
+    AST *ast = AST_GetFromTLS();
+    op->r = Record_New(AST_RecordLength(ast));
+    return OP_OK;
 }
 
 Record CartesianProductConsume(OpBase *opBase) {
