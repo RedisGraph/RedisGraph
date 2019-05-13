@@ -57,7 +57,7 @@ class GraphMultiPatternQueryFlowTest(FlowTestsBase):
         assert (actual_result.relationships_created == 6)
 
     def test02_verify_cartesian_product_streams_reset(self):
-        # See https://github.com/RedisLabsModules/RedisGraph/issues/249
+        # See https://github.com/RedisGraph/RedisGraph/issues/249
         # Forevery outgoing edge, we expect len(people) to be matched.
         expected_resultset_size = 6 * len(people)
         queries = ["""MATCH (r:person {name:"Roi"})-[]->(f), (x) RETURN f, x""",
