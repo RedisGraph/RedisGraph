@@ -1,7 +1,7 @@
 site_name: RedisGraph - a graph database module for Redis
 site_url: http://redisgraph.io
 repo_url: https://github.com/RedisGraph/RedisGraph
-repo_name: RedisLabsModules/RedisGraph
+repo_name: RedisGraph/RedisGraph
 
 google_analytics:
   - 'UA-92003007-1'
