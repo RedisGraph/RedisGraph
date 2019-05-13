@@ -15,7 +15,7 @@ Primary features:
 * [Cypher](http://www.opencypher.org/) as query language
   * Cypher queries translated into linear algebra expressions
 
-To see RedisGraph in action, visit [Demos](https://github.com/RedisLabsModules/redis-module-graph/tree/master/demo).
+To see RedisGraph in action, visit [Demos](https://github.com/RedisGraph/RedisGraph/tree/master/demo).
 
 ## Quickstart
 
@@ -79,7 +79,7 @@ How many riders represent team Ducati?
 
 Requirements:
 
-* The RedisGraph repository: `git clone https://github.com/RedisLabsModules/RedisGraph.git`
+* The RedisGraph repository: `git clone https://github.com/RedisGraph/RedisGraph.git`
 
 * On Ubuntu Linux, run: `apt-get install build-essential cmake`
 
