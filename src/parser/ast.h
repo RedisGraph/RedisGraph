@@ -53,9 +53,6 @@ char* AST_ReportErrors(const cypher_parse_result_t *result);
 // Returns all function (aggregated & none aggregated) mentioned in query.
 void AST_ReferredFunctions(const cypher_astnode_t *root, TrieMap *referred_funcs);
 
-// Checks if RETURN clause contains collapsed entities.
-int AST_ReturnClause_ContainsCollapsedNodes(const AST *ast);
-
 // Returns specified clause or NULL.
 const cypher_astnode_t* AST_GetClause(const AST *ast, cypher_astnode_type_t clause_type);
 

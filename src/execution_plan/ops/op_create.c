@@ -233,6 +233,11 @@ Record OpCreateConsume(OpBase *opBase) {
         // Pull data until child is depleted.
         OpBase *child = op->op.children[0];
         while((r = child->consume(child))) {
+            if (Record_length(r) < opBase->record_len) {
+                // If the child record was created in a different segment, it may not be
+                // large enough to accommodate the new entities.
+                Record_Extend(&r, opBase->record_len);
+            }
             /* Create entities. */
             _CreateNodes(op, r);
             _CreateEdges(op, r);

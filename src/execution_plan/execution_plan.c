@@ -432,11 +432,6 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
             /* Scan execution segment, locate the earliest position where all
              * references been resolved. */
             OpBase *op = ExecutionPlanSegment_LocateReferences(segment->root, references);
-            if (op == NULL) {
-                /* TODO The references may have been resolved by a WITH clause:
-                   "MATCH (p:person) WITH avg(p.age) AS average_age MATCH(:person)-[:friend]->(f:person) WHERE f.age > average_age RETURN f.age"
-               */
-            }
             assert(op);
 
             /* Create filter node.
@@ -617,15 +612,6 @@ ResultSet* ExecutionPlan_Execute(ExecutionPlan *plan) {
             depleted = true;
             break;
         }
-        // The same record will be passed through all segments for each loop execution
-        // Record r = NULL;
-        // for (uint i = 0; i < plan->segment_count; i ++) {
-            // r = _ExecutionPlanSegment_Execute(plan->segments[i], r);
-            // if (r == NULL) {
-                // depleted = true;
-                // break;
-            // }
-        // }
     }
     return plan->result_set;
 }

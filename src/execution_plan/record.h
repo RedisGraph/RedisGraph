@@ -36,6 +36,9 @@ Record Record_New(int entries);
 // Clones record.
 Record Record_Clone(const Record r);
 
+// Extends record to accommodate 'len' entries.
+void Record_Extend(Record *r, int len);
+
 // Merge record b into a.
 void Record_Merge(Record *a, const Record b);
 

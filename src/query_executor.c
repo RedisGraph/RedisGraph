@@ -72,14 +72,14 @@ AR_ExpNode** _ExpandCollapsedNodes(AST *ast, AR_ExpNode **return_expressions) {
                 exp->alias = rm_strdup(alias); // TODO sensible?
                 expandReturnElements = array_append(expandReturnElements, exp);
                 continue;
-            } else if (type == CYPHER_AST_IDENTIFIER) {
-                // Observed in query "UNWIND [1,2,3] AS a RETURN a AS e"
-                char *alias = (char*)cypher_ast_identifier_get_name(ast_entity);
-                AR_ExpNode *exp = AST_GetEntityFromAlias(ast, alias);
-                AST_MapAlias(ast, alias, exp);
-                exp->alias = rm_strdup(alias);
-                expandReturnElements = array_append(expandReturnElements, exp);
-                continue;
+            // } else if (type == CYPHER_AST_IDENTIFIER) {
+                // // Observed in query "UNWIND [1,2,3] AS a RETURN a AS e"
+                // char *alias = (char*)cypher_ast_identifier_get_name(ast_entity);
+                // AR_ExpNode *inner_exp = AST_GetEntityFromAlias(ast, alias);
+                // AST_MapAlias(ast, alias, inner_exp);
+                // exp->alias = rm_strdup(alias);
+                // expandReturnElements = array_append(expandReturnElements, inner_exp);
+                // continue;
             } else {
                 // We might be encountering an alias referring to a WITH clause entity
                 // TODO for the moment, just evaluate the else block code - improve later
@@ -375,10 +375,15 @@ AR_ExpNode** AST_BuildOrderExpressions(AST *ast, const cypher_astnode_t *order_c
 AR_ExpNode** AST_BuildReturnExpressions(AST *ast, const cypher_astnode_t *ret_clause) {
     AR_ExpNode **exps = _BuildReturnExpressions(ast, ret_clause);
 
-    if(AST_ReturnClause_ContainsCollapsedNodes(ast)) {
-        /* Expand collapsed nodes. */
-        // TODO memory leak on column names
-        // array_free(column_names);
+    bool contains_collapsed = false;
+    uint exp_count = array_len(exps);
+    for (uint i = 0; i < exp_count; i ++) {
+        if (exps[i]->collapsed == true) {
+            contains_collapsed = true;
+            break;
+        }
+    }
+    if (contains_collapsed) {
         exps = _ExpandCollapsedNodes(ast, exps);
     }
 

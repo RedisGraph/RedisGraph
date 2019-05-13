@@ -29,7 +29,11 @@ static void _BuildQueryGraphAddNode(const GraphContext *gc,
 
     // Check if node has been mapped using a different AST entity
     AR_ExpNode *exp = AST_GetEntity(ast, ast_entity);
-    n = QueryGraph_GetEntityByASTRef(qg, exp->operand.variadic.ast_ref);
+    char *alias = NULL;
+    if (exp) {
+        n = QueryGraph_GetEntityByASTRef(qg, exp->operand.variadic.ast_ref);
+        alias = exp->operand.variadic.entity_alias;
+    }
 
     unsigned int nlabels = cypher_ast_node_pattern_nlabels(ast_entity);
     const char *label = (nlabels > 0) ? cypher_ast_label_get_name(cypher_ast_node_pattern_get_label(ast_entity, 0)) : NULL;
@@ -40,7 +44,6 @@ static void _BuildQueryGraphAddNode(const GraphContext *gc,
         if (!n->label && label) n->label = strdup(label);
     } else {
         /* Create a new node, set its properties, and add it to the graph. */
-        char *alias = exp->operand.variadic.entity_alias;
         n = Node_New(label, alias);
         _QueryGraph_AddASTRef(qg, ast_entity, (void*)n);
         qg->nodes = array_append(qg->nodes, n);
@@ -73,7 +76,10 @@ static void _BuildQueryGraphAddEdge(const GraphContext *gc,
     if (e) return;
 
     AR_ExpNode *exp = AST_GetEntity(ast, ast_entity);
-    char *alias = exp->operand.variadic.entity_alias;
+    char *alias = NULL;
+    if (exp) {
+        alias = exp->operand.variadic.entity_alias;
+    }
 
     const cypher_astnode_t *src_node;
     const cypher_astnode_t *dest_node;

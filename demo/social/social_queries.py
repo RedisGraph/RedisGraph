@@ -95,11 +95,11 @@ friends_of_friends_single_and_over_30_query = QueryInfo(
 friends_of_friends_visited_netherlands_and_single_query = QueryInfo(
     query="""MATCH (ME:person {name:"Roi Lipman"})-[:friend]->(:person)-[:friend]->
              (fof:person {status:"single"})-[:visited]->(:country {name:"Netherlands"})
-             RETURN fof.name""",
+             RETURN fof.name ORDER BY fof.name""",
     description='Friends of friends who visited Netherlands and are single?',
     max_run_time_ms=0.3,
-    expected_result=[['Noam Nativ'],
-                     ['Gal Derriere']]
+    expected_result=[['Gal Derriere'],
+                     ['Noam Nativ']]
 )
 
 friends_visited_same_places_as_me_query = QueryInfo(

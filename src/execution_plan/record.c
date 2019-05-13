@@ -12,15 +12,6 @@
 #define RECORD_HEADER(r) (r-1)
 #define RECORD_HEADER_ENTRY(r) *(RECORD_HEADER((r)))
 
-static void _Record_Extend(Record *r, int len) {
-    if(Record_length(*r) >= len) return;
-
-    Entry header = RECORD_HEADER_ENTRY(*r);
-    (void)header; // Suppress "set but not used" compiler complaint
-    header.value.s.longval = len;
-    *r = rm_realloc(*r, sizeof(Entry) * (len+1));
-}
-
 Record Record_New(int entries) {
     Record r = rm_calloc((entries + 1), sizeof(Entry));
 
@@ -32,12 +23,6 @@ Record Record_New(int entries) {
     return r+1;
 }
 
-unsigned int Record_length(const Record r) {
-    Entry header = RECORD_HEADER_ENTRY(r);
-    int recordLength = header.value.s.longval;
-    return recordLength;
-}
-
 Record Record_Clone(const Record r) {
     int recordLength = Record_length(r);
     Record clone = Record_New(recordLength);
@@ -45,16 +30,34 @@ Record Record_Clone(const Record r) {
     return clone;
 }
 
+void Record_Extend(Record *r, int len) {
+    if(Record_length(*r) >= len) return;
+
+    Record header_ptr = RECORD_HEADER(*r);
+    // Update length of record
+    header_ptr->value.s.longval = len;
+    header_ptr = rm_realloc(header_ptr, sizeof(Entry) * (len+1));
+
+    // Reposition the Record's data pointer in case it was moved by the realloc
+    *r = header_ptr + 1;
+}
+
 void Record_Merge(Record *a, const Record b) {
     int aLength = Record_length(*a);
     int bLength = Record_length(b);
-    if(aLength < bLength) _Record_Extend(a, bLength);
+    if(aLength < bLength) Record_Extend(a, bLength);
 
     for(int i = 0; i < bLength; i++) {
         if(b[i].type != REC_TYPE_UNKNOWN) {
             (*a)[i] = b[i];
         }
     }
+}
+
+unsigned int Record_length(const Record r) {
+    Entry header = RECORD_HEADER_ENTRY(r);
+    int recordLength = header.value.s.longval;
+    return recordLength;
 }
 
 RecordEntryType Record_GetType(const Record r, int idx) {
@@ -206,11 +209,11 @@ unsigned long long Record_Hash64(const Record r) {
 }
 
 void Record_Free(Record r) {
-    // unsigned int length = Record_length(r);
-    // for(unsigned int i = 0; i < length; i++) {
-        // if(r[i].type == REC_TYPE_SCALAR) {
-            // SIValue_Free(&r[i].value.s);
-        // }
-    // }
-    // rm_free((r-1));
+    unsigned int length = Record_length(r);
+    for(unsigned int i = 0; i < length; i++) {
+        if(r[i].type == REC_TYPE_SCALAR) {
+            SIValue_Free(&r[i].value.s);
+        }
+    }
+    rm_free((r-1));
 }

@@ -184,7 +184,7 @@ AlgebraicExpression **_AlgebraicExpression_Intermediate_Expressions(const AST *a
 
         AR_ExpNode *expr = AST_GetEntity(ast, ast_rel);
         /* If edge is referenced, set expression edge pointer. */
-        if (expr->record_idx != NOT_IN_RECORD && expr->operand.variadic.entity_alias) { // TODO what is actually necessary?
+        if (expr && expr->record_idx != NOT_IN_RECORD && expr->operand.variadic.entity_alias) { // TODO what is actually necessary?
             iexp->edge = e;
             iexp->relation_ids = _setup_traversed_relations(ast_rel);
             if (expr->record_idx == NOT_IN_RECORD) {

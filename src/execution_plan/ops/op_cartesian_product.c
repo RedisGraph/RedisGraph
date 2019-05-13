@@ -9,6 +9,7 @@
 OpBase* NewCartesianProductOp(void) {
     CartesianProduct *cp = malloc(sizeof(CartesianProduct));
     cp->init = true;
+    cp->r = NULL;
 
     // Set our Op operations
     OpBase_Init(&cp->op);
@@ -113,5 +114,5 @@ OpResult CartesianProductReset(OpBase *opBase) {
 
 void CartesianProductFree(OpBase *opBase) {
     CartesianProduct *op = (CartesianProduct*)opBase;
-    Record_Free(op->r);
+    if (op->r) Record_Free(op->r);
 }
