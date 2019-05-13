@@ -28,5 +28,5 @@ void optimizeSegment(GraphContext *gc, ExecutionPlanSegment *segment) {
     reduceDistinct(segment);
 
     /* Try to reduce execution segment incase it perform node counting. */
-    // reduceCount(segment); // TODO project single response stuff
+    reduceCount(segment);
 }

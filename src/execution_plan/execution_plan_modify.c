@@ -35,7 +35,7 @@ void _OpBase_RemoveNode(OpBase *parent, OpBase *child) {
 
     assert(i != parent->childCount);
 
-    // Uppdate child count.
+    // Update child count.
     parent->childCount--;
     if(parent->childCount == 0) {
         free(parent->children);
@@ -145,7 +145,10 @@ void ExecutionPlanSegment_RemoveOp(ExecutionPlanSegment *plan, OpBase *op) {
     if(op->parent == NULL) {
         // Removing execution plan root.
         assert(op->childCount == 1);
+        // Assign child as new root.
         plan->root = op->children[0];
+        // Remove new root's parent pointer.
+        plan->root->parent = NULL;
     } else {
         // Remove op from its parent.
         OpBase* parent = op->parent;

@@ -35,7 +35,7 @@ Record AllNodeScanConsume(OpBase *opBase) {
     Entity *en = (Entity*)DataBlockIterator_Next(op->iter);
     if(en == NULL) return NULL;
     
-    Record r = *op->op.record_ptr;
+    Record r = Record_New(op->recLength);
     Node *n = Record_GetNode(r, op->nodeRecIdx);
     n->entity = en;
 

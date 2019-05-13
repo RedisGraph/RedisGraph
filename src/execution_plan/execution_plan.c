@@ -191,9 +191,10 @@ void _ExecutionPlanSegment_AddTraversalOps(Vector *ops, OpBase *cartesian_root, 
     }
 }
 
-ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext *gc, AST *ast, ResultSet *result_set, ExecutionPlanSegment *segment) {
-    segment->record_being_built = NULL;
+ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext *gc, AST *ast, ResultSet *result_set, ExecutionPlanSegment *segment, OpBase *prev_op) {
     Vector *ops = NewVector(OpBase*, 1);
+
+    if (prev_op) Vector_Push(ops, prev_op);
 
     // Build query graph
     QueryGraph *qg = BuildQueryGraph(gc, ast);
@@ -341,13 +342,13 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
         uint skip = 0;
         uint limit = 0;
         if (skip_clause) skip = AST_ParseIntegerNode(skip_clause);
-        if (limit_clause) limit = skip + AST_ParseIntegerNode(limit_clause);
+        if (limit_clause) limit = AST_ParseIntegerNode(limit_clause);
 
         if (segment->order_expressions) {
             const cypher_astnode_t *order_clause = cypher_ast_with_get_order_by(with_clause);
             int direction = AST_PrepareSortOp(order_clause);
             // AR_ExpNode **sort_exps = AST_PrepareSortOp(order_clause, &direction);
-            op = NewSortOp(segment->order_expressions, direction, limit);
+            op = NewSortOp(segment->order_expressions, direction, skip + limit);
             Vector_Push(ops, op);
         }
 
@@ -360,12 +361,12 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
             OpBase *op_limit = NewLimitOp(limit);
             Vector_Push(ops, op_limit);
         }
-
-        // op = NewHandoffOp(with_projections);
-        // Vector_Push(ops, op);
-
     } else if (ret_clause) {
 
+        // TODO we may not need a new project op if the query is something like:
+        // MATCH (a) WITH a.val AS val RETURN val
+        // Though we would still need a new projection (barring later optimizations) for:
+        // MATCH (a) WITH a.val AS val RETURN val AS e
         if (AST_ClauseContainsAggregation(ret_clause)) {
             op = NewAggregateOp(projections, modifies);
         } else {
@@ -385,11 +386,11 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
         uint skip = 0;
         uint limit = 0;
         if (skip_clause) skip = AST_ParseIntegerNode(skip_clause);
-        if (limit_clause) limit = skip + AST_ParseIntegerNode(limit_clause);
+        if (limit_clause) limit = AST_ParseIntegerNode(limit_clause); // TODO + skip?
 
         if (segment->order_expressions) {
             int direction = AST_PrepareSortOp(order_clause);
-            op = NewSortOp(segment->order_expressions, direction, limit);
+            op = NewSortOp(segment->order_expressions, direction, skip + limit);
             Vector_Push(ops, op);
         }
 
@@ -449,7 +450,7 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
         Vector_Free(sub_trees);
     }
 
-    optimizeSegment(gc, segment);
+    // optimizeSegment(gc, segment);
 
     segment->record_len = AST_RecordLength(ast);
 
@@ -535,13 +536,15 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, bool expl
 
     ExecutionPlanSegment *segment;
     AR_ExpNode **input_projections = NULL;
+    OpBase *prev_op = NULL;
     uint i;
     for (i = 0; i < with_clause_count; i ++) {
         ast->end_offset = segment_indices[i] + 1; // Switching from index to bound, so add 1
         segment = _PrepareSegment(ast, input_projections);
-        plan->segments[i] = _NewExecutionPlanSegment(ctx, gc, ast, plan->result_set, segment);
+        plan->segments[i] = _NewExecutionPlanSegment(ctx, gc, ast, plan->result_set, segment, prev_op);
         _AST_Reset(ast); // Free and NULL-set all AST constructions scoped to this segment
         // Store the expressions constructed by this segment's WITH projection to pass into the *next* segment
+        prev_op = segment->root;
         input_projections = plan->segments[i]->projections;
         ast->start_offset = ast->end_offset;
     }
@@ -549,7 +552,9 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, bool expl
     ast->end_offset = AST_NumClauses(ast);
     segment = _PrepareSegment(ast, input_projections);
     if (plan->result_set) ResultSet_CreateHeader(plan->result_set, segment->projections);
-    plan->segments[i] = _NewExecutionPlanSegment(ctx, gc, ast, plan->result_set, segment);
+    plan->segments[i] = _NewExecutionPlanSegment(ctx, gc, ast, plan->result_set, segment, prev_op);
+
+    optimizeSegment(gc, segment);
 
     return plan;
 }
@@ -571,11 +576,9 @@ void _ExecutionPlanSegmentPrint(const OpBase *op, char **strPlan, int ident) {
 }
 
 char* ExecutionPlan_Print(const ExecutionPlan *plan) {
+    ExecutionPlanSegment *last_segment = plan->segments[plan->segment_count - 1];
     char *strPlan = NULL;
-    for (uint i = 0; i < plan->segment_count; i ++) {
-        // TODO incorrect print (might just need indent)
-        _ExecutionPlanSegmentPrint(plan->segments[i]->root, &strPlan, 0);
-    }
+    _ExecutionPlanSegmentPrint(last_segment->root, &strPlan, 0);
     return strPlan;
 }
 
@@ -591,26 +594,14 @@ void ExecutionPlanSegmentInit(ExecutionPlanSegment *segment) {
     _ExecutionPlanSegmentInit(segment->root);
 }
 
-void __segmentRecordInit(OpBase *root, Record *record_ptr) {
-    root->record_ptr = record_ptr;
-    for(int i = 0; i < root->childCount; i++) {
-        __segmentRecordInit(root->children[i], record_ptr);
-    }
-}
-
-void _segmentRecordInit(ExecutionPlanSegment *segment) {
-    if(!segment) return;
-    __segmentRecordInit(segment->root, &segment->record_being_built);
-}
-
 Record _ExecutionPlanSegment_Execute(ExecutionPlanSegment *segment, Record projected_record) {
     OpBase *op = segment->root;
 
-    if (projected_record == NULL) {
-        segment->record_being_built = Record_New(segment->record_len);
-    } else {
-        segment->record_being_built = projected_record;
-    }
+    // if (projected_record == NULL) {
+        // segment->record_being_built = Record_New(segment->record_len);
+    // } else {
+        // segment->record_being_built = projected_record;
+    // }
     Record r = op->consume(op);
 
     return r;
@@ -619,21 +610,28 @@ Record _ExecutionPlanSegment_Execute(ExecutionPlanSegment *segment, Record proje
 ResultSet* ExecutionPlan_Execute(ExecutionPlan *plan) {
     for (uint i = 0; i < plan->segment_count; i ++) {
         ExecutionPlanSegmentInit(plan->segments[i]);
-        _segmentRecordInit(plan->segments[i]);
+        // _segmentRecordInit(plan->segments[i]);
     }
 
     bool depleted = false;
 
+    Record r;
     while (!depleted) {
-        // The same record will be passed through all segments for each loop execution
-        Record r = NULL;
-        for (uint i = 0; i < plan->segment_count; i ++) {
-            r = _ExecutionPlanSegment_Execute(plan->segments[i], r);
-            if (r == NULL) {
-                depleted = true;
-                break;
-            }
+        ExecutionPlanSegment *last_segment = plan->segments[plan->segment_count - 1];
+        r = _ExecutionPlanSegment_Execute(last_segment, r);
+        if (r == NULL) {
+            depleted = true;
+            break;
         }
+        // The same record will be passed through all segments for each loop execution
+        // Record r = NULL;
+        // for (uint i = 0; i < plan->segment_count; i ++) {
+            // r = _ExecutionPlanSegment_Execute(plan->segments[i], r);
+            // if (r == NULL) {
+                // depleted = true;
+                // break;
+            // }
+        // }
     }
     return plan->result_set;
 }
@@ -649,9 +647,11 @@ void _ExecutionPlanSegmentFreeOperations(OpBase* op) {
 
 void ExecutionPlanFree(ExecutionPlan *plan) {
     if(plan == NULL) return;
+    ExecutionPlanSegment *last_segment = plan->segments[plan->segment_count - 1];
+    if(last_segment->root) _ExecutionPlanSegmentFreeOperations(last_segment->root);
+
     for (uint i = 0; i < plan->segment_count; i ++) {
         ExecutionPlanSegment *segment = plan->segments[i];
-        if(segment->root) _ExecutionPlanSegmentFreeOperations(segment->root);
         QueryGraph_Free(segment->query_graph);
         free(segment);
     }

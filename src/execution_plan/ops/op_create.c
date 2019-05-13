@@ -218,7 +218,7 @@ Record OpCreateConsume(OpBase *opBase) {
 
     // No child operation to call.
     if(!op->op.childCount) {
-        Record r = *op->op.record_ptr;
+        r = Record_New(op->record_len);
         /* Create entities. */
         _CreateNodes(op, r);
         _CreateEdges(op, r);

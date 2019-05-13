@@ -14,6 +14,7 @@ OpBase* NewUnwindOp(uint record_len, uint record_idx, AR_ExpNode **exps, const c
     OpUnwind *unwind = malloc(sizeof(OpUnwind));
     unwind->expIdx = 0;
     unwind->expressions = exps;
+    unwind->record_len = record_len;
 
     // Set our Op operations
     OpBase_Init(&unwind->op);
@@ -44,7 +45,7 @@ Record UnwindConsume(OpBase *opBase) {
     if(op->expIdx == array_len(op->expressions)) return NULL;
 
     AR_ExpNode *exp = op->expressions[op->expIdx];
-    Record r = *op->op.record_ptr;
+    Record r = Record_New(op->record_len);
     SIValue v = AR_EXP_Evaluate(exp, r);
     Record_AddScalar(r, op->unwindRecIdx, v);
     op->expIdx++;
