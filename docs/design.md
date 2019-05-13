@@ -8,7 +8,7 @@ the variety of graph data solutions.
 
 With the introduction of [Redis Modules](http://antirez.com/news/106) we've recognized the great potential of introducing a
 graph data structure to the Redis arsenal, and developed RedisGraph. Bringing new graph capabilities to Redis 
-through a native C implementation with an emphasis on performance, [RedisGraph](https://github.com/RedisLabsModules/redis-graph) is now
+through a native C implementation with an emphasis on performance, [RedisGraph](https://github.com/RedisGraph/RedisGraph) is now
 available as an open source project.
 
 In this documentation, we'll discuss the internal design and features of RedisGraph and demonstrate its current capabilities.
