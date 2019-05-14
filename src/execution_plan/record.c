@@ -31,12 +31,16 @@ Record Record_Clone(const Record r) {
 }
 
 void Record_Extend(Record *r, int len) {
-    if(Record_length(*r) >= len) return;
+    int original_len = Record_length(*r);
+    if(original_len >= len) return;
 
     Record header_ptr = RECORD_HEADER(*r);
     // Update length of record
     header_ptr->value.s.longval = len;
     header_ptr = rm_realloc(header_ptr, sizeof(Entry) * (len+1));
+
+    // Initialize the added space to 0 (as Record_Merge will access it directly)
+    memset(header_ptr + (original_len + 1) * sizeof(Entry), 0, len - original_len);
 
     // Reposition the Record's data pointer in case it was moved by the realloc
     *r = header_ptr + 1;

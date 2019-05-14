@@ -194,8 +194,6 @@ void _ExecutionPlanSegment_AddTraversalOps(Vector *ops, OpBase *cartesian_root, 
 ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext *gc, AST *ast, ResultSet *result_set, ExecutionPlanSegment *segment, OpBase *prev_op) {
     Vector *ops = NewVector(OpBase*, 1);
 
-    if (prev_op) Vector_Push(ops, prev_op);
-
     // Build query graph
     QueryGraph *qg = BuildQueryGraph(gc, ast);
     segment->query_graph = qg;
@@ -417,6 +415,20 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
     }
 
     Vector_Free(ops);
+
+    if (prev_op) {
+        // Need to connect this segment to the previous one.
+        // If the last operation of this segment is a potential data producer, join them
+        // under an Apply operation.
+        if (parent_op->type & OP_TAPS) {
+            OpBase *op_apply = NewApplyOp();
+            ExecutionPlanSegment_PushBelow(parent_op, op_apply);
+            ExecutionPlanSegment_AddOp(op_apply, prev_op);
+        } else {
+            // All operations can be connected in a single chain.
+            ExecutionPlanSegment_AddOp(parent_op, prev_op);
+        }
+    }
 
     if(segment->filter_tree) {
         Vector *sub_trees = FilterTree_SubTrees(segment->filter_tree);

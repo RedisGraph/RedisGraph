@@ -119,7 +119,12 @@ void ExecutionPlanSegment_AddOp(OpBase *parent, OpBase *newOp) {
 void ExecutionPlanSegment_PushBelow(OpBase *a, OpBase *b) {
     /* B is a new operation. */
     assert(!(b->parent || b->children));
-    assert(a->parent);
+
+    if (a->parent == NULL) {
+        /* A is the root operation. */
+        _OpBase_AddChild(b, a);
+        return;
+    }
 
     /* Replace A's former parent. */
     OpBase *a_former_parent = a->parent;
