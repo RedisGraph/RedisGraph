@@ -227,7 +227,6 @@ TEST_F(FilterTreeTest, CollectAliases) {
     ASSERT_EQ(array_len(modified_entities), 4);
     std::sort(modified_entities, modified_entities + 4);
     
-    char *alias;
     for(uint i = 0; i < 4; i++) {
         ASSERT_EQ(modified_entities[i], i);
     }

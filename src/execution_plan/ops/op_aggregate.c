@@ -66,13 +66,13 @@ static AR_ExpNode** _build_aggregated_expressions(OpAggregate *op) {
 
     for(uint i = 0; i < exp_count; i++) {
         if(op->expression_classification[i] == NON_AGGREGATED) continue;
-        AR_ExpNode *exp = AR_EXP_DuplicateAggFunc(op->exps[i]);
+        AR_ExpNode *exp = AR_EXP_Clone(op->exps[i]);
         agg_exps = array_append(agg_exps, exp);
     }
 
     for(uint i = 0; i < order_exp_count; i++) {
         if(op->expression_classification[exp_count + i] == NON_AGGREGATED) continue;
-        AR_ExpNode *exp = AR_EXP_DuplicateAggFunc(op->order_exps[i]);
+        AR_ExpNode *exp = AR_EXP_Clone(op->order_exps[i]);
         agg_exps = array_append(agg_exps, exp);
     }
 

@@ -355,6 +355,11 @@ AR_ExpNode** AST_BuildOrderExpressions(AST *ast, const cypher_astnode_t *order_c
             // Reference to an alias in the query - associate with existing AR_ExpNode
             const char *alias = cypher_ast_identifier_get_name(cypher_exp);
             exp = AST_GetEntityFromAlias(ast, (char*)alias);
+            /* TODO There is a bit of oddness here, in that we should be able to create
+             * a reference node (as commented), but if the aliased entity is an aggregate,
+             * it will not register properly in op_aggregate's _classify_expressions */
+            // AR_ExpNode *referred_exp = AST_GetEntityFromAlias(ast, (char*)alias);
+            // exp = AR_EXP_NewReferenceNode((char*)alias, referred_exp->record_idx, false);
         } else {
             // Independent operator like:
             // ORDER BY COUNT(a)

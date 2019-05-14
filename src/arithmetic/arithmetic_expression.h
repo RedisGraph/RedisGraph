@@ -158,9 +158,6 @@ AR_ExpNode* AR_EXP_NewReferenceNode(char *alias, unsigned int record_idx, bool c
 // TODO tmp - consolidate these functions
 AR_ExpNode* AR_EXP_FromInlinedFilter(SchemaType base_type, unsigned int record_idx, const char *prop);
 
-/* Clone an aggregate expression node. */
-AR_ExpNode* AR_EXP_DuplicateAggFunc(const AR_ExpNode *expr);
-
 void AR_EXP_AssignRecordIndex(AR_ExpNode *exp, unsigned int idx);
 
 /* Construct an arithmetic expression tree from a CYPHER_AST_EXPRESSION node. */
