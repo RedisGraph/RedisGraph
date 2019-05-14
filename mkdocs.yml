@@ -25,6 +25,7 @@ theme:
 
 pages:
     - 'Quickstart': index.md
+    - 'Downloads': download.md
     - 'Commands': commands.md
     - 'Design': design.md
     - 'Contributor agreement': contrib.md
