@@ -11,7 +11,7 @@ extern "C" {
 #endif
 
 #include "../../src/graph/graph.h"
-#include "../../src/parser/ast.h"
+#include "../../src/parser/ast_shared.h"
 #include "../../src/index/index.h"
 #include "../../src/util/rmalloc.h"
 

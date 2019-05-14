@@ -343,8 +343,9 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
         if (segment->order_expressions) {
             const cypher_astnode_t *order_clause = cypher_ast_with_get_order_by(with_clause);
             int direction = AST_PrepareSortOp(order_clause);
-            // AR_ExpNode **sort_exps = AST_PrepareSortOp(order_clause, &direction);
-            op = NewSortOp(segment->order_expressions, direction, skip + limit);
+            // The sort operation will obey a specified limit, but must account for skipped records
+            uint sort_limit = (limit > 0) ? limit + skip : 0;
+            op = NewSortOp(segment->order_expressions, direction, sort_limit);
             Vector_Push(ops, op);
         }
 
@@ -386,7 +387,9 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
 
         if (segment->order_expressions) {
             int direction = AST_PrepareSortOp(order_clause);
-            op = NewSortOp(segment->order_expressions, direction, skip + limit);
+            // The sort operation will obey a specified limit, but must account for skipped records
+            uint sort_limit = (limit > 0) ? limit + skip : 0;
+            op = NewSortOp(segment->order_expressions, direction, sort_limit);
             Vector_Push(ops, op);
         }
 

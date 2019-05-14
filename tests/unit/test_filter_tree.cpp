@@ -13,7 +13,7 @@ extern "C" {
 #include <stdio.h>
 #include <string.h>
 #include "../../src/util/vector.h"
-#include "../../src/parser/ast.h"
+#include "../../src/parser/ast_build_filter_tree.h"
 #include "../../src/filter_tree/filter_tree.h"
 #include "../../src/util/arr.h"
 #include "../../src/util/rmalloc.h"
@@ -72,14 +72,14 @@ class FilterTreeTest: public ::testing::Test {
     FT_FilterNode* _build_simple_const_tree() {
         const char *query = "MATCH (me) WHERE me.age = 34 RETURN me";
         AST *ast = _build_ast(query);
-        FT_FilterNode *tree = BuildFiltersTree(ast);
+        FT_FilterNode *tree = AST_BuildFilterTree(ast);
         return tree;
     }
 
     FT_FilterNode* _build_simple_varying_tree() {
         const char *query = "MATCH (me),(him) WHERE me.age > him.age RETURN me, him";
         AST *ast = _build_ast(query);
-        FT_FilterNode *tree = BuildFiltersTree(ast);
+        FT_FilterNode *tree = AST_BuildFilterTree(ast);
         return tree;
     }
 
@@ -89,7 +89,7 @@ class FilterTreeTest: public ::testing::Test {
         else  query = "MATCH (me) WHERE me.age > 34 OR me.height <= 188 RETURN me";
 
         AST *ast = _build_ast(query);
-        FT_FilterNode *tree = BuildFiltersTree(ast);
+        FT_FilterNode *tree = AST_BuildFilterTree(ast);
         return tree;
     }
 
@@ -107,7 +107,7 @@ class FilterTreeTest: public ::testing::Test {
         * OR as a right child */
         const char *query = "MATCH (me),(he),(she),(theirs) WHERE (me.age > 34 AND he.height <= 188) AND (she.age > 34 OR theirs.height <= 188) RETURN me, he, she, theirs";
         AST *ast = _build_ast(query);
-        FT_FilterNode *tree = BuildFiltersTree(ast);
+        FT_FilterNode *tree = AST_BuildFilterTree(ast);
         return tree;
     }
 
@@ -222,26 +222,16 @@ TEST_F(FilterTreeTest, SubTrees) {
 
 TEST_F(FilterTreeTest, CollectAliases) {
     FT_FilterNode *tree = _build_deep_tree();
-    Vector *aliases = FilterTree_CollectAliases(tree);
-    ASSERT_EQ(Vector_Size(aliases), 4);
+    uint *modified_entities = FilterTree_CollectModified(tree);
+
+    ASSERT_EQ(array_len(modified_entities), 4);
+    std::sort(modified_entities, modified_entities + 4);
     
     char *alias;
-    const char *expectation[4] = {"me", "he", "she", "theirs"};
-    for(int i = 0; i < 4; i++) {
-        const char *expected = expectation[i];
-        int j = 0;
-        for(; j < Vector_Size(aliases); j++) {
-            Vector_Get(aliases, j, &alias);
-            if(!strcmp(alias, expected)) break;
-        }
-        ASSERT_NE(j, 4);
+    for(uint i = 0; i < 4; i++) {
+        ASSERT_EQ(modified_entities[i], i);
     }
 
-    /* Clean up. */
-    for(int i = 0; i < Vector_Size(aliases); i++) {
-        Vector_Get(aliases, i, &alias);
-        free(alias);
-    }
-    Vector_Free(aliases);
+    array_free(modified_entities);
     FilterTree_Free(tree);
 }

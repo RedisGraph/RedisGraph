@@ -55,7 +55,8 @@ static void _ResultSet_ReplyWithScalar(RedisModuleCtx *ctx, const SIValue v) {
 
 static void _ResultSet_ReplayHeader(const ResultSet *set, AR_ExpNode **exps) {
     if (exps == NULL) {
-        RedisModule_ReplyWithArray(set->ctx, 0);
+        // RedisModule_ReplySetArrayLength(set->ctx, 0);
+        // RedisModule_ReplyWithNull(set->ctx);
         return;
     }
     uint ncols = array_len(exps);
@@ -164,7 +165,8 @@ int ResultSet_AddRecord(ResultSet* set, Record r) {
 
 void ResultSet_Replay(ResultSet* set) {
     // The resultset size is 1 (for the header) + number of records
-    size_t resultset_size = set->recordCount + 1;
+    int has_header = set->column_count > 0;
+    size_t resultset_size = set->recordCount + has_header;
 
     RedisModule_ReplySetArrayLength(set->ctx, resultset_size);
     _ResultSet_ReplayStats(set->ctx, set);

@@ -7,7 +7,6 @@
 #include "ast.h"
 #include <assert.h>
 
-#include "../../deps/xxhash/xxhash.h"
 #include "../util/arr.h"
 #include "../arithmetic/repository.h"
 #include "../arithmetic/arithmetic_expression.h"
