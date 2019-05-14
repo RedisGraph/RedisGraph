@@ -92,7 +92,7 @@ static void _setupIdRange(int rel, EntityID id, bool reverse, NodeID *minId, Nod
     }
 }
 
-void _reduceTap(ExecutionPlanSegment *plan, OpBase *tap) {
+void _reduceTap(ExecutionPlan *plan, OpBase *tap) {
     if(tap->type & OP_SCAN) {
         /* See if there's a filter of the form
          * ID(n) = X
@@ -132,8 +132,8 @@ void _reduceTap(ExecutionPlanSegment *plan, OpBase *tap) {
                     inclusiveMin, inclusiveMax);
 
                 // Managed to reduce!
-                ExecutionPlanSegment_ReplaceOp(plan, tap, opNodeByIdSeek);
-                ExecutionPlanSegment_RemoveOp(plan, (OpBase*)filter);
+                ExecutionPlan_ReplaceOp(plan, tap, opNodeByIdSeek);
+                ExecutionPlan_RemoveOp(plan, (OpBase*)filter);
                 break;
             }
 
@@ -143,11 +143,11 @@ void _reduceTap(ExecutionPlanSegment *plan, OpBase *tap) {
     }
 }
 
-void seekByID(ExecutionPlanSegment *plan) {
+void seekByID(ExecutionPlan *plan) {
     assert(plan);
     
     OpBase **taps = array_new(OpBase*, 1);
-    ExecutionPlanSegment_Taps(plan->root, &taps);
+    ExecutionPlan_Taps(plan->root, &taps);
 
     for(int i = 0; i < array_len(taps); i++) {
         _reduceTap(plan, taps[i]);

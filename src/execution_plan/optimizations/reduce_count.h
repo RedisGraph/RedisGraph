@@ -13,4 +13,4 @@
  * total number of nodes with a specific label.
  * In which case we can avoid performing both SCAN* and AGGREGATE 
  * operations by simply returning Graph_NodeCount or Graph_LabeledNodeCount. */
-void reduceCount(ExecutionPlanSegment *plan);
+void reduceCount(ExecutionPlan *plan);

@@ -97,7 +97,7 @@ void _MGraph_Query(void *args) {
     if (root_type == CYPHER_AST_QUERY) { // query operation
         ExecutionPlan *plan = NewExecutionPlan(ctx, gc, false);
         resultSet = ExecutionPlan_Execute(plan);
-        ExecutionPlanFree(plan);
+        ExecutionPlan_Free(plan);
         ResultSet_Replay(resultSet);    // Send result-set back to client.
     } else if (root_type == CYPHER_AST_CREATE_NODE_PROP_INDEX || root_type == CYPHER_AST_DROP_NODE_PROP_INDEX) {
         _index_operation(ctx, gc, ast->root);

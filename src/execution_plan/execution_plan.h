@@ -31,7 +31,8 @@ typedef struct {
 } ExecutionPlanSegment;
 
 typedef struct {
-    ExecutionPlanSegment **segments;
+    OpBase *root;
+    ExecutionPlanSegment **segments; // TODO might be able to refactor to remove this element
     ResultSet *result_set;
     uint segment_count;
 } ExecutionPlan;
@@ -40,28 +41,28 @@ typedef struct {
  * Helper functions to move and analyze operations in an ExecutionPlan. */
 
 /* Removes operation from execution plan. */
-void ExecutionPlanSegment_RemoveOp(ExecutionPlanSegment *plan, OpBase *op);
+void ExecutionPlan_RemoveOp(ExecutionPlan *plan, OpBase *op);
 
 /* Adds operation to execution plan as a child of parent. */
-void ExecutionPlanSegment_AddOp(OpBase *parent, OpBase *newOp);
+void ExecutionPlan_AddOp(OpBase *parent, OpBase *newOp);
 
 /* Push b right below a. */
-void ExecutionPlanSegment_PushBelow(OpBase *a, OpBase *b);
+void ExecutionPlan_PushBelow(OpBase *a, OpBase *b);
 
 /* Replace a with b. */
-void ExecutionPlanSegment_ReplaceOp(ExecutionPlanSegment *plan, OpBase *a, OpBase *b);
+void ExecutionPlan_ReplaceOp(ExecutionPlan *plan, OpBase *a, OpBase *b);
 
 /* Locate the first operation of a given type within execution plan.
  * Returns NULL if operation wasn't found. */
-OpBase* ExecutionPlanSegment_LocateOp(OpBase *root, OPType type);
+OpBase* ExecutionPlan_LocateOp(OpBase *root, OPType type);
 
 /* Returns an array of taps; operations which generate data
  * e.g. SCAN operations */
-void ExecutionPlanSegment_Taps(OpBase *root, OpBase ***taps);
+void ExecutionPlan_Taps(OpBase *root, OpBase ***taps);
 
 /* Find the earliest operation on the ExecutionPlan at which all
  * references are resolved. */
-OpBase* ExecutionPlanSegment_LocateReferences(OpBase *root, uint *references);
+OpBase* ExecutionPlan_LocateReferences(OpBase *root, uint *references);
 
 /* execution_plan.c */
 
@@ -76,11 +77,9 @@ ExecutionPlan* NewExecutionPlan (
 char* ExecutionPlan_Print(const ExecutionPlan *plan);
 
 /* Executes plan */
-Record ExecutionPlanSegment_Execute(ExecutionPlanSegment *plan);
-
 ResultSet* ExecutionPlan_Execute(ExecutionPlan *plan);
 
 /* Free execution plan */
-void ExecutionPlanFree(ExecutionPlan *plan);
+void ExecutionPlan_Free(ExecutionPlan *plan);
 
 #endif

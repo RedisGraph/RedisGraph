@@ -63,7 +63,7 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 cleanup:
     if(plan) {
         Graph_ReleaseLock(gc->g);
-        ExecutionPlanFree(plan);
+        ExecutionPlan_Free(plan);
     }
     if(parse_result) cypher_parse_result_free(parse_result);
     return REDISMODULE_OK;

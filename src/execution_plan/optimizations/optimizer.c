@@ -7,26 +7,26 @@
 #include "./optimizer.h"
 #include "./optimizations.h"
 
-void optimizeSegment(GraphContext *gc, ExecutionPlanSegment *segment) {
+void optimizePlan(GraphContext *gc, ExecutionPlan *plan) {
     // Try to reduce SCAN + FILTER to a node seek operation.
-    seekByID(segment);
+    seekByID(plan);
 
     /* When possible, replace label scan and filter ops
      * with index scans. */
-    utilizeIndices(gc, segment);
+    utilizeIndices(gc, plan);
 
     /* Try to reduce a number of filters into a single filter op. */
-    reduceFilters(segment);
+    reduceFilters(plan);
 
     /* Remove redundant SCAN operations. */
-    // reduceScans(segment);
+    // reduceScans(plan);
 
     /* Relocate sort, skip, limit operations. */
-    relocateOperations(segment);
+    relocateOperations(plan);
     
     /* Try to reduce distinct if it follows aggregation. */
-    reduceDistinct(segment);
+    reduceDistinct(plan);
 
-    /* Try to reduce execution segment incase it perform node counting. */
-    reduceCount(segment);
+    /* Try to reduce execution plan incase it perform node counting. */
+    reduceCount(plan);
 }

@@ -65,7 +65,7 @@ static int _identifyPattern(OpBase *root, OpResult **opResult, OpAggregate **opA
     return 1;
 }
 
-void reduceCount(ExecutionPlanSegment *plan) {
+void reduceCount(ExecutionPlan *plan) {
     /* We'll only modify execution plan if it is structured as follows:
      * "Scan -> Aggregate -> Results" */
     char *label;
@@ -109,11 +109,11 @@ void reduceCount(ExecutionPlanSegment *plan) {
     OpBase *opProject = NewProjectOp(exps, modifies);
 
     // New execution plan: "Project -> Results"
-    ExecutionPlanSegment_RemoveOp(plan, (OpBase*)opScan);
+    ExecutionPlan_RemoveOp(plan, (OpBase*)opScan);
     OpBase_Free(opScan);
 
-    ExecutionPlanSegment_RemoveOp(plan, (OpBase*)opAggregate);
+    ExecutionPlan_RemoveOp(plan, (OpBase*)opAggregate);
     OpBase_Free((OpBase*)opAggregate);
 
-    ExecutionPlanSegment_AddOp((OpBase*)opResult, opProject);
+    ExecutionPlan_AddOp((OpBase*)opResult, opProject);
 }

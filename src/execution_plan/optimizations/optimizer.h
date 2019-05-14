@@ -10,6 +10,6 @@
 #include "../execution_plan.h"
 
 /* Try to optimize an execution plan segment. */
-void optimizeSegment(GraphContext *gc, ExecutionPlanSegment *segment);
+void optimizePlan(GraphContext *gc, ExecutionPlan *plan);
 
 #endif

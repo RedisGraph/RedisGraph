@@ -176,9 +176,9 @@ void _ExecutionPlanSegment_AddTraversalOps(Vector *ops, OpBase *cartesian_root, 
         OpBase *parentOp;
         Vector_Pop(traversals, &parentOp);
         // Connect cartesian product to the root of traversal.
-        ExecutionPlanSegment_AddOp(cartesian_root, parentOp);
+        ExecutionPlan_AddOp(cartesian_root, parentOp);
         while(Vector_Pop(traversals, &childOp)) {
-            ExecutionPlanSegment_AddOp(parentOp, childOp);
+            ExecutionPlan_AddOp(parentOp, childOp);
             parentOp = childOp;
         }
     } else {
@@ -413,7 +413,7 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
     segment->root = parent_op;
 
     while(Vector_Pop(ops, &child_op)) {
-        ExecutionPlanSegment_AddOp(parent_op, child_op);
+        ExecutionPlan_AddOp(parent_op, child_op);
         parent_op = child_op;
     }
 
@@ -425,11 +425,11 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
         // under an Apply operation.
         if (parent_op->type & OP_TAPS) {
             OpBase *op_apply = NewApplyOp();
-            ExecutionPlanSegment_PushBelow(parent_op, op_apply);
-            ExecutionPlanSegment_AddOp(op_apply, prev_op);
+            ExecutionPlan_PushBelow(parent_op, op_apply);
+            ExecutionPlan_AddOp(op_apply, prev_op);
         } else {
             // All operations can be connected in a single chain.
-            ExecutionPlanSegment_AddOp(parent_op, prev_op);
+            ExecutionPlan_AddOp(parent_op, prev_op);
         }
     }
 
@@ -446,13 +446,13 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
 
             /* Scan execution segment, locate the earliest position where all
              * references been resolved. */
-            OpBase *op = ExecutionPlanSegment_LocateReferences(segment->root, references);
+            OpBase *op = ExecutionPlan_LocateReferences(segment->root, references);
             assert(op);
 
             /* Create filter node.
              * Introduce filter op right below located op. */
             OpBase *filter_op = NewFilterOp(tree);
-            ExecutionPlanSegment_PushBelow(op, filter_op);
+            ExecutionPlan_PushBelow(op, filter_op);
             array_free(references);
         }
         Vector_Free(sub_trees);
@@ -513,12 +513,19 @@ ExecutionPlanSegment* _PrepareSegment(AST *ast, AR_ExpNode **projections) {
 }
 
 void _AST_Reset(AST *ast) {
-     // TODO leaks everywhere here
-    if (ast->defined_entities) array_free(ast->defined_entities);
-    if (ast->entity_map) TrieMap_Free(ast->entity_map, TrieMap_NOP_CB);
+    if (ast->defined_entities) {
+        uint len = array_len(ast->defined_entities);
+        for (uint i = 0; i < len; i ++) {
+            AR_EXP_Free(ast->defined_entities[i]);
+        }
+        array_clear(ast->defined_entities);
+    } else {
+        ast->defined_entities = array_new(AR_ExpNode*, 1);
+    }
 
-    ast->defined_entities = array_new(AR_ExpNode*, 1);
+    if (ast->entity_map) TrieMap_Free(ast->entity_map, TrieMap_NOP_CB);
     ast->entity_map = NewTrieMap();
+
     ast->record_length = 0;
 }
 
@@ -560,12 +567,14 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, bool expl
     if (plan->result_set) ResultSet_CreateHeader(plan->result_set, segment->projections);
     plan->segments[i] = _NewExecutionPlanSegment(ctx, gc, ast, plan->result_set, segment, prev_op);
 
-    optimizeSegment(gc, segment);
+    plan->root = segment->root;
+
+    optimizePlan(gc, plan);
 
     return plan;
 }
 
-void _ExecutionPlanSegmentPrint(const OpBase *op, char **strPlan, int ident) {
+void _ExecutionPlanPrint(const OpBase *op, char **strPlan, int ident) {
     char strOp[512] = {0};
     sprintf(strOp, "%*s%s\n", ident, "", op->name);
 
@@ -577,14 +586,13 @@ void _ExecutionPlanSegmentPrint(const OpBase *op, char **strPlan, int ident) {
     strcat(*strPlan, strOp);
 
     for(int i = 0; i < op->childCount; i++) {
-        _ExecutionPlanSegmentPrint(op->children[i], strPlan, ident + 4);
+        _ExecutionPlanPrint(op->children[i], strPlan, ident + 4);
     }
 }
 
 char* ExecutionPlan_Print(const ExecutionPlan *plan) {
-    ExecutionPlanSegment *last_segment = plan->segments[plan->segment_count - 1];
     char *strPlan = NULL;
-    _ExecutionPlanSegmentPrint(last_segment->root, &strPlan, 0);
+    _ExecutionPlanPrint(plan->root, &strPlan, 0);
     return strPlan;
 }
 
@@ -600,50 +608,31 @@ void _ExecutionPlanSegmentInit(OpBase *root, uint record_len) {
     }
 }
 
-void ExecutionPlanSegmentInit(ExecutionPlanSegment *segment) {
-    _ExecutionPlanSegmentInit(segment->root, segment->record_len);
-}
-
-Record _ExecutionPlanSegment_Execute(ExecutionPlanSegment *segment) {
-    OpBase *op = segment->root;
-
-    Record r = op->consume(op);
-
-    return r;
-}
-
 ResultSet* ExecutionPlan_Execute(ExecutionPlan *plan) {
     for (uint i = 0; i < plan->segment_count; i ++) {
-        ExecutionPlanSegmentInit(plan->segments[i]);
+        ExecutionPlanSegment *segment = plan->segments[i];
+        _ExecutionPlanSegmentInit(segment->root, segment->record_len);
     }
-
-    bool depleted = false;
 
     Record r;
-    while (!depleted) {
-        ExecutionPlanSegment *last_segment = plan->segments[plan->segment_count - 1];
-        r = _ExecutionPlanSegment_Execute(last_segment);
-        if (r == NULL) {
-            depleted = true;
-            break;
-        }
-    }
+    OpBase *op = plan->root;
+
+    while((r = op->consume(op)) != NULL) Record_Free(r);
     return plan->result_set;
 }
 
 
 
-void _ExecutionPlanSegmentFreeOperations(OpBase* op) {
+void _ExecutionPlan_FreeOperations(OpBase* op) {
     for(int i = 0; i < op->childCount; i++) {
-        _ExecutionPlanSegmentFreeOperations(op->children[i]);
+        _ExecutionPlan_FreeOperations(op->children[i]);
     }
     OpBase_Free(op);
 }
 
-void ExecutionPlanFree(ExecutionPlan *plan) {
+void ExecutionPlan_Free(ExecutionPlan *plan) {
     if(plan == NULL) return;
-    ExecutionPlanSegment *last_segment = plan->segments[plan->segment_count - 1];
-    if(last_segment->root) _ExecutionPlanSegmentFreeOperations(last_segment->root);
+    _ExecutionPlan_FreeOperations(plan->root);
 
     for (uint i = 0; i < plan->segment_count; i ++) {
         ExecutionPlanSegment *segment = plan->segments[i];
