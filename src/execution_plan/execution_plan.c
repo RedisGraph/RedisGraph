@@ -478,8 +478,6 @@ ExecutionPlanSegment* _PrepareSegment(AST *ast, AR_ExpNode **projections) {
             AR_ExpNode *projection = projections[i];
             uint record_idx = AST_AddRecordEntry(ast);
             AR_ExpNode *new_projection = AR_EXP_NewReferenceNode(projection->alias, record_idx, projection->collapsed);
-            new_projection->operand.variadic.ast_ref = projection->operand.variadic.ast_ref; // TODO bad
-            // AR_ExpNode *new_projection = calloc(1, sizeof(AR_ExpNode));
 
             AST_MapAlias(ast, projection->alias, new_projection);
             ast->defined_entities = array_append(ast->defined_entities, new_projection);
@@ -487,7 +485,6 @@ ExecutionPlanSegment* _PrepareSegment(AST *ast, AR_ExpNode **projections) {
     }
 
     AST_BuildAliasMap(ast);
-    // AST_BuildAliasMap(ast, projections);
 
     // Retrieve a RETURN clause if one is specified in this AST's range
     const cypher_astnode_t *ret_clause = AST_GetClause(ast, CYPHER_AST_RETURN);

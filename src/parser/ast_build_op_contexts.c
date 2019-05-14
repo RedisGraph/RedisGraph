@@ -152,10 +152,10 @@ void AST_PrepareDeleteOp(const cypher_astnode_t *delete_clause, uint **nodes_ref
         assert(entity);
         uint id = entity->record_idx;
         assert(id != NOT_IN_RECORD);
-        cypher_astnode_type_t type = cypher_astnode_type(entity->operand.variadic.ast_ref);
-        if (type == CYPHER_AST_NODE_PATTERN) {
+        SchemaType type = entity->operand.variadic.entity_type;
+        if (type == SCHEMA_NODE) {
             nodes_to_delete = array_append(nodes_to_delete, id);
-        } else if (type == CYPHER_AST_REL_PATTERN) {
+        } else if (type == SCHEMA_EDGE) {
             edges_to_delete = array_append(edges_to_delete, id);
         } else {
             assert(false);

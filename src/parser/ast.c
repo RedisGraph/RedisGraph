@@ -31,22 +31,6 @@ static void _consume_function_call_expression(const cypher_astnode_t *expression
     }
 }
 
-
-// TODO maybe consolidate with AR_EXP_NewVariableOperandNode
-AR_ExpNode* _AR_Exp_NewIdentifier(const char *entity_alias, const cypher_astnode_t *entity, unsigned int id) {
-    AR_ExpNode *node = malloc(sizeof(AR_ExpNode));
-    node->type = AR_EXP_OPERAND;
-    node->collapsed = true;
-    node->record_idx = id;
-    node->operand.type = AR_EXP_VARIADIC;
-    node->operand.variadic.entity_alias = entity_alias ? strdup(entity_alias) : NULL;
-    node->operand.variadic.entity_alias_idx = id;
-    node->operand.variadic.entity_prop = NULL;
-    node->operand.variadic.ast_ref = entity;
-
-    return node;
-}
-
 void _mapWith(AST *ast, const cypher_astnode_t *with_clause) {
     // TODO logic duplicated from AST_BuildWithExpressions
     unsigned int count = cypher_ast_with_nprojections(with_clause);
@@ -103,13 +87,6 @@ void _mapUnwind(AST *ast, const cypher_astnode_t *unwind_clause) {
     char *alias = (char*)cypher_ast_identifier_get_name(cypher_ast_unwind_get_alias(unwind_clause));
 
     const cypher_astnode_t *ast_exp = cypher_ast_unwind_get_expression(unwind_clause);
-    // AR_ExpNode *exp = AR_EXP_NewVariableOperandNode(ast, ast_exp, alias, NULL);
-    // exp->record_idx = AST_AddRecordEntry(ast);
-    // exp->collapsed = false;
-    // exp->alias = (char*)alias;
-    // AST_MapEntity(ast, ast_exp, exp);
-    // AST_MapAlias(ast, (char*)alias, exp);
-    // ast->defined_entities = array_append(ast->defined_entities, exp);
     uint id = AST_AddRecordEntry(ast);
     AR_ExpNode *exp = AR_EXP_NewReferenceNode(alias, id, false);
     ast->defined_entities = array_append(ast->defined_entities, exp);
@@ -345,16 +322,15 @@ void _AST_MapPath(AST *ast, const cypher_astnode_t *path, bool map_anonymous) {
             AR_ExpNode *exp = AST_GetEntityFromAlias(ast, (char*)alias);
             // Alias was not previously encountered.
             if (exp == NULL) {
-                exp = AR_EXP_NewVariableOperandNode(ast, entity, alias, NULL);
-                exp->record_idx = AST_AddRecordEntry(ast);
-                exp->operand.variadic.entity_alias_idx = exp->record_idx; // TODO bad logic
+                uint id = AST_AddRecordEntry(ast);
+                exp = AR_EXP_NewVariableOperandNode(entity, alias, id);
             }
             AST_MapEntity(ast, entity, exp);
             AST_MapAlias(ast, (char*)alias, exp);
             ast->defined_entities = array_append(ast->defined_entities, exp);
         } else if (map_anonymous) {
             uint id = AST_AddRecordEntry(ast);
-            AR_ExpNode *exp = _AR_Exp_NewIdentifier(NULL, entity, id);
+            AR_ExpNode *exp = AR_EXP_NewAnonymousEntity(id);
             ast->defined_entities = array_append(ast->defined_entities, exp);
             AST_MapEntity(ast, entity, exp);
         }

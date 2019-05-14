@@ -13,6 +13,7 @@
 #include "../graph/entities/graph_entity.h"
 
 typedef enum {
+  SCHEMA_UNKNOWN,
   SCHEMA_NODE,
   SCHEMA_EDGE,
 } SchemaType;

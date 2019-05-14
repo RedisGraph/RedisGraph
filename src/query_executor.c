@@ -63,31 +63,8 @@ AR_ExpNode** _ExpandCollapsedNodes(AST *ast, AR_ExpNode **return_expressions) {
                     const cypher_astnode_t *reltype_node = cypher_ast_rel_pattern_get_reltype(ast_entity, 0);
                     label = cypher_ast_reltype_get_name(reltype_node);
                 }
-            } else if (type == CYPHER_AST_UNWIND) {
-                // For UNWIND clauses, use the collection alias as the expression
-                const cypher_astnode_t *alias_node = cypher_ast_unwind_get_alias(ast_entity);
-                const char *alias = cypher_ast_identifier_get_name(alias_node);
-                AR_ExpNode *exp = AR_EXP_NewVariableOperandNode(ast, ast_entity, alias, NULL);
-                exp->collapsed = false;
-                exp->alias = rm_strdup(alias); // TODO sensible?
-                expandReturnElements = array_append(expandReturnElements, exp);
-                continue;
-            // } else if (type == CYPHER_AST_IDENTIFIER) {
-                // // Observed in query "UNWIND [1,2,3] AS a RETURN a AS e"
-                // char *alias = (char*)cypher_ast_identifier_get_name(ast_entity);
-                // AR_ExpNode *inner_exp = AST_GetEntityFromAlias(ast, alias);
-                // AST_MapAlias(ast, alias, inner_exp);
-                // exp->alias = rm_strdup(alias);
-                // expandReturnElements = array_append(expandReturnElements, inner_exp);
-                // continue;
             } else {
-                // We might be encountering an alias referring to a WITH clause entity
-                // TODO for the moment, just evaluate the else block code - improve later
-                expandReturnElements = array_append(expandReturnElements, exp);
-                continue;
-                // char *name;
-                // AR_EXP_ToString(exp, &name);
-                // exp->alias = name;
+                assert(false);
             }
 
             /* Find label's properties. */
@@ -118,19 +95,17 @@ AR_ExpNode** _ExpandCollapsedNodes(AST *ast, AR_ExpNode **return_expressions) {
                     memcpy(buffer, prop, prop_len);
                     buffer[prop_len] = '\0';
 
-                    // TODO validate and simplify
                     /* Create a new return element foreach property. */
-                    expanded_exp = AR_EXP_NewVariableOperandNode(ast, ast_entity, collapsed_entity->alias, buffer);
-                    // expanded_exp = AR_EXP_NewVariableOperandNode(ast, alias, buffer);
-                    unsigned int id = AST_AddRecordEntry(ast);
+                    uint id = AST_AddRecordEntry(ast);
+                    expanded_exp = AR_EXP_NewPropertyOperator(exp, buffer);
                     AR_EXP_AssignRecordIndex(expanded_exp, id);
                     ast->defined_entities = array_append(ast->defined_entities, expanded_exp);
 
+                    // TODO This logic is terrible, but only required until we remove collapsed entities
                     char *expanded_name;
                     AR_EXP_ToString(expanded_exp, &expanded_name);
                     AST_MapAlias(ast, expanded_name, expanded_exp);
                     expanded_exp->alias = expanded_name;
-                    // expandReturnElements = array_append(expandReturnElements, column_name);
                     expandReturnElements = array_append(expandReturnElements, expanded_exp);
                 }
                 TrieMapIterator_Free(it);

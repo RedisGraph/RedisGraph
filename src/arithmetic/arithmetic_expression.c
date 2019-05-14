@@ -99,31 +99,42 @@ static AR_ExpNode* _AR_EXP_NewOpNode(char *func_name, int child_count) {
     return node;
 }
 
-AR_ExpNode* AR_EXP_NewVariableOperandNode(const AST *ast, const cypher_astnode_t *entity, const char *alias, const char *prop) {
+AR_ExpNode* AR_EXP_NewVariableOperandNode(const cypher_astnode_t *entity, const char *alias, uint id) {
+    AR_ExpNode *node = malloc(sizeof(AR_ExpNode));
+    node->type = AR_EXP_OPERAND;
+    node->collapsed = true;
+    node->record_idx = id;
+    node->operand.type = AR_EXP_VARIADIC;
+    node->operand.variadic.entity_alias = strdup(alias);
+    node->operand.variadic.entity_alias_idx = id;
+    node->operand.variadic.entity_prop = NULL;
+    node->operand.variadic.ast_ref = entity;
+    cypher_astnode_type_t ast_type = cypher_astnode_type(entity);
+    if (ast_type == CYPHER_AST_NODE_PATTERN) {
+        node->operand.variadic.entity_type = SCHEMA_NODE;
+    } else if (ast_type == CYPHER_AST_REL_PATTERN) {
+        node->operand.variadic.entity_type = SCHEMA_EDGE;
+    } else {
+        node->operand.variadic.entity_type = SCHEMA_UNKNOWN;
+    }
+
+    return node;
+}
+
+AR_ExpNode* AR_EXP_NewPropertyOperator(AR_ExpNode *alias_node, const char *prop) {
     AR_ExpNode *node = malloc(sizeof(AR_ExpNode));
     node->type = AR_EXP_OPERAND;
     node->collapsed = false;
     node->record_idx = NOT_IN_RECORD;
     node->operand.type = AR_EXP_VARIADIC;
-    node->operand.variadic.entity_alias = strdup(alias);
-    unsigned int id = AST_GetAliasID(ast, (char*)alias); // TODO still sensible?
-    node->operand.variadic.entity_alias_idx = id;
+    node->operand.variadic.entity_alias = alias_node->operand.variadic.entity_alias;
+    node->operand.variadic.entity_alias_idx = alias_node->operand.variadic.entity_alias_idx;
     node->operand.variadic.entity_prop = (prop) ? strdup(prop) : NULL;
-    node->operand.variadic.ast_ref = entity;
+    node->operand.variadic.ast_ref = NULL;
+    SchemaType t = alias_node->operand.variadic.entity_type;
+    node->operand.variadic.entity_type = t;
+    node->operand.variadic.entity_prop_idx = Attribute_GetID(t, prop);
 
-    if(prop) {
-        // Retrieve the property from the schema of the base entity (not this entity,
-        // which is just a PROPERTY_OPERATOR)
-        AR_ExpNode *base_entity = ast->defined_entities[id];
-        cypher_astnode_type_t type = cypher_astnode_type(base_entity->operand.variadic.ast_ref);
-        if (type == CYPHER_AST_NODE_PATTERN) {
-            node->operand.variadic.entity_prop_idx = Attribute_GetID(SCHEMA_NODE, prop);
-        } else { // (type == CYPHER_AST_REL_PATTERN)
-            node->operand.variadic.entity_prop_idx = Attribute_GetID(SCHEMA_EDGE, prop);
-        }
-    } else{
-        node->collapsed = true;
-    }
     return node;
 }
 
@@ -137,23 +148,15 @@ AR_ExpNode* AR_EXP_NewReferenceNode(char *alias, unsigned int record_idx, bool c
     return node;
 }
 
-AR_ExpNode* AR_EXP_FromInlinedFilter(SchemaType base_type, unsigned int record_idx, const char *prop) {
-    AR_ExpNode *node = malloc(sizeof(AR_ExpNode));
+AR_ExpNode* AR_EXP_NewAnonymousEntity(uint id) {
+    AR_ExpNode *node = calloc(1, sizeof(AR_ExpNode));
     node->type = AR_EXP_OPERAND;
-    node->record_idx = NOT_IN_RECORD; // TODO right?
     node->operand.type = AR_EXP_VARIADIC;
-    node->operand.variadic.entity_alias = NULL;
-    node->operand.variadic.entity_alias_idx = record_idx;
-    node->operand.variadic.entity_prop = (prop) ? strdup(prop) : NULL;
-    // node->operand.variadic.ast_ref = entity;
 
-    if(prop) { // TODO necessary?
-        // Retrieve the property from the schema of the base entity (not this entity,
-        // which is just a PROPERTY_OPERATOR)
-        node->operand.variadic.entity_prop_idx = Attribute_GetID(base_type, prop);
-    }
+    node->record_idx = id;
+    node->operand.variadic.entity_alias_idx = NOT_IN_RECORD;
+
     return node;
-
 }
 
 AR_ExpNode* AR_EXP_NewConstOperandNode(SIValue constant) {
@@ -191,7 +194,8 @@ AR_ExpNode* AR_EXP_FromExpression(const AST *ast, const cypher_astnode_t *expr) 
     } else if (type == CYPHER_AST_IDENTIFIER) {
         // Identifier referencing another AST entity
         const char *alias = cypher_ast_identifier_get_name(expr);
-        return AR_EXP_NewVariableOperandNode(ast, expr, alias, NULL);
+        uint id = AST_GetAliasID(ast, (char*)alias);
+        return AR_EXP_NewVariableOperandNode(expr, alias, id);
 
     /* Entity-property pair */
     } else if (type == CYPHER_AST_PROPERTY_OPERATOR) {
@@ -201,10 +205,13 @@ AR_ExpNode* AR_EXP_FromExpression(const AST *ast, const cypher_astnode_t *expr) 
         const cypher_astnode_t *prop_expr = cypher_ast_property_operator_get_expression(expr);
         assert(cypher_astnode_type(prop_expr) == CYPHER_AST_IDENTIFIER);
         const char *alias = cypher_ast_identifier_get_name(prop_expr);
+        AR_ExpNode *alias_node = AST_GetEntityFromAlias(ast, (char*)alias);
+
         // Extract the property name
         const cypher_astnode_t *prop_name_node = cypher_ast_property_operator_get_prop_name(expr);
         const char *prop_name = cypher_ast_prop_name_get_value(prop_name_node);
-        return AR_EXP_NewVariableOperandNode(ast, expr, alias, prop_name);
+
+        return AR_EXP_NewPropertyOperator(alias_node, prop_name);
 
     /* SIValue constant types */
     } else if (type == CYPHER_AST_INTEGER) {
@@ -563,14 +570,14 @@ static AR_ExpNode* _AR_EXP_CloneOperand(AR_ExpNode* exp) {
             clone->operand.constant = exp->operand.constant;
             break;
         case AR_EXP_VARIADIC:
-            clone->operand.type = AR_EXP_VARIADIC;
+            clone->operand.type = exp->operand.type;
             clone->operand.variadic.entity_alias = rm_strdup(exp->operand.variadic.entity_alias);
             clone->operand.variadic.entity_alias_idx = exp->operand.variadic.entity_alias_idx;
+            clone->operand.variadic.entity_type = exp->operand.variadic.entity_type;
             if(exp->operand.variadic.entity_prop) {
                 clone->operand.variadic.entity_prop = rm_strdup(exp->operand.variadic.entity_prop);
             }
             clone->operand.variadic.entity_prop_idx = exp->operand.variadic.entity_prop_idx;
-            clone->operand.variadic.ast_ref = exp->operand.variadic.ast_ref;
             break;
         default:
             assert(false);

@@ -69,8 +69,10 @@ typedef struct {
             char *entity_alias;
             int entity_alias_idx;
             char *entity_prop;
+            SchemaType entity_type;
             Attribute_ID entity_prop_idx;
-            const cypher_astnode_t *ast_ref; // TODO should be deleted if possible, but needed to differentiate nodes/edges?
+            // TODO can almost delete ast_ref
+            const cypher_astnode_t *ast_ref;
         } variadic;
     };
     AR_OperandNodeType type;
@@ -151,12 +153,11 @@ int AR_EXP_ContainsAggregation(AR_ExpNode *root, AR_ExpNode **agg_node);
 /* Constructs string representation of arithmetic expression tree. */
 void AR_EXP_ToString(const AR_ExpNode *root, char **str);
 
-AR_ExpNode* AR_EXP_NewConstOperandNode(SIValue constant);
-AR_ExpNode* AR_EXP_NewVariableOperandNode(const AST *ast, const cypher_astnode_t *entity, const char *alias, const char *prop);
+AR_ExpNode* AR_EXP_NewVariableOperandNode(const cypher_astnode_t *entity, const char *alias, uint id);
+AR_ExpNode* AR_EXP_NewPropertyOperator(AR_ExpNode *alias_node, const char *prop);
 AR_ExpNode* AR_EXP_NewReferenceNode(char *alias, unsigned int record_idx, bool collapsed);
-
-// TODO tmp - consolidate these functions
-AR_ExpNode* AR_EXP_FromInlinedFilter(SchemaType base_type, unsigned int record_idx, const char *prop);
+AR_ExpNode* AR_EXP_NewAnonymousEntity(uint id);
+AR_ExpNode* AR_EXP_NewConstOperandNode(SIValue constant);
 
 void AR_EXP_AssignRecordIndex(AR_ExpNode *exp, unsigned int idx);
 

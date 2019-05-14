@@ -62,12 +62,7 @@ void AST_RecordAccommodateExpression(AST *ast, AR_ExpNode *exp) {
 unsigned int AST_AddAnonymousRecordEntry(AST *ast) {
     uint id = ast->record_length ++;
     
-    // TODO which function?
-    AR_ExpNode *exp = calloc(1, sizeof(AR_ExpNode));
-    exp->type = AR_EXP_OPERAND;
-    exp->record_idx = id;
-    exp->operand.type = AR_EXP_VARIADIC;
-    exp->operand.variadic.entity_alias_idx = id;
+    AR_ExpNode *exp = AR_EXP_NewAnonymousEntity(id);
     ast->defined_entities = array_append(ast->defined_entities, exp);
 
     return id;
