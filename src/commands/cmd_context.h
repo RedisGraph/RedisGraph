@@ -8,7 +8,7 @@
 #define COMMAND_CONTEXT_H
 
 #include "../redismodule.h"
-#include "../parser/ast.h" // TODO should be unnecessary
+#include "../ast/ast.h" // TODO should be unnecessary
 
 /* Query context, used for concurent query processing. */
 typedef struct {

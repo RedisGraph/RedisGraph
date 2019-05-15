@@ -10,7 +10,7 @@
 #include "op.h"
 #include "../../graph/entities/node.h"
 #include "../../graph/entities/edge.h"
-#include "../../parser/ast_shared.h"
+#include "../../ast/ast_shared.h"
 #include "../../resultset/resultset_statistics.h"
 
 /* Merge execution plan operation,

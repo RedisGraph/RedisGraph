@@ -17,7 +17,7 @@ extern "C" {
 #include "../../src/graph/query_graph.h"
 #include "../../src/util/simple_timer.h"
 #include "../../src/arithmetic/algebraic_expression.h"
-#include "../../src/parser/ast.h"
+#include "../../src/ast/ast.h"
 #include "../../src/util/rmalloc.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 

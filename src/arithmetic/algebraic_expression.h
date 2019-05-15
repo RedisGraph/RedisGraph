@@ -9,7 +9,7 @@
 
 #include "../graph/query_graph.h"
 #include "../graph/graph.h"
-#include "../parser/ast.h"
+#include "../ast/ast.h"
 
 // Matrix, vector operations.
 typedef enum {

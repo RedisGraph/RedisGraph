@@ -7,7 +7,7 @@
 #include <assert.h>
 
 #include "../../util/arr.h"
-#include "../../parser/ast.h"
+#include "../../ast/ast.h"
 #include "../../arithmetic/arithmetic_expression.h"
 #include "../../graph/graphcontext.h"
 #include "../../algorithms/all_paths.h"

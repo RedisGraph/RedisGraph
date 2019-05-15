@@ -8,7 +8,7 @@
 #define __GRAPH_RESULTSET_H__
 
 #include "resultset_statistics.h"
-#include "../parser/ast.h"
+#include "../ast/ast.h"
 #include "../redismodule.h"
 #include "../util/vector.h"
 #include "../execution_plan/record.h"

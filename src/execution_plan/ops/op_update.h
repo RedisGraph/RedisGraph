@@ -12,7 +12,7 @@
 #include "../../graph/entities/edge.h"
 #include "../../resultset/resultset_statistics.h"
 #include "../../arithmetic/arithmetic_expression.h"
-#include "../../parser/ast_build_op_contexts.h"
+#include "../../ast/ast_build_op_contexts.h"
 
 // Context describing a pending update to perform.
 typedef struct {    

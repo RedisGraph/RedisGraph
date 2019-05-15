@@ -5,7 +5,7 @@
 */
 
 #include "op_expand_into.h"
-#include "../../parser/ast.h"
+#include "../../ast/ast.h"
 #include "../../util/arr.h"
 
 /* Expand into checks to see if two resolved nodes are connected

@@ -15,8 +15,8 @@
 #include "./optimizations/optimizer.h"
 #include "./optimizations/optimizations.h"
 #include "../arithmetic/algebraic_expression.h"
-#include "../parser/ast_build_op_contexts.h"
-#include "../parser/ast_build_filter_tree.h"
+#include "../ast/ast_build_op_contexts.h"
+#include "../ast/ast_build_filter_tree.h"
 
 /* Given an AST path, construct a series of scans and traversals to model it. */
 void _ExecutionPlanSegment_BuildTraversalOps(QueryGraph *qg, FT_FilterNode *ft, const cypher_astnode_t *path, Vector *traversals) {

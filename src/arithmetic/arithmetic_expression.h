@@ -12,7 +12,7 @@
 #include "../execution_plan/record.h"
 #include "../graph/entities/graph_entity.h"
 #include "../graph/query_graph.h"
-#include "../parser/ast.h"
+#include "../ast/ast.h"
 #include "./agg_ctx.h"
 
 /* Forward declarations. */

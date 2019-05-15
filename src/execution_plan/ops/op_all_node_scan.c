@@ -5,7 +5,7 @@
 */
 
 #include "op_all_node_scan.h"
-#include "../../parser/ast.h"
+#include "../../ast/ast.h"
 
 OpBase* NewAllNodeScanOp(const Graph *g, Node *n, uint node_idx) {
     AllNodeScan *allNodeScan = malloc(sizeof(AllNodeScan));

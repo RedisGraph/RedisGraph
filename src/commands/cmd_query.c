@@ -7,7 +7,7 @@
 #include "cmd_query.h"
 #include "cmd_context.h"
 #include "../graph/graph.h"
-#include "../parser/ast.h"
+#include "../ast/ast.h"
 #include "../query_executor.h"
 #include "../util/simple_timer.h"
 #include "../execution_plan/execution_plan.h"

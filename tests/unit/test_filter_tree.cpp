@@ -13,7 +13,7 @@ extern "C" {
 #include <stdio.h>
 #include <string.h>
 #include "../../src/util/vector.h"
-#include "../../src/parser/ast_build_filter_tree.h"
+#include "../../src/ast/ast_build_filter_tree.h"
 #include "../../src/filter_tree/filter_tree.h"
 #include "../../src/util/arr.h"
 #include "../../src/util/rmalloc.h"
