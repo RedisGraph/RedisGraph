@@ -61,16 +61,17 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
     }
 
     // Make sure RediSearch is loaded.
-    if(RediSearch_Initialize() == REDISMODULE_OK) {
-        /* Enable full-text search.
-         * TODO: currently all procedure deal with full text-search 
-         * once additional procedure will be introduce 
-         * this registration invocation will have to change. */
-        Proc_Register();
-    } else {
-        RedisModule_Log(ctx, "warning", "RediSearch is missing, disabeling full-text search.");
-    }
-
+    // if(RediSearch_Initialize() == REDISMODULE_OK) {
+    //     /* Enable full-text search.
+    //      * TODO: currently all procedure deal with full text-search 
+    //      * once additional procedure will be introduce 
+    //      * this registration invocation will have to change. */
+    //     Proc_Register();
+    // } else {
+    //     RedisModule_Log(ctx, "warning", "RediSearch is missing, disabeling full-text search.");
+    // }
+    
+    Proc_Register();
     AR_RegisterFuncs();     // Register arithmetic functions.
     Agg_RegisterFuncs();    // Register aggregation functions.
 
