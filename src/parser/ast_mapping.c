@@ -9,8 +9,8 @@
 #include "../arithmetic/arithmetic_expression.h"
 #include <assert.h>
 
-unsigned int AST_GetAliasID(const AST *ast, char *alias) {
-    AR_ExpNode *exp = TrieMap_Find(ast->entity_map, alias, strlen(alias));
+unsigned int AST_GetAliasID(const AST *ast, const char *alias) {
+    AR_ExpNode *exp = TrieMap_Find(ast->entity_map, (char*)alias, strlen(alias));
     return exp->record_idx;
 }
 
@@ -18,8 +18,8 @@ void AST_MapEntity(const AST *ast, AST_IDENTIFIER identifier, AR_ExpNode *exp) {
     TrieMap_Add(ast->entity_map, (char*)&identifier, sizeof(identifier), exp, TrieMap_DONT_CARE_REPLACE);
 }
 
-void AST_MapAlias(const AST *ast, char *alias, AR_ExpNode *exp) {
-    TrieMap_Add(ast->entity_map, alias, strlen(alias), exp, TrieMap_DONT_CARE_REPLACE);
+void AST_MapAlias(const AST *ast, const char *alias, AR_ExpNode *exp) {
+    TrieMap_Add(ast->entity_map, (char*)alias, strlen(alias), exp, TrieMap_DONT_CARE_REPLACE);
 }
 
 AR_ExpNode* AST_GetEntity(const AST *ast, AST_IDENTIFIER entity) {
@@ -28,8 +28,8 @@ AR_ExpNode* AST_GetEntity(const AST *ast, AST_IDENTIFIER entity) {
     return v;
 }
 
-AR_ExpNode* AST_GetEntityFromAlias(const AST *ast, char *alias) {
-    void *v = TrieMap_Find(ast->entity_map, alias, strlen(alias));
+AR_ExpNode* AST_GetEntityFromAlias(const AST *ast, const char *alias) {
+    void *v = TrieMap_Find(ast->entity_map, (char*)alias, strlen(alias));
     if (v == TRIEMAP_NOTFOUND) return NULL;
     return v;
 }

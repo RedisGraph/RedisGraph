@@ -62,7 +62,7 @@ static void _ResultSet_ReplayHeader(const ResultSet *set, AR_ExpNode **exps) {
     uint ncols = array_len(exps);
     RedisModule_ReplyWithArray(set->ctx, ncols);
     for(uint i = 0; i < ncols; i++) {
-        char *alias = exps[i]->alias;
+        const char *alias = exps[i]->alias;
         RedisModule_ReplyWithStringBuffer(set->ctx, alias, strlen(alias));
     }
 }

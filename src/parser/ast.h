@@ -38,8 +38,8 @@ typedef struct {
 // AST clause validations.
 AST_Validation AST_Validate(const AST *ast, char **reason);
 
-// Checks if AST represent a read only query.
-bool AST_ReadOnly(const AST *query);
+// Checks if AST represents a read-only query.
+bool AST_ReadOnly(const cypher_astnode_t *root);
 
 // Checks to see if AST contains specified clause. 
 bool AST_ContainsClause(const AST *ast, cypher_astnode_type_t clause);
@@ -80,15 +80,15 @@ void AST_BuildAliasMap(AST *ast);
 
 // mapping functions
 
-unsigned int AST_GetAliasID(const AST *ast, char *alias);
+unsigned int AST_GetAliasID(const AST *ast, const char *alias);
 
 void AST_MapEntity(const AST *ast, AST_IDENTIFIER identifier, AR_ExpNode *exp);
 
-void AST_MapAlias(const AST *ast, char *alias, AR_ExpNode *exp);
+void AST_MapAlias(const AST *ast, const char *alias, AR_ExpNode *exp);
 
 AR_ExpNode* AST_GetEntity(const AST *ast, AST_IDENTIFIER entity);
 
-AR_ExpNode* AST_GetEntityFromAlias(const AST *ast, char *alias);
+AR_ExpNode* AST_GetEntityFromAlias(const AST *ast, const char *alias);
 
 unsigned int AST_GetEntityRecordIdx(const AST *ast, const cypher_astnode_t *entity);
 
@@ -102,5 +102,7 @@ void AST_RecordAccommodateExpression(AST *ast, AR_ExpNode *exp);
 unsigned int AST_AddAnonymousRecordEntry(AST *ast);
 
 AST* AST_GetFromTLS(void);
+
+void AST_Free(AST *ast);
 
 #endif

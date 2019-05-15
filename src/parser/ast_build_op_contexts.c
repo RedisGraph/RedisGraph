@@ -62,10 +62,11 @@ PropertyMap* AST_ConvertPropertiesMap(const AST *ast, const cypher_astnode_t *pr
         map->keys[prop_idx] = cypher_ast_prop_name_get_value(ast_key);
 
         const cypher_astnode_t *ast_value = cypher_ast_map_get_value(props, prop_idx);
-        // TODO optimize
+        // TODO write a routine to convert an AST node to an SIValue
         AR_ExpNode *value_exp = AR_EXP_FromExpression(ast, ast_value);
         SIValue value = AR_EXP_Evaluate(value_exp, NULL);
-        map->values[prop_idx] = value; // TODO mismapping? map->values is an SIValue*
+        AR_EXP_Free(value_exp);
+        map->values[prop_idx] = value;
     }
     return map;
 }

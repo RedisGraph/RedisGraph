@@ -56,9 +56,10 @@ void _MGraph_Query(void *args) {
     CommandCtx *qctx = (CommandCtx*)args;
     RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(qctx);
     ResultSet* resultSet = NULL;
-    AST *ast = qctx->ast;
-    bool readonly = AST_ReadOnly(ast);
     bool lockAcquired = false;
+
+    AST *ast = AST_Build(qctx->parse_result);
+    bool readonly = AST_ReadOnly(ast->root);
 
     // Set thread-local AST
     pthread_setspecific(_tlsASTKey, ast);
@@ -121,8 +122,8 @@ cleanup:
     }
 
     ResultSet_Free(resultSet);
+    AST_Free(ast);
     CommandCtx_Free(qctx);
-    // cypher_parse_result_free(ast);
 }
 
 /* Queries graph
@@ -135,15 +136,13 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
     simple_tic(tic);
 
-    char *errMsg = NULL;
     const char *query = RedisModule_StringPtrLen(argv[2], NULL);
 
     // Parse AST.
     cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
-    assert(parse_result);
 
     if(AST_ContainsErrors(parse_result)) {
-        errMsg = AST_ReportErrors(parse_result);
+        char *errMsg = AST_ReportErrors(parse_result);
         cypher_parse_result_free(parse_result);
         RedisModule_Log(ctx, "debug", "Error parsing query: %s", errMsg);
         RedisModule_ReplyWithError(ctx, errMsg);
@@ -151,8 +150,8 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
         return REDISMODULE_OK;
     }
 
-    AST *ast = AST_Build(parse_result);
-    bool readonly = AST_ReadOnly(ast);
+    const cypher_astnode_t *query_root = AST_GetBody(parse_result);
+    bool readonly = AST_ReadOnly(query_root);
 
     /* Determin query execution context
      * queries issued within a LUA script or multi exec block must
@@ -161,14 +160,14 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     int flags = RedisModule_GetContextFlags(ctx);
     if (flags & (REDISMODULE_CTX_FLAGS_MULTI | REDISMODULE_CTX_FLAGS_LUA)) {
       // Run query on Redis main thread.
-      context = CommandCtx_New(ctx, NULL, ast, argv[1], argv, argc);
+      context = CommandCtx_New(ctx, NULL, parse_result, argv[1], argv, argc);
       context->tic[0] = tic[0];
       context->tic[1] = tic[1];
       _MGraph_Query(context);
     } else {
       // Run query on a dedicated thread.
       RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
-      context = CommandCtx_New(NULL, bc, ast, argv[1], argv, argc);
+      context = CommandCtx_New(NULL, bc, parse_result, argv[1], argv, argc);
       context->tic[0] = tic[0];
       context->tic[1] = tic[1];
       thpool_add_work(_thpool, _MGraph_Query, context);

@@ -94,10 +94,10 @@ void _mapUnwind(AST *ast, const cypher_astnode_t *unwind_clause) {
 
 }
 
-bool AST_ReadOnly(const AST *ast) {
-    unsigned int num_clauses = cypher_astnode_nchildren(ast->root);
+bool AST_ReadOnly(const cypher_astnode_t *root) {
+    unsigned int num_clauses = cypher_astnode_nchildren(root);
     for (unsigned int i = 0; i < num_clauses; i ++) {
-        const cypher_astnode_t *child = cypher_astnode_get_child(ast->root, i);
+        const cypher_astnode_t *child = cypher_astnode_get_child(root, i);
         cypher_astnode_type_t type = cypher_astnode_type(child);
         if(type == CYPHER_AST_CREATE ||
            type == CYPHER_AST_MERGE ||
@@ -237,7 +237,7 @@ const cypher_astnode_t* AST_GetBody(const cypher_parse_result_t *result) {
 }
 
 AST* AST_Build(cypher_parse_result_t *parse_result) {
-    AST *ast = malloc(sizeof(AST));
+    AST *ast = rm_malloc(sizeof(AST));
     ast->root = AST_GetBody(parse_result);
     assert(ast->root);
     ast->record_length = 0;
@@ -247,18 +247,6 @@ AST* AST_Build(cypher_parse_result_t *parse_result) {
     ast->end_offset = cypher_astnode_nchildren(ast->root);
 
     return ast;
-}
-
-// Debug print
-void _walkTriemap(TrieMap *tm) {
-    TrieMapIterator *it = TrieMap_Iterate(tm, "", 0);
-    char *ptr;
-    tm_len_t len;
-    void *value;
-    while(TrieMapIterator_Next(it, &ptr, &len, &value)) {
-        printf("%*s\n", len, ptr);
-    }
-    TrieMapIterator_Free(it);
 }
 
 // TODO I find it so weird that this is necessary
@@ -324,10 +312,10 @@ void _AST_MapPath(AST *ast, const cypher_astnode_t *path, bool map_anonymous) {
             if (exp == NULL) {
                 uint id = AST_AddRecordEntry(ast);
                 exp = AR_EXP_NewVariableOperandNode(entity, alias, id);
+                ast->defined_entities = array_append(ast->defined_entities, exp);
             }
             AST_MapEntity(ast, entity, exp);
             AST_MapAlias(ast, (char*)alias, exp);
-            ast->defined_entities = array_append(ast->defined_entities, exp);
         } else if (map_anonymous) {
             uint id = AST_AddRecordEntry(ast);
             AR_ExpNode *exp = AR_EXP_NewAnonymousEntity(id);
@@ -376,5 +364,18 @@ AST* AST_GetFromTLS(void) {
     AST *ast = pthread_getspecific(_tlsASTKey);
     assert(ast);
     return ast;
+}
+
+void AST_Free(AST *ast) {
+    if (ast->defined_entities) {
+        uint len = array_len(ast->defined_entities);
+        for (uint i = 0; i < len; i ++) {
+            AR_EXP_Free(ast->defined_entities[i]);
+        }
+        array_free(ast->defined_entities);
+    }
+    if (ast->entity_map) TrieMap_Free(ast->entity_map, TrieMap_NOP_CB);
+
+    rm_free(ast);
 }
 

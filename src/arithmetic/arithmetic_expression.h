@@ -66,9 +66,9 @@ typedef struct {
     union {
         SIValue constant;
         struct {
-            char *entity_alias;
+            const char *entity_alias;
             int entity_alias_idx;
-            char *entity_prop;
+            const char *entity_prop;
             SchemaType entity_type;
             Attribute_ID entity_prop_idx;
             // TODO can almost delete ast_ref
@@ -87,7 +87,7 @@ struct AR_ExpNode {
         AR_OperandNode operand;
         AR_OpNode op;
     };
-    char *alias;
+    const char *alias;
     AR_ExpNodeType type;
     uint record_idx;
     bool collapsed; // TODO refactor, add type for just looking up a record index / alias
@@ -155,7 +155,7 @@ void AR_EXP_ToString(const AR_ExpNode *root, char **str);
 
 AR_ExpNode* AR_EXP_NewVariableOperandNode(const cypher_astnode_t *entity, const char *alias, uint id);
 AR_ExpNode* AR_EXP_NewPropertyOperator(AR_ExpNode *alias_node, const char *prop);
-AR_ExpNode* AR_EXP_NewReferenceNode(char *alias, unsigned int record_idx, bool collapsed);
+AR_ExpNode* AR_EXP_NewReferenceNode(const char *alias, unsigned int record_idx, bool collapsed);
 AR_ExpNode* AR_EXP_NewAnonymousEntity(uint id);
 AR_ExpNode* AR_EXP_NewConstOperandNode(SIValue constant);
 

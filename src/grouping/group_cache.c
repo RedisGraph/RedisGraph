@@ -23,8 +23,7 @@ Group* CacheGroupGet(CacheGroup *groups, char *key) {
 }
 
 void FreeGroupCache(CacheGroup *groups) {
-    // TODO figure this out?
-    // TrieMap_Free(groups, (void (*)(void *))FreeGroup);
+    TrieMap_Free(groups, (void (*)(void *))FreeGroup);
 }
 
 // Returns an iterator to scan entire group cache

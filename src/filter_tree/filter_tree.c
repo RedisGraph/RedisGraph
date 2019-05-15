@@ -198,21 +198,15 @@ void FilterTree_Print(const FT_FilterNode *root) {
     _FilterTree_Print(root, 0);
 }
 
-void _FilterTree_FreePredNode(FT_PredicateNode node) {
-    AR_EXP_Free(node.lhs);
-    AR_EXP_Free(node.rhs);
-
-    // TODO free node itself 
-}
-
 void FilterTree_Free(FT_FilterNode *root) {
-    // if(root == NULL) { return; }
-    // if(IsNodePredicate(root)) {
-        // _FilterTree_FreePredNode(root->pred);
-    // } else {
-        // FilterTree_Free(root->cond.left);
-        // FilterTree_Free(root->cond.right);
-    // }
+    if(root == NULL) return;
+    if(IsNodePredicate(root)) {
+        AR_EXP_Free(root->pred.lhs);
+        AR_EXP_Free(root->pred.rhs);
+    } else {
+        FilterTree_Free(root->cond.left);
+        FilterTree_Free(root->cond.right);
+    }
 
-    // free(root);
+    free(root);
 }

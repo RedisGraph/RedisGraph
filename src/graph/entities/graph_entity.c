@@ -49,7 +49,7 @@ SIValue* GraphEntity_AddProperty(GraphEntity *e, Attribute_ID attr_id, SIValue v
 
 	int prop_idx = e->entity->prop_count;
 	e->entity->properties[prop_idx].id = attr_id;
-	e->entity->properties[prop_idx].value = value;
+	e->entity->properties[prop_idx].value = SI_Clone(value);
 	e->entity->prop_count++;
 	
 	return &(e->entity->properties[prop_idx].value);
@@ -79,7 +79,8 @@ void GraphEntity_SetProperty(const GraphEntity *e, Attribute_ID attr_id, SIValue
 
 	SIValue *prop = GraphEntity_GetProperty(e, attr_id);
 	assert(prop != PROPERTY_NOTFOUND);
-	*prop = value;
+    SIValue_Free(prop);
+	*prop = SI_Clone(value);
 }
 
 void FreeEntity(Entity *e) {

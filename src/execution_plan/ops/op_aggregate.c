@@ -153,7 +153,10 @@ static Group* _GetGroup(OpAggregate *op, Record r) {
     // Can't reuse last accessed group, lookup group by identifier key.
     _ComputeGroupKeyStr(op, &group_key_str);
     op->group = CacheGroupGet(op->groups, group_key_str);
-    if(op->group) return op->group;
+    if(op->group) {
+        rm_free(group_key_str);
+        return op->group;
+    }
 
     // Group does not exists, create it.
     op->group = _CreateGroup(op, r);
@@ -305,8 +308,8 @@ void AggregateFree(OpBase *opBase) {
     if(op->non_aggregated_expressions) array_free(op->non_aggregated_expressions);
 
     if(op->exps) {
-        uint exp_count = array_len(op->exps);
-        for(uint i = 0; i < exp_count; i++) AR_EXP_Free(op->exps[i]);
+        // uint exp_count = array_len(op->exps);
+        // for(uint i = 0; i < exp_count; i++) AR_EXP_Free(op->exps[i]);
         array_free(op->exps);
     }
 

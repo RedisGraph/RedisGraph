@@ -29,7 +29,7 @@ static void _BuildQueryGraphAddNode(const GraphContext *gc,
 
     // Check if node has been mapped using a different AST entity
     AR_ExpNode *exp = AST_GetEntity(ast, ast_entity);
-    char *alias = NULL;
+    const char *alias = NULL;
     if (exp) {
         n = QueryGraph_GetEntityByASTRef(qg, exp->operand.variadic.ast_ref);
         alias = exp->operand.variadic.entity_alias;
@@ -76,7 +76,7 @@ static void _BuildQueryGraphAddEdge(const GraphContext *gc,
     if (e) return;
 
     AR_ExpNode *exp = AST_GetEntity(ast, ast_entity);
-    char *alias = NULL;
+    const char *alias = NULL;
     if (exp) {
         alias = exp->operand.variadic.entity_alias;
     }

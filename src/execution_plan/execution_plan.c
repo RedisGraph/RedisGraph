@@ -513,7 +513,7 @@ void _AST_Reset(AST *ast) {
     if (ast->defined_entities) {
         uint len = array_len(ast->defined_entities);
         for (uint i = 0; i < len; i ++) {
-            AR_EXP_Free(ast->defined_entities[i]);
+            // AR_EXP_Free(ast->defined_entities[i]);
         }
         array_clear(ast->defined_entities);
     } else {
@@ -636,6 +636,7 @@ void ExecutionPlan_Free(ExecutionPlan *plan) {
         QueryGraph_Free(segment->query_graph);
         free(segment);
     }
+    free(plan->segments);
 
     free(plan);
 }

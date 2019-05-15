@@ -190,7 +190,6 @@ void _collectFilters(AST *ast, FT_FilterNode **root, const cypher_astnode_t *ent
     if (node) FT_Append(root, node);
 }
 
-// TODO use more widely or delete
 FT_FilterNode* FilterNode_FromAST(const AST *ast, const cypher_astnode_t *expr) {
     assert(expr);
     cypher_astnode_type_t type = cypher_astnode_type(expr);
@@ -198,8 +197,6 @@ FT_FilterNode* FilterNode_FromAST(const AST *ast, const cypher_astnode_t *expr) 
         return _convertBinaryOperator(ast, expr);
     } else if (type == CYPHER_AST_COMPARISON) {
         return _convertComparison(ast, expr);
-    } else {
-        // AR_ExpNode *lhs = AR_EXP_FromExpression(ast, expr);
     }
     assert(false);
     return NULL;

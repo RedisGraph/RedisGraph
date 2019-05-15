@@ -123,5 +123,5 @@ void ProjectFree(OpBase *ctx) {
     OpProject *op = (OpProject*)ctx;
 
     // for(unsigned short i = 0; i < op->exp_count; i++) AR_EXP_Free(op->exps[i]); // TODO double free
-    // array_free(op->exps);
+    array_free(op->exps);
 }

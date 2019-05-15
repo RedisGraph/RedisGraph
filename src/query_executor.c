@@ -238,7 +238,7 @@ AR_ExpNode** _ReturnExpandAll(AST *ast) {
 
     for (unsigned int i = 0; i < identifier_count; i ++) {
         AR_ExpNode *entity = ast->defined_entities[i];
-        char *alias = entity->operand.variadic.entity_alias;
+        const char *alias = entity->operand.variadic.entity_alias;
         if (alias) {
             entity->alias = alias;
             entity->collapsed = true;
@@ -329,7 +329,8 @@ AR_ExpNode** AST_BuildOrderExpressions(AST *ast, const cypher_astnode_t *order_c
         if (cypher_astnode_type(cypher_exp) == CYPHER_AST_IDENTIFIER) {
             // Reference to an alias in the query - associate with existing AR_ExpNode
             const char *alias = cypher_ast_identifier_get_name(cypher_exp);
-            exp = AST_GetEntityFromAlias(ast, (char*)alias);
+            // Clone the expression so that we can free safely
+            exp = AR_EXP_Clone(AST_GetEntityFromAlias(ast, alias));
             /* TODO There is a bit of oddness here, in that we should be able to create
              * a reference node (as commented), but if the aliased entity is an aggregate,
              * it will not register properly in op_aggregate's _classify_expressions */
@@ -341,7 +342,6 @@ AR_ExpNode** AST_BuildOrderExpressions(AST *ast, const cypher_astnode_t *order_c
             exp = AR_EXP_FromExpression(ast, cypher_exp);
         }
 
-        // TODO rec_idx?
         order_exps = array_append(order_exps, exp);
         // TODO direction should be specifiable per order entity
         ascending = cypher_ast_sort_item_is_ascending(item);

@@ -89,6 +89,8 @@ static void _accumulate(OpSort *op, Record r) {
         if(_heap_elem_compare(heap_peek(op->heap), r, op) > 0) {
             Record *replaced = heap_poll(op->heap); // TODO memory leak?
             heap_offer(&op->heap, r);
+        } else {
+            Record_Free(r);
         }
     }
 }
@@ -229,6 +231,6 @@ void SortFree(OpBase *ctx) {
         array_free(op->buffer);
     }
 
-    // for(int i = 0; i < array_len(op->expressions); i++) AR_EXP_Free(op->expressions[i]); // TODO
+    for(int i = 0; i < array_len(op->expressions); i++) AR_EXP_Free(op->expressions[i]);
     array_free(op->expressions);
 }

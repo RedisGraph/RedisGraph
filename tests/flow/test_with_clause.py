@@ -1,5 +1,7 @@
 import os
 import sys
+import string
+import random
 import unittest
 import redis
 from redisgraph import Graph, Node, Edge
@@ -10,6 +12,9 @@ redis_graph = None
 dis_redis = None
 
 values = ["str1", "str2", False, True, 5, 10.5]
+
+def random_string(size=6, chars=string.ascii_letters):
+    return ''.join(random.choice(chars) for _ in range(size))
 
 def get_redis():
     global dis_redis
@@ -31,7 +36,8 @@ class WithClauseTest(FlowTestsBase):
         print "WithClauseTest"
         global redis_graph
         redis_con = get_redis()
-        redis_graph = Graph("G", redis_con)
+        GRAPH_ID = random_string()
+        redis_graph = Graph(GRAPH_ID, redis_con)
 
         cls.populate_graph()
 

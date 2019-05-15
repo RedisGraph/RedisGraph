@@ -53,12 +53,12 @@ bool _AR_SetFunction(AR_ExpNode *exp, AST_Operator op) {
 }
 
 static AR_ExpNode* _AR_EXP_NewOpNodeFromAST(AST_Operator op, int child_count) {
-    AR_ExpNode *node = calloc(1, sizeof(AR_ExpNode));
+    AR_ExpNode *node = rm_calloc(1, sizeof(AR_ExpNode));
     node->type = AR_EXP_OP;
     node->record_idx = NOT_IN_RECORD;
     node->op.func_name = NULL; // TODO needed?
     node->op.child_count = child_count;
-    node->op.children = (AR_ExpNode **)malloc(child_count * sizeof(AR_ExpNode*));
+    node->op.children = rm_malloc(child_count * sizeof(AR_ExpNode*));
 
     /* Determine function type. */
     node->op.type = AR_OP_FUNC;
@@ -71,7 +71,7 @@ static AR_ExpNode* _AR_EXP_NewOpNodeFromAST(AST_Operator op, int child_count) {
 // TODO we don't really have as many func_name strings as before (they were generated in grammar.y)
 // maybe replace with above
 static AR_ExpNode* _AR_EXP_NewOpNode(char *func_name, int child_count) {
-    AR_ExpNode *node = calloc(1, sizeof(AR_ExpNode));
+    AR_ExpNode *node = rm_calloc(1, sizeof(AR_ExpNode));
     node->type = AR_EXP_OP;
     node->collapsed = false;
     node->record_idx = NOT_IN_RECORD;
@@ -100,12 +100,12 @@ static AR_ExpNode* _AR_EXP_NewOpNode(char *func_name, int child_count) {
 }
 
 AR_ExpNode* AR_EXP_NewVariableOperandNode(const cypher_astnode_t *entity, const char *alias, uint id) {
-    AR_ExpNode *node = malloc(sizeof(AR_ExpNode));
+    AR_ExpNode *node = rm_malloc(sizeof(AR_ExpNode));
     node->type = AR_EXP_OPERAND;
     node->collapsed = true;
     node->record_idx = id;
     node->operand.type = AR_EXP_VARIADIC;
-    node->operand.variadic.entity_alias = strdup(alias);
+    node->operand.variadic.entity_alias = alias;
     node->operand.variadic.entity_alias_idx = id;
     node->operand.variadic.entity_prop = NULL;
     node->operand.variadic.ast_ref = entity;
@@ -122,14 +122,14 @@ AR_ExpNode* AR_EXP_NewVariableOperandNode(const cypher_astnode_t *entity, const 
 }
 
 AR_ExpNode* AR_EXP_NewPropertyOperator(AR_ExpNode *alias_node, const char *prop) {
-    AR_ExpNode *node = malloc(sizeof(AR_ExpNode));
+    AR_ExpNode *node = rm_malloc(sizeof(AR_ExpNode));
     node->type = AR_EXP_OPERAND;
     node->collapsed = false;
     node->record_idx = NOT_IN_RECORD;
     node->operand.type = AR_EXP_VARIADIC;
     node->operand.variadic.entity_alias = alias_node->operand.variadic.entity_alias;
     node->operand.variadic.entity_alias_idx = alias_node->operand.variadic.entity_alias_idx;
-    node->operand.variadic.entity_prop = (prop) ? strdup(prop) : NULL;
+    node->operand.variadic.entity_prop = prop;
     node->operand.variadic.ast_ref = NULL;
     SchemaType t = alias_node->operand.variadic.entity_type;
     node->operand.variadic.entity_type = t;
@@ -138,8 +138,8 @@ AR_ExpNode* AR_EXP_NewPropertyOperator(AR_ExpNode *alias_node, const char *prop)
     return node;
 }
 
-AR_ExpNode* AR_EXP_NewReferenceNode(char *alias, unsigned int record_idx, bool collapsed) {
-    AR_ExpNode *node = calloc(1, sizeof(AR_ExpNode));
+AR_ExpNode* AR_EXP_NewReferenceNode(const char *alias, unsigned int record_idx, bool collapsed) {
+    AR_ExpNode *node = rm_calloc(1, sizeof(AR_ExpNode));
     node->type = AR_EXP_REFERENCE;
     node->alias = alias;
     node->record_idx = record_idx;
@@ -149,7 +149,7 @@ AR_ExpNode* AR_EXP_NewReferenceNode(char *alias, unsigned int record_idx, bool c
 }
 
 AR_ExpNode* AR_EXP_NewAnonymousEntity(uint id) {
-    AR_ExpNode *node = calloc(1, sizeof(AR_ExpNode));
+    AR_ExpNode *node = rm_calloc(1, sizeof(AR_ExpNode));
     node->type = AR_EXP_OPERAND;
     node->operand.type = AR_EXP_VARIADIC;
 
@@ -160,7 +160,7 @@ AR_ExpNode* AR_EXP_NewAnonymousEntity(uint id) {
 }
 
 AR_ExpNode* AR_EXP_NewConstOperandNode(SIValue constant) {
-    AR_ExpNode *node = malloc(sizeof(AR_ExpNode));
+    AR_ExpNode *node = rm_malloc(sizeof(AR_ExpNode));
     node->type = AR_EXP_OPERAND;
     node->record_idx = NOT_IN_RECORD;
     node->operand.type = AR_EXP_CONSTANT;
@@ -182,7 +182,9 @@ AR_ExpNode* AR_EXP_FromExpression(const AST *ast, const cypher_astnode_t *expr) 
         const char *func_name = cypher_ast_function_name_get_value(func_node);
         // TODO When implementing calls like COUNT(DISTINCT), use cypher_ast_apply_operator_get_distinct()
         unsigned int arg_count = cypher_ast_apply_operator_narguments(expr);
+        // TODO try to replace with something not string-based
         AR_ExpNode *op = _AR_EXP_NewOpNode((char*)func_name, arg_count);
+
         for (unsigned int i = 0; i < arg_count; i ++) {
             const cypher_astnode_t *arg = cypher_ast_apply_operator_get_argument(expr, i);
             // Recursively convert arguments
@@ -230,7 +232,7 @@ AR_ExpNode* AR_EXP_FromExpression(const AST *ast, const cypher_astnode_t *expr) 
         return AR_EXP_NewConstOperandNode(converted);
     } else if (type == CYPHER_AST_STRING) {
         const char *value_str = cypher_ast_string_get_value(expr);
-        SIValue converted = SI_DuplicateStringVal(value_str); // TODO use const strings instead?
+        SIValue converted = SI_ConstStringVal((char*)value_str);
         return AR_EXP_NewConstOperandNode(converted);
     } else if (type == CYPHER_AST_TRUE) {
         SIValue converted = SI_BoolVal(true);
@@ -571,11 +573,11 @@ static AR_ExpNode* _AR_EXP_CloneOperand(AR_ExpNode* exp) {
             break;
         case AR_EXP_VARIADIC:
             clone->operand.type = exp->operand.type;
-            clone->operand.variadic.entity_alias = rm_strdup(exp->operand.variadic.entity_alias);
+            clone->operand.variadic.entity_alias = exp->operand.variadic.entity_alias;
             clone->operand.variadic.entity_alias_idx = exp->operand.variadic.entity_alias_idx;
             clone->operand.variadic.entity_type = exp->operand.variadic.entity_type;
             if(exp->operand.variadic.entity_prop) {
-                clone->operand.variadic.entity_prop = rm_strdup(exp->operand.variadic.entity_prop);
+                clone->operand.variadic.entity_prop = exp->operand.variadic.entity_prop;
             }
             clone->operand.variadic.entity_prop_idx = exp->operand.variadic.entity_prop_idx;
             break;
@@ -595,6 +597,10 @@ static AR_ExpNode* _AR_EXP_CloneOp(AR_ExpNode* exp) {
     return clone;
 }
 
+static AR_ExpNode* _AR_EXP_CloneReference(AR_ExpNode* exp) {
+    return AR_EXP_NewReferenceNode(exp->alias, exp->record_idx, exp->collapsed);
+}
+
 AR_ExpNode* AR_EXP_Clone(AR_ExpNode* exp) {
     AR_ExpNode *clone;
     switch(exp->type) {
@@ -603,6 +609,9 @@ AR_ExpNode* AR_EXP_Clone(AR_ExpNode* exp) {
             break;
         case AR_EXP_OP:
             clone = _AR_EXP_CloneOp(exp);
+            break;
+        case AR_EXP_REFERENCE:
+            clone = _AR_EXP_CloneReference(exp);
             break;
         default:
             assert(false);
@@ -616,23 +625,18 @@ AR_ExpNode* AR_EXP_Clone(AR_ExpNode* exp) {
 }
 
 void AR_EXP_Free(AR_ExpNode *root) {
-    // if(root->type == AR_EXP_OP) {
-        // for(int child_idx = 0; child_idx < root->op.child_count; child_idx++) {
-            // AR_EXP_Free(root->op.children[child_idx]);
-        // }
-        // rm_free(root->op.children);
-        // if (root->op.type == AR_OP_AGGREGATE) {
-            // AggCtx_Free(root->op.agg_func);
-        // }
-    // } else {
-        // if (root->operand.type == AR_EXP_CONSTANT) {
-            // SIValue_Free(&root->operand.constant);
-        // } else {
-            // if (root->operand.variadic.entity_alias) rm_free(root->operand.variadic.entity_alias);
-            // if (root->operand.variadic.entity_prop) rm_free(root->operand.variadic.entity_prop);
-        // }
-    // }
-    // rm_free(root);
+    if(root->type == AR_EXP_OP) {
+        for(int child_idx = 0; child_idx < root->op.child_count; child_idx++) {
+            AR_EXP_Free(root->op.children[child_idx]);
+        }
+        rm_free(root->op.children);
+        if (root->op.type == AR_OP_AGGREGATE) {
+            AggCtx_Free(root->op.agg_func);
+        }
+    } else if (root->operand.type == AR_EXP_CONSTANT) {
+        SIValue_Free(&root->operand.constant);
+    }
+    rm_free(root);
 }
 
 /* Mathematical functions - numeric */

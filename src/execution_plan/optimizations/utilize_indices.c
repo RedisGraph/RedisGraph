@@ -69,7 +69,7 @@ void utilizeIndices(GraphContext *gc, ExecutionPlan *plan) {
   char *label;
 
   // Variables to be used when comparing filters against available indices
-  char *filterProp = NULL;
+  const char *filterProp = NULL;
   SIValue constVal;
   int lhsType, rhsType;
   AST_Operator op = OP_NULL;

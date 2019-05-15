@@ -68,6 +68,7 @@ Record ApplyConsume(OpBase *opBase) {
         // We've joined all data from the right-hand stream with the current
         // retrieval from the left-hand stream.
         // The next call to ApplyConsume will attempt to pull new data.
+        Record_Free(op->lhs_record);
         op->lhs_record = NULL;
         op->rhs_idx = 0;
     }
@@ -85,6 +86,7 @@ OpResult ApplyReset(OpBase *opBase) {
 
 void ApplyFree(OpBase *opBase) {
     Apply *op = (Apply*)opBase;
+    if (op->lhs_record) Record_Free(op->lhs_record);
     if (op->rhs_records) {
         uint len = array_len(op->rhs_records);
         for (uint i = 0; i < len; i ++) {
