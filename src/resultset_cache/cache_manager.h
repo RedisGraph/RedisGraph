@@ -7,7 +7,7 @@ struct CacheManager;
 
 typedef CacheData *(*addToCacheFn)(const char *hashKey, struct CacheManager *cacheManager);
 typedef void (*increaseImportanceFn)(void *cacheData, struct CacheManager *cacheManager);
-typedef void (*CacheManagerFreeFn)(struct CacheManager *cacheManager);
+typedef void (*CacheManager_FreeFn)(struct CacheManager *cacheManager);
 typedef bool (*isCacheFullFn)(struct CacheManager *cacheManager);
 typedef CacheData *(*evictFromCacheFn)(struct CacheManager *cacheManager);
 typedef struct CacheManager
@@ -16,7 +16,7 @@ typedef struct CacheManager
     evictFromCacheFn evictFromCache;
     addToCacheFn addToCache;
     increaseImportanceFn increaseImportance;
-    CacheManagerFreeFn cacheManager_free;
+    CacheManager_FreeFn cacheManager_free;
 
 } CacheManager;
 
