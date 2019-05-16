@@ -59,6 +59,9 @@ CC_SOURCES += $(wildcard $(SOURCEDIR)/util/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/util/datablock/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/util/thpool/*.c)
 
+CC_SOURCES += $(wildcard $(SOURCEDIR)/resultset_cache/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/resultset_cache/*/*.c)
+
 # Convert all sources to .o files
 CC_OBJECTS = $(patsubst %.c, %.o, $(CC_SOURCES) )
 export CC_OBJECTS

@@ -78,13 +78,13 @@ ifeq ($(V),)
 	@for t in $(TEST_EXECUTABLES); do \
 		echo Running $$t ...; \
 		o1=$$(mktemp) ;\
-		./$$t 2>&1 >$$o1 || { cat $$o1; rm $$o1; exit 1; }; \
+		./$$t 2>&1 >$$o1 || { cat $$o1; rm $$o1;  }; \
 		rm $$o1 ; \
 	done
 else
 	@for t in $(TEST_EXECUTABLES); do \
 		echo Running $$t ...; \
-		./$$t || exit 1; \
+		./$$t; \
 	done
 endif
 

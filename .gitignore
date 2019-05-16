@@ -30,12 +30,15 @@
 
 # Folders
 CMakeFiles/
+.vscode/
+.idea/
 
 # Files
 CMakeCache.txt
 DartConfiguration.tcl
 lemon
 deps/GraphBLAS/Config/GraphBLAS.h.tmp
+.DS_Store
 
 # Project
 .cproject
