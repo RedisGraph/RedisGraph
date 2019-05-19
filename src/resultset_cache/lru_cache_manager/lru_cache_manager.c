@@ -1,76 +1,37 @@
 #include "lru_cache_manager.h"
 #include "../../util/rmalloc.h"
-#include <stdbool.h>
-#include "./lru_queue.h"
-#include <stdio.h>
-#include <string.h>
 
-// inner implementation
 
-bool _isCacheFull(LRUCacheManager *lruCacheManager)
+CacheData *evictFromCache(LRUCacheManager *lruCacheManager)
+{
+  return (CacheData *)dequeue(lruCacheManager->queue);
+}
+
+CacheData *addToCache(LRUCacheManager *lruCacheManager, const char *hashKey)
+{
+  LRUNode *newNode = enqueue(hashKey, lruCacheManager->queue);
+  return (CacheData *)newNode;
+}
+void increaseImportance(LRUCacheManager *cacheManager, void *cacheData)
+{
+  return moveToHead((LRUNode *)cacheData, cacheManager->queue);
+}
+
+bool isCacheFull(LRUCacheManager *lruCacheManager)
 {
   return isFullQueue(lruCacheManager->queue);
 }
 
-CacheData* _evictFromCache(LRUCacheManager *lruCacheManager){
-  return (CacheData *)dequeue(lruCacheManager->queue);
-}
-
-LRUNode *_addToCache(const char *hashKey, LRUCacheManager *cacheManager)
-{
-  LRUNode *newNode = enqueue(hashKey, cacheManager->queue);
-  return newNode;
-}
-void _increaseImportance(LRUNode *lruNode, LRUCacheManager *cacheManager)
-{
-  moveToHead(lruNode, cacheManager->queue);
-}
-
-// functions wrappers
-
-CacheData *evictFromCache(CacheManager *cacheManager)
-{
-  return _evictFromCache((LRUCacheManager *)cacheManager);
-}
-
-CacheData *addToCache(const char *hashKey, CacheManager *cacheManager)
-{
-  return (CacheData *)_addToCache(hashKey, (LRUCacheManager *)cacheManager);
-}
-void increaseImportance(void *cacheData, CacheManager *cacheManager)
-{
-  return _increaseImportance((LRUNode *)cacheData, (LRUCacheManager *)cacheManager);
-}
-
-bool isCacheFull(CacheManager *cacheManager)
-{
-  return _isCacheFull((LRUCacheManager *)cacheManager);
-}
-
 // create, init & delete
-void LRUCacheManager_Free(CacheManager *cacheManager)
+void LRUCacheManager_Free(LRUCacheManager *lruCacheManager)
 {
-  LRUCacheManager *lRUCacheManager = (LRUCacheManager *)cacheManager;
-  LRUQueue_Free(lRUCacheManager->queue);
-  rm_free(lRUCacheManager);
+  LRUQueue_Free(lruCacheManager->queue);
+  rm_free(lruCacheManager);
 }
 
-CacheManager *InitLRUCacheManager(LRUCacheManager *lruCacheManager)
-{
-  CacheManager *cacheManager = (CacheManager *)lruCacheManager;
- 
-  cacheManager->addToCache = &addToCache;
-  cacheManager->increaseImportance = &increaseImportance;
-  cacheManager->cacheManager_free = &LRUCacheManager_Free;
-  cacheManager->isCacheFull = &isCacheFull;
-  cacheManager->evictFromCache = &evictFromCache;
-
-  return cacheManager;
-}
-
-CacheManager *LRUCacheManager_New(size_t size)
+LRUCacheManager *LRUCacheManager_New(size_t size)
 {
   LRUCacheManager *lruCacheManager = rm_malloc(sizeof(LRUCacheManager));
   lruCacheManager->queue = LRUQueue_New(size);
-  return InitLRUCacheManager(lruCacheManager);
+  return lruCacheManager;
 }

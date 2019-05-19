@@ -1,6 +1,9 @@
 
 ROOT=../..
 
+# store absolute path to RedisGraph Makefile location
+abs_path = $(shell pwd)
+
 # Path to Google Test source
 GTEST_DIR = ../../deps/googletest
 
@@ -10,7 +13,7 @@ GTEST_DIR = ../../deps/googletest
 CPPFLAGS += -isystem $(GTEST_DIR)/include
 
 # Flags passed to the C++ compiler.
-CXXFLAGS += -g -Wall -Wextra -pthread -std=c++11
+CXXFLAGS += -g -Wall -Wextra -pthread -std=c++11 -I"$(abs_path)" -I"$(abs_path)/../deps" -I"$(abs_path)/../../deps"
 CXX_SUPPRESS = -Wno-sign-compare -Wno-format -Wno-write-strings
 
 REDISGRAPH_CXX=$(QUIET_CXX)$(CXX)
@@ -49,8 +52,10 @@ CC_OBJECTS:=$(CC_OBJECTS)
 LIBTRIEMAP=../../src/util/triemap/libtriemap.a
 LIBGRAPHBLAS=../../deps/GraphBLAS/build/libgraphblas.a
 LIBXXHASH=$(ROOT)/deps/xxhash/libxxhash.a
+RAX=$(ROOT)/deps/rax/rax.o
 
-LIBS=$(LIBTRIEMAP) $(LIBGRAPHBLAS) $(LIBXXHASH)
+
+LIBS=$(LIBTRIEMAP) $(LIBGRAPHBLAS) $(LIBXXHASH) $(RAX)
 DEPS=$(CC_OBJECTS) $(LIBS)
 
 # Build and run a test for each cpp file in directory

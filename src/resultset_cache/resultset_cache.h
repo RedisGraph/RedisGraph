@@ -1,7 +1,7 @@
 #ifndef RESULTSET_CACHE_H
 #define RESULTSET_CACHE_H
-#include "../redismodule.h"
-#include "../resultset/resultset.h"
+
+#include "result_set_cache_includes.h"
 
 int getResultSet(const char* query, ResultSet* resultSet);
 int storeResultSet(const char* query, ResultSet* resultSet);

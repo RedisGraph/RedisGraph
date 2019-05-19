@@ -75,6 +75,10 @@ LIBTRIEMAP=util/triemap/libtriemap.a
 GRAPHBLAS=../deps/GraphBLAS/build/libgraphblas.a
 LIBXXHASH=../deps/xxhash/libxxhash.a
 
+RAX=../deps/rax/rax.o
+
+
+
 # Compilation deps for the module
 LIBS=$(LIBTRIEMAP) $(GRAPHBLAS) $(LIBXXHASH)
 MODULE=$(CC_OBJECTS) $(LIBS)
@@ -106,6 +110,9 @@ $(LIBXXHASH):
 
 $(LIBTRIEMAP):
 	@$(MAKE) -C util/triemap
+
+$(RAX):
+	@$(MAKE) -C ../deps/rax
 
 BLAS_CFLAGS = -fPIC -I $(abs_path)/util -include rmalloc.h -DREDIS_MODULE_TARGET -DGB_MALLOC=rm_malloc -DGB_CALLOC=rm_calloc -DGB_REALLOC=rm_realloc -DGB_FREE=rm_free -DGBCOMPACT
 

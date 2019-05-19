@@ -10,8 +10,6 @@ struct LRUNode {
   LRUNode *next;
 };
 
-LRUNode *LRUNode_New(const char *hashKey);
-void LRUNode_Free(LRUNode *node);
 LRUNode *initLRUNode(LRUNode* node, const char *hashKey);
 
 #endif

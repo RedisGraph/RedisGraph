@@ -1,8 +1,0 @@
-#ifndef RESULT_SET_CACHE_UTILS_H
-#define RESULT_SET_CACHE_UTILS_H
-
-#define HASH_KEY_LENGTH 8
-#define RESULT_SET_CACHE_SIZE 300
-
-
-#endif
