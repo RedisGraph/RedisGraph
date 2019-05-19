@@ -14,6 +14,7 @@ CacheData *addToCache(LRUCacheManager *lruCacheManager, const char *hashKey, Res
 CacheData *evictFromCache(LRUCacheManager *lruCacheManager);
 void increaseImportance(LRUCacheManager *cacheManager, void *cacheData);
 bool isCacheFull(LRUCacheManager *lruCacheManager);
+void invalidateCache(LRUCacheManager *lruCacheManager);
 void LRUCacheManager_Free(LRUCacheManager *lruCacheManager);
 
 #endif

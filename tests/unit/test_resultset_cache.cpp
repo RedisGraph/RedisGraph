@@ -160,6 +160,20 @@ TEST_F(CacheManagerTest, LRUCacheManagerAndXXHASHTest){
   ASSERT_EQ(0, memcmp(hashKey4, evicted->hashKey, 8));
   ASSERT_EQ(rs4, cacheData4->resultSet);
 
+  invalidateCache(cacheManager);
+  ASSERT_FALSE(isCacheFull(cacheManager));
+  ASSERT_TRUE(isEmptyQueue(cacheManager->queue));
+  rs1 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
+  rs2 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
+  rs3 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
+  cacheData1 =
+      addToCache(cacheManager, hashKey1, rs1);
+  ASSERT_FALSE(isCacheFull(cacheManager));
+  cacheData2 = addToCache(cacheManager, hashKey2, rs2);
+  ASSERT_FALSE(isCacheFull(cacheManager));
+  cacheData3 = addToCache(cacheManager, hashKey3, rs3);
+  ASSERT_TRUE(isCacheFull(cacheManager));
+
   LRUCacheManager_Free(cacheManager);
 }
 

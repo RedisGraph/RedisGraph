@@ -22,6 +22,10 @@ bool isCacheFull(LRUCacheManager *lruCacheManager)
   return isFullQueue(lruCacheManager->queue);
 }
 
+void invalidateCache(LRUCacheManager *lruCacheManager){
+  emptyQueue(lruCacheManager->queue);
+}
+
 // create, init & delete
 void LRUCacheManager_Free(LRUCacheManager *lruCacheManager)
 {

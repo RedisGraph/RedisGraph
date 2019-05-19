@@ -20,6 +20,7 @@ bool isFullQueue(LRUQueue *queue);
 bool isEmptyQueue(LRUQueue *queue);
 LRUNode *dequeue(LRUQueue *queue);
 LRUNode *enqueue(LRUQueue *queue, const char *hashKey, ResultSet* resultset);
-void moveToHead(LRUQueue *queue , LRUNode *node);
+void emptyQueue(LRUQueue *queue);
+void moveToHead(LRUQueue *queue, LRUNode *node);
 LRUQueue *initLRUQueue(LRUQueue *lruQueue, size_t capacity);
 #endif

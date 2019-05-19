@@ -114,3 +114,7 @@ void moveToHead(LRUQueue *queue, LRUNode *node)
     queue->head = node;
   }
 }
+
+void emptyQueue(LRUQueue *queue){
+  initLRUQueue(queue, queue->capacity);
+}
