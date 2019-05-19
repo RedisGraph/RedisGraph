@@ -70,10 +70,11 @@ CC_DEPS = $(patsubst %.c, %.d, $(CC_SOURCES) )
 LIBTRIEMAP=util/triemap/libtriemap.a
 GRAPHBLAS=../deps/GraphBLAS/build/libgraphblas.a
 LIBXXHASH=../deps/xxhash/libxxhash.a
+LIBCYPHER-PARSER=../deps/libcypher-parser/lib/src/.libs/libcypher-parser.a
 
 # Compilation deps for the module
-LIBS=$(LIBTRIEMAP) $(GRAPHBLAS) $(LIBXXHASH)
-MODULE=$(CC_OBJECTS) $(LIBS)
+LIBS=$(LIBTRIEMAP) $(GRAPHBLAS) $(LIBXXHASH) $(LIBCYPHER-PARSER)
+MODULE=$(LIBS) $(CC_OBJECTS)
 
 REDISGRAPH_CC=$(QUIET_CC)$(CC)
 
@@ -113,6 +114,17 @@ else
 
 endif
 
+# Build libcypher-parser only if library does not already exists.
+$(LIBCYPHER-PARSER):
+ifeq (,$(wildcard $(LIBCYPHER-PARSER)))
+	# Note we're passing empty CFLAGS to libcypher-parser.
+	cd ../deps/libcypher-parser; \
+	./autogen.sh; \
+	./configure --disable-shared;
+	$(MAKE) CFLAGS="-fPIC" clean check -C ../deps/libcypher-parser
+endif
+.PHONY: $(LIBCYPHER-PARSER)
+
 # Compile query parse. 
 # This is not included in the usual make target!
 parser:
@@ -121,7 +133,7 @@ parser:
 
 # Build the module...
 redisgraph.so: $(MODULE)
-	$(REDISGRAPH_CC) -o $@ $(MODULE) $(SHOBJ_LDFLAGS) -lc -lm
+	$(REDISGRAPH_CC) -o $@ $(CC_OBJECTS) $(LIBS) $(SHOBJ_LDFLAGS) -lc -lm
 
 clean:
 	@find . -name '*.[oad]' -type f -delete
