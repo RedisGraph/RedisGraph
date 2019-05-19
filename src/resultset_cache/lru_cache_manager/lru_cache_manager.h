@@ -10,7 +10,7 @@ struct LRUCacheManager {
 };
 
 LRUCacheManager *LRUCacheManager_New(size_t);
-CacheData *addToCache(LRUCacheManager *lruCacheManager, const char *hashKey);
+CacheData *addToCache(LRUCacheManager *lruCacheManager, const char *hashKey, ResultSet* resultSet);
 CacheData *evictFromCache(LRUCacheManager *lruCacheManager);
 void increaseImportance(LRUCacheManager *cacheManager, void *cacheData);
 bool isCacheFull(LRUCacheManager *lruCacheManager);

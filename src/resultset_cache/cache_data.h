@@ -7,7 +7,7 @@ struct CacheData
 {
   char hashKey[HASH_KEY_LENGTH];
   ResultSet *resultSet;
+  bool isDirty;
 };
-
 
 #endif

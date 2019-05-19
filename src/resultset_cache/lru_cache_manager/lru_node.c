@@ -1,11 +1,16 @@
 #include "./lru_node.h"
-#include "../../util/rmalloc.h"
 
-  LRUNode *initLRUNode(LRUNode *node, const char *hashKey){
+
+  LRUNode *initLRUNode(LRUNode *node, const char *hashKey, ResultSet* resultSet){
   node->next = NULL;
   node->prev = NULL;
-  CacheData *cacheData = (CacheData *)node;
-  memcpy(cacheData->hashKey, hashKey, HASH_KEY_LENGTH);
+  memcpy(&node->cacheData.hashKey, hashKey, HASH_KEY_LENGTH);
+  if (node->cacheData.isDirty){
+    ResultSet_Free(node->cacheData.resultSet);
+  }
+  node->cacheData.resultSet = resultSet;
+  node->cacheData.isDirty = true;
+
   return node;
 }
 

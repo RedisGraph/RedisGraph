@@ -1,9 +1,9 @@
 #include "rax_cache_storage.h"
 #include "../../util/rmalloc.h"
 
-void insertToCache(RaxCacheStorage *raxCacheStorage, char *hashKey, ResultSet *resultSet)
+void insertToCache(RaxCacheStorage *raxCacheStorage, char *hashKey, CacheData *cacheData)
 {
-    raxInsert(raxCacheStorage->rt, (unsigned char *)hashKey, HASH_KEY_LENGTH, resultSet, NULL);
+    raxInsert(raxCacheStorage->rt, (unsigned char *)hashKey, HASH_KEY_LENGTH, cacheData, NULL);
 }
 
 void removeFromCache(RaxCacheStorage *raxCacheStorage, char *hashKey)
@@ -13,12 +13,12 @@ void removeFromCache(RaxCacheStorage *raxCacheStorage, char *hashKey)
 
 ResultSet *getFromCache(RaxCacheStorage *raxCacheStorage, char *hashKey)
 {
-    ResultSet *data = raxFind(raxCacheStorage->rt, (unsigned char *)hashKey, HASH_KEY_LENGTH);
+    CacheData *data = raxFind(raxCacheStorage->rt, (unsigned char *)hashKey, HASH_KEY_LENGTH);
     if (data == raxNotFound)
     {
         return NULL;
     }
-    return data;
+    return data->resultSet;
 }
 
 void RaxCacheStorage_Free(RaxCacheStorage *raxCacheStorage)

@@ -1,9 +1,8 @@
 #ifndef LRU_QUEUE_H
 #define LRU_QUEUE_H
-
-#include "../../util/rmalloc.h"
+#include "../result_set_cache_includes.h"
 #include "./lru_node.h"
-#include <stdbool.h>
+
 
 typedef struct LRUQueue {
   LRUNode *queue;
@@ -20,7 +19,7 @@ void LRUQueue_Free(LRUQueue *lruQueue);
 bool isFullQueue(LRUQueue *queue);
 bool isEmptyQueue(LRUQueue *queue);
 LRUNode *dequeue(LRUQueue *queue);
-LRUNode *enqueue(const char *hashKey, LRUQueue *queue);
-void moveToHead(LRUNode *node, LRUQueue *queue);
+LRUNode *enqueue(LRUQueue *queue, const char *hashKey, ResultSet* resultset);
+void moveToHead(LRUQueue *queue , LRUNode *node);
 LRUQueue *initLRUQueue(LRUQueue *lruQueue, size_t capacity);
 #endif

@@ -3,7 +3,7 @@
 #include<stdlib.h>
 #include<stdbool.h>
 #include "../resultset/resultset.h"
-
+#include "../util/rmalloc.h"
 
 #define HASH_KEY_LENGTH 8
 

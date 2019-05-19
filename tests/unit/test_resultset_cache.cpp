@@ -48,22 +48,30 @@ TEST_F(CacheManagerTest, LRUCacheManagerTest) {
   char hashKey3[8] = "3456789";
   char hashKey4[8] = "4567890";
 
+  ResultSet *rs1 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
+  ResultSet *rs2 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
+  ResultSet *rs3 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
+  ResultSet *rs4 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
+
   // [ | | ]
   ASSERT_FALSE(isCacheFull(cacheManager));
   // [ 1 | | ]
   CacheData *cacheData1 =
-      addToCache(cacheManager, hashKey1);
+      addToCache(cacheManager, hashKey1, rs1);
   ASSERT_STREQ(hashKey1, cacheData1->hashKey);
+  ASSERT_EQ(rs1, cacheData1->resultSet);
   ASSERT_FALSE(isCacheFull(cacheManager));
 
   // [ 2 | 1 | ]
-  CacheData *cacheData2 = addToCache(cacheManager, hashKey2);
+  CacheData *cacheData2 = addToCache(cacheManager, hashKey2, rs2);
   ASSERT_STREQ(hashKey2, cacheData2->hashKey);
+  ASSERT_EQ(rs2, cacheData2->resultSet);
   ASSERT_FALSE(isCacheFull(cacheManager));
 
   // [ 3 | 2 | 1 ]
-  CacheData *cacheData3 = addToCache(cacheManager, hashKey3);
+  CacheData *cacheData3 = addToCache(cacheManager, hashKey3, rs3);
   ASSERT_STREQ(hashKey3, cacheData3->hashKey);
+  ASSERT_EQ(rs3, cacheData3->resultSet);
   ASSERT_TRUE(isCacheFull(cacheManager));
 
   // [ 3 | 2 | ]
@@ -71,7 +79,8 @@ TEST_F(CacheManagerTest, LRUCacheManagerTest) {
   ASSERT_STREQ(hashKey1, evicted->hashKey);
 
   // [ 4 | 3 | 2 ]
-  CacheData *cacheData4 = addToCache(cacheManager, hashKey4);
+  CacheData *cacheData4 = addToCache(cacheManager, hashKey4, rs4);
+  ASSERT_EQ(rs4, cacheData4->resultSet);
   ASSERT_STREQ(hashKey4, cacheData4->hashKey);
   // [ 2 | 4 | 3 ]
   increaseImportance(cacheManager, cacheData2);
@@ -83,6 +92,7 @@ TEST_F(CacheManagerTest, LRUCacheManagerTest) {
   // [ 3 | 2 | ]
   evicted = evictFromCache(cacheManager);
   ASSERT_STREQ(hashKey4, evicted->hashKey);
+  ASSERT_EQ(rs4, cacheData4->resultSet);
 
   LRUCacheManager_Free(cacheManager);
 }
@@ -96,7 +106,11 @@ TEST_F(CacheManagerTest, LRUCacheManagerAndXXHASHTest){
   char hashKey3[8] = "" ;
   char hashKey4[8] = "" ;
 
- 
+  ResultSet *rs1 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
+  ResultSet *rs2 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
+  ResultSet *rs3 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
+  ResultSet *rs4 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
+
   char *query1 = "MATCH (a) RETURN a";
   char *query2 = "MATCH (b) RETURN b";
   char *query3 = "MATCH (c) RETURN c";
@@ -110,27 +124,31 @@ TEST_F(CacheManagerTest, LRUCacheManagerAndXXHASHTest){
   ASSERT_FALSE(isCacheFull(cacheManager));
   // [ 1 | | ]
   CacheData *cacheData1 =
-      addToCache(cacheManager, hashKey1);
+      addToCache(cacheManager, hashKey1, rs1);
   ASSERT_EQ(0, memcmp(hashKey1, cacheData1->hashKey, 8));
+  ASSERT_EQ(rs1, cacheData1->resultSet);
   ASSERT_FALSE(isCacheFull(cacheManager));
 
   // [ 2 | 1 | ]
-  CacheData *cacheData2 = addToCache(cacheManager, hashKey2);
+  CacheData *cacheData2 = addToCache(cacheManager, hashKey2, rs2);
   ASSERT_EQ(0, memcmp(hashKey2, cacheData2->hashKey, 8));
+  ASSERT_EQ(rs2, cacheData2->resultSet);
   ASSERT_FALSE(isCacheFull(cacheManager));
 
   // [ 3 | 2 | 1 ]
-  CacheData *cacheData3 = addToCache(cacheManager, hashKey3);
+  CacheData *cacheData3 = addToCache(cacheManager, hashKey3, rs3);
   ASSERT_EQ(0, memcmp(hashKey3, cacheData3->hashKey, 8));
+  ASSERT_EQ(rs3, cacheData3->resultSet);
   ASSERT_TRUE(isCacheFull(cacheManager));
 
   // [ 3 | 2 | ]
   evicted = evictFromCache(cacheManager);
-  ASSERT_EQ(0, memcmp(hashKey1, evicted->hashKey, 8));
+  ASSERT_EQ(0, memcmp(hashKey1, cacheData1->hashKey, 8));
 
   // [ 4 | 3 | 2 ]
-  CacheData *cacheData4 = addToCache(cacheManager, hashKey4);
+  CacheData *cacheData4 = addToCache(cacheManager, hashKey4, rs4);
   ASSERT_EQ(0, memcmp(hashKey4, cacheData4->hashKey, 8));
+  ASSERT_EQ(rs4, cacheData4->resultSet);
   // [ 2 | 4 | 3 ]
   increaseImportance(cacheManager, cacheData2);
 
@@ -140,8 +158,9 @@ TEST_F(CacheManagerTest, LRUCacheManagerAndXXHASHTest){
   // [ 3 | 2 | ]
   evicted = evictFromCache(cacheManager);
   ASSERT_EQ(0, memcmp(hashKey4, evicted->hashKey, 8));
+  ASSERT_EQ(rs4, cacheData4->resultSet);
 
-    LRUCacheManager_Free(cacheManager);
+  LRUCacheManager_Free(cacheManager);
 }
 
 TEST_F(CacheStorageTest, RaxTestEdgeCase){
@@ -167,32 +186,4 @@ TEST_F(CacheStorageTest, RaxTestEdgeCase){
   ASSERT_NE(&rs2, returnedRs);
   ASSERT_EQ(&rs3, returnedRs);
 
-}
-
-TEST_F(CacheStorageTest, RaxStorageTestEdgeCase)
-{
-
-  char normalKey[8] = {'a', 'b', 'c', 'd', 'e', 'f', 'g'};
-  char nullKey[8] = {'a', 'b', 'c', '\0', 'a', 'b', 'c', 'd'};
-  char nullKey2[8] = {'a', 'b', 'c', '\0', 'a', 'b', 'c', 'e'};
-
-  ResultSet rs1;
-  ResultSet rs2;
-  ResultSet rs3;
-
-  RaxCacheStorage *raxCacheStorage = RaxCacheStorage_New();
-
-  insertToCache(raxCacheStorage, normalKey, &rs1);
-  ResultSet* returnedRs = getFromCache(raxCacheStorage, normalKey);
-  // ResultSet *returnedRs = (ResultSet *)raxFind(rt, (unsigned char *)normalKey, 8);
-  ASSERT_EQ(&rs1, returnedRs);
-
-  insertToCache(raxCacheStorage, nullKey, &rs2);
-  insertToCache(raxCacheStorage, nullKey2, &rs3);
-  returnedRs = getFromCache(raxCacheStorage, nullKey);
-  ASSERT_EQ(&rs2, returnedRs);
-  returnedRs = getFromCache(raxCacheStorage, nullKey2);
-  ASSERT_NE(&rs2, returnedRs);
-  ASSERT_EQ(&rs3, returnedRs);
-  RaxCacheStorage_Free(raxCacheStorage);
 }

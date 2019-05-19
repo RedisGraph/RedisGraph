@@ -22,6 +22,10 @@ LRUQueue* initLRUQueue(LRUQueue* lruQueue, size_t capacity){
 
 void LRUQueue_Free(LRUQueue *lruQueue)
 {
+  while(lruQueue->head != NULL){
+    ResultSet_Free(lruQueue->head->cacheData.resultSet);
+    lruQueue->head = lruQueue->head->next;
+  }
   rm_free(lruQueue->queue);
   rm_free(lruQueue);
 }
@@ -58,7 +62,7 @@ LRUNode *dequeue(LRUQueue *queue)
 
 
 
-LRUNode *setNodeInQueue(LRUNode *newNode, LRUQueue *queue)
+LRUNode *setNodeInQueue(LRUQueue *queue, LRUNode *newNode )
 {
   newNode->next = queue->head;
   if (isEmptyQueue(queue))
@@ -77,9 +81,9 @@ LRUNode *setNodeInQueue(LRUNode *newNode, LRUQueue *queue)
   return newNode;
 }
 
-LRUNode *enqueue(const char *key, LRUQueue *queue)
+LRUNode *enqueue(LRUQueue *queue, const char *key, ResultSet* resultSet)
 {
-  LRUNode *node = initLRUNode(queue->emptySpace, key);
+  LRUNode *node = initLRUNode(queue->emptySpace, key, resultSet);
 
   
   //will be false until array is full
@@ -87,10 +91,10 @@ LRUNode *enqueue(const char *key, LRUQueue *queue)
     queue->emptySpace++;
   }
 
-  return setNodeInQueue(node, queue);
+  return setNodeInQueue(queue, node);
 }
 
-void moveToHead(LRUNode *node, LRUQueue *queue)
+void moveToHead(LRUQueue *queue, LRUNode *node)
 {
   if (node != queue->head)
   {

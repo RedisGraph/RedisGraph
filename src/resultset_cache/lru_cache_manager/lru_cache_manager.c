@@ -7,14 +7,14 @@ CacheData *evictFromCache(LRUCacheManager *lruCacheManager)
   return (CacheData *)dequeue(lruCacheManager->queue);
 }
 
-CacheData *addToCache(LRUCacheManager *lruCacheManager, const char *hashKey)
+CacheData *addToCache(LRUCacheManager *lruCacheManager, const char *hashKey, ResultSet* resultSet)
 {
-  LRUNode *newNode = enqueue(hashKey, lruCacheManager->queue);
+  LRUNode *newNode = enqueue(lruCacheManager->queue, hashKey, resultSet);
   return (CacheData *)newNode;
 }
 void increaseImportance(LRUCacheManager *cacheManager, void *cacheData)
 {
-  return moveToHead((LRUNode *)cacheData, cacheManager->queue);
+  return moveToHead(cacheManager->queue, (LRUNode *) cacheData);
 }
 
 bool isCacheFull(LRUCacheManager *lruCacheManager)
