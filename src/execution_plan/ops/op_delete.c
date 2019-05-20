@@ -57,6 +57,8 @@ void _DeleteEntities(OpDelete *op) {
         Node *n = op->deleted_nodes + i;
 
         // size_t current_len = array_len(inferred_edges);
+        // TODO If two nodes are connected by multiple edges of the same type,
+        // there will be a memory leak on the array (matrix value) used to contain them.
         Graph_GetNodeEdges(g, n, GRAPH_EDGE_DIR_BOTH, GRAPH_NO_RELATION, &inferred_edges);
         // size_t new_len = array_len(inferred_edges);
 
@@ -82,8 +84,14 @@ void _DeleteEntities(OpDelete *op) {
             uint64_t pos = _binarySearch(inferred_edges, ENTITY_GET_ID(e));
             if(ENTITY_GET_ID(inferred_edges + pos) == ENTITY_GET_ID(e)) {
                 // Duplicate, overwrite with last edge.
-                op->deleted_edges[i] = op->deleted_edges[array_len(op->deleted_edges)-1];
-                array_pop(op->deleted_edges);
+                if(array_len(op->deleted_edges) > 1) {
+                    op->deleted_edges[i] = array_pop(op->deleted_edges);
+                } else {
+                    // Remove last element.
+                    array_pop(op->deleted_edges);
+                }
+                // Decrement the edge index so that we'll check this edge
+                // against the new final edge on the next iteration.
                 i--;
             }
         }
@@ -114,11 +122,12 @@ void _DeleteEntities(OpDelete *op) {
     /* We must start with edge deletion as node deletion moves nodes around. 
      * Quickly delete inferred edges, edges which get deleted due to 
      * node deletion, in this case Graph_DeleteEdge doesn't have to perform
-     * any of it's internal checks (force flag) and simply delete all reference
+     * any of its internal checks (delete_all flag) and simply delete all reference
      * to the deleted inferred edge. */
     if(inferred_edges_count > 0) {
+        Edge *e;
         EdgeID edgeID;
-        Edge *e = inferred_edges;
+        int edges_deleted = 0;
 
         for(int i = 0; i < inferred_edges_count; i++) {
             e = inferred_edges + i;
@@ -131,8 +140,10 @@ void _DeleteEntities(OpDelete *op) {
 
             // Force delete, skip checks.
             Graph_DeleteEdge(op->gc->g, e, true);
+            // Only track deletions of unique edges.
+            edges_deleted++;
         }
-        if(op->result_set) op->result_set->stats.relationships_deleted += inferred_edges_count;
+        if(op->result_set) op->result_set->stats.relationships_deleted += edges_deleted;
     }
 
     /* Explicitly delete requested edges, edges in the op->deleted_edges array

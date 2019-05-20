@@ -540,7 +540,7 @@ void Graph_GetNodeEdges(const Graph *g, const Node *n, GRAPH_EDGE_DIR dir, int e
             GxB_MatrixTupleIter_new(&tupleIter, M);
             GxB_MatrixTupleIter_iterate_column(tupleIter, destNodeID);
         } else {
-            // TODO: Callers whishing to get Incoming edges to a number of nodes
+            // TODO: Callers wishing to get Incoming edges to a number of nodes
             // should pass a transposed matrix, as the operations below are costly
             // and we'll perform them forevery node.
             size_t nRows = Graph_RequiredMatrixDim(g);
@@ -582,8 +582,8 @@ int Graph_DeleteEdge(Graph *g, Edge *e, bool delete_all) {
         M = Graph_GetRelationMatrix(g, r);
         assert(GxB_Matrix_Delete(M, dest_id, src_id) == GrB_SUCCESS);
 
-        /* Upon deleteing an entry from the relation mapping matrix 
-         * make sure to free the underline array in the case of 
+        /* Upon deleting an entry from the relation mapping matrix ,
+         * make sure to free the underlying array in the case of
          * multiple nodes of type r connecting src to dest. */
         M = _Graph_GetRelationMap(g, r);
         assert(GxB_Matrix_Delete(M, dest_id, src_id )== GrB_SUCCESS);
