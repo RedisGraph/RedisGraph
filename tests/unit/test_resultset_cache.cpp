@@ -14,6 +14,7 @@ extern "C" {
 #include "../../src/resultset_cache/lru_cache_manager/lru_cache_manager.h"
 #include "../../src/resultset_cache/xxhash_query_hash/xxhash_query_hash.h"
 #include "../../src/resultset_cache/rax_cache_storage/rax_cache_storage.h"
+#include "../../src/resultset_cache/resultset_cache.h"
 #include "../../src/util/rmalloc.h"
 #include "../../deps/rax/rax.h"
 #include <stdio.h>
@@ -30,6 +31,15 @@ protected:
 };
 
 class CacheStorageTest : public ::testing::Test
+{
+protected:
+  static void SetUpTestCase()
+  { // Use the malloc family for allocations
+    Alloc_Reset();
+  }
+};
+
+class ResultSetCacheTest : public ::testing::Test
 {
 protected:
   static void SetUpTestCase()
@@ -199,5 +209,59 @@ TEST_F(CacheStorageTest, RaxTestEdgeCase){
   returnedRs = (ResultSet*)raxFind(rt, (unsigned char *)nullKey2,8);
   ASSERT_NE(&rs2, returnedRs);
   ASSERT_EQ(&rs3, returnedRs);
+}
 
+TEST_F(ResultSetCacheTest, ResultSetCacheTest){
+  ResultSetCache *resultSetCache = ResultSetCache_New(3);
+
+  ResultSet *rs1 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
+  ResultSet *rs2 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
+  ResultSet *rs3 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
+  ResultSet *rs4 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
+
+  char *query1 = "MATCH (a) RETURN a";
+  char *query2 = "MATCH (b) RETURN b";
+  char *query3 = "MATCH (c) RETURN c";
+  char *query4 = "MATCH (d) RETURN d";
+
+  //check for not existing key
+  ASSERT_FALSE(getResultSet(resultSetCache, query1));
+
+  // add single entry
+  storeResultSet(resultSetCache, query1, rs1);
+  ASSERT_EQ(rs1, getResultSet(resultSetCache, query1));
+
+  // add multiple entries
+  storeResultSet(resultSetCache, query2, rs2);
+  ASSERT_EQ(rs2, getResultSet(resultSetCache, query2));
+  storeResultSet(resultSetCache, query3, rs3);
+  ASSERT_EQ(rs3, getResultSet(resultSetCache, query3));
+  storeResultSet(resultSetCache, query4, rs4);
+  ASSERT_EQ(rs4, getResultSet(resultSetCache, query4));
+
+  //verify that oldest entry is not exists - queue is [ 4 | 3 | 2 ]
+  ASSERT_FALSE(getResultSet(resultSetCache, query1));
+
+  //clear cache
+  clearCache(resultSetCache);
+  ASSERT_FALSE(getResultSet(resultSetCache, query1));
+  ASSERT_FALSE(getResultSet(resultSetCache, query2));
+  ASSERT_FALSE(getResultSet(resultSetCache, query3));
+  ASSERT_FALSE(getResultSet(resultSetCache, query4));
+
+  //re-alloc since they are delted or will be deleted in the cache, rs4 will be deleted once those will be inserted
+  rs1 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
+  rs2 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
+  rs3 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
+
+  storeResultSet(resultSetCache, query1, rs1);
+  ASSERT_EQ(rs1, getResultSet(resultSetCache, query1));
+  storeResultSet(resultSetCache, query2, rs2);
+  ASSERT_EQ(rs2, getResultSet(resultSetCache, query2));
+  storeResultSet(resultSetCache, query3, rs3);
+  ASSERT_EQ(rs3, getResultSet(resultSetCache, query3));
+
+  ASSERT_FALSE(getResultSet(resultSetCache, query4));
+
+  ResultSetCache_Free(resultSetCache);
 }

@@ -49,7 +49,7 @@ CacheData *evictFromCache(LRUCacheManager *lruCacheManager);
  * @param  *cacheData: Cache entry address (pointer)
  * @retval None
  */
-void increaseImportance(LRUCacheManager *cacheManager, void *cacheData);
+void increaseImportance(LRUCacheManager *cacheManager, CacheData *cacheData);
 
 /**
  * @brief  Returns if queue is full or not 

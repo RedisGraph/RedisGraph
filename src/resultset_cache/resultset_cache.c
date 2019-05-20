@@ -34,10 +34,14 @@ ResultSet *getResultSet(ResultSetCache *resultSetCache, const char *query)
     // acquire read lock
     pthread_rwlock_rdlock(&resultSetCache->rwlock);
     // get result set
-    ResultSet *resultSet = getFromCache(resultSetCache->raxCacheStorage, hashKey);
+    CacheData* cacheData = getFromCache(resultSetCache->raxCacheStorage, hashKey);
+    if (cacheData){
+        increaseImportance(resultSetCache->lruCacheManager, cacheData);
+    }
+   
     // free lock
     pthread_rwlock_unlock(&resultSetCache->rwlock);
-    return resultSet;
+    return cacheData ? cacheData->resultSet : NULL;
 }
 
 void storeResultSet(ResultSetCache *resultSetCache, const char *query, ResultSet *resultSet)

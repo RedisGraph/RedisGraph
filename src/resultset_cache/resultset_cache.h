@@ -54,6 +54,7 @@ ResultSet *getResultSet(ResultSetCache* resultSetCache, const char *query);
  */
 void storeResultSet(ResultSetCache *resultSetCache, const char *query, ResultSet *resultSet);
 
+
 /**
  * @brief  Clears the cache from entries
  * @param  *resultSetCache: ResultSetCache pointer

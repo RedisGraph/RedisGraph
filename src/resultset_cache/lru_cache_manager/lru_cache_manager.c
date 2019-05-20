@@ -38,7 +38,7 @@ CacheData *addToCache(LRUCacheManager *lruCacheManager, const char *hashKey, Res
   return (CacheData *)newNode;
 }
 
-void increaseImportance(LRUCacheManager *cacheManager, void *cacheData)
+void increaseImportance(LRUCacheManager *cacheManager, CacheData *cacheData)
 {
   // move entry to the head of LRU queue (hot entry)
   return moveToHead(cacheManager->queue, (LRUNode *) cacheData);

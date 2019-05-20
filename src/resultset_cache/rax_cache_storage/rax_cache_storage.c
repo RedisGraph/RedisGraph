@@ -36,7 +36,7 @@ void removeFromCache(RaxCacheStorage *raxCacheStorage, char *hashKey)
     raxRemove(raxCacheStorage->rt, (unsigned char *)hashKey, HASH_KEY_LENGTH, NULL);
 }
 
-ResultSet *getFromCache(RaxCacheStorage *raxCacheStorage, char *hashKey)
+CacheData *getFromCache(RaxCacheStorage *raxCacheStorage, char *hashKey)
 {
     // search in rax
     CacheData *data = raxFind(raxCacheStorage->rt, (unsigned char *)hashKey, HASH_KEY_LENGTH);
@@ -45,7 +45,7 @@ ResultSet *getFromCache(RaxCacheStorage *raxCacheStorage, char *hashKey)
         // if not found return null
         return NULL;
     }
-    return data->resultSet;
+    return data;
 }
 
 void RaxCacheStorage_Free(RaxCacheStorage *raxCacheStorage)

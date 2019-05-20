@@ -48,9 +48,9 @@ void removeFromCache(RaxCacheStorage *raxCacheStorage, char *hashKey);
  * @brief  Returns a result set according to its stored key
  * @param  *raxCacheStorage: Rax storage (pointer)
  * @param  *hashKey: entry key - a charecter array in size of HASH_KEY_LENGTH 
- * @retval a result set pointer, stored in the cache entry with the specific key
+ * @retval a cache entry pointer, stored in the cache entry with the specific key
  */
-ResultSet *getFromCache(RaxCacheStorage *raxCacheStorage, char *hashKey);
+CacheData *getFromCache(RaxCacheStorage *raxCacheStorage, char *hashKey);
 
 /**
  * @brief  clears the cache storage
