@@ -507,10 +507,10 @@ int Graph_ConnectNodes(Graph *g, NodeID src, NodeID dest, int r, Edge *e) {
  * to/from given node N, depending on given direction. */
 void Graph_GetNodeEdges(const Graph *g, const Node *n, GRAPH_EDGE_DIR dir, int edgeType, Edge **edges) {
     assert(g && n && edges);
+    GrB_Matrix M;
     NodeID srcNodeID;
     NodeID destNodeID;
     GxB_MatrixTupleIter *tupleIter;
-    GrB_Matrix M;
     if(edgeType == GRAPH_NO_RELATION) M = Graph_GetAdjacencyMatrix(g);
     else M = Graph_GetRelationMatrix(g, edgeType);
 
@@ -566,21 +566,47 @@ void Graph_GetNodeEdges(const Graph *g, const Node *n, GRAPH_EDGE_DIR dir, int e
 }
 
 /* Removes an edge from Graph and updates graph relevent matrices. */
-int Graph_DeleteEdge(Graph *g, Edge *e) {
+int Graph_DeleteEdge(Graph *g, Edge *e, bool delete_all) {
     bool x;
+    GrB_Matrix R;
     GrB_Matrix M;
     GrB_Info info;
+    EdgeID edge_id;
     int r = Edge_GetRelationID(e);
     NodeID src_id = Edge_GetSrcNodeID(e);
     NodeID dest_id = Edge_GetDestNodeID(e);
+
+    /* Force delete, do not perform any validations, 
+     * simply remove edge from all relevent matrices. */
+    if(delete_all) {
+        M = Graph_GetRelationMatrix(g, r);
+        assert(GxB_Matrix_Delete(M, dest_id, src_id) == GrB_SUCCESS);
+
+        /* Upon deleteing an entry from the relation mapping matrix 
+         * make sure to free the underline array in the case of 
+         * multiple nodes of type r connecting src to dest. */
+        M = _Graph_GetRelationMap(g, r);
+        assert(GxB_Matrix_Delete(M, dest_id, src_id )== GrB_SUCCESS);
+
+        M = Graph_GetAdjacencyMatrix(g);
+        assert(GxB_Matrix_Delete(M, dest_id, src_id) == GrB_SUCCESS);
+
+        M = _Graph_Get_Transposed_AdjacencyMatrix(g);
+        assert(GxB_Matrix_Delete(M, src_id, dest_id) == GrB_SUCCESS);
+
+        // Free and remove edge from datablock.
+        FreeEntity(e->entity);
+        DataBlock_DeleteItem(g->edges, ENTITY_GET_ID(e));
+        return 0;
+    }
+
+    R = _Graph_GetRelationMap(g, r);
     M = Graph_GetRelationMatrix(g, r);
 
     // Test to see if edge exists.
     info = GrB_Matrix_extractElement_BOOL(&x, M, dest_id, src_id);
     if(info != GrB_SUCCESS) return 0;
 
-    EdgeID edge_id;
-    GrB_Matrix R = _Graph_GetRelationMap(g, r);
     GrB_Matrix_extractElement_UINT64(&edge_id, R, dest_id, src_id);
 
     if(SINGLE_EDGE(edge_id)) {
@@ -647,16 +673,11 @@ int Graph_DeleteEdge(Graph *g, Edge *e) {
 }
 
 void Graph_DeleteNode(Graph *g, Node *n) {
+    /* Assumption, node is completely detected, 
+     * there are no incoming nor outgoing edges
+     * leading to / from node. */
     assert(g && n);
     
-    // Delete incoming/outgoing edges of deleted node.
-    Edge *e = NULL;
-    Edge *edges = array_new(Edge, 32);
-
-    Graph_GetNodeEdges(g, n, GRAPH_EDGE_DIR_BOTH, GRAPH_NO_RELATION, &edges);
-    uint32_t edgeCount = array_len(edges);
-    for(int j = 0; j < edgeCount; j++) Graph_DeleteEdge(g, edges+j);
-
     // Clear label matrix at position node ID.
     uint32_t label_count = array_len(g->labels);
     for(int i = 0; i < label_count; i++) {
@@ -666,9 +687,6 @@ void Graph_DeleteNode(Graph *g, Node *n) {
 
     FreeEntity(n->entity);
     DataBlock_DeleteItem(g->nodes, ENTITY_GET_ID(n));
-
-    // Cleanup.
-    array_free(edges);
 }
 
 DataBlockIterator *Graph_ScanNodes(const Graph *g) {

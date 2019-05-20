@@ -551,7 +551,7 @@ TEST_F(GraphTest, RemoveEdges)
     NodeID destID = Edge_GetDestNodeID(&e);
     
     // Delete edge.
-    Graph_DeleteEdge(g, &e);
+    Graph_DeleteEdge(g, &e, false);
 
     // Validate edge deletion.
     ASSERT_EQ(Graph_EdgeCount(g), 2);
@@ -590,7 +590,7 @@ TEST_F(GraphTest, RemoveEdges)
     e = edges[0];
     srcID = Edge_GetSrcNodeID(&e);
     destID = Edge_GetDestNodeID(&e);
-    Graph_DeleteEdge(g, &e);
+    Graph_DeleteEdge(g, &e, false);
 
     // Validate edge deletion.
     ASSERT_EQ(Graph_EdgeCount(g), 1);
@@ -620,7 +620,7 @@ TEST_F(GraphTest, RemoveEdges)
     e = edges[1];
     srcID = Edge_GetSrcNodeID(&e);
     destID = Edge_GetDestNodeID(&e);
-    Graph_DeleteEdge(g, &e);
+    Graph_DeleteEdge(g, &e, false);
 
     // Validate edge deletion.
     ASSERT_EQ(Graph_EdgeCount(g), 0);

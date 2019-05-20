@@ -151,7 +151,8 @@ void Graph_DeleteNode (
 // Removes an edge from Graph and updates graph relevent matrices.
 int Graph_DeleteEdge (
     Graph *g,
-    Edge *e
+    Edge *e,
+    bool delete_all  // Straight forward delete, do not perform any validations.
 );
 
 // All graph matrices are required to be squared NXN
