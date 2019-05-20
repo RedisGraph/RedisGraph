@@ -414,10 +414,17 @@ TEST_F(GraphTest, RemoveNodes)
     // First node should have 2 edges.
     Graph_GetNode(g, 0, &node);
     Graph_GetNodeEdges(g, &node, GRAPH_EDGE_DIR_BOTH, GRAPH_NO_RELATION, &edges);
-    ASSERT_EQ(array_len(edges), 2);
-    array_clear(edges);
+    uint edge_count = array_len(edges);
+    ASSERT_EQ(edge_count, 2);
 
+    // Delete the edges on the first node manually, as Graph_DeleteNode expects
+    // it to be detached.
     // Both 0 -> 1 edge and 1 -> 0 edge should be removed.
+    for (uint i = 0; i < edge_count; i ++) {
+        Graph_DeleteEdge(g, &edges[i], false);
+    }
+    array_free(edges);
+
     Graph_GetNode(g, 0, &node);
     Graph_DeleteNode(g, &node);
 
@@ -551,7 +558,7 @@ TEST_F(GraphTest, RemoveEdges)
     NodeID destID = Edge_GetDestNodeID(&e);
     
     // Delete edge.
-    Graph_DeleteEdge(g, &e);
+    Graph_DeleteEdge(g, &e, false);
 
     // Validate edge deletion.
     ASSERT_EQ(Graph_EdgeCount(g), 2);
@@ -590,7 +597,7 @@ TEST_F(GraphTest, RemoveEdges)
     e = edges[0];
     srcID = Edge_GetSrcNodeID(&e);
     destID = Edge_GetDestNodeID(&e);
-    Graph_DeleteEdge(g, &e);
+    Graph_DeleteEdge(g, &e, false);
 
     // Validate edge deletion.
     ASSERT_EQ(Graph_EdgeCount(g), 1);
@@ -620,7 +627,7 @@ TEST_F(GraphTest, RemoveEdges)
     e = edges[1];
     srcID = Edge_GetSrcNodeID(&e);
     destID = Edge_GetDestNodeID(&e);
-    Graph_DeleteEdge(g, &e);
+    Graph_DeleteEdge(g, &e, false);
 
     // Validate edge deletion.
     ASSERT_EQ(Graph_EdgeCount(g), 0);

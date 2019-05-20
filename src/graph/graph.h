@@ -60,6 +60,7 @@ struct Graph {
     DataBlock *nodes;                   // Graph nodes stored in blocks.
     DataBlock *edges;                   // Graph edges stored in blocks.
     GrB_Matrix adjacency_matrix;        // Adjacency matrix, holds all graph connections.
+    GrB_Matrix _t_adjacency_matrix;     // Transposed Adjacency matrix.
     GrB_Matrix *labels;                 // Label matrices.
     GrB_Matrix *relations;              // Relation matrices.
     GrB_Matrix *_relations_map;         // Maps from (relation, row, col) to edge id.
@@ -150,7 +151,8 @@ void Graph_DeleteNode (
 // Removes an edge from Graph and updates graph relevent matrices.
 int Graph_DeleteEdge (
     Graph *g,
-    Edge *e
+    Edge *e,
+    bool delete_all  // Straight forward delete, do not perform any validations.
 );
 
 // All graph matrices are required to be squared NXN

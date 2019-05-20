@@ -129,11 +129,20 @@ class GraphDeletionFlowTest(FlowTestsBase):
 
     # Remove both Alon and Boaz from the graph. 
     def test06_delete_nodes(self):
+        rel_count_query = """MATCH (a:person)-[e]->(b:person)
+                             WHERE a.name = 'Boaz' OR a.name = 'Alon'
+                             OR b.name = 'Boaz' OR b.name = 'Alon'
+                             RETURN COUNT(e)"""
+        rel_count_result = redis_graph.query(rel_count_query)
+        # Get the total number of unique edges (incoming and outgoing)
+        # connected to Alon and Boaz.
+        rel_count = rel_count_result.result_set[1][0]
+
         query = """MATCH (s:person)
                     WHERE s.name = "Boaz" OR s.name = "Alon"
                     DELETE s"""
         actual_result = redis_graph.query(query)        
-        assert (actual_result.relationships_deleted == 0)
+        assert (actual_result.relationships_deleted == rel_count)
         assert (actual_result.nodes_deleted == 2)
 
     # Make sure Alon and Boaz are not in the graph.
