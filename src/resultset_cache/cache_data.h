@@ -1,13 +1,21 @@
+/*
+* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+*
+* This file is available under the Redis Labs Source Available License Agreement
+*/
+
 #ifndef CACHE_DATA_H
 #define CACHE_DATA_H
 #include "./result_set_cache_includes.h"
 
-typedef struct CacheData CacheData;
-struct CacheData
+/**
+ * @brief  struct for holding cache data
+ */
+typedef struct CacheData
 {
-  char hashKey[HASH_KEY_LENGTH];
-  ResultSet *resultSet;
-  bool isDirty;
-};
+  char hashKey[HASH_KEY_LENGTH];    // CacheData key - Query hashed by XXHASH
+  ResultSet *resultSet;             // Value - ResultSet
+  bool isDirty;                     // Indication for written entry, for memeory release
+} CacheData;
 
 #endif
