@@ -16,6 +16,7 @@
 //dvirdu
 #include "../resultset_cache/resultset_cache.h"
 
+
 static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST_IndexNode *indexNode) {
     /* Set up nested array response for index creation and deletion,
      * Following the response struture of other queries:
@@ -114,8 +115,7 @@ void _MGraph_Query(void *args) {
 
       //mark cache as invalid
       if(!readonly){
-        char *graphName = GraphContext_GetFromTLS()->graph_name;
-        markGraphCacheInvalid(graphName);
+        markGraphCacheInvalid(gc->graph_name);
       }
       
       resultSet = _prepare_resultset(ctx, ast, compact);
@@ -138,7 +138,7 @@ cleanup:
     if(lockAcquired) {
         if(readonly){
           // cache result set
-          char *query = RedisModule_StringPtrLen(qctx->argv[1], NULL);
+          const char *query = RedisModule_StringPtrLen(qctx->argv[2], NULL);
           setGraphCacheResultSet(gc->graph_name, query, resultSet);
           Graph_ReleaseLock(gc->g);
         }
@@ -172,8 +172,14 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     // even when the read is executed without locking
     ResultSet *resultSet = getGraphCacheResultSet(graphName, query);
     // if the resultSet is valid, send it by different thread.
-    if (resultSet){
-      thpool_add_work(_thpool, ResultSet_Replay, resultSet);
+    if (resultSet) {
+      ResultSet_RetransmitParams *retransmitParams = ResultSet_RetransmitParams_New();
+      retransmitParams->resultSet = resultSet;
+      retransmitParams->bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
+      retransmitParams->tic[0] = tic[0];
+      retransmitParams->tic[1] = tic[1];
+      thpool_add_work(_thpool,(void*) ResultSet_Retransmit, (void*)retransmitParams);
+
       return REDISMODULE_OK;
     }
     AST **ast = ParseQuery(query, strlen(query), &errMsg);

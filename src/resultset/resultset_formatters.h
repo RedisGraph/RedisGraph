@@ -55,4 +55,4 @@ void ResultSet_EmitCompactRecord(RedisModuleCtx *ctx, GraphContext *gc, const Re
 void ResultSet_ReplyWithVerboseHeader(RedisModuleCtx *ctx, const ResultSetHeader *header);
 
 // Formatter for compact header reply
-void ResultSet_ReplyWithCompactHeader(RedisModuleCtx *ctx, const ResultSetHeader *header, TrieMap *entities);
+void ResultSet_ReplyWithCompactHeader(RedisModuleCtx *ctx, const ResultSetHeader *header);

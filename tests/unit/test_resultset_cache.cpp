@@ -8,7 +8,8 @@
 #include "../../deps/googletest/include/gtest/gtest.h"
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 #include "../../src/resultset_cache/lru_cache_manager/lru_cache_manager.h"
@@ -23,9 +24,11 @@ extern "C" {
 }
 #endif
 
-class CacheManagerTest : public ::testing::Test {
+class CacheManagerTest : public ::testing::Test
+{
 protected:
-  static void SetUpTestCase() { // Use the malloc family for allocations
+  static void SetUpTestCase()
+  { // Use the malloc family for allocations
     Alloc_Reset();
   }
 };
@@ -48,7 +51,8 @@ protected:
   }
 };
 
-TEST_F(CacheManagerTest, LRUCacheManagerTest) {
+TEST_F(CacheManagerTest, LRUCacheManagerTest)
+{
 
   LRUCacheManager *cacheManager = LRUCacheManager_New(3);
   ASSERT_TRUE(cacheManager);
@@ -107,14 +111,15 @@ TEST_F(CacheManagerTest, LRUCacheManagerTest) {
   LRUCacheManager_Free(cacheManager);
 }
 
-TEST_F(CacheManagerTest, LRUCacheManagerAndXXHASHTest){
+TEST_F(CacheManagerTest, LRUCacheManagerAndXXHASHTest)
+{
   LRUCacheManager *cacheManager = LRUCacheManager_New(3);
   ASSERT_TRUE(cacheManager);
   CacheData *evicted = NULL;
-  char hashKey1[8] = "" ;
-  char hashKey2[8] = "" ;
-  char hashKey3[8] = "" ;
-  char hashKey4[8] = "" ;
+  char hashKey1[8] = "";
+  char hashKey2[8] = "";
+  char hashKey3[8] = "";
+  char hashKey4[8] = "";
 
   ResultSet *rs1 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
   ResultSet *rs2 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
@@ -187,7 +192,8 @@ TEST_F(CacheManagerTest, LRUCacheManagerAndXXHASHTest){
   LRUCacheManager_Free(cacheManager);
 }
 
-TEST_F(CacheStorageTest, RaxTestEdgeCase){
+TEST_F(CacheStorageTest, RaxTestEdgeCase)
+{
 
   char normalKey[8] = {'a', 'b', 'c', 'd', 'e', 'f', 'g'};
   char nullKey[8] = {'a', 'b', 'c', '\0', 'a', 'b', 'c', 'd'};
@@ -199,19 +205,20 @@ TEST_F(CacheStorageTest, RaxTestEdgeCase){
 
   rax *rt = raxNew();
   raxInsert(rt, (unsigned char *)normalKey, 8, &rs1, NULL);
-  ResultSet* returnedRs = (ResultSet*)raxFind(rt, (unsigned char *)normalKey,8);
+  ResultSet *returnedRs = (ResultSet *)raxFind(rt, (unsigned char *)normalKey, 8);
   ASSERT_EQ(&rs1, returnedRs);
 
   raxInsert(rt, (unsigned char *)nullKey, 8, &rs2, NULL);
   raxInsert(rt, (unsigned char *)nullKey2, 8, &rs3, NULL);
-  returnedRs = (ResultSet*)raxFind(rt, (unsigned char *)nullKey,8);
+  returnedRs = (ResultSet *)raxFind(rt, (unsigned char *)nullKey, 8);
   ASSERT_EQ(&rs2, returnedRs);
-  returnedRs = (ResultSet*)raxFind(rt, (unsigned char *)nullKey2,8);
+  returnedRs = (ResultSet *)raxFind(rt, (unsigned char *)nullKey2, 8);
   ASSERT_NE(&rs2, returnedRs);
   ASSERT_EQ(&rs3, returnedRs);
 }
 
-TEST_F(ResultSetCacheTest, ResultSetCacheTest){
+TEST_F(ResultSetCacheTest, ResultSetCacheTest)
+{
   ResultSetCache *resultSetCache = ResultSetCache_New(3);
 
   ResultSet *rs1 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
@@ -264,4 +271,48 @@ TEST_F(ResultSetCacheTest, ResultSetCacheTest){
   ASSERT_FALSE(getResultSet(resultSetCache, query4, strlen(query4)));
 
   ResultSetCache_Free(resultSetCache);
+}
+
+TEST_F(ResultSetCacheTest, GraphCacheTest)
+{
+  
+  char *query1 = "MATCH (a) RETURN a";
+  char *query2 = "MATCH (b) RETURN b";
+  char *query3 = "MATCH (c) RETURN c";
+  char *query4 = "MATCH (d) RETURN d";
+
+  char *graph1 = "graph1";
+  char *graph2 = "graph2";
+
+  ASSERT_FALSE(getGraphCacheResultSet(graph1, query1));
+  ResultSet *rs11 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
+  setGraphCacheResultSet(graph1, query1, rs11);
+  ASSERT_EQ(rs11, getGraphCacheResultSet(graph1, query1));
+  ASSERT_FALSE(getGraphCacheResultSet(graph2, query1));
+  ResultSet *rs21 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
+  setGraphCacheResultSet(graph2, query1, rs21);
+  ASSERT_EQ(rs21, getGraphCacheResultSet(graph2, query1));
+  ASSERT_NE(getGraphCacheResultSet(graph1, query1), getGraphCacheResultSet(graph2, query1));
+
+  markGraphCacheInvalid(graph1);
+  ASSERT_FALSE(getGraphCacheResultSet(graph1, query1));
+  ASSERT_EQ(rs21, getGraphCacheResultSet(graph2, query1));
+
+  invalidateGraphCache(graph1);
+  ASSERT_FALSE(getGraphCacheResultSet(graph1, query1));
+  ASSERT_EQ(rs21, getGraphCacheResultSet(graph2, query1));
+
+  rs11 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
+  setGraphCacheResultSet(graph1, query1, rs11);
+  ASSERT_EQ(rs11, getGraphCacheResultSet(graph1, query1));
+  ResultSet *rs12 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
+  setGraphCacheResultSet(graph1, query2, rs12);
+  ASSERT_EQ(rs11, getGraphCacheResultSet(graph1, query1));
+  ASSERT_EQ(rs12, getGraphCacheResultSet(graph1, query2));
+  ASSERT_EQ(rs21, getGraphCacheResultSet(graph2, query1));
+  ASSERT_FALSE(getGraphCacheResultSet(graph2, query2));
+
+  removeGraphCache(graph1);
+  ASSERT_EQ(rs21, getGraphCacheResultSet(graph2, query1));
+  removeGraphCache(graph2);
 }

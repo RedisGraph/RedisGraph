@@ -156,27 +156,15 @@ void ResultSet_EmitCompactRecord(RedisModuleCtx *ctx, GraphContext *gc, const Re
 // For every column in the header, emit a 2-array that specifies
 // the column alias followed by an enum denoting what type
 // (scalar, node, or relation) it holds.
-void ResultSet_ReplyWithCompactHeader(RedisModuleCtx *ctx, const ResultSetHeader *header, TrieMap *entities) {
+void ResultSet_ReplyWithCompactHeader(RedisModuleCtx *ctx, const ResultSetHeader *header) {
     RedisModule_ReplyWithArray(ctx, header->columns_len);
     for(int i = 0; i < header->columns_len; i++) {
         RedisModule_ReplyWithArray(ctx, 2);
         Column *c = header->columns[i];
-        ColumnTypeUser t;
         char *identifier = c->alias? c->alias: c->name;
-        AST_GraphEntity *entity = TrieMap_Find(entities, identifier, strlen(identifier));
-
+        
         // First, emit the column type enum
-        if(entity == TRIEMAP_NOTFOUND) {
-            t = COLUMN_SCALAR;
-        } else if(entity->t == N_ENTITY) {
-            t = COLUMN_NODE;
-        } else if(entity->t == N_LINK) {
-            t = COLUMN_RELATION;
-        } else {
-            t = COLUMN_SCALAR;
-        }
-
-        RedisModule_ReplyWithLongLong(ctx, t);
+        RedisModule_ReplyWithLongLong(ctx, c->type);
 
         // Second, emit the identifier string associated with the column
         RedisModule_ReplyWithStringBuffer(ctx, identifier, strlen(identifier));

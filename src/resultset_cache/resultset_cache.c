@@ -18,7 +18,7 @@ ResultSetCache *addGraphCache(const char *graphName, size_t graphNameLength)
     // if not exists, create new and return
     // acquire write lock
     pthread_rwlock_wrlock(&registeredCaches_rwlock);
-    raxInsert(registeredCaches, graphName, graphNameLength, ResultSetCache_New(RESULTSET_CACHE_ENTRY_NUMBER), NULL);
+    raxInsert(registeredCaches, (unsigned char *)graphName, graphNameLength, ResultSetCache_New(RESULTSET_CACHE_ENTRY_NUMBER), NULL);
     // free lock
     pthread_rwlock_unlock(&registeredCaches_rwlock);
     return getGraphCache(graphName, graphNameLength);
@@ -39,7 +39,7 @@ getGraphCache(const char *graphName, size_t graphNameLength)
 
     // find cache
     pthread_rwlock_rdlock(&registeredCaches_rwlock);
-    ResultSetCache *resultSetCache = raxFind(registeredCaches, graphName, graphNameLength);
+    ResultSetCache *resultSetCache = raxFind(registeredCaches, (unsigned char *)graphName, graphNameLength);
     // free lock
     pthread_rwlock_unlock(&registeredCaches_rwlock);
     if (resultSetCache == raxNotFound)
@@ -56,9 +56,9 @@ void removeGraphCache(const char *graphName)
     // if not exists, create new and return
     // acquire write lock
     pthread_rwlock_wrlock(&registeredCaches_rwlock);
-    ResultSetCache *resultSetCache = raxFind(registeredCaches, graphName, graphNameLength);
+    ResultSetCache *resultSetCache = raxFind(registeredCaches, (unsigned char *)graphName, graphNameLength);
     ResultSetCache_Free(resultSetCache);
-    raxRemove(registeredCaches, graphName, graphNameLength, NULL);
+    raxRemove(registeredCaches, (unsigned char *)graphName, graphNameLength, NULL);
     // free lock
     pthread_rwlock_unlock(&registeredCaches_rwlock);
 }

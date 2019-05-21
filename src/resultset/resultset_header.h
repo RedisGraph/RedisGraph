@@ -14,6 +14,7 @@
 typedef struct {
     char* name;
     char* alias;
+    int type;
 } Column;
 
 typedef struct {
