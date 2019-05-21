@@ -11,6 +11,7 @@
 #include "../graph/graph.h"
 #include "../query_executor.h"
 #include "../util/simple_timer.h"
+#include "../resultset_cache/resultset_cache.h"
 
 extern RedisModuleType *GraphContextRedisModuleType;
 
@@ -45,7 +46,9 @@ void _MGraph_Delete(void *args) {
 
     // Remove GraphContext from keyspace.
     if(RedisModule_DeleteKey(key) == REDISMODULE_OK) {
-        char* strElapsed;
+        //remove graph cache
+        removeGraphCache(dCtx->graphName);
+        char *strElapsed;
         double t = simple_toc(tic) * 1000;
         asprintf(&strElapsed, "Graph removed, internal execution time: %.6f milliseconds", t);
         RedisModule_ReplyWithStringBuffer(ctx, strElapsed, strlen(strElapsed));

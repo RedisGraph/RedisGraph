@@ -11,6 +11,8 @@
 #include "../util/qsort.h"
 #include "../GraphBLASExt/GxB_Delete.h"
 #include "../util/rmalloc.h"
+#include "graphcontext.h"
+#include "../resultset_cache/resultset_cache.h"
 
 /*========================= Synchronization functions ========================= */
 

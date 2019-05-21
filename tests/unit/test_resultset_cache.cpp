@@ -225,43 +225,43 @@ TEST_F(ResultSetCacheTest, ResultSetCacheTest){
   char *query4 = "MATCH (d) RETURN d";
 
   //check for not existing key
-  ASSERT_FALSE(getResultSet(resultSetCache, query1));
+  ASSERT_FALSE(getResultSet(resultSetCache, query1, strlen(query1)));
 
   // add single entry
-  storeResultSet(resultSetCache, query1, rs1);
-  ASSERT_EQ(rs1, getResultSet(resultSetCache, query1));
+  storeResultSet(resultSetCache, query1, strlen(query1), rs1);
+  ASSERT_EQ(rs1, getResultSet(resultSetCache, query1, strlen(query1)));
 
   // add multiple entries
-  storeResultSet(resultSetCache, query2, rs2);
-  ASSERT_EQ(rs2, getResultSet(resultSetCache, query2));
-  storeResultSet(resultSetCache, query3, rs3);
-  ASSERT_EQ(rs3, getResultSet(resultSetCache, query3));
-  storeResultSet(resultSetCache, query4, rs4);
-  ASSERT_EQ(rs4, getResultSet(resultSetCache, query4));
+  storeResultSet(resultSetCache, query2, strlen(query2), rs2);
+  ASSERT_EQ(rs2, getResultSet(resultSetCache, query2, strlen(query2)));
+  storeResultSet(resultSetCache, query3, strlen(query3), rs3);
+  ASSERT_EQ(rs3, getResultSet(resultSetCache, query3, strlen(query3)));
+  storeResultSet(resultSetCache, query4, strlen(query4), rs4);
+  ASSERT_EQ(rs4, getResultSet(resultSetCache, query4, strlen(query4)));
 
   //verify that oldest entry is not exists - queue is [ 4 | 3 | 2 ]
-  ASSERT_FALSE(getResultSet(resultSetCache, query1));
+  ASSERT_FALSE(getResultSet(resultSetCache, query1, strlen(query1)));
 
   //clear cache
   clearCache(resultSetCache);
-  ASSERT_FALSE(getResultSet(resultSetCache, query1));
-  ASSERT_FALSE(getResultSet(resultSetCache, query2));
-  ASSERT_FALSE(getResultSet(resultSetCache, query3));
-  ASSERT_FALSE(getResultSet(resultSetCache, query4));
+  ASSERT_FALSE(getResultSet(resultSetCache, query1, strlen(query1)));
+  ASSERT_FALSE(getResultSet(resultSetCache, query2, strlen(query2)));
+  ASSERT_FALSE(getResultSet(resultSetCache, query3, strlen(query3)));
+  ASSERT_FALSE(getResultSet(resultSetCache, query4, strlen(query4)));
 
   //re-alloc since they are delted or will be deleted in the cache, rs4 will be deleted once those will be inserted
   rs1 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
   rs2 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
   rs3 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
 
-  storeResultSet(resultSetCache, query1, rs1);
-  ASSERT_EQ(rs1, getResultSet(resultSetCache, query1));
-  storeResultSet(resultSetCache, query2, rs2);
-  ASSERT_EQ(rs2, getResultSet(resultSetCache, query2));
-  storeResultSet(resultSetCache, query3, rs3);
-  ASSERT_EQ(rs3, getResultSet(resultSetCache, query3));
+  storeResultSet(resultSetCache, query1, strlen(query1), rs1);
+  ASSERT_EQ(rs1, getResultSet(resultSetCache, query1, strlen(query1)));
+  storeResultSet(resultSetCache, query2, strlen(query2), rs2);
+  ASSERT_EQ(rs2, getResultSet(resultSetCache, query2, strlen(query2)));
+  storeResultSet(resultSetCache, query3, strlen(query3), rs3);
+  ASSERT_EQ(rs3, getResultSet(resultSetCache, query3, strlen(query3)));
 
-  ASSERT_FALSE(getResultSet(resultSetCache, query4));
+  ASSERT_FALSE(getResultSet(resultSetCache, query4, strlen(query4)));
 
   ResultSetCache_Free(resultSetCache);
 }

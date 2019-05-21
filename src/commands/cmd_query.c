@@ -13,6 +13,9 @@
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
 
+//dvirdu
+#include "../resultset_cache/resultset_cache.h"
+
 static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST_IndexNode *indexNode) {
     /* Set up nested array response for index creation and deletion,
      * Following the response struture of other queries:
@@ -108,11 +111,18 @@ void _MGraph_Query(void *args) {
     if (ast[0]->indexNode) { // index operation
         _index_operation(ctx, gc, ast[0]->indexNode);
     } else {
-        resultSet = _prepare_resultset(ctx, ast, compact);
-        ExecutionPlan *plan = NewExecutionPlan(ctx, ast, resultSet, false);
-        ExecutionPlan_Execute(plan);
-        ExecutionPlanFree(plan);
-        ResultSet_Replay(resultSet);    // Send result-set back to client.
+
+      //mark cache as invalid
+      if(!readonly){
+        char *graphName = GraphContext_GetFromTLS()->graph_name;
+        markGraphCacheInvalid(graphName);
+      }
+      
+      resultSet = _prepare_resultset(ctx, ast, compact);
+      ExecutionPlan *plan = NewExecutionPlan(ctx, ast, resultSet, false);
+      ExecutionPlan_Execute(plan);
+      ExecutionPlanFree(plan);
+      ResultSet_Replay(resultSet); // Send result-set back to client.
     }
 
     /* Report execution timing. */
@@ -126,11 +136,19 @@ void _MGraph_Query(void *args) {
 cleanup:
     // Release the read-write lock
     if(lockAcquired) {
-        if(readonly)Graph_ReleaseLock(gc->g);
-        else Graph_WriterLeave(gc->g);
+        if(readonly){
+          // cache result set
+          char *query = RedisModule_StringPtrLen(qctx->argv[1], NULL);
+          setGraphCacheResultSet(gc->graph_name, query, resultSet);
+          Graph_ReleaseLock(gc->g);
+        }
+        else {
+          //invalidate cache
+          invalidateGraphCache(gc->graph_name);
+          Graph_WriterLeave(gc->g);
+        }
     }
-
-    ResultSet_Free(resultSet);
+    if (!readonly) ResultSet_Free(resultSet);
     CommandCtx_Free(qctx);
 }
 
@@ -147,6 +165,17 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     // Parse AST.
     char *errMsg = NULL;
     const char *query = RedisModule_StringPtrLen(argv[2], NULL);
+    const char *graphName = RedisModule_StringPtrLen(argv[1], NULL);
+    //get result set by graph name and query
+    // returns only valid data. 
+    //in case of W->R dependency between two threads, the cache will be invalidated before the read, 
+    // even when the read is executed without locking
+    ResultSet *resultSet = getGraphCacheResultSet(graphName, query);
+    // if the resultSet is valid, send it by different thread.
+    if (resultSet){
+      thpool_add_work(_thpool, ResultSet_Replay, resultSet);
+      return REDISMODULE_OK;
+    }
     AST **ast = ParseQuery(query, strlen(query), &errMsg);
     if (!ast) {
         RedisModule_Log(ctx, "debug", "Error parsing query: %s", errMsg);
