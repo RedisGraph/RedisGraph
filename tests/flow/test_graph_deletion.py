@@ -136,7 +136,7 @@ class GraphDeletionFlowTest(FlowTestsBase):
         rel_count_result = redis_graph.query(rel_count_query)
         # Get the total number of unique edges (incoming and outgoing)
         # connected to Alon and Boaz.
-        rel_count = rel_count_result.result_set[1][0]
+        rel_count = rel_count_result.result_set[0][0]
 
         query = """MATCH (s:person)
                     WHERE s.name = "Boaz" OR s.name = "Alon"

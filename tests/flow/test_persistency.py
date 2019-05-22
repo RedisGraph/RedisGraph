@@ -184,38 +184,31 @@ class GraphPersistency(FlowTestsBase):
     # are saved and restored correctly.
     def test04_repeated_edges(self):
         graphname = "repeated_edges"
-        graph = Graph(graphname, redis_con)
-        # Build two nodes
-        create_query = """CREATE (:p {name: 'src'}), (:p {name: 'dest'})"""
-        actual_result = graph.query(create_query)
-        assert(actual_result.nodes_created == 2)
-
-        # Connect nodes
-        create_query = """MATCH(a:p {name: 'src'}), (b:p {name: 'dest'}) CREATE (a)-[:e {val: 1}]->(b)"""
-        actual_result = graph.query(create_query)
-        assert(actual_result.relationships_created == 1)
+        g = Graph(graphname, redis_con)
+        src = Node(label='p', properties={'name': 'src'})
+        dest = Node(label='p', properties={'name': 'dest'})
+        edge1 = Edge(src, 'e', dest, properties={'val': 1})
+        edge2 = Edge(src, 'e', dest, properties={'val': 2})
+        g.add_node(src)
+        g.add_node(dest)
+        g.add_edge(edge1)
+        g.add_edge(edge2)
+        g.commit()
 
         # Verify the new edge
-        read_query = """MATCH (a)-[e]->(b) RETURN e, a, b ORDER BY e.val"""
-        actual_result = graph.query(read_query)
-        expected_result = [[1, 'src', 'dest']]
-        assert(actual_result.result_set == expected_result)
+        q = """MATCH (a)-[e]->(b) RETURN e.val, a.name, b.name ORDER BY e.val"""
+        actual_result = g.query(q)
 
-        # Connect nodes with additional edge of the same relation.
-        create_query = """MATCH(a:p {name: 'src'}), (b:p {name: 'dest'}) CREATE (a)-[:e {val: 2}]->(b)"""
-        actual_result = graph.query(create_query)
-        assert(actual_result.relationships_created == 1)
+        expected_result = [[edge1.properties['val'], src.properties['name'], dest.properties['name']], 
+                           [edge2.properties['val'], src.properties['name'], dest.properties['name']]]
 
-        actual_result = graph.query(read_query)
-        # TODO This is the expected current behavior, subject to later change.
-        expected_result = [[2, 'src', 'dest']]
         assert(actual_result.result_set == expected_result)
 
         # Save RDB & Load from RDB
         redis_con.execute_command("DEBUG", "RELOAD")
 
         # Verify that the latest edge was properly saved and loaded
-        actual_result = graph.query(read_query)
+        actual_result = g.query(q)
         assert(actual_result.result_set == expected_result)
 
 if __name__ == '__main__':
