@@ -78,14 +78,7 @@ Requirements:
 
 * The RedisGraph repository: `git clone https://github.com/RedisGraph/RedisGraph.git`
 
-* On Ubuntu Linux, run: `apt-get install build-essential cmake`
-
-* On Fedora/CentOS/RHEL, run:
-
-  ```
-  dnf groupinstall "Development Tools"
-  dnf install cmake
-  ```
+* On Ubuntu Linux, run: `apt-get install build-essential cmake m4 automake peg libtool autoconf`
 
 To build, run `make` in the project's directory.
 
@@ -106,7 +99,7 @@ In the line above, replace `/path/to/module/src/redisgraph.so` with the actual p
 Alternatively, you can have Redis load RedisGraph using this command-line argument syntax:
 
 ```sh
-~/$ redis-server --loadmodule /path/to/module/src/redisgraph.so
+$ redis-server --loadmodule /path/to/module/src/redisgraph.so
 ```
 
 You can also use the [`MODULE LOAD`](http://redis.io/commands/module-load) command. Note, however, that `MODULE LOAD` is a dangerous command and may be blocked/deprecated in the future due to security considerations.
