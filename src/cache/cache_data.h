@@ -6,7 +6,7 @@
 
 #ifndef CACHE_DATA_H
 #define CACHE_DATA_H
-#include "./result_set_cache_includes.h"
+#include "./cache_includes.h"
 
 /**
  * @brief  struct for holding cache data

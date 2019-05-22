@@ -6,12 +6,12 @@
 
 #include "lru_cache_manager.h"
 
-LRUCacheManager *LRUCacheManager_New(size_t size)
+LRUCacheManager *LRUCacheManager_New(size_t size, cacheValueFreeFunc freeCB)
 {
   // memeory allocation
   LRUCacheManager *lruCacheManager = rm_malloc(sizeof(LRUCacheManager));
   // create new LRU queue
-  lruCacheManager->queue = LRUQueue_New(size);
+  lruCacheManager->queue = LRUQueue_New(size, freeCB);
   return lruCacheManager;
 }
 
@@ -30,10 +30,10 @@ CacheData *evictFromCache(LRUCacheManager *lruCacheManager)
   return (CacheData *)dequeue(lruCacheManager->queue);
 }
 
-CacheData *addToCache(LRUCacheManager *lruCacheManager, unsigned long long const hashKey, ResultSet *resultSet)
+CacheData *addToCache(LRUCacheManager *lruCacheManager, unsigned long long const hashKey, void *cacheValue)
 {
   // enqueue and generate new cache entry (LRU node)
-  LRUNode *newNode = enqueue(lruCacheManager->queue, hashKey, resultSet);
+  LRUNode *newNode = enqueue(lruCacheManager->queue, hashKey, cacheValue);
   // return cache entry
   return (CacheData *)newNode;
 }

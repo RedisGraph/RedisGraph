@@ -26,12 +26,13 @@ LRUQueue *initLRUQueue(LRUQueue *lruQueue, size_t capacity)
   return lruQueue;
 }
 
-LRUQueue *LRUQueue_New(size_t capacity)
+LRUQueue *LRUQueue_New(size_t capacity, cacheValueFreeFunc freeCB)
 {
   // memory allocations
   LRUQueue *lruQueue = rm_malloc(sizeof(LRUQueue));
   lruQueue->queue = rm_calloc(capacity, sizeof(LRUNode));
   lruQueue->emptyCells = array_new(LRUNode *, capacity);
+  lruQueue->freeCB = freeCB;
   // initialization
   return initLRUQueue(lruQueue, capacity);
 }
@@ -41,13 +42,13 @@ void LRUQueue_Free(LRUQueue *lruQueue)
   // go over each entry and free its result set
   while (lruQueue->head != NULL)
   {
-    ResultSet_Free(lruQueue->head->cacheData.cacheValue);
+    lruQueue->freeCB(lruQueue->head->cacheData.cacheValue);
     lruQueue->head = lruQueue->head->next;
   }
 
   for (int i = 0; i < array_len(lruQueue->emptyCells); i++)
   {
-    ResultSet_Free(lruQueue->emptyCells[i]->cacheData.cacheValue);
+    lruQueue->freeCB(lruQueue->emptyCells[i]->cacheData.cacheValue);
   }
 
   // memeory release
@@ -123,7 +124,7 @@ LRUNode *setNodeInQueue(LRUQueue *queue, LRUNode *newNode)
   return newNode;
 }
 
-LRUNode *enqueue(LRUQueue *queue, unsigned long long const key, ResultSet *resultSet)
+LRUNode *enqueue(LRUQueue *queue, unsigned long long const key, void *cacheValue)
 {
   // init new node
   LRUNode *emptyNode;
@@ -138,7 +139,7 @@ LRUNode *enqueue(LRUQueue *queue, unsigned long long const key, ResultSet *resul
     emptyNode = queue->emptySpace;
   }
 
-  LRUNode *node = initLRUNode(emptyNode, key, resultSet);
+  LRUNode *node = initLRUNode(emptyNode, key, cacheValue, queue->freeCB);
   //will be false until array is full - for linear insertion over the array
   if (!queue->fullCapacity && emptyNode == queue->emptySpace)
   {

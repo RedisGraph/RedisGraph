@@ -6,7 +6,7 @@
 
 #ifndef XXHASH_QUERY_HASH_H
 #define XXHASH_QUERY_HASH_H
-#include"../result_set_cache_includes.h"
+#include"../cache_includes.h"
 
 /**
  * @brief  Hash a query using XXHASH into a 64 bit

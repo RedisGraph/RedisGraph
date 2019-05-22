@@ -6,7 +6,7 @@
 
 #ifndef RAX_CACHE_STORAGE_H
 #define RAX_CACHE_STORAGE_H
-#include "../result_set_cache_includes.h"
+#include "../cache_includes.h"
 #include "../cache_data.h"
 #include "rax/rax.h"
 

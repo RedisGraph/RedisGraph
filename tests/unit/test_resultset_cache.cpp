@@ -12,9 +12,10 @@ extern "C"
 {
 #endif
 
-#include "../../src/resultset_cache/lru_cache_manager/lru_cache_manager.h"
-#include "../../src/resultset_cache/xxhash_query_hash/xxhash_query_hash.h"
-#include "../../src/resultset_cache/rax_cache_storage/rax_cache_storage.h"
+#include "../../src/cache/lru_cache_manager/lru_cache_manager.h"
+#include "../../src/cache/xxhash_query_hash/xxhash_query_hash.h"
+#include "../../src/cache/rax_cache_storage/rax_cache_storage.h"
+#include "../../src/cache/cache.h"
 #include "../../src/resultset_cache/resultset_cache.h"
 #include "../../src/util/rmalloc.h"
 #include "../../deps/rax/rax.h"
@@ -63,7 +64,7 @@ protected:
 TEST_F(CacheManagerTest, LRUCacheManagerTest)
 {
 
-  LRUCacheManager *cacheManager = LRUCacheManager_New(3);
+  LRUCacheManager *cacheManager = LRUCacheManager_New(3,(cacheValueFreeFunc) ResultSet_Free);
   ASSERT_TRUE(cacheManager);
   CacheData *evicted = NULL;
   char hashKey1[8] = "1234567";
@@ -122,7 +123,7 @@ TEST_F(CacheManagerTest, LRUCacheManagerTest)
 
 TEST_F(CacheManagerTest, LRUCacheManagerAndXXHASHTest)
 {
-  LRUCacheManager *cacheManager = LRUCacheManager_New(3);
+  LRUCacheManager *cacheManager = LRUCacheManager_New(3, (cacheValueFreeFunc)ResultSet_Free);
   ASSERT_TRUE(cacheManager);
   CacheData *evicted = NULL;
 
@@ -225,7 +226,7 @@ TEST_F(CacheStorageTest, RaxTestEdgeCase)
 
 TEST_F(ResultSetCacheTest, ResultSetCacheTest)
 {
-  ResultSetCache *resultSetCache = ResultSetCache_New(3);
+  Cache *resultSetCache = Cache_New(3, (cacheValueFreeFunc)ResultSet_Free);
 
   ResultSet *rs1 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
   ResultSet *rs2 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
@@ -238,45 +239,45 @@ TEST_F(ResultSetCacheTest, ResultSetCacheTest)
   char *query4 = "MATCH (d) RETURN d";
 
   //check for not existing key
-  ASSERT_FALSE(getResultSet(resultSetCache, query1, strlen(query1)));
+  ASSERT_FALSE(getCacheValue(resultSetCache, query1, strlen(query1)));
 
   // add single entry
-  storeResultSet(resultSetCache, query1, strlen(query1), rs1);
-  ASSERT_EQ(rs1, getResultSet(resultSetCache, query1, strlen(query1)));
+  storeCacheValue(resultSetCache, query1, strlen(query1), rs1);
+  ASSERT_EQ(rs1, getCacheValue(resultSetCache, query1, strlen(query1)));
 
   // add multiple entries
-  storeResultSet(resultSetCache, query2, strlen(query2), rs2);
-  ASSERT_EQ(rs2, getResultSet(resultSetCache, query2, strlen(query2)));
-  storeResultSet(resultSetCache, query3, strlen(query3), rs3);
-  ASSERT_EQ(rs3, getResultSet(resultSetCache, query3, strlen(query3)));
-  storeResultSet(resultSetCache, query4, strlen(query4), rs4);
-  ASSERT_EQ(rs4, getResultSet(resultSetCache, query4, strlen(query4)));
+  storeCacheValue(resultSetCache, query2, strlen(query2), rs2);
+  ASSERT_EQ(rs2, getCacheValue(resultSetCache, query2, strlen(query2)));
+  storeCacheValue(resultSetCache, query3, strlen(query3), rs3);
+  ASSERT_EQ(rs3, getCacheValue(resultSetCache, query3, strlen(query3)));
+  storeCacheValue(resultSetCache, query4, strlen(query4), rs4);
+  ASSERT_EQ(rs4, getCacheValue(resultSetCache, query4, strlen(query4)));
 
   //verify that oldest entry is not exists - queue is [ 4 | 3 | 2 ]
-  ASSERT_FALSE(getResultSet(resultSetCache, query1, strlen(query1)));
+  ASSERT_FALSE(getCacheValue(resultSetCache, query1, strlen(query1)));
 
   //clear cache
   clearCache(resultSetCache);
-  ASSERT_FALSE(getResultSet(resultSetCache, query1, strlen(query1)));
-  ASSERT_FALSE(getResultSet(resultSetCache, query2, strlen(query2)));
-  ASSERT_FALSE(getResultSet(resultSetCache, query3, strlen(query3)));
-  ASSERT_FALSE(getResultSet(resultSetCache, query4, strlen(query4)));
+  ASSERT_FALSE(getCacheValue(resultSetCache, query1, strlen(query1)));
+  ASSERT_FALSE(getCacheValue(resultSetCache, query2, strlen(query2)));
+  ASSERT_FALSE(getCacheValue(resultSetCache, query3, strlen(query3)));
+  ASSERT_FALSE(getCacheValue(resultSetCache, query4, strlen(query4)));
 
   //re-alloc since they are delted or will be deleted in the cache, rs4 will be deleted once those will be inserted
   rs1 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
   rs2 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
   rs3 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
 
-  storeResultSet(resultSetCache, query1, strlen(query1), rs1);
-  ASSERT_EQ(rs1, getResultSet(resultSetCache, query1, strlen(query1)));
-  storeResultSet(resultSetCache, query2, strlen(query2), rs2);
-  ASSERT_EQ(rs2, getResultSet(resultSetCache, query2, strlen(query2)));
-  storeResultSet(resultSetCache, query3, strlen(query3), rs3);
-  ASSERT_EQ(rs3, getResultSet(resultSetCache, query3, strlen(query3)));
+  storeCacheValue(resultSetCache, query1, strlen(query1), rs1);
+  ASSERT_EQ(rs1, getCacheValue(resultSetCache, query1, strlen(query1)));
+  storeCacheValue(resultSetCache, query2, strlen(query2), rs2);
+  ASSERT_EQ(rs2, getCacheValue(resultSetCache, query2, strlen(query2)));
+  storeCacheValue(resultSetCache, query3, strlen(query3), rs3);
+  ASSERT_EQ(rs3, getCacheValue(resultSetCache, query3, strlen(query3)));
 
-  ASSERT_FALSE(getResultSet(resultSetCache, query4, strlen(query4)));
+  ASSERT_FALSE(getCacheValue(resultSetCache, query4, strlen(query4)));
 
-  ResultSetCache_Free(resultSetCache);
+  Cache_Free(resultSetCache);
 }
 
 TEST_F(ResultSetCacheTest, GraphCacheTest)
@@ -391,7 +392,7 @@ TEST_F(ResultSetCacheTest, GraphCacheRemoveEntryTest){
 }
 
 TEST_F(LRUQueueTest, TestLRUQueue){
-  LRUQueue *queue = LRUQueue_New(10);
+  LRUQueue *queue = LRUQueue_New(10, (cacheValueFreeFunc)ResultSet_Free);
 
   unsigned long long key0 = 0;
   unsigned long long key1 = 1;

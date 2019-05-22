@@ -13,5 +13,5 @@
 
 #define HASH_KEY_LENGTH 8
 
-
+typedef void (*cacheValueFreeFunc)(void *);
 #endif

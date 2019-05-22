@@ -6,7 +6,7 @@
 
 #ifndef LRU_NODE_H
 #define LRU_NODE_H
-#include"../result_set_cache_includes.h"
+#include"../cache_includes.h"
 #include "../cache_data.h"
 
 // pre declaration 
@@ -29,6 +29,6 @@ struct LRUNode {
  * @param  resultSet: Node's result value (for CacheData)
  * @retval Initilized LRU node (pointer)
  */
-LRUNode *initLRUNode(LRUNode *node, unsigned long long const hashKey, ResultSet *resultSet);
+LRUNode *initLRUNode(LRUNode *node, unsigned long long const hashKey, void *cacheValue, cacheValueFreeFunc freeCB);
 
 #endif

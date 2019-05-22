@@ -6,7 +6,7 @@
 
 #include "./lru_node.h"
 
-LRUNode *initLRUNode(LRUNode *node, unsigned long long const hashKey, ResultSet *resultSet)
+LRUNode *initLRUNode(LRUNode *node, unsigned long long const hashKey, void *cacheValue, cacheValueFreeFunc freeCB)
 {
   // new node - no next and prev
   node->next = NULL;
@@ -17,10 +17,10 @@ LRUNode *initLRUNode(LRUNode *node, unsigned long long const hashKey, ResultSet 
   // if node was in use before, release the result set
   if (node->cacheData.isDirty)
   {
-    ResultSet_Free(node->cacheData.cacheValue);
+    freeCB(node->cacheData.cacheValue);
   }
   // set new value and mark as used
-  node->cacheData.cacheValue = resultSet;
+  node->cacheData.cacheValue = cacheValue;
   node->cacheData.isDirty = true;
 
   return node;

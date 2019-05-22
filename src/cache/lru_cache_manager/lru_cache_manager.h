@@ -6,7 +6,7 @@
 
 #ifndef LRU_CACHE_MANAGER_H
 #define LRU_CACHE_MANAGER_H
-#include "../result_set_cache_includes.h"
+#include "../cache_includes.h"
 #include "./lru_queue.h"
 
 /**
@@ -23,7 +23,7 @@ typedef struct LRUCacheManager
  * @param  capacity: Cache cacpcity
  * @retval Pointer to the cache manager
  */
-LRUCacheManager *LRUCacheManager_New(size_t capacity);
+LRUCacheManager *LRUCacheManager_New(size_t capacity, cacheValueFreeFunc freeCB);
 
 /**
  * @brief  Enqueue a new cache object in the cache
@@ -31,10 +31,10 @@ LRUCacheManager *LRUCacheManager_New(size_t capacity);
  *         You first need to check if the cache is full, and if so, evict an entry
  * @param  *lruCacheManager: Cache manager address (pointer)
  * @param  *hashKey: cache entry key (charected arrau in size of HASH_KEY_LENGTH)
- * @param  *resultSet: cache entry value (ResultSet pointer)
+ * @param  *cacheValue: cache entry value 
  * @retval 
  */
-CacheData *addToCache(LRUCacheManager *lruCacheManager, unsigned long long const hashKey, ResultSet *resultSet);
+CacheData *addToCache(LRUCacheManager *lruCacheManager, unsigned long long const hashKey, void *cacheValue);
 
 /**
  * @brief  Evicts the least recently used entry from the cache queue

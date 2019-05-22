@@ -6,7 +6,7 @@
 
 #ifndef LRU_QUEUE_H
 #define LRU_QUEUE_H
-#include "../result_set_cache_includes.h"
+#include "../cache_includes.h"
 #include "./lru_node.h"
 #include "../../util/arr.h"
 
@@ -23,6 +23,7 @@ typedef struct LRUQueue {
   LRUNode *emptySpace;      // Next empty place in the queue
   bool fullCapacity;        // Indication if the queue was reached full cacpcity
   LRUNode **emptyCells;
+  cacheValueFreeFunc freeCB;
 } LRUQueue;
 
 /**
@@ -30,8 +31,7 @@ typedef struct LRUQueue {
  * @param  capacity: Queue's maximal cacpaicty
  * @retval Initialized Queue (pointer)
  */
-LRUQueue *LRUQueue_New(size_t capacity);
-
+LRUQueue *LRUQueue_New(size_t capacity, cacheValueFreeFunc freeCB);
 
 /**
  * @brief  Destructor  
@@ -65,10 +65,10 @@ LRUNode *dequeue(LRUQueue *queue);
  * @brief  Enqueues a new node with given key and value 
  * @param  *queue: LRU Queue address (pointer)
  * @param  *hashKey: New node's key - charecter array in size of HASH_KEY_LENGTH
- * @param  resultset: New node's value
+ * @param  cacheValue: New node's value
  * @retval Newly genereted LRU Node, which is in the tail of the LRU queue
  */
-LRUNode *enqueue(LRUQueue *queue, unsigned long long const key, ResultSet *resultset);
+LRUNode *enqueue(LRUQueue *queue, unsigned long long const key, void *cacheValue);
 
 /**
  * @brief  Emptys a LRU Queue
