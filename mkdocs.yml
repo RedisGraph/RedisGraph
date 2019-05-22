@@ -26,6 +26,7 @@ theme:
 pages:
     - 'Quickstart': index.md
     - 'Commands': commands.md
+    - 'Result Set structure': result_structure.md
     - 'Design': design.md
     - 'Contributor agreement': contrib.md
     - 'Cypher coverage': cypher_support.md
