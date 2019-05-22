@@ -27,19 +27,19 @@ void clearCacheStorage(RaxCacheStorage *raxCacheStorage)
 void insertToCache(RaxCacheStorage *raxCacheStorage, CacheData *cacheData)
 {
     // insert to rax the cache entry key, and the cache data itself as value
-    raxInsert(raxCacheStorage->rt, (unsigned char *)cacheData->hashKey, HASH_KEY_LENGTH, cacheData, NULL);
+    raxInsert(raxCacheStorage->rt, (unsigned char *)&cacheData->hashKey, HASH_KEY_LENGTH, cacheData, NULL);
 }
 
-void removeFromCache(RaxCacheStorage *raxCacheStorage, char *hashKey)
+void removeFromCache(RaxCacheStorage *raxCacheStorage, CacheData *cacheData)
 {
     // remove from rax according to the key
-    raxRemove(raxCacheStorage->rt, (unsigned char *)hashKey, HASH_KEY_LENGTH, NULL);
+    raxRemove(raxCacheStorage->rt, (unsigned char *)&cacheData->hashKey, HASH_KEY_LENGTH, NULL);
 }
 
-CacheData *getFromCache(RaxCacheStorage *raxCacheStorage, char *hashKey)
+CacheData *getFromCache(RaxCacheStorage *raxCacheStorage, unsigned char *hashKey)
 {
     // search in rax
-    CacheData *data = raxFind(raxCacheStorage->rt, (unsigned char *)hashKey, HASH_KEY_LENGTH);
+    CacheData *data = raxFind(raxCacheStorage->rt, hashKey, HASH_KEY_LENGTH);
     if (data == raxNotFound)
     {
         // if not found return null

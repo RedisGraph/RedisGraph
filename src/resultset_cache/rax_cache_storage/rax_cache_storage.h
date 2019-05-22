@@ -39,10 +39,10 @@ void insertToCache(RaxCacheStorage *raxCacheStorage, CacheData *cacheData);
 /**
  * @brief  Removes an key (and its entry) from RAX 
  * @param  *raxCacheStorage: Rax storage (pointer)
- * @param  *hashKey: entry key - a charecter array in size of HASH_KEY_LENGTH
+ * @param  *cacheData : cacheData which its key is removed from rax
  * @retval None
  */
-void removeFromCache(RaxCacheStorage *raxCacheStorage, char *hashKey);
+void removeFromCache(RaxCacheStorage *raxCacheStorage, CacheData *cacheData);
 
 /**
  * @brief  Returns a result set according to its stored key
@@ -50,7 +50,7 @@ void removeFromCache(RaxCacheStorage *raxCacheStorage, char *hashKey);
  * @param  *hashKey: entry key - a charecter array in size of HASH_KEY_LENGTH 
  * @retval a cache entry pointer, stored in the cache entry with the specific key
  */
-CacheData *getFromCache(RaxCacheStorage *raxCacheStorage, char *hashKey);
+CacheData *getFromCache(RaxCacheStorage *raxCacheStorage, unsigned char *hashKey);
 
 /**
  * @brief  clears the cache storage

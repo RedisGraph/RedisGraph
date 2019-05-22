@@ -113,7 +113,7 @@ LRUNode *setNodeInQueue(LRUQueue *queue, LRUNode *newNode )
   return newNode;
 }
 
-LRUNode *enqueue(LRUQueue *queue, const char *key, ResultSet* resultSet)
+LRUNode *enqueue(LRUQueue *queue, unsigned long long const key, ResultSet* resultSet)
 {
   // init new node
   LRUNode *node = initLRUNode(queue->emptySpace, key, resultSet);

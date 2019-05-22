@@ -66,7 +66,7 @@ LRUNode *dequeue(LRUQueue *queue);
  * @param  resultset: New node's value
  * @retval Newly genereted LRU Node, which is in the tail of the LRU queue
  */
-LRUNode *enqueue(LRUQueue *queue, const char *hashKey, ResultSet* resultset);
+LRUNode *enqueue(LRUQueue *queue, unsigned long long const key, ResultSet *resultset);
 
 /**
  * @brief  Emptys a LRU Queue

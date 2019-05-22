@@ -100,8 +100,7 @@ void ResultSetCache_Free(ResultSetCache *resultSetCache)
 ResultSet *getResultSet(ResultSetCache *resultSetCache, const char *query, size_t queryLength)
 {
     // hash query
-    char hashKey[HASH_KEY_LENGTH];
-    hashQuery(query, queryLength, hashKey);
+    unsigned long long const hashKey = hashQuery(query, queryLength);
     CacheData *cacheData = NULL;
     // acquire read lock
     pthread_rwlock_rdlock(&resultSetCache->rwlock);
@@ -109,7 +108,7 @@ ResultSet *getResultSet(ResultSetCache *resultSetCache, const char *query, size_
     if (resultSetCache->isValid)
     {
         // get result set
-        cacheData = getFromCache(resultSetCache->raxCacheStorage, hashKey);
+        cacheData = getFromCache(resultSetCache->raxCacheStorage, (unsigned char*)&hashKey);
         if (cacheData)
         {
             increaseImportance(resultSetCache->lruCacheManager, cacheData);
@@ -124,8 +123,7 @@ ResultSet *getResultSet(ResultSetCache *resultSetCache, const char *query, size_
 void storeResultSet(ResultSetCache *resultSetCache, const char *query, size_t queryLength, ResultSet *resultSet)
 {
     // hash query
-    char hashKey[HASH_KEY_LENGTH];
-    hashQuery(query, queryLength, hashKey);
+    unsigned long long const hashKey = hashQuery(query, queryLength);
     // acquire write lock
     pthread_rwlock_wrlock(&resultSetCache->rwlock);
     //if cache is in valid state
@@ -137,7 +135,7 @@ void storeResultSet(ResultSetCache *resultSetCache, const char *query, size_t qu
             // get cache data from cache manager
             CacheData *evictedCacheData = evictFromCache(resultSetCache->lruCacheManager);
             // remove from storage
-            removeFromCache(resultSetCache->raxCacheStorage, evictedCacheData->hashKey);
+            removeFromCache(resultSetCache->raxCacheStorage, evictedCacheData);
         }
         // add to cache manager
         CacheData *insertedCacheData = addToCache(resultSetCache->lruCacheManager, hashKey, resultSet);

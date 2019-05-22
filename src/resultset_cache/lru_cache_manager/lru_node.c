@@ -6,13 +6,14 @@
 
 #include "./lru_node.h"
 
-LRUNode *initLRUNode(LRUNode *node, const char *hashKey, ResultSet *resultSet)
+LRUNode *initLRUNode(LRUNode *node, unsigned long long const hashKey, ResultSet *resultSet)
 {
   // new node - no next and prev
   node->next = NULL;
   node->prev = NULL;
   // copy key
-  memcpy(&node->cacheData.hashKey, hashKey, HASH_KEY_LENGTH);
+  node->cacheData.hashKey = hashKey;
+  
   // if node was in use before, release the result set
   if (node->cacheData.isDirty)
   {

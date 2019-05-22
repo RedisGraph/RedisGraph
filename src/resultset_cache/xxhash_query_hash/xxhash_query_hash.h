@@ -9,13 +9,11 @@
 #include"../result_set_cache_includes.h"
 
 /**
- * @brief  Hash a query using XXHASH into a 8 byte buffer
+ * @brief  Hash a query using XXHASH into a 64 bit
  * @param  *query: Query - charectes array
  * @param  queryLength: Query length
- * @param  *buffer: Output buffer to contains to hashed query, buffer should be intialized as:
- *          char buffer[HASH_KEY_LENGTH]
- * @retval None
+ * @retval hash value
  */
-void hashQuery(const char *query, size_t queryLength, char *buffer);
+unsigned long long const hashQuery(const char *query, size_t queryLength);
 
 #endif

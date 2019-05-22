@@ -29,6 +29,6 @@ struct LRUNode {
  * @param  resultSet: Node's result value (for CacheData)
  * @retval Initilized LRU node (pointer)
  */
-LRUNode *initLRUNode(LRUNode* node, const char *hashKey, ResultSet* resultSet);
+LRUNode *initLRUNode(LRUNode *node, unsigned long long const hashKey, ResultSet *resultSet);
 
 #endif

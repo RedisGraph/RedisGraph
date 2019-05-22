@@ -13,7 +13,7 @@
  */
 typedef struct CacheData
 {
-  char hashKey[HASH_KEY_LENGTH];    // CacheData key - Query hashed by XXHASH
+  unsigned long long hashKey;    // CacheData key - Query hashed by XXHASH
   ResultSet *resultSet;             // Value - ResultSet
   bool isDirty;                     // Indication for written entry, for memeory release
 } CacheData;

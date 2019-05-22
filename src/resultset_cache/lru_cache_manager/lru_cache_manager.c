@@ -30,7 +30,7 @@ CacheData *evictFromCache(LRUCacheManager *lruCacheManager)
   return (CacheData *)dequeue(lruCacheManager->queue);
 }
 
-CacheData *addToCache(LRUCacheManager *lruCacheManager, const char *hashKey, ResultSet* resultSet)
+CacheData *addToCache(LRUCacheManager *lruCacheManager, unsigned long long const hashKey, ResultSet *resultSet)
 {
   // enqueue and generate new cache entry (LRU node)
   LRUNode *newNode = enqueue(lruCacheManager->queue, hashKey, resultSet);

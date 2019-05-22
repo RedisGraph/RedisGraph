@@ -34,7 +34,7 @@ LRUCacheManager *LRUCacheManager_New(size_t capacity);
  * @param  *resultSet: cache entry value (ResultSet pointer)
  * @retval 
  */
-CacheData *addToCache(LRUCacheManager *lruCacheManager, const char *hashKey, ResultSet *resultSet);
+CacheData *addToCache(LRUCacheManager *lruCacheManager, unsigned long long const hashKey, ResultSet *resultSet);
 
 /**
  * @brief  Evicts the least recently used entry from the cache queue
