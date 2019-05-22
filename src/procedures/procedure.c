@@ -24,8 +24,8 @@ void Proc_Register() {
     _procRegister("db.labels", Proc_LabelsCtx);
     _procRegister("db.propertyKeys", Proc_PropKeysCtx);
     _procRegister("db.relationshipTypes", Proc_RelationsCtx);
-    _procRegister("db.idx.fulltext.queryNodes", Proc_FulltextQueryNodeGen);
-    _procRegister("db.idx.fulltext.createNodeIndex", Proc_FulltextCreateNodeIdxGen);
+    // _procRegister("db.idx.fulltext.queryNodes", Proc_FulltextQueryNodeGen);
+    // _procRegister("db.idx.fulltext.createNodeIndex", Proc_FulltextCreateNodeIdxGen);
 }
 
 ProcedureCtx* ProcCtxNew(const char *name,

@@ -83,8 +83,7 @@ class GraphBulkInsertFlowTest(FlowTestsBase):
 
         # Verify that the Country label exists, has the correct attributes, and is properly populated
         query_result = redis_graph.query('MATCH (c:Country) RETURN c.name, ID(c) ORDER BY c.name')
-        expected_result = [['Amsterdam', 20],
-                           ['Andora', 21],
+        expected_result = [['Andora', 21],
                            ['Canada', 18],
                            ['China', 19],
                            ['Germany', 24],
@@ -96,7 +95,7 @@ class GraphBulkInsertFlowTest(FlowTestsBase):
                            ['Prague', 15],
                            ['Russia', 23],
                            ['Thailand', 26],
-                           ['USA', 14]]        
+                           ['USA', 14]]
         assert query_result.result_set == expected_result
 
     # Validate that the expected relations and properties have been constructed
@@ -120,15 +119,14 @@ class GraphBulkInsertFlowTest(FlowTestsBase):
         assert query_result.result_set == expected_result
 
         query_result = redis_graph.query('MATCH (a)-[e:VISITED]->(b) RETURN a.name, e.purpose, b.name ORDER BY e.purpose, a.name, b.name')
-        expected_result = [['Alon Fital', 'both', 'Prague'],
-                           ['Alon Fital', 'both', 'USA'],
-                           ['Boaz Arad', 'both', 'Amsterdam'],
-                           ['Boaz Arad', 'both', 'USA'],
-                           ['Jane Chernomorin', 'both', 'USA'],
-                           ['Lucy Yanfital', 'both', 'USA'],
-                           ['Roi Lipman', 'both', 'Prague'],
-                           ['Tal Doron', 'both', 'USA'],
-                           ['Gal Derriere', 'business', 'Amsterdam'],
+
+        expected_result = [['Alon Fital', 'business', 'Prague'],
+                           ['Alon Fital', 'business', 'USA'],
+                           ['Boaz Arad', 'business', 'Netherlands'],
+                           ['Boaz Arad', 'business', 'USA'],
+                           ['Gal Derriere', 'business', 'Netherlands'],
+                           ['Jane Chernomorin', 'business', 'USA'],
+                           ['Lucy Yanfital', 'business', 'USA'],
                            ['Mor Yesharim', 'business', 'Germany'],
                            ['Ori Laslo', 'business', 'China'],
                            ['Ori Laslo', 'business', 'USA'],
@@ -363,44 +361,44 @@ class GraphBulkInsertFlowTest(FlowTestsBase):
         assert query_result.result_set == expected_result
 
     # Verify that numeric, boolean, and null types are properly handled
-    def test09_utf8(self):
-        graphname = "tmpgraph5"
-        # Write temporary files
-        with open('/tmp/nodes.tmp', mode='w') as csv_file:
-            out = csv.writer(csv_file)
-            out.writerow(['id', 'utf8_str_ß'])
-            out.writerow([0, 'Straße'])
-            out.writerow([1, 'auslösen'])
-            out.writerow([2, 'zerstören'])
-            out.writerow([3, 'français'])
-            out.writerow([4, 'américaine'])
-            out.writerow([5, 'épais'])
-            out.writerow([6, '中國的'])
-            out.writerow([7, '英語'])
-            out.writerow([8, '美國人'])
+    # def test09_utf8(self):
+    #     graphname = "tmpgraph5"
+    #     # Write temporary files
+    #     with open('/tmp/nodes.tmp', mode='w') as csv_file:
+    #         out = csv.writer(csv_file)
+    #         out.writerow(['id', 'utf8_str_ß'])
+    #         out.writerow([0, 'Straße'])
+    #         out.writerow([1, 'auslösen'])
+    #         out.writerow([2, 'zerstören'])
+    #         out.writerow([3, 'français'])
+    #         out.writerow([4, 'américaine'])
+    #         out.writerow([5, 'épais'])
+    #         out.writerow([6, '中國的'])
+    #         out.writerow([7, '英語'])
+    #         out.writerow([8, '美國人'])
 
-        runner = CliRunner()
-        res = runner.invoke(bulk_insert, ['--port', port,
-                                          '--nodes', '/tmp/nodes.tmp',
-                                          graphname])
+    #     runner = CliRunner()
+    #     res = runner.invoke(bulk_insert, ['--port', port,
+    #                                       '--nodes', '/tmp/nodes.tmp',
+    #                                       graphname])
 
-        assert res.exit_code == 0
-        assert '9 nodes created' in res.output
+    #     assert res.exit_code == 0
+    #     assert '9 nodes created' in res.output
 
-        graph = Graph(graphname, redis_con)
-        query_result = graph.query('MATCH (a) RETURN a.utf8_str_ß ORDER BY a.id')
-        expected_strs = ['Straße',
-                         'auslösen',
-                         'zerstören',
-                         'français',
-                         'américaine',
-                         'épais',
-                         '中國的',
-                         '英語',
-                         '美國人']
+    #     graph = Graph(graphname, redis_con)
+    #     query_result = graph.query('MATCH (a) RETURN a.utf8_str_ß ORDER BY a.id')
+    #     expected_strs = ['Straße',
+    #                      'auslösen',
+    #                      'zerstören',
+    #                      'français',
+    #                      'américaine',
+    #                      'épais',
+    #                      '中國的',
+    #                      '英語',
+    #                      '美國人']
 
-        for i, j in zip(query_result.result_set, expected_strs):
-            self.assertEqual(repr(i), repr(j))
+    #     for i, j in zip(query_result.result_set, expected_strs):
+    #         self.assertEqual(repr(i), repr(j))
 
 if __name__ == '__main__':
     unittest.main()
