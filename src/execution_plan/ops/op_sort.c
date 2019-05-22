@@ -87,8 +87,11 @@ static void _accumulate(OpSort *op, Record r) {
         // No room in the heap, see if we need to replace
         // a heap stored record with the current record.
         if(_heap_elem_compare(heap_peek(op->heap), r, op) > 0) {
-            Record *replaced = heap_poll(op->heap);
+            Record replaced = heap_poll(op->heap);
+            Record_Free(replaced);
             heap_offer(&op->heap, r);
+        } else {
+            Record_Free(r);
         }
     }
 }
