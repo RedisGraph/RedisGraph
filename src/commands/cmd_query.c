@@ -115,7 +115,7 @@ void _MGraph_Query(void *args) {
 
       //mark cache as invalid
       if(!readonly){
-        markGraphCacheInvalid(gc->graph_name);
+        graphCacheMarkInvalid(gc->graph_name);
       }
       
       resultSet = _prepare_resultset(ctx, ast, compact);
@@ -139,12 +139,12 @@ cleanup:
         if(readonly){
           // cache result set
           const char *query = RedisModule_StringPtrLen(qctx->argv[2], NULL);
-          setGraphCacheResultSet(gc->graph_name, query, resultSet);
+          graphCacheSet(gc->graph_name, query, resultSet);
           Graph_ReleaseLock(gc->g);
         }
         else {
           //invalidate cache
-          invalidateGraphCache(gc->graph_name);
+          graphCacheInvalidate(gc->graph_name);
           Graph_WriterLeave(gc->g);
         }
     }
@@ -170,7 +170,7 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     // returns only valid data. 
     //in case of W->R dependency between two threads, the cache will be invalidated before the read, 
     // even when the read is executed without locking
-    ResultSet *resultSet = getGraphCacheResultSet(graphName, query);
+    ResultSet *resultSet = graphCacheGet(graphName, query);
     // if the resultSet is valid, send it by different thread.
     if (resultSet) {
       ResultSet_RetransmitParams *retransmitParams = ResultSet_RetransmitParams_New();

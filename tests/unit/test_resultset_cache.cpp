@@ -24,6 +24,15 @@ extern "C"
 }
 #endif
 
+class LRUQueueTest : public ::testing::Test
+{
+protected:
+  static void SetUpTestCase()
+  { // Use the malloc family for allocations
+    Alloc_Reset();
+  }
+};
+
 class CacheManagerTest : public ::testing::Test
 {
 protected:
@@ -73,19 +82,19 @@ TEST_F(CacheManagerTest, LRUCacheManagerTest)
   CacheData *cacheData1 =
       addToCache(cacheManager, (unsigned long long)hashKey1, rs1);
   ASSERT_STREQ(hashKey1, (char*)cacheData1->hashKey);
-  ASSERT_EQ(rs1, cacheData1->resultSet);
+  ASSERT_EQ(rs1, cacheData1->cacheValue);
   ASSERT_FALSE(isCacheFull(cacheManager));
 
   // [ 2 | 1 | ]
   CacheData *cacheData2 = addToCache(cacheManager, (unsigned long long)hashKey2, rs2);
   ASSERT_STREQ(hashKey2, (char *)cacheData2->hashKey);
-  ASSERT_EQ(rs2, cacheData2->resultSet);
+  ASSERT_EQ(rs2, cacheData2->cacheValue);
   ASSERT_FALSE(isCacheFull(cacheManager));
 
   // [ 3 | 2 | 1 ]
   CacheData *cacheData3 = addToCache(cacheManager, (unsigned long long)hashKey3, rs3);
   ASSERT_STREQ(hashKey3, (char *)cacheData3->hashKey);
-  ASSERT_EQ(rs3, cacheData3->resultSet);
+  ASSERT_EQ(rs3, cacheData3->cacheValue);
   ASSERT_TRUE(isCacheFull(cacheManager));
 
   // [ 3 | 2 | ]
@@ -94,7 +103,7 @@ TEST_F(CacheManagerTest, LRUCacheManagerTest)
 
   // [ 4 | 3 | 2 ]
   CacheData *cacheData4 = addToCache(cacheManager, (unsigned long long)hashKey4, rs4);
-  ASSERT_EQ(rs4, cacheData4->resultSet);
+  ASSERT_EQ(rs4, cacheData4->cacheValue);
   ASSERT_STREQ(hashKey4, (char *)cacheData4->hashKey);
   // [ 2 | 4 | 3 ]
   increaseImportance(cacheManager, cacheData2);
@@ -106,7 +115,7 @@ TEST_F(CacheManagerTest, LRUCacheManagerTest)
   // [ 3 | 2 | ]
   evicted = evictFromCache(cacheManager);
   ASSERT_STREQ(hashKey4, (char *)evicted->hashKey);
-  ASSERT_EQ(rs4, cacheData4->resultSet);
+  ASSERT_EQ(rs4, cacheData4->cacheValue);
 
   LRUCacheManager_Free(cacheManager);
 }
@@ -138,19 +147,19 @@ TEST_F(CacheManagerTest, LRUCacheManagerAndXXHASHTest)
   CacheData *cacheData1 =
       addToCache(cacheManager, hashKey1, rs1);
   ASSERT_EQ(hashKey1, cacheData1->hashKey);
-  ASSERT_EQ(rs1, cacheData1->resultSet);
+  ASSERT_EQ(rs1, cacheData1->cacheValue);
   ASSERT_FALSE(isCacheFull(cacheManager));
 
   // [ 2 | 1 | ]
   CacheData *cacheData2 = addToCache(cacheManager, hashKey2, rs2);
   ASSERT_EQ(hashKey2, cacheData2->hashKey);
-  ASSERT_EQ(rs2, cacheData2->resultSet);
+  ASSERT_EQ(rs2, cacheData2->cacheValue);
   ASSERT_FALSE(isCacheFull(cacheManager));
 
   // [ 3 | 2 | 1 ]
   CacheData *cacheData3 = addToCache(cacheManager, hashKey3, rs3);
   ASSERT_EQ(hashKey3, cacheData3->hashKey);
-  ASSERT_EQ(rs3, cacheData3->resultSet);
+  ASSERT_EQ(rs3, cacheData3->cacheValue);
   ASSERT_TRUE(isCacheFull(cacheManager));
 
   // [ 3 | 2 | ]
@@ -160,7 +169,7 @@ TEST_F(CacheManagerTest, LRUCacheManagerAndXXHASHTest)
   // [ 4 | 3 | 2 ]
   CacheData *cacheData4 = addToCache(cacheManager, hashKey4, rs4);
   ASSERT_EQ(hashKey4, cacheData4->hashKey);
-  ASSERT_EQ(rs4, cacheData4->resultSet);
+  ASSERT_EQ(rs4, cacheData4->cacheValue);
   // [ 2 | 4 | 3 ]
   increaseImportance(cacheManager, cacheData2);
 
@@ -170,7 +179,7 @@ TEST_F(CacheManagerTest, LRUCacheManagerAndXXHASHTest)
   // [ 3 | 2 | ]
   evicted = evictFromCache(cacheManager);
   ASSERT_EQ(hashKey4, evicted->hashKey);
-  ASSERT_EQ(rs4, cacheData4->resultSet);
+  ASSERT_EQ(rs4, cacheData4->cacheValue);
 
   invalidateCache(cacheManager);
   ASSERT_FALSE(isCacheFull(cacheManager));
@@ -275,41 +284,187 @@ TEST_F(ResultSetCacheTest, GraphCacheTest)
   
   char *query1 = "MATCH (a) RETURN a";
   char *query2 = "MATCH (b) RETURN b";
-  char *query3 = "MATCH (c) RETURN c";
-  char *query4 = "MATCH (d) RETURN d";
+
 
   char *graph1 = "graph1";
   char *graph2 = "graph2";
 
-  ASSERT_FALSE(getGraphCacheResultSet(graph1, query1));
+  ASSERT_FALSE(graphCacheGet(graph1, query1));
   ResultSet *rs11 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
-  setGraphCacheResultSet(graph1, query1, rs11);
-  ASSERT_EQ(rs11, getGraphCacheResultSet(graph1, query1));
-  ASSERT_FALSE(getGraphCacheResultSet(graph2, query1));
+  graphCacheSet(graph1, query1, rs11);
+  ASSERT_EQ(rs11, graphCacheGet(graph1, query1));
+  ASSERT_FALSE(graphCacheGet(graph2, query1));
   ResultSet *rs21 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
-  setGraphCacheResultSet(graph2, query1, rs21);
-  ASSERT_EQ(rs21, getGraphCacheResultSet(graph2, query1));
-  ASSERT_NE(getGraphCacheResultSet(graph1, query1), getGraphCacheResultSet(graph2, query1));
+  graphCacheSet(graph2, query1, rs21);
+  ASSERT_EQ(rs21, graphCacheGet(graph2, query1));
+  ASSERT_NE(graphCacheGet(graph1, query1), graphCacheGet(graph2, query1));
 
-  markGraphCacheInvalid(graph1);
-  ASSERT_FALSE(getGraphCacheResultSet(graph1, query1));
-  ASSERT_EQ(rs21, getGraphCacheResultSet(graph2, query1));
+  graphCacheMarkInvalid(graph1);
+  ASSERT_FALSE(graphCacheGet(graph1, query1));
+  ASSERT_EQ(rs21, graphCacheGet(graph2, query1));
 
-  invalidateGraphCache(graph1);
-  ASSERT_FALSE(getGraphCacheResultSet(graph1, query1));
-  ASSERT_EQ(rs21, getGraphCacheResultSet(graph2, query1));
+  graphCacheInvalidate(graph1);
+  ASSERT_FALSE(graphCacheGet(graph1, query1));
+  ASSERT_EQ(rs21, graphCacheGet(graph2, query1));
 
   rs11 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
-  setGraphCacheResultSet(graph1, query1, rs11);
-  ASSERT_EQ(rs11, getGraphCacheResultSet(graph1, query1));
+  graphCacheSet(graph1, query1, rs11);
+  ASSERT_EQ(rs11, graphCacheGet(graph1, query1));
   ResultSet *rs12 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
-  setGraphCacheResultSet(graph1, query2, rs12);
-  ASSERT_EQ(rs11, getGraphCacheResultSet(graph1, query1));
-  ASSERT_EQ(rs12, getGraphCacheResultSet(graph1, query2));
-  ASSERT_EQ(rs21, getGraphCacheResultSet(graph2, query1));
-  ASSERT_FALSE(getGraphCacheResultSet(graph2, query2));
+  graphCacheSet(graph1, query2, rs12);
+  ASSERT_EQ(rs11, graphCacheGet(graph1, query1));
+  ASSERT_EQ(rs12, graphCacheGet(graph1, query2));
+  ASSERT_EQ(rs21, graphCacheGet(graph2, query1));
+  ASSERT_FALSE(graphCacheGet(graph2, query2));
 
   removeGraphCache(graph1);
-  ASSERT_EQ(rs21, getGraphCacheResultSet(graph2, query1));
+  ASSERT_EQ(rs21, graphCacheGet(graph2, query1));
   removeGraphCache(graph2);
+}
+
+TEST_F(ResultSetCacheTest, GraphCacheRemoveEntryTest){
+  char *query1 = "MATCH (a) RETURN a";
+  char *query2 = "MATCH (b) RETURN b";
+  char *query3 = "MATCH (c) RETURN c";
+  char *query4 = "MATCH (d) RETURN d";
+  char *query5 = "MATCH (e) RETURN e";
+  char *query6 = "MATCH (f) RETURN f";
+  char *query7 = "MATCH (g) RETURN g";
+  char *query8 = "MATCH (h) RETURN h";
+
+  char *graph1 = "graph1";
+
+  ResultSet *rs1 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
+  graphCacheSet(graph1, query1, rs1);
+  ASSERT_EQ(rs1, graphCacheGet(graph1, query1));
+
+  ResultSet *rs2 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
+  graphCacheSet(graph1, query2, rs2);
+  ASSERT_EQ(rs2, graphCacheGet(graph1, query2));
+
+  ResultSet *rs3 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
+  graphCacheSet(graph1, query3, rs3);
+  ASSERT_EQ(rs3, graphCacheGet(graph1, query3));
+
+  ResultSet *rs4 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
+  graphCacheSet(graph1, query4, rs4);
+  ASSERT_EQ(rs4, graphCacheGet(graph1, query4));
+
+  ResultSet *rs5 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
+  graphCacheSet(graph1, query5, rs5);
+  ASSERT_EQ(rs5, graphCacheGet(graph1, query5));
+
+  ResultSet *rs6 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
+  graphCacheSet(graph1, query6, rs6);
+  ASSERT_EQ(rs6, graphCacheGet(graph1, query6));
+
+  ResultSet *rs7 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
+  graphCacheSet(graph1, query7, rs7);
+  ASSERT_EQ(rs7, graphCacheGet(graph1, query7));
+
+  ResultSet *rs8 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
+  graphCacheSet(graph1, query8, rs8);
+  ASSERT_EQ(rs8, graphCacheGet(graph1, query8));
+
+  graphCacheRemove(graph1, query7);
+  ASSERT_FALSE(graphCacheGet(graph1, query7));
+
+  graphCacheRemove(graph1, query4);
+  ASSERT_FALSE(graphCacheGet(graph1, query4));
+
+  graphCacheRemove(graph1, query3);
+  ASSERT_FALSE(graphCacheGet(graph1, query3));
+
+  rs3 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
+  graphCacheSet(graph1, query3, rs3);
+  ASSERT_EQ(rs3, graphCacheGet(graph1, query3));
+
+  rs4 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
+  graphCacheSet(graph1, query4, rs4);
+  ASSERT_EQ(rs4, graphCacheGet(graph1, query4));
+
+  rs7 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
+  graphCacheSet(graph1, query7, rs7);
+  ASSERT_EQ(rs7, graphCacheGet(graph1, query7));
+
+  removeGraphCache(graph1);
+}
+
+TEST_F(LRUQueueTest, TestLRUQueue){
+  LRUQueue *queue = LRUQueue_New(10);
+
+  unsigned long long key0 = 0;
+  unsigned long long key1 = 1;
+  unsigned long long key2 = 2;
+  unsigned long long key3 = 3;
+  unsigned long long key4 = 4;
+  unsigned long long key5 = 5;
+  unsigned long long key6 = 6;
+  unsigned long long key7 = 7;
+  unsigned long long key8 = 8;
+  unsigned long long key9 = 9;
+  unsigned long long key10 = 10;
+
+  ResultSet *rs0 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
+  enqueue(queue, key0, rs0);
+  ASSERT_EQ(rs0, queue->queue[0].cacheData.cacheValue);
+
+  ResultSet *rs1 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
+  enqueue(queue, key1, rs1);
+  ASSERT_EQ(rs1, queue->queue[1].cacheData.cacheValue);
+
+  ResultSet *rs2 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
+  enqueue(queue, key2, rs2);
+  ASSERT_EQ(rs2, queue->queue[2].cacheData.cacheValue);
+
+  ResultSet *rs3 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
+  enqueue(queue, key3, rs3);
+  ASSERT_EQ(rs3, queue->queue[3].cacheData.cacheValue);
+
+  ResultSet *rs4 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
+  enqueue(queue, key4, rs4);
+  ASSERT_EQ(rs4, queue->queue[4].cacheData.cacheValue);
+
+  ResultSet *rs5 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
+  enqueue(queue, key5, rs5);
+  ASSERT_EQ(rs5, queue->queue[5].cacheData.cacheValue);
+
+  ResultSet *rs6 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
+  enqueue(queue, key6, rs6);
+  ASSERT_EQ(rs6, queue->queue[6].cacheData.cacheValue);
+
+  ResultSet *rs7 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
+  enqueue(queue, key7, rs7);
+  ASSERT_EQ(rs7, queue->queue[7].cacheData.cacheValue);
+
+  removeFromQueue(queue, &queue->queue[6]);
+  removeFromQueue(queue, &queue->queue[4]);
+  removeFromQueue(queue, &queue->queue[3]);
+
+  rs3 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
+  enqueue(queue, key3, rs3);
+  ASSERT_EQ(rs3, queue->queue[3].cacheData.cacheValue);
+
+  rs4 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
+  enqueue(queue, key4, rs4);
+  ASSERT_EQ(rs4, queue->queue[4].cacheData.cacheValue);
+
+  rs6 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
+  enqueue(queue, key6, rs6);
+  ASSERT_EQ(rs6, queue->queue[6].cacheData.cacheValue);
+
+  ResultSet *rs8 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
+  enqueue(queue, key8, rs8);
+  ASSERT_EQ(rs8, queue->queue[8].cacheData.cacheValue);
+
+  ResultSet *rs9 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
+  enqueue(queue, key9, rs9);
+  ASSERT_EQ(rs9, queue->queue[9].cacheData.cacheValue);
+
+  ResultSet *rs10 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
+  dequeue(queue);
+  enqueue(queue, key10, rs10);
+  ASSERT_EQ(rs9, queue->queue[9].cacheData.cacheValue);
+
+  LRUQueue_Free(queue);
 }

@@ -11,7 +11,7 @@
 LRUQueue *initLRUQueue(LRUQueue *lruQueue, size_t capacity)
 {
   // maximal capacity
-  lruQueue->capacity = capacity;      
+  lruQueue->capacity = capacity;
   // initial size is 0
   lruQueue->size = 0;
   // no head or tail
@@ -21,6 +21,8 @@ LRUQueue *initLRUQueue(LRUQueue *lruQueue, size_t capacity)
   lruQueue->emptySpace = lruQueue->queue;
   // queue hasn't reaced full cacpacity, a linear insertion is possible
   lruQueue->fullCapacity = false;
+  array_clear(lruQueue->emptyCells);
+
   return lruQueue;
 }
 
@@ -29,20 +31,29 @@ LRUQueue *LRUQueue_New(size_t capacity)
   // memory allocations
   LRUQueue *lruQueue = rm_malloc(sizeof(LRUQueue));
   lruQueue->queue = rm_calloc(capacity, sizeof(LRUNode));
+  lruQueue->emptyCells = array_new(LRUNode *, capacity);
   // initialization
   return initLRUQueue(lruQueue, capacity);
 }
 
-
-
 void LRUQueue_Free(LRUQueue *lruQueue)
 {
   // go over each entry and free its result set
-  while(lruQueue->head != NULL){
-    ResultSet_Free(lruQueue->head->cacheData.resultSet);
+  while (lruQueue->head != NULL)
+  {
+    ResultSet_Free(lruQueue->head->cacheData.cacheValue);
     lruQueue->head = lruQueue->head->next;
   }
+
+  for (int i = 0; i < array_len(lruQueue->emptyCells); i++)
+  {
+    ResultSet_Free(lruQueue->emptyCells[i]->cacheData.cacheValue);
+  }
+
   // memeory release
+
+
+  array_free(lruQueue->emptyCells);
   rm_free(lruQueue->queue);
   rm_free(lruQueue);
 }
@@ -80,16 +91,14 @@ LRUNode *dequeue(LRUQueue *queue)
   {
     queue->tail->next = NULL;
   }
-  // move next empty space to where the evicted node was
-  queue->emptySpace = tmp;
+  // add evicted cell to empty cells list
+  array_append(queue->emptyCells, tmp);
   // reduce queue size
   queue->size--;
   return tmp;
 }
 
-
-
-LRUNode *setNodeInQueue(LRUQueue *queue, LRUNode *newNode )
+LRUNode *setNodeInQueue(LRUQueue *queue, LRUNode *newNode)
 {
   // new node next is the queue (previous) head
   newNode->next = queue->head;
@@ -107,18 +116,32 @@ LRUNode *setNodeInQueue(LRUQueue *queue, LRUNode *newNode )
   // increase queue size
   queue->size++;
   // queue is full. linear inseration is no longer an option
-  if(isFullQueue(queue)){
+  if (isFullQueue(queue))
+  {
     queue->fullCapacity = true;
   }
   return newNode;
 }
 
-LRUNode *enqueue(LRUQueue *queue, unsigned long long const key, ResultSet* resultSet)
+LRUNode *enqueue(LRUQueue *queue, unsigned long long const key, ResultSet *resultSet)
 {
   // init new node
-  LRUNode *node = initLRUNode(queue->emptySpace, key, resultSet);
+  LRUNode *emptyNode;
+  //see if nodes where removed from the queue
+  if (array_len(queue->emptyCells) > 0)
+  {
+    emptyNode = array_tail(queue->emptyCells);
+    array_pop(queue->emptyCells);
+  }
+  else
+  {
+    emptyNode = queue->emptySpace;
+  }
+
+  LRUNode *node = initLRUNode(emptyNode, key, resultSet);
   //will be false until array is full - for linear insertion over the array
-  if (!queue->fullCapacity ){
+  if (!queue->fullCapacity && emptyNode == queue->emptySpace)
+  {
     queue->emptySpace++;
   }
   // put node in queue
@@ -149,7 +172,23 @@ void moveToHead(LRUQueue *queue, LRUNode *node)
   }
 }
 
-void emptyQueue(LRUQueue *queue){
+void emptyQueue(LRUQueue *queue)
+{
   // move all pointers and meta data to their defualt values
   initLRUQueue(queue, queue->capacity);
+}
+
+void removeFromQueue(LRUQueue* queue, LRUNode *node)
+{
+  if (node->prev)
+  {
+    node->prev->next = node->next;
+  }
+  if (node->next)
+  {
+    node->next->prev = node->prev;
+  }
+
+  array_append(queue->emptyCells, node);
+  queue->size--;
 }

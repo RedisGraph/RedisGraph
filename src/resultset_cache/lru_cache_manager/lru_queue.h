@@ -8,6 +8,7 @@
 #define LRU_QUEUE_H
 #include "../result_set_cache_includes.h"
 #include "./lru_node.h"
+#include "../../util/arr.h"
 
 /**
  * @brief  Struct for LRU queue. 
@@ -21,6 +22,7 @@ typedef struct LRUQueue {
   LRUNode *tail;            // Queue tail
   LRUNode *emptySpace;      // Next empty place in the queue
   bool fullCapacity;        // Indication if the queue was reached full cacpcity
+  LRUNode **emptyCells;
 } LRUQueue;
 
 /**
@@ -82,5 +84,7 @@ void emptyQueue(LRUQueue *queue);
  * @retval None
  */
 void moveToHead(LRUQueue *queue, LRUNode *node);
+
+void removeFromQueue(LRUQueue *queue, LRUNode *node);
 
 #endif

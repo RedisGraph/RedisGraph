@@ -62,6 +62,16 @@ ResultSet *getResultSet(ResultSetCache *resultSetCache, const char *query, size_
 void storeResultSet(ResultSetCache *resultSetCache, const char *query, size_t queryLength, ResultSet *resultSet);
 
 /**
+ * @brief  Removes a result set from the cache
+ * @param  *resultSetCache: ResultSetCache pointer
+ * @param  *query: Cypher query to be associated with the result set- charecters array
+ * @param  queryLength:
+ * @param  *resultSet: ResultSet pointer with the relevant result
+ * @retval None
+ */
+void removeResultSet(ResultSetCache *resultSetCache, const char *query, size_t queryLength);
+
+/**
  * @brief  Clears the cache from entries
  * @param  *resultSetCache: ResultSetCache pointer
  * @retval None
@@ -83,7 +93,7 @@ ResultSetCache *getGraphCache(const char *graphName, size_t graphNameLength);
  * @param  *query:  query for getting the cached result set
  * @retval Relavant result set if the query was cached for this graph before. null otherwise
  */
-ResultSet *getGraphCacheResultSet(const char *graphName, const char *query);
+ResultSet *graphCacheGet(const char *graphName, const char *query);
 
 /**
  * @brief  set a query result set in a cache of a specific graph 
@@ -92,21 +102,29 @@ ResultSet *getGraphCacheResultSet(const char *graphName, const char *query);
  * @param  *resultset: cache value
  * @retval None
  */
-void setGraphCacheResultSet(const char *graphName, const char *query, ResultSet *resultset);
+void graphCacheSet(const char *graphName, const char *query, ResultSet *resultset);
+
+/**
+ * @brief  removes a query result set for a cache of a specific graph  
+ * @param  *graphName: Graph name (key for the graph cache)
+ * @param  *query:  query for removing the cached result set
+ * @retval None
+ */
+void graphCacheRemove(const char *graphName, const char *query);
 
 /**
  * @brief Marks graph's cache as invalid, as part of graph modification preperations 
  * @param  *graphName: Graph's name (key to invalidate)
  * @retval None
  */
-void markGraphCacheInvalid(const char *graphName);
+void graphCacheMarkInvalid(const char *graphName);
 
 /**
  * @brief  The actual invalidation of a graph cache
  * @param  *graphName: Graph's name (key to invalidate)
  * @retval None
  */
-void invalidateGraphCache(const char *graphName);
+void graphCacheInvalidate(const char *graphName);
 
 /**
  * @brief  Delets a graph cache from the global rax which stores caches 

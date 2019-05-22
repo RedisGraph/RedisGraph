@@ -44,6 +44,11 @@ void increaseImportance(LRUCacheManager *cacheManager, CacheData *cacheData)
   return moveToHead(cacheManager->queue, (LRUNode *) cacheData);
 }
 
+void removeCacheData(LRUCacheManager *cacheManager, CacheData *cacheData)
+{
+  removeFromQueue(cacheManager->queue, (LRUNode *)cacheData);
+}
+
 bool isCacheFull(LRUCacheManager *lruCacheManager)
 {
   return isFullQueue(lruCacheManager->queue);

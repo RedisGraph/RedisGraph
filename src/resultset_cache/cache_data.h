@@ -14,7 +14,7 @@
 typedef struct CacheData
 {
   unsigned long long hashKey;    // CacheData key - Query hashed by XXHASH
-  ResultSet *resultSet;             // Value - ResultSet
+  void *cacheValue;             // Value - ResultSet
   bool isDirty;                     // Indication for written entry, for memeory release
 } CacheData;
 

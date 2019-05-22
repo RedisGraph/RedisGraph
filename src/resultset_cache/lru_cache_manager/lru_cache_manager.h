@@ -52,6 +52,14 @@ CacheData *evictFromCache(LRUCacheManager *lruCacheManager);
 void increaseImportance(LRUCacheManager *cacheManager, CacheData *cacheData);
 
 /**
+ * @brief  Removes a specific entry from the cache
+ * @param  *cacheManager: Cache manager address (pointer)
+ * @param  *cacheData: Cache entry address (pointer)
+ * @retval None
+ */
+void removeCacheData(LRUCacheManager *cacheManager, CacheData *cacheData);
+
+/**
  * @brief  Returns if queue is full or not 
  * @param  *lruCacheManager: Cache manager address (pointer)
  * @retval Returns if queue is full or not 

@@ -17,10 +17,10 @@ LRUNode *initLRUNode(LRUNode *node, unsigned long long const hashKey, ResultSet 
   // if node was in use before, release the result set
   if (node->cacheData.isDirty)
   {
-    ResultSet_Free(node->cacheData.resultSet);
+    ResultSet_Free(node->cacheData.cacheValue);
   }
   // set new value and mark as used
-  node->cacheData.resultSet = resultSet;
+  node->cacheData.cacheValue = resultSet;
   node->cacheData.isDirty = true;
 
   return node;

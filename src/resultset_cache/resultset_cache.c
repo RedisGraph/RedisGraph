@@ -63,16 +63,21 @@ void removeGraphCache(const char *graphName)
     pthread_rwlock_unlock(&registeredCaches_rwlock);
 }
 
-ResultSet *getGraphCacheResultSet(const char *graphName, const char *query)
+ResultSet *graphCacheGet(const char *graphName, const char *query)
 {
     ResultSetCache *graphCache = getGraphCache(graphName, strlen(graphName));
     return getResultSet(graphCache, query, strlen(query));
 }
 
-void setGraphCacheResultSet(const char *graphName, const char *query, ResultSet *resultset)
+void graphCacheSet(const char *graphName, const char *query, ResultSet *resultset)
 {
     ResultSetCache *graphCache = getGraphCache(graphName, strlen(graphName));
     storeResultSet(graphCache, query, strlen(query), resultset);
+}
+
+void graphCacheRemove(const char *graphName, const char *query){
+    ResultSetCache *graphCache = getGraphCache(graphName, strlen(graphName));
+    removeResultSet(graphCache, query, strlen(query));
 }
 
 ResultSetCache *ResultSetCache_New(size_t cacheSize)
@@ -117,7 +122,7 @@ ResultSet *getResultSet(ResultSetCache *resultSetCache, const char *query, size_
 
     // free lock
     pthread_rwlock_unlock(&resultSetCache->rwlock);
-    return cacheData ? cacheData->resultSet : NULL;
+    return cacheData ? cacheData->cacheValue : NULL;
 }
 
 void storeResultSet(ResultSetCache *resultSetCache, const char *query, size_t queryLength, ResultSet *resultSet)
@@ -146,6 +151,22 @@ void storeResultSet(ResultSetCache *resultSetCache, const char *query, size_t qu
     pthread_rwlock_unlock(&resultSetCache->rwlock);
 }
 
+void removeResultSet(ResultSetCache *resultSetCache, const char *query, size_t queryLength){
+    // hash query
+    unsigned long long const hashKey = hashQuery(query, queryLength);
+    // acquire write lock
+    pthread_rwlock_wrlock(&resultSetCache->rwlock);
+    // get result set
+    CacheData* cacheData = getFromCache(resultSetCache->raxCacheStorage, (unsigned char *)&hashKey);
+    if (cacheData)
+    {
+        removeCacheData(resultSetCache->lruCacheManager, cacheData);
+        removeFromCache(resultSetCache->raxCacheStorage, cacheData);
+    }
+    // unlock
+    pthread_rwlock_unlock(&resultSetCache->rwlock);
+}
+
 void markCacheInvalid(ResultSetCache *resultSetCache)
 {
     // acquire write lock
@@ -155,7 +176,7 @@ void markCacheInvalid(ResultSetCache *resultSetCache)
     pthread_rwlock_unlock(&resultSetCache->rwlock);
 }
 
-void markGraphCacheInvalid(const char *graphName)
+void graphCacheMarkInvalid(const char *graphName)
 {
     ResultSetCache *graphCache = getGraphCache(graphName, strlen(graphName));
     markCacheInvalid(graphCache);
@@ -173,7 +194,7 @@ void clearCache(ResultSetCache *resultSetCache)
     pthread_rwlock_unlock(&resultSetCache->rwlock);
 }
 
-void invalidateGraphCache(const char *graphName)
+void graphCacheInvalidate(const char *graphName)
 {
     ResultSetCache *graphCahe = getGraphCache(graphName, strlen(graphName));
     clearCache(graphCahe);
