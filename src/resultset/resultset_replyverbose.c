@@ -109,8 +109,8 @@ static void _ResultSet_VerboseReplyWithEdge(RedisModuleCtx *ctx, GraphContext *g
     RedisModule_ReplyWithArray(ctx, 2);
     RedisModule_ReplyWithStringBuffer(ctx, "type", 4);
     // Retrieve relation type
-    // TODO Make a more efficient lookup for this string
-    const char *reltype = GraphContext_GetEdgeRelationType(gc, e);
+    Schema *s = GraphContext_GetSchemaByID(gc, Edge_GetRelationID(e), SCHEMA_EDGE);
+    const char *reltype = Schema_GetName(s);
     RedisModule_ReplyWithStringBuffer(ctx, reltype, strlen(reltype));
 
     // ["src_node", srcNodeID (integer)]

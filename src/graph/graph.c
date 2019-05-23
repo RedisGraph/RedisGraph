@@ -107,16 +107,11 @@ size_t _Graph_EdgeCap(const Graph *g) {
 }
 
 // Retrieve a relation mapping matrix coresponding to relation_idx
-// Make sure matrix is synchronized
-// TODO: it might be enough just to resize the relation mapping matrix
-// and avoid flushing other pendding changes to it, need to verify
-// if resize flush pendding changes.
+// Make sure matrix is synchronized.
 GrB_Matrix _Graph_GetRelationMap(const Graph *g, int relation_idx) {
     assert(g && relation_idx >= 0 && relation_idx < array_len(g->_relations_map));
-
-    // Only sync size.
     GrB_Matrix m = g->_relations_map[relation_idx];
-    _MatrixResizeToCapacity(g, m);
+    g->SynchronizeMatrix(g, m);
     return m;
 }
 
