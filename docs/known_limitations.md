@@ -103,3 +103,17 @@ CREATE (a {val: 1}) RETURN a
 Will return a syntax error, as entities that are constructed from a CREATE clause cannot currently be returned in the same query.
 
 This limitation does not apply to queries of the form MATCH ... CREATE ... RETURN.
+
+## Indexing limitations
+
+One way in which RedisGraph will optimize queries is by introducing index scans when a filter is specified on an indexed label-property pair.
+
+The current index implementation, however, does not handle `!=` (NOT) and `OR` filters.
+
+To profile a query and see whether index optimizations have been introduced, use the `GRAPH.EXPLAIN` endpoint:
+
+```sh
+$ redis-cli GRAPH.EXPLAIN social "MATCH (p:person) WHERE p.id < 5 RETURN p"
+"Results\n    Project\n        Index Scan\n"
+```
+
