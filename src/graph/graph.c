@@ -802,9 +802,11 @@ void Graph_Free(Graph *g) {
     DataBlock_Free(g->edges);
 
     // Destroy graph-scoped locks.
-    pthread_mutex_destroy(&g->_mutex);
-    pthread_mutex_destroy(&g->_writers_mutex);
-    pthread_rwlock_destroy(&g->_rwlock);
+    assert(pthread_mutex_destroy(&g->_mutex) == 0);
+    assert(pthread_mutex_destroy(&g->_writers_mutex) == 0);
+
+    if(g->_writelocked) Graph_ReleaseLock(g);
+    assert(pthread_rwlock_destroy(&g->_rwlock) == 0);
 
     rm_free(g);
 }
