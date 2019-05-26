@@ -46,8 +46,6 @@ void _MGraph_Delete(void *args) {
 
     // Remove GraphContext from keyspace.
     if(RedisModule_DeleteKey(key) == REDISMODULE_OK) {
-        //remove graph cache
-        removeGraphCache(dCtx->graphName);
         char *strElapsed;
         double t = simple_toc(tic) * 1000;
         asprintf(&strElapsed, "Graph removed, internal execution time: %.6f milliseconds", t);

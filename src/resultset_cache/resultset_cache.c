@@ -18,7 +18,7 @@ Cache *addGraphCache(const char *graphName, size_t graphNameLength)
     // if not exists, create new and return
     // acquire write lock
     pthread_rwlock_wrlock(&registeredCaches_rwlock);
-    raxInsert(registeredCaches, (unsigned char *)graphName, graphNameLength, Cache_New(RESULTSET_CACHE_ENTRY_NUMBER, ResultSet_Free), NULL);
+    raxInsert(registeredCaches, (unsigned char *)graphName, graphNameLength, Cache_New(RESULTSET_CACHE_ENTRY_NUMBER, (cacheValueFreeFunc)ResultSet_Free), NULL);
     // free lock
     pthread_rwlock_unlock(&registeredCaches_rwlock);
     return getGraphCache(graphName, graphNameLength);

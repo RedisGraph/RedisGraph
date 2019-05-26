@@ -112,12 +112,6 @@ void _MGraph_Query(void *args) {
     if (ast[0]->indexNode) { // index operation
         _index_operation(ctx, gc, ast[0]->indexNode);
     } else {
-
-      //mark cache as invalid
-      if(!readonly){
-        graphCacheMarkInvalid(gc->graph_name);
-      }
-      
       resultSet = _prepare_resultset(ctx, ast, compact);
       ExecutionPlan *plan = NewExecutionPlan(ctx, ast, resultSet, false);
       ExecutionPlan_Execute(plan);
@@ -137,18 +131,13 @@ cleanup:
     // Release the read-write lock
     if(lockAcquired) {
         if(readonly){
-          // cache result set
-          const char *query = RedisModule_StringPtrLen(qctx->argv[2], NULL);
-          graphCacheSet(gc->graph_name, query, resultSet);
           Graph_ReleaseLock(gc->g);
         }
         else {
-          //invalidate cache
-          graphCacheInvalidate(gc->graph_name);
           Graph_WriterLeave(gc->g);
         }
     }
-    if (!readonly) ResultSet_Free(resultSet);
+    ResultSet_Free(resultSet);
     CommandCtx_Free(qctx);
 }
 
@@ -165,23 +154,6 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     // Parse AST.
     char *errMsg = NULL;
     const char *query = RedisModule_StringPtrLen(argv[2], NULL);
-    const char *graphName = RedisModule_StringPtrLen(argv[1], NULL);
-    //get result set by graph name and query
-    // returns only valid data. 
-    //in case of W->R dependency between two threads, the cache will be invalidated before the read, 
-    // even when the read is executed without locking
-    ResultSet *resultSet = graphCacheGet(graphName, query);
-    // if the resultSet is valid, send it by different thread.
-    if (resultSet) {
-      ResultSet_RetransmitParams *retransmitParams = ResultSet_RetransmitParams_New();
-      retransmitParams->resultSet = resultSet;
-      retransmitParams->bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
-      retransmitParams->tic[0] = tic[0];
-      retransmitParams->tic[1] = tic[1];
-      thpool_add_work(_thpool,(void*) ResultSet_Retransmit, (void*)retransmitParams);
-
-      return REDISMODULE_OK;
-    }
     AST **ast = ParseQuery(query, strlen(query), &errMsg);
     if (!ast) {
         RedisModule_Log(ctx, "debug", "Error parsing query: %s", errMsg);
