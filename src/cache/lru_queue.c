@@ -8,6 +8,36 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+
+/**
+ * @brief  Initialize a LRU node, and its undelying CacheData
+ * @note   
+ * @param  node: Node's address (pointer)
+ * @param  hashKey: Node's cache key (for CacheData)
+ * @param  resultSet: Node's result value (for CacheData)
+ * @retval Initilized LRU node (pointer)
+ */
+LRUNode *initLRUNode(LRUNode *node, hash_key_t const hashKey, void *cacheValue, cacheValueFreeFunc freeCB)
+{
+  // new node - no next and prev
+  node->next = NULL;
+  node->prev = NULL;
+  // copy key
+  node->cacheData.hashKey = hashKey;
+  
+  // if node was in use before, release the result set
+  if (node->cacheData.isDirty)
+  {
+    freeCB(node->cacheData.cacheValue);
+  }
+  // set new value and mark as used
+  node->cacheData.cacheValue = cacheValue;
+  node->cacheData.isDirty = true;
+
+  return node;
+}
+
+
 LRUQueue *initLRUQueue(LRUQueue *lruQueue, size_t capacity)
 {
   // maximal capacity
@@ -18,10 +48,10 @@ LRUQueue *initLRUQueue(LRUQueue *lruQueue, size_t capacity)
   lruQueue->head = NULL;
   lruQueue->tail = NULL;
   // first empty space is the first place in the queue array
-  lruQueue->emptySpace = lruQueue->queue;
+  lruQueue->emptySpace = lruQueue->buffer;
   // queue hasn't reaced full cacpacity, a linear insertion is possible
-  lruQueue->fullCapacity = false;
-  array_clear(lruQueue->emptyCells);
+  lruQueue->stopLinearInsertion = false;
+  array_clear(lruQueue->freeList);
 
   return lruQueue;
 }
@@ -30,8 +60,8 @@ LRUQueue *LRUQueue_New(size_t capacity, cacheValueFreeFunc freeCB)
 {
   // memory allocations
   LRUQueue *lruQueue = rm_malloc(sizeof(LRUQueue));
-  lruQueue->queue = rm_calloc(capacity, sizeof(LRUNode));
-  lruQueue->emptyCells = array_new(LRUNode *, capacity);
+  lruQueue->buffer = rm_calloc(capacity, sizeof(LRUNode));
+  lruQueue->freeList = array_new(LRUNode *, capacity);
   lruQueue->freeCB = freeCB;
   // initialization
   return initLRUQueue(lruQueue, capacity);
@@ -46,16 +76,16 @@ void LRUQueue_Free(LRUQueue *lruQueue)
     lruQueue->head = lruQueue->head->next;
   }
 
-  for (int i = 0; i < array_len(lruQueue->emptyCells); i++)
+  for (int i = 0; i < array_len(lruQueue->freeList); i++)
   {
-    lruQueue->freeCB(lruQueue->emptyCells[i]->cacheData.cacheValue);
+    lruQueue->freeCB(lruQueue->freeList[i]->cacheData.cacheValue);
   }
 
   // memeory release
 
 
-  array_free(lruQueue->emptyCells);
-  rm_free(lruQueue->queue);
+  array_free(lruQueue->freeList);
+  rm_free(lruQueue->buffer);
   rm_free(lruQueue);
 }
 
@@ -93,7 +123,7 @@ LRUNode *dequeue(LRUQueue *queue)
     queue->tail->next = NULL;
   }
   // add evicted cell to empty cells list
-  array_append(queue->emptyCells, tmp);
+  array_append(queue->freeList, tmp);
   // reduce queue size
   queue->size--;
   return tmp;
@@ -119,20 +149,20 @@ LRUNode *setNodeInQueue(LRUQueue *queue, LRUNode *newNode)
   // queue is full. linear inseration is no longer an option
   if (isFullQueue(queue))
   {
-    queue->fullCapacity = true;
+    queue->stopLinearInsertion = true;
   }
   return newNode;
 }
 
-LRUNode *enqueue(LRUQueue *queue, unsigned long long const key, void *cacheValue)
+LRUNode *enqueue(LRUQueue *queue, hash_key_t const key, void *cacheValue)
 {
   // init new node
   LRUNode *emptyNode;
   //see if nodes where removed from the queue
-  if (array_len(queue->emptyCells) > 0)
+  if (array_len(queue->freeList) > 0)
   {
-    emptyNode = array_tail(queue->emptyCells);
-    array_pop(queue->emptyCells);
+    emptyNode = array_tail(queue->freeList);
+    array_pop(queue->freeList);
   }
   else
   {
@@ -141,7 +171,7 @@ LRUNode *enqueue(LRUQueue *queue, unsigned long long const key, void *cacheValue
 
   LRUNode *node = initLRUNode(emptyNode, key, cacheValue, queue->freeCB);
   //will be false until array is full - for linear insertion over the array
-  if (!queue->fullCapacity && emptyNode == queue->emptySpace)
+  if (!queue->stopLinearInsertion && emptyNode == queue->emptySpace)
   {
     queue->emptySpace++;
   }
@@ -190,6 +220,6 @@ void removeFromQueue(LRUQueue* queue, LRUNode *node)
     node->next->prev = node->prev;
   }
 
-  array_append(queue->emptyCells, node);
+  array_append(queue->freeList, node);
   queue->size--;
 }

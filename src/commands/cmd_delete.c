@@ -11,7 +11,6 @@
 #include "../graph/graph.h"
 #include "../query_executor.h"
 #include "../util/simple_timer.h"
-#include "../resultset_cache/resultset_cache.h"
 
 extern RedisModuleType *GraphContextRedisModuleType;
 

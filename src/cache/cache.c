@@ -5,14 +5,26 @@
 */
 
 #include "cache.h"
+#include "xxhash/xxhash.h"
+
+/**
+ * @brief  Hash a query using XXHASH into a 64 bit
+ * @param  *key - string to be hashed
+ * @param  keyLen: key length
+ * @retval hash value
+ */
+hash_key_t hashQuery(const char *key, size_t keyLen)
+{
+    return  XXH64(key, keyLen, 0);
+}
 
 Cache *Cache_New(size_t cacheSize, cacheValueFreeFunc freeCB)
 {
     // memory allocations
     Cache *cache = rm_malloc(sizeof(Cache));
     // members initialization
-    cache->lruCacheManager = LRUCacheManager_New(cacheSize, freeCB);
-    cache->raxCacheStorage = RaxCacheStorage_New();
+    cache->lruQueue = LRUQueue_New(cacheSize, freeCB);
+    cache->rt = raxNew();
     cache->isValid = true;
     pthread_rwlock_init(&cache->rwlock, NULL);
     return cache;
@@ -21,57 +33,54 @@ Cache *Cache_New(size_t cacheSize, cacheValueFreeFunc freeCB)
 void Cache_Free(Cache *cache)
 {
     // members destructors
-    LRUCacheManager_Free(cache->lruCacheManager);
-    RaxCacheStorage_Free(cache->raxCacheStorage);
+    LRUQueue_Free(cache->lruQueue);
+    raxFree(cache->rt);
     pthread_rwlock_destroy(&cache->rwlock);
     // memory release
     rm_free(cache);
 }
 
-void *getCacheValue(Cache *cache, const char *query, size_t queryLength)
+void *getCacheValue(Cache *cache, const char *key, size_t keyLen)
 {
-    // hash query
-    unsigned long long const hashKey = hashQuery(query, queryLength);
+    unsigned long long const hashKey = hashQuery(key, keyLen);
     CacheData *cacheData = NULL;
     // acquire read lock
     pthread_rwlock_rdlock(&cache->rwlock);
 
     if (cache->isValid)
     {
-        // get result set
-        cacheData = getFromCache(cache->raxCacheStorage, (unsigned char *)&hashKey);
-        if (cacheData)
+        cacheData = raxFind(cache->rt, (unsigned char*)&hashKey, HASH_KEY_LENGTH);
+        if (cacheData != raxNotFound)
         {
-            increaseImportance(cache->lruCacheManager, cacheData);
+            moveToHead(cache->lruQueue, (LRUNode *) cacheData);
         }
     }
 
     // free lock
     pthread_rwlock_unlock(&cache->rwlock);
-    return cacheData ? cacheData->cacheValue : NULL;
+    return (cacheData && cacheData != raxNotFound) ? cacheData->cacheValue : NULL;
 }
 
-void storeCacheValue(Cache *cache, const char *query, size_t queryLength, void *value)
+void storeCacheValue(Cache *cache, const char *key, size_t keyLen, void *value)
 {
-    // hash query
-    unsigned long long const hashKey = hashQuery(query, queryLength);
+    unsigned long long const hashKey = hashQuery(key, keyLen);
     // acquire write lock
     pthread_rwlock_wrlock(&cache->rwlock);
     //if cache is in valid state
     if (cache->isValid)
     {
         // remove less recently used query
-        if (isCacheFull(cache->lruCacheManager))
+        if (isFullQueue(cache->lruQueue))
         {
-            // get cache data from cache manager
-            CacheData *evictedCacheData = evictFromCache(cache->lruCacheManager);
+            // get cache data from queue
+            CacheData *evictedCacheData = (CacheData *)dequeue(cache->lruQueue);
             // remove from storage
-            removeFromCache(cache->raxCacheStorage, evictedCacheData);
+            raxRemove(cache->rt, (unsigned char *)&evictedCacheData->hashKey, HASH_KEY_LENGTH, NULL);
         }
-        // add to cache manager
-        CacheData *insertedCacheData = addToCache(cache->lruCacheManager, hashKey, value);
+        // add to lruQueue
+        CacheData *insertedCacheData = (CacheData *) enqueue(cache->lruQueue, hashKey, value);
         // store in storage
-        insertToCache(cache->raxCacheStorage, insertedCacheData);
+        raxInsert(cache->rt, (unsigned char *)&insertedCacheData->hashKey, HASH_KEY_LENGTH, insertedCacheData, NULL);
     }
     // unlock
     pthread_rwlock_unlock(&cache->rwlock);
@@ -86,18 +95,17 @@ void markCacheInvalid(Cache *cache)
     pthread_rwlock_unlock(&cache->rwlock);
 }
 
-void removeCacheValue(Cache *cache, const char *query, size_t queryLength)
+void removeCacheValue(Cache *cache, const char *key, size_t keyLen)
 {
-    // hash query
-    unsigned long long const hashKey = hashQuery(query, queryLength);
+    unsigned long long const hashKey = hashQuery(key, keyLen);
     // acquire write lock
     pthread_rwlock_wrlock(&cache->rwlock);
     // get result set
-    CacheData *cacheData = getFromCache(cache->raxCacheStorage, (unsigned char *)&hashKey);
-    if (cacheData)
+    CacheData *cacheData = raxFind(cache->rt, (unsigned char*)&hashKey, HASH_KEY_LENGTH);
+    if (cacheData != raxNotFound)
     {
-        removeCacheData(cache->lruCacheManager, cacheData);
-        removeFromCache(cache->raxCacheStorage, cacheData);
+        removeFromQueue(cache->lruQueue, (LRUNode *)cacheData);
+        raxRemove(cache->rt, (unsigned char *)&cacheData->hashKey, HASH_KEY_LENGTH, NULL);
     }
     // unlock
     pthread_rwlock_unlock(&cache->rwlock);
@@ -107,10 +115,13 @@ void clearCache(Cache *cache)
 {
     // acquire write lock
     pthread_rwlock_wrlock(&cache->rwlock);
-    // invalidate cache manager
-    invalidateCache(cache->lruCacheManager);
+    // empty the lru queue
+    emptyQueue(cache->lruQueue);
     // clear storage
-    clearCacheStorage(cache->raxCacheStorage);
+   // free rax
+    raxFree(cache->rt);
+    // re alloc rax
+    cache->rt = raxNew();
     cache->isValid = true;
     // unlock
     pthread_rwlock_unlock(&cache->rwlock);

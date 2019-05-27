@@ -4,31 +4,41 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef LRU_QUEUE_H
-#define LRU_QUEUE_H
-#include "../cache_includes.h"
-#include "./lru_node.h"
-#include "../../util/arr.h"
+#pragma once
+
+#include "cache_includes.h"
+#include "../util/arr.h"
+
+/**
+ * @brief  A struct that wraps cache data, for LRUQueue usage
+ */
+typedef struct LRUNode {
+  struct CacheData cacheData;     // CacheData
+  struct LRUNode *prev;                  // Next Node in the queue
+  struct LRUNode *next;                  // Previous node in the queue
+} LRUNode;
+
 
 /**
  * @brief  Struct for LRU queue. 
  * The LRU queue interface is implementd over an array of doubly linked list nodes
  */
 typedef struct LRUQueue {
-  LRUNode *queue;           // Array of LRUnode
-  size_t size;              // Current queue size
-  size_t capacity;          // Maximum queue capacity
-  LRUNode *head;            // Queue head
-  LRUNode *tail;            // Queue tail
-  LRUNode *emptySpace;      // Next empty place in the queue
-  bool fullCapacity;        // Indication if the queue was reached full cacpcity
-  LRUNode **emptyCells;
+  LRUNode *buffer;              // Array of LRUnode
+  size_t size;                  // Current queue size
+  size_t capacity;              // Maximum queue capacity
+  LRUNode *head;                // Queue head
+  LRUNode *tail;                // Queue tail
+  LRUNode *emptySpace;          // Next empty place in the queue
+  bool stopLinearInsertion;         // Indication if linear insertion is possible
+  LRUNode **freeList;
   cacheValueFreeFunc freeCB;
 } LRUQueue;
 
 /**
  * @brief  Initilize an empty LRU queue with a given capacity 
  * @param  capacity: Queue's maximal cacpaicty
+ * @param  freeCB: the call back to free stored values in the cache
  * @retval Initialized Queue (pointer)
  */
 LRUQueue *LRUQueue_New(size_t capacity, cacheValueFreeFunc freeCB);
@@ -68,7 +78,7 @@ LRUNode *dequeue(LRUQueue *queue);
  * @param  cacheValue: New node's value
  * @retval Newly genereted LRU Node, which is in the tail of the LRU queue
  */
-LRUNode *enqueue(LRUQueue *queue, unsigned long long const key, void *cacheValue);
+LRUNode *enqueue(LRUQueue *queue, hash_key_t const key, void *cacheValue);
 
 /**
  * @brief  Emptys a LRU Queue
@@ -85,6 +95,12 @@ void emptyQueue(LRUQueue *queue);
  */
 void moveToHead(LRUQueue *queue, LRUNode *node);
 
-void removeFromQueue(LRUQueue *queue, LRUNode *node);
 
-#endif
+/**
+ * @brief  removes a single LRU Node from the queue, regardless to its position
+ * @note   
+ * @param  *queue:  LRU Queue
+ * @param  *node: The node to be removed
+ * @retval None
+ */
+void removeFromQueue(LRUQueue *queue, LRUNode *node);

@@ -4,31 +4,29 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef CACHE_H
-#define CACHE_H
+#pragma once
 
 #include "./cache_includes.h"
-#include "./lru_cache_manager/lru_cache_manager.h"
-#include "./rax_cache_storage/rax_cache_storage.h"
-#include "xxhash_query_hash/xxhash_query_hash.h"
+#include "lru_queue.h"
+#include "rax/rax.h"
+#include "pthread.h"
 
 /**
- * A struct to for read queries cache storage. 
- * Holds a managment struct (LRU policy) and a RAX radix tree for storage.
- * A read-write lock is set for multi-threaded operatins.
+ * Key-value cache with hard limit of items stored. Uses LRU policy for cache eviction.
  */
 typedef struct Cache
 {
-    LRUCacheManager *lruCacheManager; // Cache Manager - LRU policy
-    RaxCacheStorage *raxCacheStorage; // Storage - Rax radix tree
-    pthread_rwlock_t rwlock;          // Read-Write lock
-    bool isValid;
+    LRUQueue *lruQueue;                 // LRU Queue for maintaining eviction policy
+    rax *rt;                            // Storage - Rax radix tree
+    pthread_rwlock_t rwlock;            // Read-Write lock
+    bool isValid;                       // Flag infoming read operations that write is about to happen
 } Cache;
 
 
 /**
  * @brief  Initilize a  cache
- * @param  cacheSize: Cache size (in entries)
+ * @param  cacheSize: Number of entries
+ * @param  freeCB: callback for freeing the stored values
  * @retval cache pointer - Initialized empty cache
  */
 Cache *Cache_New(size_t cacheSize, cacheValueFreeFunc freeCB);
@@ -43,29 +41,30 @@ void Cache_Free(Cache *cache);
 /**
  * @brief  Returns a value if it is cached, NULL otherwise  
  * @param  *cache: cache pointer
- * @param  *query: Cypher query - charecters array
- * @retval  pointer with the cached answer, NULL if the query isn't cached
+ * @param  *key: Key to look for (charecters array)
+ * @param  keyLen: key length
+ * @retval  pointer with the cached answer, NULL if the key isn't cached
  */
-void *getCacheValue(Cache *cache, const char *query, size_t queryLength);
+void *getCacheValue(Cache *cache, const char *key, size_t keyLen);
 
 /**
- * @brief  Sotres a query in the cache
+ * @brief  Sotres a key and value in the cache
  * @param  *cache: cache pointer
- * @param  *query: Cypher query to be associated with the value- charecters array
- * @param  queryLength:
+ * @param  *key: Key for associating with value (charecters array)
+ * @param  keyLen: key length
  * @param  *value: pointer with the relevant value
  * @retval None
  */
-void storeCacheValue(Cache *cache, const char *query, size_t queryLength, void *value);
+void storeCacheValue(Cache *cache, const char *key, size_t keyLen, void *value);
 
 /**
- * @brief  Removes a value from the cache
+ * @brief  Removes a value from the cache according to its key
  * @param  *cache: cache pointer
- * @param  *query: Cypher query to be associated with the value- charecters array
- * @param  queryLength:
+ * @param  *key: Key to look for (charecters array)
+ * @param  keyLen: key length
  * @retval None
  */
-void removeCacheValue(Cache *cache, const char *query, size_t queryLength);
+void removeCacheValue(Cache *cache, const char *key, size_t keyLen);
 
 /**
  * @brief  Clears the cache from entries
@@ -74,6 +73,11 @@ void removeCacheValue(Cache *cache, const char *query, size_t queryLength);
  */
 void clearCache(Cache *cache);
 
-void markCacheInvalid(Cache *cache);
 
-#endif
+/**
+ * @brief  Marks cache is invalid for readers, by a writer which intend to write.
+ * @note   
+ * @param  *cache: 
+ * @retval None
+ */
+void markCacheInvalid(Cache *cache);

@@ -4,10 +4,11 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef RESULTSET_CACHE_H
-#define RESULTSET_CACHE_H
+#pragma once
+
 #include <pthread.h>
 #include "../cache/cache.h"
+#include "../resultset/resultset.h"
 
 
 #define RESULTSET_CACHE_ENTRY_NUMBER 50
@@ -66,5 +67,3 @@ void graphCacheInvalidate(const char *graphName);
  * @retval None
  */
 void removeGraphCache(const char *graphName);
-
-#endif

@@ -4,14 +4,24 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef RESULT_SET_CACHE_INCLUDES_H
-#define RESULT_SET_CACHE_INCLUDES_H
+#pragma once
+
 #include<stdlib.h>
 #include<stdbool.h>
-#include "../resultset/resultset.h"
 #include "../util/rmalloc.h"
 
 #define HASH_KEY_LENGTH 8
 
+typedef unsigned long long hash_key_t;
+
 typedef void (*cacheValueFreeFunc)(void *);
-#endif
+
+/**
+ * @brief  struct for holding cache data
+ */
+typedef struct CacheData
+{
+  hash_key_t hashKey;               // CacheData key - 64 bit hashed key
+  void *cacheValue;                 // Value to be stored in cache
+  bool isDirty;                     // Indication for written entry, for memeory release
+} CacheData;

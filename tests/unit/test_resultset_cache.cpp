@@ -12,9 +12,6 @@ extern "C"
 {
 #endif
 
-#include "../../src/cache/lru_cache_manager/lru_cache_manager.h"
-#include "../../src/cache/xxhash_query_hash/xxhash_query_hash.h"
-#include "../../src/cache/rax_cache_storage/rax_cache_storage.h"
 #include "../../src/cache/cache.h"
 #include "../../src/resultset_cache/resultset_cache.h"
 #include "../../src/util/rmalloc.h"
@@ -34,14 +31,6 @@ protected:
   }
 };
 
-class CacheManagerTest : public ::testing::Test
-{
-protected:
-  static void SetUpTestCase()
-  { // Use the malloc family for allocations
-    Alloc_Reset();
-  }
-};
 
 class CacheStorageTest : public ::testing::Test
 {
@@ -61,143 +50,6 @@ protected:
   }
 };
 
-TEST_F(CacheManagerTest, LRUCacheManagerTest)
-{
-
-  LRUCacheManager *cacheManager = LRUCacheManager_New(3,(cacheValueFreeFunc) ResultSet_Free);
-  ASSERT_TRUE(cacheManager);
-  CacheData *evicted = NULL;
-  char hashKey1[8] = "1234567";
-  char hashKey2[8] = "2345678";
-  char hashKey3[8] = "3456789";
-  char hashKey4[8] = "4567890";
-
-  ResultSet *rs1 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
-  ResultSet *rs2 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
-  ResultSet *rs3 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
-  ResultSet *rs4 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
-
-  // [ | | ]
-  ASSERT_FALSE(isCacheFull(cacheManager));
-  // [ 1 | | ]
-  CacheData *cacheData1 =
-      addToCache(cacheManager, (unsigned long long)hashKey1, rs1);
-  ASSERT_STREQ(hashKey1, (char*)cacheData1->hashKey);
-  ASSERT_EQ(rs1, cacheData1->cacheValue);
-  ASSERT_FALSE(isCacheFull(cacheManager));
-
-  // [ 2 | 1 | ]
-  CacheData *cacheData2 = addToCache(cacheManager, (unsigned long long)hashKey2, rs2);
-  ASSERT_STREQ(hashKey2, (char *)cacheData2->hashKey);
-  ASSERT_EQ(rs2, cacheData2->cacheValue);
-  ASSERT_FALSE(isCacheFull(cacheManager));
-
-  // [ 3 | 2 | 1 ]
-  CacheData *cacheData3 = addToCache(cacheManager, (unsigned long long)hashKey3, rs3);
-  ASSERT_STREQ(hashKey3, (char *)cacheData3->hashKey);
-  ASSERT_EQ(rs3, cacheData3->cacheValue);
-  ASSERT_TRUE(isCacheFull(cacheManager));
-
-  // [ 3 | 2 | ]
-  evicted = evictFromCache(cacheManager);
-  ASSERT_STREQ(hashKey1, (char *)evicted->hashKey);
-
-  // [ 4 | 3 | 2 ]
-  CacheData *cacheData4 = addToCache(cacheManager, (unsigned long long)hashKey4, rs4);
-  ASSERT_EQ(rs4, cacheData4->cacheValue);
-  ASSERT_STREQ(hashKey4, (char *)cacheData4->hashKey);
-  // [ 2 | 4 | 3 ]
-  increaseImportance(cacheManager, cacheData2);
-
-  // [ 3 | 2 | 4 ]
-  increaseImportance(cacheManager, cacheData3);
-  ASSERT_TRUE(isCacheFull(cacheManager));
-
-  // [ 3 | 2 | ]
-  evicted = evictFromCache(cacheManager);
-  ASSERT_STREQ(hashKey4, (char *)evicted->hashKey);
-  ASSERT_EQ(rs4, cacheData4->cacheValue);
-
-  LRUCacheManager_Free(cacheManager);
-}
-
-TEST_F(CacheManagerTest, LRUCacheManagerAndXXHASHTest)
-{
-  LRUCacheManager *cacheManager = LRUCacheManager_New(3, (cacheValueFreeFunc)ResultSet_Free);
-  ASSERT_TRUE(cacheManager);
-  CacheData *evicted = NULL;
-
-
-  ResultSet *rs1 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
-  ResultSet *rs2 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
-  ResultSet *rs3 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
-  ResultSet *rs4 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
-
-  char *query1 = "MATCH (a) RETURN a";
-  char *query2 = "MATCH (b) RETURN b";
-  char *query3 = "MATCH (c) RETURN c";
-  char *query4 = "MATCH (d) RETURN d";
-
-  unsigned long long hashKey1 = hashQuery(query1, strlen(query1));
-  unsigned long long hashKey2 = hashQuery(query2, strlen(query2));
-  unsigned long long hashKey3 = hashQuery(query3, strlen(query3));
-  unsigned long long hashKey4 = hashQuery(query4, strlen(query4));
-  // [ | | ]
-  ASSERT_FALSE(isCacheFull(cacheManager));
-  // [ 1 | | ]
-  CacheData *cacheData1 =
-      addToCache(cacheManager, hashKey1, rs1);
-  ASSERT_EQ(hashKey1, cacheData1->hashKey);
-  ASSERT_EQ(rs1, cacheData1->cacheValue);
-  ASSERT_FALSE(isCacheFull(cacheManager));
-
-  // [ 2 | 1 | ]
-  CacheData *cacheData2 = addToCache(cacheManager, hashKey2, rs2);
-  ASSERT_EQ(hashKey2, cacheData2->hashKey);
-  ASSERT_EQ(rs2, cacheData2->cacheValue);
-  ASSERT_FALSE(isCacheFull(cacheManager));
-
-  // [ 3 | 2 | 1 ]
-  CacheData *cacheData3 = addToCache(cacheManager, hashKey3, rs3);
-  ASSERT_EQ(hashKey3, cacheData3->hashKey);
-  ASSERT_EQ(rs3, cacheData3->cacheValue);
-  ASSERT_TRUE(isCacheFull(cacheManager));
-
-  // [ 3 | 2 | ]
-  evicted = evictFromCache(cacheManager);
-  ASSERT_EQ(hashKey1, cacheData1->hashKey);
-
-  // [ 4 | 3 | 2 ]
-  CacheData *cacheData4 = addToCache(cacheManager, hashKey4, rs4);
-  ASSERT_EQ(hashKey4, cacheData4->hashKey);
-  ASSERT_EQ(rs4, cacheData4->cacheValue);
-  // [ 2 | 4 | 3 ]
-  increaseImportance(cacheManager, cacheData2);
-
-  // [ 3 | 2 | 4 ]
-  increaseImportance(cacheManager, cacheData3);
-  ASSERT_TRUE(isCacheFull(cacheManager));
-  // [ 3 | 2 | ]
-  evicted = evictFromCache(cacheManager);
-  ASSERT_EQ(hashKey4, evicted->hashKey);
-  ASSERT_EQ(rs4, cacheData4->cacheValue);
-
-  invalidateCache(cacheManager);
-  ASSERT_FALSE(isCacheFull(cacheManager));
-  ASSERT_TRUE(isEmptyQueue(cacheManager->queue));
-  rs1 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
-  rs2 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
-  rs3 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
-  cacheData1 =
-      addToCache(cacheManager, hashKey1, rs1);
-  ASSERT_FALSE(isCacheFull(cacheManager));
-  cacheData2 = addToCache(cacheManager, hashKey2, rs2);
-  ASSERT_FALSE(isCacheFull(cacheManager));
-  cacheData3 = addToCache(cacheManager, hashKey3, rs3);
-  ASSERT_TRUE(isCacheFull(cacheManager));
-
-  LRUCacheManager_Free(cacheManager);
-}
 
 TEST_F(CacheStorageTest, RaxTestEdgeCase)
 {
@@ -408,64 +260,64 @@ TEST_F(LRUQueueTest, TestLRUQueue){
 
   ResultSet *rs0 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
   enqueue(queue, key0, rs0);
-  ASSERT_EQ(rs0, queue->queue[0].cacheData.cacheValue);
+  ASSERT_EQ(rs0, queue->buffer[0].cacheData.cacheValue);
 
   ResultSet *rs1 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
   enqueue(queue, key1, rs1);
-  ASSERT_EQ(rs1, queue->queue[1].cacheData.cacheValue);
+  ASSERT_EQ(rs1, queue->buffer[1].cacheData.cacheValue);
 
   ResultSet *rs2 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
   enqueue(queue, key2, rs2);
-  ASSERT_EQ(rs2, queue->queue[2].cacheData.cacheValue);
+  ASSERT_EQ(rs2, queue->buffer[2].cacheData.cacheValue);
 
   ResultSet *rs3 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
   enqueue(queue, key3, rs3);
-  ASSERT_EQ(rs3, queue->queue[3].cacheData.cacheValue);
+  ASSERT_EQ(rs3, queue->buffer[3].cacheData.cacheValue);
 
   ResultSet *rs4 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
   enqueue(queue, key4, rs4);
-  ASSERT_EQ(rs4, queue->queue[4].cacheData.cacheValue);
+  ASSERT_EQ(rs4, queue->buffer[4].cacheData.cacheValue);
 
   ResultSet *rs5 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
   enqueue(queue, key5, rs5);
-  ASSERT_EQ(rs5, queue->queue[5].cacheData.cacheValue);
+  ASSERT_EQ(rs5, queue->buffer[5].cacheData.cacheValue);
 
   ResultSet *rs6 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
   enqueue(queue, key6, rs6);
-  ASSERT_EQ(rs6, queue->queue[6].cacheData.cacheValue);
+  ASSERT_EQ(rs6, queue->buffer[6].cacheData.cacheValue);
 
   ResultSet *rs7 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
   enqueue(queue, key7, rs7);
-  ASSERT_EQ(rs7, queue->queue[7].cacheData.cacheValue);
+  ASSERT_EQ(rs7, queue->buffer[7].cacheData.cacheValue);
 
-  removeFromQueue(queue, &queue->queue[6]);
-  removeFromQueue(queue, &queue->queue[4]);
-  removeFromQueue(queue, &queue->queue[3]);
+  removeFromQueue(queue, &queue->buffer[6]);
+  removeFromQueue(queue, &queue->buffer[4]);
+  removeFromQueue(queue, &queue->buffer[3]);
 
   rs3 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
   enqueue(queue, key3, rs3);
-  ASSERT_EQ(rs3, queue->queue[3].cacheData.cacheValue);
+  ASSERT_EQ(rs3, queue->buffer[3].cacheData.cacheValue);
 
   rs4 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
   enqueue(queue, key4, rs4);
-  ASSERT_EQ(rs4, queue->queue[4].cacheData.cacheValue);
+  ASSERT_EQ(rs4, queue->buffer[4].cacheData.cacheValue);
 
   rs6 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
   enqueue(queue, key6, rs6);
-  ASSERT_EQ(rs6, queue->queue[6].cacheData.cacheValue);
+  ASSERT_EQ(rs6, queue->buffer[6].cacheData.cacheValue);
 
   ResultSet *rs8 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
   enqueue(queue, key8, rs8);
-  ASSERT_EQ(rs8, queue->queue[8].cacheData.cacheValue);
+  ASSERT_EQ(rs8, queue->buffer[8].cacheData.cacheValue);
 
   ResultSet *rs9 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
   enqueue(queue, key9, rs9);
-  ASSERT_EQ(rs9, queue->queue[9].cacheData.cacheValue);
+  ASSERT_EQ(rs9, queue->buffer[9].cacheData.cacheValue);
 
   ResultSet *rs10 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
   dequeue(queue);
   enqueue(queue, key10, rs10);
-  ASSERT_EQ(rs9, queue->queue[9].cacheData.cacheValue);
+  ASSERT_EQ(rs9, queue->buffer[9].cacheData.cacheValue);
 
   LRUQueue_Free(queue);
 }
