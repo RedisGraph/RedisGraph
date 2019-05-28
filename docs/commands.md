@@ -6,7 +6,7 @@ Executes the given query against a specified graph.
 
 Arguments: `Graph name, Query`
 
-Returns: `Result set`
+Returns: [Result set](result_structure.md#redisgraph-result-set-structure)
 
 ```sh
 GRAPH.QUERY us_government "MATCH (p:president)-[:born]->(:state {name:'Hawaii'}) RETURN p"

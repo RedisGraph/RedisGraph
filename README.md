@@ -41,11 +41,12 @@ once created we'll start querying our data.
 
 ### With `redis-cli`
 
+The format of results through `redis-cli` is described in [the RedisGraph documentation](https://oss.redislabs.com/redisgraph/result_structure).
+
 ```sh
 $ redis-cli
 127.0.0.1:6379> GRAPH.QUERY MotoGP "CREATE (:Rider {name:'Valentino Rossi'})-[:rides]->(:Team {name:'Yamaha'}), (:Rider {name:'Dani Pedrosa'})-[:rides]->(:Team {name:'Honda'}), (:Rider {name:'Andrea Dovizioso'})-[:rides]->(:Team {name:'Ducati'})"
-1) (empty list or set)
-2) 1) Labels added: 2
+1) 1) Labels added: 2
    2) Nodes created: 6
    3) Properties set: 6
    4) Relationships created: 3
@@ -56,21 +57,21 @@ Now that our MotoGP graph is created, we can start asking questions, for example
 Who's riding for team Yamaha?
 
 ```sh
-127.0.0.1:6379> GRAPH.QUERY MotoGP "MATCH (r:Rider)-[:rides]->(t:Team) WHERE t.name = 'Yamaha' RETURN r,t"
-1) 1) 1) "r.name"
-      2) "t.name"
-   2) 1) "Valentino Rossi"
+127.0.0.1:6379> GRAPH.QUERY MotoGP "MATCH (r:Rider)-[:rides]->(t:Team) WHERE t.name = 'Yamaha' RETURN r.name, t.name"
+1) 1) "r.name"
+   2) "t.name"
+2) 1) 1) "Valentino Rossi"
       2) "Yamaha"
-2) 1) "Query internal execution time: 0.122000 milliseconds"
+3) 1) "Query internal execution time: 0.625399 milliseconds"
 ```
 
 How many riders represent team Ducati?
 
 ```sh
 127.0.0.1:6379> GRAPH.QUERY MotoGP "MATCH (r:Rider)-[:rides]->(t:Team {name:'Ducati'}) RETURN count(r)"
-1) 1) 1) "count(r)"
-   2) 1) "1.000000"
-2) 1) "Query internal execution time: 0.129000 milliseconds"
+1) 1) "count(r)"
+2) 1) 1) (integer) 1
+3) 1) "Query internal execution time: 0.624435 milliseconds"
 ```
 
 ## Building
@@ -81,14 +82,7 @@ Requirements:
 
 * The RedisGraph repository: `git clone https://github.com/RedisGraph/RedisGraph.git`
 
-* On Ubuntu Linux, run: `apt-get install build-essential cmake`
-
-* On Fedora/CentOS/RHEL, run:
-
-  ```
-  dnf groupinstall "Development Tools"
-  dnf install cmake
-  ```
+* On Ubuntu Linux, run: `apt-get install build-essential cmake m4 automake peg libtool autoconf`
 
 To build, run `make` in the project's directory.
 
