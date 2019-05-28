@@ -9,7 +9,7 @@
 
 // Given a value type, return the matching skiplist from an index.
 static inline skiplist* _select_skiplist(const Index *idx, const SIType t) {
-  if (t & SI_STRING) {
+  if (t == T_STRING) {
     return idx->string_sl;
   } else if (t & SI_NUMERIC) {
     return idx->numeric_sl;
@@ -140,7 +140,7 @@ void Index_DeleteNode(Index *idx, NodeID node, SIValue *val) {
 
 /* Generate an iterator with no lower or upper bound. */
 IndexIter* IndexIter_Create(Index *idx, SIType type) {
-  skiplist *sl = type & SI_STRING ? idx->string_sl : idx->numeric_sl;
+  skiplist *sl = (type == T_STRING) ? idx->string_sl : idx->numeric_sl;
   return skiplistIterateAll(sl);
 }
 

@@ -52,7 +52,7 @@ class GraphMultiPatternQueryFlowTest(FlowTestsBase):
     def test01_connect_node_to_rest(self):
         query = """MATCH(r:person {name:"Roi"}), (f:person) WHERE f.name != r.name CREATE (r)-[:friend]->(f) RETURN count(f)"""
         actual_result = redis_graph.query(query)
-        friend_count = int(float(actual_result.result_set[1][0]))
+        friend_count = actual_result.result_set[0][0]
         assert(friend_count == 6)
         assert (actual_result.relationships_created == 6)
 
@@ -66,14 +66,14 @@ class GraphMultiPatternQueryFlowTest(FlowTestsBase):
                    """MATCH (x) MATCH (r:person {name:"Roi"})-[]->(f) RETURN f, x"""]
         for q in queries:
             actual_result = redis_graph.query(q)
-            records_count = len(actual_result.result_set) -1 # Discard header row.
+            records_count = len(actual_result.result_set)
             assert(records_count == expected_resultset_size)
 
     # Connect every node to every node.
     def test03_create_fully_connected_graph(self):
         query = """MATCH(a:person), (b:person) WHERE a.name != b.name CREATE (a)-[f:friend]->(b) RETURN count(f)"""
         actual_result = redis_graph.query(query)
-        friend_count = int(float(actual_result.result_set[1][0]))
+        friend_count = actual_result.result_set[0][0]
         assert(friend_count == 42)
         assert (actual_result.relationships_created == 42)
     
@@ -86,7 +86,7 @@ class GraphMultiPatternQueryFlowTest(FlowTestsBase):
 
         for q in queries:
             actual_result = redis_graph.query(q)
-            friend_count = int(float(actual_result.result_set[1][0]))
+            friend_count = actual_result.result_set[0][0]
             assert(friend_count == 343)
 
     # Ensure that an error is issued when an alias from one pattern is referenced by another.

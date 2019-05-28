@@ -40,7 +40,7 @@ class GraphMergeFlowTest(FlowTestsBase):
         assert(result.labels_added == 1)
         assert(result.nodes_created == 1)
         assert(result.properties_set == 0)
-    
+
     # Retry to create an existing entity.
     def test02_existing_single_node_with_label(self):
         global redis_graph
@@ -116,10 +116,9 @@ class GraphMergeFlowTest(FlowTestsBase):
         assert(result.properties_set == 2)
         assert(result.relationships_created == 0)
 
-        query = """MATCH (charlie { name: 'Charlie Sheen' }) RETURN charlie"""
+        query = """MATCH (charlie { name: 'Charlie Sheen' }) RETURN charlie.age, charlie.name, charlie.lastname"""
         actual_result = redis_graph.query(query)
-        expected_result = [['charlie.age', 'charlie.name', 'charlie.lastname'],
-                           [11, 'Charlie Sheen', 'Sheen']]
+        expected_result = [[11, 'Charlie Sheen', 'Sheen']]
         assert(actual_result.result_set == expected_result)
 
     # Update new entity
@@ -132,10 +131,9 @@ class GraphMergeFlowTest(FlowTestsBase):
         assert(result.properties_set == 3)
         assert(result.relationships_created == 0)
 
-        query = """MATCH (tamara:ACTOR { name: 'Tamara Tunie' }) RETURN tamara"""
+        query = """MATCH (tamara:ACTOR { name: 'Tamara Tunie' }) RETURN tamara.name, tamara.age"""
         actual_result = redis_graph.query(query)
-        expected_result = [['tamara.name', 'tamara.age'],
-                           ['Tamara Tunie', 59]]
+        expected_result = [['Tamara Tunie', 59]]
         assert(actual_result.result_set == expected_result)
 
     # Create a single edge and additional two nodes.
@@ -160,11 +158,9 @@ class GraphMergeFlowTest(FlowTestsBase):
 
         query = """MATCH (franklin:ACTOR { name: 'Franklin Cover' })-[r:ACTED_IN {rate:5.9, date:1998}]->(almostHeroes:MOVIE) RETURN franklin.name, franklin.age, r.rate, r.date"""
         actual_result = redis_graph.query(query)
-        expected_result = [['franklin.name', 'franklin.age', 'r.rate', 'r.date'],
-                           ['Franklin Cover', None, '5.9', 1998]]
+        expected_result = [['Franklin Cover', None, 5.9, 1998]]
         assert(actual_result.result_set == expected_result)
     
-
     # Update multiple nodes
     def test13_update_multiple_nodes(self):
         global redis_graph
@@ -180,10 +176,9 @@ class GraphMergeFlowTest(FlowTestsBase):
         assert(result.nodes_created == 0)
         assert(result.properties_set == 4)
 
-        query = """MATCH (p:person) RETURN p"""
+        query = """MATCH (p:person) RETURN p.age, p.newprop"""
         actual_result = redis_graph.query(query)
-        expected_result = [['p.age', 'p.newprop'],
-                           [31, 100],
+        expected_result = [[31, 100],
                            [31, 100],
                            [31, 100],
                            [31, 100]]
@@ -220,18 +215,17 @@ class GraphMergeFlowTest(FlowTestsBase):
 
         count_query = """MATCH (p:person) WHERE p.age > 0 RETURN COUNT(p)"""
         result = redis_graph.query(count_query)
-        original_count  = float(result.result_set[1][0])
+        original_count  = result.result_set[0][0]
 
-        # Add onne new person
+        # Add one new person
         merge_query = """MERGE (p:person {age:40})"""
         result = redis_graph.query(merge_query)
         assert(result.nodes_created == 1)
         assert(result.properties_set == 1)
-
         # Verify that one indexed node has been added
         result = redis_graph.query(count_query)
-        updated_count = float(result.result_set[1][0])
-        assert(updated_count == original_count + 1)
+        updated_count = result.result_set[0][0]
+        assert(updated_count == original_count+1)
 
         # Perform another merge that does not create an entity
         result = redis_graph.query(merge_query)
@@ -239,8 +233,8 @@ class GraphMergeFlowTest(FlowTestsBase):
 
         # Verify that indexed node count is unchanged
         result = redis_graph.query(count_query)
-        updated_count = float(result.result_set[1][0])
-        assert(updated_count == original_count + 1)
+        updated_count = result.result_set[0][0]
+        assert(updated_count == original_count+1)
 
 if __name__ == '__main__':
     unittest.main()

@@ -17,7 +17,6 @@ static void _CommitNodes(OpMerge *op, Record r) {
     AST_GraphEntity *ge;
     Graph *g = op->gc->g;
     AST_MergeNode *ast_merge_node = op->ast->mergeNode;
-    Schema *unified_schema = GraphContext_GetUnifiedSchema(op->gc, SCHEMA_NODE);
     
     size_t node_count = 0;
     size_t entity_count = Vector_Size(ast_merge_node->graphEntities);
@@ -67,9 +66,7 @@ static void _CommitNodes(OpMerge *op, Record r) {
                     Vector_Get(blueprint->properties, prop_idx*2, &key);
                     Vector_Get(blueprint->properties, prop_idx*2+1, &value);
 
-                    Attribute_ID prop_id = ATTRIBUTE_NOTFOUND;
-                    if(schema) prop_id = Schema_AddAttribute(schema, SCHEMA_NODE, key->stringval);
-                    else prop_id = Schema_AddAttribute(unified_schema, SCHEMA_NODE, key->stringval);
+                    Attribute_ID prop_id = GraphContext_FindOrAddAttribute(op->gc, key->stringval);
                     GraphEntity_AddProperty((GraphEntity*)n, prop_id, *value);
                 }
                 // Update tracked schema and add node to any matching indices.
@@ -127,7 +124,7 @@ static void _CommitEdges(OpMerge *op, Record r) {
                     Vector_Get(blueprint->ge.properties, prop_idx*2, &key);
                     Vector_Get(blueprint->ge.properties, prop_idx*2+1, &value);
 
-                    Attribute_ID prop_id = Schema_AddAttribute(schema, SCHEMA_EDGE, key->stringval);
+                    Attribute_ID prop_id = GraphContext_FindOrAddAttribute(op->gc, key->stringval);
                     GraphEntity_AddProperty((GraphEntity*)e, prop_id, *value);
                 }
                 op->result_set->stats.properties_set += propCount;
@@ -150,8 +147,9 @@ static void _CreateEntities(OpMerge *op, Record r) {
     Graph_ReleaseLock(op->gc->g);
 }
 
-OpBase* NewMergeOp(GraphContext *gc, AST *ast, ResultSet *result_set) {
+OpBase* NewMergeOp(AST *ast, ResultSet *result_set) {
     OpMerge *op_merge = malloc(sizeof(OpMerge));
+    GraphContext *gc = GraphContext_GetFromTLS();
     op_merge->gc = gc;
     op_merge->ast = ast;
     op_merge->result_set = result_set;

@@ -28,15 +28,12 @@ def assert_no_modifications(resultset):
            resultset.relationships_deleted) == 0)
 
 def assert_resultset_length(resultset, length):
-    # print "len(resultset.result_set): %d" % len(resultset.result_set)
-    # print "length: %d" % length
     assert(len(resultset.result_set) == length)
 
 def assert_resultset_content(resultset, expected):
     rowCount = len(expected.rows)
     for rowIdx in range(rowCount):
-        # print "rowIdx: %d" % rowIdx
-        actualRow = resultset.result_set[rowIdx+1] # Skip header row.
+        actualRow = resultset.result_set[rowIdx]
         actualRowLen = len(actualRow)
         expectedRow = expected.rows[rowIdx]        
         expectedRowLength = len(expectedRow)

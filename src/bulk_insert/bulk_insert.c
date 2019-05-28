@@ -48,7 +48,7 @@ static Attribute_ID* _BulkInsert_ReadHeader(GraphContext *gc, SchemaType t,
         *data_idx += strlen(prop_key) + 1;
 
         // Add properties to schemas
-        prop_indicies[j] = Schema_AddAttribute(schema, t, prop_key);
+        prop_indicies[j] = GraphContext_FindOrAddAttribute(gc, prop_key);
     }
 
     return prop_indicies;

@@ -27,35 +27,35 @@ class ReturnDistinctFlowTest_1(RedisGraphTestBase):
 
     def test_issue_395_scenario(self):
         # all
-        q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p")
+        q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p.name")
         self.assertEqual(q, [['Stevie'], ['Stevie'], ['Stevie'], ['Mike'], ['James'], ['James']])
         
         # order
-        q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p ORDER BY p.name")
+        q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p.name ORDER BY p.name")
         self.assertEqual(q, [['James'], ['James'], ['Mike'], ['Stevie'], ['Stevie'], ['Stevie']])
 
         # limit
-        q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p LIMIT 2")
+        q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p.name LIMIT 2")
         self.assertEqual(q, [['Stevie'], ['Stevie']])
         
         # order+limit
-        q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p ORDER BY p.name LIMIT 2")
+        q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p.name ORDER BY p.name LIMIT 2")
         self.assertEqual(q, [['James'], ['James']])
         
         # all+distinct
-        q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p")
+        q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p.name")
         self.assertEqual(q, [['Stevie'], ['Mike'], ['James']])
         
         # order+distinct
-        q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p ORDER BY p.name")
+        q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p.name ORDER BY p.name")
         self.assertEqual(q, [['James'], ['Mike'], ['Stevie']])
 
         # limit+distinct
-        q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p LIMIT 2")
+        q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p.name LIMIT 2")
         self.assertEqual(q, [['Stevie'], ['Mike']])
         
         # order+limit+distinct
-        q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p ORDER BY p.name LIMIT 2")
+        q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p.name ORDER BY p.name LIMIT 2")
         self.assertEqual(q, [['James'], ['Mike']])
 
 class ReturnDistinctFlowTest_2(RedisGraphTestBase):
@@ -77,35 +77,35 @@ class ReturnDistinctFlowTest_2(RedisGraphTestBase):
 
     def test_issue_395_scenario_2(self):
         # all
-        q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p")
+        q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p.name")
         self.assertEqual(q, [['James'], ['James'], ['Mike'], ['Stevie'], ['Stevie'], ['Stevie']])
         
         # order
-        q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p ORDER BY p.name")
+        q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p.name ORDER BY p.name")
         self.assertEqual(q, [['James'], ['James'], ['Mike'], ['Stevie'], ['Stevie'], ['Stevie']])
 
         # limit
-        q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p LIMIT 2")
+        q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p.name LIMIT 2")
         self.assertEqual(q, [['James'], ['James']])
         
         # order+limit
-        q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p ORDER BY p.name DESC LIMIT 2")
+        q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p.name ORDER BY p.name DESC LIMIT 2")
         self.assertEqual(q, [['Stevie'], ['Stevie']])
         
         # all+distinct
-        q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p")
+        q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p.name")
         self.assertEqual(q, [['James'], ['Mike'], ['Stevie']])
         
         # order+distinct
-        q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p ORDER BY p.name DESC")
+        q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p.name ORDER BY p.name DESC")
         self.assertEqual(q, [['Stevie'], ['Mike'], ['James']])
 
         # limit+distinct
-        q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p LIMIT 2")
+        q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p.name LIMIT 2")
         self.assertEqual(q, [['James'], ['Mike']])
         
         # order+limit+distinct
-        q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p ORDER BY p.name DESC LIMIT 2")
+        q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p.name ORDER BY p.name DESC LIMIT 2")
         self.assertEqual(q, [['Stevie'], ['Mike']])
 
 if __name__ == '__main__':

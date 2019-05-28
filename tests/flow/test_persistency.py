@@ -112,29 +112,29 @@ class GraphPersistency(FlowTestsBase):
             # Expecting 5 person entities.
             query = """MATCH (p:person) RETURN COUNT(p)"""
             actual_result = redis_graph.query(query)
-            nodeCount = int(float(actual_result.result_set[1][0]))
+            nodeCount = actual_result.result_set[0][0]
             assert(nodeCount == 5)
 
             query = """MATCH (p:person) WHERE p.name='Alon' RETURN COUNT(p)"""
             actual_result = redis_graph.query(query)
-            nodeCount = int(float(actual_result.result_set[1][0]))
+            nodeCount = actual_result.result_set[0][0]
             assert(nodeCount == 1)
 
             # Expecting 3 country entities.
             query = """MATCH (c:country) RETURN COUNT(c)"""
             actual_result = redis_graph.query(query)
-            nodeCount = int(float(actual_result.result_set[1][0]))
+            nodeCount = actual_result.result_set[0][0]
             assert(nodeCount == 3)
 
             query = """MATCH (c:country) WHERE c.name = 'Israel' RETURN COUNT(c)"""
             actual_result = redis_graph.query(query)
-            nodeCount = int(float(actual_result.result_set[1][0]))
+            nodeCount = actual_result.result_set[0][0]
             assert(nodeCount == 1)
 
             # Expecting 2 visit edges.
             query = """MATCH (n:person)-[e:visit]->(c:country) WHERE e.purpose='pleasure' RETURN COUNT(e)"""
             actual_result = redis_graph.query(query)
-            edgeCount = int(float(actual_result.result_set[1][0]))
+            edgeCount = actual_result.result_set[0][0]
             assert(edgeCount == 2)
 
             # Verify indices exists.
@@ -149,7 +149,7 @@ class GraphPersistency(FlowTestsBase):
         query = """MATCH (p) WHERE ID(p) = 0 OR ID(p) = 3 OR ID(p) = 7 OR ID(p) = 9 DELETE p"""
         actual_result = dense_graph.query(query)
         assert(actual_result.nodes_deleted == 4)
-        query = """MATCH (p)-[]->(q) RETURN p, q ORDER BY p.val, q.val"""
+        query = """MATCH (p)-[]->(q) RETURN p.val, q.val ORDER BY p.val, q.val"""
         first_result = dense_graph.query(query)
 
         # Save RDB & Load from RDB
@@ -171,54 +171,44 @@ class GraphPersistency(FlowTestsBase):
         # Save RDB & Load from RDB
         redis_con.execute_command("DEBUG", "RELOAD")
 
-        query = """MATCH (p) RETURN p"""
+        query = """MATCH (p) RETURN p.boolval, p.nullval, p.numval, p.strval"""
         actual_result = graph.query(query)
 
         # Verify that the properties are loaded correctly.
         # Note that the order of results is not guaranteed (currently managed by the Schema),
         # so this may need to be updated in the future.
-        expected_result = [['p.boolval', 'p.nullval', 'p.numval', 'p.strval'],
-                           ['true', None, '5.5', 'str']]
+        expected_result = [[True, None, 5.5, 'str']]
         assert(actual_result.result_set == expected_result)
 
     # Verify multiple edges of the same relation between nodes A and B
     # are saved and restored correctly.
     def test04_repeated_edges(self):
         graphname = "repeated_edges"
-        graph = Graph(graphname, redis_con)
-        # Build two nodes
-        create_query = """CREATE (:p {name: 'src'}), (:p {name: 'dest'})"""
-        actual_result = graph.query(create_query)
-        assert(actual_result.nodes_created == 2)
-
-        # Connect nodes
-        create_query = """MATCH(a:p {name: 'src'}), (b:p {name: 'dest'}) CREATE (a)-[:e {val: 1}]->(b)"""
-        actual_result = graph.query(create_query)
-        assert(actual_result.relationships_created == 1)
+        g = Graph(graphname, redis_con)
+        src = Node(label='p', properties={'name': 'src'})
+        dest = Node(label='p', properties={'name': 'dest'})
+        edge1 = Edge(src, 'e', dest, properties={'val': 1})
+        edge2 = Edge(src, 'e', dest, properties={'val': 2})
+        g.add_node(src)
+        g.add_node(dest)
+        g.add_edge(edge1)
+        g.add_edge(edge2)
+        g.commit()
 
         # Verify the new edge
-        read_query = """MATCH (a)-[e]->(b) RETURN e, a, b ORDER BY e.val"""
-        actual_result = graph.query(read_query)
-        expected_result = [['e.val', 'a.name', 'b.name'],
-                           [1, 'src', 'dest']]
-        assert(actual_result.result_set == expected_result)
+        q = """MATCH (a)-[e]->(b) RETURN e.val, a.name, b.name ORDER BY e.val"""
+        actual_result = g.query(q)
 
-        # Connect nodes with additional edge of the same relation.
-        create_query = """MATCH(a:p {name: 'src'}), (b:p {name: 'dest'}) CREATE (a)-[:e {val: 2}]->(b)"""
-        actual_result = graph.query(create_query)
-        assert(actual_result.relationships_created == 1)
+        expected_result = [[edge1.properties['val'], src.properties['name'], dest.properties['name']], 
+                           [edge2.properties['val'], src.properties['name'], dest.properties['name']]]
 
-        actual_result = graph.query(read_query)
-        expected_result = [['e.val', 'a.name', 'b.name'],
-                           [1, 'src', 'dest'],
-                           [2, 'src', 'dest']]
         assert(actual_result.result_set == expected_result)
 
         # Save RDB & Load from RDB
         redis_con.execute_command("DEBUG", "RELOAD")
 
         # Verify that the latest edge was properly saved and loaded
-        actual_result = graph.query(read_query)
+        actual_result = g.query(q)
         assert(actual_result.result_set == expected_result)
 
 if __name__ == '__main__':

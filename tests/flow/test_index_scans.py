@@ -88,8 +88,7 @@ class IndexScanFlowTest(FlowTestsBase):
         self.assertNotIn('Label Scan', plan)
 
 
-        expected_result = [['a.name', 'b.name'],
-                           ['Omri Traub', 'Gal Derriere'],
+        expected_result = [['Omri Traub', 'Gal Derriere'],
                            ['Omri Traub', 'Lucy Yanfital']]
         result = redis_graph.query(query)
 

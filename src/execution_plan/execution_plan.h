@@ -32,8 +32,8 @@ typedef struct {
 /* Creates a new execution plan from AST */
 ExecutionPlan* NewExecutionPlan (
     RedisModuleCtx *ctx,    // Module-level context
-    GraphContext *gc,       // Graph access and schemas
     AST **ast,              // Query parsed AST
+    ResultSet *result_set,  // Result set to be populated if the query returns data
     bool explain            // Construct execution plan, do not execute
 );
 
@@ -51,6 +51,10 @@ void ExecutionPlan_PushBelow(OpBase *a, OpBase *b);
 
 /* Replace a with b. */
 void ExecutionPlan_ReplaceOp(ExecutionPlan *plan, OpBase *a, OpBase *b);
+
+/* Locates all operation which generate data. 
+ * SCAN, UNWIND, PROCEDURE_CALL, CREATE. */
+void ExecutionPlan_LocateTaps(OpBase *root, OpBase ***taps);
 
 /* Locate the first operation of a given type within execution plan.
  * Returns NULL if operation wasn't found. */

@@ -9,15 +9,20 @@
 #include "redismodule.h"
 #include "config.h"
 #include "version.h"
+#include "redisearch_api.h"
 #include "commands/commands.h"
-#include "graph/serializers/graphcontext_type.h"
 #include "util/thpool/thpool.h"
 #include "arithmetic/agg_funcs.h"
+#include "procedures/procedure.h"
 #include "arithmetic/arithmetic_expression.h"
+#include "graph/serializers/graphcontext_type.h"
 
 /* Thread pool. */
 threadpool _thpool = NULL;
 pthread_key_t _tlsGCKey;    // Thread local storage graph context key.
+
+// Define the C symbols for RediSearch.
+REDISEARCH_API_INIT_SYMBOLS();
 
 /* Set up thread pool,
  * number of threads within pool should be
@@ -55,6 +60,18 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
         return REDISMODULE_ERR;
     }
 
+    // Make sure RediSearch is loaded.
+    // if(RediSearch_Initialize() == REDISMODULE_OK) {
+    //     /* Enable full-text search.
+    //      * TODO: currently all procedure deal with full text-search 
+    //      * once additional procedure will be introduce 
+    //      * this registration invocation will have to change. */
+    //     Proc_Register();
+    // } else {
+    //     RedisModule_Log(ctx, "warning", "RediSearch is missing, disabeling full-text search.");
+    // }
+    
+    Proc_Register();
     AR_RegisterFuncs();     // Register arithmetic functions.
     Agg_RegisterFuncs();    // Register aggregation functions.
 

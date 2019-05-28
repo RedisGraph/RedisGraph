@@ -51,7 +51,7 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     // Perform query validations before and after ModifyAST
     if (AST_PerformValidations(ctx, ast) != AST_VALID) return REDISMODULE_OK;
 
-    ModifyAST(gc, ast);
+    ModifyAST(ast);
     if (AST_PerformValidations(ctx, ast) != AST_VALID) return REDISMODULE_OK;
 
     if (ast[0]->indexNode != NULL) { // index operation
@@ -61,7 +61,7 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     }
 
     Graph_AcquireReadLock(gc->g);
-    plan = NewExecutionPlan(ctx, gc, ast, true);
+    plan = NewExecutionPlan(ctx, ast, NULL, true);
     char* strPlan = ExecutionPlanPrint(plan);
     RedisModule_ReplyWithStringBuffer(ctx, strPlan, strlen(strPlan));
 

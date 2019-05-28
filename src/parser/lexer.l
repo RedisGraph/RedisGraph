@@ -44,6 +44,8 @@ int yycolumn = 1;
 "DROP"      { return DROP; }
 "UNWIND"    { return UNWIND; }
 "NULL"      { return NULLVAL; }
+"CALL"      { return CALL; }
+"YIELD"     { return YIELD; }
 
 
 [0-9]*\.[0-9]+    {
@@ -59,20 +61,6 @@ int yycolumn = 1;
 [_A-Za-z][A-Za-z0-9_-]* {
   	tok.strval = strdup(yytext);
   	return UQSTRING; // Unquoted string, used for entity alias, prop name and labels.
-}
-
-(\"[^\"\\]*(?:\\.[^\"\\]*)+\")|('[^'\\]*(?:\\.[^'\\]*)+') {
-  /* String literal containing at least one escaped character - enclosed by "" or '' */
-  int len = strlen(yytext) - 1; // ignore ending quote character
-  tok.strval = malloc(len * sizeof(char));
-  int new_idx = 0;
-  for (int idx = 1; idx < len; idx ++) { // start at 1 to ignore opening quote
-    if (yytext[idx] == '\\') idx ++;  // Jump over a single escape character in the input
-    tok.strval[new_idx++] = yytext[idx]; // Copy the character and increment the output index
-  }
-
-  tok.strval[new_idx] = '\0';
-  return STRING;
 }
 
 (\"([^\\\"])*\")|('([^\\'])*') {

@@ -42,7 +42,7 @@ class GraphMultipleEdgeFlowTest(FlowTestsBase):
         # Expecting no connections.
         query = """MATCH (a {v:1})-[e]->(b {v:2}) RETURN count(e)"""
         actual_result = redis_graph.query(query)
-        assert (len(actual_result.result_set) == 1)
+        assert (len(actual_result.result_set) == 0)
 
         # Connect a to b with a single edge of type R.
         query = """MATCH (a {v:1}), (b {v:2}) CREATE (a)-[:R {v:1}]->(b)"""
@@ -52,12 +52,12 @@ class GraphMultipleEdgeFlowTest(FlowTestsBase):
         # Expecting single connections.
         query = """MATCH (a {v:1})-[e:R]->(b {v:2}) RETURN count(e)"""
         actual_result = redis_graph.query(query)
-        edge_count = actual_result.result_set[1][0]
+        edge_count = actual_result.result_set[0][0]
         assert (edge_count == 1)
 
         query = """MATCH (a {v:1})-[e:R]->(b {v:2}) RETURN ID(e)"""
         actual_result = redis_graph.query(query)
-        edge_id = actual_result.result_set[1][0]
+        edge_id = actual_result.result_set[0][0]
         assert (edge_id == 0)
 
         # Connect a to b with additional edge of type R.
@@ -68,13 +68,13 @@ class GraphMultipleEdgeFlowTest(FlowTestsBase):
         # Expecting two connections.
         query = """MATCH (a {v:1})-[e:R]->(b {v:2}) RETURN count(e)"""
         actual_result = redis_graph.query(query)
-        edge_count = actual_result.result_set[1][0]
+        edge_count = actual_result.result_set[0][0]
         assert (edge_count == 2)
 
         # Variable length path.
         query = """MATCH (a {v:1})-[:R*]->(b {v:2}) RETURN count(b)"""
         actual_result = redis_graph.query(query)
-        edge_count = actual_result.result_set[1][0]
+        edge_count = actual_result.result_set[0][0]
         assert (edge_count == 2)
 
         # Remove first connection.
@@ -88,7 +88,7 @@ class GraphMultipleEdgeFlowTest(FlowTestsBase):
 
         query = """MATCH (a {v:1})-[e:R]->(b {v:2}) RETURN ID(e)"""
         actual_result = redis_graph.query(query)
-        edge_id = actual_result.result_set[1][0]
+        edge_id = actual_result.result_set[0][0]
         assert (edge_id == 1)
 
         # Remove second connection.
@@ -99,7 +99,7 @@ class GraphMultipleEdgeFlowTest(FlowTestsBase):
         # Expecting no connections.
         query = """MATCH (a {v:1})-[e:R]->(b {v:2}) RETURN count(e)"""
         actual_result = redis_graph.query(query)        
-        assert (len(actual_result.result_set) == 1)
+        assert (len(actual_result.result_set) == 0)
 
         # Remove none existing connection.
         query = """MATCH (a {v:1})-[e]->(b {v:2}) DELETE e"""
@@ -113,7 +113,7 @@ class GraphMultipleEdgeFlowTest(FlowTestsBase):
 
         query = """MATCH (a {v:1})-[e:R]->(b {v:2}) RETURN count(e)"""
         actual_result = redis_graph.query(query)
-        edge_count = actual_result.result_set[1][0]
+        edge_count = actual_result.result_set[0][0]
         assert (edge_count == 1)
 
 if __name__ == '__main__':
