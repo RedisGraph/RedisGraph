@@ -18,7 +18,7 @@ Cache *addGraphCache(const char *graphName, size_t graphNameLength)
     // if not exists, create new and return
     // acquire write lock
     pthread_rwlock_wrlock(&registeredCaches_rwlock);
-    raxInsert(registeredCaches, (unsigned char *)graphName, graphNameLength, Cache_New(RESULTSET_CACHE_ENTRY_NUMBER, (cacheValueFreeFunc)ResultSet_Free), NULL);
+    raxInsert(registeredCaches, (unsigned char *)graphName, graphNameLength, cacheNew(RESULTSET_CACHE_ENTRY_NUMBER, (cacheValueFreeFunc)ResultSet_Free), NULL);
     // free lock
     pthread_rwlock_unlock(&registeredCaches_rwlock);
     return getGraphCache(graphName, graphNameLength);
@@ -55,7 +55,7 @@ void removeGraphCache(const char *graphName)
     // acquire write lock
     pthread_rwlock_wrlock(&registeredCaches_rwlock);
     Cache *resultSetCache = raxFind(registeredCaches, (unsigned char *)graphName, graphNameLength);
-    Cache_Free(resultSetCache);
+    cacheFree(resultSetCache);
     raxRemove(registeredCaches, (unsigned char *)graphName, graphNameLength, NULL);
     // free lock
     pthread_rwlock_unlock(&registeredCaches_rwlock);
@@ -64,29 +64,29 @@ void removeGraphCache(const char *graphName)
 ResultSet *graphCacheGet(const char *graphName, const char *query)
 {
     Cache *graphCache = getGraphCache(graphName, strlen(graphName));
-    return getCacheValue(graphCache, query, strlen(query));
+    return cacheGetValue(graphCache, query, strlen(query));
 }
 
 void graphCacheSet(const char *graphName, const char *query, ResultSet *resultset)
 {
     Cache *graphCache = getGraphCache(graphName, strlen(graphName));
-    storeCacheValue(graphCache, query, strlen(query), resultset);
+    cacheSetValue(graphCache, query, strlen(query), resultset);
 }
 
 void graphCacheRemove(const char *graphName, const char *query)
 {
     Cache *graphCache = getGraphCache(graphName, strlen(graphName));
-    removeCacheValue(graphCache, query, strlen(query));
+    cacheRemoveValue(graphCache, query, strlen(query));
 }
 
 void graphCacheMarkInvalid(const char *graphName)
 {
     Cache *graphCache = getGraphCache(graphName, strlen(graphName));
-    markCacheInvalid(graphCache);
+    cacheMarkInvalid(graphCache);
 }
 
 void graphCacheInvalidate(const char *graphName)
 {
     Cache *graphCahe = getGraphCache(graphName, strlen(graphName));
-    clearCache(graphCahe);
+    cacheClear(graphCahe);
 }

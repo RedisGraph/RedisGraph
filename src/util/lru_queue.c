@@ -8,7 +8,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-
 /**
  * @brief  Initialize a LRU node, and its undelying CacheData
  * @note   
@@ -17,26 +16,24 @@
  * @param  resultSet: Node's result value (for CacheData)
  * @retval Initilized LRU node (pointer)
  */
-LRUNode *initLRUNode(LRUNode *node, hash_key_t const hashKey, void *cacheValue, cacheValueFreeFunc freeCB)
+LRUNode *initLRUNode(LRUNode *node, void *cacheValue, size_t dataSize, lruDataFreeFunc freeCB)
 {
   // new node - no next and prev
   node->next = NULL;
   node->prev = NULL;
-  // copy key
-  node->cacheData.hashKey = hashKey;
-  
-  // if node was in use before, release the result set
-  if (node->cacheData.isDirty)
+
+  // if node was in use before, call its destructor
+  if (node->isDirty)
   {
-    freeCB(node->cacheData.cacheValue);
+    void *data = (void *)node->data;
+    freeCB(data);
   }
   // set new value and mark as used
-  node->cacheData.cacheValue = cacheValue;
-  node->cacheData.isDirty = true;
+  memcpy(&node->data, cacheValue, dataSize);
+  node->isDirty = true;
 
   return node;
 }
-
 
 LRUQueue *initLRUQueue(LRUQueue *lruQueue, size_t capacity)
 {
@@ -56,54 +53,39 @@ LRUQueue *initLRUQueue(LRUQueue *lruQueue, size_t capacity)
   return lruQueue;
 }
 
-LRUQueue *LRUQueue_New(size_t capacity, cacheValueFreeFunc freeCB)
+size_t sizeOfLRUNode(size_t dataSize)
+{
+  return dataSize + 2 * sizeof(LRUNode *) + sizeof(bool);
+}
+
+LRUQueue *lruQueueNew(size_t capacity, size_t dataSize, lruDataFreeFunc freeCB)
 {
   // memory allocations
   LRUQueue *lruQueue = rm_malloc(sizeof(LRUQueue));
-  lruQueue->buffer = rm_calloc(capacity, sizeof(LRUNode));
+  lruQueue->buffer = rm_calloc(capacity, sizeOfLRUNode(dataSize));
   lruQueue->freeList = array_new(LRUNode *, capacity);
+  lruQueue->dataSize = dataSize;
   lruQueue->freeCB = freeCB;
   // initialization
   return initLRUQueue(lruQueue, capacity);
 }
 
-void LRUQueue_Free(LRUQueue *lruQueue)
-{
-  // go over each entry and free its result set
-  while (lruQueue->head != NULL)
-  {
-    lruQueue->freeCB(lruQueue->head->cacheData.cacheValue);
-    lruQueue->head = lruQueue->head->next;
-  }
-
-  for (int i = 0; i < array_len(lruQueue->freeList); i++)
-  {
-    lruQueue->freeCB(lruQueue->freeList[i]->cacheData.cacheValue);
-  }
-
-  // memeory release
-
-
-  array_free(lruQueue->freeList);
-  rm_free(lruQueue->buffer);
-  rm_free(lruQueue);
-}
-
-bool isEmptyQueue(LRUQueue *queue)
-{
-  // no tail - nothing inside
-  return queue->tail == NULL;
-}
-bool isFullQueue(LRUQueue *queue)
+bool lruQueueIsFull(LRUQueue *queue)
 {
   // maximal capacity reached
   return queue->capacity == queue->size;
 }
 
-LRUNode *dequeue(LRUQueue *queue)
+bool lruQueueIsEmpty(LRUQueue *queue)
+{
+  // no tail - nothing inside
+  return queue->tail == NULL;
+}
+
+void *lruQueueDequeue(LRUQueue *queue)
 {
   // for empty queue return null
-  if (isEmptyQueue(queue))
+  if (lruQueueIsEmpty(queue))
   {
     return NULL;
   }
@@ -126,14 +108,14 @@ LRUNode *dequeue(LRUQueue *queue)
   array_append(queue->freeList, tmp);
   // reduce queue size
   queue->size--;
-  return tmp;
+  return tmp->data;
 }
 
 LRUNode *setNodeInQueue(LRUQueue *queue, LRUNode *newNode)
 {
   // new node next is the queue (previous) head
   newNode->next = queue->head;
-  if (isEmptyQueue(queue))
+  if (lruQueueIsEmpty(queue))
   {
     // empty queue - the new node is both head and tail
     queue->head = queue->tail = newNode;
@@ -147,14 +129,14 @@ LRUNode *setNodeInQueue(LRUQueue *queue, LRUNode *newNode)
   // increase queue size
   queue->size++;
   // queue is full. linear inseration is no longer an option
-  if (isFullQueue(queue))
+  if (lruQueueIsFull(queue))
   {
     queue->stopLinearInsertion = true;
   }
   return newNode;
 }
 
-LRUNode *enqueue(LRUQueue *queue, hash_key_t const key, void *cacheValue)
+void *lruQueueEnqueue(LRUQueue *queue, void *cacheValue)
 {
   // init new node
   LRUNode *emptyNode;
@@ -169,18 +151,32 @@ LRUNode *enqueue(LRUQueue *queue, hash_key_t const key, void *cacheValue)
     emptyNode = queue->emptySpace;
   }
 
-  LRUNode *node = initLRUNode(emptyNode, key, cacheValue, queue->freeCB);
+  LRUNode *node = initLRUNode(emptyNode, cacheValue, queue->dataSize, (lruDataFreeFunc)queue->freeCB);
   //will be false until array is full - for linear insertion over the array
   if (!queue->stopLinearInsertion && emptyNode == queue->emptySpace)
   {
-    queue->emptySpace++;
+    queue->emptySpace = (LRUNode*)((char*)queue->emptySpace + sizeOfLRUNode(queue->dataSize));
   }
   // put node in queue
-  return setNodeInQueue(queue, node);
+  return (setNodeInQueue(queue, node)->data);
 }
 
-void moveToHead(LRUQueue *queue, LRUNode *node)
+void lruQueueEmptyQueue(LRUQueue *queue)
 {
+  // move all pointers and meta data to their defualt values
+  initLRUQueue(queue, queue->capacity);
+}
+
+LRUNode *getNodeFromData(void *data, size_t dataSize)
+{
+  size_t metaDataSize = sizeOfLRUNode(dataSize) - dataSize;
+  LRUNode *node = (LRUNode *)((char *)data - metaDataSize);
+  return node;
+}
+
+void lruQueueMoveToHead(LRUQueue *queue, void *data)
+{
+  LRUNode *node = getNodeFromData(data, queue->dataSize);
   if (node != queue->head)
   {
     // pull node out from its place (line its prev and next)
@@ -203,14 +199,9 @@ void moveToHead(LRUQueue *queue, LRUNode *node)
   }
 }
 
-void emptyQueue(LRUQueue *queue)
+void lruQueueRemoveFromQueue(LRUQueue *queue, void *data)
 {
-  // move all pointers and meta data to their defualt values
-  initLRUQueue(queue, queue->capacity);
-}
-
-void removeFromQueue(LRUQueue* queue, LRUNode *node)
-{
+  LRUNode *node = getNodeFromData(data, queue->dataSize);
   if (node->prev)
   {
     node->prev->next = node->next;
@@ -222,4 +213,25 @@ void removeFromQueue(LRUQueue* queue, LRUNode *node)
 
   array_append(queue->freeList, node);
   queue->size--;
+}
+
+void lruQueueFree(LRUQueue *lruQueue)
+{
+  // go over each entry and free its result set
+  while (lruQueue->head != NULL)
+  {
+    void* data = (void*)lruQueue->head->data;
+    lruQueue->freeCB(data);
+    lruQueue->head = lruQueue->head->next;
+  }
+
+  for (int i = 0; i < array_len(lruQueue->freeList); i++)
+  {
+    lruQueue->freeCB(lruQueue->freeList[i]->data);
+  }
+
+  // memeory release
+  array_free(lruQueue->freeList);
+  rm_free(lruQueue->buffer);
+  rm_free(lruQueue);
 }

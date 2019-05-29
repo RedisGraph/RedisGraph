@@ -6,22 +6,28 @@
 
 #pragma once
 
-#include<stdlib.h>
-#include<stdbool.h>
+#include <stdlib.h>
+#include <stdbool.h>
 #include "../util/rmalloc.h"
 
 #define HASH_KEY_LENGTH 8
 
 typedef unsigned long long hash_key_t;
-
 typedef void (*cacheValueFreeFunc)(void *);
 
 /**
  * @brief  struct for holding cache data
  */
-typedef struct CacheData
-{
+typedef struct CacheData {
   hash_key_t hashKey;               // CacheData key - 64 bit hashed key
-  void *cacheValue;                 // Value to be stored in cache
-  bool isDirty;                     // Indication for written entry, for memeory release
+  void *value;                      // Value to be stored in cache
+  cacheValueFreeFunc freeFunc;      // function to free the stored value
 } CacheData;
+
+// /**
+//  * @brief  frees a a cache data object
+//  * @note   
+//  * @param  cacheData: cache data to be freed
+//  * @retval None
+//  */
+// void cacheDataFree(CacheData* cacheData);

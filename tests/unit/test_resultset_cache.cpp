@@ -78,7 +78,7 @@ TEST_F(CacheStorageTest, RaxTestEdgeCase)
 
 TEST_F(ResultSetCacheTest, ResultSetCacheTest)
 {
-  Cache *resultSetCache = Cache_New(3, (cacheValueFreeFunc)ResultSet_Free);
+  Cache *resultSetCache = cacheNew(3, (cacheValueFreeFunc)ResultSet_Free);
 
   ResultSet *rs1 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
   ResultSet *rs2 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
@@ -91,45 +91,45 @@ TEST_F(ResultSetCacheTest, ResultSetCacheTest)
   char *query4 = "MATCH (d) RETURN d";
 
   //check for not existing key
-  ASSERT_FALSE(getCacheValue(resultSetCache, query1, strlen(query1)));
+  ASSERT_FALSE(cacheGetValue(resultSetCache, query1, strlen(query1)));
 
   // add single entry
-  storeCacheValue(resultSetCache, query1, strlen(query1), rs1);
-  ASSERT_EQ(rs1, getCacheValue(resultSetCache, query1, strlen(query1)));
+  cacheSetValue(resultSetCache, query1, strlen(query1), rs1);
+  ASSERT_EQ(rs1, cacheGetValue(resultSetCache, query1, strlen(query1)));
 
   // add multiple entries
-  storeCacheValue(resultSetCache, query2, strlen(query2), rs2);
-  ASSERT_EQ(rs2, getCacheValue(resultSetCache, query2, strlen(query2)));
-  storeCacheValue(resultSetCache, query3, strlen(query3), rs3);
-  ASSERT_EQ(rs3, getCacheValue(resultSetCache, query3, strlen(query3)));
-  storeCacheValue(resultSetCache, query4, strlen(query4), rs4);
-  ASSERT_EQ(rs4, getCacheValue(resultSetCache, query4, strlen(query4)));
+  cacheSetValue(resultSetCache, query2, strlen(query2), rs2);
+  ASSERT_EQ(rs2, cacheGetValue(resultSetCache, query2, strlen(query2)));
+  cacheSetValue(resultSetCache, query3, strlen(query3), rs3);
+  ASSERT_EQ(rs3, cacheGetValue(resultSetCache, query3, strlen(query3)));
+  cacheSetValue(resultSetCache, query4, strlen(query4), rs4);
+  ASSERT_EQ(rs4, cacheGetValue(resultSetCache, query4, strlen(query4)));
 
   //verify that oldest entry is not exists - queue is [ 4 | 3 | 2 ]
-  ASSERT_FALSE(getCacheValue(resultSetCache, query1, strlen(query1)));
+  ASSERT_FALSE(cacheGetValue(resultSetCache, query1, strlen(query1)));
 
   //clear cache
-  clearCache(resultSetCache);
-  ASSERT_FALSE(getCacheValue(resultSetCache, query1, strlen(query1)));
-  ASSERT_FALSE(getCacheValue(resultSetCache, query2, strlen(query2)));
-  ASSERT_FALSE(getCacheValue(resultSetCache, query3, strlen(query3)));
-  ASSERT_FALSE(getCacheValue(resultSetCache, query4, strlen(query4)));
+  cacheClear(resultSetCache);
+  ASSERT_FALSE(cacheGetValue(resultSetCache, query1, strlen(query1)));
+  ASSERT_FALSE(cacheGetValue(resultSetCache, query2, strlen(query2)));
+  ASSERT_FALSE(cacheGetValue(resultSetCache, query3, strlen(query3)));
+  ASSERT_FALSE(cacheGetValue(resultSetCache, query4, strlen(query4)));
 
   //re-alloc since they are delted or will be deleted in the cache, rs4 will be deleted once those will be inserted
   rs1 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
   rs2 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
   rs3 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
 
-  storeCacheValue(resultSetCache, query1, strlen(query1), rs1);
-  ASSERT_EQ(rs1, getCacheValue(resultSetCache, query1, strlen(query1)));
-  storeCacheValue(resultSetCache, query2, strlen(query2), rs2);
-  ASSERT_EQ(rs2, getCacheValue(resultSetCache, query2, strlen(query2)));
-  storeCacheValue(resultSetCache, query3, strlen(query3), rs3);
-  ASSERT_EQ(rs3, getCacheValue(resultSetCache, query3, strlen(query3)));
+  cacheSetValue(resultSetCache, query1, strlen(query1), rs1);
+  ASSERT_EQ(rs1, cacheGetValue(resultSetCache, query1, strlen(query1)));
+  cacheSetValue(resultSetCache, query2, strlen(query2), rs2);
+  ASSERT_EQ(rs2, cacheGetValue(resultSetCache, query2, strlen(query2)));
+  cacheSetValue(resultSetCache, query3, strlen(query3), rs3);
+  ASSERT_EQ(rs3, cacheGetValue(resultSetCache, query3, strlen(query3)));
 
-  ASSERT_FALSE(getCacheValue(resultSetCache, query4, strlen(query4)));
+  ASSERT_FALSE(cacheGetValue(resultSetCache, query4, strlen(query4)));
 
-  Cache_Free(resultSetCache);
+  cacheFree(resultSetCache);
 }
 
 TEST_F(ResultSetCacheTest, GraphCacheTest)
@@ -243,8 +243,12 @@ TEST_F(ResultSetCacheTest, GraphCacheRemoveEntryTest){
   removeGraphCache(graph1);
 }
 
+
+void ResultSetPtr_Free(ResultSet** ptr){
+  ResultSet_Free(*ptr);
+}
 TEST_F(LRUQueueTest, TestLRUQueue){
-  LRUQueue *queue = LRUQueue_New(10, (cacheValueFreeFunc)ResultSet_Free);
+  LRUQueue *queue = lruQueueNew(10, sizeof(ResultSet *), (lruDataFreeFunc)ResultSetPtr_Free);
 
   unsigned long long key0 = 0;
   unsigned long long key1 = 1;
@@ -259,65 +263,66 @@ TEST_F(LRUQueueTest, TestLRUQueue){
   unsigned long long key10 = 10;
 
   ResultSet *rs0 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
-  enqueue(queue, key0, rs0);
-  ASSERT_EQ(rs0, queue->buffer[0].cacheData.cacheValue);
-
+  void *data0 = lruQueueEnqueue(queue, &rs0);
+  
   ResultSet *rs1 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
-  enqueue(queue, key1, rs1);
-  ASSERT_EQ(rs1, queue->buffer[1].cacheData.cacheValue);
-
+  void* data1 = lruQueueEnqueue(queue, &rs1);
+ 
   ResultSet *rs2 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
-  enqueue(queue, key2, rs2);
-  ASSERT_EQ(rs2, queue->buffer[2].cacheData.cacheValue);
+  void* data2 = lruQueueEnqueue(queue, &rs2);
 
   ResultSet *rs3 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
-  enqueue(queue, key3, rs3);
-  ASSERT_EQ(rs3, queue->buffer[3].cacheData.cacheValue);
+  void *data3 = lruQueueEnqueue(queue, &rs3);
 
   ResultSet *rs4 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
-  enqueue(queue, key4, rs4);
-  ASSERT_EQ(rs4, queue->buffer[4].cacheData.cacheValue);
+  void *data4 = lruQueueEnqueue(queue, &rs4);
 
   ResultSet *rs5 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
-  enqueue(queue, key5, rs5);
-  ASSERT_EQ(rs5, queue->buffer[5].cacheData.cacheValue);
+  void *data5 = lruQueueEnqueue(queue, &rs5);
 
   ResultSet *rs6 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
-  enqueue(queue, key6, rs6);
-  ASSERT_EQ(rs6, queue->buffer[6].cacheData.cacheValue);
+  void *data6 = lruQueueEnqueue(queue, &rs6);
 
   ResultSet *rs7 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
-  enqueue(queue, key7, rs7);
-  ASSERT_EQ(rs7, queue->buffer[7].cacheData.cacheValue);
+  void *data7 = lruQueueEnqueue(queue, &rs7);
 
-  removeFromQueue(queue, &queue->buffer[6]);
-  removeFromQueue(queue, &queue->buffer[4]);
-  removeFromQueue(queue, &queue->buffer[3]);
+  ASSERT_EQ(0, memcmp(&rs0, (ResultSet **)data0, sizeof(ResultSet *)));
+  ASSERT_EQ(0, memcmp(&rs1, (ResultSet **)data1, sizeof(ResultSet *)));
+  ASSERT_EQ(0, memcmp(&rs2, (ResultSet **)data2, sizeof(ResultSet *)));
+  ASSERT_EQ(0, memcmp(&rs3, (ResultSet **)data3, sizeof(ResultSet *)));
+  ASSERT_EQ(0, memcmp(&rs4, (ResultSet **)data4, sizeof(ResultSet *)));
+  ASSERT_EQ(0, memcmp(&rs5, (ResultSet **)data5, sizeof(ResultSet *)));
+  ASSERT_EQ(0, memcmp(&rs6, (ResultSet **)data6, sizeof(ResultSet *)));
+  ASSERT_EQ(0, memcmp(&rs7, (ResultSet **)data7, sizeof(ResultSet *)));
+
+  lruQueueRemoveFromQueue(queue, data6);
+  lruQueueRemoveFromQueue(queue, data4);
+  lruQueueRemoveFromQueue(queue, data3);
 
   rs3 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
-  enqueue(queue, key3, rs3);
-  ASSERT_EQ(rs3, queue->buffer[3].cacheData.cacheValue);
+  data3 = lruQueueEnqueue(queue, &rs3);
+  ASSERT_EQ(0, memcmp(&rs3, (ResultSet **)data3, sizeof(ResultSet *)));
 
   rs4 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
-  enqueue(queue, key4, rs4);
-  ASSERT_EQ(rs4, queue->buffer[4].cacheData.cacheValue);
+  data4 = lruQueueEnqueue(queue, &rs4);
+  ASSERT_EQ(0, memcmp(&rs4, (ResultSet **)data4, sizeof(ResultSet *)));
 
   rs6 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
-  enqueue(queue, key6, rs6);
-  ASSERT_EQ(rs6, queue->buffer[6].cacheData.cacheValue);
+  data6 = lruQueueEnqueue(queue, &rs6);
+  ASSERT_EQ(0, memcmp(&rs6, (ResultSet **)data6, sizeof(ResultSet *)));
 
   ResultSet *rs8 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
-  enqueue(queue, key8, rs8);
-  ASSERT_EQ(rs8, queue->buffer[8].cacheData.cacheValue);
+  void* data8 = lruQueueEnqueue(queue, &rs8);
+  ASSERT_EQ(0, memcmp(&rs8, (ResultSet **)data8, sizeof(ResultSet *)));
 
   ResultSet *rs9 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
-  enqueue(queue, key9, rs9);
-  ASSERT_EQ(rs9, queue->buffer[9].cacheData.cacheValue);
+  void* data9 = lruQueueEnqueue(queue, &rs9);
+  ASSERT_EQ(0, memcmp(&rs9, (ResultSet **)data9, sizeof(ResultSet *)));
 
   ResultSet *rs10 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
-  dequeue(queue);
-  enqueue(queue, key10, rs10);
-  ASSERT_EQ(rs9, queue->buffer[9].cacheData.cacheValue);
+  lruQueueDequeue(queue);
+  void* data10 = lruQueueEnqueue(queue, &rs10);
+  ASSERT_EQ(0, memcmp(&rs10, (ResultSet **)data10, sizeof(ResultSet *)));
 
-  LRUQueue_Free(queue);
+  lruQueueFree(queue);
 }
