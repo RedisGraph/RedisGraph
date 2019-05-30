@@ -250,18 +250,6 @@ void ResultSetPtr_Free(ResultSet** ptr){
 TEST_F(LRUQueueTest, TestLRUQueue){
   LRUQueue *queue = lruQueueNew(10, sizeof(ResultSet *), (lruDataFreeFunc)ResultSetPtr_Free);
 
-  unsigned long long key0 = 0;
-  unsigned long long key1 = 1;
-  unsigned long long key2 = 2;
-  unsigned long long key3 = 3;
-  unsigned long long key4 = 4;
-  unsigned long long key5 = 5;
-  unsigned long long key6 = 6;
-  unsigned long long key7 = 7;
-  unsigned long long key8 = 8;
-  unsigned long long key9 = 9;
-  unsigned long long key10 = 10;
-
   ResultSet *rs0 = (ResultSet *)rm_calloc(1, sizeof(ResultSet));
   void *data0 = lruQueueEnqueue(queue, &rs0);
   
