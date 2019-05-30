@@ -43,7 +43,8 @@ void _edge_accum(void *_z, const void *_x, const void *_y) {
     }
 }
 
-bool _select_op_free_edge(GrB_Index i, GrB_Index j, GrB_Index nrows, GrB_Index ncols, const void *x, const Graph *g) {
+bool _select_op_free_edge(GrB_Index i, GrB_Index j, GrB_Index nrows, GrB_Index ncols, const void *x, const void *k) {
+    const Graph *g = (const Graph*)k;
     const EdgeID *id = (const EdgeID*)x;
     if((SINGLE_EDGE(*id))) {
         DataBlock_DeleteItem(g->edges, SINGLE_EDGE_ID(*id));
@@ -677,13 +678,15 @@ void Graph_DeleteNode(Graph *g, Node *n) {
     DataBlock_DeleteItem(g->nodes, ENTITY_GET_ID(n));
 }
 
-void _BulkDeleteNodes(Graph *g, Node *nodes, size_t node_count, size_t *edge_deleted) {
+void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
+                      uint *node_deleted, uint *edge_deleted) {
     assert(g && g->_writelocked && nodes && node_count > 0);
 
     /* Create a matrix M where M[j,i] = 1 where:
      * Node i in is connected to node j. */
     
     GrB_Matrix A;                       // A = R(M) masked relation matrix.
+    GrB_Index nvals;                    // Number of elements in mask.
     GrB_Matrix Mask;                    // Mask noteing all implicitly deleted edges.
     GrB_Matrix Nodes;                   // Mask noteing each node marked for deletion.
     GrB_Matrix adj;                     // Adjacency matrix.
@@ -731,8 +734,10 @@ void _BulkDeleteNodes(Graph *g, Node *nodes, size_t node_count, size_t *edge_del
 
         GrB_Matrix_setElement_BOOL(Nodes, true, ID, ID);
     }
+    
+    GrB_Matrix_nvals(&nvals, Nodes);
+    *node_deleted += nvals;
 
-    GrB_Index nvals;
     GrB_Matrix_nvals(&nvals, Mask);
     *edge_deleted += nvals;
 
@@ -806,15 +811,15 @@ void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
         GrB_Matrix M;   // Matrix being modified.
         GrB_Index row;  // Row index
         GrB_Index col;  // Column index.
-    } PenddingDeletion;
+    } PendingDeletion;
 
     GrB_Matrix R;   // Relation matrix.
     GrB_Matrix M;   // Relation mapping matrix.
     GrB_Info info;
     EdgeID edge_id;
     
-    PenddingDeletion deletion;
-    PenddingDeletion *deletions = array_new(PenddingDeletion, edge_count*2);
+    PendingDeletion deletion;
+    PendingDeletion *deletions = array_new(PendingDeletion, edge_count*2);
 
     for(int i = 0; i < edge_count; i++) {
         Edge *e = edges + i;
@@ -906,15 +911,19 @@ void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
             assert(GxB_Matrix_Delete(M, src, dest) == GrB_SUCCESS);
         }
     }
+
+    // Clean up.
+    array_free(deletions);
 }
 
 /* Removes both nodes and edges from graph. */
-void Graph_BulkDelete(Graph *g, Node *nodes, size_t node_count, Edge *edges, size_t edge_count, size_t *edge_deleted) {
+void Graph_BulkDelete(Graph *g, Node *nodes, uint node_count, Edge *edges, uint edge_count, uint *node_deleted, uint *edge_deleted) {
     assert(g);
-    
-    *edge_deleted = 0;
 
-    if(node_count) _BulkDeleteNodes(g, nodes, node_count, edge_deleted);
+    *edge_deleted = 0;
+    *node_deleted = 0;
+
+    if(node_count) _BulkDeleteNodes(g, nodes, node_count, node_deleted, edge_deleted);
 
     if(edge_count) {
         // Filter out explicit edges which were removed by _BulkDeleteNodes.
@@ -936,14 +945,18 @@ void Graph_BulkDelete(Graph *g, Node *nodes, size_t node_count, Edge *edges, siz
             }
         }
 
-        // Removing duplicates
+        /* it might be that edge_count dropped to 0
+         * due to implicit edge deletion. */
+        if(edge_count == 0) return;
+
+        // Removing duplicates.
         #define is_edge_lt(a, b) (ENTITY_GET_ID((a)) < ENTITY_GET_ID((b)))
         QSORT(Edge, edges, edge_count, is_edge_lt);
 
         size_t uniqueIdx = 0;
         for(int i = 0; i < edge_count; i++) {
             // As long as current is the same as follows.
-            while(i < edge_count && ENTITY_GET_ID(edges+i) == ENTITY_GET_ID(edges+i+1)) i++;
+            while(i < edge_count-1 && ENTITY_GET_ID(edges+i) == ENTITY_GET_ID(edges+i+1)) i++;
 
             if(uniqueIdx < i) edges[uniqueIdx] = edges[i];
             uniqueIdx++;

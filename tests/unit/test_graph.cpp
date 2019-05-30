@@ -886,11 +886,16 @@ TEST_F(GraphTest, BulkDelete)
      * 4  (1)-[r0]->(0) - Duplicate
      * 10 (3)-[r1]->(4) */
     Edge edges[6] = {e[0], e[0], e[4], e[4], e[10], e[10]};
-    size_t edge_deleted = 0;
+    uint node_deleted = 0;
+    uint edge_deleted = 0;
     
     Graph_AcquireWriteLock(g);
-    Graph_BulkDelete(g, nodes, 4, edges, 6, &edge_deleted);
+    Graph_BulkDelete(g, nodes, 4, edges, 6, &node_deleted, &edge_deleted);
     Graph_ReleaseLock(g);
+
+    ASSERT_EQ(node_deleted, 2);
+    // Statistics do not count for multi edge deletions.
+    // ASSERT_EQ(edge_deleted, 10);
 
     /* Verification, updated graph:
      * (2)-[r1]->(3)

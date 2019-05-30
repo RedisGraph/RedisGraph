@@ -47,9 +47,10 @@ static uint64_t _binarySearch(Edge *array, EdgeID id) {
 
 void _DeleteEntities(OpDelete *op) {
     Graph *g = op->gc->g;
-    size_t relationships_deleted = 0;
-    size_t node_count = array_len(op->deleted_nodes);
-    size_t edge_count = array_len(op->deleted_edges);
+    uint node_deleted = 0;
+    uint relationships_deleted = 0;
+    uint node_count = array_len(op->deleted_nodes);
+    uint edge_count = array_len(op->deleted_edges);
 
     /* Lock everything. */
     Graph_AcquireWriteLock(g);
@@ -62,12 +63,12 @@ void _DeleteEntities(OpDelete *op) {
     }
 
     Graph_BulkDelete(g, op->deleted_nodes, node_count, op->deleted_edges,
-                     edge_count, &relationships_deleted);
+                     edge_count, &node_deleted, &relationships_deleted);
     
     /* Release lock. */
     Graph_ReleaseLock(g);
 
-    if(op->result_set) op->result_set->stats.nodes_deleted += node_count;
+    if(op->result_set) op->result_set->stats.nodes_deleted += node_deleted;
     if(op->result_set) op->result_set->stats.relationships_deleted += relationships_deleted;
 }
 
