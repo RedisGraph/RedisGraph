@@ -151,8 +151,18 @@ void Graph_DeleteNode (
 // Removes an edge from Graph and updates graph relevent matrices.
 int Graph_DeleteEdge (
     Graph *g,
-    Edge *e,
-    bool delete_all  // Straight forward delete, do not perform any validations.
+    Edge *e
+);
+
+// Removes both nodes and edges from graph.
+void Graph_BulkDelete (
+    Graph *g,           // Graph to delete entities from.
+    Node *nodes,        // Nodes to delete.
+    uint node_count,    // Number of nodes to delete.
+    Edge *edges,        // Edges to delete.
+    uint edge_count,    // Number of edges to delete.
+    uint *node_deleted, // Number of nodes removed.
+    uint *edge_deleted  // Number of edges removed.
 );
 
 // All graph matrices are required to be squared NXN

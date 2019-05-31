@@ -98,13 +98,14 @@ int static inline _DataBlock_IndexOutOfBounds(const DataBlock *dataBlock, size_t
     return (idx >= (dataBlock->itemCount + array_len(dataBlock->deletedIdx)));
 }
 
-DataBlock *DataBlock_New(size_t itemCap, size_t itemSize) {
+DataBlock *DataBlock_New(size_t itemCap, size_t itemSize, fpDestructor fp) {
     DataBlock *dataBlock = rm_malloc(sizeof(DataBlock));
     dataBlock->itemCount = 0;
     dataBlock->itemSize = itemSize;
     dataBlock->blockCount = 0;
     dataBlock->blocks = NULL;
     dataBlock->deletedIdx = array_new(uint64_t, 128);
+    dataBlock->destructor = fp;
     _DataBlock_AddBlocks(dataBlock, ITEM_COUNT_TO_BLOCK_COUNT(itemCap));
     return dataBlock;
 }
@@ -190,6 +191,9 @@ void DataBlock_DeleteItem(DataBlock *dataBlock, uint64_t idx) {
     // Return if item already deleted.
     unsigned char *item = block->data + offset;
     if(_DataBlock_IsItemDeleted(dataBlock, item)) return;
+
+    // Call item destructor.
+    if(dataBlock->destructor) dataBlock->destructor(item);
 
     _DataBlock_MarkItemAsDeleted(dataBlock, item);
     dataBlock->deletedIdx = array_append(dataBlock->deletedIdx, idx);

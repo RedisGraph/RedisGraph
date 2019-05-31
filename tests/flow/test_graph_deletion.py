@@ -91,9 +91,13 @@ class GraphDeletionFlowTest(FlowTestsBase):
 
     # Delete edges pointing into either Boaz or Ori.
     def test02_delete_edges(self):
+        query = """MATCH (s:person)-[e:know]->(d:person) WHERE d.name = "Boaz" OR d.name = "Ori" RETURN count(e)"""
+        actual_result = redis_graph.query(query)
+        edge_count = actual_result.result_set[0][0]
+
         query = """MATCH (s:person)-[e:know]->(d:person) WHERE d.name = "Boaz" OR d.name = "Ori" DELETE e"""
         actual_result = redis_graph.query(query)
-        assert (actual_result.relationships_deleted == 12)
+        assert (actual_result.relationships_deleted == edge_count)
         assert (actual_result.nodes_deleted == 0)
 
     # Make sure there are no edges going into either Boaz or Ori.
@@ -109,9 +113,16 @@ class GraphDeletionFlowTest(FlowTestsBase):
     # connecting the two.
     def test04_delete_typed_edge(self):
         query = """MATCH (s:person {name: "Roi"})-[e:know]->(d:person {name: "Alon"})
-                   DELETE e"""
+                   RETURN count(e)"""
+        
         actual_result = redis_graph.query(query)
-        assert (actual_result.relationships_deleted == 1)
+        edge_count = actual_result.result_set[0][0]
+
+        query = """MATCH (s:person {name: "Roi"})-[e:know]->(d:person {name: "Alon"})
+                   DELETE e"""
+
+        actual_result = redis_graph.query(query)
+        assert (actual_result.relationships_deleted == edge_count)
         assert (actual_result.nodes_deleted == 0)
 
     # Make sure Roi is still connected to Alon

@@ -248,8 +248,6 @@ void GraphContext_AddNodeToIndices(GraphContext *gc, Schema *s, Node *n) {
 
 // Delete all references to a node from any indices built upon its properties
 void GraphContext_DeleteNodeFromIndices(GraphContext *gc, Node *n) {
-  if (!GraphContext_HasIndices(gc)) return;
-
   Schema *s = NULL;
   EntityID node_id = ENTITY_GET_ID(n);
   if (n->label) {

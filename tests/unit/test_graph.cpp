@@ -420,9 +420,8 @@ TEST_F(GraphTest, RemoveNodes)
     // Delete the edges on the first node manually, as Graph_DeleteNode expects
     // it to be detached.
     // Both 0 -> 1 edge and 1 -> 0 edge should be removed.
-    for (uint i = 0; i < edge_count; i ++) {
-        Graph_DeleteEdge(g, &edges[i], false);
-    }
+    for (uint i = 0; i < edge_count; i ++) Graph_DeleteEdge(g, &edges[i]);
+
     array_free(edges);
 
     Graph_GetNode(g, 0, &node);
@@ -558,7 +557,7 @@ TEST_F(GraphTest, RemoveEdges)
     NodeID destID = Edge_GetDestNodeID(&e);
     
     // Delete edge.
-    Graph_DeleteEdge(g, &e, false);
+    Graph_DeleteEdge(g, &e);
 
     // Validate edge deletion.
     ASSERT_EQ(Graph_EdgeCount(g), 2);
@@ -597,7 +596,7 @@ TEST_F(GraphTest, RemoveEdges)
     e = edges[0];
     srcID = Edge_GetSrcNodeID(&e);
     destID = Edge_GetDestNodeID(&e);
-    Graph_DeleteEdge(g, &e, false);
+    Graph_DeleteEdge(g, &e);
 
     // Validate edge deletion.
     ASSERT_EQ(Graph_EdgeCount(g), 1);
@@ -627,7 +626,7 @@ TEST_F(GraphTest, RemoveEdges)
     e = edges[1];
     srcID = Edge_GetSrcNodeID(&e);
     destID = Edge_GetDestNodeID(&e);
-    Graph_DeleteEdge(g, &e, false);
+    Graph_DeleteEdge(g, &e);
 
     // Validate edge deletion.
     ASSERT_EQ(Graph_EdgeCount(g), 0);
@@ -789,5 +788,125 @@ TEST_F(GraphTest, GetEdge)
 
     array_free(edges);
     Graph_ReleaseLock(g);
+    Graph_Free(g);
+}
+
+
+TEST_F(GraphTest, BulkDelete)
+{
+    // Create graph.
+    int node_count = 5;
+    int edge_count = 13;
+    Node n[node_count];
+    Edge e[edge_count];
+    Graph *g = Graph_New(16, 16);
+
+    Graph_AcquireWriteLock(g);
+    
+    int l = Graph_AddLabel(g);
+    int r0 = Graph_AddRelationType(g);
+    int r1 = Graph_AddRelationType(g);
+
+    for(int i = 0; i < node_count; i++) Graph_CreateNode(g, l, &n[i]);
+
+    /* Connect nodes:
+     * (0)-[r0]->(1)
+     * (0)-[r0]->(1)
+     * (0)-[r1]->(1)
+     * (0)-[r1]->(1)
+     * 
+     * (1)-[r0]->(0)
+     * (1)-[r0]->(0)
+     * (1)-[r1]->(0)
+     * 
+     * (2)-[r0]->(0)
+     * (2)-[r1]->(1)
+     * (2)-[r1]->(3)
+     * 
+     * (3)-[r1]->(4)
+     * (3)-[r1]->(4)
+     * 
+     * (4)-[r0]->(3) */
+    
+    // Node 0 is connected to node 1 with multiple edges.
+    Graph_ConnectNodes(g, ENTITY_GET_ID(&n[0]), ENTITY_GET_ID(&n[1]), r0, &e[0]);
+    Edge_SetRelationID(&e[0], r0);
+    Graph_ConnectNodes(g, ENTITY_GET_ID(&n[0]), ENTITY_GET_ID(&n[1]), r0, &e[1]);
+    Edge_SetRelationID(&e[1], r0);
+    Graph_ConnectNodes(g, ENTITY_GET_ID(&n[0]), ENTITY_GET_ID(&n[1]), r1, &e[2]);
+    Edge_SetRelationID(&e[2], r1);
+    Graph_ConnectNodes(g, ENTITY_GET_ID(&n[0]), ENTITY_GET_ID(&n[1]), r1, &e[3]);
+    Edge_SetRelationID(&e[3], r1);
+    
+    // Node 1 is connected to node 0 with multiple edges.
+    Graph_ConnectNodes(g, ENTITY_GET_ID(&n[1]), ENTITY_GET_ID(&n[0]), r0, &e[4]);
+    Edge_SetRelationID(&e[4], r0);
+    Graph_ConnectNodes(g, ENTITY_GET_ID(&n[1]), ENTITY_GET_ID(&n[0]), r0, &e[5]);
+    Edge_SetRelationID(&e[5], r0);
+    Graph_ConnectNodes(g, ENTITY_GET_ID(&n[1]), ENTITY_GET_ID(&n[0]), r1, &e[6]);
+    Edge_SetRelationID(&e[6], r1);
+
+    // Node 2 is connected to nodes 0,1 and 3.
+    Graph_ConnectNodes(g, ENTITY_GET_ID(&n[2]), ENTITY_GET_ID(&n[0]), r0, &e[7]);
+    Edge_SetRelationID(&e[7], r0);
+    Graph_ConnectNodes(g, ENTITY_GET_ID(&n[2]), ENTITY_GET_ID(&n[1]), r1, &e[8]);
+    Edge_SetRelationID(&e[8], r1);
+    Graph_ConnectNodes(g, ENTITY_GET_ID(&n[2]), ENTITY_GET_ID(&n[3]), r1, &e[9]);
+    Edge_SetRelationID(&e[9], r1);
+
+    // Node 3 is connected to node 4 with multiple edges.
+    Graph_ConnectNodes(g, ENTITY_GET_ID(&n[3]), ENTITY_GET_ID(&n[4]), r1, &e[10]);
+    Edge_SetRelationID(&e[10], r1);
+    Graph_ConnectNodes(g, ENTITY_GET_ID(&n[3]), ENTITY_GET_ID(&n[4]), r1, &e[11]);
+    Edge_SetRelationID(&e[11], r1);
+
+    // Node 4 is connected to node 3.
+    Graph_ConnectNodes(g, ENTITY_GET_ID(&n[4]), ENTITY_GET_ID(&n[3]), r0, &e[12]);
+    Edge_SetRelationID(&e[12], r0);
+
+    Graph_ReleaseLock(g);
+    /* Delete nodes 0,1.
+     * Implicit deleted edges:
+     * 0 (0)-[r0]->(1)
+     * 1 (0)-[r0]->(1)
+     * 2 (0)-[r1]->(1)
+     * 3 (0)-[r1]->(1)
+     *
+     * 4 (1)-[r0]->(0)
+     * 5 (1)-[r0]->(0)
+     * 6 (1)-[r1]->(0)
+     *
+     * 7 (2)-[r0]->(0)
+     * 8 (2)-[r1]->(1) */
+
+    Node nodes[4] = {n[0], n[1], n[0], n[1]};
+
+    /* Delete edges 1,5 and 11.
+     * 0  (0)-[r0]->(1) - Duplicate
+     * 4  (1)-[r0]->(0) - Duplicate
+     * 10 (3)-[r1]->(4) */
+    Edge edges[6] = {e[0], e[0], e[4], e[4], e[10], e[10]};
+    uint node_deleted = 0;
+    uint edge_deleted = 0;
+    
+    Graph_AcquireWriteLock(g);
+    Graph_BulkDelete(g, nodes, 4, edges, 6, &node_deleted, &edge_deleted);
+    Graph_ReleaseLock(g);
+
+    ASSERT_EQ(node_deleted, 2);
+    // Statistics do not count for multi edge deletions.
+    // ASSERT_EQ(edge_deleted, 10);
+
+    /* Verification, updated graph:
+     * (2)-[r1]->(3)
+     * 
+     * (3)-[r1]->(4)
+     * 
+     * (4)-[r0]->(3) */
+
+    ASSERT_EQ(Graph_NodeCount(g), 3);
+    ASSERT_EQ(Graph_EdgeCount(g), 3);
+
+    // Clean up.
     Graph_Free(g);
 }
