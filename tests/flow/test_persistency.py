@@ -138,11 +138,11 @@ class GraphPersistency(FlowTestsBase):
             assert(edgeCount == 2)
 
             # Verify indices exists.
-            actual_result = redis_con.execute_command("GRAPH.EXPLAIN", "G", "MATCH (n:person) WHERE n.name = 'Roi' RETURN n")
-            assert("Index Scan" in actual_result)
+            plan = redis_graph.execution_plan("MATCH (n:person) WHERE n.name = 'Roi' RETURN n")
+            assert("Index Scan" in plan)
 
-            actual_result = redis_con.execute_command("GRAPH.EXPLAIN", "G", "MATCH (n:country) WHERE n.name = 'Israel' RETURN n")
-            assert("Index Scan" in actual_result)
+            plan = redis_graph.execution_plan("MATCH (n:country) WHERE n.name = 'Israel' RETURN n")
+            assert("Index Scan" in plan)
 
     # Verify that edges are not modified after entity deletion
     def test02_deleted_entity_migration(self):

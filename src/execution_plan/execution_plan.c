@@ -658,26 +658,18 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, AST **ast, ResultSet *resul
     return plan;
 }
 
-void _ExecutionPlanPrint(const OpBase *op, char **strPlan, int ident) {
-    char strOp[512] = {0};
-    sprintf(strOp, "%*s%s\n", ident, "", op->name);
-    
-    if(*strPlan == NULL) {
-        *strPlan = calloc(strlen(strOp) + 1, sizeof(char));
-    } else {
-        *strPlan = realloc(*strPlan, sizeof(char) * (strlen(*strPlan) + strlen(strOp) + 2));
-    }
-    strcat(*strPlan, strOp);
+void _ExecutionPlan_Print(const OpBase *op, RedisModuleCtx *ctx) {
+    if(!op) return;
 
+    RedisModule_ReplyWithArray(ctx, op->childCount + 1);
+    RedisModule_ReplyWithSimpleString(ctx, op->name);
     for(int i = 0; i < op->childCount; i++) {
-        _ExecutionPlanPrint(op->children[i], strPlan, ident + 4);
+        _ExecutionPlan_Print(op->children[i], ctx);
     }
 }
 
-char* ExecutionPlanPrint(const ExecutionPlan *plan) {
-    char *strPlan = NULL;
-    _ExecutionPlanPrint(plan->root, &strPlan, 0);
-    return strPlan;
+void ExecutionPlan_Print(const ExecutionPlan *plan, RedisModuleCtx *ctx) {
+    _ExecutionPlan_Print(plan->root, ctx);
 }
 
 void _ExecutionPlanInit(OpBase *root) {
