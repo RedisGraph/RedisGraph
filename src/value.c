@@ -62,6 +62,7 @@ SIValue SI_TransferStringVal(char *s) {
 }
 
 SIValue SI_Clone(SIValue v) {
+  // TODO: handel array cloning.
   if (v.type == T_STRING) {
     // Allocate a new copy of the input's string value
     return SI_DuplicateStringVal(v.stringval);
@@ -302,6 +303,8 @@ void SIValue_Persist(SIValue *v) {
 }
 
 void SIValue_Free(SIValue *v) {
+  SIValue *items = NULL;
+
   // The free routine only performs work if it owns a heap allocation.
   if (v->allocation == M_SELF) {
     switch (v->type) {
@@ -314,7 +317,7 @@ void SIValue_Free(SIValue *v) {
         rm_free(v->ptrval);
         return;
       case T_ARRAY:
-        SIValue *items = v->ptrval;
+        items = (SIValue*)v->ptrval;
         int item_count = array_len(items);
         for(int i = 0; i < item_count; i++) SIValue_Free(items+i);
         array_free(items);

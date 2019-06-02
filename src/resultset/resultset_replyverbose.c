@@ -5,21 +5,27 @@
  */
 
 #include "resultset_formatters.h"
+#include "../util/arr.h"
 
-/* This function has handling for SIValue array type. */
+// Forward declarations.
+static void _ResultSet_VerboseReplyWithNode(RedisModuleCtx *ctx, GraphContext *gc, Node *n);
+static void _ResultSet_VerboseReplyWithEdge(RedisModuleCtx *ctx, GraphContext *gc, Edge *e);
+static void _ResultSet_VerboseReplyWithSIValue(RedisModuleCtx *ctx, GraphContext *gc, const SIValue v);
+
+// This function has handling for SIValue array type.
 static void _ResultSet_VerboseReplyWithArray(RedisModuleCtx *ctx, GraphContext *gc, SIValue *arr) {
     int item_count = array_len(arr);
     RedisModule_ReplyWithArray(ctx, item_count);
     for(int i = 0; i < item_count; i++) {
         switch(SI_TYPE(arr[i])) {
             case T_NODE:
-                _ResultSet_VerboseReplyWithSIValue(ctx, gc, arr[i]);
-                break;
-            case T_EDGE:
                 _ResultSet_VerboseReplyWithNode(ctx, gc, (Node*)(arr+i));
                 break;
-            default:
+            case T_EDGE:
                 _ResultSet_VerboseReplyWithEdge(ctx, gc, (Edge*)(arr+i));
+                break;
+            default:
+                _ResultSet_VerboseReplyWithSIValue(ctx, gc, arr[i]);
                 break;
         }
     }
@@ -48,8 +54,7 @@ static void _ResultSet_VerboseReplyWithSIValue(RedisModuleCtx *ctx, GraphContext
             RedisModule_ReplyWithNull(ctx);
             return;
         case T_ARRAY:
-            SIValue *arr = v.ptrval;
-            _ResultSet_VerboseReplyWithArray(ctx, gc, arr);
+            _ResultSet_VerboseReplyWithArray(ctx, gc, (SIValue*)v.ptrval);
             return;
         case T_NODE: // Nodes and edges should always be Record entries at this point
         case T_EDGE:
