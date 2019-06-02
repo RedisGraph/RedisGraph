@@ -11,12 +11,12 @@
 
 #include <assert.h>
 
+// Determin which entities are modified by create op.
 void _SetModifiedEntities(OpCreate *op) {
     AST *ast = op->ast;
-    /* Determin which entities are modified by create op. */
     size_t create_entity_count = Vector_Size(op->ast->createNode->graphEntities);
-    op->nodes_to_create = malloc(sizeof(NodeCreateCtx) * create_entity_count);
-    op->edges_to_create = malloc(sizeof(EdgeCreateCtx) * create_entity_count);
+    op->nodes_to_create = rm_malloc(sizeof(NodeCreateCtx) * create_entity_count);
+    op->edges_to_create = rm_malloc(sizeof(EdgeCreateCtx) * create_entity_count);
 
     int node_idx = 0;
     int edge_idx = 0;
@@ -66,13 +66,13 @@ void _SetModifiedEntities(OpCreate *op) {
 OpBase* NewCreateOp(RedisModuleCtx *ctx, AST *ast, QueryGraph *qg, ResultSet *result_set) {
     OpCreate *op_create = calloc(1, sizeof(OpCreate));
     op_create->gc = GraphContext_GetFromTLS();
-    op_create->ast = ast;
     op_create->qg = qg;
+    op_create->ast = ast;
+    op_create->node_count = 0;
+    op_create->edge_count = 0;
     op_create->records = NULL;
     op_create->nodes_to_create = NULL;
-    op_create->node_count = 0;
     op_create->edges_to_create = NULL;
-    op_create->edge_count = 0;
     op_create->created_nodes = array_new(Node*, 0);
     op_create->created_edges = array_new(Edge*, 0);
     op_create->result_set = result_set;    
@@ -97,13 +97,13 @@ void _CreateNodes(OpCreate *op, Record r) {
         Node *n = op->nodes_to_create[i].node;
 
         /* Create a new node. */
-        Node *newNode = Node_New(n->label, n->alias);
+        Node *newNode = Record_GetNode(r, op->nodes_to_create[i].node_rec_idx);
+        newNode->entity = NULL;
+        newNode->alias = n->alias;
+        newNode->label = n->label;
 
         /* Save node for later insertion. */
         op->created_nodes = array_append(op->created_nodes, newNode);
-
-        /* Update record with new node. */
-        Record_AddScalar(r, op->nodes_to_create[i].node_rec_idx, SI_PtrVal(newNode));
     }
 }
 
@@ -113,31 +113,29 @@ void _CreateEdges(OpCreate *op, Record r) {
         Edge *e = op->edges_to_create[i].edge;
 
         /* Retrieve source and dest nodes. */
-        Node *src_node = (Node*)Record_GetGraphEntity(r, op->edges_to_create[i].src_node_rec_idx);
-        Node *dest_node = (Node*)Record_GetGraphEntity(r, op->edges_to_create[i].dest_node_rec_idx);
+        Node *src_node = Record_GetNode(r, op->edges_to_create[i].src_node_rec_idx);
+        Node *dest_node = Record_GetNode(r, op->edges_to_create[i].dest_node_rec_idx);
 
         /* Create the actual edge. */
-        Edge *newEdge = Edge_New(src_node, dest_node, e->relationship, e->alias);
+        Edge *newEdge = Record_GetEdge(r, op->edges_to_create[i].edge_rec_idx);
+        newEdge->alias = e->alias;
+        newEdge->relationship = e->relationship;
+        Edge_SetSrcNode(newEdge, src_node);
+        Edge_SetDestNode(newEdge, dest_node);
 
         /* Save edge for later insertion. */
         op->created_edges = array_append(op->created_edges, newEdge);
-
-        /* Update record with new edge. */
-        Record_AddScalar(r, op->edges_to_create[i].edge_rec_idx, SI_PtrVal(newEdge));
     }
 }
 
 /* Commit insertions. */
-static void _CommitNodes(OpCreate *op) {
+static void _CommitNodes(OpCreate *op, TrieMap *createEntities) {
     Node *n;
     int labelID;
     Graph *g = op->gc->g;
     uint node_count = array_len(op->created_nodes);
-    TrieMap *createEntities = NewTrieMap();
-    
-    Graph_AllocateNodes(op->gc->g, node_count);
-    CreateClause_ReferredEntities(op->ast->createNode, createEntities);
 
+    Graph_AllocateNodes(op->gc->g, node_count);
     for(uint i = 0; i < node_count; i++) {
         n = op->created_nodes[i];
         Schema *schema = NULL;
@@ -156,7 +154,7 @@ static void _CommitNodes(OpCreate *op) {
 
         // Introduce node into graph.
         Graph_CreateNode(g, labelID, n);
-        
+
         // Set node properties.
         AST_GraphEntity *entity = TrieMap_Find(createEntities, n->alias, strlen(n->alias));
         assert(entity != NULL && entity != TRIEMAP_NOTFOUND);
@@ -179,23 +177,22 @@ static void _CommitNodes(OpCreate *op) {
             }
         }
     }
-
-    TrieMap_Free(createEntities, TrieMap_NOP_CB);
+    
+    op->result_set->stats.nodes_created += node_count;
 }
 
-static void _CommitEdges(OpCreate *op) {
+static void _CommitEdges(OpCreate *op, TrieMap *createEntities) {
     Edge *e;
     int labelID;
     Graph *g = op->gc->g;
     int relationships_created = 0;
-    TrieMap *createEntities = NewTrieMap();
-    CreateClause_ReferredEntities(op->ast->createNode, createEntities);
-
     uint createdEdgeCount = array_len(op->created_edges);
+
     for(uint i = 0; i < createdEdgeCount; i++) {
         e = op->created_edges[i];
         int relation_id;
         NodeID srcNodeID;
+        NodeID destNodeID;
 
         // Nodes which already existed prior to this query would
         // have their ID set under e->srcNodeID and e->destNodeID
@@ -204,7 +201,6 @@ static void _CommitEdges(OpCreate *op) {
         if(e->srcNodeID != INVALID_ENTITY_ID) srcNodeID = e->srcNodeID;
         else srcNodeID = ENTITY_GET_ID(Edge_GetSrcNode(e));
         
-        NodeID destNodeID;
         if(e->destNodeID != INVALID_ENTITY_ID) destNodeID = e->destNodeID;
         else destNodeID = ENTITY_GET_ID(Edge_GetDestNode(e));
 
@@ -235,27 +231,22 @@ static void _CommitEdges(OpCreate *op) {
         }
         relationships_created++;
     }
-
-    TrieMap_Free(createEntities, TrieMap_NOP_CB);
+    
     op->result_set->stats.relationships_created += relationships_created;
 }
 
 static void _CommitNewEntities(OpCreate *op) {
-    size_t node_count = array_len(op->created_nodes);
-    size_t edge_count = array_len(op->created_edges);
+    TrieMap *createEntities = NewTrieMap();
+    CreateClause_ReferredEntities(op->ast->createNode, createEntities);
 
     // Lock everything.
     Graph_AcquireWriteLock(op->gc->g);
-
-    if(node_count > 0) {
-        _CommitNodes(op);
-        op->result_set->stats.nodes_created += node_count;
-    }
-
-    if(edge_count > 0) _CommitEdges(op);
-
+    if(array_len(op->created_nodes) > 0) _CommitNodes(op, createEntities);
+    if(array_len(op->created_edges) > 0) _CommitEdges(op, createEntities);
     // Release lock.
     Graph_ReleaseLock(op->gc->g);
+
+    TrieMap_Free(createEntities, TrieMap_NOP_CB);
 }
 
 static Record _handoff(OpCreate *op) {
@@ -311,28 +302,15 @@ OpResult OpCreateReset(OpBase *ctx) {
 
 void OpCreateFree(OpBase *ctx) {
     OpCreate *op = (OpCreate*)ctx;
+
     if(op->records) {
-        assert(array_len(op->records) == 0);
+        uint rec_count = array_len(op->records);
+        for(uint i = 0; i < rec_count; i++) Record_Free(op->records[i]);
         array_free(op->records);
     }
-    if(op->nodes_to_create) free(op->nodes_to_create);
-    if(op->edges_to_create) free(op->edges_to_create);
-    
-    if (op->created_nodes) {
-        size_t nodeCount = array_len(op->created_nodes);
-        for(uint i = 0; i < nodeCount; i++) {
-            // It's safe to free node, as its internal GraphEntity wouldn't be free.
-            Node_Free(op->created_nodes[i]);
-        }
-        array_free(op->created_nodes);
-    }
 
-    if (op->created_edges) {
-        size_t edgeCount = array_len(op->created_edges);
-        for(uint i = 0; i < edgeCount; i++) {
-            // It's safe to free edge, as its internal GraphEntity wouldn't be free.
-            Edge_Free(op->created_edges[i]);
-        }
-        array_free(op->created_edges);
-    }
+    if(op->created_nodes) array_free(op->created_nodes);
+    if(op->created_edges) array_free(op->created_edges);
+    if(op->nodes_to_create) rm_free(op->nodes_to_create);
+    if(op->edges_to_create) rm_free(op->edges_to_create);
 }
