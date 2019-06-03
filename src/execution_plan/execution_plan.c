@@ -338,29 +338,39 @@ static AR_ExpNode** _OrderClause_GetExpressions(const AST *ast) {
 }
 
 ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, AST *ast, ResultSet *result_set) {
-    GraphContext *gc = GraphContext_GetFromTLS();
-    Graph *g = gc->g;
-    ExecutionPlan *execution_plan = (ExecutionPlan*)calloc(1, sizeof(ExecutionPlan));    
-    execution_plan->result_set = result_set;
-    Vector *ops = NewVector(OpBase*, 1);
+    Graph *g;
     OpBase *op;
+    Vector *ops;
+    QueryGraph *q;
+    GraphContext *gc;
+    size_t node_count;
+    size_t edge_count;
+    FT_FilterNode *filter_tree;
+    ExecutionPlan *execution_plan;
+
+    ops = NewVector(OpBase*, 1);
+    gc = GraphContext_GetFromTLS();
+    g = gc->g;
+    execution_plan = (ExecutionPlan*)calloc(1, sizeof(ExecutionPlan));
+    execution_plan->result_set = result_set;
 
     /* Predetermin graph size: (entities in both MATCH and CREATE clauses)
      * have graph object maintain an entity capacity, to avoid reallocs,
      * problem was reallocs done by CREATE clause, which invalidated old references in ExpandAll. */
-    size_t node_count;
-    size_t edge_count;
     _Determine_Graph_Size(ast, &node_count, &edge_count);
-    QueryGraph *q = QueryGraph_New(node_count, edge_count);
+    q = QueryGraph_New(node_count, edge_count);
     execution_plan->query_graph = q;
-    FT_FilterNode *filter_tree = NULL;
-    if(ast->whereNode != NULL) {
+
+    filter_tree = NULL;
+    if(ast->whereNode) {
         filter_tree = BuildFiltersTree(ast, ast->whereNode->filters);
         execution_plan->filter_tree = filter_tree;
     }
 
     if(ast->callNode) {        
-        OpBase *opProcCall = NewProcCallOp(ast->callNode->procedure, ast->callNode->arguments, ast->callNode->yield, ast);
+        OpBase *opProcCall = NewProcCallOp(ast->callNode->procedure,
+                                            ast->callNode->arguments,
+                                            ast->callNode->yield, ast);
         Vector_Push(ops, opProcCall);
     }
 
@@ -372,7 +382,7 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, AST *ast, ResultSet *resul
         execution_plan->connected_components = connectedComponents;
 
         /* For every connected component.
-         * Incase we're dealing with components
+         * Incase we're dealing with multiple components
          * we'll simply join them all together with a join operation. */
         OpBase *cartesianProduct = NULL;
         if(connectedComponentsCount > 1) {
@@ -385,7 +395,13 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, AST *ast, ResultSet *resul
 
         for(int i = 0; i < connectedComponentsCount; i++) {
             QueryGraph *cc = connectedComponents[i];
-            if(cc->node_count > 1) {
+            if(cc->node_count == 1) {
+                /* Node scan. */
+                Node *n = cc->nodes[0];
+                if(n->label) op = NewNodeByLabelScanOp(n, ast);
+                else op = NewAllNodeScanOp(g, n, ast);
+                Vector_Push(traversals, op);
+            } else {
                 size_t expCount = 0;
                 AlgebraicExpression **exps = AlgebraicExpression_From_QueryGraph(cc, ast, &expCount);
 
@@ -452,12 +468,6 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, AST *ast, ResultSet *resul
                 }
                 // Free the expressions array, as its parts have been converted into operations
                 rm_free(exps);
-            } else {
-                /* Node scan. */
-                Node *n = cc->nodes[0];
-                if(n->label) op = NewNodeByLabelScanOp(n, ast);
-                else op = NewAllNodeScanOp(g, n, ast);
-                Vector_Push(traversals, op);
             }
 
             if(connectedComponentsCount > 1) {
