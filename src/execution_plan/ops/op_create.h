@@ -28,20 +28,17 @@ typedef struct {
 
 typedef struct {
     OpBase op;
-    GraphContext *gc;
     AST *ast;
     QueryGraph *qg;
+    GraphContext *gc;
     Record *records;
-
-    NodeCreateCtx *nodes_to_create;
     size_t node_count;
-
-    EdgeCreateCtx *edges_to_create;
     size_t edge_count;
-
     Node **created_nodes;
     Edge **created_edges;
     ResultSet *result_set;
+    NodeCreateCtx *nodes_to_create;
+    EdgeCreateCtx *edges_to_create;
 } OpCreate;
 
 OpBase* NewCreateOp(RedisModuleCtx *ctx, AST *ast, QueryGraph *qg, ResultSet *result_set);
