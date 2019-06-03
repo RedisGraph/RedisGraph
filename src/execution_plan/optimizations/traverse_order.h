@@ -11,6 +11,9 @@
 #include "../../filter_tree/filter_tree.h"
 #include "../../arithmetic/algebraic_expression.h"
 
+/* Reorders exps such that exp[i] is the ith expression to evaluate. */
+void orderExpressions(AlgebraicExpression **exps, uint exps_count);
+
 typedef enum {
     TRAVERSE_ORDER_FIRST,
     TRAVERSE_ORDER_LAST,
