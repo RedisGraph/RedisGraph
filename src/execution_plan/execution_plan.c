@@ -664,15 +664,13 @@ void _ExecutionPlan_Print(const OpBase *op, RedisModuleCtx *ctx, char *buffer, i
     *op_count += 1; // account for current operation.
 
     // Construct operation string representation.
-    int offset = 0;
-    for(int i = 0; i < ident; i++) offset += sprintf(buffer+offset, "    ");
-    int len = sprintf(buffer+offset, "%s", op->name);
+    int len = sprintf(buffer, "%*s%s", ident, "", op->name);
 
-    RedisModule_ReplyWithStringBuffer(ctx, buffer, len+offset);
+    RedisModule_ReplyWithStringBuffer(ctx, buffer, len);
 
     // Recurse over child operations.
     for(int i = 0; i < op->childCount; i++) {
-        _ExecutionPlan_Print(op->children[i], ctx, buffer, ident+1, op_count);
+        _ExecutionPlan_Print(op->children[i], ctx, buffer, ident+4, op_count);
     }
 }
 
