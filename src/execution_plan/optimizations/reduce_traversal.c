@@ -53,7 +53,7 @@ void reduceTraversal(ExecutionPlan *plan) {
         /* Search to see if dest is already resolved,
          * TODO: Explain why src is guaranteed to be resolved. */
         const char *dest = traverse->algebraic_expression->dest_node->alias;
-        printf("Trying to reduce traverse with src: %s and dest: %s\n", traverse->algebraic_expression->src_node->alias, traverse->algebraic_expression->dest_node->alias);
+        // printf("Trying to reduce traverse with src: %s and dest: %s\n", traverse->algebraic_expression->src_node->alias, traverse->algebraic_expression->dest_node->alias);
         if(_entity_resolved(traverse->op.children[0], dest)) {
             /* Both src and dest are already known
              * perform expand into instaed of traverse. */

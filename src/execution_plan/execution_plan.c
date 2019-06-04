@@ -405,67 +405,38 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, AST *ast, ResultSet *resul
                 size_t expCount = 0;
                 AlgebraicExpression **exps = AlgebraicExpression_From_QueryGraph(cc, ast, &expCount);
 
-                TRAVERSE_ORDER order = determineTraverseOrder(filter_tree, exps, expCount);
-                if(order == TRAVERSE_ORDER_FIRST) {
-                    AlgebraicExpression *exp = exps[0];
-                    selectEntryPoint(exp, filter_tree);
+                // Reorder exps, to the most performent arrangement of evaluation.
+                orderExpressions(exps, expCount);
 
-                    // Create SCAN operation.
-                    if(exp->src_node->label) {
-                        /* There's no longer need for the first matrix operand
-                         * as it's been replaced by label scan. */
-                        AlgebraicExpression_RemoveTerm(exp, 0, NULL);
-                        op = NewNodeByLabelScanOp(exp->src_node, ast);
-                        Vector_Push(traversals, op);
-                    } else {
-                        op = NewAllNodeScanOp(g, exp->src_node, ast);
-                        Vector_Push(traversals, op);
-                    }
-                    for(int i = 0; i < expCount; i++) {
-                        if(exps[i]->operand_count == 0) continue;
-                        if(exps[i]->edge && Edge_VariableLength(exps[i]->edge)) {
-                            op = NewCondVarLenTraverseOp(exps[i],
-                                                         exps[i]->edge->minHops,
-                                                         exps[i]->edge->maxHops,
-                                                         g,
-                                                         ast);
-                        }
-                        else {
-                            op = NewCondTraverseOp(exps[i], ast);
-                        }
-                        Vector_Push(traversals, op);
-                    }
+                AlgebraicExpression *exp = exps[0];
+                selectEntryPoint(exp, filter_tree);
+
+                // Create SCAN operation.
+                if(exp->src_node->label) {
+                    /* There's no longer need for the last matrix operand
+                     * as it's been replaced by label scan. */
+                    AlgebraicExpression_RemoveTerm(exp, 0, NULL);
+                    op = NewNodeByLabelScanOp(exp->src_node, ast);
+                    Vector_Push(traversals, op);
                 } else {
-                    AlgebraicExpression *exp = exps[expCount-1];
-                    selectEntryPoint(exp, filter_tree);
-                    // Create SCAN operation.
-                    if(exp->dest_node->label) {
-                        /* There's no longer need for the first matrix operand
-                         * as it's been replaced by label scan. */
-                        AlgebraicExpression_RemoveTerm(exp, 0, NULL);
-                        op = NewNodeByLabelScanOp(exp->dest_node, ast);
-                        Vector_Push(traversals, op);
-                    } else {
-                        op = NewAllNodeScanOp(g, exp->dest_node, ast);
-                        Vector_Push(traversals, op);
-                    }
-
-                    for(int i = expCount-1; i >= 0; i--) {
-                        if(exps[i]->operand_count == 0) continue;
-                        AlgebraicExpression_Transpose(exps[i]);
-                        if(exps[i]->edge && Edge_VariableLength(exps[i]->edge)) {
-                            op = NewCondVarLenTraverseOp(exps[i],
-                                                         exps[i]->edge->minHops,
-                                                         exps[i]->edge->maxHops,
-                                                         g,
-                                                         ast);
-                        }
-                        else {
-                            op = NewCondTraverseOp(exps[i], ast);
-                        }
-                        Vector_Push(traversals, op);
-                    }
+                    op = NewAllNodeScanOp(g, exp->src_node, ast);
+                    Vector_Push(traversals, op);
                 }
+                for(int i = 0; i < expCount; i++) {
+                    if(exps[i]->operand_count == 0) continue;
+                    if(exps[i]->edge && Edge_VariableLength(exps[i]->edge)) {
+                        op = NewCondVarLenTraverseOp(exps[i],
+                                                        exps[i]->edge->minHops,
+                                                        exps[i]->edge->maxHops,
+                                                        g,
+                                                        ast);
+                    }
+                    else {
+                        op = NewCondTraverseOp(exps[i], ast);
+                    }
+                    Vector_Push(traversals, op);
+                }
+
                 // Free the expressions array, as its parts have been converted into operations
                 rm_free(exps);
             }
