@@ -658,18 +658,35 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, AST **ast, ResultSet *resul
     return plan;
 }
 
-void _ExecutionPlan_Print(const OpBase *op, RedisModuleCtx *ctx) {
+void _ExecutionPlan_Print(const OpBase *op, RedisModuleCtx *ctx, char *buffer, int ident, int *op_count) {
     if(!op) return;
 
-    RedisModule_ReplyWithArray(ctx, op->childCount + 1);
-    RedisModule_ReplyWithSimpleString(ctx, op->name);
+    *op_count += 1; // account for current operation.
+
+    // Construct operation string representation.
+    int offset = 0;
+    for(int i = 0; i < ident; i++) offset += sprintf(buffer+offset, "    ");
+    int len = sprintf(buffer+offset, "%s", op->name);
+
+    RedisModule_ReplyWithStringBuffer(ctx, buffer, len+offset);
+
+    // Recurse over child operations.
     for(int i = 0; i < op->childCount; i++) {
-        _ExecutionPlan_Print(op->children[i], ctx);
+        _ExecutionPlan_Print(op->children[i], ctx, buffer, ident+1, op_count);
     }
 }
 
+// Replys with a string representation of given execution plan.
 void ExecutionPlan_Print(const ExecutionPlan *plan, RedisModuleCtx *ctx) {
-    _ExecutionPlan_Print(plan->root, ctx);
+    assert(plan && ctx);
+
+    int op_count = 0;   // Number of operations printed.
+    char buffer[1024];
+
+    // No idea how many operation are in execution plan.
+    RedisModule_ReplyWithArray(ctx, REDISMODULE_POSTPONED_ARRAY_LEN);
+    _ExecutionPlan_Print(plan->root, ctx, buffer, 0, &op_count);
+    RedisModule_ReplySetArrayLength(ctx, op_count);
 }
 
 void _ExecutionPlanInit(OpBase *root) {
