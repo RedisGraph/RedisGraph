@@ -1,4 +1,4 @@
-display_name: redisgraph
+display_name: RedisGraph
 author: RedisLabs
 email: roi@redislabs.com
 description: A graph database on top of Redis which supports Open-Cypher query language.
