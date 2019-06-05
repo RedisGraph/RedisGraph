@@ -302,12 +302,14 @@ void GraphContext_Free(GraphContext *gc) {
   }
 
   // Free attribute mappings
-  TrieMap_Free(gc->attributes, rm_free);
-  len = array_len(gc->string_mapping);
-  for (uint32_t i = 0; i < len; i ++) {
-    rm_free(gc->string_mapping[i]);
+  if(gc->attributes) TrieMap_Free(gc->attributes, rm_free);
+  if(gc->string_mapping) {
+    len = array_len(gc->string_mapping);
+    for (uint32_t i = 0; i < len; i ++) {
+      rm_free(gc->string_mapping[i]);
+    }
+    array_free(gc->string_mapping);
   }
-  array_free(gc->string_mapping);
 
   rm_free(gc);
 }

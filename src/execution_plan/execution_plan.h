@@ -38,7 +38,7 @@ ExecutionPlan* NewExecutionPlan (
 );
 
 /* Prints execution plan. */
-char* ExecutionPlanPrint(const ExecutionPlan *plan);
+void ExecutionPlan_Print(const ExecutionPlan *plan, RedisModuleCtx *ctx);
 
 /* Removes operation from execution plan. */
 void ExecutionPlan_RemoveOp(ExecutionPlan *plan, OpBase *op);
