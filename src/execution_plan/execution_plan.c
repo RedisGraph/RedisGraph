@@ -72,7 +72,7 @@ void _OpBase_RemoveChild(OpBase *parent, OpBase *child) {
     _OpBase_RemoveNode(parent, child);
 }
 
-Vector* _ExecutionPlan_Locate_References(OpBase *root, OpBase **op, Vector *references) {
+Vector* _ExecutionPlan_Locate_References(OpBase *root, OpBase **op, rax *references) {
     /* List of entities which had their ID resolved
      * at this point of execution, should include all
      * previously modified entities (up the execution plan). */
@@ -108,30 +108,29 @@ Vector* _ExecutionPlan_Locate_References(OpBase *root, OpBase **op, Vector *refe
     /* See if all references been resolved.
      * TODO: create a vector compare function
      * which checks if the content of one is in the other. */
-    int match = Vector_Size(references);
-    size_t ref_count = Vector_Size(references);
+    int match = raxSize(references);
+    size_t ref_count = match;
     size_t seen_count = Vector_Size(seen);
+    
+    // We've seen enough to start matching.
+    if(seen_count >= ref_count) {
+        for(int i = 0; i < seen_count; i++) {
+            // To many unmatched references.
+            if(match > (seen_count-i)) break;
 
-    for(int i = 0; i < ref_count; i++) {
-        char *reference;        
-        Vector_Get(references, i, &reference);
-
-        int j = 0;
-        for(; j < seen_count; j++) {
             char *resolved;
-            Vector_Get(seen, j, &resolved);
-            if(!strcmp(reference, resolved)) {
-                /* Match! */
-                break;
+            Vector_Get(seen, i, &resolved);
+            if(raxFind(references, (unsigned char*)resolved, strlen(resolved)) != raxNotFound) {
+                match--;
+                // All refrences been resolved.
+                if(match == 0) {
+                    *op = root;
+                    break;
+                }
             }
         }
-        
-        /* no match, quick break, */
-        if (j == seen_count) break;
-        else match--;
     }
 
-    if(!match) *op = root;
     return seen;
 }
 
@@ -273,7 +272,7 @@ void ExecutionPlan_Taps(OpBase *root, OpBase ***taps) {
     }
 }
 
-OpBase* ExecutionPlan_Locate_References(OpBase *root, Vector *references) {
+OpBase* ExecutionPlan_Locate_References(OpBase *root, rax *references) {
     OpBase *op = NULL;    
     Vector *temp = _ExecutionPlan_Locate_References(root, &op, references);
     Vector_Free(temp);
@@ -624,7 +623,7 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, AST **ast, ResultSet *resul
                 FT_FilterNode *tree;
                 Vector_Get(sub_trees, j, &tree);
 
-                Vector *references = FilterTree_CollectAliases(tree);
+                rax *references = FilterTree_CollectAliases(tree);
 
                 /* Scan execution plan, locate the earliest position where all 
                  * references been resolved. */
@@ -634,13 +633,8 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, AST **ast, ResultSet *resul
                 /* Create filter node.
                  * Introduce filter op right below located op. */
                 OpBase *filter_op = NewFilterOp(tree);
-                ExecutionPlan_PushBelow(op, filter_op);
-                for(int k = 0; k < Vector_Size(references); k++) {
-                    char *ref;
-                    Vector_Get(references, k, &ref);
-                    free(ref);
-                }
-                Vector_Free(references);
+                ExecutionPlan_PushBelow(op, filter_op);                
+                raxFree(references);
             }
             Vector_Free(sub_trees);
         }

@@ -199,7 +199,7 @@ void AR_EXP_Reduce(const AR_ExpNode *root) {
     }
 }
 
-void AR_EXP_CollectAliases(AR_ExpNode *root, TrieMap *aliases) {
+void AR_EXP_CollectAliases(AR_ExpNode *root, rax *aliases) {
     if (root->type == AR_EXP_OP) {
         for (int i = 0; i < root->op.child_count; i ++) {
             AR_EXP_CollectAliases(root->op.children[i], aliases);
@@ -207,7 +207,7 @@ void AR_EXP_CollectAliases(AR_ExpNode *root, TrieMap *aliases) {
     } else { // type == AR_EXP_OPERAND
         if (root->operand.type == AR_EXP_VARIADIC) {
             char *alias = root->operand.variadic.entity_alias;
-            if (alias) TrieMap_Add(aliases, alias, strlen(alias), NULL, NULL);
+            if (alias) raxInsert(aliases, (unsigned char*)alias, strlen(alias), NULL, NULL);
         }
     }
 }

@@ -9,6 +9,7 @@
 
 #include "./agg_ctx.h"
 #include "../parser/ast.h"
+#include "../../deps/rax/rax.h"
 #include "../graph/query_graph.h"
 #include "../execution_plan/record.h"
 #include "../graph/entities/graph_entity.h"
@@ -129,7 +130,7 @@ void AR_EXP_Reduce(const AR_ExpNode *root);
 /* Utility functions */
 /* Traverse an expression tree and add all graph entity aliases
  * (from variadic) to a triemap. */
-void AR_EXP_CollectAliases(AR_ExpNode *root, TrieMap *aliases);
+void AR_EXP_CollectAliases(AR_ExpNode *root, rax *aliases);
 
 /* Search for an aggregation node within the expression tree.
  * Return 1 and sets agg_node to the aggregation node if exists,
