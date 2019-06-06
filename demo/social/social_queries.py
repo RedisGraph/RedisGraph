@@ -103,8 +103,7 @@ friends_of_friends_visited_netherlands_and_single_query = QueryInfo(
 )
 
 friends_visited_same_places_as_me_query = QueryInfo(
-    query="""MATCH (:person {name:"Roi Lipman"})-[:visited]->(c:country)<-[:visited]-(f:person)<-
-             [:friend]-(:person {name:"Roi Lipman"}) 
+    query="""MATCH (ME:person {name:"Roi Lipman"})-[:visited]->(c:country)<-[:visited]-(f:person)<-[:friend]-(ME)
              RETURN f.name, c.name""",
     description='Friends who have been to places I have visited?',
     max_run_time_ms=0.45,

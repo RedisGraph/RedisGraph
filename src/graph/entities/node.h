@@ -57,6 +57,9 @@ GrB_Matrix Node_GetMatrix(Node *n);
 /* Clones given node. */
 Node* Node_Clone(const Node *n);
 
+/* Gets a string representation of given node. */
+int Node_ToString(const Node *n, char *buff, int buff_len);
+
 /* Frees allocated space by given node. */
 void Node_Free(Node* node);
 

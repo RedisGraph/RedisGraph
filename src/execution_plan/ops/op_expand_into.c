@@ -18,6 +18,23 @@ static int _SetEdge(OpExpandInto *op, Record r) {
     return 1;
 }
 
+int ExpandIntoToString(const OpBase *ctx, char *buff, uint buff_len) {
+    const OpExpandInto *op = (const OpExpandInto*)ctx;
+
+    int offset = 0;    
+    offset += snprintf(buff + offset, buff_len-offset, "%s | ", op->op.name);
+    offset += Node_ToString(op->exp->src_node, buff + offset, buff_len - offset);
+    if(op->exp->edge) {
+        offset += snprintf(buff + offset, buff_len-offset, "-");
+        offset += Edge_ToString(op->exp->edge, buff + offset, buff_len - offset);
+        offset += snprintf(buff + offset, buff_len-offset, "->");
+    } else {
+        offset += snprintf(buff + offset, buff_len-offset, "->");
+    }
+    offset += Node_ToString(op->exp->dest_node, buff + offset, buff_len - offset);
+    return offset;
+}
+
 /* Expand into checks to see if two resolved nodes are connected
  * MATCH (a)-[]->(b), (a)-[:e]->(b) 
  * in the above we might figure out that indeed a is connected somehow to b
@@ -25,7 +42,6 @@ static int _SetEdge(OpExpandInto *op, Record r) {
  * we still need to make sure a is connected via an e edge to b
  * as a and b are already resolved we just need to see if they are 
  * connected via an e edge. */
-
 OpBase* NewExpandIntoOp(AlgebraicExpression *exp, uint srcRecIdx, uint destRecIdx, uint edgeRecIdx) {
     OpExpandInto *expandInto = malloc(sizeof(OpExpandInto));
     expandInto->r = NULL;
@@ -43,6 +59,7 @@ OpBase* NewExpandIntoOp(AlgebraicExpression *exp, uint srcRecIdx, uint destRecId
     expandInto->op.type = OPType_EXPAND_INTO;
     expandInto->op.consume = OpExpandIntoConsume;
     expandInto->op.reset = OpExpandIntoReset;
+    expandInto->op.toString = ExpandIntoToString;
     expandInto->op.free = OpExpandIntoFree;
 
     if(exp->edge) {

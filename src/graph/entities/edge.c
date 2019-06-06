@@ -109,6 +109,23 @@ void Edge_SetRelationID(Edge *e, int relationID) {
 	e->relationID = relationID;
 }
 
+int Edge_ToString(const Edge *e, char *buff, int buff_len) {
+    assert(e && buff);
+
+    int offset = 0;
+    offset += snprintf(buff + offset, buff_len - offset, "[");
+    
+    if(e->alias)
+        offset += snprintf(buff + offset, buff_len - offset, "%s", e->alias);
+    if(e->relationship)
+        offset += snprintf(buff + offset, buff_len - offset, ":%s", e->relationship);
+    if(e->minHops !=1 || e->maxHops !=1)
+        offset += snprintf(buff + offset, buff_len - offset, "*%d..%d", e->minHops, e->maxHops);
+
+    offset += snprintf(buff + offset, buff_len - offset, "]");
+    return offset;
+}
+
 void Edge_Free(Edge* edge) {
 	if(!edge) return;
 

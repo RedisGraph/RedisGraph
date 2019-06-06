@@ -33,6 +33,23 @@ static void _setupTraversedRelations(CondVarLenTraverse *op) {
     op->relationIDsCount = array_len(op->relationIDs);
 }
 
+int CondVarLenTraverseToString(const OpBase *ctx, char *buff, uint buff_len) {
+    const CondVarLenTraverse *op = (const CondVarLenTraverse*)ctx;
+
+    int offset = 0;    
+    offset += snprintf(buff + offset, buff_len-offset, "%s | ", op->op.name);
+    offset += Node_ToString(op->ae->src_node, buff + offset, buff_len - offset);
+    if(op->ae->edge) {
+        offset += snprintf(buff + offset, buff_len-offset, "-");
+        offset += Edge_ToString(op->ae->edge, buff + offset, buff_len - offset);
+        offset += snprintf(buff + offset, buff_len-offset, "->");
+    } else {
+        offset += snprintf(buff + offset, buff_len-offset, "->");
+    }
+    offset += Node_ToString(op->ae->dest_node, buff + offset, buff_len - offset);
+    return offset;
+}
+
 OpBase* NewCondVarLenTraverseOp(AlgebraicExpression *ae, unsigned int minHops, unsigned int maxHops, Graph *g, AST *ast) {
     assert(ae && minHops <= maxHops && g && ae->operand_count == 1);
 
@@ -57,6 +74,7 @@ OpBase* NewCondVarLenTraverseOp(AlgebraicExpression *ae, unsigned int minHops, u
     condVarLenTraverse->op.type = OPType_CONDITIONAL_VAR_LEN_TRAVERSE;
     condVarLenTraverse->op.consume = CondVarLenTraverseConsume;
     condVarLenTraverse->op.reset = CondVarLenTraverseReset;
+    condVarLenTraverse->op.toString = CondVarLenTraverseToString;
     condVarLenTraverse->op.free = CondVarLenTraverseFree;
     condVarLenTraverse->op.modifies = NewVector(char*, 1);
 

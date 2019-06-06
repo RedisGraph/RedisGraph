@@ -66,6 +66,9 @@ void Edge_SetDestNode(Edge *e, Node *dest);
 // Sets edge relation type.
 void Edge_SetRelationID(Edge *e, int relationID);
 
+// Gets a string representation of given edge.
+int Edge_ToString(const Edge *e, char *buff, int buff_len);
+
 // Frees allocated space by given edge
 void Edge_Free(Edge *edge);
 

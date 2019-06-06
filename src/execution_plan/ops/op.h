@@ -54,10 +54,11 @@ typedef enum {
 
 struct OpBase;
 
+typedef void (*fpFree)(struct OpBase*);
 typedef OpResult (*fpInit)(struct OpBase*);
 typedef Record (*fpConsume)(struct OpBase*);
 typedef OpResult (*fpReset)(struct OpBase*);
-typedef void (*fpFree)(struct OpBase*);
+typedef int (*fpToString)(const struct OpBase*, char *, uint);
 
 struct OpBase {
     OPType type;                // Type of operation
@@ -65,6 +66,7 @@ struct OpBase {
     fpConsume consume;          // Produce next record.
     fpReset reset;              // Reset operation state.
     fpFree free;                // Free operation.
+    fpToString toString;        // operation string representation.
     char *name;                 // Operation name.
     Vector *modifies;           // List of aliases, this op modifies.
     struct OpBase **children;   // Child operations.
@@ -76,3 +78,4 @@ typedef struct OpBase OpBase;
 void OpBase_Init(OpBase *op);
 void OpBase_Reset(OpBase *op);
 void OpBase_Free(OpBase *op);
+int OpBase_ToString(const OpBase *op, char *buff, uint buff_len);

@@ -7,10 +7,17 @@
 #include "op_all_node_scan.h"
 #include "../../parser/ast.h"
 
+int AllNodeScanToString(const OpBase *ctx, char *buff, uint buff_len) {
+    const AllNodeScan *op = (const AllNodeScan*)ctx;
+    int offset = snprintf(buff, buff_len, "%s | ", op->op.name);
+    offset += Node_ToString(op->n, buff + offset, buff_len - offset);
+    return offset;
+}
+
 OpBase* NewAllNodeScanOp(const Graph *g, Node *n, AST *ast) {
     AllNodeScan *allNodeScan = malloc(sizeof(AllNodeScan));
+    allNodeScan->n = n;
     allNodeScan->iter = Graph_ScanNodes(g);
-
     allNodeScan->nodeRecIdx = AST_GetAliasID(ast, n->alias);
     allNodeScan->recLength = AST_AliasCount(ast);
 
@@ -20,6 +27,7 @@ OpBase* NewAllNodeScanOp(const Graph *g, Node *n, AST *ast) {
     allNodeScan->op.type = OPType_ALL_NODE_SCAN;
     allNodeScan->op.consume = AllNodeScanConsume;
     allNodeScan->op.reset = AllNodeScanReset;
+    allNodeScan->op.toString = AllNodeScanToString;
     allNodeScan->op.free = AllNodeScanFree;
     allNodeScan->op.modifies = NewVector(char*, 1);
 

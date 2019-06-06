@@ -104,6 +104,17 @@ Node* Node_Clone(const Node *n) {
 	return clone;
 }
 
+int Node_ToString(const Node *n, char *buff, int buff_len) {
+    assert(n && buff);
+
+    int offset = 0;
+    offset += snprintf(buff + offset, buff_len - offset, "(");
+    if(n->alias) offset += snprintf(buff + offset, buff_len - offset, "%s", n->alias);
+    if(n->label) offset += snprintf(buff + offset, buff_len - offset, ":%s", n->label);
+    offset += snprintf(buff + offset, buff_len - offset, ")");
+    return offset;
+}
+
 void Node_Free(Node* node) {
 	if(!node) return;
 

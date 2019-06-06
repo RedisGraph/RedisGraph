@@ -72,6 +72,23 @@ static int _determinRecordCap(const AST *ast) {
     return recordsCap;
 }
 
+int CondTraverseToString(const OpBase *ctx, char *buff, uint buff_len) {
+    const CondTraverse *op = (const CondTraverse*)ctx;
+
+    int offset = 0;    
+    offset += snprintf(buff + offset, buff_len-offset, "%s | ", op->op.name);
+    offset += Node_ToString(op->algebraic_expression->src_node, buff + offset, buff_len - offset);
+    if(op->algebraic_expression->edge) {
+        offset += snprintf(buff + offset, buff_len-offset, "-");
+        offset += Edge_ToString(op->algebraic_expression->edge, buff + offset, buff_len - offset);
+        offset += snprintf(buff + offset, buff_len-offset, "->");
+    } else {
+        offset += snprintf(buff + offset, buff_len-offset, "->");
+    }
+    offset += Node_ToString(op->algebraic_expression->dest_node, buff + offset, buff_len - offset);
+    return offset;
+}
+
 OpBase* NewCondTraverseOp(AlgebraicExpression *algebraic_expression, AST *ast) {
     CondTraverse *traverse = calloc(1, sizeof(CondTraverse));
     traverse->ast = ast;
@@ -101,6 +118,7 @@ OpBase* NewCondTraverseOp(AlgebraicExpression *algebraic_expression, AST *ast) {
     traverse->op.consume = CondTraverseConsume;
     traverse->op.init = CondTraverseInit;
     traverse->op.reset = CondTraverseReset;
+    traverse->op.toString = CondTraverseToString;
     traverse->op.free = CondTraverseFree;
     traverse->op.modifies = NewVector(char*, 1);
 
