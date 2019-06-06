@@ -383,6 +383,90 @@ AlgebraicExpression *AlgebraicExpression_Empty() {
     return _AE_MUL(1);
 }
 
+/* In case edge a and b share a node:
+ * (a)-[E0]->(b)<-[e1]-(c)
+ * than the shared entity is returned
+ * if edges are disjoint, NULL is returned. */
+static Node* _SharedNode(const Edge *a, const Edge *b) {
+    assert(a && b);
+    if(a->src == b->src) return a->src;
+    if(a->src == b->dest) return a->src;
+    if(a->dest == b->src) return a->dest;
+    if(a->dest == b->dest) return a->dest;
+    return NULL;
+}
+
+static AlgebraicExpression* _AlgebraicExpression_From_Path(Edge **path, uint path_len, const AST *ast) {
+    Edge *e;
+    AlgebraicExpressionOperand op;
+
+    // Construct expression.
+    AlgebraicExpression *exp = _AE_MUL(path_len * 3 - 1);  // (3) Node Edge Node.
+    // Count number of transposed edges.
+    int transposeCount = 0;
+
+    for(int i = 0; i < path_len; i++) {
+        e = path[i];
+        /* Determin if edge need to be transposed:
+         * Treating path as a chain
+         * we're aligning all edges to "point right"
+         * (A)-[E0]->(B)-[E0]->(C)-[E0]->(D).
+         * e.g. 
+         * (A)-[E0]->(B)<-[E1]-(C)-[E2]->(D)
+         * E1 will be transposed:
+         * (A)-[E0]->(B)-[E1]->(C)-[E2]->(D) */
+        bool transpose = false;
+        if(path_len > 1) {
+            if(i < path_len-1) {
+                Edge* follow = path[i+1];
+                Node *shared = _SharedNode(e, follow);
+                transpose = (e->dest != shared);
+            } else {
+                // Last edge.                
+                Edge* prev = path[i-1];
+                Node *shared = _SharedNode(prev, e);
+                transpose = (e->src != shared);
+            }
+            if(transpose) {
+                transposeCount++;
+                Edge_Reverse(e);
+            }
+        }
+
+        // If src node has a label, multiple by label matrix.
+        if(e->src->label) {
+            op = _AlgebraicExpression_OperandFromNode(e->src);
+            AlgebraicExpression_AppendOperand(exp, op);
+        }
+
+        // Add Edge matrix.
+        op = _AlgebraicExpression_OperandFromEdge(e, transpose, ast);
+        for(int i = 0; i < e->minHops; i++) {
+            AlgebraicExpression_AppendOperand(exp, op);
+        }
+    }   // End of path traversal.
+    
+    // If last node on path has a label, multiply by label matrix.
+    if(e->dest->label) {
+        op = _AlgebraicExpression_OperandFromNode(e->dest);
+        AlgebraicExpression_AppendOperand(exp, op);
+    }
+
+    // Set expression source and destination nodes.
+    exp->src_node = path[0]->src;
+    exp->dest_node = e->dest;
+
+    /* Optimize number of transpose:
+     * if the majority of operands are transposed
+     * transpose the entire expression. 
+     * TODO: avoid transposing diagonal matrices (Labels) */
+    if(transposeCount > (path_len - transposeCount)) {
+        AlgebraicExpression_Transpose(exp);
+    }
+
+    return exp;
+}
+
 AlgebraicExpression **AlgebraicExpression_From_QueryGraph(const QueryGraph *qg, const AST *ast, size_t *exp_count) {
     /* Construct algebraic expression(s) from query graph 
      * trying to take advantage of long multiplications with as few 
@@ -404,13 +488,8 @@ AlgebraicExpression **AlgebraicExpression_From_QueryGraph(const QueryGraph *qg, 
         return NULL;
     }
 
-    Edge *e;
-    Node *src;
-    Node *dest;
-    AlgebraicExpression *exp;
-    AlgebraicExpressionOperand op;
-    AlgebraicExpression **exps = array_new(AlgebraicExpression*, 1);
     QueryGraph *g = QueryGraph_Clone(qg);
+    AlgebraicExpression **exps = array_new(AlgebraicExpression*, 1);
 
     // TODO: Have a single AST function which computes its referred entities.
     TrieMap *ref_entities = NewTrieMap();
@@ -435,43 +514,7 @@ AlgebraicExpression **AlgebraicExpression_From_QueryGraph(const QueryGraph *qg, 
         assert(array_len(path) == level);
 
         // Construct expression.
-        exp = _AE_MUL(level * 3 - 1);  // (3) Node Edge Node.
-
-        // Scan path.
-        for(int i = 0; i < level; i++) {
-            e = path[i];
-
-            // Determin if edge is transposed.
-            bool transpose = false;
-
-            if(i > 0) transpose = (path[i-1]->dest != e->src);
-            if(transpose) Edge_Reverse(e);
-
-            // If src node has a label, multiple by label matrix.
-            if(e->src->label) {
-                op = _AlgebraicExpression_OperandFromNode(e->src);
-                AlgebraicExpression_AppendOperand(exp, op);
-                // printf("%s ", e->src->label);
-            }
-
-            // Add Edge matrix.
-            op = _AlgebraicExpression_OperandFromEdge(e, transpose, ast);
-            for(int i = 0; i < e->minHops; i++) {
-                AlgebraicExpression_AppendOperand(exp, op);
-            }
-            // printf("%s ", e->relationship);
-        }   // End of path traversal.
-
-        // If last node on path has a label, multiply by label matrix.
-        if(e->dest->label) {
-            op = _AlgebraicExpression_OperandFromNode(e->dest);
-            AlgebraicExpression_AppendOperand(exp, op);
-            // printf("%s ", e->dest->label);
-        }
-
-        // Set expression source and destination nodes.
-        exp->src_node = path[0]->src;
-        exp->dest_node = e->dest;
+        AlgebraicExpression *exp = _AlgebraicExpression_From_Path(path, level, ast);
 
         // Split constructed expression into sub expressions.
         AlgebraicExpression **sub_exps = _AlgebraicExpression_Intermidate_Expressions(exp, path, g, ref_entities);
@@ -485,10 +528,10 @@ AlgebraicExpression **AlgebraicExpression_From_QueryGraph(const QueryGraph *qg, 
         
         // Clean up
         array_free(sub_exps);
-        // TODO memory leak (fails on [a|b] relations?)
-        // AlgebraicExpression_Free(exp);
         free(exp->operands);
         free(exp);
+        // TODO memory leak (fails on [a|b] relations?)
+        // AlgebraicExpression_Free(exp);
     }
 
     TrieMap_Free(ref_entities, TrieMap_NOP_CB);

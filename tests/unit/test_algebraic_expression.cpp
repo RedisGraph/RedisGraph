@@ -12,9 +12,11 @@ extern "C" {
 
 #include "assert.h"
 #include "../../src/value.h"
+#include "../../src/util/arr.h"
 #include "../../src/graph/graph.h"
 #include "../../src/query_executor.h"
 #include "../../src/graph/query_graph.h"
+#include "../../src/graph/graphcontext.h"
 #include "../../src/util/simple_timer.h"
 #include "../../src/arithmetic/algebraic_expression.h"
 #include "../../src/util/rmalloc.h"
@@ -24,52 +26,170 @@ extern "C" {
 }
 #endif
 
+extern pthread_key_t _tlsGCKey;    // Thread local storage graph context key.
+
+QueryGraph *qg;
+
+// Matrices.
+GrB_Matrix mat_p;
+GrB_Matrix mat_ef;
+GrB_Matrix mat_f;
+GrB_Matrix mat_ev;
+GrB_Matrix mat_c;
+GrB_Matrix mat_ew;
+GrB_Matrix mat_e;
+
+const char *query_no_intermidate_return_nodes = "MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN p, e";
+const char *query_one_intermidate_return_nodes = "MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN p, c, e";
+const char *query_multiple_intermidate_return_nodes = "MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN p, f, c, e";
+
+const char *query_return_first_edge = "MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN ef";
+const char *query_return_intermidate_edge = "MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN ev";
+const char *query_return_last_edge = "MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN ew";
+
 class AlgebraicExpressionTest: public ::testing::Test {
     protected:
-
-    Graph *g;
-    QueryGraph *query_graph;
-    const char *query_no_intermidate_return_nodes;
-    const char *query_one_intermidate_return_nodes;
-    const char *query_multiple_intermidate_return_nodes;
-    const char *query_return_first_edge;
-    const char *query_return_intermidate_edge;
-    const char *query_return_last_edge;
-
     static void SetUpTestCase() {
         // Use the malloc family for allocations
         Alloc_Reset();
 
         // Initialize GraphBLAS.
         GrB_init(GrB_NONBLOCKING);
-        GxB_Global_Option_set(GxB_FORMAT, GxB_BY_ROW); // all matrices in CSR format
+        GxB_Global_Option_set(GxB_FORMAT, GxB_BY_COL); // all matrices in CSC format
         GxB_Global_Option_set(GxB_HYPER, GxB_NEVER_HYPER); // matrices are never hypersparse
+
+        // Create a graph
+        _fake_graph_context();
+        _build_graph();
+        _bind_matrices();
     }
 
     static void TearDownTestCase() {
+        _free_fake_graph_context();
         GrB_finalize();
     }
 
     void SetUp() {
-        srand(time(NULL));
-        // Create a graph
-        g = _build_graph();
-
-        // Create a graph describing the queries which follows
-        query_graph = _build_query_graph(g);
-
-        query_no_intermidate_return_nodes = "MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN p, e";
-        query_one_intermidate_return_nodes = "MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN p, c, e";
-        query_multiple_intermidate_return_nodes = "MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN p, f, c, e";
-
-        query_return_first_edge = "MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN ef";
-        query_return_intermidate_edge = "MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN ev";
-        query_return_last_edge = "MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN ew";
+        qg = QueryGraph_New(16, 16);
     }
 
     void TearDown() {
-        Graph_Free(g);
-        QueryGraph_Free(query_graph);
+        QueryGraph_Free(qg);
+    }
+
+    static void _fake_graph_context() {
+        GraphContext *gc = (GraphContext*)malloc(sizeof(GraphContext));
+
+        gc->g = Graph_New(16, 16);
+        gc->index_count = 0;
+        gc->graph_name = strdup("G");
+        gc->attributes = NewTrieMap();
+        gc->string_mapping = (char**)array_new(char*, 64);
+        gc->node_schemas = (Schema**)array_new(Schema*, GRAPH_DEFAULT_LABEL_CAP);
+        gc->relation_schemas = (Schema**)array_new(Schema*, GRAPH_DEFAULT_RELATION_TYPE_CAP);
+
+        GraphContext_AddSchema(gc, "Person", SCHEMA_NODE);
+        GraphContext_AddSchema(gc, "City", SCHEMA_NODE);
+        GraphContext_AddSchema(gc, "friend", SCHEMA_EDGE);
+        GraphContext_AddSchema(gc, "visit", SCHEMA_EDGE);
+        GraphContext_AddSchema(gc, "war", SCHEMA_EDGE);
+
+        int error = pthread_key_create(&_tlsGCKey, NULL);
+        ASSERT_EQ(error, 0);
+        pthread_setspecific(_tlsGCKey, gc);
+    }
+
+    /* Create a graph containing:
+     * Entities: 'people' and 'countries'.
+     * Relations: 'friend', 'visit' and 'war'. */
+    static void _build_graph() {
+        GraphContext *gc = GraphContext_GetFromTLS();
+
+        Node n;
+        Graph *g = gc->g;
+        Graph_AcquireWriteLock(g);
+
+        size_t city_count = 2;
+        size_t person_count = 2;
+        size_t node_count = person_count + city_count;
+
+        // Introduce person and country labels.
+        int city_label = GraphContext_GetSchema(gc, "City", SCHEMA_NODE)->id;
+        int person_label = GraphContext_GetSchema(gc, "Person", SCHEMA_NODE)->id;
+        Graph_AllocateNodes(g, node_count);
+
+        for(int i = 0; i < person_count; i++) {
+            Graph_CreateNode(g, person_label, &n);
+        }
+
+        for(int i = 0; i < city_count; i++) {
+            Graph_CreateNode(g, city_label, &n);
+        }
+
+        // Creates a relation matrices.
+        GrB_Index war_relation_id = GraphContext_GetSchema(gc, "war", SCHEMA_EDGE)->id;
+        GrB_Index visit_relation_id = GraphContext_GetSchema(gc, "visit", SCHEMA_EDGE)->id;
+        GrB_Index friend_relation_id = GraphContext_GetSchema(gc, "friend", SCHEMA_EDGE)->id;
+
+        // Introduce relations, connect nodes.
+        Edge e;
+        Graph_ConnectNodes(g, 0, 1, friend_relation_id, &e);
+        Graph_ConnectNodes(g, 1, 0, friend_relation_id, &e);
+
+        Graph_ConnectNodes(g, 0, 2, visit_relation_id, &e);
+        Graph_ConnectNodes(g, 0, 3, visit_relation_id, &e);
+        Graph_ConnectNodes(g, 1, 2, visit_relation_id, &e);        
+
+        Graph_ConnectNodes(g, 2, 3, war_relation_id, &e);
+        Graph_ConnectNodes(g, 3, 2, war_relation_id, &e);
+
+        Graph_ReleaseLock(g);
+    }
+
+    static void _bind_matrices() {
+        int mat_id;
+        GraphContext *gc = GraphContext_GetFromTLS();
+        Graph *g = gc->g;
+
+        mat_id = GraphContext_GetSchema(gc, "Person", SCHEMA_NODE)->id;        
+        mat_p = Graph_GetLabelMatrix(g, mat_id);
+        mat_f = Graph_GetLabelMatrix(g, mat_id);
+        
+        mat_id = GraphContext_GetSchema(gc, "City", SCHEMA_NODE)->id;
+        mat_c = Graph_GetLabelMatrix(g, mat_id);
+        mat_e = Graph_GetLabelMatrix(g, mat_id);
+        
+        mat_id = GraphContext_GetSchema(gc, "friend", SCHEMA_EDGE)->id;
+        mat_ef = Graph_GetRelationMatrix(g, mat_id);
+
+        mat_id = GraphContext_GetSchema(gc, "visit", SCHEMA_EDGE)->id;
+        mat_ev = Graph_GetRelationMatrix(g, mat_id);
+        
+        mat_id = GraphContext_GetSchema(gc, "war", SCHEMA_EDGE)->id;
+        mat_ew = Graph_GetRelationMatrix(g, mat_id);
+    }
+
+    static void _free_fake_graph_context() {
+        GraphContext *gc = GraphContext_GetFromTLS();
+        GraphContext_Free(gc);
+    }
+
+    AlgebraicExpression **build_algebraic_expression(const char *query, size_t *exp_count) {
+        GraphContext *gc = GraphContext_GetFromTLS();
+        AST **asts = ParseQuery(query, strlen(query), NULL);
+        assert(asts);
+        AST *ast = asts[0];
+
+        QueryGraph_Clear(qg);
+        BuildQueryGraph(gc, qg, ast->matchNode->_mergedPatterns);
+        // Force matrix assignment to both nodes and edges.
+        for(int i = 0; i < qg->node_count; i++) Node_GetMatrix(qg->nodes[i]);
+        for(int i = 0; i < qg->edge_count; i++) Edge_GetMatrix(qg->edges[i]);
+
+        AlgebraicExpression **ae = AlgebraicExpression_From_QueryGraph(qg, ast, exp_count);
+
+        AST_Free(asts);
+        return ae;
     }
 
     void _print_matrix(GrB_Matrix mat) {
@@ -132,104 +252,30 @@ class AlgebraicExpressionTest: public ::testing::Test {
         return true;
     }
 
-    /* Create a graph containing:
-    * Entities: 'people' and 'countries'.
-    * Relations: 'friend', 'visit' and 'war'. */
-    Graph *_build_graph() {
-        Graph *g = Graph_New(16, 16);
-        Graph_AcquireWriteLock(g);
-        size_t person_count = 2;
-        size_t country_count = 2;
-        size_t node_count = person_count + country_count;
-
-        /* Introduce person and country labels. */
-        int person_label = Graph_AddLabel(g);
-        int country_label = Graph_AddLabel(g);
-        Graph_AllocateNodes(g, node_count);
-
-        for(int i = 0; i < person_count; i++) {
-            Node n;
-            Graph_CreateNode(g, person_label, &n);
-        }
-
-        for(int i = 0; i < country_count; i++) {
-            Node n;
-            Graph_CreateNode(g, country_label, &n);
-        }
-
-        // Creates a relation matrices.
-        GrB_Index friend_relation_id = Graph_AddRelationType(g);
-        GrB_Index visit_relation_id = Graph_AddRelationType(g);
-        GrB_Index war_relation_id = Graph_AddRelationType(g);
-
-        // Introduce relations, connect nodes.
-        Edge e;
-        Graph_ConnectNodes(g, 0, 1, friend_relation_id, &e);
-        Graph_ConnectNodes(g, 1, 0, friend_relation_id, &e);
-
-        Graph_ConnectNodes(g, 0, 2, visit_relation_id, &e);
-        Graph_ConnectNodes(g, 0, 3, visit_relation_id, &e);
-        Graph_ConnectNodes(g, 1, 2, visit_relation_id, &e);        
-
-        Graph_ConnectNodes(g, 2, 3, war_relation_id, &e);
-        Graph_ConnectNodes(g, 3, 2, war_relation_id, &e);
-        return g;
+    void _compare_algebraic_operand(AlgebraicExpressionOperand *a, AlgebraicExpressionOperand *b) {
+        ASSERT_EQ(a->free, b->free);
+        ASSERT_EQ(a->operand, b->operand);
+        ASSERT_EQ(a->transpose, b->transpose);
     }
 
-    QueryGraph *_build_query_graph(Graph *g) {
-        /* Query
-        * MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) */
-        
-        QueryGraph *q = QueryGraph_New(1, 1);
-        // Create Nodes
-        Node *p = Node_New("Person", "p");
-        Node *f = Node_New("Person", "f");
-        Node *c = Node_New("City", "c");
-        Node *e = Node_New("City", "e");
-
-        // Set node matrices according to the order they've been presented
-        // during graph construction.
-        p->mat = Graph_GetLabelMatrix(g, 0);
-        f->mat = Graph_GetLabelMatrix(g, 0);
-        c->mat = Graph_GetLabelMatrix(g, 1);
-        e->mat = Graph_GetLabelMatrix(g, 1);
-
-        // Create edges
-        Edge *pff = Edge_New(p, f, "friend", "pff");
-        Edge *fvc = Edge_New(f, c, "visit", "fvc");
-        Edge *cwe = Edge_New(c, e, "war", "cwe");
-        
-        // Set edges matrices according to the order they've been presented
-        // during graph construction.
-        pff->mat = Graph_GetRelationMatrix(g, 0);
-        fvc->mat = Graph_GetRelationMatrix(g, 1);
-        cwe->mat = Graph_GetRelationMatrix(g, 2);
-
-        // Construct query graph
-        QueryGraph_AddNode(q, p, (char*)"p");
-        QueryGraph_AddNode(q, f, (char*)"f");
-        QueryGraph_AddNode(q, c, (char*)"c");
-        QueryGraph_AddNode(q, e, (char*)"e");
-        QueryGraph_ConnectNodes(q, p, f, pff, (char*)"ef");
-        QueryGraph_ConnectNodes(q, f, c, fvc, (char*)"ev");
-        QueryGraph_ConnectNodes(q, c, e, cwe, (char*)"ew");
-
-        return q;
+    void _compare_algebraic_expression(AlgebraicExpression *a, AlgebraicExpression *b) {
+        ASSERT_EQ(a->operand_count, b->operand_count);
+        for(uint i = 0; i < a->operand_count; i++) {
+            _compare_algebraic_operand(a->operands + i, b->operands + i);
+        }
     }
 
-    AlgebraicExpression **_build_algebraic_expression(const char *query, size_t *exp_count) {
-        *exp_count = 0;
-        AlgebraicExpression **ae = NULL;
+    void compare_algebraic_expressions(AlgebraicExpression **actual, AlgebraicExpression **expected, uint count) {
+        for(uint i = 0; i < count; i++) {
+            _compare_algebraic_expression(actual[i], expected[i]);
+        }
+    }
 
-        AST **ast = ParseQuery(query, strlen(query), NULL);
-        ae = AlgebraicExpression_From_Query(
-            ast[0],
-            ast[0]->matchNode->_mergedPatterns,
-            query_graph,
-            exp_count);
-        return ae;
-
-        AST_Free(ast);
+    void free_algebraic_expressions(AlgebraicExpression **exps, uint count) {
+        for(uint i = 0; i < count; i++) {
+            AlgebraicExpression *exp = exps[i];
+            AlgebraicExpression_Free(exp);
+        }
     }
 };
 
@@ -611,284 +657,523 @@ TEST_F(AlgebraicExpressionTest, ExpTransform_AB_Times_C_Plus_D) {
 }
 
 TEST_F(AlgebraicExpressionTest, MultipleIntermidateReturnNodes) {
-    Node *n;
-    Edge *e;
     size_t exp_count = 0;
-    const char *query = query_multiple_intermidate_return_nodes;    
-    AlgebraicExpression **ae = _build_algebraic_expression(query, &exp_count);
+    const char *q = query_multiple_intermidate_return_nodes;
+    AlgebraicExpression **actual = build_algebraic_expression(q, &exp_count);
     ASSERT_EQ(exp_count, 3);
-    
-    // Validate first expression.
-    AlgebraicExpression *exp = ae[0];
-    ASSERT_EQ(exp->op, AL_EXP_MUL);
-    ASSERT_EQ(exp->operand_count, 3);
 
-    n = QueryGraph_GetNodeByAlias(query_graph, "p");
-    ASSERT_EQ(exp->operands[0].operand, n->mat);
-    e = QueryGraph_GetEdgeByAlias(query_graph, "ef");
-    ASSERT_EQ(exp->operands[1].operand, e->mat);
-    n = QueryGraph_GetNodeByAlias(query_graph, "f");
-    ASSERT_EQ(exp->operands[2].operand, n->mat);
+    AlgebraicExpression **expected = (AlgebraicExpression**)malloc(sizeof(AlgebraicExpression*) * 3);
+    AlgebraicExpression *exp = AlgebraicExpression_Empty();
+    AlgebraicExpression_PrependTerm(exp, mat_p, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_ef, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_f, false, false);
+    expected[0] = exp;
 
-    // Validate second expression.
-    exp = ae[1];
-    ASSERT_EQ(exp->op, AL_EXP_MUL);
-    ASSERT_EQ(exp->operand_count, 2);
-    e = QueryGraph_GetEdgeByAlias(query_graph, "ev");
-    ASSERT_EQ(exp->operands[0].operand, e->mat);
-    n = QueryGraph_GetNodeByAlias(query_graph, "c");
-    ASSERT_EQ(exp->operands[1].operand, n->mat);
+    exp = AlgebraicExpression_Empty();
+    AlgebraicExpression_PrependTerm(exp, mat_ev, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_c, false, false);
+    expected[1] = exp;
 
-    // Validate third expression.
-    exp = ae[2];
-    ASSERT_EQ(exp->op, AL_EXP_MUL);
-    ASSERT_EQ(exp->operand_count, 2);
-    e = QueryGraph_GetEdgeByAlias(query_graph, "ew");
-    ASSERT_EQ(exp->operands[0].operand, e->mat);
-    n = QueryGraph_GetNodeByAlias(query_graph, "e");
-    ASSERT_EQ(exp->operands[1].operand, n->mat);
+    exp = AlgebraicExpression_Empty();
+    AlgebraicExpression_PrependTerm(exp, mat_ew, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_e, false, false);
+    expected[2] = exp;
+
+    compare_algebraic_expressions(actual, expected, 3);
 
     // Clean up.
-    for(int i = 0; i < exp_count; i++) AlgebraicExpression_Free(ae[i]);
-    free(ae);
+    free_algebraic_expressions(actual, exp_count);
+    free_algebraic_expressions(expected, exp_count);
+    free(expected);
+    free(actual);
 }
 
 TEST_F(AlgebraicExpressionTest, OneIntermidateReturnNode) {
-    Edge *e;
-    Node *n;
     size_t exp_count = 0;
-    const char *query = query_one_intermidate_return_nodes;
-    AlgebraicExpression **ae = _build_algebraic_expression(query, &exp_count);
+    const char *q = query_one_intermidate_return_nodes;
+    AlgebraicExpression **actual = build_algebraic_expression(q, &exp_count);
     ASSERT_EQ(exp_count, 2);
 
-    // Validate first expression.
-    AlgebraicExpression *exp = ae[0];
+    AlgebraicExpression **expected = (AlgebraicExpression**)malloc(sizeof(AlgebraicExpression*) * 2);
+    AlgebraicExpression *exp = AlgebraicExpression_Empty();
+    AlgebraicExpression_PrependTerm(exp, mat_p, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_ef, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_f, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_ev, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_c, false, false);
+    expected[0] = exp;
 
-    // Validate AlgebraicExpression structure.
-    ASSERT_EQ(exp->op, AL_EXP_MUL);
-    ASSERT_EQ(exp->operand_count, 5);
+    exp = AlgebraicExpression_Empty();
+    AlgebraicExpression_PrependTerm(exp, mat_ew, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_e, false, false);
+    expected[1] = exp;
 
-    n = QueryGraph_GetNodeByAlias(query_graph, "p");
-    ASSERT_EQ(exp->operands[0].operand, n->mat);
-    
-    e = QueryGraph_GetEdgeByAlias(query_graph, "ef");
-    ASSERT_EQ(exp->operands[1].operand, e->mat);
-
-    n = QueryGraph_GetNodeByAlias(query_graph, "f");
-    ASSERT_EQ(exp->operands[2].operand, n->mat);
-
-    e = QueryGraph_GetEdgeByAlias(query_graph, "ev");
-    ASSERT_EQ(exp->operands[3].operand, e->mat);
-
-    n = QueryGraph_GetNodeByAlias(query_graph, "c");
-    ASSERT_EQ(exp->operands[4].operand, n->mat);
-
-    // Validate second expression.
-    exp = ae[1];
-
-    // Validate AlgebraicExpression structure.
-    ASSERT_EQ(exp->op, AL_EXP_MUL);
-    ASSERT_EQ(exp->operand_count, 2);
-
-    e = QueryGraph_GetEdgeByAlias(query_graph, "ew");
-    ASSERT_EQ(exp->operands[0].operand, e->mat);
-
-    n = QueryGraph_GetNodeByAlias(query_graph, "e");
-    ASSERT_EQ(exp->operands[1].operand, n->mat);
+    compare_algebraic_expressions(actual, expected, 2);
 
     // Clean up.
-    for(int i = 0; i < exp_count; i++) AlgebraicExpression_Free(ae[i]);
-    free(ae);
+    free_algebraic_expressions(actual, exp_count);
+    free_algebraic_expressions(expected, exp_count);
+    free(expected);
+    free(actual);
 }
 
 TEST_F(AlgebraicExpressionTest, NoIntermidateReturnNodes) {
-    Node *n;
-    Edge *e;
     size_t exp_count = 0;
-    const char *query = query_no_intermidate_return_nodes;
-    AlgebraicExpression **ae = _build_algebraic_expression(query, &exp_count);
+    const char *q = query_no_intermidate_return_nodes;
+    AlgebraicExpression **actual = build_algebraic_expression(q, &exp_count);
     ASSERT_EQ(exp_count, 1);
+    
+    AlgebraicExpression **expected = (AlgebraicExpression**)malloc(sizeof(AlgebraicExpression*) * 1);
+    AlgebraicExpression *exp = AlgebraicExpression_Empty();
+    AlgebraicExpression_PrependTerm(exp, mat_p, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_ef, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_f, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_ev, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_c, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_ew, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_e, false, false);
+    expected[0] = exp;
 
-    AlgebraicExpression *exp = ae[0];
-
-    // Validate AlgebraicExpression structure.
-    ASSERT_EQ(exp->op, AL_EXP_MUL);
-    ASSERT_EQ(exp->operand_count, 7);
-
-    n = QueryGraph_GetNodeByAlias(query_graph, "p");
-    ASSERT_EQ(exp->operands[0].operand, n->mat);
-
-    e = QueryGraph_GetEdgeByAlias(query_graph, "ef");
-    ASSERT_EQ(exp->operands[1].operand, e->mat);
-
-    n = QueryGraph_GetNodeByAlias(query_graph, "f");
-    ASSERT_EQ(exp->operands[2].operand, n->mat);
-
-    e = QueryGraph_GetEdgeByAlias(query_graph, "ev");
-    ASSERT_EQ(exp->operands[3].operand, e->mat);
-
-    n = QueryGraph_GetNodeByAlias(query_graph, "c");
-    ASSERT_EQ(exp->operands[4].operand, n->mat);
-
-    e = QueryGraph_GetEdgeByAlias(query_graph, "ew");
-    ASSERT_EQ(exp->operands[5].operand, e->mat);
-
-    n = QueryGraph_GetNodeByAlias(query_graph, "e");
-    ASSERT_EQ(exp->operands[6].operand, n->mat);
+    compare_algebraic_expressions(actual, expected, 1);
 
     // Clean up.
-    AlgebraicExpression_Free(exp);
-    free(ae);
+    free_algebraic_expressions(actual, exp_count);
+    free_algebraic_expressions(expected, exp_count);
+    free(expected);
+    free(actual);
 }
 
 TEST_F(AlgebraicExpressionTest, OneIntermidateReturnEdge) {
-    Node *n;
-    Edge *e;    
     size_t exp_count;
-    const char *query;
-    AlgebraicExpression **ae;
-    AlgebraicExpression *exp;
+    const char *q;
+    AlgebraicExpression **actual;
 
-    //==============================================================================
+    //==============================================================================================
     //=== MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN ef
-    //==============================================================================
-    exp_count = 0;
-    query = query_return_first_edge;
-    ae = _build_algebraic_expression(query, &exp_count);
+    //==============================================================================================
+
+    q = query_return_first_edge;
+    actual = build_algebraic_expression(q, &exp_count);
     ASSERT_EQ(exp_count, 2);
 
-    // Validate first expression.
-    exp = ae[0];
-    ASSERT_EQ(exp->op, AL_EXP_MUL);
-    ASSERT_EQ(exp->operand_count, 3);
-    ASSERT_TRUE(exp->edge != NULL);
+    AlgebraicExpression **expected = (AlgebraicExpression**)malloc(sizeof(AlgebraicExpression*) * 2);
+    AlgebraicExpression *exp = AlgebraicExpression_Empty();
+    AlgebraicExpression_PrependTerm(exp, mat_p, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_ef, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_f, false, false);
+    expected[0] = exp;
+    
+    exp = AlgebraicExpression_Empty();
+    AlgebraicExpression_PrependTerm(exp, mat_ev, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_c, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_ew, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_e, false, false);
+    expected[1] = exp;
 
-    n = QueryGraph_GetNodeByAlias(query_graph, "p");
-    ASSERT_EQ(exp->operands[0].operand, n->mat);
-    e = QueryGraph_GetEdgeByAlias(query_graph, "ef");
-    ASSERT_EQ(exp->operands[1].operand, e->mat);
-    n = QueryGraph_GetNodeByAlias(query_graph, "f");
-    ASSERT_EQ(exp->operands[2].operand, n->mat);    
-
-    // Validate second expression.
-    exp = ae[1];
-    ASSERT_EQ(exp->op, AL_EXP_MUL);
-    ASSERT_EQ(exp->operand_count, 4);
-    ASSERT_TRUE(exp->edge == NULL);
-    e = QueryGraph_GetEdgeByAlias(query_graph, "ev");
-    ASSERT_EQ(exp->operands[0].operand, e->mat);
-    n = QueryGraph_GetNodeByAlias(query_graph, "c");
-    ASSERT_EQ(exp->operands[1].operand, n->mat);
-    e = QueryGraph_GetEdgeByAlias(query_graph, "ew");
-    ASSERT_EQ(exp->operands[2].operand, e->mat);
-    n = QueryGraph_GetNodeByAlias(query_graph, "e");
-    ASSERT_EQ(exp->operands[3].operand, n->mat);
+    compare_algebraic_expressions(actual, expected, 2);
 
     // Clean up.
-    for(int i = 0; i < exp_count; i++) AlgebraicExpression_Free(ae[i]);
-    free(ae);
+    free_algebraic_expressions(actual, exp_count);
+    free_algebraic_expressions(expected, exp_count);
+    free(expected);
+    free(actual);
 
-    //==============================================================================
+    //==============================================================================================
     //=== MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN ev
-    //==============================================================================
-    exp_count = 0;
-    query = query_return_intermidate_edge;
-    ae = _build_algebraic_expression(query, &exp_count);
+    //==============================================================================================
+    q = query_return_intermidate_edge;
+    actual = build_algebraic_expression(q, &exp_count);
     ASSERT_EQ(exp_count, 3);
 
-    // Validate first expression.
-    exp = ae[0];
-    ASSERT_EQ(exp->op, AL_EXP_MUL);
-    ASSERT_EQ(exp->operand_count, 3);
-    ASSERT_TRUE(exp->edge == NULL);
-    n = QueryGraph_GetNodeByAlias(query_graph, "p");
-    ASSERT_EQ(exp->operands[0].operand, n->mat);
-    e = QueryGraph_GetEdgeByAlias(query_graph, "ef");
-    ASSERT_EQ(exp->operands[1].operand, e->mat);
-    n = QueryGraph_GetNodeByAlias(query_graph, "f");
-    ASSERT_EQ(exp->operands[2].operand, n->mat);
-
-    // Validate second expression.
-    exp = ae[1];
-    ASSERT_EQ(exp->op, AL_EXP_MUL);
-    ASSERT_EQ(exp->operand_count, 2);    
-    ASSERT_TRUE(exp->edge != NULL);
-    e = QueryGraph_GetEdgeByAlias(query_graph, "ev");
-    ASSERT_EQ(exp->operands[0].operand, e->mat);
-    n = QueryGraph_GetNodeByAlias(query_graph, "c");
-    ASSERT_EQ(exp->operands[1].operand, n->mat);
+    expected = (AlgebraicExpression**)malloc(sizeof(AlgebraicExpression*) * 3);
+    exp = AlgebraicExpression_Empty();
+    AlgebraicExpression_PrependTerm(exp, mat_p, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_ef, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_f, false, false);
+    expected[0] = exp;
     
+    exp = AlgebraicExpression_Empty();
+    AlgebraicExpression_PrependTerm(exp, mat_ev, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_c, false, false);
+    expected[1] = exp;
 
-    // Validate third expression.
-    exp = ae[2];
-    ASSERT_EQ(exp->op, AL_EXP_MUL);
-    ASSERT_EQ(exp->operand_count, 2);
-    ASSERT_TRUE(exp->edge == NULL);
-    e = QueryGraph_GetEdgeByAlias(query_graph, "ew");
-    ASSERT_EQ(exp->operands[0].operand, e->mat);
-    n = QueryGraph_GetNodeByAlias(query_graph, "e");
-    ASSERT_EQ(exp->operands[1].operand, n->mat);
-    
+    exp = AlgebraicExpression_Empty();
+    AlgebraicExpression_PrependTerm(exp, mat_ew, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_e, false, false);
+    expected[2] = exp;
+
+    compare_algebraic_expressions(actual, expected, 3);
 
     // Clean up.
-    for(int i = 0; i < exp_count; i++) AlgebraicExpression_Free(ae[i]);
-    free(ae);
+    free_algebraic_expressions(actual, exp_count);
+    free_algebraic_expressions(expected, exp_count);
+    free(expected);
+    free(actual);
 
-    //==============================================================================
+    //==============================================================================================
     //=== MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN ew
-    //==============================================================================
+    //==============================================================================================
+    q = query_return_last_edge;
+    actual = build_algebraic_expression(q, &exp_count);
+    ASSERT_EQ(exp_count, 2);
+    
+    expected = (AlgebraicExpression**)malloc(sizeof(AlgebraicExpression*) * 2);
+    exp = AlgebraicExpression_Empty();
+    AlgebraicExpression_PrependTerm(exp, mat_p, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_ef, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_f, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_ev, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_c, false, false);
+    expected[0] = exp;
+
+    exp = AlgebraicExpression_Empty();
+    AlgebraicExpression_PrependTerm(exp, mat_ew, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_e, false, false);
+    expected[1] = exp;
+
+    compare_algebraic_expressions(actual, expected, 2);
+
+    // Clean up.
+    free_algebraic_expressions(actual, exp_count);
+    free_algebraic_expressions(expected, exp_count);
+    free(expected);
+    free(actual);
+}
+
+TEST_F(AlgebraicExpressionTest, BothDirections) {
+    size_t exp_count = 0;
+    const char *q = "MATCH (p:Person)-[ef:friend]->(f:Person)<-[ev:visit]-(c:City)-[ew:war]->(e:City) RETURN p,e";
+    AlgebraicExpression **actual = build_algebraic_expression(q, &exp_count);
+    ASSERT_EQ(exp_count, 1);
+
+    AlgebraicExpression **expected = (AlgebraicExpression**)malloc(sizeof(AlgebraicExpression*) * 1);
+    AlgebraicExpression *exp = AlgebraicExpression_Empty();
+    AlgebraicExpression_PrependTerm(exp, mat_p, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_ef, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_f, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_ev, true, false);
+    AlgebraicExpression_PrependTerm(exp, mat_c, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_ew, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_e, false, false);
+    expected[0] = exp;
+
+    compare_algebraic_expressions(actual, expected, 1);
+
+    // Clean up.
+    free_algebraic_expressions(actual, exp_count);
+    free_algebraic_expressions(expected, exp_count);
+    free(expected);
+    free(actual);
+}
+
+TEST_F(AlgebraicExpressionTest, SingleNode) {
+    size_t exp_count = 0;
+    const char *q = "MATCH (p:Person) RETURN p";
+    AlgebraicExpression **actual = build_algebraic_expression(q, &exp_count);
+    ASSERT_EQ(exp_count, 0);
+
+    AlgebraicExpression **expected = NULL;
+
+    compare_algebraic_expressions(actual, expected, 0);
+
+    // Clean up.
+    free_algebraic_expressions(actual, exp_count);
+    free(actual);
+}
+
+TEST_F(AlgebraicExpressionTest, ShareableEntity) {
+    size_t exp_count = 0;
+    const char *q = "MATCH (p:Person)-[ef:friend]->(f:Person) MATCH (f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN p,e";
+    AlgebraicExpression **actual = build_algebraic_expression(q, &exp_count);
+    ASSERT_EQ(exp_count, 1);
+    
+    AlgebraicExpression **expected = (AlgebraicExpression**)malloc(sizeof(AlgebraicExpression*) * 1);
+    AlgebraicExpression *exp = AlgebraicExpression_Empty();
+    AlgebraicExpression_PrependTerm(exp, mat_p, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_ef, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_f, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_ev, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_c, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_ew, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_e, false, false);
+    expected[0] = exp;
+
+    compare_algebraic_expressions(actual, expected, 1);
+
+    // Clean up.
+    free_algebraic_expressions(actual, exp_count);
+    free_algebraic_expressions(expected, exp_count);
+    free(expected);
+    free(actual);
+
     exp_count = 0;
-    query = query_return_last_edge;
-    ae = _build_algebraic_expression(query, &exp_count);
+    q = "MATCH (p:Person)-[ef:friend]->(f:Person) MATCH (f:Person)<-[ev:visit]-(c:City)<-[ew:war]-(e:City) RETURN p,e";
+    actual = build_algebraic_expression(q, &exp_count);
+    ASSERT_EQ(exp_count, 1);
+
+    expected = (AlgebraicExpression**)malloc(sizeof(AlgebraicExpression*) * 1);
+    exp = AlgebraicExpression_Empty();
+    AlgebraicExpression_PrependTerm(exp, mat_e, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_ew, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_c, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_ev, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_f, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_ef, true, false);
+    AlgebraicExpression_PrependTerm(exp, mat_p, false, false);
+
+    expected[0] = exp;
+
+    compare_algebraic_expressions(actual, expected, 1);
+
+    // Clean up.
+    free_algebraic_expressions(actual, exp_count);
+    free_algebraic_expressions(expected, exp_count);
+    free(expected);
+    free(actual);
+
+    exp_count = 0;
+    q = "MATCH (p:Person)-[ef:friend]->(f:Person) MATCH (f:Person)-[ev:visit]->(c:City) MATCH (c:City)-[ew:war]->(e:City) RETURN p,e";
+    actual = build_algebraic_expression(q, &exp_count);
+    ASSERT_EQ(exp_count, 1);
+
+    expected = (AlgebraicExpression**)malloc(sizeof(AlgebraicExpression*) * 1);
+    exp = AlgebraicExpression_Empty();
+    AlgebraicExpression_PrependTerm(exp, mat_p, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_ef, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_f, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_ev, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_c, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_ew, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_e, false, false);
+    expected[0] = exp;
+
+    compare_algebraic_expressions(actual, expected, 1);
+
+    // Clean up.
+    free_algebraic_expressions(actual, exp_count);
+    free_algebraic_expressions(expected, exp_count);
+    free(expected);
+    free(actual);
+
+    exp_count = 0;
+    q = "MATCH (a:Person)-[:friend]->(f:Person) MATCH (b:Person)-[:friend]->(f:Person) RETURN a,b";
+    actual = build_algebraic_expression(q, &exp_count);
+    ASSERT_EQ(exp_count, 1);
+
+    expected = (AlgebraicExpression**)malloc(sizeof(AlgebraicExpression*) * 1);
+    exp = AlgebraicExpression_Empty();
+    AlgebraicExpression_PrependTerm(exp, mat_p, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_ef, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_p, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_ef, true, false);
+    AlgebraicExpression_PrependTerm(exp, mat_p, false, false);
+    expected[0] = exp;
+
+    compare_algebraic_expressions(actual, expected, 1);
+
+    // Clean up.
+    free_algebraic_expressions(actual, exp_count);
+    free_algebraic_expressions(expected, exp_count);
+    free(expected);
+    free(actual);
+
+    // High incoming degree.
+    exp_count = 0;
+    q = "MATCH (a:Person)-[:friend]->(d:Person) MATCH (b:Person)-[:friend]->(d:Person) MATCH (c:Person)-[:friend]->(d:Person) RETURN a";
+    actual = build_algebraic_expression(q, &exp_count);
     ASSERT_EQ(exp_count, 2);
 
-    // Validate first expression.
-    exp = ae[0];
-    ASSERT_EQ(exp->op, AL_EXP_MUL);
-    ASSERT_EQ(exp->operand_count, 5);
-    ASSERT_TRUE(exp->edge == NULL);
-    n = QueryGraph_GetNodeByAlias(query_graph, "p");
-    ASSERT_EQ(exp->operands[0].operand, n->mat);
-    e = QueryGraph_GetEdgeByAlias(query_graph, "ef");
-    ASSERT_EQ(exp->operands[1].operand, e->mat);
-    n = QueryGraph_GetNodeByAlias(query_graph, "f");
-    ASSERT_EQ(exp->operands[2].operand, n->mat);
-    e = QueryGraph_GetEdgeByAlias(query_graph, "ev");
-    ASSERT_EQ(exp->operands[3].operand, e->mat);
-    n = QueryGraph_GetNodeByAlias(query_graph, "c");
-    ASSERT_EQ(exp->operands[4].operand, n->mat);
+    expected = (AlgebraicExpression**)malloc(sizeof(AlgebraicExpression*) * 2);
+    exp = AlgebraicExpression_Empty();
+    AlgebraicExpression_PrependTerm(exp, mat_p, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_ef, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_p, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_ef, true, false);
+    AlgebraicExpression_PrependTerm(exp, mat_p, false, false);
+    expected[0] = exp;
 
-    // Validate second expression.
-    exp = ae[1];
-    ASSERT_EQ(exp->op, AL_EXP_MUL);
-    ASSERT_EQ(exp->operand_count, 2);
-    ASSERT_TRUE(exp->edge != NULL);
-    e = QueryGraph_GetEdgeByAlias(query_graph, "ew");
-    ASSERT_EQ(exp->operands[0].operand, e->mat);
-    n = QueryGraph_GetNodeByAlias(query_graph, "e");
-    ASSERT_EQ(exp->operands[1].operand, n->mat);
-   
+    exp = AlgebraicExpression_Empty();
+    AlgebraicExpression_PrependTerm(exp, mat_p, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_ef, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_p, false, false);
+    expected[1] = exp;
+
+    compare_algebraic_expressions(actual, expected, 2);
 
     // Clean up.
-    for(int i = 0; i < exp_count; i++) AlgebraicExpression_Free(ae[i]);
-    free(ae);
+    free_algebraic_expressions(actual, exp_count);
+    free_algebraic_expressions(expected, exp_count);
+    free(expected);
+    free(actual);
+
+    // High outgoing degree.
+    exp_count = 0;
+    q = "MATCH (a:Person)-[:friend]->(b:Person) MATCH (a:Person)-[:friend]->(c:Person) MATCH (a:Person)-[:friend]->(d:Person) RETURN a";
+    actual = build_algebraic_expression(q, &exp_count);
+    ASSERT_EQ(exp_count, 3);
+
+    expected = (AlgebraicExpression**)malloc(sizeof(AlgebraicExpression*) * 3);
+    exp = AlgebraicExpression_Empty();
+    AlgebraicExpression_PrependTerm(exp, mat_p, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_ef, true, false);
+    AlgebraicExpression_PrependTerm(exp, mat_p, false, false);
+    expected[0] = exp;
+
+    exp = AlgebraicExpression_Empty();    
+    AlgebraicExpression_PrependTerm(exp, mat_ef, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_p, false, false);
+    expected[1] = exp;
+
+    exp = AlgebraicExpression_Empty();
+    AlgebraicExpression_PrependTerm(exp, mat_p, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_ef, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_p, false, false);
+    expected[2] = exp;
+
+    compare_algebraic_expressions(actual, expected, 3);
+
+    // Clean up.
+    free_algebraic_expressions(actual, exp_count);
+    free_algebraic_expressions(expected, exp_count);
+    free(expected);
+    free(actual);
+
+    // Cycle.
+    exp_count = 0;
+    q = "MATCH (a:Person)-[:friend]->(b:Person)-[:friend]->(a:Person) RETURN a";
+    actual = build_algebraic_expression(q, &exp_count);
+    ASSERT_EQ(exp_count, 2);
+
+    expected = (AlgebraicExpression**)malloc(sizeof(AlgebraicExpression*) * 2);
+    exp = AlgebraicExpression_Empty();
+    AlgebraicExpression_PrependTerm(exp, mat_p, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_ef, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_p, false, false);
+    expected[0] = exp;
+
+    exp = AlgebraicExpression_Empty();
+    AlgebraicExpression_PrependTerm(exp, mat_p, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_ef, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_p, false, false);
+    expected[1] = exp;
+    
+    compare_algebraic_expressions(actual, expected, 2);
+
+    // Clean up.
+    free_algebraic_expressions(actual, exp_count);
+    free_algebraic_expressions(expected, exp_count);
+    free(expected);
+    free(actual);
+
+    // Longer cycle.
+    exp_count = 0;
+    q = "MATCH (a:Person)-[:friend]->(b:Person)-[:friend]->(c:Person)-[:friend]->(a:Person) RETURN a";
+    actual = build_algebraic_expression(q, &exp_count);
+    ASSERT_EQ(exp_count, 2);
+
+    expected = (AlgebraicExpression**)malloc(sizeof(AlgebraicExpression*) * 2);
+    exp = AlgebraicExpression_Empty();
+    AlgebraicExpression_PrependTerm(exp, mat_p, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_ef, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_p, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_ef, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_p, false, false);
+    expected[0] = exp;
+
+    exp = AlgebraicExpression_Empty();
+    AlgebraicExpression_PrependTerm(exp, mat_p, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_ef, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_p, false, false);
+    expected[1] = exp;
+
+    compare_algebraic_expressions(actual, expected, 2);
+
+    // Clean up.
+    free_algebraic_expressions(actual, exp_count);
+    free_algebraic_expressions(expected, exp_count);
+    free(expected);
+    free(actual);
+}
+
+TEST_F(AlgebraicExpressionTest, VariableLength) {
+    size_t exp_count = 0;
+    const char *q = "MATCH (p:Person)-[ef:friend]->(f:Person)-[:visit*1..3]->(c:City)-[ew:war]->(e:City) RETURN p,e";
+    AlgebraicExpression **actual = build_algebraic_expression(q, &exp_count);
+    ASSERT_EQ(exp_count, 3);
+    
+    AlgebraicExpression **expected = (AlgebraicExpression**)malloc(sizeof(AlgebraicExpression*) * 3);
+    AlgebraicExpression *exp = AlgebraicExpression_Empty();
+    AlgebraicExpression_PrependTerm(exp, mat_p, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_ef, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_f, false, false);
+    expected[0] = exp;
+
+    exp = AlgebraicExpression_Empty();
+    AlgebraicExpression_PrependTerm(exp, mat_ev, false, false);
+    expected[1] = exp;
+
+    exp = AlgebraicExpression_Empty();
+    AlgebraicExpression_PrependTerm(exp, mat_c, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_ew, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_e, false, false);
+    expected[2] = exp;
+
+    compare_algebraic_expressions(actual, expected, 3);
+
+    // Clean up.
+    free_algebraic_expressions(actual, exp_count);
+    free_algebraic_expressions(expected, exp_count);
+    free(expected);
+    free(actual);
+
+    // Transposed variable length.
+    exp_count = 0;
+    q = "MATCH (p:Person)-[ef:friend]->(f:Person)<-[:visit*1..3]-(c:City)-[ew:war]->(e:City) RETURN p,e";
+    actual = build_algebraic_expression(q, &exp_count);
+    ASSERT_EQ(exp_count, 3);
+    
+    expected = (AlgebraicExpression**)malloc(sizeof(AlgebraicExpression*) * 3);
+    exp = AlgebraicExpression_Empty();
+    AlgebraicExpression_PrependTerm(exp, mat_p, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_ef, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_f, false, false);
+    expected[0] = exp;
+
+    exp = AlgebraicExpression_Empty();
+    AlgebraicExpression_PrependTerm(exp, mat_ev, true, false);
+    expected[1] = exp;
+
+    exp = AlgebraicExpression_Empty();
+    AlgebraicExpression_PrependTerm(exp, mat_c, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_ew, false, false);
+    AlgebraicExpression_PrependTerm(exp, mat_e, false, false);
+    expected[2] = exp;
+
+    compare_algebraic_expressions(actual, expected, 3);
+
+    // Clean up.
+    free_algebraic_expressions(actual, exp_count);
+    free_algebraic_expressions(expected, exp_count);
+    free(expected);
+    free(actual);
 }
 
 TEST_F(AlgebraicExpressionTest, ExpressionExecute) {
     size_t exp_count = 0;
-    const char *query = query_no_intermidate_return_nodes;
-    AlgebraicExpression **ae = _build_algebraic_expression(query, &exp_count);
+    GraphContext *gc = GraphContext_GetFromTLS();
+    Graph *g = gc->g;
+
+    const char *q = query_no_intermidate_return_nodes;
+    AlgebraicExpression **ae = build_algebraic_expression(q, &exp_count);
 
     GrB_Matrix res;
-    GrB_Matrix_new(&res, GrB_BOOL, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g));    
+    GrB_Matrix_new(&res, GrB_BOOL, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g));
 
     AlgebraicExpression *exp = ae[0];
     AlgebraicExpression_Execute(exp, res);
 
-    Node *src = QueryGraph_GetNodeByAlias(query_graph, "p");
-    Node *dest = QueryGraph_GetNodeByAlias(query_graph, "e");
-    assert(exp->src_node == src);
-    assert(exp->dest_node == dest);
+    ASSERT_STREQ(exp->src_node->alias, "p");
+    ASSERT_STREQ(exp->dest_node->alias, "e");
     
     // Validate result matrix.
     GrB_Index ncols, nrows;
@@ -897,7 +1182,7 @@ TEST_F(AlgebraicExpressionTest, ExpressionExecute) {
     assert(ncols == Graph_RequiredMatrixDim(g));
     assert(nrows == Graph_RequiredMatrixDim(g));
 
-    GrB_Index expected_entries[6] = {1,2, 0,3, 1,3};
+    GrB_Index expected_entries[6] = {2,1, 3,0, 3,1};
     GrB_Matrix expected = NULL;
 
     GrB_Matrix_dup(&expected, res);
