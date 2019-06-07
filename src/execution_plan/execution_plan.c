@@ -336,10 +336,25 @@ static AR_ExpNode** _OrderClause_GetExpressions(const AST *ast) {
 	return exps;
 }
 
+/* Keep track after resolved variabels.
+ * add variabels modified/set by op to resolved. */
+static void _UpdateResolvedVariabels(rax *resolved, OpBase *op) {
+    assert(resolved && op);
+    if(!op->modifies) return;
+
+    int count = Vector_Size(op->modifies);
+    for(int i = 0; i < count; i++) {
+        char *var;
+        Vector_Get(op->modifies, i, &var);
+        raxInsert(resolved, (unsigned char*)var, strlen(var), NULL, NULL);
+    }
+}
+
 ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, AST *ast, ResultSet *result_set) {
     Graph *g;
     OpBase *op;
     Vector *ops;
+    rax *resolved;
     QueryGraph *q;
     GraphContext *gc;
     size_t node_count;
@@ -347,6 +362,7 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, AST *ast, ResultSet *resul
     FT_FilterNode *filter_tree;
     ExecutionPlan *execution_plan;
 
+    resolved = raxNew();
     ops = NewVector(OpBase*, 1);
     gc = GraphContext_GetFromTLS();
     g = gc->g;
@@ -371,6 +387,7 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, AST *ast, ResultSet *resul
                                             ast->callNode->arguments,
                                             ast->callNode->yield, ast);
         Vector_Push(ops, opProcCall);
+        _UpdateResolvedVariabels(resolved, opProcCall);
     }
 
     if(ast->matchNode) {
@@ -400,6 +417,7 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, AST *ast, ResultSet *resul
                 if(n->label) op = NewNodeByLabelScanOp(n, ast);
                 else op = NewAllNodeScanOp(g, n, ast);
                 Vector_Push(traversals, op);
+                _UpdateResolvedVariabels(resolved, op);
             } else {
                 size_t expCount = 0;
                 AlgebraicExpression **exps = AlgebraicExpression_From_QueryGraph(cc, ast, &expCount);
@@ -416,24 +434,45 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, AST *ast, ResultSet *resul
                      * as it's been replaced by label scan. */
                     AlgebraicExpression_RemoveTerm(exp, 0, NULL);
                     op = NewNodeByLabelScanOp(exp->src_node, ast);
-                    Vector_Push(traversals, op);
                 } else {
                     op = NewAllNodeScanOp(g, exp->src_node, ast);
-                    Vector_Push(traversals, op);
                 }
+
+                Vector_Push(traversals, op);
+                _UpdateResolvedVariabels(resolved, op);
+
                 for(int i = 0; i < expCount; i++) {
-                    if(exps[i]->operand_count == 0) continue;
-                    if(exps[i]->edge && Edge_VariableLength(exps[i]->edge)) {
-                        op = NewCondVarLenTraverseOp(exps[i],
-                                                        exps[i]->edge->minHops,
-                                                        exps[i]->edge->maxHops,
+                    exp = exps[i];
+                    if(exp->operand_count == 0) continue;
+                    
+                    /* Make sure expression source is already resolved.
+                     * TODO: it might be better to ensure beforehand 
+                     * that exp's source is already resolved, see 
+                     * traverse_order.c */
+                    if(raxFind(resolved,
+                        (unsigned char*)exp->src_node->alias,
+                        strlen(exp->src_node->alias)) == raxNotFound) {
+
+                        AlgebraicExpression_Transpose(exp);
+
+                        assert(raxFind(resolved,
+                            (unsigned char*)exp->src_node->alias,
+                            strlen(exp->src_node->alias)) != raxNotFound);
+                    }
+
+                    if(exp->edge && Edge_VariableLength(exp->edge)) {
+                        op = NewCondVarLenTraverseOp(exp,
+                                                        exp->edge->minHops,
+                                                        exp->edge->maxHops,
                                                         g,
                                                         ast);
                     }
                     else {
-                        op = NewCondTraverseOp(exps[i], ast);
+                        op = NewCondTraverseOp(exp, ast);
                     }
+
                     Vector_Push(traversals, op);
+                    _UpdateResolvedVariabels(resolved, op);
                 }
 
                 // Free the expressions array, as its parts have been converted into operations
@@ -465,6 +504,7 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, AST *ast, ResultSet *resul
     if(ast->unwindNode) {
         OpBase *opUnwind = NewUnwindOp(ast);
         Vector_Push(ops, opUnwind);
+        _UpdateResolvedVariabels(resolved, opUnwind);
     }
 
     /* Set root operation */
@@ -473,11 +513,13 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, AST *ast, ResultSet *resul
         OpBase *opCreate = NewCreateOp(ctx, ast, q, execution_plan->result_set);
 
         Vector_Push(ops, opCreate);
+        _UpdateResolvedVariabels(resolved, opCreate);
     }
 
     if(ast->mergeNode) {
         OpBase *opMerge = NewMergeOp(ast, execution_plan->result_set);
         Vector_Push(ops, opMerge);
+        _UpdateResolvedVariabels(resolved, opMerge);
     }
 
     if(ast->deleteNode) {
@@ -548,6 +590,7 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, AST *ast, ResultSet *resul
     }
 
     Vector_Free(ops);
+    raxFree(resolved);
     return execution_plan;
 }
 
