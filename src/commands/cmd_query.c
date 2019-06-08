@@ -145,14 +145,8 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     simple_tic(tic);
 
     // Parse AST.
-    char *errMsg = NULL;
-    size_t query_len = 0;
-    const char *query = RedisModule_StringPtrLen(argv[2], &query_len);
-    // Empty query.
-    if(query_len == 0) {
-        RedisModule_ReplyWithError(ctx, "Error empty query");
-        return REDISMODULE_OK;
-    }
+    char *errMsg = NULL;    
+    const char *query = RedisModule_StringPtrLen(argv[2], NULL);
 
     AST **ast = ParseQuery(query, strlen(query), &errMsg);
     if (!ast) {
@@ -161,6 +155,12 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
         free(errMsg);
         return REDISMODULE_OK;
     }
+    if(AST_Empty(ast[0])) {
+        AST_Free(ast);
+        RedisModule_ReplyWithError(ctx, "Error empty query.");
+        return REDISMODULE_OK;
+    }
+
     bool readonly = AST_ReadOnly(ast);
 
     /* Determin query execution context
