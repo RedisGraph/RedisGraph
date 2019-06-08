@@ -509,6 +509,23 @@ bool AST_Projects(const AST *ast) {
   return (ast->returnNode || ast->withNode);
 }
 
+bool AST_Empty(const AST *ast) {
+return (!(ast->matchNode != NULL |
+          ast->createNode != NULL |
+          ast->callNode != NULL |
+          ast->returnNode != NULL |
+          ast->mergeNode != NULL |
+          ast->deleteNode != NULL |
+          ast->setNode != NULL |
+          ast->whereNode != NULL |
+          ast->skipNode != NULL |
+          ast->orderNode != NULL |
+          ast->unwindNode != NULL |
+          ast->limitNode != NULL |
+          ast->withNode != NULL |
+          ast->indexNode != NULL));
+}
+
 bool AST_ReadOnly(AST **ast) {
   for (uint i = 0; i < array_len(ast); i++) {
     bool write = (ast[i]->createNode ||
@@ -536,6 +553,7 @@ void AST_Free(AST **ast) {
     Free_AST_LimitNode(ast[i]->limitNode);
     Free_AST_ProcedureCallNode(ast[i]->callNode);
     Free_AST_WithNode(ast[i]->withNode);
+    Free_AST_IndexNode(ast[i]->indexNode);
 
     if(ast[i]->_aliasIDMapping) TrieMap_Free(ast[i]->_aliasIDMapping, NULL);
     rm_free(ast[i]);

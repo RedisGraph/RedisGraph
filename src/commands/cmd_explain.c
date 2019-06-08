@@ -34,7 +34,7 @@ GraphContext* _empty_graph_context() {
  * argv[2] query */
 int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     if(argc < 2) return RedisModule_WrongArity(ctx);
-
+    
     const char *query;
     const char *graphname = NULL;
     bool free_graph_ctx = false;
@@ -58,6 +58,10 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
         RedisModule_ReplyWithError(ctx, errMsg);
         free(errMsg);
         return REDISMODULE_OK;
+    }
+    if(AST_Empty(ast[0])) {
+        RedisModule_ReplyWithError(ctx, "Error empty query.");
+        goto cleanup;
     }
 
     // Perform query validations before and after ModifyAST.
