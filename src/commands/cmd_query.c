@@ -141,12 +141,19 @@ cleanup:
 int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     double tic[2];
     if (argc < 3) return RedisModule_WrongArity(ctx);
-
+    
     simple_tic(tic);
 
     // Parse AST.
     char *errMsg = NULL;
-    const char *query = RedisModule_StringPtrLen(argv[2], NULL);
+    size_t query_len = 0;
+    const char *query = RedisModule_StringPtrLen(argv[2], &query_len);
+    // Empty query.
+    if(query_len == 0) {
+        RedisModule_ReplyWithError(ctx, "Error empty query");
+        return REDISMODULE_OK;
+    }
+
     AST **ast = ParseQuery(query, strlen(query), &errMsg);
     if (!ast) {
         RedisModule_Log(ctx, "debug", "Error parsing query: %s", errMsg);
