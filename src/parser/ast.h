@@ -68,6 +68,9 @@ TrieMap* AST_CollectEntityReferences(AST **ast);
  * i.e. contains RETURN, WITH clauses. */
 bool AST_Projects(const AST *ast);
 
+/* Returns true if AST is empty. */
+bool AST_Empty(const AST *ast);
+
 // Checks if AST represent a read only query.
 bool AST_ReadOnly(AST **ast);
 
