@@ -34,23 +34,16 @@ GraphContext* _empty_graph_context() {
  * argv[2] query */
 int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     if(argc < 2) return RedisModule_WrongArity(ctx);
-
-    size_t query_len;
+    
     const char *query;
     const char *graphname = NULL;
     bool free_graph_ctx = false;
 
     if(argc == 2) {
-        query = RedisModule_StringPtrLen(argv[1], &query_len);
+        query = RedisModule_StringPtrLen(argv[1], NULL);
     } else {
         graphname = RedisModule_StringPtrLen(argv[1], NULL);
-        query = RedisModule_StringPtrLen(argv[2], &query_len);
-    }
-
-    // Empty query.
-    if(query_len == 0) {
-        RedisModule_ReplyWithError(ctx, "Error empty query");
-        return REDISMODULE_OK;
+        query = RedisModule_StringPtrLen(argv[2], NULL);
     }
 
     /* Parse query, get AST. */
@@ -65,6 +58,10 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
         RedisModule_ReplyWithError(ctx, errMsg);
         free(errMsg);
         return REDISMODULE_OK;
+    }
+    if(AST_Empty(ast[0])) {
+        RedisModule_ReplyWithError(ctx, "Error empty query.");
+        goto cleanup;
     }
 
     // Perform query validations before and after ModifyAST.
