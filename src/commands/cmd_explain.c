@@ -34,16 +34,22 @@ GraphContext* _empty_graph_context() {
  * argv[2] query */
 int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     if(argc < 2) return RedisModule_WrongArity(ctx);
-    
+
     const char *query;
     const char *graphname = NULL;
     bool free_graph_ctx = false;
 
     if(argc == 2) {
-        query = RedisModule_StringPtrLen(argv[1], NULL);
+        query = RedisModule_StringPtrLen(argv[1], &query_len);
     } else {
         graphname = RedisModule_StringPtrLen(argv[1], NULL);
-        query = RedisModule_StringPtrLen(argv[2], NULL);
+        query = RedisModule_StringPtrLen(argv[2], &query_len);
+    }
+
+    // Empty query.
+    if(query_len == 0) {
+        RedisModule_ReplyWithError(ctx, "Error empty query");
+        return REDISMODULE_OK;
     }
 
     /* Parse query, get AST. */
