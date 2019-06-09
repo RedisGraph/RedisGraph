@@ -423,7 +423,7 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, AST *ast, ResultSet *resul
                 AlgebraicExpression **exps = AlgebraicExpression_From_QueryGraph(cc, ast, &expCount);
 
                 // Reorder exps, to the most performent arrangement of evaluation.
-                orderExpressions(exps, expCount);
+                orderExpressions(exps, expCount, filter_tree);
 
                 AlgebraicExpression *exp = exps[0];
                 selectEntryPoint(exp, filter_tree);

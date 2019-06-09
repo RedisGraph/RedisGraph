@@ -116,6 +116,16 @@ friends_visited_same_places_as_me_query = QueryInfo(
                      ['Alon Fital', 'USA']]
 )
 
+countries_visited_by_roi_tal_boaz = QueryInfo(
+    query="""MATCH (A:person {name:"Roi Lipman"})-[:visited]->(X:country),
+                   (B:person {name:"Tal Doron"})-[:visited]->(X),
+                   (C:person {name:"Boaz Arad"})-[:visited]->(X)
+            RETURN X.name""",
+    description='Countries visited by Roi, Tal and Boaz.',
+    max_run_time_ms=0.30,
+    expected_result=[['USA']]
+)
+
 friends_older_than_me_query = QueryInfo(
     query="""MATCH (ME:person {name:"Roi Lipman"})-[:friend]->(f:person)
              WHERE f.age > ME.age
@@ -408,6 +418,7 @@ queries_info = [
     friends_of_friends_single_and_over_30_query,
     friends_of_friends_visited_netherlands_and_single_query,
     friends_visited_same_places_as_me_query,
+    countries_visited_by_roi_tal_boaz,
     friends_older_than_me_query,
     friends_age_difference_query,
     friends_who_are_older_than_average,

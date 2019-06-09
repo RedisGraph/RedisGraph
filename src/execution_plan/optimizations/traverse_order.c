@@ -28,6 +28,7 @@ Arrangement Arrangement_Clone(const Arrangement arrangement, uint size) {
     return clone;
 }
 
+// Print arrangement.
 void Arrangement_Print(Arrangement arrangement, uint size) {
     printf("Arrangement_Print\n");
     for(uint i = 0; i < size; i++) {
@@ -49,7 +50,7 @@ static uint factorial(uint x) {
     return res;
 }
 
-/* Function to swap values at two pointers */
+// Function to swap values at two pointers.
 static void swap(Arrangement exps, uint i, uint  j) {
     AlgebraicExpression *temp;
     temp = exps[i]; 
@@ -57,7 +58,7 @@ static void swap(Arrangement exps, uint i, uint  j) {
     exps[j] = temp;
 }
 
-/* Computes all permutations of set exps. */
+// Computes all permutations of set exps.
 void permute(Arrangement set, int l, int r, Arrangement **permutations) {
     int i;
     if (l == r) {
@@ -83,6 +84,30 @@ static Arrangement* permutations(const Arrangement exps, uint exps_count) {
     assert(array_len(permutations) == permutation_count);
 
     return permutations;
+}
+
+/* A valid arrangement of expressions is one in which the ith expression
+ * source or destination nodes appear in a previous expression k where k < i. */
+static bool valid_arrangement(const Arrangement arrangement, uint exps_count) {
+    for(int i = 1; i < exps_count; i++) {        
+        AlgebraicExpression *exp = arrangement[i];
+        Node *src = exp->src_node;
+        Node *dest = exp->dest_node;
+        int j = i-1;
+
+        // Scan previous expressions.
+        for(; j >= 0; j--) {
+            AlgebraicExpression *prev_exp = arrangement[j];
+            if(prev_exp->src_node == src ||
+                prev_exp->dest_node == src ||
+                prev_exp->src_node == dest ||
+                prev_exp->dest_node == dest) break;
+        }
+        /* Nither src or dest nodes are mentioned in previous expressions
+         * as such the arrangement is invalid. */
+        if(j < 0) return false;
+    }
+    return true;
 }
 
 static int penalty_arrangement(Arrangement arrangement, uint exp_count) {
@@ -126,47 +151,46 @@ static int penalty_arrangement(Arrangement arrangement, uint exp_count) {
     return penalty;
 }
 
-static int reward_arrangement(Arrangement arrangement, uint exp_count) {
-    int reward = 0;    
+static int reward_arrangement(Arrangement arrangement, uint exp_count, const FT_FilterNode *filters) {
+    // Arrangement_Print(arrangement, exp_count);
+    int reward = 0;
+    rax *filtered_entities = FilterTree_CollectAliases(filters);
+
+    // A bit naive at the moment.
+    for(uint i = 0; i < exp_count; i++) {
+        AlgebraicExpression *exp = arrangement[i];
+        char *src_alias = exp->src_node->alias;
+        char *dest_alias = exp->dest_node->alias;
+
+        if(raxFind(filtered_entities, (unsigned char*)src_alias, strlen(src_alias)) != raxNotFound) {
+            reward += F * (exp_count - i);
+            raxRemove(filtered_entities, (unsigned char*)src_alias, strlen(src_alias), NULL);
+        }
+        if(raxFind(filtered_entities, (unsigned char*)dest_alias, strlen(dest_alias)) != raxNotFound) {
+            reward += F * (exp_count - i);
+            raxRemove(filtered_entities, (unsigned char*)dest_alias, strlen(dest_alias), NULL);
+        }
+    }
+
+    // printf("reward: %d\n", reward);
+    raxFree(filtered_entities);
     return reward;
 }
 
-static int score_arrangement(Arrangement arrangement, uint exp_count) {
+static int score_arrangement(Arrangement arrangement, uint exp_count, const FT_FilterNode *filters) {
     int score = 0;
     int penalty = penalty_arrangement(arrangement, exp_count);
+    int reward = reward_arrangement(arrangement, exp_count, filters);
     score -= penalty;
+    score += reward;
     return score;
-}
-
-/* A valid arrangement of expressions is one in which the ith expression
- * source or destination nodes appear in a previous expression k where k < i. */
-static bool valid_arrangement(const Arrangement arrangement, uint exps_count) {
-    for(int i = 1; i < exps_count; i++) {        
-        AlgebraicExpression *exp = arrangement[i];
-        Node *src = exp->src_node;
-        Node *dest = exp->dest_node;
-        int j = i-1;
-
-        // Scan previous expressions.
-        for(; j >= 0; j--) {
-            AlgebraicExpression *prev_exp = arrangement[j];
-            if(prev_exp->src_node == src ||
-                prev_exp->dest_node == src ||
-                prev_exp->src_node == dest ||
-                prev_exp->dest_node == dest) break;
-        }
-        /* Nither src or dest nodes are mentioned in previous expressions
-         * as such the arrangement is invalid. */
-        if(j < 0) return false;
-    }
-    return true;
 }
 
 /* Given a set of algebraic expressions representing a graph traversal 
  * we pick the order in which the expressions will be evaluated 
  * taking into account filters and transposes. 
  * exps will reordered. */
-void orderExpressions(AlgebraicExpression **exps, uint exps_count) {
+void orderExpressions(AlgebraicExpression **exps, uint exps_count, const FT_FilterNode *filters) {
     assert(exps);
 
     // Single expression, return quickly.
@@ -188,10 +212,11 @@ void orderExpressions(AlgebraicExpression **exps, uint exps_count) {
     /* Score each arrangement, 
      * keep track after arrangement with highest score. */
     int max_score = INT_MIN;
-    Arrangement top_arrangement;
+    Arrangement top_arrangement;    
     for(uint i = 0; i < arrangement_count; i++) {
         Arrangement arrangement = valid_arrangements[i];
-        int score = score_arrangement(arrangement, exps_count);
+        int score = score_arrangement(arrangement, exps_count, filters);
+        // printf("score: %d\n", score);
         if(max_score < score) {
             max_score = score;
             top_arrangement = arrangement;

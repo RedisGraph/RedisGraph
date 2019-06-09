@@ -11,4 +11,8 @@
 #include "../../arithmetic/algebraic_expression.h"
 
 /* Reorders exps such that exp[i] is the ith expression to evaluate. */
-void orderExpressions(AlgebraicExpression **exps, uint exps_count);
+void orderExpressions(
+    AlgebraicExpression **exps,     // Expressions to order.
+    uint exps_count,                // Number of expressions.
+    const FT_FilterNode *filters    // Filters.
+);

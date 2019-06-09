@@ -96,7 +96,7 @@ TEST_F(TraversalOrderingTest, TransposeFree) {
     set[1] = ExpBC;
     set[2] = ExpAB;
 
-    orderExpressions(set, 3);
+    orderExpressions(set, 3, NULL);
     ASSERT_EQ(set[0], ExpAB);
     ASSERT_EQ(set[1], ExpBC);
     ASSERT_EQ(set[2], ExpCD);
@@ -105,7 +105,7 @@ TEST_F(TraversalOrderingTest, TransposeFree) {
     set[0] = ExpAB;
     set[1] = ExpBC;
     set[2] = ExpCD;
-    orderExpressions(set, 3);
+    orderExpressions(set, 3, NULL);
     ASSERT_EQ(set[0], ExpAB);
     ASSERT_EQ(set[1], ExpBC);
     ASSERT_EQ(set[2], ExpCD);
@@ -114,7 +114,7 @@ TEST_F(TraversalOrderingTest, TransposeFree) {
     set[0] = ExpAB;
     set[1] = ExpCD;
     set[2] = ExpBC;
-    orderExpressions(set, 3);
+    orderExpressions(set, 3, NULL);
     ASSERT_EQ(set[0], ExpAB);
     ASSERT_EQ(set[1], ExpBC);
     ASSERT_EQ(set[2], ExpCD);
@@ -123,7 +123,7 @@ TEST_F(TraversalOrderingTest, TransposeFree) {
     set[0] = ExpBC;
     set[1] = ExpAB;
     set[2] = ExpCD;
-    orderExpressions(set, 3);
+    orderExpressions(set, 3, NULL);
     ASSERT_EQ(set[0], ExpAB);
     ASSERT_EQ(set[1], ExpBC);
     ASSERT_EQ(set[2], ExpCD);
@@ -132,7 +132,7 @@ TEST_F(TraversalOrderingTest, TransposeFree) {
     set[0] = ExpBC;
     set[1] = ExpCD;
     set[2] = ExpAB;
-    orderExpressions(set, 3);
+    orderExpressions(set, 3, NULL);
     ASSERT_EQ(set[0], ExpAB);
     ASSERT_EQ(set[1], ExpBC);
     ASSERT_EQ(set[2], ExpCD);
@@ -141,7 +141,7 @@ TEST_F(TraversalOrderingTest, TransposeFree) {
     set[0] = ExpCD;
     set[1] = ExpAB;
     set[2] = ExpBC;
-    orderExpressions(set, 3);
+    orderExpressions(set, 3, NULL);
     ASSERT_EQ(set[0], ExpAB);
     ASSERT_EQ(set[1], ExpBC);
     ASSERT_EQ(set[2], ExpCD);    
