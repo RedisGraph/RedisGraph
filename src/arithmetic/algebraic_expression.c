@@ -183,9 +183,10 @@ void AlgebraicExpression_AppendTerm(AlgebraicExpression *ae, GrB_Matrix m, bool 
         ae->operands = realloc(ae->operands, sizeof(AlgebraicExpressionOperand) * ae->operand_cap);
     }
 
-    ae->operands[ae->operand_count].transpose = transposeOp;
-    ae->operands[ae->operand_count].free = freeOp;
     ae->operands[ae->operand_count].operand = m;
+    ae->operands[ae->operand_count].free = freeOp;
+    ae->operands[ae->operand_count].diagonal = false;   // Assuming not diagonal.
+    ae->operands[ae->operand_count].transpose = transposeOp;
     ae->operand_count++;
 }
 
@@ -204,9 +205,10 @@ void AlgebraicExpression_PrependTerm(AlgebraicExpression *ae, GrB_Matrix m, bool
         ae->operands[i] = ae->operands[i-1];
     }
 
-    ae->operands[0].transpose = transposeOp;
-    ae->operands[0].free = freeOp;
     ae->operands[0].operand = m;
+    ae->operands[0].free = freeOp;
+    ae->operands[0].diagonal = false;   // Assuming not diagonal.
+    ae->operands[0].transpose = transposeOp;
 }
 
 void AlgebraicExpression_AppendOperand(AlgebraicExpression *ae, AlgebraicExpressionOperand op) {
@@ -278,9 +280,10 @@ static AlgebraicExpression** _AlgebraicExpression_Intermidate_Expressions(
     TrieMap *ref_entities) {
 
     /* Allocating maximum number of expression possible. */
+    Edge *e = NULL;
     int expIdx = 0;         // Sub expression index.
     int operandIdx = 0;     // Index to currently inspected operand.
-    Edge *e = NULL;
+    int pathLen = array_len(path);
     AlgebraicExpression **expressions;
 
     expressions = array_new(AlgebraicExpression*, exp->operand_count);
@@ -291,7 +294,7 @@ static AlgebraicExpression** _AlgebraicExpression_Intermidate_Expressions(
     expressions = array_append(expressions, iexp);
     expIdx++;
 
-    for(int i = 0; i < array_len(path); i++) {
+    for(int i = 0; i < pathLen; i++) {
         e = path[i];
         /* If edge is referenced, set expression edge pointer. */
         if(_referred_entity(e->alias, ref_entities)) iexp->edge = e;
@@ -315,7 +318,10 @@ static AlgebraicExpression** _AlgebraicExpression_Intermidate_Expressions(
         }
 
         /* If intermidate node is referenced, create a new algebraic expression. */
-        if(_intermidate_node(e->dest) && _referred_node(e->dest, ref_entities)) {
+        if(i < (pathLen-1) &&                       // Not the last edge on path.
+           _intermidate_node(e->dest) &&            // Node is an intermidate entity.
+           _referred_node(e->dest, ref_entities))   // Node is referenced.
+        {
             // Finalize current expression.
             iexp->dest_node = e->dest;
 
@@ -333,14 +339,15 @@ static AlgebraicExpression** _AlgebraicExpression_Intermidate_Expressions(
 }
 
 static AlgebraicExpressionOperand _AlgebraicExpression_OperandFromNode(Node *n) {
-    AlgebraicExpressionOperand op;   
+    AlgebraicExpressionOperand op;
     op.free = false;
+    op.diagonal = true;
     op.transpose = false;
     op.operand = Node_GetMatrix(n);
     return op;
 }
 
-static AlgebraicExpressionOperand _AlgebraicExpression_OperandFromEdge(
+static AlgebraicExpressionOperand _AlgebraicExpression_OperandFromEdge (
     Edge *e,
     bool transpose,
     const AST* ast
@@ -374,6 +381,7 @@ static AlgebraicExpressionOperand _AlgebraicExpression_OperandFromEdge(
     }
 
     op.operand = mat;
+    op.diagonal = false;
     op.free = freeMatrix;
     op.transpose = transpose;
     return op;
@@ -397,7 +405,9 @@ static Node* _SharedNode(const Edge *a, const Edge *b) {
 }
 
 static AlgebraicExpression* _AlgebraicExpression_From_Path(Edge **path, uint path_len, const AST *ast) {
-    Edge *e;
+    assert(path && path_len > 0 && ast);
+
+    Edge *e = NULL;
     AlgebraicExpressionOperand op;
 
     // Construct expression.
@@ -458,8 +468,7 @@ static AlgebraicExpression* _AlgebraicExpression_From_Path(Edge **path, uint pat
 
     /* Optimize number of transpose:
      * if the majority of operands are transposed
-     * transpose the entire expression. 
-     * TODO: avoid transposing diagonal matrices (Labels) */
+     * transpose the entire expression. */
     if(transposeCount > (path_len - transposeCount)) {
         AlgebraicExpression_Transpose(exp);
     }
@@ -566,22 +575,20 @@ void AlgebraicExpression_Execute(AlgebraicExpression *ae, GrB_Matrix res) {
      * X = A*B
      * Y = X*C
      * Z = Y*D */
-    for (int i = 1; i < operand_count; i++)
-    {
+    for (int i = 1; i < operand_count; i++) {
         // Multiply and reduce.
         leftTerm = operands[i-1];
         rightTerm = operands[i];
-        
 
         /* Incase we're required to transpose right hand side operand 
          * perform transpose once and update original expression. */
-        if (rightTerm.transpose)
-        {
+
+        if (rightTerm.transpose) {
+            assert(!rightTerm.diagonal); // Never transpose diagonal matrix.
             GrB_Matrix t = rightTerm.operand;
             /* Graph matrices are immutable, create a new matrix. 
              * and transpose. */
-            if (!rightTerm.free)
-            {
+            if (!rightTerm.free) {
                 GrB_Index cols;
                 GrB_Matrix_ncols(&cols, rightTerm.operand);
                 GrB_Matrix_new(&t, GrB_BOOL, cols, cols);
@@ -645,8 +652,10 @@ void AlgebraicExpression_Transpose(AlgebraicExpression *ae) {
 
     _AlgebraicExpression_ReverseOperandOrder(ae);
 
-    for(int i = 0; i < ae->operand_count; i++)
-        ae->operands[i].transpose = !ae->operands[i].transpose;
+    for(int i = 0; i < ae->operand_count; i++) {
+        if(ae->operands[i].diagonal) ae->operands[i].transpose = false;
+        else ae->operands[i].transpose = !ae->operands[i].transpose;
+    }
 }
 
 AlgebraicExpressionNode *AlgebraicExpressionNode_NewOperationNode(AL_EXP_OP op) {

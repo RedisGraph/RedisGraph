@@ -52,6 +52,7 @@ void AlgebraicExpressionNode_Free(AlgebraicExpressionNode *root);
 /* AlgebraicExpressionOperand a single operand within an
  * algebraic expression. */
 typedef struct  {
+    bool diagonal;          // Diagonal matrix.
     bool transpose;         // Should the matrix be transposed.
     bool free;              // Should the matrix be freed?
     GrB_Matrix operand;

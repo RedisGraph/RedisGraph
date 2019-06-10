@@ -191,7 +191,7 @@ static int score_arrangement(Arrangement arrangement, uint exp_count, const FT_F
  * taking into account filters and transposes. 
  * exps will reordered. */
 void orderExpressions(AlgebraicExpression **exps, uint exps_count, const FT_FilterNode *filters) {
-    assert(exps);
+    assert(exps && exps_count > 0);
 
     // Single expression, return quickly.
     if(exps_count == 1) return;
@@ -212,7 +212,8 @@ void orderExpressions(AlgebraicExpression **exps, uint exps_count, const FT_Filt
     /* Score each arrangement, 
      * keep track after arrangement with highest score. */
     int max_score = INT_MIN;
-    Arrangement top_arrangement;    
+    Arrangement top_arrangement = valid_arrangements[0];
+
     for(uint i = 0; i < arrangement_count; i++) {
         Arrangement arrangement = valid_arrangements[i];
         int score = score_arrangement(arrangement, exps_count, filters);
