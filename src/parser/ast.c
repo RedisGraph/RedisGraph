@@ -510,19 +510,19 @@ bool AST_Projects(const AST *ast) {
 }
 
 bool AST_Empty(const AST *ast) {
-return (!(ast->matchNode != NULL |
-          ast->createNode != NULL |
-          ast->callNode != NULL |
-          ast->returnNode != NULL |
-          ast->mergeNode != NULL |
-          ast->deleteNode != NULL |
-          ast->setNode != NULL |
-          ast->whereNode != NULL |
-          ast->skipNode != NULL |
-          ast->orderNode != NULL |
-          ast->unwindNode != NULL |
-          ast->limitNode != NULL |
-          ast->withNode != NULL |
+return (!(ast->matchNode != NULL ||
+          ast->createNode != NULL ||
+          ast->callNode != NULL ||
+          ast->returnNode != NULL ||
+          ast->mergeNode != NULL ||
+          ast->deleteNode != NULL ||
+          ast->setNode != NULL ||
+          ast->whereNode != NULL ||
+          ast->skipNode != NULL ||
+          ast->orderNode != NULL ||
+          ast->unwindNode != NULL ||
+          ast->limitNode != NULL ||
+          ast->withNode != NULL ||
           ast->indexNode != NULL));
 }
 
