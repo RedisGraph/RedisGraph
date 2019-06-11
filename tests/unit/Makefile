@@ -48,11 +48,13 @@ gtest_main.a : gtest-all.o gtest_main.o
 CC_OBJECTS:=$(CC_OBJECTS)
 RAX=../../deps/rax/rax.o
 LIBTRIEMAP=../../src/util/triemap/libtriemap.a
+LIBLAGRAPH=../../deps/LAGraph/build/liblagraph.a
 LIBGRAPHBLAS=../../deps/GraphBLAS/build/libgraphblas.a
 LIBXXHASH=$(ROOT)/deps/xxhash/libxxhash.a
 
-LIBS=$(LIBTRIEMAP) $(LIBGRAPHBLAS) $(LIBXXHASH)
+LIBS=$(LIBTRIEMAP) $(LIBGRAPHBLAS) $(LIBLAGRAPH) $(LIBXXHASH)
 DEPS=$(CC_OBJECTS) $(RAX) $(LIBS)
+
 
 # Build and run a test for each cpp file in directory
 TEST_SOURCES = $(wildcard *.cpp)

@@ -1,0 +1,12 @@
+
+#!/bin/bash
+
+# place a copy of ssget from sparse.tamu.edu (or in the SuiteSparse 
+# distribution) in your home directory.  Or put a link in your home
+# directory to ssget.  Then use ssgui.jar or ssget in MATLAB to
+# download matrices.
+
+tar zvfxO ~/ssget/MM/LAW/indochina-2004.tar.gz \
+    indochina-2004/indochina-2004.mtx | \
+    ./build/bfs_test 0 > o
+

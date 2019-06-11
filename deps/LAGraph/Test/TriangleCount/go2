@@ -1,0 +1,55 @@
+#!/bin/bash
+
+tar zvfxO ~/ssget/MM/HB/west0067.tar.gz west0067/west0067.mtx | \
+    ./build/ttest
+
+#   ~/GraphChallenge/snap/loc-brightkite_edges/loc-brightkite_edges_adj.tsv.gz \
+#   ~/GraphChallenge/snap/soc-Epinions1/soc-Epinions1_adj.tsv.gz \
+#   ~/GraphChallenge/snap/email-EuAll/email-EuAll_adj.tsv.gz \
+#   ~/GraphChallenge/snap/cit-HepPh/cit-HepPh_adj.tsv.gz \
+#   ~/GraphChallenge/snap/soc-Slashdot0902/soc-Slashdot0902_adj.tsv.gz \
+#   ~/GraphChallenge/snap/amazon0302/amazon0302_adj.tsv.gz \
+#   ~/GraphChallenge/snap/loc-gowalla_edges/loc-gowalla_edges_adj.tsv.gz \
+#   ~/GraphChallenge/snap/roadNet-TX/roadNet-TX_adj.tsv.gz \
+#   ~/GraphChallenge/snap/flickrEdges/flickrEdges_adj.tsv.gz \
+#   ~/GraphChallenge/snap/cit-Patents/cit-Patents_adj.tsv.gz \
+#   ~/GraphChallenge/snap/friendster/friendster_adj.tsv.gz
+#   ~/GraphChallenge/synthetic/image-grid/g-16764930-4194304_adj.tsv.gz \
+#   ~/GraphChallenge/synthetic/image-grid/g-268386306-67108864_adj.tsv.gz \
+
+tar zvfxO ~/ssget/MM/SNAP/loc-Brightkite.tar.gz \
+                          loc-Brightkite/loc-Brightkite.mtx | ./build/ttest
+
+tar zvfxO ~/ssget/MM/SNAP/soc-Epinions1.tar.gz \
+                          soc-Epinions1/soc-Epinions1.mtx | ./build/ttest
+
+tar zvfxO ~/ssget/MM/SNAP/email-EuAll.tar.gz \
+                          email-EuAll/email-EuAll.mtx | ./build/ttest
+
+tar zvfxO ~/ssget/MM/SNAP/cit-HepPh.tar.gz \
+                          cit-HepPh/cit-HepPh.mtx | ./build/ttest
+
+tar zvfxO ~/ssget/MM/SNAP/soc-Slashdot0902.tar.gz \
+                          soc-Slashdot0902/soc-Slashdot0902.mtx | ./build/ttest
+
+tar zvfxO ~/ssget/MM/SNAP/amazon0302.tar.gz \
+                          amazon0302/amazon0302.mtx | ./build/ttest
+
+tar zvfxO ~/ssget/MM/SNAP/loc-Gowalla.tar.gz \
+                          loc-Gowalla/loc-Gowalla.mtx | ./build/ttest
+
+tar zvfxO ~/ssget/MM/SNAP/roadNet-TX.tar.gz \
+                          roadNet-TX/roadNet-TX.mtx | ./build/ttest
+
+# not the same matrix
+# tar zvfxO ~/ssget/MM/Gleich/flickr.tar.gz \
+#                           flickr/flickr.mtx | ./build/ttest
+
+tar zvfxO ~/ssget/MM/SNAP/cit-Patents.tar.gz \
+                          cit-Patents/cit-Patents.mtx | ./build/ttest
+
+tar zvfxO ~/ssget/MM/SNAP/com-Friendster.tar.gz \
+                          com-Friendster/com-Friendster.mtx | ./build/ttest
+
+
+

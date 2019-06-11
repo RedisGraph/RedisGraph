@@ -1,0 +1,4 @@
+# Ignore these files
+A.mtx
+stderr.txt
+lcc_results

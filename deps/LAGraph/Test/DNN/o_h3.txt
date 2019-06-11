@@ -1,0 +1,131 @@
+type: double
+max # of nthreads: 40
+# of problems to solve: 12
+
+# neurons: 1024 bias: -0.3
+# features: 60000 read time: 3.06752 sec
+# entries in Y0: 6.37451 million
+
+--------------------------------------neurons per layer: 1024 layers: 120
+read net time 1.29032 sec
+# edges in all layers: 3.93216 million
+
+nthreads 40: solution time         1.93 sec speedup     0.00 test passed
+
+# entries in final Y: 1.85549 million
+check time: 0.013526 sec
+
+--------------------------------------neurons per layer: 1024 layers: 480
+read net time 3.59546 sec
+# edges in all layers: 15.7286 million
+
+nthreads 40: solution time         4.64 sec speedup     0.00 test passed
+
+# entries in final Y: 1.85549 million
+check time: 0.011503 sec
+
+--------------------------------------neurons per layer: 1024 layers: 1920
+read net time 13.8291 sec
+# edges in all layers: 62.9146 million
+
+nthreads 40: solution time        15.70 sec speedup     0.00 test passed
+
+# entries in final Y: 1.85549 million
+check time: 0.0107281 sec
+
+# neurons: 4096 bias: -0.35
+# features: 60000 read time: 12.291 sec
+# entries in Y0: 25.0191 million
+
+--------------------------------------neurons per layer: 4096 layers: 120
+read net time 8.42691 sec
+# edges in all layers: 15.7286 million
+
+nthreads 40: solution time        11.81 sec speedup     0.00 test passed
+
+# entries in final Y: 7.3769 million
+check time: 0.015543 sec
+
+--------------------------------------neurons per layer: 4096 layers: 480
+read net time 25.504 sec
+# edges in all layers: 62.9146 million
+
+nthreads 40: solution time        45.08 sec speedup     0.00 test passed
+
+# entries in final Y: 7.3769 million
+check time: 0.0156438 sec
+
+--------------------------------------neurons per layer: 4096 layers: 1920
+read net time 107.599 sec
+# edges in all layers: 251.658 million
+
+nthreads 40: solution time       147.67 sec speedup     0.00 test passed
+
+# entries in final Y: 7.3769 million
+check time: 0.0154841 sec
+
+# neurons: 16384 bias: -0.4
+# features: 60000 read time: 49.3201 sec
+# entries in Y0: 98.8589 million
+
+--------------------------------------neurons per layer: 16384 layers: 120
+read net time 31.6887 sec
+# edges in all layers: 62.9146 million
+
+nthreads 40: solution time        51.57 sec speedup     0.00 test passed
+
+# entries in final Y: 31.4245 million
+check time: 0.046694 sec
+
+--------------------------------------neurons per layer: 16384 layers: 480
+read net time 93.7625 sec
+# edges in all layers: 251.658 million
+
+nthreads 40: solution time       181.10 sec speedup     0.00 test passed
+
+# entries in final Y: 31.4245 million
+check time: 0.0498559 sec
+
+--------------------------------------neurons per layer: 16384 layers: 1920
+read net time 377.484 sec
+# edges in all layers: 1006.63 million
+
+nthreads 40: solution time       714.72 sec speedup     0.00 test passed
+
+# entries in final Y: 31.4245 million
+check time: 0.0512772 sec
+
+# neurons: 65536 bias: -0.45
+# features: 60000 read time: 201.396 sec
+# entries in Y0: 392.192 million
+
+--------------------------------------neurons per layer: 65536 layers: 120
+read net time 98.9647 sec
+# edges in all layers: 251.658 million
+
+nthreads 40: solution time       273.08 sec speedup     0.00test failure!
+
+
+# entries in final Y: 130.679 million
+check time: 0.140296 sec
+
+--------------------------------------neurons per layer: 65536 layers: 480
+read net time 298.777 sec
+# edges in all layers: 1006.63 million
+
+nthreads 40: solution time      1050.17 sec speedup     0.00test failure!
+
+
+# entries in final Y: 130.679 million
+check time: 0.154129 sec
+
+--------------------------------------neurons per layer: 65536 layers: 1920
+read net time 1207.99 sec
+# edges in all layers: 4026.53 million
+
+nthreads 40: solution time      4397.63 sec speedup     0.00test failure!
+
+
+# entries in final Y: 130.679 million
+check time: 0.192911 sec
+all tests passed

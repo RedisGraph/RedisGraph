@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# Run all 12 DNN problems
+./build/dnn
+

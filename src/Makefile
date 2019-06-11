@@ -72,12 +72,13 @@ RAX=../deps/rax/rax.o
 
 # Library dependencies
 LIBTRIEMAP=util/triemap/libtriemap.a
+LAGRAPH=../deps/LAGraph/build/liblagraph.a
 GRAPHBLAS=../deps/GraphBLAS/build/libgraphblas.a
 LIBXXHASH=../deps/xxhash/libxxhash.a
 LIBCYPHER-PARSER=../deps/libcypher-parser/lib/src/.libs/libcypher-parser.a
 
 # Compilation deps for the module
-LIBS=$(LIBTRIEMAP) $(GRAPHBLAS) $(LIBXXHASH) $(LIBCYPHER-PARSER)
+LIBS=$(LIBTRIEMAP) $(GRAPHBLAS) $(LAGRAPH) $(LIBXXHASH) $(LIBCYPHER-PARSER)
 MODULE=$(CC_OBJECTS) $(RAX) $(LIBS)
 
 REDISGRAPH_CC=$(QUIET_CC)$(CC)
@@ -118,7 +119,13 @@ $(GRAPHBLAS):
 ifeq (,$(wildcard $(GRAPHBLAS)))
 	@$(MAKE) -C ../deps/GraphBLAS CMAKE_OPTIONS="-DUSER_POSIX=1 -DCMAKE_CXX_FLAGS=-std=c++11 -DCMAKE_C_FLAGS='$(BLAS_CFLAGS)'" static_only
 else
+endif
 
+# Build LAGraph only if library does not already exists.
+$(LAGRAPH):
+ifeq (,$(wildcard $(LAGRAPH)))
+	@$(MAKE) -C ../deps/LAGraph CMAKE_OPTIONS="-DUSER_POSIX=1 -DCMAKE_CXX_FLAGS=-std=c++11 -DCMAKE_C_FLAGS='$(BLAS_CFLAGS)'" static
+else
 endif
 
 # Build libcypher-parser only if library does not already exists.
@@ -147,6 +154,7 @@ clean:
 	@-rm -f redisgraph.so
 ifeq ($(ALL),1)
 	@$(MAKE) -C ../deps/GraphBLAS clean
+	@$(MAKE) -C ../deps/LAGraph clean
 	@$(MAKE) -C ../deps/xxhash clean
 	@$(MAKE) -C ../deps/rax clean
 endif

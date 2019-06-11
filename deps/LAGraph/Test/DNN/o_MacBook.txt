@@ -1,0 +1,124 @@
+results on a 2013 MacBook Pro, 16GB RAM (1600 Mhz DDR3)
+macOS Mojave 10.14.3
+Intel icc compiler 19.0.3.199 (has a big impact on performance vs gcc)
+CPU:  2.8 GHz Intel Core i7, with 2 hardware cores and 4 threads
+LAGraph + GraphBLAS v3.0.0 (May 20th draft version)
+May 21, 2019
+
+max # of nthreads: 4
+# of problems to solve: 12
+
+# neurons: 1024 bias: -0.3
+# features: 60000 read time: 2.7924 sec
+# entries in Y0: 6.37451 million
+
+--------------------------------------neurons per layer: 1024 layers: 120
+read net time 1.64583 sec
+# edges in all layers: 3.93216 million
+
+nthreads  1: solution time        17.74 sec test passed
+nthreads  2: solution time        11.62 sec speedup     1.53 test passed
+nthreads  4: solution time        10.30 sec speedup     1.72 test passed
+
+# entries in final Y: 1.85549 million
+check time: 0.00750899 sec
+
+--------------------------------------neurons per layer: 1024 layers: 480
+read net time 5.11269 sec
+# edges in all layers: 15.7286 million
+
+nthreads  1: solution time        48.40 sec test passed
+nthreads  2: solution time        31.30 sec speedup     1.55 test passed
+nthreads  4: solution time        29.54 sec speedup     1.64 test passed
+
+# entries in final Y: 1.85549 million
+check time: 0.012634 sec
+
+--------------------------------------neurons per layer: 1024 layers: 1920
+read net time 20.6578 sec
+# edges in all layers: 62.9146 million
+
+nthreads  1: solution time       168.50 sec test passed
+nthreads  2: solution time       111.25 sec speedup     1.51 test passed
+nthreads  4: solution time       104.33 sec speedup     1.62 test passed
+
+# entries in final Y: 1.85549 million
+check time: 0.00742984 sec
+
+# neurons: 4096 bias: -0.35
+# features: 60000 read time: 11.5847 sec
+# entries in Y0: 25.0191 million
+
+--------------------------------------neurons per layer: 4096 layers: 120
+read net time 6.93179 sec
+# edges in all layers: 15.7286 million
+
+nthreads  1: solution time        73.32 sec test passed
+nthreads  2: solution time        46.83 sec speedup     1.57 test passed
+nthreads  4: solution time        43.23 sec speedup     1.70 test passed
+
+# entries in final Y: 7.3769 million
+check time: 0.021982 sec
+
+--------------------------------------neurons per layer: 4096 layers: 480
+read net time 21.3544 sec
+# edges in all layers: 62.9146 million
+
+nthreads  1: solution time       206.99 sec test passed
+nthreads  2: solution time       133.83 sec speedup     1.55 test passed
+nthreads  4: solution time       129.82 sec speedup     1.59 test passed
+
+# entries in final Y: 7.3769 million
+check time: 0.0255229 sec
+
+--------------------------------------neurons per layer: 4096 layers: 1920
+read net time 83.6342 sec
+# edges in all layers: 251.658 million
+
+nthreads  1: solution time       787.59 sec test passed
+nthreads  2: solution time       464.58 sec speedup     1.70 test passed
+nthreads  4: solution time       458.51 sec speedup     1.72 test passed
+
+# entries in final Y: 7.3769 million
+check time: 0.022166 sec
+
+# neurons: 16384 bias: -0.4
+# features: 60000 read time: 46.5493 sec
+# entries in Y0: 98.8589 million
+
+--------------------------------------neurons per layer: 16384 layers: 120
+read net time 24.1507 sec
+# edges in all layers: 62.9146 million
+
+nthreads  1: solution time       645.97 sec test passed
+nthreads  2: solution time       385.41 sec speedup     1.68 test passed
+nthreads  4: solution time       285.48 sec speedup     2.26 test passed
+
+# entries in final Y: 31.4245 million
+check time: 0.0896139 sec
+
+--------------------------------------neurons per layer: 16384 layers: 480
+read net time 72.771 sec
+# edges in all layers: 251.658 million
+
+nthreads  1: solution time      2152.09 sec test passed
+nthreads  2: solution time      1220.18 sec speedup     1.76 test passed
+nthreads  4: solution time       924.61 sec speedup     2.33 test passed
+
+# entries in final Y: 31.4245 million
+check time: 0.0994089 sec
+
+--------------------------------------neurons per layer: 16384 layers: 1920
+read net time 320.265 sec
+# edges in all layers: 1006.63 million
+
+nthreads  1: solution time      8237.68 sec test passed
+nthreads  2: solution time      4632.39 sec speedup     1.78 test passed
+nthreads  4: solution time      3550.43 sec speedup     2.32 test passed
+
+# entries in final Y: 31.4245 million
+check time: 0.111199 sec
+
+# neurons: 65536 bias: -0.45
+cannot open ./dnn_data/MNIST/sparse-images-65536.tsv
+(this file was not on the GraphChallenge web site)

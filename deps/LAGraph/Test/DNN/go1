@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# Run 1 DNN problem
+./build/dnn 1
+

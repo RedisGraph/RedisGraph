@@ -1,0 +1,44 @@
+
+TODO, SPEC: all enum values in the spec should be defined.  They are not, so as
+a result, a user code cannot be linked against an arbitrary GraphBLAS library
+after it is compiled.  It must be linked with the same GraphBLAS library it is
+compiled with.  SuiteSparse:GraphBLAS defines all user-visible enum values
+explicitly.  See the SuiteSparse/Include/GraphBLAS.h.   Note that I have
+added a GxB_DEFAULT = 0 to the descriptor enum, GrB_Desc_Value (otherwise,
+there is no way to set a descriptor value to its default value).  Otherwise,
+I have numbered them in the order they appear in the tables in the spec,
+starting with zero.
+
+TODO: the following methods require GxB_Matrix_type:
+./Source/Utility/LAGraph_ispattern.c
+./Source/Utility/LAGraph_mmwrite.c
+./Source/Utility/LAGraph_isequal.c
+(this needs to be added to the GraphBLAS API Specification)
+
+
+TODO: write an LAGraph_eWiseAdd (C,M,accum,A,B,op,amissing,bmissing,desc)
+that does eWiseAdd on the intersection only;
+for entries in A but not B, uses cij = op(aij,bmissing)
+for entries in B but not A, uses cij = op(amissing,bij)
+
+
+TODO: add interfaces to external packages.
+
+    GTgraph: (Madduri and Bader) for generating synthetic graphs
+    CSparse or CXSparse (for depth-first search, scc, dmperm, amd,
+        in the sequential case)
+    others?
+
+TODO: interfaces to:
+    MATLAB interface
+    Python interface, etc.
+
+TODO: need more algorithms and utilities
+
+    from SuiteSparse/GraphBLAS/Demo and convert to LAGraph_*:
+        mis
+
+TODO: simplify the CMake scripts in the Test/* folders (use a common
+    included file)
+
+TODO: move LICENSE, etc to Doc/

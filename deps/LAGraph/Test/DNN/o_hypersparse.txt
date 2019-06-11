@@ -1,0 +1,238 @@
+May 21, 2019.  Tim Davis
+Results on hypersparse.cs.tamu.edu
+NVIDIA DGX Station, 256GB RAM
+Intel Xeon E5-2698 v4, with 2.2 GHz, 20 hardware cores (40 threads).
+The icc compiler was used (19.0.3.199 20190206).
+The GPUs were not used.
+
+max # of nthreads: 40
+# of problems to solve: 12
+
+# neurons: 1024 bias: -0.3
+# features: 60000 read time: 3.06287 sec
+# entries in Y0: 6.37451 million
+
+--------------------------------------neurons per layer: 1024 layers: 120
+read net time 2.4239 sec
+# edges in all layers: 3.93216 million
+
+nthreads  1: solution time        18.96 sec test passed
+nthreads  2: solution time        10.66 sec speedup     1.78 test passed
+nthreads  4: solution time         5.61 sec speedup     3.38 test passed
+nthreads  8: solution time         2.92 sec speedup     6.50 test passed
+nthreads 16: solution time         1.69 sec speedup    11.20 test passed
+nthreads 20: solution time         1.45 sec speedup    13.09 test passed
+nthreads 32: solution time         1.43 sec speedup    13.24 test passed
+nthreads 40: solution time         1.32 sec speedup    14.40 test passed
+
+# entries in final Y: 1.85549 million
+check time: 0.000484943 sec
+
+--------------------------------------neurons per layer: 1024 layers: 480
+read net time 7.50829 sec
+# edges in all layers: 15.7286 million
+
+nthreads  1: solution time        49.71 sec test passed
+nthreads  2: solution time        27.60 sec speedup     1.80 test passed
+nthreads  4: solution time        14.06 sec speedup     3.54 test passed
+nthreads  8: solution time         7.27 sec speedup     6.84 test passed
+nthreads 16: solution time         4.16 sec speedup    11.96 test passed
+nthreads 20: solution time         3.61 sec speedup    13.79 test passed
+nthreads 32: solution time         3.76 sec speedup    13.21 test passed
+nthreads 40: solution time         3.47 sec speedup    14.33 test passed
+
+# entries in final Y: 1.85549 million
+check time: 0.000485897 sec
+
+--------------------------------------neurons per layer: 1024 layers: 1920
+read net time 31.6082 sec
+# edges in all layers: 62.9146 million
+
+nthreads  1: solution time       172.77 sec test passed
+nthreads  2: solution time        95.45 sec speedup     1.81 test passed
+nthreads  4: solution time        48.49 sec speedup     3.56 test passed
+nthreads  8: solution time        25.03 sec speedup     6.90 test passed
+nthreads 16: solution time        14.27 sec speedup    12.11 test passed
+nthreads 20: solution time        12.40 sec speedup    13.93 test passed
+nthreads 32: solution time        13.29 sec speedup    13.00 test passed
+nthreads 40: solution time        12.49 sec speedup    13.83 test passed
+
+# entries in final Y: 1.85549 million
+check time: 0.000486851 sec
+
+# neurons: 4096 bias: -0.35
+# features: 60000 read time: 12.286 sec
+# entries in Y0: 25.0191 million
+
+--------------------------------------neurons per layer: 4096 layers: 120
+read net time 8.83014 sec
+# edges in all layers: 15.7286 million
+
+nthreads  1: solution time        87.54 sec test passed
+nthreads  2: solution time        47.88 sec speedup     1.83 test passed
+nthreads  4: solution time        25.62 sec speedup     3.42 test passed
+nthreads  8: solution time        13.99 sec speedup     6.26 test passed
+nthreads 16: solution time         8.36 sec speedup    10.47 test passed
+nthreads 20: solution time         7.34 sec speedup    11.93 test passed
+nthreads 32: solution time         8.01 sec speedup    10.93 test passed
+nthreads 40: solution time         7.35 sec speedup    11.91 test passed
+
+# entries in final Y: 7.3769 million
+check time: 0.00508118 sec
+
+--------------------------------------neurons per layer: 4096 layers: 480
+read net time 27.6634 sec
+# edges in all layers: 62.9146 million
+
+nthreads  1: solution time       255.49 sec test passed
+nthreads  2: solution time       142.00 sec speedup     1.80 test passed
+nthreads  4: solution time        71.10 sec speedup     3.59 test passed
+nthreads  8: solution time        38.98 sec speedup     6.55 test passed
+nthreads 16: solution time        23.93 sec speedup    10.67 test passed
+nthreads 20: solution time        21.04 sec speedup    12.14 test passed
+nthreads 32: solution time        24.58 sec speedup    10.40 test passed
+nthreads 40: solution time        23.30 sec speedup    10.96 test passed
+
+# entries in final Y: 7.3769 million
+check time: 0.00581717 sec
+
+--------------------------------------neurons per layer: 4096 layers: 1920
+read net time 108.984 sec
+# edges in all layers: 251.658 million
+
+nthreads  1: solution time       925.66 sec test passed
+nthreads  2: solution time       540.06 sec speedup     1.71 test passed
+nthreads  4: solution time       276.24 sec speedup     3.35 test passed
+nthreads  8: solution time       150.90 sec speedup     6.13 test passed
+nthreads 16: solution time        92.12 sec speedup    10.05 test passed
+nthreads 20: solution time        80.43 sec speedup    11.51 test passed
+nthreads 32: solution time        85.41 sec speedup    10.84 test passed
+nthreads 40: solution time        85.28 sec speedup    10.85 test passed
+
+# entries in final Y: 7.3769 million
+check time: 0.00491405 sec
+
+# neurons: 16384 bias: -0.4
+# features: 60000 read time: 49.2964 sec
+# entries in Y0: 98.8589 million
+
+--------------------------------------neurons per layer: 16384 layers: 120
+read net time 30.2664 sec
+# edges in all layers: 62.9146 million
+
+nthreads  1: solution time       713.93 sec test passed
+nthreads  2: solution time       387.55 sec speedup     1.84 test passed
+nthreads  4: solution time       203.82 sec speedup     3.50 test passed
+nthreads  8: solution time       107.60 sec speedup     6.64 test passed
+nthreads 16: solution time        58.63 sec speedup    12.18 test passed
+nthreads 20: solution time        50.16 sec speedup    14.23 test passed
+nthreads 32: solution time        44.47 sec speedup    16.05 test passed
+nthreads 40: solution time        42.70 sec speedup    16.72 test passed
+
+# entries in final Y: 31.4245 million
+check time: 0.036767 sec
+
+--------------------------------------neurons per layer: 16384 layers: 480
+read net time 92.3257 sec
+# edges in all layers: 251.658 million
+
+nthreads  1: solution time      2416.88 sec test passed
+nthreads  2: solution time      1300.11 sec speedup     1.86 test passed
+nthreads  4: solution time       683.49 sec speedup     3.54 test passed
+nthreads  8: solution time       356.98 sec speedup     6.77 test passed
+nthreads 16: solution time       194.70 sec speedup    12.41 test passed
+nthreads 20: solution time       166.89 sec speedup    14.48 test passed
+nthreads 32: solution time       158.81 sec speedup    15.22 test passed
+nthreads 40: solution time       150.34 sec speedup    16.08 test passed
+
+# entries in final Y: 31.4245 million
+check time: 0.035886 sec
+
+--------------------------------------neurons per layer: 16384 layers: 1920
+read net time 374.778 sec
+# edges in all layers: 1006.63 million
+
+nthreads  1: solution time      9283.72 sec test passed
+nthreads  2: solution time      4973.16 sec speedup     1.87 test passed
+nthreads  4: solution time      2614.45 sec speedup     3.55 test passed
+nthreads  8: solution time      1375.57 sec speedup     6.75 test passed
+nthreads 16: solution time       751.61 sec speedup    12.35 test passed
+nthreads 20: solution time       644.91 sec speedup    14.40 test passed
+nthreads 32: solution time       624.46 sec speedup    14.87 test passed
+nthreads 40: solution time       568.21 sec speedup    16.34 test passed
+
+# entries in final Y: 31.4245 million
+check time: 0.034904 sec
+
+# neurons: 65536 bias: -0.45
+# features: 60000 read time: 201.268 sec
+# entries in Y0: 392.192 million
+
+--------------------------------------neurons per layer: 65536 layers: 120
+read net time 97.6584 sec
+# edges in all layers: 251.658 million
+
+cannot open ./dnn_data/DNN/neuron65536-l120-categories.tsv
+The job halted here.  The categories.tsv file was not yet posted.
+Below are the results after modifying dnn.c with the test-check disabled
+if the file is not found:
+
+max # of nthreads: 40
+# of problems to solve: 3
+
+# neurons: 65536 bias: -0.45
+# features: 60000 read time: 200.193 sec
+# entries in Y0: 392.192 million
+
+--------------------------------------neurons per layer: 65536 layers: 120
+read net time 97.7955 sec
+# edges in all layers: 251.658 million
+
+cannot open ./dnn_data/DNN/neuron65536-l120-categories.tsv
+nthreads  1: solution time      4551.06 sec
+nthreads  2: solution time      2406.21 sec speedup     1.89
+nthreads  4: solution time      1232.02 sec speedup     3.69
+nthreads  8: solution time       637.08 sec speedup     7.14
+nthreads 16: solution time       342.96 sec speedup    13.27
+nthreads 20: solution time       287.32 sec speedup    15.84
+nthreads 32: solution time       238.55 sec speedup    19.08
+nthreads 40: solution time       217.05 sec speedup    20.97
+
+# entries in final Y: 130.679 million
+check time: 0.09378 sec
+
+--------------------------------------neurons per layer: 65536 layers: 480
+read net time 292.103 sec
+# edges in all layers: 1006.63 million
+
+cannot open ./dnn_data/DNN/neuron65536-l480-categories.tsv
+nthreads  1: solution time     15689.33 sec
+nthreads  2: solution time      8297.06 sec speedup     1.89
+nthreads  4: solution time      4236.97 sec speedup     3.70
+nthreads  8: solution time      2196.75 sec speedup     7.14
+nthreads 16: solution time      1186.75 sec speedup    13.22
+nthreads 20: solution time       993.59 sec speedup    15.79
+nthreads 32: solution time       835.88 sec speedup    18.77
+nthreads 40: solution time       823.61 sec speedup    19.05
+
+# entries in final Y: 130.679 million
+check time: 0.099782 sec
+
+--------------------------------------neurons per layer: 65536 layers: 1920
+read net time 1170.11 sec
+# edges in all layers: 4026.53 million
+
+cannot open ./dnn_data/DNN/neuron65536-l1920-categories.tsv
+nthreads  1: solution time     62104.76 sec
+nthreads  2: solution time     32399.52 sec speedup     1.92
+nthreads  4: solution time     16644.42 sec speedup     3.73
+nthreads  8: solution time      8673.12 sec speedup     7.16
+nthreads 16: solution time      4776.58 sec speedup    13.00
+nthreads 20: solution time      4042.49 sec speedup    15.36
+nthreads 32: solution time      3340.65 sec speedup    18.59
+nthreads 40: solution time      3349.23 sec speedup    18.54
+
+# entries in final Y: 130.679 million
+check time: 0.106383 sec
+all tests passed
+
