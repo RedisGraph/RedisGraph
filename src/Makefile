@@ -14,7 +14,7 @@ endif
 CFLAGS = \
 	-Wall -Wno-unused-function -Wno-unused-variable -Wno-unused-result \
 	-fPIC -std=gnu99 \
- 	-I"$(abs_path)" -I"$(abs_path)/../deps" \
+ 	-I"$(abs_path)" -I"$(abs_path)/../deps" -I"$(abs_path)/../deps/GraphBLAS/Include"\
 	-D_GNU_SOURCE -DREDIS_MODULE_TARGET -DREDISMODULE_EXPERIMENTAL_API -DXXH_STATIC_LINKING_ONLY
 CFLAGS += $(DEBUGFLAGS)
 
