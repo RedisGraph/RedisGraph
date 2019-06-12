@@ -593,20 +593,53 @@ int Graph_DeleteEdge(Graph *g, Edge *e) {
     NodeID src_id = Edge_GetSrcNodeID(e);
     NodeID dest_id = Edge_GetDestNodeID(e);
 
+<<<<<<< Updated upstream
+=======
+    /* Force delete, do not perform any validations, 
+     * simply remove edge from all relevent matrices. */
+    if(delete_all) {
+        M = Graph_GetRelationMatrix(g, r);
+        // TODO: dvirdu change to csr
+        assert(GxB_Matrix_Delete(M, dest_id, src_id) == GrB_SUCCESS);
+
+        /* Upon deleting an entry from the relation mapping matrix ,
+         * make sure to free the underlying array in the case of
+         * multiple nodes of type r connecting src to dest. */
+        M = _Graph_GetRelationMap(g, r);
+        assert(GxB_Matrix_Delete(M, dest_id, src_id )== GrB_SUCCESS);
+
+        M = Graph_GetAdjacencyMatrix(g);
+        // TODO: dvirdu change to csr
+        assert(GxB_Matrix_Delete(M, dest_id, src_id) == GrB_SUCCESS);
+
+        M = _Graph_Get_Transposed_AdjacencyMatrix(g);
+        // TODO: dvirdu change to csr
+        assert(GxB_Matrix_Delete(M, src_id, dest_id) == GrB_SUCCESS);
+
+        // Free and remove edge from datablock.
+        FreeEntity(e->entity);
+        DataBlock_DeleteItem(g->edges, ENTITY_GET_ID(e));
+        return 0;
+    }
+
+>>>>>>> Stashed changes
     R = _Graph_GetRelationMap(g, r);
     M = Graph_GetRelationMatrix(g, r);
 
     // Test to see if edge exists.
-    info = GrB_Matrix_extractElement_BOOL(&x, M, src_id, dest_id);
+    // TODO: dvirdu change to csr
+    info = GrB_Matrix_extractElement_BOOL(&x, M, dest_id, src_id);
     if(info != GrB_SUCCESS) return 0;
 
-    GrB_Matrix_extractElement_UINT64(&edge_id, R, src_id, dest_id);
+    // TODO: dvirdu change to csr
+    GrB_Matrix_extractElement_UINT64(&edge_id, R, dest_id, src_id);
 
     if(SINGLE_EDGE(edge_id)) {
         /* Single edge of type R connecting src to dest.
          * delete entry from both M and R. */
-        assert(GxB_Matrix_Delete(M, src_id, dest_id) == GrB_SUCCESS);        
-        assert(GxB_Matrix_Delete(R, src_id, dest_id )== GrB_SUCCESS);
+        // TODO: dvirdu change to csr
+        assert(GxB_Matrix_Delete(M, dest_id, src_id) == GrB_SUCCESS);        
+        assert(GxB_Matrix_Delete(R, dest_id, src_id )== GrB_SUCCESS);
     
         // See if source is connected to destination with additional edges.
         bool connected = false;
@@ -614,7 +647,8 @@ int Graph_DeleteEdge(Graph *g, Edge *e) {
         for(int i = 0; i < relationCount; i++) {
             if(i == r) continue;
             M = Graph_GetRelationMatrix(g, i);
-            info = GrB_Matrix_extractElement_BOOL(&connected, M, src_id, dest_id);
+            // TODO: dvirdu change to csr
+            info = GrB_Matrix_extractElement_BOOL(&connected, M, dest_id, src_id);
             if(info == GrB_SUCCESS) break;
         }
 
@@ -622,10 +656,12 @@ int Graph_DeleteEdge(Graph *g, Edge *e) {
          * Remove edge from THE adjacency matrix. */
         if(!connected) {
             M = Graph_GetAdjacencyMatrix(g);
-            assert(GxB_Matrix_Delete(M, src_id, dest_id) == GrB_SUCCESS);
+            // TODO: dvirdu change to csr
+            assert(GxB_Matrix_Delete(M, dest_id, src_id) == GrB_SUCCESS);
 
             M = _Graph_Get_Transposed_AdjacencyMatrix(g);
-            assert(GxB_Matrix_Delete(M, dest_id, src_id) == GrB_SUCCESS);
+            // TODO: dvirdu change to csr
+            assert(GxB_Matrix_Delete(M, src_id, dest_id) == GrB_SUCCESS);
         }
     } else {
         /* Multiple edges connecting src to dest
@@ -655,7 +691,7 @@ int Graph_DeleteEdge(Graph *g, Edge *e) {
         if(array_len(edges) == 1) {
             edge_id = edges[0];
             array_free(edges);
-            GrB_Matrix_setElement_UINT64(R, SET_MSB(edge_id), src_id, dest_id);
+            GrB_Matrix_setElement_UINT64(R, SET_MSB(edge_id), dest_id, src_id);
         }
     }
 
@@ -717,21 +753,21 @@ void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
         NodeID ID = ENTITY_GET_ID(n);
 
         // Outgoing edges.
-        GxB_MatrixTupleIter_iterate(adj_iter, ID);
+        GxB_MatrixTupleIter_iterate_column(adj_iter, ID);
         while(true) {
-            GxB_MatrixTupleIter_next(adj_iter, NULL,  &dest, &depleted);
+            GxB_MatrixTupleIter_next(adj_iter, &dest, NULL, &depleted);
             if(depleted) break;
-            GrB_Matrix_setElement_BOOL(Mask, true, ID, dest);
+            GrB_Matrix_setElement_BOOL(Mask, true, dest, ID);
         }
 
         depleted = false;
 
         // Incoming edges.
-        GxB_MatrixTupleIter_iterate(tadj_iter, ID);
+        GxB_MatrixTupleIter_iterate_column(tadj_iter, ID);
         while(true) {
-            GxB_MatrixTupleIter_next(tadj_iter, NULL, &src, &depleted);
+            GxB_MatrixTupleIter_next(tadj_iter, &src, NULL, &depleted);
             if(depleted) break;
-            GrB_Matrix_setElement_BOOL(Mask, true, src, ID);
+            GrB_Matrix_setElement_BOOL(Mask, true, ID, src);
         }
 
         GrB_Matrix_setElement_BOOL(Nodes, true, ID, ID);
@@ -832,14 +868,14 @@ void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
         M = _Graph_GetRelationMap(g, r);
         R = Graph_GetRelationMatrix(g, r);
 
-        GrB_Matrix_extractElement_UINT64(&edge_id, M, src_id, dest_id);
+        GrB_Matrix_extractElement_UINT64(&edge_id, M, dest_id, src_id);
 
         if(SINGLE_EDGE(edge_id)) {
             /* Single edge of type R connecting src to dest.
              * delete entry from both M and R. */
             deletion.M = R;
-            deletion.row = src_id;
-            deletion.col = dest_id;
+            deletion.col = src_id;
+            deletion.row = dest_id;
             deletions = array_append(deletions, deletion);
 
             deletion.M = M;
@@ -872,7 +908,7 @@ void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
             if(array_len(multi_edges) == 1) {
                 edge_id = multi_edges[0];
                 array_free(multi_edges);
-                GrB_Matrix_setElement_UINT64(M, SET_MSB(edge_id), src_id, dest_id);
+                GrB_Matrix_setElement_UINT64(M, SET_MSB(edge_id), dest_id, src_id);
             }
         }
 
@@ -890,14 +926,14 @@ void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
     uint deletion_count = array_len(deletions);
     for(uint i = 0; i < deletion_count; i++) {
         deletion = deletions[i];
-        GrB_Index src = deletion.row;
-        GrB_Index dest = deletion.col;
+        GrB_Index src = deletion.col;
+        GrB_Index dest = deletion.row;
 
         // See if source is connected to destination with additional edges.
         bool connected = false;
         for(int i = 0; i < relationCount; i++) {
             R = Graph_GetRelationMatrix(g, i);
-            info = GrB_Matrix_extractElement_BOOL(&connected, R, src, dest);
+            info = GrB_Matrix_extractElement_BOOL(&connected, R, dest, src);
             if(info == GrB_SUCCESS) break;
         }
 
@@ -907,10 +943,10 @@ void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
          * not trying to extract entries from it. */
         if(!connected) {
             M = Graph_GetAdjacencyMatrix(g);
-            assert(GxB_Matrix_Delete(M, src, dest) == GrB_SUCCESS);
+            assert(GxB_Matrix_Delete(M, dest, src) == GrB_SUCCESS);
 
             M = _Graph_Get_Transposed_AdjacencyMatrix(g);
-            assert(GxB_Matrix_Delete(M, dest, src) == GrB_SUCCESS);
+            assert(GxB_Matrix_Delete(M, src, dest) == GrB_SUCCESS);
         }
     }
 

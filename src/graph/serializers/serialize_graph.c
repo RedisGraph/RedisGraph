@@ -284,13 +284,13 @@ void _RdbSaveEdges(RedisModuleIO *rdb, const Graph *g, char **string_mapping) {
 
         while(true) {
             bool depleted = false;
-            GxB_MatrixTupleIter_next(it, &dest, &src, &depleted);
+            GxB_MatrixTupleIter_next(it, &src, &dest, &depleted);
             e.srcNodeID = src;
             e.destNodeID = dest;
 
             if(depleted) break;
 
-            GrB_Matrix_extractElement_UINT64(&edgeID, M, dest, src);
+            GrB_Matrix_extractElement_UINT64(&edgeID, M, src, dest);
             if(SINGLE_EDGE(edgeID)) {
                 edgeID = SINGLE_EDGE_ID(edgeID);
                 Graph_GetEdge(g, edgeID, &e);

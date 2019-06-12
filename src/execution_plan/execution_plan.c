@@ -381,9 +381,9 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, AST *ast, ResultSet *resul
 
                     // Create SCAN operation.
                     if(exp->src_node->label) {
-                        /* There's no longer need for the last matrix operand
+                        /* There's no longer need for the first matrix operand
                          * as it's been replaced by label scan. */
-                        AlgebraicExpression_RemoveTerm(exp, exp->operand_count-1, NULL);
+                        AlgebraicExpression_RemoveTerm(exp, 0, NULL);
                         op = NewNodeByLabelScanOp(exp->src_node, ast);
                         Vector_Push(traversals, op);
                     } else {
@@ -409,9 +409,9 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, AST *ast, ResultSet *resul
                     selectEntryPoint(exp, filter_tree);
                     // Create SCAN operation.
                     if(exp->dest_node->label) {
-                        /* There's no longer need for the last matrix operand
+                        /* There's no longer need for the first matrix operand
                          * as it's been replaced by label scan. */
-                        AlgebraicExpression_RemoveTerm(exp, exp->operand_count-1, NULL);
+                        AlgebraicExpression_RemoveTerm(exp, 0, NULL);
                         op = NewNodeByLabelScanOp(exp->dest_node, ast);
                         Vector_Push(traversals, op);
                     } else {

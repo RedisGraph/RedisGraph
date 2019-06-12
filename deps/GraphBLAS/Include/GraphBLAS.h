@@ -5557,8 +5557,8 @@ typedef struct
     GrB_Index nvals ;       // Number of none zero values in matrix
     GrB_Index nnz_idx ;     // Index of current none zero value
     int64_t p ;             // Number of none zero values in current column
-    int64_t col_idx ;       // Index of current column
-    GrB_Index ncols ;       // Total number of coulmns in matrix
+    int64_t idx ;           // Index of current row/col
+    GrB_Index n ;           // Total number of rows/col in matrix
 } GxB_MatrixTupleIter ;
 
 // Create a new matrix iterator
@@ -5568,11 +5568,11 @@ GrB_Info GxB_MatrixTupleIter_new
     GrB_Matrix A                // matrix being iterated
 ) ;
 
-// Iterate over a specific column
-GrB_Info GxB_MatrixTupleIter_iterate_column
+//iterate over specific index
+GrB_Info GxB_MatrixTupleIter_iterate
 (
-    GxB_MatrixTupleIter *iter,       // iterator to use
-    GrB_Index colIdx        // column index to iterate over
+    GxB_MatrixTupleIter *iter,
+    GrB_Index idx
 ) ;
 
 // Advance iterator to the next none zero value
