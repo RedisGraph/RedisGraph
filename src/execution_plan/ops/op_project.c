@@ -22,7 +22,7 @@ static AR_ExpNode** _getOrderExpressions(OpBase *op) {
     return _getOrderExpressions(op->parent);
 }
 
-OpBase* NewProjectOp(const AST *ast, AR_ExpNode **exps, char **aliases) {
+OpBase* NewProjectOp(const AST *ast, AR_ExpNode **exps, char **aliases, bool add_aliases) {
     OpProject *project = malloc(sizeof(OpProject));
     project->ast = ast;
     project->exps = exps;
@@ -31,7 +31,8 @@ OpBase* NewProjectOp(const AST *ast, AR_ExpNode **exps, char **aliases) {
     project->order_exp_count = 0;
     project->singleResponse = false;
     project->aliases = aliases;
-
+    project->record_len = project->exp_count + project->order_exp_count;
+    if (add_aliases) project->record_len += array_len(aliases);
     // Set our Op operations
     OpBase_Init(&project->op);
     project->op.name = "Project";
@@ -55,6 +56,7 @@ OpResult ProjectInit(OpBase *opBase) {
     if (order_exps) {
         op->order_exps = order_exps;
         op->order_exp_count = array_len(order_exps);
+        op->record_len += op->order_exp_count;
     }
 
     return OP_OK;
@@ -77,7 +79,7 @@ Record ProjectConsume(OpBase *opBase) {
         r = Record_New(0);  // Fake empty record.
     }
 
-    Record projection = Record_New(op->exp_count + op->order_exp_count);
+    Record projection = Record_New(op->record_len);
     int rec_idx = 0;
     for(unsigned short i = 0; i < op->exp_count; i++) {
         SIValue v = AR_EXP_Evaluate(op->exps[i], r);

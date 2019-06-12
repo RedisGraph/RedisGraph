@@ -104,7 +104,7 @@ void reduceCount(ExecutionPlan *plan, AST *ast) {
     AR_ExpNode **exps = array_new(AR_ExpNode*, 1);
     exps = array_append(exps, exp);
 
-    OpBase *opProject = NewProjectOp(ast, exps, aliases);
+    OpBase *opProject = NewProjectOp(ast, exps, aliases, false);
 
     // New execution plan: "Project -> Results"    
     ExecutionPlan_RemoveOp(plan, (OpBase*)opScan);    

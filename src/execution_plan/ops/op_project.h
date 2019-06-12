@@ -20,9 +20,10 @@ typedef struct {
     bool singleResponse;            // When no child operations, return NULL after a first response.
     unsigned short exp_count;       // Number of projected expressions.
     unsigned short order_exp_count; // Number of order by expressions.
+    uint record_len;
 } OpProject;
 
-OpBase* NewProjectOp(const AST *ast, AR_ExpNode **exps, char **aliases);
+OpBase* NewProjectOp(const AST *ast, AR_ExpNode **exps, char **aliases, bool add_aliases);
 
 OpResult ProjectInit(OpBase *opBase);
 
