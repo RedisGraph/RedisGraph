@@ -15,17 +15,7 @@ GrB_Info GxB_MatrixTupleIter_new
     GB_RETURN_IF_NULL_OR_FAULTY (A) ;
 
     GrB_Index n;
-    GxB_Format_Value formatValue;
-    GxB_get(GxB_FORMAT, &formatValue);
-    if (formatValue == GxB_BY_COL)
-    {
-        GrB_Matrix_ncols(&n, A);
-    }
-    else
-    {
-        GrB_Matrix_nrows(&n, A);
-    }
-
+    GrB_Matrix_nrows(&n, A);
 
     *iter = NULL ;
     GB_MALLOC_MEMORY (*iter, 1, sizeof (GxB_MatrixTupleIter)) ;
@@ -80,72 +70,35 @@ GrB_Info GxB_MatrixTupleIter_next
 
     GrB_Matrix A = iter->A ;
 
-    GxB_Format_Value formatValue;
-    GxB_get(GxB_FORMAT, &formatValue);
-    if (formatValue == GxB_BY_COL)
+    //--------------------------------------------------------------------------
+    // extract the column indices
+    //--------------------------------------------------------------------------
+
+    if (col)
+        *col = A->i[nnz_idx];
+
+    //--------------------------------------------------------------------------
+    // extract the row indices
+    //--------------------------------------------------------------------------
+
+    const int64_t *Ap = A->p;
+    int64_t i = iter->idx;
+
+    for (; i < iter->n; i++)
     {
-        //--------------------------------------------------------------------------
-        // extract the row indices
-        //--------------------------------------------------------------------------
-
-        if (row)
-            *row = A->i[nnz_idx];
-
-        //--------------------------------------------------------------------------
-        // extract the column indices
-        //--------------------------------------------------------------------------
-
-        const int64_t *Ap = A->p;
-        int64_t j = iter->idx;
-
-        for (; j < iter->n; j++)
+        int64_t p = iter->p + Ap[i];
+        if (p < Ap[i + 1])
         {
-            int64_t p = iter->p + Ap[j];
-            if (p < Ap[j + 1])
-            {
-                iter->p++;
-                if (col)
-                    *col = j;
-                break;
-            }
-            iter->p = 0;
+            iter->p++;
+            if (row)
+                *row = i;
+            break;
         }
-
-        iter->idx = j;
-    }
-    else
-    {
-        //--------------------------------------------------------------------------
-        // extract the column indices
-        //--------------------------------------------------------------------------
-
-        if (col)
-            *col = A->i[nnz_idx];
-
-        //--------------------------------------------------------------------------
-        // extract the row indices
-        //--------------------------------------------------------------------------
-
-        const int64_t *Ap = A->p;
-        int64_t i = iter->idx;
-
-        for (; i < iter->n; i++)
-        {
-            int64_t p = iter->p + Ap[i];
-            if (p < Ap[i + 1])
-            {
-                iter->p++;
-                if (row)
-                    *row = i;
-                break;
-            }
-            iter->p = 0;
-        }
-
-        iter->idx = i;
+        iter->p = 0;
     }
 
- 
+    iter->idx = i;
+
     iter->nnz_idx++ ;
 
     *depleted = false ;
@@ -178,16 +131,7 @@ GrB_Info GxB_MatrixTupleIter_reuse
     GB_RETURN_IF_NULL_OR_FAULTY (A) ;
 
     GrB_Index n;
-    GxB_Format_Value formatValue;
-    GxB_get(GxB_FORMAT, &formatValue);
-    if (formatValue == GxB_BY_COL)
-    {
-        GrB_Matrix_ncols(&n, A);
-    }
-    else
-    {
-        GrB_Matrix_nrows(&n, A);
-    }
+    GrB_Matrix_nrows(&n, A);
 
     iter->A = A ;
     iter->n = n ;
