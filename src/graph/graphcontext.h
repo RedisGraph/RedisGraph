@@ -29,8 +29,8 @@ typedef struct {
 /* GraphContext API */
 GraphContext* GraphContext_New(RedisModuleCtx *ctx, const char *graphname,
                                size_t node_cap, size_t edge_cap);
-GraphContext* GraphContext_Retrieve(RedisModuleCtx *ctx, const char *graphname);
-
+// Retrives graphcontext object from key.
+GraphContext* GraphContext_Retrieve(RedisModuleCtx *ctx, const char *graphname, bool readonly);
 // Retrives graph context from thread local storage.
 GraphContext* GraphContext_GetFromTLS();
 

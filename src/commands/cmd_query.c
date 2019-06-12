@@ -72,7 +72,7 @@ void _MGraph_Query(void *args) {
 
     // Try to access the GraphContext
     CommandCtx_ThreadSafeContextLock(qctx);
-    GraphContext *gc = GraphContext_Retrieve(ctx, qctx->graphName);
+    GraphContext *gc = GraphContext_Retrieve(ctx, qctx->graphName, readonly);
     if(!gc) {
         if(!ast[0]->createNode && !ast[0]->mergeNode) {
             CommandCtx_ThreadSafeContextUnlock(qctx);
@@ -168,6 +168,8 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
      * run on Redis main thread, others can run on different threads. */
     CommandCtx *context;
     int flags = RedisModule_GetContextFlags(ctx);
+    // TODO: uncomment once REDISMODULE_CTX_FLAGS_LOADING is introduced to redis.
+    // if (flags & (REDISMODULE_CTX_FLAGS_MULTI | REDISMODULE_CTX_FLAGS_LUA | REDISMODULE_CTX_FLAGS_LOADING)) {
     if (flags & (REDISMODULE_CTX_FLAGS_MULTI | REDISMODULE_CTX_FLAGS_LUA)) {
       // Run query on Redis main thread.
       context = CommandCtx_New(ctx, NULL, ast, argv[1], argv, argc);

@@ -54,24 +54,26 @@ cleanup:
   return gc;
 }
 
-GraphContext* GraphContext_Retrieve(RedisModuleCtx *ctx, const char *graphname) {
-  GraphContext *gc = NULL;
-  RedisModuleString *rs_name = RedisModule_CreateString(ctx, graphname, strlen(graphname));
-  RedisModuleKey *key = RedisModule_OpenKey(ctx, rs_name, REDISMODULE_READ);
-  if (RedisModule_ModuleTypeGetType(key) != GraphContextRedisModuleType) {
-    goto cleanup;
-  }
-  gc = RedisModule_ModuleTypeGetValue(key);
+GraphContext* GraphContext_Retrieve(RedisModuleCtx *ctx, const char *graphname, bool readonly) {
+    RedisModuleKey *key;
+    GraphContext *gc = NULL;
+    RedisModuleString *rs_name = RedisModule_CreateString(ctx, graphname, strlen(graphname));
 
-  // Force GraphBLAS updates and resize matrices to node count by default
-  Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
+    if(readonly) key = RedisModule_OpenKey(ctx, rs_name, REDISMODULE_READ);
+    else key = RedisModule_OpenKey(ctx, rs_name, REDISMODULE_WRITE);
 
-  pthread_setspecific(_tlsGCKey, gc);
+    if (RedisModule_ModuleTypeGetType(key) != GraphContextRedisModuleType) goto cleanup;
+    gc = RedisModule_ModuleTypeGetValue(key);
+
+    // Force GraphBLAS updates and resize matrices to node count by default
+    Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
+
+    pthread_setspecific(_tlsGCKey, gc);
 
 cleanup:
-  RedisModule_FreeString(ctx, rs_name);
-  RedisModule_CloseKey(key);
-  return gc;
+    RedisModule_FreeString(ctx, rs_name);
+    RedisModule_CloseKey(key);
+    return gc;
 }
 
 GraphContext* GraphContext_GetFromTLS() {
