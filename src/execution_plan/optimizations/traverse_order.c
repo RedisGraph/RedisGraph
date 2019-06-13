@@ -12,6 +12,7 @@
 
 #define T 1     // Transpose penalty.
 #define F 4 * T // Filter score.
+#define L 2 * T // Label score.
 
 typedef AlgebraicExpression** Arrangement;
 
@@ -170,6 +171,7 @@ static int reward_arrangement(Arrangement arrangement, uint exp_count, const FT_
             reward += F * (exp_count - i);
             raxRemove(filtered_entities, (unsigned char*)dest_alias, strlen(dest_alias), NULL);
         }
+        if(exp->src_node->label) reward += L * (exp_count - i);
     }
 
     // printf("reward: %d\n", reward);

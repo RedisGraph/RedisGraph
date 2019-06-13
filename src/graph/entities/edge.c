@@ -120,7 +120,7 @@ int Edge_ToString(const Edge *e, char *buff, int buff_len) {
     if(e->relationship)
         offset += snprintf(buff + offset, buff_len - offset, ":%s", e->relationship);
     if(e->minHops !=1 || e->maxHops !=1)
-        offset += snprintf(buff + offset, buff_len - offset, "*%d..%d", e->minHops, e->maxHops);
+        offset += snprintf(buff + offset, buff_len - offset, "*%u..%u", e->minHops, e->maxHops);
 
     offset += snprintf(buff + offset, buff_len - offset, "]");
     return offset;
