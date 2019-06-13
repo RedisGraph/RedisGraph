@@ -265,7 +265,6 @@ static Node** _DeepestLevel(const QueryGraph *g, int *level) {
 
     l = BFS_LOWEST_LEVEL;
     leafs = BFS(leaf, &l);
-    array_free(leafs);
 
     *level = l;
     return leafs;
@@ -534,6 +533,7 @@ AlgebraicExpression **AlgebraicExpression_From_QueryGraph(const QueryGraph *qg, 
         for(uint j = 0; j < array_len(sub_exps); j++) exps = array_append(exps, sub_exps[j]);
         
         // Clean up
+        array_free(leafs);
         array_free(sub_exps);
         free(exp->operands);
         free(exp);
