@@ -515,7 +515,7 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, AST *ast, ResultSet *resul
         aggregate = ReturnClause_ContainsAggregation(ast->returnNode);
     }
 
-    if(ast->returnNode || ast->withNode){
+    if(ast->returnNode || ast->withNode) {
         if(aggregate) op = NewAggregateOp(ast, exps, aliases);
         else op = NewProjectOp(ast, exps, aliases);
         Vector_Push(ops, op);

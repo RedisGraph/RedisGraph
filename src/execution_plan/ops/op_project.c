@@ -22,6 +22,17 @@ static AR_ExpNode** _getOrderExpressions(OpBase *op) {
     return _getOrderExpressions(op->parent);
 }
 
+ /**
+  * @brief Counts the actual aliases inside the aliases array. 
+  * The aliases array is an array with size of the original projected values.
+  * It holds the mapping between a variable and its alias, or null if such alias does not exists.
+  * We need to use this function in order to allow a projected record to hold both its 
+  * projected variables values, and their alises values. If a record is allocated only with the
+  * length of the size of the expression variables count, it cannot store its alises values,
+  * and will cause a memory leak.
+  * @param  aliases: aliases mapping array
+  * @retval the amount of alised variables.
+  */
 int _actualAliasesCount(char** aliases){
     int count = 0;
     for (int i = 0; i < array_len(aliases); i++){
@@ -39,7 +50,7 @@ OpBase* NewProjectOp(const AST *ast, AR_ExpNode **exps, char **aliases) {
     project->order_exp_count = 0;
     project->singleResponse = false;
     project->aliases = aliases;
-    project->record_len = project->exp_count + project->order_exp_count;
+    project->record_len = project->exp_count;
     project->record_len += _actualAliasesCount(aliases);
     // Set our Op operations
     OpBase_Init(&project->op);
