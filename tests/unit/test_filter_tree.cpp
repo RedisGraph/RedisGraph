@@ -224,8 +224,7 @@ TEST_F(FilterTreeTest, CollectAliases) {
     FT_FilterNode *tree = _build_deep_tree();
     rax *aliases = FilterTree_CollectAliases(tree);
     ASSERT_EQ(raxSize(aliases), 4);
-    
-    char *alias;
+
     const char *expectation[4] = {"me", "he", "she", "theirs"};
     for(int i = 0; i < 4; i++) {
         const char *expected = expectation[i];
