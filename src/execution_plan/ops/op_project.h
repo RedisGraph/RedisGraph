@@ -23,7 +23,7 @@ typedef struct {
     uint record_len;
 } OpProject;
 
-OpBase* NewProjectOp(const AST *ast, AR_ExpNode **exps, char **aliases, bool add_aliases);
+OpBase* NewProjectOp(const AST *ast, AR_ExpNode **exps, char **aliases);
 
 OpResult ProjectInit(OpBase *opBase);
 

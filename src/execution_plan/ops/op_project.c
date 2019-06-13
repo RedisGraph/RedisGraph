@@ -22,7 +22,15 @@ static AR_ExpNode** _getOrderExpressions(OpBase *op) {
     return _getOrderExpressions(op->parent);
 }
 
-OpBase* NewProjectOp(const AST *ast, AR_ExpNode **exps, char **aliases, bool add_aliases) {
+int _actualAliasesCount(char** aliases){
+    int count = 0;
+    for (int i = 0; i < array_len(aliases); i++){
+        if(aliases[i]) count++;
+    }
+    return count;
+}
+
+OpBase* NewProjectOp(const AST *ast, AR_ExpNode **exps, char **aliases) {
     OpProject *project = malloc(sizeof(OpProject));
     project->ast = ast;
     project->exps = exps;
@@ -32,7 +40,7 @@ OpBase* NewProjectOp(const AST *ast, AR_ExpNode **exps, char **aliases, bool add
     project->singleResponse = false;
     project->aliases = aliases;
     project->record_len = project->exp_count + project->order_exp_count;
-    if (add_aliases) project->record_len += array_len(aliases);
+    project->record_len += _actualAliasesCount(aliases);
     // Set our Op operations
     OpBase_Init(&project->op);
     project->op.name = "Project";
