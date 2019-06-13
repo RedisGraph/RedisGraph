@@ -42,11 +42,9 @@ void reduceTraversal(ExecutionPlan *plan) {
 
         /* If traverse src and dest nodes are the same,
          * traverse acts as a filter which make sure the node is of a specific type
-         * e.g. MATCH (a:A)-[e*]->(b:B) RETURN e 
+         * e.g. MATCH (a:A)-[e:R]->(b:B) RETURN e 
          * in this case there will be a traverse operation which will 
-         * filter our dest nodes (b) which aren't of type B.
-         * TODO: maybe we should use the Apply operation here (not sure need to verify)
-         * in this case we will not reduce to expand into. */
+         * filter our dest nodes (b) which aren't of type B. */
         if(traverse->algebraic_expression->src_node == traverse->algebraic_expression->dest_node)
             continue;
 

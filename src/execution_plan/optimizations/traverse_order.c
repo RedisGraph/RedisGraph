@@ -44,8 +44,8 @@ void Arrangement_Free(Arrangement arrangement) {
 }
 
 // Computes x!
-static uint factorial(uint x) {
-    uint res = 1;
+static unsigned long factorial(uint x) {
+    unsigned long res = 1;
     for(int i = 2; i <= x; i++) res *= i;
     return res;
 }
@@ -76,7 +76,7 @@ void permute(Arrangement set, int l, int r, Arrangement **permutations) {
 // Computes all possible permutations of exps.
 static Arrangement* permutations(const Arrangement exps, uint exps_count) {
     // Number of permutations of a set S is |S|!.    
-    uint permutation_count = factorial(exps_count);
+    unsigned long permutation_count = factorial(exps_count);
     Arrangement *permutations = array_new(Arrangement, permutation_count);
 
     // Compute permutations.

@@ -98,7 +98,7 @@ void _BuildQueryGraphAddNode(const GraphContext *gc,
     /* Check for duplications. */
     Node *n = QueryGraph_GetNodeByAlias(qg, entity->alias);
     if(n == NULL) {
-        /* Create a new node, set its properties, and add it to the graph. */
+        /* Create a new node and add it to the graph. */
         n = Node_New(entity->label, entity->alias);
         QueryGraph_AddNode(qg, n);
     } else {

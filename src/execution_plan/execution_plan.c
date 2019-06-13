@@ -109,8 +109,8 @@ Vector* _ExecutionPlan_Locate_References(OpBase *root, OpBase **op, rax *referen
      * TODO: create a vector compare function
      * which checks if the content of one is in the other. */
     int match = raxSize(references);
-    size_t ref_count = match;
-    size_t seen_count = Vector_Size(seen);
+    int ref_count = match;
+    int seen_count = Vector_Size(seen);
     
     // We've seen enough to start matching.
     if(seen_count >= ref_count) {
@@ -337,8 +337,8 @@ static AR_ExpNode** _OrderClause_GetExpressions(const AST *ast) {
 }
 
 /* Keep track after resolved variabels.
- * add variabels modified/set by op to resolved. */
-static void _UpdateResolvedVariabels(rax *resolved, OpBase *op) {
+ * add variabels modified/set by op to resolved. */ 
+static void _UpdateResolvedVariables(rax *resolved, OpBase *op) {
     assert(resolved && op);
     if(!op->modifies) return;
 
@@ -387,7 +387,7 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, AST *ast, ResultSet *resul
                                             ast->callNode->arguments,
                                             ast->callNode->yield, ast);
         Vector_Push(ops, opProcCall);
-        _UpdateResolvedVariabels(resolved, opProcCall);
+        _UpdateResolvedVariables(resolved, opProcCall);
     }
 
     if(ast->matchNode) {
@@ -417,7 +417,7 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, AST *ast, ResultSet *resul
                 if(n->label) op = NewNodeByLabelScanOp(n, ast);
                 else op = NewAllNodeScanOp(g, n, ast);
                 Vector_Push(traversals, op);
-                _UpdateResolvedVariabels(resolved, op);
+                _UpdateResolvedVariables(resolved, op);
             } else {
                 size_t expCount = 0;
                 AlgebraicExpression **exps = AlgebraicExpression_From_QueryGraph(cc, ast, &expCount);
@@ -439,7 +439,7 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, AST *ast, ResultSet *resul
                 }
 
                 Vector_Push(traversals, op);
-                _UpdateResolvedVariabels(resolved, op);
+                _UpdateResolvedVariables(resolved, op);
 
                 for(int i = 0; i < expCount; i++) {
                     exp = exps[i];
@@ -472,7 +472,7 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, AST *ast, ResultSet *resul
                     }
 
                     Vector_Push(traversals, op);
-                    _UpdateResolvedVariabels(resolved, op);
+                    _UpdateResolvedVariables(resolved, op);
                 }
 
                 // Free the expressions array, as its parts have been converted into operations
@@ -504,7 +504,7 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, AST *ast, ResultSet *resul
     if(ast->unwindNode) {
         OpBase *opUnwind = NewUnwindOp(ast);
         Vector_Push(ops, opUnwind);
-        _UpdateResolvedVariabels(resolved, opUnwind);
+        _UpdateResolvedVariables(resolved, opUnwind);
     }
 
     /* Set root operation */
@@ -513,13 +513,13 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, AST *ast, ResultSet *resul
         OpBase *opCreate = NewCreateOp(ctx, ast, q, execution_plan->result_set);
 
         Vector_Push(ops, opCreate);
-        _UpdateResolvedVariabels(resolved, opCreate);
+        _UpdateResolvedVariables(resolved, opCreate);
     }
 
     if(ast->mergeNode) {
         OpBase *opMerge = NewMergeOp(ast, execution_plan->result_set);
         Vector_Push(ops, opMerge);
-        _UpdateResolvedVariabels(resolved, opMerge);
+        _UpdateResolvedVariables(resolved, opMerge);
     }
 
     if(ast->deleteNode) {

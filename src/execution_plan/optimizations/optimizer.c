@@ -21,9 +21,6 @@ void optimizePlan(ExecutionPlan *plan, AST *ast) {
     /* Try to reduce a number of filters into a single filter op. */
     reduceFilters(plan);
 
-    /* Remove redundant SCAN operations. */
-    // reduceScans(plan);
-
     /* reduce traversals where both src and dest nodes are already resolved
      * into an expand into operation. */
     reduceTraversal(plan);

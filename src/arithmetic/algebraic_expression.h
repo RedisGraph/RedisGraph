@@ -70,7 +70,7 @@ typedef struct {
 } AlgebraicExpression;
 
 /* Constructs an empty expression. */
-AlgebraicExpression *AlgebraicExpression_Empty();
+AlgebraicExpression *AlgebraicExpression_Empty(void);
 
 /* Construct algebraic expression(s) from query graph. */
 AlgebraicExpression **AlgebraicExpression_From_QueryGraph (

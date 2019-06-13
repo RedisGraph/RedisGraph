@@ -26,9 +26,7 @@ static int _intermidate_node(const Node *n) {
      * <-()->
      * ->()->
      * <-()<- */
-    return ((array_len(n->incoming_edges) > 1) ||
-            (array_len(n->outgoing_edges) > 1) ||
-            ((array_len(n->incoming_edges) > 0) && (array_len(n->outgoing_edges) > 0)));
+    return ((array_len(n->incoming_edges) + array_len(n->outgoing_edges)) >= 2);
 }
 
 static int _referred_entity(char *alias, TrieMap *ref_entities) {
@@ -387,7 +385,7 @@ static AlgebraicExpressionOperand _AlgebraicExpression_OperandFromEdge (
     return op;
 }
 
-AlgebraicExpression *AlgebraicExpression_Empty() {
+AlgebraicExpression *AlgebraicExpression_Empty(void) {
     return _AE_MUL(1);
 }
 
@@ -411,7 +409,7 @@ static AlgebraicExpression* _AlgebraicExpression_From_Path(Edge **path, uint pat
     AlgebraicExpressionOperand op;
 
     // Construct expression.
-    AlgebraicExpression *exp = _AE_MUL(path_len * 3 - 1);  // (3) Node Edge Node.
+    AlgebraicExpression *exp = _AE_MUL(path_len * 2 - 1);  // (3) Node Edge Node.
     // Count number of transposed edges.
     int transposeCount = 0;
 

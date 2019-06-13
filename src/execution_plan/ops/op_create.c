@@ -14,7 +14,9 @@
 // Determin which entities are modified by create op.
 void _SetModifiedEntities(OpCreate *op) {
     AST *ast = op->ast;
-    size_t create_entity_count = Vector_Size(op->ast->createNode->graphEntities);
+    QueryGraph *qg = op->qg;
+    size_t create_entity_count = qg->node_count + qg->edge_count;
+
     op->nodes_to_create = rm_malloc(sizeof(NodeCreateCtx) * create_entity_count);
     op->edges_to_create = rm_malloc(sizeof(EdgeCreateCtx) * create_entity_count);
 
@@ -26,33 +28,28 @@ void _SetModifiedEntities(OpCreate *op) {
     TrieMap *matchEntities = NewTrieMap();
     MatchClause_DefinedEntities(op->ast->matchNode, matchEntities);
 
-    for(int i = 0; i < create_entity_count; i++) {
-        AST_GraphEntity *create_ge;
-        Vector_Get(op->ast->createNode->graphEntities, i, &create_ge);
-        char *alias = create_ge->alias;
-
-        /* See if current entity needs to be created:
-         * 1. current entity is NOT in MATCH clause.
-         * 2. We've yet to accounted for this entity. */
+    // Nodes.
+    for(int i = 0; i < qg->node_count; i++) {
+        Node *n = qg->nodes[i];
+        char *alias = n->alias;
+        
         if(TrieMap_Add(matchEntities, alias, strlen(alias), NULL, TrieMap_DONT_CARE_REPLACE) == 0) continue;
-        if(create_ge->t == N_ENTITY) {
-            // Node.
-            Node *n = QueryGraph_GetNodeByAlias(op->qg, create_ge->alias);
-            Node **ppn = QueryGraph_GetNodeRef(op->qg, n);
-            op->nodes_to_create[node_idx].node = n;
-            op->nodes_to_create[node_idx].node_rec_idx = AST_GetAliasID(ast, n->alias);
-            node_idx++;
-        } else {
-            // Edge.
-            Edge *e = QueryGraph_GetEdgeByAlias(op->qg, create_ge->alias);            
-            op->edges_to_create[edge_idx].edge = e;
-            op->edges_to_create[edge_idx].edge_rec_idx = AST_GetAliasID(ast, e->alias);
-            assert(QueryGraph_ContainsNode(op->qg, e->src));
-            assert(QueryGraph_ContainsNode(op->qg, e->dest));
-            op->edges_to_create[edge_idx].src_node_rec_idx = AST_GetAliasID(ast, e->src->alias);
-            op->edges_to_create[edge_idx].dest_node_rec_idx = AST_GetAliasID(ast, e->dest->alias);
-            edge_idx++;
-        }        
+        op->nodes_to_create[node_idx].node = n;
+        op->nodes_to_create[node_idx].node_rec_idx = AST_GetAliasID(ast, n->alias);
+        node_idx++;
+    }
+
+    // Edges.
+    for(int i = 0; i < qg->edge_count; i++) {
+        Edge *e = qg->edges[i];
+        char *alias = e->alias;
+        if(TrieMap_Add(matchEntities, alias, strlen(alias), NULL, TrieMap_DONT_CARE_REPLACE) == 0) continue;
+
+        op->edges_to_create[edge_idx].edge = e;
+        op->edges_to_create[edge_idx].edge_rec_idx = AST_GetAliasID(ast, e->alias);
+        op->edges_to_create[edge_idx].src_node_rec_idx = AST_GetAliasID(ast, e->src->alias);
+        op->edges_to_create[edge_idx].dest_node_rec_idx = AST_GetAliasID(ast, e->dest->alias);
+        edge_idx++;
     }
 
     TrieMap_Free(matchEntities, TrieMap_NOP_CB);
