@@ -23,7 +23,7 @@ void optimizePlan(ExecutionPlan *plan, AST *ast) {
 
     /* reduce traversals where both src and dest nodes are already resolved
      * into an expand into operation. */
-    reduceTraversal(plan);
+    reduceTraversal(plan, ast);
 
     /* Relocate sort, skip, limit operations. */
     relocateOperations(plan);

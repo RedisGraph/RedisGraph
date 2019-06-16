@@ -32,7 +32,7 @@ static bool _entity_resolved(OpBase *root, const char *entity) {
  * For each T see if T's source and destination nodes
  * are already resolved, in which case replace traversal operation 
  * with expand-into op. */
-void reduceTraversal(ExecutionPlan *plan) {
+void reduceTraversal(ExecutionPlan *plan, AST *ast) {
     // OPType t = OPType_CONDITIONAL_TRAVERSE | OPType_CONDITIONAL_VAR_LEN_TRAVERSE;
     OPType t = OPType_CONDITIONAL_TRAVERSE;
     OpBase **traversals = ExecutionPlan_LocateOps(plan->root, t);
@@ -55,10 +55,7 @@ void reduceTraversal(ExecutionPlan *plan) {
         if(_entity_resolved(traverse->op.children[0], dest)) {
             /* Both src and dest are already known
              * perform expand into instaed of traverse. */
-            OpBase *expand_into = NewExpandIntoOp(traverse->algebraic_expression,
-                                                  traverse->srcNodeRecIdx,
-                                                  traverse->destNodeRecIdx,
-                                                  traverse->edgeRecIdx);
+            OpBase *expand_into = NewExpandIntoOp(traverse->algebraic_expression, ast);                                                  
 
             /* Set traverse algebraic_expression to NULL to avoid
              * early free. */

@@ -15,19 +15,29 @@
 
 typedef struct {
     OpBase op;
-    Graph *g;                   // Graph context.
+    AST *ast;
+    Graph *graph;
+    AlgebraicExpression *ae;
+    GrB_Matrix F;               // Filter matrix.
+    GrB_Matrix M;               // Algebraic expression result.
+    int *edgeRelationTypes;     // One or more relation types.
+    int edgeRelationCount;      // length of edgeRelationTypes.
+    Edge *edges;                // Discovered edges.
+    GxB_MatrixTupleIter *iter;  // Iterator over M.
+    uint srcNodeRecIdx;         // Index into record.
+    uint destNodeRecIdx;        // Index into record.
+    uint edgeRecIdx;            // Index into record.
+    uint recordsCap;            // Max number of records to process.
+    uint recordsLen;            // Number of records to process.
+    bool transposed_edge;       // Track whether the expression references a transposed edge.
+    Record *records;            // Array of records.
     Record r;                   // Current selected record.
-    uint srcRecIdx;             // Source node record position.
-    uint destRecIdx;            // Destination node record position.
-    uint edgeRecIdx;            // Edge record position.
-    int relation;               // Edge relation.
-    Edge *edges;                // Edges connecting source to destination.
-    AlgebraicExpression *exp;   // Expression to evaluate.
 } OpExpandInto;
 
-OpBase* NewExpandIntoOp(AlgebraicExpression *exp, uint srcRecIdx, uint destRecIdx, uint edgeRecIdx);
-Record OpExpandIntoConsume(OpBase *opBase);
-OpResult OpExpandIntoReset(OpBase *ctx);
-void OpExpandIntoFree(OpBase *ctx);
+OpBase* NewExpandIntoOp(AlgebraicExpression *algebraic_expression, AST *ast);
+OpResult ExpandIntoInit(OpBase *opBase);
+Record ExpandIntoConsume(OpBase *opBase);
+OpResult ExpandIntoReset(OpBase *ctx);
+void ExpandIntoFree(OpBase *ctx);
 
 #endif
