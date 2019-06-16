@@ -321,7 +321,7 @@ TEST_F(TuplesTest, ColumnIteratorTest) {
       //--------------------------------------------------------------------------
       // Get an iterator over the current column.
       //--------------------------------------------------------------------------
-      GxB_MatrixTupleIter_iterate(iter, j);
+      GxB_MatrixTupleIter_iterate_row(iter, j);
 
       //--------------------------------------------------------------------------
       // Verify iterator returned values.
@@ -361,7 +361,7 @@ TEST_F(TuplesTest, ColumnIteratorEmptyMatrixTest) {
       //--------------------------------------------------------------------------
       // Get an iterator over the current column.
       //--------------------------------------------------------------------------
-      GxB_MatrixTupleIter_iterate(iter, j);
+      GxB_MatrixTupleIter_iterate_row(iter, j);
 
       //--------------------------------------------------------------------------
       // Verify iterator returned values.

@@ -532,7 +532,7 @@ void Graph_GetNodeEdges(const Graph *g, const Node *n, GRAPH_EDGE_DIR dir, int e
     if(dir == GRAPH_EDGE_DIR_OUTGOING || dir == GRAPH_EDGE_DIR_BOTH) {
         GxB_MatrixTupleIter_new(&tupleIter, M);
         srcNodeID = ENTITY_GET_ID(n);
-        GxB_MatrixTupleIter_iterate(tupleIter, srcNodeID);
+        GxB_MatrixTupleIter_iterate_row(tupleIter, srcNodeID);
         while (true)
         {
             bool depleted = false;
@@ -554,7 +554,7 @@ void Graph_GetNodeEdges(const Graph *g, const Node *n, GRAPH_EDGE_DIR dir, int e
             // Relation wasn't specified, use transposed adjacency matrix.
             M = _Graph_Get_Transposed_AdjacencyMatrix(g);
             GxB_MatrixTupleIter_new(&tupleIter, M);
-            GxB_MatrixTupleIter_iterate(tupleIter, destNodeID);
+            GxB_MatrixTupleIter_iterate_row(tupleIter, destNodeID);
         } else {
             // TODO: Callers wishing to get Incoming edges to a number of nodes
             // should pass a transposed matrix, as the operations below are costly
@@ -569,7 +569,6 @@ void Graph_GetNodeEdges(const Graph *g, const Node *n, GRAPH_EDGE_DIR dir, int e
 
         while(true) {
             bool depleted = false;
-            // GxB_MatrixTupleIter_next(tupleIter, &srcNodeID, NULL, &depleted);
             GxB_MatrixTupleIter_next(tupleIter, NULL, &srcNodeID, &depleted);
             if(depleted) break;
             Graph_GetEdgesConnectingNodes(g, srcNodeID, destNodeID, edgeType, edges);
@@ -717,7 +716,7 @@ void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
         NodeID ID = ENTITY_GET_ID(n);
 
         // Outgoing edges.
-        GxB_MatrixTupleIter_iterate(adj_iter, ID);
+        GxB_MatrixTupleIter_iterate_row(adj_iter, ID);
         while(true) {
             GxB_MatrixTupleIter_next(adj_iter, NULL,  &dest, &depleted);
             if(depleted) break;
@@ -727,7 +726,7 @@ void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
         depleted = false;
 
         // Incoming edges.
-        GxB_MatrixTupleIter_iterate(tadj_iter, ID);
+        GxB_MatrixTupleIter_iterate_row(tadj_iter, ID);
         while(true) {
             GxB_MatrixTupleIter_next(tadj_iter, NULL, &src, &depleted);
             if(depleted) break;
