@@ -18,6 +18,7 @@ typedef struct {
     Graph *g;
     AST *ast;
     AlgebraicExpression *ae;
+    bool expandInto;                /* Both src and dest already resolved. */
     int srcNodeIdx;                 /* Node set by operation. */
     int destNodeIdx;                /* Node set by operation. */
     int *relationIDs;               /* Relation(s) we're traversing. */
@@ -32,5 +33,9 @@ typedef struct {
 OpBase* NewCondVarLenTraverseOp(AlgebraicExpression *ae, unsigned int minHops, unsigned int maxHops, Graph *g, AST *ast);
 Record CondVarLenTraverseConsume(OpBase *opBase);
 OpResult CondVarLenTraverseReset(OpBase *ctx);
+
+/* Transform operation from Conditional Variable Length Traverse
+ * to Expand Into Conditional Variable Length Traverse */
+void CondVarLenTraverseOp_ExpandInto(CondVarLenTraverse *op);
 void CondVarLenTraverseFree(OpBase *ctx);
 #endif

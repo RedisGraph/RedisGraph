@@ -83,8 +83,6 @@ static AlgebraicExpression** _AlgebraicExpression_IsolateVariableLenExps(Algebra
     /* Return value is a new set of expressions, where each variable length expression
      * is guaranteed to have a single operand, as such in the worst case the number of
      * expressions doubles + 1. */
-    // AlgebraicExpression **res = malloc(sizeof(AlgebraicExpression*) * (*expCount * 2 + 1));
-
     size_t expCount = array_len(expressions);
     AlgebraicExpression **res = array_new(AlgebraicExpression*, expCount * 2 + 1);
 
@@ -100,7 +98,7 @@ static AlgebraicExpression** _AlgebraicExpression_IsolateVariableLenExps(Algebra
         Edge *e = exp->edge;
         Node *src = exp->src_node;
         Node *dest = exp->dest_node;
-        
+
         // A variable length expression with a labeled source node
         // We only care about the source label matrix, when it comes to
         // the first expression, as in the following expressions

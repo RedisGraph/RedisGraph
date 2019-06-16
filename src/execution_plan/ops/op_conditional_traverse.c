@@ -91,15 +91,16 @@ int CondTraverseToString(const OpBase *ctx, char *buff, uint buff_len) {
 
 OpBase* NewCondTraverseOp(AlgebraicExpression *algebraic_expression, AST *ast) {
     CondTraverse *traverse = calloc(1, sizeof(CondTraverse));
-    traverse->ast = ast;
     GraphContext *gc = GraphContext_GetFromTLS();
-    traverse->graph = gc->g;
-    traverse->algebraic_expression = algebraic_expression;
-    traverse->edgeRelationTypes = NULL;
+    
+    traverse->ast = ast;
+    traverse->r = NULL;
     traverse->F = NULL;    
     traverse->iter = NULL;
     traverse->edges = NULL;
-    traverse->r = NULL;        
+    traverse->graph = gc->g;
+    traverse->edgeRelationTypes = NULL;
+    traverse->algebraic_expression = algebraic_expression;
     traverse->srcNodeRecIdx = AST_GetAliasID(ast, algebraic_expression->src_node->alias);
     traverse->destNodeRecIdx = AST_GetAliasID(ast, algebraic_expression->dest_node->alias);
     

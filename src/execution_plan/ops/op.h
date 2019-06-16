@@ -41,6 +41,7 @@ typedef enum {
     OPType_EXPAND_INTO = (1<<20),
     OPType_NODE_BY_ID_SEEK = (1<<21),
     OPType_PROC_CALL = (1<<22),
+    OPType_CONDITIONAL_VAR_LEN_TRAVERSE_EXPAND_INTO = (1<<23),
 } OPType;
 
 #define OP_SCAN (OPType_ALL_NODE_SCAN | OPType_NODE_BY_LABEL_SCAN | OPType_INDEX_SCAN | OPType_NODE_BY_ID_SEEK)

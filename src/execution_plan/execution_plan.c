@@ -250,7 +250,7 @@ OpBase* ExecutionPlan_LocateOp(OpBase *root, OPType type) {
 void _ExecutionPlan_LocateOps(OpBase *root, OPType type, OpBase ***ops) {
     if(!root) return;
 
-    if(root->type == type) (*ops) = array_append((*ops), root);
+    if(root->type & type) (*ops) = array_append((*ops), root);
 
     for(int i = 0; i < root->childCount; i++) {
         _ExecutionPlan_LocateOps(root->children[i], type, ops);

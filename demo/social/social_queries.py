@@ -384,6 +384,17 @@ all_paths_leads_to_greece_query = QueryInfo(
     expected_result=[[10]]
 )
 
+number_of_paths_to_places_visited = QueryInfo(
+    query="""MATCH (ME:person {name:'Roi Lipman'})-[:visited]->(c:country)<-[*]-(ME)
+             RETURN c.name, count(c)
+             ORDER BY c.name""",
+    description='Count number of paths to places I have visited',
+    max_run_time_ms=0.4,
+    expected_result=[['Japan', 2],
+                     ['Prague', 5],
+                     ['USA', 14]]
+)
+
 delete_friendships_query = QueryInfo(
     query="""MATCH (ME:person {name:'Roi Lipman'})-[e:friend]->() DELETE e""",
     description='Delete frienships',
@@ -442,6 +453,7 @@ queries_info = [
     happy_birthday_query,
     friends_age_statistics_query,
     all_paths_leads_to_greece_query,
+    number_of_paths_to_places_visited,
     delete_friendships_query,
     delete_person_query,
     post_delete_label_query
