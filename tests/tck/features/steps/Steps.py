@@ -22,6 +22,12 @@ def step_impl(context):
     query = context.text
     resultset = graphs.query(query)
 
+@when(u'executing control query')
+def step_impl(context):
+    global resultset
+    query = context.text
+    resultset = graphs.query(query)
+
 @when(u'executing query')
 def step_impl(context):
     global resultset
