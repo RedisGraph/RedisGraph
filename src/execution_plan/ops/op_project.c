@@ -35,7 +35,8 @@ static AR_ExpNode** _getOrderExpressions(OpBase *op) {
   */
 int _actualAliasesCount(char** aliases){
     int count = 0;
-    for (int i = 0; i < array_len(aliases); i++){
+    int aliasesLen = array_len(aliases);
+    for (int i = 0; i < aliasesLen; i++){
         if(aliases[i]) count++;
     }
     return count;
