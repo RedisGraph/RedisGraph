@@ -116,7 +116,7 @@ Feature: ReturnAcceptance2
     Then the result should be:
       | n |
     And no side effects
-
+  @skip
   Scenario: Fail when sorting on variable removed by DISTINCT
     Given an empty graph
     And having executed:
@@ -327,7 +327,7 @@ Feature: ReturnAcceptance2
       | 14      |
       | 15      |
     And no side effects
-
+  @skip
   Scenario: `substring()` with default second argument
     Given any graph
     When executing query:
