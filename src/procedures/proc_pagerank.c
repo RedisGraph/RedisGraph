@@ -12,11 +12,10 @@
 
 typedef struct {
     LAGraph_PageRank *ranking;      // Sorted ranking.
-    GrB_Index n;                    // Number of nodes ranked.
     GrB_Index i;                    // Result index to yield.
+    GrB_Index n;                    // Number of nodes ranked.
     Graph *g;                       // Graph.
     Node node;                      // Current node.
-    double rank;                    // Current node rank.
     SIValue *output;                // Output node + rank.
 } PageRankContext;
 
@@ -40,6 +39,7 @@ ProcedureResult Proc_PageRankInvoke(ProcedureCtx *ctx, char **args) {
     GrB_Matrix A;
     GrB_Index nrows;
     GrB_Index ncols;
+    GrB_Index nvals;
     GrB_Descriptor desc;
 
     int iters = 0;
@@ -58,8 +58,8 @@ ProcedureResult Proc_PageRankInvoke(ProcedureCtx *ctx, char **args) {
     
     s = GraphContext_GetSchema(gc, relation, SCHEMA_EDGE);
     if(!s) return PROCEDURE_ERR;
-    relation_id = s->id;
     
+    relation_id = s->id;
     R = Graph_GetRelationMatrix(g, relation_id);
     
     nrows = Graph_RequiredMatrixDim(g);
@@ -74,7 +74,13 @@ ProcedureResult Proc_PageRankInvoke(ProcedureCtx *ctx, char **args) {
     GrB_mxm(A, R, GrB_NULL, Rg_structured_bool, R, L, GrB_NULL);
     // Using A as a mask, as we're filtering A.
     GrB_mxm(A, A, GrB_NULL, Rg_structured_bool, L, A, desc);
-    
+
+    // TODO: Remove once CSR is merged.
+    GrB_transpose(A, GrB_NULL, GrB_NULL, A, GrB_NULL);
+
+    // Number of nodes to be ranked.
+    GrB_Matrix_nvals(&nvals, A);
+
     res = LAGraph_pagerank(
         &Phandle,       // output: array of LAGraph_PageRank structs
         A,              // binary input graph, not modified
@@ -90,9 +96,15 @@ ProcedureResult Proc_PageRankInvoke(ProcedureCtx *ctx, char **args) {
     // Setup private data.
     PageRankContext *pdata = rm_malloc(sizeof(PageRankContext));
     pdata->i = 0;
-    pdata->n = nrows;
+    pdata->g = g;
+    pdata->n = nvals;
     pdata->ranking = Phandle;
-    pdata->output = array_new(SIValue, 2);
+    pdata->output = array_new(SIValue, 4);
+
+    pdata->output = array_append(pdata->output, SI_ConstStringVal("node"));
+    pdata->output = array_append(pdata->output, SI_ConstStringVal("")); // Place holder.
+    pdata->output = array_append(pdata->output, SI_ConstStringVal("score"));
+    pdata->output = array_append(pdata->output, SI_ConstStringVal("")); // Place holder.
     ctx->privateData = pdata;
 
     return PROCEDURE_OK;
@@ -113,8 +125,8 @@ SIValue* Proc_PageRankStep(ProcedureCtx *ctx) {
     Graph_GetNode(pdata->g, node_id, &pdata->node);
 
     // Setup output.
-    pdata->output[0] = SI_Node(&pdata->node);
-    pdata->output[1] = SI_DoubleVal(rank.pagerank);
+    pdata->output[1] = SI_Node(&pdata->node);
+    pdata->output[3] = SI_DoubleVal(rank.pagerank);
     return pdata->output;
 }
 
@@ -145,7 +157,7 @@ ProcedureCtx* Proc_PageRankCtx() {
     outputs = array_append(outputs, score_output);
 
     ProcedureCtx *ctx = ProcCtxNew("algo.pageRank",
-                                    0,
+                                    2,
                                     outputs,
                                     Proc_PageRankStep,
                                     Proc_PageRankInvoke,

@@ -231,7 +231,7 @@ GrB_Info LAGraph_pagerank       // GrB_SUCCESS or error condition
 //  GxB_set (GxB_NTHREADS, 1);
 
     double tt = LAGraph_toc (tic) ;
-    fprintf (stderr, "\ninit time %g\n", tt) ;
+    // fprintf (stderr, "\ninit time %g\n", tt) ;
     LAGraph_tic (tic) ;
 
     // use GrB_mxv for t=C*r below
@@ -244,7 +244,7 @@ GrB_Info LAGraph_pagerank       // GrB_SUCCESS or error condition
     LAGRAPH_OK (GrB_mxm (T, NULL, NULL, GxB_PLUS_TIMES_FP32, D, A, NULL)) ;
 
     tt = LAGraph_toc (tic) ;
-    fprintf (stderr, "D*A mxm time %g\n", tt) ;
+    // fprintf (stderr, "D*A mxm time %g\n", tt) ;
     LAGraph_tic (tic) ;
 
     // C = C+T'
@@ -269,7 +269,7 @@ GrB_Info LAGraph_pagerank       // GrB_SUCCESS or error condition
     // GxB_fprint (C, 2, stderr) ;
 
     tt = LAGraph_toc (tic) ;
-    fprintf (stderr, "C transpose time %g\n", tt) ;
+    // fprintf (stderr, "C transpose time %g\n", tt) ;
     LAGraph_tic (tic) ;
 //  GxB_set (GxB_NTHREADS, nthreads_save) ;
 
@@ -342,17 +342,17 @@ GrB_Info LAGraph_pagerank       // GrB_SUCCESS or error condition
         // GxB_print (r, 3) ;
     }
 
-        fprintf (stderr, "reduce1  %g\n", t5) ;
-        fprintf (stderr, "mxv      %g\n", t2) ;
-        fprintf (stderr, "teleport %g\n", t6) ;
-        fprintf (stderr, "add      %g\n", t7) ;
-        fprintf (stderr, "reduce2  %g\n", t8) ;
+        // fprintf (stderr, "reduce1  %g\n", t5) ;
+        // fprintf (stderr, "mxv      %g\n", t2) ;
+        // fprintf (stderr, "teleport %g\n", t6) ;
+        // fprintf (stderr, "add      %g\n", t7) ;
+        // fprintf (stderr, "reduce2  %g\n", t8) ;
 
     LAGRAPH_OK (GrB_free (&C)) ;
     LAGRAPH_OK (GrB_free (&t)) ;
 
     tt = LAGraph_toc (tic) ;
-    fprintf (stderr, "rank time %g\n", tt) ;
+    // fprintf (stderr, "rank time %g\n", tt) ;
     LAGraph_tic (tic) ;
 
     //--------------------------------------------------------------------------
@@ -367,7 +367,7 @@ GrB_Info LAGraph_pagerank       // GrB_SUCCESS or error condition
     LAGRAPH_OK (GrB_apply (r, NULL, NULL, op_div, r, NULL)) ;
 
     tt = LAGraph_toc (tic) ;
-    fprintf (stderr, "scale time %g\n", tt) ;
+    // fprintf (stderr, "scale time %g\n", tt) ;
     LAGraph_tic (tic) ;
 
     //--------------------------------------------------------------------------
@@ -427,7 +427,7 @@ GrB_Info LAGraph_pagerank       // GrB_SUCCESS or error condition
     //--------------------------------------------------------------------------
 
     tt = LAGraph_toc (tic) ;
-    fprintf (stderr, "sort time %g\n", tt) ;
+    // fprintf (stderr, "sort time %g\n", tt) ;
 
     (*Phandle) = P ;
     return (GrB_SUCCESS) ;
