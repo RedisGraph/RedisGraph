@@ -21,7 +21,10 @@ static void _setupTraversedRelations(CondTraverse *op, GraphContext *gc) {
             if(!s) continue;
             op->edgeRelationTypes = array_append(op->edgeRelationTypes, s->id);
         }
-    } else {
+        op->edgeRelationCount = array_len(op->edgeRelationTypes);
+    }
+    else
+    {
         op->edgeRelationCount = 1;
         op->edgeRelationTypes = array_new(int , 1);
         op->edgeRelationTypes = array_append(op->edgeRelationTypes, GRAPH_NO_RELATION);
@@ -40,20 +43,19 @@ static int _CondTraverse_SetEdge(CondTraverse *op, Record r) {
 }
 
 /* Evaluate algebraic expression:
- * appends filter matrix as the right most operand 
+ * prepends filter matrix as the left most operand 
  * perform multiplications 
  * set iterator over result matrix
  * removed filter matrix from original expression
  * clears filter matrix. */
 void _traverse(CondTraverse *op) {
-    // Append matrix to algebraic expression, as the right most operand.
-    AlgebraicExpression_AppendTerm(op->algebraic_expression, op->F, false, false);
-
+    // Preppend matrix to algebraic expression, as the left most operand.
+    AlgebraicExpression_PrependTerm(op->algebraic_expression, op->F, false, false);
     // Evaluate expression.
     AlgebraicExpression_Execute(op->algebraic_expression, op->M);
-    
+
     // Remove operand.
-    AlgebraicExpression_RemoveTerm(op->algebraic_expression, op->algebraic_expression->operand_count-1, NULL);
+    AlgebraicExpression_RemoveTerm(op->algebraic_expression, 0, NULL);
 
     if(op->iter == NULL) GxB_MatrixTupleIter_new(&op->iter, op->M);
     else GxB_MatrixTupleIter_reuse(op->iter, op->M);
@@ -89,8 +91,8 @@ OpBase* NewCondTraverseOp(AlgebraicExpression *algebraic_expression, AST *ast) {
     traverse->recordsCap = _determinRecordCap(ast);
     traverse->records = rm_calloc(traverse->recordsCap, sizeof(Record));
     size_t required_dim = Graph_RequiredMatrixDim(gc->g);
-    GrB_Matrix_new(&traverse->M, GrB_BOOL, required_dim, traverse->recordsCap);
-    GrB_Matrix_new(&traverse->F, GrB_BOOL, required_dim, traverse->recordsCap);
+    GrB_Matrix_new(&traverse->M, GrB_BOOL, traverse->recordsCap, required_dim);
+    GrB_Matrix_new(&traverse->F, GrB_BOOL, traverse->recordsCap, required_dim);
 
     // Set our Op operations
     OpBase_Init(&traverse->op);
@@ -119,7 +121,7 @@ OpBase* NewCondTraverseOp(AlgebraicExpression *algebraic_expression, AST *ast) {
 
 OpResult CondTraverseInit(OpBase *opBase) {
     CondTraverse *op = (CondTraverse*)opBase;
-    size_t op_idx = op->algebraic_expression->operand_count - 1;
+    size_t op_idx = 0;
     AlgebraicExpression *exp = op->algebraic_expression;
     // If the input is set to be transposed on the first expression evaluation,
     // the source and destination nodes will be swapped in the record.
@@ -149,7 +151,8 @@ Record CondTraverseConsume(OpBase *opBase) {
     NodeID dest_id = INVALID_ENTITY_ID;
 
     while(true) {
-        if(op->iter) GxB_MatrixTupleIter_next(op->iter, &dest_id, &src_id, &depleted);
+        if(op->iter)
+            GxB_MatrixTupleIter_next(op->iter, &src_id, & dest_id, &depleted);
 
         // Managed to get a tuple, break.
         if(!depleted) break;
@@ -170,7 +173,7 @@ Record CondTraverseConsume(OpBase *opBase) {
              * F[srcId, i] = true. */
             Node *n = Record_GetNode(childRecord, op->srcNodeRecIdx);
             NodeID srcId = ENTITY_GET_ID(n);
-            GrB_Matrix_setElement_BOOL(op->F, true, srcId, op->recordsLen);
+            GrB_Matrix_setElement_BOOL(op->F, true, op->recordsLen, srcId);
         }
 
         // No data.

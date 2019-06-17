@@ -392,10 +392,7 @@ AlgebraicExpression **AlgebraicExpression_From_Query(const AST *ast, Vector *mat
     // AlgebraicExpression_Free(exp);
     free(exp->operands);
     free(exp);
-
-    /* Because matrices are column ordered, when multiplying A*B
-     * we need to reverse the order: B*A. */
-    for(int i = 0; i < *exp_count; i++) _AlgebraicExpression_ReverseOperandOrder(expressions[i]);
+    
     return expressions;
 }
 
@@ -416,38 +413,41 @@ void AlgebraicExpression_Execute(AlgebraicExpression *ae, GrB_Matrix res) {
     AlgebraicExpressionOperand operands[operand_count];
     memcpy(operands, ae->operands, sizeof(AlgebraicExpressionOperand) * operand_count);
 
-    /* Multiply right to left
+    /* Multiply left to right
      * A*B*C*D
-     * X = C*D
-     * Y = B*X
-     * Z = A*Y */
-    while(operand_count > 1) {
+     * X = A*B
+     * Y = X*C
+     * Z = Y*D */
+    for (int i = 1; i < operand_count; i++)
+    {
         // Multiply and reduce.
-        rightTerm = operands[operand_count-1];
-        leftTerm = operands[operand_count-2];
+        leftTerm = operands[i-1];
+        rightTerm = operands[i];
+        
 
-        /* Incase we're required to transpose left hand side operand 
+        /* Incase we're required to transpose right hand side operand 
          * perform transpose once and update original expression. */
-        if(leftTerm.transpose) {
-            GrB_Matrix t = leftTerm.operand;
+        if (rightTerm.transpose)
+        {
+            GrB_Matrix t = rightTerm.operand;
             /* Graph matrices are immutable, create a new matrix. 
              * and transpose. */
-            if(!leftTerm.free) {
+            if (!rightTerm.free)
+            {
                 GrB_Index cols;
-                GrB_Matrix_ncols(&cols, leftTerm.operand);
+                GrB_Matrix_ncols(&cols, rightTerm.operand);
                 GrB_Matrix_new(&t, GrB_BOOL, cols, cols);
             }
-            GrB_transpose(t, GrB_NULL, GrB_NULL, leftTerm.operand, GrB_NULL);
+            GrB_transpose(t, GrB_NULL, GrB_NULL, rightTerm.operand, GrB_NULL);
 
             // Update local and original expressions.
-            leftTerm.free = true;
-            leftTerm.operand = t;
-            leftTerm.transpose = false;
-            ae->operands[operand_count-2].free = leftTerm.free;
-            ae->operands[operand_count-2].operand = leftTerm.operand;
-            ae->operands[operand_count-2].transpose = leftTerm.transpose;
+            rightTerm.free = true;
+            rightTerm.operand = t;
+            rightTerm.transpose = false;
+            ae->operands[i].free = rightTerm.free;
+            ae->operands[i].operand = rightTerm.operand;
+            ae->operands[i].transpose = rightTerm.transpose;
         }
-
         _AlgebraicExpression_Execute_MUL(res, leftTerm.operand, rightTerm.operand, GrB_NULL);
 
         // Quick return if C is ZERO, there's no way to make progress.
@@ -456,8 +456,7 @@ void AlgebraicExpression_Execute(AlgebraicExpression *ae, GrB_Matrix res) {
         if(nvals == 0) break;
 
         // Assign result and update operands count.
-        operands[operand_count-2].operand = res;
-        operand_count--;
+        operands[i].operand = res;
     }
 }
 

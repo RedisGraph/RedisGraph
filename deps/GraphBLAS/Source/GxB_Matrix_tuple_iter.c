@@ -13,40 +13,40 @@ GrB_Info GxB_MatrixTupleIter_new
 {
     GB_WHERE ("GxB_MatrixTupleIter_new (A)") ;
     GB_RETURN_IF_NULL_OR_FAULTY (A) ;
-    
-    GrB_Index ncols ;
-    GrB_Matrix_ncols (&ncols, A) ;
+
+    GrB_Index nrows;
+    GrB_Matrix_nrows(&nrows, A);
 
     *iter = NULL ;
     GB_MALLOC_MEMORY (*iter, 1, sizeof (GxB_MatrixTupleIter)) ;
     GrB_Matrix_nvals (&((*iter)->nvals), A) ;
     (*iter)->A = A ;
     (*iter)->nnz_idx = 0 ;
-    (*iter)->col_idx = 0 ;
-    (*iter)->ncols = ncols ;
+    (*iter)->row_idx = 0 ;
+    (*iter)->nrows = nrows;
     (*iter)->p = A->p[0] ;
     return (GrB_SUCCESS) ;
 }
 
-// Update iter to scan specific column
-GrB_Info GxB_MatrixTupleIter_iterate_column
+GrB_Info GxB_MatrixTupleIter_iterate_row
 (
     GxB_MatrixTupleIter *iter,
-    GrB_Index colIdx
+    GrB_Index rowIdx
 )
 {
-    GB_WHERE ("GxB_MatrixTupleIter_iterate_column (iter, colIdx)") ;
-    GB_RETURN_IF_NULL (iter) ;
-    
-    if (colIdx < 0 && colIdx >= iter->ncols) {
-        return (GB_ERROR (GrB_INVALID_INDEX, (GB_LOG, "Column index out of range"))) ;
+    GB_WHERE("GxB_MatrixTupleIter_iterate_row (iter, rowIdx)");
+    GB_RETURN_IF_NULL(iter);
+
+    if (rowIdx < 0 && rowIdx >= iter->nrows)
+    {
+        return (GB_ERROR(GrB_INVALID_INDEX, (GB_LOG, "Row index out of range")));
     }
 
-    iter->nvals = iter->A->p[colIdx+1] ;
-    iter->nnz_idx = iter->A->p[colIdx] ;
-    iter->col_idx = colIdx ;
-    iter->p = 0 ;
-    return (GrB_SUCCESS) ;
+    iter->nvals = iter->A->p[rowIdx + 1];
+    iter->nnz_idx = iter->A->p[rowIdx];
+    iter->row_idx = rowIdx;
+    iter->p = 0;
+    return (GrB_SUCCESS);
 }
 
 // Advance iterator
@@ -71,30 +71,34 @@ GrB_Info GxB_MatrixTupleIter_next
     GrB_Matrix A = iter->A ;
 
     //--------------------------------------------------------------------------
-    // extract the row indices
-    //--------------------------------------------------------------------------
-
-    if (row) *row = A->i[nnz_idx] ;
-
-    //--------------------------------------------------------------------------
     // extract the column indices
     //--------------------------------------------------------------------------
 
-    const int64_t *Ap = A->p ;
-    int64_t j = iter->col_idx ;
+    if (col)
+        *col = A->i[nnz_idx];
 
-    for (; j < iter->ncols ; j++)
+    //--------------------------------------------------------------------------
+    // extract the row indices
+    //--------------------------------------------------------------------------
+
+    const int64_t *Ap = A->p;
+    int64_t i = iter->row_idx;
+
+    for (; i < iter->nrows; i++)
     {
-        int64_t p = iter->p + Ap [j] ;
-        if (p < Ap [j+1]) {
-            iter->p++ ;
-            if (col) *col = j ;
-            break ;
+        int64_t p = iter->p + Ap[i];
+        if (p < Ap[i + 1])
+        {
+            iter->p++;
+            if (row)
+                *row = i;
+            break;
         }
-        iter->p = 0 ;
+        iter->p = 0;
     }
-    
-    iter->col_idx = j ;
+
+    iter->row_idx = i;
+
     iter->nnz_idx++ ;
 
     *depleted = false ;
@@ -110,7 +114,7 @@ GrB_Info GxB_MatrixTupleIter_reset
     GB_WHERE ("GxB_MatrixTupleIter_reset (iter)") ;
     GB_RETURN_IF_NULL (iter) ;
     iter->nnz_idx = 0 ;
-    iter->col_idx = 0 ;
+    iter->row_idx = 0 ;
     iter->p = iter->A->p[0] ;
     return (GrB_SUCCESS) ;
 }
@@ -125,12 +129,12 @@ GrB_Info GxB_MatrixTupleIter_reuse
     GB_WHERE ("GxB_MatrixTupleIter_reuse (iter, A)") ;
     GB_RETURN_IF_NULL (iter) ;
     GB_RETURN_IF_NULL_OR_FAULTY (A) ;
-    
-    GrB_Index ncols ;
-    GrB_Matrix_ncols (&ncols, A) ;
+
+    GrB_Index nrows;
+    GrB_Matrix_nrows(&nrows, A);
 
     iter->A = A ;
-    iter->ncols = ncols ;
+    iter->nrows = nrows ;
     GrB_Matrix_nvals (&iter->nvals, A) ;
     GxB_MatrixTupleIter_reset (iter) ;
     return (GrB_SUCCESS) ;
