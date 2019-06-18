@@ -556,13 +556,9 @@ void Graph_GetNodeEdges(const Graph *g, const Node *n, GRAPH_EDGE_DIR dir, int e
             GxB_MatrixTupleIter_new(&tupleIter, M);
             GxB_MatrixTupleIter_iterate_row(tupleIter, destNodeID);
         } else {
-            // TODO: Callers wishing to get Incoming edges to a number of nodes
-            // should pass a transposed matrix, as the operations below are costly
-            // and we'll perform them forevery node.
             size_t nRows = Graph_RequiredMatrixDim(g);
             GrB_Vector_new(&incoming, GrB_BOOL, nRows);
             GrB_Descriptor_new(&desc);
-            GrB_Descriptor_set(desc, GrB_INP0, GrB_TRAN);
             GrB_Col_extract(incoming, NULL, NULL, M, GrB_ALL, nRows, destNodeID, desc);
             GxB_MatrixTupleIter_new(&tupleIter, (GrB_Matrix)incoming);
         }
