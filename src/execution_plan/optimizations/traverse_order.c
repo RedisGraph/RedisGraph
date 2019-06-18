@@ -15,25 +15,38 @@ TRAVERSE_ORDER determineTraverseOrder(const FT_FilterNode *filterTree,
                                       AlgebraicExpression **exps,
                                       size_t expCount) {
 
-    if(expCount == 1 || !filterTree) {
+    if(expCount == 1) {
         return TRAVERSE_ORDER_FIRST;
     }
-    
+    AlgebraicExpression *firstExp = exps[0];
+    AlgebraicExpression *lastExp = exps[expCount-1];
+
+    if (firstExp->operand_count == 1 && firstExp->edgeLength == NULL) return TRAVERSE_ORDER_FIRST;
+    if (lastExp->operand_count == 1 && lastExp->edgeLength == NULL) return TRAVERSE_ORDER_LAST;
+
+    bool firstExpLabeled = firstExp->src_node->label || firstExp->dest_node->label;
+    bool lastExpLabeled = lastExp->src_node->label || lastExp->dest_node->label;
+
+    /* If we have no filters, favor a starting expression in which
+     * the source or destination is labeled. */
+    if(filterTree == NULL) {
+        if(!firstExpLabeled && lastExpLabeled) {
+            return TRAVERSE_ORDER_LAST;
+        } else {
+            return TRAVERSE_ORDER_FIRST;
+        }
+    }
+
     char *destAlias;
     char *srcAlias;
-    bool firstExpLabeled = false;
-    bool lastExpLabeled = false;
-    AlgebraicExpression *exp;
     TRAVERSE_ORDER order = TRAVERSE_ORDER_FIRST;
     
     Vector *aliases = FilterTree_CollectAliases(filterTree);
     size_t aliasesCount = Vector_Size(aliases);
 
     // See if there's a filter applied to the first expression.
-    exp = exps[0];
-    firstExpLabeled = exp->src_node->label || exp->dest_node->label;
-    destAlias = exp->dest_node->alias;
-    srcAlias = exp->src_node->alias;
+    destAlias = firstExp->dest_node->alias;
+    srcAlias = firstExp->src_node->alias;
 
     for(int i = 0; i < aliasesCount; i++) {
         char *alias;
@@ -45,10 +58,8 @@ TRAVERSE_ORDER determineTraverseOrder(const FT_FilterNode *filterTree,
     }
 
     // See if there's a filter applied to the last expression.
-    exp = exps[expCount-1];
-    lastExpLabeled = exp->src_node->label || exp->dest_node->label;
-    destAlias = exp->dest_node->alias;
-    srcAlias = exp->src_node->alias;
+    destAlias = lastExp->dest_node->alias;
+    srcAlias = lastExp->src_node->alias;
 
     for(int i = 0; i < aliasesCount; i++) {
         char *alias;
