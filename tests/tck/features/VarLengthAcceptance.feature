@@ -29,6 +29,19 @@
 #encoding: utf-8
 
 Feature: VarLengthAcceptance
+    # NOTE - This file has been modified from the OpenCypher repo in the following ways:
+    #
+    # 1) The entire graph is built in a single CREATE clause.
+    #
+    # 2) Every occurence of the formulation:
+    # MATCH (a:A)
+    # MATCH (a)-[:LIKES*]->(c)
+    # Has been replaced by
+    # MATCH (a:A)-[:LIKES*]->(c)
+    #
+    # 3) An ORDER BY clause has been added to every match query,
+    # and the results are sorted accordingly.
+
 
   # TODO: Replace this with a named graph (or two)
   Background:
@@ -49,8 +62,8 @@ Feature: VarLengthAcceptance
              (n0100:D {name: 'n0100'}),
              (n0101:D {name: 'n0101'}),
              (n0110:D {name: 'n0110'}),
-             (n0111:D {name: 'n0111'})
-      CREATE (n0)-[:LIKES]->(n00),
+             (n0111:D {name: 'n0111'}),
+             (n0)-[:LIKES]->(n00),
              (n0)-[:LIKES]->(n01),
              (n00)-[:LIKES]->(n000),
              (n00)-[:LIKES]->(n001),
@@ -69,24 +82,24 @@ Feature: VarLengthAcceptance
   Scenario: Handling unbounded variable length match
     When executing query:
       """
-      MATCH (a:A)
-      MATCH (a)-[:LIKES*]->(c)
+      MATCH (a:A)-[:LIKES*]->(c)
       RETURN c.name
+      ORDER BY c.name
       """
     Then the result should be:
       | c.name  |
       | 'n00'   |
-      | 'n01'   |
       | 'n000'  |
-      | 'n001'  |
-      | 'n010'  |
-      | 'n011'  |
       | 'n0000' |
       | 'n0001' |
+      | 'n001'  |
       | 'n0010' |
       | 'n0011' |
+      | 'n01'   |
+      | 'n010'  |
       | 'n0100' |
       | 'n0101' |
+      | 'n011'  |
       | 'n0110' |
       | 'n0111' |
     And no side effects
@@ -94,43 +107,45 @@ Feature: VarLengthAcceptance
   Scenario: Handling explicitly unbounded variable length match
     When executing query:
       """
-      MATCH (a:A)
-      MATCH (a)-[:LIKES*..]->(c)
+      MATCH (a:A)-[:LIKES*1..]->(c)
       RETURN c.name
+      ORDER BY c.name
       """
     Then the result should be:
       | c.name  |
       | 'n00'   |
-      | 'n01'   |
       | 'n000'  |
-      | 'n001'  |
-      | 'n010'  |
-      | 'n011'  |
       | 'n0000' |
       | 'n0001' |
+      | 'n001'  |
       | 'n0010' |
       | 'n0011' |
+      | 'n01'   |
+      | 'n010'  |
       | 'n0100' |
       | 'n0101' |
+      | 'n011'  |
       | 'n0110' |
       | 'n0111' |
     And no side effects
 
+  @skip
   Scenario: Fail when asterisk operator is missing
     When executing query:
       """
-      MATCH (a:A)
-      MATCH (a)-[:LIKES..]->(c)
+      MATCH (a:A)-[:LIKES..]->(c)
       RETURN c.name
+      ORDER BY c.name
       """
     Then a SyntaxError should be raised at compile time: InvalidRelationshipPattern
 
+  @skip
   Scenario: Handling single bounded variable length match 1
     When executing query:
       """
-      MATCH (a:A)
-      MATCH (a)-[:LIKES*0]->(c)
+      MATCH (a:A)-[:LIKES*0]->(c)
       RETURN c.name
+      ORDER BY c.name
       """
     Then the result should be:
       | c.name |
@@ -140,9 +155,9 @@ Feature: VarLengthAcceptance
   Scenario: Handling single bounded variable length match 2
     When executing query:
       """
-      MATCH (a:A)
-      MATCH (a)-[:LIKES*1]->(c)
+      MATCH (a:A)-[:LIKES*1]->(c)
       RETURN c.name
+      ORDER BY c.name
       """
     Then the result should be:
       | c.name |
@@ -153,9 +168,9 @@ Feature: VarLengthAcceptance
   Scenario: Handling single bounded variable length match 3
     When executing query:
       """
-      MATCH (a:A)
-      MATCH (a)-[:LIKES*2]->(c)
+      MATCH (a:A)-[:LIKES*2]->(c)
       RETURN c.name
+      ORDER BY c.name
       """
     Then the result should be:
       | c.name |
@@ -168,17 +183,17 @@ Feature: VarLengthAcceptance
   Scenario: Handling upper and lower bounded variable length match 1
     When executing query:
       """
-      MATCH (a:A)
-      MATCH (a)-[:LIKES*0..2]->(c)
+      MATCH (a:A)-[:LIKES*0..2]->(c)
       RETURN c.name
+      ORDER BY c.name
       """
     Then the result should be:
       | c.name |
       | 'n0'   |
       | 'n00'  |
-      | 'n01'  |
       | 'n000' |
       | 'n001' |
+      | 'n01'  |
       | 'n010' |
       | 'n011' |
     And no side effects
@@ -186,26 +201,27 @@ Feature: VarLengthAcceptance
   Scenario: Handling upper and lower bounded variable length match 2
     When executing query:
       """
-      MATCH (a:A)
-      MATCH (a)-[:LIKES*1..2]->(c)
+      MATCH (a:A)-[:LIKES*1..2]->(c)
       RETURN c.name
+      ORDER BY c.name
       """
     Then the result should be:
       | c.name |
       | 'n00'  |
-      | 'n01'  |
       | 'n000' |
       | 'n001' |
+      | 'n01'  |
       | 'n010' |
       | 'n011' |
     And no side effects
 
+  @skip
   Scenario: Handling symmetrically bounded variable length match, bounds are zero
     When executing query:
       """
-      MATCH (a:A)
-      MATCH (a)-[:LIKES*0..0]->(c)
+      MATCH (a:A)-[:LIKES*0..0]->(c)
       RETURN c.name
+      ORDER BY c.name
       """
     Then the result should be:
       | c.name |
@@ -215,9 +231,9 @@ Feature: VarLengthAcceptance
   Scenario: Handling symmetrically bounded variable length match, bounds are one
     When executing query:
       """
-      MATCH (a:A)
-      MATCH (a)-[:LIKES*1..1]->(c)
+      MATCH (a:A)-[:LIKES*1..1]->(c)
       RETURN c.name
+      ORDER BY c.name
       """
     Then the result should be:
       | c.name |
@@ -228,9 +244,9 @@ Feature: VarLengthAcceptance
   Scenario: Handling symmetrically bounded variable length match, bounds are two
     When executing query:
       """
-      MATCH (a:A)
-      MATCH (a)-[:LIKES*2..2]->(c)
+      MATCH (a:A)-[:LIKES*2..2]->(c)
       RETURN c.name
+      ORDER BY c.name
       """
     Then the result should be:
       | c.name |
@@ -240,43 +256,47 @@ Feature: VarLengthAcceptance
       | 'n011' |
     And no side effects
 
+  @skip
   Scenario: Fail on negative bound
     When executing query:
       """
-      MATCH (a:A)
-      MATCH (a)-[:LIKES*-2]->(c)
+      MATCH (a:A)-[:LIKES*-2]->(c)
       RETURN c.name
+      ORDER BY c.name
       """
     Then a SyntaxError should be raised at compile time: InvalidRelationshipPattern
 
+  @skip
   Scenario: Handling upper and lower bounded variable length match, empty interval 1
     When executing query:
       """
-      MATCH (a:A)
-      MATCH (a)-[:LIKES*2..1]->(c)
+      MATCH (a:A)-[:LIKES*2..1]->(c)
       RETURN c.name
+      ORDER BY c.name
       """
     Then the result should be:
       | c.name |
     And no side effects
 
+  @skip
   Scenario: Handling upper and lower bounded variable length match, empty interval 2
     When executing query:
       """
-      MATCH (a:A)
-      MATCH (a)-[:LIKES*1..0]->(c)
+      MATCH (a:A)-[:LIKES*1..0]->(c)
       RETURN c.name
+      ORDER BY c.name
       """
     Then the result should be:
       | c.name |
     And no side effects
 
+  @skip
   Scenario: Handling upper bounded variable length match, empty interval
     When executing query:
       """
-      MATCH (a:A)
-      MATCH (a)-[:LIKES*..0]->(c)
+      MATCH (a:A)-[:LIKES*..0]->(c)
       RETURN c.name
+      ORDER BY c.name
       """
     Then the result should be:
       | c.name |
@@ -285,9 +305,9 @@ Feature: VarLengthAcceptance
   Scenario: Handling upper bounded variable length match 1
     When executing query:
       """
-      MATCH (a:A)
-      MATCH (a)-[:LIKES*..1]->(c)
+      MATCH (a:A)-[:LIKES*..1]->(c)
       RETURN c.name
+      ORDER BY c.name
       """
     Then the result should be:
       | c.name |
@@ -298,16 +318,16 @@ Feature: VarLengthAcceptance
   Scenario: Handling upper bounded variable length match 2
     When executing query:
       """
-      MATCH (a:A)
-      MATCH (a)-[:LIKES*..2]->(c)
+      MATCH (a:A)-[:LIKES*..2]->(c)
       RETURN c.name
+      ORDER BY c.name
       """
     Then the result should be:
       | c.name |
       | 'n00'  |
-      | 'n01'  |
       | 'n000' |
       | 'n001' |
+      | 'n01'  |
       | 'n010' |
       | 'n011' |
     And no side effects
@@ -315,25 +335,25 @@ Feature: VarLengthAcceptance
   Scenario: Handling lower bounded variable length match 1
     When executing query:
       """
-      MATCH (a:A)
-      MATCH (a)-[:LIKES*0..]->(c)
+      MATCH (a:A)-[:LIKES*0..]->(c)
       RETURN c.name
+      ORDER BY c.name
       """
     Then the result should be:
       | c.name  |
       | 'n0'    |
       | 'n00'   |
-      | 'n01'   |
       | 'n000'  |
-      | 'n001'  |
-      | 'n010'  |
-      | 'n011'  |
       | 'n0000' |
       | 'n0001' |
+      | 'n001'  |
       | 'n0010' |
       | 'n0011' |
+      | 'n01'   |
+      | 'n010'  |
       | 'n0100' |
       | 'n0101' |
+      | 'n011'  |
       | 'n0110' |
       | 'n0111' |
     And no side effects
@@ -341,24 +361,24 @@ Feature: VarLengthAcceptance
   Scenario: Handling lower bounded variable length match 2
     When executing query:
       """
-      MATCH (a:A)
-      MATCH (a)-[:LIKES*1..]->(c)
+      MATCH (a:A)-[:LIKES*1..]->(c)
       RETURN c.name
+      ORDER BY c.name
       """
     Then the result should be:
       | c.name  |
       | 'n00'   |
-      | 'n01'   |
       | 'n000'  |
-      | 'n001'  |
-      | 'n010'  |
-      | 'n011'  |
       | 'n0000' |
       | 'n0001' |
+      | 'n001'  |
       | 'n0010' |
       | 'n0011' |
+      | 'n01'   |
+      | 'n010'  |
       | 'n0100' |
       | 'n0101' |
+      | 'n011'  |
       | 'n0110' |
       | 'n0111' |
     And no side effects
@@ -366,32 +386,33 @@ Feature: VarLengthAcceptance
   Scenario: Handling lower bounded variable length match 3
     When executing query:
       """
-      MATCH (a:A)
-      MATCH (a)-[:LIKES*2..]->(c)
+      MATCH (a:A)-[:LIKES*2..]->(c)
       RETURN c.name
+      ORDER BY c.name
       """
     Then the result should be:
       | c.name  |
       | 'n000'  |
-      | 'n001'  |
-      | 'n010'  |
-      | 'n011'  |
       | 'n0000' |
       | 'n0001' |
+      | 'n001'  |
       | 'n0010' |
       | 'n0011' |
+      | 'n010'  |
       | 'n0100' |
       | 'n0101' |
+      | 'n011'  |
       | 'n0110' |
       | 'n0111' |
     And no side effects
 
+  @skip
   Scenario: Handling a variable length relationship and a standard relationship in chain, zero length 1
     When executing query:
       """
-      MATCH (a:A)
-      MATCH (a)-[:LIKES*0]->()-[:LIKES]->(c)
+      MATCH (a:A)-[:LIKES*0]->()-[:LIKES]->(c)
       RETURN c.name
+      ORDER BY c.name
       """
     Then the result should be:
       | c.name |
@@ -399,12 +420,13 @@ Feature: VarLengthAcceptance
       | 'n01'  |
     And no side effects
 
+  @skip
   Scenario: Handling a variable length relationship and a standard relationship in chain, zero length 2
     When executing query:
       """
-      MATCH (a:A)
-      MATCH (a)-[:LIKES]->()-[:LIKES*0]->(c)
+      MATCH (a:A)-[:LIKES]->()-[:LIKES*0]->(c)
       RETURN c.name
+      ORDER BY c.name
       """
     Then the result should be:
       | c.name |
@@ -415,9 +437,9 @@ Feature: VarLengthAcceptance
   Scenario: Handling a variable length relationship and a standard relationship in chain, single length 1
     When executing query:
       """
-      MATCH (a:A)
-      MATCH (a)-[:LIKES*1]->()-[:LIKES]->(c)
+      MATCH (a:A)-[:LIKES*1]->()-[:LIKES]->(c)
       RETURN c.name
+      ORDER BY c.name
       """
     Then the result should be:
       | c.name |
@@ -430,9 +452,9 @@ Feature: VarLengthAcceptance
   Scenario: Handling a variable length relationship and a standard relationship in chain, single length 2
     When executing query:
       """
-      MATCH (a:A)
-      MATCH (a)-[:LIKES]->()-[:LIKES*1]->(c)
+      MATCH (a:A)-[:LIKES]->()-[:LIKES*1]->(c)
       RETURN c.name
+      ORDER BY c.name
       """
     Then the result should be:
       | c.name |
@@ -445,9 +467,9 @@ Feature: VarLengthAcceptance
   Scenario: Handling a variable length relationship and a standard relationship in chain, longer 1
     When executing query:
       """
-      MATCH (a:A)
-      MATCH (a)-[:LIKES*2]->()-[:LIKES]->(c)
+      MATCH (a:A)-[:LIKES*2]->()-[:LIKES]->(c)
       RETURN c.name
+      ORDER BY c.name
       """
     Then the result should be:
       | c.name  |
@@ -464,9 +486,9 @@ Feature: VarLengthAcceptance
   Scenario: Handling a variable length relationship and a standard relationship in chain, longer 2
     When executing query:
       """
-      MATCH (a:A)
-      MATCH (a)-[:LIKES]->()-[:LIKES*2]->(c)
+      MATCH (a:A)-[:LIKES]->()-[:LIKES*2]->(c)
       RETURN c.name
+      ORDER BY c.name
       """
     Then the result should be:
       | c.name  |
@@ -480,6 +502,7 @@ Feature: VarLengthAcceptance
       | 'n0111' |
     And no side effects
 
+  @skip
   Scenario: Handling a variable length relationship and a standard relationship in chain, longer 3
     And having executed:
       """
@@ -494,6 +517,7 @@ Feature: VarLengthAcceptance
       MATCH (a:A)
       MATCH (a)-[:LIKES]->()-[:LIKES*3]->(c)
       RETURN c.name
+      ORDER BY c.name
       """
     Then the result should be:
       | c.name   |
@@ -515,6 +539,7 @@ Feature: VarLengthAcceptance
       | 'n01111' |
     And no side effects
 
+  @skip
   Scenario: Handling mixed relationship patterns and directions 1
     And having executed:
       """
@@ -535,6 +560,7 @@ Feature: VarLengthAcceptance
       MATCH (a:A)
       MATCH (a)<-[:LIKES]-()-[:LIKES*3]->(c)
       RETURN c.name
+      ORDER BY c.name
       """
     Then the result should be:
       | c.name   |
@@ -556,6 +582,7 @@ Feature: VarLengthAcceptance
       | 'n01111' |
     And no side effects
 
+  @skip
   Scenario: Handling mixed relationship patterns and directions 2
     # This gets hard to follow for a human mind. The answer is named graphs, but it's not crucial to fix.
     And having executed:
@@ -578,6 +605,7 @@ Feature: VarLengthAcceptance
       MATCH (a:A)
       MATCH (a)-[:LIKES]->()<-[:LIKES*3]->(c)
       RETURN c.name
+      ORDER BY c.name
       """
     Then the result should be:
       | c.name   |
@@ -599,6 +627,7 @@ Feature: VarLengthAcceptance
       | 'n01111' |
     And no side effects
 
+  @skip
   Scenario: Handling mixed relationship patterns 1
     And having executed:
       """
@@ -613,6 +642,7 @@ Feature: VarLengthAcceptance
       MATCH (a:A)
       MATCH (p)-[:LIKES*1]->()-[:LIKES]->()-[r:LIKES*2]->(c)
       RETURN c.name
+      ORDER BY c.name
       """
     Then the result should be:
       | c.name   |
@@ -634,6 +664,7 @@ Feature: VarLengthAcceptance
       | 'n01111' |
     And no side effects
 
+  @skip
   Scenario: Handling mixed relationship patterns 2
     And having executed:
       """
@@ -648,6 +679,7 @@ Feature: VarLengthAcceptance
       MATCH (a:A)
       MATCH (p)-[:LIKES]->()-[:LIKES*2]->()-[r:LIKES]->(c)
       RETURN c.name
+      ORDER BY c.name
       """
     Then the result should be:
       | c.name   |
