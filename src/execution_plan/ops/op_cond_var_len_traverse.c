@@ -99,8 +99,7 @@ Record CondVarLenTraverseConsume(OpBase *opBase) {
     }
 
     // For the timebeing we only care for the last node in path
-    Node n = Path_pop(p);
-    Path_free(p);
+    Node n = Path_head(p);
 
     Record_AddNode(op->r, op->destNodeIdx, n);
     return Record_Clone(op->r);

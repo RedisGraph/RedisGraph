@@ -26,6 +26,7 @@ typedef struct {
     Node **levels;          // Nodes reached at depth i.
     Path path;              // Current path.
     Graph *g;               // Graph to traverse.
+    Edge *neighbors;        // Reusable buffer of edges along the current path.
     int *relationIDs;       // edge type(s) to traverse.
     int relationCount;      // length of relationIDs.
     GRAPH_EDGE_DIR dir;     // traverse direction.

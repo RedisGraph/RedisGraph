@@ -19,6 +19,10 @@ Node Path_pop(Path p) {
     return array_pop(p);
 }
 
+Node Path_head(Path p) {
+    return p[array_len(p)-1];
+}
+
 size_t Path_len(const Path p) {
     return array_len(p);
 }
