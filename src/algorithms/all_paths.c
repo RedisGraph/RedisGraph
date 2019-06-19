@@ -84,6 +84,11 @@ Path AllPathsCtx_NextPath(AllPathsCtx *ctx) {
             }
 
             // See if we can return path.
+            /* TODO Note that further calls to this function will continue to operate on
+             * this path, so it is essential that the caller does not modify it (or creates
+             * a copy beforehand). If future features like an algorithm API use this routine,
+             * they should either be responsible for memory safety or a memory-safe boolean/routine
+             * should be offered. */
             if(depth >= ctx->minLen && depth <= ctx->maxLen) return ctx->path;
 		} else {
             // No way to advance, backtrack.
