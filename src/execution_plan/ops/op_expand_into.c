@@ -72,19 +72,19 @@ static uint _determinRecordCap(const AST *ast) {
 }
 
 /* Evaluate algebraic expression:
- * appends filter matrix as the right most operand 
+ * appends filter matrix as the left most operand
  * perform multiplications.
  * removed filter matrix from original expression
  * clears filter matrix. */
 static void _traverse(OpExpandInto *op) {
-    // Append filter matrix to algebraic expression, as the right most operand.
-    AlgebraicExpression_AppendTerm(op->ae, op->F, false, false);
+    // Append filter matrix to algebraic expression, as the left most operand.
+    AlgebraicExpression_PrependTerm(op->ae, op->F, false, false);
 
     // Evaluate expression.
     AlgebraicExpression_Execute(op->ae, op->M);
     
     // Remove operand.
-    AlgebraicExpression_RemoveTerm(op->ae, op->ae->operand_count-1, NULL);
+    AlgebraicExpression_RemoveTerm(op->ae, 0, NULL);
 
     // Clear filter matrix.
     GrB_Matrix_clear(op->F);
@@ -135,10 +135,10 @@ OpResult ExpandIntoInit(OpBase *opBase) {
     OpExpandInto *op = (OpExpandInto*)opBase;
 
     size_t required_dim = Graph_RequiredMatrixDim(op->graph);
-    GrB_Matrix_new(&op->M, GrB_BOOL, required_dim, op->recordsCap);
-    GrB_Matrix_new(&op->F, GrB_BOOL, required_dim, op->recordsCap);
+    GrB_Matrix_new(&op->M, GrB_BOOL, op->recordsCap, required_dim);
+    GrB_Matrix_new(&op->F, GrB_BOOL, op->recordsCap, required_dim);
 
-    size_t op_idx = op->ae->operand_count - 1;
+    size_t op_idx = 0;
     AlgebraicExpression *exp = op->ae;
     // If the input is set to be transposed on the first expression evaluation,
     // the source and destination nodes will be swapped in the record.
@@ -174,7 +174,7 @@ static Record _handoff(OpExpandInto *op) {
         destId = ENTITY_GET_ID(destNode);
 
         bool x;
-        GrB_Info res = GrB_Matrix_extractElement_BOOL(&x, op->M, destId, srcId);
+        GrB_Info res = GrB_Matrix_extractElement_BOOL(&x, op->M, srcId, destId);
         // Src is not connected to dest.
         if(res != GrB_SUCCESS) continue;
 
@@ -229,11 +229,11 @@ Record ExpandIntoConsume(OpBase *opBase) {
 
             // Store received record.
             op->records[op->recordsLen] = childRecord;
-            /* Update filter matrix F, set column i at position srcId
-             * F[srcId, i] = true. */
+            /* Update filter matrix F, set row i at position srcId
+             * F[i, srcId] = true. */
             n = Record_GetNode(childRecord, op->srcNodeRecIdx);
             NodeID srcId = ENTITY_GET_ID(n);
-            GrB_Matrix_setElement_BOOL(op->F, true, srcId, op->recordsLen);            
+            GrB_Matrix_setElement_BOOL(op->F, true, op->recordsLen, srcId);
         }
 
         // Depleted.
