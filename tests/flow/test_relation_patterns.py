@@ -153,3 +153,75 @@ class RelationPatternTest(FlowTestsBase):
         query = """MATCH (a)-[*]->(b:A) RETURN a.val, b.val ORDER BY a.val, b.val"""
         actual_result = redis_graph.query(query)
         assert(actual_result.result_set == expected_result)
+
+    # Test traversals over explicit relationship types
+    def test05_relation_types(self):
+        # Add two nodes and two edges of a new type.
+        # The new form of the graph will be:
+        # (v1)-[:e]->(v2)-[:e]->(v3)-[:q]->(v4)-[:q]->(v5)
+        query = """MATCH (n {val: 'v3'}) CREATE (n)-[:q]->(:A {val: 'v4'})-[:q]->(:A {val: 'v5'})"""
+        actual_result = redis_graph.query(query)
+        assert(actual_result.nodes_created == 2)
+        assert(actual_result.relationships_created == 2)
+
+        # Verify the graph structure
+        query = """MATCH (a)-[e]->(b) RETURN a.val, b.val, TYPE(e) ORDER BY TYPE(e), a.val, b.val"""
+        actual_result = redis_graph.query(query)
+        expected_result = [['v1', 'v2', 'e'],
+                           ['v2', 'v3', 'e'],
+                           ['v3', 'v4', 'q'],
+                           ['v4', 'v5', 'q']]
+        assert(actual_result.result_set == expected_result)
+
+        # Verify conditional traversals with explicit relation types
+        query = """MATCH (a)-[:e]->(b) RETURN a.val, b.val ORDER BY a.val, b.val"""
+        actual_result = redis_graph.query(query)
+        expected_result = [['v1', 'v2'],
+                           ['v2', 'v3']]
+        assert(actual_result.result_set == expected_result)
+
+        query = """MATCH (a)-[:q]->(b) RETURN a.val, b.val ORDER BY a.val, b.val"""
+        actual_result = redis_graph.query(query)
+        expected_result = [['v3', 'v4'],
+                           ['v4', 'v5']]
+        assert(actual_result.result_set == expected_result)
+
+        # Verify conditional traversals with multiple explicit relation types
+        query = """MATCH (a)-[e:e|:q]->(b) RETURN a.val, b.val, TYPE(e) ORDER BY TYPE(e), a.val, b.val"""
+        actual_result = redis_graph.query(query)
+        expected_result = [['v1', 'v2', 'e'],
+                           ['v2', 'v3', 'e'],
+                           ['v3', 'v4', 'q'],
+                           ['v4', 'v5', 'q']]
+        assert(actual_result.result_set == expected_result)
+
+        # Verify variable-length traversals with explicit relation types
+        query = """MATCH (a)-[:e*]->(b) RETURN a.val, b.val ORDER BY a.val, b.val"""
+        actual_result = redis_graph.query(query)
+        expected_result = [['v1', 'v2'],
+                           ['v1', 'v3'],
+                           ['v2', 'v3']]
+        assert(actual_result.result_set == expected_result)
+
+        query = """MATCH (a)-[:q*]->(b) RETURN a.val, b.val ORDER BY a.val, b.val"""
+        actual_result = redis_graph.query(query)
+        expected_result = [['v3', 'v4'],
+                           ['v3', 'v5'],
+                           ['v4', 'v5']]
+        assert(actual_result.result_set == expected_result)
+
+        # Verify variable-length traversals with multiple explicit relation types
+        query = """MATCH (a)-[:e|:q*]->(b) RETURN a.val, b.val ORDER BY a.val, b.val"""
+        actual_result = redis_graph.query(query)
+        expected_result = [['v1', 'v2'],
+                           ['v1', 'v3'],
+                           ['v1', 'v4'],
+                           ['v1', 'v5'],
+                           ['v2', 'v3'],
+                           ['v2', 'v4'],
+                           ['v2', 'v5'],
+                           ['v3', 'v4'],
+                           ['v3', 'v5'],
+                           ['v4', 'v5']]
+        assert(actual_result.result_set == expected_result)
+

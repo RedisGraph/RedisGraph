@@ -525,11 +525,12 @@ void Graph_GetNodeEdges(const Graph *g, const Node *n, GRAPH_EDGE_DIR dir, int e
     NodeID srcNodeID;
     NodeID destNodeID;
     GxB_MatrixTupleIter *tupleIter;
-    if(edgeType == GRAPH_NO_RELATION) M = Graph_GetAdjacencyMatrix(g);
-    else M = Graph_GetRelationMatrix(g, edgeType);
 
     // Outgoing.
     if(dir == GRAPH_EDGE_DIR_OUTGOING || dir == GRAPH_EDGE_DIR_BOTH) {
+        if(edgeType == GRAPH_NO_RELATION) M = Graph_GetAdjacencyMatrix(g);
+        else M = Graph_GetRelationMatrix(g, edgeType);
+
         GxB_MatrixTupleIter_new(&tupleIter, M);
         srcNodeID = ENTITY_GET_ID(n);
         GxB_MatrixTupleIter_iterate_row(tupleIter, srcNodeID);
@@ -546,22 +547,11 @@ void Graph_GetNodeEdges(const Graph *g, const Node *n, GRAPH_EDGE_DIR dir, int e
 
     // Incoming.
     if(dir == GRAPH_EDGE_DIR_INCOMING || dir == GRAPH_EDGE_DIR_BOTH) {
-        destNodeID = ENTITY_GET_ID(n);
-        GrB_Vector incoming = GrB_NULL;
-        GrB_Descriptor desc = GrB_NULL;
+        M = _Graph_Get_Transposed_AdjacencyMatrix(g);
 
-        if(edgeType == GRAPH_NO_RELATION) {
-            // Relation wasn't specified, use transposed adjacency matrix.
-            M = _Graph_Get_Transposed_AdjacencyMatrix(g);
-            GxB_MatrixTupleIter_new(&tupleIter, M);
-            GxB_MatrixTupleIter_iterate_row(tupleIter, destNodeID);
-        } else {
-            size_t nRows = Graph_RequiredMatrixDim(g);
-            GrB_Vector_new(&incoming, GrB_BOOL, nRows);
-            GrB_Descriptor_new(&desc);
-            GrB_Col_extract(incoming, NULL, NULL, M, GrB_ALL, nRows, destNodeID, desc);
-            GxB_MatrixTupleIter_new(&tupleIter, (GrB_Matrix)incoming);
-        }
+        GxB_MatrixTupleIter_new(&tupleIter, M);
+        destNodeID = ENTITY_GET_ID(n);
+        GxB_MatrixTupleIter_iterate_row(tupleIter, destNodeID);
 
         while(true) {
             bool depleted = false;
@@ -572,8 +562,6 @@ void Graph_GetNodeEdges(const Graph *g, const Node *n, GRAPH_EDGE_DIR dir, int e
 
         // Clean up
         GxB_MatrixTupleIter_free(tupleIter);
-        if(desc != GrB_NULL) GrB_Descriptor_free(&desc);
-        if(incoming != GrB_NULL) GrB_Vector_free(&incoming);
     }
 }
 
