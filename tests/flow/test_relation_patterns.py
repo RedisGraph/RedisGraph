@@ -39,7 +39,7 @@ class RelationPatternTest(FlowTestsBase):
 
         nodes = []
         for idx, v in enumerate(node_props):
-            node = Node(label="A", properties={"val": v})
+            node = Node(label="L", properties={"val": v})
             nodes.append(node)
             redis_graph.add_node(node)
 
@@ -91,7 +91,7 @@ class RelationPatternTest(FlowTestsBase):
         assert(actual_result.result_set == expected_result)
 
         # Conditional two-hop traversal with referenced intermediate node
-        query = """MATCH (a)-[:e]->(b)-[:e]->(c) RETURN a.val, b.val, c.val ORDER BY a.val, b.val"""
+        query = """MATCH (a)-[:e]->(b)-[:e]->(c) RETURN a.val, b.val, c.val"""
         actual_result = redis_graph.query(query)
         expected_result = [['v1', 'v2', 'v3']]
         assert(actual_result.result_set == expected_result)
@@ -132,7 +132,7 @@ class RelationPatternTest(FlowTestsBase):
     # and destination nodes, which can cause different execution sequences.
     def test04_variable_length_labeled_nodes(self):
         # Source and edge labeled variable-length traversal
-        query = """MATCH (a:A)-[:e*]->(b) RETURN a.val, b.val ORDER BY a.val, b.val"""
+        query = """MATCH (a:L)-[:e*]->(b) RETURN a.val, b.val ORDER BY a.val, b.val"""
         actual_result = redis_graph.query(query)
         expected_result = [['v1', 'v2'],
                            ['v1', 'v3'],
@@ -140,17 +140,17 @@ class RelationPatternTest(FlowTestsBase):
         assert(actual_result.result_set == expected_result)
 
         # Destination and edge labeled variable-length traversal (same expected result)
-        query = """MATCH (a)-[:e*]->(b:A) RETURN a.val, b.val ORDER BY a.val, b.val"""
+        query = """MATCH (a)-[:e*]->(b:L) RETURN a.val, b.val ORDER BY a.val, b.val"""
         actual_result = redis_graph.query(query)
         assert(actual_result.result_set == expected_result)
 
         # Source labeled variable-length traversal (same expected result)
-        query = """MATCH (a:A)-[*]->(b) RETURN a.val, b.val ORDER BY a.val, b.val"""
+        query = """MATCH (a:L)-[*]->(b) RETURN a.val, b.val ORDER BY a.val, b.val"""
         actual_result = redis_graph.query(query)
         assert(actual_result.result_set == expected_result)
 
         # Destination labeled variable-length traversal (same expected result)
-        query = """MATCH (a)-[*]->(b:A) RETURN a.val, b.val ORDER BY a.val, b.val"""
+        query = """MATCH (a)-[*]->(b:L) RETURN a.val, b.val ORDER BY a.val, b.val"""
         actual_result = redis_graph.query(query)
         assert(actual_result.result_set == expected_result)
 
@@ -159,7 +159,7 @@ class RelationPatternTest(FlowTestsBase):
         # Add two nodes and two edges of a new type.
         # The new form of the graph will be:
         # (v1)-[:e]->(v2)-[:e]->(v3)-[:q]->(v4)-[:q]->(v5)
-        query = """MATCH (n {val: 'v3'}) CREATE (n)-[:q]->(:A {val: 'v4'})-[:q]->(:A {val: 'v5'})"""
+        query = """MATCH (n {val: 'v3'}) CREATE (n)-[:q]->(:L {val: 'v4'})-[:q]->(:L {val: 'v5'})"""
         actual_result = redis_graph.query(query)
         assert(actual_result.nodes_created == 2)
         assert(actual_result.relationships_created == 2)

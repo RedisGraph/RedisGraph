@@ -7,7 +7,7 @@
 #include "./select_entry_point.h"
 
 void selectEntryPoint(AlgebraicExpression *ae, const FT_FilterNode *tree) {
-    if (ae->src_node == ae->dest_node) return;
+    if (ae->operand_count == 1 && ae->src_node == ae->dest_node) return;
 
     Vector *aliases = FilterTree_CollectAliases(tree);
     char *srcAlias = ae->src_node->alias;
