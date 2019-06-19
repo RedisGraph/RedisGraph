@@ -158,7 +158,7 @@ Some languages have client libraries that provide support for RedisGraph's comma
 
 ## Mailing List / Forum
 
-Got questions? Feel free to ask at the [RediGraph mailing list](https://groups.google.com/forum/#!forum/redisgraph).
+Got questions? Feel free to ask at the [RedisGraph mailing list](https://groups.google.com/forum/#!forum/redisgraph).
 
 ## License
 
