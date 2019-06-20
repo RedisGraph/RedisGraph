@@ -188,7 +188,7 @@ Feature: ReturnAcceptanceTest
       | ({name: 'D'}) |
     And no side effects
 
-  @skip
+  
   Scenario: Sort on aggregated function
     Given an empty graph
     And having executed:

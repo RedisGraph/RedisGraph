@@ -8,6 +8,16 @@ import graphs
 
 resultset = None
 
+
+@given(u'the binary-tree-1 graph')
+def step_impl(context):
+    graphs.binary_tree_graph1()
+
+
+@given(u'the binary-tree-2 graph')
+def step_impl(context):
+    graphs.binary_tree_graph2()
+
 @given(u'any graph')
 def step_impl(context):
     graphs.any_graph()
@@ -17,6 +27,25 @@ def step_impl(context):
     graphs.any_graph()
 
 @given(u'having executed')
+def step_impl(context):
+    global resultset
+    query = context.text
+    resultset = graphs.query(query)
+
+@when(u'having executed')
+def step_impl(context):
+    global resultset
+    query = context.text
+    resultset = graphs.query(query)
+
+
+@then(u'having executed')
+def step_impl(context):
+    global resultset
+    query = context.text
+    resultset = graphs.query(query)
+
+@when(u'executing control query')
 def step_impl(context):
     global resultset
     query = context.text
