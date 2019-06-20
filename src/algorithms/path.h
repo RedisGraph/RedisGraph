@@ -14,6 +14,7 @@ typedef Node* Path;
 Path Path_new(size_t len);
 Path Path_append(Path p, Node n);
 Node Path_pop(Path p);
+Node Path_head(Path p);
 size_t Path_len(const Path p);
 bool Path_empty(const Path p);
 bool Path_containsNode(const Path p, Node *n);
