@@ -90,8 +90,26 @@ static Arrangement* permutations(const Arrangement exps, uint exps_count) {
 /* A valid arrangement of expressions is one in which the ith expression
  * source or destination nodes appear in a previous expression k where k < i. */
 static bool valid_arrangement(const Arrangement arrangement, uint exps_count) {
-    for(int i = 1; i < exps_count; i++) {        
-        AlgebraicExpression *exp = arrangement[i];
+    AlgebraicExpression *exp = arrangement[0];
+    /* A variable length traversals where either the source node
+     * or destination node is labeled, can't be the opening expression
+     * in an arrangement.
+     * Consider: MATCH (a:L0)-[:R*]->(b:L1)
+     * [L0] * [R] * [L1] but because R is a variable length traversal
+     * we're dealing with 3 different expressions:
+     * exp0: [L0]
+     * exp1: [R]
+     * exp2: [L1]
+     * the arrangement where [R] is the first expression:
+     * exp0: [R]
+     * exp1: [L0]
+     * exp2: [L1]
+     * Isn't valid, as currently the first expression is converted
+     * into a scan operation. */
+    if(exp->operand_count == 1 && exp->edge) return false;
+
+    for(int i = 1; i < exps_count; i++) {
+        exp = arrangement[i];
         Node *src = exp->src_node;
         Node *dest = exp->dest_node;
         int j = i-1;
@@ -201,6 +219,7 @@ void orderExpressions(AlgebraicExpression **exps, uint exps_count, const FT_Filt
     // Compute all possible permutations of algebraic expressions.
     Arrangement *arrangements = permutations(exps, exps_count);
     uint arrangement_count = array_len(arrangements);
+    if(arrangement_count == 1) return;
 
     // Remove invalid arrangements.
     Arrangement *valid_arrangements = array_new(Arrangement, arrangement_count);
@@ -220,6 +239,7 @@ void orderExpressions(AlgebraicExpression **exps, uint exps_count, const FT_Filt
         Arrangement arrangement = valid_arrangements[i];
         int score = score_arrangement(arrangement, exps_count, filters);
         // printf("score: %d\n", score);
+        // Arrangement_Print(arrangement, exps_count);
         if(max_score < score) {
             max_score = score;
             top_arrangement = arrangement;
