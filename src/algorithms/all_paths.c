@@ -37,6 +37,7 @@ AllPathsCtx* AllPathsCtx_New(Node *src, Graph *g, int *relationIDs, int relation
     ctx->relationCount = relationCount;
     ctx->levels = array_new(Node*, 1);
 	ctx->path = array_new(Node, 1);
+	ctx->neighbors = array_new(Edge, 32);
 	_AllPathsCtx_AddNodeToLevel(ctx, 0, src);
 	return ctx;
 }
@@ -61,30 +62,34 @@ Path AllPathsCtx_NextPath(AllPathsCtx *ctx) {
             // Introduce neighbors only if path depth < maximum path length.
             if(depth < ctx->maxLen) {
                 // Get frontier neighbors.
-                Edge *neighbors = array_new(Edge, 32);
                 for(int i = 0; i < ctx->relationCount; i++) {
-                    Graph_GetNodeEdges(ctx->g, &frontier, ctx->dir, ctx->relationIDs[i], &neighbors);
+                    Graph_GetNodeEdges(ctx->g, &frontier, ctx->dir, ctx->relationIDs[i], &ctx->neighbors);
                 }
 
                 // Add unvisited neighbors to next level.
-                uint32_t neighborsCount = array_len(neighbors);
+                uint32_t neighborsCount = array_len(ctx->neighbors);
                 for(uint32_t i = 0; i < neighborsCount; i++) {
                     // TODO might need to check direction!
                     Node neighbor;
                     if(ctx->dir == GRAPH_EDGE_DIR_OUTGOING) {
-                        Graph_GetNode(ctx->g, Edge_GetDestNodeID(neighbors+i), &neighbor);
+                        Graph_GetNode(ctx->g, Edge_GetDestNodeID(ctx->neighbors+i), &neighbor);
                     } else {
-                        Graph_GetNode(ctx->g, Edge_GetSrcNodeID(neighbors+i), &neighbor);
+                        Graph_GetNode(ctx->g, Edge_GetSrcNodeID(ctx->neighbors+i), &neighbor);
                     }
 
                     if(!Path_containsNode(ctx->path, &neighbor))
                         _AllPathsCtx_AddNodeToLevel(ctx, depth, &neighbor);
                 }
-                array_free(neighbors);
+                array_clear(ctx->neighbors);
             }
 
             // See if we can return path.
-            if(depth >= ctx->minLen && depth <= ctx->maxLen) return Path_clone(ctx->path);
+            /* TODO Note that further calls to this function will continue to operate on
+             * this path, so it is essential that the caller does not modify it (or creates
+             * a copy beforehand). If future features like an algorithm API use this routine,
+             * they should either be responsible for memory safety or a memory-safe boolean/routine
+             * should be offered. */
+            if(depth >= ctx->minLen && depth <= ctx->maxLen) return ctx->path;
 		} else {
             // No way to advance, backtrack.
             Path_pop(ctx->path);
@@ -98,7 +103,9 @@ void AllPathsCtx_Free(AllPathsCtx *ctx) {
     if(!ctx) return;
     uint32_t levelsCount = array_len(ctx->levels);
     for(int i = 0; i < levelsCount; i++) array_free(ctx->levels[i]);
+    array_free(ctx->levels);
     Path_free(ctx->path);
+    array_free(ctx->neighbors);
     rm_free(ctx);
     ctx = NULL;
 }
