@@ -304,7 +304,9 @@ static AlgebraicExpression** _AlgebraicExpression_Intermidate_Expressions(
             iexp->operands[iexp->operand_count++] = exp->operands[operandIdx++];
         }
 
-        for(int j = 0; j < e->minHops; j++) {
+        /* Expand fixed variable length edge */
+        unsigned int hops = (!Edge_VariableLength(e)) ? e->minHops : 1;
+        for(int i = 0; i < hops; i++) {
             iexp->operands[iexp->operand_count++] = exp->operands[operandIdx++];
         }
 
@@ -446,6 +448,9 @@ static AlgebraicExpression* _AlgebraicExpression_From_Path(Edge **path, uint pat
 
         // Add Edge matrix.
         op = _AlgebraicExpression_OperandFromEdge(e, transpose, ast);
+
+        /* Expand fixed variable length edge */
+        unsigned int hops = (!Edge_VariableLength(e)) ? e->minHops : 1;
         for(int i = 0; i < e->minHops; i++) {
             AlgebraicExpression_AppendOperand(exp, op);
         }

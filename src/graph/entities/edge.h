@@ -12,6 +12,8 @@
 #include "graph_entity.h"
 #include "../../../deps/GraphBLAS/Include/GraphBLAS.h"
 
+#define EDGE_LENGTH_INF UINT_MAX-2
+
 /* TODO: note it is possible to get into an inconsistency
  * if we set src and srcNodeID to different nodes. */
 struct Edge {
