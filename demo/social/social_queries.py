@@ -376,6 +376,21 @@ all_reachable_entities_query = QueryInfo(
                      ['Ori Laslo', 1]]
 )
 
+all_reachable_people_min_2_hops_query = QueryInfo(
+    query="""MATCH (ME:person {name:'Roi Lipman'})-[*2..]->(e:person)
+             RETURN e.name
+             ORDER BY e.name""",
+    description='Find all reachable people at least 2 hops away from me',
+    max_run_time_ms=0.35,
+    expected_result=[['Gal Derriere'],
+                     ['Jane Chernomorin'],
+                     ['Lucy Yanfital'],
+                     ['Mor Yesharim'],
+                     ['Noam Nativ'],
+                     ['Shelly Laslo Rooz'],
+                     ['Valerie Abigail Arad']]
+)
+
 all_paths_leads_to_greece_query = QueryInfo(
     query="""MATCH (a)-[*]->(e:country {name:'Greece'})
              RETURN count(a.name) AS NumPathsToGreece""",
@@ -450,6 +465,7 @@ queries_info = [
     reachable_countries_or_people_query,
     all_reachable_countries_or_people_query,
     all_reachable_entities_query,
+    all_reachable_people_min_2_hops_query,
     happy_birthday_query,
     friends_age_statistics_query,
     all_paths_leads_to_greece_query,

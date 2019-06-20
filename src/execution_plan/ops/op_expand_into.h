@@ -29,7 +29,6 @@ typedef struct {
     uint edgeRecIdx;            // Index into record.
     uint recordsCap;            // Max number of records to process.
     uint recordsLen;            // Number of records to process.
-    bool transposed_edge;       // Track whether the expression references a transposed edge.
     Record *records;            // Array of records.
     Record r;                   // Current selected record.
 } OpExpandInto;

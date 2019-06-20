@@ -29,10 +29,11 @@ static bool _entity_resolved(OpBase *root, const char *entity) {
     return false;
 }
 
-void _removeRedundentTraversal(ExecutionPlan *plan, CondTraverse *traverse) {
+void _removeRedundantTraversal(ExecutionPlan *plan, CondTraverse *traverse) {
     AlgebraicExpression *ae =  traverse->algebraic_expression;
     if(ae->operand_count == 1 && ae->src_node == ae->dest_node) {
         ExecutionPlan_RemoveOp(plan, (OpBase*)traverse);
+        OpBase_Free((OpBase*)traverse);
     }
 }
 
@@ -45,6 +46,11 @@ void reduceTraversal(ExecutionPlan *plan, AST *ast) {
     OpBase **traversals = ExecutionPlan_LocateOps(plan->root, t);
     uint traversals_count = array_len(traversals);
     
+    /* Keep track of redundant traversals which will be removed
+     * once we'll inspect every traversal operation. */
+    uint redundantTraversalsCount = 0;
+    CondTraverse *redundantTraversals[traversals_count];
+
     for(uint i = 0; i < traversals_count; i++) {
         OpBase *op = traversals[i];
         AlgebraicExpression *ae;
@@ -92,17 +98,23 @@ void reduceTraversal(ExecutionPlan *plan, AST *ast) {
             if(ae->src_node->label) {
                 t = op->children[0];
                 if(t->type == OPType_CONDITIONAL_TRAVERSE) {
-                    _removeRedundentTraversal(plan, (CondTraverse*)t);
+                    // Queue traversal for removal.
+                    redundantTraversals[redundantTraversalsCount++] = (CondTraverse*)t;
                 }
             }
             if(ae->dest_node->label) {
                 t = op->parent;
                 if(t->type == OPType_CONDITIONAL_TRAVERSE) {
-                    _removeRedundentTraversal(plan, (CondTraverse*)t);
+                    // Queue traversal for removal.
+                    redundantTraversals[redundantTraversalsCount++] = (CondTraverse*)t;                    
                 }
             }
         }
     }
+
+    // Remove redundant traversals
+    for(uint i = 0; i < redundantTraversalsCount; i++)
+        _removeRedundantTraversal(plan, redundantTraversals[i]);
 
     // Clean up.
     array_free(traversals);

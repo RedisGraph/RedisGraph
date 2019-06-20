@@ -91,7 +91,7 @@ static Arrangement* permutations(const Arrangement exps, uint exps_count) {
  * source or destination nodes appear in a previous expression k where k < i. */
 static bool valid_arrangement(const Arrangement arrangement, uint exps_count) {
     AlgebraicExpression *exp = arrangement[0];
-    /* A variable length traversals where either the source node
+    /* A 1 hop traversals where either the source node
      * or destination node is labeled, can't be the opening expression
      * in an arrangement.
      * Consider: MATCH (a:L0)-[:R*]->(b:L1)
@@ -106,7 +106,9 @@ static bool valid_arrangement(const Arrangement arrangement, uint exps_count) {
      * exp2: [L1]
      * Isn't valid, as currently the first expression is converted
      * into a scan operation. */
-    if(exp->operand_count == 1 && exp->edge) return false;
+    if((exp->src_node->label || exp->dest_node->label) &&
+        exp->edge &&
+        exp->operand_count == 1) return false;
 
     for(int i = 1; i < exps_count; i++) {
         exp = arrangement[i];
@@ -229,6 +231,7 @@ void orderExpressions(AlgebraicExpression **exps, uint exps_count, const FT_Filt
         }
     }
     arrangement_count = array_len(valid_arrangements);
+    assert(arrangement_count > 0);
 
     /* Score each arrangement, 
      * keep track after arrangement with highest score. */

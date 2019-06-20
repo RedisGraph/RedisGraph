@@ -125,7 +125,7 @@ static AlgebraicExpression** _AlgebraicExpression_IsolateVariableLenExps(Algebra
             AlgebraicExpression_RemoveTerm(exp, exp->operand_count-1, &op);
 
             /* See if dest mat can be prepended to the following expression.
-             * If not create a new expression. */            
+             * If not create a new expression. */
             if(expIdx < expCount-1 &&
                 !_AlgebraicExpression_ContainsVariableLengthEdge(expressions[expIdx+1])) {
                 AlgebraicExpression_PrependTerm(expressions[expIdx+1], op.operand, op.transpose, op.free);
@@ -451,7 +451,7 @@ static AlgebraicExpression* _AlgebraicExpression_From_Path(Edge **path, uint pat
 
         /* Expand fixed variable length edge */
         unsigned int hops = (!Edge_VariableLength(e)) ? e->minHops : 1;
-        for(int i = 0; i < e->minHops; i++) {
+        for(int i = 0; i < hops; i++) {
             AlgebraicExpression_AppendOperand(exp, op);
         }
     }   // End of path traversal.

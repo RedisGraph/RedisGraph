@@ -38,7 +38,7 @@ static void _setupTraversedRelations(OpExpandInto *op, GraphContext *gc) {
     op->edgeRelationCount = AST_LinkEntity_LabelCount(e);
     
     if(op->edgeRelationCount > 0) {
-        op->edgeRelationTypes = array_new(int , op->edgeRelationCount);
+        op->edgeRelationTypes = array_new(int, op->edgeRelationCount);
         for(int i = 0; i < op->edgeRelationCount; i++) {
             Schema *s = GraphContext_GetSchema(gc, e->labels[i], SCHEMA_EDGE);
             if(!s) continue;
@@ -46,7 +46,7 @@ static void _setupTraversedRelations(OpExpandInto *op, GraphContext *gc) {
         }
     } else {
         op->edgeRelationCount = 1;
-        op->edgeRelationTypes = array_new(int , 1);
+        op->edgeRelationTypes = array_new(int, 1);
         op->edgeRelationTypes = array_append(op->edgeRelationTypes, GRAPH_NO_RELATION);
     }
     op->edgeRelationCount = array_len(op->edgeRelationTypes);
@@ -100,7 +100,6 @@ OpBase* NewExpandIntoOp(AlgebraicExpression *ae, AST *ast) {
     expandInto->edges = NULL;
     expandInto->graph = gc->g;
     expandInto->recordsLen = 0;
-    expandInto->transposed_edge = false;
     expandInto->edgeRelationTypes = NULL;
     expandInto->recordsCap = _determinRecordCap(ast);
     expandInto->srcNodeRecIdx = AST_GetAliasID(ast, ae->src_node->alias);
@@ -137,13 +136,6 @@ OpResult ExpandIntoInit(OpBase *opBase) {
     size_t required_dim = Graph_RequiredMatrixDim(op->graph);
     GrB_Matrix_new(&op->M, GrB_BOOL, op->recordsCap, required_dim);
     GrB_Matrix_new(&op->F, GrB_BOOL, op->recordsCap, required_dim);
-
-    size_t op_idx = 0;
-    AlgebraicExpression *exp = op->ae;
-    // If the input is set to be transposed on the first expression evaluation,
-    // the source and destination nodes will be swapped in the record.
-    op->transposed_edge = exp->edge && exp->operands[op_idx].transpose;
-
     return OP_OK;
 }
 
