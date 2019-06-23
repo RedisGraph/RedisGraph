@@ -25,7 +25,6 @@ typedef enum {
 typedef struct {
     OpBase *root;
     ResultSet *result_set;
-    QueryGraph *query_graph;
     FT_FilterNode *filter_tree;
     QueryGraph **connected_components;
 } ExecutionPlan;

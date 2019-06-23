@@ -374,7 +374,6 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, AST *ast, ResultSet *resul
      * problem was reallocs done by CREATE clause, which invalidated old references in ExpandAll. */
     _Determine_Graph_Size(ast, &node_count, &edge_count);
     q = QueryGraph_New(node_count, edge_count);
-    execution_plan->query_graph = q;
 
     filter_tree = NULL;
     if(ast->whereNode) {
@@ -638,12 +637,23 @@ static ExecutionPlan *_ExecutionPlan_Connect(ExecutionPlan *a, ExecutionPlan *b,
     }
 
     array_free(taps);
-    // null root to avoid freeing connected operations.
+    // Null root to avoid freeing connected operations.
     a->root = NULL;
-    // null query graph to avoid freeing entities referenced in both graphs
-    // TODO memory leak on entities that exclusively appear in this graph
-    free(a->query_graph);
-    a->query_graph = NULL;
+
+    // Copy connected components over.
+    if(a->connected_components) {
+        if(!b->connected_components) {
+            b->connected_components = a->connected_components;
+            a->connected_components = NULL;
+        } else {
+            uint cc_count = array_len(a->connected_components);
+            for(int i = 0; i < cc_count; i++) {
+                QueryGraph *cc = array_pop(a->connected_components);
+                b->connected_components = array_append(b->connected_components, cc);
+            }
+        }
+    }
+
     ExecutionPlanFree(a);
     return b;
 }
@@ -754,7 +764,5 @@ void ExecutionPlanFree(ExecutionPlan *plan) {
         }
         array_free(plan->connected_components);
     }
-
-    QueryGraph_Free(plan->query_graph);
     free(plan);
 }
