@@ -144,6 +144,36 @@ static int _identifyEdgeCountPattern(OpBase *root, OpResult **opResult, OpAggreg
 
     return 1;
 }
+
+void _accumulateEdges(void *_z, const void* _x, const void* _y) {
+    uint64_t* sum = (uint64_t*) _z;
+    uint64_t* currentTotal = (uint64_t*) _x;
+    const EdgeID *e = (const EdgeID*)_y;
+
+    EdgeID *ids;
+    // Single edge ID
+    if(SINGLE_EDGE(*e)) {
+        *sum = *currentTotal + 1;
+    } else {
+        // Multiple edges
+        ids = (EdgeID*)(*e);
+        *sum = *currentTotal + array_len(ids);
+    }
+}
+
+uint64_t _countRelationshipEdges(GrB_Matrix relationshipMatrix){
+    GrB_BinaryOp op;
+    GrB_Info info = GrB_BinaryOp_new(&op, _accumulateEdges, GrB_UINT64, GrB_UINT64, GrB_UINT64);
+
+    GrB_Monoid monoid;
+    info = GrB_Monoid_new(&monoid, op, (uint64_t) 0);
+
+    uint64_t edges = 0;
+    GrB_reduce(&edges, GrB_NULL, monoid, relationshipMatrix, GrB_NULL);
+
+    return edges;
+}
+
 void _reduceEdgeCount(ExecutionPlan *plan, AST *ast) {
     /* We'll only modify execution plan if it is structured as follows:
      * "Full Scan -> Conditional Traverse -> Aggregate -> Results" */
@@ -160,14 +190,18 @@ void _reduceEdgeCount(ExecutionPlan *plan, AST *ast) {
 
     /* User is trying to get total number of edges in the graph
      * optimize by skiping SCAN, Traverse and AGGREGATE. */
-    SIValue edgeCount;
+    SIValue edgeCount = SI_LongVal(0);
     GraphContext *gc = GraphContext_GetFromTLS();
 
     // If type is specified, count only labeled entities.
     CondTraverse* condTraverse = (CondTraverse*) opTraverse;
-    if (condTraverse->edgeRelationCount > 1 || condTraverse->edgeRelationTypes[0] != GRAPH_NO_RELATION) {
-        return;
-        // TODO : implement
+    int edgeRelationCount = condTraverse->edgeRelationCount;
+    if (edgeRelationCount > 1 || condTraverse->edgeRelationTypes[0] != GRAPH_NO_RELATION) {
+        uint64_t edges = 0;
+        for (int i = 0; i < edgeRelationCount; i++) {
+            edges +=  _countRelationshipEdges(gc->g->_relations_map[i]);
+        }
+        edgeCount = SI_LongVal(edges);
     } else {
         edgeCount = SI_LongVal(Graph_EdgeCount(gc->g));
     }
