@@ -11,9 +11,10 @@
 /* The reduceEdgeCount optimization will look for execution plan 
  * performing solely edge counting: total number of edges in the graph,
  * total number of edges from a specific type.
- * The goal is the reduce the costs of the following execution plans,
+ * The goal is to reduce the costs of the following execution plans,
  * to a single operation
  * 
+ * Before:
  * 127.0.0.1:6379> GRAPH.EXPLAIN g "MATCH ()-[r]->() RETURN COUNT(r)"
  * 1) "Results"
  * 2) "    Aggregate"
@@ -26,6 +27,10 @@
  * 2) "    Aggregate"
  * 3) "        Conditional Traverse"
  * 4) "            All Node Scan"
- * */
+ * 
+ * After:
+ * 127.0.0.1:6379> GRAPH.EXPLAIN g "MATCH ()-[r]->() RETURN COUNT(r)"
+ * 1) "Results"
+ * 2) "    Project" */
 
 void reduceEdgeCount(ExecutionPlan *plan, AST *ast);

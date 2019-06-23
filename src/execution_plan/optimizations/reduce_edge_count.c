@@ -8,11 +8,9 @@
 #include "../ops/ops.h"
 #include "../../util/arr.h"
 
-/* Checks if execution plan solely performs node count */
-static int _identifyPattern(OpBase *root, OpResult **opResult, OpAggregate **opAggregate, OpBase **opTraverse, OpBase **opScan, int* edgeType)
-{
+/* Checks if execution plan solely performs edge count */
+static int _identifyPattern(OpBase *root, OpResult **opResult, OpAggregate **opAggregate, OpBase **opTraverse, OpBase **opScan) {
     // Reset.
-    *edgeType = GRAPH_NO_RELATION;
     *opScan = NULL;
     *opTraverse = NULL;
     *opResult = NULL;
@@ -46,6 +44,7 @@ static int _identifyPattern(OpBase *root, OpResult **opResult, OpAggregate **opA
     // Make sure Count acts on an alias.
     if (exp->op.child_count != 1)
         return 0;
+
     AR_ExpNode *arg = exp->op.children[0];
     if (arg->type != AR_EXP_OPERAND ||
         arg->operand.type != AR_EXP_VARIADIC ||
@@ -54,34 +53,19 @@ static int _identifyPattern(OpBase *root, OpResult **opResult, OpAggregate **opA
 
     op = op->children[0];
     if (op->type!= OPType_CONDITIONAL_TRAVERSE || op->childCount != 1) return 0;
-    else {
-        CondTraverse *condTraverse = (CondTraverse *)op;
-        if (condTraverse->edgeRelationCount != 1)
-            return 0;
-        else{
-            *edgeType = condTraverse->edgeRelationTypes[0];
-        }
-    }
     *opTraverse = op;
-
     op = op->children[0];
 
     // Full node scan.
-    if (op->type != OPType_ALL_NODE_SCAN ||
-        op->childCount != 0)
-    {
-        return 0;
-    }
+    if (op->type != OPType_ALL_NODE_SCAN || op->childCount != 0) return 0;
     *opScan = op;
 
     return 1;
 }
 
-void reduceEdgeCount(ExecutionPlan *plan, AST *ast)
-{
+void reduceEdgeCount(ExecutionPlan *plan, AST *ast) {
     /* We'll only modify execution plan if it is structured as follows:
      * "Full Scan -> Conditional Traverse -> Aggregate -> Results" */
-    int edgeType;
     OpBase *opScan;
     OpBase *opTraverse;
     OpResult *opResult;
@@ -90,38 +74,35 @@ void reduceEdgeCount(ExecutionPlan *plan, AST *ast)
     /* See if execution-plan matches the pattern:
      * "Full Scan -> Conditional Traverse -> Aggregate -> Results".
      * if that's not the case, simply return without making any modifications. */
-    if (!_identifyPattern(plan->root, &opResult, &opAggregate, &opTraverse, &opScan, &edgeType))
+    if (!_identifyPattern(plan->root, &opResult, &opAggregate, &opTraverse, &opScan))
         return;
 
-    /* User is trying to get total number of nodes in the graph
-     * optimize by skiping SCAN and AGGREGATE. */
+    /* User is trying to get total number of edges in the graph
+     * optimize by skiping SCAN, Traverse and AGGREGATE. */
     SIValue edgeCount;
     GraphContext *gc = GraphContext_GetFromTLS();
 
-    // If label is specified, count only labeled entities.
-    if (edgeType != GRAPH_NO_RELATION)
-    {
+    // If type is specified, count only labeled entities.
+    CondTraverse* condTraverse = (CondTraverse*) opTraverse;
+    if (condTraverse->edgeRelationCount > 1 || condTraverse->edgeRelationTypes[0] != GRAPH_NO_RELATION) {
         return;
         // TODO : implement
-    }
-    else
-    {
+    } else {
         edgeCount = SI_LongVal(Graph_EdgeCount(gc->g));
     }
 
     // Incase alias is specified: RETURN count(r) as X
     char **aliases = NULL;
-    if (opAggregate->aliases)
-    {
+    if (opAggregate->aliases) {
         assert(array_len(opAggregate->aliases) == 1);
-        aliases = array_new(char *, 1);
+        aliases = array_new(char*, 1);
         aliases = array_append(aliases, opAggregate->aliases[0]);
     }
 
     /* Construct a constant expression, used by a new
      * projection operation. */
     AR_ExpNode *exp = AR_EXP_NewConstOperandNode(edgeCount);
-    AR_ExpNode **exps = array_new(AR_ExpNode *, 1);
+    AR_ExpNode **exps = array_new(AR_ExpNode*, 1);
     exps = array_append(exps, exp);
 
     OpBase *opProject = NewProjectOp(ast, exps, aliases);
