@@ -27,9 +27,7 @@ void optimizePlan(ExecutionPlan *plan, AST *ast) {
     /* Try to reduce distinct if it follows aggregation. */
     reduceDistinct(plan);
 
-    /* Try to reduce execution plan incase it perform node counting. */
+    /* Try to reduce execution plan incase it perform node or edge counting. */
     reduceCount(plan, ast);
 
-    /* Try to reduce execution plan incase it perform edge counting. */
-    reduceEdgeCount(plan, ast);
 }
