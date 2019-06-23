@@ -30,9 +30,4 @@ void optimizePlan(ExecutionPlan *plan, AST *ast) {
     /* Try to reduce execution plan incase it perform node or edge counting. */
     reduceCount(plan, ast);
 
-<<<<<<< HEAD
-=======
-    /* Try to reduce execution plan incase it perform edge counting. */
-    reduceEdgeCount(plan, ast);
->>>>>>> added edge count reduce
 }
