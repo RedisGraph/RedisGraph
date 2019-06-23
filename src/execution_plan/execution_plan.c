@@ -748,6 +748,26 @@ ResultSet* ExecutionPlan_Execute(ExecutionPlan *plan) {
     return plan->result_set;
 }
 
+static void _ExecutionPlan_SetProfileConsume(OpBase *root) {
+    root->profile = root->consume;
+    root->consume = OpBase_Profile;
+    root->profileRecordCount = 0;
+
+    if(root->childCount) {
+        for(int i = 0; i < root->childCount; i++) {
+            OpBase *child = root->children[i];
+            _ExecutionPlan_SetProfileConsume(child);
+        }
+    }
+}
+
+ResultSet* ExecutionPlan_Profile(ExecutionPlan *plan) {
+    /* Update each operation consume function
+     * to count number of records it produced. */
+    _ExecutionPlan_SetProfileConsume(plan->root);
+    return ExecutionPlan_Execute(plan);
+}
+
 void _ExecutionPlanFreeRecursive(OpBase* op) {
     for(int i = 0; i < op->childCount; i++) {
         _ExecutionPlanFreeRecursive(op->children[i]);

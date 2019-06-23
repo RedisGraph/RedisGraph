@@ -31,6 +31,12 @@ int OpBase_ToString(const OpBase *op, char *buff, uint buff_len) {
     else return snprintf(buff, buff_len, "%s", op->name);
 }
 
+Record OpBase_Profile(OpBase *op) {
+    Record r = op->profile(op);
+    if(r) op->profileRecordCount++;
+    return r;
+}
+
 void OpBase_Free(OpBase *op) {
     // Free internal operation
     op->free(op);

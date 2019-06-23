@@ -5,8 +5,8 @@
  */
 
 #include "resultset_formatters.h"
-#include "../parser/ast_common.h"
-#include "../util/arr.h"
+#include "../../parser/ast_common.h"
+#include "../../util/arr.h"
 
 static inline PropertyTypeUser _mapValueType(const SIValue v) {
     switch (SI_TYPE(v)) {
@@ -29,7 +29,7 @@ static inline void _ResultSet_ReplyWithValueType(RedisModuleCtx *ctx, const SIVa
     RedisModule_ReplyWithLongLong(ctx, _mapValueType(v));
 }
 
-void ResultSet_CompactReplyWithSIValue(RedisModuleCtx *ctx, GraphContext *gc, const SIValue v) {
+static void _ResultSet_CompactReplyWithSIValue(RedisModuleCtx *ctx, GraphContext *gc, const SIValue v) {
     _ResultSet_ReplyWithValueType(ctx, v);
     // Emit the actual value, then the value type (to facilitate client-side parsing)
     switch (SI_TYPE(v)) {
@@ -67,7 +67,7 @@ static void _ResultSet_CompactReplyWithProperties(RedisModuleCtx *ctx, GraphCont
         // Emit the string index
         RedisModule_ReplyWithLongLong(ctx, prop.id);
         // Emit the value
-        ResultSet_CompactReplyWithSIValue(ctx, gc, prop.value);
+        _ResultSet_CompactReplyWithSIValue(ctx, gc, prop.value);
     }
 }
 
@@ -148,7 +148,7 @@ void ResultSet_EmitCompactRecord(RedisModuleCtx *ctx, GraphContext *gc, const Re
                 break;
             default:
                 RedisModule_ReplyWithArray(ctx, 2); // Reply with array with space for type and value
-                ResultSet_CompactReplyWithSIValue(ctx, gc, Record_GetScalar(r, i));
+                _ResultSet_CompactReplyWithSIValue(ctx, gc, Record_GetScalar(r, i));
         }
     }
 }
@@ -156,7 +156,8 @@ void ResultSet_EmitCompactRecord(RedisModuleCtx *ctx, GraphContext *gc, const Re
 // For every column in the header, emit a 2-array that specifies
 // the column alias followed by an enum denoting what type
 // (scalar, node, or relation) it holds.
-void ResultSet_ReplyWithCompactHeader(RedisModuleCtx *ctx, const ResultSetHeader *header, TrieMap *entities) {
+void ResultSet_ReplyWithCompactHeader(RedisModuleCtx *ctx, const ResultSetHeader *header, void *data) {
+    TrieMap *entities = (TrieMap*)data;
     RedisModule_ReplyWithArray(ctx, header->columns_len);
     for(int i = 0; i < header->columns_len; i++) {
         RedisModule_ReplyWithArray(ctx, 2);
