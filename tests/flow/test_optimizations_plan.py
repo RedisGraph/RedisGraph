@@ -46,8 +46,16 @@ class OptimizationsPlanTest(FlowTestsBase):
                 if src != dest:
                     edge = Edge(nodes[src], "know", nodes[dest])
                     graph.add_edge(edge)
+        
+        for src in nodes:
+            for dest in nodes:
+                if src != dest:
+                    edge = Edge(nodes[src], "works_with", nodes[dest])
+                    graph.add_edge(edge)
 
         graph.commit()
+        query = """MATCH (a)-[:know]->(b) CREATE (a)-[:know]->(b)"""
+        graph.query(query)
 
     def test_typeless_edge_count(self):
         query = """MATCH ()-[r]->() RETURN COUNT(r)"""
@@ -58,7 +66,19 @@ class OptimizationsPlanTest(FlowTestsBase):
         self.assertNotIn("All Node Scan", executionPlan)
         self.assertNotIn("Conditional Traverse", executionPlan)
         self.assertNotIn("Aggregate", executionPlan)
-        expected = [[12]]
+        expected = [[36]]
+        self.assertEqual(resultset, expected)
+    
+    def test_typed_edge_count(self):
+        query = """MATCH ()-[r:know]->() RETURN COUNT(r)"""
+        resultset = graph.query(query).result_set
+        executionPlan = graph.execution_plan(query)
+        self.assertIn("Project", executionPlan)
+        self.assertIn("Results", executionPlan)
+        self.assertNotIn("All Node Scan", executionPlan)
+        self.assertNotIn("Conditional Traverse", executionPlan)
+        self.assertNotIn("Aggregate", executionPlan)
+        expected = [[24]]
         self.assertEqual(resultset, expected)
     
     def test_typeless_edge_count_with_alias(self):
@@ -70,7 +90,31 @@ class OptimizationsPlanTest(FlowTestsBase):
         self.assertNotIn("All Node Scan", executionPlan)
         self.assertNotIn("Conditional Traverse", executionPlan)
         self.assertNotIn("Aggregate", executionPlan)
-        expected = [[12]]
+        expected = [[36]]
+        self.assertEqual(resultset, expected)
+    
+    def test_typed_edge_count_with_alias(self):
+        query = """MATCH ()-[r:know]->() RETURN COUNT(r) as c"""
+        resultset = graph.query(query).result_set
+        executionPlan = graph.execution_plan(query)
+        self.assertIn("Project", executionPlan)
+        self.assertIn("Results", executionPlan)
+        self.assertNotIn("All Node Scan", executionPlan)
+        self.assertNotIn("Conditional Traverse", executionPlan)
+        self.assertNotIn("Aggregate", executionPlan)
+        expected = [[24]]
+        self.assertEqual(resultset, expected)
+
+    def test_multiple_typed_edge_count_with_alias(self):
+        query = """MATCH ()-[r:know | :works_with]->() RETURN COUNT(r) as c"""
+        resultset = graph.query(query).result_set
+        executionPlan = graph.execution_plan(query)
+        self.assertIn("Project", executionPlan)
+        self.assertIn("Results", executionPlan)
+        self.assertNotIn("All Node Scan", executionPlan)
+        self.assertNotIn("Conditional Traverse", executionPlan)
+        self.assertNotIn("Aggregate", executionPlan)
+        expected = [[36]]
         self.assertEqual(resultset, expected)
 
     def test_non_labeled_node_count(self):

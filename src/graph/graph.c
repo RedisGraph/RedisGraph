@@ -14,8 +14,6 @@
 
 static GrB_BinaryOp _graph_edge_accum = NULL;
 
-GrB_Matrix _Graph_GetRelationMap(const Graph *g, int relation_idx);
-
 /* ========================= Forward declarations  ========================= */
 void _MatrixResizeToCapacity(const Graph *g, GrB_Matrix m);
 
@@ -127,7 +125,7 @@ size_t _Graph_EdgeCap(const Graph *g) {
 
 // Retrieve a relation mapping matrix coresponding to relation_idx
 // Make sure matrix is synchronized.
-GrB_Matrix _Graph_GetRelationMap(const Graph *g, int relation_idx) {
+GrB_Matrix Graph_GetRelationMap(const Graph *g, int relation_idx) {
     assert(g && relation_idx >= 0 && relation_idx < array_len(g->_relations_map));
     GrB_Matrix m = g->_relations_map[relation_idx];
     g->SynchronizeMatrix(g, m);
@@ -155,7 +153,7 @@ void _Graph_GetEdgesConnectingNodes(const Graph *g, NodeID src, NodeID dest, int
     e.destNodeID = dest;
 
     // relation map, maps (src, dest, r) to edge IDs.
-    GrB_Matrix relationMap = _Graph_GetRelationMap(g, r);
+    GrB_Matrix relationMap = Graph_GetRelationMap(g, r);
     GrB_Info res = GrB_Matrix_extractElement_UINT64(&edgeId, relationMap, src, dest);
 
     // No entry at [dest, src], src is not connected to dest with relation R.
@@ -399,7 +397,7 @@ int Graph_GetEdgeRelation(const Graph *g, Edge *e) {
     // M[dest,src] == edge ID.
     for(int i = 0; i < array_len(g->_relations_map); i++) {
         EdgeID edgeId = 0;
-        GrB_Matrix M = _Graph_GetRelationMap(g, i);
+        GrB_Matrix M = Graph_GetRelationMap(g, i);
         GrB_Info res = GrB_Matrix_extractElement_UINT64(&edgeId, M, srcNodeID, destNodeID);
         if(res != GrB_SUCCESS) continue;
 
@@ -490,7 +488,7 @@ int Graph_ConnectNodes(Graph *g, NodeID src, NodeID dest, int r, Edge *e) {
 
     GrB_Matrix adj = Graph_GetAdjacencyMatrix(g);
     GrB_Matrix relationMat = Graph_GetRelationMatrix(g, r);
-    GrB_Matrix relationMapMat = _Graph_GetRelationMap(g, r);
+    GrB_Matrix relationMapMat = Graph_GetRelationMap(g, r);
     GrB_Matrix tadj = _Graph_Get_Transposed_AdjacencyMatrix(g);
 
     // Rows represent source nodes, columns represent destination nodes.
@@ -587,7 +585,7 @@ int Graph_DeleteEdge(Graph *g, Edge *e) {
     NodeID src_id = Edge_GetSrcNodeID(e);
     NodeID dest_id = Edge_GetDestNodeID(e);
 
-    R = _Graph_GetRelationMap(g, r);
+    R = Graph_GetRelationMap(g, r);
     M = Graph_GetRelationMatrix(g, r);
 
     // Test to see if edge exists.
@@ -743,7 +741,7 @@ void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
     // Free and remove implicit edges from relation matrices.
     int relation_count = Graph_RelationTypeCount(g);
     for(int i = 0; i < relation_count; i++) {
-        GrB_Matrix R = _Graph_GetRelationMap(g, i);
+        GrB_Matrix R = Graph_GetRelationMap(g, i);
         
         // Reset mask descriptor.
         GrB_Descriptor_set(desc, GrB_MASK, GxB_DEFAULT);
@@ -823,7 +821,7 @@ void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
         NodeID src_id = Edge_GetSrcNodeID(e);
         NodeID dest_id = Edge_GetDestNodeID(e);
 
-        M = _Graph_GetRelationMap(g, r);
+        M = Graph_GetRelationMap(g, r);
         R = Graph_GetRelationMatrix(g, r);
 
         GrB_Matrix_extractElement_UINT64(&edge_id, M, src_id, dest_id);
