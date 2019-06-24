@@ -8,6 +8,7 @@
 #include "../ops/ops.h"
 #include "../../util/arr.h"
 
+static GrB_Monoid edgeCountMonoid = NULL;
 
 static int _identifyResultAndAggregateOps(OpBase *root, OpResult** opResult, OpAggregate** opAggregate) {
     OpBase *op = root;
@@ -145,7 +146,7 @@ static int _identifyEdgeCountPattern(OpBase *root, OpResult **opResult, OpAggreg
     return 1;
 }
 
-void _accumulateEdges(void *_z, const void* _x, const void* _y) {
+void _countEdges(void *_z, const void* _x, const void* _y) {
     uint64_t* sum = (uint64_t*) _z;
     uint64_t* currentTotal = (uint64_t*) _x;
     const EdgeID *e = (const EdgeID*)_y;
@@ -161,15 +162,14 @@ void _accumulateEdges(void *_z, const void* _x, const void* _y) {
     }
 }
 
-uint64_t _countRelationshipEdges(GrB_Matrix relationshipMatrix){
-    GrB_BinaryOp op;
-    GrB_Info info = GrB_BinaryOp_new(&op, _accumulateEdges, GrB_UINT64, GrB_UINT64, GrB_UINT64);
-
-    GrB_Monoid monoid;
-    info = GrB_Monoid_new(&monoid, op, (uint64_t) 0);
-
+uint64_t _countRelationshipEdges(GrB_Matrix M){
+    if(!edgeCountMonoid) {
+        GrB_BinaryOp edgeCountBinaryOp;
+        GrB_BinaryOp_new(&edgeCountBinaryOp, _countEdges, GrB_UINT64, GrB_UINT64, GrB_UINT64);
+        GrB_Monoid_new(&edgeCountMonoid, edgeCountBinaryOp, (uint64_t) 0);
+    }
     uint64_t edges = 0;
-    GrB_reduce(&edges, GrB_NULL, monoid, relationshipMatrix, GrB_NULL);
+    GrB_reduce(&edges, GrB_NULL, edgeCountMonoid, M, GrB_NULL);
 
     return edges;
 }
@@ -196,7 +196,7 @@ void _reduceEdgeCount(ExecutionPlan *plan, AST *ast) {
     // If type is specified, count only labeled entities.
     CondTraverse* condTraverse = (CondTraverse*) opTraverse;
     int edgeRelationCount = condTraverse->edgeRelationCount;
-    if(edgeRelationCount > 1 || condTraverse->edgeRelationTypes[0] != GRAPH_NO_RELATION) {
+    if(condTraverse->edgeRelationTypes[0] != GRAPH_NO_RELATION) {
         uint64_t edges = 0;
         for (int i = 0; i < edgeRelationCount; i++) {
             edges += _countRelationshipEdges(Graph_GetRelationMap(gc->g, condTraverse->edgeRelationTypes[i]));
@@ -236,8 +236,7 @@ void _reduceEdgeCount(ExecutionPlan *plan, AST *ast) {
 }
 
 void reduceCount(ExecutionPlan *plan, AST *ast) {
-    /*
-     * both _reduceNodeCount and _reduceEdgeCount should count nodes or edges, respectively, 
+    /* both _reduceNodeCount and _reduceEdgeCount should count nodes or edges, respectively, 
      * out of the same execution plan.
      * If node count optimization was unable to execute, 
      * meaning that the execution plan does not hold any node count pattern,

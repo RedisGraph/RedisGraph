@@ -280,7 +280,10 @@ GrB_Matrix Graph_GetRelationMatrix (
 );
 
 // Retrieve a relation mapping matrix coresponding to relation_idx
-GrB_Matrix Graph_GetRelationMap(const Graph *g, int relation_idx);
+GrB_Matrix Graph_GetRelationMap (
+    const Graph *g,     // Graph from which to get mapping matrix.
+    int relation_idx    // Relation id
+);
 
 // Retrieves the zero matrix.
 // The function will resize it to match all other
