@@ -185,7 +185,7 @@ void _reduceEdgeCount(ExecutionPlan *plan, AST *ast) {
     /* See if execution-plan matches the pattern:
      * "Full Scan -> Conditional Traverse -> Aggregate -> Results".
      * if that's not the case, simply return without making any modifications. */
-    if (!_identifyEdgeCountPattern(plan->root, &opResult, &opAggregate, &opTraverse, &opScan))
+    if(!_identifyEdgeCountPattern(plan->root, &opResult, &opAggregate, &opTraverse, &opScan))
         return;
 
     /* User is trying to get total number of edges in the graph
@@ -196,10 +196,10 @@ void _reduceEdgeCount(ExecutionPlan *plan, AST *ast) {
     // If type is specified, count only labeled entities.
     CondTraverse* condTraverse = (CondTraverse*) opTraverse;
     int edgeRelationCount = condTraverse->edgeRelationCount;
-    if (edgeRelationCount > 1 || condTraverse->edgeRelationTypes[0] != GRAPH_NO_RELATION) {
+    if(edgeRelationCount > 1 || condTraverse->edgeRelationTypes[0] != GRAPH_NO_RELATION) {
         uint64_t edges = 0;
         for (int i = 0; i < edgeRelationCount; i++) {
-            edges +=  _countRelationshipEdges(gc->g->_relations_map[i]);
+            edges += _countRelationshipEdges(Graph_GetRelationMap(gc->g, condTraverse->edgeRelationTypes[i]));
         }
         edgeCount = SI_LongVal(edges);
     } else {
