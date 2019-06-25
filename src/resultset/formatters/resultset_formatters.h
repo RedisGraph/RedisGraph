@@ -12,9 +12,9 @@
 #include "resultset_replyverbose.h"
 
 typedef enum {
-    FORMATTER_VERBOSE = 0,
-    FORMATTER_COMPACT = 1,
-    FORMATTER_NOP = 2,
+    FORMATTER_NOP = 0,
+    FORMATTER_VERBOSE = 1,
+    FORMATTER_COMPACT = 2,
 } ResultSetFormatterType;
 
 /* Reply formater which does absolutely nothing.
