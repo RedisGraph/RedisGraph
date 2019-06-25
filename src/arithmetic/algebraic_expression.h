@@ -83,10 +83,10 @@ AlgebraicExpression **AlgebraicExpression_From_QueryGraph (
 void AlgebraicExpression_Execute(AlgebraicExpression *ae, GrB_Matrix res);
 
 /* Appends m as the last term in the expression ae. */
-void AlgebraicExpression_AppendTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transposeOp, bool freeOp);
+void AlgebraicExpression_AppendTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transposeOp, bool freeOp, bool diagonal);
 
 /* Prepend m as the first term in the expression ae. */
-void AlgebraicExpression_PrependTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transposeOp, bool freeOp);
+void AlgebraicExpression_PrependTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transposeOp, bool freeOp, bool diagonal);
 
 /* Removes operand at position idx */
 void AlgebraicExpression_RemoveTerm(AlgebraicExpression *ae, int idx, AlgebraicExpressionOperand *operand);

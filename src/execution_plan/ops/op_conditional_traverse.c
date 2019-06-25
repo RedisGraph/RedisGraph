@@ -50,7 +50,7 @@ static int _CondTraverse_SetEdge(CondTraverse *op, Record r) {
  * clears filter matrix. */
 void _traverse(CondTraverse *op) {
     // Preppend matrix to algebraic expression, as the left most operand.
-    AlgebraicExpression_PrependTerm(op->algebraic_expression, op->F, false, false);
+    AlgebraicExpression_PrependTerm(op->algebraic_expression, op->F, false, false, false);
 
     // Evaluate expression.
     AlgebraicExpression_Execute(op->algebraic_expression, op->M);

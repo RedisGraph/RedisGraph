@@ -112,7 +112,7 @@ static AlgebraicExpression** _AlgebraicExpression_IsolateVariableLenExps(Algebra
             AlgebraicExpression *newExp = _AE_MUL(1);
             newExp->src_node = exp->src_node;
             newExp->dest_node = exp->src_node;
-            AlgebraicExpression_PrependTerm(newExp, op.operand, op.transpose, op.free);
+            AlgebraicExpression_PrependTerm(newExp, op.operand, op.transpose, op.free, op.diagonal);
             res = array_append(res, newExp);
         }
 
@@ -128,12 +128,12 @@ static AlgebraicExpression** _AlgebraicExpression_IsolateVariableLenExps(Algebra
              * If not create a new expression. */
             if(expIdx < expCount-1 &&
                 !_AlgebraicExpression_ContainsVariableLengthEdge(expressions[expIdx+1])) {
-                AlgebraicExpression_PrependTerm(expressions[expIdx+1], op.operand, op.transpose, op.free);
+                AlgebraicExpression_PrependTerm(expressions[expIdx+1], op.operand, op.transpose, op.free, op.diagonal);
             } else {
                 AlgebraicExpression *newExp = _AE_MUL(1);
                 newExp->src_node = exp->dest_node;
                 newExp->dest_node = exp->dest_node;
-                AlgebraicExpression_PrependTerm(newExp, op.operand, op.transpose, op.free);
+                AlgebraicExpression_PrependTerm(newExp, op.operand, op.transpose, op.free, op.diagonal);
                 res = array_append(res, newExp);
             }
         }
@@ -172,7 +172,18 @@ static void _AlgebraicExpression_ReverseOperandOrder(AlgebraicExpression *exp) {
     }
 }
 
-void AlgebraicExpression_AppendTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transposeOp, bool freeOp) {
+// Debug function which prints given algebraic expression.
+void _AlgebraicExpression_Print(const AlgebraicExpression *ae) {
+    printf("src: %s \n", ae->src_node->alias);
+    for(int i = 0; i < ae->operand_count; i++) {
+        printf("\tdiagonal: %d ", ae->operands[i].diagonal);
+        printf("\ttranspose: %d ", ae->operands[i].transpose);
+        printf("\tfree: %d \n", ae->operands[i].free);
+    }
+    printf("dest: %s\n", ae->dest_node->alias);
+}
+
+void AlgebraicExpression_AppendTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transposeOp, bool freeOp, bool diagonal) {
     assert(ae);    
     if(ae->operand_count+1 > ae->operand_cap) {
         ae->operand_cap += 4;
@@ -181,12 +192,12 @@ void AlgebraicExpression_AppendTerm(AlgebraicExpression *ae, GrB_Matrix m, bool 
 
     ae->operands[ae->operand_count].operand = m;
     ae->operands[ae->operand_count].free = freeOp;
-    ae->operands[ae->operand_count].diagonal = false;   // Assuming not diagonal.
+    ae->operands[ae->operand_count].diagonal = diagonal;
     ae->operands[ae->operand_count].transpose = transposeOp;
     ae->operand_count++;
 }
 
-void AlgebraicExpression_PrependTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transposeOp, bool freeOp) {
+void AlgebraicExpression_PrependTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transposeOp, bool freeOp, bool diagonal) {
     assert(ae);
 
     ae->operand_count++;
@@ -203,7 +214,7 @@ void AlgebraicExpression_PrependTerm(AlgebraicExpression *ae, GrB_Matrix m, bool
 
     ae->operands[0].operand = m;
     ae->operands[0].free = freeOp;
-    ae->operands[0].diagonal = false;   // Assuming not diagonal.
+    ae->operands[0].diagonal = diagonal;
     ae->operands[0].transpose = transposeOp;
 }
 
@@ -306,7 +317,7 @@ static AlgebraicExpression** _AlgebraicExpression_Intermidate_Expressions(
 
         /* Expand fixed variable length edge */
         unsigned int hops = (!Edge_VariableLength(e)) ? e->minHops : 1;
-        for(int i = 0; i < hops; i++) {
+        for(int j = 0; j < hops; j++) {
             iexp->operands[iexp->operand_count++] = exp->operands[operandIdx++];
         }
 
@@ -402,7 +413,7 @@ static Node* _SharedNode(const Edge *a, const Edge *b) {
 }
 
 static AlgebraicExpression* _AlgebraicExpression_From_Path(Edge **path, uint path_len, const AST *ast) {
-    assert(path && path_len > 0 && ast);
+    assert(path && path_len > 0);
 
     Edge *e = NULL;
     AlgebraicExpressionOperand op;
@@ -451,11 +462,11 @@ static AlgebraicExpression* _AlgebraicExpression_From_Path(Edge **path, uint pat
 
         /* Expand fixed variable length edge */
         unsigned int hops = (!Edge_VariableLength(e)) ? e->minHops : 1;
-        for(int i = 0; i < hops; i++) {
+        for(int j = 0; j < hops; j++) {
             AlgebraicExpression_AppendOperand(exp, op);
         }
     }   // End of path traversal.
-    
+
     // If last node on path has a label, multiply by label matrix.
     if(e->dest->label) {
         op = _AlgebraicExpression_OperandFromNode(e->dest);
@@ -477,6 +488,7 @@ static AlgebraicExpression* _AlgebraicExpression_From_Path(Edge **path, uint pat
 }
 
 AlgebraicExpression **AlgebraicExpression_From_QueryGraph(const QueryGraph *qg, const AST *ast, size_t *exp_count) {
+    assert(qg && ast);
     /* Construct algebraic expression(s) from query graph 
      * trying to take advantage of long multiplications with as few 
      * transpose as possible we'll transform paths crossing the graph 

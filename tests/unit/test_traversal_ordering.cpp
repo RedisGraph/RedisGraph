@@ -97,9 +97,9 @@ TEST_F(TraversalOrderingTest, TransposeFree) {
     AlgebraicExpression *ExpBC = AlgebraicExpression_Empty();
     AlgebraicExpression *ExpCD = AlgebraicExpression_Empty();
     
-    AlgebraicExpression_AppendTerm(ExpAB, NULL, false, false);
-    AlgebraicExpression_AppendTerm(ExpBC, NULL, false, false);
-    AlgebraicExpression_AppendTerm(ExpCD, NULL, false, false);
+    AlgebraicExpression_AppendTerm(ExpAB, NULL, false, false, false);
+    AlgebraicExpression_AppendTerm(ExpBC, NULL, false, false, false);
+    AlgebraicExpression_AppendTerm(ExpCD, NULL, false, false, false);
 
     ExpAB->src_node = A;
     ExpAB->dest_node = B;
@@ -212,9 +212,9 @@ TEST_F(TraversalOrderingTest, FilterFirst) {
     AlgebraicExpression *ExpBC = AlgebraicExpression_Empty();
     AlgebraicExpression *ExpCD = AlgebraicExpression_Empty();
     
-    AlgebraicExpression_AppendTerm(ExpAB, NULL, false, false);
-    AlgebraicExpression_AppendTerm(ExpBC, NULL, false, false);
-    AlgebraicExpression_AppendTerm(ExpCD, NULL, false, false);
+    AlgebraicExpression_AppendTerm(ExpAB, NULL, false, false, false);
+    AlgebraicExpression_AppendTerm(ExpBC, NULL, false, false, false);
+    AlgebraicExpression_AppendTerm(ExpCD, NULL, false, false, false);
 
     ExpAB->src_node = A;
     ExpAB->dest_node = B;

@@ -410,7 +410,7 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, AST *ast, ResultSet *resul
 
         for(int i = 0; i < connectedComponentsCount; i++) {
             QueryGraph *cc = connectedComponents[i];
-            if(cc->node_count == 1) {
+            if(cc->edge_count == 0) {
                 /* Node scan. */
                 Node *n = cc->nodes[0];
                 if(n->label) op = NewNodeByLabelScanOp(n, ast);

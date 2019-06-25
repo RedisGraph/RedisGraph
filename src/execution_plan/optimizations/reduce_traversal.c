@@ -66,11 +66,15 @@ void reduceTraversal(ExecutionPlan *plan, AST *ast) {
         }
 
         /* If traverse src and dest nodes are the same,
+         * number of hops is 1 and the matrix being used is a label matrix, than
          * traverse acts as a filter which make sure the node is of a specific type
          * e.g. MATCH (a:A)-[e:R]->(b:B) RETURN e 
          * in this case there will be a traverse operation which will 
          * filter our dest nodes (b) which aren't of type B. */
-        if(ae->src_node == ae->dest_node) continue;
+
+        if(ae->src_node == ae->dest_node &&
+            ae->operand_count == 1 &&
+            ae->operands[0].diagonal) continue;
 
         /* Search to see if dest is already resolved */
         const char *dest = ae->dest_node->alias;

@@ -11,6 +11,8 @@ from base import FlowTestsBase
 
 redis_graph = None
 
+GRAPH_ID = "G"
+
 def redis():
     return DisposableRedis(loadmodule=os.path.dirname(os.path.abspath(__file__)) + '/../../src/redisgraph.so')
 
@@ -22,7 +24,7 @@ class RelationPatternTest(FlowTestsBase):
         cls.r = redis()
         cls.r.start()
         redis_con = cls.r.client()
-        redis_graph = Graph("G", redis_con)
+        redis_graph = Graph(GRAPH_ID, redis_con)
 
         cls.populate_graph()
 

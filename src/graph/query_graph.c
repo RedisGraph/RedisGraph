@@ -347,6 +347,9 @@ QueryGraph* QueryGraph_Clone(const QueryGraph *g) {
 Node* QueryGraph_RemoveNode(QueryGraph *g, Node *n) {
     assert(g && n && n->alias);
 
+    // Make sure node exists.
+    if(!QueryGraph_ContainsNode(g, n)) return NULL;
+
     /* Remove node from query graph.
      * Remove all edges associated with node. */
     uint incoming_edge_count = array_len(n->incoming_edges);

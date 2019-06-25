@@ -25,11 +25,9 @@ Node** BFS(Node *s, int *level) {
         for(int i = 0; i < array_len(current); i++) {
             Node *n = current[i];
 
-            // Mark n as visited.
-            if(!raxInsert(visited, (unsigned char*)n->alias, strlen(n->alias), NULL, NULL)) {
-                // We've already processed n.
-                continue;
-            }
+            // Have we already processed n?
+            seen = raxFind(visited, (unsigned char*)n->alias, strlen(n->alias));
+            if(seen != raxNotFound) continue;
 
             // Expand node N by visiting all of its neighbors
             for(int j = 0; j < array_len(n->outgoing_edges); j++) {
@@ -48,6 +46,9 @@ Node** BFS(Node *s, int *level) {
                     next = array_append(next, e->src);
                 }
             }
+
+            // Mark n as visited.
+            raxInsert(visited, (unsigned char*)n->alias, strlen(n->alias), NULL, NULL);
         }
 
         /* No way to progress and we're interested in the lowest level leafs

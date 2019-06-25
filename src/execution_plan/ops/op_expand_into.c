@@ -78,7 +78,7 @@ static uint _determinRecordCap(const AST *ast) {
  * clears filter matrix. */
 static void _traverse(OpExpandInto *op) {
     // Append filter matrix to algebraic expression, as the left most operand.
-    AlgebraicExpression_PrependTerm(op->ae, op->F, false, false);
+    AlgebraicExpression_PrependTerm(op->ae, op->F, false, false, false);
 
     // Evaluate expression.
     AlgebraicExpression_Execute(op->ae, op->M);

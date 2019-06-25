@@ -255,6 +255,7 @@ class AlgebraicExpressionTest: public ::testing::Test {
     void _compare_algebraic_operand(AlgebraicExpressionOperand *a, AlgebraicExpressionOperand *b) {
         ASSERT_EQ(a->free, b->free);
         ASSERT_EQ(a->operand, b->operand);
+        ASSERT_EQ(a->diagonal, b->diagonal);
         ASSERT_EQ(a->transpose, b->transpose);
     }
 
@@ -664,19 +665,19 @@ TEST_F(AlgebraicExpressionTest, MultipleIntermidateReturnNodes) {
 
     AlgebraicExpression **expected = (AlgebraicExpression**)malloc(sizeof(AlgebraicExpression*) * 3);
     AlgebraicExpression *exp = AlgebraicExpression_Empty();
-    AlgebraicExpression_AppendTerm(exp, mat_p, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_ef, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_f, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_p, false, false, true);
+    AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_f, false, false, true);
     expected[0] = exp;
 
     exp = AlgebraicExpression_Empty();
-    AlgebraicExpression_AppendTerm(exp, mat_ev, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_c, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_ev, false, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_c, false, false, true);
     expected[1] = exp;
 
     exp = AlgebraicExpression_Empty();
-    AlgebraicExpression_AppendTerm(exp, mat_ew, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_e, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_ew, false, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_e, false, false, true);
     expected[2] = exp;
 
     compare_algebraic_expressions(actual, expected, 3);
@@ -696,16 +697,16 @@ TEST_F(AlgebraicExpressionTest, OneIntermidateReturnNode) {
 
     AlgebraicExpression **expected = (AlgebraicExpression**)malloc(sizeof(AlgebraicExpression*) * 2);
     AlgebraicExpression *exp = AlgebraicExpression_Empty();
-    AlgebraicExpression_AppendTerm(exp, mat_p, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_ef, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_f, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_ev, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_c, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_p, false, false, true);
+    AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_f, false, false, true);
+    AlgebraicExpression_AppendTerm(exp, mat_ev, false, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_c, false, false, true);
     expected[0] = exp;
 
     exp = AlgebraicExpression_Empty();
-    AlgebraicExpression_AppendTerm(exp, mat_ew, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_e, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_ew, false, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_e, false, false, true);
     expected[1] = exp;
 
     compare_algebraic_expressions(actual, expected, 2);
@@ -725,13 +726,13 @@ TEST_F(AlgebraicExpressionTest, NoIntermidateReturnNodes) {
     
     AlgebraicExpression **expected = (AlgebraicExpression**)malloc(sizeof(AlgebraicExpression*) * 1);
     AlgebraicExpression *exp = AlgebraicExpression_Empty();
-    AlgebraicExpression_AppendTerm(exp, mat_p, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_ef, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_f, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_ev, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_c, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_ew, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_e, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_p, false, false, true);
+    AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_f, false, false, true);
+    AlgebraicExpression_AppendTerm(exp, mat_ev, false, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_c, false, false, true);
+    AlgebraicExpression_AppendTerm(exp, mat_ew, false, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_e, false, false, true);
     expected[0] = exp;
 
     compare_algebraic_expressions(actual, expected, 1);
@@ -758,16 +759,16 @@ TEST_F(AlgebraicExpressionTest, OneIntermidateReturnEdge) {
 
     AlgebraicExpression **expected = (AlgebraicExpression**)malloc(sizeof(AlgebraicExpression*) * 2);
     AlgebraicExpression *exp = AlgebraicExpression_Empty();
-    AlgebraicExpression_AppendTerm(exp, mat_p, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_ef, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_f, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_p, false, false, true);
+    AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_f, false, false, true);
     expected[0] = exp;
     
     exp = AlgebraicExpression_Empty();
-    AlgebraicExpression_AppendTerm(exp, mat_ev, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_c, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_ew, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_e, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_ev, false, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_c, false, false, true);
+    AlgebraicExpression_AppendTerm(exp, mat_ew, false, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_e, false, false, true);
     expected[1] = exp;
 
     compare_algebraic_expressions(actual, expected, 2);
@@ -787,19 +788,19 @@ TEST_F(AlgebraicExpressionTest, OneIntermidateReturnEdge) {
 
     expected = (AlgebraicExpression**)malloc(sizeof(AlgebraicExpression*) * 3);
     exp = AlgebraicExpression_Empty();
-    AlgebraicExpression_AppendTerm(exp, mat_p, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_ef, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_f, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_p, false, false, true);
+    AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_f, false, false, true);
     expected[0] = exp;
     
     exp = AlgebraicExpression_Empty();
-    AlgebraicExpression_AppendTerm(exp, mat_ev, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_c, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_ev, false, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_c, false, false, true);
     expected[1] = exp;
 
     exp = AlgebraicExpression_Empty();
-    AlgebraicExpression_AppendTerm(exp, mat_ew, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_e, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_ew, false, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_e, false, false, true);
     expected[2] = exp;
 
     compare_algebraic_expressions(actual, expected, 3);
@@ -819,16 +820,16 @@ TEST_F(AlgebraicExpressionTest, OneIntermidateReturnEdge) {
     
     expected = (AlgebraicExpression**)malloc(sizeof(AlgebraicExpression*) * 2);
     exp = AlgebraicExpression_Empty();
-    AlgebraicExpression_AppendTerm(exp, mat_p, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_ef, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_f, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_ev, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_c, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_p, false, false, true);
+    AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_f, false, false, true);
+    AlgebraicExpression_AppendTerm(exp, mat_ev, false, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_c, false, false, true);
     expected[0] = exp;
 
     exp = AlgebraicExpression_Empty();
-    AlgebraicExpression_AppendTerm(exp, mat_ew, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_e, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_ew, false, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_e, false, false, true);
     expected[1] = exp;
 
     compare_algebraic_expressions(actual, expected, 2);
@@ -848,13 +849,13 @@ TEST_F(AlgebraicExpressionTest, BothDirections) {
 
     AlgebraicExpression **expected = (AlgebraicExpression**)malloc(sizeof(AlgebraicExpression*) * 1);
     AlgebraicExpression *exp = AlgebraicExpression_Empty();
-    AlgebraicExpression_AppendTerm(exp, mat_p, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_ef, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_f, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_ev, true, false);
-    AlgebraicExpression_AppendTerm(exp, mat_c, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_ew, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_e, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_p, false, false, true);
+    AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_f, false, false, true);
+    AlgebraicExpression_AppendTerm(exp, mat_ev, true, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_c, false, false, true);
+    AlgebraicExpression_AppendTerm(exp, mat_ew, false, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_e, false, false, true);
     expected[0] = exp;
 
     compare_algebraic_expressions(actual, expected, 1);
@@ -889,13 +890,13 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
     
     AlgebraicExpression **expected = (AlgebraicExpression**)malloc(sizeof(AlgebraicExpression*) * 1);
     AlgebraicExpression *exp = AlgebraicExpression_Empty();
-    AlgebraicExpression_AppendTerm(exp, mat_p, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_ef, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_f, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_ev, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_c, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_ew, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_e, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_p, false, false, true);
+    AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_f, false, false, true);
+    AlgebraicExpression_AppendTerm(exp, mat_ev, false, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_c, false, false, true);
+    AlgebraicExpression_AppendTerm(exp, mat_ew, false, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_e, false, false, true);
     expected[0] = exp;
 
     compare_algebraic_expressions(actual, expected, 1);
@@ -913,13 +914,13 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 
     expected = (AlgebraicExpression**)malloc(sizeof(AlgebraicExpression*) * 1);
     exp = AlgebraicExpression_Empty();
-    AlgebraicExpression_AppendTerm(exp, mat_e, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_ew, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_c, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_ev, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_f, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_ef, true, false);
-    AlgebraicExpression_AppendTerm(exp, mat_p, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_e, false, false, true);
+    AlgebraicExpression_AppendTerm(exp, mat_ew, false, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_c, false, false, true);
+    AlgebraicExpression_AppendTerm(exp, mat_ev, false, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_f, false, false, true);
+    AlgebraicExpression_AppendTerm(exp, mat_ef, true, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_p, false, false, true);
 
     expected[0] = exp;
 
@@ -938,13 +939,13 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 
     expected = (AlgebraicExpression**)malloc(sizeof(AlgebraicExpression*) * 1);
     exp = AlgebraicExpression_Empty();
-    AlgebraicExpression_AppendTerm(exp, mat_p, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_ef, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_f, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_ev, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_c, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_ew, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_e, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_p, false, false, true);
+    AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_f, false, false, true);
+    AlgebraicExpression_AppendTerm(exp, mat_ev, false, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_c, false, false, true);
+    AlgebraicExpression_AppendTerm(exp, mat_ew, false, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_e, false, false, true);
     expected[0] = exp;
 
     compare_algebraic_expressions(actual, expected, 1);
@@ -962,11 +963,11 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 
     expected = (AlgebraicExpression**)malloc(sizeof(AlgebraicExpression*) * 1);
     exp = AlgebraicExpression_Empty();
-    AlgebraicExpression_AppendTerm(exp, mat_p, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_ef, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_p, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_ef, true, false);
-    AlgebraicExpression_AppendTerm(exp, mat_p, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_p, false, false, true);
+    AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_p, false, false, true);
+    AlgebraicExpression_AppendTerm(exp, mat_ef, true, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_p, false, false, true);
     expected[0] = exp;
 
     compare_algebraic_expressions(actual, expected, 1);
@@ -985,17 +986,17 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 
     expected = (AlgebraicExpression**)malloc(sizeof(AlgebraicExpression*) * 2);
     exp = AlgebraicExpression_Empty();
-    AlgebraicExpression_AppendTerm(exp, mat_p, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_ef, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_p, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_ef, true, false);
-    AlgebraicExpression_AppendTerm(exp, mat_p, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_p, false, false, true);
+    AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_p, false, false, true);
+    AlgebraicExpression_AppendTerm(exp, mat_ef, true, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_p, false, false, true);
     expected[0] = exp;
 
     exp = AlgebraicExpression_Empty();
-    AlgebraicExpression_AppendTerm(exp, mat_p, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_ef, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_p, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_p, false, false, true);
+    AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_p, false, false, true);
     expected[1] = exp;
 
     compare_algebraic_expressions(actual, expected, 2);
@@ -1014,20 +1015,20 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 
     expected = (AlgebraicExpression**)malloc(sizeof(AlgebraicExpression*) * 3);
     exp = AlgebraicExpression_Empty();
-    AlgebraicExpression_AppendTerm(exp, mat_p, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_ef, true, false);
-    AlgebraicExpression_AppendTerm(exp, mat_p, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_p, false, false, true);
+    AlgebraicExpression_AppendTerm(exp, mat_ef, true, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_p, false, false, true);
     expected[0] = exp;
 
     exp = AlgebraicExpression_Empty();    
-    AlgebraicExpression_AppendTerm(exp, mat_ef, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_p, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_p, false, false, true);
     expected[1] = exp;
 
     exp = AlgebraicExpression_Empty();
-    AlgebraicExpression_AppendTerm(exp, mat_p, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_ef, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_p, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_p, false, false, true);
+    AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_p, false, false, true);
     expected[2] = exp;
 
     compare_algebraic_expressions(actual, expected, 3);
@@ -1046,15 +1047,15 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 
     expected = (AlgebraicExpression**)malloc(sizeof(AlgebraicExpression*) * 2);
     exp = AlgebraicExpression_Empty();
-    AlgebraicExpression_AppendTerm(exp, mat_p, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_ef, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_p, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_p, false, false, true);
+    AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_p, false, false, true);
     expected[0] = exp;
 
     exp = AlgebraicExpression_Empty();
-    AlgebraicExpression_AppendTerm(exp, mat_p, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_ef, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_p, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_p, false, false, true);
+    AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_p, false, false, true);
     expected[1] = exp;
     
     compare_algebraic_expressions(actual, expected, 2);
@@ -1073,20 +1074,41 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 
     expected = (AlgebraicExpression**)malloc(sizeof(AlgebraicExpression*) * 2);
     exp = AlgebraicExpression_Empty();
-    AlgebraicExpression_AppendTerm(exp, mat_p, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_ef, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_p, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_ef, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_p, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_p, false, false, true);
+    AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_p, false, false, true);
+    AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_p, false, false, true);
     expected[0] = exp;
 
     exp = AlgebraicExpression_Empty();
-    AlgebraicExpression_AppendTerm(exp, mat_p, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_ef, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_p, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_p, false, false, true);
+    AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_p, false, false, true);
     expected[1] = exp;
 
     compare_algebraic_expressions(actual, expected, 2);
+
+    // Clean up.
+    free_algebraic_expressions(actual, exp_count);
+    free_algebraic_expressions(expected, exp_count);
+    free(expected);
+    free(actual);
+
+    // Self pointing node.
+    exp_count = 0;
+    q = "MATCH (a:Person)-[:friend]->(a) RETURN a";
+    actual = build_algebraic_expression(q, &exp_count);
+    ASSERT_EQ(exp_count, 1);
+
+    expected = (AlgebraicExpression**)malloc(sizeof(AlgebraicExpression*) * 1);
+    exp = AlgebraicExpression_Empty();
+    AlgebraicExpression_AppendTerm(exp, mat_p, false, false, true);
+    AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_p, false, false, true);
+    expected[0] = exp;
+
+    compare_algebraic_expressions(actual, expected, 1);
 
     // Clean up.
     free_algebraic_expressions(actual, exp_count);
@@ -1103,19 +1125,19 @@ TEST_F(AlgebraicExpressionTest, VariableLength) {
     
     AlgebraicExpression **expected = (AlgebraicExpression**)malloc(sizeof(AlgebraicExpression*) * 3);
     AlgebraicExpression *exp = AlgebraicExpression_Empty();
-    AlgebraicExpression_AppendTerm(exp, mat_p, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_ef, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_f, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_p, false, false, true);
+    AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_f, false, false, true);
     expected[0] = exp;
 
     exp = AlgebraicExpression_Empty();
-    AlgebraicExpression_AppendTerm(exp, mat_ev, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_ev, false, false, false);
     expected[1] = exp;
 
     exp = AlgebraicExpression_Empty();
-    AlgebraicExpression_AppendTerm(exp, mat_c, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_ew, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_e, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_c, false, false, true);
+    AlgebraicExpression_AppendTerm(exp, mat_ew, false, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_e, false, false, true);
     expected[2] = exp;
 
     compare_algebraic_expressions(actual, expected, 3);
@@ -1134,19 +1156,19 @@ TEST_F(AlgebraicExpressionTest, VariableLength) {
     
     expected = (AlgebraicExpression**)malloc(sizeof(AlgebraicExpression*) * 3);
     exp = AlgebraicExpression_Empty();
-    AlgebraicExpression_AppendTerm(exp, mat_p, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_ef, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_f, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_p, false, false, true);
+    AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_f, false, false, true);
     expected[0] = exp;
 
     exp = AlgebraicExpression_Empty();
-    AlgebraicExpression_AppendTerm(exp, mat_ev, true, false);
+    AlgebraicExpression_AppendTerm(exp, mat_ev, true, false, false);
     expected[1] = exp;
 
     exp = AlgebraicExpression_Empty();
-    AlgebraicExpression_AppendTerm(exp, mat_c, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_ew, false, false);
-    AlgebraicExpression_AppendTerm(exp, mat_e, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_c, false, false, true);
+    AlgebraicExpression_AppendTerm(exp, mat_ew, false, false, false);
+    AlgebraicExpression_AppendTerm(exp, mat_e, false, false, true);
     expected[2] = exp;
 
     compare_algebraic_expressions(actual, expected, 3);
