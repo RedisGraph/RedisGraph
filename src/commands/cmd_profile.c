@@ -122,14 +122,14 @@ int MGraph_Profile(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     CommandCtx *context;
     int flags = RedisModule_GetContextFlags(ctx);
     if (flags & (REDISMODULE_CTX_FLAGS_MULTI | REDISMODULE_CTX_FLAGS_LUA)) {
-      // Run query on Redis main thread.
-      context = CommandCtx_New(ctx, NULL, ast, argv[1], argv, argc);
-      _MGraph_Profile(context);
+        // Run query on Redis main thread.
+        context = CommandCtx_New(ctx, NULL, ast, argv[1], argv, argc);
+        _MGraph_Profile(context);
     } else {
-      // Run query on a dedicated thread.
-      RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
-      context = CommandCtx_New(NULL, bc, ast, argv[1], argv, argc);
-      thpool_add_work(_thpool, _MGraph_Profile, context);
+        // Run query on a dedicated thread.
+        RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
+        context = CommandCtx_New(NULL, bc, ast, argv[1], argv, argc);
+        thpool_add_work(_thpool, _MGraph_Profile, context);
     }
 
     // Replicate only if query has potential to modify key space.

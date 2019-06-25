@@ -5,6 +5,8 @@
 */
 
 #include "op.h"
+#include "../../util/simple_timer.h"
+
 #include <assert.h>
 
 void OpBase_Init(OpBase *op) {
@@ -32,7 +34,12 @@ int OpBase_ToString(const OpBase *op, char *buff, uint buff_len) {
 }
 
 Record OpBase_Profile(OpBase *op) {
+    double tic [2];
+    // Start timer.
+    simple_tic(tic);
     Record r = op->profile(op);
+    // Stop timer and accumulate.
+    op->profileExecTime += simple_toc(tic);
     if(r) op->profileRecordCount++;
     return r;
 }

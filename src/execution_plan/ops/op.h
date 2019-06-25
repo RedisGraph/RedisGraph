@@ -74,6 +74,7 @@ struct OpBase {
     struct OpBase **children;   // Child operations.
     int childCount;             // Number of children.
     int profileRecordCount;     // Number of records generated.
+    double profileExecTime;     // Operation total execution time in ms.
     struct OpBase *parent;      // Parent operations.
 };
 typedef struct OpBase OpBase;
