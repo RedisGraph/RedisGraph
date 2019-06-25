@@ -52,6 +52,7 @@ void AlgebraicExpressionNode_Free(AlgebraicExpressionNode *root);
 /* AlgebraicExpressionOperand a single operand within an
  * algebraic expression. */
 typedef struct  {
+    bool diagonal;          // Diagonal matrix.
     bool transpose;         // Should the matrix be transposed.
     bool free;              // Should the matrix be freed?
     GrB_Matrix operand;
@@ -66,20 +67,26 @@ typedef struct {
     Node *src_node;                         // Nodes represented by the first operand columns.
     Node *dest_node;                        // Nodes represented by the last operand rows.
     Edge *edge;                             // Edge represented by sole operand.
-    AST_LinkLength *edgeLength;             // Repeatable edge length.
 } AlgebraicExpression;
 
-/* Construct an algebraic expression from a query. */
-AlgebraicExpression **AlgebraicExpression_From_Query(const AST *ast, Vector *matchPattern, const QueryGraph *q, size_t *exp_count);
+/* Constructs an empty expression. */
+AlgebraicExpression *AlgebraicExpression_Empty(void);
+
+/* Construct algebraic expression(s) from query graph. */
+AlgebraicExpression **AlgebraicExpression_From_QueryGraph (
+    const QueryGraph *g,    // Graph to construct expression from.
+    const AST *ast,         // Abstract syntax tree.
+    size_t *exp_count       // Number of expression created.
+);
 
 /* Executes given expression. */
 void AlgebraicExpression_Execute(AlgebraicExpression *ae, GrB_Matrix res);
 
 /* Appends m as the last term in the expression ae. */
-void AlgebraicExpression_AppendTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transposeOp, bool freeOp);
+void AlgebraicExpression_AppendTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transposeOp, bool freeOp, bool diagonal);
 
 /* Prepend m as the first term in the expression ae. */
-void AlgebraicExpression_PrependTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transposeOp, bool freeOp);
+void AlgebraicExpression_PrependTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transposeOp, bool freeOp, bool diagonal);
 
 /* Removes operand at position idx */
 void AlgebraicExpression_RemoveTerm(AlgebraicExpression *ae, int idx, AlgebraicExpressionOperand *operand);

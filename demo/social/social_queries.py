@@ -103,8 +103,7 @@ friends_of_friends_visited_netherlands_and_single_query = QueryInfo(
 )
 
 friends_visited_same_places_as_me_query = QueryInfo(
-    query="""MATCH (:person {name:"Roi Lipman"})-[:visited]->(c:country)<-[:visited]-(f:person)<-
-             [:friend]-(:person {name:"Roi Lipman"}) 
+    query="""MATCH (ME:person {name:"Roi Lipman"})-[:visited]->(c:country)<-[:visited]-(f:person)<-[:friend]-(ME)
              RETURN f.name, c.name""",
     description='Friends who have been to places I have visited?',
     max_run_time_ms=0.45,
@@ -115,6 +114,16 @@ friends_visited_same_places_as_me_query = QueryInfo(
                      ['Boaz Arad', 'USA'],
                      ['Ori Laslo', 'USA'],
                      ['Alon Fital', 'USA']]
+)
+
+countries_visited_by_roi_tal_boaz = QueryInfo(
+    query="""MATCH (A:person {name:"Roi Lipman"})-[:visited]->(X:country),
+                   (B:person {name:"Tal Doron"})-[:visited]->(X),
+                   (C:person {name:"Boaz Arad"})-[:visited]->(X)
+            RETURN X.name""",
+    description='Countries visited by Roi, Tal and Boaz.',
+    max_run_time_ms=0.30,
+    expected_result=[['USA']]
 )
 
 friends_older_than_me_query = QueryInfo(
@@ -367,6 +376,40 @@ all_reachable_entities_query = QueryInfo(
                      ['Ori Laslo', 1]]
 )
 
+all_reachable_people_min_2_hops_query = QueryInfo(
+    query="""MATCH (ME:person {name:'Roi Lipman'})-[*2..]->(e:person)
+             RETURN e.name
+             ORDER BY e.name""",
+    description='Find all reachable people at least 2 hops away from me',
+    max_run_time_ms=0.35,
+    expected_result=[['Gal Derriere'],
+                     ['Jane Chernomorin'],
+                     ['Lucy Yanfital'],
+                     ['Mor Yesharim'],
+                     ['Noam Nativ'],
+                     ['Shelly Laslo Rooz'],
+                     ['Valerie Abigail Arad']]
+)
+
+all_paths_leads_to_greece_query = QueryInfo(
+    query="""MATCH (a)-[*]->(e:country {name:'Greece'})
+             RETURN count(a.name) AS NumPathsToGreece""",
+    description='Number of paths leading to Greece',
+    max_run_time_ms=0.4,
+    expected_result=[[10]]
+)
+
+number_of_paths_to_places_visited = QueryInfo(
+    query="""MATCH (ME:person {name:'Roi Lipman'})-[:visited]->(c:country)<-[*]-(ME)
+             RETURN c.name, count(c)
+             ORDER BY c.name""",
+    description='Count number of paths to places I have visited',
+    max_run_time_ms=0.4,
+    expected_result=[['Japan', 2],
+                     ['Prague', 5],
+                     ['USA', 14]]
+)
+
 delete_friendships_query = QueryInfo(
     query="""MATCH (ME:person {name:'Roi Lipman'})-[e:friend]->() DELETE e""",
     description='Delete frienships',
@@ -409,6 +452,7 @@ queries_info = [
     friends_of_friends_single_and_over_30_query,
     friends_of_friends_visited_netherlands_and_single_query,
     friends_visited_same_places_as_me_query,
+    countries_visited_by_roi_tal_boaz,
     friends_older_than_me_query,
     friends_age_difference_query,
     friends_who_are_older_than_average,
@@ -421,8 +465,11 @@ queries_info = [
     reachable_countries_or_people_query,
     all_reachable_countries_or_people_query,
     all_reachable_entities_query,
+    all_reachable_people_min_2_hops_query,
     happy_birthday_query,
     friends_age_statistics_query,
+    all_paths_leads_to_greece_query,
+    number_of_paths_to_places_visited,
     delete_friendships_query,
     delete_person_query,
     post_delete_label_query

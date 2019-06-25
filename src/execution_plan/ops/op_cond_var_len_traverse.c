@@ -33,6 +33,31 @@ static void _setupTraversedRelations(CondVarLenTraverse *op) {
     op->relationIDsCount = array_len(op->relationIDs);
 }
 
+int CondVarLenTraverseToString(const OpBase *ctx, char *buff, uint buff_len) {
+    const CondVarLenTraverse *op = (const CondVarLenTraverse*)ctx;
+
+    int offset = 0;    
+    offset += snprintf(buff + offset, buff_len-offset, "%s | ", op->op.name);
+    offset += Node_ToString(op->ae->src_node, buff + offset, buff_len - offset);
+    if(op->ae->edge) {
+        offset += snprintf(buff + offset, buff_len-offset, "-");
+        offset += Edge_ToString(op->ae->edge, buff + offset, buff_len - offset);
+        offset += snprintf(buff + offset, buff_len-offset, "->");
+    } else {
+        offset += snprintf(buff + offset, buff_len-offset, "->");
+    }
+    offset += Node_ToString(op->ae->dest_node, buff + offset, buff_len - offset);
+    return offset;
+}
+
+void CondVarLenTraverseOp_ExpandInto(CondVarLenTraverse *op) {
+    // Expand into doesn't performs any modifications.
+    Vector_Clear(op->op.modifies);
+    op->expandInto = true;
+    op->op.type = OPType_CONDITIONAL_VAR_LEN_TRAVERSE_EXPAND_INTO;
+    op->op.name = "Conditional Variable Length Traverse (Expand Into)";
+}
+
 OpBase* NewCondVarLenTraverseOp(AlgebraicExpression *ae, unsigned int minHops, unsigned int maxHops, Graph *g, AST *ast) {
     assert(ae && minHops <= maxHops && g && ae->operand_count == 1);
 
@@ -40,6 +65,7 @@ OpBase* NewCondVarLenTraverseOp(AlgebraicExpression *ae, unsigned int minHops, u
     condVarLenTraverse->g = g;
     condVarLenTraverse->ae = ae;
     condVarLenTraverse->ast = ast;
+    condVarLenTraverse->expandInto = false;
     condVarLenTraverse->relationIDs = NULL;
     condVarLenTraverse->srcNodeIdx = AST_GetAliasID(ast, ae->src_node->alias);
     condVarLenTraverse->destNodeIdx = AST_GetAliasID(ast, ae->dest_node->alias);
@@ -57,6 +83,7 @@ OpBase* NewCondVarLenTraverseOp(AlgebraicExpression *ae, unsigned int minHops, u
     condVarLenTraverse->op.type = OPType_CONDITIONAL_VAR_LEN_TRAVERSE;
     condVarLenTraverse->op.consume = CondVarLenTraverseConsume;
     condVarLenTraverse->op.reset = CondVarLenTraverseReset;
+    condVarLenTraverse->op.toString = CondVarLenTraverseToString;
     condVarLenTraverse->op.free = CondVarLenTraverseFree;
     condVarLenTraverse->op.modifies = NewVector(char*, 1);
 
@@ -70,15 +97,14 @@ OpBase* NewCondVarLenTraverseOp(AlgebraicExpression *ae, unsigned int minHops, u
 Record CondVarLenTraverseConsume(OpBase *opBase) {
     CondVarLenTraverse *op = (CondVarLenTraverse*)opBase;
     OpBase *child = op->op.children[0];
+    Path p = NULL;
 
     /* Incase we don't have any relations to traverse we can return quickly
      * Consider: MATCH (S)-[:L*]->(M) RETURN M
      * where label L does not exists. */
-    if(op->relationIDsCount == 0) {
-        return NULL;
-    }
+    if(op->relationIDsCount == 0) return NULL;
 
-    Path p = NULL;
+compute_path:
     while(!(p = AllPathsCtx_NextPath(op->allPathsCtx))) {
         Record childRecord = child->consume(child);
         if(!childRecord) return NULL;
@@ -101,7 +127,16 @@ Record CondVarLenTraverseConsume(OpBase *opBase) {
     // For the timebeing we only care for the last node in path
     Node n = Path_head(p);
 
-    Record_AddNode(op->r, op->destNodeIdx, n);
+    if(op->expandInto) {
+        /* Dest node is already resolved
+         * need to make sure src is connected to dest
+         * i.e. n == dest. */
+        Node *destNode = Record_GetNode(op->r, op->destNodeIdx);
+        if(ENTITY_GET_ID(&n) != ENTITY_GET_ID(destNode)) goto compute_path;
+    } else {
+        Record_AddNode(op->r, op->destNodeIdx, n);
+    }
+
     return Record_Clone(op->r);
 }
 

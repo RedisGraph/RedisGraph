@@ -5,29 +5,26 @@
 */
 
 #include "./select_entry_point.h"
+#include "../../../deps/rax/rax.h"
 
 void selectEntryPoint(AlgebraicExpression *ae, const FT_FilterNode *tree) {
-    if (ae->operand_count == 1 && ae->src_node == ae->dest_node) return;
+if (ae->operand_count == 1 && ae->src_node == ae->dest_node) return;
 
-    Vector *aliases = FilterTree_CollectAliases(tree);
+    rax *aliases = FilterTree_CollectAliases(tree);
     char *srcAlias = ae->src_node->alias;
     char *destAlias = ae->dest_node->alias;
 
-    bool srcFiltered = false;
     bool destFiltered = false;
     bool srcLabeled = ae->src_node->label != NULL;
     bool destLabeled = ae->dest_node->label != NULL;
 
     // See if either source or destination nodes are filtered.
-    for(int i = 0; i < Vector_Size(aliases); i++) {
-        char *alias;
-        Vector_Get(aliases, i, &alias);
+    if(raxFind(aliases, (unsigned char*)srcAlias, strlen(srcAlias)) != raxNotFound) {
+        goto cleanup;
+    }
 
-        srcFiltered = (strcmp(alias, srcAlias) == 0);
-        if(srcFiltered) goto cleanup;
-
-        // See if dest is filtered.
-        if(!destFiltered) destFiltered = (strcmp(alias, destAlias) == 0);
+    if(raxFind(aliases, (unsigned char*)destAlias, strlen(destAlias)) != raxNotFound) {
+        destFiltered = true;
     }
 
     /* Prefer filter over label 
@@ -46,10 +43,5 @@ void selectEntryPoint(AlgebraicExpression *ae, const FT_FilterNode *tree) {
     }
 
 cleanup:
-    for(int i = 0; i < Vector_Size(aliases); i++) {
-        char *alias;
-        Vector_Get(aliases, i, &alias);
-        free(alias);
-    }
-    Vector_Free(aliases);
+    raxFree(aliases);
 }

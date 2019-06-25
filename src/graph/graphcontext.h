@@ -20,8 +20,8 @@ typedef struct {
   TrieMap *attributes;              // From strings to attribute IDs
   char **string_mapping;            // From attribute IDs to strings
 
-  Schema **relation_schemas;        // Array of schemas for each relation type
   Schema **node_schemas;            // Array of schemas for each node label 
+  Schema **relation_schemas;        // Array of schemas for each relation type
 
   unsigned short index_count;       // Number of indicies.
 } GraphContext;

@@ -7,6 +7,13 @@
 #include "op_node_by_label_scan.h"
 #include "../../parser/ast.h"
 
+int NodeByLabelScanToString(const OpBase *ctx, char *buff, uint buff_len) {
+    const NodeByLabelScan *op = (const NodeByLabelScan*)ctx;
+    int offset = snprintf(buff, buff_len, "%s | ", op->op.name);
+    offset += Node_ToString(op->node, buff + offset, buff_len - offset);
+    return offset;
+}
+
 OpBase *NewNodeByLabelScanOp(Node *node, AST *ast) {
     NodeByLabelScan *nodeByLabelScan = malloc(sizeof(NodeByLabelScan));
     GraphContext *gc = GraphContext_GetFromTLS();
@@ -32,6 +39,7 @@ OpBase *NewNodeByLabelScanOp(Node *node, AST *ast) {
     nodeByLabelScan->op.type = OPType_NODE_BY_LABEL_SCAN;
     nodeByLabelScan->op.consume = NodeByLabelScanConsume;
     nodeByLabelScan->op.reset = NodeByLabelScanReset;
+    nodeByLabelScan->op.toString = NodeByLabelScanToString;
     nodeByLabelScan->op.free = NodeByLabelScanFree;
     
     nodeByLabelScan->op.modifies = NewVector(char*, 1);

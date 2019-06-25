@@ -15,14 +15,20 @@ void OpBase_Init(OpBase *op) {
     
     // Function pointers.
     op->init = NULL;
-    op->consume = NULL;
-    op->reset = NULL;
     op->free = NULL;
+    op->reset = NULL;
+    op->consume = NULL;
+    op->toString = NULL;
 }
 
 void OpBase_Reset(OpBase *op) {
     assert(op->reset(op) == OP_OK);
     for(int i = 0; i < op->childCount; i++) OpBase_Reset(op->children[i]);
+}
+
+int OpBase_ToString(const OpBase *op, char *buff, uint buff_len) {
+    if(op->toString) return op->toString(op, buff, buff_len);
+    else return snprintf(buff, buff_len, "%s", op->name);
 }
 
 void OpBase_Free(OpBase *op) {

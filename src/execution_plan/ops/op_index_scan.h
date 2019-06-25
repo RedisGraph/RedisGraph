@@ -16,14 +16,15 @@
 
 typedef struct {
     OpBase op;
-    uint nodeRecIdx;
-    uint recLength;  // Number of entries in a record.
+    Node *n;
     Graph *g;
+    uint recLength;  // Number of entries in a record.
+    uint nodeRecIdx;
     IndexIter *iter;
 } IndexScan;
 
 /* Creates a new IndexScan operation */
-OpBase *NewIndexScanOp(Graph *g, Node *node, IndexIter *iter, AST *ast);
+OpBase *NewIndexScanOp(Graph *g, Node *n, IndexIter *iter, AST *ast);
 
 /* IndexScan next operation
  * called each time a new node is required */

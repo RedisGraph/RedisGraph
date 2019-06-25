@@ -222,26 +222,16 @@ TEST_F(FilterTreeTest, SubTrees) {
 
 TEST_F(FilterTreeTest, CollectAliases) {
     FT_FilterNode *tree = _build_deep_tree();
-    Vector *aliases = FilterTree_CollectAliases(tree);
-    ASSERT_EQ(Vector_Size(aliases), 4);
-    
-    char *alias;
+    rax *aliases = FilterTree_CollectAliases(tree);
+    ASSERT_EQ(raxSize(aliases), 4);
+
     const char *expectation[4] = {"me", "he", "she", "theirs"};
     for(int i = 0; i < 4; i++) {
         const char *expected = expectation[i];
-        int j = 0;
-        for(; j < Vector_Size(aliases); j++) {
-            Vector_Get(aliases, j, &alias);
-            if(!strcmp(alias, expected)) break;
-        }
-        ASSERT_NE(j, 4);
+        ASSERT_NE(raxFind(aliases, (unsigned char*)expected, strlen(expected)), raxNotFound);
     }
 
-    /* Clean up. */
-    for(int i = 0; i < Vector_Size(aliases); i++) {
-        Vector_Get(aliases, i, &alias);
-        free(alias);
-    }
-    Vector_Free(aliases);
+    /* Clean up. */    
+    raxFree(aliases);
     FilterTree_Free(tree);
 }

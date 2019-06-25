@@ -72,7 +72,7 @@ void _OpBase_RemoveChild(OpBase *parent, OpBase *child) {
     _OpBase_RemoveNode(parent, child);
 }
 
-Vector* _ExecutionPlan_Locate_References(OpBase *root, OpBase **op, Vector *references) {
+Vector* _ExecutionPlan_Locate_References(OpBase *root, OpBase **op, rax *references) {
     /* List of entities which had their ID resolved
      * at this point of execution, should include all
      * previously modified entities (up the execution plan). */
@@ -108,30 +108,29 @@ Vector* _ExecutionPlan_Locate_References(OpBase *root, OpBase **op, Vector *refe
     /* See if all references been resolved.
      * TODO: create a vector compare function
      * which checks if the content of one is in the other. */
-    int match = Vector_Size(references);
-    size_t ref_count = Vector_Size(references);
-    size_t seen_count = Vector_Size(seen);
+    int match = raxSize(references);
+    int ref_count = match;
+    int seen_count = Vector_Size(seen);
+    
+    // We've seen enough to start matching.
+    if(seen_count >= ref_count) {
+        for(int i = 0; i < seen_count; i++) {
+            // To many unmatched references.
+            if(match > (seen_count-i)) break;
 
-    for(int i = 0; i < ref_count; i++) {
-        char *reference;        
-        Vector_Get(references, i, &reference);
-
-        int j = 0;
-        for(; j < seen_count; j++) {
             char *resolved;
-            Vector_Get(seen, j, &resolved);
-            if(!strcmp(reference, resolved)) {
-                /* Match! */
-                break;
+            Vector_Get(seen, i, &resolved);
+            if(raxFind(references, (unsigned char*)resolved, strlen(resolved)) != raxNotFound) {
+                match--;
+                // All refrences been resolved.
+                if(match == 0) {
+                    *op = root;
+                    break;
+                }
             }
         }
-        
-        /* no match, quick break, */
-        if (j == seen_count) break;
-        else match--;
     }
 
-    if(!match) *op = root;
     return seen;
 }
 
@@ -248,6 +247,22 @@ OpBase* ExecutionPlan_LocateOp(OpBase *root, OPType type) {
     return NULL;
 }
 
+void _ExecutionPlan_LocateOps(OpBase *root, OPType type, OpBase ***ops) {
+    if(!root) return;
+
+    if(root->type & type) (*ops) = array_append((*ops), root);
+
+    for(int i = 0; i < root->childCount; i++) {
+        _ExecutionPlan_LocateOps(root->children[i], type, ops);
+    }
+}
+
+OpBase** ExecutionPlan_LocateOps(OpBase *root, OPType type) {
+    OpBase **ops = array_new(OpBase*, 0);
+    _ExecutionPlan_LocateOps(root, type, &ops);
+    return ops;
+}
+
 void ExecutionPlan_Taps(OpBase *root, OpBase ***taps) {
     if(root == NULL) return;
     if(root->type & OP_SCAN) *taps = array_append(*taps, root);
@@ -257,7 +272,7 @@ void ExecutionPlan_Taps(OpBase *root, OpBase ***taps) {
     }
 }
 
-OpBase* ExecutionPlan_Locate_References(OpBase *root, Vector *references) {
+OpBase* ExecutionPlan_Locate_References(OpBase *root, rax *references) {
     OpBase *op = NULL;    
     Vector *temp = _ExecutionPlan_Locate_References(root, &op, references);
     Vector_Free(temp);
@@ -321,44 +336,71 @@ static AR_ExpNode** _OrderClause_GetExpressions(const AST *ast) {
 	return exps;
 }
 
+/* Keep track after resolved variabels.
+ * add variabels modified/set by op to resolved. */ 
+static void _UpdateResolvedVariables(rax *resolved, OpBase *op) {
+    assert(resolved && op);
+    if(!op->modifies) return;
+
+    int count = Vector_Size(op->modifies);
+    for(int i = 0; i < count; i++) {
+        char *var;
+        Vector_Get(op->modifies, i, &var);
+        raxInsert(resolved, (unsigned char*)var, strlen(var), NULL, NULL);
+    }
+}
+
 ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, AST *ast, ResultSet *result_set) {
-    GraphContext *gc = GraphContext_GetFromTLS();
-    Graph *g = gc->g;
-    ExecutionPlan *execution_plan = (ExecutionPlan*)calloc(1, sizeof(ExecutionPlan));    
-    execution_plan->result_set = result_set;
-    Vector *ops = NewVector(OpBase*, 1);
+    Graph *g;
     OpBase *op;
+    Vector *ops;
+    rax *resolved;
+    QueryGraph *q;
+    GraphContext *gc;
+    size_t node_count;
+    size_t edge_count;
+    FT_FilterNode *filter_tree;
+    ExecutionPlan *execution_plan;
+
+    resolved = raxNew();
+    ops = NewVector(OpBase*, 1);
+    gc = GraphContext_GetFromTLS();
+    g = gc->g;
+    execution_plan = (ExecutionPlan*)calloc(1, sizeof(ExecutionPlan));
+    execution_plan->result_set = result_set;
 
     /* Predetermin graph size: (entities in both MATCH and CREATE clauses)
      * have graph object maintain an entity capacity, to avoid reallocs,
      * problem was reallocs done by CREATE clause, which invalidated old references in ExpandAll. */
-    size_t node_count;
-    size_t edge_count;
     _Determine_Graph_Size(ast, &node_count, &edge_count);
-    QueryGraph *q = QueryGraph_New(node_count, edge_count);
-    execution_plan->query_graph = q;
-    FT_FilterNode *filter_tree = NULL;
-    if(ast->whereNode != NULL) {
+    q = QueryGraph_New(node_count, edge_count);
+
+    filter_tree = NULL;
+    if(ast->whereNode) {
         filter_tree = BuildFiltersTree(ast, ast->whereNode->filters);
         execution_plan->filter_tree = filter_tree;
     }
 
     if(ast->callNode) {        
-        OpBase *opProcCall = NewProcCallOp(ast->callNode->procedure, ast->callNode->arguments, ast->callNode->yield, ast);
+        OpBase *opProcCall = NewProcCallOp(ast->callNode->procedure,
+                                            ast->callNode->arguments,
+                                            ast->callNode->yield, ast);
         Vector_Push(ops, opProcCall);
+        _UpdateResolvedVariables(resolved, opProcCall);
     }
 
     if(ast->matchNode) {
         BuildQueryGraph(gc, q, ast->matchNode->_mergedPatterns);
 
-        // For every pattern in match clause.
-        size_t patternCount = Vector_Size(ast->matchNode->patterns);
-        
-        /* Incase we're dealing with multiple patterns
+        QueryGraph **connectedComponents = QueryGraph_ConnectedComponents(q);
+        size_t connectedComponentsCount = array_len(connectedComponents);
+        execution_plan->connected_components = connectedComponents;
+
+        /* For every connected component.
+         * Incase we're dealing with multiple components
          * we'll simply join them all together with a join operation. */
-        bool multiPattern = patternCount > 1;
         OpBase *cartesianProduct = NULL;
-        if(multiPattern) {
+        if(connectedComponentsCount > 1) {
             cartesianProduct = NewCartesianProductOp(AST_AliasCount(ast));
             Vector_Push(ops, cartesianProduct);
         }
@@ -366,90 +408,77 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, AST *ast, ResultSet *resul
         // Keep track after all traversal operations along a pattern.
         Vector *traversals = NewVector(OpBase*, 1);
 
-        for(int i = 0; i < patternCount; i++) {
-            Vector *pattern;
-            Vector_Get(ast->matchNode->patterns, i, &pattern);
-
-            if(Vector_Size(pattern) > 1) {
-                size_t expCount = 0;
-                AlgebraicExpression **exps = AlgebraicExpression_From_Query(ast, pattern, q, &expCount);
-
-                TRAVERSE_ORDER order = determineTraverseOrder(filter_tree, exps, expCount);
-                if(order == TRAVERSE_ORDER_FIRST) {
-                    AlgebraicExpression *exp = exps[0];
-                    selectEntryPoint(exp, filter_tree);
-
-                    // Create SCAN operation.
-                    if(exp->src_node->label) {
-                        /* There's no longer need for the first matrix operand
-                         * as it's been replaced by label scan. */
-                        AlgebraicExpression_RemoveTerm(exp, 0, NULL);
-                        op = NewNodeByLabelScanOp(exp->src_node, ast);
-                        Vector_Push(traversals, op);
-                    } else {
-                        op = NewAllNodeScanOp(g, exp->src_node, ast);
-                        Vector_Push(traversals, op);
-                    }
-                    for(int i = 0; i < expCount; i++) {
-                        if(exps[i]->operand_count == 0) continue;
-                        if(exps[i]->edgeLength) {
-                            op = NewCondVarLenTraverseOp(exps[i],
-                                                         exps[i]->edgeLength->minHops,
-                                                         exps[i]->edgeLength->maxHops,
-                                                         g,
-                                                         ast);
-                        }
-                        else {
-                            op = NewCondTraverseOp(exps[i], ast);
-                        }
-                        Vector_Push(traversals, op);
-                    }
-                } else {
-                    AlgebraicExpression *exp = exps[expCount-1];
-                    selectEntryPoint(exp, filter_tree);
-                    // Create SCAN operation.
-                    if(exp->dest_node->label) {
-                        /* There's no longer need for the first matrix operand
-                         * as it's been replaced by label scan. */
-                        AlgebraicExpression_RemoveTerm(exp, 0, NULL);
-                        op = NewNodeByLabelScanOp(exp->dest_node, ast);
-                        Vector_Push(traversals, op);
-                    } else {
-                        op = NewAllNodeScanOp(g, exp->dest_node, ast);
-                        Vector_Push(traversals, op);
-                    }
-
-                    for(int i = expCount-1; i >= 0; i--) {
-                        if(exps[i]->operand_count == 0) continue;
-                        AlgebraicExpression_Transpose(exps[i]);
-                        if(exps[i]->edgeLength) {
-                            op = NewCondVarLenTraverseOp(exps[i],
-                                                         exps[i]->edgeLength->minHops,
-                                                         exps[i]->edgeLength->maxHops,
-                                                         g,
-                                                         ast);
-                        }
-                        else {
-                            op = NewCondTraverseOp(exps[i], ast);
-                        }
-                        Vector_Push(traversals, op);
-                    }
-                }
-                // Free the expressions array, as its parts have been converted into operations
-                free(exps);
-            } else {
+        for(int i = 0; i < connectedComponentsCount; i++) {
+            QueryGraph *cc = connectedComponents[i];
+            if(cc->edge_count == 0) {
                 /* Node scan. */
-                AST_GraphEntity *ge;
-                Vector_Get(pattern, 0, &ge);
-                Node **n = QueryGraph_GetNodeRef(q, QueryGraph_GetNodeByAlias(q, ge->alias));
-                if(ge->label)
-                    op = NewNodeByLabelScanOp(*n, ast);
-                else
-                    op = NewAllNodeScanOp(g, *n, ast);
+                Node *n = cc->nodes[0];
+                if(n->label) op = NewNodeByLabelScanOp(n, ast);
+                else op = NewAllNodeScanOp(g, n, ast);
                 Vector_Push(traversals, op);
+                _UpdateResolvedVariables(resolved, op);
+            } else {
+                size_t expCount = 0;
+                AlgebraicExpression **exps = AlgebraicExpression_From_QueryGraph(cc, ast, &expCount);
+
+                // Reorder exps, to the most performent arrangement of evaluation.
+                orderExpressions(exps, expCount, filter_tree);
+
+                AlgebraicExpression *exp = exps[0];
+                selectEntryPoint(exp, filter_tree);
+
+                // Create SCAN operation.
+                if(exp->src_node->label) {
+                    /* There's no longer need for the last matrix operand
+                     * as it's been replaced by label scan. */
+                    AlgebraicExpression_RemoveTerm(exp, 0, NULL);
+                    op = NewNodeByLabelScanOp(exp->src_node, ast);
+                } else {
+                    op = NewAllNodeScanOp(g, exp->src_node, ast);
+                }
+
+                Vector_Push(traversals, op);
+                _UpdateResolvedVariables(resolved, op);
+
+                for(int i = 0; i < expCount; i++) {
+                    exp = exps[i];
+                    if(exp->operand_count == 0) continue;
+                    
+                    /* Make sure expression source is already resolved.
+                     * TODO: it might be better to ensure beforehand 
+                     * that exp's source is already resolved, see 
+                     * traverse_order.c */
+                    if(raxFind(resolved,
+                        (unsigned char*)exp->src_node->alias,
+                        strlen(exp->src_node->alias)) == raxNotFound) {
+
+                        AlgebraicExpression_Transpose(exp);
+
+                        assert(raxFind(resolved,
+                            (unsigned char*)exp->src_node->alias,
+                            strlen(exp->src_node->alias)) != raxNotFound);
+                    }
+
+                    if(exp->edge && Edge_VariableLength(exp->edge)) {
+                        op = NewCondVarLenTraverseOp(exp,
+                                                        exp->edge->minHops,
+                                                        exp->edge->maxHops,
+                                                        g,
+                                                        ast);
+                    }
+                    else {
+                        op = NewCondTraverseOp(exp, ast);
+                    }
+
+                    Vector_Push(traversals, op);
+                    _UpdateResolvedVariables(resolved, op);
+                }
+
+                // Free the expressions array, as its parts have been converted into operations
+                rm_free(exps);
             }
-            
-            if(multiPattern) {
+
+            if(connectedComponentsCount > 1) {
                 // Connect traversal operations.
                 OpBase *childOp;
                 OpBase *parentOp;
@@ -474,6 +503,7 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, AST *ast, ResultSet *resul
     if(ast->unwindNode) {
         OpBase *opUnwind = NewUnwindOp(ast);
         Vector_Push(ops, opUnwind);
+        _UpdateResolvedVariables(resolved, opUnwind);
     }
 
     /* Set root operation */
@@ -482,11 +512,13 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, AST *ast, ResultSet *resul
         OpBase *opCreate = NewCreateOp(ctx, ast, q, execution_plan->result_set);
 
         Vector_Push(ops, opCreate);
+        _UpdateResolvedVariables(resolved, opCreate);
     }
 
     if(ast->mergeNode) {
         OpBase *opMerge = NewMergeOp(ast, execution_plan->result_set);
         Vector_Push(ops, opMerge);
+        _UpdateResolvedVariables(resolved, opMerge);
     }
 
     if(ast->deleteNode) {
@@ -557,6 +589,7 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, AST *ast, ResultSet *resul
     }
 
     Vector_Free(ops);
+    raxFree(resolved);
     return execution_plan;
 }
 
@@ -604,12 +637,23 @@ static ExecutionPlan *_ExecutionPlan_Connect(ExecutionPlan *a, ExecutionPlan *b,
     }
 
     array_free(taps);
-    // null root to avoid freeing connected operations.
+    // Null root to avoid freeing connected operations.
     a->root = NULL;
-    // null query graph to avoid freeing entities referenced in both graphs
-    // TODO memory leak on entities that exclusively appear in this graph
-    free(a->query_graph);
-    a->query_graph = NULL;
+
+    // Copy connected components over.
+    if(a->connected_components) {
+        if(!b->connected_components) {
+            b->connected_components = a->connected_components;
+            a->connected_components = NULL;
+        } else {
+            uint cc_count = array_len(a->connected_components);
+            for(int i = 0; i < cc_count; i++) {
+                QueryGraph *cc = array_pop(a->connected_components);
+                b->connected_components = array_append(b->connected_components, cc);
+            }
+        }
+    }
+
     ExecutionPlanFree(a);
     return b;
 }
@@ -632,7 +676,7 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, AST **ast, ResultSet *resul
                 FT_FilterNode *tree;
                 Vector_Get(sub_trees, j, &tree);
 
-                Vector *references = FilterTree_CollectAliases(tree);
+                rax *references = FilterTree_CollectAliases(tree);
 
                 /* Scan execution plan, locate the earliest position where all 
                  * references been resolved. */
@@ -642,13 +686,8 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, AST **ast, ResultSet *resul
                 /* Create filter node.
                  * Introduce filter op right below located op. */
                 OpBase *filter_op = NewFilterOp(tree);
-                ExecutionPlan_PushBelow(op, filter_op);
-                for(int k = 0; k < Vector_Size(references); k++) {
-                    char *ref;
-                    Vector_Get(references, k, &ref);
-                    free(ref);
-                }
-                Vector_Free(references);
+                ExecutionPlan_PushBelow(op, filter_op);                
+                raxFree(references);
             }
             Vector_Free(sub_trees);
         }
@@ -658,23 +697,24 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, AST **ast, ResultSet *resul
     return plan;
 }
 
-void _ExecutionPlan_Print(const OpBase *op, RedisModuleCtx *ctx, char *buffer, int ident, int *op_count) {
+void _ExecutionPlan_Print(const OpBase *op, RedisModuleCtx *ctx, char *buffer, int buffer_len, int ident, int *op_count) {
     if(!op) return;
 
     *op_count += 1; // account for current operation.
 
     // Construct operation string representation.
-    int len = sprintf(buffer, "%*s%s", ident, "", op->name);
+    int bytes_written = snprintf(buffer, buffer_len, "%*s", ident, "");
+    bytes_written += OpBase_ToString(op, buffer+bytes_written, buffer_len-bytes_written);
 
-    RedisModule_ReplyWithStringBuffer(ctx, buffer, len);
+    RedisModule_ReplyWithStringBuffer(ctx, buffer, bytes_written);
 
     // Recurse over child operations.
     for(int i = 0; i < op->childCount; i++) {
-        _ExecutionPlan_Print(op->children[i], ctx, buffer, ident+4, op_count);
+        _ExecutionPlan_Print(op->children[i], ctx, buffer, buffer_len, ident+4, op_count);
     }
 }
 
-// Replys with a string representation of given execution plan.
+// Reply with a string representation of given execution plan.
 void ExecutionPlan_Print(const ExecutionPlan *plan, RedisModuleCtx *ctx) {
     assert(plan && ctx);
 
@@ -683,7 +723,7 @@ void ExecutionPlan_Print(const ExecutionPlan *plan, RedisModuleCtx *ctx) {
 
     // No idea how many operation are in execution plan.
     RedisModule_ReplyWithArray(ctx, REDISMODULE_POSTPONED_ARRAY_LEN);
-    _ExecutionPlan_Print(plan->root, ctx, buffer, 0, &op_count);
+    _ExecutionPlan_Print(plan->root, ctx, buffer, 1024, 0, &op_count);
     RedisModule_ReplySetArrayLength(ctx, op_count);
 }
 
@@ -718,7 +758,11 @@ void _ExecutionPlanFreeRecursive(OpBase* op) {
 void ExecutionPlanFree(ExecutionPlan *plan) {
     if(plan == NULL) return;
     if(plan->root) _ExecutionPlanFreeRecursive(plan->root);
-
-    QueryGraph_Free(plan->query_graph);
+    if(plan->connected_components) {
+        for(int i = 0; i < array_len(plan->connected_components); i++) {
+            QueryGraph_Free(plan->connected_components[i]);
+        }
+        array_free(plan->connected_components);
+    }
     free(plan);
 }

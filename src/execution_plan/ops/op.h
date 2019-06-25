@@ -41,6 +41,7 @@ typedef enum {
     OPType_EXPAND_INTO = (1<<20),
     OPType_NODE_BY_ID_SEEK = (1<<21),
     OPType_PROC_CALL = (1<<22),
+    OPType_CONDITIONAL_VAR_LEN_TRAVERSE_EXPAND_INTO = (1<<23),
 } OPType;
 
 #define OP_SCAN (OPType_ALL_NODE_SCAN | OPType_NODE_BY_LABEL_SCAN | OPType_INDEX_SCAN | OPType_NODE_BY_ID_SEEK)
@@ -54,10 +55,11 @@ typedef enum {
 
 struct OpBase;
 
+typedef void (*fpFree)(struct OpBase*);
 typedef OpResult (*fpInit)(struct OpBase*);
 typedef Record (*fpConsume)(struct OpBase*);
 typedef OpResult (*fpReset)(struct OpBase*);
-typedef void (*fpFree)(struct OpBase*);
+typedef int (*fpToString)(const struct OpBase*, char *, uint);
 
 struct OpBase {
     OPType type;                // Type of operation
@@ -65,6 +67,7 @@ struct OpBase {
     fpConsume consume;          // Produce next record.
     fpReset reset;              // Reset operation state.
     fpFree free;                // Free operation.
+    fpToString toString;        // operation string representation.
     char *name;                 // Operation name.
     Vector *modifies;           // List of aliases, this op modifies.
     struct OpBase **children;   // Child operations.
@@ -76,3 +79,4 @@ typedef struct OpBase OpBase;
 void OpBase_Init(OpBase *op);
 void OpBase_Reset(OpBase *op);
 void OpBase_Free(OpBase *op);
+int OpBase_ToString(const OpBase *op, char *buff, uint buff_len);

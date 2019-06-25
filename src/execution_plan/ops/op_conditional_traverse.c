@@ -50,7 +50,8 @@ static int _CondTraverse_SetEdge(CondTraverse *op, Record r) {
  * clears filter matrix. */
 void _traverse(CondTraverse *op) {
     // Preppend matrix to algebraic expression, as the left most operand.
-    AlgebraicExpression_PrependTerm(op->algebraic_expression, op->F, false, false);
+    AlgebraicExpression_PrependTerm(op->algebraic_expression, op->F, false, false, false);
+
     // Evaluate expression.
     AlgebraicExpression_Execute(op->algebraic_expression, op->M);
 
@@ -72,17 +73,35 @@ static int _determinRecordCap(const AST *ast) {
     return recordsCap;
 }
 
+int CondTraverseToString(const OpBase *ctx, char *buff, uint buff_len) {
+    const CondTraverse *op = (const CondTraverse*)ctx;
+
+    int offset = 0;    
+    offset += snprintf(buff + offset, buff_len-offset, "%s | ", op->op.name);
+    offset += Node_ToString(op->algebraic_expression->src_node, buff + offset, buff_len - offset);
+    if(op->algebraic_expression->edge) {
+        offset += snprintf(buff + offset, buff_len-offset, "-");
+        offset += Edge_ToString(op->algebraic_expression->edge, buff + offset, buff_len - offset);
+        offset += snprintf(buff + offset, buff_len-offset, "->");
+    } else {
+        offset += snprintf(buff + offset, buff_len-offset, "->");
+    }
+    offset += Node_ToString(op->algebraic_expression->dest_node, buff + offset, buff_len - offset);
+    return offset;
+}
+
 OpBase* NewCondTraverseOp(AlgebraicExpression *algebraic_expression, AST *ast) {
     CondTraverse *traverse = calloc(1, sizeof(CondTraverse));
-    traverse->ast = ast;
     GraphContext *gc = GraphContext_GetFromTLS();
-    traverse->graph = gc->g;
-    traverse->algebraic_expression = algebraic_expression;
-    traverse->edgeRelationTypes = NULL;
+    
+    traverse->ast = ast;
+    traverse->r = NULL;
     traverse->F = NULL;    
     traverse->iter = NULL;
     traverse->edges = NULL;
-    traverse->r = NULL;        
+    traverse->graph = gc->g;
+    traverse->edgeRelationTypes = NULL;
+    traverse->algebraic_expression = algebraic_expression;
     traverse->srcNodeRecIdx = AST_GetAliasID(ast, algebraic_expression->src_node->alias);
     traverse->destNodeRecIdx = AST_GetAliasID(ast, algebraic_expression->dest_node->alias);
     
@@ -101,6 +120,7 @@ OpBase* NewCondTraverseOp(AlgebraicExpression *algebraic_expression, AST *ast) {
     traverse->op.consume = CondTraverseConsume;
     traverse->op.init = CondTraverseInit;
     traverse->op.reset = CondTraverseReset;
+    traverse->op.toString = CondTraverseToString;
     traverse->op.free = CondTraverseFree;
     traverse->op.modifies = NewVector(char*, 1);
 
@@ -152,7 +172,7 @@ Record CondTraverseConsume(OpBase *opBase) {
 
     while(true) {
         if(op->iter)
-            GxB_MatrixTupleIter_next(op->iter, &src_id, & dest_id, &depleted);
+            GxB_MatrixTupleIter_next(op->iter, &src_id, &dest_id, &depleted);
 
         // Managed to get a tuple, break.
         if(!depleted) break;
@@ -187,7 +207,7 @@ Record CondTraverseConsume(OpBase *opBase) {
     Node *destNode = Record_GetNode(op->r, op->destNodeRecIdx);
     Graph_GetNode(op->graph, dest_id, destNode);
 
-    if(op->algebraic_expression->edge != NULL) {
+    if(op->algebraic_expression->edge) {
         // We're guarantee to have at least one edge.
         Node *srcNode;
         Node *destNode;

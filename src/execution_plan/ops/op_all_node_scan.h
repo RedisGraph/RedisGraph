@@ -18,6 +18,7 @@
  * Scans entire graph */
  typedef struct {
     OpBase op;
+    Node *n;
     DataBlockIterator *iter;
     uint nodeRecIdx;
     uint recLength;  // Number of entries in a record.

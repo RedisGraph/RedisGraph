@@ -24,9 +24,9 @@ typedef enum {
 
 typedef struct {
     OpBase *root;
-    QueryGraph *query_graph;
     ResultSet *result_set;
     FT_FilterNode *filter_tree;
+    QueryGraph **connected_components;
 } ExecutionPlan;
 
 /* Creates a new execution plan from AST */
@@ -59,6 +59,10 @@ void ExecutionPlan_LocateTaps(OpBase *root, OpBase ***taps);
 /* Locate the first operation of a given type within execution plan.
  * Returns NULL if operation wasn't found. */
 OpBase* ExecutionPlan_LocateOp(OpBase *root, OPType type);
+
+/* Locate all operations of a given type within execution plan.
+ * Returns an array of operations. */
+OpBase** ExecutionPlan_LocateOps(OpBase *root, OPType type);
 
 /* Returns an array of taps; operations which generate data 
  * e.g. SCAN operations */

@@ -46,12 +46,13 @@ gtest_main.a : gtest-all.o gtest_main.o
 
 # RedisGraph flags and libraries
 CC_OBJECTS:=$(CC_OBJECTS)
+RAX=../../deps/rax/rax.o
 LIBTRIEMAP=../../src/util/triemap/libtriemap.a
 LIBGRAPHBLAS=../../deps/GraphBLAS/build/libgraphblas.a
 LIBXXHASH=$(ROOT)/deps/xxhash/libxxhash.a
 
 LIBS=$(LIBTRIEMAP) $(LIBGRAPHBLAS) $(LIBXXHASH)
-DEPS=$(CC_OBJECTS) $(LIBS)
+DEPS=$(CC_OBJECTS) $(RAX) $(LIBS)
 
 # Build and run a test for each cpp file in directory
 TEST_SOURCES = $(wildcard *.cpp)

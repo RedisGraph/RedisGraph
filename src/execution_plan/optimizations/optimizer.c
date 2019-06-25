@@ -21,9 +21,13 @@ void optimizePlan(ExecutionPlan *plan, AST *ast) {
     /* Try to reduce a number of filters into a single filter op. */
     reduceFilters(plan);
 
+    /* reduce traversals where both src and dest nodes are already resolved
+     * into an expand into operation. */
+    reduceTraversal(plan, ast);
+
     /* Relocate sort, skip, limit operations. */
     relocateOperations(plan);
-    
+
     /* Try to reduce distinct if it follows aggregation. */
     reduceDistinct(plan);
 

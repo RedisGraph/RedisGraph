@@ -7,11 +7,19 @@
 #include "op_index_scan.h"
 #include "../../parser/ast.h"
 
-OpBase *NewIndexScanOp(Graph *g, Node *node, IndexIter *iter, AST *ast) {
+int IndexScanToString(const OpBase *ctx, char *buff, uint buff_len) {
+    const IndexScan *op = (const IndexScan*)ctx;
+    int offset = snprintf(buff, buff_len, "%s | ", op->op.name);
+    offset += Node_ToString(op->n, buff + offset, buff_len - offset);
+    return offset;
+}
+
+OpBase *NewIndexScanOp(Graph *g, Node *n, IndexIter *iter, AST *ast) {
   IndexScan *indexScan = malloc(sizeof(IndexScan));
   indexScan->g = g;
+  indexScan->n = n;
   indexScan->iter = iter;
-  indexScan->nodeRecIdx = AST_GetAliasID(ast, node->alias);
+  indexScan->nodeRecIdx = AST_GetAliasID(ast, n->alias);
   indexScan->recLength = AST_AliasCount(ast);
 
   // Set our Op operations
@@ -20,10 +28,11 @@ OpBase *NewIndexScanOp(Graph *g, Node *node, IndexIter *iter, AST *ast) {
   indexScan->op.type = OPType_INDEX_SCAN;
   indexScan->op.consume = IndexScanConsume;
   indexScan->op.reset = IndexScanReset;
+  indexScan->op.toString = IndexScanToString;
   indexScan->op.free = IndexScanFree;
 
   indexScan->op.modifies = NewVector(char*, 1);
-  Vector_Push(indexScan->op.modifies, node->alias);
+  Vector_Push(indexScan->op.modifies, n->alias);
 
   return (OpBase*)indexScan;
 }

@@ -146,6 +146,19 @@ class ImdbFlowTest(FlowTestsBase):
 
         # assert reversed pattern.
         self.assert_reversed_pattern(q, actual_result)
+    
+    def test_actors_played_in_drama_action_comedy(self):
+        global redis_graph
+        q = queries.actors_played_in_drama_action_comedy_query.query
+        actual_result = redis_graph.query(q)
+
+        # assert result set
+        self._assert_only_expected_results_are_in_actual_results(
+            actual_result,
+            queries.actors_played_in_drama_action_comedy_query)
+
+        # assert query run time
+        self._assert_run_time(actual_result, queries.actors_played_in_drama_action_comedy_query)
 
     def test_young_actors_played_with_cameron_diaz(self):
         global redis_graph

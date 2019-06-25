@@ -140,6 +140,26 @@ class IMDBQueries(object):
             expected_result = expected_result            
         )
 
+        ##################################################################
+        ### actors_played_in_drama_action_comedy
+        ##################################################################
+        
+        expected_result=[
+                ['Bradley Cooper'],
+                ['Michael B. Jordan'],
+                ['Michael Caine'],
+                ['Miles Teller']
+            ]
+
+        self.actors_played_in_drama_action_comedy_query = QueryInfo(
+            query="""MATCH (a:actor)-[:act]->(m0:movie {genre:'Action'}),
+                           (a)-[:act]->(m1:movie {genre:'Drama'}),
+                           (a)-[:act]->(m2:movie {genre:'Comedy'})
+                    RETURN DISTINCT a.name""",
+            description='Which actors played in Action, Drama and Comedy movies?',
+            max_run_time_ms=1.5,
+            expected_result = expected_result            
+        )
 
         ##################################################################
         ### young_actors_played_with_cameron_diaz_query
@@ -327,6 +347,7 @@ class IMDBQueries(object):
             self.actors_played_in_movie_straight_outta_compton_query,
             self.actors_over_50_that_played_in_blockbusters_query,
             self.actors_played_in_bad_drama_or_comedy_query,
+            self.actors_played_in_drama_action_comedy_query,
             self.young_actors_played_with_cameron_diaz_query,
             self.actors_played_with_cameron_diaz_and_younger_than_her_query,
             self.sum_and_average_age_of_straight_outta_compton_cast_query,

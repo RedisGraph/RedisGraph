@@ -89,17 +89,6 @@ class GraphMultiPatternQueryFlowTest(FlowTestsBase):
             friend_count = actual_result.result_set[0][0]
             assert(friend_count == 343)
 
-    # Ensure that an error is issued when an alias from one pattern is referenced by another.
-    def test05_interdependent_patterns(self):
-        queries = ["""MATCH (a)-[]->(b), (b)-[]->(c) RETURN count(b)""",
-                   """MATCH (a)-[]->(b) MATCH (b)-[]->(c) RETURN count(b)"""]
-        for q in queries:
-            try:
-                redis_graph.query(q)
-                assert(False)
-            except Exception, e:
-                assert("may not be referenced in multiple patterns") in e.message
-
     def test06_multiple_create_clauses(self):
         queries = ["""CREATE (:a {v:1}), (:b {v:2, z:3}), (:c), (:a)-[:r0 {k:9}]->(:b), (:c)-[:r1]->(:d)""",
                    """CREATE (:a {v:1}) CREATE (:b {v:2, z:3}) CREATE (:c) CREATE (:a)-[:r0 {k:9}]->(:b) CREATE (:c)-[:r1]->(:d)""",

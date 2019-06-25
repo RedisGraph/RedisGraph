@@ -163,7 +163,7 @@ int FilterTree_applyFilters(const FT_FilterNode* root, const Record r) {
     return pass;
 }
 
-void _FilterTree_CollectAliases(const FT_FilterNode *root, TrieMap *aliases) {
+void _FilterTree_CollectAliases(const FT_FilterNode *root, rax *aliases) {
     if(root == NULL) return;
 
     switch(root->t) {
@@ -181,7 +181,6 @@ void _FilterTree_CollectAliases(const FT_FilterNode *root, TrieMap *aliases) {
              * but there are multi-argument exceptions. */
             AR_EXP_CollectAliases(root->pred.lhs, aliases);
             AR_EXP_CollectAliases(root->pred.rhs, aliases);
-
             break;
         }
         default:
@@ -192,25 +191,9 @@ void _FilterTree_CollectAliases(const FT_FilterNode *root, TrieMap *aliases) {
     }
 }
 
-Vector *FilterTree_CollectAliases(const FT_FilterNode *root) {
-    TrieMap *t = NewTrieMap();
-    _FilterTree_CollectAliases(root, t);
-
-    Vector *aliases = NewVector(char*, t->cardinality);
-    TrieMapIterator *it = TrieMap_Iterate(t, "", 0);
-    
-    char *ptr;
-    tm_len_t len;
-    void *value;
-
-    while(TrieMapIterator_Next(it, &ptr, &len, &value)) {
-        char *alias = strdup(ptr);
-        alias[len] = 0;
-        Vector_Push(aliases, alias);
-    }
-
-    TrieMapIterator_Free(it);
-    TrieMap_Free(t, NULL);
+rax *FilterTree_CollectAliases(const FT_FilterNode *root) {
+    rax *aliases = raxNew();
+    _FilterTree_CollectAliases(root, aliases);
     return aliases;
 }
 

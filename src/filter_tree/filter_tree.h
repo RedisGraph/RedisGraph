@@ -9,8 +9,9 @@
 
 #include "../parser/ast.h"
 #include "../redismodule.h"
-#include "../arithmetic/arithmetic_expression.h"
+#include "../../deps/rax/rax.h"
 #include "../execution_plan/record.h"
+#include "../arithmetic/arithmetic_expression.h"
 
 #define FILTER_FAIL 0
 #define FILTER_PASS 1
@@ -54,15 +55,15 @@ int IsNodePredicate(const FT_FilterNode *node);
 
 FT_FilterNode* CreateCondFilterNode(int op);
 
-FT_FilterNode *AppendLeftChild(FT_FilterNode *root, FT_FilterNode *child);
-FT_FilterNode *AppendRightChild(FT_FilterNode *root, FT_FilterNode *child);
+FT_FilterNode* AppendLeftChild(FT_FilterNode *root, FT_FilterNode *child);
+FT_FilterNode* AppendRightChild(FT_FilterNode *root, FT_FilterNode *child);
 
 /* Runs val through the filter tree. */
 int FilterTree_applyFilters(const FT_FilterNode* root, const Record r);
 
 /* Extract every alias mentioned in the tree
  * without duplications. */
-Vector *FilterTree_CollectAliases(const FT_FilterNode *root);
+rax* FilterTree_CollectAliases(const FT_FilterNode *root);
 
 /* Prints tree. */
 void FilterTree_Print(const FT_FilterNode *root);

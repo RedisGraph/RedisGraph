@@ -552,6 +552,7 @@ Feature: MatchAcceptance
       | <(:A {name: 'A'})-[:KNOWS]->(:B {name: 'B'})-[:FRIEND]->(:C {name: 'C'})> |
     And no side effects
 
+  @skip
   Scenario: Accept skip zero
     Given any graph
     When executing query:

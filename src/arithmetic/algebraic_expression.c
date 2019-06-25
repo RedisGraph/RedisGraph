@@ -7,6 +7,8 @@
 #include "algebraic_expression.h"
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
+#include "../algorithms/algorithms.h"
+
 #include <assert.h>
 
 AlgebraicExpression *_AE_MUL(size_t operand_cap) {
@@ -16,101 +18,87 @@ AlgebraicExpression *_AE_MUL(size_t operand_cap) {
     ae->operand_count = 0;
     ae->operands = malloc(sizeof(AlgebraicExpressionOperand) * ae->operand_cap);
     ae->edge = NULL;
-    ae->edgeLength = NULL;
     return ae;
 }
 
-int _intermidate_node(const Node *n) {
+static int _intermidate_node(const Node *n) {
     /* ->()<- 
      * <-()->
      * ->()->
      * <-()<- */
-    return ((Vector_Size(n->incoming_edges) > 1) ||
-            (Vector_Size(n->outgoing_edges) > 1) ||
-            ((Vector_Size(n->incoming_edges) > 0) && (Vector_Size(n->outgoing_edges) > 0)));
+    return ((array_len(n->incoming_edges) + array_len(n->outgoing_edges)) >= 2);
 }
 
-int _referred_entity(char *alias, TrieMap *ref_entities) {
+static int _referred_entity(char *alias, TrieMap *ref_entities) {
     return TRIEMAP_NOTFOUND != TrieMap_Find(ref_entities, alias, strlen(alias));
 }
 
-int _referred_node(const Node *n, TrieMap *ref_entities) {
+static int _referred_node(const Node *n, TrieMap *ref_entities) {
     return _referred_entity(n->alias, ref_entities);
 }
 
 /* For every referenced edge, add edge source and destination nodes
  * as referenced entities. */
-void _referred_edge_ends(TrieMap *ref_entities, const QueryGraph *q) {
-    char *alias;
-    tm_len_t len;
-    void *value;
-    Vector *aliases = NewVector(char*, 0);
-    TrieMapIterator *it = TrieMap_Iterate(ref_entities, "", 0);
-
-    /* Scan ref_entities for referenced edges.
-     * note, we can not modify triemap which scanning it. */
-    while(TrieMapIterator_Next(it, &alias, &len, &value)) {
-        Edge *e = QueryGraph_GetEdgeByAlias(q, alias);
-        if(!e) continue;
-
-        // Remember edge ends.        
-        Vector_Push(aliases, e->src->alias);
-        Vector_Push(aliases, e->dest->alias);
+static void _referred_edge_ends(const QueryGraph *q, TrieMap *ref_entities) {
+    for(int i = 0; i < q->edge_count; i++) {
+        Edge *e = q->edges[i];
+        if(TrieMap_Find(ref_entities, e->alias, strlen(e->alias)) != TRIEMAP_NOTFOUND) {
+            // Edge is referenced, add ends as referenced entities.
+            char *src = e->src->alias;
+            char *dest = e->dest->alias;
+            TrieMap_Add(ref_entities, src, strlen(src), NULL, TrieMap_DONT_CARE_REPLACE);
+            TrieMap_Add(ref_entities, dest, strlen(dest), NULL, TrieMap_DONT_CARE_REPLACE);
+        }
     }
-
-    // Add edges ends as referenced entities.
-    for(int i = 0; i < Vector_Size(aliases); i++) {
-        Vector_Get(aliases, i, &alias);
-        TrieMap_Add(ref_entities, alias, strlen(alias), NULL, TrieMap_DONT_CARE_REPLACE);
-    }
-
-    TrieMapIterator_Free(it);
-    Vector_Free(aliases);
 }
 
 /* Variable length edges require their own algebraic expression,
  * therefor mark both variable length edge ends as referenced. */
-void _referred_variable_length_edges(TrieMap *ref_entities, Vector *matchPattern, const QueryGraph *q) {
+static void _referred_variable_length_edges(const QueryGraph *q, TrieMap *ref_entities) {
     Edge *e;
-    AST_GraphEntity *match_element;
+    char *src;
+    char *dest;
 
-    for(int i = 0; i < Vector_Size(matchPattern); i++) {
-        Vector_Get(matchPattern, i, &match_element);
-        if(match_element->t != N_LINK) continue;
-        
-        AST_LinkEntity *edge = (AST_LinkEntity*)match_element;
-        if(!edge->length) continue;
-
-        e = QueryGraph_GetEdgeByAlias(q, edge->ge.alias);
-        TrieMap_Add(ref_entities, e->src->alias, strlen(e->src->alias), NULL, TrieMap_DONT_CARE_REPLACE);
-        TrieMap_Add(ref_entities, e->dest->alias, strlen(e->dest->alias), NULL, TrieMap_DONT_CARE_REPLACE);
+    for(int i = 0; i < q->edge_count; i++) {
+        e = q->edges[i];
+        if(Edge_VariableLength(e)) {
+            src = e->src->alias;
+            dest = e->dest->alias;
+            TrieMap_Add(ref_entities, src, strlen(src), NULL, TrieMap_DONT_CARE_REPLACE);
+            TrieMap_Add(ref_entities, dest, strlen(dest), NULL, TrieMap_DONT_CARE_REPLACE);
+        }
     }
+}
+
+/* Checks if given expression contains a variable length edge. */
+static bool _AlgebraicExpression_ContainsVariableLengthEdge(const AlgebraicExpression *exp) {
+    return (exp->edge && Edge_VariableLength(exp->edge));
 }
 
 /* Variable length expression must contain only a single operand, the edge being 
  * traversed multiple times, in cases such as (:labelA)-[e*]->(:labelB) both label A and B
  * are applied via a label matrix operand, this function migrates A and B from a
  * variable length expression to other expressions. */
-AlgebraicExpression** _AlgebraicExpression_IsolateVariableLenExps(AlgebraicExpression **expressions, size_t *expCount) {
+static AlgebraicExpression** _AlgebraicExpression_IsolateVariableLenExps(AlgebraicExpression **expressions) {
     /* Return value is a new set of expressions, where each variable length expression
-      * is guaranteed to have a single operand, as such in the worst case the number of
-      * expressions doubles + 1. */
-    AlgebraicExpression **res = malloc(sizeof(AlgebraicExpression*) * (*expCount * 2 + 1));
-    size_t newExpCount = 0;
+     * is guaranteed to have a single operand, as such in the worst case the number of
+     * expressions doubles + 1. */
+    size_t expCount = array_len(expressions);
+    AlgebraicExpression **res = array_new(AlgebraicExpression*, expCount * 2 + 1);
 
     /* Scan through each expression, locate expression which 
      * have a variable length edge in them. */
-    for(size_t expIdx = 0; expIdx < *expCount; expIdx++) {
+    for(size_t expIdx = 0; expIdx < expCount; expIdx++) {
         AlgebraicExpression *exp = expressions[expIdx];
-        if(!exp->edgeLength) {
-            res[newExpCount++] = exp;
+        if(!_AlgebraicExpression_ContainsVariableLengthEdge(exp)) {
+            res = array_append(res, exp);
             continue;
         }
 
         Edge *e = exp->edge;
         Node *src = exp->src_node;
         Node *dest = exp->dest_node;
-        
+
         // A variable length expression with a labeled source node
         // We only care about the source label matrix, when it comes to
         // the first expression, as in the following expressions
@@ -124,11 +112,11 @@ AlgebraicExpression** _AlgebraicExpression_IsolateVariableLenExps(AlgebraicExpre
             AlgebraicExpression *newExp = _AE_MUL(1);
             newExp->src_node = exp->src_node;
             newExp->dest_node = exp->src_node;
-            AlgebraicExpression_PrependTerm(newExp, op.operand, op.transpose, op.free);
-            res[newExpCount++] = newExp;
+            AlgebraicExpression_PrependTerm(newExp, op.operand, op.transpose, op.free, op.diagonal);
+            res = array_append(res, newExp);
         }
 
-        res[newExpCount++] = exp;
+        res = array_append(res, exp);
 
         // A variable length expression with a labeled destination node.
         if(dest->mat) {
@@ -137,115 +125,22 @@ AlgebraicExpression** _AlgebraicExpression_IsolateVariableLenExps(AlgebraicExpre
             AlgebraicExpression_RemoveTerm(exp, exp->operand_count-1, &op);
 
             /* See if dest mat can be prepended to the following expression.
-             * If not create a new expression. */            
-            if(expIdx < *expCount-1 && !expressions[expIdx+1]->edgeLength) {
-                AlgebraicExpression_PrependTerm(expressions[expIdx+1], op.operand, op.transpose, op.free);
+             * If not create a new expression. */
+            if(expIdx < expCount-1 &&
+                !_AlgebraicExpression_ContainsVariableLengthEdge(expressions[expIdx+1])) {
+                AlgebraicExpression_PrependTerm(expressions[expIdx+1], op.operand, op.transpose, op.free, op.diagonal);
             } else {
                 AlgebraicExpression *newExp = _AE_MUL(1);
                 newExp->src_node = exp->dest_node;
                 newExp->dest_node = exp->dest_node;
-                AlgebraicExpression_PrependTerm(newExp, op.operand, op.transpose, op.free);
-                res[newExpCount++] = newExp;
+                AlgebraicExpression_PrependTerm(newExp, op.operand, op.transpose, op.free, op.diagonal);
+                res = array_append(res, newExp);
             }
         }
     }
 
-    *expCount = newExpCount;
-    free(expressions);
+    array_free(expressions);
     return res;
-}
-
-/* Break down expression into sub expressions.
- * considering referenced intermidate nodes and edges. */
-AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(AlgebraicExpression *exp, const AST *ast, Vector *matchPattern, const QueryGraph *q, size_t *exp_count) {
-    /* Allocating maximum number of expression possible. */
-    AlgebraicExpression **expressions = malloc(sizeof(AlgebraicExpression *) * exp->operand_count);
-    int expIdx = 0;     // Sub expression index.
-    int operandIdx = 0; // Index to currently inspected operand.
-    int transpose;     // Indicate if matrix operand needs to be transposed.    
-    Node *dest = NULL;
-    Node *src = NULL;
-    Edge *e = NULL;
-
-    TrieMap *ref_entities = NewTrieMap();
-    ReturnClause_ReferredEntities(ast->returnNode, ref_entities);
-    WithClause_ReferredEntities(ast->withNode, ref_entities);
-    CreateClause_ReferredEntities(ast->createNode, ref_entities);
-    WhereClause_ReferredEntities(ast->whereNode, ref_entities);
-    DeleteClause_ReferredEntities(ast->deleteNode, ref_entities);    
-    SetClause_ReferredEntities(ast->setNode, ref_entities);
-    _referred_edge_ends(ref_entities, q);
-    _referred_variable_length_edges(ref_entities, matchPattern, q);
-
-    AlgebraicExpression *iexp = _AE_MUL(exp->operand_count);
-    iexp->src_node = exp->src_node;
-    iexp->dest_node = exp->dest_node;
-    iexp->operand_count = 0;
-    expressions[expIdx++] = iexp;
-
-    for(int i = 0; i < Vector_Size(matchPattern); i++) {
-        AST_GraphEntity *match_element;
-        Vector_Get(matchPattern, i, &match_element);
-
-        if(match_element->t != N_LINK) continue;
-
-        AST_LinkEntity *edge = (AST_LinkEntity*)match_element;
-        transpose = (edge->direction == N_RIGHT_TO_LEFT);
-        e = QueryGraph_GetEdgeByAlias(q, edge->ge.alias);
-
-        /* If edge is referenced, set expression edge pointer. */
-        if(_referred_entity(edge->ge.alias, ref_entities))
-            iexp->edge = e;
-
-        /* If this is a variable length edge, which is not fixed in length
-         * remember edge length. */
-        if(edge->length && !AST_LinkEntity_FixedLengthEdge(edge)) {
-            iexp->edgeLength = edge->length;
-            iexp->edge = e;
-        }
-
-        dest = e->dest;
-        src = e->src;
-        if(transpose) {
-            dest = e->src;
-            src = e->dest;
-        }        
-
-        if(operandIdx == 0 && src->mat) {
-            iexp->operands[iexp->operand_count++] = exp->operands[operandIdx++];
-        }
-
-        unsigned int hops = 1;
-        /* Expand fixed variable length edge */
-        if(edge->length && AST_LinkEntity_FixedLengthEdge(edge)) {
-            hops = edge->length->minHops;
-        }
-
-        for(int j = 0; j < hops; j++) {
-            iexp->operands[iexp->operand_count++] = exp->operands[operandIdx++];
-        }
-
-        if(dest->mat) {
-            iexp->operands[iexp->operand_count++] = exp->operands[operandIdx++];
-        }
-
-        /* If intermidate node is referenced, create a new algebraic expression. */
-        if(_intermidate_node(dest) && _referred_node(dest, ref_entities)) {
-            // Finalize current expression.
-            iexp->dest_node = dest;
-
-            /* Create a new algebraic expression. */
-            iexp = _AE_MUL(exp->operand_count - operandIdx);
-            iexp->operand_count = 0;
-            iexp->src_node = expressions[expIdx-1]->dest_node;
-            iexp->dest_node = exp->dest_node;
-            expressions[expIdx++] = iexp;
-        }
-    }
-    
-    *exp_count = expIdx;
-    TrieMap_Free(ref_entities, TrieMap_NOP_CB);
-    return expressions;
 }
 
 static inline void _AlgebraicExpression_Execute_MUL(GrB_Matrix C, GrB_Matrix A, GrB_Matrix B, GrB_Descriptor desc) {
@@ -265,7 +160,7 @@ static inline void _AlgebraicExpression_Execute_MUL(GrB_Matrix C, GrB_Matrix A, 
 
 // Reverse order of operand within expression,
 // A*B*C will become C*B*A. 
-void _AlgebraicExpression_ReverseOperandOrder(AlgebraicExpression *exp) {
+static void _AlgebraicExpression_ReverseOperandOrder(AlgebraicExpression *exp) {
     int right = exp->operand_count-1;
     int left = 0;
     while(right > left) {
@@ -277,20 +172,32 @@ void _AlgebraicExpression_ReverseOperandOrder(AlgebraicExpression *exp) {
     }
 }
 
-void AlgebraicExpression_AppendTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transposeOp, bool freeOp) {
+// Debug function which prints given algebraic expression.
+void _AlgebraicExpression_Print(const AlgebraicExpression *ae) {
+    printf("src: %s \n", ae->src_node->alias);
+    for(int i = 0; i < ae->operand_count; i++) {
+        printf("\tdiagonal: %d ", ae->operands[i].diagonal);
+        printf("\ttranspose: %d ", ae->operands[i].transpose);
+        printf("\tfree: %d \n", ae->operands[i].free);
+    }
+    printf("dest: %s\n", ae->dest_node->alias);
+}
+
+void AlgebraicExpression_AppendTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transposeOp, bool freeOp, bool diagonal) {
     assert(ae);    
     if(ae->operand_count+1 > ae->operand_cap) {
         ae->operand_cap += 4;
         ae->operands = realloc(ae->operands, sizeof(AlgebraicExpressionOperand) * ae->operand_cap);
     }
 
-    ae->operands[ae->operand_count].transpose = transposeOp;
-    ae->operands[ae->operand_count].free = freeOp;
     ae->operands[ae->operand_count].operand = m;
+    ae->operands[ae->operand_count].free = freeOp;
+    ae->operands[ae->operand_count].diagonal = diagonal;
+    ae->operands[ae->operand_count].transpose = transposeOp;
     ae->operand_count++;
 }
 
-void AlgebraicExpression_PrependTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transposeOp, bool freeOp) {
+void AlgebraicExpression_PrependTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transposeOp, bool freeOp, bool diagonal) {
     assert(ae);
 
     ae->operand_count++;
@@ -305,95 +212,358 @@ void AlgebraicExpression_PrependTerm(AlgebraicExpression *ae, GrB_Matrix m, bool
         ae->operands[i] = ae->operands[i-1];
     }
 
-    ae->operands[0].transpose = transposeOp;
-    ae->operands[0].free = freeOp;
     ae->operands[0].operand = m;
+    ae->operands[0].free = freeOp;
+    ae->operands[0].diagonal = diagonal;
+    ae->operands[0].transpose = transposeOp;
 }
 
-AlgebraicExpression **AlgebraicExpression_From_Query(const AST *ast, Vector *matchPattern, const QueryGraph *q, size_t *exp_count) {
-    assert(q->edge_count != 0);
+void AlgebraicExpression_AppendOperand(AlgebraicExpression *ae, AlgebraicExpressionOperand op) {
+    assert(ae);
 
-    AlgebraicExpression *exp = _AE_MUL(q->edge_count + q->node_count);
-    int transpose; // Indicate if matrix operand needs to be transposed.    
-    Node *dest = NULL;
-    Node *src = NULL;
-    Edge *e = NULL;
+    // Make sure expression has enough room for the new operand.
+    if(ae->operand_count+1 > ae->operand_cap) {
+        ae->operand_cap += 4;
+        ae->operands = realloc(ae->operands, sizeof(AlgebraicExpressionOperand) * ae->operand_cap);
+    }
     
-    // Scan MATCH clause from left to right.
-    for(int i = 0; i < Vector_Size(matchPattern); i++) {
-        AST_GraphEntity *match_element;
-        Vector_Get(matchPattern, i, &match_element);
+    ae->operands[ae->operand_count] = op;
+    ae->operand_count++;
+}
 
-        if(match_element->t != N_LINK) continue;
-        AST_LinkEntity *astEdge = (AST_LinkEntity*)match_element;
-        transpose = (astEdge->direction == N_RIGHT_TO_LEFT);
-        e = QueryGraph_GetEdgeByAlias(q, astEdge->ge.alias);
-        assert(e);
+void AlgebraicExpression_PrependOperand(AlgebraicExpression *ae, AlgebraicExpressionOperand op) {
+    assert(ae);
 
-        // TODO: we might want to delay matrix retrieval even further.
-        GrB_Matrix mat = Edge_GetMatrix(e);
-        dest = e->dest;
-        src = e->src;
+    // Make sure expression has enough room for the new operand.
+    ae->operand_count++;
+    if(ae->operand_count+1 > ae->operand_cap) {
+        ae->operand_cap += 4;
+        ae->operands = realloc(ae->operands, sizeof(AlgebraicExpressionOperand) * ae->operand_cap);
+    }
 
-        if(transpose) {
-            dest = e->src;
-            src = e->dest;
+    // TODO: might be optimized with memcpy.
+    // Shift operands to the right, making room at the begining.
+    for(int i = ae->operand_count-1; i > 0 ; i--) {
+        ae->operands[i] = ae->operands[i-1];
+    }
+
+    ae->operands[0] = op;
+}
+
+static void _RemovePathFromGraph(QueryGraph *g, Edge **path) {
+    uint edge_count = array_len(path);
+    for(uint i = 0; i < edge_count; i++) {
+        Edge *e = path[i];
+        Node *src = e->src;
+        Node *dest = e->dest;
+
+        QueryGraph_RemoveEdge(g, e);
+        if(Node_EdgeCount(src) == 0) QueryGraph_RemoveNode(g, src);
+        if(Node_EdgeCount(dest) == 0) QueryGraph_RemoveNode(g, dest);
+    }
+}
+
+/* Determin the length of the longest path in the graph.
+ * Returns a list residing on the edge of the longest path. */
+static Node** _DeepestLevel(const QueryGraph *g, int *level) {
+    Node *s = g->nodes[0];
+    int l = BFS_LOWEST_LEVEL;
+    Node **leafs = BFS(g->nodes[0], &l);
+    Node *leaf = leafs[0];
+    array_free(leafs);
+
+    l = BFS_LOWEST_LEVEL;
+    leafs = BFS(leaf, &l);
+
+    *level = l;
+    return leafs;
+}
+
+/* Break down expression into sub expressions.
+ * considering referenced intermidate nodes and edges. */
+static AlgebraicExpression** _AlgebraicExpression_Intermidate_Expressions(
+    AlgebraicExpression *exp, Edge **path, const QueryGraph *g,
+    TrieMap *ref_entities) {
+
+    /* Allocating maximum number of expression possible. */
+    Edge *e = NULL;
+    int expIdx = 0;         // Sub expression index.
+    int operandIdx = 0;     // Index to currently inspected operand.
+    int pathLen = array_len(path);
+    AlgebraicExpression **expressions;
+
+    expressions = array_new(AlgebraicExpression*, exp->operand_count);
+    AlgebraicExpression *iexp = _AE_MUL(exp->operand_count);
+    iexp->operand_count = 0;
+    iexp->src_node = exp->src_node;
+    iexp->dest_node = exp->dest_node;
+    expressions = array_append(expressions, iexp);
+    expIdx++;
+
+    for(int i = 0; i < pathLen; i++) {
+        e = path[i];
+        /* If edge is referenced, set expression edge pointer. */
+        if(_referred_entity(e->alias, ref_entities)) iexp->edge = e;
+
+        /* If this is a variable length edge, which is not fixed in length
+         * remember edge length. */
+        if(Edge_VariableLength(e)) {
+            iexp->edge = e;
         }
 
-        if(exp->operand_count == 0) {
-            exp->src_node = src;
-            if(src->label) {
-                GrB_Matrix srcMat = Node_GetMatrix(src);
-                AlgebraicExpression_AppendTerm(exp, srcMat, false, false);
-            }
+        if(i == 0 && e->src->label) {
+            iexp->operands[iexp->operand_count++] = exp->operands[operandIdx++];
         }
 
-        // ()-[:A|:B.]->()
-        // Create matrix M, where M = A+B+...
-        int labelCount = AST_LinkEntity_LabelCount(astEdge);
-        if(labelCount > 1) {
-            GraphContext *gc = GraphContext_GetFromTLS();
-            Graph *g = gc->g;
-
-            GrB_Matrix m;
-            GrB_Matrix_new(&m, GrB_BOOL, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g));
-
-            for(int i = 0; i < labelCount; i++) {
-                char *label = astEdge->labels[i];
-                Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_EDGE);
-                if(!s) continue;
-                GrB_Matrix l = Graph_GetRelationMatrix(g, s->id);
-                GrB_Info info = GrB_eWiseAdd_Matrix_Semiring(m, NULL, NULL, Rg_structured_bool, m, l, NULL);                
-            }
-            mat = m;
-        }
-
-        unsigned int hops = 1;
         /* Expand fixed variable length edge */
-        if(astEdge->length && AST_LinkEntity_FixedLengthEdge(astEdge)) {
-            hops = astEdge->length->minHops;
+        unsigned int hops = (!Edge_VariableLength(e)) ? e->minHops : 1;
+        for(int j = 0; j < hops; j++) {
+            iexp->operands[iexp->operand_count++] = exp->operands[operandIdx++];
         }
 
-        for(int i = 0; i < hops; i++) {
-            bool freeMatrix = (labelCount > 1);
-            AlgebraicExpression_AppendTerm(exp, mat, transpose, freeMatrix);
+        if(e->dest->label) {
+            iexp->operands[iexp->operand_count++] = exp->operands[operandIdx++];
         }
 
-        if(dest->label) {
-            GrB_Matrix destMat = Node_GetMatrix(dest);
-            AlgebraicExpression_AppendTerm(exp, destMat, false, false);
+        /* If intermidate node is referenced, create a new algebraic expression. */
+        if(i < (pathLen-1) &&                       // Not the last edge on path.
+           _intermidate_node(e->dest) &&            // Node is an intermidate entity.
+           _referred_node(e->dest, ref_entities))   // Node is referenced.
+        {
+            // Finalize current expression.
+            iexp->dest_node = e->dest;
+
+            /* Create a new algebraic expression. */
+            iexp = _AE_MUL(exp->operand_count - operandIdx);
+            iexp->operand_count = 0;
+            iexp->src_node = expressions[expIdx-1]->dest_node;
+            iexp->dest_node = exp->dest_node;
+            expressions = array_append(expressions, iexp);
+            expIdx++;
         }
     }
 
-    exp->dest_node = dest;
-    AlgebraicExpression **expressions = _AlgebraicExpression_Intermidate_Expressions(exp, ast, matchPattern, q, exp_count);
-    expressions = _AlgebraicExpression_IsolateVariableLenExps(expressions, exp_count);
-    // TODO memory leak (fails on [a|b] relations?)
-    // AlgebraicExpression_Free(exp);
-    free(exp->operands);
-    free(exp);
-    
     return expressions;
+}
+
+static AlgebraicExpressionOperand _AlgebraicExpression_OperandFromNode(Node *n) {
+    AlgebraicExpressionOperand op;
+    op.free = false;
+    op.diagonal = true;
+    op.transpose = false;
+    op.operand = Node_GetMatrix(n);
+    return op;
+}
+
+static AlgebraicExpressionOperand _AlgebraicExpression_OperandFromEdge (
+    Edge *e,
+    bool transpose,
+    const AST* ast
+) {
+    AlgebraicExpressionOperand op;
+
+    // TODO: find a better way for retriving AST graph entity.
+    GrB_Matrix mat = Edge_GetMatrix(e);
+    AST_LinkEntity *astEdge = (AST_LinkEntity*)MatchClause_GetEntity(ast->matchNode, e->alias);
+    assert(astEdge);
+
+    int labelCount = AST_LinkEntity_LabelCount(astEdge);
+    bool freeMatrix = (labelCount > 1);
+    // [:A|:B]
+    // Create matrix M = A+B.
+    if(labelCount > 1) {
+        GraphContext *gc = GraphContext_GetFromTLS();
+        Graph *g = gc->g;
+
+        GrB_Matrix m;
+        GrB_Matrix_new(&m, GrB_BOOL, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g));
+
+        for(int i = 0; i < labelCount; i++) {
+            char *label = astEdge->labels[i];
+            Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_EDGE);
+            if(!s) continue;
+            GrB_Matrix l = Graph_GetRelationMatrix(g, s->id);
+            GrB_Info info = GrB_eWiseAdd_Matrix_Semiring(m, NULL, NULL, Rg_structured_bool, m, l, NULL);
+        }
+        mat = m;
+    }
+
+    op.operand = mat;
+    op.diagonal = false;
+    op.free = freeMatrix;
+    op.transpose = transpose;
+    return op;
+}
+
+AlgebraicExpression *AlgebraicExpression_Empty(void) {
+    return _AE_MUL(1);
+}
+
+/* In case edge a and b share a node:
+ * (a)-[E0]->(b)<-[e1]-(c)
+ * than the shared entity is returned
+ * if edges are disjoint, NULL is returned. */
+static Node* _SharedNode(const Edge *a, const Edge *b) {
+    assert(a && b);
+    if(a->src == b->src) return a->src;
+    if(a->src == b->dest) return a->src;
+    if(a->dest == b->src) return a->dest;
+    if(a->dest == b->dest) return a->dest;
+    return NULL;
+}
+
+static AlgebraicExpression* _AlgebraicExpression_From_Path(Edge **path, uint path_len, const AST *ast) {
+    assert(path && path_len > 0);
+
+    Edge *e = NULL;
+    AlgebraicExpressionOperand op;
+
+    // Construct expression.
+    AlgebraicExpression *exp = _AE_MUL(path_len * 2 - 1);  // (3) Node Edge Node.
+    // Count number of transposed edges.
+    int transposeCount = 0;
+
+    for(int i = 0; i < path_len; i++) {
+        e = path[i];
+        /* Determin if edge need to be transposed:
+         * Treating path as a chain
+         * we're aligning all edges to "point right"
+         * (A)-[E0]->(B)-[E0]->(C)-[E0]->(D).
+         * e.g. 
+         * (A)-[E0]->(B)<-[E1]-(C)-[E2]->(D)
+         * E1 will be transposed:
+         * (A)-[E0]->(B)-[E1]->(C)-[E2]->(D) */
+        bool transpose = false;
+        if(path_len > 1) {
+            if(i < path_len-1) {
+                Edge* follow = path[i+1];
+                Node *shared = _SharedNode(e, follow);
+                transpose = (e->dest != shared);
+            } else {
+                // Last edge.                
+                Edge* prev = path[i-1];
+                Node *shared = _SharedNode(prev, e);
+                transpose = (e->src != shared);
+            }
+            if(transpose) {
+                transposeCount++;
+                Edge_Reverse(e);
+            }
+        }
+
+        // If src node has a label, multiple by label matrix.
+        if(e->src->label) {
+            op = _AlgebraicExpression_OperandFromNode(e->src);
+            AlgebraicExpression_AppendOperand(exp, op);
+        }
+
+        // Add Edge matrix.
+        op = _AlgebraicExpression_OperandFromEdge(e, transpose, ast);
+
+        /* Expand fixed variable length edge */
+        unsigned int hops = (!Edge_VariableLength(e)) ? e->minHops : 1;
+        for(int j = 0; j < hops; j++) {
+            AlgebraicExpression_AppendOperand(exp, op);
+        }
+    }   // End of path traversal.
+
+    // If last node on path has a label, multiply by label matrix.
+    if(e->dest->label) {
+        op = _AlgebraicExpression_OperandFromNode(e->dest);
+        AlgebraicExpression_AppendOperand(exp, op);
+    }
+
+    // Set expression source and destination nodes.
+    exp->src_node = path[0]->src;
+    exp->dest_node = e->dest;
+
+    /* Optimize number of transpose:
+     * if the majority of operands are transposed
+     * transpose the entire expression. */
+    if(transposeCount > (path_len - transposeCount)) {
+        AlgebraicExpression_Transpose(exp);
+    }
+
+    return exp;
+}
+
+AlgebraicExpression **AlgebraicExpression_From_QueryGraph(const QueryGraph *qg, const AST *ast, size_t *exp_count) {
+    assert(qg && ast);
+    /* Construct algebraic expression(s) from query graph 
+     * trying to take advantage of long multiplications with as few 
+     * transpose as possible we'll transform paths crossing the graph 
+     * "diameter", these are guarantee to be the longest, although
+     * there might be situations in which these are not the most optimal paths
+     * to explore.
+     * 
+     * Once a path been transformed it's removed from the graph and the process
+     * repeat itself. */
+
+    assert(qg);
+    
+    /* A graph with no edges implies an empty algebraic expression
+     * the reasoning behind this decission is that algebraic expression 
+     * represent graph traversals, no edges means no traversals. */
+    if(qg->edge_count == 0) {
+        *exp_count = 0;
+        return NULL;
+    }
+
+    QueryGraph *g = QueryGraph_Clone(qg);
+    AlgebraicExpression **exps = array_new(AlgebraicExpression*, 1);
+
+    // TODO: Have a single AST function which computes its referred entities.
+    TrieMap *ref_entities = NewTrieMap();
+    SetClause_ReferredEntities(ast->setNode, ref_entities);
+    WithClause_ReferredEntities(ast->withNode, ref_entities);
+    WhereClause_ReferredEntities(ast->whereNode, ref_entities);
+    ReturnClause_ReferredEntities(ast->returnNode, ref_entities);
+    CreateClause_ReferredEntities(ast->createNode, ref_entities);
+    DeleteClause_ReferredEntities(ast->deleteNode, ref_entities);
+    _referred_edge_ends(g, ref_entities);
+    _referred_variable_length_edges(g, ref_entities);
+
+    // As long as there are nodes to process.
+    while(g->node_count) {
+        // Get leaf nodes at the deepest level.
+        int level;
+        Node **leafs = _DeepestLevel(g, &level);
+        assert(array_len(leafs) > 0 && level >= 0);
+
+        // Get a path of length level.
+        Edge **path = DFS(leafs[0], level);
+        assert(array_len(path) == level);
+
+        // Construct expression.
+        AlgebraicExpression *exp = _AlgebraicExpression_From_Path(path, level, ast);
+
+        // Split constructed expression into sub expressions.
+        AlgebraicExpression **sub_exps = _AlgebraicExpression_Intermidate_Expressions(exp, path, g, ref_entities);
+        sub_exps = _AlgebraicExpression_IsolateVariableLenExps(sub_exps);
+
+        // Remove path from graph.
+        _RemovePathFromGraph(g, path);
+
+        // Add constructed expression to return value.
+        for(uint j = 0; j < array_len(sub_exps); j++) exps = array_append(exps, sub_exps[j]);
+        
+        // Clean up
+        array_free(leafs);
+        array_free(sub_exps);
+        free(exp->operands);
+        free(exp);
+        // TODO memory leak (fails on [a|b] relations?)
+        // AlgebraicExpression_Free(exp);
+    }
+
+    TrieMap_Free(ref_entities, TrieMap_NOP_CB);
+
+    *exp_count = array_len(exps);
+    AlgebraicExpression **res = rm_malloc(sizeof(AlgebraicExpression*) * (*exp_count));
+    for(size_t i = 0; i < (*exp_count); i++) res[i] = exps[i];
+    array_free(exps);
+
+    return res;
 }
 
 /* Evaluates an algebraic expression,
@@ -418,22 +588,20 @@ void AlgebraicExpression_Execute(AlgebraicExpression *ae, GrB_Matrix res) {
      * X = A*B
      * Y = X*C
      * Z = Y*D */
-    for (int i = 1; i < operand_count; i++)
-    {
+    for (int i = 1; i < operand_count; i++) {
         // Multiply and reduce.
         leftTerm = operands[i-1];
         rightTerm = operands[i];
-        
 
         /* Incase we're required to transpose right hand side operand 
          * perform transpose once and update original expression. */
-        if (rightTerm.transpose)
-        {
+
+        if (rightTerm.transpose) {
+            assert(!rightTerm.diagonal); // Never transpose diagonal matrix.
             GrB_Matrix t = rightTerm.operand;
             /* Graph matrices are immutable, create a new matrix. 
              * and transpose. */
-            if (!rightTerm.free)
-            {
+            if (!rightTerm.free) {
                 GrB_Index cols;
                 GrB_Matrix_ncols(&cols, rightTerm.operand);
                 GrB_Matrix_new(&t, GrB_BOOL, cols, cols);
@@ -497,8 +665,10 @@ void AlgebraicExpression_Transpose(AlgebraicExpression *ae) {
 
     _AlgebraicExpression_ReverseOperandOrder(ae);
 
-    for(int i = 0; i < ae->operand_count; i++)
-        ae->operands[i].transpose = !ae->operands[i].transpose;
+    for(int i = 0; i < ae->operand_count; i++) {
+        if(ae->operands[i].diagonal) ae->operands[i].transpose = false;
+        else ae->operands[i].transpose = !ae->operands[i].transpose;
+    }
 }
 
 AlgebraicExpressionNode *AlgebraicExpressionNode_NewOperationNode(AL_EXP_OP op) {
