@@ -72,7 +72,7 @@ void _MGraph_Query(void *args) {
 
     // Try to access the GraphContext
     CommandCtx_ThreadSafeContextLock(qctx);
-    GraphContext *gc = GraphContext_Retrieve(ctx, qctx->graphName);
+    GraphContext *gc = GraphContext_Retrieve(ctx, qctx->graphName, readonly);
     if(!gc) {
         if(!ast[0]->createNode && !ast[0]->mergeNode) {
             CommandCtx_ThreadSafeContextUnlock(qctx);

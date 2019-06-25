@@ -71,7 +71,7 @@ void _MGraph_BulkInsert(void *args) {
         assert(gc);
     } else {
         // Query did not start with a "BEGIN" token
-        gc = GraphContext_Retrieve(ctx, graphname);
+        gc = GraphContext_Retrieve(ctx, graphname, false);
         if (gc == NULL) {
             RedisModule_ReplyWithError(ctx, "Bulk insert query did not include a BEGIN token and graph was not found.");
             goto cleanup;

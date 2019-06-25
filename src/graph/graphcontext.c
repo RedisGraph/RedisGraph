@@ -54,10 +54,11 @@ cleanup:
   return gc;
 }
 
-GraphContext* GraphContext_Retrieve(RedisModuleCtx *ctx, const char *graphname) {
+GraphContext* GraphContext_Retrieve(RedisModuleCtx *ctx, const char *graphname, bool readOnly) {
   GraphContext *gc = NULL;
   RedisModuleString *rs_name = RedisModule_CreateString(ctx, graphname, strlen(graphname));
-  RedisModuleKey *key = RedisModule_OpenKey(ctx, rs_name, REDISMODULE_READ);
+  int readWriteFlag = readOnly ? REDISMODULE_READ : REDISMODULE_WRITE;
+  RedisModuleKey *key = RedisModule_OpenKey(ctx, rs_name, readWriteFlag);
   if (RedisModule_ModuleTypeGetType(key) != GraphContextRedisModuleType) {
     goto cleanup;
   }
