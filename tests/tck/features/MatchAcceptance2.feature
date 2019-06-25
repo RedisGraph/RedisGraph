@@ -871,7 +871,7 @@ Feature: MatchAcceptance2
       | a.name |
       | 'a'    |
     And no side effects
-  @skip
+  
   Scenario: Handling cyclic patterns when separated into two parts
     Given an empty graph
     And having executed:

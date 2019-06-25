@@ -158,15 +158,16 @@ static Record _handoff(OpExpandInto *op) {
      * nodes are connected. */
     while(op->recordsLen) {
         op->recordsLen--;
+        // Current record resides at row recordsLen.
+        int rowIdx = op->recordsLen;
         op->r = op->records[op->recordsLen];
 
         srcNode = Record_GetNode(op->r, op->srcNodeRecIdx);
         destNode = Record_GetNode(op->r, op->destNodeRecIdx);
         srcId = ENTITY_GET_ID(srcNode);
         destId = ENTITY_GET_ID(destNode);
-
         bool x;
-        GrB_Info res = GrB_Matrix_extractElement_BOOL(&x, op->M, srcId, destId);
+        GrB_Info res = GrB_Matrix_extractElement_BOOL(&x, op->M, rowIdx, destId);
         // Src is not connected to dest.
         if(res != GrB_SUCCESS) continue;
 
