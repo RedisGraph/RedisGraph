@@ -12,6 +12,7 @@ def redis():
     return DisposableRedis(loadmodule=os.path.dirname(os.path.abspath(__file__)) + '/../../src/redisgraph.so')
 
 GRAPH_ID = "multiexec-graph"
+global_redis = None
 redis_con = None
 
 # Fully connected 3 nodes graph,
@@ -35,9 +36,11 @@ class MultiExecFlowTest(FlowTestsBase):
     def setUpClass(cls):
         print "Multi Exec"
         global redis_con
+        global global_redis
         cls.r = redis()
         cls.r.start()
-        redis_con = cls.r.client()
+        global_redis = cls.r
+        redis_con = global_redis.client()
 
         # redis_con = redis.Redis()
 
@@ -99,5 +102,51 @@ class MultiExecFlowTest(FlowTestsBase):
         no_edges = no_edges[1]
         assert(len(no_edges) == 0)
 
+
+    def test_transaction_failure(self):
+        
+        redis_con_a = global_redis.client() 
+        redis_con_b = global_redis.client()
+        results = redis_con_b.execute_command("INFO", "CLIENTS")
+        assert(results['connected_clients'] >= 2)
+
+        # Delete previous graph if exists.
+        redis_con_a.execute_command("DEL", GRAPH_ID)
+        redis_con_a.execute_command("GRAPH.QUERY", GRAPH_ID, CREATE_QUERY)
+
+        redis_con_a.execute_command("WATCH", GRAPH_ID)
+        redis_con_a.execute_command("MULTI")
+        redis_con_a.execute_command("GRAPH.QUERY", GRAPH_ID, MATCH_QUERY)
+        results = redis_con_a.execute_command("EXEC")
+
+        assert(results != None)
+
+        # read only query from client B - transaction OK
+        redis_con_a.execute_command("WATCH", GRAPH_ID)
+        redis_con_a.execute_command("MULTI")
+        redis_con_b.execute_command("GRAPH.QUERY", GRAPH_ID, MATCH_QUERY)
+        redis_con_a.execute_command("GRAPH.QUERY", GRAPH_ID, MATCH_QUERY)
+        results = redis_con_a.execute_command("EXEC")
+
+        assert(results != None)
+
+        # write query from client B - transaction fails
+        redis_con_a.execute_command("WATCH", GRAPH_ID)
+        redis_con_a.execute_command("MULTI")
+        redis_con_b.execute_command("GRAPH.QUERY", GRAPH_ID, UPDATE_QUERY)
+        redis_con_a.execute_command("GRAPH.QUERY", GRAPH_ID, MATCH_QUERY)
+        results = redis_con_a.execute_command("EXEC")
+
+        assert(results == None)
+
+        # GRAPH.EXPLAIN is read only - no data change - transaction OK
+        redis_con_a.execute_command("WATCH", GRAPH_ID)
+        redis_con_a.execute_command("MULTI")
+        redis_con_b.execute_command("GRAPH.EXPLAIN", GRAPH_ID, UPDATE_QUERY)
+        redis_con_a.execute_command("GRAPH.QUERY", GRAPH_ID, MATCH_QUERY)
+        results = redis_con_a.execute_command("EXEC")
+
+        assert(results != None)
+        
 if __name__ == '__main__':
     unittest.main()
