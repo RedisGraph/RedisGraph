@@ -57,7 +57,7 @@ void _MGraph_Explain(void *args) {
 
     // Retrieve the GraphContext and acquire a read lock.
     if(graphname) {
-        gc = GraphContext_Retrieve(ctx, graphname);
+        gc = GraphContext_Retrieve(ctx, graphname, true);
         if(!gc) {
             RedisModule_ReplyWithError(ctx, "key doesn't contains a graph object.");
             goto cleanup;
