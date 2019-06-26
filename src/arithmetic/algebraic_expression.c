@@ -21,12 +21,10 @@ AlgebraicExpression *_AE_MUL(size_t operand_cap) {
     return ae;
 }
 
-static int _intermidate_node(const Node *n) {
-    /* ->()<- 
-     * <-()->
-     * ->()->
-     * <-()<- */
-    return ((array_len(n->incoming_edges) + array_len(n->outgoing_edges)) >= 2);
+/* Node with (income + outcome degree) > 2
+ * is considered a highly connected node. */
+static int _highly_connected_node(const Node *n) {
+    return ((array_len(n->incoming_edges) + array_len(n->outgoing_edges)) > 2);
 }
 
 static int _referred_entity(char *alias, TrieMap *ref_entities) {
@@ -327,8 +325,8 @@ static AlgebraicExpression** _AlgebraicExpression_Intermidate_Expressions(
 
         /* If intermidate node is referenced, create a new algebraic expression. */
         if(i < (pathLen-1) &&                       // Not the last edge on path.
-           _intermidate_node(e->dest) &&            // Node is an intermidate entity.
-           _referred_node(e->dest, ref_entities))   // Node is referenced.
+           (_highly_connected_node(e->dest) ||      // Node in+out degree > 2.
+           _referred_node(e->dest, ref_entities)))  // Node is referenced.
         {
             // Finalize current expression.
             iexp->dest_node = e->dest;
