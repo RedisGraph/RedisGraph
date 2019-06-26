@@ -11,4 +11,5 @@
 #include "cmd_query.h"
 #include "cmd_delete.h"
 #include "cmd_explain.h"
+#include "cmd_profile.h"
 #include "cmd_bulk_insert.h"

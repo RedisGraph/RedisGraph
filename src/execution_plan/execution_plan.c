@@ -30,9 +30,9 @@ int _OpBase_ContainsChild(const OpBase *parent, const OpBase *child) {
 void _OpBase_AddChild(OpBase *parent, OpBase *child) {
     // Add child to parent
     if(parent->children == NULL) {
-        parent->children = malloc(sizeof(OpBase *));
+        parent->children = rm_malloc(sizeof(OpBase *));
     } else {
-        parent->children = realloc(parent->children, sizeof(OpBase *) * (parent->childCount+1));
+        parent->children = rm_realloc(parent->children, sizeof(OpBase *) * (parent->childCount+1));
     }
     parent->children[parent->childCount++] = child;
 
@@ -54,14 +54,14 @@ void _OpBase_RemoveNode(OpBase *parent, OpBase *child) {
     // Uppdate child count.
     parent->childCount--;
     if(parent->childCount == 0) {
-        free(parent->children);
+        rm_free(parent->children);
         parent->children = NULL;
     } else {
         // Shift left children.
         for(int j = i; j < parent->childCount; j++) {
             parent->children[j] = parent->children[j+1];
         }
-        parent->children = realloc(parent->children, sizeof(OpBase *) * parent->childCount);
+        parent->children = rm_realloc(parent->children, sizeof(OpBase *) * parent->childCount);
     }
 
     // Remove parent from child.
@@ -210,7 +210,7 @@ void ExecutionPlan_RemoveOp(ExecutionPlan *plan, OpBase *op) {
 
     // Clear op.
     op->parent = NULL;
-    free(op->children);
+    rm_free(op->children);
     op->children = NULL;
     op->childCount = 0;
 }
@@ -746,6 +746,39 @@ ResultSet* ExecutionPlan_Execute(ExecutionPlan *plan) {
     ExecutionPlanInit(plan);
     while((r = op->consume(op)) != NULL) Record_Free(r);
     return plan->result_set;
+}
+
+static void _ExecutionPlan_InitProfiling(OpBase *root) {
+    root->profile = root->consume;
+    root->consume = OpBase_Profile;
+    root->stats = rm_malloc(sizeof(OpStats));
+    root->stats->profileExecTime = 0;
+    root->stats->profileRecordCount = 0;
+
+    if(root->childCount) {
+        for(int i = 0; i < root->childCount; i++) {
+            OpBase *child = root->children[i];
+            _ExecutionPlan_InitProfiling(child);
+        }
+    }
+}
+
+static void _ExecutionPlan_FinalizeProfiling(OpBase *root) {
+    if(root->childCount) {
+        for(int i = 0; i < root->childCount; i++) {
+            OpBase *child = root->children[i];
+            root->stats->profileExecTime -= child->stats->profileExecTime;
+            _ExecutionPlan_FinalizeProfiling(child);
+        }
+    }
+    root->stats->profileExecTime *= 1000;   // Milliseconds.
+}
+
+ResultSet* ExecutionPlan_Profile(ExecutionPlan *plan) {
+    _ExecutionPlan_InitProfiling(plan->root);
+    ResultSet *rs = ExecutionPlan_Execute(plan);
+    _ExecutionPlan_FinalizeProfiling(plan->root);
+    return rs;
 }
 
 void _ExecutionPlanFreeRecursive(OpBase* op) {

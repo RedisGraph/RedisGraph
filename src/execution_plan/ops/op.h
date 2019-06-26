@@ -61,10 +61,17 @@ typedef Record (*fpConsume)(struct OpBase*);
 typedef OpResult (*fpReset)(struct OpBase*);
 typedef int (*fpToString)(const struct OpBase*, char *, uint);
 
+// Execution plan operation statistics.
+typedef struct {
+    int profileRecordCount;     // Number of records generated.
+    double profileExecTime;     // Operation total execution time in ms.
+}  OpStats;
+
 struct OpBase {
     OPType type;                // Type of operation
     fpInit init;                // Called once before execution.
     fpConsume consume;          // Produce next record.
+    fpConsume profile;          // Profiled version of consume.
     fpReset reset;              // Reset operation state.
     fpFree free;                // Free operation.
     fpToString toString;        // operation string representation.
@@ -72,11 +79,13 @@ struct OpBase {
     Vector *modifies;           // List of aliases, this op modifies.
     struct OpBase **children;   // Child operations.
     int childCount;             // Number of children.
+    OpStats *stats;             // Profiling statistics.
     struct OpBase *parent;      // Parent operations.
 };
 typedef struct OpBase OpBase;
 
-void OpBase_Init(OpBase *op);
-void OpBase_Reset(OpBase *op);
-void OpBase_Free(OpBase *op);
+void OpBase_Init(OpBase *op);       // Initialize op.
+void OpBase_Reset(OpBase *op);      // Reset op.
+void OpBase_Free(OpBase *op);       // Free op.
+Record OpBase_Profile(OpBase *op);  // Profile op.
 int OpBase_ToString(const OpBase *op, char *buff, uint buff_len);

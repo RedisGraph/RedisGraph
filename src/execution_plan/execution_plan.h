@@ -71,6 +71,9 @@ void ExecutionPlan_Taps(OpBase *root, OpBase ***taps);
 /* Executes plan */
 ResultSet* ExecutionPlan_Execute(ExecutionPlan *plan);
 
+/* Profile executes plan */
+ResultSet* ExecutionPlan_Profile(ExecutionPlan *plan);
+
 /* Free execution plan */
 void ExecutionPlanFree(ExecutionPlan *plan);
 

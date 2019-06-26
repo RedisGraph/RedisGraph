@@ -12,12 +12,6 @@
 #include "../grouping/group_cache.h"
 #include "../arithmetic/aggregate.h"
 
-// Choose the appropriate reply formatter
-EmitRecordFunc _ResultSet_SetReplyFormatter(bool compact) {
-    if (compact) return ResultSet_EmitCompactRecord;
-    return ResultSet_EmitVerboseRecord;
-}
-
 static void _ResultSet_ReplayStats(RedisModuleCtx* ctx, ResultSet* set) {
     char buff[512] = {0};
     size_t resultset_size = 1; /* query execution time. */
@@ -103,10 +97,10 @@ static void _ResultSet_CreateHeader(ResultSet *set, AST **ast) {
     /* Replay with table header. */
     if (set->compact) {
         TrieMap *entities = AST_CollectEntityReferences(ast);
-        ResultSet_ReplyWithCompactHeader(set->ctx, set->header, entities);
+        set->formatter->EmitHeader(set->ctx, set->header, entities);
         TrieMap_Free(entities, TrieMap_NOP_CB);
     } else {
-        ResultSet_ReplyWithVerboseHeader(set->ctx, set->header);
+        set->formatter->EmitHeader(set->ctx, set->header, NULL);
     }
 }
 
@@ -128,11 +122,11 @@ ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx, bool compact) {
     set->gc = GraphContext_GetFromTLS();
     set->distinct = (ast->returnNode && ast->returnNode->distinct);
     set->compact = compact;
-    set->EmitRecord = _ResultSet_SetReplyFormatter(set->compact);
     set->recordCount = 0;    
     set->header = NULL;
     set->bufferLen = 2048;
     set->buffer = malloc(set->bufferLen);
+    set->formatter = (compact) ? &ResultSetFormatterCompact : &ResultSetFormatterVerbose;
 
     set->stats.labels_added = 0;
     set->stats.nodes_created = 0;
@@ -142,6 +136,24 @@ ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx, bool compact) {
     set->stats.relationships_deleted = 0;
 
     return set;
+}
+
+// Choose the appropriate reply formatter.
+void ResultSet_SetReplyFormatter(ResultSet *set, ResultSetFormatterType formatter) {
+    switch(formatter) {
+        case FORMATTER_VERBOSE:
+            set->formatter = &ResultSetFormatterVerbose;
+            break;
+        case FORMATTER_COMPACT:
+            set->formatter = &ResultSetFormatterCompact;
+            break;
+        case FORMATTER_NOP:
+            set->formatter = &ResultSetNOP;
+            break;
+        default:
+            assert(false);
+        break;
+    }
 }
 
 // Initialize the user-facing reply arrays.
@@ -167,7 +179,7 @@ int ResultSet_AddRecord(ResultSet *set, Record r) {
     set->recordCount++;
 
     // Output the current record using the defined formatter
-    set->EmitRecord(set->ctx, set->gc, r, set->header->columns_len);
+    set->formatter->EmitRecord(set->ctx, set->gc, r, set->header->columns_len);
 
     return RESULTSET_OK;
 }

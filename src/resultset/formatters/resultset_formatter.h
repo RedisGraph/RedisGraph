@@ -6,11 +6,10 @@
 
 #pragma once
 
-#include "resultset_header.h"
-#include "../redismodule.h"
-#include "../execution_plan/record.h"
-#include "../graph/graphcontext.h"
-#include "../graph/query_graph.h"
+#include "../resultset_header.h"
+#include "../../redismodule.h"
+#include "../../execution_plan/record.h"
+#include "../../graph/graphcontext.h"
 
 typedef enum {
     COLUMN_UNKNOWN = 0,
@@ -28,6 +27,17 @@ typedef enum {
     PROPERTY_DOUBLE = 5,
 } PropertyTypeUser;
 
+// Typedef for header formatters.
+typedef void (*EmitHeaderFunc)(RedisModuleCtx *ctx, const ResultSetHeader *header, void *data);
+
+// Typedef for record formatters.
+typedef void (*EmitRecordFunc)(RedisModuleCtx *ctx, GraphContext *gc, const Record r, unsigned int numcols);
+
+typedef struct {
+    EmitRecordFunc EmitRecord;
+    EmitHeaderFunc EmitHeader;
+} ResultSetFormatter;
+
 /* Redis prints doubles with up to 17 digits of precision, which captures
  * the inaccuracy of many floating-point numbers (such as 0.1).
  * By using the %g format and a precision of 15 significant digits, we avoid many
@@ -41,18 +51,3 @@ static inline void _ResultSet_ReplyWithRoundedDouble(RedisModuleCtx *ctx, double
     // Output string-formatted number
     RedisModule_ReplyWithStringBuffer(ctx, str, len);
 }
-
-// Typedef for record formatters
-typedef void (*EmitRecordFunc)(RedisModuleCtx *ctx, GraphContext *gc, const Record r, unsigned int numcols);
-
-// Formatter for verbose (human-readable) replies
-void ResultSet_EmitVerboseRecord(RedisModuleCtx *ctx, GraphContext *gc, const Record r, unsigned int numcols);
-
-// Formatter for compact (client-parsed) replies
-void ResultSet_EmitCompactRecord(RedisModuleCtx *ctx, GraphContext *gc, const Record r, unsigned int numcols);
-
-// Formatter for verbose header reply
-void ResultSet_ReplyWithVerboseHeader(RedisModuleCtx *ctx, const ResultSetHeader *header);
-
-// Formatter for compact header reply
-void ResultSet_ReplyWithCompactHeader(RedisModuleCtx *ctx, const ResultSetHeader *header, TrieMap *entities);
