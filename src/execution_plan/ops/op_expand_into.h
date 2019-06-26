@@ -28,7 +28,7 @@ typedef struct {
     uint destNodeRecIdx;        // Index into record.
     uint edgeRecIdx;            // Index into record.
     uint recordsCap;            // Max number of records to process.
-    uint recordsLen;            // Number of records to process.
+    uint recordCount;           // Number of records to process.
     Record *records;            // Array of records.
     Record r;                   // Current selected record.
 } OpExpandInto;

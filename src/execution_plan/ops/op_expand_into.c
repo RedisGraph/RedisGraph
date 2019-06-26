@@ -99,7 +99,7 @@ OpBase* NewExpandIntoOp(AlgebraicExpression *ae, AST *ast) {
     expandInto->ast = ast;
     expandInto->edges = NULL;
     expandInto->graph = gc->g;
-    expandInto->recordsLen = 0;
+    expandInto->recordCount = 0;
     expandInto->edgeRelationTypes = NULL;
     expandInto->recordsCap = _determinRecordCap(ast);
     expandInto->srcNodeRecIdx = AST_GetAliasID(ast, ae->src_node->alias);
@@ -156,11 +156,11 @@ static Record _handoff(OpExpandInto *op) {
 
     /* Find a record where both record's source and destination
      * nodes are connected. */
-    while(op->recordsLen) {
-        op->recordsLen--;
-        // Current record resides at row recordsLen.
-        int rowIdx = op->recordsLen;
-        op->r = op->records[op->recordsLen];
+    while(op->recordCount) {
+        op->recordCount--;
+        // Current record resides at row recordCount.
+        int rowIdx = op->recordCount;
+        op->r = op->records[op->recordCount];
 
         srcNode = Record_GetNode(op->r, op->srcNodeRecIdx);
         destNode = Record_GetNode(op->r, op->destNodeRecIdx);
@@ -185,7 +185,7 @@ static Record _handoff(OpExpandInto *op) {
         }
 
         // Mark as NULL to avoid double free.
-        op->records[op->recordsLen] = NULL;
+        op->records[op->recordCount] = NULL;
         return op->r;
     }
 
@@ -215,22 +215,22 @@ Record ExpandIntoConsume(OpBase *opBase) {
         }
 
         // Ask child operations for data.
-        for(op->recordsLen = 0; op->recordsLen < op->recordsCap; op->recordsLen++) {
+        for(op->recordCount = 0; op->recordCount < op->recordsCap; op->recordCount++) {
             Record childRecord = child->consume(child);
             // Did not managed to get new data, break.
             if(!childRecord) break;
 
             // Store received record.
-            op->records[op->recordsLen] = childRecord;
+            op->records[op->recordCount] = childRecord;
             /* Update filter matrix F, set row i at position srcId
              * F[i, srcId] = true. */
             n = Record_GetNode(childRecord, op->srcNodeRecIdx);
             NodeID srcId = ENTITY_GET_ID(n);
-            GrB_Matrix_setElement_BOOL(op->F, true, op->recordsLen, srcId);
+            GrB_Matrix_setElement_BOOL(op->F, true, op->recordCount, srcId);
         }
 
         // Depleted.
-        if(op->recordsLen == 0) return NULL;
+        if(op->recordCount == 0) return NULL;
         _traverse(op);
     }
 
@@ -239,11 +239,11 @@ Record ExpandIntoConsume(OpBase *opBase) {
 
 OpResult ExpandIntoReset(OpBase *ctx) {
     OpExpandInto *op = (OpExpandInto*)ctx;
-    for(int i = 0; i < op->recordsLen; i++) {
+    for(int i = 0; i < op->recordCount; i++) {
         if(op->records[i]) Record_Free(op->records[i]);
         op->records = NULL;
     }
-    op->recordsLen = 0;
+    op->recordCount = 0;
 
     if(op->F) GrB_Matrix_clear(op->F);
     if(op->edges) array_clear(op->edges);
