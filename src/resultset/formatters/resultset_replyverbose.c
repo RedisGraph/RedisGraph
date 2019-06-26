@@ -34,6 +34,7 @@ static void _ResultSet_VerboseReplyWithSIValue(RedisModuleCtx *ctx, GraphContext
             assert("Unhandled value type" && false);
       }
 }
+
 static void _ResultSet_VerboseReplyWithProperties(RedisModuleCtx *ctx, GraphContext *gc, const GraphEntity *e) {
     int prop_count = ENTITY_PROP_COUNT(e);
     RedisModule_ReplyWithArray(ctx, prop_count);
@@ -148,7 +149,7 @@ void ResultSet_EmitVerboseRecord(RedisModuleCtx *ctx, GraphContext *gc, const Re
 }
 
 // Emit the alias or descriptor for each column in the header.
-void ResultSet_ReplyWithVerboseHeader(RedisModuleCtx *ctx, const ResultSetHeader *header) {
+void ResultSet_ReplyWithVerboseHeader(RedisModuleCtx *ctx, const ResultSetHeader *header, void *data) {
     RedisModule_ReplyWithArray(ctx, header->columns_len);
     for(int i = 0; i < header->columns_len; i++) {
         Column *c = header->columns[i];
