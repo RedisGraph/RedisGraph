@@ -5,6 +5,7 @@
 */
 
 #include "op.h"
+#include "../../util/rmalloc.h"
 #include "../../util/simple_timer.h"
 
 #include <assert.h>
@@ -14,6 +15,7 @@ void OpBase_Init(OpBase *op) {
     op->childCount = 0;
     op->children = NULL;
     op->parent = NULL;
+    op->stats = NULL;
     
     // Function pointers.
     op->init = NULL;
@@ -28,9 +30,26 @@ void OpBase_Reset(OpBase *op) {
     for(int i = 0; i < op->childCount; i++) OpBase_Reset(op->children[i]);
 }
 
+int OpBase_StatsToString(const OpBase *op, char *buff, uint buff_len) {
+    return snprintf(buff, buff_len,
+                    " | Records produced: %d, Execution time: %f ms",
+                    op->stats->profileRecordCount,
+                    op->stats->profileExecTime);
+}
+
 int OpBase_ToString(const OpBase *op, char *buff, uint buff_len) {
-    if(op->toString) return op->toString(op, buff, buff_len);
-    else return snprintf(buff, buff_len, "%s", op->name);
+    int bytes_written = 0;
+    
+    if(op->toString) bytes_written = op->toString(op, buff, buff_len);
+    else bytes_written = snprintf(buff, buff_len, "%s", op->name);
+
+    if(op->stats) {
+        bytes_written += OpBase_StatsToString(op,
+                                              buff + bytes_written,
+                                              buff_len - bytes_written);
+    }
+
+    return bytes_written;
 }
 
 Record OpBase_Profile(OpBase *op) {
@@ -39,15 +58,16 @@ Record OpBase_Profile(OpBase *op) {
     simple_tic(tic);
     Record r = op->profile(op);
     // Stop timer and accumulate.
-    op->profileExecTime += simple_toc(tic);
-    if(r) op->profileRecordCount++;
+    op->stats->profileExecTime += simple_toc(tic);
+    if(r) op->stats->profileRecordCount++;
     return r;
 }
 
 void OpBase_Free(OpBase *op) {
     // Free internal operation
     op->free(op);
-    if(op->children) free(op->children);
+    if(op->children) rm_free(op->children);
     if(op->modifies) Vector_Free(op->modifies);
+    if(op->stats) rm_free(op->stats);
     free(op);
 }
