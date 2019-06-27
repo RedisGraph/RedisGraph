@@ -2,7 +2,6 @@ import os
 import warnings
 from RLTest import Env 
 
-
 class FlowTestsBase(object):
     def __init__(self):
         self.env = Env()
