@@ -14,7 +14,7 @@ jobs:
             pip install redis-py-cluster &&
             pip install psutil &&
             pip install git+https://github.com/RedisLabsModules/RLTest.git@master &&
-            apt-get update; apt-get install -y automake peg libtool autoconf cmake
+            apt-get update; apt-get install -y automake peg libtool autoconf cmake valgrind
       
       # Load GraphBLAS from cache if possible.
       - restore_cache:
@@ -44,7 +44,7 @@ jobs:
 
       - run:
           name: Test
-          command: make test
+          command: make test VALGRIND=1
       
       - run:
           name: Persist Artifacts

@@ -96,8 +96,7 @@ Record ProjectConsume(OpBase *opBase) {
         // on the second call.
         if(op->singleResponse) return NULL;
         op->singleResponse = true;
-        // r = Record_New(AST_AliasCount(op->ast));  // Fake empty record.
-        r = Record_New(op->record_len);  // Fake empty record.
+        r = Record_New(AST_AliasCount(op->ast));  // Fake empty record.
     }
 
     Record projection = Record_New(op->record_len);
