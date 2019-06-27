@@ -7,7 +7,7 @@
 #include "op_node_by_label_scan.h"
 #include "../../parser/ast.h"
 
-int NodeByLabelScanToString(const OpBase *ctx, char *buff, uint buff_len) {
+static int NodeByLabelScanToString(const OpBase *ctx, char *buff, uint buff_len) {
     const NodeByLabelScan *op = (const NodeByLabelScan*)ctx;
     int offset = snprintf(buff, buff_len, "%s | ", op->op.name);
     offset += Node_ToString(op->node, buff + offset, buff_len - offset);

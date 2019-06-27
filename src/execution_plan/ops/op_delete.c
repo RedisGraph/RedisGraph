@@ -6,10 +6,7 @@
 
 #include "./op_delete.h"
 #include "../../util/arr.h"
-#include "../../util/qsort.h"
 #include <assert.h>
-
-#define EDGES_ID_ISLT(a, b) (ENTITY_GET_ID((a)) < ENTITY_GET_ID((b)))
 
 void _LocateEntities(OpDelete *op, QueryGraph *qg, AST_DeleteNode *ast_delete_node) {
     AST *ast = op->ast;
@@ -27,22 +24,6 @@ void _LocateEntities(OpDelete *op, QueryGraph *qg, AST_DeleteNode *ast_delete_no
             op->edges_to_delete[op->edge_count++] = entityRecIdx;
         }
     }
-}
-
-static uint64_t _binarySearch(Edge *array, EdgeID id) {
-    uint32_t edgeCount = array_len(array);
-    uint32_t left = 0;
-    uint32_t right = edgeCount;
-    uint32_t pos;
-    while(left < right) {
-        pos = (right + left) / 2;
-        if(ENTITY_GET_ID(array+pos) < id) {
-            left = pos + 1;
-        } else {
-            right = pos;
-        }
-    }
-    return left;
 }
 
 void _DeleteEntities(OpDelete *op) {

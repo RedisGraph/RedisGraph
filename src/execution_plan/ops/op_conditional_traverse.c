@@ -73,7 +73,7 @@ static int _determinRecordCap(const AST *ast) {
     return recordsCap;
 }
 
-int CondTraverseToString(const OpBase *ctx, char *buff, uint buff_len) {
+static int CondTraverseToString(const OpBase *ctx, char *buff, uint buff_len) {
     const CondTraverse *op = (const CondTraverse*)ctx;
 
     int offset = 0;    

@@ -7,7 +7,7 @@
 #include "op_index_scan.h"
 #include "../../parser/ast.h"
 
-int IndexScanToString(const OpBase *ctx, char *buff, uint buff_len) {
+static int IndexScanToString(const OpBase *ctx, char *buff, uint buff_len) {
     const IndexScan *op = (const IndexScan*)ctx;
     int offset = snprintf(buff, buff_len, "%s | ", op->op.name);
     offset += Node_ToString(op->n, buff + offset, buff_len - offset);
