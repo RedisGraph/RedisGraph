@@ -11,6 +11,8 @@ jobs:
           command: >-
             pip install git+https://github.com/RedisGraph/redisgraph-py.git &&
             pip install behave backports.csv &&
+            pip install redis-py-cluster &&
+            pip install psutil &&
             pip install git+https://github.com/RedisLabsModules/RLTest.git@master &&
             apt-get update; apt-get install -y automake peg libtool autoconf cmake
       
