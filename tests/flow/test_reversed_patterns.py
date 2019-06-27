@@ -1,46 +1,28 @@
 import os
 import sys
-import unittest
 from redisgraph import Graph, Node, Edge
 
-# import redis
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from disposableredis import DisposableRedis
 
 from base import FlowTestsBase
 
-GRAPH_NAME = "G"
+GRAPH_ID = "G"
 redis_con = None
 redis_graph = None
 
-def redis():
-    return DisposableRedis(loadmodule=os.path.dirname(os.path.abspath(__file__)) + '/../../src/redisgraph.so')
 
-class GraphPersistency(FlowTestsBase):
-    @classmethod
-    def setUpClass(cls):
-        print "GraphPersistency"
+class testReversedPatterns(FlowTestsBase):
+    def __init__(self):
+        super(testReversedPatterns, self).__init__()
         global redis_graph
         global redis_con
-        cls.r = redis()
-        cls.r.start()
-        redis_con = cls.r.client()
-        redis_graph = Graph(GRAPH_NAME, redis_con)
+        redis_con = self.env.getConnection()
+        redis_graph = Graph(GRAPH_ID, redis_con)
+        self.populate_graph()
 
-        # redis_con = redis.Redis()
-        # redis_graph = Graph("G", redis_con)
-
-        cls.populate_graph()
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.r.stop()
-        # pass
-
-    @classmethod
-    def populate_graph(cls):
+    def populate_graph(self):
         global redis_graph
-        if not redis_con.exists(GRAPH_NAME):
+        if not redis_con.exists(GRAPH_ID):
             # Create entities
             srcNode = Node(label="L", properties={"name": "SRC"})
             destNode = Node(label="L", properties={"name": "DEST"})
@@ -56,7 +38,4 @@ class GraphPersistency(FlowTestsBase):
         rightToLeft = """MATCH (c:L)<-[b]-(a:L) RETURN a, TYPE(b), c"""
         leftToRightResult = redis_graph.query(leftToRight)
         rightToLeftResult = redis_graph.query(rightToLeft)
-        assert(leftToRightResult.result_set == rightToLeftResult.result_set)
-
-if __name__ == '__main__':
-    unittest.main()
+        self.env.assertEquals(leftToRightResult.result_set, rightToLeftResult.result_set)

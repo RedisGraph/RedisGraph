@@ -1,11 +1,8 @@
 import os
 import sys
-import unittest
 from redisgraph import Graph, Node, Edge
 
-# import redis
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from disposableredis import DisposableRedis
 
 from base import FlowTestsBase
 
@@ -18,36 +15,19 @@ people = ["Roi", "Alon", "Ailon", "Boaz", "Tal", "Omri", "Ori"]
 countries = ["Israel", "USA", "Japan", "United Kingdom"]
 visits = [("Roi", "USA"), ("Alon", "Israel"), ("Ailon", "Japan"), ("Boaz", "United Kingdom")]
 
-def redis():
-    return DisposableRedis(loadmodule=os.path.dirname(os.path.abspath(__file__)) + '/../../src/redisgraph.so')
-
-class GraphPersistency(FlowTestsBase):
-    @classmethod
-    def setUpClass(cls):
-        print "GraphPersistency"
+class testGraphPersistency(FlowTestsBase):
+    def __init__(self):
+        super(testGraphPersistency, self).__init__()
         global redis_graph
         global dense_graph
         global redis_con
-        cls.r = redis()
-        cls.r.start()
-        redis_con = cls.r.client()
+        redis_con = self.env.getConnection()
         redis_graph = Graph(GRAPH_NAME, redis_con)
         dense_graph = Graph(DENSE_GRAPH_NAME, redis_con)
+        self.populate_graph()
+        self.populate_dense_graph()
 
-        # redis_con = redis.Redis()
-        # redis_graph = Graph(GRAPH_NAME, redis_con)
-        # dense_graph = Graph(DENSE_GRAPH_NAME, redis_con)
-
-        cls.populate_graph()
-        cls.populate_dense_graph()
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.r.stop()
-        # pass
-
-    @classmethod
-    def populate_graph(cls):
+    def populate_graph(self):
         global redis_graph
 
         if not redis_con.exists(GRAPH_NAME):
@@ -84,8 +64,7 @@ class GraphPersistency(FlowTestsBase):
             actual_result = redis_con.execute_command("GRAPH.QUERY", GRAPH_NAME, "CREATE INDEX ON :person(name)")
             actual_result = redis_con.execute_command("GRAPH.QUERY", GRAPH_NAME, "CREATE INDEX ON :country(name)")
 
-    @classmethod
-    def populate_dense_graph(cls):
+    def populate_dense_graph(self):
         global dense_graph
 
         if not redis_con.exists(DENSE_GRAPH_NAME):
@@ -113,42 +92,42 @@ class GraphPersistency(FlowTestsBase):
             query = """MATCH (p:person) RETURN COUNT(p)"""
             actual_result = redis_graph.query(query)
             nodeCount = actual_result.result_set[0][0]
-            assert(nodeCount == 5)
+            self.env.assertEquals(nodeCount, 5)
 
             query = """MATCH (p:person) WHERE p.name='Alon' RETURN COUNT(p)"""
             actual_result = redis_graph.query(query)
             nodeCount = actual_result.result_set[0][0]
-            assert(nodeCount == 1)
+            self.env.assertEquals(nodeCount, 1)
 
             # Expecting 3 country entities.
             query = """MATCH (c:country) RETURN COUNT(c)"""
             actual_result = redis_graph.query(query)
             nodeCount = actual_result.result_set[0][0]
-            assert(nodeCount == 3)
+            self.env.assertEquals(nodeCount, 3)
 
             query = """MATCH (c:country) WHERE c.name = 'Israel' RETURN COUNT(c)"""
             actual_result = redis_graph.query(query)
             nodeCount = actual_result.result_set[0][0]
-            assert(nodeCount == 1)
+            self.env.assertEquals(nodeCount, 1)
 
             # Expecting 2 visit edges.
             query = """MATCH (n:person)-[e:visit]->(c:country) WHERE e.purpose='pleasure' RETURN COUNT(e)"""
             actual_result = redis_graph.query(query)
             edgeCount = actual_result.result_set[0][0]
-            assert(edgeCount == 2)
+            self.env.assertEquals(edgeCount, 2)
 
             # Verify indices exists.
             plan = redis_graph.execution_plan("MATCH (n:person) WHERE n.name = 'Roi' RETURN n")
-            assert("Index Scan" in plan)
+            self.env.assertIn("Index Scan", plan)
 
             plan = redis_graph.execution_plan("MATCH (n:country) WHERE n.name = 'Israel' RETURN n")
-            assert("Index Scan" in plan)
+            self.env.assertIn("Index Scan", plan)
 
     # Verify that edges are not modified after entity deletion
     def test02_deleted_entity_migration(self):
         query = """MATCH (p) WHERE ID(p) = 0 OR ID(p) = 3 OR ID(p) = 7 OR ID(p) = 9 DELETE p"""
         actual_result = dense_graph.query(query)
-        assert(actual_result.nodes_deleted == 4)
+        self.env.assertEquals(actual_result.nodes_deleted, 4)
         query = """MATCH (p)-[]->(q) RETURN p.val, q.val ORDER BY p.val, q.val"""
         first_result = dense_graph.query(query)
 
@@ -156,7 +135,7 @@ class GraphPersistency(FlowTestsBase):
         redis_con.execute_command("DEBUG", "RELOAD")
 
         second_result = dense_graph.query(query)
-        assert(first_result.result_set == second_result.result_set)
+        self.env.assertEquals(first_result.result_set, second_result.result_set)
 
     # Strings, numerics, booleans, and NULL properties should be properly serialized and reloaded
     def test03_restore_properties(self):
@@ -165,8 +144,8 @@ class GraphPersistency(FlowTestsBase):
         query = """CREATE (:p {strval: 'str', numval: 5.5, nullval: NULL, boolval: true})"""
         actual_result = graph.query(query)
         # Verify that node was created correctly
-        assert(actual_result.nodes_created == 1)
-        assert(actual_result.properties_set == 4)
+        self.env.assertEquals(actual_result.nodes_created, 1)
+        self.env.assertEquals(actual_result.properties_set, 4)
 
         # Save RDB & Load from RDB
         redis_con.execute_command("DEBUG", "RELOAD")
@@ -178,7 +157,7 @@ class GraphPersistency(FlowTestsBase):
         # Note that the order of results is not guaranteed (currently managed by the Schema),
         # so this may need to be updated in the future.
         expected_result = [[True, None, 5.5, 'str']]
-        assert(actual_result.result_set == expected_result)
+        self.env.assertEquals(actual_result.result_set, expected_result)
 
     # Verify multiple edges of the same relation between nodes A and B
     # are saved and restored correctly.
@@ -202,14 +181,11 @@ class GraphPersistency(FlowTestsBase):
         expected_result = [[edge1.properties['val'], src.properties['name'], dest.properties['name']], 
                            [edge2.properties['val'], src.properties['name'], dest.properties['name']]]
 
-        assert(actual_result.result_set == expected_result)
+        self.env.assertEquals(actual_result.result_set, expected_result)
 
         # Save RDB & Load from RDB
         redis_con.execute_command("DEBUG", "RELOAD")
 
         # Verify that the latest edge was properly saved and loaded
         actual_result = g.query(q)
-        assert(actual_result.result_set == expected_result)
-
-if __name__ == '__main__':
-    unittest.main()
+        self.env.assertEquals(actual_result.result_set, expected_result)

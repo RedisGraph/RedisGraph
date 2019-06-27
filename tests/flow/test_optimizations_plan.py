@@ -1,37 +1,25 @@
 from base import FlowTestsBase
-from disposableredis import DisposableRedis
 import os
 import sys
-import unittest
 from redisgraph import Graph, Node, Edge
-import redis
+
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 graph = None
 redis_con = None
 people = ["Roi", "Alon", "Ailon", "Boaz"]
 
-def disposable_redis():
-    return DisposableRedis(loadmodule=os.path.dirname(os.path.abspath(__file__)) + '/../../src/redisgraph.so')
 
-class OptimizationsPlanTest(FlowTestsBase):
-    @classmethod
-    def setUpClass(cls):
-        print "OptimizationsPlanTest"
+class testOptimizationsPlan(FlowTestsBase):
+    def __init__(self):
+        super(testOptimizationsPlan, self).__init__()
         global graph
-        cls.r = disposable_redis()
-        cls.r.start()
-        redis_con = cls.r.client()
+        global redis_con
+        redis_con = self.env.getConnection()
         graph = Graph("g", redis_con)
-        cls.populate_graph()
-       
-    @classmethod
-    def tearDownClass(cls):
-        cls.r.stop()
-        # pass
+        self.populate_graph()
 
-    @classmethod
-    def populate_graph(cls):
+    def populate_graph(self):
         global graph
         nodes = {}
         # Create entities
@@ -61,97 +49,94 @@ class OptimizationsPlanTest(FlowTestsBase):
         query = """MATCH ()-[r]->() RETURN COUNT(r)"""
         resultset = graph.query(query).result_set
         executionPlan = graph.execution_plan(query)
-        self.assertIn("Project", executionPlan)
-        self.assertIn("Results", executionPlan)
-        self.assertNotIn("All Node Scan", executionPlan)
-        self.assertNotIn("Conditional Traverse", executionPlan)
-        self.assertNotIn("Aggregate", executionPlan)
+        self.env.assertIn("Project", executionPlan)
+        self.env.assertIn("Results", executionPlan)
+        self.env.assertNotIn("All Node Scan", executionPlan)
+        self.env.assertNotIn("Conditional Traverse", executionPlan)
+        self.env.assertNotIn("Aggregate", executionPlan)
         expected = [[36]]
-        self.assertEqual(resultset, expected)
+        self.env.assertEqual(resultset, expected)
     
     def test_typed_edge_count(self):
         query = """MATCH ()-[r:know]->() RETURN COUNT(r)"""
         resultset = graph.query(query).result_set
         executionPlan = graph.execution_plan(query)
-        self.assertIn("Project", executionPlan)
-        self.assertIn("Results", executionPlan)
-        self.assertNotIn("All Node Scan", executionPlan)
-        self.assertNotIn("Conditional Traverse", executionPlan)
-        self.assertNotIn("Aggregate", executionPlan)
+        self.env.assertIn("Project", executionPlan)
+        self.env.assertIn("Results", executionPlan)
+        self.env.assertNotIn("All Node Scan", executionPlan)
+        self.env.assertNotIn("Conditional Traverse", executionPlan)
+        self.env.assertNotIn("Aggregate", executionPlan)
         expected = [[24]]
-        self.assertEqual(resultset, expected)
+        self.env.assertEqual(resultset, expected)
     
     def test_typeless_edge_count_with_alias(self):
         query = """MATCH ()-[r]->() RETURN COUNT(r) as c"""
         resultset = graph.query(query).result_set
         executionPlan = graph.execution_plan(query)
-        self.assertIn("Project", executionPlan)
-        self.assertIn("Results", executionPlan)
-        self.assertNotIn("All Node Scan", executionPlan)
-        self.assertNotIn("Conditional Traverse", executionPlan)
-        self.assertNotIn("Aggregate", executionPlan)
+        self.env.assertIn("Project", executionPlan)
+        self.env.assertIn("Results", executionPlan)
+        self.env.assertNotIn("All Node Scan", executionPlan)
+        self.env.assertNotIn("Conditional Traverse", executionPlan)
+        self.env.assertNotIn("Aggregate", executionPlan)
         expected = [[36]]
-        self.assertEqual(resultset, expected)
+        self.env.assertEqual(resultset, expected)
     
     def test_typed_edge_count_with_alias(self):
         query = """MATCH ()-[r:know]->() RETURN COUNT(r) as c"""
         resultset = graph.query(query).result_set
         executionPlan = graph.execution_plan(query)
-        self.assertIn("Project", executionPlan)
-        self.assertIn("Results", executionPlan)
-        self.assertNotIn("All Node Scan", executionPlan)
-        self.assertNotIn("Conditional Traverse", executionPlan)
-        self.assertNotIn("Aggregate", executionPlan)
+        self.env.assertIn("Project", executionPlan)
+        self.env.assertIn("Results", executionPlan)
+        self.env.assertNotIn("All Node Scan", executionPlan)
+        self.env.assertNotIn("Conditional Traverse", executionPlan)
+        self.env.assertNotIn("Aggregate", executionPlan)
         expected = [[24]]
-        self.assertEqual(resultset, expected)
+        self.env.assertEqual(resultset, expected)
 
     def test_multiple_typed_edge_count_with_alias(self):
         query = """MATCH ()-[r:know | :works_with]->() RETURN COUNT(r) as c"""
         resultset = graph.query(query).result_set
         executionPlan = graph.execution_plan(query)
-        self.assertIn("Project", executionPlan)
-        self.assertIn("Results", executionPlan)
-        self.assertNotIn("All Node Scan", executionPlan)
-        self.assertNotIn("Conditional Traverse", executionPlan)
-        self.assertNotIn("Aggregate", executionPlan)
+        self.env.assertIn("Project", executionPlan)
+        self.env.assertIn("Results", executionPlan)
+        self.env.assertNotIn("All Node Scan", executionPlan)
+        self.env.assertNotIn("Conditional Traverse", executionPlan)
+        self.env.assertNotIn("Aggregate", executionPlan)
         expected = [[36]]
-        self.assertEqual(resultset, expected)
+        self.env.assertEqual(resultset, expected)
 
     def test_non_labeled_node_count(self):
         query = """MATCH (n) RETURN COUNT(n)"""
         resultset = graph.query(query).result_set
         executionPlan = graph.execution_plan(query)
-        self.assertIn("Project", executionPlan)
-        self.assertIn("Results", executionPlan)
-        self.assertNotIn("All Node Scan", executionPlan)
-        self.assertNotIn("Node By Label Scan", executionPlan)
-        self.assertNotIn("Aggregate", executionPlan)
+        self.env.assertIn("Project", executionPlan)
+        self.env.assertIn("Results", executionPlan)
+        self.env.assertNotIn("All Node Scan", executionPlan)
+        self.env.assertNotIn("Node By Label Scan", executionPlan)
+        self.env.assertNotIn("Aggregate", executionPlan)
         expected = [[4]]
-        self.assertEqual(resultset, expected)
+        self.env.assertEqual(resultset, expected)
     
     def test_non_labeled_node_count_with_alias(self):
         query = """MATCH (n) RETURN COUNT(n) as c"""
         resultset = graph.query(query).result_set
         executionPlan = graph.execution_plan(query)
-        self.assertIn("Project", executionPlan)
-        self.assertIn("Results", executionPlan)
-        self.assertNotIn("All Node Scan", executionPlan)
-        self.assertNotIn("Node By Label Scan", executionPlan)
-        self.assertNotIn("Aggregate", executionPlan)
+        self.env.assertIn("Project", executionPlan)
+        self.env.assertIn("Results", executionPlan)
+        self.env.assertNotIn("All Node Scan", executionPlan)
+        self.env.assertNotIn("Node By Label Scan", executionPlan)
+        self.env.assertNotIn("Aggregate", executionPlan)
         expected = [[4]]
-        self.assertEqual(resultset, expected)
+        self.env.assertEqual(resultset, expected)
     
     def test_labled_node_count(self):
         query = """MATCH (n:person) RETURN COUNT(n)"""
         resultset = graph.query(query).result_set
         executionPlan = graph.execution_plan(query)
-        self.assertIn("Project", executionPlan)
-        self.assertIn("Results", executionPlan)
-        self.assertNotIn("All Node Scan", executionPlan)
-        self.assertNotIn("Node By Label Scan", executionPlan)
-        self.assertNotIn("Aggregate", executionPlan)
+        self.env.assertIn("Project", executionPlan)
+        self.env.assertIn("Results", executionPlan)
+        self.env.assertNotIn("All Node Scan", executionPlan)
+        self.env.assertNotIn("Node By Label Scan", executionPlan)
+        self.env.assertNotIn("Aggregate", executionPlan)
         expected = [[4]]
-        self.assertEqual(resultset, expected)
-
-
-
+        self.env.assertEqual(resultset, expected)
