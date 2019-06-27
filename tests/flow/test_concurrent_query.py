@@ -1,11 +1,7 @@
 import os
 import sys
-import unittest
 import threading
 from redisgraph import Graph, Node, Edge
-
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from disposableredis import DisposableRedis
 
 from base import FlowTestsBase
 
@@ -14,9 +10,6 @@ CLIENT_COUNT = 16                   # Number of concurrent connections.
 graphs = None                       # One graph object per client.
 assertions = [True] * CLIENT_COUNT  # Each thread places its verdict at position threadID.
 people = ["Roi", "Alon", "Ailon", "Boaz", "Tal", "Omri", "Ori"]
-
-def redis():
-    return DisposableRedis(loadmodule=os.path.dirname(os.path.abspath(__file__)) + '/../../src/redisgraph.so')
 
 def query_aggregate(graph, query, threadID):
     global assertions
@@ -63,27 +56,17 @@ def delete_graph(graph, threadID):
         # Graph deletion failed.
         assertions[threadID] = False
 
-class ConcurrentQueryFlowTest(FlowTestsBase):
-    @classmethod
-    def setUpClass(cls):
+class testConcurrentQueryFlow(FlowTestsBase):
+    def __init__(self):
+        super(testConcurrentQueryFlow, self).__init__()
         global graphs
         graphs = []
-
-        print "ConcurrentQueryFlowTest"
-        cls.r = redis()
-        cls.r.start()
-
         for i in range(0, CLIENT_COUNT):
-            conn = cls.r.client()
-            graphs.append(Graph(GRAPH_ID, conn))
-        cls.populate_graph()
+            redis_con = self.env.getConnection()
+            graphs.append(Graph(GRAPH_ID, redis_con))
+        self.populate_graph()
 
-    @classmethod
-    def tearDownClass(cls):
-        cls.r.stop()
-
-    @classmethod
-    def populate_graph(cls):
+    def populate_graph(self):
         nodes = {}
         graph = graphs[0]
 
@@ -117,7 +100,7 @@ class ConcurrentQueryFlowTest(FlowTestsBase):
         for i in range(CLIENT_COUNT):
             t = threads[i]
             t.join()
-            assert(assertions[i])
+            self.env.assertTrue(assertions[i])
     
     # Concurrently get neighbors of every node.
     def test02_retrieve_neighbors(self):
@@ -134,7 +117,7 @@ class ConcurrentQueryFlowTest(FlowTestsBase):
         for i in range(CLIENT_COUNT):
             t = threads[i]
             t.join()
-            assert(assertions[i])
+            self.env.assertTrue(assertions[i])
 
     # Concurrent writes
     def test_03_concurrent_write(self):        
@@ -151,7 +134,7 @@ class ConcurrentQueryFlowTest(FlowTestsBase):
         for i in range(CLIENT_COUNT):
             t = threads[i]
             t.join()
-            assert(assertions[i])
+            self.env.assertTrue(assertions[i])
     
     # Try to delete graph multiple times.
     def test_04_concurrent_delete(self):
@@ -169,7 +152,4 @@ class ConcurrentQueryFlowTest(FlowTestsBase):
             t.join()
 
         # Exactly one thread should have successfully deleted the graph.
-        assert(assertions.count(True) == 1)
-
-if __name__ == '__main__':
-    unittest.main()
+        self.env.assertEquals(assertions.count(True), 1)

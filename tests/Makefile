@@ -11,11 +11,7 @@ unit:
 
 flow:
 	### flow tests
-ifeq ($(V),)
-	@python -m unittest discover -b
-else
-	@python -m unittest discover --verbose
-endif
+	@$(MAKE) -C flow
 
 tck:
 	### Cypher Technology Compatibility Kit (TCK)

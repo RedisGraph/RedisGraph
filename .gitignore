@@ -30,6 +30,7 @@
 
 # Folders
 CMakeFiles/
+logs/
 
 # Files
 CMakeCache.txt

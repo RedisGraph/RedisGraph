@@ -1,11 +1,8 @@
 import os
 import sys
-import unittest
 from redisgraph import Graph, Node, Edge
 
-# import redis
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from disposableredis import DisposableRedis
 
 from base import FlowTestsBase
 
@@ -19,13 +16,17 @@ node3 = Node(label="fruit", properties={"name": "Orange3", "value": 3})
 node4 = Node(label="fruit", properties={"name": "Orange4", "value": 4})
 node5 = Node(label="fruit", properties={"name": "Banana", "value": 5})
 
-def _redis():
-    return DisposableRedis(loadmodule=os.path.dirname(os.path.abspath(__file__)) + '/../../src/redisgraph.so')
-
 # Tests built in procedures,
 # e.g. db.idx.fulltext.queryNodes
 # Test over all procedure behavior in addition to procedure specifics.
-class ProceduresTest(FlowTestsBase):
+class testProcedures(FlowTestsBase):
+    def __init__(self):
+        super(testProcedures, self).__init__()
+        global redis_graph
+        global redis_con
+        redis_con = self.env.getConnection()
+        redis_graph = Graph(GRAPH_ID, redis_con)
+        self.populate_graph()
     @classmethod
     def setUpClass(cls):
         print "ProceduresTest"
@@ -41,14 +42,8 @@ class ProceduresTest(FlowTestsBase):
         # redis_con = redis_graph.redis_con
 
         cls.populate_graph()
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.r.stop()
-        # pass
-
-    @classmethod
-    def populate_graph(cls):
+  
+    def populate_graph(self):
         if redis_con.exists(GRAPH_ID):
             return
 
@@ -79,9 +74,9 @@ class ProceduresTest(FlowTestsBase):
     # Issue query and validates resultset.
     def queryAndValidate(self, query, expected_results):
         actual_resultset = redis_graph.query(query).result_set
-        assert(len(actual_resultset) == len(expected_results))
+        self.env.assertEquals(len(actual_resultset), len(expected_results))
         for i in range(len(actual_resultset)):
-            assert(self._inResultSet(expected_results[i], actual_resultset))
+            self.env.assertTrue(self._inResultSet(expected_results[i], actual_resultset))
     
     # Call procedure, omit yield, expecting all procedure outputs to
     # be included in result-set.
@@ -277,17 +272,14 @@ class ProceduresTest(FlowTestsBase):
     def test_procedure_labels(self):
         actual_resultset = redis_graph.call_procedure("db.labels").result_set
         expected_results = [["fruit"]]        
-        assert(actual_resultset == expected_results)
+        self.env.assertEquals(actual_resultset, expected_results)
     
     def test_procedure_relationshipTypes(self):
         actual_resultset = redis_graph.call_procedure("db.relationshipTypes").result_set
         expected_results = [["goWellWith"]]
-        assert(actual_resultset == expected_results)
+        self.env.assertEquals(actual_resultset, expected_results)
     
     def test_procedure_propertyKeys(self):
         actual_resultset = redis_graph.call_procedure("db.propertyKeys").result_set
         expected_results = [["value"], ["name"]]
-        assert(actual_resultset == expected_results)
-
-if __name__ == '__main__':
-    unittest.main()
+        self.env.assertEquals(actual_resultset, expected_results)

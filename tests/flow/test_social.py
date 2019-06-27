@@ -1,45 +1,26 @@
 import os
 import sys
-import unittest
 from redisgraph import Graph
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../demo/social/')
-
-# import redis
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from disposableredis import DisposableRedis
 
-from .reversepattern import ReversePattern
+from reversepattern import ReversePattern
 from base import FlowTestsBase
 import social_queries as queries
 import social_utils
 
 redis_graph = None
 
-def redis():
-    return DisposableRedis(loadmodule=os.path.dirname(os.path.abspath(__file__)) + '/../../src/redisgraph.so')
+class testSocialFlow(FlowTestsBase):
 
-class SocialFlowTest(FlowTestsBase):
-    @classmethod
-    def setUpClass(cls):
-        print "SocialFlowTest"
+    def __init__(self):
+        super(testSocialFlow, self).__init__()
         global redis_graph
-
-        cls.r = redis()
-        cls.r.start()
-        redis_con = cls.r.client()
+        redis_con = self.env.getConnection()
         redis_graph = Graph(social_utils.graph_name, redis_con)
         social_utils.populate_graph(redis_con, redis_graph)
-
-        # cls.r = redis.Redis()
-        # redis_graph = Graph(social_utils.graph_name, cls.r)
-        # social_utils.populate_graph(cls.r, redis_graph)
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.r.stop()
-        # pass
-
+ 
     def assert_reversed_pattern(self, query, resultset):
         # Test reversed pattern query.
         reversed_query = ReversePattern().reverse_query_pattern(query)
@@ -47,7 +28,7 @@ class SocialFlowTest(FlowTestsBase):
         actual_result = redis_graph.query(reversed_query)
 
         # assert result set
-        self.assertEqual(resultset.result_set, actual_result.result_set)
+        self.env.assertEqual(resultset.result_set, actual_result.result_set)
 
         # assert query run time
         self._assert_equalish(resultset.run_time_ms, actual_result.run_time_ms)
@@ -492,6 +473,3 @@ class SocialFlowTest(FlowTestsBase):
             queries.post_delete_label_query)
         # assert query run time
         self._assert_run_time(actual_result, queries.post_delete_label_query)
-
-if __name__ == '__main__':
-    unittest.main()

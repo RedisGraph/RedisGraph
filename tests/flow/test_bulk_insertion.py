@@ -2,12 +2,10 @@
 import os
 import sys
 import csv
-import unittest
 import click
 from click.testing import CliRunner
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from disposableredis import DisposableRedis
 
 from redisgraph import Graph, Node, Edge
 from base import FlowTestsBase
@@ -19,24 +17,15 @@ redis_con = None
 port = None
 redis_graph = None
 
-def redis():
-    return DisposableRedis(loadmodule=os.path.dirname(os.path.abspath(__file__)) + '/../../src/redisgraph.so')
-
-class GraphBulkInsertFlowTest(FlowTestsBase):
-    @classmethod
-    def setUpClass(cls):
-        print "BulkInsertFlowTest"
+class testGraphBulkInsertFlow(FlowTestsBase):
+    def __init__(self):
+        super(testGraphBulkInsertFlow, self).__init__()
+        global redis_graph
         global redis_con
-        global port
+        redis_con = self.env.getConnection()
+        port = self.env.envRunner.port
+        redis_graph = Graph("graph", redis_con)
 
-        cls.r = redis()
-        cls.r.start()
-        redis_con = cls.r.client()
-        port = cls.r.port
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.r.stop()
 
     # Run bulk loader script and validate terminal output
     def test01_run_script(self):
@@ -52,16 +41,13 @@ class GraphBulkInsertFlowTest(FlowTestsBase):
                                           graphname])
 
         # The script should report 27 node creations and 48 edge creations
-        assert res.exit_code == 0
-        assert '27 nodes created' in res.output
-        assert '56 relations created' in res.output
+        self.env.assertEquals(res.exit_code, 0)
+        self.env.assertIn('27 nodes created', res.output)
+        self.env.assertIn('56 relations created', res.output)
 
     # Validate that the expected nodes and properties have been constructed
     def test02_validate_nodes(self):
         global redis_graph
-        graphname = "graph"
-        redis_graph = Graph(graphname, redis_con)
-
         # Query the newly-created graph
         query_result = redis_graph.query('MATCH (p:Person) RETURN p.name, p.age, p.gender, p.status, ID(p) ORDER BY p.name')
         # Verify that the Person label exists, has the correct attributes, and is properly populated
@@ -79,7 +65,7 @@ class GraphBulkInsertFlowTest(FlowTestsBase):
                            ['Shelly Laslo Rooz', 31, 'female', 'married', 9],
                            ['Tal Doron', 32, 'male', 'single', 6],
                            ['Valerie Abigail Arad', 31, 'female', 'married', 10]]
-        assert query_result.result_set == expected_result
+        self.env.assertEquals(query_result.result_set, expected_result)
 
         # Verify that the Country label exists, has the correct attributes, and is properly populated
         query_result = redis_graph.query('MATCH (c:Country) RETURN c.name, ID(c) ORDER BY c.name')
@@ -96,7 +82,7 @@ class GraphBulkInsertFlowTest(FlowTestsBase):
                            ['Russia', 23],
                            ['Thailand', 26],
                            ['USA', 14]]
-        assert query_result.result_set == expected_result
+        self.env.assertEquals(query_result.result_set, expected_result)
 
     # Validate that the expected relations and properties have been constructed
     def test03_validate_relations(self):
@@ -116,7 +102,7 @@ class GraphBulkInsertFlowTest(FlowTestsBase):
                            ['Ailon Velger', 'married', 'Jane Chernomorin'],
                            ['Alon Fital', 'married', 'Lucy Yanfital'],
                            ['Ori Laslo', 'married', 'Shelly Laslo Rooz']]
-        assert query_result.result_set == expected_result
+        self.env.assertEquals(query_result.result_set, expected_result)
 
         query_result = redis_graph.query('MATCH (a)-[e:VISITED]->(b) RETURN a.name, e.purpose, b.name ORDER BY e.purpose, a.name, b.name')
 
@@ -163,7 +149,7 @@ class GraphBulkInsertFlowTest(FlowTestsBase):
                            ['Tal Doron', 'pleasure', 'USA'],
                            ['Valerie Abigail Arad', 'pleasure', 'Netherlands'],
                            ['Valerie Abigail Arad', 'pleasure', 'Russia']]
-        assert query_result.result_set == expected_result
+        self.env.assertEquals(query_result.result_set, expected_result)
 
     def test04_private_identifiers(self):
         graphname = "tmpgraph1"
@@ -187,9 +173,9 @@ class GraphBulkInsertFlowTest(FlowTestsBase):
                                           graphname])
 
         # The script should report 3 node creations and 2 edge creations
-        assert res.exit_code == 0
-        assert '3 nodes created' in res.output
-        assert '2 relations created' in res.output
+        self.env.assertEquals(res.exit_code, 0)
+        self.env.assertIn('3 nodes created', res.output)
+        self.env.assertIn('2 relations created', res.output)
 
         # Delete temporary files
         os.remove('/tmp/nodes.tmp')
@@ -200,7 +186,7 @@ class GraphBulkInsertFlowTest(FlowTestsBase):
         query_result = tmp_graph.query('MATCH (a) RETURN a')
 
         for propname in query_result.header:
-            assert '_identifier' not in propname
+            self.env.assertNotIn('_identifier', propname)
 
     def test05_reused_identifier(self):
         graphname = "tmpgraph2"
@@ -223,8 +209,8 @@ class GraphBulkInsertFlowTest(FlowTestsBase):
                                           graphname])
 
         # The script should fail because a node identifier is reused
-        assert res.exit_code != 0
-        assert 'used multiple times' in res.output
+        self.env.assertNotEqual(res.exit_code, 0)
+        self.env.assertIn('used multiple times', res.output)
 
         # Run the script again without creating relations
         runner = CliRunner()
@@ -233,8 +219,8 @@ class GraphBulkInsertFlowTest(FlowTestsBase):
                                           graphname])
 
         # The script should succeed and create 3 nodes
-        assert res.exit_code == 0
-        assert '3 nodes created' in res.output
+        self.env.assertEquals(res.exit_code, 0)
+        self.env.assertIn('3 nodes created', res.output)
 
         # Delete temporary files
         os.remove('/tmp/nodes.tmp')
@@ -254,20 +240,20 @@ class GraphBulkInsertFlowTest(FlowTestsBase):
                                           '--max-token-count', 1,
                                           graphname])
 
-        assert res.exit_code == 0
+        self.env.assertEquals(res.exit_code, 0)
         # The script should report statistics multiple times
-        assert res.output.count('nodes created') > 1
+        self.env.assertGreater(res.output.count('nodes created'), 1)
 
         new_graph = Graph(graphname, redis_con)
 
         # Newly-created graph should be identical to graph created in single query
         original_result = redis_graph.query('MATCH (p:Person) RETURN p, ID(p) ORDER BY p.name')
         new_result = new_graph.query('MATCH (p:Person) RETURN p, ID(p) ORDER BY p.name')
-        assert original_result.result_set == new_result.result_set
+        self.env.assertEquals(original_result.result_set, new_result.result_set)
 
         original_result = redis_graph.query('MATCH (a)-[e:KNOWS]->(b) RETURN a.name, e, b.name ORDER BY e.relation, a.name')
         new_result = new_graph.query('MATCH (a)-[e:KNOWS]->(b) RETURN a.name, e, b.name ORDER BY e.relation, a.name')
-        assert original_result.result_set == new_result.result_set
+        self.env.assertEquals(original_result.result_set, new_result.result_set)
 
     def test07_script_failures(self):
         graphname = "tmpgraph3"
@@ -283,8 +269,8 @@ class GraphBulkInsertFlowTest(FlowTestsBase):
                                           graphname])
 
         # The script should fail because a row has the wrong number of fields
-        assert res.exit_code != 0
-        assert 'Expected 2 columns' in res.exception.message
+        self.env.assertNotEqual(res.exit_code, 0)
+        self.env.assertIn('Expected 2 columns', res.exception.message)
 
         # Write temporary files
         with open('/tmp/nodes.tmp', mode='w') as csv_file:
@@ -304,8 +290,8 @@ class GraphBulkInsertFlowTest(FlowTestsBase):
                                           graphname])
 
         # The script should fail because a row has the wrong number of fields
-        assert res.exit_code != 0
-        assert 'should have at least 2 elements' in res.exception.message
+        self.env.assertNotEqual(res.exit_code, 0)
+        self.env.assertIn('should have at least 2 elements', res.exception.message)
 
         with open('/tmp/relations.tmp', mode='w') as csv_file:
             out = csv.writer(csv_file)
@@ -319,8 +305,8 @@ class GraphBulkInsertFlowTest(FlowTestsBase):
                                           graphname])
 
         # The script should fail because an invalid node identifier was used
-        assert res.exit_code != 0
-        assert 'fakeidentifier' in res.exception.message
+        self.env.assertNotEqual(res.exit_code, 0)
+        self.env.assertIn('fakeidentifier', res.exception.message)
         os.remove('/tmp/nodes.tmp')
         os.remove('/tmp/relations.tmp')
 
@@ -347,9 +333,9 @@ class GraphBulkInsertFlowTest(FlowTestsBase):
                                           '--relations', '/tmp/relations.tmp',
                                           graphname])
 
-        assert res.exit_code == 0
-        assert '3 nodes created' in res.output
-        assert '3 relations created' in res.output
+        self.env.assertEquals(res.exit_code, 0)
+        self.env.assertIn('3 nodes created', res.output)
+        self.env.assertIn('3 relations created', res.output)
 
         graph = Graph(graphname, redis_con)
         query_result = graph.query('MATCH (a)-[e]->() RETURN a.numeric, a.mixed, a.bool, e.prop ORDER BY a.numeric, e.prop')
@@ -358,7 +344,7 @@ class GraphBulkInsertFlowTest(FlowTestsBase):
                            [7, None, False, None]]
 
         # The graph should have the correct types for all properties
-        assert query_result.result_set == expected_result
+        self.env.assertEquals(query_result.result_set, expected_result)
 
     # Verify that numeric, boolean, and null types are properly handled
     # def test09_utf8(self):
@@ -399,6 +385,3 @@ class GraphBulkInsertFlowTest(FlowTestsBase):
 
     #     for i, j in zip(query_result.result_set, expected_strs):
     #         self.assertEqual(repr(i), repr(j))
-
-if __name__ == '__main__':
-    unittest.main()
