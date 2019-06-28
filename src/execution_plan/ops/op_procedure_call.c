@@ -12,12 +12,13 @@ static void _yield(OpProcCall *op, SIValue *proc_output, Record r) {
         op->yield_map = rm_malloc(sizeof(OutputMap) * array_len(op->output));
 
         for(uint i = 0; i < array_len(op->output); i++) {
-            char *yield = op->output[i];
+            const char *yield = op->output[i];
             for(uint j = 0; j < array_len(proc_output); j+=2) {
                 char *key = (proc_output + j)->stringval;
                 SIValue *val = &proc_output[j+1];
                 if(strcmp(yield, key) == 0) {
-                    int idx = AST_GetAliasID(op->ast, key);
+                    OpBase *base = (OpBase*)op;
+                    int idx = RecordMap_LookupAlias(base->record_map, key);
                     op->yield_map[i].proc_out_idx = j+1;
                     op->yield_map[i].rec_idx = idx;
                     break;
@@ -50,10 +51,9 @@ static void _yield(OpProcCall *op, SIValue *proc_output, Record r) {
     }
 }
 
-OpBase* NewProcCallOp(char *procedure, char **args, char **output, AST *ast) {
+OpBase* NewProcCallOp(const char *procedure, const char **args, const char **output, uint *modifies) {
     assert(procedure);
     OpProcCall *op = malloc(sizeof(OpProcCall));
-    op->ast = ast;
     op->args = args;
     op->output = output;
     op->procedure = Proc_Get(procedure);
@@ -71,10 +71,7 @@ OpBase* NewProcCallOp(char *procedure, char **args, char **output, AST *ast) {
     op->op.free = OpProcCallFree;
 
     int outputs_count = array_len(output);
-    if(outputs_count) {
-        op->op.modifies = NewVector(char*, outputs_count);
-        for(int i = 0; i < outputs_count; i++) Vector_Push(op->op.modifies, output[i]);
-    }
+    op->op.modifies = modifies;
 
     return (OpBase*)op;
 }
@@ -91,7 +88,7 @@ Record OpProcCallConsume(OpBase *opBase) {
 
     if(op->op.childCount == 0) {
         /* Make record large enough to accommodate all alias entities. */
-        r = Record_New(op->ast->_aliasIDMapping->cardinality);
+        r = Record_New(opBase->record_map->record_len);
     } else {
         OpBase *child = op->op.children[0];
         r = OpBase_Consume(child);

@@ -5,18 +5,18 @@
 */
 
 #include "op_cartesian_product.h"
-#include "../../parser/ast.h"
 
-OpBase* NewCartesianProductOp(int record_len) {
+OpBase* NewCartesianProductOp(void) {
     CartesianProduct *cp = malloc(sizeof(CartesianProduct));
-    cp->init = true;    
-    cp->r = Record_New(record_len);
+    cp->init = true;
+    cp->r = NULL;
 
     // Set our Op operations
     OpBase_Init(&cp->op);
     cp->op.name = "Cartesian Product";
     cp->op.type = OPType_CARTESIAN_PRODUCT;
     cp->op.consume = CartesianProductConsume;
+    cp->op.init = CartesianProductInit;
     cp->op.reset = CartesianProductReset;
     cp->op.free = CartesianProductFree;
 
@@ -61,9 +61,14 @@ static int _PullFromStreams(CartesianProduct *op) {
     return 0;
 }
 
+OpResult CartesianProductInit(OpBase *opBase) {
+    CartesianProduct *op = (CartesianProduct*)opBase;
+    op->r = Record_New(opBase->record_map->record_len);
+    return OP_OK;
+}
+
 Record CartesianProductConsume(OpBase *opBase) {
     CartesianProduct *op = (CartesianProduct*)opBase;
-    OpResult res;
     OpBase *child;
     Record childRecord;
 
@@ -109,5 +114,5 @@ OpResult CartesianProductReset(OpBase *opBase) {
 
 void CartesianProductFree(OpBase *opBase) {
     CartesianProduct *op = (CartesianProduct*)opBase;
-    Record_Free(op->r);
+    if (op->r) Record_Free(op->r);
 }

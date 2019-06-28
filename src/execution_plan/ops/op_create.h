@@ -10,39 +10,32 @@
 #include "op.h"
 #include "../../graph/entities/node.h"
 #include "../../graph/entities/edge.h"
-#include "../../parser/ast.h"
-#include "../../resultset/resultset.h"
+#include "../../resultset/resultset_statistics.h"
+#include "../../ast/ast_shared.h"
+
 /* Creates new entities according to the CREATE clause. */
 
 typedef struct {
-    Edge *edge;
-    int src_node_rec_idx;
-    int dest_node_rec_idx;
-    int edge_rec_idx;
-} EdgeCreateCtx;
-
-typedef struct {
-    Node *node;
-    int node_rec_idx;
-} NodeCreateCtx;
-
-typedef struct {
     OpBase op;
-    AST *ast;
     QueryGraph *qg;
     GraphContext *gc;
     Record *records;
-    size_t node_count;
-    size_t edge_count;
-    Node **created_nodes;
-    Edge **created_edges;
-    ResultSet *result_set;
+
     NodeCreateCtx *nodes_to_create;
     EdgeCreateCtx *edges_to_create;
+
+    // TODO tmp, improve
+    PropertyMap **node_properties;
+    PropertyMap **edge_properties;
+
+    Node **created_nodes;
+    Edge **created_edges;
+    ResultSetStatistics *stats;
 } OpCreate;
 
-OpBase* NewCreateOp(RedisModuleCtx *ctx, AST *ast, QueryGraph *qg, ResultSet *result_set);
+OpBase* NewCreateOp(ResultSetStatistics *stats, NodeCreateCtx *nodes, EdgeCreateCtx *edges);
 
+OpResult OpCreateInit(OpBase *opBase);
 Record OpCreateConsume(OpBase *opBase);
 OpResult OpCreateReset(OpBase *ctx);
 void OpCreateFree(OpBase *ctx);

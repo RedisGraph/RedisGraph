@@ -9,7 +9,7 @@
 
 #include "../execution_plan.h"
 
-/* Try to optimize an execution plan */
-void optimizePlan(ExecutionPlan *plan, AST *ast);
+/* Try to optimize an execution plan segment. */
+void optimizePlan(GraphContext *gc, ExecutionPlan *plan);
 
 #endif

@@ -5,11 +5,12 @@
  */
 
 #include "resultset_formatters.h"
+#include "../../util/arr.h"
 
 /* This function has handling for all SIValue scalar types.
  * The current RESP protocol only has unique support for strings, 8-byte integers,
  * and NULL values. */
-static void _ResultSet_VerboseReplyWithSIValue(RedisModuleCtx *ctx, GraphContext *gc, const SIValue v) {
+static void _ResultSet_VerboseReplyWithSIValue(RedisModuleCtx *ctx, const SIValue v) {
     // Emit the actual value, then the value type (to facilitate client-side parsing)
     switch (SI_TYPE(v)) {
         case T_STRING:
@@ -46,7 +47,7 @@ static void _ResultSet_VerboseReplyWithProperties(RedisModuleCtx *ctx, GraphCont
         const char *prop_str = GraphContext_GetAttributeString(gc, prop.id);
         RedisModule_ReplyWithStringBuffer(ctx, prop_str, strlen(prop_str));
         // Emit the value
-        _ResultSet_VerboseReplyWithSIValue(ctx, gc, prop.value);
+        _ResultSet_VerboseReplyWithSIValue(ctx, prop.value);
     }
 }
 
@@ -143,20 +144,17 @@ void ResultSet_EmitVerboseRecord(RedisModuleCtx *ctx, GraphContext *gc, const Re
                 _ResultSet_VerboseReplyWithEdge(ctx, gc, Record_GetEdge(r, i));
                 break;
             default:
-                _ResultSet_VerboseReplyWithSIValue(ctx, gc, Record_GetScalar(r, i));
+                _ResultSet_VerboseReplyWithSIValue(ctx, Record_GetScalar(r, i));
         }
     }
 }
 
 // Emit the alias or descriptor for each column in the header.
-void ResultSet_ReplyWithVerboseHeader(RedisModuleCtx *ctx, const ResultSetHeader *header, void *data) {
-    RedisModule_ReplyWithArray(ctx, header->columns_len);
-    for(int i = 0; i < header->columns_len; i++) {
-        Column *c = header->columns[i];
-        if(c->alias) {
-            RedisModule_ReplyWithStringBuffer(ctx, c->alias, strlen(c->alias));
-        } else {
-            RedisModule_ReplyWithStringBuffer(ctx, c->name, strlen(c->name));
-        }
+void ResultSet_ReplyWithVerboseHeader(RedisModuleCtx *ctx, const QueryGraph *unused, AR_ExpNode **exps) {
+    uint columns_len = array_len(exps);
+    RedisModule_ReplyWithArray(ctx, columns_len);
+    for(uint i = 0; i < columns_len; i++) {
+        AR_ExpNode *exp = exps[i];
+        RedisModule_ReplyWithStringBuffer(ctx, exp->resolved_name, strlen(exp->resolved_name));
     }
 }

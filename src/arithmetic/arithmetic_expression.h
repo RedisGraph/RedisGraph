@@ -8,15 +8,22 @@
 #define __ARITHMETIC_EXPRESSION_H
 
 #include "./agg_ctx.h"
-#include "../parser/ast.h"
 #include "../../deps/rax/rax.h"
-#include "../graph/query_graph.h"
+// #include "../graph/query_graph.h"
 #include "../execution_plan/record.h"
+#include "../execution_plan/record_map.h"
 #include "../graph/entities/graph_entity.h"
+#include "../graph/query_graph.h"
+#include "../ast/ast.h"
+#include "./agg_ctx.h"
+
+/* Forward declarations. */
+struct AR_ExpNode;
 
 /* AR_ExpNodeType lists the type of nodes within
  * an arithmetic expression tree. */
 typedef enum {
+    AR_EXP_UNKNOWN,
     AR_EXP_OP,
     AR_EXP_OPERAND,
 } AR_ExpNodeType;
@@ -25,6 +32,7 @@ typedef enum {
  * either an aggregation function which requires a context
  * or a stateless function. */
 typedef enum {
+    AR_OP_UNKNOWN,
     AR_OP_AGGREGATE,
     AR_OP_FUNC,
 } AR_OPType;
@@ -32,12 +40,54 @@ typedef enum {
 /* AR_OperandNodeType type of leaf node,
  * either a constant: 3, or a variable: node.property. */
 typedef enum {
+    AR_EXP_OP_UNKNOWN,
     AR_EXP_CONSTANT,
     AR_EXP_VARIADIC,
 } AR_OperandNodeType;
 
+typedef struct AR_ExpNode AR_ExpNode;
 /* AR_Func - Function pointer to an operation with an arithmetic expression */
 typedef SIValue (*AR_Func)(SIValue *argv, int argc);
+
+/* Op represents an operation applied to child args. */
+typedef struct {
+    union {
+        AR_Func f;
+        AggCtx *agg_func;
+    };                              /* Operation to perform on children. */
+    char *func_name;                /* Name of function. */
+    int child_count;                /* Number of children. */
+    struct AR_ExpNode **children;   /* Child nodes. */
+    AR_OPType type;
+} AR_OpNode;
+
+/* OperandNode represents either a constant numeric value,
+ * or a graph entity property. */
+typedef struct {
+    union {
+        SIValue constant;
+        struct {
+            const char *entity_alias;
+            const char *entity_prop;
+            int entity_alias_idx;
+            Attribute_ID entity_prop_idx;
+        } variadic;
+    };
+	AR_OperandNodeType type;
+} AR_OperandNode;
+
+/* AR_ExpNode a node within an arithmetic expression tree,
+ * This node can take one of two forms:
+ * 1. OpNode
+ * 2. OperandNode */
+struct AR_ExpNode {
+    union {
+        AR_OperandNode operand;
+        AR_OpNode op;
+    };
+    AR_ExpNodeType type;
+    const char *resolved_name;
+};
 
 /* Mathematical functions - numeric */
 SIValue AR_ADD(SIValue *argv, int argc);   /* returns the summation of given values. */
@@ -78,47 +128,6 @@ bool AR_FuncExists(const char *func_name);     /* Check to see if function exist
 /* Register an arithmetic function. */
 void AR_RegFunc(char *func_name, size_t func_name_len, AR_Func func);
 
-/* Op represents an operation applied to child args. */
-typedef struct {
-    union {
-        AR_Func f;
-        AggCtx *agg_func;
-    };                              /* Operation to perform on children. */
-    char *func_name;                /* Name of function. */
-    int child_count;                /* Number of children. */
-    struct AR_ExpNode **children;   /* Child nodes. */
-    AR_OPType type;
-} AR_OpNode;
-
-/* OperandNode represents either a constant numeric value, 
- * or a graph entity property. */
-typedef struct {
-    union {
-        SIValue constant;
-        struct {
-            char *entity_alias;
-            int entity_alias_idx;
-            char *entity_prop;
-            Attribute_ID entity_prop_idx;
-        } variadic;
-    };
-	AR_OperandNodeType type;
-} AR_OperandNode;
-
-/* AR_ExpNode a node within an arithmetic expression tree, 
- * This node can take one of two forms:
- * 1. OpNode
- * 2. OperandNode */
-struct AR_ExpNode {
-    union {
-        AR_OperandNode operand;
-        AR_OpNode op;
-    };
-    AR_ExpNodeType type;
-};
-
-typedef struct AR_ExpNode AR_ExpNode;
-
 /* Return AR_OperandNodeType for operands and -1 for operations. */
 int AR_EXP_GetOperandType(AR_ExpNode *exp);
 
@@ -128,9 +137,9 @@ void AR_EXP_Aggregate(const AR_ExpNode *root, const Record r);
 void AR_EXP_Reduce(const AR_ExpNode *root);
 
 /* Utility functions */
-/* Traverse an expression tree and add all graph entity aliases
+/* Traverse an expression tree and add all graph entity record IDs
  * (from variadic) to a triemap. */
-void AR_EXP_CollectAliases(AR_ExpNode *root, rax *aliases);
+void AR_EXP_CollectEntityIDs(AR_ExpNode *root, rax *record_ids);
 
 /* Search for an aggregation node within the expression tree.
  * Return 1 and sets agg_node to the aggregation node if exists,
@@ -140,17 +149,12 @@ int AR_EXP_ContainsAggregation(AR_ExpNode *root, AR_ExpNode **agg_node);
 /* Constructs string representation of arithmetic expression tree. */
 void AR_EXP_ToString(const AR_ExpNode *root, char **str);
 
-/* Construct a constant expression: 2 */
+AR_ExpNode* AR_EXP_NewVariableFromID(uint id, const char *prop);
+AR_ExpNode* AR_EXP_NewVariableOperandNode(const RecordMap *record_map, const char *alias, const char *prop);
 AR_ExpNode* AR_EXP_NewConstOperandNode(SIValue constant);
 
-/* Construct a variable expression: n.v*/
-AR_ExpNode* AR_EXP_NewVariableOperandNode(const AST *ast, char *entity_prop, char *entity_alias);
-
-/* Construct an operation expression: toUpper(n.v) */
-AR_ExpNode* AR_EXP_NewOpNode(char *func_name, int child_count);
-
-/* Construct an arithmetic expression tree from ast arithmetic expression node. */
-AR_ExpNode* AR_EXP_BuildFromAST(const AST *ast, const AST_ArithmeticExpressionNode *exp);
+/* Construct an arithmetic expression tree from a CYPHER_AST_EXPRESSION node. */
+AR_ExpNode* AR_EXP_FromExpression(const RecordMap *record_map, const cypher_astnode_t *expr);
 
 /* Clones given expression. */
 AR_ExpNode* AR_EXP_Clone(AR_ExpNode* exp);

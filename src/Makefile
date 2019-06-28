@@ -14,7 +14,6 @@ endif
 CFLAGS = \
 	-Wall -Wno-unused-function -Wno-unused-variable -Wno-unused-result \
 	-fPIC -std=gnu99 \
- 	-I"$(abs_path)" -I"$(abs_path)/../deps" \
 	-D_GNU_SOURCE -DREDIS_MODULE_TARGET -DREDISMODULE_EXPERIMENTAL_API -DXXH_STATIC_LINKING_ONLY
 CFLAGS += $(DEBUGFLAGS)
 
@@ -46,12 +45,7 @@ CC_SOURCES += $(wildcard $(SOURCEDIR)/graph/serializers/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/GraphBLASExt/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/grouping/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/index/*.c)
-CC_SOURCES += $(wildcard $(SOURCEDIR)/parser/clauses/*.c)
-CC_SOURCES += $(SOURCEDIR)/parser/ast.c
-CC_SOURCES += $(SOURCEDIR)/parser/ast_common.c
-CC_SOURCES += $(SOURCEDIR)/parser/ast_arithmetic_expression.c
-CC_SOURCES += $(SOURCEDIR)/parser/lex.yy.c
-CC_SOURCES += $(SOURCEDIR)/parser/grammar.c
+CC_SOURCES += $(wildcard $(SOURCEDIR)/ast/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/resultset/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/resultset/formatters/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/schema/*.c)
@@ -124,11 +118,11 @@ endif
 # Build libcypher-parser only if library does not already exists.
 $(LIBCYPHER-PARSER):
 ifeq (,$(wildcard $(LIBCYPHER-PARSER)))
-	# Note we're passing empty CFLAGS to libcypher-parser.
 	cd ../deps/libcypher-parser; \
 	./autogen.sh; \
 	./configure --disable-shared;
-	$(MAKE) CFLAGS="-fPIC" clean check -C ../deps/libcypher-parser
+	# TODO remove -g flag for production use
+	$(MAKE) CFLAGS="-g -fPIC" clean check -C ../deps/libcypher-parser
 endif
 .PHONY: $(LIBCYPHER-PARSER)
 

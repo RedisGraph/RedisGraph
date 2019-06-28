@@ -16,6 +16,7 @@ void OpBase_Init(OpBase *op) {
     op->children = NULL;
     op->parent = NULL;
     op->stats = NULL;
+    op->record_map = NULL;
     
     // Function pointers.
     op->init = NULL;
@@ -23,6 +24,8 @@ void OpBase_Init(OpBase *op) {
     op->reset = NULL;
     op->consume = NULL;
     op->toString = NULL;
+
+    op->record_map = NULL;
 }
 
 inline Record OpBase_Consume(OpBase *op) {
@@ -71,7 +74,7 @@ void OpBase_Free(OpBase *op) {
     // Free internal operation
     op->free(op);
     if(op->children) rm_free(op->children);
-    if(op->modifies) Vector_Free(op->modifies);
+    if(op->modifies) array_free(op->modifies);
     if(op->stats) rm_free(op->stats);
     free(op);
 }

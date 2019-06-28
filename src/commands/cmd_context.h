@@ -8,28 +8,28 @@
 #define COMMAND_CONTEXT_H
 
 #include "../redismodule.h"
-#include "../parser/ast.h"
+#include "../ast/ast.h" // TODO should be unnecessary
 
 /* Query context, used for concurent query processing. */
 typedef struct {
-    RedisModuleCtx *ctx;            // Redis module context.
-    RedisModuleBlockedClient *bc;   // Blocked client.
-    AST **ast;                      // Parsed AST.
-    char *graphName;                // Graph ID.
-    double tic[2];                  // Timings.
-    RedisModuleString **argv;       // Arguments.
-    int argc;                       // Argument count.
+    RedisModuleCtx *ctx;                  // Redis module context.
+    RedisModuleBlockedClient *bc;         // Blocked client.
+    cypher_parse_result_t *parse_result;  // Parser output.
+    char *graphName;                      // Graph ID.
+    double tic[2];                        // Timings.
+    RedisModuleString **argv;             // Arguments.
+    int argc;                             // Argument count.
 } CommandCtx;
 
 // Create a new command context.
 CommandCtx* CommandCtx_New
 (
-    RedisModuleCtx *ctx,            // Redis module context.
-    RedisModuleBlockedClient *bc,   // Blocked client.
-    AST **ast,
-    RedisModuleString *graphName,   // Graph ID.
-    RedisModuleString **argv,       // Arguments.
-    int argc                        // Argument count.
+    RedisModuleCtx *ctx,                  // Redis module context.
+    RedisModuleBlockedClient *bc,         // Blocked client.
+    cypher_parse_result_t *parse_result,  // Parser output.
+    RedisModuleString *graphName,         // Graph ID.
+    RedisModuleString **argv,             // Arguments.
+    int argc                              // Argument count.
 );
 
 // Get Redis module context

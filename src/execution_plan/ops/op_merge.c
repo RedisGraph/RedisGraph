@@ -7,132 +7,111 @@
 #include "op_merge.h"
 
 #include "../../schema/schema.h"
-#include "op_merge.h"
+#include "../../arithmetic/arithmetic_expression.h"
 #include <assert.h>
+
+// TODO These two functions are duplicates of op_create functions
+// TODO don't need two functions
+static void _AddNodeProperties(OpMerge *op, Schema *schema, Node *n, PropertyMap *props) {
+    if (props == NULL) return;
+
+    GraphContext *gc = op->gc;
+    Attribute_ID prop_id = ATTRIBUTE_NOTFOUND;
+
+    for(int i = 0; i < props->property_count; i++) {
+        Attribute_ID prop_id = GraphContext_FindOrAddAttribute(op->gc, props->keys[i]);
+        GraphEntity_AddProperty((GraphEntity*)n, prop_id, props->values[i]);
+    }
+
+    if (op->stats) op->stats->properties_set += props->property_count;
+}
+
+static void _AddEdgeProperties(OpMerge *op, Schema *schema, Edge *e, PropertyMap *props) {
+    if (props == NULL) return;
+
+    GraphContext *gc = op->gc;
+    Attribute_ID prop_id = ATTRIBUTE_NOTFOUND;
+
+    for(int i = 0; i < props->property_count; i++) {
+        Attribute_ID prop_id = GraphContext_FindOrAddAttribute(op->gc, props->keys[i]);
+        GraphEntity_AddProperty((GraphEntity*)e, prop_id, props->values[i]);
+    }
+
+    if (op->stats) op->stats->properties_set += props->property_count;
+}
 
 /* Saves every entity within the query graph into the actual graph.
  * update statistics regarding the number of entities create and properties set. */
 static void _CommitNodes(OpMerge *op, Record r) {
     int labelID;
-    AST_GraphEntity *ge;
     Graph *g = op->gc->g;
-    AST_MergeNode *ast_merge_node = op->ast->mergeNode;
-    
-    size_t node_count = 0;
-    size_t entity_count = Vector_Size(ast_merge_node->graphEntities);
 
-    // Determine how many nodes are specified in MERGE clause.
-    for(int i = 0; i < entity_count; i++) {
-        Vector_Get(ast_merge_node->graphEntities, i, &ge);
-        if(ge->t == N_ENTITY) node_count++;
-    }
+    uint node_count = array_len(op->nodes_to_merge);
 
     // Start by creating nodes.
     Graph_AllocateNodes(g, node_count);
 
-    for(int i = 0; i < entity_count; i++) {
-        Vector_Get(ast_merge_node->graphEntities, i, &ge);
-        if(ge->t != N_ENTITY) continue;
-
-        AST_NodeEntity *blueprint = ge;
-        Schema *schema = NULL;
+    for(uint i = 0; i < node_count; i ++) {
+        NodeCreateCtx *node_ctx = &op->nodes_to_merge[i];
+        // Get blueprint of node to create
+        QGNode *node_blueprint = node_ctx->node;
 
         // Newly created node will be placed within given record.
-        Node *n = Record_GetNode(r, i);
+        Node *created_node = Record_GetNode(r, node_ctx->node_idx);
+
+        Schema *schema = NULL;
 
         // Set, create label.
-        if(blueprint->label == NULL) {
-            labelID = GRAPH_NO_LABEL; 
+        if(node_blueprint->label == NULL) {
+            labelID = GRAPH_NO_LABEL;
         } else {
-            schema = GraphContext_GetSchema(op->gc, blueprint->label, SCHEMA_NODE);
-            /* This is the first time we encounter label, create its schema */
+            schema = GraphContext_GetSchema(op->gc, node_blueprint->label, SCHEMA_NODE);
+            /* This is the first time we've encountered this label; create its schema */
             if(schema == NULL) {
-                schema = GraphContext_AddSchema(op->gc, blueprint->label, SCHEMA_NODE);
-                op->result_set->stats.labels_added++;
+                schema = GraphContext_AddSchema(op->gc, node_blueprint->label, SCHEMA_NODE);
+                op->stats->labels_added++;
             }
             labelID = schema->id;
         }
 
-        Graph_CreateNode(g, labelID, n);
+        Graph_CreateNode(g, labelID, created_node);
 
-        if(blueprint->properties) {
-            int propCount = Vector_Size(blueprint->properties);
-            propCount /= 2; // Key value pairs.
+        _AddNodeProperties(op, schema, created_node, node_ctx->properties);
 
-            if(propCount > 0) {
-                for(int prop_idx = 0; prop_idx < propCount; prop_idx++) {
-                    SIValue *key;
-                    SIValue *value;
-                    Vector_Get(blueprint->properties, prop_idx*2, &key);
-                    Vector_Get(blueprint->properties, prop_idx*2+1, &value);
-
-                    Attribute_ID prop_id = GraphContext_FindOrAddAttribute(op->gc, key->stringval);
-                    GraphEntity_AddProperty((GraphEntity*)n, prop_id, *value);
-                }
-                // Update tracked schema and add node to any matching indices.
-                if(schema) GraphContext_AddNodeToIndices(op->gc, schema, n);
-                op->result_set->stats.properties_set += propCount;
-            }
-        }
+        if(schema) GraphContext_AddNodeToIndices(op->gc, schema, created_node);
     }
 
-    op->result_set->stats.nodes_created += node_count;
+    op->stats->nodes_created += node_count;
 }
 
 static void _CommitEdges(OpMerge *op, Record r) {
     // Create edges.
     Graph *g = op->gc->g;
-    AST_GraphEntity *ge;
-    AST_MergeNode *ast_merge_node = op->ast->mergeNode;
-    size_t edge_count = 0;
-    size_t entity_count = Vector_Size(ast_merge_node->graphEntities);
 
-    for(int i = 0; i < entity_count; i++) {
-        Vector_Get(ast_merge_node->graphEntities, i, &ge);
-        if(ge->t != N_LINK) continue;
-        edge_count++;
-
-        AST_LinkEntity *blueprint = (AST_LinkEntity*)ge;
+    uint edge_count = array_len(op->edges_to_merge);
+    // TODO allocate? nodes get allocated here
+    for(uint i = 0; i < edge_count; i ++) {
+        EdgeCreateCtx *edge_ctx = &op->edges_to_merge[i];
+        // Get blueprint of edge to create
+        QGEdge *edge_blueprint = edge_ctx->edge;
 
         // Newly created edge will be placed within given record.
-        Edge *e = Record_GetEdge(r, i);
-        Schema *schema = GraphContext_GetSchema(op->gc, blueprint->labels[0], SCHEMA_EDGE);
-        if(!schema) schema = GraphContext_AddSchema(op->gc, blueprint->labels[0], SCHEMA_EDGE);
+        Edge *created_edge = Record_GetEdge(r, edge_ctx->edge_idx);
 
-        NodeID srcId;
-        NodeID destId;
+        // An edge must have exactly 1 relationship type.
+        Schema *schema = GraphContext_GetSchema(op->gc, edge_blueprint->reltypes[0], SCHEMA_EDGE);
+        if (!schema) schema = GraphContext_AddSchema(op->gc, edge_blueprint->reltypes[0], SCHEMA_EDGE);
+
         // Node are already created, get them from record.
-        if(blueprint->direction == N_LEFT_TO_RIGHT) {
-            srcId = ENTITY_GET_ID(Record_GetNode(r, i-1));
-            destId = ENTITY_GET_ID(Record_GetNode(r, i+1));
-        } else {
-            srcId = ENTITY_GET_ID(Record_GetNode(r, i+1));
-            destId = ENTITY_GET_ID(Record_GetNode(r, i-1));
-        }
+        EntityID srcId = ENTITY_GET_ID(Record_GetNode(r, edge_ctx->src_idx));
+        EntityID destId = ENTITY_GET_ID(Record_GetNode(r, edge_ctx->dest_idx));
 
-        assert(Graph_ConnectNodes(g, srcId, destId, schema->id, e));
+        assert(Graph_ConnectNodes(g, srcId, destId, schema->id, created_edge));
 
-        // Set edge properties.
-        if(blueprint->ge.properties) {
-            int propCount = Vector_Size(blueprint->ge.properties);
-            propCount /= 2; // Key value pairs.
-
-            if(propCount > 0) {
-                for(int prop_idx = 0; prop_idx < propCount; prop_idx++) {
-                    SIValue *key;
-                    SIValue *value;
-                    Vector_Get(blueprint->ge.properties, prop_idx*2, &key);
-                    Vector_Get(blueprint->ge.properties, prop_idx*2+1, &value);
-
-                    Attribute_ID prop_id = GraphContext_FindOrAddAttribute(op->gc, key->stringval);
-                    GraphEntity_AddProperty((GraphEntity*)e, prop_id, *value);
-                }
-                op->result_set->stats.properties_set += propCount;
-            }
-        }
+        _AddEdgeProperties(op, schema, created_edge, edge_ctx->properties);
     }
 
-    op->result_set->stats.relationships_created += edge_count;
+    if (op->stats) op->stats->relationships_created += edge_count;
 }
 
 static void _CreateEntities(OpMerge *op, Record r) {
@@ -147,24 +126,30 @@ static void _CreateEntities(OpMerge *op, Record r) {
     Graph_ReleaseLock(op->gc->g);
 }
 
-OpBase* NewMergeOp(AST *ast, ResultSet *result_set) {
+OpBase* NewMergeOp(ResultSetStatistics *stats, NodeCreateCtx *nodes_to_merge, EdgeCreateCtx *edges_to_merge) {
     OpMerge *op_merge = malloc(sizeof(OpMerge));
-    GraphContext *gc = GraphContext_GetFromTLS();
-    op_merge->gc = gc;
-    op_merge->ast = ast;
-    op_merge->result_set = result_set;
+    op_merge->stats = stats;
+    op_merge->gc = GraphContext_GetFromTLS();
     op_merge->matched = false;
     op_merge->created = false;
+
+    op_merge->nodes_to_merge = nodes_to_merge;
+    op_merge->edges_to_merge = edges_to_merge;
 
     // Set our Op operations
     OpBase_Init(&op_merge->op);
     op_merge->op.name = "Merge";
     op_merge->op.type = OPType_MERGE;
     op_merge->op.consume = OpMergeConsume;
+    op_merge->op.init = OpMergeInit;
     op_merge->op.reset = OpMergeReset;
     op_merge->op.free = OpMergeFree;
 
     return (OpBase*)op_merge;
+}
+
+OpResult OpMergeInit(OpBase *opBase) {
+    return OP_OK;
 }
 
 Record OpMergeConsume(OpBase *opBase) {
@@ -187,7 +172,7 @@ Record OpMergeConsume(OpBase *opBase) {
         if(op->matched) return r;
 
         // No previous match, create MERGE pattern.
-        r = Record_New(AST_AliasCount(op->ast));
+        r = Record_New(opBase->record_map->record_len);
         _CreateEntities(op, r);
         op->created = true;
     }

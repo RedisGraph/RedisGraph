@@ -7,12 +7,13 @@
 #ifndef ALGEBRAIC_EXPRESSION_H
 #define ALGEBRAIC_EXPRESSION_H
 
+#include "../execution_plan/record_map.h"
 #include "../graph/query_graph.h"
 #include "../graph/graph.h"
-#include "../parser/ast.h"
 
 // Matrix, vector operations.
 typedef enum {
+    AL_EXP_UNARY,
     AL_EXP_ADD,
     AL_EXP_MUL,
     AL_EXP_TRANSPOSE,
@@ -64,18 +65,19 @@ typedef struct {
     size_t operand_count;                   // Number of operands.
     size_t operand_cap;                     // Allocated number of operands.
     AlgebraicExpressionOperand *operands;   // Array of operands.
-    Node *src_node;                         // Nodes represented by the first operand columns.
-    Node *dest_node;                        // Nodes represented by the last operand rows.
-    Edge *edge;                             // Edge represented by sole operand.
+    QGNode *src_node;                       // Nodes represented by the first operand columns.
+    QGNode *dest_node;                      // Nodes represented by the last operand rows.
+    // int *relation_ids;                      // IDs of relationship types associated with edge.
+    QGEdge *edge;                           // Edge represented by sole operand.
 } AlgebraicExpression;
 
 /* Constructs an empty expression. */
 AlgebraicExpression *AlgebraicExpression_Empty(void);
 
 /* Construct algebraic expression(s) from query graph. */
-AlgebraicExpression **AlgebraicExpression_From_QueryGraph (
+AlgebraicExpression **AlgebraicExpression_FromQueryGraph (
     const QueryGraph *g,    // Graph to construct expression from.
-    const AST *ast,         // Abstract syntax tree.
+    RecordMap *record_map,  // Map of Record IDs of referenced entities
     size_t *exp_count       // Number of expression created.
 );
 

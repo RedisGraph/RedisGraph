@@ -6,10 +6,10 @@
 
 #pragma once
 
-#include "../resultset_header.h"
 #include "../../redismodule.h"
 #include "../../execution_plan/record.h"
 #include "../../graph/graphcontext.h"
+#include "../../graph/query_graph.h"
 
 typedef enum {
     COLUMN_UNKNOWN = 0,
@@ -28,9 +28,10 @@ typedef enum {
 } PropertyTypeUser;
 
 // Typedef for header formatters.
-typedef void (*EmitHeaderFunc)(RedisModuleCtx *ctx, const ResultSetHeader *header, void *data);
+typedef void (*EmitHeaderFunc)(RedisModuleCtx *ctx, const QueryGraph *qg, AR_ExpNode **exps);
 
 // Typedef for record formatters.
+// TODO remove GraphContext
 typedef void (*EmitRecordFunc)(RedisModuleCtx *ctx, GraphContext *gc, const Record r, unsigned int numcols);
 
 typedef struct {
@@ -51,3 +52,4 @@ static inline void _ResultSet_ReplyWithRoundedDouble(RedisModuleCtx *ctx, double
     // Output string-formatted number
     RedisModule_ReplyWithStringBuffer(ctx, str, len);
 }
+

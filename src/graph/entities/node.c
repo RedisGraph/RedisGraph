@@ -19,8 +19,11 @@ Node* Node_New(const char *label, const char *alias) {
 	n->incoming_edges = array_new(Edge*, 0);
 	n->labelID = GRAPH_UNKNOWN_LABEL;
 
-	if(label != NULL) n->label = strdup(label);
-	if(alias != NULL) n->alias = strdup(alias);
+    // TODO valid?
+	n->label = label;
+	n->alias = alias;
+	// if(label != NULL) n->label = strdup(label);
+	// if(alias != NULL) n->alias = strdup(alias);
 
 	return n;
 }
@@ -118,8 +121,8 @@ int Node_ToString(const Node *n, char *buff, int buff_len) {
 void Node_Free(Node* node) {
 	if(!node) return;
 
-	if(node->label != NULL) free(node->label);
-	if(node->alias != NULL) free(node->alias);
+	// if(node->label != NULL) free(node->label);
+	// if(node->alias != NULL) free(node->alias);
 	if(node->outgoing_edges) array_free(node->outgoing_edges);
 	if(node->incoming_edges) array_free(node->incoming_edges);
 

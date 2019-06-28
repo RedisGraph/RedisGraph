@@ -20,7 +20,7 @@ class testNodeByIDFlow(FlowTestsBase):
     def populate_graph(self):
         global redis_graph
         # Create entities
-        for i in range(10):            
+        for i in range(10):
             node = Node(label="person", properties={"id": i})
             redis_graph.add_node(node)
         redis_graph.commit()
@@ -47,7 +47,7 @@ class testNodeByIDFlow(FlowTestsBase):
         self.env.assertNotIn("NodeByIdSeek", redis_graph.execution_plan(query))
         resultsetB = redis_graph.query(query).result_set
         self.env.assertEqual(resultsetA, resultsetB)
-        
+
         # All nodes.
         query = """MATCH (n) WHERE ID(n) >= 0 RETURN n ORDER BY n.id"""
         resultsetA = redis_graph.query(query).result_set
@@ -64,7 +64,7 @@ class testNodeByIDFlow(FlowTestsBase):
         self.env.assertNotIn("NodeByIdSeek", redis_graph.execution_plan(query))
         resultsetB = redis_graph.query(query).result_set
         self.env.assertEqual(resultsetA, resultsetB)
-        
+
         # A single node.
         query = """MATCH (n) WHERE ID(n) = 0 RETURN n ORDER BY n.id"""
         resultsetA = redis_graph.query(query).result_set
@@ -73,7 +73,7 @@ class testNodeByIDFlow(FlowTestsBase):
         self.env.assertNotIn("NodeByIdSeek", redis_graph.execution_plan(query))
         resultsetB = redis_graph.query(query).result_set
         self.env.assertEqual(resultsetA, resultsetB)
-        
+
         # 4 nodes (6,7,8,9)
         query = """MATCH (n) WHERE ID(n) > 5 RETURN n ORDER BY n.id"""
         resultsetA = redis_graph.query(query).result_set
@@ -90,7 +90,7 @@ class testNodeByIDFlow(FlowTestsBase):
         self.env.assertNotIn("NodeByIdSeek", redis_graph.execution_plan(query))
         resultsetB = redis_graph.query(query).result_set
         self.env.assertEqual(resultsetA, resultsetB)
-        
+
         # 5 nodes (5, 6,7,8,9)
         query = """MATCH (n) WHERE ID(n) >= 5 RETURN n ORDER BY n.id"""
         resultsetA = redis_graph.query(query).result_set
@@ -107,7 +107,7 @@ class testNodeByIDFlow(FlowTestsBase):
         self.env.assertNotIn("NodeByIdSeek", redis_graph.execution_plan(query))
         resultsetB = redis_graph.query(query).result_set
         self.env.assertEqual(resultsetA, resultsetB)
-        
+
         # 5 nodes (0,1,2,3,4)
         query = """MATCH (n) WHERE ID(n) < 5 RETURN n ORDER BY n.id"""
         resultsetA = redis_graph.query(query).result_set
@@ -124,7 +124,7 @@ class testNodeByIDFlow(FlowTestsBase):
         self.env.assertNotIn("NodeByIdSeek", redis_graph.execution_plan(query))
         resultsetB = redis_graph.query(query).result_set
         self.env.assertEqual(resultsetA, resultsetB)
-        
+
         # 6 nodes (0,1,2,3,4,5)
         query = """MATCH (n) WHERE ID(n) <= 5 RETURN n ORDER BY n.id"""
         resultsetA = redis_graph.query(query).result_set
@@ -141,7 +141,7 @@ class testNodeByIDFlow(FlowTestsBase):
         self.env.assertNotIn("NodeByIdSeek", redis_graph.execution_plan(query))
         resultsetB = redis_graph.query(query).result_set
         self.env.assertEqual(resultsetA, resultsetB)
-        
+
         # All nodes except last one.
         query = """MATCH (n) WHERE ID(n) < 9 RETURN n ORDER BY n.id"""
         resultsetA = redis_graph.query(query).result_set
@@ -158,7 +158,7 @@ class testNodeByIDFlow(FlowTestsBase):
         self.env.assertNotIn("NodeByIdSeek", redis_graph.execution_plan(query))
         resultsetB = redis_graph.query(query).result_set
         self.env.assertEqual(resultsetA, resultsetB)
-        
+
         # All nodes.
         query = """MATCH (n) WHERE ID(n) <= 9 RETURN n ORDER BY n.id"""
         resultsetA = redis_graph.query(query).result_set
@@ -192,7 +192,7 @@ class testNodeByIDFlow(FlowTestsBase):
         self.env.assertNotIn("NodeByIdSeek", redis_graph.execution_plan(query))
         resultsetB = redis_graph.query(query).result_set
         self.env.assertEqual(resultsetA, resultsetB)
-        
+
         # All nodes.
         query = """MATCH (n) WHERE ID(n) <= 100 RETURN n ORDER BY n.id"""
         resultsetA = redis_graph.query(query).result_set

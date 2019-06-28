@@ -30,9 +30,9 @@ class RedisGraphTestBase(FlowTestsBase):
     def create_graph(cls):
         global redis_con
         global redis_graph
-        
+
         redis_con.execute_command("DEL", cls.graphId())  # delete previous graph if exists
-        
+
         redis_graph = Graph(cls.graphId(), redis_con)
 
         cmd = " ".join(map(lambda x: x.strip(), cls.createCommand().split("\n")))
@@ -59,7 +59,7 @@ class RedisGraphTestBase(FlowTestsBase):
     def multi(self):
         global redis_con
         redis_con.execute_command("MULTI")
-    
+
     def exec_(self):
         return redis_con.execute_command("EXEC")
 
@@ -67,7 +67,7 @@ class testReturnDistinctFlow1(RedisGraphTestBase):
 
     def __init__(self):
         super(testReturnDistinctFlow1, self).__init__()
-    
+
     @classmethod
     def createCommand(cls):
         return ""
@@ -89,7 +89,7 @@ class testReturnDistinctFlow1(RedisGraphTestBase):
 
     def test_distinct_optimization(self):
         # Make sure we do not omit distinct when performain none aggregated projection.
-        execution_plan = self.explain("MATCH (n) RETURN DISTINCT n.name, n.age")        
+        execution_plan = self.explain("MATCH (n) RETURN DISTINCT n.name, n.age")
         self.env.assertIn("Distinct", execution_plan)
 
         # Distinct should be omitted when performain aggregation.
@@ -100,7 +100,7 @@ class testReturnDistinctFlow1(RedisGraphTestBase):
         # all
         q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p.name")
         self.env.assertEqual(q, [['Stevie'], ['Stevie'], ['Stevie'], ['Mike'], ['James'], ['James']])
-        
+
         # order
         q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p.name ORDER BY p.name")
         self.env.assertEqual(q, [['James'], ['James'], ['Mike'], ['Stevie'], ['Stevie'], ['Stevie']])
@@ -108,15 +108,15 @@ class testReturnDistinctFlow1(RedisGraphTestBase):
         # limit
         q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p.name LIMIT 2")
         self.env.assertEqual(q, [['Stevie'], ['Stevie']])
-        
+
         # order+limit
         q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p.name ORDER BY p.name LIMIT 2")
         self.env.assertEqual(q, [['James'], ['James']])
-        
+
         # all+distinct
         q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p.name")
         self.env.assertEqual(q, [['Stevie'], ['Mike'], ['James']])
-        
+
         # order+distinct
         q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p.name ORDER BY p.name")
         self.env.assertEqual(q, [['James'], ['Mike'], ['Stevie']])
@@ -124,7 +124,7 @@ class testReturnDistinctFlow1(RedisGraphTestBase):
         # limit+distinct
         q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p.name LIMIT 2")
         self.env.assertEqual(q, [['Stevie'], ['Mike']])
-        
+
         # order+limit+distinct
         q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p.name ORDER BY p.name LIMIT 2")
         self.env.assertEqual(q, [['James'], ['Mike']])
@@ -137,7 +137,7 @@ class testReturnDistinctFlow2(RedisGraphTestBase):
     @classmethod
     def createCommand(cls):
         return """
-            CREATE 
+            CREATE
                 (s:PARENT {name: 'Stevie'}),
                 (m:PARENT {name: 'Mike'}),
                 (j:PARENT {name: 'James'}),
@@ -157,32 +157,32 @@ class testReturnDistinctFlow2(RedisGraphTestBase):
     def test_issue_395_scenario_2(self):
         # all
         q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p.name")
-        self.env.assertEqual(q, [['James'], ['James'], ['Mike'], ['Stevie'], ['Stevie'], ['Stevie']])
-        
+        self.env.assertEqual(q, [['Stevie'], ['Stevie'], ['Stevie'], ['Mike'], ['James'], ['James']])
+
         # order
         q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p.name ORDER BY p.name")
         self.env.assertEqual(q, [['James'], ['James'], ['Mike'], ['Stevie'], ['Stevie'], ['Stevie']])
 
         # limit
         q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p.name LIMIT 2")
-        self.env.assertEqual(q, [['James'], ['James']])
-        
+        self.env.assertEqual(q, [['Stevie'], ['Stevie']])
+
         # order+limit
         q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p.name ORDER BY p.name DESC LIMIT 2")
         self.env.assertEqual(q, [['Stevie'], ['Stevie']])
-        
+
         # all+distinct
         q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p.name")
-        self.env.assertEqual(q, [['James'], ['Mike'], ['Stevie']])
-        
+        self.env.assertEqual(q, [['Stevie'], ['Mike'], ['James']])
+
         # order+distinct
         q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p.name ORDER BY p.name DESC")
         self.env.assertEqual(q, [['Stevie'], ['Mike'], ['James']])
 
         # limit+distinct
         q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p.name LIMIT 2")
-        self.env.assertEqual(q, [['James'], ['Mike']])
-        
+        self.env.assertEqual(q, [['Stevie'], ['Mike']])
+
         # order+limit+distinct
         q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p.name ORDER BY p.name DESC LIMIT 2")
         self.env.assertEqual(q, [['Stevie'], ['Mike']])

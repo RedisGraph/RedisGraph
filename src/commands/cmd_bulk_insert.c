@@ -7,7 +7,6 @@
 #include "cmd_bulk_insert.h"
 #include "./cmd_context.h"
 #include "../graph/graph.h"
-#include "../query_executor.h"
 #include "../bulk_insert/bulk_insert.h"
 #include "../util/rmalloc.h"
 

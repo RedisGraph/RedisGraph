@@ -30,7 +30,7 @@ void _relocateOp(ExecutionPlan *plan, OPType type) {
     assert(op->childCount == 1);
 
     // Find the first projection or aggregation in the operation's chain
-    OpBase *projection_op= _locateProjection(op->children[0]);
+    OpBase *projection_op = _locateProjection(op->children[0]);
     assert(projection_op);
 
     // Remove op from its current position.

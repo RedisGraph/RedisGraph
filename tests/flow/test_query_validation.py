@@ -8,7 +8,8 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from base import FlowTestsBase
 
 redis_graph = None
-
+dis_redis = None
+redis_con = None
 
 class testQueryValidationFlow(FlowTestsBase):
 
@@ -63,5 +64,21 @@ class testQueryValidationFlow(FlowTestsBase):
        query = r"MATCH (a:escaped) RETURN a.prop1, a.prop2, a.prop3"
        actual_result = redis_graph.query(query)
        expected_result = [["single ' char", 'double " char', 'mixed \' and " chars']]
-
        self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test05_invalid_entity_references(self):
+        try:
+            query = """MATCH (a) RETURN e"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError:
+            # Expecting an error.
+            pass
+
+        try:
+            query = """MATCH (a) RETURN a ORDER BY e"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError:
+            # Expecting an error.
+            pass

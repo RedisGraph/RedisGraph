@@ -512,6 +512,21 @@ static cypher_astnode_t *_skip(yycontext *yy);
 #define YY_INPUT(yy, buf, result, max_size) \
     source((yy), (buf), &(result), (max_size))
 
+/* The initial size of the text buffer, in bytes. The default is
+ * 1024 and the buffer size is doubled whenever required to meet
+ * demand during parsing. An application that typically parses
+ * much longer strings could increase this to avoid unnecessary
+ * buffer reallocation. */
+#define YY_BUFFER_SIZE 1024 * 1024
+
+/* The initial size of the variable and action stacks. The default
+ * is 128, which is doubled whenever required to meet demand during
+ * parsing. Applications that have deep call stacks with many
+ * local variables, or that perform many actions after a single
+ * successful match, could increase this to avoid unnecessary buf-
+ * fer reallocation. */
+// #define YY_STACK_SIZE 128*128
+
 #pragma GCC diagnostic ignored "-Wunused-function"
 #pragma GCC diagnostic ignored "-Wunused-label"
 #pragma GCC diagnostic ignored "-Wunused-value"

@@ -9,7 +9,7 @@
 #include <assert.h>
 #include "./cmd_context.h"
 #include "../graph/graph.h"
-#include "../query_executor.h"
+#include "../graph/graphcontext.h"
 #include "../util/simple_timer.h"
 
 extern RedisModuleType *GraphContextRedisModuleType;

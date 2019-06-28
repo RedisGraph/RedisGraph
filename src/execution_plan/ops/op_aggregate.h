@@ -8,9 +8,7 @@
 #define __OP_AGGREGATE_H__
 
 #include "op.h"
-#include "../../parser/ast.h"
 #include "../../redismodule.h"
-#include "../../resultset/resultset.h"
 #include "../../graph/query_graph.h"
 #include "../../grouping/group_cache.h"
 #include "../../arithmetic/arithmetic_expression.h"
@@ -18,7 +16,7 @@
 // Matrix, vector operations.
 typedef enum {
     AGGREGATED,
-    NONE_AGGREGATED,
+    NON_AGGREGATED,
 } ExpClassification;
 
 /* Aggregate
@@ -27,20 +25,18 @@ typedef enum {
  typedef struct {
     OpBase op;
     AST *ast;
-    char **aliases;
-    AR_ExpNode **expressions;
+    AR_ExpNode **exps;
     AR_ExpNode **order_exps;
-    unsigned short exp_count;
-    unsigned short order_exp_count;
-    AR_ExpNode **none_aggregated_expressions;      /* Array of arithmetic expression. */
-    ExpClassification *expression_classification;  /* classifies expression as aggregated/none aggregated.  */
+    AR_ExpNode **non_aggregated_expressions;       /* Array of arithmetic expression. */
+    ExpClassification *expression_classification;  /* classifies expression as aggregated/non-aggregated. */
     Group *group;                                  /* Last accessed group. */
     TrieMap *groups;
     SIValue *group_keys;                           /* Array of values composing an aggregated group. */
     CacheGroupIterator *groupIter;
+    Record last_record;
  } OpAggregate;
 
-OpBase* NewAggregateOp(AST *ast, AR_ExpNode **expressions, char **aliases);
+OpBase* NewAggregateOp(AR_ExpNode **expressions, uint *modifies);
 OpResult AggregateInit(OpBase *opBase);
 Record AggregateConsume(OpBase *opBase);
 OpResult AggregateReset(OpBase *opBase);

@@ -22,8 +22,11 @@ Edge* Edge_New(Node *src, Node *dest, const char *relationship, const char *alia
 	e->maxHops = 1;
 	e->relationID = GRAPH_UNKNOWN_RELATION;
 
-	if(relationship != NULL) e->relationship = strdup(relationship);
-	if(alias != NULL) e->alias = strdup(alias);
+    // TODO valid?
+    e->relationship = relationship;
+    e->alias = alias;
+	// if(relationship != NULL) e->relationship = strdup(relationship);
+	// if(alias != NULL) e->alias = strdup(alias);
 
 	return e;
 }
@@ -133,7 +136,7 @@ int Edge_ToString(const Edge *e, char *buff, int buff_len) {
 void Edge_Free(Edge* edge) {
 	if(!edge) return;
 
-	if(edge->alias != NULL) free(edge->alias);
-	if(edge->relationship != NULL) free(edge->relationship);
+	// if(edge->alias != NULL) free(edge->alias);
+	// if(edge->relationship != NULL) free(edge->relationship);
 	free(edge);
 }

@@ -4,34 +4,16 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include <assert.h>
 #include "../value.h"
 #include "filter_tree.h"
-#include "../parser/grammar.h"
-#include "../query_executor.h"
-#include "../util/vector.h"
+#include "../util/arr.h"
+#include <assert.h>
 
-FT_FilterNode* LeftChild(const FT_FilterNode *node) { return node->cond.left; }
-FT_FilterNode* RightChild(const FT_FilterNode *node) { return node->cond.right; }
+static inline FT_FilterNode* LeftChild(const FT_FilterNode *node) { return node->cond.left; }
+static inline FT_FilterNode* RightChild(const FT_FilterNode *node) { return node->cond.right; }
 
 int IsNodePredicate(const FT_FilterNode *node) {
     return node->t == FT_N_PRED;
-}
-
-FT_FilterNode* CreateCondFilterNode(int op) {
-    FT_FilterNode* filterNode = (FT_FilterNode*)malloc(sizeof(FT_FilterNode));
-    filterNode->t = FT_N_COND;
-    filterNode->cond.op = op;
-    return filterNode;
-}
-
-FT_FilterNode* _CreatePredicateFilterNode(const AST *ast, const AST_PredicateNode *pn) {
-    FT_FilterNode *filterNode = malloc(sizeof(FT_FilterNode));
-    filterNode->t= FT_N_PRED;
-    filterNode->pred.op = pn->op;
-    filterNode->pred.lhs = AR_EXP_BuildFromAST(ast, pn->lhs);
-    filterNode->pred.rhs = AR_EXP_BuildFromAST(ast, pn->rhs);
-    return filterNode;
 }
 
 FT_FilterNode *AppendLeftChild(FT_FilterNode *root, FT_FilterNode *child) {
@@ -44,6 +26,22 @@ FT_FilterNode *AppendRightChild(FT_FilterNode *root, FT_FilterNode *child) {
     return root->cond.right;
 }
 
+FT_FilterNode* FilterTree_CreatePredicateFilter(AST_Operator op, AR_ExpNode *lhs, AR_ExpNode *rhs) {
+    FT_FilterNode *filterNode = malloc(sizeof(FT_FilterNode));
+    filterNode->t = FT_N_PRED;
+    filterNode->pred.op = op;
+    filterNode->pred.lhs = lhs;
+    filterNode->pred.rhs = rhs;
+    return filterNode;
+}
+
+FT_FilterNode* FilterTree_CreateConditionFilter(AST_Operator op) {
+    FT_FilterNode* filterNode = (FT_FilterNode*)malloc(sizeof(FT_FilterNode));
+    filterNode->t = FT_N_COND;
+    filterNode->cond.op = op;
+    return filterNode;
+}
+
 void _FilterTree_SubTrees(const FT_FilterNode *root, Vector *sub_trees) {
     if (root == NULL) return;
 
@@ -54,13 +52,13 @@ void _FilterTree_SubTrees(const FT_FilterNode *root, Vector *sub_trees) {
             break;
         case FT_N_COND:
             switch(root->cond.op) {
-                case AND:
+                case OP_AND:
                     /* Break AND down to its components. */
                     _FilterTree_SubTrees(root->cond.left, sub_trees);
                     _FilterTree_SubTrees(root->cond.right, sub_trees);
                     free((FT_FilterNode *)root);
                     break;
-                case OR:
+                case OP_OR:
                     /* OR tree must be return as is. */
                     Vector_Push(sub_trees, root);
                     break;
@@ -80,52 +78,38 @@ Vector* FilterTree_SubTrees(const FT_FilterNode *root) {
     return sub_trees;
 }
 
-FT_FilterNode* BuildFiltersTree(const AST *ast, const AST_FilterNode *root) {
-    FT_FilterNode *filterNode;
-
-    if(root->t == N_PRED) {
-        filterNode = _CreatePredicateFilterNode(ast, &root->pn);
-    } else {
-        filterNode = CreateCondFilterNode(root->cn.op);
-        AppendLeftChild(filterNode, BuildFiltersTree(ast, root->cn.left));
-        AppendRightChild(filterNode, BuildFiltersTree(ast, root->cn.right));
-    }
-
-    return filterNode;
-}
-
 /* Applies a single filter to a single result.
  * Compares given values, tests if values maintain desired relation (op) */
-int _applyFilter(SIValue* aVal, SIValue* bVal, int op) {
+int _applyFilter(SIValue* aVal, SIValue* bVal, AST_Operator op) {
     int rel = SIValue_Compare(*aVal, *bVal);
     /* Values are of disjoint types */
     if (rel == DISJOINT) {
         /* The filter passes if we're testing for inequality, and fails otherwise. */
-        return (op == NE);
+        return (op == OP_NEQUAL);
     }
 
     switch(op) {
-        case EQ:
-        return rel == 0;
+        case OP_EQUAL:
+            return rel == 0;
 
-        case GT:
-        return rel > 0;
+        case OP_GT:
+            return rel > 0;
 
-        case GE:
-        return rel >= 0;
+        case OP_GE:
+            return rel >= 0;
 
-        case LT:
-        return rel < 0;
+        case OP_LT:
+            return rel < 0;
 
-        case LE:
-        return rel <= 0;
+        case OP_LE:
+            return rel <= 0;
 
-        case NE:
-        return rel != 0;
+        case OP_NEQUAL:
+            return rel != 0;
 
         default:
-        /* Op should be enforced by AST. */
-        assert(0);
+            /* Op should be enforced by AST. */
+            assert(0);
     }
     /* We shouldn't reach this point. */
     return 0;
@@ -150,12 +134,12 @@ int FilterTree_applyFilters(const FT_FilterNode* root, const Record r) {
     /* root->t == FT_N_COND, visit left subtree. */
     int pass = FilterTree_applyFilters(LeftChild(root), r);
     
-    if(root->cond.op == AND && pass == 1) {
+    if(root->cond.op == OP_AND && pass == 1) {
         /* Visit right subtree. */
         pass *= FilterTree_applyFilters(RightChild(root), r);
     }
 
-    if(root->cond.op == OR && pass == 0) {
+    if(root->cond.op == OP_OR && pass == 0) {
         /* Visit right subtree. */
         pass = FilterTree_applyFilters(RightChild(root), r);
     }
@@ -163,24 +147,24 @@ int FilterTree_applyFilters(const FT_FilterNode* root, const Record r) {
     return pass;
 }
 
-void _FilterTree_CollectAliases(const FT_FilterNode *root, rax *aliases) {
+void _FilterTree_CollectModified(const FT_FilterNode *root, rax *modified) {
     if(root == NULL) return;
 
     switch(root->t) {
         case FT_N_COND:
         {
-            _FilterTree_CollectAliases(root->cond.left, aliases);
-            _FilterTree_CollectAliases(root->cond.right, aliases);
+            _FilterTree_CollectModified(root->cond.left, modified);
+            _FilterTree_CollectModified(root->cond.right, modified);
             break;
         }
         case FT_N_PRED:
         {
-            /* Traverse left and right-hand expressions, adding all encountered aliases
+            /* Traverse left and right-hand expressions, adding all encountered modified
              * to the triemap.
-             * We'll typically encounter 0 or 1 aliases in each expression,
+             * We'll typically encounter 0 or 1 modified in each expression,
              * but there are multi-argument exceptions. */
-            AR_EXP_CollectAliases(root->pred.lhs, aliases);
-            AR_EXP_CollectAliases(root->pred.rhs, aliases);
+            AR_EXP_CollectEntityIDs(root->pred.lhs, modified);
+            AR_EXP_CollectEntityIDs(root->pred.rhs, modified);
             break;
         }
         default:
@@ -191,10 +175,11 @@ void _FilterTree_CollectAliases(const FT_FilterNode *root, rax *aliases) {
     }
 }
 
-rax *FilterTree_CollectAliases(const FT_FilterNode *root) {
-    rax *aliases = raxNew();
-    _FilterTree_CollectAliases(root, aliases);
-    return aliases;
+rax* FilterTree_CollectModified(const FT_FilterNode *root) {
+    rax *modified = raxNew();
+    _FilterTree_CollectModified(root, modified);
+
+    return modified;
 }
 
 void _FilterTree_Print(const FT_FilterNode *root, int ident) {
@@ -224,17 +209,11 @@ void FilterTree_Print(const FT_FilterNode *root) {
     _FilterTree_Print(root, 0);
 }
 
-void _FilterTree_FreePredNode(FT_PredicateNode node) {
-    AR_EXP_Free(node.lhs);
-    AR_EXP_Free(node.rhs);
-
-    // TODO free node itself 
-}
-
 void FilterTree_Free(FT_FilterNode *root) {
-    if(root == NULL) { return; }
+    if(root == NULL) return;
     if(IsNodePredicate(root)) {
-        _FilterTree_FreePredNode(root->pred);
+        AR_EXP_Free(root->pred.lhs);
+        AR_EXP_Free(root->pred.rhs);
     } else {
         FilterTree_Free(root->cond.left);
         FilterTree_Free(root->cond.right);

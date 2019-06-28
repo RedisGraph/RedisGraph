@@ -11,12 +11,8 @@
 #include "../../util/heap.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
-#define DIR_DESC -1
-#define DIR_ASC 1
-
 typedef struct {
     OpBase op;
-    const AST *ast;
     AR_ExpNode **expressions;   // Expression to sort by.
     heap_t *heap;               // Holds top n records.
     Record *buffer;             // Holds all records.
@@ -26,7 +22,7 @@ typedef struct {
 } OpSort;
 
 /* Creates a new Sort operation */
-OpBase *NewSortOp(const AST *ast, AR_ExpNode **expressions);
+OpBase* NewSortOp(AR_ExpNode **expressions, int direction, unsigned int limit);
 
 Record SortConsume(OpBase *opBase);
 

@@ -10,20 +10,13 @@
 #include "op.h"
 #include "../../graph/entities/node.h"
 #include "../../graph/entities/edge.h"
-#include "../../resultset/resultset.h"
+#include "../../resultset/resultset_statistics.h"
 #include "../../arithmetic/arithmetic_expression.h"
-
-// Context describing an update expression.
-typedef struct {
-    AST_GraphEntity *ge;            /* Referred entity in MATCH clause. */
-    char *attribute;                /* Attribute name to update. */
-    int entityRecIdx;               /* Position of entity within record. */
-    AR_ExpNode *exp;                /* Expression to evaluate. */
-} EntityUpdateEvalCtx;
+#include "../../ast/ast_build_op_contexts.h"
 
 // Context describing a pending update to perform.
 typedef struct {
-    char *attribute;                    /* Attribute name to update. */
+    const char *attribute;              /* Attribute name to update. */
     Attribute_ID attr_id;               /* ID of attribute to update. */
     Node n;
     Edge e;
@@ -33,9 +26,8 @@ typedef struct {
 
 typedef struct {
     OpBase op;
-    AST *ast;
     GraphContext *gc;
-    ResultSet *result_set;
+    ResultSetStatistics *stats;
 
     uint update_expressions_count;
     EntityUpdateEvalCtx *update_expressions;    /* List of entities to update and their arithmetic expressions. */
@@ -47,7 +39,7 @@ typedef struct {
     bool updates_commited;                      /* Updates performed? */
 } OpUpdate;
 
-OpBase* NewUpdateOp(AST *ast, ResultSet *result_set);
+OpBase* NewUpdateOp(GraphContext *gc, EntityUpdateEvalCtx *update_exps, uint update_exp_count, ResultSetStatistics *stats);
 OpResult OpUpdateInit(OpBase *opBase);
 Record OpUpdateConsume(OpBase *opBase);
 OpResult OpUpdateReset(OpBase *ctx);

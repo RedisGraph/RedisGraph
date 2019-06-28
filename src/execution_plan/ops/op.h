@@ -7,12 +7,13 @@
 #pragma once
 
 #include "../record.h"
+#include "../record_map.h"
 #include "../../redismodule.h"
 #include "../../graph/query_graph.h"
 #include "../../graph/entities/node.h"
 #include "../../graph/entities/edge.h"
 #include "../../schema/schema.h"
-#include "../../util/vector.h"
+#include "../../util/arr.h"
 
 #define OP_REQUIRE_NEW_DATA(opRes) (opRes & (OP_DEPLETED | OP_REFRESH)) > 0
 
@@ -43,9 +44,11 @@ typedef enum {
     OPType_PROC_CALL = (1<<22),
     OPType_CONDITIONAL_VAR_LEN_TRAVERSE_EXPAND_INTO = (1<<23),
     OPType_VALUE_HASH_JOIN = (1<<24),
+    OPType_APPLY = (1<<25),
 } OPType;
 
 #define OP_SCAN (OPType_ALL_NODE_SCAN | OPType_NODE_BY_LABEL_SCAN | OPType_INDEX_SCAN | OPType_NODE_BY_ID_SEEK)
+#define OP_TAPS (OP_SCAN | OPType_CREATE | OPType_UNWIND | OPType_MERGE)
 
 typedef enum {
     OP_DEPLETED = 1,
@@ -54,6 +57,7 @@ typedef enum {
     OP_ERR = 8,
 } OpResult;
 
+struct ExecutionPlanSegment;
 struct OpBase;
 
 typedef void (*fpFree)(struct OpBase*);
@@ -77,7 +81,8 @@ struct OpBase {
     fpFree free;                // Free operation.
     fpToString toString;        // operation string representation.
     char *name;                 // Operation name.
-    Vector *modifies;           // List of aliases, this op modifies.
+    uint *modifies;                // List of Record indices this op modifies.
+    RecordMap *record_map;         // Mapping of entities into Record IDs in the scope of this ExecutionPlanSegment.
     struct OpBase **children;   // Child operations.
     int childCount;             // Number of children.
     OpStats *stats;             // Profiling statistics.

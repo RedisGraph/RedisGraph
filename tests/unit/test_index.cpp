@@ -11,6 +11,7 @@ extern "C" {
 #endif
 
 #include "../../src/graph/graph.h"
+#include "../../src/ast/ast_shared.h"
 #include "../../src/index/index.h"
 #include "../../src/util/rmalloc.h"
 
@@ -104,7 +105,7 @@ TEST_F(IndexTest, StringIndex) {
   SIValue lb = SI_ConstStringVal("");
 
   IndexIter *iter = IndexIter_Create(str_idx, T_STRING);
-  IndexIter_ApplyBound(iter, &lb, GE);
+  IndexIter_ApplyBound(iter, &lb, OP_GE);
 
   NodeID *node_id;
   Node cur;
@@ -143,7 +144,7 @@ TEST_F(IndexTest, NumericIndex) {
   // Build an iterator from a constant filter - this will include all elements
   SIValue lb = SI_DoubleVal(0);
   IndexIter *iter = IndexIter_Create(num_idx, T_DOUBLE);
-  IndexIter_ApplyBound(iter, &lb, GE);
+  IndexIter_ApplyBound(iter, &lb, OP_GE);
 
   NodeID *node_id;
   Node cur;
@@ -201,7 +202,7 @@ TEST_F(IndexTest, IteratorBounds) {
   }
 
   IndexIter_Reset(iter);
-  IndexIter_ApplyBound(iter, lb, GE);
+  IndexIter_ApplyBound(iter, lb, OP_GE);
   /* Lower bound should reduce the number of values iterated over */
   int cur_vals = count_iter_vals(iter);
   ASSERT_LT(cur_vals, prev_vals);
@@ -209,7 +210,7 @@ TEST_F(IndexTest, IteratorBounds) {
   /* Set the same lower bound, but exclusive.
    * Number of values should again be reduced. */
   IndexIter_Reset(iter);
-  IndexIter_ApplyBound(iter, lb, GT);
+  IndexIter_ApplyBound(iter, lb, OP_GT);
   cur_vals = count_iter_vals(iter);
   ASSERT_LT(cur_vals, prev_vals);
 
@@ -222,7 +223,7 @@ TEST_F(IndexTest, IteratorBounds) {
     ub = GraphEntity_GetProperty((GraphEntity*)&cur, num_key_id);
     if (ub->doubleval > lb->doubleval) break;
   }
-  IndexIter_ApplyBound(iter, ub, LE);
+  IndexIter_ApplyBound(iter, ub, OP_LE);
   /* Upper bound should reduce the number of values iterated over */
   cur_vals = count_iter_vals(iter);
   ASSERT_LT(cur_vals, prev_vals);
@@ -231,7 +232,7 @@ TEST_F(IndexTest, IteratorBounds) {
   /* Set the same upper bound, but exclusive.
    * Number of values should again be reduced. */
   IndexIter_Reset(iter);
-  IndexIter_ApplyBound(iter, ub, LT);
+  IndexIter_ApplyBound(iter, ub, OP_LT);
   cur_vals = count_iter_vals(iter);
   ASSERT_LT(cur_vals, prev_vals);
 
@@ -239,7 +240,7 @@ TEST_F(IndexTest, IteratorBounds) {
    * Number of values should be 0. */
   IndexIter_Reset(iter);
   SIValue ub_last = SI_DoubleVal(lb->doubleval - 1);
-  IndexIter_ApplyBound(iter, &ub_last, LT);
+  IndexIter_ApplyBound(iter, &ub_last, OP_LT);
   cur_vals = count_iter_vals(iter);
   ASSERT_EQ(cur_vals, 0);
 

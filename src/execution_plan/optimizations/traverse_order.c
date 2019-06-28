@@ -60,7 +60,7 @@ static void swap(Arrangement exps, uint i, uint  j) {
 }
 
 // Computes all permutations of set exps.
-void permute(Arrangement set, int l, int r, Arrangement **permutations) {
+static void permute(Arrangement set, int l, int r, Arrangement **permutations) {
     int i;
     if (l == r) {
         Arrangement permutation = Arrangement_Clone(set, r+1);
@@ -112,8 +112,8 @@ static bool valid_arrangement(const Arrangement arrangement, uint exps_count) {
 
     for(int i = 1; i < exps_count; i++) {
         exp = arrangement[i];
-        Node *src = exp->src_node;
-        Node *dest = exp->dest_node;
+        QGNode *src = exp->src_node;
+        QGNode *dest = exp->dest_node;
         int j = i-1;
 
         // Scan previous expressions.
@@ -144,7 +144,7 @@ static int penalty_arrangement(Arrangement arrangement, uint exp_count) {
     for(uint i = 1; i < exp_count; i++) {
         exp = arrangement[i];
         bool src_resolved = false;
-        Node *src = exp->src_node;
+        QGNode *src = exp->src_node;
 
         // See if source is already resolved.
         for(int j = i-1; j >= 0; j--) {
@@ -172,24 +172,24 @@ static int penalty_arrangement(Arrangement arrangement, uint exp_count) {
     return penalty;
 }
 
-static int reward_arrangement(Arrangement arrangement, uint exp_count, const FT_FilterNode *filters) {
+static int reward_arrangement(Arrangement arrangement, uint exp_count, const RecordMap *record_map, const FT_FilterNode *filters) {
     // Arrangement_Print(arrangement, exp_count);
     int reward = 0;
-    rax *filtered_entities = FilterTree_CollectAliases(filters);
+    rax *filtered_entities = FilterTree_CollectModified(filters);
 
     // A bit naive at the moment.
     for(uint i = 0; i < exp_count; i++) {
         AlgebraicExpression *exp = arrangement[i];
-        char *src_alias = exp->src_node->alias;
-        char *dest_alias = exp->dest_node->alias;
+        uint src_id = RecordMap_LookupEntityID(record_map, exp->src_node->id);
+        uint dest_id = RecordMap_LookupEntityID(record_map, exp->dest_node->id);
 
-        if(raxFind(filtered_entities, (unsigned char*)src_alias, strlen(src_alias)) != raxNotFound) {
+        if(raxFind(filtered_entities, (unsigned char*)&src_id, sizeof(src_id)) != raxNotFound) {
             reward += F * (exp_count - i);
-            raxRemove(filtered_entities, (unsigned char*)src_alias, strlen(src_alias), NULL);
+            raxRemove(filtered_entities, (unsigned char*)&src_id, sizeof(src_id), NULL);
         }
-        if(raxFind(filtered_entities, (unsigned char*)dest_alias, strlen(dest_alias)) != raxNotFound) {
+        if(raxFind(filtered_entities, (unsigned char*)&dest_id, sizeof(dest_id)) != raxNotFound) {
             reward += F * (exp_count - i);
-            raxRemove(filtered_entities, (unsigned char*)dest_alias, strlen(dest_alias), NULL);
+            raxRemove(filtered_entities, (unsigned char*)&dest_id, sizeof(dest_id), NULL);
         }
         if(exp->src_node->label) reward += L * (exp_count - i);
     }
@@ -199,20 +199,40 @@ static int reward_arrangement(Arrangement arrangement, uint exp_count, const FT_
     return reward;
 }
 
-static int score_arrangement(Arrangement arrangement, uint exp_count, const FT_FilterNode *filters) {
+static int score_arrangement(Arrangement arrangement, uint exp_count, const RecordMap *record_map, const FT_FilterNode *filters) {
     int score = 0;
     int penalty = penalty_arrangement(arrangement, exp_count);
-    int reward = reward_arrangement(arrangement, exp_count, filters);
+    int reward = reward_arrangement(arrangement, exp_count, record_map, filters);
     score -= penalty;
     score += reward;
     return score;
+}
+
+// Transpose out-of-order expressions so that each expresson's source is resolved
+// in the winning sequence.
+static void resolve_winning_sequence(AlgebraicExpression **exps, uint exp_count) {
+    for (uint i = 1; i < exp_count; i ++) {
+        AlgebraicExpression *exp = exps[i];
+        bool src_resolved = false;
+        QGNode *src = exp->src_node;
+
+        // See if source is already resolved.
+        for(int j = i-1; j >= 0; j--) {
+            AlgebraicExpression *prev_exp = exps[j];
+            if(prev_exp->src_node == src || prev_exp->dest_node == src) {
+                src_resolved = true;
+                break;
+            }
+        }
+        if (!src_resolved) AlgebraicExpression_Transpose(exp);
+    }
 }
 
 /* Given a set of algebraic expressions representing a graph traversal 
  * we pick the order in which the expressions will be evaluated 
  * taking into account filters and transposes. 
  * exps will reordered. */
-void orderExpressions(AlgebraicExpression **exps, uint exps_count, const FT_FilterNode *filters) {
+void orderExpressions(AlgebraicExpression **exps, uint exps_count, const RecordMap *record_map, const FT_FilterNode *filters) {
     assert(exps && exps_count > 0);
 
     // Single expression, return quickly.
@@ -240,7 +260,7 @@ void orderExpressions(AlgebraicExpression **exps, uint exps_count, const FT_Filt
 
     for(uint i = 0; i < arrangement_count; i++) {
         Arrangement arrangement = valid_arrangements[i];
-        int score = score_arrangement(arrangement, exps_count, filters);
+        int score = score_arrangement(arrangement, exps_count, record_map, filters);
         // printf("score: %d\n", score);
         // Arrangement_Print(arrangement, exps_count);
         if(max_score < score) {
@@ -251,6 +271,10 @@ void orderExpressions(AlgebraicExpression **exps, uint exps_count, const FT_Filt
 
     // Update input.
     for(uint i = 0; i < exps_count; i++) exps[i] = top_arrangement[i];
+
+    // Depending on how the expressions have been ordered, we may have to transpose expressions
+    // so that their source nodes have already been resolved by previous expressions.
+    resolve_winning_sequence(exps, exps_count);
 
     // Clean up.
     for(uint i = 0; i < arrangement_count; i++) Arrangement_Free(arrangements[i]);

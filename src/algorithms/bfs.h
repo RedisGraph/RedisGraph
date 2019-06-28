@@ -6,8 +6,7 @@
 
 #pragma once
 
-#include "../graph/entities/node.h"
-
+#include "../graph/entities/qg_node.h"
 #include <limits.h>
 
 #define BFS_LOWEST_LEVEL INT_MAX    // Return leaf nodes at deepest level.
@@ -17,7 +16,7 @@
  * Incase level is set to BFS_LOWEST_LEVEL 
  * well scan all the way to the bottom and set level
  * to indicate the level reached. */
-Node** BFS (
-    Node *s,    // Node from which BFS scan begins.
+QGNode** BFS (
+    QGNode *s,  // Node from which BFS scan begins.
     int *level  // Stop scanning at level.
 );

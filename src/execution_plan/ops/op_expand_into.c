@@ -5,7 +5,9 @@
 */
 
 #include "op_expand_into.h"
+#include "../../ast/ast.h"
 #include "../../util/arr.h"
+#include "../../util/vector.h"
 #include "../../GraphBLASExt/GxB_Delete.h"
 
 // String representation of operation.
@@ -14,15 +16,15 @@ static int ExpandIntoToString(const OpBase *ctx, char *buff, uint buff_len) {
 
     int offset = 0;    
     offset += snprintf(buff + offset, buff_len-offset, "%s | ", op->op.name);
-    offset += Node_ToString(op->ae->src_node, buff + offset, buff_len - offset);
+    offset += QGNode_ToString(op->ae->src_node, buff + offset, buff_len - offset);
     if(op->ae->edge) {
         offset += snprintf(buff + offset, buff_len-offset, "-");
-        offset += Edge_ToString(op->ae->edge, buff + offset, buff_len - offset);
+        offset += QGEdge_ToString(op->ae->edge, buff + offset, buff_len - offset);
         offset += snprintf(buff + offset, buff_len-offset, "->");
     } else {
         offset += snprintf(buff + offset, buff_len-offset, "->");
     }
-    offset += Node_ToString(op->ae->dest_node, buff + offset, buff_len - offset);
+    offset += QGNode_ToString(op->ae->dest_node, buff + offset, buff_len - offset);
     return offset;
 }
 
@@ -32,24 +34,25 @@ static int ExpandIntoToString(const OpBase *ctx, char *buff, uint buff_len) {
  * in the case where no relationship types are specified
  * op->edgeRelationTypes will contain GRAPH_NO_RELATION. */
 static void _setupTraversedRelations(OpExpandInto *op, GraphContext *gc) {
-    AST *ast = op->ast;
-    const char *alias = op->ae->edge->alias;
-    AST_LinkEntity *e = (AST_LinkEntity*)MatchClause_GetEntity(ast->matchNode, alias);
-    op->edgeRelationCount = AST_LinkEntity_LabelCount(e);
+    // TODO
+    // AST *ast = op->ast;
+    // const char *alias = op->ae->edge->alias;
+    // AST_LinkEntity *e = (AST_LinkEntity*)MatchClause_GetEntity(ast->matchNode, alias);
+    // op->edgeRelationCount = AST_LinkEntity_LabelCount(e);
     
-    if(op->edgeRelationCount > 0) {
-        op->edgeRelationTypes = array_new(int, op->edgeRelationCount);
-        for(int i = 0; i < op->edgeRelationCount; i++) {
-            Schema *s = GraphContext_GetSchema(gc, e->labels[i], SCHEMA_EDGE);
-            if(!s) continue;
-            op->edgeRelationTypes = array_append(op->edgeRelationTypes, s->id);
-        }
-    } else {
-        op->edgeRelationCount = 1;
-        op->edgeRelationTypes = array_new(int, 1);
-        op->edgeRelationTypes = array_append(op->edgeRelationTypes, GRAPH_NO_RELATION);
-    }
-    op->edgeRelationCount = array_len(op->edgeRelationTypes);
+    // if(op->edgeRelationCount > 0) {
+        // op->edgeRelationTypes = array_new(int, op->edgeRelationCount);
+        // for(int i = 0; i < op->edgeRelationCount; i++) {
+            // Schema *s = GraphContext_GetSchema(gc, e->labels[i], SCHEMA_EDGE);
+            // if(!s) continue;
+            // op->edgeRelationTypes = array_append(op->edgeRelationTypes, s->id);
+        // }
+    // } else {
+        // op->edgeRelationCount = 1;
+        // op->edgeRelationTypes = array_new(int, 1);
+        // op->edgeRelationTypes = array_append(op->edgeRelationTypes, GRAPH_NO_RELATION);
+    // }
+    // op->edgeRelationCount = array_len(op->edgeRelationTypes);
 }
 
 // Sets traversed edge within record.
@@ -67,7 +70,7 @@ static bool _setEdge(OpExpandInto *op) {
  * which will be considered when evaluating an algebraic expression. */
 static uint _determinRecordCap(const AST *ast) {
     uint recordsCap = 16;    // Default.
-    if(ast->limitNode) recordsCap = MIN(recordsCap, ast->limitNode->limit);
+    // if(ast->limitNode) recordsCap = MIN(recordsCap, ast->limitNode->limit); // TODO
     return recordsCap;
 }
 
@@ -90,20 +93,22 @@ static void _traverse(OpExpandInto *op) {
     GrB_Matrix_clear(op->F);
 }
 
-OpBase* NewExpandIntoOp(AlgebraicExpression *ae, AST *ast) {
+OpBase* NewExpandIntoOp(AlgebraicExpression *ae, uint src_node_idx, uint dest_node_idx, uint edge_idx) {
     OpExpandInto *expandInto = calloc(1, sizeof(OpExpandInto));
     GraphContext *gc = GraphContext_GetFromTLS();
     expandInto->ae = ae;
     expandInto->F = NULL;
     expandInto->r = NULL;
+    AST *ast = AST_GetFromTLS();
     expandInto->ast = ast;
     expandInto->edges = NULL;
     expandInto->graph = gc->g;
     expandInto->recordCount = 0;
     expandInto->edgeRelationTypes = NULL;
     expandInto->recordsCap = _determinRecordCap(ast);
-    expandInto->srcNodeRecIdx = AST_GetAliasID(ast, ae->src_node->alias);
-    expandInto->destNodeRecIdx = AST_GetAliasID(ast, ae->dest_node->alias);
+    expandInto->srcNodeRecIdx = src_node_idx;
+    expandInto->destNodeRecIdx = dest_node_idx;
+    expandInto->edgeRecIdx = edge_idx;
     expandInto->records = rm_calloc(expandInto->recordsCap, sizeof(Record));
 
     // Set our Op operations
@@ -118,13 +123,13 @@ OpBase* NewExpandIntoOp(AlgebraicExpression *ae, AST *ast) {
     expandInto->op.modifies = NULL;
 
     if(ae->edge) {
-        char *modified = NULL;
-        _setupTraversedRelations(expandInto, gc);
-        modified = expandInto->ae->edge->alias;
-        expandInto->op.modifies = NewVector(char*, 0);
-        Vector_Push(expandInto->op.modifies, modified);
+        assert(false); // TODO fixc
+        // char *modified = NULL;
+        // _setupTraversedRelations(expandInto, gc);
+        // modified = expandInto->ae->edge->alias;
+        expandInto->op.modifies = array_new(uint, 1);
+        // expandInto->op.modifies = array_append(traverse->op.modifies, modified);
         expandInto->edges = array_new(Edge, 32);
-        expandInto->edgeRecIdx = AST_GetAliasID(ast, ae->edge->alias);
     }
 
     return (OpBase*)expandInto;

@@ -14,6 +14,7 @@
 #include "../redisearch_api.h"
 
 typedef enum {
+  SCHEMA_UNKNOWN,
   SCHEMA_NODE,
   SCHEMA_EDGE,
 } SchemaType;

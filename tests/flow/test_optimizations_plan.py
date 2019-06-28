@@ -4,7 +4,7 @@ import sys
 from redisgraph import Graph, Node, Edge
 
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+dis_redis = None
 graph = None
 redis_con = None
 people = ["Roi", "Alon", "Ailon", "Boaz"]
@@ -34,7 +34,7 @@ class testOptimizationsPlan(FlowTestsBase):
                 if src != dest:
                     edge = Edge(nodes[src], "know", nodes[dest])
                     graph.add_edge(edge)
-        
+
         for src in nodes:
             for dest in nodes:
                 if src != dest:

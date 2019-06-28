@@ -32,7 +32,7 @@ class testSocialFlow(FlowTestsBase):
 
         # assert query run time
         self._assert_equalish(resultset.run_time_ms, actual_result.run_time_ms)
-        
+
     def test00_graph_entities(self):
         global redis_graph
         q = queries.graph_entities.query
@@ -45,7 +45,7 @@ class testSocialFlow(FlowTestsBase):
 
         # assert query run time
         self._assert_run_time(actual_result, queries.graph_entities)
-        
+
         # assert reversed pattern.
         self.assert_reversed_pattern(q, actual_result)
 
@@ -247,7 +247,7 @@ class testSocialFlow(FlowTestsBase):
 
         # assert query run time
         self._assert_run_time(actual_result, queries.visit_purpose_of_each_country_i_visited_query)
-        
+
         # assert reversed pattern.
         self.assert_reversed_pattern(q, actual_result)
 
@@ -413,7 +413,7 @@ class testSocialFlow(FlowTestsBase):
 
         # assert query run time
         self._assert_run_time(actual_result, queries.friends_age_statistics_query)
-        
+
         # assert reversed pattern.
         self.assert_reversed_pattern(q, actual_result)
     

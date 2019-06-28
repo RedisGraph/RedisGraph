@@ -8,7 +8,6 @@
 #define __OP_ALL_NODE_SCAN_H__
 
 #include "op.h"
-#include "../../parser/ast.h"
 #include "../../graph/graph.h"
 #include "../../graph/query_graph.h"
 #include "../../graph/entities/node.h"
@@ -18,14 +17,14 @@
  * Scans entire graph */
  typedef struct {
     OpBase op;
-    Node *n;
+    QGNode *n;
     DataBlockIterator *iter;
     uint nodeRecIdx;
-    uint recLength;  // Number of entries in a record.
  } AllNodeScan;
 
-OpBase* NewAllNodeScanOp(const Graph *g, Node *n, AST *ast);
+OpBase* NewAllNodeScanOp(const Graph *g, QGNode *n, uint rec_idx);
 Record AllNodeScanConsume(OpBase *opBase);
+OpResult AllNodeScanInit(OpBase *opBase);
 OpResult AllNodeScanReset(OpBase *op);
 void AllNodeScanFree(OpBase *ctx);
 

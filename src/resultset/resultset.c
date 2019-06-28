@@ -8,7 +8,6 @@
 #include "../value.h"
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
-#include "../query_executor.h"
 #include "../grouping/group_cache.h"
 #include "../arithmetic/aggregate.h"
 
@@ -57,76 +56,29 @@ static void _ResultSet_ReplayStats(RedisModuleCtx* ctx, ResultSet* set) {
     }
 }
 
-static Column* _NewColumn(char *name, char *alias) {
-    Column* column = rm_malloc(sizeof(Column));
-    column->name = name;
-    column->alias = alias;
-    return column;
-}
+static void _ResultSet_ReplyWithHeader(ResultSet *set, QueryGraph *qg) {
+    assert(set->recordCount == 0);
 
-static void _Column_Free(Column* column) {
-    /* No need to free alias,
-     * it will be freed as part of AST_Free. */
-    rm_free(column->name);
-    rm_free(column);
-}
+    set->column_count = array_len(set->exps);
 
-static void _ResultSet_CreateHeader(ResultSet *set, AST **ast) {
-    AST *final_ast = ast[array_len(ast)-1];
-
-    assert(final_ast->returnNode && set->header == NULL && set->recordCount == 0);
-    ResultSetHeader* header = rm_malloc(sizeof(ResultSetHeader));
-
-    header->columns_len = array_len(final_ast->returnNode->returnElements);
-    header->columns = rm_malloc(sizeof(Column*) * header->columns_len);
-
-    for(int i = 0; i < header->columns_len; i++) {
-        AST_ReturnElementNode *returnElementNode = final_ast->returnNode->returnElements[i];
-
-        AR_ExpNode *ar_exp = AR_EXP_BuildFromAST(final_ast, returnElementNode->exp);
-
-        char *column_name;
-        AR_EXP_ToString(ar_exp, &column_name);
-        Column *column = _NewColumn(column_name, returnElementNode->alias);
-        AR_EXP_Free(ar_exp);
-
-        header->columns[i] = column;
-    }
-
-    set->header = header;
     /* Replay with table header. */
     if (set->compact) {
-        TrieMap *entities = AST_CollectEntityReferences(ast);
-        set->formatter->EmitHeader(set->ctx, set->header, entities);
-        TrieMap_Free(entities, TrieMap_NOP_CB);
+        set->formatter->EmitHeader(set->ctx, qg, set->exps);
     } else {
-        set->formatter->EmitHeader(set->ctx, set->header, NULL);
+        set->formatter->EmitHeader(set->ctx, NULL, set->exps);
     }
 }
 
-static void _ResultSetHeader_Free(ResultSetHeader* header) {
-    if(!header) return;
-
-    for(int i = 0; i < header->columns_len; i++) _Column_Free(header->columns[i]);
-
-    if(header->columns != NULL) {
-        rm_free(header->columns);
-    }
-
-    rm_free(header);
-}
-
-ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx, bool compact) {
+ResultSet* NewResultSet(RedisModuleCtx *ctx, bool distinct, bool compact) {
     ResultSet* set = (ResultSet*)malloc(sizeof(ResultSet));
     set->ctx = ctx;
     set->gc = GraphContext_GetFromTLS();
-    set->distinct = (ast->returnNode && ast->returnNode->distinct);
+    set->distinct = distinct;
     set->compact = compact;
-    set->recordCount = 0;    
-    set->header = NULL;
-    set->bufferLen = 2048;
-    set->buffer = malloc(set->bufferLen);
     set->formatter = (compact) ? &ResultSetFormatterCompact : &ResultSetFormatterVerbose;
+    set->recordCount = 0;
+    set->column_count = 0; // TODO necessary variable?
+    set->exps = NULL;
 
     set->stats.labels_added = 0;
     set->stats.nodes_created = 0;
@@ -140,6 +92,7 @@ ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx, bool compact) {
 
 // Choose the appropriate reply formatter.
 void ResultSet_SetReplyFormatter(ResultSet *set, ResultSetFormatterType formatter) {
+    // TODO unused?
     switch(formatter) {
         case FORMATTER_VERBOSE:
             set->formatter = &ResultSetFormatterVerbose;
@@ -157,10 +110,8 @@ void ResultSet_SetReplyFormatter(ResultSet *set, ResultSetFormatterType formatte
 }
 
 // Initialize the user-facing reply arrays.
-void ResultSet_ReplyWithPreamble(ResultSet *set, AST **ast) {
-    // The last AST will contain the return clause, if one is specified
-    AST *final_ast = ast[array_len(ast)-1];
-    if (final_ast->returnNode == NULL) {
+void ResultSet_ReplyWithPreamble(ResultSet *set, QueryGraph *qg) {
+    if (set->exps == NULL || array_len(set->exps) == 0) {
         // Queries that don't form result sets will only emit statistics
         RedisModule_ReplyWithArray(set->ctx, 1);
         return;
@@ -169,9 +120,9 @@ void ResultSet_ReplyWithPreamble(ResultSet *set, AST **ast) {
     // header, records, statistics
     RedisModule_ReplyWithArray(set->ctx, 3);
 
-    _ResultSet_CreateHeader(set, ast);
+    _ResultSet_ReplyWithHeader(set, qg);
 
-    // We don't know at this point the number of records we're about to return.
+    // // We don't know at this point the number of records we're about to return.
     RedisModule_ReplyWithArray(set->ctx, REDISMODULE_POSTPONED_ARRAY_LEN);
 }
 
@@ -179,7 +130,7 @@ int ResultSet_AddRecord(ResultSet *set, Record r) {
     set->recordCount++;
 
     // Output the current record using the defined formatter
-    set->formatter->EmitRecord(set->ctx, set->gc, r, set->header->columns_len);
+    set->formatter->EmitRecord(set->ctx, set->gc, r, set->column_count);
 
     return RESULTSET_OK;
 }
@@ -187,9 +138,8 @@ int ResultSet_AddRecord(ResultSet *set, Record r) {
 void ResultSet_Replay(ResultSet* set) {
     // If we have emitted records, set the number of elements in the
     // preceding array
-    if (set->header) {
-        size_t resultset_size = set->recordCount;
-        RedisModule_ReplySetArrayLength(set->ctx, resultset_size);
+    if (set->exps) {
+        RedisModule_ReplySetArrayLength(set->ctx, set->recordCount);
     }
     _ResultSet_ReplayStats(set->ctx, set);
 }
@@ -197,7 +147,5 @@ void ResultSet_Replay(ResultSet* set) {
 void ResultSet_Free(ResultSet *set) {
     if(!set) return;
 
-    free(set->buffer);
-    if(set->header) _ResultSetHeader_Free(set->header);
     free(set);
 }

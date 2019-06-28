@@ -23,11 +23,13 @@ static int _identifyResultAndAggregateOps(OpBase *root, OpResult** opResult, OpA
 
     // Expecting a single aggregation, without ordering.
     *opAggregate = (OpAggregate*)op;
-    if((*opAggregate)->exp_count != 1 || (*opAggregate)->order_exp_count != 0) return 0;
+    uint exp_count = array_len((*opAggregate)->exps);
+    uint order_exp_count = array_len((*opAggregate)->order_exps);
+    if(exp_count != 1 || order_exp_count != 0) return 0;
 
-    AR_ExpNode *exp = (*opAggregate)->expressions[0];
+    AR_ExpNode *exp = (*opAggregate)->exps[0];
 
-    // Make sure aggregation performs counting.    
+    // Make sure aggregation performs counting.
     if( exp->type != AR_EXP_OP ||
         exp->op.type != AR_OP_AGGREGATE ||
         strcasecmp(exp->op.func_name, "count")) return 0;
@@ -43,7 +45,7 @@ static int _identifyResultAndAggregateOps(OpBase *root, OpResult** opResult, OpA
 
 }
 /* Checks if execution plan solely performs node count */
-static int _identifyNodeCountPattern(OpBase *root, OpResult **opResult, OpAggregate **opAggregate, OpBase **opScan, char **label) {
+static int _identifyNodeCountPattern(OpBase *root, OpResult **opResult, OpAggregate **opAggregate, OpBase **opScan, const char **label) {
     // Reset.
     *label = NULL;
     *opScan = NULL;
@@ -54,9 +56,9 @@ static int _identifyNodeCountPattern(OpBase *root, OpResult **opResult, OpAggreg
     OpBase* op = ((OpBase*)*opAggregate)->children[0];
 
     // Scan, either a full node or label scan.
-    if((op->type != OPType_ALL_NODE_SCAN && 
+    if((op->type != OPType_ALL_NODE_SCAN &&
         op->type != OPType_NODE_BY_LABEL_SCAN) ||
-        op->childCount != 0) {           
+        op->childCount != 0) {
            return 0;
     }
 
@@ -70,10 +72,10 @@ static int _identifyNodeCountPattern(OpBase *root, OpResult **opResult, OpAggreg
     return 1;
 }
 
-bool _reduceNodeCount(ExecutionPlan *plan, AST *ast){
+bool _reduceNodeCount(ExecutionPlan *plan) {
 /* We'll only modify execution plan if it is structured as follows:
      * "Scan -> Aggregate -> Results" */
-    char *label;
+    const char *label;
     OpBase *opScan;
     OpResult *opResult;
     OpAggregate *opAggregate;
@@ -98,11 +100,11 @@ bool _reduceNodeCount(ExecutionPlan *plan, AST *ast){
     }
 
     // Incase alias is specified: RETURN count(n) as X
-    char **aliases = NULL;
-    if(opAggregate->aliases) {
-        assert(array_len(opAggregate->aliases) == 1);
-        aliases = array_new(char*, 1);
-        aliases = array_append(aliases, opAggregate->aliases[0]);
+    uint *modifies = NULL;
+    if(opAggregate->op.modifies) {
+        assert(array_len(opAggregate->op.modifies) == 1);
+        modifies = array_new(uint, 1);
+        modifies = array_append(modifies, opAggregate->op.modifies[0]);
     }
 
     /* Construct a constant expression, used by a new
@@ -111,10 +113,14 @@ bool _reduceNodeCount(ExecutionPlan *plan, AST *ast){
     AR_ExpNode **exps = array_new(AR_ExpNode*, 1);
     exps = array_append(exps, exp);
 
-    OpBase *opProject = NewProjectOp(ast, exps, aliases);
+    OpBase *opProject = NewProjectOp(exps, modifies);
 
-    // New execution plan: "Project -> Results"    
-    ExecutionPlan_RemoveOp(plan, (OpBase*)opScan);    
+    // TODO this shouldn't need to be an explicit step.
+    // See _associateRecordMap and ExecutionPlanInit to come up with solution.
+    opProject->record_map = opScan->record_map;
+
+    // New execution plan: "Project -> Results"
+    ExecutionPlan_RemoveOp(plan, (OpBase*)opScan);
     OpBase_Free(opScan);
 
     ExecutionPlan_RemoveOp(plan, (OpBase*)opAggregate);
@@ -174,7 +180,7 @@ uint64_t _countRelationshipEdges(GrB_Matrix M){
     return edges;
 }
 
-void _reduceEdgeCount(ExecutionPlan *plan, AST *ast) {
+void _reduceEdgeCount(ExecutionPlan *plan) {
     /* We'll only modify execution plan if it is structured as follows:
      * "Full Scan -> Conditional Traverse -> Aggregate -> Results" */
     OpBase *opScan;
@@ -207,12 +213,14 @@ void _reduceEdgeCount(ExecutionPlan *plan, AST *ast) {
     }
 
     // Incase alias is specified: RETURN count(r) as X
-    char **aliases = NULL;
-    if (opAggregate->aliases) {
-        assert(array_len(opAggregate->aliases) == 1);
-        aliases = array_new(char*, 1);
-        aliases = array_append(aliases, opAggregate->aliases[0]);
-    }
+    // TODO
+    uint *aliases = NULL;
+    // char **aliases = NULL;
+    // if (opAggregate->aliases) {
+        // assert(array_len(opAggregate->aliases) == 1);
+        // aliases = array_new(char*, 1);
+        // aliases = array_append(aliases, opAggregate->aliases[0]);
+    // }
 
     /* Construct a constant expression, used by a new
      * projection operation. */
@@ -220,7 +228,11 @@ void _reduceEdgeCount(ExecutionPlan *plan, AST *ast) {
     AR_ExpNode **exps = array_new(AR_ExpNode*, 1);
     exps = array_append(exps, exp);
 
-    OpBase *opProject = NewProjectOp(ast, exps, aliases);
+    OpBase *opProject = NewProjectOp(exps, aliases);
+
+    // TODO this shouldn't need to be an explicit step.
+    // See _associateRecordMap and ExecutionPlanInit to come up with solution.
+    opProject->record_map = opScan->record_map;
 
     // New execution plan: "Project -> Results"
     ExecutionPlan_RemoveOp(plan, (OpBase *)opScan);
@@ -235,12 +247,12 @@ void _reduceEdgeCount(ExecutionPlan *plan, AST *ast) {
     ExecutionPlan_AddOp((OpBase *)opResult, opProject);
 }
 
-void reduceCount(ExecutionPlan *plan, AST *ast) {
+void reduceCount(ExecutionPlan *plan) {
     /* both _reduceNodeCount and _reduceEdgeCount should count nodes or edges, respectively, 
      * out of the same execution plan.
      * If node count optimization was unable to execute, 
      * meaning that the execution plan does not hold any node count pattern,
      * then edge count will be tried to be executed upon the same execution plan */
-    bool reduceNodeCountSucsses = _reduceNodeCount(plan, ast);
-    if(!reduceNodeCountSucsses) _reduceEdgeCount(plan, ast);
+    bool reduceNodeCountSucsses = _reduceNodeCount(plan);
+    if(!reduceNodeCountSucsses) _reduceEdgeCount(plan);
 }

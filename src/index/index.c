@@ -77,7 +77,6 @@ Index* Index_Create(Graph *g, const char *label, int label_id, const char *attr_
 
   skiplist *sl;
   NodeID node_id;
-  GraphEntity *entity;
 
   int found;
   int prop_index = 0;

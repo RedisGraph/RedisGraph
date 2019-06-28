@@ -6,7 +6,6 @@
 
 #include "op_results.h"
 #include "../../util/arr.h"
-#include "../../query_executor.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
 OpBase* NewResultsOp(ResultSet *result_set, QueryGraph* graph) {

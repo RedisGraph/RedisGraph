@@ -1,6 +1,9 @@
 import os
 import sys
+import string
+import random
 import unittest
+import redis
 from redisgraph import Graph, Node, Edge
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
@@ -8,6 +11,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from base import FlowTestsBase
 
 redis_graph = None
+redis_con = None
 people = ["Roi", "Alon", "Ailon", "Boaz", "Tal", "Omri", "Ori"]
 
 class testGraphMultiPatternQueryFlow(FlowTestsBase):
@@ -32,7 +36,7 @@ class testGraphMultiPatternQueryFlow(FlowTestsBase):
 
     # Connect a single node to all other nodes.
     def test01_connect_node_to_rest(self):
-        query = """MATCH(r:person {name:"Roi"}), (f:person) WHERE f.name != r.name CREATE (r)-[:friend]->(f) RETURN count(f)"""
+        query = """MATCH(r:person {name:"Roi"}), (f:person) WHERE f.name <> r.name CREATE (r)-[:friend]->(f) RETURN count(f)"""
         actual_result = redis_graph.query(query)
         friend_count = actual_result.result_set[0][0]
         self.env.assertEquals(friend_count, 6)
@@ -53,7 +57,7 @@ class testGraphMultiPatternQueryFlow(FlowTestsBase):
 
     # Connect every node to every node.
     def test03_create_fully_connected_graph(self):
-        query = """MATCH(a:person), (b:person) WHERE a.name != b.name CREATE (a)-[f:friend]->(b) RETURN count(f)"""
+        query = """MATCH(a:person), (b:person) WHERE a.name <> b.name CREATE (a)-[f:friend]->(b) RETURN count(f)"""
         actual_result = redis_graph.query(query)
         friend_count = actual_result.result_set[0][0]
         self.env.assertEquals(friend_count, 42)
