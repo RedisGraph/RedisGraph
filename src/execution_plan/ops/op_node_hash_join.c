@@ -139,8 +139,8 @@ OpBase *NewNodeHashJoin(const AST *ast, const Node *intersect_node) {
 
     // Set our Op operations
     OpBase_Init(&nodeHashJoin->op);
-    nodeHashJoin->op.name = "Index Scan";
-    nodeHashJoin->op.type = OPType_INDEX_SCAN;
+    nodeHashJoin->op.name = "Node Hash Join";
+    nodeHashJoin->op.type = OPType_NODE_HASH_JOIN;
     nodeHashJoin->op.free = NodeHashJoinFree;
     nodeHashJoin->op.init = NodeHashJoinInit;
     nodeHashJoin->op.reset = NodeHashJoinReset;
