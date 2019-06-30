@@ -156,8 +156,17 @@ package: redisgraph.so
 	@ramp pack -m "`pwd`/../ramp_manifest.yml" -v -o "../build/redisgraph.{os}-{architecture}.latest.zip" "`pwd`/redisgraph.so"
 
 test: redisgraph.so
-	@$(MAKE) -C ../tests test
+	#check valgrind flag
+ifeq ($(VALGRIND),)
+	
+else
 
-test_valgrind: redisgraph.so
-	# Run unit tests under Valgrind
-	@$(MAKE) -C ../tests test_valgrind
+ifeq ($(uname_S),Linux)
+
+else
+	@echo building docker to run valgrind on MacOS
+	@cd ../ ;\
+	docker build -f DockerFile.test -t mac_os_test_docker .;
+endif
+endif
+	@$(MAKE) -C ../tests test

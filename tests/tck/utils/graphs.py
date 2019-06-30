@@ -1,9 +1,6 @@
-import redis
 import os
 import sys
-
-sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
-from disposableredis import DisposableRedis
+from RLTest import Env 
 
 from redisgraph import Graph, Node, Edge
 
@@ -12,9 +9,7 @@ graph_name = "G"
 redis_graph = None
 
 def redis():
-    graph_so = os.path.dirname(os.path.abspath(__file__)) + '/../../../src/redisgraph.so'
-    print graph_so
-    return DisposableRedis(loadmodule=graph_so)
+   return Env()
 
 def _brand_new_redis():
     global r
@@ -22,10 +17,7 @@ def _brand_new_redis():
         r.stop()
 
     r = redis()
-    r.start()
-    return r.client()
-
-    # return redis.Redis()
+    return r.getConnection()
 
 def empty_graph():
     global redis_graph
@@ -118,8 +110,3 @@ def binary_tree_graph2():
 
 def query(q):
     return redis_graph.query(q)
-
-def teardown():
-    global r
-    if r is not None:
-        r.stop()

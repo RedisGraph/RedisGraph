@@ -1,7 +1,7 @@
 .PHONY: test
 # find the OS
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
-
+TEST_ARGS = 
 # check verbose flag
 ifeq ($(V),)
 
@@ -38,9 +38,7 @@ else
 ifeq ($(valgrind),)
 	@python -m RLTest --module ../../src/redisgraph.so  $(TEST_ARGS)
 else
-	@echo building docker to run valgrind on MacOS
-	@cd ../../ ;\
-	docker build -f DockerFile.test -t mac_os_test_docker .;\
-	docker run -ti  mac_os_test_docker bash -c "cd tests/flow/; RLTest --module ../../src/redisgraph.so $(TEST_ARGS)"
+	@echo running docker to run valgrind flow test on MacOS
+	@docker run -ti  mac_os_test_docker bash -c "cd tests/flow/; RLTest --module ../../src/redisgraph.so $(TEST_ARGS)"
 endif
 endif
