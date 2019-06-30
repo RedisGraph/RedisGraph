@@ -96,15 +96,30 @@ ProcedureResult Proc_PageRankInvoke(ProcedureCtx *ctx, char **args) {
     int relation_id = s->id;
     GrB_Matrix R = Graph_GetRelationMatrix(g, relation_id);
 
-    /* Create a compact representation of L*R*L 
-     * this will avoid computing pagerank for nodes
-     * not labeled as L. */
-    GrB_Index *mapping;
-    GrB_Matrix C = _compact_matrix(L, R, &mapping);
-
-    // Number of nodes to be ranked.
     GrB_Index nrows;
-    GrB_Matrix_nrows(&nrows, C);
+    GrB_Matrix_nrows(&nrows, R);
+
+    GrB_Index nvals;
+    GrB_Matrix_nvals(&nvals, L);
+
+    bool freeC;
+    GrB_Matrix C;
+    GrB_Index *mapping = NULL;
+
+    if(nrows == nvals) {
+        /* R doesn't contains information other than
+         * connections between nodes labeled as L. */
+        C = R;
+        freeC = false;
+    } else {
+        /* Create a compact representation of L*R*L
+        * this will avoid computing pagerank for nodes
+        * not labeled as L. */
+        C = _compact_matrix(L, R, &mapping);
+        freeC = true;
+        // Number of nodes to be ranked.
+        GrB_Matrix_nrows(&nrows, C);
+    }
 
     int iters = 0;
     double tol = 1e-5;
@@ -120,7 +135,7 @@ ProcedureResult Proc_PageRankInvoke(ProcedureCtx *ctx, char **args) {
     );    
     assert(res == GrB_SUCCESS);
 
-    GrB_free(&C);
+    if(freeC) GrB_free(&C);
 
     // Setup private data.
     PageRankContext *pdata = rm_malloc(sizeof(PageRankContext));
@@ -149,7 +164,10 @@ SIValue* Proc_PageRankStep(ProcedureCtx *ctx) {
     if(pdata->i >= pdata->n) return NULL;
 
     LAGraph_PageRank rank = pdata->ranking[pdata->i++];
-    NodeID node_id = pdata->mapping[(NodeID)rank.page];
+    NodeID node_id = (NodeID)rank.page;
+
+    // Required to performing mapping.
+    if (pdata->mapping) node_id = pdata->mapping[node_id];
 
     Graph_GetNode(pdata->g, node_id, &pdata->node);
 
@@ -164,8 +182,8 @@ ProcedureResult Proc_PageRankFree(ProcedureCtx *ctx) {
     if(ctx->privateData) {
         PageRankContext *pdata = ctx->privateData;
         free(pdata->ranking);
-        free(pdata->mapping);
         array_free(pdata->output);
+        if(pdata->mapping) free(pdata->mapping);
         rm_free(ctx->privateData);
     }
 
