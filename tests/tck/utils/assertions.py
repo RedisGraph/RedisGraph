@@ -1,10 +1,15 @@
+from numbers import Number
+from redisgraph import Node, Edge
 def is_number_tryexcept(s):
-    """ Returns True is string is a number. """
+    """ Returns True if string is a number. """
+    if not isinstance(s, (Number, basestring)):
+        return False
     try:
         float(s)
         return True
     except ValueError:
         return False
+    
 
 def assert_empty_resultset(resultset):
     assert len(resultset.result_set) is 0
@@ -31,6 +36,7 @@ def assert_resultset_length(resultset, length):
     assert(len(resultset.result_set) == length)
 
 def assert_resultset_content(resultset, expected):
+    resultset.pretty_print()
     rowCount = len(expected.rows)
     for rowIdx in range(rowCount):
         actualRow = resultset.result_set[rowIdx]
@@ -60,8 +66,20 @@ def assert_resultset_content(resultset, expected):
                 if expectedCell.is_integer():
                     expectedCell = int(expectedCell)
 
+            if isinstance(actualCell, Node):
+                actualCell = actualCell.__str__()
+
+            if isinstance(actualCell, Edge):
+                res = "["
+                if actualCell.relation:
+                    res += ":" + actualCell.relation
+                if actualCell.properties:
+                    props = ','.join(key+':'+str(quote_string(val)) for key, val in actualCell.properties.items())
+                    res += '{' + props + '}'
+                res += ']'
+                actualCell = res
             # if actualCell is not expectedCell:
             #     print "actualCell: %s differ from expectedCell: %s\n" % (actualCell, expectedCell)
             # else:
             #     print "PERFECTO!\n"
-            assert actualCell == expectedCell, "actualCell: %s differ from expectedCell: %s\n" % (actualCell, expectedCell)
+            assert actualCell == expectedCell , "actualCell: %s differ from expectedCell: %s\n" % (actualCell, expectedCell)
