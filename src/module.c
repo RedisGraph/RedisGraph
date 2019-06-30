@@ -16,6 +16,7 @@
 #include "procedures/procedure.h"
 #include "arithmetic/arithmetic_expression.h"
 #include "graph/serializers/graphcontext_type.h"
+#include "../deps/LAGraph/Include/LAGraph.h"
 
 /* Thread pool. */
 threadpool _thpool = NULL;
@@ -52,6 +53,9 @@ int _RegisterDataTypes(RedisModuleCtx *ctx) {
 
 int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     /* TODO: when module unloads call GrB_finalize. */
+    // assert(LAGraph_init() == GrB_SUCCESS);
+    // assert(LAGraph_xinit(rm_malloc, rm_calloc, rm_realloc, rm_free, true) == GrB_SUCCESS);
+
     assert(GrB_init(GrB_NONBLOCKING) == GrB_SUCCESS);
     GxB_set(GxB_FORMAT, GxB_BY_ROW); // all matrices in CSR format
     GxB_set(GxB_HYPER, GxB_NEVER_HYPER); // matrices are never hypersparse

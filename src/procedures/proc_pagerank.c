@@ -12,6 +12,7 @@
 
 typedef struct {
     LAGraph_PageRank *ranking;      // Sorted ranking.
+    GrB_Index *mapping;             // Maps between translated node ID to original node ID.
     GrB_Index i;                    // Result index to yield.
     GrB_Index n;                    // Number of nodes ranked.
     Graph *g;                       // Graph.
@@ -19,86 +20,115 @@ typedef struct {
     SIValue *output;                // Output node + rank.
 } PageRankContext;
 
+/* Compact matrix, creates a new matrix out of R (a relation matrix) 
+ * where only row i and column i remain, where L[i,i] = 1.
+ * this will prodice a matrix C where #rows and #cols in C <=  #rows and #cols in R 
+ * in addition this has the nice side-effect similar to L*R*L e.g.
+ * focusing only on entries in R representing nodes labeled as L. */
+static GrB_Matrix _compact_matrix(GrB_Matrix L, GrB_Matrix R, GrB_Index **mapping) {
+    GrB_Index nvals = 0;
+    GrB_Matrix_nvals(&nvals, L);
+    
+    GrB_Matrix C;
+
+    // Because L is diagonal, number of nodes equals number of entries.
+    GrB_Index nrows = nvals;
+    GrB_Index ncols = nvals;
+    GrB_Matrix_new(&C, GrB_BOOL, nrows, ncols);
+
+    // Extract row indicies.
+    GrB_Index ni = nvals;
+    GrB_Index *I = malloc(sizeof(GrB_Index) * ni);
+
+    // Caller will need to free I.
+    *mapping = I;
+
+    GrB_Info res = GrB_Matrix_extractTuples_BOOL           // [I,J,X] = find (A)
+    (
+        I,          // array for returning row indices of tuples
+        GrB_NULL,   // array for returning col indices of tuples
+        GrB_NULL,   // array for returning values of tuples
+        &nvals,     // I,J,X size on input; # tuples on output
+        L           // matrix to extract tuples from
+    );
+    assert(res == GrB_SUCCESS);
+
+    /* For every node N of type L
+     * retrieve all possible connections from n to every other node 
+     * of type L. */
+    res = GrB_extract   // C<Mask> = accum (C, A(I,J))
+    (
+        C,          // input/output matrix for results
+        GrB_NULL,   // optional mask for C, unused if NULL
+        GrB_NULL,   // optional accum for Z=accum(C,T)
+        R,          // first input:  matrix A
+        I,          // row indices
+        ni,         // number of row indices
+        I,          // column indices
+        ni,         // number of column indices
+        GrB_NULL    // descriptor for C, Mask, and A
+    );
+    assert(res == GrB_SUCCESS);
+
+    return C;
+}
+
 // CALL algo.pageRank('Page', 'LINKS')
 ProcedureResult Proc_PageRankInvoke(ProcedureCtx *ctx, char **args) {
     if(array_len(args) != 2) return PROCEDURE_ERR;
 
     const char *label = args[0];
     const char *relation = args[1];
-    assert(label && relation);
+    assert(label && relation);    
+   
+    GraphContext *gc = GraphContext_GetFromTLS();
+    Graph *g = gc->g;
 
-    Graph *g;
-    Schema *s;
-    int label_id;
-    int relation_id;
-    GraphContext *gc;
+    Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
+    if(!s) return PROCEDURE_ERR;
 
-    GrB_Info res;
-    GrB_Matrix L;
-    GrB_Matrix R;
-    GrB_Matrix A;
+    int label_id = s->id;
+    GrB_Matrix L = Graph_GetLabelMatrix(g, label_id);
+
+    s = GraphContext_GetSchema(gc, relation, SCHEMA_EDGE);
+    if(!s) return PROCEDURE_ERR;
+
+    int relation_id = s->id;
+    GrB_Matrix R = Graph_GetRelationMatrix(g, relation_id);
+
+    /* Create a compact representation of L*R*L 
+     * this will avoid computing pagerank for nodes
+     * not labeled as L. */
+    GrB_Index *mapping;
+    GrB_Matrix C = _compact_matrix(L, R, &mapping);
+
+    // Number of nodes to be ranked.
     GrB_Index nrows;
-    GrB_Index ncols;
-    GrB_Index nvals;
-    GrB_Descriptor desc;
+    GrB_Matrix_nrows(&nrows, C);
 
     int iters = 0;
     double tol = 1e-5;
     int iterations = 20;
-    LAGraph_PageRank *Phandle;
+    LAGraph_PageRank *Phandle = NULL;
 
-    gc = GraphContext_GetFromTLS();
-    g = gc->g;
-
-    s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
-    if(!s) return PROCEDURE_ERR;
-
-    label_id = s->id;
-    L = Graph_GetLabelMatrix(g, label_id);
-    
-    s = GraphContext_GetSchema(gc, relation, SCHEMA_EDGE);
-    if(!s) return PROCEDURE_ERR;
-    
-    relation_id = s->id;
-    R = Graph_GetRelationMatrix(g, relation_id);
-    
-    nrows = Graph_RequiredMatrixDim(g);
-    ncols = Graph_RequiredMatrixDim(g);
-
-    GrB_Descriptor_new(&desc);
-    GrB_Descriptor_set(desc, GrB_OUTP, GrB_REPLACE);
-
-    GrB_Matrix_new(&A, GrB_BOOL, nrows, ncols);
-
-    // Using R as a mask, as we're filtering R.
-    GrB_mxm(A, R, GrB_NULL, Rg_structured_bool, R, L, GrB_NULL);
-    // Using A as a mask, as we're filtering A.
-    GrB_mxm(A, A, GrB_NULL, Rg_structured_bool, L, A, desc);
-
-    // TODO: Remove once CSR is merged.
-    GrB_transpose(A, GrB_NULL, GrB_NULL, A, GrB_NULL);
-
-    // Number of nodes to be ranked.
-    GrB_Matrix_nvals(&nvals, A);
-
-    res = LAGraph_pagerank(
+    GrB_Info res = LAGraph_pagerank(
         &Phandle,       // output: array of LAGraph_PageRank structs
-        A,              // binary input graph, not modified
+        C,              // binary input graph, not modified
         iterations,     // max number of iterations
         tol,            // stop when norm (r-rnew,2) < tol
         &iters          // number of iterations taken
-    );
+    );    
+    assert(res == GrB_SUCCESS);
 
-    // Clean up.
-    GrB_free(&A);
-    GrB_free(&desc);
+    GrB_free(&C);
 
     // Setup private data.
     PageRankContext *pdata = rm_malloc(sizeof(PageRankContext));
     pdata->i = 0;
     pdata->g = g;
-    pdata->n = nvals;
+    pdata->n = nrows;
     pdata->ranking = Phandle;
+    pdata->mapping = mapping;
     pdata->output = array_new(SIValue, 4);
 
     pdata->output = array_append(pdata->output, SI_ConstStringVal("node"));
@@ -118,9 +148,8 @@ SIValue* Proc_PageRankStep(ProcedureCtx *ctx) {
     // Depleted?
     if(pdata->i >= pdata->n) return NULL;
 
-    // Get schema label.
     LAGraph_PageRank rank = pdata->ranking[pdata->i++];
-    NodeID node_id = (NodeID)rank.page;
+    NodeID node_id = pdata->mapping[(NodeID)rank.page];
 
     Graph_GetNode(pdata->g, node_id, &pdata->node);
 
@@ -135,6 +164,7 @@ ProcedureResult Proc_PageRankFree(ProcedureCtx *ctx) {
     if(ctx->privateData) {
         PageRankContext *pdata = ctx->privateData;
         free(pdata->ranking);
+        free(pdata->mapping);
         array_free(pdata->output);
         rm_free(ctx->privateData);
     }
@@ -165,4 +195,3 @@ ProcedureCtx* Proc_PageRankCtx() {
                                     privateData);
     return ctx;
 }
-
