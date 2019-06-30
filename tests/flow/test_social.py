@@ -464,8 +464,21 @@ class SocialFlowTest(FlowTestsBase):
 
         # assert query run time
         self._assert_run_time(actual_result, queries.number_of_paths_to_places_visited)
+    
+    def test26_pagerank_over_frienship(self):
+        global redis_graph
+        q = queries.pagerank_over_frienship.query
+        actual_result = redis_graph.query(q)
 
-    def test26_delete_friendships(self):
+        # assert result set
+        self._assert_only_expected_results_are_in_actual_results(
+            actual_result,
+            queries.pagerank_over_frienship)
+
+        # assert query run time
+        self._assert_run_time(actual_result, queries.pagerank_over_frienship)
+
+    def test27_delete_friendships(self):
         global redis_graph
         q = queries.delete_friendships_query.query
         actual_result = redis_graph.query(q)
@@ -473,7 +486,7 @@ class SocialFlowTest(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.delete_friendships_query)
 
-    def test27_delete_person(self):
+    def test28_delete_person(self):
         global redis_graph
         q = queries.delete_person_query.query
         actual_result = redis_graph.query(q)
@@ -481,7 +494,7 @@ class SocialFlowTest(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.delete_person_query)
 
-    def test28_post_delete_label(self):
+    def test29_post_delete_label(self):
         global redis_graph
         q = queries.post_delete_label_query.query
         actual_result = redis_graph.query(q)
