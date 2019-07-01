@@ -52,7 +52,7 @@ LIBLAGRAPH=../../deps/LAGraph/build/liblagraph.a
 LIBGRAPHBLAS=../../deps/GraphBLAS/build/libgraphblas.a
 LIBXXHASH=$(ROOT)/deps/xxhash/libxxhash.a
 
-LIBS=$(LIBTRIEMAP) $(LIBLAGRAPH) $(LIBGRAPHBLAS) $(LIBXXHASH)
+LIBS=$(LIBTRIEMAP) $(LIBGRAPHBLAS) $(LIBLAGRAPH) $(LIBXXHASH)
 DEPS=$(CC_OBJECTS) $(RAX) $(LIBS)
 
 
