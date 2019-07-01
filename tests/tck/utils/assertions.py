@@ -10,6 +10,67 @@ def is_number_tryexcept(s):
     except ValueError:
         return False
     
+def prepareActualValue(actualValue):
+        actualValue = prepareString(actualValue)
+        actualValue = stringToNumeric(actualValue)
+        actualValue = nodeToString(actualValue)
+        actualValue = edgeToString(actualValue)
+        return actualValue
+
+def prepareExpectedValue(expectedValue):
+    # string preparation
+    expectedValue = prepareString(expectedValue)
+    if expectedValue == "true":
+        expectedValue = True
+    if expectedValue == "false":
+        expectedValue = False
+    if expectedValue == "null":
+        expectedValue = None
+    expectedValue = stringToNumeric(expectedValue)
+    return expectedValue
+
+def prepareString(value):
+    if isinstance(value, basestring):
+        value = value.replace("'", "")
+        value = value.replace('"', "")
+    return value
+
+def stringToNumeric(value):
+    if is_number_tryexcept(value):
+        value = float(value)
+        if value.is_integer():
+            value = int(value)
+    return value
+
+def nodeToString(value):
+    if isinstance(value, Node):
+        res = '('
+        if value.alias:
+            res += value.alias
+        if value.label:
+            res += ':' + value.label
+        if value.properties:
+            props = ','.join(key+': '+str(val) for key, val in value.properties.items())
+            if value.label:
+                res+=" "
+            res += '{' + props + '}'
+        res += ')'
+        value = res
+    return value
+
+def edgeToString(value):
+    if isinstance(value, Edge):
+        res = "["
+        if value.relation:
+            res += ":" + value.relation
+        if value.properties:
+            props = ','.join(key+': '+str(val) for key, val in value.properties.items())
+            if value.relation:
+                res+=" "
+            res += '{' + props + '}'
+        res += ']'
+        value = res
+    return value
 
 def assert_empty_resultset(resultset):
     assert len(resultset.result_set) is 0
@@ -47,59 +108,6 @@ def assert_resultset_content(resultset, expected):
         assert(expectedRowLength == actualRowLen)
         for cellIdx in range(expectedRowLength):
             # Strip value from single quotes.
-            actualCell = actualRow[cellIdx]
-            expectedCell = expectedRow[cellIdx]
-            if isinstance(actualCell, basestring):
-                actualCell = actualCell.replace("'", "")
-                actualCell = actualCell.replace('"', "")
-            if isinstance(expectedCell, basestring):
-                expectedCell = expectedCell.replace("'", "")
-                expectedCell = expectedCell.replace('"', "")
-                if expectedCell == "true":
-                    expectedCell = True
-                if expectedCell == "false":
-                    expectedCell = False
-                if expectedCell == "null":
-                    expectedCell = None
-                    
-            # Cast to integer if possible.
-            if is_number_tryexcept(actualCell):
-                actualCell = float(actualCell)
-                if actualCell.is_integer():
-                    actualCell = int(actualCell)
-            
-            if is_number_tryexcept(expectedCell):
-                expectedCell = float(expectedCell)
-                if expectedCell.is_integer():
-                    expectedCell = int(expectedCell)
-
-            if isinstance(actualCell, Node):
-                res = '('
-                if actualCell.alias:
-                    res += actualCell.alias
-                if actualCell.label:
-                    res += ':' + actualCell.label
-                if actualCell.properties:
-                    props = ','.join(key+': '+str(val) for key, val in actualCell.properties.items())
-                    if actualCell.label:
-                        res+=" "
-                    res += '{' + props + '}'
-                res += ')'
-                actualCell = res
-
-            if isinstance(actualCell, Edge):
-                res = "["
-                if actualCell.relation:
-                    res += ":" + actualCell.relation
-                if actualCell.properties:
-                    props = ','.join(key+': '+str(val) for key, val in actualCell.properties.items())
-                    if actualCell.relation:
-                        res+=" "
-                    res += '{' + props + '}'
-                res += ']'
-                actualCell = res
-            # if actualCell is not expectedCell:
-            #     print "actualCell: %s differ from expectedCell: %s\n" % (actualCell, expectedCell)
-            # else:
-            #     print "PERFECTO!\n"
-            assert actualCell == expectedCell , "actualCell: %s differ from expectedCell: %s\n" % (actualCell, expectedCell)
+            actualValue = prepareActualValue(actualRow[cellIdx])
+            expectedValue= prepareExpectedValue(expectedRow[cellIdx])
+            assert actualValue == expectedValue , "actualCell: %s differ from expectedCell: %s\n" % (actualValue, expectedValue)
