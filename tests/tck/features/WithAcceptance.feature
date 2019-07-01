@@ -89,7 +89,7 @@ Feature: WithAcceptance
       | (:B) | (:A) |
       | (:B) | (:B) |
     And no side effects
-  @skip
+  
   Scenario: Aliasing
     Given an empty graph
     And having executed:

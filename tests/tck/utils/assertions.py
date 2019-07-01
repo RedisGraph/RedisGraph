@@ -23,7 +23,8 @@ def assert_property(resultset, stat, value):
         assert(resultset.labels_added == value)
     elif stat == "+properties":
         assert(resultset.properties_set == value)        
-
+    elif stat == "-nodes":
+        assert(resultset.nodes_deleted == value)
     else:
         assert(False)
 
@@ -54,7 +55,13 @@ def assert_resultset_content(resultset, expected):
             if isinstance(expectedCell, basestring):
                 expectedCell = expectedCell.replace("'", "")
                 expectedCell = expectedCell.replace('"', "")
-
+                if expectedCell == "true":
+                    expectedCell = True
+                if expectedCell == "false":
+                    expectedCell = False
+                if expectedCell == "null":
+                    expectedCell = None
+                    
             # Cast to integer if possible.
             if is_number_tryexcept(actualCell):
                 actualCell = float(actualCell)
@@ -67,14 +74,27 @@ def assert_resultset_content(resultset, expected):
                     expectedCell = int(expectedCell)
 
             if isinstance(actualCell, Node):
-                actualCell = actualCell.__str__()
+                res = '('
+                if actualCell.alias:
+                    res += actualCell.alias
+                if actualCell.label:
+                    res += ':' + actualCell.label
+                if actualCell.properties:
+                    props = ','.join(key+': '+str(val) for key, val in actualCell.properties.items())
+                    if actualCell.label:
+                        res+=" "
+                    res += '{' + props + '}'
+                res += ')'
+                actualCell = res
 
             if isinstance(actualCell, Edge):
                 res = "["
                 if actualCell.relation:
                     res += ":" + actualCell.relation
                 if actualCell.properties:
-                    props = ','.join(key+':'+str(quote_string(val)) for key, val in actualCell.properties.items())
+                    props = ','.join(key+': '+str(val) for key, val in actualCell.properties.items())
+                    if actualCell.relation:
+                        res+=" "
                     res += '{' + props + '}'
                 res += ']'
                 actualCell = res
