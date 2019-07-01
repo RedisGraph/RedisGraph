@@ -27,10 +27,6 @@ class FlowTestsBase(object):
         # Assert actual values vs expected values.
         for res in query_info.expected_result:
             self.env.assertIn(res, actual_result_set)
-            # self.env.assertTrue(res in actual_result_set,
-            #                 'The item %s is NOT in the actual result\n'
-            #                 'The actual result: %s\nThe expected result: %s' %
-            #                 (str(res), str(actual_result_set), str(query_info.expected_result)))
 
     def _assert_actual_results_contained_in_expected_results(self,
                                                              actual_result,

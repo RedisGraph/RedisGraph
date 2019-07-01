@@ -2,8 +2,6 @@ import os
 import sys
 from redisgraph import Graph, Node, Edge
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
 from base import FlowTestsBase
 
 GRAPH_ID = "G"

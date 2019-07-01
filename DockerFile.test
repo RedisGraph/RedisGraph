@@ -8,15 +8,11 @@ RUN set -ex;\
     apt-get update;\
     apt-get install -y --no-install-recommends $deps;\
     pip install wheel;\
-    pip install Click;\
-    pip install rmtest;\
-    pip install git+https://github.com/RedisGraph/redisgraph-py.git@master;\
+    pip install Click rmtest backports.csv psutil behave;\
     pip install redis-py-cluster;\
-    pip install backports.csv;\
-    pip install psutil;\
-    pip install git+https://github.com/RedisLabsModules/RLTest.git@master;\
-    pip install behave
-
+    pip install git+https://github.com/RedisGraph/redisgraph-py.git@master;\
+    pip install git+https://github.com/RedisLabsModules/RLTest.git@master;
+    
 # Build the source
 ADD ./ /redisgraph
 
