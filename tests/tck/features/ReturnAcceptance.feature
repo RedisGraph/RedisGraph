@@ -61,7 +61,7 @@ Feature: ReturnAcceptanceTest
       | 1 |
     And no side effects
 
-  @skip
+  
   Scenario: Limit to two hits with explicit order
     Given an empty graph
     And having executed:
