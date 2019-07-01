@@ -994,7 +994,7 @@ Feature: MatchAcceptance2
       | p    |
       | <()> |
     And no side effects
-  @skip
+  
   Scenario: Matching with aggregation
     Given an empty graph
     And having executed:
@@ -1517,7 +1517,7 @@ Feature: MatchAcceptance2
       | r.prop |
       | 1      |
     And no side effects
-  @skip
+  
   Scenario: Projecting nodes and relationships
     Given an empty graph
     And having executed:

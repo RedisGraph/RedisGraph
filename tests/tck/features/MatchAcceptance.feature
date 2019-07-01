@@ -61,7 +61,7 @@ Feature: MatchAcceptance
       | p                                             |
       | <(:Label1)<-[:T1]-(:Label2)-[:T2]->(:Label3)> |
     And no side effects
-  @skip
+  
   Scenario: Use multiple MATCH clauses to do a Cartesian product
     Given an empty graph
     And having executed:
@@ -73,7 +73,7 @@ Feature: MatchAcceptance
     When executing query:
       """
       MATCH (n), (m)
-      RETURN n.value AS n, m.value AS m
+      RETURN n.value AS n, m.value AS m ORDER by n, m
       """
     Then the result should be:
       | n | m |
@@ -83,9 +83,9 @@ Feature: MatchAcceptance
       | 2 | 1 |
       | 2 | 2 |
       | 2 | 3 |
-      | 3 | 3 |
       | 3 | 1 |
       | 3 | 2 |
+      | 3 | 3 |
     And no side effects
   @skip
   Scenario: Use params in pattern matching predicates

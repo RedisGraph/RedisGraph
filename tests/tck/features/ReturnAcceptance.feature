@@ -232,7 +232,6 @@ Feature: ReturnAcceptanceTest
       | ({name: 'C'}) |
     And no side effects
 
-  @skip
   Scenario: Support column renaming
     Given an empty graph
     And having executed:
