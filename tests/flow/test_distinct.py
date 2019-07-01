@@ -6,39 +6,40 @@ redis_graph = None
 redis_con = None
 
 class RedisGraphTestBase(FlowTestsBase):
+
     def __init__(self):
         super(RedisGraphTestBase, self).__init__()
         global redis_con
-        global redis_graph
-
         redis_con = self.env.getConnection()
         self.create_graph()
+
     @classmethod
     def graphId(cls):
         return cls.__name__
 
-    def createCommand(self):
-        return ""
+    @classmethod
+    def createCommand(cls):
+        raise NotImplementedError("Implement createCommand")
 
     # several commands specified as multiine string, one command per line
+    @classmethod
+    def createCommands(cls):
+        raise NotImplementedError("Implement createCommands")
 
-    def createCommands(self):
-        return ""
-
-    
-    def create_graph(self):
+    @classmethod
+    def create_graph(cls):
         global redis_con
         global redis_graph
         
-        redis_con.execute_command("DEL", self.graphId())  # delete previous graph if exists
+        redis_con.execute_command("DEL", cls.graphId())  # delete previous graph if exists
         
-        redis_graph = Graph(self.graphId(), redis_con)
+        redis_graph = Graph(cls.graphId(), redis_con)
 
-        cmd = " ".join(map(lambda x: x.strip(), self.createCommand().split("\n")))
+        cmd = " ".join(map(lambda x: x.strip(), cls.createCommand().split("\n")))
         if cmd != "":
             redis_graph.query(cmd)
 
-        for cmd in self.createCommands().split("\n"):
+        for cmd in cls.createCommands().split("\n"):
             cmd = cmd.strip()
             if cmd != "":
                 redis_graph.query(cmd)
@@ -50,10 +51,7 @@ class RedisGraphTestBase(FlowTestsBase):
     def query(self, cmd):
         global redis_graph
         q = redis_graph.query(cmd)
-        try:
-            return q.result_set
-        except:
-            return []
+        return q.result_set
 
     def explain(self, query):
         return redis_graph.execution_plan(query)
@@ -66,10 +64,16 @@ class RedisGraphTestBase(FlowTestsBase):
         return redis_con.execute_command("EXEC")
 
 class testReturnDistinctFlow1(RedisGraphTestBase):
+
     def __init__(self):
         super(testReturnDistinctFlow1, self).__init__()
+    
+    @classmethod
+    def createCommand(cls):
+        return ""
 
-    def createCommands(self):
+    @classmethod
+    def createCommands(cls):
         return """
             CREATE (:PARENT {name: 'Stevie'})
             CREATE (:PARENT {name: 'Mike'})
@@ -126,6 +130,7 @@ class testReturnDistinctFlow1(RedisGraphTestBase):
         self.env.assertEqual(q, [['James'], ['Mike']])
 
 class testReturnDistinctFlow2(RedisGraphTestBase):
+
     def __init__(self):
         super(testReturnDistinctFlow2, self).__init__()
 
@@ -144,6 +149,10 @@ class testReturnDistinctFlow2(RedisGraphTestBase):
                 (j)-[:HAS]->(c5:CHILD {name: 'child5'}),
                 (j)-[:HAS]->(c6:CHILD {name: 'child6'})
             """
+
+    @classmethod
+    def createCommands(cls):
+        return ""
 
     def test_issue_395_scenario_2(self):
         # all

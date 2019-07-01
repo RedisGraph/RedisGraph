@@ -41,30 +41,30 @@ class testWithClause(FlowTestsBase):
                     [True],
                     [5],
                     [10.5]]
-        self.env.assertEqual( actual_result.result_set, expected)
+        self.env.assertEqual(actual_result.result_set, expected)
 
 
         query = """MATCH (a:label_a) WITH a.a_val AS val SKIP 1 LIMIT 1 RETURN val ORDER BY val"""
         actual_result = redis_graph.query(query)
         expected = [['str2']]
-        self.env.assertEqual( actual_result.result_set, expected)
+        self.env.assertEqual(actual_result.result_set, expected)
 
 
         query = """MERGE (a:label_a {a_val: 5}) WITH a.a_val AS val RETURN val ORDER BY val"""
         actual_result = redis_graph.query(query)
         expected = [[5]]
-        self.env.assertEqual( actual_result.properties_set, 0)
+        self.env.assertEqual(actual_result.properties_set, 0)
 
-        self.env.assertEqual( actual_result.result_set, expected)
+        self.env.assertEqual(actual_result.result_set, expected)
 
 
         # Merge on existing edge
         query = """MERGE ()-[e {edgeval: 5}]->() WITH e.edgeval AS val RETURN val"""
         actual_result = redis_graph.query(query)
         expected = [[5]]
-        self.env.assertEqual( actual_result.properties_set, 0)
+        self.env.assertEqual(actual_result.properties_set, 0)
 
-        self.env.assertEqual( actual_result.result_set, expected)
+        self.env.assertEqual(actual_result.result_set, expected)
     def test02_with_arithmetic_op_read_queries(self):
         # Iterate over nodes
         query = """MATCH (a) WITH ID(a) AS id RETURN id ORDER BY id"""

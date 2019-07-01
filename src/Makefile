@@ -158,13 +158,8 @@ package: redisgraph.so
 
 test: redisgraph.so
 	#check valgrind flag
-ifeq ($(VALGRIND),)
-	
-else
-
-ifeq ($(uname_S),Linux)
-
-else
+ifneq ($(VALGRIND),)
+ifneq ($(uname_S),Linux)
 	@echo building docker to run valgrind on MacOS
 	@cd ../ ;\
 	docker build -f DockerFile.test -t mac_os_test_docker .;
