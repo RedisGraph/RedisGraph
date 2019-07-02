@@ -1,18 +1,11 @@
 import os
 import sys
-import unittest
 
-# import redis
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from disposableredis import DisposableRedis
 
 from base import FlowTestsBase
 
-def redis():
-    return DisposableRedis(loadmodule=os.path.dirname(os.path.abspath(__file__)) + '/../../src/redisgraph.so')
-
 GRAPH_ID = "multiexec-graph"
-global_redis = None
 redis_con = None
 
 # Fully connected 3 nodes graph,
@@ -31,23 +24,11 @@ DEL_QUERY = """MATCH (al:person {name:'Al'})-[e:knows]->(b:person {name:'Betty'}
 # Change Al name from Al to Steve.
 UPDATE_QUERY = "MATCH (al:person {name:'Al'}) SET al.name = 'Steve'"
 
-class MultiExecFlowTest(FlowTestsBase):
-    @classmethod
-    def setUpClass(cls):
-        print "Multi Exec"
+class testMultiExecFlow(FlowTestsBase):
+    def __init__(self):
+        super(testMultiExecFlow, self).__init__()
         global redis_con
-        global global_redis
-        cls.r = redis()
-        cls.r.start()
-        global_redis = cls.r
-        redis_con = global_redis.client()
-
-        # redis_con = redis.Redis()
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.r.stop()
-        # pass
+        redis_con = self.env.getConnection()
 
     def test_graph_entities(self):
         # Delete previous graph if exists.
@@ -92,23 +73,23 @@ class MultiExecFlowTest(FlowTestsBase):
 
         two_edges = results[1]
         two_edges = two_edges[1][0][1]        
-        assert(two_edges == 2)
+        self.env.assertEquals(two_edges, 2)
 
         one_edge = results[3]
         one_edge = one_edge[1][0][1]
-        assert(one_edge == 1)
+        self.env.assertEquals(one_edge, 1)
 
         no_edges = results[5]
         no_edges = no_edges[1]
-        assert(len(no_edges) == 0)
+        self.env.assertEquals(len(no_edges), 0)
 
 
     def test_transaction_failure(self):
         
-        redis_con_a = global_redis.client() 
-        redis_con_b = global_redis.client()
+        redis_con_a = self.env.getConnection()
+        redis_con_b = self.env.getConnection()
         results = redis_con_b.execute_command("INFO", "CLIENTS")
-        assert(results['connected_clients'] >= 2)
+        self.env.assertGreaterEqual(results['connected_clients'], 2)
 
         # Delete previous graph if exists.
         redis_con_a.execute_command("DEL", GRAPH_ID)
@@ -119,7 +100,7 @@ class MultiExecFlowTest(FlowTestsBase):
         redis_con_a.execute_command("GRAPH.QUERY", GRAPH_ID, MATCH_QUERY)
         results = redis_con_a.execute_command("EXEC")
 
-        assert(results != None)
+        self.env.assertNotEqual(results, None)
 
         # read only query from client B - transaction OK
         redis_con_a.execute_command("WATCH", GRAPH_ID)
@@ -128,7 +109,7 @@ class MultiExecFlowTest(FlowTestsBase):
         redis_con_a.execute_command("GRAPH.QUERY", GRAPH_ID, MATCH_QUERY)
         results = redis_con_a.execute_command("EXEC")
 
-        assert(results != None)
+        self.env.assertNotEqual(results, None)
 
         # write query from client B - transaction fails
         redis_con_a.execute_command("WATCH", GRAPH_ID)
@@ -137,7 +118,7 @@ class MultiExecFlowTest(FlowTestsBase):
         redis_con_a.execute_command("GRAPH.QUERY", GRAPH_ID, MATCH_QUERY)
         results = redis_con_a.execute_command("EXEC")
 
-        assert(results == None)
+        self.env.assertEqual(results, None)
 
         # GRAPH.EXPLAIN is read only - no data change - transaction OK
         redis_con_a.execute_command("WATCH", GRAPH_ID)
@@ -146,7 +127,4 @@ class MultiExecFlowTest(FlowTestsBase):
         redis_con_a.execute_command("GRAPH.QUERY", GRAPH_ID, MATCH_QUERY)
         results = redis_con_a.execute_command("EXEC")
 
-        assert(results != None)
-        
-if __name__ == '__main__':
-    unittest.main()
+        self.env.assertNotEqual(results, None)

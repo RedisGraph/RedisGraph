@@ -3,40 +3,22 @@ import sys
 import unittest
 from redisgraph import Graph, Node, Edge
 
-# import redis
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from disposableredis import DisposableRedis
 
 from base import FlowTestsBase
 
 redis_graph = None
 people = ["Roi", "Alon", "Ailon", "Boaz", "Tal", "Omri", "Ori"]
 
-def redis():
-    return DisposableRedis(loadmodule=os.path.dirname(os.path.abspath(__file__)) + '/../../src/redisgraph.so')
-
-class GraphMultiPatternQueryFlowTest(FlowTestsBase):
-    @classmethod
-    def setUpClass(cls):
-        print "GraphMultiPatternQueryFlowTest"
+class testGraphMultiPatternQueryFlow(FlowTestsBase):
+    def __init__(self):
+        super(testGraphMultiPatternQueryFlow, self).__init__()
         global redis_graph
-        cls.r = redis()
-        cls.r.start()
-        redis_con = cls.r.client()
+        redis_con = self.env.getConnection()
         redis_graph = Graph("G", redis_con)
+        self.populate_graph()
 
-        # cls.r = redis.Redis()
-        # redis_graph = Graph("G", cls.r)
-
-        cls.populate_graph()
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.r.stop()
-        # pass
-
-    @classmethod
-    def populate_graph(cls):
+    def populate_graph(self):
         global redis_graph
         
         nodes = {}
@@ -53,8 +35,8 @@ class GraphMultiPatternQueryFlowTest(FlowTestsBase):
         query = """MATCH(r:person {name:"Roi"}), (f:person) WHERE f.name != r.name CREATE (r)-[:friend]->(f) RETURN count(f)"""
         actual_result = redis_graph.query(query)
         friend_count = actual_result.result_set[0][0]
-        assert(friend_count == 6)
-        assert (actual_result.relationships_created == 6)
+        self.env.assertEquals(friend_count, 6)
+        self.env.assertEquals(actual_result.relationships_created, 6)
 
     def test02_verify_cartesian_product_streams_reset(self):
         # See https://github.com/RedisGraph/RedisGraph/issues/249
@@ -67,15 +49,15 @@ class GraphMultiPatternQueryFlowTest(FlowTestsBase):
         for q in queries:
             actual_result = redis_graph.query(q)
             records_count = len(actual_result.result_set)
-            assert(records_count == expected_resultset_size)
+            self.env.assertEquals(records_count, expected_resultset_size)
 
     # Connect every node to every node.
     def test03_create_fully_connected_graph(self):
         query = """MATCH(a:person), (b:person) WHERE a.name != b.name CREATE (a)-[f:friend]->(b) RETURN count(f)"""
         actual_result = redis_graph.query(query)
         friend_count = actual_result.result_set[0][0]
-        assert(friend_count == 42)
-        assert (actual_result.relationships_created == 42)
+        self.env.assertEquals(friend_count, 42)
+        self.env.assertEquals(actual_result.relationships_created, 42)
     
     # Perform a cartesian product of 3 sets.
     def test04_cartesian_product(self):
@@ -87,7 +69,7 @@ class GraphMultiPatternQueryFlowTest(FlowTestsBase):
         for q in queries:
             actual_result = redis_graph.query(q)
             friend_count = actual_result.result_set[0][0]
-            assert(friend_count == 343)
+            self.env.assertEquals(friend_count, 343)
 
     def test06_multiple_create_clauses(self):
         queries = ["""CREATE (:a {v:1}), (:b {v:2, z:3}), (:c), (:a)-[:r0 {k:9}]->(:b), (:c)-[:r1]->(:d)""",
@@ -95,9 +77,6 @@ class GraphMultiPatternQueryFlowTest(FlowTestsBase):
                    """CREATE (:a {v:1}), (:b {v:2, z:3}) CREATE (:c), (:a)-[:r0 {k:9}]->(:b) CREATE (:c)-[:r1]->(:d)"""]
         for q in queries:
             actual_result = redis_graph.query(q)
-            assert (actual_result.relationships_created == 2)
-            assert (actual_result.properties_set == 4)
-            assert (actual_result.nodes_created == 7)
-
-if __name__ == '__main__':
-    unittest.main()
+            self.env.assertEquals(actual_result.relationships_created, 2)
+            self.env.assertEquals(actual_result.properties_set, 4)
+            self.env.assertEquals(actual_result.nodes_created, 7)

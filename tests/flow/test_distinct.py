@@ -1,6 +1,77 @@
-from redis_base import RedisGraphTestBase
+from redisgraph import Graph, Node, Edge
 
-class ReturnDistinctFlowTest_1(RedisGraphTestBase):
+from base import FlowTestsBase
+
+redis_graph = None
+redis_con = None
+
+class RedisGraphTestBase(FlowTestsBase):
+
+    def __init__(self):
+        super(RedisGraphTestBase, self).__init__()
+        global redis_con
+        redis_con = self.env.getConnection()
+        self.create_graph()
+
+    @classmethod
+    def graphId(cls):
+        return cls.__name__
+
+    @classmethod
+    def createCommand(cls):
+        raise NotImplementedError("Implement createCommand")
+
+    # several commands specified as multiine string, one command per line
+    @classmethod
+    def createCommands(cls):
+        raise NotImplementedError("Implement createCommands")
+
+    @classmethod
+    def create_graph(cls):
+        global redis_con
+        global redis_graph
+        
+        redis_con.execute_command("DEL", cls.graphId())  # delete previous graph if exists
+        
+        redis_graph = Graph(cls.graphId(), redis_con)
+
+        cmd = " ".join(map(lambda x: x.strip(), cls.createCommand().split("\n")))
+        if cmd != "":
+            redis_graph.query(cmd)
+
+        for cmd in cls.createCommands().split("\n"):
+            cmd = cmd.strip()
+            if cmd != "":
+                redis_graph.query(cmd)
+
+    def execute(self, cmd):
+        global redis_con
+        return redis_con.execute_command(cmd)
+
+    def query(self, cmd):
+        global redis_graph
+        q = redis_graph.query(cmd)
+        return q.result_set
+
+    def explain(self, query):
+        return redis_graph.execution_plan(query)
+
+    def multi(self):
+        global redis_con
+        redis_con.execute_command("MULTI")
+    
+    def exec_(self):
+        return redis_con.execute_command("EXEC")
+
+class testReturnDistinctFlow1(RedisGraphTestBase):
+
+    def __init__(self):
+        super(testReturnDistinctFlow1, self).__init__()
+    
+    @classmethod
+    def createCommand(cls):
+        return ""
+
     @classmethod
     def createCommands(cls):
         return """
@@ -19,46 +90,50 @@ class ReturnDistinctFlowTest_1(RedisGraphTestBase):
     def test_distinct_optimization(self):
         # Make sure we do not omit distinct when performain none aggregated projection.
         execution_plan = self.explain("MATCH (n) RETURN DISTINCT n.name, n.age")        
-        self.assertIn("Distinct", execution_plan)
+        self.env.assertIn("Distinct", execution_plan)
 
         # Distinct should be omitted when performain aggregation.
         execution_plan = self.explain("MATCH (n) RETURN DISTINCT n.name, max(n.age)")
-        self.assertNotIn("Distinct", execution_plan)
+        self.env.assertNotIn("Distinct", execution_plan)
 
     def test_issue_395_scenario(self):
         # all
         q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p.name")
-        self.assertEqual(q, [['Stevie'], ['Stevie'], ['Stevie'], ['Mike'], ['James'], ['James']])
+        self.env.assertEqual(q, [['Stevie'], ['Stevie'], ['Stevie'], ['Mike'], ['James'], ['James']])
         
         # order
         q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p.name ORDER BY p.name")
-        self.assertEqual(q, [['James'], ['James'], ['Mike'], ['Stevie'], ['Stevie'], ['Stevie']])
+        self.env.assertEqual(q, [['James'], ['James'], ['Mike'], ['Stevie'], ['Stevie'], ['Stevie']])
 
         # limit
         q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p.name LIMIT 2")
-        self.assertEqual(q, [['Stevie'], ['Stevie']])
+        self.env.assertEqual(q, [['Stevie'], ['Stevie']])
         
         # order+limit
         q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p.name ORDER BY p.name LIMIT 2")
-        self.assertEqual(q, [['James'], ['James']])
+        self.env.assertEqual(q, [['James'], ['James']])
         
         # all+distinct
         q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p.name")
-        self.assertEqual(q, [['Stevie'], ['Mike'], ['James']])
+        self.env.assertEqual(q, [['Stevie'], ['Mike'], ['James']])
         
         # order+distinct
         q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p.name ORDER BY p.name")
-        self.assertEqual(q, [['James'], ['Mike'], ['Stevie']])
+        self.env.assertEqual(q, [['James'], ['Mike'], ['Stevie']])
 
         # limit+distinct
         q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p.name LIMIT 2")
-        self.assertEqual(q, [['Stevie'], ['Mike']])
+        self.env.assertEqual(q, [['Stevie'], ['Mike']])
         
         # order+limit+distinct
         q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p.name ORDER BY p.name LIMIT 2")
-        self.assertEqual(q, [['James'], ['Mike']])
+        self.env.assertEqual(q, [['James'], ['Mike']])
 
-class ReturnDistinctFlowTest_2(RedisGraphTestBase):
+class testReturnDistinctFlow2(RedisGraphTestBase):
+
+    def __init__(self):
+        super(testReturnDistinctFlow2, self).__init__()
+
     @classmethod
     def createCommand(cls):
         return """
@@ -75,38 +150,39 @@ class ReturnDistinctFlowTest_2(RedisGraphTestBase):
                 (j)-[:HAS]->(c6:CHILD {name: 'child6'})
             """
 
+    @classmethod
+    def createCommands(cls):
+        return ""
+
     def test_issue_395_scenario_2(self):
         # all
         q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p.name")
-        self.assertEqual(q, [['James'], ['James'], ['Mike'], ['Stevie'], ['Stevie'], ['Stevie']])
+        self.env.assertEqual(q, [['James'], ['James'], ['Mike'], ['Stevie'], ['Stevie'], ['Stevie']])
         
         # order
         q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p.name ORDER BY p.name")
-        self.assertEqual(q, [['James'], ['James'], ['Mike'], ['Stevie'], ['Stevie'], ['Stevie']])
+        self.env.assertEqual(q, [['James'], ['James'], ['Mike'], ['Stevie'], ['Stevie'], ['Stevie']])
 
         # limit
         q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p.name LIMIT 2")
-        self.assertEqual(q, [['James'], ['James']])
+        self.env.assertEqual(q, [['James'], ['James']])
         
         # order+limit
         q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p.name ORDER BY p.name DESC LIMIT 2")
-        self.assertEqual(q, [['Stevie'], ['Stevie']])
+        self.env.assertEqual(q, [['Stevie'], ['Stevie']])
         
         # all+distinct
         q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p.name")
-        self.assertEqual(q, [['James'], ['Mike'], ['Stevie']])
+        self.env.assertEqual(q, [['James'], ['Mike'], ['Stevie']])
         
         # order+distinct
         q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p.name ORDER BY p.name DESC")
-        self.assertEqual(q, [['Stevie'], ['Mike'], ['James']])
+        self.env.assertEqual(q, [['Stevie'], ['Mike'], ['James']])
 
         # limit+distinct
         q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p.name LIMIT 2")
-        self.assertEqual(q, [['James'], ['Mike']])
+        self.env.assertEqual(q, [['James'], ['Mike']])
         
         # order+limit+distinct
         q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p.name ORDER BY p.name DESC LIMIT 2")
-        self.assertEqual(q, [['Stevie'], ['Mike']])
-
-if __name__ == '__main__':
-    unittest.main()
+        self.env.assertEqual(q, [['Stevie'], ['Mike']])
