@@ -14,7 +14,7 @@ def is_numeric(value):
     except ValueError:
         # value was a string not representing a number
         return False
-
+    
 # prepare the actual value returned from redisgraph to be in 
 # comparison vaiable format of the TCK feature files expected values
 def prepareActualValue(actualValue):
