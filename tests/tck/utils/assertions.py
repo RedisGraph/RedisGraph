@@ -1,75 +1,91 @@
 from numbers import Number
 from redisgraph import Node, Edge
-def is_number_tryexcept(s):
-    """ Returns True if string is a number. """
-    if not isinstance(s, (Number, basestring)):
+
+# Returns True if value is a number or string representation of a number.
+def is_numeric(value): 
+    # check for value's type to be a number or a string
+    if not isinstance(value, (Number, basestring)):
         return False
     try:
-        float(s)
+        # value is either number or string, try to convert to float
+        float(value)
+        # conversion succeed
         return True
     except ValueError:
+        # value was a string not representing a number
         return False
-    
-def prepareActualValue(actualValue):
-        actualValue = prepareString(actualValue)
-        actualValue = stringToNumeric(actualValue)
-        actualValue = nodeToString(actualValue)
-        actualValue = edgeToString(actualValue)
-        return actualValue
 
+# prepare the actual value returned from redisgraph to be in 
+# comparison vaiable format of the TCK feature files expected values
+def prepareActualValue(actualValue):
+    # if value is a numeric string or a number, transform to numeric value
+    if is_numeric(actualValue):
+        actualValue = stringToNumeric(actualValue)
+    # value is string
+    elif isinstance(actualValue, basestring):
+        # remove qoutes if any
+        actualValue = removeQuotes(actualValue)
+    # value is a node
+    elif isinstance(actualValue, Node):
+        actualValue = nodeToString(actualValue)
+    # value is an edge
+    elif isinstance(actualValue, Edge):
+        actualValue = edgeToString(actualValue)
+    return actualValue
+
+# prepare the expected value to be in comparison vaiable format
 def prepareExpectedValue(expectedValue):
-    # string preparation
-    expectedValue = prepareString(expectedValue)
+    # the expected value is always string. Do a string preparation
+    expectedValue = removeQuotes(expectedValue)
+    # in case of boolean value string
     if expectedValue == "true":
         expectedValue = True
-    if expectedValue == "false":
+    elif expectedValue == "false":
         expectedValue = False
-    if expectedValue == "null":
+    elif expectedValue == "null":
         expectedValue = None
-    expectedValue = stringToNumeric(expectedValue)
+    # in case of numeric string
+    elif is_numeric(expectedValue):
+        expectedValue = stringToNumeric(expectedValue)
     return expectedValue
 
-def prepareString(value):
-    if isinstance(value, basestring):
-        value = value.replace("'", "")
-        value = value.replace('"', "")
+def removeQuotes(value):
+    value = value.replace("'", "")
+    value = value.replace('"', "")  
     return value
 
 def stringToNumeric(value):
-    if is_number_tryexcept(value):
-        value = float(value)
-        if value.is_integer():
-            value = int(value)
+    value = float(value)
+    if value.is_integer():
+        value = int(value)
     return value
 
 def nodeToString(value):
-    if isinstance(value, Node):
-        res = '('
-        if value.alias:
-            res += value.alias
+    res = '('
+    if value.alias:
+        res += value.alias
+    if value.label:
+        res += ':' + value.label
+    if value.properties:
+        props = ','.join(key+': '+str(val) for key, val in value.properties.items())
         if value.label:
-            res += ':' + value.label
-        if value.properties:
-            props = ','.join(key+': '+str(val) for key, val in value.properties.items())
-            if value.label:
-                res+=" "
-            res += '{' + props + '}'
-        res += ')'
-        value = res
+            res+=" "
+        res += '{' + props + '}'
+    res += ')'
+    value = res  
     return value
 
 def edgeToString(value):
-    if isinstance(value, Edge):
-        res = "["
+    res = "["
+    if value.relation:
+        res += ":" + value.relation
+    if value.properties:
+        props = ','.join(key+': '+str(val) for key, val in value.properties.items())
         if value.relation:
-            res += ":" + value.relation
-        if value.properties:
-            props = ','.join(key+': '+str(val) for key, val in value.properties.items())
-            if value.relation:
-                res+=" "
-            res += '{' + props + '}'
-        res += ']'
-        value = res
+            res+=" "
+        res += '{' + props + '}'
+    res += ']'
+    value = res
     return value
 
 def assert_empty_resultset(resultset):
@@ -98,7 +114,6 @@ def assert_resultset_length(resultset, length):
     assert(len(resultset.result_set) == length)
 
 def assert_resultset_content(resultset, expected):
-    resultset.pretty_print()
     rowCount = len(expected.rows)
     for rowIdx in range(rowCount):
         actualRow = resultset.result_set[rowIdx]
@@ -109,5 +124,5 @@ def assert_resultset_content(resultset, expected):
         for cellIdx in range(expectedRowLength):
             # Strip value from single quotes.
             actualValue = prepareActualValue(actualRow[cellIdx])
-            expectedValue= prepareExpectedValue(expectedRow[cellIdx])
+            expectedValue = prepareExpectedValue(expectedRow[cellIdx])
             assert actualValue == expectedValue , "actualCell: %s differ from expectedCell: %s\n" % (actualValue, expectedValue)

@@ -163,8 +163,8 @@ void ResultSet_ReplyWithCompactHeader(RedisModuleCtx *ctx, const ResultSetHeader
         RedisModule_ReplyWithArray(ctx, 2);
         Column *c = header->columns[i];
         ColumnTypeUser t;
-        char *identifier = c->name;
-        AST_GraphEntity *entity = TrieMap_Find(entities, identifier, strlen(identifier));
+        char *identifier = c->alias? c->alias: c->name;
+        AST_GraphEntity *entity = TrieMap_Find(entities, c->name, strlen(c->name));
 
         // First, emit the column type enum
         if(entity == TRIEMAP_NOTFOUND) {
