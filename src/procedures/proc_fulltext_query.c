@@ -9,7 +9,7 @@
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
 #include "../graph/graphcontext.h"
-#include "../redisearch_api.h"
+#include "RediSearch/src/redisearch_api.h"
 
 //------------------------------------------------------------------------------
 // fulltext createNodeIndex
@@ -90,7 +90,7 @@ ProcedureResult Proc_FulltextQueryNodeFree(ProcedureCtx *ctx) {
     return PROCEDURE_OK;
 }
 
-ProcedureCtx* Proc_FulltextQueryNodeGen() {
+ProcedureCtx* Proc_FulltextQueryNodeCtx() {
     void *privateData = NULL;
     ProcedureOutput **output = array_new(ProcedureOutput*, 1);
     ProcedureOutput *out_node = rm_malloc(sizeof(ProcedureOutput));

@@ -9,7 +9,7 @@
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
 #include "../graph/graphcontext.h"
-#include "../redisearch_api.h"
+#include "RediSearch/src/redisearch_api.h"
 
 //------------------------------------------------------------------------------
 // fulltext createNodeIndex
@@ -118,7 +118,10 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke(ProcedureCtx *ctx, char **args)
         }
     }
 
-    RSIndex *idx = RediSearch_CreateIndex(label, _getNodeAttribute, indexCtx);
+    RSIndexOptions* indexOptions =  RediSearch_CreateIndexOptions();
+    RediSearch_IndexOptionsSetGetValueCallback(indexOptions, _getNodeAttribute, indexCtx);
+    RediSearch_IndexOptionsSetFlags(indexOptions, GC_POLICY_FORK);
+    RSIndex *idx = RediSearch_CreateIndex(label, indexOptions);
     Schema_SetFullTextIndex(s, idx);
     for(int i = 0; i < fields_count; i++) {
         char *field = fields[i];
@@ -141,7 +144,7 @@ ProcedureResult Proc_FulltextCreateNodeIdxFree(ProcedureCtx *ctx) {
     return PROCEDURE_OK;
 }
 
-ProcedureCtx* Proc_FulltextCreateNodeIdxGen() {
+ProcedureCtx* Proc_FulltextCreateNodeIdxCtx() {
     void *privateData = NULL;
     ProcedureOutput **output = array_new(ProcedureOutput*, 0);
     ProcedureCtx *ctx = ProcCtxNew("db.idx.fulltext.createNodeIndex",

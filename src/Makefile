@@ -75,9 +75,10 @@ LIBTRIEMAP=util/triemap/libtriemap.a
 GRAPHBLAS=../deps/GraphBLAS/build/libgraphblas.a
 LIBXXHASH=../deps/xxhash/libxxhash.a
 LIBCYPHER-PARSER=../deps/libcypher-parser/lib/src/.libs/libcypher-parser.a
+LIBREDISEARCH = ../deps/RediSearch/build/libredisearchS.a
 
 # Compilation deps for the module
-LIBS=$(LIBTRIEMAP) $(GRAPHBLAS) $(LIBXXHASH) $(LIBCYPHER-PARSER)
+LIBS=$(LIBTRIEMAP) $(GRAPHBLAS) $(LIBXXHASH) $(LIBCYPHER-PARSER) $(LIBREDISEARCH)
 MODULE=$(CC_OBJECTS) $(RAX) $(LIBS)
 
 REDISGRAPH_CC=$(QUIET_CC)$(CC)
@@ -132,6 +133,14 @@ ifeq (,$(wildcard $(LIBCYPHER-PARSER)))
 endif
 .PHONY: $(LIBCYPHER-PARSER)
 
+$(LIBREDISEARCH):
+	cd ../deps/RediSearch; \
+    mkdir -p build; \
+    cd build; \
+    cmake -DRS_BUILD_STATIC=ON ../ ;\
+    make
+.PHONY: $(LIBREDISEARCH)
+
 # Compile query parse. 
 # This is not included in the usual make target!
 parser:
@@ -149,6 +158,7 @@ ifeq ($(ALL),1)
 	@$(MAKE) -C ../deps/GraphBLAS clean
 	@$(MAKE) -C ../deps/xxhash clean
 	@$(MAKE) -C ../deps/rax clean
+	@$(MAKE) -C ../deps/RediSearch/build clean
 endif
 	@$(MAKE) -C ../tests clean
 

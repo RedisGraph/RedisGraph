@@ -9,7 +9,7 @@
 #include "redismodule.h"
 #include "config.h"
 #include "version.h"
-#include "redisearch_api.h"
+#include "RediSearch/src/redisearch_api.h"
 #include "commands/commands.h"
 #include "util/thpool/thpool.h"
 #include "arithmetic/agg_funcs.h"

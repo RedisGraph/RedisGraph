@@ -10,7 +10,7 @@ GTEST_DIR = ../../deps/googletest
 CPPFLAGS += -isystem $(GTEST_DIR)/include
 
 # Flags passed to the C++ compiler.
-CXXFLAGS += -g -Wall -Wextra -pthread -std=c++11
+CXXFLAGS += -g -Wall -Wextra -pthread -std=c++11 -I $(ROOT)/deps
 CXX_SUPPRESS = -Wno-sign-compare -Wno-format -Wno-write-strings
 
 REDISGRAPH_CXX=$(QUIET_CXX)$(CXX)
@@ -22,6 +22,16 @@ ENDCOLOR="\033[0m"
 ifndef V
 QUIET_CXX = @printf '    %b %b\n' $(CCCOLOR)CXX$(ENDCOLOR) $(SRCCOLOR)$@$(ENDCOLOR) 1>&2;
 endif
+
+# find the OS
+uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
+ifeq ($(uname_S),Linux)
+	LDFLAGS ?= -shared -Bsymbolic -Bsymbolic-functions -ldl -lpthread
+else
+	CFLAGS += -mmacosx-version-min=10.14
+	LDFLAGS ?= -mmacosx-version-min=10.14 -bundle -undefined dynamic_lookup
+endif
+
 
 # Google Test headers - do not modify
 GTEST_HEADERS = $(GTEST_DIR)/include/gtest/*.h \
@@ -50,8 +60,9 @@ RAX=../../deps/rax/rax.o
 LIBTRIEMAP=../../src/util/triemap/libtriemap.a
 LIBGRAPHBLAS=../../deps/GraphBLAS/build/libgraphblas.a
 LIBXXHASH=$(ROOT)/deps/xxhash/libxxhash.a
+LIBREDISEARCH = $(ROOT)/deps/RediSearch/build/libredisearchS.a
 
-LIBS=$(LIBTRIEMAP) $(LIBGRAPHBLAS) $(LIBXXHASH)
+LIBS=$(LIBTRIEMAP) $(LIBGRAPHBLAS) $(LIBXXHASH) $(LIBREDISEARCH)
 DEPS=$(CC_OBJECTS) $(RAX) $(LIBS)
 
 # Build and run a test for each cpp file in directory
