@@ -116,7 +116,7 @@ Feature: MatchAcceptance2
       | [({num: 1}), ({num: 2})] |
       | [({num: 3}), ({num: 4})] |
     And no side effects
-  @skip
+  
   Scenario: Zero-length variable length pattern in the middle of the pattern
     Given an empty graph
     And having executed:
@@ -138,7 +138,7 @@ Feature: MatchAcceptance2
       | ({name: 'A'}) | ({name: 'B'}) | ({name: 'B'}) |
       | ({name: 'A'}) | ({name: 'B'}) | ({name: 'C'}) |
     And no side effects
-  @skip
+  
   Scenario: Simple variable length pattern
     Given an empty graph
     And having executed:
@@ -475,7 +475,7 @@ Feature: MatchAcceptance2
       | a.id | b.id |
       | 0    | 1    |
     And no side effects
-  @skip
+  
   Scenario: Matching all nodes
     Given an empty graph
     And having executed:
@@ -485,7 +485,7 @@ Feature: MatchAcceptance2
     When executing query:
       """
       MATCH (n)
-      RETURN n
+      RETURN n ORDER BY type(n)
       """
     Then the result should be:
       | n    |
@@ -546,7 +546,7 @@ Feature: MatchAcceptance2
       | b    |
       | (:B) |
     And no side effects
-  @skip
+  
   Scenario: Matching using relationship predicate with multiples of the same type
     Given an empty graph
     And having executed:
@@ -587,7 +587,7 @@ Feature: MatchAcceptance2
       | 1   | 1        |
       | 2   | 1        |
     And no side effects
-  @skip
+  
   Scenario: Simple node property predicate
     Given an empty graph
     And having executed:
@@ -700,7 +700,7 @@ Feature: MatchAcceptance2
       | b      |
       | (:Foo) |
     And no side effects
-  @skip
+  
   Scenario: Matching a relationship pattern using a label predicate on both sides
     Given an empty graph
     And having executed:
@@ -852,7 +852,7 @@ Feature: MatchAcceptance2
       | (:A) |
       | (:D) |
     And no side effects
-  @skip
+  
   Scenario: Handling cyclic patterns
     Given an empty graph
     And having executed:
@@ -994,7 +994,7 @@ Feature: MatchAcceptance2
       | p    |
       | <()> |
     And no side effects
-  @skip
+  
   Scenario: Matching with aggregation
     Given an empty graph
     And having executed:
@@ -1517,7 +1517,7 @@ Feature: MatchAcceptance2
       | r.prop |
       | 1      |
     And no side effects
-  @skip
+  
   Scenario: Projecting nodes and relationships
     Given an empty graph
     And having executed:
@@ -1534,7 +1534,7 @@ Feature: MatchAcceptance2
       | foo  | bar  |
       | (:A) | [:T] |
     And no side effects
-  @skip
+  
   Scenario: Missing node property should become null
     Given an empty graph
     And having executed:
@@ -1550,7 +1550,7 @@ Feature: MatchAcceptance2
       | a.bar |
       | null  |
     And no side effects
-  @skip
+  
   Scenario: Missing relationship property should become null
     Given an empty graph
     And having executed:

@@ -29,7 +29,7 @@
 #encoding: utf-8
 
 Feature: NullAcceptance
-  @skip
+  
   Scenario: Property existence check on non-null node
     Given an empty graph
     And having executed:
