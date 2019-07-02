@@ -58,11 +58,10 @@ class testQueryValidationFlow(FlowTestsBase):
        query = r"CREATE (:escaped{prop1:'single \' char', prop2: 'double \" char', prop3: 'mixed \' and \" chars'})"
        actual_result = redis_graph.query(query)
        self.env.assertEquals(actual_result.nodes_created, 1)
-       self.env.assertEquals((actual_result.properties_set, 3)
+       self.env.assertEquals(actual_result.properties_set, 3)
 
        query = r"MATCH (a:escaped) RETURN a.prop1, a.prop2, a.prop3"
        actual_result = redis_graph.query(query)
        expected_result = [["single ' char", 'double " char', 'mixed \' and " chars']]
 
-       self.env.assertEquals((actual_result.result_set, expected_result)
-       
+       self.env.assertEquals(actual_result.result_set, expected_result)

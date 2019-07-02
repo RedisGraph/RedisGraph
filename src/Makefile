@@ -157,12 +157,13 @@ package: redisgraph.so
 	@ramp pack -m "`pwd`/../ramp_manifest.yml" -v -o "../build/redisgraph.{os}-{architecture}.latest.zip" "`pwd`/redisgraph.so"
 
 test: redisgraph.so
-	#check valgrind flag
+	# check valgrind flag is not empty
 ifneq ($(VALGRIND),)
+	# valgrind is requested, check that host's os is not Linux
 ifneq ($(uname_S),Linux)
 	@echo building docker to run valgrind on MacOS
 	@cd ../ ;\
-	docker build -f DockerFile.test -t mac_os_test_docker .;
+	docker build -f ./tests/Dockerfile -t mac_os_test_docker .;
 endif
 endif
 	@$(MAKE) -C ../tests test

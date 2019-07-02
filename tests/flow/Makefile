@@ -8,9 +8,7 @@ ifneq ($(V),)
 endif
 
 # check environment flag
-ifeq ($(ENV),)
-	
-else
+ifneq ($(ENV),)
 	TEST_ARGS += --env $(ENV)
 endif
 
