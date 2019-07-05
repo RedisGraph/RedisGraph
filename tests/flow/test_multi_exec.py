@@ -7,7 +7,6 @@ from base import FlowTestsBase
 
 GRAPH_ID = "multiexec-graph"
 redis_con = None
-dis_redis = None
 
 # Fully connected 3 nodes graph,
 CREATE_QUERY = """CREATE (al:person {name:'Al'}), (betty:person {name:'Betty'}), (michael:person {name:'Michael'}),

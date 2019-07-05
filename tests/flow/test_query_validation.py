@@ -8,8 +8,6 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from base import FlowTestsBase
 
 redis_graph = None
-dis_redis = None
-redis_con = None
 
 class testQueryValidationFlow(FlowTestsBase):
 

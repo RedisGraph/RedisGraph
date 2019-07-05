@@ -8,7 +8,6 @@ from base import FlowTestsBase
 
 GRAPH_ID = "procedures"
 redis_graph = None
-dis_redis = None
 redis_con = None
 
 node1 = Node(label="fruit", properties={"name": "Orange1", "value": 1})
