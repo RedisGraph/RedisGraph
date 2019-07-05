@@ -15,9 +15,6 @@
 static void _AddNodeProperties(OpMerge *op, Schema *schema, Node *n, PropertyMap *props) {
     if (props == NULL) return;
 
-    GraphContext *gc = op->gc;
-    Attribute_ID prop_id = ATTRIBUTE_NOTFOUND;
-
     for(int i = 0; i < props->property_count; i++) {
         Attribute_ID prop_id = GraphContext_FindOrAddAttribute(op->gc, props->keys[i]);
         GraphEntity_AddProperty((GraphEntity*)n, prop_id, props->values[i]);
@@ -28,9 +25,6 @@ static void _AddNodeProperties(OpMerge *op, Schema *schema, Node *n, PropertyMap
 
 static void _AddEdgeProperties(OpMerge *op, Schema *schema, Edge *e, PropertyMap *props) {
     if (props == NULL) return;
-
-    GraphContext *gc = op->gc;
-    Attribute_ID prop_id = ATTRIBUTE_NOTFOUND;
 
     for(int i = 0; i < props->property_count; i++) {
         Attribute_ID prop_id = GraphContext_FindOrAddAttribute(op->gc, props->keys[i]);
@@ -86,7 +80,6 @@ static void _CommitNodes(OpMerge *op, Record r) {
 
 static void _CommitEdges(OpMerge *op, Record r) {
     // Create edges.
-    Graph *g = op->gc->g;
 
     uint edge_count = array_len(op->edges_to_merge);
     // TODO allocate? nodes get allocated here
@@ -106,7 +99,7 @@ static void _CommitEdges(OpMerge *op, Record r) {
         EntityID srcId = ENTITY_GET_ID(Record_GetNode(r, edge_ctx->src_idx));
         EntityID destId = ENTITY_GET_ID(Record_GetNode(r, edge_ctx->dest_idx));
 
-        assert(Graph_ConnectNodes(g, srcId, destId, schema->id, created_edge));
+        assert(Graph_ConnectNodes(op->gc->g, srcId, destId, schema->id, created_edge));
 
         _AddEdgeProperties(op, schema, created_edge, edge_ctx->properties);
     }

@@ -34,50 +34,6 @@ QGEdge* QGEdge_Clone(const QGEdge *orig) {
     return e;
 }
 
-// NodeID QGEdge_GetSrcNodeID(const QGEdge* edge) {
-	// assert(edge);
-	// return edge->srcNodeID;
-// }
-
-// NodeID QGEdge_GetDestNodeID(const QGEdge* edge) {
-	// assert(edge);
-	// return edge->destNodeID;
-// }
-
-/* int QGEdge_GetRelationID(const QGEdge *edge) { */
-	/* assert(edge); */
-    /* return edge->relationID; */
-/* } */
-
-QGNode* QGEdge_GetSrcNode(QGEdge *e) {
-	assert(e);
-	return e->src;
-}
-
-QGNode* QGEdge_GetDestNode(QGEdge *e) {
-	assert(e);
-	return e->dest;
-}
-
-// GrB_Matrix QGEdge_GetMatrix(QGEdge *e) {
-    // assert(e);
-
-    // // Retrieve matrix from graph if edge matrix isn't set.
-    // if(!e->mat) {
-        // GraphContext *gc = GraphContext_GetFromTLS();
-        // Graph *g = gc->g;
-
-        // // Get relation matrix.
-        // if(e->relationID == GRAPH_UNKNOWN_RELATION) {
-			// e->mat = Graph_GetZeroMatrix(g);
-		// } else {
-			// e->mat = Graph_GetRelationMatrix(g, e->relationID);
-        // }
-    // }
-
-    // return e->mat;
-// }
-
 bool QGEdge_VariableLength(const QGEdge *e) {
 	assert(e);
 	return (e->minHops != e->maxHops);
@@ -101,29 +57,12 @@ void QGEdge_Reverse(QGEdge *e) {
 	QGNode_ConnectNode(e->src, e->dest, e);
 }
 
-// void QGEdge_SetSrcNode(QGEdge *e, QGNode *src) {
-    // assert(e && src);
-    // e->src = src;
-    // e->srcNodeID = ENTITY_GET_ID(src);
-// }
-
-// void QGEdge_SetDestNode(QGEdge *e, QGNode *dest) {
-    // assert(e && dest);
-    // e->dest = dest;
-    // e->destNodeID = ENTITY_GET_ID(dest);
-// }
-
-// void QGEdge_SetRelationID(QGEdge *e, int relationID) {
-    // assert(e);
-    // e->relationID = relationID;
-// }
-
 int QGEdge_ToString(const QGEdge *e, char *buff, int buff_len) {
     assert(e && buff);
 
     int offset = 0;
     offset += snprintf(buff + offset, buff_len - offset, "[");
-    
+
     if(e->alias)
         offset += snprintf(buff + offset, buff_len - offset, "%s", e->alias);
     uint reltype_count = array_len(e->reltypes);

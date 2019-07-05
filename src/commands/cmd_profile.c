@@ -12,81 +12,66 @@
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
 
-static ResultSet* _prepare_resultset(RedisModuleCtx *ctx, AST **ast) {
-    // TODO
-    // The last AST will contain the return clause, if one is specified.
-    ResultSet *set = NewResultSet(ctx, false, false);
-
-    // Set result-set formatter to a NOP formatter.
-    ResultSet_SetReplyFormatter(set, FORMATTER_NOP);
-
-    // Fake header.
-    // set->header = rm_malloc(sizeof(ResultSetHeader));
-    // set->header->columns_len = 0;
-    // set->header->columns = NULL;
-
-    return set;
-}
-
 void _MGraph_Profile(void *args) {
-    // CommandCtx *qctx = (CommandCtx*)args;
-    // AST *ast = qctx->ast;
-    // bool lockAcquired = false;
-    // ResultSet* resultSet = NULL;
-    // bool readonly = AST_ReadOnly(ast);
-    // RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(qctx);
+    CommandCtx *qctx = (CommandCtx*)args;
+    RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(qctx);
 
-    // // Try to access the GraphContext
-    // CommandCtx_ThreadSafeContextLock(qctx);
-    // GraphContext *gc = GraphContext_Retrieve(ctx, qctx->graphName, readonly);
-    // if(!gc) {
-        // if(!ast[0]->createNode && !ast[0]->mergeNode) {
-            // CommandCtx_ThreadSafeContextUnlock(qctx);
-            // RedisModule_ReplyWithError(ctx, "key doesn't contains a graph object.");
-            // goto cleanup;
-        // }
-        // assert(!readonly);
-        // gc = GraphContext_New(ctx, qctx->graphName, GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
-        // if(!gc) {
-            // CommandCtx_ThreadSafeContextUnlock(qctx);
-            // RedisModule_ReplyWithError(ctx, "Graph name already in use as a Redis key.");
-            // goto cleanup;
-        // }
-        // // TODO: free graph if no entities were created.
-    // }
+    bool lockAcquired = false;
 
-    // CommandCtx_ThreadSafeContextUnlock(qctx);
+    AST *ast = AST_Build(qctx->parse_result);
+    bool readonly = AST_ReadOnly(ast->root);
 
-    // // Perform query validations before and after ModifyAST
-    // if (AST_PerformValidations(ctx, ast) != AST_VALID) goto cleanup;
-    // ModifyAST(ast);
-    // if (AST_PerformValidations(ctx, ast) != AST_VALID) goto cleanup;
+    // Try to access the GraphContext
+    CommandCtx_ThreadSafeContextLock(qctx);
+    GraphContext *gc = GraphContext_Retrieve(ctx, qctx->graphName, readonly);
+    if(!gc) {
+        if (!AST_ContainsClause(ast, CYPHER_AST_CREATE) &&
+            !AST_ContainsClause(ast, CYPHER_AST_MERGE)) {
+            CommandCtx_ThreadSafeContextUnlock(qctx);
+            RedisModule_ReplyWithError(ctx, "key doesn't contains a graph object.");
+            goto cleanup;
+        }
+        assert(!readonly);
+        gc = GraphContext_New(ctx, qctx->graphName, GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
+        if(!gc) {
+            CommandCtx_ThreadSafeContextUnlock(qctx);
+            RedisModule_ReplyWithError(ctx, "Graph name already in use as a Redis key.");
+            goto cleanup;
+        }
+        // TODO: free graph if no entities were created.
+    }
 
-    // // Acquire the appropriate lock.
-    // if(readonly) Graph_AcquireReadLock(gc->g);
-    // else Graph_WriterEnter(gc->g);  // Single writer.
-    // lockAcquired = true;
+    CommandCtx_ThreadSafeContextUnlock(qctx);
 
-    // if (ast[0]->indexNode) { // Index operation.
-        // RedisModule_ReplyWithError(ctx, "Can't profile index operations.");
-        // goto cleanup;
-    // }
+    // Perform query validations
+    if (AST_PerformValidations(ctx, ast) != AST_VALID) goto cleanup;
 
-    // resultSet = _prepare_resultset(ctx, ast);
-    // ExecutionPlan *plan = NewExecutionPlan(ctx, ast, resultSet, false);
-    // ExecutionPlan_Profile(plan);
-    // ExecutionPlan_Print(plan, ctx);
-    // ExecutionPlanFree(plan);
+    // Acquire the appropriate lock.
+    if(readonly) Graph_AcquireReadLock(gc->g);
+    else Graph_WriterEnter(gc->g);  // Single writer.
+    lockAcquired = true;
 
-// cleanup:
-    // // Release the read-write lock
-    // if(lockAcquired) {
-        // if(readonly)Graph_ReleaseLock(gc->g);
-        // else Graph_WriterLeave(gc->g);
-    // }
+    const cypher_astnode_type_t root_type = cypher_astnode_type(ast->root);
+    if (root_type == CYPHER_AST_CREATE_NODE_PROP_INDEX || root_type == CYPHER_AST_DROP_NODE_PROP_INDEX) {
+        RedisModule_ReplyWithError(ctx, "Can't profile index operations.");
+        goto cleanup;
+    } else if (root_type != CYPHER_AST_QUERY) {
+        assert("Unhandled query type" && false);
+    }
 
-    // ResultSet_Free(resultSet);
-    // CommandCtx_Free(qctx);
+    ExecutionPlan *plan = NewExecutionPlan(ctx, gc, false, false);
+    ExecutionPlan_Profile(plan);
+    ExecutionPlan_Print(plan, ctx);
+    ExecutionPlan_Free(plan);
+
+cleanup:
+    // Release the read-write lock
+    if(lockAcquired) {
+        if(readonly)Graph_ReleaseLock(gc->g);
+        else Graph_WriterLeave(gc->g);
+    }
+
+    CommandCtx_Free(qctx);
 }
 
 /* Profiles query
@@ -94,44 +79,44 @@ void _MGraph_Profile(void *args) {
  * argv[1] graph name
  * argv[2] query to profile */
 int MGraph_Profile(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-    // if (argc < 3) return RedisModule_WrongArity(ctx);
+    if (argc < 3) return RedisModule_WrongArity(ctx);
 
-    // // Parse AST.
-    // char *errMsg = NULL;    
-    // const char *query = RedisModule_StringPtrLen(argv[2], NULL);
+    // Parse AST.
+    char *errMsg = NULL;    
+    const char *query = RedisModule_StringPtrLen(argv[2], NULL);
 
-    // AST **ast = ParseQuery(query, strlen(query), &errMsg);
-    // if (!ast) {
-        // RedisModule_Log(ctx, "debug", "Error parsing query: %s", errMsg);
-        // RedisModule_ReplyWithError(ctx, errMsg);
-        // free(errMsg);
-        // return REDISMODULE_OK;
-    // }
-    // if(AST_Empty(ast[0])) {
-        // AST_Free(ast);
-        // RedisModule_ReplyWithError(ctx, "Error empty query.");
-        // return REDISMODULE_OK;
-    // }
+    // Parse AST.
+    cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
 
-    // bool readonly = AST_ReadOnly(ast);
+    if(AST_ContainsErrors(parse_result)) {
+        char *errMsg = AST_ReportErrors(parse_result);
+        cypher_parse_result_free(parse_result);
+        RedisModule_Log(ctx, "debug", "Error parsing query: %s", errMsg);
+        RedisModule_ReplyWithError(ctx, errMsg);
+        free(errMsg);
+        return REDISMODULE_OK;
+    }
+
+    const cypher_astnode_t *query_root = AST_GetBody(parse_result);
+    bool readonly = AST_ReadOnly(query_root);
 
     /* Determin query execution context
      * queries issued within a LUA script or multi exec block must
      * run on Redis main thread, others can run on different threads. */
-    // CommandCtx *context;
-    // int flags = RedisModule_GetContextFlags(ctx);
-    // if (flags & (REDISMODULE_CTX_FLAGS_MULTI | REDISMODULE_CTX_FLAGS_LUA)) {
-        // // Run query on Redis main thread.
-        // context = CommandCtx_New(ctx, NULL, ast, argv[1], argv, argc);
-        // _MGraph_Profile(context);
-    // } else {
-        // // Run query on a dedicated thread.
-        // RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
-        // context = CommandCtx_New(NULL, bc, ast, argv[1], argv, argc);
-        // thpool_add_work(_thpool, _MGraph_Profile, context);
-    // }
+    CommandCtx *context;
+    int flags = RedisModule_GetContextFlags(ctx);
+    if (flags & (REDISMODULE_CTX_FLAGS_MULTI | REDISMODULE_CTX_FLAGS_LUA)) {
+        // Run query on Redis main thread.
+        context = CommandCtx_New(ctx, NULL, parse_result, argv[1], argv, argc);
+        _MGraph_Profile(context);
+    } else {
+        // Run query on a dedicated thread.
+        RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
+        context = CommandCtx_New(NULL, bc, parse_result, argv[1], argv, argc);
+        thpool_add_work(_thpool, _MGraph_Profile, context);
+    }
 
-    // // Replicate only if query has potential to modify key space.
-    // if(!readonly) RedisModule_ReplicateVerbatim(ctx);
+    // Replicate only if query has potential to modify key space.
+    if(!readonly) RedisModule_ReplicateVerbatim(ctx);
     return REDISMODULE_OK;
 }

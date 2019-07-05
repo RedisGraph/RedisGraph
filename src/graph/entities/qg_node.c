@@ -11,7 +11,6 @@
 
 QGNode* QGNode_New(const char *label, const char *alias) {
     QGNode *n = rm_malloc(sizeof(QGNode));
-    n->n = Node_New(NULL, NULL); // label, alias
     n->alias = NULL;
     n->label = NULL;
     n->labelID = GRAPH_NO_LABEL;
@@ -58,39 +57,8 @@ int QGNode_EdgeCount(const QGNode *n) {
 	return QGNode_IncomeDegree(n) + QGNode_OutgoingDegree(n);
 }
 
-void QGNode_SetLabelID(QGNode *n, int labelID) {
-	assert(n);
-	n->labelID = labelID;
-}
-
-// GrB_Matrix QGNode_GetMatrix(QGNode *n) {
-	/* QGNode's label must be set, 
-	 * otherwise it doesn't make sense to refer to a matrix. */
-	// assert(n && n->label);
-
-	// // Retrieve matrix from graph if edge matrix isn't set.
-    // if(!n->mat) {
-        // GraphContext *gc = GraphContext_GetFromTLS();
-        // Graph *g = gc->g;
-
-        /* Get label matrix:
-		 * There's no sense in calling QGNode_GetMatrix
-		 * if node isn't labeled. */
-		// assert(n->labelID != GRAPH_NO_LABEL);
-        // if(n->labelID == GRAPH_UNKNOWN_LABEL) {
-			// // Label specified (n:Label), but doesn't exists.
-			// n->mat = Graph_GetZeroMatrix(g);
-		// } else {
-			// n->mat = Graph_GetLabelMatrix(g, n->labelID);
-        // }
-    // }
-
-    // return n->mat;
-// }
-
 QGNode* QGNode_Clone(const QGNode *orig) {
     QGNode *n = rm_malloc(sizeof(QGNode));
-    n->n = orig->n;
     n->id = orig->id;
     n->label = orig->label;
     n->labelID = orig->labelID;

@@ -31,7 +31,6 @@ typedef enum {
 typedef void (*EmitHeaderFunc)(RedisModuleCtx *ctx, const QueryGraph *qg, AR_ExpNode **exps);
 
 // Typedef for record formatters.
-// TODO remove GraphContext
 typedef void (*EmitRecordFunc)(RedisModuleCtx *ctx, GraphContext *gc, const Record r, unsigned int numcols);
 
 typedef struct {

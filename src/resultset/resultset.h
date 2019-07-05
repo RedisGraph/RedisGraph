@@ -20,18 +20,15 @@
 typedef struct {
     RedisModuleCtx *ctx;
     GraphContext *gc;           /* Context used for mapping attribute strings and IDs */
-    uint column_count; // TODO necessary variable?
-    AR_ExpNode **exps;
-    bool distinct;              /* Whether or not each record is unique. */
+    uint column_count;          /* Number of columns in result set. */
+    AR_ExpNode **exps;          /* Expression nodes containing result set header strings. */
     bool compact;               /* Whether records should be returned in compact form. */
     size_t recordCount;         /* Number of records introduced. */
     ResultSetStatistics stats;  /* ResultSet statistics. */
     ResultSetFormatter *formatter;  /* ResultSet data formatter. */
 } ResultSet;
 
-ResultSet* NewResultSet(RedisModuleCtx *ctx, bool distinct, bool compact);
-
-void ResultSet_SetReplyFormatter(ResultSet *set, ResultSetFormatterType formatter);
+ResultSet* NewResultSet(RedisModuleCtx *ctx, bool compact);
 
 void ResultSet_ReplyWithPreamble(ResultSet *set, QueryGraph *qg);
 

@@ -33,21 +33,19 @@ typedef struct {
 
 int TraverseRecordCap(const AST *ast);
 
-PropertyMap* AST_ConvertPropertiesMap(const cypher_astnode_t *props, const RecordMap *record_map);
+PropertyMap* AST_ConvertPropertiesMap(const cypher_astnode_t *props, RecordMap *record_map);
 
-AR_ExpNode** AST_ConvertCollection(const cypher_astnode_t *collection, const RecordMap *record_map);
+AR_ExpNode** AST_ConvertCollection(const cypher_astnode_t *collection, RecordMap *record_map);
 
 EntityUpdateEvalCtx* AST_PrepareUpdateOp(const cypher_astnode_t *set_clause, RecordMap *record_map, uint *nitems_ref);
 
 void AST_PrepareDeleteOp(const cypher_astnode_t *delete_clause, const QueryGraph *qg, RecordMap *record_map, uint **nodes_ref, uint **edges_ref);
 
-// AR_ExpNode** AST_PrepareSortOp(const cypher_astnode_t *order_clause, int *direction);
 int AST_PrepareSortOp(const cypher_astnode_t *order_clause);
 
-AST_UnwindContext AST_PrepareUnwindOp(const cypher_astnode_t *unwind_clause, const RecordMap *record_map);
+AST_UnwindContext AST_PrepareUnwindOp(const cypher_astnode_t *unwind_clause, RecordMap *record_map);
 
 AST_MergeContext AST_PrepareMergeOp(RecordMap *record_map, AST *ast, const cypher_astnode_t *merge_clause, QueryGraph *qg);
 
 AST_CreateContext AST_PrepareCreateOp(RecordMap *record_map, AST *ast, QueryGraph *qg);
 
-// uint* AST_WithClauseModifies(RecordMap *record_map, const cypher_astnode_t *with_clause);

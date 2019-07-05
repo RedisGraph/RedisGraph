@@ -108,8 +108,7 @@ AR_ExpNode* AR_EXP_NewVariableFromID(uint id, const char *prop) {
     return node;
 }
 
-AR_ExpNode* AR_EXP_NewVariableOperandNode(const RecordMap *record_map, const char *alias, const char *prop) {
-    // assert(false);
+AR_ExpNode* AR_EXP_NewVariableOperandNode(RecordMap *record_map, const char *alias, const char *prop) {
     AR_ExpNode *node = rm_malloc(sizeof(AR_ExpNode));
     node->type = AR_EXP_OPERAND;
     node->operand.type = AR_EXP_VARIADIC;
@@ -144,7 +143,7 @@ AR_ExpNode* AR_EXP_NewConstOperandNode(SIValue constant) {
     return node;
 }
 
-AR_ExpNode* AR_EXP_FromExpression(const RecordMap *record_map, const cypher_astnode_t *expr) {
+AR_ExpNode* AR_EXP_FromExpression(RecordMap *record_map, const cypher_astnode_t *expr) {
     const cypher_astnode_type_t type = cypher_astnode_type(expr);
 
     /* Function invocations*/
@@ -398,7 +397,7 @@ void AR_EXP_CollectEntityIDs(AR_ExpNode *root, rax *record_ids) {
     } else { // type == AR_EXP_OPERAND
         if (root->operand.type == AR_EXP_VARIADIC) {
             int record_idx = root->operand.variadic.entity_alias_idx;
-            assert(record_idx != NOT_IN_RECORD);
+            assert(record_idx != IDENTIFIER_NOT_FOUND);
             raxInsert(record_ids, (unsigned char*)&record_idx, sizeof(record_idx), NULL, NULL);
         }
     }

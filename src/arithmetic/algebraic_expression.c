@@ -16,34 +16,6 @@ static inline bool intermediate_node(uint node_idx, uint path_len) {
     return (node_idx > 0) && (node_idx < path_len - 1);
 }
 
-// static inline bool _ExpressionIsVariableLength(const AlgebraicExpression *exp) {
-    // return exp->minHops != exp->maxHops;
-// }
-
-static int* _setup_traversed_relations(const cypher_astnode_t *ast_relation) {
-    GraphContext *gc = GraphContext_GetFromTLS();
-
-    uint relationIDsCount = cypher_ast_rel_pattern_nreltypes(ast_relation);
-
-    int *relationIDs;
-    if(relationIDsCount > 0) {
-        relationIDs = array_new(int, relationIDsCount);
-        for(int i = 0; i < relationIDsCount; i++) {
-            // TODO documentation error in libcypher-parser
-            const cypher_astnode_t *ast_reltype = cypher_ast_rel_pattern_get_reltype(ast_relation, i);
-            const char *reltype = cypher_ast_reltype_get_name(ast_reltype);
-            Schema *s = GraphContext_GetSchema(gc, reltype, SCHEMA_EDGE);
-            if(!s) continue;
-            relationIDs = array_append(relationIDs, s->id);
-        }
-    } else {
-        relationIDs = array_new(int, 1);
-        relationIDs = array_append(relationIDs, GRAPH_NO_RELATION);
-    }
-
-    return relationIDs;
-}
-
 AlgebraicExpression *_AE_MUL(size_t operand_cap) {
     AlgebraicExpression *ae = malloc(sizeof(AlgebraicExpression));
     ae->op = AL_EXP_MUL;
@@ -63,41 +35,6 @@ static bool _highly_connected_node(const QGNode *n) {
 static inline bool _referred_entity(const RecordMap *record_map, uint id) {
     return (RecordMap_LookupEntityID(record_map, id) != IDENTIFIER_NOT_FOUND);
 }
-
-/* For every referenced edge, add edge source and destination nodes
- * as referenced entities. */
-// static void _referred_edge_ends(const QueryGraph *q, TrieMap *ref_entities) {
-    // uint edge_count = array_len(q->edges);
-    // for(int i = 0; i < edge_count; i++) {
-        // QGEdge *e = q->edges[i];
-        // if(TrieMap_Find(ref_entities, e->alias, strlen(e->alias)) != TRIEMAP_NOTFOUND) {
-            // // Edge is referenced, add ends as referenced entities.
-            // char *src = e->src->alias;
-            // char *dest = e->dest->alias;
-            // TrieMap_Add(ref_entities, src, strlen(src), NULL, TrieMap_DONT_CARE_REPLACE);
-            // TrieMap_Add(ref_entities, dest, strlen(dest), NULL, TrieMap_DONT_CARE_REPLACE);
-        // }
-    // }
-// }
-
-/* Variable length edges require their own algebraic expression,
- * therefor mark both variable length edge ends as referenced. */
-// static void _referred_variable_length_edges(const QueryGraph *q, TrieMap *ref_entities) {
-    // QGEdge *e;
-    // char *src;
-    // char *dest;
-
-    // uint edge_count = array_len(q->edges);
-    // for(int i = 0; i < edge_count; i++) {
-        // e = q->edges[i];
-        // if(Edge_VariableLength(e)) {
-            // src = e->src->alias;
-            // dest = e->dest->alias;
-            // TrieMap_Add(ref_entities, src, strlen(src), NULL, TrieMap_DONT_CARE_REPLACE);
-            // TrieMap_Add(ref_entities, dest, strlen(dest), NULL, TrieMap_DONT_CARE_REPLACE);
-        // }
-    // }
-// }
 
 /* Checks if given expression contains a variable length edge. */
 static bool _AlgebraicExpression_ContainsVariableLengthEdge(const AlgebraicExpression *exp) {
@@ -124,7 +61,6 @@ static AlgebraicExpression** _AlgebraicExpression_IsolateVariableLenExps(Algebra
             continue;
         }
 
-        QGEdge *e = exp->edge;
         QGNode *src = exp->src_node;
         QGNode *dest = exp->dest_node;
 
@@ -148,7 +84,7 @@ static AlgebraicExpression** _AlgebraicExpression_IsolateVariableLenExps(Algebra
         res = array_append(res, exp);
 
         // If the expression has a labeled destination, separate it into its own expression.
-        if(exp->dest_node->label) {
+        if(dest->label) {
             // Remove dest node matrix from expression.
             AlgebraicExpressionOperand op;
             AlgebraicExpression_RemoveTerm(exp, exp->operand_count-1, &op);
@@ -171,103 +107,6 @@ static AlgebraicExpression** _AlgebraicExpression_IsolateVariableLenExps(Algebra
     array_free(expressions);
     return res;
 }
-
-/* Break down expression into sub expressions.
- * considering referenced intermediate nodes and edges. */
-// AlgebraicExpression **_AlgebraicExpression_Intermediate_Expressions(RecordMap *record_map, AlgebraicExpression *exp, const cypher_astnode_t *path, const QueryGraph *q, size_t *exp_count) {
-    // [> Allocating maximum number of expression possible. <]
-    // AlgebraicExpression **expressions = malloc(sizeof(AlgebraicExpression *) * exp->operand_count);
-    // int expIdx = 0;     // Sub expression index.
-    // int operandIdx = 0; // Index to currently inspected operand.
-    // bool transpose;     // Indicate if matrix operand needs to be transposed.
-    // Node *dest = NULL;
-    // Node *src = NULL;
-    // Edge *e = NULL;
-    // uint dest_node_idx;
-
-    // AlgebraicExpression *iexp = _AE_MUL(exp->operand_count);
-    // iexp->src_node = exp->src_node;
-    // iexp->dest_node = exp->dest_node;
-    // iexp->operand_count = 0;
-    // expressions[expIdx++] = iexp;
-
-    // uint nelems = cypher_ast_pattern_path_nelements(path);
-    // for(uint i = 1; i < nelems; i += 2) {
-        // const cypher_astnode_t *ast_rel = cypher_ast_pattern_path_get_element(path, i);
-        // cypher_astnode_type_t type = cypher_astnode_type(ast_rel);
-
-        // e = QueryGraph_GetEntityByASTRef(q, ast_rel);
-        // transpose = (cypher_ast_rel_pattern_get_direction(ast_rel) == CYPHER_REL_INBOUND);
-
-        // uint edge_idx = RecordMap_LookupEntityID(record_map, e->entity->id);
-        // [> If edge is referenced, set expression edge pointer. <]
-        // if (edge_idx != IDENTIFIER_NOT_FOUND) { // TODO referenced edges must be mapped prior to building AlgebraicExpression
-            // iexp->edge = e;
-            // iexp->relation_ids = _setup_traversed_relations(ast_rel);
-        // }
-
-        /* If this is a variable length edge, which is not fixed in length
-         * remember edge length. */
-
-        // // TODO delete if possible
-        // unsigned int hops = 1;
-        // const cypher_astnode_t *varlength = cypher_ast_rel_pattern_get_varlength(ast_rel);
-        // if (varlength) {
-            // const cypher_astnode_t *start_node = cypher_ast_range_get_start(varlength);
-            // const cypher_astnode_t *end_node = cypher_ast_range_get_end(varlength);
-            // unsigned int start = (start_node == NULL) ? 1 : AST_ParseIntegerNode(start_node);
-             // // TODO make better unbounded identifier
-            // unsigned int end = (end_node == NULL) ? 100 : AST_ParseIntegerNode(end_node);
-            // iexp->minHops = start;
-            // iexp->maxHops = end;
-            // iexp->edge = e;
-            // if (iexp->relation_ids == NULL) iexp->relation_ids = _setup_traversed_relations(ast_rel);
-            // [> Expand fixed variable length edge <]
-            // if (end == start) hops = start;
-        // }
-
-        // if (transpose) {
-            // dest = e->src;
-            // src = e->dest;
-        // } else {
-            // dest = e->dest;
-            // src = e->src;
-        // }
-
-        // if(operandIdx == 0 && src->mat) {
-            // iexp->operands[iexp->operand_count++] = exp->operands[operandIdx++];
-        // }
-
-        // for(int j = 0; j < hops; j++) {
-            // iexp->operands[iexp->operand_count++] = exp->operands[operandIdx++];
-        // }
-
-        // if(dest->mat) {
-            // iexp->operands[iexp->operand_count++] = exp->operands[operandIdx++];
-        // }
-
-        // // Don't build intermediate expression for non-intermediate nodes (not first or last)
-        // if (intermediate_node(i + 1, nelems) == false) continue;
-
-        // dest_node_idx = RecordMap_LookupEntityID(record_map, dest->entity->id);
-        // // Don't build intermediate expression if destination node is not referenced
-        // if (dest_node_idx == NOT_IN_RECORD) continue;
-
-        // // Finalize current expression.
-        // iexp->dest_node = dest;
-
-
-        // [> Create a new algebraic expression. <]
-        // AlgebraicExpression *prev_exp = expressions[expIdx-1];
-        // iexp = _CloneAlgebraicExpression(exp); // TODO delete this function
-        // // New expression's source is the previous expression's destination
-        // iexp->src_node = prev_exp->dest_node;
-        // expressions[expIdx++] = iexp;
-    // }
-
-    // *exp_count = expIdx;
-    // return expressions;
-// }
 
 static inline void _AlgebraicExpression_Execute_MUL(GrB_Matrix C, GrB_Matrix A, GrB_Matrix B, GrB_Descriptor desc) {
     // Using our own compile-time, user defined semiring see rg_structured_bool.m4
@@ -357,37 +196,6 @@ void AlgebraicExpression_AppendOperand(AlgebraicExpression *ae, AlgebraicExpress
     ae->operand_count++;
 }
 
-// AlgebraicExpression **AlgebraicExpression_FromPath(RecordMap *record_map, const QueryGraph *q, const cypher_astnode_t *path, size_t *exp_count) {
-    // uint edge_count = array_len(q->edges);
-    // uint node_count = array_len(q->nodes);
-    // assert(edge_count != 0);
-
-    // AlgebraicExpression *exp = _AE_MUL(edge_count + node_count);
-    // bool transpose; // Indicate if matrix operand needs to be transposed.
-    // Node *dest = NULL;
-    // Node *src = NULL;
-    // Edge *e = NULL;
-
-    // uint nelems = cypher_ast_pattern_path_nelements(path);
-
-    // const cypher_astnode_t *ast_rel = NULL;
-    // // Scan relations in MATCH clause from left to right.
-    // for(uint i = 1; i < nelems; i += 2) {
-        // ast_rel = cypher_ast_pattern_path_get_element(path, i);
-
-        // e = QueryGraph_GetEntityByASTRef(q, ast_rel);
-
-        // // TODO: we might want to delay matrix retrieval even further.
-        // GrB_Matrix mat = Edge_GetMatrix(e);
-        // dest = e->dest;
-        // src = e->src;
-
-        // transpose = (cypher_ast_rel_pattern_get_direction(ast_rel) == CYPHER_REL_INBOUND);
-        // if(transpose) {
-            // dest = e->src;
-            // src = e->dest;
-        // }
-
 void AlgebraicExpression_PrependOperand(AlgebraicExpression *ae, AlgebraicExpressionOperand op) {
     assert(ae);
 
@@ -423,7 +231,6 @@ static void _RemovePathFromGraph(QueryGraph *g, QGEdge **path) {
 /* Determin the length of the longest path in the graph.
  * Returns a list residing on the edge of the longest path. */
 static QGNode** _DeepestLevel(const QueryGraph *g, int *level) {
-    QGNode *s = g->nodes[0];
     int l = BFS_LOWEST_LEVEL;
     QGNode **leafs = BFS(g->nodes[0], &l);
     QGNode *leaf = leafs[0];
@@ -679,18 +486,6 @@ AlgebraicExpression **AlgebraicExpression_FromQueryGraph(const QueryGraph *qg, R
 
     QueryGraph *g = QueryGraph_Clone(qg);
     AlgebraicExpression **exps = array_new(AlgebraicExpression*, 1);
-
-    // TODO: Have a single AST function which computes its referred entities.
-    // TODO This should be done before now.
-    // TrieMap *ref_entities = NewTrieMap();
-    // SetClause_ReferredEntities(ast->setNode, ref_entities);
-    // WithClause_ReferredEntities(ast->withNode, ref_entities);
-    // WhereClause_ReferredEntities(ast->whereNode, ref_entities);
-    // ReturnClause_ReferredEntities(ast->returnNode, ref_entities);
-    // CreateClause_ReferredEntities(ast->createNode, ref_entities);
-    // DeleteClause_ReferredEntities(ast->deleteNode, ref_entities);
-    // _referred_edge_ends(g, ref_entities);
-    // _referred_variable_length_edges(g, ref_entities);
 
     // As long as there are nodes to process.
     while(array_len(g->nodes) > 0) {

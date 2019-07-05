@@ -12,7 +12,6 @@
 typedef struct QGEdge QGEdge;
 
 typedef struct {
-    Node *n;
     uint id;
     const char *label;
     int labelID;
@@ -41,9 +40,6 @@ void QGNode_RemoveIncomingEdge(QGNode *n, QGEdge *e);
 
 /* Removes given Outgoing edge from node. */
 void QGNode_RemoveOutgoingEdge(QGNode *n, QGEdge *e);
-
-/* Sets node relation type. */
-void QGNode_SetLabelID(QGNode *n, int labelID);
 
 /* Retrieves node matrix. */
 GrB_Matrix QGNode_GetMatrix(QGNode *n);

@@ -163,11 +163,6 @@ void ResultSet_ReplyWithCompactHeader(RedisModuleCtx *ctx, const QueryGraph *qg,
         RedisModule_ReplyWithArray(ctx, 2);
         ColumnTypeUser t;
         // First, emit the column type enum
-        /* TODO options:
-           Lookup aliases in QueryGraph.
-           Lookup aliases in AST?
-           Lookup in first Record (doesn't really work, since at that point we're looking at a projection)
-           */
         if(exp->type == AR_EXP_OPERAND && exp->operand.type == AR_EXP_VARIADIC && exp->operand.variadic.entity_prop == NULL) {
             const char *alias = exp->operand.variadic.entity_alias;
             SchemaType type = QueryGraph_GetEntityTypeByAlias(qg, alias);

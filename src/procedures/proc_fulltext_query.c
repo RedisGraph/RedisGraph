@@ -25,7 +25,7 @@ typedef struct {
     RSResultsIterator *iter;
 } QueryNodeContext;
 
-ProcedureResult Proc_FulltextQueryNodeInvoke(ProcedureCtx *ctx, char **args) {
+ProcedureResult Proc_FulltextQueryNodeInvoke(ProcedureCtx *ctx, const char **args) {
     if(array_len(args) < 2) return PROCEDURE_ERR;
 
     QueryNodeContext *pdata = rm_malloc(sizeof(QueryNodeContext));

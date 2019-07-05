@@ -8,6 +8,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from base import FlowTestsBase
 
+GRAPH_ID = "G"
 redis_graph = None
 labels = ["label_a", "label_b"]
 fields = ['unique', 'group', 'doubleval', 'intval', 'stringval']

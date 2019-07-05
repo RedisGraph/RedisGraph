@@ -306,6 +306,6 @@ uint AST_GetEntityIDFromReference(const AST *ast, AST_IDENTIFIER entity) {
 
 uint AST_GetEntityIDFromAlias(const AST *ast, const char *alias) {
     void *v = TrieMap_Find(ast->entity_map, (char*)alias, strlen(alias));
-    if (v == TRIEMAP_NOTFOUND) return NOT_IN_RECORD;
+    if (v == TRIEMAP_NOTFOUND) return IDENTIFIER_NOT_FOUND;
     return *(uint*)v;
 }

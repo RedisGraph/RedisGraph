@@ -17,7 +17,7 @@ void Proc_Register();
 ProcedureCtx* Proc_Get(const char *proc_name);
 
 // Invokes procedure.
-ProcedureResult Proc_Invoke(ProcedureCtx *proc, char **args);
+ProcedureResult Proc_Invoke(ProcedureCtx *proc, const char **args);
 
 /* Single step theough procedure iterator
  * Returns array of key value pairs. */

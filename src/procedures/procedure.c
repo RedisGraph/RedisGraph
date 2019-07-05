@@ -55,7 +55,7 @@ ProcedureCtx* Proc_Get(const char *proc_name) {
     return ctx;
 }
 
-ProcedureResult Proc_Invoke(ProcedureCtx *proc, char **args) {
+ProcedureResult Proc_Invoke(ProcedureCtx *proc, const char **args) {
     assert(proc);
     if(proc->argc != PROCEDURE_VARIABLE_ARG_COUNT) assert(proc->argc == array_len(args));
     // TODO: procedure can only be invoke once.

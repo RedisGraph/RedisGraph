@@ -4,9 +4,9 @@
 #include "../util/arr.h"
 
 // Forward declaration
-FT_FilterNode* _FilterNode_FromAST(const RecordMap *record_map, const cypher_astnode_t *expr);
+FT_FilterNode* _FilterNode_FromAST(RecordMap *record_map, const cypher_astnode_t *expr);
 
-FT_FilterNode* _CreatePredicateFilterNode(const RecordMap *record_map, AST_Operator op, const cypher_astnode_t *lhs, const cypher_astnode_t *rhs) {
+FT_FilterNode* _CreatePredicateFilterNode(RecordMap *record_map, AST_Operator op, const cypher_astnode_t *lhs, const cypher_astnode_t *rhs) {
     return FilterTree_CreatePredicateFilter(op, AR_EXP_FromExpression(record_map, lhs), AR_EXP_FromExpression(record_map, rhs));
 }
 
@@ -38,7 +38,7 @@ void _FT_Append(FT_FilterNode **root_ptr, FT_FilterNode *child) {
     *root_ptr = new_root;
 }
 
-FT_FilterNode* _CreateFilterSubtree(const RecordMap *record_map, AST_Operator op, const cypher_astnode_t *lhs, const cypher_astnode_t *rhs) {
+FT_FilterNode* _CreateFilterSubtree(RecordMap *record_map, AST_Operator op, const cypher_astnode_t *lhs, const cypher_astnode_t *rhs) {
     FT_FilterNode *filter = NULL;
     switch (op) {
         case OP_OR:
@@ -62,7 +62,7 @@ FT_FilterNode* _CreateFilterSubtree(const RecordMap *record_map, AST_Operator op
 // AND, OR, XOR (others?)
 /* WHERE (condition) AND (condition),
  * WHERE a.val = b.val */
-FT_FilterNode* _convertBinaryOperator(const RecordMap *record_map, const cypher_astnode_t *op_node) {
+FT_FilterNode* _convertBinaryOperator(RecordMap *record_map, const cypher_astnode_t *op_node) {
     const cypher_operator_t *operator = cypher_ast_binary_operator_get_operator(op_node);
     // Arguments are of type CYPHER_AST_EXPRESSION
     const cypher_astnode_t *lhs = cypher_ast_binary_operator_get_argument1(op_node);
@@ -77,7 +77,7 @@ FT_FilterNode* _convertBinaryOperator(const RecordMap *record_map, const cypher_
  * Most comparisons will only have one operator and two expressions, but Cypher
  * allows more complex formulations like "x < y <= z".
  * A comparison takes a form such as "WHERE a.val < y.val". */
-FT_FilterNode* _convertComparison(const RecordMap *record_map, const cypher_astnode_t *comparison_node) {
+FT_FilterNode* _convertComparison(RecordMap *record_map, const cypher_astnode_t *comparison_node) {
     unsigned int nelems = cypher_ast_comparison_get_length(comparison_node);
     assert(nelems == 1); // TODO tmp, but may require modifying tree formation.
 
@@ -137,7 +137,7 @@ FT_FilterNode* _convertInlinedProperties(RecordMap *record_map, const QueryGraph
     return root;
 }
 
-FT_FilterNode* _FilterNode_FromAST(const RecordMap *record_map, const cypher_astnode_t *expr) {
+FT_FilterNode* _FilterNode_FromAST(RecordMap *record_map, const cypher_astnode_t *expr) {
     assert(expr);
     cypher_astnode_type_t type = cypher_astnode_type(expr);
     if (type == CYPHER_AST_BINARY_OPERATOR) {

@@ -18,16 +18,6 @@
 #include "../ast/ast_build_op_contexts.h"
 #include "../ast/ast_build_filter_tree.h"
 
-static ResultSet* _prepare_resultset(RedisModuleCtx *ctx, AST *ast, bool compact) {
-    const cypher_astnode_t *ret_clause = AST_GetClause(ast, CYPHER_AST_RETURN);
-    bool distinct = false;
-    if (ret_clause) {
-        distinct = cypher_ast_return_is_distinct(ret_clause);
-    }
-    ResultSet *set = NewResultSet(ctx, distinct, compact);
-    return set;
-}
-
 // TODO dup of work in ExecutionPlanInit, but we need record_map associated with
 // ops before calling optimizePlan
 static void _associateRecordMap(OpBase *root, RecordMap *record_map) {
@@ -91,7 +81,7 @@ AR_ExpNode** _BuildOrderExpressions(RecordMap *record_map, AR_ExpNode **projecti
          * projections, reference otherwise-unprojected aliases. In the referencing-projection
          * case, we may not be allowed to use the pre-existing record index:
          * RETURN e.name as v ORDER BY v */
-        AR_ExpNode *exp;
+        AR_ExpNode *exp = NULL;
         if (cypher_astnode_type(ast_exp) == CYPHER_AST_IDENTIFIER) {
             // Order expression is a reference to an alias in the query
             const char *alias = cypher_ast_identifier_get_name(ast_exp);
@@ -99,15 +89,9 @@ AR_ExpNode** _BuildOrderExpressions(RecordMap *record_map, AR_ExpNode **projecti
                 AR_ExpNode *projection = projections[j];
                 if (!strcmp(projection->resolved_name, alias)) {
                     exp = projection;
+                    break;
                 }
             }
-            // uint record_id = RecordMap_LookupAlias(record_map, alias);
-            // if (record_id != IDENTIFIER_NOT_FOUND) {
-                // // check projections?
-            // }
-            // // Clone the expression so that we can free safely
-            // // assert(false);
-            // exp = AR_EXP_Clone(AST_GetEntityFromAlias(ast, alias));
         } else {
             // Independent operator like:
             // ORDER BY COUNT(a)
@@ -149,14 +133,6 @@ AR_ExpNode** _BuildReturnExpressions(RecordMap *record_map, const cypher_astnode
         if (alias_node) {
             // The projection either has an alias (AS), is a function call, or is a property specification (e.name).
             identifier = cypher_ast_identifier_get_name(alias_node);
-            // TODO not quite correct, since re-uses the record ID but we actually want to refer to the
-            // just-built AR_ExpNode
-            // For the moment, use master logic? (No.)
-            // AR_ExpNode *alias_exp = AR_EXP_Clone(exp);
-            // AR_ExpNode *alias_exp = AR_EXP_NewVariableOperandNode(record_map, alias, NULL);
-            // AR_ExpNode *alias_exp = AR_EXP_NewReferenceNode(i);
-            // RecordMap_AssociateAliasWithID(record_map, alias, exp->operand.variadic.entity_alias_idx);
-            // RecordMap_LookupAlias(segment->record_map, alias);
         } else {
             // This expression did not have an alias, so it must be an identifier
             const cypher_astnode_t *ast_exp = cypher_ast_projection_get_expression(projection);
@@ -270,226 +246,14 @@ const char** _BuildCallArguments(RecordMap *record_map, const cypher_astnode_t *
 
         const cypher_astnode_t *ast_exp = cypher_ast_call_get_argument(call_clause, i);
 
-        // Construction an AR_ExpNode to represent this entity.
-        // AR_ExpNode *exp = AR_EXP_FromExpression(record_map, ast_exp);
-
         const cypher_astnode_t *identifier_node = cypher_ast_projection_get_alias(ast_exp);
         const char *identifier = cypher_ast_identifier_get_name(identifier_node);
 
         arguments = array_append(arguments, identifier);
-        // expressions = array_append(expressions, exp);
     }
 
     return arguments;
 }
-
-/* Given an AST path, construct a series of scans and traversals to model it. */
-// void _ExecutionPlanSegment_BuildTraversalOps(ExecutionPlanSegment *segment, QueryGraph *qg, FT_FilterNode *ft, const cypher_astnode_t *path, Vector *traversals) {
-    // GraphContext *gc = GraphContext_GetFromTLS();
-    // AST *ast = AST_GetFromTLS();
-    // OpBase *op = NULL;
-
-    // uint nelems = cypher_ast_pattern_path_nelements(path);
-    // if (nelems == 1) {
-        // // Only one entity is specified - build a node scan.
-        // const cypher_astnode_t *ast_node = cypher_ast_pattern_path_get_element(path, 0);
-        // Node *n = QueryGraph_GetEntityByASTRef(qg, ast_node);
-        // uint ast_id = n->entity->id;
-        // uint rec_idx = RecordMap_FindOrAddID(segment->record_map, ast_id);
-        // if(cypher_ast_node_pattern_nlabels(ast_node) > 0) {
-            // op = NewNodeByLabelScanOp(n, rec_idx);
-        // } else {
-            // op = NewAllNodeScanOp(gc->g, n, rec_idx);
-        // }
-        // Vector_Push(traversals, op);
-        // return;
-    // }
-
-    // // This path must be expressed with one or more traversals.
-    // size_t expCount = 0;
-    // AlgebraicExpression **exps = AlgebraicExpression_FromPath(segment->record_map, qg, path, &expCount);
-
-    // TRAVERSE_ORDER order;
-    // if (exps[0]->op == AL_EXP_UNARY) {
-        // // If either the first or last expression simply specifies a node, it should
-        // // be replaced by a label scan. (This can be the case after building a
-        // // variable-length traversal like MATCH (a)-[*]->(b:labeled)
-        // AlgebraicExpression *to_replace = exps[0];
-
-        // // Retrieve the AST ID for the source node
-        // uint ast_id = exps[0]->src_node->entity->id;
-        // // Convert to a Record ID
-        // uint record_id = RecordMap_FindOrAddID(segment->record_map, ast_id);
-
-        // op = NewNodeByLabelScanOp(to_replace->src_node, record_id);
-        // Vector_Push(traversals, op);
-        // AlgebraicExpression_Free(to_replace);
-        // for (uint q = 1; q < expCount; q ++) {
-            // exps[q-1] = exps[q];
-        // }
-        // expCount --;
-        // order = TRAVERSE_ORDER_FIRST;
-    // } else if (exps[expCount - 1]->op == AL_EXP_UNARY) {
-        // AlgebraicExpression *to_replace = exps[expCount - 1];
-
-        // // Retrieve the AST ID for the source node)
-        // uint ast_id = exps[0]->src_node->entity->id;
-        // // Convert to a Record ID
-        // uint record_id = RecordMap_FindOrAddID(segment->record_map, ast_id);
-        // op = NewNodeByLabelScanOp(to_replace->src_node, record_id);
-        // Vector_Push(traversals, op);
-        // AlgebraicExpression_Free(to_replace);
-        // expCount --;
-        // order = TRAVERSE_ORDER_LAST;
-    // } else {
-        // // order = determineTraverseOrder(ft, exps, expCount);
-        // order = TRAVERSE_ORDER_FIRST;
-    // }
-
-    // if(order == TRAVERSE_ORDER_FIRST) {
-        // if (op == NULL) {
-            // // We haven't already built the appropriate label scan
-            // AlgebraicExpression *exp = exps[0];
-            // selectEntryPoint(exp, ft);
-
-            // // Retrieve the AST ID for the source node
-            // uint ast_id = exps[0]->src_node->entity->id;
-            // // Convert to a Record ID
-            // // TODO next, messing up average_age query
-            // uint record_id = RecordMap_FindOrAddID(segment->record_map, ast_id);
-
-            // // Create SCAN operation.
-            // if(exp->src_node->label) {
-                /* There's no longer need for the first matrix operand
-                 * as it's been replaced by label scan. */
-                // AlgebraicExpression_RemoveTerm(exp, 0, NULL);
-                // op = NewNodeByLabelScanOp(exp->src_node, record_id);
-                // Vector_Push(traversals, op);
-            // } else {
-                // op = NewAllNodeScanOp(gc->g, exp->src_node, record_id);
-                // Vector_Push(traversals, op);
-            // }
-        // }
-        // for(int i = 0; i < expCount; i++) {
-            // if(exps[i]->operand_count == 0) continue;
-            // uint ast_id;
-            // uint src_node_idx;
-            // uint dest_node_idx;
-            // uint edge_idx = IDENTIFIER_NOT_FOUND;
-            // if (exps[i]->op == AL_EXP_UNARY) {
-                // // TODO ?
-                // // exps[i]->dest_node_idx = exps[i]->src_node_idx;
-            // } else {
-                // // Make sure that all entities are represented in Record
-                // uint ast_id = exps[i]->src_node->entity->id;
-                // src_node_idx = RecordMap_FindOrAddID(segment->record_map, ast_id);
-
-                // ast_id = exps[i]->dest_node->entity->id;
-                // dest_node_idx = RecordMap_FindOrAddID(segment->record_map, ast_id);
-
-                // if (exps[i]->edge) {
-                    // ast_id = exps[i]->edge->entity->id;
-                    // edge_idx = RecordMap_FindOrAddID(segment->record_map, ast_id);
-                // }
-            // }
-            // if(exps[i]->minHops != 1 || exps[i]->maxHops != 1) {
-                // op = NewCondVarLenTraverseOp(exps[i],
-                                             // exps[i]->minHops,
-                                             // exps[i]->maxHops,
-                                             // src_node_idx,
-                                             // dest_node_idx,
-                                             // gc->g);
-            // } else {
-                // op = NewCondTraverseOp(gc->g, exps[i], src_node_idx, dest_node_idx, edge_idx, TraverseRecordCap(ast));
-            // }
-            // Vector_Push(traversals, op);
-        // }
-    // } else {
-        // if (op == NULL) {
-            // // We haven't already built the appropriate label scan
-            // AlgebraicExpression *exp = exps[expCount-1];
-            // selectEntryPoint(exp, ft);
-
-            // // Retrieve the AST ID for the destination node
-            // uint ast_id = exps[0]->dest_node->entity->id;
-            // // Convert to a Record ID
-            // uint record_id = RecordMap_FindOrAddID(segment->record_map, ast_id);
-
-            // // Create SCAN operation.
-            // if(exp->dest_node->label) {
-                /* There's no longer need for the first matrix operand
-                 * as it's been replaced by label scan. */
-                // AlgebraicExpression_RemoveTerm(exp, 0, NULL);
-                // op = NewNodeByLabelScanOp(exp->dest_node, record_id);
-                // Vector_Push(traversals, op);
-            // } else {
-                // op = NewAllNodeScanOp(gc->g, exp->dest_node, record_id);
-                // Vector_Push(traversals, op);
-            // }
-        // }
-
-        // for(int i = expCount-1; i >= 0; i--) {
-            // if(exps[i]->operand_count == 0) continue;
-            // AlgebraicExpression_Transpose(exps[i]);
-            // // TODO tmp
-            // uint ast_id;
-            // uint src_node_idx;
-            // uint dest_node_idx;
-            // uint edge_idx = IDENTIFIER_NOT_FOUND;
-            // if (exps[i]->op == AL_EXP_UNARY) {
-                // // exps[i]->src_node_idx = exps[i]->dest_node_idx;
-            // } else {
-                // // Make sure that all entities are represented in Record
-                // uint ast_id = exps[i]->src_node->entity->id;
-                // src_node_idx = RecordMap_FindOrAddID(segment->record_map, ast_id);
-
-                // ast_id = exps[i]->dest_node->entity->id;
-                // dest_node_idx = RecordMap_FindOrAddID(segment->record_map, ast_id);
-
-                // if (exps[i]->edge) {
-                    // ast_id = exps[i]->edge->entity->id;
-                    // edge_idx = RecordMap_FindOrAddID(segment->record_map, ast_id);
-                // }
-            // }
-            // if(exps[i]->minHops != 1 || exps[i]->maxHops != 1) {
-                // op = NewCondVarLenTraverseOp(exps[i],
-                                             // exps[i]->minHops,
-                                             // exps[i]->maxHops,
-                                             // src_node_idx,
-                                             // dest_node_idx,
-                                             // gc->g);
-            // } else {
-                // op = NewCondTraverseOp(gc->g, exps[i], src_node_idx, dest_node_idx, edge_idx, TraverseRecordCap(ast));
-            // }
-            // Vector_Push(traversals, op);
-        // }
-    // }
-    // // Free the expressions array, as its parts have been converted into operations
-    // free(exps);
-// }
-
-// void _ExecutionPlanSegment_AddTraversalOps(Vector *ops, OpBase *cartesian_root, Vector *traversals) {
-    // if(cartesian_root) {
-        // // If we're traversing multiple disjoint paths, the new traversal
-        // // should be connected uner a Cartesian product.
-        // OpBase *childOp;
-        // OpBase *parentOp;
-        // Vector_Pop(traversals, &parentOp);
-        // // Connect cartesian product to the root of traversal.
-        // ExecutionPlan_AddOp(cartesian_root, parentOp);
-        // while(Vector_Pop(traversals, &childOp)) {
-            // ExecutionPlan_AddOp(parentOp, childOp);
-            // parentOp = childOp;
-        // }
-    // } else {
-        // // Otherwise, the traversals can be added sequentially to the overall ops chain
-        // OpBase *op;
-        // for(int traversalIdx = 0; traversalIdx < Vector_Size(traversals); traversalIdx++) {
-            // Vector_Get(traversals, traversalIdx, &op);
-            // Vector_Push(ops, op);
-        // }
-    // }
-// }
 
 void _ExecutionPlanSegment_ProcessQueryGraph(ExecutionPlanSegment *segment, QueryGraph *qg, FT_FilterNode *ft, rax *resolved, Vector *ops) {
     GraphContext *gc = GraphContext_GetFromTLS();
@@ -746,48 +510,6 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
         _ExecutionPlanSegment_ProcessQueryGraph(segment, qg, filter_tree, resolved, ops);
     }
 
-    // execution_plan->connected_components = connectedComponents;
-    // const cypher_astnode_t **match_clauses = AST_CollectReferencesInRange(ast, CYPHER_AST_MATCH);
-    // uint match_count = array_len(match_clauses);
-
-    /* TODO Currently, we don't differentiate between:
-     * MATCH (a) MATCH (b)
-     * and
-     * MATCH (a), (b)
-     * Introduce this distinction. */
-    // OpBase *cartesianProduct = NULL;
-    // if (match_count > 1) {
-        // cartesianProduct = NewCartesianProductOp();
-        // Vector_Push(ops, cartesianProduct);
-    // }
-
-    // // Build traversal operations for every MATCH clause
-    // for (uint i = 0; i < match_count; i ++) {
-        // // Each MATCH clause has a pattern that consists of 1 or more paths
-        // const cypher_astnode_t *ast_pattern = cypher_ast_match_get_pattern(match_clauses[i]);
-        // uint npaths = cypher_ast_pattern_npaths(ast_pattern);
-
-        /* If we're dealing with multiple paths (which our validations have guaranteed
-         * are disjoint), we'll join them all together with a Cartesian product (full join). */
-        // if ((cartesianProduct == NULL) && (cypher_ast_pattern_npaths(ast_pattern) > 1)) {
-            // cartesianProduct = NewCartesianProductOp();
-            // Vector_Push(ops, cartesianProduct);
-        // }
-
-        // Vector *path_traversal = NewVector(OpBase*, 1);
-        // for (uint j = 0; j < npaths; j ++) {
-            // // Convert each path into the appropriate traversal operation(s).
-            // const cypher_astnode_t *path = cypher_ast_pattern_get_path(ast_pattern, j);
-            // // Note that every edge that must be represented in the Record should be mapped before this call.
-            // _ExecutionPlanSegment_BuildTraversalOps(segment, qg, filter_tree, path, path_traversal);
-            // _ExecutionPlanSegment_AddTraversalOps(ops, cartesianProduct, path_traversal);
-            // Vector_Clear(path_traversal);
-        // }
-        // Vector_Free(path_traversal);
-    // }
-
-    // array_free(match_clauses);
-
     // Set root operation
     const cypher_astnode_t *unwind_clause = AST_GetClause(ast, CYPHER_AST_UNWIND);
     if(unwind_clause) {
@@ -815,12 +537,6 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
         // As with paths in a MATCH query, build the appropriate traversal operations
         // and append them to the set of ops.
         AST_MergeContext merge_ast_ctx = AST_PrepareMergeOp(record_map, ast, merge_clause, qg);
-        // const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(merge_clause);
-        // TODO handled by QueryGraph components?
-        // Vector *path_traversal = NewVector(OpBase*, 1);
-        // _ExecutionPlanSegment_BuildTraversalOps(segment, qg, filter_tree, path, path_traversal);
-        // _ExecutionPlanSegment_AddTraversalOps(ops, NULL, path_traversal);
-        // Vector_Free(path_traversal);
 
         // Append a merge operation
         OpBase *opMerge = NewMergeOp(&result_set->stats,
@@ -987,18 +703,6 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
         // If the last operation of this segment is a potential data producer, join them
         // under an Apply operation.
         if (parent_op->type & OP_TAPS) {
-            // TODO this wasn't previously necesssary - remove if possible, clean up otherwise
-            // uint prev_projection_count = array_len(prev_projections);
-            // uint *new_modifies = parent_op->modifies;
-            // uint new_projection_count = array_len(new_modifies);
-            // modifies = array_new(uint, prev_projection_count + new_projection_count);
-            // for (uint i = 0; i < prev_projection_count; i ++) {
-                // modifies = array_append(modifies, i);
-            // }
-            // for (uint i = 0; i < new_projection_count; i ++) {
-                // modifies = array_append(modifies, new_modifies[i]);
-            // }
-            // OpBase *op_apply = NewApplyOp(modifies);
             OpBase *op_apply = NewApplyOp();
             ExecutionPlan_PushBelow(parent_op, op_apply);
             ExecutionPlan_AddOp(op_apply, prev_op);
@@ -1043,7 +747,7 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, bool comp
 
     ExecutionPlan *plan = rm_malloc(sizeof(ExecutionPlan));
 
-    plan->result_set = _prepare_resultset(ctx, ast, compact);
+    plan->result_set = NewResultSet(ctx, compact);
 
     uint with_clause_count = AST_GetClauseCount(ast, CYPHER_AST_WITH);
     plan->segment_count = with_clause_count + 1;
@@ -1088,7 +792,6 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, bool comp
     optimizePlan(gc, plan);
 
 
-    AR_ExpNode **return_columns = segment->projections;
     if (explain == false) {
         plan->result_set->exps = segment->projections;
         ResultSet_ReplyWithPreamble(plan->result_set, segment->query_graph);

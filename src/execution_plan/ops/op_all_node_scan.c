@@ -18,8 +18,6 @@ OpBase* NewAllNodeScanOp(const Graph *g, QGNode *n, uint node_idx) {
     AllNodeScan *allNodeScan = malloc(sizeof(AllNodeScan));
     allNodeScan->n = n;
     allNodeScan->iter = Graph_ScanNodes(g);
-
-    AST *ast = AST_GetFromTLS();
     allNodeScan->nodeRecIdx = node_idx;
 
     // Set our Op operations

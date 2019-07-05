@@ -69,15 +69,14 @@ static void _ResultSet_ReplyWithHeader(ResultSet *set, QueryGraph *qg) {
     }
 }
 
-ResultSet* NewResultSet(RedisModuleCtx *ctx, bool distinct, bool compact) {
+ResultSet* NewResultSet(RedisModuleCtx *ctx, bool compact) {
     ResultSet* set = (ResultSet*)malloc(sizeof(ResultSet));
     set->ctx = ctx;
     set->gc = GraphContext_GetFromTLS();
-    set->distinct = distinct;
     set->compact = compact;
     set->formatter = (compact) ? &ResultSetFormatterCompact : &ResultSetFormatterVerbose;
     set->recordCount = 0;
-    set->column_count = 0; // TODO necessary variable?
+    set->column_count = 0;
     set->exps = NULL;
 
     set->stats.labels_added = 0;
@@ -88,25 +87,6 @@ ResultSet* NewResultSet(RedisModuleCtx *ctx, bool distinct, bool compact) {
     set->stats.relationships_deleted = 0;
 
     return set;
-}
-
-// Choose the appropriate reply formatter.
-void ResultSet_SetReplyFormatter(ResultSet *set, ResultSetFormatterType formatter) {
-    // TODO unused?
-    switch(formatter) {
-        case FORMATTER_VERBOSE:
-            set->formatter = &ResultSetFormatterVerbose;
-            break;
-        case FORMATTER_COMPACT:
-            set->formatter = &ResultSetFormatterCompact;
-            break;
-        case FORMATTER_NOP:
-            set->formatter = &ResultSetNOP;
-            break;
-        default:
-            assert(false);
-        break;
-    }
 }
 
 // Initialize the user-facing reply arrays.

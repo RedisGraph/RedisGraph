@@ -20,17 +20,6 @@ static void _QueryGraph_AddID(QueryGraph *qg, uint id, void *qg_entity) {
     assert(rc == 1);
 }
 
-static bool _QueryGraph_ContainsEntity(GraphEntity *entity, GraphEntity **entities) {
-    uint entity_count = array_len(entities);
-    for(uint i = 0; i < entity_count; i++) {
-        GraphEntity *e = entities[i];
-        if(e == entity) {
-            return true;
-        }
-    }
-    return false;
-}
-
 static void _BuildQueryGraphAddNode(const GraphContext *gc,
                              const AST *ast,
                              const cypher_astnode_t *ast_entity,
@@ -85,10 +74,8 @@ static void _BuildQueryGraphAddNode(const GraphContext *gc,
             if(s) label_id = s->id;
             n->label = label;
             n->labelID = label_id;
-            Node_SetLabelID(n->n, label_id);
         } else {
             n->labelID = GRAPH_NO_LABEL;
-            Node_SetLabelID(n->n, GRAPH_NO_LABEL);
         }
     }
 
@@ -149,8 +136,6 @@ static void _BuildQueryGraphAddEdge(const GraphContext *gc,
         e->reltypeIDs = array_append(e->reltypeIDs, s->id);
     }
 
-    // e->e = Edge_New(src->n, dest->n, NULL, NULL); // TODO what is necessary?
-
     // Incase of a variable length edge, set edge min/max hops.
     const cypher_astnode_t *range = cypher_ast_rel_pattern_get_varlength(ast_entity);
     if (range) {
@@ -164,12 +149,6 @@ static void _BuildQueryGraphAddEdge(const GraphContext *gc,
             e->maxHops = EDGE_LENGTH_INF;
         }
     }
-
-    // Add AST ID to GraphEntity
-    // _dummyEntity((GraphEntity*)e, id);
-
-    // Add edge pointer back into AST mapping using the same ID
-    // ASTMap_AddEntity(ast, e, id);
 
     // Add the current AST reference.
     _QueryGraph_AddASTRef(qg, ast_entity, (void*)e);
@@ -241,19 +220,6 @@ QueryGraph* BuildQueryGraph(const GraphContext *gc, const AST *ast) {
         }
     }
     array_free(match_clauses);
-
-    // CREATE clauses
-    // const cypher_astnode_t **create_clauses = AST_CollectReferencesInRange(ast, CYPHER_AST_CREATE);
-    // uint create_count = array_len(create_clauses);
-    // for (uint i = 0; i < create_count; i ++) {
-        // const cypher_astnode_t *pattern = cypher_ast_create_get_pattern(create_clauses[i]);
-        // uint npaths = cypher_ast_pattern_npaths(pattern);
-        // for (uint j = 0; j < npaths; j ++) {
-            // const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, j);
-            // QueryGraph_AddPath(gc, ast, qg, path);
-        // }
-    // }
-    // array_free(create_clauses);
 
     // MERGE clauses
     const cypher_astnode_t **merge_clauses = AST_CollectReferencesInRange(ast, CYPHER_AST_MERGE);

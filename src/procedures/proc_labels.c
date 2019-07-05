@@ -18,7 +18,7 @@ typedef struct {
     SIValue *output;    // Output label.
 } LabelsContext;
 
-ProcedureResult Proc_LabelsInvoke(ProcedureCtx *ctx, char **args) {
+ProcedureResult Proc_LabelsInvoke(ProcedureCtx *ctx, const char **args) {
     if(array_len(args) != 0) return PROCEDURE_ERR;
 
     LabelsContext *pdata = rm_malloc(sizeof(LabelsContext));

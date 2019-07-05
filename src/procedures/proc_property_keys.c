@@ -18,7 +18,7 @@ typedef struct {
     SIValue *output;    // Output label.
 } RelationsContext;
 
-ProcedureResult Proc_PropKeysInvoke(ProcedureCtx *ctx, char **args) {
+ProcedureResult Proc_PropKeysInvoke(ProcedureCtx *ctx, const char **args) {
     if(array_len(args) != 0) return PROCEDURE_ERR;
 
     RelationsContext *pdata = rm_malloc(sizeof(RelationsContext));

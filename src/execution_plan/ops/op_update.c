@@ -94,7 +94,6 @@ static void _UpdateEdge(OpUpdate *op, EntityUpdateCtx *ctx) {
     Edge *edge = &ctx->e;
 
     int label_id = Graph_GetEdgeRelation(op->gc->g, edge);
-    Schema *s = GraphContext_GetSchemaByID(op->gc, label_id, SCHEMA_EDGE);
 
     // Try to get current property value.
     SIValue *old_value = GraphEntity_GetProperty((GraphEntity*)edge, ctx->attr_id);

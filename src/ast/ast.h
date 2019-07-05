@@ -15,8 +15,6 @@
 // typedef const cypher_astnode_t* AST_IDENTIFIER;
 typedef const void* AST_IDENTIFIER;
 
-#define NOT_IN_RECORD UINT_MAX // TODO delete
-
 #define IDENTIFIER_NOT_FOUND UINT_MAX
 
 typedef enum {

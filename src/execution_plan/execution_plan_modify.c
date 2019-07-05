@@ -107,7 +107,6 @@ uint* _ExecutionPlan_LocateReferences(OpBase *root, OpBase **op, rax *references
 
     /* See if all references have been resolved. */
     uint match = raxSize(references);
-    uint ref_count = match;
 
     for(uint i = 0; i < seen_count; i++) {
         // Too many unmatched references.
