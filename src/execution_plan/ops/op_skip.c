@@ -28,7 +28,7 @@ Record SkipConsume(OpBase *op) {
 
     // As long as we're required to skip
     while(skip->skipped < skip->rec_to_skip) {
-        Record discard = child->consume(child);  
+        Record discard = OpBase_Consume(child);
         
         // Depleted.
         if(!discard) return NULL;
@@ -40,7 +40,7 @@ Record SkipConsume(OpBase *op) {
         skip->skipped++;
     }
 
-    return child->consume(child);
+    return OpBase_Consume(child);
 }
 
 OpResult SkipReset(OpBase *ctx) {

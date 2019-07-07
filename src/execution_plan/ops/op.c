@@ -25,12 +25,16 @@ void OpBase_Init(OpBase *op) {
     op->toString = NULL;
 }
 
+inline Record OpBase_Consume(OpBase *op) {
+    return op->consume(op);
+}
+
 void OpBase_Reset(OpBase *op) {
     assert(op->reset(op) == OP_OK);
     for(int i = 0; i < op->childCount; i++) OpBase_Reset(op->children[i]);
 }
 
-int OpBase_StatsToString(const OpBase *op, char *buff, uint buff_len) {
+static int _OpBase_StatsToString(const OpBase *op, char *buff, uint buff_len) {
     return snprintf(buff, buff_len,
                     " | Records produced: %d, Execution time: %f ms",
                     op->stats->profileRecordCount,
@@ -44,7 +48,7 @@ int OpBase_ToString(const OpBase *op, char *buff, uint buff_len) {
     else bytes_written = snprintf(buff, buff_len, "%s", op->name);
 
     if(op->stats) {
-        bytes_written += OpBase_StatsToString(op,
+        bytes_written += _OpBase_StatsToString(op,
                                               buff + bytes_written,
                                               buff_len - bytes_written);
     }

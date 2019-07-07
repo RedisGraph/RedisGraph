@@ -233,15 +233,18 @@ static void _CommitEdges(OpCreate *op, TrieMap *createEntities) {
 }
 
 static void _CommitNewEntities(OpCreate *op) {
+    Graph *g = op->gc->g;
     TrieMap *createEntities = NewTrieMap();
     CreateClause_ReferredEntities(op->ast->createNode, createEntities);
 
     // Lock everything.
-    Graph_AcquireWriteLock(op->gc->g);
+    Graph_AcquireWriteLock(g);
+    Graph_SetMatrixPolicy(g, RESIZE_TO_CAPACITY);
     if(array_len(op->created_nodes) > 0) _CommitNodes(op, createEntities);
     if(array_len(op->created_edges) > 0) _CommitEdges(op, createEntities);
+    Graph_SetMatrixPolicy(g, SYNC_AND_MINIMIZE_SPACE);
     // Release lock.
-    Graph_ReleaseLock(op->gc->g);
+    Graph_ReleaseLock(g);
 
     TrieMap_Free(createEntities, TrieMap_NOP_CB);
 }
@@ -275,7 +278,7 @@ Record OpCreateConsume(OpBase *opBase) {
     } else {
         // Pull data until child is depleted.
         OpBase *child = op->op.children[0];
-        while((r = child->consume(child))) {
+        while((r = OpBase_Consume(child))) {
             /* Create entities. */
             _CreateNodes(op, r);
             _CreateEdges(op, r);

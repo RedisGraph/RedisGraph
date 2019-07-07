@@ -102,7 +102,7 @@ Record OpDeleteConsume(OpBase *opBase) {
     OpDelete *op = (OpDelete*)opBase;
     OpBase *child = op->op.children[0];
 
-    Record r = child->consume(child);
+    Record r = OpBase_Consume(child);
     if(!r) return NULL;
 
     /* Enqueue entities for deletion. */

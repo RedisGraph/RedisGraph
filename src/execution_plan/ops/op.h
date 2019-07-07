@@ -85,7 +85,8 @@ struct OpBase {
 typedef struct OpBase OpBase;
 
 void OpBase_Init(OpBase *op);       // Initialize op.
-void OpBase_Reset(OpBase *op);      // Reset op.
 void OpBase_Free(OpBase *op);       // Free op.
+void OpBase_Reset(OpBase *op);      // Reset op.
+Record OpBase_Consume(OpBase *op);  // Consume op.
 Record OpBase_Profile(OpBase *op);  // Profile op.
 int OpBase_ToString(const OpBase *op, char *buff, uint buff_len);
