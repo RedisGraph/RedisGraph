@@ -359,7 +359,6 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, AST *ast, ResultSet *resul
     GraphContext *gc;
     size_t node_count;
     size_t edge_count;
-    FT_FilterNode *filter_tree;
     ExecutionPlan *execution_plan;
 
     resolved = raxNew();
@@ -375,10 +374,9 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, AST *ast, ResultSet *resul
     _Determine_Graph_Size(ast, &node_count, &edge_count);
     q = QueryGraph_New(node_count, edge_count);
 
-    filter_tree = NULL;
+    execution_plan->filter_tree = NULL;
     if(ast->whereNode) {
-        filter_tree = BuildFiltersTree(ast, ast->whereNode->filters);
-        execution_plan->filter_tree = filter_tree;
+        execution_plan->filter_tree = BuildFiltersTree(ast, ast->whereNode->filters);
     }
 
     if(ast->callNode) {        
@@ -422,16 +420,21 @@ ExecutionPlan* _NewExecutionPlan(RedisModuleCtx *ctx, AST *ast, ResultSet *resul
                 AlgebraicExpression **exps = AlgebraicExpression_From_QueryGraph(cc, ast, &expCount);
 
                 // Reorder exps, to the most performent arrangement of evaluation.
-                orderExpressions(exps, expCount, filter_tree);
+                orderExpressions(exps, expCount, execution_plan->filter_tree);
 
                 AlgebraicExpression *exp = exps[0];
-                selectEntryPoint(exp, filter_tree);
+                selectEntryPoint(exp, execution_plan->filter_tree);
 
                 // Create SCAN operation.
                 if(exp->src_node->label) {
-                    /* There's no longer need for the last matrix operand
-                     * as it's been replaced by label scan. */
-                    AlgebraicExpression_RemoveTerm(exp, 0, NULL);
+                    /* Resolve source node by performing label scan,
+                     * in which case if the first algebraic expression operand
+                     * is a label matrix (diagonal) remove it, otherwise
+                     * the label matrix associated with source's label is located
+                     * within another traversal operation, for the timebeing do not
+                     * try to locate and remove it, there's no real harm except some performace hit
+                     * in keeping that label matrix. */
+                    if(exp->operands[0].diagonal) AlgebraicExpression_RemoveTerm(exp, 0, NULL);
                     op = NewNodeByLabelScanOp(exp->src_node, ast);
                 } else {
                     op = NewAllNodeScanOp(g, exp->src_node, ast);
@@ -667,7 +670,7 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, AST **ast, ResultSet *resul
         if(i == 0) plan = curr_plan;
         else plan = _ExecutionPlan_Connect(plan, curr_plan, ast[i]);
 
-        if(ast[i]->whereNode != NULL) {
+        if(curr_plan->filter_tree != NULL) {
             Vector *sub_trees = FilterTree_SubTrees(curr_plan->filter_tree);
 
             /* For each filter tree find the earliest position along the execution 
