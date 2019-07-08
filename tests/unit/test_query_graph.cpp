@@ -117,10 +117,14 @@ class QueryGraphTest: public ::testing::Test {
         const char *relation = "R";
 
         QGNode *A = QGNode_New(label, "A");
+        A->id = 0;
         QGNode *B = QGNode_New(label, "B");
+        B->id = 1;
         QGNode *C = QGNode_New(label, "C");
+        C->id = 2;
 
         QGEdge *AB = QGEdge_New(A, B, relation, "AB");
+        AB->id = 3;
 
         QueryGraph *g = QueryGraph_New(node_cap, edge_cap);
         QueryGraph_AddNode(g, A);
@@ -165,12 +169,18 @@ TEST_F(QueryGraphTest, QueryGraphClone) {
     const char *relation = "R";
 
     QGNode *A = QGNode_New(label, "A");
+    A->id = 0;
     QGNode *B = QGNode_New(label, "B");
+    B->id = 1;
     QGNode *C = QGNode_New(label, "C");
+    C->id = 2;
 
     QGEdge *AB = QGEdge_New(A, B, relation, "AB");
+    AB->id = 3;
     QGEdge *BC = QGEdge_New(B, C, relation, "BC");
+    BC->id = 4;
     QGEdge *CA = QGEdge_New(C, A, relation, "CA");
+    CA->id = 5;
 
     QueryGraph *g = QueryGraph_New(node_cap, edge_cap);
     QueryGraph_AddNode(g, A);
@@ -218,12 +228,18 @@ TEST_F(QueryGraphTest, QueryGraphRemoveEntities) {
     const char *relation = "R";
 
     QGNode *A = QGNode_New(label, "A");
+    A->id = 0;
     QGNode *B = QGNode_New(label, "B");
+    B->id = 1;
     QGNode *C = QGNode_New(label, "C");
+    C->id = 2;
 
     QGEdge *AB = QGEdge_New(A, B, relation, "AB");
+    AB->id = 3;
     QGEdge *BC = QGEdge_New(B, C, relation, "BC");
+    BC->id = 4;
     QGEdge *CA = QGEdge_New(C, A, relation, "CA");
+    CA->id = 5;
 
     QueryGraph *g = QueryGraph_New(node_cap, edge_cap);
     QueryGraph_AddNode(g, A);
@@ -236,28 +252,28 @@ TEST_F(QueryGraphTest, QueryGraphRemoveEntities) {
 
     // Remove an edge.
     ASSERT_TRUE(contains_edge(g, AB));
-    ASSERT_TRUE(QueryGraph_GetEntityByASTID(g, AB->id) != NULL);
+    ASSERT_TRUE(QueryGraph_GetEdgeByID(g, AB->id) != NULL);
     
     QueryGraph_RemoveEdge(g, AB);
 
     ASSERT_FALSE(contains_edge(g, AB));
-    ASSERT_FALSE(QueryGraph_GetEntityByASTID(g, AB->id) != NULL);
+    ASSERT_FALSE(QueryGraph_GetEdgeByID(g, AB->id) != NULL);
     
     // Remove node.
     ASSERT_TRUE(contains_node(g, C));
-    ASSERT_TRUE(QueryGraph_GetEntityByASTID(g, C->id) != NULL);
+    ASSERT_TRUE(QueryGraph_GetNodeByID(g, C->id) != NULL);
 
     QueryGraph_RemoveNode(g, C);
     
     ASSERT_FALSE(contains_node(g, C));
-    ASSERT_FALSE(QueryGraph_GetEntityByASTID(g, C->id) != NULL);
+    ASSERT_FALSE(QueryGraph_GetNodeByID(g, C->id) != NULL);
 
     // Both CA BC edges should be removed.
     ASSERT_FALSE(contains_edge(g, CA));
-    ASSERT_FALSE(QueryGraph_GetEntityByASTID(g, CA->id) != NULL);
+    ASSERT_FALSE(QueryGraph_GetEdgeByID(g, CA->id) != NULL);
     
     ASSERT_FALSE(contains_edge(g, BC));
-    ASSERT_FALSE(QueryGraph_GetEntityByASTID(g, BC->id) != NULL);
+    ASSERT_FALSE(QueryGraph_GetEdgeByID(g, BC->id) != NULL);
 
     /* Assert entity count:
      * Nodes - A was removed.

@@ -479,9 +479,22 @@ AlgebraicExpression **AlgebraicExpression_FromQueryGraph(const QueryGraph *qg, R
     /* A graph with no edges implies an empty algebraic expression
      * the reasoning behind this decission is that algebraic expression 
      * represent graph traversals, no edges means no traversals. */
-    if(array_len(qg->edges) == 0) {
+    uint edge_count = array_len(qg->edges);
+    if(edge_count == 0) {
         *exp_count = 0;
         return NULL;
+    }
+
+    // Add the ends of all referred edges to the Record mapping.
+    for (uint i = 0; i < edge_count; i ++) {
+        QGEdge *e = qg->edges[i];
+        // Add all variable-length traversals.
+        if (e->minHops != e->maxHops) RecordMap_FindOrAddID(record_map, e->id);
+        if (RecordMap_LookupEntityID(record_map, e->id) != IDENTIFIER_NOT_FOUND) {
+            // The edge is referred; ensure that its source and destination are mapped in the Record.
+            RecordMap_FindOrAddID(record_map, e->src->id);
+            RecordMap_FindOrAddID(record_map, e->dest->id);
+        }
     }
 
     QueryGraph *g = QueryGraph_Clone(qg);
@@ -520,6 +533,7 @@ AlgebraicExpression **AlgebraicExpression_FromQueryGraph(const QueryGraph *qg, R
         // AlgebraicExpression_Free(exp);
     }
 
+    // TODO just return exps?
     *exp_count = array_len(exps);
     AlgebraicExpression **res = rm_malloc(sizeof(AlgebraicExpression*) * (*exp_count));
     for(size_t i = 0; i < (*exp_count); i++) res[i] = exps[i];

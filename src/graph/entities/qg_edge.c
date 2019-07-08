@@ -25,11 +25,11 @@ QGEdge* QGEdge_Clone(const QGEdge *orig) {
     e->alias = orig->alias;
     e->reltypes = orig->reltypes;
     e->reltypeIDs = orig->reltypeIDs;
-    // e->src = orig->src;
-    // e->dest = orig->dest;
     e->minHops = orig->minHops;
     e->maxHops = orig->maxHops;
     e->id = orig->id;
+    e->src = NULL;
+    e->dest = NULL;
 
     return e;
 }

@@ -322,6 +322,7 @@ QueryGraph* QueryGraph_Clone(const QueryGraph *qg) {
         QGEdge *e = qg->edges[i];
         QGNode *src = QueryGraph_GetNodeByID(clone, e->src->id);
         QGNode *dest = QueryGraph_GetNodeByID(clone, e->dest->id);
+        assert(src && dest);
         QGEdge *clone_edge = QGEdge_Clone(e);
         QueryGraph_ConnectNodes(clone, src, dest, clone_edge);
     }

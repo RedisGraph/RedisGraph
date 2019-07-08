@@ -21,11 +21,14 @@ extern "C" {
 #include "../../src/util/rmalloc.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 
+extern AR_ExpNode** _BuildReturnExpressions(RecordMap *record_map, const cypher_astnode_t *ret_clause);
+
 #ifdef __cplusplus
 }
 #endif
 
 extern pthread_key_t _tlsGCKey;    // Thread local storage graph context key.
+extern pthread_key_t _tlsASTKey;  // Thread local storage AST key.
 
 QueryGraph *qg;
 
@@ -61,6 +64,8 @@ class AlgebraicExpressionTest: public ::testing::Test {
         _fake_graph_context();
         _build_graph();
         _bind_matrices();
+        int error = pthread_key_create(&_tlsASTKey, NULL);
+        ASSERT_EQ(error, 0);
     }
 
     static void TearDownTestCase() {
@@ -177,16 +182,11 @@ class AlgebraicExpressionTest: public ::testing::Test {
         GraphContext *gc = GraphContext_GetFromTLS();
         cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
         AST *ast = AST_Build(parse_result);
+        QueryGraph *qg = BuildQueryGraph(gc, ast);
+        RecordMap *map = RecordMap_New();
+        _BuildReturnExpressions(map, AST_GetClause(ast, CYPHER_AST_RETURN));
+        AlgebraicExpression **ae = AlgebraicExpression_FromQueryGraph(qg, map, exp_count);
 
-        QueryGraph_Clear(qg);
-        BuildQueryGraph(gc, ast);
-        // Force matrix assignment to both nodes and edges.
-        for(int i = 0; i < array_len(qg->nodes); i++) Graph_GetLabelMatrix(gc->g, qg->nodes[i]->labelID);
-        for(int i = 0; i < array_len(qg->edges); i++) Graph_GetRelationMatrix(gc->g, qg->edges[i]->reltypeIDs[0]);
-
-        AlgebraicExpression **ae = AlgebraicExpression_FromQueryGraph(qg, NULL, exp_count);
-
-        AST_Free(ast);
         return ae;
     }
 

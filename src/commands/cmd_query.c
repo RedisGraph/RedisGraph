@@ -152,6 +152,7 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     const char *query = RedisModule_StringPtrLen(argv[2], NULL);
 
     // Parse AST.
+    // TODO move into thread
     cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
 
     if(AST_ContainsErrors(parse_result)) {
