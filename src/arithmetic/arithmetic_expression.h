@@ -98,6 +98,13 @@ SIValue AR_TYPE(SIValue *argv,
 SIValue AR_EXISTS(SIValue *argv,
 				  int argc);    /* returns true if the specified property exists in the node, or relationship. */
 
+/* Date time functions */
+SIValue AR_DATETIME(SIValue *argv, int argc);
+SIValue AR_LOCALDATETIME(SIValue *argv, int argc);
+SIValue AR_DATE(SIValue *argv, int argc);
+SIValue AR_TIME(SIValue *argv, int argc);
+SIValue AR_LOCALTIME(SIValue *argv, int argc);
+
 void AR_RegisterFuncs();                       /* Registers all arithmetic functions. */
 AR_Func AR_GetFunc(char *func_name);           /* Get arithmetic function. */
 bool AR_FuncExists(const char

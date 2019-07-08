@@ -11,6 +11,7 @@
 #include "../util/rmalloc.h"
 #include "../graph/graphcontext.h"
 #include "../util/triemap/triemap.h"
+#include "../datatypes/temporal_value.h"
 
 #include "assert.h"
 #include <math.h>
@@ -762,6 +763,68 @@ SIValue AR_EXISTS(SIValue *argv, int argc) {
 	return SI_BoolVal(1);
 }
 
+SIValue AR_DATETIME(SIValue *argv, int argc) {
+	// TODO: handle string and map
+	if(argc == 0) {
+		RG_TemporalValue dateTime = RG_DateTime_New();
+		return SI_TemporalValue(&dateTime);
+	} else if(argc == 1 && SI_TYPE(argv[0]) == T_STRING) {
+		RG_TemporalValue dateTime = RG_DateTime_New_FromString(argv[0].stringval);
+		return SI_TemporalValue(&dateTime);
+	}
+	return SI_NullVal();
+
+}
+
+SIValue AR_LOCALDATETIME(SIValue *argv, int argc) {
+	// TODO: handle string and map
+	if(argc == 0) {
+		RG_TemporalValue localDateTime = RG_LocalDateTime_New();
+		return SI_TemporalValue(&localDateTime);
+	} else if(argc == 1 && SI_TYPE(argv[0]) == T_STRING) {
+		RG_TemporalValue localDateTime = RG_LocalDateTime_New_FromString(argv[0].stringval);
+		return SI_TemporalValue(&localDateTime);
+	}
+	return SI_NullVal();
+
+}
+
+SIValue AR_DATE(SIValue *argv, int argc) {
+	// TODO: handle string and map
+	if(argc == 0) {
+		RG_TemporalValue date = RG_Date_New();
+		return SI_TemporalValue(&date);
+	} else if(argc == 1 && SI_TYPE(argv[0]) == T_STRING) {
+		RG_TemporalValue date = RG_Date_New_FromString(argv[0].stringval);
+		return SI_TemporalValue(&date);
+	}
+	return SI_NullVal();
+}
+
+SIValue AR_TIME(SIValue *argv, int argc) {
+	// TODO: handle string and map
+	if(argc == 0) {
+		RG_TemporalValue time = RG_Time_New();
+		return SI_TemporalValue(&time);
+	} else if(argc == 1 && SI_TYPE(argv[0]) == T_STRING) {
+		RG_TemporalValue time = RG_Time_New_FromString(argv[0].stringval);
+		return SI_TemporalValue(&time);
+	}
+	return SI_NullVal();
+}
+
+SIValue AR_LOCALTIME(SIValue *argv, int argc) {
+	// TODO: handle string and map
+	if(argc == 0) {
+		RG_TemporalValue localTime = RG_LocalTime_New();
+		return SI_TemporalValue(&localTime);
+	} else if(argc == 1 && SI_TYPE(argv[0]) == T_STRING) {
+		RG_TemporalValue localTime = RG_LocalTime_New_FromString(argv[0].stringval);
+		return SI_TemporalValue(&localTime);
+	}
+	return SI_NullVal();
+}
+
 void AR_RegFunc(char *func_name, size_t func_name_len, AR_Func func) {
 	if(__aeRegisteredFuncs == NULL) {
 		__aeRegisteredFuncs = NewTrieMap();
@@ -891,5 +954,26 @@ void AR_RegisterFuncs() {
 
 	_toLower("exists", &lower_func_name[0], &lower_func_name_len);
 	AR_RegFunc(lower_func_name, lower_func_name_len, AR_EXISTS);
+	lower_func_name_len = 32;
+
+	// date time functions
+	_toLower("datetime", &lower_func_name[0], &lower_func_name_len);
+	AR_RegFunc(lower_func_name, lower_func_name_len, AR_DATETIME);
+	lower_func_name_len = 32;
+
+	_toLower("localdatetime", &lower_func_name[0], &lower_func_name_len);
+	AR_RegFunc(lower_func_name, lower_func_name_len, AR_LOCALDATETIME);
+	lower_func_name_len = 32;
+
+	_toLower("date", &lower_func_name[0], &lower_func_name_len);
+	AR_RegFunc(lower_func_name, lower_func_name_len, AR_DATE);
+	lower_func_name_len = 32;
+
+	_toLower("time", &lower_func_name[0], &lower_func_name_len);
+	AR_RegFunc(lower_func_name, lower_func_name_len, AR_TIME);
+	lower_func_name_len = 32;
+
+	_toLower("localtime", &lower_func_name[0], &lower_func_name_len);
+	AR_RegFunc(lower_func_name, lower_func_name_len, AR_LOCALTIME);
 	lower_func_name_len = 32;
 }

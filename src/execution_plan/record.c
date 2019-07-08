@@ -117,6 +117,8 @@ void Record_Add(Record r, int idx, SIValue v) {
 	case T_EDGE:
 		Record_AddEdge(r, idx, *(Edge *)v.ptrval);
 		break;
+	case T_TEMPORAL_VALUE:
+		Record_AddTemporalValue(r, idx, v.time);
 	default:
 		Record_AddScalar(r, idx, v);
 		break;
@@ -138,6 +140,10 @@ void Record_AddEdge(Record r, int idx, Edge edge) {
 	r[idx].type = REC_TYPE_EDGE;
 }
 
+void Record_AddTemporalValue(Record r, int idx, RG_TemporalValue temporalvalue) {
+	r[idx].value.s.time = temporalvalue;
+	r[idx].type = REC_TYPE_TEMPORAL;
+}
 size_t Record_ToString(const Record r, char **buf, size_t *buf_cap) {
 	uint rLen = Record_length(r);
 	SIValue values[rLen];
@@ -217,15 +223,18 @@ unsigned long long Record_Hash64(const Record r) {
 				assert(false);
 			}
 			break;
+		case REC_TYPE_TEMPORAL:
+			data = &si.time;
+			len = sizeof(si.time;
+						 break;
+					 case REC_TYPE_UNKNOWN:
+							 assert(false);
 
-		case REC_TYPE_UNKNOWN:
-			assert(false);
+						 default:
+								 assert(false);
+				}
 
-		default:
-			assert(false);
-		}
-
-		res = XXH64_update(&state, data, len);
+			  res = XXH64_update(&state, data, len);
 		assert(res != XXH_ERROR);
 	}
 

@@ -30,6 +30,7 @@ typedef enum {
 	T_CONSTSTRING = 0x100, // only used in deserialization routine
 	T_NODE = 0x200,
 	T_EDGE = 0x400,
+	T_TIMESTAMP = 0x800,
 } SIType;
 
 typedef enum {
@@ -64,8 +65,8 @@ typedef struct {
 		char *stringval;
 		void *ptrval;
 	};
-	SIType type;
 	SIAllocation allocation;
+	SIType type;
 } SIValue;
 
 /* Functions to construct an SIValue from a specific input type. */
@@ -76,12 +77,11 @@ SIValue SI_BoolVal(int b);
 SIValue SI_PtrVal(void *v);
 SIValue SI_Node(void *n);
 SIValue SI_Edge(void *e);
-SIValue SI_DuplicateStringVal(const char
-							  *s); // Duplicate and ultimately free the input string
+SIValue SI_TimeStamp(void *ts);
+SIValue SI_DuplicateStringVal(const char *s); // Duplicate and ultimately free the input string
 SIValue SI_ConstStringVal(char
 						  *s);           // Neither duplicate nor assume ownership of input string
-SIValue SI_TransferStringVal(char
-							 *s);        // Don't duplicate input string, but assume ownership
+SIValue SI_TransferStringVal(char *s);        // Don't duplicate input string, but assume ownership
 
 /* Functions to copy an SIValue. */
 SIValue SI_Clone(SIValue
