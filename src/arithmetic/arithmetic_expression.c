@@ -69,7 +69,7 @@ static AR_ExpNode* _AR_EXP_NewOpNodeFromAST(AST_Operator op, int child_count) {
 
 // TODO we don't really have as many func_name strings as before (they were generated in grammar.y)
 // maybe replace with above
-static AR_ExpNode* _AR_EXP_NewOpNode(char *func_name, int child_count) {
+AR_ExpNode* _AR_EXP_NewOpNode(char *func_name, int child_count) {
     AR_ExpNode *node = rm_calloc(1, sizeof(AR_ExpNode));
     node->type = AR_EXP_OP;
     node->op.func_name = func_name;

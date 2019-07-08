@@ -57,7 +57,6 @@ typedef enum {
     OP_ERR = 8,
 } OpResult;
 
-struct ExecutionPlanSegment;
 struct OpBase;
 
 typedef void (*fpFree)(struct OpBase*);

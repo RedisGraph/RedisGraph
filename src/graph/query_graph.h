@@ -27,6 +27,9 @@ typedef struct {
     TrieMap *ast_references;
 } QueryGraph;
 
+void QueryGraph_AddNode(QueryGraph *qg, QGNode *n);
+void QueryGraph_AddEdge(QueryGraph *qg, QGEdge *n);
+
 /* Prepare a new query graph with initial allocations for
  * the provided node and edge counts. */
 QueryGraph* QueryGraph_New(uint node_cap, uint edge_cap);
@@ -72,6 +75,10 @@ void* QueryGraph_GetEntityByASTRef(const QueryGraph *qg, const cypher_astnode_t 
 
 /* Retrieve a graph entity from an AST ID. */
 void* QueryGraph_GetEntityByASTID(const QueryGraph *qg, uint id);
+
+QGNode* QueryGraph_GetNodeByID(const QueryGraph *qg, uint id);
+
+QGEdge* QueryGraph_GetEdgeByID(const QueryGraph *qg, uint id);
 
 /* Determine whether a given alias refers to a node or relation. */
 SchemaType QueryGraph_GetEntityTypeByAlias(const QueryGraph *qg, const char *alias);

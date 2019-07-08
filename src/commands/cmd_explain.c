@@ -59,7 +59,7 @@ void _MGraph_Explain(void *args) {
         goto cleanup;
     }
 
-    pthread_setspecific(_tlsASTKey, ast);
+    // pthread_setspecific(_tlsASTKey, ast);
 
     // Retrieve the GraphContext and acquire a read lock.
     gc = GraphContext_Retrieve(ctx, graphname, true);

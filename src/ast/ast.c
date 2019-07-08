@@ -224,6 +224,9 @@ AST* AST_Build(cypher_parse_result_t *parse_result) {
     assert(ast->root);
     if (cypher_astnode_type(ast->root) == CYPHER_AST_QUERY) AST_BuildEntityMap(ast);
 
+    // Set thread-local AST
+    pthread_setspecific(_tlsASTKey, ast);
+
     return ast;
 }
 

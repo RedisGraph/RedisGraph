@@ -41,9 +41,6 @@ void QGNode_RemoveIncomingEdge(QGNode *n, QGEdge *e);
 /* Removes given Outgoing edge from node. */
 void QGNode_RemoveOutgoingEdge(QGNode *n, QGEdge *e);
 
-/* Retrieves node matrix. */
-GrB_Matrix QGNode_GetMatrix(QGNode *n);
-
 /* Clones given node. */
 QGNode* QGNode_Clone(const QGNode *n);
 

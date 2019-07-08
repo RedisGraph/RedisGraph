@@ -32,5 +32,5 @@ uint RecordMap_FindOrAddAlias(RecordMap *record_map, const char *alias);
 
 void RecordMap_AssociateAliasWithID(RecordMap *record_map, char *alias, uint id);
 
-RecordMap *RecordMap_New(void);
+RecordMap* RecordMap_New(void);
 void RecordMap_Free(RecordMap *record_map);

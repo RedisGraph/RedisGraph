@@ -298,9 +298,8 @@ void _ExecutionPlanSegment_ProcessQueryGraph(ExecutionPlanSegment *segment, Quer
             selectEntryPoint(exp, segment->record_map, ft);
 
             // Retrieve the AST ID for the source node
-            uint ast_id = exps[0]->src_node->id;
+            uint ast_id = exp->src_node->id;
             // Convert to a Record ID
-            // TODO next, messing up average_age query // still true?
             uint record_id = RecordMap_FindOrAddID(segment->record_map, ast_id);
 
             // Create SCAN operation.

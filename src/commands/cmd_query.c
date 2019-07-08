@@ -74,9 +74,6 @@ void _MGraph_Query(void *args) {
         return;
     }
 
-    // Set thread-local AST
-    pthread_setspecific(_tlsASTKey, ast);
-
     // Try to access the GraphContext
     CommandCtx_ThreadSafeContextLock(qctx);
     GraphContext *gc = GraphContext_Retrieve(ctx, qctx->graphName, readonly);

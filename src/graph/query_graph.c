@@ -53,7 +53,7 @@ static void _BuildQueryGraphAddNode(const GraphContext *gc,
         // TODO old dummy entity logic? What if we have multiple AST IDs?
         n->id = id;
 
-        qg->nodes = array_append(qg->nodes, n);
+        QueryGraph_AddNode(qg, n);
 
     }
 
@@ -156,6 +156,14 @@ static void _BuildQueryGraphAddEdge(const GraphContext *gc,
     QueryGraph_ConnectNodes(qg, src, dest, e);
 }
 
+void QueryGraph_AddNode(QueryGraph *qg, QGNode *n) {
+    qg->nodes = array_append(qg->nodes, n);
+}
+
+void QueryGraph_AddEdge(QueryGraph *qg, QGEdge *e) {
+    qg->edges = array_append(qg->edges, e);
+}
+
 QueryGraph* QueryGraph_New(uint node_cap, uint edge_cap) {
     QueryGraph *qg = rm_malloc(sizeof(QueryGraph));
 
@@ -171,7 +179,7 @@ void QueryGraph_ConnectNodes(QueryGraph *qg, QGNode *src, QGNode *dest, QGEdge *
     QGNode_ConnectNode(src, dest, e);
     e->src = src;
     e->dest = dest;
-    qg->edges = array_append(qg->edges, e);
+    QueryGraph_AddEdge(qg, e);
 }
 
 void QueryGraph_AddPath(const GraphContext *gc, const AST *ast, QueryGraph *qg, const cypher_astnode_t *path) {
@@ -269,6 +277,14 @@ QGNode* QueryGraph_GetNodeByID(const QueryGraph *qg, uint id) {
     return NULL;
 }
 
+QGEdge* QueryGraph_GetEdgeByID(const QueryGraph *qg, uint id) {
+    uint edge_count = array_len(qg->edges);
+    for (uint i = 0; i < edge_count; i ++) {
+        if (id == qg->edges[i]->id) return qg->edges[i];
+    }
+    return NULL;
+}
+
 SchemaType QueryGraph_GetEntityTypeByAlias(const QueryGraph *qg, const char *alias) {
     // TODO weak logic
     uint count = array_len(qg->nodes);
@@ -298,13 +314,12 @@ QueryGraph* QueryGraph_Clone(const QueryGraph *qg) {
     for(int i = 0; i < node_count; i++) {
         // Clones node without its edges.
         QGNode *n = QGNode_Clone(qg->nodes[i]);
-        clone->nodes = array_append(clone->nodes, n);
+        QueryGraph_AddNode(clone, n);
     }
 
     // Clone edges.
     for(int i = 0; i < edge_count; i++) {
         QGEdge *e = qg->edges[i];
-        // TODO is this lookup necessary? Can't we just pass e->src?
         QGNode *src = QueryGraph_GetNodeByID(clone, e->src->id);
         QGNode *dest = QueryGraph_GetNodeByID(clone, e->dest->id);
         QGEdge *clone_edge = QGEdge_Clone(e);

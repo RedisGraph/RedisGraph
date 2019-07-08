@@ -15,12 +15,18 @@ extern "C" {
 #include "../../src/graph/entities/node.h"
 #include "../../src/arithmetic/agg_funcs.h"
 #include "../../src/execution_plan/record.h"
+#include "../../src/execution_plan/execution_plan.h"
 #include "../../src/util/rmalloc.h"
 #include "../../src/util/arr.h"
+
+// Declaration of function in execution_plan.h
+AR_ExpNode** _BuildReturnExpressions(RecordMap *record_map, const cypher_astnode_t *ret_clause);
 
 #ifdef __cplusplus
 }
 #endif
+
+pthread_key_t _tlsASTKey;  // Thread local storage AST key.
 
 class ArithmeticTest: public ::testing::Test {
   protected:
@@ -30,6 +36,9 @@ class ArithmeticTest: public ::testing::Test {
 
       AR_RegisterFuncs();
       Agg_RegisterFuncs();
+
+      int error = pthread_key_create(&_tlsASTKey, NULL);
+      ASSERT_EQ(error, 0);
     }
 
     static void TearDownTestCase() {
@@ -59,11 +68,10 @@ void _test_ar_func(AR_ExpNode *root, SIValue expected, const Record r) {
 AR_ExpNode* _exp_from_query(const char *query) {
   cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
   AST *ast = AST_Build(parse_result);
-  ast->defined_entities = (AR_ExpNode **)array_new(AR_ExpNode*, 1);
   ast->entity_map = NewTrieMap();
 
   const cypher_astnode_t *ret_clause = AST_GetClause(ast, CYPHER_AST_RETURN);
-  AR_ExpNode **return_elems = AST_BuildReturnExpressions(ast, ret_clause);
+  AR_ExpNode **return_elems = _BuildReturnExpressions(NULL, ret_clause);
 
   return return_elems[0];
 }

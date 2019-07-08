@@ -14,7 +14,6 @@ extern "C" {
 #include "../../src/value.h"
 #include "../../src/util/arr.h"
 #include "../../src/graph/graph.h"
-#include "../../src/query_executor.h"
 #include "../../src/graph/query_graph.h"
 #include "../../src/graph/graphcontext.h"
 #include "../../src/util/simple_timer.h"
@@ -176,19 +175,18 @@ class AlgebraicExpressionTest: public ::testing::Test {
 
     AlgebraicExpression **build_algebraic_expression(const char *query, size_t *exp_count) {
         GraphContext *gc = GraphContext_GetFromTLS();
-        AST **asts = ParseQuery(query, strlen(query), NULL);
-        assert(asts);
-        AST *ast = asts[0];
+        cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
+        AST *ast = AST_Build(parse_result);
 
         QueryGraph_Clear(qg);
-        BuildQueryGraph(gc, qg, ast->matchNode->_mergedPatterns);
+        BuildQueryGraph(gc, ast);
         // Force matrix assignment to both nodes and edges.
-        for(int i = 0; i < qg->node_count; i++) Node_GetMatrix(qg->nodes[i]);
-        for(int i = 0; i < qg->edge_count; i++) Edge_GetMatrix(qg->edges[i]);
+        for(int i = 0; i < array_len(qg->nodes); i++) Graph_GetLabelMatrix(gc->g, qg->nodes[i]->labelID);
+        for(int i = 0; i < array_len(qg->edges); i++) Graph_GetRelationMatrix(gc->g, qg->edges[i]->reltypeIDs[0]);
 
-        AlgebraicExpression **ae = AlgebraicExpression_From_QueryGraph(qg, ast, exp_count);
+        AlgebraicExpression **ae = AlgebraicExpression_FromQueryGraph(qg, NULL, exp_count);
 
-        AST_Free(asts);
+        AST_Free(ast);
         return ae;
     }
 

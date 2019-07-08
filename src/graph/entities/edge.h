@@ -26,14 +26,12 @@ struct Edge {
     NodeID srcNodeID;       /* Source node ID. */
     NodeID destNodeID;      /* Destination node ID. */
     GrB_Matrix mat;         /* Adjacency matrix, associated with edge. */
-    unsigned int minHops;   /* Minimum number of hops this edge represents. */ // TODO
-    unsigned int maxHops;   /* Maximum number of hops this edge represents. */ // TODO
 };
 
 typedef struct Edge Edge;
 
 /* Creates a new edge, connecting src to dest node. */
-Edge* Edge_New(Node *src, Node *dest, const char *relationship, const char *alias);
+// Edge* Edge_New(Node *src, Node *dest, const char *relationship, const char *alias);
 
 // Retrieve edge source node ID.
 NodeID Edge_GetSrcNodeID(const Edge *edge); // graph.c, serializer, all_paths, replies
@@ -53,12 +51,6 @@ Node* Edge_GetDestNode(Edge *e);
 // Retrieves edge matrix.
 GrB_Matrix Edge_GetMatrix(Edge *e); // AE
 
-// Determins if this is a variable length edge.
-bool Edge_VariableLength(const Edge *e); // AE
-
-// Reverse edge direction.
-void Edge_Reverse(Edge *e); // AE
-
 // Sets edge source node.
 void Edge_SetSrcNode(Edge *e, Node *src); // QG
 
@@ -67,9 +59,6 @@ void Edge_SetDestNode(Edge *e, Node *dest); // QG
 
 // Sets edge relation type.
 void Edge_SetRelationID(Edge *e, int relationID); // QG, graph.c
-
-// Gets a string representation of given edge.
-int Edge_ToString(const Edge *e, char *buff, int buff_len); // Ops printing
 
 // Frees allocated space by given edge
 void Edge_Free(Edge *edge);
