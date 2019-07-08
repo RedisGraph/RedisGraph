@@ -33,7 +33,7 @@ static void _setupTraversedRelations(CondVarLenTraverse *op) {
     op->relationIDsCount = array_len(op->relationIDs);
 }
 
-int CondVarLenTraverseToString(const OpBase *ctx, char *buff, uint buff_len) {
+static int CondVarLenTraverseToString(const OpBase *ctx, char *buff, uint buff_len) {
     const CondVarLenTraverse *op = (const CondVarLenTraverse*)ctx;
 
     int offset = 0;    

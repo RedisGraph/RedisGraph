@@ -7,7 +7,7 @@
 #include "op_all_node_scan.h"
 #include "../../parser/ast.h"
 
-int AllNodeScanToString(const OpBase *ctx, char *buff, uint buff_len) {
+static int AllNodeScanToString(const OpBase *ctx, char *buff, uint buff_len) {
     const AllNodeScan *op = (const AllNodeScan*)ctx;
     int offset = snprintf(buff, buff_len, "%s | ", op->op.name);
     offset += Node_ToString(op->n, buff + offset, buff_len - offset);
