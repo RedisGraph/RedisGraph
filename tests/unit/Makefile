@@ -23,16 +23,6 @@ ifndef V
 QUIET_CXX = @printf '    %b %b\n' $(CCCOLOR)CXX$(ENDCOLOR) $(SRCCOLOR)$@$(ENDCOLOR) 1>&2;
 endif
 
-# find the OS
-uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
-ifeq ($(uname_S),Linux)
-	LDFLAGS ?= -shared -Bsymbolic -Bsymbolic-functions -ldl -lpthread
-else
-	CFLAGS += -mmacosx-version-min=10.14
-	LDFLAGS ?= -mmacosx-version-min=10.14 -bundle -undefined dynamic_lookup
-endif
-
-
 # Google Test headers - do not modify
 GTEST_HEADERS = $(GTEST_DIR)/include/gtest/*.h \
                 $(GTEST_DIR)/include/gtest/internal/*.h
@@ -41,11 +31,11 @@ GTEST_HEADERS = $(GTEST_DIR)/include/gtest/*.h \
 GTEST_SRCS_ = $(GTEST_DIR)/src/*.cc $(GTEST_DIR)/src/*.h $(GTEST_HEADERS)
 
 gtest-all.o : $(GTEST_SRCS_)
-	@$(REDISGRAPH_CXX) $(CPPFLAGS) -I$(GTEST_DIR) $(CXXFLAGS) -c \
+	@$(REDISGRAPH_CXX) $(CPPFLAGS) -I$(GTEST_DIR) $(CXXFLAGS) -ldl -c \
             $(GTEST_DIR)/src/gtest-all.cc
 
 gtest_main.o : $(GTEST_SRCS_)
-	@$(REDISGRAPH_CXX) $(CPPFLAGS) -I$(GTEST_DIR) $(CXXFLAGS) -c \
+	@$(REDISGRAPH_CXX) $(CPPFLAGS) -I$(GTEST_DIR) $(CXXFLAGS) -ldl -c \
             $(GTEST_DIR)/src/gtest_main.cc
 
 gtest.a : gtest-all.o
@@ -61,14 +51,18 @@ LIBTRIEMAP=../../src/util/triemap/libtriemap.a
 LIBGRAPHBLAS=../../deps/GraphBLAS/build/libgraphblas.a
 LIBXXHASH=$(ROOT)/deps/xxhash/libxxhash.a
 LIBREDISEARCH = $(ROOT)/deps/RediSearch/build/libredisearchS.a
+COMMON=common.o
 
 LIBS=$(LIBTRIEMAP) $(LIBGRAPHBLAS) $(LIBXXHASH) $(LIBREDISEARCH)
-DEPS=$(CC_OBJECTS) $(RAX) $(LIBS)
+DEPS=$(CC_OBJECTS) $(COMMON) $(RAX) $(LIBS)
 
 # Build and run a test for each cpp file in directory
 TEST_SOURCES = $(wildcard *.cpp)
 TEST_OBJECTS = $(patsubst %.cpp, %.o, $(TEST_SOURCES))
 TEST_EXECUTABLES = $(patsubst %.cpp, %.run, $(TEST_SOURCES))
+
+common.o:
+	@$(REDISGRAPH_CXX) common.c $(CPPFLAGS) $(CXXFLAGS) $(CXX_SUPPRESS) -c -o $@ $<
 
 # Compile object files from unit test sources
 %.o: %.cpp

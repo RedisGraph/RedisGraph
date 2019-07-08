@@ -4,6 +4,10 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
+#pragma GCC visibility push(default)
+REDISMODULE_INIT_SYMBOLS();
+#pragma GCC visibility pop
+
 #include <unistd.h>
 #include <assert.h>
 #include "redismodule.h"
