@@ -12,14 +12,14 @@
 
 QGEdge* QGEdge_New(QGNode *src, QGNode *dest, const char *relationship, const char *alias, uint id) {
     QGEdge *e = rm_malloc(sizeof(QGEdge));
+    e->id = id;
+    e->alias = alias;
     e->reltypes = array_new(const char*, 1);
     e->reltypeIDs = array_new(uint, 1);
     e->src = NULL;
     e->dest = NULL;
     e->minHops = 1;
     e->maxHops = 1;
-    e->alias = NULL;
-    e->id = id;
 
     return e;
 }
@@ -27,8 +27,8 @@ QGEdge* QGEdge_New(QGNode *src, QGNode *dest, const char *relationship, const ch
 QGEdge* QGEdge_Clone(const QGEdge *orig) {
     QGEdge *e = rm_malloc(sizeof(QGEdge));
     e->alias = orig->alias;
-    e->reltypes = orig->reltypes;
-    e->reltypeIDs = orig->reltypeIDs;
+    e->reltypes = orig->reltypes; // TODO possibly memcpy
+    e->reltypeIDs = orig->reltypeIDs; // TODO possibly memcpy
     e->minHops = orig->minHops;
     e->maxHops = orig->maxHops;
     e->id = orig->id;
@@ -44,19 +44,15 @@ bool QGEdge_VariableLength(const QGEdge *e) {
 }
 
 void QGEdge_Reverse(QGEdge *e) {
-	QGNode *t;
 	QGNode *src = e->src;
 	QGNode *dest = e->dest;
 
 	QGNode_RemoveOutgoingEdge(src, e);
 	QGNode_RemoveIncomingEdge(dest, e);
 
-	// Swap and reconnect.
-	t = e->src;
-	e->src = e->dest;
-	e->dest = t;
-
-    // Edge_Reverse(e->e);
+	// Reconnect nodes with the source and destination reversed.
+	e->src = dest;
+	e->dest = src;
 
 	QGNode_ConnectNode(e->src, e->dest, e);
 }
@@ -84,11 +80,12 @@ int QGEdge_ToString(const QGEdge *e, char *buff, int buff_len) {
     return offset;
 }
 
-void QGEdge_Free(QGEdge* edge) {
-    // TODO
-	// if(!edge) return;
+void QGEdge_Free(QGEdge* e) {
+    if(!e) return;
 
-	// if(edge->alias != NULL) free(edge->alias);
-	// if(edge->relationship != NULL) free(edge->relationship);
-	// free(edge);
+    // TODO
+    // array_free(e->reltypes);
+    // array_free(e->reltypeIDs);
+
+    rm_free(e);
 }

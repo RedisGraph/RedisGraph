@@ -38,14 +38,16 @@ static void _BuildQueryGraphAddNode(const GraphContext *gc,
     // If this AST ID has already been mapped into the QueryGraph from a different AST entity,
     //  we'll augment the previously-built QGNode with any new AST data.
     // This call captures reused aliases.
-    n = QueryGraph_GetEntityByASTID(qg, id);
+    n = QueryGraph_GetNodeByID(qg, id);
 
     if (n == NULL) {
         // Node has not been mapped; create it.
-        n = QGNode_New(NULL, NULL, id);
 
+        const char *alias = NULL;
         const cypher_astnode_t *ast_alias = cypher_ast_node_pattern_get_identifier(ast_entity);
-        if (ast_alias) n->alias = cypher_ast_identifier_get_name(ast_alias);
+        if (ast_alias) alias = cypher_ast_identifier_get_name(ast_alias);
+
+        n = QGNode_New(NULL, alias, id);
 
         // Map the AST ID.
         _QueryGraph_AddID(qg, id, n);
@@ -75,8 +77,6 @@ static void _BuildQueryGraphAddNode(const GraphContext *gc,
             n->labelID = GRAPH_NO_LABEL;
         }
     }
-
-    // TODO properties?
 }
 
 static void _BuildQueryGraphAddEdge(const GraphContext *gc,
@@ -96,17 +96,16 @@ static void _BuildQueryGraphAddEdge(const GraphContext *gc,
     // If this AST ID has already been mapped into the QueryGraph from a different AST entity,
     //  we'll augment the previously-built QGEdge with any new AST data.
     // This call captures reused aliases.
-    assert(QueryGraph_GetEntityByASTID(qg, id) == NULL);
+    assert(QueryGraph_GetEdgeByID(qg, id) == NULL);
 
-    QGEdge *e = QGEdge_New(NULL, NULL, NULL, NULL, id);
-
+    const char *alias = NULL;
     const cypher_astnode_t *ast_alias = cypher_ast_rel_pattern_get_identifier(ast_entity);
-    if (ast_alias) e->alias = cypher_ast_identifier_get_name(ast_alias);
+    if (ast_alias) alias = cypher_ast_identifier_get_name(ast_alias);
+
+    QGEdge *e = QGEdge_New(NULL, NULL, NULL, alias, id);
 
     // Map the AST ID.
     _QueryGraph_AddID(qg, id, e);
-
-    // TODO old dummy entity logic? What if we have multiple AST IDs?
 
     QGNode *src = QueryGraph_GetEntityByASTRef(qg, l_entity);
     QGNode *dest = QueryGraph_GetEntityByASTRef(qg, r_entity);
@@ -123,7 +122,7 @@ static void _BuildQueryGraphAddEdge(const GraphContext *gc,
     for (uint i = 0; i < nreltypes; i ++) {
         const char *reltype = cypher_ast_reltype_get_name(cypher_ast_rel_pattern_get_reltype(ast_entity, i));
         e->reltypes = array_append(e->reltypes, reltype);
-        // TODO unsafe - we might not have a schema if we're creating in this query
+        // TODO unsafe? we might not have a schema if we're creating in this query
         Schema *s = GraphContext_GetSchema(gc, reltype, SCHEMA_EDGE);
         if(!s) {
             e->reltypeIDs = array_append(e->reltypeIDs, GRAPH_UNKNOWN_RELATION);
@@ -152,14 +151,6 @@ static void _BuildQueryGraphAddEdge(const GraphContext *gc,
     QueryGraph_ConnectNodes(qg, src, dest, e);
 }
 
-void QueryGraph_AddNode(QueryGraph *qg, QGNode *n) {
-    qg->nodes = array_append(qg->nodes, n);
-}
-
-void QueryGraph_AddEdge(QueryGraph *qg, QGEdge *e) {
-    qg->edges = array_append(qg->edges, e);
-}
-
 QueryGraph* QueryGraph_New(uint node_cap, uint edge_cap) {
     QueryGraph *qg = rm_malloc(sizeof(QueryGraph));
 
@@ -171,11 +162,15 @@ QueryGraph* QueryGraph_New(uint node_cap, uint edge_cap) {
     return qg;
 }
 
+void QueryGraph_AddNode(QueryGraph *qg, QGNode *n) {
+    qg->nodes = array_append(qg->nodes, n);
+}
+
 void QueryGraph_ConnectNodes(QueryGraph *qg, QGNode *src, QGNode *dest, QGEdge *e) {
     QGNode_ConnectNode(src, dest, e);
     e->src = src;
     e->dest = dest;
-    QueryGraph_AddEdge(qg, e);
+    qg->edges = array_append(qg->edges, e);
 }
 
 void QueryGraph_AddPath(const GraphContext *gc, const AST *ast, QueryGraph *qg, const cypher_astnode_t *path) {
@@ -189,7 +184,6 @@ void QueryGraph_AddPath(const GraphContext *gc, const AST *ast, QueryGraph *qg, 
 
     /* Every odd offset corresponds to an edge in a path. */
     for (uint i = 1; i < nelems; i += 2) {
-        // TODO still need to introduce nodes first? not doing that would simplify this logic
         const cypher_astnode_t *l_entity = cypher_ast_pattern_path_get_element(path, i - 1);
         const cypher_astnode_t *r_entity = cypher_ast_pattern_path_get_element(path, i + 1);
         const cypher_astnode_t *entity = cypher_ast_pattern_path_get_element(path, i);
@@ -199,9 +193,7 @@ void QueryGraph_AddPath(const GraphContext *gc, const AST *ast, QueryGraph *qg, 
 
 }
 
-/* Build a complete query graph from the clauses that can introduce entities
- * (MATCH, MERGE, and CREATE) */
-// TODO Depending on how path uniqueness is specified, this may be too inclusive?
+/* Build a query graph from MATCH and MERGE clauses. */
 QueryGraph* BuildQueryGraph(const GraphContext *gc, const AST *ast) {
     uint node_count;
     uint edge_count;
@@ -210,7 +202,7 @@ QueryGraph* BuildQueryGraph(const GraphContext *gc, const AST *ast) {
     node_count = edge_count = ast->entity_map->cardinality;
     QueryGraph *qg = QueryGraph_New(node_count, edge_count);
 
-    // We are interested in every path held in a MATCH or CREATE pattern,
+    // We are interested in every path held in a MATCH pattern,
     // and the (single) path described by a MERGE clause.
 
     const cypher_astnode_t **match_clauses = AST_CollectReferencesInRange(ast, CYPHER_AST_MATCH);
@@ -234,8 +226,6 @@ QueryGraph* BuildQueryGraph(const GraphContext *gc, const AST *ast) {
     }
     array_free(merge_clauses);
 
-    // TODO WITH entities?
-
     return qg;
 }
 
@@ -255,12 +245,6 @@ void QueryGraph_AddCreateClauses(const GraphContext *gc, const AST *ast, QueryGr
 
 void* QueryGraph_GetEntityByASTRef(const QueryGraph *qg, const cypher_astnode_t *ref) {
     void *ge = TrieMap_Find(qg->ast_references, (void*)&ref, sizeof(ref));
-    if (ge == TRIEMAP_NOTFOUND) return NULL;
-    return ge;
-}
-
-void* QueryGraph_GetEntityByASTID(const QueryGraph *qg, uint id) {
-    void *ge = TrieMap_Find(qg->ast_references, (void*)&id, sizeof(id));
     if (ge == TRIEMAP_NOTFOUND) return NULL;
     return ge;
 }
@@ -305,16 +289,16 @@ QueryGraph* QueryGraph_Clone(const QueryGraph *qg) {
     uint node_count = array_len(qg->nodes);
     uint edge_count = array_len(qg->edges);
     QueryGraph *clone = QueryGraph_New(node_count, edge_count);
-    
+
     // Clone nodes.
-    for(int i = 0; i < node_count; i++) {
+    for(uint i = 0; i < node_count; i++) {
         // Clones node without its edges.
         QGNode *n = QGNode_Clone(qg->nodes[i]);
         QueryGraph_AddNode(clone, n);
     }
 
     // Clone edges.
-    for(int i = 0; i < edge_count; i++) {
+    for(uint i = 0; i < edge_count; i++) {
         QGEdge *e = qg->edges[i];
         QGNode *src = QueryGraph_GetNodeByID(clone, e->src->id);
         QGNode *dest = QueryGraph_GetNodeByID(clone, e->dest->id);
@@ -429,9 +413,9 @@ QueryGraph** QueryGraph_ConnectedComponents(const QueryGraph *qg) {
             n = g->nodes[i];
             reachable = raxFind(visited, (unsigned char*)&n->id, sizeof(n->id));
 
-            /* If node is reachable, which means it is part of the 
+            /* If node is reachable, which means it is part of the
              * connected component, then remove it from the graph,
-             * otherwise, node isn't reachable, not part of the 
+             * otherwise, node isn't reachable, not part of the
              * connected component. */
             if(reachable != raxNotFound) {
                 QueryGraph_RemoveNode(g, n);
@@ -440,9 +424,9 @@ QueryGraph** QueryGraph_ConnectedComponents(const QueryGraph *qg) {
                 QueryGraph_RemoveNode(cc, n);
             }
         }
-    
+
         connected_components = array_append(connected_components, cc);
-        
+
         // Clear visited dict for next iteration.
         raxFree(visited);
 
@@ -452,11 +436,6 @@ QueryGraph** QueryGraph_ConnectedComponents(const QueryGraph *qg) {
 
     QueryGraph_Free(g);
     return connected_components;
-}
-
-void QueryGraph_Clear(QueryGraph *qg) {
-    while(array_len(qg->edges) > 0) QueryGraph_RemoveEdge(qg, qg->edges[0]);
-    while(array_len(qg->nodes) > 0) QueryGraph_RemoveNode(qg, qg->nodes[0]);
 }
 
 /* Frees entire graph. */

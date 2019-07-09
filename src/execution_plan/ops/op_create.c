@@ -56,7 +56,6 @@ void _CreateNodes(OpCreate *op, Record r) {
         /* Create a new node. */
         Node *newNode = Record_GetNode(r, op->nodes_to_create[i].node_idx);
         newNode->entity = NULL;
-        newNode->alias = n->alias;
         newNode->label = n->label;
         newNode->labelID = n->labelID;
 
@@ -80,7 +79,6 @@ void _CreateEdges(OpCreate *op, Record r) {
 
         /* Create the actual edge. */
         Edge *newEdge = Record_GetEdge(r, op->edges_to_create[i].edge_idx);
-        newEdge->alias = e->alias;
         if (array_len(e->reltypes) > 0) newEdge->relationship = e->reltypes[0];
         Edge_SetSrcNode(newEdge, src_node);
         Edge_SetDestNode(newEdge, dest_node);

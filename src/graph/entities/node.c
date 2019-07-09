@@ -12,12 +12,10 @@
 #include "graph_entity.h"
 #include "../graphcontext.h"
 
-Node* Node_New(const char *label, const char *alias) {
+Node* Node_New(const char *label) {
 	Node* n = calloc(1, sizeof(Node));
 	n->labelID = GRAPH_UNKNOWN_LABEL;
-
 	n->label = label;
-	n->alias = alias;
 
 	return n;
 }
@@ -48,7 +46,7 @@ GrB_Matrix Node_GetMatrix(Node *n) {
 }
 
 Node* Node_Clone(const Node *n) {
-	Node *clone = Node_New(n->label, n->alias);
+	Node *clone = Node_New(n->label);
 	clone->mat = n->mat;
 	// TODO: consider setting labelID in Node_New.
 	clone->labelID = n->labelID;

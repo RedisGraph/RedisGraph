@@ -13,10 +13,10 @@
 typedef struct QGEdge QGEdge;
 
 typedef struct {
-    uint id;
-    int labelID;
-    const char *label; // TODO move
-    const char *alias;
+    uint id;                   /* Unique QueryGraph ID for Record mapping */
+    int labelID;               /* Label ID */
+    const char *label;         /* Label string */
+    const char *alias;         /* User-provided alias associated with this node */
     QGEdge** outgoing_edges;   /* Array of incoming edges (ME)<-(SRC) */
     QGEdge** incoming_edges;   /* Array of outgoing edges (ME)->(DEST) */
 } QGNode;
@@ -46,7 +46,7 @@ void QGNode_RemoveOutgoingEdge(QGNode *n, QGEdge *e);
 QGNode* QGNode_Clone(const QGNode *n);
 
 /* Gets a string representation of given node. */
-int QGNode_ToString(const QGNode *n, char *buff, int buff_len); // Ops printing
+int QGNode_ToString(const QGNode *n, char *buff, int buff_len);
 
 /* Frees allocated space by given node. */
 void QGNode_Free(QGNode* node);

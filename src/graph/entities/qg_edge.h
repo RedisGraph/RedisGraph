@@ -11,32 +11,31 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-struct QGEdge {
-    const char *alias;
-    const char **reltypes;
-    int *reltypeIDs; // TODO can be uint save for GRAPH_NO_RELATION
-    QGNode *src;
-    QGNode *dest;
-    uint minHops;   /* Minimum number of hops this edge represents. */
-    uint maxHops;   /* Maximum number of hops this edge represents. */
-    uint id;
-};
-
-typedef struct QGEdge QGEdge;
+typedef struct QGEdge {
+    uint id;               /* Unique QueryGraph ID for Record mapping */
+    const char *alias;     /* User-provided alias attached to edge. */
+    const char **reltypes; /* Relationship type strings */
+    int *reltypeIDs;       /* Relationship type IDs */ // TODO can be uint save for GRAPH_NO_RELATION
+    QGNode *src;           /* Pointer to source node. */
+    QGNode *dest;          /* Pointer to destination node. */
+    uint minHops;          /* Minimum number of hops this edge represents. */
+    uint maxHops;          /* Maximum number of hops this edge represents. */
+} QGEdge;
 
 /* Creates a new edge, connecting src to dest node. */
 QGEdge* QGEdge_New(QGNode *src, QGNode *dest, const char *relationship, const char *alias, uint id);
 
+/* Create a duplicate of an edge containing all of the original's data. */
 QGEdge* QGEdge_Clone(const QGEdge *orig);
 
-// Determins if this is a variable length edge.
+/* Determine whether this is a variable length edge. */
 bool QGEdge_VariableLength(const QGEdge *e);
 
-// Reverse edge direction.
+/* Reverse edge direction. */
 void QGEdge_Reverse(QGEdge *e);
 
-// Gets a string representation of given edge.
+/* Gets a string representation of given edge. */
 int QGEdge_ToString(const QGEdge *e, char *buff, int buff_len);
 
-// Frees allocated space by given edge
-void QGEdge_Free(QGEdge *edge);
+/* Free allocations associated with the given edge. */
+void QGEdge_Free(QGEdge *e);

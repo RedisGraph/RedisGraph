@@ -18,7 +18,6 @@
  * if we set src and srcNodeID to different nodes. */
 struct Edge {
     Entity *entity;         /* MUST be the first property of Edge. */
-    const char *alias;            /* Alias attached to edge. */
     const char* relationship;     /* Label attached to edge. */
     int relationID;         /* Relation ID. */
     Node* src;              /* Pointer to source node. */

@@ -10,23 +10,7 @@
 #include "../../util/arr.h"
 #include <assert.h>
 
-QGNode* QGNode_New(const char *label, const char *alias, uint id) {
-    QGNode *n = rm_malloc(sizeof(QGNode));
-    n->alias = alias;
-    n->label = label;
-    n->labelID = GRAPH_NO_LABEL;
-    n->incoming_edges = array_new(QGEdge*, 0);
-    n->outgoing_edges = array_new(QGEdge*, 0);
-    n->id = id;
-    return n;
-}
-
-void QGNode_ConnectNode(QGNode* src, QGNode* dest, QGEdge* e) {
-	src->outgoing_edges = array_append(src->outgoing_edges, e);
-	dest->incoming_edges = array_append(dest->incoming_edges, e);
-}
-
-void _QGNode_RemoveEdge(QGEdge **edges, QGEdge *e) {
+static void _QGNode_RemoveEdge(QGEdge **edges, QGEdge *e) {
     uint edge_count = array_len(edges);
     for(uint i = 0; i < edge_count; i++) {
         QGEdge *ie = edges[i];
@@ -37,12 +21,15 @@ void _QGNode_RemoveEdge(QGEdge **edges, QGEdge *e) {
     }
 }
 
-void QGNode_RemoveIncomingEdge(QGNode *n, QGEdge *e) {
-	_QGNode_RemoveEdge(n->incoming_edges, e);
-}
-
-void QGNode_RemoveOutgoingEdge(QGNode *n, QGEdge *e) {
-	_QGNode_RemoveEdge(n->outgoing_edges, e);
+QGNode* QGNode_New(const char *label, const char *alias, uint id) {
+    QGNode *n = rm_malloc(sizeof(QGNode));
+    n->id = id;
+    n->labelID = GRAPH_NO_LABEL;
+    n->label = label;
+    n->alias = alias;
+    n->incoming_edges = array_new(QGEdge*, 0);
+    n->outgoing_edges = array_new(QGEdge*, 0);
+    return n;
 }
 
 int QGNode_IncomeDegree(const QGNode *n) {
@@ -57,12 +44,26 @@ int QGNode_EdgeCount(const QGNode *n) {
 	return QGNode_IncomeDegree(n) + QGNode_OutgoingDegree(n);
 }
 
+void QGNode_ConnectNode(QGNode* src, QGNode* dest, QGEdge* e) {
+	src->outgoing_edges = array_append(src->outgoing_edges, e);
+	dest->incoming_edges = array_append(dest->incoming_edges, e);
+}
+
+void QGNode_RemoveIncomingEdge(QGNode *n, QGEdge *e) {
+	_QGNode_RemoveEdge(n->incoming_edges, e);
+}
+
+void QGNode_RemoveOutgoingEdge(QGNode *n, QGEdge *e) {
+	_QGNode_RemoveEdge(n->outgoing_edges, e);
+}
+
 QGNode* QGNode_Clone(const QGNode *orig) {
     QGNode *n = rm_malloc(sizeof(QGNode));
     n->id = orig->id;
     n->label = orig->label;
     n->labelID = orig->labelID;
     n->alias = orig->alias;
+    // Don't save edges when duplicating a node
     n->incoming_edges = array_new(QGEdge*, 0);
     n->outgoing_edges = array_new(QGEdge*, 0);
 
@@ -83,9 +84,9 @@ int QGNode_ToString(const QGNode *n, char *buff, int buff_len) {
 void QGNode_Free(QGNode* node) {
 	if(!node) return;
 
-	// if(node->outgoing_edges) array_free(node->outgoing_edges);
-	// if(node->incoming_edges) array_free(node->incoming_edges);
+    if(node->outgoing_edges) array_free(node->outgoing_edges);
+    if(node->incoming_edges) array_free(node->incoming_edges);
 
-	// rm_free(node);
+    rm_free(node);
 	node = NULL;
 }

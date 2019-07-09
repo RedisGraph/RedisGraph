@@ -14,25 +14,21 @@
 #include "../ast/ast.h"
 #include "../ast/ast_shared.h"
 
-// struct QGEdge;
-
-
 typedef struct {
-    // TODO both arrays are only used for choosing the proper free routine
-    // right now - should refactor to remove.
-    // Could just have separate triemaps, since I don't think there's any
-    // real benefit to an integrated one.
-    QGNode **nodes;
-    QGEdge **edges;
-    TrieMap *ast_references;
+    QGNode **nodes;             // Nodes contained in QueryGraph
+    QGEdge **edges;             // Edges contained in QueryGraph
+    TrieMap *ast_references;    // A mapping of AST pointers to QueryGraph entities
 } QueryGraph;
-
-void QueryGraph_AddNode(QueryGraph *qg, QGNode *n);
-void QueryGraph_AddEdge(QueryGraph *qg, QGEdge *n);
 
 /* Prepare a new query graph with initial allocations for
  * the provided node and edge counts. */
 QueryGraph* QueryGraph_New(uint node_cap, uint edge_cap);
+
+/* Adds a new node to the graph */
+void QueryGraph_AddNode(QueryGraph* g, QGNode *n);
+
+/* Adds a new edge to the graph */
+void QueryGraph_ConnectNodes(QueryGraph *qg, QGNode *src, QGNode *dest, QGEdge *e);
 
 /* Add all nodes and relationships from a single path
  * (from part of a MATCH or CREATE pattern, or a MERGE clause)
@@ -47,41 +43,30 @@ QueryGraph* BuildQueryGraph(const GraphContext *gc, const AST *ast);
 /* Add all paths described in CREATE clauses to the QueryGraph. */
 void QueryGraph_AddCreateClauses(const GraphContext *gc, const AST *ast, QueryGraph *qg);
 
-/* Adds a new node to the graph */
-// void QueryGraph_AddNode(QueryGraph* g, Node *n);
-
-/* Remove given node from query graph. */
-QGNode* QueryGraph_RemoveNode(QueryGraph *g, QGNode *n);
-
-/* Adds a new edge to the graph */
-// void QueryGraph_ConnectNodes(QueryGraph *g, Node *src, Node *dest, Edge *e);
-void QueryGraph_ConnectNodes(QueryGraph *qg, QGNode *src, QGNode *dest, QGEdge *e);
-
-/* Remove given edge from query graph. */
-QGEdge* QueryGraph_RemoveEdge(QueryGraph *g, QGEdge *e);
-
-/* Performs deep copy of input query graph. */
-QueryGraph* QueryGraph_Clone(const QueryGraph *g);
-
-/* Removes all nodes and edges from query graph. */
-void QueryGraph_Clear(QueryGraph *q);
-
-/* Breaks up query graph into its connected components.
- * Returns an array object */
-QueryGraph** QueryGraph_ConnectedComponents(const QueryGraph *qg);
-
 /* Retrieve a graph entity from an AST pointer */
 void* QueryGraph_GetEntityByASTRef(const QueryGraph *qg, const cypher_astnode_t *ref);
 
-/* Retrieve a graph entity from an AST ID. */
-void* QueryGraph_GetEntityByASTID(const QueryGraph *qg, uint id);
-
+/* Retrieve a node by AST ID. */
 QGNode* QueryGraph_GetNodeByID(const QueryGraph *qg, uint id);
 
+/* Retrieve an edge by AST ID. */
 QGEdge* QueryGraph_GetEdgeByID(const QueryGraph *qg, uint id);
 
 /* Determine whether a given alias refers to a node or relation. */
 SchemaType QueryGraph_GetEntityTypeByAlias(const QueryGraph *qg, const char *alias);
+
+/* Performs deep copy of input query graph. */
+QueryGraph* QueryGraph_Clone(const QueryGraph *g);
+
+/* Remove given node from query graph. */
+QGNode* QueryGraph_RemoveNode(QueryGraph *g, QGNode *n);
+
+/* Remove given edge from query graph. */
+QGEdge* QueryGraph_RemoveEdge(QueryGraph *g, QGEdge *e);
+
+/* Breaks up query graph into its connected components.
+ * Returns an array object */
+QueryGraph** QueryGraph_ConnectedComponents(const QueryGraph *qg);
 
 /* Frees entire graph */
 void QueryGraph_Free(QueryGraph* qg);

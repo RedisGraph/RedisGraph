@@ -11,19 +11,15 @@
 #include "graph_entity.h"
 #include "../../../deps/GraphBLAS/Include/GraphBLAS.h"
 
-/* Forward declaration of edge */
-struct Edge;
-
 typedef struct {
     Entity *entity;                 /* MUST be the first property of Edge. */
-    const char *label;                    /* Label attached to node */
+    const char *label;              /* Label attached to node */
     int labelID;                    /* Label ID. */
-    const char *alias;                    /* Alias attached to node */
     GrB_Matrix mat;                 /* Label matrix, associated with node. */
 } Node;
 
 /* Creates a new node. */
-Node* Node_New(const char *label, const char *alias); // QG only
+Node* Node_New(const char *label);
 
 /* Sets node relation type. */
 void Node_SetLabelID(Node *n, int labelID); // QG only
