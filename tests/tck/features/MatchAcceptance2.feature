@@ -485,7 +485,7 @@ Feature: MatchAcceptance2
     When executing query:
       """
       MATCH (n)
-      RETURN n
+      RETURN n ORDER BY labels(n)
       """
     Then the result should be:
       | n    |

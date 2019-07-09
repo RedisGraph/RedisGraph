@@ -126,8 +126,6 @@ AR_ExpNode* _AR_EXP_NewVariableOperandNodeFromAST(RecordMap *record_map, const c
     node->type = AR_EXP_OPERAND;
     node->operand.type = AR_EXP_VARIADIC;
     node->operand.variadic.entity_alias = alias;
-    // AST *ast = AST_GetFromTLS();
-    // node->operand.variadic.entity_alias_idx = RecordMap_FindOrAddASTEntity(record_map, ast, entity);
     node->operand.variadic.entity_alias_idx = RecordMap_FindOrAddAlias(record_map, alias);
     node->operand.variadic.entity_prop = prop;
     node->operand.variadic.entity_prop_idx = ATTRIBUTE_NOTFOUND;

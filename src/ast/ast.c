@@ -189,12 +189,12 @@ const cypher_astnode_t** AST_CollectReferencesInRange(const AST *ast, cypher_ast
     return found;
 }
 
-void _AST_CollectAliases(TrieMap *aliases, const cypher_astnode_t *entity) {
+void _AST_CollectAliases(const char ***aliases, const cypher_astnode_t *entity) {
     if (entity == NULL) return;
 
     if (cypher_astnode_type(entity) == CYPHER_AST_IDENTIFIER) {
         const char *identifier = cypher_ast_identifier_get_name(entity);
-        TrieMap_Add(aliases, (char*)identifier, strlen(identifier), NULL, TrieMap_DONT_CARE_REPLACE);
+        *aliases = array_append(*aliases, identifier);
         return;
     }
 
@@ -204,9 +204,21 @@ void _AST_CollectAliases(TrieMap *aliases, const cypher_astnode_t *entity) {
     }
 }
 
-TrieMap* AST_CollectAliases(AST *ast) {
-    TrieMap *aliases = NewTrieMap();
-    _AST_CollectAliases(aliases, ast->root);
+// Collect aliases from clauses that introduce entities (MATCH, MERGE, CREATE, UNWIND)
+const char** AST_CollectAliases(AST *ast) {
+    const char **aliases = array_new(const char*, 1);
+    uint clause_count = cypher_ast_query_nclauses(ast->root);
+    for (uint i = 0; i < clause_count; i ++) {
+        const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
+        cypher_astnode_type_t type = cypher_astnode_type(clause);
+        if (type == CYPHER_AST_MATCH  ||
+            type == CYPHER_AST_MERGE  ||
+            type == CYPHER_AST_CREATE ||
+            type == CYPHER_AST_UNWIND
+            ) {
+            _AST_CollectAliases(&aliases, clause);
+        }
+    }
 
     return aliases;
 }

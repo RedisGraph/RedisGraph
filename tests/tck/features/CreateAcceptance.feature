@@ -532,5 +532,5 @@ Feature: CreateAcceptance
       """
     # modified to match our return order
     Then the result should be:
-      | a    |  r1   | r2    | b    | c    |
-      | (:A) | [:R1] | [:R2] | (:B) | (:C) |
+      | a     | r2    | b    |  r1  | c    |
+      | (:A)  | [:R2] | (:B) | [:R1]| (:C) |

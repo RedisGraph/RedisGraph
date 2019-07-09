@@ -41,7 +41,7 @@ static bool _AlgebraicExpression_ContainsVariableLengthEdge(const AlgebraicExpre
     return (exp->edge && QGEdge_VariableLength(exp->edge));
 }
 
-/* Variable length expression must contain only a single operand, the edge being 
+/* Variable length expression must contain only a single operand, the edge being
  * traversed multiple times, in cases such as (:labelA)-[e*]->(:labelB) both label A and B
  * are applied via a label matrix operand, this function migrates A and B from a
  * variable length expression to other expressions. */
@@ -52,7 +52,7 @@ static AlgebraicExpression** _AlgebraicExpression_IsolateVariableLenExps(Algebra
     size_t expCount = array_len(expressions);
     AlgebraicExpression **res = array_new(AlgebraicExpression*, expCount * 2 + 1);
 
-    /* Scan through each expression, locate expression which 
+    /* Scan through each expression, locate expression which
      * have a variable length edge in them. */
     for(size_t expIdx = 0; expIdx < expCount; expIdx++) {
         AlgebraicExpression *exp = expressions[expIdx];
@@ -124,7 +124,7 @@ static inline void _AlgebraicExpression_Execute_MUL(GrB_Matrix C, GrB_Matrix A, 
 }
 
 // Reverse order of operand within expression,
-// A*B*C will become C*B*A. 
+// A*B*C will become C*B*A.
 static void _AlgebraicExpression_ReverseOperandOrder(AlgebraicExpression *exp) {
     int right = exp->operand_count-1;
     int left = 0;
@@ -149,7 +149,7 @@ void _AlgebraicExpression_Print(const AlgebraicExpression *ae) {
 }
 
 void AlgebraicExpression_AppendTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transposeOp, bool freeOp, bool diagonal) {
-    assert(ae);    
+    assert(ae);
     if(ae->operand_count+1 > ae->operand_cap) {
         ae->operand_cap += 4;
         ae->operands = realloc(ae->operands, sizeof(AlgebraicExpressionOperand) * ae->operand_cap);
@@ -191,7 +191,7 @@ void AlgebraicExpression_AppendOperand(AlgebraicExpression *ae, AlgebraicExpress
         ae->operand_cap += 4;
         ae->operands = realloc(ae->operands, sizeof(AlgebraicExpressionOperand) * ae->operand_cap);
     }
-    
+
     ae->operands[ae->operand_count] = op;
     ae->operand_count++;
 }
@@ -389,6 +389,56 @@ static QGNode* _SharedNode(const QGEdge *a, const QGEdge *b) {
     return NULL;
 }
 
+static bool _shouldReversePath(QGEdge **path, uint path_len, bool *to_transpose) {
+    if (path_len <= 1) {
+        to_transpose[0] = false;
+        return false;
+    }
+
+    uint transposeCount = 0;
+    // For every edge except the last:
+    for(uint i = 0; i < path_len - 1; i++) {
+        to_transpose[i] = false;
+        QGEdge *e = path[i];
+        QGEdge *follow = path[i+1];
+        QGNode *shared = _SharedNode(e, follow);
+        // The edge should be transposed if its destination is shared
+        if (e->dest != shared) {
+            to_transpose[i] = true;
+            transposeCount++;
+        }
+    }
+    // For the last edge, transpose if its source is shared
+    QGEdge *e = path[path_len-1];
+    QGNode *shared = _SharedNode(path[path_len-2], e);
+    if (e->src != shared) {
+        transposeCount++;
+        to_transpose[path_len-1] = true;
+    } else {
+        to_transpose[path_len-1] = false;
+    }
+    return transposeCount > path_len - transposeCount;
+}
+
+static void _reversePath(QGEdge **path, uint path_len, bool *to_transpose) {
+    for (uint i = 0; i < path_len; i ++) {
+        // A reversed path should have its transpositions flipped
+        to_transpose[i] = !to_transpose[i];
+        if (to_transpose[i]) QGEdge_Reverse(path[i]);
+    }
+    // Reverse the path array as well as the transposition array
+    for (uint i = 0; i < path_len / 2; i ++) {
+        uint opposite = path_len-i-1;
+        QGEdge *tmp = path[opposite];
+        path[opposite] = path[i];
+        path[i] = tmp;
+
+        bool transpose_tmp = to_transpose[opposite];
+        to_transpose[opposite] = to_transpose[i];
+        to_transpose[i] = transpose_tmp;
+    }
+}
+
 static AlgebraicExpression* _AlgebraicExpression_FromPath(QGEdge **path, uint path_len) {
     assert(path && path_len > 0);
 
@@ -397,36 +447,25 @@ static AlgebraicExpression* _AlgebraicExpression_FromPath(QGEdge **path, uint pa
 
     // Construct expression.
     AlgebraicExpression *exp = _AE_MUL(path_len * 2 - 1);  // (3) Node Edge Node.
-    // Count number of transposed edges.
-    int transposeCount = 0;
+
+    /* Treating path as a chain
+     * we're aligning all edges to "point right"
+     * (A)-[E0]->(B)-[E0]->(C)-[E0]->(D).
+     * e.g.
+     * (A)-[E0]->(B)<-[E1]-(C)-[E2]->(D)
+     * E1 will be transposed:
+     * (A)-[E0]->(B)-[E1]->(C)-[E2]->(D) */
+
+    bool to_transpose[path_len];
+    // Track which edges must be transposed, and whether the entire path should be reversed.
+    bool reverse_path = _shouldReversePath(path, path_len, to_transpose);
+    // Reverse the path if the majority of edges must be transposed.
+    if (reverse_path) _reversePath(path, path_len, to_transpose);
 
     for(int i = 0; i < path_len; i++) {
         e = path[i];
-        /* Determin if edge need to be transposed:
-         * Treating path as a chain
-         * we're aligning all edges to "point right"
-         * (A)-[E0]->(B)-[E0]->(C)-[E0]->(D).
-         * e.g. 
-         * (A)-[E0]->(B)<-[E1]-(C)-[E2]->(D)
-         * E1 will be transposed:
-         * (A)-[E0]->(B)-[E1]->(C)-[E2]->(D) */
-        bool transpose = false;
-        if(path_len > 1) {
-            if(i < path_len-1) {
-                QGEdge *follow = path[i+1];
-                QGNode *shared = _SharedNode(e, follow);
-                transpose = (e->dest != shared);
-            } else {
-                // Last edge.                
-                QGEdge *prev = path[i-1];
-                QGNode *shared = _SharedNode(prev, e);
-                transpose = (e->src != shared);
-            }
-            if(transpose) {
-                transposeCount++;
-                QGEdge_Reverse(e);
-            }
-        }
+        // If our path has been reversed, we've already corrected the edges.
+        if (to_transpose[i] && !reverse_path) QGEdge_Reverse(e);
 
         // If src node has a label, multiply by label matrix.
         if(e->src->label) {
@@ -435,7 +474,7 @@ static AlgebraicExpression* _AlgebraicExpression_FromPath(QGEdge **path, uint pa
         }
 
         // Add Edge matrix.
-        op = _AlgebraicExpression_OperandFromEdge(e, transpose);
+        op = _AlgebraicExpression_OperandFromEdge(e, to_transpose[i]);
 
         /* Expand fixed variable length edge */
         unsigned int hops = (!QGEdge_VariableLength(e)) ? e->minHops : 1;
@@ -454,30 +493,23 @@ static AlgebraicExpression* _AlgebraicExpression_FromPath(QGEdge **path, uint pa
     exp->src_node = path[0]->src;
     exp->dest_node = e->dest;
 
-    /* Optimize number of transpose:
-     * if the majority of operands are transposed
-     * transpose the entire expression. */
-    if(transposeCount > (path_len - transposeCount)) {
-        AlgebraicExpression_Transpose(exp);
-    }
-
     return exp;
 }
 
 AlgebraicExpression **AlgebraicExpression_FromQueryGraph(const QueryGraph *qg, RecordMap *record_map, size_t *exp_count) {
     assert(qg);
-    /* Construct algebraic expression(s) from query graph 
-     * trying to take advantage of long multiplications with as few 
-     * transpose as possible we'll transform paths crossing the graph 
+    /* Construct algebraic expression(s) from query graph
+     * trying to take advantage of long multiplications with as few
+     * transpose as possible we'll transform paths crossing the graph
      * "diameter", these are guarantee to be the longest, although
      * there might be situations in which these are not the most optimal paths
      * to explore.
-     * 
+     *
      * Once a path been transformed it's removed from the graph and the process
      * repeat itself. */
 
     /* A graph with no edges implies an empty algebraic expression
-     * the reasoning behind this decission is that algebraic expression 
+     * the reasoning behind this decission is that algebraic expression
      * represent graph traversals, no edges means no traversals. */
     uint edge_count = array_len(qg->edges);
     if(edge_count == 0) {
@@ -523,7 +555,7 @@ AlgebraicExpression **AlgebraicExpression_FromQueryGraph(const QueryGraph *qg, R
 
         // Add constructed expression to return value.
         for(uint j = 0; j < array_len(sub_exps); j++) exps = array_append(exps, sub_exps[j]);
-        
+
         // Clean up
         array_free(leafs);
         array_free(sub_exps);

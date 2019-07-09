@@ -62,7 +62,7 @@ uint AST_NumClauses(const AST *ast);
 
 const cypher_astnode_t** AST_CollectReferencesInRange(const AST *ast, cypher_astnode_type_t type);
 
-TrieMap* AST_CollectAliases(AST *ast);
+const char** AST_CollectAliases(AST *ast);
 
 const cypher_astnode_t* AST_GetBody(const cypher_parse_result_t *result);
 

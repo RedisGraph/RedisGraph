@@ -11,6 +11,7 @@
 #include "../util/rmalloc.h"
 #include "../util/arr.h"
 #include "../util/vector.h"
+#include "../util/qsort.h"
 #include "../graph/entities/edge.h"
 #include "./optimizations/optimizer.h"
 #include "./optimizations/optimizations.h"
@@ -49,20 +50,32 @@ static void _UpdateResolvedVariables(rax *resolved, OpBase *op) {
 AR_ExpNode** _ReturnExpandAll(RecordMap *record_map) {
     AST *ast = AST_GetFromTLS();
 
-    TrieMap *aliases = AST_CollectAliases(ast);
-    uint count = aliases->cardinality;
+    const char **aliases = AST_CollectAliases(ast);
+    uint count = array_len(aliases);
 
+    // Trim array to only include unique aliases
+#define ALIAS_STRCMP(a,b) (!strcmp(*a,*b))
+
+    QSORT(const char*, aliases, count, ALIAS_STRCMP);
+    uint unique_idx = 0;
+    for (int i = 0; i < count - 1; i ++) {
+        if (strcmp(aliases[i], aliases[i+1])) {
+            aliases[unique_idx++] = aliases[i];
+        }
+    }
+    aliases[unique_idx++] = aliases[count - 1];
+    array_trimm_len(aliases, unique_idx);
+
+    count = unique_idx;
+    // Build an expression for each alias
     AR_ExpNode **return_expressions = array_new(AR_ExpNode*, count);
-    void *value;
-    tm_len_t len;
-    char *key;
-    TrieMapIterator *it = TrieMap_Iterate(aliases, "", 0);
-    while(TrieMapIterator_Next(it, &key, &len, &value)) {
-        AR_ExpNode *exp = AR_EXP_NewVariableOperandNode(record_map, (const char *)key, NULL);
-        exp->resolved_name = key;
+    for (int i = 0; i < count; i ++) {
+        AR_ExpNode *exp = AR_EXP_NewVariableOperandNode(record_map, aliases[i], NULL);
+        exp->resolved_name = aliases[i];
         return_expressions = array_append(return_expressions, exp);
     }
 
+    array_free(aliases);
     return return_expressions;
 }
 
