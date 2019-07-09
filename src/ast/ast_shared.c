@@ -1,4 +1,5 @@
 #include "ast_shared.h"
+#include <assert.h>
 
 AST_Operator AST_ConvertOperatorNode(const cypher_operator_t *op) {
     // TODO ordered by precedence, which I don't know if we're managing properly right now

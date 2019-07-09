@@ -42,16 +42,13 @@ static void _BuildQueryGraphAddNode(const GraphContext *gc,
 
     if (n == NULL) {
         // Node has not been mapped; create it.
-        n = QGNode_New(NULL, NULL);
+        n = QGNode_New(NULL, NULL, id);
 
         const cypher_astnode_t *ast_alias = cypher_ast_node_pattern_get_identifier(ast_entity);
         if (ast_alias) n->alias = cypher_ast_identifier_get_name(ast_alias);
 
         // Map the AST ID.
         _QueryGraph_AddID(qg, id, n);
-
-        // TODO old dummy entity logic? What if we have multiple AST IDs?
-        n->id = id;
 
         QueryGraph_AddNode(qg, n);
 
@@ -101,8 +98,7 @@ static void _BuildQueryGraphAddEdge(const GraphContext *gc,
     // This call captures reused aliases.
     assert(QueryGraph_GetEntityByASTID(qg, id) == NULL);
 
-    QGEdge *e = QGEdge_New(NULL, NULL, NULL, NULL);
-    e->id = id;
+    QGEdge *e = QGEdge_New(NULL, NULL, NULL, NULL, id);
 
     const cypher_astnode_t *ast_alias = cypher_ast_rel_pattern_get_identifier(ast_entity);
     if (ast_alias) e->alias = cypher_ast_identifier_get_name(ast_alias);

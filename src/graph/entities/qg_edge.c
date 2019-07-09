@@ -10,13 +10,16 @@
 #include "../../util/arr.h"
 #include <assert.h>
 
-QGEdge* QGEdge_New(QGNode *src, QGNode *dest, const char *relationship, const char *alias) {
+QGEdge* QGEdge_New(QGNode *src, QGNode *dest, const char *relationship, const char *alias, uint id) {
     QGEdge *e = rm_malloc(sizeof(QGEdge));
     e->reltypes = array_new(const char*, 1);
     e->reltypeIDs = array_new(uint, 1);
+    e->src = NULL;
+    e->dest = NULL;
     e->minHops = 1;
     e->maxHops = 1;
     e->alias = NULL;
+    e->id = id;
 
     return e;
 }

@@ -13,7 +13,7 @@
 #include "../execution_plan/record.h"
 #include "../execution_plan/record_map.h"
 #include "../graph/entities/graph_entity.h"
-#include "../graph/query_graph.h"
+#include "../ast/ast_shared.h"
 #include "../ast/ast.h"
 #include "./agg_ctx.h"
 

@@ -49,14 +49,15 @@ class DFSTest: public ::testing::Test {
         const char *label = "L";
         const char *relation = "R";
 
-        A = QGNode_New(label, "A");
-        B = QGNode_New(label, "B");
-        C = QGNode_New(label, "C");
-        D = QGNode_New(label, "D");
+        uint id = 0;
+        A = QGNode_New(label, "A", id++);
+        B = QGNode_New(label, "B", id++);
+        C = QGNode_New(label, "C", id++);
+        D = QGNode_New(label, "D", id++);
 
-        AB = QGEdge_New(A, B, relation, "AB");
-        BC = QGEdge_New(B, C, relation, "BC");
-        CD = QGEdge_New(C, D, relation, "CD");
+        AB = QGEdge_New(A, B, relation, "AB", id++);
+        BC = QGEdge_New(B, C, relation, "BC", id++);
+        CD = QGEdge_New(C, D, relation, "CD", id++);
 
         QueryGraph *g = QueryGraph_New(node_cap, edge_cap);
         QueryGraph_AddNode(g, A);

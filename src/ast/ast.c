@@ -6,6 +6,7 @@
 
 #include "ast.h"
 #include <assert.h>
+#include <pthread.h>
 
 #include "../util/arr.h"
 #include "../arithmetic/repository.h"

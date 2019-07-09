@@ -14,15 +14,15 @@ typedef struct QGEdge QGEdge;
 
 typedef struct {
     uint id;
-    const char *label;
     int labelID;
+    const char *label; // TODO move
     const char *alias;
     QGEdge** outgoing_edges;   /* Array of incoming edges (ME)<-(SRC) */
     QGEdge** incoming_edges;   /* Array of outgoing edges (ME)->(DEST) */
 } QGNode;
 
 /* Creates a new node. */
-QGNode* QGNode_New(const char *label, const char *alias); // QG only
+QGNode* QGNode_New(const char *label, const char *alias, uint id);
 
 /* Returns number of edges pointing into node. */
 int QGNode_IncomeDegree(const QGNode *n);

@@ -48,14 +48,15 @@ class BFSTest: public ::testing::Test {
         const char *label = "L";
         const char *relation = "R";
 
-        A = QGNode_New(label, "A");
-        B = QGNode_New(label, "B");
-        C = QGNode_New(label, "C");
-        D = QGNode_New(label, "D");
+        uint id = 0;
+        A = QGNode_New(label, "A", id++);
+        B = QGNode_New(label, "B", id++);
+        C = QGNode_New(label, "C", id++);
+        D = QGNode_New(label, "D", id++);
 
-        AB = QGEdge_New(A, B, relation, "AB");
-        BC = QGEdge_New(B, C, relation, "BC");
-        BD = QGEdge_New(B, D, relation, "BD");
+        AB = QGEdge_New(A, B, relation, "AB", id++);
+        BC = QGEdge_New(B, C, relation, "BC", id++);
+        BD = QGEdge_New(B, D, relation, "BD", id++);
 
         QueryGraph *g = QueryGraph_New(node_cap, edge_cap);
         QueryGraph_AddNode(g, A);
@@ -78,6 +79,7 @@ TEST_F(BFSTest, BFSLevels) {
     int level = 0;              // BFS stops when reach level depth.
 
     g = BuildGraph();
+    // S = QueryGraph_GetNodeByID(g, A->id);
     S = A;
 
     QGNode *expected_level_0[1] = {A};

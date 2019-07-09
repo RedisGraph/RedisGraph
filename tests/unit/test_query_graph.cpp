@@ -69,7 +69,7 @@ class QueryGraphTest: public ::testing::Test {
         // Create nodes.
         const char *label = "L";
 
-        QGNode *A = QGNode_New(label, "A");
+        QGNode *A = QGNode_New(label, "A", 0);
         QueryGraph *g = QueryGraph_New(node_cap, edge_cap);
         QueryGraph_AddNode(g, A);
         
@@ -86,13 +86,14 @@ class QueryGraphTest: public ::testing::Test {
         const char *label = "L";
         const char *relation = "R";
 
-        QGNode *A = QGNode_New(label, "A");
-        QGNode *B = QGNode_New(label, "B");
-        QGNode *C = QGNode_New(label, "C");
+        uint id = 0;
+        QGNode *A = QGNode_New(label, "A", id++);
+        QGNode *B = QGNode_New(label, "B", id++);
+        QGNode *C = QGNode_New(label, "C", id++);
 
-        QGEdge *AB = QGEdge_New(A, B, relation, "AB");
-        QGEdge *BC = QGEdge_New(B, C, relation, "BC");
-        QGEdge *CA = QGEdge_New(C, A, relation, "CA");
+        QGEdge *AB = QGEdge_New(A, B, relation, "AB", id++);
+        QGEdge *BC = QGEdge_New(B, C, relation, "BC", id++);
+        QGEdge *CA = QGEdge_New(C, A, relation, "CA", id++);
 
         QueryGraph *g = QueryGraph_New(node_cap, edge_cap);
         QueryGraph_AddNode(g, A);
@@ -116,15 +117,12 @@ class QueryGraphTest: public ::testing::Test {
         const char *label = "L";
         const char *relation = "R";
 
-        QGNode *A = QGNode_New(label, "A");
-        A->id = 0;
-        QGNode *B = QGNode_New(label, "B");
-        B->id = 1;
-        QGNode *C = QGNode_New(label, "C");
-        C->id = 2;
+        uint id = 0;
+        QGNode *A = QGNode_New(label, "A", id++);
+        QGNode *B = QGNode_New(label, "B", id++);
+        QGNode *C = QGNode_New(label, "C", id++);
 
-        QGEdge *AB = QGEdge_New(A, B, relation, "AB");
-        AB->id = 3;
+        QGEdge *AB = QGEdge_New(A, B, relation, "AB", id++);
 
         QueryGraph *g = QueryGraph_New(node_cap, edge_cap);
         QueryGraph_AddNode(g, A);
@@ -146,8 +144,9 @@ class QueryGraphTest: public ::testing::Test {
         const char *label = "L";
         const char *relation = "R";
 
-        QGNode *A = QGNode_New(label, "A");
-        QGEdge *AA = QGEdge_New(A, A, relation, "AA");
+        uint id = 0;
+        QGNode *A = QGNode_New(label, "A", id++);
+        QGEdge *AA = QGEdge_New(A, A, relation, "AA", id++);
 
         QueryGraph *g = QueryGraph_New(node_cap, edge_cap);
         QueryGraph_AddNode(g, A);
@@ -168,19 +167,14 @@ TEST_F(QueryGraphTest, QueryGraphClone) {
     const char *label = "L";
     const char *relation = "R";
 
-    QGNode *A = QGNode_New(label, "A");
-    A->id = 0;
-    QGNode *B = QGNode_New(label, "B");
-    B->id = 1;
-    QGNode *C = QGNode_New(label, "C");
-    C->id = 2;
+    uint id = 0;
+    QGNode *A = QGNode_New(label, "A", id++);
+    QGNode *B = QGNode_New(label, "B", id++);
+    QGNode *C = QGNode_New(label, "C", id++);
 
-    QGEdge *AB = QGEdge_New(A, B, relation, "AB");
-    AB->id = 3;
-    QGEdge *BC = QGEdge_New(B, C, relation, "BC");
-    BC->id = 4;
-    QGEdge *CA = QGEdge_New(C, A, relation, "CA");
-    CA->id = 5;
+    QGEdge *AB = QGEdge_New(A, B, relation, "AB", id++);
+    QGEdge *BC = QGEdge_New(B, C, relation, "BC", id++);
+    QGEdge *CA = QGEdge_New(C, A, relation, "CA", id++);
 
     QueryGraph *g = QueryGraph_New(node_cap, edge_cap);
     QueryGraph_AddNode(g, A);
@@ -227,19 +221,14 @@ TEST_F(QueryGraphTest, QueryGraphRemoveEntities) {
     const char *label = "L";
     const char *relation = "R";
 
-    QGNode *A = QGNode_New(label, "A");
-    A->id = 0;
-    QGNode *B = QGNode_New(label, "B");
-    B->id = 1;
-    QGNode *C = QGNode_New(label, "C");
-    C->id = 2;
+    uint id = 0;
+    QGNode *A = QGNode_New(label, "A", id++);
+    QGNode *B = QGNode_New(label, "B", id++);
+    QGNode *C = QGNode_New(label, "C", id++);
 
-    QGEdge *AB = QGEdge_New(A, B, relation, "AB");
-    AB->id = 3;
-    QGEdge *BC = QGEdge_New(B, C, relation, "BC");
-    BC->id = 4;
-    QGEdge *CA = QGEdge_New(C, A, relation, "CA");
-    CA->id = 5;
+    QGEdge *AB = QGEdge_New(A, B, relation, "AB", id++);
+    QGEdge *BC = QGEdge_New(B, C, relation, "BC", id++);
+    QGEdge *CA = QGEdge_New(C, A, relation, "CA", id++);
 
     QueryGraph *g = QueryGraph_New(node_cap, edge_cap);
     QueryGraph_AddNode(g, A);

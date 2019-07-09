@@ -6,6 +6,7 @@
 
 #include <unistd.h>
 #include <assert.h>
+#include <pthread.h>
 #include "redismodule.h"
 #include "config.h"
 #include "version.h"

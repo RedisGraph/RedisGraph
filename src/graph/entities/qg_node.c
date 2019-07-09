@@ -5,18 +5,19 @@
  */
 
 #include "qg_node.h"
+#include "qg_edge.h"
 #include "../graph.h"
 #include "../../util/arr.h"
 #include <assert.h>
 
-QGNode* QGNode_New(const char *label, const char *alias) {
+QGNode* QGNode_New(const char *label, const char *alias, uint id) {
     QGNode *n = rm_malloc(sizeof(QGNode));
-    n->alias = NULL;
-    n->label = NULL;
+    n->alias = alias;
+    n->label = label;
     n->labelID = GRAPH_NO_LABEL;
     n->incoming_edges = array_new(QGEdge*, 0);
     n->outgoing_edges = array_new(QGEdge*, 0);
-    // n->id = -1;
+    n->id = id;
     return n;
 }
 

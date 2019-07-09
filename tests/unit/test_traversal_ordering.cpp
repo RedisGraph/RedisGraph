@@ -75,14 +75,15 @@ TEST_F(TraversalOrderingTest, TransposeFree) {
      * Arrangement { [AB], [BC], [CD] } 
      * Is the only one that doesn't requires any transposes. */
 
-    QGNode *A = QGNode_New(NULL, "A");
-    QGNode *B = QGNode_New(NULL, "B");
-    QGNode *C = QGNode_New(NULL, "C");
-    QGNode *D = QGNode_New(NULL, "D");
+    uint id = 0;
+    QGNode *A = QGNode_New(NULL, "A", id++);
+    QGNode *B = QGNode_New(NULL, "B", id++);
+    QGNode *C = QGNode_New(NULL, "C", id++);
+    QGNode *D = QGNode_New(NULL, "D", id++);
 
-    QGEdge *AB = QGEdge_New(A, B, "E", "AB");
-    QGEdge *BC = QGEdge_New(B, C, "E", "BC");
-    QGEdge *CD = QGEdge_New(C, D, "E", "CD");
+    QGEdge *AB = QGEdge_New(A, B, "E", "AB", id++);
+    QGEdge *BC = QGEdge_New(B, C, "E", "BC", id++);
+    QGEdge *CD = QGEdge_New(C, D, "E", "CD", id++);
 
     QueryGraph *qg = QueryGraph_New(4, 3);
 
@@ -190,22 +191,16 @@ TEST_F(TraversalOrderingTest, FilterFirst) {
      * { [CB], [CD], [BA] } (D)<-(C)->(B)->(A) (2 transposes)
      * { [CD], [CB], [BA] } (A)<-(B)<-(C)->(D) (2 transposes) */
 
+    uint id = 0;
     FT_FilterNode *filters;
-    QGNode *A = QGNode_New(NULL, "A");
-    A->id = 0;
-    QGNode *B = QGNode_New(NULL, "B");
-    B->id = 1;
-    QGNode *C = QGNode_New(NULL, "C");
-    C->id = 2;
-    QGNode *D = QGNode_New(NULL, "D");
-    D->id = 3;
+    QGNode *A = QGNode_New(NULL, "A", id++);
+    QGNode *B = QGNode_New(NULL, "B", id++);
+    QGNode *C = QGNode_New(NULL, "C", id++);
+    QGNode *D = QGNode_New(NULL, "D", id++);
 
-    QGEdge *AB = QGEdge_New(A, B, "E", "AB");
-    AB->id = 4;
-    QGEdge *BC = QGEdge_New(B, C, "E", "BC");
-    BC->id = 5;
-    QGEdge *CD = QGEdge_New(C, D, "E", "CD");
-    CD->id = 6;
+    QGEdge *AB = QGEdge_New(A, B, "E", "AB", id++);
+    QGEdge *BC = QGEdge_New(B, C, "E", "BC", id++);
+    QGEdge *CD = QGEdge_New(C, D, "E", "CD", id++);
 
     QueryGraph *qg = QueryGraph_New(4, 3);
 
