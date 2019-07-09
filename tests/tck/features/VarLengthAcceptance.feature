@@ -145,6 +145,7 @@ Feature: VarLengthAcceptance
       MATCH (a:A)
       MATCH (a)-[:LIKES*1]->(c)
       RETURN c.name
+      ORDER BY c.name
       """
     Then the result should be:
       | c.name |
@@ -158,6 +159,7 @@ Feature: VarLengthAcceptance
       MATCH (a:A)
       MATCH (a)-[:LIKES*2]->(c)
       RETURN c.name
+      ORDER BY c.name
       """
     Then the result should be:
       | c.name |
@@ -222,6 +224,7 @@ Feature: VarLengthAcceptance
       MATCH (a:A)
       MATCH (a)-[:LIKES*1..1]->(c)
       RETURN c.name
+      ORDER BY c.name
       """
     Then the result should be:
       | c.name |
@@ -235,6 +238,7 @@ Feature: VarLengthAcceptance
       MATCH (a:A)
       MATCH (a)-[:LIKES*2..2]->(c)
       RETURN c.name
+      ORDER BY c.name
       """
     Then the result should be:
       | c.name |
@@ -292,6 +296,7 @@ Feature: VarLengthAcceptance
       MATCH (a:A)
       MATCH (a)-[:LIKES*..1]->(c)
       RETURN c.name
+      ORDER BY c.name
       """
     Then the result should be:
       | c.name |
