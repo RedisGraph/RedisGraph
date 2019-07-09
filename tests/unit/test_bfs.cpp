@@ -72,8 +72,8 @@ class BFSTest: public ::testing::Test {
 };
 
 TEST_F(BFSTest, BFSLevels) {
-    QGNode *S;                    // BFS starts here.
-    QGNode **nodes;               // Nodes reached by BFS.
+    QGNode *S;                  // BFS starts here.
+    QGNode **nodes;             // Nodes reached by BFS.
     QueryGraph *g;              // Graph traversed.
     int level = 0;              // BFS stops when reach level depth.
 

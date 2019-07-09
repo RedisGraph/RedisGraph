@@ -6,6 +6,7 @@
 
 #include "qg_edge.h"
 #include "qg_node.h"
+#include "../graph.h"
 #include "../../util/arr.h"
 #include <assert.h>
 

@@ -354,11 +354,7 @@ QGNode* QueryGraph_RemoveNode(QueryGraph *qg, QGNode *n) {
     uint node_count = array_len(qg->nodes);
     for(uint i = 0; i < node_count; i++) {
         if(n->id == qg->nodes[i]->id) {
-            /* If this is not the last element,
-             * remove it by migrating the last element
-             * to the removed position. */
-            QGNode *last = array_pop(qg->nodes);
-            if (last != n) qg->nodes[i] = last;
+            array_del_fast(qg->nodes, i);
             break;
         }
     }
@@ -377,11 +373,7 @@ QGEdge* QueryGraph_RemoveEdge(QueryGraph *qg, QGEdge *e) {
     uint edge_count = array_len(qg->edges);
     for(uint i = 0; i < edge_count; i++) {
         if(e->id == qg->edges[i]->id) {
-            /* If this is not the last element,
-             * remove it by migrating the last element
-             * to the removed position. */
-            QGEdge *last = array_pop(qg->edges);
-            if (last != e) qg->edges[i] = last;
+            array_del_fast(qg->edges, i);
             break;
         }
     }

@@ -26,15 +26,14 @@ void QGNode_ConnectNode(QGNode* src, QGNode* dest, QGEdge* e) {
 }
 
 void _QGNode_RemoveEdge(QGEdge **edges, QGEdge *e) {
-	uint edge_count = array_len(edges);
-	for(uint i = 0; i < edge_count; i++) {
-		QGEdge *ie = edges[i];
-		if(e == ie) {
-			edges[i] = edges[edge_count-1];
-			array_pop(edges);
-			return;
-		}
-	}
+    uint edge_count = array_len(edges);
+    for(uint i = 0; i < edge_count; i++) {
+        QGEdge *ie = edges[i];
+        if(e == edges[i]) {
+            array_del_fast(edges, i);
+            return;
+        }
+    }
 }
 
 void QGNode_RemoveIncomingEdge(QGNode *n, QGEdge *e) {

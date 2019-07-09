@@ -162,10 +162,32 @@ static void array_free(array_t arr) {
     assert(array_hdr(arr)->len > 0); \
     arr[--(array_hdr(arr)->len)];    \
   })
+
 /* Clears the array, such that array_len will return 0. */
 #define array_clear(arr)             \
   ({                                 \
     array_hdr(arr)->len = 0;         \
+  })
+
+/* Remove a specified element from the array */
+#define array_del(arr, ix)                                                        \
+  ({                                                                              \
+    assert(array_len(arr) > ix);                                                  \
+    if (array_len(arr) - 1 > ix) {                                                \
+      memcpy(arr + ix, arr + ix + 1, sizeof(*arr) * (array_len(arr) - (ix + 1))); \
+    }                                                                             \
+    --array_hdr(arr)->len;                                                        \
+    arr;                                                                          \
+  })
+
+/* Remove a specified element from the array, but does not preserve order */
+#define array_del_fast(arr, ix)          \
+  ({                                     \
+    if (array_len(arr) > 1) {            \
+      arr[ix] = arr[array_len(arr) - 1]; \
+    }                                    \
+    --array_hdr(arr)->len;               \
+    arr;                                 \
   })
 
 #endif

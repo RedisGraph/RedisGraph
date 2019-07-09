@@ -6,9 +6,10 @@
 
 #pragma once
 
-#include "edge.h"
 #include "qg_node.h"
 #include <string.h>
+#include <stdint.h>
+#include <stdbool.h>
 
 struct QGEdge {
     const char *alias;

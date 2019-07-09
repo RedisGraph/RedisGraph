@@ -6,7 +6,8 @@
 
 #pragma once
 
-#include "node.h"
+#include <stdlib.h>
+#include <stdint.h>
 
 /* Forward declaration of edge */
 typedef struct QGEdge QGEdge;
