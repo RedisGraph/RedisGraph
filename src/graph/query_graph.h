@@ -68,5 +68,11 @@ QGEdge* QueryGraph_RemoveEdge(QueryGraph *g, QGEdge *e);
  * Returns an array object */
 QueryGraph** QueryGraph_ConnectedComponents(const QueryGraph *qg);
 
+/* Retrieve the number of nodes in a QueryGraph. */
+uint QueryGraph_NodeCount(const QueryGraph *qg);
+
+/* Retrieve the number of edges in a QueryGraph. */
+uint QueryGraph_EdgeCount(const QueryGraph *qg);
+
 /* Frees entire graph */
 void QueryGraph_Free(QueryGraph* qg);

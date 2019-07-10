@@ -120,8 +120,8 @@ FT_FilterNode* _convertInlinedProperties(RecordMap *record_map, const QueryGraph
     for (unsigned int i = 0; i < nelems; i ++) {
         // key is of type CYPHER_AST_PROP_NAME
         const char *prop = cypher_ast_prop_name_get_value(cypher_ast_map_get_key(props, i));
-        AR_ExpNode *lhs = AR_EXP_NewVariableFromID(record_id, prop);
-
+        AR_ExpNode *lhs = AR_EXP_NewVariableOperandNode(record_map, NULL, prop);
+        lhs->operand.variadic.entity_alias_idx = record_id;
         // val is of type CYPHER_AST_EXPRESSION
         const cypher_astnode_t *val = cypher_ast_map_get_value(props, i);
         AR_ExpNode *rhs = AR_EXP_FromExpression(record_map, val);

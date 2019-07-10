@@ -11,7 +11,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-typedef struct QGEdge {
+struct QGEdge {
     uint id;               /* Unique QueryGraph ID for Record mapping */
     const char *alias;     /* User-provided alias attached to edge. */
     const char **reltypes; /* Relationship type strings */
@@ -20,7 +20,9 @@ typedef struct QGEdge {
     QGNode *dest;          /* Pointer to destination node. */
     uint minHops;          /* Minimum number of hops this edge represents. */
     uint maxHops;          /* Maximum number of hops this edge represents. */
-} QGEdge;
+};
+
+typedef struct QGEdge QGEdge;
 
 /* Creates a new edge, connecting src to dest node. */
 QGEdge* QGEdge_New(QGNode *src, QGNode *dest, const char *relationship, const char *alias, uint id);

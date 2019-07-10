@@ -12,11 +12,7 @@
 
 #include <assert.h>
 
-static inline bool intermediate_node(uint node_idx, uint path_len) {
-    return (node_idx > 0) && (node_idx < path_len - 1);
-}
-
-AlgebraicExpression *_AE_MUL(size_t operand_cap) {
+static AlgebraicExpression *_AE_MUL(size_t operand_cap) {
     AlgebraicExpression *ae = malloc(sizeof(AlgebraicExpression));
     ae->op = AL_EXP_MUL;
     ae->operand_cap = operand_cap;
@@ -41,6 +37,26 @@ static bool _AlgebraicExpression_ContainsVariableLengthEdge(const AlgebraicExpre
     return (exp->edge && QGEdge_VariableLength(exp->edge));
 }
 
+
+/* Every variable-length edge and every edge referenced
+ * in another clause (such as RETURN or WHERE) should be
+ * recorded in the RecordMap, as well as those edges'
+ * source and destination nodes. */
+static void _map_edge_references(const QueryGraph *qg, RecordMap *record_map) {
+    uint edge_count = QueryGraph_EdgeCount(qg);
+    // Add the ends of all referred edges to the Record mapping.
+    for (uint i = 0; i < edge_count; i++) {
+        QGEdge *e = qg->edges[i];
+        // Add all variable-length traversals.
+        if (QGEdge_VariableLength(e)) RecordMap_FindOrAddID(record_map, e->id);
+        if (RecordMap_LookupEntityID(record_map, e->id) != IDENTIFIER_NOT_FOUND) {
+            // The edge is referred; ensure that its source and destination are mapped in the Record.
+            RecordMap_FindOrAddID(record_map, e->src->id);
+            RecordMap_FindOrAddID(record_map, e->dest->id);
+        }
+    }
+
+}
 /* Variable length expression must contain only a single operand, the edge being
  * traversed multiple times, in cases such as (:labelA)-[e*]->(:labelB) both label A and B
  * are applied via a label matrix operand, this function migrates A and B from a
@@ -402,13 +418,13 @@ static bool _shouldReversePath(QGEdge **path, uint path_len, bool *to_transpose)
         QGEdge *e = path[i];
         QGEdge *follow = path[i+1];
         QGNode *shared = _SharedNode(e, follow);
-        // The edge should be transposed if its destination is shared
+        // The edge should be transposed if its destination is not shared.
         if (e->dest != shared) {
             to_transpose[i] = true;
             transposeCount++;
         }
     }
-    // For the last edge, transpose if its source is shared
+    // For the last edge, transpose if its source is not shared.
     QGEdge *e = path[path_len-1];
     QGNode *shared = _SharedNode(path[path_len-2], e);
     if (e->src != shared) {
@@ -421,13 +437,13 @@ static bool _shouldReversePath(QGEdge **path, uint path_len, bool *to_transpose)
 }
 
 static void _reversePath(QGEdge **path, uint path_len, bool *to_transpose) {
-    for (uint i = 0; i < path_len; i ++) {
+    for (uint i = 0; i < path_len; i++) {
         // A reversed path should have its transpositions flipped
         to_transpose[i] = !to_transpose[i];
         if (to_transpose[i]) QGEdge_Reverse(path[i]);
     }
     // Reverse the path array as well as the transposition array
-    for (uint i = 0; i < path_len / 2; i ++) {
+    for (uint i = 0; i < path_len / 2; i++) {
         uint opposite = path_len-i-1;
         QGEdge *tmp = path[opposite];
         path[opposite] = path[i];
@@ -511,29 +527,20 @@ AlgebraicExpression **AlgebraicExpression_FromQueryGraph(const QueryGraph *qg, R
     /* A graph with no edges implies an empty algebraic expression
      * the reasoning behind this decission is that algebraic expression
      * represent graph traversals, no edges means no traversals. */
-    uint edge_count = array_len(qg->edges);
+    uint edge_count = QueryGraph_EdgeCount(qg);
     if(edge_count == 0) {
         *exp_count = 0;
         return NULL;
     }
 
-    // Add the ends of all referred edges to the Record mapping.
-    for (uint i = 0; i < edge_count; i ++) {
-        QGEdge *e = qg->edges[i];
-        // Add all variable-length traversals.
-        if (e->minHops != e->maxHops) RecordMap_FindOrAddID(record_map, e->id);
-        if (RecordMap_LookupEntityID(record_map, e->id) != IDENTIFIER_NOT_FOUND) {
-            // The edge is referred; ensure that its source and destination are mapped in the Record.
-            RecordMap_FindOrAddID(record_map, e->src->id);
-            RecordMap_FindOrAddID(record_map, e->dest->id);
-        }
-    }
+    // Update the RecordMap with 
+    _map_edge_references(qg, record_map);
 
     QueryGraph *g = QueryGraph_Clone(qg);
     AlgebraicExpression **exps = array_new(AlgebraicExpression*, 1);
 
     // As long as there are nodes to process.
-    while(array_len(g->nodes) > 0) {
+    while(QueryGraph_NodeCount(g) > 0) {
         // Get leaf nodes at the deepest level.
         int level;
         QGNode **leafs = _DeepestLevel(g, &level);

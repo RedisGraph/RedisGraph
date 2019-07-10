@@ -45,7 +45,6 @@ typedef enum {
     AR_EXP_VARIADIC,
 } AR_OperandNodeType;
 
-typedef struct AR_ExpNode AR_ExpNode;
 /* AR_Func - Function pointer to an operation with an arithmetic expression */
 typedef SIValue (*AR_Func)(SIValue *argv, int argc);
 
@@ -60,6 +59,8 @@ typedef struct {
     struct AR_ExpNode **children;   /* Child nodes. */
     AR_OPType type;
 } AR_OpNode;
+
+typedef struct AR_ExpNode AR_ExpNode;
 
 /* OperandNode represents either a constant numeric value,
  * or a graph entity property. */
@@ -149,7 +150,6 @@ int AR_EXP_ContainsAggregation(AR_ExpNode *root, AR_ExpNode **agg_node);
 /* Constructs string representation of arithmetic expression tree. */
 void AR_EXP_ToString(const AR_ExpNode *root, char **str);
 
-AR_ExpNode* AR_EXP_NewVariableFromID(uint id, const char *prop);
 AR_ExpNode* AR_EXP_NewVariableOperandNode(RecordMap *record_map, const char *alias, const char *prop);
 AR_ExpNode* AR_EXP_NewConstOperandNode(SIValue constant);
 

@@ -12,7 +12,6 @@
 #include "../util/triemap/triemap.h"
 #include "../../deps/libcypher-parser/lib/src/cypher-parser.h"
 
-// typedef const cypher_astnode_t* AST_IDENTIFIER;
 typedef const void* AST_IDENTIFIER;
 
 #define IDENTIFIER_NOT_FOUND UINT_MAX

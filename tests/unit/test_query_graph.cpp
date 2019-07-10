@@ -45,7 +45,7 @@ class QueryGraphTest: public ::testing::Test {
     }
 
     bool contains_node(const QueryGraph *qg, const QGNode *n) {
-        uint count = array_len(qg->nodes);
+        uint count = QueryGraph_NodeCount(qg);
         for (uint i = 0; i < count; i ++) {
             if (qg->nodes[i] == n) return true;
         }
@@ -53,7 +53,7 @@ class QueryGraphTest: public ::testing::Test {
     }
 
     bool contains_edge(const QueryGraph *qg, const QGEdge *e) {
-        uint count = array_len(qg->edges);
+        uint count = QueryGraph_EdgeCount(qg);
         for (uint i = 0; i < count; i ++) {
             if (qg->edges[i] == e) return true;
         }
@@ -188,18 +188,18 @@ TEST_F(QueryGraphTest, QueryGraphClone) {
     QueryGraph *clone = QueryGraph_Clone(g);
 
     // Validations.
-    ASSERT_EQ(array_len(g->nodes), array_len(clone->nodes));
-    ASSERT_EQ(array_len(g->edges), array_len(clone->edges));
+    ASSERT_EQ(QueryGraph_NodeCount(g), QueryGraph_NodeCount(clone));
+    ASSERT_EQ(QueryGraph_EdgeCount(g), QueryGraph_EdgeCount(clone));
 
     // Validate nodes.
-    for(int i = 0; i < array_len(g->nodes); i++) {
+    for(int i = 0; i < QueryGraph_NodeCount(g); i++) {
         QGNode *a = g->nodes[i];
         QGNode *b = clone->nodes[i];
         compare_nodes(a, b);
     }
 
     // Validate edges.
-    for(int i = 0; i < array_len(g->edges); i++) {
+    for(int i = 0; i < QueryGraph_EdgeCount(g); i++) {
         QGEdge *a = g->edges[i];
         QGEdge *b = clone->edges[i];
         compare_edges(a, b);  
@@ -267,8 +267,8 @@ TEST_F(QueryGraphTest, QueryGraphRemoveEntities) {
     /* Assert entity count:
      * Nodes - A was removed.
      * Edges - AB explicitly removed, BC and CA implicitly removed. */
-    ASSERT_EQ(array_len(g->nodes), 2);    
-    ASSERT_EQ(array_len(g->edges), 0);
+    ASSERT_EQ(QueryGraph_NodeCount(g), 2);    
+    ASSERT_EQ(QueryGraph_EdgeCount(g), 0);
 
     // Assert remaining entities, 
     ASSERT_TRUE(contains_node(g, A));

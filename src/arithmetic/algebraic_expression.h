@@ -67,7 +67,6 @@ typedef struct {
     AlgebraicExpressionOperand *operands;   // Array of operands.
     QGNode *src_node;                       // Nodes represented by the first operand columns.
     QGNode *dest_node;                      // Nodes represented by the last operand rows.
-    // int *relation_ids;                      // IDs of relationship types associated with edge.
     QGEdge *edge;                           // Edge represented by sole operand.
 } AlgebraicExpression;
 

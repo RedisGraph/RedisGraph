@@ -25,7 +25,7 @@ static inline int _validate_numeric(const SIValue v) {
     return SI_TYPE(v) & SI_NUMERIC;
 }
 
-bool _AR_SetFunction(AR_ExpNode *exp, AST_Operator op) {
+static bool _AR_SetFunction(AR_ExpNode *exp, AST_Operator op) {
     switch(op) {
         case OP_PLUS:
             exp->op.f = AR_ADD;
@@ -96,37 +96,16 @@ AR_ExpNode* _AR_EXP_NewOpNode(char *func_name, int child_count) {
     return node;
 }
 
-AR_ExpNode* AR_EXP_NewVariableFromID(uint id, const char *prop) {
-    AR_ExpNode *node = rm_malloc(sizeof(AR_ExpNode));
-    node->type = AR_EXP_OPERAND;
-    node->operand.type = AR_EXP_VARIADIC;
-    node->operand.variadic.entity_alias = NULL;
-    node->operand.variadic.entity_alias_idx = id;
-    node->operand.variadic.entity_prop = prop;
-    node->operand.variadic.entity_prop_idx = ATTRIBUTE_NOTFOUND;
-
-    return node;
-}
-
 AR_ExpNode* AR_EXP_NewVariableOperandNode(RecordMap *record_map, const char *alias, const char *prop) {
     AR_ExpNode *node = rm_malloc(sizeof(AR_ExpNode));
     node->type = AR_EXP_OPERAND;
     node->operand.type = AR_EXP_VARIADIC;
     node->operand.variadic.entity_alias = alias;
-    node->operand.variadic.entity_alias_idx = RecordMap_FindOrAddAlias(record_map, alias);
-    node->operand.variadic.entity_prop = prop;
-    node->operand.variadic.entity_prop_idx = ATTRIBUTE_NOTFOUND;
-
-    return node;
-}
-
-// TODO tmp crap
-AR_ExpNode* _AR_EXP_NewVariableOperandNodeFromAST(RecordMap *record_map, const char *alias, const char *prop, const cypher_astnode_t *entity) {
-    AR_ExpNode *node = rm_malloc(sizeof(AR_ExpNode));
-    node->type = AR_EXP_OPERAND;
-    node->operand.type = AR_EXP_VARIADIC;
-    node->operand.variadic.entity_alias = alias;
-    node->operand.variadic.entity_alias_idx = RecordMap_FindOrAddAlias(record_map, alias);
+    if (alias) {
+        node->operand.variadic.entity_alias_idx = RecordMap_FindOrAddAlias(record_map, alias);
+    } else {
+        node->operand.variadic.entity_alias_idx = IDENTIFIER_NOT_FOUND;
+    }
     node->operand.variadic.entity_prop = prop;
     node->operand.variadic.entity_prop_idx = ATTRIBUTE_NOTFOUND;
 
@@ -144,7 +123,7 @@ AR_ExpNode* AR_EXP_NewConstOperandNode(SIValue constant) {
 AR_ExpNode* AR_EXP_FromExpression(RecordMap *record_map, const cypher_astnode_t *expr) {
     const cypher_astnode_type_t type = cypher_astnode_type(expr);
 
-    /* Function invocations*/
+    /* Function invocations */
     if (type == CYPHER_AST_APPLY_OPERATOR || type == CYPHER_AST_APPLY_ALL_OPERATOR) {
         // TODO handle CYPHER_AST_APPLY_ALL_OPERATOR
         const cypher_astnode_t *func_node = cypher_ast_apply_operator_get_func_name(expr);
@@ -165,7 +144,7 @@ AR_ExpNode* AR_EXP_FromExpression(RecordMap *record_map, const cypher_astnode_t 
     } else if (type == CYPHER_AST_IDENTIFIER) {
         // Identifier referencing another record_map entity
         const char *alias = cypher_ast_identifier_get_name(expr);
-        return _AR_EXP_NewVariableOperandNodeFromAST(record_map, alias, NULL, expr);
+        return AR_EXP_NewVariableOperandNode(record_map, alias, NULL);
 
     /* Entity-property pair */
     } else if (type == CYPHER_AST_PROPERTY_OPERATOR) {
@@ -180,8 +159,7 @@ AR_ExpNode* AR_EXP_FromExpression(RecordMap *record_map, const cypher_astnode_t 
         const cypher_astnode_t *prop_name_node = cypher_ast_property_operator_get_prop_name(expr);
         const char *prop_name = cypher_ast_prop_name_get_value(prop_name_node);
 
-        return _AR_EXP_NewVariableOperandNodeFromAST(record_map, alias, prop_name, expr);
-        // return AR_EXP_NewPropertyOperator(entity_id, prop_name, SCHEMA_UNKNOWN);
+        return AR_EXP_NewVariableOperandNode(record_map, alias, prop_name);
 
     /* SIValue constant types */
     } else if (type == CYPHER_AST_INTEGER) {

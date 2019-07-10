@@ -16,7 +16,6 @@ typedef struct {
     uint record_len;    // Length of Record being modified by this segment.
 } RecordMap;
 
-typedef const void* AST_IDENTIFIER;
 #define IDENTIFIER_NOT_FOUND UINT_MAX
 
 uint RecordMap_GetRecordIDFromReference(RecordMap *map, AST_IDENTIFIER entity);

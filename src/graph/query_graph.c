@@ -250,7 +250,7 @@ void* QueryGraph_GetEntityByASTRef(const QueryGraph *qg, const cypher_astnode_t 
 }
 
 QGNode* QueryGraph_GetNodeByID(const QueryGraph *qg, uint id) {
-    uint node_count = array_len(qg->nodes);
+    uint node_count = QueryGraph_NodeCount(qg);
     for (uint i = 0; i < node_count; i ++) {
         if (id == qg->nodes[i]->id) return qg->nodes[i];
     }
@@ -258,7 +258,7 @@ QGNode* QueryGraph_GetNodeByID(const QueryGraph *qg, uint id) {
 }
 
 QGEdge* QueryGraph_GetEdgeByID(const QueryGraph *qg, uint id) {
-    uint edge_count = array_len(qg->edges);
+    uint edge_count = QueryGraph_EdgeCount(qg);
     for (uint i = 0; i < edge_count; i ++) {
         if (id == qg->edges[i]->id) return qg->edges[i];
     }
@@ -267,7 +267,7 @@ QGEdge* QueryGraph_GetEdgeByID(const QueryGraph *qg, uint id) {
 
 SchemaType QueryGraph_GetEntityTypeByAlias(const QueryGraph *qg, const char *alias) {
     // TODO weak logic
-    uint count = array_len(qg->nodes);
+    uint count = QueryGraph_NodeCount(qg);
     for (uint i = 0; i < count; i ++) {
         const char *entity_alias = qg->nodes[i]->alias;
         if (!entity_alias) continue;
@@ -275,7 +275,7 @@ SchemaType QueryGraph_GetEntityTypeByAlias(const QueryGraph *qg, const char *ali
     }
 
     // Unnecessary if the alias is guaranteed to be in QueryGraph.
-    count = array_len(qg->edges);
+    count = QueryGraph_EdgeCount(qg);
     for (uint i = 0; i < count; i ++) {
         const char *entity_alias = qg->edges[i]->alias;
         if (!entity_alias) continue;
@@ -286,8 +286,8 @@ SchemaType QueryGraph_GetEntityTypeByAlias(const QueryGraph *qg, const char *ali
 }
 
 QueryGraph* QueryGraph_Clone(const QueryGraph *qg) {
-    uint node_count = array_len(qg->nodes);
-    uint edge_count = array_len(qg->edges);
+    uint node_count = QueryGraph_NodeCount(qg);
+    uint edge_count = QueryGraph_EdgeCount(qg);
     QueryGraph *clone = QueryGraph_New(node_count, edge_count);
 
     // Clone nodes.
@@ -331,7 +331,7 @@ QGNode* QueryGraph_RemoveNode(QueryGraph *qg, QGNode *n) {
     }
 
     // Remove node from graph nodes.
-    uint node_count = array_len(qg->nodes);
+    uint node_count = QueryGraph_NodeCount(qg);
     for(uint i = 0; i < node_count; i++) {
         if(n->id == qg->nodes[i]->id) {
             array_del_fast(qg->nodes, i);
@@ -350,7 +350,7 @@ QGEdge* QueryGraph_RemoveEdge(QueryGraph *qg, QGEdge *e) {
     QGNode_RemoveIncomingEdge(e->dest, e);
 
     /* Remove edge from query graph. */
-    uint edge_count = array_len(qg->edges);
+    uint edge_count = QueryGraph_EdgeCount(qg);
     for(uint i = 0; i < edge_count; i++) {
         if(e->id == qg->edges[i]->id) {
             array_del_fast(qg->edges, i);
@@ -407,7 +407,7 @@ QueryGraph** QueryGraph_ConnectedComponents(const QueryGraph *qg) {
          * Remove all none reachable nodes from current connected component.
          * Remove connected component from graph. */
         QueryGraph *cc = QueryGraph_Clone(g);
-        uint node_count = array_len(g->nodes);
+        uint node_count = QueryGraph_NodeCount(g);
         for(uint i = 0; i < node_count; i++) {
             void *reachable;
             n = g->nodes[i];
@@ -431,11 +431,20 @@ QueryGraph** QueryGraph_ConnectedComponents(const QueryGraph *qg) {
         raxFree(visited);
 
         // Exit when graph is empty.
-        if(array_len(g->nodes) == 0) break;
+        if(QueryGraph_NodeCount(g) == 0) break;
     }
 
     QueryGraph_Free(g);
     return connected_components;
+}
+
+uint QueryGraph_NodeCount(const QueryGraph *qg) {
+    return array_len(qg->nodes);
+}
+
+/* Retrieve the number of edges in a QueryGraph. */
+uint QueryGraph_EdgeCount(const QueryGraph *qg) {
+    return array_len(qg->edges);
 }
 
 /* Frees entire graph. */
@@ -443,13 +452,13 @@ void QueryGraph_Free(QueryGraph* qg) {
     if (!qg) return;
 
     /* Free QueryGraph nodes. */
-    uint nodeCount = array_len(qg->nodes);
+    uint nodeCount = QueryGraph_NodeCount(qg);
     for (uint i = 0; i < nodeCount; i ++) {
         QGNode_Free(qg->nodes[i]);
     }
 
     /* Free QueryGraph edges. */
-    uint edgeCount = array_len(qg->edges);
+    uint edgeCount = QueryGraph_EdgeCount(qg);
     for(uint i = 0; i < edgeCount; i ++) {
         QGEdge_Free(qg->edges[i]);
     }
