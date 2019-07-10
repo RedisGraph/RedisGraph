@@ -14,7 +14,7 @@
 #
 dnl Process this file with autoconf to produce a configure script
 AC_PREREQ([2.69])
-AC_INIT([libcypher-parser],[0.6.1~devel])
+AC_INIT([libcypher-parser],[0.6.3~devel])
 AC_CONFIG_SRCDIR([lib/src/cypher-parser.h.in])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([build-aux/m4])
@@ -48,7 +48,7 @@ AC_ARG_VAR([LEG], [leg parser generator command])
 AC_CHECK_PROG([LEG], [leg], [leg])
 AM_CONDITIONAL([HAVE_LEG], [test -n "$LEG"])
 
-AS_IF([test -n "$LEG" -o -f ./src/lib/parser_leg.c], [],
+AS_IF([test -n "$LEG" -o -f ./lib/src/parser_leg.c], [],
   [AC_MSG_ERROR([leg is required: please install http://piumarta.com/software/peg/])])
 
 AC_C_CONST

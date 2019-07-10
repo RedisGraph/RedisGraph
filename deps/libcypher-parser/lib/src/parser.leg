@@ -500,6 +500,7 @@ INFIX-OP =
     | OR &{OP(OR)}                     { op_push(OR); }
     | XOR &{OP(XOR)}                   { op_push(XOR); }
     | NOT &{OP(NOT)}                   { op_push(NOT); }
+    | REGEX &{OP(REGEX)}               { op_push(REGEX); }
     | EQUAL &{OP(EQUAL)}               { op_push(EQUAL); }
     | NEQUAL &{OP(NEQUAL)}             { op_push(NEQUAL); }
     | PLUS &{OP(PLUS)}                 { op_push(PLUS); }
@@ -509,7 +510,6 @@ INFIX-OP =
     | MOD &{OP(MOD)}                   { op_push(MOD); }
     | POW &{OP(POW)}                   { op_push(POW); }
     | IN &{OP(IN)}                     { op_push(IN); }
-    | REGEX &{OP(REGEX)}               { op_push(REGEX); }
     | CONTAINS &{OP(CONTAINS)}         { op_push(CONTAINS); }
     | STARTS-WITH &{OP(STARTS_WITH)}   { op_push(STARTS_WITH); }
     | ENDS-WITH &{OP(ENDS_WITH)}       { op_push(ENDS_WITH); }
