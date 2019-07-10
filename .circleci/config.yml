@@ -23,7 +23,7 @@ jobs:
       # Load libcypher-parser from cache if possible.
       - restore_cache:
           keys:
-          - libcypher-parser-{{checksum "./deps/libcypher-parser/linter/src/cypher-lint.c"}}
+          - libcypher-parser-{{checksum "./deps/libcypher-parser/README.md"}}
 
       - run:
           name: Build
@@ -39,7 +39,7 @@ jobs:
       - save_cache:
           paths:
             - deps/libcypher-parser
-          key: libcypher-parser-{{checksum "./deps/libcypher-parser/linter/src/cypher-lint.c"}}
+          key: libcypher-parser-{{checksum "./deps/libcypher-parser/README.md"}}
 
       - run:
           name: Test

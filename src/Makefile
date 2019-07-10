@@ -141,6 +141,7 @@ clean:
 	@-rm -f redisgraph.so
 ifeq ($(ALL),1)
 	@$(MAKE) -C ../deps/GraphBLAS clean
+	@$(MAKE) -C ../deps/libcypher-parser clean
 	@$(MAKE) -C ../deps/xxhash clean
 	@$(MAKE) -C ../deps/rax clean
 endif
