@@ -10,15 +10,15 @@
 #include <stdint.h>
 
 /* Forward declaration of edge */
-typedef struct QGEdge QGEdge;
+struct QGEdge;
 
 typedef struct {
     uint id;                   /* Unique QueryGraph ID for Record mapping */
     int labelID;               /* Label ID */
     const char *label;         /* Label string */
     const char *alias;         /* User-provided alias associated with this node */
-    QGEdge** outgoing_edges;   /* Array of incoming edges (ME)<-(SRC) */
-    QGEdge** incoming_edges;   /* Array of outgoing edges (ME)->(DEST) */
+    struct QGEdge** outgoing_edges;   /* Array of incoming edges (ME)<-(SRC) */
+    struct QGEdge** incoming_edges;   /* Array of outgoing edges (ME)->(DEST) */
 } QGNode;
 
 /* Creates a new node. */
@@ -34,13 +34,13 @@ int QGNode_OutgoingDegree(const QGNode *n);
 int QGNode_EdgeCount(const QGNode *n);
 
 /* Connects source node to destination node by edge. */
-void QGNode_ConnectNode(QGNode* src, QGNode* dest, QGEdge* e);
+void QGNode_ConnectNode(QGNode* src, QGNode* dest, struct QGEdge* e);
 
 /* Removes given Incoming edge from node. */
-void QGNode_RemoveIncomingEdge(QGNode *n, QGEdge *e);
+void QGNode_RemoveIncomingEdge(QGNode *n, struct QGEdge *e);
 
 /* Removes given Outgoing edge from node. */
-void QGNode_RemoveOutgoingEdge(QGNode *n, QGEdge *e);
+void QGNode_RemoveOutgoingEdge(QGNode *n, struct QGEdge *e);
 
 /* Clones given node. */
 QGNode* QGNode_Clone(const QGNode *n);

@@ -21,8 +21,6 @@ typedef enum {
     AST_INVALID
 } AST_Validation;
 
-typedef struct AR_ExpNode AR_ExpNode;
-
 typedef struct {
     const cypher_astnode_t *root;     // Root element of libcypher-parser AST
     TrieMap *entity_map;              // Mapping of aliases and AST node pointers to AST IDs

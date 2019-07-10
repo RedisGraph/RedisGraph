@@ -12,6 +12,8 @@
 #include "../graph/entities/qg_edge.h"
 #include "../arithmetic/arithmetic_expression.h"
 
+struct AR_ExpNode;
+
 typedef enum {
     OP_NULL,
     OP_OR,
@@ -42,7 +44,7 @@ typedef struct {
     const char *attribute;          /* Attribute name to update. */
     Attribute_ID attribute_idx;     /* Attribute internal ID. */
     uint entityRecIdx;              /* Position of entity within record. */
-    AR_ExpNode *exp;                /* Expression to evaluate. */
+    struct AR_ExpNode *exp;         /* Expression to evaluate. */
 } EntityUpdateEvalCtx;
 
 // Context describing a node in a CREATE or MERGE clause

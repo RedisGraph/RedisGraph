@@ -252,11 +252,8 @@ AST* AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset) {
     for (uint i = 0; i < n; i ++) {
         clauses[i] = (cypher_astnode_t*)cypher_ast_query_get_clause(master_ast->root, i + start_offset);
     }
-    // TODO warning - 'range' causes failures when 0-initialized.
-    // Revisit to determine safety of this instantiation.
-    struct cypher_input_range range;
+    struct cypher_input_range range = {};
     ast->root = cypher_ast_query(NULL, 0, (cypher_astnode_t *const *)clauses, n, NULL, 0, range);
-    // ast->root = cypher_ast_query(NULL, 0, (cypher_astnode_t *const *)clauses, n, clauses, n, range);
 
     pthread_setspecific(_tlsASTKey, ast); // TODO I don't know if I like this
     AST_BuildEntityMap(ast);

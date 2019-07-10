@@ -17,9 +17,6 @@
 #include "../ast/ast.h"
 #include "./agg_ctx.h"
 
-/* Forward declarations. */
-struct AR_ExpNode;
-
 /* AR_ExpNodeType lists the type of nodes within
  * an arithmetic expression tree. */
 typedef enum {
@@ -60,8 +57,6 @@ typedef struct {
     AR_OPType type;
 } AR_OpNode;
 
-typedef struct AR_ExpNode AR_ExpNode;
-
 /* OperandNode represents either a constant numeric value,
  * or a graph entity property. */
 typedef struct {
@@ -89,6 +84,8 @@ struct AR_ExpNode {
     AR_ExpNodeType type;
     const char *resolved_name;
 };
+
+typedef struct AR_ExpNode AR_ExpNode;
 
 /* Mathematical functions - numeric */
 SIValue AR_ADD(SIValue *argv, int argc);   /* returns the summation of given values. */

@@ -7,7 +7,6 @@
 #pragma once
 
 #include "../util/triemap/triemap.h"
-// #include "../arithmetic/arithmetic_expression.h"
 #include "../ast/ast.h"
 #include <limits.h>
 
@@ -20,7 +19,6 @@ typedef struct {
 
 uint RecordMap_GetRecordIDFromReference(RecordMap *map, AST_IDENTIFIER entity);
 uint RecordMap_ReferenceToRecordID(RecordMap *map, AST_IDENTIFIER identifier);
-uint RecordMap_ExpressionToRecordID(RecordMap *map, AR_ExpNode *exp);
 
 uint RecordMap_LookupAlias(const RecordMap *map, const char *alias);
 uint RecordMap_LookupEntityID(const RecordMap *record_map, uint id);
