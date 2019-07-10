@@ -295,6 +295,19 @@ class testImdbFlow(FlowTestsBase):
         # assert reversed pattern.
         self.assert_reversed_pattern(q, actual_result)
     
+    def test_same_year_higher_rating_than_huntforthewilderpeople(self):
+        global redis_graph
+        q = queries.same_year_higher_rating_than_huntforthewilderpeople_query.query
+        actual_result = redis_graph.query(q)
+
+        # assert result set
+        self._assert_only_expected_results_are_in_actual_results(
+            actual_result,
+            queries.same_year_higher_rating_than_huntforthewilderpeople_query)
+
+        # assert query run time
+        self._assert_run_time(actual_result, queries.same_year_higher_rating_than_huntforthewilderpeople_query)
+
     # def test_all_actors_named_tim(self):
     #     global redis_graph
 

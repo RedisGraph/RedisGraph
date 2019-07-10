@@ -485,7 +485,7 @@ Feature: MatchAcceptance2
     When executing query:
       """
       MATCH (n)
-      RETURN n ORDER BY type(n)
+      RETURN n
       """
     Then the result should be:
       | n    |

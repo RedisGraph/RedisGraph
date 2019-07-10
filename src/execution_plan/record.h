@@ -33,6 +33,9 @@ typedef Entry *Record;
 // Create a new record capable of holding N entries.
 Record Record_New(int entries);
 
+// Extands record to given length.
+void Record_Extend(Record *r, int len);
+
 // Clones record.
 Record Record_Clone(const Record r);
 

@@ -17,7 +17,6 @@
 #include "./reduce_distinct.h"
 #include "./seek_by_id.h"
 #include "./reduce_traversal.h"
-
-
+#include "./apply_join.h"
 
 #endif
