@@ -25,10 +25,10 @@ static bool _record_islt(Record l, Record r, uint idx) {
 
 // Performs binary search, returns the leftmost index of a match.
 static int64_t _binarySearchLeftmost(Record *array, int join_key_idx, SIValue v) {    
-    int32_t recordCount = array_len(array);
-    int32_t pos;
-    int32_t left = 0;
-    int32_t right = recordCount;
+    int64_t recordCount = array_len(array);
+    int64_t pos;
+    int64_t left = 0;
+    int64_t right = recordCount;
     while(left < right) {
         pos = (right + left) / 2;
         SIValue x = Record_GetScalar(array[pos], join_key_idx);
@@ -39,10 +39,10 @@ static int64_t _binarySearchLeftmost(Record *array, int join_key_idx, SIValue v)
 }
 
 // Performs binary search, returns the rightmost index of a match.
-static int64_t _binarySearchRightmost(Record *array, int32_t array_len, int join_key_idx, SIValue v) {
-    int32_t pos;
-    int32_t left = 0;
-    int32_t right = array_len;
+static int64_t _binarySearchRightmost(Record *array, int64_t array_len, int join_key_idx, SIValue v) {
+    int64_t pos;
+    int64_t left = 0;
+    int64_t right = array_len;
     while(left < right) {
         pos = (right + left) / 2;
         SIValue x = Record_GetScalar(array[pos], join_key_idx);
@@ -286,4 +286,6 @@ void ValueHashJoinFree(OpBase *ctx) {
         }
         array_free(op->cached_records);
     }
+    if(op->lhs_exp) AR_EXP_Free(op->lhs_exp);
+    if(op->rhs_exp) AR_EXP_Free(op->rhs_exp);
 }

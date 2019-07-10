@@ -147,12 +147,17 @@ void applyJoin(ExecutionPlan *plan) {
                 if(lhs == NULL || rhs == NULL) continue;
 
                 assert(lhs != rhs);
+                lhs = AR_EXP_Clone(lhs);
+                rhs = AR_EXP_Clone(rhs);
                 OpBase *value_hash_join = NewValueHashJoin(lhs, rhs);
 
                 /* Remove filter which is now part of the join operation
                  * replace cartesian product with join. */
                 ExecutionPlan_RemoveOp(plan, (OpBase*)filter);
+                OpBase_Free((OpBase*)filter);
                 ExecutionPlan_ReplaceOp(plan, cp, value_hash_join);
+                OpBase_Free(cp);
+
                 break;
             }
         }

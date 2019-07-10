@@ -27,7 +27,6 @@ Record Record_New(int entries) {
 void Record_Extend(Record *r, int len) {
     int rec_len = Record_length(*r);
     if(rec_len >= len) return;
-    assert(len > rec_len);
 
     Record header = RECORD_HEADER(*r);
     header->value.s.longval = len;

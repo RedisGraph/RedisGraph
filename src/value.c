@@ -216,8 +216,6 @@ int SIValue_Compare(const SIValue a, const SIValue b) {
         case T_NODE:
         case T_EDGE:
             return ENTITY_GET_ID((GraphEntity*)a.ptrval) - ENTITY_GET_ID((GraphEntity*)b.ptrval);
-        case T_NULL:
-            return 0;
         default:
             // Both inputs were of an incomparable type, like a pointer or NULL
             return DISJOINT;
