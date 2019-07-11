@@ -31,7 +31,7 @@ static void _ResetStreams(CartesianProduct *cp, int streamIdx) {
 static int _PullFromStreams(CartesianProduct *op) {
     for(int i = 1; i < op->op.childCount; i++) {
         OpBase *child = op->op.children[i];
-        Record childRecord = child->consume(child);
+        Record childRecord = OpBase_Consume(child);
 
         if(childRecord) {
             Record_Merge(&op->r, childRecord);
@@ -43,7 +43,7 @@ static int _PullFromStreams(CartesianProduct *op) {
             // Pull from resetted streams.
             for(int j = 0; j < i; j++) {
                 child = op->op.children[j];
-                childRecord = child->consume(child);
+                childRecord = OpBase_Consume(child);
                 if(childRecord) {
                     Record_Merge(&op->r, childRecord);
                     Record_Free(childRecord);                    
@@ -72,7 +72,7 @@ Record CartesianProductConsume(OpBase *opBase) {
 
         for(int i = 0; i < op->op.childCount; i++) {
             child = op->op.children[i];
-            childRecord = child->consume(child);
+            childRecord = OpBase_Consume(child);
             if(!childRecord) {
                 // TODO: leak childRecord.
                 return NULL;
@@ -85,7 +85,7 @@ Record CartesianProductConsume(OpBase *opBase) {
 
     // Pull from first stream.
     child = op->op.children[0];
-    childRecord = child->consume(child);
+    childRecord = OpBase_Consume(child);
         
     if(childRecord) {
         // Managed to get data from first stream.

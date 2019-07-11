@@ -216,7 +216,7 @@ Record ExpandIntoConsume(OpBase *opBase) {
 
         // Ask child operations for data.
         for(op->recordCount = 0; op->recordCount < op->recordsCap; op->recordCount++) {
-            Record childRecord = child->consume(child);
+            Record childRecord = OpBase_Consume(child);
             // Did not managed to get new data, break.
             if(!childRecord) break;
 

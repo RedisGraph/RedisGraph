@@ -184,7 +184,7 @@ Record CondTraverseConsume(OpBase *opBase) {
 
         // Ask child operations for data.
         for(op->recordsLen = 0; op->recordsLen < op->recordsCap; op->recordsLen++) {
-            Record childRecord = child->consume(child);
+            Record childRecord = OpBase_Consume(child);
             if(!childRecord) break;
 
             // Store received record.

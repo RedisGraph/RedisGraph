@@ -29,7 +29,7 @@ Record FilterConsume(OpBase *opBase) {
     OpBase *child = filter->op.children[0];
 
     while(true) {
-        r = child->consume(child);
+        r = OpBase_Consume(child);
         if(!r) break;
 
         /* Pass graph through filter tree */

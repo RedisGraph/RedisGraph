@@ -747,7 +747,7 @@ ResultSet* ExecutionPlan_Execute(ExecutionPlan *plan) {
     OpBase *op = plan->root;
     
     ExecutionPlanInit(plan);
-    while((r = op->consume(op)) != NULL) Record_Free(r);
+    while((r = OpBase_Consume(op)) != NULL) Record_Free(r);
     return plan->result_set;
 }
 

@@ -106,7 +106,7 @@ Record CondVarLenTraverseConsume(OpBase *opBase) {
 
 compute_path:
     while(!(p = AllPathsCtx_NextPath(op->allPathsCtx))) {
-        Record childRecord = child->consume(child);
+        Record childRecord = OpBase_Consume(child);
         if(!childRecord) return NULL;
         
         if(op->r) Record_Free(op->r);

@@ -175,7 +175,7 @@ Record OpMergeConsume(OpBase *opBase) {
     if(op->created) return NULL;
 
     OpBase *child = op->op.children[0];
-    Record r = child->consume(child);
+    Record r = OpBase_Consume(child);
     if(r) {
         /* If we're here that means pattern was matched! 
         * in that case there's no need to create any graph entity,

@@ -202,7 +202,7 @@ Record OpUpdateConsume(OpBase *opBase) {
     // Updates already performed.
     if(op->updates_commited) return _handoff(op);
 
-    while((r = child->consume(child))) {
+    while((r = OpBase_Consume(child))) {
         /* Evaluate each update expression and store result 
          * for later execution. */
         EntityUpdateEvalCtx *update_expression = op->update_expressions;

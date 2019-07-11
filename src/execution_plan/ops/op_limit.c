@@ -31,7 +31,7 @@ Record LimitConsume(OpBase *op) {
     // Consume a single record.
     limit->consumed++;
     OpBase *child = limit->op.children[0];
-    return child->consume(child);
+    return OpBase_Consume(child);
 }
 
 OpResult LimitReset(OpBase *ctx) {
