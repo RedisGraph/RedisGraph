@@ -28,7 +28,7 @@ Record DistinctConsume(OpBase *opBase) {
     OpBase *child = self->op.children[0];
 
     while(true) {
-        Record r = child->consume(child);
+        Record r = OpBase_Consume(child);
         if(!r) return NULL;
 
         unsigned long long const hash = Record_Hash64(r);

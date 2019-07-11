@@ -267,7 +267,7 @@ Record AggregateConsume(OpBase *opBase) {
     if(op->groupIter) return _handoff(op);
 
     Record r;
-    while((r = child->consume(child))) _aggregateRecord(op, r);
+    while((r = OpBase_Consume(child))) _aggregateRecord(op, r);
 
     op->groupIter = CacheGroupIter(op->groups);
     return _handoff(op);

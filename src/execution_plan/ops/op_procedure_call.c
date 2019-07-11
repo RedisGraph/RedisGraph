@@ -94,7 +94,7 @@ Record OpProcCallConsume(OpBase *opBase) {
         r = Record_New(op->ast->_aliasIDMapping->cardinality);
     } else {
         OpBase *child = op->op.children[0];
-        r = child->consume(child);
+        r = OpBase_Consume(child);
         if(!r) return NULL;
     }    
     

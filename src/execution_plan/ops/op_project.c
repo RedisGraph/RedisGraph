@@ -88,7 +88,7 @@ Record ProjectConsume(OpBase *opBase) {
 
     if(op->op.childCount) {
         OpBase *child = op->op.children[0];
-        r = child->consume(child);
+        r = OpBase_Consume(child);
         if(!r) return NULL;
     } else {
         // QUERY: RETURN 1+2

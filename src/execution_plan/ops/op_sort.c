@@ -169,7 +169,7 @@ Record SortConsume(OpBase *opBase) {
     // try to get records.
     OpBase *child = op->op.children[0];
     bool newData = false;
-    while((r = child->consume(child))) {
+    while((r = OpBase_Consume(child))) {
         _accumulate(op, r);
         newData = true;
     }
