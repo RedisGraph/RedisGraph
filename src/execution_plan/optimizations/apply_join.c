@@ -149,6 +149,24 @@ void applyJoin(ExecutionPlan *plan) {
                 assert(lhs != rhs);
                 lhs = AR_EXP_Clone(lhs);
                 rhs = AR_EXP_Clone(rhs);
+
+                /* In order to reduce value-hash-join cache size
+                 * prefer to cache a branch which will produce the smallest number
+                 * of records, currently prefer a branch with a filter. */
+                OpBase *left_branch = cp->children[0];
+                OpBase *right_branch = cp->children[1];
+                bool left_branch_filtered = (ExecutionPlan_LocateOp(left_branch, OPType_FILTER) != NULL);
+                bool right_branch_filtered = (ExecutionPlan_LocateOp(right_branch, OPType_FILTER) != NULL);                
+                if(!left_branch_filtered && right_branch_filtered) {
+                    // Swap branches!
+                    cp->children[0] = right_branch;
+                    cp->children[1] = left_branch;
+
+                    AR_ExpNode *t = lhs;
+                    lhs = rhs;
+                    rhs = t;
+                }
+
                 OpBase *value_hash_join = NewValueHashJoin(lhs, rhs);
 
                 /* Remove filter which is now part of the join operation

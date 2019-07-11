@@ -215,8 +215,10 @@ Record ValueHashJoinConsume(OpBase *opBase) {
     Record l;
     if(op->number_of_intersections > 0) {
         while((l = _get_intersecting_record(op))) {
-            Record_Merge(&op->rhs_rec, l);
-            return Record_Clone(op->rhs_rec);            
+            /* Merge into cached records to avoid 
+             * record extension */
+            Record_Merge(&l, op->rhs_rec);            
+            return Record_Clone(l);
         }
     }
 
@@ -243,8 +245,8 @@ Record ValueHashJoinConsume(OpBase *opBase) {
 
         // Found atleast one intersecting record.
         l = _get_intersecting_record(op);
-        Record_Merge(&op->rhs_rec, l);
-        return Record_Clone(op->rhs_rec);
+        Record_Merge(&l, op->rhs_rec);
+        return Record_Clone(l);
     }
 }
 
