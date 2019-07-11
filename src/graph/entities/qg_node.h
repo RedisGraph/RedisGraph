@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <sys/types.h>
 #include <stdlib.h>
 #include <stdint.h>
 
