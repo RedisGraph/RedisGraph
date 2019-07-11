@@ -52,6 +52,7 @@ void _MGraph_Explain(void *args) {
 
     /* Parse query, get AST. */
     cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
+    qctx->parse_result = parse_result;
     AST *ast = AST_Build(parse_result);
 
     if(AST_Empty(ast)) {
@@ -101,7 +102,7 @@ cleanup:
     }
 
     CommandCtx_Free(qctx);
-    // if(parse_result) cypher_parse_result_free(parse_result);
+    AST_Free(ast);
     if(free_graph_ctx) GraphContext_Free(gc);
 }
 

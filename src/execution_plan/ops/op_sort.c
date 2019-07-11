@@ -232,6 +232,7 @@ void SortFree(OpBase *ctx) {
         array_free(op->buffer);
     }
 
-    for(int i = 0; i < array_len(op->expressions); i++) AR_EXP_Free(op->expressions[i]);
-    array_free(op->expressions);
+    // TODO handled by ExecutionPlanSegment for now
+    // for(int i = 0; i < array_len(op->expressions); i++) AR_EXP_Free(op->expressions[i]);
+    // array_free(op->expressions);
 }

@@ -101,7 +101,8 @@ AR_ExpNode** _BuildOrderExpressions(RecordMap *record_map, AR_ExpNode **projecti
             for (uint j = 0; j < projection_count; j ++) {
                 AR_ExpNode *projection = projections[j];
                 if (!strcmp(projection->resolved_name, alias)) {
-                    exp = projection;
+                    // The projection must be cloned to avoid a double free
+                    exp = AR_EXP_Clone(projection);
                     break;
                 }
             }
@@ -392,6 +393,7 @@ void _ExecutionPlanSegment_ProcessQueryGraph(ExecutionPlanSegment *segment, Quer
         }
         Vector_Clear(traversals);
     }
+
     Vector_Free(traversals);
 }
 
@@ -458,6 +460,7 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
 
     // Allocate a new segment
     ExecutionPlanSegment *segment = rm_malloc(sizeof(ExecutionPlanSegment));
+    segment->connected_components = NULL;
 
     // Initialize map of Record IDs
     RecordMap *record_map = RecordMap_New();
@@ -563,7 +566,8 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
         uint *nodes_ref;
         uint *edges_ref;
         AST_PrepareDeleteOp(delete_clause, qg, record_map, &nodes_ref, &edges_ref);
-        OpBase *opDelete = NewDeleteOp(nodes_ref, edges_ref, &result_set->stats);
+        ResultSetStatistics *stats = (result_set) ? &result_set->stats : NULL;
+        OpBase *opDelete = NewDeleteOp(nodes_ref, edges_ref, stats);
         Vector_Push(ops, opDelete);
     }
 
@@ -602,6 +606,7 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
         while (raxNext(&iter)) {
             modifies = array_append(modifies, *(uint*)iter.key);
         }
+        raxFree(modifies_ids);
     }
 
     OpBase *op;
@@ -751,6 +756,8 @@ ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext
 
     _associateRecordMap(segment->root, record_map);
 
+    raxFree(resolved);
+
     return segment;
 }
 
@@ -759,7 +766,7 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, bool comp
 
     ExecutionPlan *plan = rm_malloc(sizeof(ExecutionPlan));
 
-    plan->result_set = NewResultSet(ctx, compact);
+    plan->result_set = (explain) ? NULL : NewResultSet(ctx, compact);
 
     uint with_clause_count = AST_GetClauseCount(ast, CYPHER_AST_WITH);
     plan->segment_count = with_clause_count + 1;
@@ -920,14 +927,45 @@ void _ExecutionPlan_FreeOperations(OpBase* op) {
     OpBase_Free(op);
 }
 
+void _ExecutionPlanSegment_Free(ExecutionPlanSegment *segment) {
+    RecordMap_Free(segment->record_map);
+
+    if (segment->connected_components) {
+        uint connected_component_count = array_len(segment->connected_components);
+        for (uint i = 0; i < connected_component_count; i ++) {
+            QueryGraph_Free(segment->connected_components[i]);
+        }
+        array_free(segment->connected_components);
+    }
+
+    QueryGraph_Free(segment->query_graph);
+
+    if (segment->projections) {
+        uint projection_count = array_len(segment->projections);
+        for (uint i = 0; i < projection_count; i ++) {
+            AR_EXP_Free(segment->projections[i]);
+        }
+        array_free(segment->projections);
+    }
+
+    if (segment->order_expressions) {
+        uint order_count = array_len(segment->order_expressions);
+        for (uint i = 0; i < order_count; i ++) {
+            AR_EXP_Free(segment->order_expressions[i]);
+        }
+        array_free(segment->order_expressions);
+    }
+
+    // TODO FT?
+    rm_free(segment);
+}
+
 void ExecutionPlan_Free(ExecutionPlan *plan) {
     if(plan == NULL) return;
     _ExecutionPlan_FreeOperations(plan->root);
 
     for (uint i = 0; i < plan->segment_count; i ++) {
-        ExecutionPlanSegment *segment = plan->segments[i];
-        QueryGraph_Free(segment->query_graph);
-        rm_free(segment);
+        _ExecutionPlanSegment_Free(plan->segments[i]);
     }
     rm_free(plan->segments);
 

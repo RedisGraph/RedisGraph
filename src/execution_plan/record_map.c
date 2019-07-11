@@ -203,7 +203,7 @@ RecordMap *RecordMap_New() {
 }
 
 void RecordMap_Free(RecordMap *record_map) {
-    TrieMap_Free(record_map->map, NULL);
+    TrieMap_Free(record_map->map, rm_free);
     rm_free(record_map);
 }
 

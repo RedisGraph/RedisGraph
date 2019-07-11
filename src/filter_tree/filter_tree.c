@@ -122,7 +122,12 @@ int _applyPredicateFilters(const FT_FilterNode* root, const Record r) {
     SIValue lhs = AR_EXP_Evaluate(root->pred.lhs, r);
     SIValue rhs = AR_EXP_Evaluate(root->pred.rhs, r);
 
-    return _applyFilter(&lhs, &rhs, root->pred.op);
+    int ret = _applyFilter(&lhs, &rhs, root->pred.op);
+
+    SIValue_Free(&lhs);
+    SIValue_Free(&rhs);
+
+    return ret;
 }
 
 int FilterTree_applyFilters(const FT_FilterNode* root, const Record r) {
