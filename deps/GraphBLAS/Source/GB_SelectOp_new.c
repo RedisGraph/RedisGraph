@@ -14,15 +14,13 @@
 
 // This function is not directly user-callable.  Use GxB_SelectOp_new instead.
 
-// not parallel: this function does O(1) work and is already thread-safe.
-
 #include "GB.h"
 
 GrB_Info GB_SelectOp_new        // create a new user-defined select operator
 (
     GxB_SelectOp *selectop,     // handle for the new select operator
     GxB_select_function function,// pointer to the select function
-    const GrB_Type xtype,       // type of input x
+    GrB_Type xtype,             // type of input x
     const char *name            // name of the function
 )
 { 
@@ -42,7 +40,7 @@ GrB_Info GB_SelectOp_new        // create a new user-defined select operator
     //--------------------------------------------------------------------------
 
     // allocate the select operator
-    GB_CALLOC_MEMORY (*selectop, 1, sizeof (struct GB_SelectOp_opaque), NULL) ;
+    GB_CALLOC_MEMORY (*selectop, 1, sizeof (struct GB_SelectOp_opaque)) ;
     if (*selectop == NULL)
     { 
         // out of memory

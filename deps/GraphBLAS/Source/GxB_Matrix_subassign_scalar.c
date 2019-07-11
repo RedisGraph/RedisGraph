@@ -17,11 +17,7 @@
 // Compare with GrB_Matrix_assign_scalar,
 // which uses M and C_Replace differently.
 
-// The actual work is done in GB_subassign_scalar.c.
-
-// parallel: not here; see GB_subassign_kernel
-
-#include "GB.h"
+#include "GB_subassign.h"
 
 #define GB_ASSIGN(type,T,ampersand)                                            \
 GrB_Info GxB_Matrix_subassign_ ## T /* C(Rows,Cols)<M> += x                 */ \
@@ -29,7 +25,7 @@ GrB_Info GxB_Matrix_subassign_ ## T /* C(Rows,Cols)<M> += x                 */ \
     GrB_Matrix C,                   /* input/output matrix for results      */ \
     const GrB_Matrix M,             /* optional mask for C(Rows,Cols)       */ \
     const GrB_BinaryOp accum,       /* accum for Z=accum(C(Rows,Cols),x)    */ \
-    const type x,                   /* scalar to assign to C(Rows,Cols)     */ \
+    type x,                         /* scalar to assign to C(Rows,Cols)     */ \
     const GrB_Index *Rows,          /* row indices                          */ \
     GrB_Index nRows,                /* number of row indices                */ \
     const GrB_Index *Cols,          /* column indices                       */ \

@@ -11,6 +11,9 @@ function A = GB_spec_random (m, n, d, scale, class, is_csc,is_hyper,hyper_ratio)
 % is_csc: true for CSC, false for CSR; defaults to true
 % is_hyper: false for non-hypersparse, true for hypersparse, default false
 
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
 if (nargin < 1)
     m = 4 ;
 end
@@ -46,7 +49,4 @@ end
 A.matrix = scale * sprandn (m, n, d) ;
 A.class = class ;
 A.pattern = logical (spones (A.matrix)) ;
-
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
-% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 

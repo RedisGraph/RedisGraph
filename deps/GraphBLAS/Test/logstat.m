@@ -1,10 +1,12 @@
 function logstat (testscript)
 %LOGSTAT run a GraphBLAS test and log the results to log.txt 
 
-%  SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+%  SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 %  http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 [debug, compact, malloc, covered] = GB_mex_debug ;
+
+nthreads = nthreads_get ;
 
 if (nargin == 0)
     f = fopen ('log.txt', 'a') ;
@@ -22,6 +24,7 @@ if (nargin == 0)
     if (covered)
         fprintf (f, ' [cover]') ;
     end
+    fprintf (f, ' [nthreads: %d]', nthreads) ;
     fprintf (f, '\n') ;
 
     fclose (f) ;
@@ -42,6 +45,7 @@ end
 if (covered)
     fprintf (' [cover]') ;
 end
+fprintf (' [nthreads: %d]', nthreads) ;
 fprintf ('\n') ;
 
 t1 = cputime ;

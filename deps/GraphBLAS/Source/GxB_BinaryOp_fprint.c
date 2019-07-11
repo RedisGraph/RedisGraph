@@ -7,8 +7,6 @@
 
 //------------------------------------------------------------------------------
 
-// not parallel: this function does O(1) work and is already thread-safe.
-
 #include "GB.h"
 
 GrB_Info GxB_BinaryOp_fprint        // print and check a GrB_BinaryOp

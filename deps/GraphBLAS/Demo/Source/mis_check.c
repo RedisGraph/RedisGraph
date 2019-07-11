@@ -40,7 +40,10 @@
     GrB_free (&r_desc) ;        \
     GrB_free (&sr_desc) ;       \
     GrB_free (&set_random) ;    \
-    GrB_free (&degrees) ;
+    GrB_free (&degrees) ;       \
+    GrB_free (&Seed) ;          \
+    GrB_free (&X) ;             \
+    prand_finalize ( ) ;
 
 #include "demos.h"
 
@@ -67,7 +70,8 @@
 GrB_Info mis_check              // compute a maximal independent set
 (
     GrB_Vector *iset_output,    // iset(i) = true if i is in the set
-    const GrB_Matrix A          // symmetric Boolean matrix
+    const GrB_Matrix A,         // symmetric Boolean matrix
+    int64_t seed                // random number seed
 )
 {
 
@@ -87,8 +91,10 @@ GrB_Info mis_check              // compute a maximal independent set
 #endif
     GrB_Descriptor r_desc = NULL ;
     GrB_Descriptor sr_desc = NULL ;
-    GrB_UnaryOp set_random = NULL ;
+    GrB_BinaryOp set_random = NULL ;
     GrB_Vector degrees = NULL ;
+    GrB_Vector Seed = NULL ;
+    GrB_Vector X = NULL ;
 
     GrB_Index n ;
     GrB_Info info ;
@@ -118,13 +124,19 @@ GrB_Info mis_check              // compute a maximal independent set
     OK (GrB_Descriptor_new (&r_desc)) ;
     OK (GrB_Descriptor_set (r_desc, GrB_OUTP, GrB_REPLACE)) ;
 
+    // create the random number seeds
+    OK (prand_init ( )) ;
+    OK (prand_seed (&Seed, seed, n, 0)) ;
+    OK (GrB_Vector_new (&X, GrB_FP64, n)) ;
+
     // descriptor: C_replace + structural complement of mask
     OK (GrB_Descriptor_new (&sr_desc)) ;
     OK (GrB_Descriptor_set (sr_desc, GrB_MASK, GrB_SCMP)) ;
     OK (GrB_Descriptor_set (sr_desc, GrB_OUTP, GrB_REPLACE)) ;
 
-    // create the mis_score unary operator
-    OK (GrB_UnaryOp_new (&set_random, mis_score, GrB_FP64, GrB_UINT32)) ;
+    // create the mis_score binary operator
+    OK (GrB_BinaryOp_new (&set_random, mis_score2,
+        GrB_FP64, GrB_UINT32, GrB_FP64)) ;
 
     // compute the degree of each node
     OK (GrB_Vector_new (&degrees, GrB_FP64, n)) ;
@@ -146,9 +158,13 @@ GrB_Info mis_check              // compute a maximal independent set
 
     while (nvals > 0)
     {
+        // sparsify the random number seeds (just keep it for each candidate) 
+        OK (GrB_assign (Seed, candidates, NULL, Seed, GrB_ALL, n, r_desc)) ;
 
         // compute a random probability scaled by inverse of degree
-        OK (GrB_apply (prob, candidates, NULL, set_random, degrees, r_desc)) ;
+        OK (prand_xget (X, Seed)) ;
+        OK (GrB_eWiseMult (prob, candidates, NULL, set_random, degrees, X,
+            r_desc)) ;
 
         // compute the max probability of all neighbors
         OK (GrB_vxm (neighbor_max, candidates, NULL, maxSelect1st,
@@ -171,6 +187,7 @@ GrB_Info mis_check              // compute a maximal independent set
         // Neighbors of new members can also be removed from candidates
         OK (GrB_vxm (new_neighbors, candidates, NULL, Boolean,
             new_members, A, NULL)) ;
+
         OK (GrB_apply (candidates, new_neighbors, NULL, GrB_IDENTITY_BOOL,
             candidates, sr_desc)) ;
 
@@ -178,7 +195,11 @@ GrB_Info mis_check              // compute a maximal independent set
 
         // this will not occur, unless the input is corrupted somehow,
         // or if two candidates have exactly the same score
-        if (last_nvals == nvals) { printf ("stall!\n") ; OK (GrB_INVALID_VALUE) ; }
+        if (last_nvals == nvals)
+        {
+            printf ("stall!\n") ;
+            OK (GrB_INVALID_VALUE) ;
+        }
         last_nvals = nvals ;
     }
 

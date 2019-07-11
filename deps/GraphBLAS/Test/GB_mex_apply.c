@@ -2,7 +2,7 @@
 // GB_mex_apply: C<Mask> = accum(C,op(A)) or op(A')
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -28,6 +28,7 @@ GrB_Matrix A = NULL ;
 GrB_Descriptor desc = NULL ;
 GrB_BinaryOp accum = NULL ;
 GrB_UnaryOp op = NULL ;
+GrB_Info apply (bool is_matrix) ;
 
 //------------------------------------------------------------------------------
 

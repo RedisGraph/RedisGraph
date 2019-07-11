@@ -24,9 +24,7 @@
 
 // Compare this function with GB_shallow_cast.c
 
-// parallel: not here, but in GB_apply_op.
-
-#include "GB.h"
+#include "GB_apply.h"
 
 GrB_Info GB_shallow_op      // create shallow matrix and apply operator
 (

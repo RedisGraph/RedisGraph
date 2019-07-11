@@ -9,8 +9,6 @@
 
 // GrB_Vector: same as GrB_Matrix, except it has exactly one column
 
-// parallel: this function does O(nnz(A)) work in GB_matvec_check, not here.
-
 #include "GB.h"
 
 GrB_Info GB_Vector_check    // check a GraphBLAS vector

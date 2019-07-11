@@ -1,10 +1,15 @@
 function test46b
 %TEST46B performance test of GrB_assign
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 fprintf ('\n--------------performance test GB_mex_assign\n') ;
+
+[save save_chunk] = nthreads_get ;
+chunk = 4096 ;
+nthreads = feature ('numcores') ;
+nthreads_set (nthreads, chunk) ;
 
 dt = struct ('inp0', 'tran') ;
 
@@ -109,6 +114,6 @@ toc
 
 assert (isequal (C, C3.matrix)) ;
 
+nthreads_set (save, save_chunk) ;
+
 fprintf ('\ntest46b: all tests passed\n') ;
-
-

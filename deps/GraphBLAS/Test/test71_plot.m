@@ -1,7 +1,7 @@
 function test71_plot (T, Nedges, Nnodes, LLnz, LLmem, LLflops, Ntri, f)
 %TEST71_PLOT plot the results from test71
 
-%  SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+%  SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 %  http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 if (nargin == 0)

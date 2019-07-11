@@ -33,8 +33,6 @@
 // grep "allocate a new header"
 // which shows all uses of GB_new and GB_create
 
-// parallel: not here but perhaps in GB_new
-
 #include "GB.h"
 
 GrB_Info GB_create              // create a new matrix, including A->i and A->x

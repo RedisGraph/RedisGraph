@@ -961,7 +961,6 @@ EXCLUDE_SYMBOLS        = ASSERT \
     Mx \
     n \
     n_pending \
-    NDEBUG \
     nvec \
     nvec_nonempty \
     nzmax \

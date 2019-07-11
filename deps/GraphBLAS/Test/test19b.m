@@ -1,10 +1,16 @@
 function test19b(fulltest)
 %TEST19B test GrB_assign and GrB_*_setElement with many pending operations
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
-fprintf ('\nGrB_assign and setElement test, many pending computations\n') ;
+fprintf ('\ntest19b: GrB_assign and setElement, many pending computations\n') ;
+
+d = stat ;
+if (d)
+    % test skipped if malloc debugging enabled
+    return ;
+end
 
 if (nargin < 1)
     fulltest = 0 ;

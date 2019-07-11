@@ -1,0 +1,5 @@
+#!/bin/sh
+
+
+../build/mis_demo < Matrix/2blocks
+

@@ -7,8 +7,6 @@
 
 //------------------------------------------------------------------------------
 
-// not parallel: this function does O(1) work and is already thread-safe.
-
 #include "GB.h"
 
 GrB_Info GxB_Matrix_Option_get      // gets the current option of a matrix
@@ -32,41 +30,41 @@ GrB_Info GxB_Matrix_Option_get      // gets the current option of a matrix
     //--------------------------------------------------------------------------
 
     va_list ap ;
-    double *hyper_ratio ;
-    GxB_Format_Value *format ;
-    bool *is_hyper ;
 
     switch (field)
     {
 
         case GxB_HYPER : 
 
-            va_start (ap, field) ;
-            hyper_ratio = va_arg (ap, double *) ;
-            va_end (ap) ;
-
-            GB_RETURN_IF_NULL (hyper_ratio) ;
-            (*hyper_ratio) = A->hyper_ratio ;
+            {
+                va_start (ap, field) ;
+                double *hyper_ratio = va_arg (ap, double *) ;
+                va_end (ap) ;
+                GB_RETURN_IF_NULL (hyper_ratio) ;
+                (*hyper_ratio) = A->hyper_ratio ;
+            }
             break ;
 
         case GxB_FORMAT : 
 
-            va_start (ap, field) ;
-            format = va_arg (ap, GxB_Format_Value *) ;
-            va_end (ap) ;
-
-            GB_RETURN_IF_NULL (format) ;
-            (*format) = (A->is_csc) ? GxB_BY_COL : GxB_BY_ROW ;
+            {
+                va_start (ap, field) ;
+                GxB_Format_Value *format = va_arg (ap, GxB_Format_Value *) ;
+                va_end (ap) ;
+                GB_RETURN_IF_NULL (format) ;
+                (*format) = (A->is_csc) ? GxB_BY_COL : GxB_BY_ROW ;
+            }
             break ;
 
         case GxB_IS_HYPER : 
 
-            va_start (ap, field) ;
-            is_hyper = va_arg (ap, bool *) ;
-            va_end (ap) ;
-
-            GB_RETURN_IF_NULL (is_hyper) ;
-            (*is_hyper) = A->is_hyper ;
+            {
+                va_start (ap, field) ;
+                bool *is_hyper = va_arg (ap, bool *) ;
+                va_end (ap) ;
+                GB_RETURN_IF_NULL (is_hyper) ;
+                (*is_hyper) = A->is_hyper ;
+            }
             break ;
 
         default : 

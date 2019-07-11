@@ -21,7 +21,6 @@ test48 ;        % performance test of GrB_mxm
 test46b ;       % performance test GB_mex_assign
 test49 ;        % performance test of GrB_mxm (dot product method, A'*B)
 test51 ;        % performance test GB_mex_subassign, multiple ops
-test51b ;       % performance test GB_mex_assign, multiple ops
 test58(0)       % longer GB_mex_eWiseAdd_Matrix performance test
 test61 ;        % performance test of GrB_eMult
 test68 ;        % performance tests for eWiseMult
@@ -32,8 +31,26 @@ test73 ;        % performance of C = A*B, with mask
 test86 ;        % performance of GrB_Matrix_extract
 test52 ;        % performance of A*B with tall matrices, AdotB, AxB
 
-% performance test of GrB_mxm on all semirings (just auto method)
+test37 ;        % performance of qsort
+test51b ;       % performance of GrB_assign, multiply operations
+test87 ;        % performance test of GrB_mxm
+test89 ;        % performance test of complex A*B
+test91 ;        % test subref performance on dense vectors
+test95 ;        % performance test for GrB_transpose
+
+test111 ;       % performance test for eWiseAdd
+test113 ;       % performance tests for GrB_kron
+test114 ;       % performance of reduce-to-scalar
+test116 ;       % performance tests C(I,J)=A and C=A(I,J)
+test117 ;       % performance tests C(:,:)<M> += A
+test118 ;       % performance tests C(:,:)<M> = A
+test119 ;       % performance tests C(I,J) += scalar
+test120 ;       % performance tests C(I,J)<!M> += scalar
+test121 ;       % performance tests C(I,J)+=A
+test122 ;       % performance tests C(I,J)<!M> += A
+
+% perfoance test of GrB_mxm on all semirings (just auto method)
 test06(936, [ ], 1, 0) ;
 
-fprintf ('\ntestperf:  all tests passed.  Total time %g\n', toc (t)) ;
+fprintf ('\ntestperf:  all tests passed.  Total te %g\n', toc (t)) ;
 

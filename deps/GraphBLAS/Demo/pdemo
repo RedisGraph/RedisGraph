@@ -1,0 +1,19 @@
+#!/bin/sh
+
+../build/pagerank_demo < Matrix/eye3                > pagerank_demo.out
+../build/pagerank_demo < Matrix/2blocks            >> pagerank_demo.out
+../build/pagerank_demo < Matrix/t1                 >> pagerank_demo.out
+../build/pagerank_demo < Matrix/bcsstk01           >> pagerank_demo.out
+../build/pagerank_demo < Matrix/bcsstk16           >> pagerank_demo.out
+../build/pagerank_demo < Matrix/fs_183_1           >> pagerank_demo.out
+../build/pagerank_demo < Matrix/west0067           >> pagerank_demo.out
+
+echo "Comparing PageRank results:"
+diff -I time -I " d:" Output/pagerank_demo.out     pagerank_demo.out
+echo "Some mismatches are expected between dpagerank and ipagerank."
+echo "number of mismatches between dpagerank and ipagerank in your tests: "
+grep mismatch pagerank_demo.out | wc -l
+echo "number of mismatches between dpagerank and ipagerank in Demo/Output: "
+grep mismatch Output/pagerank_demo.out | wc -l
+
+exit 0

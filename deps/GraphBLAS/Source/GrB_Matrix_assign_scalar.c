@@ -19,9 +19,7 @@
 
 // The actual work is done in GB_assign_scalar.c.
 
-// parallel: not here; see GB_assign
-
-#include "GB.h"
+#include "GB_assign.h"
 
 #define GB_ASSIGN(type,T,ampersand)                                            \
 GrB_Info GrB_Matrix_assign_ ## T    /* C<M>(Rows,Cols) += x                 */ \
@@ -29,7 +27,7 @@ GrB_Info GrB_Matrix_assign_ ## T    /* C<M>(Rows,Cols) += x                 */ \
     GrB_Matrix C,                   /* input/output matrix for results      */ \
     const GrB_Matrix M,             /* optional mask for C                  */ \
     const GrB_BinaryOp accum,       /* accum for Z=accum(C(Rows,Cols),x)    */ \
-    const type x,                   /* scalar to assign to C(Rows,Cols)     */ \
+    type x,                         /* scalar to assign to C(Rows,Cols)     */ \
     const GrB_Index *Rows,          /* row indices                          */ \
     GrB_Index nRows,                /* number of row indices                */ \
     const GrB_Index *Cols,          /* column indices                       */ \

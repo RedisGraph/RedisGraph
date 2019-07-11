@@ -1,3 +1,41 @@
+Version 3.0.0, July TODO, 2019
+
+    * version number: Two changes to the user-visible API are not
+        backward-compatible with V2.x: the extra parameter to GxB_init, and the
+        change in the type of the Thunk argument for GxB_select.  Thus, the SO
+        version of SuiteSparse:GraphBLAS is now 3, no longer 2.
+    * OpenMP parallelism: added nthreads and chunk parameters
+    * added parameter to GxB_init: bool user_malloc_is_thread_safe,
+        for MATLAB mexFunction interface.  mxMalloc is not thread-safe.
+        This change is not backward compatible with Version 2.x.
+    * changed thunk parameter of GxB_select:  was (const void *),
+        now GrB_Vector of length 1.
+        This change is not backward compatible with Version 2.x.
+    * added options to GxB_get: determine if a matrix is hypersparse or not,
+        global library and API information.
+    * new operators and semirings: RDIV (f(x,y)=y/x) and RMINUS (y-x)
+
+Version 2.3.4, July 4, 2019
+
+    * Collected Algorithm of the ACM
+    * minor bug fix to GrB_*_extractTuples: nvals was left unchanged
+        if the matrix or vector had no entries (now returned as zero).
+
+Version 2.3.3, May 27, 2019
+
+    * minor changes to the documentation: no change to the code
+
+Version 2.3.2, Mar 18, 2019
+
+    * GxB_Matrix_Option_set: removed spurious check of input matrix
+
+Version 2.3.1, Mar 9, 2019
+
+    * _Generic:  further modifications for 'int' vs 'const int', needed for
+        icc 19.0.0.
+    * bug fix in user_def1.m4: compile-time GxB_Semring_define with terminal
+        monoids
+
 Version 2.3.0, Feb 25, 2019
 
     * early exit: for integer TIMES monoids (terminal value is 0);

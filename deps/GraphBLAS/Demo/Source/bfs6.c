@@ -80,21 +80,22 @@ GrB_Info bfs6               // BFS of a graph (using unary operator)
     // BFS traversal and label the nodes
     //--------------------------------------------------------------------------
 
-    GrB_Index nvals = 1 ;
-    for (level = 1 ; nvals > 0 && level <= n ; level++)
+    bool successor = true ; // true when some successor found
+    for (level = 1 ; successor && level <= n ; level++)
     {
+
         // v[q] = level, using apply.  This function applies the unary operator
         // to the entries in q, which are the unvisited successors, and then
         // writes their levels to v, thus updating the levels of those nodes in
         // v.  The patterns of v and q are disjoint.
         GrB_apply (v, NULL, GrB_PLUS_INT32, apply_level, q, NULL) ;
 
-        // q'<!v> = q ||.&& A ; finds all the unvisited
+        // q<!v> = q ||.&& A ; finds all the unvisited
         // successors from current q, using !v as the mask
         GrB_vxm (q, v, NULL, Boolean, q, A, desc) ;
 
-        // this fails if A has any explicit zeros
-        GrB_Vector_nvals (&nvals, q) ;
+        // successor = ||(q)
+        GrB_reduce (&successor, NULL, Lor, q, NULL) ;
     }
 
     // make v sparse

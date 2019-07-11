@@ -7,9 +7,7 @@
 
 //------------------------------------------------------------------------------
 
-// parallel: not here
-
-#include "GB.h"
+#include "GB_export.h"
 
 #define GB_FREE_ALL ;
 
@@ -50,7 +48,7 @@ GrB_Info GxB_Matrix_export_HyperCSR  // export and free a hypersparse CSR matrix
     //--------------------------------------------------------------------------
 
     // ensure the matrix is in hypersparse CSR format
-    (*A)->hyper_ratio = GxB_ALWAYS_HYPER ;
+    (*A)->hyper_ratio = GB_ALWAYS_HYPER ;
     if (!((*A)->is_hyper))
     { 
         // convert A from standard to hypersparse format

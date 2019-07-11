@@ -1,13 +1,18 @@
 function test30b
 %TEST30B performance test GB_mex_assign, scalar expansionb
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
-%% this test is too slow when debugging
+% this test is too slow when debugging
 debug = GB_mex_debug ;
 
 if (debug == 0)
+
+    [save save_chunk] = nthreads_get ;
+    chunk = 4096 ;
+    nthreads = feature ('numcores') ;
+    nthreads_set (nthreads, chunk) ;
 
     Prob = ssget (2662) ;
     A = Prob.A ;
@@ -45,8 +50,10 @@ if (debug == 0)
     assert (isequal (C, C2.matrix)) ;
     fprintf ('\ntest30b: all tests passed\n') ;
 
+    nthreads_set (save, save_chunk) ;
+
 else
-    fprintf ('\ntest30b: tests skipped when NDEBUG enabled\n') ;
+    fprintf ('\ntest30b: tests skipped when debug enabled\n') ;
 end
 
 

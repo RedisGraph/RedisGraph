@@ -1,0 +1,26 @@
+#!/bin/sh
+
+../build/bfs_demo 1 4 4                        > bfs_demo.out
+../build/bfs_demo 0 5 5 30 1                  >> bfs_demo.out
+../build/bfs_demo < Matrix/eye3               >> bfs_demo.out
+../build/bfs_demo < Matrix/2blocks            >> bfs_demo.out
+../build/bfs_demo < Matrix/t1                 >> bfs_demo.out
+../build/bfs_demo < Matrix/t2                 >> bfs_demo.out
+../build/bfs_demo < Matrix/ash219             >> bfs_demo.out
+../build/bfs_demo < Matrix/bcsstk01           >> bfs_demo.out
+../build/bfs_demo < Matrix/bcsstk16           >> bfs_demo.out
+../build/bfs_demo < Matrix/fs_183_1           >> bfs_demo.out
+../build/bfs_demo < Matrix/ibm32a             >> bfs_demo.out
+../build/bfs_demo < Matrix/ibm32b             >> bfs_demo.out
+../build/bfs_demo < Matrix/lp_afiro           >> bfs_demo.out
+../build/bfs_demo < Matrix/mbeacxc            >> bfs_demo.out
+../build/bfs_demo < Matrix/west0067           >> bfs_demo.out
+../build/bfs_demo 1 200 200 0                 >> bfs_demo.out
+../build/bfs_demo 0 10000 10000 100000 0      >> bfs_demo.out
+../build/bfs_demo 0 10000 10000 100000 1      >> bfs_demo.out
+../build/bfs_demo 0 100000 100000 10000000 0  >> bfs_demo.out
+../build/bfs_demo 0 100000 100000 10000000 1  >> bfs_demo.out
+
+diff -I time Output/bfs_demo.out          bfs_demo.out
+
+exit 0

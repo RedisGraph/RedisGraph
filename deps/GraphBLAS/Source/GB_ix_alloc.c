@@ -18,8 +18,6 @@
 // The function never accessed the global matrix queue, and thus it
 // cannot return GrB_PANIC.
 
-// not parallel: this function does O(1) work and is already thread-safe.
-
 #include "GB.h"
 
 GrB_Info GB_ix_alloc        // allocate A->i and A->x space in a matrix
@@ -35,11 +33,8 @@ GrB_Info GB_ix_alloc        // allocate A->i and A->x space in a matrix
     // check inputs
     //--------------------------------------------------------------------------
 
-    // GB_new does not always initialize A->p; GB_check fails in this case.  So
-    // the following assertion is not possible here.  This is by design.
-    // Thus, ASSERT_OK (GB_check (A, "A", ...)) ;  cannot be used here.
-    ASSERT (A != NULL && A->p != NULL) ;
-    ASSERT ((!(A->is_hyper) || A->h != NULL)) ;
+    // GB_new does not always initialize or even allocate A->p
+    ASSERT (A != NULL) ;
 
     if (nzmax > GB_INDEX_MAX)
     { 
@@ -53,8 +48,7 @@ GrB_Info GB_ix_alloc        // allocate A->i and A->x space in a matrix
 
     // Free the existing A->x and A->i content, if any.
     // Leave A->p and A->h unchanged.
-    GrB_Info info = GB_ix_free (A) ;
-    ASSERT (info == GrB_SUCCESS) ;
+    GB_IX_FREE (A) ;
 
     // allocate the new A->x and A->i content
     A->nzmax = GB_IMAX (nzmax, 1) ;

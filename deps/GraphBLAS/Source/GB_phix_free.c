@@ -11,8 +11,6 @@
 // A->magic becomes GB_MAGIC2.  If this matrix is given to a user-callable
 // GraphBLAS function, it will generate a GrB_INVALID_OBJECT error.
 
-// not parallel: this function does O(1) work and is already thread-safe.
-
 // This function normally returns GrB_SUCCESS. 
 
 // If A is in the queue, it is removed, which requires access to the critical

@@ -1,10 +1,10 @@
 function test30
 %TEST30 test GxB_subassign
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
-%% this test is too slow when debugging
+% this test is too slow when debugging
 debug = GB_mex_debug ;
 
 if (debug == 0)
@@ -29,6 +29,7 @@ if (debug == 0)
     % to MATLAB.
 
     fprintf ('start GraphBLAS:\n') ;
+
     tic 
     C2 = GB_mex_subassign (A, [], [], scalar, I0, J0, []) ;
     toc
@@ -46,6 +47,6 @@ if (debug == 0)
     fprintf ('\ntest30: all tests passed\n') ;
 
 else
-    fprintf ('\ntest30: tests skipped when NDEBUG enabled\n') ;
+    fprintf ('\ntest30: tests skipped when debug enabled\n') ;
 end
 

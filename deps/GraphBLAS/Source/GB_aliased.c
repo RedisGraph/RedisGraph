@@ -12,9 +12,10 @@
 // always be shallow, in either A or B, or both.  NULL pointers are not
 // aliased.
 
-// not parallel: takes O(1) time
-
 #include "GB.h"
+
+// true if pointers p1 and p2 are aliased and not NULL
+#define GB_POINTER_ALIASED(p1,p2) ((p1) == (p2) && (p1) != NULL)
 
 bool GB_aliased             // determine if A and B are aliased
 (

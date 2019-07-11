@@ -10,9 +10,7 @@
 // Since A->p and A->h are unchanged, the matrix is still valid (unless it was
 // invalid on input).  nnz(A) would report zero, and so would GrB_Matrix_nvals.
 
-// not parallel: this function does O(1) work and is already thread-safe.
-
-#include "GB.h"
+#include "GB_Pending.h"
 
 GrB_Info GB_ix_free             // free A->i and A->x of a matrix
 (
@@ -34,8 +32,7 @@ GrB_Info GB_ix_free             // free A->i and A->x of a matrix
     //--------------------------------------------------------------------------
 
     // zombies and pending tuples are about to be deleted
-    ASSERT (GB_PENDING_OK (A)) ;
-    ASSERT (GB_ZOMBIES_OK (A)) ;
+    ASSERT (GB_PENDING_OK (A)) ; ASSERT (GB_ZOMBIES_OK (A)) ;
 
     // free A->i unless it is shallow
     if (!A->i_shallow)
@@ -60,8 +57,8 @@ GrB_Info GB_ix_free             // free A->i and A->x of a matrix
     // no zombies remain
     A->nzombies = 0 ;
 
-    // free pending tuples
-    GB_pending_free (A) ;
+    // free the list of pending tuples
+    GB_Pending_free (&(A->Pending)) ;
 
     // remove from the queue, if present; panic if critical section fails
     if (!GB_queue_remove (A)) return (GrB_PANIC) ;

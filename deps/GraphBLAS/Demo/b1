@@ -1,0 +1,5 @@
+#!/bin/sh
+
+../build/bfs_demo 1 4 4
+
+exit 0

@@ -12,9 +12,7 @@
 // implementation, both are the same as an n-by-1 GrB_Matrix, except with
 // restrictions on the matrix operations that can be performed on them.
 
-// parallel: not here; see GB_extract.
-
-#include "GB.h"
+#include "GB_extract.h"
 
 GrB_Info GrB_Col_extract        // w<M> = accum (w, A(I,j)) or (A(j,I))'
 (
@@ -43,8 +41,6 @@ GrB_Info GrB_Col_extract        // w<M> = accum (w, A(I,j)) or (A(j,I))'
     // get the descriptor
     GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, A_transpose, xx1, xx2);
 
-    // FUTURE:: use a consistent error message; see also
-    // GB_ijproperties, GB_ICHECK, setElement, extractElement
     GrB_Index ancols = (A_transpose ? GB_NROWS (A) : GB_NCOLS (A)) ;
     if (j >= ancols)
     { 

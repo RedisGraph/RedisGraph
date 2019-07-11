@@ -7,8 +7,6 @@
 
 //------------------------------------------------------------------------------
 
-// parallel: not needed; used only for testing and debugging.
-
 #include "GB.h"
 
 GrB_Info GxB_Matrix_fprint          // print and check a GrB_Matrix

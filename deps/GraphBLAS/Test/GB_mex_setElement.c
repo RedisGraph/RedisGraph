@@ -2,7 +2,7 @@
 // GB_mex_setElement: MATLAB interface for A(i,j) = x
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -23,6 +23,9 @@
     GB_mx_put_global (true, 0) ;        \
 }
 
+#if defined ( __GNUC__ )
+#pragma GCC diagnostic ignored "-Wmissing-prototypes"
+#endif
 
 // set all elements of a matrix and return if an error is encountered
 #define setEl(name,type)                                                    \

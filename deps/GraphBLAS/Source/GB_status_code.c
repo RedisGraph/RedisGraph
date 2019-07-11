@@ -9,8 +9,6 @@
 
 // GB_status_code: convert GrB_Info enum into a string
 
-// not parallel: this function does O(1) work and is already thread-safe.
-
 #include "GB.h"
 
 const char *GB_status_code (GrB_Info info)

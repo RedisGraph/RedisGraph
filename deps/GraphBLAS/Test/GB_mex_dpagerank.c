@@ -2,7 +2,7 @@
 // GB_mex_dpagerank: compute pagerank with a real semiring
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -59,17 +59,17 @@ void mexFunction
 
     // compute the PageRank P
     int iters = 0 ;
-    TIC ;
+    GB_MEX_TIC ;
     if (nargin > 1)
     {
-        printf ("dpagerank2, method %d\n", method) ;
+        // printf ("dpagerank2, method %d\n", method) ;
         info = dpagerank2 (&P, A, 100, 1e-5, &iters, method) ;
     }
     else // default method
     {
         info = dpagerank (&P, A) ;
     }
-    TOC ;
+    GB_MEX_TOC ;
 
     if (info != GrB_SUCCESS)
     {

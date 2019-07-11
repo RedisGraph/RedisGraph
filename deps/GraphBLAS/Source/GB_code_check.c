@@ -9,8 +9,6 @@
 
 // Only prints entries of built-in types; user-defined types can't be printed.
 
-// not parallel: this function does O(1) work and is already thread-safe.
-
 #include "GB.h"
 
 GrB_Info GB_code_check          // print an entry using a type code
@@ -26,6 +24,7 @@ GrB_Info GB_code_check          // print an entry using a type code
     int64_t i ;
     uint64_t u ;
     double d ;
+    float s ;
 
     switch (code)
     {
@@ -38,7 +37,7 @@ GrB_Info GB_code_check          // print an entry using a type code
         case GB_UINT32_code : u = *((uint32_t *) x) ; GBPR ("uint32 "  GBu, u) ; break ;
         case GB_INT64_code  : i = *((int64_t  *) x) ; GBPR ("int64 "   GBd, i) ; break ;
         case GB_UINT64_code : u = *((uint64_t *) x) ; GBPR ("uint64 "  GBu, u) ; break ;
-        case GB_FP32_code   : d = *((float    *) x) ; GBPR ("float %.6g"  , d) ; break ;
+        case GB_FP32_code   : s = *((float    *) x) ; GBPR ("float %.6g"  , (double) s) ; break ;
         case GB_FP64_code   : d = *((double   *) x) ; GBPR ("double %.15g", d) ; break ;
         case GB_UCT_code    :
         case GB_UDT_code    :

@@ -7,41 +7,28 @@
 
 //------------------------------------------------------------------------------
 
-// computes C(i,j) = A (:,i)'*B(:,j) via sparse dot product.
+// computes C(i,j) = A (:,i)'*B(:,j) via sparse dot product
 
-// parallel: the parallelism will be handled outside this code, in
-// GB_AxB_parallel.  This work is done by a single thread.
+//      GB_PHASE_1_OF_2 ; determine if cij exists, and increment C_count
+//      GB_PHASE_2_OF_2 : 2nd phase, compute cij, no realloc of C
 
-#undef GB_DOT_MULTADD
 #undef GB_DOT_MERGE
 
-// cij += A(k,i) * B(k,j)
-#define GB_DOT_MULTADD(pA,pB)                                   \
-{                                                               \
-    GB_DOT_GETA (pA) ;         /* aki = A(k,i) */               \
-    GB_DOT_GETB (pB) ;         /* bkj = B(k,j) */               \
-    GB_DOT_MULT (bkj) ;        /* t = aki * bkj */              \
-    GB_DOT_ADD ;               /* cij += t */                   \
-    GB_DOT_TERMINAL (cij) ;    /* break if cij == terminal */   \
-}
-
 // cij += A(k,i) * B(k,j), for merge operation
-#define GB_DOT_MERGE                                            \
-{                                                               \
-    GB_DOT_GETA (pA++) ;       /* aki = A(k,i) */               \
-    GB_DOT_GETB (pB++) ;       /* bkj = B(k,j) */               \
-    GB_DOT_MULT (bkj) ;        /* t = aki * bkj */              \
-    if (cij_exists)                                             \
-    {                                                           \
-        GB_DOT_ADD ;           /* cij += t */                   \
-    }                                                           \
-    else                                                        \
-    {                                                           \
-        /* cij = A(k,i) * B(k,j), and add to the pattern */     \
-        cij_exists = true ;                                     \
-        GB_DOT_COPY ;          /* cij = t */                    \
-    }                                                           \
-    GB_DOT_TERMINAL (cij) ;    /* break if cij == terminal */   \
+#define GB_DOT_MERGE                                                \
+{                                                                   \
+    GB_GETA (aki, Ax, pA) ;             /* aki = A(k,i) */          \
+    GB_GETB (bkj, Bx, pB) ;             /* bkj = B(k,j) */          \
+    if (cij_exists)                                                 \
+    {                                                               \
+        GB_MULTADD (cij, aki, bkj) ;    /* cij += aki * bkj */      \
+    }                                                               \
+    else                                                            \
+    {                                                               \
+        /* cij = A(k,i) * B(k,j), and add to the pattern */         \
+        cij_exists = true ;                                         \
+        GB_MULT (cij, aki, bkj) ;       /* cij = aki * bkj */       \
+    }                                                               \
 }
 
 {
@@ -56,27 +43,15 @@
     ASSERT (ainz >= 0) ;
 
     //--------------------------------------------------------------------------
-    // ensure enough space exists in C
+    // declare the cij scalar
     //--------------------------------------------------------------------------
 
-    if (cnz == C->nzmax)
-    {
-        GrB_Info info = GB_ix_realloc (C, 2*(C->nzmax), true, NULL) ;
-        if (info != GrB_SUCCESS)
-        { 
-            // out of memory
-            ASSERT (!(C->enqueued)) ;
-            GB_free (Chandle) ;
-            return (info) ;
-        }
-        Ci = C->i ;
-        Cx = C->x ;
-        // reacquire the pointer cij C->x has moved
-        GB_DOT_REACQUIRE ;
-    }
+    #if !defined ( GB_PHASE_1_OF_2 )
+    GB_CIJ_DECLARE (cij) ;
+    #endif
 
     //--------------------------------------------------------------------------
-    // compute C(i,j)
+    // compute C(i,j) = A(:,i)' * B(j,:)
     //--------------------------------------------------------------------------
 
     if (ainz == 0)
@@ -107,11 +82,23 @@
         //----------------------------------------------------------------------
 
         cij_exists = true ;
-        GB_DOT_CLEAR ;                         // cij = identity
-        for (int64_t k = 0 ; k < bvlen ; k++)
+
+        #if !defined ( GB_PHASE_1_OF_2 )
+        // cij = A(0,i) * B(0,j)
+        GB_GETA (aki, Ax, pA) ;             // aki = A(0,i)
+        GB_GETB (bkj, Bx, pB) ;             // bkj = B(0,j)
+        GB_MULT (cij, aki, bkj) ;           // cij = aki * bkj
+
+        GB_DOT_SIMD
+        for (int64_t k = 1 ; k < bvlen ; k++)
         { 
-            GB_DOT_MULTADD (pA+k, pB+k) ;      // cij += A(k,i) * B(k,j)
+            GB_DOT_TERMINAL (cij) ;             // break if cij == terminal
+            // cij += A(k,i) * B(k,j)
+            GB_GETA (aki, Ax, pA+k) ;           // aki = A(k,i)
+            GB_GETB (bkj, Bx, pB+k) ;           // bkj = B(k,j)
+            GB_MULTADD (cij, aki, bkj) ;        // cij += aki * bkj
         }
+        #endif
 
     }
     else if (ainz == bvlen)
@@ -122,12 +109,25 @@
         //----------------------------------------------------------------------
 
         cij_exists = true ;
-        GB_DOT_CLEAR ;                         // cij = identity
-        for ( ; pB < pB_end ; pB++)
+
+        #if !defined ( GB_PHASE_1_OF_2 )
+        int64_t k = Bi [pB] ;               // first row index of B(:,j)
+        // cij = A(k,i) * B(k,j)
+        GB_GETA (aki, Ax, pA+k) ;           // aki = A(k,i)
+        GB_GETB (bkj, Bx, pB  ) ;           // bkj = B(k,j)
+        GB_MULT (cij, aki, bkj) ;           // cij = aki * bkj
+
+        GB_DOT_SIMD
+        for (int64_t p = pB+1 ; p < pB_end ; p++)
         { 
-            int64_t k = Bi [pB] ;
-            GB_DOT_MULTADD (pA+k, pB) ;        // cij += A(k,i) * B(k,j)
+            GB_DOT_TERMINAL (cij) ;             // break if cij == terminal
+            int64_t k = Bi [p] ;                // next row index of B(:,j)
+            // cij += A(k,i) * B(k,j)
+            GB_GETA (aki, Ax, pA+k) ;           // aki = A(k,i)
+            GB_GETB (bkj, Bx, p   ) ;           // bkj = B(k,j)
+            GB_MULTADD (cij, aki, bkj) ;        // cij += aki * bkj
         }
+        #endif
 
     }
     else if (bjnz == bvlen)
@@ -138,12 +138,25 @@
         //----------------------------------------------------------------------
 
         cij_exists = true ;
-        GB_DOT_CLEAR ;                         // cij = identity
-        for ( ; pA < pA_end ; pA++)
+
+        #if !defined ( GB_PHASE_1_OF_2 )
+        int64_t k = Ai [pA] ;               // first row index of A(:,i)
+        // cij = A(k,i) * B(k,j)
+        GB_GETA (aki, Ax, pA  ) ;           // aki = A(k,i)
+        GB_GETB (bkj, Bx, pB+k) ;           // bkj = B(k,j)
+        GB_MULT (cij, aki, bkj) ;           // cij = aki * bkj
+
+        GB_DOT_SIMD
+        for (int64_t p = pA+1 ; p < pA_end ; p++)
         { 
-            int64_t k = Ai [pA] ;
-            GB_DOT_MULTADD (pA, pB+k) ;        // cij += A(k,i) * B(k,j)
+            GB_DOT_TERMINAL (cij) ;             // break if cij == terminal
+            int64_t k = Ai [p] ;                // next row index of A(:,i)
+            // cij += A(k,i) * B(k,j)
+            GB_GETA (aki, Ax, p   ) ;           // aki = A(k,i)
+            GB_GETB (bkj, Bx, pB+k) ;           // bkj = B(k,j)
+            GB_MULTADD (cij, aki, bkj) ;        // cij += aki * bkj
         }
+        #endif
 
     }
     else if (ainz > 8 * bjnz)
@@ -175,7 +188,15 @@
             else // ia == ib == k
             { 
                 // A(k,i) and B(k,j) are the next entries to merge
+                #if defined ( GB_PHASE_1_OF_2 )
+                cij_exists = true ;
+                break ;
+                #else
                 GB_DOT_MERGE ;
+                GB_DOT_TERMINAL (cij) ;         // break if cij == terminal
+                pA++ ;
+                pB++ ;
+                #endif
             }
         }
 
@@ -209,7 +230,15 @@
             else // ia == ib == k
             { 
                 // A(k,i) and B(k,j) are the next entries to merge
+                #if defined ( GB_PHASE_1_OF_2 )
+                cij_exists = true ;
+                break ;
+                #else
                 GB_DOT_MERGE ;
+                GB_DOT_TERMINAL (cij) ;         // break if cij == terminal
+                pA++ ;
+                pB++ ;
+                #endif
             }
         }
 
@@ -238,7 +267,15 @@
             else // ia == ib == k
             { 
                 // A(k,i) and B(k,j) are the next entries to merge
+                #if defined ( GB_PHASE_1_OF_2 )
+                cij_exists = true ;
+                break ;
+                #else
                 GB_DOT_MERGE ;
+                GB_DOT_TERMINAL (cij) ;         // break if cij == terminal
+                pA++ ;
+                pB++ ;
+                #endif
             }
         }
     }
@@ -250,8 +287,15 @@
     if (cij_exists)
     { 
         // C(i,j) = cij
-        GB_DOT_SAVE ;
+        #if defined ( GB_PHASE_1_OF_2 )
+        C_count [Iter_k] ++ ;
+        #else
+        GB_CIJ_SAVE (cij, cnz) ;
         Ci [cnz++] = i ;
+        #if defined ( GB_PHASE_2_OF_2 )
+        if (cnz > cnz_last) break ;
+        #endif
+        #endif
     }
 }
 

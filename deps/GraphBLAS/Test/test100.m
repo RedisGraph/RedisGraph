@@ -4,6 +4,8 @@ function test100
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
+[~, ~, ~, classes, ~, ~] = GB_spec_opsall ;
+
 rng ('default') ;
 
 fprintf ('\ntest100: GB_mex_isequal\n') ;
@@ -49,8 +51,6 @@ A = A+A.' ;
 r0 = isequal (A, A.') ;
 r1 = GB_mex_isequal (A, A.') ;
 assert (r0 == r1) 
-
-[mult_ops unary_ops add_ops classes] = GB_spec_opsall ;
 
 density = 0.5 ;
 scale = 100 ;

@@ -2,8 +2,10 @@ function test74
 %TEST74 test GrB_mxm: dot product method
 % built-in semirings, no typecast, no mask
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
+[mult_ops, ~, add_ops, classes, ~, ~] = GB_spec_opsall ;
 
 if (nargin < 1)
     fulltest = 1 ;
@@ -16,8 +18,6 @@ else
     fprintf ('quick test of GrB_mxm (dot product method)\n') ;
     n_semirings_max = 1 ;
 end
-
-[mult_ops unary_ops add_ops classes] = GB_spec_opsall ;
 
 dnn = struct ;
 dtn = struct ( 'inp0', 'tran' ) ;

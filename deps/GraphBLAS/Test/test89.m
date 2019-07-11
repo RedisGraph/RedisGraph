@@ -1,8 +1,13 @@
 function test89
 %TEST89 performance test of complex A*B
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
+[save save_chunk] = nthreads_get ;
+chunk = 4096 ;
+nthreads = feature ('numcores') ;
+nthreads_set (nthreads, chunk) ;
 
 rng ('default') ;
 Prob = ssget (936) 
@@ -38,13 +43,14 @@ for do_real = 0:1
         % 1002: heap
         % 1003: dot
 
-    % GraphBLAS is slower than MATLAB because the complex type is user-defined.
-    % This uses the default method, which selects Gustavson's method:
+    % GraphBLAS is slower than it could be because the complex type may be
+    % user-defined at run-time.  This uses the default method, which selects
+    % Gustavson's method:
 
     C2 = GB_mex_AxB (A, B) ;
     tg = gbresults ;
     err = norm (C1-C2,1)
-    fprintf ('GraphBLAS %g slowdown %g\n', tg, tg/tm) ;
+    fprintf ('GraphBLAS %g speedup %g\n', tg, tm/tg) ;
 
     % these are expected to be slower still; they do not use the default method
     % (Gustavson) which is selected by the auto-strategy.
@@ -52,12 +58,13 @@ for do_real = 0:1
     C2 = GB_mex_AxB (A, B, 0, 0, 1002) ;
     tg = gbresults ;
     err = norm (C1-C2,1)
-    fprintf ('GraphBLAS %g slowdown %g (heap)\n', tg, tg/tm) ;
+    fprintf ('GraphBLAS %g speedup %g (heap)\n', tg, tm/tg) ;
 
 
     C2 = GB_mex_AxB (A, B, 0, 0, 1003) ;
     tg = gbresults ;
     err = norm (C1-C2,1)
-    fprintf ('GraphBLAS %g slowdown %g (dot)\n', tg, tg/tm) ;
+    fprintf ('GraphBLAS %g speedup %g (dot)\n', tg, tm/tg) ;
 
 end
+nthreads_set (save, save_chunk) ;

@@ -2,7 +2,7 @@
 // GB_mex_rdiv: compute C=A*B with the rdiv operator
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -38,19 +38,19 @@ int64_t bnrows = 0 ;
 int64_t bncols = 0 ;
 GrB_Desc_Value AxB_method = GxB_DEFAULT, AxB_method_used ;
 
+GrB_Info axb (GB_Context Context, bool cprint) ;
+
 #ifndef MY_RDIV
 GrB_Semiring My_plus_rdiv = NULL ;
 GrB_BinaryOp My_rdiv = NULL ;
 
-void my_rdiv
-(
-    double *z,
-    const double *x,
-    const double *y
-)
+void my_rdiv (double *z, const double *x, const double *y) ;
+
+void my_rdiv (double *z, const double *x, const double *y)
 {
     (*z) = (*y) / (*x) ;
 }
+
 #endif
 
 //------------------------------------------------------------------------------

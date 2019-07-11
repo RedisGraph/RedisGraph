@@ -2,7 +2,7 @@
 // GB_mx_build_template: build a sparse vector or matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -77,6 +77,26 @@
 #define FREE_DEEP_COPY ;
 
 bool malloc_debug = false ;
+
+GrB_Info builder
+(
+    #ifdef MATRIX
+    GrB_Matrix *Chandle,
+    #else
+    GrB_Vector *Chandle,
+    #endif
+    GrB_Type ctype,
+    GrB_Index nrows,
+    GrB_Index ncols,
+    GrB_Index *I,
+    GrB_Index *J,
+    void *X,
+    GrB_Index ni,
+    GrB_BinaryOp dup,
+    bool C_is_csc,
+    mxClassID xclass,
+    GB_Context Context
+) ;
 
 //------------------------------------------------------------------------------
 

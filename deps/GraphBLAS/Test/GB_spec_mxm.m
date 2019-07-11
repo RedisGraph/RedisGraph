@@ -43,7 +43,7 @@ function C = GB_spec_mxm (C, Mask, accum, semiring, A, B, descriptor)
 % C<Mask> = accum (C,T).  See GrB_accum_mask for a description of this
 % last step.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 %-------------------------------------------------------------------------------

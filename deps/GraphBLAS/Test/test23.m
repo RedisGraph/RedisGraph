@@ -1,25 +1,23 @@
 function test23(fulltest)
 %TEST23 test GrB_*_build
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
+[~, ~, ~, classes, ~, ~] = GB_spec_opsall ;
 
 if (nargin < 1)
     % do a short test, by default
     fulltest = 0 ;
 end
 
-[mult_ops unary_ops add_ops classes] = GB_spec_opsall ;
-
 ops = {
-% for these 8, the monoid has the same type as x, y, and z, all semiring.class
 'first',  0, % z = x
 'second', 0, % z = y
 'min',    1, % z = min(x,y)
 'max',    1, % z = max(x,y)
 'plus',   1, % z = x + y
 'times',  1, % z = x * y
-% these 3 are x, y, and z are semiring.class 
 'iseq',   1, % z = x == y
 'or',     1, % z = x || y
 'and',    1, % z = x && y

@@ -10,13 +10,11 @@
 // GrB_init (or GxB_init) must called before any other GraphBLAS operation.
 // GrB_finalize must be called as the last GraphBLAS operation.
 
-// not parallel: this function does O(1) work and is already thread-safe.
-
 #include "GB.h"
 
 GrB_Info GrB_init           // start up GraphBLAS
 (
-    const GrB_Mode mode     // blocking or non-blocking mode
+    GrB_Mode mode           // blocking or non-blocking mode
 )
 {
 
@@ -24,12 +22,14 @@ GrB_Info GrB_init           // start up GraphBLAS
     // check inputs
     //--------------------------------------------------------------------------
 
-    GB_WHERE ("GrB_init (mode)") ;
+    GB_CONTEXT ("GrB_init (mode)") ;
 
     //--------------------------------------------------------------------------
     // initialize GraphBLAS
     //--------------------------------------------------------------------------
 
-    return (GB_init (mode, malloc, calloc, realloc, free, Context)) ;
+    // default:  use the ANSI C11 malloc memory manager, which is thread-safe 
+
+    return (GB_init (mode, malloc, calloc, realloc, free, true, Context)) ;
 }
 

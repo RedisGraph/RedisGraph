@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_apply_op:  apply a unary operator to an array
+// GB_apply_op: typecast and apply a unary operator to an array
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
@@ -11,18 +11,19 @@
 
 // Compare with GB_transpose_op.c
 
-// PARALLEL: do it here, but it is easy.  Might want to split into separate
-// files like Generated/GB_AxB*, so worker is not in a macro but in a function.
-
-#include "GB.h"
+#include "GB_apply.h"
+#ifndef GBCOMPACT
+#include "GB_iterator.h"
+#include "GB_unaryop__include.h"
+#endif
 
 void GB_apply_op            // apply a unary operator, Cx = op ((xtype) Ax)
 (
-    GB_void *Cx,            // output array, of type op->ztype
-    const GrB_UnaryOp op,   // operator to apply
-    const GB_void *Ax,      // input array, of type atype
-    const GrB_Type atype,   // type of Ax
-    const int64_t anz,      // size of Ax and Cx
+    GB_void *restrict Cx,           // output array, of type op->ztype
+    const GrB_UnaryOp op,           // operator to apply
+    const GB_void *restrict Ax,     // input array, of type Atype
+    const GrB_Type Atype,           // type of Ax
+    const int64_t anz,              // size of Ax and Cx
     GB_Context Context
 )
 {
@@ -34,151 +35,62 @@ void GB_apply_op            // apply a unary operator, Cx = op ((xtype) Ax)
     ASSERT (Cx != NULL) ;
     ASSERT (Ax != NULL) ;
     ASSERT (anz >= 0) ;
-    ASSERT (atype != NULL) ;
+    ASSERT (Atype != NULL) ;
     ASSERT (op != NULL) ;
+
+    GrB_Info info ;
 
     //--------------------------------------------------------------------------
     // determine the number of threads to use
     //--------------------------------------------------------------------------
 
-    GB_GET_NTHREADS (nthreads, Context) ;
+    GB_GET_NTHREADS_MAX (nthreads_max, chunk, Context) ;
+    int nthreads = GB_nthreads (anz, chunk, nthreads_max) ;
 
     //--------------------------------------------------------------------------
     // define the worker for the switch factory
     //--------------------------------------------------------------------------
 
-    // Some unary operators z=f(x) do not use the value x, like z=1.  This is
-    // intentional, so the gcc warning is ignored.
-    #pragma GCC diagnostic ignored "-Wunused-but-set-variable"
+    // FUTURE:: these operators could be renamed:
+    // GrB_AINV_BOOL and GxB_ABS_BOOL to GrB_IDENTITY_BOOL.
+    // GrB_MINV_BOOL to GxB_ONE_BOOL.
+    // GxB_ABS_UINT* to GrB_IDENTITY_UINT*.
+    // and then these workers would not need to be created.
 
-    // For built-in types only, thus xtype == ztype, but atype can differ
-    #define GB_WORKER(ztype,atype)                              \
-    {                                                           \
-        ztype *cx = (ztype *) Cx ;                              \
-        atype *ax = (atype *) Ax ;                              \
-        for (int64_t p = 0 ; p < anz ; p++)                     \
-        {                                                       \
-            /* x = (ztype) ax [p], type casting */              \
-            ztype x ;                                           \
-            GB_CAST (x, ax [p]) ;                               \
-            /* apply the unary operator */                      \
-            cx [p] = GB_OP (x) ;                                \
-        }                                                       \
-        return ;                                                \
-    }
+    #define GB_unop(op,zname,aname) GB_unop_ ## op ## zname ## aname
+
+    #define GB_WORKER(op,zname,ztype,aname,atype)                           \
+    {                                                                       \
+        info = GB_unop (op,zname,aname) ((ztype *) Cx, (const atype *) Ax,  \
+            anz, nthreads) ;                                                \
+        if (info == GrB_SUCCESS) return ;                                   \
+    }                                                                       \
+    break ;
 
     //--------------------------------------------------------------------------
     // launch the switch factory
     //--------------------------------------------------------------------------
 
-    // If GB_COMPACT is defined, the switch factory is disabled and all
-    // work is done by the generic worker.  The compiled code will be more
-    // compact, but 3 to 4 times slower.
-
     #ifndef GBCOMPACT
-
-        // switch factory for two types, controlled by code1 and code2
-        GB_Type_code code1 = op->ztype->code ;      // defines ztype
-        GB_Type_code code2 = atype->code ;          // defines atype
-
-        ASSERT (code1 <= GB_UDT_code) ;
-        ASSERT (code2 <= GB_UDT_code) ;
-
-        // GB_BOP(x) is for boolean x, GB_IOP(x) for integer (int* and uint*),
-        // and GB_FOP(x) is for float, and GB_DOP(x) is for double.
-
-        // NOTE: some of these operators z=f(x) do not depend on x, like z=1.
-        // x is read anyway, but the compiler can remove that as dead code if
-        // it is able to.  gcc with -Wunused-but-set-variable will complain,
-        // but there's no simple way to silence this spurious warning.
-        // Ignore it.
-
-        switch (op->opcode)
-        {
-
-            case GB_ONE_opcode :       // z = 1
-
-                #define GB_BOP(x) true
-                #define GB_IOP(x) 1
-                #define GB_FOP(x) 1
-                #define GB_DOP(x) 1
-                #include "GB_2type_template.c"
-                break ;
-
-            case GB_IDENTITY_opcode :  // z = x
-
-                #define GB_BOP(x) x
-                #define GB_IOP(x) x
-                #define GB_FOP(x) x
-                #define GB_DOP(x) x
-                #include "GB_2type_template.c"
-                break ;
-
-            case GB_AINV_opcode :      // z = -x
-
-                #define GB_BOP(x)  x
-                #define GB_IOP(x) -x
-                #define GB_FOP(x) -x
-                #define GB_DOP(x) -x
-                #include "GB_2type_template.c"
-                break ;
-
-            case GB_ABS_opcode :       // z = abs(x)
-
-                #define GB_BOP(x) x
-                #define GB_IOP(x) GB_IABS(x)
-                #define GB_FOP(x) fabsf(x)
-                #define GB_DOP(x) fabs(x)
-                #include "GB_2type_template.c"
-                break ;
-
-            case GB_MINV_opcode :      // z = 1/x
-
-                // see Source/GB.h discussion on boolean and integer division
-                #define GB_BOP(x) true
-                #define GB_IOP(x) GB_IMINV(x)
-                #define GB_FOP(x) 1./x
-                #define GB_DOP(x) 1./x
-                #include "GB_2type_template.c"
-                break ;
-
-            case GB_LNOT_opcode :      // z = ! (x != 0)
-
-                #define GB_BOP(x) !x
-                #define GB_IOP(x) (!(x != 0))
-                #define GB_FOP(x) (!(x != 0))
-                #define GB_DOP(x) (!(x != 0))
-                #include "GB_2type_template.c"
-                break ;
-
-            default: ;
-        }
-
+    #include "GB_unaryop_factory.c"
     #endif
 
-    // If the switch factory has no worker for the opcode or type, then it
-    // falls through to the generic worker below.
-
     //--------------------------------------------------------------------------
-    // generic worker:  apply an operator, with optional typecasting
+    // generic worker: typecast and apply an operator
     //--------------------------------------------------------------------------
 
-    // The generic worker can handle any operator and any type, and it does all
-    // required typecasting.  Thus the switch factory can be disabled, and the
-    // code will more compact and still work.  It will just be slower.
-
-    int64_t asize = atype->size ;
-    int64_t zsize = op->ztype->size ;
+    size_t asize = Atype->size ;
+    size_t zsize = op->ztype->size ;
+    size_t xsize = op->xtype->size ;
     GB_cast_function
-        cast_A_to_X = GB_cast_factory (op->xtype->code, atype->code) ;
+        cast_A_to_X = GB_cast_factory (op->xtype->code, Atype->code) ;
     GxB_unary_function fop = op->function ;
 
-    // scalar workspace
-    char xwork [op->xtype->size] ;
-
+    #pragma omp parallel for num_threads(nthreads) schedule(static)
     for (int64_t p = 0 ; p < anz ; p++)
     { 
         // xwork = (xtype) Ax [p]
+        GB_void xwork [xsize] ;
         cast_A_to_X (xwork, Ax +(p*asize), asize) ;
         // Cx [p] = fop (xwork)
         fop (Cx +(p*zsize), xwork) ;

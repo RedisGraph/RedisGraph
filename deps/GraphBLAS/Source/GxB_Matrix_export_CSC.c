@@ -7,9 +7,7 @@
 
 //------------------------------------------------------------------------------
 
-// parallel: not here
-
-#include "GB.h"
+#include "GB_export.h"
 
 #define GB_FREE_ALL ;
 
@@ -46,7 +44,7 @@ GrB_Info GxB_Matrix_export_CSC  // export and free a CSC matrix
     //--------------------------------------------------------------------------
 
     // ensure the matrix is in standard CSC format
-    (*A)->hyper_ratio = GxB_NEVER_HYPER ;
+    (*A)->hyper_ratio = GB_NEVER_HYPER ;
     if (!((*A)->is_csc))
     { 
         // A = A', done in place, to put A in CSC format

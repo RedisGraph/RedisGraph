@@ -9,6 +9,10 @@
 
 #include "demos.h"
 
+#if defined __INTEL_COMPILER
+#pragma warning (disable: 556)
+#endif
+
 #define FREE_ALL                    \
 {                                   \
     GrB_free (C_handle) ;           \
@@ -98,18 +102,18 @@ GrB_Info import_test (GrB_Matrix *C_handle, int format, bool dump)
 
             if (dump)
             {
-                printf ("export standard CSR: %llu-by-%llu, nvals %llu:\n",
-                    nrows, ncols, nvals) ;
+                printf ("export standard CSR: %g-by-%g, nvals %g:\n",
+                    (double) nrows, (double) ncols, (double) nvals) ;
                 OK (GxB_Type_fprint (type, "type", GxB_COMPLETE, stdout)) ;
                 GETVAL ;
-                printf ("Ap %p Aj %p Ax %p\n", Ap, Aj, Ax) ;
+                printf ("Ap %p Aj %p Ax %p\n", (void *) Ap, (void *) Aj, Ax) ;
 
                 for (int64_t i = 0 ; i < nrows ; i++)
                 {
-                    printf ("Row %lld\n", i) ;
+                    printf ("Row %g\n", (double) i) ;
                     for (int64_t p = Ap [i] ; p < Ap [i+1] ; p++)
                     {
-                        printf ("  col %llu value ", Aj [p]) ;
+                        printf ("  col %g value ", (double) Aj [p]) ;
                         PRINTVAL (p) ;
                         printf ("\n") ;
                     }
@@ -135,17 +139,17 @@ GrB_Info import_test (GrB_Matrix *C_handle, int format, bool dump)
 
             if (dump)
             {
-                printf ("export standard CSC: %llu-by-%llu, nvals %llu:\n",
-                    nrows, ncols, nvals) ;
+                printf ("export standard CSC: %g-by-%g, nvals %g:\n",
+                    (double) nrows, (double) ncols, (double) nvals) ;
                 OK (GxB_Type_fprint (type, "type", GxB_COMPLETE, stdout)) ;
                 GETVAL ;
 
                 for (int64_t j = 0 ; j < ncols ; j++)
                 {
-                    printf ("Col %lld\n", j) ;
+                    printf ("Col %g\n", (double) j) ;
                     for (int64_t p = Ap [j] ; p < Ap [j+1] ; p++)
                     {
-                        printf ("  row %llu value ", Ai [p]) ;
+                        printf ("  row %g value ", (double) Ai [p]) ;
                         PRINTVAL (p) ;  // print Ax [p]
                         printf ("\n") ;
                     }
@@ -171,18 +175,18 @@ GrB_Info import_test (GrB_Matrix *C_handle, int format, bool dump)
 
             if (dump)
             {
-                printf ("export hyper CSR: %llu-by-%llu, nvals %llu, "
-                    "nvec %llu:\n", nrows, ncols, nvals, nvec) ;
+                printf ("export hyper CSR: %g-by-%g, nvals %g, nvec %g:\n",
+                (double) nrows, (double) ncols, (double) nvals, (double) nvec) ;
                 OK (GxB_Type_fprint (type, "type", GxB_COMPLETE, stdout)) ;
                 GETVAL ;
 
                 for (int64_t k = 0 ; k < nvec ; k++)
                 {
                     int64_t i = Ah [k] ;
-                    printf ("Row %lld\n", i) ;
+                    printf ("Row %g\n", (double) i) ;
                     for (int64_t p = Ap [k] ; p < Ap [k+1] ; p++)
                     {
-                        printf ("  col %llu value ", Aj [p]) ;
+                        printf ("  col %g value ", (double) Aj [p]) ;
                         PRINTVAL (p) ;
                         printf ("\n") ;
                     }
@@ -207,18 +211,18 @@ GrB_Info import_test (GrB_Matrix *C_handle, int format, bool dump)
 
             if (dump)
             {
-                printf ("export hyper CSC: %llu-by-%llu, nvals %llu, "
-                    "nvec %llu:\n", nrows, ncols, nvals, nvec) ;
+                printf ("export hyper CSC: %g-by-%g, nvals %g, nvec %g:\n",
+                (double) nrows, (double) ncols, (double) nvals, (double) nvec) ;
                 OK (GxB_Type_fprint (type, "type", GxB_COMPLETE, stdout)) ;
                 GETVAL ;
 
                 for (int64_t k = 0 ; k < nvec ; k++)
                 {
                     int64_t j = Ah [k] ;
-                    printf ("Col %lld\n", j) ;
+                    printf ("Col %g\n", (double) j) ;
                     for (int64_t p = Ap [k] ; p < Ap [k+1] ; p++)
                     {
-                        printf ("  row %llu value ", Ai [p]) ;
+                        printf ("  row %g value ", (double) Ai [p]) ;
                         PRINTVAL (p) ;
                         printf ("\n") ;
                     }

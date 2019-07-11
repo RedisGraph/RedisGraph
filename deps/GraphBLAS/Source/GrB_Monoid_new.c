@@ -11,16 +11,14 @@
 // y, and z must all be the same, and the identity value must also have the
 // same type.  No typecasting is done for the identity value.
 
-// not parallel: this function does O(1) work and is already thread-safe.
-
 #include "GB.h"
 
 #define GB_MONOID_NEW(type,T)                                               \
 GrB_Info GrB_Monoid_new_ ## T       /* create a new monoid */               \
 (                                                                           \
     GrB_Monoid *monoid,             /* handle of monoid to create    */     \
-    const GrB_BinaryOp op,          /* binary operator of the monoid */     \
-    const type identity             /* identity value of the monoid  */     \
+    GrB_BinaryOp op,                /* binary operator of the monoid */     \
+    type identity                   /* identity value of the monoid  */     \
 )                                                                           \
 {                                                                           \
     GB_WHERE ("GrB_Monoid_new_" GB_STR(T) " (&monoid, op, identity)") ;     \
@@ -43,8 +41,8 @@ GB_MONOID_NEW (double   , FP64   )
 GrB_Info GrB_Monoid_new_UDT         // create a monoid with a user-defined type
 (
     GrB_Monoid *monoid,             // handle of monoid to create
-    const GrB_BinaryOp op,          // binary operator of the monoid
-    const void *identity            // identity value of the monoid
+    GrB_BinaryOp op,                // binary operator of the monoid
+    void *identity                  // identity value of the monoid
 )
 { 
     GB_WHERE ("GrB_Monoid_new_UDT (&monoid, op, identity)") ;

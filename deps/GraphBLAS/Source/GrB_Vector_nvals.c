@@ -7,8 +7,6 @@
 
 //------------------------------------------------------------------------------
 
-// parallel: not here, but in GB_nvals (which forces completeion).
-
 #include "GB.h"
 
 GrB_Info GrB_Vector_nvals   // get the number of entries in a vector
@@ -24,7 +22,6 @@ GrB_Info GrB_Vector_nvals   // get the number of entries in a vector
 
     GB_WHERE ("GrB_Vector_nvals (&nvals, v)") ;
     GB_RETURN_IF_NULL_OR_FAULTY (v) ;
-    Context->nthreads = GxB_DEFAULT ;   // no descriptor, so use default rule
     ASSERT (GB_VECTOR_OK (v)) ;
 
     // do not check if nvals is NULL; pending updates must be applied first, in

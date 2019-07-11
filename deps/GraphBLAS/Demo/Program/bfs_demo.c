@@ -2,7 +2,7 @@
 // GraphBLAS/Demo/Program/bfs_demo.c: breadth first search using vxm with a mask
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -34,6 +34,7 @@
 // macro used by OK(...) to free workspace if an error occurs
 #define FREE_ALL            \
     GrB_free (&v) ;         \
+    GrB_free (&v0) ;        \
     GrB_free (&A) ;         \
     GrB_free (&Abool) ;     \
     GrB_free (&is_reachable) ; \
@@ -46,9 +47,11 @@ int main (int argc, char **argv)
     GrB_Info info ;
     GrB_Matrix A = NULL ;
     GrB_Matrix A2, Abool = NULL ;
-    GrB_Vector v = NULL ;
+    GrB_Vector v = NULL, v0 = NULL ;
     GrB_Vector is_reachable = NULL ;
     GrB_Monoid max_monoid = NULL ;
+    GrB_Index nreach0 = 0 ;
+    int64_t nlevel0 = -1 ;
     double tic [2], t ;
     OK (GrB_init (GrB_NONBLOCKING)) ;
     fprintf (stderr, "bfs_demo:\n") ;
@@ -87,6 +90,7 @@ int main (int argc, char **argv)
         // All methods give identical results, just using different methods
 
         GrB_Index s = 0 ;
+        GxB_set (GxB_NTHREADS, 2) ;
 
         switch (method)
         {
@@ -154,6 +158,44 @@ int main (int argc, char **argv)
         fprintf (stderr, "nodes reached: %.16g of %.16g levels: %.16g "
             "time: %12.6f seconds\n", (double) nreachable, (double) n,
                 (double) nlevels, t) ;
+
+        if (method == 0)
+        {
+            v0 = v ;
+            nreach0 = nreachable ;
+            nlevel0 = nlevels ;
+            v = NULL ;
+        }
+        else
+        {
+            bool ok = true ;
+            if (nreachable != nreach0 || nlevels != nlevel0)
+            {
+                ok = false ;
+            }
+            // see LAGraph_Vector_isequal for a better method
+            for (int64_t i = 0 ; i < n ; i++)
+            {
+                int32_t v0i = -1, vi = -1 ;
+                OK (GrB_Vector_extractElement (&v0i, v0, i)) ;
+                OK (GrB_Vector_extractElement (&vi , v , i)) ;
+                if (v0i != vi)
+                {
+                    fprintf (stderr, "v failure!\n") ;
+                    printf  ("v failure!\n") ;
+                    ok = false ;
+                    break ;
+                }
+            }
+            if (!ok)
+            {
+                fprintf (stderr, "test failure!\n") ;
+                printf  ("test failure!\n") ;
+                GxB_print (v0, 3) ;
+                GxB_print (v , 3) ;
+                exit (1) ;
+            }
+        }
 
         OK (GrB_free (&v)) ;
     }

@@ -11,18 +11,15 @@
 
 // The input matrices A and B are optionally transposed.
 
-// Not user-callable.  Does the work for GxB_kron
-
-// parallel: not here, but in GB_kron_kernel.
-
-#include "GB.h"
+#include "GB_kron.h"
+#include "GB_transpose.h"
 
 GrB_Info GB_kron                    // C<M> = accum (C, kron(A,B))
 (
     GrB_Matrix C,                   // input/output matrix for results
     const bool C_replace,           // if true, clear C before writing to it
     const GrB_Matrix M,             // optional mask for C, unused if NULL
-    const bool Mask_comp,           // if true, use ~M
+    const bool Mask_comp,           // if true, use !M
     const GrB_BinaryOp accum,       // optional accum for Z=accum(C,T)
     const GrB_BinaryOp op,          // defines '*' for kron(A,B)
     const GrB_Matrix A,             // input matrix
@@ -37,7 +34,7 @@ GrB_Info GB_kron                    // C<M> = accum (C, kron(A,B))
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT (GB_ALIAS_OK3 (C, M, A, B)) ;
+    // C may be aliased with M, A, and/or B
 
     GB_RETURN_IF_NULL_OR_FAULTY (C) ;
     GB_RETURN_IF_NULL_OR_FAULTY (A) ;
@@ -61,15 +58,16 @@ GrB_Info GB_kron                    // C<M> = accum (C, kron(A,B))
     }
 
     // T=op(A,B) via op operator, so A and B must be compatible with z=op(a,b)
-    info = GB_BinaryOp_compatible (op, NULL, A->type, B->type, 0, Context) ;
+    info = GB_BinaryOp_compatible (op, NULL, A->type, B->type,
+        GB_ignore_code, Context) ;
     if (info != GrB_SUCCESS)
     { 
         return (info) ;
     }
 
     // delete any lingering zombies and assemble any pending tuples in A and B,
-    // so that cnz = nnz(A) * nnz(B) can be computed.  Pending updates of C
-    // and M are done after this check.
+    // so that cnz = nnz(A) * nnz(B) can be computed.  Updates of C and M are
+    // done after this check.
     GB_WAIT (A) ;
     GB_WAIT (B) ;
 
@@ -150,7 +148,7 @@ GrB_Info GB_kron                    // C<M> = accum (C, kron(A,B))
     //--------------------------------------------------------------------------
 
     GrB_Matrix T ;
-    info = GB_kron_kernel (&T, C->is_csc, op,
+    info = GB_kroner (&T, C->is_csc, op,
         A_transpose ? AT : A, B_transpose ? BT : B, Context) ;
 
     // free workspace

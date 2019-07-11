@@ -3,6 +3,7 @@
 //------------------------------------------------------------------------------
 
 #include "GB.h"
+#include "GB_Pending.h"
 
 GrB_Info GxB_Matrix_Pending     // does matrix has pending operations
 (
@@ -17,6 +18,7 @@ GrB_Info GxB_Matrix_Pending     // does matrix has pending operations
     GB_RETURN_IF_NULL_OR_FAULTY (A) ;
     GB_RETURN_IF_NULL (pending) ;
 
-    (*pending) = (A->nzombies > 0) || (A->n_pending > 0) ;
+    (*pending) = (A->nzombies > 0) || (GB_Pending_n(A) > 0) ;
+
     return (GrB_SUCCESS) ;
 }

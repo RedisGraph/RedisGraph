@@ -10,8 +10,6 @@
 // Returns true if a non-hypersparse matrix should be converted to hypersparse.
 // Returns false if the matrix is already hypersparse.
 
-// not parallel: this function does O(1) work and is already thread-safe.
-
 #include "GB.h"
 
 bool GB_to_hyper_test       // test for conversion to hypersparse

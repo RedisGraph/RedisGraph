@@ -1,7 +1,7 @@
 function test58 (cover)
 %TEST58 test GrB_eWiseAdd
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 if (nargin < 1)
@@ -9,6 +9,11 @@ if (nargin < 1)
 end
 
 fprintf ('\ntest58: ----- quick performance for GB_mex_eWiseAdd_Matrix\n') ;
+
+[save save_chunk] = nthreads_get ;
+chunk = 4096 ;
+nthreads = feature ('numcores') ;
+nthreads_set (nthreads, chunk) ;
 
 
 add = 'plus' ;
@@ -146,3 +151,4 @@ end
 
 fprintf ('\ntest58: all tests passed\n') ;
 
+nthreads_set (save, save_chunk) ;

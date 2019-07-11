@@ -10,8 +10,6 @@
 // c = a*b where c is GrB_Index (uint64_t), and a and b are int64_t.
 // Check for overflow.  Requires a >= 0 and b >= 0.
 
-// not parallel: this function does O(1) work and is already thread-safe.
-
 #include "GB.h"
 
 bool GB_Index_multiply      // true if ok, false if overflow

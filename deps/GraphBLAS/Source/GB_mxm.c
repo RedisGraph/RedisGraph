@@ -12,16 +12,14 @@
 // This function is not user-callable.  It does the work for user-callable
 // functions GrB_mxm, GrB_mxv, and GrB_vxm.
 
-// parallel: not here; see GB_AxB_parallel instead.
-
-#include "GB.h"
+#include "GB_mxm.h"
 
 GrB_Info GB_mxm                     // C<M> = A*B
 (
     GrB_Matrix C,                   // input/output matrix for results
     const bool C_replace,           // if true, clear C before writing to it
     const GrB_Matrix M,             // optional mask for C, unused if NULL
-    const bool Mask_comp,           // if true, use ~M
+    const bool Mask_comp,           // if true, use !M
     const GrB_BinaryOp accum,       // optional accum for Z=accum(C,T)
     const GrB_Semiring semiring,    // defines '+' and '*' for C=A*B
     const GrB_Matrix A,             // input matrix
@@ -38,7 +36,7 @@ GrB_Info GB_mxm                     // C<M> = A*B
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT (GB_ALIAS_OK3 (C, M, A, B)) ;
+    // C may be aliased with M, A, and/or B
 
     GB_RETURN_IF_FAULTY (accum) ;
     GB_RETURN_IF_NULL_OR_FAULTY (semiring) ;
@@ -63,13 +61,13 @@ GrB_Info GB_mxm                     // C<M> = A*B
     { 
         // z=fmult(b,a), for entries a from A, and b from B
         info = GB_BinaryOp_compatible (semiring->multiply,
-                                        NULL, B->type, A->type, 0, Context) ;
+                NULL, B->type, A->type, GB_ignore_code, Context) ;
     }
     else
     { 
         // z=fmult(a,b), for entries a from A, and b from B
         info = GB_BinaryOp_compatible (semiring->multiply,
-                                        NULL, A->type, B->type, 0, Context) ;
+                NULL, A->type, B->type, GB_ignore_code, Context) ;
     }
     if (info != GrB_SUCCESS)
     { 
@@ -115,8 +113,6 @@ GrB_Info GB_mxm                     // C<M> = A*B
         A_transpose, B_transpose, flipxy, &mask_applied, AxB_method,
         &(C->AxB_method_used), Context) ;
 
-    ASSERT_OK (GB_check (C, "C from AxB_meta", GB0)) ;
-
     if (info != GrB_SUCCESS)
     { 
         // out of memory
@@ -134,23 +130,20 @@ GrB_Info GB_mxm                     // C<M> = A*B
     // C<M> = accum (C,T): accumulate the results into C via the mask
     //--------------------------------------------------------------------------
 
-    // GB_NNZ(C) requires GB_WAIT (C) first.  so subtract zombies
-    // and add pending tuples to get an upper bound on NNZ(C)
-    int64_t cnz_upper_bound = (GB_NNZ (C) - C->nzombies) + C->n_pending ;
-
     if ((accum == NULL) && (C->is_csc == T->is_csc)
         && (M == NULL || (M != NULL && mask_applied))
-        && (C_replace || GB_NNZ (C) == 0))
+        && (C_replace || GB_NNZ_UPPER_BOUND (C) == 0))
     { 
-        // C = 0 ; C = (ctype) T ; with the same CSR/CSC format.
-        // The mask M (if any) has already been applied in GB_AxB_meta.
-        // If C is also empty, or to be cleared anyway, and if accum is not
-        // present, then T can be transplanted directly into C, as C = (ctype)
-        // T, typecasting if needed.  If no typecasting is done then this takes
-        // no time at all and is a pure transplant.  Also conform C to its
-        // desired hypersparsity.
+        // C = 0 ; C = (ctype) T ; with the same CSR/CSC format.  The mask M
+        // (if any) has already been applied.  If C is also empty, or to be
+        // cleared anyway, and if accum is not present, then T can be
+        // transplanted directly into C, as C = (ctype) T, typecasting if
+        // needed.  If no typecasting is done then this takes no time at all
+        // and is a pure transplant.  Also conform C to its desired
+        // hypersparsity.
         GB_MATRIX_FREE (&MT) ;
-        return (GB_transplant_conform (C, C->type, &T, Context)) ;
+        info = GB_transplant_conform (C, C->type, &T, Context) ;
+        return (info) ;
     }
     else
     { 

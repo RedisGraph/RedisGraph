@@ -1,7 +1,7 @@
 function test53(fulltests)
 %TEST53 test GrB_Matrix_extract
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 if (nargin < 1)
@@ -9,12 +9,12 @@ if (nargin < 1)
 end
 
 if (fulltests)
-    fprintf ('\n==== exhaustive test for GrB_Matrix_extract:\n') ;
+    fprintf ('\n==== test53: exhaustive test for GrB_Matrix_extract:\n') ;
 else
-    fprintf ('\n==== quick test for GrB_Matrix_extract:\n') ;
+    fprintf ('\n==== test53: quick test for GrB_Matrix_extract:\n') ;
 end
 
-[ops unary_ops add_ops classes] = GB_spec_opsall ;
+[mult_ops, ~, ~, classes, ~, ~] = GB_spec_opsall ;
 
 problems = [
     10,    1,    7,  -5, 100
@@ -140,14 +140,14 @@ for k0 = 1:size (problems,1) ;
             fprintf ('%s', cinclass) ;
 
             if (fulltests)
-                k3_list = 1:length (ops) ;
+                k3_list = 1:length (mult_ops) ;
             else
-                k3_list = unique ([1 5 irand(2,length(ops),1,1)]) ;
+                k3_list = unique ([1 5 irand(2,length(mult_ops),1,1)]) ;
             end
 
             % try every operator
             for k3 = k3_list
-                op = ops {k3} ;
+                op = mult_ops {k3} ;
                 fprintf ('.') ;
 
                 if (fulltests)

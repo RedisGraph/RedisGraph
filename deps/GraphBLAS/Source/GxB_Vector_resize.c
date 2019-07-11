@@ -7,8 +7,6 @@
 
 //------------------------------------------------------------------------------
 
-// parallel: not here; see GB_resize
-
 #include "GB.h"
 
 GrB_Info GxB_Vector_resize      // change the size of a vector
@@ -24,7 +22,6 @@ GrB_Info GxB_Vector_resize      // change the size of a vector
 
     GB_WHERE ("GxB_Vector_resize (u, nrows_new)") ;
     GB_RETURN_IF_NULL_OR_FAULTY (u) ;
-    Context->nthreads = GxB_DEFAULT ;   // no descriptor, so use default rule
 
     //--------------------------------------------------------------------------
     // resize the vector

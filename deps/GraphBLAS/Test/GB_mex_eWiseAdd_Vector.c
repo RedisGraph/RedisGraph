@@ -2,7 +2,7 @@
 // GB_mex_eWiseAdd_Vector: w<mask> = accum(w,u+v)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -107,9 +107,6 @@ void mexFunction
 
     // w<mask> = accum(w,u+v)
     METHOD (GrB_eWiseAdd (w, mask, accum, add, u, v, desc)) ;
-
-    GrB_wait ( ) ;
-    TOC ;
 
     // return w to MATLAB as a struct and free the GraphBLAS w
     pargout [0] = GB_mx_Vector_to_mxArray (&w, "w output", true) ;

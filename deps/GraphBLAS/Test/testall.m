@@ -5,10 +5,10 @@ function testall (longtests)
 % testall ;         % runs just the shorter tests (about 15 minutes)
 % testall(1) ;      % runs all the tests (overnight).  Requires SuiteSparse.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
-t = cputime ;
+testall_time = tic ;
 
 if (nargin < 1)
     % run the shorter tests by default
@@ -34,6 +34,7 @@ logstat ;             % start the log.txt
 %-------------------------------------------------------------------------------
 % quick tests for statement coverage
 
+logstat ('test115') ; % GrB_assign with duplicate indices
 logstat ('test101') ; % GrB_*_import and export
 logstat ('test103') ; % GrB_transpose aliases
 logstat ('test104') ; % export/import
@@ -44,7 +45,7 @@ logstat ('test108') ; % boolean monoids
 logstat ('test109') ; % terminal monoid with user-defined type
 logstat ('test110') ; % binary search of M(:,j) in accum/mask
 logstat ('test98') ;  % GB_mex_mxm, typecast on the fly
-logstat ('test92') ;  % GB_subref_symbolic
+logstat ('test92') ;  % GB_subref (symbolic case)
 logstat ('test97') ;  % GB_mex_assign, scalar expansion and zombies
 logstat ('test100') ; % GB_mex_isequal
 logstat ('test01') ;  % error handling
@@ -165,5 +166,6 @@ if (longtests)
     logstat ('test61') ;
 end
 
-fprintf ('\ntestall: all tests passed, total time %g sec\n', cputime-t) ;
+t = toc (testall_time) ;
+fprintf ('\ntestall: all tests passed, total time %g sec\n', t) ;
 

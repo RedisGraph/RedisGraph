@@ -7,7 +7,8 @@
 
 //------------------------------------------------------------------------------
 
-// not parallel: this function does O(1) work and is already thread-safe.
+// for additional diagnostics, use:
+// #define GB_DEVELOPER 1
 
 #include "GB.h"
 

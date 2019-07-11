@@ -2,7 +2,7 @@
 // GB_mx_object_to_mxArray
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -82,19 +82,19 @@ mxArray *GB_mx_object_to_mxArray   // returns the MATLAB mxArray
     if (C->x == NULL)
     {
         ASSERT (C->nzmax == 0 && cnz == 0) ;
-        GB_CALLOC_MEMORY (C->x, 1, sizeof (double), NULL) ;
+        GB_CALLOC_MEMORY (C->x, 1, sizeof (double)) ;
         C->x_shallow = false ;
     }
     if (C->i == NULL)
     {
         ASSERT (C->nzmax == 0 && cnz == 0) ;
-        GB_CALLOC_MEMORY (C->i, 1, sizeof (int64_t), NULL) ;
+        GB_CALLOC_MEMORY (C->i, 1, sizeof (int64_t)) ;
         C->i_shallow = false ;
     }
     if (C->p == NULL)
     {
         ASSERT (C->nzmax == 0 && cnz == 0) ;
-        GB_CALLOC_MEMORY (C->p, C->vdim + 1, sizeof (int64_t), NULL) ;
+        GB_CALLOC_MEMORY (C->p, C->vdim + 1, sizeof (int64_t)) ;
         C->p_shallow = false ;
     }
 

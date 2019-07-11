@@ -9,12 +9,9 @@ GrB_Info GB_AxB_user
 
     GrB_Matrix *GB_Chandle,
     const GrB_Matrix GB_M,
-    const GrB_Matrix GB_A,
+    const GrB_Matrix GB_A,     // not used for dot method
     const GrB_Matrix GB_B,
     bool GB_flipxy,
-
-    // for dot method only:
-    const bool GB_mask_comp,
 
     // for heap method only:
     int64_t *restrict GB_List,
@@ -22,8 +19,16 @@ GrB_Info GB_AxB_user
     GB_Element *restrict GB_Heap,
     const int64_t GB_bjnz_max,
 
-    // for Gustavson method only:
-    GB_Sauna GB_C_Sauna
+    // for Gustavson's method only:
+    GB_Sauna GB_C_Sauna,
+
+    // for dot method only:
+    const GrB_Matrix *GB_Aslice,
+    const bool GB_mask_comp,
+    const int GB_dot_nthreads,
+    const int GB_naslice,
+    const int GB_nbslice,
+    int64_t **GB_C_counts
 )
 {
     GrB_Info GB_info = GrB_SUCCESS ;

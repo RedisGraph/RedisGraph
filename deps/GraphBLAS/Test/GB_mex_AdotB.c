@@ -2,7 +2,7 @@
 // GB_mex_AdotB: compute C=spones(Mask).*(A'*B)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -28,6 +28,8 @@
 GrB_Matrix A = NULL, B = NULL, C = NULL, Aconj = NULL, Mask = NULL ;
 GrB_Monoid add = NULL ;
 GrB_Semiring semiring = NULL ;
+GrB_Info adotb_complex (GB_Context Context) ;
+GrB_Info adotb (GB_Context Context) ;
 
 //------------------------------------------------------------------------------
 
@@ -58,16 +60,21 @@ GrB_Info adotb_complex (GB_Context Context)
 
     bool mask_applied = false ;
 
-    info = GB_AxB_dot (&C, Mask,
+    GrB_Matrix Aslice [1] ;
+    Aslice [0] = Aconj ;
+
+    info = GB_AxB_dot2 (&C, Mask,
         false,      // mask not complemented
-        Aconj, B,
+        Aslice, B,
         #ifdef MY_COMPLEX
             My_Complex_plus_times,
         #else
             Complex_plus_times,
         #endif
         false,
-        &mask_applied) ;
+        &mask_applied,
+        // single thread:
+        1, 1, 1, Context) ;
 
     #ifdef MY_COMPLEX
     // convert back to run-time complex type
@@ -95,12 +102,16 @@ GrB_Info adotb (GB_Context Context)
     }
     // C = A'*B
     bool mask_applied = false ;
-    info = GB_AxB_dot (&C, Mask,
+    GrB_Matrix Aslice [1] ;
+    Aslice [0] = A ;
+    info = GB_AxB_dot2 (&C, Mask,
         false,      // mask not complemented
-        A, B,
+        Aslice, B,
         semiring /* GxB_PLUS_TIMES_FP64 */,
         false,
-        &mask_applied) ;
+        &mask_applied,
+        // single thread:
+        1, 1, 1, Context) ;
     GrB_free (&add) ;
     GrB_free (&semiring) ;
     return (info) ;

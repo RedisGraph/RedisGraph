@@ -2,10 +2,13 @@
 // GB_mex.h: definitions for the MATLAB interface to GraphBLAS
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
+
+// to turn on memory usage debug printing, uncomment this line:
+// #define GB_PRINT_MALLOC 1
 
 #ifndef GB_MEXH
 #define GB_MEXH
@@ -13,6 +16,14 @@
 #define GB_PANIC mexErrMsgTxt ("panic") ;
 
 #include "GB.h"
+#include "GB_mxm.h"
+#include "GB_Pending.h"
+#include "GB_Sauna.h"
+#include "GB_add.h"
+#include "GB_subref.h"
+#include "GB_transpose.h"
+#include "GB_qsort.h"
+#include "GB_apply.h"
 
 #include "demos.h"
 
@@ -43,11 +54,11 @@ void GB_mx_put_time
 (
     GrB_Desc_Value AxB_method_used
 ) ;
-void GB_mx_clear_time ( ) ;             // clear the time and start the tic
-#define TIC { GB_mx_clear_time ( ) ; }
-#define TOC { gbtime = simple_toc (tic) ; }
+void GB_mx_clear_time (void) ;          // clear the time and start the tic
+#define GB_MEX_TIC { GB_mx_clear_time ( ) ; }
+#define GB_MEX_TOC { gbtime = simple_toc (tic) ; }
 
-void GB_mx_abort ( ) ;                  // assertion failure
+void GB_mx_abort (void) ;               // assertion failure
 
 bool GB_mx_mxArray_to_BinaryOp          // true if successful, false otherwise
 (
@@ -273,12 +284,12 @@ bool GB_mx_isequal  // true if A and B are exactly the same
     GrB_Matrix B
 ) ;
 
-int GB_mx_Sauna_nmalloc ( ) ;  // return # of mallocs in Saunas in use
+int GB_mx_Sauna_nmalloc (void) ;  // return # of mallocs in Saunas in use
 
 GrB_Matrix GB_mx_alias      // output matrix (NULL if no match found)
 (
     char *arg_name,         // name of the output matrix
-    mxArray *arg,           // string to select the alias
+    const mxArray *arg,     // string to select the alias
     char *arg1_name,        // name of first possible alias
     GrB_Matrix arg1,        // first possible alias
     char *arg2_name,        // name of 2nd possible alias
@@ -289,14 +300,15 @@ GrB_Matrix GB_mx_alias      // output matrix (NULL if no match found)
 
 #ifdef GB_PRINT_MALLOC
 
-#define AS_IF_FREE(p)                   \
-{                                       \
-    GB_Global_nmalloc_decrement ( ) ;   \
-    printf ("\nfree:                         to MATLAB (%s) line %d file %s\n",\
-        GB_STR(p), __LINE__,__FILE__);  \
-    printf ("free:    %14p %3d %1d\n",  \
-        p, GB_Global_nmalloc_get ( ) GB_Global_malloc_debug_get ( )) ; \
-    (p) = NULL ;                        \
+#define AS_IF_FREE(p)                       \
+{                                           \
+    GB_Global_nmalloc_decrement ( ) ;       \
+    printf ("\nfree: to MATLAB (%s) line %d file %s\n",\
+        GB_STR(p), __LINE__,__FILE__);      \
+    printf ("%14p as if free: %3d %1d\n",   \
+        p, GB_Global_nmalloc_get ( ),       \
+        GB_Global_malloc_debug_get ( )) ;   \
+    (p) = NULL ;                            \
 }
 
 #else
@@ -339,9 +351,12 @@ GrB_Matrix GB_mx_alias      // output matrix (NULL if no match found)
     if (!malloc_debug)                                                      \
     {                                                                       \
         /* no malloc debugging; just call the method */                     \
-        TIC ;                                                               \
+        GB_MEX_TIC ;                                                        \
         GrB_Info info = GRAPHBLAS_OPERATION ;                               \
-        TOC ;                                                               \
+        /* Finish the work since we're returning to MATLAB. */              \
+        /* This allows proper timing with gbresults.m */                    \
+        GrB_wait ( ) ;                                                      \
+        GB_MEX_TOC ;                                                        \
         if (info == GrB_PANIC) mexErrMsgTxt ("panic!") ;                    \
         if (! (info == GrB_SUCCESS || info == GrB_NO_VALUE))                \
         {                                                                   \
@@ -362,9 +377,10 @@ GrB_Matrix GB_mx_alias      // output matrix (NULL if no match found)
             METHOD_TRY ;                                                    \
             /* call the method with malloc debug enabled */                 \
             GB_Global_malloc_debug_set (true) ;                             \
-            TIC ;                                                           \
+            GB_MEX_TIC ;                                                    \
             GrB_Info info = GRAPHBLAS_OPERATION ;                           \
-            TOC ;                                                           \
+            /* do not finish the work */                                    \
+            GB_MEX_TOC ;                                                    \
             GB_Global_malloc_debug_set (false) ;                            \
             if (tries > 1000000) mexErrMsgTxt ("infinite loop!") ;          \
             if (info == GrB_SUCCESS || info == GrB_NO_VALUE)                \
@@ -421,13 +437,13 @@ GrB_Matrix GB_mx_alias      // output matrix (NULL if no match found)
 // the internal GB_cov array.  The MATLAB array is created if it doesn't exist.
 // Thus, to clear the counts simply clear GraphBLAS_gbcov from the MATLAB
 // global workpace.
-void GB_cover_get ( ) ;
+void GB_cover_get (void) ;
 
 // GB_cover_put copies the internal GB_cov array back into the MATLAB
 // GraphBLAS_gbcov array, for analysis and for subsequent statement counting.
 // This way, multiple tests in MATLAB can be accumulated into a single array
 // of counters.
-void GB_cover_put ( ) ;
+void GB_cover_put (void) ;
 
 #endif
 

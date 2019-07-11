@@ -2,7 +2,7 @@
 // GB_mx_put_time: put the time back to the global MATLAB workspace
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -33,5 +33,4 @@ void GB_mx_put_time
     // version that was already there
     mexPutVariable ("global", "GraphBLAS_results", gbresults_matlab) ;
 }
-
 

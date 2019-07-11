@@ -1,10 +1,10 @@
 function test54
-%TEST54 test GB_subref_numeric with I=lo:hi, J=lo:hi
+%TEST54 test GB_subref (numeric case) with I=lo:hi, J=lo:hi
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
-fprintf ('\n==== quick test for subref and assign (lo:stride:hi):\n') ;
+fprintf ('\ntest54: ==== quick test for subref and assign (lo:stride:hi):\n') ;
 clear
 
 m = 5 ;

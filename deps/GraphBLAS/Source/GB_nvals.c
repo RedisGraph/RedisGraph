@@ -7,8 +7,6 @@
 
 //------------------------------------------------------------------------------
 
-// parallel: not here; see GB_wait
-
 #include "GB.h"
 
 GrB_Info GB_nvals           // get the number of entries in a matrix

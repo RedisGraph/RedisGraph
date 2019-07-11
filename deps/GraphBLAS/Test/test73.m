@@ -1,12 +1,16 @@
 function test73
 %TEST73 performance of C = A*B, with mask
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 fprintf ('\n----------------- C=A*B performance\n') ;
 
-clear
+[save save_chunk] = nthreads_get ;
+chunk = 4096 ;
+nthreads = feature ('numcores') ;
+nthreads_set (nthreads, chunk) ;
+
 Prob = ssget (1338)
 A = Prob.A ;
 
@@ -77,3 +81,4 @@ assert (isequal (C2, C1.matrix)) ;
 assert (isequal (C2 .* spones (L), C3.matrix)) ;
 assert (isequal (C2, C4.matrix)) ;
 assert (isequal (C2b, C5.matrix)) ;
+nthreads_set (save, save_chunk) ;

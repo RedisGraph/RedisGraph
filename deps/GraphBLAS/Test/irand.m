@@ -1,5 +1,4 @@
 function I = irand (imin, imax, m, n)
-%
 %IRAND construct a random integer matrix 
 %
 % return a random m-by-n matrix of integers (uint64)
@@ -7,7 +6,7 @@ function I = irand (imin, imax, m, n)
 %
 % I = irand (imin, imax, m, n)
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 if (nargin < 4)

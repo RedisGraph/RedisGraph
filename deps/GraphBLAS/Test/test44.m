@@ -1,10 +1,10 @@
 function test44
 %TEST44 test qsort
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
-fprintf ('\n------------------------------------- qsort tests\n') ;
+fprintf ('\ntest44\n------------------------------------- qsort tests\n') ;
 
 rng ('default') ;
 
@@ -19,7 +19,7 @@ Iout1 = sort (I) ;
 t = toc ;
 
 tic
-Iout = GB_mex_qsort_1 (I) ;
+Iout = GB_mex_qsort_1a (I) ;
 t2 = toc ;
 
 fprintf ('MATLAB: sort %g sec  qsort1a: %g  speedup: %g\n', t, t2, t/t2) ;
@@ -38,14 +38,14 @@ IJout = sortrows (IJ, 1) ;
 t = toc ;
 
 tic
-[Iout, Jout] = GB_mex_qsort_2a (I, J) ;
+[Iout, Jout] = GB_mex_qsort_1b (I, J) ;
 t2 = toc ;
 
-fprintf ('MATLAB: sortrows %g sec  qsort2a: %g  speedup: %g\n', t, t2, t/t2) ;
+fprintf ('MATLAB: sortrows %g sec  qsort1b: %g  speedup: %g\n', t, t2, t/t2) ;
 
 assert (isequal ([Iout Jout], IJout))
 
-fprintf ('\n----------------------- qsort 2b\n') ;
+fprintf ('\n----------------------- qsort 2\n') ;
 
 I = int64 ((n/10)* rand (n,1)) ;
 J = int64 (randperm (n))' ;
@@ -56,7 +56,7 @@ IJout = sortrows (IJ) ;
 t = toc ;
 
 tic
-[Iout, Jout] = GB_mex_qsort_2b (I, J) ;
+[Iout, Jout] = GB_mex_qsort_2 (I, J) ;
 t2 = toc ;
 
 fprintf ('MATLAB: sortrows %g sec  qsort2a: %g  speedup: %g\n', t, t2, t/t2) ;

@@ -2,7 +2,7 @@
 // GB_mex_AplusB: compute C=A+B
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -72,13 +72,8 @@ void mexFunction
     // printf ("time so far: %g\n", simple_toc (tic2)) ;
     // simple_tic (tic2) ;
 
-    // C = A+B using the op
-    METHOD (GB_add (&C, A->type, true, A, B, op, Context)) ;
-
-    // GrB_wait ( ) ;
-    // TOC ;
-    // printf ("time method: %g\n", simple_toc (tic2)) ;
-    // simple_tic (tic2) ;
+    // C = A+B using the op.  No mask
+    METHOD (GB_add (&C, A->type, true, NULL, A, B, op, Context)) ;
 
     // return C to MATLAB as a plain sparse matrix
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C AplusB result", false) ;

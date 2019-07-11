@@ -12,9 +12,7 @@
 // and k in the tuples (j,i,k) are used as the sort key.  The values i and j
 // may appear in multiple tuples, but the value k is unique across all tuples.
 
-// parallel: not here, see Template/GB_qsort_template.c
-
-#include "GB.h"
+#include "GB_qsort.h"
 
 // returns true if a < b
 #define GB_lt(A,a,B,b)                                                      \
@@ -79,6 +77,8 @@
 
 #define GB_partition GB_partition_3
 #define GB_quicksort GB_quicksort_3
+#define GB_quicksort_par  GB_quicksort_par_3
+#define GB_quicksort_main GB_quicksort_main_3
 
 #include "GB_qsort_template.c"
 

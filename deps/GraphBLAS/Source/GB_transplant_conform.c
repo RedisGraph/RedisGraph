@@ -7,9 +7,8 @@
 
 //------------------------------------------------------------------------------
 
-// C = (type) T, then conform C to its desired hypersparsity.  T is freed
-
-// parallel: not here
+// C = (type) T, then conform C to its desired hypersparsity.  T is freed.
+// All prior content of C is cleared; zombies and pending tuples are abandoned.
 
 #include "GB.h"
 

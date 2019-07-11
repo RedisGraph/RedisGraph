@@ -11,7 +11,8 @@
 
 // This function is called via the GB_FREE_MEMORY(p,n,s) macro.
 
-// not parallel: this function does O(1) work and is already thread-safe.
+// to turn on memory usage debug printing, uncomment this line:
+// #define GB_PRINT_MALLOC 1
 
 #include "GB.h"
 
@@ -27,23 +28,57 @@ void GB_free_memory
 
         if (GB_Global_malloc_tracking_get ( ))
         {
+
+            //------------------------------------------------------------------
+            // for memory usage testing only
+            //------------------------------------------------------------------
+
             // at least one item is always allocated
             nitems = GB_IMAX (1, nitems) ;
-            int nmalloc = GB_Global_nmalloc_decrement ( ) ;
-            GB_Global_inuse_decrement (nitems * size_of_item) ;
+            size_of_item = GB_IMAX (1, size_of_item) ;
+
+            #if defined ( GB_PRINT_MALLOC ) || defined ( GB_DEBUG )
+
+                int nmalloc = 0 ;
+                #define GB_CRITICAL_SECTION                             \
+                {                                                       \
+                    nmalloc = GB_Global_nmalloc_decrement ( ) ;         \
+                    GB_Global_inuse_decrement (nitems * size_of_item) ; \
+                }
+
+            #else
+
+                #define GB_CRITICAL_SECTION                             \
+                {                                                       \
+                    GB_Global_nmalloc_decrement ( ) ;                   \
+                    GB_Global_inuse_decrement (nitems * size_of_item) ; \
+                }
+
+            #endif
+
+            #if defined (USER_POSIX_THREADS) || defined (USER_ANSI_THREADS)
+            bool ok = true ;
+            #endif
+            #include "GB_critical_section.c"
+
             #ifdef GB_PRINT_MALLOC
-            printf ("Free:    %14p %3d %1d n "GBd" size "GBd"\n",
-                p, nmalloc, GB_Global.malloc_debug,
-                (int64_t) nitems, (int64_t) size_of_item) ;
+            printf ("%14p Free:  %3d %1d n "GBd" size "GBd"\n",
+                p, nmalloc, GB_Global_malloc_debug_get ( ), (int64_t) nitems,
+                (int64_t) size_of_item) ;
             if (nmalloc < 0)
             {
                 printf ("%d free    %p negative mallocs!\n", nmalloc, p) ;
             }
             #endif
+
             ASSERT (nmalloc >= 0) ;
         }
 
-        GB_Global.free_function (p) ;
+        //----------------------------------------------------------------------
+        // free the memory
+        //----------------------------------------------------------------------
+
+        GB_Global_free_function (p) ;
     }
 }
 

@@ -12,12 +12,16 @@
 // function.  Results are undefined if more than one thread calls this
 // function at the same time.
 
-// not parallel: this function does O(1) work
-
-#include "GB.h"
+#include "GB_Sauna.h"
 
 GrB_Info GrB_finalize ( )
 { 
+
+    //--------------------------------------------------------------------------
+    // check inputs
+    //--------------------------------------------------------------------------
+
+    GB_WHERE ("GrB_finalize") ;
 
     //--------------------------------------------------------------------------
     // free all workspace
@@ -32,7 +36,7 @@ GrB_Info GrB_finalize ( )
     // destroy the queue
     //--------------------------------------------------------------------------
 
-    if (GB_Global.user_multithreaded)
+    if (GB_Global_user_multithreaded_get ( ))
     {
 
         #if defined (USER_POSIX_THREADS)
@@ -40,8 +44,7 @@ GrB_Info GrB_finalize ( )
             // delete the critical section for POSIX pthreads
             pthread_mutex_destroy (&GB_sync) ;
             // thread-local storage will be deleted when the user thread
-            // terminates, using GB_Global.free_function passed to
-            // pthread_key_create in GB_init.
+            // terminates, using the free_function passed to GB_init.
         }
 
         #elif defined (USER_WINDOWS_THREADS)

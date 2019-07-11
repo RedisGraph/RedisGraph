@@ -17,7 +17,7 @@
 
 // If an out-of-memory condition occurs, all content of the matrix is cleared.
 
-// PARALLEL: a reduction loop
+// The input matrix may be jumbled; this is not an error condition.
 
 #include "GB.h"
 
@@ -32,23 +32,8 @@ GrB_Info GB_to_hyper        // convert a matrix to hypersparse
     // check inputs
     //--------------------------------------------------------------------------
 
-    // GB_subref_numeric can return a matrix with jumbled columns, since it
-    // soon be transposed (and sorted) in GB_accum_mask.  However, it passes
-    // the jumbled matrix to GB_to_hyper_conform.  This function does not
-    // access the row indices at all, so it works fine if the columns have
-    // jumbled row indices.
-
     ASSERT_OK_OR_JUMBLED (GB_check (A, "A converting to hypersparse", GB0)) ;
-
-    #ifndef NDEBUG
-    GrB_Info info ;
-    #endif
-
-    //--------------------------------------------------------------------------
-    // determine the number of threads to use
-    //--------------------------------------------------------------------------
-
-    GB_GET_NTHREADS (nthreads, Context) ;
+    int64_t anz = GB_NNZ (A) ;
 
     //--------------------------------------------------------------------------
     // convert A to hypersparse form
@@ -56,24 +41,50 @@ GrB_Info GB_to_hyper        // convert a matrix to hypersparse
 
     if (!A->is_hyper)
     {
-        ASSERT (A->h == NULL) ;
-        ASSERT (A->nvec == A->plen && A->plen == A->vdim) ;
 
         //----------------------------------------------------------------------
-        // count the number of non-empty vectors in A
+        // determine the number of threads to use
         //----------------------------------------------------------------------
-
-        int64_t *restrict Ap_old = A->p ;
-        bool Ap_old_shallow = A->p_shallow ;
 
         int64_t n = A->vdim ;
+        GB_GET_NTHREADS_MAX (nthreads_max, chunk, Context) ;
+        int nthreads = GB_nthreads (n, chunk, nthreads_max) ;
+        int ntasks = (nthreads == 1) ? 1 : (8 * nthreads) ;
+        ntasks = GB_IMIN (ntasks, n) ;
+        ntasks = GB_IMAX (ntasks, 1) ;
 
-        if (A->nvec_nonempty < 0)
-        { 
-            A->nvec_nonempty = GB_nvec_nonempty (A, Context) ;
+        //----------------------------------------------------------------------
+        // count the number of non-empty vectors in A in each slice
+        //----------------------------------------------------------------------
+
+        A->is_hyper = true ;    // A becomes hypersparse
+        ASSERT (A->h == NULL) ;
+        ASSERT (A->nvec == A->plen && A->plen == n) ;
+
+        const int64_t *restrict Ap_old = A->p ;
+        bool Ap_old_shallow = A->p_shallow ;
+
+        int64_t Count [ntasks+1] ;
+
+        #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1)
+        for (int tid = 0 ; tid < ntasks ; tid++)
+        {
+            int64_t jstart, jend, my_nvec_nonempty = 0 ; ;
+            GB_PARTITION (jstart, jend, n, tid, ntasks) ;
+            for (int64_t j = jstart ; j < jend ; j++)
+            {
+                if (Ap_old [j] < Ap_old [j+1]) my_nvec_nonempty++ ;
+            }
+            Count [tid] = my_nvec_nonempty ;
         }
 
-        int64_t nvec_new = A->nvec_nonempty ;
+        //----------------------------------------------------------------------
+        // compute cumulative sum of Counts and nvec_nonempty
+        //----------------------------------------------------------------------
+
+        GB_cumsum (Count, ntasks, NULL, 1) ;
+        int64_t nvec_nonempty = Count [ntasks] ;
+        A->nvec_nonempty = nvec_nonempty ;
 
         //----------------------------------------------------------------------
         // allocate the new A->p and A->h
@@ -81,14 +92,13 @@ GrB_Info GB_to_hyper        // convert a matrix to hypersparse
 
         int64_t *restrict Ap_new ;
         int64_t *restrict Ah_new ;
-        GB_MALLOC_MEMORY (Ap_new, nvec_new+1, sizeof (int64_t)) ;
-        GB_MALLOC_MEMORY (Ah_new, nvec_new,   sizeof (int64_t)) ;
+        GB_MALLOC_MEMORY (Ap_new, nvec_nonempty+1, sizeof (int64_t)) ;
+        GB_MALLOC_MEMORY (Ah_new, nvec_nonempty,   sizeof (int64_t)) ;
         if (Ap_new == NULL || Ah_new == NULL)
         { 
             // out of memory
-            A->is_hyper = true ;    // A is hypersparse, but otherwise invalid
-            GB_FREE_MEMORY (Ap_new, nvec_new+1, sizeof (int64_t)) ;
-            GB_FREE_MEMORY (Ah_new, nvec_new,   sizeof (int64_t)) ;
+            GB_FREE_MEMORY (Ap_new, nvec_nonempty+1, sizeof (int64_t)) ;
+            GB_FREE_MEMORY (Ah_new, nvec_nonempty,   sizeof (int64_t)) ;
             GB_PHIX_FREE (A) ;
             return (GB_OUT_OF_MEMORY) ;
         }
@@ -97,12 +107,8 @@ GrB_Info GB_to_hyper        // convert a matrix to hypersparse
         // transplant the new A->p and A->h into the matrix
         //----------------------------------------------------------------------
 
-        // this must be done here so that GB_jappend, just below, can be used.
-
-        A->is_hyper = true ;
-        A->plen = nvec_new ;
-        A->nvec = 0 ;
-
+        A->plen = nvec_nonempty ;
+        A->nvec = nvec_nonempty ;
         A->p = Ap_new ;
         A->h = Ah_new ;
         A->p_shallow = false ;
@@ -112,30 +118,31 @@ GrB_Info GB_to_hyper        // convert a matrix to hypersparse
         // construct the new hyperlist in the new A->p and A->h
         //----------------------------------------------------------------------
 
-        int64_t jlast, anz, anz_last ;
-        GB_jstartup (A, &jlast, &anz, &anz_last) ;
-
-        for (int64_t j = 0 ; j < n ; j++)
-        { 
-            anz = Ap_old [j+1] ;
-            ASSERT (A->nvec <= A->plen) ;
-            #ifndef NDEBUG
-            info = 
-            #endif
-            GB_jappend (A, j, &jlast, anz, &anz_last, Context) ;
-            ASSERT (info == GrB_SUCCESS) ;
-            ASSERT (A->nvec <= A->plen) ;
+        #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1)
+        for (int tid = 0 ; tid < ntasks ; tid++)
+        {
+            int64_t jstart, jend, k = Count [tid] ;
+            GB_PARTITION (jstart, jend, n, tid, ntasks) ;
+            for (int64_t j = jstart ; j < jend ; j++)
+            {
+                if (Ap_old [j] < Ap_old [j+1])
+                {
+                    // vector index j is the kth vector in the new Ah
+                    Ap_new [k] = Ap_old [j] ;
+                    Ah_new [k] = j ;
+                    k++ ;
+                }
+            }
+            ASSERT (k == Count [tid+1]) ;
         }
-        GB_jwrapup (A, jlast, anz) ;
-        ASSERT (A->nvec == nvec_new) ;
-        ASSERT (A->nvec_nonempty == nvec_new) ;
+
+        Ap_new [nvec_nonempty] = anz ;
+        A->magic = GB_MAGIC ;
+        ASSERT (A->nvec_nonempty == GB_nvec_nonempty (A, Context)) ;
 
         //----------------------------------------------------------------------
         // free the old A->p unless it's shallow
         //----------------------------------------------------------------------
-
-        // this cannot use GB_ph_free because the new A->p content has already
-        // been placed into A, as required by GB_jappend just above.
 
         if (!Ap_old_shallow)
         { 
@@ -147,6 +154,7 @@ GrB_Info GB_to_hyper        // convert a matrix to hypersparse
     // A is now in hypersparse form
     //--------------------------------------------------------------------------
 
+    ASSERT (anz == GB_NNZ (A)) ;
     ASSERT_OK_OR_JUMBLED (GB_check (A, "A converted to hypersparse", GB0)) ;
     ASSERT (A->is_hyper) ;
     return (GrB_SUCCESS) ;

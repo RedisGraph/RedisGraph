@@ -1,7 +1,7 @@
 function test72
 %TEST72 special cases for mxm, ewise, ...
 
-%  SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+%  SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 %  http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 fprintf ('\n--------------test72: special cases\n') ;
@@ -40,9 +40,9 @@ GB_spec_compare (C0, C1, 0) ;
 assert (isequal (Z, sparse (C0.matrix))) ;
 
 n = 500 ;
-%%% n = 4 ;
+% n = 4 ;
 A = speye (n) ;
-%%% A = sparse (rand (n)) ;
+% A = sparse (rand (n)) ;
 B = sparse (rand (n)) ;
 Z = sparse (n,n) ;
 

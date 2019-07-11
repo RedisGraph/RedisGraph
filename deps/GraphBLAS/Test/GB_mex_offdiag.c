@@ -2,7 +2,7 @@
 // GB_mex_offdiag: compute C=offdiag(A,1)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -15,6 +15,7 @@
 
 #define FREE_ALL                        \
 {                                       \
+    GB_VECTOR_FREE (&Thunk) ;           \
     GB_MATRIX_FREE (&A) ;               \
     GB_MATRIX_FREE (&C) ;               \
     GB_mx_put_global (true, 0) ;        \
@@ -32,6 +33,7 @@ void mexFunction
 
     bool malloc_debug = GB_mx_get_global (true) ;
     GrB_Matrix A = NULL, C = NULL ;
+    GrB_Vector Thunk = NULL ;
 
     // check inputs
     GB_WHERE (USAGE) ;
@@ -70,8 +72,13 @@ void mexFunction
     #define GET_DEEP_COPY  GrB_Matrix_new (&C, GrB_FP64, A->vlen, A->vdim) ;
     #define FREE_DEEP_COPY GrB_free (&C) ;
 
+    GrB_Vector_new (&Thunk, GrB_INT64, 1) ;
+    GrB_Vector_setElement (Thunk, k, 0) ;
+    GrB_Index ignore ;
+    GrB_Vector_nvals (&ignore, Thunk) ;
+
     // C = offdiag (A,k)
-    METHOD (GxB_Matrix_select (C, NULL, NULL, GxB_OFFDIAG, A, &k, NULL)) ;
+    METHOD (GxB_Matrix_select (C, NULL, NULL, GxB_OFFDIAG, A, Thunk, NULL)) ;
 
     // return C to MATLAB as a regular MATLAB sparse matrix
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C offdiag", false) ;

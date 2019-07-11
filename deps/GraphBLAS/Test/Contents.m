@@ -117,7 +117,7 @@
 %   test51b  - test GrB_assign, multiply operations
 %   test52   - test AdotB vs AxB
 %   test53   - test GrB_Matrix_extract
-%   test54   - test GB_subref_numeric with I=lo:hi, J=lo:hi
+%   test54   - test GB_subref (numeric case) with I=lo:hi, J=lo:hi
 %   test55   - test GxB_subassign, illustrate duplicate indices, MATLAB vs GraphBLAS
 %   test55b  - test GrB_assign, illustrate duplicate indices, MATLAB vs GraphBLAS
 %   test56   - test GrB_*_build
@@ -155,7 +155,7 @@
 %   test89   - performance test of complex A*B
 %   test90   - test AxB with pre-compiled semirings: plus_rdiv and plus_rdiv2
 %   test91   - test subref performance on dense vectors
-%   test92   - test GB_subref_symbolic
+%   test92   - test GB_subref (symbolic case)
 %   test93   - test dpagerank and ipagerank
 %   test94   - test pagerank
 %   test95   - performance test for GrB_transpose

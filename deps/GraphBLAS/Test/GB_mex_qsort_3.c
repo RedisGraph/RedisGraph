@@ -2,7 +2,7 @@
 // GB_mex_qsort_3: sort using GB_qsort_3
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -66,11 +66,11 @@ void mexFunction
     int64_t *Kout = mxGetData (pargout [2]) ;
     memcpy (Kout, K, n * sizeof (int64_t)) ;
 
-    TIC ;
+    GB_MEX_TIC ;
 
     GB_qsort_3 (Iout, Jout, Kout, n, Context) ;
 
-    TOC ;
+    GB_MEX_TOC ;
     GB_mx_put_time (0) ;
 }
 

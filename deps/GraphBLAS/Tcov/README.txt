@@ -1,4 +1,4 @@
-SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 GraphBLAS/Tcov: statement coverage tests
@@ -39,7 +39,6 @@ Files in GraphBLAS/Tcov:
 
     Contents.m     for 'help Tcov' in MATLAB; list of files
 
-    gbcmake.m      compile GraphBLAS for statement coverage testing
     gbcover.m      compile GraphBLAS for statement coverage testing
     gbcover_edit.m create a version of GraphBLAS for statement coverage tests
     testcov.m      run all GraphBLAS tests, with statement coverage
@@ -53,8 +52,4 @@ Files in GraphBLAS/Tcov:
     tmp_cover       where coverage reports are placed
     tmp_include     for include files augmented with coverate tests
     tmp_source      for source files augmented with coverate tests
-
-
-    gbmake.m        compiles the MATLAB interface to GraphBLAS (all of
-                    GraphBLAS compiled with mex command)
 

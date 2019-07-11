@@ -6,8 +6,8 @@ function flops = flopcount (M,A,B) ;
 % flops(j) is the flops to compute A*B(1:j-1), and flops(n+1) is the total
 % flopcount, if B is m-by-n.
 %
-% Each 'flop' counted is actually a multiply-add pair.  M can be [ ].  This
-% function returns the same thing as GB_AxB_flopcounts.
+% Each 'flop' counted is actually a multiply-add pair.  M can be [ ]. The
+% flopcount m-file returns the same thing as GB_AxB_flopcount.
 
 n = size (B,2) ;
 flops = zeros (1,n) ;

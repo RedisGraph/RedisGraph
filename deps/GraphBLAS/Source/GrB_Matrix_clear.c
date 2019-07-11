@@ -11,8 +11,6 @@
 // zero.  This puts the matrix A in the same state it had after GrB_Matrix_new
 // (&A, ...).  The dimensions and type of A are not changed.
 
-// parallel: not here but in GB_clear.  
-
 #include "GB.h"
 
 GrB_Info GrB_Matrix_clear   // clear a matrix of all entries;
@@ -27,7 +25,6 @@ GrB_Info GrB_Matrix_clear   // clear a matrix of all entries;
 
     GB_WHERE ("GrB_Matrix_clear (A)") ;
     GB_RETURN_IF_NULL_OR_FAULTY (A) ;
-    Context->nthreads = GxB_DEFAULT ;   // no descriptor, so use default rule
 
     //--------------------------------------------------------------------------
     // clear the matrix

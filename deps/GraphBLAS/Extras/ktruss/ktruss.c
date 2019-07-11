@@ -156,7 +156,7 @@ int64_t ktruss                  // # steps taken, or <= 0 if error
 
         // C is now in Ap, Ai, Ax, and n.  Prune all entries C(i,j) < support.
         // This code snippet is a mimic for
-        // GxB_select (T, NULL, NULL, supportop, C, &support, NULL)
+        // GxB_select (T, NULL, NULL, supportop, C, Support, NULL)
         // except that this code can operate on C in-place.
 
         int64_t cnz = 0 ;
@@ -191,7 +191,8 @@ int64_t ktruss                  // # steps taken, or <= 0 if error
         if (cnz == anz)
         {
             // k-truss has been found, free workspace and return result
-            printf ("ktruss nthreads %d done: tmult %g tsel %g\n", nthreads, tmult, tsel) ;
+            printf ("ktruss nthreads %d done: tmult %g tsel %g\n",
+                nthreads, tmult, tsel) ;
             #pragma omp parallel num_threads(nthreads)
             {
                 free (w) ;

@@ -7,10 +7,8 @@
 
 //------------------------------------------------------------------------------
 
-// Pending tuples are ignored.  If a vector has all zombies it is still
+// All pending tuples are ignored.  If a vector has all zombies it is still
 // counted as non-empty.
-
-// PARALLEL: simple parallel reduction
 
 #include "GB.h"
 
@@ -28,12 +26,6 @@ int64_t GB_nvec_nonempty        // return # of non-empty vectors
     ASSERT (A != NULL) ;
 
     //--------------------------------------------------------------------------
-    // determine the number of threads to use
-    //--------------------------------------------------------------------------
-
-    GB_GET_NTHREADS (nthreads, Context) ;
-
-    //--------------------------------------------------------------------------
     // trivial case
     //--------------------------------------------------------------------------
 
@@ -43,16 +35,25 @@ int64_t GB_nvec_nonempty        // return # of non-empty vectors
     }
 
     //--------------------------------------------------------------------------
+    // determine the number of threads to use
+    //--------------------------------------------------------------------------
+
+    int64_t anvec = A->nvec ;
+
+    GB_GET_NTHREADS_MAX (nthreads_max, chunk, Context) ;
+    int nthreads = GB_nthreads (anvec, chunk, nthreads_max) ;
+
+    //--------------------------------------------------------------------------
     // count the non-empty columns
     //--------------------------------------------------------------------------
 
     int64_t nvec_nonempty = 0 ;
+    const int64_t *restrict Ap = A->p ;
 
-    GBI_for_each_vector (A)
-    { 
-        GBI_jth_iteration (j, p, pend) ;
-        int64_t ajnz = pend - p ;
-        if (ajnz > 0) nvec_nonempty++ ;
+    #pragma omp parallel for num_threads(nthreads) reduction(+:nvec_nonempty)
+    for (int64_t k = 0 ; k < anvec ; k++)
+    {
+        if (Ap [k] < Ap [k+1]) nvec_nonempty++ ;
     }
 
     ASSERT (nvec_nonempty >= 0 && nvec_nonempty <= A->vdim) ;

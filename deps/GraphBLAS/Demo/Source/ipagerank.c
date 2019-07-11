@@ -46,8 +46,9 @@
 // scalar operators
 //------------------------------------------------------------------------------
 
+// NOTE: this operator uses global value.  ipagerank can be done in
+// parallel, internally, but only one instance of ipagerank can be used.
 uint64_t ic ;
-#pragma omp threadprivate(ic)
 
 // scale by the integer ic
 void iscale (uint64_t *z, const uint64_t *x)

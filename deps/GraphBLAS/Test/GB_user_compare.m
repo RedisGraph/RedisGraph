@@ -4,7 +4,7 @@ function GB_user_compare (C1, C2, tol)
 %
 % compare two complex results, from GB_mex_op and GB_user_op
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 if (tol)

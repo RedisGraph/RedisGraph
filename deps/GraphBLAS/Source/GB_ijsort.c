@@ -7,18 +7,31 @@
 
 //------------------------------------------------------------------------------
 
-// PARALLEL: deletes duplicates, see also GB_builder.  This is only used in
-// GB_assign, for scalar expansion and for the C_replace_phase, and only when I
-// and/or J are lists (not GrB_ALL, nor lo:inc:hi).
+// Sort an index array and remove duplicates.  In MATLAB notation:
 
-#include "GB.h"
+/*
+    [I1 I1k] = sort (I) ;
+    Iduplicate = [I1 (1:end-1) == I1 (2:end)), false] ;
+    I2  = I1  (~Iduplicate) ;
+    I2k = I1k (~Iduplicate) ;
+*/
+
+#include "GB_ij.h"
+#include "GB_qsort.h"
+
+#define GB_FREE_WORK                                    \
+{                                                       \
+    GB_FREE_MEMORY (I1,  ni, sizeof (GrB_Index)) ;      \
+    GB_FREE_MEMORY (I1k, ni, sizeof (GrB_Index)) ;      \
+}
 
 GrB_Info GB_ijsort
 (
-    const GrB_Index *I, // index array of size ni
-    int64_t *p_ni,      // input: size of I, output: number of indices in I2
-    GrB_Index **p_I2,   // output array of size ni, where I2 [0..ni2-1]
+    const GrB_Index *restrict I, // size ni, where ni > 1 always holds
+    int64_t *restrict p_ni,      // : size of I, output: # of indices in I2
+    GrB_Index *restrict *p_I2,   // size ni2, where I2 [0..ni2-1]
                         // contains the sorted indices with duplicates removed.
+    GrB_Index *restrict *p_I2k,  // output array of size ni2
     GB_Context Context
 )
 {
@@ -30,61 +43,158 @@ GrB_Info GB_ijsort
     ASSERT (I != NULL) ;
     ASSERT (p_ni != NULL) ;
     ASSERT (p_I2 != NULL) ;
-
-    //--------------------------------------------------------------------------
-    // determine the number of threads to use
-    //--------------------------------------------------------------------------
-
-    GB_GET_NTHREADS (nthreads, Context) ;
+    ASSERT (p_I2k != NULL) ;
 
     //--------------------------------------------------------------------------
     // get inputs
     //--------------------------------------------------------------------------
 
-    GrB_Index *I2 = NULL ;
+    GrB_Index *restrict I1  = NULL ;
+    GrB_Index *restrict I1k = NULL ;
+    GrB_Index *restrict I2  = NULL ;
+    GrB_Index *restrict I2k = NULL ;
     int64_t ni = *p_ni ;
+    ASSERT (ni > 1) ;
 
     //--------------------------------------------------------------------------
-    // allocate the new list
+    // determine the number of threads to use
     //--------------------------------------------------------------------------
 
-    GB_MALLOC_MEMORY (I2, ni, sizeof (GrB_Index)) ;
-    if (I2 == NULL)
+    GB_GET_NTHREADS_MAX (nthreads_max, chunk, Context) ;
+    int nthreads = GB_nthreads (ni, chunk, nthreads_max) ;
+    // printf ("ni "GBd" chunk %g\n", ni, chunk) ;
+
+    //--------------------------------------------------------------------------
+    // allocate workspace
+    //--------------------------------------------------------------------------
+
+    GB_MALLOC_MEMORY (I1,  ni, sizeof (GrB_Index)) ;
+    GB_MALLOC_MEMORY (I1k, ni, sizeof (GrB_Index)) ;
+    if (I1 == NULL || I1k == NULL)
     { 
         // out of memory
+        GB_FREE_WORK ;
         return (GB_OUT_OF_MEMORY) ;
     }
 
     //--------------------------------------------------------------------------
-    // copy I into I2 and sort it
+    // copy I into I1 and sort it
     //--------------------------------------------------------------------------
 
+    GB_memcpy (I1, I, ni * sizeof (GrB_Index), nthreads) ;
+
+    #pragma omp parallel for num_threads(nthreads) schedule(static)
     for (int64_t k = 0 ; k < ni ; k++)
-    { 
-        I2 [k] = I [k] ;
+    {
+        I1k [k] = k ;
     }
 
-    GB_qsort_1 ((int64_t *) I2, ni, Context) ;
+    GB_qsort_2 ((int64_t *) I1, (int64_t *) I1k, ni, Context) ;
 
     //--------------------------------------------------------------------------
-    // remove duplicates from I2
+    // count unique entries in I1
     //--------------------------------------------------------------------------
 
-    int64_t ni2 = 1 ;
-    for (int64_t k = 1 ; k < ni ; k++)
+    int ntasks = (nthreads == 1) ? 1 : (32 * nthreads) ;
+    ntasks = GB_IMIN (ntasks, ni) ;
+    ntasks = GB_IMAX (ntasks, 1) ;
+
+    int64_t Count [ntasks+1] ;
+
+    #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1)
+    for (int tid = 0 ; tid < ntasks ; tid++)
     {
-        if (I2 [ni2-1] != I2 [k])
-        { 
-            I2 [ni2++] = I2 [k] ;
+        int64_t kfirst, klast, my_count = (tid == 0) ? 1 : 0 ;
+        GB_PARTITION (kfirst, klast, ni, tid, ntasks) ;
+        for (int64_t k = GB_IMAX (kfirst,1) ; k < klast ; k++)
+        {
+            if (I1 [k-1] != I1 [k])
+            {
+                my_count++ ;
+            }
+        }
+        Count [tid] = my_count ;
+    }
+
+    GB_cumsum (Count, ntasks, NULL, 1) ;
+    int64_t ni2 = Count [ntasks] ;
+
+    //--------------------------------------------------------------------------
+    // allocate the result I2
+    //--------------------------------------------------------------------------
+
+    GB_MALLOC_MEMORY (I2 , ni2, sizeof (GrB_Index)) ;
+    GB_MALLOC_MEMORY (I2k, ni2, sizeof (GrB_Index)) ;
+    if (I2 == NULL || I2k == NULL)
+    { 
+        // out of memory
+        GB_FREE_WORK ;
+        GB_FREE_MEMORY (I2 , ni2, sizeof (GrB_Index)) ;
+        GB_FREE_MEMORY (I2k, ni2, sizeof (GrB_Index)) ;
+        return (GB_OUT_OF_MEMORY) ;
+    }
+
+    //--------------------------------------------------------------------------
+    // construct the new list I2 from I1, removing duplicates
+    //--------------------------------------------------------------------------
+
+    #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1)
+    for (int tid = 0 ; tid < ntasks ; tid++)
+    {
+        int64_t kfirst, klast, k2 = Count [tid] ;
+        GB_PARTITION (kfirst, klast, ni, tid, ntasks) ;
+        if (tid == 0)
+        {
+            // the first entry in I1 is never a duplicate
+            I2  [k2] = I1  [0] ;
+            I2k [k2] = I1k [0] ;
+            k2++ ;
+        }
+        for (int64_t k = GB_IMAX (kfirst,1) ; k < klast ; k++)
+        {
+            if (I1 [k-1] != I1 [k])
+            {
+                I2  [k2] = I1  [k] ;
+                I2k [k2] = I1k [k] ;
+                k2++ ;
+            }
         }
     }
 
     //--------------------------------------------------------------------------
-    // return the new sorted list
+    // check result: compare with single-pass, single-threaded algorithm
     //--------------------------------------------------------------------------
 
-    *p_I2 = I2 ;        // I2 has size ni, but only I2 [0..ni2-1] is defined
-    *p_ni = ni2 ;
+    #ifdef GB_DEBUG
+    {
+        int64_t ni1 = 1 ;
+        for (int64_t k = 1 ; k < ni ; k++)
+        {
+            if (I1 [ni1-1] != I1 [k])
+            { 
+                I1  [ni1] = I1  [k] ;
+                I1k [ni1] = I1k [k] ;
+                ni1++ ;
+            }
+        }
+        // printf ("OK "GBd" "GBd"\n", ni1, ni) ;
+        ASSERT (ni1 == ni2) ;
+        for (int64_t k = 0 ; k < ni1 ; k++)
+        {
+            ASSERT (I1  [k] == I2 [k]) ;
+            ASSERT (I1k [k] == I2k [k]) ;
+        }
+    }
+    #endif
+
+    //--------------------------------------------------------------------------
+    // free workspace and return the new sorted list
+    //--------------------------------------------------------------------------
+
+    GB_FREE_WORK ;
+    *(p_I2 ) = (GrB_Index *) I2 ;
+    *(p_I2k) = (GrB_Index *) I2k ;
+    *(p_ni ) = (int64_t    ) ni2 ;
 
     return (GrB_SUCCESS) ;
 }

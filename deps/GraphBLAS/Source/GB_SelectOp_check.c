@@ -7,7 +7,8 @@
 
 //------------------------------------------------------------------------------
 
-// not parallel: this function does O(1) work and is already thread-safe.
+// for additional diagnostics, use:
+// #define GB_DEVELOPER 1
 
 #include "GB.h"
 
@@ -67,13 +68,7 @@ GrB_Info GB_SelectOp_check  // check a GraphBLAS select operator
             GB_NAME, op->name))) ;
     }
 
-    if (!(op->opcode == GB_TRIL_opcode ||
-          op->opcode == GB_TRIU_opcode ||
-          op->opcode == GB_DIAG_opcode ||
-          op->opcode == GB_OFFDIAG_opcode ||
-          op->opcode == GB_NONZERO_opcode ||
-          op->opcode == GB_USER_SELECT_C_opcode ||
-          op->opcode == GB_USER_SELECT_R_opcode))
+    if (op->opcode < GB_TRIL_opcode || op->opcode > GB_USER_SELECT_R_opcode)
     { 
         if (pr > 0) GBPR ("invalid opcode\n") ;
         return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,

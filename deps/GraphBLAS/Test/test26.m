@@ -1,12 +1,17 @@
 function test26(longtests)
 %TEST26 performance test for GxB_select
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
-fprintf ('\nperformance of GxB_select\n') ;
+fprintf ('\ntest26 ------------------------------performance of GxB_select\n') ;
 
-[mult_ops unary_ops add_ops classes semirings select_ops] = GB_spec_opsall ;
+[save save_chunk] = nthreads_get ;
+chunk = 4096 ;
+nthreads = feature ('numcores') ;
+nthreads_set (nthreads, chunk) ;
+
+[~, ~, ~, ~, ~, select_ops] = GB_spec_opsall ;
 
 if (nargin < 1)
     longtests = 0 ;
@@ -41,7 +46,7 @@ for probs = 1:nprobs
             A = A4.matrix ;
             % spok(A) will fail since it has intentional explicit zeros
         case 4
-            A = sparse (rand (4000)) ;
+            A = sparse (rand (6000)) ;
         case 5
             Prob = ssget (2662) ;
             A = Prob.A ;
@@ -131,3 +136,4 @@ for probs = 1:nprobs
     end
 end
 
+nthreads_set (save, save_chunk) ;

@@ -2,7 +2,7 @@
 // GB_mex_select: C<M> = accum(C,select(A,k)) or select(A',k)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -11,10 +11,11 @@
 
 #include "GB_mex.h"
 
-#define USAGE "C = GB_mex_select (C, M, accum, op, A, k, desc, test)"
+#define USAGE "C = GB_mex_select (C, M, accum, op, A, Thunk, desc, test)"
 
 #define FREE_ALL                        \
 {                                       \
+    GB_VECTOR_FREE (&Thunk) ;           \
     GB_MATRIX_FREE (&C) ;               \
     GB_MATRIX_FREE (&M) ;               \
     GB_MATRIX_FREE (&A) ;               \
@@ -37,6 +38,7 @@ void mexFunction
     GrB_Matrix A = NULL ;
     GrB_Descriptor desc = NULL ;
     int64_t k = 0 ;
+    GrB_Vector Thunk = NULL ;
 
     // check inputs
     GB_WHERE (USAGE) ;
@@ -110,16 +112,22 @@ void mexFunction
         C->nvec_nonempty = -1 ;
     }
 
+    GrB_Vector_new (&Thunk, GrB_INT64, 1) ;
+    GrB_Vector_setElement (Thunk, k, 0) ;
+    GrB_Index ignore ;
+    GrB_Vector_nvals (&ignore, Thunk) ;
+    // GxB_print (Thunk, 3) ;
+
     // C<M> = accum(C,op(A))
     if (C->vdim == 1 && (desc == NULL || desc->in0 == GxB_DEFAULT))
     {
         // this is just to test the Vector version
         METHOD (GxB_select ((GrB_Vector) C, (GrB_Vector) M, accum, op,
-            (GrB_Vector) A, &k, desc)) ;
+            (GrB_Vector) A, Thunk, desc)) ;
     }
     else
     {
-        METHOD (GxB_select (C, M, accum, op, A, &k, desc)) ;
+        METHOD (GxB_select (C, M, accum, op, A, Thunk, desc)) ;
     }
 
     // return C to MATLAB as a struct and free the GraphBLAS C

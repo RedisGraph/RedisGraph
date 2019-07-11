@@ -2,7 +2,7 @@
 // GB_mex_about: print the 'about' information
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -12,6 +12,8 @@
 #include "GB_mex.h"
 
 #define USAGE "GB_mex_about"
+
+GrB_Info ack (int64_t *stuff, GrB_Matrix GunkIt) ;
 
 GrB_Info ack (int64_t *stuff, GrB_Matrix GunkIt)
 {
@@ -29,6 +31,7 @@ void mexFunction
     const mxArray *pargin [ ]
 )
 {
+    printf ("in %s\n", __FILE__) ;
 
     // test GrB_init with invalid mode
     GB_Global_GrB_init_called_set (false) ;
@@ -143,7 +146,7 @@ void mexFunction
 
     GrB_free (&m) ;
 
-    int16_t id0 = GB_MINUS_INF (id0) ;
+    int16_t id0 = INT16_MIN ;
 
     GrB_Monoid_new (&m, GrB_MAX_INT16, id0) ;
     GB_check (m, "max int16 monoid", GxB_COMPLETE) ;
@@ -256,26 +259,27 @@ void mexFunction
     // test the #ifdefs
     #ifdef GxB_SUITESPARSE_GRAPHBLAS
 
-    printf ("\nAbout:\n%s\n", GxB_ABOUT) ;
-    printf ("Date: %s\n", GxB_DATE) ;
+    printf ("\nAbout:\n%s\n", GxB_IMPLEMENTATION_ABOUT) ;
+    printf ("Date: %s\n", GxB_IMPLEMENTATION_DATE) ;
     printf ("Implementation: %d.%d.%d ("GBu")\n",
         GxB_IMPLEMENTATION_MAJOR,
         GxB_IMPLEMENTATION_MINOR,
         GxB_IMPLEMENTATION_SUB,
         GxB_IMPLEMENTATION) ;
-    printf ("License:%s\n", GxB_LICENSE) ;
-    printf ("Spec: %d.%d.%d ("GBu")\n",
-        GxB_MAJOR, GxB_MINOR, GxB_SUB, GxB) ;
-    printf ("Spec Date: %s\n", GxB_SPEC_DATE) ;
-    printf ("About the spec:\n%s\n", GxB_SPEC) ;
+    printf ("License:%s\n", GxB_IMPLEMENTATION_LICENSE) ;
 
-    #if GxB >= GxB_VERSION(1,0,0)
+    printf ("Spec: %d.%d.%d ("GBu")\n",
+        GxB_SPEC_MAJOR, GxB_SPEC_MINOR, GxB_SPEC_SUB, GxB_SPEC_VERSION) ;
+    printf ("Spec Date: %s\n", GxB_SPEC_DATE) ;
+    printf ("About the spec:\n%s\n", GxB_SPEC_ABOUT) ;
+
+    #if GxB_SPEC_VERSION >= GxB_VERSION(1,0,0)
     printf ("The spec is >= version 1.0.0\n") ;
     #else
     printf ("The spec is < version 1.0.0\n") ;
     #endif
 
-    #if GxB < GxB_VERSION(2,3,0)
+    #if GxB_SPEC_VERSION < GxB_VERSION(2,3,0)
     printf ("The spec is < version 2.3.0\n") ;
     #else
     printf ("The spec is >= version 2.3.0\n") ;
@@ -363,6 +367,14 @@ void mexFunction
     printf ("thread safety: %d\n", threading) ;
     GxB_get (GxB_THREADING, &threading) ;
     printf ("threading: %d\n", threading) ;
+
+    int nthreads ;
+    GxB_get (GxB_NTHREADS, &nthreads) ;
+    printf ("# threads: %d\n", nthreads) ;
+
+    double chunk ;
+    GxB_get (GxB_CHUNK, &chunk) ;
+    printf ("chunk: %g\n", chunk) ;
 
     GB_mx_put_global (true, 0) ;
 }

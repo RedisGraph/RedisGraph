@@ -1,7 +1,7 @@
 function test55
 %TEST55 test GxB_subassign, illustrate duplicate indices, MATLAB vs GraphBLAS
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 % MATLAB and GraphBLAS differ on how repeated indices are handled
@@ -31,8 +31,6 @@ C2 = GB_mex_subassign (a, [], 'plus', b, i0, j0)
 
 C1
 full (C2.matrix)
-
-%%%
 
 c = sparse ([ 1 2 3 4 5 ])
 i = uint64 (0)

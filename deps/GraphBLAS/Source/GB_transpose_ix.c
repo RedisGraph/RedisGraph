@@ -7,112 +7,73 @@
 
 //------------------------------------------------------------------------------
 
-// The values of A are typecasted to R_type, the type of the R matrix.
-// A can be sparse or hypersparse, but R is not hypersparse.
+// The values of A are typecasted to C->type, the type of the C matrix.
+// A can be sparse or hypersparse, but C is not hypersparse.
 
-// The row pointers of the output matrix have already been computed, in Rp.
-// Row i will appear in Ri, in the positions Rp [i] .. Rp [i+1], for the
-// version of Rp on *input*.  On output, however, Rp has been shifted down
-// by one.  Rp [0:m-1] has been over written with Rp [1:m].  They can be
-// shifted back, if needed, but GraphBLAS treats this array Rp, on input
-// to this function, as a throw-away copy of Rp.
+// This method is parallel, but not highly scalable.  It uses only naslice =
+// nnz(A)/(A->vlen) threads.
 
-// Compare with GB_transpose_op.c
+#include "GB_transpose.h"
+#ifndef GBCOMPACT
+#include "GB_unaryop__include.h"
+#endif
 
-// PARALLEL: the bucket transpose will not be simple to parallelize.  The qsort
-// method of transpose would be more parallel.  This method might remain mostly
-// sequential.
-
-#include "GB.h"
-
-void GB_transpose_ix        // transpose the pattern and values of a matrix
+void GB_transpose_ix            // transpose the pattern and values of a matrix
 (
-    int64_t *Rp,            // size m+1, input: row pointers, shifted on output
-    int64_t *Ri,            // size cnz, output column indices
-    GB_void *Rx,            // size cnz, output numerical values, type R_type
-    const GrB_Type R_type,  // type of output R (do typecasting into R)
-    const GrB_Matrix A,     // input matrix
-    GB_Context Context
+    GrB_Matrix C,                       // output matrix
+    const GrB_Matrix A,                 // input matrix
+    int64_t **Rowcounts,                // Rowcounts [naslice]
+    GBI_single_iterator Iter,           // iterator for the matrix A
+    const int64_t *restrict A_slice,    // defines how A is sliced
+    int naslice                         // # of slices of A
 )
 {
-
-    //--------------------------------------------------------------------------
-    // check inputs
-    //--------------------------------------------------------------------------
-
-    ASSERT (A != NULL) ;
-    ASSERT (R_type != NULL) ;
-    ASSERT (Rp != NULL && Ri != NULL && Rx != NULL) ;
-    ASSERT (GB_Type_compatible (A->type, R_type)) ;
-    ASSERT (!GB_ZOMBIES (A)) ;
-
-    //--------------------------------------------------------------------------
-    // determine the number of threads to use
-    //--------------------------------------------------------------------------
-
-    GB_GET_NTHREADS (nthreads, Context) ;
-
-    //--------------------------------------------------------------------------
-    // get the input matrix
-    //--------------------------------------------------------------------------
-
-    const int64_t *Ai = A->i ;
-    const GB_void *Ax = A->x ;
 
     //--------------------------------------------------------------------------
     // define the worker for the switch factory
     //--------------------------------------------------------------------------
 
-    #define GB_WORKER(rtype,atype)                              \
-    {                                                           \
-        rtype *rx = (rtype *) Rx ;                              \
-        atype *ax = (atype *) Ax ;                              \
-        GBI_for_each_vector (A)                                 \
-        {                                                       \
-            GBI_for_each_entry (j, p, pend)                     \
-            {                                                   \
-                int64_t q = Rp [Ai [p]]++ ;                     \
-                Ri [q] = j ;                                    \
-                /* rx [q] = ax [p], type casting */             \
-                GB_CAST (rx [q], ax [p]) ;                      \
-            }                                                   \
-        }                                                       \
-        return ;                                                \
-    }
+    GrB_Info info ;
+
+    #define GB_tran(zname,aname) GB_tran__identity ## zname ## aname
+
+    #define GB_WORKER(ignore1,zname,ztype,aname,atype)                      \
+    {                                                                       \
+        info = GB_tran (zname,aname) (C, A, Rowcounts, Iter, A_slice,       \
+            naslice) ;                                                      \
+        if (info == GrB_SUCCESS) return ;                                   \
+    }                                                                       \
+    break ;
 
     //--------------------------------------------------------------------------
     // launch the switch factory
     //--------------------------------------------------------------------------
 
-    // The switch factory cannot be disabled by #ifndef GBCOMPACT
-    // because the generic worker does no typecasting.
-
     // switch factory for two types, controlled by code1 and code2
-    GB_Type_code code1 = R_type->code ;         // defines rtype
+    GrB_Type ctype = C->type ;
+    GB_Type_code code1 = ctype->code ;          // defines ztype
     GB_Type_code code2 = A->type->code ;        // defines atype
-    ASSERT (code1 <= GB_UDT_code) ;
-    ASSERT (code2 <= GB_UDT_code) ;
-    #include "GB_2type_template.c"
+
+    #ifndef GBCOMPACT
+    #include "GB_2type_factory.c"
+    #endif
 
     //--------------------------------------------------------------------------
-    // generic worker
+    // generic worker: transpose and typecast
     //--------------------------------------------------------------------------
 
-    // the switch factory handles all built-in types; user-defined types
-    // fall through the switch factory to here, which can never be
-    // typecasted.  Because the generic worker does no typecasting, the
-    // switch factory cannot be disabled.
-    ASSERT (A->type == R_type && A->type->code > GB_FP64_code) ;
+    size_t asize = A->type->size ;
+    size_t csize = C->type->size ;
+    GB_cast_function cast_A_to_X = GB_cast_factory (code1, code2) ;
 
-    int64_t asize = A->type->size ;
-    GBI_for_each_vector (A)
-    {
-        GBI_for_each_entry (j, p, pend)
-        { 
-            int64_t q = Rp [Ai [p]]++ ;
-            Ri [q] = j ;
-            memcpy (Rx +(q*asize), Ax +(p*asize), asize) ;
-        }
-    }
+    // Cx [pC] = (ctype) Ax [pA]
+    #define GB_CAST_OP(pC,pA)  \
+        cast_A_to_X (Cx +(pC*csize), Ax +(pA*asize), asize) ;
+
+    #define GB_ATYPE GB_void
+    #define GB_CTYPE GB_void
+
+    #define GB_PHASE_2_OF_2
+    #include "GB_unaryop_transpose.c"
 }
 

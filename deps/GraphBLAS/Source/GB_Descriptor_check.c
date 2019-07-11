@@ -7,7 +7,8 @@
 
 //------------------------------------------------------------------------------
 
-// not parallel: this function does O(1) work and is already thread-safe.
+// for additional diagnostics, use:
+// #define GB_DEVELOPER 1
 
 #include "GB.h"
 
@@ -120,7 +121,7 @@ GrB_Info GB_Descriptor_check    // check a GraphBLAS descriptor
     info [1] = GB_dc (true,  "mask      ", D->mask, GrB_SCMP,    pr,f,Context) ;
     info [2] = GB_dc (true,  "input0    ", D->in0,  GrB_TRAN,    pr,f,Context) ;
     info [3] = GB_dc (true,  "input1    ", D->in1,  GrB_TRAN,    pr,f,Context) ;
-    info [4] = GB_dc (false, "AxB_method", D->axb,  0,           pr,f,Context) ;
+    info [4] = GB_dc (false, "AxB_method", D->axb,  GxB_DEFAULT, pr,f,Context) ;
 
     for (int i = 0 ; i < 5 ; i++)
     { 
@@ -129,6 +130,31 @@ GrB_Info GB_Descriptor_check    // check a GraphBLAS descriptor
             if (pr > 0) GBPR ("Descriptor field set to an invalid value\n") ;
             return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
                 "Descriptor field set to an invalid value: [%s]", GB_NAME))) ;
+        }
+    }
+
+    int nthreads_max = D->nthreads_max ;
+    double chunk = D->chunk ;
+
+    if (pr > 0)
+    {
+        GBPR ("D.nthreads = ") ;
+        if (nthreads_max <= GxB_DEFAULT)
+        {
+            GBPR ("default\n") ;
+        }
+        else
+        {
+            GBPR ("%d\n", nthreads_max) ;
+        }
+        GBPR ("D.chunk = ") ;
+        if (chunk <= GxB_DEFAULT)
+        {
+            GBPR ("default\n") ;
+        }
+        else
+        {
+            GBPR ("%g\n", chunk) ;
         }
     }
 

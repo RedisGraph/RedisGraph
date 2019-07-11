@@ -10,8 +10,6 @@
 // Check if the types for C<M> = accum (C,T) are all compatible,
 // and (if present) make sure the size of C and M match.
 
-// not parallel: this function does O(1) work and is already thread-safe.
-
 #include "GB.h"
 
 GrB_Info GB_compatible          // SUCCESS if all is OK, *_MISMATCH otherwise
@@ -29,7 +27,7 @@ GrB_Info GB_compatible          // SUCCESS if all is OK, *_MISMATCH otherwise
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT (GB_ALIAS_OK (C, M)) ;
+    // C may be aliased with M
 
     GrB_Info info ;
 
@@ -49,7 +47,8 @@ GrB_Info GB_compatible          // SUCCESS if all is OK, *_MISMATCH otherwise
         // be compatible.  This is the same as the condition below
         // when accum is NULL.
 
-        info = GB_BinaryOp_compatible (accum, ctype, ctype, ttype, 0, Context) ;
+        info = GB_BinaryOp_compatible (accum, ctype, ctype, ttype,
+            GB_ignore_code, Context) ;
         if (info != GrB_SUCCESS)
         { 
             return (info) ;
