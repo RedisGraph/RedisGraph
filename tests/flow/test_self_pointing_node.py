@@ -1,11 +1,8 @@
 import os
 import sys
-import unittest
 from redisgraph import Graph, Node, Edge
 
-# import redis
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from disposableredis import DisposableRedis
 
 from base import FlowTestsBase
 
@@ -13,28 +10,15 @@ redis_graph = None
 
 GRAPH_ID = "G"
 
-def redis():
-    return DisposableRedis(loadmodule=os.path.dirname(os.path.abspath(__file__)) + '/../../src/redisgraph.so')
-
-class SelfPointingNode(FlowTestsBase):
-    @classmethod
-    def setUpClass(cls):
-        print "SelfPointingNode"
+class testSelfPointingNode(FlowTestsBase):
+    def __init__(self):
+        super(testSelfPointingNode, self).__init__()
         global redis_graph
-        cls.r = redis()
-        cls.r.start()
-        redis_con = cls.r.client()
+        redis_con = self.env.getConnection()
         redis_graph = Graph(GRAPH_ID, redis_con)
-
-        cls.populate_graph()
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.r.stop()
-        # pass
-
-    @classmethod
-    def populate_graph(cls):
+        self.populate_graph()
+   
+    def populate_graph(self):
         # Construct a graph with the form:
         # (v1)-[:e]->(v1)
 
@@ -73,19 +57,19 @@ class SelfPointingNode(FlowTestsBase):
         result_f = redis_graph.query(query)
         plan_f = redis_graph.execution_plan(query)
 
-        assert(len(result_a.result_set) == 1)
+        self.env.assertEquals(len(result_a.result_set), 1)
         n = result_a.result_set[0][0]
-        assert(n.id == 0)
+        self.env.assertEquals(n.id, 0)
 
-        assert(result_b.result_set == result_a.result_set)
-        assert(result_c.result_set == result_a.result_set)
-        assert(result_d.result_set == result_a.result_set)
-        assert(result_e.result_set == result_a.result_set)
-        assert(result_f.result_set == result_a.result_set)
+        self.env.assertEquals(result_b.result_set, result_a.result_set)
+        self.env.assertEquals(result_c.result_set, result_a.result_set)
+        self.env.assertEquals(result_d.result_set, result_a.result_set)
+        self.env.assertEquals(result_e.result_set, result_a.result_set)
+        self.env.assertEquals(result_f.result_set, result_a.result_set)
 
-        assert("Expand Into" in plan_a)
-        assert("Expand Into" in plan_b)
-        assert("Expand Into" in plan_c)
-        assert("Expand Into" in plan_d)
-        assert("Expand Into" in plan_e)
-        assert("Expand Into" in plan_f)
+        self.env.assertIn("Expand Into", plan_a)
+        self.env.assertIn("Expand Into", plan_b)
+        self.env.assertIn("Expand Into", plan_c)
+        self.env.assertIn("Expand Into", plan_d)
+        self.env.assertIn("Expand Into", plan_e)
+        self.env.assertIn("Expand Into", plan_f)

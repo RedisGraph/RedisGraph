@@ -479,7 +479,7 @@ Feature: FunctionsAcceptance
       RETURN labels(list[1]) AS l
       """
     Then a TypeError should be raised at runtime: InvalidArgumentValue
-  @skip
+  
   Scenario: `exists()` is case insensitive
     Given an empty graph
     And having executed:
@@ -489,7 +489,7 @@ Feature: FunctionsAcceptance
     When executing query:
       """
       MATCH (n:X)
-      RETURN n, EXIsTS(n.prop) AS b
+      RETURN n, EXIsTS(n.prop) AS b ORDER BY n.prop
       """
     Then the result should be:
       | n               | b     |

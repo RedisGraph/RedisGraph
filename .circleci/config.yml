@@ -10,8 +10,10 @@ jobs:
           name: Install prerequisite
           command: >-
             pip install git+https://github.com/RedisGraph/redisgraph-py.git &&
-            pip install behave backports.csv &&
-            apt-get update; apt-get install -y automake peg libtool autoconf cmake
+            pip install psutil behave backports.csv && 
+            pip install redis-py-cluster &&
+            pip install git+https://github.com/RedisLabsModules/RLTest.git@master &&
+            apt-get update; apt-get install -y automake peg libtool autoconf cmake valgrind
       
       # Load GraphBLAS from cache if possible.
       - restore_cache:

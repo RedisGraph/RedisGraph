@@ -202,34 +202,34 @@ SIValue SIValue_Divide(const SIValue a, const SIValue b) {
 }
 
 int SIValue_Compare(const SIValue a, const SIValue b) {
-  /* In order to be comparable, both SIValues must be strings,
-   * booleans, or numerics. */
-  if (a.type == b.type) {
-    switch (a.type) {
-      case T_INT64:
-      case T_BOOL:
-        return a.longval - b.longval;
-      case T_DOUBLE:
-        return SAFE_COMPARISON_RESULT(a.doubleval - b.doubleval);
-      case T_STRING:
-        return strcmp(a.stringval, b.stringval);
-      case T_NODE:
-      case T_EDGE:
-        return ENTITY_GET_ID((GraphEntity*)a.ptrval) - ENTITY_GET_ID((GraphEntity*)b.ptrval);
-      default:
-        // Both inputs were of an incomparable type, like a pointer or NULL
-        return DISJOINT;
+    /* In order to be comparable, both SIValues must be strings,
+     * booleans, or numerics. */
+    if(a.type == b.type) {
+        switch (a.type) {
+        case T_INT64:
+        case T_BOOL:
+            return a.longval - b.longval;
+        case T_DOUBLE:
+            return SAFE_COMPARISON_RESULT(a.doubleval - b.doubleval);
+        case T_STRING:
+            return strcmp(a.stringval, b.stringval);
+        case T_NODE:
+        case T_EDGE:
+            return ENTITY_GET_ID((GraphEntity*)a.ptrval) - ENTITY_GET_ID((GraphEntity*)b.ptrval);
+        default:
+            // Both inputs were of an incomparable type, like a pointer or NULL
+            return DISJOINT;
+        }
     }
-  }
 
-  // The inputs have different SITypes - compare them if they
-  // are both numerics of differing types
-  if (SI_TYPE(a) & SI_NUMERIC && SI_TYPE(b) & SI_NUMERIC) {
-    double diff = SI_GET_NUMERIC(a) - SI_GET_NUMERIC(b);
-    return SAFE_COMPARISON_RESULT(diff);
-  }
+    /* The inputs have different SITypes - compare them if they
+     * are both numerics of differing types */
+    if (SI_TYPE(a) & SI_NUMERIC && SI_TYPE(b) & SI_NUMERIC) {
+        double diff = SI_GET_NUMERIC(a) - SI_GET_NUMERIC(b);
+        return SAFE_COMPARISON_RESULT(diff);
+    }
 
-  return DISJOINT;
+    return DISJOINT;
 }
 
 // Return a strcmp-like value wherein -1 indicates that the value

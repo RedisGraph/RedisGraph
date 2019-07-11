@@ -18,6 +18,9 @@ void optimizePlan(ExecutionPlan *plan, AST *ast) {
     /* Remove redundant SCAN operations. */
     reduceScans(plan);
 
+    /* Try to match disjoint entities by applying a join */
+    applyJoin(plan);
+
     /* Try to reduce a number of filters into a single filter op. */
     reduceFilters(plan);
 
@@ -33,5 +36,4 @@ void optimizePlan(ExecutionPlan *plan, AST *ast) {
 
     /* Try to reduce execution plan incase it perform node or edge counting. */
     reduceCount(plan, ast);
-
 }

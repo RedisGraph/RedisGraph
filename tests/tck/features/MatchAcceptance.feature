@@ -61,7 +61,7 @@ Feature: MatchAcceptance
       | p                                             |
       | <(:Label1)<-[:T1]-(:Label2)-[:T2]->(:Label3)> |
     And no side effects
-  @skip
+  
   Scenario: Use multiple MATCH clauses to do a Cartesian product
     Given an empty graph
     And having executed:
@@ -73,7 +73,7 @@ Feature: MatchAcceptance
     When executing query:
       """
       MATCH (n), (m)
-      RETURN n.value AS n, m.value AS m
+      RETURN n.value AS n, m.value AS m ORDER by n, m
       """
     Then the result should be:
       | n | m |
@@ -83,9 +83,9 @@ Feature: MatchAcceptance
       | 2 | 1 |
       | 2 | 2 |
       | 2 | 3 |
-      | 3 | 3 |
       | 3 | 1 |
       | 3 | 2 |
+      | 3 | 3 |
     And no side effects
   @skip
   Scenario: Use params in pattern matching predicates
@@ -140,7 +140,7 @@ Feature: MatchAcceptance
       | a         |
       | 'Someone' |
     And no side effects
-  @skip
+  
   Scenario: Filter based on rel prop name
     Given an empty graph
     And having executed:
@@ -176,7 +176,7 @@ Feature: MatchAcceptance
       | 'Ann Darrow' |
       | 'King Kong'  |
     And no side effects
-  @skip
+  
   Scenario: Get neighbours
     Given an empty graph
     And having executed:
@@ -192,7 +192,7 @@ Feature: MatchAcceptance
       | n1              | n2              |
       | (:A {value: 1}) | (:B {value: 2}) |
     And no side effects
-  @skip
+  
   Scenario: Get two related nodes
     Given an empty graph
     And having executed:
@@ -204,7 +204,7 @@ Feature: MatchAcceptance
     When executing query:
       """
       MATCH ()-[rel:KNOWS]->(x)
-      RETURN x
+      RETURN x ORDER BY x.value
       """
     Then the result should be:
       | x               |
@@ -227,7 +227,7 @@ Feature: MatchAcceptance
       | b               |
       | (:C {value: 3}) |
     And no side effects
-  @skip
+  
   Scenario: Handle comparison between node properties
     Given an empty graph
     And having executed:
@@ -245,7 +245,7 @@ Feature: MatchAcceptance
       """
       MATCH (n)-[rel]->(x)
       WHERE n.animal = x.animal
-      RETURN n, x
+      RETURN n, x ORDER BY n.animal DESC
       """
     Then the result should be:
       | n                       | x                       |
@@ -288,7 +288,7 @@ Feature: MatchAcceptance
       | (:A {value: 1}) | (:B {value: 2}) | (:C {value: 3}) |
       | (:B {value: 2}) | (:A {value: 1}) | null            |
     And no side effects
-  @skip
+  
   Scenario: Rel type function works as expected
     Given an empty graph
     And having executed:
@@ -309,7 +309,7 @@ Feature: MatchAcceptance
       | x                |
       | (:B {name: 'B'}) |
     And no side effects
-  @skip
+  
   Scenario: Walk alternative relationships
     Given an empty graph
     And having executed:
@@ -325,14 +325,14 @@ Feature: MatchAcceptance
       """
       MATCH (n)-[r]->(x)
       WHERE type(r) = 'KNOWS' OR type(r) = 'HATES'
-      RETURN r
+      RETURN r ORDER BY type(r) DESC
       """
     Then the result should be:
       | r        |
       | [:KNOWS] |
       | [:HATES] |
     And no side effects
-  @skip
+  
   Scenario: Handle OR in the WHERE clause
     Given an empty graph
     And having executed:
@@ -345,7 +345,7 @@ Feature: MatchAcceptance
       """
       MATCH (n)
       WHERE n.p1 = 12 OR n.p2 = 13
-      RETURN n
+      RETURN n ORDER BY n.p1
       """
     Then the result should be:
       | n             |

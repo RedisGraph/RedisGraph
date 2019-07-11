@@ -62,7 +62,7 @@ Feature: Literals
       | literal     |
       | -.000000001 |
     And no side effects
-@skip
+
   Scenario: Return a boolean
     When executing query:
       """
@@ -92,7 +92,7 @@ Feature: Literals
       | literal |
       | ''      |
     And no side effects
-@skip
+
   Scenario: Return null
     When executing query:
       """

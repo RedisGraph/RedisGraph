@@ -326,6 +326,32 @@ class IMDBQueries(object):
         )
 
         ##################################################################
+        ### same_year_higher_rating_than_huntforthewilderpeople
+        ##################################################################
+
+        self.same_year_higher_rating_than_huntforthewilderpeople_query = QueryInfo(
+            query="""MATCH (base:movie), (option:movie)
+                     WHERE base.title = 'Hunt for the Wilderpeople' AND
+                     base.year = option.year AND
+                     option.rating > base.rating
+                     RETURN option.title, option.rating
+                     ORDER BY option.rating, option.title desc
+                     LIMIT 10""",
+            description='List 10 movies released on the same year as "Hunt for the Wilderpeople" that got higher rating than it',
+            max_run_time_ms=0.8,
+            expected_result=[["Hacksaw Ridge", 8.8],
+                             ["Moonlight", 8.7],
+                             ["La La Land", 8.6],
+                             ["Arrival", 8.5],
+                             ["Hell or High Water", 8.2],
+                             ["Zootopia", 8.1],
+                             ["Split", 8.1],
+                             ["Nocturnal Animals", 8.1],
+                             ["Deadpool", 8.1],
+                             ["Ah-ga-ssi", 8.1]]
+        )
+
+        ##################################################################
         ### all_actors_named_tim
         ##################################################################
 
@@ -355,7 +381,8 @@ class IMDBQueries(object):
             self.find_ten_oldest_actors_query,
             self.actors_over_85_index_scan,
             self.eighties_movies_index_scan,
-            self.find_titles_starting_with_american_query
+            self.find_titles_starting_with_american_query,
+            self.same_year_higher_rating_than_huntforthewilderpeople_query
             # self.all_actors_named_tim
         ]
     

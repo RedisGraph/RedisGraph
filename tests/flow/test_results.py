@@ -1,10 +1,8 @@
 import os
 import sys
-import unittest
 from redisgraph import Graph, Node, Edge
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from disposableredis import DisposableRedis
 
 from base import FlowTestsBase
 
@@ -13,28 +11,17 @@ redis_con = None
 
 people = ["Roi", "Alon", "Ailon", "Boaz"]
 
-def redis():
-    return DisposableRedis(loadmodule=os.path.dirname(os.path.abspath(__file__)) + '/../../src/redisgraph.so')
 
-class ResultSetFlowTest(FlowTestsBase):
-    @classmethod
-    def setUpClass(cls):
-        print "ResultSetFlowTest"
+class testResultSetFlow(FlowTestsBase):
+    def __init__(self):
+        super(testResultSetFlow, self).__init__()
         global graph
         global redis_con
-        cls.r = redis()
-        cls.r.start()
-        redis_con = cls.r.client()
+        redis_con = self.env.getConnection()
         graph = Graph("G", redis_con)
-        cls.populate_graph()
+        self.populate_graph()
 
-    @classmethod
-    def tearDownClass(cls):
-        cls.r.stop()
-        # pass
-
-    @classmethod
-    def populate_graph(cls):
+    def populate_graph(self):
         global graph
         nodes = {}
         # Create entities
@@ -63,9 +50,9 @@ class ResultSetFlowTest(FlowTestsBase):
                            ['Ailon', 2],
                            ['Boaz', 3]]
 
-        assert(len(result.result_set) == 4)
-        assert(len(result.header) == 2) # 2 columns in result set
-        assert(result.result_set == expected_result)
+        self.env.assertEquals(len(result.result_set), 4)
+        self.env.assertEquals(len(result.header), 2) # 2 columns in result set
+        self.env.assertEquals(result.result_set, expected_result)
 
     # Verify that full node returns function properly
     def test02_return_nodes(self):
@@ -73,8 +60,8 @@ class ResultSetFlowTest(FlowTestsBase):
         result = graph.query(query)
 
         # TODO add more assertions after updated client format is defined
-        assert(len(result.result_set) == 4)
-        assert(len(result.header) == 1) # 1 column in result set
+        self.env.assertEquals(len(result.result_set), 4)
+        self.env.assertEquals(len(result.header), 1) # 1 column in result set
 
     # Verify that full edge returns function properly
     def test03_return_edges(self):
@@ -82,16 +69,16 @@ class ResultSetFlowTest(FlowTestsBase):
         result = graph.query(query)
 
         # TODO add more assertions after updated client format is defined
-        assert(len(result.result_set) == 12) # 12 relations (fully connected graph)
-        assert(len(result.header) == 1) # 1 column in result set
+        self.env.assertEquals(len(result.result_set), 12) # 12 relations (fully connected graph)
+        self.env.assertEquals(len(result.header), 1) # 1 column in result set
 
     def test04_mixed_returns(self):
         query = """MATCH (a)-[e]->() RETURN a.name, a, e ORDER BY a.val"""
         result = graph.query(query)
 
         # TODO add more assertions after updated client format is defined
-        assert(len(result.result_set) == 12) # 12 relations (fully connected graph)
-        assert(len(result.header) == 3) # 3 columns in result set
+        self.env.assertEquals(len(result.result_set), 12) # 12 relations (fully connected graph)
+        self.env.assertEquals(len(result.header), 3) # 3 columns in result set
 
 
     # Verify that the DISTINCT operator works with full entity returns
@@ -99,13 +86,13 @@ class ResultSetFlowTest(FlowTestsBase):
         graph2 = Graph("H", redis_con)
         query = """CREATE (a)-[:e]->(), (a)-[:e]->()"""
         result = graph2.query(query)
-        assert(result.nodes_created == 3)
-        assert(result.relationships_created == 2)
+        self.env.assertEquals(result.nodes_created, 3)
+        self.env.assertEquals(result.relationships_created, 2)
 
         query = """MATCH (a)-[]->() RETURN a"""
         non_distinct = graph2.query(query)
         query = """MATCH (a)-[]->() RETURN DISTINCT a"""
         distinct = graph2.query(query)
 
-        assert(len(non_distinct.result_set) == 2)
-        assert(len(distinct.result_set) == 1)
+        self.env.assertEquals(len(non_distinct.result_set), 2)
+        self.env.assertEquals(len(distinct.result_set), 1)

@@ -193,7 +193,7 @@ Feature: CreateAcceptance
       | +nodes         | 2 |
       | +relationships | 1 |
       | +properties    | 1 |
-  @skip
+
   Scenario: Create a relationship with the correct direction
     Given an empty graph
     And having executed:
@@ -217,7 +217,7 @@ Feature: CreateAcceptance
     Then the result should be:
       | x    |  y   |
       | (:X) | (:Y) |
-  @skip
+
   Scenario: Create a relationship and an end node from a matched starting node
     Given an empty graph
     And having executed:
@@ -259,7 +259,7 @@ Feature: CreateAcceptance
     Then the result should be empty
     And the side effects should be:
       | +nodes | 4 |
-  @skip
+  
   Scenario: Create a relationship with a reversed direction
     Given an empty graph
     When executing query:
@@ -279,7 +279,7 @@ Feature: CreateAcceptance
     Then the result should be:
       | a    | b    |
       | (:A) | (:B) |
-  @skip
+  
   Scenario: Create a pattern with multiple hops
     Given an empty graph
     When executing query:
@@ -299,7 +299,7 @@ Feature: CreateAcceptance
     Then the result should be:
       | a    | b    | c    |
       | (:A) | (:B) | (:C) |
-  @skip
+  
   Scenario: Create a pattern with multiple hops in the reverse direction
     Given an empty graph
     When executing query:
@@ -319,7 +319,7 @@ Feature: CreateAcceptance
     Then the result should be:
       | a    | b    | c    |
       | (:A) | (:B) | (:C) |
-  @skip
+  
   Scenario: Create a pattern with multiple hops in varying directions
     Given an empty graph
     When executing query:
@@ -339,7 +339,7 @@ Feature: CreateAcceptance
     Then the result should be:
       | a    | b    | c    |
       | (:A) | (:B) | (:C) |
-  @skip
+  
   Scenario: Create a pattern with multiple hops with multiple types and varying directions
     Given any graph
     When executing query:
@@ -513,7 +513,7 @@ Feature: CreateAcceptance
       RETURN r
       """
     Then a SyntaxError should be raised at compile time: RequiresDirectedRelationship
-  @skip
+  
   Scenario: Creating a pattern with multiple hops and changing directions
     Given an empty graph
     When executing query:
@@ -530,6 +530,7 @@ Feature: CreateAcceptance
       MATCH (a:A)<-[r1:R1]-(b:B)-[r2:R2]->(c:C)
       RETURN *
       """
+    # modified to match our return order
     Then the result should be:
-      | a    | b    | c    | r1    | r2    |
-      | (:A) | (:B) | (:C) | [:R1] | [:R2] |
+      | a    |  r1   | r2    | b    | c    |
+      | (:A) | [:R1] | [:R2] | (:B) | (:C) |

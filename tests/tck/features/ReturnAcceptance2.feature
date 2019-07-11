@@ -147,7 +147,7 @@ Feature: ReturnAcceptance2
       | n.name  | foo |
       | 'nisse' | 1   |
     And no side effects
-  @skip
+  
   Scenario: DISTINCT on nullable values
     Given an empty graph
     And having executed:
@@ -157,7 +157,7 @@ Feature: ReturnAcceptance2
     When executing query:
       """
       MATCH (n)
-      RETURN DISTINCT n.name
+      RETURN DISTINCT n.name ORDER by n.name
       """
     Then the result should be:
       | n.name     |
@@ -419,7 +419,7 @@ Feature: ReturnAcceptance2
       | a  | a.id |
       | 42 | 42   |
     And no side effects
-  @skip
+  
   Scenario: Projecting an arithmetic expression with aggregation
     Given an empty graph
     And having executed:

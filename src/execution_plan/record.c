@@ -13,15 +13,6 @@
 #define RECORD_HEADER(r) (r-1)
 #define RECORD_HEADER_ENTRY(r) *(RECORD_HEADER((r)))
 
-static void _Record_Extend(Record *r, int len) {
-    if(Record_length(*r) >= len) return;
-
-    Entry header = RECORD_HEADER_ENTRY(*r);
-    (void)header; // Suppress "set but not used" compiler complaint
-    header.value.s.longval = len;
-    *r = rm_realloc(*r, sizeof(Entry) * (len+1));
-}
-
 Record Record_New(int entries) {
     Record r = rm_calloc((entries + 1), sizeof(Entry));
 
@@ -31,6 +22,18 @@ Record Record_New(int entries) {
 
     // Skip header entry.
     return r+1;
+}
+
+void Record_Extend(Record *r, int len) {
+    int rec_len = Record_length(*r);
+    if(rec_len >= len) return;
+
+    Record header = RECORD_HEADER(*r);
+    header->value.s.longval = len;
+    header = rm_realloc(header, sizeof(Entry) * (len+1));
+
+    // Skip header entry.
+    *r = header+1;
 }
 
 unsigned int Record_length(const Record r) {
@@ -49,7 +52,7 @@ Record Record_Clone(const Record r) {
 void Record_Merge(Record *a, const Record b) {
     int aLength = Record_length(*a);
     int bLength = Record_length(b);
-    if(aLength < bLength) _Record_Extend(a, bLength);
+    if(aLength < bLength) Record_Extend(a, bLength);
 
     for(int i = 0; i < bLength; i++) {
         if(b[i].type != REC_TYPE_UNKNOWN) {
@@ -139,7 +142,11 @@ size_t Record_ToString(const Record r, char **buf, size_t *buf_cap) {
     uint rLen = Record_length(r);
     SIValue values[rLen];
     for(int i = 0; i < rLen; i++) {
-        values[i] = Record_Get(r, i);
+        if(Record_GetType(r, i) == REC_TYPE_UNKNOWN) {
+            values[i] = SI_ConstStringVal("UNKNOWN");
+        } else {
+            values[i] = Record_Get(r, i);
+        }
     }
 
     size_t required_len = SIValue_StringConcatLen(values, rLen);

@@ -65,12 +65,12 @@ def step_impl(context):
 def step_impl(context):
     stat = context.table.headings[0]
     value = int(context.table.headings[1])
-    assertions.assert_property(resultset, stat, value)
+    assertions.assert_statistics(resultset, stat, value)
 
     for row in context.table:
         stat = row[0]
         value = int(row[1])
-        assertions.assert_property(resultset, stat, value)
+        assertions.assert_statistics(resultset, stat, value)
 
 @then(u'no side effects')
 def step_impl(context):
@@ -80,7 +80,7 @@ def step_impl(context):
 def step_impl(context):
     expected_length = len(context.table.rows)
     assertions.assert_resultset_length(resultset, expected_length)
-    assertions.assert_resultset_content(resultset, context.table)
+    assertions.assert_resultsets_equals(resultset, context.table)
 
 @then(u'the result should be, in order')
 def step_impl(context):

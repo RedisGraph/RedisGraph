@@ -1,38 +1,27 @@
 import os
 import sys
-import unittest
 from redisgraph import Graph
+from base import FlowTestsBase
+
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from reversepattern import ReversePattern
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../demo/imdb/')
-from disposableredis import DisposableRedis
-
-from .reversepattern import ReversePattern
-from base import FlowTestsBase
 import imdb_queries
 import imdb_utils
 
 queries = None
 redis_graph = None
 
-def redis():
-    return DisposableRedis(loadmodule=os.path.dirname(os.path.abspath(__file__)) + '/../../src/redisgraph.so')
-
-class ImdbFlowTest(FlowTestsBase):
-    @classmethod
-    def setUpClass(cls):
-        print "ImdbFlowTest"
+class testImdbFlow(FlowTestsBase):
+    def __init__(self):
+        super(testImdbFlow, self).__init__()
         global redis_graph
         global queries
-        cls.r = redis()
-        cls.r.start()
-        redis_con = cls.r.client()
+        redis_con = self.env.getConnection()
         redis_graph = Graph(imdb_utils.graph_name, redis_con)
         actors, movies = imdb_utils.populate_graph(redis_con, redis_graph)
         queries = imdb_queries.IMDBQueries(actors, movies)
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.r.stop()
 
     def assert_reversed_pattern(self, query, resultset):
         # Test reversed pattern query.
@@ -41,7 +30,7 @@ class ImdbFlowTest(FlowTestsBase):
         actual_result = redis_graph.query(reversed_query)
 
         # assert result set
-        self.assertEqual(resultset.result_set, actual_result.result_set)
+        self.env.assertEqual(resultset.result_set, actual_result.result_set)
 
         # assert query run time
         self._assert_equalish(resultset.run_time_ms, actual_result.run_time_ms)
@@ -61,8 +50,8 @@ class ImdbFlowTest(FlowTestsBase):
 
         # assert execution plan
         execution_plan = redis_graph.execution_plan(q)
-        self.assertNotIn("Aggregate", execution_plan)
-        self.assertNotIn("Node By Label Scan", execution_plan)
+        self.env.assertNotIn("Aggregate", execution_plan)
+        self.env.assertNotIn("Node By Label Scan", execution_plan)
     
     def test_actors_played_with_nicolas_cage(self):
         global redis_graph
@@ -248,7 +237,7 @@ class ImdbFlowTest(FlowTestsBase):
         redis_graph.redis_con.execute_command("GRAPH.QUERY", redis_graph.name, "CREATE INDEX ON :actor(age)")
         q = queries.actors_over_85_index_scan.query
         execution_plan = redis_graph.execution_plan(q)
-        self.assertIn('Index Scan', execution_plan)
+        self.env.assertIn('Index Scan', execution_plan)
 
         actual_result = redis_graph.query(q)
 
@@ -273,7 +262,7 @@ class ImdbFlowTest(FlowTestsBase):
         redis_graph.redis_con.execute_command("GRAPH.QUERY", redis_graph.name, "CREATE INDEX ON :movie(year)")
         q = queries.eighties_movies_index_scan.query
         execution_plan = redis_graph.execution_plan(q)
-        self.assertIn('Index Scan', execution_plan)
+        self.env.assertIn('Index Scan', execution_plan)
 
         actual_result = redis_graph.query(q)
 
@@ -306,6 +295,19 @@ class ImdbFlowTest(FlowTestsBase):
         # assert reversed pattern.
         self.assert_reversed_pattern(q, actual_result)
     
+    def test_same_year_higher_rating_than_huntforthewilderpeople(self):
+        global redis_graph
+        q = queries.same_year_higher_rating_than_huntforthewilderpeople_query.query
+        actual_result = redis_graph.query(q)
+
+        # assert result set
+        self._assert_only_expected_results_are_in_actual_results(
+            actual_result,
+            queries.same_year_higher_rating_than_huntforthewilderpeople_query)
+
+        # assert query run time
+        self._assert_run_time(actual_result, queries.same_year_higher_rating_than_huntforthewilderpeople_query)
+
     # def test_all_actors_named_tim(self):
     #     global redis_graph
 
@@ -313,7 +315,7 @@ class ImdbFlowTest(FlowTestsBase):
     #     redis_graph.redis_con.execute_command("GRAPH.QUERY", redis_graph.name, "CALL db.idx.fulltext.createNodeIndex('actor', 'name')")
     #     q = queries.all_actors_named_tim
     #     execution_plan = redis_graph.execution_plan(q)
-    #     self.assertIn('ProcedureCall', execution_plan)
+    #     self.evn.assertIn('ProcedureCall', execution_plan)
 
     #     actual_result = redis_graph.query(q)
 
@@ -324,6 +326,3 @@ class ImdbFlowTest(FlowTestsBase):
 
     #     # assert query run time
     #     self._assert_run_time(actual_result, queries.all_actors_named_tim)
-
-if __name__ == '__main__':
-    unittest.main()

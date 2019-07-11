@@ -1,49 +1,27 @@
 import os
 import sys
-import unittest
 from redisgraph import Graph, Node, Edge
-
-# import redis
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from disposableredis import DisposableRedis
 
 from base import FlowTestsBase
 
 GRAPH_ID = "G"
 redis_graph = None
 
-def redis():
-    return DisposableRedis(loadmodule=os.path.dirname(os.path.abspath(__file__)) + '/../../src/redisgraph.so')
-
-class GraphCreationFlowTest(FlowTestsBase):
-    @classmethod
-    def setUpClass(cls):
-        print "GraphCreationFlowTest"
+class testGraphCreationFlow(FlowTestsBase):
+    def __init__(self):
+        super(testGraphCreationFlow, self).__init__()
         global redis_graph
-        cls.r = redis()
-        cls.r.start()
-        redis_con = cls.r.client()
+        redis_con = self.env.getConnection()
         redis_graph = Graph(GRAPH_ID, redis_con)
-
-        # cls.r = redis.Redis()
-        # redis_graph = Graph(GRAPH_ID, cls.r)
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.r.stop()
-        # pass
 
     def test01_create_return(self):
         query = """CREATE (a:person {name:'A'}), (b:person {name:'B'})"""
         result = redis_graph.query(query)
-        assert(result.nodes_created == 2)
+        self.env.assertEquals(result.nodes_created, 2)
 
         query = """MATCH (src:person) CREATE (src)-[e:knows]->(dest {name:'C'}) RETURN src,e,dest ORDER BY ID(src) DESC LIMIT 1"""
         result = redis_graph.query(query)
-        assert(result.nodes_created == 2)
-        assert(result.relationships_created == 2)
-        assert(len(result.result_set) == 1)
-        assert(result.result_set[0][0].properties['name'] == 'A')
-
-if __name__ == '__main__':
-    unittest.main()
+        self.env.assertEquals(result.nodes_created, 2)
+        self.env.assertEquals(result.relationships_created, 2)
+        self.env.assertEquals(len(result.result_set), 1)
+        self.env.assertEquals(result.result_set[0][0].properties['name'], 'A')
