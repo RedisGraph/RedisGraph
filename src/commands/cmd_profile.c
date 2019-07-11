@@ -44,7 +44,7 @@ void _MGraph_Profile(void *args) {
     CommandCtx_ThreadSafeContextUnlock(qctx);
 
     // Perform query validations
-    if (AST_PerformValidations(ctx, ast) != AST_VALID) goto cleanup;
+    if (AST_Validate(ctx, ast) != AST_VALID) goto cleanup;
 
     // Acquire the appropriate lock.
     if(readonly) Graph_AcquireReadLock(gc->g);

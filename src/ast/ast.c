@@ -9,6 +9,7 @@
 #include <pthread.h>
 
 #include "../util/arr.h"
+#include "../util/qsort.h"
 #include "../arithmetic/repository.h"
 #include "../arithmetic/arithmetic_expression.h"
 
@@ -17,7 +18,7 @@ extern pthread_key_t _tlsASTKey;  // Thread local storage AST key.
 // Note each function call within given expression
 // Example: given the expression: "abs(max(min(a), abs(k)))"
 // referred_funcs will include: "abs", "max" and "min".
-void _consume_function_call_expression(const cypher_astnode_t *expression, TrieMap *referred_funcs) {
+static void _consume_function_call_expression(const cypher_astnode_t *expression, TrieMap *referred_funcs) {
     // Value is an apply operator
     const cypher_astnode_t *func = cypher_ast_apply_operator_get_func_name(expression);
     const char *func_name = cypher_ast_function_name_get_value(func);
@@ -32,18 +33,6 @@ void _consume_function_call_expression(const cypher_astnode_t *expression, TrieM
     }
 }
 
-// void _mapUnwind(AST *ast, const cypher_astnode_t *unwind_clause) {
-    // const cypher_astnode_t *alias_node = cypher_ast_unwind_get_alias(unwind_clause);
-    // const char *alias = cypher_ast_identifier_get_name(cypher_ast_unwind_get_alias(unwind_clause));
-
-    // const cypher_astnode_t *ast_exp = cypher_ast_unwind_get_expression(unwind_clause);
-    // uint id = AST_AddRecordEntry(ast);
-    // AR_ExpNode *exp = AR_EXP_NewReferenceNode(alias, id, false);
-    // ast->defined_entities = array_append(ast->defined_entities, exp);
-    // ASTMap_FindOrAddAlias(ast, alias, id);
-
-// }
-
 bool AST_ReadOnly(const cypher_astnode_t *root) {
     // Iterate over children rather than clauses, as the root is not
     // guaranteed to be a query.
@@ -51,23 +40,17 @@ bool AST_ReadOnly(const cypher_astnode_t *root) {
     for (unsigned int i = 0; i < num_children; i ++) {
         const cypher_astnode_t *child = cypher_astnode_get_child(root, i);
         cypher_astnode_type_t type = cypher_astnode_type(child);
-        if(type == CYPHER_AST_CREATE ||
-           type == CYPHER_AST_MERGE ||
-           type == CYPHER_AST_DELETE ||
-           type == CYPHER_AST_SET ||
-           type == CYPHER_AST_CREATE_NODE_PROP_INDEX ||
-           type == CYPHER_AST_DROP_NODE_PROP_INDEX) {
+        if(type == CYPHER_AST_CREATE                      ||
+                type == CYPHER_AST_MERGE                  ||
+                type == CYPHER_AST_DELETE                 ||
+                type == CYPHER_AST_SET                    ||
+                type == CYPHER_AST_CREATE_NODE_PROP_INDEX ||
+                type == CYPHER_AST_DROP_NODE_PROP_INDEX) {
             return false;
         }
     }
 
     return true;
-}
-
-// TODO is this necessary?
-bool AST_Empty(const AST *ast) {
-    return false;
-    // return cypher_ast_query_nclauses(ast->root) > 0;
 }
 
 bool AST_ContainsClause(const AST *ast, cypher_astnode_type_t clause) {
@@ -133,21 +116,6 @@ const cypher_astnode_t* AST_GetClause(const AST *ast, cypher_astnode_type_t clau
     return NULL;
 }
 
-/* Collect references to all clauses of the specified type in the query. Since clauses
- * cannot be nested, we only need to check the immediate children of the query node. */
-uint AST_GetTopLevelClauses(const AST *ast, cypher_astnode_type_t clause_type, const cypher_astnode_t **matches) {
-    unsigned int num_found = 0;
-    uint clause_count = cypher_ast_query_nclauses(ast->root);
-    for (unsigned int i = 0; i < clause_count; i ++) {
-        const cypher_astnode_t *child = cypher_ast_query_get_clause(ast->root, i);
-        if (cypher_astnode_type(child) != clause_type) continue;
-
-        matches[num_found] = child;
-        num_found ++;
-    }
-    return num_found;
-}
-
 uint* AST_GetClauseIndices(const AST *ast, cypher_astnode_type_t clause_type) {
     uint *clause_indices = array_new(uint, 0);
     uint clause_count = cypher_ast_query_nclauses(ast->root);
@@ -170,13 +138,13 @@ uint AST_GetClauseCount(const AST *ast, cypher_astnode_type_t clause_type) {
     return num_found;
 }
 
-uint AST_NumClauses(const AST *ast) {
-    return cypher_astnode_nchildren(ast->root);
-}
+/* Collect references to all clauses of the specified type in the query. Since clauses
+ * cannot be nested, we only need to check the immediate children of the query node. */
+const cypher_astnode_t** AST_GetClauses(const AST *ast, cypher_astnode_type_t type) {
+    uint count = AST_GetClauseCount(ast, type);
+    if (count == 0) return NULL;
 
-// TODO should just use this format or the TopLevel format
-const cypher_astnode_t** AST_CollectReferencesInRange(const AST *ast, cypher_astnode_type_t type) {
-    const cypher_astnode_t **found = array_new(const cypher_astnode_t *, 0);
+    const cypher_astnode_t **found = array_new(const cypher_astnode_t*, count);
 
     uint clause_count = cypher_ast_query_nclauses(ast->root);
     for (uint i = 0; i < clause_count; i ++) {
@@ -220,12 +188,27 @@ const char** AST_CollectAliases(AST *ast) {
         }
     }
 
+    // Trim array to only include unique aliases
+#define ALIAS_STRCMP(a,b) (!strcmp(*a,*b))
+
+    uint count = array_len(aliases);
+    QSORT(const char*, aliases, count, ALIAS_STRCMP);
+    uint unique_idx = 0;
+    for (int i = 0; i < count - 1; i ++) {
+        if (strcmp(aliases[i], aliases[i+1])) {
+            aliases[unique_idx++] = aliases[i];
+        }
+    }
+    aliases[unique_idx++] = aliases[count - 1];
+    array_trimm_len(aliases, unique_idx);
+
     return aliases;
 }
 
 const cypher_astnode_t* AST_GetBody(const cypher_parse_result_t *result) {
     const cypher_astnode_t *statement = cypher_parse_result_get_root(result, 0);
-    assert(statement && cypher_astnode_type(statement) == CYPHER_AST_STATEMENT);
+    if (statement == NULL) return NULL; // Empty query
+    assert(cypher_astnode_type(statement) == CYPHER_AST_STATEMENT);
 
     return cypher_ast_statement_get_body(statement);
 }
@@ -301,17 +284,6 @@ bool AST_ClauseContainsAggregation(const cypher_astnode_t *clause) {
     TrieMap_Free(referred_funcs, TrieMap_NOP_CB);
 
     return aggregated;
-}
-
-AST_Validation AST_PerformValidations(RedisModuleCtx *ctx, const AST *ast) {
-    char *reason;
-    AST_Validation res = AST_Validate(ast, &reason);
-    if (res != AST_VALID) {
-        RedisModule_ReplyWithError(ctx, reason);
-        free(reason);
-        return AST_INVALID;
-    }
-    return AST_VALID;
 }
 
 AST* AST_GetFromTLS(void) {

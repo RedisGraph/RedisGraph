@@ -193,18 +193,17 @@ static AST_Validation _Validate_MATCH_Clause(const AST *ast, char **reason) {
     // libcypher_parser doesn't have a WHERE node, all of the filters
     // are specified within the MATCH node sub-tree.
     // Iterate over all top-level query children (clauses)
-    uint match_count = AST_GetClauseCount(ast, CYPHER_AST_MATCH);
-    if (match_count == 0) return AST_VALID;
 
-    const cypher_astnode_t *match_clauses[match_count];
-    AST_GetTopLevelClauses(ast, CYPHER_AST_MATCH, match_clauses);
+    const cypher_astnode_t **match_clauses = AST_GetClauses(ast, CYPHER_AST_MATCH);
+    if (match_clauses == NULL) return AST_VALID;
 
     TrieMap *referred_funcs = NewTrieMap();
     TrieMap *identifiers = NewTrieMap();
     TrieMap *reused_entities = NewTrieMap();
     AST_Validation res;
 
-    for (unsigned int i = 0; i < match_count; i ++) {
+    uint match_count = array_len(match_clauses);
+    for (uint i = 0; i < match_count; i ++) {
         const cypher_astnode_t *match_clause = match_clauses[i];
         // Collect function references
         AST_ReferredFunctions(match_clause, referred_funcs);
@@ -223,16 +222,16 @@ cleanup:
     TrieMap_Free(referred_funcs, TrieMap_NOP_CB);
     TrieMap_Free(identifiers, TrieMap_NOP_CB);
     TrieMap_Free(reused_entities, TrieMap_NOP_CB);
+    array_free(match_clauses);
+
     return res;
 }
 
 static AST_Validation _Validate_MERGE_Clause(const AST *ast, char **reason) {
-    uint merge_count = AST_GetClauseCount(ast, CYPHER_AST_MERGE);
-    if (merge_count == 0) return AST_VALID;
+    const cypher_astnode_t **merge_clauses = AST_GetClauses(ast, CYPHER_AST_MERGE);
+    if (merge_clauses == NULL) return AST_VALID;
 
-    const cypher_astnode_t *merge_clauses[merge_count];
-    AST_GetTopLevelClauses(ast, CYPHER_AST_MERGE, merge_clauses);
-
+    uint merge_count = array_len(merge_clauses);
     for (uint i = 0; i < merge_count; i ++) {
         const cypher_astnode_t *merge_clause = merge_clauses[i];
         const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(merge_clause);
@@ -247,6 +246,7 @@ static AST_Validation _Validate_MERGE_Clause(const AST *ast, char **reason) {
             }
         }
     }
+    array_free(merge_clauses);
 
     return AST_VALID;
 }
@@ -380,7 +380,7 @@ static AST_Validation _AST_Aliases_Defined(const AST *ast, char **undefined_alia
     return res;
 }
 
-AST_Validation AST_Validate(const AST *ast, char **reason) {
+static AST_Validation _AST_Validate(const AST *ast, char **reason) {
     // Occurs on statements like CREATE INDEX
     if (cypher_astnode_type(ast->root) != CYPHER_AST_QUERY) return AST_VALID;
 
@@ -408,6 +408,17 @@ AST_Validation AST_Validate(const AST *ast, char **reason) {
         return AST_INVALID;
     }
 
+    return AST_VALID;
+}
+
+AST_Validation AST_Validate(RedisModuleCtx *ctx, const AST *ast) {
+    char *reason;
+    AST_Validation res = _AST_Validate(ast, &reason);
+    if (res != AST_VALID) {
+        RedisModule_ReplyWithError(ctx, reason);
+        free(reason);
+        return AST_INVALID;
+    }
     return AST_VALID;
 }
 

@@ -68,12 +68,6 @@ void _MGraph_Query(void *args) {
     AST *ast = AST_Build(qctx->parse_result);
     bool readonly = AST_ReadOnly(ast->root);
 
-    if(AST_Empty(ast)) {
-        AST_Free(ast);
-        RedisModule_ReplyWithError(ctx, "Error empty query.");
-        return;
-    }
-
     // Try to access the GraphContext
     CommandCtx_ThreadSafeContextLock(qctx);
     GraphContext *gc = GraphContext_Retrieve(ctx, qctx->graphName, readonly);
@@ -96,7 +90,7 @@ void _MGraph_Query(void *args) {
     CommandCtx_ThreadSafeContextUnlock(qctx);
 
     // Perform query validations
-    if (AST_PerformValidations(ctx, ast) != AST_VALID) goto cleanup;
+    if (AST_Validate(ctx, ast) != AST_VALID) goto cleanup;
 
     bool compact = _check_compact_flag(qctx);
 
@@ -165,6 +159,12 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     }
 
     const cypher_astnode_t *query_root = AST_GetBody(parse_result);
+    if (query_root == NULL) {
+        cypher_parse_result_free(parse_result);
+        RedisModule_ReplyWithError(ctx, "Error: empty query.");
+        return REDISMODULE_OK;
+    }
+
     bool readonly = AST_ReadOnly(query_root);
 
     /* Determin query execution context

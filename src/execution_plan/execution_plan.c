@@ -50,23 +50,10 @@ static void _UpdateResolvedVariables(rax *resolved, OpBase *op) {
 AR_ExpNode** _ReturnExpandAll(RecordMap *record_map) {
     AST *ast = AST_GetFromTLS();
 
+    // Collect all unique aliases
     const char **aliases = AST_CollectAliases(ast);
     uint count = array_len(aliases);
 
-    // Trim array to only include unique aliases
-#define ALIAS_STRCMP(a,b) (!strcmp(*a,*b))
-
-    QSORT(const char*, aliases, count, ALIAS_STRCMP);
-    uint unique_idx = 0;
-    for (int i = 0; i < count - 1; i ++) {
-        if (strcmp(aliases[i], aliases[i+1])) {
-            aliases[unique_idx++] = aliases[i];
-        }
-    }
-    aliases[unique_idx++] = aliases[count - 1];
-    array_trimm_len(aliases, unique_idx);
-
-    count = unique_idx;
     // Build an expression for each alias
     AR_ExpNode **return_expressions = array_new(AR_ExpNode*, count);
     for (int i = 0; i < count; i ++) {

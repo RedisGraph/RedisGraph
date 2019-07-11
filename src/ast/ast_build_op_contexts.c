@@ -260,14 +260,11 @@ void _buildAliasTrieMap(TrieMap *map, const cypher_astnode_t *entity) {
 
 // TODO This logic doesn't belong here, but might be entirely replaceable - investigate.
 TrieMap* _MatchClause_DefinedEntities(const AST *ast) {
-    // TODO needs start/end bounds
-    uint match_count = AST_GetClauseCount(ast, CYPHER_AST_MATCH);
-    const cypher_astnode_t *match_clauses[match_count];
-    AST_GetTopLevelClauses(ast, CYPHER_AST_MATCH, match_clauses);
+    const cypher_astnode_t **match_clauses = AST_GetClauses(ast, CYPHER_AST_MATCH);
+    uint match_count = (match_clauses) ? array_len(match_clauses) : 0;
 
-    uint merge_count = AST_GetClauseCount(ast, CYPHER_AST_MERGE);
-    const cypher_astnode_t *merge_clauses[merge_count];
-    AST_GetTopLevelClauses(ast, CYPHER_AST_MERGE, merge_clauses);
+    const cypher_astnode_t **merge_clauses = AST_GetClauses(ast, CYPHER_AST_MERGE);
+    uint merge_count = (merge_clauses) ? array_len(merge_clauses) : 0;
 
     TrieMap *map = NewTrieMap();
 
@@ -279,13 +276,15 @@ TrieMap* _MatchClause_DefinedEntities(const AST *ast) {
         _buildAliasTrieMap(map, merge_clauses[i]);
     }
 
+    if (match_clauses) array_free(match_clauses);
+    if (merge_clauses) array_free(merge_clauses);
+
     return map;
 }
 
 AST_CreateContext AST_PrepareCreateOp(RecordMap *record_map, AST *ast, QueryGraph *qg) {
-    uint create_clause_count = AST_GetClauseCount(ast, CYPHER_AST_CREATE);
-    const cypher_astnode_t *create_clauses[create_clause_count];
-    AST_GetTopLevelClauses(ast, CYPHER_AST_CREATE, create_clauses);
+    const cypher_astnode_t **create_clauses = AST_GetClauses(ast, CYPHER_AST_CREATE);
+    uint create_count = (create_clauses) ? array_len(create_clauses) : 0;
 
     /* For every entity within the CREATE clause see if it's also mentioned
      * within the MATCH clause. */
@@ -294,12 +293,12 @@ AST_CreateContext AST_PrepareCreateOp(RecordMap *record_map, AST *ast, QueryGrap
     NodeCreateCtx *nodes_to_create = array_new(NodeCreateCtx, 1);
     EdgeCreateCtx *edges_to_create = array_new(EdgeCreateCtx, 1);
 
-    for (uint i = 0; i < create_clause_count; i ++) {
+    for (uint i = 0; i < create_count; i++) {
         const cypher_astnode_t *clause = create_clauses[i];
         const cypher_astnode_t *pattern = cypher_ast_create_get_pattern(clause);
         uint npaths = cypher_ast_pattern_npaths(pattern);
 
-        for (uint j = 0; j < npaths; j ++) {
+        for (uint j = 0; j < npaths; j++) {
             const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, j);
             uint path_elem_count = cypher_ast_pattern_path_nelements(path);
             for (uint j = 0; j < path_elem_count; j ++) {
@@ -333,6 +332,7 @@ AST_CreateContext AST_PrepareCreateOp(RecordMap *record_map, AST *ast, QueryGrap
     }
 
     TrieMap_Free(match_entities, TrieMap_NOP_CB);
+    array_free(create_clauses);
 
     AST_CreateContext ctx = { .nodes_to_create = nodes_to_create, .edges_to_create = edges_to_create };
 

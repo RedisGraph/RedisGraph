@@ -205,42 +205,48 @@ QueryGraph* BuildQueryGraph(const GraphContext *gc, const AST *ast) {
     // We are interested in every path held in a MATCH pattern,
     // and the (single) path described by a MERGE clause.
 
-    const cypher_astnode_t **match_clauses = AST_CollectReferencesInRange(ast, CYPHER_AST_MATCH);
-    uint match_count = array_len(match_clauses);
-    for (uint i = 0; i < match_count; i ++) {
-        const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(match_clauses[i]);
-        uint npaths = cypher_ast_pattern_npaths(pattern);
-        for (uint j = 0; j < npaths; j ++) {
-            const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, j);
-            QueryGraph_AddPath(gc, ast, qg, path);
+    const cypher_astnode_t **match_clauses = AST_GetClauses(ast, CYPHER_AST_MATCH);
+    if (match_clauses) {
+        uint match_count = array_len(match_clauses);
+        for (uint i = 0; i < match_count; i ++) {
+            const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(match_clauses[i]);
+            uint npaths = cypher_ast_pattern_npaths(pattern);
+            for (uint j = 0; j < npaths; j ++) {
+                const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, j);
+                QueryGraph_AddPath(gc, ast, qg, path);
+            }
         }
+        array_free(match_clauses);
     }
-    array_free(match_clauses);
 
     // MERGE clauses
-    const cypher_astnode_t **merge_clauses = AST_CollectReferencesInRange(ast, CYPHER_AST_MERGE);
-    uint merge_count = array_len(merge_clauses);
-    for (uint i = 0; i < merge_count; i ++) {
-        const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(merge_clauses[i]);
-        QueryGraph_AddPath(gc, ast, qg, path);
+    const cypher_astnode_t **merge_clauses = AST_GetClauses(ast, CYPHER_AST_MERGE);
+    if (merge_clauses) {
+        uint merge_count = array_len(merge_clauses);
+        for (uint i = 0; i < merge_count; i ++) {
+            const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(merge_clauses[i]);
+            QueryGraph_AddPath(gc, ast, qg, path);
+        }
+        array_free(merge_clauses);
     }
-    array_free(merge_clauses);
 
     return qg;
 }
 
 void QueryGraph_AddCreateClauses(const GraphContext *gc, const AST *ast, QueryGraph *qg) {
-    const cypher_astnode_t **create_clauses = AST_CollectReferencesInRange(ast, CYPHER_AST_CREATE);
-    uint create_count = array_len(create_clauses);
-    for (uint i = 0; i < create_count; i ++) {
-        const cypher_astnode_t *pattern = cypher_ast_create_get_pattern(create_clauses[i]);
-        uint npaths = cypher_ast_pattern_npaths(pattern);
-        for (uint j = 0; j < npaths; j ++) {
-            const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, j);
-            QueryGraph_AddPath(gc, ast, qg, path);
+    const cypher_astnode_t **create_clauses = AST_GetClauses(ast, CYPHER_AST_CREATE);
+    if (create_clauses) {
+        uint create_count = array_len(create_clauses);
+        for (uint i = 0; i < create_count; i ++) {
+            const cypher_astnode_t *pattern = cypher_ast_create_get_pattern(create_clauses[i]);
+            uint npaths = cypher_ast_pattern_npaths(pattern);
+            for (uint j = 0; j < npaths; j ++) {
+                const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, j);
+                QueryGraph_AddPath(gc, ast, qg, path);
+            }
         }
+        array_free(create_clauses);
     }
-    array_free(create_clauses);
 }
 
 void* QueryGraph_GetEntityByASTRef(const QueryGraph *qg, const cypher_astnode_t *ref) {

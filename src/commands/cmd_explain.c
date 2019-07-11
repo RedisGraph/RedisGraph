@@ -55,8 +55,8 @@ void _MGraph_Explain(void *args) {
     qctx->parse_result = parse_result;
     AST *ast = AST_Build(parse_result);
 
-    if(AST_Empty(ast)) {
-        RedisModule_ReplyWithError(ctx, "Error empty query.");
+    if(AST_GetBody(parse_result) == NULL) {
+        RedisModule_ReplyWithError(ctx, "Error: empty query.");
         goto cleanup;
     }
 
@@ -70,7 +70,7 @@ void _MGraph_Explain(void *args) {
     }
 
     // Perform query validations before and after ModifyAST
-    if(AST_PerformValidations(ctx, ast) != AST_VALID) goto cleanup;
+    if(AST_Validate(ctx, ast) != AST_VALID) goto cleanup;
 
     // TODO index ops
     // if (ast[0]->indexNode != NULL) { // index operation

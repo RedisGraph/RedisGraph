@@ -180,19 +180,23 @@ void _AST_ConvertFilters(RecordMap *record_map, const QueryGraph *qg, FT_FilterN
 
 FT_FilterNode* AST_BuildFilterTree(AST *ast, RecordMap *record_map, const QueryGraph *qg) {
     FT_FilterNode *filter_tree = NULL;
-    const cypher_astnode_t **match_clauses = AST_CollectReferencesInRange(ast, CYPHER_AST_MATCH);
-    uint match_count = array_len(match_clauses);
-    for (unsigned int i = 0; i < match_count; i ++) {
-        _AST_ConvertFilters(record_map, qg, &filter_tree, match_clauses[i]);
+    const cypher_astnode_t **match_clauses = AST_GetClauses(ast, CYPHER_AST_MATCH);
+    if (match_clauses) {
+        uint match_count = array_len(match_clauses);
+        for (unsigned int i = 0; i < match_count; i ++) {
+            _AST_ConvertFilters(record_map, qg, &filter_tree, match_clauses[i]);
+        }
+        array_free(match_clauses);
     }
-    array_free(match_clauses);
 
-    const cypher_astnode_t **merge_clauses = AST_CollectReferencesInRange(ast, CYPHER_AST_MERGE);
-    uint merge_count = array_len(merge_clauses);
-    for (unsigned int i = 0; i < merge_count; i ++) {
-        _AST_ConvertFilters(record_map, qg, &filter_tree, merge_clauses[i]);
+    const cypher_astnode_t **merge_clauses = AST_GetClauses(ast, CYPHER_AST_MERGE);
+    if (merge_clauses) {
+        uint merge_count = array_len(merge_clauses);
+        for (unsigned int i = 0; i < merge_count; i ++) {
+            _AST_ConvertFilters(record_map, qg, &filter_tree, merge_clauses[i]);
+        }
+        array_free(merge_clauses);
     }
-    array_free(merge_clauses);
 
     return filter_tree;
 }
