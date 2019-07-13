@@ -33,6 +33,11 @@ cmake:
 # the same as "make library"
 static: library
 
+# Somewhat confusingly, the static rule compiles both the static and dynamic libraries,
+# which is why we have the custom static_only rule to reduce compilation time.
+static_only:
+	( cd build ; cmake $(CMAKE_OPTIONS) .. ; $(MAKE) -j4 graphblas_static )
+
 # installs GraphBLAS to the install location defined by cmake, usually
 # /usr/local/lib and /usr/local/include
 install:

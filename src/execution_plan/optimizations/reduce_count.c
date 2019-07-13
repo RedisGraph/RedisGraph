@@ -8,7 +8,7 @@
 #include "../ops/ops.h"
 #include "../../util/arr.h"
 
-static GrB_Monoid edgeCountMonoid = NULL;
+static GrB_UnaryOp countMultipleEdges = NULL;
 
 static int _identifyResultAndAggregateOps(OpBase *root, OpResult** opResult, OpAggregate** opAggregate) {
     OpBase *op = root;
@@ -146,31 +146,50 @@ static int _identifyEdgeCountPattern(OpBase *root, OpResult **opResult, OpAggreg
     return 1;
 }
 
-void _countEdges(void *_z, const void* _x, const void* _y) {
-    uint64_t* sum = (uint64_t*) _z;
-    uint64_t* currentTotal = (uint64_t*) _x;
-    const EdgeID *e = (const EdgeID*)_y;
-
-    EdgeID *ids;
-    // Single edge ID
-    if(SINGLE_EDGE(*e)) {
-        *sum = *currentTotal + 1;
+void _countEdges(void *z, const void *x) {
+    uint64_t *entry = (uint64_t*) x;
+    if(SINGLE_EDGE(*entry)) {
+        *(uint64_t*)z = 1;
     } else {
-        // Multiple edges
-        ids = (EdgeID*)(*e);
-        *sum = *currentTotal + array_len(ids);
+        EdgeID *ids = (EdgeID*)(*entry);
+        *(uint64_t*)z = array_len(ids);
     }
 }
 
-uint64_t _countRelationshipEdges(GrB_Matrix M){
-    if(!edgeCountMonoid) {
-        GrB_BinaryOp edgeCountBinaryOp;
-        GrB_BinaryOp_new(&edgeCountBinaryOp, _countEdges, GrB_UINT64, GrB_UINT64, GrB_UINT64);
-        GrB_Monoid_new(&edgeCountMonoid, edgeCountBinaryOp, (uint64_t) 0);
+uint64_t _countRelationshipEdges(GrB_Matrix M) {
+    // Create Unary operation only once.
+    if(!countMultipleEdges) {
+        GrB_UnaryOp_new(&countMultipleEdges, _countEdges,
+                        GrB_UINT64, GrB_UINT64);
     }
-    uint64_t edges = 0;
-    GrB_reduce(&edges, GrB_NULL, edgeCountMonoid, M, GrB_NULL);
 
+    /* TODO: to avoid this entire process keep track if
+     * M contains multiple edges between two given nodes
+     * if there are no multiple edges, 
+     * i.e. `a` is connected to `b` with multiple edges of type R
+     * then all we need to do is return M's nnz.
+     * Otherwise create a new matrix A, where A[i,j] = x 
+     * where x is the number of edges in M[i,j]
+     * then reduce A using the plus (sum) monoid. */
+
+    GrB_Index nrows;
+    GrB_Index ncols;
+    GrB_Matrix_nrows(&nrows, M);
+    GrB_Matrix_ncols(&ncols, M);
+
+    GrB_Matrix A;
+    GrB_Matrix_new(&A, GrB_UINT64, nrows, ncols);
+
+    // A[i,j] = # of edges in M[i,j].
+    GrB_Matrix_apply(A, GrB_NULL, GrB_NULL,
+                     countMultipleEdges, M, GrB_NULL);
+
+    uint64_t edges = 0;
+    // Sum(A)
+    GrB_Matrix_reduce_UINT64(&edges, GrB_NULL,
+                             GxB_PLUS_UINT64_MONOID, A, GrB_NULL);
+
+    GrB_free(&A);
     return edges;
 }
 
