@@ -561,9 +561,11 @@ AlgebraicExpression **AlgebraicExpression_FromQueryGraph(const QueryGraph *qg, R
         _RemovePathFromGraph(g, path); // TODO memory leak
 
         // Add constructed expression to return value.
-        for(uint j = 0; j < array_len(sub_exps); j++) exps = array_append(exps, sub_exps[j]);
+        uint sub_count = array_len(sub_exps);
+        for(uint j = 0; j < sub_count; j++) exps = array_append(exps, sub_exps[j]);
 
         // Clean up
+        array_free(path);
         array_free(leafs);
         array_free(sub_exps);
         free(exp->operands);

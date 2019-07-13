@@ -311,9 +311,5 @@ void AggregateFree(OpBase *opBase) {
     if(op->expression_classification) rm_free(op->expression_classification);
     if(op->non_aggregated_expressions) array_free(op->non_aggregated_expressions);
 
-    // TODO ensure is freed elsewhere (valgrind error on doing COUNT optimization).
-    // Consider freeing as part of result set?
-    // if(op->exps) array_free(op->exps);
-
     FreeGroupCache(op->groups);
 }

@@ -424,7 +424,8 @@ QueryGraph** QueryGraph_ConnectedComponents(const QueryGraph *qg) {
              * otherwise, node isn't reachable, not part of the
              * connected component. */
             if(reachable != raxNotFound) {
-                QueryGraph_RemoveNode(g, n);
+                QGNode *removed = QueryGraph_RemoveNode(g, n);
+                QGNode_Free(removed);
             } else {
                 n = QueryGraph_GetNodeByID(cc, n->id);
                 QueryGraph_RemoveNode(cc, n);
@@ -440,7 +441,9 @@ QueryGraph** QueryGraph_ConnectedComponents(const QueryGraph *qg) {
         if(QueryGraph_NodeCount(g) == 0) break;
     }
 
+    array_free(q);
     QueryGraph_Free(g);
+
     return connected_components;
 }
 

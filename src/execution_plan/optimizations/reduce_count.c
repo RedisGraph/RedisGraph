@@ -212,23 +212,13 @@ void _reduceEdgeCount(ExecutionPlan *plan) {
         edgeCount = SI_LongVal(Graph_EdgeCount(gc->g));
     }
 
-    // Incase alias is specified: RETURN count(r) as X
-    // TODO
-    uint *aliases = NULL;
-    // char **aliases = NULL;
-    // if (opAggregate->aliases) {
-        // assert(array_len(opAggregate->aliases) == 1);
-        // aliases = array_new(char*, 1);
-        // aliases = array_append(aliases, opAggregate->aliases[0]);
-    // }
-
     /* Construct a constant expression, used by a new
      * projection operation. */
     AR_ExpNode *exp = AR_EXP_NewConstOperandNode(edgeCount);
     AR_ExpNode **exps = array_new(AR_ExpNode*, 1);
     exps = array_append(exps, exp);
 
-    OpBase *opProject = NewProjectOp(exps, aliases);
+    OpBase *opProject = NewProjectOp(exps, NULL);
 
     // TODO this shouldn't need to be an explicit step.
     // See _associateRecordMap and ExecutionPlanInit to come up with solution.

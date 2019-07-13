@@ -242,7 +242,7 @@ void orderExpressions(AlgebraicExpression **exps, uint exps_count, const RecordM
     // Compute all possible permutations of algebraic expressions.
     Arrangement *arrangements = permutations(exps, exps_count);
     uint arrangement_count = array_len(arrangements);
-    if(arrangement_count == 1) return;
+    if(arrangement_count == 1) goto cleanup;
 
     // Remove invalid arrangements.
     Arrangement *valid_arrangements = array_new(Arrangement, arrangement_count);
@@ -251,15 +251,15 @@ void orderExpressions(AlgebraicExpression **exps, uint exps_count, const RecordM
             valid_arrangements = array_append(valid_arrangements, arrangements[i]);
         }
     }
-    arrangement_count = array_len(valid_arrangements);
-    assert(arrangement_count > 0);
+    uint valid_arrangement_count = array_len(valid_arrangements);
+    assert(valid_arrangement_count > 0);
 
     /* Score each arrangement, 
      * keep track after arrangement with highest score. */
     int max_score = INT_MIN;
     Arrangement top_arrangement = valid_arrangements[0];
 
-    for(uint i = 0; i < arrangement_count; i++) {
+    for(uint i = 0; i < valid_arrangement_count; i++) {
         Arrangement arrangement = valid_arrangements[i];
         int score = score_arrangement(arrangement, exps_count, record_map, filters);
         // printf("score: %d\n", score);
@@ -270,6 +270,8 @@ void orderExpressions(AlgebraicExpression **exps, uint exps_count, const RecordM
         }
     }
 
+    array_free(valid_arrangements);
+
     // Update input.
     for(uint i = 0; i < exps_count; i++) exps[i] = top_arrangement[i];
 
@@ -277,7 +279,7 @@ void orderExpressions(AlgebraicExpression **exps, uint exps_count, const RecordM
     // so that their source nodes have already been resolved by previous expressions.
     resolve_winning_sequence(exps, exps_count);
 
-    // Clean up.
+cleanup:
     for(uint i = 0; i < arrangement_count; i++) Arrangement_Free(arrangements[i]);
     array_free(arrangements);
 }

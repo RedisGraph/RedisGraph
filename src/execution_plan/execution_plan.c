@@ -106,7 +106,8 @@ static AR_ExpNode** _BuildOrderExpressions(RecordMap *record_map, AR_ExpNode **p
 }
 
 // Handle RETURN entities
-static AR_ExpNode** _BuildReturnExpressions(RecordMap *record_map, const cypher_astnode_t *ret_clause) {
+// (This function is not static because it is relied upon by unit tests)
+AR_ExpNode** _BuildReturnExpressions(RecordMap *record_map, const cypher_astnode_t *ret_clause) {
     // Query is of type "RETURN *",
     // collect all defined identifiers and create return elements for them
     if (cypher_ast_return_has_include_existing(ret_clause)) return _ReturnExpandAll(record_map);
@@ -784,6 +785,8 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, bool comp
         end_offset = cypher_astnode_nchildren(ast->root);
         ast_segment = AST_NewSegment(ast, start_offset, end_offset);
     }
+
+    if (segment_indices) array_free(segment_indices);
 
     segment = _NewExecutionPlanSegment(ctx, gc, ast_segment, plan->result_set, input_projections, prev_op);
     plan->segments[i] = segment;

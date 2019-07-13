@@ -132,6 +132,8 @@ EntityUpdateEvalCtx* AST_PrepareUpdateOp(const cypher_astnode_t *set_clause, Rec
         update_expressions[i].attribute = cypher_ast_prop_name_get_value(prop);
         update_expressions[i].exp = AR_EXP_FromExpression(record_map, val_to_set);
         update_expressions[i].entityRecIdx = RecordMap_FindOrAddAlias(record_map, entity->operand.variadic.entity_alias);
+
+        AR_EXP_Free(entity);
     }
 
     *nitems_ref = nitems;

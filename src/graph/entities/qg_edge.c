@@ -27,8 +27,8 @@ QGEdge* QGEdge_New(QGNode *src, QGNode *dest, const char *relationship, const ch
 QGEdge* QGEdge_Clone(const QGEdge *orig) {
     QGEdge *e = rm_malloc(sizeof(QGEdge));
     e->alias = orig->alias;
-    e->reltypes = orig->reltypes; // TODO possibly memcpy
-    e->reltypeIDs = orig->reltypeIDs; // TODO possibly memcpy
+    array_clone(e->reltypes, orig->reltypes);
+    array_clone(e->reltypeIDs, orig->reltypeIDs);
     e->minHops = orig->minHops;
     e->maxHops = orig->maxHops;
     e->id = orig->id;
@@ -83,9 +83,8 @@ int QGEdge_ToString(const QGEdge *e, char *buff, int buff_len) {
 void QGEdge_Free(QGEdge* e) {
     if(!e) return;
 
-    // TODO
-    // array_free(e->reltypes);
-    // array_free(e->reltypeIDs);
+    array_free(e->reltypes);
+    array_free(e->reltypeIDs);
 
     rm_free(e);
 }
