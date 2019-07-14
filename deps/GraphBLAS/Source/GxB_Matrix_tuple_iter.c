@@ -37,7 +37,7 @@ GrB_Info GxB_MatrixTupleIter_iterate_row
     GB_WHERE("GxB_MatrixTupleIter_iterate_row (iter, rowIdx)");
     GB_RETURN_IF_NULL(iter);
 
-    if (rowIdx < 0 && rowIdx >= iter->nrows)
+    if (rowIdx >= iter->nrows)
     {
         return (GB_ERROR(GrB_INVALID_INDEX, (GB_LOG, "Row index out of range")));
     }

@@ -10,7 +10,7 @@ GTEST_DIR = ../../deps/googletest
 CPPFLAGS += -isystem $(GTEST_DIR)/include
 
 # Flags passed to the C++ compiler.
-CXXFLAGS += -g -Wall -Wextra -pthread -std=c++11
+CXXFLAGS += -g -Wall -Wextra -pthread -std=c++11 -fopenmp
 CXX_SUPPRESS = -Wno-sign-compare -Wno-format -Wno-write-strings
 
 REDISGRAPH_CXX=$(QUIET_CXX)$(CXX)
