@@ -102,7 +102,7 @@ void ResultSet_ReplyWithPreamble(ResultSet *set, QueryGraph *qg) {
 
     _ResultSet_ReplyWithHeader(set, qg);
 
-    // // We don't know at this point the number of records we're about to return.
+    // We don't know at this point the number of records we're about to return.
     RedisModule_ReplyWithArray(set->ctx, REDISMODULE_POSTPONED_ARRAY_LEN);
 }
 

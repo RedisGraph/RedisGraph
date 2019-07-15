@@ -40,9 +40,6 @@ void QueryGraph_AddPath(const GraphContext *gc, const AST *ast, QueryGraph *qg, 
  * nodes and relationships in a query. */
 QueryGraph* BuildQueryGraph(const GraphContext *gc, const AST *ast);
 
-/* Add all paths described in CREATE clauses to the QueryGraph. */
-void QueryGraph_AddCreateClauses(const GraphContext *gc, const AST *ast, QueryGraph *qg);
-
 /* Retrieve a graph entity from an AST pointer */
 void* QueryGraph_GetEntityByASTRef(const QueryGraph *qg, const cypher_astnode_t *ref);
 

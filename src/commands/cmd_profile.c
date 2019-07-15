@@ -59,7 +59,8 @@ void _MGraph_Profile(void *args) {
         assert("Unhandled query type" && false);
     }
 
-    ExecutionPlan *plan = NewExecutionPlan(ctx, gc, false, false);
+    ResultSet *result_set = NewResultSet(ctx, false);
+    ExecutionPlan *plan = NewExecutionPlan(ctx, gc, result_set);
     ExecutionPlan_Profile(plan);
     ExecutionPlan_Print(plan, ctx);
     ExecutionPlan_Free(plan);

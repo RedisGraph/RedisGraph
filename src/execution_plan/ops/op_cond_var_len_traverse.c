@@ -16,16 +16,8 @@
 static void _setupTraversedRelations(CondVarLenTraverse *op, QGEdge *e) {
     uint reltype_count = array_len(e->reltypeIDs);
     if (reltype_count > 0) {
-        op->edgeRelationTypes = e->reltypeIDs; // TODO can't free this way
+        op->edgeRelationTypes = e->reltypeIDs; // TODO can't free this way 
         op->edgeRelationCount = reltype_count;
-        // op->edgeRelationTypes = array_new(int , op->edgeRelationCount);
-        // for(int i = 0; i < op->edgeRelationCount; i++) {
-            // Schema *s = GraphContext_GetSchema(gc, e->labels[i], SCHEMA_EDGE);
-            // if(!s) continue;
-            // op->edgeRelationTypes = array_append(op->edgeRelationTypes, s->id);
-        // }
-        // op->edgeRelationCount = array_len(op->edgeRelationTypes);
-    
     } else {
         op->edgeRelationCount = 1;
         op->edgeRelationTypes = array_new(int, 1);
@@ -58,8 +50,8 @@ void CondVarLenTraverseOp_ExpandInto(CondVarLenTraverse *op) {
     op->op.name = "Conditional Variable Length Traverse (Expand Into)";
 }
 
-OpBase* NewCondVarLenTraverseOp(AlgebraicExpression *ae, uint minHops, uint maxHops, uint src_node_idx, uint dest_node_idx, Graph *g) {
-    assert(ae && minHops <= maxHops && g && ae->operand_count == 1);
+OpBase* NewCondVarLenTraverseOp(Graph *g, RecordMap *record_map, AlgebraicExpression *ae) {
+    assert(ae && ae->edge->minHops <= ae->edge->maxHops && g && ae->operand_count == 1);
 
     CondVarLenTraverse *condVarLenTraverse = malloc(sizeof(CondVarLenTraverse));
     condVarLenTraverse->g = g;
@@ -68,11 +60,11 @@ OpBase* NewCondVarLenTraverseOp(AlgebraicExpression *ae, uint minHops, uint maxH
     // condVarLenTraverse->relationIDs = NULL;
     condVarLenTraverse->edgeRelationTypes = NULL;
 
-    condVarLenTraverse->srcNodeIdx = src_node_idx;
-    condVarLenTraverse->destNodeIdx = dest_node_idx;
+    condVarLenTraverse->srcNodeIdx = RecordMap_FindOrAddID(record_map, ae->src_node->id);
+    condVarLenTraverse->destNodeIdx = RecordMap_FindOrAddID(record_map, ae->dest_node->id);
 
-    condVarLenTraverse->minHops = minHops;
-    condVarLenTraverse->maxHops = maxHops;
+    condVarLenTraverse->minHops = ae->edge->minHops;
+    condVarLenTraverse->maxHops = ae->edge->maxHops;
     condVarLenTraverse->allPathsCtx = NULL;
     condVarLenTraverse->traverseDir = (ae->operands[0].transpose) ? GRAPH_EDGE_DIR_INCOMING : GRAPH_EDGE_DIR_OUTGOING;
     condVarLenTraverse->r = NULL;
@@ -89,7 +81,7 @@ OpBase* NewCondVarLenTraverseOp(AlgebraicExpression *ae, uint minHops, uint maxH
     condVarLenTraverse->op.free = CondVarLenTraverseFree;
 
     condVarLenTraverse->op.modifies = array_new(uint, 1);
-    condVarLenTraverse->op.modifies = array_append(condVarLenTraverse->op.modifies, dest_node_idx);
+    condVarLenTraverse->op.modifies = array_append(condVarLenTraverse->op.modifies, condVarLenTraverse->destNodeIdx);
 
     return (OpBase*)condVarLenTraverse;
 }

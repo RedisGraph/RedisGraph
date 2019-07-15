@@ -47,5 +47,5 @@ AST_UnwindContext AST_PrepareUnwindOp(const cypher_astnode_t *unwind_clause, Rec
 
 AST_MergeContext AST_PrepareMergeOp(RecordMap *record_map, AST *ast, const cypher_astnode_t *merge_clause, QueryGraph *qg);
 
-AST_CreateContext AST_PrepareCreateOp(RecordMap *record_map, AST *ast, QueryGraph *qg);
+AST_CreateContext AST_PrepareCreateOp(GraphContext *gc, RecordMap *record_map, AST *ast, QueryGraph *qg);
 

@@ -103,7 +103,8 @@ void _MGraph_Query(void *args) {
 
     const cypher_astnode_type_t root_type = cypher_astnode_type(ast->root);
     if (root_type == CYPHER_AST_QUERY) { // query operation
-        ExecutionPlan *plan = NewExecutionPlan(ctx, gc, compact, false);
+        ResultSet *result_set = NewResultSet(ctx, compact);
+        ExecutionPlan *plan = NewExecutionPlan(ctx, gc, result_set);
         resultSet = ExecutionPlan_Execute(plan);
         ExecutionPlan_Free(plan);
         ResultSet_Replay(resultSet);    // Send result-set back to client.

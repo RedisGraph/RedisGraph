@@ -79,7 +79,10 @@ int CondTraverseToString(const OpBase *ctx, char *buff, uint buff_len) {
     return offset;
 }
 
-OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *ae, uint src_node_idx, uint dest_node_idx, uint edge_idx, uint records_cap) {
+OpBase* NewCondTraverseOp(Graph *g, RecordMap *record_map, AlgebraicExpression *ae, uint records_cap) {
+
+
+
     CondTraverse *traverse = calloc(1, sizeof(CondTraverse));
     traverse->graph = g;
     traverse->ae = ae;
@@ -89,9 +92,10 @@ OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *ae, uint src_node_idx, 
     traverse->edges = NULL;
     traverse->r = NULL;
 
-    traverse->srcNodeIdx = src_node_idx;
-    traverse->destNodeIdx = dest_node_idx;
-    traverse->edgeRecIdx = edge_idx;
+    // Make sure that all entities are represented in Record
+    traverse->srcNodeIdx = RecordMap_FindOrAddID(record_map, ae->src_node->id);
+    traverse->destNodeIdx = RecordMap_FindOrAddID(record_map, ae->dest_node->id);
+    traverse->edgeRecIdx = IDENTIFIER_NOT_FOUND;
 
     traverse->recordsLen = 0;
     traverse->transposed_edge = false;
@@ -111,11 +115,12 @@ OpBase* NewCondTraverseOp(Graph *g, AlgebraicExpression *ae, uint src_node_idx, 
     traverse->op.toString = CondTraverseToString;
     traverse->op.free = CondTraverseFree;
     traverse->op.modifies = array_new(uint, 1);
-    traverse->op.modifies = array_append(traverse->op.modifies, dest_node_idx);
+    traverse->op.modifies = array_append(traverse->op.modifies, traverse->destNodeIdx);
 
     if(ae->edge) {
+        traverse->edgeRecIdx = RecordMap_FindOrAddID(record_map, ae->edge->id);
         _setupTraversedRelations(traverse, ae->edge);
-        traverse->op.modifies = array_append(traverse->op.modifies, edge_idx);
+        traverse->op.modifies = array_append(traverse->op.modifies, traverse->edgeRecIdx);
         traverse->edges = array_new(Edge, 32);
     }
 

@@ -21,7 +21,6 @@ void _FT_Append(FT_FilterNode **root_ptr, FT_FilterNode *child) {
     }
 
     if (root->t == FT_N_COND) {
-
         if (root->cond.left == NULL) {
             AppendLeftChild(root, child);
             return;
@@ -109,11 +108,6 @@ FT_FilterNode* _convertInlinedProperties(RecordMap *record_map, const QueryGraph
     uint entity_id = (type == SCHEMA_NODE) ? ((QGNode*)qg_entity)->id : ((QGEdge*)qg_entity)->id;
     // AST *ast = AST_GetFromTLS();
     uint record_id =  RecordMap_FindOrAddID(record_map, entity_id);
-    // uint record_id = RecordMap_GetRecordIDFromReference(record_map, entity);
-    // if (record_id == IDENTIFIER_NOT_FOUND) {
-        // uint ast_id = AST_GetEntityIDFromReference(ast, entity);
-        // record_id = RecordMap_FindOrAddASTEntity(record_map, ast, entity);
-    // }
 
     FT_FilterNode *root = NULL;
     unsigned int nelems = cypher_ast_map_nentries(props);

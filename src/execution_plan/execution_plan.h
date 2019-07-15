@@ -28,7 +28,6 @@ typedef struct {
     QueryGraph *query_graph;         // QueryGraph representing all graph entities in this segment. // TODO del?
     FT_FilterNode *filter_tree;      // FilterTree containing filters to be applied to this segment.
     AR_ExpNode **projections;        // Expressions to be constructed for a WITH or RETURN clause.
-    AR_ExpNode **order_expressions;  // Expressions to be constructed for an ORDER clause.
 } ExecutionPlanSegment;
 
 typedef struct {
@@ -79,8 +78,7 @@ OpBase* ExecutionPlan_LocateReferences(OpBase *root, rax *references);
 ExecutionPlan* NewExecutionPlan (
     RedisModuleCtx *ctx,    // Module-level context
     GraphContext *gc,       // Graph access and schemas
-    bool compact,
-    bool explain
+    ResultSet *result_set
 );
 
 /* Prints execution plan. */
@@ -94,11 +92,3 @@ ResultSet* ExecutionPlan_Profile(ExecutionPlan *plan);
 
 /* Free execution plan */
 void ExecutionPlan_Free(ExecutionPlan *plan);
-
-// Mapping functions
-// uint ExecutionPlanSegment_GetRecordIDFromReference(ExecutionPlanSegment *segment, AST_IDENTIFIER entity);
-// uint ExecutionPlanSegment_ReferenceToRecordID(ExecutionPlanSegment *segment, AST_IDENTIFIER identifier);
-// uint ExecutionPlanSegment_ExpressionToRecordID(ExecutionPlanSegment *segment, AR_ExpNode *exp);
-// uint ExecutionPlanSegment_AliasToRecordID(ExecutionPlanSegment *segment, const char *alias, uint id);
-
-uint ExecutionPlanSegment_RecordLength(ExecutionPlanSegment *segment);

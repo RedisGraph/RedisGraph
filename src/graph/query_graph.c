@@ -233,22 +233,6 @@ QueryGraph* BuildQueryGraph(const GraphContext *gc, const AST *ast) {
     return qg;
 }
 
-void QueryGraph_AddCreateClauses(const GraphContext *gc, const AST *ast, QueryGraph *qg) {
-    const cypher_astnode_t **create_clauses = AST_GetClauses(ast, CYPHER_AST_CREATE);
-    if (create_clauses) {
-        uint create_count = array_len(create_clauses);
-        for (uint i = 0; i < create_count; i ++) {
-            const cypher_astnode_t *pattern = cypher_ast_create_get_pattern(create_clauses[i]);
-            uint npaths = cypher_ast_pattern_npaths(pattern);
-            for (uint j = 0; j < npaths; j ++) {
-                const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, j);
-                QueryGraph_AddPath(gc, ast, qg, path);
-            }
-        }
-        array_free(create_clauses);
-    }
-}
-
 void* QueryGraph_GetEntityByASTRef(const QueryGraph *qg, const cypher_astnode_t *ref) {
     void *ge = TrieMap_Find(qg->ast_references, (void*)&ref, sizeof(ref));
     if (ge == TRIEMAP_NOTFOUND) return NULL;

@@ -65,6 +65,10 @@ long AST_ParseIntegerNode(const cypher_astnode_t *int_node);
 
 bool AST_ClauseContainsAggregation(const cypher_astnode_t *clause);
 
+/* Given an AST entity representing a node, edge, identifier, or property specification,
+ * return its alias (if one is provided). */
+const char* AST_GetEntityAlias(const cypher_astnode_t *entity);
+
 // mapping functions
 uint AST_GetEntityIDFromReference(const AST *ast, AST_IDENTIFIER entity);
 

@@ -92,7 +92,7 @@ void _MGraph_Explain(void *args) {
     }
 
     Graph_AcquireReadLock(gc->g);
-    plan = NewExecutionPlan(ctx, gc, false, true);
+    plan = NewExecutionPlan(ctx, gc, NULL);
     ExecutionPlan_Print(plan, ctx);
 
 cleanup:

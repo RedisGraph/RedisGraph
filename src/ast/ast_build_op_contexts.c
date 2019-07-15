@@ -192,7 +192,7 @@ AST_UnwindContext AST_PrepareUnwindOp(const cypher_astnode_t *unwind_clause, Rec
     const cypher_astnode_t *collection = cypher_ast_unwind_get_expression(unwind_clause);
     AR_ExpNode **exps = _AST_ConvertCollection(collection, record_map);
     const char *alias = cypher_ast_identifier_get_name(cypher_ast_unwind_get_alias(unwind_clause));
-    uint record_idx = RecordMap_LookupAlias(record_map, alias);
+    uint record_idx = RecordMap_FindOrAddAlias(record_map, alias);
 
     AST_UnwindContext ctx = { .exps = exps, .record_idx = record_idx };
     return ctx;
@@ -284,7 +284,7 @@ TrieMap* _MatchClause_DefinedEntities(const AST *ast) {
     return map;
 }
 
-AST_CreateContext AST_PrepareCreateOp(RecordMap *record_map, AST *ast, QueryGraph *qg) {
+AST_CreateContext AST_PrepareCreateOp(GraphContext *gc, RecordMap *record_map, AST *ast, QueryGraph *qg) {
     const cypher_astnode_t **create_clauses = AST_GetClauses(ast, CYPHER_AST_CREATE);
     uint create_count = (create_clauses) ? array_len(create_clauses) : 0;
 
@@ -302,6 +302,9 @@ AST_CreateContext AST_PrepareCreateOp(RecordMap *record_map, AST *ast, QueryGrap
 
         for (uint j = 0; j < npaths; j++) {
             const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, j);
+            // Add the path to the QueryGraph
+            QueryGraph_AddPath(gc, ast, qg, path);
+
             uint path_elem_count = cypher_ast_pattern_path_nelements(path);
             for (uint j = 0; j < path_elem_count; j ++) {
                 /* See if current entity needs to be created:
