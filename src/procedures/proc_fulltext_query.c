@@ -9,7 +9,7 @@
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
 #include "../graph/graphcontext.h"
-#include "../redisearch_api.h"
+#include "../../deps/RediSearch/src/redisearch_api.h"
 
 //------------------------------------------------------------------------------
 // fulltext createNodeIndex
