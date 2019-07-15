@@ -67,13 +67,14 @@ RAX=../deps/rax/rax.o
 
 # Library dependencies
 LIBTRIEMAP=util/triemap/libtriemap.a
-GRAPHBLAS=../deps/GraphBLAS/build/libgraphblas.a
 LIBXXHASH=../deps/xxhash/libxxhash.a
+GRAPHBLAS=../deps/GraphBLAS/build/libgraphblas.a
+REDISEARCH=../deps/RediSearch/build/libredisearchS.a
 LIBCYPHER-PARSER=../deps/libcypher-parser/lib/src/.libs/libcypher-parser.a
 
 # Compilation deps for the module
-LIBS=$(LIBTRIEMAP) $(GRAPHBLAS) $(LIBXXHASH) $(LIBCYPHER-PARSER)
-MODULE=$(LIBS) $(RAX) $(CC_OBJECTS)
+LIBS=$(LIBTRIEMAP) $(GRAPHBLAS) $(REDISEARCH) $(LIBXXHASH) $(LIBCYPHER-PARSER)
+MODULE=$(CC_OBJECTS) $(RAX) $(LIBS)
 
 REDISGRAPH_CC=$(QUIET_CC)$(CC)
 
@@ -112,8 +113,15 @@ BLAS_CFLAGS = -fPIC -I $(abs_path)/util -include rmalloc.h -DREDIS_MODULE_TARGET
 $(GRAPHBLAS):
 ifeq (,$(wildcard $(GRAPHBLAS)))
 	@$(MAKE) -C ../deps/GraphBLAS CMAKE_OPTIONS="-DUSER_POSIX=1 -DCMAKE_CXX_FLAGS=-std=c++11 -DCMAKE_C_FLAGS='$(BLAS_CFLAGS)'" static_only
-else
+endif
 
+$(REDISEARCH):
+ifeq (,$(wildcard $(REDISEARCH)))
+	cd ../deps/RediSearch; \
+	mkdir build; \
+	cd build; \
+	cmake -DRS_BUILD_STATIC=ON ..; \
+	make;
 endif
 
 # Build libcypher-parser only if library does not already exists.
@@ -140,10 +148,11 @@ clean:
 	@find . -name '*.[oad]' -type f -delete
 	@-rm -f redisgraph.so
 ifeq ($(ALL),1)
-	@$(MAKE) -C ../deps/GraphBLAS clean
-	@$(MAKE) -C ../deps/libcypher-parser clean
-	@$(MAKE) -C ../deps/xxhash clean
 	@$(MAKE) -C ../deps/rax clean
+	@$(MAKE) -C ../deps/xxhash clean
+	@$(MAKE) -C ../deps/GraphBLAS clean
+	@$(MAKE) -C ../deps/RediSearch clean
+	@$(MAKE) -C ../deps/libcypher-parser clean
 endif
 	@$(MAKE) -C ../tests clean
 
