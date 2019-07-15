@@ -9,7 +9,7 @@
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
 #include "../graph/graphcontext.h"
-#include "../redisearch_api.h"
+#include "../../deps/RediSearch/src/redisearch_api.h"
 
 //------------------------------------------------------------------------------
 // fulltext createNodeIndex
@@ -91,11 +91,11 @@ static int _getNodeAttribute(void *ctx, const char *fieldName, const void *id, c
 	return ret;
 }
 
-ProcedureResult Proc_FulltextCreateNodeIdxInvoke(ProcedureCtx *ctx, const char **args) {
+ProcedureResult Proc_FulltextCreateNodeIdxInvoke(ProcedureCtx *ctx, char **args) {
 	if(array_len(args) < 2) return PROCEDURE_ERR;
 
 	// Create full-text index.
-	const char *label = args[0];
+	char *label = args[0];
 	GraphContext *gc = GraphContext_GetFromTLS();
 	_fulltextIndexCtx *indexCtx = rm_malloc(sizeof(_fulltextIndexCtx));
 	Graph *g = gc->g;
@@ -108,21 +108,21 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke(ProcedureCtx *ctx, const char *
 	int label_id = s->id;
 	uint fields_count = array_len(args) - 1;
 	uint fields_ids[fields_count];
-	const char **fields = args + 1; // Skip index name.
+	char **fields = args + 1; // Skip index name.
 
 	// Validate that all specified fields exists.
 	for(int i = 0; i < fields_count; i++) {
-		const char *field = fields[i];
+		char *field = fields[i];
 		if(GraphContext_GetAttributeID(gc, field) == ATTRIBUTE_NOTFOUND) {
 			// TODO: report error.
 			return PROCEDURE_ERR;
 		}
 	}
 
-	RSIndex *idx = RediSearch_CreateIndex(label, _getNodeAttribute, indexCtx);
+	RSIndex *idx = RediSearch_CreateIndex(label, NULL);
 	Schema_SetFullTextIndex(s, idx);
 	for(int i = 0; i < fields_count; i++) {
-		const char *field = fields[i];
+		char *field = fields[i];
 		fields_ids[i] = GraphContext_GetAttributeID(gc, field);
 		// Introduce text fields.
 		RediSearch_CreateTextField(idx, field);

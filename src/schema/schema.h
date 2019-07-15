@@ -11,7 +11,7 @@
 #include "../index/index.h"
 #include "../util/triemap/triemap.h"
 #include "../graph/entities/graph_entity.h"
-#include "../redisearch_api.h"
+#include "../../deps/RediSearch/src/redisearch_api.h"
 
 typedef enum {
 	SCHEMA_UNKNOWN,
