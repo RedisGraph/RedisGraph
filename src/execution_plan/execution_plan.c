@@ -432,7 +432,7 @@ static ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, Graph
     segment->query_graph = qg;
 
     // Build filter tree
-    FT_FilterNode *filter_tree = AST_BuildFilterTree(ast, record_map, qg);
+    FT_FilterNode *filter_tree = AST_BuildFilterTree(ast, record_map);
     segment->filter_tree = filter_tree;
 
     const cypher_astnode_t *call_clause = AST_GetClause(ast, CYPHER_AST_CALL);
@@ -729,7 +729,7 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
             ast_segment = AST_NewSegment(ast, start_offset, end_offset);
 
             // Construct a new ExecutionPlanSEgment.
-            segment =_NewExecutionPlanSegment(ctx, gc, ast_segment, plan->result_set, input_projections, prev_op);
+            segment = _NewExecutionPlanSegment(ctx, gc, ast_segment, plan->result_set, input_projections, prev_op);
             plan->segments[i] = segment;
             // TODO probably a memory leak on ast->root
             AST_Free(ast_segment); // Free all AST constructions scoped to this segment

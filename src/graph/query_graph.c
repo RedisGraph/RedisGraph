@@ -10,11 +10,6 @@
 #include "../../deps/rax/rax.h"
 #include <assert.h>
 
-static void _QueryGraph_AddASTRef(QueryGraph *qg, const cypher_astnode_t *ast_entity, void *qg_entity) {
-    int rc = TrieMap_Add(qg->ast_references, (char*)&ast_entity, sizeof(ast_entity), qg_entity, TrieMap_DONT_CARE_REPLACE);
-    assert(rc == 1);
-}
-
 static void _QueryGraph_AddID(QueryGraph *qg, uint id, void *qg_entity) {
     int rc = TrieMap_Add(qg->ast_references, (char*)&id, sizeof(id), qg_entity, TrieMap_DONT_CARE_REPLACE);
     assert(rc == 1);
@@ -24,25 +19,16 @@ static void _BuildQueryGraphAddNode(const GraphContext *gc,
                              const AST *ast,
                              const cypher_astnode_t *ast_entity,
                              QueryGraph *qg) {
-
-    // Look up this AST reference in the QueryGraph.
-    QGNode *n = QueryGraph_GetEntityByASTRef(qg, ast_entity);
-
-    // This AST node has already been added to the QueryGraph, do nothing.
-    if (n) return;
-
     // Retrieve the AST ID of this reference.
     uint id = AST_GetEntityIDFromReference(ast, ast_entity);
     assert(id != IDENTIFIER_NOT_FOUND);
 
-    // If this AST ID has already been mapped into the QueryGraph from a different AST entity,
-    //  we'll augment the previously-built QGNode with any new AST data.
-    // This call captures reused aliases.
-    n = QueryGraph_GetNodeByID(qg, id);
+    // Look up this AST ID in the QueryGraph.
+    // This node may already exist if it appears multiple times in query patterns.
+    QGNode *n = QueryGraph_GetNodeByID(qg, id);
 
     if (n == NULL) {
         // Node has not been mapped; create it.
-
         const char *alias = NULL;
         const cypher_astnode_t *ast_alias = cypher_ast_node_pattern_get_identifier(ast_entity);
         if (ast_alias) alias = cypher_ast_identifier_get_name(ast_alias);
@@ -55,9 +41,6 @@ static void _BuildQueryGraphAddNode(const GraphContext *gc,
         QueryGraph_AddNode(qg, n);
 
     }
-
-    // Add the current AST reference.
-    _QueryGraph_AddASTRef(qg, ast_entity, (void*)n);
 
     // Retrieve node labels from the AST entity.
     uint nlabels = cypher_ast_node_pattern_nlabels(ast_entity);
@@ -82,20 +65,14 @@ static void _BuildQueryGraphAddNode(const GraphContext *gc,
 static void _BuildQueryGraphAddEdge(const GraphContext *gc,
                         const AST *ast,
                         const cypher_astnode_t *ast_entity,
-                        const cypher_astnode_t *l_entity,
-                        const cypher_astnode_t *r_entity,
+                        QGNode *src,
+                        QGNode *dest,
                         QueryGraph *qg) {
-
-    // Each edge can only appear once in a QueryGraph.
-    assert(QueryGraph_GetEntityByASTRef(qg, ast_entity) == NULL);;
-
     // Retrieve the AST ID of this reference.
     uint id = AST_GetEntityIDFromReference(ast, ast_entity);
     assert(id != IDENTIFIER_NOT_FOUND);
 
-    // If this AST ID has already been mapped into the QueryGraph from a different AST entity,
-    //  we'll augment the previously-built QGEdge with any new AST data.
-    // This call captures reused aliases.
+    // Each edge can only appear once in a QueryGraph.
     assert(QueryGraph_GetEdgeByID(qg, id) == NULL);
 
     const char *alias = NULL;
@@ -106,9 +83,6 @@ static void _BuildQueryGraphAddEdge(const GraphContext *gc,
 
     // Map the AST ID.
     _QueryGraph_AddID(qg, id, e);
-
-    QGNode *src = QueryGraph_GetEntityByASTRef(qg, l_entity);
-    QGNode *dest = QueryGraph_GetEntityByASTRef(qg, r_entity);
 
     // Swap the source and destination for left-pointing relations
     if(cypher_ast_rel_pattern_get_direction(ast_entity) == CYPHER_REL_INBOUND) {
@@ -144,9 +118,6 @@ static void _BuildQueryGraphAddEdge(const GraphContext *gc,
             e->maxHops = EDGE_LENGTH_INF;
         }
     }
-
-    // Add the current AST reference.
-    _QueryGraph_AddASTRef(qg, ast_entity, (void*)e);
 
     QueryGraph_ConnectNodes(qg, src, dest, e);
 }
@@ -184,13 +155,22 @@ void QueryGraph_AddPath(const GraphContext *gc, const AST *ast, QueryGraph *qg, 
 
     /* Every odd offset corresponds to an edge in a path. */
     for (uint i = 1; i < nelems; i += 2) {
+        // Retrieve the QGNode corresponding to the node left of this edge.
         const cypher_astnode_t *l_entity = cypher_ast_pattern_path_get_element(path, i - 1);
+        uint left_id = AST_GetEntityIDFromReference(ast, l_entity);
+        QGNode *left = QueryGraph_GetNodeByID(qg, left_id);
+
+        // Retrieve the QGNode corresponding to the node right of this edge.
         const cypher_astnode_t *r_entity = cypher_ast_pattern_path_get_element(path, i + 1);
+        uint right_id = AST_GetEntityIDFromReference(ast, r_entity);
+        QGNode *right = QueryGraph_GetNodeByID(qg, right_id);
+
+        // Retrieve the AST reference to this edge.
         const cypher_astnode_t *entity = cypher_ast_pattern_path_get_element(path, i);
 
-        _BuildQueryGraphAddEdge(gc, ast, entity, l_entity, r_entity, qg);
+        // Build and add a QGEdge representing this entity to the QueryGraph.
+        _BuildQueryGraphAddEdge(gc, ast, entity, left, right, qg);
     }
-
 }
 
 /* Build a query graph from MATCH and MERGE clauses. */
@@ -231,12 +211,6 @@ QueryGraph* BuildQueryGraph(const GraphContext *gc, const AST *ast) {
     }
 
     return qg;
-}
-
-void* QueryGraph_GetEntityByASTRef(const QueryGraph *qg, const cypher_astnode_t *ref) {
-    void *ge = TrieMap_Find(qg->ast_references, (void*)&ref, sizeof(ref));
-    if (ge == TRIEMAP_NOTFOUND) return NULL;
-    return ge;
 }
 
 QGNode* QueryGraph_GetNodeByID(const QueryGraph *qg, uint id) {

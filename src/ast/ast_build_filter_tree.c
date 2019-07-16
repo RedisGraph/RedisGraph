@@ -90,7 +90,8 @@ FT_FilterNode* _convertComparison(RecordMap *record_map, const cypher_astnode_t 
     return _CreatePredicateFilterNode(record_map, op, lhs, rhs);
 }
 
-FT_FilterNode* _convertInlinedProperties(RecordMap *record_map, const QueryGraph *qg, const cypher_astnode_t *entity, SchemaType type) {
+static FT_FilterNode* _convertInlinedProperties(RecordMap *record_map, const AST *ast,
+                                         const cypher_astnode_t *entity, SchemaType type) {
     const cypher_astnode_t *props = NULL;
 
     if (type == SCHEMA_NODE) {
@@ -101,13 +102,11 @@ FT_FilterNode* _convertInlinedProperties(RecordMap *record_map, const QueryGraph
 
     if (!props) return NULL;
 
-    // Nodes and edges are stored in the QueryGraph.
-    void *qg_entity = QueryGraph_GetEntityByASTRef(qg, entity);
-    assert(qg_entity);
+    // Retrieve the AST ID of the entity.
+    uint ast_id = AST_GetEntityIDFromReference(ast, entity);
 
-    uint entity_id = (type == SCHEMA_NODE) ? ((QGNode*)qg_entity)->id : ((QGEdge*)qg_entity)->id;
-    // AST *ast = AST_GetFromTLS();
-    uint record_id =  RecordMap_FindOrAddID(record_map, entity_id);
+    // Add the AST ID to the record map.
+    uint record_id = RecordMap_FindOrAddID(record_map, ast_id);
 
     FT_FilterNode *root = NULL;
     unsigned int nelems = cypher_ast_map_nentries(props);
@@ -124,7 +123,7 @@ FT_FilterNode* _convertInlinedProperties(RecordMap *record_map, const QueryGraph
          * (note the repeated double quotes) - this creates a variable rather than a scalar.
          * Can we use this to handle escape characters or something? How does it work? */
         // Inlined properties can only be scalars right now
-        assert(rhs->operand.type == AR_EXP_CONSTANT && "non-scalar inlined property - add handling for this?");
+        assert(rhs->operand.type == AR_EXP_CONSTANT && "non-scalar inlined property are not currently supported.");
         FT_FilterNode *t = FilterTree_CreatePredicateFilter(OP_EQUAL, lhs, rhs);
         _FT_Append(&root, t);
     }
@@ -143,7 +142,8 @@ FT_FilterNode* _FilterNode_FromAST(RecordMap *record_map, const cypher_astnode_t
     return NULL;
 }
 
-void _AST_ConvertFilters(RecordMap *record_map, const QueryGraph *qg, FT_FilterNode **root, const cypher_astnode_t *entity) {
+void _AST_ConvertFilters(RecordMap *record_map, const AST *ast,
+                         FT_FilterNode **root, const cypher_astnode_t *entity) {
     if (!entity) return;
 
     cypher_astnode_type_t type = cypher_astnode_type(entity);
@@ -151,34 +151,34 @@ void _AST_ConvertFilters(RecordMap *record_map, const QueryGraph *qg, FT_FilterN
     FT_FilterNode *node = NULL;
     // If the current entity is a node or edge pattern, capture its properties map (if any)
     if (type == CYPHER_AST_NODE_PATTERN) {
-        node = _convertInlinedProperties(record_map, qg, entity, SCHEMA_NODE);
+        node = _convertInlinedProperties(record_map, ast, entity, SCHEMA_NODE);
     } else if (type == CYPHER_AST_REL_PATTERN) {
-        node = _convertInlinedProperties(record_map, qg, entity, SCHEMA_EDGE);
+        node = _convertInlinedProperties(record_map, ast, entity, SCHEMA_EDGE);
     } else if (type == CYPHER_AST_COMPARISON) {
         node = _convertComparison(record_map, entity);
     } else if (type == CYPHER_AST_BINARY_OPERATOR) {
         node = _convertBinaryOperator(record_map, entity);
     } else if (type == CYPHER_AST_UNARY_OPERATOR) {
         // TODO, also n-ary maybe
-        assert(false);
+        assert(false && "unary filters are not currently supported.");
     } else {
         unsigned int child_count = cypher_astnode_nchildren(entity);
         for(unsigned int i = 0; i < child_count; i++) {
             const cypher_astnode_t *child = cypher_astnode_get_child(entity, i);
             // Recursively continue searching
-            _AST_ConvertFilters(record_map, qg, root, child);
+            _AST_ConvertFilters(record_map, ast, root, child);
         }
     }
     if (node) _FT_Append(root, node);
 }
 
-FT_FilterNode* AST_BuildFilterTree(AST *ast, RecordMap *record_map, const QueryGraph *qg) {
+FT_FilterNode* AST_BuildFilterTree(AST *ast, RecordMap *record_map) {
     FT_FilterNode *filter_tree = NULL;
     const cypher_astnode_t **match_clauses = AST_GetClauses(ast, CYPHER_AST_MATCH);
     if (match_clauses) {
         uint match_count = array_len(match_clauses);
         for (unsigned int i = 0; i < match_count; i ++) {
-            _AST_ConvertFilters(record_map, qg, &filter_tree, match_clauses[i]);
+            _AST_ConvertFilters(record_map, ast, &filter_tree, match_clauses[i]);
         }
         array_free(match_clauses);
     }
@@ -187,7 +187,7 @@ FT_FilterNode* AST_BuildFilterTree(AST *ast, RecordMap *record_map, const QueryG
     if (merge_clauses) {
         uint merge_count = array_len(merge_clauses);
         for (unsigned int i = 0; i < merge_count; i ++) {
-            _AST_ConvertFilters(record_map, qg, &filter_tree, merge_clauses[i]);
+            _AST_ConvertFilters(record_map, ast, &filter_tree, merge_clauses[i]);
         }
         array_free(merge_clauses);
     }
