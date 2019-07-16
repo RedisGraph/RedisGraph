@@ -94,8 +94,6 @@ void _MGraph_Query(void *args) {
 
     bool compact = _check_compact_flag(qctx);
 
-    CommandCtx_ThreadSafeContextUnlock(qctx);
-
     // Acquire the appropriate lock.
     if(readonly) Graph_AcquireReadLock(gc->g);
     else Graph_WriterEnter(gc->g);  // Single writer.
