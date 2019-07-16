@@ -5,6 +5,7 @@ import unittest
 from hotels import hotels
 import random
 import time
+from RLTest import Env
 
 
 def testAdd(env):
@@ -2126,6 +2127,44 @@ def testIssue666(env):
 # 127.0.0.1:6379> ft.add foo "ft:foo/two" 1 FIELDS bar "four five six"
 # Could not connect to Redis at 127.0.0.1:6379: Connection refused
 
+def testPrefixDeletedExpansions(env):
+    from unittest import SkipTest
+    # first get the gc implementation. This doesn't work on forkgc currently
+    gcp = env.cmd('ft.config', 'get', 'gc_policy')[0][1]
+    if gcp.lower() == 'fork':
+        raise SkipTest('test not supported on fork gc')
+
+    env.cmd('ft.create', 'idx', 'schema', 'txt1', 'text', 'tag1', 'tag')
+    # get the number of maximum expansions
+    maxexpansions = int(env.cmd('ft.config', 'get', 'maxexpansions')[0][1])
+
+    for x in range(maxexpansions):
+        env.cmd('ft.add', 'idx', 'doc{}'.format(x), 1, 'fields',
+                'txt1', 'term{}'.format(x), 'tag1', 'tag{}'.format(x))
+    
+    for x in range(maxexpansions):
+        env.cmd('ft.del', 'idx', 'doc{}'.format(x))
+    
+    env.cmd('ft.add', 'idx', 'doc_XXX', 1, 'fields', 'txt1', 'termZZZ', 'tag1', 'tagZZZ')
+
+    # r = env.cmd('ft.search', 'idx', 'term*')
+    # print(r)
+    # r = env.cmd('ft.search', 'idx', '@tag1:{tag*}')
+    # print(r)
+
+    tmax = time.time() + 0.5  # 250ms max
+    iters = 0
+    while time.time() < tmax:
+        iters += 1
+        env.cmd('ft.debug', 'gc_forceinvoke', 'idx')
+        r = env.cmd('ft.search', 'idx', '@txt1:term* @tag1:{tag*}')
+        if r[0]:
+            break
+    
+    print 'did {} iterations'.format(iters)
+    r = env.cmd('ft.search', 'idx', '@txt1:term* @tag1:{tag*}')
+    env.assertEqual([1, 'doc_XXX', ['txt1', 'termZZZ', 'tag1', 'tagZZZ']], r)
+
 
 def testOptionalFilter(env):
     env.cmd('ft.create', 'idx', 'schema', 't1', 'text')
@@ -2151,6 +2190,14 @@ def testIssue736(env):
     extra_fields += ['n2', 'not-a-number', 't2', 'random, junk']
     with env.assertResponseError():
         env.cmd('ft.add', 'idx', 'doc2', 1, 'fields', *extra_fields)
+
+def testCriteriaTesterDeactivated():
+    env = Env(moduleArgs='_MAX_RESULTS_TO_UNSORTED_MODE 1')
+    env.cmd('ft.create', 'idx', 'schema', 't1', 'text')
+    env.cmd('ft.add', 'idx', 'doc1', 1, 'fields', 't1', 'hello1 hey hello2')
+    env.cmd('ft.add', 'idx', 'doc2', 1, 'fields', 't1', 'hello2 hey')
+    env.cmd('ft.add', 'idx', 'doc3', 1, 'fields', 't1', 'hey')
+    env.expect('ft.search', 'idx', '(hey hello1)|(hello2 hey)').equal([2L, 'doc1', ['t1', 'hello1 hey hello2'], 'doc2', ['t1', 'hello2 hey']])
 
 def grouper(iterable, n, fillvalue=None):
     "Collect data into fixed-length chunks or blocks"
