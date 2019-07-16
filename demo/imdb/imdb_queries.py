@@ -355,16 +355,18 @@ class IMDBQueries(object):
         ### all_actors_named_tim
         ##################################################################
 
-        # self.all_actors_named_tim = QueryInfo(
-        #     query="""CALL db.idx.fulltext.queryNodes('actor', 'tim')""",
-        #     description='All actors named Tim',
-        #     max_run_time_ms=4,
-        #     expected_result=[['Tim Roth', 0],
-        #                     ['Tim Reid', 0],
-        #                     ['Tim McGraw', 0],
-        #                     ['Tim Griffin', 0],
-        #                     ['Tim Blake Nelson', 0]]
-        # )
+        self.all_actors_named_tim = QueryInfo(
+            query="""CALL db.idx.fulltext.queryNodes('actor', 'tim') YIELD node
+                     RETURN node.name
+                     ORDER BY node.name""",
+            description='All actors named Tim',
+            max_run_time_ms=4,
+            expected_result=[['Tim Roth'],
+                            ['Tim Reid'],
+                            ['Tim McGraw'],
+                            ['Tim Griffin'],
+                            ['Tim Blake Nelson']]
+        )
 
         self.queries_info = [
             self.number_of_actors_query,
@@ -382,8 +384,8 @@ class IMDBQueries(object):
             self.actors_over_85_index_scan,
             self.eighties_movies_index_scan,
             self.find_titles_starting_with_american_query,
-            self.same_year_higher_rating_than_huntforthewilderpeople_query
-            # self.all_actors_named_tim
+            self.same_year_higher_rating_than_huntforthewilderpeople_query,
+            self.all_actors_named_tim
         ]
 
     def queries(self):

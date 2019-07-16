@@ -4,8 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef __SCHEMA_H__
-#define __SCHEMA_H__
+#pragma once
 
 #include "../redismodule.h"
 #include "../index/index.h"
@@ -14,47 +13,44 @@
 #include "../../deps/RediSearch/src/redisearch_api.h"
 
 typedef enum {
-	SCHEMA_UNKNOWN,
-	SCHEMA_NODE,
-	SCHEMA_EDGE,
+  SCHEMA_NODE,
+  SCHEMA_EDGE,
 } SchemaType;
 
 /* Schema represents the structure of a typed graph entity (Node/Edge).
  * similar to a relational table structure, our schemas are a collection
  * of attributes we've encountered overtime as entities were created or updated. */
 typedef struct {
-	int id;                 /* Internal ID to a matrix within the graph. */
-	char *name;             /* Schema name. */
-	Index **indices;        /* Indices applicable to schema. */
-	RSIndex *fulltextIdx;   /* Full-text index. */
+  int id;               // Internal ID to a matrix within the graph.
+  char *name;           // Schema name.
+  Index* index;         // Exact match index.
+  Index* fulltextIdx;   // Full-text index.
 } Schema;
 
 /* Creates a new schema. */
-Schema *Schema_New(const char *label, int id);
+Schema* Schema_New(const char *label, int id);
 
 const char *Schema_GetName(const Schema *s);
+
+/* Returns true if schema has either a full-text or exact-match index. */
+bool Schema_HasIndices(const Schema *s);
 
 /* Returns number of indices in schema. */
 unsigned short Schema_IndexCount(const Schema *s);
 
-/* Retrieves index from attribute.
+/* Retrieves index from attribute. 
  * Returns NULL if index wasn't found. */
-Index *Schema_GetIndex(Schema *s, Attribute_ID attr_id);
-
-/* Sets schema fulltext index. */
-void Schema_SetFullTextIndex(Schema *s, RSIndex *idx);
-
-/* Retrieves schema full-text index, returns NULL if index doesn't exists. */
-RSIndex *Schema_GetFullTextIndex(const Schema *s);
+Index* Schema_GetIndex(const Schema *s, const char *field, IndexType type);
 
 /* Assign a new index to attribute
  * attribute must already exists and not associated with an index. */
-int Schema_AddIndex(Schema *s, Attribute_ID attr_id);
+int Schema_AddIndex(Index **idx, Schema *s, const char *field, IndexType type);
 
 /* Removes index. */
-int Schema_RemoveIndex(Schema *s, Attribute_ID attr_id);
+int Schema_RemoveIndex(Schema *s, const char *field, IndexType type);
+
+/* Introduce node schema indicies */
+void Schema_AddNodeToIndices(const Schema *s, const Node *n, bool update);
 
 /* Free schema. */
 void Schema_Free(Schema *s);
-
-#endif /* __SCHEMA_H__ */

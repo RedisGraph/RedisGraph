@@ -7,6 +7,7 @@
 #include "op_value_hash_join.h"
 #include "../../value.h"
 #include "../../util/arr.h"
+#include "../../util/rmalloc.h"
 #include "../../util/qsort.h"
 #include <assert.h>
 

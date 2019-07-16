@@ -7,7 +7,7 @@
 #include "op_expand_into.h"
 #include "../../ast/ast.h"
 #include "../../util/arr.h"
-#include "../../util/vector.h"
+#include "../../util/rmalloc.h"
 #include "../../GraphBLASExt/GxB_Delete.h"
 
 // String representation of operation.

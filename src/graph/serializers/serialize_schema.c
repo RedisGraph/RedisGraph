@@ -6,6 +6,7 @@
 
 #include "serialize_schema.h"
 #include "../../util/arr.h"
+#include "../../util/rmalloc.h"
 
 /* Deserialize unified schema */
 void RdbLoadAttributeKeys(RedisModuleIO *rdb, GraphContext *gc) {
