@@ -69,7 +69,7 @@ RAX=../deps/rax/rax.o
 LIBTRIEMAP=util/triemap/libtriemap.a
 LIBXXHASH=../deps/xxhash/libxxhash.a
 GRAPHBLAS=../deps/GraphBLAS/build/libgraphblas.a
-REDISEARCH=../deps/RediSearch/build/libredisearchS.a
+REDISEARCH=../deps/RediSearch/build/libredisearch.a
 LIBCYPHER-PARSER=../deps/libcypher-parser/lib/src/.libs/libcypher-parser.a
 
 # Compilation deps for the module
