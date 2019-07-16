@@ -167,8 +167,8 @@ static void _CommitNewEntities(OpCreate *op) {
     Graph_AcquireWriteLock(g);
     Graph_SetMatrixPolicy(g, RESIZE_TO_CAPACITY);
     uint node_count = array_len(op->created_nodes);
-    if(node_count > 0) _CommitNodes(op, createEntities);
-    if(array_len(op->created_edges) > 0) _CommitEdges(op, createEntities);
+    if(node_count > 0) _CommitNodes(op);
+    if(array_len(op->created_edges) > 0) _CommitEdges(op);
     Graph_SetMatrixPolicy(g, SYNC_AND_MINIMIZE_SPACE);
     // Release lock.
     Graph_ReleaseLock(g);
