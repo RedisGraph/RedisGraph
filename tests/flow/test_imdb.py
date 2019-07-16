@@ -308,21 +308,19 @@ class testImdbFlow(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.same_year_higher_rating_than_huntforthewilderpeople_query)
 
-    # def test_all_actors_named_tim(self):
-    #     global redis_graph
+    def test_all_actors_named_tim(self):
+        global redis_graph
+        
+        q = queries.all_actors_named_tim.query
+        execution_plan = redis_graph.execution_plan(q)
+        self.env.assertIn('ProcedureCall', execution_plan)
 
-    #     # Create full-text index over actor's name.
-    #     redis_graph.redis_con.execute_command("GRAPH.QUERY", redis_graph.name, "CALL db.idx.fulltext.createNodeIndex('actor', 'name')")
-    #     q = queries.all_actors_named_tim
-    #     execution_plan = redis_graph.execution_plan(q)
-    #     self.evn.assertIn('ProcedureCall', execution_plan)
+        actual_result = redis_graph.query(q)
 
-    #     actual_result = redis_graph.query(q)
+        # assert result set
+        self._assert_only_expected_results_are_in_actual_results(
+            actual_result,
+            queries.all_actors_named_tim)
 
-    #     # assert result set
-    #     self._assert_only_expected_results_are_in_actual_results(
-    #         actual_result,
-    #         queries.all_actors_named_tim)
-
-    #     # assert query run time
-    #     self._assert_run_time(actual_result, queries.all_actors_named_tim)
+        # assert query run time
+        self._assert_run_time(actual_result, queries.all_actors_named_tim)

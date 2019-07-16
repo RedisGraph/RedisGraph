@@ -6,6 +6,7 @@
 
 #include "op_procedure_call.h"
 #include "../../util/arr.h"
+#include "../../util/rmalloc.h"
 
 static void _yield(OpProcCall *op, SIValue *proc_output, Record r) {
 	if(!op->yield_map) {

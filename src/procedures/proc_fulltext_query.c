@@ -7,9 +7,9 @@
 #include "proc_fulltext_query.h"
 #include "../value.h"
 #include "../util/arr.h"
+#include "../index/index.h"
 #include "../util/rmalloc.h"
 #include "../graph/graphcontext.h"
-#include "../../deps/RediSearch/src/redisearch_api.h"
 
 //------------------------------------------------------------------------------
 // fulltext createNodeIndex
@@ -21,40 +21,43 @@ typedef struct {
 	Node n;
 	Graph *g;
 	SIValue *output;
-	RSIndex *idx;
+	Index *idx;
 	RSResultsIterator *iter;
 } QueryNodeContext;
 
-ProcedureResult Proc_FulltextQueryNodeInvoke(ProcedureCtx *ctx, const char **args) {
+ProcedureResult Proc_FulltextQueryNodeInvoke(ProcedureCtx *ctx, char **args) {
 	if(array_len(args) < 2) return PROCEDURE_ERR;
 
-	QueryNodeContext *pdata = rm_malloc(sizeof(QueryNodeContext));
-	pdata->output = array_new(SIValue, 2);
-	pdata->g = GraphContext_GetFromTLS()->g;
-	pdata->output = array_append(pdata->output, SI_ConstStringVal("node"));
-	pdata->output = array_append(pdata->output, SI_Node(&pdata->n));
-	// pdata->output = array_append(pdata->output, SI_ConstStringVal("score"));
-	// pdata->output = array_append(pdata->output, SI_DoubleVal(0.0));
-	pdata->idx = NULL;
-	pdata->iter = NULL;
-	ctx->privateData = pdata;
+	ctx->privateData = NULL;
+	GraphContext *gc = GraphContext_GetFromTLS();
 
 	// See if there's a full-text index for given label.
 	char *err = NULL;
 	const char *label = args[0];
 	const char *query = args[1];
-	GraphContext *gc = GraphContext_GetFromTLS();
 
 	// Get full-text index from schema.
 	Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 	if(s == NULL) return PROCEDURE_OK;
-	pdata->idx = Schema_GetFullTextIndex(s);
-	if(!pdata->idx) return PROCEDURE_OK;
+	Index *idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
+	if(!idx) return PROCEDURE_OK;
+
+	QueryNodeContext *pdata = rm_malloc(sizeof(QueryNodeContext));
+	pdata->idx = idx;
+	pdata->g = gc->g;
+	pdata->output = array_new(SIValue, 2);
+	pdata->output = array_append(pdata->output, SI_ConstStringVal("node"));
+	pdata->output = array_append(pdata->output, SI_Node(&pdata->n));
+	// pdata->output = array_append(pdata->output, SI_ConstStringVal("score"));
+	// pdata->output = array_append(pdata->output, SI_DoubleVal(0.0));
 
 	// Execute query
-	pdata->iter = RediSearch_IterateQuery(pdata->idx, query, strlen(query), &err);
-	// TODO: report error!
-	if(err) pdata->iter = NULL;
+	pdata->iter = Index_Query(pdata->idx, query, &err);
+	if(!pdata->iter) {
+		// TODO: report error!
+	}
+
+	ctx->privateData = pdata;
 	return PROCEDURE_OK;
 }
 
@@ -62,12 +65,12 @@ SIValue *Proc_FulltextQueryNodeStep(ProcedureCtx *ctx) {
 	assert(ctx->privateData);
 
 	QueryNodeContext *pdata = (QueryNodeContext *)ctx->privateData;
-	if(!pdata->iter || !pdata->idx) return NULL;
+	if(!pdata || !pdata->iter) return NULL;
 
 	/* Try to get a result out of the iterator.
 	 * NULL is returned if iterator id depleted. */
 	size_t len = 0;
-	NodeID *id = (NodeID *)RediSearch_ResultsIteratorNext(pdata->iter, pdata->idx, &len);
+	NodeID *id = (NodeID *)RediSearch_ResultsIteratorNext(pdata->iter, pdata->idx->idx, &len);
 
 	// Depleted.
 	if(!id) return NULL;
@@ -82,11 +85,13 @@ SIValue *Proc_FulltextQueryNodeStep(ProcedureCtx *ctx) {
 
 ProcedureResult Proc_FulltextQueryNodeFree(ProcedureCtx *ctx) {
 	// Clean up.
-	if(ctx->privateData) {
-		QueryNodeContext *pdata = ctx->privateData;
-		array_free(pdata->output);
-		rm_free(ctx->privateData);
-	}
+	if(!ctx->privateData) return PROCEDURE_OK;
+
+	QueryNodeContext *pdata = ctx->privateData;
+	array_free(pdata->output);
+	if(pdata->iter) RediSearch_ResultsIteratorFree(pdata->iter);
+	rm_free(pdata);
+
 	return PROCEDURE_OK;
 }
 

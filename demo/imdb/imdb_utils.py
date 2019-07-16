@@ -58,4 +58,6 @@ def populate_graph(redis_con, redis_graph):
 	print("Loaded %d actors" % len(actors))
 	redis_graph.commit()
 
+	redis_graph.call_procedure("db.idx.fulltext.createNodeIndex", "actor", "name")
+
 	return (actors, movies)
