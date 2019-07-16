@@ -68,7 +68,7 @@ TEST_EXECUTABLES = $(patsubst %.cpp, %.run, $(TEST_SOURCES))
 
 # Build '*.run' binaries for each source
 %.run: %.o gtest_main.a $(DEPS)
-	@$(REDISGRAPH_CXX) $(CPPFLAGS) $(CXXFLAGS) $(CXX_SUPPRESS) $(LDFLAGS) $^ -o $@
+	@$(REDISGRAPH_CXX) $(CPPFLAGS) $(CXXFLAGS) $(CXX_SUPPRESS) $^ $(LDFLAGS) -o $@
 
 
 .PHONY: all build test test_valgrind clean
