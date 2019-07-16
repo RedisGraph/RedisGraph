@@ -29,7 +29,7 @@ static bool _highly_connected_node(const QGNode *n) {
 }
 
 static inline bool _referred_entity(const RecordMap *record_map, uint id) {
-    return (RecordMap_LookupEntityID(record_map, id) != IDENTIFIER_NOT_FOUND);
+    return (RecordMap_LookupID(record_map, id) != IDENTIFIER_NOT_FOUND);
 }
 
 /* Checks if given expression contains a variable length edge. */
@@ -49,7 +49,7 @@ static void _map_edge_references(const QueryGraph *qg, RecordMap *record_map) {
         QGEdge *e = qg->edges[i];
         // Add all variable-length traversals.
         if (QGEdge_VariableLength(e)) RecordMap_FindOrAddID(record_map, e->id);
-        if (RecordMap_LookupEntityID(record_map, e->id) != IDENTIFIER_NOT_FOUND) {
+        if (RecordMap_LookupID(record_map, e->id) != IDENTIFIER_NOT_FOUND) {
             // The edge is referred; ensure that its source and destination are mapped in the Record.
             RecordMap_FindOrAddID(record_map, e->src->id);
             RecordMap_FindOrAddID(record_map, e->dest->id);

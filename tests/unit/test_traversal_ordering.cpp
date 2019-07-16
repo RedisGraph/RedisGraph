@@ -42,9 +42,9 @@ class TraversalOrderingTest: public ::testing::Test {
         return ast;
     }
 
-    FT_FilterNode* build_filter_tree_from_query(RecordMap *map, QueryGraph *qg, const char *query) {
+    FT_FilterNode* build_filter_tree_from_query(RecordMap *map, const char *query) {
         AST *ast = _build_ast(query);
-        return AST_BuildFilterTree(ast, map, qg);
+        return AST_BuildFilterTree(ast, map);
     }
 };
 
@@ -233,7 +233,7 @@ TEST_F(TraversalOrderingTest, FilterFirst) {
     set[1] = ExpBC;
     set[2] = ExpCD;
 
-    filters = build_filter_tree_from_query(map, qg, "MATCH (A)-[]->(B)-[]->(C)-[]->(D) WHERE A.val = 1 RETURN *");
+    filters = build_filter_tree_from_query(map, "MATCH (A)-[]->(B)-[]->(C)-[]->(D) WHERE A.val = 1 RETURN *");
 
     orderExpressions(set, 3, map, filters);
     ASSERT_EQ(set[0], ExpAB);
@@ -247,7 +247,7 @@ TEST_F(TraversalOrderingTest, FilterFirst) {
     set[1] = ExpBC;
     set[2] = ExpCD;
 
-    filters = build_filter_tree_from_query(map, qg, "MATCH (A)-[]->(B)-[]->(C)-[]->(D) WHERE B.val = 1 RETURN *");
+    filters = build_filter_tree_from_query(map, "MATCH (A)-[]->(B)-[]->(C)-[]->(D) WHERE B.val = 1 RETURN *");
 
     orderExpressions(set, 3, map, filters);
     ASSERT_TRUE (set[0] == ExpAB || set[0] == ExpBC);
@@ -259,7 +259,7 @@ TEST_F(TraversalOrderingTest, FilterFirst) {
     set[1] = ExpBC;
     set[2] = ExpCD;
 
-    filters = build_filter_tree_from_query(map, qg, "MATCH (A)-[]->(B)-[]->(C)-[]->(D) WHERE C.val = 1 RETURN *");
+    filters = build_filter_tree_from_query(map, "MATCH (A)-[]->(B)-[]->(C)-[]->(D) WHERE C.val = 1 RETURN *");
 
     orderExpressions(set, 3, map, filters);
     ASSERT_TRUE(set[0] == ExpBC || set[0] == ExpCD);
@@ -271,7 +271,7 @@ TEST_F(TraversalOrderingTest, FilterFirst) {
     set[1] = ExpBC;
     set[2] = ExpCD;
 
-    filters = build_filter_tree_from_query(map, qg, "MATCH (A)-[]->(B)-[]->(C)-[]->(D) WHERE D.val = 1 RETURN *");
+    filters = build_filter_tree_from_query(map, "MATCH (A)-[]->(B)-[]->(C)-[]->(D) WHERE D.val = 1 RETURN *");
 
     orderExpressions(set, 3, map, filters);
 

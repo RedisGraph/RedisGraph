@@ -70,7 +70,7 @@ class FilterTreeTest: public ::testing::Test {
         const char *query = "MATCH (me) WHERE me.age = 34 RETURN me";
         AST *ast = _build_ast(query);
         RecordMap *map = RecordMap_New();
-        FT_FilterNode *tree = AST_BuildFilterTree(ast, map, NULL);
+        FT_FilterNode *tree = AST_BuildFilterTree(ast, map);
         return tree;
     }
 
@@ -78,7 +78,7 @@ class FilterTreeTest: public ::testing::Test {
         const char *query = "MATCH (me),(him) WHERE me.age > him.age RETURN me, him";
         AST *ast = _build_ast(query);
         RecordMap *map = RecordMap_New();
-        FT_FilterNode *tree = AST_BuildFilterTree(ast, map, NULL);
+        FT_FilterNode *tree = AST_BuildFilterTree(ast, map);
         return tree;
     }
 
@@ -89,7 +89,7 @@ class FilterTreeTest: public ::testing::Test {
 
         AST *ast = _build_ast(query);
         RecordMap *map = RecordMap_New();
-        FT_FilterNode *tree = AST_BuildFilterTree(ast, map, NULL);
+        FT_FilterNode *tree = AST_BuildFilterTree(ast, map);
         return tree;
     }
 
@@ -108,7 +108,7 @@ class FilterTreeTest: public ::testing::Test {
         const char *query = "MATCH (me),(he),(she),(theirs) WHERE (me.age > 34 AND he.height <= 188) AND (she.age > 34 OR theirs.height <= 188) RETURN me, he, she, theirs";
         AST *ast = _build_ast(query);
         RecordMap *map = RecordMap_New();
-        FT_FilterNode *tree = AST_BuildFilterTree(ast, map, NULL);
+        FT_FilterNode *tree = AST_BuildFilterTree(ast, map);
         return tree;
     }
 

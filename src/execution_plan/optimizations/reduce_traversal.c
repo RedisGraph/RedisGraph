@@ -78,7 +78,7 @@ void reduceTraversal(ExecutionPlan *plan) {
         /* Search to see if dest is already resolved */
         uint dest_id = ae->dest_node->id;
         // Convert the entity ID to a Record ID
-        uint entity_record_idx = RecordMap_LookupEntityID(op->record_map, dest_id);
+        uint entity_record_idx = RecordMap_LookupID(op->record_map, dest_id);
         assert(entity_record_idx != IDENTIFIER_NOT_FOUND);
         if(!_entity_resolved(op->children[0], entity_record_idx)) continue;
 

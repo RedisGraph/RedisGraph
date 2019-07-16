@@ -10,24 +10,27 @@
 #include "../ast/ast.h"
 #include <limits.h>
 
+#define IDENTIFIER_NOT_FOUND UINT_MAX
+
 typedef struct {
-    TrieMap *map;       // Mapping of multiple key types to Record IDs
+    TrieMap *map;       // Mapping of AST IDs and aliases to Record IDs
     uint record_len;    // Length of Record being modified by this segment.
 } RecordMap;
 
-#define IDENTIFIER_NOT_FOUND UINT_MAX
-
-uint RecordMap_GetRecordIDFromReference(RecordMap *map, AST_IDENTIFIER entity);
-uint RecordMap_ReferenceToRecordID(RecordMap *map, AST_IDENTIFIER identifier);
-
+/* Retrieve a Record ID given an alias, returning IDENTIFER_NOT_FOUND if alias is not mapped. */
 uint RecordMap_LookupAlias(const RecordMap *map, const char *alias);
-uint RecordMap_LookupEntityID(const RecordMap *record_map, uint id);
 
-uint RecordMap_FindOrAddASTEntity(RecordMap *record_map, const AST *ast, const cypher_astnode_t *entity);
-uint RecordMap_FindOrAddID(RecordMap *record_map, uint entity_id);
+/* Retrieve a Record ID given an AST/QueryGraph ID, returning IDENTIFER_NOT_FOUND if ID is not mapped. */
+uint RecordMap_LookupID(const RecordMap *record_map, uint id);
+
+/* Retrieve a Record ID given an alias, creating a new ID if not previously mapped. */
 uint RecordMap_FindOrAddAlias(RecordMap *record_map, const char *alias);
 
-void RecordMap_AssociateAliasWithID(RecordMap *record_map, char *alias, uint id);
+/* Retrieve a Record ID given an AST/QueryGraph ID, creating a new ID if not previously mapped. */
+uint RecordMap_FindOrAddID(RecordMap *record_map, uint entity_id);
 
+/* Create a new RecordMap. */
 RecordMap* RecordMap_New(void);
+
+/* Free the given RecordMap. */
 void RecordMap_Free(RecordMap *record_map);

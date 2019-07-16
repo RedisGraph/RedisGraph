@@ -10,11 +10,6 @@
 #include "../../deps/rax/rax.h"
 #include <assert.h>
 
-static void _QueryGraph_AddID(QueryGraph *qg, uint id, void *qg_entity) {
-    int rc = TrieMap_Add(qg->ast_references, (char*)&id, sizeof(id), qg_entity, TrieMap_DONT_CARE_REPLACE);
-    assert(rc == 1);
-}
-
 static void _BuildQueryGraphAddNode(const GraphContext *gc,
                              const AST *ast,
                              const cypher_astnode_t *ast_entity,
@@ -34,9 +29,6 @@ static void _BuildQueryGraphAddNode(const GraphContext *gc,
         if (ast_alias) alias = cypher_ast_identifier_get_name(ast_alias);
 
         n = QGNode_New(NULL, alias, id);
-
-        // Map the AST ID.
-        _QueryGraph_AddID(qg, id, n);
 
         QueryGraph_AddNode(qg, n);
 
@@ -81,9 +73,6 @@ static void _BuildQueryGraphAddEdge(const GraphContext *gc,
 
     QGEdge *e = QGEdge_New(NULL, NULL, NULL, alias, id);
 
-    // Map the AST ID.
-    _QueryGraph_AddID(qg, id, e);
-
     // Swap the source and destination for left-pointing relations
     if(cypher_ast_rel_pattern_get_direction(ast_entity) == CYPHER_REL_INBOUND) {
         QGNode *tmp = src;
@@ -127,8 +116,6 @@ QueryGraph* QueryGraph_New(uint node_cap, uint edge_cap) {
 
     qg->nodes = array_new(QGNode*, node_cap);
     qg->edges = array_new(QGEdge*, edge_cap);
-
-    qg->ast_references = NewTrieMap();
 
     return qg;
 }
@@ -430,7 +417,6 @@ void QueryGraph_Free(QueryGraph* qg) {
         QGEdge_Free(qg->edges[i]);
     }
 
-    TrieMap_Free(qg->ast_references, TrieMap_NOP_CB);
     array_free(qg->nodes);
     array_free(qg->edges);
     rm_free(qg);

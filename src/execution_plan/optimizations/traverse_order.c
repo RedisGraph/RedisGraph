@@ -181,8 +181,8 @@ static int reward_arrangement(Arrangement arrangement, uint exp_count, const Rec
     // A bit naive at the moment.
     for(uint i = 0; i < exp_count; i++) {
         AlgebraicExpression *exp = arrangement[i];
-        uint src_id = RecordMap_LookupEntityID(record_map, exp->src_node->id);
-        uint dest_id = RecordMap_LookupEntityID(record_map, exp->dest_node->id);
+        uint src_id = RecordMap_LookupID(record_map, exp->src_node->id);
+        uint dest_id = RecordMap_LookupID(record_map, exp->dest_node->id);
 
         if(raxFind(filtered_entities, (unsigned char*)&src_id, sizeof(src_id)) != raxNotFound) {
             reward += F * (exp_count - i);

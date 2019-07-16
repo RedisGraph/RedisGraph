@@ -12,8 +12,8 @@ void selectEntryPoint(AlgebraicExpression *ae, const RecordMap *record_map, cons
 if (ae->operand_count == 1 && ae->src_node == ae->dest_node) return;
 
     rax *modifies = FilterTree_CollectModified(tree);
-    uint src_id = RecordMap_LookupEntityID(record_map, ae->src_node->id);
-    uint dest_id = RecordMap_LookupEntityID(record_map, ae->dest_node->id);
+    uint src_id = RecordMap_LookupID(record_map, ae->src_node->id);
+    uint dest_id = RecordMap_LookupID(record_map, ae->dest_node->id);
 
     bool destFiltered = false;
     bool srcLabeled = ae->src_node->label != NULL;

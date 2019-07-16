@@ -14,14 +14,21 @@ static inline EdgeCreateCtx _NewEdgeCreateCtx(RecordMap *record_map, AST *ast, c
     const cypher_astnode_t *ast_edge = cypher_ast_pattern_path_get_element(path, edge_path_offset);
     const cypher_astnode_t *ast_props = cypher_ast_rel_pattern_get_properties(ast_edge);
 
-    uint id = RecordMap_FindOrAddASTEntity(record_map, ast, ast_edge);
+    uint ast_id;
+    // Retrieve the AST ID of this edge.
+    ast_id = AST_GetEntityIDFromReference(ast, ast_edge);
+    // Map this ID to the record map.
+    uint record_id = RecordMap_FindOrAddID(record_map, ast_id);
 
     // Get QueryGraph entity
-    uint ast_id = AST_GetEntityIDFromReference(ast, ast_edge);
     QGEdge *e = QueryGraph_GetEdgeByID(qg, ast_id);
 
-    uint src_idx = RecordMap_FindOrAddASTEntity(record_map, ast, cypher_ast_pattern_path_get_element(path, edge_path_offset - 1));
-    uint dest_idx = RecordMap_FindOrAddASTEntity(record_map, ast, cypher_ast_pattern_path_get_element(path, edge_path_offset + 1));
+    const cypher_astnode_t *left = cypher_ast_pattern_path_get_element(path, edge_path_offset - 1);
+    const cypher_astnode_t *right = cypher_ast_pattern_path_get_element(path, edge_path_offset + 1);
+
+    // Ensure that the left and right nodes are also mapped.
+    uint src_idx = RecordMap_FindOrAddID(record_map, AST_GetEntityIDFromReference(ast, left));
+    uint dest_idx = RecordMap_FindOrAddID(record_map, AST_GetEntityIDFromReference(ast, right));
 
     // Swap the source and destination for left-pointing relations
     if (cypher_ast_rel_pattern_get_direction(ast_edge) == CYPHER_REL_INBOUND) {
@@ -34,7 +41,7 @@ static inline EdgeCreateCtx _NewEdgeCreateCtx(RecordMap *record_map, AST *ast, c
                                .properties = AST_ConvertPropertiesMap(ast_props, record_map),
                                .src_idx = src_idx,
                                .dest_idx = dest_idx,
-                               .edge_idx = id };
+                               .edge_idx = record_id };
     return new_edge;
 }
 
@@ -43,11 +50,11 @@ static inline NodeCreateCtx _NewNodeCreateCtx(RecordMap *record_map, AST *ast, c
     uint ast_id = AST_GetEntityIDFromReference(ast, ast_node);
     QGNode *n = QueryGraph_GetNodeByID(qg, ast_id);
 
+    // Map this ID into the record map.
+    uint id = RecordMap_FindOrAddID(record_map, ast_id);
 
     const cypher_astnode_t *ast_props = cypher_ast_node_pattern_get_properties(ast_node);
     PropertyMap *properties = AST_ConvertPropertiesMap(ast_props, record_map);
-
-    uint id = RecordMap_FindOrAddASTEntity(record_map, ast, ast_node);
 
     NodeCreateCtx new_node = { .node = n, .properties = properties, .node_idx = id };
 
@@ -214,7 +221,8 @@ AST_MergeContext AST_PrepareMergeOp(RecordMap *record_map, AST *ast, const cyphe
     for(uint i = 0; i < entity_count; i ++) {
         const cypher_astnode_t *elem = cypher_ast_pattern_path_get_element(path, i);
         // Register entity for Record if necessary
-        RecordMap_FindOrAddASTEntity(record_map, ast, elem);
+        uint ast_id = AST_GetEntityIDFromReference(ast, elem);
+        RecordMap_FindOrAddID(record_map, ast_id);
 
         if (i % 2) { // Entity is a relationship
             EdgeCreateCtx new_edge = _NewEdgeCreateCtx(record_map, ast, qg, path, i);

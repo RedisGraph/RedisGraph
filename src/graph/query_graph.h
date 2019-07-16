@@ -17,7 +17,6 @@
 typedef struct {
     QGNode **nodes;             // Nodes contained in QueryGraph
     QGEdge **edges;             // Edges contained in QueryGraph
-    TrieMap *ast_references;    // A mapping of AST pointers to QueryGraph entities
 } QueryGraph;
 
 /* Prepare a new query graph with initial allocations for

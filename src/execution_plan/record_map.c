@@ -9,14 +9,7 @@
 #include <assert.h>
 
 static void* _BuildMapValue(uint64_t id) {
-    // TODO so many unnecessary allocs
     return (void*)id;
-}
-
-uint RecordMap_GetRecordIDFromReference(RecordMap *record_map, AST_IDENTIFIER entity) {
-    void *id = TrieMap_Find(record_map->map, (char*)&entity, sizeof(entity));
-    if (id == TRIEMAP_NOTFOUND) return IDENTIFIER_NOT_FOUND;
-    return (uint64_t)id;
 }
 
 // TODO unused except in op_procedure_call
@@ -27,55 +20,11 @@ uint RecordMap_LookupAlias(const RecordMap *record_map, const char *alias) {
     return (uint64_t)id_ptr;
 }
 
-uint RecordMap_LookupEntityID(const RecordMap *record_map, uint id) {
+uint RecordMap_LookupID(const RecordMap *record_map, uint id) {
     void *id_ptr = TrieMap_Find(record_map->map, (char*)&id, sizeof(id));
     if (id_ptr == TRIEMAP_NOTFOUND) return IDENTIFIER_NOT_FOUND;
 
     return (uint64_t)id_ptr;
-}
-
-uint RecordMap_FindOrAddASTEntity(RecordMap *record_map, const AST *ast, const cypher_astnode_t *entity) {
-    // Retrieve the AST ID
-    uint ast_id = AST_GetEntityIDFromReference(ast, entity);
-
-    // If the AST ID has a corresponding Record ID, return it.
-    uint id = RecordMap_LookupEntityID(record_map, ast_id);
-    if (id != IDENTIFIER_NOT_FOUND) return id;
-
-    // We're adding a new Record mapping; create a new ID
-    id = record_map->record_len++;
-
-    // Map the AST ID
-    void *id_ptr = _BuildMapValue(id);
-    TrieMap_Add(record_map->map, (char*)&ast_id, sizeof(ast_id), id_ptr, TrieMap_DONT_CARE_REPLACE);
-
-    // Map AST pointer
-    id_ptr = _BuildMapValue(id);
-    TrieMap_Add(record_map->map, (char*)&entity, sizeof(entity), id_ptr, TrieMap_DONT_CARE_REPLACE);
-
-    // Map alias if one is provided. 
-    const char *alias = AST_GetEntityAlias(entity);
-
-    // Entities like (:node {val: 5}) will be mapped by AST ID and pointer, but not alias.
-    if (alias) {
-        id_ptr = _BuildMapValue(id);
-        TrieMap_Add(record_map->map, (char*)alias, strlen(alias), id_ptr, TrieMap_DONT_CARE_REPLACE);
-    }
-
-    return id;
-}
-
-uint RecordMap_FindOrAddID(RecordMap *record_map, uint entity_id) {
-    void *id_ptr = TrieMap_Find(record_map->map, (char*)&entity_id, sizeof(entity_id));
-    if (id_ptr != TRIEMAP_NOTFOUND) return (uint64_t)id_ptr;
-
-    uint id = record_map->record_len++;
-
-    // Map ID value
-    id_ptr = _BuildMapValue(id);
-    TrieMap_Add(record_map->map, (char*)&entity_id, sizeof(entity_id), id_ptr, TrieMap_DONT_CARE_REPLACE);
-
-    return id;
 }
 
 uint RecordMap_FindOrAddAlias(RecordMap *record_map, const char *alias) {
@@ -92,7 +41,7 @@ uint RecordMap_FindOrAddAlias(RecordMap *record_map, const char *alias) {
     // The AST ID will not exist if this alias is projected by a WITH clause
     if (ast_id != IDENTIFIER_NOT_FOUND) {
         // This AST ID may already be represented in the record map
-        record_id = RecordMap_LookupEntityID(record_map, ast_id);
+        record_id = RecordMap_LookupID(record_map, ast_id);
         if (record_id != IDENTIFIER_NOT_FOUND) return record_id;
     }
 
@@ -112,9 +61,17 @@ uint RecordMap_FindOrAddAlias(RecordMap *record_map, const char *alias) {
     return id;
 }
 
-void RecordMap_AssociateAliasWithID(RecordMap *record_map, char *alias, uint id) {
-    void *id_ptr = _BuildMapValue(id);
-    TrieMap_Add(record_map->map, alias, strlen(alias), id_ptr, TrieMap_DONT_CARE_REPLACE);
+uint RecordMap_FindOrAddID(RecordMap *record_map, uint entity_id) {
+    void *id_ptr = TrieMap_Find(record_map->map, (char*)&entity_id, sizeof(entity_id));
+    if (id_ptr != TRIEMAP_NOTFOUND) return (uint64_t)id_ptr;
+
+    uint id = record_map->record_len++;
+
+    // Map ID value
+    id_ptr = _BuildMapValue(id);
+    TrieMap_Add(record_map->map, (char*)&entity_id, sizeof(entity_id), id_ptr, TrieMap_DONT_CARE_REPLACE);
+
+    return id;
 }
 
 RecordMap *RecordMap_New() {
