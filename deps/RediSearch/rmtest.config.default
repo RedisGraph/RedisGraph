@@ -1,0 +1,8 @@
+[server]
+; Module to actually test
+module = /home/tower-linux/dev/redis/search/redisearch.so
+
+[testvars]
+; for the test_ext.py script
+EXT_TEST_PATH = /home/tower-linux/dev/redis/search/src/tests/libexample_extension.so
+

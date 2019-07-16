@@ -1,0 +1,140 @@
+test_args 1 0.00227499
+test_cmdparse 1 0.00178003
+test_heap 1 0.0016861
+test_periodic 1 0.0121009
+test_priority_queue 1 0.00135708
+test_vector 1 0.00135899
+rstest 1 0.32649
+test_array 1 0.000622034
+test_blkalloc 1 0.000547886
+test_cntokenize 1 0.0517049
+test_khtable 1 0.000629902
+test_qint 1 0.000528812
+test_quantile 1 0.000863075
+test_stemmer 1 0.000677824
+test_stopwords 1 0.000871897
+test_summarize 1 0.00306892
+test_synonym_map 1 0.00068903
+test_tokenize 1 0.000627041
+test_trie 1 0.00471282
+PY_test 0 0
+PY_test_SAFEMODE 0 0
+PY_test_FORKGC 0 0
+PY_test_aggregate 0 0
+PY_test_aggregate_SAFEMODE 0 0
+PY_test_aggregate_FORKGC 0 0
+PY_test_aof 0 0
+PY_test_aof_SAFEMODE 0 0
+PY_test_aof_FORKGC 0 0
+PY_test_cn 0 0
+PY_test_cn_SAFEMODE 0 0
+PY_test_cn_FORKGC 0 0
+PY_test_conditional_updates 0 0
+PY_test_conditional_updates_SAFEMODE 0 0
+PY_test_conditional_updates_FORKGC 0 0
+PY_test_cursors 0 0
+PY_test_cursors_SAFEMODE 0 0
+PY_test_cursors_FORKGC 0 0
+PY_test_debug_commands 0 0
+PY_test_debug_commands_SAFEMODE 0 0
+PY_test_debug_commands_FORKGC 0 0
+PY_test_doctable 0 0
+PY_test_doctable_SAFEMODE 0 0
+PY_test_doctable_FORKGC 0 0
+PY_test_expire 0 0
+PY_test_expire_SAFEMODE 0 0
+PY_test_expire_FORKGC 0 0
+PY_test_ext 0 0
+PY_test_ext_SAFEMODE 0 0
+PY_test_ext_FORKGC 0 0
+PY_test_fuzz 0 0
+PY_test_fuzz_SAFEMODE 0 0
+PY_test_fuzz_FORKGC 0 0
+PY_test_fuzzy 0 0
+PY_test_fuzzy_SAFEMODE 0 0
+PY_test_fuzzy_FORKGC 0 0
+PY_test_gc 0 0
+PY_test_gc_SAFEMODE 0 0
+PY_test_gc_FORKGC 0 0
+PY_test_phonetics 0 0
+PY_test_phonetics_SAFEMODE 0 0
+PY_test_phonetics_FORKGC 0 0
+PY_test_scorers 0 0
+PY_test_scorers_SAFEMODE 0 0
+PY_test_scorers_FORKGC 0 0
+PY_test_spell_check 0 0
+PY_test_spell_check_SAFEMODE 0 0
+PY_test_spell_check_FORKGC 0 0
+PY_test_summarize 0 0
+PY_test_summarize_SAFEMODE 0 0
+PY_test_summarize_FORKGC 0 0
+PY_test_synonyms 0 0
+PY_test_synonyms_SAFEMODE 0 0
+PY_test_synonyms_FORKGC 0 0
+PY_test_tags 0 0
+PY_test_tags_SAFEMODE 0 0
+PY_test_tags_FORKGC 0 0
+PY_test_wideschema 0 0
+PY_test_wideschema_SAFEMODE 0 0
+PY_test_wideschema_FORKGC 0 0
+---
+PY_test
+PY_test_SAFEMODE
+PY_test_FORKGC
+PY_test_aggregate
+PY_test_aggregate_SAFEMODE
+PY_test_aggregate_FORKGC
+PY_test_aof
+PY_test_aof_SAFEMODE
+PY_test_aof_FORKGC
+PY_test_cn
+PY_test_cn_SAFEMODE
+PY_test_cn_FORKGC
+PY_test_conditional_updates
+PY_test_conditional_updates_SAFEMODE
+PY_test_conditional_updates_FORKGC
+PY_test_cursors
+PY_test_cursors_SAFEMODE
+PY_test_cursors_FORKGC
+PY_test_debug_commands
+PY_test_debug_commands_SAFEMODE
+PY_test_debug_commands_FORKGC
+PY_test_doctable
+PY_test_doctable_SAFEMODE
+PY_test_doctable_FORKGC
+PY_test_expire
+PY_test_expire_SAFEMODE
+PY_test_expire_FORKGC
+PY_test_ext
+PY_test_ext_SAFEMODE
+PY_test_ext_FORKGC
+PY_test_fuzz
+PY_test_fuzz_SAFEMODE
+PY_test_fuzz_FORKGC
+PY_test_fuzzy
+PY_test_fuzzy_SAFEMODE
+PY_test_fuzzy_FORKGC
+PY_test_gc
+PY_test_gc_SAFEMODE
+PY_test_gc_FORKGC
+PY_test_phonetics
+PY_test_phonetics_SAFEMODE
+PY_test_phonetics_FORKGC
+PY_test_scorers
+PY_test_scorers_SAFEMODE
+PY_test_scorers_FORKGC
+PY_test_spell_check
+PY_test_spell_check_SAFEMODE
+PY_test_spell_check_FORKGC
+PY_test_summarize
+PY_test_summarize_SAFEMODE
+PY_test_summarize_FORKGC
+PY_test_synonyms
+PY_test_synonyms_SAFEMODE
+PY_test_synonyms_FORKGC
+PY_test_tags
+PY_test_tags_SAFEMODE
+PY_test_tags_FORKGC
+PY_test_wideschema
+PY_test_wideschema_SAFEMODE
+PY_test_wideschema_FORKGC
