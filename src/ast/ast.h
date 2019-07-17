@@ -46,39 +46,49 @@ void AST_ReferredFunctions(const cypher_astnode_t *root, TrieMap *referred_funcs
 // Returns specified clause or NULL.
 const cypher_astnode_t* AST_GetClause(const AST *ast, cypher_astnode_type_t clause_type);
 
+// Returns the indexes into the AST of all instances of the given clause.
 uint* AST_GetClauseIndices(const AST *ast, cypher_astnode_type_t clause_type);
 
+// Returns the number of times the given clause appears in the AST.
 uint AST_GetClauseCount(const AST *ast, cypher_astnode_type_t clause_type);
 
+// Returns all instances of the given clause in the AST.
 const cypher_astnode_t** AST_GetClauses(const AST *ast, cypher_astnode_type_t type);
 
+// Collect all user-provided aliases in the query.
+// (Only used for populating return expressions when "RETURN *" is specified.)
 const char** AST_CollectElementNames(AST *ast);
 
+// Retrieve the AST root node from a parsed query.
 const cypher_astnode_t* AST_GetBody(const cypher_parse_result_t *result);
 
 AST* AST_Build(cypher_parse_result_t *parse_result);
 
 AST* AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset);
 
+// Convert an AST integer node (which is stored internally as a string) into an integer.
 long AST_ParseIntegerNode(const cypher_astnode_t *int_node);
 
+// Returns true if the given clause contains an aggregate function.
 bool AST_ClauseContainsAggregation(const cypher_astnode_t *clause);
 
-/* Given an AST entity representing a node, edge, identifier, or property specification,
- * return its alias (if one is provided). */
-const char* AST_GetEntityAlias(const cypher_astnode_t *entity);
+/* AST Map API */
 
-// mapping functions
+// Retrieve an AST ID from an AST pointer
 uint AST_GetEntityIDFromReference(const AST *ast, AST_IDENTIFIER entity);
 
+// Retrieve an AST ID from an alias
 uint AST_GetEntityIDFromAlias(const AST *ast, const char *alias);
 
-uint ASTMap_AddEntity(const AST *ast, AST_IDENTIFIER identifier, uint id);
-
+// Retrieve an AST ID from an alias, creating a new ID if not previously mapped.
+// (This is only necessary to handle aliases introduced from stored procedures
+// rather than the query).
 uint ASTMap_FindOrAddAlias(const AST *ast, const char *alias, uint id);
 
+// Construct the AST map.
 void AST_BuildEntityMap(AST *ast);
 
+// Retrieve
 AST* AST_GetFromTLS(void);
 
 void AST_Free(AST *ast);

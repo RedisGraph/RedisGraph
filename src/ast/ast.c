@@ -251,27 +251,6 @@ long AST_ParseIntegerNode(const cypher_astnode_t *int_node) {
     return strtol(value_str, NULL, 0);
 }
 
-const char* AST_GetEntityAlias(const cypher_astnode_t *entity) {
-    assert(entity);
-
-    cypher_astnode_type_t type = cypher_astnode_type(entity);
-    if (type == CYPHER_AST_IDENTIFIER) {
-        return cypher_ast_identifier_get_name(entity);
-    } else if (type == CYPHER_AST_NODE_PATTERN) {
-        const cypher_astnode_t *ast_alias = cypher_ast_node_pattern_get_identifier(entity);
-        if (ast_alias) return cypher_ast_identifier_get_name(ast_alias);
-    } else if (type == CYPHER_AST_REL_PATTERN) {
-        const cypher_astnode_t *ast_alias = cypher_ast_rel_pattern_get_identifier(entity);
-        if (ast_alias) return cypher_ast_identifier_get_name(ast_alias);
-    } else if (type == CYPHER_AST_PROPERTY_OPERATOR) {
-        const cypher_astnode_t *ast_expr = cypher_ast_property_operator_get_expression(entity);
-        if (cypher_astnode_type(ast_expr) == CYPHER_AST_IDENTIFIER) {
-            return cypher_ast_identifier_get_name(ast_expr);
-        }
-    }
-    return NULL;
-}
-
 bool AST_ClauseContainsAggregation(const cypher_astnode_t *clause) {
     assert(clause);
 
