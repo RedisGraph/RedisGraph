@@ -53,6 +53,17 @@ void _MGraph_Explain(void *args) {
     /* Parse query, get AST. */
     cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
     qctx->parse_result = parse_result;
+
+    // Verify that the query does not contain any expressions not in the RedisGraph support whitelist
+    char *reason;
+    const cypher_astnode_t *root = AST_GetBody(parse_result);
+    if (AST_WhitelistQuery(root, &reason) != AST_VALID) {
+        // Unsupported expressions found; reply with error.
+        RedisModule_ReplyWithError(ctx, reason);
+        free(reason);
+        goto cleanup;
+    }
+
     AST *ast = AST_Build(parse_result);
 
     if(AST_GetBody(parse_result) == NULL) {
@@ -60,24 +71,18 @@ void _MGraph_Explain(void *args) {
         goto cleanup;
     }
 
-    // pthread_setspecific(_tlsASTKey, ast);
-
-    // Retrieve the GraphContext and acquire a read lock.
-    gc = GraphContext_Retrieve(ctx, graphname, true);
-    if(!gc) {
-        RedisModule_ReplyWithError(ctx, "key doesn't contains a graph object.");
-        goto cleanup;
-    }
-
     // Perform query validations before and after ModifyAST
     if(AST_Validate(ctx, ast) != AST_VALID) goto cleanup;
 
-    // TODO index ops
-    // if (ast[0]->indexNode != NULL) { // index operation
-        // char *reply = (ast[0]->indexNode->operation == CREATE_INDEX) ? "Create Index" : "Drop Index";
-        // RedisModule_ReplyWithSimpleString(ctx, reply);
-        // goto cleanup;
-    // }
+    // Handle replies for index creation/deletion
+    const cypher_astnode_type_t root_type = cypher_astnode_type(ast->root);
+    if (root_type == CYPHER_AST_CREATE_NODE_PROP_INDEX) {
+        RedisModule_ReplyWithSimpleString(ctx, "Create Index");
+        goto cleanup;
+    } else if (root_type == CYPHER_AST_DROP_NODE_PROP_INDEX) {
+        RedisModule_ReplyWithSimpleString(ctx, "Drop Index");
+        goto cleanup;
+    }
 
     // Retrieve the GraphContext and acquire a read lock.
     if(graphname) {

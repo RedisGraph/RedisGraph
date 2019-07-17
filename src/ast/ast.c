@@ -283,8 +283,8 @@ AST* AST_GetFromTLS(void) {
 }
 
 void AST_Free(AST *ast) {
+    if (ast == NULL) return;
     if (ast->entity_map) TrieMap_Free(ast->entity_map, TrieMap_NOP_CB);
-
     rm_free(ast);
 }
 

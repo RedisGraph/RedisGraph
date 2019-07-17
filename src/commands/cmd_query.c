@@ -64,8 +64,19 @@ void _MGraph_Query(void *args) {
     RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(qctx);
     ResultSet* resultSet = NULL;
     bool lockAcquired = false;
+    AST *ast = NULL;
 
-    AST *ast = AST_Build(qctx->parse_result);
+    // Verify that the query does not contain any expressions not in the RedisGraph support whitelist
+    const cypher_astnode_t *root = AST_GetBody(qctx->parse_result);
+    char *reason;
+    if (AST_WhitelistQuery(root, &reason) != AST_VALID) {
+        // Unsupported expressions found; reply with error.
+        RedisModule_ReplyWithError(ctx, reason);
+        free(reason);
+        goto cleanup;
+    }
+
+    ast = AST_Build(qctx->parse_result);
     bool readonly = AST_ReadOnly(ast->root);
 
     // Try to access the GraphContext

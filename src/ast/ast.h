@@ -28,6 +28,9 @@ typedef struct {
 // AST clause validations.
 AST_Validation AST_Validate(RedisModuleCtx *ctx, const AST *ast);
 
+// Check if any entity in the AST is not in the RedisGraph supported whitelist.
+AST_Validation AST_WhitelistQuery(const cypher_astnode_t *root, char **reason);
+
 // Checks if AST represents a read-only query.
 bool AST_ReadOnly(const cypher_astnode_t *root);
 

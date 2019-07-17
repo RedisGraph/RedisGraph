@@ -380,6 +380,157 @@ static AST_Validation _AST_Aliases_Defined(const AST *ast, char **undefined_alia
     return res;
 }
 
+static AST_Validation _QueryTestWhitelist(rax *whitelist, const cypher_astnode_t *elem, char **reason) {
+    if (elem == NULL) return AST_VALID;
+    cypher_astnode_type_t type = cypher_astnode_type(elem);
+    if (raxFind(whitelist, (unsigned char*)&type, sizeof(type)) == raxNotFound) {
+       asprintf(reason, "RedisGraph does not currently support %s", cypher_astnode_typestr(type));
+       return AST_INVALID;
+    }
+
+    uint nchildren = cypher_astnode_nchildren(elem);
+    for (uint i = 0; i < nchildren; i ++) {
+        if (_QueryTestWhitelist(whitelist, cypher_astnode_get_child(elem, i), reason) != AST_VALID) {
+            return AST_INVALID;
+        }
+    }
+
+    return AST_VALID;
+}
+
+static rax* _BuildWhitelist(void) {
+	// The end_of_list token allows us to modify this array without worrying about its length
+#define end_of_list UINT8_MAX
+	// When we introduce support for one of these, simply remove it from the list.
+    cypher_astnode_type_t supported_entities[] = {
+                                                  // CYPHER_AST_STATEMENT,
+                                                  // CYPHER_AST_STATEMENT_OPTION,
+                                                  // CYPHER_AST_CYPHER_OPTION,
+                                                  // CYPHER_AST_CYPHER_OPTION_PARAM,
+                                                  // CYPHER_AST_EXPLAIN_OPTION,
+                                                  // CYPHER_AST_PROFILE_OPTION,
+                                                  // CYPHER_AST_SCHEMA_COMMAND,
+                                                  CYPHER_AST_CREATE_NODE_PROP_INDEX,
+                                                  CYPHER_AST_DROP_NODE_PROP_INDEX,
+                                                  // CYPHER_AST_CREATE_NODE_PROP_CONSTRAINT,
+                                                  // CYPHER_AST_DROP_NODE_PROP_CONSTRAINT,
+                                                  // CYPHER_AST_CREATE_REL_PROP_CONSTRAINT,
+                                                  // CYPHER_AST_DROP_REL_PROP_CONSTRAINT,
+                                                  CYPHER_AST_QUERY,
+                                                  // CYPHER_AST_QUERY_OPTION,
+                                                  // CYPHER_AST_USING_PERIODIC_COMMIT,
+                                                  CYPHER_AST_QUERY_CLAUSE,
+                                                  // CYPHER_AST_LOAD_CSV,
+                                                  // CYPHER_AST_START,
+                                                  // CYPHER_AST_START_POINT,
+                                                  // CYPHER_AST_NODE_INDEX_LOOKUP,
+                                                  // CYPHER_AST_NODE_INDEX_QUERY,
+                                                  // CYPHER_AST_NODE_ID_LOOKUP,
+                                                  // CYPHER_AST_ALL_NODES_SCAN,
+                                                  // CYPHER_AST_REL_INDEX_LOOKUP,
+                                                  // CYPHER_AST_REL_INDEX_QUERY,
+                                                  // CYPHER_AST_REL_ID_LOOKUP,
+                                                  // CYPHER_AST_ALL_RELS_SCAN,
+                                                  CYPHER_AST_MATCH,
+                                                  // CYPHER_AST_MATCH_HINT,
+                                                  // CYPHER_AST_USING_INDEX,
+                                                  // CYPHER_AST_USING_JOIN,
+                                                  // CYPHER_AST_USING_SCAN,
+                                                  CYPHER_AST_MERGE,
+                                                  // CYPHER_AST_MERGE_ACTION,
+                                                  // CYPHER_AST_ON_MATCH,
+                                                  // CYPHER_AST_ON_CREATE,
+                                                  CYPHER_AST_CREATE,
+                                                  CYPHER_AST_SET,
+                                                  CYPHER_AST_SET_ITEM,
+                                                  CYPHER_AST_SET_PROPERTY,
+                                                  // CYPHER_AST_SET_ALL_PROPERTIES,
+                                                  CYPHER_AST_MERGE_PROPERTIES,
+                                                  // CYPHER_AST_SET_LABELS,
+                                                  CYPHER_AST_DELETE,
+                                                  // CYPHER_AST_REMOVE,
+                                                  // CYPHER_AST_REMOVE_ITEM,
+                                                  // CYPHER_AST_REMOVE_LABELS,
+                                                  // CYPHER_AST_REMOVE_PROPERTY,
+                                                  // CYPHER_AST_FOREACH,
+                                                  CYPHER_AST_WITH,
+                                                  CYPHER_AST_UNWIND,
+                                                  CYPHER_AST_CALL,
+                                                  CYPHER_AST_RETURN,
+                                                  CYPHER_AST_PROJECTION,
+                                                  CYPHER_AST_ORDER_BY,
+                                                  CYPHER_AST_SORT_ITEM,
+                                                  // CYPHER_AST_UNION,
+                                                  CYPHER_AST_EXPRESSION,
+                                                  CYPHER_AST_UNARY_OPERATOR,
+                                                  CYPHER_AST_BINARY_OPERATOR,
+                                                  CYPHER_AST_COMPARISON,
+                                                  CYPHER_AST_APPLY_OPERATOR,
+                                                  // CYPHER_AST_APPLY_ALL_OPERATOR,
+                                                  CYPHER_AST_PROPERTY_OPERATOR,
+                                                  // CYPHER_AST_SUBSCRIPT_OPERATOR,
+                                                  // CYPHER_AST_SLICE_OPERATOR,
+                                                  // CYPHER_AST_LABELS_OPERATOR,
+                                                  // CYPHER_AST_LIST_COMPREHENSION,
+                                                  // CYPHER_AST_PATTERN_COMPREHENSION,
+                                                  // CYPHER_AST_CASE,
+                                                  // CYPHER_AST_FILTER,
+                                                  // CYPHER_AST_EXTRACT,
+                                                  // CYPHER_AST_REDUCE,
+                                                  // CYPHER_AST_ALL,
+                                                  // CYPHER_AST_ANY,
+                                                  // CYPHER_AST_SINGLE,
+                                                  // CYPHER_AST_NONE,
+                                                  CYPHER_AST_COLLECTION,
+                                                  CYPHER_AST_MAP,
+                                                  CYPHER_AST_IDENTIFIER,
+                                                  // CYPHER_AST_PARAMETER,
+                                                  CYPHER_AST_STRING,
+                                                  CYPHER_AST_INTEGER,
+                                                  CYPHER_AST_FLOAT,
+                                                  CYPHER_AST_BOOLEAN,
+                                                  CYPHER_AST_TRUE,
+                                                  CYPHER_AST_FALSE,
+                                                  CYPHER_AST_NULL,
+                                                  CYPHER_AST_LABEL,
+                                                  CYPHER_AST_RELTYPE,
+                                                  CYPHER_AST_PROP_NAME,
+                                                  CYPHER_AST_FUNCTION_NAME,
+                                                  // CYPHER_AST_INDEX_NAME,
+                                                  CYPHER_AST_PROC_NAME,
+                                                  CYPHER_AST_PATTERN,
+                                                  // CYPHER_AST_NAMED_PATH,
+                                                  // CYPHER_AST_SHORTEST_PATH,
+                                                  CYPHER_AST_PATTERN_PATH,
+                                                  CYPHER_AST_NODE_PATTERN,
+                                                  CYPHER_AST_REL_PATTERN,
+                                                  CYPHER_AST_RANGE,
+                                                  // CYPHER_AST_COMMAND,
+                                                  // CYPHER_AST_COMMENT,
+                                                  // CYPHER_AST_LINE_COMMENT,
+                                                  // CYPHER_AST_BLOCK_COMMENT,
+                                                  CYPHER_AST_ERROR,
+                                                  // CYPHER_AST_MAP_PROJECTION,
+                                                  // CYPHER_AST_MAP_PROJECTION_SELECTOR,
+                                                  // CYPHER_AST_MAP_PROJECTION_LITERAL,
+                                                  // CYPHER_AST_MAP_PROJECTION_PROPERTY,
+                                                  // CYPHER_AST_MAP_PROJECTION_IDENTIFIER,
+                                                  // CYPHER_AST_MAP_PROJECTION_ALL_PROPERTIES,
+                                                  end_of_list
+    };
+
+
+    int i = 0;
+    rax *whitelist = raxNew();
+    cypher_astnode_type_t supported_entity;
+    while ((supported_entity = supported_entities[i++]) != end_of_list) {
+		// Introduce every type to the whitelist rax
+        raxInsert(whitelist, (unsigned char*)&supported_entity, sizeof(supported_entity), NULL, NULL);
+    }
+
+    return whitelist;
+}
+
 static AST_Validation _AST_Validate(const AST *ast, char **reason) {
     // Occurs on statements like CREATE INDEX
     if (cypher_astnode_type(ast->root) != CYPHER_AST_QUERY) return AST_VALID;
@@ -411,6 +562,13 @@ static AST_Validation _AST_Validate(const AST *ast, char **reason) {
     return AST_VALID;
 }
 
+AST_Validation AST_WhitelistQuery(const cypher_astnode_t *root, char **reason) {
+    rax *whitelist = _BuildWhitelist();
+    AST_Validation res = _QueryTestWhitelist(whitelist, root, reason);
+    raxFree(whitelist);
+    return res;
+}
+
 AST_Validation AST_Validate(RedisModuleCtx *ctx, const AST *ast) {
     char *reason;
     AST_Validation res = _AST_Validate(ast, &reason);
@@ -422,64 +580,3 @@ AST_Validation AST_Validate(RedisModuleCtx *ctx, const AST *ast) {
     return AST_VALID;
 }
 
-//==============================================================================
-//=== MATCH CLAUSE =============================================================
-//==============================================================================
-void AST_MatchClause_DefinedEntities(const AST *ast, TrieMap *definedEntities) {
-    const cypher_astnode_t *match_clause = AST_GetClause(ast, CYPHER_AST_MATCH);
-
-    _AST_GetIdentifiers(match_clause, definedEntities);
-}
-
-//==============================================================================
-//=== MERGE CLAUSE =============================================================
-//==============================================================================
-void AST_MergeClause_DefinedEntities(const AST *ast, TrieMap *definedEntities) {
-    const cypher_astnode_t *match_clause = AST_GetClause(ast, CYPHER_AST_MATCH);
-
-    _AST_GetIdentifiers(match_clause, definedEntities);
-}
-
-//==============================================================================
-//=== WHERE CLAUSE =============================================================
-//==============================================================================
-void _AST_WhereClause_ReferredFunctions(const cypher_astnode_t *match_clause, TrieMap *referred_funcs) {
-    if (!match_clause) return;
-    AST_ReferredFunctions(match_clause, referred_funcs);
-}
-
-// void AST_WhereClause_ReferredFunctions(const cypher_parse_result_t *ast, TrieMap *referred_funcs) {
-//     const cypher_astnode_t *root = cypher_parse_result_get_root(ast, 0);
-//     const cypher_astnode_t *match = AST_GetClause(root, CYPHER_AST_MATCH);
-//     if (!match) return;
-
-//     // Inspect inlined filters ({a:v}).
-//     const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(match);
-//     unsigned int npaths = cypher_ast_pattern_npaths(pattern);
-
-//     // For each path in pattern
-//     for(unsigned int i = 0; i < npaths; i++) {
-//         const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, i);
-//         unsigned int nelements = cypher_ast_pattern_path_nelements(path);
-
-//         // For each element in current path.
-//         for(unsigned int j = 0; j < nelements; j++) {
-//             const cypher_astnode_t *element = cypher_ast_pattern_path_get_element(path, j);
-//             const cypher_astnode_t *properties;
-
-//             // Element is a node if j is odd, otherwise element is a relation.
-//             if((j % 2) == 0) properties = cypher_ast_node_pattern_get_properties(element);
-//             else properties = cypher_ast_rel_pattern_get_properties(element);
-//             if(!properties) continue;
-
-//             unsigned int nentries = cypher_ast_map_nentries(properties);
-//             // For each key/value pair in current element.
-//             for(unsigned int k = 0; k < nentries; k++) {
-//                 const cypher_astnode_t *value = cypher_ast_map_get_value(properties, k);
-//                 cypher_astnode_type_t value_type = cypher_astnode_type(value);
-//                 if(value_type != CYPHER_AST_APPLY_OPERATOR) continue;
-//                 _consume_function_call_expression(value, referred_funcs);
-//             }
-//         }
-//     }
-// }
