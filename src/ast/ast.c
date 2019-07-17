@@ -24,7 +24,7 @@ static void _consume_function_call_expression(const cypher_astnode_t *expression
     const char *func_name = cypher_ast_function_name_get_value(func);
     TrieMap_Add(referred_funcs, (char*)func_name, strlen(func_name), NULL, TrieMap_DONT_CARE_REPLACE);
 
-    unsigned int narguments = cypher_ast_apply_operator_narguments(expression);
+    uint narguments = cypher_ast_apply_operator_narguments(expression);
     for(int i = 0; i < narguments; i++) {
         const cypher_astnode_t *child_exp = cypher_ast_apply_operator_get_argument(expression, i);
         cypher_astnode_type_t child_exp_type = cypher_astnode_type(child_exp);
@@ -37,7 +37,7 @@ bool AST_ReadOnly(const cypher_astnode_t *root) {
     // Iterate over children rather than clauses, as the root is not
     // guaranteed to be a query.
     uint num_children = cypher_astnode_nchildren(root);
-    for (unsigned int i = 0; i < num_children; i ++) {
+    for (uint i = 0; i < num_children; i ++) {
         const cypher_astnode_t *child = cypher_astnode_get_child(root, i);
         cypher_astnode_type_t type = cypher_astnode_type(child);
         if(type == CYPHER_AST_CREATE                      ||
@@ -63,8 +63,8 @@ bool AST_ContainsErrors(const cypher_parse_result_t *result) {
 
 char* AST_ReportErrors(const cypher_parse_result_t *result) {
     char *errorMsg;
-    unsigned int nerrors = cypher_parse_result_nerrors(result);
-    for(unsigned int i = 0; i < nerrors; i++) {
+    uint nerrors = cypher_parse_result_nerrors(result);
+    for(uint i = 0; i < nerrors; i++) {
         const cypher_parse_error_t *error = cypher_parse_result_get_error(result, i);
 
         // Get the position of an error.
@@ -96,7 +96,7 @@ void AST_ReferredFunctions(const cypher_astnode_t *root, TrieMap *referred_funcs
     if(root_type == CYPHER_AST_APPLY_OPERATOR) {
         _consume_function_call_expression(root, referred_funcs);
     } else {
-        unsigned int child_count = cypher_astnode_nchildren(root);
+        uint child_count = cypher_astnode_nchildren(root);
         for(int i = 0; i < child_count; i++) {
             const cypher_astnode_t *child = cypher_astnode_get_child(root, i);
             AST_ReferredFunctions(child, referred_funcs);
@@ -105,7 +105,7 @@ void AST_ReferredFunctions(const cypher_astnode_t *root, TrieMap *referred_funcs
 }
 
 
-// Retrieve the first instance of the specified clause in range, if any.
+// Retrieve the first instance of the specified clause in the AST segment, if any.
 const cypher_astnode_t* AST_GetClause(const AST *ast, cypher_astnode_type_t clause_type) {
     uint clause_count = cypher_ast_query_nclauses(ast->root);
     for (uint i = 0; i < clause_count; i ++) {
@@ -119,7 +119,7 @@ const cypher_astnode_t* AST_GetClause(const AST *ast, cypher_astnode_type_t clau
 uint* AST_GetClauseIndices(const AST *ast, cypher_astnode_type_t clause_type) {
     uint *clause_indices = array_new(uint, 0);
     uint clause_count = cypher_ast_query_nclauses(ast->root);
-    for (unsigned int i = 0; i < clause_count; i ++) {
+    for (uint i = 0; i < clause_count; i ++) {
         if (cypher_astnode_type(cypher_ast_query_get_clause(ast->root, i)) == clause_type) {
             clause_indices = array_append(clause_indices, i);
         }
@@ -129,11 +129,10 @@ uint* AST_GetClauseIndices(const AST *ast, cypher_astnode_type_t clause_type) {
 
 uint AST_GetClauseCount(const AST *ast, cypher_astnode_type_t clause_type) {
     uint clause_count = cypher_ast_query_nclauses(ast->root);
-    unsigned int num_found = 0;
-    for (unsigned int i = 0; i < clause_count; i ++) {
+    uint num_found = 0;
+    for (uint i = 0; i < clause_count; i ++) {
         const cypher_astnode_t *child = cypher_ast_query_get_clause(ast->root, i);
         if (cypher_astnode_type(child) == clause_type) num_found ++;
-
     }
     return num_found;
 }
@@ -173,7 +172,7 @@ void _AST_CollectAliases(const char ***aliases, const cypher_astnode_t *entity) 
 }
 
 // Collect aliases from clauses that introduce entities (MATCH, MERGE, CREATE, UNWIND)
-const char** AST_CollectAliases(AST *ast) {
+const char** AST_CollectElementNames(AST *ast) {
     const char **aliases = array_new(const char*, 1);
     uint clause_count = cypher_ast_query_nclauses(ast->root);
     for (uint i = 0; i < clause_count; i ++) {

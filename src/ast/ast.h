@@ -6,7 +6,6 @@
 
 #pragma once
 
-// #include "/ast_shared.h"
 #include "../value.h"
 #include "../redismodule.h"
 #include "../util/triemap/triemap.h"
@@ -53,7 +52,7 @@ uint AST_GetClauseCount(const AST *ast, cypher_astnode_type_t clause_type);
 
 const cypher_astnode_t** AST_GetClauses(const AST *ast, cypher_astnode_type_t type);
 
-const char** AST_CollectAliases(AST *ast);
+const char** AST_CollectElementNames(AST *ast);
 
 const cypher_astnode_t* AST_GetBody(const cypher_parse_result_t *result);
 

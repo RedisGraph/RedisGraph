@@ -167,10 +167,10 @@ void AST_PrepareDeleteOp(const cypher_astnode_t *delete_clause, const QueryGraph
 
         /* We need to determine whether each alias refers to a node or edge.
          * Currently, we'll do this by consulting with the QueryGraph. */
-        SchemaType type = QueryGraph_GetEntityTypeByAlias(qg, alias);
-        if (type == SCHEMA_NODE) {
+        EntityType type = QueryGraph_GetEntityTypeByAlias(qg, alias);
+        if (type == ENTITY_NODE) {
             nodes_to_delete = array_append(nodes_to_delete, id);
-        } else if (type == SCHEMA_EDGE) {
+        } else if (type == ENTITY_EDGE) {
             edges_to_delete = array_append(edges_to_delete, id);
         } else {
             assert(false);

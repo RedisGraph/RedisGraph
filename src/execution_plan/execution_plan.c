@@ -19,8 +19,7 @@
 #include "../ast/ast_build_op_contexts.h"
 #include "../ast/ast_build_filter_tree.h"
 
-// TODO dup of work in ExecutionPlanInit, but we need record_map associated with
-// ops before calling optimizePlan
+// Associate each operation in the chain with the provided RecordMap.
 static void _associateRecordMap(OpBase *root, RecordMap *record_map) {
     // If this op has already been initialized,
     // we don't need to recurse further.
@@ -36,11 +35,9 @@ static void _associateRecordMap(OpBase *root, RecordMap *record_map) {
 
 /* In a query with a RETURN *, build projections for all explicit aliases
  * in previous clauses. */
-static AR_ExpNode** _ReturnExpandAll(RecordMap *record_map) {
-    AST *ast = AST_GetFromTLS();
-
+static AR_ExpNode** _ReturnExpandAll(RecordMap *record_map, AST *ast) {
     // Collect all unique aliases
-    const char **aliases = AST_CollectAliases(ast);
+    const char **aliases = AST_CollectElementNames(ast);
     uint count = array_len(aliases);
 
     // Build an expression for each alias
@@ -96,10 +93,10 @@ static AR_ExpNode** _BuildOrderExpressions(RecordMap *record_map, AR_ExpNode **p
 
 // Handle RETURN entities
 // (This function is not static because it is relied upon by unit tests)
-AR_ExpNode** _BuildReturnExpressions(RecordMap *record_map, const cypher_astnode_t *ret_clause) {
+AR_ExpNode** _BuildReturnExpressions(RecordMap *record_map, const cypher_astnode_t *ret_clause, AST *ast) {
     // Query is of type "RETURN *",
     // collect all defined identifiers and create return elements for them
-    if (cypher_ast_return_has_include_existing(ret_clause)) return _ReturnExpandAll(record_map);
+    if (cypher_ast_return_has_include_existing(ret_clause)) return _ReturnExpandAll(record_map, ast);
 
     uint count = cypher_ast_return_nprojections(ret_clause);
     AR_ExpNode **return_expressions = array_new(AR_ExpNode*, count);
@@ -174,7 +171,7 @@ static AR_ExpNode** _BuildWithExpressions(RecordMap *record_map, const cypher_as
  /* _BuildCallProjections creates an array of expression nodes to populate a Project operation with.
   * All Strings in the YIELD block of a CALL clause are represented, or the procedure-registered
   * outputs if the YIELD block is missing. */
-static AR_ExpNode** _BuildCallProjections(RecordMap *record_map, const cypher_astnode_t *call_clause) {
+static AR_ExpNode** _BuildCallProjections(RecordMap *record_map, const cypher_astnode_t *call_clause, AST *ast) {
     // Handle yield entities
     uint yield_count = cypher_ast_call_nprojections(call_clause);
     AR_ExpNode **expressions = array_new(AR_ExpNode*, yield_count);
@@ -215,10 +212,11 @@ static AR_ExpNode** _BuildCallProjections(RecordMap *record_map, const cypher_as
             const char *name = proc->output[i]->name;
 
             // TODO the 'name' variable doesn't have an AST ID, so an assertion in
-            // AR_EXP_NewVariableOperandNode() fails without this call. Consider options.
-            ASTMap_FindOrAddAlias(AST_GetFromTLS(), name, IDENTIFIER_NOT_FOUND);
+            // AR_EXP_NewVariableOperandNode() fails without this call.
+            // Consider alternatives, because this is an annoying kludge.
+            ASTMap_FindOrAddAlias(ast, name, IDENTIFIER_NOT_FOUND);
             AR_ExpNode *exp = AR_EXP_NewVariableOperandNode(record_map, name, NULL);
-            exp->resolved_name = name; // TODO kludge?
+            exp->resolved_name = name;
             expressions = array_append(expressions, exp);
         }
     }
@@ -245,9 +243,8 @@ static const char** _BuildCallArguments(RecordMap *record_map, const cypher_astn
     return arguments;
 }
 
-static void _ExecutionPlanSegment_ProcessQueryGraph(ExecutionPlanSegment *segment, QueryGraph *qg, FT_FilterNode *ft, Vector *ops) {
+static void _ExecutionPlanSegment_ProcessQueryGraph(ExecutionPlanSegment *segment, QueryGraph *qg, AST *ast, FT_FilterNode *ft, Vector *ops) {
     GraphContext *gc = GraphContext_GetFromTLS();
-    AST *ast = AST_GetFromTLS();
 
     QueryGraph **connectedComponents = QueryGraph_ConnectedComponents(qg);
     uint connectedComponentsCount = array_len(connectedComponents);
@@ -411,7 +408,7 @@ static ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, Graph
 
     const cypher_astnode_t *order_clause = NULL;
     if (ret_clause) {
-        segment->projections = _BuildReturnExpressions(segment->record_map, ret_clause);
+        segment->projections = _BuildReturnExpressions(segment->record_map, ret_clause, ast);
         order_clause = cypher_ast_return_get_order_by(ret_clause);
     } else if (with_clause) {
         segment->projections = _BuildWithExpressions(segment->record_map, with_clause);
@@ -440,7 +437,7 @@ static ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, Graph
         // A call clause has a procedure name, 0+ arguments (parenthesized expressions), and a projection if YIELD is included
         const char *proc_name = cypher_ast_proc_name_get_value(cypher_ast_call_get_proc_name(call_clause));
         const char **arguments = _BuildCallArguments(record_map, call_clause);
-        AR_ExpNode **yield_exps = _BuildCallProjections(record_map, call_clause);
+        AR_ExpNode **yield_exps = _BuildCallProjections(record_map, call_clause, ast);
         uint yield_count = array_len(yield_exps);
         const char **yields = array_new(const char *, yield_count);
         if (segment->projections == NULL) segment->projections = array_new(AR_ExpNode*, yield_count);
@@ -461,7 +458,7 @@ static ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, Graph
 
     // Build traversal operations for every connected component in the QueryGraph
     if (AST_ContainsClause(ast, CYPHER_AST_MATCH) || AST_ContainsClause(ast, CYPHER_AST_MERGE)) {
-        _ExecutionPlanSegment_ProcessQueryGraph(segment, qg, filter_tree, ops);
+        _ExecutionPlanSegment_ProcessQueryGraph(segment, qg, ast, filter_tree, ops);
     }
 
     // If we are in a querying context, retrieve a pointer to the statistics for operations

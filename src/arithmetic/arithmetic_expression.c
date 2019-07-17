@@ -47,7 +47,7 @@ static bool _AR_SetFunction(AR_ExpNode *exp, AST_Operator op) {
         case OP_POW: // TODO implement
         // Includes operators like <, AND, etc
         default:
-            assert(false);
+            assert(false && "Unhandled operator was specified in query");
             return NULL;
     }
 }
@@ -55,7 +55,7 @@ static bool _AR_SetFunction(AR_ExpNode *exp, AST_Operator op) {
 static AR_ExpNode* _AR_EXP_NewOpNodeFromAST(AST_Operator op, int child_count) {
     AR_ExpNode *node = rm_calloc(1, sizeof(AR_ExpNode));
     node->type = AR_EXP_OP;
-    node->op.func_name = NULL; // TODO needed?
+    node->op.func_name = NULL;
     node->op.child_count = child_count;
     node->op.children = rm_malloc(child_count * sizeof(AR_ExpNode*));
 
@@ -67,8 +67,8 @@ static AR_ExpNode* _AR_EXP_NewOpNodeFromAST(AST_Operator op, int child_count) {
 
 }
 
-// TODO we don't really have as many func_name strings as before (they were generated in grammar.y)
-// maybe replace with above
+// TODO we don't really have as many func_name strings as before (they were generated in grammar.y).
+// It should be possible to combine this function with _AR_EXP_NewOpNodeFromAST
 AR_ExpNode* _AR_EXP_NewOpNode(char *func_name, int child_count) {
     AR_ExpNode *node = rm_calloc(1, sizeof(AR_ExpNode));
     node->type = AR_EXP_OP;
@@ -130,7 +130,6 @@ AR_ExpNode* AR_EXP_FromExpression(RecordMap *record_map, const cypher_astnode_t 
         const char *func_name = cypher_ast_function_name_get_value(func_node);
         // TODO When implementing calls like COUNT(DISTINCT), use cypher_ast_apply_operator_get_distinct()
         unsigned int arg_count = cypher_ast_apply_operator_narguments(expr);
-        // TODO try to replace with something not string-based
         AR_ExpNode *op = _AR_EXP_NewOpNode((char*)func_name, arg_count);
 
         for (unsigned int i = 0; i < arg_count; i ++) {
@@ -190,24 +189,24 @@ AR_ExpNode* AR_EXP_FromExpression(RecordMap *record_map, const cypher_astnode_t 
         SIValue converted = SI_NullVal();
         return AR_EXP_NewConstOperandNode(converted);
 
-    /* Comparison/filter types */
-    // TODO Possibly implement these, replacing AST_Filter types
+        /* Handling for unary operators (-5, +a.val) */
     } else if (type == CYPHER_AST_UNARY_OPERATOR) {
-        // unary
         const cypher_astnode_t *arg = cypher_ast_unary_operator_get_argument(expr); // CYPHER_AST_EXPRESSION
         const cypher_operator_t *operator = cypher_ast_unary_operator_get_operator(expr);
         if (operator == CYPHER_OP_UNARY_MINUS) {
-            // -3 is a unary minus operation on the integer 3
-            // TODO I feel like this is really over-elaborate - handle it in parser?
-            // TODO this can obviously be improved greatly
+            // This expression can be something like -3 or -a.val
+            // TODO In the former case, we can construct a much simpler tree than this.
             AR_ExpNode *ar_exp = AR_EXP_FromExpression(record_map, arg);
-            SIValue exp = AR_EXP_Evaluate(ar_exp, NULL);
-            exp = SIValue_Subtract(SI_LongVal(0), exp);
-            return AR_EXP_NewConstOperandNode(exp);
+            AR_ExpNode *op = _AR_EXP_NewOpNodeFromAST(OP_MULT, 2);
+            op->op.children[0] = AR_EXP_NewConstOperandNode(SI_LongVal(-1));
+            op->op.children[1] = AR_EXP_FromExpression(record_map, arg);
+            return op;
         } else if (operator == CYPHER_OP_UNARY_PLUS) {
-            assert(false); // TODO
+            // This expression is something like +3 or +a.val.
+            // I think the + can always be safely ignored.
+            return AR_EXP_FromExpression(record_map, arg);
         } else if (operator == CYPHER_OP_NOT) {
-            assert(false); // TODO
+            assert(false); // This should be handled in the FilterTree code
         }
     } else if (type == CYPHER_AST_BINARY_OPERATOR) {
         const cypher_operator_t *operator = cypher_ast_binary_operator_get_operator(expr);

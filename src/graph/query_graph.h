@@ -19,6 +19,12 @@ typedef struct {
     QGEdge **edges;             // Edges contained in QueryGraph
 } QueryGraph;
 
+typedef enum {
+    ENTITY_UNKNOWN,
+    ENTITY_NODE,
+    ENTITY_EDGE,
+} EntityType;
+
 /* Prepare a new query graph with initial allocations for
  * the provided node and edge counts. */
 QueryGraph* QueryGraph_New(uint node_cap, uint edge_cap);
@@ -49,7 +55,7 @@ QGNode* QueryGraph_GetNodeByID(const QueryGraph *qg, uint id);
 QGEdge* QueryGraph_GetEdgeByID(const QueryGraph *qg, uint id);
 
 /* Determine whether a given alias refers to a node or relation. */
-SchemaType QueryGraph_GetEntityTypeByAlias(const QueryGraph *qg, const char *alias);
+EntityType QueryGraph_GetEntityTypeByAlias(const QueryGraph *qg, const char *alias);
 
 /* Performs deep copy of input query graph. */
 QueryGraph* QueryGraph_Clone(const QueryGraph *g);

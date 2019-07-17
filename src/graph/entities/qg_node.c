@@ -81,12 +81,11 @@ int QGNode_ToString(const QGNode *n, char *buff, int buff_len) {
     return offset;
 }
 
-void QGNode_Free(QGNode* node) {
+void QGNode_Free(QGNode *node) {
 	if(!node) return;
 
     if(node->outgoing_edges) array_free(node->outgoing_edges);
     if(node->incoming_edges) array_free(node->incoming_edges);
 
     rm_free(node);
-	node = NULL;
 }

@@ -165,12 +165,12 @@ void ResultSet_ReplyWithCompactHeader(RedisModuleCtx *ctx, const QueryGraph *qg,
         // First, emit the column type enum
         if(exp->type == AR_EXP_OPERAND && exp->operand.type == AR_EXP_VARIADIC && exp->operand.variadic.entity_prop == NULL) {
             const char *alias = exp->operand.variadic.entity_alias;
-            SchemaType type = QueryGraph_GetEntityTypeByAlias(qg, alias);
+            EntityType type = QueryGraph_GetEntityTypeByAlias(qg, alias);
             switch (type) {
-                case SCHEMA_NODE:
+                case ENTITY_NODE:
                     t = COLUMN_NODE;
                     break;
-                case SCHEMA_EDGE:
+                case ENTITY_EDGE:
                     t = COLUMN_RELATION;
                     break;
                 default:

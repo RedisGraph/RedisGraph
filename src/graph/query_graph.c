@@ -216,13 +216,13 @@ QGEdge* QueryGraph_GetEdgeByID(const QueryGraph *qg, uint id) {
     return NULL;
 }
 
-SchemaType QueryGraph_GetEntityTypeByAlias(const QueryGraph *qg, const char *alias) {
+EntityType QueryGraph_GetEntityTypeByAlias(const QueryGraph *qg, const char *alias) {
     // TODO weak logic
     uint count = QueryGraph_NodeCount(qg);
     for (uint i = 0; i < count; i ++) {
         const char *entity_alias = qg->nodes[i]->alias;
         if (!entity_alias) continue;
-        if (!strcmp(entity_alias, alias)) return SCHEMA_NODE;
+        if (!strcmp(entity_alias, alias)) return ENTITY_NODE;
     }
 
     // Unnecessary if the alias is guaranteed to be in QueryGraph.
@@ -230,10 +230,10 @@ SchemaType QueryGraph_GetEntityTypeByAlias(const QueryGraph *qg, const char *ali
     for (uint i = 0; i < count; i ++) {
         const char *entity_alias = qg->edges[i]->alias;
         if (!entity_alias) continue;
-        if (!strcmp(entity_alias, alias)) return SCHEMA_EDGE;
+        if (!strcmp(entity_alias, alias)) return ENTITY_EDGE;
     }
 
-    return SCHEMA_UNKNOWN;
+    return ENTITY_UNKNOWN;
 }
 
 QueryGraph* QueryGraph_Clone(const QueryGraph *qg) {
