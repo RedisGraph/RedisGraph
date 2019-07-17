@@ -13,11 +13,14 @@ int IndexScanToString(const OpBase *ctx, char *buff, uint buff_len) {
 	return offset;
 }
 
-OpBase *NewIndexScanOp(Graph *g, QGNode *n, uint node_idx, IndexIter *iter) {
+OpBase *NewIndexScanOp(Graph *g, Node *n, RSIndex *idx, RSResultsIterator *iter, AST *ast) {
 	IndexScan *indexScan = malloc(sizeof(IndexScan));
 	indexScan->g = g;
 	indexScan->n = n;
+	indexScan->idx = idx;
 	indexScan->iter = iter;
+	indexScan->nodeRecIdx = AST_GetAliasID(ast, n->alias);
+	indexScan->recLength = AST_AliasCount(ast);
 
 	indexScan->nodeRecIdx = node_idx;
 
@@ -39,7 +42,7 @@ OpBase *NewIndexScanOp(Graph *g, QGNode *n, uint node_idx, IndexIter *iter) {
 Record IndexScanConsume(OpBase *opBase) {
 	IndexScan *op = (IndexScan *)opBase;
 
-	EntityID *nodeId = IndexIter_Next(op->iter);
+	const EntityID *nodeId = RediSearch_ResultsIteratorNext(op->iter, op->idx, NULL);
 	if(!nodeId) return NULL;
 
 	Record r = Record_New(opBase->record_map->record_len);
@@ -53,11 +56,11 @@ Record IndexScanConsume(OpBase *opBase) {
 
 OpResult IndexScanReset(OpBase *ctx) {
 	IndexScan *indexScan = (IndexScan *)ctx;
-	IndexIter_Reset(indexScan->iter);
+	RediSearch_ResultsIteratorReset(indexScan->iter);
 	return OP_OK;
 }
 
 void IndexScanFree(OpBase *op) {
 	IndexScan *indexScan = (IndexScan *)op;
-	IndexIter_Free(indexScan->iter);
+	RediSearch_ResultsIteratorFree(indexScan->iter);
 }

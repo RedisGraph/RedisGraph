@@ -5,13 +5,14 @@
 */
 
 #include "cmd_query.h"
-#include "cmd_context.h"
-#include "../graph/graph.h"
 #include "../ast/ast.h"
+#include "cmd_context.h"
+#include "../util/arr.h"
+#include "../graph/graph.h"
+#include "../index/index.h"
+#include "../util/rmalloc.h"
 #include "../util/simple_timer.h"
 #include "../execution_plan/execution_plan.h"
-#include "../util/arr.h"
-#include "../util/rmalloc.h"
 #include "../../deps/libcypher-parser/lib/src/cypher-parser.h"
 
 extern pthread_key_t _tlsASTKey;  // Thread local storage AST key.
@@ -26,6 +27,7 @@ void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, const cypher_astnod
 	RedisModule_ReplyWithArray(ctx, 2); // Two Array
 	RedisModule_ReplyWithArray(ctx, 0); // Empty result-set
 	RedisModule_ReplyWithArray(ctx, 2); // Statistics.
+	Index *idx = NULL;
 
 	if(cypher_astnode_type(index_op) == CYPHER_AST_CREATE_NODE_PROP_INDEX) {
 		// Retrieve strings from AST node
@@ -33,7 +35,8 @@ void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, const cypher_astnod
 														  index_op));
 		const char *prop = cypher_ast_prop_name_get_value(cypher_ast_create_node_prop_index_get_prop_name(
 															  index_op));
-		if(GraphContext_AddIndex(gc, label, prop) != INDEX_OK) {
+		if(GraphContext_AddIndex(&idx, gc, indexNode->label, indexNode->property,
+								 IDX_EXACT_MATCH) != INDEX_OK) {
 			// Index creation may have failed if the label or property was invalid, or the index already exists.
 			RedisModule_ReplyWithSimpleString(ctx, "(no changes, no records)");
 			return;
@@ -44,7 +47,7 @@ void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, const cypher_astnod
 		const char *label = cypher_ast_label_get_name(cypher_ast_drop_node_prop_index_get_label(index_op));
 		const char *prop = cypher_ast_prop_name_get_value(cypher_ast_drop_node_prop_index_get_prop_name(
 															  index_op));
-		if(GraphContext_DeleteIndex(gc, label, prop) == INDEX_OK) {
+		if(GraphContext_DeleteIndex(gc, label, prop, IDX_EXACT_MATCH) == INDEX_OK) {
 			RedisModule_ReplyWithSimpleString(ctx, "Indices removed: 1");
 		} else {
 			char *reply;

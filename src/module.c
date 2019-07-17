@@ -61,47 +61,31 @@ int _RegisterDataTypes(RedisModuleCtx *ctx) {
 }
 
 int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-<<<<<<< HEAD
+	/* TODO: when module unloads call GrB_finalize. */
+	assert(GrB_init(GrB_NONBLOCKING) == GrB_SUCCESS);
+	GxB_set(GxB_FORMAT, GxB_BY_ROW); // all matrices in CSR format
+	GxB_set(GxB_HYPER, GxB_NEVER_HYPER); // matrices are never hypersparse
+
 	if(RedisModule_Init(ctx, "graph", REDISGRAPH_MODULE_VERSION,
 						REDISMODULE_APIVER_1) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}
 
-	/* TODO: when module unloads call GrB_finalize. */
-	GrB_Info info = GrB_init(GrB_NONBLOCKING);
-	if(info != GrB_SUCCESS) {
-		RedisModule_Log(ctx, "warning", "GraphBLAS failed to initialize, error: %s", GrB_error());
+	if(RediSearch_Init(ctx, REDISEARCH_INIT_LIBRARY) != REDISMODULE_OK) {
 		return REDISMODULE_ERR;
 	}
 
-	GxB_set(GxB_FORMAT, GxB_BY_ROW); // all matrices in CSR format
-	GxB_set(GxB_HYPER, GxB_NEVER_HYPER); // matrices are never hypersparse
-
 	// currently we do not support AOF in graph
-	// TODO: remove when we do
+	// TODO: remove when we do.
 	int contextFlags = RedisModule_GetContextFlags(ctx);
 	if(contextFlags & REDISMODULE_CTX_FLAGS_AOF) {
 		RedisModule_Log(ctx, "warning", "RedisGraph does not support AOF");
 		return REDISMODULE_ERR;
 	}
 
-	// Make sure RediSearch is loaded.
-	// if(RediSearch_Initialize() == REDISMODULE_OK) {
-	//     /* Enable full-text search.
-	//      * TODO: currently all procedure deal with full text-search
-	//      * once additional procedure will be introduce
-	//      * this registration invocation will have to change. */
-	//     Proc_Register();
-	// } else {
-	//     RedisModule_Log(ctx, "warning", "RediSearch is missing, disabeling full-text search.");
-	// }
-
-	Proc_Register();
-	AR_RegisterFuncs();      // Register arithmetic functions.
-	Agg_RegisterFuncs();     // Register aggregation functions.
-	CypherWhitelist_Build(); // Build whitelist of supported Cypher elements.
-
-	if(!_Setup_ThreadLocalStorage()) return REDISMODULE_ERR;
+	Proc_Register();        // Register procedures.
+	AR_RegisterFuncs();     // Register arithmetic functions.
+	Agg_RegisterFuncs();    // Register aggregation functions.
 
 	long long threadCount = Config_GetThreadCount(ctx, argv, argc);
 	if(!_Setup_ThreadPOOL(threadCount)) return REDISMODULE_ERR;
@@ -135,58 +119,4 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	}
 
 	return REDISMODULE_OK;
-=======
-    /* TODO: when module unloads call GrB_finalize. */
-    assert(GrB_init(GrB_NONBLOCKING) == GrB_SUCCESS);
-    GxB_set(GxB_FORMAT, GxB_BY_ROW); // all matrices in CSR format
-    GxB_set(GxB_HYPER, GxB_NEVER_HYPER); // matrices are never hypersparse
-
-    if (RedisModule_Init(ctx, "graph", REDISGRAPH_MODULE_VERSION, REDISMODULE_APIVER_1) == REDISMODULE_ERR) {
-        return REDISMODULE_ERR;
-    }
-
-    if(RediSearch_Init(ctx, REDISEARCH_INIT_LIBRARY) != REDISMODULE_OK) {
-        return REDISMODULE_ERR;
-    }
-
-    // currently we do not support AOF in graph
-    // TODO: remove when we do.
-    int contextFlags = RedisModule_GetContextFlags(ctx);
-    if (contextFlags & REDISMODULE_CTX_FLAGS_AOF) {
-        RedisModule_Log(ctx, "warning", "RedisGraph does not support AOF");
-        return REDISMODULE_ERR;
-     }
-
-    Proc_Register();        // Register procedures.
-    AR_RegisterFuncs();     // Register arithmetic functions.
-    Agg_RegisterFuncs();    // Register aggregation functions.
-
-    long long threadCount = Config_GetThreadCount(ctx, argv, argc);
-    if (!_Setup_ThreadPOOL(threadCount)) return REDISMODULE_ERR;
-    RedisModule_Log(ctx, "notice", "Thread pool created, using %d threads.", threadCount);
-
-    if (_RegisterDataTypes(ctx) != REDISMODULE_OK) return REDISMODULE_ERR;
-
-    if(RedisModule_CreateCommand(ctx, "graph.QUERY", MGraph_Query, "write deny-oom", 1, 1, 1) == REDISMODULE_ERR) {
-        return REDISMODULE_ERR;
-    }
-
-    if(RedisModule_CreateCommand(ctx, "graph.DELETE", MGraph_Delete, "write", 1, 1, 1) == REDISMODULE_ERR) {
-        return REDISMODULE_ERR;
-    }
-
-    if(RedisModule_CreateCommand(ctx, "graph.EXPLAIN", MGraph_Explain, "write", 1, 1, 1) == REDISMODULE_ERR) {
-        return REDISMODULE_ERR;
-    }
-
-    if(RedisModule_CreateCommand(ctx, "graph.PROFILE", MGraph_Profile, "write", 1, 1, 1) == REDISMODULE_ERR) {
-        return REDISMODULE_ERR;
-    }
-
-    if(RedisModule_CreateCommand(ctx, "graph.BULK", MGraph_BulkInsert, "write deny-oom", 1, 1, 1) == REDISMODULE_ERR) {
-        return REDISMODULE_ERR;
-    }
-
-    return REDISMODULE_OK;
->>>>>>> fulltext search
 }
