@@ -7,6 +7,7 @@
 #include "apply_join.h"
 #include "../../util/arr.h"
 #include "../ops/op_filter.h"
+#include "../../parser/grammar.h"
 #include "../../../deps/rax/rax.h"
 #include "../ops/op_value_hash_join.h"
 #include "../ops/op_cartesian_product.h"
