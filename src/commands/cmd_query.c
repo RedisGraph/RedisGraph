@@ -169,6 +169,7 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
         return REDISMODULE_OK;
     }
 
+    // Check for empty query
     const cypher_astnode_t *query_root = AST_GetBody(parse_result);
     if (query_root == NULL) {
         cypher_parse_result_free(parse_result);

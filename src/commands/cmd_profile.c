@@ -111,6 +111,12 @@ int MGraph_Profile(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     }
 
     const cypher_astnode_t *query_root = AST_GetBody(parse_result);
+    if (query_root == NULL) {
+        cypher_parse_result_free(parse_result);
+        RedisModule_ReplyWithError(ctx, "Error: empty query.");
+        return REDISMODULE_OK;
+    }
+
     bool readonly = AST_ReadOnly(query_root);
 
     /* Determin query execution context

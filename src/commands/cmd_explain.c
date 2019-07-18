@@ -56,9 +56,16 @@ void _MGraph_Explain(void *args) {
     cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
     qctx->parse_result = parse_result;
 
-    // Verify that the query does not contain any expressions not in the RedisGraph support whitelist
-    char *reason;
     const cypher_astnode_t *root = AST_GetBody(parse_result);
+
+    // Check for empty query
+    if(root == NULL) {
+        RedisModule_ReplyWithError(ctx, "Error: empty query.");
+        goto cleanup;
+    }
+
+    char *reason;
+    // Verify that the query does not contain any expressions not in the RedisGraph support whitelist
     if (CypherWhitelist_ValidateQuery(root, &reason) != AST_VALID) {
         // Unsupported expressions found; reply with error.
         RedisModule_ReplyWithError(ctx, reason);
@@ -67,11 +74,6 @@ void _MGraph_Explain(void *args) {
     }
 
     ast = AST_Build(parse_result);
-
-    if(AST_GetBody(parse_result) == NULL) {
-        RedisModule_ReplyWithError(ctx, "Error: empty query.");
-        goto cleanup;
-    }
 
     // Perform query validations before and after ModifyAST
     if(AST_Validate(ctx, ast) != AST_VALID) goto cleanup;
