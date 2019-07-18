@@ -9,6 +9,7 @@
 #include "../graph/graph.h"
 #include "../ast/ast.h"
 #include "../util/simple_timer.h"
+#include "../ast/cypher_whitelist.h"
 #include "../execution_plan/execution_plan.h"
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
@@ -69,7 +70,7 @@ void _MGraph_Query(void *args) {
     // Verify that the query does not contain any expressions not in the RedisGraph support whitelist
     const cypher_astnode_t *root = AST_GetBody(qctx->parse_result);
     char *reason;
-    if (AST_WhitelistQuery(root, &reason) != AST_VALID) {
+    if (CypherWhitelist_ValidateQuery(root, &reason) != AST_VALID) {
         // Unsupported expressions found; reply with error.
         RedisModule_ReplyWithError(ctx, reason);
         free(reason);

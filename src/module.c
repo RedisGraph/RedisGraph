@@ -13,6 +13,7 @@
 #include "redisearch_api.h"
 #include "commands/commands.h"
 #include "util/thpool/thpool.h"
+#include "ast/cypher_whitelist.h"
 #include "arithmetic/agg_funcs.h"
 #include "procedures/procedure.h"
 #include "arithmetic/arithmetic_expression.h"
@@ -97,8 +98,9 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
     // }
     
     Proc_Register();
-    AR_RegisterFuncs();     // Register arithmetic functions.
-    Agg_RegisterFuncs();    // Register aggregation functions.
+    AR_RegisterFuncs();      // Register arithmetic functions.
+    Agg_RegisterFuncs();     // Register aggregation functions.
+    CypherWhitelist_Build(); // Build whitelist of supported Cypher elements.
 
     if(!_Setup_ThreadLocalStorage()) return REDISMODULE_ERR;
     

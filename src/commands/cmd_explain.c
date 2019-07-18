@@ -8,6 +8,7 @@
 #include "cmd_context.h"
 #include "../index/index.h"
 #include "../util/rmalloc.h"
+#include "../ast/cypher_whitelist.h"
 #include "../execution_plan/execution_plan.h"
 
 extern pthread_key_t _tlsASTKey;  // Thread local storage AST key.
@@ -39,6 +40,7 @@ void _MGraph_Explain(void *args) {
     GraphContext *gc = NULL;
     ExecutionPlan *plan = NULL;
     bool free_graph_ctx = false;
+    AST *ast = NULL;
     const char *graphname = qctx->graphName;
 
     const char *query;
@@ -57,14 +59,14 @@ void _MGraph_Explain(void *args) {
     // Verify that the query does not contain any expressions not in the RedisGraph support whitelist
     char *reason;
     const cypher_astnode_t *root = AST_GetBody(parse_result);
-    if (AST_WhitelistQuery(root, &reason) != AST_VALID) {
+    if (CypherWhitelist_ValidateQuery(root, &reason) != AST_VALID) {
         // Unsupported expressions found; reply with error.
         RedisModule_ReplyWithError(ctx, reason);
         free(reason);
         goto cleanup;
     }
 
-    AST *ast = AST_Build(parse_result);
+    ast = AST_Build(parse_result);
 
     if(AST_GetBody(parse_result) == NULL) {
         RedisModule_ReplyWithError(ctx, "Error: empty query.");
