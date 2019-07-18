@@ -35,3 +35,9 @@ TEST_F(TimeStampTest, TypeConversions) {
     ASSERT_EQ(ts.tv_nsec, value.allocation);
     ASSERT_EQ(sizeof(int), sizeof(value.allocation));
 }
+
+TEST_F(TimeStampTest, TestPrint) {
+
+    RG_TimeStamp timeStamp = RG_TimeStamp_New();
+    std::cout << RG_TimeStamp_ToString(timeStamp) << std::endl;
+}

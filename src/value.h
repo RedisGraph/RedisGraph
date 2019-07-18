@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include "datatypes/time_stamp.h"
 
 /* Type defines the supported types by the indexing system. The types are powers
  * of 2 so they can be used in bitmasks of matching types.
@@ -60,12 +61,18 @@ typedef enum {
 
 typedef struct {
 	union {
+		struct {
+			union {
+				void *ptrval;
+				char *stringval;
+			};
+			SIAllocation allocation;
+		};
+
+		RG_TimeStamp time;
 		int64_t longval;
 		double doubleval;
-		char *stringval;
-		void *ptrval;
 	};
-	SIAllocation allocation;
 	SIType type;
 } SIValue;
 
