@@ -24,15 +24,16 @@ Record Record_New(int entries) {
 }
 
 void Record_Extend(Record *r, int len) {
-    int rec_len = Record_length(*r);
-    if(rec_len >= len) return;
+    int original_len = Record_length(*r);
+    if(original_len >= len) return;
 
     Record header = RECORD_HEADER(*r);
     header->value.s.longval = len;
     header = rm_realloc(header, sizeof(Entry) * (len+1));
 
     // Initialize the added space to 0 (as Record_Merge will access it directly)
-    memset(header + (rec_len + 1) * sizeof(Entry), 0, len - rec_len);
+    int added_count = len - original_len;
+    memset(header + original_len + 1, 0, added_count * sizeof(Entry));
 
     // Reposition the Record's data pointer in case it was moved by the realloc
     *r = header+1;
