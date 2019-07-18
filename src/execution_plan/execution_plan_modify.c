@@ -114,7 +114,6 @@ uint* _ExecutionPlan_LocateReferences(OpBase *root, OpBase **op, rax *references
         uint seen_id = seen[i];
 
         if(raxFind(references, (unsigned char*)&seen_id, sizeof(seen_id)) != raxNotFound) {
-            // TODO does this only work if seen is all unique?
             match--;
             // All references have been resolved.
             if(match == 0) {

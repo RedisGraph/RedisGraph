@@ -61,10 +61,6 @@ static AR_ExpNode** _BuildOrderExpressions(RecordMap *record_map, AR_ExpNode **p
     for (uint i = 0; i < count; i++) {
         const cypher_astnode_t *item = cypher_ast_order_by_get_item(order_clause, i);
         const cypher_astnode_t *ast_exp = cypher_ast_sort_item_get_expression(item);
-        /* TODO need to think about logic here - can introduce new data, reference
-         * projections, reference otherwise-unprojected aliases. In the referencing-projection
-         * case, we may not be allowed to use the pre-existing record index:
-         * RETURN e.name as v ORDER BY v */
         AR_ExpNode *exp = NULL;
         if (cypher_astnode_type(ast_exp) == CYPHER_AST_IDENTIFIER) {
             // Order expression is a reference to an alias in the query
@@ -219,6 +215,7 @@ static AR_ExpNode** _BuildCallProjections(RecordMap *record_map, const cypher_as
             exp->resolved_name = name;
             expressions = array_append(expressions, exp);
         }
+        Proc_Free(proc);
     }
 
     return expressions;
@@ -443,7 +440,7 @@ static ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, Graph
         if (segment->projections == NULL) segment->projections = array_new(AR_ExpNode*, yield_count);
         uint *call_modifies = array_new(uint, yield_count);
         for (uint i = 0; i < yield_count; i ++) {
-            // TODO revisit this
+            // TODO revisit this logic, room for improvement
             // Add yielded expressions to segment projections.
             segment->projections = array_append(segment->projections, yield_exps[i]);
             // Track the names of yielded variables.
@@ -451,6 +448,7 @@ static ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, Graph
             // Track which variables are modified by this operation.
             call_modifies = array_append(call_modifies, yield_exps[i]->operand.variadic.entity_alias_idx);
         }
+        array_free(yield_exps);
 
         OpBase *opProcCall = NewProcCallOp(proc_name, arguments, yields, call_modifies);
         Vector_Push(ops, opProcCall);
@@ -584,7 +582,6 @@ static ExecutionPlanSegment* _NewExecutionPlanSegment(RedisModuleCtx *ctx, Graph
             Vector_Push(ops, op_limit);
         }
     } else if (ret_clause) {
-
         // TODO we may not need a new project op if the query is something like:
         // MATCH (a) WITH a.val AS val RETURN val
         // Though we would still need a new projection (barring later optimizations) for:
@@ -728,7 +725,10 @@ ExecutionPlan* NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
             // Construct a new ExecutionPlanSEgment.
             segment = _NewExecutionPlanSegment(ctx, gc, ast_segment, plan->result_set, input_projections, prev_op);
             plan->segments[i] = segment;
-            // TODO probably a memory leak on ast->root
+
+            // Free the AST segment (the AST tree is freed separately,
+            // since this does not need to be performed the master AST)
+            cypher_ast_free((cypher_astnode_t*)ast_segment->root);
             AST_Free(ast_segment); // Free all AST constructions scoped to this segment
 
             // Store the root op and the expressions constructed by this segment's

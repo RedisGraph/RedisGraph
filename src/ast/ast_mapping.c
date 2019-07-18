@@ -14,11 +14,12 @@
 //------------------------------------------------------------------------------
 // AST Map Construction
 //------------------------------------------------------------------------------
-
-static void* _BuildMapValue(uint64_t id) {
+// Cast an AST ID so that it may be added to the AST entity map
+static inline void* _BuildMapValue(uint64_t id) {
     return (void*)id;
 }
 
+// Add an AST entity (pointer) to the AST entity map
 static uint _ASTMap_AddEntity(const AST *ast, AST_IDENTIFIER identifier, uint id) {
     // Assign a new ID if one is not provided
     if (id == IDENTIFIER_NOT_FOUND) {

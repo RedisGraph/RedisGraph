@@ -9,22 +9,6 @@
 #include "../../util/arr.h"
 #include <assert.h>
 
-static uint64_t _binarySearch(Edge *array, EdgeID id) {
-    uint32_t edgeCount = array_len(array);
-    uint32_t left = 0;
-    uint32_t right = edgeCount;
-    uint32_t pos;
-    while(left < right) {
-        pos = (right + left) / 2;
-        if(ENTITY_GET_ID(array+pos) < id) {
-            left = pos + 1;
-        } else {
-            right = pos;
-        }
-    }
-    return left;
-}
-
 void _DeleteEntities(OpDelete *op) {
     Graph *g = op->gc->g;
     uint node_deleted = 0;

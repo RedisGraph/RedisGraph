@@ -12,16 +12,8 @@
 static void _setupTraversedRelations(CondTraverse *op, QGEdge *e) {
     uint reltype_count = array_len(e->reltypeIDs);
     if (reltype_count > 0) {
-        op->edgeRelationTypes = e->reltypeIDs; // TODO can't free this way
+        array_clone(op->edgeRelationTypes, e->reltypeIDs);
         op->edgeRelationCount = reltype_count;
-        // op->edgeRelationTypes = array_new(int , op->edgeRelationCount);
-        // for(int i = 0; i < op->edgeRelationCount; i++) {
-            // Schema *s = GraphContext_GetSchema(gc, e->labels[i], SCHEMA_EDGE);
-            // if(!s) continue;
-            // op->edgeRelationTypes = array_append(op->edgeRelationTypes, s->id);
-        // }
-        // op->edgeRelationCount = array_len(op->edgeRelationTypes);
-    
     } else {
         op->edgeRelationCount = 1;
         op->edgeRelationTypes = array_new(int, 1);
@@ -80,9 +72,6 @@ int CondTraverseToString(const OpBase *ctx, char *buff, uint buff_len) {
 }
 
 OpBase* NewCondTraverseOp(Graph *g, RecordMap *record_map, AlgebraicExpression *ae, uint records_cap) {
-
-
-
     CondTraverse *traverse = calloc(1, sizeof(CondTraverse));
     traverse->graph = g;
     traverse->ae = ae;

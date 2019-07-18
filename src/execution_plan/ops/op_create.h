@@ -23,8 +23,6 @@ typedef struct {
 
     NodeCreateCtx *nodes_to_create;
     EdgeCreateCtx *edges_to_create;
-
-    // TODO tmp, improve
     PropertyMap **node_properties;
     PropertyMap **edge_properties;
 

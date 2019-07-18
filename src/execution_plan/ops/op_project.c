@@ -100,5 +100,8 @@ OpResult ProjectReset(OpBase *ctx) {
 
 void ProjectFree(OpBase *ctx) {
     OpProject *op = (OpProject*)ctx;
+    // TODO These expressions are typically freed as part of
+    // _ExecutionPlanSegment_Free, but this forms a leak in scenarios
+    // like the ReduceCount optimization.
     // if (op->exps) array_free(op->exps);
 }

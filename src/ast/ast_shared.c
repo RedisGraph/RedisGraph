@@ -10,7 +10,8 @@ AST_Operator AST_ConvertOperatorNode(const cypher_operator_t *op) {
         assert(false);
     } else if (op == CYPHER_OP_AND) {
         return OP_AND;
-    } else if (op == CYPHER_OP_NOT) { // TODO unary, maybe doesn't belong here
+    } else if (op == CYPHER_OP_NOT) {
+        // Unary, maybe doesn't belong here
         return OP_NOT;
     } else if (op == CYPHER_OP_EQUAL) {
         return OP_EQUAL;
@@ -44,9 +45,8 @@ AST_Operator AST_ConvertOperatorNode(const cypher_operator_t *op) {
 void PropertyMap_Free(PropertyMap *map) {
     if (map == NULL) return;
 
-    // TODO always freed elsewhere?
     for (uint i = 0; i < map->property_count; i++) {
-        // SIValue_Free(&map->values[i]);
+        SIValue_Free(&map->values[i]);
     }
     free(map->keys);
     free(map->values);

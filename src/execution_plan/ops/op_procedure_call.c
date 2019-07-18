@@ -117,6 +117,8 @@ OpResult OpProcCallReset(OpBase *ctx) {
 
 void OpProcCallFree(OpBase *ctx) {
     OpProcCall *op = (OpProcCall*)ctx;
+    if (op->args) array_free(op->args);
+    if (op->output) array_free(op->output);
     if(op->procedure) Proc_Free(op->procedure);
     if(op->yield_map) rm_free(op->yield_map);
 }

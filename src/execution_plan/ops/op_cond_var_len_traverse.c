@@ -16,7 +16,7 @@
 static void _setupTraversedRelations(CondVarLenTraverse *op, QGEdge *e) {
     uint reltype_count = array_len(e->reltypeIDs);
     if (reltype_count > 0) {
-        op->edgeRelationTypes = e->reltypeIDs; // TODO can't free this way 
+        array_clone(op->edgeRelationTypes, e->reltypeIDs);
         op->edgeRelationCount = reltype_count;
     } else {
         op->edgeRelationCount = 1;
@@ -44,7 +44,7 @@ int CondVarLenTraverseToString(const OpBase *ctx, char *buff, uint buff_len) {
 
 void CondVarLenTraverseOp_ExpandInto(CondVarLenTraverse *op) {
     // Expand into doesn't performs any modifications.
-    // Vector_Clear(op->op.modifies);
+    array_clear(op->op.modifies);
     op->expandInto = true;
     op->op.type = OPType_CONDITIONAL_VAR_LEN_TRAVERSE_EXPAND_INTO;
     op->op.name = "Conditional Variable Length Traverse (Expand Into)";
@@ -57,7 +57,6 @@ OpBase* NewCondVarLenTraverseOp(Graph *g, RecordMap *record_map, AlgebraicExpres
     condVarLenTraverse->g = g;
     condVarLenTraverse->ae = ae;
     condVarLenTraverse->expandInto = false;
-    // condVarLenTraverse->relationIDs = NULL;
     condVarLenTraverse->edgeRelationTypes = NULL;
 
     condVarLenTraverse->srcNodeIdx = RecordMap_FindOrAddID(record_map, ae->src_node->id);

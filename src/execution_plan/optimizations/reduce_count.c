@@ -215,7 +215,7 @@ void _reduceEdgeCount(ExecutionPlan *plan) {
     /* Construct a constant expression, used by a new
      * projection operation. */
     AR_ExpNode *exp = AR_EXP_NewConstOperandNode(edgeCount);
-    AR_ExpNode **exps = array_new(AR_ExpNode*, 1);
+    AR_ExpNode **exps = array_new(AR_ExpNode*, 1); // TODO memory leak!
     exps = array_append(exps, exp);
 
     OpBase *opProject = NewProjectOp(exps, NULL);

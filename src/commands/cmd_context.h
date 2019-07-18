@@ -4,11 +4,10 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef COMMAND_CONTEXT_H
-#define COMMAND_CONTEXT_H
+#pragma once
 
 #include "../redismodule.h"
-#include "../ast/ast.h" // TODO should be unnecessary
+#include "../../deps/libcypher-parser/lib/src/cypher-parser.h"
 
 /* Query context, used for concurent query processing. */
 typedef struct {
@@ -55,5 +54,3 @@ void CommandCtx_Free
 (
     CommandCtx* qctx
 );
-
-#endif
