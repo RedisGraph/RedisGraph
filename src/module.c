@@ -100,7 +100,6 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
     Proc_Register();
     AR_RegisterFuncs();      // Register arithmetic functions.
     Agg_RegisterFuncs();     // Register aggregation functions.
-    CypherWhitelist_Build(); // Build whitelist of supported Cypher elements.
 
     if(!_Setup_ThreadLocalStorage()) return REDISMODULE_ERR;
     
