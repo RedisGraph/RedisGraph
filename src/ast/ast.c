@@ -64,6 +64,8 @@ bool AST_ContainsErrors(const cypher_parse_result_t *result) {
 char* AST_ReportErrors(const cypher_parse_result_t *result) {
     char *errorMsg;
     uint nerrors = cypher_parse_result_nerrors(result);
+    // TODO We are currently only reporting the first error to simplify the response.
+    if (nerrors > 1) nerrors = 1;
     for(uint i = 0; i < nerrors; i++) {
         const cypher_parse_error_t *error = cypher_parse_result_get_error(result, i);
 
