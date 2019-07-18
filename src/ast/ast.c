@@ -64,7 +64,7 @@ bool AST_ContainsErrors(const cypher_parse_result_t *result) {
 char* AST_ReportErrors(const cypher_parse_result_t *result) {
     char *errorMsg;
     uint nerrors = cypher_parse_result_nerrors(result);
-    // TODO We are currently only reporting the first error to simplify the response.
+    // We are currently only reporting the first error to simplify the response.
     if (nerrors > 1) nerrors = 1;
     for(uint i = 0; i < nerrors; i++) {
         const cypher_parse_error_t *error = cypher_parse_result_get_error(result, i);
@@ -239,13 +239,16 @@ AST* AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset) {
     struct cypher_input_range range = {};
     ast->root = cypher_ast_query(NULL, 0, (cypher_astnode_t *const *)clauses, n, NULL, 0, range);
 
-    pthread_setspecific(_tlsASTKey, ast); // TODO I don't know if I like this
+    // TODO This overwrites the previously-held AST pointer, which could lead to inconsistencies
+    // in the future if we expect the variable to hold a different AST.
+    pthread_setspecific(_tlsASTKey, ast);
     AST_BuildEntityMap(ast);
 
     return ast;
 }
 
-// TODO I find it so weird that this is necessary
+// TODO Consider augmenting libcypher-parser so that we don't need to perform this
+// work in-module.
 long AST_ParseIntegerNode(const cypher_astnode_t *int_node) {
     assert(int_node);
 
@@ -276,6 +279,21 @@ bool AST_ClauseContainsAggregation(const cypher_astnode_t *clause) {
     TrieMap_Free(referred_funcs, TrieMap_NOP_CB);
 
     return aggregated;
+}
+
+// Determine the maximum number of records
+// which will be considered when evaluating an algebraic expression.
+int TraverseRecordCap(const AST *ast) {
+    int recordsCap = 16;    // Default.
+    const cypher_astnode_t *ret_clause = AST_GetClause(ast, CYPHER_AST_RETURN);
+    if (ret_clause == NULL) return recordsCap;
+    // TODO Consider storing this number somewhere, as this logic is also in ExecutionPlan
+    const cypher_astnode_t *limit_clause = cypher_ast_return_get_limit(ret_clause);
+    if (limit_clause) {
+        int limit = AST_ParseIntegerNode(limit_clause);
+        recordsCap = MIN(recordsCap, limit);
+    }
+    return recordsCap;
 }
 
 AST* AST_GetFromTLS(void) {

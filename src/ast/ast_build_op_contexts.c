@@ -61,6 +61,60 @@ static inline NodeCreateCtx _NewNodeCreateCtx(RecordMap *record_map, AST *ast, c
     return new_node;
 }
 
+static void _buildAliasTrieMap(TrieMap *map, const cypher_astnode_t *entity) {
+    if (!entity) return;
+
+    cypher_astnode_type_t type = cypher_astnode_type(entity);
+
+    char *alias = NULL;
+    if (type == CYPHER_AST_NODE_PATTERN) {
+        const cypher_astnode_t *alias_node = cypher_ast_node_pattern_get_identifier(entity);
+        if (alias_node) alias = (char*)cypher_ast_identifier_get_name(alias_node);
+    } else if (type == CYPHER_AST_REL_PATTERN) {
+        const cypher_astnode_t *alias_node = cypher_ast_rel_pattern_get_identifier(entity);
+        if (alias_node) alias = (char*)cypher_ast_identifier_get_name(alias_node);
+    } else if (type == CYPHER_AST_UNWIND) {
+        // The UNWIND clause aliases an expression
+        const cypher_astnode_t *alias_node = cypher_ast_unwind_get_alias(entity);
+        assert(alias_node);
+        alias = (char*)cypher_ast_identifier_get_name(alias_node);
+    } else {
+        unsigned int child_count = cypher_astnode_nchildren(entity);
+        for(unsigned int i = 0; i < child_count; i++) {
+            const cypher_astnode_t *child = cypher_astnode_get_child(entity, i);
+            // Recursively continue searching
+            _buildAliasTrieMap(map, child);
+        }
+        return;
+    }
+
+    if (alias) TrieMap_Add(map, alias, strlen(alias), NULL, TrieMap_DONT_CARE_REPLACE);
+}
+
+
+static TrieMap* _MatchMerge_DefinedEntities(const AST *ast) {
+    const cypher_astnode_t **match_clauses = AST_GetClauses(ast, CYPHER_AST_MATCH);
+    uint match_count = (match_clauses) ? array_len(match_clauses) : 0;
+
+    const cypher_astnode_t **merge_clauses = AST_GetClauses(ast, CYPHER_AST_MERGE);
+    uint merge_count = (merge_clauses) ? array_len(merge_clauses) : 0;
+
+    TrieMap *map = NewTrieMap();
+
+    for (uint i = 0; i < match_count; i ++) {
+        _buildAliasTrieMap(map, match_clauses[i]);
+    }
+
+    for (uint i = 0; i < merge_count; i ++) {
+        _buildAliasTrieMap(map, merge_clauses[i]);
+    }
+
+    if (match_clauses) array_free(match_clauses);
+    if (merge_clauses) array_free(merge_clauses);
+
+    return map;
+}
+
 PropertyMap* AST_ConvertPropertiesMap(const cypher_astnode_t *props, RecordMap *record_map) {
     if (props == NULL) return NULL;
     assert(cypher_astnode_type(props) == CYPHER_AST_MAP); // TODO add parameter support
@@ -77,7 +131,7 @@ PropertyMap* AST_ConvertPropertiesMap(const cypher_astnode_t *props, RecordMap *
         map->keys[prop_idx] = cypher_ast_prop_name_get_value(ast_key);
 
         const cypher_astnode_t *ast_value = cypher_ast_map_get_value(props, prop_idx);
-        // TODO write a routine to convert an record_map node to an SIValue
+        // TODO write a routine to convert a record_map node to an SIValue
         AR_ExpNode *value_exp = AR_EXP_FromExpression(record_map, ast_value);
         SIValue value = AR_EXP_Evaluate(value_exp, NULL);
         AR_EXP_Free(value_exp);
@@ -99,21 +153,6 @@ AR_ExpNode** _AST_ConvertCollection(const cypher_astnode_t *collection, RecordMa
     }
 
     return expressions;
-}
-
-// Determine the maximum number of records
-// which will be considered when evaluating an algebraic expression.
-int TraverseRecordCap(const AST *ast) {
-    int recordsCap = 16;    // Default.
-    const cypher_astnode_t *ret_clause = AST_GetClause(ast, CYPHER_AST_RETURN);
-    if (ret_clause == NULL) return recordsCap;
-    // TODO should just store this number somewhere, as this logic is also in resultset
-    const cypher_astnode_t *limit_clause = cypher_ast_return_get_limit(ret_clause);
-    if (limit_clause) {
-        int limit = AST_ParseIntegerNode(limit_clause);
-        recordsCap = MIN(recordsCap, limit);
-    }
-    return recordsCap;
 }
 
 EntityUpdateEvalCtx* AST_PrepareUpdateOp(const cypher_astnode_t *set_clause, RecordMap *record_map, uint *nitems_ref) {
@@ -182,7 +221,6 @@ void AST_PrepareDeleteOp(const cypher_astnode_t *delete_clause, const QueryGraph
 
 }
 
-// TODO largely unnecessary
 int AST_PrepareSortOp(const cypher_astnode_t *order_clause) {
     assert(order_clause);
 
@@ -241,69 +279,13 @@ AST_MergeContext AST_PrepareMergeOp(RecordMap *record_map, AST *ast, const cyphe
 //------------------------------------------------------------------------------
 // CREATE operations
 //------------------------------------------------------------------------------
-
-// TODO how necessary are these functions? More generic options?
-void _buildAliasTrieMap(TrieMap *map, const cypher_astnode_t *entity) {
-    if (!entity) return;
-
-    cypher_astnode_type_t type = cypher_astnode_type(entity);
-
-    char *alias = NULL;
-    if (type == CYPHER_AST_NODE_PATTERN) {
-        const cypher_astnode_t *alias_node = cypher_ast_node_pattern_get_identifier(entity);
-        if (alias_node) alias = (char*)cypher_ast_identifier_get_name(alias_node);
-    } else if (type == CYPHER_AST_REL_PATTERN) {
-        const cypher_astnode_t *alias_node = cypher_ast_rel_pattern_get_identifier(entity);
-        if (alias_node) alias = (char*)cypher_ast_identifier_get_name(alias_node);
-    } else if (type == CYPHER_AST_UNWIND) {
-        // The UNWIND clause aliases an expression
-        const cypher_astnode_t *alias_node = cypher_ast_unwind_get_alias(entity);
-        assert(alias_node);
-        alias = (char*)cypher_ast_identifier_get_name(alias_node);
-    } else {
-        unsigned int child_count = cypher_astnode_nchildren(entity);
-        for(unsigned int i = 0; i < child_count; i++) {
-            const cypher_astnode_t *child = cypher_astnode_get_child(entity, i);
-            // Recursively continue searching
-            _buildAliasTrieMap(map, child);
-        }
-        return;
-    }
-
-    if (alias) TrieMap_Add(map, alias, strlen(alias), NULL, TrieMap_DONT_CARE_REPLACE);
-}
-
-// TODO This logic doesn't belong here, but might be entirely replaceable - investigate.
-TrieMap* _MatchClause_DefinedEntities(const AST *ast) {
-    const cypher_astnode_t **match_clauses = AST_GetClauses(ast, CYPHER_AST_MATCH);
-    uint match_count = (match_clauses) ? array_len(match_clauses) : 0;
-
-    const cypher_astnode_t **merge_clauses = AST_GetClauses(ast, CYPHER_AST_MERGE);
-    uint merge_count = (merge_clauses) ? array_len(merge_clauses) : 0;
-
-    TrieMap *map = NewTrieMap();
-
-    for (uint i = 0; i < match_count; i ++) {
-        _buildAliasTrieMap(map, match_clauses[i]);
-    }
-
-    for (uint i = 0; i < merge_count; i ++) {
-        _buildAliasTrieMap(map, merge_clauses[i]);
-    }
-
-    if (match_clauses) array_free(match_clauses);
-    if (merge_clauses) array_free(merge_clauses);
-
-    return map;
-}
-
 AST_CreateContext AST_PrepareCreateOp(GraphContext *gc, RecordMap *record_map, AST *ast, QueryGraph *qg) {
     const cypher_astnode_t **create_clauses = AST_GetClauses(ast, CYPHER_AST_CREATE);
     uint create_count = (create_clauses) ? array_len(create_clauses) : 0;
 
     /* For every entity within the CREATE clause see if it's also mentioned
      * within the MATCH clause. */
-    TrieMap *match_entities = _MatchClause_DefinedEntities(ast);
+    TrieMap *match_entities = _MatchMerge_DefinedEntities(ast);
 
     NodeCreateCtx *nodes_to_create = array_new(NodeCreateCtx, 1);
     EdgeCreateCtx *edges_to_create = array_new(EdgeCreateCtx, 1);

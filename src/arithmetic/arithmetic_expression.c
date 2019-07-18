@@ -231,7 +231,7 @@ AR_ExpNode* AR_EXP_FromExpression(RecordMap *record_map, const cypher_astnode_t 
        CYPHER_AST_PARAMETER
        CYPHER_AST_PATTERN_COMPREHENSION
        CYPHER_AST_SLICE_OPERATOR
-       CYPHER_AST_REDUCE // TODO what is this?
+       CYPHER_AST_REDUCE
        CYPHER_AST_SUBSCRIPT_OPERATOR
     */
         printf("Encountered unhandled type '%s'\n", cypher_astnode_typestr(type));

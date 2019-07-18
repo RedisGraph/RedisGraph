@@ -72,6 +72,10 @@ long AST_ParseIntegerNode(const cypher_astnode_t *int_node);
 // Returns true if the given clause contains an aggregate function.
 bool AST_ClauseContainsAggregation(const cypher_astnode_t *clause);
 
+// Determine the maximum number of records
+// which will be considered when evaluating an algebraic expression.
+int TraverseRecordCap(const AST *ast);
+
 /* AST Map API */
 
 // Retrieve an AST ID from an AST pointer

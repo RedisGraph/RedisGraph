@@ -77,8 +77,8 @@ FT_FilterNode* _convertBinaryOperator(RecordMap *record_map, const cypher_astnod
  * allows more complex formulations like "x < y <= z".
  * A comparison takes a form such as "WHERE a.val < y.val". */
 FT_FilterNode* _convertComparison(RecordMap *record_map, const cypher_astnode_t *comparison_node) {
-    unsigned int nelems = cypher_ast_comparison_get_length(comparison_node);
-    assert(nelems == 1); // TODO tmp, but may require modifying tree formation.
+    uint nelems = cypher_ast_comparison_get_length(comparison_node);
+    assert(nelems == 1); // TODO Cypher comparisons are allowed to be longer, as in "x < y <= z"
 
     const cypher_operator_t *operator = cypher_ast_comparison_get_operator(comparison_node, 0);
     AST_Operator op = AST_ConvertOperatorNode(operator);
@@ -109,8 +109,8 @@ static FT_FilterNode* _convertInlinedProperties(RecordMap *record_map, const AST
     uint record_id = RecordMap_FindOrAddID(record_map, ast_id);
 
     FT_FilterNode *root = NULL;
-    unsigned int nelems = cypher_ast_map_nentries(props);
-    for (unsigned int i = 0; i < nelems; i ++) {
+    uint nelems = cypher_ast_map_nentries(props);
+    for (uint i = 0; i < nelems; i ++) {
         // key is of type CYPHER_AST_PROP_NAME
         const char *prop = cypher_ast_prop_name_get_value(cypher_ast_map_get_key(props, i));
         AR_ExpNode *lhs = AR_EXP_NewVariableOperandNode(record_map, NULL, prop);
@@ -162,8 +162,8 @@ void _AST_ConvertFilters(RecordMap *record_map, const AST *ast,
         // TODO, also n-ary maybe
         assert(false && "unary filters are not currently supported.");
     } else {
-        unsigned int child_count = cypher_astnode_nchildren(entity);
-        for(unsigned int i = 0; i < child_count; i++) {
+        uint child_count = cypher_astnode_nchildren(entity);
+        for(uint i = 0; i < child_count; i++) {
             const cypher_astnode_t *child = cypher_astnode_get_child(entity, i);
             // Recursively continue searching
             _AST_ConvertFilters(record_map, ast, root, child);
@@ -177,7 +177,7 @@ FT_FilterNode* AST_BuildFilterTree(AST *ast, RecordMap *record_map) {
     const cypher_astnode_t **match_clauses = AST_GetClauses(ast, CYPHER_AST_MATCH);
     if (match_clauses) {
         uint match_count = array_len(match_clauses);
-        for (unsigned int i = 0; i < match_count; i ++) {
+        for (uint i = 0; i < match_count; i ++) {
             _AST_ConvertFilters(record_map, ast, &filter_tree, match_clauses[i]);
         }
         array_free(match_clauses);
@@ -186,7 +186,7 @@ FT_FilterNode* AST_BuildFilterTree(AST *ast, RecordMap *record_map) {
     const cypher_astnode_t **merge_clauses = AST_GetClauses(ast, CYPHER_AST_MERGE);
     if (merge_clauses) {
         uint merge_count = array_len(merge_clauses);
-        for (unsigned int i = 0; i < merge_count; i ++) {
+        for (uint i = 0; i < merge_count; i ++) {
             _AST_ConvertFilters(record_map, ast, &filter_tree, merge_clauses[i]);
         }
         array_free(merge_clauses);
