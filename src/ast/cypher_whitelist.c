@@ -5,17 +5,26 @@
  */
 
 #include "cypher_whitelist.h"
+#include "../../deps/libcypher-parser/lib/src/operators.h" // TODO safe?
 #include "../../deps/rax/rax.h"
 
-static rax *_whitelist = NULL;
+/* Whitelist of all accepted cypher_astnode types:
+ * Includes entities like CREATE clauses and node patterns,
+ * does not include entities like REMOVE clauses or CASE statements. */
+static rax *_astnode_type_whitelist = NULL;
+
+/* Whitelist of all accepted AST operators:
+ * Includes operators like greater-than,
+ * does not include operators like regexes or IN. */
+static rax *_operator_whitelist = NULL;
 
 // Build a whitelist containing all AST types currently supported by the module.
-static void _CypherWhitelist_Build() {
-    _whitelist = raxNew();
+static void _buildTypesWhitelist(void) {
+    _astnode_type_whitelist = raxNew();
 	// The end_of_list token allows us to modify this array without worrying about its length
 #define end_of_list UINT8_MAX
 	// When we introduce support for one of these, simply remove it from the list.
-    cypher_astnode_type_t supported_entities[] = {
+    cypher_astnode_type_t supported_types[] = {
                                                   CYPHER_AST_STATEMENT,
                                                   // CYPHER_AST_STATEMENT_OPTION,
                                                   // CYPHER_AST_CYPHER_OPTION,
@@ -133,21 +142,90 @@ static void _CypherWhitelist_Build() {
     };
 
     int i = 0;
-    cypher_astnode_type_t supported_entity;
-    while ((supported_entity = supported_entities[i++]) != end_of_list) {
+    cypher_astnode_type_t supported_type;
+    while ((supported_type = supported_types[i++]) != end_of_list) {
 		// Introduce every type to the whitelist rax
-        raxInsert(_whitelist, (unsigned char*)&supported_entity, sizeof(supported_entity), NULL, NULL);
+        raxInsert(_astnode_type_whitelist, (unsigned char*)&supported_type, sizeof(supported_type), NULL, NULL);
     }
+}
+
+static void _buildOperatorsWhitelist(void) {
+    _operator_whitelist = raxNew();
+	// The end_of_list token allows us to modify this array without worrying about its length
+    const cypher_operator_t *end_of_operator_list = NULL;
+	// When we introduce support for one of these, simply remove it from the list.
+    const cypher_operator_t *supported_operators[] = {
+                                                  CYPHER_OP_OR,
+                                                  // CYPHER_OP_XOR,
+                                                  CYPHER_OP_AND,
+                                                  CYPHER_OP_NOT,
+                                                  CYPHER_OP_EQUAL,
+                                                  CYPHER_OP_NEQUAL,
+                                                  CYPHER_OP_LT,
+                                                  CYPHER_OP_GT,
+                                                  CYPHER_OP_LTE,
+                                                  CYPHER_OP_GTE,
+                                                  CYPHER_OP_PLUS,
+                                                  CYPHER_OP_MINUS,
+                                                  CYPHER_OP_MULT,
+                                                  CYPHER_OP_DIV,
+                                                  // CYPHER_OP_MOD,
+                                                  // CYPHER_OP_POW,
+                                                  CYPHER_OP_UNARY_PLUS,
+                                                  CYPHER_OP_UNARY_MINUS,
+                                                  // CYPHER_OP_SUBSCRIPT,
+                                                  // CYPHER_OP_MAP_PROJECTION,
+                                                  // CYPHER_OP_REGEX,
+                                                  // CYPHER_OP_IN,
+                                                  CYPHER_OP_STARTS_WITH,
+                                                  CYPHER_OP_ENDS_WITH,
+                                                  // CYPHER_OP_CONTAINS,
+                                                  // CYPHER_OP_IS_NULL,
+                                                  // CYPHER_OP_IS_NOT_NULL,
+                                                  CYPHER_OP_PROPERTY,
+                                                  CYPHER_OP_LABEL,
+                                                  end_of_operator_list
+    };
+
+    int i = 0;
+    const cypher_operator_t *supported_operator;
+    while ((supported_operator = supported_operators[i++]) != end_of_operator_list) {
+		// Introduce every type to the whitelist rax
+        raxInsert(_operator_whitelist, (unsigned char*)supported_operator, sizeof(*supported_operator), NULL, NULL);
+    }
+
+}
+
+static void _CypherWhitelist_Build(void) {
+    _buildTypesWhitelist();
+    _buildOperatorsWhitelist();
 }
 
 static AST_Validation _CypherWhitelist_ValidateQuery(const cypher_astnode_t *elem, char **reason) {
     if (elem == NULL) return AST_VALID;
     cypher_astnode_type_t type = cypher_astnode_type(elem);
-    if (raxFind(_whitelist, (unsigned char*)&type, sizeof(type)) == raxNotFound) {
+    // Validate the type of the AST node
+    if (raxFind(_astnode_type_whitelist, (unsigned char*)&type, sizeof(type)) == raxNotFound) {
        asprintf(reason, "RedisGraph does not currently support %s", cypher_astnode_typestr(type));
        return AST_INVALID;
     }
 
+    // If the node is an operator call, validate that we
+    // support the operator type
+    const cypher_operator_t *operator = NULL;
+    if (type == CYPHER_AST_BINARY_OPERATOR) {
+        operator = cypher_ast_binary_operator_get_operator(elem);
+    } else if (type == CYPHER_AST_UNARY_OPERATOR) {
+        operator = cypher_ast_unary_operator_get_operator(elem);
+    }
+    if (operator) {
+        if (raxFind(_operator_whitelist, (unsigned char*)operator, sizeof(*operator)) == raxNotFound) {
+            asprintf(reason, "RedisGraph does not currently support %s", operator->str);
+            return AST_INVALID;
+        }
+    }
+
+    // Recursively visit children
     uint nchildren = cypher_astnode_nchildren(elem);
     for (uint i = 0; i < nchildren; i ++) {
         if (CypherWhitelist_ValidateQuery(cypher_astnode_get_child(elem, i), reason) != AST_VALID) {
@@ -159,6 +237,6 @@ static AST_Validation _CypherWhitelist_ValidateQuery(const cypher_astnode_t *ele
 }
 
 AST_Validation CypherWhitelist_ValidateQuery(const cypher_astnode_t *root, char **reason) {
-    if (_whitelist == NULL) _CypherWhitelist_Build(); // Build whitelist of supported Cypher elements.
+    if (_astnode_type_whitelist == NULL) _CypherWhitelist_Build(); // Build whitelist of supported Cypher elements.
     return _CypherWhitelist_ValidateQuery(root, reason);
 }
