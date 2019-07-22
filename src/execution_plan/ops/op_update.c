@@ -163,6 +163,12 @@ OpBase* NewUpdateOp(GraphContext *gc, EntityUpdateEvalCtx *update_exps, uint upd
     op_update->op.free = OpUpdateFree;
     op_update->op.init = OpUpdateInit;
 
+    // Construct the array of IDs this operation modifies
+    op_update->op.modifies = array_new(uint, update_exp_count);
+    for (uint i = 0; i < update_exp_count; i ++) {
+        // TODO does 'modifies' need to be unique?
+        op_update->op.modifies = array_append(op_update->op.modifies, update_exps[i].entityRecIdx);
+    }
     return (OpBase*)op_update;
 }
 

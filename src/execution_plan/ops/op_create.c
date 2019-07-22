@@ -21,8 +21,6 @@ OpBase* NewCreateOp(ResultSetStatistics *stats, NodeCreateCtx *nodes, EdgeCreate
     op_create->edge_properties = array_new(PropertyMap*, 0);
     op_create->stats = stats;
 
-    // TODO modified?
-
     // Set our Op operations
     OpBase_Init(&op_create->op);
     op_create->op.name = "Create";
@@ -31,6 +29,18 @@ OpBase* NewCreateOp(ResultSetStatistics *stats, NodeCreateCtx *nodes, EdgeCreate
     op_create->op.init = OpCreateInit;
     op_create->op.reset = OpCreateReset;
     op_create->op.free = OpCreateFree;
+
+    uint node_blueprint_count = array_len(nodes);
+    uint edge_blueprint_count = array_len(edges);
+    // Construct the array of IDs this operation modifies
+    op_create->op.modifies = array_new(uint, node_blueprint_count + edge_blueprint_count);
+    for (uint i = 0; i < node_blueprint_count; i ++) {
+        op_create->op.modifies = array_append(op_create->op.modifies, nodes[i].node_idx);
+    }
+    for (uint i = 0; i < edge_blueprint_count; i ++) {
+        // TODO should this also add the src and dest IDs?
+        op_create->op.modifies = array_append(op_create->op.modifies, edges[i].edge_idx);
+    }
 
     return (OpBase*)op_create;
 }

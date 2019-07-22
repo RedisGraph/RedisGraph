@@ -59,6 +59,16 @@ OpBase* NewDeleteOp(uint *nodes_ref, uint *edges_ref, ResultSetStatistics *stats
     op_delete->op.reset = OpDeleteReset;
     op_delete->op.free = OpDeleteFree;
 
+    op_delete->op.modifies = array_new(uint, op_delete->node_count + op_delete->edge_count);
+    // Update modifies array to include all deleted nodes
+    for (uint i = 0; i < op_delete->node_count; i ++) {
+        op_delete->op.modifies = array_append(op_delete->op.modifies, nodes_ref[i]);
+    }
+    // Update modifies array to include all deleted edges
+    for (uint i = 0; i < op_delete->edge_count; i ++) {
+        op_delete->op.modifies = array_append(op_delete->op.modifies, edges_ref[i]);
+    }
+
     return (OpBase*)op_delete;
 }
 
