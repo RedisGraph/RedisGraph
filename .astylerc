@@ -1,0 +1,19 @@
+# .astylerc
+# http://astyle.sourceforge.net/astyle.html
+
+--mode=c
+--style=google
+--indent=tab=4
+--pad-oper
+--unpad-paren
+--align-pointer=name
+--max-code-length=80
+--break-after-logical
+
+--preserve-date
+
+--recursive
+--exclude=demo
+--exclude=deps
+--exclude=docs
+--exclude=tests
