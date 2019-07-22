@@ -96,7 +96,7 @@ const cypher_astnode_t* AST_GetClause(const AST *ast, cypher_astnode_type_t clau
 }
 
 uint* AST_GetClauseIndices(const AST *ast, cypher_astnode_type_t clause_type) {
-    uint *clause_indices = array_new(uint, 0);
+    uint *clause_indices = array_new(uint, 1);
     uint clause_count = cypher_ast_query_nclauses(ast->root);
     for (uint i = 0; i < clause_count; i ++) {
         if (cypher_astnode_type(cypher_ast_query_get_clause(ast->root, i)) == clause_type) {

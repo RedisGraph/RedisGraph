@@ -84,6 +84,8 @@ Requirements:
 
 * On Ubuntu Linux, run: `apt-get install build-essential cmake m4 automake peg libtool autoconf`
 
+* On OS X, verify that `homebrew` is installed and run: `brew install cmake m4 automake peg libtool autoconf`
+
 To build, run `make` in the project's directory.
 
 Congratulations! You can find the compiled binary at `src/redisgraph.so`.

@@ -185,8 +185,7 @@ static AST_Validation _Validate_MATCH_Clause_Relations(const cypher_astnode_t *n
     // Make sure relation identifier is unique.
     if(node_type == CYPHER_AST_REL_PATTERN) {
         if(_Validate_MATCH_Clause_ReusedEdges(node, identifiers, reason) == AST_INVALID) return AST_INVALID;
-    }
-    if(node_type == CYPHER_AST_RANGE) {
+    } else if (node_type == CYPHER_AST_RANGE) {
         return _MATCH_Clause_Validate_Range(node, reason);
     }
 
@@ -237,6 +236,86 @@ cleanup:
     TrieMap_Free(reused_entities, TrieMap_NOP_CB);
     array_free(match_clauses);
 
+    return res;
+}
+
+static AST_Validation _ValidateWithEntitiesOnPath(const cypher_astnode_t *path, TrieMap *projections, char **reason) {
+    uint path_len = cypher_ast_pattern_path_nelements(path);
+    // Check all entities on the path
+    for (uint i = 0; i < path_len; i ++) {
+        const cypher_astnode_t *ast_identifier = NULL;
+        if (i % 2) { // Checking an edge pattern
+            const cypher_astnode_t *edge = cypher_ast_pattern_path_get_element(path, i);
+            ast_identifier = cypher_ast_rel_pattern_get_identifier(edge);
+        } else { // Checking a node pattern
+            const cypher_astnode_t *node = cypher_ast_pattern_path_get_element(path, i);
+            ast_identifier = cypher_ast_node_pattern_get_identifier(node);
+        }
+
+        // If this entity was labeled, ensure that it has not been projected from a WITH clause
+        if (ast_identifier) {
+            const char *identifier = cypher_ast_identifier_get_name(ast_identifier);
+            if (TrieMap_Find(projections, (char*)identifier, strlen(identifier)) != TRIEMAP_NOTFOUND) {
+                asprintf(reason, "Reusing the WITH projection '%s' in another pattern is currently not supported", identifier);
+                return AST_INVALID;
+            }
+        }
+    }
+
+    return AST_VALID;
+}
+
+static AST_Validation _Validate_WITH_Clause(const AST *ast, char **reason) {
+    // Verify that projected entities (nodes and edges) are not used in
+    // later path patterns.
+    // TODO The QueryGraph should be extended to allow this in the future.
+
+    // Retrieve the indices of each WITH clause to properly set the bounds of each scope.
+    // If the query does not have a WITH clause, there is only one scope.
+    uint end_offset;
+    uint start_offset = 0;
+    uint with_clause_count = AST_GetClauseCount(ast, CYPHER_AST_WITH);
+    if (with_clause_count == 0) return AST_VALID;
+
+    TrieMap *with_projections = NewTrieMap();
+    uint clause_count = cypher_ast_query_nclauses(ast->root);
+    AST_Validation res = AST_VALID;
+
+    // Visit all clauses in order
+    for (uint i = 0; i < clause_count; i ++) {
+        const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
+        cypher_astnode_type_t type = cypher_astnode_type(clause);
+        if (type == CYPHER_AST_WITH) {
+            // Collect projected aliases from WITH clauses into the same triemap
+            _AST_GetWithAliases(clause, with_projections);
+        } else if (type == CYPHER_AST_MATCH) {
+            // Verify that no path in a MATCH pattern reuses a WITH projection
+            const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(clause);
+            uint path_count = cypher_ast_pattern_npaths(pattern);
+            for (uint j = 0; j < path_count; j ++) {
+                const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, j);
+                res = _ValidateWithEntitiesOnPath(path, with_projections, reason);
+                if (res == AST_INVALID) break;
+            }
+        } else if (type == CYPHER_AST_CREATE) {
+            // Verify that no path in a CREATE pattern reuses a WITH projection
+            const cypher_astnode_t *pattern = cypher_ast_create_get_pattern(clause);
+            uint path_count = cypher_ast_pattern_npaths(pattern);
+            for (uint j = 0; j < path_count; j ++) {
+                const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, j);
+                res = _ValidateWithEntitiesOnPath(path, with_projections, reason);
+                if (res == AST_INVALID) break;
+            }
+
+        } else if (type == CYPHER_AST_MERGE) {
+            // Verify that the single path in a MERGE clause doesn't reuse a WITH projection
+            const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(clause);
+            res = _ValidateWithEntitiesOnPath(path, with_projections, reason);
+            if (res == AST_INVALID) break;
+        }
+    }
+
+    TrieMap_Free(with_projections, TrieMap_NOP_CB);
     return res;
 }
 
@@ -476,17 +555,20 @@ static void _AST_GetReferredIdentifiers(const cypher_astnode_t *node, TrieMap *i
     }
 }
 
-/* Check that all referred identifiers been defined. */
-static AST_Validation _AST_Aliases_Defined(const AST *ast, char **undefined_alias) {
+/* Check that all referred identifiers been defined in the same AST scope. */
+static AST_Validation _AST_Aliases_DefinedInScope(const AST *ast, uint start_offset, uint end_offset, char **undefined_alias) {
     AST_Validation res = AST_VALID;
-
-    // Get defined identifiers.
     TrieMap *defined_aliases = NewTrieMap();
-    _AST_GetDefinedIdentifiers(ast->root, defined_aliases);
-
-    // Get referred identifiers.
     TrieMap *referred_identifiers = NewTrieMap();
-    _AST_GetReferredIdentifiers(ast->root, referred_identifiers);
+
+    for (uint i = start_offset; i < end_offset; i ++) {
+        const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
+        // Get defined identifiers.
+        _AST_GetDefinedIdentifiers(clause, defined_aliases);
+        // Get referred identifiers except from the first clause in the scope,
+        // which cannot introduce aliases but not contain references.
+        if (i != start_offset) _AST_GetReferredIdentifiers(clause, referred_identifiers);
+    }
 
     char *alias;
     tm_len_t len;
@@ -507,6 +589,31 @@ static AST_Validation _AST_Aliases_Defined(const AST *ast, char **undefined_alia
     TrieMap_Free(defined_aliases, TrieMap_NOP_CB);
     TrieMap_Free(referred_identifiers, TrieMap_NOP_CB);
     return res;
+}
+
+/* Check that all referred identifiers been defined. */
+static AST_Validation _AST_Aliases_Defined(const AST *ast, char **undefined_alias) {
+    AST_Validation res = AST_VALID;
+
+    // Retrieve the indices of each WITH clause to properly set the bounds of each scope.
+    // If the query does not have a WITH clause, there is only one scope.
+    uint end_offset;
+    uint start_offset = 0;
+    uint with_clause_count = AST_GetClauseCount(ast, CYPHER_AST_WITH);
+    if (with_clause_count > 0) {
+        uint *segment_indices = AST_GetClauseIndices(ast, CYPHER_AST_WITH);
+        for (uint i = 0; i < with_clause_count; i++) {
+            end_offset = segment_indices[i];
+            res = _AST_Aliases_DefinedInScope(ast, start_offset, end_offset, undefined_alias);
+            if (res != AST_VALID) break;
+            start_offset = end_offset; // Update the start offset for the next scope
+        }
+        array_free(segment_indices);
+        if (res != AST_VALID) return res; // Return early if we've encountered an error
+    }
+
+    end_offset = cypher_ast_query_nclauses(ast->root);
+    return _AST_Aliases_DefinedInScope(ast, start_offset, end_offset, undefined_alias);
 }
 
 // Report encountered errors by libcypher-parser.
@@ -543,6 +650,10 @@ static char* _AST_ReportErrors(const cypher_parse_result_t *result) {
 
 static AST_Validation _AST_ValidateClauses(const AST *ast, char **reason) {
     if (_Validate_MATCH_Clause(ast, reason) == AST_INVALID) {
+        return AST_INVALID;
+    }
+
+    if (_Validate_WITH_Clause(ast, reason) == AST_INVALID) {
         return AST_INVALID;
     }
 
