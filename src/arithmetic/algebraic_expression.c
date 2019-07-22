@@ -371,11 +371,14 @@ static AlgebraicExpressionOperand _AlgebraicExpression_OperandFromEdge (
         GrB_Matrix_new(&m, GrB_BOOL, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g));
 
         for(uint i = 0; i < reltype_count; i++) {
-            // TODO does this make sense if the reltype is created by this query?
-            // char *label = astEdge->labels[i];
-            // Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_EDGE);
-            // if(!s) continue;
-            GrB_Matrix l = Graph_GetRelationMatrix(g, e->reltypeIDs[i]);
+            GrB_Matrix l;
+            uint reltype_id = e->reltypeIDs[i];
+            if (reltype_id == GRAPH_UNKNOWN_RELATION) {
+                // No matrix to add
+                continue;
+            } else {
+                l = Graph_GetRelationMatrix(gc->g, reltype_id);
+            }
             GrB_Info info = GrB_eWiseAdd_Matrix_Semiring(m, NULL, NULL, Rg_structured_bool, m, l, NULL);
         }
         mat = m;
