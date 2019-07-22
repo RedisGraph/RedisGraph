@@ -8,7 +8,6 @@
 #include "cmd_context.h"
 #include "../index/index.h"
 #include "../util/rmalloc.h"
-#include "../ast/cypher_whitelist.h"
 #include "../execution_plan/execution_plan.h"
 
 extern pthread_key_t _tlsASTKey;  // Thread local storage AST key.
@@ -42,41 +41,22 @@ void _MGraph_Explain(void *args) {
     bool free_graph_ctx = false;
     AST *ast = NULL;
     const char *graphname = qctx->graphName;
-
     const char *query;
 
-    if(qctx->argc == 2) {
-        query = RedisModule_StringPtrLen(qctx->argv[1], NULL);
-    } else {
-        graphname = RedisModule_StringPtrLen(qctx->argv[1], NULL);
+    if(graphname) {
         query = RedisModule_StringPtrLen(qctx->argv[2], NULL);
+    } else {
+        query = RedisModule_StringPtrLen(qctx->argv[1], NULL);
     }
 
     /* Parse query, get AST. */
     cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
     qctx->parse_result = parse_result;
 
-    const cypher_astnode_t *root = AST_GetBody(parse_result);
-
-    // Check for empty query
-    if(root == NULL) {
-        RedisModule_ReplyWithError(ctx, "Error: empty query.");
-        goto cleanup;
-    }
-
-    char *reason;
-    // Verify that the query does not contain any expressions not in the RedisGraph support whitelist
-    if (CypherWhitelist_ValidateQuery(root, &reason) != AST_VALID) {
-        // Unsupported expressions found; reply with error.
-        RedisModule_ReplyWithError(ctx, reason);
-        free(reason);
-        goto cleanup;
-    }
+    // Perform query validations
+    if (AST_Validate(ctx, qctx->parse_result) != AST_VALID) goto cleanup;
 
     ast = AST_Build(parse_result);
-
-    // Perform query validations before and after ModifyAST
-    if(AST_Validate(ctx, ast) != AST_VALID) goto cleanup;
 
     // Handle replies for index creation/deletion
     const cypher_astnode_type_t root_type = cypher_astnode_type(ast->root);
@@ -110,22 +90,18 @@ cleanup:
         ExecutionPlan_Free(plan);
     }
 
-    CommandCtx_Free(qctx);
     AST_Free(ast);
+    CommandCtx_Free(qctx);
     if(free_graph_ctx) GraphContext_Free(gc);
 }
 
 int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     if(argc < 2) return RedisModule_WrongArity(ctx);
 
-    // const char *query;
     RedisModuleString *graphName = NULL;
 
-    if(argc == 2) {
-        // query = RedisModule_StringPtrLen(argv[1], NULL);
-    } else {
+    if(argc > 2) {
         graphName = argv[1];
-        // query = RedisModule_StringPtrLen(argv[2], NULL);
     }
 
     /* Determin execution context

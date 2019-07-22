@@ -33,12 +33,24 @@ static void _consume_function_call_expression(const cypher_astnode_t *expression
     }
 }
 
-bool AST_ReadOnly(const cypher_astnode_t *root) {
+bool AST_ReadOnly(const cypher_parse_result_t *result) {
+    // A lot of these steps will be unnecessary once we move
+    // parsing into the subthread (and can thus perform this check
+    // after validations).
+
+    // Check for failures in libcypher-parser
+    if(AST_ContainsErrors(result)) return true;
+
+    const cypher_astnode_t *root = cypher_parse_result_get_root(result, 0);
+    // Check for empty query
+    if (root == NULL) return true;
+
+    const cypher_astnode_t *body = cypher_ast_statement_get_body(root);
     // Iterate over children rather than clauses, as the root is not
     // guaranteed to be a query.
-    uint num_children = cypher_astnode_nchildren(root);
+    uint num_children = cypher_astnode_nchildren(body);
     for (uint i = 0; i < num_children; i ++) {
-        const cypher_astnode_t *child = cypher_astnode_get_child(root, i);
+        const cypher_astnode_t *child = cypher_astnode_get_child(body, i);
         cypher_astnode_type_t type = cypher_astnode_type(child);
         if(type == CYPHER_AST_CREATE                      ||
                 type == CYPHER_AST_MERGE                  ||
@@ -55,41 +67,6 @@ bool AST_ReadOnly(const cypher_astnode_t *root) {
 
 bool AST_ContainsClause(const AST *ast, cypher_astnode_type_t clause) {
     return AST_GetClause(ast, clause) != NULL;
-}
-
-bool AST_ContainsErrors(const cypher_parse_result_t *result) {
-    return cypher_parse_result_nerrors(result) > 0;
-}
-
-char* AST_ReportErrors(const cypher_parse_result_t *result) {
-    char *errorMsg;
-    uint nerrors = cypher_parse_result_nerrors(result);
-    // We are currently only reporting the first error to simplify the response.
-    if (nerrors > 1) nerrors = 1;
-    for(uint i = 0; i < nerrors; i++) {
-        const cypher_parse_error_t *error = cypher_parse_result_get_error(result, i);
-
-        // Get the position of an error.
-        struct cypher_input_position errPos = cypher_parse_error_position(error);
-
-        // Get the error message of an error.
-        const char *errMsg = cypher_parse_error_message(error);
-
-        // Get the error context of an error.
-        // This returns a pointer to a null-terminated string, which contains a
-        // section of the input around where the error occurred, that is limited
-        // in length and suitable for presentation to a user.
-        const char *errCtx = cypher_parse_error_context(error);
-
-        // Get the offset into the context of an error.
-        // Identifies the point of the error within the context string, allowing
-        // this to be reported to the user, typically with an arrow pointing to the
-        // invalid character.
-        size_t errCtxOffset = cypher_parse_error_context_offset(error);
-
-        asprintf(&errorMsg, "errMsg: %s line: %u, column: %u, offset: %zu errCtx: %s errCtxOffset: %zu", errMsg, errPos.line, errPos.column, errPos.offset, errCtx, errCtxOffset);
-    }
-    return errorMsg;
 }
 
 // Recursively collect the names of all function calls beneath a node
@@ -206,19 +183,20 @@ const char** AST_CollectElementNames(AST *ast) {
     return aliases;
 }
 
-const cypher_astnode_t* AST_GetBody(const cypher_parse_result_t *result) {
-    const cypher_astnode_t *statement = cypher_parse_result_get_root(result, 0);
-    if (statement == NULL) return NULL; // Empty query
-    assert(cypher_astnode_type(statement) == CYPHER_AST_STATEMENT);
-
-    return cypher_ast_statement_get_body(statement);
-}
-
 AST* AST_Build(cypher_parse_result_t *parse_result) {
     AST *ast = rm_malloc(sizeof(AST));
     ast->entity_map = NULL;
-    ast->root = AST_GetBody(parse_result);
+
+    // Retrieve the AST root node from a parsed query.
+    const cypher_astnode_t *statement = cypher_parse_result_get_root(parse_result, 0);
+    // We are parsing with the CYPHER_PARSE_ONLY_STATEMENTS flag,
+    // and double-checking this in AST validations
+    assert(cypher_astnode_type(statement) == CYPHER_AST_STATEMENT);
+
+    ast->root = cypher_ast_statement_get_body(statement);
+    // Empty queries should be captured by AST validations
     assert(ast->root);
+
     if (cypher_astnode_type(ast->root) == CYPHER_AST_QUERY) AST_BuildEntityMap(ast);
 
     // Set thread-local AST

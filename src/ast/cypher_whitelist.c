@@ -16,7 +16,7 @@ static void _CypherWhitelist_Build() {
 #define end_of_list UINT8_MAX
 	// When we introduce support for one of these, simply remove it from the list.
     cypher_astnode_type_t supported_entities[] = {
-                                                  // CYPHER_AST_STATEMENT,
+                                                  CYPHER_AST_STATEMENT,
                                                   // CYPHER_AST_STATEMENT_OPTION,
                                                   // CYPHER_AST_CYPHER_OPTION,
                                                   // CYPHER_AST_CYPHER_OPTION_PARAM,

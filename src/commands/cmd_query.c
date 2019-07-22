@@ -9,7 +9,6 @@
 #include "../graph/graph.h"
 #include "../ast/ast.h"
 #include "../util/simple_timer.h"
-#include "../ast/cypher_whitelist.h"
 #include "../execution_plan/execution_plan.h"
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
@@ -63,22 +62,15 @@ static inline bool _check_compact_flag(CommandCtx *qctx) {
 void _MGraph_Query(void *args) {
     CommandCtx *qctx = (CommandCtx*)args;
     RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(qctx);
-    ResultSet* resultSet = NULL;
+    ResultSet *result_set = NULL;
     bool lockAcquired = false;
     AST *ast = NULL;
 
-    // Verify that the query does not contain any expressions not in the RedisGraph support whitelist
-    const cypher_astnode_t *root = AST_GetBody(qctx->parse_result);
-    char *reason;
-    if (CypherWhitelist_ValidateQuery(root, &reason) != AST_VALID) {
-        // Unsupported expressions found; reply with error.
-        RedisModule_ReplyWithError(ctx, reason);
-        free(reason);
-        goto cleanup;
-    }
+    // Perform query validations
+    if (AST_Validate(ctx, qctx->parse_result) != AST_VALID) goto cleanup;
 
     ast = AST_Build(qctx->parse_result);
-    bool readonly = AST_ReadOnly(ast->root);
+    bool readonly = AST_ReadOnly(qctx->parse_result);
 
     // Try to access the GraphContext
     CommandCtx_ThreadSafeContextLock(qctx);
@@ -101,9 +93,6 @@ void _MGraph_Query(void *args) {
     }
     CommandCtx_ThreadSafeContextUnlock(qctx);
 
-    // Perform query validations
-    if (AST_Validate(ctx, ast) != AST_VALID) goto cleanup;
-
     bool compact = _check_compact_flag(qctx);
 
     // Acquire the appropriate lock.
@@ -115,9 +104,9 @@ void _MGraph_Query(void *args) {
     if (root_type == CYPHER_AST_QUERY) { // query operation
         ResultSet *result_set = NewResultSet(ctx, compact);
         ExecutionPlan *plan = NewExecutionPlan(ctx, gc, result_set);
-        resultSet = ExecutionPlan_Execute(plan);
+        result_set = ExecutionPlan_Execute(plan);
         ExecutionPlan_Free(plan);
-        ResultSet_Replay(resultSet);    // Send result-set back to client.
+        ResultSet_Replay(result_set);    // Send result-set back to client.
     } else if (root_type == CYPHER_AST_CREATE_NODE_PROP_INDEX || root_type == CYPHER_AST_DROP_NODE_PROP_INDEX) {
         _index_operation(ctx, gc, ast->root);
     } else {
@@ -139,7 +128,7 @@ cleanup:
         else Graph_WriterLeave(gc->g);
     }
 
-    ResultSet_Free(resultSet);
+    ResultSet_Free(result_set);
     AST_Free(ast);
     CommandCtx_Free(qctx);
 }
@@ -157,27 +146,10 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     const char *query = RedisModule_StringPtrLen(argv[2], NULL);
 
     // Parse AST.
-    // TODO move into thread
+    // TODO move into thread when possible
     cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
 
-    if(AST_ContainsErrors(parse_result)) {
-        char *errMsg = AST_ReportErrors(parse_result);
-        cypher_parse_result_free(parse_result);
-        RedisModule_Log(ctx, "debug", "Error parsing query: %s", errMsg);
-        RedisModule_ReplyWithError(ctx, errMsg);
-        free(errMsg);
-        return REDISMODULE_OK;
-    }
-
-    // Check for empty query
-    const cypher_astnode_t *query_root = AST_GetBody(parse_result);
-    if (query_root == NULL) {
-        cypher_parse_result_free(parse_result);
-        RedisModule_ReplyWithError(ctx, "Error: empty query.");
-        return REDISMODULE_OK;
-    }
-
-    bool readonly = AST_ReadOnly(query_root);
+    bool readonly = AST_ReadOnly(parse_result);
 
     /* Determin query execution context
      * queries issued within a LUA script or multi exec block must

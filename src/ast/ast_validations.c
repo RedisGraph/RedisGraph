@@ -6,10 +6,24 @@
 
 #include "ast.h"
 #include "ast_shared.h"
+#include "cypher_whitelist.h"
 #include "../util/arr.h"
 #include "../arithmetic/repository.h"
 #include "../arithmetic/arithmetic_expression.h"
 #include <assert.h>
+
+// Validate that an input string can be completely converted to a positive integer in range.
+static inline AST_Validation _ValidatePositiveInteger(const char *input) {
+    assert(input);
+    char *endptr; // If the entire string is converted, endptr will point to a null byte
+    errno = 0; // If underflow or overflow occurs, errno will be set
+
+    strtol(input, &endptr, 0); // Perform conversion
+
+    if (errno != 0 || *endptr != '\0') return AST_INVALID;
+
+    return AST_VALID;
+}
 
 static void _AST_GetIdentifiers(const cypher_astnode_t *node, TrieMap *identifiers) {
     if(!node) return;
@@ -190,7 +204,7 @@ static AST_Validation _Validate_MATCH_Clause(const AST *ast, char **reason) {
     // Check to see if all mentioned inlined, outlined functions exists.
     // Inlined functions appear within entity definition ({a:v})
     // Outlined functions appear within the WHERE clause.
-    // libcypher_parser doesn't have a WHERE node, all of the filters
+    // libcypher-parser doesn't have a WHERE node, all of the filters
     // are specified within the MATCH node sub-tree.
     // Iterate over all top-level query children (clauses)
 
@@ -205,13 +219,12 @@ static AST_Validation _Validate_MATCH_Clause(const AST *ast, char **reason) {
     uint match_count = array_len(match_clauses);
     for (uint i = 0; i < match_count; i ++) {
         const cypher_astnode_t *match_clause = match_clauses[i];
-        // Collect function references
-        AST_ReferredFunctions(match_clause, referred_funcs);
-
         // Validate relations contained in clause
         res = _Validate_MATCH_Clause_Relations(match_clause, identifiers, reason);
         if (res == AST_INVALID) goto cleanup;
 
+        // Collect function references
+        AST_ReferredFunctions(match_clause, referred_funcs);
     }
 
     // Verify that referred functions exist.
@@ -312,6 +325,122 @@ static AST_Validation _Validate_RETURN_Clause(const AST *ast, char **reason) {
     return res;
 }
 
+// LIMIT and SKIP are not independent clauses, but modifiers that can be applied to WITH or RETURN clauses
+static AST_Validation _Validate_LIMIT_SKIP_Modifiers(const AST *ast, char **reason) {
+    // Handle modifiers on the RETURN clause
+    const cypher_astnode_t *return_clause = AST_GetClause(ast, CYPHER_AST_RETURN);
+    // Skip check if the RETURN clause does not specify a limit
+    if (return_clause) {
+        // Handle LIMIT modifier
+        const cypher_astnode_t *limit = cypher_ast_return_get_limit(return_clause);
+        if (limit) {
+            // Handle non-integer types specified as LIMIT value
+            if (cypher_astnode_type(limit) != CYPHER_AST_INTEGER) {
+                asprintf(reason, "LIMIT specified value of invalid type, must be a positive integer");
+                return AST_INVALID;
+            }
+
+            // Handle LIMIT strings that cannot be fully converted to integers,
+            // due to size or invalid characters
+            const char *value_str = cypher_ast_integer_get_valuestr(limit);
+            if (_ValidatePositiveInteger(value_str) != AST_VALID) {
+                asprintf(reason, "LIMIT specified value '%s', must be a positive integer in the signed 8-byte range.", value_str);
+                return AST_INVALID;
+            }
+        }
+
+        // Handle SKIP modifier
+        const cypher_astnode_t *skip = cypher_ast_return_get_skip(return_clause);
+        if (skip) {
+            // Handle non-integer types specified as skip value
+            if (cypher_astnode_type(skip) != CYPHER_AST_INTEGER) {
+                asprintf(reason, "SKIP specified value of invalid type, must be a positive integer");
+                return AST_INVALID;
+            }
+
+            // Handle skip strings that cannot be fully converted to integers,
+            // due to size or invalid characters
+            const char *value_str = cypher_ast_integer_get_valuestr(skip);
+            if (_ValidatePositiveInteger(value_str) != AST_VALID) {
+                asprintf(reason, "SKIP specified value '%s', must be a positive integer in the signed 8-byte range.", value_str);
+                return AST_INVALID;
+            }
+        }
+    }
+
+    // Handle LIMIT modifiers on all WITH clauses
+    const cypher_astnode_t **with_clauses = AST_GetClauses(ast, CYPHER_AST_WITH);
+    if (!with_clauses) return AST_VALID;
+
+    AST_Validation res = AST_VALID;
+    uint with_count = array_len(with_clauses);
+    for (uint i = 0; i < with_count; i++) {
+        const cypher_astnode_t *with_clause = with_clauses[i];
+        // Handle LIMIT modifier
+        const cypher_astnode_t *limit = cypher_ast_with_get_limit(with_clause);
+        if (limit) {
+            // Handle non-integer types specified as LIMIT value
+            if (cypher_astnode_type(limit) != CYPHER_AST_INTEGER) {
+                asprintf(reason, "LIMIT specified value of invalid type, must be a positive integer");
+                res = AST_INVALID;
+                break;
+            }
+
+            // Handle LIMIT strings that cannot be fully converted to integers,
+            // due to size or invalid characters
+            const char *value_str = cypher_ast_integer_get_valuestr(limit);
+            if (_ValidatePositiveInteger(value_str) != AST_VALID) {
+                asprintf(reason, "LIMIT specified value '%s', must be a positive integer in the signed 8-byte range.", value_str);
+                res = AST_INVALID;
+                break;
+            }
+        }
+
+        // Handle SKIP modifier
+        const cypher_astnode_t *skip = cypher_ast_with_get_skip(with_clause);
+        if (skip) {
+            // Handle non-integer types specified as skip value
+            if (cypher_astnode_type(skip) != CYPHER_AST_INTEGER) {
+                asprintf(reason, "SKIP specified value of invalid type, must be a positive integer");
+                res = AST_INVALID;
+                break;
+            }
+
+            // Handle skip strings that cannot be fully converted to integers,
+            // due to size or invalid characters
+            const char *value_str = cypher_ast_integer_get_valuestr(skip);
+            if (_ValidatePositiveInteger(value_str) != AST_VALID) {
+                asprintf(reason, "SKIP specified value '%s', must be a positive integer in the signed 8-byte range.", value_str);
+                res = AST_INVALID;
+                break;
+            }
+        }
+    }
+    array_free(with_clauses);
+
+    return res;
+}
+
+// A query must end in a RETURN clause, a procedure, or an updating clause
+// (CREATE, MERGE, DELETE, SET, or REMOVE once supported)
+static AST_Validation _ValidateQueryTermination(const AST *ast, char **reason) {
+    uint clause_count = cypher_ast_query_nclauses(ast->root);
+    const cypher_astnode_t *last_clause = cypher_ast_query_get_clause(ast->root, clause_count - 1);
+    cypher_astnode_type_t type = cypher_astnode_type(last_clause);
+    if (type != CYPHER_AST_RETURN   &&
+        type != CYPHER_AST_CREATE   &&
+        type != CYPHER_AST_MERGE    &&
+        type != CYPHER_AST_DELETE   &&
+        type != CYPHER_AST_SET      &&
+        type != CYPHER_AST_CALL
+       ) {
+        asprintf(reason, "Query cannot conclude with %s (must be RETURN or an update clause)", cypher_astnode_typestr(type));
+        return AST_INVALID;
+    }
+    return AST_VALID;
+
+}
+
 static void _AST_GetDefinedIdentifiers(const cypher_astnode_t *node, TrieMap *identifiers) {
     if (!node) return;
     cypher_astnode_type_t type = cypher_astnode_type(node);
@@ -380,10 +509,39 @@ static AST_Validation _AST_Aliases_Defined(const AST *ast, char **undefined_alia
     return res;
 }
 
-static AST_Validation _AST_Validate(const AST *ast, char **reason) {
-    // Occurs on statements like CREATE INDEX
-    if (cypher_astnode_type(ast->root) != CYPHER_AST_QUERY) return AST_VALID;
+// Report encountered errors by libcypher-parser.
+static char* _AST_ReportErrors(const cypher_parse_result_t *result) {
+    char *errorMsg;
+    uint nerrors = cypher_parse_result_nerrors(result);
+    // We are currently only reporting the first error to simplify the response.
+    if (nerrors > 1) nerrors = 1;
+    for(uint i = 0; i < nerrors; i++) {
+        const cypher_parse_error_t *error = cypher_parse_result_get_error(result, i);
 
+        // Get the position of an error.
+        struct cypher_input_position errPos = cypher_parse_error_position(error);
+
+        // Get the error message of an error.
+        const char *errMsg = cypher_parse_error_message(error);
+
+        // Get the error context of an error.
+        // This returns a pointer to a null-terminated string, which contains a
+        // section of the input around where the error occurred, that is limited
+        // in length and suitable for presentation to a user.
+        const char *errCtx = cypher_parse_error_context(error);
+
+        // Get the offset into the context of an error.
+        // Identifies the point of the error within the context string, allowing
+        // this to be reported to the user, typically with an arrow pointing to the
+        // invalid character.
+        size_t errCtxOffset = cypher_parse_error_context_offset(error);
+
+        asprintf(&errorMsg, "errMsg: %s line: %u, column: %u, offset: %zu errCtx: %s errCtxOffset: %zu", errMsg, errPos.line, errPos.column, errPos.offset, errCtx, errCtxOffset);
+    }
+    return errorMsg;
+}
+
+static AST_Validation _AST_ValidateClauses(const AST *ast, char **reason) {
     if (_Validate_MATCH_Clause(ast, reason) == AST_INVALID) {
         return AST_INVALID;
     }
@@ -404,6 +562,14 @@ static AST_Validation _AST_Validate(const AST *ast, char **reason) {
         return AST_INVALID;
     }
 
+    if (_Validate_LIMIT_SKIP_Modifiers(ast, reason) == AST_INVALID) {
+        return AST_INVALID;
+    }
+
+    if (_ValidateQueryTermination(ast, reason) == AST_INVALID) {
+        return AST_INVALID;
+    }
+
     if(_AST_Aliases_Defined(ast, reason) == AST_INVALID) {
         return AST_INVALID;
     }
@@ -411,14 +577,68 @@ static AST_Validation _AST_Validate(const AST *ast, char **reason) {
     return AST_VALID;
 }
 
-AST_Validation AST_Validate(RedisModuleCtx *ctx, const AST *ast) {
+// Checks to see if libcypher-parser reported any errors.
+bool AST_ContainsErrors(const cypher_parse_result_t *result) {
+    return cypher_parse_result_nerrors(result) > 0;
+}
+
+AST_Validation AST_Validate(RedisModuleCtx *ctx, const cypher_parse_result_t *result) {
+    // Check for failures in libcypher-parser
+    if(AST_ContainsErrors(result)) {
+        char *errMsg = _AST_ReportErrors(result);
+        RedisModule_Log(ctx, "debug", "Error parsing query: %s", errMsg);
+        RedisModule_ReplyWithError(ctx, errMsg);
+        free(errMsg);
+        return AST_INVALID;
+    }
+
+    const cypher_astnode_t *root = cypher_parse_result_get_root(result, 0);
+    // Check for empty query
+    if (root == NULL) {
+        RedisModule_ReplyWithError(ctx, "Error: empty query.");
+        return AST_INVALID;
+    }
+
     char *reason;
-    AST_Validation res = _AST_Validate(ast, &reason);
-    if (res != AST_VALID) {
+    // Verify that the query does not contain any expressions not in the RedisGraph support whitelist
+    if (CypherWhitelist_ValidateQuery(root, &reason) != AST_VALID) {
+        // Unsupported expressions found; reply with error.
         RedisModule_ReplyWithError(ctx, reason);
         free(reason);
         return AST_INVALID;
     }
-    return AST_VALID;
+
+    cypher_astnode_type_t root_type = cypher_astnode_type(root);
+    if (root_type != CYPHER_AST_STATEMENT) {
+        // This should be unnecessary, as we're currently parsing
+        // with the CYPHER_PARSE_ONLY_STATEMENTS flag.
+        asprintf(&reason, "Encountered unsupported query type '%s'", cypher_astnode_typestr(root_type));
+        RedisModule_ReplyWithError(ctx, reason);
+        free(reason);
+        return AST_INVALID;
+    }
+
+    const cypher_astnode_t *body = cypher_ast_statement_get_body(root);
+    cypher_astnode_type_t body_type = cypher_astnode_type(body);
+    if (body_type == CYPHER_AST_CREATE_NODE_PROP_INDEX ||
+            body_type == CYPHER_AST_DROP_NODE_PROP_INDEX) {
+        // Index operation; validations are handled elsewhere.
+        return AST_VALID;
+    }
+
+    AST_Validation res = AST_VALID;
+    // TODO either merge this all with AST_Build
+    // or modify these calls to accept a cypher_astnode
+    AST *ast = rm_malloc(sizeof(AST));
+    ast->root = body;
+    // Check for invalid queries not captured by libcypher-parser
+    res = _AST_ValidateClauses(ast, &reason);
+    if (res != AST_VALID) {
+        RedisModule_ReplyWithError(ctx, reason);
+        free(reason);
+    }
+    rm_free(ast);
+
+    return res;
 }
 

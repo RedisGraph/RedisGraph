@@ -8,7 +8,6 @@
 #include "cmd_context.h"
 #include "../graph/graph.h"
 #include "../util/simple_timer.h"
-#include "../ast/cypher_whitelist.h"
 #include "../execution_plan/execution_plan.h"
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
@@ -16,21 +15,15 @@
 void _MGraph_Profile(void *args) {
     CommandCtx *qctx = (CommandCtx*)args;
     RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(qctx);
+    ResultSet *result_set = NULL;
     bool lockAcquired = false;
     AST *ast = NULL;
 
-    // Verify that the query does not contain any expressions not in the RedisGraph support whitelist
-    const cypher_astnode_t *root = AST_GetBody(qctx->parse_result);
-    char *reason;
-    if (CypherWhitelist_ValidateQuery(root, &reason) != AST_VALID) {
-        // Unsupported expressions found; reply with error.
-        RedisModule_ReplyWithError(ctx, reason);
-        free(reason);
-        goto cleanup;
-    }
+    // Perform query validations
+    if (AST_Validate(ctx, qctx->parse_result) != AST_VALID) goto cleanup;
 
     ast = AST_Build(qctx->parse_result);
-    bool readonly = AST_ReadOnly(ast->root);
+    bool readonly = AST_ReadOnly(qctx->parse_result);
 
     // Try to access the GraphContext
     CommandCtx_ThreadSafeContextLock(qctx);
@@ -54,9 +47,6 @@ void _MGraph_Profile(void *args) {
 
     CommandCtx_ThreadSafeContextUnlock(qctx);
 
-    // Perform query validations
-    if (AST_Validate(ctx, ast) != AST_VALID) goto cleanup;
-
     // Acquire the appropriate lock.
     if(readonly) Graph_AcquireReadLock(gc->g);
     else Graph_WriterEnter(gc->g);  // Single writer.
@@ -70,7 +60,7 @@ void _MGraph_Profile(void *args) {
         assert("Unhandled query type" && false);
     }
 
-    ResultSet *result_set = NewResultSet(ctx, false);
+    result_set = NewResultSet(ctx, false);
     ExecutionPlan *plan = NewExecutionPlan(ctx, gc, result_set);
     ExecutionPlan_Profile(plan);
     ExecutionPlan_Print(plan, ctx);
@@ -83,6 +73,7 @@ cleanup:
         else Graph_WriterLeave(gc->g);
     }
 
+    ResultSet_Free(result_set);
     AST_Free(ast);
     CommandCtx_Free(qctx);
 }
@@ -94,30 +85,12 @@ cleanup:
 int MGraph_Profile(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     if (argc < 3) return RedisModule_WrongArity(ctx);
 
-    // Parse AST.
-    char *errMsg = NULL;    
     const char *query = RedisModule_StringPtrLen(argv[2], NULL);
 
     // Parse AST.
     cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
 
-    if(AST_ContainsErrors(parse_result)) {
-        char *errMsg = AST_ReportErrors(parse_result);
-        cypher_parse_result_free(parse_result);
-        RedisModule_Log(ctx, "debug", "Error parsing query: %s", errMsg);
-        RedisModule_ReplyWithError(ctx, errMsg);
-        free(errMsg);
-        return REDISMODULE_OK;
-    }
-
-    const cypher_astnode_t *query_root = AST_GetBody(parse_result);
-    if (query_root == NULL) {
-        cypher_parse_result_free(parse_result);
-        RedisModule_ReplyWithError(ctx, "Error: empty query.");
-        return REDISMODULE_OK;
-    }
-
-    bool readonly = AST_ReadOnly(query_root);
+    bool readonly = AST_ReadOnly(parse_result);
 
     /* Determin query execution context
      * queries issued within a LUA script or multi exec block must
@@ -136,6 +109,7 @@ int MGraph_Profile(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     }
 
     // Replicate only if query has potential to modify key space.
+    // TODO is this necessary for Profile queries?
     if(!readonly) RedisModule_ReplicateVerbatim(ctx);
     return REDISMODULE_OK;
 }

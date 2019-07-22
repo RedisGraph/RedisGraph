@@ -25,20 +25,17 @@ typedef struct {
     TrieMap *entity_map;              // Mapping of aliases and AST node pointers to AST IDs
 } AST;
 
-// AST clause validations.
-AST_Validation AST_Validate(RedisModuleCtx *ctx, const AST *ast);
+// Checks to see if libcypher-parser reported any errors.
+bool AST_ContainsErrors(const cypher_parse_result_t *result);
 
-// Checks if AST represents a read-only query.
-bool AST_ReadOnly(const cypher_astnode_t *root);
+// Make sure the parse result and the AST tree pass all validations.
+AST_Validation AST_Validate(RedisModuleCtx *ctx, const cypher_parse_result_t *result);
+
+// Checks if the parse result represents a read-only query.
+bool AST_ReadOnly(const cypher_parse_result_t *result);
 
 // Checks to see if AST contains specified clause. 
 bool AST_ContainsClause(const AST *ast, cypher_astnode_type_t clause);
-
-// Checks to see if query contains any errors.
-bool AST_ContainsErrors(const cypher_parse_result_t *result);
-
-// Report encountered errors.
-char* AST_ReportErrors(const cypher_parse_result_t *result);
 
 // Returns all function (aggregated & none aggregated) mentioned in query.
 void AST_ReferredFunctions(const cypher_astnode_t *root, TrieMap *referred_funcs);
@@ -58,9 +55,6 @@ const cypher_astnode_t** AST_GetClauses(const AST *ast, cypher_astnode_type_t ty
 // Collect all user-provided aliases in the query.
 // (Only used for populating return expressions when "RETURN *" is specified.)
 const char** AST_CollectElementNames(AST *ast);
-
-// Retrieve the AST root node from a parsed query.
-const cypher_astnode_t* AST_GetBody(const cypher_parse_result_t *result);
 
 AST* AST_Build(cypher_parse_result_t *parse_result);
 
