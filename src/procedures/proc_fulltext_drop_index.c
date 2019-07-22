@@ -40,7 +40,7 @@ ProcedureResult Proc_FulltextDropIndexFree(ProcedureCtx *ctx) {
     return PROCEDURE_OK;
 }
 
-ProcedureCtx* Proc_FulltextDropIndexGen() {
+ProcedureCtx* Proc_FulltextDropIdxGen() {
     void *privateData = NULL;
     ProcedureOutput **output = array_new(ProcedureOutput*, 0);
     ProcedureCtx *ctx = ProcCtxNew("db.index.fulltext.drop",

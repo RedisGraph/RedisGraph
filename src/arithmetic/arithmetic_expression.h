@@ -171,6 +171,10 @@ void AR_EXP_Reduce(const AR_ExpNode *root);
  * (from variadic) to a triemap. */
 void AR_EXP_CollectEntityIDs(AR_ExpNode *root, rax *record_ids);
 
+/* Traverse an expression tree and add all mentioned attributes:
+ * n.attr > 3 to a prefix tree. */
+void AR_EXP_CollectAttributes(AR_ExpNode *root, rax *attributes);
+
 /* Search for an aggregation node within the expression tree.
  * Return 1 and sets agg_node to the aggregation node if exists,
  * Please note an expression tree can only contain a single aggregation node. */

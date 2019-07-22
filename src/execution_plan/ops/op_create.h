@@ -8,10 +8,20 @@
 #define __OP_CREATE_H
 
 #include "op.h"
+#include "../../parser/ast.h"
+#include "../../ast/ast_shared.h"
 #include "../../graph/entities/node.h"
 #include "../../graph/entities/edge.h"
+#include "../../resultset/resultset.h"
 #include "../../resultset/resultset_statistics.h"
-#include "../../ast/ast_shared.h"
+/* Creates new entities according to the CREATE clause. */
+
+typedef struct {
+    Edge *edge;
+    int src_node_rec_idx;
+    int dest_node_rec_idx;
+    int edge_rec_idx;
+} EdgeCreateCtx;
 
 /* Creates new entities according to the CREATE clause. */
 

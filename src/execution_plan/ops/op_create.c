@@ -103,39 +103,105 @@ void _CreateEdges(OpCreate *op, Record r) {
 	}
 }
 
+static void _UpdateSchemas(OpCreate *op) {
+	/* Indicies created prior to introduction of indexed entities
+	 * have no knowledge of attribute IDs
+	 * now that new entities been created indicies will pick up on newly
+	 * created attributes.
+	 * Consider an empty graph followed by:
+	 * CREATE INDEX ON :person(name)
+	 * CREATE (:person {name:'X'}) */
+	for(uint i = 0; i < op->node_count; i++) {
+		NodeCreateCtx n = op->nodes_to_create[i];
+		if(n.node->labelID == GRAPH_NO_LABEL) continue;
+
+		Index *idx = GraphContext_GetIndex(op->gc, n.node->label, NULL, IDX_EXACT_MATCH);
+		if(idx) Index_RefreshSchema(idx);
+	}
+
+	/* Now that all relevent indices been updated
+	 * introduce nodes to indices. */
+	uint node_count = array_len(op->created_nodes);
+	for(uint i = 0; i < node_count; i++) {
+		Node *n = op->created_nodes[i];
+		if(!n->label) continue;
+
+		Schema *s = GraphContext_GetSchemaByID(op->gc, n->labelID, SCHEMA_NODE);
+		GraphContext_AddNodeToIndices(op->gc, s, n);
+	}
+}
+
 /* Commit insertions. */
-static void _CommitNodes(OpCreate *op) {
+static void _CommitNodes(OpCreate *op, TrieMap *createEntities) {
 	Node *n;
 	int labelID;
 	Graph *g = op->gc->g;
+	uint created_node_count = array_len(op->created_nodes);
 
-	uint node_count = array_len(op->created_nodes);
-	Graph_AllocateNodes(op->gc->g, node_count);
+	// Create missing schemas.
+	for(uint i = 0; i < op->node_count; i++) {
+		n = op->nodes_to_create[i].node;
+		if(!n->label) continue;
+		if(GraphContext_GetSchema(op->gc, n->label, SCHEMA_NODE) == NULL) {
+			Schema *s = GraphContext_AddSchema(op->gc, n->label, SCHEMA_NODE);
+			n->labelID = s->id;
+			op->result_set->stats.labels_added++;
+		}
 
-	for(uint i = 0; i < node_count; i++) {
+		// Introduce node attributes to graph.
+		AST_GraphEntity *entity = TrieMap_Find(createEntities, n->alias, strlen(n->alias));
+		assert(entity != NULL && entity != TRIEMAP_NOTFOUND);
+		if(!entity->properties) continue;
+
+		int propCount = Vector_Size(entity->properties);
+		if(propCount > 0) {
+			for(int prop_idx = 0; prop_idx < propCount; prop_idx += 2) {
+				SIValue *key;
+				Vector_Get(entity->properties, prop_idx, &key);
+				Attribute_ID prop_id = GraphContext_FindOrAddAttribute(op->gc, key->stringval);
+			}
+		}
+	}
+
+	// Create nodes.
+	Graph_AllocateNodes(op->gc->g, created_node_count);
+	for(uint i = 0; i < created_node_count; i++) {
 		n = op->created_nodes[i];
-		Schema *schema = NULL;
 
 		// Get label ID.
 		if(n->label == NULL) {
 			labelID = GRAPH_NO_LABEL;
 		} else {
-			schema = GraphContext_GetSchema(op->gc, n->label, SCHEMA_NODE);
-			if(schema == NULL) {
-				schema = GraphContext_AddSchema(op->gc, n->label, SCHEMA_NODE);
-				op->stats->labels_added++;
-			}
+			Schema *schema = GraphContext_GetSchema(op->gc, n->label, SCHEMA_NODE);
+			assert(schema);
 			labelID = schema->id;
 		}
 
 		// Introduce node into graph.
 		Graph_CreateNode(g, labelID, n);
 
-		_AddProperties(op, (GraphEntity *)n, op->node_properties[i]);
+		// Set node properties.
+		AST_GraphEntity *entity = TrieMap_Find(createEntities, n->alias, strlen(n->alias));
+		assert(entity != NULL && entity != TRIEMAP_NOTFOUND);
 
-		if(n->label) GraphContext_AddNodeToIndices(op->gc, schema, n);
+		if(entity->properties) {
+			int propCount = Vector_Size(entity->properties);
+			if(propCount > 0) {
+				for(int prop_idx = 0; prop_idx < propCount; prop_idx += 2) {
+					SIValue *key;
+					SIValue *value;
+					Vector_Get(entity->properties, prop_idx, &key);
+					Vector_Get(entity->properties, prop_idx + 1, &value);
+
+					Attribute_ID prop_id = GraphContext_GetAttributeID(op->gc, key->stringval);
+					GraphEntity_AddProperty((GraphEntity *)n, prop_id, *value);
+				}
+				op->result_set->stats.properties_set += propCount / 2;
+			}
+		}
 	}
 
+	op->result_set->stats.nodes_created += created_node_count;
 }
 
 static void _CommitEdges(OpCreate *op) {
@@ -174,18 +240,24 @@ static void _CommitEdges(OpCreate *op) {
 
 static void _CommitNewEntities(OpCreate *op) {
 	Graph *g = op->gc->g;
+	TrieMap *createEntities = NewTrieMap();
+	CreateClause_ReferredEntities(op->ast->createNode, createEntities);
 
 	// Lock everything.
 	Graph_AcquireWriteLock(g);
 	Graph_SetMatrixPolicy(g, RESIZE_TO_CAPACITY);
-	uint node_count = array_len(op->created_nodes);
-	if(node_count > 0) _CommitNodes(op);
-	if(array_len(op->created_edges) > 0) _CommitEdges(op);
+	if(array_len(op->created_nodes) > 0) {
+		_CommitNodes(op, createEntities);
+		if(GraphContext_HasIndices(op->gc)) _UpdateSchemas(op);
+	}
+	if(array_len(op->created_edges) > 0) {
+		_CommitEdges(op, createEntities);
+	}
 	Graph_SetMatrixPolicy(g, SYNC_AND_MINIMIZE_SPACE);
 	// Release lock.
 	Graph_ReleaseLock(g);
 
-	op->stats->nodes_created += node_count;
+	TrieMap_Free(createEntities, TrieMap_NOP_CB);
 }
 
 static Record _handoff(OpCreate *op) {

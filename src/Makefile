@@ -54,6 +54,7 @@ CC_SOURCES += $(wildcard $(SOURCEDIR)/procedures/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/util/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/util/datablock/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/util/thpool/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/util/range/*.c)
 
 # Convert all sources to .o files
 CC_OBJECTS = $(patsubst %.c, %.o, $(CC_SOURCES) )
