@@ -101,6 +101,12 @@ bool Index_ContainsField
 	const char *field
 );
 
+// Tries to update missing fields id.
+void Index_RefreshSchema
+(
+	Index *idx
+);
+
 // Free fulltext index.
 void Index_Free
 (

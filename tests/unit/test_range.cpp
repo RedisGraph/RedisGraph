@@ -1,0 +1,309 @@
+/*
+* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+*
+* This file is available under the Redis Labs Source Available License Agreement
+*/
+
+#include "../../deps/googletest/include/gtest/gtest.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+#include "../../src/util/rmalloc.h"
+#include "../../src/parser/grammar.h"
+#include "../../src/util/range/string_range.h"
+#include "../../src/util/range/numeric_range.h"
+#include <math.h>
+#ifdef __cplusplus
+}
+#endif
+
+class RangeTest: public ::testing::Test {
+    protected:
+    static void SetUpTestCase() {
+        // Use the malloc family for allocations
+        Alloc_Reset();
+    }
+};
+
+//------------------------------------------------------------------------------
+// Numeric range
+//------------------------------------------------------------------------------
+
+TEST_F(RangeTest, NumericRangeNew) {
+    NumericRange *r = NumericRange_New();
+    
+    ASSERT_TRUE(r->valid);
+    ASSERT_EQ(r->max, INFINITY);
+    ASSERT_EQ(r->min, -INFINITY);
+    ASSERT_FALSE(r->include_max);
+    ASSERT_FALSE(r->include_min);
+
+    NumericRange_Free(r);
+}
+
+TEST_F(RangeTest, NumericRangeValidation) {
+    NumericRange *r = NumericRange_New();
+
+    // X > 5 AND X < 5
+    r->max = 5;
+    r->min = 5;
+    r->include_max = false;
+    r->include_min = false;
+    ASSERT_FALSE(NumericRange_IsValid(r));
+
+    // X >= 5 AND X < 5
+    r->max = 5;
+    r->min = 5;
+    r->include_max = false;
+    r->include_min = true;
+    ASSERT_FALSE(NumericRange_IsValid(r));
+    
+    // X >= 5 AND X <= 5
+    r->max = 5;
+    r->min = 5;
+    r->include_max = true;
+    r->include_min = true;
+    ASSERT_TRUE(NumericRange_IsValid(r));
+
+    // X > 5 AND X <= 5
+    r->max = 5;
+    r->min = 5;
+    r->include_max = true;
+    r->include_min = false;
+    ASSERT_FALSE(NumericRange_IsValid(r));
+
+    // (5, 10)  X > 5 AND x < 10.
+    r->max = 10;
+    r->min = 5;
+    r->include_max = false;
+    r->include_min = false;
+    ASSERT_TRUE(NumericRange_IsValid(r));
+
+    // (5, 10]  X > 5 AND x <= 10.
+    r->max = 10;
+    r->min = 5;
+    r->include_max = true;
+    r->include_min = false;
+    ASSERT_TRUE(NumericRange_IsValid(r));
+
+    // [5, 10)  X >= 5 AND x < 10.
+    r->max = 10;
+    r->min = 5;
+    r->include_max = false;
+    r->include_min = true;
+    ASSERT_TRUE(NumericRange_IsValid(r));
+
+    // [5, 10]  X >= 5 AND x =< 10.
+    r->max = 10;
+    r->min = 5;
+    r->include_max = true;
+    r->include_min = true;
+    ASSERT_TRUE(NumericRange_IsValid(r));
+
+    NumericRange_Free(r);
+}
+
+TEST_F(RangeTest, NumericTightenRange) {
+    NumericRange *r = NumericRange_New();
+
+    // X < 100
+    NumericRange_TightenRange(r, LT, 100);
+    ASSERT_EQ(r->max, 100);
+    ASSERT_FALSE(r->include_max);
+
+    // X <= 100
+    NumericRange_TightenRange(r, LE, 100);
+    ASSERT_EQ(r->max, 100);
+    ASSERT_FALSE(r->include_max);
+
+    // X >= 50
+    NumericRange_TightenRange(r, GE, 50);
+    ASSERT_EQ(r->min, 50);
+    ASSERT_TRUE(r->include_min);
+
+    // X > 50
+    NumericRange_TightenRange(r, GT, 50);
+    ASSERT_EQ(r->min, 50);
+    ASSERT_FALSE(r->include_min);
+
+    // 75 <= X >= 75
+    NumericRange_TightenRange(r, EQ, 75);
+    ASSERT_EQ(r->min, 75);
+    ASSERT_TRUE(r->include_min);
+    ASSERT_EQ(r->max, 75);
+    ASSERT_TRUE(r->include_max);
+
+    ASSERT_TRUE(NumericRange_IsValid(r));
+    NumericRange_Free(r);
+}
+
+TEST_F(RangeTest, NumericContainsValue) {
+    NumericRange *r = NumericRange_New();
+    // -INF < X < INF
+    ASSERT_TRUE(NumericRange_ContainsValue(r, 100));
+
+    // X <= 100
+    NumericRange_TightenRange(r, LE, 100);
+    ASSERT_FALSE(NumericRange_ContainsValue(r, 101));
+    ASSERT_TRUE(NumericRange_ContainsValue(r, 100));
+    ASSERT_TRUE(NumericRange_ContainsValue(r, -9999));
+
+    // X > -10
+    NumericRange_TightenRange(r, GT, -10);
+    ASSERT_FALSE(NumericRange_ContainsValue(r, -10));
+    ASSERT_TRUE(NumericRange_ContainsValue(r, -9));
+
+    // X >= 0 AND X <= 0
+    NumericRange_TightenRange(r, EQ, 0);
+    ASSERT_FALSE(NumericRange_ContainsValue(r, 1));
+    ASSERT_FALSE(NumericRange_ContainsValue(r, -1));
+    ASSERT_TRUE(NumericRange_ContainsValue(r, 0));
+
+    // X > 0
+    NumericRange_TightenRange(r, GT, 0);
+    ASSERT_FALSE(NumericRange_ContainsValue(r, 0));
+
+    NumericRange_Free(r);
+}
+
+//------------------------------------------------------------------------------
+// String range
+//------------------------------------------------------------------------------
+
+TEST_F(RangeTest, StringRangeNew) {
+    StringRange *r = StringRange_New();
+    
+    ASSERT_TRUE(r->valid);
+    ASSERT_TRUE(r->max == NULL);
+    ASSERT_TRUE(r->min == NULL);
+    ASSERT_FALSE(r->include_max);
+    ASSERT_FALSE(r->include_min);
+
+    StringRange_Free(r);
+}
+
+TEST_F(RangeTest, StringRangeValidation) {
+    StringRange *r = StringRange_New();
+
+    // X > "a" AND X < "a"
+    r->max = "a";
+    r->min = "a";
+    r->include_max = false;
+    r->include_min = false;
+    ASSERT_FALSE(StringRange_IsValid(r));
+
+    // X >= "a" AND X < "a"
+    r->max = "a";
+    r->min = "a";
+    r->include_max = false;
+    r->include_min = true;
+    ASSERT_FALSE(StringRange_IsValid(r));
+    
+    // X >= "a" AND X <= "a"
+    r->max = "a";
+    r->min = "a";
+    r->include_max = true;
+    r->include_min = true;
+    ASSERT_TRUE(StringRange_IsValid(r));
+
+    // X > "a" AND X <= "a"
+    r->max = "a";
+    r->min = "a";
+    r->include_max = true;
+    r->include_min = false;
+    ASSERT_FALSE(StringRange_IsValid(r));
+
+    // ("a", "z")  X > "a" AND x < "z".
+    r->max = "z";
+    r->min = "a";
+    r->include_max = false;
+    r->include_min = false;
+    ASSERT_TRUE(StringRange_IsValid(r));
+
+    // ("a", "z"]  X > "a" AND x <= "z".
+    r->max = "z";
+    r->min = "a";
+    r->include_max = true;
+    r->include_min = false;
+    ASSERT_TRUE(StringRange_IsValid(r));
+
+    // ["a", "z")  X >= "a" AND x < "z".
+    r->max = "z";
+    r->min = "a";
+    r->include_max = false;
+    r->include_min = true;
+    ASSERT_TRUE(StringRange_IsValid(r));
+
+    // ["a", "z"]  X >= "a" AND x =< "z".
+    r->max = "z";
+    r->min = "a";
+    r->include_max = true;
+    r->include_min = true;
+    ASSERT_TRUE(StringRange_IsValid(r));
+
+    StringRange_Free(r);
+}
+
+TEST_F(RangeTest, StringTightenRange) {
+    StringRange *r = StringRange_New();
+
+    // X < "z"
+    StringRange_TightenRange(r, LT, "z");
+    ASSERT_STREQ(r->max, "z");
+    ASSERT_FALSE(r->include_max);
+
+    // X <= "z"
+    StringRange_TightenRange(r, LE, "z");
+    ASSERT_STREQ(r->max, "z");
+    ASSERT_FALSE(r->include_max);
+
+    // X >= "a"
+    StringRange_TightenRange(r, GE, "a");
+    ASSERT_STREQ(r->min, "a");
+    ASSERT_TRUE(r->include_min);
+
+    // X > "a"
+    StringRange_TightenRange(r, GT, "a");
+    ASSERT_STREQ(r->min, "a");
+    ASSERT_FALSE(r->include_min);
+
+    // "g" <= X >= "g"
+    StringRange_TightenRange(r, EQ, "g");
+    ASSERT_STREQ(r->min, "g");
+    ASSERT_TRUE(r->include_min);
+    ASSERT_STREQ(r->max, "g");
+    ASSERT_TRUE(r->include_max);
+
+    ASSERT_TRUE(StringRange_IsValid(r));
+    StringRange_Free(r);
+}
+
+TEST_F(RangeTest, StringContainsValue) {
+    StringRange *r = StringRange_New();
+    // -INF < X < INF
+    ASSERT_TRUE(StringRange_ContainsValue(r, "k"));
+
+    // X <= "y"
+    StringRange_TightenRange(r, LE, "y");
+    ASSERT_FALSE(StringRange_ContainsValue(r, "z"));
+    ASSERT_TRUE(StringRange_ContainsValue(r, "y"));
+    ASSERT_TRUE(StringRange_ContainsValue(r, "a"));
+
+    // X > "a"
+    StringRange_TightenRange(r, GT, "a");
+    ASSERT_FALSE(StringRange_ContainsValue(r, "a"));
+    ASSERT_TRUE(StringRange_ContainsValue(r, "b"));
+
+    // X >= "k" AND X <= "k"
+    StringRange_TightenRange(r, EQ, "k");
+    ASSERT_FALSE(StringRange_ContainsValue(r, "l"));
+    ASSERT_FALSE(StringRange_ContainsValue(r, "j"));
+    ASSERT_TRUE(StringRange_ContainsValue(r, "k"));
+
+    // X > "k"
+    StringRange_TightenRange(r, GT, "k");
+    ASSERT_FALSE(StringRange_ContainsValue(r, "k"));
+
+    StringRange_Free(r);
+}

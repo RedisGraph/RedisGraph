@@ -39,8 +39,9 @@ typedef enum {
 	M_CONST = 0x4      // SIValue does not own its allocation, but its access is safe
 } SIAllocation;
 
-#define SI_NUMERIC (T_INT64 | T_DOUBLE)
 #define SI_TYPE(value) (value).type
+#define SI_NUMERIC (T_INT64 | T_DOUBLE)
+#define SI_STRING (T_STRING | T_CONSTSTRING)
 
 /* Retrieve the numeric associated with an SIValue without explicitly
  * assigning it a type. */

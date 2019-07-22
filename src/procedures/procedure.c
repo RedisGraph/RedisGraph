@@ -23,7 +23,9 @@ void Proc_Register() {
 	_procRegister("db.labels", Proc_LabelsCtx);
 	_procRegister("db.propertyKeys", Proc_PropKeysCtx);
 	_procRegister("db.relationshipTypes", Proc_RelationsCtx);
+
 	// Register FullText Search generator.
+	_procRegister("db.index.fulltext.drop", Proc_FulltextDropIdxGen);
 	_procRegister("db.idx.fulltext.queryNodes", Proc_FulltextQueryNodeGen);
 	_procRegister("db.idx.fulltext.createNodeIndex", Proc_FulltextCreateNodeIdxGen);
 }
