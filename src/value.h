@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-#include "datatypes/time_stamp.h"
+#include "datatypes/temporal_value.h"
 
 /* Type defines the supported types by the indexing system. The types are powers
  * of 2 so they can be used in bitmasks of matching types.
@@ -31,7 +31,7 @@ typedef enum {
 	T_CONSTSTRING = 0x100, // only used in deserialization routine
 	T_NODE = 0x200,
 	T_EDGE = 0x400,
-	T_TIMESTAMP = 0x800,
+	T_TEMPORAL_VALUE = 0x800,
 } SIType;
 
 typedef enum {
@@ -69,7 +69,7 @@ typedef struct {
 			SIAllocation allocation;
 		};
 
-		RG_TimeStamp time;
+		RG_TemporalValue time;
 		int64_t longval;
 		double doubleval;
 	};
@@ -84,7 +84,7 @@ SIValue SI_BoolVal(int b);
 SIValue SI_PtrVal(void *v);
 SIValue SI_Node(void *n);
 SIValue SI_Edge(void *e);
-SIValue SI_TimeStamp(void *ts);
+SIValue SI_TemporalValue(void *ts);
 SIValue SI_DuplicateStringVal(const char *s); // Duplicate and ultimately free the input string
 SIValue SI_ConstStringVal(char
 						  *s);           // Neither duplicate nor assume ownership of input string

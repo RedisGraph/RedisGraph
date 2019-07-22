@@ -15,7 +15,6 @@
 #include <sys/param.h>
 #include <assert.h>
 #include "util/rmalloc.h"
-#include "datatypes/time_stamp.h"
 
 SIValue SI_LongVal(int64_t i) {
 	return (SIValue) {
@@ -59,10 +58,10 @@ SIValue SI_Edge(void *e) {
 	};
 }
 
-SIValue SI_TimeStamp(void *ts) {
-	RG_TimeStamp *timeStamp = (RG_TimeStamp *)ts;
+SIValue SI_TemporalValue(void *ts) {
+	RG_TemporalValue *temporalValue = (RG_TemporalValue *)ts;
 	return (SIValue) {
-		.time = *timeStamp, .type = T_TIMESTAMP
+		.time = *temporalValue, .type = T_TEMPORAL_VALUE
 	};
 }
 
@@ -109,6 +108,7 @@ inline int SIValue_IsNullPtr(SIValue *v) {
 }
 
 int SIValue_ToString(SIValue v, char *buf, size_t len) {
+	<<< <<< < HEAD
 	int bytes_written = 0;
 
 	switch(v.type) {
@@ -116,7 +116,6 @@ int SIValue_ToString(SIValue v, char *buf, size_t len) {
 		strncpy(buf, v.stringval, len);
 		bytes_written = strlen(buf);
 		break;
-	case T_INT64:
 		bytes_written = snprintf(buf, len, "%lld", (long long)v.longval);
 		break;
 	case T_BOOL:
@@ -129,8 +128,8 @@ int SIValue_ToString(SIValue v, char *buf, size_t len) {
 	case T_EDGE:
 		bytes_written = snprintf(buf, len, "%llu", ENTITY_GET_ID((GraphEntity *)v.ptrval));
 		break;
-	case T_TIMESTAMP:
-		strncpy(buf, RG_TimeStamp_ToString(v.time), len);
+	case T_TEMPORAL_VALUE:
+		strncpy(buf, RG_TemporalValue_ToString(v.time), len);
 		bytes_written = strlen(buf);
 		break;
 	case T_NULL:
@@ -139,6 +138,7 @@ int SIValue_ToString(SIValue v, char *buf, size_t len) {
 	}
 
 	return bytes_written;
+	>>> >>> > finished basic date time functionality
 }
 
 int SIValue_ToDouble(const SIValue *v, double *d) {
@@ -146,7 +146,6 @@ int SIValue_ToDouble(const SIValue *v, double *d) {
 	case T_DOUBLE:
 		*d = v->doubleval;
 		return 1;
-	case T_INT64:
 	case T_BOOL:
 		*d = (double)v->longval;
 		return 1;
@@ -238,7 +237,6 @@ SIValue SIValue_Divide(const SIValue a, const SIValue b) {
 }
 
 int SIValue_Compare(const SIValue a, const SIValue b) {
-	<<< <<< < HEAD
 	/* In order to be comparable, both SIValues must be strings,
 	 * booleans, or numerics. */
 	if(a.type == b.type) {
@@ -252,8 +250,9 @@ int SIValue_Compare(const SIValue a, const SIValue b) {
 			return strcmp(a.stringval, b.stringval);
 		case T_NODE:
 		case T_EDGE:
-			return ENTITY_GET_ID((GraphEntity *)a.ptrval) - ENTITY_GET_ID((
-																			  GraphEntity *)b.ptrval);
+			return ENTITY_GET_ID((GraphEntity *)a.ptrval) - ENTITY_GET_ID((GraphEntity *)b.ptrval);
+		case T_TEMPORAL_VALUE:
+			return RG_TemporalValue_Compare(a.time, b.time);
 		default:
 			// Both inputs were of an incomparable type, like a pointer or NULL
 			return DISJOINT;
@@ -268,147 +267,71 @@ int SIValue_Compare(const SIValue a, const SIValue b) {
 	}
 
 	return DISJOINT;
-	== == == =
-		<<< <<< < Updated upstream
-		/* In order to be comparable, both SIValues must be strings,
-		 * booleans, or numerics. */
-	if(a.type == b.type) {
-		switch(a.type) {
-		case T_INT64:
-		case T_BOOL:
-			return a.longval - b.longval;
-		case T_DOUBLE:
-			return SAFE_COMPARISON_RESULT(a.doubleval - b.doubleval);
-		case T_STRING:
-			return strcmp(a.stringval, b.stringval);
-		case T_NODE:
-		case T_EDGE:
-			return ENTITY_GET_ID((GraphEntity *)a.ptrval) - ENTITY_GET_ID((GraphEntity *)b.ptrval);
-		default:
-			// Both inputs were of an incomparable type, like a pointer or NULL
-			return DISJOINT;
-		}
-		== == == =
-			/* In order to be comparable, both SIValues must be strings,
-			 * booleans, or numerics. */
-		if(a.type == b.type) {
-			switch(a.type) {
-			case T_INT64:
-			case T_BOOL:
-				return a.longval - b.longval;
-			case T_DOUBLE:
-				return SAFE_COMPARISON_RESULT(a.doubleval - b.doubleval);
-			case T_STRING:
-				return strcmp(a.stringval, b.stringval);
-			case T_NODE:
-			case T_EDGE:
-				return ENTITY_GET_ID((GraphEntity *)a.ptrval) - ENTITY_GET_ID((GraphEntity *)b.ptrval);
-			case T_TIMESTAMP:
-				return RG_TimeStamp_Compare(a.time, b.time);
-			default:
-				// Both inputs were of an incomparable type, like a pointer or NULL
-				return DISJOINT;
-				>>> >>> > Stashed changes
-			}
-
-			/* The inputs have different SITypes - compare them if they
-			 * are both numerics of differing types */
-			if(SI_TYPE(a) & SI_NUMERIC && SI_TYPE(b) & SI_NUMERIC) {
-				double diff = SI_GET_NUMERIC(a) - SI_GET_NUMERIC(b);
-				return SAFE_COMPARISON_RESULT(diff);
-			}
-
-			return DISJOINT;
-			>>> >>> > merged from master
-		}
+}
 
 // Return a strcmp-like value wherein -1 indicates that the value
 // on the left-hand side is lesser, and 1 indicates that is greater.
-		int SIValue_Order(const SIValue a, const SIValue b) {
-			<<< <<< < HEAD
-			// If the values are directly comparable, return the comparison result
-			int cmp = SIValue_Compare(a, b);
-			if(cmp != DISJOINT) return cmp;
+int SIValue_Order(const SIValue a, const SIValue b) {
+	// If the values are directly comparable, return the comparison result
+	int cmp = SIValue_Compare(a, b);
+	if(cmp != DISJOINT) return cmp;
 
-			// Cypher's orderability property defines string < boolean < numeric < NULL.
-			if(a.type == T_STRING) {
-				return -1;
-			} else if(b.type == T_STRING) {
-				return 1;
-			} else if(a.type == T_BOOL) {
-				return -1;
-			} else if(b.type == T_BOOL) {
-				return 1;
-			} else if(a.type & SI_NUMERIC) {
-				return -1;
-			} else if(b.type & SI_NUMERIC) {
-				return 1;
-			}
+	// Cypher's orderability property defines datetime < string < boolean < numeric < NULL.
+	if(a.type == T_TEMPORAL_VALUE) {
+		return -1;
+	} else if(b.type == T_TEMPORAL_VALUE) {
+		return 1;
+	} else if(a.type == T_STRING) {
+		return -1;
+	} else if(b.type == T_STRING) {
+		return 1;
+	} else if(a.type == T_BOOL) {
+		return -1;
+	} else if(b.type == T_BOOL) {
+		return 1;
+	} else if(a.type & SI_NUMERIC) {
+		return -1;
+	} else if(b.type & SI_NUMERIC) {
+		return 1;
+	}
 
-			// We can reach here if both values are NULL, in which case no order is imposed.
-			return 0;
-			== == == =
-				// If the values are directly comparable, return the comparison result
-				int cmp = SIValue_Compare(a, b);
-			if(cmp != DISJOINT) return cmp;
+	// We can reach here if both values are NULL, in which case no order is imposed.
+	return 0;
+}
 
-			// Cypher's orderability property defines datetime < string < boolean < numeric < NULL.
-			if(a.type == T_TIMESTAMP) {
-				return -1;
-			} else if(b.type == T_TIMESTAMP) {
-				return 1;
-			} else if(a.type == T_STRING) {
-				return -1;
-			} else if(b.type == T_STRING) {
-				return 1;
-			} else if(a.type == T_BOOL) {
-				return -1;
-			} else if(b.type == T_BOOL) {
-				return 1;
-			} else if(a.type & SI_NUMERIC) {
-				return -1;
-			} else if(b.type & SI_NUMERIC) {
-				return 1;
-			}
-
-			// We can reach here if both values are NULL, in which case no order is imposed.
-			return 0;
-			>>> >>> > merged from master
+void SIValue_Persist(SIValue *v) {
+	if(v->allocation == M_VOLATILE) {
+		size_t size;
+		if(v->type == T_NODE) {
+			size = sizeof(Node);
+		} else if(v->type == T_EDGE) {
+			size = sizeof(Edge);
+		} else {
+			return;
 		}
+		void *clone = rm_malloc(size);
+		clone = memcpy(clone, v->ptrval, size);
+		v->ptrval = clone;
+		v->allocation = M_SELF;
+	}
+}
 
-		void SIValue_Persist(SIValue * v) {
-			if(v->allocation == M_VOLATILE) {
-				size_t size;
-				if(v->type == T_NODE) {
-					size = sizeof(Node);
-				} else if(v->type == T_EDGE) {
-					size = sizeof(Edge);
-				} else {
-					return;
-				}
-				void *clone = rm_malloc(size);
-				clone = memcpy(clone, v->ptrval, size);
-				v->ptrval = clone;
-				v->allocation = M_SELF;
-			}
+
+void SIValue_Free(SIValue *v) {
+	// The free routine only performs work if it owns a heap allocation.
+	if(v->allocation == M_SELF) {
+		switch(v->type) {
+		case T_STRING:
+			rm_free(v->stringval);
+			v->stringval = NULL;
+			return;
+		case T_NODE:
+		case T_EDGE:
+			rm_free(v->ptrval);
+			return;
+		default:
+			return;
 		}
-
-
-		void SIValue_Free(SIValue * v) {
-			// The free routine only performs work if it owns a heap allocation.
-			if(v->allocation == M_SELF) {
-				switch(v->type) {
-				case T_STRING:
-					rm_free(v->stringval);
-					v->stringval = NULL;
-					return;
-				case T_NODE:
-				case T_EDGE:
-					rm_free(v->ptrval);
-					return;
-				default:
-					return;
-				}
-			}
-		}
+	}
+}
 
