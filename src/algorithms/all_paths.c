@@ -10,7 +10,7 @@
 // Make sure context levels array have atleast 'level' entries,
 // Append given 'node' to given 'level' array.
 static void _AllPathsCtx_AddNodeToLevel(AllPathsCtx *ctx, uint level,
-                                        Node *node) {
+										Node *node) {
 	while(array_len(ctx->levels) <= level) {
 		ctx->levels = array_append(ctx->levels, array_new(Node, 1));
 	}
@@ -23,8 +23,8 @@ static bool _AllPathsCtx_LevelNotEmpty(const AllPathsCtx *ctx, uint level) {
 }
 
 AllPathsCtx *AllPathsCtx_New(Node *src, Graph *g, int *relationIDs,
-                             int relationCount, GRAPH_EDGE_DIR dir, unsigned int minLen,
-                             unsigned int maxLen) {
+							 int relationCount, GRAPH_EDGE_DIR dir, unsigned int minLen,
+							 unsigned int maxLen) {
 	assert(src);
 
 	AllPathsCtx *ctx = rm_malloc(sizeof(AllPathsCtx));
@@ -75,7 +75,7 @@ Path AllPathsCtx_NextPath(AllPathsCtx *ctx) {
 				// Get frontier neighbors.
 				for(int i = 0; i < ctx->relationCount; i++) {
 					Graph_GetNodeEdges(ctx->g, &frontier, ctx->dir, ctx->relationIDs[i],
-					                   &ctx->neighbors);
+									   &ctx->neighbors);
 				}
 
 				// Add unvisited neighbors to next level.

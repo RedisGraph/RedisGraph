@@ -120,7 +120,7 @@ int SIValue_ToString(SIValue v, char *buf, size_t len) {
 	case T_NODE:
 	case T_EDGE:
 		bytes_written = snprintf(buf, len, "%llu",
-		                         ENTITY_GET_ID((GraphEntity *)v.ptrval));
+								 ENTITY_GET_ID((GraphEntity *)v.ptrval));
 		break;
 	case T_NULL:
 	default:
@@ -171,7 +171,7 @@ size_t SIValue_StringConcatLen(SIValue *strings, unsigned int string_count) {
 		/* String elements representing bytes size strings,
 		 * for all other SIValue types 32 bytes should be enough. */
 		elem_len = (strings[i].type == T_STRING) ? strlen(strings[i].stringval) + 1 :
-		           32;
+				   32;
 		length += elem_len;
 	}
 
@@ -181,7 +181,7 @@ size_t SIValue_StringConcatLen(SIValue *strings, unsigned int string_count) {
 }
 
 size_t SIValue_StringConcat(SIValue *strings, unsigned int string_count,
-                            char *buf, size_t buf_len) {
+							char *buf, size_t buf_len) {
 	size_t offset = 0;
 
 	for(int i = 0; i < string_count; i ++) {
@@ -241,7 +241,7 @@ int SIValue_Compare(const SIValue a, const SIValue b) {
 		case T_NODE:
 		case T_EDGE:
 			return ENTITY_GET_ID((GraphEntity *)a.ptrval) - ENTITY_GET_ID((
-			            GraphEntity *)b.ptrval);
+																			  GraphEntity *)b.ptrval);
 		default:
 			// Both inputs were of an incomparable type, like a pointer or NULL
 			return DISJOINT;

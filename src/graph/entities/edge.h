@@ -34,7 +34,7 @@ typedef struct Edge Edge;
 
 /* Creates a new edge, connecting src to dest node. */
 Edge *Edge_New(Node *src, Node *dest, const char *relationship,
-               const char *alias);
+			   const char *alias);
 
 // Retrieve edge source node ID.
 NodeID Edge_GetSrcNodeID(const Edge *edge);

@@ -47,7 +47,7 @@ static void *_replaceReferredEntity(void *oldval, void *newval) {
 }
 
 void CreateClause_ReferredEntities(const AST_CreateNode *createNode,
-                                   TrieMap *referredNodes) {
+								   TrieMap *referredNodes) {
 	if(!createNode) return;
 
 	int entities_count = Vector_Size(createNode->graphEntities);
@@ -57,7 +57,7 @@ void CreateClause_ReferredEntities(const AST_CreateNode *createNode,
 		Vector_Get(createNode->graphEntities, i, &entity);
 		if(!entity->alias) continue;
 		TrieMap_Add(referredNodes, entity->alias, strlen(entity->alias), entity,
-		            _replaceReferredEntity);
+					_replaceReferredEntity);
 	}
 }
 
@@ -66,12 +66,12 @@ void CreateClause_ReferredEntities(const AST_CreateNode *createNode,
  * the timebeing setting the defined entities to referred entities
  * is good enough. */
 void CreateClause_DefinedEntities(const AST_CreateNode *createNode,
-                                  TrieMap *identifiers) {
+								  TrieMap *identifiers) {
 	return CreateClause_ReferredEntities(createNode, identifiers);
 }
 
 void CreateClause_NameAnonymousNodes(AST_CreateNode *createNode,
-                                     int *entityID) {
+									 int *entityID) {
 	if(!createNode) return;
 
 	int entities_count = Vector_Size(createNode->graphEntities);

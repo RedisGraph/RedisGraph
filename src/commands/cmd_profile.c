@@ -48,7 +48,7 @@ void _MGraph_Profile(void *args) {
 		}
 		assert(!readonly);
 		gc = GraphContext_New(ctx, qctx->graphName, GRAPH_DEFAULT_NODE_CAP,
-		                      GRAPH_DEFAULT_EDGE_CAP);
+							  GRAPH_DEFAULT_EDGE_CAP);
 		if(!gc) {
 			CommandCtx_ThreadSafeContextUnlock(qctx);
 			RedisModule_ReplyWithError(ctx, "Graph name already in use as a Redis key.");
@@ -129,7 +129,7 @@ int MGraph_Profile(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	} else {
 		// Run query on a dedicated thread.
 		RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL,
-		                               0);
+															   0);
 		context = CommandCtx_New(NULL, bc, ast, argv[1], argv, argc);
 		thpool_add_work(_thpool, _MGraph_Profile, context);
 	}

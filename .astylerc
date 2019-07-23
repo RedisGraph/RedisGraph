@@ -3,11 +3,12 @@
 
 --mode=c
 --style=google
---indent=tab=4
+--indent=force-tab=4
 --pad-oper
 --unpad-paren
 --align-pointer=name
---max-code-length=80
+--max-code-length=100
+--max-continuation-indent=80
 --break-after-logical
 --preserve-date
 --suffix=none

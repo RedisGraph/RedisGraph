@@ -29,11 +29,11 @@ typedef enum {
 
 // Typedef for header formatters.
 typedef void (*EmitHeaderFunc)(RedisModuleCtx *ctx,
-                               const ResultSetHeader *header, void *data);
+							   const ResultSetHeader *header, void *data);
 
 // Typedef for record formatters.
 typedef void (*EmitRecordFunc)(RedisModuleCtx *ctx, GraphContext *gc,
-                               const Record r, unsigned int numcols);
+							   const Record r, unsigned int numcols);
 
 typedef struct {
 	EmitRecordFunc EmitRecord;
@@ -46,7 +46,7 @@ typedef struct {
  * awkward representations like RETURN 0.1 emitting "0.10000000000000001",
  * though we're still subject to many of the typical issues with floating-point error. */
 static inline void _ResultSet_ReplyWithRoundedDouble(RedisModuleCtx *ctx,
-        double d) {
+													 double d) {
 	// Get length required to print number
 	int len = snprintf(NULL, 0, "%.15g", d);
 	char str[len + 1]; // TODO a reusable buffer would be far preferable

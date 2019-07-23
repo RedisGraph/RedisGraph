@@ -34,7 +34,7 @@ void _SetModifiedEntities(OpCreate *op) {
 		char *alias = n->alias;
 
 		if(TrieMap_Add(matchEntities, alias, strlen(alias), NULL,
-		               TrieMap_DONT_CARE_REPLACE) == 0) continue;
+					   TrieMap_DONT_CARE_REPLACE) == 0) continue;
 		op->nodes_to_create[node_idx].node = n;
 		op->nodes_to_create[node_idx].node_rec_idx = AST_GetAliasID(ast, n->alias);
 		node_idx++;
@@ -45,14 +45,14 @@ void _SetModifiedEntities(OpCreate *op) {
 		Edge *e = qg->edges[i];
 		char *alias = e->alias;
 		if(TrieMap_Add(matchEntities, alias, strlen(alias), NULL,
-		               TrieMap_DONT_CARE_REPLACE) == 0) continue;
+					   TrieMap_DONT_CARE_REPLACE) == 0) continue;
 
 		op->edges_to_create[edge_idx].edge = e;
 		op->edges_to_create[edge_idx].edge_rec_idx = AST_GetAliasID(ast, e->alias);
 		op->edges_to_create[edge_idx].src_node_rec_idx = AST_GetAliasID(ast,
-		        e->src->alias);
+																		e->src->alias);
 		op->edges_to_create[edge_idx].dest_node_rec_idx = AST_GetAliasID(ast,
-		        e->dest->alias);
+																		 e->dest->alias);
 		edge_idx++;
 	}
 
@@ -65,7 +65,7 @@ void _SetModifiedEntities(OpCreate *op) {
 }
 
 OpBase *NewCreateOp(RedisModuleCtx *ctx, AST *ast, QueryGraph *qg,
-                    ResultSet *result_set) {
+					ResultSet *result_set) {
 	OpCreate *op_create = calloc(1, sizeof(OpCreate));
 	op_create->gc = GraphContext_GetFromTLS();
 	op_create->qg = qg;
@@ -159,7 +159,7 @@ static void _CommitNodes(OpCreate *op, TrieMap *createEntities) {
 
 		// Set node properties.
 		AST_GraphEntity *entity = TrieMap_Find(createEntities, n->alias,
-		                                       strlen(n->alias));
+											   strlen(n->alias));
 		assert(entity != NULL && entity != TRIEMAP_NOTFOUND);
 
 		if(entity->properties) {
@@ -209,14 +209,14 @@ static void _CommitEdges(OpCreate *op, TrieMap *createEntities) {
 
 		Schema *schema = GraphContext_GetSchema(op->gc, e->relationship, SCHEMA_EDGE);
 		if(!schema) schema = GraphContext_AddSchema(op->gc, e->relationship,
-			                     SCHEMA_EDGE);
+														SCHEMA_EDGE);
 		relation_id = schema->id;
 
 		if(!Graph_ConnectNodes(g, srcNodeID, destNodeID, relation_id, e)) continue;
 
 		// Set edge properties.
 		AST_GraphEntity *entity = TrieMap_Find(createEntities, e->alias,
-		                                       strlen(e->alias));
+											   strlen(e->alias));
 		assert(entity != NULL && entity != TRIEMAP_NOTFOUND);
 
 		if(entity->properties) {

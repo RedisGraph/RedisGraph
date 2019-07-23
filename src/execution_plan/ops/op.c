@@ -36,9 +36,9 @@ void OpBase_Reset(OpBase *op) {
 
 static int _OpBase_StatsToString(const OpBase *op, char *buff, uint buff_len) {
 	return snprintf(buff, buff_len,
-	                " | Records produced: %d, Execution time: %f ms",
-	                op->stats->profileRecordCount,
-	                op->stats->profileExecTime);
+					" | Records produced: %d, Execution time: %f ms",
+					op->stats->profileRecordCount,
+					op->stats->profileExecTime);
 }
 
 int OpBase_ToString(const OpBase *op, char *buff, uint buff_len) {
@@ -49,8 +49,8 @@ int OpBase_ToString(const OpBase *op, char *buff, uint buff_len) {
 
 	if(op->stats) {
 		bytes_written += _OpBase_StatsToString(op,
-		                                       buff + bytes_written,
-		                                       buff_len - bytes_written);
+											   buff + bytes_written,
+											   buff_len - bytes_written);
 	}
 
 	return bytes_written;

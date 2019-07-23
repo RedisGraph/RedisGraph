@@ -10,9 +10,9 @@
 #include "../arithmetic/arithmetic_expression.h"
 
 AST_ArithmeticExpressionNode *New_AST_AR_EXP_VariableOperandNode(char *alias,
-        char *property) {
+																 char *property) {
 	AST_ArithmeticExpressionNode *node = rm_malloc(sizeof(
-	        AST_ArithmeticExpressionNode));
+													   AST_ArithmeticExpressionNode));
 	node->type = AST_AR_EXP_OPERAND;
 	node->operand.type = AST_AR_EXP_VARIADIC;
 	node->operand.variadic.alias = rm_strdup(alias);
@@ -26,9 +26,9 @@ AST_ArithmeticExpressionNode *New_AST_AR_EXP_VariableOperandNode(char *alias,
 }
 
 AST_ArithmeticExpressionNode *New_AST_AR_EXP_ConstOperandNode(
-    SIValue constant) {
+	SIValue constant) {
 	AST_ArithmeticExpressionNode *node = rm_malloc(sizeof(
-	        AST_ArithmeticExpressionNode));
+													   AST_ArithmeticExpressionNode));
 	node->type = AST_AR_EXP_OPERAND;
 	node->operand.type = AST_AR_EXP_CONSTANT;
 	node->operand.constant = constant;
@@ -37,7 +37,7 @@ AST_ArithmeticExpressionNode *New_AST_AR_EXP_ConstOperandNode(
 
 AST_ArithmeticExpressionNode *New_AST_AR_EXP_OpNode(char *func, Vector *args) {
 	AST_ArithmeticExpressionNode *node = rm_malloc(sizeof(
-	        AST_ArithmeticExpressionNode));
+													   AST_ArithmeticExpressionNode));
 	node->type = AST_AR_EXP_OP;
 	node->op.function = func;
 	node->op.args = args;
@@ -45,7 +45,7 @@ AST_ArithmeticExpressionNode *New_AST_AR_EXP_OpNode(char *func, Vector *args) {
 }
 
 void AST_AR_EXP_GetAliases(const AST_ArithmeticExpressionNode *exp,
-                           TrieMap *aliases) {
+						   TrieMap *aliases) {
 	if(exp->type == AST_AR_EXP_OP) {
 		/* Process operands. */
 		for(int i = 0; i < Vector_Size(exp->op.args); i++) {
@@ -58,17 +58,17 @@ void AST_AR_EXP_GetAliases(const AST_ArithmeticExpressionNode *exp,
 		if(exp->operand.type == AST_AR_EXP_VARIADIC) {
 			char *alias = exp->operand.variadic.alias;
 			if(alias) TrieMap_Add(aliases, alias, strlen(alias), NULL,
-				                      TrieMap_DONT_CARE_REPLACE);
+									  TrieMap_DONT_CARE_REPLACE);
 		}
 	}
 }
 
 void AST_AR_EXP_GetFunctions(const AST_ArithmeticExpressionNode *exp,
-                             TrieMap *functions) {
+							 TrieMap *functions) {
 	if(exp->type == AST_AR_EXP_OP) {
 		AST_ArithmeticExpressionOP op = exp->op;
 		TrieMap_Add(functions, op.function, strlen(op.function), NULL,
-		            TrieMap_DONT_CARE_REPLACE);
+					TrieMap_DONT_CARE_REPLACE);
 		for(int i = 0; i < Vector_Size(op.args); i++) {
 			AST_ArithmeticExpressionNode *arg;
 			Vector_Get(op.args, i, &arg);
@@ -97,7 +97,7 @@ int AST_AR_EXP_ContainsAggregation(const AST_ArithmeticExpressionNode *exp) {
 }
 
 void Free_AST_ArithmeticExpressionNode(AST_ArithmeticExpressionNode
-                                       *arExpNode) {
+									   *arExpNode) {
 	if(!arExpNode) return;
 	/* Free arithmetic expression operation. */
 	if(arExpNode->type == AST_AR_EXP_OP) {

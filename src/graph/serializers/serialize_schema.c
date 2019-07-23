@@ -42,7 +42,7 @@ void RdbLoadAttributeKeys(RedisModuleIO *rdb, GraphContext *gc) {
 
 		// Update the string->ID triemap
 		TrieMap_Add(gc->attributes, attr, len, pAttribute_id,
-		            TrieMap_DONT_CARE_REPLACE);
+					TrieMap_DONT_CARE_REPLACE);
 		// Update the ID->string array
 		// The RDB string was not null-terminated, so we need to make an updated copy
 		char *rm_attr = rm_malloc((len + 1) * sizeof(char));

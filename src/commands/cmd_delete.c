@@ -22,7 +22,7 @@ void _MGraph_Delete(void *args) {
 	CommandCtx *dCtx = (CommandCtx *)args;
 	RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(dCtx);
 	RedisModuleString *graph_name = RedisModule_CreateString(ctx, dCtx->graphName,
-	                                strlen(dCtx->graphName));
+															 strlen(dCtx->graphName));
 	CommandCtx_ThreadSafeContextLock(dCtx);
 
 	RedisModuleKey *key = RedisModule_OpenKey(ctx, graph_name, REDISMODULE_WRITE);
@@ -32,7 +32,7 @@ void _MGraph_Delete(void *args) {
 		goto cleanup;
 	} else if(keytype != REDISMODULE_KEYTYPE_MODULE) {
 		RedisModule_ReplyWithError(ctx,
-		                           "Specified graph name referred to incorrect key type.");
+								   "Specified graph name referred to incorrect key type.");
 		goto cleanup;
 	}
 
@@ -50,7 +50,7 @@ void _MGraph_Delete(void *args) {
 		char *strElapsed;
 		double t = simple_toc(tic) * 1000;
 		asprintf(&strElapsed,
-		         "Graph removed, internal execution time: %.6f milliseconds", t);
+				 "Graph removed, internal execution time: %.6f milliseconds", t);
 		RedisModule_ReplyWithStringBuffer(ctx, strElapsed, strlen(strElapsed));
 		free(strElapsed);
 	} else {
@@ -79,7 +79,7 @@ int MGraph_Delete(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 		_MGraph_Delete(context);
 	} else {
 		RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL,
-		                               0);
+															   0);
 		context = CommandCtx_New(NULL, bc, NULL, graph_name, argv, argc);
 		thpool_add_work(_thpool, _MGraph_Delete, context);
 	}

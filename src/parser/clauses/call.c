@@ -11,7 +11,7 @@
 #include "../../procedures/procedure.h"
 
 AST_ProcedureCallNode *New_AST_ProcedureCallNode(char *procedure,
-        char **arguments, char **yield) {
+												 char **arguments, char **yield) {
 	AST_ProcedureCallNode *procCall = rm_malloc(sizeof(AST_ProcedureCallNode));
 	procCall->procedure = procedure;
 	procCall->arguments = arguments;
@@ -20,13 +20,13 @@ AST_ProcedureCallNode *New_AST_ProcedureCallNode(char *procedure,
 }
 
 void ProcedureCallClause_ReferredEntities(const AST_ProcedureCallNode *node,
-        TrieMap *referred_entities) {
+										  TrieMap *referred_entities) {
 	// Procedure call doesn't refers to any entities.
 	return;
 }
 
 void ProcedureCallClause_DefinedEntities(const AST_ProcedureCallNode *node,
-        TrieMap *definedEntities) {
+										 TrieMap *definedEntities) {
 	if(!node) return;
 
 	ProcedureCtx *proc = Proc_Get(node->procedure);
@@ -54,10 +54,10 @@ void ProcedureCallClause_DefinedEntities(const AST_ProcedureCallNode *node,
 				}
 
 				TrieMap_Add(definedEntities,
-				            node->yield[i],
-				            strlen(node->yield[i]),
-				            entity,
-				            TrieMap_DONT_CARE_REPLACE);
+							node->yield[i],
+							strlen(node->yield[i]),
+							entity,
+							TrieMap_DONT_CARE_REPLACE);
 				break;
 			}
 		}

@@ -16,14 +16,14 @@ typedef struct {
 } AST_ProcedureCallNode;
 
 AST_ProcedureCallNode *New_AST_ProcedureCallNode(char *procedure,
-        char **arguments, char **yield);
+												 char **arguments, char **yield);
 
 /* Lists entities consumed by this clause. */
 void ProcedureCallClause_ReferredEntities(const AST_ProcedureCallNode *node,
-        TrieMap *referred_entities);
+										  TrieMap *referred_entities);
 
 /* Lists entities defined by this clause. */
 void ProcedureCallClause_DefinedEntities(const AST_ProcedureCallNode *node,
-        TrieMap *definedEntities);
+										 TrieMap *definedEntities);
 
 void Free_AST_ProcedureCallNode(AST_ProcedureCallNode *node);

@@ -31,10 +31,10 @@ typedef struct {
 
 /* Creates a new execution plan from AST */
 ExecutionPlan *NewExecutionPlan(
-    RedisModuleCtx *ctx,    // Module-level context
-    AST **ast,              // Query parsed AST
-    ResultSet *result_set,  // Result set to be populated if the query returns data
-    bool explain            // Construct execution plan, do not execute
+	RedisModuleCtx *ctx,    // Module-level context
+	AST **ast,              // Query parsed AST
+	ResultSet *result_set,  // Result set to be populated if the query returns data
+	bool explain            // Construct execution plan, do not execute
 );
 
 /* Prints execution plan. */

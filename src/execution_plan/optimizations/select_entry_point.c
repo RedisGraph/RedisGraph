@@ -20,12 +20,12 @@ void selectEntryPoint(AlgebraicExpression *ae, const FT_FilterNode *tree) {
 
 	// See if either source or destination nodes are filtered.
 	if(raxFind(aliases, (unsigned char *)srcAlias,
-	           strlen(srcAlias)) != raxNotFound) {
+			   strlen(srcAlias)) != raxNotFound) {
 		goto cleanup;
 	}
 
 	if(raxFind(aliases, (unsigned char *)destAlias,
-	           strlen(destAlias)) != raxNotFound) {
+			   strlen(destAlias)) != raxNotFound) {
 		destFiltered = true;
 	}
 

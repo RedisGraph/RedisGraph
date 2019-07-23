@@ -29,24 +29,24 @@ typedef struct {
 } OpProcCall;
 
 OpBase *NewProcCallOp(
-    char *procedure,    // Procedure name.
-    char **args,        // Arguments passed to procedure invocation.
-    char **output,      // Procedure output.
-    AST *ast            // AST.
+	char *procedure,    // Procedure name.
+	char **args,        // Arguments passed to procedure invocation.
+	char **output,      // Procedure output.
+	AST *ast            // AST.
 );
 
 OpResult OpProcCallInit(
-    OpBase *opBase
+	OpBase *opBase
 );
 
 Record OpProcCallConsume(
-    OpBase *opBase
+	OpBase *opBase
 );
 
 OpResult OpProcCallReset(
-    OpBase *ctx
+	OpBase *ctx
 );
 
 void OpProcCallFree(
-    OpBase *ctx
+	OpBase *ctx
 );

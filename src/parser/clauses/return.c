@@ -10,9 +10,9 @@
 #include "../../util/rmalloc.h"
 
 AST_ReturnElementNode *New_AST_ReturnElementNode(AST_ArithmeticExpressionNode
-        *exp, char *alias) {
+												 *exp, char *alias) {
 	AST_ReturnElementNode *returnElementNode = rm_malloc(sizeof(
-	            AST_ReturnElementNode));
+															 AST_ReturnElementNode));
 	returnElementNode->exp = exp;
 	returnElementNode->alias = NULL;
 
@@ -22,7 +22,7 @@ AST_ReturnElementNode *New_AST_ReturnElementNode(AST_ArithmeticExpressionNode
 }
 
 AST_ReturnNode *New_AST_ReturnNode(AST_ReturnElementNode **returnElements,
-                                   int distinct) {
+								   int distinct) {
 	AST_ReturnNode *returnNode = rm_malloc(sizeof(AST_ReturnNode));
 	returnNode->distinct = distinct;
 	returnNode->returnElements = returnElements;
@@ -44,7 +44,7 @@ int ReturnClause_ContainsAggregation(const AST_ReturnNode *returnNode) {
 }
 
 void ReturnClause_ReferredEntities(const AST_ReturnNode *returnNode,
-                                   TrieMap *referred_nodes) {
+								   TrieMap *referred_nodes) {
 	if(!returnNode) return;
 
 	uint elemCount = array_len(returnNode->returnElements);
@@ -57,7 +57,7 @@ void ReturnClause_ReferredEntities(const AST_ReturnNode *returnNode,
 
 // Collect aggregate functions invoked by the return clause.
 int ReturnClause_AggregateFunctions(const AST_ReturnNode *returnNode,
-                                    AST_ArithmeticExpressionOP **funcs) {
+									AST_ArithmeticExpressionOP **funcs) {
 	uint elemCount = array_len(returnNode->returnElements);
 	int aggregate_count = 0;
 	for(uint i = 0; i < elemCount; i++) {
@@ -72,7 +72,7 @@ int ReturnClause_AggregateFunctions(const AST_ReturnNode *returnNode,
 }
 
 void ReturnClause_ReferredFunctions(const AST_ReturnNode *returnNode,
-                                    TrieMap *referred_funcs) {
+									TrieMap *referred_funcs) {
 	if(!returnNode) return;
 
 	uint elemCount = array_len(returnNode->returnElements);
@@ -87,7 +87,7 @@ void ReturnClause_ReferredFunctions(const AST_ReturnNode *returnNode,
 // aliased expressions can be referred to by other clauses (ORDER BY)
 // these will be added to the definedEntities triemap.
 void ReturnClause_DefinedEntities(const AST_ReturnNode *returnNode,
-                                  TrieMap *definedEntities) {
+								  TrieMap *definedEntities) {
 	if(!returnNode) return;
 
 	uint elemCount = array_len(returnNode->returnElements);
@@ -95,10 +95,10 @@ void ReturnClause_DefinedEntities(const AST_ReturnNode *returnNode,
 		AST_ReturnElementNode *retElem = returnNode->returnElements[i];
 		if(retElem->alias) {
 			TrieMap_Add(definedEntities,
-			            retElem->alias,
-			            strlen(retElem->alias),
-			            NULL,
-			            TrieMap_DONT_CARE_REPLACE);
+						retElem->alias,
+						strlen(retElem->alias),
+						NULL,
+						TrieMap_DONT_CARE_REPLACE);
 		}
 	}
 }
@@ -118,7 +118,7 @@ char **ReturnClause_GetAliases(const AST_ReturnNode *return_node) {
 void Free_AST_ReturnElementNode(AST_ReturnElementNode *returnElementNode) {
 	if(!returnElementNode) return;
 	if(returnElementNode->exp) Free_AST_ArithmeticExpressionNode(
-		    returnElementNode->exp);
+			returnElementNode->exp);
 	if(returnElementNode->alias != NULL) rm_free(returnElementNode->alias);
 	rm_free(returnElementNode);
 }

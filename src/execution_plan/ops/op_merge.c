@@ -97,9 +97,9 @@ static void _CommitEdges(OpMerge *op, Record r) {
 		// Newly created edge will be placed within given record.
 		Edge *e = Record_GetEdge(r, i);
 		Schema *schema = GraphContext_GetSchema(op->gc, blueprint->labels[0],
-		                                        SCHEMA_EDGE);
+												SCHEMA_EDGE);
 		if(!schema) schema = GraphContext_AddSchema(op->gc, blueprint->labels[0],
-			                     SCHEMA_EDGE);
+														SCHEMA_EDGE);
 
 		NodeID srcId;
 		NodeID destId;

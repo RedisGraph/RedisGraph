@@ -14,7 +14,7 @@ AST_MergeNode *New_AST_MergeNode(Vector *graphEntities) {
 }
 
 void MergeClause_NameAnonymousNodes(const AST_MergeNode *mergeNode,
-                                    int *entityID) {
+									int *entityID) {
 	if(!mergeNode) return;
 
 	int entities_count = Vector_Size(mergeNode->graphEntities);
@@ -32,7 +32,7 @@ void MergeClause_NameAnonymousNodes(const AST_MergeNode *mergeNode,
 }
 
 void MergeClause_DefinedEntities(const AST_MergeNode *mergeNode,
-                                 TrieMap *defined_entities) {
+								 TrieMap *defined_entities) {
 	if(!mergeNode) return;
 
 	int merge_element_count = Vector_Size(mergeNode->graphEntities);
@@ -42,7 +42,7 @@ void MergeClause_DefinedEntities(const AST_MergeNode *mergeNode,
 		Vector_Get(mergeNode->graphEntities, i, &entity);
 		if(!entity->alias) continue;
 		TrieMap_Add(defined_entities, entity->alias, strlen(entity->alias), entity,
-		            TrieMap_DONT_CARE_REPLACE);
+					TrieMap_DONT_CARE_REPLACE);
 	}
 }
 

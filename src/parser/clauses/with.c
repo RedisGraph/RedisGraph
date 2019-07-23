@@ -21,7 +21,7 @@ AST_WithNode *New_AST_WithNode(AST_WithElementNode **exps) {
 }
 
 AST_WithElementNode *New_AST_WithElementNode(AST_ArithmeticExpressionNode *exp,
-        char *alias) {
+											 char *alias) {
 	AST_WithElementNode *withElementNode = rm_malloc(sizeof(AST_WithElementNode));
 	withElementNode->alias = alias;
 	withElementNode->exp = exp;
@@ -29,7 +29,7 @@ AST_WithElementNode *New_AST_WithElementNode(AST_ArithmeticExpressionNode *exp,
 }
 
 void WithClause_ReferredEntities(const AST_WithNode *withNode,
-                                 TrieMap *referred_nodes) {
+								 TrieMap *referred_nodes) {
 	if(!withNode) return;
 
 	uint elemCount = array_len(withNode->exps);
@@ -42,14 +42,14 @@ void WithClause_ReferredEntities(const AST_WithNode *withNode,
 }
 
 void WithClause_DefinedEntities(const AST_WithNode *withNode,
-                                TrieMap *definedEntities) {
+								TrieMap *definedEntities) {
 	if(!withNode) return;
 
 	uint elemCount = array_len(withNode->exps);
 	for(uint i = 0; i < elemCount; i++) {
 		AST_WithElementNode *elem = withNode->exps[i];
 		TrieMap_Add(definedEntities, elem->alias, strlen(elem->alias), NULL,
-		            TrieMap_DONT_CARE_REPLACE);
+					TrieMap_DONT_CARE_REPLACE);
 	}
 }
 

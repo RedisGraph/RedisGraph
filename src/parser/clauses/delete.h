@@ -16,7 +16,7 @@ typedef struct {
 
 AST_DeleteNode *New_AST_DeleteNode(Vector *elements);
 void DeleteClause_ReferredEntities(const AST_DeleteNode *delete_node,
-                                   TrieMap *referred_entities);
+								   TrieMap *referred_entities);
 void Free_AST_DeleteNode(AST_DeleteNode *delete_node);
 
 #endif

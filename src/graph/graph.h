@@ -102,201 +102,201 @@ void Graph_ApplyAllPending(Graph *g);
 
 // Create a new graph.
 Graph *Graph_New(
-    size_t node_cap,    // Allocation size for node datablocks and matrix dimensions.
-    size_t edge_cap     // Allocation size for edge datablocks.
+	size_t node_cap,    // Allocation size for node datablocks and matrix dimensions.
+	size_t edge_cap     // Allocation size for edge datablocks.
 );
 
 // Creates a new label matrix, returns id given to label.
 int Graph_AddLabel(
-    Graph *g
+	Graph *g
 );
 
 // Creates a new relation matrix, returns id given to relation.
 int Graph_AddRelationType(
-    Graph *g
+	Graph *g
 );
 
 // Make sure graph can hold an additional N nodes.
 void Graph_AllocateNodes(
-    Graph *g,               // Graph for which nodes will be added.
-    size_t n                // Number of nodes to create.
+	Graph *g,               // Graph for which nodes will be added.
+	size_t n                // Number of nodes to create.
 );
 
 // Make sure graph can hold an additional N edges.
 void Graph_AllocateEdges(
-    Graph *g,               // Graph for which nodes will be added.
-    size_t n                // Number of edges to create.
+	Graph *g,               // Graph for which nodes will be added.
+	size_t n                // Number of edges to create.
 );
 
 // Create a single node and labels it accordingly.
 // Return newly created node.
 void Graph_CreateNode(
-    Graph *g,
-    int label,
-    Node *n
+	Graph *g,
+	int label,
+	Node *n
 );
 
 // Connects source node to destination node.
 // Returns 1 if connection is formed, 0 otherwise.
 int Graph_ConnectNodes(
-    Graph *g,           // Graph on which to operate.
-    NodeID src,         // Source node ID.
-    NodeID dest,        // Destination node ID.
-    int r,              // Edge type.
-    Edge *e
+	Graph *g,           // Graph on which to operate.
+	NodeID src,         // Source node ID.
+	NodeID dest,        // Destination node ID.
+	int r,              // Edge type.
+	Edge *e
 );
 
 // Removes node and all of its connections within the graph.
 void Graph_DeleteNode(
-    Graph *g,
-    Node *node
+	Graph *g,
+	Node *node
 );
 
 // Removes an edge from Graph and updates graph relevent matrices.
 int Graph_DeleteEdge(
-    Graph *g,
-    Edge *e
+	Graph *g,
+	Edge *e
 );
 
 // Removes both nodes and edges from graph.
 void Graph_BulkDelete(
-    Graph *g,           // Graph to delete entities from.
-    Node *nodes,        // Nodes to delete.
-    uint node_count,    // Number of nodes to delete.
-    Edge *edges,        // Edges to delete.
-    uint edge_count,    // Number of edges to delete.
-    uint *node_deleted, // Number of nodes removed.
-    uint *edge_deleted  // Number of edges removed.
+	Graph *g,           // Graph to delete entities from.
+	Node *nodes,        // Nodes to delete.
+	uint node_count,    // Number of nodes to delete.
+	Edge *edges,        // Edges to delete.
+	uint edge_count,    // Number of edges to delete.
+	uint *node_deleted, // Number of nodes removed.
+	uint *edge_deleted  // Number of edges removed.
 );
 
 // All graph matrices are required to be squared NXN
 // where N is Graph_RequiredMatrixDim.
 size_t Graph_RequiredMatrixDim(
-    const Graph *g
+	const Graph *g
 );
 
 // Retrieves a node iterator which can be used to access
 // every node in the graph.
 DataBlockIterator *Graph_ScanNodes(
-    const Graph *g
+	const Graph *g
 );
 
 // Retrieves an edge iterator which can be used to access
 // every edge in the graph.
 DataBlockIterator *Graph_ScanEdges(
-    const Graph *g
+	const Graph *g
 );
 
 // Returns number of nodes in the graph.
 size_t Graph_NodeCount(
-    const Graph *g
+	const Graph *g
 );
 
 // Returns number of nodes with given label.
 size_t Graph_LabeledNodeCount(
-    const Graph *g,
-    int label
+	const Graph *g,
+	int label
 );
 
 // Returns number of edges in the graph.
 size_t Graph_EdgeCount(
-    const Graph *g
+	const Graph *g
 );
 
 // Returns number of different edge types.
 int Graph_RelationTypeCount(
-    const Graph *g
+	const Graph *g
 );
 
 // Returns number of different node types.
 int Graph_LabelTypeCount(
-    const Graph *g
+	const Graph *g
 );
 
 // Retrieves node with given id from graph,
 // Returns NULL if node wasn't found.
 int Graph_GetNode(
-    const Graph *g,
-    NodeID id,
-    Node *n
+	const Graph *g,
+	NodeID id,
+	Node *n
 );
 
 // Retrieves node label
 // Returns GRAPH_NO_LABEL if node has no label.
 int Graph_GetNodeLabel(
-    const Graph *g,
-    NodeID nodeID
+	const Graph *g,
+	NodeID nodeID
 );
 
 // Retrieves edge with given id from graph,
 // Returns NULL if edge wasn't found.
 int Graph_GetEdge(
-    const Graph *g,
-    EdgeID id,
-    Edge *e
+	const Graph *g,
+	EdgeID id,
+	Edge *e
 );
 
 // Retrieves edge relation type
 // Returns GRAPH_NO_RELATION if edge has no relation type.
 int Graph_GetEdgeRelation(
-    const Graph *g,
-    Edge *e
+	const Graph *g,
+	Edge *e
 );
 
 // Retrieves edges connecting source to destination,
 // relation is optional, pass GRAPH_NO_RELATION if you do not care
 // about edge type.
 void Graph_GetEdgesConnectingNodes(
-    const Graph *g,     // Graph to get edges from.
-    NodeID srcID,       // Source node of edge
-    NodeID destID,      // Destination node of edge
-    int r,              // Edge type.
-    Edge **edges        // array_t of edges connecting src to dest of type r.
+	const Graph *g,     // Graph to get edges from.
+	NodeID srcID,       // Source node of edge
+	NodeID destID,      // Destination node of edge
+	int r,              // Edge type.
+	Edge **edges        // array_t of edges connecting src to dest of type r.
 );
 
 // Checks if src is connected to dest via edge of type r
 // set r to GRAPH_NO_RELATION if you do not care
 // about edge type.
 bool Graph_EdgeExists(
-    const Graph *g,     // Graph to get edges from.
-    NodeID srcID,       // Source node of edge
-    NodeID destID,      // Destination node of edge
-    int r               // Edge type.
+	const Graph *g,     // Graph to get edges from.
+	NodeID srcID,       // Source node of edge
+	NodeID destID,      // Destination node of edge
+	int r               // Edge type.
 );
 
 // Get node edges.
 void Graph_GetNodeEdges(
-    const Graph *g,         // Graph to get edges from.
-    const Node *n,          // Node to extract edges from.
-    GRAPH_EDGE_DIR dir,     // Edge direction.
-    int edgeType,           // Relation type.
-    Edge **edges            // array_t incoming/outgoing edges.
+	const Graph *g,         // Graph to get edges from.
+	const Node *n,          // Node to extract edges from.
+	GRAPH_EDGE_DIR dir,     // Edge direction.
+	int edgeType,           // Relation type.
+	Edge **edges            // array_t incoming/outgoing edges.
 );
 
 // Retrieves the adjacency matrix.
 // Matrix is resized if its size doesn't match graph's node count.
 GrB_Matrix Graph_GetAdjacencyMatrix(
-    const Graph *g
+	const Graph *g
 );
 
 // Retrieves a label matrix.
 // Matrix is resized if its size doesn't match graph's node count.
 GrB_Matrix Graph_GetLabelMatrix(
-    const Graph *g,     // Graph from which to get adjacency matrix.
-    int label           // Label described by matrix.
+	const Graph *g,     // Graph from which to get adjacency matrix.
+	int label           // Label described by matrix.
 );
 
 // Retrieves a typed adjacency matrix.
 // Matrix is resized if its size doesn't match graph's node count.
 GrB_Matrix Graph_GetRelationMatrix(
-    const Graph *g,     // Graph from which to get adjacency matrix.
-    int relation        // Relation described by matrix.
+	const Graph *g,     // Graph from which to get adjacency matrix.
+	int relation        // Relation described by matrix.
 );
 
 // Retrieve a relation mapping matrix coresponding to relation_idx
 GrB_Matrix Graph_GetRelationMap(
-    const Graph *g,     // Graph from which to get mapping matrix.
-    int relation_idx    // Relation id
+	const Graph *g,     // Graph from which to get mapping matrix.
+	int relation_idx    // Relation id
 );
 
 // Retrieves the zero matrix.
@@ -306,7 +306,7 @@ GrB_Matrix Graph_GetZeroMatrix(const Graph *g);
 
 // Free graph.
 void Graph_Free(
-    Graph *g
+	Graph *g
 );
 
 #endif

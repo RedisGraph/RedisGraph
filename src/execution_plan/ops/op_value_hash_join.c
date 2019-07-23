@@ -25,7 +25,7 @@ static bool _record_islt(Record l, Record r, uint idx) {
 
 // Performs binary search, returns the leftmost index of a match.
 static int64_t _binarySearchLeftmost(Record *array, int join_key_idx,
-                                     SIValue v) {
+									 SIValue v) {
 	int64_t recordCount = array_len(array);
 	int64_t pos;
 	int64_t left = 0;
@@ -41,7 +41,7 @@ static int64_t _binarySearchLeftmost(Record *array, int join_key_idx,
 
 // Performs binary search, returns the rightmost index of a match.
 static int64_t _binarySearchRightmost(Record *array, int64_t array_len,
-                                      int join_key_idx, SIValue v) {
+									  int join_key_idx, SIValue v) {
 	int64_t pos;
 	int64_t left = 0;
 	int64_t right = array_len;
@@ -59,7 +59,7 @@ static int64_t _binarySearchRightmost(Record *array, int64_t array_len,
 static Record _get_intersecting_record(OpValueHashJoin *op) {
 	// No more intersecting records.
 	if(op->intersect_idx == -1 ||
-	        op->number_of_intersections == 0) return NULL;
+			op->number_of_intersections == 0) return NULL;
 
 	Record cr = op->cached_records[op->intersect_idx];
 
@@ -78,7 +78,7 @@ static bool _set_intersection_idx(OpValueHashJoin *op, SIValue v) {
 	uint record_count = array_len(op->cached_records);
 
 	int64_t leftmost_idx = _binarySearchLeftmost(op->cached_records,
-	                       op->join_value_rec_idx, v);
+												 op->join_value_rec_idx, v);
 	if(leftmost_idx >= record_count) return false;
 
 	// Make sure value was found.
@@ -95,10 +95,10 @@ static bool _set_intersection_idx(OpValueHashJoin *op, SIValue v) {
 	/* Count how many records share the same node.
 	 * reduce search space by truncating left bound */
 	int64_t rightmost_idx = _binarySearchRightmost(op->cached_records +
-	                        leftmost_idx,
-	                        record_count - leftmost_idx,
-	                        op->join_value_rec_idx,
-	                        v);
+												   leftmost_idx,
+												   record_count - leftmost_idx,
+												   op->join_value_rec_idx,
+												   v);
 	// Compensate index.
 	rightmost_idx += leftmost_idx;
 	// +1 consider rightmost_idx == leftmost_idx.
@@ -112,7 +112,7 @@ static bool _set_intersection_idx(OpValueHashJoin *op, SIValue v) {
 void _sort_cached_records(OpValueHashJoin *op) {
 	uint idx = op->join_value_rec_idx;
 	QSORT(Record, op->cached_records,
-	      array_len(op->cached_records), RECORD_SORT_ON_ENTRY);
+		  array_len(op->cached_records), RECORD_SORT_ON_ENTRY);
 }
 
 /* Caches all records coming from left branch. */

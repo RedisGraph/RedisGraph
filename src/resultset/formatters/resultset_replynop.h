@@ -8,6 +8,6 @@
 
 // Formatter for compact (client-parsed) replies
 void ResultSet_EmitNOPHeader(RedisModuleCtx *ctx, const ResultSetHeader *header,
-                             void *data);
+							 void *data);
 void ResultSet_EmitNOPRecord(RedisModuleCtx *ctx, GraphContext *gc,
-                             const Record r, unsigned int numcols);
+							 const Record r, unsigned int numcols);

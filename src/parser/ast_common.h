@@ -50,9 +50,9 @@ typedef struct {
 } AST_LinkEntity;
 
 AST_NodeEntity *New_AST_NodeEntity(char *alias, char *label,
-                                   Vector *properties);
+								   Vector *properties);
 AST_LinkEntity *New_AST_LinkEntity(char *alias, char **labels,
-                                   Vector *properties, AST_LinkDirection dir, AST_LinkLength *length);
+								   Vector *properties, AST_LinkDirection dir, AST_LinkLength *length);
 AST_LinkLength *New_AST_LinkLength(unsigned int minHops, unsigned int maxHops);
 AST_Variable *New_AST_Variable(char *alias, char *property);
 AST_GraphEntity *Clone_AST_GraphEntity(const AST_GraphEntity *src);

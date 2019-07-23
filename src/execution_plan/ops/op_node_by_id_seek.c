@@ -19,12 +19,12 @@ static inline bool _outOfBounds(OpNodeByIdSeek *op) {
 
 OpBase *NewOpNodeByIdSeekOp
 (
-    const AST *ast,
-    unsigned int nodeRecIdx,
-    NodeID minId,
-    NodeID maxId,
-    bool minInclusive,
-    bool maxInclusive
+	const AST *ast,
+	unsigned int nodeRecIdx,
+	NodeID minId,
+	NodeID maxId,
+	bool minInclusive,
+	bool maxInclusive
 ) {
 	// Can't include unspecified bound.
 	assert(!(minId == ID_RANGE_UNBOUND && minInclusive));
@@ -42,9 +42,9 @@ OpBase *NewOpNodeByIdSeekOp
 
 	// The largest possible entity ID is the same as Graph_RequiredMatrixDim.
 	if(maxId == ID_RANGE_UNBOUND) maxId = Graph_RequiredMatrixDim(
-		        op_nodeByIdSeek->g);
+												  op_nodeByIdSeek->g);
 	op_nodeByIdSeek->maxId = MIN(Graph_RequiredMatrixDim(op_nodeByIdSeek->g),
-	                             maxId);
+								 maxId);
 
 	op_nodeByIdSeek->currentId = op_nodeByIdSeek->minId;
 	/* Advance current ID when min is not inclusive and

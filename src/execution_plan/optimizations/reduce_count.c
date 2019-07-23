@@ -11,7 +11,7 @@
 static GrB_Monoid edgeCountMonoid = NULL;
 
 static int _identifyResultAndAggregateOps(OpBase *root, OpResult **opResult,
-        OpAggregate **opAggregate) {
+										  OpAggregate **opAggregate) {
 	OpBase *op = root;
 	// Op Results.
 	if(op->type != OPType_RESULTS || op->childCount != 1) return 0;
@@ -25,28 +25,28 @@ static int _identifyResultAndAggregateOps(OpBase *root, OpResult **opResult,
 	// Expecting a single aggregation, without ordering.
 	*opAggregate = (OpAggregate *)op;
 	if((*opAggregate)->exp_count != 1 ||
-	        (*opAggregate)->order_exp_count != 0) return 0;
+			(*opAggregate)->order_exp_count != 0) return 0;
 
 	AR_ExpNode *exp = (*opAggregate)->expressions[0];
 
 	// Make sure aggregation performs counting.
 	if(exp->type != AR_EXP_OP ||
-	        exp->op.type != AR_OP_AGGREGATE ||
-	        strcasecmp(exp->op.func_name, "count")) return 0;
+			exp->op.type != AR_OP_AGGREGATE ||
+			strcasecmp(exp->op.func_name, "count")) return 0;
 
 	// Make sure Count acts on an alias.
 	if(exp->op.child_count != 1) return 0;
 	AR_ExpNode *arg = exp->op.children[0];
 	if(arg->type != AR_EXP_OPERAND ||
-	        arg->operand.type != AR_EXP_VARIADIC ||
-	        arg->operand.variadic.entity_prop != NULL) return 0;
+			arg->operand.type != AR_EXP_VARIADIC ||
+			arg->operand.variadic.entity_prop != NULL) return 0;
 
 	return 1;
 
 }
 /* Checks if execution plan solely performs node count */
 static int _identifyNodeCountPattern(OpBase *root, OpResult **opResult,
-                                     OpAggregate **opAggregate, OpBase **opScan, char **label) {
+									 OpAggregate **opAggregate, OpBase **opScan, char **label) {
 	// Reset.
 	*label = NULL;
 	*opScan = NULL;
@@ -58,8 +58,8 @@ static int _identifyNodeCountPattern(OpBase *root, OpResult **opResult,
 
 	// Scan, either a full node or label scan.
 	if((op->type != OPType_ALL_NODE_SCAN &&
-	        op->type != OPType_NODE_BY_LABEL_SCAN) ||
-	        op->childCount != 0) {
+			op->type != OPType_NODE_BY_LABEL_SCAN) ||
+			op->childCount != 0) {
 		return 0;
 	}
 
@@ -85,7 +85,7 @@ bool _reduceNodeCount(ExecutionPlan *plan, AST *ast) {
 	 * "Scan -> Aggregate -> Results".
 	 * if that's not the case, simply return without making any modifications. */
 	if(!_identifyNodeCountPattern(plan->root, &opResult, &opAggregate, &opScan,
-	                              &label)) return false;
+								  &label)) return false;
 
 	/* User is trying to get total number of nodes in the graph
 	 * optimize by skiping SCAN and AGGREGATE. */
@@ -130,7 +130,7 @@ bool _reduceNodeCount(ExecutionPlan *plan, AST *ast) {
 
 /* Checks if execution plan solely performs edge count */
 static int _identifyEdgeCountPattern(OpBase *root, OpResult **opResult,
-                                     OpAggregate **opAggregate, OpBase **opTraverse, OpBase **opScan) {
+									 OpAggregate **opAggregate, OpBase **opTraverse, OpBase **opScan) {
 	// Reset.
 	*opScan = NULL;
 	*opTraverse = NULL;
@@ -171,7 +171,7 @@ uint64_t _countRelationshipEdges(GrB_Matrix M) {
 	if(!edgeCountMonoid) {
 		GrB_BinaryOp edgeCountBinaryOp;
 		GrB_BinaryOp_new(&edgeCountBinaryOp, _countEdges, GrB_UINT64, GrB_UINT64,
-		                 GrB_UINT64);
+						 GrB_UINT64);
 		GrB_Monoid_new(&edgeCountMonoid, edgeCountBinaryOp, (uint64_t) 0);
 	}
 	uint64_t edges = 0;
@@ -192,7 +192,7 @@ void _reduceEdgeCount(ExecutionPlan *plan, AST *ast) {
 	 * "Full Scan -> Conditional Traverse -> Aggregate -> Results".
 	 * if that's not the case, simply return without making any modifications. */
 	if(!_identifyEdgeCountPattern(plan->root, &opResult, &opAggregate, &opTraverse,
-	                              &opScan))
+								  &opScan))
 		return;
 
 	/* User is trying to get total number of edges in the graph
@@ -207,7 +207,7 @@ void _reduceEdgeCount(ExecutionPlan *plan, AST *ast) {
 		uint64_t edges = 0;
 		for(int i = 0; i < edgeRelationCount; i++) {
 			edges += _countRelationshipEdges(Graph_GetRelationMap(gc->g,
-			                                 condTraverse->edgeRelationTypes[i]));
+																  condTraverse->edgeRelationTypes[i]));
 		}
 		edgeCount = SI_LongVal(edges);
 	} else {

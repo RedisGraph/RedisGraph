@@ -23,10 +23,10 @@ typedef struct {
 } AST_OrderNode;
 
 AST_OrderNode *New_AST_OrderNode(Vector *expressions,
-                                 AST_OrderByDirection direction);
+								 AST_OrderByDirection direction);
 
 void OrderClause_ReferredEntities(const AST_OrderNode *order_node,
-                                  TrieMap *referred_entities);
+								  TrieMap *referred_entities);
 
 void Free_AST_OrderNode(AST_OrderNode *orderNode);
 

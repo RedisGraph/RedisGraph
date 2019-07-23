@@ -18,6 +18,6 @@
  * well scan all the way to the bottom and set level
  * to indicate the level reached. */
 Node **BFS(
-    Node *s,    // Node from which BFS scan begins.
-    int *level  // Stop scanning at level.
+	Node *s,    // Node from which BFS scan begins.
+	int *level  // Stop scanning at level.
 );

@@ -27,26 +27,26 @@ typedef struct {
 
 OpBase *NewOpNodeByIdSeekOp
 (
-    const AST *ast,
-    unsigned int nodeRecIdx,
-    NodeID minId,
-    NodeID maxId,
-    bool includeMin,
-    bool includeMax
+	const AST *ast,
+	unsigned int nodeRecIdx,
+	NodeID minId,
+	NodeID maxId,
+	bool includeMin,
+	bool includeMax
 );
 
 Record OpNodeByIdSeekConsume
 (
-    OpBase *opBase
+	OpBase *opBase
 );
 
 OpResult OpNodeByIdSeekReset
 (
-    OpBase *ctx
+	OpBase *ctx
 );
 
 void OpNodeByIdSeekFree
 (
-    OpBase *ctx
+	OpBase *ctx
 );
 

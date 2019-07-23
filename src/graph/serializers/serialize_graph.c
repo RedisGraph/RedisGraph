@@ -222,7 +222,7 @@ void _RdbSaveNodes(RedisModuleIO *rdb, const Graph *g,  char **string_mapping) {
 }
 
 void _RdbSaveEdge(RedisModuleIO *rdb, const Graph *g, const Edge *e,
-                  int r, char **string_mapping) {
+				  int r, char **string_mapping) {
 
 	/* Format:
 	* edge
@@ -269,7 +269,7 @@ void _RdbSaveEdges(RedisModuleIO *rdb, const Graph *g, char **string_mapping) {
 
 	// Sort deleted indices.
 	QSORT(NodeID, g->nodes->deletedIdx, array_len(g->nodes->deletedIdx),
-	      ENTITY_ID_ISLT);
+		  ENTITY_ID_ISLT);
 
 	// #edges (N)
 	RedisModule_SaveUnsigned(rdb, Graph_EdgeCount(g));

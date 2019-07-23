@@ -13,7 +13,7 @@
 #include "../graphcontext.h"
 
 Edge *Edge_New(Node *src, Node *dest, const char *relationship,
-               const char *alias) {
+			   const char *alias) {
 	assert(src && dest);
 
 	Edge *e = calloc(1, sizeof(Edge));
@@ -125,7 +125,7 @@ int Edge_ToString(const Edge *e, char *buff, int buff_len) {
 			offset += snprintf(buff + offset, buff_len - offset, "*%u..INF", e->minHops);
 		else
 			offset += snprintf(buff + offset, buff_len - offset, "*%u..%u", e->minHops,
-			                   e->maxHops);
+							   e->maxHops);
 	}
 
 	offset += snprintf(buff + offset, buff_len - offset, "]");

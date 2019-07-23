@@ -53,7 +53,7 @@ typedef struct {
 /* Adds property to entity
  * returns - reference to newly added property. */
 SIValue *GraphEntity_AddProperty(GraphEntity *e, Attribute_ID attr_id,
-                                 SIValue value);
+								 SIValue value);
 
 /* Retrieves entity's property
  * NOTE: If the key does not exist, we return the special
@@ -62,7 +62,7 @@ SIValue *GraphEntity_GetProperty(const GraphEntity *e, Attribute_ID attr_id);
 
 /* Updates existing attribute value. */
 void GraphEntity_SetProperty(const GraphEntity *e, Attribute_ID attr_id,
-                             SIValue value);
+							 SIValue value);
 
 /* Release all memory allocated by entity */
 void FreeEntity(Entity *e);

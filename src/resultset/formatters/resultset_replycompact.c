@@ -26,12 +26,12 @@ static inline PropertyTypeUser _mapValueType(const SIValue v) {
 }
 
 static inline void _ResultSet_ReplyWithValueType(RedisModuleCtx *ctx,
-        const SIValue v) {
+												 const SIValue v) {
 	RedisModule_ReplyWithLongLong(ctx, _mapValueType(v));
 }
 
 static void _ResultSet_CompactReplyWithSIValue(RedisModuleCtx *ctx,
-        GraphContext *gc, const SIValue v) {
+											   GraphContext *gc, const SIValue v) {
 	_ResultSet_ReplyWithValueType(ctx, v);
 	// Emit the actual value, then the value type (to facilitate client-side parsing)
 	switch(SI_TYPE(v)) {
@@ -59,7 +59,7 @@ static void _ResultSet_CompactReplyWithSIValue(RedisModuleCtx *ctx,
 }
 
 static void _ResultSet_CompactReplyWithProperties(RedisModuleCtx *ctx,
-        GraphContext *gc, const GraphEntity *e) {
+												  GraphContext *gc, const GraphEntity *e) {
 	int prop_count = ENTITY_PROP_COUNT(e);
 	RedisModule_ReplyWithArray(ctx, prop_count);
 	// Iterate over all properties stored on entity
@@ -75,7 +75,7 @@ static void _ResultSet_CompactReplyWithProperties(RedisModuleCtx *ctx,
 }
 
 static void _ResultSet_CompactReplyWithNode(RedisModuleCtx *ctx,
-        GraphContext *gc, Node *n) {
+											GraphContext *gc, Node *n) {
 	/*  Compact node reply format:
 	 *  [
 	 *      Node ID (integer),
@@ -107,7 +107,7 @@ static void _ResultSet_CompactReplyWithNode(RedisModuleCtx *ctx,
 }
 
 static void _ResultSet_CompactReplyWithEdge(RedisModuleCtx *ctx,
-        GraphContext *gc, Edge *e) {
+											GraphContext *gc, Edge *e) {
 	/*  Compact edge reply format:
 	 *  [
 	 *      Edge ID (integer),
@@ -140,7 +140,7 @@ static void _ResultSet_CompactReplyWithEdge(RedisModuleCtx *ctx,
 }
 
 void ResultSet_EmitCompactRecord(RedisModuleCtx *ctx, GraphContext *gc,
-                                 const Record r, unsigned int numcols) {
+								 const Record r, unsigned int numcols) {
 	// Prepare return array sized to the number of RETURN entities
 	RedisModule_ReplyWithArray(ctx, numcols);
 
@@ -154,7 +154,7 @@ void ResultSet_EmitCompactRecord(RedisModuleCtx *ctx, GraphContext *gc,
 			break;
 		default:
 			RedisModule_ReplyWithArray(ctx,
-			                           2); // Reply with array with space for type and value
+									   2); // Reply with array with space for type and value
 			_ResultSet_CompactReplyWithSIValue(ctx, gc, Record_GetScalar(r, i));
 		}
 	}
@@ -164,7 +164,7 @@ void ResultSet_EmitCompactRecord(RedisModuleCtx *ctx, GraphContext *gc,
 // the column alias followed by an enum denoting what type
 // (scalar, node, or relation) it holds.
 void ResultSet_ReplyWithCompactHeader(RedisModuleCtx *ctx,
-                                      const ResultSetHeader *header, void *data) {
+									  const ResultSetHeader *header, void *data) {
 	TrieMap *entities = (TrieMap *)data;
 	RedisModule_ReplyWithArray(ctx, header->columns_len);
 	for(int i = 0; i < header->columns_len; i++) {

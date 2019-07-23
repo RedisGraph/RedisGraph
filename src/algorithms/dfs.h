@@ -14,6 +14,6 @@
 /* Perform DFS scan from node S,
  * Returns a single path from S to a reachable node at distance level. */
 Edge **DFS(
-    Node *s,    // Node from which DFS scan begins.
-    int level   // Stop scanning once reached level.
+	Node *s,    // Node from which DFS scan begins.
+	int level   // Stop scanning once reached level.
 );

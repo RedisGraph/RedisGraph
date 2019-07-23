@@ -49,7 +49,7 @@ static bool _idFilter(FT_FilterNode *f, int *rel, EntityID *id, bool *reverse) {
 }
 
 static void _setupIdRange(int rel, EntityID id, bool reverse, NodeID *minId,
-                          NodeID *maxId, bool *inclusiveMin, bool *inclusiveMax) {
+						  NodeID *maxId, bool *inclusiveMin, bool *inclusiveMax) {
 	switch(rel) {
 	case GT:
 		*minId = id;
@@ -130,7 +130,7 @@ void _reduceTap(ExecutionPlan *plan, const AST *ast, OpBase *tap) {
 
 				_setupIdRange(rel, id, reverse, &minId, &maxId, &inclusiveMin, &inclusiveMax);
 				opNodeByIdSeek = NewOpNodeByIdSeekOp(ast, nodeRecIdx, minId, maxId,
-				                                     inclusiveMin, inclusiveMax);
+													 inclusiveMin, inclusiveMax);
 
 				// Managed to reduce!
 				ExecutionPlan_ReplaceOp(plan, tap, opNodeByIdSeek);

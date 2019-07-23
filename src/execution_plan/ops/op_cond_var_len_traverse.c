@@ -17,7 +17,7 @@ static void _setupTraversedRelations(CondVarLenTraverse *op) {
 	op->relationIDsCount = 0;
 	GraphContext *gc = GraphContext_GetFromTLS();
 	AST_LinkEntity *e = (AST_LinkEntity *)MatchClause_GetEntity(ast->matchNode,
-	                    op->ae->edge->alias);
+																op->ae->edge->alias);
 	int relationIDsCount = AST_LinkEntity_LabelCount(e);
 
 	if(relationIDsCount > 0) {
@@ -60,7 +60,7 @@ void CondVarLenTraverseOp_ExpandInto(CondVarLenTraverse *op) {
 }
 
 OpBase *NewCondVarLenTraverseOp(AlgebraicExpression *ae, unsigned int minHops,
-                                unsigned int maxHops, Graph *g, AST *ast) {
+								unsigned int maxHops, Graph *g, AST *ast) {
 	assert(ae && minHops <= maxHops && g && ae->operand_count == 1);
 
 	CondVarLenTraverse *condVarLenTraverse = malloc(sizeof(CondVarLenTraverse));
@@ -75,7 +75,7 @@ OpBase *NewCondVarLenTraverseOp(AlgebraicExpression *ae, unsigned int minHops,
 	condVarLenTraverse->maxHops = maxHops;
 	condVarLenTraverse->allPathsCtx = NULL;
 	condVarLenTraverse->traverseDir = (ae->operands[0].transpose) ?
-	                                  GRAPH_EDGE_DIR_INCOMING : GRAPH_EDGE_DIR_OUTGOING;
+									  GRAPH_EDGE_DIR_INCOMING : GRAPH_EDGE_DIR_OUTGOING;
 	condVarLenTraverse->r = NULL;
 
 	_setupTraversedRelations(condVarLenTraverse);
@@ -119,12 +119,12 @@ compute_path:
 
 		AllPathsCtx_Free(op->allPathsCtx);
 		op->allPathsCtx = AllPathsCtx_New(srcNode,
-		                                  op->g,
-		                                  op->relationIDs,
-		                                  op->relationIDsCount,
-		                                  op->traverseDir,
-		                                  op->minHops,
-		                                  op->maxHops);
+										  op->g,
+										  op->relationIDs,
+										  op->relationIDsCount,
+										  op->traverseDir,
+										  op->minHops,
+										  op->maxHops);
 	}
 
 	// For the timebeing we only care for the last node in path

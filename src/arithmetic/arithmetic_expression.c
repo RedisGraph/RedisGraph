@@ -34,7 +34,7 @@ AR_ExpNode *AR_EXP_NewConstOperandNode(SIValue constant) {
 }
 
 AR_ExpNode *AR_EXP_NewVariableOperandNode(const AST *ast, char *entity_prop,
-        char *entity_alias) {
+										  char *entity_alias) {
 	AR_ExpNode *node = rm_calloc(1, sizeof(AR_ExpNode));
 	node->type = AR_EXP_OPERAND;
 	node->operand.type = AR_EXP_VARIADIC;
@@ -77,7 +77,7 @@ AR_ExpNode *AR_EXP_NewOpNode(char *func_name, int child_count) {
 }
 
 AR_ExpNode *AR_EXP_BuildFromAST(const AST *ast,
-                                const AST_ArithmeticExpressionNode *exp) {
+								const AST_ArithmeticExpressionNode *exp) {
 	AR_ExpNode *root;
 
 	if(exp->type == AST_AR_EXP_OP) {
@@ -93,8 +93,8 @@ AR_ExpNode *AR_EXP_BuildFromAST(const AST *ast,
 			root = AR_EXP_NewConstOperandNode(exp->operand.constant);
 		} else {
 			root = AR_EXP_NewVariableOperandNode(ast,
-			                                     exp->operand.variadic.property,
-			                                     exp->operand.variadic.alias);
+												 exp->operand.variadic.property,
+												 exp->operand.variadic.alias);
 		}
 	}
 
@@ -116,7 +116,7 @@ int AR_EXP_GetOperandType(AR_ExpNode *exp) {
 void _AR_EXP_UpdatePropIdx(AR_ExpNode *root, const Record r) {
 	GraphContext *gc = GraphContext_GetFromTLS();
 	root->operand.variadic.entity_prop_idx = GraphContext_GetAttributeID(gc,
-	        root->operand.variadic.entity_prop);
+																		 root->operand.variadic.entity_prop);
 }
 
 SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
@@ -145,12 +145,12 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 			// Fetch entity property value.
 			if(root->operand.variadic.entity_prop != NULL) {
 				GraphEntity *ge = Record_GetGraphEntity(r,
-				                                        root->operand.variadic.entity_alias_idx);
+														root->operand.variadic.entity_alias_idx);
 				if(root->operand.variadic.entity_prop_idx == ATTRIBUTE_NOTFOUND) {
 					_AR_EXP_UpdatePropIdx(root, r);
 				}
 				SIValue *property = GraphEntity_GetProperty(ge,
-				                    root->operand.variadic.entity_prop_idx);
+															root->operand.variadic.entity_prop_idx);
 				if(property == PROPERTY_NOTFOUND) result = SI_NullVal();
 				else result = SI_ShallowCopy(*property);
 			} else {
@@ -236,7 +236,7 @@ int AR_EXP_ContainsAggregation(AR_ExpNode *root, AR_ExpNode **agg_node) {
 }
 
 void _AR_EXP_ToString(const AR_ExpNode *root, char **str, size_t *str_size,
-                      size_t *bytes_written) {
+					  size_t *bytes_written) {
 	/* Make sure there are at least 64 bytes in str. */
 	if(*str == NULL) {
 		*bytes_written = 0;
@@ -293,16 +293,16 @@ void _AR_EXP_ToString(const AR_ExpNode *root, char **str, size_t *str_size,
 		// Concat Operand node.
 		if(root->operand.type == AR_EXP_CONSTANT) {
 			size_t len = SIValue_ToString(root->operand.constant, (*str + *bytes_written),
-			                              64);
+										  64);
 			*bytes_written += len;
 		} else {
 			if(root->operand.variadic.entity_prop != NULL) {
 				*bytes_written += sprintf(
-				                      (*str + *bytes_written), "%s.%s",
-				                      root->operand.variadic.entity_alias, root->operand.variadic.entity_prop);
+									  (*str + *bytes_written), "%s.%s",
+									  root->operand.variadic.entity_alias, root->operand.variadic.entity_prop);
 			} else {
 				*bytes_written += sprintf((*str + *bytes_written), "%s",
-				                          root->operand.variadic.entity_alias);
+										  root->operand.variadic.entity_alias);
 			}
 		}
 	}
@@ -326,12 +326,12 @@ static AR_ExpNode *_AR_EXP_CloneOperand(AR_ExpNode *exp) {
 	case AR_EXP_VARIADIC:
 		clone->operand.type = AR_EXP_VARIADIC;
 		clone->operand.variadic.entity_alias = rm_strdup(
-		        exp->operand.variadic.entity_alias);
+												   exp->operand.variadic.entity_alias);
 		clone->operand.variadic.entity_alias_idx =
-		    exp->operand.variadic.entity_alias_idx;
+			exp->operand.variadic.entity_alias_idx;
 		if(exp->operand.variadic.entity_prop) {
 			clone->operand.variadic.entity_prop = rm_strdup(
-			        exp->operand.variadic.entity_prop);
+													  exp->operand.variadic.entity_prop);
 		}
 		clone->operand.variadic.entity_prop_idx = exp->operand.variadic.entity_prop_idx;
 		break;
@@ -381,9 +381,9 @@ void AR_EXP_Free(AR_ExpNode *root) {
 			SIValue_Free(&root->operand.constant);
 		} else {
 			if(root->operand.variadic.entity_alias) rm_free(
-				    root->operand.variadic.entity_alias);
+					root->operand.variadic.entity_alias);
 			if(root->operand.variadic.entity_prop) rm_free(
-				    root->operand.variadic.entity_prop);
+					root->operand.variadic.entity_prop);
 		}
 	}
 	rm_free(root);
@@ -483,7 +483,7 @@ SIValue AR_ABS(SIValue *argv, int argc) {
 	SIValue result = argv[0];
 	if(!_validate_numeric(result)) return SI_NullVal();
 	if(SI_GET_NUMERIC(argv[0]) < 0) return SIValue_Multiply(argv[0],
-		                                       SI_LongVal(-1));
+																SI_LongVal(-1));
 	return argv[0];
 }
 
@@ -775,7 +775,7 @@ AR_Func AR_GetFunc(char *func_name) {
 	size_t lower_func_name_len = 32;
 	_toLower(func_name, &lower_func_name[0], &lower_func_name_len);
 	void *f = TrieMap_Find(__aeRegisteredFuncs, lower_func_name,
-	                       lower_func_name_len);
+						   lower_func_name_len);
 	if(f != TRIEMAP_NOTFOUND) {
 		return f;
 	}
@@ -787,7 +787,7 @@ bool AR_FuncExists(const char *func_name) {
 	size_t lower_func_name_len = 32;
 	_toLower(func_name, &lower_func_name[0], &lower_func_name_len);
 	void *f = TrieMap_Find(__aeRegisteredFuncs, lower_func_name,
-	                       lower_func_name_len);
+						   lower_func_name_len);
 	return (f != TRIEMAP_NOTFOUND);
 }
 

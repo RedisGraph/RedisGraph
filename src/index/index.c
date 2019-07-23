@@ -54,15 +54,15 @@ void freeKey(SIValue *key) {
 //------------------------------------------------------------------------------
 void initializeSkiplists(Index *index) {
 	index->string_sl = skiplistCreate(compareStrings, compareNodes, cloneKey,
-	                                  freeKey);
+									  freeKey);
 	index->numeric_sl = skiplistCreate(compareNumerics, compareNodes, cloneKey,
-	                                   freeKey);
+									   freeKey);
 }
 
 /* Index_Create allocates an Index object and populates it with all unique IDs and values
  * that possess the provided label and property. */
 Index *Index_Create(Graph *g, const char *label, int label_id,
-                    const char *attr_str, Attribute_ID attr_id) {
+					const char *attr_str, Attribute_ID attr_id) {
 	const GrB_Matrix label_matrix = Graph_GetLabelMatrix(g, label_id);
 	GxB_MatrixTupleIter *it;
 	GxB_MatrixTupleIter_new(&it, label_matrix);

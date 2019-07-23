@@ -47,11 +47,11 @@ struct ProcedureCtx {
 typedef struct ProcedureCtx ProcedureCtx;
 
 ProcedureCtx *ProcCtxNew(
-    const char *name,           // Procedure name.
-    unsigned int argc,          // Procedure arguments.
-    ProcedureOutput **output,   // Procedure output.
-    ProcStep fStep,             // Procedure Step function.
-    ProcInvoke fInvoke,         // Procedure Invoke function.
-    ProcFree fFree,             // Procedure Free function.
-    void *privateData           // Procedure private data.
+	const char *name,           // Procedure name.
+	unsigned int argc,          // Procedure arguments.
+	ProcedureOutput **output,   // Procedure output.
+	ProcStep fStep,             // Procedure Step function.
+	ProcInvoke fInvoke,         // Procedure Invoke function.
+	ProcFree fFree,             // Procedure Free function.
+	void *privateData           // Procedure private data.
 );

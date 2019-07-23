@@ -21,27 +21,27 @@ typedef struct {
 } AST_ReturnNode;
 
 AST_ReturnElementNode *New_AST_ReturnElementNode(AST_ArithmeticExpressionNode
-        *exp, char *alias);
+												 *exp, char *alias);
 
 AST_ReturnNode *New_AST_ReturnNode(AST_ReturnElementNode **returnElements,
-                                   int distinct);
+								   int distinct);
 
 int ReturnClause_ContainsAggregation(const AST_ReturnNode *return_node);
 
 int ReturnClause_AggregateFunctions(const AST_ReturnNode *returnNode,
-                                    AST_ArithmeticExpressionOP **funcs);
+									AST_ArithmeticExpressionOP **funcs);
 
 void ReturnClause_ReferredEntities(const AST_ReturnNode *return_node,
-                                   TrieMap *referred_nodes);
+								   TrieMap *referred_nodes);
 
 void ReturnClause_ReferredFunctions(const AST_ReturnNode *return_node,
-                                    TrieMap *referred_funcs);
+									TrieMap *referred_funcs);
 
 // Return clause can (kinda) introduce "entities", consider: RETURN n.v AS Z ORDER BY Z*Z
 // Z hold an expression value which can be referred to at a later stage, similar to
 // MATCH (N), in which N can be referred by other clauses.
 void ReturnClause_DefinedEntities(const AST_ReturnNode *return_node,
-                                  TrieMap *definedEntities);
+								  TrieMap *definedEntities);
 
 /* Returns an array of aliases one per return element, in case return element
  * does not have an alias, NULL is returned for that particular element.

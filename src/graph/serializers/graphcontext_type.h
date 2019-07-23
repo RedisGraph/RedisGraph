@@ -18,7 +18,7 @@ int GraphContextType_Register(RedisModuleCtx *ctx);
 void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver);
 void GraphContextType_RdbSave(RedisModuleIO *rdb, void *value);
 void GraphContextType_AofRewrite(RedisModuleIO *aof, RedisModuleString *key,
-                                 void *value);
+								 void *value);
 void GraphContextType_Free(void *value);
 
 #endif

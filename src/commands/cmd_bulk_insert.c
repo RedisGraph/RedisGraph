@@ -47,8 +47,8 @@ void _MGraph_BulkInsert(void *args) {
 		if(key) {
 			char *err;
 			asprintf(&err,
-			         "Graph with name '%s' cannot be created, as Redis key '%s' already exists.",
-			         graphname, graphname);
+					 "Graph with name '%s' cannot be created, as Redis key '%s' already exists.",
+					 graphname, graphname);
 			RedisModule_ReplyWithError(ctx, err);
 			free(err);
 			goto cleanup;
@@ -62,7 +62,7 @@ void _MGraph_BulkInsert(void *args) {
 	}
 
 	if(RedisModule_StringToLongLong(*argv++,
-	                                &relations_in_query) != REDISMODULE_OK) {
+									&relations_in_query) != REDISMODULE_OK) {
 		RedisModule_ReplyWithError(ctx, "Error parsing relation count.");
 		goto cleanup;
 	}
@@ -77,7 +77,7 @@ void _MGraph_BulkInsert(void *args) {
 		gc = GraphContext_Retrieve(ctx, graphname, false);
 		if(gc == NULL) {
 			RedisModule_ReplyWithError(ctx,
-			                           "Bulk insert query did not include a BEGIN token and graph was not found.");
+									   "Bulk insert query did not include a BEGIN token and graph was not found.");
 			goto cleanup;
 		}
 		initial_node_count = Graph_NodeCount(gc->g);
@@ -104,7 +104,7 @@ void _MGraph_BulkInsert(void *args) {
 
 	// Replay to caller.
 	len = snprintf(reply, 1024, "%llu nodes created, %llu edges created",
-	               nodes_in_query, relations_in_query);
+				   nodes_in_query, relations_in_query);
 	RedisModule_ReplyWithStringBuffer(ctx, reply, len);
 
 cleanup:
@@ -128,7 +128,7 @@ int MGraph_BulkInsert(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 		_MGraph_BulkInsert(context);
 	} else {
 		RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL,
-		                               0);
+															   0);
 		// Construct concurent query context.
 		context = CommandCtx_New(NULL, bc, NULL, NULL, argv, argc);
 		// Execute bulk insert on a dedicated thread.

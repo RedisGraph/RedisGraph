@@ -10,7 +10,7 @@
  * The current RESP protocol only has unique support for strings, 8-byte integers,
  * and NULL values. */
 static void _ResultSet_VerboseReplyWithSIValue(RedisModuleCtx *ctx,
-        GraphContext *gc, const SIValue v) {
+											   GraphContext *gc, const SIValue v) {
 	// Emit the actual value, then the value type (to facilitate client-side parsing)
 	switch(SI_TYPE(v)) {
 	case T_STRING:
@@ -37,7 +37,7 @@ static void _ResultSet_VerboseReplyWithSIValue(RedisModuleCtx *ctx,
 }
 
 static void _ResultSet_VerboseReplyWithProperties(RedisModuleCtx *ctx,
-        GraphContext *gc, const GraphEntity *e) {
+												  GraphContext *gc, const GraphEntity *e) {
 	int prop_count = ENTITY_PROP_COUNT(e);
 	RedisModule_ReplyWithArray(ctx, prop_count);
 	// Iterate over all properties stored on entity
@@ -53,7 +53,7 @@ static void _ResultSet_VerboseReplyWithProperties(RedisModuleCtx *ctx,
 }
 
 static void _ResultSet_VerboseReplyWithNode(RedisModuleCtx *ctx,
-        GraphContext *gc, Node *n) {
+											GraphContext *gc, Node *n) {
 	/*  Verbose node reply format:
 	 *  [
 	 *      ["id", Node ID (integer)]
@@ -92,7 +92,7 @@ static void _ResultSet_VerboseReplyWithNode(RedisModuleCtx *ctx,
 }
 
 static void _ResultSet_VerboseReplyWithEdge(RedisModuleCtx *ctx,
-        GraphContext *gc, Edge *e) {
+											GraphContext *gc, Edge *e) {
 	/*  Edge reply format:
 	 *  [
 	 *      ["id", Edge ID (integer)]
@@ -135,7 +135,7 @@ static void _ResultSet_VerboseReplyWithEdge(RedisModuleCtx *ctx,
 }
 
 void ResultSet_EmitVerboseRecord(RedisModuleCtx *ctx, GraphContext *gc,
-                                 const Record r, unsigned int numcols) {
+								 const Record r, unsigned int numcols) {
 	// Prepare return array sized to the number of RETURN entities
 	RedisModule_ReplyWithArray(ctx, numcols);
 
@@ -155,7 +155,7 @@ void ResultSet_EmitVerboseRecord(RedisModuleCtx *ctx, GraphContext *gc,
 
 // Emit the alias or descriptor for each column in the header.
 void ResultSet_ReplyWithVerboseHeader(RedisModuleCtx *ctx,
-                                      const ResultSetHeader *header, void *data) {
+									  const ResultSetHeader *header, void *data) {
 	RedisModule_ReplyWithArray(ctx, header->columns_len);
 	for(int i = 0; i < header->columns_len; i++) {
 		Column *c = header->columns[i];

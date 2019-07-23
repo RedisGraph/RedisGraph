@@ -33,7 +33,7 @@ Record DistinctConsume(OpBase *opBase) {
 
 		unsigned long long const hash = Record_Hash64(r);
 		int is_new = TrieMap_Add(self->trie, (char *) &hash, sizeof(hash), NULL,
-		                         TrieMap_DONT_CARE_REPLACE);
+								 TrieMap_DONT_CARE_REPLACE);
 		if(is_new)
 			return r;
 		Record_Free(r);

@@ -12,7 +12,7 @@
 #define EDGES_ID_ISLT(a, b) (ENTITY_GET_ID((a)) < ENTITY_GET_ID((b)))
 
 void _LocateEntities(OpDelete *op, QueryGraph *qg,
-                     AST_DeleteNode *ast_delete_node) {
+					 AST_DeleteNode *ast_delete_node) {
 	AST *ast = op->ast;
 	for(int i = 0; i < Vector_Size(ast_delete_node->graphEntities); i++) {
 		char *entity_alias;
@@ -64,18 +64,18 @@ void _DeleteEntities(OpDelete *op) {
 	}
 
 	Graph_BulkDelete(g, op->deleted_nodes, node_count, op->deleted_edges,
-	                 edge_count, &node_deleted, &relationships_deleted);
+					 edge_count, &node_deleted, &relationships_deleted);
 
 	/* Release lock. */
 	Graph_ReleaseLock(g);
 
 	if(op->result_set) op->result_set->stats.nodes_deleted += node_deleted;
 	if(op->result_set) op->result_set->stats.relationships_deleted +=
-		    relationships_deleted;
+			relationships_deleted;
 }
 
 OpBase *NewDeleteOp(AST_DeleteNode *ast_delete_node, QueryGraph *qg,
-                    ResultSet *result_set, AST *ast) {
+					ResultSet *result_set, AST *ast) {
 	OpDelete *op_delete = malloc(sizeof(OpDelete));
 
 	op_delete->gc = GraphContext_GetFromTLS();
@@ -83,9 +83,9 @@ OpBase *NewDeleteOp(AST_DeleteNode *ast_delete_node, QueryGraph *qg,
 	op_delete->node_count = 0;
 	op_delete->edge_count = 0;
 	op_delete->nodes_to_delete = malloc(sizeof(int) * Vector_Size(
-	                                        ast_delete_node->graphEntities));
+											ast_delete_node->graphEntities));
 	op_delete->edges_to_delete = malloc(sizeof(int) * Vector_Size(
-	                                        ast_delete_node->graphEntities));
+											ast_delete_node->graphEntities));
 	op_delete->deleted_nodes = array_new(Node, 32);
 	op_delete->deleted_edges = array_new(Edge, 32);
 	op_delete->result_set = result_set;

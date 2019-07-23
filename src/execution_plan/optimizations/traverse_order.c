@@ -35,7 +35,7 @@ void Arrangement_Print(Arrangement arrangement, uint size) {
 	for(uint i = 0; i < size; i++) {
 		AlgebraicExpression *exp = arrangement[i];
 		printf("%d, src: %s, dest: %s\n", i, exp->src_node->alias,
-		       exp->dest_node->alias);
+			   exp->dest_node->alias);
 	}
 }
 
@@ -108,8 +108,8 @@ static bool valid_arrangement(const Arrangement arrangement, uint exps_count) {
 	 * Isn't valid, as currently the first expression is converted
 	 * into a scan operation. */
 	if((exp->src_node->label || exp->dest_node->label) &&
-	        exp->edge &&
-	        exp->operand_count == 1) return false;
+			exp->edge &&
+			exp->operand_count == 1) return false;
 
 	for(int i = 1; i < exps_count; i++) {
 		exp = arrangement[i];
@@ -121,9 +121,9 @@ static bool valid_arrangement(const Arrangement arrangement, uint exps_count) {
 		for(; j >= 0; j--) {
 			AlgebraicExpression *prev_exp = arrangement[j];
 			if(prev_exp->src_node == src ||
-			        prev_exp->dest_node == src ||
-			        prev_exp->src_node == dest ||
-			        prev_exp->dest_node == dest) break;
+					prev_exp->dest_node == src ||
+					prev_exp->src_node == dest ||
+					prev_exp->dest_node == dest) break;
 		}
 		/* Nither src or dest nodes are mentioned in previous expressions
 		 * as such the arrangement is invalid. */
@@ -174,7 +174,7 @@ static int penalty_arrangement(Arrangement arrangement, uint exp_count) {
 }
 
 static int reward_arrangement(Arrangement arrangement, uint exp_count,
-                              const FT_FilterNode *filters) {
+							  const FT_FilterNode *filters) {
 	// Arrangement_Print(arrangement, exp_count);
 	int reward = 0;
 	rax *filtered_entities = FilterTree_CollectAliases(filters);
@@ -186,16 +186,16 @@ static int reward_arrangement(Arrangement arrangement, uint exp_count,
 		char *dest_alias = exp->dest_node->alias;
 
 		if(raxFind(filtered_entities, (unsigned char *)src_alias,
-		           strlen(src_alias)) != raxNotFound) {
+				   strlen(src_alias)) != raxNotFound) {
 			reward += F * (exp_count - i);
 			raxRemove(filtered_entities, (unsigned char *)src_alias, strlen(src_alias),
-			          NULL);
+					  NULL);
 		}
 		if(raxFind(filtered_entities, (unsigned char *)dest_alias,
-		           strlen(dest_alias)) != raxNotFound) {
+				   strlen(dest_alias)) != raxNotFound) {
 			reward += F * (exp_count - i);
 			raxRemove(filtered_entities, (unsigned char *)dest_alias, strlen(dest_alias),
-			          NULL);
+					  NULL);
 		}
 		if(exp->src_node->label) reward += L * (exp_count - i);
 	}
@@ -206,7 +206,7 @@ static int reward_arrangement(Arrangement arrangement, uint exp_count,
 }
 
 static int score_arrangement(Arrangement arrangement, uint exp_count,
-                             const FT_FilterNode *filters) {
+							 const FT_FilterNode *filters) {
 	int score = 0;
 	int penalty = penalty_arrangement(arrangement, exp_count);
 	int reward = reward_arrangement(arrangement, exp_count, filters);
@@ -220,7 +220,7 @@ static int score_arrangement(Arrangement arrangement, uint exp_count,
  * taking into account filters and transposes.
  * exps will reordered. */
 void orderExpressions(AlgebraicExpression **exps, uint exps_count,
-                      const FT_FilterNode *filters) {
+					  const FT_FilterNode *filters) {
 	assert(exps && exps_count > 0);
 
 	// Single expression, return quickly.

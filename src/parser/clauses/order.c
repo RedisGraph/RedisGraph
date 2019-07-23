@@ -8,7 +8,7 @@
 #include "../../util/arr.h"
 
 AST_OrderNode *New_AST_OrderNode(Vector *expressions,
-                                 AST_OrderByDirection direction) {
+								 AST_OrderByDirection direction) {
 	AST_OrderNode *orderNode = (AST_OrderNode *)malloc(sizeof(AST_OrderNode));
 	size_t expCount = Vector_Size(expressions);
 
@@ -26,7 +26,7 @@ AST_OrderNode *New_AST_OrderNode(Vector *expressions,
 }
 
 void OrderClause_ReferredEntities(const AST_OrderNode *order_node,
-                                  TrieMap *referred_entities) {
+								  TrieMap *referred_entities) {
 	if(!order_node) return;
 
 	int order_element_count = array_len(order_node->expressions);

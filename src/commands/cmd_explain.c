@@ -51,7 +51,7 @@ void _MGraph_Explain(void *args) {
 	if(ast[0]->indexNode != NULL) {
 		RedisModule_ReplyWithArray(ctx, 1);
 		char *reply = (ast[0]->indexNode->operation == CREATE_INDEX) ? "Create Index" :
-		              "Drop Index";
+					  "Drop Index";
 		RedisModule_ReplyWithSimpleString(ctx, reply);
 		goto cleanup;
 	}
@@ -123,7 +123,7 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	} else {
 		// Run on a dedicated thread.
 		RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL,
-		                               0);
+															   0);
 		context = CommandCtx_New(NULL, bc, ast, graphName, argv, argc);
 		thpool_add_work(_thpool, _MGraph_Explain, context);
 	}

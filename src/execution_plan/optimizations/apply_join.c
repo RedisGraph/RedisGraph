@@ -58,7 +58,7 @@ static bool _stream_resolves_entities(const OpBase *root, rax *aliases) {
  * _relate_exp_to_stream will try to associate each expression
  * lhs and rhs with the appropriate branch. */
 static void _relate_exp_to_stream(const OpBase *cp, const FT_FilterNode *f,
-                                  AR_ExpNode **lhs, AR_ExpNode **rhs) {
+								  AR_ExpNode **lhs, AR_ExpNode **rhs) {
 	*lhs = NULL;
 	*rhs = NULL;
 	bool expression_resolved = true;
@@ -157,9 +157,9 @@ void applyJoin(ExecutionPlan *plan) {
 				OpBase *left_branch = cp->children[0];
 				OpBase *right_branch = cp->children[1];
 				bool left_branch_filtered = (ExecutionPlan_LocateOp(left_branch,
-				                             OPType_FILTER) != NULL);
+																	OPType_FILTER) != NULL);
 				bool right_branch_filtered = (ExecutionPlan_LocateOp(right_branch,
-				                              OPType_FILTER) != NULL);
+																	 OPType_FILTER) != NULL);
 				if(!left_branch_filtered && right_branch_filtered) {
 					// Swap branches!
 					cp->children[0] = right_branch;

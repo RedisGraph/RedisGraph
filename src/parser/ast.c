@@ -18,9 +18,9 @@
 
 /* Compares a triemap of user-specified functions with the registered functions we provide. */
 static AST_Validation _AST_ValidateReferredFunctions(TrieMap
-        *referred_functions,
-        char **reason,
-        bool include_aggregates) {
+													 *referred_functions,
+													 char **reason,
+													 bool include_aggregates) {
 	void *value;
 	tm_len_t len;
 	char *funcName;
@@ -154,7 +154,7 @@ static AST_Validation _Validate_MATCH_Clause(const AST *ast, char **reason) {
 		if(edge->length) {
 			if(edge->length->minHops > edge->length->maxHops) {
 				asprintf(reason,
-				         "Variable length path, maximum number of hops must be greater or equal to minimum number of hops.");
+						 "Variable length path, maximum number of hops must be greater or equal to minimum number of hops.");
 				res = AST_INVALID;
 				break;
 			}
@@ -166,10 +166,10 @@ static AST_Validation _Validate_MATCH_Clause(const AST *ast, char **reason) {
 		if(!alias) continue;
 
 		int new = TrieMap_Add(edgeAliases, alias, strlen(alias), NULL,
-		                      TrieMap_DONT_CARE_REPLACE);
+							  TrieMap_DONT_CARE_REPLACE);
 		if(!new) {
 			asprintf(reason,
-			         "Cannot use the same relationship variable '%s' for multiple patterns.", alias);
+					 "Cannot use the same relationship variable '%s' for multiple patterns.", alias);
 			res = AST_INVALID;
 			break;
 		}
@@ -190,7 +190,7 @@ static AST_Validation _Validate_RETURN_Clause(const AST *ast, char **reason) {
 
 	// Verify that referred functions exist.
 	AST_Validation res = _AST_ValidateReferredFunctions(ref_functions, reason,
-	                     true);
+														true);
 	int function_count = ref_functions->cardinality;
 
 	TrieMap_Free(ref_functions, TrieMap_NOP_CB);
@@ -222,7 +222,7 @@ static AST_Validation _Validate_RETURN_Clause(const AST *ast, char **reason) {
 				// Look up alias in the entities defined by the MATCH clause
 				if(TrieMap_Find(entities, alias, strlen(alias)) != TRIEMAP_NOTFOUND) {
 					asprintf(reason,
-					         "Nodes and edges cannot be aggregated by functions other than COUNT.");
+							 "Nodes and edges cannot be aggregated by functions other than COUNT.");
 					res = AST_INVALID;
 					break;
 				}
@@ -261,7 +261,7 @@ static AST_Validation _Validate_WHERE_Clause(const AST *ast, char **reason) {
 
 	// Verify that referred functions exist.
 	AST_Validation res = _AST_ValidateReferredFunctions(ref_functions, reason,
-	                     false);
+														false);
 
 	TrieMap_Free(ref_functions, TrieMap_NOP_CB);
 
@@ -274,17 +274,17 @@ static AST_Validation _Validate_CALL_Clause(const AST *ast, char **reason) {
 	ProcedureCtx *proc = Proc_Get(ast->callNode->procedure);
 	if(!proc) {
 		asprintf(reason,
-		         "There is no procedure with the name `%s` registered for this database instance. Please ensure you've spelled the procedure name correctly.",
-		         ast->callNode->procedure);
+				 "There is no procedure with the name `%s` registered for this database instance. Please ensure you've spelled the procedure name correctly.",
+				 ast->callNode->procedure);
 		return AST_INVALID;
 	}
 
 	if(proc->argc != PROCEDURE_VARIABLE_ARG_COUNT &&
-	        proc->argc != array_len(ast->callNode->arguments)) {
+			proc->argc != array_len(ast->callNode->arguments)) {
 		asprintf(reason,
-		         "Procedure call does not provide the required number of arguments: got %d expected %d. ",
-		         array_len(ast->callNode->arguments),
-		         proc->argc);
+				 "Procedure call does not provide the required number of arguments: got %d expected %d. ",
+				 array_len(ast->callNode->arguments),
+				 proc->argc);
 
 		Proc_Free(proc);
 		return AST_INVALID;
@@ -321,12 +321,12 @@ static AST_Validation _Validate_CALL_Clause(const AST *ast, char **reason) {
 }
 
 AST *AST_New(AST_MatchNode *matchNode, AST_WhereNode *whereNode,
-             AST_CreateNode *createNode, AST_MergeNode *mergeNode,
-             AST_SetNode *setNode, AST_DeleteNode *deleteNode,
-             AST_ReturnNode *returnNode, AST_OrderNode *orderNode,
-             AST_SkipNode *skipNode, AST_LimitNode *limitNode,
-             AST_IndexNode *indexNode, AST_UnwindNode *unwindNode,
-             AST_ProcedureCallNode *callNode) {
+			 AST_CreateNode *createNode, AST_MergeNode *mergeNode,
+			 AST_SetNode *setNode, AST_DeleteNode *deleteNode,
+			 AST_ReturnNode *returnNode, AST_OrderNode *orderNode,
+			 AST_SkipNode *skipNode, AST_LimitNode *limitNode,
+			 AST_IndexNode *indexNode, AST_UnwindNode *unwindNode,
+			 AST_ProcedureCallNode *callNode) {
 	AST *ast = rm_malloc(sizeof(AST));
 
 	ast->matchNode = matchNode;
@@ -356,9 +356,9 @@ AST_Validation AST_Validate(const AST *ast, char **reason) {
 
 	/* MATCH clause must be followed by either a CREATE or a RETURN clause. */
 	if(ast->matchNode && !(ast->createNode || ast->returnNode || ast->setNode ||
-	                       ast->deleteNode || ast->mergeNode || ast->withNode)) {
+						   ast->deleteNode || ast->mergeNode || ast->withNode)) {
 		asprintf(reason,
-		         "Query cannot conclude with MATCH (must be RETURN or an update clause)");
+				 "Query cannot conclude with MATCH (must be RETURN or an update clause)");
 		return AST_INVALID;
 	}
 
@@ -427,7 +427,7 @@ void AST_MapAliasToID(AST *ast, AST_WithNode *prevWithClause) {
 	uint id = 0;
 	uint *entityID = NULL;
 	ast->_aliasIDMapping =
-	    NewTrieMap(); // Holds mapping between referred entities and IDs.
+		NewTrieMap(); // Holds mapping between referred entities and IDs.
 
 	if(prevWithClause) {
 		for(uint i = 0; i < array_len(prevWithClause->exps); i++) {
@@ -435,10 +435,10 @@ void AST_MapAliasToID(AST *ast, AST_WithNode *prevWithClause) {
 			*entityID = id++;
 			AST_WithElementNode *exp = prevWithClause->exps[i];
 			TrieMap_Add(ast->_aliasIDMapping,
-			            exp->alias,
-			            strlen(exp->alias),
-			            entityID,
-			            TrieMap_DONT_CARE_REPLACE);
+						exp->alias,
+						strlen(exp->alias),
+						entityID,
+						TrieMap_DONT_CARE_REPLACE);
 		}
 	}
 
@@ -453,7 +453,7 @@ void AST_MapAliasToID(AST *ast, AST_WithNode *prevWithClause) {
 		entityID = malloc(sizeof(uint));
 		*entityID = id++;
 		TrieMap_Add(ast->_aliasIDMapping, ptr, len, entityID,
-		            TrieMap_DONT_CARE_REPLACE);
+					TrieMap_DONT_CARE_REPLACE);
 	}
 
 	TrieMapIterator_Free(it);
@@ -494,28 +494,28 @@ bool AST_Projects(const AST *ast) {
 
 bool AST_Empty(const AST *ast) {
 	return (!(ast->matchNode != NULL ||
-	          ast->createNode != NULL ||
-	          ast->callNode != NULL ||
-	          ast->returnNode != NULL ||
-	          ast->mergeNode != NULL ||
-	          ast->deleteNode != NULL ||
-	          ast->setNode != NULL ||
-	          ast->whereNode != NULL ||
-	          ast->skipNode != NULL ||
-	          ast->orderNode != NULL ||
-	          ast->unwindNode != NULL ||
-	          ast->limitNode != NULL ||
-	          ast->withNode != NULL ||
-	          ast->indexNode != NULL));
+			  ast->createNode != NULL ||
+			  ast->callNode != NULL ||
+			  ast->returnNode != NULL ||
+			  ast->mergeNode != NULL ||
+			  ast->deleteNode != NULL ||
+			  ast->setNode != NULL ||
+			  ast->whereNode != NULL ||
+			  ast->skipNode != NULL ||
+			  ast->orderNode != NULL ||
+			  ast->unwindNode != NULL ||
+			  ast->limitNode != NULL ||
+			  ast->withNode != NULL ||
+			  ast->indexNode != NULL));
 }
 
 bool AST_ReadOnly(AST **ast) {
 	for(uint i = 0; i < array_len(ast); i++) {
 		bool write = (ast[i]->createNode ||
-		              ast[i]->mergeNode ||
-		              ast[i]->deleteNode ||
-		              ast[i]->setNode ||
-		              ast[i]->indexNode);
+					  ast[i]->mergeNode ||
+					  ast[i]->deleteNode ||
+					  ast[i]->setNode ||
+					  ast[i]->indexNode);
 		if(write) return false;
 	}
 	return true;

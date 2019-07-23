@@ -107,14 +107,14 @@ static void _replicateCallClauseToReturnClause(AST *ast) {
 	AST_ProcedureCallNode *call = ast->callNode;
 	unsigned int output_len = array_len(call->yield);
 	AST_ReturnElementNode **returnElements = array_new(AST_ReturnElementNode *,
-	        output_len);
+													   output_len);
 
 	for(unsigned int i = 0; i < output_len; i++) {
 		char *alias = NULL;
 		char *property = NULL;
 		char *output = call->yield[i];
 		AST_ArithmeticExpressionNode *exp = New_AST_AR_EXP_VariableOperandNode(output,
-		                                    property);
+																			   property);
 		AST_ReturnElementNode *returnElement = New_AST_ReturnElementNode(exp, alias);
 		returnElements = array_append(returnElements, returnElement);
 	}
@@ -137,7 +137,7 @@ static void _populateReturnAll(AST *ast) {
 	char buffer[256];
 	// Allocate a new return element array to contain all user-provided aliases
 	AST_ReturnElementNode **entities = array_new(AST_ReturnElementNode *,
-	                                   identifiers->cardinality);
+												 identifiers->cardinality);
 	char *ptr;
 	tm_len_t len;
 	void *value;
@@ -153,7 +153,7 @@ static void _populateReturnAll(AST *ast) {
 
 		// Create and add a return entity for the alias
 		AST_ArithmeticExpressionNode *arNode = New_AST_AR_EXP_VariableOperandNode(
-		        buffer, NULL);
+												   buffer, NULL);
 		AST_ReturnElementNode *returnEntity = New_AST_ReturnElementNode(arNode, NULL);
 		entities = array_append(entities, returnEntity);
 	}
@@ -304,7 +304,7 @@ static void _AST_reverse_match_patterns(AST *ast) {
 		}
 		Vector_Push(patterns, v);
 		Vector_Clear(
-		    pattern); // We're reusing the original entities, so don't free them.
+			pattern); // We're reusing the original entities, so don't free them.
 	}
 
 	Vector_Free(ast->matchNode->_mergedPatterns);

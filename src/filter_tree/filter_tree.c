@@ -30,7 +30,7 @@ FT_FilterNode *CreateCondFilterNode(int op) {
 }
 
 FT_FilterNode *_CreatePredicateFilterNode(const AST *ast,
-        const AST_PredicateNode *pn) {
+										  const AST_PredicateNode *pn) {
 	FT_FilterNode *filterNode = malloc(sizeof(FT_FilterNode));
 	filterNode->t = FT_N_PRED;
 	filterNode->pred.op = pn->op;

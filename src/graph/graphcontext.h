@@ -28,12 +28,12 @@ typedef struct {
 
 /* GraphContext API */
 GraphContext *GraphContext_New(RedisModuleCtx *ctx, const char *graphname,
-                               size_t node_cap, size_t edge_cap);
+							   size_t node_cap, size_t edge_cap);
 
 // Retrive the graph context according to the graph name
 // readOnly is the access mode to the graph key
 GraphContext *GraphContext_Retrieve(RedisModuleCtx *ctx, const char *graphname,
-                                    bool readOnly);
+									bool readOnly);
 
 // Retrives graph context from thread local storage.
 GraphContext *GraphContext_GetFromTLS();
@@ -43,13 +43,13 @@ GraphContext *GraphContext_GetFromTLS();
 unsigned short GraphContext_SchemaCount(const GraphContext *gc, SchemaType t);
 // Retrieve the specific schema for the provided ID
 Schema *GraphContext_GetSchemaByID(const GraphContext *gc, int id,
-                                   SchemaType t);
+								   SchemaType t);
 // Retrieve the specific schema for the provided node label or relation type string
 Schema *GraphContext_GetSchema(const GraphContext *gc, const char *label,
-                               SchemaType t);
+							   SchemaType t);
 // Add a new schema and matrix for the given label
 Schema *GraphContext_AddSchema(GraphContext *gc, const char *label,
-                               SchemaType t);
+							   SchemaType t);
 
 // Retrieve the label string for a given Node object
 const char *GraphContext_GetNodeLabel(const GraphContext *gc, Node *n);
@@ -61,27 +61,27 @@ uint GraphContext_AttributeCount(GraphContext *gc);
 
 // Retrieve an attribute ID given a string, creating one if not found
 Attribute_ID GraphContext_FindOrAddAttribute(GraphContext *gc,
-        const char *attribute);
+											 const char *attribute);
 
 // Retrieve an attribute string given an ID
 const char *GraphContext_GetAttributeString(const GraphContext *gc,
-        Attribute_ID id);
+											Attribute_ID id);
 
 // Retrieve an attribute ID given a string, or ATTRIBUTE_NOTFOUND if attribute doesn't exist.
 Attribute_ID GraphContext_GetAttributeID(const GraphContext *gc,
-        const char *str);
+										 const char *str);
 
 /* Index API */
 bool GraphContext_HasIndices(GraphContext *gc);
 // Attempt to retrieve an index on the given label and attribute
 Index *GraphContext_GetIndex(const GraphContext *gc, const char *label,
-                             const char *attribute);
+							 const char *attribute);
 // Create and populate an index for the given label and attribute
 int GraphContext_AddIndex(GraphContext *gc, const char *label,
-                          const char *attribute);
+						  const char *attribute);
 // Remove and free an index
 int GraphContext_DeleteIndex(GraphContext *gc, const char *label,
-                             const char *attribute);
+							 const char *attribute);
 
 // Add a single node to all indices its properties match
 void GraphContext_AddNodeToIndices(GraphContext *gc, Schema *s, Node *n);

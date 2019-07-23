@@ -41,7 +41,7 @@ static void _classify_expressions(OpAggregate *op) {
 		if(!AR_EXP_ContainsAggregation(exp, NULL)) {
 			op->expression_classification[i] = NONE_AGGREGATED;
 			op->none_aggregated_expressions = array_append(op->none_aggregated_expressions,
-			                                  exp);
+														   exp);
 		} else {
 			op->expression_classification[i] = AGGREGATED;
 		}
@@ -126,7 +126,7 @@ static Group *_GetGroup(OpAggregate *op, Record r) {
 	uint expCount = array_len(op->none_aggregated_expressions);
 	for(uint i = 0; i < expCount; i++) {
 		if(reuseLastAccessedGroup &&
-		        SIValue_Compare(op->group->keys[i], op->group_keys[i]) == 0) {
+				SIValue_Compare(op->group->keys[i], op->group_keys[i]) == 0) {
 			reuseLastAccessedGroup = true;
 		} else {
 			reuseLastAccessedGroup = false;
@@ -258,7 +258,7 @@ OpResult AggregateInit(OpBase *opBase) {
 	/* Allocate memory for group keys. */
 	uint noneAggExpCount = array_len(op->none_aggregated_expressions);
 	if(noneAggExpCount) op->group_keys = rm_malloc(sizeof(SIValue) *
-		                                     noneAggExpCount);
+													   noneAggExpCount);
 	return OP_OK;
 }
 

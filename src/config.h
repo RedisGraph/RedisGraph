@@ -16,9 +16,9 @@
 // otherwise returns thread count equals to the number
 // of cores available.
 long long Config_GetThreadCount(
-    RedisModuleCtx *ctx,
-    RedisModuleString **argv,
-    int argc
+	RedisModuleCtx *ctx,
+	RedisModuleString **argv,
+	int argc
 );
 
 #endif

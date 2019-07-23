@@ -37,7 +37,7 @@ typedef struct {
 ResultSet *NewResultSet(AST *ast, RedisModuleCtx *ctx, bool compact);
 
 void ResultSet_SetReplyFormatter(ResultSet *set,
-                                 ResultSetFormatterType formatter);
+								 ResultSetFormatterType formatter);
 
 void ResultSet_ReplyWithPreamble(ResultSet *set, AST **ast);
 

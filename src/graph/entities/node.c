@@ -110,9 +110,9 @@ int Node_ToString(const Node *n, char *buff, int buff_len) {
 	int offset = 0;
 	offset += snprintf(buff + offset, buff_len - offset, "(");
 	if(n->alias) offset += snprintf(buff + offset, buff_len - offset, "%s",
-		                                n->alias);
+										n->alias);
 	if(n->label) offset += snprintf(buff + offset, buff_len - offset, ":%s",
-		                                n->label);
+										n->label);
 	offset += snprintf(buff + offset, buff_len - offset, ")");
 	return offset;
 }

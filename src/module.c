@@ -51,9 +51,9 @@ int _RegisterDataTypes(RedisModuleCtx *ctx) {
 }
 
 int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv,
-                       int argc) {
+					   int argc) {
 	if(RedisModule_Init(ctx, "graph", REDISGRAPH_MODULE_VERSION,
-	                    REDISMODULE_APIVER_1) == REDISMODULE_ERR) {
+						REDISMODULE_APIVER_1) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}
 
@@ -61,7 +61,7 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv,
 	GrB_Info info = GrB_init(GrB_NONBLOCKING);
 	if(info != GrB_SUCCESS) {
 		RedisModule_Log(ctx, "warning", "GraphBLAS failed to initialize, error: %s",
-		                GrB_error());
+						GrB_error());
 		return REDISMODULE_ERR;
 	}
 
@@ -94,32 +94,32 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv,
 	long long threadCount = Config_GetThreadCount(ctx, argv, argc);
 	if(!_Setup_ThreadPOOL(threadCount)) return REDISMODULE_ERR;
 	RedisModule_Log(ctx, "notice", "Thread pool created, using %d threads.",
-	                threadCount);
+					threadCount);
 
 	if(_RegisterDataTypes(ctx) != REDISMODULE_OK) return REDISMODULE_ERR;
 
 	if(RedisModule_CreateCommand(ctx, "graph.QUERY", MGraph_Query, "write deny-oom",
-	                             1, 1, 1) == REDISMODULE_ERR) {
+								 1, 1, 1) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}
 
 	if(RedisModule_CreateCommand(ctx, "graph.DELETE", MGraph_Delete, "write", 1, 1,
-	                             1) == REDISMODULE_ERR) {
+								 1) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}
 
 	if(RedisModule_CreateCommand(ctx, "graph.EXPLAIN", MGraph_Explain, "write", 1,
-	                             1, 1) == REDISMODULE_ERR) {
+								 1, 1) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}
 
 	if(RedisModule_CreateCommand(ctx, "graph.PROFILE", MGraph_Profile, "write", 1,
-	                             1, 1) == REDISMODULE_ERR) {
+								 1, 1) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}
 
 	if(RedisModule_CreateCommand(ctx, "graph.BULK", MGraph_BulkInsert,
-	                             "write deny-oom", 1, 1, 1) == REDISMODULE_ERR) {
+								 "write deny-oom", 1, 1, 1) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}
 

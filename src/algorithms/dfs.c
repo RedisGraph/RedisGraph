@@ -15,7 +15,7 @@ bool _DFS(Node *n, int level, int current_level, rax *visited, Edge ***path) {
 
 	// Mark n as visited, return if node already marked.
 	if(!raxInsert(visited, (unsigned char *)n->alias, strlen(n->alias), NULL,
-	              NULL)) {
+				  NULL)) {
 		// We've already processed n.
 		return false;
 	}

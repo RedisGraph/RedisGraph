@@ -14,7 +14,7 @@
 #include "../util/rmalloc.h"
 
 static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc,
-                             AST_IndexNode *indexNode) {
+							 AST_IndexNode *indexNode) {
 	/* Set up nested array response for index creation and deletion,
 	 * Following the response struture of other queries:
 	 * First element is an empty result-set followed by statistics.
@@ -27,7 +27,7 @@ static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc,
 	switch(indexNode->operation) {
 	case CREATE_INDEX:
 		if(GraphContext_AddIndex(gc, indexNode->label,
-		                         indexNode->property) != INDEX_OK) {
+								 indexNode->property) != INDEX_OK) {
 			// Index creation may have failed if the label or property was invalid, or the index already exists.
 			RedisModule_ReplyWithSimpleString(ctx, "(no changes, no records)");
 			break;
@@ -36,12 +36,12 @@ static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc,
 		break;
 	case DROP_INDEX:
 		if(GraphContext_DeleteIndex(gc, indexNode->label,
-		                            indexNode->property) == INDEX_OK) {
+									indexNode->property) == INDEX_OK) {
 			RedisModule_ReplyWithSimpleString(ctx, "Indices removed: 1");
 		} else {
 			char *reply;
 			asprintf(&reply, "ERR Unable to drop index on :%s(%s): no such index.",
-			         indexNode->label, indexNode->property);
+					 indexNode->label, indexNode->property);
 			RedisModule_ReplyWithError(ctx, reply);
 			free(reply);
 		}
@@ -55,11 +55,11 @@ static inline bool _check_compact_flag(CommandCtx *qctx) {
 	// The only additional argument to check currently is whether the query results
 	// should be returned in compact form
 	return (qctx->argc > 3 &&
-	        !strcasecmp(RedisModule_StringPtrLen(qctx->argv[3], NULL), "--compact"));
+			!strcasecmp(RedisModule_StringPtrLen(qctx->argv[3], NULL), "--compact"));
 }
 
 static ResultSet *_prepare_resultset(RedisModuleCtx *ctx, AST **ast,
-                                     bool compact) {
+									 bool compact) {
 	// The last AST will contain the return clause, if one is specified
 	AST *final_ast = ast[array_len(ast) - 1];
 	ResultSet *set = NewResultSet(final_ast, ctx, compact);
@@ -86,7 +86,7 @@ void _MGraph_Query(void *args) {
 		}
 		assert(!readonly);
 		gc = GraphContext_New(ctx, qctx->graphName, GRAPH_DEFAULT_NODE_CAP,
-		                      GRAPH_DEFAULT_EDGE_CAP);
+							  GRAPH_DEFAULT_EDGE_CAP);
 
 		if(!gc) {
 			CommandCtx_ThreadSafeContextUnlock(qctx);
@@ -183,7 +183,7 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	} else {
 		// Run query on a dedicated thread.
 		RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL,
-		                               0);
+															   0);
 		context = CommandCtx_New(NULL, bc, ast, argv[1], argv, argc);
 		context->tic[0] = tic[0];
 		context->tic[1] = tic[1];

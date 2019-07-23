@@ -33,7 +33,7 @@ void _OpBase_AddChild(OpBase *parent, OpBase *child) {
 		parent->children = rm_malloc(sizeof(OpBase *));
 	} else {
 		parent->children = rm_realloc(parent->children,
-		                              sizeof(OpBase *) * (parent->childCount + 1));
+									  sizeof(OpBase *) * (parent->childCount + 1));
 	}
 	parent->children[parent->childCount++] = child;
 
@@ -63,7 +63,7 @@ void _OpBase_RemoveNode(OpBase *parent, OpBase *child) {
 			parent->children[j] = parent->children[j + 1];
 		}
 		parent->children = rm_realloc(parent->children,
-		                              sizeof(OpBase *) * parent->childCount);
+									  sizeof(OpBase *) * parent->childCount);
 	}
 
 	// Remove parent from child.
@@ -75,7 +75,7 @@ void _OpBase_RemoveChild(OpBase *parent, OpBase *child) {
 }
 
 Vector *_ExecutionPlan_Locate_References(OpBase *root, OpBase **op,
-        rax *references) {
+										 rax *references) {
 	/* List of entities which had their ID resolved
 	 * at this point of execution, should include all
 	 * previously modified entities (up the execution plan). */
@@ -93,7 +93,7 @@ Vector *_ExecutionPlan_Locate_References(OpBase *root, OpBase **op,
 	/* Traverse execution plan, upwards. */
 	for(int i = 0; i < root->childCount; i++) {
 		Vector *saw = _ExecutionPlan_Locate_References(root->children[i], op,
-		              references);
+													   references);
 
 		/* Quick return if op was located. */
 		if(*op) {
@@ -125,7 +125,7 @@ Vector *_ExecutionPlan_Locate_References(OpBase *root, OpBase **op,
 			char *resolved;
 			Vector_Get(seen, i, &resolved);
 			if(raxFind(references, (unsigned char *)resolved,
-			           strlen(resolved)) != raxNotFound) {
+					   strlen(resolved)) != raxNotFound) {
 				match--;
 				// All refrences been resolved.
 				if(match == 0) {
@@ -140,7 +140,7 @@ Vector *_ExecutionPlan_Locate_References(OpBase *root, OpBase **op,
 }
 
 void _Count_Graph_Entities(const Vector *entities, size_t *node_count,
-                           size_t *edge_count) {
+						   size_t *edge_count) {
 	for(int i = 0; i < Vector_Size(entities); i++) {
 		AST_GraphEntity *entity;
 		Vector_Get(entities, i, &entity);
@@ -154,7 +154,7 @@ void _Count_Graph_Entities(const Vector *entities, size_t *node_count,
 }
 
 void _Determine_Graph_Size(const AST *ast, size_t *node_count,
-                           size_t *edge_count) {
+						   size_t *edge_count) {
 	*edge_count = 0;
 	*node_count = 0;
 	Vector *entities;
@@ -224,11 +224,11 @@ void ExecutionPlan_RemoveOp(ExecutionPlan *plan, OpBase *op) {
 
 static bool inline _TapOperation(const OpBase *op) {
 	return (op->type == OPType_ALL_NODE_SCAN ||
-	        op->type == OPType_NODE_BY_LABEL_SCAN ||
-	        op->type == OPType_INDEX_SCAN ||
-	        op->type == OPType_CREATE ||
-	        op->type == OPType_UNWIND ||
-	        op->type == OPType_PROC_CALL);
+			op->type == OPType_NODE_BY_LABEL_SCAN ||
+			op->type == OPType_INDEX_SCAN ||
+			op->type == OPType_CREATE ||
+			op->type == OPType_UNWIND ||
+			op->type == OPType_PROC_CALL);
 }
 
 void ExecutionPlan_LocateTaps(OpBase *root, OpBase ***taps) {
@@ -358,7 +358,7 @@ static void _UpdateResolvedVariables(rax *resolved, OpBase *op) {
 }
 
 ExecutionPlan *_NewExecutionPlan(RedisModuleCtx *ctx, AST *ast,
-                                 ResultSet *result_set) {
+								 ResultSet *result_set) {
 	Graph *g;
 	OpBase *op;
 	Vector *ops;
@@ -389,8 +389,8 @@ ExecutionPlan *_NewExecutionPlan(RedisModuleCtx *ctx, AST *ast,
 
 	if(ast->callNode) {
 		OpBase *opProcCall = NewProcCallOp(ast->callNode->procedure,
-		                                   ast->callNode->arguments,
-		                                   ast->callNode->yield, ast);
+										   ast->callNode->arguments,
+										   ast->callNode->yield, ast);
 		Vector_Push(ops, opProcCall);
 		_UpdateResolvedVariables(resolved, opProcCall);
 	}
@@ -426,7 +426,7 @@ ExecutionPlan *_NewExecutionPlan(RedisModuleCtx *ctx, AST *ast,
 			} else {
 				size_t expCount = 0;
 				AlgebraicExpression **exps = AlgebraicExpression_From_QueryGraph(cc, ast,
-				                             &expCount);
+																				 &expCount);
 
 				// Reorder exps, to the most performent arrangement of evaluation.
 				orderExpressions(exps, expCount, execution_plan->filter_tree);
@@ -461,22 +461,22 @@ ExecutionPlan *_NewExecutionPlan(RedisModuleCtx *ctx, AST *ast,
 					 * that exp's source is already resolved, see
 					 * traverse_order.c */
 					if(raxFind(resolved,
-					           (unsigned char *)exp->src_node->alias,
-					           strlen(exp->src_node->alias)) == raxNotFound) {
+							   (unsigned char *)exp->src_node->alias,
+							   strlen(exp->src_node->alias)) == raxNotFound) {
 
 						AlgebraicExpression_Transpose(exp);
 
 						assert(raxFind(resolved,
-						               (unsigned char *)exp->src_node->alias,
-						               strlen(exp->src_node->alias)) != raxNotFound);
+									   (unsigned char *)exp->src_node->alias,
+									   strlen(exp->src_node->alias)) != raxNotFound);
 					}
 
 					if(exp->edge && Edge_VariableLength(exp->edge)) {
 						op = NewCondVarLenTraverseOp(exp,
-						                             exp->edge->minHops,
-						                             exp->edge->maxHops,
-						                             g,
-						                             ast);
+													 exp->edge->minHops,
+													 exp->edge->maxHops,
+													 g,
+													 ast);
 					} else {
 						op = NewCondTraverseOp(exp, ast);
 					}
@@ -502,7 +502,7 @@ ExecutionPlan *_NewExecutionPlan(RedisModuleCtx *ctx, AST *ast,
 				}
 			} else {
 				for(int traversalIdx = 0; traversalIdx < Vector_Size(traversals);
-				        traversalIdx++) {
+						traversalIdx++) {
 					Vector_Get(traversals, traversalIdx, &op);
 					Vector_Push(ops, op);
 				}
@@ -535,7 +535,7 @@ ExecutionPlan *_NewExecutionPlan(RedisModuleCtx *ctx, AST *ast,
 
 	if(ast->deleteNode) {
 		OpBase *opDelete = NewDeleteOp(ast->deleteNode, q, execution_plan->result_set,
-		                               ast);
+									   ast);
 		Vector_Push(ops, opDelete);
 	}
 
@@ -619,10 +619,10 @@ static void _ExecutionPlan_StreamTaps(OpBase *root, OpBase ***taps) {
 }
 
 static ExecutionPlan *_ExecutionPlan_Connect(ExecutionPlan *a, ExecutionPlan *b,
-        AST *ast) {
+											 AST *ast) {
 	assert(a &&
-	       b &&
-	       (a->root->type == OPType_PROJECT || a->root->type == OPType_AGGREGATE));
+		   b &&
+		   (a->root->type == OPType_PROJECT || a->root->type == OPType_AGGREGATE));
 
 	OpBase *tap;
 	OpBase **taps = array_new(sizeof(OpBase *), 1);
@@ -673,7 +673,7 @@ static ExecutionPlan *_ExecutionPlan_Connect(ExecutionPlan *a, ExecutionPlan *b,
 }
 
 ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, AST **ast,
-                                ResultSet *result_set, bool explain) {
+								ResultSet *result_set, bool explain) {
 	ExecutionPlan *plan = NULL;
 	ExecutionPlan *curr_plan;
 
@@ -713,7 +713,7 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, AST **ast,
 }
 
 void _ExecutionPlan_Print(const OpBase *op, RedisModuleCtx *ctx, char *buffer,
-                          int buffer_len, int ident, int *op_count) {
+						  int buffer_len, int ident, int *op_count) {
 	if(!op) return;
 
 	*op_count += 1; // account for current operation.
@@ -721,14 +721,14 @@ void _ExecutionPlan_Print(const OpBase *op, RedisModuleCtx *ctx, char *buffer,
 	// Construct operation string representation.
 	int bytes_written = snprintf(buffer, buffer_len, "%*s", ident, "");
 	bytes_written += OpBase_ToString(op, buffer + bytes_written,
-	                                 buffer_len - bytes_written);
+									 buffer_len - bytes_written);
 
 	RedisModule_ReplyWithStringBuffer(ctx, buffer, bytes_written);
 
 	// Recurse over child operations.
 	for(int i = 0; i < op->childCount; i++) {
 		_ExecutionPlan_Print(op->children[i], ctx, buffer, buffer_len, ident + 4,
-		                     op_count);
+							 op_count);
 	}
 }
 

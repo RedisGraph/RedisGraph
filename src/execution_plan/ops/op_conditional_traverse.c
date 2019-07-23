@@ -12,7 +12,7 @@ static void _setupTraversedRelations(CondTraverse *op, GraphContext *gc) {
 	AST *ast = op->ast;
 	const char *alias = op->algebraic_expression->edge->alias;
 	AST_LinkEntity *e = (AST_LinkEntity *)MatchClause_GetEntity(ast->matchNode,
-	                    alias);
+																alias);
 	op->edgeRelationCount = AST_LinkEntity_LabelCount(e);
 
 	if(op->edgeRelationCount > 0) {
@@ -50,7 +50,7 @@ static int _CondTraverse_SetEdge(CondTraverse *op, Record r) {
 void _traverse(CondTraverse *op) {
 	// Preppend matrix to algebraic expression, as the left most operand.
 	AlgebraicExpression_PrependTerm(op->algebraic_expression, op->F, false, false,
-	                                false);
+									false);
 
 	// Evaluate expression.
 	AlgebraicExpression_Execute(op->algebraic_expression, op->M);
@@ -79,17 +79,17 @@ int CondTraverseToString(const OpBase *ctx, char *buff, uint buff_len) {
 	int offset = 0;
 	offset += snprintf(buff + offset, buff_len - offset, "%s | ", op->op.name);
 	offset += Node_ToString(op->algebraic_expression->src_node, buff + offset,
-	                        buff_len - offset);
+							buff_len - offset);
 	if(op->algebraic_expression->edge) {
 		offset += snprintf(buff + offset, buff_len - offset, "-");
 		offset += Edge_ToString(op->algebraic_expression->edge, buff + offset,
-		                        buff_len - offset);
+								buff_len - offset);
 		offset += snprintf(buff + offset, buff_len - offset, "->");
 	} else {
 		offset += snprintf(buff + offset, buff_len - offset, "->");
 	}
 	offset += Node_ToString(op->algebraic_expression->dest_node, buff + offset,
-	                        buff_len - offset);
+							buff_len - offset);
 	return offset;
 }
 
@@ -106,9 +106,9 @@ OpBase *NewCondTraverseOp(AlgebraicExpression *algebraic_expression, AST *ast) {
 	traverse->edgeRelationTypes = NULL;
 	traverse->algebraic_expression = algebraic_expression;
 	traverse->srcNodeRecIdx = AST_GetAliasID(ast,
-	                          algebraic_expression->src_node->alias);
+											 algebraic_expression->src_node->alias);
 	traverse->destNodeRecIdx = AST_GetAliasID(ast,
-	                           algebraic_expression->dest_node->alias);
+											  algebraic_expression->dest_node->alias);
 
 	traverse->recordsLen = 0;
 	traverse->transposed_edge = false;
@@ -227,10 +227,10 @@ Record CondTraverseConsume(OpBase *opBase) {
 
 		for(int i = 0; i < op->edgeRelationCount; i++) {
 			Graph_GetEdgesConnectingNodes(op->graph,
-			                              ENTITY_GET_ID(srcNode),
-			                              ENTITY_GET_ID(destNode),
-			                              op->edgeRelationTypes[i],
-			                              &op->edges);
+										  ENTITY_GET_ID(srcNode),
+										  ENTITY_GET_ID(destNode),
+										  op->edgeRelationTypes[i],
+										  &op->edges);
 		}
 
 		_CondTraverse_SetEdge(op, op->r);

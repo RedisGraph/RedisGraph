@@ -13,7 +13,7 @@ AST_DeleteNode *New_AST_DeleteNode(Vector *elements) {
 }
 
 void DeleteClause_ReferredEntities(const AST_DeleteNode *delete_node,
-                                   TrieMap *referred_entities) {
+								   TrieMap *referred_entities) {
 	if(!delete_node) return;
 
 	int delete_element_count = Vector_Size(delete_node->graphEntities);
@@ -21,7 +21,7 @@ void DeleteClause_ReferredEntities(const AST_DeleteNode *delete_node,
 		char *delete_element;
 		Vector_Get(delete_node->graphEntities, i, &delete_element);
 		TrieMap_Add(referred_entities, delete_element, strlen(delete_element),
-		            delete_element, TrieMap_DONT_CARE_REPLACE);
+					delete_element, TrieMap_DONT_CARE_REPLACE);
 	}
 }
 

@@ -43,7 +43,7 @@ static void _ResultSet_ReplayStats(RedisModuleCtx *ctx, ResultSet *set) {
 
 	if(set->stats.relationships_created > 0) {
 		buflen = sprintf(buff, "Relationships created: %d",
-		                 set->stats.relationships_created);
+						 set->stats.relationships_created);
 		RedisModule_ReplyWithStringBuffer(ctx, (const char *)buff, buflen);
 	}
 
@@ -54,7 +54,7 @@ static void _ResultSet_ReplayStats(RedisModuleCtx *ctx, ResultSet *set) {
 
 	if(set->stats.relationships_deleted > 0) {
 		buflen = sprintf(buff, "Relationships deleted: %d",
-		                 set->stats.relationships_deleted);
+						 set->stats.relationships_deleted);
 		RedisModule_ReplyWithStringBuffer(ctx, (const char *)buff, buflen);
 	}
 }
@@ -84,7 +84,7 @@ static void _ResultSet_CreateHeader(ResultSet *set, AST **ast) {
 
 	for(int i = 0; i < header->columns_len; i++) {
 		AST_ReturnElementNode *returnElementNode =
-		    final_ast->returnNode->returnElements[i];
+			final_ast->returnNode->returnElements[i];
 
 		AR_ExpNode *ar_exp = AR_EXP_BuildFromAST(final_ast, returnElementNode->exp);
 
@@ -130,7 +130,7 @@ ResultSet *NewResultSet(AST *ast, RedisModuleCtx *ctx, bool compact) {
 	set->bufferLen = 2048;
 	set->buffer = malloc(set->bufferLen);
 	set->formatter = (compact) ? &ResultSetFormatterCompact :
-	                 &ResultSetFormatterVerbose;
+					 &ResultSetFormatterVerbose;
 
 	set->stats.labels_added = 0;
 	set->stats.nodes_created = 0;
@@ -144,7 +144,7 @@ ResultSet *NewResultSet(AST *ast, RedisModuleCtx *ctx, bool compact) {
 
 // Choose the appropriate reply formatter.
 void ResultSet_SetReplyFormatter(ResultSet *set,
-                                 ResultSetFormatterType formatter) {
+								 ResultSetFormatterType formatter) {
 	switch(formatter) {
 	case FORMATTER_VERBOSE:
 		set->formatter = &ResultSetFormatterVerbose;

@@ -4,12 +4,12 @@
 
 CommandCtx *CommandCtx_New
 (
-    RedisModuleCtx *ctx,
-    RedisModuleBlockedClient *bc,
-    AST **ast,
-    RedisModuleString *graphName,
-    RedisModuleString **argv,
-    int argc
+	RedisModuleCtx *ctx,
+	RedisModuleBlockedClient *bc,
+	AST **ast,
+	RedisModuleString *graphName,
+	RedisModuleString **argv,
+	int argc
 ) {
 	CommandCtx *context = rm_malloc(sizeof(CommandCtx));
 	context->bc = bc;
@@ -21,7 +21,7 @@ CommandCtx *CommandCtx_New
 
 	// Make a copy of graph name.
 	if(graphName) context->graphName = rm_strdup(RedisModule_StringPtrLen(graphName,
-		                                   NULL));
+																			  NULL));
 	return context;
 }
 

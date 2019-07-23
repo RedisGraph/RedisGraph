@@ -30,7 +30,7 @@ int __agg_sumStep(AggCtx *ctx, SIValue *argv, int argc) {
 			if(!SIValue_IsNullPtr(&argv[i])) {
 				// not convertible to double!
 				return Agg_SetError(ctx,
-				                    "SUM Could not convert upstream value to double");
+									"SUM Could not convert upstream value to double");
 			} else {
 				return AGG_OK;
 			}
@@ -74,7 +74,7 @@ int __agg_avgStep(AggCtx *ctx, SIValue *argv, int argc) {
 			if(!SIValue_IsNullPtr(&argv[i])) {
 				// not convertible to double!
 				return Agg_SetError(ctx,
-				                    "AVG Could not convert upstream value to double");
+									"AVG Could not convert upstream value to double");
 			} else {
 				return AGG_OK;
 			}
@@ -236,11 +236,11 @@ int __agg_percStep(AggCtx *ctx, SIValue *argv, int argc) {
 	if(ac->percentile < 0) {
 		if(!SIValue_ToDouble(&argv[argc - 1], &ac->percentile)) {
 			return Agg_SetError(ctx,
-			                    "PERC_DISC Could not convert percentile argument to double");
+								"PERC_DISC Could not convert percentile argument to double");
 		}
 		if(ac->percentile < 0 || ac->percentile > 1) {
 			return Agg_SetError(ctx,
-			                    "PERC_DISC Invalid input for percentile is not a valid argument, must be a number in the range 0.0 to 1.0");
+								"PERC_DISC Invalid input for percentile is not a valid argument, must be a number in the range 0.0 to 1.0");
 		}
 	}
 
@@ -255,7 +255,7 @@ int __agg_percStep(AggCtx *ctx, SIValue *argv, int argc) {
 			if(!SIValue_IsNullPtr(&argv[i])) {
 				// not convertible to double!
 				return Agg_SetError(ctx,
-				                    "PERC_DISC Could not convert upstream value to double");
+									"PERC_DISC Could not convert upstream value to double");
 			} else {
 				return AGG_OK;
 			}
@@ -297,7 +297,7 @@ int __agg_percContReduceNext(AggCtx *ctx) {
 	// Split the temp value into its integer and fractional values
 	fraction_val = modf(float_idx, &int_val);
 	int index =
-	    int_val; // Casting the integral part of the value to an int for convenience
+		int_val; // Casting the integral part of the value to an int for convenience
 
 	if(!fraction_val) {
 		// A valid index was requested, so we can directly return a value
@@ -361,7 +361,7 @@ int __agg_StdevStep(AggCtx *ctx, SIValue *argv, int argc) {
 			if(!SIValue_IsNullPtr(&argv[i])) {
 				// not convertible to double!
 				return Agg_SetError(ctx,
-				                    "STDEV Could not convert upstream value to double");
+									"STDEV Could not convert upstream value to double");
 			} else {
 				return AGG_OK;
 			}

@@ -22,15 +22,15 @@ typedef struct {
 
 BulkInsertContext *BulkInsertContext_New
 (
-    RedisModuleCtx *ctx,
-    RedisModuleBlockedClient *bc,
-    RedisModuleString **argv,
-    int argc
+	RedisModuleCtx *ctx,
+	RedisModuleBlockedClient *bc,
+	RedisModuleString **argv,
+	int argc
 );
 
 void BulkInsertContext_Free
 (
-    BulkInsertContext *ctx
+	BulkInsertContext *ctx
 );
 
 int MGraph_BulkInsert(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);

@@ -21,11 +21,11 @@ AST_MatchNode *New_AST_MatchNode(Vector *patterns);
 
 /* Lists entities defined by this clause. */
 void MatchClause_DefinedEntities(const AST_MatchNode *matchNode,
-                                 TrieMap *referred_entities);
+								 TrieMap *referred_entities);
 
 /* Get an AST_GraphEntity* aliased as given alias. */
 AST_GraphEntity *MatchClause_GetEntity(const AST_MatchNode *matchNode,
-                                       const char *alias);
+									   const char *alias);
 
 /* Give an alias to every entity which doesn't have an alias. */
 void MatchClause_NameAnonymousNodes(AST_MatchNode *matchNode, int *entityID);

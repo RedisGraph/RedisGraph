@@ -17,7 +17,7 @@ AST_Variable *New_AST_Variable(char *alias, char *property) {
 }
 
 static void _AST_Clone_BaseEntity(AST_GraphEntity *clone,
-                                  const AST_GraphEntity *src) {
+								  const AST_GraphEntity *src) {
 	clone->alias = src->alias;
 	clone->label = src->label;
 	clone->t = src->t;
@@ -75,7 +75,7 @@ AST_GraphEntity *Clone_AST_GraphEntity(const AST_GraphEntity *src) {
 }
 
 AST_LinkEntity *New_AST_LinkEntity(char *alias, char **labels,
-                                   Vector *properties, AST_LinkDirection dir, AST_LinkLength *length) {
+								   Vector *properties, AST_LinkDirection dir, AST_LinkLength *length) {
 	AST_LinkEntity *le = (AST_LinkEntity *)calloc(1, sizeof(AST_LinkEntity));
 	le->direction = dir;
 	le->length = length;
@@ -94,7 +94,7 @@ AST_LinkEntity *New_AST_LinkEntity(char *alias, char **labels,
 }
 
 AST_NodeEntity *New_AST_NodeEntity(char *alias, char *label,
-                                   Vector *properties) {
+								   Vector *properties) {
 	AST_NodeEntity *ne = (AST_NodeEntity *)calloc(1, sizeof(AST_NodeEntity));
 	ne->t = N_ENTITY;
 	ne->properties = properties;

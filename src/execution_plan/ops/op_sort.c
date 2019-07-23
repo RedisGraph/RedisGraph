@@ -35,7 +35,7 @@ static bool _record_islt(Record a, Record b, const OpSort *op) {
 		if(rel == 0) continue;  // Elements are equal; try next ORDER BY element
 		rel *= op->direction;   // Flip value for descending order.
 		return rel >
-		       0;         // Return true if the current left element is less than the right.
+			   0;         // Return true if the current left element is less than the right.
 	}
 	return false;   // b >= a
 }
@@ -121,7 +121,7 @@ OpBase *NewSortOp(const AST *ast, AR_ExpNode **expressions) {
 	OpSort *sort = malloc(sizeof(OpSort));
 	sort->ast = ast;
 	sort->direction = (ast->orderNode->direction == ORDER_DIR_DESC) ? DIR_DESC :
-	                  DIR_ASC;
+					  DIR_ASC;
 	sort->limit = 0;
 	sort->offset = 0;
 	sort->expressions = expressions;
@@ -244,6 +244,6 @@ void SortFree(OpBase *ctx) {
 	}
 
 	for(int i = 0; i < array_len(op->expressions);
-	        i++) AR_EXP_Free(op->expressions[i]);
+			i++) AR_EXP_Free(op->expressions[i]);
 	array_free(op->expressions);
 }

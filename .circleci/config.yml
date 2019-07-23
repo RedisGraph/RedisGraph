@@ -16,9 +16,9 @@ jobs:
             apt-get update; apt-get install -y automake peg libtool autoconf cmake valgrind astyle
       
       # Validate source complies with formatting
-      - run:
-          name: Formatting
-          command: astyle --options=.astylerc -R "src/*.c,*.h" --dry-run -Q
+      #- run:
+          # name: Formatting
+          # command: astyle --options=.astylerc -R "./*.c,*.h" --dry-run -Q
 
       # Load GraphBLAS from cache if possible.
       - restore_cache:

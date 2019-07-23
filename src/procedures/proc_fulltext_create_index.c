@@ -24,12 +24,12 @@ typedef struct {
 } _fulltextIndexCtx;
 
 static void _populateIndex(
-    RSIndex *idx,
-    Graph *g,
-    int label_id,
-    char **fields,
-    uint *fields_ids,
-    uint fields_count) {
+	RSIndex *idx,
+	Graph *g,
+	int label_id,
+	char **fields,
+	uint *fields_ids,
+	uint fields_count) {
 	Node node;
 	NodeID node_id;
 	GraphEntity *entity;
@@ -54,7 +54,7 @@ static void _populateIndex(
 			if(v == PROPERTY_NOTFOUND) continue;
 			if(v->type != T_STRING) continue;
 			RediSearch_DocumentAddFieldString(doc, fields[i], v->stringval,
-			                                  strlen(v->stringval), RSFLDTYPE_FULLTEXT);
+											  strlen(v->stringval), RSFLDTYPE_FULLTEXT);
 		}
 
 		RediSearch_SpecAddDocument(idx, doc);
@@ -64,7 +64,7 @@ static void _populateIndex(
 }
 
 static int _getNodeAttribute(void *ctx, const char *fieldName, const void *id,
-                             char **strVal, double *doubleVal) {
+							 char **strVal, double *doubleVal) {
 	Node n;
 	NodeID nId = *(NodeID *)id;
 	_fulltextIndexCtx *indexCtx = ctx;
@@ -92,7 +92,7 @@ static int _getNodeAttribute(void *ctx, const char *fieldName, const void *id,
 }
 
 ProcedureResult Proc_FulltextCreateNodeIdxInvoke(ProcedureCtx *ctx,
-        char **args) {
+												 char **args) {
 	if(array_len(args) < 2) return PROCEDURE_ERR;
 
 	// Create full-text index.
@@ -147,12 +147,12 @@ ProcedureCtx *Proc_FulltextCreateNodeIdxGen() {
 	void *privateData = NULL;
 	ProcedureOutput **output = array_new(ProcedureOutput *, 0);
 	ProcedureCtx *ctx = ProcCtxNew("db.idx.fulltext.createNodeIndex",
-	                               PROCEDURE_VARIABLE_ARG_COUNT,
-	                               output,
-	                               Proc_FulltextCreateNodeIdxStep,
-	                               Proc_FulltextCreateNodeIdxInvoke,
-	                               Proc_FulltextCreateNodeIdxFree,
-	                               privateData);
+								   PROCEDURE_VARIABLE_ARG_COUNT,
+								   output,
+								   Proc_FulltextCreateNodeIdxStep,
+								   Proc_FulltextCreateNodeIdxInvoke,
+								   Proc_FulltextCreateNodeIdxFree,
+								   privateData);
 
 	return ctx;
 }

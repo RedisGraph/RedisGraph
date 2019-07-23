@@ -35,7 +35,7 @@ QueryGraph *QueryGraph_New(size_t node_cap, size_t edge_cap);
  * representing queried entities and the relationships
  * between them. */
 void BuildQueryGraph(const GraphContext *gc, QueryGraph *query_graph,
-                     Vector *entities);
+					 Vector *entities);
 
 /* Checks if graph contains given node */
 bool QueryGraph_ContainsNode(const QueryGraph *graph, const Node *node);
@@ -57,7 +57,7 @@ Edge *QueryGraph_GetEdgeByAlias(const QueryGraph *g, const char *alias);
 
 /* Search for either node/edge with given alias. */
 GraphEntity *QueryGraph_GetEntityByAlias(const QueryGraph *g,
-        const char *alias);
+										 const char *alias);
 
 GraphEntity **QueryGraph_GetEntityRef(const QueryGraph *g, const char *alias);
 

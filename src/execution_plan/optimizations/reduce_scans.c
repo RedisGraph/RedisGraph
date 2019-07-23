@@ -15,8 +15,8 @@ void _collectScanOpes(OpBase *root, OpBase ***scans) {
 	if(root == NULL) return;
 
 	if(root->type == OPType_ALL_NODE_SCAN ||
-	        root->type == OPType_NODE_BY_LABEL_SCAN ||
-	        root->type == OPType_INDEX_SCAN) {
+			root->type == OPType_NODE_BY_LABEL_SCAN ||
+			root->type == OPType_INDEX_SCAN) {
 		*scans = array_append(*scans, root);
 	}
 

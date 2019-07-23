@@ -36,20 +36,20 @@ typedef struct {
 
 // Create a new All paths context object.
 AllPathsCtx *AllPathsCtx_New(
-    Node *src,              // Source node to traverse.
-    Graph *g,               // Graph to traverse.
-    int *relationIDs,       // Edge type(s) on which we'll traverse.
-    int relationCount,      // Length of relationIDs.
-    GRAPH_EDGE_DIR dir,     // Traversal direction.
-    unsigned int
-    minLen,    // Path length must contain be at least minLen + 1 nodes.
-    unsigned int maxLen     // Path length must not exceed maxLen + 1 nodes.
+	Node *src,              // Source node to traverse.
+	Graph *g,               // Graph to traverse.
+	int *relationIDs,       // Edge type(s) on which we'll traverse.
+	int relationCount,      // Length of relationIDs.
+	GRAPH_EDGE_DIR dir,     // Traversal direction.
+	unsigned int
+	minLen,    // Path length must contain be at least minLen + 1 nodes.
+	unsigned int maxLen     // Path length must not exceed maxLen + 1 nodes.
 );
 
 // Tries to produce a new path from given context
 // If no additional path can be computed return NULL.
 Path AllPathsCtx_NextPath(
-    AllPathsCtx *ctx
+	AllPathsCtx *ctx
 );
 
 // Free context object.

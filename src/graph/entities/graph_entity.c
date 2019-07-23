@@ -15,7 +15,7 @@ SIValue *PROPERTY_NOTFOUND = &(SIValue) {
 
 /* Removes entity's property. */
 static void _GraphEntity_RemoveProperty(const GraphEntity *e,
-                                        Attribute_ID attr_id) {
+										Attribute_ID attr_id) {
 	// Quick return if attribute is missing.
 	if(GraphEntity_GetProperty(e, attr_id) == PROPERTY_NOTFOUND) return;
 
@@ -35,7 +35,7 @@ static void _GraphEntity_RemoveProperty(const GraphEntity *e,
 				 * attribute and shrink properties bag. */
 				e->entity->properties[i] = e->entity->properties[prop_count - 1];
 				e->entity->properties = rm_realloc(e->entity->properties,
-				                                   sizeof(EntityProperty) * e->entity->prop_count);
+												   sizeof(EntityProperty) * e->entity->prop_count);
 			}
 
 			break;
@@ -45,12 +45,12 @@ static void _GraphEntity_RemoveProperty(const GraphEntity *e,
 
 /* Add a new property to entity */
 SIValue *GraphEntity_AddProperty(GraphEntity *e, Attribute_ID attr_id,
-                                 SIValue value) {
+								 SIValue value) {
 	if(e->entity->properties == NULL) {
 		e->entity->properties = rm_malloc(sizeof(EntityProperty));
 	} else {
 		e->entity->properties = rm_realloc(e->entity->properties,
-		                                   sizeof(EntityProperty) * (e->entity->prop_count + 1));
+										   sizeof(EntityProperty) * (e->entity->prop_count + 1));
 	}
 
 	int prop_idx = e->entity->prop_count;
@@ -76,7 +76,7 @@ SIValue *GraphEntity_GetProperty(const GraphEntity *e, Attribute_ID attr_id) {
 
 // Updates existing property value.
 void GraphEntity_SetProperty(const GraphEntity *e, Attribute_ID attr_id,
-                             SIValue value) {
+							 SIValue value) {
 	assert(e);
 
 	// Setting an attribute value to NULL removes that attribute.

@@ -29,12 +29,12 @@ void Proc_Register() {
 }
 
 ProcedureCtx *ProcCtxNew(const char *name,
-                         unsigned int argc,
-                         ProcedureOutput **output,
-                         ProcStep fStep,
-                         ProcInvoke fInvoke,
-                         ProcFree fFree,
-                         void *privateData) {
+						 unsigned int argc,
+						 ProcedureOutput **output,
+						 ProcStep fStep,
+						 ProcInvoke fInvoke,
+						 ProcFree fFree,
+						 void *privateData) {
 
 	ProcedureCtx *ctx = rm_malloc(sizeof(ProcedureCtx));
 	ctx->argc = argc;
@@ -50,7 +50,7 @@ ProcedureCtx *ProcCtxNew(const char *name,
 ProcedureCtx *Proc_Get(const char *proc_name) {
 	if(!__procedures) return NULL;
 	ProcGenerator gen = TrieMap_Find(__procedures, (char *)proc_name,
-	                                 strlen(proc_name));
+									 strlen(proc_name));
 	if(gen == TRIEMAP_NOTFOUND) return NULL;
 	ProcedureCtx *ctx = gen();
 	return ctx;
@@ -59,7 +59,7 @@ ProcedureCtx *Proc_Get(const char *proc_name) {
 ProcedureResult Proc_Invoke(ProcedureCtx *proc, char **args) {
 	assert(proc);
 	if(proc->argc != PROCEDURE_VARIABLE_ARG_COUNT) assert(proc->argc == array_len(
-		            args));
+																  args));
 	// TODO: procedure can only be invoke once.
 	return proc->Invoke(proc, args);
 }

@@ -14,7 +14,7 @@ AST_WhereNode *New_AST_WhereNode(AST_FilterNode *filters) {
 }
 
 AST_FilterNode *New_AST_PredicateNode(AST_ArithmeticExpressionNode *lhs, int op,
-                                      AST_ArithmeticExpressionNode *rhs) {
+									  AST_ArithmeticExpressionNode *rhs) {
 	AST_FilterNode *n = malloc(sizeof(AST_FilterNode));
 	n->t = N_PRED;
 	n->pn.lhs = lhs;
@@ -25,7 +25,7 @@ AST_FilterNode *New_AST_PredicateNode(AST_ArithmeticExpressionNode *lhs, int op,
 }
 
 AST_FilterNode *New_AST_ConditionNode(AST_FilterNode *left, int op,
-                                      AST_FilterNode *right) {
+									  AST_FilterNode *right) {
 	AST_FilterNode *n = malloc(sizeof(AST_FilterNode));
 	n->t = N_COND;
 	n->cn.left = left;
@@ -41,7 +41,7 @@ void FreePredicateNode(AST_PredicateNode *predicateNode) {
 }
 
 void _WhereClause_ReferredEntities(AST_FilterNode *root,
-                                   TrieMap *referred_entities) {
+								   TrieMap *referred_entities) {
 	switch(root->t) {
 	case N_COND:
 		_WhereClause_ReferredEntities(root->cn.left, referred_entities);
@@ -58,13 +58,13 @@ void _WhereClause_ReferredEntities(AST_FilterNode *root,
 }
 
 void WhereClause_ReferredEntities(const AST_WhereNode *where_node,
-                                  TrieMap *referred_entities) {
+								  TrieMap *referred_entities) {
 	if(!where_node) return;
 	_WhereClause_ReferredEntities(where_node->filters, referred_entities);
 }
 
 void WhereClause_ReferredFunctions(const AST_FilterNode *root,
-                                   TrieMap *referred_funcs) {
+								   TrieMap *referred_funcs) {
 	if(!root) return;
 	if(root->t == N_PRED) {
 		// Check expressions on each side of predicate filters

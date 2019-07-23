@@ -77,15 +77,15 @@ SIValue SI_PtrVal(void *v);
 SIValue SI_Node(void *n);
 SIValue SI_Edge(void *e);
 SIValue SI_DuplicateStringVal(const char
-                              *s); // Duplicate and ultimately free the input string
+							  *s); // Duplicate and ultimately free the input string
 SIValue SI_ConstStringVal(char
-                          *s);           // Neither duplicate nor assume ownership of input string
+						  *s);           // Neither duplicate nor assume ownership of input string
 SIValue SI_TransferStringVal(char
-                             *s);        // Don't duplicate input string, but assume ownership
+							 *s);        // Don't duplicate input string, but assume ownership
 
 /* Functions to copy an SIValue. */
 SIValue SI_Clone(SIValue
-                 v);               // If input is a string type, duplicate and assume ownership
+				 v);               // If input is a string type, duplicate and assume ownership
 SIValue SI_ShallowCopy(SIValue v);         // Don't duplicate any inputs
 
 int SIValue_IsNull(SIValue v);
@@ -105,7 +105,7 @@ size_t SIValue_StringConcatLen(SIValue *strings, unsigned int string_count);
 
 /* Concats strings as a comma separated string. */
 size_t SIValue_StringConcat(SIValue *strings, unsigned int string_count,
-                            char *buf, size_t buf_len);
+							char *buf, size_t buf_len);
 
 /* Arithmetic operators for numeric SIValues.
  * The caller is responsible for ensuring that the arguments

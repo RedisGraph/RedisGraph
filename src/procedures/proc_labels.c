@@ -27,7 +27,7 @@ ProcedureResult Proc_LabelsInvoke(ProcedureCtx *ctx, char **args) {
 	pdata->output = array_new(SIValue, 2);
 	pdata->output = array_append(pdata->output, SI_ConstStringVal("label"));
 	pdata->output = array_append(pdata->output,
-	                             SI_ConstStringVal("")); // Place holder.
+								 SI_ConstStringVal("")); // Place holder.
 
 	ctx->privateData = pdata;
 	return PROCEDURE_OK;
@@ -44,7 +44,7 @@ SIValue *Proc_LabelsStep(ProcedureCtx *ctx) {
 
 	// Get schema label.
 	Schema *s = GraphContext_GetSchemaByID(pdata->gc, pdata->schema_id++,
-	                                       SCHEMA_NODE);
+										   SCHEMA_NODE);
 	char *label = (char *)Schema_GetName(s);
 	pdata->output[1] = SI_ConstStringVal(label);
 	return pdata->output;
@@ -70,11 +70,11 @@ ProcedureCtx *Proc_LabelsCtx() {
 
 	outputs = array_append(outputs, output);
 	ProcedureCtx *ctx = ProcCtxNew("db.labels",
-	                               0,
-	                               outputs,
-	                               Proc_LabelsStep,
-	                               Proc_LabelsInvoke,
-	                               Proc_LabelsFree,
-	                               privateData);
+								   0,
+								   outputs,
+								   Proc_LabelsStep,
+								   Proc_LabelsInvoke,
+								   Proc_LabelsFree,
+								   privateData);
 	return ctx;
 }

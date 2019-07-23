@@ -29,7 +29,7 @@ typedef struct {
 } OpDelete;
 
 OpBase *NewDeleteOp(AST_DeleteNode *ast_delete_node, QueryGraph *qg,
-                    ResultSet *result_set, AST *ast);
+					ResultSet *result_set, AST *ast);
 Record OpDeleteConsume(OpBase *opBase);
 OpResult OpDeleteReset(OpBase *ctx);
 void OpDeleteFree(OpBase *ctx);

@@ -20,7 +20,7 @@ extern pthread_key_t _tlsGCKey;
 RedisModuleType *GraphContextRedisModuleType;
 
 void static _GraphContextType_SerializeIndicies(RedisModuleIO *rdb,
-        GraphContext *gc) {
+												GraphContext *gc) {
 	// Currently indicies are only defined on nodes.
 	unsigned short schema_count = GraphContext_SchemaCount(gc, SCHEMA_NODE);
 
@@ -114,7 +114,7 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
 	if(encver > GRAPHCONTEXT_TYPE_ENCODING_VERSION) {
 		// Not forward compatible.
 		printf("Failed loading Graph, RedisGraph version (%d) is not forward compatible.\n",
-		       REDISGRAPH_MODULE_VERSION);
+			   REDISGRAPH_MODULE_VERSION);
 		return NULL;
 	}
 
@@ -176,7 +176,7 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
 }
 
 void GraphContextType_AofRewrite(RedisModuleIO *aof, RedisModuleString *key,
-                                 void *value) {
+								 void *value) {
 	// TODO: implement.
 }
 
@@ -188,14 +188,14 @@ void GraphContextType_Free(void *value) {
 
 int GraphContextType_Register(RedisModuleCtx *ctx) {
 	RedisModuleTypeMethods tm = {.version = REDISMODULE_TYPE_METHOD_VERSION,
-	                             .rdb_load = GraphContextType_RdbLoad,
-	                             .rdb_save = GraphContextType_RdbSave,
-	                             .aof_rewrite = GraphContextType_AofRewrite,
-	                             .free = GraphContextType_Free
-	                            };
+								 .rdb_load = GraphContextType_RdbLoad,
+								 .rdb_save = GraphContextType_RdbSave,
+								 .aof_rewrite = GraphContextType_AofRewrite,
+								 .free = GraphContextType_Free
+								};
 
 	GraphContextRedisModuleType = RedisModule_CreateDataType(ctx, "graphdata",
-	                              GRAPHCONTEXT_TYPE_ENCODING_VERSION, &tm);
+															 GRAPHCONTEXT_TYPE_ENCODING_VERSION, &tm);
 	if(GraphContextRedisModuleType == NULL) {
 		return REDISMODULE_ERR;
 	}

@@ -15,7 +15,7 @@ static void _BuildUpdateEvalCtx(OpUpdate *op, AST *ast) {
 	AST_SetNode *setNode = ast->setNode;
 	op->update_expressions_count = Vector_Size(setNode->set_elements);
 	op->update_expressions = rm_malloc(sizeof(EntityUpdateEvalCtx) *
-	                                   op->update_expressions_count);
+									   op->update_expressions_count);
 
 	for(uint i = 0; i < op->update_expressions_count; i++) {
 		/* Get a reference to the entity in the SET clause. */
@@ -24,19 +24,19 @@ static void _BuildUpdateEvalCtx(OpUpdate *op, AST *ast) {
 		op->update_expressions[i].attribute = element->entity->property;
 		op->update_expressions[i].exp = AR_EXP_BuildFromAST(ast, element->exp);
 		op->update_expressions[i].entityRecIdx = AST_GetAliasID(op->ast,
-		        element->entity->alias);
+																element->entity->alias);
 	}
 }
 
 /* Delay updates until all entities are processed,
  * _QueueUpdate will queue up all information necessary to perform an update. */
 static void _QueueUpdate(OpUpdate *op, GraphEntity *entity,
-                         GraphEntityType type, char *attribute, SIValue new_value) {
+						 GraphEntityType type, char *attribute, SIValue new_value) {
 	/* Make sure we've got enough room in queue. */
 	if(op->pending_updates_count == op->pending_updates_cap) {
 		op->pending_updates_cap *= 2;
 		op->pending_updates = rm_realloc(op->pending_updates,
-		                                 op->pending_updates_cap * sizeof(EntityUpdateCtx));
+										 op->pending_updates_cap * sizeof(EntityUpdateCtx));
 	}
 
 	uint i = op->pending_updates_count;
@@ -55,7 +55,7 @@ static void _QueueUpdate(OpUpdate *op, GraphEntity *entity,
 
 /* Introduce updated entity to index. */
 static void _UpdateIndex(EntityUpdateCtx *ctx, GraphContext *gc, Schema *s,
-                         SIValue *old_value, SIValue *new_value) {
+						 SIValue *old_value, SIValue *new_value) {
 	if(s == NULL) return;
 	Node *n = &ctx->n;
 	EntityID node_id = ENTITY_GET_ID(n);
@@ -93,7 +93,7 @@ static void _UpdateNode(OpUpdate *op, EntityUpdateCtx *ctx) {
 
 	// Try to get current property value.
 	SIValue *old_value  = GraphEntity_GetProperty((GraphEntity *)node,
-	                      ctx->attr_id);
+												  ctx->attr_id);
 
 	// Update index for node entities.
 	_UpdateIndex(ctx, op->gc, s, old_value, &ctx->new_value);
@@ -146,7 +146,7 @@ static void _CommitUpdates(OpUpdate *op) {
 	}
 
 	if(op->result_set) op->result_set->stats.properties_set +=
-		    op->pending_updates_count;
+			op->pending_updates_count;
 }
 
 /* We only cache records if op_update is not the last
@@ -175,9 +175,9 @@ OpBase *NewUpdateOp(AST *ast, ResultSet *result_set) {
 	op_update->update_expressions_count = 0;
 	op_update->pending_updates_count = 0;
 	op_update->pending_updates_cap =
-	    16; /* 16 seems reasonable number to start with. */
+		16; /* 16 seems reasonable number to start with. */
 	op_update->pending_updates = rm_malloc(sizeof(EntityUpdateCtx) *
-	                                       op_update->pending_updates_cap);
+										   op_update->pending_updates_cap);
 	op_update->records = NULL;
 	op_update->updates_commited = false;
 
@@ -250,7 +250,7 @@ OpResult OpUpdateReset(OpBase *ctx) {
 	op->pending_updates_count = 0;
 	op->pending_updates_cap = 16; /* 16 seems reasonable number to start with. */
 	op->pending_updates = rm_realloc(op->pending_updates,
-	                                 op->pending_updates_cap * sizeof(EntityUpdateCtx));
+									 op->pending_updates_cap * sizeof(EntityUpdateCtx));
 	return OP_OK;
 }
 

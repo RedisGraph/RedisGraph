@@ -27,7 +27,7 @@ AST_MatchNode *New_AST_MatchNode(Vector *patterns) {
 }
 
 void MatchClause_DefinedEntities(const AST_MatchNode *matchNode,
-                                 TrieMap *definedEntities) {
+								 TrieMap *definedEntities) {
 	if(!matchNode) return;
 
 	int entityCount = Vector_Size(matchNode->_mergedPatterns);
@@ -36,12 +36,12 @@ void MatchClause_DefinedEntities(const AST_MatchNode *matchNode,
 		Vector_Get(matchNode->_mergedPatterns, i, &entity);
 		if(!entity->alias) continue;
 		TrieMap_Add(definedEntities, entity->alias, strlen(entity->alias), entity,
-		            TrieMap_DONT_CARE_REPLACE);
+					TrieMap_DONT_CARE_REPLACE);
 	}
 }
 
 AST_GraphEntity *MatchClause_GetEntity(const AST_MatchNode *matchNode,
-                                       const char *alias) {
+									   const char *alias) {
 	if(!matchNode) return NULL;
 
 	int entityCount = Vector_Size(matchNode->_mergedPatterns);

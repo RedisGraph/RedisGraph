@@ -68,7 +68,7 @@ SIValue *Proc_FulltextQueryNodeStep(ProcedureCtx *ctx) {
 	 * NULL is returned if iterator id depleted. */
 	size_t len = 0;
 	NodeID *id = (NodeID *)RediSearch_ResultsIteratorNext(pdata->iter, pdata->idx,
-	             &len);
+														  &len);
 
 	// Depleted.
 	if(!id) return NULL;
@@ -100,11 +100,11 @@ ProcedureCtx *Proc_FulltextQueryNodeGen() {
 
 	output = array_append(output, out_node);
 	ProcedureCtx *ctx = ProcCtxNew("db.idx.fulltext.queryNodes",
-	                               2,
-	                               output,
-	                               Proc_FulltextQueryNodeStep,
-	                               Proc_FulltextQueryNodeInvoke,
-	                               Proc_FulltextQueryNodeFree,
-	                               privateData);
+								   2,
+								   output,
+								   Proc_FulltextQueryNodeStep,
+								   Proc_FulltextQueryNodeInvoke,
+								   Proc_FulltextQueryNodeFree,
+								   privateData);
 	return ctx;
 }

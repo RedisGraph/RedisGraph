@@ -31,7 +31,7 @@ typedef struct {
 } CondVarLenTraverse;
 
 OpBase *NewCondVarLenTraverseOp(AlgebraicExpression *ae, unsigned int minHops,
-                                unsigned int maxHops, Graph *g, AST *ast);
+								unsigned int maxHops, Graph *g, AST *ast);
 Record CondVarLenTraverseConsume(OpBase *opBase);
 OpResult CondVarLenTraverseReset(OpBase *ctx);
 

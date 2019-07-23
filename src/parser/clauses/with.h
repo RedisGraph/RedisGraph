@@ -21,13 +21,13 @@ typedef struct {
 AST_WithNode *New_AST_WithNode(AST_WithElementNode **exps);
 
 AST_WithElementNode *New_AST_WithElementNode(AST_ArithmeticExpressionNode *exp,
-        char *alias);
+											 char *alias);
 
 void WithClause_ReferredEntities(const AST_WithNode *withNode,
-                                 TrieMap *referred_nodes);
+								 TrieMap *referred_nodes);
 
 void WithClause_DefinedEntities(const AST_WithNode *withNode,
-                                TrieMap *definedEntities);
+								TrieMap *definedEntities);
 
 char **WithClause_GetAliases(const AST_WithNode *withNode);
 

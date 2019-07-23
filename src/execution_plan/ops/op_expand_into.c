@@ -35,7 +35,7 @@ static void _setupTraversedRelations(OpExpandInto *op, GraphContext *gc) {
 	AST *ast = op->ast;
 	const char *alias = op->ae->edge->alias;
 	AST_LinkEntity *e = (AST_LinkEntity *)MatchClause_GetEntity(ast->matchNode,
-	                    alias);
+																alias);
 	op->edgeRelationCount = AST_LinkEntity_LabelCount(e);
 
 	if(op->edgeRelationCount > 0) {
@@ -176,10 +176,10 @@ static Record _handoff(OpExpandInto *op) {
 		if(op->ae->edge) {
 			for(int i = 0; i < op->edgeRelationCount; i++) {
 				Graph_GetEdgesConnectingNodes(op->graph,
-				                              srcId,
-				                              destId,
-				                              op->edgeRelationTypes[i],
-				                              &op->edges);
+											  srcId,
+											  destId,
+											  op->edgeRelationTypes[i],
+											  &op->edges);
 			}
 			_setEdge(op);
 			return Record_Clone(op->r);

@@ -10,7 +10,7 @@
 #include <assert.h>
 
 long long Config_GetThreadCount(RedisModuleCtx *ctx, RedisModuleString **argv,
-                                int argc) {
+								int argc) {
 	// Default.
 	int CPUCount = sysconf(_SC_NPROCESSORS_ONLN);
 	long long threadCount = (CPUCount != -1) ? CPUCount : 1;
@@ -32,10 +32,10 @@ long long Config_GetThreadCount(RedisModuleCtx *ctx, RedisModuleString **argv,
 	assert(threadCount > 0);
 	if(threadCount > CPUCount)
 		RedisModule_Log(ctx,
-		                "warning",
-		                "Number of threads: %d greater then number of cores: %d.",
-		                threadCount,
-		                CPUCount);
+						"warning",
+						"Number of threads: %d greater then number of cores: %d.",
+						threadCount,
+						CPUCount);
 
 	return threadCount;
 }
