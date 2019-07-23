@@ -502,7 +502,7 @@ ExecutionPlan *_NewExecutionPlan(RedisModuleCtx *ctx, AST *ast,
 				}
 			} else {
 				for(int traversalIdx = 0; traversalIdx < Vector_Size(traversals);
-						traversalIdx++) {
+					traversalIdx++) {
 					Vector_Get(traversals, traversalIdx, &op);
 					Vector_Push(ops, op);
 				}

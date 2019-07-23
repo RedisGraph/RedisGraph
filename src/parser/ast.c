@@ -280,7 +280,7 @@ static AST_Validation _Validate_CALL_Clause(const AST *ast, char **reason) {
 	}
 
 	if(proc->argc != PROCEDURE_VARIABLE_ARG_COUNT &&
-			proc->argc != array_len(ast->callNode->arguments)) {
+	   proc->argc != array_len(ast->callNode->arguments)) {
 		asprintf(reason,
 				 "Procedure call does not provide the required number of arguments: got %d expected %d. ",
 				 array_len(ast->callNode->arguments),

@@ -25,21 +25,21 @@ static int _identifyResultAndAggregateOps(OpBase *root, OpResult **opResult,
 	// Expecting a single aggregation, without ordering.
 	*opAggregate = (OpAggregate *)op;
 	if((*opAggregate)->exp_count != 1 ||
-			(*opAggregate)->order_exp_count != 0) return 0;
+	   (*opAggregate)->order_exp_count != 0) return 0;
 
 	AR_ExpNode *exp = (*opAggregate)->expressions[0];
 
 	// Make sure aggregation performs counting.
 	if(exp->type != AR_EXP_OP ||
-			exp->op.type != AR_OP_AGGREGATE ||
-			strcasecmp(exp->op.func_name, "count")) return 0;
+	   exp->op.type != AR_OP_AGGREGATE ||
+	   strcasecmp(exp->op.func_name, "count")) return 0;
 
 	// Make sure Count acts on an alias.
 	if(exp->op.child_count != 1) return 0;
 	AR_ExpNode *arg = exp->op.children[0];
 	if(arg->type != AR_EXP_OPERAND ||
-			arg->operand.type != AR_EXP_VARIADIC ||
-			arg->operand.variadic.entity_prop != NULL) return 0;
+	   arg->operand.type != AR_EXP_VARIADIC ||
+	   arg->operand.variadic.entity_prop != NULL) return 0;
 
 	return 1;
 
@@ -58,8 +58,8 @@ static int _identifyNodeCountPattern(OpBase *root, OpResult **opResult,
 
 	// Scan, either a full node or label scan.
 	if((op->type != OPType_ALL_NODE_SCAN &&
-			op->type != OPType_NODE_BY_LABEL_SCAN) ||
-			op->childCount != 0) {
+		op->type != OPType_NODE_BY_LABEL_SCAN) ||
+	   op->childCount != 0) {
 		return 0;
 	}
 

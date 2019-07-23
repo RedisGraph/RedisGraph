@@ -981,7 +981,7 @@ void Graph_BulkDelete(Graph *g, Node *nodes, uint node_count, Edge *edges,
 		for(int i = 0; i < edge_count; i++) {
 			// As long as current is the same as follows.
 			while(i < edge_count - 1 &&
-					ENTITY_GET_ID(edges + i) == ENTITY_GET_ID(edges + i + 1)) i++;
+				  ENTITY_GET_ID(edges + i) == ENTITY_GET_ID(edges + i + 1)) i++;
 
 			if(uniqueIdx < i) edges[uniqueIdx] = edges[i];
 			uniqueIdx++;

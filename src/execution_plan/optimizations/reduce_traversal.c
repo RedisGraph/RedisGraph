@@ -73,8 +73,8 @@ void reduceTraversal(ExecutionPlan *plan, AST *ast) {
 		 * filter our dest nodes (b) which aren't of type B. */
 
 		if(ae->src_node == ae->dest_node &&
-				ae->operand_count == 1 &&
-				ae->operands[0].diagonal) continue;
+		   ae->operand_count == 1 &&
+		   ae->operands[0].diagonal) continue;
 
 		/* Search to see if dest is already resolved */
 		const char *dest = ae->dest_node->alias;
