@@ -129,7 +129,7 @@ static AlgebraicExpression **_AlgebraicExpression_IsolateVariableLenExps(
 			/* See if dest mat can be prepended to the following expression.
 			 * If not create a new expression. */
 			if(expIdx < expCount - 1 &&
-					!_AlgebraicExpression_ContainsVariableLengthEdge(expressions[expIdx + 1])) {
+			   !_AlgebraicExpression_ContainsVariableLengthEdge(expressions[expIdx + 1])) {
 				AlgebraicExpression_PrependTerm(expressions[expIdx + 1], op.operand,
 												op.transpose, op.free, op.diagonal);
 			} else {
@@ -340,8 +340,8 @@ static AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(
 
 		/* If intermidate node is referenced, create a new algebraic expression. */
 		if(i < (pathLen - 1) &&                     // Not the last edge on path.
-				(_highly_connected_node(e->dest) ||      // Node in+out degree > 2.
-				 _referred_node(e->dest, ref_entities))) { // Node is referenced.
+		   (_highly_connected_node(e->dest) ||      // Node in+out degree > 2.
+			_referred_node(e->dest, ref_entities))) { // Node is referenced.
 			// Finalize current expression.
 			iexp->dest_node = e->dest;
 
@@ -565,7 +565,7 @@ AlgebraicExpression **AlgebraicExpression_From_QueryGraph(const QueryGraph *qg,
 
 		// Add constructed expression to return value.
 		for(uint j = 0; j < array_len(sub_exps);
-				j++) exps = array_append(exps, sub_exps[j]);
+			j++) exps = array_append(exps, sub_exps[j]);
 
 		// Clean up
 		array_free(leafs);
@@ -749,9 +749,9 @@ void AlgebraicExpression_SumOfMul(AlgebraicExpressionNode **root) {
 		AlgebraicExpressionNode *r = (*root)->operation.r;
 
 		if((l->type == AL_OPERATION && l->operation.op == AL_EXP_ADD &&
-				!(r->type == AL_OPERATION && r->operation.op == AL_EXP_ADD)) ||
-				(r->type == AL_OPERATION && r->operation.op == AL_EXP_ADD &&
-				 !(l->type == AL_OPERATION && l->operation.op == AL_EXP_ADD))) {
+			!(r->type == AL_OPERATION && r->operation.op == AL_EXP_ADD)) ||
+		   (r->type == AL_OPERATION && r->operation.op == AL_EXP_ADD &&
+			!(l->type == AL_OPERATION && l->operation.op == AL_EXP_ADD))) {
 
 			AlgebraicExpressionNode *add = AlgebraicExpressionNode_NewOperationNode(
 											   AL_EXP_ADD);
@@ -813,13 +813,13 @@ static GrB_Matrix _AlgebraicExpression_Eval_ADD(AlgebraicExpressionNode *exp,
 
 	// Determine if left or right expression needs to be transposed.
 	if(leftHand && leftHand->type == AL_OPERATION &&
-			leftHand->operation.op == AL_EXP_TRANSPOSE) {
+	   leftHand->operation.op == AL_EXP_TRANSPOSE) {
 		if(!desc) GrB_Descriptor_new(&desc);
 		GrB_Descriptor_set(desc, GrB_INP0, GrB_TRAN);
 	}
 
 	if(rightHand && rightHand->type == AL_OPERATION &&
-			rightHand->operation.op == AL_EXP_TRANSPOSE) {
+	   rightHand->operation.op == AL_EXP_TRANSPOSE) {
 		if(!desc) GrB_Descriptor_new(&desc);
 		GrB_Descriptor_set(desc, GrB_INP1, GrB_TRAN);
 	}
@@ -866,13 +866,13 @@ static GrB_Matrix _AlgebraicExpression_Eval_MUL(AlgebraicExpressionNode *exp,
 
 	// Determine if left or right expression needs to be transposed.
 	if(leftHand && leftHand->type == AL_OPERATION &&
-			leftHand->operation.op == AL_EXP_TRANSPOSE) {
+	   leftHand->operation.op == AL_EXP_TRANSPOSE) {
 		if(!desc) GrB_Descriptor_new(&desc);
 		GrB_Descriptor_set(desc, GrB_INP0, GrB_TRAN);
 	}
 
 	if(rightHand && rightHand->type == AL_OPERATION &&
-			rightHand->operation.op == AL_EXP_TRANSPOSE) {
+	   rightHand->operation.op == AL_EXP_TRANSPOSE) {
 		if(!desc) GrB_Descriptor_new(&desc);
 		GrB_Descriptor_set(desc, GrB_INP1, GrB_TRAN);
 	}

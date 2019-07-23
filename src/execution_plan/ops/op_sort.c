@@ -244,6 +244,6 @@ void SortFree(OpBase *ctx) {
 	}
 
 	for(int i = 0; i < array_len(op->expressions);
-			i++) AR_EXP_Free(op->expressions[i]);
+		i++) AR_EXP_Free(op->expressions[i]);
 	array_free(op->expressions);
 }

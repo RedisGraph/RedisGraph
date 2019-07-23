@@ -108,8 +108,8 @@ static bool valid_arrangement(const Arrangement arrangement, uint exps_count) {
 	 * Isn't valid, as currently the first expression is converted
 	 * into a scan operation. */
 	if((exp->src_node->label || exp->dest_node->label) &&
-			exp->edge &&
-			exp->operand_count == 1) return false;
+	   exp->edge &&
+	   exp->operand_count == 1) return false;
 
 	for(int i = 1; i < exps_count; i++) {
 		exp = arrangement[i];
@@ -121,9 +121,9 @@ static bool valid_arrangement(const Arrangement arrangement, uint exps_count) {
 		for(; j >= 0; j--) {
 			AlgebraicExpression *prev_exp = arrangement[j];
 			if(prev_exp->src_node == src ||
-					prev_exp->dest_node == src ||
-					prev_exp->src_node == dest ||
-					prev_exp->dest_node == dest) break;
+			   prev_exp->dest_node == src ||
+			   prev_exp->src_node == dest ||
+			   prev_exp->dest_node == dest) break;
 		}
 		/* Nither src or dest nodes are mentioned in previous expressions
 		 * as such the arrangement is invalid. */

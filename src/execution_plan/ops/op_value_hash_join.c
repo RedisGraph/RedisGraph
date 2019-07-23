@@ -59,7 +59,7 @@ static int64_t _binarySearchRightmost(Record *array, int64_t array_len,
 static Record _get_intersecting_record(OpValueHashJoin *op) {
 	// No more intersecting records.
 	if(op->intersect_idx == -1 ||
-			op->number_of_intersections == 0) return NULL;
+	   op->number_of_intersections == 0) return NULL;
 
 	Record cr = op->cached_records[op->intersect_idx];
 
