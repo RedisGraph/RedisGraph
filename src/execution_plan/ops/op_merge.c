@@ -72,7 +72,7 @@ static void _CommitNodes(OpMerge *op, Record r) {
 
 		_AddNodeProperties(op, schema, created_node, node_ctx->properties);
 
-		if(schema) GraphContext_AddNodeToIndices(op->gc, schema, created_node);
+		if(schema) Schema_AddNodeToIndices(schema, created_node, false);
 	}
 
 	op->stats->nodes_created += node_count;

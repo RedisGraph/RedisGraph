@@ -116,6 +116,23 @@ void Schema_AddNodeToIndices(const Schema *s, const Node *n, bool update) {
 	Index_IndexNode(idx, n);
 }
 
+// Index node under all shcema indicies.
+void Schema_AddNodeToIndices(const Schema *s, const Node *n, bool update) {
+	if(!s) return;
+
+	Index *idx = s->fulltextIdx;
+	if(idx) {
+		if(update) Index_RemoveNode(idx, n);
+		Index_IndexNode(idx, n);
+	}
+
+	idx = s->index;
+	if(!idx) return;
+
+	if(update) Index_RemoveNode(idx, n);
+	Index_IndexNode(idx, n);
+}
+
 void Schema_Free(Schema *schema) {
 	if(schema->name) rm_free(schema->name);
 

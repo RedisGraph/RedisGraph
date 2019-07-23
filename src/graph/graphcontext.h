@@ -72,9 +72,6 @@ Index* GraphContext_GetIndex(const GraphContext *gc, const char *label, const ch
 int GraphContext_AddIndex(Index **idx, GraphContext *gc, const char *label, const char *field, IndexType type);
 // Remove and free an index
 int GraphContext_DeleteIndex(GraphContext *gc, const char *label, const char *field, IndexType type);
-
-// Add a single node to all indices its properties match
-void GraphContext_AddNodeToIndices(GraphContext *gc, Schema *s, Node *n);
 // Remove a single node from all indices that refer to it
 void GraphContext_DeleteNodeFromIndices(GraphContext *gc, Node *n);
 

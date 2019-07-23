@@ -264,20 +264,6 @@ bool Index_ContainsField
 	return false;
 }
 
-void Index_RefreshSchema
-(
-	Index *idx
-) {
-	assert(idx);
-	GraphContext *gc = GraphContext_GetFromTLS();
-
-	for(uint i = 0; i < idx->fields_count; i++) {
-		if(idx->fields_ids[i] == ATTRIBUTE_NOTFOUND) {
-			idx->fields_ids[i] = GraphContext_GetAttributeID(gc, idx->fields[i]);
-		}
-	}
-}
-
 // Free index.
 void Index_Free
 (
