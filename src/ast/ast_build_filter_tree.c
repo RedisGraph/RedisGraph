@@ -137,7 +137,9 @@ FT_FilterNode* _FilterNode_FromAST(RecordMap *record_map, const cypher_astnode_t
         return _convertBinaryOperator(record_map, expr);
     } else if (type == CYPHER_AST_COMPARISON) {
         return _convertComparison(record_map, expr);
-    }
+    } else if (type == CYPHER_AST_APPLY_OPERATOR) {
+		assert(false && "Unary APPLY operators are not currently supported in filters.");
+	}
     assert(false);
     return NULL;
 }
@@ -161,6 +163,8 @@ void _AST_ConvertFilters(RecordMap *record_map, const AST *ast,
     } else if (type == CYPHER_AST_UNARY_OPERATOR) {
         // TODO, also n-ary maybe
         assert(false && "unary filters are not currently supported.");
+    } else if (type == CYPHER_AST_APPLY_OPERATOR) {
+        assert(false && "APPLY operators are not currently supported in filters.");
     } else {
         uint child_count = cypher_astnode_nchildren(entity);
         for(uint i = 0; i < child_count; i++) {

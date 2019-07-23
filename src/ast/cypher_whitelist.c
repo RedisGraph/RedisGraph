@@ -103,7 +103,7 @@ static void _buildTypesWhitelist(void) {
                                                   // CYPHER_AST_ANY,
                                                   // CYPHER_AST_SINGLE,
                                                   // CYPHER_AST_NONE,
-                                                  CYPHER_AST_COLLECTION,
+                                                  // CYPHER_AST_COLLECTION,
                                                   CYPHER_AST_MAP,
                                                   CYPHER_AST_IDENTIFIER,
                                                   // CYPHER_AST_PARAMETER,
@@ -210,8 +210,10 @@ static AST_Validation _CypherWhitelist_ValidateQuery(const cypher_astnode_t *ele
        return AST_INVALID;
     }
 
-    // If the node is an operator call, validate that we
-    // support the operator type
+	// As the UNWIND clause is the only place we currently support COLLECTIONs, validate it separately
+	if (type == CYPHER_AST_UNWIND) return AST_VALID;
+
+    // If the node is an operator call, validate that we support the operator type
     const cypher_operator_t *operator = NULL;
     if (type == CYPHER_AST_BINARY_OPERATOR) {
         operator = cypher_ast_binary_operator_get_operator(elem);
