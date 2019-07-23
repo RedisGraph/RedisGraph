@@ -1,4 +1,5 @@
 from numbers import Number
+from collections import Counter
 from redisgraph import Node, Edge
 
 # Returns True if value is a number or string representation of a number.
@@ -129,6 +130,11 @@ def assert_rows_equal(actualRow, expectedRow):
     for cellIdx in range(expectedRowLength):
         # compare each value
         assert_values_equal(actualRow[cellIdx], expectedRow[cellIdx])
+
+def assert_resultsets_equals_in_order(actual, expected):
+    actual_ctr = Counter(tuple(row) for row in resultset.result_set)
+    expected_ctr = Counter(tuple(row) for row in context.table)
+    assert actual_ctr == expected_ctr
 
 def assert_resultsets_equals(actual, expected):
     rowCount = len(expected.rows)
