@@ -26,3 +26,6 @@ deploydocs: builddocs
 
 test:
 	@$(MAKE) -C ./src test
+
+format:
+	astyle --quiet --options=.astylerc -R "./*.c,*.h"

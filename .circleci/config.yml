@@ -15,6 +15,10 @@ jobs:
             pip install git+https://github.com/RedisLabsModules/RLTest.git@master &&
             apt-get update; apt-get install -y automake peg libtool autoconf cmake valgrind
       
+      # Validate source complies with formatting
+      - run:
+        name: Formatting
+        command: astyle --options=.astylerc -R "./*.c,*.h" --dry-run -Q
       # Load GraphBLAS from cache if possible.
       - restore_cache:
           keys:
