@@ -15,39 +15,41 @@
 
 // Context describing an update expression.
 typedef struct {
-    AST_GraphEntity *ge;            /* Referred entity in MATCH clause. */
-    char *attribute;                /* Attribute name to update. */
-    int entityRecIdx;               /* Position of entity within record. */
-    AR_ExpNode *exp;                /* Expression to evaluate. */
+	AST_GraphEntity *ge;            /* Referred entity in MATCH clause. */
+	char *attribute;                /* Attribute name to update. */
+	int entityRecIdx;               /* Position of entity within record. */
+	AR_ExpNode *exp;                /* Expression to evaluate. */
 } EntityUpdateEvalCtx;
 
 // Context describing a pending update to perform.
 typedef struct {
-    char *attribute;                    /* Attribute name to update. */
-    Attribute_ID attr_id;               /* ID of attribute to update. */
-    Node n;
-    Edge e;
-    GraphEntityType entity_type;        /* Graph entity type. */
-    SIValue new_value;                  /* Constant value to set. */
+	char *attribute;                    /* Attribute name to update. */
+	Attribute_ID attr_id;               /* ID of attribute to update. */
+	Node n;
+	Edge e;
+	GraphEntityType entity_type;        /* Graph entity type. */
+	SIValue new_value;                  /* Constant value to set. */
 } EntityUpdateCtx;
 
 typedef struct {
-    OpBase op;
-    AST *ast;
-    GraphContext *gc;
-    ResultSet *result_set;
+	OpBase op;
+	AST *ast;
+	GraphContext *gc;
+	ResultSet *result_set;
 
-    uint update_expressions_count;
-    EntityUpdateEvalCtx *update_expressions;    /* List of entities to update and their arithmetic expressions. */
+	uint update_expressions_count;
+	EntityUpdateEvalCtx
+	*update_expressions;    /* List of entities to update and their arithmetic expressions. */
 
-    uint pending_updates_cap;
-    uint pending_updates_count;
-    EntityUpdateCtx *pending_updates;           /* List of entities to update and their actual new value. */
-    Record *records;                            /* Updated records, used only when query inspects updated entities. */
-    bool updates_commited;                      /* Updates performed? */
+	uint pending_updates_cap;
+	uint pending_updates_count;
+	EntityUpdateCtx
+	*pending_updates;           /* List of entities to update and their actual new value. */
+	Record *records;                            /* Updated records, used only when query inspects updated entities. */
+	bool updates_commited;                      /* Updates performed? */
 } OpUpdate;
 
-OpBase* NewUpdateOp(AST *ast, ResultSet *result_set);
+OpBase *NewUpdateOp(AST *ast, ResultSet *result_set);
 OpResult OpUpdateInit(OpBase *opBase);
 Record OpUpdateConsume(OpBase *opBase);
 OpResult OpUpdateReset(OpBase *ctx);

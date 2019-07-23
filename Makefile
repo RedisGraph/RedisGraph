@@ -28,4 +28,4 @@ test:
 	@$(MAKE) -C ./src test
 
 format:
-	astyle --quiet --options=.astylerc -R "./*.c,*.h"
+	astyle --quiet --options=.astylerc -R "src/*.c,*.h"

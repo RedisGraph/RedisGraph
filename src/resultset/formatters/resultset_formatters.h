@@ -12,26 +12,26 @@
 #include "resultset_replyverbose.h"
 
 typedef enum {
-    FORMATTER_NOP = 0,
-    FORMATTER_VERBOSE = 1,
-    FORMATTER_COMPACT = 2,
+	FORMATTER_NOP = 0,
+	FORMATTER_VERBOSE = 1,
+	FORMATTER_COMPACT = 2,
 } ResultSetFormatterType;
 
 /* Reply formater which does absolutely nothing.
  * used when profiling a query */
 static ResultSetFormatter ResultSetNOP = {
-    .EmitRecord = ResultSet_EmitNOPRecord,
-    .EmitHeader = ResultSet_EmitNOPHeader
+	.EmitRecord = ResultSet_EmitNOPRecord,
+	.EmitHeader = ResultSet_EmitNOPHeader
 };
 
 /* Compact reply formatter, this is the default formatter. */
 static ResultSetFormatter ResultSetFormatterCompact = {
-    .EmitRecord = ResultSet_EmitCompactRecord,
-    .EmitHeader = ResultSet_ReplyWithCompactHeader
+	.EmitRecord = ResultSet_EmitCompactRecord,
+	.EmitHeader = ResultSet_ReplyWithCompactHeader
 };
 
 /* Verbose reply formatter, used when querying via CLI. */
 static ResultSetFormatter ResultSetFormatterVerbose = {
-    .EmitRecord = ResultSet_EmitVerboseRecord,
-    .EmitHeader = ResultSet_ReplyWithVerboseHeader
+	.EmitRecord = ResultSet_EmitVerboseRecord,
+	.EmitHeader = ResultSet_ReplyWithVerboseHeader
 };

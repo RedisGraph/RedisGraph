@@ -14,23 +14,24 @@
 
 /* OP Traverse */
 typedef struct {
-    OpBase op;
-    Graph *g;
-    AST *ast;
-    AlgebraicExpression *ae;
-    bool expandInto;                /* Both src and dest already resolved. */
-    int srcNodeIdx;                 /* Node set by operation. */
-    int destNodeIdx;                /* Node set by operation. */
-    int *relationIDs;               /* Relation(s) we're traversing. */
-    int relationIDsCount;           /* Length of relationIDs. */
-    GRAPH_EDGE_DIR traverseDir;     /* Traverse direction. */
-    unsigned int minHops;           /* Maximum number of hops to perform. */
-    unsigned int maxHops;           /* Maximum number of hops to perform. */        
-    AllPathsCtx *allPathsCtx;
-    Record r;
+	OpBase op;
+	Graph *g;
+	AST *ast;
+	AlgebraicExpression *ae;
+	bool expandInto;                /* Both src and dest already resolved. */
+	int srcNodeIdx;                 /* Node set by operation. */
+	int destNodeIdx;                /* Node set by operation. */
+	int *relationIDs;               /* Relation(s) we're traversing. */
+	int relationIDsCount;           /* Length of relationIDs. */
+	GRAPH_EDGE_DIR traverseDir;     /* Traverse direction. */
+	unsigned int minHops;           /* Maximum number of hops to perform. */
+	unsigned int maxHops;           /* Maximum number of hops to perform. */
+	AllPathsCtx *allPathsCtx;
+	Record r;
 } CondVarLenTraverse;
 
-OpBase* NewCondVarLenTraverseOp(AlgebraicExpression *ae, unsigned int minHops, unsigned int maxHops, Graph *g, AST *ast);
+OpBase *NewCondVarLenTraverseOp(AlgebraicExpression *ae, unsigned int minHops,
+                                unsigned int maxHops, Graph *g, AST *ast);
 Record CondVarLenTraverseConsume(OpBase *opBase);
 OpResult CondVarLenTraverseReset(OpBase *ctx);
 

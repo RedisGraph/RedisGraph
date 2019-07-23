@@ -14,9 +14,11 @@ typedef struct {
 	Vector *graphEntities; /* Vector of AST_GraphEntity pointers. */
 } AST_CreateNode;
 
-AST_CreateNode* New_AST_CreateNode(Vector *patterns);
-void CreateClause_ReferredEntities(const AST_CreateNode *createNode, TrieMap *referredNodes);
-void CreateClause_DefinedEntities(const AST_CreateNode *createNode, TrieMap *identifiers);
+AST_CreateNode *New_AST_CreateNode(Vector *patterns);
+void CreateClause_ReferredEntities(const AST_CreateNode *createNode,
+                                   TrieMap *referredNodes);
+void CreateClause_DefinedEntities(const AST_CreateNode *createNode,
+                                  TrieMap *identifiers);
 void CreateClause_NameAnonymousNodes(AST_CreateNode *createNode, int *entityID);
 void Free_AST_CreateNode(AST_CreateNode *createNode);
 

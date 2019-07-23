@@ -25,16 +25,17 @@ typedef skiplistIterator IndexIter;
  * When building Index Scan operations, the types of values described by filters will
  * specify which skiplist should be traversed. */
 typedef struct {
-  char *label;
-  char *attribute;
-  Attribute_ID attr_id;
-  skiplist *string_sl;
-  skiplist *numeric_sl;
+	char *label;
+	char *attribute;
+	Attribute_ID attr_id;
+	skiplist *string_sl;
+	skiplist *numeric_sl;
 } Index;
 
 /* Index_Create builds an index for a label-property pair so that queries reliant
  * on these entities can use expedited scan logic. */
-Index* Index_Create(Graph *g, const char *label, int label_id, const char *attr_str, Attribute_ID attr_id);
+Index *Index_Create(Graph *g, const char *label, int label_id,
+                    const char *attr_str, Attribute_ID attr_id);
 
 /* Delete a single entity from an index if it is present. */
 void Index_DeleteNode(Index *idx, NodeID node, SIValue *val);
@@ -43,14 +44,14 @@ void Index_DeleteNode(Index *idx, NodeID node, SIValue *val);
 void Index_InsertNode(Index *idx, NodeID node, SIValue *val);
 
 /* Build a new iterator to traverse all indexed values of the specified type. */
-IndexIter* IndexIter_Create(Index *idx, SIType type);
+IndexIter *IndexIter_Create(Index *idx, SIType type);
 
 /* Update the lower or upper bound of an index iterator based on a constant predicate filter
  * (if that filter represents a narrower bound than the current one). */
 bool IndexIter_ApplyBound(IndexIter *iter, SIValue *bound, int op);
 
 /* Returns a pointer to the next Node ID in the index, or NULL if the iterator has been depleted. */
-GrB_Index* IndexIter_Next(IndexIter *iter);
+GrB_Index *IndexIter_Next(IndexIter *iter);
 
 /* Reset an iterator to its original position. */
 void IndexIter_Reset(IndexIter *iter);

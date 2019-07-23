@@ -49,13 +49,15 @@ typedef struct {
 	char **labels;
 } AST_LinkEntity;
 
-AST_NodeEntity* New_AST_NodeEntity(char *alias, char *label, Vector *properties);
-AST_LinkEntity* New_AST_LinkEntity(char *alias, char **labels, Vector *properties, AST_LinkDirection dir, AST_LinkLength *length);
-AST_LinkLength* New_AST_LinkLength(unsigned int minHops, unsigned int maxHops);
-AST_Variable* New_AST_Variable(char *alias, char *property);
-AST_GraphEntity* Clone_AST_GraphEntity(const AST_GraphEntity *src);
-bool AST_LinkEntity_FixedLengthEdge(const AST_LinkEntity* edge);
-int AST_LinkEntity_LabelCount(const AST_LinkEntity* edge);
+AST_NodeEntity *New_AST_NodeEntity(char *alias, char *label,
+                                   Vector *properties);
+AST_LinkEntity *New_AST_LinkEntity(char *alias, char **labels,
+                                   Vector *properties, AST_LinkDirection dir, AST_LinkLength *length);
+AST_LinkLength *New_AST_LinkLength(unsigned int minHops, unsigned int maxHops);
+AST_Variable *New_AST_Variable(char *alias, char *property);
+AST_GraphEntity *Clone_AST_GraphEntity(const AST_GraphEntity *src);
+bool AST_LinkEntity_FixedLengthEdge(const AST_LinkEntity *edge);
+int AST_LinkEntity_LabelCount(const AST_LinkEntity *edge);
 void Free_AST_GraphEntity(AST_GraphEntity *entity);
 void Free_AST_Variable(AST_Variable *v);
 

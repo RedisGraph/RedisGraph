@@ -17,30 +17,32 @@
 
 // Matrix, vector operations.
 typedef enum {
-    AGGREGATED,
-    NONE_AGGREGATED,
+	AGGREGATED,
+	NONE_AGGREGATED,
 } ExpClassification;
 
 /* Aggregate
- * aggregates graph according to  
+ * aggregates graph according to
  * return clause */
- typedef struct {
-    OpBase op;
-    AST *ast;
-    char **aliases;
-    AR_ExpNode **expressions;
-    AR_ExpNode **order_exps;
-    unsigned short exp_count;
-    unsigned short order_exp_count;
-    AR_ExpNode **none_aggregated_expressions;      /* Array of arithmetic expression. */
-    ExpClassification *expression_classification;  /* classifies expression as aggregated/none aggregated.  */
-    Group *group;                                  /* Last accessed group. */
-    TrieMap *groups;
-    SIValue *group_keys;                           /* Array of values composing an aggregated group. */
-    CacheGroupIterator *groupIter;
- } OpAggregate;
+typedef struct {
+	OpBase op;
+	AST *ast;
+	char **aliases;
+	AR_ExpNode **expressions;
+	AR_ExpNode **order_exps;
+	unsigned short exp_count;
+	unsigned short order_exp_count;
+	AR_ExpNode
+	**none_aggregated_expressions;      /* Array of arithmetic expression. */
+	ExpClassification
+	*expression_classification;  /* classifies expression as aggregated/none aggregated.  */
+	Group *group;                                  /* Last accessed group. */
+	TrieMap *groups;
+	SIValue *group_keys;                           /* Array of values composing an aggregated group. */
+	CacheGroupIterator *groupIter;
+} OpAggregate;
 
-OpBase* NewAggregateOp(AST *ast, AR_ExpNode **expressions, char **aliases);
+OpBase *NewAggregateOp(AST *ast, AR_ExpNode **expressions, char **aliases);
 OpResult AggregateInit(OpBase *opBase);
 Record AggregateConsume(OpBase *opBase);
 OpResult AggregateReset(OpBase *opBase);

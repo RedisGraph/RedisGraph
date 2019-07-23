@@ -21,28 +21,30 @@
 #define RESULTSET_FULL 0
 
 typedef struct {
-    RedisModuleCtx *ctx;
-    GraphContext *gc;               /* Context used for mapping attribute strings and IDs */
-    ResultSetHeader *header;        /* Describes how records should look like. */
-    bool distinct;                  /* Whether or not each record is unique. */
-    bool compact;                   /* Whether records should be returned in compact form. */
-    size_t recordCount;             /* Number of records introduced. */
-    char *buffer;                   /* Reusable buffer for record streaming. */
-    size_t bufferLen;               /* Size of buffer in bytes. */
-    ResultSetStatistics stats;      /* ResultSet statistics. */
-    ResultSetFormatter *formatter;  /* ResultSet data formatter. */
+	RedisModuleCtx *ctx;
+	GraphContext
+	*gc;               /* Context used for mapping attribute strings and IDs */
+	ResultSetHeader *header;        /* Describes how records should look like. */
+	bool distinct;                  /* Whether or not each record is unique. */
+	bool compact;                   /* Whether records should be returned in compact form. */
+	size_t recordCount;             /* Number of records introduced. */
+	char *buffer;                   /* Reusable buffer for record streaming. */
+	size_t bufferLen;               /* Size of buffer in bytes. */
+	ResultSetStatistics stats;      /* ResultSet statistics. */
+	ResultSetFormatter *formatter;  /* ResultSet data formatter. */
 } ResultSet;
 
-ResultSet* NewResultSet(AST* ast, RedisModuleCtx *ctx, bool compact);
+ResultSet *NewResultSet(AST *ast, RedisModuleCtx *ctx, bool compact);
 
-void ResultSet_SetReplyFormatter(ResultSet *set, ResultSetFormatterType formatter);
+void ResultSet_SetReplyFormatter(ResultSet *set,
+                                 ResultSetFormatterType formatter);
 
 void ResultSet_ReplyWithPreamble(ResultSet *set, AST **ast);
 
-int ResultSet_AddRecord(ResultSet* set, Record r);
+int ResultSet_AddRecord(ResultSet *set, Record r);
 
-void ResultSet_Replay(ResultSet* set);
+void ResultSet_Replay(ResultSet *set);
 
-void ResultSet_Free(ResultSet* set);
+void ResultSet_Free(ResultSet *set);
 
 #endif

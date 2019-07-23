@@ -13,22 +13,22 @@
 typedef TrieMapIterator CacheGroupIterator;
 typedef TrieMap CacheGroup;
 
-CacheGroup* CacheGroupNew();
+CacheGroup *CacheGroupNew();
 
 void CacheGroupAdd(CacheGroup *groups, char *key, Group *group);
 
 // Retrives a group,
 // Sets group to NULL if key is missing.
-Group* CacheGroupGet(CacheGroup *groups, char *key);
+Group *CacheGroupGet(CacheGroup *groups, char *key);
 
 void FreeGroupCache(CacheGroup *groups);
 
 // Returns an iterator to scan hashtable
-CacheGroupIterator* CacheGroupIter(CacheGroup *groups);
+CacheGroupIterator *CacheGroupIter(CacheGroup *groups);
 
 // Advance iterator and returns key & value in current position.
 int CacheGroupIterNext(CacheGroupIterator *iter, char **key, Group **group);
 
-void CacheGroupIterator_Free(CacheGroupIterator* iter);
+void CacheGroupIterator_Free(CacheGroupIterator *iter);
 
 #endif

@@ -12,17 +12,17 @@
 
 /* Query context, used for concurent query processing. */
 typedef struct {
-    RedisModuleCtx *ctx;            // Redis module context.
-    RedisModuleBlockedClient *bc;   // Blocked client.
-    AST **ast;                      // Parsed AST.
-    char *graphName;                // Graph ID.
-    double tic[2];                  // Timings.
-    RedisModuleString **argv;       // Arguments.
-    int argc;                       // Argument count.
+	RedisModuleCtx *ctx;            // Redis module context.
+	RedisModuleBlockedClient *bc;   // Blocked client.
+	AST **ast;                      // Parsed AST.
+	char *graphName;                // Graph ID.
+	double tic[2];                  // Timings.
+	RedisModuleString **argv;       // Arguments.
+	int argc;                       // Argument count.
 } CommandCtx;
 
 // Create a new command context.
-CommandCtx* CommandCtx_New
+CommandCtx *CommandCtx_New
 (
     RedisModuleCtx *ctx,            // Redis module context.
     RedisModuleBlockedClient *bc,   // Blocked client.
@@ -33,7 +33,7 @@ CommandCtx* CommandCtx_New
 );
 
 // Get Redis module context
-RedisModuleCtx* CommandCtx_GetRedisCtx
+RedisModuleCtx *CommandCtx_GetRedisCtx
 (
     CommandCtx *qctx
 );
@@ -53,7 +53,7 @@ void CommandCtx_ThreadSafeContextUnlock
 // Free command context.
 void CommandCtx_Free
 (
-    CommandCtx* qctx
+    CommandCtx *qctx
 );
 
 #endif

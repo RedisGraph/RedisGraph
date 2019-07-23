@@ -13,7 +13,7 @@ typedef struct {
 	int limit;
 } AST_LimitNode;
 
-AST_LimitNode* New_AST_LimitNode(int limit);
+AST_LimitNode *New_AST_LimitNode(int limit);
 void Free_AST_LimitNode(AST_LimitNode *limitNode);
 
 #endif

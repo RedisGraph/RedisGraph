@@ -14,7 +14,8 @@
 
 typedef struct {
 	AST_Variable *entity;				/* Destination entity to update. */
-	AST_ArithmeticExpressionNode *exp;	/* Arithmetic expression, evaluated value used for update. */
+	AST_ArithmeticExpressionNode
+	*exp;	/* Arithmetic expression, evaluated value used for update. */
 } AST_SetElement;
 
 typedef struct {
@@ -22,9 +23,11 @@ typedef struct {
 } AST_SetNode;
 
 /* Set clause individual elements. */
-AST_SetNode* New_AST_SetNode(Vector *elements);
-AST_SetElement* New_AST_SetElement(AST_Variable *updated_entity, AST_ArithmeticExpressionNode *exp);
-void SetClause_ReferredEntities(const AST_SetNode *set_node, TrieMap *referred_entities);
+AST_SetNode *New_AST_SetNode(Vector *elements);
+AST_SetElement *New_AST_SetElement(AST_Variable *updated_entity,
+                                   AST_ArithmeticExpressionNode *exp);
+void SetClause_ReferredEntities(const AST_SetNode *set_node,
+                                TrieMap *referred_entities);
 void Free_AST_SetNode(AST_SetNode *setNode);
 
 #endif

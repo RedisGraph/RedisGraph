@@ -15,20 +15,21 @@
 
 
 typedef struct {
-    OpBase op;
-    GraphContext *gc;
-    AST *ast;
-    size_t node_count;
-    size_t edge_count;
-    int *nodes_to_delete;
-    int *edges_to_delete;
-    Node *deleted_nodes;    // Array of nodes to be removed.    
-    Edge *deleted_edges;    // Array of edges to be removed.
+	OpBase op;
+	GraphContext *gc;
+	AST *ast;
+	size_t node_count;
+	size_t edge_count;
+	int *nodes_to_delete;
+	int *edges_to_delete;
+	Node *deleted_nodes;    // Array of nodes to be removed.
+	Edge *deleted_edges;    // Array of edges to be removed.
 
-    ResultSet *result_set;
+	ResultSet *result_set;
 } OpDelete;
 
-OpBase* NewDeleteOp(AST_DeleteNode *ast_delete_node, QueryGraph *qg, ResultSet *result_set, AST *ast);
+OpBase *NewDeleteOp(AST_DeleteNode *ast_delete_node, QueryGraph *qg,
+                    ResultSet *result_set, AST *ast);
 Record OpDeleteConsume(OpBase *opBase);
 OpResult OpDeleteReset(OpBase *ctx);
 void OpDeleteFree(OpBase *ctx);

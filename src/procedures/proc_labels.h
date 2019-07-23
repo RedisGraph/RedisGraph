@@ -8,4 +8,4 @@
 
 #include "proc_ctx.h"
 
-ProcedureCtx* Proc_LabelsCtx();
+ProcedureCtx *Proc_LabelsCtx();

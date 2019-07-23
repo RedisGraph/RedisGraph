@@ -12,13 +12,13 @@
 /* A column within the result-set
  * a column can be referred to either by its name or alias */
 typedef struct {
-    char* name;
-    char* alias;
+	char *name;
+	char *alias;
 } Column;
 
 typedef struct {
-    size_t columns_len; /* Number of columns in record */
-    Column** columns;   /* Vector of Columns, desired elements specified in return clause */
+	size_t columns_len; /* Number of columns in record */
+	Column **columns;   /* Vector of Columns, desired elements specified in return clause */
 } ResultSetHeader;
 
 #endif

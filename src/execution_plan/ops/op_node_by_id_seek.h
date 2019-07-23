@@ -14,18 +14,18 @@
 
 /* Node by ID seek locates an entity by its ID */
 typedef struct {
-    OpBase op;
-    Graph *g;               // Graph object.
-    int nodeRecIdx;         // Position of entity within record.
-    int recLength;          // Size of record.
-    NodeID minId;           // Min ID to fetch.
-    bool minInclusive;      // Include min ID.
-    NodeID maxId;           // Max ID to fetch.
-    bool maxInclusive;      // Include max ID.
-    NodeID currentId;       // Current ID fetched.
+	OpBase op;
+	Graph *g;               // Graph object.
+	int nodeRecIdx;         // Position of entity within record.
+	int recLength;          // Size of record.
+	NodeID minId;           // Min ID to fetch.
+	bool minInclusive;      // Include min ID.
+	NodeID maxId;           // Max ID to fetch.
+	bool maxInclusive;      // Include max ID.
+	NodeID currentId;       // Current ID fetched.
 } OpNodeByIdSeek;
 
-OpBase* NewOpNodeByIdSeekOp
+OpBase *NewOpNodeByIdSeekOp
 (
     const AST *ast,
     unsigned int nodeRecIdx,

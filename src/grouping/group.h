@@ -11,19 +11,20 @@
 #include "../arithmetic/arithmetic_expression.h"
 
 typedef struct {
-    int key_count;
-    SIValue* keys;
-    AR_ExpNode** aggregationFunctions;   /* Array of AR_ExpNode*, where the root is an aggregation function. */
-    Record r;   /* Representative record for all aggregated records in group. */
+	int key_count;
+	SIValue *keys;
+	AR_ExpNode
+	**aggregationFunctions;   /* Array of AR_ExpNode*, where the root is an aggregation function. */
+	Record r;   /* Representative record for all aggregated records in group. */
 } Group;
 
 /* Creates a new group */
-Group* NewGroup(int key_count, SIValue* keys, AR_ExpNode** funcs, Record r);
+Group *NewGroup(int key_count, SIValue *keys, AR_ExpNode **funcs, Record r);
 
-/* Compute group key string representation, it is the callers 
+/* Compute group key string representation, it is the callers
  * responsibility to free returned string. */
 void Group_KeyStr(const Group *g, char **group_key);
 
-void FreeGroup(Group* group);
+void FreeGroup(Group *group);
 
 #endif

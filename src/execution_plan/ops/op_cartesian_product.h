@@ -10,17 +10,17 @@
 #include "op.h"
 #include "../../parser/ast.h"
 
-/* Cartesian product AKA Join. 
- * Currently this operation is a NOP 
- * once execution plan refactoring will take place 
+/* Cartesian product AKA Join.
+ * Currently this operation is a NOP
+ * once execution plan refactoring will take place
  * we'll implement its logic. */
- typedef struct {
-     OpBase op;
-     bool init;
-     Record r;
- } CartesianProduct;
+typedef struct {
+	OpBase op;
+	bool init;
+	Record r;
+} CartesianProduct;
 
-OpBase* NewCartesianProductOp(int record_len);
+OpBase *NewCartesianProductOp(int record_len);
 Record CartesianProductConsume(OpBase *opBase);
 OpResult CartesianProductReset(OpBase *opBase);
 void CartesianProductFree(OpBase *opBase);
