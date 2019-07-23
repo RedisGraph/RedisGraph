@@ -6,12 +6,12 @@
 
 #include "./skip.h"
 
-AST_SkipNode* New_AST_SkipNode(size_t n) {
-    AST_SkipNode* skipNode = malloc(sizeof(AST_SkipNode));
-    skipNode->skip = n;
-    return skipNode;
+AST_SkipNode *New_AST_SkipNode(size_t n) {
+	AST_SkipNode *skipNode = malloc(sizeof(AST_SkipNode));
+	skipNode->skip = n;
+	return skipNode;
 }
 
 void Free_AST_SkipNode(AST_SkipNode *skipNode) {
-    if(skipNode) free(skipNode);
+	if(skipNode) free(skipNode);
 }

@@ -10,53 +10,54 @@
 #include "../graph/entities/edge.h"
 
 bool _DFS(Node *n, int level, int current_level, rax *visited, Edge ***path) {
-    // As long as we've yet to reach required level and there are nodes to process.
-    if(current_level >= level) return true;
+	// As long as we've yet to reach required level and there are nodes to process.
+	if(current_level >= level) return true;
 
-    // Mark n as visited, return if node already marked.
-    if(!raxInsert(visited, (unsigned char*)n->alias, strlen(n->alias), NULL, NULL)) {
-        // We've already processed n.
-        return false;
-    }
+	// Mark n as visited, return if node already marked.
+	if(!raxInsert(visited, (unsigned char *)n->alias, strlen(n->alias), NULL,
+				  NULL)) {
+		// We've already processed n.
+		return false;
+	}
 
-    // Expand node N by visiting all of its neighbors
-    bool not_seen;
-    bool self_pointing_edge;
-    for(int i = 0; i < array_len(n->outgoing_edges); i++) {
-        Edge *e = n->outgoing_edges[i];
-        char *dest = e->dest->alias;        
-        self_pointing_edge = (strcmp(dest, n->alias) == 0);
-        not_seen = raxFind(visited, (unsigned char*)dest, strlen(dest)) == raxNotFound;
-        if(self_pointing_edge || not_seen) {
-            *path = array_append(*path, e);
-            if(_DFS(e->dest, level, ++current_level, visited, path)) return true;
-            array_pop(*path);
-        }
-    }
+	// Expand node N by visiting all of its neighbors
+	bool not_seen;
+	bool self_pointing_edge;
+	for(int i = 0; i < array_len(n->outgoing_edges); i++) {
+		Edge *e = n->outgoing_edges[i];
+		char *dest = e->dest->alias;
+		self_pointing_edge = (strcmp(dest, n->alias) == 0);
+		not_seen = raxFind(visited, (unsigned char *)dest, strlen(dest)) == raxNotFound;
+		if(self_pointing_edge || not_seen) {
+			*path = array_append(*path, e);
+			if(_DFS(e->dest, level, ++current_level, visited, path)) return true;
+			array_pop(*path);
+		}
+	}
 
-    for(int i = 0; i < array_len(n->incoming_edges); i++) {
-        Edge *e = n->incoming_edges[i];
-        char *src = e->src->alias;        
-        self_pointing_edge = (strcmp(src, n->alias) == 0);
-        not_seen = raxFind(visited, (unsigned char*)src, strlen(src)) == raxNotFound;
-        if(self_pointing_edge || not_seen) {
-            *path = array_append(*path, e);
-            if(_DFS(e->src, level, ++current_level, visited, path)) return true;
-            array_pop(*path);
-        }
-    }
+	for(int i = 0; i < array_len(n->incoming_edges); i++) {
+		Edge *e = n->incoming_edges[i];
+		char *src = e->src->alias;
+		self_pointing_edge = (strcmp(src, n->alias) == 0);
+		not_seen = raxFind(visited, (unsigned char *)src, strlen(src)) == raxNotFound;
+		if(self_pointing_edge || not_seen) {
+			*path = array_append(*path, e);
+			if(_DFS(e->src, level, ++current_level, visited, path)) return true;
+			array_pop(*path);
+		}
+	}
 
-    raxRemove(visited, (unsigned char*)n->alias, strlen(n->alias), NULL);
-    return false;
+	raxRemove(visited, (unsigned char *)n->alias, strlen(n->alias), NULL);
+	return false;
 }
 
 // Returns a single path from S to a reachable node at distance level.
-Edge** DFS(Node *s, int level) {    
-    int current_level = 0;                  // Tracks BFS level.
-    rax *visited = raxNew();                // Dictionary of visited nodes.
-    Edge **path = array_new(Edge*, 0);      // Path found.
-    
-    _DFS(s, level, current_level, visited, &path);
-    raxFree(visited);
-    return path;
+Edge **DFS(Node *s, int level) {
+	int current_level = 0;                  // Tracks BFS level.
+	rax *visited = raxNew();                // Dictionary of visited nodes.
+	Edge **path = array_new(Edge *, 0);     // Path found.
+
+	_DFS(s, level, current_level, visited, &path);
+	raxFree(visited);
+	return path;
 }

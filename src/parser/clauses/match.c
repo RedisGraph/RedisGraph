@@ -7,10 +7,10 @@
 #include "./match.h"
 #include "../ast_common.h"
 
-AST_MatchNode* New_AST_MatchNode(Vector *patterns) {
-	AST_MatchNode *matchNode = (AST_MatchNode*)malloc(sizeof(AST_MatchNode));
+AST_MatchNode *New_AST_MatchNode(Vector *patterns) {
+	AST_MatchNode *matchNode = (AST_MatchNode *)malloc(sizeof(AST_MatchNode));
 	matchNode->patterns = patterns;
-	matchNode->_mergedPatterns = NewVector(AST_GraphEntity*, 1);
+	matchNode->_mergedPatterns = NewVector(AST_GraphEntity *, 1);
 
 	for(int i = 0; i < Vector_Size(patterns); i++) {
 		Vector *pattern;
@@ -26,7 +26,8 @@ AST_MatchNode* New_AST_MatchNode(Vector *patterns) {
 	return matchNode;
 }
 
-void MatchClause_DefinedEntities(const AST_MatchNode *matchNode, TrieMap *definedEntities) {
+void MatchClause_DefinedEntities(const AST_MatchNode *matchNode,
+								 TrieMap *definedEntities) {
 	if(!matchNode) return;
 
 	int entityCount = Vector_Size(matchNode->_mergedPatterns);
@@ -34,11 +35,13 @@ void MatchClause_DefinedEntities(const AST_MatchNode *matchNode, TrieMap *define
 		AST_GraphEntity *entity;
 		Vector_Get(matchNode->_mergedPatterns, i, &entity);
 		if(!entity->alias) continue;
-		TrieMap_Add(definedEntities, entity->alias, strlen(entity->alias), entity, TrieMap_DONT_CARE_REPLACE);
+		TrieMap_Add(definedEntities, entity->alias, strlen(entity->alias), entity,
+					TrieMap_DONT_CARE_REPLACE);
 	}
 }
 
-AST_GraphEntity* MatchClause_GetEntity(const AST_MatchNode *matchNode, const char* alias) {
+AST_GraphEntity *MatchClause_GetEntity(const AST_MatchNode *matchNode,
+									   const char *alias) {
 	if(!matchNode) return NULL;
 
 	int entityCount = Vector_Size(matchNode->_mergedPatterns);
@@ -58,13 +61,13 @@ void MatchClause_NameAnonymousNodes(AST_MatchNode *matchNode, int *entityID) {
 	for(int i = 0; i < entityCount; i++) {
 		AST_GraphEntity *entity;
 		Vector_Get(matchNode->_mergedPatterns, i, &entity);
-        if (entity->alias == NULL) {
+		if(entity->alias == NULL) {
 			entity->anonymous = true;
 			// TODO: Memory leak!
-            asprintf(&entity->alias, "anon_%d", *entityID);
-            (*entityID)++;
-        }
-    }
+			asprintf(&entity->alias, "anon_%d", *entityID);
+			(*entityID)++;
+		}
+	}
 }
 
 void Free_AST_MatchNode(AST_MatchNode *matchNode) {
@@ -74,10 +77,10 @@ void Free_AST_MatchNode(AST_MatchNode *matchNode) {
 		Vector_Free(pattern);
 	}
 
-    AST_GraphEntity *ge;
+	AST_GraphEntity *ge;
 	while(Vector_Pop(matchNode->_mergedPatterns, &ge)) {
-        Free_AST_GraphEntity(ge);
-    }
+		Free_AST_GraphEntity(ge);
+	}
 
 	Vector_Free(matchNode->_mergedPatterns);
 	Vector_Free(matchNode->patterns);

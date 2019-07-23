@@ -17,24 +17,24 @@
 /* StreamState
  * Different states in which stream can be at. */
 typedef enum {
-    StreamUnInitialized,
-    StreamConsuming,
-    StreamDepleted,
+	StreamUnInitialized,
+	StreamConsuming,
+	StreamDepleted,
 } StreamState;
 
 typedef struct {
-    OpBase *root;
-    ResultSet *result_set;
-    FT_FilterNode *filter_tree;
-    QueryGraph **connected_components;
+	OpBase *root;
+	ResultSet *result_set;
+	FT_FilterNode *filter_tree;
+	QueryGraph **connected_components;
 } ExecutionPlan;
 
 /* Creates a new execution plan from AST */
-ExecutionPlan* NewExecutionPlan (
-    RedisModuleCtx *ctx,    // Module-level context
-    AST **ast,              // Query parsed AST
-    ResultSet *result_set,  // Result set to be populated if the query returns data
-    bool explain            // Construct execution plan, do not execute
+ExecutionPlan *NewExecutionPlan(
+	RedisModuleCtx *ctx,    // Module-level context
+	AST **ast,              // Query parsed AST
+	ResultSet *result_set,  // Result set to be populated if the query returns data
+	bool explain            // Construct execution plan, do not execute
 );
 
 /* Prints execution plan. */
@@ -52,27 +52,27 @@ void ExecutionPlan_PushBelow(OpBase *a, OpBase *b);
 /* Replace a with b. */
 void ExecutionPlan_ReplaceOp(ExecutionPlan *plan, OpBase *a, OpBase *b);
 
-/* Locates all operation which generate data. 
+/* Locates all operation which generate data.
  * SCAN, UNWIND, PROCEDURE_CALL, CREATE. */
 void ExecutionPlan_LocateTaps(OpBase *root, OpBase ***taps);
 
 /* Locate the first operation of a given type within execution plan.
  * Returns NULL if operation wasn't found. */
-OpBase* ExecutionPlan_LocateOp(OpBase *root, OPType type);
+OpBase *ExecutionPlan_LocateOp(OpBase *root, OPType type);
 
 /* Locate all operations of a given type within execution plan.
  * Returns an array of operations. */
-OpBase** ExecutionPlan_LocateOps(OpBase *root, OPType type);
+OpBase **ExecutionPlan_LocateOps(OpBase *root, OPType type);
 
-/* Returns an array of taps; operations which generate data 
+/* Returns an array of taps; operations which generate data
  * e.g. SCAN operations */
 void ExecutionPlan_Taps(OpBase *root, OpBase ***taps);
 
 /* Executes plan */
-ResultSet* ExecutionPlan_Execute(ExecutionPlan *plan);
+ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan);
 
 /* Profile executes plan */
-ResultSet* ExecutionPlan_Profile(ExecutionPlan *plan);
+ResultSet *ExecutionPlan_Profile(ExecutionPlan *plan);
 
 /* Free execution plan */
 void ExecutionPlanFree(ExecutionPlan *plan);

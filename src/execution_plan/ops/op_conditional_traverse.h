@@ -15,33 +15,33 @@
 
 /* OP Traverse */
 typedef struct {
-    OpBase op;
-    AST *ast;
-    Graph *graph;
-    AlgebraicExpression *algebraic_expression;
-    GrB_Matrix F;               // Filter matrix.
-    GrB_Matrix M;               // Algebraic expression result.
-    int *edgeRelationTypes;     // One or more relation types.
-    int edgeRelationCount;      // length of edgeRelationTypes.
-    Edge *edges;                // Discovered edges.
-    GxB_MatrixTupleIter *iter;  // Iterator over M.
-    int srcNodeRecIdx;          // Index into record.
-    int destNodeRecIdx;         // Index into record.
-    int edgeRecIdx;             // Index into record.
-    int recordsCap;             // Max number of records to process.
-    int recordsLen;             // Number of records to process.
-    bool transposed_edge;       // Track whether the expression references a transposed edge.
-    Record *records;            // Array of records.
-    Record r;                   // Current selected record.
+	OpBase op;
+	AST *ast;
+	Graph *graph;
+	AlgebraicExpression *algebraic_expression;
+	GrB_Matrix F;               // Filter matrix.
+	GrB_Matrix M;               // Algebraic expression result.
+	int *edgeRelationTypes;     // One or more relation types.
+	int edgeRelationCount;      // length of edgeRelationTypes.
+	Edge *edges;                // Discovered edges.
+	GxB_MatrixTupleIter *iter;  // Iterator over M.
+	int srcNodeRecIdx;          // Index into record.
+	int destNodeRecIdx;         // Index into record.
+	int edgeRecIdx;             // Index into record.
+	int recordsCap;             // Max number of records to process.
+	int recordsLen;             // Number of records to process.
+	bool transposed_edge;       // Track whether the expression references a transposed edge.
+	Record *records;            // Array of records.
+	Record r;                   // Current selected record.
 } CondTraverse;
 
 /* Creates a new Traverse operation */
-OpBase* NewCondTraverseOp(AlgebraicExpression *algebraic_expression, AST *ast);
+OpBase *NewCondTraverseOp(AlgebraicExpression *algebraic_expression, AST *ast);
 
 /* One-time setup of Traverse operation. */
 OpResult CondTraverseInit(OpBase *opBase);
 
-/* TraverseConsume next operation 
+/* TraverseConsume next operation
  * each call will update the graph
  * returns NULL when no additional updates are available */
 Record CondTraverseConsume(OpBase *opBase);

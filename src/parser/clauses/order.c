@@ -7,12 +7,13 @@
 #include "./order.h"
 #include "../../util/arr.h"
 
-AST_OrderNode* New_AST_OrderNode(Vector *expressions, AST_OrderByDirection direction) {
-	AST_OrderNode *orderNode = (AST_OrderNode*)malloc(sizeof(AST_OrderNode));
+AST_OrderNode *New_AST_OrderNode(Vector *expressions,
+								 AST_OrderByDirection direction) {
+	AST_OrderNode *orderNode = (AST_OrderNode *)malloc(sizeof(AST_OrderNode));
 	size_t expCount = Vector_Size(expressions);
-	
+
 	// TODO: Remove this logic once arithmetic_expression migrates from vector to array.
-	orderNode->expressions = array_new(AST_ArithmeticExpressionNode*, expCount);
+	orderNode->expressions = array_new(AST_ArithmeticExpressionNode *, expCount);
 	for(int i = 0; i < expCount; i++) {
 		AST_ArithmeticExpressionNode *exp;
 		Vector_Get(expressions, i, &exp);
@@ -24,14 +25,15 @@ AST_OrderNode* New_AST_OrderNode(Vector *expressions, AST_OrderByDirection direc
 	return orderNode;
 }
 
-void OrderClause_ReferredEntities(const AST_OrderNode *order_node, TrieMap *referred_entities) {
-    if(!order_node) return;
+void OrderClause_ReferredEntities(const AST_OrderNode *order_node,
+								  TrieMap *referred_entities) {
+	if(!order_node) return;
 
-    int order_element_count = array_len(order_node->expressions);
-    for(int i = 0; i < order_element_count; i++) {
-        AST_ArithmeticExpressionNode *order_element = order_node->expressions[i];
-        AST_AR_EXP_GetAliases(order_element, referred_entities);
-    }
+	int order_element_count = array_len(order_node->expressions);
+	for(int i = 0; i < order_element_count; i++) {
+		AST_ArithmeticExpressionNode *order_element = order_node->expressions[i];
+		AST_AR_EXP_GetAliases(order_element, referred_entities);
+	}
 }
 
 void Free_AST_OrderNode(AST_OrderNode *orderNode) {

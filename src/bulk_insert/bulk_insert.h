@@ -21,11 +21,11 @@
  * (thousands of entities) new graph. */
 
 /* Parse bulk insert format and inserts new entities */
-int BulkInsert (
-    RedisModuleCtx *ctx,        // Redis thread-safe context.
-    GraphContext *gc,           // GraphContext hosting schemas and Graph.
-    RedisModuleString **argv,   // Arguments passed to bulk insert command.
-    int argc                    // Number of elements in argv.
+int BulkInsert(
+	RedisModuleCtx *ctx,        // Redis thread-safe context.
+	GraphContext *gc,           // GraphContext hosting schemas and Graph.
+	RedisModuleString **argv,   // Arguments passed to bulk insert command.
+	int argc                    // Number of elements in argv.
 );
 
 #endif

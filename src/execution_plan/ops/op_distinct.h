@@ -11,11 +11,11 @@
 #include "util/triemap/triemap.h"
 
 typedef struct {
-    OpBase op;
-    TrieMap *trie;
+	OpBase op;
+	TrieMap *trie;
 } OpDistinct;
 
-OpBase* NewDistinctOp();
+OpBase *NewDistinctOp();
 Record DistinctConsume(OpBase *opBase);
 OpResult DistinctReset(OpBase *ctx);
 void DistinctFree(OpBase *ctx);

@@ -13,14 +13,14 @@
 /* Filter
  * filters graph according to where cluase */
 typedef struct {
-    OpBase op;
-    FT_FilterNode *filterTree;
+	OpBase op;
+	FT_FilterNode *filterTree;
 } Filter;
 
 /* Creates a new Filter operation */
-OpBase* NewFilterOp(FT_FilterNode *filterTree);
+OpBase *NewFilterOp(FT_FilterNode *filterTree);
 
-/* FilterConsume next operation 
+/* FilterConsume next operation
  * returns NULL when depleted. */
 Record FilterConsume(OpBase *opBase);
 

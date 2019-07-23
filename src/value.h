@@ -18,25 +18,25 @@
  * differing types is used to maintain the Cypher-defined global sort order
  * in the SIValue_Order routine. */
 typedef enum {
-  T_NULL = 0,
-  T_STRING = 0x001,
-  // T_INT32 = 0x002, // unused
-  T_INT64 = 0x004,
-  // T_UINT = 0x008, // unused
-  T_BOOL = 0x010, // shares 'longval' representation in SIValue union
-  // T_FLOAT = 0x020, // unused
-  T_DOUBLE = 0x040,
-  T_PTR = 0x080,
-  T_CONSTSTRING = 0x100, // only used in deserialization routine
-  T_NODE = 0x200,
-  T_EDGE = 0x400,
+	T_NULL = 0,
+	T_STRING = 0x001,
+	// T_INT32 = 0x002, // unused
+	T_INT64 = 0x004,
+	// T_UINT = 0x008, // unused
+	T_BOOL = 0x010, // shares 'longval' representation in SIValue union
+	// T_FLOAT = 0x020, // unused
+	T_DOUBLE = 0x040,
+	T_PTR = 0x080,
+	T_CONSTSTRING = 0x100, // only used in deserialization routine
+	T_NODE = 0x200,
+	T_EDGE = 0x400,
 } SIType;
 
 typedef enum {
-  M_NONE = 0,        // SIValue is not heap-allocated
-  M_SELF = 0x1,      // SIValue is responsible for freeing its reference
-  M_VOLATILE = 0x2,  // SIValue does not own its reference and may go out of scope
-  M_CONST = 0x4      // SIValue does not own its allocation, but its access is safe
+	M_NONE = 0,        // SIValue is not heap-allocated
+	M_SELF = 0x1,      // SIValue is responsible for freeing its reference
+	M_VOLATILE = 0x2,  // SIValue does not own its reference and may go out of scope
+	M_CONST = 0x4      // SIValue does not own its allocation, but its access is safe
 } SIAllocation;
 
 #define SI_NUMERIC (T_INT64 | T_DOUBLE)
@@ -58,14 +58,14 @@ typedef enum {
 #define DISJOINT INT_MAX
 
 typedef struct {
-  union {
-    int64_t longval;
-    double doubleval;
-    char *stringval;
-    void *ptrval;
-  };
-  SIType type;
-  SIAllocation allocation;
+	union {
+		int64_t longval;
+		double doubleval;
+		char *stringval;
+		void *ptrval;
+	};
+	SIType type;
+	SIAllocation allocation;
 } SIValue;
 
 /* Functions to construct an SIValue from a specific input type. */
@@ -73,15 +73,19 @@ SIValue SI_LongVal(int64_t i);
 SIValue SI_DoubleVal(double d);
 SIValue SI_NullVal(void);
 SIValue SI_BoolVal(int b);
-SIValue SI_PtrVal(void* v);
+SIValue SI_PtrVal(void *v);
 SIValue SI_Node(void *n);
 SIValue SI_Edge(void *e);
-SIValue SI_DuplicateStringVal(const char *s); // Duplicate and ultimately free the input string
-SIValue SI_ConstStringVal(char *s);           // Neither duplicate nor assume ownership of input string
-SIValue SI_TransferStringVal(char *s);        // Don't duplicate input string, but assume ownership
+SIValue SI_DuplicateStringVal(const char
+							  *s); // Duplicate and ultimately free the input string
+SIValue SI_ConstStringVal(char
+						  *s);           // Neither duplicate nor assume ownership of input string
+SIValue SI_TransferStringVal(char
+							 *s);        // Don't duplicate input string, but assume ownership
 
 /* Functions to copy an SIValue. */
-SIValue SI_Clone(SIValue v);               // If input is a string type, duplicate and assume ownership
+SIValue SI_Clone(SIValue
+				 v);               // If input is a string type, duplicate and assume ownership
 SIValue SI_ShallowCopy(SIValue v);         // Don't duplicate any inputs
 
 int SIValue_IsNull(SIValue v);
@@ -97,10 +101,11 @@ int SIValue_ToDouble(const SIValue *v, double *d);
 SIValue SIValue_FromString(const char *s);
 
 /* Determines number of bytes required to concat strings. */
-size_t SIValue_StringConcatLen(SIValue* strings, unsigned int string_count);
+size_t SIValue_StringConcatLen(SIValue *strings, unsigned int string_count);
 
 /* Concats strings as a comma separated string. */
-size_t SIValue_StringConcat(SIValue* strings, unsigned int string_count, char *buf, size_t buf_len);
+size_t SIValue_StringConcat(SIValue *strings, unsigned int string_count,
+							char *buf, size_t buf_len);
 
 /* Arithmetic operators for numeric SIValues.
  * The caller is responsible for ensuring that the arguments

@@ -28,39 +28,41 @@ typedef GrB_Index NodeID;
 typedef GrB_Index EdgeID;
 
 typedef enum GraphEntityType {
-   GETYPE_NODE,
-   GETYPE_EDGE
+	GETYPE_NODE,
+	GETYPE_EDGE
 } GraphEntityType;
 
 typedef struct {
-    Attribute_ID id;
-    SIValue value;
+	Attribute_ID id;
+	SIValue value;
 } EntityProperty;
 
 // Essence of a graph entity.
 // TODO: see if pragma pack 0 will cause memory access violation on ARM.
 typedef struct {
-    EntityID id;                    // Unique id
-    int prop_count;                 // Number of properties.
-    EntityProperty *properties;     // Key value pair of attributes.
+	EntityID id;                    // Unique id
+	int prop_count;                 // Number of properties.
+	EntityProperty *properties;     // Key value pair of attributes.
 } Entity;
 
 // Common denominator between nodes and edges.
 typedef struct {
-    Entity *entity;
+	Entity *entity;
 } GraphEntity;
 
 /* Adds property to entity
  * returns - reference to newly added property. */
-SIValue* GraphEntity_AddProperty(GraphEntity *e, Attribute_ID attr_id, SIValue value);
+SIValue *GraphEntity_AddProperty(GraphEntity *e, Attribute_ID attr_id,
+								 SIValue value);
 
 /* Retrieves entity's property
  * NOTE: If the key does not exist, we return the special
  * constant value PROPERTY_NOTFOUND. */
-SIValue* GraphEntity_GetProperty(const GraphEntity *e, Attribute_ID attr_id);
+SIValue *GraphEntity_GetProperty(const GraphEntity *e, Attribute_ID attr_id);
 
 /* Updates existing attribute value. */
-void GraphEntity_SetProperty(const GraphEntity *e, Attribute_ID attr_id, SIValue value);
+void GraphEntity_SetProperty(const GraphEntity *e, Attribute_ID attr_id,
+							 SIValue value);
 
 /* Release all memory allocated by entity */
 void FreeEntity(Entity *e);

@@ -12,10 +12,11 @@
 #include "graph_entity.h"
 #include "../graphcontext.h"
 
-Edge* Edge_New(Node *src, Node *dest, const char *relationship, const char *alias) {
+Edge *Edge_New(Node *src, Node *dest, const char *relationship,
+			   const char *alias) {
 	assert(src && dest);
 
-	Edge* e = calloc(1, sizeof(Edge));
+	Edge *e = calloc(1, sizeof(Edge));
 	Edge_SetSrcNode(e, src);
 	Edge_SetDestNode(e, dest);
 	e->minHops = 1;
@@ -28,12 +29,12 @@ Edge* Edge_New(Node *src, Node *dest, const char *relationship, const char *alia
 	return e;
 }
 
-NodeID Edge_GetSrcNodeID(const Edge* edge) {
+NodeID Edge_GetSrcNodeID(const Edge *edge) {
 	assert(edge);
 	return edge->srcNodeID;
 }
 
-NodeID Edge_GetDestNodeID(const Edge* edge) {
+NodeID Edge_GetDestNodeID(const Edge *edge) {
 	assert(edge);
 	return edge->destNodeID;
 }
@@ -43,33 +44,33 @@ int Edge_GetRelationID(const Edge *edge) {
 	return edge->relationID;
 }
 
-Node* Edge_GetSrcNode(Edge *e) {
+Node *Edge_GetSrcNode(Edge *e) {
 	assert(e);
 	return e->src;
 }
 
-Node* Edge_GetDestNode(Edge *e) {
+Node *Edge_GetDestNode(Edge *e) {
 	assert(e);
 	return e->dest;
 }
 
 GrB_Matrix Edge_GetMatrix(Edge *e) {
-    assert(e);
+	assert(e);
 
-    // Retrieve matrix from graph if edge matrix isn't set.
-    if(!e->mat) {
-        GraphContext *gc = GraphContext_GetFromTLS();
-        Graph *g = gc->g;
+	// Retrieve matrix from graph if edge matrix isn't set.
+	if(!e->mat) {
+		GraphContext *gc = GraphContext_GetFromTLS();
+		Graph *g = gc->g;
 
-        // Get relation matrix.
-        if(e->relationID == GRAPH_UNKNOWN_RELATION) {
+		// Get relation matrix.
+		if(e->relationID == GRAPH_UNKNOWN_RELATION) {
 			e->mat = Graph_GetZeroMatrix(g);
 		} else {
 			e->mat = Graph_GetRelationMatrix(g, e->relationID);
-        }
-    }
+		}
+	}
 
-    return e->mat;
+	return e->mat;
 }
 
 bool Edge_VariableLength(const Edge *e) {
@@ -110,27 +111,28 @@ void Edge_SetRelationID(Edge *e, int relationID) {
 }
 
 int Edge_ToString(const Edge *e, char *buff, int buff_len) {
-    assert(e && buff);
+	assert(e && buff);
 
-    int offset = 0;
-    offset += snprintf(buff + offset, buff_len - offset, "[");
-    
-    if(e->alias)
-        offset += snprintf(buff + offset, buff_len - offset, "%s", e->alias);
-    if(e->relationship)
-        offset += snprintf(buff + offset, buff_len - offset, ":%s", e->relationship);
-    if(e->minHops !=1 || e->maxHops !=1) {
-        if(e->maxHops == EDGE_LENGTH_INF)
-            offset += snprintf(buff + offset, buff_len - offset, "*%u..INF", e->minHops);
-        else
-            offset += snprintf(buff + offset, buff_len - offset, "*%u..%u", e->minHops, e->maxHops);
-    }
+	int offset = 0;
+	offset += snprintf(buff + offset, buff_len - offset, "[");
 
-    offset += snprintf(buff + offset, buff_len - offset, "]");
-    return offset;
+	if(e->alias)
+		offset += snprintf(buff + offset, buff_len - offset, "%s", e->alias);
+	if(e->relationship)
+		offset += snprintf(buff + offset, buff_len - offset, ":%s", e->relationship);
+	if(e->minHops != 1 || e->maxHops != 1) {
+		if(e->maxHops == EDGE_LENGTH_INF)
+			offset += snprintf(buff + offset, buff_len - offset, "*%u..INF", e->minHops);
+		else
+			offset += snprintf(buff + offset, buff_len - offset, "*%u..%u", e->minHops,
+							   e->maxHops);
+	}
+
+	offset += snprintf(buff + offset, buff_len - offset, "]");
+	return offset;
 }
 
-void Edge_Free(Edge* edge) {
+void Edge_Free(Edge *edge) {
 	if(!edge) return;
 
 	if(edge->alias != NULL) free(edge->alias);

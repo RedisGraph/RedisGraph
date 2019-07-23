@@ -7,40 +7,43 @@
 #include "merge.h"
 #include "../ast_common.h"
 
-AST_MergeNode* New_AST_MergeNode(Vector *graphEntities) {
+AST_MergeNode *New_AST_MergeNode(Vector *graphEntities) {
 	AST_MergeNode *mergeNode = malloc(sizeof(AST_MergeNode));
 	mergeNode->graphEntities = graphEntities;
 	return mergeNode;
 }
 
-void MergeClause_NameAnonymousNodes(const AST_MergeNode *mergeNode, int *entityID) {
+void MergeClause_NameAnonymousNodes(const AST_MergeNode *mergeNode,
+									int *entityID) {
 	if(!mergeNode) return;
 
 	int entities_count = Vector_Size(mergeNode->graphEntities);
 
-    for(int i = 0; i < entities_count; i++) {
-        AST_GraphEntity *entity;
-        Vector_Get(mergeNode->graphEntities, i, &entity);
-		if (entity->alias == NULL) {
-            entity->anonymous = true;
+	for(int i = 0; i < entities_count; i++) {
+		AST_GraphEntity *entity;
+		Vector_Get(mergeNode->graphEntities, i, &entity);
+		if(entity->alias == NULL) {
+			entity->anonymous = true;
 			// TODO: Memory leak!
-            asprintf(&entity->alias, "anon_%d", *entityID);
-            (*entityID)++;
-        }
-    }
+			asprintf(&entity->alias, "anon_%d", *entityID);
+			(*entityID)++;
+		}
+	}
 }
 
-void MergeClause_DefinedEntities(const AST_MergeNode *mergeNode, TrieMap *defined_entities) {
-    if(!mergeNode) return;
+void MergeClause_DefinedEntities(const AST_MergeNode *mergeNode,
+								 TrieMap *defined_entities) {
+	if(!mergeNode) return;
 
-    int merge_element_count = Vector_Size(mergeNode->graphEntities);
+	int merge_element_count = Vector_Size(mergeNode->graphEntities);
 
-    for(int i = 0; i < merge_element_count; i++) {
-        AST_GraphEntity *entity;
-        Vector_Get(mergeNode->graphEntities, i, &entity);
-        if(!entity->alias) continue;
-		TrieMap_Add(defined_entities, entity->alias, strlen(entity->alias), entity, TrieMap_DONT_CARE_REPLACE);
-    }
+	for(int i = 0; i < merge_element_count; i++) {
+		AST_GraphEntity *entity;
+		Vector_Get(mergeNode->graphEntities, i, &entity);
+		if(!entity->alias) continue;
+		TrieMap_Add(defined_entities, entity->alias, strlen(entity->alias), entity,
+					TrieMap_DONT_CARE_REPLACE);
+	}
 }
 
 void Free_AST_MergeNode(AST_MergeNode *mergeNode) {

@@ -12,20 +12,20 @@
 #include "../graph/entities/edge.h"
 
 typedef enum  {
-    REC_TYPE_UNKNOWN = 0,
-    REC_TYPE_SCALAR,
-    REC_TYPE_NODE,
-    REC_TYPE_EDGE,
-    REC_TYPE_HEADER,
+	REC_TYPE_UNKNOWN = 0,
+	REC_TYPE_SCALAR,
+	REC_TYPE_NODE,
+	REC_TYPE_EDGE,
+	REC_TYPE_HEADER,
 } RecordEntryType;
 
 typedef struct {
-    union {
-        SIValue s;
-        Node n;
-        Edge e;
-    } value;
-    RecordEntryType type;    
+	union {
+		SIValue s;
+		Node n;
+		Edge e;
+	} value;
+	RecordEntryType type;
 } Entry;
 
 typedef Entry *Record;

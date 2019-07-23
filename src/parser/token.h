@@ -9,11 +9,11 @@
 #include <stdlib.h>
 
 typedef struct {
-  int64_t longval;
-  double dval;
-  char *strval;
-  char *s;  // token string
-  int pos;  // position in the query
+	int64_t longval;
+	double dval;
+	char *strval;
+	char *s;  // token string
+	int pos;  // position in the query
 } Token;
 
 extern Token tok;

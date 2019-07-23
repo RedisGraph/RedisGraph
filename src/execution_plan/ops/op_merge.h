@@ -20,15 +20,15 @@
  * is created. */
 
 typedef struct {
-    OpBase op;              // Base op.
-    GraphContext *gc;       // Graph data.
-    AST *ast;               // Query abstract syntax tree.
-    ResultSet *result_set;  // Required for statistics updates.
-    bool matched;           // Has the entire pattern been matched.
-    bool created;           // Has the entire pattern been created.
+	OpBase op;              // Base op.
+	GraphContext *gc;       // Graph data.
+	AST *ast;               // Query abstract syntax tree.
+	ResultSet *result_set;  // Required for statistics updates.
+	bool matched;           // Has the entire pattern been matched.
+	bool created;           // Has the entire pattern been created.
 } OpMerge;
 
-OpBase* NewMergeOp(AST *ast, ResultSet *result_set);
+OpBase *NewMergeOp(AST *ast, ResultSet *result_set);
 Record OpMergeConsume(OpBase *opBase);
 OpResult OpMergeReset(OpBase *ctx);
 void OpMergeFree(OpBase *ctx);

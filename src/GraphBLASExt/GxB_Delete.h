@@ -14,9 +14,9 @@
  * If M[row,col] isn't empty then M's NNZ is reduced by one. */
 GrB_Info GxB_Matrix_Delete
 (
-    GrB_Matrix M,
-    GrB_Index row,
-    GrB_Index col
+	GrB_Matrix M,
+	GrB_Index row,
+	GrB_Index col
 ) ;
 
 #endif

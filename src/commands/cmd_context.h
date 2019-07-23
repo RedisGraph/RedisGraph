@@ -12,48 +12,48 @@
 
 /* Query context, used for concurent query processing. */
 typedef struct {
-    RedisModuleCtx *ctx;            // Redis module context.
-    RedisModuleBlockedClient *bc;   // Blocked client.
-    AST **ast;                      // Parsed AST.
-    char *graphName;                // Graph ID.
-    double tic[2];                  // Timings.
-    RedisModuleString **argv;       // Arguments.
-    int argc;                       // Argument count.
+	RedisModuleCtx *ctx;            // Redis module context.
+	RedisModuleBlockedClient *bc;   // Blocked client.
+	AST **ast;                      // Parsed AST.
+	char *graphName;                // Graph ID.
+	double tic[2];                  // Timings.
+	RedisModuleString **argv;       // Arguments.
+	int argc;                       // Argument count.
 } CommandCtx;
 
 // Create a new command context.
-CommandCtx* CommandCtx_New
+CommandCtx *CommandCtx_New
 (
-    RedisModuleCtx *ctx,            // Redis module context.
-    RedisModuleBlockedClient *bc,   // Blocked client.
-    AST **ast,
-    RedisModuleString *graphName,   // Graph ID.
-    RedisModuleString **argv,       // Arguments.
-    int argc                        // Argument count.
+	RedisModuleCtx *ctx,            // Redis module context.
+	RedisModuleBlockedClient *bc,   // Blocked client.
+	AST **ast,
+	RedisModuleString *graphName,   // Graph ID.
+	RedisModuleString **argv,       // Arguments.
+	int argc                        // Argument count.
 );
 
 // Get Redis module context
-RedisModuleCtx* CommandCtx_GetRedisCtx
+RedisModuleCtx *CommandCtx_GetRedisCtx
 (
-    CommandCtx *qctx
+	CommandCtx *qctx
 );
 
 // Acquire Redis global lock.
 void CommandCtx_ThreadSafeContextLock
 (
-    const CommandCtx *qctx
+	const CommandCtx *qctx
 );
 
 // Release Redis global lock.
 void CommandCtx_ThreadSafeContextUnlock
 (
-    const CommandCtx *qctx
+	const CommandCtx *qctx
 );
 
 // Free command context.
 void CommandCtx_Free
 (
-    CommandCtx* qctx
+	CommandCtx *qctx
 );
 
 #endif

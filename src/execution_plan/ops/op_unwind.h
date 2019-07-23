@@ -14,16 +14,16 @@
 /* OP Unwind */
 
 typedef struct {
-    OpBase op;
-    AST *ast;
-    AST_UnwindNode *unwindClause;
-    AR_ExpNode **expressions;   // Array of expressions
-    uint expIdx;                // Current expression index to evaluate.
-    int unwindRecIdx;           // Update record at this index.
- } OpUnwind;
+	OpBase op;
+	AST *ast;
+	AST_UnwindNode *unwindClause;
+	AR_ExpNode **expressions;   // Array of expressions
+	uint expIdx;                // Current expression index to evaluate.
+	int unwindRecIdx;           // Update record at this index.
+} OpUnwind;
 
 /* Creates a new Unwind operation */
-OpBase* NewUnwindOp(AST *ast);
+OpBase *NewUnwindOp(AST *ast);
 
 OpResult UnwindInit(OpBase *opBase);
 

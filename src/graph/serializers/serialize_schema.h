@@ -12,7 +12,7 @@
 #include "../graphcontext.h"
 
 void RdbLoadAttributeKeys(RedisModuleIO *rdb, GraphContext *gc);
-Schema* RdbLoadSchema(RedisModuleIO *rdb, SchemaType type);
+Schema *RdbLoadSchema(RedisModuleIO *rdb, SchemaType type);
 
 void RdbSaveSchema(RedisModuleIO *rdb, Schema *s);
 void RdbSaveDummySchema(RedisModuleIO *rdb);

@@ -17,13 +17,16 @@ typedef enum {
 } AST_OrderByDirection;
 
 typedef struct {
-	AST_ArithmeticExpressionNode **expressions;	// Array of arithmetic expressions to order by.
+	AST_ArithmeticExpressionNode
+	**expressions;	// Array of arithmetic expressions to order by.
 	AST_OrderByDirection direction;
 } AST_OrderNode;
 
-AST_OrderNode* New_AST_OrderNode(Vector* expressions, AST_OrderByDirection direction);
+AST_OrderNode *New_AST_OrderNode(Vector *expressions,
+								 AST_OrderByDirection direction);
 
-void OrderClause_ReferredEntities(const AST_OrderNode *order_node, TrieMap *referred_entities);
+void OrderClause_ReferredEntities(const AST_OrderNode *order_node,
+								  TrieMap *referred_entities);
 
 void Free_AST_OrderNode(AST_OrderNode *orderNode);
 
