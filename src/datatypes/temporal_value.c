@@ -237,7 +237,7 @@ int RG_TemporalValue_GetDay(RG_TemporalValue temporalValue) {
 	}
 	struct tm *timeDescriptor  = _getTimeDescriptorFromTemporalValue(temporalValue);
 
-	return timeDescriptor->tm_mday + 1;
+	return timeDescriptor->tm_mday;
 }
 
 int RG_TemporalValue_GetOrdinalDay(RG_TemporalValue temporalValue) {
@@ -256,8 +256,8 @@ int RG_TemporalValue_GetDayOfWeek(RG_TemporalValue temporalValue) {
 		return INT32_MIN;
 	}
 	struct tm *timeDescriptor  = _getTimeDescriptorFromTemporalValue(temporalValue);
-
-	return timeDescriptor->tm_wday;
+	// tm first day is Sunday, Cypher first day is Monday
+	return (timeDescriptor->tm_wday + 6) % 7 + 1;
 }
 
 int RG_TemporalValue_GetHour(RG_TemporalValue temporalValue) {
