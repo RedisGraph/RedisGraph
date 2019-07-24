@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2018 "Neo Technology,"
+# Copyright (c) 2015-2019 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,7 +30,6 @@
 
 Feature: StartingPointAcceptance
 
-  
   Scenario: Find all nodes
     Given an empty graph
     And having executed:
@@ -42,7 +41,7 @@ Feature: StartingPointAcceptance
     When executing query:
       """
       MATCH (n)
-      RETURN n ORDER BY n.name
+      RETURN n
       """
     Then the result should be:
       | n             |
@@ -51,7 +50,6 @@ Feature: StartingPointAcceptance
       | ({name: 'c'}) |
     And no side effects
 
-  
   Scenario: Find labelled nodes
     Given an empty graph
     And having executed:
@@ -72,21 +70,20 @@ Feature: StartingPointAcceptance
       | (:Animal) |
     And no side effects
 
-  
   Scenario: Find nodes by property
     Given an empty graph
     And having executed:
       """
-      CREATE ({prop: 1}),
-             ({prop: 2})
+      CREATE ({num: 1}),
+             ({num: 2})
       """
     When executing query:
       """
       MATCH (n)
-      WHERE n.prop = 2
+      WHERE n.num = 2
       RETURN n
       """
     Then the result should be:
-      | n           |
-      | ({prop: 2}) |
+      | n          |
+      | ({num: 2}) |
     And no side effects

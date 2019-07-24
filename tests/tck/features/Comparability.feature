@@ -34,40 +34,42 @@ Feature: Comparability
     Given an empty graph
     And having executed:
       """
-      CREATE (root:Root)-[:T]->(:Child {id: 0}),
-             (root)-[:T]->(:Child {id: 'xx'}),
+      CREATE (root:Root)-[:T]->(:Child {var: 0}),
+             (root)-[:T]->(:Child {var: 'xx'}),
              (root)-[:T]->(:Child)
       """
     When executing query:
       """
       MATCH (:Root)-->(i:Child)
-      WHERE exists(i.id) AND i.id > 'x'
-      RETURN i.id
+      WHERE exists(i.var) AND i.var > 'x'
+      RETURN i.var
       """
     Then the result should be:
-      | i.id |
-      | 'xx' |
+      | i.var |
+      | 'xx'  |
     And no side effects
+
   @skip
   Scenario: Comparing strings and integers using > in a OR'd predicate
     Given an empty graph
     And having executed:
       """
-      CREATE (root:Root)-[:T]->(:Child {id: 0}),
-             (root)-[:T]->(:Child {id: 'xx'}),
+      CREATE (root:Root)-[:T]->(:Child {var: 0}),
+             (root)-[:T]->(:Child {var: 'xx'}),
              (root)-[:T]->(:Child)
       """
     When executing query:
       """
       MATCH (:Root)-->(i:Child)
-      WHERE NOT exists(i.id) OR i.id > 'x'
-      RETURN i.id
+      WHERE NOT exists(i.var) OR i.var > 'x'
+      RETURN i.var
       """
     Then the result should be:
-      | i.id |
-      | 'xx' |
-      | null |
+      | i.var |
+      | 'xx'  |
+      | null  |
     And no side effects
+
   @skip
   Scenario Outline: Comparing across types yields null, except numbers
     Given an empty graph
@@ -98,3 +100,23 @@ Feature: Comparability
       | <=       | 1    | 3.14 |
       | >=       | 3.14 | 1    |
       | >        | 3.14 | 1    |
+
+  @skip
+  Scenario Outline: Comparing lists
+    Given an empty graph
+    When executing query:
+      """
+      RETURN <lhs> >= <rhs> AS result
+      """
+    Then the result should be:
+      | result   |
+      | <result> |
+    And no side effects
+
+    Examples:
+      | lhs       | rhs       | result |
+      | [1, 0]    | [1]       | true   |
+      | [1, null] | [1]       | true   |
+      | [1, 2]    | [1, null] | null   |
+      | [1, 'a']  | [1, null] | null   |
+      | [1, 2]    | [3, null] | false  |
