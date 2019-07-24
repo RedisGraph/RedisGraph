@@ -20,6 +20,8 @@ static inline PropertyTypeUser _mapValueType(const SIValue v) {
 		return PROPERTY_BOOLEAN;
 	case T_DOUBLE:
 		return PROPERTY_DOUBLE;
+	case T_TEMPORAL_VALUE:
+		return PROPERTY_TEMPORAL_VALUE;
 	default:
 		return PROPERTY_UNKNOWN;
 	}
@@ -28,6 +30,27 @@ static inline PropertyTypeUser _mapValueType(const SIValue v) {
 static inline void _ResultSet_ReplyWithValueType(RedisModuleCtx *ctx,
 												 const SIValue v) {
 	RedisModule_ReplyWithLongLong(ctx, _mapValueType(v));
+}
+
+static void _ResultSet_CompactReplyWithTemporalValue(RedisModuleCtx *ctx,
+													 GraphContext *gc, RG_TemporalValue temporalValue) {
+	RedisModule_ReplyWithArray(ctx, 3);
+
+	// seconds from 1900-01-01T00:00:00
+	// in case of duration - total duration in seconds
+	RedisModule_ReplyWithLongLong(ctx, temporalValue.seconds);
+
+	// nanoseconds extra from the last second
+	// in case of duration - total duration in seconds
+	RedisModule_ReplyWithLongLong(ctx, temporalValue.nano);
+
+	// type (5 lsb) and time zone (27 msb)
+	// cast struct to a 32 bit array
+	// [0-1] time_t - seconds
+	// [2] int32_t - nano
+	// [3] int32_t - type and timezone
+	int32_t *ptr = (int32_t *)&temporalValue;
+	RedisModule_ReplyWithLongLong(ctx, ptr[3]);
 }
 
 static void _ResultSet_CompactReplyWithSIValue(RedisModuleCtx *ctx,
@@ -47,6 +70,9 @@ static void _ResultSet_CompactReplyWithSIValue(RedisModuleCtx *ctx,
 	case T_BOOL:
 		if(v.longval != 0) RedisModule_ReplyWithStringBuffer(ctx, "true", 4);
 		else RedisModule_ReplyWithStringBuffer(ctx, "false", 5);
+		return;
+	case T_TEMPORAL_VALUE:
+		_ResultSet_CompactReplyWithTemporalValue(ctx, gc, v.time);
 		return;
 	case T_NULL:
 		RedisModule_ReplyWithNull(ctx);
