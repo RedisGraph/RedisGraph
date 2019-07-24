@@ -108,7 +108,7 @@ inline int SIValue_IsNullPtr(SIValue *v) {
 }
 
 int SIValue_ToString(SIValue v, char *buf, size_t len) {
-	<<< <<< < HEAD
+
 	int bytes_written = 0;
 
 	switch(v.type) {
@@ -116,6 +116,7 @@ int SIValue_ToString(SIValue v, char *buf, size_t len) {
 		strncpy(buf, v.stringval, len);
 		bytes_written = strlen(buf);
 		break;
+	case T_INT64:
 		bytes_written = snprintf(buf, len, "%lld", (long long)v.longval);
 		break;
 	case T_BOOL:
@@ -138,7 +139,6 @@ int SIValue_ToString(SIValue v, char *buf, size_t len) {
 	}
 
 	return bytes_written;
-	>>> >>> > finished basic date time functionality
 }
 
 int SIValue_ToDouble(const SIValue *v, double *d) {

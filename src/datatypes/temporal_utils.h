@@ -7,10 +7,12 @@
 #pragma once
 #include <stdbool.h>
 
-const int normalYearQuarterDaysAgg[4] = {0, 90, 181, 273};
-const int leapYearQuarterDaysAgg[4] = {0, 91, 182, 274};
+extern const int nomralYearQuarterDays[4];
+extern const int normalYearQuarterDaysAgg[4];
+extern const int leapYearQuarterDays[4];
+extern const int leapYearQuarterDaysAgg[4];
 
-const int normalYearMonthDaysAgg[11] = {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304};
-const int leapYearMonthDaysAgg[11] = {0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305};
+extern const int normalYearMonthDaysAgg[11];
+extern const int leapYearMonthDaysAgg[11];
 
 bool isLeapYear(int year);

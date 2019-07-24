@@ -224,7 +224,7 @@ int RG_TemporalValue_GetDayOfQuarter(RG_TemporalValue temporalValue) {
 	struct tm *timeDescriptor  = _getTimeDescriptorFromTemporalValue(temporalValue);
 
 	int q = timeDescriptor->tm_mon / 4;
-	if(_isLeapYear(timeDescriptor->tm_year))
+	if(isLeapYear(timeDescriptor->tm_year))
 		return timeDescriptor->tm_yday - leapYearQuarterDaysAgg[q] + 1;
 	else
 		return timeDescriptor->tm_yday - normalYearQuarterDaysAgg[q] + 1;

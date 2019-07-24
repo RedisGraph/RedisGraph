@@ -225,16 +225,16 @@ unsigned long long Record_Hash64(const Record r) {
 			break;
 		case REC_TYPE_TEMPORAL:
 			data = &si.time;
-			len = sizeof(si.time;
-						 break;
-					 case REC_TYPE_UNKNOWN:
-							 assert(false);
+			len = sizeof(si.time);
+			break;
+		case REC_TYPE_UNKNOWN:
+			assert(false);
 
-						 default:
-								 assert(false);
-				}
+		default:
+			assert(false);
+		}
 
-			  res = XXH64_update(&state, data, len);
+		res = XXH64_update(&state, data, len);
 		assert(res != XXH_ERROR);
 	}
 

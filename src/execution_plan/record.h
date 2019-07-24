@@ -75,8 +75,9 @@ void Record_AddNode(Record r, int idx, Node node);
 
 // Add an edge to record at position idx.
 void Record_AddEdge(Record r, int idx, Edge edge);
+
 // Add a temporal value at position idx.
-void Record_AddTemporal(Record r, int idx, RG_TemporalValue);
+void Record_AddTemporalValue(Record r, int idx, RG_TemporalValue);
 
 // String representation of record.
 size_t Record_ToString(const Record r, char **buf, size_t *buf_cap);
