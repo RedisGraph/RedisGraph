@@ -9,7 +9,9 @@
 #include "graph_entity.h"
 #include "../../util/rmalloc.h"
 
-SIValue *PROPERTY_NOTFOUND = &(SIValue){.longval = 0, .type = T_NULL};
+SIValue *PROPERTY_NOTFOUND = &(SIValue) {
+	.longval = 0, .type = T_NULL
+};
 
 /* Removes entity's property. */
 static void _GraphEntity_RemoveProperty(const GraphEntity *e, Attribute_ID attr_id) {
@@ -29,9 +31,10 @@ static void _GraphEntity_RemoveProperty(const GraphEntity *e, Attribute_ID attr_
 				e->entity->properties = NULL;
 			} else {
 				/* Overwrite deleted attribute with the last
-			 	 * attribute and shrink properties bag. */
-				e->entity->properties[i] = e->entity->properties[prop_count-1];
-				e->entity->properties = rm_realloc(e->entity->properties, sizeof(EntityProperty) * e->entity->prop_count);
+				 * attribute and shrink properties bag. */
+				e->entity->properties[i] = e->entity->properties[prop_count - 1];
+				e->entity->properties = rm_realloc(e->entity->properties,
+												   sizeof(EntityProperty) * e->entity->prop_count);
 			}
 
 			break;
@@ -40,22 +43,23 @@ static void _GraphEntity_RemoveProperty(const GraphEntity *e, Attribute_ID attr_
 }
 
 /* Add a new property to entity */
-SIValue* GraphEntity_AddProperty(GraphEntity *e, Attribute_ID attr_id, SIValue value) {
+SIValue *GraphEntity_AddProperty(GraphEntity *e, Attribute_ID attr_id, SIValue value) {
 	if(e->entity->properties == NULL) {
 		e->entity->properties = rm_malloc(sizeof(EntityProperty));
 	} else {
-		e->entity->properties = rm_realloc(e->entity->properties, sizeof(EntityProperty) * (e->entity->prop_count + 1));
+		e->entity->properties = rm_realloc(e->entity->properties,
+										   sizeof(EntityProperty) * (e->entity->prop_count + 1));
 	}
 
 	int prop_idx = e->entity->prop_count;
 	e->entity->properties[prop_idx].id = attr_id;
 	e->entity->properties[prop_idx].value = SI_Clone(value);
 	e->entity->prop_count++;
-	
+
 	return &(e->entity->properties[prop_idx].value);
 }
 
-SIValue* GraphEntity_GetProperty(const GraphEntity *e, Attribute_ID attr_id) {
+SIValue *GraphEntity_GetProperty(const GraphEntity *e, Attribute_ID attr_id) {
 	if(attr_id == ATTRIBUTE_NOTFOUND) return PROPERTY_NOTFOUND;
 
 	for(int i = 0; i < e->entity->prop_count; i++) {
@@ -79,7 +83,7 @@ void GraphEntity_SetProperty(const GraphEntity *e, Attribute_ID attr_id, SIValue
 
 	SIValue *prop = GraphEntity_GetProperty(e, attr_id);
 	assert(prop != PROPERTY_NOTFOUND);
-    SIValue_Free(prop);
+	SIValue_Free(prop);
 	*prop = SI_Clone(value);
 }
 

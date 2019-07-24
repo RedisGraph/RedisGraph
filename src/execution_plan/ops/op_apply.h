@@ -9,15 +9,15 @@
 #include "op.h"
 
 typedef struct {
-    OpBase op;
-    bool init;
-    Record lhs_record;
-    Record *rhs_records;
-    uint rhs_idx;
+	OpBase op;
+	bool init;
+	Record lhs_record;
+	Record *rhs_records;
+	uint rhs_idx;
 } Apply;
 
 // OpBase* NewApplyOp(uint *modifies);
-OpBase* NewApplyOp(void);
+OpBase *NewApplyOp(void);
 OpResult ApplyInit(OpBase *opBase);
 Record ApplyConsume(OpBase *opBase);
 OpResult ApplyReset(OpBase *opBase);

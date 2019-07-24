@@ -10,13 +10,13 @@
 #include "op.h"
 
 /* Cartesian product AKA Join. */
- typedef struct {
-     OpBase op;
-     bool init;
-     Record r;
- } CartesianProduct;
+typedef struct {
+	OpBase op;
+	bool init;
+	Record r;
+} CartesianProduct;
 
-OpBase* NewCartesianProductOp(void);
+OpBase *NewCartesianProductOp(void);
 OpResult CartesianProductInit(OpBase *opBase);
 Record CartesianProductConsume(OpBase *opBase);
 OpResult CartesianProductReset(OpBase *opBase);

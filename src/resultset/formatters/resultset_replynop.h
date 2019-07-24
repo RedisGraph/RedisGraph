@@ -8,4 +8,5 @@
 
 // Formatter for compact (client-parsed) replies
 void ResultSet_EmitNOPHeader(RedisModuleCtx *ctx, const QueryGraph *qg, AR_ExpNode **exps);
-void ResultSet_EmitNOPRecord(RedisModuleCtx *ctx, GraphContext *gc, const Record r, unsigned int numcols);
+void ResultSet_EmitNOPRecord(RedisModuleCtx *ctx, GraphContext *gc, const Record r,
+							 unsigned int numcols);

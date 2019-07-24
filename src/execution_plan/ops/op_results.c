@@ -8,41 +8,41 @@
 #include "../../util/arr.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
-OpBase* NewResultsOp(ResultSet *result_set, QueryGraph* graph) {
-    Results *results = malloc(sizeof(Results));
-    results->result_set = result_set;
+OpBase *NewResultsOp(ResultSet *result_set, QueryGraph *graph) {
+	Results *results = malloc(sizeof(Results));
+	results->result_set = result_set;
 
-    // Set our Op operations
-    OpBase_Init(&results->op);
-    results->op.name = "Results";
-    results->op.type = OPType_RESULTS;
-    results->op.consume = ResultsConsume;
-    results->op.reset = ResultsReset;
-    results->op.free = ResultsFree;
+	// Set our Op operations
+	OpBase_Init(&results->op);
+	results->op.name = "Results";
+	results->op.type = OPType_RESULTS;
+	results->op.consume = ResultsConsume;
+	results->op.reset = ResultsReset;
+	results->op.free = ResultsFree;
 
-    return (OpBase*)results;
+	return (OpBase *)results;
 }
 
 /* Results consume operation
  * called each time a new result record is required */
 Record ResultsConsume(OpBase *opBase) {
-    Record r = NULL;
-    Results *op = (Results*)opBase;
+	Record r = NULL;
+	Results *op = (Results *)opBase;
 
-    if(op->op.childCount) {
-        OpBase *child = op->op.children[0];
-        r = OpBase_Consume(child);
-        if(!r) return NULL;
-    }
+	if(op->op.childCount) {
+		OpBase *child = op->op.children[0];
+		r = OpBase_Consume(child);
+		if(!r) return NULL;
+	}
 
-    /* Append to final result set. */
-    ResultSet_AddRecord(op->result_set, r);
-    return r;
+	/* Append to final result set. */
+	ResultSet_AddRecord(op->result_set, r);
+	return r;
 }
 
 /* Restart */
 OpResult ResultsReset(OpBase *op) {
-    return OP_OK;
+	return OP_OK;
 }
 
 /* Frees Results */

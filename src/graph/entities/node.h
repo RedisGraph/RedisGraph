@@ -12,14 +12,14 @@
 #include "../../../deps/GraphBLAS/Include/GraphBLAS.h"
 
 typedef struct {
-    Entity *entity;                 /* MUST be the first property of Edge. */
-    const char *label;              /* Label attached to node */
-    int labelID;                    /* Label ID. */
-    GrB_Matrix mat;                 /* Label matrix, associated with node. */
+	Entity *entity;                 /* MUST be the first property of Edge. */
+	const char *label;              /* Label attached to node */
+	int labelID;                    /* Label ID. */
+	GrB_Matrix mat;                 /* Label matrix, associated with node. */
 } Node;
 
 /* Creates a new node. */
-Node* Node_New(const char *label);
+Node *Node_New(const char *label);
 
 /* Sets node relation type. */
 void Node_SetLabelID(Node *n, int labelID); // QG only
@@ -28,9 +28,9 @@ void Node_SetLabelID(Node *n, int labelID); // QG only
 GrB_Matrix Node_GetMatrix(Node *n); // AE
 
 /* Clones given node. */
-Node* Node_Clone(const Node *n); // QG
+Node *Node_Clone(const Node *n); // QG
 
 /* Frees allocated space by given node. */
-void Node_Free(Node* node);
+void Node_Free(Node *node);
 
 #endif

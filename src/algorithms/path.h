@@ -9,7 +9,7 @@
 
 #include "../graph/entities/node.h"
 
-typedef Node* Path;
+typedef Node *Path;
 
 Path Path_new(size_t len);
 Path Path_append(Path p, Node n);

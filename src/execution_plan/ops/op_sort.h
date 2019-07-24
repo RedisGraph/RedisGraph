@@ -12,17 +12,17 @@
 #include "../../arithmetic/arithmetic_expression.h"
 
 typedef struct {
-    OpBase op;
-    AR_ExpNode **expressions;   // Expression to sort by.
-    heap_t *heap;               // Holds top n records.
-    Record *buffer;             // Holds all records.
-    unsigned int offset;        // Offset into projected order expressions within a record.
-    unsigned int limit;         // Total number of records to produce, 0 no limit.
-    int direction;              // Ascending / desending.
+	OpBase op;
+	AR_ExpNode **expressions;   // Expression to sort by.
+	heap_t *heap;               // Holds top n records.
+	Record *buffer;             // Holds all records.
+	unsigned int offset;        // Offset into projected order expressions within a record.
+	unsigned int limit;         // Total number of records to produce, 0 no limit.
+	int direction;              // Ascending / desending.
 } OpSort;
 
 /* Creates a new Sort operation */
-OpBase* NewSortOp(AR_ExpNode **expressions, int direction, unsigned int limit);
+OpBase *NewSortOp(AR_ExpNode **expressions, int direction, unsigned int limit);
 
 Record SortConsume(OpBase *opBase);
 

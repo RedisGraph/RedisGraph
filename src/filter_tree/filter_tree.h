@@ -19,8 +19,8 @@
 /* Nodes within the filter tree are one of two types
  * Either a predicate node or a condition node. */
 typedef enum {
-  FT_N_PRED,
-  FT_N_COND,
+	FT_N_PRED,
+	FT_N_COND,
 } FT_FilterNodeType;
 
 struct FT_FilterNode;
@@ -39,30 +39,30 @@ typedef struct {
 
 /* All nodes within the filter tree are of type FT_FilterNode. */
 struct FT_FilterNode {
-  union {
-    FT_PredicateNode pred;
-    FT_ConditionNode cond;
-  };
-  FT_FilterNodeType t;	/* Determines actual type of this node. */
+	union {
+		FT_PredicateNode pred;
+		FT_ConditionNode cond;
+	};
+	FT_FilterNodeType t;	/* Determines actual type of this node. */
 };
 
 typedef struct FT_FilterNode FT_FilterNode;
 
 int IsNodePredicate(const FT_FilterNode *node);
 
-FT_FilterNode* AppendLeftChild(FT_FilterNode *root, FT_FilterNode *child);
-FT_FilterNode* AppendRightChild(FT_FilterNode *root, FT_FilterNode *child);
+FT_FilterNode *AppendLeftChild(FT_FilterNode *root, FT_FilterNode *child);
+FT_FilterNode *AppendRightChild(FT_FilterNode *root, FT_FilterNode *child);
 
-FT_FilterNode* FilterTree_CreatePredicateFilter(AST_Operator op, AR_ExpNode *lhs, AR_ExpNode *rhs);
+FT_FilterNode *FilterTree_CreatePredicateFilter(AST_Operator op, AR_ExpNode *lhs, AR_ExpNode *rhs);
 
-FT_FilterNode* FilterTree_CreateConditionFilter(AST_Operator op);
+FT_FilterNode *FilterTree_CreateConditionFilter(AST_Operator op);
 
 /* Runs val through the filter tree. */
-int FilterTree_applyFilters(const FT_FilterNode* root, const Record r);
+int FilterTree_applyFilters(const FT_FilterNode *root, const Record r);
 
 /* Extract every modified record ID mentioned in the tree
  * without duplications. */
-rax* FilterTree_CollectModified(const FT_FilterNode *root);
+rax *FilterTree_CollectModified(const FT_FilterNode *root);
 
 /* Prints tree. */
 void FilterTree_Print(const FT_FilterNode *root);
@@ -71,7 +71,7 @@ void FilterTree_Print(const FT_FilterNode *root);
  * sub trees under an OR operator are returned,
  * sub trees under an AND operator are broken down to the smallest
  * components possible following the two rules above. */
-Vector* FilterTree_SubTrees(const FT_FilterNode *root);
+Vector *FilterTree_SubTrees(const FT_FilterNode *root);
 
 void FilterTree_Free(FT_FilterNode *root);
 

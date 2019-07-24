@@ -17,14 +17,14 @@
 /* TODO: note it is possible to get into an inconsistency
  * if we set src and srcNodeID to different nodes. */
 struct Edge {
-    Entity *entity;         /* MUST be the first property of Edge. */
-    const char* relationship;     /* Label attached to edge. */
-    int relationID;         /* Relation ID. */
-    Node* src;              /* Pointer to source node. */
-    Node* dest;             /* Pointer to destination node. */
-    NodeID srcNodeID;       /* Source node ID. */
-    NodeID destNodeID;      /* Destination node ID. */
-    GrB_Matrix mat;         /* Adjacency matrix, associated with edge. */
+	Entity *entity;         /* MUST be the first property of Edge. */
+	const char *relationship;     /* Label attached to edge. */
+	int relationID;         /* Relation ID. */
+	Node *src;              /* Pointer to source node. */
+	Node *dest;             /* Pointer to destination node. */
+	NodeID srcNodeID;       /* Source node ID. */
+	NodeID destNodeID;      /* Destination node ID. */
+	GrB_Matrix mat;         /* Adjacency matrix, associated with edge. */
 };
 
 typedef struct Edge Edge;
@@ -42,10 +42,10 @@ NodeID Edge_GetDestNodeID(const Edge *edge); // graph.c, serializer, all_paths, 
 int Edge_GetRelationID(const Edge *edge); // graph.c, replies
 
 // Retrieve edge source node.
-Node* Edge_GetSrcNode(Edge *e); // opcreate
+Node *Edge_GetSrcNode(Edge *e); // opcreate
 
 // Retrieve edge destination node. // opcreate
-Node* Edge_GetDestNode(Edge *e);
+Node *Edge_GetDestNode(Edge *e);
 
 // Retrieves edge matrix.
 GrB_Matrix Edge_GetMatrix(Edge *e); // AE

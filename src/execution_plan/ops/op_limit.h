@@ -10,12 +10,12 @@
 #include "op.h"
 
 typedef struct {
-    OpBase op;
-    unsigned int limit;     // Max number of records to consume.
-    unsigned int consumed;  // Number of records consumed so far.
+	OpBase op;
+	unsigned int limit;     // Max number of records to consume.
+	unsigned int consumed;  // Number of records consumed so far.
 } OpLimit;
 
-OpBase* NewLimitOp(unsigned int limit);
+OpBase *NewLimitOp(unsigned int limit);
 
 Record LimitConsume(OpBase *op);
 

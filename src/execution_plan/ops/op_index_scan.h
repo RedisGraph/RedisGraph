@@ -14,12 +14,12 @@
 
 
 typedef struct {
-    OpBase op;
-    Graph *g;
-    QGNode *n;
-    uint recLength;  // Number of entries in a record.
-    uint nodeRecIdx;
-    IndexIter *iter;
+	OpBase op;
+	Graph *g;
+	QGNode *n;
+	uint recLength;  // Number of entries in a record.
+	uint nodeRecIdx;
+	IndexIter *iter;
 } IndexScan;
 
 /* Creates a new IndexScan operation */

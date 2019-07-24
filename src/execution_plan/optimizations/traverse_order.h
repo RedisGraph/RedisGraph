@@ -11,14 +11,14 @@
 #include "../../arithmetic/algebraic_expression.h"
 
 typedef enum {
-    TRAVERSE_ORDER_FIRST,
-    TRAVERSE_ORDER_LAST,
+	TRAVERSE_ORDER_FIRST,
+	TRAVERSE_ORDER_LAST,
 } TRAVERSE_ORDER;
 
 /* Reorders exps such that exp[i] is the ith expression to evaluate. */
 void orderExpressions(
-    AlgebraicExpression **exps,     // Expressions to order.
-    uint exps_count,                // Number of expressions.
-    const RecordMap *record_map,    // Mapping of entity IDs to Record IDs.
-    const FT_FilterNode *filters    // Filters.
+	AlgebraicExpression **exps,     // Expressions to order.
+	uint exps_count,                // Number of expressions.
+	const RecordMap *record_map,    // Mapping of entity IDs to Record IDs.
+	const FT_FilterNode *filters    // Filters.
 );

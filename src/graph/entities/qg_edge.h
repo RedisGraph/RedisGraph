@@ -12,23 +12,23 @@
 #include <stdbool.h>
 
 struct QGEdge {
-    uint id;               /* Unique QueryGraph ID for Record mapping */
-    const char *alias;     /* User-provided alias attached to edge. */
-    const char **reltypes; /* Relationship type strings */
-    int *reltypeIDs;       /* Relationship type IDs */ // TODO can be uint save for GRAPH_NO_RELATION
-    QGNode *src;           /* Pointer to source node. */
-    QGNode *dest;          /* Pointer to destination node. */
-    uint minHops;          /* Minimum number of hops this edge represents. */
-    uint maxHops;          /* Maximum number of hops this edge represents. */
+	uint id;               /* Unique QueryGraph ID for Record mapping */
+	const char *alias;     /* User-provided alias attached to edge. */
+	const char **reltypes; /* Relationship type strings */
+	int *reltypeIDs;       /* Relationship type IDs */ // TODO can be uint save for GRAPH_NO_RELATION
+	QGNode *src;           /* Pointer to source node. */
+	QGNode *dest;          /* Pointer to destination node. */
+	uint minHops;          /* Minimum number of hops this edge represents. */
+	uint maxHops;          /* Maximum number of hops this edge represents. */
 };
 
 typedef struct QGEdge QGEdge;
 
 /* Creates a new edge, connecting src to dest node. */
-QGEdge* QGEdge_New(QGNode *src, QGNode *dest, const char *relationship, const char *alias, uint id);
+QGEdge *QGEdge_New(QGNode *src, QGNode *dest, const char *relationship, const char *alias, uint id);
 
 /* Create a duplicate of an edge containing all of the original's data. */
-QGEdge* QGEdge_Clone(const QGEdge *orig);
+QGEdge *QGEdge_Clone(const QGEdge *orig);
 
 /* Determine whether this is a variable length edge. */
 bool QGEdge_VariableLength(const QGEdge *e);

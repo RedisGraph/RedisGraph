@@ -11,18 +11,18 @@
 #include "../util/triemap/triemap.h"
 #include "../../deps/libcypher-parser/lib/src/cypher-parser.h"
 
-typedef const void* AST_IDENTIFIER;
+typedef const void *AST_IDENTIFIER;
 
 #define IDENTIFIER_NOT_FOUND UINT_MAX
 
 typedef enum {
-    AST_VALID,
-    AST_INVALID
+	AST_VALID,
+	AST_INVALID
 } AST_Validation;
 
 typedef struct {
-    const cypher_astnode_t *root;     // Root element of libcypher-parser AST
-    TrieMap *entity_map;              // Mapping of aliases and AST node pointers to AST IDs
+	const cypher_astnode_t *root;     // Root element of libcypher-parser AST
+	TrieMap *entity_map;              // Mapping of aliases and AST node pointers to AST IDs
 } AST;
 
 // Checks to see if libcypher-parser reported any errors.
@@ -34,31 +34,31 @@ AST_Validation AST_Validate(RedisModuleCtx *ctx, const cypher_parse_result_t *re
 // Checks if the parse result represents a read-only query.
 bool AST_ReadOnly(const cypher_parse_result_t *result);
 
-// Checks to see if AST contains specified clause. 
+// Checks to see if AST contains specified clause.
 bool AST_ContainsClause(const AST *ast, cypher_astnode_type_t clause);
 
 // Returns all function (aggregated & none aggregated) mentioned in query.
 void AST_ReferredFunctions(const cypher_astnode_t *root, TrieMap *referred_funcs);
 
 // Returns specified clause or NULL.
-const cypher_astnode_t* AST_GetClause(const AST *ast, cypher_astnode_type_t clause_type);
+const cypher_astnode_t *AST_GetClause(const AST *ast, cypher_astnode_type_t clause_type);
 
 // Returns the indexes into the AST of all instances of the given clause.
-uint* AST_GetClauseIndices(const AST *ast, cypher_astnode_type_t clause_type);
+uint *AST_GetClauseIndices(const AST *ast, cypher_astnode_type_t clause_type);
 
 // Returns the number of times the given clause appears in the AST.
 uint AST_GetClauseCount(const AST *ast, cypher_astnode_type_t clause_type);
 
 // Returns all instances of the given clause in the AST.
-const cypher_astnode_t** AST_GetClauses(const AST *ast, cypher_astnode_type_t type);
+const cypher_astnode_t **AST_GetClauses(const AST *ast, cypher_astnode_type_t type);
 
 // Collect all user-provided aliases in the query.
 // (Only used for populating return expressions when "RETURN *" is specified.)
-const char** AST_CollectElementNames(AST *ast);
+const char **AST_CollectElementNames(AST *ast);
 
-AST* AST_Build(cypher_parse_result_t *parse_result);
+AST *AST_Build(cypher_parse_result_t *parse_result);
 
-AST* AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset);
+AST *AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset);
 
 // Convert an AST integer node (which is stored internally as a string) into an integer.
 long AST_ParseIntegerNode(const cypher_astnode_t *int_node);
@@ -87,6 +87,6 @@ uint ASTMap_FindOrAddAlias(const AST *ast, const char *alias, uint id);
 void AST_BuildEntityMap(AST *ast);
 
 // Retrieve
-AST* AST_GetFromTLS(void);
+AST *AST_GetFromTLS(void);
 
 void AST_Free(AST *ast);

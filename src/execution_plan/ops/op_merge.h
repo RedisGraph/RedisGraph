@@ -20,16 +20,17 @@
  * is created. */
 
 typedef struct {
-    OpBase op;                        // Base op.
-    GraphContext *gc;                 // Graph data.
-    NodeCreateCtx *nodes_to_merge;
-    EdgeCreateCtx *edges_to_merge;
-    ResultSetStatistics *stats;       // Required for statistics updates.
-    bool matched;                     // Has the entire pattern been matched?
-    bool created;                     // Has the entire pattern been created?
+	OpBase op;                        // Base op.
+	GraphContext *gc;                 // Graph data.
+	NodeCreateCtx *nodes_to_merge;
+	EdgeCreateCtx *edges_to_merge;
+	ResultSetStatistics *stats;       // Required for statistics updates.
+	bool matched;                     // Has the entire pattern been matched?
+	bool created;                     // Has the entire pattern been created?
 } OpMerge;
 
-OpBase* NewMergeOp(ResultSetStatistics *stats, NodeCreateCtx *nodes_to_merge, EdgeCreateCtx *edges_to_merge);
+OpBase *NewMergeOp(ResultSetStatistics *stats, NodeCreateCtx *nodes_to_merge,
+				   EdgeCreateCtx *edges_to_merge);
 OpResult OpMergeInit(OpBase *opBase);
 Record OpMergeConsume(OpBase *opBase);
 OpResult OpMergeReset(OpBase *ctx);

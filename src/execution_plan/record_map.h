@@ -13,8 +13,8 @@
 #define IDENTIFIER_NOT_FOUND UINT_MAX
 
 typedef struct {
-    TrieMap *map;       // Mapping of AST IDs and aliases to Record IDs
-    uint record_len;    // Length of Record being modified by this segment.
+	TrieMap *map;       // Mapping of AST IDs and aliases to Record IDs
+	uint record_len;    // Length of Record being modified by this segment.
 } RecordMap;
 
 /* Retrieve a Record ID given an alias, returning IDENTIFER_NOT_FOUND if alias is not mapped. */
@@ -30,7 +30,7 @@ uint RecordMap_FindOrAddAlias(RecordMap *record_map, const char *alias);
 uint RecordMap_FindOrAddID(RecordMap *record_map, uint entity_id);
 
 /* Create a new RecordMap. */
-RecordMap* RecordMap_New(void);
+RecordMap *RecordMap_New(void);
 
 /* Free the given RecordMap. */
 void RecordMap_Free(RecordMap *record_map);

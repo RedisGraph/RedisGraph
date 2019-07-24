@@ -15,28 +15,29 @@
 
 // Matrix, vector operations.
 typedef enum {
-    AGGREGATED,
-    NON_AGGREGATED,
+	AGGREGATED,
+	NON_AGGREGATED,
 } ExpClassification;
 
 /* Aggregate
- * aggregates graph according to  
+ * aggregates graph according to
  * return clause */
- typedef struct {
-    OpBase op;
-    AST *ast;
-    AR_ExpNode **exps;
-    AR_ExpNode **order_exps;
-    AR_ExpNode **non_aggregated_expressions;       /* Array of arithmetic expression. */
-    ExpClassification *expression_classification;  /* classifies expression as aggregated/non-aggregated. */
-    Group *group;                                  /* Last accessed group. */
-    TrieMap *groups;
-    SIValue *group_keys;                           /* Array of values composing an aggregated group. */
-    CacheGroupIterator *groupIter;
-    Record last_record;
- } OpAggregate;
+typedef struct {
+	OpBase op;
+	AST *ast;
+	AR_ExpNode **exps;
+	AR_ExpNode **order_exps;
+	AR_ExpNode **non_aggregated_expressions;       /* Array of arithmetic expression. */
+	ExpClassification
+	*expression_classification;  /* classifies expression as aggregated/non-aggregated. */
+	Group *group;                                  /* Last accessed group. */
+	TrieMap *groups;
+	SIValue *group_keys;                           /* Array of values composing an aggregated group. */
+	CacheGroupIterator *groupIter;
+	Record last_record;
+} OpAggregate;
 
-OpBase* NewAggregateOp(AR_ExpNode **expressions, uint *modifies);
+OpBase *NewAggregateOp(AR_ExpNode **expressions, uint *modifies);
 OpResult AggregateInit(OpBase *opBase);
 Record AggregateConsume(OpBase *opBase);
 OpResult AggregateReset(OpBase *opBase);

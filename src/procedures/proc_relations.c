@@ -13,66 +13,66 @@
 // CALL db.relationshipTypes()
 
 typedef struct {
-    uint schema_id;     // Current schema ID.
-    GraphContext *gc;   // Graph context.
-    SIValue *output;    // Output label.
+	uint schema_id;     // Current schema ID.
+	GraphContext *gc;   // Graph context.
+	SIValue *output;    // Output label.
 } RelationsContext;
 
 ProcedureResult Proc_RelationsInvoke(ProcedureCtx *ctx, const char **args) {
-    if(array_len(args) != 0) return PROCEDURE_ERR;
+	if(array_len(args) != 0) return PROCEDURE_ERR;
 
-    RelationsContext *pdata = rm_malloc(sizeof(RelationsContext));
-    pdata->schema_id = 0;
-    pdata->gc = GraphContext_GetFromTLS();
-    pdata->output = array_new(SIValue, 2);
-    pdata->output = array_append(pdata->output, SI_ConstStringVal("relationshipType"));
-    pdata->output = array_append(pdata->output, SI_ConstStringVal("")); // Place holder.
+	RelationsContext *pdata = rm_malloc(sizeof(RelationsContext));
+	pdata->schema_id = 0;
+	pdata->gc = GraphContext_GetFromTLS();
+	pdata->output = array_new(SIValue, 2);
+	pdata->output = array_append(pdata->output, SI_ConstStringVal("relationshipType"));
+	pdata->output = array_append(pdata->output, SI_ConstStringVal("")); // Place holder.
 
-    ctx->privateData = pdata;
-    return PROCEDURE_OK;
+	ctx->privateData = pdata;
+	return PROCEDURE_OK;
 }
 
-SIValue* Proc_RelationsStep(ProcedureCtx *ctx) {
-    assert(ctx->privateData);
+SIValue *Proc_RelationsStep(ProcedureCtx *ctx) {
+	assert(ctx->privateData);
 
-    RelationsContext *pdata = (RelationsContext*)ctx->privateData;
+	RelationsContext *pdata = (RelationsContext *)ctx->privateData;
 
-    // Depleted?
-    if(pdata->schema_id >= GraphContext_SchemaCount(pdata->gc, SCHEMA_EDGE))
-    return NULL;
+	// Depleted?
+	if(pdata->schema_id >= GraphContext_SchemaCount(pdata->gc, SCHEMA_EDGE))
+		return NULL;
 
-    // Get schema name.
-    Schema *s = GraphContext_GetSchemaByID(pdata->gc, pdata->schema_id++, SCHEMA_EDGE);
-    char *name = (char*)Schema_GetName(s);
-    pdata->output[1] = SI_ConstStringVal(name);
-    return pdata->output;
+	// Get schema name.
+	Schema *s = GraphContext_GetSchemaByID(pdata->gc, pdata->schema_id++, SCHEMA_EDGE);
+	char *name = (char *)Schema_GetName(s);
+	pdata->output[1] = SI_ConstStringVal(name);
+	return pdata->output;
 }
 
 ProcedureResult Proc_RelationsFree(ProcedureCtx *ctx) {
-    // Clean up.
-    if(ctx->privateData) {
-        RelationsContext *pdata = ctx->privateData;
-        array_free(pdata->output);
-        rm_free(ctx->privateData);
-    }
+	// Clean up.
+	if(ctx->privateData) {
+		RelationsContext *pdata = ctx->privateData;
+		array_free(pdata->output);
+		rm_free(ctx->privateData);
+	}
 
-    return PROCEDURE_OK;
+	return PROCEDURE_OK;
 }
 
-ProcedureCtx* Proc_RelationsCtx() {
-    void *privateData = NULL;
-    ProcedureOutput **outputs = array_new(ProcedureOutput*, 1);
-    ProcedureOutput *output = rm_malloc(sizeof(ProcedureOutput));
-    output->name = "relationshipType";
-    output->type = T_CONSTSTRING;
+ProcedureCtx *Proc_RelationsCtx() {
+	void *privateData = NULL;
+	ProcedureOutput **outputs = array_new(ProcedureOutput *, 1);
+	ProcedureOutput *output = rm_malloc(sizeof(ProcedureOutput));
+	output->name = "relationshipType";
+	output->type = T_CONSTSTRING;
 
-    outputs = array_append(outputs, output);
-    ProcedureCtx *ctx = ProcCtxNew("db.relationshipTypes",
-                                    0,
-                                    outputs,
-                                    Proc_RelationsStep,
-                                    Proc_RelationsInvoke,
-                                    Proc_RelationsFree,
-                                    privateData);
-    return ctx;
+	outputs = array_append(outputs, output);
+	ProcedureCtx *ctx = ProcCtxNew("db.relationshipTypes",
+								   0,
+								   outputs,
+								   Proc_RelationsStep,
+								   Proc_RelationsInvoke,
+								   Proc_RelationsFree,
+								   privateData);
+	return ctx;
 }

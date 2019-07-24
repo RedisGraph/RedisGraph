@@ -14,23 +14,23 @@ extern threadpool _thpool;
 
 /* Multi threaded bulk insert context. */
 typedef struct {
-    RedisModuleBlockedClient *bc;   // Blocked client.
-    double tic[2];                  // timings.
-    RedisModuleString **argv;
-    int argc;
+	RedisModuleBlockedClient *bc;   // Blocked client.
+	double tic[2];                  // timings.
+	RedisModuleString **argv;
+	int argc;
 } BulkInsertContext;
 
-BulkInsertContext* BulkInsertContext_New
+BulkInsertContext *BulkInsertContext_New
 (
-    RedisModuleCtx *ctx,
-    RedisModuleBlockedClient *bc,
-    RedisModuleString **argv,
-    int argc
+	RedisModuleCtx *ctx,
+	RedisModuleBlockedClient *bc,
+	RedisModuleString **argv,
+	int argc
 );
 
 void BulkInsertContext_Free
 (
-    BulkInsertContext* ctx
+	BulkInsertContext *ctx
 );
 
 int MGraph_BulkInsert(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);

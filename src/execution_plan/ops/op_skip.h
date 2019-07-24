@@ -10,12 +10,12 @@
 #include "op.h"
 
 typedef struct {
-    OpBase op;
-    unsigned int rec_to_skip;
-    unsigned int skipped;
+	OpBase op;
+	unsigned int rec_to_skip;
+	unsigned int skipped;
 } OpSkip;
 
-OpBase* NewSkipOp(unsigned int rec_to_skip);
+OpBase *NewSkipOp(unsigned int rec_to_skip);
 
 Record SkipConsume(OpBase *op);
 

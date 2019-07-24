@@ -14,32 +14,32 @@
 #include "../redisearch_api.h"
 
 typedef enum {
-  SCHEMA_UNKNOWN,
-  SCHEMA_NODE,
-  SCHEMA_EDGE,
+	SCHEMA_UNKNOWN,
+	SCHEMA_NODE,
+	SCHEMA_EDGE,
 } SchemaType;
 
 /* Schema represents the structure of a typed graph entity (Node/Edge).
  * similar to a relational table structure, our schemas are a collection
  * of attributes we've encountered overtime as entities were created or updated. */
 typedef struct {
-  int id;                 /* Internal ID to a matrix within the graph. */
-  char *name;             /* Schema name. */
-  Index** indices;        /* Indices applicable to schema. */
-  RSIndex* fulltextIdx;   /* Full-text index. */
+	int id;                 /* Internal ID to a matrix within the graph. */
+	char *name;             /* Schema name. */
+	Index **indices;        /* Indices applicable to schema. */
+	RSIndex *fulltextIdx;   /* Full-text index. */
 } Schema;
 
 /* Creates a new schema. */
-Schema* Schema_New(const char *label, int id);
+Schema *Schema_New(const char *label, int id);
 
 const char *Schema_GetName(const Schema *s);
 
 /* Returns number of indices in schema. */
 unsigned short Schema_IndexCount(const Schema *s);
 
-/* Retrieves index from attribute. 
+/* Retrieves index from attribute.
  * Returns NULL if index wasn't found. */
-Index* Schema_GetIndex(Schema *s, Attribute_ID attr_id);
+Index *Schema_GetIndex(Schema *s, Attribute_ID attr_id);
 
 /* Sets schema fulltext index. */
 void Schema_SetFullTextIndex(Schema *s, RSIndex *idx);

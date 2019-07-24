@@ -16,22 +16,22 @@
 /* Creates new entities according to the CREATE clause. */
 
 typedef struct {
-    OpBase op;
-    QueryGraph *qg;
-    GraphContext *gc;
-    Record *records;
+	OpBase op;
+	QueryGraph *qg;
+	GraphContext *gc;
+	Record *records;
 
-    NodeCreateCtx *nodes_to_create;
-    EdgeCreateCtx *edges_to_create;
-    PropertyMap **node_properties;
-    PropertyMap **edge_properties;
+	NodeCreateCtx *nodes_to_create;
+	EdgeCreateCtx *edges_to_create;
+	PropertyMap **node_properties;
+	PropertyMap **edge_properties;
 
-    Node **created_nodes;
-    Edge **created_edges;
-    ResultSetStatistics *stats;
+	Node **created_nodes;
+	Edge **created_edges;
+	ResultSetStatistics *stats;
 } OpCreate;
 
-OpBase* NewCreateOp(ResultSetStatistics *stats, NodeCreateCtx *nodes, EdgeCreateCtx *edges);
+OpBase *NewCreateOp(ResultSetStatistics *stats, NodeCreateCtx *nodes, EdgeCreateCtx *edges);
 
 OpResult OpCreateInit(OpBase *opBase);
 Record OpCreateConsume(OpBase *opBase);

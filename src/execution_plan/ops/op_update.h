@@ -16,30 +16,33 @@
 
 // Context describing a pending update to perform.
 typedef struct {
-    const char *attribute;              /* Attribute name to update. */
-    Attribute_ID attr_id;               /* ID of attribute to update. */
-    Node n;
-    Edge e;
-    GraphEntityType entity_type;        /* Graph entity type. */
-    SIValue new_value;                  /* Constant value to set. */
+	const char *attribute;              /* Attribute name to update. */
+	Attribute_ID attr_id;               /* ID of attribute to update. */
+	Node n;
+	Edge e;
+	GraphEntityType entity_type;        /* Graph entity type. */
+	SIValue new_value;                  /* Constant value to set. */
 } EntityUpdateCtx;
 
 typedef struct {
-    OpBase op;
-    GraphContext *gc;
-    ResultSetStatistics *stats;
+	OpBase op;
+	GraphContext *gc;
+	ResultSetStatistics *stats;
 
-    uint update_expressions_count;
-    EntityUpdateEvalCtx *update_expressions;    /* List of entities to update and their arithmetic expressions. */
+	uint update_expressions_count;
+	EntityUpdateEvalCtx
+	*update_expressions;    /* List of entities to update and their arithmetic expressions. */
 
-    uint pending_updates_cap;
-    uint pending_updates_count;
-    EntityUpdateCtx *pending_updates;           /* List of entities to update and their actual new value. */
-    Record *records;                            /* Updated records, used only when query inspects updated entities. */
-    bool updates_commited;                      /* Updates performed? */
+	uint pending_updates_cap;
+	uint pending_updates_count;
+	EntityUpdateCtx
+	*pending_updates;           /* List of entities to update and their actual new value. */
+	Record *records;                            /* Updated records, used only when query inspects updated entities. */
+	bool updates_commited;                      /* Updates performed? */
 } OpUpdate;
 
-OpBase* NewUpdateOp(GraphContext *gc, EntityUpdateEvalCtx *update_exps, uint update_exp_count, ResultSetStatistics *stats);
+OpBase *NewUpdateOp(GraphContext *gc, EntityUpdateEvalCtx *update_exps, uint update_exp_count,
+					ResultSetStatistics *stats);
 OpResult OpUpdateInit(OpBase *opBase);
 Record OpUpdateConsume(OpBase *opBase);
 OpResult OpUpdateReset(OpBase *ctx);
