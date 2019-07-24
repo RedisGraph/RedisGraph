@@ -84,11 +84,11 @@ TEST_F(TemporalValueTest, TestYear)
 
     // check for time
     RG_TemporalValue time = RG_Time_New_FromTimeSpec(ts);
-    ASSERT_EQ(RG_TemporalValue_GetYear(time), INT_MIN);
+    ASSERT_EQ(RG_TemporalValue_GetYear(time), INT64_MIN);
 
     // check for local time
     RG_TemporalValue localTime = RG_LocalTime_New_FromTimeSpec(ts);
-    ASSERT_EQ(RG_TemporalValue_GetYear(localTime), INT_MIN);
+    ASSERT_EQ(RG_TemporalValue_GetYear(localTime), INT64_MIN);
 }
 
 TEST_F(TemporalValueTest, TestQuarter)
@@ -115,11 +115,11 @@ TEST_F(TemporalValueTest, TestQuarter)
 
             // check for time
             RG_TemporalValue time = RG_Time_New_FromTimeSpec(ts);
-            ASSERT_EQ(RG_TemporalValue_GetQuarter(time), INT_MIN);
+            ASSERT_EQ(RG_TemporalValue_GetQuarter(time), INT64_MIN);
 
             // check for local time
             RG_TemporalValue localTime = RG_LocalTime_New_FromTimeSpec(ts);
-            ASSERT_EQ(RG_TemporalValue_GetQuarter(localTime), INT_MIN);
+            ASSERT_EQ(RG_TemporalValue_GetQuarter(localTime), INT64_MIN);
         }
     }
 }
@@ -146,11 +146,11 @@ TEST_F(TemporalValueTest, TestMonth)
 
         // check for time
         RG_TemporalValue time = RG_Time_New_FromTimeSpec(ts);
-        ASSERT_EQ(RG_TemporalValue_GetMonth(time), INT_MIN);
+        ASSERT_EQ(RG_TemporalValue_GetMonth(time), INT64_MIN);
 
         // check for local time
         RG_TemporalValue localTime = RG_LocalTime_New_FromTimeSpec(ts);
-        ASSERT_EQ(RG_TemporalValue_GetMonth(localTime), INT_MIN);
+        ASSERT_EQ(RG_TemporalValue_GetMonth(localTime), INT64_MIN);
     }
 }
 
@@ -177,11 +177,11 @@ TEST_F(TemporalValueTest, TestWeek)
 
     // check for time
     RG_TemporalValue time = RG_Time_New_FromTimeSpec(ts);
-    ASSERT_EQ(RG_TemporalValue_GetWeek(time), INT_MIN);
+    ASSERT_EQ(RG_TemporalValue_GetWeek(time), INT64_MIN);
 
     // check for local time
     RG_TemporalValue localTime = RG_LocalTime_New_FromTimeSpec(ts);
-    ASSERT_EQ(RG_TemporalValue_GetWeek(localTime), INT_MIN);
+    ASSERT_EQ(RG_TemporalValue_GetWeek(localTime), INT64_MIN);
 }
 
 TEST_F(TemporalValueTest, TestWeekYear)
@@ -207,11 +207,11 @@ TEST_F(TemporalValueTest, TestWeekYear)
 
     // check for time
     RG_TemporalValue time = RG_Time_New_FromTimeSpec(ts);
-    ASSERT_EQ(RG_TemporalValue_GetWeekYear(time), INT_MIN);
+    ASSERT_EQ(RG_TemporalValue_GetWeekYear(time), INT64_MIN);
 
     // check for local time
     RG_TemporalValue localTime = RG_LocalTime_New_FromTimeSpec(ts);
-    ASSERT_EQ(RG_TemporalValue_GetWeekYear(localTime), INT_MIN);
+    ASSERT_EQ(RG_TemporalValue_GetWeekYear(localTime), INT64_MIN);
 }
 
 TEST_F(TemporalValueTest, TestDayOfQuarter)
@@ -237,11 +237,11 @@ TEST_F(TemporalValueTest, TestDayOfQuarter)
 
     // check for time
     RG_TemporalValue time = RG_Time_New_FromTimeSpec(ts);
-    ASSERT_EQ(RG_TemporalValue_GetDayOfQuarter(time), INT_MIN);
+    ASSERT_EQ(RG_TemporalValue_GetDayOfQuarter(time), INT64_MIN);
 
     // check for local time
     RG_TemporalValue localTime = RG_LocalTime_New_FromTimeSpec(ts);
-    ASSERT_EQ(RG_TemporalValue_GetDayOfQuarter(localTime), INT_MIN);
+    ASSERT_EQ(RG_TemporalValue_GetDayOfQuarter(localTime), INT64_MIN);
 }
 
 TEST_F(TemporalValueTest, TestDay)
@@ -270,13 +270,13 @@ TEST_F(TemporalValueTest, TestDay)
 
     // check for time
     RG_TemporalValue time = RG_Time_New_FromTimeSpec(ts);
-    ASSERT_EQ(RG_TemporalValue_GetMonth(time), INT_MIN);
-    ASSERT_EQ(RG_TemporalValue_GetDay(time), INT_MIN);
+    ASSERT_EQ(RG_TemporalValue_GetMonth(time), INT64_MIN);
+    ASSERT_EQ(RG_TemporalValue_GetDay(time), INT64_MIN);
 
     // check for local time
     RG_TemporalValue localTime = RG_LocalTime_New_FromTimeSpec(ts);
-    ASSERT_EQ(RG_TemporalValue_GetMonth(time), INT_MIN);
-    ASSERT_EQ(RG_TemporalValue_GetDay(time), INT_MIN);
+    ASSERT_EQ(RG_TemporalValue_GetMonth(time), INT64_MIN);
+    ASSERT_EQ(RG_TemporalValue_GetDay(time), INT64_MIN);
 }
 
 TEST_F(TemporalValueTest, TestOrdinalDay)
@@ -308,15 +308,15 @@ TEST_F(TemporalValueTest, TestOrdinalDay)
 
     // check for time
     RG_TemporalValue time = RG_Time_New_FromTimeSpec(ts);
-    ASSERT_EQ(RG_TemporalValue_GetMonth(time), INT_MIN);
-    ASSERT_EQ(RG_TemporalValue_GetDay(time), INT_MIN);
-    ASSERT_EQ(RG_TemporalValue_GetOrdinalDay(time), INT_MIN);
+    ASSERT_EQ(RG_TemporalValue_GetMonth(time), INT64_MIN);
+    ASSERT_EQ(RG_TemporalValue_GetDay(time), INT64_MIN);
+    ASSERT_EQ(RG_TemporalValue_GetOrdinalDay(time), INT64_MIN);
 
     // check for local time
     RG_TemporalValue localTime = RG_LocalTime_New_FromTimeSpec(ts);
-    ASSERT_EQ(RG_TemporalValue_GetMonth(time), INT_MIN);
-    ASSERT_EQ(RG_TemporalValue_GetDay(time), INT_MIN);
-    ASSERT_EQ(RG_TemporalValue_GetOrdinalDay(time), INT_MIN);
+    ASSERT_EQ(RG_TemporalValue_GetMonth(localTime), INT64_MIN);
+    ASSERT_EQ(RG_TemporalValue_GetDay(localTime), INT64_MIN);
+    ASSERT_EQ(RG_TemporalValue_GetOrdinalDay(localTime), INT64_MIN);
 }
 
 TEST_F(TemporalValueTest, TestDayOfWeek)
@@ -344,12 +344,64 @@ TEST_F(TemporalValueTest, TestDayOfWeek)
 
         // check for time
         RG_TemporalValue time = RG_Time_New_FromTimeSpec(ts);
-        ASSERT_EQ(RG_TemporalValue_GetDayOfWeek(time), INT_MIN);
+        ASSERT_EQ(RG_TemporalValue_GetDayOfWeek(time), INT64_MIN);
 
         // check for local time
         RG_TemporalValue localTime = RG_LocalTime_New_FromTimeSpec(ts);
-        ASSERT_EQ(RG_TemporalValue_GetDayOfWeek(localTime), INT_MIN);
+        ASSERT_EQ(RG_TemporalValue_GetDayOfWeek(localTime), INT64_MIN);
     }
+}
+
+TEST_F(TemporalValueTest, TestTime)
+{
+    struct tm t = makeNewBrokenTime();
+    t.tm_sec = 41;
+    t.tm_min = 37;
+    t.tm_hour = 14;
+    struct timespec ts = createTimespec(t);
+    ts.tv_nsec = 123456789;
+    // check for datetime
+    RG_TemporalValue dateTime = RG_DateTime_New_FromTimeSpec(ts);
+    ASSERT_EQ(RG_TemporalValue_GetHour(dateTime), 14);
+    ASSERT_EQ(RG_TemporalValue_GetMinute(dateTime), 37);
+    ASSERT_EQ(RG_TemporalValue_GetSecond(dateTime), 41);
+    ASSERT_EQ(RG_TemporalValue_GetMillisecond(dateTime), 123);
+    ASSERT_EQ(RG_TemporalValue_GetMicrosecond(dateTime), 123456);
+    ASSERT_EQ(RG_TemporalValue_GetNanosecond(dateTime), 123456789);
+    // check for local dateTime
+    RG_TemporalValue localDateTime = RG_LocalDateTime_New_FromTimeSpec(ts);
+    ASSERT_EQ(RG_TemporalValue_GetHour(localDateTime), 14);
+    ASSERT_EQ(RG_TemporalValue_GetMinute(localDateTime), 37);
+    ASSERT_EQ(RG_TemporalValue_GetSecond(localDateTime), 41);
+    ASSERT_EQ(RG_TemporalValue_GetMillisecond(localDateTime), 123);
+    ASSERT_EQ(RG_TemporalValue_GetMicrosecond(localDateTime), 123456);
+    ASSERT_EQ(RG_TemporalValue_GetNanosecond(localDateTime), 123456789);
+    // check for time
+    RG_TemporalValue time = RG_Time_New_FromTimeSpec(ts);
+    ASSERT_EQ(RG_TemporalValue_GetHour(time), 14);
+    ASSERT_EQ(RG_TemporalValue_GetMinute(time), 37);
+    ASSERT_EQ(RG_TemporalValue_GetSecond(time), 41);
+    ASSERT_EQ(RG_TemporalValue_GetMillisecond(time), 123);
+    ASSERT_EQ(RG_TemporalValue_GetMicrosecond(time), 123456);
+    ASSERT_EQ(RG_TemporalValue_GetNanosecond(time), 123456789);
+
+    // check for local time
+    RG_TemporalValue localTime = RG_LocalTime_New_FromTimeSpec(ts);
+    ASSERT_EQ(RG_TemporalValue_GetHour(localTime), 14);
+    ASSERT_EQ(RG_TemporalValue_GetMinute(localTime), 37);
+    ASSERT_EQ(RG_TemporalValue_GetSecond(localTime), 41);
+    ASSERT_EQ(RG_TemporalValue_GetMillisecond(localTime), 123);
+    ASSERT_EQ(RG_TemporalValue_GetMicrosecond(localTime), 123456);
+    ASSERT_EQ(RG_TemporalValue_GetNanosecond(localTime), 123456789);
+
+    // check for date
+    RG_TemporalValue date = RG_Date_New_FromTimeSpec(ts);
+    ASSERT_EQ(RG_TemporalValue_GetHour(date), INT64_MIN);
+    ASSERT_EQ(RG_TemporalValue_GetMinute(date), INT64_MIN);
+    ASSERT_EQ(RG_TemporalValue_GetSecond(date), INT64_MIN);
+    ASSERT_EQ(RG_TemporalValue_GetMillisecond(date), INT64_MIN);
+    ASSERT_EQ(RG_TemporalValue_GetMicrosecond(date), INT64_MIN);
+    ASSERT_EQ(RG_TemporalValue_GetNanosecond(date), INT64_MIN);
 }
 
 // TEST_F(TimeStampTest, TestPrint) {

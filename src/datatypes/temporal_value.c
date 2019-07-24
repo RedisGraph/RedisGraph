@@ -136,7 +136,7 @@ struct timespec _createTimespecFromTm(struct tm t) {
 }
 
 // return 1 on failure, 0 on success
-int _timeDescriptor_YearWeek(const struct tm *timeDescriptor, int *year, int *week) {
+int _timeDescriptor_YearWeek(const struct tm *timeDescriptor, int64_t *year, int64_t *week) {
 	// work with local copy
 	struct tm tm = *timeDescriptor;
 	// fully populate the yday and wday fields.
@@ -164,62 +164,62 @@ int _timeDescriptor_YearWeek(const struct tm *timeDescriptor, int *year, int *we
 	return 0;
 }
 
-int RG_TemporalValue_GetYear(RG_TemporalValue temporalValue) {
+int64_t RG_TemporalValue_GetYear(RG_TemporalValue temporalValue) {
 	if(!(temporalValue.type & dateMask)) {
 		// not a date type. should return error/execption
-		return INT32_MIN;
+		return INT64_MIN;
 	}
 	struct tm *timeDescriptor  = _getTimeDescriptorFromTemporalValue(temporalValue);
 	return timeDescriptor->tm_year + 1900;
 }
 
-int RG_TemporalValue_GetQuarter(RG_TemporalValue temporalValue) {
+int64_t RG_TemporalValue_GetQuarter(RG_TemporalValue temporalValue) {
 	if(!(temporalValue.type & dateMask)) {
 		// not a date type. should return error/execption
-		return INT32_MIN;
+		return INT64_MIN;
 	}
 	struct tm *timeDescriptor  = _getTimeDescriptorFromTemporalValue(temporalValue);
 	int month = timeDescriptor->tm_mon;
 	return (month / 3) + 1;
 }
 
-int RG_TemporalValue_GetMonth(RG_TemporalValue temporalValue) {
+int64_t RG_TemporalValue_GetMonth(RG_TemporalValue temporalValue) {
 	if(!(temporalValue.type & dateMask)) {
 		// not a date type. should return error/execption
-		return INT32_MIN;
+		return INT64_MIN;
 	}
 	struct tm *timeDescriptor  = _getTimeDescriptorFromTemporalValue(temporalValue);
 	return timeDescriptor->tm_mon + 1;
 }
 
-int RG_TemporalValue_GetWeek(RG_TemporalValue temporalValue) {
+int64_t RG_TemporalValue_GetWeek(RG_TemporalValue temporalValue) {
 	if(!(temporalValue.type & dateMask)) {
 		// not a date type. should return error/execption
-		return INT32_MIN;
+		return INT64_MIN;
 	}
 	struct tm *timeDescriptor  = _getTimeDescriptorFromTemporalValue(temporalValue);
 
-	int y = 0, w = 0;
+	int64_t y = 0, w = 0;
 	int err = _timeDescriptor_YearWeek(timeDescriptor, &y, &w);
 	return w;
 }
 
-int RG_TemporalValue_GetWeekYear(RG_TemporalValue temporalValue) {
+int64_t RG_TemporalValue_GetWeekYear(RG_TemporalValue temporalValue) {
 	if(!(temporalValue.type & dateMask)) {
 		// not a date type. should return error/execption
-		return INT32_MIN;
+		return INT64_MIN;
 	}
 	struct tm *timeDescriptor  = _getTimeDescriptorFromTemporalValue(temporalValue);
 
-	int y = 0, w = 0;
+	int64_t y = 0, w = 0;
 	int err = _timeDescriptor_YearWeek(timeDescriptor, &y, &w);
 	return y;
 }
 
-int RG_TemporalValue_GetDayOfQuarter(RG_TemporalValue temporalValue) {
+int64_t RG_TemporalValue_GetDayOfQuarter(RG_TemporalValue temporalValue) {
 	if(!(temporalValue.type & dateMask)) {
 		// not a date type. should return error/execption
-		return INT32_MIN;
+		return INT64_MIN;
 	}
 	struct tm *timeDescriptor  = _getTimeDescriptorFromTemporalValue(temporalValue);
 
@@ -230,88 +230,88 @@ int RG_TemporalValue_GetDayOfQuarter(RG_TemporalValue temporalValue) {
 		return timeDescriptor->tm_yday - normalYearQuarterDaysAgg[q] + 1;
 }
 
-int RG_TemporalValue_GetDay(RG_TemporalValue temporalValue) {
+int64_t RG_TemporalValue_GetDay(RG_TemporalValue temporalValue) {
 	if(!(temporalValue.type & dateMask)) {
 		// not a date type. should return error/execption
-		return INT32_MIN;
+		return INT64_MIN;
 	}
 	struct tm *timeDescriptor  = _getTimeDescriptorFromTemporalValue(temporalValue);
 
 	return timeDescriptor->tm_mday;
 }
 
-int RG_TemporalValue_GetOrdinalDay(RG_TemporalValue temporalValue) {
+int64_t RG_TemporalValue_GetOrdinalDay(RG_TemporalValue temporalValue) {
 	if(!(temporalValue.type & dateMask)) {
 		// not a date type. should return error/execption
-		return INT32_MIN;
+		return INT64_MIN;
 	}
 	struct tm *timeDescriptor  = _getTimeDescriptorFromTemporalValue(temporalValue);
 
 	return timeDescriptor->tm_yday + 1;
 }
 
-int RG_TemporalValue_GetDayOfWeek(RG_TemporalValue temporalValue) {
+int64_t RG_TemporalValue_GetDayOfWeek(RG_TemporalValue temporalValue) {
 	if(!(temporalValue.type & dateMask)) {
 		// not a date type. should return error/execption
-		return INT32_MIN;
+		return INT64_MIN;
 	}
 	struct tm *timeDescriptor  = _getTimeDescriptorFromTemporalValue(temporalValue);
 	// tm first day is Sunday, Cypher first day is Monday
 	return (timeDescriptor->tm_wday + 6) % 7 + 1;
 }
 
-int RG_TemporalValue_GetHour(RG_TemporalValue temporalValue) {
+int64_t RG_TemporalValue_GetHour(RG_TemporalValue temporalValue) {
 	if(!(temporalValue.type & timeMask)) {
-		// not a date type. should return error/execption
-		return INT32_MIN;
+		// not a time type. should return error/execption
+		return INT64_MIN;
 	}
 	struct tm *timeDescriptor  = _getTimeDescriptorFromTemporalValue(temporalValue);
 
 	return timeDescriptor->tm_hour;
 }
 
-int RG_TemporalValue_GetMinute(RG_TemporalValue temporalValue) {
+int64_t RG_TemporalValue_GetMinute(RG_TemporalValue temporalValue) {
 	if(!(temporalValue.type & timeMask)) {
-		// not a date type. should return error/execption
-		return INT32_MIN;
+		// not a time type. should return error/execption
+		return INT64_MIN;
 	}
 	struct tm *timeDescriptor  = _getTimeDescriptorFromTemporalValue(temporalValue);
 
 	return timeDescriptor->tm_min;
 }
 
-int RG_TemporalValue_GetSecond(RG_TemporalValue temporalValue) {
+int64_t RG_TemporalValue_GetSecond(RG_TemporalValue temporalValue) {
 	if(!(temporalValue.type & timeMask)) {
-		// not a date type. should return error/execption
-		return INT32_MIN;
+		// not a time type. should return error/execption
+		return INT64_MIN;
 	}
 	struct tm *timeDescriptor  = _getTimeDescriptorFromTemporalValue(temporalValue);
 
 	return timeDescriptor->tm_sec;
 }
 
-int RG_TemporalValue_GetMillisecond(RG_TemporalValue temporalValue) {
+int64_t RG_TemporalValue_GetMillisecond(RG_TemporalValue temporalValue) {
 	if(!(temporalValue.type & timeMask)) {
-		// not a date type. should return error/execption
-		return INT32_MIN;
+		// not a time type. should return error/execption
+		return INT64_MIN;
 	}
 
-	return temporalValue.nano * 1000000;
+	return temporalValue.nano / 1000000;
 }
 
-int RG_TemporalValue_GetMicrosecond(RG_TemporalValue temporalValue) {
+int64_t RG_TemporalValue_GetMicrosecond(RG_TemporalValue temporalValue) {
 	if(!(temporalValue.type & timeMask)) {
-		// not a date type. should return error/execption
-		return INT32_MIN;
+		// not a time type. should return error/execption
+		return INT64_MIN;
 	}
 
-	return temporalValue.nano * 1000;
+	return temporalValue.nano / 1000;
 }
 
-int RG_TemporalValue_GetNaosecond(RG_TemporalValue temporalValue) {
+int64_t RG_TemporalValue_GetNanosecond(RG_TemporalValue temporalValue) {
 	if(!(temporalValue.type & timeMask)) {
-		// not a date type. should return error/execption
-		return INT32_MIN;
+		// not a time type. should return error/execption
+		return INT64_MIN;
 	}
 
 	return temporalValue.nano;
