@@ -12,7 +12,14 @@ extern const int normalYearQuarterDaysAgg[4];
 extern const int leapYearQuarterDays[4];
 extern const int leapYearQuarterDaysAgg[4];
 
-extern const int normalYearMonthDaysAgg[11];
-extern const int leapYearMonthDaysAgg[11];
+extern const int normalYearMonthDaysAgg[12];
+extern const int leapYearMonthDaysAgg[12];
+
+/**
+  * @brief  return is a year is leap year or not (feb 29)
+  * @note   
+  * @param  year: 
+  * @retval 
+  */
 
 bool isLeapYear(int year);

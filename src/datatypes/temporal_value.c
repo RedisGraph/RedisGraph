@@ -14,6 +14,30 @@ const char utcFormat[] = "YYYY-MM-DDTHH:MM:SS.NNNNNNNNNz";
 const int dateMask = DATE | DATE_TIME | LOCAL_DATE_TIME;
 const int timeMask = TIME | LOCAL_TIME | DATE_TIME | LOCAL_DATE_TIME;
 
+/**
+ * @brief  auxilary method to generate a tm struct from temporal value
+ * @param  temporalValue:
+ * @retval tm struct time descriptor
+ */
+struct tm *_getTimeDescriptorFromTemporalValue(RG_TemporalValue temporalValue) {
+	struct timespec ts;
+	ts.tv_sec = temporalValue.seconds;
+	ts.tv_nsec = temporalValue.nano;
+	return gmtime(&ts.tv_sec);
+}
+/**
+ * @brief  auxilary method to generate a timespec struct from tm struct
+ * @param  t: tm struct
+ * @retval timespec, with nano value = 0
+ */
+struct timespec _createTimespecFromTm(struct tm t) {
+	time_t epoch = timegm(&t);
+	struct timespec ts;
+	ts.tv_sec = epoch;
+	ts.tv_nsec = 0;
+	return ts;
+}
+
 RG_TemporalValue RG_TemporalValue_New_FromTimeSpec(RG_TemporalType temporalType,
 												   struct timespec ts) {
 	RG_TemporalValue temporalValue;
@@ -111,31 +135,14 @@ RG_TemporalValue RG_LocalDateTime_New_FromString(const char *str) {
 	return RG_LocalDateTime_New_FromTimeSpec(ts);
 }
 
-
-// SIValue RG_TemporalValue_ToSIValue(RG_TemporalValue timeStamp) {
-//     return (struct SIValue)timeStamp;
-
-// }
-// RG_TemporalValue SIValue_ToRG_TemporalValue(SIValue value) {
-//     return (RG_TemporalValue)value;
-// }
-
-struct tm *_getTimeDescriptorFromTemporalValue(RG_TemporalValue temporalValue) {
-	struct timespec ts;
-	ts.tv_sec = temporalValue.seconds;
-	ts.tv_nsec = temporalValue.nano;
-	return gmtime(&ts.tv_sec);
-}
-
-struct timespec _createTimespecFromTm(struct tm t) {
-	time_t epoch = timegm(&t);
-	struct timespec ts;
-	ts.tv_sec = epoch;
-	ts.tv_nsec = 0;
-	return ts;
-}
-
-// return 1 on failure, 0 on success
+/**
+ * @brief  return the right week in a year according to ISO 8601. taken from https://stackoverflow.com/questions/42568215/iso-8601-week-number-in-c
+ * @note
+ * @param  *timeDescriptor: a tm struct
+ * @param  *year: out-by-pointer year value
+ * @param  *week: out-by-pointer week value
+ * @retval return 1 on failure, 0 on success
+ */
 int _timeDescriptor_YearWeek(const struct tm *timeDescriptor, int64_t *year, int64_t *week) {
 	// work with local copy
 	struct tm tm = *timeDescriptor;
