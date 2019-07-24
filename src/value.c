@@ -146,6 +146,7 @@ int SIValue_ToDouble(const SIValue *v, double *d) {
 	case T_DOUBLE:
 		*d = v->doubleval;
 		return 1;
+	case T_INT64:
 	case T_BOOL:
 		*d = (double)v->longval;
 		return 1;
