@@ -92,6 +92,12 @@ def prepareExpectedValue(expectedValue):
         expectedValue = toNumeric(expectedValue)
     return expectedValue
 
+def prepare_actual_row(row):
+    return tuple(prepareActualValue(cell) for cell in row)
+
+def prepare_expected_row(row):
+    return tuple(prepareExpectedValue(cell) for cell in row)
+
 def assert_empty_resultset(resultset):
     assert len(resultset.result_set) is 0
 
@@ -119,33 +125,19 @@ def assert_no_modifications(resultset):
 def assert_resultset_length(resultset, length):
     assert(len(resultset.result_set) == length)
 
-def assert_values_equal(actual, expected):
-    # prepare values and compare
-    actual = prepareActualValue(actual)
-    expected = prepareExpectedValue(expected)
-    assert actual == expected , "actualCell: %s differ from expectedCell: %s\n" % (actual, expected)
-
-def assert_rows_equal(actualRow, expectedRow):
-    expectedRowLength = len(expectedRow)
-    for cellIdx in range(expectedRowLength):
-        # compare each value
-        assert_values_equal(actualRow[cellIdx], expectedRow[cellIdx])
-
 def assert_resultsets_equals_in_order(actual, expected):
-    actual_ctr = Counter(tuple(row) for row in resultset.result_set)
-    expected_ctr = Counter(tuple(row) for row in context.table)
-    assert actual_ctr == expected_ctr
-
-def assert_resultsets_equals(actual, expected):
     rowCount = len(expected.rows)
     # check amount of rows
     assert_resultset_length(actual, rowCount)
-    if rowCount > 0:
-        # if there are rows, check row length
-        assert len(actual.result_set[0]) == len(expected.rows[0])
-        for rowIdx in range(rowCount):
-            actualRow = actual.result_set[rowIdx]
-            expectedRow = expected.rows[rowIdx]
-            # compare rows
-            assert_rows_equal(actualRow, expectedRow)
-            
+    for rowIdx in range(rowCount):
+        actualRow = prepare_actual_row(actual.result_set[rowIdx])
+        expectedRow = prepare_expected_row(expected.rows[rowIdx])
+        # compare rows
+        assert actualRow == expectedRow
+
+def assert_resultsets_equals(actual, expected):
+    # Convert each row to a tuple, and maintain a count of how many times that row appears
+    actualCtr = Counter(prepare_actual_row(row) for row in actual.result_set)
+    expectedCtr = Counter(prepare_expected_row(row) for row in expected)
+    # Validate that the constructed Counters are equal
+    assert actualCtr == expectedCtr

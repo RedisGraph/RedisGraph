@@ -34,13 +34,13 @@ Feature: LargeIntegerEquality
     Given an empty graph
     And having executed:
       """
-      CREATE (:Label {id: 4611686018427387905})
+      CREATE (:TheLabel {id: 4611686018427387905})
       """
 
   Scenario: Does not lose precision
     When executing query:
       """
-      MATCH (p:Label)
+      MATCH (p:TheLabel)
       RETURN p.id
       """
     Then the result should be:
@@ -51,7 +51,7 @@ Feature: LargeIntegerEquality
   Scenario: Handling inlined equality of large integer
     When executing query:
       """
-      MATCH (p:Label {id: 4611686018427387905})
+      MATCH (p:TheLabel {id: 4611686018427387905})
       RETURN p.id
       """
     Then the result should be:
@@ -62,7 +62,7 @@ Feature: LargeIntegerEquality
   Scenario: Handling explicit equality of large integer
     When executing query:
       """
-      MATCH (p:Label)
+      MATCH (p:TheLabel)
       WHERE p.id = 4611686018427387905
       RETURN p.id
       """
@@ -74,20 +74,20 @@ Feature: LargeIntegerEquality
   Scenario: Handling inlined equality of large integer, non-equal values
     When executing query:
       """
-      MATCH (p:Label {id : 4611686018427387900})
+      MATCH (p:TheLabel {id : 4611686018427387900})
       RETURN p.id
       """
     Then the result should be:
-      | p.id                |
+      | p.id |
     And no side effects
 
   Scenario: Handling explicit equality of large integer, non-equal values
     When executing query:
       """
-      MATCH (p:Label)
+      MATCH (p:TheLabel)
       WHERE p.id = 4611686018427387900
       RETURN p.id
       """
     Then the result should be:
-      | p.id                |
+      | p.id |
     And no side effects

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2018 "Neo Technology,"
+# Copyright (c) 2015-2019 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -65,7 +65,7 @@ Feature: Create
     Given an empty graph
     When executing query:
       """
-      CREATE (:Label)
+      CREATE (:TheLabel)
       """
     Then the result should be empty
     And the side effects should be:
@@ -76,7 +76,7 @@ Feature: Create
     Given any graph
     When executing query:
       """
-      CREATE ({created: true})
+      CREATE ({ok: true})
       """
     Then the result should be empty
     And the side effects should be:

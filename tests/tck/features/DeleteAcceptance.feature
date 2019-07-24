@@ -29,7 +29,7 @@
 #encoding: utf-8
 
 Feature: DeleteAcceptance
-  
+
   Scenario: Delete nodes
     Given an empty graph
     And having executed:
