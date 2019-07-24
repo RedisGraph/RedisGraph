@@ -1,0 +1,26 @@
+# .astylerc
+# http://astyle.sourceforge.net/astyle.html
+
+--mode=c
+--style=google
+--indent=force-tab=4
+--pad-oper
+--unpad-paren
+--align-pointer=name
+--max-code-length=100
+--max-continuation-indent=80
+--min-conditional-indent=0
+--break-after-logical
+--preserve-date
+--suffix=none
+--exclude=demo
+--exclude=deps
+--exclude=docs
+--exclude=tests
+--exclude=src/util
+--exclude=src/redismodule.h
+--exclude=src/redisearch_api.h
+--exclude=src/parser/grammar.c
+--exclude=src/parser/lemon.c
+--exclude=src/parser/lempar.c
+--exclude=src/parser/lex.yy.c
