@@ -10,22 +10,20 @@
 #include <stdint.h>
 #include <time.h>
 
-typedef enum
-{
-    TIME = 1,
-    LOCAL_TIME = 2,
-    DATE = 4,
-    DATE_TIME = 8,
-    LOCAL_DATE_TIME = 16,
-    DURATION = 32
+typedef enum {
+	TIME = 1,
+	LOCAL_TIME = 2,
+	DATE = 4,
+	DATE_TIME = 8,
+	LOCAL_DATE_TIME = 16,
+	DURATION = 32
 } RG_TemporalType;
 
-typedef struct
-{
-    time_t seconds;             // holds nano seconds from epoch
-    uint32_t nano;              // holds nano seconds delta
-    unsigned int type : 6;      // holds type
-    unsigned int timeZone : 26; // bitmap to hold temporal type and timezone id
+typedef struct {
+	time_t seconds;             // holds nano seconds from epoch
+	uint32_t nano;              // holds nano seconds delta
+	unsigned int type : 6;      // holds type
+	unsigned int timeZone : 26; // bitmap to hold temporal type and timezone id
 } RG_TemporalValue;
 
 // new temporal values
@@ -207,8 +205,8 @@ int64_t RG_TemporalValue_GetNanosecond(RG_TemporalValue temporalValue);
 
 /**
   * @brief  toString function
-  * @note   
-  * @param  temporalValue: 
+  * @note
+  * @param  temporalValue:
   * @retval a string represantion of the value
   */
 
@@ -216,7 +214,7 @@ const char *RG_TemporalValue_ToString(RG_TemporalValue temporalValue);
 
 /**
   * @brief  compare between two temporal values
-  * @note   
+  * @note
   * @param  a: temporal value
   * @param  b: temporal value
   * @retval negative value if a < b, 0 if equal, positive if b < a

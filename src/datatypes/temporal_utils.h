@@ -17,9 +17,9 @@ extern const int leapYearMonthDaysAgg[12];
 
 /**
   * @brief  return is a year is leap year or not (feb 29)
-  * @note   
-  * @param  year: 
-  * @retval 
+  * @note
+  * @param  year:
+  * @retval
   */
 
 bool isLeapYear(int year);
