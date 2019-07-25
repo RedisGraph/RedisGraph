@@ -30,6 +30,7 @@
 
 Feature: KeysAcceptance
 
+@skip
   Scenario: Using `keys()` on a single node, non-empty result
     Given an empty graph
     And having executed:
@@ -48,6 +49,7 @@ Feature: KeysAcceptance
       | 'surname' |
     And no side effects
 
+@skip
   Scenario: Using `keys()` on multiple nodes, non-empty result
     Given an empty graph
     And having executed:
@@ -69,6 +71,7 @@ Feature: KeysAcceptance
       | 'otherSurname' |
     And no side effects
 
+@skip
   Scenario: Using `keys()` on a single node, empty result
     Given an empty graph
     And having executed:
@@ -85,6 +88,7 @@ Feature: KeysAcceptance
       | theProps |
     And no side effects
 
+@skip
   Scenario: Using `keys()` on an optionally matched node
     Given an empty graph
     And having executed:
@@ -101,6 +105,7 @@ Feature: KeysAcceptance
       | theProps |
     And no side effects
 
+@skip
   Scenario: Using `keys()` on a relationship, non-empty result
     Given an empty graph
     And having executed:
@@ -119,6 +124,7 @@ Feature: KeysAcceptance
       | 'year'   |
     And no side effects
 
+@skip
   Scenario: Using `keys()` on a relationship, empty result
     Given an empty graph
     And having executed:
@@ -135,6 +141,7 @@ Feature: KeysAcceptance
       | theProps |
     And no side effects
 
+@skip
   Scenario: Using `keys()` on an optionally matched relationship
     Given an empty graph
     And having executed:
@@ -151,6 +158,7 @@ Feature: KeysAcceptance
       | theProps |
     And no side effects
 
+@skip
   Scenario: Using `keys()` on a literal map
     Given any graph
     When executing query:
@@ -162,6 +170,7 @@ Feature: KeysAcceptance
       | ['name', 'age', 'address'] |
     And no side effects
 
+@skip
   Scenario: Using `keys()` on a parameter map
     Given any graph
     And parameters are:

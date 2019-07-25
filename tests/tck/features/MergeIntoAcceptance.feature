@@ -37,6 +37,7 @@ Feature: MergeIntoAcceptance
       CREATE (:A {name: 'A'}), (:B {name: 'B'})
       """
 
+@skip
   Scenario: Updating one property with ON CREATE
     When executing query:
       """
@@ -57,6 +58,7 @@ Feature: MergeIntoAcceptance
       | keyValue      |
       | ['name->foo'] |
 
+@skip
   Scenario: Null-setting one property with ON CREATE
     When executing query:
       """
@@ -76,6 +78,7 @@ Feature: MergeIntoAcceptance
       | keyValue |
       | []       |
 
+@skip
   Scenario: Copying properties from node with ON CREATE
     When executing query:
       """
@@ -96,6 +99,7 @@ Feature: MergeIntoAcceptance
       | keyValue    |
       | ['name->A'] |
 
+@skip
   Scenario: Copying properties from node with ON MATCH
     And having executed:
       """
@@ -121,6 +125,7 @@ Feature: MergeIntoAcceptance
       | keyValue    |
       | ['name->A'] |
 
+@skip
   Scenario: Copying properties from literal map with ON CREATE
     When executing query:
       """
@@ -141,6 +146,7 @@ Feature: MergeIntoAcceptance
       | keyValue                    |
       | ['name->bar', 'name2->baz'] |
 
+@skip
   Scenario: Copying properties from literal map with ON MATCH
     And having executed:
       """

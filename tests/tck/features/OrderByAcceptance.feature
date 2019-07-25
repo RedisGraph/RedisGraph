@@ -73,6 +73,7 @@ Feature: OrderByAcceptance
       | -5   |
     And no side effects
 
+@skip
   Scenario: ORDER BY of a column introduced in RETURN should return salient results in ascending order
     When executing query:
       """
@@ -89,6 +90,7 @@ Feature: OrderByAcceptance
       | 1 |
     And no side effects
 
+@skip
   Scenario: Renaming columns before ORDER BY should return results in ascending order
     And having executed:
       """
@@ -246,6 +248,7 @@ Feature: OrderByAcceptance
       | 1.3    |
     And no side effects
 
+@skip
   Scenario: ORDER BY should order lists in the expected order
     When executing query:
       """
@@ -265,6 +268,7 @@ Feature: OrderByAcceptance
       | [null, 2] |
     And no side effects
 
+@skip
   Scenario: ORDER BY DESC should order lists in the expected order
     When executing query:
       """
@@ -284,6 +288,7 @@ Feature: OrderByAcceptance
       | []        |
     And no side effects
 
+@skip
   Scenario: ORDER BY should order distinct types in the expected order
     And having executed:
       """
@@ -310,6 +315,7 @@ Feature: OrderByAcceptance
       | null              |
     And no side effects
 
+@skip
   Scenario: ORDER BY DESC should order distinct types in the expected order
     And having executed:
       """
@@ -366,6 +372,7 @@ Feature: OrderByAcceptance
       | name |
     And no side effects
 
+@skip
   Scenario: ORDER BY with negative parameter for LIMIT should not generate errors
     And parameters are:
       | limit | -1 |
@@ -380,6 +387,7 @@ Feature: OrderByAcceptance
       | name |
     And no side effects
 
+@skip
   Scenario: ORDER BY with a negative LIMIT should fail with a syntax exception
     And having executed:
       """

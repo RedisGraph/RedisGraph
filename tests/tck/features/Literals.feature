@@ -103,6 +103,7 @@ Feature: Literals
       | null    |
     And no side effects
 
+@skip
   Scenario: Return an empty list
     When executing query:
       """
@@ -113,6 +114,7 @@ Feature: Literals
       | []      |
     And no side effects
 
+@skip
   Scenario: Return a nonempty list
     When executing query:
       """
@@ -123,6 +125,7 @@ Feature: Literals
       | [0, 1, 2] |
     And no side effects
 
+@skip
   Scenario: Return an empty map
     When executing query:
       """
@@ -133,6 +136,7 @@ Feature: Literals
       | {}      |
     And no side effects
 
+@skip
   Scenario: Return a nonempty map
     When executing query:
       """

@@ -42,6 +42,7 @@ Feature: OptionalMatchAcceptance
              (b)-[:LOOP]->(b)
       """
 
+@skip
   Scenario: Return null when no matches due to inline label predicate
     When executing query:
       """
@@ -54,6 +55,7 @@ Feature: OptionalMatchAcceptance
       | null |
     And no side effects
 
+@skip
   Scenario: Return null when no matches due to label predicate in WHERE
     When executing query:
       """
@@ -67,6 +69,7 @@ Feature: OptionalMatchAcceptance
       | null |
     And no side effects
 
+@skip
   Scenario: Respect predicates on the OPTIONAL MATCH
     When executing query:
       """
@@ -80,6 +83,7 @@ Feature: OptionalMatchAcceptance
       | (:A {num: 42}) |
     And no side effects
 
+@skip
   Scenario: Returning label predicate on null node
     When executing query:
       """
@@ -92,6 +96,7 @@ Feature: OptionalMatchAcceptance
       | null   |
     And no side effects
 
+@skip
   Scenario: MATCH after OPTIONAL MATCH
     When executing query:
       """
@@ -106,6 +111,7 @@ Feature: OptionalMatchAcceptance
       | d |
     And no side effects
 
+@skip
   Scenario: WITH after OPTIONAL MATCH
     When executing query:
       """
@@ -119,6 +125,7 @@ Feature: OptionalMatchAcceptance
       | (:A {num: 42}) | (:B {num: 46}) |
     And no side effects
 
+@skip
   Scenario: Named paths in optional matches
     When executing query:
       """
@@ -143,6 +150,7 @@ Feature: OptionalMatchAcceptance
       | (:A {num: 42}) |
     And no side effects
 
+@skip
   Scenario: OPTIONAL MATCH with labels on the optional end node
     And having executed:
       """
@@ -163,6 +171,7 @@ Feature: OptionalMatchAcceptance
       | (:Y:Z) |
     And no side effects
 
+@skip
   Scenario: Named paths inside optional matches with node predicates
     When executing query:
       """
@@ -190,6 +199,7 @@ Feature: OptionalMatchAcceptance
       | (:C)           |
     And no side effects
 
+@skip
   Scenario: Variable length optional relationships with length predicates
     When executing query:
       """
@@ -202,6 +212,7 @@ Feature: OptionalMatchAcceptance
       | null |
     And no side effects
 
+@skip
   Scenario: Optionally matching self-loops
     When executing query:
       """
@@ -214,6 +225,7 @@ Feature: OptionalMatchAcceptance
       | [:LOOP] |
     And no side effects
 
+@skip
   Scenario: Optionally matching self-loops without matches
     When executing query:
       """
@@ -241,6 +253,7 @@ Feature: OptionalMatchAcceptance
       | (:C) |
     And no side effects
 
+@skip
   Scenario: Variable length optional relationships with bound nodes, no matches
     When executing query:
       """
@@ -265,6 +278,7 @@ Feature: OptionalMatchAcceptance
       | (:A {num: 42}) |
     And no side effects
 
+@skip
   Scenario: Longer pattern with bound nodes without matches
     When executing query:
       """
@@ -277,6 +291,7 @@ Feature: OptionalMatchAcceptance
       | null |
     And no side effects
 
+@skip
   Scenario: Handling correlated optional matches; first does not match implies second does not match
     When executing query:
       """
@@ -290,6 +305,7 @@ Feature: OptionalMatchAcceptance
       | (:C) | null |
     And no side effects
 
+@skip
   Scenario: Handling optional matches between optionally matched entities
     When executing query:
       """
@@ -305,6 +321,7 @@ Feature: OptionalMatchAcceptance
       | null | (:B {num: 46}) | null |
     And no side effects
 
+@skip
   Scenario: Handling optional matches between nulls
     When executing query:
       """
@@ -319,6 +336,7 @@ Feature: OptionalMatchAcceptance
       | null | null | null |
     And no side effects
 
+@skip
   Scenario: OPTIONAL MATCH and `collect()`
     And having executed:
       """
@@ -337,6 +355,7 @@ Feature: OptionalMatchAcceptance
       | [] | [42, 43, 44] |
     And no side effects
 
+@skip
   Scenario: OPTIONAL MATCH and WHERE
     And having executed:
       """
@@ -359,6 +378,7 @@ Feature: OptionalMatchAcceptance
       | (:X {val: 6}) | null          |
     And no side effects
 
+@skip
   Scenario: OPTIONAL MATCH on two relationships and WHERE
     And having executed:
       """
@@ -381,6 +401,7 @@ Feature: OptionalMatchAcceptance
       | (:X {val: 6}) | null          | null          |
     And no side effects
 
+@skip
   Scenario: Two OPTIONAL MATCH clauses and WHERE
     And having executed:
       """

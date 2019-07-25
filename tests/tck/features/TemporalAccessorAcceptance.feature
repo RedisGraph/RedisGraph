@@ -33,6 +33,7 @@ Feature: TemporalAccessorAcceptance
   Background:
     Given an empty graph
 
+@skip
   Scenario: Should provide accessors for date
     And having executed:
       """
@@ -49,6 +50,7 @@ Feature: TemporalAccessorAcceptance
       | 1984   | 4         | 10      | 41     | 1984       | 11    | 285          | 4         | 11             |
     And no side effects
 
+@skip
   Scenario: Should provide accessors for date in last weekYear
     And having executed:
       """
@@ -65,6 +67,7 @@ Feature: TemporalAccessorAcceptance
       | 1984   | 1983       | 52     | 7         |
     And no side effects
 
+@skip
   Scenario: Should provide accessors for local time
     And having executed:
       """
@@ -81,6 +84,7 @@ Feature: TemporalAccessorAcceptance
       | 12     | 31       | 14       | 645           | 645876        | 645876123    |
     And no side effects
 
+@skip
   Scenario: Should provide accessors for time
     And having executed:
       """
@@ -97,6 +101,7 @@ Feature: TemporalAccessorAcceptance
       | 12     | 31       | 14       | 645           | 645876        | 645876123    | '+01:00'   | '+01:00' | 60              | 3600            |
     And no side effects
 
+@skip
   Scenario: Should provide accessors for local date time
     And having executed:
       """
@@ -114,6 +119,7 @@ Feature: TemporalAccessorAcceptance
       | 1984   | 4         | 11      | 45     | 1984       | 11    | 316          | 7         | 42             | 12     | 31       | 14       | 645           | 645876        | 645876123    |
     And no side effects
 
+@skip
   Scenario: Should provide accessors for date time
     And having executed:
       """
@@ -132,6 +138,7 @@ Feature: TemporalAccessorAcceptance
       | 1984   | 4         | 11      | 45     | 1984       | 11    | 316          | 7         | 42             | 12     | 31       | 14       | 645           | 645876        | 645876123    | 'Europe/Stockholm' | '+01:00' | 60              | 3600            | 469020674      | 469020674645  |
     And no side effects
 
+@skip
   Scenario: Should provide accessors for duration
     And having executed:
       """

@@ -30,6 +30,7 @@
 
 Feature: ComparisonOperatorAcceptance
 
+@skip
   Scenario: Handling numerical ranges 1
     Given an empty graph
     And having executed:
@@ -48,6 +49,7 @@ Feature: ComparisonOperatorAcceptance
       | 2     |
     And no side effects
 
+@skip
   Scenario: Handling numerical ranges 2
     Given an empty graph
     And having executed:
@@ -67,6 +69,7 @@ Feature: ComparisonOperatorAcceptance
       | 3     |
     And no side effects
 
+@skip
   Scenario: Handling numerical ranges 3
     Given an empty graph
     And having executed:
@@ -86,6 +89,7 @@ Feature: ComparisonOperatorAcceptance
       | 2     |
     And no side effects
 
+@skip
   Scenario: Handling numerical ranges 4
     Given an empty graph
     And having executed:
@@ -106,6 +110,7 @@ Feature: ComparisonOperatorAcceptance
       | 3     |
     And no side effects
 
+@skip
   Scenario: Handling string ranges 1
     Given an empty graph
     And having executed:
@@ -124,6 +129,7 @@ Feature: ComparisonOperatorAcceptance
       | 'b'    |
     And no side effects
 
+@skip
   Scenario: Handling string ranges 2
     Given an empty graph
     And having executed:
@@ -143,6 +149,7 @@ Feature: ComparisonOperatorAcceptance
       | 'c'    |
     And no side effects
 
+@skip
   Scenario: Handling string ranges 3
     Given an empty graph
     And having executed:
@@ -162,6 +169,7 @@ Feature: ComparisonOperatorAcceptance
       | 'b'    |
     And no side effects
 
+@skip
   Scenario: Handling string ranges 4
     Given an empty graph
     And having executed:
@@ -182,6 +190,7 @@ Feature: ComparisonOperatorAcceptance
       | 'c'    |
     And no side effects
 
+@skip
   Scenario: Handling empty range
     Given an empty graph
     And having executed:
@@ -198,6 +207,7 @@ Feature: ComparisonOperatorAcceptance
       | n.num |
     And no side effects
 
+@skip
   Scenario: Handling long chains of operators
     Given an empty graph
     And having executed:

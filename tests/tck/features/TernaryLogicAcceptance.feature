@@ -33,6 +33,7 @@ Feature: TernaryLogicAcceptanceTest
   Background:
     Given any graph
 
+@skip
   Scenario: The inverse of a null is a null
     When executing query:
       """
@@ -43,6 +44,7 @@ Feature: TernaryLogicAcceptanceTest
       | null  |
     And no side effects
 
+@skip
   Scenario: A literal null IS null
     When executing query:
       """
@@ -53,6 +55,7 @@ Feature: TernaryLogicAcceptanceTest
       | true  |
     And no side effects
 
+@skip
   Scenario: A literal null is not IS NOT null
     When executing query:
       """
@@ -63,6 +66,7 @@ Feature: TernaryLogicAcceptanceTest
       | false |
     And no side effects
 
+@skip
   Scenario: It is unknown - i.e. null - if a null is equal to a null
     When executing query:
       """
@@ -73,6 +77,7 @@ Feature: TernaryLogicAcceptanceTest
       | null  |
     And no side effects
 
+@skip
   Scenario: It is unknown - i.e. null - if a null is not equal to a null
     When executing query:
       """
@@ -83,6 +88,7 @@ Feature: TernaryLogicAcceptanceTest
       | null  |
     And no side effects
 
+@skip
   Scenario Outline: Using null in AND
     And parameters are:
       | lhs | <lhs> |
@@ -104,6 +110,7 @@ Feature: TernaryLogicAcceptanceTest
       | null  | false | false  |
       | false | null  | false  |
 
+@skip
   Scenario Outline: Using null in OR
     And parameters are:
       | lhs | <lhs> |
@@ -125,6 +132,7 @@ Feature: TernaryLogicAcceptanceTest
       | null  | false | null   |
       | false | null  | null   |
 
+@skip
   Scenario Outline: Using null in XOR
     And parameters are:
       | lhs    | <lhs>    |
@@ -146,6 +154,7 @@ Feature: TernaryLogicAcceptanceTest
       | null  | false | null   |
       | false | null  | null   |
 
+@skip
   Scenario Outline: Using null in IN
     And parameters are:
       | elt    | <elt>    |

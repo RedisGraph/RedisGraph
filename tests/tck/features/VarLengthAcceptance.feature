@@ -116,6 +116,7 @@ Feature: VarLengthAcceptance
       | 'n0111' |
     And no side effects
 
+@skip
   Scenario: Fail when asterisk operator is missing
     When executing query:
       """
@@ -125,6 +126,7 @@ Feature: VarLengthAcceptance
       """
     Then a SyntaxError should be raised at compile time: InvalidRelationshipPattern
 
+@skip
   Scenario: Handling single bounded variable length match 1
     When executing query:
       """
@@ -200,6 +202,7 @@ Feature: VarLengthAcceptance
       | 'n011' |
     And no side effects
 
+@skip
   Scenario: Handling symmetrically bounded variable length match, bounds are zero
     When executing query:
       """
@@ -240,6 +243,7 @@ Feature: VarLengthAcceptance
       | 'n011' |
     And no side effects
 
+@skip
   Scenario: Fail on negative bound
     When executing query:
       """
@@ -249,6 +253,7 @@ Feature: VarLengthAcceptance
       """
     Then a SyntaxError should be raised at compile time: InvalidRelationshipPattern
 
+@skip
   Scenario: Handling upper and lower bounded variable length match, empty interval 1
     When executing query:
       """
@@ -260,6 +265,7 @@ Feature: VarLengthAcceptance
       | c.name |
     And no side effects
 
+@skip
   Scenario: Handling upper and lower bounded variable length match, empty interval 2
     When executing query:
       """
@@ -271,6 +277,7 @@ Feature: VarLengthAcceptance
       | c.name |
     And no side effects
 
+@skip
   Scenario: Handling upper bounded variable length match, empty interval
     When executing query:
       """
@@ -480,6 +487,7 @@ Feature: VarLengthAcceptance
       | 'n0111' |
     And no side effects
 
+@skip
   Scenario: Handling a variable length relationship and a standard relationship in chain, longer 3
     And having executed:
       """
@@ -515,6 +523,7 @@ Feature: VarLengthAcceptance
       | 'n01111' |
     And no side effects
 
+@skip
   Scenario: Handling mixed relationship patterns and directions 1
     And having executed:
       """
@@ -556,6 +565,7 @@ Feature: VarLengthAcceptance
       | 'n01111' |
     And no side effects
 
+@skip
   Scenario: Handling mixed relationship patterns and directions 2
     # This gets hard to follow for a human mind. The answer is named graphs, but it's not crucial to fix.
     And having executed:
@@ -599,6 +609,7 @@ Feature: VarLengthAcceptance
       | 'n01111' |
     And no side effects
 
+@skip
   Scenario: Handling mixed relationship patterns 1
     And having executed:
       """
@@ -634,6 +645,7 @@ Feature: VarLengthAcceptance
       | 'n01111' |
     And no side effects
 
+@skip
   Scenario: Handling mixed relationship patterns 2
     And having executed:
       """

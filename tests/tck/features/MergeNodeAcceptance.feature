@@ -30,6 +30,7 @@
 
 Feature: MergeNodeAcceptance
 
+@skip
   Scenario: Merge node when no nodes exist
     Given an empty graph
     When executing query:
@@ -43,6 +44,7 @@ Feature: MergeNodeAcceptance
     And the side effects should be:
       | +nodes | 1 |
 
+@skip
   Scenario: Merge node with label
     Given an empty graph
     When executing query:
@@ -57,6 +59,7 @@ Feature: MergeNodeAcceptance
       | +nodes  | 1 |
       | +labels | 1 |
 
+@skip
   Scenario: Merge node with label add label on create
     Given an empty graph
     When executing query:
@@ -72,6 +75,7 @@ Feature: MergeNodeAcceptance
       | +nodes  | 1 |
       | +labels | 2 |
 
+@skip
   Scenario: Merge node with label add property on create
     Given an empty graph
     When executing query:
@@ -156,6 +160,7 @@ Feature: MergeNodeAcceptance
       | 42    |
     And no side effects
 
+@skip
   Scenario: Merge node with label add label on match when it exists
     Given an empty graph
     And having executed:
@@ -174,6 +179,7 @@ Feature: MergeNodeAcceptance
     And the side effects should be:
       | +labels | 1 |
 
+@skip
   Scenario: Merge node with label add property on update when it exists
     Given an empty graph
     And having executed:
@@ -191,6 +197,7 @@ Feature: MergeNodeAcceptance
       | null  |
     And no side effects
 
+@skip
   Scenario: Merge node and set property on match
     Given an empty graph
     And having executed:
@@ -209,6 +216,7 @@ Feature: MergeNodeAcceptance
     And the side effects should be:
       | +properties | 1 |
 
+@skip
   Scenario: Should work when finding multiple elements
     Given an empty graph
     When executing query:
@@ -222,6 +230,7 @@ Feature: MergeNodeAcceptance
       | +nodes  | 2 |
       | +labels | 1 |
 
+@skip
   Scenario: Should handle argument properly
     Given an empty graph
     And having executed:
@@ -240,6 +249,7 @@ Feature: MergeNodeAcceptance
       | +labels     | 1 |
       | +properties | 1 |
 
+@skip
   Scenario: Should handle arguments properly with only write clauses
     Given an empty graph
     When executing query:
@@ -252,6 +262,7 @@ Feature: MergeNodeAcceptance
       | +nodes      | 2 |
       | +properties | 2 |
 
+@skip
   Scenario: Should be able to merge using property from match
     Given an empty graph
     And having executed:
@@ -274,6 +285,7 @@ Feature: MergeNodeAcceptance
       | +labels     | 1 |
       | +properties | 3 |
 
+@skip
   Scenario: Should be able to use properties from match in ON CREATE
     Given an empty graph
     And having executed:
@@ -297,6 +309,7 @@ Feature: MergeNodeAcceptance
       | +labels     | 1 |
       | +properties | 1 |
 
+@skip
   Scenario: Should be able to use properties from match in ON MATCH
     Given an empty graph
     And having executed:
@@ -320,6 +333,7 @@ Feature: MergeNodeAcceptance
       | +labels     | 1 |
       | +properties | 1 |
 
+@skip
   Scenario: Should be able to use properties from match in ON MATCH and ON CREATE
     Given an empty graph
     And having executed:
@@ -344,6 +358,7 @@ Feature: MergeNodeAcceptance
       | +labels     | 1 |
       | +properties | 1 |
 
+@skip
   Scenario: Should be able to set labels on match
     Given an empty graph
     And having executed:
@@ -359,6 +374,7 @@ Feature: MergeNodeAcceptance
     And the side effects should be:
       | +labels | 1 |
 
+@skip
   Scenario: Should be able to set labels on match and on create
     Given an empty graph
     And having executed:
@@ -377,6 +393,7 @@ Feature: MergeNodeAcceptance
       | +nodes  | 1 |
       | +labels | 3 |
 
+@skip
   Scenario: Should support updates while merging
     Given an empty graph
     And having executed:
@@ -410,6 +427,7 @@ Feature: MergeNodeAcceptance
       | +labels     | 1  |
       | +properties | 30 |
 
+@skip
   Scenario: Merge must properly handle multiple labels
     Given an empty graph
     And having executed:
@@ -429,6 +447,7 @@ Feature: MergeNodeAcceptance
       | +labels     | 1 |
       | +properties | 1 |
 
+@skip
   Scenario: Merge followed by multiple creates
     Given an empty graph
     When executing query:
@@ -444,6 +463,7 @@ Feature: MergeNodeAcceptance
       | +labels        | 2 |
       | +properties    | 1 |
 
+@skip
   Scenario: Unwind combined with merge
     Given an empty graph
     When executing query:
@@ -459,6 +479,7 @@ Feature: MergeNodeAcceptance
       | +nodes      | 4 |
       | +properties | 4 |
 
+@skip
   Scenario: Merges should not be able to match on deleted nodes
     Given an empty graph
     And having executed:
@@ -482,6 +503,7 @@ Feature: MergeNodeAcceptance
       | -nodes      | 2 |
       | -properties | 2 |
 
+@skip
   Scenario: ON CREATE on created nodes
     Given an empty graph
     When executing query:

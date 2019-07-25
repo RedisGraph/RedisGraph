@@ -30,6 +30,7 @@
 
 Feature: MatchAcceptance
 
+@skip
   Scenario: Path query should return results in written order
     Given an empty graph
     And having executed:
@@ -46,6 +47,7 @@ Feature: MatchAcceptance
       | <(:Label1)<-[:TYPE]-(:Label2)> |
     And no side effects
 
+@skip
   Scenario: Longer path query should return results in written order
     Given an empty graph
     And having executed:
@@ -88,6 +90,7 @@ Feature: MatchAcceptance
       | 3 | 2 |
     And no side effects
 
+@skip
   Scenario: Use params in pattern matching predicates
     Given an empty graph
     And having executed:
@@ -107,6 +110,7 @@ Feature: MatchAcceptance
       | (:B {name: 'me'}) |
     And no side effects
 
+@skip
   Scenario: Filter out based on node prop name
     Given an empty graph
     And having executed:
@@ -253,6 +257,7 @@ Feature: MatchAcceptance
       | (:D {animal: 'cow'})    | (:B {animal: 'cow'})    |
     And no side effects
 
+@skip
   Scenario: Return two subgraphs with bound undirected relationship
     Given an empty graph
     And having executed:
@@ -270,6 +275,7 @@ Feature: MatchAcceptance
       | (:A {num: 1}) | (:B {num: 2}) |
     And no side effects
 
+@skip
   Scenario: Return two subgraphs with bound undirected relationship and optional relationship
     Given an empty graph
     And having executed:
@@ -353,6 +359,7 @@ Feature: MatchAcceptance
       | (:B {p2: 13}) |
     And no side effects
 
+@skip
   Scenario: Return a simple path
     Given an empty graph
     And having executed:
@@ -369,6 +376,7 @@ Feature: MatchAcceptance
       | <(:A {name: 'A'})-[:KNOWS]->(:B {name: 'B'})> |
     And no side effects
 
+@skip
   Scenario: Return a three node path
     Given an empty graph
     And having executed:
@@ -385,6 +393,7 @@ Feature: MatchAcceptance
       | <(:A {name: 'A'})-[:KNOWS]->(:B {name: 'B'})-[:KNOWS]->(:C {name: 'C'})> |
     And no side effects
 
+@skip
   Scenario: Do not return anything because path length does not match
     Given an empty graph
     And having executed:
@@ -401,6 +410,7 @@ Feature: MatchAcceptance
       | x |
     And no side effects
 
+@skip
   Scenario: Pass the path length test
     Given an empty graph
     And having executed:
@@ -418,6 +428,7 @@ Feature: MatchAcceptance
       | (:B {name: 'B'}) |
     And no side effects
 
+@skip
   Scenario: Return relationships by fetching them from the path - starting from the end
     Given an empty graph
     And having executed:
@@ -434,6 +445,7 @@ Feature: MatchAcceptance
       | [[:REL {num: 1}], [:REL {num: 2}]] |
     And no side effects
 
+@skip
   Scenario: Return relationships by fetching them from the path
     Given an empty graph
     And having executed:
@@ -450,6 +462,7 @@ Feature: MatchAcceptance
       | [[:REL {num: 1}], [:REL {num: 2}]] |
     And no side effects
 
+@skip
   Scenario: Return relationships by collecting them as a list - directed, one way
     Given an empty graph
     And having executed:
@@ -466,6 +479,7 @@ Feature: MatchAcceptance
       | [[:REL {num: 1}], [:REL {num: 2}]] |
     And no side effects
 
+@skip
   Scenario: Return relationships by collecting them as a list - undirected, starting from two extremes
     Given an empty graph
     And having executed:
@@ -483,6 +497,7 @@ Feature: MatchAcceptance
       | [[:REL {num:2}], [:REL {num:1}]] |
     And no side effects
 
+@skip
   Scenario: Return relationships by collecting them as a list - undirected, starting from one extreme
     Given an empty graph
     And having executed:
@@ -499,6 +514,7 @@ Feature: MatchAcceptance
       | [[:REL {num: 1}], [:REL {num: 2}]] |
     And no side effects
 
+@skip
   Scenario: Return a var length path
     Given an empty graph
     And having executed:
@@ -516,6 +532,7 @@ Feature: MatchAcceptance
       | <(:A {name: 'A'})-[:KNOWS {num: 1}]->(:B {name: 'B'})-[:KNOWS {num: 2}]->(:C {name: 'C'})> |
     And no side effects
 
+@skip
   Scenario: Return a var length path of length zero
     Given an empty graph
     And having executed:
@@ -534,6 +551,7 @@ Feature: MatchAcceptance
       | (:A) | (:B) | 1 |
     And no side effects
 
+@skip
   Scenario: Return a named var length path of length zero
     Given an empty graph
     And having executed:

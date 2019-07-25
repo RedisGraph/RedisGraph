@@ -33,6 +33,7 @@ Feature: MiscellaneousErrorAcceptance
   Background:
     Given any graph
 
+@skip
   Scenario: Failing on incorrect unicode literal
     When executing query:
       """
@@ -40,6 +41,7 @@ Feature: MiscellaneousErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: InvalidUnicodeLiteral
 
+@skip
   Scenario: Failing on merging relationship with null property
     When executing query:
       """
@@ -48,6 +50,7 @@ Feature: MiscellaneousErrorAcceptance
       """
     Then a SemanticError should be raised at compile time: MergeReadOwnWrites
 
+@skip
   Scenario: Failing on merging node with null property
     When executing query:
       """
@@ -55,6 +58,7 @@ Feature: MiscellaneousErrorAcceptance
       """
     Then a SemanticError should be raised at compile time: MergeReadOwnWrites
 
+@skip
   Scenario: Failing on aggregation in WHERE
     When executing query:
       """
@@ -64,6 +68,7 @@ Feature: MiscellaneousErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: InvalidAggregation
 
+@skip
   Scenario: Failing on aggregation in ORDER BY after RETURN
     When executing query:
       """
@@ -73,6 +78,7 @@ Feature: MiscellaneousErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: InvalidAggregation
 
+@skip
   Scenario: Failing on aggregation in ORDER BY after WITH
     When executing query:
       """
@@ -83,6 +89,7 @@ Feature: MiscellaneousErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: InvalidAggregation
 
+@skip
   Scenario: Failing when not aliasing expressions in WITH
     When executing query:
       """
@@ -92,6 +99,7 @@ Feature: MiscellaneousErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: NoExpressionAlias
 
+@skip
   Scenario: Failing when using undefined variable in pattern
     When executing query:
       """
@@ -101,6 +109,7 @@ Feature: MiscellaneousErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: UndefinedVariable
 
+@skip
   Scenario: Failing when using undefined variable in SET
     When executing query:
       """
@@ -110,6 +119,7 @@ Feature: MiscellaneousErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: UndefinedVariable
 
+@skip
   Scenario: Failing when using undefined variable in DELETE
     When executing query:
       """
@@ -118,6 +128,7 @@ Feature: MiscellaneousErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: UndefinedVariable
 
+@skip
   Scenario: Failing when using a variable that is already bound in CREATE
     When executing query:
       """
@@ -127,6 +138,7 @@ Feature: MiscellaneousErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: VariableAlreadyBound
 
+@skip
   Scenario: Failing when using a path variable that is already bound
     When executing query:
       """
@@ -137,6 +149,7 @@ Feature: MiscellaneousErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: VariableAlreadyBound
 
+@skip
   Scenario: Failing when using a list as a node
     When executing query:
       """
@@ -147,6 +160,7 @@ Feature: MiscellaneousErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: VariableTypeConflict
 
+@skip
   Scenario: Failing when using a variable length relationship as a single relationship
     When executing query:
       """
@@ -157,6 +171,7 @@ Feature: MiscellaneousErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: InvalidArgumentType
 
+@skip
   Scenario: Failing when UNION has different columns
     When executing query:
       """
@@ -166,6 +181,7 @@ Feature: MiscellaneousErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: DifferentColumnsInUnion
 
+@skip
   Scenario: Failing when mixing UNION and UNION ALL
     When executing query:
       """
@@ -177,6 +193,7 @@ Feature: MiscellaneousErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: InvalidClauseComposition
 
+@skip
   Scenario: Failing when creating without direction
     When executing query:
       """
@@ -184,6 +201,7 @@ Feature: MiscellaneousErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: RequiresDirectedRelationship
 
+@skip
   Scenario: Failing when creating with two directions
     When executing query:
       """
@@ -191,6 +209,7 @@ Feature: MiscellaneousErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: RequiresDirectedRelationship
 
+@skip
   Scenario: Failing when deleting a label
     When executing query:
       """
@@ -199,6 +218,7 @@ Feature: MiscellaneousErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: InvalidDelete
 
+@skip
   Scenario: Failing when setting a list of maps as a property
     When executing query:
       """
@@ -207,6 +227,7 @@ Feature: MiscellaneousErrorAcceptance
       """
     Then a TypeError should be raised at compile time: InvalidPropertyType
 
+@skip
   Scenario: Failing when multiple columns have the same name
     When executing query:
       """
@@ -214,6 +235,7 @@ Feature: MiscellaneousErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: ColumnNameConflict
 
+@skip
   Scenario: Failing when using RETURN * without variables in scope
     When executing query:
       """

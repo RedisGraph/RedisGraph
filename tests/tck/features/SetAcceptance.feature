@@ -30,6 +30,7 @@
 
 Feature: SetAcceptance
 
+@skip
   Scenario: Setting a node property to null removes the existing property
     Given an empty graph
     And having executed:
@@ -48,6 +49,7 @@ Feature: SetAcceptance
     And the side effects should be:
       | -properties | 1 |
 
+@skip
   Scenario: Setting a relationship property to null removes the existing property
     Given an empty graph
     And having executed:
@@ -66,6 +68,7 @@ Feature: SetAcceptance
     And the side effects should be:
       | -properties | 1 |
 
+@skip
   Scenario: Set a property
     Given any graph
     And having executed:
@@ -86,6 +89,7 @@ Feature: SetAcceptance
       | +properties | 1 |
       | -properties | 1 |
 
+@skip
   Scenario: Set a property to an expression
     Given an empty graph
     And having executed:
@@ -142,6 +146,7 @@ Feature: SetAcceptance
     And the side effects should be:
       | +properties | 1 |
 
+@skip
   Scenario: Setting a property to null removes the property
     Given an empty graph
     And having executed:
@@ -161,6 +166,7 @@ Feature: SetAcceptance
     And the side effects should be:
       | -properties | 1 |
 
+@skip
   Scenario: Add a label to a node
     Given an empty graph
     And having executed:
@@ -179,6 +185,7 @@ Feature: SetAcceptance
     And the side effects should be:
       | +labels | 1 |
 
+@skip
   Scenario: Adding a list property
     Given an empty graph
     And having executed:
@@ -197,6 +204,7 @@ Feature: SetAcceptance
     And the side effects should be:
       | +properties | 1 |
 
+@skip
   Scenario: Concatenate elements onto a list property
     Given any graph
     When executing query:
@@ -212,6 +220,7 @@ Feature: SetAcceptance
       | +nodes      | 1 |
       | +properties | 1 |
 
+@skip
   Scenario: Concatenate elements in reverse onto a list property
     Given any graph
     When executing query:
@@ -227,6 +236,7 @@ Feature: SetAcceptance
       | +nodes      | 1 |
       | +properties | 1 |
 
+@skip
   Scenario: Overwrite values when using +=
     Given an empty graph
     And having executed:
@@ -246,6 +256,7 @@ Feature: SetAcceptance
       | +properties | 1 |
       | -properties | 1 |
 
+@skip
   Scenario: Retain old values when using +=
     Given an empty graph
     And having executed:
@@ -264,6 +275,7 @@ Feature: SetAcceptance
     And the side effects should be:
       | +properties | 1 |
 
+@skip
   Scenario: Explicit null values in a map remove old values
     Given an empty graph
     And having executed:
@@ -282,6 +294,7 @@ Feature: SetAcceptance
     And the side effects should be:
       | -properties | 1 |
 
+@skip
   Scenario: Non-existent values in a property map are removed with SET =
     Given an empty graph
     And having executed:

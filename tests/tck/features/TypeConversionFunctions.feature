@@ -30,6 +30,7 @@
 
 Feature: TypeConversionFunctions
 
+@skip
   Scenario: `toBoolean()` on valid literal string
     Given any graph
     When executing query:
@@ -41,6 +42,7 @@ Feature: TypeConversionFunctions
       | true |
     And no side effects
 
+@skip
   Scenario: `toBoolean()` on booleans
     Given any graph
     When executing query:
@@ -54,6 +56,7 @@ Feature: TypeConversionFunctions
       | false |
     And no side effects
 
+@skip
   Scenario: `toBoolean()` on variables with valid string values
     Given any graph
     When executing query:
@@ -67,6 +70,7 @@ Feature: TypeConversionFunctions
       | false |
     And no side effects
 
+@skip
   Scenario: `toBoolean()` on invalid strings
     Given any graph
     When executing query:
@@ -82,6 +86,7 @@ Feature: TypeConversionFunctions
       | null |
     And no side effects
 
+@skip
   Scenario Outline: `toBoolean()` on invalid types
     Given any graph
     When executing query:
@@ -99,6 +104,7 @@ Feature: TypeConversionFunctions
       | 1.0     |
 
 
+@skip
   Scenario: `toInteger()`
     Given an empty graph
     And having executed:
@@ -117,6 +123,7 @@ Feature: TypeConversionFunctions
       | 42   |
     And no side effects
 
+@skip
   Scenario: `toInteger()` on float
     Given any graph
     When executing query:
@@ -129,6 +136,7 @@ Feature: TypeConversionFunctions
       | 82                |
     And no side effects
 
+@skip
   Scenario: `toInteger()` returning null on non-numerical string
     Given any graph
     When executing query:
@@ -141,6 +149,7 @@ Feature: TypeConversionFunctions
       | null | null  |
     And no side effects
 
+@skip
   Scenario: `toInteger()` handling mixed number types
     Given any graph
     When executing query:
@@ -153,6 +162,7 @@ Feature: TypeConversionFunctions
       | [2, 2]      |
     And no side effects
 
+@skip
   Scenario: `toInteger()` handling Any type
     Given any graph
     When executing query:
@@ -165,6 +175,7 @@ Feature: TypeConversionFunctions
       | [2, 2, 1]   |
     And no side effects
 
+@skip
   Scenario: `toInteger()` on a list of strings
     Given any graph
     When executing query:
@@ -177,6 +188,7 @@ Feature: TypeConversionFunctions
       | [2, 2, null] |
     And no side effects
 
+@skip
   Scenario: `toInteger()` on a complex-typed expression
     Given any graph
     And parameters are:
@@ -190,6 +202,7 @@ Feature: TypeConversionFunctions
       | 0      |
     And no side effects
 
+@skip
   Scenario Outline: `toInteger()` failing on invalid arguments
     Given an empty graph
     And having executed:
@@ -212,6 +225,7 @@ Feature: TypeConversionFunctions
       | r       |
       | p       |
 
+@skip
   Scenario: `toFloat()`
     Given an empty graph
     And having executed:
@@ -230,6 +244,7 @@ Feature: TypeConversionFunctions
       | 4.0   |
     And no side effects
 
+@skip
   Scenario: `toFloat()` on mixed number types
     Given any graph
     When executing query:
@@ -242,6 +257,7 @@ Feature: TypeConversionFunctions
       | [3.4, 3.0]    |
     And no side effects
 
+@skip
   Scenario: `toFloat()` returning null on non-numerical string
     Given any graph
     When executing query:
@@ -254,6 +270,7 @@ Feature: TypeConversionFunctions
       | null | null  |
     And no side effects
 
+@skip
   Scenario: `toFloat()` handling Any type
     Given any graph
     When executing query:
@@ -266,6 +283,7 @@ Feature: TypeConversionFunctions
       | [3.4, 3.0, 5.0] |
     And no side effects
 
+@skip
   Scenario: `toFloat()` on a list of strings
     Given any graph
     When executing query:
@@ -278,6 +296,7 @@ Feature: TypeConversionFunctions
       | [1.0, 2.0, null] |
     And no side effects
 
+@skip
   Scenario Outline: `toFloat()` failing on invalid arguments
     Given an empty graph
     And having executed:
@@ -318,6 +337,7 @@ Feature: TypeConversionFunctions
       | '4'                |
     And no side effects
 
+@skip
   Scenario: `toString()` handling boolean properties
     Given an empty graph
     And having executed:
@@ -334,6 +354,7 @@ Feature: TypeConversionFunctions
       | 'true'              |
     And no side effects
 
+@skip
   Scenario: `toString()` handling inlined boolean
     Given any graph
     When executing query:
@@ -345,6 +366,7 @@ Feature: TypeConversionFunctions
       | 'false' |
     And no side effects
 
+@skip
   Scenario: `toString()` handling boolean literal
     Given any graph
     When executing query:
@@ -356,6 +378,7 @@ Feature: TypeConversionFunctions
       | 'true' |
     And no side effects
 
+@skip
   Scenario: `toString()` should work on Any type
     Given any graph
     When executing query:
@@ -367,6 +390,7 @@ Feature: TypeConversionFunctions
       | ['1', '2.3', 'true', 'apa'] |
     And no side effects
 
+@skip
   Scenario: `toString()` on a list of integers
     Given any graph
     When executing query:
@@ -379,6 +403,7 @@ Feature: TypeConversionFunctions
       | ['1', '2', '3'] |
     And no side effects
 
+@skip
   Scenario Outline: `toString()` failing on invalid arguments
     Given an empty graph
     And having executed:
@@ -400,6 +425,7 @@ Feature: TypeConversionFunctions
       | r       |
       | p       |
 
+@skip
   Scenario: `toString()` should accept potentially correct types 1
     Given any graph
     When executing query:
@@ -414,6 +440,7 @@ Feature: TypeConversionFunctions
       | 'x'      |
     And no side effects
 
+@skip
   Scenario: `toString()` should accept potentially correct types 2
     Given any graph
     When executing query:

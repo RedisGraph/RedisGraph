@@ -37,6 +37,7 @@ Feature: ColumnNameAcceptance
       CREATE ()
       """
 
+@skip
   Scenario: Keeping used expression 1
     When executing query:
       """
@@ -48,6 +49,7 @@ Feature: ColumnNameAcceptance
       | 1          |
     And no side effects
 
+@skip
   Scenario: Keeping used expression 2
     When executing query:
       """
@@ -58,6 +60,7 @@ Feature: ColumnNameAcceptance
       | nOdEs( p ) |
     And no side effects
 
+@skip
   Scenario: Keeping used expression 3
     When executing query:
       """
@@ -69,6 +72,7 @@ Feature: ColumnNameAcceptance
       | 0                   |
     And no side effects
 
+@skip
   Scenario: Keeping used expression 4
     When executing query:
       """

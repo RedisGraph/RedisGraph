@@ -32,6 +32,7 @@ Feature: TemporalSelectAcceptance
   Background:
     Given any graph
 
+@skip
   Scenario Outline: Should select date
     When executing query:
       """
@@ -67,6 +68,7 @@ Feature: TemporalSelectAcceptance
       | datetime({year: 1984, month: 11, day: 11, hour: 12, timezone: '+01:00'})                                 | {date: other, ordinalDay: 28} | '1984-01-28' |
       | datetime({year: 1984, month: 11, day: 11, hour: 12, timezone: '+01:00'})                                 | {date: other, quarter: 3}     | '1984-08-11' |
 
+@skip
   Scenario Outline: Should select local time
     When executing query:
       """
@@ -93,6 +95,7 @@ Feature: TemporalSelectAcceptance
       | datetime({year: 1984, month: 10, day: 11, hour: 12, timezone: '+01:00'})                                | {time: other}             | '12:00'              |
       | datetime({year: 1984, month: 10, day: 11, hour: 12, timezone: '+01:00'})                                | {time: other, second: 42} | '12:00:42'           |
 
+@skip
   Scenario Outline: Should select time
     When executing query:
       """
@@ -127,6 +130,7 @@ Feature: TemporalSelectAcceptance
       | datetime({year: 1984, month: 10, day: 11, hour: 12, timezone: 'Europe/Stockholm'})                      | {time: other, second: 42}                     | '12:00:42+01:00'           |
       | datetime({year: 1984, month: 10, day: 11, hour: 12, timezone: 'Europe/Stockholm'})                      | {time: other, second: 42, timezone: '+05:00'} | '16:00:42+05:00'           |
 
+@skip
   Scenario Outline: Should select date into local date time
     When executing query:
       """
@@ -147,6 +151,7 @@ Feature: TemporalSelectAcceptance
       | datetime({year: 1984, month: 10, day: 11, hour: 12, timezone: '+01:00'})                                | {date: other, hour: 10, minute: 10, second: 10}          | '1984-10-11T10:10:10' |
       | datetime({year: 1984, month: 10, day: 11, hour: 12, timezone: '+01:00'})                                | {date: other, day: 28, hour: 10, minute: 10, second: 10} | '1984-10-28T10:10:10' |
 
+@skip
   Scenario Outline: Should select time into local date time
     When executing query:
       """
@@ -169,6 +174,7 @@ Feature: TemporalSelectAcceptance
       | datetime({year: 1984, month: 10, day: 11, hour: 12, timezone: '+01:00'})                                | {year: 1984, month: 10, day: 11, time: other}             | '1984-10-11T12:00'              |
       | datetime({year: 1984, month: 10, day: 11, hour: 12, timezone: '+01:00'})                                | {year: 1984, month: 10, day: 11, time: other, second: 42} | '1984-10-11T12:00:42'           |
 
+@skip
   Scenario Outline: Should select date and time into local date time
     When executing query:
       """
@@ -207,6 +213,7 @@ Feature: TemporalSelectAcceptance
       | datetime({year: 1984, month: 10, day: 11, hour: 12, timezone: '+01:00'})                                | datetime({year: 1984, month: 10, day: 11, hour: 12, timezone: '+01:00'})                                | {date: otherDate, time: otherTime}                      | '1984-10-11T12:00'              |
       | datetime({year: 1984, month: 10, day: 11, hour: 12, timezone: '+01:00'})                                | datetime({year: 1984, month: 10, day: 11, hour: 12, timezone: '+01:00'})                                | {date: otherDate, time: otherTime, day: 28, second: 42} | '1984-10-28T12:00:42'           |
 
+@skip
   Scenario Outline: Should select datetime into local date time
     When executing query:
       """
@@ -227,6 +234,7 @@ Feature: TemporalSelectAcceptance
       | datetime({year: 1984, month: 10, day: 11, hour: 12, timezone: '+01:00'})                                | {datetime: other}                      | '1984-10-11T12:00'        |
       | datetime({year: 1984, month: 10, day: 11, hour: 12, timezone: '+01:00'})                                | {datetime: other, day: 28, second: 42} | '1984-10-28T12:00:42'     |
 
+@skip
   Scenario Outline: Should select date into date time
     When executing query:
       """
@@ -253,6 +261,7 @@ Feature: TemporalSelectAcceptance
       | datetime({year: 1984, month: 10, day: 11, hour: 12, timezone: '+01:00'})                                | {date: other, day: 28, hour: 10, minute: 10, second: 10}                               | '1984-10-28T10:10:10Z'                        |
       | datetime({year: 1984, month: 10, day: 11, hour: 12, timezone: '+01:00'})                                | {date: other, day: 28, hour: 10, minute: 10, second: 10, timezone: 'Pacific/Honolulu'} | '1984-10-28T10:10:10-10:00[Pacific/Honolulu]' |
 
+@skip
   Scenario Outline: Should select time into date time
     When executing query:
       """
@@ -283,6 +292,7 @@ Feature: TemporalSelectAcceptance
       | datetime({year: 1984, month: 10, day: 11, hour: 12, timezone: 'Europe/Stockholm'})                      | {year: 1984, month: 10, day: 11, time: other, second: 42}                               | '1984-10-11T12:00:42+01:00[Europe/Stockholm]'           |
       | datetime({year: 1984, month: 10, day: 11, hour: 12, timezone: 'Europe/Stockholm'})                      | {year: 1984, month: 10, day: 11, time: other, second: 42, timezone: 'Pacific/Honolulu'} | '1984-10-11T01:00:42-10:00[Pacific/Honolulu]'           |
 
+@skip
   Scenario Outline: Should select date and time into date time
     When executing query:
       """
@@ -345,6 +355,7 @@ Feature: TemporalSelectAcceptance
       | datetime({year: 1984, month: 10, day: 11, hour: 12, timezone: '+01:00'})                                | datetime({year: 1984, month: 10, day: 11, hour: 12, timezone: 'Europe/Stockholm'})                      | {date: otherDate, time: otherTime, day: 28, second: 42}                               | '1984-10-28T12:00:42+01:00[Europe/Stockholm]'           |
       | datetime({year: 1984, month: 10, day: 11, hour: 12, timezone: '+01:00'})                                | datetime({year: 1984, month: 10, day: 11, hour: 12, timezone: 'Europe/Stockholm'})                      | {date: otherDate, time: otherTime, day: 28, second: 42, timezone: 'Pacific/Honolulu'} | '1984-10-28T01:00:42-10:00[Pacific/Honolulu]'           |
 
+@skip
   Scenario Outline: Should datetime into date time
     When executing query:
       """

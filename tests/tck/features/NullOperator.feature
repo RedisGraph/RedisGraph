@@ -30,6 +30,7 @@
 
 Feature: NullOperator
 
+@skip
   Scenario: Property null check on non-null node
     Given an empty graph
     And having executed:
@@ -47,6 +48,7 @@ Feature: NullOperator
       | true              | false            |
     And no side effects
 
+@skip
   Scenario: Property not null check on non-null node
     Given an empty graph
     And having executed:
@@ -64,6 +66,7 @@ Feature: NullOperator
       | false                 | true                 |
     And no side effects
 
+@skip
   Scenario: Property null check on optional non-null node
     Given an empty graph
     And having executed:
@@ -81,6 +84,7 @@ Feature: NullOperator
       | true              | false            |
     And no side effects
 
+@skip
   Scenario: Property not null check on optional non-null node
     Given an empty graph
     And having executed:
@@ -98,6 +102,7 @@ Feature: NullOperator
       | false                 | true                 |
     And no side effects
 
+@skip
   Scenario: Property null check on null node
     Given an empty graph
     When executing query:
@@ -110,6 +115,7 @@ Feature: NullOperator
       | true              |
     And no side effects
 
+@skip
   Scenario: Property not null check on null node
     Given an empty graph
     When executing query:

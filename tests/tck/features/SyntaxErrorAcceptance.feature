@@ -33,6 +33,7 @@ Feature: SyntaxErrorAcceptance
   Background:
     Given any graph
 
+@skip
   Scenario: Using a non-existent function
     When executing query:
       """
@@ -41,6 +42,7 @@ Feature: SyntaxErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: UnknownFunction
 
+@skip
   Scenario: Using `rand()` in aggregations
     When executing query:
       """
@@ -48,6 +50,7 @@ Feature: SyntaxErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: NonConstantExpression
 
+@skip
   Scenario: Supplying invalid hexadecimal literal 1
     When executing query:
       """
@@ -55,6 +58,7 @@ Feature: SyntaxErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: InvalidNumberLiteral
 
+@skip
   Scenario: Supplying invalid hexadecimal literal 2
     When executing query:
       """

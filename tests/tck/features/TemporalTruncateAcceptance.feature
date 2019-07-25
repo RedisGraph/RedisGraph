@@ -33,6 +33,7 @@ Feature: TemporalTruncateAcceptance
   Background:
     Given any graph
 
+@skip
   Scenario Outline: Should truncate date
     When executing query:
       """
@@ -97,6 +98,7 @@ Feature: TemporalTruncateAcceptance
       | 'day'         | datetime({year: 1984, month: 10, day: 11, hour: 12, minute: 31, second: 14, nanosecond: 645876123, timezone: '+01:00'}) | {}                             | '1984-10-11'                               |
       | 'day'         | localdatetime({year: 1984, month: 10, day: 11, hour: 12, minute: 31, second: 14, nanosecond: 645876123})                | {}                             | '1984-10-11'                               |
 
+@skip
   Scenario Outline: Should truncate datetime
     When executing query:
       """
@@ -215,6 +217,7 @@ Feature: TemporalTruncateAcceptance
       | 'microsecond' | localdatetime({year: 1984, month: 10, day: 11, hour: 12, minute: 31, second: 14, nanosecond: 645876123})                | {nanosecond: 2}                | '1984-10-11T12:31:14.645876002Z'           |
       | 'microsecond' | localdatetime({year: 1984, month: 10, day: 11, hour: 12, minute: 31, second: 14, nanosecond: 645876123})                | {}                             | '1984-10-11T12:31:14.645876Z'              |
 
+@skip
   Scenario Outline: Should truncate localdatetime
     When executing query:
       """
@@ -302,6 +305,7 @@ Feature: TemporalTruncateAcceptance
       | 'microsecond' | localdatetime({year: 1984, month: 10, day: 11, hour: 12, minute: 31, second: 14, nanosecond: 645876123})                | {nanosecond: 2}                | '1984-10-11T12:31:14.645876002'            |
       | 'microsecond' | localdatetime({year: 1984, month: 10, day: 11, hour: 12, minute: 31, second: 14, nanosecond: 645876123})                | {}                             | '1984-10-11T12:31:14.645876'               |
 
+@skip
   Scenario Outline: Should truncate localtime
     When executing query:
       """
@@ -359,6 +363,7 @@ Feature: TemporalTruncateAcceptance
       | 'microsecond' | time({hour: 12, minute: 31, second: 14, nanosecond: 645876123, timezone: '+01:00'})                                     | {nanosecond: 2}                | '12:31:14.645876002'                       |
       | 'microsecond' | time({hour: 12, minute: 31, second: 14, nanosecond: 645876123, timezone: '+01:00'})                                     | {}                             | '12:31:14.645876'                          |
 
+@skip
   Scenario Outline: Should truncate time
     When executing query:
       """

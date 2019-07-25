@@ -60,6 +60,7 @@ Feature: DeleteAcceptance
     And the side effects should be:
       | -nodes | 1 |
 
+@skip
   Scenario: Delete relationships
     Given an empty graph
     And having executed:
@@ -76,6 +77,7 @@ Feature: DeleteAcceptance
     And the side effects should be:
       | -relationships | 3 |
 
+@skip
   Scenario: Deleting connected nodes
     Given an empty graph
     And having executed:
@@ -92,6 +94,7 @@ Feature: DeleteAcceptance
       """
     Then a ConstraintVerificationFailed should be raised at runtime: DeleteConnectedNode
 
+@skip
   Scenario: Detach deleting connected nodes and relationships
     Given an empty graph
     And having executed:
@@ -112,6 +115,7 @@ Feature: DeleteAcceptance
       | -relationships | 3 |
       | -labels        | 1 |
 
+@skip
   Scenario: Detach deleting paths
     Given an empty graph
     And having executed:
@@ -132,6 +136,7 @@ Feature: DeleteAcceptance
       | -relationships | 3 |
       | -labels        | 1 |
 
+@skip
   Scenario: Undirected expand followed by delete and count
     Given an empty graph
     And having executed:
@@ -151,6 +156,7 @@ Feature: DeleteAcceptance
       | -nodes         | 2 |
       | -relationships | 1 |
 
+@skip
   Scenario: Undirected variable length expand followed by delete and count
     Given an empty graph
     And having executed:
@@ -172,6 +178,7 @@ Feature: DeleteAcceptance
       | -nodes         | 3 |
       | -relationships | 2 |
 
+@skip
   Scenario: Create and delete in same query
     Given an empty graph
     And having executed:
@@ -187,6 +194,7 @@ Feature: DeleteAcceptance
     Then the result should be empty
     And no side effects
 
+@skip
   Scenario: Delete optionally matched relationship
     Given an empty graph
     And having executed:
@@ -223,6 +231,7 @@ Feature: DeleteAcceptance
     Then the result should be empty
     And no side effects
 
+@skip
   Scenario: Delete on null path
     Given an empty graph
     When executing query:
@@ -233,6 +242,7 @@ Feature: DeleteAcceptance
     Then the result should be empty
     And no side effects
 
+@skip
   Scenario: Delete node from a list
     Given an empty graph
     And having executed:
@@ -256,6 +266,7 @@ Feature: DeleteAcceptance
       | -nodes         | 1 |
       | -relationships | 1 |
 
+@skip
   Scenario: Delete relationship from a list
     Given an empty graph
     And having executed:
@@ -278,6 +289,7 @@ Feature: DeleteAcceptance
     And the side effects should be:
       | -relationships | 1 |
 
+@skip
   Scenario: Delete nodes from a map
     Given an empty graph
     And having executed:
@@ -295,6 +307,7 @@ Feature: DeleteAcceptance
       | -nodes  | 2 |
       | -labels | 1 |
 
+@skip
   Scenario: Delete relationships from a map
     Given an empty graph
     And having executed:
@@ -313,6 +326,7 @@ Feature: DeleteAcceptance
     And the side effects should be:
       | -relationships | 2 |
 
+@skip
   Scenario: Detach delete nodes from nested map/list
     Given an empty graph
     And having executed:
@@ -332,6 +346,7 @@ Feature: DeleteAcceptance
       | -nodes         | 1 |
       | -relationships | 2 |
 
+@skip
   Scenario: Delete relationships from nested map/list
     Given an empty graph
     And having executed:
@@ -350,6 +365,7 @@ Feature: DeleteAcceptance
     And the side effects should be:
       | -relationships | 1 |
 
+@skip
   Scenario: Delete paths from nested map/list
     Given an empty graph
     And having executed:
@@ -370,6 +386,7 @@ Feature: DeleteAcceptance
       | -relationships | 2 |
       | -labels        | 1 |
 
+@skip
   Scenario: Delete relationship with bidirectional matching
     Given an empty graph
     And having executed:

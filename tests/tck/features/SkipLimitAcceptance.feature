@@ -33,6 +33,7 @@ Feature: SkipLimitAcceptanceTest
   Background:
     Given any graph
 
+@skip
   Scenario: SKIP with an expression that depends on variables should fail
     When executing query:
       """
@@ -40,6 +41,7 @@ Feature: SkipLimitAcceptanceTest
       """
     Then a SyntaxError should be raised at compile time: NonConstantExpression
 
+@skip
   Scenario: LIMIT with an expression that depends on variables should fail
     When executing query:
       """
@@ -47,6 +49,7 @@ Feature: SkipLimitAcceptanceTest
       """
     Then a SyntaxError should be raised at compile time: NonConstantExpression
 
+@skip
   Scenario: SKIP with an expression that does not depend on variables
     And having executed:
       """
@@ -66,6 +69,7 @@ Feature: SkipLimitAcceptanceTest
     And no side effects
 
 
+@skip
   Scenario: LIMIT with an expression that does not depend on variables
     And having executed:
       """

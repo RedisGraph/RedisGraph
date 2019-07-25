@@ -30,6 +30,7 @@
 
 Feature: WhereAcceptance
 
+@skip
   Scenario: NOT and false
     Given an empty graph
     And having executed:

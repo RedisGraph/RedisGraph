@@ -33,6 +33,7 @@ Feature: LabelsAcceptance
   Background:
     Given an empty graph
 
+@skip
   Scenario: Adding a single label
     And having executed:
       """
@@ -50,6 +51,7 @@ Feature: LabelsAcceptance
     And the side effects should be:
       | +labels | 1 |
 
+@skip
   Scenario: Ignore space before colon
     And having executed:
       """
@@ -67,6 +69,7 @@ Feature: LabelsAcceptance
     And the side effects should be:
       | +labels | 1 |
 
+@skip
   Scenario: Adding multiple labels
     And having executed:
       """
@@ -84,6 +87,7 @@ Feature: LabelsAcceptance
     And the side effects should be:
       | +labels | 2 |
 
+@skip
   Scenario: Ignoring intermediate whitespace 1
     And having executed:
       """
@@ -101,6 +105,7 @@ Feature: LabelsAcceptance
     And the side effects should be:
       | +labels | 2 |
 
+@skip
   Scenario: Ignoring intermediate whitespace 2
     And having executed:
       """
@@ -118,6 +123,7 @@ Feature: LabelsAcceptance
     And the side effects should be:
       | +labels | 2 |
 
+@skip
   Scenario: Creating node without label
     When executing query:
       """
@@ -130,6 +136,7 @@ Feature: LabelsAcceptance
     And the side effects should be:
       | +nodes | 1 |
 
+@skip
   Scenario: Creating node with two labels
     When executing query:
       """
@@ -144,6 +151,7 @@ Feature: LabelsAcceptance
       | +labels     | 2 |
       | +properties | 1 |
 
+@skip
   Scenario: Ignore space when creating node with labels
     When executing query:
       """
@@ -157,6 +165,7 @@ Feature: LabelsAcceptance
       | +nodes  | 1 |
       | +labels | 2 |
 
+@skip
   Scenario: Create node with label in pattern
     When executing query:
       """
@@ -171,6 +180,7 @@ Feature: LabelsAcceptance
       | +relationships | 1 |
       | +labels        | 2 |
 
+@skip
   Scenario: Fail when adding a new label predicate on a node that is already bound 1
     When executing query:
       """
@@ -179,6 +189,7 @@ Feature: LabelsAcceptance
       """
     Then a SyntaxError should be raised at compile time: VariableAlreadyBound
 
+@skip
   Scenario: Fail when adding new label predicate on a node that is already bound 2
     When executing query:
       """
@@ -187,6 +198,7 @@ Feature: LabelsAcceptance
       """
     Then a SyntaxError should be raised at compile time: VariableAlreadyBound
 
+@skip
   Scenario: Fail when adding new label predicate on a node that is already bound 3
     When executing query:
       """
@@ -195,6 +207,7 @@ Feature: LabelsAcceptance
       """
     Then a SyntaxError should be raised at compile time: VariableAlreadyBound
 
+@skip
   Scenario: Fail when adding new label predicate on a node that is already bound 4
     When executing query:
       """
@@ -203,6 +216,7 @@ Feature: LabelsAcceptance
       """
     Then a SyntaxError should be raised at compile time: VariableAlreadyBound
 
+@skip
   Scenario: Fail when adding new label predicate on a node that is already bound 5
     When executing query:
       """
@@ -211,6 +225,7 @@ Feature: LabelsAcceptance
       """
     Then a SyntaxError should be raised at compile time: VariableAlreadyBound
 
+@skip
   Scenario: Using `labels()` in return clauses
     And having executed:
       """
@@ -226,6 +241,7 @@ Feature: LabelsAcceptance
       | []        |
     And no side effects
 
+@skip
   Scenario: Removing a label
     And having executed:
       """
@@ -243,6 +259,7 @@ Feature: LabelsAcceptance
     And the side effects should be:
       | -labels | 1 |
 
+@skip
   Scenario: Removing a non-existent label
     And having executed:
       """

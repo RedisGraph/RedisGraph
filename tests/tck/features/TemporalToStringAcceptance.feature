@@ -33,6 +33,7 @@ Feature: TemporalToStringAcceptance
   Background:
     Given any graph
 
+@skip
   Scenario: Should serialize date
     When executing query:
       """
@@ -44,6 +45,7 @@ Feature: TemporalToStringAcceptance
       | '1984-10-11' | true |
     And no side effects
 
+@skip
   Scenario: Should serialize local time
     When executing query:
       """
@@ -55,6 +57,7 @@ Feature: TemporalToStringAcceptance
       | '12:31:14.645876123' | true |
     And no side effects
 
+@skip
   Scenario: Should serialize time
     When executing query:
       """
@@ -66,6 +69,7 @@ Feature: TemporalToStringAcceptance
       | '12:31:14.645876123+01:00' | true |
     And no side effects
 
+@skip
   Scenario: Should serialize local date time
     When executing query:
       """
@@ -77,6 +81,7 @@ Feature: TemporalToStringAcceptance
       | '1984-10-11T12:31:14.645876123' | true |
     And no side effects
 
+@skip
   Scenario: Should serialize date time
     When executing query:
       """
@@ -88,6 +93,7 @@ Feature: TemporalToStringAcceptance
       | '1984-10-11T12:31:14.645876123+01:00' | true |
     And no side effects
 
+@skip
   Scenario Outline: Should serialize duration
     When executing query:
       """
@@ -113,6 +119,7 @@ Feature: TemporalToStringAcceptance
       | {seconds: -60, milliseconds: 1}                                                       | 'PT-59.999S'                    | true    |
       | {seconds: -60, milliseconds: -1}                                                      | 'PT-1M-0.001S'                  | true    |
 
+@skip
   Scenario: Should serialize timezones correctly
     When executing query:
       """

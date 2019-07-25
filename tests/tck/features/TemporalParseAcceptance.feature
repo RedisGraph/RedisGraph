@@ -33,6 +33,7 @@ Feature: TemporalParseAcceptance
   Background:
     Given any graph
 
+@skip
   Scenario Outline: Should parse date from string
     When executing query:
       """
@@ -57,6 +58,7 @@ Feature: TemporalParseAcceptance
       | '2015202'    | '2015-07-21' |
       | '2015'       | '2015-01-01' |
 
+@skip
   Scenario Outline: Should parse local time from string
     When executing query:
       """
@@ -77,6 +79,7 @@ Feature: TemporalParseAcceptance
       | '2140'         | '21:40'        |
       | '21'           | '21:00'        |
 
+@skip
   Scenario Outline: Should parse time from string
     When executing query:
       """
@@ -98,6 +101,7 @@ Feature: TemporalParseAcceptance
       | '2140-02'           | '21:40-02:00'        |
       | '22+18:00'          | '22:00+18:00'        |
 
+@skip
   Scenario Outline: Should parse local date time from string
     When executing query:
       """
@@ -118,6 +122,7 @@ Feature: TemporalParseAcceptance
       | '2015-W30T2140'           | '2015-07-20T21:40'        |
       | '2015202T21'              | '2015-07-21T21:00'        |
 
+@skip
   Scenario Outline: Should parse date time from string
     When executing query:
       """
@@ -139,6 +144,7 @@ Feature: TemporalParseAcceptance
       | '2015-W30T2140-02'             | '2015-07-20T21:40-02:00'        |
       | '2015202T21+18:00'             | '2015-07-21T21:00+18:00'        |
 
+@skip
   Scenario Outline: Should parse date time with named time zone from string
     When executing query:
       """
@@ -157,6 +163,7 @@ Feature: TemporalParseAcceptance
       | '2015-07-21T21:40:32.142[Europe/London]'          | '2015-07-21T21:40:32.142+01:00[Europe/London]'       |
       | '1818-07-21T21:40:32.142[Europe/Stockholm]'       | '1818-07-21T21:40:32.142+01:12:12[Europe/Stockholm]' |
 
+@skip
   Scenario Outline: Should parse duration from string
     When executing query:
       """

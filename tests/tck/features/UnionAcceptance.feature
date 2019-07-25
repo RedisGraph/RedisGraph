@@ -30,6 +30,7 @@
 
 Feature: UnionAcceptance
 
+@skip
   Scenario: Should be able to create text output from union queries
     Given an empty graph
     And having executed:
@@ -50,6 +51,7 @@ Feature: UnionAcceptance
       | (:B) |
     And no side effects
 
+@skip
   Scenario: Two elements, both unique, not distinct
     Given an empty graph
     When executing query:
@@ -64,6 +66,7 @@ Feature: UnionAcceptance
       | 2 |
     And no side effects
 
+@skip
   Scenario: Two elements, both unique, distinct
     Given an empty graph
     When executing query:
@@ -78,6 +81,7 @@ Feature: UnionAcceptance
       | 2 |
     And no side effects
 
+@skip
   Scenario: Three elements, two unique, distinct
     Given an empty graph
     When executing query:
@@ -94,6 +98,7 @@ Feature: UnionAcceptance
       | 1 |
     And no side effects
 
+@skip
   Scenario: Three elements, two unique, not distinct
     Given an empty graph
     When executing query:

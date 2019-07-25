@@ -33,6 +33,7 @@ Feature: DurationBetweenAcceptance
   Background:
     Given any graph
 
+@skip
   Scenario Outline: Should split between boundaries correctly
     When executing query:
       """
@@ -53,6 +54,7 @@ Feature: DurationBetweenAcceptance
       | datetime('2017-10-28T23:00+02:00[Europe/Stockholm]') | datetime('2017-10-29T04:00+01:00[Europe/Stockholm]') | 'PT6H'             | 0    | 21600   | 0         |
       | datetime('2017-10-29T04:00+01:00[Europe/Stockholm]') | datetime('2017-10-28T23:00+02:00[Europe/Stockholm]') | 'PT-6H'            | 0    | -21600  | 0         |
 
+@skip
   Scenario Outline: Should compute duration between two temporals
     When executing query:
       """
@@ -91,6 +93,7 @@ Feature: DurationBetweenAcceptance
       | datetime('2014-07-21T21:40:36.143+0200') | localtime('16:30')                       | 'PT-5H-10M-36.143S'       |
       | datetime('2014-07-21T21:40:36.143+0200') | time('16:30+0100')                       | 'PT-4H-10M-36.143S'       |
 
+@skip
   Scenario Outline: Should compute duration between two temporals in months
     When executing query:
       """
@@ -125,6 +128,7 @@ Feature: DurationBetweenAcceptance
       | datetime('2014-07-21T21:40:36.143+0200') | localtime('16:30')                       | 'PT0S'   |
       | datetime('2014-07-21T21:40:36.143+0200') | time('16:30+0100')                       | 'PT0S'   |
 
+@skip
   Scenario Outline: Should compute duration between two temporals in days
     When executing query:
       """
@@ -159,6 +163,7 @@ Feature: DurationBetweenAcceptance
       | datetime('2014-07-21T21:40:36.143+0200') | localtime('16:30')                       | 'PT0S'    |
       | datetime('2014-07-21T21:40:36.143+0200') | time('16:30+0100')                       | 'PT0S'    |
 
+@skip
   Scenario Outline: Should compute duration between two temporals in seconds
     When executing query:
       """
@@ -197,6 +202,7 @@ Feature: DurationBetweenAcceptance
       | datetime('2014-07-21T21:40:36.143+0200') | localtime('16:30')                       | 'PT-5H-10M-36.143S'   |
       | datetime('2014-07-21T21:40:36.143+0200') | time('16:30+0100')                       | 'PT-4H-10M-36.143S'   |
 
+@skip
   Scenario: Should compute duration between if they differ only by a fraction of a second and the first comes after the second.
     When executing query:
       """
@@ -207,6 +213,7 @@ Feature: DurationBetweenAcceptance
       | 'PT-0.001S' |
     And no side effects
 
+@skip
   Scenario Outline: Should compute negative duration between in big units
     When executing query:
       """
@@ -225,6 +232,7 @@ Feature: DurationBetweenAcceptance
       | datetime('2018-07-21T21:40:36.143+0200') | localdatetime('2016-07-21T21:40:36.143') | 'P-2Y'      |
       | datetime('2018-07-21T21:40:36.143+0500') | datetime('1984-07-21T22:40:36.143+0200') | 'P-33Y-11M' |
 
+@skip
   Scenario Outline: Should handle durations at daylight saving time day
     When executing query:
       """
@@ -244,6 +252,7 @@ Feature: DurationBetweenAcceptance
       | date({year: 2017, month: 10, day: 29})                                            | datetime({year: 2017, month: 10, day: 29, hour: 4, timezone: 'Europe/Stockholm'}) | 'PT5H'  |
       | datetime({year: 2017, month: 10, day: 29, hour: 0, timezone: 'Europe/Stockholm'}) | date({year: 2017, month: 10, day: 30})                                            | 'PT25H' |
 
+@skip
   Scenario: Should handle large durations
     When executing query:
       """
@@ -254,6 +263,7 @@ Feature: DurationBetweenAcceptance
       | 'P1999999998Y11M30D' |
     And no side effects
 
+@skip
   Scenario: Should handle large durations in seconds
     When executing query:
       """
@@ -264,6 +274,7 @@ Feature: DurationBetweenAcceptance
       | 'PT17531639991215H59M59S' |
     And no side effects
 
+@skip
   Scenario Outline: Should handle when seconds and subseconds have different signs
     When executing query:
       """
@@ -287,6 +298,7 @@ Feature: DurationBetweenAcceptance
       | '12:34:56.3' | '12:34:54.7' | 'PT-1.6S'     |
       | '12:34:54.7' | '12:34:56.3' | 'PT1.6S'      |
 
+@skip
   Scenario Outline: Should compute durations with no difference
     When executing query:
       """
@@ -305,6 +317,7 @@ Feature: DurationBetweenAcceptance
       | localdatetime() |
       | datetime()      |
 
+@skip
   Scenario Outline: Should propagate null
     When executing query:
       """

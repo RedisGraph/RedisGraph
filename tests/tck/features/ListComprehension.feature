@@ -30,6 +30,7 @@
 
 Feature: ListComprehension
 
+@skip
   Scenario: Returning a list comprehension
     Given an empty graph
     And having executed:
@@ -48,6 +49,7 @@ Feature: ListComprehension
       | [(:A), (:A)] |
     And no side effects
 
+@skip
   Scenario: Using a list comprehension in a WITH
     Given an empty graph
     And having executed:
@@ -67,6 +69,7 @@ Feature: ListComprehension
       | [(:A), (:A)] | 2 |
     And no side effects
 
+@skip
   Scenario: Using a list comprehension in a WHERE
     Given an empty graph
     And having executed:

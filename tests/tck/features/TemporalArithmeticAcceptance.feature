@@ -33,6 +33,7 @@ Feature: TemporalArithmeticAcceptance
   Background:
     Given an empty graph
 
+@skip
   Scenario Outline: Should add or subtract duration to or from date
     And having executed:
       """
@@ -55,6 +56,7 @@ Feature: TemporalArithmeticAcceptance
       | {months: 1, days: -14, hours: 16, minutes: -12, seconds: 70}                                      | '1984-10-28' | '1984-09-25' |
       | {years: 12.5, months: 5.5, days: 14.5, hours: 16.5, minutes: 12.5, seconds: 70.5, nanoseconds: 3} | '1997-10-11' | '1971-10-12' |
 
+@skip
   Scenario Outline: Should add or subtract duration to or from local time
     And having executed:
       """
@@ -77,6 +79,7 @@ Feature: TemporalArithmeticAcceptance
       | {months: 1, days: -14, hours: 16, minutes: -12, seconds: 70}                                      | '04:20:24.000000001' | '20:42:04.000000001' |
       | {years: 12.5, months: 5.5, days: 14.5, hours: 16.5, minutes: 12.5, seconds: 70.5, nanoseconds: 3} | '22:29:27.500000004' | '02:33:00.499999998' |
 
+@skip
   Scenario Outline: Should add or subtract duration to or from time
     And having executed:
       """
@@ -99,6 +102,7 @@ Feature: TemporalArithmeticAcceptance
       | {months: 1, days: -14, hours: 16, minutes: -12, seconds: 70}                                      | '04:20:24.000000001+01:00' | '20:42:04.000000001+01:00' |
       | {years: 12.5, months: 5.5, days: 14.5, hours: 16.5, minutes: 12.5, seconds: 70.5, nanoseconds: 3} | '22:29:27.500000004+01:00' | '02:33:00.499999998+01:00' |
 
+@skip
   Scenario Outline: Should add or subtract duration to or from local date time
     And having executed:
       """
@@ -121,6 +125,7 @@ Feature: TemporalArithmeticAcceptance
       | {months: 1, days: -14, hours: 16, minutes: -12, seconds: 70}                                      | '1984-10-29T04:20:24.000000001' | '1984-09-24T20:42:04.000000001' |
       | {years: 12.5, months: 5.5, days: 14.5, hours: 16.5, minutes: 12.5, seconds: 70.5, nanoseconds: 3} | '1997-10-11T22:29:27.500000004' | '1971-10-12T02:33:00.499999998' |
 
+@skip
   Scenario Outline: Should add or subtract duration to or from date time
     And having executed:
       """
@@ -143,6 +148,7 @@ Feature: TemporalArithmeticAcceptance
       | {months: 1, days: -14, hours: 16, minutes: -12, seconds: 70}                                      | '1984-10-29T04:20:24.000000001+01:00' | '1984-09-24T20:42:04.000000001+01:00' |
       | {years: 12.5, months: 5.5, days: 14.5, hours: 16.5, minutes: 12.5, seconds: 70.5, nanoseconds: 3} | '1997-10-11T22:29:27.500000004+01:00' | '1971-10-12T02:33:00.499999998+01:00' |
 
+@skip
   Scenario Outline: Should add or subtract durations
     And having executed:
       """
@@ -171,6 +177,7 @@ Feature: TemporalArithmeticAcceptance
       | {years: 12.5, months: 5.5, days: 14.5, hours: 16.5, minutes: 12.5, seconds: 70.5, nanoseconds: 3} | {months: 1, days: -14, hours: 16, minutes: -12, seconds: 70}                                      | 'P13Y15DT49H47M23.500000003S'    | 'P12Y10M43DT18H9M3.500000003S'       |
       | {years: 12.5, months: 5.5, days: 14.5, hours: 16.5, minutes: 12.5, seconds: 70.5, nanoseconds: 3} | {years: 12.5, months: 5.5, days: 14.5, hours: 16.5, minutes: 12.5, seconds: 70.5, nanoseconds: 3} | 'P25Y10M58DT67H56M27.000000006S' | 'PT0S'                               |
 
+@skip
   Scenario Outline: Should multiply or divide durations by numbers
     And having executed:
       """

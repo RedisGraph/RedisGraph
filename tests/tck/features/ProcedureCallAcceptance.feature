@@ -33,6 +33,7 @@ Feature: ProcedureCallAcceptance
   Background:
     Given an empty graph
 
+@skip
   Scenario: In-query call to procedure that takes arguments fails when trying to pass them implicitly
     And there exists a procedure test.my.proc(in :: INTEGER?) :: (out :: INTEGER?):
       | in | out |
@@ -43,6 +44,7 @@ Feature: ProcedureCallAcceptance
       """
     Then a SyntaxError should be raised at compile time: InvalidArgumentPassingMode
 
+@skip
   Scenario: Standalone call to procedure that takes no arguments
     And there exists a procedure test.labels() :: (label :: STRING?):
       | label |
@@ -60,6 +62,7 @@ Feature: ProcedureCallAcceptance
       | 'C'   |
     And no side effects
 
+@skip
   Scenario: In-query call to procedure that takes no arguments
     And there exists a procedure test.labels() :: (label :: STRING?):
       | label |
@@ -78,6 +81,7 @@ Feature: ProcedureCallAcceptance
       | 'C'   |
     And no side effects
 
+@skip
   Scenario: Calling the same procedure twice using the same outputs in each call
     And there exists a procedure test.labels() :: (label :: STRING?):
       | label |
@@ -98,6 +102,7 @@ Feature: ProcedureCallAcceptance
       | 3 | 'C'   |
     And no side effects
 
+@skip
   Scenario: Standalone call to VOID procedure that takes no arguments
     And there exists a procedure test.doNothing() :: VOID:
       |
@@ -108,6 +113,7 @@ Feature: ProcedureCallAcceptance
     Then the result should be empty
     And no side effects
 
+@skip
   Scenario: In-query call to VOID procedure that takes no arguments
     And there exists a procedure test.doNothing() :: VOID:
       |
@@ -121,6 +127,7 @@ Feature: ProcedureCallAcceptance
       | n |
     And no side effects
 
+@skip
   Scenario: In-query call to VOID procedure does not consume rows
     And there exists a procedure test.doNothing() :: VOID:
       |
@@ -143,6 +150,7 @@ Feature: ProcedureCallAcceptance
       | 'c'  |
     And no side effects
 
+@skip
   Scenario: Standalone call to VOID procedure that takes no arguments, called with implicit arguments
     And there exists a procedure test.doNothing() :: VOID:
       |
@@ -153,6 +161,7 @@ Feature: ProcedureCallAcceptance
     Then the result should be empty
     And no side effects
 
+@skip
   Scenario: In-query call to procedure that takes no arguments and yields no results
     And there exists a procedure test.doNothing() :: ():
       |
@@ -164,6 +173,7 @@ Feature: ProcedureCallAcceptance
       | 1 |
     And no side effects
 
+@skip
   Scenario: Standalone call to procedure that takes no arguments and yields no results
     And there exists a procedure test.doNothing() :: ():
       |
@@ -174,6 +184,7 @@ Feature: ProcedureCallAcceptance
     Then the result should be empty
     And no side effects
 
+@skip
   Scenario: Standalone call to procedure that takes no arguments and yields no results, called with implicit arguments
     And there exists a procedure test.doNothing() :: ():
       |
@@ -184,6 +195,7 @@ Feature: ProcedureCallAcceptance
     Then the result should be empty
     And no side effects
 
+@skip
   Scenario: In-query call to procedure with explicit arguments
     And there exists a procedure test.my.proc(name :: STRING?, id :: INTEGER?) :: (city :: STRING?, country_code :: INTEGER?):
       | name     | id | city      | country_code |
@@ -203,6 +215,7 @@ Feature: ProcedureCallAcceptance
       | 'Berlin' | 49           |
     And no side effects
 
+@skip
   Scenario: In-query call to procedure with explicit arguments that drops all result fields
     And there exists a procedure test.my.proc(name :: STRING?, id :: INTEGER?) :: (city :: STRING?, country_code :: INTEGER?):
       | name     | id | city      | country_code |
@@ -223,6 +236,7 @@ Feature: ProcedureCallAcceptance
       | 'Stefan' | 1  | 1     |
     And no side effects
 
+@skip
   Scenario: Standalone call to procedure with explicit arguments
     And there exists a procedure test.my.proc(name :: STRING?, id :: INTEGER?) :: (city :: STRING?, country_code :: INTEGER?):
       | name     | id | city      | country_code |
@@ -241,6 +255,7 @@ Feature: ProcedureCallAcceptance
       | 'Berlin' | 49           |
     And no side effects
 
+@skip
   Scenario: Standalone call to procedure with implicit arguments
     And there exists a procedure test.my.proc(name :: STRING?, id :: INTEGER?) :: (city :: STRING?, country_code :: INTEGER?):
       | name     | id | city      | country_code |
@@ -262,6 +277,7 @@ Feature: ProcedureCallAcceptance
       | 'Berlin' | 49           |
     And no side effects
 
+@skip
   Scenario: Standalone call to procedure with argument of type NUMBER accepts value of type INTEGER
     And there exists a procedure test.my.proc(in :: NUMBER?) :: (out :: STRING?):
       | in   | out           |
@@ -276,6 +292,7 @@ Feature: ProcedureCallAcceptance
       | 'wisdom' |
     And no side effects
 
+@skip
   Scenario: In-query call to procedure with argument of type NUMBER accepts value of type INTEGER
     And there exists a procedure test.my.proc(in :: NUMBER?) :: (out :: STRING?):
       | in   | out           |
@@ -291,6 +308,7 @@ Feature: ProcedureCallAcceptance
       | 'wisdom' |
     And no side effects
 
+@skip
   Scenario: Standalone call to procedure with argument of type NUMBER accepts value of type FLOAT
     And there exists a procedure test.my.proc(in :: NUMBER?) :: (out :: STRING?):
       | in   | out           |
@@ -305,6 +323,7 @@ Feature: ProcedureCallAcceptance
       | 'about right' |
     And no side effects
 
+@skip
   Scenario: In-query call to procedure with argument of type NUMBER accepts value of type FLOAT
     And there exists a procedure test.my.proc(in :: NUMBER?) :: (out :: STRING?):
       | in   | out           |
@@ -320,6 +339,7 @@ Feature: ProcedureCallAcceptance
       | 'about right' |
     And no side effects
 
+@skip
   Scenario: Standalone call to procedure with argument of type FLOAT accepts value of type INTEGER
     And there exists a procedure test.my.proc(in :: FLOAT?) :: (out :: STRING?):
       | in   | out            |
@@ -333,6 +353,7 @@ Feature: ProcedureCallAcceptance
       | 'close enough' |
     And no side effects
 
+@skip
   Scenario: In-query call to procedure with argument of type FLOAT accepts value of type INTEGER
     And there exists a procedure test.my.proc(in :: FLOAT?) :: (out :: STRING?):
       | in   | out            |
@@ -347,6 +368,7 @@ Feature: ProcedureCallAcceptance
       | 'close enough' |
     And no side effects
 
+@skip
   Scenario: Standalone call to procedure with argument of type INTEGER accepts value of type FLOAT
     And there exists a procedure test.my.proc(in :: INTEGER?) :: (out :: STRING?):
       | in | out            |
@@ -360,6 +382,7 @@ Feature: ProcedureCallAcceptance
       | 'close enough' |
     And no side effects
 
+@skip
   Scenario: In-query call to procedure with argument of type INTEGER accepts value of type FLOAT
     And there exists a procedure test.my.proc(in :: INTEGER?) :: (out :: STRING?):
       | in | out            |
@@ -374,6 +397,7 @@ Feature: ProcedureCallAcceptance
       | 'close enough' |
     And no side effects
 
+@skip
   Scenario: Standalone call to procedure with null argument
     And there exists a procedure test.my.proc(in :: INTEGER?) :: (out :: STRING?):
       | in   | out   |
@@ -387,6 +411,7 @@ Feature: ProcedureCallAcceptance
       | 'nix' |
     And no side effects
 
+@skip
   Scenario: In-query call to procedure with null argument
     And there exists a procedure test.my.proc(in :: INTEGER?) :: (out :: STRING?):
       | in   | out   |
@@ -401,6 +426,7 @@ Feature: ProcedureCallAcceptance
       | 'nix' |
     And no side effects
 
+@skip
   Scenario: Standalone call to procedure should fail if input type is wrong
     And there exists a procedure test.my.proc(in :: INTEGER?) :: (out :: INTEGER?):
       | in | out |
@@ -410,6 +436,7 @@ Feature: ProcedureCallAcceptance
       """
     Then a SyntaxError should be raised at compile time: InvalidArgumentType
 
+@skip
   Scenario: In-query call to procedure should fail if input type is wrong
     And there exists a procedure test.my.proc(in :: INTEGER?) :: (out :: INTEGER?):
       | in | out |
@@ -420,6 +447,7 @@ Feature: ProcedureCallAcceptance
       """
     Then a SyntaxError should be raised at compile time: InvalidArgumentType
 
+@skip
   Scenario: Standalone call to procedure should fail if explicit argument is missing
     And there exists a procedure test.my.proc(name :: STRING?, in :: INTEGER?) :: (out :: INTEGER?):
       | name | in | out |
@@ -429,6 +457,7 @@ Feature: ProcedureCallAcceptance
       """
     Then a SyntaxError should be raised at compile time: InvalidNumberOfArguments
 
+@skip
   Scenario: In-query call to procedure should fail if explicit argument is missing
     And there exists a procedure test.my.proc(name :: STRING?, in :: INTEGER?) :: (out :: INTEGER?):
       | name | in | out |
@@ -439,6 +468,7 @@ Feature: ProcedureCallAcceptance
       """
     Then a SyntaxError should be raised at compile time: InvalidNumberOfArguments
 
+@skip
   Scenario: Standalone call to procedure should fail if too many explicit argument are given
     And there exists a procedure test.my.proc(in :: INTEGER?) :: (out :: INTEGER?):
       | in | out |
@@ -448,6 +478,7 @@ Feature: ProcedureCallAcceptance
       """
     Then a SyntaxError should be raised at compile time: InvalidNumberOfArguments
 
+@skip
   Scenario: In-query call to procedure should fail if too many explicit argument are given
     And there exists a procedure test.my.proc(in :: INTEGER?) :: (out :: INTEGER?):
       | in | out |
@@ -458,6 +489,7 @@ Feature: ProcedureCallAcceptance
       """
     Then a SyntaxError should be raised at compile time: InvalidNumberOfArguments
 
+@skip
   Scenario: Standalone call to procedure should fail if implicit argument is missing
     And there exists a procedure test.my.proc(name :: STRING?, in :: INTEGER?) :: (out :: INTEGER?):
       | name | in | out |
@@ -469,6 +501,7 @@ Feature: ProcedureCallAcceptance
       """
     Then a ParameterMissing should be raised at compile time: MissingParameter
 
+@skip
   Scenario: In-query call to procedure that has outputs fails if no outputs are yielded
     And there exists a procedure test.my.proc(in :: INTEGER?) :: (out :: INTEGER?):
       | in | out |
@@ -479,6 +512,7 @@ Feature: ProcedureCallAcceptance
       """
     Then a SyntaxError should be raised at compile time: UndefinedVariable
 
+@skip
   Scenario: Standalone call to unknown procedure should fail
     When executing query:
       """
@@ -486,6 +520,7 @@ Feature: ProcedureCallAcceptance
       """
     Then a ProcedureError should be raised at compile time: ProcedureNotFound
 
+@skip
   Scenario: In-query call to unknown procedure should fail
     When executing query:
       """
@@ -494,6 +529,7 @@ Feature: ProcedureCallAcceptance
       """
     Then a ProcedureError should be raised at compile time: ProcedureNotFound
 
+@skip
   Scenario: In-query procedure call should fail if shadowing an already bound variable
     And there exists a procedure test.labels() :: (label :: STRING?):
       | label |
@@ -508,6 +544,7 @@ Feature: ProcedureCallAcceptance
       """
     Then a SyntaxError should be raised at compile time: VariableAlreadyBound
 
+@skip
   Scenario: In-query procedure call should fail if one of the argument expressions uses an aggregation function
     And there exists a procedure test.labels(in :: INTEGER?) :: (label :: STRING?):
       | in | label |

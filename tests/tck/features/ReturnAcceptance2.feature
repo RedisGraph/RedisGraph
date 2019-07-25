@@ -30,6 +30,7 @@
 
 Feature: ReturnAcceptance2
 
+@skip
   Scenario: Fail when returning properties of deleted nodes
     Given an empty graph
     And having executed:
@@ -44,6 +45,7 @@ Feature: ReturnAcceptance2
       """
     Then a EntityNotFound should be raised at runtime: DeletedEntityAccess
 
+@skip
   Scenario: Fail when returning labels of deleted nodes
     Given an empty graph
     And having executed:
@@ -58,6 +60,7 @@ Feature: ReturnAcceptance2
       """
     Then a EntityNotFound should be raised at runtime: DeletedEntityAccess
 
+@skip
   Scenario: Fail when returning properties of deleted relationships
     Given an empty graph
     And having executed:
@@ -72,6 +75,7 @@ Feature: ReturnAcceptance2
       """
     Then a EntityNotFound should be raised at runtime: DeletedEntityAccess
 
+@skip
   Scenario: Do not fail when returning type of deleted relationships
     Given an empty graph
     And having executed:
@@ -90,6 +94,7 @@ Feature: ReturnAcceptance2
     And the side effects should be:
       | -relationships | 1 |
 
+@skip
   Scenario: Accept valid Unicode literal
     Given any graph
     When executing query:
@@ -117,6 +122,7 @@ Feature: ReturnAcceptance2
       | n |
     And no side effects
 
+@skip
   Scenario: Fail when sorting on variable removed by DISTINCT
     Given an empty graph
     And having executed:
@@ -131,6 +137,7 @@ Feature: ReturnAcceptance2
       """
     Then a SyntaxError should be raised at compile time: UndefinedVariable
 
+@skip
   Scenario: Ordering with aggregation
     Given an empty graph
     And having executed:
@@ -165,6 +172,7 @@ Feature: ReturnAcceptance2
       | null       |
     And no side effects
 
+@skip
   Scenario: Return all variables
     Given an empty graph
     And having executed:
@@ -181,6 +189,7 @@ Feature: ReturnAcceptance2
       | (:Start) | () | <(:Start)-[:T]->()> |
     And no side effects
 
+@skip
   Scenario: `sqrt()` returning float values
     Given any graph
     When executing query:
@@ -192,6 +201,7 @@ Feature: ReturnAcceptance2
       | 3.6         |
     And no side effects
 
+@skip
   Scenario: Arithmetic expressions inside aggregation
     Given an empty graph
     And having executed:
@@ -225,6 +235,7 @@ Feature: ReturnAcceptance2
       | ({name: 'Michael'}) | ({name: 'Peter'})  | 0   |
     And no side effects
 
+@skip
   Scenario: Matching and disregarding output, then matching again
     Given an empty graph
     And having executed:
@@ -256,6 +267,7 @@ Feature: ReturnAcceptance2
       | 776           |
     And no side effects
 
+@skip
   Scenario: Returning a list property
     Given an empty graph
     And having executed:
@@ -272,6 +284,7 @@ Feature: ReturnAcceptance2
       | ({numbers: [1, 2, 3]}) |
     And no side effects
 
+@skip
   Scenario: Returning a projected map
     Given an empty graph
     And having executed:
@@ -287,6 +300,7 @@ Feature: ReturnAcceptance2
       | {a: 1, b: 'foo'} |
     And no side effects
 
+@skip
   Scenario: Returning an expression
     Given an empty graph
     And having executed:
@@ -303,6 +317,7 @@ Feature: ReturnAcceptance2
       | false        | true          |
     And no side effects
 
+@skip
   Scenario: Limiting amount of rows when there are fewer left than the LIMIT argument
     Given an empty graph
     And having executed:
@@ -393,6 +408,7 @@ Feature: ReturnAcceptance2
       | ({id: 10}) |
     And no side effects
 
+@skip
   Scenario: Arithmetic expressions should propagate null values
     Given any graph
     When executing query:
@@ -436,6 +452,7 @@ Feature: ReturnAcceptance2
       | ({id: 42}) | 4            |
     And no side effects
 
+@skip
   Scenario: Multiple aliasing and backreferencing
     Given any graph
     When executing query:
@@ -452,6 +469,7 @@ Feature: ReturnAcceptance2
       | +nodes      | 1 |
       | +properties | 1 |
 
+@skip
   Scenario: Aggregating by a list property has a correct definition of equality
     Given an empty graph
     And having executed:
@@ -469,6 +487,7 @@ Feature: ReturnAcceptance2
       | 2     |
     And no side effects
 
+@skip
   Scenario: Reusing variable names
     Given an empty graph
     And having executed:
@@ -490,6 +509,7 @@ Feature: ReturnAcceptance2
       | 20160614 |
     And no side effects
 
+@skip
   Scenario: DISTINCT inside aggregation should work with lists in maps
     Given an empty graph
     And having executed:
@@ -506,6 +526,7 @@ Feature: ReturnAcceptance2
       | 1     |
     And no side effects
 
+@skip
   Scenario: Handling DISTINCT with lists in maps
     Given an empty graph
     And having executed:
@@ -523,6 +544,7 @@ Feature: ReturnAcceptance2
       | 1        |
     And no side effects
 
+@skip
   Scenario: DISTINCT inside aggregation should work with nested lists in maps
     Given an empty graph
     And having executed:
@@ -539,6 +561,7 @@ Feature: ReturnAcceptance2
       | 1     |
     And no side effects
 
+@skip
   Scenario: DISTINCT inside aggregation should work with nested lists of maps in maps
     Given an empty graph
     And having executed:
