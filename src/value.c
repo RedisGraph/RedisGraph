@@ -48,31 +48,37 @@ SIValue SI_PtrVal(void *v) {
 
 SIValue SI_Node(void *n) {
 	return (SIValue) {
-		.ptrval = n, .type = T_NODE, .allocation = M_VOLATILE
+		.ptrval = n, .allocation = M_VOLATILE, .type = T_NODE
 	};
 }
 
 SIValue SI_Edge(void *e) {
 	return (SIValue) {
-		.ptrval = e, .type = T_EDGE, .allocation = M_VOLATILE
+		.ptrval = e, .allocation = M_VOLATILE, .type = T_EDGE
+	};
+}
+
+SIValue SI_TemporalValue(RG_TemporalValue temporalValue) {
+	return (SIValue) {
+		.time = temporalValue, .type = T_TEMPORAL_VALUE
 	};
 }
 
 SIValue SI_DuplicateStringVal(const char *s) {
 	return (SIValue) {
-		.stringval = rm_strdup(s), .type = T_STRING, .allocation = M_SELF
+		.stringval = rm_strdup(s), .allocation = M_SELF, .type = T_STRING
 	};
 }
 
 SIValue SI_ConstStringVal(char *s) {
 	return (SIValue) {
-		.stringval = s, .type = T_STRING, .allocation = M_CONST
+		.stringval = s, .allocation = M_CONST, .type = T_STRING
 	};
 }
 
 SIValue SI_TransferStringVal(char *s) {
 	return (SIValue) {
-		.stringval = s, .type = T_STRING, .allocation = M_SELF
+		.stringval = s, .allocation = M_SELF, .type = T_STRING
 	};
 }
 
@@ -101,6 +107,7 @@ inline int SIValue_IsNullPtr(SIValue *v) {
 }
 
 int SIValue_ToString(SIValue v, char *buf, size_t len) {
+
 	int bytes_written = 0;
 
 	switch(v.type) {
@@ -119,8 +126,11 @@ int SIValue_ToString(SIValue v, char *buf, size_t len) {
 		break;
 	case T_NODE:
 	case T_EDGE:
-		bytes_written = snprintf(buf, len, "%llu",
-								 ENTITY_GET_ID((GraphEntity *)v.ptrval));
+		bytes_written = snprintf(buf, len, "%llu", ENTITY_GET_ID((GraphEntity *)v.ptrval));
+		break;
+	case T_TEMPORAL_VALUE:
+		strncpy(buf, RG_TemporalValue_ToString(v.time), len);
+		bytes_written = strlen(buf);
 		break;
 	case T_NULL:
 	default:
@@ -228,7 +238,7 @@ SIValue SIValue_Divide(const SIValue a, const SIValue b) {
 
 int SIValue_Compare(const SIValue a, const SIValue b) {
 	/* In order to be comparable, both SIValues must be strings,
-	 * booleans, or numerics. */
+	 * booleans, numerics or temporal values. */
 	if(a.type == b.type) {
 		switch(a.type) {
 		case T_INT64:
@@ -240,8 +250,9 @@ int SIValue_Compare(const SIValue a, const SIValue b) {
 			return strcmp(a.stringval, b.stringval);
 		case T_NODE:
 		case T_EDGE:
-			return ENTITY_GET_ID((GraphEntity *)a.ptrval) - ENTITY_GET_ID((
-																			  GraphEntity *)b.ptrval);
+			return ENTITY_GET_ID((GraphEntity *)a.ptrval) - ENTITY_GET_ID((GraphEntity *)b.ptrval);
+		case T_TEMPORAL_VALUE:
+			return RG_TemporalValue_Compare(a.time, b.time);
 		default:
 			// Both inputs were of an incomparable type, like a pointer or NULL
 			return DISJOINT;
@@ -265,8 +276,12 @@ int SIValue_Order(const SIValue a, const SIValue b) {
 	int cmp = SIValue_Compare(a, b);
 	if(cmp != DISJOINT) return cmp;
 
-	// Cypher's orderability property defines string < boolean < numeric < NULL.
-	if(a.type == T_STRING) {
+	// Cypher's orderability property defines datetime < string < boolean < numeric < NULL.
+	if(a.type == T_TEMPORAL_VALUE) {
+		return -1;
+	} else if(b.type == T_TEMPORAL_VALUE) {
+		return 1;
+	} else if(a.type == T_STRING) {
 		return -1;
 	} else if(b.type == T_STRING) {
 		return 1;
@@ -300,6 +315,7 @@ void SIValue_Persist(SIValue *v) {
 		v->allocation = M_SELF;
 	}
 }
+
 
 void SIValue_Free(SIValue *v) {
 	// The free routine only performs work if it owns a heap allocation.

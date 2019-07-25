@@ -17,6 +17,7 @@ typedef enum  {
 	REC_TYPE_NODE,
 	REC_TYPE_EDGE,
 	REC_TYPE_HEADER,
+	REC_TYPE_TEMPORAL
 } RecordEntryType;
 
 typedef struct {
@@ -63,7 +64,7 @@ SIValue Record_Get(Record r, int idx);
 // Get a graph entity from record at position idx.
 GraphEntity *Record_GetGraphEntity(const Record r, int idx);
 
-// Add a scalar, node, or edge to the record, depending on the SIValue type.
+// Add a scalar, node, edge or temporal value to the record, depending on the SIValue type.
 void Record_Add(Record r, int idx, SIValue v);
 
 // Add a scalar to record at position idx.
@@ -74,6 +75,9 @@ void Record_AddNode(Record r, int idx, Node node);
 
 // Add an edge to record at position idx.
 void Record_AddEdge(Record r, int idx, Edge edge);
+
+// Add a temporal value at position idx.
+void Record_AddTemporalValue(Record r, int idx, RG_TemporalValue);
 
 // String representation of record.
 size_t Record_ToString(const Record r, char **buf, size_t *buf_cap);

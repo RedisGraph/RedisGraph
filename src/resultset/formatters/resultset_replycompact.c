@@ -20,6 +20,8 @@ static inline PropertyTypeUser _mapValueType(const SIValue v) {
 		return PROPERTY_BOOLEAN;
 	case T_DOUBLE:
 		return PROPERTY_DOUBLE;
+	case T_TEMPORAL_VALUE:
+		return PROPERTY_TEMPORAL_VALUE;
 	default:
 		return PROPERTY_UNKNOWN;
 	}
@@ -28,6 +30,50 @@ static inline PropertyTypeUser _mapValueType(const SIValue v) {
 static inline void _ResultSet_ReplyWithValueType(RedisModuleCtx *ctx,
 												 const SIValue v) {
 	RedisModule_ReplyWithLongLong(ctx, _mapValueType(v));
+}
+/* reply an array in size of */
+static void _ResultSet_CompactReplyWithTemporalValue(RedisModuleCtx *ctx,
+													 GraphContext *gc, RG_TemporalValue temporalValue) {
+
+	/*  Compact temporal value reply format:
+	 *  [
+	 *
+	 *      temporal value type (int)
+	 *          TIME = 1,
+	 *          LOCAL_TIME = 2,
+	 *          DATE = 4,
+	 *          DATE_TIME = 8,
+	 *          LOCAL_DATE_TIME = 16,
+	 *          DURATION = 32
+	 *      seconds since 1900-01-01T00:00:00 (int64)
+	 *      nanoseconds delta (int32)
+	 *      optional - if timezone supported
+	 *      timezone - string
+	 *  ]
+	 */
+	bool timezoneSupported = RG_TemporalValue_IsTimezoneSuppoerted(temporalValue);
+	if(timezoneSupported)
+		RedisModule_ReplyWithArray(ctx, 4);
+	else
+		RedisModule_ReplyWithArray(ctx, 3);
+
+	//send type
+	RedisModule_ReplyWithLongLong(ctx, temporalValue.type);
+
+	// seconds from 1900-01-01T00:00:00
+	// in case of duration - total duration in seconds
+	RedisModule_ReplyWithLongLong(ctx, temporalValue.seconds);
+
+	// nanoseconds extra from the last second
+	// in case of duration - total duration in seconds
+	RedisModule_ReplyWithLongLong(ctx, temporalValue.nano);
+
+	// send timezone
+	if(timezoneSupported) {
+		const char *timezoneString;
+		RG_TemporalValue_GetTimeZone(temporalValue, &timezoneString);
+		RedisModule_ReplyWithStringBuffer(ctx, timezoneString, strlen(timezoneString));
+	}
 }
 
 static void _ResultSet_CompactReplyWithSIValue(RedisModuleCtx *ctx,
@@ -47,6 +93,9 @@ static void _ResultSet_CompactReplyWithSIValue(RedisModuleCtx *ctx,
 	case T_BOOL:
 		if(v.longval != 0) RedisModule_ReplyWithStringBuffer(ctx, "true", 4);
 		else RedisModule_ReplyWithStringBuffer(ctx, "false", 5);
+		return;
+	case T_TEMPORAL_VALUE:
+		_ResultSet_CompactReplyWithTemporalValue(ctx, gc, v.time);
 		return;
 	case T_NULL:
 		RedisModule_ReplyWithNull(ctx);

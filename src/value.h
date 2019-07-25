@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include "datatypes/temporal_value.h"
 
 /* Type defines the supported types by the indexing system. The types are powers
  * of 2 so they can be used in bitmasks of matching types.
@@ -30,13 +31,14 @@ typedef enum {
 	T_CONSTSTRING = 0x100, // only used in deserialization routine
 	T_NODE = 0x200,
 	T_EDGE = 0x400,
+	T_TEMPORAL_VALUE = 0x800,
 } SIType;
 
 typedef enum {
-	M_NONE = 0,        // SIValue is not heap-allocated
-	M_SELF = 0x1,      // SIValue is responsible for freeing its reference
-	M_VOLATILE = 0x2,  // SIValue does not own its reference and may go out of scope
-	M_CONST = 0x4      // SIValue does not own its allocation, but its access is safe
+	M_NONE = 0,       // SIValue is not heap-allocated
+	M_SELF = 0x1,     // SIValue is responsible for freeing its reference
+	M_VOLATILE = 0x2, // SIValue does not own its reference and may go out of scope
+	M_CONST = 0x4     // SIValue does not own its allocation, but its access is safe
 } SIAllocation;
 
 #define SI_NUMERIC (T_INT64 | T_DOUBLE)
@@ -59,13 +61,19 @@ typedef enum {
 
 typedef struct {
 	union {
+		struct {
+			union {
+				void *ptrval;
+				char *stringval;
+			};
+			SIAllocation allocation;
+		};
+
+		RG_TemporalValue time;
 		int64_t longval;
 		double doubleval;
-		char *stringval;
-		void *ptrval;
 	};
 	SIType type;
-	SIAllocation allocation;
 } SIValue;
 
 /* Functions to construct an SIValue from a specific input type. */
@@ -76,17 +84,16 @@ SIValue SI_BoolVal(int b);
 SIValue SI_PtrVal(void *v);
 SIValue SI_Node(void *n);
 SIValue SI_Edge(void *e);
-SIValue SI_DuplicateStringVal(const char
-							  *s); // Duplicate and ultimately free the input string
+SIValue SI_TemporalValue(RG_TemporalValue temporalValue);
+SIValue SI_DuplicateStringVal(const char *s); // Duplicate and ultimately free the input string
 SIValue SI_ConstStringVal(char
-						  *s);           // Neither duplicate nor assume ownership of input string
-SIValue SI_TransferStringVal(char
-							 *s);        // Don't duplicate input string, but assume ownership
+						  *s);     // Neither duplicate nor assume ownership of input string
+SIValue SI_TransferStringVal(char *s); // Don't duplicate input string, but assume ownership
 
 /* Functions to copy an SIValue. */
 SIValue SI_Clone(SIValue
-				 v);               // If input is a string type, duplicate and assume ownership
-SIValue SI_ShallowCopy(SIValue v);         // Don't duplicate any inputs
+				 v);           // If input is a string type, duplicate and assume ownership
+SIValue SI_ShallowCopy(SIValue v); // Don't duplicate any inputs
 
 int SIValue_IsNull(SIValue v);
 int SIValue_IsNullPtr(SIValue *v);
@@ -136,4 +143,3 @@ void SIValue_Persist(SIValue *v);
 void SIValue_Free(SIValue *v);
 
 #endif // __SECONDARY_VALUE_H__
-

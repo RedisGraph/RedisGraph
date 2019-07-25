@@ -25,6 +25,7 @@ typedef enum {
 	PROPERTY_INTEGER = 3,
 	PROPERTY_BOOLEAN = 4,
 	PROPERTY_DOUBLE = 5,
+	PROPERTY_TEMPORAL_VALUE = 6,
 } PropertyTypeUser;
 
 // Typedef for header formatters.

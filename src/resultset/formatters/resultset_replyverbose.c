@@ -6,6 +6,18 @@
 
 #include "resultset_formatters.h"
 
+/* replay a cypher string represantation of the time value */
+static void _ResultSet_VerboseRepltWithTemporalValue(RedisModuleCtx *ctx,
+													 GraphContext *gc, RG_TemporalValue temporalValue) {
+
+	/*  Verbose temporal value reply format:
+	 *  String with the relevae temporal type format
+	 */
+	const char *str = RG_TemporalValue_ToString(temporalValue);
+
+	RedisModule_ReplyWithStringBuffer(ctx, str, strlen(str));
+}
+
 /* This function has handling for all SIValue scalar types.
  * The current RESP protocol only has unique support for strings, 8-byte integers,
  * and NULL values. */
@@ -25,6 +37,9 @@ static void _ResultSet_VerboseReplyWithSIValue(RedisModuleCtx *ctx,
 	case T_BOOL:
 		if(v.longval != 0) RedisModule_ReplyWithStringBuffer(ctx, "true", 4);
 		else RedisModule_ReplyWithStringBuffer(ctx, "false", 5);
+		return;
+	case T_TEMPORAL_VALUE:
+		_ResultSet_VerboseRepltWithTemporalValue(ctx, gc, v.time);
 		return;
 	case T_NULL:
 		RedisModule_ReplyWithNull(ctx);
