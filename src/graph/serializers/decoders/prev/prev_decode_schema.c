@@ -4,12 +4,13 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "serialize_schema.h"
-#include "../../util/arr.h"
-#include "../../util/rmalloc.h"
+#include "prev_decode_schema.h"
+
+#include "../../../../util/arr.h"
+#include "../../../../util/rmalloc.h"
 
 /* Deserialize unified schema */
-void RdbLoadAttributeKeys(RedisModuleIO *rdb, GraphContext *gc) {
+void PrevRdbLoadAttributeKeys(RedisModuleIO *rdb, GraphContext *gc) {
 	/* Format:
 	 * id // (fake)
 	 * name // (fake)
@@ -53,7 +54,7 @@ void RdbLoadAttributeKeys(RedisModuleIO *rdb, GraphContext *gc) {
 	}
 }
 
-Schema *RdbLoadSchema(RedisModuleIO *rdb, SchemaType type) {
+Schema *PrevRdbLoadSchema(RedisModuleIO *rdb, SchemaType type) {
 	/* Format:
 	 * id
 	 * name
@@ -76,53 +77,3 @@ Schema *RdbLoadSchema(RedisModuleIO *rdb, SchemaType type) {
 
 	return s;
 }
-
-void RdbSaveSchema(RedisModuleIO *rdb, Schema *s) {
-	/* Format:
-	 * id
-	 * name
-	 * #attributes // TODO unnecessary
-	 * attributes  // TODO unnecessary
-	 */
-
-	RedisModule_SaveUnsigned(rdb, s->id);
-	RedisModule_SaveStringBuffer(rdb, s->name, strlen(s->name) + 1);
-	// Don't save any strings
-	RedisModule_SaveUnsigned(rdb, 0);
-}
-
-/* Serialize dummy values to fill expected space in RDB file.
- * This is primarily required for the second unified schema (edges),
- * as the space for the first is used to encode all attribute keys
- */
-void RdbSaveDummySchema(RedisModuleIO *rdb) {
-	/* Format:
-	 * id
-	 * name
-	 * #attributes
-	 * attributes (nothing, as # is 0)
-	 */
-
-	RedisModule_SaveUnsigned(rdb, 0);
-	RedisModule_SaveStringBuffer(rdb, "", 1);
-	RedisModule_SaveUnsigned(rdb, 0);
-}
-
-void RdbSaveAttributeKeys(RedisModuleIO *rdb, GraphContext *gc) {
-	/* Format:
-	 * id // (fake)
-	 * name // (fake)
-	 * #attribute keys
-	 * attribute keys
-	 */
-
-	RedisModule_SaveUnsigned(rdb, 0);
-	RedisModule_SaveStringBuffer(rdb, "", 1);
-	uint count = GraphContext_AttributeCount(gc);
-	RedisModule_SaveUnsigned(rdb, count);
-	for(uint i = 0; i < count; i ++) {
-		char *key = gc->string_mapping[i];
-		RedisModule_SaveStringBuffer(rdb, key, strlen(key));
-	}
-}
-
