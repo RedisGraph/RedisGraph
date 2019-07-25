@@ -9,9 +9,12 @@
 #include "temporal_utils.h"
 #include "../util/rmalloc.h"
 
-static const char utcFormat[] = "YYYY-MM-DDTHH:MM:SS.NNNNNNNNNz";
+static const char cypherDateTimeFormat[] = "YYYY-MM-DDTHH:MM:SS.NNNNNNNNN";
+static const char cypherDateFormat[] = "YYYY-MM-DD";
+static const char cypherTimeFormat[] = "HH:MM:SS.NNNNNNNNN";
 static const int dateMask = DATE | DATE_TIME | LOCAL_DATE_TIME;
 static const int timeMask = TIME | LOCAL_TIME | DATE_TIME | LOCAL_DATE_TIME;
+static const int timezoneSupportedMask = TIME | DATE_TIME;
 
 /**
  * @brief  auxilary method to generate a tm struct from temporal value
@@ -323,13 +326,99 @@ int64_t RG_TemporalValue_GetNanosecond(RG_TemporalValue temporalValue) {
 	return temporalValue.nano;
 }
 
-const char *RG_TemporalValue_ToString(RG_TemporalValue timestamp) {
-	struct tm *time = gmtime(&timestamp.seconds);
-	size_t len = strlen(utcFormat) + 1;
+/**
+ * @brief  return a string representation of the time zone
+ * @note
+ * @param  temporalValue:
+ * @retval time zone string
+ */
+const char *getTimeZoneString(RG_TemporalValue temporalValue) {
+	// temporary until we'll have time zones support
+	char *str = rm_calloc(2, sizeof(char));
+	sprintf(str, "z");
+	return str;
+}
+
+int64_t RG_TemporalValue_GetTimeZone(RG_TemporalValue temporalValue, const char **timezone) {
+	if(!RG_TemporalValue_IsTimezoneSuppoerted(temporalValue))
+		return RG_TEMPORAL_FUNC_FAIL;
+	*timezone = getTimeZoneString(temporalValue);
+	return RG_TEMPORAL_FUNC_SUCCESS;
+}
+
+
+bool RG_TemporalValue_IsTimezoneSuppoerted(RG_TemporalValue temporalValue) {
+	return (temporalValue.type & timezoneSupportedMask);
+}
+// date time to string
+const char *datetimeToString(RG_TemporalValue temporalValue) {
+	struct tm *time = gmtime(&temporalValue.seconds);
+	const char *timezone;
+	RG_TemporalValue_GetTimeZone(temporalValue, &timezone);
+	size_t len = strlen(cypherDateTimeFormat) + strlen(timezone) + 1;
 	char *buffer = rm_malloc(len);
 	len -= strftime(buffer, len, "%Y-%m-%dT%H:%M:%S.", time);
-	snprintf(&buffer[strlen(buffer)], len, ".%09uiz", timestamp.nano);
+	snprintf(&buffer[strlen(buffer)], len, "%09u%s", temporalValue.nano, timezone);
 	return buffer;
+}
+
+// local date time to string
+const char *localdatetimeToString(RG_TemporalValue temporalValue) {
+	struct tm *time = gmtime(&temporalValue.seconds);
+	size_t len = strlen(cypherDateTimeFormat) + 1;
+	char *buffer = rm_malloc(len);
+	len -= strftime(buffer, len, "%Y-%m-%dT%H:%M:%S.", time);
+	snprintf(&buffer[strlen(buffer)], len, "%09u", temporalValue.nano);
+	return buffer;
+}
+
+// time to string
+const char *timeToString(RG_TemporalValue temporalValue) {
+	struct tm *time = gmtime(&temporalValue.seconds);
+	const char *timezone;
+	RG_TemporalValue_GetTimeZone(temporalValue, &timezone);
+	size_t len = strlen(cypherTimeFormat) + strlen(timezone) + 1;
+	char *buffer = rm_malloc(len);
+	len -= strftime(buffer, len, "%H:%M:%S.", time);
+	snprintf(&buffer[strlen(buffer)], len, "%09u%s", temporalValue.nano, timezone);
+	return buffer;
+}
+
+// local time to string
+const char *localtimeToString(RG_TemporalValue temporalValue) {
+	struct tm *time = gmtime(&temporalValue.seconds);
+	size_t len = strlen(cypherTimeFormat)  + 1;
+	char *buffer = rm_malloc(len);
+	len -= strftime(buffer, len, "%H:%M:%S.", time);
+	snprintf(&buffer[strlen(buffer)], len, "%09u", temporalValue.nano);
+	return buffer;
+}
+
+//  date to string
+const char *dateToString(RG_TemporalValue temporalValue) {
+	struct tm *time = gmtime(&temporalValue.seconds);
+	size_t len = strlen(cypherDateFormat) + 1;
+	char *buffer = rm_malloc(len);
+	strftime(buffer, len, "%Y-%m-%d", time);
+	return buffer;
+}
+
+const char *RG_TemporalValue_ToString(RG_TemporalValue temporalValue) {
+	switch(temporalValue.type) {
+	case DATE_TIME:
+		return datetimeToString(temporalValue);
+	case LOCAL_DATE_TIME:
+		return localdatetimeToString(temporalValue);
+	case TIME:
+		return timeToString(temporalValue);
+	case LOCAL_TIME:
+		return localtimeToString(temporalValue);
+	case DATE:
+		return dateToString(temporalValue);
+	case DURATION:
+	default:
+		return "\0";
+	}
 }
 
 int RG_TemporalValue_Compare(RG_TemporalValue a, RG_TemporalValue b) {

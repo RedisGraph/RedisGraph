@@ -6,32 +6,16 @@
 
 #include "resultset_formatters.h"
 
-
+/* replay a cypher string represantation of the time value */
 static void _ResultSet_VerboseRepltWithTemporalValue(RedisModuleCtx *ctx,
 													 GraphContext *gc, RG_TemporalValue temporalValue) {
-	RedisModule_ReplyWithArray(ctx, 3);
 
-	// ["seconds", seconds from 1900-01-01T00:00:00]
-	// in case of duration - total duration in seconds
-	RedisModule_ReplyWithArray(ctx, 2);
-	RedisModule_ReplyWithStringBuffer(ctx, "seconds", 7);
-	RedisModule_ReplyWithLongLong(ctx, temporalValue.seconds);
+	/*  Verbose temporal value reply format:
+	 *  String with the relevae temporal type format
+	 */
+	const char *str = RG_TemporalValue_ToString(temporalValue);
 
-	// ["nano", nanoseconds extra from the last second]
-	// in case of duration - total duration in seconds
-	RedisModule_ReplyWithArray(ctx, 2);
-	RedisModule_ReplyWithStringBuffer(ctx, "nano", 4);
-	RedisModule_ReplyWithLongLong(ctx, temporalValue.nano);
-
-	// ["type-tz", type (5 lsb) and time zone (27 msb)]
-	// cast struct to a 32 bit array
-	// [0-1] time_t - seconds
-	// [2] int32_t - nano
-	// [3] int32_t - type and timezone
-	int32_t *ptr = (int32_t *)&temporalValue;
-	RedisModule_ReplyWithArray(ctx, 2);
-	RedisModule_ReplyWithStringBuffer(ctx, "type-tz", 7);
-	RedisModule_ReplyWithLongLong(ctx, ptr[3]);
+	RedisModule_ReplyWithStringBuffer(ctx, str, strlen(str));
 }
 
 /* This function has handling for all SIValue scalar types.

@@ -31,10 +31,34 @@ static inline void _ResultSet_ReplyWithValueType(RedisModuleCtx *ctx,
 												 const SIValue v) {
 	RedisModule_ReplyWithLongLong(ctx, _mapValueType(v));
 }
-
+/* reply an array in size of */
 static void _ResultSet_CompactReplyWithTemporalValue(RedisModuleCtx *ctx,
 													 GraphContext *gc, RG_TemporalValue temporalValue) {
-	RedisModule_ReplyWithArray(ctx, 3);
+
+	/*  Compact temporal value reply format:
+	 *  [
+	 *
+	 *      temporal value type (int)
+	 *          TIME = 1,
+	 *          LOCAL_TIME = 2,
+	 *          DATE = 4,
+	 *          DATE_TIME = 8,
+	 *          LOCAL_DATE_TIME = 16,
+	 *          DURATION = 32
+	 *      seconds since 1900-01-01T00:00:00 (int64)
+	 *      nanoseconds delta (int32)
+	 *      optional - if timezone supported
+	 *      timezone - string
+	 *  ]
+	 */
+	bool timezoneSupported = RG_TemporalValue_IsTimezoneSuppoerted(temporalValue);
+	if(timezoneSupported)
+		RedisModule_ReplyWithArray(ctx, 4);
+	else
+		RedisModule_ReplyWithArray(ctx, 3);
+
+	//send type
+	RedisModule_ReplyWithLongLong(ctx, temporalValue.type);
 
 	// seconds from 1900-01-01T00:00:00
 	// in case of duration - total duration in seconds
@@ -44,13 +68,12 @@ static void _ResultSet_CompactReplyWithTemporalValue(RedisModuleCtx *ctx,
 	// in case of duration - total duration in seconds
 	RedisModule_ReplyWithLongLong(ctx, temporalValue.nano);
 
-	// type (5 lsb) and time zone (27 msb)
-	// cast struct to a 32 bit array
-	// [0-1] time_t - seconds
-	// [2] int32_t - nano
-	// [3] int32_t - type and timezone
-	int32_t *ptr = (int32_t *)&temporalValue;
-	RedisModule_ReplyWithLongLong(ctx, ptr[3]);
+	// send timezone
+	if(timezoneSupported) {
+		const char *timezoneString;
+		RG_TemporalValue_GetTimeZone(temporalValue, &timezoneString);
+		RedisModule_ReplyWithStringBuffer(ctx, timezoneString, strlen(timezoneString));
+	}
 }
 
 static void _ResultSet_CompactReplyWithSIValue(RedisModuleCtx *ctx,
