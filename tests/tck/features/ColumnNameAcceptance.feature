@@ -36,7 +36,7 @@ Feature: ColumnNameAcceptance
       """
       CREATE ()
       """
-  @skip
+
   Scenario: Keeping used expression 1
     When executing query:
       """
@@ -47,7 +47,7 @@ Feature: ColumnNameAcceptance
       | cOuNt( * ) |
       | 1          |
     And no side effects
-  @skip
+
   Scenario: Keeping used expression 2
     When executing query:
       """
@@ -57,7 +57,7 @@ Feature: ColumnNameAcceptance
     Then the result should be:
       | nOdEs( p ) |
     And no side effects
-  @skip
+
   Scenario: Keeping used expression 3
     When executing query:
       """
@@ -68,7 +68,7 @@ Feature: ColumnNameAcceptance
       | coUnt( dIstInct p ) |
       | 0                   |
     And no side effects
-  @skip
+
   Scenario: Keeping used expression 4
     When executing query:
       """

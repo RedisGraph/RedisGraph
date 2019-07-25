@@ -29,7 +29,7 @@
 #encoding: utf-8
 
 Feature: EqualsAcceptance
-  @skip
+
   Scenario: Number-typed integer comparison
     Given an empty graph
     And having executed:
@@ -48,7 +48,7 @@ Feature: EqualsAcceptance
       | n         |
       | ({id: 0}) |
     And no side effects
-  @skip
+
   Scenario: Number-typed float comparison
     Given an empty graph
     And having executed:
@@ -66,7 +66,7 @@ Feature: EqualsAcceptance
     Then the result should be:
       | n |
     And no side effects
-  @skip
+
   Scenario: Any-typed string comparison
     Given an empty graph
     And having executed:
@@ -84,7 +84,7 @@ Feature: EqualsAcceptance
     Then the result should be:
       | n |
     And no side effects
-  @skip
+
   Scenario: Comparing nodes to nodes
     Given an empty graph
     And having executed:
@@ -103,7 +103,7 @@ Feature: EqualsAcceptance
       | count(b) |
       | 1        |
     And no side effects
-  @skip
+
   Scenario: Comparing relationships to relationships
     Given an empty graph
     And having executed:
@@ -123,7 +123,6 @@ Feature: EqualsAcceptance
       | 1        |
     And no side effects
 
-  @skip
   Scenario Outline: Comparing lists to lists
     Given an empty graph
     When executing query:

@@ -28,57 +28,60 @@
 
 #encoding: utf-8
 
-Feature: SkipLimitAcceptanceTest
+Feature: OptionalMatch
 
-  Background:
-    Given any graph
-
-  Scenario: SKIP with an expression that depends on variables should fail
-    When executing query:
-      """
-      MATCH (n) RETURN n SKIP n.count
-      """
-    Then a SyntaxError should be raised at compile time: NonConstantExpression
-
-  Scenario: LIMIT with an expression that depends on variables should fail
-    When executing query:
-      """
-      MATCH (n) RETURN n LIMIT n.count
-      """
-    Then a SyntaxError should be raised at compile time: NonConstantExpression
-
-  Scenario: SKIP with an expression that does not depend on variables
+  Scenario: Satisfies the open world assumption, relationships between same nodes
+    Given an empty graph
     And having executed:
       """
-      UNWIND range(1, 10) AS i
-      CREATE ({nr: i})
+      CREATE (a:Player), (b:Team)
+      CREATE (a)-[:PLAYS_FOR]->(b),
+             (a)-[:SUPPORTS]->(b)
       """
     When executing query:
       """
-      MATCH (n)
-      WITH n SKIP toInteger(rand()*9)
-      WITH count(*) AS count
-      RETURN count > 0 AS nonEmpty
+      MATCH (p:Player)-[:PLAYS_FOR]->(team:Team)
+      OPTIONAL MATCH (p)-[s:SUPPORTS]->(team)
+      RETURN count(*) AS matches, s IS NULL AS optMatch
       """
     Then the result should be:
-      | nonEmpty |
-      | true     |
+      | matches | optMatch |
+      | 1       | false    |
     And no side effects
 
-
-  Scenario: LIMIT with an expression that does not depend on variables
+  Scenario: Satisfies the open world assumption, single relationship
+    Given an empty graph
     And having executed:
       """
-      UNWIND range(1, 3) AS i
-      CREATE ({nr: i})
+      CREATE (a:Player), (b:Team)
+      CREATE (a)-[:PLAYS_FOR]->(b)
       """
     When executing query:
       """
-      MATCH (n)
-      WITH n LIMIT toInteger(ceil(1.7))
-      RETURN count(*) AS count
+      MATCH (p:Player)-[:PLAYS_FOR]->(team:Team)
+      OPTIONAL MATCH (p)-[s:SUPPORTS]->(team)
+      RETURN count(*) AS matches, s IS NULL AS optMatch
       """
     Then the result should be:
-      | count |
-      | 2     |
+      | matches | optMatch |
+      | 1       | true     |
+    And no side effects
+
+  Scenario: Satisfies the open world assumption, relationships between different nodes
+    Given an empty graph
+    And having executed:
+      """
+      CREATE (a:Player), (b:Team), (c:Team)
+      CREATE (a)-[:PLAYS_FOR]->(b),
+             (a)-[:SUPPORTS]->(c)
+      """
+    When executing query:
+      """
+      MATCH (p:Player)-[:PLAYS_FOR]->(team:Team)
+      OPTIONAL MATCH (p)-[s:SUPPORTS]->(team)
+      RETURN count(*) AS matches, s IS NULL AS optMatch
+      """
+    Then the result should be:
+      | matches | optMatch |
+      | 1       | true     |
     And no side effects

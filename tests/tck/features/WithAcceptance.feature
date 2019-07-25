@@ -29,7 +29,7 @@
 #encoding: utf-8
 
 Feature: WithAcceptance
-  @skip
+
   Scenario: Passing on pattern nodes
     Given an empty graph
     And having executed:
@@ -47,7 +47,7 @@ Feature: WithAcceptance
       | a    | b    |
       | (:A) | (:B) |
     And no side effects
-  @skip
+
   Scenario: ORDER BY and LIMIT can be used
     Given an empty graph
     And having executed:
@@ -68,7 +68,7 @@ Feature: WithAcceptance
       | a    |
       | (:A) |
     And no side effects
-  @skip
+
   Scenario: No dependencies between the query parts
     Given an empty graph
     And having executed:
@@ -110,7 +110,7 @@ Feature: WithAcceptance
       | b                |
       | (:End {num: 42}) |
     And no side effects
-  @skip
+
   Scenario: Handle dependencies across WITH
     Given an empty graph
     And having executed:
@@ -132,7 +132,7 @@ Feature: WithAcceptance
       | b                       |
       | (:End {num: 42, id: 0}) |
     And no side effects
-  @skip
+
   Scenario: Handle dependencies across WITH with SKIP
     Given an empty graph
     And having executed:
@@ -155,7 +155,7 @@ Feature: WithAcceptance
       | b                            |
       | ({name: 'A', num: 0, id: 0}) |
     And no side effects
-  @skip
+
   Scenario: WHERE after WITH should filter results
     Given an empty graph
     And having executed:
@@ -175,7 +175,7 @@ Feature: WithAcceptance
       | a             |
       | ({name: 'B'}) |
     And no side effects
-  @skip
+
   Scenario: WHERE after WITH can filter on top of an aggregation
     Given an empty graph
     And having executed:
@@ -198,7 +198,7 @@ Feature: WithAcceptance
       | a             |
       | ({name: 'A'}) |
     And no side effects
-  @skip
+
   Scenario: ORDER BY on an aggregating key
     Given an empty graph
     And having executed:
@@ -219,7 +219,7 @@ Feature: WithAcceptance
       | 'A'  | 2        |
       | 'B'  | 1        |
     And no side effects
-  @skip
+
   Scenario: ORDER BY a DISTINCT column
     Given an empty graph
     And having executed:
@@ -240,7 +240,7 @@ Feature: WithAcceptance
       | 'A'  |
       | 'B'  |
     And no side effects
-  @skip
+
   Scenario: WHERE on a DISTINCT column
     Given an empty graph
     And having executed:
@@ -260,7 +260,7 @@ Feature: WithAcceptance
       | bars |
       | 'B'  |
     And no side effects
-  @skip
+
   Scenario: A simple pattern with one bound endpoint
     Given an empty graph
     And having executed:
@@ -280,7 +280,7 @@ Feature: WithAcceptance
       | a    | r      | b    |
       | (:A) | [:REL] | (:B) |
     And no side effects
-  @skip
+
   Scenario: Null handling
     Given an empty graph
     When executing query:
@@ -293,7 +293,7 @@ Feature: WithAcceptance
     Then the result should be:
       | a | b |
     And no side effects
-  @skip
+
   Scenario: Nested maps
     Given an empty graph
     When executing query:
@@ -305,7 +305,7 @@ Feature: WithAcceptance
       | nestedMap.name.name2 |
       | 'baz'                |
     And no side effects
-  @skip
+
   Scenario: Connected components succeeding WITH
     Given an empty graph
     And having executed:
@@ -325,7 +325,7 @@ Feature: WithAcceptance
       | m    | n    | x    |
       | (:B) | (:A) | (:X) |
     And no side effects
-  @skip
+
   Scenario: Single WITH using a predicate and aggregation
     Given an empty graph
     And having executed:
@@ -343,7 +343,7 @@ Feature: WithAcceptance
       | count(*) |
       | 1        |
     And no side effects
-  @skip
+
   Scenario: Multiple WITHs using a predicate and aggregation
     Given an empty graph
     And having executed:

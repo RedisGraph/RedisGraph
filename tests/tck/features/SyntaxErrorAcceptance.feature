@@ -28,57 +28,36 @@
 
 #encoding: utf-8
 
-Feature: SkipLimitAcceptanceTest
+Feature: SyntaxErrorAcceptance
 
   Background:
     Given any graph
 
-  Scenario: SKIP with an expression that depends on variables should fail
+  Scenario: Using a non-existent function
     When executing query:
       """
-      MATCH (n) RETURN n SKIP n.count
+      MATCH (a)
+      RETURN foo(a)
+      """
+    Then a SyntaxError should be raised at compile time: UnknownFunction
+
+  Scenario: Using `rand()` in aggregations
+    When executing query:
+      """
+      RETURN count(rand())
       """
     Then a SyntaxError should be raised at compile time: NonConstantExpression
 
-  Scenario: LIMIT with an expression that depends on variables should fail
+  Scenario: Supplying invalid hexadecimal literal 1
     When executing query:
       """
-      MATCH (n) RETURN n LIMIT n.count
+      RETURN 0x23G34
       """
-    Then a SyntaxError should be raised at compile time: NonConstantExpression
+    Then a SyntaxError should be raised at compile time: InvalidNumberLiteral
 
-  Scenario: SKIP with an expression that does not depend on variables
-    And having executed:
-      """
-      UNWIND range(1, 10) AS i
-      CREATE ({nr: i})
-      """
+  Scenario: Supplying invalid hexadecimal literal 2
     When executing query:
       """
-      MATCH (n)
-      WITH n SKIP toInteger(rand()*9)
-      WITH count(*) AS count
-      RETURN count > 0 AS nonEmpty
+      RETURN 0x23j
       """
-    Then the result should be:
-      | nonEmpty |
-      | true     |
-    And no side effects
-
-
-  Scenario: LIMIT with an expression that does not depend on variables
-    And having executed:
-      """
-      UNWIND range(1, 3) AS i
-      CREATE ({nr: i})
-      """
-    When executing query:
-      """
-      MATCH (n)
-      WITH n LIMIT toInteger(ceil(1.7))
-      RETURN count(*) AS count
-      """
-    Then the result should be:
-      | count |
-      | 2     |
-    And no side effects
+    Then a SyntaxError should be raised at compile time: InvalidNumberLiteral

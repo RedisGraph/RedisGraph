@@ -29,7 +29,7 @@
 #encoding: utf-8
 
 Feature: ComparisonOperatorAcceptance
-  @skip
+
   Scenario: Handling numerical ranges 1
     Given an empty graph
     And having executed:
@@ -47,7 +47,7 @@ Feature: ComparisonOperatorAcceptance
       | n.num |
       | 2     |
     And no side effects
-  @skip
+
   Scenario: Handling numerical ranges 2
     Given an empty graph
     And having executed:
@@ -66,7 +66,7 @@ Feature: ComparisonOperatorAcceptance
       | 2     |
       | 3     |
     And no side effects
-  @skip
+
   Scenario: Handling numerical ranges 3
     Given an empty graph
     And having executed:
@@ -85,7 +85,7 @@ Feature: ComparisonOperatorAcceptance
       | 1     |
       | 2     |
     And no side effects
-  @skip
+
   Scenario: Handling numerical ranges 4
     Given an empty graph
     And having executed:
@@ -105,7 +105,7 @@ Feature: ComparisonOperatorAcceptance
       | 2     |
       | 3     |
     And no side effects
-  @skip
+
   Scenario: Handling string ranges 1
     Given an empty graph
     And having executed:
@@ -123,7 +123,7 @@ Feature: ComparisonOperatorAcceptance
       | n.name |
       | 'b'    |
     And no side effects
-  @skip
+
   Scenario: Handling string ranges 2
     Given an empty graph
     And having executed:
@@ -142,7 +142,7 @@ Feature: ComparisonOperatorAcceptance
       | 'b'    |
       | 'c'    |
     And no side effects
-  @skip
+
   Scenario: Handling string ranges 3
     Given an empty graph
     And having executed:
@@ -161,7 +161,7 @@ Feature: ComparisonOperatorAcceptance
       | 'a'    |
       | 'b'    |
     And no side effects
-  @skip
+
   Scenario: Handling string ranges 4
     Given an empty graph
     And having executed:
@@ -181,7 +181,7 @@ Feature: ComparisonOperatorAcceptance
       | 'b'    |
       | 'c'    |
     And no side effects
-  @skip
+
   Scenario: Handling empty range
     Given an empty graph
     And having executed:
@@ -197,7 +197,7 @@ Feature: ComparisonOperatorAcceptance
     Then the result should be:
       | n.num |
     And no side effects
-  @skip
+
   Scenario: Handling long chains of operators
     Given an empty graph
     And having executed:

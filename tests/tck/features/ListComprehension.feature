@@ -28,57 +28,61 @@
 
 #encoding: utf-8
 
-Feature: SkipLimitAcceptanceTest
+Feature: ListComprehension
 
-  Background:
-    Given any graph
-
-  Scenario: SKIP with an expression that depends on variables should fail
-    When executing query:
-      """
-      MATCH (n) RETURN n SKIP n.count
-      """
-    Then a SyntaxError should be raised at compile time: NonConstantExpression
-
-  Scenario: LIMIT with an expression that depends on variables should fail
-    When executing query:
-      """
-      MATCH (n) RETURN n LIMIT n.count
-      """
-    Then a SyntaxError should be raised at compile time: NonConstantExpression
-
-  Scenario: SKIP with an expression that does not depend on variables
+  Scenario: Returning a list comprehension
+    Given an empty graph
     And having executed:
       """
-      UNWIND range(1, 10) AS i
-      CREATE ({nr: i})
+      CREATE (a:A)
+      CREATE (a)-[:T]->(:B),
+             (a)-[:T]->(:C)
       """
     When executing query:
       """
-      MATCH (n)
-      WITH n SKIP toInteger(rand()*9)
-      WITH count(*) AS count
-      RETURN count > 0 AS nonEmpty
+      MATCH p = (n)-->()
+      RETURN [x IN collect(p) | head(nodes(x))] AS p
       """
     Then the result should be:
-      | nonEmpty |
-      | true     |
+      | p            |
+      | [(:A), (:A)] |
     And no side effects
 
-
-  Scenario: LIMIT with an expression that does not depend on variables
+  Scenario: Using a list comprehension in a WITH
+    Given an empty graph
     And having executed:
       """
-      UNWIND range(1, 3) AS i
-      CREATE ({nr: i})
+      CREATE (a:A)
+      CREATE (a)-[:T]->(:B),
+             (a)-[:T]->(:C)
       """
     When executing query:
       """
-      MATCH (n)
-      WITH n LIMIT toInteger(ceil(1.7))
-      RETURN count(*) AS count
+      MATCH p = (n:A)-->()
+      WITH [x IN collect(p) | head(nodes(x))] AS p, count(n) AS c
+      RETURN p, c
       """
     Then the result should be:
-      | count |
-      | 2     |
+      | p            | c |
+      | [(:A), (:A)] | 2 |
     And no side effects
+
+  Scenario: Using a list comprehension in a WHERE
+    Given an empty graph
+    And having executed:
+      """
+      CREATE (a:A {name: 'c'})
+      CREATE (a)-[:T]->(:B),
+             (a)-[:T]->(:C)
+      """
+    When executing query:
+      """
+      MATCH (n)-->(b)
+      WHERE n.name IN [x IN labels(b) | lower(x)]
+      RETURN b
+      """
+    Then the result should be:
+      | b    |
+      | (:C) |
+    And no side effects
+

@@ -28,57 +28,24 @@
 
 #encoding: utf-8
 
-Feature: SkipLimitAcceptanceTest
+Feature: JoinAcceptance
 
-  Background:
-    Given any graph
-
-  Scenario: SKIP with an expression that depends on variables should fail
-    When executing query:
-      """
-      MATCH (n) RETURN n SKIP n.count
-      """
-    Then a SyntaxError should be raised at compile time: NonConstantExpression
-
-  Scenario: LIMIT with an expression that depends on variables should fail
-    When executing query:
-      """
-      MATCH (n) RETURN n LIMIT n.count
-      """
-    Then a SyntaxError should be raised at compile time: NonConstantExpression
-
-  Scenario: SKIP with an expression that does not depend on variables
+  Scenario: Find friends of others
+    Given an empty graph
     And having executed:
       """
-      UNWIND range(1, 10) AS i
-      CREATE ({nr: i})
+      CREATE (:A {id: 1}),
+             (:A {id: 2}),
+             (:B {id: 2}),
+             (:B {id: 3})
       """
     When executing query:
       """
-      MATCH (n)
-      WITH n SKIP toInteger(rand()*9)
-      WITH count(*) AS count
-      RETURN count > 0 AS nonEmpty
+      MATCH (a:A), (b:B)
+      WHERE a.id = b.id
+      RETURN a, b
       """
     Then the result should be:
-      | nonEmpty |
-      | true     |
-    And no side effects
-
-
-  Scenario: LIMIT with an expression that does not depend on variables
-    And having executed:
-      """
-      UNWIND range(1, 3) AS i
-      CREATE ({nr: i})
-      """
-    When executing query:
-      """
-      MATCH (n)
-      WITH n LIMIT toInteger(ceil(1.7))
-      RETURN count(*) AS count
-      """
-    Then the result should be:
-      | count |
-      | 2     |
+      | a            | b            |
+      | (:A {id: 2}) | (:B {id: 2}) |
     And no side effects

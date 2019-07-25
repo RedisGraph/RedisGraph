@@ -28,154 +28,147 @@
 
 #encoding: utf-8
 
-Feature: NullAcceptance
+Feature: RemoveAcceptance
 
-  Scenario: Property existence check on non-null node
+  Scenario: Should ignore nulls
     Given an empty graph
     And having executed:
       """
-      CREATE ({exists: 42})
+      CREATE ({num: 42})
       """
     When executing query:
       """
       MATCH (n)
-      RETURN exists(n.missing),
-             exists(n.exists)
+      OPTIONAL MATCH (n)-[r]->()
+      REMOVE r.num
+      RETURN n
       """
     Then the result should be:
-      | exists(n.missing) | exists(n.exists) |
-      | false             | true             |
+      | n           |
+      | ({num: 42}) |
     And no side effects
 
-  Scenario: Property existence check on optional non-null node
+  Scenario: Remove a single label
     Given an empty graph
     And having executed:
       """
-      CREATE ({exists: 42})
+      CREATE (:L {num: 42})
       """
     When executing query:
       """
-      OPTIONAL MATCH (n)
-      RETURN exists(n.missing),
-             exists(n.exists)
+      MATCH (n)
+      REMOVE n:L
+      RETURN n.num
       """
     Then the result should be:
-      | exists(n.missing) | exists(n.exists) |
-      | false             | true             |
-    And no side effects
+      | n.num |
+      | 42    |
+    And the side effects should be:
+      | -labels | 1 |
 
-  Scenario: Property existence check on null node
+  Scenario: Remove multiple labels
     Given an empty graph
+    And having executed:
+      """
+      CREATE (:L1:L2:L3 {num: 42})
+      """
     When executing query:
       """
-      OPTIONAL MATCH (n)
-      RETURN exists(n.missing)
+      MATCH (n)
+      REMOVE n:L1:L3
+      RETURN labels(n)
       """
     Then the result should be:
-      | exists(n.missing) |
-      | null              |
-    And no side effects
+      | labels(n) |
+      | ['L2']    |
+    And the side effects should be:
+      | -labels | 2 |
 
-  Scenario: Ignore null when setting property
+  Scenario: Remove a single node property
     Given an empty graph
+    And having executed:
+      """
+      CREATE (:L {num: 42})
+      """
     When executing query:
       """
-      OPTIONAL MATCH (a:DoesNotExist)
-      SET a.num = 42
-      RETURN a
+      MATCH (n)
+      REMOVE n.num
+      RETURN exists(n.num) AS still_there
       """
     Then the result should be:
-      | a    |
-      | null |
-    And no side effects
+      | still_there |
+      | false       |
+    And the side effects should be:
+      | -properties | 1 |
 
-  Scenario: Ignore null when removing property
+  Scenario: Remove multiple node properties
     Given an empty graph
+    And having executed:
+      """
+      CREATE (:L {num: 42, name: 'a', name2: 'B'})
+      """
     When executing query:
       """
-      OPTIONAL MATCH (a:DoesNotExist)
-      REMOVE a.num
-      RETURN a
+      MATCH (n)
+      REMOVE n.num, n.name
+      RETURN size(keys(n)) AS props
       """
     Then the result should be:
-      | a    |
-      | null |
-    And no side effects
+      | props |
+      | 1     |
+    And the side effects should be:
+      | -properties | 2 |
 
-  Scenario: Ignore null when setting properties using an appending map
+  Scenario: Remove a single relationship property
     Given an empty graph
+    And having executed:
+      """
+      CREATE (a), (b), (a)-[:X {num: 42}]->(b)
+      """
     When executing query:
       """
-      OPTIONAL MATCH (a:DoesNotExist)
-      SET a += {num: 42}
-      RETURN a
+      MATCH ()-[r]->()
+      REMOVE r.num
+      RETURN exists(r.num) AS still_there
       """
     Then the result should be:
-      | a    |
-      | null |
-    And no side effects
+      | still_there |
+      | false       |
+    And the side effects should be:
+      | -properties | 1 |
 
-  Scenario: Ignore null when setting properties using an overriding map
+  Scenario: Remove multiple relationship properties
     Given an empty graph
+    And having executed:
+      """
+      CREATE (a), (b), (a)-[:X {num: 42, a: 'a', b: 'B'}]->(b)
+      """
     When executing query:
       """
-      OPTIONAL MATCH (a:DoesNotExist)
-      SET a = {num: 42}
-      RETURN a
+      MATCH ()-[r]->()
+      REMOVE r.num, r.a
+      RETURN size(keys(r)) AS props
       """
     Then the result should be:
-      | a    |
-      | null |
-    And no side effects
+      | props |
+      | 1     |
+    And the side effects should be:
+      | -properties | 2 |
 
-  Scenario: Ignore null when setting label
+  Scenario: Remove a missing property should be a valid operation
     Given an empty graph
+    And having executed:
+      """
+      CREATE (), (), ()
+      """
     When executing query:
       """
-      OPTIONAL MATCH (a:DoesNotExist)
-      SET a:L
-      RETURN a
+      MATCH (n)
+      REMOVE n.num
+      RETURN sum(size(keys(n))) AS totalNumberOfProps
       """
     Then the result should be:
-      | a    |
-      | null |
-    And no side effects
-
-  Scenario: Ignore null when removing label
-    Given an empty graph
-    When executing query:
-      """
-      OPTIONAL MATCH (a:DoesNotExist)
-      REMOVE a:L
-      RETURN a
-      """
-    Then the result should be:
-      | a    |
-      | null |
-    And no side effects
-
-  Scenario: Ignore null when deleting node
-    Given an empty graph
-    When executing query:
-      """
-      OPTIONAL MATCH (a:DoesNotExist)
-      DELETE a
-      RETURN a
-      """
-    Then the result should be:
-      | a    |
-      | null |
-    And no side effects
-
-  Scenario: Ignore null when deleting relationship
-    Given an empty graph
-    When executing query:
-      """
-      OPTIONAL MATCH ()-[r:DoesNotExist]-()
-      DELETE r
-      RETURN r
-      """
-    Then the result should be:
-      | r    |
-      | null |
+      | totalNumberOfProps |
+      | 0                  |
     And no side effects

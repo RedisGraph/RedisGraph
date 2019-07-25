@@ -43,7 +43,7 @@ Feature: UnwindAcceptance
       | 2 |
       | 3 |
     And no side effects
-  @skip
+
   Scenario: Unwinding a range
     Given any graph
     When executing query:
@@ -57,7 +57,7 @@ Feature: UnwindAcceptance
       | 2 |
       | 3 |
     And no side effects
-  @skip
+
   Scenario: Unwinding a concatenation of lists
     Given any graph
     When executing query:
@@ -75,7 +75,7 @@ Feature: UnwindAcceptance
       | 5 |
       | 6 |
     And no side effects
-  @skip
+
   Scenario: Unwinding a collected unwound expression
     Given any graph
     When executing query:
@@ -90,7 +90,7 @@ Feature: UnwindAcceptance
       | 1 |
       | 2 |
     And no side effects
-  @skip
+
   Scenario: Unwinding a collected expression
     Given an empty graph
     And having executed:
@@ -109,7 +109,7 @@ Feature: UnwindAcceptance
       | 1       |
       | 2       |
     And no side effects
-  @skip
+
   Scenario: Creating nodes from an unwound parameter list
     Given an empty graph
     And having executed:
@@ -136,7 +136,7 @@ Feature: UnwindAcceptance
       | +relationships | 2 |
       | +labels        | 1 |
       | +properties    | 2 |
-  @skip
+
   Scenario: Double unwinding a list of lists
     Given any graph
     When executing query:
@@ -155,7 +155,7 @@ Feature: UnwindAcceptance
       | 5 |
       | 6 |
     And no side effects
-  @skip
+
   Scenario: Unwinding the empty list
     Given any graph
     When executing query:
@@ -166,7 +166,7 @@ Feature: UnwindAcceptance
     Then the result should be:
       | empty |
     And no side effects
-  @skip
+
   Scenario: Unwinding null
     Given any graph
     When executing query:
@@ -198,7 +198,7 @@ Feature: UnwindAcceptance
       | 5         |
       | 5         |
     And no side effects
-  @skip
+
   Scenario: Unwind does not prune context
     Given any graph
     When executing query:
@@ -213,7 +213,7 @@ Feature: UnwindAcceptance
       | [1, 2, 3] | 2 |
       | [1, 2, 3] | 3 |
     And no side effects
-  @skip
+
   Scenario: Unwind does not remove variables from scope
     Given an empty graph
     And having executed:
@@ -237,7 +237,7 @@ Feature: UnwindAcceptance
       | a    | b2   |
       | (:S) | (:E) |
     And no side effects
-  @skip
+
   Scenario: Multiple unwinds after each other
     Given any graph
     When executing query:
@@ -259,7 +259,7 @@ Feature: UnwindAcceptance
       | 2 | [1, 2] | 4 | [3, 4] | 5 | [5, 6] |
       | 2 | [1, 2] | 4 | [3, 4] | 6 | [5, 6] |
     And no side effects
-  @skip
+
   Scenario: Unwind with merge
     Given an empty graph
     And parameters are:

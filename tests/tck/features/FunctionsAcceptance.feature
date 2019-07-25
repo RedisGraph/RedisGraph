@@ -29,7 +29,7 @@
 #encoding: utf-8
 
 Feature: FunctionsAcceptance
-  @skip
+
   Scenario: Run coalesce
     Given an empty graph
     And having executed:
@@ -46,7 +46,7 @@ Feature: FunctionsAcceptance
       | 'CEO'                     |
       | 'Nobody'                  |
     And no side effects
-  @skip
+
   Scenario: Functions should return null if they get path containing unbound
     Given any graph
     When executing query:
@@ -59,7 +59,7 @@ Feature: FunctionsAcceptance
       | length(nodes(p)) | type(r) | nodes(p) | relationships(p) |
       | null             | null    | null     | null             |
     And no side effects
-  @skip
+
   Scenario: `split()`
     Given any graph
     When executing query:
@@ -71,7 +71,7 @@ Feature: FunctionsAcceptance
       | item |
       | 2    |
     And no side effects
-  @skip
+
   Scenario: `properties()` on a node
     Given an empty graph
     And having executed:
@@ -87,7 +87,7 @@ Feature: FunctionsAcceptance
       | m                             |
       | {name: 'Popeye', level: 9001} |
     And no side effects
-  @skip
+
   Scenario: `properties()` on a relationship
     Given an empty graph
     And having executed:
@@ -103,7 +103,7 @@ Feature: FunctionsAcceptance
       | m                             |
       | {name: 'Popeye', level: 9001} |
     And no side effects
-  @skip
+
   Scenario: `properties()` on a map
     Given any graph
     When executing query:
@@ -114,7 +114,7 @@ Feature: FunctionsAcceptance
       | m                             |
       | {name: 'Popeye', level: 9001} |
     And no side effects
-  @skip
+
   Scenario: `properties()` failing on an integer literal
     Given any graph
     When executing query:
@@ -122,7 +122,7 @@ Feature: FunctionsAcceptance
       RETURN properties(1)
       """
     Then a SyntaxError should be raised at compile time: InvalidArgumentType
-  @skip
+
   Scenario: `properties()` failing on a string literal
     Given any graph
     When executing query:
@@ -130,7 +130,7 @@ Feature: FunctionsAcceptance
       RETURN properties('Cypher')
       """
     Then a SyntaxError should be raised at compile time: InvalidArgumentType
-  @skip
+
   Scenario: `properties()` failing on a list of booleans
     Given any graph
     When executing query:
@@ -138,7 +138,7 @@ Feature: FunctionsAcceptance
       RETURN properties([true, false])
       """
     Then a SyntaxError should be raised at compile time: InvalidArgumentType
-  @skip
+
   Scenario: `properties()` on null
     Given any graph
     When executing query:
@@ -160,7 +160,7 @@ Feature: FunctionsAcceptance
       | reverse('raksO') |
       | 'Oskar'          |
     And no side effects
-  @skip
+
   Scenario: `exists()` with dynamic property lookup
     Given an empty graph
     And having executed:
@@ -178,7 +178,7 @@ Feature: FunctionsAcceptance
       | n                       |
       | (:Person {name: 'foo'}) |
     And no side effects
-  @skip
+
   Scenario Outline: `exists()` with literal maps
     Given any graph
     When executing query:
@@ -196,7 +196,7 @@ Feature: FunctionsAcceptance
       | {name: 'Mats', name2: 'Pontus'} | true   |
       | {name: null}                    | false  |
       | {notName: 0, notName2: null}    | false  |
-  @skip
+
   Scenario Outline: IS NOT NULL with literal maps
     Given any graph
     When executing query:
@@ -214,7 +214,7 @@ Feature: FunctionsAcceptance
       | {name: 'Mats', name2: 'Pontus'} | true   |
       | {name: null}                    | false  |
       | {notName: 0, notName2: null}    | false  |
-  @skip
+
   Scenario Outline: `percentileDisc()`
     Given an empty graph
     And having executed:
@@ -240,7 +240,7 @@ Feature: FunctionsAcceptance
       | 0.0 | 10.0   |
       | 0.5 | 20.0   |
       | 1.0 | 30.0   |
-  @skip
+
   Scenario Outline: `percentileCont()`
     Given an empty graph
     And having executed:
@@ -266,7 +266,7 @@ Feature: FunctionsAcceptance
       | 0.0 | 10.0   |
       | 0.5 | 20.0   |
       | 1.0 | 30.0   |
-  @skip
+
   Scenario Outline: `percentileCont()` failing on bad arguments
     Given an empty graph
     And having executed:
@@ -287,7 +287,7 @@ Feature: FunctionsAcceptance
       | 1000       |
       | -1         |
       | 1.1        |
-  @skip
+
   Scenario Outline: `percentileDisc()` failing on bad arguments
     Given an empty graph
     And having executed:
@@ -308,7 +308,7 @@ Feature: FunctionsAcceptance
       | 1000       |
       | -1         |
       | 1.1        |
-  @skip
+
   Scenario: `percentileDisc()` failing in more involved query
     Given an empty graph
     And having executed:
@@ -361,7 +361,7 @@ Feature: FunctionsAcceptance
       | type(r1) | type(r2) |
       | 'T1'     | 'T2'     |
     And no side effects
-  @skip
+
   Scenario: `type()` on null relationship
     Given an empty graph
     And having executed:
@@ -378,7 +378,7 @@ Feature: FunctionsAcceptance
       | type(r) |
       | null    |
     And no side effects
-  @skip
+
   Scenario: `type()` on mixed null and non-null relationships
     Given an empty graph
     And having executed:
@@ -396,7 +396,7 @@ Feature: FunctionsAcceptance
       | 'T'     |
       | null    |
     And no side effects
-  @skip
+
   Scenario: `type()` handling Any type
     Given an empty graph
     And having executed:
@@ -413,7 +413,7 @@ Feature: FunctionsAcceptance
       | type(list[0]) |
       | 'T'           |
     And no side effects
-  @skip
+
   Scenario Outline: `type()` failing on invalid arguments
     Given an empty graph
     And having executed:
@@ -434,7 +434,7 @@ Feature: FunctionsAcceptance
       | true    |
       | ''      |
       | []      |
-  @skip
+
   Scenario: `labels()` should accept type Any
     Given an empty graph
     And having executed:
@@ -452,7 +452,7 @@ Feature: FunctionsAcceptance
       | ['Foo']        |
       | ['Foo', 'Bar'] |
     And no side effects
-  @skip
+
   Scenario: `labels()` failing on a path
     Given an empty graph
     And having executed:
@@ -465,7 +465,7 @@ Feature: FunctionsAcceptance
       RETURN labels(p) AS l
       """
     Then a SyntaxError should be raised at compile time: InvalidArgumentType
-  @skip
+
   Scenario: `labels()` failing on invalid arguments
     Given an empty graph
     And having executed:
@@ -479,7 +479,7 @@ Feature: FunctionsAcceptance
       RETURN labels(list[1]) AS l
       """
     Then a TypeError should be raised at runtime: InvalidArgumentValue
-  
+
   Scenario: `exists()` is case insensitive
     Given an empty graph
     And having executed:

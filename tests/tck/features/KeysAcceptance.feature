@@ -28,154 +28,149 @@
 
 #encoding: utf-8
 
-Feature: NullAcceptance
+Feature: KeysAcceptance
 
-  Scenario: Property existence check on non-null node
+  Scenario: Using `keys()` on a single node, non-empty result
     Given an empty graph
     And having executed:
       """
-      CREATE ({exists: 42})
+      CREATE ({name: 'Andres', surname: 'Lopez'})
       """
     When executing query:
       """
       MATCH (n)
-      RETURN exists(n.missing),
-             exists(n.exists)
+      UNWIND keys(n) AS x
+      RETURN DISTINCT x AS theProps
       """
     Then the result should be:
-      | exists(n.missing) | exists(n.exists) |
-      | false             | true             |
+      | theProps  |
+      | 'name'    |
+      | 'surname' |
     And no side effects
 
-  Scenario: Property existence check on optional non-null node
+  Scenario: Using `keys()` on multiple nodes, non-empty result
     Given an empty graph
     And having executed:
       """
-      CREATE ({exists: 42})
+      CREATE ({name: 'Andres', surname: 'Lopez'}),
+             ({otherName: 'Andres', otherSurname: 'Lopez'})
+      """
+    When executing query:
+      """
+      MATCH (n)
+      UNWIND keys(n) AS x
+      RETURN DISTINCT x AS theProps
+      """
+    Then the result should be:
+      | theProps       |
+      | 'name'         |
+      | 'surname'      |
+      | 'otherName'    |
+      | 'otherSurname' |
+    And no side effects
+
+  Scenario: Using `keys()` on a single node, empty result
+    Given an empty graph
+    And having executed:
+      """
+      CREATE ()
+      """
+    When executing query:
+      """
+      MATCH (n)
+      UNWIND keys(n) AS x
+      RETURN DISTINCT x AS theProps
+      """
+    Then the result should be:
+      | theProps |
+    And no side effects
+
+  Scenario: Using `keys()` on an optionally matched node
+    Given an empty graph
+    And having executed:
+      """
+      CREATE ()
       """
     When executing query:
       """
       OPTIONAL MATCH (n)
-      RETURN exists(n.missing),
-             exists(n.exists)
+      UNWIND keys(n) AS x
+      RETURN DISTINCT x AS theProps
       """
     Then the result should be:
-      | exists(n.missing) | exists(n.exists) |
-      | false             | true             |
+      | theProps |
     And no side effects
 
-  Scenario: Property existence check on null node
+  Scenario: Using `keys()` on a relationship, non-empty result
     Given an empty graph
+    And having executed:
+      """
+      CREATE ()-[:KNOWS {status: 'bad', year: '2015'}]->()
+      """
     When executing query:
       """
-      OPTIONAL MATCH (n)
-      RETURN exists(n.missing)
+      MATCH ()-[r:KNOWS]-()
+      UNWIND keys(r) AS x
+      RETURN DISTINCT x AS theProps
       """
     Then the result should be:
-      | exists(n.missing) |
-      | null              |
+      | theProps |
+      | 'status' |
+      | 'year'   |
     And no side effects
 
-  Scenario: Ignore null when setting property
+  Scenario: Using `keys()` on a relationship, empty result
     Given an empty graph
+    And having executed:
+      """
+      CREATE ()-[:KNOWS]->()
+      """
     When executing query:
       """
-      OPTIONAL MATCH (a:DoesNotExist)
-      SET a.num = 42
-      RETURN a
+      MATCH ()-[r:KNOWS]-()
+      UNWIND keys(r) AS x
+      RETURN DISTINCT x AS theProps
       """
     Then the result should be:
-      | a    |
-      | null |
+      | theProps |
     And no side effects
 
-  Scenario: Ignore null when removing property
+  Scenario: Using `keys()` on an optionally matched relationship
     Given an empty graph
+    And having executed:
+      """
+      CREATE ()-[:KNOWS]->()
+      """
     When executing query:
       """
-      OPTIONAL MATCH (a:DoesNotExist)
-      REMOVE a.num
-      RETURN a
+      OPTIONAL MATCH ()-[r:KNOWS]-()
+      UNWIND keys(r) AS x
+      RETURN DISTINCT x AS theProps
       """
     Then the result should be:
-      | a    |
-      | null |
+      | theProps |
     And no side effects
 
-  Scenario: Ignore null when setting properties using an appending map
-    Given an empty graph
+  Scenario: Using `keys()` on a literal map
+    Given any graph
     When executing query:
       """
-      OPTIONAL MATCH (a:DoesNotExist)
-      SET a += {num: 42}
-      RETURN a
+      RETURN keys({name: 'Alice', age: 38, address: {city: 'London', residential: true}}) AS k
       """
-    Then the result should be:
-      | a    |
-      | null |
+    Then the result should be (ignoring element order for lists):
+      | k                          |
+      | ['name', 'age', 'address'] |
     And no side effects
 
-  Scenario: Ignore null when setting properties using an overriding map
-    Given an empty graph
+  Scenario: Using `keys()` on a parameter map
+    Given any graph
+    And parameters are:
+      | param | {name: 'Alice', age: 38, address: {city: 'London', residential: true}} |
     When executing query:
       """
-      OPTIONAL MATCH (a:DoesNotExist)
-      SET a = {num: 42}
-      RETURN a
+      RETURN keys($param) AS k
       """
-    Then the result should be:
-      | a    |
-      | null |
-    And no side effects
-
-  Scenario: Ignore null when setting label
-    Given an empty graph
-    When executing query:
-      """
-      OPTIONAL MATCH (a:DoesNotExist)
-      SET a:L
-      RETURN a
-      """
-    Then the result should be:
-      | a    |
-      | null |
-    And no side effects
-
-  Scenario: Ignore null when removing label
-    Given an empty graph
-    When executing query:
-      """
-      OPTIONAL MATCH (a:DoesNotExist)
-      REMOVE a:L
-      RETURN a
-      """
-    Then the result should be:
-      | a    |
-      | null |
-    And no side effects
-
-  Scenario: Ignore null when deleting node
-    Given an empty graph
-    When executing query:
-      """
-      OPTIONAL MATCH (a:DoesNotExist)
-      DELETE a
-      RETURN a
-      """
-    Then the result should be:
-      | a    |
-      | null |
-    And no side effects
-
-  Scenario: Ignore null when deleting relationship
-    Given an empty graph
-    When executing query:
-      """
-      OPTIONAL MATCH ()-[r:DoesNotExist]-()
-      DELETE r
-      RETURN r
-      """
-    Then the result should be:
-      | r    |
-      | null |
+    Then the result should be (ignoring element order for lists):
+      | k                          |
+      | ['address', 'name', 'age'] |
     And no side effects

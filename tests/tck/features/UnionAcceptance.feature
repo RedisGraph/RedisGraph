@@ -28,57 +28,85 @@
 
 #encoding: utf-8
 
-Feature: SkipLimitAcceptanceTest
+Feature: UnionAcceptance
 
-  Background:
-    Given any graph
-
-  Scenario: SKIP with an expression that depends on variables should fail
-    When executing query:
-      """
-      MATCH (n) RETURN n SKIP n.count
-      """
-    Then a SyntaxError should be raised at compile time: NonConstantExpression
-
-  Scenario: LIMIT with an expression that depends on variables should fail
-    When executing query:
-      """
-      MATCH (n) RETURN n LIMIT n.count
-      """
-    Then a SyntaxError should be raised at compile time: NonConstantExpression
-
-  Scenario: SKIP with an expression that does not depend on variables
+  Scenario: Should be able to create text output from union queries
+    Given an empty graph
     And having executed:
       """
-      UNWIND range(1, 10) AS i
-      CREATE ({nr: i})
+      CREATE (:A), (:B)
       """
     When executing query:
       """
-      MATCH (n)
-      WITH n SKIP toInteger(rand()*9)
-      WITH count(*) AS count
-      RETURN count > 0 AS nonEmpty
+      MATCH (a:A)
+      RETURN a AS a
+      UNION
+      MATCH (b:B)
+      RETURN b AS a
       """
     Then the result should be:
-      | nonEmpty |
-      | true     |
+      | a    |
+      | (:A) |
+      | (:B) |
     And no side effects
 
-
-  Scenario: LIMIT with an expression that does not depend on variables
-    And having executed:
-      """
-      UNWIND range(1, 3) AS i
-      CREATE ({nr: i})
-      """
+  Scenario: Two elements, both unique, not distinct
+    Given an empty graph
     When executing query:
       """
-      MATCH (n)
-      WITH n LIMIT toInteger(ceil(1.7))
-      RETURN count(*) AS count
+      RETURN 1 AS x
+      UNION ALL
+      RETURN 2 AS x
       """
     Then the result should be:
-      | count |
-      | 2     |
+      | x |
+      | 1 |
+      | 2 |
+    And no side effects
+
+  Scenario: Two elements, both unique, distinct
+    Given an empty graph
+    When executing query:
+      """
+      RETURN 1 AS x
+      UNION
+      RETURN 2 AS x
+      """
+    Then the result should be:
+      | x |
+      | 1 |
+      | 2 |
+    And no side effects
+
+  Scenario: Three elements, two unique, distinct
+    Given an empty graph
+    When executing query:
+      """
+      RETURN 2 AS x
+      UNION
+      RETURN 1 AS x
+      UNION
+      RETURN 2 AS x
+      """
+    Then the result should be:
+      | x |
+      | 2 |
+      | 1 |
+    And no side effects
+
+  Scenario: Three elements, two unique, not distinct
+    Given an empty graph
+    When executing query:
+      """
+      RETURN 2 AS x
+      UNION ALL
+      RETURN 1 AS x
+      UNION ALL
+      RETURN 2 AS x
+      """
+    Then the result should be:
+      | x |
+      | 2 |
+      | 1 |
+      | 2 |
     And no side effects

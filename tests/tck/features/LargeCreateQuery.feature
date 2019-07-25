@@ -29,7 +29,7 @@
 #encoding: utf-8
 
 Feature: LargeCreateQuery
-  @skip
+
   Scenario: Generate the movie graph correctly
     Given an empty graph
     When executing query:

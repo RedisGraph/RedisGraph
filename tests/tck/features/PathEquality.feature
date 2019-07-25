@@ -28,57 +28,21 @@
 
 #encoding: utf-8
 
-Feature: SkipLimitAcceptanceTest
+Feature: PathEquality
 
-  Background:
-    Given any graph
-
-  Scenario: SKIP with an expression that depends on variables should fail
-    When executing query:
-      """
-      MATCH (n) RETURN n SKIP n.count
-      """
-    Then a SyntaxError should be raised at compile time: NonConstantExpression
-
-  Scenario: LIMIT with an expression that depends on variables should fail
-    When executing query:
-      """
-      MATCH (n) RETURN n LIMIT n.count
-      """
-    Then a SyntaxError should be raised at compile time: NonConstantExpression
-
-  Scenario: SKIP with an expression that does not depend on variables
+  Scenario: Direction of traversed relationship is not significant for path equality, simple
+    Given an empty graph
     And having executed:
       """
-      UNWIND range(1, 10) AS i
-      CREATE ({nr: i})
+      CREATE (n:A)-[:LOOP]->(n)
       """
     When executing query:
       """
-      MATCH (n)
-      WITH n SKIP toInteger(rand()*9)
-      WITH count(*) AS count
-      RETURN count > 0 AS nonEmpty
+      MATCH p1 = (:A)-->()
+      MATCH p2 = (:A)<--()
+      RETURN p1 = p2
       """
     Then the result should be:
-      | nonEmpty |
-      | true     |
-    And no side effects
-
-
-  Scenario: LIMIT with an expression that does not depend on variables
-    And having executed:
-      """
-      UNWIND range(1, 3) AS i
-      CREATE ({nr: i})
-      """
-    When executing query:
-      """
-      MATCH (n)
-      WITH n LIMIT toInteger(ceil(1.7))
-      RETURN count(*) AS count
-      """
-    Then the result should be:
-      | count |
-      | 2     |
+      | p1 = p2 |
+      | true    |
     And no side effects

@@ -30,7 +30,6 @@
 
 Feature: AggregationAcceptance
 
-  @skip
   Scenario: Support multiple divisions in aggregate function
     Given an empty graph
     And having executed:
@@ -48,7 +47,6 @@ Feature: AggregationAcceptance
       | 2     |
     And no side effects
 
-  @skip
   Scenario: Support column renaming for aggregates as well
     Given an empty graph
     And having executed:
@@ -66,7 +64,6 @@ Feature: AggregationAcceptance
       | 11         |
     And no side effects
 
-  @skip
   Scenario: Aggregates inside normal functions
     Given an empty graph
     And having executed:
@@ -84,7 +81,6 @@ Feature: AggregationAcceptance
       | 11               |
     And no side effects
 
-  @skip
   Scenario: Handle aggregates inside non-aggregate expressions
     Given an empty graph
     When executing query:
@@ -96,7 +92,6 @@ Feature: AggregationAcceptance
       | {foo: a.name='Andres', kids: collect(child.name)} |
     And no side effects
 
-  @skip
   Scenario: Count nodes
     Given an empty graph
     And having executed:
@@ -114,7 +109,6 @@ Feature: AggregationAcceptance
       | (:L) | 2        |
     And no side effects
 
-  @skip
   Scenario: Sort on aggregate function and normal property
     Given an empty graph
     And having executed:
@@ -137,7 +131,6 @@ Feature: AggregationAcceptance
       | 'Germany'  | 1        |
     And no side effects
 
-  @skip
   Scenario: Aggregate on property
     Given an empty graph
     And having executed:
@@ -194,7 +187,6 @@ Feature: AggregationAcceptance
       | 'a'    | 75         |
     And no side effects
 
-  @skip
   Scenario: Handle aggregation on functions
     Given an empty graph
     And having executed:
@@ -213,7 +205,6 @@ Feature: AggregationAcceptance
       | () | 1.0            |
     And no side effects
 
-  @skip
   Scenario: Distinct on unbound node
     Given an empty graph
     When executing query:
@@ -226,7 +217,6 @@ Feature: AggregationAcceptance
       | 0                 |
     And no side effects
 
-  @skip
   Scenario: Distinct on null
     Given an empty graph
     And having executed:
@@ -243,7 +233,6 @@ Feature: AggregationAcceptance
       | 0                      |
     And no side effects
 
-  @skip
   Scenario: Collect distinct nulls
     Given any graph
     When executing query:
@@ -256,7 +245,6 @@ Feature: AggregationAcceptance
       | [] |
     And no side effects
 
-  @skip
   Scenario: Collect distinct values mixed with nulls
     Given any graph
     When executing query:
@@ -269,7 +257,6 @@ Feature: AggregationAcceptance
       | [1] |
     And no side effects
 
-  @skip
   Scenario: Aggregate on list values
     Given an empty graph
     And having executed:
@@ -289,7 +276,6 @@ Feature: AggregationAcceptance
       | ['blue'] | 1        |
     And no side effects
 
-  @skip
   Scenario: Aggregates in aggregates
     Given any graph
     When executing query:
@@ -298,7 +284,6 @@ Feature: AggregationAcceptance
       """
     Then a SyntaxError should be raised at compile time: NestedAggregation
 
-  @skip
   Scenario: Aggregates with arithmetics
     Given an empty graph
     And having executed:
@@ -332,7 +317,6 @@ Feature: AggregationAcceptance
       | 30 |
     And no side effects
 
-  @skip
   Scenario: Multiple aggregates on same variable
     Given an empty graph
     And having executed:
@@ -349,7 +333,6 @@ Feature: AggregationAcceptance
       | 1        | [()]       |
     And no side effects
 
-  @skip
   Scenario: Simple counting of nodes
     Given an empty graph
     And having executed:
@@ -367,7 +350,6 @@ Feature: AggregationAcceptance
       | 100      |
     And no side effects
 
-  @skip
   Scenario: Aggregation of named paths
     Given an empty graph
     And having executed:
@@ -391,7 +373,6 @@ Feature: AggregationAcceptance
       | [[(:C), (:D), (:E), (:F)]]                               | 3 |
     And no side effects
 
-  @skip
   Scenario: Aggregation with `min()`
     Given an empty graph
     And having executed:
@@ -413,7 +394,6 @@ Feature: AggregationAcceptance
       | 'a'  | ['c', 'b'] | 1   |
     And no side effects
 
-  @skip
   Scenario: Handle subexpression in aggregation also occurring as standalone expression with nested aggregation in a literal map
     Given an empty graph
     And having executed:
@@ -432,7 +412,6 @@ Feature: AggregationAcceptance
       | 42  | 42  | {name:1} |
     And no side effects
 
-  @skip
   Scenario: Projection during aggregation in WITH before MERGE and after WITH with predicate
     Given an empty graph
     And having executed:
@@ -452,7 +431,6 @@ Feature: AggregationAcceptance
       | 42   |
     And no side effects
 
-  @skip
   Scenario: No overflow during summation
     Given any graph
     When executing query:
@@ -467,7 +445,6 @@ Feature: AggregationAcceptance
       | 3004498500 |
     And no side effects
 
-  @skip
   Scenario: Counting with loops
     Given an empty graph
     And having executed:
