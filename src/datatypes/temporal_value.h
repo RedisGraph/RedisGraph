@@ -10,6 +10,8 @@
 #include <stdint.h>
 #include <time.h>
 
+#define RG_TEMPORAL_FUNC_FAIL INT64_MIN
+
 typedef enum {
 	TIME = 1,
 	LOCAL_TIME = 2,
@@ -209,7 +211,6 @@ int64_t RG_TemporalValue_GetNanosecond(RG_TemporalValue temporalValue);
   * @param  temporalValue:
   * @retval a string represantion of the value
   */
-
 const char *RG_TemporalValue_ToString(RG_TemporalValue temporalValue);
 
 /**
@@ -219,5 +220,4 @@ const char *RG_TemporalValue_ToString(RG_TemporalValue temporalValue);
   * @param  b: temporal value
   * @retval negative value if a < b, 0 if equal, positive if b < a
   */
-
 int RG_TemporalValue_Compare(RG_TemporalValue a, RG_TemporalValue b);

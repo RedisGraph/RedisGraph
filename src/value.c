@@ -58,10 +58,9 @@ SIValue SI_Edge(void *e) {
 	};
 }
 
-SIValue SI_TemporalValue(void *ts) {
-	RG_TemporalValue *temporalValue = (RG_TemporalValue *)ts;
+SIValue SI_TemporalValue(RG_TemporalValue temporalValue) {
 	return (SIValue) {
-		.time = *temporalValue, .type = T_TEMPORAL_VALUE
+		.time = temporalValue, .type = T_TEMPORAL_VALUE
 	};
 }
 
@@ -239,7 +238,7 @@ SIValue SIValue_Divide(const SIValue a, const SIValue b) {
 
 int SIValue_Compare(const SIValue a, const SIValue b) {
 	/* In order to be comparable, both SIValues must be strings,
-	 * booleans, or numerics. */
+	 * booleans, numerics or temporal values. */
 	if(a.type == b.type) {
 		switch(a.type) {
 		case T_INT64:

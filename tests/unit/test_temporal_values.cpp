@@ -32,7 +32,7 @@ TEST_F(TemporalValueTest, TypeConversions)
     ASSERT_EQ(ts.tv_sec, temporalValue.seconds);
     ASSERT_EQ(ts.tv_nsec, temporalValue.nano);
 
-    SIValue value = SI_TemporalValue(&temporalValue);
+    SIValue value = SI_TemporalValue(temporalValue);
     ASSERT_EQ(ts.tv_sec, value.longval);
     ASSERT_EQ(ts.tv_nsec, value.allocation);
     ASSERT_EQ(sizeof(int), sizeof(value.allocation));
@@ -84,11 +84,11 @@ TEST_F(TemporalValueTest, TestYear)
 
     // check for time
     RG_TemporalValue time = RG_Time_New_FromTimeSpec(ts);
-    ASSERT_EQ(RG_TemporalValue_GetYear(time), INT64_MIN);
+    ASSERT_EQ(RG_TemporalValue_GetYear(time), RG_TEMPORAL_FUNC_FAIL);
 
     // check for local time
     RG_TemporalValue localTime = RG_LocalTime_New_FromTimeSpec(ts);
-    ASSERT_EQ(RG_TemporalValue_GetYear(localTime), INT64_MIN);
+    ASSERT_EQ(RG_TemporalValue_GetYear(localTime), RG_TEMPORAL_FUNC_FAIL);
 }
 
 TEST_F(TemporalValueTest, TestQuarter)
@@ -115,11 +115,11 @@ TEST_F(TemporalValueTest, TestQuarter)
 
             // check for time
             RG_TemporalValue time = RG_Time_New_FromTimeSpec(ts);
-            ASSERT_EQ(RG_TemporalValue_GetQuarter(time), INT64_MIN);
+            ASSERT_EQ(RG_TemporalValue_GetQuarter(time), RG_TEMPORAL_FUNC_FAIL);
 
             // check for local time
             RG_TemporalValue localTime = RG_LocalTime_New_FromTimeSpec(ts);
-            ASSERT_EQ(RG_TemporalValue_GetQuarter(localTime), INT64_MIN);
+            ASSERT_EQ(RG_TemporalValue_GetQuarter(localTime), RG_TEMPORAL_FUNC_FAIL);
         }
     }
 }
@@ -146,11 +146,11 @@ TEST_F(TemporalValueTest, TestMonth)
 
         // check for time
         RG_TemporalValue time = RG_Time_New_FromTimeSpec(ts);
-        ASSERT_EQ(RG_TemporalValue_GetMonth(time), INT64_MIN);
+        ASSERT_EQ(RG_TemporalValue_GetMonth(time), RG_TEMPORAL_FUNC_FAIL);
 
         // check for local time
         RG_TemporalValue localTime = RG_LocalTime_New_FromTimeSpec(ts);
-        ASSERT_EQ(RG_TemporalValue_GetMonth(localTime), INT64_MIN);
+        ASSERT_EQ(RG_TemporalValue_GetMonth(localTime), RG_TEMPORAL_FUNC_FAIL);
     }
 }
 
@@ -177,11 +177,11 @@ TEST_F(TemporalValueTest, TestWeek)
 
     // check for time
     RG_TemporalValue time = RG_Time_New_FromTimeSpec(ts);
-    ASSERT_EQ(RG_TemporalValue_GetWeek(time), INT64_MIN);
+    ASSERT_EQ(RG_TemporalValue_GetWeek(time), RG_TEMPORAL_FUNC_FAIL);
 
     // check for local time
     RG_TemporalValue localTime = RG_LocalTime_New_FromTimeSpec(ts);
-    ASSERT_EQ(RG_TemporalValue_GetWeek(localTime), INT64_MIN);
+    ASSERT_EQ(RG_TemporalValue_GetWeek(localTime), RG_TEMPORAL_FUNC_FAIL);
 }
 
 TEST_F(TemporalValueTest, TestWeekYear)
@@ -207,11 +207,11 @@ TEST_F(TemporalValueTest, TestWeekYear)
 
     // check for time
     RG_TemporalValue time = RG_Time_New_FromTimeSpec(ts);
-    ASSERT_EQ(RG_TemporalValue_GetWeekYear(time), INT64_MIN);
+    ASSERT_EQ(RG_TemporalValue_GetWeekYear(time), RG_TEMPORAL_FUNC_FAIL);
 
     // check for local time
     RG_TemporalValue localTime = RG_LocalTime_New_FromTimeSpec(ts);
-    ASSERT_EQ(RG_TemporalValue_GetWeekYear(localTime), INT64_MIN);
+    ASSERT_EQ(RG_TemporalValue_GetWeekYear(localTime), RG_TEMPORAL_FUNC_FAIL);
 }
 
 TEST_F(TemporalValueTest, TestDayOfQuarter)
@@ -237,11 +237,11 @@ TEST_F(TemporalValueTest, TestDayOfQuarter)
 
     // check for time
     RG_TemporalValue time = RG_Time_New_FromTimeSpec(ts);
-    ASSERT_EQ(RG_TemporalValue_GetDayOfQuarter(time), INT64_MIN);
+    ASSERT_EQ(RG_TemporalValue_GetDayOfQuarter(time), RG_TEMPORAL_FUNC_FAIL);
 
     // check for local time
     RG_TemporalValue localTime = RG_LocalTime_New_FromTimeSpec(ts);
-    ASSERT_EQ(RG_TemporalValue_GetDayOfQuarter(localTime), INT64_MIN);
+    ASSERT_EQ(RG_TemporalValue_GetDayOfQuarter(localTime), RG_TEMPORAL_FUNC_FAIL);
 }
 
 TEST_F(TemporalValueTest, TestDay)
@@ -270,13 +270,13 @@ TEST_F(TemporalValueTest, TestDay)
 
     // check for time
     RG_TemporalValue time = RG_Time_New_FromTimeSpec(ts);
-    ASSERT_EQ(RG_TemporalValue_GetMonth(time), INT64_MIN);
-    ASSERT_EQ(RG_TemporalValue_GetDay(time), INT64_MIN);
+    ASSERT_EQ(RG_TemporalValue_GetMonth(time), RG_TEMPORAL_FUNC_FAIL);
+    ASSERT_EQ(RG_TemporalValue_GetDay(time), RG_TEMPORAL_FUNC_FAIL);
 
     // check for local time
     RG_TemporalValue localTime = RG_LocalTime_New_FromTimeSpec(ts);
-    ASSERT_EQ(RG_TemporalValue_GetMonth(time), INT64_MIN);
-    ASSERT_EQ(RG_TemporalValue_GetDay(time), INT64_MIN);
+    ASSERT_EQ(RG_TemporalValue_GetMonth(time), RG_TEMPORAL_FUNC_FAIL);
+    ASSERT_EQ(RG_TemporalValue_GetDay(time), RG_TEMPORAL_FUNC_FAIL);
 }
 
 TEST_F(TemporalValueTest, TestOrdinalDay)
@@ -308,15 +308,15 @@ TEST_F(TemporalValueTest, TestOrdinalDay)
 
     // check for time
     RG_TemporalValue time = RG_Time_New_FromTimeSpec(ts);
-    ASSERT_EQ(RG_TemporalValue_GetMonth(time), INT64_MIN);
-    ASSERT_EQ(RG_TemporalValue_GetDay(time), INT64_MIN);
-    ASSERT_EQ(RG_TemporalValue_GetOrdinalDay(time), INT64_MIN);
+    ASSERT_EQ(RG_TemporalValue_GetMonth(time), RG_TEMPORAL_FUNC_FAIL);
+    ASSERT_EQ(RG_TemporalValue_GetDay(time), RG_TEMPORAL_FUNC_FAIL);
+    ASSERT_EQ(RG_TemporalValue_GetOrdinalDay(time), RG_TEMPORAL_FUNC_FAIL);
 
     // check for local time
     RG_TemporalValue localTime = RG_LocalTime_New_FromTimeSpec(ts);
-    ASSERT_EQ(RG_TemporalValue_GetMonth(localTime), INT64_MIN);
-    ASSERT_EQ(RG_TemporalValue_GetDay(localTime), INT64_MIN);
-    ASSERT_EQ(RG_TemporalValue_GetOrdinalDay(localTime), INT64_MIN);
+    ASSERT_EQ(RG_TemporalValue_GetMonth(localTime), RG_TEMPORAL_FUNC_FAIL);
+    ASSERT_EQ(RG_TemporalValue_GetDay(localTime), RG_TEMPORAL_FUNC_FAIL);
+    ASSERT_EQ(RG_TemporalValue_GetOrdinalDay(localTime), RG_TEMPORAL_FUNC_FAIL);
 }
 
 TEST_F(TemporalValueTest, TestDayOfWeek)
@@ -344,11 +344,11 @@ TEST_F(TemporalValueTest, TestDayOfWeek)
 
         // check for time
         RG_TemporalValue time = RG_Time_New_FromTimeSpec(ts);
-        ASSERT_EQ(RG_TemporalValue_GetDayOfWeek(time), INT64_MIN);
+        ASSERT_EQ(RG_TemporalValue_GetDayOfWeek(time), RG_TEMPORAL_FUNC_FAIL);
 
         // check for local time
         RG_TemporalValue localTime = RG_LocalTime_New_FromTimeSpec(ts);
-        ASSERT_EQ(RG_TemporalValue_GetDayOfWeek(localTime), INT64_MIN);
+        ASSERT_EQ(RG_TemporalValue_GetDayOfWeek(localTime), RG_TEMPORAL_FUNC_FAIL);
     }
 }
 
@@ -396,12 +396,12 @@ TEST_F(TemporalValueTest, TestTime)
 
     // check for date
     RG_TemporalValue date = RG_Date_New_FromTimeSpec(ts);
-    ASSERT_EQ(RG_TemporalValue_GetHour(date), INT64_MIN);
-    ASSERT_EQ(RG_TemporalValue_GetMinute(date), INT64_MIN);
-    ASSERT_EQ(RG_TemporalValue_GetSecond(date), INT64_MIN);
-    ASSERT_EQ(RG_TemporalValue_GetMillisecond(date), INT64_MIN);
-    ASSERT_EQ(RG_TemporalValue_GetMicrosecond(date), INT64_MIN);
-    ASSERT_EQ(RG_TemporalValue_GetNanosecond(date), INT64_MIN);
+    ASSERT_EQ(RG_TemporalValue_GetHour(date), RG_TEMPORAL_FUNC_FAIL);
+    ASSERT_EQ(RG_TemporalValue_GetMinute(date), RG_TEMPORAL_FUNC_FAIL);
+    ASSERT_EQ(RG_TemporalValue_GetSecond(date), RG_TEMPORAL_FUNC_FAIL);
+    ASSERT_EQ(RG_TemporalValue_GetMillisecond(date), RG_TEMPORAL_FUNC_FAIL);
+    ASSERT_EQ(RG_TemporalValue_GetMicrosecond(date), RG_TEMPORAL_FUNC_FAIL);
+    ASSERT_EQ(RG_TemporalValue_GetNanosecond(date), RG_TEMPORAL_FUNC_FAIL);
 }
 
 // TEST_F(TimeStampTest, TestPrint) {

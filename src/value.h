@@ -35,10 +35,10 @@ typedef enum {
 } SIType;
 
 typedef enum {
-	M_NONE = 0,        // SIValue is not heap-allocated
-	M_SELF = 0x1,      // SIValue is responsible for freeing its reference
-	M_VOLATILE = 0x2,  // SIValue does not own its reference and may go out of scope
-	M_CONST = 0x4      // SIValue does not own its allocation, but its access is safe
+	M_NONE = 0,       // SIValue is not heap-allocated
+	M_SELF = 0x1,     // SIValue is responsible for freeing its reference
+	M_VOLATILE = 0x2, // SIValue does not own its reference and may go out of scope
+	M_CONST = 0x4     // SIValue does not own its allocation, but its access is safe
 } SIAllocation;
 
 #define SI_NUMERIC (T_INT64 | T_DOUBLE)
@@ -84,16 +84,16 @@ SIValue SI_BoolVal(int b);
 SIValue SI_PtrVal(void *v);
 SIValue SI_Node(void *n);
 SIValue SI_Edge(void *e);
-SIValue SI_TemporalValue(void *ts);
+SIValue SI_TemporalValue(RG_TemporalValue temporalValue);
 SIValue SI_DuplicateStringVal(const char *s); // Duplicate and ultimately free the input string
 SIValue SI_ConstStringVal(char
-						  *s);           // Neither duplicate nor assume ownership of input string
-SIValue SI_TransferStringVal(char *s);        // Don't duplicate input string, but assume ownership
+						  *s);     // Neither duplicate nor assume ownership of input string
+SIValue SI_TransferStringVal(char *s); // Don't duplicate input string, but assume ownership
 
 /* Functions to copy an SIValue. */
 SIValue SI_Clone(SIValue
-				 v);               // If input is a string type, duplicate and assume ownership
-SIValue SI_ShallowCopy(SIValue v);         // Don't duplicate any inputs
+				 v);           // If input is a string type, duplicate and assume ownership
+SIValue SI_ShallowCopy(SIValue v); // Don't duplicate any inputs
 
 int SIValue_IsNull(SIValue v);
 int SIValue_IsNullPtr(SIValue *v);
@@ -143,4 +143,3 @@ void SIValue_Persist(SIValue *v);
 void SIValue_Free(SIValue *v);
 
 #endif // __SECONDARY_VALUE_H__
-

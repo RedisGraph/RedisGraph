@@ -4,15 +4,14 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include <limits.h>
 #include <stdbool.h>
 #include "temporal_value.h"
 #include "temporal_utils.h"
 #include "../util/rmalloc.h"
 
-const char utcFormat[] = "YYYY-MM-DDTHH:MM:SS.NNNNNNNNNz";
-const int dateMask = DATE | DATE_TIME | LOCAL_DATE_TIME;
-const int timeMask = TIME | LOCAL_TIME | DATE_TIME | LOCAL_DATE_TIME;
+static const char utcFormat[] = "YYYY-MM-DDTHH:MM:SS.NNNNNNNNNz";
+static const int dateMask = DATE | DATE_TIME | LOCAL_DATE_TIME;
+static const int timeMask = TIME | LOCAL_TIME | DATE_TIME | LOCAL_DATE_TIME;
 
 /**
  * @brief  auxilary method to generate a tm struct from temporal value
@@ -174,7 +173,7 @@ int _timeDescriptor_YearWeek(const struct tm *timeDescriptor, int64_t *year, int
 int64_t RG_TemporalValue_GetYear(RG_TemporalValue temporalValue) {
 	if(!(temporalValue.type & dateMask)) {
 		// not a date type. should return error/execption
-		return INT64_MIN;
+		return RG_TEMPORAL_FUNC_FAIL;
 	}
 	struct tm *timeDescriptor  = _getTimeDescriptorFromTemporalValue(temporalValue);
 	return timeDescriptor->tm_year + 1900;
@@ -183,7 +182,7 @@ int64_t RG_TemporalValue_GetYear(RG_TemporalValue temporalValue) {
 int64_t RG_TemporalValue_GetQuarter(RG_TemporalValue temporalValue) {
 	if(!(temporalValue.type & dateMask)) {
 		// not a date type. should return error/execption
-		return INT64_MIN;
+		return RG_TEMPORAL_FUNC_FAIL;
 	}
 	struct tm *timeDescriptor  = _getTimeDescriptorFromTemporalValue(temporalValue);
 	int month = timeDescriptor->tm_mon;
@@ -193,7 +192,7 @@ int64_t RG_TemporalValue_GetQuarter(RG_TemporalValue temporalValue) {
 int64_t RG_TemporalValue_GetMonth(RG_TemporalValue temporalValue) {
 	if(!(temporalValue.type & dateMask)) {
 		// not a date type. should return error/execption
-		return INT64_MIN;
+		return RG_TEMPORAL_FUNC_FAIL;
 	}
 	struct tm *timeDescriptor  = _getTimeDescriptorFromTemporalValue(temporalValue);
 	return timeDescriptor->tm_mon + 1;
@@ -202,7 +201,7 @@ int64_t RG_TemporalValue_GetMonth(RG_TemporalValue temporalValue) {
 int64_t RG_TemporalValue_GetWeek(RG_TemporalValue temporalValue) {
 	if(!(temporalValue.type & dateMask)) {
 		// not a date type. should return error/execption
-		return INT64_MIN;
+		return RG_TEMPORAL_FUNC_FAIL;
 	}
 	struct tm *timeDescriptor  = _getTimeDescriptorFromTemporalValue(temporalValue);
 
@@ -214,7 +213,7 @@ int64_t RG_TemporalValue_GetWeek(RG_TemporalValue temporalValue) {
 int64_t RG_TemporalValue_GetWeekYear(RG_TemporalValue temporalValue) {
 	if(!(temporalValue.type & dateMask)) {
 		// not a date type. should return error/execption
-		return INT64_MIN;
+		return RG_TEMPORAL_FUNC_FAIL;
 	}
 	struct tm *timeDescriptor  = _getTimeDescriptorFromTemporalValue(temporalValue);
 
@@ -226,7 +225,7 @@ int64_t RG_TemporalValue_GetWeekYear(RG_TemporalValue temporalValue) {
 int64_t RG_TemporalValue_GetDayOfQuarter(RG_TemporalValue temporalValue) {
 	if(!(temporalValue.type & dateMask)) {
 		// not a date type. should return error/execption
-		return INT64_MIN;
+		return RG_TEMPORAL_FUNC_FAIL;
 	}
 	struct tm *timeDescriptor  = _getTimeDescriptorFromTemporalValue(temporalValue);
 
@@ -240,7 +239,7 @@ int64_t RG_TemporalValue_GetDayOfQuarter(RG_TemporalValue temporalValue) {
 int64_t RG_TemporalValue_GetDay(RG_TemporalValue temporalValue) {
 	if(!(temporalValue.type & dateMask)) {
 		// not a date type. should return error/execption
-		return INT64_MIN;
+		return RG_TEMPORAL_FUNC_FAIL;
 	}
 	struct tm *timeDescriptor  = _getTimeDescriptorFromTemporalValue(temporalValue);
 
@@ -250,7 +249,7 @@ int64_t RG_TemporalValue_GetDay(RG_TemporalValue temporalValue) {
 int64_t RG_TemporalValue_GetOrdinalDay(RG_TemporalValue temporalValue) {
 	if(!(temporalValue.type & dateMask)) {
 		// not a date type. should return error/execption
-		return INT64_MIN;
+		return RG_TEMPORAL_FUNC_FAIL;
 	}
 	struct tm *timeDescriptor  = _getTimeDescriptorFromTemporalValue(temporalValue);
 
@@ -260,7 +259,7 @@ int64_t RG_TemporalValue_GetOrdinalDay(RG_TemporalValue temporalValue) {
 int64_t RG_TemporalValue_GetDayOfWeek(RG_TemporalValue temporalValue) {
 	if(!(temporalValue.type & dateMask)) {
 		// not a date type. should return error/execption
-		return INT64_MIN;
+		return RG_TEMPORAL_FUNC_FAIL;
 	}
 	struct tm *timeDescriptor  = _getTimeDescriptorFromTemporalValue(temporalValue);
 	// tm first day is Sunday, Cypher first day is Monday
@@ -270,7 +269,7 @@ int64_t RG_TemporalValue_GetDayOfWeek(RG_TemporalValue temporalValue) {
 int64_t RG_TemporalValue_GetHour(RG_TemporalValue temporalValue) {
 	if(!(temporalValue.type & timeMask)) {
 		// not a time type. should return error/execption
-		return INT64_MIN;
+		return RG_TEMPORAL_FUNC_FAIL;
 	}
 	struct tm *timeDescriptor  = _getTimeDescriptorFromTemporalValue(temporalValue);
 
@@ -280,7 +279,7 @@ int64_t RG_TemporalValue_GetHour(RG_TemporalValue temporalValue) {
 int64_t RG_TemporalValue_GetMinute(RG_TemporalValue temporalValue) {
 	if(!(temporalValue.type & timeMask)) {
 		// not a time type. should return error/execption
-		return INT64_MIN;
+		return RG_TEMPORAL_FUNC_FAIL;
 	}
 	struct tm *timeDescriptor  = _getTimeDescriptorFromTemporalValue(temporalValue);
 
@@ -290,7 +289,7 @@ int64_t RG_TemporalValue_GetMinute(RG_TemporalValue temporalValue) {
 int64_t RG_TemporalValue_GetSecond(RG_TemporalValue temporalValue) {
 	if(!(temporalValue.type & timeMask)) {
 		// not a time type. should return error/execption
-		return INT64_MIN;
+		return RG_TEMPORAL_FUNC_FAIL;
 	}
 	struct tm *timeDescriptor  = _getTimeDescriptorFromTemporalValue(temporalValue);
 
@@ -300,7 +299,7 @@ int64_t RG_TemporalValue_GetSecond(RG_TemporalValue temporalValue) {
 int64_t RG_TemporalValue_GetMillisecond(RG_TemporalValue temporalValue) {
 	if(!(temporalValue.type & timeMask)) {
 		// not a time type. should return error/execption
-		return INT64_MIN;
+		return RG_TEMPORAL_FUNC_FAIL;
 	}
 
 	return temporalValue.nano / 1000000;
@@ -309,7 +308,7 @@ int64_t RG_TemporalValue_GetMillisecond(RG_TemporalValue temporalValue) {
 int64_t RG_TemporalValue_GetMicrosecond(RG_TemporalValue temporalValue) {
 	if(!(temporalValue.type & timeMask)) {
 		// not a time type. should return error/execption
-		return INT64_MIN;
+		return RG_TEMPORAL_FUNC_FAIL;
 	}
 
 	return temporalValue.nano / 1000;
@@ -318,12 +317,11 @@ int64_t RG_TemporalValue_GetMicrosecond(RG_TemporalValue temporalValue) {
 int64_t RG_TemporalValue_GetNanosecond(RG_TemporalValue temporalValue) {
 	if(!(temporalValue.type & timeMask)) {
 		// not a time type. should return error/execption
-		return INT64_MIN;
+		return RG_TEMPORAL_FUNC_FAIL;
 	}
 
 	return temporalValue.nano;
 }
-
 
 const char *RG_TemporalValue_ToString(RG_TemporalValue timestamp) {
 	struct tm *time = gmtime(&timestamp.seconds);

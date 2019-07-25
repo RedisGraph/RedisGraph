@@ -767,36 +767,34 @@ SIValue AR_DATETIME(SIValue *argv, int argc) {
 	// TODO: handle string and map
 	if(argc == 0) {
 		RG_TemporalValue dateTime = RG_DateTime_New();
-		return SI_TemporalValue(&dateTime);
+		return SI_TemporalValue(dateTime);
 	} else if(argc == 1 && SI_TYPE(argv[0]) == T_STRING) {
 		RG_TemporalValue dateTime = RG_DateTime_New_FromString(argv[0].stringval);
-		return SI_TemporalValue(&dateTime);
+		return SI_TemporalValue(dateTime);
 	}
 	return SI_NullVal();
-
 }
 
 SIValue AR_LOCALDATETIME(SIValue *argv, int argc) {
 	// TODO: handle string and map
 	if(argc == 0) {
 		RG_TemporalValue localDateTime = RG_LocalDateTime_New();
-		return SI_TemporalValue(&localDateTime);
+		return SI_TemporalValue(localDateTime);
 	} else if(argc == 1 && SI_TYPE(argv[0]) == T_STRING) {
 		RG_TemporalValue localDateTime = RG_LocalDateTime_New_FromString(argv[0].stringval);
-		return SI_TemporalValue(&localDateTime);
+		return SI_TemporalValue(localDateTime);
 	}
 	return SI_NullVal();
-
 }
 
 SIValue AR_DATE(SIValue *argv, int argc) {
 	// TODO: handle string and map
 	if(argc == 0) {
 		RG_TemporalValue date = RG_Date_New();
-		return SI_TemporalValue(&date);
+		return SI_TemporalValue(date);
 	} else if(argc == 1 && SI_TYPE(argv[0]) == T_STRING) {
 		RG_TemporalValue date = RG_Date_New_FromString(argv[0].stringval);
-		return SI_TemporalValue(&date);
+		return SI_TemporalValue(date);
 	}
 	return SI_NullVal();
 }
@@ -805,10 +803,10 @@ SIValue AR_TIME(SIValue *argv, int argc) {
 	// TODO: handle string and map
 	if(argc == 0) {
 		RG_TemporalValue time = RG_Time_New();
-		return SI_TemporalValue(&time);
+		return SI_TemporalValue(time);
 	} else if(argc == 1 && SI_TYPE(argv[0]) == T_STRING) {
 		RG_TemporalValue time = RG_Time_New_FromString(argv[0].stringval);
-		return SI_TemporalValue(&time);
+		return SI_TemporalValue(time);
 	}
 	return SI_NullVal();
 }
@@ -817,10 +815,10 @@ SIValue AR_LOCALTIME(SIValue *argv, int argc) {
 	// TODO: handle string and map
 	if(argc == 0) {
 		RG_TemporalValue localTime = RG_LocalTime_New();
-		return SI_TemporalValue(&localTime);
+		return SI_TemporalValue(localTime);
 	} else if(argc == 1 && SI_TYPE(argv[0]) == T_STRING) {
 		RG_TemporalValue localTime = RG_LocalTime_New_FromString(argv[0].stringval);
-		return SI_TemporalValue(&localTime);
+		return SI_TemporalValue(localTime);
 	}
 	return SI_NullVal();
 }
