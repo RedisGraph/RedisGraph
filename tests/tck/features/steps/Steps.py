@@ -84,6 +84,6 @@ def step_impl(context):
 
 @then(u'the result should be, in order')
 def step_impl(context):
-    # TODO: validate ORDER.
     expected_length = len(context.table.rows)
     assertions.assert_resultset_length(resultset, expected_length)
+    assertions.assert_resultsets_equals_in_order(resultset, context.table)

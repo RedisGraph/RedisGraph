@@ -40,7 +40,7 @@ Feature: CreateAcceptance
     And the side effects should be:
       | +nodes  | 1 |
       | +labels | 4 |
-  
+
   Scenario: Combine MATCH and CREATE
     Given an empty graph
     And having executed:
@@ -54,7 +54,8 @@ Feature: CreateAcceptance
       """
     Then the result should be empty
     And the side effects should be:
-      | +nodes  | 2 |
+      | +nodes | 2 |
+
   @skip
   Scenario: Combine MATCH, WITH and CREATE
     Given an empty graph
@@ -72,8 +73,8 @@ Feature: CreateAcceptance
       """
     Then the result should be empty
     And the side effects should be:
-      | +nodes  | 10 |
-  
+      | +nodes | 10 |
+
   Scenario: Newly-created nodes not visible to preceding MATCH
     Given an empty graph
     And having executed:
@@ -93,8 +94,8 @@ Feature: CreateAcceptance
     Given any graph
     When executing query:
       """
-      CREATE (n {prop: 'foo'})
-      RETURN n.prop AS p
+      CREATE (n {name: 'foo'})
+      RETURN n.name AS p
       """
     Then the result should be:
       | p     |
@@ -107,7 +108,7 @@ Feature: CreateAcceptance
     Given any graph
     When executing query:
       """
-      CREATE (n {id: 12, property: null})
+      CREATE (n {id: 12, name: null})
       RETURN n.id AS id
       """
     Then the result should be:
@@ -121,7 +122,7 @@ Feature: CreateAcceptance
     Given any graph
     When executing query:
       """
-      CREATE ()-[r:X {id: 12, property: null}]->()
+      CREATE ()-[r:X {id: 12, name: null}]->()
       RETURN r.id
       """
     Then the result should be:
@@ -131,7 +132,7 @@ Feature: CreateAcceptance
       | +nodes         | 2 |
       | +relationships | 1 |
       | +properties    | 1 |
-  
+
   Scenario: Create a simple pattern
     Given any graph
     When executing query:
@@ -142,7 +143,7 @@ Feature: CreateAcceptance
     And the side effects should be:
       | +nodes         | 2 |
       | +relationships | 1 |
-  
+
   Scenario: Create a self loop
     Given an empty graph
     When executing query:
@@ -154,7 +155,7 @@ Feature: CreateAcceptance
       | +nodes         | 1 |
       | +relationships | 1 |
       | +labels        | 1 |
-  
+
   Scenario: Create a self loop using MATCH
     Given an empty graph
     And having executed:
@@ -169,7 +170,7 @@ Feature: CreateAcceptance
     Then the result should be empty
     And the side effects should be:
       | +relationships | 1 |
-  
+
   Scenario: Create nodes and relationships
     Given any graph
     When executing query:
@@ -181,12 +182,12 @@ Feature: CreateAcceptance
     And the side effects should be:
       | +nodes         | 2 |
       | +relationships | 1 |
-  
+
   Scenario: Create a relationship with a property
     Given any graph
     When executing query:
       """
-      CREATE ()-[:R {prop: 42}]->()
+      CREATE ()-[:R {num: 42}]->()
       """
     Then the result should be empty
     And the side effects should be:
@@ -259,7 +260,7 @@ Feature: CreateAcceptance
     Then the result should be empty
     And the side effects should be:
       | +nodes | 4 |
-  
+
   Scenario: Create a relationship with a reversed direction
     Given an empty graph
     When executing query:
@@ -279,7 +280,7 @@ Feature: CreateAcceptance
     Then the result should be:
       | a    | b    |
       | (:A) | (:B) |
-  
+
   Scenario: Create a pattern with multiple hops
     Given an empty graph
     When executing query:
@@ -299,7 +300,7 @@ Feature: CreateAcceptance
     Then the result should be:
       | a    | b    | c    |
       | (:A) | (:B) | (:C) |
-  
+
   Scenario: Create a pattern with multiple hops in the reverse direction
     Given an empty graph
     When executing query:
@@ -319,7 +320,7 @@ Feature: CreateAcceptance
     Then the result should be:
       | a    | b    | c    |
       | (:A) | (:B) | (:C) |
-  
+
   Scenario: Create a pattern with multiple hops in varying directions
     Given an empty graph
     When executing query:
@@ -339,7 +340,7 @@ Feature: CreateAcceptance
     Then the result should be:
       | a    | b    | c    |
       | (:A) | (:B) | (:C) |
-  
+
   Scenario: Create a pattern with multiple hops with multiple types and varying directions
     Given any graph
     When executing query:
@@ -358,12 +359,13 @@ Feature: CreateAcceptance
     Then the result should be:
       | r1    | r2    | r3    |
       | [:R1] | [:R2] | [:R3] |
+
   @skip
   Scenario: Nodes are not created when aliases are applied to variable names
     Given an empty graph
     And having executed:
       """
-      CREATE ({foo: 1})
+      CREATE ({num: 1})
       """
     When executing query:
       """
@@ -375,9 +377,10 @@ Feature: CreateAcceptance
       """
     Then the result should be:
       | a          | b          |
-      | ({foo: 1}) | ({foo: 1}) |
+      | ({num: 1}) | ({num: 1}) |
     And the side effects should be:
       | +relationships | 1 |
+
   @skip
   Scenario: Only a single node is created when an alias is applied to a variable name
     Given an empty graph
@@ -403,7 +406,7 @@ Feature: CreateAcceptance
     Given an empty graph
     And having executed:
       """
-      CREATE ({foo: 'A'})
+      CREATE ({name: 'A'})
       """
     When executing query:
       """
@@ -416,8 +419,8 @@ Feature: CreateAcceptance
       RETURN x, y
       """
     Then the result should be:
-      | x            | y            |
-      | ({foo: 'A'}) | ({foo: 'A'}) |
+      | x              | y              |
+      | ({name: 'A'}) | ({name: 'A'}) |
     And the side effects should be:
       | +relationships | 2 |
   @skip
@@ -425,7 +428,7 @@ Feature: CreateAcceptance
     Given an empty graph
     And having executed:
       """
-      CREATE ({foo: 5})
+      CREATE ({num: 5})
       """
     When executing query:
       """
@@ -438,7 +441,7 @@ Feature: CreateAcceptance
       """
     Then the result should be:
       | x          |
-      | ({foo: 5}) |
+      | ({num: 5}) |
     And the side effects should be:
       | +nodes         | 2 |
       | +relationships | 2 |
@@ -513,7 +516,7 @@ Feature: CreateAcceptance
       RETURN r
       """
     Then a SyntaxError should be raised at compile time: RequiresDirectedRelationship
-  
+
   Scenario: Creating a pattern with multiple hops and changing directions
     Given an empty graph
     When executing query:

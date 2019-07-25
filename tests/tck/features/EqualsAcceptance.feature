@@ -122,3 +122,24 @@ Feature: EqualsAcceptance
       | count(b) |
       | 1        |
     And no side effects
+
+  @skip
+  Scenario Outline: Comparing lists to lists
+    Given an empty graph
+    When executing query:
+      """
+      RETURN <lhs> = <rhs> AS result
+      """
+    Then the result should be:
+      | result   |
+      | <result> |
+    And no side effects
+
+    Examples:
+      | lhs           | rhs           | result |
+      | [1, 2]        | [1]           | false  |
+      | [null]        | [1]           | null   |
+      | ['a']         | [1]           | null   |
+      | [[1]]         | [[1], [null]] | false  |
+      | [[1], [2]]    | [[1], [null]] | null   |
+      | [[1], [2, 3]] | [[1], [null]] | false  |

@@ -35,17 +35,17 @@ Feature: ComparisonOperatorAcceptance
     And having executed:
       """
       UNWIND [1, 2, 3] AS i
-      CREATE ({value: i})
+      CREATE ({num: i})
       """
     When executing query:
       """
       MATCH (n)
-      WHERE 1 < n.value < 3
-      RETURN n.value
+      WHERE 1 < n.num < 3
+      RETURN n.num
       """
     Then the result should be:
-      | n.value |
-      | 2       |
+      | n.num |
+      | 2     |
     And no side effects
   @skip
   Scenario: Handling numerical ranges 2
@@ -53,18 +53,18 @@ Feature: ComparisonOperatorAcceptance
     And having executed:
       """
       UNWIND [1, 2, 3] AS i
-      CREATE ({value: i})
+      CREATE ({num: i})
       """
     When executing query:
       """
       MATCH (n)
-      WHERE 1 < n.value <= 3
-      RETURN n.value
+      WHERE 1 < n.num <= 3
+      RETURN n.num
       """
     Then the result should be:
-      | n.value |
-      | 2       |
-      | 3       |
+      | n.num |
+      | 2     |
+      | 3     |
     And no side effects
   @skip
   Scenario: Handling numerical ranges 3
@@ -72,18 +72,18 @@ Feature: ComparisonOperatorAcceptance
     And having executed:
       """
       UNWIND [1, 2, 3] AS i
-      CREATE ({value: i})
+      CREATE ({num: i})
       """
     When executing query:
       """
       MATCH (n)
-      WHERE 1 <= n.value < 3
-      RETURN n.value
+      WHERE 1 <= n.num < 3
+      RETURN n.num
       """
     Then the result should be:
-      | n.value |
-      | 1       |
-      | 2       |
+      | n.num |
+      | 1     |
+      | 2     |
     And no side effects
   @skip
   Scenario: Handling numerical ranges 4
@@ -91,19 +91,19 @@ Feature: ComparisonOperatorAcceptance
     And having executed:
       """
       UNWIND [1, 2, 3] AS i
-      CREATE ({value: i})
+      CREATE ({num: i})
       """
     When executing query:
       """
       MATCH (n)
-      WHERE 1 <= n.value <= 3
-      RETURN n.value
+      WHERE 1 <= n.num <= 3
+      RETURN n.num
       """
     Then the result should be:
-      | n.value |
-      | 1       |
-      | 2       |
-      | 3       |
+      | n.num |
+      | 1     |
+      | 2     |
+      | 3     |
     And no side effects
   @skip
   Scenario: Handling string ranges 1
@@ -111,17 +111,17 @@ Feature: ComparisonOperatorAcceptance
     And having executed:
       """
       UNWIND ['a', 'b', 'c'] AS c
-      CREATE ({value: c})
+      CREATE ({name: c})
       """
     When executing query:
       """
       MATCH (n)
-      WHERE 'a' < n.value < 'c'
-      RETURN n.value
+      WHERE 'a' < n.name < 'c'
+      RETURN n.name
       """
     Then the result should be:
-      | n.value |
-      | 'b'     |
+      | n.name |
+      | 'b'    |
     And no side effects
   @skip
   Scenario: Handling string ranges 2
@@ -129,18 +129,18 @@ Feature: ComparisonOperatorAcceptance
     And having executed:
       """
       UNWIND ['a', 'b', 'c'] AS c
-      CREATE ({value: c})
+      CREATE ({name: c})
       """
     When executing query:
       """
       MATCH (n)
-      WHERE 'a' < n.value <= 'c'
-      RETURN n.value
+      WHERE 'a' < n.name <= 'c'
+      RETURN n.name
       """
     Then the result should be:
-      | n.value |
-      | 'b'     |
-      | 'c'     |
+      | n.name |
+      | 'b'    |
+      | 'c'    |
     And no side effects
   @skip
   Scenario: Handling string ranges 3
@@ -148,18 +148,18 @@ Feature: ComparisonOperatorAcceptance
     And having executed:
       """
       UNWIND ['a', 'b', 'c'] AS c
-      CREATE ({value: c})
+      CREATE ({name: c})
       """
     When executing query:
       """
       MATCH (n)
-      WHERE 'a' <= n.value < 'c'
-      RETURN n.value
+      WHERE 'a' <= n.name < 'c'
+      RETURN n.name
       """
     Then the result should be:
-      | n.value |
-      | 'a'     |
-      | 'b'     |
+      | n.name |
+      | 'a'    |
+      | 'b'    |
     And no side effects
   @skip
   Scenario: Handling string ranges 4
@@ -167,35 +167,35 @@ Feature: ComparisonOperatorAcceptance
     And having executed:
       """
       UNWIND ['a', 'b', 'c'] AS c
-      CREATE ({value: c})
+      CREATE ({name: c})
       """
     When executing query:
       """
       MATCH (n)
-      WHERE 'a' <= n.value <= 'c'
-      RETURN n.value
+      WHERE 'a' <= n.name <= 'c'
+      RETURN n.name
       """
     Then the result should be:
-      | n.value |
-      | 'a'     |
-      | 'b'     |
-      | 'c'     |
+      | n.name |
+      | 'a'    |
+      | 'b'    |
+      | 'c'    |
     And no side effects
   @skip
   Scenario: Handling empty range
     Given an empty graph
     And having executed:
       """
-      CREATE ({value: 3})
+      CREATE ({num: 3})
       """
     When executing query:
       """
       MATCH (n)
-      WHERE 10 < n.value <= 3
-      RETURN n.value
+      WHERE 10 < n.num <= 3
+      RETURN n.num
       """
     Then the result should be:
-      | n.value |
+      | n.num |
     And no side effects
   @skip
   Scenario: Handling long chains of operators

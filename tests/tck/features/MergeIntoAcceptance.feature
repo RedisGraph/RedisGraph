@@ -100,7 +100,7 @@ Feature: MergeIntoAcceptance
     And having executed:
       """
       MATCH (a:A), (b:B)
-      CREATE (a)-[:TYPE {foo: 'bar'}]->(b)
+      CREATE (a)-[:TYPE {name: 'bar'}]->(b)
       """
     When executing query:
       """
@@ -126,7 +126,7 @@ Feature: MergeIntoAcceptance
       """
       MATCH (a {name: 'A'}), (b {name: 'B'})
       MERGE (a)-[r:TYPE]->(b)
-        ON CREATE SET r += {foo: 'bar', bar: 'baz'}
+      ON CREATE SET r += {name: 'bar', name2: 'baz'}
       """
     Then the result should be empty
     And the side effects should be:
@@ -138,30 +138,31 @@ Feature: MergeIntoAcceptance
       RETURN [key IN keys(r) | key + '->' + r[key]] AS keyValue
       """
     Then the result should be (ignoring element order for lists):
-      | keyValue                 |
-      | ['foo->bar', 'bar->baz'] |
+      | keyValue                    |
+      | ['name->bar', 'name2->baz'] |
+
   @skip
   Scenario: Copying properties from literal map with ON MATCH
     And having executed:
       """
       MATCH (a:A), (b:B)
-      CREATE (a)-[:TYPE {foo: 'bar'}]->(b)
+      CREATE (a)-[:TYPE {name: 'bar'}]->(b)
       """
     When executing query:
       """
       MATCH (a {name: 'A'}), (b {name: 'B'})
       MERGE (a)-[r:TYPE]->(b)
-        ON MATCH SET r += {foo: 'baz', bar: 'baz'}
+        ON MATCH SET r += {name: 'baz', name2: 'baz'}
       """
     Then the result should be empty
     And the side effects should be:
-      | +properties    | 2 |
-      | -properties    | 1 |
+      | +properties | 2 |
+      | -properties | 1 |
     When executing control query:
       """
       MATCH ()-[r:TYPE]->()
       RETURN [key IN keys(r) | key + '->' + r[key]] AS keyValue
       """
     Then the result should be (ignoring element order for lists):
-      | keyValue                 |
-      | ['foo->baz', 'bar->baz'] |
+      | keyValue                    |
+      | ['name->baz', 'name2->baz'] |

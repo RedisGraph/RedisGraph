@@ -89,62 +89,62 @@ Feature: WithAcceptance
       | (:B) | (:A) |
       | (:B) | (:B) |
     And no side effects
-  
+
   Scenario: Aliasing
     Given an empty graph
     And having executed:
       """
-      CREATE (:Begin {prop: 42}),
-             (:End {prop: 42}),
-             (:End {prop: 3})
+      CREATE (:Begin {num: 42}),
+             (:End {num: 42}),
+             (:End {num: 3})
       """
     When executing query:
       """
       MATCH (a:Begin)
-      WITH a.prop AS property
+      WITH a.num AS property
       MATCH (b:End)
-      WHERE property = b.prop
+      WHERE property = b.num
       RETURN b
       """
     Then the result should be:
-      | b                 |
-      | (:End {prop: 42}) |
+      | b                |
+      | (:End {num: 42}) |
     And no side effects
   @skip
   Scenario: Handle dependencies across WITH
     Given an empty graph
     And having executed:
       """
-      CREATE (a:End {prop: 42, id: 0}),
-             (:End {prop: 3}),
-             (:Begin {prop: a.id})
+      CREATE (a:End {num: 42, id: 0}),
+             (:End {num: 3}),
+             (:Begin {num: a.id})
       """
     When executing query:
       """
       MATCH (a:Begin)
-      WITH a.prop AS property
+      WITH a.num AS property
         LIMIT 1
       MATCH (b)
       WHERE b.id = property
       RETURN b
       """
     Then the result should be:
-      | b                        |
-      | (:End {prop: 42, id: 0}) |
+      | b                       |
+      | (:End {num: 42, id: 0}) |
     And no side effects
   @skip
   Scenario: Handle dependencies across WITH with SKIP
     Given an empty graph
     And having executed:
       """
-      CREATE (a {prop: 'A', key: 0, id: 0}),
-             ({prop: 'B', key: a.id, id: 1}),
-             ({prop: 'C', key: 0, id: 2})
+      CREATE (a {name: 'A', num: 0, id: 0}),
+             ({name: 'B', num: a.id, id: 1}),
+             ({name: 'C', num: 0, id: 2})
       """
     When executing query:
       """
       MATCH (a)
-      WITH a.prop AS property, a.key AS idToUse
+      WITH a.name AS property, a.num AS idToUse
         ORDER BY property
         SKIP 1
       MATCH (b)
@@ -152,8 +152,8 @@ Feature: WithAcceptance
       RETURN DISTINCT b
       """
     Then the result should be:
-      | b                    |
-      | ({prop: 'A', key: 0, id: 0}) |
+      | b                            |
+      | ({name: 'A', num: 0, id: 0}) |
     And no side effects
   @skip
   Scenario: WHERE after WITH should filter results
@@ -203,15 +203,15 @@ Feature: WithAcceptance
     Given an empty graph
     And having executed:
       """
-      CREATE ({bar: 'A'}),
-             ({bar: 'A'}),
-             ({bar: 'B'})
+      CREATE ({name: 'A'}),
+             ({name: 'A'}),
+             ({name: 'B'})
       """
     When executing query:
       """
       MATCH (a)
-      WITH a.bar AS bars, count(*) AS relCount
-      ORDER BY a.bar
+      WITH a.name AS bars, count(*) AS relCount
+      ORDER BY a.name
       RETURN *
       """
     Then the result should be:
@@ -224,15 +224,15 @@ Feature: WithAcceptance
     Given an empty graph
     And having executed:
       """
-      CREATE ({bar: 'A'}),
-             ({bar: 'A'}),
-             ({bar: 'B'})
+      CREATE ({name: 'A'}),
+             ({name: 'A'}),
+             ({name: 'B'})
       """
     When executing query:
       """
       MATCH (a)
-      WITH DISTINCT a.bar AS bars
-      ORDER BY a.bar
+      WITH DISTINCT a.name AS bars
+      ORDER BY a.name
       RETURN *
       """
     Then the result should be:
@@ -245,15 +245,15 @@ Feature: WithAcceptance
     Given an empty graph
     And having executed:
       """
-      CREATE ({bar: 'A'}),
-             ({bar: 'A'}),
-             ({bar: 'B'})
+      CREATE ({name2: 'A'}),
+             ({name2: 'A'}),
+             ({name2: 'B'})
       """
     When executing query:
       """
       MATCH (a)
-      WITH DISTINCT a.bar AS bars
-      WHERE a.bar = 'B'
+      WITH DISTINCT a.name2 AS bars
+      WHERE a.name2 = 'B'
       RETURN *
       """
     Then the result should be:
@@ -298,12 +298,12 @@ Feature: WithAcceptance
     Given an empty graph
     When executing query:
       """
-      WITH {foo: {bar: 'baz'}} AS nestedMap
-      RETURN nestedMap.foo.bar
+      WITH {name: {name2: 'baz'}} AS nestedMap
+      RETURN nestedMap.name.name2
       """
     Then the result should be:
-      | nestedMap.foo.bar |
-      | 'baz'             |
+      | nestedMap.name.name2 |
+      | 'baz'                |
     And no side effects
   @skip
   Scenario: Connected components succeeding WITH
@@ -330,13 +330,13 @@ Feature: WithAcceptance
     Given an empty graph
     And having executed:
       """
-      CREATE ({prop: 43}), ({prop: 42})
+      CREATE ({num: 43}), ({num: 42})
       """
     When executing query:
       """
       MATCH (n)
       WITH n
-      WHERE n.prop = 42
+      WHERE n.num = 42
       RETURN count(*)
       """
     Then the result should be:

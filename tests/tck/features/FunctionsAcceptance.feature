@@ -165,18 +165,18 @@ Feature: FunctionsAcceptance
     Given an empty graph
     And having executed:
       """
-      CREATE (:Person {prop: 'foo'}),
+      CREATE (:Person {name: 'foo'}),
              (:Person)
       """
     When executing query:
       """
       MATCH (n:Person)
-      WHERE exists(n['prop'])
+      WHERE exists(n['name'])
       RETURN n
       """
     Then the result should be:
       | n                       |
-      | (:Person {prop: 'foo'}) |
+      | (:Person {name: 'foo'}) |
     And no side effects
   @skip
   Scenario Outline: `exists()` with literal maps
@@ -219,16 +219,16 @@ Feature: FunctionsAcceptance
     Given an empty graph
     And having executed:
       """
-      CREATE ({prop: 10.0}),
-             ({prop: 20.0}),
-             ({prop: 30.0})
+      CREATE ({price: 10.0}),
+             ({price: 20.0}),
+             ({price: 30.0})
       """
     And parameters are:
       | percentile | <p> |
     When executing query:
       """
       MATCH (n)
-      RETURN percentileDisc(n.prop, $percentile) AS p
+      RETURN percentileDisc(n.price, $percentile) AS p
       """
     Then the result should be:
       | p        |
@@ -245,16 +245,16 @@ Feature: FunctionsAcceptance
     Given an empty graph
     And having executed:
       """
-      CREATE ({prop: 10.0}),
-             ({prop: 20.0}),
-             ({prop: 30.0})
+      CREATE ({price: 10.0}),
+             ({price: 20.0}),
+             ({price: 30.0})
       """
     And parameters are:
       | percentile | <p> |
     When executing query:
       """
       MATCH (n)
-      RETURN percentileCont(n.prop, $percentile) AS p
+      RETURN percentileCont(n.price, $percentile) AS p
       """
     Then the result should be:
       | p        |
@@ -271,14 +271,14 @@ Feature: FunctionsAcceptance
     Given an empty graph
     And having executed:
       """
-      CREATE ({prop: 10.0})
+      CREATE ({price: 10.0})
       """
     And parameters are:
       | param | <percentile> |
     When executing query:
       """
       MATCH (n)
-      RETURN percentileCont(n.prop, $param)
+      RETURN percentileCont(n.price, $param)
       """
     Then a ArgumentError should be raised at runtime: NumberOutOfRange
 
@@ -292,14 +292,14 @@ Feature: FunctionsAcceptance
     Given an empty graph
     And having executed:
       """
-      CREATE ({prop: 10.0})
+      CREATE ({price: 10.0})
       """
     And parameters are:
       | param | <percentile> |
     When executing query:
       """
       MATCH (n)
-      RETURN percentileDisc(n.prop, $param)
+      RETURN percentileDisc(n.price, $param)
       """
     Then a ArgumentError should be raised at runtime: NumberOutOfRange
 
@@ -489,7 +489,7 @@ Feature: FunctionsAcceptance
     When executing query:
       """
       MATCH (n:X)
-      RETURN n, EXIsTS(n.prop) AS b ORDER BY n.prop
+      RETURN n, EXIsTS(n.prop) AS b
       """
     Then the result should be:
       | n               | b     |
