@@ -74,6 +74,11 @@ static AR_ExpNode **_BuildOrderExpressions(RecordMap *record_map, AR_ExpNode **p
 					break;
 				}
 			}
+			if(exp == NULL) {
+				// We didn't match any previous projections. This can occur when we're
+				// ordering by a projected WITH entity that is not also being returned.
+				exp = AR_EXP_FromExpression(record_map, ast_exp);
+			}
 		} else {
 			// Independent operator like:
 			// ORDER BY COUNT(a)
@@ -414,6 +419,17 @@ static ExecutionPlanSegment *_NewExecutionPlanSegment(RedisModuleCtx *ctx, Graph
 	const cypher_astnode_t *order_clause = NULL;
 	if(ret_clause) {
 		segment->projections = _BuildReturnExpressions(segment->record_map, ret_clause, ast);
+		// If we have a RETURN * and previous WITH projections, include those projections.
+		if(cypher_ast_return_has_include_existing(ret_clause) && prev_projections) {
+			uint prev_projection_count = array_len(prev_projections);
+			for(uint i = 0; i < prev_projection_count; i++) {
+				// Build a new projection that's just the WITH identifier
+				AR_ExpNode *projection = AR_EXP_NewVariableOperandNode(record_map,
+																	   prev_projections[i]->resolved_name, NULL);
+				projection->resolved_name = prev_projections[i]->resolved_name;
+				segment->projections = array_append(segment->projections, projection);
+			}
+		}
 		order_clause = cypher_ast_return_get_order_by(ret_clause);
 	} else if(with_clause) {
 		segment->projections = _BuildWithExpressions(segment->record_map, with_clause);
@@ -678,10 +694,21 @@ static ExecutionPlanSegment *_NewExecutionPlanSegment(RedisModuleCtx *ctx, Graph
 
 			rax *references = FilterTree_CollectModified(tree);
 
-			/* Scan execution segment, locate the earliest position where all
-			 * references been resolved. */
-			OpBase *op = ExecutionPlan_LocateReferences(segment->root, references);
-			assert(op);
+			if(raxSize(references) > 0) {
+				/* Scan execution segment, locate the earliest position where all
+				 * references been resolved. */
+				op = ExecutionPlan_LocateReferences(segment->root, references);
+				assert(op);
+			} else {
+				/* The filter tree does not contain references, like:
+				 * WHERE 1=1
+				 * TODO This logic is inadequate. For now, we'll place the op
+				 * directly below the first projection (hopefully there is one!). */
+				op = segment->root;
+				while(op->childCount > 0 && op->type != OPType_PROJECT && op->type != OPType_AGGREGATE) {
+					op = op->children[0];
+				}
+			}
 
 			/* Create filter node.
 			 * Introduce filter op right below located op. */

@@ -171,6 +171,8 @@ const char **AST_CollectElementNames(AST *ast) {
 #define ALIAS_STRCMP(a,b) (!strcmp(*a,*b))
 
 	uint count = array_len(aliases);
+	if(count == 0) return aliases;
+
 	QSORT(const char *, aliases, count, ALIAS_STRCMP);
 	uint unique_idx = 0;
 	for(int i = 0; i < count - 1; i ++) {
@@ -286,4 +288,3 @@ void AST_Free(AST *ast) {
 	if(ast->entity_map) TrieMap_Free(ast->entity_map, TrieMap_NOP_CB);
 	rm_free(ast);
 }
-

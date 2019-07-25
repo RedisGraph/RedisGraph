@@ -285,6 +285,11 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 		} else {
 			// Fetch entity property value.
 			if(root->operand.variadic.entity_prop != NULL) {
+				RecordEntryType t = Record_GetType(r, root->operand.variadic.entity_alias_idx);
+				// Property requested on a scalar value.
+				// TODO this should issue a TypeError
+				if(t != REC_TYPE_NODE && t != REC_TYPE_EDGE) return SI_NullVal();
+
 				GraphEntity *ge = Record_GetGraphEntity(r, root->operand.variadic.entity_alias_idx);
 				if(root->operand.variadic.entity_prop_idx == ATTRIBUTE_NOTFOUND) {
 					_AR_EXP_UpdatePropIdx(root, r);
@@ -498,7 +503,7 @@ AR_ExpNode *AR_EXP_Clone(AR_ExpNode *exp) {
 		assert(false);
 		break;
 	}
-
+	clone->resolved_name = exp->resolved_name;
 	return clone;
 }
 

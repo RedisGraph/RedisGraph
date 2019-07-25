@@ -6,8 +6,6 @@
 
 #pragma once
 
-// #include "../graph/entities/node.h"
-// #include "../graph/entities/edge.h"
 #include "../graph/entities/qg_node.h"
 #include "../graph/entities/qg_edge.h"
 #include "../arithmetic/arithmetic_expression.h"
@@ -35,7 +33,7 @@ typedef enum {
 
 typedef struct {
 	const char **keys;
-	SIValue *values;
+	SIValue *values; // TODO Replace with AR_ExpNodes
 	int property_count;
 } PropertyMap;
 

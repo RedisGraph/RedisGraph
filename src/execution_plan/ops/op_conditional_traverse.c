@@ -61,9 +61,15 @@ int CondTraverseToString(const OpBase *ctx, char *buff, uint buff_len) {
 	offset += snprintf(buff + offset, buff_len - offset, "%s | ", op->op.name);
 	offset += QGNode_ToString(op->ae->src_node, buff + offset, buff_len - offset);
 	if(op->ae->edge) {
-		offset += snprintf(buff + offset, buff_len - offset, "-");
-		offset += QGEdge_ToString(op->ae->edge, buff + offset, buff_len - offset);
-		offset += snprintf(buff + offset, buff_len - offset, "->");
+		if(op->ae->operands[0].transpose) {
+			offset += snprintf(buff + offset, buff_len - offset, "<-");
+			offset += QGEdge_ToString(op->ae->edge, buff + offset, buff_len - offset);
+			offset += snprintf(buff + offset, buff_len - offset, "-");
+		} else {
+			offset += snprintf(buff + offset, buff_len - offset, "-");
+			offset += QGEdge_ToString(op->ae->edge, buff + offset, buff_len - offset);
+			offset += snprintf(buff + offset, buff_len - offset, "->");
+		}
 	} else {
 		offset += snprintf(buff + offset, buff_len - offset, "->");
 	}
@@ -205,7 +211,7 @@ Record CondTraverseConsume(OpBase *opBase) {
 										  &op->edges);
 		}
 
-		_CondTraverse_SetEdge(op, op->r);
+		if(!_CondTraverse_SetEdge(op, op->r)) return NULL;
 	}
 
 	return Record_Clone(op->r);

@@ -34,7 +34,7 @@ static void _AST_GetIdentifiers(const cypher_astnode_t *node, TrieMap *identifie
 		TrieMap_Add(identifiers, (char *)identifier, strlen(identifier), NULL, TrieMap_DONT_CARE_REPLACE);
 	}
 
-	unsigned int child_count = cypher_astnode_nchildren(node);
+	uint child_count = cypher_astnode_nchildren(node);
 
 	/* In case current node is of type projection
 	 * inspect first child only,
@@ -45,7 +45,7 @@ static void _AST_GetIdentifiers(const cypher_astnode_t *node, TrieMap *identifie
 	 * @14  20..26  > > > > identifier         `max(z)` */
 	if(cypher_astnode_type(node) == CYPHER_AST_PROJECTION) child_count = 1;
 
-	for(int i = 0; i < child_count; i++) {
+	for(uint i = 0; i < child_count; i++) {
 		const cypher_astnode_t *child = cypher_astnode_get_child(node, i);
 		_AST_GetIdentifiers(child, identifiers);
 	}
@@ -56,8 +56,8 @@ static void _AST_GetWithAliases(const cypher_astnode_t *node, TrieMap *aliases) 
 	if(cypher_astnode_type(node) != CYPHER_AST_WITH) return;
 	assert(aliases);
 
-	int num_with_projections = cypher_ast_with_nprojections(node);
-	for(unsigned int i = 0; i < num_with_projections; i ++) {
+	uint num_with_projections = cypher_ast_with_nprojections(node);
+	for(uint i = 0; i < num_with_projections; i ++) {
 		const cypher_astnode_t *child = cypher_ast_with_get_projection(node, i);
 		const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(child);
 		const char *alias;
@@ -71,17 +71,16 @@ static void _AST_GetWithAliases(const cypher_astnode_t *node, TrieMap *aliases) 
 		}
 		TrieMap_Add(aliases, (char *)alias, strlen(alias), NULL, TrieMap_DONT_CARE_REPLACE);
 	}
-
 }
 
 // UNWIND and WITH also form aliases, but don't need special handling for us yet.
 static void _AST_GetReturnAliases(const cypher_astnode_t *node, TrieMap *aliases) {
 	assert(node && aliases && cypher_astnode_type(node) == CYPHER_AST_RETURN);
 
-	int num_return_projections = cypher_ast_return_nprojections(node);
+	uint num_return_projections = cypher_ast_return_nprojections(node);
 	if(num_return_projections == 0) return;
 
-	for(unsigned int i = 0; i < num_return_projections; i ++) {
+	for(uint i = 0; i < num_return_projections; i ++) {
 		const cypher_astnode_t *child = cypher_ast_return_get_projection(node, i);
 		const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(child);
 		if(alias_node == NULL) continue;
@@ -90,10 +89,39 @@ static void _AST_GetReturnAliases(const cypher_astnode_t *node, TrieMap *aliases
 	}
 }
 
+static void _CollectIdentifiers(const cypher_astnode_t *root, TrieMap *projections) {
+	if(cypher_astnode_type(root) == CYPHER_AST_IDENTIFIER) {
+		// Identifier found, add to triemap
+		const char *identifier = cypher_ast_identifier_get_name(root);
+		TrieMap_Add(projections, (char *)identifier, strlen(identifier), NULL, TrieMap_DONT_CARE_REPLACE);
+	} else {
+		uint child_count = cypher_astnode_nchildren(root);
+		for(uint i = 0; i < child_count; i ++) {
+			_CollectIdentifiers(cypher_astnode_get_child(root, i), projections);
+		}
+	}
+}
+
+/* Collect all identifiers used in the RETURN clause (but not aliases defined there) */
+static TrieMap *_AST_GetReturnProjections(const cypher_astnode_t *return_clause) {
+	if(!return_clause) return NULL;
+
+	uint projection_count = cypher_ast_return_nprojections(return_clause);
+	if(projection_count == 0) return NULL;
+
+	TrieMap *projections = NewTrieMap();
+	for(uint i = 0; i < projection_count; i ++) {
+		const cypher_astnode_t *projection = cypher_ast_return_get_projection(return_clause, i);
+		_CollectIdentifiers(projection, projections);
+	}
+
+	return projections;
+}
+
 /* Compares a triemap of user-specified functions with the registered functions we provide. */
 static AST_Validation _AST_ValidateReferredFunctions(TrieMap *referred_functions, char **reason,
 													 bool include_aggregates) {
-	int res = AST_VALID;
+	AST_Validation res = AST_VALID;
 	void *value;
 	tm_len_t len;
 	char *funcName;
@@ -128,44 +156,69 @@ static AST_Validation _AST_ValidateReferredFunctions(TrieMap *referred_functions
 	}
 
 	// If the function was not found, provide a reason if one is not set
-	if(res == AST_INVALID && *reason == NULL) {
-		asprintf(reason, "Unknown function '%s'", funcName);
-	}
+	if(res == AST_INVALID && *reason == NULL) asprintf(reason, "Unknown function '%s'", funcName);
 
 	TrieMapIterator_Free(it);
 	return res;
 }
 
-static AST_Validation _MATCH_Clause_Validate_Range(const cypher_astnode_t *range, char **reason) {
-	// Defaults
+static inline bool _AliasIsReturned(TrieMap *projections, const char *identifier) {
+	if(TrieMap_Find(projections, (char *)identifier, strlen(identifier)) != TRIEMAP_NOTFOUND) {
+		return true;
+	}
+	return false;
+}
+
+// If we have a multi-hop traversal (fixed or variable length), we cannot currently return that entity.
+static AST_Validation _ValidateMultiHopTraversal(TrieMap *projections, const cypher_astnode_t *edge,
+												 const cypher_astnode_t *range,
+												 char **reason) {
 	int start = 1;
 	int end = INT_MAX - 2;
 
 	const cypher_astnode_t *range_start = cypher_ast_range_get_start(range);
-	if(range_start) {
-		const char *start_str = cypher_ast_integer_get_valuestr(range_start);
-		start = atoi(start_str);
-	}
+	if(range_start) start = AST_ParseIntegerNode(range_start);
 
 	const cypher_astnode_t *range_end = cypher_ast_range_get_end(range);
-	if(range_end) {
-		const char *end_str = cypher_ast_integer_get_valuestr(range_end);
-		end = atoi(end_str);
-	}
+	if(range_end) end = AST_ParseIntegerNode(range_end);
 
+	// Validate specified range
 	if(start > end) {
 		asprintf(reason,
 				 "Variable length path, maximum number of hops must be greater or equal to minimum number of hops.");
 		return AST_INVALID;
 	}
 
+	bool multihop = (start > 1) || (start != end);
+	if(!multihop) return AST_VALID;
+
+	// Multi-hop traversals cannot (currently) be filtered on
+	if(cypher_ast_rel_pattern_get_properties(edge) != NULL) {
+		asprintf(reason, "RedisGraph does not currently support filters on variable-length paths.");
+		return AST_INVALID;
+	}
+
+	// Multi-hop traversals cannot be referenced
+	if(!projections) return AST_VALID;
+
+	// Check if relation has an alias
+	const cypher_astnode_t *ast_identifier = cypher_ast_rel_pattern_get_identifier(edge);
+	if(!ast_identifier) return AST_VALID;
+
+	// Verify that the alias is not found in the RETURN clause.
+	const char *identifier = cypher_ast_identifier_get_name(ast_identifier);
+	if(_AliasIsReturned(projections, identifier)) {
+		asprintf(reason, "Cannot return variable-length traversal '%s'.", identifier);
+		return AST_INVALID;
+	}
+
 	return AST_VALID;
 }
 
-static AST_Validation _Validate_MATCH_Clause_ReusedEdges(const cypher_astnode_t *node,
-														 TrieMap *identifiers, char **reason) {
-	unsigned int child_count = cypher_astnode_nchildren(node);
-	for(int i = 0; i < child_count; i++) {
+static AST_Validation _Validate_ReusedEdges(const cypher_astnode_t *node,
+											TrieMap *identifiers, char **reason) {
+	uint child_count = cypher_astnode_nchildren(node);
+	for(uint i = 0; i < child_count; i++) {
 		const cypher_astnode_t *child = cypher_astnode_get_child(node, i);
 		cypher_astnode_type_t type = cypher_astnode_type(child);
 
@@ -184,7 +237,35 @@ static AST_Validation _Validate_MATCH_Clause_ReusedEdges(const cypher_astnode_t 
 	return AST_VALID;
 }
 
-static AST_Validation _ValidatePath(const cypher_astnode_t *path, TrieMap *identifiers,
+static AST_Validation _ValidateRelation(TrieMap *projections, const cypher_astnode_t *edge,
+										TrieMap *identifiers,
+										char **reason) {
+	AST_Validation res = AST_VALID;
+
+	// Make sure relation identifier is unique
+	res = _Validate_ReusedEdges(edge, identifiers, reason);
+	if(res != AST_VALID) return res;
+
+	// If this is a multi-hop traversal, validate it
+	const cypher_astnode_t *range = cypher_ast_rel_pattern_get_varlength(edge);
+	if(range) {
+		res = _ValidateMultiHopTraversal(projections, edge, range, reason);
+		if(res != AST_VALID) return res;
+	}
+
+	// Validate that the relation is explicit and directed
+	// TODO Lift this limitation when possible
+	if(cypher_ast_rel_pattern_get_direction(edge) == CYPHER_REL_BIDIRECTIONAL) {
+		asprintf(reason, "RedisGraph does not currently support undirected relations.");
+		return AST_INVALID;
+	};
+
+	return res;
+}
+
+static AST_Validation _ValidatePath(const cypher_astnode_t *path,
+									TrieMap *projections,
+									TrieMap *identifiers,
 									char **reason) {
 	AST_Validation res = AST_VALID;
 	uint path_len = cypher_ast_pattern_path_nelements(path);
@@ -193,45 +274,48 @@ static AST_Validation _ValidatePath(const cypher_astnode_t *path, TrieMap *ident
 	for(uint i = 0; i < path_len; i ++) {
 		if(i % 2) {  // Relation pattern
 			const cypher_astnode_t *edge = cypher_ast_pattern_path_get_element(path, i);
-			// Make sure relation identifier is unique
-			res = _Validate_MATCH_Clause_ReusedEdges(edge, identifiers, reason);
-			if(res != AST_VALID) break;
-
-			// Validate the range specified by the relation
-			const cypher_astnode_t *range = cypher_ast_rel_pattern_get_varlength(edge);
-			if(range) {
-				res = _MATCH_Clause_Validate_Range(range, reason);
-				if(res != AST_VALID) break;
-			}
-
-			// Validate that the relation is explicit and directed
-			// TODO Lift this limitation when possible
-			if(cypher_ast_rel_pattern_get_direction(edge) == CYPHER_REL_BIDIRECTIONAL) {
-				asprintf(reason, "RedisGraph does not currently support undirected relations.");
-				res = AST_INVALID;
-				break;
-			};
+			res = _ValidateRelation(projections, edge, identifiers, reason);
+			if(res != AST_VALID) return res;
 		}
 	}
 
 	return res;
 }
 
-static AST_Validation _ValidatePattern(const cypher_astnode_t *pattern, TrieMap *identifiers,
-									   char **reason) {
+static AST_Validation _ValidatePattern(TrieMap *projections, const cypher_astnode_t *pattern,
+									   TrieMap *identifiers, char **reason) {
 	AST_Validation res = AST_VALID;
 	uint path_count = cypher_ast_pattern_npaths(pattern);
 	for(uint i = 0; i < path_count; i ++) {
-		res = _ValidatePath(cypher_ast_pattern_get_path(pattern, i), identifiers, reason);
+		res = _ValidatePath(cypher_ast_pattern_get_path(pattern, i), projections, identifiers, reason);
 		if(res != AST_VALID) break;
 	}
+
 	return res;
 }
 
+static bool _ValueIsConstant(const cypher_astnode_t *root) {
+	cypher_astnode_type_t type = cypher_astnode_type(root);
+	if(type == CYPHER_AST_PROPERTY_OPERATOR ||
+	   type == CYPHER_AST_IDENTIFIER
+	  ) {
+		return false;
+	}
+
+	// Recursively visit children
+	uint child_count = cypher_astnode_nchildren(root);
+	for(uint i = 0; i < child_count; i++) {
+		if(!_ValueIsConstant(cypher_astnode_get_child(root, i))) return false;
+	}
+
+	return true;
+}
+
+// Validate the property maps used in node/edge patterns in MATCH, MERGE, and CREATE clauses
 static AST_Validation _ValidateInlinedProperties(const cypher_astnode_t *props, char **reason) {
 	cypher_astnode_type_t type = cypher_astnode_type(props);
 	if(type == CYPHER_AST_PARAMETER) {
-		asprintf(reason, "Parameters are not currently supported in RedisGraph");
+		asprintf(reason, "Parameters are not currently supported in RedisGraph.");
 		return AST_INVALID;
 	}
 
@@ -241,16 +325,34 @@ static AST_Validation _ValidateInlinedProperties(const cypher_astnode_t *props, 
 		return AST_INVALID;
 	}
 
-	uint filter_count = cypher_ast_map_nentries(props);
-	for(uint i = 0; i < filter_count; i ++) {
-		cypher_astnode_type_t value_type = cypher_astnode_type(cypher_ast_map_get_value(props, i));
+	AST_Validation res = AST_VALID;
+	uint prop_count = cypher_ast_map_nentries(props);
+	for(uint i = 0; i < prop_count; i ++) {
+		const cypher_astnode_t *value = cypher_ast_map_get_value(props, i);
+		cypher_astnode_type_t value_type = cypher_astnode_type(value);
 		if(value_type == CYPHER_AST_IDENTIFIER) {
-			asprintf(reason, "Parameters are not currently supported in RedisGraph");
-			return AST_INVALID;
+			res = AST_INVALID;
+			break;
+		} else if(value_type == CYPHER_AST_PROPERTY_OPERATOR) {
+			res = AST_INVALID;
+			break;
+		} else if(value_type == CYPHER_AST_BINARY_OPERATOR) {
+			const cypher_astnode_t *lhs = cypher_ast_binary_operator_get_argument1(value);
+			if(!(_ValueIsConstant(lhs))) {
+				res = AST_INVALID;
+				break;
+			}
+			const cypher_astnode_t *rhs = cypher_ast_binary_operator_get_argument1(value);
+			if(!(_ValueIsConstant(rhs))) {
+				res = AST_INVALID;
+				break;
+			}
 		}
 	}
-
-	return AST_VALID;
+	if(res == AST_INVALID) {
+		asprintf(reason, "Non-constant values cannot currently be used as inlined props in RedisGraph.");
+	}
+	return res;
 }
 
 static AST_Validation _ValidateInlinedPropertiesOnPath(const cypher_astnode_t *path,
@@ -271,7 +373,6 @@ static AST_Validation _ValidateInlinedPropertiesOnPath(const cypher_astnode_t *p
 	}
 
 	return AST_VALID;
-
 }
 
 static AST_Validation _ValidateFilterPredicates(const cypher_astnode_t *predicate, char **reason) {
@@ -321,7 +422,13 @@ static AST_Validation _ValidateFilterPredicates(const cypher_astnode_t *predicat
 
 		}
 	} else if(type == CYPHER_AST_UNARY_OPERATOR) {
+		// WHERE exists(a.name)
 		asprintf(reason, "Unary APPLY operators are not currently supported in filters.");
+		return AST_INVALID;
+	} else if(type == CYPHER_AST_PATTERN_PATH) {
+		// Comparisons of form:
+		// MATCH (a), (b) WHERE a.id = 0 AND (a)-[:T]->(b:TheLabel)
+		asprintf(reason, "Paths cannot currently be specified in filters.");
 		return AST_INVALID;
 	}
 
@@ -359,11 +466,14 @@ static AST_Validation _Validate_MATCH_Clauses(const AST *ast, char **reason) {
 	TrieMap *reused_entities = NewTrieMap();
 	AST_Validation res;
 
+	const cypher_astnode_t *return_clause = AST_GetClause(ast, CYPHER_AST_RETURN);
+	TrieMap *projections = _AST_GetReturnProjections(return_clause);
 	uint match_count = array_len(match_clauses);
 	for(uint i = 0; i < match_count; i ++) {
 		const cypher_astnode_t *match_clause = match_clauses[i];
 		// Validate the pattern described by the MATCH clause
-		res = _ValidatePattern(cypher_ast_match_get_pattern(match_clause), identifiers, reason);
+		res = _ValidatePattern(projections, cypher_ast_match_get_pattern(match_clause), identifiers,
+							   reason);
 		if(res == AST_INVALID) goto cleanup;
 
 		// Validate that inlined filters do not use parameters
@@ -503,19 +613,19 @@ cleanup:
 
 // Validate that each relation pattern is typed.
 static AST_Validation _Validate_CREATE_Clause_TypedRelations(const cypher_astnode_t *node) {
-	unsigned int child_count = cypher_astnode_nchildren(node);
+	uint child_count = cypher_astnode_nchildren(node);
 
 	// Make sure relation pattern has a single relation type.
 	if(cypher_astnode_type(node) == CYPHER_AST_REL_PATTERN) {
-		unsigned int relation_type_count = 0;
-		for(int i = 0; i < child_count; i++) {
+		uint relation_type_count = 0;
+		for(uint i = 0; i < child_count; i++) {
 			const cypher_astnode_t *child = cypher_astnode_get_child(node, i);
 			if(cypher_astnode_type(child) == CYPHER_AST_RELTYPE) relation_type_count++;
 		}
 		if(relation_type_count != 1) return AST_INVALID;
 	} else {
 		// Keep scanning for relation pattern nodes.
-		for(int i = 0; i < child_count; i++) {
+		for(uint i = 0; i < child_count; i++) {
 			const cypher_astnode_t *child = cypher_astnode_get_child(node, i);
 			if(_Validate_CREATE_Clause_TypedRelations(child) == AST_INVALID) return AST_INVALID;
 		}
@@ -568,9 +678,54 @@ static AST_Validation _Validate_DELETE_Clauses(const AST *ast, char **reason) {
 	return AST_VALID;
 }
 
+// Verify that we handle the projected types. An example of an unsupported projection is:
+// RETURN count(a) > 0
+static AST_Validation _Validate_ReturnedTypes(const cypher_astnode_t *return_clause,
+											  char **reason) {
+	uint projection_count = cypher_ast_return_nprojections(return_clause);
+	for(uint i = 0; i < projection_count; i ++) {
+		const cypher_astnode_t *projection = cypher_ast_return_get_projection(return_clause, i);
+		const cypher_astnode_t *expr = cypher_ast_projection_get_expression(projection);
+		cypher_astnode_type_t type = cypher_astnode_type(expr);
+		if(type == CYPHER_AST_COMPARISON) {
+			asprintf(reason, "RedisGraph does not currently support returning '%s'",
+					 cypher_astnode_typestr(type));
+			return AST_INVALID;
+		} else if(type == CYPHER_AST_UNARY_OPERATOR) {
+			const cypher_operator_t *oper = cypher_ast_unary_operator_get_operator(expr);
+			if(oper == CYPHER_OP_NOT ||
+			   oper == CYPHER_OP_IS_NULL ||
+			   oper == CYPHER_OP_IS_NOT_NULL
+			  ) {
+				// TODO weird that we can't print operator strings?
+				asprintf(reason, "RedisGraph does not currently support returning this unary operator.");
+				return AST_INVALID;
+			}
+		} else if(type == CYPHER_AST_BINARY_OPERATOR) {
+			const cypher_operator_t *oper = cypher_ast_binary_operator_get_operator(expr);
+			if(oper == CYPHER_OP_OR ||
+			   oper == CYPHER_OP_AND ||
+			   oper == CYPHER_OP_EQUAL ||
+			   oper == CYPHER_OP_NEQUAL ||
+			   oper == CYPHER_OP_LT ||
+			   oper == CYPHER_OP_GT ||
+			   oper == CYPHER_OP_LTE ||
+			   oper == CYPHER_OP_GTE) {
+				// TODO weird that we can't print operator strings?
+				asprintf(reason, "RedisGraph does not currently support returning this binary operator.");
+				return AST_INVALID;
+			}
+		}
+	}
+	return AST_VALID;
+}
+
 static AST_Validation _Validate_RETURN_Clause(const AST *ast, char **reason) {
 	const cypher_astnode_t *return_clause = AST_GetClause(ast, CYPHER_AST_RETURN);
 	if(!return_clause) return AST_VALID;
+
+	// Verify the types of RETURN projections
+	if(_Validate_ReturnedTypes(return_clause, reason) != AST_VALID) return AST_INVALID;
 
 	// Retrieve all user-specified functions in RETURN clause.
 	TrieMap *referred_funcs = NewTrieMap();
@@ -747,8 +902,8 @@ static void _AST_GetDefinedIdentifiers(const cypher_astnode_t *node, TrieMap *id
 			  type == CYPHER_AST_CREATE) {
 		_AST_GetIdentifiers(node, identifiers);
 	} else {
-		unsigned int child_count = cypher_astnode_nchildren(node);
-		for(int c = 0; c < child_count; c ++) {
+		uint child_count = cypher_astnode_nchildren(node);
+		for(uint c = 0; c < child_count; c ++) {
 			const cypher_astnode_t *child = cypher_astnode_get_child(node, c);
 			_AST_GetDefinedIdentifiers(child, identifiers);
 		}
@@ -762,8 +917,8 @@ static void _AST_GetReferredIdentifiers(const cypher_astnode_t *node, TrieMap *i
 	   type == CYPHER_AST_WITH) {
 		_AST_GetIdentifiers(node, identifiers);
 	} else {
-		unsigned int child_count = cypher_astnode_nchildren(node);
-		for(int c = 0; c < child_count; c ++) {
+		uint child_count = cypher_astnode_nchildren(node);
+		for(uint c = 0; c < child_count; c ++) {
 			const cypher_astnode_t *child = cypher_astnode_get_child(node, c);
 			_AST_GetReferredIdentifiers(child, identifiers);
 		}
@@ -997,4 +1152,3 @@ AST_Validation AST_Validate(RedisModuleCtx *ctx, const cypher_parse_result_t *re
 
 	return res;
 }
-

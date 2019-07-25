@@ -134,8 +134,9 @@ PropertyMap *AST_ConvertPropertiesMap(const cypher_astnode_t *props, RecordMap *
 		map->keys[prop_idx] = cypher_ast_prop_name_get_value(ast_key);
 
 		const cypher_astnode_t *ast_value = cypher_ast_map_get_value(props, prop_idx);
-		// TODO write a routine to convert a record_map node to an SIValue
 		AR_ExpNode *value_exp = AR_EXP_FromExpression(record_map, ast_value);
+		// TODO It will be really nice to store AR_ExpNodes rather than resolved SIValues;
+		// allowing things like "CREATE (:b {prop: a.name})"
 		SIValue value = AR_EXP_Evaluate(value_exp, NULL);
 		AR_EXP_Free(value_exp);
 		map->values[prop_idx] = value;
@@ -352,4 +353,3 @@ AST_CreateContext AST_PrepareCreateOp(GraphContext *gc, RecordMap *record_map, A
 
 	return ctx;
 }
-
