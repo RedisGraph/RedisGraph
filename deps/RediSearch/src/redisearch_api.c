@@ -19,20 +19,35 @@ int RediSearch_GetCApiVersion() {
   return REDISEARCH_CAPI_VERSION;
 }
 
+static dictType invidxDictType = {0};
+
+static void valFreeCb(void* unused, void* p) {
+  KeysDictValue* kdv = p;
+  if (kdv->dtor) {
+    kdv->dtor(kdv->p);
+  }
+  free(kdv);
+}
+
 IndexSpec* RediSearch_CreateIndex(const char* name, const RSIndexOptions* options) {
   RSIndexOptions opts_s = {.gcPolicy = GC_POLICY_FORK};
   if (!options) {
     options = &opts_s;
   }
   IndexSpec* spec = NewIndexSpec(name);
-  IndexSpec_MakeKeyless(spec);
   spec->flags |= Index_Temporary;  // temporary is so that we will not use threads!!
   if (!spec->indexer) {
     spec->indexer = NewIndexer(spec);
   }
 
+  // Initialize only once:
+  if (!invidxDictType.valDestructor) {
+    invidxDictType = dictTypeHeapRedisStrings;
+    invidxDictType.valDestructor = valFreeCb;
+  }
   spec->getValue = options->gvcb;
   spec->getValueCtx = options->gvcbData;
+  spec->keysDict = dictCreate(&invidxDictType, NULL);
   spec->minPrefix = 0;
   spec->maxPrefixExpansions = -1;
   if (options->flags & RSIDXOPT_DOCTBLSIZE_UNLIMITED) {
@@ -51,7 +66,11 @@ void RediSearch_DropIndex(IndexSpec* sp) {
     // for now this is good enough, we should add another api to GC called before its freed.
     ((ForkGCCtx*)(sp->gc->gcCtx))->type = ForkGCCtxType_FREED;
   }
+  dict* d = sp->keysDict;
+  dictRelease(d);
+  sp->keysDict = NULL;
   IndexSpec_FreeSync(sp);
+
   RWLOCK_RELEASE();
 }
 
@@ -247,13 +266,15 @@ QueryNode* RediSearch_CreatePrefixNode(IndexSpec* sp, const char* fieldName, con
 }
 
 QueryNode* RediSearch_CreateLexRangeNode(IndexSpec* sp, const char* fieldName, const char* begin,
-                                         const char* end) {
+                                         const char* end, int includeBegin, int includeEnd) {
   QueryNode* ret = NewQueryNode(QN_LEXRANGE);
   if (begin) {
     ret->lxrng.begin = begin;
+    ret->lxrng.includeBegin = includeBegin;
   }
   if (end) {
     ret->lxrng.end = end;
+    ret->lxrng.includeEnd = includeEnd;
   }
   if (fieldName) {
     ret->opts.fieldMask = IndexSpec_GetFieldBit(sp, fieldName, strlen(fieldName));
@@ -277,6 +298,10 @@ QueryNode* RediSearch_CreateIntersectNode(IndexSpec* sp, int exact) {
 
 QueryNode* RediSearch_CreateUnionNode(IndexSpec* sp) {
   return NewQueryNode(QN_UNION);
+}
+
+QueryNode* RediSearch_CreateEmptyNode(IndexSpec* sp) {
+  return NewQueryNode(QN_NULL);
 }
 
 QueryNode* RediSearch_CreateNotNode(IndexSpec* sp) {
@@ -382,6 +407,10 @@ end:
   }
   QueryError_ClearError(&status);
   return it;
+}
+
+int RediSearch_DocumentExists(IndexSpec* sp, const void* docKey, size_t len) {
+  return DocTable_GetId(&sp->docs, docKey, len) != 0;
 }
 
 RS_ApiIter* RediSearch_IterateQuery(IndexSpec* sp, const char* s, size_t n, char** error) {

@@ -161,12 +161,14 @@ MODULE_API_FUNC(RSQNode*, RediSearch_CreatePrefixNode)
 (RSIndex* sp, const char* fieldName, const char* s);
 
 MODULE_API_FUNC(RSQNode*, RediSearch_CreateLexRangeNode)
-(RSIndex* sp, const char* fieldName, const char* begin, const char* end);
+(RSIndex* sp, const char* fieldName, const char* begin, const char* end, int includeBegin,
+ int includeEnd);
 
 MODULE_API_FUNC(RSQNode*, RediSearch_CreateTagNode)(RSIndex* sp, const char* field);
 
 MODULE_API_FUNC(RSQNode*, RediSearch_CreateIntersectNode)(RSIndex* sp, int exact);
 MODULE_API_FUNC(RSQNode*, RediSearch_CreateUnionNode)(RSIndex* sp);
+MODULE_API_FUNC(RSQNode*, RediSearch_CreateEmptyNode)(RSIndex* sp);
 MODULE_API_FUNC(RSQNode*, RediSearch_CreateNotNode)(RSIndex* sp);
 MODULE_API_FUNC(void, RediSearch_QueryNodeFree)(RSQNode* qn);
 
@@ -192,6 +194,9 @@ MODULE_API_FUNC(RSResultsIterator*, RediSearch_GetResultsIterator)(RSQNode* qn, 
  */
 MODULE_API_FUNC(RSResultsIterator*, RediSearch_IterateQuery)
 (RSIndex* sp, const char* s, size_t n, char** err);
+
+MODULE_API_FUNC(int, RediSearch_DocumentExists)
+(RSIndex* sp, const void* docKey, size_t len);
 
 MODULE_API_FUNC(const void*, RediSearch_ResultsIteratorNext)
 (RSResultsIterator* iter, RSIndex* sp, size_t* len);
