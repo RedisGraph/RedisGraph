@@ -672,20 +672,20 @@ static ExecutionPlanSegment *_NewExecutionPlanSegment(RedisModuleCtx *ctx, Graph
 	if(prev_op) {
 		// Need to connect this segment to the previous one.
 		// If the last operation of this segment is a potential data producer, join them
-		// under an Apply operation. (This could be a Cartesian Product if preferred.)
+		// under a Cartesian Product operation. (This could be an Apply op if preferred.)
 		if(parent_op->type & OP_TAPS) {
-			OpBase *op_apply = NewApplyOp();
+			OpBase *op_cp = NewCartesianProductOp();
 			uint prev_projection_count = array_len(prev_projections);
 			// The Apply op must be associated with the IDs projected from the previous segment
 			// in case we're placing filter operations.
 			// (although this is a rather ugly way to accomplish that.)
-			op_apply->modifies = array_new(uint, prev_projection_count);
+			op_cp->modifies = array_new(uint, prev_projection_count);
 			for(uint i = 0; i < prev_projection_count; i ++) {
-				op_apply->modifies = array_append(op_apply->modifies, i);
+				op_cp->modifies = array_append(op_cp->modifies, i);
 			}
 
-			ExecutionPlan_PushBelow(parent_op, op_apply);
-			ExecutionPlan_AddOp(op_apply, prev_op);
+			ExecutionPlan_PushBelow(parent_op, op_cp);
+			ExecutionPlan_AddOp(op_cp, prev_op);
 		} else {
 			// All operations can be connected in a single chain.
 			ExecutionPlan_AddOp(parent_op, prev_op);
