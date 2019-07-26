@@ -74,6 +74,10 @@ uint *_ExecutionPlan_LocateReferences(OpBase *root, OpBase **op, rax *references
 	 * previously modified entities (up the execution plan). */
 	uint *seen = array_new(uint *, 0);
 
+	/* If this operation is already associated with a record map, it is from
+	 * an earlier ExecutionPlanSegment and its IDs are not comparable. */
+	if(root->record_map) return seen;
+
 	uint modifies_count = array_len(root->modifies);
 	/* Append current op modified entities. */
 	for(uint i = 0; i < modifies_count; i++) {

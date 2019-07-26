@@ -49,6 +49,8 @@ Record ApplyConsume(OpBase *opBase) {
 		}
 	}
 
+	uint rhs_count = array_len(op->rhs_records);
+
 	OpBase *lhs = op->op.children[0];
 	if(op->lhs_record == NULL) {
 		// No pending data from left-hand stream
@@ -64,9 +66,12 @@ Record ApplyConsume(OpBase *opBase) {
 	// Clone the left-hand record
 	Record r = Record_Clone(op->lhs_record);
 
+	// No records were produced by the right-hand stream
+	if(rhs_count == 0) return r;
+
 	rhs_record = op->rhs_records[op->rhs_idx++];
 
-	if(op->rhs_idx == array_len(op->rhs_records)) {
+	if(op->rhs_idx == rhs_count) {
 		// We've joined all data from the right-hand stream with the current
 		// retrieval from the left-hand stream.
 		// The next call to ApplyConsume will attempt to pull new data.
