@@ -34,4 +34,4 @@ test:
 	@$(MAKE) -C ./src test
 
 format:
-	astyle -Q --options=.astylerc -R "./*.c,*.h"
+	astyle -Q --options=.astylerc -R --ignore-exclude-errors "./*.c,*.h"
