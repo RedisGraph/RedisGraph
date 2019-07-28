@@ -8,59 +8,83 @@
 #include "../util/arr.h"
 
 Path Path_new(size_t len) {
-	return array_new(Node, len);
+	Path path;
+	path.edges = array_new(Edge, len);
+	path.nodes = array_new(Node, len);
+	return path;
 }
 
-Path Path_append(Path p, Node n) {
-	return array_append(p, n);
+void Path_appendNode(Path p, Node n) {
+	array_append(p.nodes, n);
 }
 
-Node Path_pop(Path p) {
-	return array_pop(p);
+void Path_appendEdge(Path p, Edge e) {
+	array_append(p.edges, e);
+}
+
+Node Path_popNode(Path p) {
+	return array_pop(p.nodes);
+}
+Edge Path_popEdge(Path p) {
+	return array_pop(p.edges);
+}
+
+size_t Path_nodeCount(Path p) {
+	return array_len(p.nodes);
+}
+
+size_t Path_edgeCount(Path p) {
+	return array_len(p.edges);
 }
 
 Node Path_head(Path p) {
-	return p[array_len(p) - 1];
+	return p.nodes[array_len(p.nodes) - 1];
 }
 
 size_t Path_len(const Path p) {
-	return array_len(p);
+	return Path_edgeCount(p);
 }
 
 bool Path_empty(const Path p) {
-	return (array_len(p) == 0);
+	return (array_len(p.edges) == 0);
 }
 
 bool Path_containsNode(const Path p, Node *n) {
 	uint32_t pathLen = Path_len(p);
 	for(int i = 0; i < pathLen; i++) {
-		if(ENTITY_GET_ID(p + i) == ENTITY_GET_ID(n)) return true;
+		if(ENTITY_GET_ID(p.nodes + i) == ENTITY_GET_ID(n)) return true;
 	}
 	return false;
 }
 
 Path Path_clone(const Path p) {
 	int pathLen = Path_len(p);
-	Path clone = Path_new(pathLen);
+	Path clone = Path_new(pathLen + 1);
 
 	for(int i = 0; i < pathLen; i++) {
-		clone = Path_append(clone, p[i]);
+		Path_appendNode(clone, p.nodes[i]);
 	}
 
 	return clone;
 }
 
 void Path_print(Path p) {
-	assert(p);
 	Node *n = NULL;
+	Edge *e = NULL;
 	int pathLen = Path_len(p);
-
+	// print node edge
 	for(int i = 0; i < pathLen; i++) {
-		n = p + i;
+		n = p.nodes + i;
 		printf("%llu ", ENTITY_GET_ID(n));
+		e = p.edges + i;
+		printf("%llu ", ENTITY_GET_ID(e));
 	}
+	// print last node
+	n = p.nodes + pathLen + 1;
+	printf("%llu ", ENTITY_GET_ID(n));
 }
 
 void Path_free(Path p) {
-	array_free(p);
+	array_free(p.nodes);
+	array_free(p.edges);
 }

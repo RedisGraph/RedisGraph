@@ -87,7 +87,7 @@ OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicEx
 static Record CondVarLenTraverseConsume(OpBase *opBase) {
 	CondVarLenTraverse *op = (CondVarLenTraverse *)opBase;
 	OpBase *child = op->op.children[0];
-	Path p = NULL;
+	Path *p = NULL;
 
 	/* Incase we don't have any relations to traverse we can return quickly
 	 * Consider: MATCH (S)-[:L*]->(M) RETURN M
@@ -117,7 +117,7 @@ compute_path:
 	}
 
 	// For the timebeing we only care for the last node in path
-	Node n = Path_head(p);
+	Node n = Path_head(*p);
 
 	if(op->expandInto) {
 		/* Dest node is already resolved
