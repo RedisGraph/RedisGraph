@@ -445,6 +445,7 @@ This section contains information on all supported functions from the Cypher que
 |id() | Returns the ID of a relationship or node |
 |labels() | Returns a string representation of the label of a node. |
 |type() | Returns a string representation of the type of a relation. |
+|timestamp() | Returns the the amount of milliseconds since epoch. |
 
 ## Predicate functions
 

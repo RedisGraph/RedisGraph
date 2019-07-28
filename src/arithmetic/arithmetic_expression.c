@@ -13,7 +13,6 @@
 #include "../util/triemap/triemap.h"
 #include "../datatypes/temporal_value.h"
 
-
 #include "assert.h"
 #include <math.h>
 #include <ctype.h>
