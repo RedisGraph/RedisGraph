@@ -18,7 +18,7 @@ extern "C"
 #include "../../src/arithmetic/agg_funcs.h"
 #include "../../src/execution_plan/record.h"
 #include "../../src/util/rmalloc.h"
-#include "../../src/datatypes/temporal_value.h"
+#include <time.h>
 
 #ifdef __cplusplus
 }
@@ -843,5 +843,5 @@ TEST_F(ArithmeticTest, TimestampTest)
     arExp = _exp_from_query(query);
     result = AR_EXP_Evaluate(arExp, r);
 
-    ASSERT_LE(abs(1000 * ts.tv_sec + ts.tv_nsec / 1000000 - RG_TemporalValue_NewTimestamp()), 1);
+    ASSERT_LE(abs((1000 * ts.tv_sec + ts.tv_nsec / 1000000) - result.longval), 5);
 }
