@@ -764,6 +764,10 @@ SIValue AR_EXISTS(SIValue *argv, int argc) {
 	return SI_BoolVal(1);
 }
 
+SIValue AR_TIMESTAMP(SIValue *argv, int argc) {
+	return SI_LongVal(RG_TemporalValue_NewTimestamp());
+}
+
 void AR_RegFunc(char *func_name, size_t func_name_len, AR_Func func) {
 	if(__aeRegisteredFuncs == NULL) {
 		__aeRegisteredFuncs = NewTrieMap();
