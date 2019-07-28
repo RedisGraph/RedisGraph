@@ -11,6 +11,8 @@
 #include "../util/rmalloc.h"
 #include "../graph/graphcontext.h"
 #include "../util/triemap/triemap.h"
+#include "../datatypes/temporal_value.h"
+
 
 #include "assert.h"
 #include <math.h>
@@ -891,5 +893,9 @@ void AR_RegisterFuncs() {
 
 	_toLower("exists", &lower_func_name[0], &lower_func_name_len);
 	AR_RegFunc(lower_func_name, lower_func_name_len, AR_EXISTS);
+	lower_func_name_len = 32;
+
+	_toLower("timestamp", &lower_func_name[0], &lower_func_name_len);
+	AR_RegFunc(lower_func_name, lower_func_name_len, AR_TIMESTAMP);
 	lower_func_name_len = 32;
 }
