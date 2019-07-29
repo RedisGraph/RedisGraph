@@ -18,7 +18,7 @@ static void _RdbSaveAttributeKeys(RedisModuleIO *rdb, GraphContext *gc) {
     RedisModule_SaveUnsigned(rdb, count);
     for (uint i = 0; i < count; i ++) {
         char *key = gc->string_mapping[i];
-        RedisModule_SaveStringBuffer(rdb, key, strlen(key));
+        RedisModule_SaveStringBuffer(rdb, key, strlen(key) + 1);
     }
 }
 

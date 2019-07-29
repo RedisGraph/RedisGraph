@@ -35,7 +35,8 @@ static void QueryTagNode_Free(QueryTagNode *tag) {
 }
 
 static void QueryLexRangeNode_Free(QueryLexRangeNode *lx) {
-  // Nothing here for now..
+  if (lx->begin) free(lx->begin);
+  if (lx->end) free(lx->end);
 }
 
 // void _queryNumericNode_Free(QueryNumericNode *nn) { free(nn->nf); }
@@ -405,7 +406,7 @@ static IndexIterator *Query_EvalLexRangeNode(QueryEvalCtx *q, QueryNode *lx) {
   ctx.nits = 0;
 
   rune *begin = NULL, *end = NULL;
-  size_t nbegin = -1, nend = -1;
+  size_t nbegin, nend;
   if (lx->lxrng.begin) {
     begin = strToFoldedRunes(lx->lxrng.begin, &nbegin);
   }
@@ -413,8 +414,8 @@ static IndexIterator *Query_EvalLexRangeNode(QueryEvalCtx *q, QueryNode *lx) {
     end = strToFoldedRunes(lx->lxrng.end, &nend);
   }
 
-  TrieNode_IterateRange(t->root, begin, nbegin, lx->lxrng.includeBegin, end, nend,
-                        lx->lxrng.includeEnd, rangeIterCb, &ctx);
+  TrieNode_IterateRange(t->root, begin, begin ? nbegin : -1, lx->lxrng.includeBegin, end,
+                        end ? nend : -1, lx->lxrng.includeEnd, rangeIterCb, &ctx);
   free(begin);
   free(end);
   if (!ctx.its || ctx.nits == 0) {
@@ -587,7 +588,7 @@ static IndexIterator *Query_EvalTagLexRangeNode(QueryEvalCtx *q, TagIndex *idx, 
   ctx.nits = 0;
 
   const char *begin = qn->lxrng.begin, *end = qn->lxrng.end;
-  size_t nbegin = strlen(begin), nend = strlen(end);
+  int nbegin = begin ? strlen(begin) : -1, nend = end ? strlen(end) : -1;
 
   TrieMap_IterateRange(t, begin, nbegin, qn->lxrng.includeBegin, end, nend, qn->lxrng.includeEnd,
                        rangeIterCbStrs, &ctx);

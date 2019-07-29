@@ -170,6 +170,49 @@ TEST_F(LLApiTest, testAddDocumentNumericField) {
   ASSERT_STREQ(id, DOCID1);
   id = (const char*)RediSearch_ResultsIteratorNext(iter, index, &len);
   ASSERT_STREQ(id, NULL);
+  RediSearch_ResultsIteratorFree(iter);
+
+  // searching on the index
+  qn = RediSearch_CreateNumericNode(index, NUMERIC_FIELD_NAME, RSRANGE_INF, 10, 0, 0);
+  iter = RediSearch_GetResultsIterator(qn, index);
+  ASSERT_TRUE(iter != NULL);
+
+  id = (const char*)RediSearch_ResultsIteratorNext(iter, index, &len);
+  ASSERT_STREQ(id, DOCID1);
+  id = (const char*)RediSearch_ResultsIteratorNext(iter, index, &len);
+  ASSERT_STREQ(id, NULL);
+
+  RediSearch_ResultsIteratorFree(iter);
+  RediSearch_DropIndex(index);
+}
+
+TEST_F(LLApiTest, testAddDocumentNumericFieldWithMoreThenOneNode) {
+  // creating the index
+  RSIndex* index = RediSearch_CreateIndex("index", NULL);
+
+  // adding text field to the index
+  RediSearch_CreateNumericField(index, NUMERIC_FIELD_NAME);
+
+  // adding document to the index
+  RSDoc* d = RediSearch_CreateDocument(DOCID1, strlen(DOCID1), 1.0, NULL);
+  RediSearch_DocumentAddFieldNumber(d, NUMERIC_FIELD_NAME, 20, RSFLDTYPE_DEFAULT);
+  RediSearch_SpecAddDocument(index, d);
+
+  // adding document to the index
+  d = RediSearch_CreateDocument(DOCID2, strlen(DOCID2), 1.0, NULL);
+  RediSearch_DocumentAddFieldNumber(d, NUMERIC_FIELD_NAME, 40, RSFLDTYPE_DEFAULT);
+  RediSearch_SpecAddDocument(index, d);
+
+  // searching on the index
+  RSQNode* qn = RediSearch_CreateNumericNode(index, NUMERIC_FIELD_NAME, 30, 10, 0, 0);
+  RSResultsIterator* iter = RediSearch_GetResultsIterator(qn, index);
+  ASSERT_TRUE(iter != NULL);
+
+  size_t len;
+  const char* id = (const char*)RediSearch_ResultsIteratorNext(iter, index, &len);
+  ASSERT_STREQ(id, DOCID1);
+  id = (const char*)RediSearch_ResultsIteratorNext(iter, index, &len);
+  ASSERT_STREQ(id, NULL);
 
   RediSearch_ResultsIteratorFree(iter);
   RediSearch_DropIndex(index);
@@ -320,6 +363,10 @@ TEST_F(LLApiTest, testRanges) {
 
   ValidateResults(index, qn, 'o', 'w', 9);
 
+  qn = RediSearch_CreateLexRangeNode(index, FIELD_NAME_1, NULL, NULL, 1, 1);
+
+  ValidateResults(index, qn, 'a', 'z', 26);
+
   // printf("Have %lu ids in range!\n", results.size());
   RediSearch_DropIndex(index);
 }
@@ -343,6 +390,12 @@ TEST_F(LLApiTest, testRangesOnTags) {
   RediSearch_QueryNodeAddChild(tagQn, qn);
 
   ValidateResults(index, tagQn, 'o', 'w', 9);
+
+  tagQn = RediSearch_CreateTagNode(index, FIELD_NAME_1);
+  qn = RediSearch_CreateLexRangeNode(index, FIELD_NAME_1, NULL, NULL, 1, 1);
+  RediSearch_QueryNodeAddChild(tagQn, qn);
+
+  ValidateResults(index, tagQn, 'a', 'z', 26);
 
   RediSearch_DropIndex(index);
 }
@@ -465,6 +518,45 @@ TEST_F(LLApiTest, testMultitype) {
 
   qn = RediSearch_CreateTagNode(index, "f2");
   RediSearch_QueryNodeAddChild(qn, RediSearch_CreateTokenNode(index, NULL, "world"));
+  results = getResults(index, qn);
+  ASSERT_EQ(1, results.size());
+  ASSERT_EQ("doc1", results[0]);
+
+  RediSearch_DropIndex(index);
+}
+
+TEST_F(LLApiTest, testMultitypeNumericTag) {
+  RSIndex* index = RediSearch_CreateIndex("index", NULL);
+  RSField* f1 =
+      RediSearch_CreateField(index, "f1", RSFLDTYPE_TAG | RSFLDTYPE_NUMERIC, RSFLDOPT_NONE);
+  RSField* f2 =
+      RediSearch_CreateField(index, "f2", RSFLDTYPE_TAG | RSFLDTYPE_NUMERIC, RSFLDOPT_NONE);
+
+  RediSearch_TagCaseSensitive(f1, 1);
+
+  // Add document...
+  RSDoc* d = RediSearch_CreateDocumentSimple("doc1");
+  RediSearch_DocumentAddFieldCString(d, "f1", "World", RSFLDTYPE_TAG);
+  RediSearch_DocumentAddFieldCString(d, "f2", "World", RSFLDTYPE_TAG);
+  int rc = RediSearch_SpecAddDocument(index, d);
+  ASSERT_EQ(REDISMODULE_OK, rc);
+
+  auto qn = RediSearch_CreateTagNode(index, "f2");
+  RediSearch_QueryNodeAddChild(qn,
+                               RediSearch_CreateLexRangeNode(index, "f2", "world", "world", 1, 1));
+  std::vector<std::string> results = getResults(index, qn);
+  ASSERT_EQ(1, results.size());
+  ASSERT_EQ("doc1", results[0]);
+
+  qn = RediSearch_CreateTagNode(index, "f1");
+  RediSearch_QueryNodeAddChild(qn,
+                               RediSearch_CreateLexRangeNode(index, "f1", "world", "world", 1, 1));
+  results = getResults(index, qn);
+  ASSERT_EQ(0, results.size());
+
+  qn = RediSearch_CreateTagNode(index, "f1");
+  RediSearch_QueryNodeAddChild(qn,
+                               RediSearch_CreateLexRangeNode(index, "f1", "World", "world", 1, 1));
   results = getResults(index, qn);
   ASSERT_EQ(1, results.size());
   ASSERT_EQ("doc1", results[0]);
