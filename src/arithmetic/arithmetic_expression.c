@@ -11,6 +11,7 @@
 #include "../util/rmalloc.h"
 #include "../graph/graphcontext.h"
 #include "../util/triemap/triemap.h"
+#include "../datatypes/temporal_value.h"
 
 #include "assert.h"
 #include <math.h>
@@ -762,6 +763,10 @@ SIValue AR_EXISTS(SIValue *argv, int argc) {
 	return SI_BoolVal(1);
 }
 
+SIValue AR_TIMESTAMP(SIValue *argv, int argc) {
+	return SI_LongVal(TemporalValue_NewTimestamp());
+}
+
 void AR_RegFunc(char *func_name, size_t func_name_len, AR_Func func) {
 	if(__aeRegisteredFuncs == NULL) {
 		__aeRegisteredFuncs = NewTrieMap();
@@ -891,5 +896,9 @@ void AR_RegisterFuncs() {
 
 	_toLower("exists", &lower_func_name[0], &lower_func_name_len);
 	AR_RegFunc(lower_func_name, lower_func_name_len, AR_EXISTS);
+	lower_func_name_len = 32;
+
+	_toLower("timestamp", &lower_func_name[0], &lower_func_name_len);
+	AR_RegFunc(lower_func_name, lower_func_name_len, AR_TIMESTAMP);
 	lower_func_name_len = 32;
 }
