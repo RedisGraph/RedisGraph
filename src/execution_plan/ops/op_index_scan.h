@@ -21,15 +21,19 @@ typedef struct {
     uint recLength;  // Number of entries in a record.
     uint nodeRecIdx;
     RSIndex *idx;
+    RSQNode *qn;
     RSResultsIterator *iter;
 } IndexScan;
 
 /* Creates a new IndexScan operation */
-OpBase *NewIndexScanOp(Graph *g, Node *n, RSIndex *idx, RSResultsIterator *iter, AST *ast);
+OpBase *NewIndexScanOp(Graph *g, Node *n, RSIndex *idx, RSQNode *qn, AST *ast);
 
 /* IndexScan next operation
  * called each time a new node is required */
 Record IndexScanConsume(OpBase *opBase);
+
+/* Initialize index scan operation. */
+OpResult IndexScanInit(OpBase *opBase);
 
 /* Restart iterator */
 OpResult IndexScanReset(OpBase *ctx);

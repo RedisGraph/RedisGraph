@@ -18,7 +18,7 @@ static void _RdbLoadAttributeKeys(RedisModuleIO *rdb, GraphContext *gc) {
     /* Format:
      * #attribute keys
      * attribute keys
-    */
+     */
    
     uint count = RedisModule_LoadUnsigned(rdb);
     for (uint i = 0; i < count; i ++) {
@@ -79,6 +79,12 @@ GraphContext* RdbLoadGraphContext(RedisModuleIO *rdb) {
     RdbLoadGraph(rdb, gc);
 
     // TODO: Populate indicies.
+    uint node_schemas_count = array_len(gc->node_schemas);
+    for(uint i = 0; i < node_schemas_count; i++) {
+        Schema *s = gc->node_schemas[i];
+        if(s->index) Index_Construct(s->index);
+        if(s->fulltextIdx) Index_Construct(s->fulltextIdx);
+    }
 
     return gc;
 }

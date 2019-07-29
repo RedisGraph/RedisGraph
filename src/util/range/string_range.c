@@ -63,26 +63,30 @@ void StringRange_TightenRange(StringRange *range, int op, const char *v) {
     switch (op) {
         case LT:    // <
             if(!range->max || strcmp(range->max, v) >= 0) {
-                range->include_max = false;
-                range->max = v;
+                range->include_max = false;                
+                if(range->max) rm_free(range->max);
+                range->max = rm_strdup(v);
             }
             break;
         case LE:    // <=
             if(!range->max || strcmp(range->max, v) > 0) {
                 range->include_max = true;
-                range->max = v;
+                if(range->max) rm_free(range->max);
+                range->max = rm_strdup(v);
             }
             break;
         case GT:    // >
             if(!range->min || strcmp(range->min, v) <= 0 ) {
                 range->include_min = false;
-                range->min = v;
+                if(range->min) rm_free(range->min);
+                range->min = rm_strdup(v);
             }
             break;
         case GE:    // >=
             if(!range->min || strcmp(range->min, v) < 0) {
                 range->include_min = true;
-                range->min = v;
+                if(range->min) rm_free(range->min);
+                range->min = rm_strdup(v);
             }
             break;
         case EQ:    // =
@@ -94,8 +98,10 @@ void StringRange_TightenRange(StringRange *range, int op, const char *v) {
 
             range->include_min = true;
             range->include_max = true;
-            range->min = v;
-            range->max = v;
+            if(range->min) rm_free(range->min);
+            range->min = rm_strdup(v);
+            if(range->max) rm_free(range->max);
+            range->max = rm_strdup(v);
             break;
     }
 
@@ -126,5 +132,7 @@ void StringRange_ToString(const StringRange *range) {
 
 void StringRange_Free(StringRange *range) {
     assert(range);
+    if(range->min) rm_free(range->min);
+    if(range->max) rm_free(range->max);
     rm_free(range);
 }

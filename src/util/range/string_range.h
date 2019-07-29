@@ -9,8 +9,8 @@
 #include <stdbool.h>
 
 typedef struct {
-    const char *min;
-    const char *max;
+    char *min;
+    char *max;
     bool include_min;
     bool include_max;
     bool valid;

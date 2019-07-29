@@ -184,64 +184,62 @@ TEST_F(RangeTest, StringRangeNew) {
 }
 
 TEST_F(RangeTest, StringRangeValidation) {
-    StringRange *r = StringRange_New();
+    StringRange *r;
 
     // X > "a" AND X < "a"
-    r->max = "a";
-    r->min = "a";
-    r->include_max = false;
-    r->include_min = false;
+    r = StringRange_New();
+    StringRange_TightenRange(r, LT, "a");
+    StringRange_TightenRange(r, GT, "a");
     ASSERT_FALSE(StringRange_IsValid(r));
+    StringRange_Free(r);
 
     // X >= "a" AND X < "a"
-    r->max = "a";
-    r->min = "a";
-    r->include_max = false;
-    r->include_min = true;
+    r = StringRange_New();
+    StringRange_TightenRange(r, LT, "a");
+    StringRange_TightenRange(r, GE, "a");
     ASSERT_FALSE(StringRange_IsValid(r));
+    StringRange_Free(r);
     
     // X >= "a" AND X <= "a"
-    r->max = "a";
-    r->min = "a";
-    r->include_max = true;
-    r->include_min = true;
+    r = StringRange_New();
+    StringRange_TightenRange(r, LE, "a");
+    StringRange_TightenRange(r, GE, "a");
     ASSERT_TRUE(StringRange_IsValid(r));
+    StringRange_Free(r);
 
     // X > "a" AND X <= "a"
-    r->max = "a";
-    r->min = "a";
-    r->include_max = true;
-    r->include_min = false;
+    r = StringRange_New();
+    StringRange_TightenRange(r, LE, "a");
+    StringRange_TightenRange(r, GT, "a");
     ASSERT_FALSE(StringRange_IsValid(r));
+    StringRange_Free(r);
 
     // ("a", "z")  X > "a" AND x < "z".
-    r->max = "z";
-    r->min = "a";
-    r->include_max = false;
-    r->include_min = false;
+    r = StringRange_New();
+    StringRange_TightenRange(r, LT, "z");
+    StringRange_TightenRange(r, GT, "a");
     ASSERT_TRUE(StringRange_IsValid(r));
+    StringRange_Free(r);
 
     // ("a", "z"]  X > "a" AND x <= "z".
-    r->max = "z";
-    r->min = "a";
-    r->include_max = true;
-    r->include_min = false;
+    r = StringRange_New();
+    StringRange_TightenRange(r, LE, "z");
+    StringRange_TightenRange(r, GT, "a");
     ASSERT_TRUE(StringRange_IsValid(r));
+    StringRange_Free(r);
 
     // ["a", "z")  X >= "a" AND x < "z".
-    r->max = "z";
-    r->min = "a";
-    r->include_max = false;
-    r->include_min = true;
+    r = StringRange_New();
+    StringRange_TightenRange(r, LT, "z");
+    StringRange_TightenRange(r, GE, "a");
     ASSERT_TRUE(StringRange_IsValid(r));
+    StringRange_Free(r);
 
     // ["a", "z"]  X >= "a" AND x =< "z".
-    r->max = "z";
-    r->min = "a";
-    r->include_max = true;
-    r->include_min = true;
+    r = StringRange_New();
+    StringRange_TightenRange(r, LE, "z");
+    StringRange_TightenRange(r, GE, "a");
     ASSERT_TRUE(StringRange_IsValid(r));
-
     StringRange_Free(r);
 }
 
