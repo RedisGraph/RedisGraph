@@ -165,9 +165,9 @@ TEST_F(AllPathsTest, UpToThreeLegsPaths)
     // Three leg paths.
     NodeID p7[5] = {3, 0, 1, 2, 1};
     NodeID p8[5] = {3, 0, 1, 2, 3};
-    NodeID p9[5] = {4, 0, 2, 1, 0};
-    NodeID p10[5] = {4, 0, 2, 1, 2};
-    NodeID p11[5] = {4, 0, 2, 3, 0};
+    NodeID p9[5] = {3, 0, 2, 1, 0};
+    NodeID p10[5] = {3, 0, 2, 1, 2};
+    NodeID p11[5] = {3, 0, 2, 3, 0};
 
     NodeID *expectedPaths[12] = {p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11};
 

@@ -14,12 +14,14 @@ Path Path_new(size_t len) {
 	return path;
 }
 
-void Path_appendNode(Path p, Node n) {
-	array_append(p.nodes, n);
+Path Path_appendNode(Path p, Node n) {
+	p.nodes = array_append(p.nodes, n);
+	return p;
 }
 
-void Path_appendEdge(Path p, Edge e) {
-	array_append(p.edges, e);
+Path Path_appendEdge(Path p, Edge e) {
+	p.edges = array_append(p.edges, e);
+	return p;
 }
 
 Node Path_popNode(Path p) {
@@ -46,7 +48,7 @@ size_t Path_len(const Path p) {
 }
 
 bool Path_empty(const Path p) {
-	return (array_len(p.edges) == 0);
+	return Path_len(p) == 0;
 }
 
 bool Path_containsNode(const Path p, Node *n) {

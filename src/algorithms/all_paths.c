@@ -14,7 +14,7 @@ static void _AllPathsCtx_AddNodeToLevel(AllPathsCtx *ctx, uint level, Node *node
 	while(array_len(ctx->levels) <= level) {
 		ctx->levels = array_append(ctx->levels, Path_new(0));
 	}
-	Path_appendNode(ctx->levels[level], *node);
+	ctx->levels[level] = Path_appendNode(ctx->levels[level], *node);
 }
 
 static void __AllPathsCtx_AddConnectionToLevel(AllPathsCtx *ctx, uint level, Node *node,
@@ -22,8 +22,8 @@ static void __AllPathsCtx_AddConnectionToLevel(AllPathsCtx *ctx, uint level, Nod
 	while(array_len(ctx->levels) <= level) {
 		ctx->levels = array_append(ctx->levels, Path_new(0));
 	}
-	Path_appendNode(ctx->levels[level], *node);
-	Path_appendEdge(ctx->levels[level], *edge);
+	ctx->levels[level] = Path_appendNode(ctx->levels[level], *node);
+	ctx->levels[level] = Path_appendEdge(ctx->levels[level], *edge);
 }
 
 // Check to see if context levels array has entries at position 'level'.
@@ -56,8 +56,8 @@ AllPathsCtx *AllPathsCtx_New(Node *src, Graph *g, int *relationIDs, int relation
 Path *AllPathsCtx_NextPath(AllPathsCtx *ctx) {
 	if(!ctx) return NULL;
 	// As long as path is not empty OR there are neighbors to traverse.
-	while(!Path_empty(ctx->path) || _AllPathsCtx_LevelNotEmpty(ctx, 0)) {
-		uint32_t depth = Path_len(ctx->path);
+	while(Path_nodeCount(ctx->path) || _AllPathsCtx_LevelNotEmpty(ctx, 0)) {
+		uint32_t depth = Path_nodeCount(ctx->path);
 
 		// Can we advance?
 		if(_AllPathsCtx_LevelNotEmpty(ctx, depth)) {
@@ -72,10 +72,10 @@ Path *AllPathsCtx_NextPath(AllPathsCtx *ctx) {
 			bool frontierAlreadyOnPath = Path_containsNode(ctx->path, &frontierNode);
 
 			// Add frontier to path.
-			Path_appendNode(ctx->path, frontierNode);
+			ctx->path = Path_appendNode(ctx->path, frontierNode);
 			if(Path_edgeCount(ctx->levels[depth]) > 0) {
 				Edge frontierEdge = Path_popEdge(ctx->levels[depth]);
-				Path_appendEdge(ctx->path, frontierEdge);
+				ctx->path = Path_appendEdge(ctx->path, frontierEdge);
 			}
 
 			// Update path depth.
@@ -115,7 +115,7 @@ Path *AllPathsCtx_NextPath(AllPathsCtx *ctx) {
 		} else {
 			// No way to advance, backtrack.
 			Path_popNode(ctx->path);
-			Path_popEdge(ctx->path);
+			if(Path_edgeCount(ctx->path)) Path_popEdge(ctx->path);
 		}
 	}
 	// Couldn't find a path.
@@ -128,7 +128,7 @@ void AllPathsCtx_Free(AllPathsCtx *ctx) {
 	for(int i = 0; i < levelsCount; i++) Path_free(ctx->levels[i]);
 	array_free(ctx->levels);
 	Path_free(ctx->path);
-	// array_free(ctx->neighbors);
+	array_free(ctx->neighbors);
 	rm_free(ctx);
 	ctx = NULL;
 }
