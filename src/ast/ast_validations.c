@@ -119,7 +119,7 @@ static TrieMap *_AST_GetReturnProjections(const cypher_astnode_t *return_clause)
 }
 
 /* Compares a triemap of user-specified functions with the registered functions we provide. */
-static AST_Validation _AST_ValidateReferredFunctions(TrieMap *referred_functions, char **reason,
+static AST_Validation _ValidateReferredFunctions(TrieMap *referred_functions, char **reason,
 													 bool include_aggregates) {
 	AST_Validation res = AST_VALID;
 	void *value;
@@ -270,13 +270,11 @@ static AST_Validation _ValidatePath(const cypher_astnode_t *path,
 	AST_Validation res = AST_VALID;
 	uint path_len = cypher_ast_pattern_path_nelements(path);
 
-	// Check all entities on the path
-	for(uint i = 0; i < path_len; i ++) {
-		if(i % 2) {  // Relation pattern
-			const cypher_astnode_t *edge = cypher_ast_pattern_path_get_element(path, i);
-			res = _ValidateRelation(projections, edge, identifiers, reason);
-			if(res != AST_VALID) return res;
-		}
+	// Check all relations on the path (every odd offset)
+	for(uint i = 1; i < path_len; i += 2) {
+		const cypher_astnode_t *edge = cypher_ast_pattern_path_get_element(path, i);
+		res = _ValidateRelation(projections, edge, identifiers, reason);
+		if(res != AST_VALID) return res;
 	}
 
 	return res;
@@ -358,20 +356,21 @@ static AST_Validation _ValidateInlinedProperties(const cypher_astnode_t *props, 
 static AST_Validation _ValidateInlinedPropertiesOnPath(const cypher_astnode_t *path,
 													   char **reason) {
 	uint path_len = cypher_ast_pattern_path_nelements(path);
-	// Check all entities on the path
-	for(uint i = 0; i < path_len; i ++) {
+	// Check all nodes on path
+	for(uint i = 0; i < path_len; i += 2) {
 		const cypher_astnode_t *ast_identifier = NULL;
-		if(i % 2) {  // Checking an edge pattern
-			const cypher_astnode_t *edge = cypher_ast_pattern_path_get_element(path, i);
-			const cypher_astnode_t *props = cypher_ast_rel_pattern_get_properties(edge);
-			if(props && (_ValidateInlinedProperties(props, reason) != AST_VALID)) return AST_INVALID;
-		} else { // Checking a node pattern
-			const cypher_astnode_t *node = cypher_ast_pattern_path_get_element(path, i);
-			const cypher_astnode_t *props = cypher_ast_node_pattern_get_properties(node);
-			if(props && (_ValidateInlinedProperties(props, reason) != AST_VALID)) return AST_INVALID;
-		}
+		const cypher_astnode_t *node = cypher_ast_pattern_path_get_element(path, i);
+		const cypher_astnode_t *props = cypher_ast_node_pattern_get_properties(node);
+		if(props && (_ValidateInlinedProperties(props, reason) != AST_VALID)) return AST_INVALID;
 	}
 
+	// Check all edges on path
+	for(uint i = 1; i < path_len; i += 2) {
+		const cypher_astnode_t *ast_identifier = NULL;
+		const cypher_astnode_t *edge = cypher_ast_pattern_path_get_element(path, i);
+		const cypher_astnode_t *props = cypher_ast_rel_pattern_get_properties(edge);
+		if(props && (_ValidateInlinedProperties(props, reason) != AST_VALID)) return AST_INVALID;
+	}
 	return AST_VALID;
 }
 
@@ -486,7 +485,7 @@ static AST_Validation _Validate_MATCH_Clauses(const AST *ast, char **reason) {
 
 	// Verify that referred functions exist.
 	bool include_aggregates = false;
-	res = _AST_ValidateReferredFunctions(referred_funcs, reason, include_aggregates);
+	res = _ValidateReferredFunctions(referred_funcs, reason, include_aggregates);
 
 cleanup:
 	TrieMap_Free(referred_funcs, TrieMap_NOP_CB);
@@ -733,7 +732,7 @@ static AST_Validation _Validate_RETURN_Clause(const AST *ast, char **reason) {
 
 	// Verify that referred functions exist.
 	bool include_aggregates = true;
-	AST_Validation res = _AST_ValidateReferredFunctions(referred_funcs, reason, include_aggregates);
+	AST_Validation res = _ValidateReferredFunctions(referred_funcs, reason, include_aggregates);
 	TrieMap_Free(referred_funcs, TrieMap_NOP_CB);
 
 	return res;
@@ -1040,7 +1039,7 @@ static AST_Validation _ValidateMaps(const cypher_astnode_t *root, char **reason)
 	return AST_VALID;
 }
 
-static AST_Validation _AST_ValidateClauses(const AST *ast, char **reason) {
+static AST_Validation _ValidateClauses(const AST *ast, char **reason) {
 	if(_Validate_MATCH_Clauses(ast, reason) == AST_INVALID) {
 		return AST_INVALID;
 	}
@@ -1143,7 +1142,7 @@ AST_Validation AST_Validate(RedisModuleCtx *ctx, const cypher_parse_result_t *re
 	AST *ast = rm_malloc(sizeof(AST));
 	ast->root = body;
 	// Check for invalid queries not captured by libcypher-parser
-	res = _AST_ValidateClauses(ast, &reason);
+	res = _ValidateClauses(ast, &reason);
 	if(res != AST_VALID) {
 		RedisModule_ReplyWithError(ctx, reason);
 		free(reason);

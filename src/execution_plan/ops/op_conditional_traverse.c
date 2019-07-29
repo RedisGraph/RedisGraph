@@ -211,7 +211,7 @@ Record CondTraverseConsume(OpBase *opBase) {
 										  &op->edges);
 		}
 
-		if(!_CondTraverse_SetEdge(op, op->r)) return NULL;
+		_CondTraverse_SetEdge(op, op->r);
 	}
 
 	return Record_Clone(op->r);

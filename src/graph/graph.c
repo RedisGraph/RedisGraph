@@ -442,6 +442,10 @@ void Graph_GetEdgesConnectingNodes(const Graph *g, NodeID srcID, NodeID destID, 
 								   Edge **edges) {
 	assert(g && r < Graph_RelationTypeCount(g) && edges);
 
+	// Invalid relation type specified; this can occur on multi-type traversals like:
+	// MATCH ()-[:real_type|fake_type]->()
+	if(r == GRAPH_UNKNOWN_RELATION) return;
+
 	Node srcNode;
 	Node destNode;
 	assert(Graph_GetNode(g, srcID, &srcNode));

@@ -380,9 +380,8 @@ static AlgebraicExpressionOperand _AlgebraicExpression_OperandFromEdge(
 			if(reltype_id == GRAPH_UNKNOWN_RELATION) {
 				// No matrix to add
 				continue;
-			} else {
-				l = Graph_GetRelationMatrix(gc->g, reltype_id);
 			}
+			l = Graph_GetRelationMatrix(gc->g, reltype_id);
 			GrB_Info info = GrB_eWiseAdd_Matrix_Semiring(m, NULL, NULL, Rg_structured_bool, m, l, NULL);
 		}
 		mat = m;
