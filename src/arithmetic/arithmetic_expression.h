@@ -89,65 +89,66 @@ struct AR_ExpNode {
 typedef struct AR_ExpNode AR_ExpNode;
 
 /* Mathematical functions - numeric */
-SIValue AR_ADD(SIValue *argv,
-			   int argc); /* returns the summation of given values. */
-SIValue AR_SUB(SIValue *argv,
-			   int argc); /* returns the subtracting given values. */
-SIValue AR_MUL(SIValue *argv,
-			   int argc); /* returns the multiplication of given values. */
-SIValue AR_DIV(SIValue *argv,
-			   int argc); /* returns the divition of given values. */
-SIValue AR_ABS(SIValue *argv,
-			   int argc); /* returns the absolute value of the given number. */
-SIValue AR_CEIL(SIValue *argv,
-				int argc); /* returns the smallest floating point number that is greater than or equal to the given number and equal to a mathematical integer. */
-SIValue AR_FLOOR(SIValue *argv,
-				 int argc); /* returns the largest floating point number that is less than or equal to the given number and equal to a mathematical integer. */
-SIValue AR_RAND(SIValue *argv,
-				int argc); /* returns a random floating point number in the range from 0 to 1; i.e. [0,1]. The numbers returned follow an approximate uniform distribution. */
-SIValue AR_ROUND(SIValue *argv,
-				 int argc); /* returns the value of the given number rounded to the nearest integer. */
-SIValue AR_SIGN(SIValue *argv,
-				int argc); /* returns the signum of the given number: 0 if the number is 0, -1 for any negative number, and 1 for any positive number. */
+/* returns the summation of given values. */
+SIValue AR_ADD(SIValue *argv, int argc);
+/* returns the subtracting given values. */
+SIValue AR_SUB(SIValue *argv, int argc);
+/* returns the multiplication of given values. */
+SIValue AR_MUL(SIValue *argv, int argc);
+/* returns the divition of given values. */
+SIValue AR_DIV(SIValue *argv, int argc);
+/* returns the absolute value of the given number. */
+SIValue AR_ABS(SIValue *argv, int argc);
+/* returns the smallest floating point number that is greater than or equal to the given number and equal to a mathematical integer. */
+SIValue AR_CEIL(SIValue *argv, int argc);
+/* returns the largest floating point number that is less than or equal to the given number and equal to a mathematical integer. */
+SIValue AR_FLOOR(SIValue *argv, int argc);
+/* returns a random floating point number in the range from 0 to 1; i.e. [0,1]. The numbers returned follow an approximate uniform distribution. */
+SIValue AR_RAND(SIValue *argv, int argc);
+/* returns the value of the given number rounded to the nearest integer. */
+SIValue AR_ROUND(SIValue *argv, int argc);
+/* returns the signum of the given number: 0 if the number is 0, -1 for any negative number, and 1 for any positive number. */
+SIValue AR_SIGN(SIValue *argv, int argc);
 
 /* String functions */
-SIValue AR_LEFT(SIValue *argv,
-				int argc); /* returns a string containing the specified number of leftmost characters of the original string. */
-SIValue AR_LTRIM(SIValue *argv,
-				 int argc); /* returns the original string with leading whitespace removed. */
-SIValue AR_REPLACE(SIValue *argv,
-				   int argc); /* returns a string in which all occurrences of a specified string in the original string have been replaced by ANOTHER (specified) string. */
-SIValue AR_REVERSE(SIValue *argv,
-				   int argc); /* returns a string in which the order of all characters in the original string have been reversed. */
-SIValue AR_RIGHT(SIValue *argv,
-				 int argc); /* returns a string containing the specified number of rightmost characters of the original string. */
-SIValue AR_RTRIM(SIValue *argv,
-				 int argc); /* returns the original string with trailing whitespace removed. */
-SIValue AR_SPLIT(SIValue *argv,
-				 int argc); /* returns a list of strings resulting from the splitting of the original string around matches of the given delimiter. */
-SIValue AR_SUBSTRING(SIValue *argv,
-					 int argc); /* returns a substring of the original string, beginning with a 0-based index start and length. */
-SIValue AR_TOLOWER(SIValue *argv,
-				   int argc); /* returns the original string in lowercase. */
-SIValue AR_TOSTRING(SIValue *argv,
-					int argc); /* converts an integer, float or boolean value to a string. */
-SIValue AR_TOUPPER(SIValue *argv,
-				   int argc); /* returns the original string in uppercase. */
-SIValue AR_TRIM(SIValue *argv,
-				int argc); /* returns the original string with leading and trailing whitespace removed. */
-SIValue AR_CONCAT(SIValue *argv,
-				  int argc); /* returns a string concatenation of given values. */
+/* returns a string containing the specified number of leftmost characters of the original string. */
+SIValue AR_LEFT(SIValue *argv, int argc);
+/* returns the original string with leading whitespace removed. */
+SIValue AR_LTRIM(SIValue *argv, int argc);
+/* returns a string in which all occurrences of a specified string in the original string have been replaced by ANOTHER (specified) string. */
+SIValue AR_REPLACE(SIValue *argv, int argc);
+/* returns a string in which the order of all characters in the original string have been reversed. */
+SIValue AR_REVERSE(SIValue *argv, int argc);
+/* returns a string containing the specified number of rightmost characters of the original string. */
+SIValue AR_RIGHT(SIValue *argv, int argc);
+/* returns the original string with trailing whitespace removed. */
+SIValue AR_RTRIM(SIValue *argv, int argc);
+/* returns a list of strings resulting from the splitting of the original string around matches of the given delimiter. */
+SIValue AR_SPLIT(SIValue *argv, int argc);
+/* returns a substring of the original string, beginning with a 0-based index start and length. */
+SIValue AR_SUBSTRING(SIValue *argv, int argc);
+/* returns the original string in lowercase. */
+SIValue AR_TOLOWER(SIValue *argv, int argc);
+/* converts an integer, float or boolean value to a string. */
+SIValue AR_TOSTRING(SIValue *argv, int argc);
+/* returns the original string in uppercase. */
+SIValue AR_TOUPPER(SIValue *argv, int argc);
+/* returns the original string with leading and trailing whitespace removed. */
+SIValue AR_TRIM(SIValue *argv, int argc);
+/* returns a string concatenation of given values. */
+SIValue AR_CONCAT(SIValue *argv, int argc);
+/* returns the id of a relationship or node. */
+SIValue AR_ID(SIValue *argv, int argc);
+/* returns a string representations the label of a node. */
+SIValue AR_LABELS(SIValue *argv, int argc);
+/* returns a string representation of the type of a relation. */
+SIValue AR_TYPE(SIValue *argv, int argc);
+/* returns true if the specified property exists in the node, or relationship. */
+SIValue AR_EXISTS(SIValue *argv, int argc);
 
-SIValue AR_ID(SIValue *argv,
-			  int argc); /* returns the id of a relationship or node. */
-SIValue AR_LABELS(SIValue *argv,
-				  int argc); /* returns a string representations the label of a node. */
-SIValue AR_TYPE(SIValue *argv,
-				int argc); /* returns a string representation of the type of a relation. */
-SIValue AR_EXISTS(SIValue *argv,
-				  int argc); /* returns true if the specified property exists in the node, or relationship. */
-
-SIValue AR_TIMESTAMP(SIValue *argv, int argc); /* returns a timestamp - millis from epoch */
+/* Temporal functions */
+/* returns a timestamp - millis from epoch */
+SIValue AR_TIMESTAMP(SIValue *argv, int argc);
 
 void AR_RegisterFuncs();             /* Registers all arithmetic functions. */
 AR_Func AR_GetFunc(char *func_name); /* Get arithmetic function. */
